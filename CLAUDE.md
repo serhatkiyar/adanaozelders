@@ -47,7 +47,7 @@ admins (bağımsız kullanıcı tablosu)
 
 - **Unified User Table Yoktur**: Admin, Tutor ve Client ayrı tablolarda tutulur.
 - **Soft-delete**: Tüm tablolarda `deleted_at` kolonu (`deleted_at IS NULL` filtresi önemlidir).
-- **Migration**: Alembic kullanılmamaktadır. `core/init_db.py::_apply_lightweight_migrations` içinde idempotent DDL (ALTER TABLE) ile tablo güncellemeleri yapılır. Yeni tablolar `Base.metadata.create_all` ile otomatik oluşur.
+- **Migration**: Alembic kullanılır (async, `migrations/`). Şema değişikliği için `alembic revision --autogenerate -m "..."` ile revizyon üretip `alembic upgrade head` ile uygulanır. `AUTO_CREATE_DB=true` iken uygulama açılışında (`main.py` lifespan) migration'lar otomatik `head`'e yükseltilir, ardından rol/admin seed'lenir. (`core/init_db.py` ve `Base.metadata.create_all` artık kullanılmaz.)
 - **Concurrency**: Booking çakışmaları PostgreSQL GiST Exclusion Constraint ile veritabanı seviyesinde engellenir.
 
 ## İş Kuralları ve Temel Özellikler

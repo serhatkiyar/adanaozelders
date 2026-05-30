@@ -1,10 +1,13 @@
 import io
+import logging
 import uuid
 
 import aioboto3
 from PIL import Image
 
 from core.config import settings
+
+logger = logging.getLogger(__name__)
 
 
 def optimize_image(file_bytes: bytes, size: tuple[int, int] = (256, 256)) -> bytes:
@@ -93,4 +96,5 @@ async def delete_avatar(avatar_url: str) -> None:
         ) as s3:
             await s3.delete_object(Bucket=settings.AWS_BUCKET_NAME, Key=key)
     except Exception:
-        pass  # best-effort
+        # best-effort silme; başarısızlık akışı bozmaz ama iz bırakırız.
+        logger.warning("avatar delete failed for %s", avatar_url, exc_info=True)
