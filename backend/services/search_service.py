@@ -36,6 +36,7 @@ def _to_search_out(
     return TutorSearchOut(
         id=tutor.id,
         full_name=tutor.full_name,
+        avatar_url=tutor.avatar_url,
         headline=tutor.headline,
         bio=tutor.bio,
         hourly_rate=tutor.hourly_rate,

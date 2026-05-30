@@ -59,6 +59,7 @@ async def get_client_public(
         full_name=client.full_name,
         username=client.username,
         about=client.about,
+        avatar_url=client.avatar_url,
         birth_date=client.birth_date,
         gender=client.gender,
         created_at=client.created_at,
