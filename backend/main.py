@@ -10,7 +10,7 @@ from api.router import api_router
 from core.config import settings
 from core.database import AsyncSessionLocal, engine
 from core.exceptions import register_exception_handlers
-from core.init_db import init_db
+from core import seed
 from core import presence
 from services import booking_service
 
@@ -40,7 +40,10 @@ async def _presence_flusher() -> None:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     if settings.AUTO_CREATE_DB:
-        await init_db()
+        async with AsyncSessionLocal() as session:
+            await seed.seed_roles(session)
+            await seed.seed_admin(session)
+            await session.commit()
     task1 = asyncio.create_task(_reminder_loop())
     task2 = asyncio.create_task(_presence_flusher())
     yield
