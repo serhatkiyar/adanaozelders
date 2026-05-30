@@ -96,15 +96,16 @@ async def get_review(db: AsyncSession, review_id: int) -> Review | None:
 async def get_by_booking(db: AsyncSession, booking_id: int) -> Review | None:
     row = (
         await db.execute(
-            select(Review, Client.full_name)
+            select(Review, Client.full_name, Client.avatar_url)
             .join(Client, Review.client_id == Client.id)
             .where(Review.booking_id == booking_id, Review.deleted_at.is_(None))
         )
     ).first()
     if row is None:
         return None
-    review, full_name = row
+    review, full_name, avatar_url = row
     review.client_name = full_name
+    review.client_avatar_url = avatar_url
     return review
 
 
@@ -117,7 +118,7 @@ async def list_reviews(
     offset: int = 0,
 ) -> list[Review]:
     stmt = (
-        select(Review, Client.full_name)
+        select(Review, Client.full_name, Client.avatar_url)
         .join(Client, Review.client_id == Client.id)
         .where(Review.deleted_at.is_(None))
     )
@@ -128,8 +129,9 @@ async def list_reviews(
     stmt = stmt.order_by(Review.created_at.desc()).limit(limit).offset(offset)
     rows = (await db.execute(stmt)).all()
     reviews: list[Review] = []
-    for review, full_name in rows:
+    for review, full_name, avatar_url in rows:
         review.client_name = full_name  # serileştirme için transient alan
+        review.client_avatar_url = avatar_url
         reviews.append(review)
     return reviews
 

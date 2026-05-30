@@ -274,7 +274,9 @@ export interface BookingOut {
   meeting_room?: string | null;
   created_at: string;
   tutor_name?: string | null;
+  tutor_avatar_url?: string | null;
   client_name?: string | null;
+  client_avatar_url?: string | null;
   reviewed: boolean;
 }
 
@@ -300,7 +302,8 @@ export interface ReviewOut {
   comment_text?: string | null;
   tutor_reply?: string | null;
   created_at: string;
-  client_name?: string | null; // yalnızca liste uçlarında dolu
+  client_name?: string | null;
+  client_avatar_url?: string | null; // yalnızca liste uçlarında dolu
 }
 
 /* ============================ QA ============================ */
@@ -339,13 +342,16 @@ export interface QAThreadOut {
   created_at: string;
   messages: QAMessageOut[];
   tutor_name?: string | null;
+  tutor_avatar_url?: string | null;
   client_name?: string | null;
+  client_avatar_url?: string | null;
 }
 
 export interface LessonQuestionGroup {
   booking_id: number;
   tutor_id: number;
   tutor_name?: string | null;
+  tutor_avatar_url?: string | null;
   tutor_headline?: string | null;
   start_at: string;
   end_at: string;

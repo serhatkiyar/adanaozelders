@@ -152,7 +152,9 @@ async def get_booking(db: AsyncSession, booking_id: int) -> Booking | None:
     tutor = await db.get(Tutor, booking.tutor_id)
     client = await db.get(Client, booking.client_id)
     booking.tutor_name = tutor.full_name if tutor else None
+    booking.tutor_avatar_url = tutor.avatar_url if tutor else None
     booking.client_name = client.full_name if client else None
+    booking.client_avatar_url = client.avatar_url if client else None
     review_id = await db.scalar(
         select(Review.id).where(
             Review.booking_id == booking.id, Review.deleted_at.is_(None)
@@ -178,7 +180,7 @@ async def list_bookings(
         .label("reviewed")
     )
     stmt = (
-        select(Booking, Tutor.full_name, Client.full_name, reviewed_col)
+        select(Booking, Tutor.full_name, Tutor.avatar_url, Client.full_name, Client.avatar_url, reviewed_col)
         .join(Tutor, Booking.tutor_id == Tutor.id)
         .join(Client, Booking.client_id == Client.id)
         .where(Booking.deleted_at.is_(None))
@@ -194,9 +196,11 @@ async def list_bookings(
     stmt = stmt.order_by(Booking.start_at.desc()).limit(limit).offset(offset)
 
     bookings: list[Booking] = []
-    for booking, tutor_name, client_name, reviewed in (await db.execute(stmt)).all():
+    for booking, tutor_name, tutor_avatar, client_name, client_avatar, reviewed in (await db.execute(stmt)).all():
         booking.tutor_name = tutor_name
+        booking.tutor_avatar_url = tutor_avatar
         booking.client_name = client_name
+        booking.client_avatar_url = client_avatar
         booking.reviewed = reviewed
         bookings.append(booking)
     return bookings

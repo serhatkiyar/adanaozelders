@@ -96,7 +96,7 @@ function ReviewCard({
   return (
     <div className="rounded-xl border border-slate-100 bg-white p-5 dark:border-slate-700 dark:bg-slate-800">
       <div className="flex items-start gap-3">
-        <Avatar name={name} size="sm" />
+        <Avatar name={name} avatar_url={review.client_avatar_url} size="sm" />
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between gap-2">
             <span className="text-sm font-semibold text-slate-800 dark:text-slate-100">

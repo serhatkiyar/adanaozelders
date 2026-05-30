@@ -68,6 +68,8 @@ class BookingOut(BaseModel):
     created_at: datetime.datetime
     # Görüntüleme için; list_bookings/get_booking doldurur, aksiyon yanıtlarında da set edilir.
     tutor_name: str | None = None
+    tutor_avatar_url: str | None = None
     client_name: str | None = None
+    client_avatar_url: str | None = None
     # Bu rezervasyon için aktif bir değerlendirme var mı? list_bookings/get_booking doldurur.
     reviewed: bool = False

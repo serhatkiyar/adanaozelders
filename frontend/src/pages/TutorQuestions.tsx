@@ -30,7 +30,7 @@ function TutorThreadCard({ thread }: { thread: QAThreadOut }) {
           to={`/tutor/students/${thread.client_id}`}
           className="flex min-w-0 items-center gap-2.5 rounded-lg transition hover:opacity-80"
         >
-          <Avatar name={clientName} size="sm" />
+          <Avatar name={clientName} avatar_url={thread.client_avatar_url} size="sm" />
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold text-slate-800 hover:text-indigo-600 dark:text-slate-100 dark:hover:text-indigo-400">
               {clientName}

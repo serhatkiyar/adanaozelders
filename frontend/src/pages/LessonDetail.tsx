@@ -158,7 +158,7 @@ export default function LessonDetail() {
               to={counterpartLink}
               className="flex min-w-0 items-center gap-3 transition hover:opacity-80"
             >
-              <Avatar name={counterpartName} size="lg" />
+              <Avatar name={counterpartName} avatar_url={isClient ? booking.tutor_avatar_url : booking.client_avatar_url} size="lg" />
               <div className="min-w-0">
                 <p className="truncate text-lg font-bold text-slate-900 dark:text-white">
                   {counterpartName}

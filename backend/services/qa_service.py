@@ -73,8 +73,11 @@ async def create_thread(
     db.add(thread)
     await db.flush()
     full = await _load_thread(db, thread.id)
-    full.tutor_name = (await db.get(Tutor, full.tutor_id)).full_name
+    tutor = await db.get(Tutor, full.tutor_id)
+    full.tutor_name = tutor.full_name if tutor else None
+    full.tutor_avatar_url = tutor.avatar_url if tutor else None
     full.client_name = client.full_name
+    full.client_avatar_url = client.avatar_url
     return full
 
 
@@ -131,7 +134,9 @@ async def get_thread(db: AsyncSession, thread_id: int) -> QAThread | None:
     tutor = await db.get(Tutor, thread.tutor_id)
     client = await db.get(Client, thread.client_id)
     thread.tutor_name = tutor.full_name if tutor else None
+    thread.tutor_avatar_url = tutor.avatar_url if tutor else None
     thread.client_name = client.full_name if client else None
+    thread.client_avatar_url = client.avatar_url if client else None
     return thread
 
 
@@ -145,7 +150,7 @@ async def list_threads(
     offset: int = 0,
 ) -> list[QAThread]:
     stmt = (
-        select(QAThread, Tutor.full_name, Client.full_name)
+        select(QAThread, Tutor.full_name, Tutor.avatar_url, Client.full_name, Client.avatar_url)
         .options(selectinload(QAThread.messages))
         .join(Tutor, QAThread.tutor_id == Tutor.id)
         .join(Client, QAThread.client_id == Client.id)
@@ -162,9 +167,11 @@ async def list_threads(
     stmt = stmt.order_by(QAThread.created_at.desc()).limit(limit).offset(offset)
 
     threads: list[QAThread] = []
-    for thread, tutor_name, client_name in (await db.execute(stmt)).all():
+    for thread, tutor_name, tutor_avatar, client_name, client_avatar in (await db.execute(stmt)).all():
         thread.tutor_name = tutor_name
+        thread.tutor_avatar_url = tutor_avatar
         thread.client_name = client_name
+        thread.client_avatar_url = client_avatar
         threads.append(thread)
     return threads
 
@@ -181,7 +188,7 @@ async def list_question_rights(
 
     rows = (
         await db.execute(
-            select(Booking, Tutor.full_name, Tutor.headline)
+            select(Booking, Tutor.full_name, Tutor.avatar_url, Tutor.headline)
             .join(Tutor, Booking.tutor_id == Tutor.id)
             .where(
                 Booking.client_id == client.id,
@@ -194,7 +201,7 @@ async def list_question_rights(
     if not rows:
         return []
 
-    booking_ids = [b.id for b, _, _ in rows]
+    booking_ids = [b.id for b, _, _, _ in rows]
     threads = (
         (
             await db.execute(
@@ -215,7 +222,7 @@ async def list_question_rights(
         by_booking.setdefault(t.booking_id, []).append(t)
 
     groups: list[LessonQuestionGroup] = []
-    for booking, full_name, headline in rows:
+    for booking, full_name, avatar_url, headline in rows:
         b_threads = by_booking.get(booking.id, [])
         used = len(b_threads)
         # Tamamlanmış ders, bitiminden window_days gün sonrasına kadar aktiftir.
@@ -236,13 +243,16 @@ async def list_question_rights(
 
         for t in b_threads:
             t.tutor_name = full_name
+            t.tutor_avatar_url = avatar_url
             t.client_name = client.full_name
+            t.client_avatar_url = client.avatar_url
 
         groups.append(
             LessonQuestionGroup(
                 booking_id=booking.id,
                 tutor_id=booking.tutor_id,
                 tutor_name=full_name,
+                tutor_avatar_url=avatar_url,
                 tutor_headline=headline,
                 start_at=booking.start_at,
                 end_at=booking.end_at,

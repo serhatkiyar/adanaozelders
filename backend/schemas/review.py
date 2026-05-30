@@ -29,6 +29,7 @@ class ReviewOut(BaseModel):
     created_at: datetime.datetime
     # Yorum geçmişinde göstermek için; list_reviews dışında None döner.
     client_name: str | None = None
+    client_avatar_url: str | None = None
 
 
 class TutorReply(BaseModel):
