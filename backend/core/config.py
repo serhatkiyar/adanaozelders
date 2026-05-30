@@ -35,6 +35,10 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
     LAST_SEEN_THROTTLE_SECONDS: int = 60
 
+    REDIS_URL: str = "redis://localhost:6379/0"
+    PRESENCE_ONLINE_TTL_SECONDS: int = 300
+    PRESENCE_FLUSH_INTERVAL_SECONDS: int = 300
+
     AUTO_CREATE_DB: bool = True
     ADMIN_EMAIL: str | None = None
     ADMIN_PASSWORD: str | None = None

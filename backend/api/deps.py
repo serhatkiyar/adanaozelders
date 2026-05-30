@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from core.config import settings
 from core.database import get_db
 from core.security import decode_access_token
+from core import presence
 from models.admin import Admin
 from models.client import Client
 from models.role import ROLE_IDS, RoleType
@@ -62,8 +63,10 @@ async def get_current_active_user(
     now = datetime.datetime.now(datetime.timezone.utc)
     threshold = datetime.timedelta(seconds=settings.LAST_SEEN_THROTTLE_SECONDS)
     if user.last_seen_at is None or now - user.last_seen_at > threshold:
+        # Note: We update memory object but do NOT commit to DB synchronously.
+        # It's flushed asynchronously via presence.
         user.last_seen_at = now
-        await db.commit()
+        await presence.touch(user.__tablename__, user.id)
     return user
 
 

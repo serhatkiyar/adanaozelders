@@ -11,6 +11,7 @@ from core.config import settings
 from core.database import AsyncSessionLocal, engine
 from core.exceptions import register_exception_handlers
 from core.init_db import init_db
+from core import presence
 from services import booking_service
 
 _REMINDER_INTERVAL_SECONDS = 300
@@ -27,15 +28,27 @@ async def _reminder_loop() -> None:
             pass  # best-effort; bir sonraki periyotta tekrar denenir
 
 
+async def _presence_flusher() -> None:
+    while True:
+        await asyncio.sleep(settings.PRESENCE_FLUSH_INTERVAL_SECONDS)
+        try:
+            async with AsyncSessionLocal() as session:
+                await presence.flush_to_db(session)
+        except Exception:
+            pass
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     if settings.AUTO_CREATE_DB:
         await init_db()
-    task = asyncio.create_task(_reminder_loop())
+    task1 = asyncio.create_task(_reminder_loop())
+    task2 = asyncio.create_task(_presence_flusher())
     yield
-    task.cancel()
+    task1.cancel()
+    task2.cancel()
     with contextlib.suppress(asyncio.CancelledError):
-        await task
+        await task1
+        await task2
     await engine.dispose()
 
 
