@@ -259,6 +259,34 @@ export interface BookingCreate {
   location?: string | null;
 }
 
+export interface BookingResourceOut {
+  id: number;
+  booking_id: number;
+  uploader_role: "CLIENT" | "TUTOR" | string;
+  uploader_id: number;
+  title: string;
+  url: string;
+  created_at: string;
+}
+
+export interface BookingCommentOut {
+  id: number;
+  booking_id: number;
+  sender_role: "CLIENT" | "TUTOR" | string;
+  sender_id: number;
+  body: string;
+  created_at: string;
+}
+
+export interface BookingPrivateNoteOut {
+  id: number;
+  booking_id: number;
+  owner_role: number;
+  owner_id: number;
+  body: string;
+  created_at: string;
+}
+
 export interface BookingOut {
   id: number;
   tutor_id: number;
@@ -271,13 +299,18 @@ export interface BookingOut {
   cancel_reason?: string | null;
   mode?: string | null; // ONLINE | IN_PERSON
   location?: string | null;
+  location_lat: number | null;
+  location_lng: number | null;
   meeting_room?: string | null;
   created_at: string;
   tutor_name?: string | null;
   tutor_avatar_url?: string | null;
   client_name?: string | null;
-  client_avatar_url?: string | null;
+  client_avatar_url: string | null;
   reviewed: boolean;
+  resources: BookingResourceOut[];
+  comments: BookingCommentOut[];
+  private_notes: BookingPrivateNoteOut[];
 }
 
 /* ============================ REVIEW ============================ */

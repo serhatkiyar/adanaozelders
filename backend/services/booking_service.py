@@ -5,16 +5,34 @@ import secrets
 
 from fastapi import HTTPException, status
 from sqlalchemy import func, select
+from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.config import settings
+from core.moderation import mask_contact_info
 from models.booking import Booking, BookingStatus
 from models.client import Client
 from models.review import Review
-from models.role import ROLE_IDS, RoleType
+from models.role import ROLE_IDS, RoleType, role_name
 from models.tutor import Tutor, TutorAvailability, TutorStatus
-from schemas.booking import BookingCreate
+from models.booking_resource import BookingResource
+from models.booking_comment import BookingComment
+from models.booking_private_note import BookingPrivateNote
+from schemas.booking import BookingCreate, BookingResourceCreate, BookingCommentCreate, BookingLocationUpdate, BookingPrivateNoteCreate
 from services import notification_service
+from core.ws_manager import manager
+
+CurrentUser = "Admin | Tutor | Client"
+
+
+def _filter_private_notes(booking: Booking, *, role_id: int, user_id: int) -> None:
+    """Booking üzerindeki özel notları yalnızca sahibi görebilsin diye in-place
+    filtreler. Özel notlar gizlilik açısından karşı tarafa asla sızmamalı."""
+    booking.private_notes = [
+        n
+        for n in booking.private_notes
+        if n.owner_role == role_id and n.owner_id == user_id
+    ]
 
 _TRANSITIONS: dict[BookingStatus, set[BookingStatus]] = {
     BookingStatus.PENDING: {
@@ -145,22 +163,48 @@ async def count_completed(db: AsyncSession, *, role_id: int, user_id: int) -> in
     return int((await db.scalar(stmt)) or 0)
 
 
-async def get_booking(db: AsyncSession, booking_id: int) -> Booking | None:
-    booking = await db.get(Booking, booking_id)
-    if booking is None or booking.deleted_at is not None:
+async def get_booking(
+    db: AsyncSession, booking_id: int, *, viewer=None
+) -> Booking | None:
+    # Tutor/Client adı+avatarı ayrı db.get yerine tek sorguda join ile çekilir.
+    stmt = (
+        select(
+            Booking,
+            Tutor.full_name,
+            Tutor.avatar_url,
+            Client.full_name,
+            Client.avatar_url,
+        )
+        .options(
+            selectinload(Booking.resources),
+            selectinload(Booking.comments),
+        )
+        .join(Tutor, Booking.tutor_id == Tutor.id)
+        .join(Client, Booking.client_id == Client.id)
+        .where(Booking.id == booking_id)
+    )
+    row = (await db.execute(stmt)).first()
+    if row is None:
         return None
-    tutor = await db.get(Tutor, booking.tutor_id)
-    client = await db.get(Client, booking.client_id)
-    booking.tutor_name = tutor.full_name if tutor else None
-    booking.tutor_avatar_url = tutor.avatar_url if tutor else None
-    booking.client_name = client.full_name if client else None
-    booking.client_avatar_url = client.avatar_url if client else None
+    booking, tutor_name, tutor_avatar, client_name, client_avatar = row
+    if booking.deleted_at is not None:
+        return None
+    booking.tutor_name = tutor_name
+    booking.tutor_avatar_url = tutor_avatar
+    booking.client_name = client_name
+    booking.client_avatar_url = client_avatar
     review_id = await db.scalar(
         select(Review.id).where(
             Review.booking_id == booking.id, Review.deleted_at.is_(None)
         )
     )
     booking.reviewed = review_id is not None
+    # Özel notlar yalnızca sahibine döner. viewer verilmezse (örn. dahili çağrı)
+    # güvenli tarafta kalıp tüm notları gizleriz.
+    if viewer is not None:
+        _filter_private_notes(booking, role_id=viewer.role_id, user_id=viewer.id)
+    else:
+        booking.private_notes = []
     return booking
 
 
@@ -181,6 +225,10 @@ async def list_bookings(
     )
     stmt = (
         select(Booking, Tutor.full_name, Tutor.avatar_url, Client.full_name, Client.avatar_url, reviewed_col)
+        .options(
+            selectinload(Booking.resources),
+            selectinload(Booking.comments)
+        )
         .join(Tutor, Booking.tutor_id == Tutor.id)
         .join(Client, Booking.client_id == Client.id)
         .where(Booking.deleted_at.is_(None))
@@ -202,6 +250,8 @@ async def list_bookings(
         booking.client_name = client_name
         booking.client_avatar_url = client_avatar
         booking.reviewed = reviewed
+        # Özel notlar yalnızca isteği yapan tarafa döner.
+        _filter_private_notes(booking, role_id=role_id, user_id=user_id)
         bookings.append(booking)
     return bookings
 
@@ -283,9 +333,11 @@ async def reschedule(
 
 
 async def set_location(
-    db: AsyncSession, booking: Booking, *, actor: "Client | Tutor", location: str
+    db: AsyncSession, booking: Booking, *, actor: "Client | Tutor", data: BookingLocationUpdate
 ) -> Booking:
-    booking.location = location
+    booking.location = data.location
+    booking.location_lat = data.location_lat
+    booking.location_lng = data.location_lng
     await db.flush()
     if actor.role_id == ROLE_IDS[RoleType.CLIENT]:
         rid, rrole, link = booking.tutor_id, ROLE_IDS[RoleType.TUTOR], "/tutor"
@@ -338,6 +390,34 @@ async def send_due_reminders(db: AsyncSession) -> int:
     return len(rows)
 
 
+async def auto_complete_past_bookings(db: AsyncSession) -> int:
+    """Bitişinden AUTO_COMPLETE_GRACE_HOURS saat geçmiş ama hâlâ ACCEPTED olan
+    dersleri otomatik COMPLETED'a geçirir. Böylece eğitmen elle işaretlemese de
+    öğrencinin değerlendirme ve soru (QA) hakkı açılır.
+    """
+    now = datetime.datetime.now(datetime.timezone.utc)
+    cutoff = now - datetime.timedelta(hours=settings.AUTO_COMPLETE_GRACE_HOURS)
+    rows = (
+        await db.execute(
+            select(Booking).where(
+                Booking.status == BookingStatus.ACCEPTED,
+                Booking.deleted_at.is_(None),
+                Booking.end_at <= cutoff,
+            )
+        )
+    ).scalars().all()
+    for booking in rows:
+        booking.status = BookingStatus.COMPLETED
+        await notification_service.notify(
+            db,
+            user_id=booking.client_id,
+            role_id=ROLE_IDS[RoleType.CLIENT],
+            message="Dersin tamamlandı. Değerlendirme yapabilir ve eğitmene soru sorabilirsin.",
+            link="/student/bookings",
+        )
+    return len(rows)
+
+
 async def cancel(
     db: AsyncSession,
     booking: Booking,
@@ -373,4 +453,167 @@ async def cancel(
         message=message,
         link=link,
     )
+    return booking
+
+
+async def add_resource(
+    db: AsyncSession,
+    booking: Booking,
+    actor: "Client | Tutor",
+    data: BookingResourceCreate,
+) -> Booking:
+    resource = BookingResource(
+        booking_id=booking.id,
+        uploader_role=role_name(actor.role_id),
+        uploader_id=actor.id,
+        title=mask_contact_info(data.title),
+        url=data.url,
+    )
+    db.add(resource)
+    await db.flush()
+    # Bildirim
+    if actor.role_id == ROLE_IDS[RoleType.CLIENT]:
+        recipient_id, recipient_role, link = (
+            booking.tutor_id,
+            ROLE_IDS[RoleType.TUTOR],
+            "/tutor",
+        )
+    else:
+        recipient_id, recipient_role, link = (
+            booking.client_id,
+            ROLE_IDS[RoleType.CLIENT],
+            f"/lesson/{booking.id}",
+        )
+    await notification_service.notify(
+        db,
+        user_id=recipient_id,
+        role_id=recipient_role,
+        message=f"Ders için yeni bir kaynak paylaşıldı: {data.title}",
+        link=link,
+    )
+    await db.refresh(booking, ["resources"])
+    return booking
+
+
+async def delete_resource(
+    db: AsyncSession,
+    booking: Booking,
+    actor: "Client | Tutor",
+    resource_id: int,
+) -> Booking:
+    stmt = select(BookingResource).where(BookingResource.id == resource_id, BookingResource.booking_id == booking.id)
+    resource = await db.scalar(stmt)
+    if not resource:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Resource not found")
+
+    actor_role_name = role_name(actor.role_id)
+    if resource.uploader_id != actor.id or resource.uploader_role != actor_role_name:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Not your resource")
+    
+    await db.delete(resource)
+    await db.flush()
+    await db.refresh(booking, ["resources"])
+    return booking
+
+
+async def add_comment(
+    db: AsyncSession,
+    booking: Booking,
+    actor: "Client | Tutor",
+    data: BookingCommentCreate,
+) -> Booking:
+    comment = BookingComment(
+        booking_id=booking.id,
+        sender_role=role_name(actor.role_id),
+        sender_id=actor.id,
+        body=mask_contact_info(data.body),
+    )
+    db.add(comment)
+    await db.flush()
+
+    if actor.role_id == ROLE_IDS[RoleType.CLIENT]:
+        recipient_id, recipient_role, link = (
+            booking.tutor_id,
+            ROLE_IDS[RoleType.TUTOR],
+            "/tutor",
+        )
+    else:
+        recipient_id, recipient_role, link = (
+            booking.client_id,
+            ROLE_IDS[RoleType.CLIENT],
+            f"/lesson/{booking.id}",
+        )
+    await notification_service.notify(
+        db,
+        user_id=recipient_id,
+        role_id=recipient_role,
+        message=f"{actor.full_name} ders detayına yeni bir not bıraktı.",
+        link=link,
+    )
+    
+    await manager.send_personal_message(
+        {
+            "type": "NEW_BOOKING_COMMENT",
+            "booking_id": booking.id
+        },
+        user_id=recipient_id,
+        role_id=recipient_role
+    )
+
+    await db.refresh(booking, ["comments"])
+    return booking
+
+
+async def delete_comment(
+    db: AsyncSession,
+    booking: Booking,
+    actor: "Client | Tutor",
+    comment_id: int,
+) -> Booking:
+    stmt = select(BookingComment).where(BookingComment.id == comment_id, BookingComment.booking_id == booking.id)
+    comment = await db.scalar(stmt)
+    if not comment:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Comment not found")
+
+    actor_role_name = role_name(actor.role_id)
+    if comment.sender_id != actor.id or comment.sender_role != actor_role_name:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Not your comment")
+    
+    await db.delete(comment)
+    await db.flush()
+    await db.refresh(booking, ["comments"])
+    return booking
+
+async def add_private_note(
+    db: AsyncSession, booking: Booking, actor: "Client | Tutor", note_in: BookingPrivateNoteCreate
+) -> Booking:
+    note = BookingPrivateNote(
+        booking_id=booking.id,
+        owner_role=actor.role_id,
+        owner_id=actor.id,
+        body=note_in.body,
+    )
+    db.add(note)
+    await db.flush()
+    await db.refresh(booking, ["private_notes"])
+    # refresh tüm notları geri yükler; tekrar sahibe göre filtrele.
+    _filter_private_notes(booking, role_id=actor.role_id, user_id=actor.id)
+    return booking
+
+async def delete_private_note(
+    db: AsyncSession, booking: Booking, actor: "Client | Tutor", note_id: int
+) -> Booking:
+    # booking.private_notes get_booking tarafından zaten aktöre filtrelenmiştir;
+    # başkasının notu bu listede olmadığı için "yok" sayılır (varlık ifşa edilmez).
+    note = next((n for n in booking.private_notes if n.id == note_id), None)
+    if not note:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Private note not found")
+    if note.owner_role != actor.role_id or note.owner_id != actor.id:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Cannot delete someone else's note")
+
+    await db.delete(note)
+    await db.flush()
+    await db.refresh(booking, ["private_notes"])
+    # refresh tüm notları geri yükler; tekrar sahibe göre filtrele.
+    _filter_private_notes(booking, role_id=actor.role_id, user_id=actor.id)
     return booking

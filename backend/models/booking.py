@@ -58,6 +58,8 @@ class Booking(Base, TimestampMixin, SoftDeleteMixin):
     mode: Mapped[str | None] = mapped_column(String(20), nullable=True)
     # Yüzyüze ders için buluşma yeri (serbest metin adres).
     location: Mapped[str | None] = mapped_column(Text, nullable=True)
+    location_lat: Mapped[float | None] = mapped_column(Numeric(9, 6), nullable=True)
+    location_lng: Mapped[float | None] = mapped_column(Numeric(9, 6), nullable=True)
     # Canlı ders odası (Jitsi oda adı; yalnızca uzaktan derste kabul edilince üretilir).
     meeting_room: Mapped[str | None] = mapped_column(String(120), nullable=True)
     # Ders öncesi hatırlatma bildirimi gönderildi mi (arka plan görevi için).
@@ -78,6 +80,13 @@ class Booking(Base, TimestampMixin, SoftDeleteMixin):
     client: Mapped["Client"] = relationship(back_populates="bookings")
     review: Mapped["Review | None"] = relationship(
         back_populates="booking", uselist=False
+    )
+    resources: Mapped[list["BookingResource"]] = relationship(back_populates="booking", cascade="all, delete-orphan")
+    comments: Mapped[list["BookingComment"]] = relationship(
+        "BookingComment", back_populates="booking", cascade="all, delete-orphan", lazy="selectin"
+    )
+    private_notes: Mapped[list["BookingPrivateNote"]] = relationship(
+        "BookingPrivateNote", back_populates="booking", cascade="all, delete-orphan", lazy="selectin"
     )
 
     __table_args__ = (

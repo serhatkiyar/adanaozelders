@@ -5,13 +5,15 @@ import { TUTOR_NAV } from "@/lib/nav";
 import { Avatar } from "@/components/Avatar";
 import { CancelModal } from "@/components/CancelModal";
 import { ProfileCompleteness } from "@/components/ProfileCompleteness";
-import { jitsiUrl } from "@/lib/lesson";
+
+import { useMeetingStore } from "@/store/meetingStore";
 import { useBookingAction, useBookings } from "@/hooks/useBookings";
 import { useMyTutorProfile } from "@/hooks/useTutorProfile";
 import { BookingStatus, type BookingOut } from "@/types";
 import { formatRange } from "@/lib/datetime";
 import { formatTRY, parseMoney } from "@/lib/money";
 import { BOOKING_STATUS_LABEL, BOOKING_STATUS_STYLE } from "@/lib/bookingStatus";
+import { isLessonJoinable } from "@/lib/lesson";
 import { getErrorMessage } from "@/lib/errors";
 import { toast } from "@/store/toastStore";
 
@@ -55,7 +57,7 @@ function StatBox({
 
 /* ─── booking card ───────────────────────────────────── */
 
-function BookingCard({ booking }: { booking: BookingOut }) {
+function BookingCard({ booking, onJoinMeeting }: { booking: BookingOut; onJoinMeeting: (booking: BookingOut) => void }) {
   const accept   = useBookingAction("accept");
   const reject   = useBookingAction("reject");
   const complete = useBookingAction("complete");
@@ -132,14 +134,21 @@ function BookingCard({ booking }: { booking: BookingOut }) {
         ) : isAccepted ? (
           <>
             {booking.meeting_room && (
-              <a
-                href={jitsiUrl(booking.meeting_room)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 active:scale-95"
-              >
-                🎥 Derse Katıl
-              </a>
+              isLessonJoinable(booking.start_at, booking.end_at) ? (
+                <button
+                  onClick={() => onJoinMeeting(booking)}
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 active:scale-95"
+                >
+                  🎥 Derse Katıl
+                </button>
+              ) : (
+                <span
+                  title="Canlı ders, başlangıçtan 15 dk önce açılır."
+                  className="inline-flex cursor-not-allowed items-center gap-1.5 rounded-xl bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-400 dark:bg-slate-700 dark:text-slate-500"
+                >
+                  🎥 Ders saatinde açılır
+                </span>
+              )
             )}
             <button
               disabled={busy}
@@ -183,11 +192,13 @@ function BookingSection({
   hint,
   bookings,
   alert,
+  onJoinMeeting,
 }: {
   title: string;
   hint?: string;
   bookings: BookingOut[];
   alert?: boolean;
+  onJoinMeeting: (booking: BookingOut) => void;
 }) {
   if (bookings.length === 0) return null;
 
@@ -216,7 +227,7 @@ function BookingSection({
       )}
       <div className="mt-3 space-y-3">
         {bookings.map((b) => (
-          <BookingCard key={b.id} booking={b} />
+          <BookingCard key={b.id} booking={b} onJoinMeeting={onJoinMeeting} />
         ))}
       </div>
     </section>
@@ -228,6 +239,7 @@ function BookingSection({
 export default function TutorDashboard() {
   const { data, isLoading, isError, error } = useBookings({ limit: 100 });
   const { data: profile } = useMyTutorProfile();
+  const { joinMeeting } = useMeetingStore();
 
   const groups = useMemo(() => {
     const pending: BookingOut[] = [];
@@ -302,13 +314,15 @@ export default function TutorDashboard() {
               hint="Yanıtını bekleyen yeni talepler."
               bookings={groups.pending}
               alert
+              onJoinMeeting={(bk) => joinMeeting(bk.meeting_room!, bk.tutor_name || "Eğitmen", bk.client_name || "Öğrenci")}
             />
             <BookingSection
               title="Onaylı Dersler"
               hint="Yaklaşan dersler — bittiğinde tamamlandı olarak işaretle."
               bookings={groups.accepted}
+              onJoinMeeting={(bk) => joinMeeting(bk.meeting_room!, bk.tutor_name || "Eğitmen", bk.client_name || "Öğrenci")}
             />
-            <BookingSection title="Geçmiş" bookings={groups.history} />
+            <BookingSection title="Geçmiş" bookings={groups.history} onJoinMeeting={(bk) => joinMeeting(bk.meeting_room!, bk.tutor_name || "Eğitmen", bk.client_name || "Öğrenci")} />
           </>
         )}
       </div>

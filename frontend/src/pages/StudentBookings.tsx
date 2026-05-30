@@ -7,13 +7,15 @@ import { ReviewModal } from "@/components/ReviewModal";
 import { QuestionModal } from "@/components/QuestionModal";
 import { CancelModal } from "@/components/CancelModal";
 import { RescheduleModal } from "@/components/RescheduleModal";
-import { jitsiUrl } from "@/lib/lesson";
+
+import { useMeetingStore } from "@/store/meetingStore";
 import { useBookings } from "@/hooks/useBookings";
 import { BookingStatus, type BookingOut } from "@/types";
 import { formatRange } from "@/lib/datetime";
 import { formatTRY, parseMoney } from "@/lib/money";
 import { BOOKING_STATUS_LABEL, BOOKING_STATUS_STYLE } from "@/lib/bookingStatus";
 import { qaEligibility } from "@/lib/qaWindow";
+import { isLessonJoinable } from "@/lib/lesson";
 import { getErrorMessage } from "@/lib/errors";
 
 interface AskTarget {
@@ -85,11 +87,13 @@ function BookingRow({
   reviewed,
   onReview,
   onAsk,
+  onJoinMeeting,
 }: {
   booking: BookingOut;
   reviewed: boolean;
   onReview: (id: number) => void;
   onAsk: (target: AskTarget) => void;
+  onJoinMeeting: (booking: BookingOut) => void;
 }) {
   const canReview = booking.status === BookingStatus.COMPLETED && !reviewed;
   const tutorName = booking.tutor_name ?? `Eğitmen #${booking.tutor_id}`;
@@ -150,14 +154,21 @@ function BookingRow({
           )}
 
           {booking.status === BookingStatus.ACCEPTED && booking.meeting_room && (
-            <a
-              href={jitsiUrl(booking.meeting_room)}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3.5 py-1.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 active:scale-95"
-            >
-              🎥 Derse Katıl
-            </a>
+            isLessonJoinable(booking.start_at, booking.end_at) ? (
+              <button
+                onClick={() => onJoinMeeting(booking)}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3.5 py-1.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 active:scale-95"
+              >
+                🎥 Derse Katıl
+              </button>
+            ) : (
+              <span
+                title="Canlı ders, başlangıçtan 15 dk önce açılır."
+                className="inline-flex cursor-not-allowed items-center gap-1.5 rounded-xl bg-slate-100 px-3.5 py-1.5 text-sm font-semibold text-slate-400 dark:bg-slate-700 dark:text-slate-500"
+              >
+                🎥 Ders saatinde açılır
+              </span>
+            )
           )}
 
           {canCancel && (
@@ -238,6 +249,7 @@ function BookingRow({
 
 export default function StudentBookings() {
   const { data, isLoading, isError, error } = useBookings({ limit: 100 });
+  const { joinMeeting } = useMeetingStore();
   const [activeReview, setActiveReview] = useState<number | null>(null);
   const [activeAsk, setActiveAsk]       = useState<AskTarget | null>(null);
   const [reviewed, setReviewed]         = useState<Set<number>>(new Set());
@@ -361,6 +373,7 @@ export default function StudentBookings() {
                   reviewed={b.reviewed || reviewed.has(b.id)}
                   onReview={setActiveReview}
                   onAsk={setActiveAsk}
+                  onJoinMeeting={(bk) => joinMeeting(bk.meeting_room!, bk.tutor_name || "Eğitmen", bk.client_name || "Öğrenci")}
                 />
               ))}
             </>

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import datetime
-import re
 
 from fastapi import HTTPException, status
 from sqlalchemy import exists, func, or_, select
@@ -15,11 +14,9 @@ from models.messaging import Conversation, Message
 from models.role import ROLE_IDS, RoleType
 from models.tutor import Tutor
 from core.ws_manager import manager
+from core.moderation import mask_contact_info
 
 CurrentUser = Admin | Tutor | Client
-
-# Disintermediation: telefon/e-posta sızıntısını maskeleyen ikinci savunma katmanı.
-_LEAK = re.compile(r"(\+?\d[\d\s().-]{8,}\d)|([\w.+-]+@[\w-]+\.[\w.-]+)", re.IGNORECASE)
 
 
 async def _can_message(db: AsyncSession, client_id: int, tutor_id: int) -> bool:
@@ -80,7 +77,7 @@ async def send_message(
         conversation_id=conv_id,
         sender_role=sender_role,
         sender_id=sender.id,
-        body=_LEAK.sub("[gizlendi]", body),
+        body=mask_contact_info(body),
     )
     db.add(message)
     await db.flush()

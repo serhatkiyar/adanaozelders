@@ -9,6 +9,12 @@ import {
   rejectBooking,
   rescheduleBooking,
   setBookingLocation,
+  addBookingResource,
+  deleteBookingResource,
+  addBookingComment,
+  deleteBookingComment,
+  addBookingPrivateNote,
+  deleteBookingPrivateNote,
   type ListBookingsParams,
 } from "@/api/bookings";
 import { BookingStatus, type BookingCreate, type BookingOut } from "@/types";
@@ -23,8 +29,8 @@ export function useBookings(params: ListBookingsParams) {
 export function useSetBookingLocation() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, location }: { id: number; location: string }) =>
-      setBookingLocation(id, location),
+    mutationFn: ({ id, location, lat, lng }: { id: number; location: string; lat: number | null; lng: number | null }) =>
+      setBookingLocation(id, location, lat, lng),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["bookings"] }),
   });
 }
@@ -133,6 +139,78 @@ export function useBookingAction(action: BookingActionType) {
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["bookings"] });
+    },
+  });
+}
+
+export function useAddBookingResource() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, title, url }: { id: number; title: string; url: string }) =>
+      addBookingResource(id, title, url),
+    onSuccess: (_, { id }) => {
+      qc.invalidateQueries({ queryKey: ["bookings", "detail", id] });
+      qc.invalidateQueries({ queryKey: ["bookings"] });
+    },
+  });
+}
+
+export function useDeleteBookingResource() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, resourceId }: { id: number; resourceId: number }) =>
+      deleteBookingResource(id, resourceId),
+    onSuccess: (_, { id }) => {
+      qc.invalidateQueries({ queryKey: ["bookings", "detail", id] });
+      qc.invalidateQueries({ queryKey: ["bookings"] });
+    },
+  });
+}
+
+export function useAddBookingComment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, body }: { id: number; body: string }) =>
+      addBookingComment(id, body),
+    onSuccess: (_, { id }) => {
+      qc.invalidateQueries({ queryKey: ["bookings", "detail", id] });
+      qc.invalidateQueries({ queryKey: ["bookings"] });
+    },
+  });
+}
+
+export function useDeleteBookingComment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, commentId }: { id: number; commentId: number }) =>
+      deleteBookingComment(id, commentId),
+    onSuccess: (_, { id }) => {
+      qc.invalidateQueries({ queryKey: ["bookings", "detail", id] });
+      qc.invalidateQueries({ queryKey: ["bookings"] });
+    },
+  });
+}
+
+export function useAddBookingPrivateNote() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, body }: { id: number; body: string }) =>
+      addBookingPrivateNote(id, body),
+    onSuccess: (_, { id }) => {
+      qc.invalidateQueries({ queryKey: ["bookings", "detail", id] });
+      qc.invalidateQueries({ queryKey: ["bookings"] });
+    },
+  });
+}
+
+export function useDeleteBookingPrivateNote() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, noteId }: { id: number; noteId: number }) =>
+      deleteBookingPrivateNote(id, noteId),
+    onSuccess: (_, { id }) => {
+      qc.invalidateQueries({ queryKey: ["bookings", "detail", id] });
+      qc.invalidateQueries({ queryKey: ["bookings"] });
     },
   });
 }

@@ -1,13 +1,69 @@
 from __future__ import annotations
 
 import datetime
+import re
 from decimal import Decimal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from models.booking import BookingStatus
 from schemas.tutor import TeachingMode
 
+class BookingResourceCreate(BaseModel):
+    title: str = Field(..., min_length=1, max_length=255)
+    url: str = Field(..., max_length=2048)
+
+    @field_validator("url")
+    @classmethod
+    def _validate_url_scheme(cls, v: str) -> str:
+        # Yalnızca http/https; javascript:/data:/mailto:/tel: gibi şemalar
+        # XSS/phishing ve aracılık-dışı (disintermediation) riski taşır.
+        v = v.strip()
+        if not re.match(r"^https?://", v, re.IGNORECASE):
+            raise ValueError("URL http:// veya https:// ile başlamalıdır")
+        return v
+
+class BookingResourceOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    booking_id: int
+    uploader_role: str
+    uploader_id: int
+    title: str
+    url: str
+    created_at: datetime.datetime
+
+class BookingCommentCreate(BaseModel):
+    body: str
+
+class BookingCommentOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    booking_id: int
+    sender_role: str
+    sender_id: int
+    body: str
+    created_at: datetime.datetime
+
+
+class BookingPrivateNoteCreate(BaseModel):
+    body: str
+
+
+class BookingPrivateNoteOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    booking_id: int
+    owner_role: int
+    owner_id: int
+    body: str
+    created_at: datetime.datetime
+
+
+class BookingLocationUpdate(BaseModel):
+    location: str
+    location_lat: float | None = None
+    location_lng: float | None = None
 
 class BookingCreate(BaseModel):
     tutor_id: int
@@ -64,6 +120,8 @@ class BookingOut(BaseModel):
     cancel_reason: str | None = None
     mode: str | None = None
     location: str | None = None
+    location_lat: float | None = None
+    location_lng: float | None = None
     meeting_room: str | None = None
     created_at: datetime.datetime
     # Görüntüleme için; list_bookings/get_booking doldurur, aksiyon yanıtlarında da set edilir.
@@ -73,3 +131,6 @@ class BookingOut(BaseModel):
     client_avatar_url: str | None = None
     # Bu rezervasyon için aktif bir değerlendirme var mı? list_bookings/get_booking doldurur.
     reviewed: bool = False
+    resources: list[BookingResourceOut] = []
+    comments: list[BookingCommentOut] = []
+    private_notes: list[BookingPrivateNoteOut] = []

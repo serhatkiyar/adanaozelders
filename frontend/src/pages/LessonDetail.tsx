@@ -14,13 +14,21 @@ import {
   useBooking,
   useBookingAction,
   useSetBookingLocation,
+  useAddBookingResource,
+  useDeleteBookingResource,
+  useAddBookingComment,
+  useDeleteBookingComment,
+  useAddBookingPrivateNote,
+  useDeleteBookingPrivateNote,
 } from "@/hooks/useBookings";
+import { MapPicker } from "@/components/MapPicker";
 import { useReviewByBooking } from "@/hooks/useReviews";
 import { useQaRights } from "@/hooks/useQa";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { formatRange } from "@/lib/datetime";
 import { formatTRY, parseMoney } from "@/lib/money";
-import { jitsiUrl, mapsUrl } from "@/lib/lesson";
+import { isLessonJoinable } from "@/lib/lesson";
+import { useMeetingStore } from "@/store/meetingStore";
 import { getErrorMessage } from "@/lib/errors";
 import { toast } from "@/store/toastStore";
 import { BOOKING_STATUS_LABEL, BOOKING_STATUS_STYLE } from "@/lib/bookingStatus";
@@ -54,6 +62,8 @@ export default function LessonDetail() {
   const { data: review } = useReviewByBooking(bookingId);
   const { data: qaGroups } = useQaRights();
 
+  const joinMeeting = useMeetingStore((s) => s.joinMeeting);
+
   const accept = useBookingAction("accept");
   const reject = useBookingAction("reject");
   const complete = useBookingAction("complete");
@@ -66,7 +76,22 @@ export default function LessonDetail() {
   const [reviewed, setReviewed] = useState(false);
   const [editingLoc, setEditingLoc] = useState(false);
   const [locDraft, setLocDraft] = useState("");
+  const [locLatDraft, setLocLatDraft] = useState<number | null>(null);
+  const [locLngDraft, setLocLngDraft] = useState<number | null>(null);
   const setLoc = useSetBookingLocation();
+
+  const [resTitle, setResTitle] = useState("");
+  const [resUrl, setResUrl] = useState("");
+  const addRes = useAddBookingResource();
+  const delRes = useDeleteBookingResource();
+
+  const [commentBody, setCommentBody] = useState("");
+  const addComment = useAddBookingComment();
+  const delComment = useDeleteBookingComment();
+
+  const addPrivateNote = useAddBookingPrivateNote();
+  const delPrivateNote = useDeleteBookingPrivateNote();
+  const [privateNoteBody, setPrivateNoteBody] = useState("");
 
   if (isLoading) return <FullScreenSpinner />;
 
@@ -124,7 +149,7 @@ export default function LessonDetail() {
       return;
     }
     setLoc.mutate(
-      { id: bookingId, location: locDraft.trim() },
+      { id: bookingId, location: locDraft.trim(), lat: locLatDraft, lng: locLngDraft },
       {
         onSuccess: () => {
           toast.success("Buluşma yeri kaydedildi.");
@@ -141,18 +166,64 @@ export default function LessonDetail() {
       onError: (err) => toast.error(getErrorMessage(err, "İşlem başarısız.")),
     });
 
+  const handleAddResource = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!resTitle.trim() || !resUrl.trim()) return;
+    addRes.mutate(
+      { id: bookingId, title: resTitle.trim(), url: resUrl.trim() },
+      {
+        onSuccess: () => {
+          toast.success("Kaynak eklendi.");
+          setResTitle("");
+          setResUrl("");
+        },
+        onError: (err) => toast.error(getErrorMessage(err, "Kaynak eklenemedi.")),
+      }
+    );
+  };
+
+  const handleAddComment = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!commentBody.trim()) return;
+    addComment.mutate(
+      { id: bookingId, body: commentBody.trim() },
+      {
+        onSuccess: () => {
+          setCommentBody("");
+        },
+        onError: (err) => toast.error(getErrorMessage(err, "Not gönderilemedi.")),
+      }
+    );
+  };
+
+  const handleAddPrivateNote = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!privateNoteBody.trim()) return;
+    addPrivateNote.mutate(
+      { id: bookingId, body: privateNoteBody.trim() },
+      {
+        onSuccess: () => {
+          setPrivateNoteBody("");
+        },
+        onError: (err) => toast.error(getErrorMessage(err, "Not gönderilemedi.")),
+      }
+    );
+  };
+
   return (
     <DashboardShell title="Ders Detayı" navItems={navItems ?? undefined}>
-      <div className="mx-auto max-w-3xl space-y-5 pb-12">
+      <div className="mx-auto max-w-6xl pb-12">
         <button
           onClick={() => navigate(-1)}
-          className="text-sm font-medium text-indigo-600 hover:text-indigo-700 dark:text-indigo-400"
+          className="mb-5 inline-block text-sm font-medium text-indigo-600 hover:text-indigo-700 dark:text-indigo-400"
         >
           ← Geri dön
         </button>
 
+        <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-3 lg:grid-flow-row-dense">
+
         {/* ── Header ── */}
-        <section className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-slate-700">
+        <section className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-slate-700 lg:col-span-2">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <Link
               to={counterpartLink}
@@ -200,16 +271,30 @@ export default function LessonDetail() {
             )}
           </div>
 
-          {/* Canlı katılım — yalnızca uzaktan + onaylı + oda */}
+          {/* Canlı katılım — yalnızca uzaktan + onaylı + oda. Gömülü pencerede açılır
+              (GlobalMeeting); ders saatinden 15 dk önce aktifleşir. */}
           {isAccepted && isRemote && booking.meeting_room && (
-            <a
-              href={jitsiUrl(booking.meeting_room)}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-4 inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 active:scale-95"
-            >
-              🎥 Canlı Derse Katıl
-            </a>
+            isLessonJoinable(booking.start_at, booking.end_at) ? (
+              <button
+                onClick={() =>
+                  joinMeeting(
+                    booking.meeting_room!,
+                    booking.tutor_name || "Eğitmen",
+                    booking.client_name || "Öğrenci"
+                  )
+                }
+                className="mt-4 inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 active:scale-95"
+              >
+                🎥 Canlı Derse Katıl
+              </button>
+            ) : (
+              <span
+                title="Canlı ders, başlangıçtan 15 dk önce açılır."
+                className="mt-4 inline-flex cursor-not-allowed items-center gap-2 rounded-xl bg-slate-100 px-5 py-2.5 text-sm font-semibold text-slate-400 dark:bg-slate-700 dark:text-slate-500"
+              >
+                🎥 Ders saatinde açılır
+              </span>
+            )
           )}
           {/* Yüzyüze ders — buluşma yeri */}
           {booking.mode === "IN_PERSON" && (
@@ -222,6 +307,8 @@ export default function LessonDetail() {
                   <button
                     onClick={() => {
                       setLocDraft(booking.location ?? "");
+                      setLocLatDraft(booking.location_lat ?? null);
+                      setLocLngDraft(booking.location_lng ?? null);
                       setEditingLoc(true);
                     }}
                     className="text-xs font-semibold text-emerald-700 hover:underline dark:text-emerald-300"
@@ -231,37 +318,58 @@ export default function LessonDetail() {
                 )}
               </div>
               {editingLoc ? (
-                <div className="mt-2 flex flex-wrap gap-2">
-                  <input
-                    value={locDraft}
-                    onChange={(e) => setLocDraft(e.target.value)}
-                    maxLength={300}
-                    placeholder="Adres / buluşma noktası (ör. X Kütüphanesi, Kadıköy)"
-                    className="min-w-[12rem] flex-1 rounded-lg border border-emerald-200 bg-white px-3 py-1.5 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-emerald-200 dark:border-emerald-500/30 dark:bg-slate-700 dark:text-white"
+                <div className="mt-4 flex flex-col gap-3">
+                  <MapPicker 
+                    initialLat={locLatDraft} 
+                    initialLng={locLngDraft} 
+                    onLocationSelect={(lat, lng) => {
+                      setLocLatDraft(lat);
+                      setLocLngDraft(lng);
+                    }}
                   />
-                  <button
-                    onClick={saveLoc}
-                    disabled={setLoc.isPending}
-                    className="rounded-lg bg-emerald-600 px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-60"
-                  >
-                    Kaydet
-                  </button>
-                  <button
-                    onClick={() => setEditingLoc(false)}
-                    className="rounded-lg px-2 py-1.5 text-sm text-slate-500 dark:text-slate-400"
-                  >
-                    Vazgeç
-                  </button>
+                  <div className="flex flex-wrap gap-2">
+                    <input
+                      value={locDraft}
+                      onChange={(e) => setLocDraft(e.target.value)}
+                      maxLength={300}
+                      placeholder="Adres / bina numarası / tarif..."
+                      className="min-w-[12rem] flex-1 rounded-lg border border-emerald-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-emerald-200 dark:border-emerald-500/30 dark:bg-slate-700 dark:text-white"
+                    />
+                    <button
+                      onClick={saveLoc}
+                      disabled={setLoc.isPending}
+                      className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-60"
+                    >
+                      Kaydet
+                    </button>
+                    <button
+                      onClick={() => setEditingLoc(false)}
+                      className="rounded-lg px-3 py-2 text-sm text-slate-500 dark:text-slate-400 hover:bg-emerald-100 dark:hover:bg-slate-600"
+                    >
+                      Vazgeç
+                    </button>
+                  </div>
                 </div>
               ) : booking.location ? (
-                <a
-                  href={mapsUrl(booking.location)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="mt-1 inline-block text-sm text-emerald-800 hover:underline dark:text-emerald-200"
-                >
-                  {booking.location} — Haritada gör →
-                </a>
+                <div className="mt-3 flex flex-col gap-2">
+                  <a
+                    href={`https://www.google.com/maps/search/?api=1&query=${
+                      booking.location_lat && booking.location_lng 
+                      ? `${booking.location_lat},${booking.location_lng}`
+                      : encodeURIComponent(booking.location)
+                    }`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm font-medium text-emerald-800 underline underline-offset-2 hover:text-emerald-900 dark:text-emerald-200 dark:hover:text-emerald-100"
+                  >
+                    {booking.location}
+                  </a>
+                  {booking.location_lat && booking.location_lng && (
+                    <div className="mt-2 h-32 w-full max-w-sm overflow-hidden rounded-xl">
+                      <MapPicker initialLat={booking.location_lat} initialLng={booking.location_lng} readonly={true} />
+                    </div>
+                  )}
+                </div>
               ) : (
                 <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                   Henüz buluşma yeri belirlenmedi.
@@ -353,7 +461,7 @@ export default function LessonDetail() {
 
         {/* ── Review ── */}
         {review && (
-          <section className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-slate-700">
+          <section className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-slate-700 lg:col-span-1">
             <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
               Değerlendirme
             </h2>
@@ -380,7 +488,7 @@ export default function LessonDetail() {
 
         {/* ── Q&A (öğrenci) ── */}
         {isClient && qaGroup && (
-          <section className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-slate-700">
+          <section className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-slate-700 lg:col-span-2">
             <div className="flex items-center justify-between gap-3">
               <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
                 Bu Ders İçin Sorularım
@@ -431,6 +539,218 @@ export default function LessonDetail() {
             </div>
           </section>
         )}
+
+        {/* ── Ders Kaynakları ── */}
+        <section className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-slate-700 lg:col-span-1">
+          <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+            Ders Kaynakları (Bağlantılar)
+          </h2>
+          <div className="mt-4 space-y-3">
+            {booking.resources && booking.resources.length > 0 ? (
+              booking.resources.map((res) => {
+                const canDelete = res.uploader_id === user?.id && res.uploader_role === role;
+                return (
+                  <div key={res.id} className="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-3 dark:bg-slate-700/40">
+                    <div className="flex flex-col min-w-0 pr-4">
+                      <a
+                        href={res.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm font-semibold text-indigo-600 hover:underline dark:text-indigo-400 truncate"
+                      >
+                        {res.title}
+                      </a>
+                      <a
+                        href={res.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-slate-400 hover:underline dark:text-slate-500 truncate"
+                      >
+                        {res.url}
+                      </a>
+                    </div>
+                    {canDelete && (
+                      <button
+                        disabled={delRes.isPending}
+                        onClick={() => delRes.mutate({ id: bookingId, resourceId: res.id })}
+                        className="text-xs text-red-500 hover:text-red-700 disabled:opacity-50"
+                      >
+                        Sil
+                      </button>
+                    )}
+                  </div>
+                );
+              })
+            ) : (
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                Henüz kaynak eklenmemiş.
+              </p>
+            )}
+
+            {/* Yeni Kaynak Ekle Formu */}
+            {canMessage && (
+              <form onSubmit={handleAddResource} className="mt-4 flex flex-wrap gap-2 pt-4 border-t border-slate-100 dark:border-slate-700">
+                <input
+                  type="text"
+                  placeholder="Başlık (ör: 1. Hafta Notları)"
+                  value={resTitle}
+                  onChange={(e) => setResTitle(e.target.value)}
+                  className="flex-1 min-w-[12rem] rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 dark:border-slate-600 dark:bg-slate-900 dark:text-white"
+                />
+                <input
+                  type="url"
+                  placeholder="Drive/Dropbox Linki (https://...)"
+                  value={resUrl}
+                  onChange={(e) => setResUrl(e.target.value)}
+                  className="flex-2 min-w-[16rem] rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 dark:border-slate-600 dark:bg-slate-900 dark:text-white"
+                />
+                <button
+                  type="submit"
+                  disabled={addRes.isPending || !resTitle.trim() || !resUrl.trim()}
+                  className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Ekle
+                </button>
+              </form>
+            )}
+          </div>
+        </section>
+
+        {/* ── Ders Notları (Yorumlar) ── */}
+        <section className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-slate-700 lg:col-span-2">
+          <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+            Ders Notları
+          </h2>
+          <div className="mt-4 space-y-4">
+            {booking.comments && booking.comments.length > 0 ? (
+              <div className="space-y-3">
+                {booking.comments.map((comment) => {
+                  const isMine = comment.sender_id === user?.id && comment.sender_role === role;
+                  return (
+                    <div
+                      key={comment.id}
+                      className={`flex w-full flex-col ${isMine ? "items-end" : "items-start"}`}
+                    >
+                      <div className="flex max-w-[85%] flex-col gap-1">
+                        <div className="flex items-baseline gap-2">
+                          <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                            {isMine ? "Sen" : (comment.sender_role === "TUTOR" ? "Eğitmen" : "Öğrenci")}
+                          </span>
+                          <span className="text-[10px] text-slate-400">
+                            {new Date(comment.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
+                        <div
+                          className={`relative rounded-2xl px-4 py-2 text-sm ${
+                            isMine
+                              ? "bg-indigo-600 text-white"
+                              : "bg-slate-100 text-slate-800 dark:bg-slate-700 dark:text-slate-100"
+                          }`}
+                        >
+                          <p className="whitespace-pre-wrap">{comment.body}</p>
+                        </div>
+                        {isMine && (
+                          <button
+                            onClick={() => delComment.mutate({ id: bookingId, commentId: comment.id })}
+                            disabled={delComment.isPending}
+                            className="self-end px-1 text-[10px] font-semibold text-slate-400 hover:text-red-500 disabled:opacity-50"
+                          >
+                            Sil
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                Bu ders için henüz not bırakılmamış.
+              </p>
+            )}
+
+            {/* Yeni Yorum Formu */}
+            {canMessage && (
+              <form onSubmit={handleAddComment} className="mt-2 flex gap-2 pt-2">
+                <textarea
+                  rows={2}
+                  placeholder="Derse ait notunuzu veya mesajınızı yazın..."
+                  value={commentBody}
+                  onChange={(e) => setCommentBody(e.target.value)}
+                  className="flex-1 resize-none rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 dark:border-slate-600 dark:bg-slate-900 dark:text-white"
+                />
+                <button
+                  type="submit"
+                  disabled={addComment.isPending || !commentBody.trim()}
+                  className="rounded-xl bg-indigo-600 px-5 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Gönder
+                </button>
+              </form>
+            )}
+          </div>
+        </section>
+
+        {/* ── Kişisel Notlarım (Gizli) ── */}
+        <section className="rounded-2xl bg-yellow-50/50 p-6 shadow-sm ring-1 ring-yellow-100 dark:bg-yellow-900/10 dark:ring-yellow-900/30 lg:col-span-1">
+          <div className="flex items-center gap-2">
+            <h2 className="text-xs font-semibold uppercase tracking-wide text-yellow-700 dark:text-yellow-500">
+              Kişisel Notlarım
+            </h2>
+            <span className="rounded bg-yellow-200/50 px-1.5 py-0.5 text-[10px] font-bold text-yellow-800 dark:bg-yellow-800/30 dark:text-yellow-400">
+              🔒 Sadece siz görebilirsiniz
+            </span>
+          </div>
+          
+          <div className="mt-4 space-y-4">
+            {booking.private_notes && booking.private_notes.length > 0 ? (
+              <div className="space-y-3">
+                {booking.private_notes.map((note) => (
+                  <div key={note.id} className="relative rounded-xl bg-yellow-100/80 px-4 py-3 shadow-sm dark:bg-yellow-800/20">
+                    <p className="whitespace-pre-wrap text-sm text-yellow-900 dark:text-yellow-100">
+                      {note.body}
+                    </p>
+                    <div className="mt-2 flex items-center justify-between">
+                      <span className="text-[10px] text-yellow-700/60 dark:text-yellow-500/60">
+                        {new Date(note.created_at).toLocaleDateString()} {new Date(note.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                      <button
+                        onClick={() => delPrivateNote.mutate({ id: bookingId, noteId: note.id })}
+                        disabled={delPrivateNote.isPending}
+                        className="text-xs font-semibold text-yellow-700/60 hover:text-red-500 dark:text-yellow-500/60 disabled:opacity-50"
+                      >
+                        Sil
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-yellow-800/60 dark:text-yellow-600/60">
+                Kendinize ait gizli bir not eklemediniz.
+              </p>
+            )}
+
+            <form onSubmit={handleAddPrivateNote} className="mt-2 flex gap-2 pt-2">
+              <textarea
+                rows={2}
+                placeholder="Derse girmeden önce hatırlamanız gerekenler..."
+                value={privateNoteBody}
+                onChange={(e) => setPrivateNoteBody(e.target.value)}
+                className="flex-1 resize-none rounded-xl border border-yellow-200 bg-white/60 px-4 py-2 text-sm outline-none focus:border-yellow-400 focus:ring-1 focus:ring-yellow-400 dark:border-yellow-700/30 dark:bg-slate-900/40 dark:text-yellow-50 dark:focus:border-yellow-600"
+              />
+              <button
+                type="submit"
+                disabled={addPrivateNote.isPending || !privateNoteBody.trim()}
+                className="rounded-xl bg-yellow-500 px-5 py-2 text-sm font-semibold text-white transition hover:bg-yellow-600 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-yellow-600 dark:hover:bg-yellow-700"
+              >
+                Not Ekle
+              </button>
+            </form>
+          </div>
+        </section>
+        </div>
+
       </div>
 
       {showCancel && (

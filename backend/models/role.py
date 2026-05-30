@@ -21,6 +21,14 @@ ROLE_IDS: dict[RoleType, int] = {
     RoleType.CLIENT: 3,
 }
 
+# role_id -> RoleType ters haritası (ör. booking comment/resource'ta rol adını yazarken).
+ROLE_NAMES: dict[int, RoleType] = {v: k for k, v in ROLE_IDS.items()}
+
+
+def role_name(role_id: int) -> str:
+    """role_id'yi 'ADMIN'/'TUTOR'/'CLIENT' string adına çevirir."""
+    return ROLE_NAMES[role_id].value
+
 
 class Role(Base):
     __tablename__ = "roles"

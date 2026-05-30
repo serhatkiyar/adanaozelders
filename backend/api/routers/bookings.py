@@ -15,14 +15,21 @@ from schemas.booking import (
     BookingLocation,
     BookingOut,
     BookingReschedule,
+    BookingResourceCreate,
+    BookingCommentCreate,
+    BookingLocationUpdate,
+    BookingPrivateNoteCreate,
 )
 from services import booking_service
 
 router = APIRouter(prefix="/bookings", tags=["bookings"])
 
 
-async def _get_booking_or_404(db: AsyncSession, booking_id: int) -> Booking:
-    booking = await booking_service.get_booking(db, booking_id)
+async def _get_booking_or_404(
+    db: AsyncSession, booking_id: int, viewer: CurrentUser
+) -> Booking:
+    # viewer, özel notların yalnızca sahibine dönmesi için servise iletilir.
+    booking = await booking_service.get_booking(db, booking_id, viewer=viewer)
     if booking is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Booking not found")
     return booking
@@ -58,6 +65,7 @@ async def list_my_bookings(
     user: CurrentUser = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
+    # Özel not filtrelemesi servis katmanında (list_bookings) yapılır.
     return await booking_service.list_bookings(
         db,
         role_id=user.role_id,
@@ -74,7 +82,7 @@ async def get_booking(
     user: CurrentUser = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
-    booking = await _get_booking_or_404(db, booking_id)
+    booking = await _get_booking_or_404(db, booking_id, user)
     _assert_party(booking, user)
     return booking
 
@@ -85,7 +93,7 @@ async def accept_booking(
     tutor: Tutor = Depends(require_roles(RoleType.TUTOR)),
     db: AsyncSession = Depends(get_db),
 ):
-    booking = await _get_booking_or_404(db, booking_id)
+    booking = await _get_booking_or_404(db, booking_id, tutor)
     _assert_owner_tutor(booking, tutor)
     return await booking_service.accept(db, booking)
 
@@ -96,7 +104,7 @@ async def reject_booking(
     tutor: Tutor = Depends(require_roles(RoleType.TUTOR)),
     db: AsyncSession = Depends(get_db),
 ):
-    booking = await _get_booking_or_404(db, booking_id)
+    booking = await _get_booking_or_404(db, booking_id, tutor)
     _assert_owner_tutor(booking, tutor)
     return await booking_service.reject(db, booking)
 
@@ -107,7 +115,7 @@ async def complete_booking(
     tutor: Tutor = Depends(require_roles(RoleType.TUTOR)),
     db: AsyncSession = Depends(get_db),
 ):
-    booking = await _get_booking_or_404(db, booking_id)
+    booking = await _get_booking_or_404(db, booking_id, tutor)
     _assert_owner_tutor(booking, tutor)
     return await booking_service.complete(db, booking)
 
@@ -119,7 +127,7 @@ async def cancel_booking(
     user: CurrentUser = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
-    booking = await _get_booking_or_404(db, booking_id)
+    booking = await _get_booking_or_404(db, booking_id, user)
     _assert_party(booking, user)
     return await booking_service.cancel(
         db, booking, cancelled_by=user, reason=payload.reason if payload else None
@@ -133,7 +141,7 @@ async def reschedule_booking(
     client: Client = Depends(require_roles(RoleType.CLIENT)),
     db: AsyncSession = Depends(get_db),
 ):
-    booking = await _get_booking_or_404(db, booking_id)
+    booking = await _get_booking_or_404(db, booking_id, client)
     if booking.client_id != client.id:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Not your booking")
     return await booking_service.reschedule(
@@ -144,12 +152,84 @@ async def reschedule_booking(
 @router.post("/{booking_id}/location", response_model=BookingOut)
 async def set_booking_location(
     booking_id: int,
-    payload: BookingLocation,
+    payload: BookingLocationUpdate,
     user: CurrentUser = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
-    booking = await _get_booking_or_404(db, booking_id)
+    booking = await _get_booking_or_404(db, booking_id, user)
     _assert_party(booking, user)
     return await booking_service.set_location(
-        db, booking, actor=user, location=payload.location
+        db, booking, actor=user, data=payload
     )
+
+
+@router.post("/{booking_id}/resources", response_model=BookingOut)
+async def add_booking_resource(
+    booking_id: int,
+    payload: BookingResourceCreate,
+    user: CurrentUser = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    booking = await _get_booking_or_404(db, booking_id, user)
+    _assert_party(booking, user)
+    return await booking_service.add_resource(db, booking, actor=user, data=payload)
+
+
+@router.delete("/{booking_id}/resources/{resource_id}", response_model=BookingOut)
+async def delete_booking_resource(
+    booking_id: int,
+    resource_id: int,
+    user: CurrentUser = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    booking = await _get_booking_or_404(db, booking_id, user)
+    _assert_party(booking, user)
+    return await booking_service.delete_resource(
+        db, booking, actor=user, resource_id=resource_id
+    )
+
+
+@router.post("/{booking_id}/comments", response_model=BookingOut)
+async def add_booking_comment(
+    booking_id: int,
+    payload: BookingCommentCreate,
+    user: CurrentUser = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    booking = await _get_booking_or_404(db, booking_id, user)
+    _assert_party(booking, user)
+    return await booking_service.add_comment(db, booking, actor=user, data=payload)
+
+
+@router.delete("/{booking_id}/comments/{comment_id}", response_model=BookingOut)
+async def delete_booking_comment(
+    booking_id: int,
+    comment_id: int,
+    user: CurrentUser = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    booking = await _get_booking_or_404(db, booking_id, user)
+    _assert_party(booking, user)
+    return await booking_service.delete_comment(db, booking, actor=user, comment_id=comment_id)
+
+@router.post("/{booking_id}/private-notes", response_model=BookingOut)
+async def add_booking_private_note(
+    booking_id: int,
+    payload: BookingPrivateNoteCreate,
+    user: CurrentUser = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    booking = await _get_booking_or_404(db, booking_id, user)
+    _assert_party(booking, user)
+    return await booking_service.add_private_note(db, booking, actor=user, note_in=payload)
+
+@router.delete("/{booking_id}/private-notes/{note_id}", response_model=BookingOut)
+async def delete_booking_private_note(
+    booking_id: int,
+    note_id: int,
+    user: CurrentUser = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    booking = await _get_booking_or_404(db, booking_id, user)
+    _assert_party(booking, user)
+    return await booking_service.delete_private_note(db, booking, actor=user, note_id=note_id)
