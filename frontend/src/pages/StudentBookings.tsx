@@ -108,7 +108,7 @@ function BookingRow({
           to={`/student/tutors/${booking.tutor_id}`}
           className="flex min-w-0 items-center gap-3 transition hover:opacity-80"
         >
-          <Avatar name={tutorName} avatar_url={b.tutor_avatar_url} size="sm" />
+          <Avatar name={tutorName} avatar_url={booking.tutor_avatar_url} size="sm" />
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold text-slate-900 hover:text-indigo-600 dark:text-white dark:hover:text-indigo-400">
               {tutorName}

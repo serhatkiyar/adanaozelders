@@ -88,7 +88,7 @@ function BookingCard({ booking }: { booking: BookingOut }) {
         to={`/tutor/students/${booking.client_id}`}
         className="flex min-w-0 items-start gap-3 transition hover:opacity-80"
       >
-        <Avatar name={clientName} avatar_url={b.client_avatar_url} size="sm" />
+        <Avatar name={clientName} avatar_url={booking.client_avatar_url} size="sm" />
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold text-slate-900 hover:text-indigo-600 dark:text-white dark:hover:text-indigo-400">
             {clientName}
