@@ -2,7 +2,11 @@ from sqlalchemy import DDL, event
 
 from core.database import Base
 from models.admin import Admin
+from models.audit_log import AuditLog
 from models.booking import Booking, BookingStatus
+from models.booking_comment import BookingComment
+from models.booking_private_note import BookingPrivateNote
+from models.booking_resource import BookingResource
 from models.bookmark import Bookmark
 from models.client import Client, ClientEducation
 from models.demand import Demand, DemandStatus
@@ -29,7 +33,11 @@ for _extension in ("btree_gist", "pg_trgm"):
 
 __all__ = [
     "Admin",
+    "AuditLog",
     "Booking",
+    "BookingComment",
+    "BookingPrivateNote",
+    "BookingResource",
     "BookingStatus",
     "Bookmark",
     "Client",

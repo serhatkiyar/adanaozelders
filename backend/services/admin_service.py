@@ -1,16 +1,39 @@
 from __future__ import annotations
 
 import datetime
+import secrets
 
+from fastapi import HTTPException, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from core.security import hash_password
 from models.admin import Admin
 from models.booking import Booking, BookingStatus
 from models.client import Client
 from models.review import Review
 from models.tutor import Tutor, TutorStatus
 from schemas.admin import AdminStats, AdminUserOut, AdminBookingOut
+
+# Admin yalnızca tutor/client şifresini sıfırlayabilir (admin'ler hariç).
+_RESET_MODELS: dict[str, type] = {"tutor": Tutor, "client": Client}
+
+
+async def reset_user_password(
+    db: AsyncSession, *, role: str, user_id: int, new_password: str | None
+) -> str:
+    """Admin tarafından e-postasız şifre sıfırlama. new_password verilmezse rastgele
+    geçici şifre üretir ve döndürür (admin kullanıcıya iletir)."""
+    model = _RESET_MODELS.get(role)
+    if model is None:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid role")
+    user = await db.get(model, user_id)
+    if user is None or user.deleted_at is not None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")
+    password = new_password or secrets.token_urlsafe(9)
+    user.hashed_password = hash_password(password)
+    await db.flush()
+    return password
 
 
 async def _count(db: AsyncSession, model, *conditions) -> int:

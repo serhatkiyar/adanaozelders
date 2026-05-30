@@ -14,7 +14,7 @@ import {
   useAdminCancelBooking,
   useAdminToggleDisputeBooking,
 } from "@/hooks/useAdmin";
-import { TutorStatus, type AdminUserOut, type TutorOut, type AdminBookingOut } from "@/types";
+import { TutorStatus, type AdminUserOut, type TutorOut } from "@/types";
 import { formatDateTime } from "@/lib/datetime";
 import { formatRate } from "@/lib/money";
 import { getErrorMessage } from "@/lib/errors";
@@ -291,10 +291,12 @@ function UserRow({ user }: { user: AdminUserOut }) {
   return (
     <tr className="border-t border-slate-100 transition hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-700/30">
       <td className="px-4 py-3">
-        <div className="flex min-w-0 items-center gap-3">
-          <Avatar name={user.full_name} avatar_url={user.avatar_url} size="sm" />
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-100 text-sm font-semibold text-slate-600 dark:bg-slate-700 dark:text-slate-300">
+            {user.first_name[0]}{user.last_name[0]}
+          </div>
           <div className="min-w-0">
-            <p className="truncate text-sm font-semibold text-slate-900 dark:text-white">
+            <p className="text-sm font-medium text-slate-900 dark:text-white">
               {user.full_name}
             </p>
             <p className="truncate text-xs text-slate-500 dark:text-slate-400">

@@ -49,3 +49,16 @@ class AdminBookingOut(BaseModel):
 
     tutor_name: str | None = None
     client_name: str | None = None
+
+
+class AuditLogOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    actor_id: int
+    actor_role: int
+    action: str
+    target_type: str
+    target_id: int | None = None
+    details: str | None = None
+    created_at: datetime.datetime
