@@ -10,8 +10,11 @@ import {
   useDeleteTutor,
   useRejectTutor,
   useSuspendTutor,
+  useAdminBookings,
+  useAdminCancelBooking,
+  useAdminToggleDisputeBooking,
 } from "@/hooks/useAdmin";
-import { TutorStatus, type AdminUserOut, type TutorOut } from "@/types";
+import { TutorStatus, type AdminUserOut, type TutorOut, type AdminBookingOut } from "@/types";
 import { formatDateTime } from "@/lib/datetime";
 import { formatRate } from "@/lib/money";
 import { getErrorMessage } from "@/lib/errors";
@@ -540,13 +543,68 @@ function ListingManagement() {
   );
 }
 
+/* ─── booking management ────────────────────────────── */
+
+function BookingManagement() {
+  const { data, isLoading, isError, error } = useAdminBookings();
+  const cancel = useAdminCancelBooking();
+  const dispute = useAdminToggleDisputeBooking();
+
+  if (isLoading) return <div>Yükleniyor...</div>;
+  if (isError) return <div className="text-red-500">Hata: {getErrorMessage(error, "")}</div>;
+
+  const bookings = data ?? [];
+
+  return (
+    <div className="space-y-4">
+      {bookings.length === 0 && <p className="text-slate-500">Kayıtlı rezervasyon yok.</p>}
+      {bookings.map(b => (
+        <div key={b.id} className="rounded-xl border p-4 bg-white dark:bg-slate-800 dark:border-slate-700 flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+          <div>
+            <div className="flex gap-2 items-center mb-1">
+              <span className="font-semibold text-sm">{b.tutor_name} ↔ {b.client_name}</span>
+              <span className={`text-xs px-2 py-0.5 rounded-full ${b.status === 'CANCELLED' ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-700'}`}>
+                {b.status}
+              </span>
+              {b.is_disputed && <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">İhtilaflı</span>}
+            </div>
+            <p className="text-xs text-slate-500">{formatDateTime(b.start_at)} - {formatDateTime(b.end_at)}</p>
+            {b.cancel_reason && <p className="text-xs text-red-500 mt-1">İptal: {b.cancel_reason}</p>}
+            {b.admin_notes && <p className="text-xs text-amber-600 mt-1">Not: {b.admin_notes}</p>}
+          </div>
+          <div className="flex gap-2">
+            {!b.is_disputed ? (
+              <button onClick={() => dispute.mutate({ id: b.id, is_disputed: true, admin_notes: window.prompt("İhtilaf notu:") || "" })} className="text-xs px-3 py-1.5 rounded-lg bg-amber-500 text-white">
+                İhtilaf İşaretle
+              </button>
+            ) : (
+              <button onClick={() => dispute.mutate({ id: b.id, is_disputed: false })} className="text-xs px-3 py-1.5 rounded-lg border border-amber-500 text-amber-600">
+                İhtilafı Kaldır
+              </button>
+            )}
+            {b.status !== "CANCELLED" && b.status !== "REJECTED" && (
+              <button onClick={() => {
+                const reason = window.prompt("İptal nedeni?");
+                if(reason) cancel.mutate({ id: b.id, reason });
+              }} className="text-xs px-3 py-1.5 rounded-lg bg-red-600 text-white">
+                İptal / İade
+              </button>
+            )}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 /* ─── tabs ────────────────────────────────────────────── */
 
-type Tab = "overview" | "listings";
+type Tab = "overview" | "listings" | "bookings";
 
 const TABS: { value: Tab; label: string }[] = [
   { value: "overview", label: "Genel Bakış" },
   { value: "listings", label: "İlan Yönetimi" },
+  { value: "bookings", label: "Rezervasyonlar" },
 ];
 
 export default function AdminHome() {
@@ -577,8 +635,10 @@ export default function AdminHome() {
             <PendingTutorsSection />
             <UsersTable />
           </>
-        ) : (
+        ) : tab === "listings" ? (
           <ListingManagement />
+        ) : (
+          <BookingManagement />
         )}
       </div>
     </DashboardShell>

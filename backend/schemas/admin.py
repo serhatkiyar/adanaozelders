@@ -29,3 +29,23 @@ class AdminUserOut(BaseModel):
     role: str
     is_active: bool
     created_at: datetime.datetime
+
+
+class AdminBookingOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    tutor_id: int
+    client_id: int
+    status: str
+    start_at: datetime.datetime
+    end_at: datetime.datetime
+    price: float | None = None
+    notes: str | None = None
+    cancel_reason: str | None = None
+    is_disputed: bool
+    admin_notes: str | None = None
+    created_at: datetime.datetime
+
+    tutor_name: str | None = None
+    client_name: str | None = None

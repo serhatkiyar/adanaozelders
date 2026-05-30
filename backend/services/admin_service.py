@@ -10,7 +10,7 @@ from models.booking import Booking, BookingStatus
 from models.client import Client
 from models.review import Review
 from models.tutor import Tutor, TutorStatus
-from schemas.admin import AdminStats, AdminUserOut
+from schemas.admin import AdminStats, AdminUserOut, AdminBookingOut
 
 
 async def _count(db: AsyncSession, model, *conditions) -> int:
@@ -80,3 +80,47 @@ async def delete_tutor(db: AsyncSession, tutor: Tutor) -> None:
     # Soft delete: ilan listelerden ve aramadan düşer, veri korunur.
     tutor.deleted_at = datetime.datetime.now(datetime.timezone.utc)
     await db.flush()
+
+
+async def list_bookings(
+    db: AsyncSession, *, limit: int = 50, offset: int = 0, booking_id: int | None = None
+) -> list[AdminBookingOut]:
+    stmt = (
+        select(Booking, Tutor.full_name.label("tutor_name"), Client.full_name.label("client_name"))
+        .join(Tutor, Booking.tutor_id == Tutor.id)
+        .join(Client, Booking.client_id == Client.id)
+        .where(Booking.deleted_at.is_(None))
+    )
+    if booking_id is not None:
+        stmt = stmt.where(Booking.id == booking_id)
+        
+    stmt = stmt.order_by(Booking.created_at.desc()).limit(limit).offset(offset)
+    
+    rows = (await db.execute(stmt)).all()
+    
+    out = []
+    for b, t_name, c_name in rows:
+        bo = AdminBookingOut.model_validate(b)
+        bo.tutor_name = t_name
+        bo.client_name = c_name
+        out.append(bo)
+    return out
+
+
+async def cancel_booking(db: AsyncSession, booking: Booking, reason: str | None = None) -> Booking:
+    booking.status = BookingStatus.CANCELLED
+    if reason:
+        booking.cancel_reason = f"Admin İptali: {reason}"
+    else:
+        booking.cancel_reason = "Admin tarafından iptal edildi."
+    await db.flush()
+    return booking
+
+
+async def toggle_dispute(db: AsyncSession, booking: Booking, is_disputed: bool, admin_notes: str | None = None) -> Booking:
+    booking.is_disputed = is_disputed
+    if admin_notes is not None:
+        booking.admin_notes = admin_notes
+    await db.flush()
+    return booking
+

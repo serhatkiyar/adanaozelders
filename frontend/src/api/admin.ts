@@ -1,5 +1,5 @@
 import { apiClient } from "@/api/axios";
-import type { AdminStats, AdminUserOut, TutorOut } from "@/types";
+import type { AdminStats, AdminUserOut, TutorOut, AdminBookingOut } from "@/types";
 
 export async function fetchAdminStats(): Promise<AdminStats> {
   const { data } = await apiClient.get<AdminStats>("/admin/stats");
@@ -55,5 +55,20 @@ export async function fetchAdminTutorsByStatus(
   const { data } = await apiClient.get<TutorOut[]>("/admin/tutors", {
     params: status ? { status } : undefined,
   });
+  return data;
+}
+
+export async function fetchAdminBookings(params: { limit?: number; offset?: number } = {}): Promise<AdminBookingOut[]> {
+  const { data } = await apiClient.get<AdminBookingOut[]>("/admin/bookings", { params });
+  return data;
+}
+
+export async function cancelAdminBooking(id: number, reason: string): Promise<AdminBookingOut> {
+  const { data } = await apiClient.post<AdminBookingOut>(`/admin/bookings/${id}/cancel`, { reason });
+  return data;
+}
+
+export async function toggleDisputeAdminBooking(id: number, is_disputed: boolean, admin_notes?: string): Promise<AdminBookingOut> {
+  const { data } = await apiClient.post<AdminBookingOut>(`/admin/bookings/${id}/dispute`, { is_disputed, admin_notes });
   return data;
 }

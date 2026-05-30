@@ -8,6 +8,9 @@ import {
   fetchAdminUsers,
   rejectTutor,
   suspendTutor,
+  fetchAdminBookings,
+  cancelAdminBooking,
+  toggleDisputeAdminBooking,
 } from "@/api/admin";
 
 export function useAdminStats() {
@@ -37,6 +40,7 @@ function useInvalidateAdmin() {
   return () => {
     qc.invalidateQueries({ queryKey: ["admin", "tutors"] });
     qc.invalidateQueries({ queryKey: ["admin", "stats"] });
+    qc.invalidateQueries({ queryKey: ["admin", "bookings"] });
   };
 }
 
@@ -76,6 +80,30 @@ export function useDeleteTutor() {
   const invalidate = useInvalidateAdmin();
   return useMutation({
     mutationFn: (id: number) => deleteTutor(id),
+    onSuccess: invalidate,
+  });
+}
+
+export function useAdminBookings(params: { limit?: number; offset?: number } = { limit: 100 }) {
+  return useQuery({
+    queryKey: ["admin", "bookings", params],
+    queryFn: () => fetchAdminBookings(params),
+  });
+}
+
+export function useAdminCancelBooking() {
+  const invalidate = useInvalidateAdmin();
+  return useMutation({
+    mutationFn: ({ id, reason }: { id: number; reason: string }) => cancelAdminBooking(id, reason),
+    onSuccess: invalidate,
+  });
+}
+
+export function useAdminToggleDisputeBooking() {
+  const invalidate = useInvalidateAdmin();
+  return useMutation({
+    mutationFn: ({ id, is_disputed, admin_notes }: { id: number; is_disputed: boolean; admin_notes?: string }) => 
+      toggleDisputeAdminBooking(id, is_disputed, admin_notes),
     onSuccess: invalidate,
   });
 }

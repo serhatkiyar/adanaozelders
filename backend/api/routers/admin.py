@@ -8,8 +8,16 @@ from api.deps import require_roles
 from core.database import get_db
 from models.role import RoleType
 from models.tutor import Tutor, TutorStatus
-from schemas.admin import AdminStats, AdminUserOut
+from models.booking import Booking
+from schemas.admin import AdminStats, AdminUserOut, AdminBookingOut
 from schemas.tutor import TutorOut
+from schemas.booking import BookingCancel
+from pydantic import BaseModel
+
+class DisputeToggle(BaseModel):
+    is_disputed: bool
+    admin_notes: str | None = None
+
 from services import admin_service, tutor_service
 
 router = APIRouter(
@@ -82,3 +90,43 @@ async def activate_tutor(tutor_id: int, db: AsyncSession = Depends(get_db)):
 async def delete_tutor(tutor_id: int, db: AsyncSession = Depends(get_db)):
     tutor = await _get_tutor_or_404(db, tutor_id)
     await admin_service.delete_tutor(db, tutor)
+
+
+async def _get_booking_or_404(db: AsyncSession, booking_id: int) -> Booking:
+    booking = await db.get(Booking, booking_id)
+    if booking is None or booking.deleted_at is not None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Booking not found")
+    return booking
+
+
+@router.get("/bookings", response_model=list[AdminBookingOut])
+async def list_bookings(
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    db: AsyncSession = Depends(get_db),
+):
+    return await admin_service.list_bookings(db, limit=limit, offset=offset)
+
+
+@router.post("/bookings/{booking_id}/cancel", response_model=AdminBookingOut)
+async def cancel_booking(
+    booking_id: int,
+    payload: BookingCancel,
+    db: AsyncSession = Depends(get_db),
+):
+    booking = await _get_booking_or_404(db, booking_id)
+    booking = await admin_service.cancel_booking(db, booking, reason=payload.reason)
+    return (await admin_service.list_bookings(db, limit=1, offset=0, booking_id=booking.id))[0]
+
+
+@router.post("/bookings/{booking_id}/dispute", response_model=AdminBookingOut)
+async def dispute_booking(
+    booking_id: int,
+    payload: DisputeToggle,
+    db: AsyncSession = Depends(get_db),
+):
+    booking = await _get_booking_or_404(db, booking_id)
+    booking = await admin_service.toggle_dispute(
+        db, booking, is_disputed=payload.is_disputed, admin_notes=payload.admin_notes
+    )
+    return (await admin_service.list_bookings(db, limit=1, offset=0, booking_id=booking.id))[0]

@@ -69,6 +69,11 @@ class Booking(Base, TimestampMixin, SoftDeleteMixin):
         SmallInteger, nullable=False, server_default=text("0")
     )
 
+    is_disputed: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("false")
+    )
+    admin_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+
     tutor: Mapped["Tutor"] = relationship(back_populates="bookings")
     client: Mapped["Client"] = relationship(back_populates="bookings")
     review: Mapped["Review | None"] = relationship(

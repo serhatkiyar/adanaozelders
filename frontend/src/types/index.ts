@@ -475,3 +475,20 @@ export interface AdminUserOut {
   is_active: boolean;
   created_at: string;
 }
+
+export interface AdminBookingOut {
+  id: number;
+  tutor_id: number;
+  client_id: number;
+  status: BookingStatus | string;
+  start_at: string;
+  end_at: string;
+  price?: number | null;
+  notes?: string | null;
+  cancel_reason?: string | null;
+  is_disputed: boolean;
+  admin_notes?: string | null;
+  created_at: string;
+  tutor_name?: string | null;
+  client_name?: string | null;
+}
