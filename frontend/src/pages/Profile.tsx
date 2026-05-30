@@ -141,9 +141,17 @@ export default function Profile() {
               <div className="pointer-events-none absolute -right-10 -top-10 h-48 w-48 rounded-full bg-white/[0.06]" />
               <div className="pointer-events-none absolute -bottom-6 right-10 h-28 w-28 rounded-full bg-white/[0.04]" />
               <div className="relative flex items-center gap-5">
-                <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-white/20 text-2xl font-bold shadow-inner backdrop-blur-sm ring-1 ring-white/30">
-                  {user.first_name.charAt(0).toUpperCase()}
-                </div>
+                {user.avatar_url ? (
+                  <img
+                    src={user.avatar_url}
+                    alt={user.full_name}
+                    className="h-16 w-16 shrink-0 rounded-2xl object-cover shadow-inner ring-1 ring-white/30"
+                  />
+                ) : (
+                  <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-white/20 text-2xl font-bold shadow-inner backdrop-blur-sm ring-1 ring-white/30">
+                    {user.first_name.charAt(0).toUpperCase()}
+                  </div>
+                )}
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2.5">
                     <h1 className="truncate text-xl font-bold leading-tight tracking-tight">
