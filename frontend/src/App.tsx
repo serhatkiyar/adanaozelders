@@ -3,6 +3,7 @@ import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { queryClient } from "@/lib/queryClient";
 import { Toaster } from "@/components/Toaster";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ROLE_IDS } from "@/types";
 import { PublicRoute } from "@/routes/PublicRoute";
 import { ProtectedRoute } from "@/routes/ProtectedRoute";
@@ -34,6 +35,7 @@ import Messages from "@/pages/Messages";
 import Leaderboard from "@/pages/Leaderboard";
 import Profile from "@/pages/Profile";
 import Settings from "@/pages/Settings";
+import { GlobalMeeting } from "@/components/GlobalMeeting";
 
 function WsManager() {
   const token = useAuthStore((s) => s.token);
@@ -58,6 +60,11 @@ function WsManager() {
           qc.invalidateQueries({ queryKey: ["conversations"] });
         } else if (msg.type === "NEW_NOTIFICATION") {
           qc.invalidateQueries({ queryKey: ["notifications"] });
+        } else if (msg.type === "NEW_BOOKING_COMMENT") {
+          if (msg.booking_id) {
+            qc.invalidateQueries({ queryKey: ["bookings", "detail", msg.booking_id] });
+          }
+          qc.invalidateQueries({ queryKey: ["bookings"] });
         }
       } catch (err) {
         console.error("WS Parse error", err);
@@ -72,6 +79,7 @@ function WsManager() {
 
 function App() {
   return (
+    <ErrorBoundary>
     <QueryClientProvider client={queryClient}>
       <WsManager />
       <BrowserRouter>
@@ -119,9 +127,11 @@ function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>
+      <GlobalMeeting />
       <Toaster />
       <ReactQueryDevtools initialIsOpen={false} />
     </QueryClientProvider>
+    </ErrorBoundary>
   );
 }
 
