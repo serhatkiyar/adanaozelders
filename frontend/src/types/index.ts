@@ -171,6 +171,7 @@ export interface ConversationOut {
   created_at: string;
   counterparty_id?: number | null;
   counterparty_name?: string | null;
+  counterparty_avatar_url?: string | null;
   last_message?: string | null;
   last_message_at?: string | null;
   unread?: number;

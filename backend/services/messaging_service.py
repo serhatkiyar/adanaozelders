@@ -115,12 +115,13 @@ async def list_conversations(
     cp_ids = {(c.tutor_id if is_client else c.client_id) for c in convs}
     name_rows = (
         await db.execute(
-            select(counterparty.id, counterparty.full_name).where(
+            select(counterparty.id, counterparty.full_name, counterparty.avatar_url).where(
                 counterparty.id.in_(cp_ids)
             )
         )
     ).all()
     names = {row[0]: row[1] for row in name_rows}
+    avatars = {row[0]: row[2] for row in name_rows}
 
     # Her sohbetin son mesajı (Postgres DISTINCT ON).
     conv_ids = [c.id for c in convs]
@@ -162,6 +163,7 @@ async def list_conversations(
         cp_id = c.tutor_id if is_client else c.client_id
         c.counterparty_id = cp_id
         c.counterparty_name = names.get(cp_id)
+        c.counterparty_avatar_url = avatars.get(cp_id)
         lm = last.get(c.id)
         c.last_message = lm[0] if lm else None
         c.last_message_at = lm[1] if lm else None

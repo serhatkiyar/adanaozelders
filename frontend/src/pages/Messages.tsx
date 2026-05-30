@@ -178,7 +178,7 @@ export default function Messages() {
                             : "hover:bg-slate-50 dark:hover:bg-slate-700/40"
                         }`}
                       >
-                        <Avatar name={c.counterparty_name ?? "?"} size="sm" />
+                        <Avatar name={c.counterparty_name ?? "?"} avatar_url={c.counterparty_avatar_url} size="sm" />
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center justify-between gap-2">
                             <span className="truncate text-sm font-semibold text-slate-900 dark:text-white">
@@ -240,7 +240,7 @@ export default function Messages() {
                     <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
                   </svg>
                 </button>
-                <Avatar name={activeName ?? "?"} size="sm" />
+                <Avatar name={activeName ?? "?"} avatar_url={selectedConv?.counterparty_avatar_url} size="sm" />
                 <span className="truncate text-sm font-semibold text-slate-900 dark:text-white">
                   {activeName ?? "Kullanıcı"}
                 </span>

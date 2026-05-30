@@ -30,6 +30,7 @@ class ConversationOut(BaseModel):
     # Servis katmanında doldurulan türetilmiş alanlar (kolon değil).
     counterparty_id: int | None = None
     counterparty_name: str | None = None
+    counterparty_avatar_url: str | None = None
     last_message: str | None = None
     last_message_at: datetime.datetime | None = None
     unread: int = 0
