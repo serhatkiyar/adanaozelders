@@ -14,6 +14,7 @@ from models.client import Client
 from models.messaging import Conversation, Message
 from models.role import ROLE_IDS, RoleType
 from models.tutor import Tutor
+from core.ws_manager import manager
 
 CurrentUser = Admin | Tutor | Client
 
@@ -84,6 +85,14 @@ async def send_message(
     db.add(message)
     await db.flush()
     await db.refresh(message)
+
+    counterparty_role = ROLE_IDS[RoleType.TUTOR] if sender_role == "CLIENT" else ROLE_IDS[RoleType.CLIENT]
+    await manager.send_personal_message(
+        {"type": "NEW_MESSAGE", "data": {"conversation_id": conv_id}},
+        counterparty_id,
+        counterparty_role
+    )
+
     return message
 
 

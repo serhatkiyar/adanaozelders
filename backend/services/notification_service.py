@@ -4,6 +4,7 @@ from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from models.notification import Notification
+from core.ws_manager import manager
 
 
 async def notify(
@@ -20,6 +21,12 @@ async def notify(
         )
     )
     await db.flush()
+
+    await manager.send_personal_message(
+        {"type": "NEW_NOTIFICATION", "data": {"message": message, "link": link}},
+        user_id,
+        role_id
+    )
 
 
 async def list_for(

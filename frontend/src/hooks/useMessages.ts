@@ -14,7 +14,6 @@ export function useConversations() {
     queryKey: ["conversations"],
     queryFn: listConversations,
     enabled: !!token,
-    refetchInterval: 30_000,
   });
 }
 
@@ -23,7 +22,6 @@ export function useMessages(conversationId: number | null) {
     queryKey: ["messages", conversationId],
     queryFn: () => listMessages(conversationId as number),
     enabled: conversationId !== null,
-    refetchInterval: 15_000,
   });
 }
 
@@ -33,7 +31,6 @@ export function useMessagesUnreadCount() {
     queryKey: ["messages", "unread"],
     queryFn: unreadCount,
     enabled: !!token,
-    refetchInterval: 30_000,
   });
 }
 

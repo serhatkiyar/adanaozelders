@@ -15,6 +15,7 @@ from api.routers import (
     qa,
     reviews,
     tutors,
+    ws,
 )
 
 api_router = APIRouter()
@@ -32,3 +33,4 @@ api_router.include_router(admin.router)
 api_router.include_router(notifications.router)
 api_router.include_router(messages.router)
 api_router.include_router(leaderboard.router)
+api_router.include_router(ws.router)

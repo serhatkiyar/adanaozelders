@@ -13,7 +13,6 @@ export function useUnreadCount() {
     queryKey: ["notifications", "unread"],
     queryFn: fetchUnreadCount,
     enabled: !!token,
-    refetchInterval: 30_000,
   });
 }
 

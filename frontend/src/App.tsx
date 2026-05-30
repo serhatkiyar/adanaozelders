@@ -6,6 +6,10 @@ import { Toaster } from "@/components/Toaster";
 import { ROLE_IDS } from "@/types";
 import { PublicRoute } from "@/routes/PublicRoute";
 import { ProtectedRoute } from "@/routes/ProtectedRoute";
+import { useEffect } from "react";
+import { useAuthStore } from "@/store/authStore";
+import { useWsStore } from "@/store/wsStore";
+import { useQueryClient } from "@tanstack/react-query";
 import Landing from "@/pages/Landing";
 import PublicMarketplace from "@/pages/PublicMarketplace";
 import PublicTutorProfile from "@/pages/PublicTutorProfile";
@@ -31,9 +35,45 @@ import Leaderboard from "@/pages/Leaderboard";
 import Profile from "@/pages/Profile";
 import Settings from "@/pages/Settings";
 
+function WsManager() {
+  const token = useAuthStore((s) => s.token);
+  const { connect, disconnect, socket } = useWsStore();
+  const qc = useQueryClient();
+
+  useEffect(() => {
+    if (token) {
+      connect(token);
+    } else {
+      disconnect();
+    }
+  }, [token, connect, disconnect]);
+
+  useEffect(() => {
+    if (!socket) return;
+    const handleMessage = (event: MessageEvent) => {
+      try {
+        const msg = JSON.parse(event.data);
+        if (msg.type === "NEW_MESSAGE") {
+          qc.invalidateQueries({ queryKey: ["messages"] });
+          qc.invalidateQueries({ queryKey: ["conversations"] });
+        } else if (msg.type === "NEW_NOTIFICATION") {
+          qc.invalidateQueries({ queryKey: ["notifications"] });
+        }
+      } catch (err) {
+        console.error("WS Parse error", err);
+      }
+    };
+    socket.addEventListener("message", handleMessage);
+    return () => socket.removeEventListener("message", handleMessage);
+  }, [socket, qc]);
+
+  return null;
+}
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
+      <WsManager />
       <BrowserRouter>
         <Routes>
           {/* Public: giriş yapmış kullanıcı kendi paneline yönlendirilir. */}
