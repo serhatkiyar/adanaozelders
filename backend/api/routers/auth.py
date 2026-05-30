@@ -2,13 +2,15 @@ from __future__ import annotations
 
 import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import CurrentUser, get_current_active_user
 from core.database import get_db
+from core.config import settings
 from core.security import create_access_token
+from core.storage import upload_avatar, delete_avatar
 from schemas.auth import RegisterRequest, Token
 from schemas.tutor import TutorOut
 from schemas.user import PasswordChange, UserOut, UserStats, UserUpdate
@@ -115,3 +117,38 @@ async def change_my_password(
         current_password=payload.current_password,
         new_password=payload.new_password,
     )
+
+
+@router.post("/me/avatar", response_model=UserOut)
+async def update_my_avatar(
+    file: UploadFile = File(...),
+    user: CurrentUser = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    file_bytes = await file.read()
+    if len(file_bytes) > settings.MAX_AVATAR_SIZE_BYTES:
+        raise HTTPException(
+            status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, "File is too large"
+        )
+
+    if user.avatar_url:
+        await delete_avatar(user.avatar_url)
+
+    url = await upload_avatar(file_bytes)
+    user.avatar_url = url
+    await db.commit()
+    await db.refresh(user)
+    return user
+
+
+@router.delete("/me/avatar", response_model=UserOut)
+async def delete_my_avatar(
+    user: CurrentUser = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    if user.avatar_url:
+        await delete_avatar(user.avatar_url)
+        user.avatar_url = None
+        await db.commit()
+        await db.refresh(user)
+    return user

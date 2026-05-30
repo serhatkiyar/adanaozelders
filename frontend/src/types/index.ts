@@ -78,6 +78,7 @@ export interface UserOut {
   full_name: string; // first_name + last_name (backend hybrid)
   is_active: boolean;
   role_id: number;
+  avatar_url?: string | null;
   about?: string | null;
   birth_date?: string | null; // "YYYY-MM-DD"
   gender?: Gender | null;
@@ -129,6 +130,7 @@ export interface ClientPublicOut {
   id: number;
   full_name: string;
   username: string;
+  avatar_url?: string | null;
   about?: string | null;
   birth_date?: string | null; // "YYYY-MM-DD"
   gender?: Gender | null;
@@ -143,6 +145,7 @@ export interface ClientSearchOut {
   id: number;
   full_name: string;
   username: string;
+  avatar_url?: string | null;
   about?: string | null;
   birth_date?: string | null; // "YYYY-MM-DD"
   gender?: Gender | null;
@@ -214,6 +217,7 @@ export interface TutorOut extends UserOut {
 export interface TutorSearchOut {
   id: number;
   full_name: string;
+  avatar_url?: string | null;
   headline?: string | null;
   bio?: string | null;
   hourly_rate?: string | null; // Decimal -> string

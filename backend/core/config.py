@@ -39,6 +39,13 @@ class Settings(BaseSettings):
     PRESENCE_ONLINE_TTL_SECONDS: int = 300
     PRESENCE_FLUSH_INTERVAL_SECONDS: int = 300
 
+    AWS_ACCESS_KEY_ID: str = "minioadmin"
+    AWS_SECRET_ACCESS_KEY: str = "minioadmin"
+    AWS_REGION_NAME: str = "us-east-1"
+    AWS_BUCKET_NAME: str = "avatars"
+    AWS_ENDPOINT_URL: str = "http://localhost:9000"
+    MAX_AVATAR_SIZE_BYTES: int = 5 * 1024 * 1024
+
     AUTO_CREATE_DB: bool = True
     ADMIN_EMAIL: str | None = None
     ADMIN_PASSWORD: str | None = None

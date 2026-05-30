@@ -11,6 +11,7 @@ class NameMixin:
     first_name: Mapped[str] = mapped_column(String(75), nullable=False)
     last_name: Mapped[str] = mapped_column(String(75), nullable=False)
     username: Mapped[str] = mapped_column(String(50), nullable=False)
+    avatar_url: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
     @hybrid_property
     def full_name(self) -> str:

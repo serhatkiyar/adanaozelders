@@ -66,7 +66,7 @@ export default function StudentProfile() {
         {/* ── Header ── */}
         <section className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-slate-700">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-            <Avatar name={student.full_name} size="lg" />
+            <Avatar name={student.full_name} avatar_url={student.avatar_url} size="lg" />
             <div className="min-w-0 flex-1">
               <h1 className="text-xl font-bold text-slate-900 dark:text-white">
                 {student.full_name}
@@ -147,3 +147,4 @@ export default function StudentProfile() {
     </DashboardShell>
   );
 }
+

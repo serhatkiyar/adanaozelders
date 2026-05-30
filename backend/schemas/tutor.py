@@ -74,6 +74,7 @@ class TutorSearchOut(BaseModel):
 
     id: int
     full_name: str
+    avatar_url: str | None = None
     headline: str | None = None
     bio: str | None = None
     hourly_rate: Decimal | None = None

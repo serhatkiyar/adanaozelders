@@ -22,6 +22,7 @@ class UserOut(BaseModel):
     is_active: bool
     role_id: int
     about: str | None = None
+    avatar_url: str | None = None
     birth_date: datetime.date | None = None
     gender: Gender | None = None
     created_at: datetime.datetime
@@ -55,6 +56,7 @@ class ClientPublicOut(BaseModel):
     full_name: str
     username: str
     about: str | None = None
+    avatar_url: str | None = None
     birth_date: datetime.date | None = None
     gender: Gender | None = None
     created_at: datetime.datetime
@@ -70,6 +72,7 @@ class ClientSearchOut(BaseModel):
     full_name: str
     username: str
     about: str | None = None
+    avatar_url: str | None = None
     birth_date: datetime.date | None = None
     gender: Gender | None = None
     last_seen_at: datetime.datetime | None = None

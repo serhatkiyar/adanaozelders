@@ -116,7 +116,7 @@ function PendingTutorCard({ tutor }: { tutor: TutorOut }) {
   return (
     <div className="flex flex-col gap-4 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-amber-100 dark:bg-slate-800 dark:ring-amber-700/30 sm:flex-row sm:items-start sm:justify-between">
       <div className="flex min-w-0 items-start gap-3">
-        <Avatar name={tutor.full_name} />
+        <Avatar name={tutor.full_name} avatar_url={tutor.avatar_url} />
         <div className="min-w-0">
           <p className="font-semibold text-slate-900 dark:text-white">
             {tutor.full_name}
@@ -289,7 +289,7 @@ function UserRow({ user }: { user: AdminUserOut }) {
     <tr className="border-t border-slate-100 transition hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-700/30">
       <td className="px-4 py-3">
         <div className="flex min-w-0 items-center gap-3">
-          <Avatar name={user.full_name} size="sm" />
+          <Avatar name={user.full_name} avatar_url={user.avatar_url} size="sm" />
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold text-slate-900 dark:text-white">
               {user.full_name}
@@ -424,7 +424,7 @@ function ListingRow({ tutor }: { tutor: TutorOut }) {
   return (
     <div className="flex flex-col gap-4 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-slate-700 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex min-w-0 items-start gap-3">
-        <Avatar name={tutor.full_name} size="sm" />
+        <Avatar name={tutor.full_name} avatar_url={tutor.avatar_url} size="sm" />
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <p className="truncate text-sm font-semibold text-slate-900 dark:text-white">
@@ -584,3 +584,4 @@ export default function AdminHome() {
     </DashboardShell>
   );
 }
+

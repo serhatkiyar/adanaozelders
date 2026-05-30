@@ -20,7 +20,7 @@ export function ClientCard({ client }: { client: ClientSearchOut }) {
       className="group flex h-full flex-col rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100 transition duration-200 hover:-translate-y-1 hover:shadow-lg hover:ring-indigo-200 dark:bg-slate-800 dark:ring-slate-700 dark:hover:ring-indigo-500/40"
     >
       <div className="flex items-start gap-3">
-        <Avatar name={client.full_name} />
+        <Avatar name={client.full_name} avatar_url={client.avatar_url} />
         <div className="min-w-0 flex-1">
           <h3 className="truncate text-base font-semibold text-slate-900 transition group-hover:text-indigo-700 dark:text-white dark:group-hover:text-indigo-300">
             {client.full_name}
@@ -62,3 +62,4 @@ export function ClientCard({ client }: { client: ClientSearchOut }) {
     </Link>
   );
 }
+

@@ -7,6 +7,9 @@ import { useChangePassword } from "@/hooks/useProfile";
 import { getErrorMessage } from "@/lib/errors";
 import { toast } from "@/store/toastStore";
 import { ROLE_IDS } from "@/types";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiClient } from "@/api/axios";
+import { Avatar } from "@/components/Avatar";
 
 const inputClass =
   "mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100";
@@ -20,10 +23,57 @@ const labelClass =
 export default function Settings() {
   const { data: user, isLoading } = useCurrentUser();
   const changePassword = useChangePassword();
+  const queryClient = useQueryClient();
 
   const [current, setCurrent] = useState("");
   const [next, setNext] = useState("");
   const [confirm, setConfirm] = useState("");
+  const [isUploading, setIsUploading] = useState(false);
+
+  const uploadAvatar = useMutation({
+    mutationFn: async (file: File) => {
+      const formData = new FormData();
+      formData.append("file", file);
+      const { data } = await apiClient.post("/auth/me/avatar", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      return data;
+    },
+    onSuccess: () => {
+      toast.success("Profil fotoğrafı güncellendi.");
+      queryClient.invalidateQueries({ queryKey: ["currentUser"] });
+    },
+    onError: (err) => {
+      toast.error(getErrorMessage(err, "Fotoğraf yüklenemedi."));
+    },
+    onSettled: () => setIsUploading(false),
+  });
+
+  const deleteAvatar = useMutation({
+    mutationFn: async () => {
+      const { data } = await apiClient.delete("/auth/me/avatar");
+      return data;
+    },
+    onSuccess: () => {
+      toast.success("Profil fotoğrafı silindi.");
+      queryClient.invalidateQueries({ queryKey: ["currentUser"] });
+    },
+    onError: (err) => {
+      toast.error(getErrorMessage(err, "Fotoğraf silinemedi."));
+    },
+  });
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Dosya boyutu 5MB'dan küçük olmalıdır.");
+      return;
+    }
+    setIsUploading(true);
+    uploadAvatar.mutate(file);
+    e.target.value = "";
+  };
 
   const roleNav =
     user?.role_id === ROLE_IDS.CLIENT
@@ -84,10 +134,48 @@ export default function Settings() {
                 Hesap
               </h3>
               <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                E-posta adresin değiştirilemez. Ad, soyad ve kullanıcı adını{" "}
-                Profil sayfandan düzenleyebilirsin.
+                Profil fotoğrafını veya iletişim bilgilerini yönet.
               </p>
-              <div className="mt-5 space-y-4">
+              
+              <div className="mt-5 mb-8 flex items-center space-x-6">
+                <Avatar
+                  name={user.full_name}
+                  avatar_url={user.avatar_url}
+                  size="lg"
+                />
+                <div>
+                  <label
+                    htmlFor="avatar-upload"
+                    className={`inline-flex items-center justify-center rounded-lg bg-indigo-50 px-4 py-2 text-sm font-semibold text-indigo-700 transition hover:bg-indigo-100 cursor-pointer ${
+                      isUploading ? "opacity-50 pointer-events-none" : ""
+                    }`}
+                  >
+                    {isUploading ? "Yükleniyor..." : "Fotoğraf Değiştir"}
+                  </label>
+                  <input
+                    id="avatar-upload"
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    className="hidden"
+                    onChange={handleFileSelect}
+                  />
+                  {user.avatar_url && (
+                    <button
+                      type="button"
+                      onClick={() => deleteAvatar.mutate()}
+                      disabled={deleteAvatar.isPending}
+                      className="ml-4 text-sm font-medium text-red-600 hover:text-red-500 transition disabled:opacity-50"
+                    >
+                      Kaldır
+                    </button>
+                  )}
+                  <p className="mt-2 text-xs text-slate-500">
+                    JPG, PNG, WEBP (Max 5MB). Kare olarak kırpılır.
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-4">
                 <div>
                   <label className={labelClass}>E-posta</label>
                   <input

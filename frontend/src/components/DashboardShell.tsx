@@ -345,7 +345,7 @@ export function DashboardShell({
                 onClick={() => setAccountOpen((o) => !o)}
                 className="rounded-full ring-2 ring-transparent transition hover:ring-indigo-200 dark:hover:ring-slate-700"
               >
-                <Avatar name={user?.full_name ?? "?"} size="sm" />
+                <Avatar name={user?.full_name ?? "?"} avatar_url={user?.avatar_url} size="sm" />
               </button>
               {accountOpen && (
                 <div className="absolute right-0 top-full z-40 mt-2 w-56 rounded-2xl bg-white p-2 shadow-xl ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700">
@@ -404,7 +404,7 @@ export function DashboardShell({
         {menuOpen && (
           <div className="mt-3 flex flex-col gap-0.5 sm:hidden">
             <div className="flex items-center gap-3 px-3 py-2">
-              <Avatar name={user?.full_name ?? "?"} size="sm" />
+              <Avatar name={user?.full_name ?? "?"} avatar_url={user?.avatar_url} size="sm" />
               <div className="min-w-0">
                 <p className="truncate text-sm font-semibold text-slate-900 dark:text-white">
                   {user?.full_name}

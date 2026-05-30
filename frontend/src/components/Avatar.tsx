@@ -1,5 +1,6 @@
 interface AvatarProps {
   name: string;
+  avatar_url?: string | null;
   size?: "sm" | "md" | "lg";
 }
 
@@ -36,7 +37,17 @@ function colorFor(name: string): string {
   return PALETTE[hash % PALETTE.length];
 }
 
-export function Avatar({ name, size = "md" }: AvatarProps) {
+export function Avatar({ name, avatar_url, size = "md" }: AvatarProps) {
+  if (avatar_url) {
+    return (
+      <img
+        src={avatar_url}
+        alt={name}
+        className={`object-cover shrink-0 rounded-full ${SIZES[size]}`}
+      />
+    );
+  }
+
   return (
     <div
       aria-hidden

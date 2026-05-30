@@ -371,7 +371,7 @@ export default function TutorProfile() {
         {/* ── Header ── */}
         <section className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-slate-700">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
-            <Avatar name={tutor.full_name} size="lg" />
+            <Avatar name={tutor.full_name} avatar_url={tutor.avatar_url} size="lg" />
             <div className="min-w-0 flex-1">
               <h1 className="text-xl font-bold text-slate-900 dark:text-white">
                 {tutor.full_name}
@@ -702,3 +702,4 @@ export default function TutorProfile() {
     </DashboardShell>
   );
 }
+

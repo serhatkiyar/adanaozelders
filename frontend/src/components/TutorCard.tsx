@@ -53,7 +53,7 @@ export function TutorCard({
     >
       {/* Header */}
       <div className="flex items-start gap-3">
-        <Avatar name={tutor.full_name} />
+        <Avatar name={tutor.full_name} avatar_url={tutor.avatar_url} />
         <div className="min-w-0 flex-1">
           <h3 className="truncate text-base font-semibold text-slate-900 transition group-hover:text-indigo-700 dark:text-white dark:group-hover:text-indigo-300">
             {tutor.full_name}
@@ -153,3 +153,4 @@ export function TutorCard({
     </Link>
   );
 }
+
