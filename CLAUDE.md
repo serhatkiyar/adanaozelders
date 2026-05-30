@@ -29,43 +29,55 @@ cp .env.example .env          # VITE_API_BASE_URL=http://localhost:8000/api/v1
 npm run dev                   # http://localhost:5173
 ```
 
-Gerekli: PostgreSQL (pg_trgm ve btree_gist eklentileri aktif), Python 3.11+, Node 18+.
+Gerekli: PostgreSQL (pg_trgm ve btree_gist eklentileri aktif), Python 3.11+, Node 18+, Redis (presence + rate-limit), S3/MinIO (avatar).
+
+### Docker ile (tek komut)
+
+```bash
+docker-compose up --build   # postgres + redis + minio + backend(8000) + frontend(5173)
+```
+
+`docker-compose.yml` Postgres/Redis/MinIO'yu (avatar bucket init dahil) ayağa kaldırır; backend açılışta şemayı hazırlar. CI: `.github/workflows/ci.yml` (backend pytest + frontend build).
 
 ## Veritabanı Şeması (Özet)
 
 ```
 tutors ──┬── tutor_educations / tutor_subjects / tutor_availability
-         ├── bookings ──┬── reviews (1:1)
+  (konum)│
+  lat/lng├── bookings ──┬── reviews (1:1)
          │   (client_id)├── qa_threads (chat-style qa_messages)
-         │              └── practice_exams
+         │              ├── practice_exams
+         │              └── booking_comments / booking_resources / booking_private_notes
 clients ─┼── client_educations
          ├── bookmarks (client->tutor)
          ├── demands (açık talepler)
          └── conversations/messages (client<->tutor)
 admins (bağımsız kullanıcı tablosu)
+audit_logs (admin aksiyon denetim kaydı)   notifications ((user_id, role_id))
 ```
 
 - **Unified User Table Yoktur**: Admin, Tutor ve Client ayrı tablolarda tutulur.
 - **Soft-delete**: Tüm tablolarda `deleted_at` kolonu (`deleted_at IS NULL` filtresi önemlidir).
-- **Migration**: Alembic kullanılır (async, `migrations/`). Şema değişikliği için `alembic revision --autogenerate -m "..."` ile revizyon üretip `alembic upgrade head` ile uygulanır. `AUTO_CREATE_DB=true` iken uygulama açılışında (`main.py` lifespan) migration'lar otomatik `head`'e yükseltilir, ardından rol/admin seed'lenir. (`core/init_db.py` ve `Base.metadata.create_all` artık kullanılmaz.)
+- **Migration**: Alembic ile izlenir (async, `migrations/`). **Dikkat:** mevcut "initial" revizyonu dolu bir DB'ye karşı üretildiği için tabloları kurmaz; bu yüzden açılışta (`AUTO_CREATE_DB=true`) `core/migrations.py::ensure_schema` çalışır → `Base.metadata.create_all` + idempotent `ALTER ... ADD COLUMN IF NOT EXISTS` + `alembic stamp head`, ardından rol/admin seed. Yeni *tablo* create_all ile gelir; mevcut tabloya yeni *kolon* için `_ADDED_COLUMNS_DDL`'e idempotent ALTER ekleyin. Detay: `backend/CLAUDE.md`.
 - **Concurrency**: Booking çakışmaları PostgreSQL GiST Exclusion Constraint ile veritabanı seviyesinde engellenir.
 
 ## İş Kuralları ve Temel Özellikler
 
 - **Tutor Onboarding FSM**: DRAFT → PENDING_APPROVAL → APPROVED/REJECTED/SUSPENDED (Admin onayı gerekir)
-- **Booking FSM**: PENDING → ACCEPTED/REJECTED/CANCELLED; ACCEPTED → COMPLETED/CANCELLED
-- **Arama ve Sıralama**: pg_trgm trigram similarity + GIN index ile full-text search. Bayesian average formülü ile eğitmen sıralaması yapılır.
-- **Mesajlaşma (Gated)**: Sadece aktif/onaylanmış rezervasyonu olan eğitmen ve öğrenci mesajlaşabilir. Sistemde regex tabanlı anti-disintermediation (iletişim bilgisi gizleme) vardır.
-- **Yetkilendirme**: JWT payload'undaki `role_id` (1=ADMIN, 2=TUTOR, 3=CLIENT) ile dependency injection üzerinden RBAC (Role-Based Access Control) sağlanır.
+- **Booking FSM**: PENDING → ACCEPTED/REJECTED/CANCELLED; ACCEPTED → COMPLETED/CANCELLED. Geçmiş ACCEPTED dersler arka planda otomatik COMPLETED'a geçer.
+- **Ders İşbirliği**: Onaylı derste yorumlar, kaynaklar (link), buluşma konumu ve özel notlar (yalnız sahibine görünür); ONLINE derste minimize edilebilir gömülü Jitsi penceresi.
+- **Arama ve Sıralama**: pg_trgm trigram similarity + GIN index ile full-text search; Bayesian average ile sıralama. **Coğrafi arama**: lat/lng/radius_km ile Haversine mesafe filtresi ("yakınımdaki eğitmenler").
+- **Mesajlaşma (Gated)**: Sadece aktif/onaylanmış rezervasyonu olan eğitmen ve öğrenci mesajlaşabilir. `mask_contact_info` ile anti-disintermediation; aynı maske ders yorumları ve kaynak başlıklarına da uygulanır.
+- **Yetkilendirme & Güvenlik**: JWT `role_id` (1=ADMIN, 2=TUTOR, 3=CLIENT) ile RBAC. Login/register IP rate-limit; `/auth/logout` ile sunucu tarafı token iptali (Redis denylist). Admin kritik aksiyonları `audit_logs`'a yazılır.
 - **QA Kota**: Tamamlanan ders başına öğrencinin 3 soru hakkı vardır (7 günlük pencere içinde). Atomik güncellemelerle race condition önlenir.
 
 ## Roller
 
 | Rol | Yapabilir |
 |-----|-----------|
-| CLIENT | Eğitmen ara, rezervasyon yap, talep (demand) oluştur, mesajlaş, deneme sınavı kaydet, favorilere ekle (bookmark), soru sor, yorum/puan ver. |
-| TUTOR | Onboarding/Profil yönetimi, rezervasyon kabul/red, öğrenci taleplerine (demands) bak, mesajlaş, soruları cevapla. |
-| ADMIN | Eğitmen onay/red/askıya alma, tüm kullanıcıları listeleme, platform istatistiklerini görme. |
+| CLIENT | Eğitmen ara (yakınımda dahil), rezervasyon yap, talep (demand) oluştur, mesajlaş, deneme sınavı kaydet, favorilere ekle, soru sor, yorum/puan ver, takvim. |
+| TUTOR | Onboarding/Profil + konum yönetimi, rezervasyon kabul/red/tamamla, ders kaynağı/not paylaş, öğrenci taleplerine bak, mesajlaş, soruları cevapla, takvim. |
+| ADMIN | Eğitmen onay/red/askı, booking iptal/dispute, şifre sıfırlama, audit log görüntüleme, kullanıcı listeleme, platform istatistikleri. |
 
 ## Kodlama Kuralları
 
