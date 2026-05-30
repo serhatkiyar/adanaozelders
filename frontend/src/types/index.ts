@@ -199,6 +199,9 @@ export interface TutorProfileUpdate {
   bio?: string | null;
   hourly_rate?: number | null;
   teaching_mode?: TeachingMode | null;
+  location_text?: string | null;
+  location_lat?: number | null;
+  location_lng?: number | null;
   subjects?: string[] | null;
   availability?: Availability[] | null;
 }
@@ -211,6 +214,9 @@ export interface TutorOut extends UserOut {
   teaching_mode?: TeachingMode | null;
   birth_date?: string | null; // "YYYY-MM-DD"
   gender?: Gender | null;
+  location_text?: string | null;
+  location_lat?: number | null;
+  location_lng?: number | null;
   subjects?: string[];
   availability?: Availability[];
 }
@@ -229,6 +235,10 @@ export interface TutorSearchOut {
   rating_count: number;
   rating_average?: number | null;
   bayesian_score: number;
+  location_text?: string | null;
+  location_lat?: number | null;
+  location_lng?: number | null;
+  distance_km?: number | null;
   subjects?: string[];
   availability?: Availability[];
   educations?: Education[];

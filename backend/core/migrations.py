@@ -24,6 +24,7 @@ from pathlib import Path
 
 from alembic import command
 from alembic.config import Config
+from sqlalchemy import text
 
 from core.database import Base, engine
 
@@ -31,6 +32,14 @@ logger = logging.getLogger(__name__)
 
 _BACKEND_DIR = Path(__file__).resolve().parent.parent
 _ALEMBIC_INI = _BACKEND_DIR / "alembic.ini"
+
+# create_all MEVCUT tablolara yeni KOLON eklemez. Sonradan eklenen kolonları, mevcut
+# dev DB'lerde de garanti etmek için idempotent ALTER ile uygularız (fresh DB'de no-op).
+_ADDED_COLUMNS_DDL: tuple[str, ...] = (
+    "ALTER TABLE tutors ADD COLUMN IF NOT EXISTS location_text VARCHAR(300)",
+    "ALTER TABLE tutors ADD COLUMN IF NOT EXISTS location_lat NUMERIC(9,6)",
+    "ALTER TABLE tutors ADD COLUMN IF NOT EXISTS location_lng NUMERIC(9,6)",
+)
 
 
 def _config() -> Config:
@@ -51,6 +60,8 @@ async def ensure_schema() -> None:
     logger.info("Schema: ensuring tables/extensions via create_all")
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        for ddl in _ADDED_COLUMNS_DDL:
+            await conn.execute(text(ddl))
     # stamp, env.py online modu (asyncio.run) kullandığından ayrı thread'de.
     await asyncio.to_thread(_stamp_head)
     logger.info("Schema: ready, alembic stamped to head")

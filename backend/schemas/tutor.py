@@ -51,6 +51,10 @@ class TutorProfileUpdate(BaseModel):
         default=None, ge=0, max_digits=10, decimal_places=2
     )
     teaching_mode: TeachingMode | None = None
+    # Yüzyüze ders için baz konum (serbest adres + harita koordinatı).
+    location_text: str | None = Field(default=None, max_length=300)
+    location_lat: float | None = Field(default=None, ge=-90, le=90)
+    location_lng: float | None = Field(default=None, ge=-180, le=180)
     # Verilirse eğitmenin ders/branş kümesini tümüyle değiştirir (replace).
     subjects: list[str] | None = Field(default=None, max_length=40)
     # Verilirse haftalık müsaitlik pencerelerini tümüyle değiştirir (replace).
@@ -65,6 +69,9 @@ class TutorOut(UserOut):
     teaching_mode: TeachingMode | None = None
     birth_date: datetime.date | None = None
     gender: Gender | None = None
+    location_text: str | None = None
+    location_lat: float | None = None
+    location_lng: float | None = None
     subjects: list[str] = []
     availability: list[AvailabilityOut] = []
 
@@ -85,6 +92,11 @@ class TutorSearchOut(BaseModel):
     rating_count: int
     rating_average: float | None = None
     bayesian_score: float
+    location_text: str | None = None
+    location_lat: float | None = None
+    location_lng: float | None = None
+    # "Yakınımdaki" araması yapıldığında doldurulur (km).
+    distance_km: float | None = None
     subjects: list[str] = []
     availability: list[AvailabilityOut] = []
     educations: list[EducationOut] = []

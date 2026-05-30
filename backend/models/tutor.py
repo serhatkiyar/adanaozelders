@@ -66,6 +66,11 @@ class Tutor(Base, NameMixin, TimestampMixin, SoftDeleteMixin, LastSeenMixin):
         SAEnum(Gender, name="gender"), nullable=True
     )
 
+    # Yüzyüze ders için eğitmenin baz konumu ("yakınımdaki eğitmenler" araması).
+    location_text: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    location_lat: Mapped[float | None] = mapped_column(Numeric(9, 6), nullable=True)
+    location_lng: Mapped[float | None] = mapped_column(Numeric(9, 6), nullable=True)
+
     rating_count: Mapped[int] = mapped_column(
         Integer, nullable=False, server_default=text("0")
     )

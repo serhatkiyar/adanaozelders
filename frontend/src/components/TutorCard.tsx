@@ -102,6 +102,13 @@ export function TutorCard({
         {isOnline ? "Çevrimiçi" : formatLastSeen(tutor.last_seen_at)}
       </p>
 
+      {/* Mesafe (yalnızca "yakınımdaki" aramasında dolu gelir) */}
+      {tutor.distance_km != null && (
+        <p className="mt-1.5 inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300">
+          📍 ~{tutor.distance_km} km uzakta
+        </p>
+      )}
+
       {/* Subjects */}
       {tutor.subjects && tutor.subjects.length > 0 && (
         <div className="mt-2 flex flex-wrap gap-1">

@@ -33,6 +33,7 @@ import StudentBookings from "@/pages/StudentBookings";
 import LessonDetail from "@/pages/LessonDetail";
 import Messages from "@/pages/Messages";
 import Leaderboard from "@/pages/Leaderboard";
+import Calendar from "@/pages/Calendar";
 import Profile from "@/pages/Profile";
 import Settings from "@/pages/Settings";
 import { GlobalMeeting } from "@/components/GlobalMeeting";
@@ -117,6 +118,7 @@ function App() {
             <Route path="/settings" element={<Settings />} />
             <Route path="/messages" element={<Messages />} />
             <Route path="/leaderboard" element={<Leaderboard />} />
+            <Route path="/calendar" element={<Calendar />} />
             <Route path="/lesson/:id" element={<LessonDetail />} />
             <Route path="/student/tutors/:id" element={<TutorProfile />} />
           </Route>

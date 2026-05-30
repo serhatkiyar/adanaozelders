@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import type { UseMutationResult } from "@tanstack/react-query";
 import { DashboardShell } from "@/components/DashboardShell";
 import { ProfileCompleteness } from "@/components/ProfileCompleteness";
+import { MapPicker } from "@/components/MapPicker";
 import { TUTOR_NAV } from "@/lib/nav";
 import {
   useMyTutorProfile,
@@ -114,6 +115,9 @@ export default function TutorSettings() {
   const [teachingMode, setTeachingMode] = useState<TeachingMode | "">("");
   const [subjects, setSubjects] = useState<string[]>([]);
   const [availability, setAvailability] = useState<Availability[]>([]);
+  const [locationText, setLocationText] = useState("");
+  const [locationLat, setLocationLat] = useState<number | null>(null);
+  const [locationLng, setLocationLng] = useState<number | null>(null);
 
   useEffect(() => {
     if (data) {
@@ -124,6 +128,9 @@ export default function TutorSettings() {
       setTeachingMode(data.teaching_mode ?? "");
       setSubjects(data.subjects ?? []);
       setAvailability(data.availability ?? []);
+      setLocationText(data.location_text ?? "");
+      setLocationLat(data.location_lat ?? null);
+      setLocationLng(data.location_lng ?? null);
     }
   }, [data]);
 
@@ -167,6 +174,9 @@ export default function TutorSettings() {
         bio: bio.trim() || null,
         hourly_rate: rate,
         teaching_mode: teachingMode || null,
+        location_text: locationText.trim() || null,
+        location_lat: locationLat,
+        location_lng: locationLng,
         subjects,
         availability,
       },
@@ -390,6 +400,33 @@ export default function TutorSettings() {
                   </div>
                   <p className="mt-1.5 text-xs text-slate-400 dark:text-slate-500">
                     Seçtiğin dersler, öğrencilerin aramada seni bulmasını sağlar.
+                  </p>
+                </div>
+
+                {/* Konum — yüzyüze ders ve "yakınımdaki eğitmenler" araması için */}
+                <div>
+                  <label className={labelCls}>Konum (yüzyüze ders için)</label>
+                  <input
+                    type="text"
+                    value={locationText}
+                    disabled={!editable}
+                    onChange={(e) => setLocationText(e.target.value)}
+                    placeholder="ör. Kadıköy, İstanbul"
+                    className="mb-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-indigo-400 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900"
+                  />
+                  <MapPicker
+                    initialLat={locationLat}
+                    initialLng={locationLng}
+                    readonly={!editable}
+                    onLocationSelect={(lat, lng) => {
+                      setLocationLat(lat);
+                      setLocationLng(lng);
+                    }}
+                  />
+                  <p className="mt-1.5 text-xs text-slate-400 dark:text-slate-500">
+                    {locationLat != null
+                      ? `Seçili konum: ${locationLat.toFixed(4)}, ${locationLng?.toFixed(4)} — öğrenciler "yakınımdaki" aramasında seni bulabilir.`
+                      : "Haritaya tıklayarak baz konumunu işaretle (opsiyonel)."}
                   </p>
                 </div>
 

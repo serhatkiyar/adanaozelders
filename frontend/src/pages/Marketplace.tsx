@@ -7,6 +7,7 @@ import { SubjectMegaMenu } from "@/components/SubjectMegaMenu";
 import { useTutorSearch } from "@/hooks/useTutorSearch";
 import { useDebounce } from "@/hooks/useDebounce";
 import { getErrorMessage } from "@/lib/errors";
+import { toast } from "@/store/toastStore";
 import { Gender, TeachingMode, TutorSort } from "@/types";
 import type { TutorSearchParams } from "@/api/tutors";
 
@@ -52,6 +53,29 @@ export default function Marketplace() {
   const [minAge, setMinAge] = useState("");
   const [maxAge, setMaxAge] = useState("");
   const [limit, setLimit] = useState(20);
+  // "Yakınımdaki eğitmenler": tarayıcı konumu + yarıçap (km).
+  const [nearMe, setNearMe] = useState<{ lat: number; lng: number } | null>(null);
+  const [radiusKm, setRadiusKm] = useState(25);
+  const [geoLoading, setGeoLoading] = useState(false);
+
+  const requestNearMe = () => {
+    if (!navigator.geolocation) {
+      toast.error("Tarayıcınız konum servisini desteklemiyor.");
+      return;
+    }
+    setGeoLoading(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setNearMe({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        setGeoLoading(false);
+      },
+      () => {
+        toast.error("Konum alınamadı. Lütfen izin verin.");
+        setGeoLoading(false);
+      },
+      { enableHighAccuracy: false, timeout: 8000 }
+    );
+  };
 
   const toggleMode = (m: TeachingMode) =>
     setModes((prev) =>
@@ -85,6 +109,11 @@ export default function Marketplace() {
     const maxA = Number(debouncedMaxAge);
     if (debouncedMinAge && !Number.isNaN(minA) && minA >= 0) p.min_age = minA;
     if (debouncedMaxAge && !Number.isNaN(maxA) && maxA >= 0) p.max_age = maxA;
+    if (nearMe) {
+      p.lat = nearMe.lat;
+      p.lng = nearMe.lng;
+      p.radius_km = radiusKm;
+    }
     return p;
   }, [
     subjects,
@@ -97,6 +126,8 @@ export default function Marketplace() {
     debouncedMinAge,
     debouncedMaxAge,
     limit,
+    nearMe,
+    radiusKm,
   ]);
 
   const { data, isLoading, isFetching, isError, error } = useTutorSearch(params);
@@ -175,6 +206,37 @@ export default function Marketplace() {
                 {opt.label}
               </button>
             ))}
+          </div>
+
+          <div className="h-5 w-px bg-slate-200 dark:bg-slate-700" />
+
+          {/* Yakınımdaki eğitmenler (geolocation + yarıçap) */}
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => (nearMe ? setNearMe(null) : requestNearMe())}
+              disabled={geoLoading}
+              className={`inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-medium transition disabled:opacity-60 ${
+                nearMe
+                  ? "bg-emerald-600 text-white shadow-sm"
+                  : "bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600"
+              }`}
+              title="Konumunuza göre en yakın eğitmenleri sıralar"
+            >
+              📍 {geoLoading ? "Konum alınıyor…" : nearMe ? "Yakınımda ✓" : "Yakınımda"}
+            </button>
+            {nearMe && (
+              <select
+                value={radiusKm}
+                onChange={(e) => setRadiusKm(Number(e.target.value))}
+                className="rounded-full bg-slate-100 px-2 py-1.5 text-xs font-medium text-slate-600 dark:bg-slate-700 dark:text-slate-300"
+              >
+                {[5, 10, 25, 50, 100].map((r) => (
+                  <option key={r} value={r}>
+                    {r} km
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
 
           <div className="h-5 w-px bg-slate-200 dark:bg-slate-700" />

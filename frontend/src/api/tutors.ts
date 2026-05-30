@@ -17,6 +17,9 @@ export interface TutorSearchParams {
   max_age?: number;
   subject?: string[];
   sort?: TutorSort;
+  lat?: number;
+  lng?: number;
+  radius_km?: number;
   limit?: number;
   offset?: number;
 }

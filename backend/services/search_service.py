@@ -32,6 +32,7 @@ def _to_search_out(
     educations: list | None = None,
     subjects: list[str] | None = None,
     availability: list | None = None,
+    distance_km: float | None = None,
 ) -> TutorSearchOut:
     return TutorSearchOut(
         id=tutor.id,
@@ -51,12 +52,29 @@ def _to_search_out(
         bayesian_score=bayesian_average(
             tutor.rating_sum, tutor.rating_count, prior_mean, confidence
         ),
+        location_text=tutor.location_text,
+        location_lat=float(tutor.location_lat) if tutor.location_lat is not None else None,
+        location_lng=float(tutor.location_lng) if tutor.location_lng is not None else None,
+        distance_km=round(distance_km, 1) if distance_km is not None else None,
         subjects=subjects or [],
         availability=[
             AvailabilityOut.model_validate(a) for a in (availability or [])
         ],
         educations=[EducationOut.model_validate(e) for e in (educations or [])],
     )
+
+
+def _haversine_km(lat: float, lng: float):
+    """Tutor.location_lat/lng ile (lat,lng) arası km mesafe ifadesi (Haversine).
+    acos domain'ini [-1,1]'e clamp ederek float hatasından NaN'i önler."""
+    cos_expr = (
+        func.cos(func.radians(lat))
+        * func.cos(func.radians(Tutor.location_lat))
+        * func.cos(func.radians(Tutor.location_lng) - func.radians(lng))
+        + func.sin(func.radians(lat)) * func.sin(func.radians(Tutor.location_lat))
+    )
+    clamped = func.greatest(-1.0, func.least(1.0, cos_expr))
+    return 6371.0 * func.acos(clamped)
 
 
 async def search_tutors(
@@ -71,6 +89,9 @@ async def search_tutors(
     max_age: int | None = None,
     subjects: list[str] | None = None,
     sort: TutorSort | None = None,
+    lat: float | None = None,
+    lng: float | None = None,
+    radius_km: float | None = None,
     limit: int = 20,
     offset: int = 0,
 ) -> list[TutorSearchOut]:
@@ -78,8 +99,12 @@ async def search_tutors(
     confidence = settings.BAYESIAN_CONFIDENCE
     score = bayesian_score_expr(prior_mean, confidence)
 
+    geo = lat is not None and lng is not None
+    distance_expr = _haversine_km(lat, lng) if geo else None
+
+    base_cols = (Tutor, distance_expr.label("distance_km")) if geo else (Tutor,)
     stmt = (
-        select(Tutor)
+        select(*base_cols)
         .options(selectinload(Tutor.subject_links))
         .where(
             Tutor.status == TutorStatus.APPROVED,
@@ -87,6 +112,13 @@ async def search_tutors(
             Tutor.deleted_at.is_(None),
         )
     )
+    if geo:
+        # Konumu olmayan eğitmenler "yakınımdaki" aramasında elenir.
+        stmt = stmt.where(
+            Tutor.location_lat.isnot(None), Tutor.location_lng.isnot(None)
+        )
+        if radius_km is not None:
+            stmt = stmt.where(distance_expr <= radius_km)
 
     if subjects:
         stmt = stmt.where(
@@ -137,6 +169,9 @@ async def search_tutors(
         stmt = stmt.order_by(Tutor.hourly_rate.desc().nulls_last(), score.desc())
     elif sort == TutorSort.RATING_DESC:
         stmt = stmt.order_by(score.desc(), Tutor.created_at.desc())
+    elif geo:
+        # Kullanıcı açık bir sıralama seçmediyse, yakınımdaki aramada mesafe önceliklidir.
+        stmt = stmt.order_by(distance_expr.asc(), score.desc())
     elif relevance is not None:
         stmt = stmt.order_by(score.desc(), relevance.desc())
     else:
@@ -144,16 +179,21 @@ async def search_tutors(
 
     stmt = stmt.limit(limit).offset(offset)
 
-    tutors = (await db.execute(stmt)).scalars().all()
-    return [
-        _to_search_out(
-            tutor,
-            prior_mean,
-            confidence,
-            subjects=[link.subject for link in tutor.subject_links],
+    rows = (await db.execute(stmt)).all()
+    results: list[TutorSearchOut] = []
+    for row in rows:
+        tutor = row[0]
+        distance = row[1] if geo else None
+        results.append(
+            _to_search_out(
+                tutor,
+                prior_mean,
+                confidence,
+                subjects=[link.subject for link in tutor.subject_links],
+                distance_km=float(distance) if distance is not None else None,
+            )
         )
-        for tutor in tutors
-    ]
+    return results
 
 
 async def get_tutor_public(db: AsyncSession, tutor_id: int) -> TutorSearchOut:

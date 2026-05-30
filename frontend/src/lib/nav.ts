@@ -24,6 +24,7 @@ export const STUDENT_NAV: NavItem[] = [
   { to: "/student/exams", label: "Denemelerim", icon: "exams" },
   { to: "/student/demands", label: "Taleplerim", icon: "demand" },
   { to: "/student/bookings", label: "Rezervasyonlarım", icon: "bookings" },
+  { to: "/calendar", label: "Takvim", icon: "bookings" },
   { to: "/leaderboard", label: "Liderlik", icon: "trophy" },
 ];
 
@@ -34,5 +35,6 @@ export const TUTOR_NAV: NavItem[] = [
   { to: "/messages", label: "Mesajlar", icon: "messages" },
   { to: "/tutor/questions", label: "Sorular", icon: "questions" },
   { to: "/tutor/settings", label: "İlan Ayarları", icon: "listing" },
+  { to: "/calendar", label: "Takvim", icon: "bookings" },
   { to: "/leaderboard", label: "Liderlik", icon: "trophy" },
 ];
