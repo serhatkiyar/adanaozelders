@@ -39,6 +39,11 @@ class Settings(BaseSettings):
     PRESENCE_ONLINE_TTL_SECONDS: int = 300
     PRESENCE_FLUSH_INTERVAL_SECONDS: int = 300
 
+    # Rate limiting (Redis fixed-window, IP bazlı). Redis erişilemezse fail-open.
+    RATE_LIMIT_WINDOW_SECONDS: int = 60
+    RATE_LIMIT_LOGIN: int = 10
+    RATE_LIMIT_REGISTER: int = 5
+
     AWS_ACCESS_KEY_ID: str = "minioadmin"
     AWS_SECRET_ACCESS_KEY: str = "minioadmin"
     AWS_REGION_NAME: str = "us-east-1"
@@ -57,6 +62,10 @@ class Settings(BaseSettings):
     QA_WEEKLY_QUOTA: int = 3
     QA_QUOTA_WINDOW_DAYS: int = 7
     QA_QUESTIONS_PER_LESSON: int = 3
+
+    # ACCEPTED bir ders, bitişinden bu kadar saat sonra hâlâ tamamlanmadıysa arka
+    # plan görevi tarafından otomatik COMPLETED'a geçirilir (review/QA açılsın diye).
+    AUTO_COMPLETE_GRACE_HOURS: int = 12
 
     # Müsaitlik/yerel saat hesapları için sabit ofset (Türkiye UTC+3, DST yok).
     APP_UTC_OFFSET_HOURS: int = 3

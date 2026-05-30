@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from core.config import settings
 from core.database import get_db
 from core.security import decode_access_token
+from core.token_denylist import is_revoked
 from core import presence
 from models.admin import Admin
 from models.client import Client
@@ -40,6 +41,10 @@ async def get_current_user(
     try:
         payload = decode_access_token(token)
     except jwt.PyJWTError:
+        raise _credentials_exception
+
+    # Logout ile iptal edilmiş (denylist'teki) token reddedilir.
+    if await is_revoked(payload.get("jti")):
         raise _credentials_exception
 
     subject = payload.get("sub")

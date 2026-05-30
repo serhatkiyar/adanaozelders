@@ -2,15 +2,29 @@ from __future__ import annotations
 
 import datetime
 
+import jwt
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.deps import CurrentUser, get_current_active_user
+from api.deps import CurrentUser, get_current_active_user, oauth2_scheme
 from core.database import get_db
 from core.config import settings
-from core.security import create_access_token
+from core.ratelimit import rate_limit
+from core.security import create_access_token, decode_access_token
+from core.token_denylist import revoke
 from core.storage import upload_avatar, delete_avatar
+
+_login_limit = rate_limit(
+    key="login",
+    limit=settings.RATE_LIMIT_LOGIN,
+    window_seconds=settings.RATE_LIMIT_WINDOW_SECONDS,
+)
+_register_limit = rate_limit(
+    key="register",
+    limit=settings.RATE_LIMIT_REGISTER,
+    window_seconds=settings.RATE_LIMIT_WINDOW_SECONDS,
+)
 from schemas.auth import RegisterRequest, Token
 from schemas.tutor import TutorOut
 from schemas.user import PasswordChange, UserOut, UserStats, UserUpdate
@@ -20,7 +34,10 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 @router.post(
-    "/register/tutor", response_model=TutorOut, status_code=status.HTTP_201_CREATED
+    "/register/tutor",
+    response_model=TutorOut,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(_register_limit)],
 )
 async def register_tutor(
     payload: RegisterRequest, db: AsyncSession = Depends(get_db)
@@ -38,7 +55,10 @@ async def register_tutor(
 
 
 @router.post(
-    "/register/client", response_model=UserOut, status_code=status.HTTP_201_CREATED
+    "/register/client",
+    response_model=UserOut,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(_register_limit)],
 )
 async def register_client(
     payload: RegisterRequest, db: AsyncSession = Depends(get_db)
@@ -55,7 +75,7 @@ async def register_client(
     )
 
 
-@router.post("/login", response_model=Token)
+@router.post("/login", response_model=Token, dependencies=[Depends(_login_limit)])
 async def login(
     form: OAuth2PasswordRequestForm = Depends(),
     db: AsyncSession = Depends(get_db),
@@ -78,6 +98,20 @@ async def login(
         subject=user.id, role=role.value, role_id=user.role_id
     )
     return Token(access_token=token)
+
+
+@router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
+async def logout(token: str = Depends(oauth2_scheme)):
+    # Token'ın jti'sini kalan ömrü kadar denylist'e koyarak sunucu tarafında iptal et.
+    try:
+        payload = decode_access_token(token)
+    except jwt.PyJWTError:
+        return  # geçersiz/expired token: zaten oturum yok
+    jti = payload.get("jti")
+    exp = payload.get("exp")
+    if jti and exp:
+        now = int(datetime.datetime.now(datetime.timezone.utc).timestamp())
+        await revoke(jti, max(int(exp) - now, 1))
 
 
 @router.get("/me", response_model=UserOut)

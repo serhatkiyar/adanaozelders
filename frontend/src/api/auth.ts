@@ -34,6 +34,11 @@ export async function register(
   return data;
 }
 
+export async function logout(): Promise<void> {
+  // Sunucu tarafında token'ı iptal eder (denylist). Hata olsa da akış bozulmamalı.
+  await apiClient.post("/auth/logout");
+}
+
 export async function fetchMe(): Promise<UserOut> {
   const { data } = await apiClient.get<UserOut>("/auth/me");
   return data;

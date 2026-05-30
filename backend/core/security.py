@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import datetime
+import secrets
 
 import bcrypt
 import jwt
@@ -27,6 +28,8 @@ def create_access_token(*, subject: int, role: str, role_id: int) -> str:
         "role": role,
         "role_id": role_id,
         "type": "access",
+        # jti: logout'ta token'ı denylist'e koyabilmek için benzersiz kimlik.
+        "jti": secrets.token_urlsafe(16),
         "iat": now,
         "exp": now + datetime.timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES),
     }
