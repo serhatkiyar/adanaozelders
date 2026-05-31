@@ -6,6 +6,8 @@ import { useAuthStore } from "@/store/authStore";
 import { roleHome } from "@/lib/roles";
 import { ROUTES } from "@/lib/routes";
 import { getErrorMessage } from "@/lib/errors";
+import { buildWelcome } from "@/lib/greeting";
+import { toast } from "@/store/toastStore";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -31,6 +33,7 @@ export default function Login() {
       return user;
     },
     onSuccess: (user) => {
+      toast.success(buildWelcome(user.id, user.full_name));
       navigate(roleHome(user.role_id), { replace: true });
     },
   });

@@ -3,9 +3,11 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuthStore } from "@/store/authStore";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useRecentlyViewed } from "@/hooks/useRecentlyViewed";
+import { useBookings } from "@/hooks/useBookings";
 import { ROUTES } from "@/lib/routes";
-import { ROLE_IDS } from "@/types";
+import { ROLE_IDS, BookingStatus } from "@/types";
 import { STUDENT_NAV, TUTOR_NAV } from "@/lib/nav";
+import { firstNameOf, timeGreeting } from "@/lib/greeting";
 import { SubjectCarousel } from "@/components/SubjectCarousel";
 import { TutorCard } from "@/components/TutorCard";
 import { HScroll } from "@/components/HScroll";
@@ -138,11 +140,69 @@ function Snow() {
   );
 }
 
+/* ─── personalized hero (logged-in) ──────────────────── */
+
+function PersonalHero({
+  firstName,
+  isClient,
+}: {
+  firstName: string;
+  isClient: boolean;
+}) {
+  // Yalnız giriş'liyken mount olur → useBookings güvenle çalışır (authed).
+  const { data: bookings } = useBookings({ limit: 100 });
+  const list = bookings ?? [];
+  const upcoming = list.filter((b) => b.status === BookingStatus.ACCEPTED).length;
+  const pending = list.filter((b) => b.status === BookingStatus.PENDING).length;
+
+  const linkCls =
+    "font-semibold text-indigo-600 transition hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300";
+
+  let subtitle: React.ReactNode = "Bugün hangi konuda ders almak istersin?";
+  if (isClient && upcoming > 0) {
+    subtitle = (
+      <>
+        Yaklaşan {upcoming > 1 ? `${upcoming} dersin` : "bir dersin"} var.{" "}
+        <Link to={ROUTES.calendar} className={linkCls}>
+          Takvime git →
+        </Link>
+      </>
+    );
+  } else if (isClient && pending > 0) {
+    subtitle = (
+      <>
+        Bekleyen {pending > 1 ? `${pending} ders talebin` : "bir ders talebin"} var.{" "}
+        <Link to={ROUTES.bookings} className={linkCls}>
+          Görüntüle →
+        </Link>
+      </>
+    );
+  }
+
+  return (
+    <>
+      <h1 className="text-4xl font-extrabold leading-tight tracking-tight text-slate-900 dark:text-white sm:text-6xl sm:leading-tight">
+        {timeGreeting()},{" "}
+        <span className="bg-gradient-to-r from-indigo-600 to-violet-600 bg-clip-text text-transparent">
+          {firstName}
+        </span>
+      </h1>
+      <p className="mx-auto mt-4 max-w-xl text-lg text-slate-500 dark:text-slate-400">
+        {subtitle}
+      </p>
+    </>
+  );
+}
+
 /* ─── search hero ────────────────────────────────────── */
 
 function SearchHero() {
   const [q, setQ] = useState("");
   const navigate = useNavigate();
+  const token = useAuthStore((s) => s.token);
+  const { data: user } = useCurrentUser();
+  const firstName = firstNameOf(user?.full_name);
+  const personalized = !!token && !!firstName;
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -163,12 +223,19 @@ function SearchHero() {
 
       {/* Increased max-w to 5xl so the carousel can be wider */}
       <div className="relative mx-auto max-w-5xl px-6 text-center">
-        <h1 className="text-4xl font-extrabold leading-tight tracking-tight text-slate-900 dark:text-white sm:text-6xl sm:leading-tight">
-          Uzman Eğitmenle Öğren,{" "}
-          <span className="bg-gradient-to-r from-indigo-600 to-violet-600 bg-clip-text text-transparent">
-            Hedefine Ulaş.
-          </span>
-        </h1>
+        {personalized ? (
+          <PersonalHero
+            firstName={firstName}
+            isClient={user?.role_id === ROLE_IDS.CLIENT}
+          />
+        ) : (
+          <h1 className="text-4xl font-extrabold leading-tight tracking-tight text-slate-900 dark:text-white sm:text-6xl sm:leading-tight">
+            Uzman Eğitmenle Öğren,{" "}
+            <span className="bg-gradient-to-r from-indigo-600 to-violet-600 bg-clip-text text-transparent">
+              Hedefine Ulaş.
+            </span>
+          </h1>
+        )}
 
         {/* Search bar is constrained to max-w-3xl, centered */}
         <form onSubmit={submit} className="mx-auto mt-12 flex h-14 max-w-3xl overflow-hidden rounded-full shadow-lg shadow-indigo-100 ring-1 ring-slate-200 dark:shadow-none dark:ring-slate-700">

@@ -6,6 +6,8 @@ import { useAuthStore } from "@/store/authStore";
 import { roleHome } from "@/lib/roles";
 import { ROUTES } from "@/lib/routes";
 import { getErrorMessage } from "@/lib/errors";
+import { buildWelcome } from "@/lib/greeting";
+import { toast } from "@/store/toastStore";
 import { Gender } from "@/types";
 
 const GENDERS = [
@@ -85,6 +87,7 @@ function LoginForm({ onSuccess }: { onSuccess: () => void }) {
     },
     onSuccess: (user) => {
       onSuccess();
+      toast.success(buildWelcome(user.id, user.full_name));
       navigate(roleHome(user.role_id));
     },
   });
