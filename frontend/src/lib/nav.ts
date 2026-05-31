@@ -30,7 +30,6 @@ export const STUDENT_NAV: NavItem[] = [
 
 export const TUTOR_NAV: NavItem[] = [
   { to: "/tutor", label: "Panel", end: true, icon: "dashboard" },
-  { to: "/tutor/students", label: "Öğrenci Ara", icon: "search" },
   { to: "/tutor/demands", label: "Talepler", icon: "demand" },
   { to: "/messages", label: "Mesajlar", icon: "messages" },
   { to: "/tutor/questions", label: "Sorular", icon: "questions" },

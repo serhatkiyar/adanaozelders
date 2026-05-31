@@ -16,6 +16,9 @@ import PublicMarketplace from "@/pages/PublicMarketplace";
 import PublicTutorProfile from "@/pages/PublicTutorProfile";
 import Login from "@/pages/Login";
 import Register from "@/pages/Register";
+import ForgotPassword from "@/pages/ForgotPassword";
+import ResetPassword from "@/pages/ResetPassword";
+import VerifyEmail from "@/pages/VerifyEmail";
 import AdminHome from "@/pages/dashboards/AdminHome";
 import TutorDashboard from "@/pages/TutorDashboard";
 import TutorSettings from "@/pages/TutorSettings";
@@ -24,7 +27,6 @@ import Marketplace from "@/pages/Marketplace";
 import Favorites from "@/pages/Favorites";
 import TutorProfile from "@/pages/TutorProfile";
 import StudentProfile from "@/pages/StudentProfile";
-import StudentSearch from "@/pages/StudentSearch";
 import Questions from "@/pages/Questions";
 import Exams from "@/pages/Exams";
 import StudentDemands from "@/pages/StudentDemands";
@@ -37,6 +39,7 @@ import Calendar from "@/pages/Calendar";
 import Profile from "@/pages/Profile";
 import Settings from "@/pages/Settings";
 import { GlobalMeeting } from "@/components/GlobalMeeting";
+import { AuthModal } from "@/components/AuthModal";
 
 function WsManager() {
   const token = useAuthStore((s) => s.token);
@@ -91,6 +94,12 @@ function App() {
             <Route path="/register" element={<Register />} />
           </Route>
 
+          {/* Token tabanlı akışlar: oturum durumundan bağımsız erişilebilir
+              (doğrulamayı giriş yapmış kullanıcı da yapabilir). */}
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/verify-email" element={<VerifyEmail />} />
+
           {/* Protected: role_id bazlı asimetrik erişim. */}
           <Route element={<ProtectedRoute allowedRoleId={ROLE_IDS.ADMIN} />}>
             <Route path="/admin" element={<AdminHome />} />
@@ -99,7 +108,6 @@ function App() {
             <Route path="/tutor" element={<TutorDashboard />} />
             <Route path="/tutor/questions" element={<TutorQuestions />} />
             <Route path="/tutor/settings" element={<TutorSettings />} />
-            <Route path="/tutor/students" element={<StudentSearch />} />
             <Route path="/tutor/students/:id" element={<StudentProfile />} />
             <Route path="/tutor/demands" element={<TutorDemands />} />
           </Route>
@@ -128,6 +136,7 @@ function App() {
           <Route path="/egitmen/:id" element={<PublicTutorProfile />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+        <AuthModal />
       </BrowserRouter>
       <GlobalMeeting />
       <Toaster />
