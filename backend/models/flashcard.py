@@ -58,7 +58,8 @@ class Flashcard(Base, TimestampMixin, SoftDeleteMixin):
     ease_factor: Mapped[float] = mapped_column(
         Float, nullable=False, server_default=text("2.5")
     )
-    interval_days: Mapped[int] = mapped_column(
+    # Bir sonraki aralık DAKİKA cinsinden (Anki öğrenme adımları: 1dk/10dk/1sa…).
+    interval_minutes: Mapped[int] = mapped_column(
         Integer, nullable=False, server_default=text("0")
     )
     repetitions: Mapped[int] = mapped_column(

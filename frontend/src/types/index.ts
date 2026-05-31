@@ -146,7 +146,7 @@ export interface Flashcard {
   deck_id: number;
   front: string;
   back: string;
-  interval_days: number;
+  interval_minutes: number;
   repetitions: number;
   ease_factor: number;
   due_at: string;

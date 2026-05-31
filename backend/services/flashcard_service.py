@@ -18,7 +18,8 @@ from schemas.flashcard import (
 
 _MIN_EASE = 1.3
 _MAX_EASE = 3.0
-_MAX_INTERVAL = 365
+_DAY = 1440  # bir gün, dakika
+_MAX_INTERVAL_MIN = 365 * _DAY
 
 
 def _now() -> datetime.datetime:
@@ -207,42 +208,48 @@ async def get_study_cards(
 
 
 def _apply_sm2(card: Flashcard, rating: ReviewRating) -> None:
-    """SM-2 (Anki) varyantı: derecelendirmeye göre kolaylık/aralık/son tarihi günceller."""
+    """SM-2 (Anki) varyantı, DAKİKA-bazlı öğrenme adımlarıyla:
+      • Tekrar → 1 dk (üst üste basınca kısa kalır)
+      • Zor    → öğrenmede 10 dk, olgunda aralık×1.2 (gün)
+      • İyi    → 1 saat → (sonra) 1 gün → olgunda aralık×ease
+      • Kolay  → 1 gün → olgunda aralık×ease×1.3
+    """
     now = _now()
     ef = card.ease_factor
+    iv = card.interval_minutes  # mevcut aralık (dk)
 
     if rating == ReviewRating.AGAIN:
         card.repetitions = 0
-        card.interval_days = 0
+        card.interval_minutes = 1
         card.ease_factor = max(_MIN_EASE, ef - 0.20)
-        # 1 dakika sonra tekrar göster (öğrenme aşaması).
-        card.due_at = now + datetime.timedelta(minutes=1)
-        card.last_reviewed_at = now
-        return
-
-    if rating == ReviewRating.HARD:
-        card.ease_factor = max(_MIN_EASE, ef - 0.15)
-        interval = max(1, round((card.interval_days or 1) * 1.2))
-    elif rating == ReviewRating.GOOD:
-        if card.repetitions == 0:
-            interval = 1
-        elif card.repetitions == 1:
-            interval = 6
+    elif rating == ReviewRating.HARD:
+        if iv < _DAY:
+            card.interval_minutes = 10  # öğrenme adımı
         else:
-            interval = max(1, round(card.interval_days * card.ease_factor))
+            days = max(1, round(iv / _DAY * 1.2))
+            card.interval_minutes = days * _DAY
+            card.ease_factor = max(_MIN_EASE, ef - 0.15)
+        card.repetitions += 1
+    elif rating == ReviewRating.GOOD:
+        if iv < 60:
+            card.interval_minutes = 60       # 1 saat
+        elif iv < _DAY:
+            card.interval_minutes = _DAY     # mezuniyet: 1 gün
+        else:
+            days = max(1, round(iv / _DAY * ef))
+            card.interval_minutes = days * _DAY
+        card.repetitions += 1
     else:  # EASY
         card.ease_factor = min(_MAX_EASE, ef + 0.15)
-        if card.repetitions == 0:
-            interval = 2
-        elif card.repetitions == 1:
-            interval = 6
+        if iv < _DAY:
+            card.interval_minutes = _DAY     # 1 gün (varsayılan)
         else:
-            interval = max(1, round(card.interval_days * card.ease_factor * 1.3))
+            days = max(1, round(iv / _DAY * card.ease_factor * 1.3))
+            card.interval_minutes = days * _DAY
+        card.repetitions += 1
 
-    interval = min(interval, _MAX_INTERVAL)
-    card.repetitions += 1
-    card.interval_days = interval
-    card.due_at = now + datetime.timedelta(days=interval)
+    card.interval_minutes = min(card.interval_minutes, _MAX_INTERVAL_MIN)
+    card.due_at = now + datetime.timedelta(minutes=card.interval_minutes)
     card.last_reviewed_at = now
 
 

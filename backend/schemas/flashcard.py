@@ -51,7 +51,7 @@ class CardOut(BaseModel):
     deck_id: int
     front: str
     back: str
-    interval_days: int
+    interval_minutes: int
     repetitions: int
     ease_factor: float
     due_at: datetime.datetime

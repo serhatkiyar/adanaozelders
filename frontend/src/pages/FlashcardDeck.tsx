@@ -14,6 +14,7 @@ import {
 } from "@/hooks/useFlashcards";
 import { getErrorMessage } from "@/lib/errors";
 import { toast } from "@/store/toastStore";
+import { formatDue, previewLabel } from "@/lib/srs";
 import { ROLE_IDS, type Flashcard, type ReviewRating } from "@/types";
 import { ROUTES } from "@/lib/routes";
 
@@ -112,6 +113,21 @@ function CardRow({ deckId, card }: { deckId: number; card: Flashcard }) {
         <p className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">{card.front}</p>
         <p className="truncate text-sm text-slate-500 dark:text-slate-400">{card.back}</p>
       </div>
+      {(() => {
+        const d = formatDue(card.due_at);
+        return (
+          <span
+            className={`mt-0.5 hidden shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold sm:inline-block ${
+              d.due
+                ? "bg-indigo-50 text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-300"
+                : "bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400"
+            }`}
+            title="Bir sonraki tekrar"
+          >
+            {d.label}
+          </span>
+        );
+      })()}
       <div className="flex shrink-0 items-center gap-1">
         {confirming ? (
           <>
@@ -244,9 +260,12 @@ function StudySession({ deckId, onExit }: { deckId: number; onExit: () => void }
                 key={b.rating}
                 onClick={() => rate(b.rating)}
                 disabled={review.isPending}
-                className={`rounded-xl px-2 py-3 text-sm font-bold text-white transition active:scale-95 disabled:opacity-60 ${b.cls}`}
+                className={`rounded-xl px-2 py-2.5 text-white transition active:scale-95 disabled:opacity-60 ${b.cls}`}
               >
-                {b.label}
+                <span className="block text-sm font-bold">{b.label}</span>
+                <span className="mt-0.5 block text-[11px] font-medium text-white/80">
+                  {previewLabel(current, b.rating)}
+                </span>
               </button>
             ))}
           </div>

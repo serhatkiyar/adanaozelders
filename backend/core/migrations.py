@@ -54,6 +54,10 @@ _ADDED_COLUMNS_DDL: tuple[str, ...] = (
     # Eğitmen eğitim bilgisine diploma/belge eki (zorunlu onay kanıtı).
     "ALTER TABLE tutor_educations ADD COLUMN IF NOT EXISTS document_url VARCHAR(500)",
     "ALTER TABLE tutor_educations ADD COLUMN IF NOT EXISTS document_name VARCHAR(255)",
+    # Kelime kartı aralığı gün → dakika (Anki öğrenme adımları). Eski kolonu (varsa)
+    # bırakıp yenisini ekleriz; tablo yeni olduğundan veri kaybı yok.
+    "ALTER TABLE flashcards ADD COLUMN IF NOT EXISTS interval_minutes INTEGER NOT NULL DEFAULT 0",
+    "ALTER TABLE flashcards DROP COLUMN IF EXISTS interval_days",
 )
 
 
