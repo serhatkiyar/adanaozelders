@@ -1,0 +1,238 @@
+[
+  {
+    "name": "TYT",
+    "icon": "default.svg"
+  },
+  {
+    "name": "AYT",
+    "icon": "default.svg"
+  },
+  {
+    "name": "LGS",
+    "icon": "default.svg"
+  },
+  {
+    "name": "KPSS",
+    "icon": "default.svg"
+  },
+  {
+    "name": "YDS",
+    "icon": "default.svg"
+  },
+  {
+    "name": "DGS",
+    "icon": "default.svg"
+  },
+  {
+    "name": "ALES",
+    "icon": "default.svg"
+  },
+  {
+    "name": "ÖABT",
+    "icon": "default.svg"
+  },
+  {
+    "name": "MSÜ",
+    "icon": "default.svg"
+  },
+  {
+    "icon": "224.svg",
+    "name": "İngilizce"
+  },
+  {
+    "icon": "13.svg",
+    "name": "Matematik"
+  },
+  {
+    "icon": "33.svg",
+    "name": "Almanca"
+  },
+  {
+    "icon": "132.svg",
+    "name": "Piyano"
+  },
+  {
+    "icon": "168.svg",
+    "name": "Tenis"
+  },
+  {
+    "icon": "123.svg",
+    "name": "Gitar"
+  },
+  {
+    "icon": "156.svg",
+    "name": "Yüzme"
+  },
+  {
+    "icon": "181.svg",
+    "name": "Resim"
+  },
+  {
+    "icon": "1635.svg",
+    "name": "Türkçe"
+  },
+  {
+    "icon": "143.svg",
+    "name": "Personal Trainer"
+  },
+  {
+    "icon": "116.svg",
+    "name": "Şan"
+  },
+  {
+    "icon": "34.svg",
+    "name": "Arapça"
+  },
+  {
+    "icon": "75.svg",
+    "name": "Rusça"
+  },
+  {
+    "icon": "51.svg",
+    "name": "Fransızca"
+  },
+  {
+    "icon": "137.svg",
+    "name": "Keman"
+  },
+  {
+    "icon": "1131.svg",
+    "name": "Direksiyon"
+  },
+  {
+    "icon": "default.svg",
+    "name": "Fitness"
+  },
+  {
+    "icon": "14.svg",
+    "name": "Fizik"
+  },
+  {
+    "icon": "default.svg",
+    "name": "Bağlama"
+  },
+  {
+    "icon": "580.svg",
+    "name": "Eğitim koçluğu"
+  },
+  {
+    "icon": "200.svg",
+    "name": "Satranç"
+  },
+  {
+    "icon": "default.svg",
+    "name": "Kuran"
+  },
+  {
+    "icon": "171.svg",
+    "name": "Yoga"
+  },
+  {
+    "icon": "15.svg",
+    "name": "Kimya"
+  },
+  {
+    "icon": "default.svg",
+    "name": "Fen bilimleri"
+  },
+  {
+    "icon": "48.svg",
+    "name": "İspanyolca"
+  },
+  {
+    "icon": "515.svg",
+    "name": "Elektro gitar"
+  },
+  {
+    "icon": "default.svg",
+    "name": "Pilates"
+  },
+  {
+    "icon": "148.svg",
+    "name": "Futbol"
+  },
+  {
+    "icon": "638.svg",
+    "name": "Tarih"
+  },
+  {
+    "icon": "default.svg",
+    "name": "Diksiyon"
+  },
+  {
+    "icon": "default.svg",
+    "name": "Kuran okuma"
+  },
+  {
+    "icon": "1098.svg",
+    "name": "Yaşam koçluğu"
+  },
+  {
+    "icon": "102.svg",
+    "name": "Psikoloji"
+  },
+  {
+    "icon": "1808.svg",
+    "name": "Dans"
+  },
+  {
+    "icon": "374.svg",
+    "name": "AutoCAD"
+  },
+  {
+    "icon": "10.svg",
+    "name": "Biyoloji"
+  },
+  {
+    "icon": "142.svg",
+    "name": "Boks"
+  },
+  {
+    "icon": "57.svg",
+    "name": "İtalyanca"
+  },
+  {
+    "icon": "default.svg",
+    "name": "Din kültürü ve ahlak bilgisi"
+  },
+  {
+    "icon": "99.svg",
+    "name": "Coğrafya"
+  },
+  {
+    "icon": "174.svg",
+    "name": "Mimari"
+  },
+  {
+    "icon": "58.svg",
+    "name": "Japonca"
+  },
+  {
+    "icon": "default.svg",
+    "name": "Okul öncesi eğitim"
+  },
+  {
+    "icon": "44.svg",
+    "name": "Korece"
+  },
+  {
+    "icon": "723.svg",
+    "name": "İngilizce konuşma becerileri"
+  },
+  {
+    "icon": "default.svg",
+    "name": "Müzik eğitimi"
+  },
+  {
+    "icon": "115.svg",
+    "name": "Bateri"
+  },
+  {
+    "icon": "84.svg",
+    "name": "Yabancılar için Türkçe"
+  },
+  {
+    "icon": "141.svg",
+    "name": "Basketbol"
+  }
+]

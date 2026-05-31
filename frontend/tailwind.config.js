@@ -17,6 +17,15 @@ export default {
           "sans-serif",
         ],
       },
+      keyframes: {
+        snow: {
+          "0%": { transform: "translateY(-10vh) translateX(0)" },
+          "100%": { transform: "translateY(110vh) translateX(20px)" },
+        },
+      },
+      animation: {
+        snow: "snow 10s linear infinite",
+      },
     },
   },
   plugins: [],

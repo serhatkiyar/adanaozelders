@@ -25,6 +25,14 @@ services:
       timeout: 3s
       retries: 10
 
+  # Geliştirme SMTP sunucusu: gönderilen tüm e-postaları yakalar (dışarı çıkmaz).
+  # Web arayüzü: http://localhost:8025 — doğrulama/şifre linklerini buradan aç.
+  mailhog:
+    image: mailhog/mailhog:latest
+    ports:
+      - "1025:1025"  # SMTP
+      - "8025:8025"  # Web UI
+
   minio:
     image: minio/minio:latest
     command: server /data --console-address ":9001"
@@ -65,6 +73,8 @@ services:
         condition: service_healthy
       minio:
         condition: service_healthy
+      mailhog:
+        condition: service_started
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
@@ -81,6 +91,13 @@ services:
       AWS_ENDPOINT_URL: http://minio:9000
       AWS_BUCKET_NAME: ${AWS_BUCKET_NAME:-avatars}
       BACKEND_CORS_ORIGINS: '["http://localhost:5173","http://localhost"]'
+      # E-posta: MailHog'a yaz (gerçek sağlayıcı/anahtar gerekmez).
+      EMAIL_PROVIDER: ${EMAIL_PROVIDER:-smtp}
+      SMTP_HOST: ${SMTP_HOST:-mailhog}
+      SMTP_PORT: ${SMTP_PORT:-1025}
+      SMTP_USE_TLS: "False"
+      EMAIL_FROM: ${EMAIL_FROM:-no-reply@ceyhan.local}
+      FRONTEND_BASE_URL: ${FRONTEND_BASE_URL:-http://localhost:5173}
     ports:
       - "8000:8000"
 
