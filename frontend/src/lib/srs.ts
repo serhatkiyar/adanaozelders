@@ -10,12 +10,14 @@ type SrsState = Pick<Flashcard, "interval_minutes" | "ease_factor">;
 
 /** Derecelendirme sonrası bir sonraki aralık (DAKİKA). */
 export function previewIntervalMinutes(card: SrsState, rating: ReviewRating): number {
-  const iv = card.interval_minutes;
-  const ef = card.ease_factor;
+  // Bayat/eksik veriye karşı savunma (NaN'ı önler).
+  const iv = Number.isFinite(card.interval_minutes) ? card.interval_minutes : 0;
+  const ef = Number.isFinite(card.ease_factor) ? card.ease_factor : 2.5;
   let next: number;
 
   if (rating === "again") {
-    next = 1;
+    // Lapse: olgun kart 10 dk sonra (yeniden öğren), öğrenmede 1 dk sonra.
+    next = iv >= DAY ? 10 : 1;
   } else if (rating === "hard") {
     next = iv < DAY ? 10 : Math.max(1, Math.round((iv / DAY) * 1.2)) * DAY;
   } else if (rating === "good") {
@@ -32,6 +34,7 @@ export function previewIntervalMinutes(card: SrsState, rating: ReviewRating): nu
 
 /** Dakikayı kısa Türkçe etikete çevirir ("1 dk", "10 dk", "1 saat", "4 gün", "2 ay"). */
 export function intervalLabel(minutes: number): string {
+  if (!Number.isFinite(minutes)) return "—";
   if (minutes < 1) return "<1 dk";
   if (minutes < 60) return `${Math.round(minutes)} dk`;
   if (minutes < DAY) return `${Math.round(minutes / 60)} saat`;

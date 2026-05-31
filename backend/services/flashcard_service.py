@@ -219,9 +219,19 @@ def _apply_sm2(card: Flashcard, rating: ReviewRating) -> None:
     iv = card.interval_minutes  # mevcut aralık (dk)
 
     if rating == ReviewRating.AGAIN:
+        # Anki "lapse": kolaylık düşer; olgun kart unutulduysa aralık YARIYA iner
+        # (min 1 gün) ve 10 dk sonra yeniden öğrenilir; öğrenme aşamasındaki kart
+        # başa döner ve 1 dk sonra tekrar görünür. Üst üste basınca süre kısalır.
         card.repetitions = 0
-        card.interval_minutes = 1
         card.ease_factor = max(_MIN_EASE, ef - 0.20)
+        if iv >= _DAY:
+            card.interval_minutes = max(_DAY, round(iv * 0.5))
+            card.due_at = now + datetime.timedelta(minutes=10)
+        else:
+            card.interval_minutes = 0
+            card.due_at = now + datetime.timedelta(minutes=1)
+        card.last_reviewed_at = now
+        return
     elif rating == ReviewRating.HARD:
         if iv < _DAY:
             card.interval_minutes = 10  # öğrenme adımı
