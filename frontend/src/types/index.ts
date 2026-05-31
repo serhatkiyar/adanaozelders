@@ -140,6 +140,32 @@ export interface ClientPublicOut {
   educations: Education[];
 }
 
+// Öğrencinin kayıtlı (yeniden kullanılabilir) buluşma adresi.
+export interface SavedAddress {
+  id: number;
+  title: string;
+  address_line: string;
+  door_no?: string | null;
+  apt_no?: string | null;
+  directions?: string | null;
+  location_lat?: number | null;
+  location_lng?: number | null;
+  is_default: boolean;
+}
+
+export interface SavedAddressCreate {
+  title: string;
+  address_line: string;
+  door_no?: string | null;
+  apt_no?: string | null;
+  directions?: string | null;
+  location_lat?: number | null;
+  location_lng?: number | null;
+  is_default?: boolean;
+}
+
+export type SavedAddressUpdate = Partial<SavedAddressCreate>;
+
 // Öğrenci arama sonucu kartı (eğitmen tarafından aranır).
 export interface ClientSearchOut {
   id: number;

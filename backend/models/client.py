@@ -4,7 +4,7 @@ import datetime
 
 from sqlalchemy import Boolean, Date
 from sqlalchemy import Enum as SAEnum
-from sqlalchemy import ForeignKey, Index, Integer, String, Text, text
+from sqlalchemy import ForeignKey, Index, Integer, Numeric, String, Text, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from core.database import Base
@@ -40,6 +40,9 @@ class Client(Base, NameMixin, TimestampMixin, SoftDeleteMixin, LastSeenMixin):
     practice_exams: Mapped[list["PracticeExam"]] = relationship(back_populates="client")
     demands: Mapped[list["Demand"]] = relationship(back_populates="client")
     reviews: Mapped[list["Review"]] = relationship(back_populates="client")
+    addresses: Mapped[list["ClientAddress"]] = relationship(
+        back_populates="client", cascade="all, delete-orphan"
+    )
 
     __table_args__ = (
         Index(
@@ -71,3 +74,30 @@ class ClientEducation(Base, TimestampMixin, SoftDeleteMixin):
     end_year: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     client: Mapped["Client"] = relationship(back_populates="educations")
+
+
+class ClientAddress(Base, TimestampMixin, SoftDeleteMixin):
+    """Öğrencinin kayıtlı (yeniden kullanılabilir) buluşma adresi.
+
+    Yüzyüze rezervasyonda her seferinde adres yazmamak için; harita konumu
+    (lat/lng) ile birlikte serbest metin detayları saklanır.
+    """
+
+    __tablename__ = "client_addresses"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    client_id: Mapped[int] = mapped_column(
+        ForeignKey("clients.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    title: Mapped[str] = mapped_column(String(80), nullable=False)
+    address_line: Mapped[str] = mapped_column(Text, nullable=False)
+    door_no: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    apt_no: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    directions: Mapped[str | None] = mapped_column(Text, nullable=True)
+    location_lat: Mapped[float | None] = mapped_column(Numeric(9, 6), nullable=True)
+    location_lng: Mapped[float | None] = mapped_column(Numeric(9, 6), nullable=True)
+    is_default: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("false")
+    )
+
+    client: Mapped["Client"] = relationship(back_populates="addresses")

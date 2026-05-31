@@ -8,7 +8,7 @@ from models.booking_comment import BookingComment
 from models.booking_private_note import BookingPrivateNote
 from models.booking_resource import BookingResource
 from models.bookmark import Bookmark
-from models.client import Client, ClientEducation
+from models.client import Client, ClientAddress, ClientEducation
 from models.demand import Demand, DemandStatus
 from models.exam import PracticeExam, PracticeExamSubject
 from models.messaging import Conversation, Message
@@ -41,6 +41,7 @@ __all__ = [
     "BookingStatus",
     "Bookmark",
     "Client",
+    "ClientAddress",
     "ClientEducation",
     "Conversation",
     "Demand",

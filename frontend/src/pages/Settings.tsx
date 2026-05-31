@@ -10,6 +10,7 @@ import { ROLE_IDS } from "@/types";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/api/axios";
 import { Avatar } from "@/components/Avatar";
+import { AddressSection } from "@/components/AddressSection";
 
 const inputClass =
   "mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100";
@@ -270,6 +271,9 @@ export default function Settings() {
                 </div>
               </form>
             </section>
+
+            {/* Kayıtlı adresler — yalnız öğrenci (yüzyüze rezervasyon konumları) */}
+            {user.role_id === ROLE_IDS.CLIENT && <AddressSection />}
           </>
         )}
       </div>
