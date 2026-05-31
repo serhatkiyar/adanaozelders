@@ -5,6 +5,7 @@ import { QuestionModal } from "@/components/QuestionModal";
 import { QaThreadChat } from "@/components/QaThreadChat";
 import { formatDate } from "@/lib/datetime";
 import type { LessonQuestionGroup } from "@/types";
+import { ROUTES } from "@/lib/routes";
 
 interface AskState {
   bookingId: number;
@@ -68,7 +69,7 @@ function LessonGroup({
       {open && (
         <div className="space-y-3 border-t border-slate-100 px-5 py-4 dark:border-slate-700">
           <Link
-            to={`/student/tutors/${group.tutor_id}`}
+            to={ROUTES.tutor(group.tutor_id)}
             className="inline-flex items-center gap-1 text-xs font-medium text-indigo-600 transition hover:text-indigo-700 dark:text-indigo-400"
           >
             {tutorName} profilini gör →

@@ -1,3 +1,5 @@
+import { ROUTES } from "@/lib/routes";
+
 export type NavIcon =
   | "favorites"
   | "questions"
@@ -8,6 +10,7 @@ export type NavIcon =
   | "messages"
   | "exams"
   | "demand"
+  | "calendar"
   | "trophy";
 
 export interface NavItem {
@@ -18,22 +21,18 @@ export interface NavItem {
 }
 
 export const STUDENT_NAV: NavItem[] = [
-  { to: "/student/favorites", label: "Favorilerim", icon: "favorites" },
-  { to: "/messages", label: "Mesajlar", icon: "messages" },
-  { to: "/student/questions", label: "Sorularım", icon: "questions" },
-  { to: "/student/exams", label: "Denemelerim", icon: "exams" },
-
-  { to: "/student/bookings", label: "Rezervasyonlarım", icon: "bookings" },
-  { to: "/calendar", label: "Takvim", icon: "bookings" },
-  { to: "/leaderboard", label: "Liderlik", icon: "trophy" },
+  { to: ROUTES.favorites, label: "Favorilerim", icon: "favorites" },
+  { to: ROUTES.messages, label: "Mesajlar", icon: "messages" },
+  { to: ROUTES.questions, label: "Sorularım", icon: "questions" },
+  { to: ROUTES.exams, label: "Denemelerim", icon: "exams" },
+  { to: ROUTES.bookings, label: "Ders Taleplerim", icon: "bookings" },
+  { to: ROUTES.calendar, label: "Takvim", icon: "calendar" },
 ];
 
 export const TUTOR_NAV: NavItem[] = [
-  { to: "/tutor", label: "Panel", end: true, icon: "dashboard" },
-
-  { to: "/messages", label: "Mesajlar", icon: "messages" },
-  { to: "/tutor/questions", label: "Sorular", icon: "questions" },
-  { to: "/tutor/settings", label: "İlan Ayarları", icon: "listing" },
-  { to: "/calendar", label: "Takvim", icon: "bookings" },
-  { to: "/leaderboard", label: "Liderlik", icon: "trophy" },
+  { to: ROUTES.panel, label: "Panel", end: true, icon: "dashboard" },
+  { to: ROUTES.messages, label: "Mesajlar", icon: "messages" },
+  { to: ROUTES.questions, label: "Sorular", icon: "questions" },
+  { to: ROUTES.tutorListing, label: "İlan Ayarları", icon: "listing" },
+  { to: ROUTES.calendar, label: "Takvim", icon: "calendar" },
 ];

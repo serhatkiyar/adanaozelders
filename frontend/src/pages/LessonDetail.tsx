@@ -82,6 +82,7 @@ export default function LessonDetail() {
 
   const [resTitle, setResTitle] = useState("");
   const [resUrl, setResUrl] = useState("");
+  const [showAddResource, setShowAddResource] = useState(false);
   const addRes = useAddBookingResource();
   const delRes = useDeleteBookingResource();
 
@@ -119,7 +120,6 @@ export default function LessonDetail() {
   const counterpartName = isClient
     ? booking.tutor_name ?? "Eğitmen"
     : booking.client_name ?? "Öğrenci";
-  const counterpartId = isClient ? booking.tutor_id : booking.client_id;
   const counterpartLink = isClient
     ? `/student/tutors/${booking.tutor_id}`
     : `/tutor/students/${booking.client_id}`;
@@ -176,6 +176,7 @@ export default function LessonDetail() {
           toast.success("Kaynak eklendi.");
           setResTitle("");
           setResUrl("");
+          setShowAddResource(false);
         },
         onError: (err) => toast.error(getErrorMessage(err, "Kaynak eklenemedi.")),
       }
@@ -248,10 +249,10 @@ export default function LessonDetail() {
 
           <div className="mt-4 flex flex-wrap items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
             <span className="rounded-lg bg-slate-100 px-2.5 py-1 dark:bg-slate-700">
-              📅 {formatRange(booking.start_at, booking.end_at)}
+              {formatRange(booking.start_at, booking.end_at)}
             </span>
             <span className="rounded-lg bg-slate-100 px-2.5 py-1 dark:bg-slate-700">
-              ⏱ {durationLabel(booking.start_at, booking.end_at)}
+              {durationLabel(booking.start_at, booking.end_at)}
             </span>
             {modeLabel && (
               <span
@@ -261,7 +262,7 @@ export default function LessonDetail() {
                     : "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400"
                 }`}
               >
-                {isRemote ? "🎥" : "📍"} {modeLabel}
+                {isRemote ? "" : ""} {modeLabel}
               </span>
             )}
             {price !== null && (
@@ -301,7 +302,7 @@ export default function LessonDetail() {
             <div className="mt-4 rounded-xl bg-emerald-50 px-4 py-3 dark:bg-emerald-500/10">
               <div className="flex items-center justify-between gap-2">
                 <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">
-                  📍 Buluşma Yeri
+                  🏠︎ Buluşma Yeri
                 </p>
                 {!editingLoc && (
                   <button
@@ -391,7 +392,7 @@ export default function LessonDetail() {
 
           {/* ── Actions ── */}
           <div className="mt-5 flex flex-wrap gap-2 border-t border-slate-100 pt-4 dark:border-slate-700">
-            {canMessage && (
+            {/* {canMessage && (
               <button
                 onClick={() =>
                   navigate(
@@ -402,7 +403,7 @@ export default function LessonDetail() {
               >
                 Mesaj Gönder
               </button>
-            )}
+            )} */}
 
             {role === "TUTOR" && isPending && (
               <>
@@ -543,7 +544,7 @@ export default function LessonDetail() {
         {/* ── Ders Kaynakları ── */}
         <section className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-slate-700 lg:col-span-1">
           <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
-            Ders Kaynakları (Bağlantılar)
+            Ders Kaynakları
           </h2>
           <div className="mt-4 space-y-3">
             {booking.resources && booking.resources.length > 0 ? (
@@ -587,30 +588,59 @@ export default function LessonDetail() {
               </p>
             )}
 
-            {/* Yeni Kaynak Ekle Formu */}
-            {canMessage && (
-              <form onSubmit={handleAddResource} className="mt-4 flex flex-wrap gap-2 pt-4 border-t border-slate-100 dark:border-slate-700">
-                <input
-                  type="text"
-                  placeholder="Başlık (ör: 1. Hafta Notları)"
-                  value={resTitle}
-                  onChange={(e) => setResTitle(e.target.value)}
-                  className="flex-1 min-w-[12rem] rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 dark:border-slate-600 dark:bg-slate-900 dark:text-white"
-                />
-                <input
-                  type="url"
-                  placeholder="Drive/Dropbox Linki (https://...)"
-                  value={resUrl}
-                  onChange={(e) => setResUrl(e.target.value)}
-                  className="flex-2 min-w-[16rem] rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 dark:border-slate-600 dark:bg-slate-900 dark:text-white"
-                />
+            {/* Yeni Kaynak Ekle Formu / Butonu */}
+            {canMessage && !showAddResource && (
+              <div className="mt-4 border-t border-slate-100 pt-4 dark:border-slate-700">
                 <button
-                  type="submit"
-                  disabled={addRes.isPending || !resTitle.trim() || !resUrl.trim()}
-                  className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  onClick={() => setShowAddResource(true)}
+                  className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 py-3 text-sm font-semibold text-slate-600 transition hover:border-indigo-400 hover:bg-indigo-50 hover:text-indigo-600 dark:border-slate-600 dark:text-slate-400 dark:hover:border-indigo-500/50 dark:hover:bg-indigo-500/10 dark:hover:text-indigo-400"
                 >
-                  Ekle
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                  </svg>
+                  {/*  '+' yanına yazılacak yazı*/}
                 </button>
+              </div>
+            )}
+
+            {canMessage && showAddResource && (
+              <form onSubmit={handleAddResource} className="mt-4 flex flex-col gap-3 border-t border-slate-100 pt-4 dark:border-slate-700">
+                <div className="flex flex-col gap-2">
+                  <input
+                    type="text"
+                    placeholder="Başlık giriniz"
+                    value={resTitle}
+                    onChange={(e) => setResTitle(e.target.value)}
+                    className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 dark:border-slate-600 dark:bg-slate-900 dark:text-white"
+                  />
+                  <input
+                    type="url"
+                    placeholder="Kaynak Linki"
+                    value={resUrl}
+                    onChange={(e) => setResUrl(e.target.value)}
+                    className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 dark:border-slate-600 dark:bg-slate-900 dark:text-white"
+                  />
+                </div>
+                <div className="flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowAddResource(false);
+                      setResTitle("");
+                      setResUrl("");
+                    }}
+                    className="rounded-xl px-4 py-2 text-sm font-semibold text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700"
+                  >
+                    Vazgeç
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={addRes.isPending || !resTitle.trim() || !resUrl.trim()}
+                    className="rounded-xl bg-indigo-600 px-5 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    Kaydet
+                  </button>
+                </div>
               </form>
             )}
           </div>
@@ -619,7 +649,7 @@ export default function LessonDetail() {
         {/* ── Ders Notları (Yorumlar) ── */}
         <section className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-slate-700 lg:col-span-2">
           <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
-            Ders Notları
+            Ders Mesajları
           </h2>
           <div className="mt-4 space-y-4">
             {booking.comments && booking.comments.length > 0 ? (
@@ -665,7 +695,7 @@ export default function LessonDetail() {
               </div>
             ) : (
               <p className="text-sm text-slate-500 dark:text-slate-400">
-                Bu ders için henüz not bırakılmamış.
+                Bu ders için henüz bir mesaj yok.
               </p>
             )}
 
@@ -674,7 +704,7 @@ export default function LessonDetail() {
               <form onSubmit={handleAddComment} className="mt-2 flex gap-2 pt-2">
                 <textarea
                   rows={2}
-                  placeholder="Derse ait notunuzu veya mesajınızı yazın..."
+                  placeholder="Mesajınız"
                   value={commentBody}
                   onChange={(e) => setCommentBody(e.target.value)}
                   className="flex-1 resize-none rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 dark:border-slate-600 dark:bg-slate-900 dark:text-white"
@@ -692,13 +722,13 @@ export default function LessonDetail() {
         </section>
 
         {/* ── Kişisel Notlarım (Gizli) ── */}
-        <section className="rounded-2xl bg-yellow-50/50 p-6 shadow-sm ring-1 ring-yellow-100 dark:bg-yellow-900/10 dark:ring-yellow-900/30 lg:col-span-1">
+        <section className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-slate-700 lg:col-span-1">
           <div className="flex items-center gap-2">
-            <h2 className="text-xs font-semibold uppercase tracking-wide text-yellow-700 dark:text-yellow-500">
-              Kişisel Notlarım
+            <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+              Notlar
             </h2>
-            <span className="rounded bg-yellow-200/50 px-1.5 py-0.5 text-[10px] font-bold text-yellow-800 dark:bg-yellow-800/30 dark:text-yellow-400">
-              🔒 Sadece siz görebilirsiniz
+            <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-500 dark:bg-slate-700 dark:text-slate-400">
+              Sadece siz görebilirsiniz
             </span>
           </div>
           
@@ -706,18 +736,18 @@ export default function LessonDetail() {
             {booking.private_notes && booking.private_notes.length > 0 ? (
               <div className="space-y-3">
                 {booking.private_notes.map((note) => (
-                  <div key={note.id} className="relative rounded-xl bg-yellow-100/80 px-4 py-3 shadow-sm dark:bg-yellow-800/20">
-                    <p className="whitespace-pre-wrap text-sm text-yellow-900 dark:text-yellow-100">
+                  <div key={note.id} className="relative rounded-xl bg-slate-50 px-4 py-3 dark:bg-slate-700/40">
+                    <p className="whitespace-pre-wrap text-sm text-slate-800 dark:text-slate-100">
                       {note.body}
                     </p>
                     <div className="mt-2 flex items-center justify-between">
-                      <span className="text-[10px] text-yellow-700/60 dark:text-yellow-500/60">
+                      <span className="text-[10px] text-slate-400">
                         {new Date(note.created_at).toLocaleDateString()} {new Date(note.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </span>
                       <button
                         onClick={() => delPrivateNote.mutate({ id: bookingId, noteId: note.id })}
                         disabled={delPrivateNote.isPending}
-                        className="text-xs font-semibold text-yellow-700/60 hover:text-red-500 dark:text-yellow-500/60 disabled:opacity-50"
+                        className="text-xs font-semibold text-slate-400 hover:text-red-500 disabled:opacity-50"
                       >
                         Sil
                       </button>
@@ -726,25 +756,25 @@ export default function LessonDetail() {
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-yellow-800/60 dark:text-yellow-600/60">
-                Kendinize ait gizli bir not eklemediniz.
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                Henüz bir not eklemediniz.
               </p>
             )}
 
-            <form onSubmit={handleAddPrivateNote} className="mt-2 flex gap-2 pt-2">
+            <form onSubmit={handleAddPrivateNote} className="mt-2 flex gap-2 pt-2 border-t border-slate-100 dark:border-slate-700">
               <textarea
                 rows={2}
-                placeholder="Derse girmeden önce hatırlamanız gerekenler..."
+                placeholder="Notunuz"
                 value={privateNoteBody}
                 onChange={(e) => setPrivateNoteBody(e.target.value)}
-                className="flex-1 resize-none rounded-xl border border-yellow-200 bg-white/60 px-4 py-2 text-sm outline-none focus:border-yellow-400 focus:ring-1 focus:ring-yellow-400 dark:border-yellow-700/30 dark:bg-slate-900/40 dark:text-yellow-50 dark:focus:border-yellow-600"
+                className="flex-1 resize-none rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 dark:border-slate-600 dark:bg-slate-900 dark:text-white"
               />
               <button
                 type="submit"
                 disabled={addPrivateNote.isPending || !privateNoteBody.trim()}
-                className="rounded-xl bg-yellow-500 px-5 py-2 text-sm font-semibold text-white transition hover:bg-yellow-600 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-yellow-600 dark:hover:bg-yellow-700"
+                className="rounded-xl bg-indigo-600 px-5 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                Not Ekle
+                Kaydet
               </button>
             </form>
           </div>

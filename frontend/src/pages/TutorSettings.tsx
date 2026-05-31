@@ -5,6 +5,7 @@ import { DashboardShell } from "@/components/DashboardShell";
 import { ProfileCompleteness } from "@/components/ProfileCompleteness";
 import { MapPicker } from "@/components/MapPicker";
 import { TUTOR_NAV } from "@/lib/nav";
+import { ROUTES } from "@/lib/routes";
 import {
   useMyTutorProfile,
   useTutorListingAction,
@@ -247,6 +248,19 @@ export default function TutorSettings() {
                   <p className="mt-2 text-sm leading-relaxed text-slate-500 dark:text-slate-400">
                     {cfg!.help}
                   </p>
+                  {(data.status === TutorStatus.DRAFT ||
+                    data.status === TutorStatus.REJECTED) && (
+                    <p className="mt-2 text-xs leading-relaxed text-amber-600 dark:text-amber-400">
+                      ⚠ Onaya gönderebilmek için{" "}
+                      <Link
+                        to={ROUTES.profile}
+                        className="font-semibold underline underline-offset-2 hover:text-amber-700 dark:hover:text-amber-300"
+                      >
+                        Profil → Eğitim
+                      </Link>{" "}
+                      bölümünden en az bir eğitime diploma/belge yüklemelisin.
+                    </p>
+                  )}
                 </div>
 
                 {/* FSM actions */}
@@ -506,7 +520,7 @@ export default function TutorSettings() {
                 <div className="rounded-xl bg-slate-50 px-4 py-3 text-xs text-slate-500 dark:bg-slate-700/40 dark:text-slate-400">
                   Yaş ve cinsiyet bilgini{" "}
                   <Link
-                    to="/profile"
+                    to={ROUTES.profile}
                     className="font-semibold text-indigo-600 hover:underline dark:text-indigo-400"
                   >
                     Profil

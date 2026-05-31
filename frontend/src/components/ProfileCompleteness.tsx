@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { parseMoney } from "@/lib/money";
+import { ROUTES } from "@/lib/routes";
 import type { TutorOut } from "@/types";
 
 export function ProfileCompleteness({
@@ -51,7 +52,7 @@ export function ProfileCompleteness({
       </p>
       {showLink && (
         <Link
-          to="/tutor/settings"
+          to={ROUTES.tutorListing}
           className="mt-3 inline-block rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700 active:scale-95"
         >
           İlan Ayarları'na git →

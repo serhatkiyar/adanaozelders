@@ -1,63 +1,31 @@
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { AxiosError } from "axios";
 import { DashboardShell } from "@/components/DashboardShell";
 import { STUDENT_NAV, TUTOR_NAV } from "@/lib/nav";
 import { StarRating } from "@/components/StarRating";
 import { Avatar } from "@/components/Avatar";
 import { EducationSection } from "@/components/EducationSection";
 import { BookmarkButton } from "@/components/BookmarkButton";
+import { ShareButton } from "@/components/ShareButton";
+import { ReportModal } from "@/components/ReportModal";
 import { FullScreenSpinner } from "@/components/Spinner";
+import { ReviewListModal } from "@/components/ReviewListModal";
 import { useTutorDetail } from "@/hooks/useTutorSearch";
 import { useReviewsByTutor, useReplyToReview } from "@/hooks/useReviews";
-import { useBookings, useCreateBooking } from "@/hooks/useBookings";
+import { useBookings } from "@/hooks/useBookings";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
-import { localInputToIso, formatDateTime, formatLastSeen } from "@/lib/datetime";
-import { ageFromBirthDate, GENDER_LABEL } from "@/lib/demographics";
-import {
-  WEEKDAYS_SHORT,
-  hhmmToMin,
-  summarize,
-  weekdayOfDateStr,
-} from "@/lib/availability";
+import { formatDateTime, formatLastSeen } from "@/lib/datetime";
 import { formatRate, parseMoney } from "@/lib/money";
 import { getErrorMessage } from "@/lib/errors";
 import { toast } from "@/store/toastStore";
 import { BookingStatus, ROLE_IDS, TeachingMode } from "@/types";
-import type { ReviewOut } from "@/types";
+import type { ReviewOut, TutorSearchOut } from "@/types";
+import { BookingModal } from "@/components/BookingModal";
+import { ROUTES, parseTutorId } from "@/lib/routes";
+import { useCanonicalTutorSlug } from "@/hooks/useCanonicalTutorSlug";
+import { recordViewedTutor } from "@/lib/recentlyViewed";
 
-/* ─── constants ─────────────────────────────────────────── */
-
-const DURATIONS = [
-  { label: "30 dk", value: 30 },
-  { label: "1 saat", value: 60 },
-  { label: "1.5 saat", value: 90 },
-  { label: "2 saat", value: 120 },
-];
-
-const TIME_SLOTS = [
-  "09:00", "10:00", "11:00", "12:00",
-  "13:00", "14:00", "15:00", "16:00",
-  "17:00", "18:00", "19:00", "20:00",
-  "21:00", "22:00",
-];
-
-const MODE_LABEL: Partial<Record<TeachingMode, string>> = {
-  [TeachingMode.ONLINE]: "Uzaktan",
-  [TeachingMode.IN_PERSON]: "Yüzyüze",
-  [TeachingMode.BOTH]: "Uzaktan & Yüzyüze",
-};
-
-function toDateStr(d: Date): string {
-  return d.toISOString().slice(0, 10);
-}
-
-const today = new Date();
-const QUICK_DATES = [
-  { label: "Bugün", value: toDateStr(today) },
-  { label: "Yarın", value: toDateStr(new Date(today.getTime() + 86_400_000)) },
-  { label: "+2 gün", value: toDateStr(new Date(today.getTime() + 2 * 86_400_000)) },
-];
+// Removed constants
 
 /* ─── ReviewCard ─────────────────────────────────────────── */
 
@@ -175,40 +143,13 @@ function ReviewCard({
   );
 }
 
-/* ─── pill button helper ─────────────────────────────────── */
-
-function Pill({
-  active,
-  disabled,
-  onClick,
-  children,
-}: {
-  active: boolean;
-  disabled?: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      disabled={disabled}
-      onClick={onClick}
-      className={`rounded-xl px-3.5 py-2 text-sm font-medium transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 ${
-        active
-          ? "bg-indigo-600 text-white shadow-sm"
-          : "bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600"
-      }`}
-    >
-      {children}
-    </button>
-  );
-}
+// Removed pill
 
 /* ─── main page ─────────────────────────────────────────── */
 
 export default function TutorProfile() {
-  const { id } = useParams();
-  const tutorId = Number(id);
+  const { slug } = useParams();
+  const tutorId = parseTutorId(slug);
   const navigate = useNavigate();
 
   const { data: currentUser } = useCurrentUser();
@@ -220,6 +161,11 @@ export default function TutorProfile() {
         : undefined;
 
   const { data: tutor, isLoading, isError } = useTutorDetail(tutorId);
+  useCanonicalTutorSlug(tutor);
+  // "Son görüntülenen ilanlar" için bu eğitmeni kaydet.
+  useEffect(() => {
+    if (tutor) recordViewedTutor(tutor);
+  }, [tutor]);
   const { data: reviews, isLoading: reviewsLoading } = useReviewsByTutor(tutorId);
   const { data: myBookings } = useBookings({ limit: 100 });
   const hasActiveBooking = (myBookings ?? []).some(
@@ -229,97 +175,13 @@ export default function TutorProfile() {
         b.status === BookingStatus.ACCEPTED)
   );
 
-  // Booking state — split date + time for pill UX
-  const [selectedDate, setSelectedDate] = useState("");
-  const [selectedTime, setSelectedTime] = useState("");
-  const [duration, setDuration] = useState(60);
-  const [notes, setNotes] = useState("");
-  const [mode, setMode] = useState<TeachingMode>(TeachingMode.ONLINE);
-  const [bookingLocation, setBookingLocation] = useState("");
+  const [showBookingModal, setShowBookingModal] = useState(false);
 
-  const createBooking = useCreateBooking();
   const replyMutation = useReplyToReview(tutorId);
   const isOwnerTutor =
     currentUser?.role_id === ROLE_IDS.TUTOR && currentUser.id === tutorId;
-
-  const startLocal =
-    selectedDate && selectedTime ? `${selectedDate}T${selectedTime}` : "";
-
-  const todayStr = toDateStr(new Date());
-  const nowHour = new Date().getHours();
-
-  const hasAvailability = (tutor?.availability?.length ?? 0) > 0;
-  // Seçili güne ait müsaitlik pencereleri (null = müsaitlik tanımsız → kısıt yok).
-  const dayWindows = useMemo(() => {
-    if (!selectedDate || !hasAvailability) return null;
-    const wd = weekdayOfDateStr(selectedDate);
-    return (tutor?.availability ?? []).filter((a) => a.weekday === wd);
-  }, [selectedDate, hasAvailability, tutor?.availability]);
-
-  const isTimeDisabled = (time: string) => {
-    if (selectedDate && selectedDate < todayStr) return true;
-    if (selectedDate === todayStr && parseInt(time.slice(0, 2), 10) <= nowHour)
-      return true;
-    if (dayWindows !== null) {
-      const t = hhmmToMin(time);
-      return !dayWindows.some(
-        (w) => w.start_minute <= t && t + duration <= w.end_minute
-      );
-    }
-    return false;
-  };
-
-  // Seçili saat, gün/süre/müsaitlik değişince geçersiz kalırsa temizle.
-  useEffect(() => {
-    if (selectedTime && isTimeDisabled(selectedTime)) setSelectedTime("");
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedDate, duration, dayWindows]);
-
-  const handleBooking = (e: FormEvent) => {
-    e.preventDefault();
-    if (!selectedDate || !selectedTime) {
-      toast.error("Lütfen tarih ve saat seçin.");
-      return;
-    }
-    const start = new Date(startLocal);
-    const end = new Date(start.getTime() + duration * 60_000);
-    const canChoose =
-      !tutor?.teaching_mode || tutor.teaching_mode === TeachingMode.BOTH;
-    const lessonMode = canChoose
-      ? mode
-      : (tutor!.teaching_mode as TeachingMode);
-    createBooking.mutate(
-      {
-        tutor_id: tutorId,
-        start_at: localInputToIso(startLocal),
-        end_at: end.toISOString(),
-        notes: notes.trim() || null,
-        mode: lessonMode,
-        location:
-          lessonMode === TeachingMode.IN_PERSON
-            ? bookingLocation.trim() || null
-            : null,
-      },
-      {
-        onSuccess: () => {
-          toast.success("Rezervasyon talebin gönderildi.");
-          navigate("/student/bookings");
-        },
-        onError: (err) => {
-          if (err instanceof AxiosError && err.response?.status === 409) {
-            toast.error("Bu saat dolu — lütfen başka bir zaman seçin.");
-            return;
-          }
-          if (err instanceof AxiosError && err.response?.status === 422) {
-            toast.error("Seçtiğin saat eğitmenin müsaitliği dışında.");
-            return;
-          }
-          toast.error(getErrorMessage(err, "Rezervasyon oluşturulamadı."));
-        },
-      }
-    );
-  };
-
+  const [showReport, setShowReport] = useState(false);
+  const [showReviews, setShowReviews] = useState(false);
 
   if (isLoading) return <FullScreenSpinner />;
 
@@ -342,21 +204,16 @@ export default function TutorProfile() {
   }
 
   const rate = parseMoney(tutor.hourly_rate);
-  const hasRatings = tutor.rating_count > 0;
-  const modeLabel = tutor.teaching_mode ? MODE_LABEL[tutor.teaching_mode] : null;
-  const canChooseMode =
-    !tutor.teaching_mode || tutor.teaching_mode === TeachingMode.BOTH;
-  const age = ageFromBirthDate(tutor.birth_date);
-  const genderLabel =
-    tutor.gender && tutor.gender !== "UNSPECIFIED"
-      ? GENDER_LABEL[tutor.gender]
-      : null;
+  const modeLabel = tutor.teaching_mode === TeachingMode.ONLINE 
+    ? "Uzaktan" 
+    : tutor.teaching_mode === TeachingMode.IN_PERSON 
+    ? "Yüzyüze" 
+    : tutor.teaching_mode === TeachingMode.BOTH 
+    ? "Uzaktan & Yüzyüze" 
+    : null;
   const isOnline =
     !!tutor.last_seen_at &&
     Date.now() - new Date(tutor.last_seen_at).getTime() < 120_000;
-
-  const inputCls =
-    "w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:placeholder-slate-500";
 
   return (
     <DashboardShell title="Eğitmen Detayı" navItems={navItems}>
@@ -370,96 +227,121 @@ export default function TutorProfile() {
 
         {/* ── Header ── */}
         <section className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-slate-700">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
-            <Avatar name={tutor.full_name} avatar_url={tutor.avatar_url} size="lg" />
-            <div className="min-w-0 flex-1">
-              <h1 className="text-xl font-bold text-slate-900 dark:text-white">
-                {tutor.full_name}
-              </h1>
-              {tutor.headline && (
-                <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
-                  {tutor.headline}
-                </p>
-              )}
-              <div className="mt-2 flex flex-wrap items-center gap-3">
-                <div className="flex items-center gap-1.5">
-                  <StarRating value={tutor.rating_average} />
-                  <span className="text-sm text-slate-500 dark:text-slate-400">
-                    {hasRatings
-                      ? `${tutor.rating_average?.toFixed(1)} (${tutor.rating_count} değerlendirme)`
-                      : "Henüz değerlendirme yok"}
-                  </span>
-                </div>
+          <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
+            <div className="flex items-center gap-4">
+              <Avatar
+                name={tutor.full_name}
+                avatar_url={tutor.avatar_url}
+                size="xl"
+                shape="square"
+              />
+              <div className="flex flex-col justify-center gap-1.5">
+                <h1 className="text-2xl font-bold leading-none text-slate-900 dark:text-white">
+                  {tutor.full_name}
+                </h1>
+
                 {modeLabel && (
-                  <span className="rounded-full bg-indigo-50 px-2.5 py-0.5 text-xs font-medium text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300">
+                  <div className="text-sm font-medium text-indigo-600 dark:text-indigo-400">
                     {modeLabel}
-                  </span>
+                  </div>
                 )}
-                {age !== null && (
-                  <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600 dark:bg-slate-700 dark:text-slate-300">
-                    {age} yaş
-                  </span>
-                )}
-                {genderLabel && (
-                  <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600 dark:bg-slate-700 dark:text-slate-300">
-                    {genderLabel}
-                  </span>
-                )}
+                
+                <div className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">
+                  {isOnline ? "Çevrimiçi" : <span className="text-slate-400 dark:text-slate-500 font-normal">{formatLastSeen(tutor.last_seen_at)}</span>}
+                </div>
               </div>
-              <p className="mt-2 flex items-center gap-1.5 text-xs text-slate-400 dark:text-slate-500">
-                <span
-                  className={`inline-block h-1.5 w-1.5 rounded-full ${
-                    isOnline ? "bg-emerald-400" : "bg-slate-300 dark:bg-slate-600"
-                  }`}
-                />
-                {isOnline ? "Çevrimiçi" : formatLastSeen(tutor.last_seen_at)}
-              </p>
             </div>
-            <div className="flex shrink-0 flex-col items-start gap-2 sm:items-end">
-              {currentUser?.role_id === ROLE_IDS.CLIENT && (
+            
+            <div className="flex flex-col items-start gap-3 sm:items-end">
+              {currentUser && !isOwnerTutor && (
                 <div className="flex items-center gap-2">
                   {hasActiveBooking && (
                     <button
                       type="button"
+                      title="Mesaj Gönder"
+                      aria-label="Mesaj Gönder"
                       onClick={() =>
-                        navigate(
-                          `/messages?to=${tutor.id}&name=${encodeURIComponent(tutor.full_name)}`
-                        )
+                        navigate(ROUTES.messageWith(tutor.id, tutor.full_name))
                       }
-                      className="inline-flex items-center gap-1.5 rounded-xl bg-slate-100 px-3 py-1.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600"
+                      className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition active:scale-90 hover:bg-slate-200 hover:text-slate-700 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700"
                     >
-                      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
+                      <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M6 12 3.269 3.125A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0 0h7.5" />
                       </svg>
-                      Mesaj Gönder
                     </button>
                   )}
+                  <ShareButton size="md" />
                   <BookmarkButton tutorId={tutor.id} size="md" />
+                  <button
+                    type="button"
+                    onClick={() => setShowReport(true)}
+                    className="text-xs font-medium text-slate-400 transition hover:text-rose-600 dark:text-slate-500 dark:hover:text-rose-400"
+                  >
+                    ⚐ Şikayet et
+                  </button>
                 </div>
               )}
-              {rate !== null ? (
-                <div>
-                  <span className="text-2xl font-bold text-slate-900 dark:text-white">
-                    {formatRate(tutor.hourly_rate)}
-                  </span>
-                </div>
-              ) : (
-                <span className="text-sm text-slate-400">
-                  Ücret belirtilmemiş
-                </span>
+              {showReport && (
+                <ReportModal
+                  targetType="TUTOR"
+                  targetId={tutorId}
+                  targetLabel={tutor.full_name}
+                  onClose={() => setShowReport(false)}
+                />
               )}
-              <div className="mt-1.5 rounded-full bg-slate-100 px-2.5 py-0.5 text-center text-xs font-semibold text-slate-500 dark:bg-slate-700 dark:text-slate-400">
-                Sıralama {tutor.bayesian_score.toFixed(2)}
-              </div>
             </div>
           </div>
+
+          {/* ── Verdiği Dersler (transparan, profil kartının içinde) ── */}
+          {tutor.subjects && tutor.subjects.length > 0 && (
+            <div className="mt-5 border-t border-slate-100 pt-4 dark:border-slate-700/60">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+                Verdiği Dersler
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {tutor.subjects.map((s) => (
+                  <span
+                    key={s}
+                    className="rounded-full bg-indigo-50 px-3 py-1 text-sm font-medium text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300"
+                  >
+                    {s}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* ── Booking Section (Inside Card) ── */}
+          <div className="mt-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-t border-slate-100 pt-5 dark:border-slate-700/60">
+            <div>
+              <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                Saatlik ücret
+              </p>
+              <p className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">
+                {rate !== null ? formatRate(tutor.hourly_rate) : "Belirtilmemiş"}
+              </p>
+            </div>
+            <button
+              onClick={() => setShowBookingModal(true)}
+              className="rounded-xl bg-indigo-600 px-5 py-2.5 text-center text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 active:scale-95"
+            >
+              Ders Talep Et
+            </button>
+          </div>
         </section>
+
+        {/* ── Headline / İlan Başlığı (Outside Card) ── */}
+        {(tutor.headline || isOwnerTutor) && (
+          <h2 className="px-2 pt-2 text-3xl font-extrabold leading-tight text-slate-900 dark:text-white">
+            {tutor.headline || "Eğitmen"}
+          </h2>
+        )}
 
         {/* ── Bio ── */}
         {tutor.bio && (
           <section className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-slate-700">
             <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
-              Hakkında
+              {tutor.full_name.split(" ")[0]} ile ilgili bilgiler
             </h2>
             <p className="mt-3 whitespace-pre-line text-sm leading-relaxed text-slate-600 dark:text-slate-300">
               {tutor.bio}
@@ -467,189 +349,8 @@ export default function TutorProfile() {
           </section>
         )}
 
-        {/* ── Verdiği Dersler ── */}
-        {tutor.subjects && tutor.subjects.length > 0 && (
-          <section className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-slate-700">
-            <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
-              Verdiği Dersler
-            </h2>
-            <div className="mt-3 flex flex-wrap gap-2">
-              {tutor.subjects.map((s) => (
-                <span
-                  key={s}
-                  className="rounded-full bg-indigo-50 px-3 py-1 text-sm font-medium text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300"
-                >
-                  {s}
-                </span>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* ── Eğitim (salt-okunur; boşsa gizli) ── */}
+        {/* ── Eğitim ── */}
         <EducationSection educations={tutor.educations} />
-
-        {/* ── Booking ── */}
-        <div>
-          <section className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-slate-700">
-            <h2 className="text-base font-semibold text-slate-900 dark:text-white">
-              Rezervasyon Talebi
-            </h2>
-            {hasAvailability && (
-              <div className="mt-3 rounded-xl bg-indigo-50 px-4 py-2.5 text-xs leading-relaxed text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-300">
-                <span className="font-semibold">Müsait saatler:</span>{" "}
-                {summarize(tutor.availability ?? [])
-                  .map((s) => `${WEEKDAYS_SHORT[s.weekday]} ${s.ranges}`)
-                  .join(" · ")}
-              </div>
-            )}
-            <form onSubmit={handleBooking} className="mt-4 space-y-5">
-              {/* Quick date pills */}
-              <div>
-                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
-                  Tarih
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {QUICK_DATES.map((d) => (
-                    <Pill
-                      key={d.value}
-                      active={selectedDate === d.value}
-                      onClick={() => setSelectedDate(d.value)}
-                    >
-                      {d.label}
-                    </Pill>
-                  ))}
-                  {selectedDate && !QUICK_DATES.find((d) => d.value === selectedDate) && (
-                    <span className="flex items-center rounded-xl bg-indigo-600 px-3.5 py-2 text-sm font-medium text-white">
-                      {selectedDate}
-                    </span>
-                  )}
-                </div>
-                <input
-                  type="date"
-                  min={todayStr}
-                  value={selectedDate}
-                  onChange={(e) => setSelectedDate(e.target.value)}
-                  className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-700 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200"
-                />
-              </div>
-
-              {/* Time slot pills */}
-              <div>
-                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
-                  Saat
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {TIME_SLOTS.map((t) => {
-                    const disabled = isTimeDisabled(t);
-                    return (
-                      <Pill
-                        key={t}
-                        active={selectedTime === t}
-                        disabled={disabled}
-                        onClick={() => setSelectedTime(t)}
-                      >
-                        {t}
-                      </Pill>
-                    );
-                  })}
-                </div>
-                {dayWindows !== null && dayWindows.length === 0 && selectedDate && (
-                  <p className="mt-2 text-xs text-amber-600 dark:text-amber-400">
-                    Eğitmen bu gün müsait değil — başka bir gün seç.
-                  </p>
-                )}
-              </div>
-
-              {/* Duration pills */}
-              <div>
-                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
-                  Süre
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {DURATIONS.map((d) => (
-                    <Pill
-                      key={d.value}
-                      active={duration === d.value}
-                      onClick={() => setDuration(d.value)}
-                    >
-                      {d.label}
-                    </Pill>
-                  ))}
-                </div>
-              </div>
-
-              {/* Ders şekli — yalnızca eğitmen her ikisini de sunuyorsa seçilir */}
-              {canChooseMode && (
-                <div>
-                  <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
-                    Ders Şekli
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    <Pill
-                      active={mode === TeachingMode.ONLINE}
-                      onClick={() => setMode(TeachingMode.ONLINE)}
-                    >
-                      Uzaktan
-                    </Pill>
-                    <Pill
-                      active={mode === TeachingMode.IN_PERSON}
-                      onClick={() => setMode(TeachingMode.IN_PERSON)}
-                    >
-                      Yüzyüze
-                    </Pill>
-                  </div>
-                </div>
-              )}
-
-              {/* Buluşma yeri — yüzyüze ders seçiliyse */}
-              {((canChooseMode && mode === TeachingMode.IN_PERSON) ||
-                (!canChooseMode &&
-                  tutor.teaching_mode === TeachingMode.IN_PERSON)) && (
-                <div>
-                  <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
-                    Buluşma Yeri (opsiyonel)
-                  </label>
-                  <input
-                    value={bookingLocation}
-                    onChange={(e) => setBookingLocation(e.target.value)}
-                    maxLength={300}
-                    className={inputCls}
-                    placeholder="Adres / buluşma noktası — ders sayfasından da düzenlenebilir"
-                  />
-                </div>
-              )}
-
-              {/* Notes */}
-              <div>
-                <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
-                  Not (opsiyonel)
-                </label>
-                <textarea
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  rows={3}
-                  className={inputCls}
-                  placeholder="Konu, hedef, özel istek…"
-                />
-              </div>
-
-              {startLocal && (
-                <p className="rounded-xl bg-indigo-50 px-4 py-2.5 text-xs font-medium text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300">
-                  Seçilen: {selectedDate} — {selectedTime} ({duration} dk)
-                </p>
-              )}
-
-              <button
-                type="submit"
-                disabled={createBooking.isPending || !startLocal}
-                className="w-full rounded-xl bg-indigo-600 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {createBooking.isPending ? "Gönderiliyor…" : "Rezervasyon Talep Et"}
-              </button>
-            </form>
-          </section>
-        </div>
 
         {/* ── Reviews ── */}
         <section className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-slate-700">
@@ -657,16 +358,28 @@ export default function TutorProfile() {
             <h2 className="text-base font-semibold text-slate-900 dark:text-white">
               Değerlendirmeler
             </h2>
-            {hasRatings && (
+            <button
+              onClick={() => setShowReviews(true)}
+              className="text-sm font-medium text-indigo-600 hover:text-indigo-700 dark:text-indigo-400"
+            >
+              Tümünü gör
+            </button>
+          </div>
+          <div className="mt-4">
+            {tutor.rating_average !== null && tutor.rating_average !== undefined ? (
               <div className="flex items-center gap-2">
-                <StarRating value={tutor.rating_average} />
-                <span className="text-sm font-bold text-slate-800 dark:text-slate-100">
-                  {tutor.rating_average?.toFixed(1)}
+                <StarRating value={tutor.rating_average} single={true} />
+                <span className="font-bold text-slate-800 dark:text-slate-100">
+                  {tutor.rating_average.toFixed(1)}
                 </span>
-                <span className="text-xs text-slate-400">
-                  ({tutor.rating_count})
+                <span className="text-slate-500 dark:text-slate-400 font-medium">
+                  ({tutor.rating_count} değerlendirme)
                 </span>
               </div>
+            ) : (
+              <span className="text-slate-500 dark:text-slate-400 font-medium italic">
+                Henüz değerlendirme yok
+              </span>
             )}
           </div>
           <div className="mt-4 space-y-3">
@@ -699,6 +412,21 @@ export default function TutorProfile() {
           </div>
         </section>
       </div>
+
+      {showBookingModal && tutor && (
+        <BookingModal
+          tutor={tutor as TutorSearchOut}
+          onClose={() => setShowBookingModal(false)}
+        />
+      )}
+
+      {showReviews && tutor && (
+        <ReviewListModal
+          tutorId={tutor.id}
+          tutorName={tutor.full_name}
+          onClose={() => setShowReviews(false)}
+        />
+      )}
     </DashboardShell>
   );
 }

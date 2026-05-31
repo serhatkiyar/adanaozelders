@@ -1,9 +1,10 @@
-import { FormEvent, useState } from "react";
+import { FormEvent, useRef, useState } from "react";
 import {
   useAddEducation,
   useDeleteEducation,
   useMyEducations,
   useUpdateEducation,
+  useUploadEducationDocument,
 } from "@/hooks/useEducations";
 import { getErrorMessage } from "@/lib/errors";
 import { toast } from "@/store/toastStore";
@@ -180,17 +181,113 @@ function EducationForm({
 
 /* ─── Item ───────────────────────────────────────────────── */
 
+const DOC_ACCEPT = ".pdf,.png,.jpg,.jpeg,.webp,.doc,.docx";
+
+function DiplomaIcon({ className = "h-4 w-4" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className={className} aria-hidden>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+    </svg>
+  );
+}
+
+// Diploma/belge alanı: eğitmen panelinde yükle/değiştir, profilde indir linki.
+function DocumentArea({
+  edu,
+  withDocument,
+  onUploadDocument,
+  uploading,
+}: {
+  edu: Education;
+  withDocument: boolean;
+  onUploadDocument?: (file: File) => void;
+  uploading?: boolean;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const hasDoc = !!edu.document_url;
+
+  // Salt-okunur (profil) ve belge varsa: indirilebilir link.
+  if (!withDocument) {
+    if (!hasDoc) return null;
+    return (
+      <a
+        href={edu.document_url!}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="mt-1.5 inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100 dark:bg-emerald-500/15 dark:text-emerald-300 dark:hover:bg-emerald-500/25"
+      >
+        <DiplomaIcon className="h-3.5 w-3.5" />
+        Diploma / Belge
+      </a>
+    );
+  }
+
+  // Editable (eğitmen): yükle / değiştir.
+  return (
+    <div className="mt-2">
+      <input
+        ref={inputRef}
+        type="file"
+        accept={DOC_ACCEPT}
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) onUploadDocument?.(f);
+          e.target.value = "";
+        }}
+      />
+      {hasDoc ? (
+        <div className="flex flex-wrap items-center gap-2">
+          <a
+            href={edu.document_url!}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100 dark:bg-emerald-500/15 dark:text-emerald-300 dark:hover:bg-emerald-500/25"
+          >
+            <DiplomaIcon className="h-3.5 w-3.5" />
+            <span className="max-w-[160px] truncate">{edu.document_name || "Diploma"}</span>
+          </a>
+          <button
+            type="button"
+            disabled={uploading}
+            onClick={() => inputRef.current?.click()}
+            className="rounded-lg px-2 py-1 text-xs font-medium text-indigo-600 transition hover:bg-indigo-50 disabled:opacity-50 dark:text-indigo-400 dark:hover:bg-indigo-900/30"
+          >
+            {uploading ? "Yükleniyor…" : "Değiştir"}
+          </button>
+        </div>
+      ) : (
+        <button
+          type="button"
+          disabled={uploading}
+          onClick={() => inputRef.current?.click()}
+          className="inline-flex items-center gap-1.5 rounded-lg border border-dashed border-amber-300 bg-amber-50 px-2.5 py-1.5 text-xs font-semibold text-amber-700 transition hover:bg-amber-100 disabled:opacity-50 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300 dark:hover:bg-amber-500/20"
+        >
+          <DiplomaIcon className="h-3.5 w-3.5" />
+          {uploading ? "Yükleniyor…" : "Diploma / Belge Yükle (zorunlu)"}
+        </button>
+      )}
+    </div>
+  );
+}
+
 function EducationItem({
   edu,
   editable,
+  withDocument,
   onEdit,
   onDelete,
+  onUploadDocument,
+  uploading,
   deleting,
 }: {
   edu: Education;
   editable: boolean;
+  withDocument: boolean;
   onEdit: () => void;
   onDelete: () => void;
+  onUploadDocument: (file: File) => void;
+  uploading: boolean;
   deleting: boolean;
 }) {
   const [confirming, setConfirming] = useState(false);
@@ -216,6 +313,12 @@ function EducationItem({
             {years}
           </p>
         )}
+        <DocumentArea
+          edu={edu}
+          withDocument={editable && withDocument}
+          onUploadDocument={onUploadDocument}
+          uploading={uploading}
+        />
       </div>
       {editable && (
         <div className="flex shrink-0 items-start gap-1">
@@ -266,16 +369,20 @@ function EducationItem({
 interface EducationSectionProps {
   editable?: boolean;
   educations?: Education[]; // read-only mod için
+  // Eğitmen ise diploma/belge yükleme kontrolünü göster (zorunlu kalite kapısı).
+  withDocument?: boolean;
 }
 
 export function EducationSection({
   editable = false,
   educations: readOnlyList,
+  withDocument = false,
 }: EducationSectionProps) {
   const myEducations = useMyEducations(editable);
   const addMutation = useAddEducation();
   const updateMutation = useUpdateEducation();
   const deleteMutation = useDeleteEducation();
+  const uploadMutation = useUploadEducationDocument();
 
   const [adding, setAdding] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -312,6 +419,15 @@ export function EducationSection({
       onSuccess: () => toast.success("Eğitim bilgisi silindi."),
       onError: (err) => toast.error(getErrorMessage(err, "Silinemedi.")),
     });
+
+  const handleUploadDocument = (id: number, file: File) =>
+    uploadMutation.mutate(
+      { id, file },
+      {
+        onSuccess: () => toast.success("Diploma/belge yüklendi."),
+        onError: (err) => toast.error(getErrorMessage(err, "Belge yüklenemedi.")),
+      }
+    );
 
   return (
     <div className="rounded-2xl bg-white px-6 py-5 shadow-sm ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-slate-700">
@@ -350,15 +466,21 @@ export function EducationSection({
                   key={edu.id}
                   edu={edu}
                   editable={editable}
+                  withDocument={withDocument}
                   deleting={
                     deleteMutation.isPending &&
                     deleteMutation.variables === edu.id
+                  }
+                  uploading={
+                    uploadMutation.isPending &&
+                    uploadMutation.variables?.id === edu.id
                   }
                   onEdit={() => {
                     setAdding(false);
                     setEditingId(edu.id);
                   }}
                   onDelete={() => handleDelete(edu.id)}
+                  onUploadDocument={(file) => handleUploadDocument(edu.id, file)}
                 />
               )
             )}
@@ -373,8 +495,9 @@ export function EducationSection({
 
             {editable && !adding && list.length === 0 && (
               <p className="text-sm italic text-slate-400 dark:text-slate-500">
-                Henüz eğitim bilgisi eklemedin. İstersen okul, derece ve yıl
-                bilgilerini ekleyebilirsin (zorunlu değil).
+                {withDocument
+                  ? "Henüz eğitim bilgisi eklemedin. Eğitmen olarak en az bir eğitim ekleyip diploma/belge yüklemen gerekir; aksi halde ilanını onaya gönderemezsin."
+                  : "Henüz eğitim bilgisi eklemedin. İstersen okul, derece ve yıl bilgilerini ekleyebilirsin (zorunlu değil)."}
               </p>
             )}
           </>

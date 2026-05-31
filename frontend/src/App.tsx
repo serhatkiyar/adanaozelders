@@ -1,19 +1,22 @@
-import { QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { useEffect } from "react";
 import { queryClient } from "@/lib/queryClient";
 import { Toaster } from "@/components/Toaster";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { FullScreenSpinner } from "@/components/Spinner";
 import { ROLE_IDS } from "@/types";
+import { ROUTES } from "@/lib/routes";
 import { PublicRoute } from "@/routes/PublicRoute";
 import { ProtectedRoute } from "@/routes/ProtectedRoute";
-import { useEffect } from "react";
+import { LegacyRedirect } from "@/routes/LegacyRedirect";
 import { useAuthStore } from "@/store/authStore";
 import { useWsStore } from "@/store/wsStore";
-import { useQueryClient } from "@tanstack/react-query";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
 import Landing from "@/pages/Landing";
-import PublicMarketplace from "@/pages/PublicMarketplace";
-import PublicTutorProfile from "@/pages/PublicTutorProfile";
+import MarketplacePage from "@/pages/MarketplacePage";
+import TutorProfilePage from "@/pages/TutorProfilePage";
 import Login from "@/pages/Login";
 import Register from "@/pages/Register";
 import ForgotPassword from "@/pages/ForgotPassword";
@@ -23,13 +26,10 @@ import AdminHome from "@/pages/dashboards/AdminHome";
 import TutorDashboard from "@/pages/TutorDashboard";
 import TutorSettings from "@/pages/TutorSettings";
 import TutorQuestions from "@/pages/TutorQuestions";
-import Marketplace from "@/pages/Marketplace";
 import Favorites from "@/pages/Favorites";
-import TutorProfile from "@/pages/TutorProfile";
 import StudentProfile from "@/pages/StudentProfile";
 import Questions from "@/pages/Questions";
 import Exams from "@/pages/Exams";
-
 import StudentBookings from "@/pages/StudentBookings";
 import LessonDetail from "@/pages/LessonDetail";
 import Messages from "@/pages/Messages";
@@ -63,7 +63,9 @@ function WsManager() {
           qc.invalidateQueries({ queryKey: ["conversations"] });
         } else if (msg.type === "NEW_NOTIFICATION") {
           qc.invalidateQueries({ queryKey: ["notifications"] });
-        } else if (msg.type === "NEW_BOOKING_COMMENT") {
+        } else if (msg.type === "BOOKING_UPDATE" || msg.type === "NEW_BOOKING_COMMENT") {
+          // Rezervasyon oluşturma/kabul/red/iptal/tamamlama/yorum → her iki tarafta
+          // liste ve detayı sayfa yenilemeden canlı tazele.
           if (msg.booking_id) {
             qc.invalidateQueries({ queryKey: ["bookings", "detail", msg.booking_id] });
           }
@@ -80,6 +82,50 @@ function WsManager() {
   return null;
 }
 
+// Nötr panel girişi (/panel): role göre uygun ana ekranı render eder.
+function PanelHome() {
+  const { data: user, isLoading } = useCurrentUser();
+  if (isLoading || !user) return <FullScreenSpinner />;
+  if (user.role_id === ROLE_IDS.ADMIN) return <AdminHome />;
+  if (user.role_id === ROLE_IDS.TUTOR) return <TutorDashboard />;
+  // CLIENT'in ana işi eğitmen bulmak → listeye yönlendir.
+  return <Navigate to={ROUTES.tutors} replace />;
+}
+
+// "Sorular" rol göre farklı içerik: öğrenci kendi sorularını, eğitmen gelenleri görür.
+function PanelQuestions() {
+  const { data: user, isLoading } = useCurrentUser();
+  if (isLoading || !user) return <FullScreenSpinner />;
+  if (user.role_id === ROLE_IDS.TUTOR) return <TutorQuestions />;
+  if (user.role_id === ROLE_IDS.CLIENT) return <Questions />;
+  return <Navigate to={ROUTES.panel} replace />;
+}
+
+// Eski (İngilizce/karışık) URL'ler → yeni Türkçe yapı. SPA içi `replace`,
+// query string LegacyRedirect tarafından korunur (?token=, ?q=, ?to= …).
+const LEGACY_STATIC: [string, string][] = [
+  ["/login", ROUTES.login],
+  ["/register", ROUTES.register],
+  ["/forgot-password", ROUTES.forgotPassword],
+  ["/reset-password", ROUTES.resetPassword],
+  ["/verify-email", ROUTES.verifyEmail],
+  ["/kesfet", ROUTES.tutors],
+  ["/admin", ROUTES.panel],
+  ["/tutor", ROUTES.panel],
+  ["/student", ROUTES.tutors],
+  ["/student/favorites", ROUTES.favorites],
+  ["/student/questions", ROUTES.questions],
+  ["/student/exams", ROUTES.exams],
+  ["/student/bookings", ROUTES.bookings],
+  ["/tutor/questions", ROUTES.questions],
+  ["/tutor/settings", ROUTES.tutorListing],
+  ["/profile", ROUTES.profile],
+  ["/settings", ROUTES.settings],
+  ["/messages", ROUTES.messages],
+  ["/calendar", ROUTES.calendar],
+  ["/leaderboard", ROUTES.leaderboard],
+];
+
 function App() {
   return (
     <ErrorBoundary>
@@ -87,53 +133,69 @@ function App() {
       <WsManager />
       <BrowserRouter>
         <Routes>
-          {/* Public: giriş yapmış kullanıcı kendi paneline yönlendirilir. */}
+          {/* ── Public (SEO) — oturumdan bağımsız; içerik oturuma göre uyarlanır ── */}
+          <Route path={ROUTES.home} element={<Landing />} />
+          <Route path={ROUTES.tutors} element={<MarketplacePage />} />
+          <Route path="/egitmenler/:slug" element={<TutorProfilePage />} />
+
+          {/* ── Kimlik: giriş yapmış kullanıcı kendi paneline yönlendirilir ── */}
           <Route element={<PublicRoute />}>
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
+            <Route path={ROUTES.login} element={<Login />} />
+            <Route path={ROUTES.register} element={<Register />} />
           </Route>
 
-          {/* Token tabanlı akışlar: oturum durumundan bağımsız erişilebilir
-              (doğrulamayı giriş yapmış kullanıcı da yapabilir). */}
-          <Route path="/forgot-password" element={<ForgotPassword />} />
-          <Route path="/reset-password" element={<ResetPassword />} />
-          <Route path="/verify-email" element={<VerifyEmail />} />
+          {/* ── Token akışları: oturum durumundan bağımsız erişilebilir ── */}
+          <Route path={ROUTES.forgotPassword} element={<ForgotPassword />} />
+          <Route path={ROUTES.resetPassword} element={<ResetPassword />} />
+          <Route path={ROUTES.verifyEmail} element={<VerifyEmail />} />
 
-          {/* Protected: role_id bazlı asimetrik erişim. */}
-          <Route element={<ProtectedRoute allowedRoleId={ROLE_IDS.ADMIN} />}>
-            <Route path="/admin" element={<AdminHome />} />
-          </Route>
-          <Route element={<ProtectedRoute allowedRoleId={ROLE_IDS.TUTOR} />}>
-            <Route path="/tutor" element={<TutorDashboard />} />
-            <Route path="/tutor/questions" element={<TutorQuestions />} />
-            <Route path="/tutor/settings" element={<TutorSettings />} />
-            <Route path="/tutor/students/:id" element={<StudentProfile />} />
-
-          </Route>
-          <Route element={<ProtectedRoute allowedRoleId={ROLE_IDS.CLIENT} />}>
-            <Route path="/student" element={<Marketplace />} />
-            <Route path="/student/favorites" element={<Favorites />} />
-            <Route path="/student/questions" element={<Questions />} />
-            <Route path="/student/exams" element={<Exams />} />
-
-            <Route path="/student/bookings" element={<StudentBookings />} />
-          </Route>
-
-          {/* Tüm roller: ortak profil sayfası (rol kısıtı yok, yalnızca kimlik). */}
+          {/* ── Panel: nötr shell, role-adaptive. Yalnızca kimlik gerektiren ortak uçlar ── */}
           <Route element={<ProtectedRoute />}>
-            <Route path="/profile" element={<Profile />} />
-            <Route path="/settings" element={<Settings />} />
-            <Route path="/messages" element={<Messages />} />
-            <Route path="/leaderboard" element={<Leaderboard />} />
-            <Route path="/calendar" element={<Calendar />} />
-            <Route path="/lesson/:id" element={<LessonDetail />} />
-            <Route path="/student/tutors/:id" element={<TutorProfile />} />
+            <Route path={ROUTES.panel} element={<PanelHome />} />
+            <Route path={ROUTES.messages} element={<Messages />} />
+            <Route path={ROUTES.calendar} element={<Calendar />} />
+            <Route path={ROUTES.leaderboard} element={<Leaderboard />} />
+            <Route path={ROUTES.profile} element={<Profile />} />
+            <Route path={ROUTES.settings} element={<Settings />} />
+            <Route path={ROUTES.questions} element={<PanelQuestions />} />
+            <Route path="/panel/rezervasyonlar/:id" element={<LessonDetail />} />
           </Route>
 
-          <Route path="/" element={<Landing />} />
-          <Route path="/kesfet" element={<PublicMarketplace />} />
-          <Route path="/egitmen/:id" element={<PublicTutorProfile />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
+          {/* ── Panel: yalnızca CLIENT ── */}
+          <Route element={<ProtectedRoute allowedRoleId={ROLE_IDS.CLIENT} />}>
+            <Route path={ROUTES.favorites} element={<Favorites />} />
+            <Route path={ROUTES.exams} element={<Exams />} />
+            <Route path={ROUTES.bookings} element={<StudentBookings />} />
+          </Route>
+
+          {/* ── Panel: yalnızca TUTOR ── */}
+          <Route element={<ProtectedRoute allowedRoleId={ROLE_IDS.TUTOR} />}>
+            <Route path={ROUTES.tutorListing} element={<TutorSettings />} />
+            <Route path="/panel/ogrenciler/:id" element={<StudentProfile />} />
+          </Route>
+
+          {/* ── Eski URL'ler → yeni yapı (geriye dönük uyumluluk) ── */}
+          {LEGACY_STATIC.map(([from, to]) => (
+            <Route key={from} path={from} element={<LegacyRedirect to={to} />} />
+          ))}
+          <Route
+            path="/egitmen/:id"
+            element={<LegacyRedirect to={(p) => ROUTES.tutor(p.id!)} />}
+          />
+          <Route
+            path="/student/tutors/:id"
+            element={<LegacyRedirect to={(p) => ROUTES.tutor(p.id!)} />}
+          />
+          <Route
+            path="/lesson/:id"
+            element={<LegacyRedirect to={(p) => ROUTES.lesson(p.id!)} />}
+          />
+          <Route
+            path="/tutor/students/:id"
+            element={<LegacyRedirect to={(p) => ROUTES.studentProfile(p.id!)} />}
+          />
+
+          <Route path="*" element={<Navigate to={ROUTES.home} replace />} />
         </Routes>
         <AuthModal />
       </BrowserRouter>

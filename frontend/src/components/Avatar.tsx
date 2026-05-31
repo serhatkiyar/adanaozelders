@@ -1,7 +1,8 @@
 interface AvatarProps {
   name: string;
   avatar_url?: string | null;
-  size?: "sm" | "md" | "lg";
+  size?: "sm" | "md" | "lg" | "xl";
+  shape?: "circle" | "square";
 }
 
 // İsme göre deterministik renk paleti (rastgele/sahte değil).
@@ -20,6 +21,7 @@ const SIZES = {
   sm: "h-9 w-9 text-xs",
   md: "h-11 w-11 text-sm",
   lg: "h-16 w-16 text-xl",
+  xl: "h-32 w-32 text-4xl",
 };
 
 function initials(name: string): string {
@@ -37,13 +39,15 @@ function colorFor(name: string): string {
   return PALETTE[hash % PALETTE.length];
 }
 
-export function Avatar({ name, avatar_url, size = "md" }: AvatarProps) {
+export function Avatar({ name, avatar_url, size = "md", shape = "circle" }: AvatarProps) {
+  const roundedClass = shape === "square" ? "rounded-3xl" : "rounded-full";
+
   if (avatar_url) {
     return (
       <img
         src={avatar_url}
         alt={name}
-        className={`object-cover shrink-0 rounded-full ${SIZES[size]}`}
+        className={`object-cover shrink-0 ${roundedClass} ${SIZES[size]}`}
       />
     );
   }
@@ -51,7 +55,7 @@ export function Avatar({ name, avatar_url, size = "md" }: AvatarProps) {
   return (
     <div
       aria-hidden
-      className={`flex shrink-0 select-none items-center justify-center rounded-full font-semibold ${colorFor(
+      className={`flex shrink-0 select-none items-center justify-center font-semibold ${roundedClass} ${colorFor(
         name
       )} ${SIZES[size]}`}
     >

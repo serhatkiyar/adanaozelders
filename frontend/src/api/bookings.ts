@@ -99,6 +99,20 @@ export async function deleteBookingResource(
   return data;
 }
 
+export async function uploadBookingResource(
+  id: number,
+  file: File
+): Promise<BookingOut> {
+  const form = new FormData();
+  form.append("file", file);
+  const { data } = await apiClient.post<BookingOut>(
+    `/bookings/${id}/resources/upload`,
+    form,
+    { headers: { "Content-Type": "multipart/form-data" } }
+  );
+  return data;
+}
+
 export async function addBookingComment(
   id: number,
   body: string

@@ -3,15 +3,25 @@ import { DashboardShell } from "@/components/DashboardShell";
 import { STUDENT_NAV } from "@/lib/nav";
 import { TutorCard } from "@/components/TutorCard";
 import { useBookmarks } from "@/hooks/useBookmarks";
+import { ROUTES } from "@/lib/routes";
 
 export default function Favorites() {
   const { data, isLoading } = useBookmarks();
 
   return (
     <DashboardShell title="Favorilerim" navItems={STUDENT_NAV}>
-      <div className="mx-auto max-w-6xl">
+      <div className="mx-auto max-w-[1050px] space-y-6">
+        <div>
+          <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
+            Favorilerim
+          </h1>
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+            Kaydettiğin eğitmenleri buradan inceleyebilir ve profillerine ulaşabilirsin.
+          </p>
+        </div>
+
         {isLoading ? (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
             {Array.from({ length: 3 }).map((_, i) => (
               <div
                 key={i}
@@ -33,7 +43,7 @@ export default function Favorites() {
               Eğitmen kartındaki kaydet (bookmark) ikonuna dokunarak favorilerine ekleyebilirsin.
             </p>
             <Link
-              to="/student"
+              to={ROUTES.tutors}
               className="mt-4 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700"
             >
               Eğitmenleri keşfet
@@ -44,7 +54,7 @@ export default function Favorites() {
             <p className="mb-3 text-xs text-slate-400 dark:text-slate-500">
               {data.length} favori eğitmen
             </p>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
               {data.map((tutor) => (
                 <TutorCard key={tutor.id} tutor={tutor} />
               ))}

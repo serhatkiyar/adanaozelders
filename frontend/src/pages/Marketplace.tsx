@@ -1,14 +1,14 @@
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useRef, useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { DashboardShell } from "@/components/DashboardShell";
-import { STUDENT_NAV } from "@/lib/nav";
+import { STUDENT_NAV, TUTOR_NAV } from "@/lib/nav";
 import { TutorCard } from "@/components/TutorCard";
-import { SubjectMegaMenu } from "@/components/SubjectMegaMenu";
 import { useTutorSearch } from "@/hooks/useTutorSearch";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useDebounce } from "@/hooks/useDebounce";
 import { getErrorMessage } from "@/lib/errors";
 import { toast } from "@/store/toastStore";
-import { Gender, TeachingMode, TutorSort } from "@/types";
+import { Gender, ROLE_IDS, TeachingMode, TutorSort } from "@/types";
 import type { TutorSearchParams } from "@/api/tutors";
 
 /* ─── options ─────────────────────────────────────────── */
@@ -33,11 +33,21 @@ const GENDER_OPTIONS: { value: Gender; label: string }[] = [
 /* ─── main page ─────────────────────────────────────────── */
 
 export default function Marketplace() {
+  // Bu sayfa /egitmenler'in oturum içi (panel chrome'lu) halidir; nav rol bazlı.
+  const { data: currentUser } = useCurrentUser();
+  const navItems =
+    currentUser?.role_id === ROLE_IDS.TUTOR
+      ? TUTOR_NAV
+      : currentUser?.role_id === ROLE_IDS.CLIENT
+        ? STUDENT_NAV
+        : undefined;
   const [searchParams] = useSearchParams();
   const [q, setQ] = useState(() => searchParams.get("q") ?? "");
   const [subjects, setSubjects] = useState<string[]>(() =>
     searchParams.getAll("subject")
   );
+  const [showFilters, setShowFilters] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const qParam = searchParams.get("q");
@@ -82,10 +92,6 @@ export default function Marketplace() {
       prev.includes(m) ? prev.filter((x) => x !== m) : [...prev, m]
     );
 
-  const addSubject = (s: string) =>
-    setSubjects((prev) =>
-      prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]
-    );
   const removeSubject = (s: string) =>
     setSubjects((prev) => prev.filter((x) => x !== s));
 
@@ -150,27 +156,44 @@ export default function Marketplace() {
   };
 
   return (
-    <DashboardShell title="Marketplace" navItems={STUDENT_NAV}>
-      {/* Subject mega menu */}
-      <div className="-mx-4 -mt-4 mb-6 bg-slate-700 px-4 py-2 dark:bg-slate-950 sm:-mx-6 sm:-mt-6 sm:px-6">
-        <SubjectMegaMenu value="" onSelect={addSubject} />
-      </div>
-
-      <div className="mx-auto max-w-6xl space-y-4">
-        {/* ── Search bar ── */}
-        <div className="relative">
-          <span className="pointer-events-none absolute inset-y-0 left-4 flex items-center text-slate-400">
-            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0Z" />
+    <DashboardShell title="Eğitmen Bul" navItems={navItems}>
+      <div className="mx-auto max-w-[1050px] space-y-4">
+        {/* ── Search bar (landing stili pill) & Filter Button ── */}
+        <div className="flex gap-2">
+          <div className="group flex h-11 flex-1 overflow-hidden rounded-full bg-white shadow-sm ring-1 ring-slate-200 transition hover:shadow-md hover:ring-slate-300 focus-within:ring-2 focus-within:ring-indigo-300 dark:bg-slate-800 dark:shadow-none dark:ring-slate-700 dark:hover:ring-slate-600 dark:focus-within:ring-indigo-500">
+            <input
+              ref={searchInputRef}
+              type="text"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Konu, sınav veya eğitmen ara… (ör. TYT Matematik)"
+              className="flex-1 bg-transparent px-5 text-sm sm:text-base text-slate-900 outline-none placeholder:text-slate-400 dark:text-white dark:placeholder:text-slate-500"
+            />
+            <button
+              type="button"
+              aria-label="Ara"
+              onClick={() => searchInputRef.current?.focus()}
+              className="flex w-20 sm:w-24 shrink-0 cursor-pointer items-center justify-center bg-gradient-to-r from-indigo-600 to-violet-600 text-white transition hover:from-indigo-700 hover:to-violet-700 active:scale-95"
+            >
+              <svg className="h-7 w-7 -translate-x-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.3}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0Z" />
+              </svg>
+            </button>
+          </div>
+          <button
+            onClick={() => setShowFilters(true)}
+            className="btn-neon-hover flex h-11 shrink-0 items-center gap-2 rounded-full px-5 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-slate-200 transition active:scale-95 dark:text-slate-200 dark:ring-slate-700"
+          >
+            <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M2.628 1.601C5.028 1.206 7.49 1 10 1s4.973.206 7.372.601a.75.75 0 01.628.74v2.288a2.25 2.25 0 01-.659 1.59l-4.682 4.683a2.25 2.25 0 00-.659 1.59v3.037c0 .684-.31 1.33-.844 1.757l-1.937 1.55A.75.75 0 018 18.25v-5.757a2.25 2.25 0 00-.659-1.591L2.659 6.22A2.25 2.25 0 012 4.629V2.34a.75.75 0 01.628-.74z" clipRule="evenodd" />
             </svg>
-          </span>
-          <input
-            type="text"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Eğitmen, konu veya alan ara…"
-            className="w-full rounded-2xl border border-slate-200 bg-white py-3 pl-10 pr-4 text-sm text-slate-900 shadow-sm outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:placeholder-slate-500 dark:focus:border-indigo-500"
-          />
+            <span className="hidden sm:inline">Filtrele</span>
+            {hasFilters && (
+              <span className="ml-1 flex h-5 w-5 items-center justify-center rounded-full bg-indigo-600 text-[10px] font-bold text-white">
+                ✓
+              </span>
+            )}
+          </button>
         </div>
 
         {/* ── Selected subjects ── */}
@@ -189,169 +212,12 @@ export default function Marketplace() {
           </div>
         )}
 
-        {/* ── Filter bar ── */}
-        <div className="flex flex-wrap items-center gap-3 rounded-2xl bg-white px-4 py-3 shadow-sm ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-slate-700">
-          {/* Sort pills */}
-          <div className="flex flex-wrap items-center gap-1.5">
-            {SORT_OPTIONS.map((opt) => (
-              <button
-                key={opt.value}
-                onClick={() => setSort(opt.value)}
-                className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
-                  sort === opt.value
-                    ? "bg-indigo-600 text-white shadow-sm"
-                    : "bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600"
-                }`}
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
 
-          <div className="h-5 w-px bg-slate-200 dark:bg-slate-700" />
-
-          {/* Yakınımdaki eğitmenler (geolocation + yarıçap) */}
-          <div className="flex items-center gap-1.5">
-            <button
-              onClick={() => (nearMe ? setNearMe(null) : requestNearMe())}
-              disabled={geoLoading}
-              className={`inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-medium transition disabled:opacity-60 ${
-                nearMe
-                  ? "bg-emerald-600 text-white shadow-sm"
-                  : "bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600"
-              }`}
-              title="Konumunuza göre en yakın eğitmenleri sıralar"
-            >
-              📍 {geoLoading ? "Konum alınıyor…" : nearMe ? "Yakınımda ✓" : "Yakınımda"}
-            </button>
-            {nearMe && (
-              <select
-                value={radiusKm}
-                onChange={(e) => setRadiusKm(Number(e.target.value))}
-                className="rounded-full bg-slate-100 px-2 py-1.5 text-xs font-medium text-slate-600 dark:bg-slate-700 dark:text-slate-300"
-              >
-                {[5, 10, 25, 50, 100].map((r) => (
-                  <option key={r} value={r}>
-                    {r} km
-                  </option>
-                ))}
-              </select>
-            )}
-          </div>
-
-          <div className="h-5 w-px bg-slate-200 dark:bg-slate-700" />
-
-          {/* Teaching mode pills */}
-          <div className="flex items-center gap-1.5">
-            {MODE_OPTIONS.map((opt) => (
-              <button
-                key={opt.value}
-                onClick={() => toggleMode(opt.value)}
-                className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
-                  modes.includes(opt.value)
-                    ? "bg-indigo-600 text-white shadow-sm"
-                    : "bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600"
-                }`}
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
-
-          <div className="h-5 w-px bg-slate-200 dark:bg-slate-700" />
-
-          {/* Price range */}
-          <div className="flex items-center gap-1.5">
-            <div className="relative">
-              <span className="pointer-events-none absolute inset-y-0 left-2.5 flex items-center text-xs text-slate-400">₺</span>
-              <input
-                type="number"
-                min={0}
-                value={minRate}
-                onChange={(e) => setMinRate(e.target.value)}
-                placeholder="Min"
-                className="w-20 rounded-xl border border-slate-200 bg-white py-1.5 pl-6 pr-2 text-xs text-slate-900 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:border-slate-600 dark:bg-slate-700 dark:text-white"
-              />
-            </div>
-            <span className="text-xs text-slate-400">—</span>
-            <div className="relative">
-              <span className="pointer-events-none absolute inset-y-0 left-2.5 flex items-center text-xs text-slate-400">₺</span>
-              <input
-                type="number"
-                min={0}
-                value={maxRate}
-                onChange={(e) => setMaxRate(e.target.value)}
-                placeholder="Max"
-                className="w-20 rounded-xl border border-slate-200 bg-white py-1.5 pl-6 pr-2 text-xs text-slate-900 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:border-slate-600 dark:bg-slate-700 dark:text-white"
-              />
-            </div>
-          </div>
-
-          <div className="h-5 w-px bg-slate-200 dark:bg-slate-700" />
-
-          {/* Gender pills */}
-          <div className="flex items-center gap-1.5">
-            {GENDER_OPTIONS.map((opt) => (
-              <button
-                key={opt.value}
-                onClick={() =>
-                  setGender((g) => (g === opt.value ? "" : opt.value))
-                }
-                className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
-                  gender === opt.value
-                    ? "bg-indigo-600 text-white shadow-sm"
-                    : "bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600"
-                }`}
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
-
-          <div className="h-5 w-px bg-slate-200 dark:bg-slate-700" />
-
-          {/* Age range */}
-          <div className="flex items-center gap-1.5">
-            <span className="text-xs text-slate-400">Yaş</span>
-            <input
-              type="number"
-              min={0}
-              max={120}
-              value={minAge}
-              onChange={(e) => setMinAge(e.target.value)}
-              placeholder="Min"
-              className="w-16 rounded-xl border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-900 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:border-slate-600 dark:bg-slate-700 dark:text-white"
-            />
-            <span className="text-xs text-slate-400">—</span>
-            <input
-              type="number"
-              min={0}
-              max={120}
-              value={maxAge}
-              onChange={(e) => setMaxAge(e.target.value)}
-              placeholder="Max"
-              className="w-16 rounded-xl border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-900 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:border-slate-600 dark:bg-slate-700 dark:text-white"
-            />
-          </div>
-
-          {/* Clear filters */}
-          {hasFilters && (
-            <>
-              <div className="h-5 w-px bg-slate-200 dark:bg-slate-700" />
-              <button
-                onClick={clearAll}
-                className="text-xs font-medium text-slate-400 transition hover:text-slate-600 dark:hover:text-slate-200"
-              >
-                Temizle
-              </button>
-            </>
-          )}
-        </div>
 
         {/* ── Results ── */}
         <div>
           {isLoading ? (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
               {Array.from({ length: 6 }).map((_, i) => (
                 <div
                   key={i}
@@ -395,7 +261,7 @@ export default function Marketplace() {
                   </span>
                 )}
               </div>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
                 {data.map((tutor) => (
                   <TutorCard key={tutor.id} tutor={tutor} />
                 ))}
@@ -416,6 +282,165 @@ export default function Marketplace() {
           )}
         </div>
       </div>
+
+      {/* ── Filter Modal ── */}
+      {showFilters && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-slate-900/50 p-4 sm:p-6 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="absolute inset-0" onClick={() => setShowFilters(false)} />
+          <div className="relative w-full max-w-lg overflow-hidden rounded-3xl bg-white shadow-2xl ring-1 ring-slate-100 animate-in slide-in-from-bottom-4 sm:zoom-in-95 duration-200 dark:bg-slate-800 dark:ring-slate-700 flex flex-col max-h-[90vh]">
+            <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4 dark:border-slate-700">
+              <h2 className="text-lg font-bold text-slate-900 dark:text-white">Filtrele ve Sırala</h2>
+              <button
+                onClick={() => setShowFilters(false)}
+                className="rounded-full p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-700 dark:hover:text-slate-300"
+              >
+                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto p-6 space-y-8">
+              {/* Sıralama */}
+              <div>
+                <h3 className="mb-3 text-sm font-semibold text-slate-900 dark:text-white">Sıralama</h3>
+                <div className="flex flex-wrap gap-2">
+                  {SORT_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.value}
+                      onClick={() => setSort(opt.value)}
+                      className={`rounded-xl px-4 py-2 text-sm font-medium transition ${
+                        sort === opt.value
+                          ? "bg-indigo-600 text-white shadow-sm ring-1 ring-indigo-600"
+                          : "bg-slate-50 text-slate-600 ring-1 ring-slate-200 hover:bg-slate-100 dark:bg-slate-900 dark:text-slate-300 dark:ring-slate-700 dark:hover:bg-slate-800"
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Konum */}
+              <div>
+                <h3 className="mb-3 text-sm font-semibold text-slate-900 dark:text-white">Mesafe (Uzaklık)</h3>
+                <div className="relative">
+                  <select
+                    value={nearMe ? radiusKm : ""}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (!val) {
+                        setNearMe(null);
+                        return;
+                      }
+                      setRadiusKm(Number(val));
+                      if (!nearMe) requestNearMe();
+                    }}
+                    className="w-full appearance-none rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-900 shadow-sm outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:focus:border-indigo-500"
+                  >
+                    <option value="">Farketmez (Her Yer)</option>
+                    <option value="5">Bana en fazla 5 km uzaklıkta</option>
+                    <option value="10">Bana en fazla 10 km uzaklıkta</option>
+                    <option value="25">Bana en fazla 25 km uzaklıkta</option>
+                    <option value="50">Bana en fazla 50 km uzaklıkta</option>
+                    <option value="100">Bana en fazla 100 km uzaklıkta</option>
+                  </select>
+                  <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-slate-400">
+                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </span>
+                </div>
+                {geoLoading && <p className="mt-2 text-xs font-medium text-indigo-600 animate-pulse">Konum bilginiz alınıyor...</p>}
+                {nearMe && !geoLoading && <p className="mt-2 text-xs font-medium text-emerald-600">✓ Konumunuz kullanılıyor</p>}
+              </div>
+
+              {/* Eğitim Modu */}
+              <div>
+                <h3 className="mb-3 text-sm font-semibold text-slate-900 dark:text-white">Ders İşleme Şekli</h3>
+                <div className="flex flex-wrap gap-2">
+                  {MODE_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.value}
+                      onClick={() => toggleMode(opt.value)}
+                      className={`rounded-xl px-4 py-2 text-sm font-medium transition ${
+                        modes.includes(opt.value)
+                          ? "bg-indigo-600 text-white shadow-sm ring-1 ring-indigo-600"
+                          : "bg-slate-50 text-slate-600 ring-1 ring-slate-200 hover:bg-slate-100 dark:bg-slate-900 dark:text-slate-300 dark:ring-slate-700 dark:hover:bg-slate-800"
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Fiyat */}
+              <div>
+                <div className="mb-3 flex items-center justify-between">
+                  <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Maksimum Saatlik Ücret</h3>
+                  <span className="text-sm font-bold text-indigo-600 dark:text-indigo-400">
+                    {maxRate && Number(maxRate) < 2000 ? `₺${maxRate}` : "Limitsiz"}
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min="0"
+                  max="2000"
+                  step="50"
+                  value={maxRate || 2000}
+                  onChange={(e) => {
+                    const val = Number(e.target.value);
+                    if (val >= 2000) setMaxRate("");
+                    else setMaxRate(e.target.value);
+                  }}
+                  className="h-2 w-full cursor-pointer appearance-none rounded-lg bg-slate-200 accent-indigo-600 dark:bg-slate-700"
+                />
+                <div className="mt-2 flex justify-between text-xs font-medium text-slate-400">
+                  <span>₺0</span>
+                  <span>₺2000+</span>
+                </div>
+              </div>
+
+              {/* Cinsiyet */}
+              <div>
+                <h3 className="mb-3 text-sm font-semibold text-slate-900 dark:text-white">Cinsiyet</h3>
+                <div className="flex flex-wrap gap-2">
+                  {GENDER_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.value}
+                      onClick={() => setGender((g) => (g === opt.value ? "" : opt.value))}
+                      className={`rounded-xl px-4 py-2 text-sm font-medium transition ${
+                        gender === opt.value
+                          ? "bg-indigo-600 text-white shadow-sm ring-1 ring-indigo-600"
+                          : "bg-slate-50 text-slate-600 ring-1 ring-slate-200 hover:bg-slate-100 dark:bg-slate-900 dark:text-slate-300 dark:ring-slate-700 dark:hover:bg-slate-800"
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+            </div>
+
+            <div className="border-t border-slate-100 p-4 sm:px-6 sm:py-5 dark:border-slate-700 flex gap-3 bg-slate-50 dark:bg-slate-800/50">
+              <button
+                onClick={clearAll}
+                className="flex-1 rounded-xl bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-slate-200 transition hover:bg-slate-50 active:scale-95 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700 dark:hover:bg-slate-700"
+              >
+                Temizle
+              </button>
+              <button
+                onClick={() => setShowFilters(false)}
+                className="flex-[2] rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white shadow-sm shadow-indigo-500/20 transition hover:bg-indigo-700 active:scale-95"
+              >
+                Sonuçları Göster
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </DashboardShell>
   );
 }

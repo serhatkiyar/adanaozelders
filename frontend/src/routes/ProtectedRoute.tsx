@@ -2,6 +2,7 @@ import { Navigate, Outlet } from "react-router-dom";
 import { useAuthStore } from "@/store/authStore";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { roleHome } from "@/lib/roles";
+import { ROUTES } from "@/lib/routes";
 import { FullScreenSpinner } from "@/components/Spinner";
 
 interface ProtectedRouteProps {
@@ -14,7 +15,7 @@ export function ProtectedRoute({ allowedRoleId }: ProtectedRouteProps) {
   const { data: user, isLoading, isError } = useCurrentUser();
 
   if (!token) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to={ROUTES.login} replace />;
   }
 
   if (isLoading) {
@@ -23,7 +24,7 @@ export function ProtectedRoute({ allowedRoleId }: ProtectedRouteProps) {
 
   // 401 interceptor zaten logout yaptı; girişe yönlendir.
   if (isError || !user) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to={ROUTES.login} replace />;
   }
 
   if (allowedRoleId !== undefined && user.role_id !== allowedRoleId) {

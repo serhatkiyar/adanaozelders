@@ -7,6 +7,7 @@ import { useThreads } from "@/hooks/useQa";
 import { formatDate } from "@/lib/datetime";
 import { getErrorMessage } from "@/lib/errors";
 import { QAStatus, type QAThreadOut } from "@/types";
+import { ROUTES } from "@/lib/routes";
 
 const statusLabel: Record<QAStatus, string> = {
   [QAStatus.OPEN]: "Yanıt bekliyor",
@@ -27,7 +28,7 @@ function TutorThreadCard({ thread }: { thread: QAThreadOut }) {
     <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-slate-700">
       <div className="flex items-center justify-between gap-3">
         <Link
-          to={`/tutor/students/${thread.client_id}`}
+          to={ROUTES.studentProfile(thread.client_id)}
           className="flex min-w-0 items-center gap-2.5 rounded-lg transition hover:opacity-80"
         >
           <Avatar name={clientName} avatar_url={thread.client_avatar_url} size="sm" />

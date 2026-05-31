@@ -2,6 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuthStore } from "@/store/authStore";
 import { logout as logoutRequest } from "@/api/auth";
+import { ROUTES } from "@/lib/routes";
 
 export function useLogout() {
   const navigate = useNavigate();
@@ -17,6 +18,6 @@ export function useLogout() {
         logout();
         queryClient.clear();
       });
-    navigate("/login", { replace: true });
+    navigate(ROUTES.login, { replace: true });
   };
 }

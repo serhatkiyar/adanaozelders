@@ -6,6 +6,7 @@ import { useBookings } from "@/hooks/useBookings";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { BookingStatus, ROLE_IDS, type BookingOut } from "@/types";
 import { BOOKING_STATUS_LABEL, BOOKING_STATUS_STYLE } from "@/lib/bookingStatus";
+import { ROUTES } from "@/lib/routes";
 
 const WEEKDAYS = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"];
 
@@ -151,7 +152,7 @@ export default function Calendar() {
                     return (
                       <Link
                         key={b.id}
-                        to={`/lesson/${b.id}`}
+                        to={ROUTES.lesson(b.id)}
                         className="block rounded-lg border border-slate-100 bg-slate-50 px-2 py-1.5 text-xs transition hover:border-indigo-200 hover:bg-indigo-50/60 dark:border-slate-700 dark:bg-slate-900/50 dark:hover:bg-slate-700/50"
                         title={`${BOOKING_STATUS_LABEL[b.status]} — ${counterparty ?? ""}`}
                       >

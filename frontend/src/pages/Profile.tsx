@@ -9,6 +9,7 @@ import { ageFromBirthDate, GENDER_LABEL } from "@/lib/demographics";
 import { getErrorMessage } from "@/lib/errors";
 import { toast } from "@/store/toastStore";
 import { Gender, ROLE_IDS } from "@/types";
+import { ROUTES } from "@/lib/routes";
 
 const ROLE_META: Record<number, { label: string }> = {
   [ROLE_IDS.ADMIN]: { label: "Yönetici" },
@@ -365,7 +366,12 @@ export default function Profile() {
             </SectionCard>
 
             {/* ── Eğitim (öğrenci & öğretmen; opsiyonel, LinkedIn tarzı) ── */}
-            {user.role_id !== ROLE_IDS.ADMIN && <EducationSection editable />}
+            {user.role_id !== ROLE_IDS.ADMIN && (
+              <EducationSection
+                editable
+                withDocument={user.role_id === ROLE_IDS.TUTOR}
+              />
+            )}
 
             {/* ── Güvenlik kısa yolu ── */}
             <div className="flex items-center justify-between rounded-2xl bg-white px-6 py-4 shadow-sm ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-slate-700">
@@ -378,7 +384,7 @@ export default function Profile() {
                 </p>
               </div>
               <Link
-                to="/settings"
+                to={ROUTES.settings}
                 className="shrink-0 rounded-xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700"
               >
                 Hesap Ayarları

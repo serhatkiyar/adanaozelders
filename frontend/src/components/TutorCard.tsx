@@ -1,161 +1,101 @@
 import { Link } from "react-router-dom";
 import type { TutorSearchOut } from "@/types";
-import { TeachingMode } from "@/types";
-import { StarRating } from "@/components/StarRating";
-import { Avatar } from "@/components/Avatar";
 import { BookmarkButton } from "@/components/BookmarkButton";
-import { formatRate, parseMoney } from "@/lib/money";
-import { formatLastSeen } from "@/lib/datetime";
-import { ageFromBirthDate, GENDER_LABEL } from "@/lib/demographics";
-
-const MODE_META: Record<TeachingMode, { label: string; cls: string }> = {
-  [TeachingMode.ONLINE]: {
-    label: "Uzaktan",
-    cls: "bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400",
-  },
-  [TeachingMode.IN_PERSON]: {
-    label: "Yüzyüze",
-    cls: "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400",
-  },
-  [TeachingMode.BOTH]: {
-    label: "Uzaktan & Yüzyüze",
-    cls: "bg-violet-50 text-violet-600 dark:bg-violet-500/10 dark:text-violet-400",
-  },
-};
+import { StarRating } from "@/components/StarRating";
+import { parseMoney } from "@/lib/money";
+import { ROUTES, tutorSlug } from "@/lib/routes";
 
 interface TutorCardProps {
   tutor: TutorSearchOut;
-  hrefBase?: string;
   showBookmark?: boolean;
 }
 
 export function TutorCard({
   tutor,
-  hrefBase = "/student/tutors",
   showBookmark = true,
 }: TutorCardProps) {
   const hasRatings = tutor.rating_count > 0;
   const rate = parseMoney(tutor.hourly_rate);
-  const mode = tutor.teaching_mode ? MODE_META[tutor.teaching_mode] : null;
-  const age = ageFromBirthDate(tutor.birth_date);
-  const genderLabel =
-    tutor.gender && tutor.gender !== "UNSPECIFIED"
-      ? GENDER_LABEL[tutor.gender]
-      : null;
-  const isOnline =
-    !!tutor.last_seen_at &&
-    Date.now() - new Date(tutor.last_seen_at).getTime() < 120_000;
+  
+  const locationText = tutor.distance_km != null 
+    ? `~${tutor.distance_km} km` 
+    : (tutor.teaching_mode === "ONLINE" ? "Uzaktan (webcam)" : "Yüzyüze & Uzaktan");
+    
+  const mainSubject = tutor.subjects?.[0] || "Özel Ders";
+  // Superprof usually only shows first name
+  const firstName = tutor.full_name.split(" ")[0];
 
   return (
     <Link
-      to={`${hrefBase}/${tutor.id}`}
-      className="group flex h-full flex-col rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100 transition duration-200 hover:-translate-y-1 hover:shadow-lg hover:ring-indigo-200 dark:bg-slate-800 dark:ring-slate-700 dark:hover:ring-indigo-500/40"
+      to={ROUTES.tutor(tutorSlug(tutor))}
+      className="group flex flex-col transition duration-300 mx-auto w-full max-w-[310px]"
     >
-      {/* Header */}
-      <div className="flex items-start gap-3">
-        <Avatar name={tutor.full_name} avatar_url={tutor.avatar_url} />
-        <div className="min-w-0 flex-1">
-          <h3 className="truncate text-base font-semibold text-slate-900 transition group-hover:text-indigo-700 dark:text-white dark:group-hover:text-indigo-300">
-            {tutor.full_name}
-          </h3>
-          {tutor.headline && (
-            <p className="mt-0.5 truncate text-sm text-slate-500 dark:text-slate-400">
-              {tutor.headline}
-            </p>
-          )}
-        </div>
-        <div className="flex shrink-0 items-center gap-1.5">
-          <span
-            title="Bayesian sıralama puanı"
-            className="rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-bold text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-300"
-          >
-            ★ {tutor.bayesian_score.toFixed(1)}
-          </span>
-          {showBookmark && <BookmarkButton tutorId={tutor.id} />}
-        </div>
-      </div>
-
-      {/* Bio preview */}
-      {tutor.bio && (
-        <p className="mt-3 line-clamp-2 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
-          {tutor.bio}
-        </p>
-      )}
-
-      {/* Rating */}
-      <div className="mt-4 flex items-center gap-2">
-        <StarRating value={tutor.rating_average} />
-        <span className="text-xs text-slate-500 dark:text-slate-400">
-          {hasRatings
-            ? `${tutor.rating_average?.toFixed(1)} (${tutor.rating_count})`
-            : "Henüz değerlendirme yok"}
-        </span>
-      </div>
-
-      {/* Presence */}
-      <p className="mt-2 flex items-center gap-1.5 text-xs text-slate-400 dark:text-slate-500">
-        <span
-          className={`inline-block h-1.5 w-1.5 rounded-full ${
-            isOnline ? "bg-emerald-400" : "bg-slate-300 dark:bg-slate-600"
-          }`}
+      {/* ── Picture Area ── */}
+      <div className="relative aspect-square w-full overflow-hidden rounded-3xl bg-slate-100 dark:bg-slate-800">
+        <img 
+          src={tutor.avatar_url || "https://ui-avatars.com/api/?name=" + encodeURIComponent(tutor.full_name) + "&background=c7d2fe&color=3730a3&size=400"} 
+          alt={tutor.full_name} 
+          className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+          loading="lazy"
         />
-        {isOnline ? "Çevrimiçi" : formatLastSeen(tutor.last_seen_at)}
-      </p>
-
-      {/* Mesafe (yalnızca "yakınımdaki" aramasında dolu gelir) */}
-      {tutor.distance_km != null && (
-        <p className="mt-1.5 inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300">
-          📍 ~{tutor.distance_km} km uzakta
-        </p>
-      )}
-
-      {/* Subjects */}
-      {tutor.subjects && tutor.subjects.length > 0 && (
-        <div className="mt-2 flex flex-wrap gap-1">
-          {tutor.subjects.slice(0, 3).map((s) => (
-            <span
-              key={s}
-              className="rounded-md bg-indigo-50 px-1.5 py-0.5 text-[11px] font-medium text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-300"
-            >
-              {s}
-            </span>
-          ))}
-          {tutor.subjects.length > 3 && (
-            <span className="px-1 text-[11px] text-slate-400 dark:text-slate-500">
-              +{tutor.subjects.length - 3}
-            </span>
-          )}
-        </div>
-      )}
-
-      {/* Footer */}
-      <div className="mt-auto flex items-center justify-between gap-2 border-t border-slate-100 pt-3 dark:border-slate-700">
-        <div className="flex flex-wrap gap-1.5">
-          {mode && (
-            <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${mode.cls}`}>
-              {mode.label}
-            </span>
-          )}
-          {age !== null && (
-            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600 dark:bg-slate-700 dark:text-slate-300">
-              {age} yaş
-            </span>
-          )}
-          {genderLabel && (
-            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600 dark:bg-slate-700 dark:text-slate-300">
-              {genderLabel}
-            </span>
-          )}
-        </div>
-        {rate !== null ? (
-          <span className="shrink-0 text-base font-bold text-slate-900 dark:text-white">
-            {formatRate(tutor.hourly_rate)}
-          </span>
-        ) : (
-          <span className="text-xs text-slate-400 dark:text-slate-500">
-            Ücret belirtilmemiş
-          </span>
+        
+        {/* Bookmark top right */}
+        {showBookmark && (
+          <div className="absolute right-4 top-4 z-10 text-slate-700 transition hover:scale-110 dark:text-white">
+            <BookmarkButton tutorId={tutor.id} />
+          </div>
         )}
+
+        {/* Gradient Mask at bottom */}
+        <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-90 transition-opacity duration-300 group-hover:opacity-100" />
+        
+        {/* Text Container over image */}
+        <div className="absolute bottom-4 left-4 right-4 flex flex-col">
+          <p className="text-xl font-bold text-white drop-shadow-md">
+            {firstName}
+          </p>
+          <div className="mt-0.5 flex items-center text-xs font-medium text-white/90 drop-shadow-md">
+            <span>{locationText}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Bottom Part ── */}
+      <div className="flex flex-col pt-3 pb-1 px-1">
+        {/* Badges: Rating & Status */}
+        <ul className="flex items-center gap-2 text-xs font-medium text-slate-700 dark:text-slate-300">
+          <li className="flex items-center gap-1">
+            <StarRating value={tutor.rating_average ?? 0} single={true} />
+            <span className="font-bold text-slate-900 dark:text-white text-xs">
+              {hasRatings ? (tutor.rating_average ?? 0).toFixed(1) : "Yeni"}
+            </span>
+            {hasRatings && (
+              <span className="text-slate-500 dark:text-slate-400">
+                ({tutor.rating_count} yorum)
+              </span>
+            )}
+          </li>
+        </ul>
+        
+        <h3 className="mt-1 line-clamp-2 min-h-[40px] text-sm leading-snug text-slate-800 dark:text-slate-200">
+          {tutor.headline || tutor.bio || `${mainSubject} alanında uzman eğitmen ile derslere hemen başlayın.`}
+        </h3>
+
+        {/* Pricing */}
+        <div className="mt-1 flex items-center justify-between">
+          <div className="flex items-baseline text-slate-900 dark:text-white">
+            <span className="text-sm font-bold">
+              {rate !== null ? `${rate}₺` : "Ücret belirtilmemiş"}
+            </span>
+            {rate !== null && (
+              <span className="text-[11px] font-bold">/saat</span>
+            )}
+          </div>
+          {/* İlk ders ücretsiz etiketi */}
+          <div className="flex items-center text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
+            İlk ders ücretsiz
+          </div>
+        </div>
       </div>
     </Link>
   );

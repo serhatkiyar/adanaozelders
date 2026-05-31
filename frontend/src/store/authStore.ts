@@ -34,10 +34,13 @@ const switchingStorage: StateStorage = {
 
 interface AuthState {
   token: string | null;
+  refreshToken: string | null;
   user: UserOut | null;
   isAuthenticated: boolean;
   setRemember: (remember: boolean) => void;
   setToken: (token: string) => void;
+  // Login ve sessiz yenileme (rotasyon) sonrası access + refresh birlikte yazılır.
+  setTokens: (access: string, refresh: string | null) => void;
   setUser: (user: UserOut | null) => void;
   logout: () => void;
 }
@@ -46,18 +49,30 @@ export const useAuthStore = create<AuthState>()(
   persist(
     (set) => ({
       token: null,
+      refreshToken: null,
       user: null,
       isAuthenticated: false,
       setRemember: (remember) =>
         localStorage.setItem(REMEMBER_KEY, remember ? "1" : "0"),
       setToken: (token) => set({ token, isAuthenticated: true }),
+      setTokens: (access, refresh) =>
+        set({ token: access, refreshToken: refresh, isAuthenticated: true }),
       setUser: (user) => set({ user }),
-      logout: () => set({ token: null, user: null, isAuthenticated: false }),
+      logout: () =>
+        set({
+          token: null,
+          refreshToken: null,
+          user: null,
+          isAuthenticated: false,
+        }),
     }),
     {
       name: "ceyhan-auth",
       storage: createJSONStorage(() => switchingStorage),
-      partialize: (state) => ({ token: state.token }),
+      partialize: (state) => ({
+        token: state.token,
+        refreshToken: state.refreshToken,
+      }),
       onRehydrateStorage: () => (state) => {
         if (state?.token) state.isAuthenticated = true;
       },

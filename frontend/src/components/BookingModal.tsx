@@ -306,11 +306,11 @@ export function BookingModal({ tutor, onClose }: BookingModalProps) {
       {
         onSuccess: () => {
           // Adres kaydetme işlemi artık önceden yapılıyor.
-          toast.success("Rezervasyon talebin gönderildi.");
+          toast.success("Ders talebin gönderildi.");
           onClose();
         },
         onError: (err) =>
-          toast.error(getErrorMessage(err, "Rezervasyon oluşturulamadı.")),
+          toast.error(getErrorMessage(err, "Ders talebi oluşturulamadı.")),
       }
     );
   };
@@ -402,7 +402,7 @@ export function BookingModal({ tutor, onClose }: BookingModalProps) {
             <div className="w-9" />
           )}
           <h2 className="text-xl font-bold text-slate-900 dark:text-white">
-            Rezervasyon Talebi
+            Ders Talebi
           </h2>
           <button
             onClick={onClose}
@@ -702,7 +702,7 @@ export function BookingModal({ tutor, onClose }: BookingModalProps) {
                   Eğitmene Mesaj (Opsiyonel)
                 </label>
                 <textarea
-                  rows={6}
+                  rows={8}
                   maxLength={1000}
                   placeholder="Kendinizi kısaca tanıtın, ders beklentilerinizi veya hedeflerinizi yazın..."
                   value={notes}
@@ -716,7 +716,7 @@ export function BookingModal({ tutor, onClose }: BookingModalProps) {
                 disabled={createBooking.isPending || (mode === TeachingMode.IN_PERSON && !bookingLocation.trim() && !locationLat)}
                 className="mt-6 w-full rounded-xl bg-indigo-600 px-4 py-3.5 text-center text-sm font-bold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {createBooking.isPending ? "Gönderiliyor…" : "Rezervasyon Talep Et"}
+                {createBooking.isPending ? "Gönderiliyor…" : "Ders Talep Et"}
               </button>
             </div>
           )}

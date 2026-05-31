@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useMutation } from "@tanstack/react-query";
 import { register, type RegisterRole } from "@/api/auth";
 import { getErrorMessage } from "@/lib/errors";
+import { ROUTES } from "@/lib/routes";
 import { Gender } from "@/types";
 
 const GENDERS = [
@@ -36,7 +37,7 @@ export default function Register() {
         gender: gender || null,
       }),
     onSuccess: () => {
-      navigate("/login", {
+      navigate(ROUTES.login, {
         replace: true,
         state: { registered: true },
       });
@@ -79,7 +80,7 @@ export default function Register() {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-                Ad
+                Ad <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
@@ -88,13 +89,13 @@ export default function Register() {
                 maxLength={75}
                 value={firstName}
                 onChange={(e) => setFirstName(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:placeholder-slate-500"
+                className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:placeholder-slate-500"
                 placeholder="Adınız"
               />
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-                Soyad
+                Soyad <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
@@ -103,7 +104,7 @@ export default function Register() {
                 maxLength={75}
                 value={lastName}
                 onChange={(e) => setLastName(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:placeholder-slate-500"
+                className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:placeholder-slate-500"
                 placeholder="Soyadınız"
               />
             </div>
@@ -111,7 +112,7 @@ export default function Register() {
 
           <div>
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-              Kullanıcı Adı
+              Kullanıcı Adı <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
@@ -122,28 +123,28 @@ export default function Register() {
               title="Yalnızca harf, rakam ve alt çizgi (_)"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:placeholder-slate-500"
+              className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:placeholder-slate-500"
               placeholder="kullanici_adi"
             />
           </div>
 
           <div>
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-              E-posta
+              E-posta <span className="text-red-500">*</span>
             </label>
             <input
               type="email"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:placeholder-slate-500"
+              className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:placeholder-slate-500"
               placeholder="ornek@eposta.com"
             />
           </div>
 
           <div>
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-              Parola
+              Parola <span className="text-red-500">*</span>
             </label>
             <input
               type="password"
@@ -152,7 +153,7 @@ export default function Register() {
               maxLength={128}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:placeholder-slate-500"
+              className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:placeholder-slate-500"
               placeholder="En az 8 karakter"
             />
           </div>
@@ -161,24 +162,24 @@ export default function Register() {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-                Doğum Tarihi <span className="text-slate-400">(opsiyonel)</span>
+                Doğum Tarihi
               </label>
               <input
                 type="date"
                 max={todayStr}
                 value={birthDate}
                 onChange={(e) => setBirthDate(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white"
+                className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white"
               />
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-                Cinsiyet <span className="text-slate-400">(opsiyonel)</span>
+                Cinsiyet
               </label>
               <select
                 value={gender}
                 onChange={(e) => setGender(e.target.value as Gender | "")}
-                className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white"
+                className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white"
               >
                 <option value="">Seçilmedi</option>
                 {GENDERS.map((g) => (
@@ -208,7 +209,7 @@ export default function Register() {
         <p className="mt-6 text-center text-sm text-slate-500 dark:text-slate-400">
           Zaten hesabın var mı?{" "}
           <Link
-            to="/login"
+            to={ROUTES.login}
             className="font-semibold text-indigo-600 hover:text-indigo-700 dark:text-indigo-400"
           >
             Giriş yap

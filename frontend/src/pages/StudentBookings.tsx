@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { DashboardShell } from "@/components/DashboardShell";
 import { STUDENT_NAV } from "@/lib/nav";
+import { ROUTES } from "@/lib/routes";
 import { Avatar } from "@/components/Avatar";
 import { ReviewModal } from "@/components/ReviewModal";
 import { QuestionModal } from "@/components/QuestionModal";
@@ -10,13 +11,16 @@ import { RescheduleModal } from "@/components/RescheduleModal";
 
 import { useMeetingStore } from "@/store/meetingStore";
 import { useBookings } from "@/hooks/useBookings";
-import { BookingStatus, type BookingOut } from "@/types";
+import { usePayBooking } from "@/hooks/usePayments";
+import { PaymentBadge } from "@/components/PaymentBadge";
+import { BookingStatus, PaymentStatus, type BookingOut } from "@/types";
 import { formatRange } from "@/lib/datetime";
 import { formatTRY, parseMoney } from "@/lib/money";
 import { BOOKING_STATUS_LABEL, BOOKING_STATUS_STYLE } from "@/lib/bookingStatus";
 import { qaEligibility } from "@/lib/qaWindow";
 import { isLessonJoinable } from "@/lib/lesson";
 import { getErrorMessage } from "@/lib/errors";
+import { toast } from "@/store/toastStore";
 
 interface AskTarget {
   bookingId: number;
@@ -25,9 +29,10 @@ interface AskTarget {
 
 /* ─── filter tabs ────────────────────────────────────── */
 
-type Filter = "ALL" | BookingStatus;
+type Filter = "ACTIVE" | "ALL" | BookingStatus;
 
 const FILTERS: { value: Filter; label: string }[] = [
+  { value: "ACTIVE",                    label: "Aktif"      },
   { value: "ALL",                       label: "Tümü"       },
   { value: BookingStatus.PENDING,       label: "Bekliyor"   },
   { value: BookingStatus.ACCEPTED,      label: "Onaylı"     },
@@ -37,48 +42,12 @@ const FILTERS: { value: Filter; label: string }[] = [
 ];
 
 const FILTER_BADGE_CLS: Partial<Record<Filter, string>> = {
+  ACTIVE:                    "bg-blue-500",
   [BookingStatus.PENDING]:   "bg-amber-500",
   [BookingStatus.ACCEPTED]:  "bg-indigo-500",
-  [BookingStatus.COMPLETED]: "bg-emerald-500",
+  [BookingStatus.COMPLETED]: "bg-slate-400",
   [BookingStatus.REJECTED]:  "bg-red-500",
 };
-
-/* ─── stat box ───────────────────────────────────────── */
-
-type Tone = "amber" | "indigo" | "emerald";
-
-const TONE: Record<Tone, { num: string; ring: string; icon: string }> = {
-  amber:   { num: "text-amber-600",   ring: "ring-amber-100",   icon: "bg-amber-50 text-amber-400"   },
-  indigo:  { num: "text-indigo-600",  ring: "ring-indigo-100",  icon: "bg-indigo-50 text-indigo-400"  },
-  emerald: { num: "text-emerald-600", ring: "ring-emerald-100", icon: "bg-emerald-50 text-emerald-400" },
-};
-
-function StatBox({
-  label,
-  value,
-  tone,
-  emoji,
-}: {
-  label: string;
-  value: number;
-  tone: Tone;
-  emoji: string;
-}) {
-  const cls = TONE[tone];
-  return (
-    <div className={`rounded-2xl bg-white p-5 shadow-sm ring-1 dark:bg-slate-800 dark:ring-slate-700 ${cls.ring}`}>
-      <div className="flex items-start justify-between">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
-            {label}
-          </p>
-          <p className={`mt-2 text-3xl font-bold ${cls.num}`}>{value}</p>
-        </div>
-        <span className={`rounded-xl p-2.5 text-lg ${cls.icon}`}>{emoji}</span>
-      </div>
-    </div>
-  );
-}
 
 /* ─── booking row ────────────────────────────────────── */
 
@@ -105,11 +74,25 @@ function BookingRow({
     booking.status === BookingStatus.PENDING ||
     booking.status === BookingStatus.ACCEPTED;
 
+  const payMutation = usePayBooking();
+  // Onaylanmış ama ödenmemiş ders → öğrenci ödeyebilir (escrow).
+  const needsPayment =
+    booking.status === BookingStatus.ACCEPTED &&
+    booking.payment?.status === PaymentStatus.PENDING;
+  const handlePay = () => {
+    payMutation.mutate(booking.id, {
+      onSuccess: (p) => {
+        if (!p.redirect_url) toast.success("Ödeme alındı, ders kesinleşti.");
+      },
+      onError: (err) => toast.error(getErrorMessage(err, "Ödeme yapılamadı.")),
+    });
+  };
+
   return (
     <div className="flex flex-col gap-3 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100 transition hover:shadow-md dark:bg-slate-800 dark:ring-slate-700">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <Link
-          to={`/student/tutors/${booking.tutor_id}`}
+          to={ROUTES.tutor(booking.tutor_id)}
           className="flex min-w-0 items-center gap-3 transition hover:opacity-80"
         >
           <Avatar name={tutorName} avatar_url={booking.tutor_avatar_url} size="sm" />
@@ -131,12 +114,26 @@ function BookingRow({
             {BOOKING_STATUS_LABEL[booking.status]}
           </span>
 
+          {booking.payment && <PaymentBadge payment={booking.payment} />}
+
           <Link
-            to={`/lesson/${booking.id}`}
+            to={ROUTES.lesson(booking.id)}
             className="text-xs font-semibold text-indigo-600 transition hover:text-indigo-700 dark:text-indigo-400"
           >
             Detay →
           </Link>
+
+          {needsPayment && (
+            <button
+              onClick={handlePay}
+              disabled={payMutation.isPending}
+              className="rounded-xl bg-emerald-600 px-3.5 py-1.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {payMutation.isPending
+                ? "İşleniyor…"
+                : `Öde · ${formatTRY(booking.payment?.amount)}`}
+            </button>
+          )}
 
           {canReview && (
             <button
@@ -253,7 +250,7 @@ export default function StudentBookings() {
   const [activeReview, setActiveReview] = useState<number | null>(null);
   const [activeAsk, setActiveAsk]       = useState<AskTarget | null>(null);
   const [reviewed, setReviewed]         = useState<Set<number>>(new Set());
-  const [filter, setFilter]             = useState<Filter>("ALL");
+  const [filter, setFilter]             = useState<Filter>("ACTIVE");
 
   const markReviewed = (id: number) =>
     setReviewed((prev) => new Set(prev).add(id));
@@ -271,31 +268,43 @@ export default function StudentBookings() {
   }, [data]);
 
   const filtered = useMemo(
-    () =>
-      filter === "ALL"
-        ? (data ?? [])
-        : (data ?? []).filter((b) => b.status === filter),
+    () => {
+      if (!data) return [];
+      if (filter === "ALL") return data;
+      if (filter === "ACTIVE") return data.filter((b) => b.status === BookingStatus.PENDING || b.status === BookingStatus.ACCEPTED);
+      return data.filter((b) => b.status === filter);
+    },
     [data, filter]
   );
 
   return (
-    <DashboardShell title="Rezervasyonlarım" navItems={STUDENT_NAV}>
+    <DashboardShell title="Ders Taleplerim" navItems={STUDENT_NAV}>
       <div className="mx-auto max-w-4xl space-y-6 pb-12">
+        <div>
+          <h1 className="text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
+            Ders Taleplerim
+          </h1>
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+            Tüm ders taleplerini ve rezervasyonlarını buradan yönetebilirsin.
+          </p>
+        </div>
 
-        {/* Stats */}
+        {/* Stats 
         {!isLoading && !isError && (
           <div className="grid grid-cols-3 gap-3 sm:gap-4">
             <StatBox label="Bekleyen"   value={counts[BookingStatus.PENDING]}   tone="amber"   emoji="⏳" />
             <StatBox label="Onaylı"     value={counts[BookingStatus.ACCEPTED]}  tone="indigo"  emoji="✅" />
             <StatBox label="Tamamlanan" value={counts[BookingStatus.COMPLETED]} tone="emerald" emoji="🎓" />
           </div>
-        )}
+        )}*/}
 
         {/* Filter tabs */}
         <div className="flex flex-wrap gap-1.5 rounded-2xl bg-white px-4 py-3 shadow-sm ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-slate-700">
           {FILTERS.map((f) => {
             const count = f.value === "ALL"
               ? (data ?? []).length
+              : f.value === "ACTIVE"
+              ? (counts[BookingStatus.PENDING] ?? 0) + (counts[BookingStatus.ACCEPTED] ?? 0)
               : counts[f.value as BookingStatus] ?? 0;
             const active = filter === f.value;
 
@@ -335,7 +344,7 @@ export default function StudentBookings() {
           ) : isError ? (
             <div className="flex items-center gap-3 rounded-2xl bg-red-50 px-5 py-4 text-sm text-red-700 ring-1 ring-red-100 dark:bg-red-500/10 dark:text-red-300 dark:ring-red-800/30">
               <span>⚠</span>
-              {getErrorMessage(error, "Rezervasyonlar yüklenemedi.")}
+              {getErrorMessage(error, "Ders talepleri yüklenemedi.")}
             </div>
           ) : filtered.length === 0 ? (
             <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 py-20 text-center dark:border-slate-700">

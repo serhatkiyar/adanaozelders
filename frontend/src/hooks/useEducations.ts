@@ -4,6 +4,7 @@ import {
   deleteEducation,
   fetchMyEducations,
   updateEducation,
+  uploadEducationDocument,
 } from "@/api/educations";
 import { useAuthStore } from "@/store/authStore";
 import type { EducationCreate, EducationUpdate } from "@/types";
@@ -49,6 +50,15 @@ export function useDeleteEducation() {
   const invalidate = useInvalidateEducations();
   return useMutation({
     mutationFn: (id: number) => deleteEducation(id),
+    onSuccess: invalidate,
+  });
+}
+
+export function useUploadEducationDocument() {
+  const invalidate = useInvalidateEducations();
+  return useMutation({
+    mutationFn: ({ id, file }: { id: number; file: File }) =>
+      uploadEducationDocument(id, file),
     onSuccess: invalidate,
   });
 }

@@ -9,6 +9,7 @@ import { useBookings } from "@/hooks/useBookings";
 import { formatLastSeen } from "@/lib/datetime";
 import { ageFromBirthDate, GENDER_LABEL } from "@/lib/demographics";
 import { BookingStatus, Gender } from "@/types";
+import { ROUTES } from "@/lib/routes";
 
 export default function StudentProfile() {
   const { id } = useParams();
@@ -113,9 +114,7 @@ export default function StudentProfile() {
                 <button
                   type="button"
                   onClick={() =>
-                    navigate(
-                      `/messages?to=${student.id}&name=${encodeURIComponent(student.full_name)}`
-                    )
+                    navigate(ROUTES.messageWith(student.id, student.full_name))
                   }
                   className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-indigo-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700 active:scale-95"
                 >

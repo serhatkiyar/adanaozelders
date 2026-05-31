@@ -1,9 +1,16 @@
-import { useEffect, useRef, useState } from "react";
-import { Link, Navigate, useNavigate } from "react-router-dom";
+import { useEffect, useState, useMemo } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuthStore } from "@/store/authStore";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
-import { roleHome } from "@/lib/roles";
-import { FullScreenSpinner } from "@/components/Spinner";
+import { useRecentlyViewed } from "@/hooks/useRecentlyViewed";
+import { ROUTES } from "@/lib/routes";
+import { ROLE_IDS } from "@/types";
+import { STUDENT_NAV, TUTOR_NAV } from "@/lib/nav";
+import { SubjectCarousel } from "@/components/SubjectCarousel";
+import { TutorCard } from "@/components/TutorCard";
+import { HScroll } from "@/components/HScroll";
+import { DashboardHeader } from "@/components/DashboardHeader";
+import { PublicNavbar } from "@/components/PublicNavbar";
 import { EXAMS, type ExamCategory } from "@/lib/examTree";
 
 // Bir sınavın tüm (benzersiz) derslerini ?subject=A&subject=B… sorgusuna çevirir.
@@ -15,24 +22,42 @@ function examSubjectQuery(exam: ExamCategory): string {
 /* ─── redirect if already authenticated ─────────────── */
 
 export default function Landing() {
-  const token = useAuthStore((s) => s.token);
-  const { data: user, isLoading } = useCurrentUser();
-
+  // Landing artık hem anonim hem giriş'li kullanıcının ana keşif ekranıdır;
+  // giriş'li kullanıcı yönlendirilmez, navbar oturuma göre uyarlanır.
   useEffect(() => {
-    document.title = "Ceyhan Özel Ders — Uzman Eğitmenle Öğren, Hedefine Ulaş.";
+    document.title = "Adana Özel Ders - Uzman Eğitmenle Öğren, Hedefine Ulaş.";
   }, []);
-
-  if (token && isLoading) return <FullScreenSpinner />;
-  if (token && user) return <Navigate to={roleHome(user.role_id)} replace />;
 
   return (
     <div className="min-h-screen bg-white antialiased dark:bg-slate-900">
       <Navbar />
-      <ExamNav />
       <SearchHero />
+      <RecentlyViewed />
       <SubjectRows />
       <Footer />
     </div>
+  );
+}
+
+/* ─── recently viewed listings (under the category bar) ── */
+
+function RecentlyViewed() {
+  const items = useRecentlyViewed();
+  if (items.length === 0) return null;
+
+  return (
+    <section className="mx-auto max-w-6xl px-6 pt-6 pb-2">
+      <h2 className="mb-5 text-left text-xl font-bold tracking-tight text-slate-900 dark:text-white">
+        Son Görüntülenen İlanlar
+      </h2>
+      <HScroll className="gap-5 pb-2">
+        {items.map((tutor) => (
+          <div key={tutor.id} className="w-[230px] shrink-0 sm:w-[250px]">
+            <TutorCard tutor={tutor} />
+          </div>
+        ))}
+      </HScroll>
+    </section>
   );
 }
 
@@ -44,8 +69,8 @@ export function AnnouncementBanner() {
   return (
     <div className="relative bg-indigo-600 px-4 py-2.5 text-center text-xs font-semibold text-white sm:text-sm">
       <span>
-        🎓 YKS 2025 hazırlığına başla — uzman eğitmenlerle ilk dersin{" "}
-        <Link to="/student" className="underline underline-offset-2 hover:text-indigo-100">
+        🎓 YKS 2025 hazırlığına başla - uzman eğitmenlerle ilk dersin{" "}
+        <Link to={ROUTES.tutors} className="underline underline-offset-2 hover:text-indigo-100">
           hemen randevu al →
         </Link>
       </span>
@@ -65,100 +90,50 @@ export function AnnouncementBanner() {
 /* ─── navbar ─────────────────────────────────────────── */
 
 function Navbar() {
-  return (
-    <header className="sticky top-0 z-40 border-b border-slate-100 bg-white/80 backdrop-blur-md dark:border-slate-800 dark:bg-slate-900/80">
-      <div className="flex w-full items-center justify-between px-6 py-4">
-        <Link
-          to="/"
-          className="text-lg font-bold text-indigo-600 transition hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300"
-        >
-          Ceyhan Özel Ders
-        </Link>
-        <Link
-          to="/login"
-          className="rounded-xl bg-violet-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-violet-700 active:scale-95"
-        >
-          Giriş Yap
-        </Link>
-      </div>
-    </header>
-  );
+  const token = useAuthStore((s) => s.token);
+  const { data: user } = useCurrentUser();
+  const loggedIn = !!token && !!user;
+
+  // Giriş'liyken panel ekranının üst barını (nav ikonları + bildirim zili +
+  // hesap menüsü) aynen kullan; anonimken pazarlama navbar'ı (kayıt/giriş).
+  if (loggedIn) {
+    const navItems =
+      user.role_id === ROLE_IDS.TUTOR
+        ? TUTOR_NAV
+        : user.role_id === ROLE_IDS.CLIENT
+          ? STUDENT_NAV
+          : undefined;
+    return <DashboardHeader navItems={navItems} transparent />;
+  }
+
+  return <PublicNavbar />;
 }
 
-/* ─── exam nav ───────────────────────────────────────── */
+/* ─── snow effect ──────────────────────────────────────── */
 
-function ExamNav() {
-  const [open, setOpen] = useState<number | null>(null);
-  const rootRef = useRef<HTMLDivElement>(null);
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    if (open === null) return;
-    const onDoc = (e: MouseEvent) => {
-      if (rootRef.current && !rootRef.current.contains(e.target as Node))
-        setOpen(null);
-    };
-    document.addEventListener("mousedown", onDoc);
-    return () => document.removeEventListener("mousedown", onDoc);
-  }, [open]);
-
-  const pick = (subject: string) => {
-    setOpen(null);
-    navigate(`/kesfet?subject=${encodeURIComponent(subject)}`);
-  };
+function Snow() {
+  const particles = useMemo(() => Array.from({ length: 40 }).map(() => ({
+    left: `${Math.random() * 100}%`,
+    size: `${Math.random() * 5 + 3}px`,
+    duration: `${Math.random() * 10 + 10}s`,
+    delay: `-${Math.random() * 20}s`,
+  })), []);
 
   return (
-    <div
-      ref={rootRef}
-      className="relative bg-gradient-to-r from-indigo-700 to-violet-700"
-      onMouseLeave={() => setOpen(null)}
-    >
-      <div className="flex w-full items-center">
-        {EXAMS.map((exam, idx) => (
-          <div key={exam.label} className="relative">
-            <button
-              type="button"
-              onMouseEnter={() => setOpen(idx)}
-              onClick={() => setOpen((o) => (o === idx ? null : idx))}
-              className={`px-4 py-3 text-base font-bold transition ${
-                open === idx
-                  ? "bg-white/20 text-white"
-                  : "text-white/85 hover:bg-white/10 hover:text-white"
-              }`}
-            >
-              {exam.label}
-            </button>
-
-            {open === idx && (
-              <div className={`absolute top-full z-30 mt-1 w-max rounded-2xl bg-white p-4 shadow-2xl ring-1 ring-slate-200 ${idx >= EXAMS.length - 3 ? "right-0" : "left-0"}`}>
-                <div className="flex gap-6">
-                  {EXAMS[idx].columns.map((col, ci) => (
-                    <div key={col.title ?? ci} className="min-w-[130px]">
-                      {col.title && (
-                        <p className="mb-2 px-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
-                          {col.title}
-                        </p>
-                      )}
-                      <div className="flex flex-col gap-0.5">
-                        {col.items.map((it) => (
-                          <button
-                            key={it.label}
-                            type="button"
-                            onClick={() => pick(it.q)}
-                            className="rounded-lg px-2 py-1.5 text-left text-sm text-slate-600 transition hover:bg-indigo-50 hover:text-indigo-700"
-                          >
-                            {it.label}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
+    <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
+      {particles.map((p, i) => (
+        <div
+          key={i}
+          className="absolute rounded-full bg-indigo-500/60 animate-snow-custom dark:bg-indigo-300/40"
+          style={{
+            left: p.left,
+            width: p.size,
+            height: p.size,
+            animationDuration: p.duration,
+            animationDelay: p.delay,
+          }}
+        />
+      ))}
     </div>
   );
 }
@@ -171,21 +146,23 @@ function SearchHero() {
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
-    navigate(`/kesfet${q.trim() ? `?q=${encodeURIComponent(q.trim())}` : ""}`);
+    navigate(`${ROUTES.tutors}${q.trim() ? `?q=${encodeURIComponent(q.trim())}` : ""}`);
   };
 
   return (
-    <section className="relative overflow-hidden bg-[radial-gradient(ellipse_80%_60%_at_50%_-10%,rgba(139,92,246,0.10),transparent)] py-24 sm:py-32">
+    <section className="relative overflow-hidden bg-[radial-gradient(ellipse_80%_60%_at_50%_-10%,rgba(139,92,246,0.10),transparent)] pt-24 pb-12 sm:pt-32 sm:pb-16">
       <div
         aria-hidden
         className="pointer-events-none absolute -left-40 -top-40 h-[28rem] w-[28rem] rounded-full bg-indigo-100/40 blur-3xl"
       />
+      <Snow />
       <div
         aria-hidden
         className="pointer-events-none absolute -right-40 top-10 h-96 w-96 rounded-full bg-violet-100/40 blur-3xl"
       />
 
-      <div className="relative mx-auto max-w-3xl px-6 text-center">
+      {/* Increased max-w to 5xl so the carousel can be wider */}
+      <div className="relative mx-auto max-w-5xl px-6 text-center">
         <h1 className="text-4xl font-extrabold leading-tight tracking-tight text-slate-900 dark:text-white sm:text-6xl sm:leading-tight">
           Uzman Eğitmenle Öğren,{" "}
           <span className="bg-gradient-to-r from-indigo-600 to-violet-600 bg-clip-text text-transparent">
@@ -193,41 +170,29 @@ function SearchHero() {
           </span>
         </h1>
 
-        <p className="mx-auto mt-5 max-w-xl text-base leading-relaxed text-slate-500 dark:text-slate-400 sm:text-lg">
-          Sınav, ders ya da kişisel gelişim — alanında uzman öğretmenini bul,
-          ilk dersi dakikalar içinde planla.
-        </p>
-
-        {/* Search bar */}
-        <form onSubmit={submit} className="mt-10 flex h-14 overflow-hidden rounded-2xl shadow-lg shadow-indigo-100 ring-1 ring-slate-200 dark:shadow-none dark:ring-slate-700">
+        {/* Search bar is constrained to max-w-3xl, centered */}
+        <form onSubmit={submit} className="mx-auto mt-12 flex h-14 max-w-3xl overflow-hidden rounded-full shadow-lg shadow-indigo-100 ring-1 ring-slate-200 dark:shadow-none dark:ring-slate-700">
           <input
             type="text"
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Konu, sınav veya eğitmen ara… (ör. TYT Matematik)"
-            className="flex-1 bg-white px-5 text-sm text-slate-900 outline-none placeholder:text-slate-400 dark:bg-slate-800 dark:text-white dark:placeholder:text-slate-500"
+            className="flex-1 bg-white px-6 text-base sm:text-lg text-slate-900 outline-none placeholder:text-slate-400 dark:bg-slate-800 dark:text-white dark:placeholder:text-slate-500"
           />
           <button
             type="submit"
             aria-label="Ara"
-            className="flex w-14 shrink-0 items-center justify-center bg-gradient-to-r from-indigo-600 to-violet-600 text-white transition hover:from-indigo-700 hover:to-violet-700 active:scale-95"
+            className="flex w-20 sm:w-24 shrink-0 items-center justify-center bg-gradient-to-r from-indigo-600 to-violet-600 text-white transition hover:from-indigo-700 hover:to-violet-700 active:scale-95"
           >
-            <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2}>
+            <svg className="h-6 w-6 -translate-x-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0Z" />
             </svg>
           </button>
         </form>
 
-        {/* Trust row */}
-        <div className="mt-10 flex flex-wrap items-center justify-center gap-x-8 gap-y-3 text-xs font-medium text-slate-400 dark:text-slate-500">
-          {["Onaylı Eğitmenler", "Anlık Rezervasyon", "Güvenli Ödeme", "7/24 Destek"].map((t) => (
-            <span key={t} className="flex items-center gap-1.5">
-              <svg className="h-3.5 w-3.5 text-emerald-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
-              </svg>
-              {t}
-            </span>
-          ))}
+        {/* Categories directly under search bar, fills max-w-5xl naturally */}
+        <div className="mt-8">
+          <SubjectCarousel />
         </div>
       </div>
     </section>
@@ -264,6 +229,13 @@ function SubjectRows() {
 
   return (
     <div>
+      {/* Wave Transition (only before the first row) */}
+      <div className="-mb-1 w-full overflow-hidden rotate-180">
+        <svg className="w-[125%] -ml-[12.5%] text-indigo-950" height="120" viewBox="0 0 100 100" preserveAspectRatio="none">
+          <path d="M0,0 L100,0 C35,150 35,0 0,100z" fill="currentColor"></path>
+        </svg>
+      </div>
+
       {shown.map((exam, idx) => {
         const s = ROW_STYLES[idx % ROW_STYLES.length];
         const allItems = exam.columns.flatMap((c) => c.items);
@@ -281,7 +253,7 @@ function SubjectRows() {
                     {EXAM_DESCS[exam.label] ?? "Alanında uzman eğitmenlerle çalış, hedefine ulaş."}
                   </p>
                   <button
-                    onClick={() => navigate(`/kesfet?${examSubjectQuery(exam)}`)}
+                    onClick={() => navigate(`${ROUTES.tutors}?${examSubjectQuery(exam)}`)}
                     className={`mt-8 rounded-xl px-7 py-3 text-sm font-bold text-white shadow transition active:scale-95 ${s.btn}`}
                   >
                     Eğitmen Bul →
@@ -297,7 +269,7 @@ function SubjectRows() {
                     {allItems.map((it) => (
                       <button
                         key={it.label}
-                        onClick={() => navigate(`/kesfet?subject=${encodeURIComponent(it.q)}`)}
+                        onClick={() => navigate(`${ROUTES.tutors}?subject=${encodeURIComponent(it.q)}`)}
                         className={`rounded-lg px-3 py-1.5 text-sm font-medium ring-1 transition hover:opacity-80 ${s.card} ${s.text}`}
                       >
                         {it.label}
@@ -321,15 +293,16 @@ function Footer() {
   return (
     <footer className="border-t border-slate-100 bg-white py-10 dark:border-slate-800 dark:bg-slate-900">
       <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-6 sm:flex-row">
-        <Link to="/" className="text-base font-bold text-indigo-600 dark:text-indigo-400">
-          Ceyhan Özel Ders
+        <Link to="/" className="flex items-center gap-2 transition hover:opacity-90">
+          <img src="/logo.png" alt="Adana Özel Ders Logo" className="h-36 sm:h-40 w-auto object-contain max-w-none -my-14 sm:-my-16 -ml-4 sm:-ml-6 grayscale opacity-70 hover:grayscale-0 hover:opacity-100 transition" />
         </Link>
-        <p className="text-xs text-slate-400 dark:text-slate-500">
-          © {new Date().getFullYear()} Ceyhan Özel Ders. Tüm hakları saklıdır.
-        </p>
-        <div className="flex gap-4 text-xs font-medium text-slate-500 dark:text-slate-400">
-          <Link to="/login" className="transition hover:text-slate-900 dark:hover:text-white">Giriş Yap</Link>
-          <Link to="/register" className="transition hover:text-slate-900 dark:hover:text-white">Kayıt Ol</Link>
+        <div className="border-t border-slate-200 py-8 text-center text-sm text-slate-500 dark:border-slate-800 dark:text-slate-400">
+          <p>© {new Date().getFullYear()} Adana Özel Ders. Tüm hakları saklıdır.</p>
+          <div className="mt-4 flex justify-center gap-4">
+            <Link to="?modal=login" className="transition hover:text-slate-900 dark:hover:text-white">Giriş Yap</Link>
+            <Link to="?modal=register" className="transition hover:text-slate-900 dark:hover:text-white">Kayıt Ol</Link>
+            <Link to="/contact" className="transition hover:text-slate-900 dark:hover:text-white">İletişim</Link>
+          </div>
         </div>
       </div>
     </footer>

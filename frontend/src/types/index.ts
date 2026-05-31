@@ -55,6 +55,7 @@ export enum Gender {
 export interface Token {
   access_token: string;
   token_type: string;
+  refresh_token?: string | null;
 }
 
 export interface RegisterRequest {
@@ -77,6 +78,7 @@ export interface UserOut {
   username: string;
   full_name: string; // first_name + last_name (backend hybrid)
   is_active: boolean;
+  email_verified: boolean;
   role_id: number;
   avatar_url?: string | null;
   about?: string | null;
@@ -113,6 +115,9 @@ export interface Education {
   field_of_study?: string | null;
   start_year?: number | null;
   end_year?: number | null;
+  // Yalnız eğitmen eğitimlerinde dolu (diploma/belge).
+  document_url?: string | null;
+  document_name?: string | null;
 }
 
 export interface EducationCreate {
@@ -234,6 +239,7 @@ export interface TutorProfileUpdate {
 
 export interface TutorOut extends UserOut {
   status: TutorStatus;
+  slug: string; // backend computed: isim-soyisim-{id}
   headline?: string | null;
   bio?: string | null;
   hourly_rate?: string | null; // Decimal -> string
@@ -249,6 +255,7 @@ export interface TutorOut extends UserOut {
 
 export interface TutorSearchOut {
   id: number;
+  slug: string; // backend computed: isim-soyisim-{id}
   full_name: string;
   avatar_url?: string | null;
   headline?: string | null;
@@ -289,10 +296,12 @@ export interface BookingCreate {
   tutor_id: number;
   start_at: string;
   end_at: string;
-  price?: number | null;
+  // Fiyat gönderilmez; backend eğitmen ücreti × süre ile hesaplar.
   notes?: string | null;
   mode?: TeachingMode | null; // ONLINE | IN_PERSON
   location?: string | null;
+  location_lat?: number | null;
+  location_lng?: number | null;
 }
 
 export interface BookingResourceOut {
@@ -301,7 +310,11 @@ export interface BookingResourceOut {
   uploader_role: "CLIENT" | "TUTOR" | string;
   uploader_id: number;
   title: string;
+  kind: "link" | "file" | string;
   url: string;
+  file_name?: string | null;
+  content_type?: string | null;
+  size_bytes?: number | null;
   created_at: string;
 }
 
@@ -347,6 +360,77 @@ export interface BookingOut {
   resources: BookingResourceOut[];
   comments: BookingCommentOut[];
   private_notes: BookingPrivateNoteOut[];
+  payment?: Payment | null;
+}
+
+/* ============================ PAYMENT ============================ */
+
+export enum PaymentStatus {
+  PENDING = "PENDING", // tutor kabul etti; öğrencinin ödemesi bekleniyor
+  HELD = "HELD", // ödendi; tutar emanette (escrow)
+  RELEASED = "RELEASED", // ders tamamlandı; eğitmene aktarıldı
+  REFUNDED = "REFUNDED", // iptal; öğrenciye iade
+  FAILED = "FAILED", // ödeme başarısız
+}
+
+export interface Payment {
+  id: number;
+  booking_id: number;
+  amount: string; // Decimal -> string
+  commission_amount: string;
+  tutor_earning: string;
+  commission_rate: string;
+  currency: string;
+  status: PaymentStatus;
+  provider: string;
+  paid_at?: string | null;
+  released_at?: string | null;
+  refunded_at?: string | null;
+  created_at: string;
+  redirect_url?: string | null; // prod 3DS; fake'te null
+}
+
+export interface EarningsSummary {
+  released: string;
+  pending: string;
+}
+
+/* ============================ REPORT ============================ */
+
+export enum ReportReason {
+  SPAM = "SPAM",
+  HARASSMENT = "HARASSMENT",
+  INAPPROPRIATE = "INAPPROPRIATE",
+  CONTACT_INFO = "CONTACT_INFO",
+  SCAM = "SCAM",
+  OTHER = "OTHER",
+}
+
+export enum ReportStatus {
+  OPEN = "OPEN",
+  RESOLVED = "RESOLVED",
+  DISMISSED = "DISMISSED",
+}
+
+export interface ReportCreate {
+  target_type: string;
+  target_id: number;
+  reason: ReportReason;
+  description?: string | null;
+}
+
+export interface ReportOut {
+  id: number;
+  reporter_role: number;
+  reporter_id: number;
+  target_type: string;
+  target_id: number;
+  reason: ReportReason;
+  description?: string | null;
+  status: ReportStatus;
+  resolution?: string | null;
+  resolved_at?: string | null;
+  created_at: string;
 }
 
 /* ============================ REVIEW ============================ */

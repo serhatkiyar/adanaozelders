@@ -27,7 +27,7 @@ export function CancelModal({
       { id: bookingId, reason: reason.trim() },
       {
         onSuccess: () => {
-          toast.success("Rezervasyon iptal edildi.");
+          toast.success("Ders talebi iptal edildi.");
           onClose();
         },
         onError: (err) => toast.error(getErrorMessage(err, "İptal edilemedi.")),
@@ -39,7 +39,7 @@ export function CancelModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 px-4 backdrop-blur-sm">
       <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700">
         <h3 className="text-lg font-bold text-slate-900 dark:text-white">
-          Rezervasyonu İptal Et
+          Ders Talebini İptal Et
         </h3>
         <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
           {counterpartName

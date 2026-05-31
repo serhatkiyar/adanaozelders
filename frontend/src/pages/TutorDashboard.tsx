@@ -4,12 +4,13 @@ import { DashboardShell } from "@/components/DashboardShell";
 import { TUTOR_NAV } from "@/lib/nav";
 import { Avatar } from "@/components/Avatar";
 import { CancelModal } from "@/components/CancelModal";
-import { ProfileCompleteness } from "@/components/ProfileCompleteness";
 
 import { useMeetingStore } from "@/store/meetingStore";
 import { useBookingAction, useBookings } from "@/hooks/useBookings";
-import { useMyTutorProfile } from "@/hooks/useTutorProfile";
+import { useEarnings } from "@/hooks/usePayments";
+import { PaymentBadge } from "@/components/PaymentBadge";
 import { BookingStatus, type BookingOut } from "@/types";
+import { ROUTES } from "@/lib/routes";
 import { formatRange } from "@/lib/datetime";
 import { formatTRY, parseMoney } from "@/lib/money";
 import { BOOKING_STATUS_LABEL, BOOKING_STATUS_STYLE } from "@/lib/bookingStatus";
@@ -87,7 +88,7 @@ function BookingCard({ booking, onJoinMeeting }: { booking: BookingOut; onJoinMe
       }`}
     >
       <Link
-        to={`/tutor/students/${booking.client_id}`}
+        to={ROUTES.studentProfile(booking.client_id)}
         className="flex min-w-0 items-start gap-3 transition hover:opacity-80"
       >
         <Avatar name={clientName} avatar_url={booking.client_avatar_url} size="sm" />
@@ -109,7 +110,7 @@ function BookingCard({ booking, onJoinMeeting }: { booking: BookingOut; onJoinMe
 
       <div className="flex shrink-0 items-center gap-2">
         <Link
-          to={`/lesson/${booking.id}`}
+          to={ROUTES.lesson(booking.id)}
           className="text-xs font-semibold text-indigo-600 transition hover:text-indigo-700 dark:text-indigo-400"
         >
           Detay →
@@ -118,14 +119,14 @@ function BookingCard({ booking, onJoinMeeting }: { booking: BookingOut; onJoinMe
           <>
             <button
               disabled={busy}
-              onClick={() => run(accept, "Rezervasyon kabul edildi.")}
+              onClick={() => run(accept, "Ders talebi kabul edildi.")}
               className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {accept.isPending ? "…" : "Kabul Et"}
             </button>
             <button
               disabled={busy}
-              onClick={() => run(reject, "Rezervasyon reddedildi.")}
+              onClick={() => run(reject, "Ders talebi reddedildi.")}
               className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-red-600 shadow-sm transition hover:bg-red-50 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-600 dark:bg-slate-700 dark:hover:bg-red-900/20"
             >
               {reject.isPending ? "…" : "Reddet"}
@@ -172,6 +173,7 @@ function BookingCard({ booking, onJoinMeeting }: { booking: BookingOut; onJoinMe
             {BOOKING_STATUS_LABEL[booking.status]}
           </span>
         )}
+        {booking.payment && <PaymentBadge payment={booking.payment} />}
       </div>
 
       {showCancel && (
@@ -238,7 +240,7 @@ function BookingSection({
 
 export default function TutorDashboard() {
   const { data, isLoading, isError, error } = useBookings({ limit: 100 });
-  const { data: profile } = useMyTutorProfile();
+  const { data: earnings } = useEarnings();
   const { joinMeeting } = useMeetingStore();
 
   const groups = useMemo(() => {
@@ -261,7 +263,6 @@ export default function TutorDashboard() {
   return (
     <DashboardShell title="Eğitmen Paneli" navItems={TUTOR_NAV}>
       <div className="mx-auto max-w-3xl space-y-6 pb-12">
-        {profile && <ProfileCompleteness tutor={profile} />}
         {isLoading ? (
           <div className="space-y-3">
             <div className="grid grid-cols-3 gap-3">
@@ -276,7 +277,7 @@ export default function TutorDashboard() {
         ) : isError ? (
           <div className="flex items-center gap-3 rounded-2xl bg-red-50 px-5 py-4 text-sm text-red-700 ring-1 ring-red-100 dark:bg-red-500/10 dark:text-red-300 dark:ring-red-800/30">
             <span>⚠</span>
-            {getErrorMessage(error, "Rezervasyonlar yüklenemedi.")}
+            {getErrorMessage(error, "Ders talepleri yüklenemedi.")}
           </div>
         ) : (data ?? []).length === 0 ? (
           <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 py-20 text-center dark:border-slate-700">
@@ -298,6 +299,28 @@ export default function TutorDashboard() {
               <StatBox label="Onaylı" value={groups.accepted.length} tone="indigo" icon="✅" />
               <StatBox label="Tamamlanan" value={completedCount} tone="emerald" icon="🎓" />
             </div>
+
+            {/* Kazanç özeti (escrow) */}
+            {earnings && (
+              <div className="flex items-center justify-between rounded-2xl bg-gradient-to-br from-emerald-50 to-white px-5 py-4 ring-1 ring-emerald-100 dark:from-emerald-900/10 dark:to-slate-800 dark:ring-emerald-800/30">
+                <div>
+                  <p className="text-xs font-medium text-emerald-700 dark:text-emerald-300">
+                    Toplam kazancın (net)
+                  </p>
+                  <p className="text-2xl font-bold text-emerald-700 dark:text-emerald-300">
+                    {formatTRY(earnings.released)}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Emanette bekleyen
+                  </p>
+                  <p className="text-lg font-semibold text-slate-700 dark:text-slate-200">
+                    {formatTRY(earnings.pending)}
+                  </p>
+                </div>
+              </div>
+            )}
 
             {/* Alert banner for pending */}
             {groups.pending.length > 0 && (

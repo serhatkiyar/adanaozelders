@@ -47,7 +47,7 @@ export function RescheduleModal({ bookingId, onClose }: RescheduleModalProps) {
       },
       {
         onSuccess: () => {
-          toast.success("Rezervasyon yeni saate taşındı; eğitmen onayı bekliyor.");
+          toast.success("Ders talebi yeni saate taşındı; eğitmen onayı bekliyor.");
           onClose();
         },
         onError: (err) => {
@@ -69,7 +69,7 @@ export function RescheduleModal({ bookingId, onClose }: RescheduleModalProps) {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 px-4 backdrop-blur-sm">
       <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700">
         <h3 className="text-lg font-bold text-slate-900 dark:text-white">
-          Rezervasyonu Ertele
+          Ders Talebini Ertele
         </h3>
         <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
           Yeni saat eğitmenin onayına sunulur.

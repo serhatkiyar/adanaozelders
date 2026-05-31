@@ -27,3 +27,16 @@ export async function updateEducation(
 export async function deleteEducation(id: number): Promise<void> {
   await apiClient.delete(`/me/educations/${id}`);
 }
+
+export async function uploadEducationDocument(
+  id: number,
+  file: File
+): Promise<Education> {
+  const form = new FormData();
+  form.append("file", file);
+  const { data } = await apiClient.post<Education>(
+    `/me/educations/${id}/document`,
+    form
+  );
+  return data;
+}

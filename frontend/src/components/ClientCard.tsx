@@ -3,6 +3,7 @@ import { Avatar } from "@/components/Avatar";
 import { formatLastSeen } from "@/lib/datetime";
 import { ageFromBirthDate, GENDER_LABEL } from "@/lib/demographics";
 import { Gender, type ClientSearchOut } from "@/types";
+import { ROUTES } from "@/lib/routes";
 
 export function ClientCard({ client }: { client: ClientSearchOut }) {
   const age = ageFromBirthDate(client.birth_date);
@@ -16,7 +17,7 @@ export function ClientCard({ client }: { client: ClientSearchOut }) {
 
   return (
     <Link
-      to={`/tutor/students/${client.id}`}
+      to={ROUTES.studentProfile(client.id)}
       className="group flex h-full flex-col rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100 transition duration-200 hover:-translate-y-1 hover:shadow-lg hover:ring-indigo-200 dark:bg-slate-800 dark:ring-slate-700 dark:hover:ring-indigo-500/40"
     >
       <div className="flex items-start gap-3">

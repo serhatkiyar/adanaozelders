@@ -11,6 +11,7 @@ import {
   setBookingLocation,
   addBookingResource,
   deleteBookingResource,
+  uploadBookingResource,
   addBookingComment,
   deleteBookingComment,
   addBookingPrivateNote,
@@ -160,6 +161,18 @@ export function useDeleteBookingResource() {
   return useMutation({
     mutationFn: ({ id, resourceId }: { id: number; resourceId: number }) =>
       deleteBookingResource(id, resourceId),
+    onSuccess: (_, { id }) => {
+      qc.invalidateQueries({ queryKey: ["bookings", "detail", id] });
+      qc.invalidateQueries({ queryKey: ["bookings"] });
+    },
+  });
+}
+
+export function useUploadBookingResource() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, file }: { id: number; file: File }) =>
+      uploadBookingResource(id, file),
     onSuccess: (_, { id }) => {
       qc.invalidateQueries({ queryKey: ["bookings", "detail", id] });
       qc.invalidateQueries({ queryKey: ["bookings"] });
