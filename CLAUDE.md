@@ -29,7 +29,7 @@ cp .env.example .env          # VITE_API_BASE_URL=http://localhost:8000/api/v1
 npm run dev                   # http://localhost:5173
 ```
 
-Gerekli: PostgreSQL (pg_trgm ve btree_gist eklentileri aktif), Python 3.11+, Node 18+, Redis (presence + rate-limit), S3/MinIO (avatar).
+Gerekli: PostgreSQL (pg_trgm ve btree_gist eklentileri aktif), Python 3.11+, Node 18+, Redis (presence + rate-limit), S3/MinIO (avatar). E-posta için MailHog/SMTP **opsiyoneldir** — `EMAIL_PROVIDER=console` ile (varsayılan) dış servis gerekmez, mailler loglanır.
 
 ### Docker ile (tek komut)
 
@@ -37,7 +37,7 @@ Gerekli: PostgreSQL (pg_trgm ve btree_gist eklentileri aktif), Python 3.11+, Nod
 docker-compose up --build   # postgres + redis + minio + backend(8000) + frontend(5173)
 ```
 
-`docker-compose.yml` Postgres/Redis/MinIO'yu (avatar bucket init dahil) ayağa kaldırır; backend açılışta şemayı hazırlar. CI: `.github/workflows/ci.yml` (backend pytest + frontend build).
+`docker-compose.yml` Postgres/Redis/MinIO'yu (avatar bucket init dahil) + **MailHog**'u (SMTP yakalayıcı; web UI `http://localhost:8025`) ayağa kaldırır; backend açılışta şemayı hazırlar. CI: `.github/workflows/ci.yml` (backend pytest + frontend **Vitest** + build).
 
 ## Veritabanı Şeması (Özet)
 
@@ -64,11 +64,13 @@ audit_logs (admin aksiyon denetim kaydı)   notifications ((user_id, role_id))
 ## İş Kuralları ve Temel Özellikler
 
 - **Tutor Onboarding FSM**: DRAFT → PENDING_APPROVAL → APPROVED/REJECTED/SUSPENDED (Admin onayı gerekir)
-- **Booking FSM**: PENDING → ACCEPTED/REJECTED/CANCELLED; ACCEPTED → COMPLETED/CANCELLED. Geçmiş ACCEPTED dersler arka planda otomatik COMPLETED'a geçer.
-- **Ders İşbirliği**: Onaylı derste yorumlar, kaynaklar (link), buluşma konumu ve özel notlar (yalnız sahibine görünür); ONLINE derste minimize edilebilir gömülü Jitsi penceresi.
+- **Booking FSM**: PENDING → ACCEPTED/REJECTED/CANCELLED; ACCEPTED → COMPLETED/CANCELLED. Geçmiş ACCEPTED dersler arka planda otomatik COMPLETED'a geçer. **Ücret sunucuda hesaplanır** (eğitmen saatlik ücreti × süre); istemciden alınmaz, reschedule'da yeniden hesaplanır.
+- **Ders İşbirliği**: Onaylı derste yorumlar, kaynaklar (link **veya yüklenen dosya** — PDF/görsel/doküman, MinIO'ya), buluşma konumu ve özel notlar (yalnız sahibine görünür); ONLINE derste minimize edilebilir gömülü Jitsi penceresi.
 - **Arama ve Sıralama**: pg_trgm trigram similarity + GIN index ile full-text search; Bayesian average ile sıralama. **Coğrafi arama**: lat/lng/radius_km ile Haversine mesafe filtresi ("yakınımdaki eğitmenler").
 - **Mesajlaşma (Gated)**: Sadece aktif/onaylanmış rezervasyonu olan eğitmen ve öğrenci mesajlaşabilir. `mask_contact_info` ile anti-disintermediation; aynı maske ders yorumları ve kaynak başlıklarına da uygulanır.
-- **Yetkilendirme & Güvenlik**: JWT `role_id` (1=ADMIN, 2=TUTOR, 3=CLIENT) ile RBAC. Login/register IP rate-limit; `/auth/logout` ile sunucu tarafı token iptali (Redis denylist). Admin kritik aksiyonları `audit_logs`'a yazılır.
+- **Yetkilendirme & Güvenlik**: JWT `role_id` (1=ADMIN, 2=TUTOR, 3=CLIENT) ile RBAC. Login/register/email **IP** rate-limit; booking/mesaj/qa/demand/review/ödeme yazma uçlarında **kullanıcı bazlı** rate-limit (Redis fixed-window, fail-open); `/auth/logout` ile sunucu tarafı token iptali (Redis denylist). Kısa ömürlü access token, **DB-tabanlı rotasyonlu refresh token** ile `/auth/refresh` üzerinden sessizce yenilenir (frontend axios interceptor); logout her ikisini de iptal eder. Admin kritik aksiyonları `audit_logs`'a yazılır.
+- **E-posta Doğrulama & Self-Service Şifre Sıfırlama**: Kayıtta doğrulama maili gönderilir; `email_verified` durumu panelde banner ile gösterilir (login bloklanmaz — soft enforcement). Şifre sıfırlama token tabanlıdır (hesap enumeration'ına karşı sabit yanıt). Sağlayıcıdan bağımsız `core/mail` katmanı: geliştirmede console/MailHog, üretimde gerçek SMTP — yalnızca `.env` değişir. Tokenlar DB'de **hash'li**, tek kullanımlık, süre sınırlı (`verification_tokens`).
+- **Ödeme (Escrow / Emanet)**: Sağlayıcıdan bağımsız `core/payments` katmanı (geliştirmede `FakePaymentProvider` anında başarı — dış hesap gerekmez; üretimde iyzico, yalnız `.env` değişir). Akış: tutor accept → ödeme `PENDING` → öğrenci öder → `HELD` (emanet) → ders COMPLETED → komisyon (`PLATFORM_COMMISSION_RATE`, varsayılan %10) düşülüp eğitmene `RELEASED`; iptalde `REFUNDED`. Tutar sunucuda hesaplanan `booking.price`'tan gelir; eğitmen kazancı ve platform komisyonu `payments` tablosunda tutulur.
 - **QA Kota**: Tamamlanan ders başına öğrencinin 3 soru hakkı vardır (7 günlük pencere içinde). Atomik güncellemelerle race condition önlenir.
 
 ## Roller
