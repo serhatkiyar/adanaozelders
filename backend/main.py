@@ -14,6 +14,7 @@ from core.database import AsyncSessionLocal, engine
 from core.exceptions import register_exception_handlers
 from core import migrations, seed
 from core import presence
+from core import observability
 from services import booking_service
 
 logger = logging.getLogger(__name__)
@@ -51,6 +52,7 @@ async def lifespan(app: FastAPI):
         async with AsyncSessionLocal() as session:
             await seed.seed_roles(session)
             await seed.seed_admin(session)
+            await seed.seed_tutors(session)
             await session.commit()
     task1 = asyncio.create_task(_reminder_loop())
     task2 = asyncio.create_task(_presence_flusher())
@@ -76,6 +78,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Logging + Sentry (opsiyonel) + request-id middleware (en dışta, ilk çalışır).
+observability.install(app)
 
 register_exception_handlers(app)
 app.include_router(api_router, prefix=settings.API_V1_PREFIX)

@@ -8,11 +8,19 @@ from sqlalchemy import ForeignKey, Index, Integer, Numeric, String, Text, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from core.database import Base
-from models.mixins import LastSeenMixin, NameMixin, SoftDeleteMixin, TimestampMixin
+from models.mixins import (
+    EmailVerificationMixin,
+    LastSeenMixin,
+    NameMixin,
+    SoftDeleteMixin,
+    TimestampMixin,
+)
 from models.tutor import Gender
 
 
-class Client(Base, NameMixin, TimestampMixin, SoftDeleteMixin, LastSeenMixin):
+class Client(
+    Base, NameMixin, TimestampMixin, SoftDeleteMixin, LastSeenMixin, EmailVerificationMixin
+):
     __tablename__ = "clients"
 
     id: Mapped[int] = mapped_column(primary_key=True)

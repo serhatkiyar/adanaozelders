@@ -13,7 +13,10 @@ from models.demand import Demand, DemandStatus
 from models.exam import PracticeExam, PracticeExamSubject
 from models.messaging import Conversation, Message
 from models.notification import Notification
+from models.payment import Payment, PaymentStatus
 from models.qa import QAMessage, QAStatus, QAThread
+from models.refresh_token import RefreshToken
+from models.report import Report, ReportReason, ReportStatus
 from models.review import Review
 from models.role import Role, RoleType
 from models.tutor import (
@@ -23,6 +26,7 @@ from models.tutor import (
     TutorStatus,
     TutorSubject,
 )
+from models.verification_token import TokenPurpose, VerificationToken
 
 for _extension in ("btree_gist", "pg_trgm"):
     event.listen(
@@ -48,17 +52,25 @@ __all__ = [
     "DemandStatus",
     "Message",
     "Notification",
+    "Payment",
+    "PaymentStatus",
     "PracticeExam",
     "PracticeExamSubject",
     "QAMessage",
     "QAStatus",
     "QAThread",
+    "RefreshToken",
+    "Report",
+    "ReportReason",
+    "ReportStatus",
     "Review",
     "Role",
     "RoleType",
+    "TokenPurpose",
     "Tutor",
     "TutorAvailability",
     "TutorEducation",
     "TutorStatus",
     "TutorSubject",
+    "VerificationToken",
 ]

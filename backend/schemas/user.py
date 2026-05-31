@@ -20,6 +20,7 @@ class UserOut(BaseModel):
     username: str
     full_name: str  # first_name + last_name (model hybrid)
     is_active: bool
+    email_verified: bool = False
     role_id: int
     about: str | None = None
     avatar_url: str | None = None

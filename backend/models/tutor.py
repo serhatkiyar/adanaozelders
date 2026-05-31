@@ -20,7 +20,13 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.schema import Computed
 
 from core.database import Base
-from models.mixins import LastSeenMixin, NameMixin, SoftDeleteMixin, TimestampMixin
+from models.mixins import (
+    EmailVerificationMixin,
+    LastSeenMixin,
+    NameMixin,
+    SoftDeleteMixin,
+    TimestampMixin,
+)
 
 
 class TutorStatus(str, enum.Enum):
@@ -37,7 +43,9 @@ class Gender(str, enum.Enum):
     UNSPECIFIED = "UNSPECIFIED"
 
 
-class Tutor(Base, NameMixin, TimestampMixin, SoftDeleteMixin, LastSeenMixin):
+class Tutor(
+    Base, NameMixin, TimestampMixin, SoftDeleteMixin, LastSeenMixin, EmailVerificationMixin
+):
     __tablename__ = "tutors"
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -135,6 +143,10 @@ class TutorEducation(Base, TimestampMixin, SoftDeleteMixin):
     field_of_study: Mapped[str | None] = mapped_column(String(150), nullable=True)
     start_year: Mapped[int | None] = mapped_column(Integer, nullable=True)
     end_year: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # Diploma/belge kanıtı (PDF/görsel). Eğitmen onaya gönderirken en az bir
+    # eğitimde bu zorunludur (bkz. tutor_service.submit_for_approval).
+    document_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    document_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
     tutor: Mapped["Tutor"] = relationship(back_populates="educations")
 

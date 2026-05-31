@@ -39,29 +39,43 @@ def _client_ip(request: Request) -> str:
     return request.client.host if request.client else "unknown"
 
 
+async def enforce(*, bucket: str, limit: int, window_seconds: int) -> None:
+    """Tek bir bucket için fixed-window sayaç kontrolü. Limit aşılırsa 429.
+
+    Redis erişilemezse fail-open (sessizce geçer). IP ve kullanıcı bazlı
+    limiter'lar (rate_limit / user_rate_limit) bunu paylaşır.
+    """
+    r = _redis()
+    if r is None:
+        return  # fail-open
+    try:
+        current = await r.incr(bucket)
+        if current == 1:
+            await r.expire(bucket, window_seconds)
+        if current > limit:
+            ttl = await r.ttl(bucket)
+            retry = max(ttl, 1)
+            raise HTTPException(
+                status.HTTP_429_TOO_MANY_REQUESTS,
+                f"Çok fazla istek. Lütfen {retry} saniye sonra tekrar deneyin.",
+                headers={"Retry-After": str(retry)},
+            )
+    except HTTPException:
+        raise
+    except Exception:
+        # Redis hatası akışı bozmasın; ama iz bırak.
+        logger.warning("rate limit check failed for %s", bucket, exc_info=True)
+        return
+
+
 def rate_limit(*, key: str, limit: int, window_seconds: int):
+    """IP bazlı limiter (auth uçları: login/register/email)."""
+
     async def dependency(request: Request) -> None:
-        r = _redis()
-        if r is None:
-            return  # fail-open
-        bucket = f"rl:{key}:{_client_ip(request)}"
-        try:
-            current = await r.incr(bucket)
-            if current == 1:
-                await r.expire(bucket, window_seconds)
-            if current > limit:
-                ttl = await r.ttl(bucket)
-                retry = max(ttl, 1)
-                raise HTTPException(
-                    status.HTTP_429_TOO_MANY_REQUESTS,
-                    f"Çok fazla deneme. Lütfen {retry} saniye sonra tekrar deneyin.",
-                    headers={"Retry-After": str(retry)},
-                )
-        except HTTPException:
-            raise
-        except Exception:
-            # Redis hatası akışı bozmasın; ama iz bırak.
-            logger.warning("rate limit check failed for %s", bucket, exc_info=True)
-            return
+        await enforce(
+            bucket=f"rl:{key}:{_client_ip(request)}",
+            limit=limit,
+            window_seconds=window_seconds,
+        )
 
     return dependency

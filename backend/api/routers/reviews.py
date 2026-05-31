@@ -3,7 +3,13 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.deps import CurrentUser, get_current_active_user, require_roles
+from api.deps import (
+    CurrentUser,
+    get_current_active_user,
+    require_roles,
+    user_rate_limit,
+)
+from core.config import settings
 from core.database import get_db
 from models.client import Client
 from models.review import Review
@@ -13,6 +19,12 @@ from schemas.review import ReviewCreate, ReviewOut, ReviewUpdate, TutorReply
 from services import review_service
 
 router = APIRouter(prefix="/reviews", tags=["reviews"])
+
+_create_limit = user_rate_limit(
+    key="review_create",
+    limit=settings.RATE_LIMIT_REVIEW,
+    window_seconds=settings.RATE_LIMIT_WINDOW_SECONDS,
+)
 
 
 async def _get_review_or_404(db: AsyncSession, review_id: int) -> Review:
@@ -27,7 +39,12 @@ def _assert_owner(review: Review, client: Client) -> None:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Not your review")
 
 
-@router.post("", response_model=ReviewOut, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "",
+    response_model=ReviewOut,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(_create_limit)],
+)
 async def create_review(
     payload: ReviewCreate,
     client: Client = Depends(require_roles(RoleType.CLIENT)),
@@ -41,7 +58,6 @@ async def list_reviews(
     tutor_id: int | None = Query(default=None),
     limit: int = Query(default=20, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
-    _user: CurrentUser = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
     return await review_service.list_reviews(

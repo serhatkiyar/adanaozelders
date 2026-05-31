@@ -4,7 +4,7 @@ from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from models.notification import Notification
-from core.ws_manager import manager
+from core import ws_outbox
 
 
 async def notify(
@@ -22,10 +22,13 @@ async def notify(
     )
     await db.flush()
 
-    await manager.send_personal_message(
+    # Commit sonrası gönderilir (bkz. core/ws_outbox) — böylece alıcı refetch
+    # ettiğinde bildirim satırı DB'de hazır olur.
+    ws_outbox.enqueue(
+        db,
         {"type": "NEW_NOTIFICATION", "data": {"message": message, "link": link}},
-        user_id,
-        role_id
+        user_id=user_id,
+        role_id=role_id,
     )
 
 

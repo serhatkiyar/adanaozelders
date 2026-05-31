@@ -1,9 +1,16 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.deps import CurrentUser, get_current_active_user, require_roles
+from api.deps import (
+    CurrentUser,
+    get_current_active_user,
+    require_roles,
+    user_rate_limit,
+)
+from core import storage
+from core.config import settings
 from core.database import get_db
 from models.booking import Booking, BookingStatus
 from models.client import Client
@@ -23,6 +30,17 @@ from schemas.booking import (
 from services import booking_service
 
 router = APIRouter(prefix="/bookings", tags=["bookings"])
+
+_create_limit = user_rate_limit(
+    key="booking_create",
+    limit=settings.RATE_LIMIT_BOOKING,
+    window_seconds=settings.RATE_LIMIT_WINDOW_SECONDS,
+)
+_upload_limit = user_rate_limit(
+    key="resource_upload",
+    limit=settings.RATE_LIMIT_BOOKING,
+    window_seconds=settings.RATE_LIMIT_WINDOW_SECONDS,
+)
 
 
 async def _get_booking_or_404(
@@ -48,7 +66,12 @@ def _assert_party(booking: Booking, user: CurrentUser) -> None:
     raise HTTPException(status.HTTP_403_FORBIDDEN, "Not your booking")
 
 
-@router.post("", response_model=BookingOut, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "",
+    response_model=BookingOut,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(_create_limit)],
+)
 async def create_booking(
     payload: BookingCreate,
     client: Client = Depends(require_roles(RoleType.CLIENT)),
@@ -186,6 +209,46 @@ async def delete_booking_resource(
     _assert_party(booking, user)
     return await booking_service.delete_resource(
         db, booking, actor=user, resource_id=resource_id
+    )
+
+
+@router.post(
+    "/{booking_id}/resources/upload",
+    response_model=BookingOut,
+    dependencies=[Depends(_upload_limit)],
+)
+async def upload_booking_resource(
+    booking_id: int,
+    file: UploadFile = File(...),
+    user: CurrentUser = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    booking = await _get_booking_or_404(db, booking_id, user)
+    _assert_party(booking, user)
+    if not storage.is_allowed_resource(file.filename):
+        raise HTTPException(
+            status.HTTP_415_UNSUPPORTED_MEDIA_TYPE, "Desteklenmeyen dosya türü"
+        )
+    data = await file.read()
+    if not data:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Boş dosya")
+    if len(data) > settings.MAX_RESOURCE_SIZE_BYTES:
+        mb = settings.MAX_RESOURCE_SIZE_BYTES // (1024 * 1024)
+        raise HTTPException(
+            status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            f"Dosya çok büyük (en fazla {mb} MB)",
+        )
+    url = await storage.upload_file(
+        data, original_name=file.filename, content_type=file.content_type
+    )
+    return await booking_service.add_uploaded_resource(
+        db,
+        booking,
+        actor=user,
+        url=url,
+        file_name=file.filename or "dosya",
+        content_type=file.content_type,
+        size_bytes=len(data),
     )
 
 

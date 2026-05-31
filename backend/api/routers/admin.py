@@ -36,7 +36,9 @@ class PasswordResetIn(BaseModel):
 class PasswordResetOut(BaseModel):
     temporary_password: str
 
-from services import admin_service, audit_service, tutor_service
+from models.report import ReportStatus
+from schemas.report import ReportCountOut, ReportOut, ReportResolve
+from services import admin_service, audit_service, report_service, tutor_service
 
 router = APIRouter(
     prefix="/admin",
@@ -241,3 +243,48 @@ async def reset_user_password(
         target_id=payload.user_id,
     )
     return PasswordResetOut(temporary_password=password)
+
+
+# ── Şikayet moderasyonu ──────────────────────────────────────────────
+
+
+@router.get("/reports", response_model=list[ReportOut])
+async def list_reports(
+    status_filter: ReportStatus | None = Query(default=None, alias="status"),
+    limit: int = Query(default=50, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+    db: AsyncSession = Depends(get_db),
+):
+    return await report_service.list_for_admin(
+        db, status_filter=status_filter, limit=limit, offset=offset
+    )
+
+
+@router.get("/reports/count", response_model=ReportCountOut)
+async def open_report_count(db: AsyncSession = Depends(get_db)):
+    return ReportCountOut(open=await report_service.count_open(db))
+
+
+@router.post("/reports/{report_id}/resolve", response_model=ReportOut)
+async def resolve_report(
+    report_id: int,
+    payload: ReportResolve,
+    admin: Admin = Depends(_current_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    report = await report_service.resolve(
+        db,
+        report_id=report_id,
+        admin=admin,
+        status_value=payload.status,
+        resolution=payload.resolution,
+    )
+    await audit_service.record(
+        db,
+        actor=admin,
+        action=f"report.{payload.status.value.lower()}",
+        target_type="report",
+        target_id=report_id,
+        details=payload.resolution,
+    )
+    return report

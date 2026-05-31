@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+import re
 from decimal import Decimal
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import require_roles
@@ -102,9 +103,14 @@ async def activate_my_listing(
 
 # Dinamik path; statik /me ve /search rotalarından SONRA tanımlanmalı.
 # Herkese açık (login gerekmez) — kayıt öncesi keşif. Rezervasyon/mesaj yine login ister.
+# Hem sayısal id ("42") hem de SEO slug'ı ("ahmet-yilmaz-42") kabul eder; her iki
+# durumda da gerçek eğitmen sondaki id'den çözülür.
 @router.get("/{tutor_id}", response_model=TutorSearchOut)
 async def get_tutor(
-    tutor_id: int,
+    tutor_id: str,
     db: AsyncSession = Depends(get_db),
 ):
-    return await search_service.get_tutor_public(db, tutor_id)
+    match = re.search(r"(\d+)$", tutor_id)
+    if not match:
+        raise HTTPException(status_code=404, detail="Eğitmen bulunamadı.")
+    return await search_service.get_tutor_public(db, int(match.group(1)))

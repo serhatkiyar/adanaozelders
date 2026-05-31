@@ -41,3 +41,6 @@ class EducationOut(BaseModel):
     field_of_study: str | None = None
     start_year: int | None = None
     end_year: int | None = None
+    # Yalnız eğitmen eğitimlerinde dolu (diploma/belge). Client'ta her zaman None.
+    document_url: str | None = None
+    document_name: str | None = None

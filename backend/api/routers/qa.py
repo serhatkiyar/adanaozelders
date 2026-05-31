@@ -3,7 +3,13 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.deps import CurrentUser, get_current_active_user, require_roles
+from api.deps import (
+    CurrentUser,
+    get_current_active_user,
+    require_roles,
+    user_rate_limit,
+)
+from core.config import settings
 from core.database import get_db
 from models.client import Client
 from models.qa import QAStatus, QAThread
@@ -19,6 +25,12 @@ from schemas.qa import (
 from services import qa_service
 
 router = APIRouter(prefix="/qa", tags=["qa"])
+
+_qa_limit = user_rate_limit(
+    key="qa_write",
+    limit=settings.RATE_LIMIT_QA,
+    window_seconds=settings.RATE_LIMIT_WINDOW_SECONDS,
+)
 
 
 async def _get_thread_or_404(db: AsyncSession, thread_id: int) -> QAThread:
@@ -36,7 +48,12 @@ def _assert_party(thread: QAThread, user: CurrentUser) -> None:
     raise HTTPException(status.HTTP_403_FORBIDDEN, "Not your thread")
 
 
-@router.post("", response_model=QAThreadOut, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "",
+    response_model=QAThreadOut,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(_qa_limit)],
+)
 async def ask_question(
     payload: QAThreadCreate,
     client: Client = Depends(require_roles(RoleType.CLIENT)),
@@ -82,7 +99,11 @@ async def get_thread(
     return thread
 
 
-@router.post("/{thread_id}/messages", response_model=QAThreadOut)
+@router.post(
+    "/{thread_id}/messages",
+    response_model=QAThreadOut,
+    dependencies=[Depends(_qa_limit)],
+)
 async def post_message(
     thread_id: int,
     payload: QAMessageCreate,

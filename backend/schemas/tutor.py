@@ -4,8 +4,9 @@ import datetime
 import enum
 from decimal import Decimal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, computed_field, model_validator
 
+from core.slug import tutor_slug
 from models.tutor import Gender, TutorStatus
 from schemas.education import EducationOut
 from schemas.user import UserOut
@@ -75,6 +76,12 @@ class TutorOut(UserOut):
     subjects: list[str] = []
     availability: list[AvailabilityOut] = []
 
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def slug(self) -> str:
+        """Kanonik SEO slug: ``isim-soyisim-{id}``."""
+        return tutor_slug(self.id, self.full_name)
+
 
 class TutorSearchOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -100,3 +107,9 @@ class TutorSearchOut(BaseModel):
     subjects: list[str] = []
     availability: list[AvailabilityOut] = []
     educations: list[EducationOut] = []
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def slug(self) -> str:
+        """Kanonik SEO slug: ``isim-soyisim-{id}``."""
+        return tutor_slug(self.id, self.full_name)

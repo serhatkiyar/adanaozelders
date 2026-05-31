@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import datetime
 import secrets
+from decimal import Decimal, ROUND_HALF_UP
 
 from fastapi import HTTPException, status
 from sqlalchemy import func, select
@@ -10,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.config import settings
 from core.moderation import mask_contact_info
+from core import storage
 from models.booking import Booking, BookingStatus
 from models.client import Client
 from models.review import Review
@@ -19,10 +21,23 @@ from models.booking_resource import BookingResource
 from models.booking_comment import BookingComment
 from models.booking_private_note import BookingPrivateNote
 from schemas.booking import BookingCreate, BookingResourceCreate, BookingCommentCreate, BookingLocationUpdate, BookingPrivateNoteCreate
-from services import notification_service
-from core.ws_manager import manager
+from services import notification_service, payment_service
+from core import ws_outbox
 
 CurrentUser = "Admin | Tutor | Client"
+
+
+def _notify_booking_update(db: AsyncSession, booking: Booking) -> None:
+    """Rezervasyon durumu değiştiğinde her iki tarafın (eğitmen + öğrenci)
+    rezervasyon listesi/detayı sayfa yenilemeden canlı tazelensin diye WS olayı
+    kuyruğa alır. Commit sonrası gönderilir (bkz. core/ws_outbox)."""
+    payload = {"type": "BOOKING_UPDATE", "booking_id": booking.id}
+    ws_outbox.enqueue(
+        db, payload, user_id=booking.tutor_id, role_id=ROLE_IDS[RoleType.TUTOR]
+    )
+    ws_outbox.enqueue(
+        db, payload, user_id=booking.client_id, role_id=ROLE_IDS[RoleType.CLIENT]
+    )
 
 
 def _filter_private_notes(booking: Booking, *, role_id: int, user_id: int) -> None:
@@ -89,6 +104,25 @@ async def _assert_within_availability(
         )
 
 
+def _compute_price(
+    tutor: Tutor,
+    start_at: datetime.datetime,
+    end_at: datetime.datetime,
+) -> Decimal | None:
+    """Ders ücretini SUNUCUDA hesaplar: eğitmen saatlik ücreti × süre (saat).
+
+    Fiyat asla istemciden alınmaz (manipülasyon önlenir). Eğitmen ücreti
+    tanımlamamışsa None döner. 2 ondalığa yuvarlanır.
+    """
+    if tutor.hourly_rate is None:
+        return None
+    delta = end_at - start_at
+    seconds = Decimal(delta.days * 86400 + delta.seconds)
+    hours = seconds / Decimal(3600)
+    rate = Decimal(str(tutor.hourly_rate))
+    return (rate * hours).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+
 async def create_booking(
     db: AsyncSession, client: Client, data: BookingCreate
 ) -> Booking:
@@ -127,10 +161,12 @@ async def create_booking(
         tutor_id=data.tutor_id,
         start_at=data.start_at,
         end_at=data.end_at,
-        price=data.price,
+        price=_compute_price(tutor, data.start_at, data.end_at),
         notes=data.notes,
         mode=mode,
         location=data.location,
+        location_lat=data.location_lat,
+        location_lng=data.location_lng,
     )
     db.add(booking)
     await db.flush()  # GiST exclusion violation surfaces here -> IntegrityError -> 409
@@ -142,7 +178,8 @@ async def create_booking(
         message=f"{client.full_name} yeni bir ders talebi gönderdi.",
         link="/tutor",
     )
-    return booking
+    _notify_booking_update(db, booking)
+    return await get_booking(db, booking.id, viewer=client)
 
 
 async def count_completed(db: AsyncSession, *, role_id: int, user_id: int) -> int:
@@ -269,6 +306,9 @@ async def accept(db: AsyncSession, booking: Booking) -> Booking:
         message="Rezervasyon talebin kabul edildi.",
         link="/student/bookings",
     )
+    # Escrow ödeme kaydını oluştur (PENDING); öğrenci ödemeye yönlendirilir.
+    await payment_service.create_for_booking(db, booking)
+    _notify_booking_update(db, booking)
     return booking
 
 
@@ -282,6 +322,7 @@ async def reject(db: AsyncSession, booking: Booking) -> Booking:
         message="Rezervasyon talebin reddedildi.",
         link="/student/bookings",
     )
+    _notify_booking_update(db, booking)
     return booking
 
 
@@ -295,6 +336,9 @@ async def complete(db: AsyncSession, booking: Booking) -> Booking:
         message="Dersin tamamlandı. Değerlendirme yapabilir ve eğitmene soru sorabilirsin.",
         link="/student/bookings",
     )
+    # Emanetteki ödemeyi (varsa) eğitmene serbest bırak.
+    await payment_service.release(db, booking)
+    _notify_booking_update(db, booking)
     return booking
 
 
@@ -317,6 +361,10 @@ async def reschedule(
     await _assert_within_availability(db, booking.tutor_id, start_at, end_at)
     booking.start_at = start_at
     booking.end_at = end_at
+    # Süre değişmiş olabilir; ücreti güncel saatlik ücretle yeniden hesapla.
+    tutor = await db.get(Tutor, booking.tutor_id)
+    if tutor is not None:
+        booking.price = _compute_price(tutor, start_at, end_at)
     # Yeni saat eğitmenin yeniden onayına sunulur; oda/hatırlatma sıfırlanır.
     booking.status = BookingStatus.PENDING
     booking.meeting_room = None
@@ -329,6 +377,7 @@ async def reschedule(
         message="Bir rezervasyon yeni bir saate taşındı ve onayını bekliyor.",
         link="/tutor",
     )
+    _notify_booking_update(db, booking)
     return booking
 
 
@@ -354,6 +403,7 @@ async def set_location(
         message="Yüzyüze ders için buluşma yeri güncellendi.",
         link=link,
     )
+    _notify_booking_update(db, booking)
     return booking
 
 
@@ -415,6 +465,9 @@ async def auto_complete_past_bookings(db: AsyncSession) -> int:
             message="Dersin tamamlandı. Değerlendirme yapabilir ve eğitmene soru sorabilirsin.",
             link="/student/bookings",
         )
+        # Emanetteki ödemeyi de eğitmene serbest bırak (varsa).
+        await payment_service.release(db, booking)
+        _notify_booking_update(db, booking)
     return len(rows)
 
 
@@ -453,6 +506,9 @@ async def cancel(
         message=message,
         link=link,
     )
+    # Emanette ödeme varsa öğrenciye iade et (yoksa no-op).
+    await payment_service.refund(db, booking)
+    _notify_booking_update(db, booking)
     return booking
 
 
@@ -491,8 +547,7 @@ async def add_resource(
         message=f"Ders için yeni bir kaynak paylaşıldı: {data.title}",
         link=link,
     )
-    await db.refresh(booking, ["resources"])
-    return booking
+    return await get_booking(db, booking.id, viewer=actor)
 
 
 async def delete_resource(
@@ -509,11 +564,55 @@ async def delete_resource(
     actor_role_name = role_name(actor.role_id)
     if resource.uploader_id != actor.id or resource.uploader_role != actor_role_name:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Not your resource")
-    
+
+    # Yüklenmiş dosyaysa S3/MinIO objesini de sil (best-effort).
+    if getattr(resource, "kind", "link") == "file" and resource.url:
+        await storage.delete_file(resource.url)
     await db.delete(resource)
     await db.flush()
-    await db.refresh(booking, ["resources"])
-    return booking
+    return await get_booking(db, booking.id, viewer=actor)
+
+
+async def add_uploaded_resource(
+    db: AsyncSession,
+    booking: Booking,
+    actor: "Client | Tutor",
+    *,
+    url: str,
+    file_name: str,
+    content_type: str | None,
+    size_bytes: int,
+) -> Booking:
+    """Yüklenmiş bir dosyayı ders kaynağı olarak kaydeder (kind='file')."""
+    resource = BookingResource(
+        booking_id=booking.id,
+        uploader_role=role_name(actor.role_id),
+        uploader_id=actor.id,
+        title=mask_contact_info(file_name),
+        kind="file",
+        url=url,
+        file_name=file_name,
+        content_type=content_type,
+        size_bytes=size_bytes,
+    )
+    db.add(resource)
+    await db.flush()
+    if actor.role_id == ROLE_IDS[RoleType.CLIENT]:
+        recipient_id, recipient_role, link = (
+            booking.tutor_id, ROLE_IDS[RoleType.TUTOR], "/tutor",
+        )
+    else:
+        recipient_id, recipient_role, link = (
+            booking.client_id, ROLE_IDS[RoleType.CLIENT], f"/lesson/{booking.id}",
+        )
+    await notification_service.notify(
+        db,
+        user_id=recipient_id,
+        role_id=recipient_role,
+        message=f"Ders için yeni bir dosya paylaşıldı: {file_name}",
+        link=link,
+    )
+    return await get_booking(db, booking.id, viewer=actor)
 
 
 async def add_comment(
@@ -551,17 +650,14 @@ async def add_comment(
         link=link,
     )
     
-    await manager.send_personal_message(
-        {
-            "type": "NEW_BOOKING_COMMENT",
-            "booking_id": booking.id
-        },
+    ws_outbox.enqueue(
+        db,
+        {"type": "NEW_BOOKING_COMMENT", "booking_id": booking.id},
         user_id=recipient_id,
-        role_id=recipient_role
+        role_id=recipient_role,
     )
 
-    await db.refresh(booking, ["comments"])
-    return booking
+    return await get_booking(db, booking.id, viewer=actor)
 
 
 async def delete_comment(
@@ -581,8 +677,7 @@ async def delete_comment(
     
     await db.delete(comment)
     await db.flush()
-    await db.refresh(booking, ["comments"])
-    return booking
+    return await get_booking(db, booking.id, viewer=actor)
 
 async def add_private_note(
     db: AsyncSession, booking: Booking, actor: "Client | Tutor", note_in: BookingPrivateNoteCreate
@@ -595,10 +690,7 @@ async def add_private_note(
     )
     db.add(note)
     await db.flush()
-    await db.refresh(booking, ["private_notes"])
-    # refresh tüm notları geri yükler; tekrar sahibe göre filtrele.
-    _filter_private_notes(booking, role_id=actor.role_id, user_id=actor.id)
-    return booking
+    return await get_booking(db, booking.id, viewer=actor)
 
 async def delete_private_note(
     db: AsyncSession, booking: Booking, actor: "Client | Tutor", note_id: int
@@ -613,7 +705,4 @@ async def delete_private_note(
 
     await db.delete(note)
     await db.flush()
-    await db.refresh(booking, ["private_notes"])
-    # refresh tüm notları geri yükler; tekrar sahibe göre filtrele.
-    _filter_private_notes(booking, role_id=actor.role_id, user_id=actor.id)
-    return booking
+    return await get_booking(db, booking.id, viewer=actor)

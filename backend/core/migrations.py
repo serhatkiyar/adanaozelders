@@ -39,6 +39,21 @@ _ADDED_COLUMNS_DDL: tuple[str, ...] = (
     "ALTER TABLE tutors ADD COLUMN IF NOT EXISTS location_text VARCHAR(300)",
     "ALTER TABLE tutors ADD COLUMN IF NOT EXISTS location_lat NUMERIC(9,6)",
     "ALTER TABLE tutors ADD COLUMN IF NOT EXISTS location_lng NUMERIC(9,6)",
+    # E-posta doğrulama durumu (EmailVerificationMixin) — mevcut DB'lere de uygula.
+    "ALTER TABLE admins ADD COLUMN IF NOT EXISTS email_verified_at TIMESTAMPTZ",
+    "ALTER TABLE tutors ADD COLUMN IF NOT EXISTS email_verified_at TIMESTAMPTZ",
+    "ALTER TABLE clients ADD COLUMN IF NOT EXISTS email_verified_at TIMESTAMPTZ",
+    # Admin hesapları güvenilir kabul edilir; eski admin satırlarını doğrulanmış yap
+    # (idempotent: ilk koşudan sonra NULL kalmaz). Tutor/client gerçekten doğrulamalı.
+    "UPDATE admins SET email_verified_at = now() WHERE email_verified_at IS NULL",
+    # Ders kaynaklarına dosya eki desteği (link vs yüklenmiş dosya).
+    "ALTER TABLE booking_resources ADD COLUMN IF NOT EXISTS kind VARCHAR(10) NOT NULL DEFAULT 'link'",
+    "ALTER TABLE booking_resources ADD COLUMN IF NOT EXISTS file_name VARCHAR(255)",
+    "ALTER TABLE booking_resources ADD COLUMN IF NOT EXISTS content_type VARCHAR(120)",
+    "ALTER TABLE booking_resources ADD COLUMN IF NOT EXISTS size_bytes INTEGER",
+    # Eğitmen eğitim bilgisine diploma/belge eki (zorunlu onay kanıtı).
+    "ALTER TABLE tutor_educations ADD COLUMN IF NOT EXISTS document_url VARCHAR(500)",
+    "ALTER TABLE tutor_educations ADD COLUMN IF NOT EXISTS document_name VARCHAR(255)",
 )
 
 
@@ -48,9 +63,16 @@ def _config() -> Config:
     return cfg
 
 
-def _stamp_head() -> None:
-    command.stamp(_config(), "head")
-
+def _run_stamp_subprocess():
+    import subprocess
+    import sys
+    result = subprocess.run(
+        [sys.executable, "-m", "alembic", "stamp", "head"],
+        capture_output=True,
+        text=True
+    )
+    if result.returncode != 0:
+        raise RuntimeError(f"Alembic stamp failed: {result.stderr}")
 
 async def ensure_schema() -> None:
     """Şemanın güncel olduğunu garanti eder (create_all + alembic stamp head)."""
@@ -62,6 +84,12 @@ async def ensure_schema() -> None:
         await conn.run_sync(Base.metadata.create_all)
         for ddl in _ADDED_COLUMNS_DDL:
             await conn.execute(text(ddl))
-    # stamp, env.py online modu (asyncio.run) kullandığından ayrı thread'de.
-    await asyncio.to_thread(_stamp_head)
-    logger.info("Schema: ready, alembic stamped to head")
+            
+    # stamp komutunu subprocess olarak çalıştır (Windows'ta uvicorn + asyncio.run dead-lock'ını önler)
+    # Windows SelectorEventLoop hatası almamak için standart subprocess kütüphanesini to_thread ile kullanıyoruz.
+    logger.info("Schema: stamping alembic head via sync subprocess")
+    try:
+        await asyncio.to_thread(_run_stamp_subprocess)
+        logger.info("Schema: ready, alembic stamped to head")
+    except Exception as e:
+        logger.error(str(e))

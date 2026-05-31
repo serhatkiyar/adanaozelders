@@ -154,3 +154,23 @@ async def authenticate(db: AsyncSession, *, email: str, password: str):
         if user is not None and verify_password(password, user.hashed_password):
             return user, role
     return None, None
+
+
+async def find_by_email(db: AsyncSession, *, email: str):
+    """E-postayı 3 kullanıcı tablosunda sırayla arar. Şifre sıfırlama talebinde
+    kullanılır (kimlik doğrulamasız). Bulunamazsa None — çağıran enumeration'a
+    karşı yanıtı her durumda aynı tutmalıdır."""
+    for _role, model in _LOGIN_PRECEDENCE:
+        stmt = select(model).where(model.email == email, model.deleted_at.is_(None))
+        user = (await db.execute(stmt)).scalar_one_or_none()
+        if user is not None:
+            return user
+    return None
+
+
+async def reset_password(
+    db: AsyncSession, user: Admin | Tutor | Client, *, new_password: str
+) -> None:
+    """Token ile doğrulanmış şifre sıfırlama (mevcut şifre sorulmaz)."""
+    user.hashed_password = hash_password(new_password)
+    await db.flush()

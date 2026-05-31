@@ -4,10 +4,18 @@ from sqlalchemy import Boolean, ForeignKey, Index, String, Text, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from core.database import Base
-from models.mixins import LastSeenMixin, NameMixin, SoftDeleteMixin, TimestampMixin
+from models.mixins import (
+    EmailVerificationMixin,
+    LastSeenMixin,
+    NameMixin,
+    SoftDeleteMixin,
+    TimestampMixin,
+)
 
 
-class Admin(Base, NameMixin, TimestampMixin, SoftDeleteMixin, LastSeenMixin):
+class Admin(
+    Base, NameMixin, TimestampMixin, SoftDeleteMixin, LastSeenMixin, EmailVerificationMixin
+):
     __tablename__ = "admins"
 
     id: Mapped[int] = mapped_column(primary_key=True)

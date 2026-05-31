@@ -1,5 +1,6 @@
 import io
 import logging
+import os
 import uuid
 
 import aioboto3
@@ -8,6 +9,24 @@ from PIL import Image
 from core.config import settings
 
 logger = logging.getLogger(__name__)
+
+# Ders materyali olarak kabul edilen uzantılar (public bucket'a keyfi yürütülebilir
+# dosya konmasın diye whitelist). Üretimde private bucket + signed URL önerilir.
+ALLOWED_RESOURCE_EXTS: frozenset[str] = frozenset(
+    {
+        ".pdf", ".png", ".jpg", ".jpeg", ".webp", ".gif",
+        ".doc", ".docx", ".ppt", ".pptx", ".xls", ".xlsx",
+        ".txt", ".csv", ".zip",
+    }
+)
+
+
+def resource_ext(filename: str | None) -> str:
+    return os.path.splitext(filename or "")[1].lower()
+
+
+def is_allowed_resource(filename: str | None) -> bool:
+    return resource_ext(filename) in ALLOWED_RESOURCE_EXTS
 
 
 def optimize_image(file_bytes: bytes, size: tuple[int, int] = (256, 256)) -> bytes:
@@ -98,3 +117,46 @@ async def delete_avatar(avatar_url: str) -> None:
     except Exception:
         # best-effort silme; başarısızlık akışı bozmaz ama iz bırakırız.
         logger.warning("avatar delete failed for %s", avatar_url, exc_info=True)
+
+
+async def upload_file(
+    file_bytes: bytes, *, original_name: str | None, content_type: str | None
+) -> str:
+    """Genel dosyayı (ders materyali) S3/MinIO'ya yükler ve public URL döner.
+
+    Avatar'dan farkı: görsel optimizasyonu YAPMAZ (PDF/doc dahil her türü olduğu
+    gibi saklar). Anahtar `lesson-resources/<uuid><ext>` (uuid → tahmin edilemez).
+    NOT: Avatar bucket'ı public-read olduğundan dosya da public erişilebilir olur;
+    üretimde private bucket + presigned/proxied indirme önerilir.
+    """
+    ext = resource_ext(original_name)
+    key = f"lesson-resources/{uuid.uuid4().hex}{ext}"
+    body_kwargs = {"Bucket": settings.AWS_BUCKET_NAME, "Key": key, "Body": file_bytes}
+    if content_type:
+        body_kwargs["ContentType"] = content_type
+
+    session = aioboto3.Session()
+    async with session.client(
+        "s3",
+        endpoint_url=settings.AWS_ENDPOINT_URL,
+        aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+        aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+        region_name=settings.AWS_REGION_NAME,
+    ) as s3:
+        try:
+            await s3.put_object(**body_kwargs, ACL="public-read")
+        except Exception:
+            # ACL kapalıysa (bucket policy ile public) ACL'siz dene.
+            await s3.put_object(**body_kwargs)
+
+    if settings.AWS_ENDPOINT_URL:
+        return f"{settings.AWS_ENDPOINT_URL.rstrip('/')}/{settings.AWS_BUCKET_NAME}/{key}"
+    return (
+        f"https://{settings.AWS_BUCKET_NAME}.s3."
+        f"{settings.AWS_REGION_NAME}.amazonaws.com/{key}"
+    )
+
+
+async def delete_file(url: str) -> None:
+    """Genel obje silme (ders materyali). delete_avatar ile aynı bucket mantığı."""
+    await delete_avatar(url)

@@ -88,6 +88,10 @@ class Booking(Base, TimestampMixin, SoftDeleteMixin):
     private_notes: Mapped[list["BookingPrivateNote"]] = relationship(
         "BookingPrivateNote", back_populates="booking", cascade="all, delete-orphan", lazy="selectin"
     )
+    payment: Mapped["Payment | None"] = relationship(
+        "Payment", back_populates="booking", uselist=False,
+        cascade="all, delete-orphan", lazy="selectin",
+    )
 
     __table_args__ = (
         CheckConstraint("end_at > start_at", name="ck_bookings_time_order"),

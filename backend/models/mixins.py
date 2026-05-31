@@ -41,6 +41,19 @@ class SoftDeleteMixin:
     )
 
 
+class EmailVerificationMixin:
+    """E-posta doğrulama durumu. ``email_verified_at`` doluysa adres doğrulanmıştır.
+    ``email_verified`` türetilmiş bool, şemalarda (UserOut) doğrudan sunulur."""
+
+    email_verified_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    @property
+    def email_verified(self) -> bool:
+        return self.email_verified_at is not None
+
+
 class LastSeenMixin:
     last_seen_at: Mapped[datetime.datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True

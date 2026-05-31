@@ -37,5 +37,11 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
         except Exception:
             await session.rollback()
             raise
+        else:
+            # WS push'ları yalnızca commit BAŞARILI olduktan sonra gönderilir
+            # (commit öncesi gönderim alıcıda eski veri refetch'ine yol açıyordu).
+            from core import ws_outbox
+
+            await ws_outbox.flush(session)
         finally:
             await session.close()

@@ -89,3 +89,34 @@ async def delete(
     edu = await _get_owned_or_404(db, user, education_id)
     edu.deleted_at = datetime.datetime.now(datetime.timezone.utc)
     await db.flush()
+
+
+async def set_document(
+    db: AsyncSession,
+    user: Tutor,
+    education_id: int,
+    *,
+    url: str,
+    document_name: str,
+):
+    """Eğitim kaydına diploma/belge URL'sini iliştirir (yalnız eğitmen)."""
+    edu = await _get_owned_or_404(db, user, education_id)
+    edu.document_url = url
+    edu.document_name = document_name
+    await db.flush()
+    await db.refresh(edu)
+    return edu
+
+
+async def has_document(db: AsyncSession, *, tutor_id: int) -> bool:
+    """Eğitmenin en az bir eğitim kaydında belge var mı? (onay kapısı)."""
+    stmt = (
+        select(TutorEducation.id)
+        .where(
+            TutorEducation.tutor_id == tutor_id,
+            TutorEducation.deleted_at.is_(None),
+            TutorEducation.document_url.is_not(None),
+        )
+        .limit(1)
+    )
+    return (await db.execute(stmt)).first() is not None

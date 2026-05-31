@@ -7,6 +7,7 @@ from decimal import Decimal
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from models.booking import BookingStatus
+from schemas.payment import PaymentOut
 from schemas.tutor import TeachingMode
 
 class BookingResourceCreate(BaseModel):
@@ -30,7 +31,11 @@ class BookingResourceOut(BaseModel):
     uploader_role: str
     uploader_id: int
     title: str
+    kind: str = "link"  # "link" | "file"
     url: str
+    file_name: str | None = None
+    content_type: str | None = None
+    size_bytes: int | None = None
     created_at: datetime.datetime
 
 class BookingCommentCreate(BaseModel):
@@ -69,12 +74,13 @@ class BookingCreate(BaseModel):
     tutor_id: int
     start_at: datetime.datetime
     end_at: datetime.datetime
-    price: Decimal | None = Field(
-        default=None, ge=0, max_digits=10, decimal_places=2
-    )
+    # NOT: Fiyat istemciden ALINMAZ; sunucuda eğitmen ücreti × süre ile hesaplanır
+    # (bkz. booking_service._compute_price). Manipülasyonu önlemek için şemada yok.
     notes: str | None = None
     mode: TeachingMode | None = None  # ONLINE | IN_PERSON (BOTH seçilemez)
     location: str | None = Field(default=None, max_length=300)
+    location_lat: float | None = None
+    location_lng: float | None = None
 
     @model_validator(mode="after")
     def _validate_window(self) -> "BookingCreate":
@@ -134,3 +140,5 @@ class BookingOut(BaseModel):
     resources: list[BookingResourceOut] = []
     comments: list[BookingCommentOut] = []
     private_notes: list[BookingPrivateNoteOut] = []
+    # Escrow ödeme durumu (booking.payment 1:1, selectin yüklenir).
+    payment: PaymentOut | None = None

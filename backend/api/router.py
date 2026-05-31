@@ -13,7 +13,9 @@ from api.routers import (
     leaderboard,
     messages,
     notifications,
+    payments,
     qa,
+    reports,
     reviews,
     tutors,
     ws,
@@ -35,4 +37,6 @@ api_router.include_router(admin.router)
 api_router.include_router(notifications.router)
 api_router.include_router(messages.router)
 api_router.include_router(leaderboard.router)
+api_router.include_router(payments.router)
+api_router.include_router(reports.router)
 api_router.include_router(ws.router)

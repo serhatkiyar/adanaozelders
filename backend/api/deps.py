@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.config import settings
 from core.database import get_db
+from core.ratelimit import enforce
 from core.security import decode_access_token
 from core.token_denylist import is_revoked
 from core import presence
@@ -96,3 +97,22 @@ async def get_current_approved_tutor(
     if tutor.status != TutorStatus.APPROVED:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Tutor is not approved")
     return tutor
+
+
+def user_rate_limit(*, key: str, limit: int, window_seconds: int):
+    """Kullanıcı (role_id+user_id) bazlı fixed-window limiter — kimlik doğrulamalı
+    yazma uçları için (booking/mesaj/qa/demand/review/ödeme). IP bazlı limiter'ın
+    aksine aynı NAT arkasındaki kullanıcılar birbirini etkilemez. Redis yoksa
+    fail-open. get_current_active_user ile aynı istekte paylaşılır (çift auth yok).
+    """
+
+    async def dependency(
+        user: CurrentUser = Depends(get_current_active_user),
+    ) -> None:
+        await enforce(
+            bucket=f"rl:{key}:u{user.role_id}:{user.id}",
+            limit=limit,
+            window_seconds=window_seconds,
+        )
+
+    return dependency

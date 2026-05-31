@@ -3,12 +3,19 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.deps import CurrentUser, get_current_active_user
+from api.deps import CurrentUser, get_current_active_user, user_rate_limit
+from core.config import settings
 from core.database import get_db
 from schemas.messaging import ConversationOut, MessageCreate, MessageOut
 from services import messaging_service
 
 router = APIRouter(prefix="/messages", tags=["messages"])
+
+_send_limit = user_rate_limit(
+    key="message_send",
+    limit=settings.RATE_LIMIT_MESSAGE,
+    window_seconds=settings.RATE_LIMIT_WINDOW_SECONDS,
+)
 
 
 @router.get("/conversations", response_model=list[ConversationOut])
@@ -56,6 +63,7 @@ async def list_messages(
     "/{counterparty_id}",
     response_model=MessageOut,
     status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(_send_limit)],
 )
 async def send_message(
     counterparty_id: int,

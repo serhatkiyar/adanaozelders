@@ -3,7 +3,8 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.deps import get_current_approved_tutor, require_roles
+from api.deps import get_current_approved_tutor, require_roles, user_rate_limit
+from core.config import settings
 from core.database import get_db
 from models.client import Client
 from models.role import RoleType
@@ -12,8 +13,19 @@ from services import demand_service
 
 router = APIRouter(prefix="/demands", tags=["demands"])
 
+_create_limit = user_rate_limit(
+    key="demand_create",
+    limit=settings.RATE_LIMIT_DEMAND,
+    window_seconds=settings.RATE_LIMIT_WINDOW_SECONDS,
+)
 
-@router.post("", response_model=DemandOut, status_code=status.HTTP_201_CREATED)
+
+@router.post(
+    "",
+    response_model=DemandOut,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(_create_limit)],
+)
 async def create_demand(
     payload: DemandCreate,
     client: Client = Depends(require_roles(RoleType.CLIENT)),

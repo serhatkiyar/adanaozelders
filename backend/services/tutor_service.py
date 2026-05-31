@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from models.role import ROLE_IDS, RoleType
 from models.tutor import Tutor, TutorAvailability, TutorStatus, TutorSubject
 from schemas.tutor import TutorProfileUpdate
-from services import notification_service
+from services import education_service, notification_service
 
 _MAX_SUBJECTS = 40
 _MAX_AVAILABILITY = 60
@@ -121,6 +121,14 @@ async def update_profile(
 
 
 async def submit_for_approval(db: AsyncSession, tutor: Tutor) -> Tutor:
+    # Zorunlu kalite kapısı: en az bir eğitim kaydında diploma/belge olmadan
+    # eğitmen onaya gönderilemez.
+    if not await education_service.has_document(db, tutor_id=tutor.id):
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            "Onaya göndermeden önce eğitim bilgilerinden en az birine diploma/belge "
+            "yüklemelisin. (Profil → Eğitim)",
+        )
     _transition(tutor, TutorStatus.PENDING_APPROVAL)
     await db.flush()
     return tutor
