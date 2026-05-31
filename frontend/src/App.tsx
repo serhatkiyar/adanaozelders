@@ -29,8 +29,7 @@ import TutorProfile from "@/pages/TutorProfile";
 import StudentProfile from "@/pages/StudentProfile";
 import Questions from "@/pages/Questions";
 import Exams from "@/pages/Exams";
-import StudentDemands from "@/pages/StudentDemands";
-import TutorDemands from "@/pages/TutorDemands";
+
 import StudentBookings from "@/pages/StudentBookings";
 import LessonDetail from "@/pages/LessonDetail";
 import Messages from "@/pages/Messages";
@@ -109,14 +108,14 @@ function App() {
             <Route path="/tutor/questions" element={<TutorQuestions />} />
             <Route path="/tutor/settings" element={<TutorSettings />} />
             <Route path="/tutor/students/:id" element={<StudentProfile />} />
-            <Route path="/tutor/demands" element={<TutorDemands />} />
+
           </Route>
           <Route element={<ProtectedRoute allowedRoleId={ROLE_IDS.CLIENT} />}>
             <Route path="/student" element={<Marketplace />} />
             <Route path="/student/favorites" element={<Favorites />} />
             <Route path="/student/questions" element={<Questions />} />
             <Route path="/student/exams" element={<Exams />} />
-            <Route path="/student/demands" element={<StudentDemands />} />
+
             <Route path="/student/bookings" element={<StudentBookings />} />
           </Route>
 
