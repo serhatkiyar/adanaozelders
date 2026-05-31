@@ -35,6 +35,9 @@ import LessonDetail from "@/pages/LessonDetail";
 import Messages from "@/pages/Messages";
 import Leaderboard from "@/pages/Leaderboard";
 import Calendar from "@/pages/Calendar";
+import Learn from "@/pages/Learn";
+import Flashcards from "@/pages/Flashcards";
+import FlashcardDeck from "@/pages/FlashcardDeck";
 import Profile from "@/pages/Profile";
 import Settings from "@/pages/Settings";
 import { GlobalMeeting } from "@/components/GlobalMeeting";
@@ -154,6 +157,9 @@ function App() {
             <Route path={ROUTES.panel} element={<PanelHome />} />
             <Route path={ROUTES.messages} element={<Messages />} />
             <Route path={ROUTES.calendar} element={<Calendar />} />
+            <Route path={ROUTES.learn} element={<Learn />} />
+            <Route path={ROUTES.flashcards} element={<Flashcards />} />
+            <Route path="/panel/ogren/kelime-kartlari/:id" element={<FlashcardDeck />} />
             <Route path={ROUTES.leaderboard} element={<Leaderboard />} />
             <Route path={ROUTES.profile} element={<Profile />} />
             <Route path={ROUTES.settings} element={<Settings />} />

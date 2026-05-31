@@ -10,6 +10,7 @@ from api.routers import (
     demands,
     educations,
     exams,
+    flashcards,
     leaderboard,
     messages,
     notifications,
@@ -32,6 +33,7 @@ api_router.include_router(bookings.router)
 api_router.include_router(bookmarks.router)
 api_router.include_router(qa.router)
 api_router.include_router(exams.router)
+api_router.include_router(flashcards.router)
 api_router.include_router(reviews.router)
 api_router.include_router(admin.router)
 api_router.include_router(notifications.router)

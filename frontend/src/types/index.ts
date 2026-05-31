@@ -130,6 +130,41 @@ export interface EducationCreate {
 
 export type EducationUpdate = EducationCreate;
 
+/* ============================ FLASHCARDS (Öğren) ============================ */
+
+export interface FlashcardDeck {
+  id: number;
+  name: string;
+  description?: string | null;
+  card_count: number;
+  due_count: number;
+  created_at: string;
+}
+
+export interface Flashcard {
+  id: number;
+  deck_id: number;
+  front: string;
+  back: string;
+  interval_days: number;
+  repetitions: number;
+  ease_factor: number;
+  due_at: string;
+  last_reviewed_at?: string | null;
+}
+
+export type ReviewRating = "again" | "hard" | "good" | "easy";
+
+export interface DeckCreate {
+  name: string;
+  description?: string | null;
+}
+
+export interface CardCreate {
+  front: string;
+  back: string;
+}
+
 // Bir öğrencinin herkese açık profili (öğretmenler görüntüler).
 export interface ClientPublicOut {
   id: number;

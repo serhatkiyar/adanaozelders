@@ -11,6 +11,7 @@ from models.bookmark import Bookmark
 from models.client import Client, ClientAddress, ClientEducation
 from models.demand import Demand, DemandStatus
 from models.exam import PracticeExam, PracticeExamSubject
+from models.flashcard import Flashcard, FlashcardDeck
 from models.messaging import Conversation, Message
 from models.notification import Notification
 from models.payment import Payment, PaymentStatus
@@ -50,6 +51,8 @@ __all__ = [
     "Conversation",
     "Demand",
     "DemandStatus",
+    "Flashcard",
+    "FlashcardDeck",
     "Message",
     "Notification",
     "Payment",

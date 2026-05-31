@@ -11,7 +11,8 @@ export type NavIcon =
   | "exams"
   | "demand"
   | "calendar"
-  | "trophy";
+  | "trophy"
+  | "learn";
 
 export interface NavItem {
   to: string;
@@ -25,6 +26,7 @@ export const STUDENT_NAV: NavItem[] = [
   { to: ROUTES.messages, label: "Mesajlar", icon: "messages" },
   { to: ROUTES.questions, label: "Sorularım", icon: "questions" },
   { to: ROUTES.exams, label: "Denemelerim", icon: "exams" },
+  { to: ROUTES.learn, label: "Öğren", icon: "learn" },
   { to: ROUTES.bookings, label: "Ders Taleplerim", icon: "bookings" },
   { to: ROUTES.calendar, label: "Takvim", icon: "calendar" },
 ];

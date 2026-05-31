@@ -29,6 +29,10 @@ export const ROUTES = {
   questions: "/panel/sorular",
   exams: "/panel/denemeler",
   leaderboard: "/panel/liderlik",
+  // Öğren bölümü (kelime kartları / SRS)
+  learn: "/panel/ogren",
+  flashcards: "/panel/ogren/kelime-kartlari",
+  flashcardDeck: (id: string | number) => `/panel/ogren/kelime-kartlari/${id}`,
   profile: "/panel/profil",
   settings: "/panel/ayarlar",
   tutorListing: "/panel/ilan",
