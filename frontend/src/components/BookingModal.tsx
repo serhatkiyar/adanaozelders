@@ -168,11 +168,18 @@ function TimeStepper({
 interface BookingModalProps {
   tutor: TutorSearchOut;
   onClose: () => void;
+  /** Takvimden açıldıysa önseçili tarih ("YYYY-MM-DD"); listedeyse vurgulanır. */
+  initialDate?: string;
 }
 
-export function BookingModal({ tutor, onClose }: BookingModalProps) {
+export function BookingModal({ tutor, onClose, initialDate }: BookingModalProps) {
   const [step, setStep] = useState(1);
-  const [selectedDate, setSelectedDate] = useState("");
+  // Önseçili tarih yalnızca 14 günlük listede yer alıyorsa seedle (geçmiş/uzak değilse).
+  const [selectedDate, setSelectedDate] = useState(
+    initialDate && NEXT_14_DAYS.some((d) => d.value === initialDate)
+      ? initialDate
+      : ""
+  );
   const [selectedTime, setSelectedTime] = useState("");
   const [duration, setDuration] = useState(60);
   const [notes, setNotes] = useState("");

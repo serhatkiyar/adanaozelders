@@ -1,14 +1,50 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { DashboardShell } from "@/components/DashboardShell";
+import { FullScreenSpinner } from "@/components/Spinner";
+import { NewLessonRequestModal } from "@/components/NewLessonRequestModal";
+import { BookingModal } from "@/components/BookingModal";
 import { STUDENT_NAV, TUTOR_NAV } from "@/lib/nav";
 import { useBookings } from "@/hooks/useBookings";
+import { useTutorDetail } from "@/hooks/useTutorSearch";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { toast } from "@/store/toastStore";
 import { BookingStatus, ROLE_IDS, type BookingOut } from "@/types";
 import { BOOKING_STATUS_LABEL, BOOKING_STATUS_STYLE } from "@/lib/bookingStatus";
 import { ROUTES } from "@/lib/routes";
 
 const WEEKDAYS = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"];
+
+/** Yerel (timezone kaymasız) "YYYY-MM-DD" — takvim hücresinden tarih önseçimi için. */
+function localDateStr(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+// Seçilen eğitmenin detayını (uygunluk/mod) çekip BookingModal'ı açar.
+function BookingLauncher({
+  tutorId,
+  initialDate,
+  onClose,
+}: {
+  tutorId: number;
+  initialDate?: string;
+  onClose: () => void;
+}) {
+  const { data: tutor, isLoading, isError } = useTutorDetail(tutorId);
+
+  useEffect(() => {
+    if (isError) {
+      toast.error("Eğitmen bilgileri yüklenemedi.");
+      onClose();
+    }
+  }, [isError, onClose]);
+
+  if (isLoading || !tutor) return <FullScreenSpinner />;
+  return <BookingModal tutor={tutor} initialDate={initialDate} onClose={onClose} />;
+}
 
 /** Verilen tarihin içinde bulunduğu haftanın Pazartesi 00:00'ı (yerel). */
 function mondayOf(date: Date): Date {
@@ -33,10 +69,20 @@ const rangeFmt = new Intl.DateTimeFormat("tr-TR", { day: "numeric", month: "long
 export default function Calendar() {
   const { data: user } = useCurrentUser();
   const isTutor = user?.role_id === ROLE_IDS.TUTOR;
+  const isStudent = user?.role_id === ROLE_IDS.CLIENT;
   const navItems = isTutor ? TUTOR_NAV : STUDENT_NAV;
 
   const { data: bookings, isLoading } = useBookings({ limit: 100 });
   const [weekOffset, setWeekOffset] = useState(0);
+
+  // "Ders talebi oluştur" akışı: gün seçimi → eğitmen seçici → BookingModal.
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [pickerDate, setPickerDate] = useState<string | null>(null);
+  const [pickedTutorId, setPickedTutorId] = useState<number | null>(null);
+  const openPicker = (dateStr: string | null) => {
+    setPickerDate(dateStr);
+    setPickerOpen(true);
+  };
 
   const weekStart = useMemo(() => {
     const base = mondayOf(new Date());
@@ -78,6 +124,8 @@ export default function Calendar() {
   const weekEnd = new Date(weekStart);
   weekEnd.setDate(weekEnd.getDate() + 6);
   const today = new Date();
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
 
   return (
     <DashboardShell navItems={navItems} title="Takvim">
@@ -93,6 +141,17 @@ export default function Calendar() {
             </p>
           </div>
           <div className="flex items-center gap-2">
+            {isStudent && (
+              <button
+                onClick={() => openPicker(null)}
+                className="mr-1 flex items-center gap-1.5 rounded-xl bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 active:scale-95"
+              >
+                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                </svg>
+                <span className="hidden sm:inline">Ders Talebi</span>
+              </button>
+            )}
             <button
               onClick={() => setWeekOffset((o) => o - 1)}
               className="rounded-xl bg-slate-100 px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600"
@@ -119,6 +178,7 @@ export default function Calendar() {
           {days.map((day, i) => {
             const list = byDay.get(day.toDateString()) ?? [];
             const isToday = sameDay(day, today);
+            const isPast = day < startOfToday;
             return (
               <div
                 key={day.toISOString()}
@@ -177,11 +237,42 @@ export default function Calendar() {
                     </p>
                   )}
                 </div>
+
+                {isStudent && !isPast && (
+                  <button
+                    onClick={() => openPicker(localDateStr(day))}
+                    className="mt-1.5 flex w-full items-center justify-center gap-1 rounded-lg border border-dashed border-slate-200 py-1.5 text-[11px] font-semibold text-slate-400 transition hover:border-indigo-300 hover:bg-indigo-50/40 hover:text-indigo-600 dark:border-slate-700 dark:text-slate-500 dark:hover:border-indigo-500/40 dark:hover:bg-indigo-500/5 dark:hover:text-indigo-300"
+                  >
+                    + Ekle
+                  </button>
+                )}
               </div>
             );
           })}
         </div>
       </div>
+
+      {isStudent && pickerOpen && (
+        <NewLessonRequestModal
+          dateLabel={pickerDate ? rangeFmt.format(new Date(pickerDate)) : null}
+          onPick={(id) => {
+            setPickedTutorId(id);
+            setPickerOpen(false);
+          }}
+          onClose={() => setPickerOpen(false)}
+        />
+      )}
+
+      {pickedTutorId != null && (
+        <BookingLauncher
+          tutorId={pickedTutorId}
+          initialDate={pickerDate ?? undefined}
+          onClose={() => {
+            setPickedTutorId(null);
+            setPickerDate(null);
+          }}
+        />
+      )}
     </DashboardShell>
   );
 }
