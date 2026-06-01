@@ -167,13 +167,29 @@ export interface CardCreate {
 
 /* ============================ TASKS (Görevlerim / To-Do) ============================ */
 
-export type TaskPriority = "LOW" | "MEDIUM" | "HIGH";
+// Öncelik tamsayı (Todoist deseni): 1=P1 (acil) … 4=P4 (varsayılan).
+export type TaskPriority = 1 | 2 | 3 | 4;
+
+// Tekrar kuralı; backend ile aynı sözcükler.
+export type TaskRecurrence =
+  | "daily"
+  | "weekly"
+  | "weekdays"
+  | "monthly"
+  | "yearly";
+
+export interface TaskLabel {
+  id: number;
+  name: string;
+  color?: string | null;
+}
 
 export interface TaskList {
   id: number;
   name: string;
   color?: string | null;
   position: number;
+  is_inbox: boolean;
   active_count: number;
   overdue_count: number;
   created_at: string;
@@ -194,14 +210,21 @@ export interface Task {
   description?: string | null;
   priority: TaskPriority;
   due_at?: string | null;
+  recurrence?: string | null;
   completed_at?: string | null;
   position: number;
   booking_id?: number | null;
   subtasks: Subtask[];
+  labels: TaskLabel[];
   created_at: string;
 }
 
 export interface TaskListCreate {
+  name: string;
+  color?: string | null;
+}
+
+export interface LabelCreate {
   name: string;
   color?: string | null;
 }
@@ -211,7 +234,9 @@ export interface TaskCreate {
   description?: string | null;
   priority?: TaskPriority;
   due_at?: string | null;
+  recurrence?: string | null;
   booking_id?: number | null;
+  label_ids?: number[];
 }
 
 export interface TaskUpdate {
@@ -219,7 +244,9 @@ export interface TaskUpdate {
   description?: string | null;
   priority?: TaskPriority;
   due_at?: string | null;
+  recurrence?: string | null;
   booking_id?: number | null;
+  label_ids?: number[];
   list_id?: number;
 }
 

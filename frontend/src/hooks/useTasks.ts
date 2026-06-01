@@ -1,20 +1,27 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  createLabel,
   createSubtask,
   createTask,
   createTaskList,
+  deleteLabel,
   deleteSubtask,
   deleteTask,
   deleteTaskList,
+  fetchLabels,
   fetchTaskLists,
   fetchTasks,
+  reorderTaskLists,
+  reorderTasks,
   toggleTask,
+  updateLabel,
   updateSubtask,
   updateTask,
   updateTaskList,
 } from "@/api/tasks";
 import { useAuthStore } from "@/store/authStore";
 import type {
+  LabelCreate,
   TaskCreate,
   TaskListCreate,
   TaskStatusFilter,
@@ -23,8 +30,14 @@ import type {
 
 const TASKS_ROOT = ["tasks"] as const;
 const LISTS_KEY = ["tasks", "lists"] as const;
-const tasksKey = (listId: number | null, status: TaskStatusFilter) =>
-  ["tasks", "items", listId ?? "all", status] as const;
+const LABELS_KEY = ["tasks", "labels"] as const;
+
+export interface TasksQuery {
+  listId?: number | null;
+  status?: TaskStatusFilter;
+  labelId?: number | null;
+  enabled?: boolean;
+}
 
 // Görev veya liste değişince hem listeleri (sayaçlar) hem öğeleri tazele.
 function useInvalidateAll() {
@@ -41,15 +54,21 @@ export function useTaskLists() {
   });
 }
 
-export function useTasks(
-  listId: number | null,
-  status: TaskStatusFilter,
-  enabled = true
-) {
+export function useLabels() {
   const token = useAuthStore((s) => s.token);
   return useQuery({
-    queryKey: tasksKey(listId, status),
-    queryFn: () => fetchTasks({ listId, status }),
+    queryKey: LABELS_KEY,
+    queryFn: fetchLabels,
+    enabled: !!token,
+  });
+}
+
+export function useTasks(query: TasksQuery) {
+  const token = useAuthStore((s) => s.token);
+  const { listId = null, status = "active", labelId = null, enabled = true } = query;
+  return useQuery({
+    queryKey: ["tasks", "items", listId ?? "all", labelId ?? "none", status],
+    queryFn: () => fetchTasks({ listId, status, labelId }),
     enabled: !!token && enabled,
   });
 }
@@ -86,6 +105,48 @@ export function useDeleteTaskList() {
   const invalidate = useInvalidateAll();
   return useMutation({
     mutationFn: (id: number) => deleteTaskList(id),
+    onSuccess: invalidate,
+  });
+}
+
+export function useReorderTaskLists() {
+  const invalidate = useInvalidateAll();
+  return useMutation({
+    mutationFn: (ids: number[]) => reorderTaskLists(ids),
+    onSuccess: invalidate,
+  });
+}
+
+export function useReorderTasks() {
+  const invalidate = useInvalidateAll();
+  return useMutation({
+    mutationFn: (ids: number[]) => reorderTasks(ids),
+    onSuccess: invalidate,
+  });
+}
+
+// ── Etiket mutasyonları ──
+export function useCreateLabel() {
+  const invalidate = useInvalidateAll();
+  return useMutation({
+    mutationFn: (payload: LabelCreate) => createLabel(payload),
+    onSuccess: invalidate,
+  });
+}
+
+export function useUpdateLabel() {
+  const invalidate = useInvalidateAll();
+  return useMutation({
+    mutationFn: ({ id, payload }: { id: number; payload: Partial<LabelCreate> }) =>
+      updateLabel(id, payload),
+    onSuccess: invalidate,
+  });
+}
+
+export function useDeleteLabel() {
+  const invalidate = useInvalidateAll();
+  return useMutation({
+    mutationFn: (id: number) => deleteLabel(id),
     onSuccess: invalidate,
   });
 }

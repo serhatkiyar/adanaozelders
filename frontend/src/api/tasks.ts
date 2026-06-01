@@ -1,8 +1,10 @@
 import { apiClient } from "@/api/axios";
 import type {
+  LabelCreate,
   Subtask,
   Task,
   TaskCreate,
+  TaskLabel,
   TaskList,
   TaskListCreate,
   TaskStatusFilter,
@@ -32,20 +34,53 @@ export async function deleteTaskList(id: number): Promise<void> {
   await apiClient.delete(`/tasks/lists/${id}`);
 }
 
+export async function reorderTaskLists(ids: number[]): Promise<void> {
+  await apiClient.post("/tasks/lists/reorder", { ids });
+}
+
+// ── Etiketler ──
+export async function fetchLabels(): Promise<TaskLabel[]> {
+  const { data } = await apiClient.get<TaskLabel[]>("/tasks/labels");
+  return data;
+}
+
+export async function createLabel(payload: LabelCreate): Promise<TaskLabel> {
+  const { data } = await apiClient.post<TaskLabel>("/tasks/labels", payload);
+  return data;
+}
+
+export async function updateLabel(
+  id: number,
+  payload: Partial<LabelCreate>
+): Promise<TaskLabel> {
+  const { data } = await apiClient.patch<TaskLabel>(`/tasks/labels/${id}`, payload);
+  return data;
+}
+
+export async function deleteLabel(id: number): Promise<void> {
+  await apiClient.delete(`/tasks/labels/${id}`);
+}
+
 // ── Görevler ──
 export async function fetchTasks(params: {
   listId?: number | null;
   status?: TaskStatusFilter;
   bookingId?: number | null;
+  labelId?: number | null;
 }): Promise<Task[]> {
   const { data } = await apiClient.get<Task[]>("/tasks", {
     params: {
       list_id: params.listId ?? undefined,
       booking_id: params.bookingId ?? undefined,
+      label_id: params.labelId ?? undefined,
       status: params.status ?? "active",
     },
   });
   return data;
+}
+
+export async function reorderTasks(ids: number[]): Promise<void> {
+  await apiClient.post("/tasks/reorder", { ids });
 }
 
 export async function createTask(
