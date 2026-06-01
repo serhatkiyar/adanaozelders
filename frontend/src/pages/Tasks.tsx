@@ -144,7 +144,7 @@ function DueChip({ iso, recurrence }: { iso?: string | null; recurrence?: string
 }
 
 // ── Liste (proje) oluştur / düzenle ──
-function ListModal({ list, onClose }: { list?: TaskList | null; onClose: () => void }) {
+function ListModal({ list, onClose, onCreated }: { list?: TaskList | null; onClose: () => void; onCreated?: (l: TaskList) => void }) {
   const [name, setName] = useState(list?.name ?? "");
   const [color, setColor] = useState<string | null>(list?.color ?? COLORS[5]);
   const create = useCreateTaskList();
@@ -159,15 +159,18 @@ function ListModal({ list, onClose }: { list?: TaskList | null; onClose: () => v
       toast.error("Proje adı boş olamaz.");
       return;
     }
-    const opts = {
-      onSuccess: () => {
-        toast.success(isEdit ? "Proje güncellendi." : "Proje oluşturuldu.");
-        onClose();
-      },
-      onError: (err: unknown) => toast.error(getErrorMessage(err, "İşlem başarısız.")),
-    };
-    if (isEdit) update.mutate({ id: list!.id, payload: { name: trimmed, color } }, opts);
-    else create.mutate({ name: trimmed, color }, opts);
+    const onError = (err: unknown) => toast.error(getErrorMessage(err, "İşlem başarısız."));
+    if (isEdit) {
+      update.mutate({ id: list!.id, payload: { name: trimmed, color } }, {
+        onSuccess: () => { toast.success("Proje güncellendi."); onClose(); },
+        onError,
+      });
+    } else {
+      create.mutate({ name: trimmed, color }, {
+        onSuccess: (created) => { toast.success("Proje oluşturuldu."); onCreated?.(created); onClose(); },
+        onError,
+      });
+    }
   };
 
   return (
@@ -790,7 +793,7 @@ export default function Tasks() {
         </main>
       </div>
 
-      {creatingList && <ListModal onClose={() => setCreatingList(false)} />}
+      {creatingList && <ListModal onCreated={(l) => setSelection({ kind: "list", id: l.id })} onClose={() => setCreatingList(false)} />}
       {editingList && <ListModal list={editingList} onClose={() => setEditingList(null)} />}
       {editingLabel && <LabelModal label={editingLabel} onClose={() => setEditingLabel(null)} />}
       {openTask && <TaskDetailModal task={openTask} lists={lists ?? []} allLabels={labels ?? []} onClose={() => setOpenTaskId(null)} />}
