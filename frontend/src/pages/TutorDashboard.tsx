@@ -337,15 +337,15 @@ export default function TutorDashboard() {
               hint="Yanıtını bekleyen yeni talepler."
               bookings={groups.pending}
               alert
-              onJoinMeeting={(bk) => joinMeeting(bk.meeting_room!, bk.tutor_name || "Eğitmen", bk.client_name || "Öğrenci")}
+              onJoinMeeting={(bk) => joinMeeting(bk.id, bk.meeting_room!, bk.tutor_name || "Eğitmen", bk.client_name || "Öğrenci")}
             />
             <BookingSection
               title="Onaylı Dersler"
               hint="Yaklaşan dersler — bittiğinde tamamlandı olarak işaretle."
               bookings={groups.accepted}
-              onJoinMeeting={(bk) => joinMeeting(bk.meeting_room!, bk.tutor_name || "Eğitmen", bk.client_name || "Öğrenci")}
+              onJoinMeeting={(bk) => joinMeeting(bk.id, bk.meeting_room!, bk.tutor_name || "Eğitmen", bk.client_name || "Öğrenci")}
             />
-            <BookingSection title="Geçmiş" bookings={groups.history} onJoinMeeting={(bk) => joinMeeting(bk.meeting_room!, bk.tutor_name || "Eğitmen", bk.client_name || "Öğrenci")} />
+            <BookingSection title="Geçmiş" bookings={groups.history} onJoinMeeting={(bk) => joinMeeting(bk.id, bk.meeting_room!, bk.tutor_name || "Eğitmen", bk.client_name || "Öğrenci")} />
           </>
         )}
       </div>

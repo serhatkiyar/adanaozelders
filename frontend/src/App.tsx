@@ -42,6 +42,7 @@ import Profile from "@/pages/Profile";
 import Settings from "@/pages/Settings";
 import { GlobalMeeting } from "@/components/GlobalMeeting";
 import { AuthModal } from "@/components/AuthModal";
+import { rtcManager } from "@/lib/rtcTransfer";
 
 function WsManager() {
   const token = useAuthStore((s) => s.token);
@@ -73,6 +74,9 @@ function WsManager() {
             qc.invalidateQueries({ queryKey: ["bookings", "detail", msg.booking_id] });
           }
           qc.invalidateQueries({ queryKey: ["bookings"] });
+        } else if (msg.type === "RTC_SIGNAL" && msg.booking_id && msg.signal) {
+          // Uçtan uca dosya aktarımı sinyalleşmesi (WebRTC) → P2P yöneticisine ilet.
+          rtcManager.handleSignal(msg.booking_id, msg.signal);
         }
       } catch (err) {
         console.error("WS Parse error", err);

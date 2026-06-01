@@ -245,6 +245,32 @@ async def get_booking(
     return booking
 
 
+async def resolve_signal_target(
+    db: AsyncSession,
+    booking_id: int,
+    sender_user_id: int,
+    sender_role_id: int,
+) -> tuple[int, int] | None:
+    """WebRTC (P2P dosya aktarımı) sinyal relay'i için karşı tarafı çözer.
+
+    Gönderen, booking'in katılımcısı (tutoru ya da clientı) ise karşı tarafın
+    ``(user_id, role_id)`` ikilisini döndürür; aksi halde ``None`` (yetkisiz).
+    Yalnız aktif (PENDING/ACCEPTED) derslerde relay yapılır.
+    """
+    booking = await db.get(Booking, booking_id)
+    if booking is None or booking.deleted_at is not None:
+        return None
+    if booking.status not in (BookingStatus.PENDING, BookingStatus.ACCEPTED):
+        return None
+    tutor_role = ROLE_IDS[RoleType.TUTOR]
+    client_role = ROLE_IDS[RoleType.CLIENT]
+    if sender_role_id == tutor_role and booking.tutor_id == sender_user_id:
+        return booking.client_id, client_role
+    if sender_role_id == client_role and booking.client_id == sender_user_id:
+        return booking.tutor_id, tutor_role
+    return None
+
+
 async def list_bookings(
     db: AsyncSession,
     *,

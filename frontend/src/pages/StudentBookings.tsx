@@ -382,7 +382,7 @@ export default function StudentBookings() {
                   reviewed={b.reviewed || reviewed.has(b.id)}
                   onReview={setActiveReview}
                   onAsk={setActiveAsk}
-                  onJoinMeeting={(bk) => joinMeeting(bk.meeting_room!, bk.tutor_name || "Eğitmen", bk.client_name || "Öğrenci")}
+                  onJoinMeeting={(bk) => joinMeeting(bk.id, bk.meeting_room!, bk.tutor_name || "Eğitmen", bk.client_name || "Öğrenci")}
                 />
               ))}
             </>
