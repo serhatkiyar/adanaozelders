@@ -44,6 +44,60 @@ export default function Learn() {
             </div>
           </Link>
 
+          {/* Zamanlayıcı (Derin Çalışma) */}
+          <Link
+            to={ROUTES.deepwork}
+            className="group relative overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-600 to-teal-600 p-6 text-white shadow-lg shadow-emerald-500/20 transition hover:-translate-y-0.5 hover:shadow-xl"
+          >
+            <div className="absolute -right-6 -top-6 h-28 w-28 rounded-full bg-white/10" />
+            <div className="relative">
+              <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/15">
+                <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7}>
+                  <circle cx="12" cy="13" r="8" strokeLinecap="round" strokeLinejoin="round" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v4l2.5 2.5M9 2h6" />
+                </svg>
+              </span>
+              <h2 className="mt-4 text-lg font-bold">Zamanlayıcı</h2>
+              <p className="mt-1 text-sm text-emerald-50">
+                Pomodoro tekniğiyle derin çalış: odak/mola döngüleri, sesli uyarı,
+                bildirim ve günlük odak istatistiği.
+              </p>
+              <span className="mt-4 inline-flex items-center gap-1 text-sm font-semibold">
+                Başla
+                <svg className="h-4 w-4 transition group-hover:translate-x-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                </svg>
+              </span>
+            </div>
+          </Link>
+
+          {/* Grafik Çizici */}
+          <Link
+            to={ROUTES.grapher}
+            className="group relative overflow-hidden rounded-3xl bg-gradient-to-br from-sky-600 to-cyan-600 p-6 text-white shadow-lg shadow-sky-500/20 transition hover:-translate-y-0.5 hover:shadow-xl"
+          >
+            <div className="absolute -right-6 -top-6 h-28 w-28 rounded-full bg-white/10" />
+            <div className="relative">
+              <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/15">
+                <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 3v18h18" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 7c-3 0-3 8-6 8s-3-6-6-6" />
+                </svg>
+              </span>
+              <h2 className="mt-4 text-lg font-bold">Grafik Çizici</h2>
+              <p className="mt-1 text-sm text-sky-50">
+                TYT/AYT için fonksiyon grafikleri: formülü yaz, çizdir, yakınlaştır,
+                kökleri gör ve PNG olarak indir.
+              </p>
+              <span className="mt-4 inline-flex items-center gap-1 text-sm font-semibold">
+                Başla
+                <svg className="h-4 w-4 transition group-hover:translate-x-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                </svg>
+              </span>
+            </div>
+          </Link>
+
           {/* Yakında gelecek araçlar */}
           {["Notlarım", "Mini Testler"].map((label) => (
             <div

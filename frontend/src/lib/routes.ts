@@ -33,6 +33,8 @@ export const ROUTES = {
   learn: "/panel/ogren",
   flashcards: "/panel/ogren/kelime-kartlari",
   flashcardDeck: (id: string | number) => `/panel/ogren/kelime-kartlari/${id}`,
+  deepwork: "/panel/ogren/zamanlayici",
+  grapher: "/panel/ogren/grafik",
   profile: "/panel/profil",
   settings: "/panel/ayarlar",
   tutorListing: "/panel/ilan",

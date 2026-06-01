@@ -38,9 +38,12 @@ import Calendar from "@/pages/Calendar";
 import Learn from "@/pages/Learn";
 import Flashcards from "@/pages/Flashcards";
 import FlashcardDeck from "@/pages/FlashcardDeck";
+import DeepWork from "@/pages/DeepWork";
+import Grapher from "@/pages/Grapher";
 import Profile from "@/pages/Profile";
 import Settings from "@/pages/Settings";
 import { GlobalMeeting } from "@/components/GlobalMeeting";
+import { DeepWorkTimer } from "@/components/DeepWorkTimer";
 import { AuthModal } from "@/components/AuthModal";
 import { rtcManager } from "@/lib/rtcTransfer";
 
@@ -164,6 +167,8 @@ function App() {
             <Route path={ROUTES.learn} element={<Learn />} />
             <Route path={ROUTES.flashcards} element={<Flashcards />} />
             <Route path="/panel/ogren/kelime-kartlari/:id" element={<FlashcardDeck />} />
+            <Route path={ROUTES.deepwork} element={<DeepWork />} />
+            <Route path={ROUTES.grapher} element={<Grapher />} />
             <Route path={ROUTES.leaderboard} element={<Leaderboard />} />
             <Route path={ROUTES.profile} element={<Profile />} />
             <Route path={ROUTES.settings} element={<Settings />} />
@@ -208,6 +213,7 @@ function App() {
           <Route path="*" element={<Navigate to={ROUTES.home} replace />} />
         </Routes>
         <AuthModal />
+        <DeepWorkTimer />
       </BrowserRouter>
       <GlobalMeeting />
       <Toaster />
