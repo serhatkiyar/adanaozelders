@@ -188,28 +188,44 @@ async def _validate_booking(
 
 # ── Gelen Kutusu (Inbox) ─────────────────────────────────────────
 async def ensure_inbox(db: AsyncSession, user: CurrentUser) -> TaskList:
-    """Kullanıcının varsayılan 'Gelen Kutusu' listesini döner; yoksa oluşturur."""
-    inbox = (
-        await db.execute(
-            select(TaskList).where(
-                TaskList.user_id == user.id,
-                TaskList.role_id == user.role_id,
-                TaskList.is_inbox.is_(True),
-                TaskList.deleted_at.is_(None),
+    """Kullanıcının varsayılan 'Gelen Kutusu' listesini döner; yoksa oluşturur.
+
+    Açılışta birden çok endpoint (lists/tasks/labels) paralel çağrıldığından,
+    inbox yokken birkaç istek aynı anda oluşturup MÜKERRER satır bırakabilir.
+    Bu yüzden ``scalar_one_or_none`` yerine tüm inbox'ları okur, en küçük id'yi
+    tutar ve fazlalıkları soft-delete eder (kendi kendini onarır)."""
+    inboxes = list(
+        (
+            await db.execute(
+                select(TaskList)
+                .where(
+                    TaskList.user_id == user.id,
+                    TaskList.role_id == user.role_id,
+                    TaskList.is_inbox.is_(True),
+                    TaskList.deleted_at.is_(None),
+                )
+                .order_by(TaskList.id.asc())
             )
-        )
-    ).scalar_one_or_none()
-    if inbox is None:
-        inbox = TaskList(
-            user_id=user.id,
-            role_id=user.role_id,
-            name=INBOX_NAME,
-            is_inbox=True,
-            position=-1,  # her zaman en üstte
-        )
-        db.add(inbox)
-        await db.flush()
-        await db.refresh(inbox)
+        ).scalars().all()
+    )
+    if inboxes:
+        if len(inboxes) > 1:
+            # Yarış koşulu artığı: fazlalık inbox'ları temizle.
+            for extra in inboxes[1:]:
+                extra.deleted_at = _now()
+            await db.flush()
+        return inboxes[0]
+
+    inbox = TaskList(
+        user_id=user.id,
+        role_id=user.role_id,
+        name=INBOX_NAME,
+        is_inbox=True,
+        position=-1,  # her zaman en üstte
+    )
+    db.add(inbox)
+    await db.flush()
+    await db.refresh(inbox)
     return inbox
 
 
