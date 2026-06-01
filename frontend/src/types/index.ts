@@ -165,6 +165,66 @@ export interface CardCreate {
   back: string;
 }
 
+/* ============================ TASKS (Görevlerim / To-Do) ============================ */
+
+export type TaskPriority = "LOW" | "MEDIUM" | "HIGH";
+
+export interface TaskList {
+  id: number;
+  name: string;
+  color?: string | null;
+  position: number;
+  active_count: number;
+  overdue_count: number;
+  created_at: string;
+}
+
+export interface Subtask {
+  id: number;
+  task_id: number;
+  title: string;
+  is_done: boolean;
+  position: number;
+}
+
+export interface Task {
+  id: number;
+  list_id: number;
+  title: string;
+  description?: string | null;
+  priority: TaskPriority;
+  due_at?: string | null;
+  completed_at?: string | null;
+  position: number;
+  booking_id?: number | null;
+  subtasks: Subtask[];
+  created_at: string;
+}
+
+export interface TaskListCreate {
+  name: string;
+  color?: string | null;
+}
+
+export interface TaskCreate {
+  title: string;
+  description?: string | null;
+  priority?: TaskPriority;
+  due_at?: string | null;
+  booking_id?: number | null;
+}
+
+export interface TaskUpdate {
+  title?: string;
+  description?: string | null;
+  priority?: TaskPriority;
+  due_at?: string | null;
+  booking_id?: number | null;
+  list_id?: number;
+}
+
+export type TaskStatusFilter = "active" | "completed" | "all";
+
 // Bir öğrencinin herkese açık profili (öğretmenler görüntüler).
 export interface ClientPublicOut {
   id: number;

@@ -40,6 +40,7 @@ import Flashcards from "@/pages/Flashcards";
 import FlashcardDeck from "@/pages/FlashcardDeck";
 import DeepWork from "@/pages/DeepWork";
 import Grapher from "@/pages/Grapher";
+import Tasks from "@/pages/Tasks";
 import Profile from "@/pages/Profile";
 import Settings from "@/pages/Settings";
 import { GlobalMeeting } from "@/components/GlobalMeeting";
@@ -169,6 +170,7 @@ function App() {
             <Route path="/panel/ogren/kelime-kartlari/:id" element={<FlashcardDeck />} />
             <Route path={ROUTES.deepwork} element={<DeepWork />} />
             <Route path={ROUTES.grapher} element={<Grapher />} />
+            <Route path={ROUTES.tasks} element={<Tasks />} />
             <Route path={ROUTES.leaderboard} element={<Leaderboard />} />
             <Route path={ROUTES.profile} element={<Profile />} />
             <Route path={ROUTES.settings} element={<Settings />} />

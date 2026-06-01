@@ -28,6 +28,7 @@ export const ROUTES = {
   favorites: "/panel/favoriler",
   questions: "/panel/sorular",
   exams: "/panel/denemeler",
+  tasks: "/panel/gorevler",
   leaderboard: "/panel/liderlik",
   // Öğren bölümü (kelime kartları / SRS)
   learn: "/panel/ogren",

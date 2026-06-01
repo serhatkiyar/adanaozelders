@@ -75,7 +75,7 @@ Aynı kaynağın **tek kanonik URL'i** vardır: `/egitmenler` ve `/egitmenler/:s
 | ADMIN (1) | `/panel` (AdminHome) | — |
 | TUTOR (2) | `/panel` (TutorDashboard) | `/panel/ilan` (ilan ayarları), `/panel/ogrenciler/:id`, `/panel/sorular` (gelen sorular) |
 | CLIENT (3)| `/egitmenler` (arama) | `/panel/favoriler`, `/panel/denemeler`, `/panel/rezervasyonlar`, `/panel/sorular` (kendi soruları) |
-| Ortak | — | `/panel/mesajlar`, `/panel/profil`, `/panel/ayarlar`, `/panel/liderlik`, `/panel/takvim`, `/panel/rezervasyonlar/:id` (ders detayı) |
+| Ortak | — | `/panel/mesajlar`, `/panel/profil`, `/panel/ayarlar`, `/panel/liderlik`, `/panel/takvim`, `/panel/ogren/*` (Öğren araçları), `/panel/gorevler` (Görevlerim / To-Do), `/panel/rezervasyonlar/:id` (ders detayı) |
 
 `/panel` ve `/panel/sorular`, rol göre farklı içerik render eden delegator'lardır (`PanelHome`, `PanelQuestions`).
 

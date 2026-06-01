@@ -10,6 +10,7 @@ import { RescheduleModal } from "@/components/RescheduleModal";
 import { ReviewModal } from "@/components/ReviewModal";
 import { QuestionModal } from "@/components/QuestionModal";
 import { QaThreadChat } from "@/components/QaThreadChat";
+import { LessonTasksCard } from "@/components/LessonTasksCard";
 import {
   useBooking,
   useBookingAction,
@@ -592,6 +593,9 @@ export default function LessonDetail() {
             notes={booking.private_notes}
           />
         </section>
+
+        {/* ── Bu derse ait görevler (To-Do) ── */}
+        <LessonTasksCard bookingId={bookingId} />
         </div>
 
       </div>
