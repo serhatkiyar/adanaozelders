@@ -13,8 +13,17 @@ import { useRtcStore } from "@/store/rtcStore";
 import { useWsStore } from "@/store/wsStore";
 
 const ICE_SERVERS: RTCConfiguration = {
-  iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
+  iceServers: [
+    { urls: "stun:stun.l.google.com:19302" },
+    { urls: "stun:stun1.l.google.com:19302" },
+  ],
 };
+
+// Tanılama: konsola WebRTC akış loglarını basar. Sorun giderirken true yap.
+const DEBUG = false;
+function log(...args: unknown[]) {
+  if (DEBUG) console.log("[P2P]", ...args);
+}
 
 const CHUNK_SIZE = 16 * 1024; // 16 KB
 const HIGH_WATER_MARK = 8 * 1024 * 1024; // 8 MB — üstündeyse drenajı bekle
@@ -42,6 +51,8 @@ class RtcTransferManager {
   // gönderen tarafı
   private fileToSend: File | null = null;
   private aborted = false;
+  private answered = false; // gönderen: bir answer kabul edildi mi (ilk answer kazanır)
+  private rejectTimer: ReturnType<typeof setTimeout> | null = null;
 
   // alıcı tarafı
   private incomingOffer: Extract<Signal, { kind: "offer" }> | null = null;
@@ -53,8 +64,14 @@ class RtcTransferManager {
     const bookingId = useMeetingStore.getState().bookingId;
     const socket = useWsStore.getState().socket;
     if (bookingId == null || !socket || socket.readyState !== WebSocket.OPEN) {
+      log("sinyal GÖNDERİLEMEDİ", {
+        kind: signal.kind,
+        bookingId,
+        socket: socket?.readyState,
+      });
       return false;
     }
+    log("sinyal →", signal.kind, "booking", bookingId);
     socket.send(JSON.stringify({ type: "RTC_SIGNAL", booking_id: bookingId, signal }));
     return true;
   }
@@ -216,7 +233,15 @@ class RtcTransferManager {
   // ── Sinyal alımı (WsManager çağırır) ──────────────────────────────
   handleSignal(bookingId: number, signal: Signal) {
     const currentBooking = useMeetingStore.getState().bookingId;
-    if (currentBooking == null || currentBooking !== bookingId) return;
+    if (currentBooking == null || currentBooking !== bookingId) {
+      log(
+        "sinyal YOK SAYILDI — bu sekme derste değil/farklı ders.",
+        { kind: signal.kind, geleningBooking: bookingId, aktifBooking: currentBooking },
+        "→ karşı sekmenin de 'Canlı Derse Katıl' ile derse girmesi gerekir."
+      );
+      return;
+    }
+    log("sinyal ←", signal.kind, "booking", bookingId);
 
     switch (signal.kind) {
       case "offer":
@@ -229,9 +254,19 @@ class RtcTransferManager {
         this.onRemoteIce(signal);
         break;
       case "reject":
-        if (signal.transferId === this.transferId) {
-          useRtcStore.getState().patchActive({ status: "rejected" });
-          this.cleanup();
+        // Karşı hesabın birden çok sekmesi olabilir: meşgul bir kopya sekme reject
+        // gönderirken başka bir sekme kabul edip (answer) bağlanabilir. Bu yüzden
+        // reject'te hemen iptal etmeyiz; kısa süre answer gelmezse reddedilmiş sayarız.
+        if (signal.transferId === this.transferId && !this.answered) {
+          if (this.rejectTimer) clearTimeout(this.rejectTimer);
+          this.rejectTimer = setTimeout(() => {
+            this.rejectTimer = null;
+            if (!this.answered) {
+              log("reject kesinleşti (answer gelmedi)");
+              useRtcStore.getState().patchActive({ status: "rejected" });
+              this.cleanup();
+            }
+          }, 4000);
         }
         break;
       case "cancel":
@@ -265,7 +300,13 @@ class RtcTransferManager {
   }
 
   private async onRemoteAnswer(signal: Extract<Signal, { kind: "answer" }>) {
-    if (!this.pc || signal.transferId !== this.transferId) return;
+    // İlk answer kazanır; sonraki answer'lar (birden çok kabul eden sekme) yok sayılır.
+    if (!this.pc || signal.transferId !== this.transferId || this.answered) return;
+    this.answered = true;
+    if (this.rejectTimer) {
+      clearTimeout(this.rejectTimer);
+      this.rejectTimer = null;
+    }
     await this.pc.setRemoteDescription(signal.sdp);
     this.remoteReady = true;
     await this.drainCandidates();
@@ -310,8 +351,17 @@ class RtcTransferManager {
         this.sendSignal({ kind: "ice", transferId, candidate: e.candidate.toJSON() });
       }
     };
+    pc.oniceconnectionstatechange = () => log("iceConnectionState:", pc.iceConnectionState);
     pc.onconnectionstatechange = () => {
-      if (pc.connectionState === "failed") this.fail("Bağlantı kurulamadı (NAT/güvenlik duvarı).");
+      log("connectionState:", pc.connectionState);
+      if (pc.connectionState === "connected") {
+        useRtcStore.getState().patchActive({ status: "transferring" });
+      }
+      if (pc.connectionState === "failed") {
+        this.fail(
+          "Bağlantı kurulamadı. Karşı tarafın da derse girdiğinden emin ol; sorun sürerse ağ/güvenlik duvarı engelliyor olabilir."
+        );
+      }
     };
     return pc;
   }
@@ -323,6 +373,10 @@ class RtcTransferManager {
 
   private cleanup() {
     this.aborted = true;
+    if (this.rejectTimer) {
+      clearTimeout(this.rejectTimer);
+      this.rejectTimer = null;
+    }
     try {
       this.channel?.close();
     } catch {
@@ -339,6 +393,7 @@ class RtcTransferManager {
     this.incomingOffer = null;
     this.pendingCandidates = [];
     this.remoteReady = false;
+    this.answered = false;
   }
 }
 
