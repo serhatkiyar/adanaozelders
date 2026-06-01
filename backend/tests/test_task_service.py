@@ -1,6 +1,10 @@
 import datetime
 
-from services.task_service import classify_due, compute_next_due
+from services.task_service import (
+    classify_due,
+    compute_next_due,
+    task_reminder_message,
+)
 
 NOW = datetime.datetime(2026, 6, 1, 12, 0, tzinfo=datetime.timezone.utc)
 
@@ -61,4 +65,13 @@ def test_recurrence_monthly_december_rolls_year():
     dec15 = datetime.datetime(2026, 12, 15, 9, 0, tzinfo=datetime.timezone.utc)
     assert compute_next_due("monthly", dec15) == datetime.datetime(
         2027, 1, 15, 9, 0, tzinfo=datetime.timezone.utc
+    )
+
+
+# ── task_reminder_message ──
+def test_reminder_message_overdue_vs_upcoming():
+    assert task_reminder_message("Ödev", True) == "Görev gecikti: Ödev"
+    assert (
+        task_reminder_message("Ödev", False)
+        == "Görev son tarihi yaklaşıyor: Ödev"
     )

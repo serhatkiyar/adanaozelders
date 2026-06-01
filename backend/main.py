@@ -15,7 +15,7 @@ from core.exceptions import register_exception_handlers
 from core import migrations, seed
 from core import presence
 from core import observability
-from services import booking_service
+from services import booking_service, task_service
 
 logger = logging.getLogger(__name__)
 
@@ -29,6 +29,7 @@ async def _reminder_loop() -> None:
             async with AsyncSessionLocal() as session:
                 await booking_service.send_due_reminders(session)
                 await booking_service.auto_complete_past_bookings(session)
+                await task_service.send_task_due_reminders(session)
                 await session.commit()
         except Exception:
             # best-effort; bir sonraki periyotta tekrar denenir ama sessizce yutma.

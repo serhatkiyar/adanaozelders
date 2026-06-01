@@ -110,7 +110,7 @@ Tüm istekler `/api/v1` ile başlar.
 | `/reports/*` | Şikayet oluştur (generic target, dedupe, rate-limit) + kendi şikayetlerim |
 | `/leaderboard/*` | En iyi eğitmenler ve öğrenciler listesi |
 | `/payments/*` | Booking ödemesi (escrow): durum sorgu, **pay** (öğrenci öder→HELD), **earnings** (tutor kazanç özeti), **admin/summary** (platform komisyon/hacim) |
-| `/tasks/*` | Kişisel To-Do (Todoist benzeri): proje(liste)/görev/alt-görev/**etiket** CRUD, `toggle` (tamamla; **tekrarlayan** görev bir sonraki tarihe yuvarlanır), `reorder` (sürükle-bırak), filtreler (status/`booking_id`/`label_id`); 4-kademe öncelik (1=P1…4=P4), **Gelen Kutusu** (silinemez varsayılan proje, `list_lists`'te lazy oluşur). Sahiplik `(user_id, role_id)`; görev opsiyonel `booking_id` ile derse bağlanır |
+| `/tasks/*` | Kişisel To-Do (Todoist benzeri): proje(liste)/görev/alt-görev/**etiket** CRUD, `toggle` (tamamla; **tekrarlayan** görev bir sonraki tarihe yuvarlanır), `reorder` (sürükle-bırak), filtreler (status/`booking_id`/`label_id`); 4-kademe öncelik (1=P1…4=P4), **Gelen Kutusu** (silinemez varsayılan proje, `list_lists`'te lazy oluşur). Sahiplik `(user_id, role_id)`; görev opsiyonel `booking_id` ile derse bağlanır. **Son tarih hatırlatması**: `_reminder_loop` (main.py, 5 dk) `send_task_due_reminders`'ı çağırır — lead penceresindeki/gecikmiş aktif görevler için sahibine bir kez bildirim (`reminder_sent`; due değişince/tekrar yuvarlanınca sıfırlanır) |
 | `/ws` | WebSocket (mesaj/bildirim/booking-comment push; token query param) |
 
 ## Kodlama Kuralları

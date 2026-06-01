@@ -115,6 +115,11 @@ class Task(Base, TimestampMixin, SoftDeleteMixin):
     completed_at: Mapped[datetime.datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    # Son tarih hatırlatma bildirimi gönderildi mi (arka plan döngüsü için).
+    # due_at değişince / tekrar yuvarlanınca sıfırlanır.
+    reminder_sent: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("false")
+    )
     position: Mapped[int] = mapped_column(
         Integer, nullable=False, server_default=text("0")
     )

@@ -122,6 +122,10 @@ class Settings(BaseSettings):
     # plan görevi tarafından otomatik COMPLETED'a geçirilir (review/QA açılsın diye).
     AUTO_COMPLETE_GRACE_HOURS: int = 12
 
+    # Görev son tarihi bu kadar dakika kala (ve geçmiş ama hatırlatılmamış görevler için)
+    # bir kez hatırlatma bildirimi gönderilir.
+    TASK_REMINDER_LEAD_MINUTES: int = 60
+
     # Müsaitlik/yerel saat hesapları için sabit ofset (Türkiye UTC+3, DST yok).
     APP_UTC_OFFSET_HOURS: int = 3
 

@@ -9,9 +9,11 @@ from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import CurrentUser
+from core.config import settings
 from models.booking import Booking
 from models.role import ROLE_IDS, RoleType
 from models.task import Subtask, Task, TaskLabel, TaskList, task_label_links
+from services import notification_service
 from schemas.task import (
     LabelCreate,
     LabelUpdate,
@@ -84,6 +86,13 @@ def _normalize_recurrence(value: str | None) -> str | None:
         return None
     v = value.strip().lower()
     return v if v in _RECURRENCE_RULES else None
+
+
+def task_reminder_message(title: str, overdue: bool) -> str:
+    """Son tarih hatırlatma bildirimi metni (saf; testlenebilir)."""
+    if overdue:
+        return f"Görev gecikti: {title}"
+    return f"Görev son tarihi yaklaşıyor: {title}"
 
 
 # ── Sahiplik yardımcıları ────────────────────────────────────────
@@ -498,6 +507,7 @@ async def update_task(
         task.priority = payload["priority"]
     if "due_at" in payload:
         task.due_at = payload["due_at"]
+        task.reminder_sent = False  # yeni son tarih -> yeniden hatırlat
     if "recurrence" in payload:
         task.recurrence = _normalize_recurrence(payload["recurrence"])
     if "booking_id" in payload:
@@ -529,6 +539,7 @@ async def toggle_task(
                 guard += 1
             if nxt is not None:
                 task.due_at = nxt
+                task.reminder_sent = False  # sonraki oluşum için yeniden hatırlat
                 await db.flush()
                 await db.refresh(task, attribute_names=["subtasks", "labels"])
                 return task
@@ -597,3 +608,38 @@ async def delete_subtask(
     subtask = await _owned_subtask_or_404(db, user, subtask_id)
     subtask.deleted_at = _now()
     await db.flush()
+
+
+# ── Son tarih hatırlatmaları (arka plan döngüsü) ─────────────────
+async def send_task_due_reminders(db: AsyncSession) -> int:
+    """Son tarihi yaklaşan (lead penceresi içinde) veya geçmiş ama henüz
+    hatırlatılmamış aktif görevler için sahibine bir kez bildirim gönderir.
+    Booking ``send_due_reminders`` deseniyle aynı; ``main._reminder_loop``
+    içinde periyodik çağrılır."""
+    now = _now()
+    lead = now + datetime.timedelta(minutes=settings.TASK_REMINDER_LEAD_MINUTES)
+    rows = (
+        await db.execute(
+            select(Task, TaskList.user_id, TaskList.role_id)
+            .join(TaskList, Task.list_id == TaskList.id)
+            .where(
+                Task.deleted_at.is_(None),
+                Task.completed_at.is_(None),
+                Task.reminder_sent.is_(False),
+                Task.due_at.is_not(None),
+                Task.due_at <= lead,
+                TaskList.deleted_at.is_(None),
+            )
+        )
+    ).all()
+    for task, user_id, role_id in rows:
+        overdue = task.due_at is not None and task.due_at < now
+        await notification_service.notify(
+            db,
+            user_id=user_id,
+            role_id=role_id,
+            message=task_reminder_message(task.title, overdue),
+            link="/panel/gorevler",
+        )
+        task.reminder_sent = True
+    return len(rows)
