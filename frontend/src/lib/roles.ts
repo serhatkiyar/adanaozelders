@@ -9,7 +9,7 @@ export function roleHome(roleId: number | null | undefined): string {
     case ROLE_IDS.ADMIN:
       return ROUTES.panel;
     case ROLE_IDS.TUTOR:
-      return ROUTES.panel;
+      return ROUTES.home;
     case ROLE_IDS.CLIENT:
       return ROUTES.home;
     default:

@@ -32,9 +32,9 @@ export const STUDENT_NAV: NavItem[] = [
 ];
 
 export const TUTOR_NAV: NavItem[] = [
-  { to: ROUTES.panel, label: "Panel", end: true, icon: "dashboard" },
+  { to: ROUTES.panel, label: "Anasayfa", end: true, icon: "dashboard" },
   { to: ROUTES.messages, label: "Mesajlar", icon: "messages" },
-  { to: ROUTES.questions, label: "Sorular", icon: "questions" },
+  { to: ROUTES.questions, label: "Sorularım", icon: "questions" },
   { to: ROUTES.tutorListing, label: "İlan Ayarları", icon: "listing" },
   { to: ROUTES.calendar, label: "Takvim", icon: "calendar" },
 ];

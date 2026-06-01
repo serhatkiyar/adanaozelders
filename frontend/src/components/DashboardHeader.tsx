@@ -268,7 +268,7 @@ export function DashboardHeader({ navItems, transparent = false }: DashboardHead
   );
 
   const accountLinks = (onClick: () => void) => {
-    const secondaryLabels = ["Sorular", "Sorularım", "Denemelerim", "Takvim"];
+    const secondaryLabels = ["Denemelerim", "Takvim", "Taleplerim", "Ders Taleplerim"];
     const primaryItems = navItems?.filter((l) => !secondaryLabels.includes(l.label)) || [];
     const secondaryItems = navItems?.filter((l) => secondaryLabels.includes(l.label)) || [];
 
