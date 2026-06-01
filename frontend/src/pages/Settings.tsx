@@ -1,4 +1,4 @@
-import { FormEvent, useState } from "react";
+import { FormEvent, useState, useCallback } from "react";
 import { AxiosError } from "axios";
 import { DashboardShell } from "@/components/DashboardShell";
 import { STUDENT_NAV, TUTOR_NAV } from "@/lib/nav";
@@ -11,6 +11,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/api/axios";
 import { Avatar } from "@/components/Avatar";
 import { AddressSection } from "@/components/AddressSection";
+import { ImageCropModal } from "@/components/ImageCropModal";
 
 const inputClass =
   "mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100";
@@ -30,11 +31,12 @@ export default function Settings() {
   const [next, setNext] = useState("");
   const [confirm, setConfirm] = useState("");
   const [isUploading, setIsUploading] = useState(false);
+  const [cropImageSrc, setCropImageSrc] = useState<string | null>(null);
 
   const uploadAvatar = useMutation({
-    mutationFn: async (file: File) => {
+    mutationFn: async (blob: Blob) => {
       const formData = new FormData();
-      formData.append("file", file);
+      formData.append("file", blob, "avatar.webp");
       const { data } = await apiClient.post("/auth/me/avatar", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
@@ -42,12 +44,19 @@ export default function Settings() {
     },
     onSuccess: () => {
       toast.success("Profil fotoğrafı güncellendi.");
-      queryClient.invalidateQueries({ queryKey: ["currentUser"] });
+      queryClient.refetchQueries({ queryKey: ["me"] });
     },
     onError: (err) => {
       toast.error(getErrorMessage(err, "Fotoğraf yüklenemedi."));
     },
-    onSettled: () => setIsUploading(false),
+    onSettled: () => {
+      setIsUploading(false);
+      // Revoke the object URL to free memory
+      if (cropImageSrc) {
+        URL.revokeObjectURL(cropImageSrc);
+        setCropImageSrc(null);
+      }
+    },
   });
 
   const deleteAvatar = useMutation({
@@ -57,7 +66,7 @@ export default function Settings() {
     },
     onSuccess: () => {
       toast.success("Profil fotoğrafı silindi.");
-      queryClient.invalidateQueries({ queryKey: ["currentUser"] });
+      queryClient.refetchQueries({ queryKey: ["me"] });
     },
     onError: (err) => {
       toast.error(getErrorMessage(err, "Fotoğraf silinemedi."));
@@ -71,10 +80,26 @@ export default function Settings() {
       toast.error("Dosya boyutu 5MB'dan küçük olmalıdır.");
       return;
     }
-    setIsUploading(true);
-    uploadAvatar.mutate(file);
+    // Create object URL and open crop modal
+    const objectUrl = URL.createObjectURL(file);
+    setCropImageSrc(objectUrl);
     e.target.value = "";
   };
+
+  const handleCropComplete = useCallback(
+    (blob: Blob) => {
+      setIsUploading(true);
+      uploadAvatar.mutate(blob);
+    },
+    [uploadAvatar]
+  );
+
+  const handleCropClose = useCallback(() => {
+    if (cropImageSrc) {
+      URL.revokeObjectURL(cropImageSrc);
+    }
+    setCropImageSrc(null);
+  }, [cropImageSrc]);
 
   const roleNav =
     user?.role_id === ROLE_IDS.CLIENT
@@ -117,6 +142,7 @@ export default function Settings() {
   };
 
   return (
+    <>
     <DashboardShell title="Hesap Ayarları" navItems={roleNav}>
       <div className="mx-auto max-w-2xl space-y-6 pb-12">
         <h2 className="text-lg font-bold text-slate-900 dark:text-white">
@@ -278,5 +304,16 @@ export default function Settings() {
         )}
       </div>
     </DashboardShell>
+
+    {/* Image Crop Modal */}
+    {cropImageSrc && (
+      <ImageCropModal
+        imageSrc={cropImageSrc}
+        onCropComplete={handleCropComplete}
+        onClose={handleCropClose}
+        isUploading={isUploading}
+      />
+    )}
+    </>
   );
 }
