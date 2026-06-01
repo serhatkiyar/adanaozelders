@@ -7,6 +7,10 @@ from api.deps import CurrentUser, get_current_active_user, user_rate_limit
 from core.config import settings
 from core.database import get_db
 from schemas.task import (
+    LabelCreate,
+    LabelOut,
+    LabelUpdate,
+    ReorderIn,
     SubtaskCreate,
     SubtaskOut,
     SubtaskUpdate,
@@ -28,7 +32,7 @@ _write_limit = user_rate_limit(
 )
 
 
-# ── Listeler ─────────────────────────────────────────────────────
+# ── Listeler / projeler ──────────────────────────────────────────
 @router.get("/lists", response_model=list[TaskListOut])
 async def list_lists(
     user: CurrentUser = Depends(get_current_active_user),
@@ -51,6 +55,15 @@ async def create_list(
     return await task_service.create_list(db, user, payload)
 
 
+@router.post("/lists/reorder", status_code=status.HTTP_204_NO_CONTENT)
+async def reorder_lists(
+    payload: ReorderIn,
+    user: CurrentUser = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    await task_service.reorder_lists(db, user, payload.ids)
+
+
 @router.patch("/lists/{list_id}", response_model=TaskListOut)
 async def update_list(
     list_id: int,
@@ -70,11 +83,54 @@ async def delete_list(
     await task_service.delete_list(db, user, list_id)
 
 
+# ── Etiketler ────────────────────────────────────────────────────
+@router.get("/labels", response_model=list[LabelOut])
+async def list_labels(
+    user: CurrentUser = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    return await task_service.list_labels(db, user)
+
+
+@router.post(
+    "/labels",
+    response_model=LabelOut,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(_write_limit)],
+)
+async def create_label(
+    payload: LabelCreate,
+    user: CurrentUser = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    return await task_service.create_label(db, user, payload)
+
+
+@router.patch("/labels/{label_id}", response_model=LabelOut)
+async def update_label(
+    label_id: int,
+    payload: LabelUpdate,
+    user: CurrentUser = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    return await task_service.update_label(db, user, label_id, payload)
+
+
+@router.delete("/labels/{label_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_label(
+    label_id: int,
+    user: CurrentUser = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    await task_service.delete_label(db, user, label_id)
+
+
 # ── Görevler ─────────────────────────────────────────────────────
 @router.get("", response_model=list[TaskOut])
 async def list_tasks(
     list_id: int | None = Query(default=None),
     booking_id: int | None = Query(default=None),
+    label_id: int | None = Query(default=None),
     status_filter: str = Query(
         default="active", alias="status", pattern="^(active|completed|all)$"
     ),
@@ -87,6 +143,7 @@ async def list_tasks(
         list_id=list_id,
         status_filter=status_filter,
         booking_id=booking_id,
+        label_id=label_id,
     )
 
 
@@ -103,6 +160,15 @@ async def create_task(
     db: AsyncSession = Depends(get_db),
 ):
     return await task_service.create_task(db, user, list_id, payload)
+
+
+@router.post("/reorder", status_code=status.HTTP_204_NO_CONTENT)
+async def reorder_tasks(
+    payload: ReorderIn,
+    user: CurrentUser = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    await task_service.reorder_tasks(db, user, payload.ids)
 
 
 @router.patch("/{task_id}", response_model=TaskOut)

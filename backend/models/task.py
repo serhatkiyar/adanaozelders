@@ -1,34 +1,52 @@
 from __future__ import annotations
 
 import datetime
-import enum
 
 from sqlalchemy import (
     Boolean,
+    CheckConstraint,
+    Column,
     DateTime,
     ForeignKey,
     Index,
     Integer,
+    SmallInteger,
     String,
+    Table,
     Text,
     text,
 )
-from sqlalchemy import Enum as SAEnum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from core.database import Base
 from models.mixins import SoftDeleteMixin, TimestampMixin
 
+# Öncelik tamsayı olarak tutulur (Todoist deseni): 1=P1 (acil/kırmızı) … 4=P4 (varsayılan).
+PRIORITY_MIN = 1
+PRIORITY_MAX = 4
+PRIORITY_DEFAULT = 4
 
-class TaskPriority(str, enum.Enum):
-    LOW = "LOW"
-    MEDIUM = "MEDIUM"
-    HIGH = "HIGH"
+
+# Görev ↔ etiket çoka-çok bağ tablosu.
+task_label_links = Table(
+    "task_label_links",
+    Base.metadata,
+    Column(
+        "task_id",
+        ForeignKey("tasks.id", ondelete="CASCADE"),
+        primary_key=True,
+    ),
+    Column(
+        "label_id",
+        ForeignKey("task_labels.id", ondelete="CASCADE"),
+        primary_key=True,
+    ),
+)
 
 
 class TaskList(Base, TimestampMixin, SoftDeleteMixin):
-    """Görev listesi / kategori. Birleşik kullanıcı tablosu olmadığından sahiplik
-    (user_id, role_id) çiftiyle belirlenir (bkz. flashcard_decks / notifications)."""
+    """Görev listesi / proje. Sahiplik (user_id, role_id) çiftiyle belirlenir.
+    ``is_inbox`` doluysa kullanıcının silinemeyen varsayılan 'Gelen Kutusu'dur."""
 
     __tablename__ = "task_lists"
 
@@ -36,10 +54,13 @@ class TaskList(Base, TimestampMixin, SoftDeleteMixin):
     user_id: Mapped[int] = mapped_column(Integer, nullable=False)
     role_id: Mapped[int] = mapped_column(Integer, nullable=False)
     name: Mapped[str] = mapped_column(String(120), nullable=False)
-    # UI rozet rengi (hex ya da preset etiketi); zorunlu değil.
+    # UI rengi (hex; örn '#6366f1') ya da preset etiketi.
     color: Mapped[str | None] = mapped_column(String(20), nullable=True)
     position: Mapped[int] = mapped_column(
         Integer, nullable=False, server_default=text("0")
+    )
+    is_inbox: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("false")
     )
 
     tasks: Mapped[list["Task"]] = relationship(
@@ -51,9 +72,25 @@ class TaskList(Base, TimestampMixin, SoftDeleteMixin):
     )
 
 
+class TaskLabel(Base, TimestampMixin, SoftDeleteMixin):
+    """Projeler-arası etiket (@etiket). Sahiplik (user_id, role_id) çiftiyle."""
+
+    __tablename__ = "task_labels"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    role_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    name: Mapped[str] = mapped_column(String(60), nullable=False)
+    color: Mapped[str | None] = mapped_column(String(20), nullable=True)
+
+    __table_args__ = (
+        Index("ix_task_labels_owner", "user_id", "role_id"),
+    )
+
+
 class Task(Base, TimestampMixin, SoftDeleteMixin):
     """Tek görev. Sahiplik listesinden (TaskList) türetilir. İsteğe bağlı olarak
-    bir derse (booking) bağlanabilir."""
+    bir derse (booking) bağlanabilir ve tekrarlayan (recurrence) olabilir."""
 
     __tablename__ = "tasks"
 
@@ -65,14 +102,15 @@ class Task(Base, TimestampMixin, SoftDeleteMixin):
     )
     title: Mapped[str] = mapped_column(String(200), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
-    priority: Mapped[TaskPriority] = mapped_column(
-        SAEnum(TaskPriority, name="task_priority"),
-        nullable=False,
-        server_default=text("'MEDIUM'"),
+    # 1=P1 … 4=P4 (varsayılan). bkz. PRIORITY_* sabitleri.
+    priority: Mapped[int] = mapped_column(
+        SmallInteger, nullable=False, server_default=text("4")
     )
     due_at: Mapped[datetime.datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    # Tekrar kuralı (örn 'daily', 'weekly', 'monthly', 'weekdays'); yoksa null.
+    recurrence: Mapped[str | None] = mapped_column(String(30), nullable=True)
     # Doluysa görev tamamlanmıştır; null ise aktiftir.
     completed_at: Mapped[datetime.datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
@@ -91,8 +129,14 @@ class Task(Base, TimestampMixin, SoftDeleteMixin):
     subtasks: Mapped[list["Subtask"]] = relationship(
         back_populates="task", cascade="all, delete-orphan", lazy="selectin"
     )
+    labels: Mapped[list["TaskLabel"]] = relationship(
+        secondary=task_label_links, lazy="selectin"
+    )
 
     __table_args__ = (
+        CheckConstraint(
+            "priority BETWEEN 1 AND 4", name="ck_tasks_priority_range"
+        ),
         Index("ix_tasks_list_due", "list_id", "due_at"),
     )
 

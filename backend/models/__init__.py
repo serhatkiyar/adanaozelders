@@ -20,7 +20,7 @@ from models.refresh_token import RefreshToken
 from models.report import Report, ReportReason, ReportStatus
 from models.review import Review
 from models.role import Role, RoleType
-from models.task import Subtask, Task, TaskList, TaskPriority
+from models.task import Subtask, Task, TaskLabel, TaskList
 from models.tutor import (
     Tutor,
     TutorAvailability,
@@ -72,8 +72,8 @@ __all__ = [
     "RoleType",
     "Subtask",
     "Task",
+    "TaskLabel",
     "TaskList",
-    "TaskPriority",
     "TokenPurpose",
     "Tutor",
     "TutorAvailability",

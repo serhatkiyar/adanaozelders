@@ -4,10 +4,27 @@ import datetime
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from models.task import TaskPriority
+
+# ── Etiketler ────────────────────────────────────────────────────
+class LabelCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=60)
+    color: str | None = Field(default=None, max_length=20)
 
 
-# ── Listeler ─────────────────────────────────────────────────────
+class LabelUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=60)
+    color: str | None = Field(default=None, max_length=20)
+
+
+class LabelOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    name: str
+    color: str | None = None
+
+
+# ── Listeler / projeler ──────────────────────────────────────────
 class TaskListCreate(BaseModel):
     name: str = Field(min_length=1, max_length=120)
     color: str | None = Field(default=None, max_length=20)
@@ -25,6 +42,7 @@ class TaskListOut(BaseModel):
     name: str
     color: str | None = None
     position: int = 0
+    is_inbox: bool = False
     active_count: int = 0
     overdue_count: int = 0
     created_at: datetime.datetime
@@ -54,17 +72,21 @@ class SubtaskOut(BaseModel):
 class TaskCreate(BaseModel):
     title: str = Field(min_length=1, max_length=200)
     description: str | None = Field(default=None, max_length=4000)
-    priority: TaskPriority = TaskPriority.MEDIUM
+    priority: int = Field(default=4, ge=1, le=4)
     due_at: datetime.datetime | None = None
+    recurrence: str | None = Field(default=None, max_length=30)
     booking_id: int | None = None
+    label_ids: list[int] | None = None
 
 
 class TaskUpdate(BaseModel):
     title: str | None = Field(default=None, min_length=1, max_length=200)
     description: str | None = Field(default=None, max_length=4000)
-    priority: TaskPriority | None = None
+    priority: int | None = Field(default=None, ge=1, le=4)
     due_at: datetime.datetime | None = None
+    recurrence: str | None = Field(default=None, max_length=30)
     booking_id: int | None = None
+    label_ids: list[int] | None = None
     # Görevi başka bir listeye taşımak için.
     list_id: int | None = None
 
@@ -76,10 +98,17 @@ class TaskOut(BaseModel):
     list_id: int
     title: str
     description: str | None = None
-    priority: TaskPriority
+    priority: int
     due_at: datetime.datetime | None = None
+    recurrence: str | None = None
     completed_at: datetime.datetime | None = None
     position: int = 0
     booking_id: int | None = None
     subtasks: list[SubtaskOut] = []
+    labels: list[LabelOut] = []
     created_at: datetime.datetime
+
+
+# ── Sıralama (sürükle-bırak) ─────────────────────────────────────
+class ReorderIn(BaseModel):
+    ids: list[int] = Field(min_length=1)

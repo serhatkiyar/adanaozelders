@@ -58,6 +58,30 @@ _ADDED_COLUMNS_DDL: tuple[str, ...] = (
     # bırakıp yenisini ekleriz; tablo yeni olduğundan veri kaybı yok.
     "ALTER TABLE flashcards ADD COLUMN IF NOT EXISTS interval_minutes INTEGER NOT NULL DEFAULT 0",
     "ALTER TABLE flashcards DROP COLUMN IF EXISTS interval_days",
+    # To-Do gelişmeleri (Todoist benzeri): tekrarlama, gelen kutusu, 4-kademe öncelik.
+    "ALTER TABLE tasks ADD COLUMN IF NOT EXISTS recurrence VARCHAR(30)",
+    "ALTER TABLE task_lists ADD COLUMN IF NOT EXISTS is_inbox BOOLEAN NOT NULL DEFAULT false",
+    # Öncelik enum(LOW/MEDIUM/HIGH) → smallint(1..4). Yalnız kolon hâlâ enum ise dönüştür
+    # (idempotent: dönüşümden sonra udt_name='int2' olur, blok atlanır).
+    """
+    DO $$
+    BEGIN
+      IF EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'tasks' AND column_name = 'priority'
+          AND udt_name = 'task_priority'
+      ) THEN
+        ALTER TABLE tasks ALTER COLUMN priority DROP DEFAULT;
+        ALTER TABLE tasks ALTER COLUMN priority TYPE smallint
+          USING (CASE priority::text
+                   WHEN 'HIGH' THEN 1
+                   WHEN 'MEDIUM' THEN 3
+                   WHEN 'LOW' THEN 4
+                   ELSE 4 END);
+        ALTER TABLE tasks ALTER COLUMN priority SET DEFAULT 4;
+      END IF;
+    END $$;
+    """,
 )
 
 
