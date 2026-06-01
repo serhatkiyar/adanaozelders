@@ -54,6 +54,8 @@ class Settings(BaseSettings):
     RATE_LIMIT_REVIEW: int = 10
     RATE_LIMIT_PAYMENT: int = 10
     RATE_LIMIT_REPORT: int = 5
+    # To-do görev/alt görev yazma uçları (kullanıcı bazlı; hızlı ekleme için yüksek).
+    RATE_LIMIT_TASK: int = 60
 
     AWS_ACCESS_KEY_ID: str = "minioadmin"
     AWS_SECRET_ACCESS_KEY: str = "minioadmin"

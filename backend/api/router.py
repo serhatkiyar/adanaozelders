@@ -18,6 +18,7 @@ from api.routers import (
     qa,
     reports,
     reviews,
+    tasks,
     tutors,
     ws,
 )
@@ -41,4 +42,5 @@ api_router.include_router(messages.router)
 api_router.include_router(leaderboard.router)
 api_router.include_router(payments.router)
 api_router.include_router(reports.router)
+api_router.include_router(tasks.router)
 api_router.include_router(ws.router)

@@ -110,6 +110,7 @@ Tüm istekler `/api/v1` ile başlar.
 | `/reports/*` | Şikayet oluştur (generic target, dedupe, rate-limit) + kendi şikayetlerim |
 | `/leaderboard/*` | En iyi eğitmenler ve öğrenciler listesi |
 | `/payments/*` | Booking ödemesi (escrow): durum sorgu, **pay** (öğrenci öder→HELD), **earnings** (tutor kazanç özeti), **admin/summary** (platform komisyon/hacim) |
+| `/tasks/*` | Kişisel To-Do: liste/görev/alt-görev CRUD, `toggle` (tamamla), akıllı görünüm filtreleri (status/`booking_id`); sahiplik `(user_id, role_id)`, görev opsiyonel `booking_id` ile derse bağlanır |
 | `/ws` | WebSocket (mesaj/bildirim/booking-comment push; token query param) |
 
 ## Kodlama Kuralları
