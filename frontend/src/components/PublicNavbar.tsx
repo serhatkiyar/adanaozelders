@@ -14,7 +14,7 @@ export function PublicNavbar() {
           <img
             src="/logo.png"
             alt="Adana Özel Ders"
-            className="h-40 sm:h-48 w-auto object-contain max-w-none -my-16 sm:-my-20 -ml-6 sm:-ml-10"
+            className="h-8 sm:h-10 w-auto object-contain"
           />
         </Link>
         <div className="flex items-center gap-2">

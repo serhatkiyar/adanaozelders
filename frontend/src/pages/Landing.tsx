@@ -361,7 +361,7 @@ function Footer() {
     <footer className="border-t border-slate-100 bg-white py-10 dark:border-slate-800 dark:bg-slate-900">
       <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-6 sm:flex-row">
         <Link to="/" className="flex items-center gap-2 transition hover:opacity-90">
-          <img src="/logo.png" alt="Adana Özel Ders Logo" className="h-36 sm:h-40 w-auto object-contain max-w-none -my-14 sm:-my-16 -ml-4 sm:-ml-6 grayscale opacity-70 hover:grayscale-0 hover:opacity-100 transition" />
+          <img src="/logo.png" alt="Adana Özel Ders Logo" className="h-8 sm:h-10 w-auto object-contain grayscale opacity-70 hover:grayscale-0 hover:opacity-100 transition" />
         </Link>
         <div className="border-t border-slate-200 py-8 text-center text-sm text-slate-500 dark:border-slate-800 dark:text-slate-400">
           <p>© {new Date().getFullYear()} Adana Özel Ders. Tüm hakları saklıdır.</p>

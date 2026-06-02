@@ -367,8 +367,8 @@ export function DashboardHeader({ navItems, transparent = false }: DashboardHead
     ? "sticky top-0 z-40 border-b border-slate-100 bg-white/80 px-6 py-4 backdrop-blur-md dark:border-slate-800 dark:bg-slate-900/80"
     : "border-b border-slate-200 bg-white px-4 py-4 dark:border-slate-800 dark:bg-slate-900 sm:px-6";
   const logoClass = transparent
-    ? "h-40 sm:h-48 w-auto object-contain max-w-none -my-16 sm:-my-20 -ml-6 sm:-ml-10"
-    : "h-36 sm:h-40 w-auto object-contain max-w-none -my-14 sm:-my-16 -ml-5 sm:-ml-8";
+    ? "h-8 sm:h-10 w-auto object-contain"
+    : "h-7 sm:h-8 w-auto object-contain";
 
   return (
     <header className={headerClass}>
