@@ -18,6 +18,7 @@ from models.notification import Notification
 from models.payment import Payment, PaymentStatus
 from models.qa import QAMessage, QAStatus, QAThread
 from models.refresh_token import RefreshToken
+from models.reminder import TaskReminder
 from models.report import Report, ReportReason, ReportStatus
 from models.review import Review
 from models.role import Role, RoleType
@@ -78,6 +79,7 @@ __all__ = [
     "TaskFilter",
     "TaskLabel",
     "TaskList",
+    "TaskReminder",
     "TokenPurpose",
     "Tutor",
     "TutorAvailability",

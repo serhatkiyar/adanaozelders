@@ -153,6 +153,12 @@ class Task(Base, TimestampMixin, SoftDeleteMixin):
     labels: Mapped[list["TaskLabel"]] = relationship(
         secondary=task_label_links, lazy="selectin"
     )
+    reminders: Mapped[list["TaskReminder"]] = relationship(  # noqa: F821
+        back_populates="task",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+        order_by="TaskReminder.trigger_at",
+    )
 
     __table_args__ = (
         CheckConstraint(

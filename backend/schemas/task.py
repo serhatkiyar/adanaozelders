@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import datetime
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -72,6 +73,28 @@ class SubtaskOut(BaseModel):
     position: int = 0
 
 
+# ── Hatırlatıcılar (Todoist 'Reminders') ─────────────────────────
+class ReminderIn(BaseModel):
+    """Görev oluşturma/güncellemede iç içe gelen hatırlatma. ``relative`` ise
+    son tarihe göre ``offset_minutes`` (negatif = önce) gerekir; ``absolute`` ise
+    ``remind_at`` mutlak anı gerekir. ``trigger_at`` sunucuda hesaplanır."""
+
+    type: Literal["relative", "absolute"]
+    offset_minutes: int | None = Field(default=None, ge=-100_000, le=100_000)
+    remind_at: datetime.datetime | None = None
+
+
+class ReminderOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    type: str
+    offset_minutes: int | None = None
+    remind_at: datetime.datetime | None = None
+    trigger_at: datetime.datetime
+    status: str
+
+
 # ── Görevler ─────────────────────────────────────────────────────
 class TaskCreate(BaseModel):
     title: str = Field(min_length=1, max_length=200)
@@ -81,6 +104,9 @@ class TaskCreate(BaseModel):
     recurrence: str | None = Field(default=None, max_length=30)
     booking_id: int | None = None
     label_ids: list[int] | None = None
+    # İç içe hatırlatıcılar + istemci zaman dilimi (IANA, Intl…timeZone).
+    reminders: list[ReminderIn] | None = None
+    timezone: str | None = Field(default=None, max_length=64)
 
 
 class TaskUpdate(BaseModel):
@@ -96,6 +122,9 @@ class TaskUpdate(BaseModel):
     # Üst görev: değer verilirse alt görev yapar, None ile üst seviyeye çıkarır.
     # "ayarlanmadı" ile "None'a çek" ayrımı için ``exclude_unset`` kullanılır.
     parent_id: int | None = None
+    # Verilirse tüm hatırlatıcılar bununla değiştirilir (full replace).
+    reminders: list[ReminderIn] | None = None
+    timezone: str | None = Field(default=None, max_length=64)
 
 
 class TaskOut(BaseModel):
@@ -114,6 +143,7 @@ class TaskOut(BaseModel):
     parent_id: int | None = None
     subtasks: list[SubtaskOut] = []
     labels: list[LabelOut] = []
+    reminders: list[ReminderOut] = []
     created_at: datetime.datetime
 
 

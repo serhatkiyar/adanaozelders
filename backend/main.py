@@ -19,7 +19,8 @@ from services import booking_service, task_service
 
 logger = logging.getLogger(__name__)
 
-_REMINDER_INTERVAL_SECONDS = 300
+# 60 sn: açık görev hatırlatıcılarının (trigger_at <= now) zamanında işlenmesi için.
+_REMINDER_INTERVAL_SECONDS = 60
 
 
 async def _reminder_loop() -> None:
@@ -30,6 +31,7 @@ async def _reminder_loop() -> None:
                 await booking_service.send_due_reminders(session)
                 await booking_service.auto_complete_past_bookings(session)
                 await task_service.send_task_due_reminders(session)
+                await task_service.dispatch_task_reminders(session)
                 await session.commit()
         except Exception:
             # best-effort; bir sonraki periyotta tekrar denenir ama sessizce yutma.

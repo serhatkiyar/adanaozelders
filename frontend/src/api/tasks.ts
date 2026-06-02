@@ -110,19 +110,31 @@ export async function reorderTasks(ids: number[]): Promise<void> {
   await apiClient.post("/tasks/reorder", { ids });
 }
 
+// İstemcinin yerel zaman dilimi (IANA, örn 'Europe/Istanbul').
+function clientTimezone(): string {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+  } catch {
+    return "UTC";
+  }
+}
+
 export async function createTask(
   listId: number,
   payload: TaskCreate
 ): Promise<Task> {
   const { data } = await apiClient.post<Task>(
     `/tasks/lists/${listId}/tasks`,
-    payload
+    { timezone: clientTimezone(), ...payload }
   );
   return data;
 }
 
 export async function updateTask(id: number, payload: TaskUpdate): Promise<Task> {
-  const { data } = await apiClient.patch<Task>(`/tasks/${id}`, payload);
+  const { data } = await apiClient.patch<Task>(`/tasks/${id}`, {
+    timezone: clientTimezone(),
+    ...payload,
+  });
   return data;
 }
 

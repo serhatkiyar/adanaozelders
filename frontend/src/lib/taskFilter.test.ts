@@ -27,6 +27,7 @@ function task(p: Partial<Task> & { id: number }): Task {
     booking_id: null,
     subtasks: [],
     labels: p.labels ?? [],
+    reminders: [],
     created_at: NOW.toISOString(),
   };
 }

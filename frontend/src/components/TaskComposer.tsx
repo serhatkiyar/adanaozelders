@@ -5,7 +5,8 @@ import { isoToLocalInput } from "@/lib/taskView";
 import { localInputToIso } from "@/lib/datetime";
 import { getErrorMessage } from "@/lib/errors";
 import { toast } from "@/store/toastStore";
-import type { TaskLabel, TaskList, TaskPriority } from "@/types";
+import ReminderEditor from "@/components/ReminderEditor";
+import type { ReminderInput, TaskLabel, TaskList, TaskPriority } from "@/types";
 
 // Todoist 'Add task' kartı: görev adı + açıklama + chip kontrolleri (tarih,
 // öncelik, etiket, tekrar) + proje seçici + İptal/Görev ekle.
@@ -18,6 +19,7 @@ export interface ComposerPayload {
   recurrence: string | null;
   label_ids: number[];
   list_id: number;
+  reminders: ReminderInput[];
 }
 
 interface Props {
@@ -101,6 +103,8 @@ export default function TaskComposer({ lists, labels, defaultListId, projects, l
   const [dueIso, setDueIso] = useState<string | null>(null);
   const [recurrence, setRecurrence] = useState("");
   const [labelIds, setLabelIds] = useState<number[]>([]);
+  const [reminders, setReminders] = useState<ReminderInput[]>([]);
+  const [showReminders, setShowReminders] = useState(false);
   const [listId, setListId] = useState<number | undefined>(defaultListId);
   const [menu, setMenu] = useState<"date" | "priority" | "labels" | "recur" | "project" | null>(null);
   const [newLabel, setNewLabel] = useState("");
@@ -128,9 +132,13 @@ export default function TaskComposer({ lists, labels, defaultListId, projects, l
 
   const reset = () => {
     setTitle(""); setDescription(""); // hızlı ardışık girişte tarih/öncelik/proje korunur
+    setReminders([]); setShowReminders(false);
     setMenu(null);
     titleRef.current?.focus();
   };
+
+  // absolute hatırlatmalarda boş remind_at'leri ele (geçersiz).
+  const validReminders = () => reminders.filter((r) => (r.type === "absolute" ? !!r.remind_at : true));
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
@@ -155,6 +163,7 @@ export default function TaskComposer({ lists, labels, defaultListId, projects, l
         recurrence: rec,
         label_ids: allIds,
         list_id: target,
+        reminders: validReminders(),
       });
       reset();
     };
@@ -274,7 +283,20 @@ export default function TaskComposer({ lists, labels, defaultListId, projects, l
             </div>
           </Pop>
         </div>
+
+        {/* Hatırlatıcı */}
+        <button type="button" onClick={() => setShowReminders((s) => !s)} className={`${chipCls} ${reminders.length ? chipActiveCls : ""}`}>
+          <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7}><path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" /></svg>
+          {reminders.length ? `Hatırlatıcı (${reminders.length})` : "Hatırlatıcı"}
+        </button>
       </div>
+
+      {/* Hatırlatıcılar bölümü */}
+      {(showReminders || reminders.length > 0) && (
+        <div className="mt-3 rounded-xl border border-slate-200 p-2.5 dark:border-slate-700">
+          <ReminderEditor reminders={reminders} due={dueIso} onChange={setReminders} />
+        </div>
+      )}
 
       {/* Alt bar: proje seçici + aksiyonlar */}
       <div className="mt-3 flex items-center justify-between gap-2 border-t border-slate-100 pt-3 dark:border-slate-700">

@@ -12,6 +12,7 @@ from api.deps import CurrentUser
 from core.config import settings
 from models.booking import Booking
 from models.role import ROLE_IDS, RoleType
+from models.reminder import TaskReminder
 from models.task import (
     Subtask,
     Task,
@@ -104,6 +105,34 @@ def task_reminder_message(title: str, overdue: bool) -> str:
     if overdue:
         return f"Görev gecikti: {title}"
     return f"Görev son tarihi yaklaşıyor: {title}"
+
+
+def reminder_message(title: str) -> str:
+    """Açık (kullanıcı tanımlı) hatırlatma bildirimi metni (saf)."""
+    return f"Hatırlatma: {title}"
+
+
+# ── Hatırlatma çalıştırma anı (saf; testlenebilir) ────────────────
+def compute_trigger_at(
+    rtype: str,
+    offset_minutes: int | None,
+    remind_at: datetime.datetime | None,
+    due_at: datetime.datetime | None,
+) -> datetime.datetime | None:
+    """Bir hatırlatmanın çalışacağı **mutlak (UTC)** anı hesaplar.
+
+    - ``absolute``: doğrudan ``remind_at``.
+    - ``relative``: ``due_at + offset_minutes`` (negatif ofset = önce). Son tarih
+      yoksa veya ofset yoksa hesaplanamaz → None (çağıran bunu eler).
+
+    Saf fonksiyon (``_sync_reminders`` ve testler tarafından kullanılır)."""
+    if rtype == "absolute":
+        return remind_at
+    if rtype == "relative":
+        if due_at is None or offset_minutes is None:
+            return None
+        return due_at + datetime.timedelta(minutes=offset_minutes)
+    return None
 
 
 # ── Kayıtlı filtre kriter normalizasyonu (saf; testlenebilir) ──────
@@ -623,6 +652,51 @@ async def list_tasks(
     return list((await db.execute(stmt)).scalars().all())
 
 
+def _build_reminders(
+    reminders_in,
+    due_at: datetime.datetime | None,
+    timezone: str | None,
+) -> list[TaskReminder]:
+    """``ReminderIn`` listesinden ``TaskReminder`` satırları üretir; ``trigger_at``
+    hesaplanamayan (örn son tarihi olmayan relative) öğeleri eler."""
+    out: list[TaskReminder] = []
+    for item in reminders_in or []:
+        trig = compute_trigger_at(
+            item.type, item.offset_minutes, item.remind_at, due_at
+        )
+        if trig is None:
+            continue
+        out.append(
+            TaskReminder(
+                type=item.type,
+                offset_minutes=item.offset_minutes if item.type == "relative" else None,
+                remind_at=item.remind_at if item.type == "absolute" else None,
+                trigger_at=trig,
+                status="pending",
+                timezone=timezone,
+            )
+        )
+    return out
+
+
+def _recompute_relative_reminders(task: Task) -> None:
+    """Son tarih değişince mevcut ``relative`` hatırlatmaların ``trigger_at``'ını
+    yeniden hesaplar ve yeniden silahlandırır (status=pending). Son tarih
+    kalmadıysa relative hatırlatmalar düşürülür (absolute'ler korunur)."""
+    kept: list[TaskReminder] = []
+    for r in task.reminders:
+        if r.type != "relative":
+            kept.append(r)
+            continue
+        trig = compute_trigger_at("relative", r.offset_minutes, None, task.due_at)
+        if trig is None:
+            continue  # anchor (due_at) kayboldu -> sil (orphan-delete)
+        r.trigger_at = trig
+        r.status = "pending"
+        kept.append(r)
+    task.reminders = kept
+
+
 async def create_task(
     db: AsyncSession, user: CurrentUser, list_id: int, data: TaskCreate
 ) -> Task:
@@ -647,9 +721,10 @@ async def create_task(
         position=int(max_pos) + 1,
     )
     task.labels = labels
+    task.reminders = _build_reminders(data.reminders, data.due_at, data.timezone)
     db.add(task)
     await db.flush()
-    await db.refresh(task, attribute_names=["subtasks", "labels"])
+    await db.refresh(task, attribute_names=["subtasks", "labels", "reminders"])
     return task
 
 
@@ -706,7 +781,8 @@ async def update_task(
         task.description = (payload["description"] or "").strip() or None
     if payload.get("priority") is not None:
         task.priority = payload["priority"]
-    if "due_at" in payload:
+    due_changed = "due_at" in payload
+    if due_changed:
         task.due_at = payload["due_at"]
         task.reminder_sent = False  # yeni son tarih -> yeniden hatırlat
     if "recurrence" in payload:
@@ -742,8 +818,14 @@ async def update_task(
             if task.list_id != parent.list_id:
                 task.list_id = parent.list_id
                 await _cascade_subtree_list(db, task.id, parent.list_id)
+    # Hatırlatıcılar: verilirse tümünü değiştir; verilmeyip son tarih değiştiyse
+    # mevcut relative hatırlatmaları yeni son tarihe göre yeniden hesapla.
+    if "reminders" in payload:
+        task.reminders = _build_reminders(data.reminders, task.due_at, data.timezone)
+    elif due_changed:
+        _recompute_relative_reminders(task)
     await db.flush()
-    await db.refresh(task, attribute_names=["subtasks", "labels"])
+    await db.refresh(task, attribute_names=["subtasks", "labels", "reminders"])
     return task
 
 
@@ -837,9 +919,10 @@ async def delete_subtask(
 # ── Son tarih hatırlatmaları (arka plan döngüsü) ─────────────────
 async def send_task_due_reminders(db: AsyncSession) -> int:
     """Son tarihi yaklaşan (lead penceresi içinde) veya geçmiş ama henüz
-    hatırlatılmamış aktif görevler için sahibine bir kez bildirim gönderir.
-    Booking ``send_due_reminders`` deseniyle aynı; ``main._reminder_loop``
-    içinde periyodik çağrılır."""
+    hatırlatılmamış aktif görevler için sahibine bir kez **örtük** bildirim
+    gönderir. **Açık (kullanıcı tanımlı) hatırlatıcısı olan görevler atlanır** —
+    onları ``dispatch_task_reminders`` yönetir (çift bildirim olmaz). Booking
+    ``send_due_reminders`` deseniyle aynı; ``main._reminder_loop``'ta çağrılır."""
     now = _now()
     lead = now + datetime.timedelta(minutes=settings.TASK_REMINDER_LEAD_MINUTES)
     rows = (
@@ -853,6 +936,7 @@ async def send_task_due_reminders(db: AsyncSession) -> int:
                 Task.due_at.is_not(None),
                 Task.due_at <= lead,
                 TaskList.deleted_at.is_(None),
+                Task.id.notin_(select(TaskReminder.task_id)),
             )
         )
     ).all()
@@ -866,4 +950,36 @@ async def send_task_due_reminders(db: AsyncSession) -> int:
             link="/panel/gorevler",
         )
         task.reminder_sent = True
+    return len(rows)
+
+
+async def dispatch_task_reminders(db: AsyncSession) -> int:
+    """Çalışma anı gelmiş (``trigger_at <= now``) bekleyen açık hatırlatıcıları
+    işler: aktif görev için sahibine bildirim gönderir, durumu ``sent`` yapar
+    (tamamlanmış/silinmiş görevler bildirimsiz ``sent``'e geçer). ``main``'deki
+    60 sn'lik döngüden çağrılır."""
+    now = _now()
+    rows = (
+        await db.execute(
+            select(TaskReminder, Task, TaskList.user_id, TaskList.role_id)
+            .join(Task, TaskReminder.task_id == Task.id)
+            .join(TaskList, Task.list_id == TaskList.id)
+            .where(
+                TaskReminder.status == "pending",
+                TaskReminder.trigger_at <= now,
+                Task.deleted_at.is_(None),
+                TaskList.deleted_at.is_(None),
+            )
+        )
+    ).all()
+    for reminder, task, user_id, role_id in rows:
+        if task.completed_at is None:
+            await notification_service.notify(
+                db,
+                user_id=user_id,
+                role_id=role_id,
+                message=reminder_message(task.title),
+                link="/panel/gorevler",
+            )
+        reminder.status = "sent"
     return len(rows)

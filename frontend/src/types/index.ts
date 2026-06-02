@@ -236,6 +236,25 @@ export interface Subtask {
   position: number;
 }
 
+// ── Hatırlatıcılar (Todoist 'Reminders') ──
+export type ReminderType = "relative" | "absolute";
+
+export interface TaskReminder {
+  id: number;
+  type: ReminderType;
+  offset_minutes?: number | null; // relative: son tarihe göre dakika (negatif = önce)
+  remind_at?: string | null; // absolute: mutlak an (ISO/UTC)
+  trigger_at: string;
+  status: string; // pending | sent | failed
+}
+
+// İç içe gönderilen hatırlatma (create/update payload).
+export interface ReminderInput {
+  type: ReminderType;
+  offset_minutes?: number | null;
+  remind_at?: string | null;
+}
+
 export interface Task {
   id: number;
   list_id: number;
@@ -250,6 +269,7 @@ export interface Task {
   parent_id?: number | null;
   subtasks: Subtask[];
   labels: TaskLabel[];
+  reminders: TaskReminder[];
   created_at: string;
 }
 
@@ -271,6 +291,8 @@ export interface TaskCreate {
   recurrence?: string | null;
   booking_id?: number | null;
   label_ids?: number[];
+  reminders?: ReminderInput[];
+  timezone?: string;
 }
 
 export interface TaskUpdate {
@@ -283,6 +305,8 @@ export interface TaskUpdate {
   label_ids?: number[];
   list_id?: number;
   parent_id?: number | null;
+  reminders?: ReminderInput[];
+  timezone?: string;
 }
 
 export type TaskStatusFilter = "active" | "completed" | "all";

@@ -44,9 +44,11 @@ import { parseQuickAdd } from "@/lib/quickParse";
 import { localInputToIso } from "@/lib/datetime";
 import TaskCommandPalette, { type RecentRef } from "@/components/TaskCommandPalette";
 import TaskComposer from "@/components/TaskComposer";
+import ReminderEditor from "@/components/ReminderEditor";
 import {
   ROLE_IDS,
   type DueGroupKey,
+  type ReminderInput,
   type Task,
   type TaskFilter,
   type TaskLabel,
@@ -306,6 +308,9 @@ function TaskDetailModal({ task, lists, allLabels, onClose }: { task: Task; list
   const [listId, setListId] = useState(task.list_id);
   const [bookingId, setBookingId] = useState<number | "">(task.booking_id ?? "");
   const [labelIds, setLabelIds] = useState<number[]>(task.labels.map((l) => l.id));
+  const [reminders, setReminders] = useState<ReminderInput[]>(
+    task.reminders.map((r) => ({ type: r.type, offset_minutes: r.offset_minutes, remind_at: r.remind_at }))
+  );
   const [newSub, setNewSub] = useState("");
   const [newLabel, setNewLabel] = useState("");
 
@@ -341,6 +346,7 @@ function TaskDetailModal({ task, lists, allLabels, onClose }: { task: Task; list
           list_id: listId,
           booking_id: bookingId === "" ? null : Number(bookingId),
           label_ids: labelIds,
+          reminders: reminders.filter((r) => (r.type === "absolute" ? !!r.remind_at : true)),
         },
       },
       {
@@ -418,6 +424,12 @@ function TaskDetailModal({ task, lists, allLabels, onClose }: { task: Task; list
                 {lists.map((l) => (<option key={l.id} value={l.id}>{l.name}</option>))}
               </select>
             </div>
+          </div>
+
+          {/* Hatırlatıcılar */}
+          <div>
+            <label className="mb-1.5 block text-xs font-medium text-slate-500 dark:text-slate-400">Hatırlatıcılar</label>
+            <ReminderEditor reminders={reminders} due={due ? localInputToIso(due) : null} onChange={setReminders} />
           </div>
 
           <div>
@@ -1608,6 +1620,7 @@ export default function Tasks() {
                     due_at: payload.due_at,
                     recurrence: payload.recurrence,
                     label_ids: payload.label_ids.length ? payload.label_ids : undefined,
+                    reminders: payload.reminders,
                   },
                 },
                 { onError: (err) => toast.error(getErrorMessage(err, "Eklenemedi.")) }
