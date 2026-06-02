@@ -13,7 +13,8 @@ export type NavIcon =
   | "calendar"
   | "trophy"
   | "learn"
-  | "tasks";
+  | "tasks"
+  | "habit";
 
 export interface NavItem {
   to: string;
@@ -29,6 +30,7 @@ export const STUDENT_NAV: NavItem[] = [
   { to: ROUTES.exams, label: "Denemelerim", icon: "exams" },
   { to: ROUTES.learn, label: "Öğren", icon: "learn" },
   { to: ROUTES.tasks, label: "Görevlerim", icon: "tasks" },
+  { to: ROUTES.habits, label: "Alışkanlıklar", icon: "habit" },
   { to: ROUTES.bookings, label: "Ders Taleplerim", icon: "bookings" },
   { to: ROUTES.calendar, label: "Takvim", icon: "calendar" },
 ];
@@ -38,6 +40,7 @@ export const TUTOR_NAV: NavItem[] = [
   { to: ROUTES.messages, label: "Mesajlar", icon: "messages" },
   { to: ROUTES.questions, label: "Sorularım", icon: "questions" },
   { to: ROUTES.tasks, label: "Görevlerim", icon: "tasks" },
+  { to: ROUTES.habits, label: "Alışkanlıklar", icon: "habit" },
   { to: ROUTES.tutorListing, label: "İlan Ayarları", icon: "listing" },
   { to: ROUTES.calendar, label: "Takvim", icon: "calendar" },
 ];

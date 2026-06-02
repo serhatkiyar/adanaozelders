@@ -36,6 +36,7 @@ export const ROUTES = {
   flashcardDeck: (id: string | number) => `/panel/ogren/kelime-kartlari/${id}`,
   deepwork: "/panel/ogren/zamanlayici",
   grapher: "/panel/ogren/grafik",
+  habits: "/panel/ogren/aliskanliklar",
   profile: "/panel/profil",
   settings: "/panel/ayarlar",
   tutorListing: "/panel/ilan",

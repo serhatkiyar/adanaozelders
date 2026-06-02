@@ -98,6 +98,33 @@ export default function Learn() {
             </div>
           </Link>
 
+          {/* Alışkanlıklar */}
+          <Link
+            to={ROUTES.habits}
+            className="group relative overflow-hidden rounded-3xl bg-gradient-to-br from-amber-500 to-orange-600 p-6 text-white shadow-lg shadow-amber-500/20 transition hover:-translate-y-0.5 hover:shadow-xl"
+          >
+            <div className="absolute -right-6 -top-6 h-28 w-28 rounded-full bg-white/10" />
+            <div className="relative">
+              <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/15">
+                <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.362 5.214A8.252 8.252 0 0 1 12 21 8.25 8.25 0 0 1 6.038 7.047 8.287 8.287 0 0 0 9 9.601a8.983 8.983 0 0 1 3.361-6.867 8.21 8.21 0 0 0 3 2.48Z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 18a3.75 3.75 0 0 0 .495-7.467 5.99 5.99 0 0 0-1.925 3.546 5.974 5.974 0 0 1-2.133-1A3.75 3.75 0 0 0 12 18Z" />
+                </svg>
+              </span>
+              <h2 className="mt-4 text-lg font-bold">Alışkanlıklar</h2>
+              <p className="mt-1 text-sm text-amber-50">
+                Çalışma disiplinini kur: günlük/haftalık hedefler, seri (streak) takibi
+                ve ısı haritasıyla istikrarını gör.
+              </p>
+              <span className="mt-4 inline-flex items-center gap-1 text-sm font-semibold">
+                Başla
+                <svg className="h-4 w-4 transition group-hover:translate-x-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                </svg>
+              </span>
+            </div>
+          </Link>
+
           {/* Yakında gelecek araçlar */}
           {["Notlarım", "Mini Testler"].map((label) => (
             <div
