@@ -12,6 +12,7 @@ from models.client import Client, ClientAddress, ClientEducation
 from models.demand import Demand, DemandStatus
 from models.exam import PracticeExam, PracticeExamSubject
 from models.flashcard import Flashcard, FlashcardDeck
+from models.habit import Habit, HabitEntry
 from models.messaging import Conversation, Message
 from models.notification import Notification
 from models.payment import Payment, PaymentStatus
@@ -20,7 +21,7 @@ from models.refresh_token import RefreshToken
 from models.report import Report, ReportReason, ReportStatus
 from models.review import Review
 from models.role import Role, RoleType
-from models.task import Subtask, Task, TaskLabel, TaskList
+from models.task import Subtask, Task, TaskFilter, TaskLabel, TaskList
 from models.tutor import (
     Tutor,
     TutorAvailability,
@@ -54,6 +55,8 @@ __all__ = [
     "DemandStatus",
     "Flashcard",
     "FlashcardDeck",
+    "Habit",
+    "HabitEntry",
     "Message",
     "Notification",
     "Payment",
@@ -72,6 +75,7 @@ __all__ = [
     "RoleType",
     "Subtask",
     "Task",
+    "TaskFilter",
     "TaskLabel",
     "TaskList",
     "TokenPurpose",

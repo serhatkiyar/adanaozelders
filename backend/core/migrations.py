@@ -61,7 +61,13 @@ _ADDED_COLUMNS_DDL: tuple[str, ...] = (
     # To-Do gelişmeleri (Todoist benzeri): tekrarlama, gelen kutusu, 4-kademe öncelik.
     "ALTER TABLE tasks ADD COLUMN IF NOT EXISTS recurrence VARCHAR(30)",
     "ALTER TABLE tasks ADD COLUMN IF NOT EXISTS reminder_sent BOOLEAN NOT NULL DEFAULT false",
+    # İç içe alt görev (Todoist): self-FK üst görev. Üst silinince alt da silinir.
+    "ALTER TABLE tasks ADD COLUMN IF NOT EXISTS parent_id INTEGER REFERENCES tasks(id) ON DELETE CASCADE",
     "ALTER TABLE task_lists ADD COLUMN IF NOT EXISTS is_inbox BOOLEAN NOT NULL DEFAULT false",
+    # Favoriler (Todoist): proje/etiket/filtre "Favoriler" bölümüne sabitlenir.
+    # task_filters yeni tablo olduğundan create_all ile gelir; mevcut iki tabloya ekle.
+    "ALTER TABLE task_lists ADD COLUMN IF NOT EXISTS is_favorite BOOLEAN NOT NULL DEFAULT false",
+    "ALTER TABLE task_labels ADD COLUMN IF NOT EXISTS is_favorite BOOLEAN NOT NULL DEFAULT false",
     # Öncelik enum(LOW/MEDIUM/HIGH) → smallint(1..4). Yalnız kolon hâlâ enum ise dönüştür
     # (idempotent: dönüşümden sonra udt_name='int2' olur, blok atlanır).
     """

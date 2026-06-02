@@ -12,7 +12,14 @@ from api.deps import CurrentUser
 from core.config import settings
 from models.booking import Booking
 from models.role import ROLE_IDS, RoleType
-from models.task import Subtask, Task, TaskLabel, TaskList, task_label_links
+from models.task import (
+    Subtask,
+    Task,
+    TaskFilter,
+    TaskLabel,
+    TaskList,
+    task_label_links,
+)
 from services import notification_service
 from schemas.task import (
     LabelCreate,
@@ -20,6 +27,8 @@ from schemas.task import (
     SubtaskCreate,
     SubtaskUpdate,
     TaskCreate,
+    TaskFilterCreate,
+    TaskFilterUpdate,
     TaskListCreate,
     TaskListUpdate,
     TaskUpdate,
@@ -27,6 +36,8 @@ from schemas.task import (
 
 INBOX_NAME = "Gelen Kutusu"
 _RECURRENCE_RULES = {"daily", "weekly", "weekdays", "monthly", "yearly"}
+_DUE_GROUPS = {"overdue", "today", "upcoming", "none"}
+_FILTER_SORTS = {"smart", "due", "priority", "alpha"}
 
 
 def _now() -> datetime.datetime:
@@ -93,6 +104,50 @@ def task_reminder_message(title: str, overdue: bool) -> str:
     if overdue:
         return f"Görev gecikti: {title}"
     return f"Görev son tarihi yaklaşıyor: {title}"
+
+
+# ── Kayıtlı filtre kriter normalizasyonu (saf; testlenebilir) ──────
+def normalize_criteria(raw: dict | None) -> dict:
+    """Kayıtlı filtre kriterlerini güvenli/kanonik bir sözlüğe indirger:
+    bilinmeyen değerleri eler, tekrarları temizler, sıra korunur. İstemciden
+    ne gelirse gelsin tutarlı bir şekil garanti eder (saf fonksiyon)."""
+    raw = raw or {}
+    q = (raw.get("q") or "").strip() or None
+
+    priorities: list[int] = []
+    for value in raw.get("priorities") or []:
+        try:
+            num = int(value)
+        except (TypeError, ValueError):
+            continue
+        if 1 <= num <= 4 and num not in priorities:
+            priorities.append(num)
+
+    label_ids: list[int] = []
+    for value in raw.get("label_ids") or []:
+        try:
+            num = int(value)
+        except (TypeError, ValueError):
+            continue
+        if num not in label_ids:
+            label_ids.append(num)
+
+    due: list[str] = []
+    for value in raw.get("due") or []:
+        if value in _DUE_GROUPS and value not in due:
+            due.append(value)
+
+    sort = raw.get("sort")
+    if sort not in _FILTER_SORTS:
+        sort = "smart"
+
+    return {
+        "q": q,
+        "priorities": priorities,
+        "label_ids": label_ids,
+        "due": due,
+        "sort": sort,
+    }
 
 
 # ── Sahiplik yardımcıları ────────────────────────────────────────
@@ -327,6 +382,8 @@ async def update_list(
         task_list.name = payload["name"].strip()
     if "color" in payload:
         task_list.color = (payload["color"] or "").strip() or None
+    if payload.get("is_favorite") is not None:
+        task_list.is_favorite = payload["is_favorite"]
     await db.flush()
     await _attach_counts(db, [task_list])
     return task_list
@@ -405,6 +462,8 @@ async def update_label(
         label.name = payload["name"].strip()
     if "color" in payload:
         label.color = (payload["color"] or "").strip() or None
+    if payload.get("is_favorite") is not None:
+        label.is_favorite = payload["is_favorite"]
     await db.flush()
     return label
 
@@ -412,6 +471,90 @@ async def update_label(
 async def delete_label(db: AsyncSession, user: CurrentUser, label_id: int) -> None:
     label = await _owned_label_or_404(db, user, label_id)
     label.deleted_at = _now()
+    await db.flush()
+
+
+# ── Kayıtlı filtreler ────────────────────────────────────────────
+async def _owned_filter_or_404(
+    db: AsyncSession, user: CurrentUser, filter_id: int
+) -> TaskFilter:
+    flt = await db.get(TaskFilter, filter_id)
+    if (
+        flt is None
+        or flt.deleted_at is not None
+        or flt.user_id != user.id
+        or flt.role_id != user.role_id
+    ):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Filtre bulunamadı")
+    return flt
+
+
+async def list_filters(db: AsyncSession, user: CurrentUser) -> list[TaskFilter]:
+    return list(
+        (
+            await db.execute(
+                select(TaskFilter)
+                .where(
+                    TaskFilter.user_id == user.id,
+                    TaskFilter.role_id == user.role_id,
+                    TaskFilter.deleted_at.is_(None),
+                )
+                .order_by(TaskFilter.position.asc(), TaskFilter.created_at.asc())
+            )
+        ).scalars().all()
+    )
+
+
+async def create_filter(
+    db: AsyncSession, user: CurrentUser, data: TaskFilterCreate
+) -> TaskFilter:
+    max_pos = (
+        await db.execute(
+            select(func.coalesce(func.max(TaskFilter.position), -1)).where(
+                TaskFilter.user_id == user.id,
+                TaskFilter.role_id == user.role_id,
+                TaskFilter.deleted_at.is_(None),
+            )
+        )
+    ).scalar_one()
+    flt = TaskFilter(
+        user_id=user.id,
+        role_id=user.role_id,
+        name=data.name.strip(),
+        color=(data.color or "").strip() or None,
+        criteria=normalize_criteria(data.criteria.model_dump()),
+        is_favorite=data.is_favorite,
+        position=int(max_pos) + 1,
+    )
+    db.add(flt)
+    await db.flush()
+    await db.refresh(flt)
+    return flt
+
+
+async def update_filter(
+    db: AsyncSession, user: CurrentUser, filter_id: int, data: TaskFilterUpdate
+) -> TaskFilter:
+    flt = await _owned_filter_or_404(db, user, filter_id)
+    payload = data.model_dump(exclude_unset=True)
+    if payload.get("name"):
+        flt.name = payload["name"].strip()
+    if "color" in payload:
+        flt.color = (payload["color"] or "").strip() or None
+    if payload.get("criteria") is not None:
+        flt.criteria = normalize_criteria(payload["criteria"])
+    if payload.get("is_favorite") is not None:
+        flt.is_favorite = payload["is_favorite"]
+    await db.flush()
+    await db.refresh(flt)
+    return flt
+
+
+async def delete_filter(
+    db: AsyncSession, user: CurrentUser, filter_id: int
+) -> None:
+    flt = await _owned_filter_or_404(db, user, filter_id)
+    flt.deleted_at = _now()
     await db.flush()
 
 
@@ -510,6 +653,48 @@ async def create_task(
     return task
 
 
+async def _ancestor_ids(db: AsyncSession, start_id: int | None) -> set[int]:
+    """``start_id``'den köke kadar ata görev id'leri (start dahil). Döngü/aşırı
+    derinliğe karşı korumalı."""
+    ids: set[int] = set()
+    cur = start_id
+    for _ in range(200):
+        if cur is None or cur in ids:
+            break
+        ids.add(cur)
+        node = await db.get(Task, cur)
+        if node is None:
+            break
+        cur = node.parent_id
+    return ids
+
+
+async def _cascade_subtree_list(
+    db: AsyncSession, root_id: int, list_id: int
+) -> None:
+    """Bir görevin tüm (alt) alt görevlerini aynı listeye taşır — alt görev
+    üst görevle aynı projede yaşar."""
+    frontier = [root_id]
+    seen: set[int] = set()
+    while frontier:
+        pid = frontier.pop()
+        if pid in seen:
+            continue
+        seen.add(pid)
+        children = list(
+            (
+                await db.execute(
+                    select(Task).where(
+                        Task.parent_id == pid, Task.deleted_at.is_(None)
+                    )
+                )
+            ).scalars().all()
+        )
+        for child in children:
+            child.list_id = list_id
+            frontier.append(child.id)
+
+
 async def update_task(
     db: AsyncSession, user: CurrentUser, task_id: int, data: TaskUpdate
 ) -> Task:
@@ -534,6 +719,29 @@ async def update_task(
     if payload.get("list_id") is not None and payload["list_id"] != task.list_id:
         await _owned_list_or_404(db, user, payload["list_id"])
         task.list_id = payload["list_id"]
+        await _cascade_subtree_list(db, task.id, task.list_id)
+    # Üst görev (alt görev yapma / üst seviyeye çıkarma).
+    if "parent_id" in payload:
+        new_parent = payload["parent_id"]
+        if new_parent is None:
+            task.parent_id = None
+        else:
+            if new_parent == task.id:
+                raise HTTPException(
+                    status.HTTP_400_BAD_REQUEST, "Görev kendi alt görevi olamaz"
+                )
+            parent = await _owned_task_or_404(db, user, new_parent)
+            # Döngü: yeni üst, bu görevin altındaysa reddet.
+            if task.id in await _ancestor_ids(db, new_parent):
+                raise HTTPException(
+                    status.HTTP_400_BAD_REQUEST,
+                    "Bir görev kendi alt görevinin altına taşınamaz",
+                )
+            task.parent_id = new_parent
+            # Alt görev üst görevle aynı listede yaşar (alt-ağaç dahil).
+            if task.list_id != parent.list_id:
+                task.list_id = parent.list_id
+                await _cascade_subtree_list(db, task.id, parent.list_id)
     await db.flush()
     await db.refresh(task, attribute_names=["subtasks", "labels"])
     return task

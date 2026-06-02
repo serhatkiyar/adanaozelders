@@ -165,6 +165,37 @@ export interface CardCreate {
   back: string;
 }
 
+/* ============================ HABITS (Alışkanlıklar) ============================ */
+
+export type HabitPeriod = "daily" | "weekly";
+
+export interface Habit {
+  id: number;
+  name: string;
+  color?: string | null;
+  icon?: string | null;
+  period: HabitPeriod;
+  target_per_period: number;
+  created_at: string;
+  // Sunucuda hesaplanan metrikler:
+  current_streak: number;
+  longest_streak: number;
+  total_completions: number;
+  period_count: number;
+  today_count: number;
+  done: boolean;
+  // Isı haritası: { "YYYY-MM-DD": count } (son ~17 hafta).
+  recent: Record<string, number>;
+}
+
+export interface HabitCreate {
+  name: string;
+  color?: string | null;
+  icon?: string | null;
+  period: HabitPeriod;
+  target_per_period: number;
+}
+
 /* ============================ TASKS (Görevlerim / To-Do) ============================ */
 
 // Öncelik tamsayı (Todoist deseni): 1=P1 (acil) … 4=P4 (varsayılan).
@@ -182,6 +213,7 @@ export interface TaskLabel {
   id: number;
   name: string;
   color?: string | null;
+  is_favorite: boolean;
 }
 
 export interface TaskList {
@@ -190,6 +222,7 @@ export interface TaskList {
   color?: string | null;
   position: number;
   is_inbox: boolean;
+  is_favorite: boolean;
   active_count: number;
   overdue_count: number;
   created_at: string;
@@ -214,6 +247,7 @@ export interface Task {
   completed_at?: string | null;
   position: number;
   booking_id?: number | null;
+  parent_id?: number | null;
   subtasks: Subtask[];
   labels: TaskLabel[];
   created_at: string;
@@ -248,9 +282,40 @@ export interface TaskUpdate {
   booking_id?: number | null;
   label_ids?: number[];
   list_id?: number;
+  parent_id?: number | null;
 }
 
 export type TaskStatusFilter = "active" | "completed" | "all";
+
+// ── Kayıtlı filtreler (Todoist 'Filtreler') ──
+export type TaskSort = "smart" | "due" | "priority" | "alpha";
+export type DueGroupKey = "overdue" | "today" | "upcoming" | "none";
+
+// Backend ile birebir (snake_case) — depolanan kriter şekli.
+export interface TaskFilterCriteria {
+  q?: string | null;
+  priorities: TaskPriority[];
+  label_ids: number[];
+  due: DueGroupKey[];
+  sort: TaskSort;
+}
+
+export interface TaskFilter {
+  id: number;
+  name: string;
+  color?: string | null;
+  criteria: TaskFilterCriteria;
+  position: number;
+  is_favorite: boolean;
+  created_at: string;
+}
+
+export interface TaskFilterCreate {
+  name: string;
+  color?: string | null;
+  criteria: TaskFilterCriteria;
+  is_favorite?: boolean;
+}
 
 // Bir öğrencinin herkese açık profili (öğretmenler görüntüler).
 export interface ClientPublicOut {

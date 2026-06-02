@@ -15,6 +15,9 @@ from schemas.task import (
     SubtaskOut,
     SubtaskUpdate,
     TaskCreate,
+    TaskFilterCreate,
+    TaskFilterOut,
+    TaskFilterUpdate,
     TaskListCreate,
     TaskListOut,
     TaskListUpdate,
@@ -123,6 +126,48 @@ async def delete_label(
     db: AsyncSession = Depends(get_db),
 ):
     await task_service.delete_label(db, user, label_id)
+
+
+# ── Kayıtlı filtreler ────────────────────────────────────────────
+@router.get("/filters", response_model=list[TaskFilterOut])
+async def list_filters(
+    user: CurrentUser = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    return await task_service.list_filters(db, user)
+
+
+@router.post(
+    "/filters",
+    response_model=TaskFilterOut,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(_write_limit)],
+)
+async def create_filter(
+    payload: TaskFilterCreate,
+    user: CurrentUser = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    return await task_service.create_filter(db, user, payload)
+
+
+@router.patch("/filters/{filter_id}", response_model=TaskFilterOut)
+async def update_filter(
+    filter_id: int,
+    payload: TaskFilterUpdate,
+    user: CurrentUser = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    return await task_service.update_filter(db, user, filter_id, payload)
+
+
+@router.delete("/filters/{filter_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_filter(
+    filter_id: int,
+    user: CurrentUser = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    await task_service.delete_filter(db, user, filter_id)
 
 
 # ── Görevler ─────────────────────────────────────────────────────

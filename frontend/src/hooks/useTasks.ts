@@ -3,12 +3,15 @@ import {
   createLabel,
   createSubtask,
   createTask,
+  createTaskFilter,
   createTaskList,
   deleteLabel,
   deleteSubtask,
   deleteTask,
+  deleteTaskFilter,
   deleteTaskList,
   fetchLabels,
+  fetchTaskFilters,
   fetchTaskLists,
   fetchTasks,
   reorderTaskLists,
@@ -17,12 +20,14 @@ import {
   updateLabel,
   updateSubtask,
   updateTask,
+  updateTaskFilter,
   updateTaskList,
 } from "@/api/tasks";
 import { useAuthStore } from "@/store/authStore";
 import type {
   LabelCreate,
   TaskCreate,
+  TaskFilterCreate,
   TaskListCreate,
   TaskStatusFilter,
   TaskUpdate,
@@ -31,6 +36,7 @@ import type {
 const TASKS_ROOT = ["tasks"] as const;
 const LISTS_KEY = ["tasks", "lists"] as const;
 const LABELS_KEY = ["tasks", "labels"] as const;
+const FILTERS_KEY = ["tasks", "filters"] as const;
 
 export interface TasksQuery {
   listId?: number | null;
@@ -83,6 +89,41 @@ export function useTasksForBooking(bookingId: number) {
   });
 }
 
+// ── Kayıtlı filtreler ──
+export function useTaskFilters() {
+  const token = useAuthStore((s) => s.token);
+  return useQuery({
+    queryKey: FILTERS_KEY,
+    queryFn: fetchTaskFilters,
+    enabled: !!token,
+  });
+}
+
+export function useCreateTaskFilter() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: TaskFilterCreate) => createTaskFilter(payload),
+    onSuccess: () => qc.invalidateQueries({ queryKey: FILTERS_KEY }),
+  });
+}
+
+export function useUpdateTaskFilter() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, payload }: { id: number; payload: Partial<TaskFilterCreate> & { is_favorite?: boolean } }) =>
+      updateTaskFilter(id, payload),
+    onSuccess: () => qc.invalidateQueries({ queryKey: FILTERS_KEY }),
+  });
+}
+
+export function useDeleteTaskFilter() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => deleteTaskFilter(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: FILTERS_KEY }),
+  });
+}
+
 // ── Liste mutasyonları ──
 export function useCreateTaskList() {
   const invalidate = useInvalidateAll();
@@ -95,7 +136,7 @@ export function useCreateTaskList() {
 export function useUpdateTaskList() {
   const invalidate = useInvalidateAll();
   return useMutation({
-    mutationFn: ({ id, payload }: { id: number; payload: Partial<TaskListCreate> }) =>
+    mutationFn: ({ id, payload }: { id: number; payload: Partial<TaskListCreate> & { is_favorite?: boolean } }) =>
       updateTaskList(id, payload),
     onSuccess: invalidate,
   });
@@ -137,7 +178,7 @@ export function useCreateLabel() {
 export function useUpdateLabel() {
   const invalidate = useInvalidateAll();
   return useMutation({
-    mutationFn: ({ id, payload }: { id: number; payload: Partial<LabelCreate> }) =>
+    mutationFn: ({ id, payload }: { id: number; payload: Partial<LabelCreate> & { is_favorite?: boolean } }) =>
       updateLabel(id, payload),
     onSuccess: invalidate,
   });

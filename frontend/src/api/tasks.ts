@@ -4,6 +4,8 @@ import type {
   Subtask,
   Task,
   TaskCreate,
+  TaskFilter,
+  TaskFilterCreate,
   TaskLabel,
   TaskList,
   TaskListCreate,
@@ -24,7 +26,7 @@ export async function createTaskList(payload: TaskListCreate): Promise<TaskList>
 
 export async function updateTaskList(
   id: number,
-  payload: Partial<TaskListCreate>
+  payload: Partial<TaskListCreate> & { is_favorite?: boolean }
 ): Promise<TaskList> {
   const { data } = await apiClient.patch<TaskList>(`/tasks/lists/${id}`, payload);
   return data;
@@ -51,7 +53,7 @@ export async function createLabel(payload: LabelCreate): Promise<TaskLabel> {
 
 export async function updateLabel(
   id: number,
-  payload: Partial<LabelCreate>
+  payload: Partial<LabelCreate> & { is_favorite?: boolean }
 ): Promise<TaskLabel> {
   const { data } = await apiClient.patch<TaskLabel>(`/tasks/labels/${id}`, payload);
   return data;
@@ -59,6 +61,31 @@ export async function updateLabel(
 
 export async function deleteLabel(id: number): Promise<void> {
   await apiClient.delete(`/tasks/labels/${id}`);
+}
+
+// ── Kayıtlı filtreler ──
+export async function fetchTaskFilters(): Promise<TaskFilter[]> {
+  const { data } = await apiClient.get<TaskFilter[]>("/tasks/filters");
+  return data;
+}
+
+export async function createTaskFilter(
+  payload: TaskFilterCreate
+): Promise<TaskFilter> {
+  const { data } = await apiClient.post<TaskFilter>("/tasks/filters", payload);
+  return data;
+}
+
+export async function updateTaskFilter(
+  id: number,
+  payload: Partial<TaskFilterCreate> & { is_favorite?: boolean }
+): Promise<TaskFilter> {
+  const { data } = await apiClient.patch<TaskFilter>(`/tasks/filters/${id}`, payload);
+  return data;
+}
+
+export async function deleteTaskFilter(id: number): Promise<void> {
+  await apiClient.delete(`/tasks/filters/${id}`);
 }
 
 // ── Görevler ──

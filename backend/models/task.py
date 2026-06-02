@@ -16,6 +16,7 @@ from sqlalchemy import (
     Text,
     text,
 )
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from core.database import Base
@@ -62,6 +63,10 @@ class TaskList(Base, TimestampMixin, SoftDeleteMixin):
     is_inbox: Mapped[bool] = mapped_column(
         Boolean, nullable=False, server_default=text("false")
     )
+    # Favori (kenar çubuğunda "Favoriler" bölümüne sabitlenir).
+    is_favorite: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("false")
+    )
 
     tasks: Mapped[list["Task"]] = relationship(
         back_populates="task_list", cascade="all, delete-orphan"
@@ -82,6 +87,10 @@ class TaskLabel(Base, TimestampMixin, SoftDeleteMixin):
     role_id: Mapped[int] = mapped_column(Integer, nullable=False)
     name: Mapped[str] = mapped_column(String(60), nullable=False)
     color: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    # Favori (kenar çubuğunda "Favoriler" bölümüne sabitlenir).
+    is_favorite: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("false")
+    )
 
     __table_args__ = (
         Index("ix_task_labels_owner", "user_id", "role_id"),
@@ -129,6 +138,13 @@ class Task(Base, TimestampMixin, SoftDeleteMixin):
         nullable=True,
         index=True,
     )
+    # Üst görev (Todoist tarzı iç içe alt görev). Kök görevlerde NULL.
+    # Üst görev silinince alt görevler de silinir (CASCADE).
+    parent_id: Mapped[int | None] = mapped_column(
+        ForeignKey("tasks.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+    )
 
     task_list: Mapped["TaskList"] = relationship(back_populates="tasks")
     subtasks: Mapped[list["Subtask"]] = relationship(
@@ -143,6 +159,37 @@ class Task(Base, TimestampMixin, SoftDeleteMixin):
             "priority BETWEEN 1 AND 4", name="ck_tasks_priority_range"
         ),
         Index("ix_tasks_list_due", "list_id", "due_at"),
+    )
+
+
+class TaskFilter(Base, TimestampMixin, SoftDeleteMixin):
+    """Kayıtlı özel görev filtresi (Todoist 'Filtreler'). Sahiplik (user_id,
+    role_id) çiftiyle belirlenir. Kriterler JSONB olarak tutulur — arama metni,
+    öncelikler, etiketler, son-tarih grupları ve sıralama; filtre seçilince
+    istemci bu kriterleri (zaten yüklü) görevlere uygular."""
+
+    __tablename__ = "task_filters"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    role_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    name: Mapped[str] = mapped_column(String(120), nullable=False)
+    color: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    # {"q": str|None, "priorities": [int], "label_ids": [int],
+    #  "due": [str], "sort": str} — task_service.normalize_criteria ile sağlanır.
+    criteria: Mapped[dict] = mapped_column(
+        JSONB, nullable=False, server_default=text("'{}'::jsonb")
+    )
+    position: Mapped[int] = mapped_column(
+        Integer, nullable=False, server_default=text("0")
+    )
+    # Favori (kenar çubuğunda "Favoriler" bölümüne sabitlenir).
+    is_favorite: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("false")
+    )
+
+    __table_args__ = (
+        Index("ix_task_filters_owner", "user_id", "role_id"),
     )
 
 
