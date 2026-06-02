@@ -43,6 +43,7 @@ import {
 import { parseQuickAdd } from "@/lib/quickParse";
 import { localInputToIso } from "@/lib/datetime";
 import TaskCommandPalette, { type RecentRef } from "@/components/TaskCommandPalette";
+import TaskComposer from "@/components/TaskComposer";
 import {
   ROLE_IDS,
   type DueGroupKey,
@@ -1122,7 +1123,6 @@ export default function Tasks() {
   // Filtre oluştur/düzenle modalı (Todoist 'Add filter').
   const [builder, setBuilder] = useState<{ mode: "create" | "edit"; filter?: TaskFilter | null; initialCriteria?: TaskCriteria } | null>(null);
   const [openTaskId, setOpenTaskId] = useState<number | null>(null);
-  const [quickText, setQuickText] = useState("");
 
   // Arama + filtre çubuğu durumu (camelCase çalışma kriteri).
   const [criteria, setCriteria] = useState<TaskCriteria>(EMPTY_CRITERIA);
@@ -1135,14 +1135,9 @@ export default function Tasks() {
   // Komut paleti (Todoist 'Search', Ctrl/⌘+K) ve liste-altı görev ekleme composer'ı.
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [composerOpen, setComposerOpen] = useState(false);
-  const quickRef = useRef<HTMLInputElement>(null);
   const [recents, setRecents] = useState<RecentRef[]>(() => {
     try { return JSON.parse(localStorage.getItem("task_recents") || "[]"); } catch { return []; }
   });
-
-  useEffect(() => {
-    if (composerOpen) quickRef.current?.focus();
-  }, [composerOpen]);
 
   // Ctrl/⌘+K ile komut paletini aç/kapat.
   useEffect(() => {
@@ -1165,7 +1160,6 @@ export default function Tasks() {
   };
 
   const createTask = useCreateTask();
-  const createLabel = useCreateLabel();
   const deleteList = useDeleteTaskList();
   const deleteLabel = useDeleteLabel();
   const reorderTasks = useReorderTasks();
@@ -1185,10 +1179,6 @@ export default function Tasks() {
 
   const projects = useMemo(() => (lists ?? []).map((l) => ({ id: l.id, name: l.name })), [lists]);
   const labelRefs = useMemo(() => (labels ?? []).map((l) => ({ id: l.id, name: l.name })), [labels]);
-  const parsed = useMemo(
-    () => parseQuickAdd(quickText, { projects, labels: labelRefs }),
-    [quickText, projects, labelRefs]
-  );
 
   const todayCount = useMemo(
     () => (allActive.data ?? []).filter((t) => ["today", "overdue"].includes(classifyDue(t.due_at) ?? "")).length,
@@ -1325,42 +1315,6 @@ export default function Tasks() {
     reorderLists.mutate(ids, { onError: (err) => toast.error(getErrorMessage(err, "Sıralanamadı.")) });
   };
 
-  const quickAdd = async (e: FormEvent) => {
-    e.preventDefault();
-    if (!parsed.title) {
-      toast.error("Görev başlığı boş olamaz.");
-      return;
-    }
-    const targetListId = parsed.listId ?? (selection.kind === "list" ? selection.id : inboxId);
-    if (!targetListId) {
-      toast.error("Önce bir proje oluştur.");
-      return;
-    }
-    const labelIds = [...parsed.labelIds];
-    for (const name of parsed.newLabelNames) {
-      try {
-        const lbl = await createLabel.mutateAsync({ name, color: COLORS[8] });
-        labelIds.push(lbl.id);
-      } catch {
-        /* etiket oluşturulamazsa görevi yine de ekle */
-      }
-    }
-    createTask.mutate(
-      {
-        listId: targetListId,
-        payload: {
-          title: parsed.title,
-          priority: (parsed.priority as TaskPriority) ?? undefined,
-          due_at: parsed.dueIso,
-          recurrence: parsed.recurrence,
-          label_ids: labelIds.length ? labelIds : undefined,
-        },
-      },
-      { onError: (err) => toast.error(getErrorMessage(err, "Eklenemedi.")) }
-    );
-    setQuickText("");
-  };
-
   const openTask =
     filteredTasks.find((t) => t.id === openTaskId) ??
     visibleTasks.find((t) => t.id === openTaskId) ??
@@ -1371,9 +1325,9 @@ export default function Tasks() {
       <div className="mx-auto flex max-w-6xl flex-col gap-6 lg:flex-row">
         {/* Kenar çubuğu */}
         <aside className="lg:w-64 lg:flex-none">
-          {/* Görev Ekle */}
-          <button onClick={() => setComposerOpen(true)} className="mb-4 flex w-full items-center gap-2.5 rounded-xl bg-indigo-600 px-3 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700">
-            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white/20">
+          {/* Görev Ekle (Todoist tarzı: renkli artı + metin, dolu arka plan yok) */}
+          <button onClick={() => setComposerOpen(true)} className="group mb-2 flex w-full items-center gap-2.5 rounded-xl px-2 py-2 text-sm font-semibold text-indigo-600 transition hover:bg-slate-100 dark:text-indigo-400 dark:hover:bg-slate-800">
+            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-indigo-600 text-white transition group-hover:bg-indigo-700">
               <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 5v14m7-7H5" /></svg>
             </span>
             Görev Ekle
@@ -1619,43 +1573,49 @@ export default function Tasks() {
             )}
           </div>
 
-          {/* Görev ekleme (liste altı composer — Todoist tarzı) */}
+          {/* Görev ekleme tetikleyicisi — composer ayrı pencerede (modal) açılır */}
           {!filterMode && selection.kind !== "manage" && !(selection.kind === "view" && selection.view === "completed") && (
             <div className="mt-4">
-              {composerOpen ? (
-                <form onSubmit={quickAdd} className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-700 dark:bg-slate-800">
-                  <input ref={quickRef} value={quickText} maxLength={300} onChange={(e) => setQuickText(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === "Escape") { setComposerOpen(false); setQuickText(""); } }}
-                    placeholder="Görev adı — örn: Rapor yarın 17:00 !1 #İş @acil"
-                    className="w-full bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-400 dark:text-white" />
-                  {quickText.trim() && (
-                    <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[11px]">
-                      {parsed.dueIso && <span className="rounded-full bg-amber-50 px-2 py-0.5 font-medium text-amber-600 dark:bg-amber-500/15 dark:text-amber-300">📅 {dueChipLabel(parsed.dueIso)}</span>}
-                      {parsed.recurrence && <span className="rounded-full bg-slate-100 px-2 py-0.5 font-medium text-slate-500 dark:bg-slate-700 dark:text-slate-300">🔁 {REC_LABELS[parsed.recurrence]}</span>}
-                      {parsed.priority && <span className={`rounded-full px-2 py-0.5 font-semibold ${PRIO[parsed.priority as TaskPriority].chip}`}>P{parsed.priority}</span>}
-                      {parsed.listId && <span className="rounded-full bg-indigo-50 px-2 py-0.5 font-medium text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-300">#{lists?.find((l) => l.id === parsed.listId)?.name}</span>}
-                      {parsed.labelIds.map((id) => (<span key={id} className="rounded-full bg-slate-100 px-2 py-0.5 font-medium text-slate-500 dark:bg-slate-700 dark:text-slate-300">@{labels?.find((l) => l.id === id)?.name}</span>))}
-                      {parsed.newLabelNames.map((n) => (<span key={n} className="rounded-full bg-emerald-50 px-2 py-0.5 font-medium text-emerald-600 dark:bg-emerald-500/15 dark:text-emerald-300">@{n} (yeni)</span>))}
-                    </div>
-                  )}
-                  <div className="mt-3 flex justify-end gap-2">
-                    <button type="button" onClick={() => { setComposerOpen(false); setQuickText(""); }} className="rounded-lg px-3 py-1.5 text-xs font-medium text-slate-500 transition hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700">İptal</button>
-                    <button type="submit" disabled={createTask.isPending || !parsed.title} className="rounded-lg bg-indigo-600 px-4 py-1.5 text-xs font-semibold text-white transition hover:bg-indigo-700 disabled:opacity-50">Görev ekle</button>
-                  </div>
-                </form>
-              ) : (
-                <button onClick={() => setComposerOpen(true)} className="group flex w-full items-center gap-2 rounded-xl px-2 py-2 text-sm font-medium text-slate-400 transition hover:text-indigo-600">
-                  <span className="flex h-5 w-5 items-center justify-center rounded-full text-indigo-500 transition group-hover:bg-indigo-600 group-hover:text-white">
-                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 5v14m7-7H5" /></svg>
-                  </span>
-                  Görev ekle
-                </button>
-              )}
+              <button onClick={() => setComposerOpen(true)} className="group flex w-full items-center gap-2 rounded-xl px-2 py-2 text-sm font-medium text-slate-400 transition hover:text-indigo-600">
+                <span className="flex h-5 w-5 items-center justify-center rounded-full text-indigo-500 transition group-hover:bg-indigo-600 group-hover:text-white">
+                  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 5v14m7-7H5" /></svg>
+                </span>
+                Görev ekle
+              </button>
             </div>
           )}
         </main>
       </div>
 
+      {composerOpen && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/50 p-4 pt-[12vh] backdrop-blur-sm" onClick={() => setComposerOpen(false)}>
+          <div className="w-full max-w-xl animate-in zoom-in-95 duration-150" onClick={(e) => e.stopPropagation()}>
+            <TaskComposer
+              lists={lists ?? []}
+              labels={labels ?? []}
+              defaultListId={selection.kind === "list" ? selection.id : inboxId}
+              projects={projects}
+              labelRefs={labelRefs}
+              pending={createTask.isPending}
+              onCancel={() => setComposerOpen(false)}
+              onSubmit={(payload) => createTask.mutate(
+                {
+                  listId: payload.list_id,
+                  payload: {
+                    title: payload.title,
+                    description: payload.description,
+                    priority: payload.priority,
+                    due_at: payload.due_at,
+                    recurrence: payload.recurrence,
+                    label_ids: payload.label_ids.length ? payload.label_ids : undefined,
+                  },
+                },
+                { onError: (err) => toast.error(getErrorMessage(err, "Eklenemedi.")) }
+              )}
+            />
+          </div>
+        </div>
+      )}
       {creatingList && <ListModal onCreated={(l) => selectNav({ kind: "list", id: l.id })} onClose={() => setCreatingList(false)} />}
       {editingList && <ListModal list={editingList} onClose={() => setEditingList(null)} />}
       {editingLabel && <LabelModal label={editingLabel} onClose={() => setEditingLabel(null)} />}
