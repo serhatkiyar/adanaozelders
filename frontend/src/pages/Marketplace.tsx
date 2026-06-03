@@ -398,7 +398,7 @@ export default function Marketplace() {
                 />
                 <div className="mt-2 flex justify-between text-xs font-medium text-slate-400">
                   <span>₺0</span>
-                  <span>₺2000+</span>
+                  <span>₺5000+</span>
                 </div>
               </div>
 

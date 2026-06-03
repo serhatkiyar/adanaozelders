@@ -61,25 +61,29 @@ frontend/src/
 
 ## Routing ve Erişim Kontrolü
 
-URL yapısı **iki yüzeye** ayrılır ve **tek kaynaktan** (`lib/routes.ts::ROUTES`) yönetilir — bileşenlerde ham path literal'i kullanmayın, daima `ROUTES`'tan tüketin.
+URL yapısı **tek kaynaktan** (`lib/routes.ts`) yönetilir — bileşenlerde ham path literal'i kullanmayın. İki export: **`PATHS`** = react-router `path` desenleri (`:param` dahil, `<Route path>` için), **`ROUTES`** = `Link`/navigate URL üreticileri (statikler PATHS'ten türer → drift yok, param'lılar fonksiyondur). **`/panel` öneki YOKTUR** — oturum-içi yüzey kökte düz (flat) ve semantiktir.
 
-- **Public (Türkçe/SEO):** `/` (Landing), `/egitmenler` (arama), `/egitmenler/:slug` (eğitmen profili; slug = `isim-soyisim-{id}`, backend `slug` döner), `/giris`, `/kayit`, `/sifremi-unuttum`, `/sifre-yenile`, `/e-posta-dogrula`.
-- **Panel (oturum içi, nötr `/panel` shell, role-adaptive):** aşağıdaki tablo.
+- **Public (Türkçe/SEO):** `/` (root dispatcher), `/egitmenler` (arama), `/egitmenler/:slug` (eğitmen profili; slug = `isim-soyisim-{id}`, backend `slug` döner), `/giris`, `/kayit`, `/sifremi-unuttum`, `/sifre-yenile`, `/e-posta-dogrula`.
+- **Oturum-içi (DÜZ, role-adaptive):** aşağıdaki tablo.
 
-Aynı kaynağın **tek kanonik URL'i** vardır: `/egitmenler` ve `/egitmenler/:slug`, oturuma göre shell uyarlayan **delegator** sayfalardır (`MarketplacePage`, `TutorProfilePage` → anonim = public shell, giriş'li = panel shell + rezervasyon/mesaj). Slug kanonik değilse (`/egitmenler/42` veya bayat slug) `useCanonicalTutorSlug` ile `replace` yönlendirilir. Eski URL'ler (`/login`, `/kesfet`, `/egitmen/:id`, `/student/*`, `/tutor/*`, `/lesson/:id`, `/profile` …) `routes/LegacyRedirect.tsx` ile yeni yapıya (query/param korunarak) yönlendirilir.
+**Root dispatcher** (`App.tsx::RootDispatcher`, path `/`): anonim → public `Landing` (prerender/SEO hedefi); oturumlu → role workspace (ADMIN → `AdminHome`, TUTOR → `TutorDashboard`, CLIENT → keşif `Landing`). URL daima `/` kalır; tutor ve client kökten başlar (`roleHome` tüm roller için `/`).
 
-`ProtectedRoute.tsx` token + rol eşleşmesini kontrol eder; login olmuş kullanıcı `/giris`/`/kayit`'a girerse `roleHome` ile kendi yüzeyine döner (ADMIN/TUTOR → `/panel`, CLIENT → `/egitmenler`).
+`/egitmenler` ve `/egitmenler/:slug` oturuma göre shell uyarlayan **delegator**'lardır (`MarketplacePage`, `TutorProfilePage` → anonim = public shell, giriş'li = panel shell + rezervasyon/mesaj). Slug kanonik değilse `useCanonicalTutorSlug` ile `replace` yönlendirilir. Eski URL'ler — **tüm `/panel/*` dahil** (`/panel/profil`→`/hesabim`, `/panel/rezervasyonlar(/:id)`→`/ders-talepleri(/:id)`, `/panel/ogren/*`→`/ogren/*`, `/panel/ogrenciler/:id`→`/ogrenciler/:id` …) artı eski İngilizce yüzey (`/login`, `/kesfet`, `/egitmen/:id`, `/lesson/:id` …) — `routes/LegacyRedirect.tsx` ile tek hop, query/param korunarak yönlendirilir.
 
-| Rol | Ana Sayfa | Özel Route'lar (hepsi `/panel/*`) |
+`ProtectedRoute.tsx` token + rol eşleşmesini kontrol eder; login olmuş kullanıcı `/giris`/`/kayit`'a girerse `roleHome` (→ `/`) ile kök workspace'ine döner. Protected gruplar pathless layout route'larıdır; sayfalar `React.lazy` + tek `<Suspense>` ile kod-bölünür.
+
+| Rol | Ana Sayfa (`/`) | Özel Route'lar (DÜZ) |
 |-----|-----------|-----------------------------------|
-| ADMIN (1) | `/panel` (AdminHome) | — |
-| TUTOR (2) | `/panel` (TutorDashboard) | `/panel/ilan` (ilan ayarları), `/panel/ogrenciler/:id`, `/panel/sorular` (gelen sorular) |
-| CLIENT (3)| `/egitmenler` (arama) | `/panel/favoriler`, `/panel/denemeler`, `/panel/rezervasyonlar`, `/panel/sorular` (kendi soruları) |
-| Ortak | — | `/panel/mesajlar`, `/panel/profil`, `/panel/ayarlar`, `/panel/liderlik`, `/panel/takvim`, `/panel/ogren/*` (Öğren araçları: kelime kartları, zamanlayıcı, grafik, **alışkanlıklar** `/panel/ogren/aliskanliklar`), `/panel/gorevler` (Görevlerim / Todoist benzeri To-Do), `/panel/rezervasyonlar/:id` (ders detayı) |
+| ADMIN (1) | AdminHome | — |
+| TUTOR (2) | TutorDashboard | `/ilan-ayarlari` (ilan), `/ogrenciler/:id`, `/sorular` (gelen sorular) |
+| CLIENT (3)| Landing (keşif) | `/favoriler`, `/denemeler`, `/ders-talepleri` (talep listesi), `/sorular` (kendi soruları) |
+| Ortak | — | `/mesajlar`, `/hesabim` (profil), `/ayarlar`, `/liderlik`, `/takvim`, `/ogren/*` (kelime kartları, zamanlayıcı, grafik, **alışkanlıklar** `/ogren/aliskanliklar`), `/gorevler` (Görevlerim / Todoist benzeri To-Do), `/ders-talepleri/:id` (ders detayı — CLIENT + TUTOR ortak) |
 
 > **Görevlerim (To-Do):** Todoist tarzı. `lib/quickParse.ts` doğal-dil hızlı ekleme ayrıştırır (Türkçe tarih/saat, `!1-4`/`p1-4` öncelik, `#proje`, `@etiket`, tekrar) ve `Tasks.tsx`'te canlı önizleme gösterir. Projeler (renkli + sürükle-bırak), **Gelen Kutusu**, etiketler+filtre, 4-kademe öncelik bayrakları, tekrarlayan görevler, "Yaklaşan" güne göre gruplu. **İç içe alt görevler** (`Task.parent_id` self-FK): liste/Gelen Kutusu görünümünde `TaskTree` ağaç olarak nestler (aç/kapa + alt görev sayısı); bir görevi başka görevin satırına **girintiyle sürükleyince** alt görev olur (sağ bölge=alt görev, sol=kardeş/sıralama), backend döngü kontrolü + alt-ağacı parent'ın listesine taşır. Görev satırı hover'da **layout shift yapmaz** — sadece tutma tutamacı + düzenle/sil ikonları belirir. **Görev ekleme** ayrı modal pencerede (`TaskComposer`): ad/açıklama + chip'ler (tarih/öncelik/etiket/tekrar/**hatırlatıcı**) + proje seçici. **Hatırlatıcılar** (`ReminderEditor`, composer + detay modalı): ön ayar offsetleri (son tarihte/15 dk/1 saat/1 gün önce) veya özel mutlak tarih, çoklu + sil; lokal state → iç içe payload. `api/tasks.ts` her create/update'e istemci `timezone`'unu (Intl…timeZone) otomatik ekler. **Global arama + filtre çubuğu** (öncelik/etiket/son-tarih/sıralama) ve **kayıtlı filtreler** ("Filtreler" kenar bölümü; kaydet/güncelle/sil) — `lib/taskFilter.ts` saf mantık (`applyTaskFilter`/`criteriaActive`/`toStored`/`fromStored`), zaten yüklü aktif görevlere anlık uygulanır. **Todoist tarzı kenar çubuğu**: üstte "Görev Ekle" (liste-altı composer'ı açar), Ara (komut paleti), Gelen Kutusu/Bugün/Yaklaşan/Filtreler ve Etiketler nav, renkli `#` proje ikonları + sayaç; **Favoriler** bölümü — proje/etiket/filtre `is_favorite` ile yıldızlanıp en üstte toplanır (hover yıldız toggle). **Komut paleti** (`components/TaskCommandPalette.tsx`, Ctrl/⌘+K veya "Ara"): boşken Son görüntülenenler (localStorage `task_recents`) + Gezinme; yazınca görev/proje/etiket/filtre + komutlarda canlı arama, klavyeyle gezinme (↑↓/Enter/Esc); görev seçince detay açılır, "tüm görevlerde ara" global aramaya köprüler. **Filtreler ve Etiketler sayfası** (`selection.kind==="manage"`): ana sütunda Filtrelerim + Etiketler (sayaçlı) listesi, satır içi düzenle/sil/favori + "＋" ile ekleme — etiket/filtre artık sidebar yerine burada ve Favoriler'de yönetilir. **Filtre Ekle/Düzenle modalı** (`FilterBuilderModal`): Filtre Yardımcısı (doğal dil → kriter, `parseQuickAdd` ile), ad/renk/favori, chip-tabanlı kriter (Query yerine) ve canlı önizleme. Tüm saf yardımcılar (`quickParse`, `taskView`, `taskFilter`) Vitest'lidir.
 
-`/panel` ve `/panel/sorular`, rol göre farklı içerik render eden delegator'lardır (`PanelHome`, `PanelQuestions`).
+`/` (root dispatcher) ve `/sorular`, rol göre farklı içerik render eden delegator'lardır (`RootDispatcher`, `PanelQuestions`).
+
+> **SEO (`react-helmet-async`):** Merkezî `<Seo />` (`components/Seo.tsx`) title/description/canonical/OG/Twitter yönetir; `lib/seo.ts` site sabitleri + `absoluteUrl`/`clampDescription` + `VITE_SITE_URL` (yoksa runtime origin) verir. `HelmetProvider` `main.tsx`'te. `<JsonLd />` schema.org yapısal verisi enjekte eder: Landing'de Organization + WebSite(SearchAction); eğitmen profilinde (`PublicTutorProfile`) Person + AggregateRating + Offer. Public sayfalar (`Landing`, `PublicMarketplace`, `PublicTutorProfile`) `<Seo />` kullanır; marketplace filtre query'leri ayrı kanonik üretmez (canonical = `/egitmenler`). `public/robots.txt` oturum-içi düz path'leri (`/hesabim`, `/ders-talepleri*`, `/mesajlar`, `/ogren` …) ve kimlik akışlarını `Disallow` eder.
 
 ## State Yönetimi
 

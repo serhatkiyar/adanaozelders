@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { PublicShell } from "@/components/PublicShell";
+import { Seo } from "@/components/Seo";
 import { TutorCard } from "@/components/TutorCard";
 import { useTutorSearch } from "@/hooks/useTutorSearch";
 import { useDebounce } from "@/hooks/useDebounce";
@@ -48,8 +49,19 @@ export default function PublicMarketplace() {
 
   const { data, isLoading, isFetching, isError, error } = useTutorSearch(params);
 
+  const seoTitle = subjects.length
+    ? `${subjects.join(", ")} Eğitmenleri`
+    : debouncedQ.trim()
+      ? `"${debouncedQ.trim()}" için eğitmenler`
+      : "Eğitmen Ara";
+  const seoDesc = subjects.length
+    ? `Adana'da ${subjects.join(", ")} dersi veren onaylı, uzman özel ders eğitmenlerini keşfet, karşılaştır ve ders talebi oluştur.`
+    : "Adana'daki onaylı özel ders eğitmenlerini puan, fiyat ve branşa göre ara; online veya yüz yüze ders talebi oluştur.";
+
   return (
-    <PublicShell title="Keşfet">
+    <PublicShell>
+      {/* Filtre query'leri ayrı kanonik üretmesin → kanonik daima /egitmenler */}
+      <Seo title={seoTitle} description={seoDesc} canonicalPath="/egitmenler" />
       <div className="mx-auto max-w-[1050px] space-y-4">
         {/* Login CTA banner */}
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-gradient-to-r from-indigo-600 to-violet-600 px-5 py-3.5 text-white">

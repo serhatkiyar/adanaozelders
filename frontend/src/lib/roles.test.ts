@@ -3,8 +3,8 @@ import { roleHome } from "@/lib/roles";
 import { ROLE_IDS } from "@/types";
 
 describe("roleHome", () => {
-  it("rol bazlı ana sayfayı döndürür", () => {
-    expect(roleHome(ROLE_IDS.ADMIN)).toBe("/panel");
+  it("tüm roller kök (`/`) workspace'inden başlar", () => {
+    expect(roleHome(ROLE_IDS.ADMIN)).toBe("/");
     expect(roleHome(ROLE_IDS.TUTOR)).toBe("/");
     expect(roleHome(ROLE_IDS.CLIENT)).toBe("/");
   });

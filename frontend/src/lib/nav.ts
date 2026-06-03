@@ -36,7 +36,8 @@ export const STUDENT_NAV: NavItem[] = [
 ];
 
 export const TUTOR_NAV: NavItem[] = [
-  { to: ROUTES.panel, label: "Anasayfa", end: true, icon: "dashboard" },
+  { to: ROUTES.home, label: "Anasayfa", end: true, icon: "dashboard" },
+  { to: ROUTES.bookings, label: "Ders Talepleri", icon: "bookings" },
   { to: ROUTES.messages, label: "Mesajlar", icon: "messages" },
   { to: ROUTES.questions, label: "Sorularım", icon: "questions" },
   { to: ROUTES.tasks, label: "Görevlerim", icon: "tasks" },

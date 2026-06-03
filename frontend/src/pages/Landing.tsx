@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuthStore } from "@/store/authStore";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
@@ -8,6 +8,9 @@ import { ROUTES } from "@/lib/routes";
 import { ROLE_IDS, BookingStatus } from "@/types";
 import { STUDENT_NAV, TUTOR_NAV } from "@/lib/nav";
 import { firstNameOf, timeGreeting } from "@/lib/greeting";
+import { Seo } from "@/components/Seo";
+import { JsonLd } from "@/components/JsonLd";
+import { SITE_NAME, siteUrl, absoluteUrl } from "@/lib/seo";
 import { SubjectCarousel } from "@/components/SubjectCarousel";
 import { TutorCard } from "@/components/TutorCard";
 import { HScroll } from "@/components/HScroll";
@@ -26,12 +29,35 @@ function examSubjectQuery(exam: ExamCategory): string {
 export default function Landing() {
   // Landing artık hem anonim hem giriş'li kullanıcının ana keşif ekranıdır;
   // giriş'li kullanıcı yönlendirilmez, navbar oturuma göre uyarlanır.
-  useEffect(() => {
-    document.title = "Adana Özel Ders - Uzman Eğitmenle Öğren, Hedefine Ulaş.";
-  }, []);
-
   return (
     <div className="min-h-screen bg-white antialiased dark:bg-slate-900">
+      <Seo
+        canonicalPath="/"
+        description="Adana'da TYT, AYT, LGS, KPSS ve daha fazlası için alanında uzman, onaylı eğitmenlerle online veya yüz yüze özel ders. Hedefine ulaş."
+      >
+        <JsonLd
+          data={[
+            {
+              "@context": "https://schema.org",
+              "@type": "Organization",
+              name: SITE_NAME,
+              url: siteUrl(),
+              logo: absoluteUrl("/logo.png"),
+            },
+            {
+              "@context": "https://schema.org",
+              "@type": "WebSite",
+              name: SITE_NAME,
+              url: siteUrl(),
+              potentialAction: {
+                "@type": "SearchAction",
+                target: `${siteUrl()}/egitmenler?q={search_term_string}`,
+                "query-input": "required name=search_term_string",
+              },
+            },
+          ]}
+        />
+      </Seo>
       <Navbar />
       <SearchHero />
       <RecentlyViewed />

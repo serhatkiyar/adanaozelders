@@ -1,53 +1,56 @@
 import { QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
-import { useEffect } from "react";
+import { Suspense, lazy, useEffect } from "react";
 import { queryClient } from "@/lib/queryClient";
 import { Toaster } from "@/components/Toaster";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { FullScreenSpinner } from "@/components/Spinner";
 import { ROLE_IDS } from "@/types";
-import { ROUTES } from "@/lib/routes";
+import { ROUTES, PATHS } from "@/lib/routes";
 import { PublicRoute } from "@/routes/PublicRoute";
 import { ProtectedRoute } from "@/routes/ProtectedRoute";
 import { LegacyRedirect } from "@/routes/LegacyRedirect";
 import { useAuthStore } from "@/store/authStore";
 import { useWsStore } from "@/store/wsStore";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
+// Landing kök (`/`) yüzeyidir + prerender/SEO hedefi → eager (kod bölünmez).
 import Landing from "@/pages/Landing";
-import MarketplacePage from "@/pages/MarketplacePage";
-import TutorProfilePage from "@/pages/TutorProfilePage";
-import Login from "@/pages/Login";
-import Register from "@/pages/Register";
-import ForgotPassword from "@/pages/ForgotPassword";
-import ResetPassword from "@/pages/ResetPassword";
-import VerifyEmail from "@/pages/VerifyEmail";
-import AdminHome from "@/pages/dashboards/AdminHome";
-import TutorDashboard from "@/pages/TutorDashboard";
-import TutorSettings from "@/pages/TutorSettings";
-import TutorQuestions from "@/pages/TutorQuestions";
-import Favorites from "@/pages/Favorites";
-import StudentProfile from "@/pages/StudentProfile";
-import Questions from "@/pages/Questions";
-import Exams from "@/pages/Exams";
-import StudentBookings from "@/pages/StudentBookings";
-import LessonDetail from "@/pages/LessonDetail";
-import Messages from "@/pages/Messages";
-import Leaderboard from "@/pages/Leaderboard";
-import Calendar from "@/pages/Calendar";
-import Learn from "@/pages/Learn";
-import Flashcards from "@/pages/Flashcards";
-import FlashcardDeck from "@/pages/FlashcardDeck";
-import DeepWork from "@/pages/DeepWork";
-import Grapher from "@/pages/Grapher";
-import Habits from "@/pages/Habits";
-import Tasks from "@/pages/Tasks";
-import Profile from "@/pages/Profile";
-import Settings from "@/pages/Settings";
 import { GlobalMeeting } from "@/components/GlobalMeeting";
 import { DeepWorkTimer } from "@/components/DeepWorkTimer";
 import { AuthModal } from "@/components/AuthModal";
 import { rtcManager } from "@/lib/rtcTransfer";
+
+// ── Route-level code splitting: ağır modüller talep üzerine yüklenir ──
+const MarketplacePage = lazy(() => import("@/pages/MarketplacePage"));
+const TutorProfilePage = lazy(() => import("@/pages/TutorProfilePage"));
+const Login = lazy(() => import("@/pages/Login"));
+const Register = lazy(() => import("@/pages/Register"));
+const ForgotPassword = lazy(() => import("@/pages/ForgotPassword"));
+const ResetPassword = lazy(() => import("@/pages/ResetPassword"));
+const VerifyEmail = lazy(() => import("@/pages/VerifyEmail"));
+const AdminHome = lazy(() => import("@/pages/dashboards/AdminHome"));
+const TutorDashboard = lazy(() => import("@/pages/TutorDashboard"));
+const TutorSettings = lazy(() => import("@/pages/TutorSettings"));
+const TutorQuestions = lazy(() => import("@/pages/TutorQuestions"));
+const Favorites = lazy(() => import("@/pages/Favorites"));
+const StudentProfile = lazy(() => import("@/pages/StudentProfile"));
+const Questions = lazy(() => import("@/pages/Questions"));
+const Exams = lazy(() => import("@/pages/Exams"));
+const StudentBookings = lazy(() => import("@/pages/StudentBookings"));
+const LessonDetail = lazy(() => import("@/pages/LessonDetail"));
+const Messages = lazy(() => import("@/pages/Messages"));
+const Leaderboard = lazy(() => import("@/pages/Leaderboard"));
+const Calendar = lazy(() => import("@/pages/Calendar"));
+const Learn = lazy(() => import("@/pages/Learn"));
+const Flashcards = lazy(() => import("@/pages/Flashcards"));
+const FlashcardDeck = lazy(() => import("@/pages/FlashcardDeck"));
+const DeepWork = lazy(() => import("@/pages/DeepWork"));
+const Grapher = lazy(() => import("@/pages/Grapher"));
+const Habits = lazy(() => import("@/pages/Habits"));
+const Tasks = lazy(() => import("@/pages/Tasks"));
+const Profile = lazy(() => import("@/pages/Profile"));
+const Settings = lazy(() => import("@/pages/Settings"));
 
 function WsManager() {
   const token = useAuthStore((s) => s.token);
@@ -94,14 +97,28 @@ function WsManager() {
   return null;
 }
 
-// Nötr panel girişi (/panel): role göre uygun ana ekranı render eder.
-function PanelHome() {
+// Kök (`/`) root dispatcher: anonim → public Landing (prerender/SEO hedefi),
+// oturumlu → role workspace (URL `/` kalır). Hem öğrenci hem EĞİTMEN kökten,
+// Landing workspace'inden başlar (zenginleştirilecek); ders talepleri kökte DEĞİL,
+// `/ders-talepleri`'ndedir. Yalnız ADMIN'in kök ekranı kendi panosudur.
+function RootDispatcher() {
+  const token = useAuthStore((s) => s.token);
   const { data: user, isLoading } = useCurrentUser();
+  if (!token) return <Landing />;
   if (isLoading || !user) return <FullScreenSpinner />;
   if (user.role_id === ROLE_IDS.ADMIN) return <AdminHome />;
+  return <Landing />;
+}
+
+// "Ders Talepleri" — ortak `/ders-talepleri` URL'i, rol göre içerik:
+//  • TUTOR  → panosu (gelen talepler/kazanç) = TutorDashboard
+//  • CLIENT → kendi talep listesi = StudentBookings
+function BookingsHome() {
+  const { data: user, isLoading } = useCurrentUser();
+  if (isLoading || !user) return <FullScreenSpinner />;
   if (user.role_id === ROLE_IDS.TUTOR) return <TutorDashboard />;
-  // CLIENT'in ana işi eğitmen bulmak → listeye yönlendir.
-  return <Navigate to={ROUTES.tutors} replace />;
+  if (user.role_id === ROLE_IDS.CLIENT) return <StudentBookings />;
+  return <Navigate to={ROUTES.home} replace />;
 }
 
 // "Sorular" rol göre farklı içerik: öğrenci kendi sorularını, eğitmen gelenleri görür.
@@ -110,20 +127,21 @@ function PanelQuestions() {
   if (isLoading || !user) return <FullScreenSpinner />;
   if (user.role_id === ROLE_IDS.TUTOR) return <TutorQuestions />;
   if (user.role_id === ROLE_IDS.CLIENT) return <Questions />;
-  return <Navigate to={ROUTES.panel} replace />;
+  return <Navigate to={ROUTES.home} replace />;
 }
 
-// Eski (İngilizce/karışık) URL'ler → yeni Türkçe yapı. SPA içi `replace`,
-// query string LegacyRedirect tarafından korunur (?token=, ?q=, ?to= …).
+// Eski URL'ler → yeni düz yapı. Tek hop `replace`; query string LegacyRedirect
+// tarafından korunur (?token=, ?q=, ?to= …). Eski `/panel/*` öneki dahil.
 const LEGACY_STATIC: [string, string][] = [
+  // İngilizce/karışık eski yüzey
   ["/login", ROUTES.login],
   ["/register", ROUTES.register],
   ["/forgot-password", ROUTES.forgotPassword],
   ["/reset-password", ROUTES.resetPassword],
   ["/verify-email", ROUTES.verifyEmail],
   ["/kesfet", ROUTES.tutors],
-  ["/admin", ROUTES.panel],
-  ["/tutor", ROUTES.panel],
+  ["/admin", ROUTES.home],
+  ["/tutor", ROUTES.home],
   ["/student", ROUTES.tutors],
   ["/student/favorites", ROUTES.favorites],
   ["/student/questions", ROUTES.questions],
@@ -136,6 +154,24 @@ const LEGACY_STATIC: [string, string][] = [
   ["/messages", ROUTES.messages],
   ["/calendar", ROUTES.calendar],
   ["/leaderboard", ROUTES.leaderboard],
+  // Eski `/panel/*` öneki → yeni düz path
+  ["/panel", ROUTES.home],
+  ["/panel/profil", ROUTES.profile],
+  ["/panel/mesajlar", ROUTES.messages],
+  ["/panel/takvim", ROUTES.calendar],
+  ["/panel/favoriler", ROUTES.favorites],
+  ["/panel/sorular", ROUTES.questions],
+  ["/panel/denemeler", ROUTES.exams],
+  ["/panel/gorevler", ROUTES.tasks],
+  ["/panel/liderlik", ROUTES.leaderboard],
+  ["/panel/ayarlar", ROUTES.settings],
+  ["/panel/ilan", ROUTES.tutorListing],
+  ["/panel/rezervasyonlar", ROUTES.bookings],
+  ["/panel/ogren", ROUTES.learn],
+  ["/panel/ogren/kelime-kartlari", ROUTES.flashcards],
+  ["/panel/ogren/zamanlayici", ROUTES.deepwork],
+  ["/panel/ogren/grafik", ROUTES.grapher],
+  ["/panel/ogren/aliskanliklar", ROUTES.habits],
 ];
 
 function App() {
@@ -144,56 +180,57 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <WsManager />
       <BrowserRouter>
+        <Suspense fallback={<FullScreenSpinner />}>
         <Routes>
-          {/* ── Public (SEO) — oturumdan bağımsız; içerik oturuma göre uyarlanır ── */}
-          <Route path={ROUTES.home} element={<Landing />} />
-          <Route path={ROUTES.tutors} element={<MarketplacePage />} />
-          <Route path="/egitmenler/:slug" element={<TutorProfilePage />} />
+          {/* ── Kök dağıtıcı + public (SEO) — oturumdan bağımsız ── */}
+          <Route path={PATHS.home} element={<RootDispatcher />} />
+          <Route path={PATHS.tutors} element={<MarketplacePage />} />
+          <Route path={PATHS.tutor} element={<TutorProfilePage />} />
 
-          {/* ── Kimlik: giriş yapmış kullanıcı kendi paneline yönlendirilir ── */}
+          {/* ── Kimlik: giriş yapmış kullanıcı kök workspace'ine yönlendirilir ── */}
           <Route element={<PublicRoute />}>
-            <Route path={ROUTES.login} element={<Login />} />
-            <Route path={ROUTES.register} element={<Register />} />
+            <Route path={PATHS.login} element={<Login />} />
+            <Route path={PATHS.register} element={<Register />} />
           </Route>
 
           {/* ── Token akışları: oturum durumundan bağımsız erişilebilir ── */}
-          <Route path={ROUTES.forgotPassword} element={<ForgotPassword />} />
-          <Route path={ROUTES.resetPassword} element={<ResetPassword />} />
-          <Route path={ROUTES.verifyEmail} element={<VerifyEmail />} />
+          <Route path={PATHS.forgotPassword} element={<ForgotPassword />} />
+          <Route path={PATHS.resetPassword} element={<ResetPassword />} />
+          <Route path={PATHS.verifyEmail} element={<VerifyEmail />} />
 
-          {/* ── Panel: nötr shell, role-adaptive. Yalnızca kimlik gerektiren ortak uçlar ── */}
+          {/* ── Oturum-içi (DÜZ). Yalnızca kimlik gerektiren ortak uçlar ── */}
           <Route element={<ProtectedRoute />}>
-            <Route path={ROUTES.panel} element={<PanelHome />} />
-            <Route path={ROUTES.messages} element={<Messages />} />
-            <Route path={ROUTES.calendar} element={<Calendar />} />
-            <Route path={ROUTES.learn} element={<Learn />} />
-            <Route path={ROUTES.flashcards} element={<Flashcards />} />
-            <Route path="/panel/ogren/kelime-kartlari/:id" element={<FlashcardDeck />} />
-            <Route path={ROUTES.deepwork} element={<DeepWork />} />
-            <Route path={ROUTES.grapher} element={<Grapher />} />
-            <Route path={ROUTES.habits} element={<Habits />} />
-            <Route path={ROUTES.tasks} element={<Tasks />} />
-            <Route path={ROUTES.leaderboard} element={<Leaderboard />} />
-            <Route path={ROUTES.profile} element={<Profile />} />
-            <Route path={ROUTES.settings} element={<Settings />} />
-            <Route path={ROUTES.questions} element={<PanelQuestions />} />
-            <Route path="/panel/rezervasyonlar/:id" element={<LessonDetail />} />
+            <Route path={PATHS.messages} element={<Messages />} />
+            <Route path={PATHS.calendar} element={<Calendar />} />
+            <Route path={PATHS.learn} element={<Learn />} />
+            <Route path={PATHS.flashcards} element={<Flashcards />} />
+            <Route path={PATHS.flashcardDeck} element={<FlashcardDeck />} />
+            <Route path={PATHS.deepwork} element={<DeepWork />} />
+            <Route path={PATHS.grapher} element={<Grapher />} />
+            <Route path={PATHS.habits} element={<Habits />} />
+            <Route path={PATHS.tasks} element={<Tasks />} />
+            <Route path={PATHS.leaderboard} element={<Leaderboard />} />
+            <Route path={PATHS.profile} element={<Profile />} />
+            <Route path={PATHS.settings} element={<Settings />} />
+            <Route path={PATHS.questions} element={<PanelQuestions />} />
+            {/* Ders talepleri — CLIENT + TUTOR ortak (rol göre içerik) */}
+            <Route path={PATHS.bookings} element={<BookingsHome />} />
+            <Route path={PATHS.lesson} element={<LessonDetail />} />
           </Route>
 
-          {/* ── Panel: yalnızca CLIENT ── */}
+          {/* ── Yalnızca CLIENT ── */}
           <Route element={<ProtectedRoute allowedRoleId={ROLE_IDS.CLIENT} />}>
-            <Route path={ROUTES.favorites} element={<Favorites />} />
-            <Route path={ROUTES.exams} element={<Exams />} />
-            <Route path={ROUTES.bookings} element={<StudentBookings />} />
+            <Route path={PATHS.favorites} element={<Favorites />} />
+            <Route path={PATHS.exams} element={<Exams />} />
           </Route>
 
-          {/* ── Panel: yalnızca TUTOR ── */}
+          {/* ── Yalnızca TUTOR ── */}
           <Route element={<ProtectedRoute allowedRoleId={ROLE_IDS.TUTOR} />}>
-            <Route path={ROUTES.tutorListing} element={<TutorSettings />} />
-            <Route path="/panel/ogrenciler/:id" element={<StudentProfile />} />
+            <Route path={PATHS.tutorListing} element={<TutorSettings />} />
+            <Route path={PATHS.studentProfile} element={<StudentProfile />} />
           </Route>
 
-          {/* ── Eski URL'ler → yeni yapı (geriye dönük uyumluluk) ── */}
+          {/* ── Eski URL'ler → yeni düz yapı (geriye dönük uyumluluk, tek hop) ── */}
           {LEGACY_STATIC.map(([from, to]) => (
             <Route key={from} path={from} element={<LegacyRedirect to={to} />} />
           ))}
@@ -213,9 +250,22 @@ function App() {
             path="/tutor/students/:id"
             element={<LegacyRedirect to={(p) => ROUTES.studentProfile(p.id!)} />}
           />
+          <Route
+            path="/panel/rezervasyonlar/:id"
+            element={<LegacyRedirect to={(p) => ROUTES.lesson(p.id!)} />}
+          />
+          <Route
+            path="/panel/ogren/kelime-kartlari/:id"
+            element={<LegacyRedirect to={(p) => ROUTES.flashcardDeck(p.id!)} />}
+          />
+          <Route
+            path="/panel/ogrenciler/:id"
+            element={<LegacyRedirect to={(p) => ROUTES.studentProfile(p.id!)} />}
+          />
 
           <Route path="*" element={<Navigate to={ROUTES.home} replace />} />
         </Routes>
+        </Suspense>
         <AuthModal />
         <DeepWorkTimer />
       </BrowserRouter>
