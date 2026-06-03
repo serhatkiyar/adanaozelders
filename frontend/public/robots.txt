@@ -1,0 +1,28 @@
+# Adana Özel Ders — arama motoru tarama kuralları
+# Public/SEO yüzeyi taranabilir; oturum-içi (kişisel) düz path'ler hariç tutulur.
+
+User-agent: *
+Allow: /
+Allow: /egitmenler
+
+# ── Oturum-içi / kişisel alanlar (indekslenmesin) ──
+Disallow: /hesabim
+Disallow: /ayarlar
+Disallow: /mesajlar
+Disallow: /takvim
+Disallow: /favoriler
+Disallow: /denemeler
+Disallow: /gorevler
+Disallow: /liderlik
+Disallow: /sorular
+Disallow: /ogren
+Disallow: /ders-talepleri
+Disallow: /ilan-ayarlari
+Disallow: /ogrenciler
+
+# ── Kimlik & token akışları ──
+Disallow: /giris
+Disallow: /kayit
+Disallow: /sifremi-unuttum
+Disallow: /sifre-yenile
+Disallow: /e-posta-dogrula

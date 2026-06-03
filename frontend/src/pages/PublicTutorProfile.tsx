@@ -12,7 +12,10 @@ import { formatLastSeen } from "@/lib/datetime";
 import { WEEKDAYS_SHORT, summarize } from "@/lib/availability";
 import { formatRate, parseMoney } from "@/lib/money";
 import { ShareButton } from "@/components/ShareButton";
-import { parseTutorId } from "@/lib/routes";
+import { Seo } from "@/components/Seo";
+import { JsonLd } from "@/components/JsonLd";
+import { absoluteUrl } from "@/lib/seo";
+import { ROUTES, parseTutorId, tutorSlug } from "@/lib/routes";
 import { useCanonicalTutorSlug } from "@/hooks/useCanonicalTutorSlug";
 import { TeachingMode } from "@/types";
 
@@ -38,7 +41,8 @@ export default function PublicTutorProfile() {
 
   if (isError || !tutor) {
     return (
-      <PublicShell title="Eğitmen">
+      <PublicShell>
+        <Seo title="Eğitmen bulunamadı" noindex />
         <div className="mx-auto max-w-2xl">
           <button
             onClick={() => navigate(-1)}
@@ -63,8 +67,64 @@ export default function PublicTutorProfile() {
     !!tutor.last_seen_at &&
     Date.now() - new Date(tutor.last_seen_at).getTime() < 120_000;
 
+  // ── SEO: kanonik slug + Person/AggregateRating/Offer yapısal verisi ──
+  const canonicalPath = ROUTES.tutor(tutorSlug(tutor));
+  const seoDesc =
+    tutor.bio ||
+    tutor.headline ||
+    (tutor.subjects?.length
+      ? `${tutor.full_name} — ${tutor.subjects.join(", ")} özel ders eğitmeni.`
+      : `${tutor.full_name} ile özel ders.`);
+  const personLd: Record<string, unknown> = {
+    "@context": "https://schema.org",
+    "@type": "Person",
+    name: tutor.full_name,
+    url: absoluteUrl(canonicalPath),
+    jobTitle: "Özel Ders Eğitmeni",
+    ...(tutor.avatar_url ? { image: tutor.avatar_url } : {}),
+    ...(tutor.headline ? { description: tutor.headline } : {}),
+    ...(tutor.subjects?.length ? { knowsAbout: tutor.subjects } : {}),
+    ...(hasRatings && tutor.rating_average
+      ? {
+          aggregateRating: {
+            "@type": "AggregateRating",
+            ratingValue: Number(tutor.rating_average.toFixed(2)),
+            reviewCount: tutor.rating_count,
+            bestRating: 5,
+            worstRating: 1,
+          },
+        }
+      : {}),
+    ...(rate !== null
+      ? {
+          makesOffer: {
+            "@type": "Offer",
+            priceCurrency: "TRY",
+            price: rate,
+            availability: "https://schema.org/InStock",
+            itemOffered: {
+              "@type": "Service",
+              name: "Özel ders",
+              ...(tutor.subjects?.length
+                ? { serviceType: tutor.subjects.join(", ") }
+                : {}),
+            },
+          },
+        }
+      : {}),
+  };
+
   return (
-    <PublicShell title={tutor.full_name}>
+    <PublicShell>
+      <Seo
+        title={tutor.full_name}
+        description={seoDesc}
+        canonicalPath={canonicalPath}
+        type="profile"
+        image={tutor.avatar_url ?? undefined}
+      >
+        <JsonLd data={personLd} />
+      </Seo>
       <div className="mx-auto max-w-4xl space-y-5 pb-12">
         <button
           onClick={() => navigate(-1)}

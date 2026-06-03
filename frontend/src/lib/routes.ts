@@ -1,13 +1,21 @@
 // Uygulamanın TEK route kaynağı. Bileşenlere ham string path dağıtmayın;
-// her zaman buradan tüketin. Public yüzey Türkçe/SEO dostu, oturum içi yüzey
-// nötr `/panel` altında role-adaptive'tir.
+// her zaman buradan tüketin.
+//
+// İki yüzey:
+//  • Public (SEO): Türkçe/anlamlı path'ler.
+//  • Oturum-içi: DÜZ (flat) — `/panel` öneki YOKTUR. Kök (`/`) bir
+//    "root dispatcher"dır: anonim → public Landing, oturumlu → role workspace.
+//
+// `PATHS`  = react-router `path` desenleri (`:param` dahil) — `<Route path>` için.
+// `ROUTES` = gezinme/`Link` için URL üreticileri; statikler PATHS'ten türer
+//            (tek kaynak, literal drift yok), param'lılar fonksiyondur.
 
-export const ROUTES = {
+export const PATHS = {
   // ── Public (SEO) ──
   home: "/",
   tutors: "/egitmenler",
-  /** Eğitmen profili — slug ("ahmet-yilmaz-42") veya salt id verilebilir. */
-  tutor: (slugOrId: string | number) => `/egitmenler/${slugOrId}`,
+  /** Eğitmen profili — slug ("ahmet-yilmaz-42") veya salt id. */
+  tutor: "/egitmenler/:slug",
 
   // ── Kimlik & token akışları ──
   login: "/giris",
@@ -16,31 +24,68 @@ export const ROUTES = {
   resetPassword: "/sifre-yenile",
   verifyEmail: "/e-posta-dogrula",
 
-  // ── Panel (oturum içi, role-adaptive) ──
-  panel: "/panel",
-  bookings: "/panel/rezervasyonlar",
-  lesson: (id: string | number) => `/panel/rezervasyonlar/${id}`,
-  messages: "/panel/mesajlar",
+  // ── Oturum-içi (DÜZ, role-adaptive) ──
+  /** Ders talepleri listesi (CLIENT). */
+  bookings: "/ders-talepleri",
+  /** Ders/talep detayı — CLIENT + TUTOR ortak. */
+  lesson: "/ders-talepleri/:id",
+  messages: "/mesajlar",
+  calendar: "/takvim",
+  favorites: "/favoriler",
+  questions: "/sorular",
+  exams: "/denemeler",
+  tasks: "/gorevler",
+  leaderboard: "/liderlik",
+  // Öğren bölümü (kelime kartları / SRS / odak / grafik / alışkanlıklar)
+  learn: "/ogren",
+  flashcards: "/ogren/kelime-kartlari",
+  flashcardDeck: "/ogren/kelime-kartlari/:id",
+  deepwork: "/ogren/zamanlayici",
+  grapher: "/ogren/grafik",
+  habits: "/ogren/aliskanliklar",
+  profile: "/hesabim",
+  settings: "/ayarlar",
+  tutorListing: "/ilan-ayarlari",
+  studentProfile: "/ogrenciler/:id",
+} as const;
+
+export const ROUTES = {
+  // ── Public ──
+  home: PATHS.home,
+  tutors: PATHS.tutors,
+  /** Eğitmen profili — slug ("ahmet-yilmaz-42") veya salt id verilebilir. */
+  tutor: (slugOrId: string | number) => `/egitmenler/${slugOrId}`,
+
+  // ── Kimlik & token akışları ──
+  login: PATHS.login,
+  register: PATHS.register,
+  forgotPassword: PATHS.forgotPassword,
+  resetPassword: PATHS.resetPassword,
+  verifyEmail: PATHS.verifyEmail,
+
+  // ── Oturum-içi ──
+  bookings: PATHS.bookings,
+  lesson: (id: string | number) => `/ders-talepleri/${id}`,
+  messages: PATHS.messages,
   /** Belirli bir kişiyle sohbeti açar (mesajlaşma sayfası to/name query'siyle). */
   messageWith: (counterpartId: string | number, name: string) =>
-    `/panel/mesajlar?to=${counterpartId}&name=${encodeURIComponent(name)}`,
-  calendar: "/panel/takvim",
-  favorites: "/panel/favoriler",
-  questions: "/panel/sorular",
-  exams: "/panel/denemeler",
-  tasks: "/panel/gorevler",
-  leaderboard: "/panel/liderlik",
-  // Öğren bölümü (kelime kartları / SRS)
-  learn: "/panel/ogren",
-  flashcards: "/panel/ogren/kelime-kartlari",
-  flashcardDeck: (id: string | number) => `/panel/ogren/kelime-kartlari/${id}`,
-  deepwork: "/panel/ogren/zamanlayici",
-  grapher: "/panel/ogren/grafik",
-  habits: "/panel/ogren/aliskanliklar",
-  profile: "/panel/profil",
-  settings: "/panel/ayarlar",
-  tutorListing: "/panel/ilan",
-  studentProfile: (id: string | number) => `/panel/ogrenciler/${id}`,
+    `/mesajlar?to=${counterpartId}&name=${encodeURIComponent(name)}`,
+  calendar: PATHS.calendar,
+  favorites: PATHS.favorites,
+  questions: PATHS.questions,
+  exams: PATHS.exams,
+  tasks: PATHS.tasks,
+  leaderboard: PATHS.leaderboard,
+  learn: PATHS.learn,
+  flashcards: PATHS.flashcards,
+  flashcardDeck: (id: string | number) => `/ogren/kelime-kartlari/${id}`,
+  deepwork: PATHS.deepwork,
+  grapher: PATHS.grapher,
+  habits: PATHS.habits,
+  profile: PATHS.profile,
+  settings: PATHS.settings,
+  tutorListing: PATHS.tutorListing,
+  studentProfile: (id: string | number) => `/ogrenciler/${id}`,
 } as const;
 
 // Eğitmen için kanonik slug. Backend `slug` döner (isim-soyisim-{id}); yoksa id'ye düş.
