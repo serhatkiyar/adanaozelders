@@ -4,6 +4,7 @@ import { ExamSessionsManager } from "@/components/ExamSessionsManager";
 import { QrScanner } from "@/components/QrScanner";
 import { useOperatorMe, useVerifyAttendance } from "@/hooks/useLibraryExams";
 import { useLibraryEarnings } from "@/hooks/useLibraries";
+import { useChangePassword } from "@/hooks/useProfile";
 import {
   useAttendStudyReservation,
   useManageStudyReservations,
@@ -126,8 +127,86 @@ export default function OperatorHome() {
 
         {/* ── Çalışma alanı rezervasyonları ── */}
         {op && <StudyReservationsList libraryId={op.library_id} />}
+
+        {/* ── Hesap: şifre değiştir ── */}
+        <PasswordPanel />
       </div>
     </DashboardShell>
+  );
+}
+
+function PasswordPanel() {
+  const [open, setOpen] = useState(false);
+  const [form, setForm] = useState({ current: "", next: "", confirm: "" });
+  const change = useChangePassword();
+
+  const submit = () => {
+    if (form.next.length < 8) {
+      toast.error("Yeni şifre en az 8 karakter olmalı.");
+      return;
+    }
+    if (form.next !== form.confirm) {
+      toast.error("Yeni şifreler eşleşmiyor.");
+      return;
+    }
+    change.mutate(
+      { current_password: form.current, new_password: form.next },
+      {
+        onSuccess: () => {
+          toast.success("Şifren güncellendi.");
+          setForm({ current: "", next: "", confirm: "" });
+          setOpen(false);
+        },
+        onError: (e) => toast.error(getErrorMessage(e, "Şifre değiştirilemedi.")),
+      }
+    );
+  };
+
+  return (
+    <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700">
+      <div className="flex items-center justify-between">
+        <h2 className="text-base font-bold text-slate-900 dark:text-white">Hesap Güvenliği</h2>
+        <button
+          onClick={() => setOpen((v) => !v)}
+          className="rounded-lg bg-slate-100 px-3 py-1.5 text-sm font-semibold text-slate-700 dark:bg-slate-700 dark:text-slate-200"
+        >
+          {open ? "Kapat" : "Şifre değiştir"}
+        </button>
+      </div>
+      {open && (
+        <div className="mt-3 grid max-w-md grid-cols-1 gap-2">
+          <input
+            type="password"
+            className="input"
+            placeholder="Mevcut şifre"
+            value={form.current}
+            onChange={(e) => setForm({ ...form, current: e.target.value })}
+          />
+          <input
+            type="password"
+            className="input"
+            placeholder="Yeni şifre (min 8)"
+            value={form.next}
+            onChange={(e) => setForm({ ...form, next: e.target.value })}
+          />
+          <input
+            type="password"
+            className="input"
+            placeholder="Yeni şifre (tekrar)"
+            value={form.confirm}
+            onChange={(e) => setForm({ ...form, confirm: e.target.value })}
+            onKeyDown={(e) => e.key === "Enter" && submit()}
+          />
+          <button
+            onClick={submit}
+            disabled={change.isPending || !form.current || !form.next}
+            className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
+          >
+            {change.isPending ? "Güncelleniyor…" : "Şifreyi Güncelle"}
+          </button>
+        </div>
+      )}
+    </div>
   );
 }
 

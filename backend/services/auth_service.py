@@ -136,7 +136,7 @@ async def update_me(
 
 async def change_password(
     db: AsyncSession,
-    user: Admin | Tutor | Client,
+    user: Admin | Tutor | Client | LibraryOperator,
     *,
     current_password: str,
     new_password: str,
