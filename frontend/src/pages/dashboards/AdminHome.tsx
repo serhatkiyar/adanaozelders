@@ -20,6 +20,7 @@ import {
   useOpenReportCount,
 } from "@/hooks/useReports";
 import { REPORT_REASON_LABEL } from "@/components/ReportModal";
+import AdminLibraries from "@/pages/dashboards/AdminLibraries";
 import {
   TutorStatus,
   ReportStatus,
@@ -613,11 +614,12 @@ function BookingManagement() {
 
 /* ─── tabs ────────────────────────────────────────────── */
 
-type Tab = "overview" | "listings" | "bookings" | "reports";
+type Tab = "overview" | "listings" | "libraries" | "bookings" | "reports";
 
 const TABS: { value: Tab; label: string }[] = [
   { value: "overview", label: "Genel Bakış" },
   { value: "listings", label: "İlan Yönetimi" },
+  { value: "libraries", label: "Kütüphaneler" },
   { value: "bookings", label: "Ders Talepleri" },
   { value: "reports", label: "Şikayetler" },
 ];
@@ -802,6 +804,8 @@ export default function AdminHome() {
           </>
         ) : tab === "listings" ? (
           <ListingManagement />
+        ) : tab === "libraries" ? (
+          <AdminLibraries />
         ) : tab === "bookings" ? (
           <BookingManagement />
         ) : (

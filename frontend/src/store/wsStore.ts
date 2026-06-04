@@ -14,9 +14,15 @@ let intentionalClose = false;
 let attempts = 0;
 
 function wsBaseUrl(): string {
-  return import.meta.env.VITE_API_BASE_URL
-    ? import.meta.env.VITE_API_BASE_URL.replace(/^http/, "ws")
-    : "ws://localhost:8000/api/v1";
+  const base = import.meta.env.VITE_API_BASE_URL;
+  if (!base) return "ws://localhost:8000/api/v1";
+  // Göreli base (ör. "/api/v1" + Vite proxy) → sayfanın origin'inden ws/wss kur.
+  if (base.startsWith("/")) {
+    const proto = window.location.protocol === "https:" ? "wss" : "ws";
+    return `${proto}://${window.location.host}${base}`;
+  }
+  // Mutlak http(s) base → ws(s)'e çevir.
+  return base.replace(/^http/, "ws");
 }
 
 export const useWsStore = create<WsState>((set, get) => ({

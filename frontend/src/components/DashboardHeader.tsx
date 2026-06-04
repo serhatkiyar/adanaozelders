@@ -2,8 +2,9 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Link, NavLink, useLocation } from "react-router-dom";
 import { Avatar } from "@/components/Avatar";
 import { NotificationsBell } from "@/components/NotificationsBell";
+import { NavbarWidget } from "@/components/NavbarWidget";
+import { PersonalizeModal } from "@/components/PersonalizeModal";
 import { useAuthStore } from "@/store/authStore";
-import { useThemeStore } from "@/store/themeStore";
 import { useLogout } from "@/hooks/useLogout";
 import { useMessagesUnreadCount } from "@/hooks/useMessages";
 import { roleHome } from "@/lib/roles";
@@ -25,8 +26,11 @@ type IconName =
   | "learn"
   | "tasks"
   | "habit"
+  | "library"
+  | "tickets"
   | "profile"
   | "settings"
+  | "personalize"
   | "logout"
   | "sun"
   | "moon";
@@ -130,6 +134,20 @@ const ICON_PATHS: Record<IconName, ReactNode> = {
       d="M15.362 5.214A8.252 8.252 0 0 1 12 21 8.25 8.25 0 0 1 6.038 7.047 8.287 8.287 0 0 0 9 9.601a8.983 8.983 0 0 1 3.361-6.867 8.21 8.21 0 0 0 3 2.48Z M12 18a3.75 3.75 0 0 0 .495-7.468 5.99 5.99 0 0 0-1.925 3.547 5.975 5.975 0 0 1-2.133-1.001A3.75 3.75 0 0 0 12 18Z"
     />
   ),
+  library: (
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25"
+    />
+  ),
+  tickets: (
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      d="M16.5 6v.75m0 3v.75m0 3v.75m0 3V18m-9-5.25h5.25M7.5 15h3M3.375 5.25c-.621 0-1.125.504-1.125 1.125v3.026a2.999 2.999 0 0 1 0 5.198v3.026c0 .621.504 1.125 1.125 1.125h17.25c.621 0 1.125-.504 1.125-1.125v-3.026a2.999 2.999 0 0 1 0-5.198V6.375c0-.621-.504-1.125-1.125-1.125H3.375Z"
+    />
+  ),
   profile: (
     <path
       strokeLinecap="round"
@@ -150,6 +168,13 @@ const ICON_PATHS: Record<IconName, ReactNode> = {
         d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"
       />
     </>
+  ),
+  personalize: (
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      d="M4.098 19.902a3.75 3.75 0 0 0 5.304 0l6.401-6.402M6.75 21A3.75 3.75 0 0 1 3 17.25V4.125C3 3.504 3.504 3 4.125 3h5.25c.621 0 1.125.504 1.125 1.125v4.072M6.75 21a3.75 3.75 0 0 0 3.75-3.75V8.197M6.75 21h13.125c.621 0 1.125-.504 1.125-1.125v-5.25c0-.621-.504-1.125-1.125-1.125h-4.072M10.5 8.197l2.88-2.88c.438-.439 1.15-.439 1.59 0l3.712 3.713c.44.44.44 1.152 0 1.59l-2.879 2.88M6.75 17.25h.008v.008H6.75v-.008Z"
+    />
   ),
   logout: (
     <path
@@ -221,13 +246,12 @@ export function DashboardHeader({ navItems, transparent = false }: DashboardHead
   const user = useAuthStore((s) => s.user);
   const logout = useLogout();
   const home = roleHome(user?.role_id);
-  const theme = useThemeStore((s) => s.theme);
-  const toggleTheme = useThemeStore((s) => s.toggle);
   const { data: msgUnread = 0 } = useMessagesUnreadCount();
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
   const [showMoreLinks, setShowMoreLinks] = useState(false);
+  const [personalizeOpen, setPersonalizeOpen] = useState(false);
   const accountRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
 
@@ -248,30 +272,6 @@ export function DashboardHeader({ navItems, transparent = false }: DashboardHead
     document.addEventListener("mousedown", onDoc);
     return () => document.removeEventListener("mousedown", onDoc);
   }, [accountOpen]);
-
-  const themeRow = (
-    <button
-      type="button"
-      onClick={toggleTheme}
-      className="flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-700"
-    >
-      <span className="flex items-center gap-2.5">
-        <Icon name={theme === "dark" ? "moon" : "sun"} className="h-5 w-5" />
-        {theme === "dark" ? "Koyu tema" : "Açık tema"}
-      </span>
-      <span
-        className={`relative h-5 w-9 shrink-0 rounded-full transition ${
-          theme === "dark" ? "bg-indigo-500" : "bg-slate-300"
-        }`}
-      >
-        <span
-          className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-all ${
-            theme === "dark" ? "left-[1.125rem]" : "left-0.5"
-          }`}
-        />
-      </span>
-    </button>
-  );
 
   const topNavItems = navItems?.filter(
     (item) =>
@@ -345,8 +345,18 @@ export function DashboardHeader({ navItems, transparent = false }: DashboardHead
           <Icon name="settings" className="h-5 w-5" />
           Ayarlar
         </NavLink>
+        <button
+          type="button"
+          onClick={() => {
+            onClick();
+            setPersonalizeOpen(true);
+          }}
+          className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm font-medium text-slate-700 transition hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-700"
+        >
+          <Icon name="personalize" className="h-5 w-5" />
+          Kişiselleştir
+        </button>
         <div className="my-1 border-t border-slate-100 dark:border-slate-700" />
-        {themeRow}
         <button
           onClick={() => {
             onClick();
@@ -371,13 +381,15 @@ export function DashboardHeader({ navItems, transparent = false }: DashboardHead
     : "h-7 sm:h-8 w-auto object-contain";
 
   return (
+    <>
     <header className={headerClass}>
       <div className="flex w-full items-center justify-between gap-3">
         <Link
           to={home}
-          className="flex shrink-0 items-center gap-2 transition hover:opacity-90 group"
+          className="group flex shrink-0 items-center gap-2 transition hover:opacity-90"
+          aria-label="Ana sayfa"
         >
-          <img src="/logo.png" alt="Adana Özel Ders" className={logoClass} />
+          <NavbarWidget logoClass={logoClass} />
         </Link>
 
         {/* Masaüstü: nav ikonları + avatar dropdown */}
@@ -519,5 +531,10 @@ export function DashboardHeader({ navItems, transparent = false }: DashboardHead
         </div>
       )}
     </header>
+
+    {personalizeOpen && (
+      <PersonalizeModal onClose={() => setPersonalizeOpen(false)} />
+    )}
+    </>
   );
 }

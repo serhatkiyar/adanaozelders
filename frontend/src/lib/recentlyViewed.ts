@@ -41,6 +41,16 @@ export function getRecentlyViewed(): TutorSearchOut[] {
   }
 }
 
+// Görüntüleme geçmişini tamamen temizler (Kişiselleştir penceresinden).
+export function clearRecentlyViewed(): void {
+  try {
+    localStorage.removeItem(KEY);
+    window.dispatchEvent(new Event(RECENTLY_VIEWED_EVENT));
+  } catch {
+    // storage erişilemez — sessizce yok say.
+  }
+}
+
 export function recordViewedTutor(tutor: TutorSearchOut): void {
   if (!tutor || typeof tutor.id !== "number") return;
   try {

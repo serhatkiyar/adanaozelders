@@ -14,6 +14,13 @@
   }
 }
 
+@layer components {
+  /* Ortak form girdisi (admin kütüphane editörü vb.) */
+  .input {
+    @apply w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:border-slate-600 dark:bg-slate-900 dark:text-white dark:focus:border-indigo-500 dark:focus:ring-indigo-500/20;
+  }
+}
+
 @keyframes toast-in {
   from {
     opacity: 0;

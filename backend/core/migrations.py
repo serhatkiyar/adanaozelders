@@ -36,6 +36,13 @@ _ALEMBIC_INI = _BACKEND_DIR / "alembic.ini"
 # create_all MEVCUT tablolara yeni KOLON eklemez. Sonradan eklenen kolonları, mevcut
 # dev DB'lerde de garanti etmek için idempotent ALTER ile uygularız (fresh DB'de no-op).
 _ADDED_COLUMNS_DDL: tuple[str, ...] = (
+    # Kütüphane operatörü rolü (role_id=4). Mevcut DB'lerde `role_type` PG enum'una 4.
+    # değeri idempotent ekle (fresh DB'de create_all zaten 4 değerle kurar → no-op).
+    # PG12+: ADD VALUE bir transaction içinde çalışabilir; yeni değer ancak commit'ten
+    # sonra (seed aşamasında) kullanılır — ensure_schema bu transaction'ı önce commit eder.
+    "ALTER TYPE role_type ADD VALUE IF NOT EXISTS 'LIBRARY_OPERATOR'",
+    # Kütüphane çalışma alanı saatlik ücreti (Faz 3 — saatlik koltuk rezervasyonu).
+    "ALTER TABLE libraries ADD COLUMN IF NOT EXISTS study_hourly_price NUMERIC(10,2)",
     "ALTER TABLE tutors ADD COLUMN IF NOT EXISTS location_text VARCHAR(300)",
     "ALTER TABLE tutors ADD COLUMN IF NOT EXISTS location_lat NUMERIC(9,6)",
     "ALTER TABLE tutors ADD COLUMN IF NOT EXISTS location_lng NUMERIC(9,6)",

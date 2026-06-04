@@ -18,6 +18,8 @@ class Settings(BaseSettings):
     BACKEND_CORS_ORIGINS: list[str] = [
         "http://localhost:5173",
         "http://127.0.0.1:5173",
+        # Yerel ağ (telefon vb.) erişimi — makinenin Wi-Fi IP'si.
+        "http://10.62.0.178:5173",
     ]
 
     POSTGRES_USER: str
@@ -98,6 +100,28 @@ class Settings(BaseSettings):
 
     # E-posta tetikleyen endpoint'ler için IP rate-limit (Redis, fail-open).
     RATE_LIMIT_EMAIL: int = 5
+    # Adres arama (geocode) proxy'si — kullanıcı bazlı (typeahead için yüksek).
+    RATE_LIMIT_GEOCODE: int = 90
+
+    # Adres arama/geocode. Sağlayıcıdan bağımsız (core/payments, core/mail deseni):
+    #   GOOGLE_MAPS_API_KEY verilirse Google Places API (New) + Geocoding kullanılır
+    #   (autocomplete session token + field mask ile maliyet düşük; anahtar yalnız
+    #   sunucuda durur, istemciye sızmaz). Verilmezse Nominatim/OpenStreetMap'e
+    #   fallback edilir — geliştirmede DIŞ HESAP/ANAHTAR GEREKMEZ.
+    GOOGLE_MAPS_API_KEY: str | None = None
+    # Ters-geocode (koordinat→adres; harita sürükleme/geolocation) için Google
+    # Places API (New) yetmez → Geocoding API gerekir. Maliyet (en sık çağrı) ve
+    # "yalnız Places API açık kalsın" için varsayılan: key olsa bile reverse'i
+    # ücretsiz Nominatim'e ver. False yaparsan reverse de Google'a gider (o zaman
+    # konsolda "Geocoding API" de etkin olmalı). İleri arama (autocomplete/details)
+    # her hâlükârda key varsa Google'ı kullanır.
+    GEOCODE_REVERSE_USE_NOMINATIM: bool = True
+    GEOCODE_COUNTRY: str = "tr"
+    GEOCODE_LANGUAGE: str = "tr"
+    # Sonuçları yerele yaklaştırmak için arama yanlılığı (Ceyhan merkezli).
+    GEOCODE_BIAS_LAT: float = 37.029003
+    GEOCODE_BIAS_LNG: float = 35.820839
+    GEOCODE_BIAS_RADIUS_M: int = 30000
 
     # Gözlemlenebilirlik. Sentry yalnızca SENTRY_DSN verilirse etkinleşir (yoksa
     # no-op — geliştirmede dış hesap gerekmez). Request-id her zaman çalışır.

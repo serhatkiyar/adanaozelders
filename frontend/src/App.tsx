@@ -24,6 +24,10 @@ import { rtcManager } from "@/lib/rtcTransfer";
 // ── Route-level code splitting: ağır modüller talep üzerine yüklenir ──
 const MarketplacePage = lazy(() => import("@/pages/MarketplacePage"));
 const TutorProfilePage = lazy(() => import("@/pages/TutorProfilePage"));
+const Libraries = lazy(() => import("@/pages/Libraries"));
+const LibraryDetail = lazy(() => import("@/pages/LibraryDetail"));
+const Tickets = lazy(() => import("@/pages/Tickets"));
+const OperatorHome = lazy(() => import("@/pages/dashboards/OperatorHome"));
 const Login = lazy(() => import("@/pages/Login"));
 const Register = lazy(() => import("@/pages/Register"));
 const ForgotPassword = lazy(() => import("@/pages/ForgotPassword"));
@@ -107,6 +111,7 @@ function RootDispatcher() {
   if (!token) return <Landing />;
   if (isLoading || !user) return <FullScreenSpinner />;
   if (user.role_id === ROLE_IDS.ADMIN) return <AdminHome />;
+  if (user.role_id === ROLE_IDS.LIBRARY_OPERATOR) return <OperatorHome />;
   return <Landing />;
 }
 
@@ -186,6 +191,8 @@ function App() {
           <Route path={PATHS.home} element={<RootDispatcher />} />
           <Route path={PATHS.tutors} element={<MarketplacePage />} />
           <Route path={PATHS.tutor} element={<TutorProfilePage />} />
+          <Route path={PATHS.libraries} element={<Libraries />} />
+          <Route path={PATHS.library} element={<LibraryDetail />} />
 
           {/* ── Kimlik: giriş yapmış kullanıcı kök workspace'ine yönlendirilir ── */}
           <Route element={<PublicRoute />}>
@@ -222,6 +229,7 @@ function App() {
           <Route element={<ProtectedRoute allowedRoleId={ROLE_IDS.CLIENT} />}>
             <Route path={PATHS.favorites} element={<Favorites />} />
             <Route path={PATHS.exams} element={<Exams />} />
+            <Route path={PATHS.tickets} element={<Tickets />} />
           </Route>
 
           {/* ── Yalnızca TUTOR ── */}

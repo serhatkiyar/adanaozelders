@@ -8,6 +8,7 @@ export function roleHome(roleId: number | null | undefined): string {
     case ROLE_IDS.ADMIN:
     case ROLE_IDS.TUTOR:
     case ROLE_IDS.CLIENT:
+    case ROLE_IDS.LIBRARY_OPERATOR:
       return ROUTES.home;
     default:
       return ROUTES.login;

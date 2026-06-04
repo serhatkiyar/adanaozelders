@@ -8,12 +8,14 @@ export enum RoleType {
   ADMIN = "ADMIN",
   TUTOR = "TUTOR",
   CLIENT = "CLIENT",
+  LIBRARY_OPERATOR = "LIBRARY_OPERATOR",
 }
 
 export const ROLE_IDS = {
   ADMIN: 1,
   TUTOR: 2,
   CLIENT: 3,
+  LIBRARY_OPERATOR: 4,
 } as const;
 
 export enum TutorStatus {
@@ -855,4 +857,200 @@ export interface AdminBookingOut {
   created_at: string;
   tutor_name?: string | null;
   client_name?: string | null;
+}
+
+/* ============================ LIBRARY (Kütüphane) ============================ */
+
+export interface LibraryHours {
+  weekday: number; // 0=Pazartesi … 6=Pazar
+  is_closed: boolean;
+  open_minute?: number | null;
+  close_minute?: number | null;
+}
+
+export interface LibrarySearchOut {
+  id: number;
+  name: string;
+  slug: string;
+  description?: string | null;
+  cover_url?: string | null;
+  location_text?: string | null;
+  location_lat?: number | null;
+  location_lng?: number | null;
+  capacity?: number | null;
+  study_hourly_price?: string | null; // Decimal -> string; doluysa çalışma alanı rez. açık
+  amenities: string[];
+  rating_count: number;
+  rating_average?: number | null;
+  bayesian_score?: number | null;
+  distance_km?: number | null;
+  open_now?: boolean | null;
+}
+
+export interface LibraryDetailOut extends LibrarySearchOut {
+  phone?: string | null;
+  email?: string | null;
+  website?: string | null;
+  status: string; // ACTIVE | HIDDEN
+  hours: LibraryHours[];
+  created_at?: string | null;
+}
+
+export interface LibraryReviewOut {
+  id: number;
+  library_id: number;
+  client_id: number;
+  rating: number;
+  comment_text?: string | null;
+  created_at: string;
+  client_name?: string | null;
+  client_avatar_url?: string | null;
+}
+
+export interface LibraryReviewCreate {
+  rating: number;
+  comment_text?: string | null;
+}
+
+export interface LibraryWrite {
+  name: string;
+  description?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  website?: string | null;
+  cover_url?: string | null;
+  location_text?: string | null;
+  location_lat?: number | null;
+  location_lng?: number | null;
+  capacity?: number | null;
+  study_hourly_price?: number | null;
+  status?: string;
+  amenities?: string[];
+  hours?: LibraryHours[];
+}
+
+/* ===================== STUDY RESERVATION (Çalışma alanı) ===================== */
+
+export interface StudyQuoteOut {
+  available: boolean;
+  capacity: number;
+  remaining: number;
+  hourly_price: string;
+  hours: number;
+  amount: string;
+  currency: string;
+  reason?: string | null;
+}
+
+export interface StudyReservationOut {
+  id: number;
+  library_id: number;
+  library_name?: string | null;
+  library_slug?: string | null;
+  client_id: number;
+  starts_at: string;
+  ends_at: string;
+  status: RegistrationStatus;
+  amount: string;
+  currency: string;
+  paid_at?: string | null;
+  attended_at?: string | null;
+  qr_token?: string | null;
+  created_at: string;
+}
+
+export interface StudyPayResult {
+  reservation: StudyReservationOut;
+  redirect_url?: string | null;
+}
+
+/* ===================== LIBRARY EXAM (Deneme oturumu) ===================== */
+
+export type RegistrationStatus =
+  | "PENDING_PAYMENT"
+  | "PAID"
+  | "ATTENDED"
+  | "CANCELLED"
+  | "REFUNDED";
+
+export interface ExamSessionOut {
+  id: number;
+  library_id: number;
+  library_name?: string | null;
+  library_slug?: string | null;
+  exam_type: string; // TYT/AYT/YKS…
+  title: string;
+  description?: string | null;
+  starts_at: string; // ISO
+  duration_minutes: number;
+  capacity: number;
+  price: string; // Decimal -> string
+  currency: string;
+  status: string; // SCHEDULED/CANCELLED/COMPLETED
+  registered_count: number;
+  available: number;
+  my_status?: RegistrationStatus | null;
+  my_registration_id?: number | null;
+}
+
+export interface ExamSessionWrite {
+  exam_type: string;
+  title: string;
+  description?: string | null;
+  starts_at: string;
+  duration_minutes: number;
+  capacity: number;
+  price: number;
+}
+
+export interface RegistrationOut {
+  id: number;
+  session_id: number;
+  client_id: number;
+  status: RegistrationStatus;
+  amount: string;
+  currency: string;
+  paid_at?: string | null;
+  attended_at?: string | null;
+  qr_token?: string | null;
+  created_at: string;
+  session?: ExamSessionOut | null;
+}
+
+export interface PayResult {
+  registration: RegistrationOut;
+  redirect_url?: string | null;
+}
+
+export interface AttendanceResult {
+  registration_id: number;
+  client_name: string;
+  exam_title: string;
+  status: RegistrationStatus;
+  already: boolean;
+  message: string;
+}
+
+export interface RosterEntry {
+  registration_id: number;
+  client_name: string;
+  status: RegistrationStatus;
+  attended_at?: string | null;
+}
+
+export interface OperatorOut {
+  id: number;
+  email: string;
+  full_name: string;
+  library_id: number;
+  is_active: boolean;
+  created_at: string;
+  library_name?: string | null;
+}
+
+export interface OperatorCreate {
+  email: string;
+  password: string;
+  first_name: string;
+  last_name: string;
 }

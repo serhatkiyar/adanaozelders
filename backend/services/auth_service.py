@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from core.security import hash_password, verify_password
 from models.admin import Admin
 from models.client import Client
+from models.library_operator import LibraryOperator
 from models.role import ROLE_IDS, RoleType
 from models.tutor import Gender, Tutor
 from schemas.user import UserUpdate
@@ -17,6 +18,7 @@ _LOGIN_PRECEDENCE: tuple[tuple[RoleType, type], ...] = (
     (RoleType.ADMIN, Admin),
     (RoleType.TUTOR, Tutor),
     (RoleType.CLIENT, Client),
+    (RoleType.LIBRARY_OPERATOR, LibraryOperator),
 )
 
 
@@ -25,8 +27,8 @@ async def _email_taken(db: AsyncSession, model: type, email: str) -> bool:
     return (await db.execute(stmt)).first() is not None
 
 
-# Kullanıcı adı tüm hesap türlerinde (admin/tutor/client) globalde tekildir.
-_ALL_USER_MODELS: tuple[type, ...] = (Admin, Tutor, Client)
+# Kullanıcı adı tüm hesap türlerinde globalde tekildir.
+_ALL_USER_MODELS: tuple[type, ...] = (Admin, Tutor, Client, LibraryOperator)
 
 
 async def _username_taken(
