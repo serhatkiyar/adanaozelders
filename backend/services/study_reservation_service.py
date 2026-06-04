@@ -13,10 +13,11 @@ import secrets
 from decimal import ROUND_HALF_UP, Decimal
 
 from fastapi import HTTPException, status
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core import payments
+from core.codes import gen_short_code, normalize_code
 from core.config import settings
 from models.client import Client
 from models.library import Library, LibraryHours
@@ -58,6 +59,23 @@ def compute_amount(hourly_price: Decimal, starts: datetime.datetime, ends: datet
     """Saatlik ücret × süre (saat). Saf — test edilebilir."""
     amount = hourly_price * _hours(starts, ends)
     return amount.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+
+async def _unique_short_code(db: AsyncSession) -> str:
+    """Aktif (PAID/ATTENDED) rezervasyonlar arasında benzersiz kısa kod üretir."""
+    while True:
+        code = gen_short_code()
+        exists = (
+            await db.execute(
+                select(StudyReservation.id).where(
+                    StudyReservation.short_code == code,
+                    StudyReservation.status.in_(ACTIVE_REGISTRATION_STATUSES),
+                    StudyReservation.deleted_at.is_(None),
+                )
+            )
+        ).first()
+        if exists is None:
+            return code
 
 
 async def _overlap_count(
@@ -148,6 +166,7 @@ def _res_out(r: StudyReservation, *, library: Library | None = None) -> StudyRes
     out.amount = str(r.amount)
     if r.status != RegistrationStatus.PAID.value:
         out.qr_token = None
+        out.short_code = None
     if library is not None:
         out.library_name = library.name
         out.library_slug = library.slug
@@ -315,6 +334,7 @@ async def pay(
     res.provider_ref = provider_ref
     res.paid_at = _now()
     res.qr_token = secrets.token_urlsafe(24)
+    res.short_code = await _unique_short_code(db)
     await db.commit()
     await db.refresh(res)
     return _res_out(res), None
@@ -378,15 +398,23 @@ def _window_label(res: StudyReservation) -> str:
 
 
 async def verify_attendance(
-    db: AsyncSession, *, operator_library_id: int, operator_id: int, token: str
+    db: AsyncSession,
+    *,
+    operator_library_id: int,
+    operator_id: int,
+    token: str,
+    code: str | None = None,
 ) -> AttendanceResult | None:
-    """QR token'ı çalışma rezervasyonlarında arar. Bulup doğrularsa AttendanceResult
-    döner; token bir çalışma rezervasyonu DEĞİLSE None (çağıran deneme oturumlarına
+    """QR token'ı (veya elle girilen kısa kodu) çalışma rezervasyonlarında arar. Bulup
+    doğrularsa AttendanceResult döner; eşleşme YOKSA None (çağıran deneme oturumlarına
     bakar — birleşik QR doğrulama). Operatör yalnız kendi kütüphanesini doğrular."""
+    conds = [StudyReservation.qr_token == token]
+    if code:
+        conds.append(StudyReservation.short_code == code)
     res = (
         await db.execute(
             select(StudyReservation).where(
-                StudyReservation.qr_token == token,
+                or_(*conds),
                 StudyReservation.deleted_at.is_(None),
             )
         )

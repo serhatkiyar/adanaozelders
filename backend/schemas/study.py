@@ -42,6 +42,7 @@ class StudyReservationOut(BaseModel):
     paid_at: datetime.datetime | None = None
     attended_at: datetime.datetime | None = None
     qr_token: str | None = None
+    short_code: str | None = None
     created_at: datetime.datetime
 
 

@@ -966,6 +966,7 @@ export interface StudyReservationOut {
   paid_at?: string | null;
   attended_at?: string | null;
   qr_token?: string | null;
+  short_code?: string | null;
   created_at: string;
 }
 
@@ -1023,6 +1024,7 @@ export interface RegistrationOut {
   paid_at?: string | null;
   attended_at?: string | null;
   qr_token?: string | null;
+  short_code?: string | null;
   created_at: string;
   session?: ExamSessionOut | null;
 }

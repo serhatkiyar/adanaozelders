@@ -14,11 +14,12 @@ import secrets
 from decimal import ROUND_HALF_UP, Decimal
 
 from fastapi import HTTPException, status
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from core import payments
+from core.codes import gen_short_code, normalize_code
 from core.config import settings
 from models.client import Client
 from models.library import Library
@@ -59,6 +60,23 @@ def parse_qr_token(payload: str) -> str:
     if ":" in token:
         token = token.split(":", 1)[1]
     return token
+
+
+async def _unique_short_code(db: AsyncSession) -> str:
+    """Aktif (PAID/ATTENDED) deneme biletleri arasında benzersiz kısa kod üretir."""
+    while True:
+        code = gen_short_code()
+        exists = (
+            await db.execute(
+                select(ExamRegistration.id).where(
+                    ExamRegistration.short_code == code,
+                    ExamRegistration.status.in_(ACTIVE_REGISTRATION_STATUSES),
+                    ExamRegistration.deleted_at.is_(None),
+                )
+            )
+        ).first()
+        if exists is None:
+            return code
 
 
 async def _count_active(db: AsyncSession, session_id: int) -> int:
@@ -296,9 +314,10 @@ async def _attach_counts_and_mine(
 def _reg_out(reg: ExamRegistration, *, session: ExamSessionOut | None = None) -> RegistrationOut:
     out = RegistrationOut.model_validate(reg)
     out.amount = str(reg.amount)
-    # QR yalnız ödenmiş (PAID) kayıtta paylaşılır.
+    # QR + kısa kod yalnız ödenmiş (PAID) kayıtta paylaşılır.
     if reg.status != RegistrationStatus.PAID.value:
         out.qr_token = None
+        out.short_code = None
     out.session = session
     return out
 
@@ -397,6 +416,7 @@ async def pay(
     reg.provider_ref = provider_ref
     reg.paid_at = _now()
     reg.qr_token = secrets.token_urlsafe(24)
+    reg.short_code = await _unique_short_code(db)
     await db.commit()
     await db.refresh(reg)
     return _reg_out(reg), None
@@ -496,13 +516,17 @@ async def verify_attendance(
     kendi kütüphanesinin oturumlarındaki kayıtları doğrulayabilir.
     """
     token = parse_qr_token(payload)
+    code = normalize_code(payload)  # QR okutulamazsa elle girilen kısa kod
 
     reg = (
         await db.execute(
             select(ExamRegistration)
             .options(selectinload(ExamRegistration.session))
             .where(
-                ExamRegistration.qr_token == token,
+                or_(
+                    ExamRegistration.qr_token == token,
+                    ExamRegistration.short_code == code,
+                ),
                 ExamRegistration.deleted_at.is_(None),
             )
         )
@@ -516,6 +540,7 @@ async def verify_attendance(
             operator_library_id=operator_library_id,
             operator_id=operator_id,
             token=token,
+            code=code,
         )
         if study_result is not None:
             return study_result

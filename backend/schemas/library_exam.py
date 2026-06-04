@@ -71,6 +71,8 @@ class RegistrationOut(BaseModel):
     attended_at: datetime.datetime | None = None
     # Yalnız ödeme yapılmış (PAID) kayıtlarda dolu; QR olarak gösterilir.
     qr_token: str | None = None
+    # QR okutulamazsa elle girilen kısa kod (yalnız PAID).
+    short_code: str | None = None
     created_at: datetime.datetime
     # Oturum özeti (öğrencinin "biletlerim" listesinde göstermek için).
     session: ExamSessionOut | None = None

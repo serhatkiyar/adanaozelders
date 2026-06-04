@@ -142,6 +142,8 @@ class ExamRegistration(Base, TimestampMixin, SoftDeleteMixin):
 
     # QR yoklama — öğrencinin gösterdiği bilet kodu (ödeme anında üretilir).
     qr_token: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    # QR okutulamazsa operatörün elle gireceği kısa, insan-dostu kod (ör. '8F3K9Q').
+    short_code: Mapped[str | None] = mapped_column(String(12), nullable=True, index=True)
     attended_at: Mapped[datetime.datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )

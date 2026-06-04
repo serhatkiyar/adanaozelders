@@ -119,15 +119,19 @@ function QrModal({
   title,
   subtitle,
   value,
+  code,
   onClose,
 }: {
   title: string;
   subtitle?: string;
-  value: string;
+  value: string; // QR'a gömülen tam token ("{id}:{token}")
+  code: string; // elle girilebilen kısa kod ("8F3K9Q")
   onClose: () => void;
 }) {
+  // Okunaklı olsun diye 3'erli grupla göster (kopyalama ham kodu alır).
+  const pretty = code.length === 6 ? `${code.slice(0, 3)} ${code.slice(3)}` : code;
   const copy = () => {
-    navigator.clipboard?.writeText(value).then(
+    navigator.clipboard?.writeText(code).then(
       () => toast.success("Kod kopyalandı."),
       () => toast.error("Kopyalanamadı, elle seçin.")
     );
@@ -162,15 +166,16 @@ function QrModal({
 
         {/* Elle giriş kodu (QR okutulamazsa) */}
         <p className="mt-5 text-center text-xs font-medium text-slate-500 dark:text-slate-400">
-          QR okutulamıyorsa görevliye bu kodu okutun:
+          QR okutulamıyorsa görevliye bu kodu söyleyin:
         </p>
-        <div className="mt-2 flex items-center gap-2 rounded-xl bg-slate-50 p-2 dark:bg-slate-900/50">
-          <code className="flex-1 select-all break-all px-2 text-center text-sm font-semibold tracking-wide text-slate-800 dark:text-slate-100">
-            {value}
+        <div className="mt-2 flex items-center justify-between gap-3 rounded-xl bg-slate-50 p-3 dark:bg-slate-900/50">
+          <code className="flex-1 select-all text-center font-mono text-3xl font-bold tracking-[0.2em] text-slate-900 dark:text-white">
+            {pretty}
           </code>
           <button
             onClick={copy}
             className="shrink-0 rounded-lg bg-indigo-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-indigo-700"
+            aria-label="Kodu kopyala"
           >
             Kopyala
           </button>
@@ -280,6 +285,7 @@ function TicketCard({ reg }: { reg: RegistrationOut }) {
             title={session?.title ?? "Deneme bileti"}
             subtitle={session?.library_name ?? undefined}
             value={`${reg.id}:${reg.qr_token}`}
+            code={reg.short_code ?? `${reg.id}:${reg.qr_token}`}
             onClose={() => setShowQr(false)}
           />
         )}
@@ -371,6 +377,7 @@ function StudyReservationCard({ res }: { res: StudyReservationOut }) {
             title="Çalışma alanı girişi"
             subtitle={res.library_name ?? undefined}
             value={`${res.id}:${res.qr_token}`}
+            code={res.short_code ?? `${res.id}:${res.qr_token}`}
             onClose={() => setShowQr(false)}
           />
         )}
