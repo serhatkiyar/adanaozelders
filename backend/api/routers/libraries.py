@@ -21,10 +21,12 @@ from core.config import settings
 from core.database import get_db
 from models.admin import Admin
 from models.client import Client
+from models.library_operator import LibraryOperator
 from models.role import RoleType
 from schemas.library import (
     LibraryCreate,
     LibraryDetailOut,
+    LibraryEarningsOut,
     LibraryImagesReorder,
     LibraryReviewCreate,
     LibraryReviewOut,
@@ -172,6 +174,24 @@ async def delete_library_review(
     db: AsyncSession = Depends(get_db),
 ):
     await library_service.delete_review(db, client, review_id)
+
+
+# ── Kazanç özeti (admin / o kütüphanenin operatörü) ──────────────────────────────
+
+
+@router.get("/{library_id}/earnings", response_model=LibraryEarningsOut)
+async def library_earnings(
+    library_id: int,
+    user: CurrentUser = Depends(
+        require_roles(RoleType.ADMIN, RoleType.LIBRARY_OPERATOR)
+    ),
+    db: AsyncSession = Depends(get_db),
+):
+    """Kütüphane escrow kazanç özeti (serbest + emanette). Operatör yalnız kendi
+    kütüphanesini görebilir."""
+    if isinstance(user, LibraryOperator) and user.library_id != library_id:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Bu kütüphanede yetkin yok")
+    return await library_service.earnings_summary(db, library_id)
 
 
 # ── Admin görsel yönetimi (logo / banner / galeri) ───────────────────────────────

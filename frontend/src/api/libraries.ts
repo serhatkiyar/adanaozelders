@@ -1,6 +1,7 @@
 import { apiClient } from "@/api/axios";
 import type {
   LibraryDetailOut,
+  LibraryEarningsOut,
   LibraryReviewCreate,
   LibraryReviewOut,
   LibrarySearchOut,
@@ -86,6 +87,15 @@ export async function updateLibrary(
 
 export async function deleteLibrary(id: number): Promise<void> {
   await apiClient.delete(`/libraries/${id}`);
+}
+
+export async function fetchLibraryEarnings(
+  libraryId: number
+): Promise<LibraryEarningsOut> {
+  const { data } = await apiClient.get<LibraryEarningsOut>(
+    `/libraries/${libraryId}/earnings`
+  );
+  return data;
 }
 
 /* ── Admin görsel yönetimi (logo / banner / galeri) ── */

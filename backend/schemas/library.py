@@ -76,6 +76,20 @@ class LibraryImagesReorder(BaseModel):
     image_ids: list[int] = Field(default_factory=list)
 
 
+# ── Kazanç özeti (operatör/admin) ────────────────────────────────────────────────
+
+
+class LibraryEarningsOut(BaseModel):
+    """Kütüphanenin escrow kazanç özeti (deneme oturumları + çalışma alanı birleşik)."""
+
+    currency: str
+    released_earning: str  # kütüphaneye serbest bırakılmış net kazanç (Decimal->str)
+    held_earning: str  # emanette bekleyen (ödenmiş ama henüz serbest değil)
+    commission_total: str  # serbest bırakılanlardan kesilen platform komisyonu
+    released_count: int
+    held_count: int
+
+
 # ── Admin küratör CRUD ───────────────────────────────────────────────────────────
 
 

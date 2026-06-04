@@ -12,6 +12,7 @@ import {
   deleteLibraryReview,
   fetchLibrary,
   fetchLibraryAdmin,
+  fetchLibraryEarnings,
   fetchLibraryReviews,
   listLibrariesAdmin,
   reorderLibraryImages,
@@ -78,6 +79,15 @@ export function useAdminLibraries() {
   return useQuery({
     queryKey: ["libraries", "admin"],
     queryFn: listLibrariesAdmin,
+  });
+}
+
+/** Kütüphane escrow kazanç özeti (operatör/admin). */
+export function useLibraryEarnings(libraryId: number | undefined) {
+  return useQuery({
+    queryKey: ["libraries", "earnings", libraryId],
+    queryFn: () => fetchLibraryEarnings(libraryId!),
+    enabled: Number.isFinite(libraryId) && (libraryId ?? 0) > 0,
   });
 }
 

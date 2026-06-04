@@ -3,10 +3,12 @@ import { DashboardShell } from "@/components/DashboardShell";
 import { ExamSessionsManager } from "@/components/ExamSessionsManager";
 import { QrScanner } from "@/components/QrScanner";
 import { useOperatorMe, useVerifyAttendance } from "@/hooks/useLibraryExams";
+import { useLibraryEarnings } from "@/hooks/useLibraries";
 import {
   useAttendStudyReservation,
   useManageStudyReservations,
 } from "@/hooks/useStudy";
+import { formatTRY } from "@/lib/money";
 import { formatDateTime } from "@/lib/datetime";
 import { getErrorMessage } from "@/lib/errors";
 import { toast } from "@/store/toastStore";
@@ -47,6 +49,9 @@ export default function OperatorHome() {
             Deneme oturumlarını yönet ve katılımcıların QR kodlarını okutarak doğrula.
           </p>
         </div>
+
+        {/* ── Kazanç özeti ── */}
+        {op && <EarningsCard libraryId={op.library_id} />}
 
         {/* ── QR doğrulama ── */}
         <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700">
@@ -123,6 +128,44 @@ export default function OperatorHome() {
         {op && <StudyReservationsList libraryId={op.library_id} />}
       </div>
     </DashboardShell>
+  );
+}
+
+function EarningsCard({ libraryId }: { libraryId: number }) {
+  const { data, isLoading } = useLibraryEarnings(libraryId);
+  if (isLoading) {
+    return <div className="h-24 animate-pulse rounded-2xl bg-slate-100 dark:bg-slate-800" />;
+  }
+  if (!data) return null;
+
+  return (
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div className="rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-600 p-5 text-white shadow-sm">
+        <p className="text-xs font-medium text-emerald-50">Serbest kazanç</p>
+        <p className="mt-1 text-2xl font-bold">{formatTRY(data.released_earning)}</p>
+        <p className="mt-0.5 text-[11px] text-emerald-100">
+          {data.released_count} katılım · komisyon {formatTRY(data.commission_total)}
+        </p>
+      </div>
+      <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700">
+        <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Emanette bekleyen</p>
+        <p className="mt-1 text-2xl font-bold text-amber-600 dark:text-amber-400">
+          {formatTRY(data.held_earning)}
+        </p>
+        <p className="mt-0.5 text-[11px] text-slate-400">
+          {data.held_count} ödenmiş, henüz doğrulanmadı
+        </p>
+      </div>
+      <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700">
+        <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Toplam (serbest + emanet)</p>
+        <p className="mt-1 text-2xl font-bold text-slate-900 dark:text-white">
+          {formatTRY(
+            (Number(data.released_earning) + Number(data.held_earning)).toFixed(2)
+          )}
+        </p>
+        <p className="mt-0.5 text-[11px] text-slate-400">Katılım doğrulandıkça serbest kalır</p>
+      </div>
+    </div>
   );
 }
 

@@ -921,6 +921,15 @@ export interface LibraryReviewCreate {
   comment_text?: string | null;
 }
 
+export interface LibraryEarningsOut {
+  currency: string;
+  released_earning: string; // kütüphaneye serbest bırakılmış net kazanç
+  held_earning: string; // emanette bekleyen
+  commission_total: string; // platform komisyonu
+  released_count: number;
+  held_count: number;
+}
+
 export interface LibraryWrite {
   name: string;
   description?: string | null;

@@ -10,6 +10,7 @@ from __future__ import annotations
 import datetime
 import re
 import unicodedata
+from decimal import Decimal
 
 from fastapi import HTTPException, status
 from sqlalchemy import Float, cast, func, or_, select
@@ -28,9 +29,16 @@ from models.library import (
     LibraryReview,
     LibraryStatus,
 )
+from models.library_exam import (
+    ExamRegistration,
+    LibraryExamSession,
+    RegistrationStatus,
+)
+from models.study_reservation import StudyReservation
 from schemas.library import (
     LibraryCreate,
     LibraryDetailOut,
+    LibraryEarningsOut,
     LibraryHoursOut,
     LibraryImageOut,
     LibraryReviewCreate,
@@ -632,3 +640,96 @@ async def reorder_images(
             order += 1
     await db.commit()
     return await get_library_admin(db, lib_id)
+
+
+# ── Kazanç özeti (operatör/admin) ────────────────────────────────────────────────
+
+
+async def earnings_summary(db: AsyncSession, library_id: int) -> LibraryEarningsOut:
+    """Kütüphanenin escrow kazanç özeti — deneme oturumları + çalışma alanı birleşik.
+    RELEASED = ``released_at`` dolu (katılım doğrulandı VEYA no-show sonrası serbest);
+    HELD = ödenmiş ama henüz serbest değil (``status=PAID`` ve ``released_at`` NULL)."""
+    await _require_lib(db, library_id)
+
+    # Deneme — serbest bırakılmış (kazanç + komisyon + adet)
+    exam_rel = (
+        await db.execute(
+            select(
+                func.coalesce(func.sum(ExamRegistration.library_earning), 0),
+                func.coalesce(func.sum(ExamRegistration.commission_amount), 0),
+                func.count(),
+            )
+            .join(
+                LibraryExamSession,
+                LibraryExamSession.id == ExamRegistration.session_id,
+            )
+            .where(
+                LibraryExamSession.library_id == library_id,
+                ExamRegistration.deleted_at.is_(None),
+                ExamRegistration.released_at.isnot(None),
+            )
+        )
+    ).one()
+    # Deneme — emanette (held)
+    exam_held = (
+        await db.execute(
+            select(
+                func.coalesce(func.sum(ExamRegistration.library_earning), 0),
+                func.count(),
+            )
+            .join(
+                LibraryExamSession,
+                LibraryExamSession.id == ExamRegistration.session_id,
+            )
+            .where(
+                LibraryExamSession.library_id == library_id,
+                ExamRegistration.deleted_at.is_(None),
+                ExamRegistration.status == RegistrationStatus.PAID.value,
+                ExamRegistration.released_at.is_(None),
+            )
+        )
+    ).one()
+    # Çalışma alanı — serbest bırakılmış
+    study_rel = (
+        await db.execute(
+            select(
+                func.coalesce(func.sum(StudyReservation.library_earning), 0),
+                func.coalesce(func.sum(StudyReservation.commission_amount), 0),
+                func.count(),
+            ).where(
+                StudyReservation.library_id == library_id,
+                StudyReservation.deleted_at.is_(None),
+                StudyReservation.released_at.isnot(None),
+            )
+        )
+    ).one()
+    # Çalışma alanı — emanette
+    study_held = (
+        await db.execute(
+            select(
+                func.coalesce(func.sum(StudyReservation.library_earning), 0),
+                func.count(),
+            ).where(
+                StudyReservation.library_id == library_id,
+                StudyReservation.deleted_at.is_(None),
+                StudyReservation.status == RegistrationStatus.PAID.value,
+                StudyReservation.released_at.is_(None),
+            )
+        )
+    ).one()
+
+    def _d(v) -> Decimal:
+        return Decimal(str(v)).quantize(Decimal("0.01"))
+
+    released_earning = _d(exam_rel[0]) + _d(study_rel[0])
+    commission_total = _d(exam_rel[1]) + _d(study_rel[1])
+    held_earning = _d(exam_held[0]) + _d(study_held[0])
+
+    return LibraryEarningsOut(
+        currency=settings.PAYMENT_CURRENCY,
+        released_earning=str(released_earning),
+        held_earning=str(held_earning),
+        commission_total=str(commission_total),
+        released_count=int(exam_rel[2]) + int(study_rel[2]),
+        held_count=int(exam_held[1]) + int(study_held[1]),
+    )
