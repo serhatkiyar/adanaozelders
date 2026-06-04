@@ -51,7 +51,9 @@ export function LibrariesMap({ libraries, height = "70vh" }: LibrariesMapProps) 
 
   return (
     <div
-      className="overflow-hidden rounded-2xl ring-1 ring-slate-200 dark:ring-slate-700"
+      // isolate: Leaflet'in iç panel/kontrolleri (z-index 400–1000) kendi stacking
+      // context'inde kalsın; aksi halde sayfa header'ı/menülerin üstüne taşar.
+      className="isolate overflow-hidden rounded-2xl ring-1 ring-slate-200 dark:ring-slate-700"
       style={{ height }}
     >
       <MapContainer
