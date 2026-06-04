@@ -373,18 +373,28 @@ function LibraryEditorModal({
       hours: form.hours ?? [],
     };
 
-    const opts = {
-      onSuccess: () => {
-        toast.success(isEdit ? "Kütüphane güncellendi." : "Kütüphane eklendi.");
-        onClose();
-      },
-      onError: (e: unknown) => toast.error(getErrorMessage(e, "Kaydedilemedi.")),
-    };
+    const onError = (e: unknown) => toast.error(getErrorMessage(e, "Kaydedilemedi."));
 
     if (isEdit) {
-      update.mutate({ id: form.id!, payload }, opts);
+      update.mutate(
+        { id: form.id!, payload },
+        {
+          onSuccess: () => {
+            toast.success("Kütüphane güncellendi.");
+            onClose();
+          },
+          onError,
+        }
+      );
     } else {
-      create.mutate(payload, opts);
+      // Oluşturunca KAPATMA: dönen id ile edit moduna geç → görsel yöneticisi açılsın.
+      create.mutate(payload, {
+        onSuccess: (created) => {
+          toast.success("Kütüphane eklendi. Artık logo ve galeri ekleyebilirsin.");
+          setForm((f) => ({ ...f, id: created.id }));
+        },
+        onError,
+      });
     }
   };
 
