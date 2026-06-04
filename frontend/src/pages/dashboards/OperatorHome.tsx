@@ -3,7 +3,10 @@ import { DashboardShell } from "@/components/DashboardShell";
 import { ExamSessionsManager } from "@/components/ExamSessionsManager";
 import { QrScanner } from "@/components/QrScanner";
 import { useOperatorMe, useVerifyAttendance } from "@/hooks/useLibraryExams";
-import { useManageStudyReservations } from "@/hooks/useStudy";
+import {
+  useAttendStudyReservation,
+  useManageStudyReservations,
+} from "@/hooks/useStudy";
 import { formatDateTime } from "@/lib/datetime";
 import { getErrorMessage } from "@/lib/errors";
 import { toast } from "@/store/toastStore";
@@ -125,10 +128,20 @@ export default function OperatorHome() {
 
 function StudyReservationsList({ libraryId }: { libraryId: number }) {
   const { data, isLoading } = useManageStudyReservations(libraryId);
+  const attend = useAttendStudyReservation();
+
   if (isLoading) {
     return <div className="h-20 animate-pulse rounded-2xl bg-slate-100 dark:bg-slate-800" />;
   }
   if (!data || data.length === 0) return null;
+
+  const doAttend = (id: number, name: string) => {
+    attend.mutate(id, {
+      onSuccess: (res) =>
+        toast.success(res.already ? `${name} zaten giriş yapmıştı.` : `${name} giriş yaptı ✓`),
+      onError: (e) => toast.error(getErrorMessage(e, "Doğrulama başarısız.")),
+    });
+  };
 
   return (
     <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700">
@@ -137,17 +150,26 @@ function StudyReservationsList({ libraryId }: { libraryId: number }) {
       </h2>
       <ul className="divide-y divide-slate-100 dark:divide-slate-700">
         {data.map((r) => (
-          <li key={r.id} className="flex items-center justify-between py-2 text-sm">
-            <span className="text-slate-700 dark:text-slate-200">
-              {formatDateTime(r.starts_at)} – {formatDateTime(r.ends_at)}
-            </span>
-            <span
-              className={`text-xs font-semibold ${
-                r.status === "ATTENDED" ? "text-emerald-600" : "text-amber-600"
-              }`}
-            >
-              {r.status === "ATTENDED" ? "Giriş yaptı ✓" : "Bekliyor"}
-            </span>
+          <li key={r.id} className="flex items-center justify-between gap-2 py-2 text-sm">
+            <div className="min-w-0">
+              <p className="truncate font-medium text-slate-800 dark:text-slate-100">
+                {r.client_name ?? "Öğrenci"}
+              </p>
+              <p className="truncate text-xs text-slate-500 dark:text-slate-400">
+                {formatDateTime(r.starts_at)} – {formatDateTime(r.ends_at)}
+              </p>
+            </div>
+            {r.status === "ATTENDED" ? (
+              <span className="shrink-0 text-xs font-semibold text-emerald-600">Giriş yaptı ✓</span>
+            ) : (
+              <button
+                onClick={() => doAttend(r.id, r.client_name ?? "Öğrenci")}
+                disabled={attend.isPending}
+                className="shrink-0 rounded-lg bg-emerald-600 px-3 py-1 text-xs font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-60"
+              >
+                {attend.isPending ? "…" : "Giriş ver"}
+              </button>
+            )}
           </li>
         ))}
       </ul>

@@ -1,5 +1,6 @@
 import { apiClient } from "@/api/axios";
 import type {
+  AttendanceResult,
   StudyPayResult,
   StudyQuoteOut,
   StudyReservationOut,
@@ -51,6 +52,16 @@ export async function fetchManageStudyReservations(
   const { data } = await apiClient.get<StudyReservationOut[]>(
     "/study-reservations/manage",
     { params: { library_id: libraryId } }
+  );
+  return data;
+}
+
+/** Operatör: rezervasyon listesinden seçip girişi doğrula (QR/kod olmadan). */
+export async function attendStudyReservation(
+  reservationId: number
+): Promise<AttendanceResult> {
+  const { data } = await apiClient.post<AttendanceResult>(
+    `/study-reservations/${reservationId}/attend`
   );
   return data;
 }

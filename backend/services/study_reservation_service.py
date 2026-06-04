@@ -161,7 +161,12 @@ def _ensure_study_enabled(library: Library) -> Decimal:
     return Decimal(str(library.study_hourly_price))
 
 
-def _res_out(r: StudyReservation, *, library: Library | None = None) -> StudyReservationOut:
+def _res_out(
+    r: StudyReservation,
+    *,
+    library: Library | None = None,
+    client_name: str | None = None,
+) -> StudyReservationOut:
     out = StudyReservationOut.model_validate(r)
     out.amount = str(r.amount)
     if r.status != RegistrationStatus.PAID.value:
@@ -170,6 +175,8 @@ def _res_out(r: StudyReservation, *, library: Library | None = None) -> StudyRes
     if library is not None:
         out.library_name = library.name
         out.library_slug = library.slug
+    if client_name is not None:
+        out.client_name = client_name
     return out
 
 
@@ -374,11 +381,12 @@ async def list_mine(db: AsyncSession, client: Client) -> list[StudyReservationOu
 async def list_manage(
     db: AsyncSession, library_id: int
 ) -> list[StudyReservationOut]:
-    """Operatör/admin: kütüphanenin yaklaşan ödenmiş rezervasyonları."""
+    """Operatör/admin: kütüphanenin yaklaşan ödenmiş rezervasyonları (katılımcı adıyla)."""
     rows = (
         await db.execute(
-            select(StudyReservation, Library)
+            select(StudyReservation, Library, Client)
             .join(Library, Library.id == StudyReservation.library_id)
+            .join(Client, Client.id == StudyReservation.client_id)
             .where(
                 StudyReservation.library_id == library_id,
                 StudyReservation.deleted_at.is_(None),
@@ -388,7 +396,9 @@ async def list_manage(
             .order_by(StudyReservation.starts_at.asc())
         )
     ).all()
-    return [_res_out(r, library=lib) for r, lib in rows]
+    return [
+        _res_out(r, library=lib, client_name=cl.full_name) for r, lib, cl in rows
+    ]
 
 
 def _window_label(res: StudyReservation) -> str:
@@ -421,7 +431,32 @@ async def verify_attendance(
     ).scalars().first()
     if res is None:
         return None
+    return await _attend_study(
+        db, res, operator_library_id=operator_library_id, operator_id=operator_id
+    )
 
+
+async def verify_by_reservation(
+    db: AsyncSession, *, operator_library_id: int, operator_id: int, reservation_id: int
+) -> AttendanceResult:
+    """Operatör rezervasyon listesinden seçip girişi doğrular (QR/kod olmadan)."""
+    res = await db.get(StudyReservation, reservation_id)
+    if res is None or res.deleted_at is not None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Rezervasyon bulunamadı")
+    return await _attend_study(
+        db, res, operator_library_id=operator_library_id, operator_id=operator_id
+    )
+
+
+async def _attend_study(
+    db: AsyncSession,
+    res: StudyReservation,
+    *,
+    operator_library_id: int,
+    operator_id: int,
+) -> AttendanceResult:
+    """Yüklenmiş bir rezervasyon için girişi işaretler + emaneti serbest bırakır.
+    QR/kod ve listeden-seç yollarının paylaştığı çekirdek."""
     client = await db.get(Client, res.client_id)
     client_name = client.full_name if client else "Öğrenci"
 

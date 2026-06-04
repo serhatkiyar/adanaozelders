@@ -1,5 +1,6 @@
 import { useState } from "react";
 import {
+  useAttendRegistration,
   useCancelSession,
   useCreateSession,
   useManageSessions,
@@ -173,24 +174,39 @@ function SessionRow({
 
 function RosterPanel({ sessionId }: { sessionId: number }) {
   const { data, isLoading } = useRoster(sessionId);
+  const attend = useAttendRegistration();
+
   if (isLoading) {
     return <div className="mt-2 h-12 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />;
   }
   if (!data || data.length === 0) {
     return <p className="mt-2 text-xs text-slate-400">Henüz kayıtlı katılımcı yok.</p>;
   }
+
+  const doAttend = (registrationId: number, name: string) => {
+    attend.mutate(registrationId, {
+      onSuccess: (res) =>
+        toast.success(res.already ? `${name} zaten doğrulanmıştı.` : `${name} doğrulandı ✓`),
+      onError: (e) => toast.error(getErrorMessage(e, "Doğrulama başarısız.")),
+    });
+  };
+
   return (
     <ul className="mt-2 divide-y divide-slate-100 rounded-lg bg-slate-50 dark:divide-slate-700 dark:bg-slate-900/40">
       {data.map((r) => (
-        <li key={r.registration_id} className="flex items-center justify-between px-3 py-2 text-sm">
-          <span className="text-slate-700 dark:text-slate-200">{r.client_name}</span>
-          <span
-            className={`text-xs font-semibold ${
-              r.status === "ATTENDED" ? "text-emerald-600" : "text-amber-600"
-            }`}
-          >
-            {r.status === "ATTENDED" ? "Katıldı ✓" : "Bekliyor"}
-          </span>
+        <li key={r.registration_id} className="flex items-center justify-between gap-2 px-3 py-2 text-sm">
+          <span className="min-w-0 truncate text-slate-700 dark:text-slate-200">{r.client_name}</span>
+          {r.status === "ATTENDED" ? (
+            <span className="shrink-0 text-xs font-semibold text-emerald-600">Katıldı ✓</span>
+          ) : (
+            <button
+              onClick={() => doAttend(r.registration_id, r.client_name)}
+              disabled={attend.isPending}
+              className="shrink-0 rounded-lg bg-emerald-600 px-3 py-1 text-xs font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-60"
+            >
+              {attend.isPending ? "…" : "Giriş ver"}
+            </button>
+          )}
         </li>
       ))}
     </ul>

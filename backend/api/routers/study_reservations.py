@@ -12,6 +12,7 @@ from models.admin import Admin
 from models.client import Client
 from models.library_operator import LibraryOperator
 from models.role import RoleType
+from schemas.library_exam import AttendanceResult
 from schemas.study import (
     StudyPayResult,
     StudyQuoteOut,
@@ -61,6 +62,21 @@ async def list_manage(
 ):
     _assert_can_manage(user, library_id)
     return await study_reservation_service.list_manage(db, library_id)
+
+
+@router.post("/{reservation_id}/attend", response_model=AttendanceResult)
+async def attend(
+    reservation_id: int,
+    operator: LibraryOperator = Depends(require_roles(RoleType.LIBRARY_OPERATOR)),
+    db: AsyncSession = Depends(get_db),
+):
+    """Operatör rezervasyon listesinden seçip girişi doğrular (QR/kod olmadan)."""
+    return await study_reservation_service.verify_by_reservation(
+        db,
+        operator_library_id=operator.library_id,
+        operator_id=operator.id,
+        reservation_id=reservation_id,
+    )
 
 
 # ── Öğrenci ──────────────────────────────────────────────────────────────────────

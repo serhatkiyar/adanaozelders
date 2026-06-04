@@ -34,6 +34,7 @@ class StudyReservationOut(BaseModel):
     library_name: str | None = None
     library_slug: str | None = None
     client_id: int
+    client_name: str | None = None  # operatör listesi için
     starts_at: datetime.datetime
     ends_at: datetime.datetime
     status: str

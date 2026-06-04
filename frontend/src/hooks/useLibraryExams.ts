@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  attendRegistration,
   cancelRegistration,
   cancelSession,
   createOperator,
@@ -118,6 +119,18 @@ export function useVerifyAttendance() {
   return useMutation({
     mutationFn: (payload: string) => verifyAttendance(payload),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["exam-roster"] }),
+  });
+}
+
+/** Operatör: katılımcı listesinden seçip doğrula (QR/kod olmadan). */
+export function useAttendRegistration() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (registrationId: number) => attendRegistration(registrationId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["exam-roster"] });
+      qc.invalidateQueries({ queryKey: ["exam-sessions"] });
+    },
   });
 }
 

@@ -5,6 +5,7 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import {
+  attendStudyReservation,
   cancelStudy,
   fetchManageStudyReservations,
   fetchMyStudyReservations,
@@ -67,5 +68,13 @@ export function useManageStudyReservations(libraryId: number | undefined) {
     queryKey: ["study-reservations", "manage", libraryId],
     queryFn: () => fetchManageStudyReservations(libraryId!),
     enabled: Number.isFinite(libraryId) && (libraryId ?? 0) > 0,
+  });
+}
+
+export function useAttendStudyReservation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (reservationId: number) => attendStudyReservation(reservationId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["study-reservations"] }),
   });
 }

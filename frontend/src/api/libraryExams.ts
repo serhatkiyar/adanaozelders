@@ -103,6 +103,16 @@ export async function verifyAttendance(payload: string): Promise<AttendanceResul
   return data;
 }
 
+/** Listeden seçip doğrula (QR/kod olmadan). */
+export async function attendRegistration(
+  registrationId: number
+): Promise<AttendanceResult> {
+  const { data } = await apiClient.post<AttendanceResult>(
+    `/exam-registrations/${registrationId}/attend`
+  );
+  return data;
+}
+
 /* ── Operatör hesapları (admin) ── */
 
 export async function fetchOperators(libraryId: number): Promise<OperatorOut[]> {

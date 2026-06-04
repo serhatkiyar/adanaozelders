@@ -958,6 +958,7 @@ export interface StudyReservationOut {
   library_name?: string | null;
   library_slug?: string | null;
   client_id: number;
+  client_name?: string | null;
   starts_at: string;
   ends_at: string;
   status: RegistrationStatus;

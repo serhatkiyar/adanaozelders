@@ -190,3 +190,20 @@ async def verify_attendance(
         operator_id=operator.id,
         payload=payload.payload,
     )
+
+
+@router.post(
+    "/exam-registrations/{registration_id}/attend", response_model=AttendanceResult
+)
+async def attend_by_registration(
+    registration_id: int,
+    operator: LibraryOperator = Depends(require_roles(RoleType.LIBRARY_OPERATOR)),
+    db: AsyncSession = Depends(get_db),
+):
+    """Operatör katılımcı listesinden seçip doğrular (QR/kod olmadan)."""
+    return await library_exam_service.verify_by_registration(
+        db,
+        operator_library_id=operator.library_id,
+        operator_id=operator.id,
+        registration_id=registration_id,
+    )

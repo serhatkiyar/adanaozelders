@@ -545,6 +545,43 @@ async def verify_attendance(
         if study_result is not None:
             return study_result
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Geçersiz QR / bilet bulunamadı")
+
+    return await _attend_exam(
+        db, reg, operator_library_id=operator_library_id, operator_id=operator_id
+    )
+
+
+async def verify_by_registration(
+    db: AsyncSession, *, operator_library_id: int, operator_id: int, registration_id: int
+) -> AttendanceResult:
+    """Operatör katılımcı listesinden seçip doğrular (QR/kod olmadan). Aynı scope +
+    escrow-release mantığını QR yolu ile paylaşır."""
+    reg = (
+        await db.execute(
+            select(ExamRegistration)
+            .options(selectinload(ExamRegistration.session))
+            .where(
+                ExamRegistration.id == registration_id,
+                ExamRegistration.deleted_at.is_(None),
+            )
+        )
+    ).scalars().first()
+    if reg is None or reg.session is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Kayıt bulunamadı")
+    return await _attend_exam(
+        db, reg, operator_library_id=operator_library_id, operator_id=operator_id
+    )
+
+
+async def _attend_exam(
+    db: AsyncSession,
+    reg: ExamRegistration,
+    *,
+    operator_library_id: int,
+    operator_id: int,
+) -> AttendanceResult:
+    """Yüklenmiş bir kayıt için katılımı işaretler + emaneti serbest bırakır (RELEASED).
+    QR/kod ve listeden-seç yollarının paylaştığı çekirdek."""
     if reg.session.library_id != operator_library_id:
         raise HTTPException(
             status.HTTP_403_FORBIDDEN, "Bu bilet sizin kütüphanenize ait değil"
@@ -567,7 +604,6 @@ async def verify_attendance(
             status.HTTP_409_CONFLICT, "Bu kayıt ödenmemiş; katılım doğrulanamaz"
         )
 
-    # Katılımı işaretle + emaneti kütüphaneye serbest bırak (RELEASED).
     reg.status = RegistrationStatus.ATTENDED.value
     reg.attended_at = _now()
     reg.attended_by_operator_id = operator_id
