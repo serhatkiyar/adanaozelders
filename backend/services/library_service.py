@@ -283,7 +283,8 @@ async def get_library_public(db: AsyncSession, id_or_slug: str) -> LibraryDetail
     )
     hours = sorted(lib.hours, key=lambda h: h.weekday)
     return LibraryDetailOut(
-        **base.model_dump(),
+        # open_now açıkça aşağıda veriliyor → base dump'ından çıkar (çift argüman olmasın).
+        **base.model_dump(exclude={"open_now"}),
         phone=lib.phone,
         email=lib.email,
         website=lib.website,
@@ -476,7 +477,8 @@ async def get_library_admin(db: AsyncSession, lib_id: int) -> LibraryDetailOut:
     )
     hours = sorted(lib.hours, key=lambda h: h.weekday)
     return LibraryDetailOut(
-        **base.model_dump(),
+        # open_now açıkça aşağıda veriliyor → base dump'ından çıkar (çift argüman olmasın).
+        **base.model_dump(exclude={"open_now"}),
         phone=lib.phone,
         email=lib.email,
         website=lib.website,
