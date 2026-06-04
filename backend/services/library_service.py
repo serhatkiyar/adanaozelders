@@ -456,9 +456,17 @@ async def update_library(
     ):
         if field in data:
             setattr(lib, field, data[field])
+    # Çocuk koleksiyonları (amenities/hours) yeniden kurulurken eski satırları ÖNCE
+    # silip flush etmeliyiz: aksi halde SQLAlchemy yeni INSERT'leri orphan DELETE'lerden
+    # önce gönderir ve aynı (library_id, weekday) / (library_id, amenity) için unique
+    # ihlali (23505 → 409) oluşur.
     if "amenities" in data and data["amenities"] is not None:
+        lib.amenity_links.clear()
+        await db.flush()
         _apply_amenities(lib, data["amenities"])
     if "hours" in data and data["hours"] is not None:
+        lib.hours.clear()
+        await db.flush()
         _apply_hours(lib, payload.hours or [])
 
     await db.commit()
