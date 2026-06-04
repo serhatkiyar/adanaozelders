@@ -313,6 +313,31 @@ async def get_library_public(db: AsyncSession, id_or_slug: str) -> LibraryDetail
 # ── Değerlendirme ────────────────────────────────────────────────────────────────
 
 
+async def _verified_client_ids(db: AsyncSession, library_id: int) -> set[int]:
+    """Bu kütüphanede ATTENDED (katılmış) deneme VEYA çalışma kaydı olan client'lar —
+    'doğrulanmış ziyaretçi' rozeti için."""
+    exam = (
+        select(ExamRegistration.client_id)
+        .join(LibraryExamSession, LibraryExamSession.id == ExamRegistration.session_id)
+        .where(
+            LibraryExamSession.library_id == library_id,
+            ExamRegistration.status == RegistrationStatus.ATTENDED.value,
+            ExamRegistration.deleted_at.is_(None),
+        )
+    )
+    study = select(StudyReservation.client_id).where(
+        StudyReservation.library_id == library_id,
+        StudyReservation.status == RegistrationStatus.ATTENDED.value,
+        StudyReservation.deleted_at.is_(None),
+    )
+    rows = (await db.execute(exam.union(study))).all()
+    return {r[0] for r in rows}
+
+
+async def _is_verified_visitor(db: AsyncSession, library_id: int, client_id: int) -> bool:
+    return client_id in await _verified_client_ids(db, library_id)
+
+
 async def list_reviews(
     db: AsyncSession, *, library_id: int, limit: int = 20, offset: int = 0
 ) -> list[LibraryReviewOut]:
@@ -328,11 +353,13 @@ async def list_reviews(
         .offset(offset)
     )
     rows = (await db.execute(stmt)).all()
+    verified_ids = await _verified_client_ids(db, library_id)
     out: list[LibraryReviewOut] = []
     for review, client in rows:
         item = LibraryReviewOut.model_validate(review)
         item.client_name = client.full_name
         item.client_avatar_url = client.avatar_url
+        item.verified = client.id in verified_ids
         out.append(item)
     return out
 
@@ -373,6 +400,7 @@ async def create_review(
     item = LibraryReviewOut.model_validate(review)
     item.client_name = client.full_name
     item.client_avatar_url = client.avatar_url
+    item.verified = await _is_verified_visitor(db, library_id, client.id)
     return item
 
 

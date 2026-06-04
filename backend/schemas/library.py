@@ -56,6 +56,8 @@ class LibraryReviewOut(BaseModel):
     created_at: datetime.datetime
     client_name: str | None = None
     client_avatar_url: str | None = None
+    # Bu kütüphanede ATTENDED (deneme/çalışma) kaydı olan öğrenci → doğrulanmış ziyaretçi.
+    verified: bool = False
 
 
 # ── Galeri görselleri ────────────────────────────────────────────────────────────

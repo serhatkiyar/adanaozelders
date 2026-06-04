@@ -281,9 +281,16 @@ export default function LibraryDetail() {
                       <div className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-100 text-sm font-bold text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-300">
                         {(r.client_name ?? "?").charAt(0).toUpperCase()}
                       </div>
-                      <span className="text-sm font-semibold text-slate-800 dark:text-slate-200">
-                        {r.client_name ?? "Öğrenci"}
-                      </span>
+                      <div className="flex flex-col">
+                        <span className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+                          {r.client_name ?? "Öğrenci"}
+                        </span>
+                        {r.verified && (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
+                            ✓ Doğrulanmış ziyaretçi
+                          </span>
+                        )}
+                      </div>
                     </div>
                     <StarRating value={r.rating} />
                   </div>

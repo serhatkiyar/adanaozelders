@@ -914,6 +914,7 @@ export interface LibraryReviewOut {
   created_at: string;
   client_name?: string | null;
   client_avatar_url?: string | null;
+  verified?: boolean;
 }
 
 export interface LibraryReviewCreate {
