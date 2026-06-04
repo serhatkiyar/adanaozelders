@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { MapPicker } from "@/components/MapPicker";
+import { LibraryMediaManager } from "@/components/LibraryMediaManager";
 import { ExamSessionsManager } from "@/components/ExamSessionsManager";
 import {
   useAdminLibraries,
@@ -457,10 +458,22 @@ function LibraryEditorModal({
             <Field label="Web sitesi">
               <input value={form.website ?? ""} onChange={(e) => set("website", e.target.value)} className="input" placeholder="https://..." />
             </Field>
-            <Field label="Kapak görseli (URL)">
+            <Field label="Kapak görseli (URL — alternatif)">
               <input value={form.cover_url ?? ""} onChange={(e) => set("cover_url", e.target.value)} className="input" placeholder="https://...jpg" />
             </Field>
           </div>
+
+          {/* Görseller (logo / banner / galeri) — yalnız kayıtlı kütüphanede */}
+          <Field label="Görseller (logo · kapak · galeri)">
+            {isEdit ? (
+              <LibraryMediaManager libraryId={form.id!} />
+            ) : (
+              <p className="rounded-xl border border-dashed border-slate-300 px-4 py-3 text-xs text-slate-500 dark:border-slate-700 dark:text-slate-400">
+                📸 Logo, kapak ve galeri fotoğraflarını yüklemek için önce kütüphaneyi
+                kaydedin, sonra “Düzenle” ile geri dönün.
+              </p>
+            )}
+          </Field>
 
           {/* Durum */}
           <Field label="Durum">

@@ -81,3 +81,70 @@ export async function updateLibrary(
 export async function deleteLibrary(id: number): Promise<void> {
   await apiClient.delete(`/libraries/${id}`);
 }
+
+/* ── Admin görsel yönetimi (logo / banner / galeri) ── */
+
+const MULTIPART = { headers: { "Content-Type": "multipart/form-data" } };
+
+export async function uploadLibraryLogo(
+  id: number,
+  file: File
+): Promise<LibraryDetailOut> {
+  const form = new FormData();
+  form.append("file", file);
+  const { data } = await apiClient.post<LibraryDetailOut>(
+    `/libraries/${id}/logo`,
+    form,
+    MULTIPART
+  );
+  return data;
+}
+
+export async function uploadLibraryCover(
+  id: number,
+  file: File
+): Promise<LibraryDetailOut> {
+  const form = new FormData();
+  form.append("file", file);
+  const { data } = await apiClient.post<LibraryDetailOut>(
+    `/libraries/${id}/cover`,
+    form,
+    MULTIPART
+  );
+  return data;
+}
+
+export async function uploadLibraryImages(
+  id: number,
+  files: File[]
+): Promise<LibraryDetailOut> {
+  const form = new FormData();
+  files.forEach((f) => form.append("files", f));
+  const { data } = await apiClient.post<LibraryDetailOut>(
+    `/libraries/${id}/images`,
+    form,
+    MULTIPART
+  );
+  return data;
+}
+
+export async function deleteLibraryImage(
+  id: number,
+  imageId: number
+): Promise<LibraryDetailOut> {
+  const { data } = await apiClient.delete<LibraryDetailOut>(
+    `/libraries/${id}/images/${imageId}`
+  );
+  return data;
+}
+
+export async function reorderLibraryImages(
+  id: number,
+  imageIds: number[]
+): Promise<LibraryDetailOut> {
+  const { data } = await apiClient.patch<LibraryDetailOut>(
+    `/libraries/${id}/images/reorder`,
+    { image_ids: imageIds }
+  );
+  return data;
+}

@@ -49,7 +49,9 @@ class Library(Base, TimestampMixin, SoftDeleteMixin):
     phone: Mapped[str | None] = mapped_column(String(30), nullable=True)
     email: Mapped[str | None] = mapped_column(String(255), nullable=True)
     website: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    # cover_url = geniş kapak/banner (16:9); logo_url = kurum logosu (1:1).
     cover_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    logo_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
     # Baz konum ("yakınımdaki kütüphaneler" haritası / Haversine araması).
     location_text: Mapped[str | None] = mapped_column(String(300), nullable=True)
@@ -98,6 +100,11 @@ class Library(Base, TimestampMixin, SoftDeleteMixin):
     )
     reviews: Mapped[list["LibraryReview"]] = relationship(
         back_populates="library", cascade="all, delete-orphan"
+    )
+    images: Mapped[list["LibraryImage"]] = relationship(
+        back_populates="library",
+        cascade="all, delete-orphan",
+        order_by="LibraryImage.sort_order, LibraryImage.id",
     )
 
     __table_args__ = (
@@ -165,6 +172,26 @@ class LibraryAmenity(Base):
     library: Mapped["Library"] = relationship(back_populates="amenity_links")
 
     __table_args__ = (Index("ix_library_amenities_amenity", "amenity"),)
+
+
+class LibraryImage(Base, TimestampMixin):
+    """Kütüphane galeri fotoğrafı (One-to-Many; çalışma salonu, kafeterya, giriş…).
+    Görsel object storage'a (MinIO/S3) yüklenir; burada yalnız public URL tutulur.
+    ``sort_order`` küçükten büyüğe galeri sırasını verir (admin sürükle-bırak)."""
+
+    __tablename__ = "library_images"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    library_id: Mapped[int] = mapped_column(
+        ForeignKey("libraries.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    url: Mapped[str] = mapped_column(String(500), nullable=False)
+    caption: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    sort_order: Mapped[int] = mapped_column(
+        Integer, nullable=False, server_default=text("0")
+    )
+
+    library: Mapped["Library"] = relationship(back_populates="images")
 
 
 class LibraryReview(Base, TimestampMixin, SoftDeleteMixin):

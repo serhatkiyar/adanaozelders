@@ -17,6 +17,7 @@ from models.library import (
     Library,
     LibraryAmenity,
     LibraryHours,
+    LibraryImage,
     LibraryReview,
     LibraryStatus,
 )
@@ -79,6 +80,7 @@ __all__ = [
     "LibraryAmenity",
     "LibraryExamSession",
     "LibraryHours",
+    "LibraryImage",
     "LibraryOperator",
     "LibraryReview",
     "LibraryStatus",

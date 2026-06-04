@@ -868,12 +868,20 @@ export interface LibraryHours {
   close_minute?: number | null;
 }
 
+export interface LibraryImageOut {
+  id: number;
+  url: string;
+  caption?: string | null;
+  sort_order: number;
+}
+
 export interface LibrarySearchOut {
   id: number;
   name: string;
   slug: string;
   description?: string | null;
   cover_url?: string | null;
+  logo_url?: string | null;
   location_text?: string | null;
   location_lat?: number | null;
   location_lng?: number | null;
@@ -893,6 +901,7 @@ export interface LibraryDetailOut extends LibrarySearchOut {
   website?: string | null;
   status: string; // ACTIVE | HIDDEN
   hours: LibraryHours[];
+  images: LibraryImageOut[];
   created_at?: string | null;
 }
 
@@ -919,6 +928,7 @@ export interface LibraryWrite {
   email?: string | null;
   website?: string | null;
   cover_url?: string | null;
+  logo_url?: string | null;
   location_text?: string | null;
   location_lat?: number | null;
   location_lng?: number | null;

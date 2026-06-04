@@ -26,6 +26,7 @@ import {
 } from "@/lib/libraryHours";
 import { ROUTES } from "@/lib/routes";
 import { ROLE_IDS } from "@/types";
+import type { LibraryImageOut } from "@/types";
 
 export default function LibraryDetail() {
   const { slug } = useParams<{ slug: string }>();
@@ -107,6 +108,13 @@ export default function LibraryDetail() {
             )}
           </div>
           <div className="p-5 sm:p-6">
+            {lib.logo_url && (
+              <img
+                src={lib.logo_url}
+                alt={`${lib.name} logosu`}
+                className="-mt-16 mb-3 h-20 w-20 rounded-2xl bg-white object-cover shadow-lg ring-4 ring-white dark:ring-slate-800"
+              />
+            )}
             <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{lib.name}</h1>
             {lib.location_text && (
               <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
@@ -170,6 +178,9 @@ export default function LibraryDetail() {
             )}
           </div>
         </div>
+
+        {/* ── Galeri ── */}
+        {lib.images && lib.images.length > 0 && <LibraryGallery images={lib.images} />}
 
         {/* ── Çalışma saatleri + Harita ── */}
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
@@ -269,6 +280,100 @@ export default function LibraryDetail() {
     </DashboardShell>
   ) : (
     <PublicShell>{content}</PublicShell>
+  );
+}
+
+/* ── Galeri (grid + lightbox) ── */
+
+function LibraryGallery({ images }: { images: LibraryImageOut[] }) {
+  const [active, setActive] = useState<number | null>(null);
+
+  const close = () => setActive(null);
+  const step = (dir: -1 | 1) =>
+    setActive((i) =>
+      i == null ? i : (i + dir + images.length) % images.length
+    );
+
+  return (
+    <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700">
+      <h2 className="mb-3 text-base font-bold text-slate-900 dark:text-white">
+        Galeri
+      </h2>
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+        {images.map((im, i) => (
+          <button
+            key={im.id}
+            type="button"
+            onClick={() => setActive(i)}
+            className="group relative aspect-video overflow-hidden rounded-xl bg-slate-100 ring-1 ring-slate-200 dark:bg-slate-700 dark:ring-slate-600"
+          >
+            <img
+              src={im.url}
+              alt={im.caption ?? ""}
+              loading="lazy"
+              className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+            />
+          </button>
+        ))}
+      </div>
+
+      {active != null && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/90 p-4"
+          onClick={close}
+        >
+          <button
+            type="button"
+            onClick={close}
+            className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-xl text-white transition hover:bg-white/20"
+            aria-label="Kapat"
+          >
+            ✕
+          </button>
+          {images.length > 1 && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                step(-1);
+              }}
+              className="absolute left-3 flex h-12 w-12 items-center justify-center rounded-full bg-white/10 text-2xl text-white transition hover:bg-white/20 sm:left-6"
+              aria-label="Önceki"
+            >
+              ‹
+            </button>
+          )}
+          <figure onClick={(e) => e.stopPropagation()} className="max-w-4xl">
+            <img
+              src={images[active].url}
+              alt={images[active].caption ?? ""}
+              className="max-h-[80vh] w-auto rounded-2xl object-contain"
+            />
+            {images[active].caption && (
+              <figcaption className="mt-3 text-center text-sm text-slate-200">
+                {images[active].caption}
+              </figcaption>
+            )}
+            <p className="mt-1 text-center text-xs text-slate-400">
+              {active + 1} / {images.length}
+            </p>
+          </figure>
+          {images.length > 1 && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                step(1);
+              }}
+              className="absolute right-3 flex h-12 w-12 items-center justify-center rounded-full bg-white/10 text-2xl text-white transition hover:bg-white/20 sm:right-6"
+              aria-label="Sonraki"
+            >
+              ›
+            </button>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 

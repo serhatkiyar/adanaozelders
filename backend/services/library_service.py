@@ -19,10 +19,12 @@ from sqlalchemy.orm import selectinload
 from core.config import settings
 from models.admin import Admin
 from models.client import Client
+from core import storage
 from models.library import (
     Library,
     LibraryAmenity,
     LibraryHours,
+    LibraryImage,
     LibraryReview,
     LibraryStatus,
 )
@@ -30,6 +32,7 @@ from schemas.library import (
     LibraryCreate,
     LibraryDetailOut,
     LibraryHoursOut,
+    LibraryImageOut,
     LibraryReviewCreate,
     LibraryReviewOut,
     LibrarySearchOut,
@@ -134,6 +137,7 @@ def _to_search_out(
         slug=lib.slug,
         description=lib.description,
         cover_url=lib.cover_url,
+        logo_url=lib.logo_url,
         location_text=lib.location_text,
         location_lat=float(lib.location_lat) if lib.location_lat is not None else None,
         location_lng=float(lib.location_lng) if lib.location_lng is not None else None,
@@ -251,6 +255,7 @@ async def _load_full(db: AsyncSession, lib_id: int) -> Library | None:
         .options(
             selectinload(Library.amenity_links),
             selectinload(Library.hours),
+            selectinload(Library.images),
         )
         .where(Library.id == lib_id, Library.deleted_at.is_(None))
     )
@@ -263,6 +268,7 @@ async def get_library_public(db: AsyncSession, id_or_slug: str) -> LibraryDetail
         .options(
             selectinload(Library.amenity_links),
             selectinload(Library.hours),
+            selectinload(Library.images),
         )
         .where(Library.deleted_at.is_(None), Library.status == LibraryStatus.ACTIVE.value)
     )
@@ -291,6 +297,7 @@ async def get_library_public(db: AsyncSession, id_or_slug: str) -> LibraryDetail
         status=lib.status,
         created_at=lib.created_at,
         hours=[LibraryHoursOut.model_validate(h) for h in hours],
+        images=[LibraryImageOut.model_validate(im) for im in lib.images],
         open_now=_is_open_now(hours),
     )
 
@@ -406,6 +413,7 @@ async def create_library(
         email=payload.email,
         website=payload.website,
         cover_url=payload.cover_url,
+        logo_url=payload.logo_url,
         location_text=payload.location_text,
         location_lat=payload.location_lat,
         location_lng=payload.location_lng,
@@ -438,6 +446,7 @@ async def update_library(
         "email",
         "website",
         "cover_url",
+        "logo_url",
         "location_text",
         "location_lat",
         "location_lng",
@@ -485,6 +494,7 @@ async def get_library_admin(db: AsyncSession, lib_id: int) -> LibraryDetailOut:
         status=lib.status,
         created_at=lib.created_at,
         hours=[LibraryHoursOut.model_validate(h) for h in hours],
+        images=[LibraryImageOut.model_validate(im) for im in lib.images],
         open_now=_is_open_now(hours),
     )
 
@@ -518,3 +528,99 @@ async def list_libraries_admin(
         item.open_now = _is_open_now(list(lib.hours))
         out.append(item)
     return out
+
+
+# ── Görsel yönetimi (admin küratör; logo / banner / galeri) ──────────────────────
+
+
+async def _require_lib(db: AsyncSession, lib_id: int) -> Library:
+    lib = await db.get(Library, lib_id)
+    if lib is None or lib.deleted_at is not None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Kütüphane bulunamadı")
+    return lib
+
+
+async def set_logo(db: AsyncSession, lib_id: int, file_bytes: bytes) -> LibraryDetailOut:
+    """Kurumsal logoyu (1:1 kare) yükler ve eskisini storage'dan temizler."""
+    lib = await _require_lib(db, lib_id)
+    old = lib.logo_url
+    lib.logo_url = await storage.upload_library_photo(file_bytes, square=True)
+    await db.commit()
+    if old:
+        await storage.delete_file(old)
+    return await get_library_admin(db, lib_id)
+
+
+async def set_cover(db: AsyncSession, lib_id: int, file_bytes: bytes) -> LibraryDetailOut:
+    """Geniş kapak/banner (16:9) yükler ve eskisini storage'dan temizler."""
+    lib = await _require_lib(db, lib_id)
+    old = lib.cover_url
+    lib.cover_url = await storage.upload_library_photo(file_bytes, square=False)
+    await db.commit()
+    if old:
+        await storage.delete_file(old)
+    return await get_library_admin(db, lib_id)
+
+
+async def add_images(
+    db: AsyncSession, lib_id: int, files: list[bytes], *, captions: list[str | None] | None = None
+) -> LibraryDetailOut:
+    """Galeriye bir veya daha fazla fotoğraf ekler (mevcut sıranın sonuna)."""
+    await _require_lib(db, lib_id)
+    start = (
+        await db.execute(
+            select(func.coalesce(func.max(LibraryImage.sort_order), -1) + 1).where(
+                LibraryImage.library_id == lib_id
+            )
+        )
+    ).scalar_one()
+    for i, raw in enumerate(files):
+        url = await storage.upload_library_photo(raw, square=False)
+        cap = captions[i] if captions and i < len(captions) else None
+        db.add(
+            LibraryImage(
+                library_id=lib_id, url=url, caption=cap, sort_order=start + i
+            )
+        )
+    await db.commit()
+    return await get_library_admin(db, lib_id)
+
+
+async def delete_image(db: AsyncSession, lib_id: int, image_id: int) -> LibraryDetailOut:
+    """Galeri fotoğrafını siler (kayıt + storage objesi)."""
+    await _require_lib(db, lib_id)
+    img = await db.get(LibraryImage, image_id)
+    if img is None or img.library_id != lib_id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Görsel bulunamadı")
+    url = img.url
+    await db.delete(img)
+    await db.commit()
+    if url:
+        await storage.delete_file(url)
+    return await get_library_admin(db, lib_id)
+
+
+async def reorder_images(
+    db: AsyncSession, lib_id: int, image_ids: list[int]
+) -> LibraryDetailOut:
+    """Galeri sırasını verilen id dizisine göre yeniden numaralar."""
+    await _require_lib(db, lib_id)
+    imgs = (
+        await db.execute(
+            select(LibraryImage).where(LibraryImage.library_id == lib_id)
+        )
+    ).scalars().all()
+    by_id = {im.id: im for im in imgs}
+    order = 0
+    for iid in image_ids:
+        im = by_id.get(iid)
+        if im is not None:
+            im.sort_order = order
+            order += 1
+    # Dizide olmayanlar (varsa) sona eklenir, stabil kalsın.
+    for im in imgs:
+        if im.id not in image_ids:
+            im.sort_order = order
+            order += 1
+    await db.commit()
+    return await get_library_admin(db, lib_id)

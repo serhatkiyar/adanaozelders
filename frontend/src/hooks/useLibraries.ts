@@ -8,15 +8,20 @@ import {
   createLibrary,
   createLibraryReview,
   deleteLibrary,
+  deleteLibraryImage,
   deleteLibraryReview,
   fetchLibrary,
   fetchLibraryReviews,
   listLibrariesAdmin,
+  reorderLibraryImages,
   searchLibraries,
   updateLibrary,
+  uploadLibraryCover,
+  uploadLibraryImages,
+  uploadLibraryLogo,
   type LibrarySearchParams,
 } from "@/api/libraries";
-import type { LibraryReviewCreate, LibraryWrite } from "@/types";
+import type { LibraryDetailOut, LibraryReviewCreate, LibraryWrite } from "@/types";
 
 export function useLibrarySearch(params: LibrarySearchParams) {
   return useQuery({
@@ -104,4 +109,38 @@ export function useDeleteLibrary() {
       qc.invalidateQueries({ queryKey: ["libraries"] });
     },
   });
+}
+
+/* ── Admin görsel yönetimi (logo / banner / galeri) ── */
+
+export function useLibraryMedia(libraryId: number) {
+  const qc = useQueryClient();
+  const onSuccess = (fresh: LibraryDetailOut) => {
+    // Editör anında güncel görselleri görsün + liste/detay tazelensin.
+    qc.setQueryData(["libraries", "detail", libraryId], fresh);
+    qc.invalidateQueries({ queryKey: ["libraries"] });
+  };
+
+  const uploadLogo = useMutation({
+    mutationFn: (file: File) => uploadLibraryLogo(libraryId, file),
+    onSuccess,
+  });
+  const uploadCover = useMutation({
+    mutationFn: (file: File) => uploadLibraryCover(libraryId, file),
+    onSuccess,
+  });
+  const uploadImages = useMutation({
+    mutationFn: (files: File[]) => uploadLibraryImages(libraryId, files),
+    onSuccess,
+  });
+  const removeImage = useMutation({
+    mutationFn: (imageId: number) => deleteLibraryImage(libraryId, imageId),
+    onSuccess,
+  });
+  const reorder = useMutation({
+    mutationFn: (imageIds: number[]) => reorderLibraryImages(libraryId, imageIds),
+    onSuccess,
+  });
+
+  return { uploadLogo, uploadCover, uploadImages, removeImage, reorder };
 }

@@ -1,6 +1,14 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    HTTPException,
+    Query,
+    UploadFile,
+    status,
+)
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import (
@@ -17,12 +25,32 @@ from models.role import RoleType
 from schemas.library import (
     LibraryCreate,
     LibraryDetailOut,
+    LibraryImagesReorder,
     LibraryReviewCreate,
     LibraryReviewOut,
     LibrarySearchOut,
     LibraryUpdate,
 )
 from services import library_service
+
+# Tek görsel için üst sınır (yüklemeden önce; optimize sonrası çok daha küçük olur).
+_MAX_IMAGE_BYTES = 12 * 1024 * 1024
+
+
+async def _read_image(file: UploadFile) -> bytes:
+    """UploadFile'ı okur, image olduğunu ve boyutu doğrular (aksi halde 400)."""
+    if file.content_type and not file.content_type.startswith("image/"):
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST, "Yalnızca görsel dosyası yüklenebilir."
+        )
+    data = await file.read()
+    if not data:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Boş dosya.")
+    if len(data) > _MAX_IMAGE_BYTES:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST, "Görsel 12MB sınırını aşıyor."
+        )
+    return data
 
 router = APIRouter(prefix="/libraries", tags=["libraries"])
 
@@ -133,6 +161,62 @@ async def delete_library_review(
     db: AsyncSession = Depends(get_db),
 ):
     await library_service.delete_review(db, client, review_id)
+
+
+# ── Admin görsel yönetimi (logo / banner / galeri) ───────────────────────────────
+
+
+@router.post("/{library_id}/logo", response_model=LibraryDetailOut)
+async def upload_library_logo(
+    library_id: int,
+    file: UploadFile = File(...),
+    _admin: Admin = Depends(require_roles(RoleType.ADMIN)),
+    db: AsyncSession = Depends(get_db),
+):
+    return await library_service.set_logo(db, library_id, await _read_image(file))
+
+
+@router.post("/{library_id}/cover", response_model=LibraryDetailOut)
+async def upload_library_cover(
+    library_id: int,
+    file: UploadFile = File(...),
+    _admin: Admin = Depends(require_roles(RoleType.ADMIN)),
+    db: AsyncSession = Depends(get_db),
+):
+    return await library_service.set_cover(db, library_id, await _read_image(file))
+
+
+@router.post("/{library_id}/images", response_model=LibraryDetailOut)
+async def upload_library_images(
+    library_id: int,
+    files: list[UploadFile] = File(...),
+    _admin: Admin = Depends(require_roles(RoleType.ADMIN)),
+    db: AsyncSession = Depends(get_db),
+):
+    if not files:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "En az bir görsel seçin.")
+    blobs = [await _read_image(f) for f in files]
+    return await library_service.add_images(db, library_id, blobs)
+
+
+@router.patch("/{library_id}/images/reorder", response_model=LibraryDetailOut)
+async def reorder_library_images(
+    library_id: int,
+    payload: LibraryImagesReorder,
+    _admin: Admin = Depends(require_roles(RoleType.ADMIN)),
+    db: AsyncSession = Depends(get_db),
+):
+    return await library_service.reorder_images(db, library_id, payload.image_ids)
+
+
+@router.delete("/{library_id}/images/{image_id}", response_model=LibraryDetailOut)
+async def delete_library_image(
+    library_id: int,
+    image_id: int,
+    _admin: Admin = Depends(require_roles(RoleType.ADMIN)),
+    db: AsyncSession = Depends(get_db),
+):
+    return await library_service.delete_image(db, library_id, image_id)
 
 
 # ── Admin güncelle / sil ─────────────────────────────────────────────────────────

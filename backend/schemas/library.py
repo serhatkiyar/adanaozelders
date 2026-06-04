@@ -58,6 +58,24 @@ class LibraryReviewOut(BaseModel):
     client_avatar_url: str | None = None
 
 
+# ── Galeri görselleri ────────────────────────────────────────────────────────────
+
+
+class LibraryImageOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    url: str
+    caption: str | None = None
+    sort_order: int = 0
+
+
+class LibraryImagesReorder(BaseModel):
+    """Galeri sırasını tümüyle yeniden tanımlar (verilen id sırasına göre)."""
+
+    image_ids: list[int] = Field(default_factory=list)
+
+
 # ── Admin küratör CRUD ───────────────────────────────────────────────────────────
 
 
@@ -68,6 +86,7 @@ class LibraryCreate(BaseModel):
     email: str | None = Field(default=None, max_length=255)
     website: str | None = Field(default=None, max_length=300)
     cover_url: str | None = Field(default=None, max_length=500)
+    logo_url: str | None = Field(default=None, max_length=500)
     location_text: str | None = Field(default=None, max_length=300)
     location_lat: float | None = Field(default=None, ge=-90, le=90)
     location_lng: float | None = Field(default=None, ge=-180, le=180)
@@ -102,6 +121,7 @@ class LibraryUpdate(BaseModel):
     email: str | None = Field(default=None, max_length=255)
     website: str | None = Field(default=None, max_length=300)
     cover_url: str | None = Field(default=None, max_length=500)
+    logo_url: str | None = Field(default=None, max_length=500)
     location_text: str | None = Field(default=None, max_length=300)
     location_lat: float | None = Field(default=None, ge=-90, le=90)
     location_lng: float | None = Field(default=None, ge=-180, le=180)
@@ -142,6 +162,7 @@ class LibrarySearchOut(BaseModel):
     slug: str
     description: str | None = None
     cover_url: str | None = None
+    logo_url: str | None = None
     location_text: str | None = None
     location_lat: float | None = None
     location_lng: float | None = None
@@ -164,4 +185,5 @@ class LibraryDetailOut(LibrarySearchOut):
     website: str | None = None
     status: str = "ACTIVE"
     hours: list[LibraryHoursOut] = Field(default_factory=list)
+    images: list[LibraryImageOut] = Field(default_factory=list)
     created_at: datetime.datetime | None = None

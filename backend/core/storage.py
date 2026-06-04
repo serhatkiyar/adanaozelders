@@ -52,6 +52,57 @@ def optimize_image(file_bytes: bytes, size: tuple[int, int] = (256, 256)) -> byt
     return out_io.getvalue()
 
 
+def optimize_photo(file_bytes: bytes, max_dim: int = 1600, quality: int = 82) -> bytes:
+    """Galeri/banner görseli: en-boy oranını KORUR, yalnız büyükse küçültür (max_dim'e
+    sığdırır) ve WebP'ye çevirir. Logo/avatar'ın kare-crop'undan farkı budur."""
+    img = Image.open(io.BytesIO(file_bytes))
+    img.thumbnail((max_dim, max_dim), Image.Resampling.LANCZOS)
+    if img.mode != "RGB":
+        img = img.convert("RGB")
+    out_io = io.BytesIO()
+    img.save(out_io, format="WebP", quality=quality)
+    return out_io.getvalue()
+
+
+async def _put_webp(data: bytes, *, prefix: str) -> str:
+    """Optimize edilmiş WebP'yi bucket'a koyar ve public URL döner (ortak yol)."""
+    key = f"{prefix}/{uuid.uuid4().hex}.webp"
+    body_kwargs = {
+        "Bucket": settings.AWS_BUCKET_NAME,
+        "Key": key,
+        "Body": data,
+        "ContentType": "image/webp",
+    }
+    session = aioboto3.Session()
+    async with session.client(
+        "s3",
+        endpoint_url=settings.AWS_ENDPOINT_URL,
+        aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+        aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+        region_name=settings.AWS_REGION_NAME,
+    ) as s3:
+        try:
+            await s3.put_object(**body_kwargs, ACL="public-read")
+        except Exception:
+            await s3.put_object(**body_kwargs)
+    if settings.AWS_ENDPOINT_URL:
+        return f"{settings.AWS_ENDPOINT_URL.rstrip('/')}/{settings.AWS_BUCKET_NAME}/{key}"
+    return (
+        f"https://{settings.AWS_BUCKET_NAME}.s3."
+        f"{settings.AWS_REGION_NAME}.amazonaws.com/{key}"
+    )
+
+
+async def upload_library_photo(file_bytes: bytes, *, square: bool = False) -> str:
+    """Kütüphane görseli yükler. ``square=True`` → logo (512×512 kare crop);
+    aksi halde banner/galeri (en-boy korunur, max 1600px). Public URL döner."""
+    if square:
+        data = optimize_image(file_bytes, size=(512, 512))
+    else:
+        data = optimize_photo(file_bytes)
+    return await _put_webp(data, prefix="library-photos")
+
+
 async def upload_avatar(file_bytes: bytes) -> str:
     """Optimize edilmiş resmi S3/MinIO bucket'ına yükler ve Public URL döner."""
     optimized_bytes = optimize_image(file_bytes)

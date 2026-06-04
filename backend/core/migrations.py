@@ -43,6 +43,8 @@ _ADDED_COLUMNS_DDL: tuple[str, ...] = (
     "ALTER TYPE role_type ADD VALUE IF NOT EXISTS 'LIBRARY_OPERATOR'",
     # Kütüphane çalışma alanı saatlik ücreti (Faz 3 — saatlik koltuk rezervasyonu).
     "ALTER TABLE libraries ADD COLUMN IF NOT EXISTS study_hourly_price NUMERIC(10,2)",
+    # Kurumsal logo (1:1; cover_url banner). library_images tablosu create_all ile gelir.
+    "ALTER TABLE libraries ADD COLUMN IF NOT EXISTS logo_url VARCHAR(500)",
     "ALTER TABLE tutors ADD COLUMN IF NOT EXISTS location_text VARCHAR(300)",
     "ALTER TABLE tutors ADD COLUMN IF NOT EXISTS location_lat NUMERIC(9,6)",
     "ALTER TABLE tutors ADD COLUMN IF NOT EXISTS location_lng NUMERIC(9,6)",
