@@ -28,6 +28,21 @@ import { ROUTES } from "@/lib/routes";
 import { ROLE_IDS } from "@/types";
 import type { LibraryImageOut } from "@/types";
 
+/** Google Maps yol tarifi linki: koordinat varsa onu, yoksa adres metnini hedef alır. */
+function directionsUrl(lib: {
+  location_lat?: number | null;
+  location_lng?: number | null;
+  location_text?: string | null;
+  name: string;
+}): string | null {
+  const base = "https://www.google.com/maps/dir/?api=1&destination=";
+  if (lib.location_lat != null && lib.location_lng != null) {
+    return `${base}${lib.location_lat},${lib.location_lng}`;
+  }
+  const text = lib.location_text || lib.name;
+  return text ? `${base}${encodeURIComponent(text)}` : null;
+}
+
 export default function LibraryDetail() {
   const { slug } = useParams<{ slug: string }>();
   const token = useAuthStore((s) => s.token);
@@ -112,7 +127,7 @@ export default function LibraryDetail() {
               <img
                 src={lib.logo_url}
                 alt={`${lib.name} logosu`}
-                className="-mt-16 mb-3 h-20 w-20 rounded-2xl bg-white object-cover shadow-lg ring-4 ring-white dark:ring-slate-800"
+                className="relative z-10 -mt-16 mb-3 h-20 w-20 rounded-2xl bg-white object-cover shadow-lg ring-4 ring-white dark:bg-slate-800 dark:ring-slate-800"
               />
             )}
             <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{lib.name}</h1>
@@ -215,9 +230,25 @@ export default function LibraryDetail() {
           </div>
 
           <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700">
-            <h2 className="mb-3 text-base font-bold text-slate-900 dark:text-white">Konum</h2>
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <h2 className="text-base font-bold text-slate-900 dark:text-white">Konum</h2>
+              {directionsUrl(lib) && (
+                <a
+                  href={directionsUrl(lib)!}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex shrink-0 items-center gap-1.5 rounded-xl bg-indigo-600 px-3.5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 active:scale-95"
+                >
+                  🧭 Yol Tarifi Al
+                </a>
+              )}
+            </div>
             {lib.location_lat != null && lib.location_lng != null ? (
               <LibrariesMap libraries={[lib]} height="260px" />
+            ) : lib.location_text ? (
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                📍 {lib.location_text}
+              </p>
             ) : (
               <p className="text-sm text-slate-400">Konum bilgisi girilmemiş.</p>
             )}
