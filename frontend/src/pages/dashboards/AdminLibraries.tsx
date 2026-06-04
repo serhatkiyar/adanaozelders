@@ -13,7 +13,7 @@ import {
   useDeleteOperator,
   useOperators,
 } from "@/hooks/useLibraryExams";
-import { fetchLibrary } from "@/api/libraries";
+import { fetchLibraryAdmin } from "@/api/libraries";
 import { AMENITY_OPTIONS, amenityIcon, amenityLabel } from "@/lib/amenities";
 import {
   WEEKDAY_LABELS,
@@ -65,8 +65,8 @@ export default function AdminLibraries() {
 
   const openEdit = async (lib: LibrarySearchOut) => {
     try {
-      // Tam kayıt (saatler + iletişim) detay ucundan gelir.
-      const full = await fetchLibrary(lib.id);
+      // Tam kayıt (saatler + iletişim) admin detay ucundan gelir (GİZLİ dahil).
+      const full = await fetchLibraryAdmin(lib.id);
       setEditor({
         id: full.id,
         name: full.name,

@@ -1,5 +1,5 @@
 import { useRef } from "react";
-import { useLibraryDetail, useLibraryMedia } from "@/hooks/useLibraries";
+import { useLibraryAdminDetail, useLibraryMedia } from "@/hooks/useLibraries";
 import { toast } from "@/store/toastStore";
 import { getErrorMessage } from "@/lib/errors";
 import type { LibraryImageOut } from "@/types";
@@ -13,7 +13,7 @@ import type { LibraryImageOut } from "@/types";
  * önce kaydedilmeli.
  */
 export function LibraryMediaManager({ libraryId }: { libraryId: number }) {
-  const { data: lib, isLoading } = useLibraryDetail(libraryId);
+  const { data: lib, isLoading } = useLibraryAdminDetail(libraryId);
   const { uploadLogo, uploadCover, uploadImages, removeImage, reorder } =
     useLibraryMedia(libraryId);
 

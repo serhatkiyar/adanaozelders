@@ -11,6 +11,7 @@ import {
   deleteLibraryImage,
   deleteLibraryReview,
   fetchLibrary,
+  fetchLibraryAdmin,
   fetchLibraryReviews,
   listLibrariesAdmin,
   reorderLibraryImages,
@@ -80,6 +81,15 @@ export function useAdminLibraries() {
   });
 }
 
+/** Admin düzenleme detayı — GİZLİ kütüphaneleri de getirir. */
+export function useLibraryAdminDetail(id: number | undefined) {
+  return useQuery({
+    queryKey: ["libraries", "adminDetail", id],
+    queryFn: () => fetchLibraryAdmin(id!),
+    enabled: Number.isFinite(id) && (id ?? 0) > 0,
+  });
+}
+
 export function useCreateLibrary() {
   const qc = useQueryClient();
   return useMutation({
@@ -116,7 +126,8 @@ export function useDeleteLibrary() {
 export function useLibraryMedia(libraryId: number) {
   const qc = useQueryClient();
   const onSuccess = (fresh: LibraryDetailOut) => {
-    // Editör anında güncel görselleri görsün + liste/detay tazelensin.
+    // Editör (admin detay) anında güncel görselleri görsün + liste/public detay tazelensin.
+    qc.setQueryData(["libraries", "adminDetail", libraryId], fresh);
     qc.setQueryData(["libraries", "detail", libraryId], fresh);
     qc.invalidateQueries({ queryKey: ["libraries"] });
   };

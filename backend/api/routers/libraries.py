@@ -104,6 +104,17 @@ async def list_libraries_admin(
     return await library_service.list_libraries_admin(db, limit=limit, offset=offset)
 
 
+@router.get("/admin/{library_id}", response_model=LibraryDetailOut)
+async def get_library_admin_detail(
+    library_id: int,
+    _admin: Admin = Depends(require_roles(RoleType.ADMIN)),
+    db: AsyncSession = Depends(get_db),
+):
+    """Admin düzenleme için tam detay — public uçtan farkı GİZLİ (HIDDEN) kütüphaneyi
+    de döndürür (public uç yalnız ACTIVE gösterir → düzenlerken 404 olurdu)."""
+    return await library_service.get_library_admin(db, library_id)
+
+
 @router.post("", response_model=LibraryDetailOut, status_code=status.HTTP_201_CREATED)
 async def create_library(
     payload: LibraryCreate,

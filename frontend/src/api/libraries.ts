@@ -34,6 +34,12 @@ export async function fetchLibrary(idOrSlug: string | number): Promise<LibraryDe
   return data;
 }
 
+/** Admin detay — GİZLİ kütüphaneleri de döndürür (public uç yalnız ACTIVE gösterir). */
+export async function fetchLibraryAdmin(id: number): Promise<LibraryDetailOut> {
+  const { data } = await apiClient.get<LibraryDetailOut>(`/libraries/admin/${id}`);
+  return data;
+}
+
 export async function fetchLibraryReviews(
   libraryId: number
 ): Promise<LibraryReviewOut[]> {
