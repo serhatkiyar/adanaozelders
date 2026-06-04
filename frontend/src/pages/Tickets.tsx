@@ -113,6 +113,73 @@ export default function Tickets() {
   );
 }
 
+/* ── QR + elle girilebilir kod modalı ── */
+
+function QrModal({
+  title,
+  subtitle,
+  value,
+  onClose,
+}: {
+  title: string;
+  subtitle?: string;
+  value: string;
+  onClose: () => void;
+}) {
+  const copy = () => {
+    navigator.clipboard?.writeText(value).then(
+      () => toast.success("Kod kopyalandı."),
+      () => toast.error("Kopyalanamadı, elle seçin.")
+    );
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        className="relative w-full max-w-sm rounded-3xl bg-white p-6 shadow-2xl dark:bg-slate-800"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button
+          onClick={onClose}
+          className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 dark:hover:bg-slate-700"
+          aria-label="Kapat"
+        >
+          ✕
+        </button>
+
+        <h3 className="pr-8 text-lg font-bold text-slate-900 dark:text-white">{title}</h3>
+        {subtitle && (
+          <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">📍 {subtitle}</p>
+        )}
+
+        {/* QR — kontrast için her zaman beyaz zemin */}
+        <div className="mx-auto mt-5 w-fit rounded-2xl bg-white p-4 ring-1 ring-slate-200">
+          <QRCodeSVG value={value} size={216} level="M" />
+        </div>
+
+        {/* Elle giriş kodu (QR okutulamazsa) */}
+        <p className="mt-5 text-center text-xs font-medium text-slate-500 dark:text-slate-400">
+          QR okutulamıyorsa görevliye bu kodu okutun:
+        </p>
+        <div className="mt-2 flex items-center gap-2 rounded-xl bg-slate-50 p-2 dark:bg-slate-900/50">
+          <code className="flex-1 select-all break-all px-2 text-center text-sm font-semibold tracking-wide text-slate-800 dark:text-slate-100">
+            {value}
+          </code>
+          <button
+            onClick={copy}
+            className="shrink-0 rounded-lg bg-indigo-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-indigo-700"
+          >
+            Kopyala
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function TicketCard({ reg }: { reg: RegistrationOut }) {
   const [showQr, setShowQr] = useState(false);
   const pay = usePayRegistration();
@@ -198,23 +265,23 @@ function TicketCard({ reg }: { reg: RegistrationOut }) {
             )}
             {reg.status === "PAID" && reg.qr_token && (
               <button
-                onClick={() => setShowQr((v) => !v)}
+                onClick={() => setShowQr(true)}
                 className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
               >
-                {showQr ? "QR'ı gizle" : "QR kodunu göster"}
+                QR / kod göster
               </button>
             )}
           </div>
         </div>
 
-        {/* QR — ödenmiş biletlerde */}
+        {/* QR + elle giriş kodu modalı — ödenmiş biletlerde */}
         {reg.status === "PAID" && reg.qr_token && showQr && (
-          <div className="flex flex-col items-center rounded-xl bg-white p-3 ring-1 ring-slate-200 dark:ring-slate-600">
-            <QRCodeSVG value={`${reg.id}:${reg.qr_token}`} size={148} level="M" />
-            <p className="mt-2 text-center text-[11px] text-slate-400">
-              Kütüphanede okutun
-            </p>
-          </div>
+          <QrModal
+            title={session?.title ?? "Deneme bileti"}
+            subtitle={session?.library_name ?? undefined}
+            value={`${reg.id}:${reg.qr_token}`}
+            onClose={() => setShowQr(false)}
+          />
         )}
         {reg.status === "ATTENDED" && (
           <div className="flex items-center gap-2 rounded-xl bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">
@@ -292,18 +359,20 @@ function StudyReservationCard({ res }: { res: StudyReservationOut }) {
               </>
             )}
             {res.status === "PAID" && res.qr_token && (
-              <button onClick={() => setShowQr((v) => !v)} className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700">
-                {showQr ? "QR'ı gizle" : "Giriş QR'ını göster"}
+              <button onClick={() => setShowQr(true)} className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700">
+                Giriş QR'ı / kodu göster
               </button>
             )}
           </div>
         </div>
 
         {res.status === "PAID" && res.qr_token && showQr && (
-          <div className="flex flex-col items-center rounded-xl bg-white p-3 ring-1 ring-slate-200 dark:ring-slate-600">
-            <QRCodeSVG value={`${res.id}:${res.qr_token}`} size={148} level="M" />
-            <p className="mt-2 text-center text-[11px] text-slate-400">Girişte okutun</p>
-          </div>
+          <QrModal
+            title="Çalışma alanı girişi"
+            subtitle={res.library_name ?? undefined}
+            value={`${res.id}:${res.qr_token}`}
+            onClose={() => setShowQr(false)}
+          />
         )}
         {res.status === "ATTENDED" && (
           <div className="flex items-center gap-2 rounded-xl bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">
