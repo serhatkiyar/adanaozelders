@@ -25,7 +25,9 @@ class StudyQuoteOut(BaseModel):
 
 
 class StudyReservationOut(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
+    # amount Numeric (Decimal) kolonundan gelir ama frontend string bekler; Pydantic'in
+    # Decimal -> str coercion'ı olmadan model_validate(r) hata verir (commit SONRASI 500).
+    model_config = ConfigDict(from_attributes=True, coerce_numbers_to_str=True)
 
     id: int
     library_id: int

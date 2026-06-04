@@ -15,6 +15,14 @@ function todayStr(): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
+// 24 saatlik dilim, 30 dk adımlarla (00:00 … 23:30) — tarayıcı yereline bağlı
+// AM/PM görünümünden bağımsız, her zaman 24 saat.
+const TIME_OPTIONS: string[] = Array.from({ length: 48 }, (_, i) => {
+  const h = Math.floor(i / 2);
+  const m = i % 2 ? "30" : "00";
+  return `${String(h).padStart(2, "0")}:${m}`;
+});
+
 /** "YYYY-MM-DD" + "HH:MM" (yerel) → ISO string. Geçersizse null. */
 function toIso(date: string, time: string): string | null {
   if (!date || !time) return null;
@@ -85,11 +93,31 @@ export function StudySpaceSection({ library }: { library: LibraryDetailOut }) {
         </label>
         <label className="block">
           <span className="mb-1 block text-xs font-semibold text-slate-600 dark:text-slate-300">Başlangıç</span>
-          <input type="time" value={start} onChange={(e) => setStart(e.target.value)} className="input" />
+          <select
+            value={start}
+            onChange={(e) => {
+              const v = e.target.value;
+              setStart(v);
+              // Bitiş başlangıçtan sonra kalsın.
+              if (end <= v) {
+                const next = TIME_OPTIONS.find((t) => t > v);
+                if (next) setEnd(next);
+              }
+            }}
+            className="input"
+          >
+            {TIME_OPTIONS.map((t) => (
+              <option key={t} value={t}>{t}</option>
+            ))}
+          </select>
         </label>
         <label className="block">
           <span className="mb-1 block text-xs font-semibold text-slate-600 dark:text-slate-300">Bitiş</span>
-          <input type="time" value={end} onChange={(e) => setEnd(e.target.value)} className="input" />
+          <select value={end} onChange={(e) => setEnd(e.target.value)} className="input">
+            {TIME_OPTIONS.filter((t) => t > start).map((t) => (
+              <option key={t} value={t}>{t}</option>
+            ))}
+          </select>
         </label>
       </div>
 

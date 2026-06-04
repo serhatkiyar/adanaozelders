@@ -217,19 +217,32 @@ async def reserve(
     if used >= (library.capacity or 0):
         raise HTTPException(status.HTTP_409_CONFLICT, "Seçilen saatte kapasite dolu")
 
-    # Öğrencinin kendi çakışan aktif/bekleyen rezervasyonu olmasın.
+    # Öğrencinin bu pencereyle çakışan ÖDENMEMİŞ (askıda) holdlerini iptal et: terk
+    # edilmiş bir ödeme denemesi (PENDING_PAYMENT) aynı öğrenciyi aynı slottan kalıcı
+    # olarak engellememeli. Askıdaki holdler kapasiteyi de tüketmez.
+    stale = (
+        await db.execute(
+            select(StudyReservation).where(
+                StudyReservation.client_id == client.id,
+                StudyReservation.library_id == library_id,
+                StudyReservation.deleted_at.is_(None),
+                StudyReservation.status == RegistrationStatus.PENDING_PAYMENT.value,
+                StudyReservation.starts_at < ends,
+                StudyReservation.ends_at > starts,
+            )
+        )
+    ).scalars().all()
+    for s in stale:
+        s.status = RegistrationStatus.CANCELLED.value
+
+    # Yalnız ÖDENMİŞ/aktif çakışan rezervasyon varsa engelle (çift ödeme olmasın).
     own = (
         await db.execute(
             select(func.count()).where(
                 StudyReservation.client_id == client.id,
                 StudyReservation.library_id == library_id,
                 StudyReservation.deleted_at.is_(None),
-                StudyReservation.status.in_(
-                    (
-                        RegistrationStatus.PENDING_PAYMENT.value,
-                        *ACTIVE_REGISTRATION_STATUSES,
-                    )
-                ),
+                StudyReservation.status.in_(ACTIVE_REGISTRATION_STATUSES),
                 StudyReservation.starts_at < ends,
                 StudyReservation.ends_at > starts,
             )
@@ -237,7 +250,8 @@ async def reserve(
     ).scalar_one()
     if own:
         raise HTTPException(
-            status.HTTP_409_CONFLICT, "Bu saat aralığında zaten bir rezervasyonun var"
+            status.HTTP_409_CONFLICT,
+            "Bu saat aralığında zaten ödenmiş bir rezervasyonun var",
         )
 
     amount = compute_amount(hourly, starts, ends)
