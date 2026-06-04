@@ -482,6 +482,34 @@ async def list_my_registrations(
 # ── Operatör: katılımcı listesi + QR doğrulama ───────────────────────────────────
 
 
+async def auto_release_no_shows(db: AsyncSession) -> int:
+    """Etkinliği bitmiş ama katılımı doğrulanmamış (no-show) ÖDENMİŞ kayıtlarda
+    emaneti kütüphaneye serbest bırakır (``released_at``). No-show iadesi yoktur →
+    para kütüphaneye geçer; aksi halde escrow'da süresiz kilitli kalırdı. ATTENDED
+    olanlar zaten serbest; CANCELLED/REFUNDED hariç. Loop commit eder."""
+    now = _now()
+    grace = datetime.timedelta(hours=settings.AUTO_COMPLETE_GRACE_HOURS)
+    rows = (
+        await db.execute(
+            select(ExamRegistration, LibraryExamSession)
+            .join(LibraryExamSession, LibraryExamSession.id == ExamRegistration.session_id)
+            .where(
+                ExamRegistration.status == RegistrationStatus.PAID.value,
+                ExamRegistration.released_at.is_(None),
+                ExamRegistration.deleted_at.is_(None),
+                LibraryExamSession.starts_at <= now,
+            )
+        )
+    ).all()
+    count = 0
+    for reg, sess in rows:
+        end = sess.starts_at + datetime.timedelta(minutes=sess.duration_minutes)
+        if end + grace <= now:
+            reg.released_at = now
+            count += 1
+    return count
+
+
 async def roster(db: AsyncSession, session_id: int) -> list[dict]:
     """Operatör/admin için oturum katılımcı listesi (ödeyenler + katılanlar)."""
     rows = (

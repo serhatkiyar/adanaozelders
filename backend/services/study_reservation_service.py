@@ -401,6 +401,27 @@ async def list_manage(
     ]
 
 
+async def auto_release_no_shows(db: AsyncSession) -> int:
+    """Penceresi bitmiş ama girişi doğrulanmamış (no-show) ÖDENMİŞ rezervasyonlarda
+    emaneti kütüphaneye serbest bırakır (``released_at``). No-show iadesi yoktur →
+    para kütüphaneye geçer; aksi halde escrow'da süresiz kilitli kalırdı. Loop commit eder."""
+    now = _now()
+    grace = datetime.timedelta(hours=settings.AUTO_COMPLETE_GRACE_HOURS)
+    rows = (
+        await db.execute(
+            select(StudyReservation).where(
+                StudyReservation.status == RegistrationStatus.PAID.value,
+                StudyReservation.released_at.is_(None),
+                StudyReservation.deleted_at.is_(None),
+                StudyReservation.ends_at <= now - grace,
+            )
+        )
+    ).scalars().all()
+    for r in rows:
+        r.released_at = now
+    return len(rows)
+
+
 def _window_label(res: StudyReservation) -> str:
     local_s = res.starts_at.astimezone(_TZ)
     local_e = res.ends_at.astimezone(_TZ)
