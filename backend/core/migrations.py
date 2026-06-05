@@ -48,6 +48,8 @@ _ADDED_COLUMNS_DDL: tuple[str, ...] = (
     # Karma puanlama: yorum agregeye (rating_sum/count) katkı veriyor mu — yalnız
     # doğrulanmış ziyaretçiler sayılır. Mevcut yorumlar saymaya devam etsin → DEFAULT true.
     "ALTER TABLE library_reviews ADD COLUMN IF NOT EXISTS counts_to_rating BOOLEAN NOT NULL DEFAULT true",
+    # Self-servis onboarding: reddedilen başvuruda admin gerekçesi (PENDING/REJECTED FSM).
+    "ALTER TABLE libraries ADD COLUMN IF NOT EXISTS rejection_reason VARCHAR(500)",
     # QR okutulamazsa elle girilen kısa doğrulama kodu (deneme bileti + çalışma rez.).
     "ALTER TABLE exam_registrations ADD COLUMN IF NOT EXISTS short_code VARCHAR(12)",
     "ALTER TABLE study_reservations ADD COLUMN IF NOT EXISTS short_code VARCHAR(12)",

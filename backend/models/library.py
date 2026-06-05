@@ -23,12 +23,15 @@ from models.mixins import SoftDeleteMixin, TimestampMixin
 
 
 class LibraryStatus(str, enum.Enum):
-    """Kütüphane katalog durumu. Kütüphaneler admin tarafından küratörlenir
-    (sahanın gezilip kaydedilmesi); self-servis onboarding yok. ``ACTIVE`` kayıtlar
-    public katalogda/haritada görünür."""
+    """Kütüphane katalog durumu. İki giriş yolu: admin küratörlüğü (doğrudan ACTIVE)
+    ve self-servis onboarding (PENDING → admin onayı → ACTIVE / REJECTED). Yalnız
+    ``ACTIVE`` kayıtlar public katalogda/haritada görünür. (status kolonu VARCHAR(10) —
+    değerler ≤10 karakter olmalı.)"""
 
     ACTIVE = "ACTIVE"
     HIDDEN = "HIDDEN"
+    PENDING = "PENDING"  # self-kayıt → admin onayı bekliyor (public'te görünmez)
+    REJECTED = "REJECTED"  # admin reddetti (operatöre gerekçe gösterilir)
 
 
 class Library(Base, TimestampMixin, SoftDeleteMixin):
@@ -75,6 +78,8 @@ class Library(Base, TimestampMixin, SoftDeleteMixin):
     status: Mapped[str] = mapped_column(
         String(10), nullable=False, server_default=text("'ACTIVE'")
     )
+    # Self-kayıt reddedilirse admin'in gerekçesi (operatör panelinde gösterilir).
+    rejection_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
     rating_count: Mapped[int] = mapped_column(
         Integer, nullable=False, server_default=text("0")

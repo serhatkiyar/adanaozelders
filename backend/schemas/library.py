@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import datetime
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 
 # ── Çalışma saatleri ────────────────────────────────────────────────────────────
@@ -216,6 +216,36 @@ class LibraryDetailOut(LibrarySearchOut):
     street: str | None = None
     building_no: str | None = None
     status: str = "ACTIVE"
+    # Self-kayıt reddedilmişse admin gerekçesi (operatör panelinde gösterilir).
+    rejection_reason: str | None = None
     hours: list[LibraryHoursOut] = Field(default_factory=list)
     images: list[LibraryImageOut] = Field(default_factory=list)
     created_at: datetime.datetime | None = None
+
+
+# ── Self-servis onboarding ("kütüphaneni listele") ───────────────────────────────
+
+
+class LibraryRegister(BaseModel):
+    """Self-servis kayıt: operatör hesabı + temel kütüphane bilgisi. Kütüphane
+    PENDING durumda oluşur (public'te görünmez); admin onayıyla ACTIVE olur. Profilin
+    gerisi (saat/foto/olanak) onay sonrası operatör panelinden tamamlanır."""
+
+    # Operatör hesabı
+    email: EmailStr
+    password: str = Field(min_length=8, max_length=128)
+    first_name: str = Field(min_length=1, max_length=75)
+    last_name: str = Field(min_length=1, max_length=75)
+    # Kütüphane temel bilgisi
+    name: str = Field(min_length=2, max_length=200)
+    phone: str | None = Field(default=None, max_length=30)
+    description: str | None = Field(default=None, max_length=5000)
+    city: str | None = Field(default=None, max_length=100)
+    district: str | None = Field(default=None, max_length=100)
+    location_text: str | None = Field(default=None, max_length=400)
+    location_lat: float | None = Field(default=None, ge=-90, le=90)
+    location_lng: float | None = Field(default=None, ge=-180, le=180)
+
+
+class LibraryRejectRequest(BaseModel):
+    reason: str | None = Field(default=None, max_length=500)

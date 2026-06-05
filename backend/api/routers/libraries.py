@@ -19,21 +19,26 @@ from api.deps import (
 )
 from core.config import settings
 from core.database import get_db
+from core.ratelimit import rate_limit
+from core.security import create_access_token
 from models.admin import Admin
 from models.client import Client
 from models.library_operator import LibraryOperator
 from models.role import RoleType
+from schemas.auth import Token
 from schemas.library import (
     LibraryCreate,
     LibraryDetailOut,
     LibraryEarningsOut,
     LibraryImagesReorder,
+    LibraryRegister,
+    LibraryRejectRequest,
     LibraryReviewCreate,
     LibraryReviewOut,
     LibrarySearchOut,
     LibraryUpdate,
 )
-from services import library_service
+from services import library_onboarding_service, library_service, refresh_token_service
 
 # Tek görsel için üst sınır (yüklemeden önce; optimize sonrası çok daha küçük olur).
 _MAX_IMAGE_BYTES = 12 * 1024 * 1024
@@ -59,6 +64,12 @@ router = APIRouter(prefix="/libraries", tags=["libraries"])
 _review_limit = user_rate_limit(
     key="library_review",
     limit=settings.RATE_LIMIT_REVIEW,
+    window_seconds=settings.RATE_LIMIT_WINDOW_SECONDS,
+)
+# Self-servis kayıt IP bazlı rate-limit (kayıt/register ile aynı bütçe).
+_register_limit = rate_limit(
+    key="library_register",
+    limit=settings.RATE_LIMIT_REGISTER,
     window_seconds=settings.RATE_LIMIT_WINDOW_SECONDS,
 )
 
@@ -101,6 +112,55 @@ async def search_libraries(
         limit=limit,
         offset=offset,
     )
+
+
+# ── Self-servis onboarding ("kütüphaneni listele") — /{id_or_slug}'tan ÖNCE ──
+
+
+@router.post(
+    "/register",
+    response_model=Token,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(_register_limit)],
+)
+async def register_library(
+    payload: LibraryRegister, db: AsyncSession = Depends(get_db)
+):
+    """Public self-servis kayıt: operatör hesabı + PENDING kütüphane oluşturur ve
+    oturumu açar (login deseniyle token döner). Kütüphane admin onayına dek public
+    değildir; operatör panelinden profilini tamamlar."""
+    operator = await library_onboarding_service.register(db, payload)
+    token = create_access_token(
+        subject=operator.id,
+        role=RoleType.LIBRARY_OPERATOR.value,
+        role_id=operator.role_id,
+    )
+    refresh = await refresh_token_service.issue(
+        db, role_id=operator.role_id, user_id=operator.id
+    )
+    await db.commit()
+    return Token(access_token=token, refresh_token=refresh)
+
+
+@router.post("/{library_id}/approve", response_model=LibraryDetailOut)
+async def approve_library(
+    library_id: int,
+    admin: Admin = Depends(require_roles(RoleType.ADMIN)),
+    db: AsyncSession = Depends(get_db),
+):
+    """Bekleyen self-servis başvuruyu onaylar → ACTIVE (public)."""
+    return await library_onboarding_service.approve(db, admin, library_id)
+
+
+@router.post("/{library_id}/reject", response_model=LibraryDetailOut)
+async def reject_library(
+    library_id: int,
+    payload: LibraryRejectRequest,
+    admin: Admin = Depends(require_roles(RoleType.ADMIN)),
+    db: AsyncSession = Depends(get_db),
+):
+    """Bekleyen başvuruyu reddeder → REJECTED + gerekçe (operatöre bildirilir)."""
+    return await library_onboarding_service.reject(db, admin, library_id, payload.reason)
 
 
 # ── Admin küratör listesi (gizliler dahil) — /{id_or_slug}'tan ÖNCE tanımlanmalı ──
