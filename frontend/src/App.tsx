@@ -75,31 +75,53 @@ function WsManager() {
 
   useEffect(() => {
     if (!socket) return;
+
+    // Hızlı bildirim seli (ör. art arda mesaj) tek refetch'e insin diye invalidate'leri
+    // kısa bir pencerede birleştir (coalesce): aynı query key 250 ms içinde bir kez
+    // geçersiz kılınır. Böylece her WS mesajında tüm listeler yeniden çekilmez.
+    const pending = new Map<string, readonly unknown[]>();
+    let flush: ReturnType<typeof setTimeout> | null = null;
+    const invalidate = (queryKey: readonly unknown[]) => {
+      pending.set(JSON.stringify(queryKey), queryKey);
+      if (flush) return;
+      flush = setTimeout(() => {
+        const keys = [...pending.values()];
+        pending.clear();
+        flush = null;
+        for (const queryKey of keys) qc.invalidateQueries({ queryKey });
+      }, 250);
+    };
+
     const handleMessage = (event: MessageEvent) => {
       try {
         const msg = JSON.parse(event.data);
         if (msg.type === "NEW_MESSAGE") {
-          qc.invalidateQueries({ queryKey: ["messages"] });
-          qc.invalidateQueries({ queryKey: ["conversations"] });
+          // Yalnız ilgili sohbeti + liste/okunmamış sayacını tazele (tüm thread'leri DEĞİL).
+          const convId = msg.data?.conversation_id;
+          invalidate(convId != null ? ["messages", convId] : ["messages"]);
+          invalidate(["messages", "unread"]);
+          invalidate(["conversations"]);
         } else if (msg.type === "NEW_NOTIFICATION") {
-          qc.invalidateQueries({ queryKey: ["notifications"] });
+          invalidate(["notifications"]);
         } else if (msg.type === "BOOKING_UPDATE" || msg.type === "NEW_BOOKING_COMMENT") {
           // Rezervasyon oluşturma/kabul/red/iptal/tamamlama/yorum → her iki tarafta
-          // liste ve detayı sayfa yenilemeden canlı tazele.
-          if (msg.booking_id) {
-            qc.invalidateQueries({ queryKey: ["bookings", "detail", msg.booking_id] });
-          }
-          qc.invalidateQueries({ queryKey: ["bookings"] });
+          // liste ve detayı sayfa yenilemeden canlı tazele. (["bookings"] öneki detayı
+          // da kapsar.)
+          invalidate(["bookings"]);
         } else if (msg.type === "RTC_SIGNAL" && msg.booking_id && msg.signal) {
-          // Uçtan uca dosya aktarımı sinyalleşmesi (WebRTC) → P2P yöneticisine ilet.
+          // Uçtan uca dosya aktarımı sinyalleşmesi (WebRTC) → gerçek zamanlı, throttle ETME.
           rtcManager.handleSignal(msg.booking_id, msg.signal);
         }
       } catch (err) {
         console.error("WS Parse error", err);
       }
     };
+
     socket.addEventListener("message", handleMessage);
-    return () => socket.removeEventListener("message", handleMessage);
+    return () => {
+      socket.removeEventListener("message", handleMessage);
+      if (flush) clearTimeout(flush);
+    };
   }, [socket, qc]);
 
   return null;
