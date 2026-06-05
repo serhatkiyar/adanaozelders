@@ -62,11 +62,15 @@ const STATUS_PILL: Record<RegistrationStatus, { label: string; cls: string }> = 
   },
 };
 
+const PREVIEW_COUNT = 3; // bölüm başına ön gösterim; fazlası "daha fazla göster" ile açılır
+
 export default function Tickets() {
   const { data, isLoading } = useMyRegistrations();
   const { data: studyRes, isLoading: studyLoading } = useMyStudyReservations();
   const hasExam = data && data.length > 0;
   const hasStudy = studyRes && studyRes.length > 0;
+  const [showAllExam, setShowAllExam] = useState(false);
+  const [showAllStudy, setShowAllStudy] = useState(false);
 
   return (
     <DashboardShell title="Biletlerim" navItems={STUDENT_NAV}>
@@ -106,9 +110,16 @@ export default function Tickets() {
                 <h2 className="text-center text-xl font-extrabold text-slate-900 dark:text-white sm:text-2xl">
                   Deneme Biletleri
                 </h2>
-                {data!.map((r) => (
+                {(showAllExam ? data! : data!.slice(0, PREVIEW_COUNT)).map((r) => (
                   <TicketCard key={r.id} reg={r} />
                 ))}
+                {data!.length > PREVIEW_COUNT && (
+                  <MoreToggle
+                    expanded={showAllExam}
+                    hidden={data!.length - PREVIEW_COUNT}
+                    onToggle={() => setShowAllExam((v) => !v)}
+                  />
+                )}
               </section>
             )}
             {hasStudy && (
@@ -116,15 +127,51 @@ export default function Tickets() {
                 <h2 className="text-center text-xl font-extrabold text-slate-900 dark:text-white sm:text-2xl">
                   Çalışma Alanı Biletleri
                 </h2>
-                {studyRes!.map((r) => (
+                {(showAllStudy ? studyRes! : studyRes!.slice(0, PREVIEW_COUNT)).map((r) => (
                   <StudyReservationCard key={r.id} res={r} />
                 ))}
+                {studyRes!.length > PREVIEW_COUNT && (
+                  <MoreToggle
+                    expanded={showAllStudy}
+                    hidden={studyRes!.length - PREVIEW_COUNT}
+                    onToggle={() => setShowAllStudy((v) => !v)}
+                  />
+                )}
               </section>
             )}
           </div>
         )}
       </div>
     </DashboardShell>
+  );
+}
+
+/* Bölüm "daha fazla / daha az" küçük geçişi. */
+function MoreToggle({
+  expanded,
+  hidden,
+  onToggle,
+}: {
+  expanded: boolean;
+  hidden: number;
+  onToggle: () => void;
+}) {
+  return (
+    <button
+      onClick={onToggle}
+      className="mx-auto flex items-center gap-1 pt-1 text-sm font-semibold text-indigo-600 transition hover:text-indigo-700 hover:underline dark:text-indigo-300"
+    >
+      {expanded ? "Daha az göster" : `${hidden} bilet daha göster`}
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={2.4}
+        className={`h-4 w-4 transition-transform ${expanded ? "rotate-180" : ""}`}
+      >
+        <path strokeLinecap="round" strokeLinejoin="round" d="m6 9 6 6 6-6" />
+      </svg>
+    </button>
   );
 }
 
