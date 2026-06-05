@@ -18,6 +18,36 @@ L.Icon.Default.mergeOptions({
 
 const ADANA: [number, number] = [37.029003, 35.820839];
 
+// HTML enjeksiyonuna karşı küçük kaçış (isim/URL data'mızdan gelse de güvenli olsun).
+function esc(s: string): string {
+  return s.replace(/[&<>"']/g, (c) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!
+  );
+}
+
+// Yuvarlak "logo-pin": logo varsa görsel, yoksa (veya 404'te) baş harf;
+// beyaz çerçeve + gölge + alt işaretçi ile harita pini gibi durur.
+function libraryIcon(lib: LibrarySearchOut): L.DivIcon {
+  const initial = esc((lib.name?.trim()?.[0] ?? "?").toUpperCase());
+  const img = lib.logo_url
+    ? `<img src="${esc(lib.logo_url)}" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover" onerror="this.remove()"/>`
+    : "";
+  const html = `
+    <div style="position:relative;width:44px;height:52px">
+      <div style="position:relative;width:44px;height:44px;border-radius:9999px;overflow:hidden;background:#4f46e5;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px;border:2px solid #fff;box-shadow:0 2px 6px rgba(15,23,42,.35)">
+        <span>${initial}</span>${img}
+      </div>
+      <div style="position:absolute;left:50%;top:41px;transform:translateX(-50%);width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:8px solid #fff;filter:drop-shadow(0 2px 1px rgba(15,23,42,.25))"></div>
+    </div>`;
+  return L.divIcon({
+    html,
+    className: "lib-pin",
+    iconSize: [44, 52],
+    iconAnchor: [22, 52], // alt işaretçi ucu = koordinat
+    popupAnchor: [0, -46],
+  });
+}
+
 function FitBounds({ points }: { points: [number, number][] }) {
   const map = useMap();
   useEffect(() => {
@@ -71,6 +101,7 @@ export function LibrariesMap({ libraries, height = "70vh" }: LibrariesMapProps) 
           <Marker
             key={lib.id}
             position={[lib.location_lat as number, lib.location_lng as number]}
+            icon={libraryIcon(lib)}
           >
             <Popup>
               <div className="min-w-[180px]">
@@ -100,7 +131,7 @@ export function LibrariesMap({ libraries, height = "70vh" }: LibrariesMapProps) 
                 </div>
                 <Link
                   to={ROUTES.library(lib.slug)}
-                  className="mt-2 inline-block rounded-lg bg-indigo-600 px-3 py-1 text-xs font-semibold text-white hover:bg-indigo-700"
+                  className="mt-2 inline-block rounded-lg bg-indigo-600 px-3 py-1 text-xs font-semibold !text-white hover:bg-indigo-700 hover:!text-white"
                 >
                   Profili gör →
                 </Link>

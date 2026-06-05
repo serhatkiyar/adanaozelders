@@ -157,7 +157,7 @@ export default function LibraryDetail() {
               <img
                 src={lib.logo_url}
                 alt={`${lib.name} logosu`}
-                className="relative z-10 -mt-16 mb-3 h-20 w-20 rounded-2xl bg-white object-cover shadow-lg ring-4 ring-white dark:bg-slate-800 dark:ring-slate-800"
+                className="relative z-10 -mt-16 mb-3 h-20 w-20 rounded-full bg-white object-cover shadow-lg ring-4 ring-white dark:bg-slate-800 dark:ring-slate-800"
               />
             )}
             <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
