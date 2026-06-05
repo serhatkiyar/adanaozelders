@@ -26,6 +26,7 @@ const MarketplacePage = lazy(() => import("@/pages/MarketplacePage"));
 const TutorProfilePage = lazy(() => import("@/pages/TutorProfilePage"));
 const Libraries = lazy(() => import("@/pages/Libraries"));
 const LibraryDetail = lazy(() => import("@/pages/LibraryDetail"));
+const LibraryRegister = lazy(() => import("@/pages/LibraryRegister"));
 const Tickets = lazy(() => import("@/pages/Tickets"));
 const OperatorHome = lazy(() => import("@/pages/dashboards/OperatorHome"));
 const Login = lazy(() => import("@/pages/Login"));
@@ -219,6 +220,7 @@ function App() {
           <Route path={PATHS.tutor} element={<TutorProfilePage />} />
           <Route path={PATHS.libraries} element={<Libraries />} />
           <Route path={PATHS.library} element={<LibraryDetail />} />
+          <Route path={PATHS.libraryRegister} element={<LibraryRegister />} />
 
           {/* ── Geliştirme prototipi (oturum gerektirmez) ── */}
           <Route path="/test-bilet" element={<TicketTearTest />} />

@@ -56,6 +56,9 @@ export default function OperatorHome() {
           </p>
         </div>
 
+        {/* ── Onay durumu (self-servis başvuru) ── */}
+        {op && <LibraryStatusBanner libraryId={op.library_id} />}
+
         {/* ── Kütüphane profili (bio/telefon/logo/banner/galeri…) ── */}
         {op && <LibraryProfilePanel libraryId={op.library_id} />}
 
@@ -141,6 +144,47 @@ export default function OperatorHome() {
       </div>
     </DashboardShell>
   );
+}
+
+/* Self-servis başvuru onay durumu: PENDING (inceleniyor) / REJECTED (gerekçe) / ACTIVE (yayında). */
+function LibraryStatusBanner({ libraryId }: { libraryId: number }) {
+  const { data: lib } = useLibraryAdminDetail(libraryId);
+  if (!lib) return null;
+
+  if (lib.status === "PENDING") {
+    return (
+      <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-500/30 dark:bg-amber-500/10">
+        <p className="flex items-center gap-2 text-sm font-bold text-amber-800 dark:text-amber-200">
+          🔍 Başvurun inceleniyor
+        </p>
+        <p className="mt-1 text-sm text-amber-700/90 dark:text-amber-200/80">
+          Admin onayından sonra kütüphanen yayına girer ve öğrencilere görünür olur.
+          Bu sırada aşağıdan <strong>profilini tamamlayabilirsin</strong> (saatler, görseller,
+          olanaklar, konum) — onaylanır onaylanmaz hazır olsun.
+        </p>
+      </div>
+    );
+  }
+
+  if (lib.status === "REJECTED") {
+    return (
+      <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 dark:border-rose-500/30 dark:bg-rose-500/10">
+        <p className="flex items-center gap-2 text-sm font-bold text-rose-800 dark:text-rose-200">
+          ⛔ Başvurun reddedildi
+        </p>
+        {lib.rejection_reason && (
+          <p className="mt-1 text-sm text-rose-700/90 dark:text-rose-200/80">
+            <span className="font-semibold">Gerekçe:</span> {lib.rejection_reason}
+          </p>
+        )}
+        <p className="mt-1 text-sm text-rose-700/90 dark:text-rose-200/80">
+          Profilini güncelleyip yöneticiyle iletişime geçebilirsin.
+        </p>
+      </div>
+    );
+  }
+
+  return null; // ACTIVE → banner gerekmez
 }
 
 function LibraryProfilePanel({ libraryId }: { libraryId: number }) {

@@ -20,6 +20,8 @@ export const PATHS = {
   libraries: "/kutuphaneler",
   /** Kütüphane profili — slug veya salt id. */
   library: "/kutuphaneler/:slug",
+  /** Self-servis "kütüphaneni listele" kaydı (public). */
+  libraryRegister: "/kutuphane-kayit",
 
   // ── Kimlik & token akışları ──
   login: "/giris",
@@ -64,6 +66,7 @@ export const ROUTES = {
   libraries: PATHS.libraries,
   /** Kütüphane profili — slug veya salt id. */
   library: (slugOrId: string | number) => `/kutuphaneler/${slugOrId}`,
+  libraryRegister: PATHS.libraryRegister,
 
   // ── Kimlik & token akışları ──
   login: PATHS.login,

@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { DashboardShell } from "@/components/DashboardShell";
 import { PublicShell } from "@/components/PublicShell";
 import { STUDENT_NAV, TUTOR_NAV } from "@/lib/nav";
@@ -12,6 +13,7 @@ import { getErrorMessage } from "@/lib/errors";
 import { toast } from "@/store/toastStore";
 import { Seo } from "@/components/Seo";
 import { AMENITY_OPTIONS, amenityIcon, amenityLabel } from "@/lib/amenities";
+import { ROUTES } from "@/lib/routes";
 import { ROLE_IDS } from "@/types";
 import type { LibrarySearchParams } from "@/api/libraries";
 
@@ -106,6 +108,12 @@ export default function Libraries() {
           <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
             Bölgendeki çalışma mekânlarını keşfet, haritada gör, değerlendir.
           </p>
+          <Link
+            to={ROUTES.libraryRegister}
+            className="mt-2 inline-flex items-center gap-1.5 text-sm font-semibold text-indigo-600 hover:underline dark:text-indigo-300"
+          >
+            🏛️ Mekânın mı var? Ücretsiz listele →
+          </Link>
         </div>
         {/* Liste / Harita geçişi */}
         <div className="flex rounded-full bg-slate-100 p-1 dark:bg-slate-800">

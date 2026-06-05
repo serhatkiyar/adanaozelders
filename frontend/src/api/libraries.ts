@@ -2,11 +2,36 @@ import { apiClient } from "@/api/axios";
 import type {
   LibraryDetailOut,
   LibraryEarningsOut,
+  LibraryRegisterPayload,
   LibraryReviewCreate,
   LibraryReviewOut,
   LibrarySearchOut,
   LibraryWrite,
+  Token,
 } from "@/types";
+
+/** Self-servis kayıt: operatör hesabı + PENDING kütüphane oluşturur, token döner. */
+export async function registerLibrary(payload: LibraryRegisterPayload): Promise<Token> {
+  const { data } = await apiClient.post<Token>("/libraries/register", payload);
+  return data;
+}
+
+/** Admin: bekleyen başvuruyu onayla (→ ACTIVE). */
+export async function approveLibrary(id: number): Promise<LibraryDetailOut> {
+  const { data } = await apiClient.post<LibraryDetailOut>(`/libraries/${id}/approve`);
+  return data;
+}
+
+/** Admin: bekleyen başvuruyu reddet (→ REJECTED + gerekçe). */
+export async function rejectLibrary(
+  id: number,
+  reason?: string | null
+): Promise<LibraryDetailOut> {
+  const { data } = await apiClient.post<LibraryDetailOut>(`/libraries/${id}/reject`, {
+    reason: reason ?? null,
+  });
+  return data;
+}
 
 export interface LibrarySearchParams {
   q?: string;

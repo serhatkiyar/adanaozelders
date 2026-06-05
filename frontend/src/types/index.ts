@@ -904,10 +904,27 @@ export interface LibraryDetailOut extends LibrarySearchOut {
   neighborhood?: string | null; // Mahalle
   street?: string | null; // Sokak/Cadde
   building_no?: string | null; // Kapı No
-  status: string; // ACTIVE | HIDDEN
+  status: string; // ACTIVE | HIDDEN | PENDING | REJECTED
+  rejection_reason?: string | null; // self-kayıt reddedildiyse admin gerekçesi
   hours: LibraryHours[];
   images: LibraryImageOut[];
   created_at?: string | null;
+}
+
+/** Self-servis "kütüphaneni listele" kayıt yükü (operatör hesabı + temel bilgi). */
+export interface LibraryRegisterPayload {
+  email: string;
+  password: string;
+  first_name: string;
+  last_name: string;
+  name: string;
+  phone?: string | null;
+  description?: string | null;
+  city?: string | null;
+  district?: string | null;
+  location_text?: string | null;
+  location_lat?: number | null;
+  location_lng?: number | null;
 }
 
 export interface LibraryReviewOut {
