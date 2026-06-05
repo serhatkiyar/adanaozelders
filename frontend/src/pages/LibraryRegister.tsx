@@ -2,6 +2,7 @@ import { FormEvent, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { PublicShell } from "@/components/PublicShell";
+import { MapPicker } from "@/components/MapPicker";
 import { Seo } from "@/components/Seo";
 import { registerLibrary } from "@/api/libraries";
 import { fetchMe } from "@/api/auth";
@@ -35,6 +36,12 @@ export default function LibraryRegister() {
   });
   const set = (k: keyof typeof form) => (e: { target: { value: string } }) =>
     setForm((f) => ({ ...f, [k]: e.target.value }));
+  // Konum ayrı tutulur (sayısal + MapPicker callback'i ile set edilir).
+  const [loc, setLoc] = useState<{ lat: number | null; lng: number | null; text: string }>({
+    lat: null,
+    lng: null,
+    text: "",
+  });
 
   const mutation = useMutation({
     mutationFn: async () => {
@@ -48,6 +55,9 @@ export default function LibraryRegister() {
         city: form.city.trim() || null,
         district: form.district.trim() || null,
         description: form.description.trim() || null,
+        location_lat: loc.lat,
+        location_lng: loc.lng,
+        location_text: loc.text.trim() || null,
       });
       setTokens(token.access_token, token.refresh_token ?? null);
       const user = await fetchMe();
@@ -113,6 +123,26 @@ export default function LibraryRegister() {
             </Field>
             <Field label="Kısa tanıtım" hint="Konseptin, öne çıkan özelliklerin (opsiyonel).">
               <textarea className="input" rows={3} value={form.description} onChange={set("description")} maxLength={5000} />
+            </Field>
+
+            <Field
+              label="Konum"
+              hint="Haritada arayıp tam noktanı işaretle — haritada bulunman ve yol tarifi için önemli."
+            >
+              <div className="h-64 overflow-hidden rounded-xl ring-1 ring-slate-200 dark:ring-slate-700 [&_.map-picker-root]:h-full">
+                <MapPicker
+                  initialLat={loc.lat}
+                  initialLng={loc.lng}
+                  onLocationSelect={(lat, lng, address) =>
+                    setLoc((p) => ({ lat, lng, text: address ?? p.text }))
+                  }
+                />
+              </div>
+              {loc.lat != null && loc.lng != null && (
+                <p className="mt-1.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                  ✓ Konum işaretlendi{loc.text ? ` · ${loc.text}` : ""}
+                </p>
+              )}
             </Field>
           </fieldset>
 
