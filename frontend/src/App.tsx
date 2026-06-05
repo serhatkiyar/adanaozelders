@@ -55,6 +55,10 @@ const Habits = lazy(() => import("@/pages/Habits"));
 const Tasks = lazy(() => import("@/pages/Tasks"));
 const Profile = lazy(() => import("@/pages/Profile"));
 const Settings = lazy(() => import("@/pages/Settings"));
+// Geliştirme prototipi: "yırtılan kupon" bilet animasyonu (/test-bilet)
+const TicketTearTest = lazy(() => import("@/pages/TicketTearTest"));
+// Geliştirme prototipi: canlı ders (Jitsi) önizleme (/test-canli-ders)
+const TestLiveLesson = lazy(() => import("@/pages/TestLiveLesson"));
 
 function WsManager() {
   const token = useAuthStore((s) => s.token);
@@ -193,6 +197,10 @@ function App() {
           <Route path={PATHS.tutor} element={<TutorProfilePage />} />
           <Route path={PATHS.libraries} element={<Libraries />} />
           <Route path={PATHS.library} element={<LibraryDetail />} />
+
+          {/* ── Geliştirme prototipi (oturum gerektirmez) ── */}
+          <Route path="/test-bilet" element={<TicketTearTest />} />
+          <Route path="/test-canli-ders" element={<TestLiveLesson />} />
 
           {/* ── Kimlik: giriş yapmış kullanıcı kök workspace'ine yönlendirilir ── */}
           <Route element={<PublicRoute />}>
