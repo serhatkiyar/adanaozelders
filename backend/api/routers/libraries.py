@@ -63,6 +63,16 @@ _review_limit = user_rate_limit(
 )
 
 
+def _assert_can_manage_library(user: CurrentUser, library_id: int) -> None:
+    """Profil/görsel yönetimi: admin her kütüphaneyi, operatör yalnız kendi
+    kütüphanesini yönetebilir (deneme oturumlarındaki ``_assert_can_manage`` deseni)."""
+    if isinstance(user, Admin):
+        return
+    if isinstance(user, LibraryOperator) and user.library_id == library_id:
+        return
+    raise HTTPException(status.HTTP_403_FORBIDDEN, "Bu kütüphanede yetkin yok")
+
+
 # ── Public arama / liste ─────────────────────────────────────────────────────────
 
 
@@ -109,11 +119,14 @@ async def list_libraries_admin(
 @router.get("/admin/{library_id}", response_model=LibraryDetailOut)
 async def get_library_admin_detail(
     library_id: int,
-    _admin: Admin = Depends(require_roles(RoleType.ADMIN)),
+    user: CurrentUser = Depends(
+        require_roles(RoleType.ADMIN, RoleType.LIBRARY_OPERATOR)
+    ),
     db: AsyncSession = Depends(get_db),
 ):
-    """Admin düzenleme için tam detay — public uçtan farkı GİZLİ (HIDDEN) kütüphaneyi
-    de döndürür (public uç yalnız ACTIVE gösterir → düzenlerken 404 olurdu)."""
+    """Düzenleme için tam detay — public uçtan farkı GİZLİ (HIDDEN) kütüphaneyi de
+    döndürür. Admin her kütüphaneyi, operatör yalnız kendi kütüphanesini görür."""
+    _assert_can_manage_library(user, library_id)
     return await library_service.get_library_admin(db, library_id)
 
 
@@ -201,9 +214,12 @@ async def library_earnings(
 async def upload_library_logo(
     library_id: int,
     file: UploadFile = File(...),
-    _admin: Admin = Depends(require_roles(RoleType.ADMIN)),
+    user: CurrentUser = Depends(
+        require_roles(RoleType.ADMIN, RoleType.LIBRARY_OPERATOR)
+    ),
     db: AsyncSession = Depends(get_db),
 ):
+    _assert_can_manage_library(user, library_id)
     return await library_service.set_logo(db, library_id, await _read_image(file))
 
 
@@ -211,9 +227,12 @@ async def upload_library_logo(
 async def upload_library_cover(
     library_id: int,
     file: UploadFile = File(...),
-    _admin: Admin = Depends(require_roles(RoleType.ADMIN)),
+    user: CurrentUser = Depends(
+        require_roles(RoleType.ADMIN, RoleType.LIBRARY_OPERATOR)
+    ),
     db: AsyncSession = Depends(get_db),
 ):
+    _assert_can_manage_library(user, library_id)
     return await library_service.set_cover(db, library_id, await _read_image(file))
 
 
@@ -221,9 +240,12 @@ async def upload_library_cover(
 async def upload_library_images(
     library_id: int,
     files: list[UploadFile] = File(...),
-    _admin: Admin = Depends(require_roles(RoleType.ADMIN)),
+    user: CurrentUser = Depends(
+        require_roles(RoleType.ADMIN, RoleType.LIBRARY_OPERATOR)
+    ),
     db: AsyncSession = Depends(get_db),
 ):
+    _assert_can_manage_library(user, library_id)
     if not files:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "En az bir görsel seçin.")
     blobs = [await _read_image(f) for f in files]
@@ -234,9 +256,12 @@ async def upload_library_images(
 async def reorder_library_images(
     library_id: int,
     payload: LibraryImagesReorder,
-    _admin: Admin = Depends(require_roles(RoleType.ADMIN)),
+    user: CurrentUser = Depends(
+        require_roles(RoleType.ADMIN, RoleType.LIBRARY_OPERATOR)
+    ),
     db: AsyncSession = Depends(get_db),
 ):
+    _assert_can_manage_library(user, library_id)
     return await library_service.reorder_images(db, library_id, payload.image_ids)
 
 
@@ -244,23 +269,32 @@ async def reorder_library_images(
 async def delete_library_image(
     library_id: int,
     image_id: int,
-    _admin: Admin = Depends(require_roles(RoleType.ADMIN)),
+    user: CurrentUser = Depends(
+        require_roles(RoleType.ADMIN, RoleType.LIBRARY_OPERATOR)
+    ),
     db: AsyncSession = Depends(get_db),
 ):
+    _assert_can_manage_library(user, library_id)
     return await library_service.delete_image(db, library_id, image_id)
 
 
-# ── Admin güncelle / sil ─────────────────────────────────────────────────────────
+# ── Güncelle (admin / sahip operatör) / sil (yalnız admin) ───────────────────────
 
 
 @router.patch("/{library_id}", response_model=LibraryDetailOut)
 async def update_library(
     library_id: int,
     payload: LibraryUpdate,
-    _admin: Admin = Depends(require_roles(RoleType.ADMIN)),
+    user: CurrentUser = Depends(
+        require_roles(RoleType.ADMIN, RoleType.LIBRARY_OPERATOR)
+    ),
     db: AsyncSession = Depends(get_db),
 ):
-    return await library_service.update_library(db, library_id, payload)
+    _assert_can_manage_library(user, library_id)
+    # Operatör ad/slug ve görünürlük (status) DEĞİŞTİREMEZ (kimlik + yayın admin'de).
+    return await library_service.update_library(
+        db, library_id, payload, allow_identity=isinstance(user, Admin)
+    )
 
 
 @router.delete("/{library_id}", status_code=status.HTTP_204_NO_CONTENT)

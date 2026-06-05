@@ -1,7 +1,10 @@
 import { Link } from "react-router-dom";
 import { ROUTES } from "@/lib/routes";
 import { StarRating } from "@/components/StarRating";
+import { LibraryBookmarkButton } from "@/components/LibraryBookmarkButton";
+import { ShareButton } from "@/components/ShareButton";
 import { amenityIcon, amenityLabel } from "@/lib/amenities";
+import { absoluteUrl } from "@/lib/seo";
 import type { LibrarySearchOut } from "@/types";
 
 export function LibraryCard({ library }: { library: LibrarySearchOut }) {
@@ -34,8 +37,18 @@ export function LibraryCard({ library }: { library: LibrarySearchOut }) {
             {library.open_now ? "Şu an açık" : "Kapalı"}
           </span>
         )}
+        {/* Favorile + Paylaş — kart bir Link olduğundan butonlar tıklamayı durdurur. */}
+        <div className="absolute right-3 top-3 z-10 flex items-center gap-1.5">
+          <ShareButton
+            url={absoluteUrl(ROUTES.library(library.slug))}
+            title={library.name}
+            heading="Kütüphaneyi paylaş"
+            overlay
+          />
+          <LibraryBookmarkButton libraryId={library.id} />
+        </div>
         {library.distance_km != null && (
-          <span className="absolute right-3 top-3 rounded-full bg-slate-900/70 px-2.5 py-1 text-[11px] font-semibold text-white backdrop-blur">
+          <span className="absolute bottom-2 right-3 rounded-full bg-slate-900/70 px-2.5 py-1 text-[11px] font-semibold text-white backdrop-blur">
             {library.distance_km} km
           </span>
         )}

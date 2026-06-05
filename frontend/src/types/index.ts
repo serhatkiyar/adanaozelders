@@ -1013,9 +1013,17 @@ export interface ExamSessionOut {
   available: number;
   my_status?: RegistrationStatus | null;
   my_registration_id?: number | null;
+  // Katalog (blueprint) + sonuç durumu.
+  catalog_id?: number | null;
+  catalog_name?: string | null;
+  is_nationwide?: boolean;
+  answer_key_url?: string | null; // yalnız sonuç yayınlandıysa dolu
+  results_published?: boolean;
+  results_entered_count?: number;
 }
 
 export interface ExamSessionWrite {
+  catalog_id?: number | null;
   exam_type: string;
   title: string;
   description?: string | null;
@@ -1038,6 +1046,39 @@ export interface RegistrationOut {
   short_code?: string | null;
   created_at: string;
   session?: ExamSessionOut | null;
+  // Sınav sonucu (yalnız oturum yayınlandıysa dolu). Birincil = karne (PDF/görsel).
+  result_published?: boolean;
+  result_document_url?: string | null;
+  result_net?: string | null; // opsiyonel toplam net
+  result_rank?: number | null; // opsiyonel sıralama
+}
+
+// ── Deneme katalogu (blueprint) ──
+export interface CatalogOut {
+  id: number;
+  exam_name: string;
+  exam_type: string;
+  publisher_name?: string | null;
+  description?: string | null;
+  question_count?: number | null;
+  duration_minutes?: number | null;
+  is_public: boolean;
+  is_nationwide: boolean;
+  answer_key_url?: string | null;
+  has_answer_key_data: boolean;
+  created_at?: string | null;
+  session_count: number;
+}
+
+export interface CatalogWrite {
+  exam_name: string;
+  exam_type: string;
+  publisher_name?: string | null;
+  description?: string | null;
+  question_count?: number | null;
+  duration_minutes?: number | null;
+  is_public?: boolean;
+  is_nationwide?: boolean;
 }
 
 export interface PayResult {
@@ -1059,6 +1100,25 @@ export interface RosterEntry {
   client_name: string;
   status: RegistrationStatus;
   attended_at?: string | null;
+  result_document_url?: string | null;
+  result_net?: string | null;
+  result_rank?: number | null;
+}
+
+export interface ResultSummaryIn {
+  net?: number | null;
+  rank?: number | null;
+}
+
+export interface BulkDocumentOut {
+  matched: number;
+  skipped: number;
+  errors: string[];
+}
+
+export interface PublishResultsOut {
+  published_count: number;
+  message: string;
 }
 
 export interface OperatorOut {

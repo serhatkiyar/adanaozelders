@@ -466,17 +466,19 @@ async def create_library(
 
 
 async def update_library(
-    db: AsyncSession, lib_id: int, payload: LibraryUpdate
+    db: AsyncSession, lib_id: int, payload: LibraryUpdate, *, allow_identity: bool = True
 ) -> LibraryDetailOut:
+    """``allow_identity=False`` (operatör) iken ad/slug ve görünürlük (status)
+    değiştirilemez — bunlar admin küratörlüğünde kalır."""
     lib = await _load_full(db, lib_id)
     if lib is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Kütüphane bulunamadı")
 
     data = payload.model_dump(exclude_unset=True)
-    if "name" in data and data["name"]:
+    if allow_identity and "name" in data and data["name"]:
         lib.name = data["name"]
         lib.slug = await _unique_slug(db, _slugify(data["name"]), exclude_id=lib.id)
-    for field in (
+    editable = [
         "description",
         "phone",
         "email",
@@ -488,8 +490,10 @@ async def update_library(
         "location_lng",
         "capacity",
         "study_hourly_price",
-        "status",
-    ):
+    ]
+    if allow_identity:
+        editable.append("status")
+    for field in editable:
         if field in data:
             setattr(lib, field, data[field])
     # Çocuk koleksiyonları (amenities/hours) yeniden kurulurken eski satırları ÖNCE

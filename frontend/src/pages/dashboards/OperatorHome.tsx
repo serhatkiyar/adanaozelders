@@ -2,8 +2,13 @@ import { useState } from "react";
 import { DashboardShell } from "@/components/DashboardShell";
 import { ExamSessionsManager } from "@/components/ExamSessionsManager";
 import { QrScanner } from "@/components/QrScanner";
+import {
+  LibraryEditorModal,
+  toEditorState,
+  type EditorState,
+} from "@/components/LibraryEditorModal";
 import { useOperatorMe, useVerifyAttendance } from "@/hooks/useLibraryExams";
-import { useLibraryEarnings } from "@/hooks/useLibraries";
+import { useLibraryAdminDetail, useLibraryEarnings } from "@/hooks/useLibraries";
 import { useChangePassword } from "@/hooks/useProfile";
 import {
   useAttendStudyReservation,
@@ -50,6 +55,9 @@ export default function OperatorHome() {
             Deneme oturumlarını yönet ve katılımcıların QR kodlarını okutarak doğrula.
           </p>
         </div>
+
+        {/* ── Kütüphane profili (bio/telefon/logo/banner/galeri…) ── */}
+        {op && <LibraryProfilePanel libraryId={op.library_id} />}
 
         {/* ── Kazanç özeti ── */}
         {op && <EarningsCard libraryId={op.library_id} />}
@@ -132,6 +140,66 @@ export default function OperatorHome() {
         <PasswordPanel />
       </div>
     </DashboardShell>
+  );
+}
+
+function LibraryProfilePanel({ libraryId }: { libraryId: number }) {
+  const { data: lib, isLoading } = useLibraryAdminDetail(libraryId);
+  const [editing, setEditing] = useState<EditorState | null>(null);
+
+  const open = () => {
+    if (lib) setEditing(toEditorState(lib));
+  };
+
+  return (
+    <div className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700">
+      {/* Kapak + logo önizleme */}
+      <div className="relative h-28 w-full bg-gradient-to-br from-indigo-100 to-violet-100 dark:from-slate-700 dark:to-slate-800">
+        {lib?.cover_url && (
+          <img src={lib.cover_url} alt="" className="h-full w-full object-cover" />
+        )}
+        {lib?.logo_url && (
+          <img
+            src={lib.logo_url}
+            alt=""
+            className="absolute -bottom-6 left-5 h-14 w-14 rounded-xl bg-white object-cover shadow-md ring-2 ring-white dark:ring-slate-800"
+          />
+        )}
+      </div>
+      <div className="px-5 pb-5 pt-8">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h2 className="text-base font-bold text-slate-900 dark:text-white">
+              Kütüphane Profili
+            </h2>
+            <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+              Açıklama, iletişim, logo, kapak, galeri, saatler, olanaklar ve konumunu güncelle.
+            </p>
+          </div>
+          <button
+            onClick={open}
+            disabled={isLoading || !lib}
+            className="shrink-0 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:opacity-60"
+          >
+            {isLoading ? "…" : "Profili Düzenle"}
+          </button>
+        </div>
+        {lib && !lib.description && (
+          <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">
+            Henüz açıklama/biyografi eklenmemiş — profilini doldurarak öğrencilere daha
+            güçlü görün.
+          </p>
+        )}
+      </div>
+
+      {editing && (
+        <LibraryEditorModal
+          state={editing}
+          canEditIdentity={false}
+          onClose={() => setEditing(null)}
+        />
+      )}
+    </div>
   );
 }
 

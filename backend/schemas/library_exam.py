@@ -9,6 +9,8 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 class ExamSessionCreate(BaseModel):
+    # Opsiyonel katalog (blueprint) bağı; doluysa ortak deneme/cevap anahtarı paylaşılır.
+    catalog_id: int | None = None
     exam_type: str = Field(min_length=1, max_length=20)  # TYT/AYT/YKS/YDT/LGS…
     title: str = Field(min_length=2, max_length=200)
     description: str | None = Field(default=None, max_length=3000)
@@ -19,6 +21,7 @@ class ExamSessionCreate(BaseModel):
 
 
 class ExamSessionUpdate(BaseModel):
+    catalog_id: int | None = None
     exam_type: str | None = Field(default=None, min_length=1, max_length=20)
     title: str | None = Field(default=None, min_length=2, max_length=200)
     description: str | None = Field(default=None, max_length=3000)
@@ -29,6 +32,11 @@ class ExamSessionUpdate(BaseModel):
 
 
 class ExamSessionOut(BaseModel):
+    # RegistrationOut.session ORM relationship'inden (reg.session) model_validate
+    # ile doldurulabildiği için from_attributes + Decimal->str coercion gerekir;
+    # aksi halde nested validation 500 verir (price Numeric, ORM instance).
+    model_config = ConfigDict(from_attributes=True, coerce_numbers_to_str=True)
+
     id: int
     library_id: int
     library_name: str | None = None
@@ -47,6 +55,15 @@ class ExamSessionOut(BaseModel):
     # İstek sahibi öğrencinin bu oturumdaki kayıt durumu (varsa).
     my_status: str | None = None
     my_registration_id: int | None = None
+    # Katalog (blueprint) bağı + sonuç durumu.
+    catalog_id: int | None = None
+    catalog_name: str | None = None
+    is_nationwide: bool = False
+    # Etkin cevap anahtarı (session.answer_key_url or catalog.answer_key_url).
+    answer_key_url: str | None = None
+    results_published: bool = False
+    # Yönetim listesinde: kaç katılımcının sonucu girilmiş (operatör ilerlemesi).
+    results_entered_count: int = 0
 
 
 # ── Kayıt + bilet ────────────────────────────────────────────────────────────────
@@ -76,6 +93,47 @@ class RegistrationOut(BaseModel):
     created_at: datetime.datetime
     # Oturum özeti (öğrencinin "biletlerim" listesinde göstermek için).
     session: ExamSessionOut | None = None
+    # ── Sınav sonucu (yalnız oturum yayınlandıysa öğrenciye döner) ──
+    result_published: bool = False
+    result_document_url: str | None = None  # bireysel karne (PDF/görsel) — birincil
+    result_net: str | None = None  # opsiyonel toplam net (Decimal -> string)
+    result_rank: int | None = None  # opsiyonel sıralama
+
+
+# ── Sonuç girişi (operatör / admin) ──────────────────────────────────────────────
+
+
+class ResultSummaryIn(BaseModel):
+    """Opsiyonel hızlı özet (karne başlığından): toplam net + sıralama.
+    Karne PDF'i asıl teslimdir; bu alanlar yalnız listede özet göstermek için."""
+
+    net: float | None = Field(default=None, ge=0, le=1000)
+    rank: int | None = Field(default=None, ge=1, le=10_000_000)
+
+
+class RosterRow(BaseModel):
+    """Operatör katılımcı/sonuç tablosu satırı."""
+
+    registration_id: int
+    client_name: str
+    status: str
+    attended_at: datetime.datetime | None = None
+    result_document_url: str | None = None
+    result_net: str | None = None
+    result_rank: int | None = None
+
+
+class BulkDocumentOut(BaseModel):
+    """Toplu karne (PDF) yükleme sonucu özeti."""
+
+    matched: int = 0  # dosya adından kayda eşlenip yüklenen karne sayısı
+    skipped: int = 0
+    errors: list[str] = Field(default_factory=list)
+
+
+class PublishResultsOut(BaseModel):
+    published_count: int = 0  # karnesi olan + bildirilen öğrenci sayısı
+    message: str
 
 
 class PayResult(BaseModel):

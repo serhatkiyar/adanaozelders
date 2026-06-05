@@ -1,6 +1,16 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Body, Depends, HTTPException, Query, status
+from fastapi import (
+    APIRouter,
+    Body,
+    Depends,
+    File,
+    HTTPException,
+    Query,
+    Response,
+    UploadFile,
+    status,
+)
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import (
@@ -14,18 +24,45 @@ from models.admin import Admin
 from models.client import Client
 from models.library_exam import LibraryExamSession
 from models.library_operator import LibraryOperator
-from models.role import RoleType
+from models.role import ROLE_IDS, RoleType
 from schemas.library_exam import (
     AttendanceResult,
+    BulkDocumentOut,
     ExamSessionCreate,
     ExamSessionOut,
     ExamSessionUpdate,
     PayResult,
+    PublishResultsOut,
     QRVerifyIn,
     RegistrationCreate,
     RegistrationOut,
+    ResultSummaryIn,
+    RosterRow,
 )
 from services import library_exam_service
+
+# Sonuç belgesi (karne/optik) ve oturum cevap anahtarı: PDF veya görsel, 20MB.
+_MAX_DOC_BYTES = 20 * 1024 * 1024
+
+
+async def _read_doc(file: UploadFile) -> bytes:
+    ct = file.content_type or ""
+    if not (ct == "application/pdf" or ct.startswith("image/")):
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST, "Yalnız PDF veya görsel yüklenebilir."
+        )
+    data = await file.read()
+    if not data:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Boş dosya.")
+    if len(data) > _MAX_DOC_BYTES:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Dosya 20MB sınırını aşıyor.")
+    return data
+
+
+def _entered_by(user: CurrentUser) -> tuple[int, int]:
+    """(user_id, role_id) — sonucu giren kullanıcının denetim kimliği."""
+    role = RoleType.ADMIN if isinstance(user, Admin) else RoleType.LIBRARY_OPERATOR
+    return user.id, ROLE_IDS[role]
 
 router = APIRouter(tags=["library-exams"])
 
@@ -112,7 +149,7 @@ async def cancel_session(
     return await library_exam_service.cancel_session(db, session_id)
 
 
-@router.get("/exam-sessions/{session_id}/roster")
+@router.get("/exam-sessions/{session_id}/roster", response_model=list[RosterRow])
 async def session_roster(
     session_id: int,
     user: CurrentUser = Depends(require_roles(RoleType.ADMIN, RoleType.LIBRARY_OPERATOR)),
@@ -121,6 +158,129 @@ async def session_roster(
     s = await _get_session_or_404(db, session_id)
     _assert_can_manage(user, s.library_id)
     return await library_exam_service.roster(db, session_id)
+
+
+# ── Sonuç girişi + yayınlama (admin / o kütüphanenin operatörü) ──────────────────
+
+
+@router.get("/exam-sessions/{session_id}/results/reference")
+async def results_reference(
+    session_id: int,
+    user: CurrentUser = Depends(require_roles(RoleType.ADMIN, RoleType.LIBRARY_OPERATOR)),
+    db: AsyncSession = Depends(get_db),
+):
+    """Toplu karne yükleme için referans CSV'si (registration_id + öğrenci adı).
+    Operatör her karne PDF'ini ilgili kayıt no ile adlandırır."""
+    s = await _get_session_or_404(db, session_id)
+    _assert_can_manage(user, s.library_id)
+    rows = await library_exam_service.roster(db, session_id)
+    csv_text = library_exam_service.results_reference_csv(rows)
+    return Response(
+        content=csv_text,
+        media_type="text/csv",
+        headers={
+            "Content-Disposition": f'attachment; filename="oturum-{session_id}-referans.csv"'
+        },
+    )
+
+
+@router.put(
+    "/exam-sessions/{session_id}/results/{registration_id}/summary",
+    response_model=RosterRow,
+)
+async def set_result_summary(
+    session_id: int,
+    registration_id: int,
+    payload: ResultSummaryIn,
+    user: CurrentUser = Depends(require_roles(RoleType.ADMIN, RoleType.LIBRARY_OPERATOR)),
+    db: AsyncSession = Depends(get_db),
+):
+    """Opsiyonel hızlı özet: toplam net + sıralama (karne başlığından)."""
+    s = await _get_session_or_404(db, session_id)
+    _assert_can_manage(user, s.library_id)
+    user_id, role_id = _entered_by(user)
+    return await library_exam_service.set_result_summary(
+        db, session_id, registration_id, payload, user_id=user_id, role_id=role_id
+    )
+
+
+@router.post(
+    "/exam-sessions/{session_id}/results/{registration_id}/document",
+    response_model=RosterRow,
+)
+async def upload_result_document(
+    session_id: int,
+    registration_id: int,
+    file: UploadFile = File(...),
+    user: CurrentUser = Depends(require_roles(RoleType.ADMIN, RoleType.LIBRARY_OPERATOR)),
+    db: AsyncSession = Depends(get_db),
+):
+    """Bir öğrencinin bireysel karnesini (PDF/görsel) yükler — birincil sonuç."""
+    s = await _get_session_or_404(db, session_id)
+    _assert_can_manage(user, s.library_id)
+    data = await _read_doc(file)
+    user_id, role_id = _entered_by(user)
+    return await library_exam_service.set_result_document(
+        db,
+        session_id,
+        registration_id,
+        file_bytes=data,
+        original_name=file.filename,
+        content_type=file.content_type,
+        user_id=user_id,
+        role_id=role_id,
+    )
+
+
+@router.post("/exam-sessions/{session_id}/results/bulk", response_model=BulkDocumentOut)
+async def bulk_upload_documents(
+    session_id: int,
+    files: list[UploadFile] = File(...),
+    user: CurrentUser = Depends(require_roles(RoleType.ADMIN, RoleType.LIBRARY_OPERATOR)),
+    db: AsyncSession = Depends(get_db),
+):
+    """Toplu karne yükleme — her dosya adının başındaki kayıt no ile eşlenir."""
+    s = await _get_session_or_404(db, session_id)
+    _assert_can_manage(user, s.library_id)
+    if not files:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "En az bir dosya seçin.")
+    payload: list[tuple[str | None, str | None, bytes]] = []
+    for f in files:
+        payload.append((f.filename, f.content_type, await _read_doc(f)))
+    user_id, role_id = _entered_by(user)
+    return await library_exam_service.bulk_upload_documents(
+        db, session_id, payload, user_id=user_id, role_id=role_id
+    )
+
+
+@router.post("/exam-sessions/{session_id}/results/publish", response_model=PublishResultsOut)
+async def publish_results(
+    session_id: int,
+    user: CurrentUser = Depends(require_roles(RoleType.ADMIN, RoleType.LIBRARY_OPERATOR)),
+    db: AsyncSession = Depends(get_db),
+):
+    s = await _get_session_or_404(db, session_id)
+    _assert_can_manage(user, s.library_id)
+    return await library_exam_service.publish_results(db, session_id)
+
+
+@router.post("/exam-sessions/{session_id}/answer-key", response_model=ExamSessionOut)
+async def upload_session_answer_key(
+    session_id: int,
+    file: UploadFile = File(...),
+    user: CurrentUser = Depends(require_roles(RoleType.ADMIN, RoleType.LIBRARY_OPERATOR)),
+    db: AsyncSession = Depends(get_db),
+):
+    s = await _get_session_or_404(db, session_id)
+    _assert_can_manage(user, s.library_id)
+    data = await _read_doc(file)
+    return await library_exam_service.set_session_answer_key(
+        db,
+        session_id,
+        file_bytes=data,
+        original_name=file.filename,
+        content_type=file.content_type,
+    )
 
 
 # ── Öğrenci: kayıt + ödeme + biletlerim ──────────────────────────────────────────

@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   attendRegistration,
+  bulkUploadDocuments,
   cancelRegistration,
   cancelSession,
   createOperator,
@@ -13,11 +14,15 @@ import {
   fetchPublicSessions,
   fetchRoster,
   payRegistration,
+  publishResults,
   registerForSession,
+  setResultSummary,
   updateSession,
+  uploadResultDocument,
+  uploadSessionAnswerKey,
   verifyAttendance,
 } from "@/api/libraryExams";
-import type { ExamSessionWrite, OperatorCreate } from "@/types";
+import type { ExamSessionWrite, OperatorCreate, ResultSummaryIn } from "@/types";
 
 /* ── Public / öğrenci ── */
 
@@ -109,6 +114,63 @@ export function useRoster(sessionId: number | undefined) {
     queryKey: ["exam-roster", sessionId],
     queryFn: () => fetchRoster(sessionId!),
     enabled: Number.isFinite(sessionId) && (sessionId ?? 0) > 0,
+  });
+}
+
+/* ── Sonuç girişi + yayınlama (admin / operatör) ── */
+
+function useResultInvalidator() {
+  const qc = useQueryClient();
+  return () => {
+    qc.invalidateQueries({ queryKey: ["exam-roster"] });
+    qc.invalidateQueries({ queryKey: ["exam-sessions"] });
+  };
+}
+
+export function useSetResultSummary(sessionId: number) {
+  const invalidate = useResultInvalidator();
+  return useMutation({
+    mutationFn: ({
+      registrationId,
+      payload,
+    }: {
+      registrationId: number;
+      payload: ResultSummaryIn;
+    }) => setResultSummary(sessionId, registrationId, payload),
+    onSuccess: invalidate,
+  });
+}
+
+export function useBulkUploadDocuments(sessionId: number) {
+  const invalidate = useResultInvalidator();
+  return useMutation({
+    mutationFn: (files: File[]) => bulkUploadDocuments(sessionId, files),
+    onSuccess: invalidate,
+  });
+}
+
+export function useUploadResultDocument(sessionId: number) {
+  const invalidate = useResultInvalidator();
+  return useMutation({
+    mutationFn: ({ registrationId, file }: { registrationId: number; file: File }) =>
+      uploadResultDocument(sessionId, registrationId, file),
+    onSuccess: invalidate,
+  });
+}
+
+export function usePublishResults(sessionId: number) {
+  const invalidate = useResultInvalidator();
+  return useMutation({
+    mutationFn: () => publishResults(sessionId),
+    onSuccess: invalidate,
+  });
+}
+
+export function useUploadSessionAnswerKey(sessionId: number) {
+  const invalidate = useResultInvalidator();
+  return useMutation({
+    mutationFn: (file: File) => uploadSessionAnswerKey(sessionId, file),
+    onSuccess: invalidate,
   });
 }
 

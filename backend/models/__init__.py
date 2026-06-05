@@ -21,12 +21,14 @@ from models.library import (
     LibraryReview,
     LibraryStatus,
 )
+from models.library_bookmark import LibraryBookmark
 from models.library_exam import (
     ExamRegistration,
     ExamSessionStatus,
     LibraryExamSession,
     RegistrationStatus,
 )
+from models.library_exam_catalog import ExamType, LibraryExamCatalog
 from models.library_operator import LibraryOperator
 from models.messaging import Conversation, Message
 from models.study_reservation import StudyReservation
@@ -72,12 +74,15 @@ __all__ = [
     "DemandStatus",
     "ExamRegistration",
     "ExamSessionStatus",
+    "ExamType",
     "Flashcard",
     "FlashcardDeck",
     "Habit",
     "HabitEntry",
     "Library",
     "LibraryAmenity",
+    "LibraryBookmark",
+    "LibraryExamCatalog",
     "LibraryExamSession",
     "LibraryHours",
     "LibraryImage",

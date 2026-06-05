@@ -1,8 +1,17 @@
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { useLibraryAdminDetail, useLibraryMedia } from "@/hooks/useLibraries";
+import { ImageCropModal } from "@/components/ImageCropModal";
 import { toast } from "@/store/toastStore";
 import { getErrorMessage } from "@/lib/errors";
 import type { LibraryImageOut } from "@/types";
+
+// Kırpma ayarları: logo kare (1:1, 512×512), banner geniş (16:9, 1600×900).
+const CROP_PRESET = {
+  logo: { aspect: 1, w: 512, h: 512, title: "Logoyu kırp (kare)" },
+  cover: { aspect: 16 / 9, w: 1600, h: 900, title: "Kapağı kırp (16:9)" },
+} as const;
+
+type CropKind = keyof typeof CROP_PRESET;
 
 /**
  * Kütüphane görsel yönetimi (admin küratör): kurumsal logo (1:1), geniş kapak/banner
@@ -16,6 +25,11 @@ export function LibraryMediaManager({ libraryId }: { libraryId: number }) {
   const { data: lib, isLoading } = useLibraryAdminDetail(libraryId);
   const { uploadLogo, uploadCover, uploadImages, removeImage, reorder } =
     useLibraryMedia(libraryId);
+  // Kırpma akışı: dosya seçilince doğrudan yüklemek yerine kırpma penceresi açılır.
+  const [crop, setCrop] = useState<{ kind: CropKind; src: string } | null>(null);
+
+  const onError = (e: unknown) =>
+    toast.error(getErrorMessage(e, "Görsel işlemi başarısız."));
 
   if (isLoading || !lib) {
     return (
@@ -25,8 +39,28 @@ export function LibraryMediaManager({ libraryId }: { libraryId: number }) {
 
   const images = lib.images ?? [];
 
-  const onError = (e: unknown) =>
-    toast.error(getErrorMessage(e, "Görsel işlemi başarısız."));
+  const openCrop = (kind: CropKind, file: File) =>
+    setCrop({ kind, src: URL.createObjectURL(file) });
+
+  const closeCrop = () => {
+    if (crop) URL.revokeObjectURL(crop.src);
+    setCrop(null);
+  };
+
+  const onCropDone = (blob: Blob) => {
+    if (!crop) return;
+    const file = new File([blob], `${crop.kind}.webp`, { type: "image/webp" });
+    const mutation = crop.kind === "logo" ? uploadLogo : uploadCover;
+    mutation.mutate(file, {
+      onSuccess: () => {
+        toast.success(crop.kind === "logo" ? "Logo güncellendi." : "Kapak güncellendi.");
+        closeCrop();
+      },
+      onError,
+    });
+  };
+
+  const cropBusy = uploadLogo.isPending || uploadCover.isPending;
 
   const move = (index: number, dir: -1 | 1) => {
     const next = index + dir;
@@ -47,12 +81,7 @@ export function LibraryMediaManager({ libraryId }: { libraryId: number }) {
           rounded="rounded-2xl"
           aspect="aspect-square"
           busy={uploadLogo.isPending}
-          onPick={(f) =>
-            uploadLogo.mutate(f, {
-              onSuccess: () => toast.success("Logo güncellendi."),
-              onError,
-            })
-          }
+          onPick={(f) => openCrop("logo", f)}
         />
         <SingleImageField
           label="Kapak / Banner (16:9)"
@@ -61,12 +90,7 @@ export function LibraryMediaManager({ libraryId }: { libraryId: number }) {
           rounded="rounded-2xl"
           aspect="aspect-video"
           busy={uploadCover.isPending}
-          onPick={(f) =>
-            uploadCover.mutate(f, {
-              onSuccess: () => toast.success("Kapak güncellendi."),
-              onError,
-            })
-          }
+          onPick={(f) => openCrop("cover", f)}
         />
       </div>
 
@@ -114,6 +138,19 @@ export function LibraryMediaManager({ libraryId }: { libraryId: number }) {
           </div>
         )}
       </div>
+
+      {crop && (
+        <ImageCropModal
+          imageSrc={crop.src}
+          aspectRatio={CROP_PRESET[crop.kind].aspect}
+          outputWidth={CROP_PRESET[crop.kind].w}
+          outputHeight={CROP_PRESET[crop.kind].h}
+          title={CROP_PRESET[crop.kind].title}
+          isUploading={cropBusy}
+          onCropComplete={onCropDone}
+          onClose={closeCrop}
+        />
+      )}
     </div>
   );
 }

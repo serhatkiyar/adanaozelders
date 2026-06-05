@@ -18,7 +18,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from core import payments
+from core import exam_results, payments, storage
 from core.codes import gen_short_code, normalize_code
 from core.config import settings
 from models.client import Client
@@ -30,13 +30,18 @@ from models.library_exam import (
     LibraryExamSession,
     RegistrationStatus,
 )
+from models.library_exam_catalog import LibraryExamCatalog
 from models.role import ROLE_IDS, RoleType
 from schemas.library_exam import (
     AttendanceResult,
+    BulkDocumentOut,
     ExamSessionCreate,
     ExamSessionOut,
     ExamSessionUpdate,
+    PublishResultsOut,
     RegistrationOut,
+    ResultSummaryIn,
+    RosterRow,
 )
 from services import notification_service
 
@@ -96,7 +101,14 @@ def _session_out(
     library_slug: str | None = None,
     my_status: str | None = None,
     my_registration_id: int | None = None,
+    catalog_name: str | None = None,
+    is_nationwide: bool = False,
+    catalog_answer_key_url: str | None = None,
+    results_entered_count: int = 0,
 ) -> ExamSessionOut:
+    published = s.results_published_at is not None
+    # Cevap anahtarı yalnız sonuçlar yayınlandıktan sonra paylaşılır (önceden sızmasın).
+    answer_key = (s.answer_key_url or catalog_answer_key_url) if published else None
     return ExamSessionOut(
         id=s.id,
         library_id=s.library_id,
@@ -115,6 +127,12 @@ def _session_out(
         available=max(0, s.capacity - registered_count),
         my_status=my_status,
         my_registration_id=my_registration_id,
+        catalog_id=s.catalog_id,
+        catalog_name=catalog_name,
+        is_nationwide=is_nationwide,
+        answer_key_url=answer_key,
+        results_published=published,
+        results_entered_count=results_entered_count,
     )
 
 
@@ -128,14 +146,61 @@ async def _get_session_or_404(db: AsyncSession, session_id: int) -> LibraryExamS
 # ── Oturum yönetimi (admin / operatör) ──────────────────────────────────────────
 
 
+async def _validate_catalog(db: AsyncSession, catalog_id: int) -> LibraryExamCatalog:
+    cat = await db.get(LibraryExamCatalog, catalog_id)
+    if cat is None or cat.deleted_at is not None or not cat.is_public:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Katalog bulunamadı")
+    return cat
+
+
+async def _entered_count(db: AsyncSession, session_id: int) -> int:
+    """Karnesi yüklenmiş kayıt sayısı (operatör ilerlemesi)."""
+    return int(
+        (
+            await db.execute(
+                select(func.count()).where(
+                    ExamRegistration.session_id == session_id,
+                    ExamRegistration.result_document_url.isnot(None),
+                    ExamRegistration.deleted_at.is_(None),
+                )
+            )
+        ).scalar_one()
+    )
+
+
+async def _enriched_session_out(
+    db: AsyncSession,
+    s: LibraryExamSession,
+    *,
+    registered_count: int,
+    library_name: str | None = None,
+    library_slug: str | None = None,
+) -> ExamSessionOut:
+    """Tek oturumu katalog + girilmiş sonuç sayısıyla zenginleştirip döndürür."""
+    cat = await db.get(LibraryExamCatalog, s.catalog_id) if s.catalog_id else None
+    return _session_out(
+        s,
+        registered_count=registered_count,
+        library_name=library_name,
+        library_slug=library_slug,
+        catalog_name=cat.exam_name if cat else None,
+        is_nationwide=bool(cat.is_nationwide) if cat else False,
+        catalog_answer_key_url=cat.answer_key_url if cat else None,
+        results_entered_count=await _entered_count(db, s.id),
+    )
+
+
 async def create_session(
     db: AsyncSession, library_id: int, payload: ExamSessionCreate
 ) -> ExamSessionOut:
     lib = await db.get(Library, library_id)
     if lib is None or lib.deleted_at is not None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Kütüphane bulunamadı")
+    if payload.catalog_id is not None:
+        await _validate_catalog(db, payload.catalog_id)
     s = LibraryExamSession(
         library_id=library_id,
+        catalog_id=payload.catalog_id,
         exam_type=payload.exam_type.strip().upper(),
         title=payload.title.strip(),
         description=payload.description,
@@ -149,7 +214,9 @@ async def create_session(
     db.add(s)
     await db.commit()
     await db.refresh(s)
-    return _session_out(s, registered_count=0, library_name=lib.name, library_slug=lib.slug)
+    return await _enriched_session_out(
+        db, s, registered_count=0, library_name=lib.name, library_slug=lib.slug
+    )
 
 
 async def update_session(
@@ -157,6 +224,10 @@ async def update_session(
 ) -> ExamSessionOut:
     s = await _get_session_or_404(db, session_id)
     data = payload.model_dump(exclude_unset=True)
+    if "catalog_id" in data:
+        if data["catalog_id"] is not None:
+            await _validate_catalog(db, data["catalog_id"])
+        s.catalog_id = data["catalog_id"]
     if "exam_type" in data and data["exam_type"]:
         s.exam_type = data["exam_type"].strip().upper()
     for field in ("title", "description", "starts_at", "duration_minutes", "capacity"):
@@ -173,7 +244,7 @@ async def update_session(
         )
     await db.commit()
     await db.refresh(s)
-    return _session_out(s, registered_count=active)
+    return await _enriched_session_out(db, s, registered_count=active)
 
 
 async def cancel_session(db: AsyncSession, session_id: int) -> ExamSessionOut:
@@ -278,6 +349,31 @@ async def _attach_counts_and_mine(
         ).scalars().all()
     }
 
+    # Katalog bilgisi (ortak deneme adı/cevap anahtarı) — tek sorgu.
+    cat_ids = {s.catalog_id for s in sessions if s.catalog_id is not None}
+    cats = {
+        c.id: c
+        for c in (
+            await db.execute(
+                select(LibraryExamCatalog).where(LibraryExamCatalog.id.in_(cat_ids))
+            )
+        ).scalars().all()
+    } if cat_ids else {}
+
+    # Karne yüklenmiş kayıt sayıları (operatör ilerlemesi) — tek sorgu.
+    entered_rows = (
+        await db.execute(
+            select(ExamRegistration.session_id, func.count())
+            .where(
+                ExamRegistration.session_id.in_(ids),
+                ExamRegistration.result_document_url.isnot(None),
+                ExamRegistration.deleted_at.is_(None),
+            )
+            .group_by(ExamRegistration.session_id)
+        )
+    ).all()
+    entered = {sid: c for sid, c in entered_rows}
+
     mine: dict[int, ExamRegistration] = {}
     if client_id is not None:
         my_rows = (
@@ -295,6 +391,7 @@ async def _attach_counts_and_mine(
     for s in sessions:
         lib = libs.get(s.library_id)
         reg = mine.get(s.id)
+        cat = cats.get(s.catalog_id) if s.catalog_id else None
         out.append(
             _session_out(
                 s,
@@ -303,6 +400,10 @@ async def _attach_counts_and_mine(
                 library_slug=lib.slug if lib else None,
                 my_status=reg.status if reg else None,
                 my_registration_id=reg.id if reg else None,
+                catalog_name=cat.exam_name if cat else None,
+                is_nationwide=bool(cat.is_nationwide) if cat else False,
+                catalog_answer_key_url=cat.answer_key_url if cat else None,
+                results_entered_count=int(entered.get(s.id, 0)),
             )
         )
     return out
@@ -318,6 +419,13 @@ def _reg_out(reg: ExamRegistration, *, session: ExamSessionOut | None = None) ->
     if reg.status != RegistrationStatus.PAID.value:
         out.qr_token = None
         out.short_code = None
+    # Sınav sonucu (karne + opsiyonel net/sıralama) yalnız oturum yayınlandıysa döner.
+    published = bool(session and session.results_published)
+    out.result_published = published
+    if not published:
+        out.result_document_url = None
+        out.result_net = None
+        out.result_rank = None
     out.session = session
     return out
 
@@ -464,16 +572,30 @@ async def list_my_registrations(
         ).scalars().all()
     } if lib_ids else {}
 
+    cat_ids = {r.session.catalog_id for r in rows if r.session and r.session.catalog_id}
+    cats = {
+        c.id: c
+        for c in (
+            await db.execute(
+                select(LibraryExamCatalog).where(LibraryExamCatalog.id.in_(cat_ids))
+            )
+        ).scalars().all()
+    } if cat_ids else {}
+
     out: list[RegistrationOut] = []
     for r in rows:
         sess_out = None
         if r.session:
             lib = libs.get(r.session.library_id)
+            cat = cats.get(r.session.catalog_id) if r.session.catalog_id else None
             sess_out = _session_out(
                 r.session,
                 registered_count=0,
                 library_name=lib.name if lib else None,
                 library_slug=lib.slug if lib else None,
+                catalog_name=cat.exam_name if cat else None,
+                is_nationwide=bool(cat.is_nationwide) if cat else False,
+                catalog_answer_key_url=cat.answer_key_url if cat else None,
             )
         out.append(_reg_out(r, session=sess_out))
     return out
@@ -510,8 +632,8 @@ async def auto_release_no_shows(db: AsyncSession) -> int:
     return count
 
 
-async def roster(db: AsyncSession, session_id: int) -> list[dict]:
-    """Operatör/admin için oturum katılımcı listesi (ödeyenler + katılanlar)."""
+async def roster(db: AsyncSession, session_id: int) -> list[RosterRow]:
+    """Operatör/admin için oturum katılımcı + sonuç tablosu (ödeyenler + katılanlar)."""
     rows = (
         await db.execute(
             select(ExamRegistration, Client)
@@ -524,15 +646,218 @@ async def roster(db: AsyncSession, session_id: int) -> list[dict]:
             .order_by(ExamRegistration.status.desc(), ExamRegistration.created_at.asc())
         )
     ).all()
-    return [
-        {
-            "registration_id": reg.id,
-            "client_name": client.full_name,
-            "status": reg.status,
-            "attended_at": reg.attended_at,
-        }
-        for reg, client in rows
-    ]
+    return [_roster_row(reg, client.full_name) for reg, client in rows]
+
+
+# ── Sonuç (karne) girişi + yayınlama (operatör / admin) ──────────────────────────
+
+
+def _roster_row(reg: ExamRegistration, client_name: str) -> RosterRow:
+    return RosterRow(
+        registration_id=reg.id,
+        client_name=client_name,
+        status=reg.status,
+        attended_at=reg.attended_at,
+        result_document_url=reg.result_document_url,
+        result_net=str(reg.result_net) if reg.result_net is not None else None,
+        result_rank=reg.result_rank,
+    )
+
+
+async def _require_reg_in_session(
+    db: AsyncSession, session_id: int, registration_id: int
+) -> ExamRegistration:
+    reg = await db.get(ExamRegistration, registration_id)
+    if (
+        reg is None
+        or reg.deleted_at is not None
+        or reg.session_id != session_id
+        or reg.status not in ACTIVE_REGISTRATION_STATUSES
+    ):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Kayıt bu oturumda bulunamadı")
+    return reg
+
+
+def _stamp_entry(reg: ExamRegistration, *, user_id: int, role_id: int) -> None:
+    reg.results_entered_by_user_id = user_id
+    reg.results_entered_by_role_id = role_id
+    reg.results_entered_at = _now()
+
+
+async def set_result_summary(
+    db: AsyncSession,
+    session_id: int,
+    registration_id: int,
+    payload: ResultSummaryIn,
+    *,
+    user_id: int,
+    role_id: int,
+) -> RosterRow:
+    """Opsiyonel hızlı özet: toplam net + sıralama (karne başlığından). Net girişi
+    DEĞİL — asıl sonuç karne PDF'idir; bu yalnız listede özet göstermek içindir."""
+    await _get_session_or_404(db, session_id)
+    reg = await _require_reg_in_session(db, session_id, registration_id)
+    reg.result_net = (
+        Decimal(str(payload.net)).quantize(Decimal("0.01"))
+        if payload.net is not None
+        else None
+    )
+    reg.result_rank = payload.rank
+    _stamp_entry(reg, user_id=user_id, role_id=role_id)
+    await db.commit()
+    client = await db.get(Client, reg.client_id)
+    return _roster_row(reg, client.full_name if client else "Öğrenci")
+
+
+async def set_result_document(
+    db: AsyncSession,
+    session_id: int,
+    registration_id: int,
+    *,
+    file_bytes: bytes,
+    original_name: str | None,
+    content_type: str | None,
+    user_id: int,
+    role_id: int,
+) -> RosterRow:
+    """Bir katılımcının taranmış bireysel karnesini (PDF/görsel) yükler — BİRİNCİL sonuç."""
+    await _get_session_or_404(db, session_id)
+    reg = await _require_reg_in_session(db, session_id, registration_id)
+    old = reg.result_document_url
+    reg.result_document_url = await storage.upload_file(
+        file_bytes, original_name=original_name, content_type=content_type
+    )
+    _stamp_entry(reg, user_id=user_id, role_id=role_id)
+    await db.commit()
+    if old:
+        await storage.delete_file(old)
+    client = await db.get(Client, reg.client_id)
+    return _roster_row(reg, client.full_name if client else "Öğrenci")
+
+
+async def bulk_upload_documents(
+    db: AsyncSession,
+    session_id: int,
+    files: list[tuple[str | None, str | None, bytes]],
+    *,
+    user_id: int,
+    role_id: int,
+) -> BulkDocumentOut:
+    """Toplu karne yükleme: her dosya adının başındaki registration_id ile eşlenir
+    (operatör referans listesine göre adlandırır). ``files`` = (ad, content_type, bytes)."""
+    # Bu oturuma ait aktif kayıt id'leri (yabancı/yanlış eşlemeleri ele).
+    valid_ids = {
+        rid
+        for (rid,) in (
+            await db.execute(
+                select(ExamRegistration.id).where(
+                    ExamRegistration.session_id == session_id,
+                    ExamRegistration.status.in_(ACTIVE_REGISTRATION_STATUSES),
+                    ExamRegistration.deleted_at.is_(None),
+                )
+            )
+        ).all()
+    }
+    matched = 0
+    skipped = 0
+    errors: list[str] = []
+    for name, content_type, blob in files:
+        reg_id = exam_results.parse_registration_id(name)
+        if reg_id is None or reg_id not in valid_ids:
+            skipped += 1
+            errors.append(
+                f"'{name or 'dosya'}' eşlenemedi (ad başına kayıt no koyun)"
+            )
+            continue
+        reg = await db.get(ExamRegistration, reg_id)
+        old = reg.result_document_url
+        reg.result_document_url = await storage.upload_file(
+            blob, original_name=name, content_type=content_type
+        )
+        _stamp_entry(reg, user_id=user_id, role_id=role_id)
+        if old:
+            await storage.delete_file(old)
+        matched += 1
+    await db.commit()
+    return BulkDocumentOut(matched=matched, skipped=skipped, errors=errors)
+
+
+async def publish_results(db: AsyncSession, session_id: int) -> PublishResultsOut:
+    """Oturum sonuçlarını öğrencilere açar: ``results_published_at`` damgalanır ve
+    karnesi olan her öğrenciye bildirim gider. İlk yayında bildirim atılır; tekrar
+    çağrılırsa sessizdir (spam yok). (Konu-bazında in-app analiz Faz B.)"""
+    s = await _get_session_or_404(db, session_id)
+    first_publish = s.results_published_at is None
+    if first_publish:
+        s.results_published_at = _now()
+
+    regs = (
+        await db.execute(
+            select(ExamRegistration).where(
+                ExamRegistration.session_id == session_id,
+                ExamRegistration.result_document_url.isnot(None),
+                ExamRegistration.deleted_at.is_(None),
+            )
+        )
+    ).scalars().all()
+    count = 0
+    for reg in regs:
+        if first_publish:
+            await notification_service.notify(
+                db,
+                user_id=reg.client_id,
+                role_id=ROLE_IDS[RoleType.CLIENT],
+                message=f"'{s.title}' deneme sınavı karnen açıklandı.",
+                link="/biletlerim",
+            )
+        count += 1
+    await db.commit()
+    return PublishResultsOut(
+        published_count=count,
+        message=(
+            f"Sonuçlar yayınlandı ({count} karne)."
+            if first_publish
+            else "Sonuçlar zaten yayında."
+        ),
+    )
+
+
+async def set_session_answer_key(
+    db: AsyncSession,
+    session_id: int,
+    *,
+    file_bytes: bytes,
+    original_name: str | None,
+    content_type: str | None,
+) -> ExamSessionOut:
+    """Oturuma özel cevap anahtarı yükler (katalogsuz oturumlar için)."""
+    s = await _get_session_or_404(db, session_id)
+    old = s.answer_key_url
+    s.answer_key_url = await storage.upload_file(
+        file_bytes, original_name=original_name, content_type=content_type
+    )
+    await db.commit()
+    await db.refresh(s)
+    if old:
+        await storage.delete_file(old)
+    return await _enriched_session_out(
+        db, s, registered_count=await _count_active(db, s.id)
+    )
+
+
+def results_reference_csv(roster_rows: list[RosterRow]) -> str:
+    """Toplu karne yükleme için referans listesi: registration_id + öğrenci adı.
+    Operatör her karne PDF'ini ilgili ``registration_id`` ile adlandırır (ör.
+    "123 - Ali Veli.pdf") → toplu yüklemede otomatik eşlenir."""
+    import csv as _csv
+    import io as _io
+
+    buf = _io.StringIO()
+    w = _csv.writer(buf)
+    w.writerow(["registration_id", "client_name"])
+    for r in roster_rows:
+        w.writerow([r.registration_id, r.client_name])
+    return buf.getvalue()
 
 
 async def verify_attendance(

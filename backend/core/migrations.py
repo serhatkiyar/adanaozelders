@@ -48,6 +48,24 @@ _ADDED_COLUMNS_DDL: tuple[str, ...] = (
     # QR okutulamazsa elle girilen kısa doğrulama kodu (deneme bileti + çalışma rez.).
     "ALTER TABLE exam_registrations ADD COLUMN IF NOT EXISTS short_code VARCHAR(12)",
     "ALTER TABLE study_reservations ADD COLUMN IF NOT EXISTS short_code VARCHAR(12)",
+    # Deneme içeriği & sonuç yönetimi. library_exam_catalogs tablosu create_all ile gelir;
+    # mevcut tablolara yeni kolonlar idempotent eklenir.
+    "ALTER TABLE library_exam_sessions ADD COLUMN IF NOT EXISTS catalog_id INTEGER REFERENCES library_exam_catalogs(id) ON DELETE SET NULL",
+    "ALTER TABLE library_exam_sessions ADD COLUMN IF NOT EXISTS answer_key_url VARCHAR(500)",
+    "ALTER TABLE library_exam_sessions ADD COLUMN IF NOT EXISTS results_published_at TIMESTAMPTZ",
+    "ALTER TABLE exam_registrations ADD COLUMN IF NOT EXISTS result_correct INTEGER",
+    "ALTER TABLE exam_registrations ADD COLUMN IF NOT EXISTS result_wrong INTEGER",
+    "ALTER TABLE exam_registrations ADD COLUMN IF NOT EXISTS result_blank INTEGER",
+    "ALTER TABLE exam_registrations ADD COLUMN IF NOT EXISTS result_net NUMERIC(6,2)",
+    "ALTER TABLE exam_registrations ADD COLUMN IF NOT EXISTS result_rank INTEGER",
+    "ALTER TABLE exam_registrations ADD COLUMN IF NOT EXISTS result_document_url VARCHAR(500)",
+    "ALTER TABLE exam_registrations ADD COLUMN IF NOT EXISTS results_entered_by_user_id INTEGER",
+    "ALTER TABLE exam_registrations ADD COLUMN IF NOT EXISTS results_entered_by_role_id INTEGER",
+    "ALTER TABLE exam_registrations ADD COLUMN IF NOT EXISTS results_entered_at TIMESTAMPTZ",
+    # Kütüphane oturumu sonucunun öğrenci /denemeler panosuna idempotent projeksiyonu.
+    "ALTER TABLE practice_exams ADD COLUMN IF NOT EXISTS source_registration_id INTEGER REFERENCES exam_registrations(id) ON DELETE SET NULL",
+    # Kayıt başına tek projeksiyon (create_all mevcut tabloya index eklemez → elle).
+    "CREATE UNIQUE INDEX IF NOT EXISTS uq_practice_exams_source_reg ON practice_exams (source_registration_id) WHERE source_registration_id IS NOT NULL",
     "ALTER TABLE tutors ADD COLUMN IF NOT EXISTS location_text VARCHAR(300)",
     "ALTER TABLE tutors ADD COLUMN IF NOT EXISTS location_lat NUMERIC(9,6)",
     "ALTER TABLE tutors ADD COLUMN IF NOT EXISTS location_lng NUMERIC(9,6)",

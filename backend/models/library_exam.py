@@ -64,6 +64,11 @@ class LibraryExamSession(Base, TimestampMixin, SoftDeleteMixin):
     library_id: Mapped[int] = mapped_column(
         ForeignKey("libraries.id", ondelete="CASCADE"), nullable=False, index=True
     )
+    # Opsiyonel katalog (blueprint) bağı. Doluysa ortak deneme/cevap anahtarı paylaşılır;
+    # boşsa oturum tek-seferlik çalışır (geriye uyumlu).
+    catalog_id: Mapped[int | None] = mapped_column(
+        ForeignKey("library_exam_catalogs.id", ondelete="SET NULL"), nullable=True
+    )
     exam_type: Mapped[str] = mapped_column(String(20), nullable=False)  # TYT/AYT/YKS…
     title: Mapped[str] = mapped_column(String(200), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -83,7 +88,16 @@ class LibraryExamSession(Base, TimestampMixin, SoftDeleteMixin):
         String(12), nullable=False, server_default=text("'SCHEDULED'")
     )
 
+    # Bu oturuma özel cevap anahtarı (katalogsuz oturumlar için; katalog varsa
+    # etkin anahtar = session.answer_key_url or catalog.answer_key_url).
+    answer_key_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    # Sonuçlar öğrenciye açıldığında damgalanır; doluysa öğrenci sonucunu görebilir.
+    results_published_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
     library: Mapped["Library"] = relationship()
+    catalog: Mapped["LibraryExamCatalog"] = relationship()
     registrations: Mapped[list["ExamRegistration"]] = relationship(
         back_populates="session", cascade="all, delete-orphan"
     )
@@ -149,6 +163,25 @@ class ExamRegistration(Base, TimestampMixin, SoftDeleteMixin):
     )
     attended_by_operator_id: Mapped[int | None] = mapped_column(
         ForeignKey("library_operators.id", ondelete="SET NULL"), nullable=True
+    )
+
+    # ── Sınav sonucu (operatör/admin girer; oturum yayınlanınca öğrenciye açılır) ──
+    # BİRİNCİL teslim: öğrencinin taranmış bireysel karnesi (PDF/görsel, MinIO). Karne
+    # zaten sıralama + ders + konu kırılımını içerir; sistemde net elle yazılmaz.
+    result_document_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    # OPSİYONEL hızlı özet (operatör karne başlığından kopyalayabilir): toplam net + sıralama.
+    result_net: Mapped[float | None] = mapped_column(Numeric(6, 2), nullable=True)
+    result_rank: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # (Eski) doğru/yanlış/boş kolonları kullanılmıyor — karne modeline geçildi; şema
+    # uyumu için bırakıldı (Faz B yapısal analizinde yeniden kullanılabilir).
+    result_correct: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    result_wrong: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    result_blank: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # Sonucu giren kullanıcı (operatör veya admin) — denetim için (user_id + role_id).
+    results_entered_by_user_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    results_entered_by_role_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    results_entered_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
     )
 
     session: Mapped["LibraryExamSession"] = relationship(back_populates="registrations")

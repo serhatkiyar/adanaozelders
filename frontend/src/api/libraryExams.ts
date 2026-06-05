@@ -1,14 +1,19 @@
 import { apiClient } from "@/api/axios";
 import type {
   AttendanceResult,
+  BulkDocumentOut,
   ExamSessionOut,
   ExamSessionWrite,
   OperatorCreate,
   OperatorOut,
   PayResult,
+  PublishResultsOut,
   RegistrationOut,
+  ResultSummaryIn,
   RosterEntry,
 } from "@/types";
+
+const MULTIPART = { headers: { "Content-Type": "multipart/form-data" } };
 
 /* ── Public: bir kütüphanenin yaklaşan oturumları ── */
 
@@ -65,6 +70,84 @@ export async function fetchRoster(sessionId: number): Promise<RosterEntry[]> {
     `/exam-sessions/${sessionId}/roster`
   );
   return data;
+}
+
+/* ── Karne (sonuç) yükleme + yayınlama (admin / operatör) ── */
+
+/** Bir öğrencinin bireysel karnesini (PDF/görsel) yükler — birincil sonuç. */
+export async function uploadResultDocument(
+  sessionId: number,
+  registrationId: number,
+  file: File
+): Promise<RosterEntry> {
+  const form = new FormData();
+  form.append("file", file);
+  const { data } = await apiClient.post<RosterEntry>(
+    `/exam-sessions/${sessionId}/results/${registrationId}/document`,
+    form,
+    MULTIPART
+  );
+  return data;
+}
+
+/** Toplu karne yükleme — dosya adlarının başındaki kayıt no ile eşlenir. */
+export async function bulkUploadDocuments(
+  sessionId: number,
+  files: File[]
+): Promise<BulkDocumentOut> {
+  const form = new FormData();
+  files.forEach((f) => form.append("files", f));
+  const { data } = await apiClient.post<BulkDocumentOut>(
+    `/exam-sessions/${sessionId}/results/bulk`,
+    form,
+    MULTIPART
+  );
+  return data;
+}
+
+/** Opsiyonel hızlı özet: toplam net + sıralama. */
+export async function setResultSummary(
+  sessionId: number,
+  registrationId: number,
+  payload: ResultSummaryIn
+): Promise<RosterEntry> {
+  const { data } = await apiClient.put<RosterEntry>(
+    `/exam-sessions/${sessionId}/results/${registrationId}/summary`,
+    payload
+  );
+  return data;
+}
+
+export async function publishResults(
+  sessionId: number
+): Promise<PublishResultsOut> {
+  const { data } = await apiClient.post<PublishResultsOut>(
+    `/exam-sessions/${sessionId}/results/publish`
+  );
+  return data;
+}
+
+export async function uploadSessionAnswerKey(
+  sessionId: number,
+  file: File
+): Promise<ExamSessionOut> {
+  const form = new FormData();
+  form.append("file", file);
+  const { data } = await apiClient.post<ExamSessionOut>(
+    `/exam-sessions/${sessionId}/answer-key`,
+    form,
+    MULTIPART
+  );
+  return data;
+}
+
+/** Toplu karne adlandırma referansı CSV'si (registration_id + ad). */
+export async function downloadResultsReference(sessionId: number): Promise<Blob> {
+  const { data } = await apiClient.get(
+    `/exam-sessions/${sessionId}/results/reference`,
+    { responseType: "blob" }
+  );
+  return data as Blob;
 }
 
 /* ── Öğrenci: kayıt + ödeme + biletlerim ── */

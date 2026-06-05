@@ -11,6 +11,13 @@ interface ImageCropModalProps {
   onClose: () => void;
   /** Whether the upload is in progress */
   isUploading?: boolean;
+  /** Kırpma oranı (genişlik/yükseklik). Varsayılan 1 (kare — avatar/logo). 16:9 → 16/9. */
+  aspectRatio?: number;
+  /** Çıktı çözünürlüğü (px). Varsayılan 512×512. Banner için ör. 1600×900. */
+  outputWidth?: number;
+  outputHeight?: number;
+  /** Başlık. */
+  title?: string;
 }
 
 export function ImageCropModal({
@@ -18,6 +25,10 @@ export function ImageCropModal({
   onCropComplete,
   onClose,
   isUploading = false,
+  aspectRatio = 1,
+  outputWidth = 512,
+  outputHeight = 512,
+  title = "Fotoğrafı Düzenle",
 }: ImageCropModalProps) {
   const cropperRef = useRef<ReactCropperElement>(null);
   const [zoom, setZoom] = useState(0);
@@ -28,8 +39,8 @@ export function ImageCropModal({
     if (!cropper) return;
 
     cropper.getCroppedCanvas({
-      width: 512,
-      height: 512,
+      width: outputWidth,
+      height: outputHeight,
       imageSmoothingEnabled: true,
       imageSmoothingQuality: "high",
     }).toBlob(
@@ -39,7 +50,7 @@ export function ImageCropModal({
       "image/webp",
       0.9
     );
-  }, [onCropComplete]);
+  }, [onCropComplete, outputWidth, outputHeight]);
 
   const handleRotate = (deg: number) => {
     const cropper = cropperRef.current?.cropper;
@@ -77,7 +88,7 @@ export function ImageCropModal({
         {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4 dark:border-slate-700">
           <h3 className="text-base font-semibold text-slate-900 dark:text-white">
-            Fotoğrafı Düzenle
+            {title}
           </h3>
           <button
             type="button"
@@ -98,7 +109,7 @@ export function ImageCropModal({
             ref={cropperRef}
             src={imageSrc}
             style={{ height: 360, width: "100%" }}
-            aspectRatio={1}
+            aspectRatio={aspectRatio}
             viewMode={1}
             dragMode="move"
             guides={false}

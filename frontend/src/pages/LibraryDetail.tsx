@@ -7,6 +7,8 @@ import { LibrariesMap } from "@/components/LibrariesMap";
 import { ExamSessionsSection } from "@/components/ExamSessionsSection";
 import { StudySpaceSection } from "@/components/StudySpaceSection";
 import { StarRating } from "@/components/StarRating";
+import { LibraryBookmarkButton } from "@/components/LibraryBookmarkButton";
+import { ShareButton } from "@/components/ShareButton";
 import { Seo } from "@/components/Seo";
 import {
   useCreateLibraryReview,
@@ -130,12 +132,26 @@ export default function LibraryDetail() {
                 className="relative z-10 -mt-16 mb-3 h-20 w-20 rounded-2xl bg-white object-cover shadow-lg ring-4 ring-white dark:bg-slate-800 dark:ring-slate-800"
               />
             )}
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{lib.name}</h1>
-            {lib.location_text && (
-              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                📍 {lib.location_text}
-              </p>
-            )}
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
+                  {lib.name}
+                </h1>
+                {lib.location_text && (
+                  <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                    📍 {lib.location_text}
+                  </p>
+                )}
+              </div>
+              <div className="flex shrink-0 items-center gap-2">
+                <LibraryBookmarkButton libraryId={lib.id} withLabel />
+                <ShareButton
+                  title={lib.name}
+                  heading="Kütüphaneyi paylaş"
+                  withLabel
+                />
+              </div>
+            </div>
             <div className="mt-2 flex flex-wrap items-center gap-3">
               <div className="flex items-center gap-1.5">
                 <StarRating value={lib.rating_average} />

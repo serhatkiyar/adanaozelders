@@ -3,10 +3,16 @@ import { useState } from "react";
 interface ShareModalProps {
   url: string;
   titleText: string;
+  heading?: string;
   onClose: () => void;
 }
 
-export function ShareModal({ url, titleText, onClose }: ShareModalProps) {
+export function ShareModal({
+  url,
+  titleText,
+  heading = "İlanı Paylaş",
+  onClose,
+}: ShareModalProps) {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = () => {
@@ -29,7 +35,7 @@ export function ShareModal({ url, titleText, onClose }: ShareModalProps) {
       >
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-bold text-slate-900 dark:text-white">
-            İlanı Paylaş
+            {heading}
           </h2>
           <button
             onClick={onClose}

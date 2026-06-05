@@ -289,10 +289,73 @@ function TicketCard({ reg }: { reg: RegistrationOut }) {
             onClose={() => setShowQr(false)}
           />
         )}
-        {reg.status === "ATTENDED" && (
+        {reg.status === "ATTENDED" && !reg.result_published && (
           <div className="flex items-center gap-2 rounded-xl bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">
             ✓ Katılım doğrulandı
           </div>
+        )}
+      </div>
+
+      {reg.result_published && <ExamResultPanel reg={reg} />}
+    </div>
+  );
+}
+
+function ExamResultPanel({ reg }: { reg: RegistrationOut }) {
+  const answerKey = reg.session?.answer_key_url;
+  const karne = reg.result_document_url;
+  const hasSummary = reg.result_net != null || reg.result_rank != null;
+
+  return (
+    <div className="border-t border-slate-100 bg-slate-50 px-5 py-4 dark:border-slate-700 dark:bg-slate-900/40">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h4 className="text-sm font-bold text-slate-900 dark:text-white">
+          📊 Sınav sonucun açıklandı
+        </h4>
+        {hasSummary && (
+          <div className="flex items-center gap-3 text-sm">
+            {reg.result_net != null && (
+              <span className="font-bold text-slate-900 dark:text-white">
+                Net <span className="text-indigo-600 dark:text-indigo-300">{reg.result_net}</span>
+              </span>
+            )}
+            {reg.result_rank != null && (
+              <span className="font-bold text-slate-900 dark:text-white">
+                Sıra <span className="text-indigo-600 dark:text-indigo-300">{reg.result_rank}</span>
+              </span>
+            )}
+          </div>
+        )}
+      </div>
+
+      <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+        Sıralama, ders ve konu bazında doğru/yanlış kırılımı karnende yer alır.
+      </p>
+
+      <div className="mt-3 flex flex-wrap gap-2">
+        {karne ? (
+          <a
+            href={karne}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
+          >
+            📄 Karnemi Gör
+          </a>
+        ) : (
+          <span className="rounded-lg bg-slate-100 px-4 py-2 text-sm font-medium text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+            Karne henüz yüklenmedi
+          </span>
+        )}
+        {answerKey && (
+          <a
+            href={answerKey}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300"
+          >
+            🔑 Cevap Anahtarı
+          </a>
         )}
       </div>
     </div>
