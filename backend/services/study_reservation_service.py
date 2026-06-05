@@ -347,19 +347,47 @@ async def pay(
     return _res_out(res), None
 
 
+# Ödenmiş rezervasyon iptalinde tam iade penceresi: başlangıca bu kadar saatten FAZLA
+# varsa tam iade; daha az kalırsa iade yok (deneme bileti ile aynı kural).
+REFUND_WINDOW_HOURS = 24
+
+
 async def cancel(db: AsyncSession, client: Client, reservation_id: int) -> None:
     res = await db.get(StudyReservation, reservation_id)
     if res is None or res.deleted_at is not None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Rezervasyon bulunamadı")
     if res.client_id != client.id:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Sizin rezervasyonunuz değil")
-    if res.status != RegistrationStatus.PENDING_PAYMENT.value:
-        raise HTTPException(
-            status.HTTP_409_CONFLICT,
-            "Ödenmiş rezervasyon iptal edilemez (iade yok). Yalnız ödeme öncesi iptal edilebilir.",
-        )
-    res.status = RegistrationStatus.CANCELLED.value
-    await db.commit()
+
+    # Ödeme öncesi iptal her zaman serbest.
+    if res.status == RegistrationStatus.PENDING_PAYMENT.value:
+        res.status = RegistrationStatus.CANCELLED.value
+        await db.commit()
+        return
+
+    # Ödenmiş rezervasyon: başlangıca REFUND_WINDOW_HOURS saatten fazla varsa TAM iade.
+    if res.status == RegistrationStatus.PAID.value:
+        if _now() > res.starts_at - datetime.timedelta(hours=REFUND_WINDOW_HOURS):
+            raise HTTPException(
+                status.HTTP_409_CONFLICT,
+                f"Rezervasyona {REFUND_WINDOW_HOURS} saatten az kaldı; iade yapılamaz.",
+            )
+        refunded = True
+        if Decimal(str(res.amount)) > 0:
+            provider = payments.get_payment_provider()
+            refunded = await provider.refund(
+                provider_ref=res.provider_ref, amount=Decimal(str(res.amount))
+            )
+        if not refunded:
+            raise HTTPException(
+                status.HTTP_502_BAD_GATEWAY, "İade alınamadı; lütfen sonra tekrar dene."
+            )
+        res.status = RegistrationStatus.REFUNDED.value
+        res.refunded_at = _now()
+        await db.commit()
+        return
+
+    raise HTTPException(status.HTTP_409_CONFLICT, "Bu rezervasyon iptal edilemez.")
 
 
 async def list_mine(db: AsyncSession, client: Client) -> list[StudyReservationOut]:

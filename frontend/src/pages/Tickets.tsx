@@ -316,6 +316,13 @@ const PAY_BTN =
 const GHOST_BTN =
   "rounded-lg border border-white/30 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/10 disabled:opacity-60";
 
+// Ödenmiş bilet/rezervasyon: başlangıca bu kadar saatten FAZLA varsa iptalde tam iade.
+const REFUND_WINDOW_HOURS = 24;
+function refundableUntilStart(startIso?: string | null): boolean {
+  if (!startIso) return false;
+  return new Date(startIso).getTime() - Date.now() > REFUND_WINDOW_HOURS * 3600 * 1000;
+}
+
 function TicketCard({ reg }: { reg: RegistrationOut }) {
   const [showQr, setShowQr] = useState(false);
   const [showResult, setShowResult] = useState(false);
@@ -339,9 +346,14 @@ function TicketCard({ reg }: { reg: RegistrationOut }) {
   };
 
   const doCancel = () => {
-    if (!window.confirm("Bu kaydı iptal etmek istiyor musun?")) return;
+    const paid = reg.status === "PAID";
+    const msg = paid
+      ? `Bu bileti iptal edip tam iade almak istiyor musun? (Oturuma ${REFUND_WINDOW_HOURS} saatten az kalınca iade yapılamaz.)`
+      : "Bu kaydı iptal etmek istiyor musun?";
+    if (!window.confirm(msg)) return;
     cancel.mutate(reg.id, {
-      onSuccess: () => toast.success("Kayıt iptal edildi."),
+      onSuccess: () =>
+        toast.success(paid ? "Bilet iptal edildi, ödemen iade edildi." : "Kayıt iptal edildi."),
       onError: (e) => toast.error(getErrorMessage(e, "İptal başarısız.")),
     });
   };
@@ -391,6 +403,14 @@ function TicketCard({ reg }: { reg: RegistrationOut }) {
                 </button>
                 <button onClick={doCancel} disabled={cancel.isPending} className={GHOST_BTN}>
                   İptal
+                </button>
+              </div>
+            )}
+
+            {reg.status === "PAID" && refundableUntilStart(session?.starts_at) && (
+              <div className="mt-3">
+                <button onClick={doCancel} disabled={cancel.isPending} className={GHOST_BTN}>
+                  İptal et &amp; iade al
                 </button>
               </div>
             )}
@@ -455,9 +475,14 @@ function StudyReservationCard({ res }: { res: StudyReservationOut }) {
   };
 
   const doCancel = () => {
-    if (!window.confirm("Bu rezervasyonu iptal etmek istiyor musun?")) return;
+    const paid = res.status === "PAID";
+    const msg = paid
+      ? `Bu rezervasyonu iptal edip tam iade almak istiyor musun? (Başlangıca ${REFUND_WINDOW_HOURS} saatten az kalınca iade yapılamaz.)`
+      : "Bu rezervasyonu iptal etmek istiyor musun?";
+    if (!window.confirm(msg)) return;
     cancel.mutate(res.id, {
-      onSuccess: () => toast.success("Rezervasyon iptal edildi."),
+      onSuccess: () =>
+        toast.success(paid ? "Rezervasyon iptal edildi, ödemen iade edildi." : "Rezervasyon iptal edildi."),
       onError: (e) => toast.error(getErrorMessage(e, "İptal başarısız.")),
     });
   };
@@ -498,6 +523,14 @@ function StudyReservationCard({ res }: { res: StudyReservationOut }) {
               </button>
               <button onClick={doCancel} disabled={cancel.isPending} className={GHOST_BTN}>
                 İptal
+              </button>
+            </div>
+          )}
+
+          {res.status === "PAID" && refundableUntilStart(res.starts_at) && (
+            <div className="mt-3">
+              <button onClick={doCancel} disabled={cancel.isPending} className={GHOST_BTN}>
+                İptal et &amp; iade al
               </button>
             </div>
           )}

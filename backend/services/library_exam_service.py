@@ -530,6 +530,11 @@ async def pay(
     return _reg_out(reg), None
 
 
+# Ödenmiş kayıt iptalinde tam iade için pencere: oturum başlangıcına bu kadar saatten
+# FAZLA varsa öğrenci iptal edip tam iade alır; daha az kalırsa iade yok (no-show riski).
+REFUND_WINDOW_HOURS = 24
+
+
 async def cancel_registration(
     db: AsyncSession, client: Client, registration_id: int
 ) -> None:
@@ -538,14 +543,39 @@ async def cancel_registration(
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Kayıt bulunamadı")
     if reg.client_id != client.id:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Sizin kaydınız değil")
-    # Ödeme öncesi iptal serbest; ödenmişse no-show iadesi yok → iptal edilemez.
-    if reg.status != RegistrationStatus.PENDING_PAYMENT.value:
-        raise HTTPException(
-            status.HTTP_409_CONFLICT,
-            "Ödenmiş kayıt iptal edilemez (iade yok). Yalnız ödeme öncesi iptal edilebilir.",
-        )
-    reg.status = RegistrationStatus.CANCELLED.value
-    await db.commit()
+
+    # Ödeme öncesi iptal her zaman serbest.
+    if reg.status == RegistrationStatus.PENDING_PAYMENT.value:
+        reg.status = RegistrationStatus.CANCELLED.value
+        await db.commit()
+        return
+
+    # Ödenmiş kayıt: başlangıca REFUND_WINDOW_HOURS saatten fazla varsa TAM iade.
+    if reg.status == RegistrationStatus.PAID.value:
+        session = await db.get(LibraryExamSession, reg.session_id)
+        if session is None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Oturum bulunamadı")
+        if _now() > session.starts_at - datetime.timedelta(hours=REFUND_WINDOW_HOURS):
+            raise HTTPException(
+                status.HTTP_409_CONFLICT,
+                f"Oturuma {REFUND_WINDOW_HOURS} saatten az kaldı; iade yapılamaz.",
+            )
+        refunded = True
+        if Decimal(str(reg.amount)) > 0:
+            provider = payments.get_payment_provider()
+            refunded = await provider.refund(
+                provider_ref=reg.provider_ref, amount=Decimal(str(reg.amount))
+            )
+        if not refunded:
+            raise HTTPException(
+                status.HTTP_502_BAD_GATEWAY, "İade alınamadı; lütfen sonra tekrar dene."
+            )
+        reg.status = RegistrationStatus.REFUNDED.value
+        reg.refunded_at = _now()
+        await db.commit()
+        return
+
+    raise HTTPException(status.HTTP_409_CONFLICT, "Bu kayıt iptal edilemez.")
 
 
 async def list_my_registrations(
