@@ -131,6 +131,22 @@ def _bayesian_score_expr(prior_mean: float, confidence: float):
     ).label("bayesian_score")
 
 
+def _compose_address(
+    street: str | None,
+    building_no: str | None,
+    neighborhood: str | None,
+    district: str | None,
+    city: str | None,
+) -> str | None:
+    """Yapısal alanlardan tam adres metni derler (location_text). Boş alanlar atlanır.
+    Örn: 'Atatürk Cd No:5, Reşatbey, Çukurova, Adana'."""
+    line1_parts = [p.strip() for p in (street, f"No:{building_no}" if building_no else None) if p and p.strip()]
+    line1 = " ".join(line1_parts)
+    parts = [line1, neighborhood, district, city]
+    out = ", ".join(p.strip() for p in parts if p and p.strip())
+    return out or None
+
+
 def _to_search_out(
     lib: Library,
     prior_mean: float,
@@ -149,6 +165,8 @@ def _to_search_out(
         location_text=lib.location_text,
         location_lat=float(lib.location_lat) if lib.location_lat is not None else None,
         location_lng=float(lib.location_lng) if lib.location_lng is not None else None,
+        city=lib.city,
+        district=lib.district,
         capacity=lib.capacity,
         study_hourly_price=(
             str(lib.study_hourly_price) if lib.study_hourly_price is not None else None
@@ -302,6 +320,9 @@ async def get_library_public(db: AsyncSession, id_or_slug: str) -> LibraryDetail
         phone=lib.phone,
         email=lib.email,
         website=lib.website,
+        neighborhood=lib.neighborhood,
+        street=lib.street,
+        building_no=lib.building_no,
         status=lib.status,
         created_at=lib.created_at,
         hours=[LibraryHoursOut.model_validate(h) for h in hours],
@@ -450,9 +471,20 @@ async def create_library(
         website=payload.website,
         cover_url=payload.cover_url,
         logo_url=payload.logo_url,
-        location_text=payload.location_text,
+        location_text=_compose_address(
+            payload.street,
+            payload.building_no,
+            payload.neighborhood,
+            payload.district,
+            payload.city,
+        ),
         location_lat=payload.location_lat,
         location_lng=payload.location_lng,
+        city=payload.city,
+        district=payload.district,
+        neighborhood=payload.neighborhood,
+        street=payload.street,
+        building_no=payload.building_no,
         capacity=payload.capacity,
         study_hourly_price=payload.study_hourly_price,
         status=payload.status,
@@ -485,9 +517,13 @@ async def update_library(
         "website",
         "cover_url",
         "logo_url",
-        "location_text",
         "location_lat",
         "location_lng",
+        "city",
+        "district",
+        "neighborhood",
+        "street",
+        "building_no",
         "capacity",
         "study_hourly_price",
     ]
@@ -496,6 +532,15 @@ async def update_library(
     for field in editable:
         if field in data:
             setattr(lib, field, data[field])
+    # En az bir DOLU yapısal adres alanı varsa tam adres metnini (location_text) yeniden
+    # derle. Hepsi boşsa eski location_text'i KORU (eski kayıtların adresi silinmesin).
+    if any(
+        (data.get(k) or "").strip()
+        for k in ("city", "district", "neighborhood", "street", "building_no")
+    ):
+        lib.location_text = _compose_address(
+            lib.street, lib.building_no, lib.neighborhood, lib.district, lib.city
+        )
     # Çocuk koleksiyonları (amenities/hours) yeniden kurulurken eski satırları ÖNCE
     # silip flush etmeliyiz: aksi halde SQLAlchemy yeni INSERT'leri orphan DELETE'lerden
     # önce gönderir ve aynı (library_id, weekday) / (library_id, amenity) için unique
@@ -539,6 +584,9 @@ async def get_library_admin(db: AsyncSession, lib_id: int) -> LibraryDetailOut:
         phone=lib.phone,
         email=lib.email,
         website=lib.website,
+        neighborhood=lib.neighborhood,
+        street=lib.street,
+        building_no=lib.building_no,
         status=lib.status,
         created_at=lib.created_at,
         hours=[LibraryHoursOut.model_validate(h) for h in hours],

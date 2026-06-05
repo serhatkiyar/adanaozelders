@@ -54,9 +54,16 @@ class Library(Base, TimestampMixin, SoftDeleteMixin):
     logo_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
     # Baz konum ("yakınımdaki kütüphaneler" haritası / Haversine araması).
-    location_text: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    # location_text = yapısal alanlardan ELDE EDİLEN tam adres (gösterim + yol tarifi).
+    location_text: Mapped[str | None] = mapped_column(String(400), nullable=True)
     location_lat: Mapped[float | None] = mapped_column(Numeric(9, 6), nullable=True)
     location_lng: Mapped[float | None] = mapped_column(Numeric(9, 6), nullable=True)
+    # Yapısal adres — operatör/admin elle girer (geocode otomatik doldurmaz).
+    city: Mapped[str | None] = mapped_column(String(100), nullable=True)          # İl
+    district: Mapped[str | None] = mapped_column(String(100), nullable=True)      # İlçe
+    neighborhood: Mapped[str | None] = mapped_column(String(150), nullable=True)  # Mahalle
+    street: Mapped[str | None] = mapped_column(String(200), nullable=True)        # Sokak/Cadde
+    building_no: Mapped[str | None] = mapped_column(String(30), nullable=True)    # Kapı No
 
     # Çalışma alanı (masa) kapasitesi — saatlik koltuk rezervasyonunda kontenjan.
     capacity: Mapped[int | None] = mapped_column(Integer, nullable=True)

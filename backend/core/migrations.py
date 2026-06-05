@@ -69,6 +69,12 @@ _ADDED_COLUMNS_DDL: tuple[str, ...] = (
     "ALTER TABLE tutors ADD COLUMN IF NOT EXISTS location_text VARCHAR(300)",
     "ALTER TABLE tutors ADD COLUMN IF NOT EXISTS location_lat NUMERIC(9,6)",
     "ALTER TABLE tutors ADD COLUMN IF NOT EXISTS location_lng NUMERIC(9,6)",
+    # Kütüphane yapısal adresi (il/ilçe/mahalle/sokak/no) — elle girilir.
+    "ALTER TABLE libraries ADD COLUMN IF NOT EXISTS city VARCHAR(100)",
+    "ALTER TABLE libraries ADD COLUMN IF NOT EXISTS district VARCHAR(100)",
+    "ALTER TABLE libraries ADD COLUMN IF NOT EXISTS neighborhood VARCHAR(150)",
+    "ALTER TABLE libraries ADD COLUMN IF NOT EXISTS street VARCHAR(200)",
+    "ALTER TABLE libraries ADD COLUMN IF NOT EXISTS building_no VARCHAR(30)",
     # E-posta doğrulama durumu (EmailVerificationMixin) — mevcut DB'lere de uygula.
     "ALTER TABLE admins ADD COLUMN IF NOT EXISTS email_verified_at TIMESTAMPTZ",
     "ALTER TABLE tutors ADD COLUMN IF NOT EXISTS email_verified_at TIMESTAMPTZ",

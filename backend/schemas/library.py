@@ -103,9 +103,14 @@ class LibraryCreate(BaseModel):
     website: str | None = Field(default=None, max_length=300)
     cover_url: str | None = Field(default=None, max_length=500)
     logo_url: str | None = Field(default=None, max_length=500)
-    location_text: str | None = Field(default=None, max_length=300)
     location_lat: float | None = Field(default=None, ge=-90, le=90)
     location_lng: float | None = Field(default=None, ge=-180, le=180)
+    # Yapısal adres (elle girilir; location_text bunlardan derlenir).
+    city: str | None = Field(default=None, max_length=100)
+    district: str | None = Field(default=None, max_length=100)
+    neighborhood: str | None = Field(default=None, max_length=150)
+    street: str | None = Field(default=None, max_length=200)
+    building_no: str | None = Field(default=None, max_length=30)
     capacity: int | None = Field(default=None, ge=0, le=100000)
     study_hourly_price: float | None = Field(default=None, ge=0, le=100000)
     status: str = Field(default="ACTIVE")
@@ -138,9 +143,13 @@ class LibraryUpdate(BaseModel):
     website: str | None = Field(default=None, max_length=300)
     cover_url: str | None = Field(default=None, max_length=500)
     logo_url: str | None = Field(default=None, max_length=500)
-    location_text: str | None = Field(default=None, max_length=300)
     location_lat: float | None = Field(default=None, ge=-90, le=90)
     location_lng: float | None = Field(default=None, ge=-180, le=180)
+    city: str | None = Field(default=None, max_length=100)
+    district: str | None = Field(default=None, max_length=100)
+    neighborhood: str | None = Field(default=None, max_length=150)
+    street: str | None = Field(default=None, max_length=200)
+    building_no: str | None = Field(default=None, max_length=30)
     capacity: int | None = Field(default=None, ge=0, le=100000)
     study_hourly_price: float | None = Field(default=None, ge=0, le=100000)
     status: str | None = None
@@ -182,6 +191,9 @@ class LibrarySearchOut(BaseModel):
     location_text: str | None = None
     location_lat: float | None = None
     location_lng: float | None = None
+    # Kart/hero kısa bölge etiketi için yapısal il/ilçe.
+    city: str | None = None
+    district: str | None = None
     capacity: int | None = None
     study_hourly_price: str | None = None  # Decimal -> string
     amenities: list[str] = Field(default_factory=list)
@@ -199,6 +211,10 @@ class LibraryDetailOut(LibrarySearchOut):
     phone: str | None = None
     email: str | None = None
     website: str | None = None
+    # Yapısal adresin tamamı (editörde düzenleme için).
+    neighborhood: str | None = None
+    street: str | None = None
+    building_no: str | None = None
     status: str = "ACTIVE"
     hours: list[LibraryHoursOut] = Field(default_factory=list)
     images: list[LibraryImageOut] = Field(default_factory=list)

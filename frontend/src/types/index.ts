@@ -882,9 +882,11 @@ export interface LibrarySearchOut {
   description?: string | null;
   cover_url?: string | null;
   logo_url?: string | null;
-  location_text?: string | null;
+  location_text?: string | null; // yapısal alanlardan derlenen tam adres
   location_lat?: number | null;
   location_lng?: number | null;
+  city?: string | null; // İl
+  district?: string | null; // İlçe
   capacity?: number | null;
   study_hourly_price?: string | null; // Decimal -> string; doluysa çalışma alanı rez. açık
   amenities: string[];
@@ -899,6 +901,9 @@ export interface LibraryDetailOut extends LibrarySearchOut {
   phone?: string | null;
   email?: string | null;
   website?: string | null;
+  neighborhood?: string | null; // Mahalle
+  street?: string | null; // Sokak/Cadde
+  building_no?: string | null; // Kapı No
   status: string; // ACTIVE | HIDDEN
   hours: LibraryHours[];
   images: LibraryImageOut[];
@@ -939,9 +944,14 @@ export interface LibraryWrite {
   website?: string | null;
   cover_url?: string | null;
   logo_url?: string | null;
-  location_text?: string | null;
   location_lat?: number | null;
   location_lng?: number | null;
+  // Yapısal adres (elle girilir; location_text backend'de bunlardan derlenir).
+  city?: string | null;
+  district?: string | null;
+  neighborhood?: string | null;
+  street?: string | null;
+  building_no?: string | null;
   capacity?: number | null;
   study_hourly_price?: number | null;
   status?: string;

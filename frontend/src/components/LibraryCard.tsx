@@ -3,8 +3,9 @@ import { ROUTES } from "@/lib/routes";
 import { StarRating } from "@/components/StarRating";
 import { LibraryBookmarkButton } from "@/components/LibraryBookmarkButton";
 import { ShareButton } from "@/components/ShareButton";
-import { amenityIcon, amenityLabel } from "@/lib/amenities";
 import { absoluteUrl } from "@/lib/seo";
+import { regionLabel } from "@/lib/region";
+import { PinIcon } from "@/components/PinIcon";
 import type { LibrarySearchOut } from "@/types";
 
 export function LibraryCard({ library }: { library: LibrarySearchOut }) {
@@ -66,9 +67,12 @@ export function LibraryCard({ library }: { library: LibrarySearchOut }) {
         <h3 className="line-clamp-1 text-base font-bold text-slate-900 dark:text-white">
           {library.name}
         </h3>
-        {library.location_text && (
-          <p className="mt-0.5 line-clamp-1 text-xs text-slate-500 dark:text-slate-400">
-            📍 {library.location_text}
+        {regionLabel(library.city, library.district, library.location_text) && (
+          <p className="mt-0.5 flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400">
+            <PinIcon className="h-3.5 w-3.5 shrink-0" />
+            <span className="line-clamp-1">
+              {regionLabel(library.city, library.district, library.location_text)}
+            </span>
           </p>
         )}
 
@@ -90,25 +94,6 @@ export function LibraryCard({ library }: { library: LibrarySearchOut }) {
           <p className="mt-2 text-xs font-semibold text-violet-600 dark:text-violet-300">
             🪑 Çalışma alanı · ₺{Number(library.study_hourly_price).toLocaleString("tr-TR")}/saat
           </p>
-        )}
-
-        {library.amenities.length > 0 && (
-          <div className="mt-3 flex flex-wrap gap-1.5">
-            {library.amenities.slice(0, 4).map((a) => (
-              <span
-                key={a}
-                className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600 dark:bg-slate-700 dark:text-slate-300"
-              >
-                <span>{amenityIcon(a)}</span>
-                {amenityLabel(a)}
-              </span>
-            ))}
-            {library.amenities.length > 4 && (
-              <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-500 dark:bg-slate-700 dark:text-slate-400">
-                +{library.amenities.length - 4}
-              </span>
-            )}
-          </div>
         )}
       </div>
     </Link>

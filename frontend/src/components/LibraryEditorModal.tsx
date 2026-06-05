@@ -32,9 +32,13 @@ export function emptyEditor(): EditorState {
     email: "",
     website: "",
     cover_url: "",
-    location_text: "",
     location_lat: null,
     location_lng: null,
+    city: "",
+    district: "",
+    neighborhood: "",
+    street: "",
+    building_no: "",
     capacity: null,
     study_hourly_price: null,
     status: "ACTIVE",
@@ -53,9 +57,13 @@ export function toEditorState(full: LibraryDetailOut): EditorState {
     email: full.email ?? "",
     website: full.website ?? "",
     cover_url: full.cover_url ?? "",
-    location_text: full.location_text ?? "",
     location_lat: full.location_lat ?? null,
     location_lng: full.location_lng ?? null,
+    city: full.city ?? "",
+    district: full.district ?? "",
+    neighborhood: full.neighborhood ?? "",
+    street: full.street ?? "",
+    building_no: full.building_no ?? "",
     capacity: full.capacity ?? null,
     study_hourly_price:
       full.study_hourly_price != null ? Number(full.study_hourly_price) : null,
@@ -129,7 +137,12 @@ export function LibraryEditorModal({
       phone: form.phone?.trim() || null,
       email: form.email?.trim() || null,
       website: form.website?.trim() || null,
-      location_text: form.location_text?.trim() || null,
+      // Yapısal adres elle girilir; tam adres (location_text) backend'de derlenir.
+      city: form.city?.trim() || null,
+      district: form.district?.trim() || null,
+      neighborhood: form.neighborhood?.trim() || null,
+      street: form.street?.trim() || null,
+      building_no: form.building_no?.trim() || null,
       location_lat: form.location_lat ?? null,
       location_lng: form.location_lng ?? null,
       capacity: form.capacity ?? null,
@@ -278,24 +291,40 @@ export function LibraryEditorModal({
             </Field>
           )}
 
-          {/* Konum */}
-          <Field label="Konum (haritadan işaretle)">
-            {form.location_text && (
-              <p className="mb-2 text-xs text-emerald-600 dark:text-emerald-400">
-                📍 {form.location_text}
-              </p>
-            )}
+          {/* Adres (elle) */}
+          <Field label="Adres">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <input value={form.city ?? ""} onChange={(e) => set("city", e.target.value)} className="input" placeholder="İl (ör. Adana)" />
+              <input value={form.district ?? ""} onChange={(e) => set("district", e.target.value)} className="input" placeholder="İlçe (ör. Çukurova)" />
+              <input value={form.neighborhood ?? ""} onChange={(e) => set("neighborhood", e.target.value)} className="input" placeholder="Mahalle" />
+              <div className="grid grid-cols-[1fr_90px] gap-2">
+                <input value={form.street ?? ""} onChange={(e) => set("street", e.target.value)} className="input" placeholder="Sokak / Cadde" />
+                <input value={form.building_no ?? ""} onChange={(e) => set("building_no", e.target.value)} className="input" placeholder="No" />
+              </div>
+            </div>
+          </Field>
+
+          {/* Konum — yalnız harita işareti (adres OTOMATİK dolmaz) */}
+          <Field label="Harita Konumu (yol tarifi için)">
+            <p className="mb-2 text-xs text-slate-500 dark:text-slate-400">
+              Adresi yukarıdan yaz; aşağıdan da kütüphanenin tam noktasını işaretle.
+              Harita yalnız konumu (koordinat) belirler, adresi değiştirmez.
+            </p>
             <div className="h-72 overflow-hidden rounded-xl ring-1 ring-slate-200 dark:ring-slate-700 [&_.map-picker-root]:h-full">
               <MapPicker
                 initialLat={form.location_lat}
                 initialLng={form.location_lng}
-                onLocationSelect={(lat, lng, address) => {
+                onLocationSelect={(lat, lng) => {
                   set("location_lat", lat);
                   set("location_lng", lng);
-                  if (address) set("location_text", address);
                 }}
               />
             </div>
+            {form.location_lat != null && form.location_lng != null && (
+              <p className="mt-2 text-xs text-emerald-600 dark:text-emerald-400">
+                ✓ Konum işaretlendi ({form.location_lat.toFixed(5)}, {form.location_lng.toFixed(5)})
+              </p>
+            )}
           </Field>
 
           {/* Olanaklar */}

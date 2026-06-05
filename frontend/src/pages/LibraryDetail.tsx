@@ -27,8 +27,23 @@ import {
   normalizeWeek,
 } from "@/lib/libraryHours";
 import { ROUTES } from "@/lib/routes";
+import { regionLabel } from "@/lib/region";
+import { PinIcon } from "@/components/PinIcon";
 import { ROLE_IDS } from "@/types";
-import type { LibraryImageOut } from "@/types";
+import type {
+  LibraryDetailOut,
+  LibraryImageOut,
+  LibraryReviewOut,
+} from "@/types";
+
+type TabKey = "home" | "exams" | "about" | "announcements";
+
+const TABS: { key: TabKey; label: string }[] = [
+  { key: "home", label: "Ana Sayfa" },
+  { key: "exams", label: "Denemeler" },
+  { key: "about", label: "Hakkında" },
+  { key: "announcements", label: "Duyurular" },
+];
 
 /** Google Maps yol tarifi linki: koordinat varsa onu, yoksa adres metnini hedef alır. */
 function directionsUrl(lib: {
@@ -60,6 +75,8 @@ export default function LibraryDetail() {
         ? STUDENT_NAV
         : undefined;
 
+  const [tab, setTab] = useState<TabKey>("home");
+  const [reviewsOpen, setReviewsOpen] = useState(false);
   const todayWeekday = jsDayToWeekday(new Date().getDay());
 
   const content = (() => {
@@ -88,9 +105,10 @@ export default function LibraryDetail() {
     }
 
     const week = normalizeWeek(lib.hours);
+    const avgLabel = lib.rating_average != null ? lib.rating_average.toFixed(1) : "Yeni";
 
     return (
-      <div className="mx-auto max-w-[900px] space-y-6">
+      <div className="mx-auto max-w-[900px] space-y-5">
         <Seo
           title={lib.name}
           description={
@@ -123,6 +141,16 @@ export default function LibraryDetail() {
                 {lib.open_now ? "Şu an açık" : "Şu an kapalı"}
               </span>
             )}
+            {/* Favori + Paylaş — yalnız sembol (buzlu, kapak üzerinde) */}
+            <div className="absolute right-4 top-4 z-10 flex items-center gap-2">
+              <ShareButton
+                title={lib.name}
+                heading="Kütüphaneyi paylaş"
+                size="md"
+                overlay
+              />
+              <LibraryBookmarkButton libraryId={lib.id} size="md" />
+            </div>
           </div>
           <div className="p-5 sm:p-6">
             {lib.logo_url && (
@@ -132,198 +160,91 @@ export default function LibraryDetail() {
                 className="relative z-10 -mt-16 mb-3 h-20 w-20 rounded-2xl bg-white object-cover shadow-lg ring-4 ring-white dark:bg-slate-800 dark:ring-slate-800"
               />
             )}
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
-                  {lib.name}
-                </h1>
-                {lib.location_text && (
-                  <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                    📍 {lib.location_text}
-                  </p>
-                )}
-              </div>
-              <div className="flex shrink-0 items-center gap-2">
-                <LibraryBookmarkButton libraryId={lib.id} withLabel />
-                <ShareButton
-                  title={lib.name}
-                  heading="Kütüphaneyi paylaş"
-                  withLabel
-                />
-              </div>
-            </div>
-            <div className="mt-2 flex flex-wrap items-center gap-3">
-              <div className="flex items-center gap-1.5">
-                <StarRating value={lib.rating_average} />
-                <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">
-                  {lib.rating_average != null ? lib.rating_average.toFixed(1) : "Yeni"}
-                </span>
-                <span className="text-xs text-slate-400">
-                  ({lib.rating_count} değerlendirme)
-                </span>
-              </div>
-              {lib.capacity != null && (
-                <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
-                  🪑 {lib.capacity} kişilik
-                </span>
-              )}
-            </div>
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
+              {lib.name}
+            </h1>
+            {regionLabel(lib.city, lib.district, lib.location_text) && (
+              <p className="mt-1 flex items-center gap-1 text-sm text-slate-500 dark:text-slate-400">
+                <PinIcon className="h-4 w-4 shrink-0" />
+                {regionLabel(lib.city, lib.district, lib.location_text)}
+              </p>
+            )}
+            {/* Ortalama puan — tıklanınca değerlendirmeler modal'da açılır */}
+            <button
+              type="button"
+              onClick={() => setReviewsOpen(true)}
+              className="group mt-2 inline-flex items-center gap-1.5 rounded-lg py-1 text-left"
+            >
+              <StarRating value={lib.rating_average} />
+              <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                {avgLabel}
+              </span>
+              <span className="text-xs text-slate-400 underline-offset-2 group-hover:text-indigo-600 group-hover:underline dark:group-hover:text-indigo-300">
+                ({lib.rating_count} değerlendirme)
+              </span>
+            </button>
 
+            {/* Biyografi (profil açıklaması — Instagram/X gibi) */}
             {lib.description && (
-              <p className="mt-4 whitespace-pre-line text-sm leading-relaxed text-slate-600 dark:text-slate-300">
+              <p className="mt-3 whitespace-pre-line text-sm leading-relaxed text-slate-600 dark:text-slate-300">
                 {lib.description}
               </p>
             )}
-
-            {/* İletişim */}
-            <div className="mt-4 flex flex-wrap gap-3 text-sm">
-              {lib.phone && (
-                <a href={`tel:${lib.phone}`} className="font-medium text-indigo-600 hover:underline dark:text-indigo-300">
-                  📞 {lib.phone}
-                </a>
-              )}
-              {lib.website && (
-                <a
-                  href={lib.website}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="font-medium text-indigo-600 hover:underline dark:text-indigo-300"
-                >
-                  🌐 Web sitesi
-                </a>
-              )}
-            </div>
-
-            {lib.amenities.length > 0 && (
-              <div className="mt-4 flex flex-wrap gap-2">
-                {lib.amenities.map((a) => (
-                  <span
-                    key={a}
-                    className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600 dark:bg-slate-700 dark:text-slate-300"
-                  >
-                    <span>{amenityIcon(a)}</span>
-                    {amenityLabel(a)}
-                  </span>
-                ))}
-              </div>
-            )}
           </div>
         </div>
 
-        {/* ── Galeri ── */}
-        {lib.images && lib.images.length > 0 && <LibraryGallery images={lib.images} />}
-
-        {/* ── Çalışma saatleri + Harita ── */}
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-          <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700">
-            <h2 className="mb-3 text-base font-bold text-slate-900 dark:text-white">
-              Çalışma Saatleri
-            </h2>
-            <ul className="space-y-1.5">
-              {week.map((h) => {
-                const isToday = h.weekday === todayWeekday;
-                const closed = h.is_closed || h.open_minute == null;
-                return (
-                  <li
-                    key={h.weekday}
-                    className={`flex items-center justify-between rounded-lg px-3 py-1.5 text-sm ${
-                      isToday
-                        ? "bg-indigo-50 font-semibold text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-300"
-                        : "text-slate-600 dark:text-slate-300"
-                    }`}
-                  >
-                    <span>
-                      {WEEKDAY_LABELS[h.weekday]}
-                      {isToday && " (Bugün)"}
-                    </span>
-                    <span className={closed ? "text-rose-500" : ""}>
-                      {formatHoursLine(h)}
-                    </span>
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
-
-          <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700">
-            <div className="mb-3 flex items-center justify-between gap-2">
-              <h2 className="text-base font-bold text-slate-900 dark:text-white">Konum</h2>
-              {directionsUrl(lib) && (
-                <a
-                  href={directionsUrl(lib)!}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex shrink-0 items-center gap-1.5 rounded-xl bg-indigo-600 px-3.5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 active:scale-95"
-                >
-                  🧭 Yol Tarifi Al
-                </a>
-              )}
-            </div>
-            {lib.location_lat != null && lib.location_lng != null ? (
-              <LibrariesMap libraries={[lib]} height="260px" />
-            ) : lib.location_text ? (
-              <p className="text-sm text-slate-500 dark:text-slate-400">
-                📍 {lib.location_text}
-              </p>
-            ) : (
-              <p className="text-sm text-slate-400">Konum bilgisi girilmemiş.</p>
-            )}
-          </div>
+        {/* ── Sekmeler ── */}
+        <div className="flex gap-1 overflow-x-auto rounded-2xl bg-white p-1.5 shadow-sm ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700">
+          {TABS.map((t) => (
+            <button
+              key={t.key}
+              onClick={() => setTab(t.key)}
+              className={`shrink-0 rounded-xl px-4 py-2 text-sm font-semibold transition ${
+                tab === t.key
+                  ? "bg-indigo-600 text-white shadow-sm"
+                  : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700"
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
         </div>
 
-        {/* ── Çalışma alanı rezervasyonu ── */}
-        <StudySpaceSection library={lib} />
-
-        {/* ── Deneme sınavları ── */}
-        <ExamSessionsSection libraryId={lib.id} />
-
-        {/* ── Değerlendirmeler ── */}
-        <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700">
-          <h2 className="mb-4 text-base font-bold text-slate-900 dark:text-white">
-            Değerlendirmeler ({lib.rating_count})
-          </h2>
-
-          {isClient && <ReviewForm libraryId={lib.id} />}
-
-          <div className="mt-4 space-y-4">
-            {reviews && reviews.length > 0 ? (
-              reviews.map((r) => (
-                <div
-                  key={r.id}
-                  className="rounded-xl border border-slate-100 p-4 dark:border-slate-700"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-100 text-sm font-bold text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-300">
-                        {(r.client_name ?? "?").charAt(0).toUpperCase()}
-                      </div>
-                      <div className="flex flex-col">
-                        <span className="text-sm font-semibold text-slate-800 dark:text-slate-200">
-                          {r.client_name ?? "Öğrenci"}
-                        </span>
-                        {r.verified && (
-                          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
-                            ✓ Doğrulanmış ziyaretçi
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    <StarRating value={r.rating} />
-                  </div>
-                  {r.comment_text && (
-                    <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-                      {r.comment_text}
-                    </p>
-                  )}
-                </div>
-              ))
-            ) : (
-              <p className="py-6 text-center text-sm text-slate-400">
-                Henüz değerlendirme yok. İlk değerlendirmeyi sen yap!
-              </p>
-            )}
+        {/* ── Sekme içeriği ── */}
+        {tab === "home" && (
+          <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 py-16 text-center dark:border-slate-700">
+            <div className="text-3xl">🏠</div>
+            <p className="mt-3 text-sm font-medium text-slate-700 dark:text-slate-300">
+              Ana sayfa yakında
+            </p>
+            <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
+              Bu sekmenin içeriği henüz belirlenmedi.
+            </p>
           </div>
-        </div>
+        )}
+
+        {tab === "exams" && (
+          <div className="space-y-5">
+            <StudySpaceSection library={lib} />
+            <ExamSessionsSection libraryId={lib.id} />
+          </div>
+        )}
+
+        {tab === "about" && (
+          <AboutTab lib={lib} week={week} todayWeekday={todayWeekday} />
+        )}
+
+        {tab === "announcements" && <AnnouncementsTab />}
+
+        {/* ── Değerlendirme modal'ı (ortalama puana tıklanınca) ── */}
+        {reviewsOpen && (
+          <ReviewsModal
+            lib={lib}
+            reviews={reviews}
+            isClient={isClient}
+            onClose={() => setReviewsOpen(false)}
+          />
+        )}
       </div>
     );
   })();
@@ -492,6 +413,254 @@ function ReviewForm({ libraryId }: { libraryId: number }) {
       >
         {create.isPending ? "Gönderiliyor…" : "Değerlendir"}
       </button>
+    </div>
+  );
+}
+
+/* ── "Hakkında" sekmesi: kapasite · saatler · olanaklar · iletişim · harita ── */
+
+function AboutTab({
+  lib,
+  week,
+  todayWeekday,
+}: {
+  lib: LibraryDetailOut;
+  week: ReturnType<typeof normalizeWeek>;
+  todayWeekday: number;
+}) {
+  return (
+    <div className="space-y-5">
+      {/* Galeri */}
+      {lib.images && lib.images.length > 0 && <LibraryGallery images={lib.images} />}
+
+      {/* Hızlı bilgiler */}
+      <div className="flex flex-wrap gap-3">
+        {lib.capacity != null && (
+          <span className="inline-flex items-center gap-1.5 rounded-xl bg-white px-3.5 py-2 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:ring-slate-700">
+            🪑 {lib.capacity} kişilik
+          </span>
+        )}
+        {lib.open_now != null && (
+          <span
+            className={`inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-sm font-semibold shadow-sm ${
+              lib.open_now
+                ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300"
+                : "bg-rose-50 text-rose-600 dark:bg-rose-500/15 dark:text-rose-300"
+            }`}
+          >
+            {lib.open_now ? "● Şu an açık" : "● Şu an kapalı"}
+          </span>
+        )}
+      </div>
+
+      {/* Olanaklar */}
+      {lib.amenities.length > 0 && (
+        <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700">
+          <h2 className="mb-3 text-base font-bold text-slate-900 dark:text-white">
+            Olanaklar
+          </h2>
+          <div className="flex flex-wrap gap-2">
+            {lib.amenities.map((a) => (
+              <span
+                key={a}
+                className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600 dark:bg-slate-700 dark:text-slate-300"
+              >
+                <span>{amenityIcon(a)}</span>
+                {amenityLabel(a)}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* İletişim */}
+      {(lib.phone || lib.website) && (
+        <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700">
+          <h2 className="mb-3 text-base font-bold text-slate-900 dark:text-white">
+            İletişim
+          </h2>
+          <div className="flex flex-wrap gap-3 text-sm">
+            {lib.phone && (
+              <a href={`tel:${lib.phone}`} className="font-medium text-indigo-600 hover:underline dark:text-indigo-300">
+                📞 {lib.phone}
+              </a>
+            )}
+            {lib.website && (
+              <a
+                href={lib.website}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-medium text-indigo-600 hover:underline dark:text-indigo-300"
+              >
+                🌐 Web sitesi
+              </a>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Saatler + Harita */}
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+        <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700">
+          <h2 className="mb-3 text-base font-bold text-slate-900 dark:text-white">
+            Çalışma Saatleri
+          </h2>
+          <ul className="space-y-1.5">
+            {week.map((h) => {
+              const isToday = h.weekday === todayWeekday;
+              const closed = h.is_closed || h.open_minute == null;
+              return (
+                <li
+                  key={h.weekday}
+                  className={`flex items-center justify-between rounded-lg px-3 py-1.5 text-sm ${
+                    isToday
+                      ? "bg-indigo-50 font-semibold text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-300"
+                      : "text-slate-600 dark:text-slate-300"
+                  }`}
+                >
+                  <span>
+                    {WEEKDAY_LABELS[h.weekday]}
+                    {isToday && " (Bugün)"}
+                  </span>
+                  <span className={closed ? "text-rose-500" : ""}>
+                    {formatHoursLine(h)}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+
+        <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700">
+          <div className="mb-3 flex items-center justify-between gap-2">
+            <h2 className="text-base font-bold text-slate-900 dark:text-white">Konum</h2>
+            {directionsUrl(lib) && (
+              <a
+                href={directionsUrl(lib)!}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex shrink-0 items-center gap-1.5 rounded-xl bg-indigo-600 px-3.5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 active:scale-95"
+              >
+                🧭 Yol Tarifi Al
+              </a>
+            )}
+          </div>
+          {/* Adres (tam) */}
+          {lib.location_text ? (
+            <p className="mb-3 flex items-start gap-1.5 text-sm text-slate-600 dark:text-slate-300">
+              <PinIcon className="mt-0.5 h-4 w-4 shrink-0" />
+              <span>{lib.location_text}</span>
+            </p>
+          ) : null}
+          {lib.location_lat != null && lib.location_lng != null ? (
+            <LibrariesMap libraries={[lib]} height="260px" />
+          ) : !lib.location_text ? (
+            <p className="text-sm text-slate-400">Konum bilgisi girilmemiş.</p>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── "Duyurular" sekmesi (şimdilik boş durum) ── */
+
+function AnnouncementsTab() {
+  return (
+    <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 py-16 text-center dark:border-slate-700">
+      <div className="text-3xl">📣</div>
+      <p className="mt-3 text-sm font-medium text-slate-700 dark:text-slate-300">
+        Henüz duyuru yok
+      </p>
+      <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
+        Kütüphane yeni etkinlik, kampanya veya değişiklikleri burada paylaşacak.
+      </p>
+    </div>
+  );
+}
+
+/* ── Değerlendirmeler modal'ı (ortalama puana tıklanınca) ── */
+
+function ReviewsModal({
+  lib,
+  reviews,
+  isClient,
+  onClose,
+}: {
+  lib: LibraryDetailOut;
+  reviews: LibraryReviewOut[] | undefined;
+  isClient: boolean;
+  onClose: () => void;
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        className="relative flex max-h-[88vh] w-full max-w-lg flex-col overflow-hidden rounded-3xl bg-white shadow-2xl dark:bg-slate-800"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4 dark:border-slate-700">
+          <div className="flex items-center gap-2">
+            <StarRating value={lib.rating_average} />
+            <span className="text-base font-bold text-slate-900 dark:text-white">
+              {lib.rating_average != null ? lib.rating_average.toFixed(1) : "Yeni"}
+            </span>
+            <span className="text-sm text-slate-400">
+              · {lib.rating_count} değerlendirme
+            </span>
+          </div>
+          <button
+            onClick={onClose}
+            className="rounded-full p-2 text-slate-400 transition hover:bg-slate-100 dark:hover:bg-slate-700"
+            aria-label="Kapat"
+          >
+            ✕
+          </button>
+        </div>
+
+        <div className="flex-1 space-y-4 overflow-y-auto p-5">
+          {isClient && <ReviewForm libraryId={lib.id} />}
+
+          {reviews && reviews.length > 0 ? (
+            reviews.map((r) => (
+              <div
+                key={r.id}
+                className="rounded-xl border border-slate-100 p-4 dark:border-slate-700"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-100 text-sm font-bold text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-300">
+                      {(r.client_name ?? "?").charAt(0).toUpperCase()}
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+                        {r.client_name ?? "Öğrenci"}
+                      </span>
+                      {r.verified && (
+                        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
+                          ✓ Doğrulanmış ziyaretçi
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <StarRating value={r.rating} />
+                </div>
+                {r.comment_text && (
+                  <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
+                    {r.comment_text}
+                  </p>
+                )}
+              </div>
+            ))
+          ) : (
+            <p className="py-6 text-center text-sm text-slate-400">
+              Henüz değerlendirme yok. {isClient ? "İlk değerlendirmeyi sen yap!" : ""}
+            </p>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
