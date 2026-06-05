@@ -28,6 +28,22 @@
   border: 0;
 }
 
+/* Harita yan paneli (Google Maps tarzı) soldan kayarak girer.
+   Not: projede tailwindcss-animate yok, bu yüzden gerçek keyframe tanımlıyoruz. */
+@keyframes panel-slide-in-left {
+  from {
+    transform: translateX(-100%);
+    opacity: 0.4;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+.animate-panel-left {
+  animation: panel-slide-in-left 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
 @keyframes toast-in {
   from {
     opacity: 0;

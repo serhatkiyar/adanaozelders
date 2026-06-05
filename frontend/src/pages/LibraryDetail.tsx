@@ -553,7 +553,7 @@ function AboutTab({
             </p>
           ) : null}
           {lib.location_lat != null && lib.location_lng != null ? (
-            <LibrariesMap libraries={[lib]} height="260px" />
+            <LibrariesMap libraries={[lib]} height="260px" enablePanel={false} />
           ) : !lib.location_text ? (
             <p className="text-sm text-slate-400">Konum bilgisi girilmemiş.</p>
           ) : null}

@@ -57,7 +57,7 @@ export function LibraryCard({ library }: { library: LibrarySearchOut }) {
           <img
             src={library.logo_url}
             alt=""
-            className="absolute bottom-2 left-3 h-11 w-11 rounded-xl bg-white object-cover shadow-md ring-2 ring-white dark:ring-slate-800"
+            className="absolute bottom-2 left-3 h-11 w-11 rounded-full bg-white object-cover shadow-md ring-2 ring-white dark:ring-slate-800"
             loading="lazy"
           />
         )}

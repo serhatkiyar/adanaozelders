@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { MapContainer, Marker, Popup, TileLayer, useMap } from "react-leaflet";
 import L from "leaflet";
 import { Link } from "react-router-dom";
@@ -7,6 +7,7 @@ import markerIcon2x from "leaflet/dist/images/marker-icon-2x.png";
 import markerIcon from "leaflet/dist/images/marker-icon.png";
 import markerShadow from "leaflet/dist/images/marker-shadow.png";
 import { ROUTES } from "@/lib/routes";
+import { LibraryMapPanel } from "@/components/LibraryMapPanel";
 import type { LibrarySearchOut } from "@/types";
 
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -26,15 +27,20 @@ function esc(s: string): string {
 }
 
 // Yuvarlak "logo-pin": logo varsa görsel, yoksa (veya 404'te) baş harf;
-// beyaz çerçeve + gölge + alt işaretçi ile harita pini gibi durur.
-function libraryIcon(lib: LibrarySearchOut): L.DivIcon {
+// beyaz çerçeve + gölge + alt işaretçi ile harita pini gibi durur. Seçiliyken
+// indigo halka + büyür (öne çıkar).
+function libraryIcon(lib: LibrarySearchOut, selected = false): L.DivIcon {
   const initial = esc((lib.name?.trim()?.[0] ?? "?").toUpperCase());
   const img = lib.logo_url
     ? `<img src="${esc(lib.logo_url)}" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover" onerror="this.remove()"/>`
     : "";
+  const ring = selected
+    ? "0 0 0 3px #6366f1, 0 4px 10px rgba(15,23,42,.4)"
+    : "0 2px 6px rgba(15,23,42,.35)";
+  const scale = selected ? "transform:scale(1.12);transform-origin:bottom center;" : "";
   const html = `
-    <div style="position:relative;width:44px;height:52px">
-      <div style="position:relative;width:44px;height:44px;border-radius:9999px;overflow:hidden;background:#4f46e5;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px;border:2px solid #fff;box-shadow:0 2px 6px rgba(15,23,42,.35)">
+    <div style="position:relative;width:44px;height:52px;${scale}">
+      <div style="position:relative;width:44px;height:44px;border-radius:9999px;overflow:hidden;background:#4f46e5;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px;border:2px solid #fff;box-shadow:${ring}">
         <span>${initial}</span>${img}
       </div>
       <div style="position:absolute;left:50%;top:41px;transform:translateX(-50%);width:0;height:0;border-left:6px solid transparent;border-right:6px solid transparent;border-top:8px solid #fff;filter:drop-shadow(0 2px 1px rgba(15,23,42,.25))"></div>
@@ -46,6 +52,19 @@ function libraryIcon(lib: LibrarySearchOut): L.DivIcon {
     iconAnchor: [22, 52], // alt işaretçi ucu = koordinat
     popupAnchor: [0, -46],
   });
+}
+
+// Seçilen kütüphaneye yumuşak uçuş; panel solu kapattığından merkezi sağa kaydır.
+function FlyToSelected({ lib }: { lib: LibrarySearchOut | null }) {
+  const map = useMap();
+  useEffect(() => {
+    if (lib?.location_lat == null || lib.location_lng == null) return;
+    const zoom = Math.max(map.getZoom(), 15);
+    const offX = window.innerWidth >= 640 ? 190 : 0; // panel genişliğinin ~yarısı
+    const pt = map.project([lib.location_lat, lib.location_lng], zoom).subtract([offX, 0]);
+    map.flyTo(map.unproject(pt, zoom), zoom, { duration: 0.6 });
+  }, [lib, map]);
+  return null;
 }
 
 function FitBounds({ points }: { points: [number, number][] }) {
@@ -64,9 +83,18 @@ function FitBounds({ points }: { points: [number, number][] }) {
 interface LibrariesMapProps {
   libraries: LibrarySearchOut[];
   height?: string;
+  /** Marker'a tıklayınca Google Maps tarzı yan panel aç (varsayılan). Tek
+   *  kütüphane gösteren detay sayfasında `false` → eski sade popup. */
+  enablePanel?: boolean;
 }
 
-export function LibrariesMap({ libraries, height = "70vh" }: LibrariesMapProps) {
+export function LibrariesMap({
+  libraries,
+  height = "70vh",
+  enablePanel = true,
+}: LibrariesMapProps) {
+  const [selected, setSelected] = useState<LibrarySearchOut | null>(null);
+
   const located = useMemo(
     () =>
       libraries.filter(
@@ -79,11 +107,19 @@ export function LibrariesMap({ libraries, height = "70vh" }: LibrariesMapProps) 
     [located]
   );
 
+  // Filtre/arama sonuçları değişince, seçili artık listede yoksa paneli kapat.
+  // (Referansı değiştirmeyiz → arka plan refetch'inde harita gereksiz uçmaz;
+  //  panel zaten useLibraryDetail ile güncel veriyi çeker.)
+  useEffect(() => {
+    if (selected && !located.some((l) => l.id === selected.id)) setSelected(null);
+  }, [located, selected]);
+
   return (
     <div
       // isolate: Leaflet'in iç panel/kontrolleri (z-index 400–1000) kendi stacking
       // context'inde kalsın; aksi halde sayfa header'ı/menülerin üstüne taşar.
-      className="isolate overflow-hidden rounded-2xl ring-1 ring-slate-200 dark:ring-slate-700"
+      // relative: yan panel haritanın üzerine konumlansın.
+      className="relative isolate overflow-hidden rounded-2xl ring-1 ring-slate-200 dark:ring-slate-700"
       style={{ height }}
     >
       <MapContainer
@@ -97,49 +133,61 @@ export function LibrariesMap({ libraries, height = "70vh" }: LibrariesMapProps) 
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         />
         <FitBounds points={points} />
+        {enablePanel && <FlyToSelected lib={selected} />}
         {located.map((lib) => (
           <Marker
             key={lib.id}
             position={[lib.location_lat as number, lib.location_lng as number]}
-            icon={libraryIcon(lib)}
+            icon={libraryIcon(lib, enablePanel && selected?.id === lib.id)}
+            eventHandlers={enablePanel ? { click: () => setSelected(lib) } : undefined}
           >
-            <Popup>
-              <div className="min-w-[180px]">
-                <p className="text-sm font-bold text-slate-900">{lib.name}</p>
-                {lib.location_text && (
-                  <p className="mt-0.5 text-xs text-slate-500">{lib.location_text}</p>
-                )}
-                <div className="mt-1 flex items-center gap-2 text-xs text-slate-600">
-                  <span className="text-amber-500">★</span>
-                  <span>
-                    {lib.rating_average != null
-                      ? lib.rating_average.toFixed(1)
-                      : "Yeni"}
-                  </span>
-                  {lib.rating_count > 0 && (
-                    <span className="text-slate-400">({lib.rating_count})</span>
+            {!enablePanel && (
+              <Popup>
+                <div className="min-w-[180px]">
+                  <p className="text-sm font-bold text-slate-900">{lib.name}</p>
+                  {lib.location_text && (
+                    <p className="mt-0.5 text-xs text-slate-500">{lib.location_text}</p>
                   )}
-                  {lib.open_now != null && (
-                    <span
-                      className={
-                        lib.open_now ? "text-emerald-600" : "text-rose-500"
-                      }
-                    >
-                      • {lib.open_now ? "Açık" : "Kapalı"}
+                  <div className="mt-1 flex items-center gap-2 text-xs text-slate-600">
+                    <span className="text-amber-500">★</span>
+                    <span>
+                      {lib.rating_average != null ? lib.rating_average.toFixed(1) : "Yeni"}
                     </span>
-                  )}
+                    {lib.rating_count > 0 && (
+                      <span className="text-slate-400">({lib.rating_count})</span>
+                    )}
+                    {lib.open_now != null && (
+                      <span className={lib.open_now ? "text-emerald-600" : "text-rose-500"}>
+                        • {lib.open_now ? "Açık" : "Kapalı"}
+                      </span>
+                    )}
+                  </div>
+                  <div className="mt-2 flex items-center gap-1.5">
+                    <Link
+                      to={ROUTES.library(lib.slug)}
+                      className="inline-block rounded-lg bg-indigo-600 px-3 py-1 text-xs font-semibold !text-white hover:bg-indigo-700 hover:!text-white"
+                    >
+                      Profili gör →
+                    </Link>
+                    <a
+                      href={`https://www.google.com/maps/dir/?api=1&destination=${lib.location_lat},${lib.location_lng}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 rounded-lg bg-slate-100 px-3 py-1 text-xs font-semibold !text-slate-700 hover:bg-slate-200 hover:!text-slate-900"
+                    >
+                      🧭 Yol tarifi
+                    </a>
+                  </div>
                 </div>
-                <Link
-                  to={ROUTES.library(lib.slug)}
-                  className="mt-2 inline-block rounded-lg bg-indigo-600 px-3 py-1 text-xs font-semibold !text-white hover:bg-indigo-700 hover:!text-white"
-                >
-                  Profili gör →
-                </Link>
-              </div>
-            </Popup>
+              </Popup>
+            )}
           </Marker>
         ))}
       </MapContainer>
+
+      {enablePanel && selected && (
+        <LibraryMapPanel library={selected} onClose={() => setSelected(null)} />
+      )}
     </div>
   );
 }
