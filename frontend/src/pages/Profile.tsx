@@ -5,6 +5,8 @@ import { EducationSection } from "@/components/EducationSection";
 import { STUDENT_NAV, TUTOR_NAV } from "@/lib/nav";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useMyStats, useUpdateProfile } from "@/hooks/useProfile";
+import { useAvatarUpload } from "@/hooks/useAvatarUpload";
+import { ImageCropModal } from "@/components/ImageCropModal";
 import { ageFromBirthDate, GENDER_LABEL } from "@/lib/demographics";
 import { getErrorMessage } from "@/lib/errors";
 import { toast } from "@/store/toastStore";
@@ -61,6 +63,7 @@ export default function Profile() {
   const { data: user, isLoading } = useCurrentUser();
   const { data: stats } = useMyStats();
   const updateProfile = useUpdateProfile();
+  const avatar = useAvatarUpload();
 
   const [isEditing, setIsEditing] = useState(false);
   const [firstName, setFirstName] = useState("");
@@ -128,6 +131,7 @@ export default function Profile() {
       : null;
 
   return (
+    <>
     <DashboardShell title="Profil" navItems={roleNav}>
       <div className="mx-auto max-w-xl space-y-4 pb-12">
         {isLoading || !user ? (
@@ -142,16 +146,48 @@ export default function Profile() {
               <div className="pointer-events-none absolute -right-10 -top-10 h-48 w-48 rounded-full bg-white/[0.06]" />
               <div className="pointer-events-none absolute -bottom-6 right-10 h-28 w-28 rounded-full bg-white/[0.04]" />
               <div className="relative flex items-center gap-5">
-                {user.avatar_url ? (
-                  <img
-                    src={user.avatar_url}
-                    alt={user.full_name}
-                    className="h-16 w-16 shrink-0 rounded-2xl object-cover shadow-inner ring-1 ring-white/30"
+                {/* Avatara tıkla → kırp & yükle (hover'da kamera rozeti). */}
+                <label
+                  className="group relative h-16 w-16 shrink-0 cursor-pointer"
+                  title="Profil fotoğrafını değiştir"
+                >
+                  {user.avatar_url ? (
+                    <img
+                      src={user.avatar_url}
+                      alt={user.full_name}
+                      className="h-16 w-16 rounded-2xl object-cover shadow-inner ring-1 ring-white/30"
+                    />
+                  ) : (
+                    <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white/20 text-2xl font-bold shadow-inner backdrop-blur-sm ring-1 ring-white/30">
+                      {user.first_name.charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                  <span className="absolute inset-0 flex flex-col items-center justify-center gap-0.5 rounded-2xl bg-black/45 text-white opacity-0 backdrop-blur-[1px] transition group-hover:opacity-100">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="h-5 w-5">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 0 1 5.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 0 0-1.134-.175 2.31 2.31 0 0 1-1.64-1.055l-.822-1.316a2.192 2.192 0 0 0-1.736-1.039 48.774 48.774 0 0 0-5.232 0 2.192 2.192 0 0 0-1.736 1.039l-.821 1.316Z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0Z" />
+                    </svg>
+                    <span className="text-[9px] font-bold uppercase tracking-wide">Değiştir</span>
+                  </span>
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    className="hidden"
+                    onChange={avatar.onFileSelect}
                   />
-                ) : (
-                  <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-white/20 text-2xl font-bold shadow-inner backdrop-blur-sm ring-1 ring-white/30">
-                    {user.first_name.charAt(0).toUpperCase()}
-                  </div>
+                </label>
+                {user.avatar_url && (
+                  <button
+                    type="button"
+                    onClick={() => avatar.deleteAvatar.mutate()}
+                    disabled={avatar.deleteAvatar.isPending}
+                    title="Profil fotoğrafını kaldır"
+                    className="absolute left-[3.25rem] top-0 flex h-6 w-6 items-center justify-center rounded-full bg-white text-slate-500 shadow ring-1 ring-slate-200 transition hover:text-red-600 disabled:opacity-50 dark:bg-slate-800 dark:text-slate-400 dark:ring-slate-700"
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-3.5 w-3.5">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+                    </svg>
+                  </button>
                 )}
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2.5">
@@ -394,5 +430,15 @@ export default function Profile() {
         )}
       </div>
     </DashboardShell>
+
+    {avatar.cropImageSrc && (
+      <ImageCropModal
+        imageSrc={avatar.cropImageSrc}
+        onCropComplete={avatar.onCropComplete}
+        onClose={avatar.onCropClose}
+        isUploading={avatar.isUploading}
+      />
+    )}
+    </>
   );
 }
