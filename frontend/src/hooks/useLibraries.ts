@@ -18,6 +18,7 @@ import {
   listLibrariesAdmin,
   rejectLibrary,
   reorderLibraryImages,
+  resubmitLibrary,
   searchLibraries,
   updateLibrary,
   uploadLibraryCover,
@@ -148,6 +149,15 @@ export function useRejectLibrary() {
   return useMutation({
     mutationFn: ({ id, reason }: { id: number; reason?: string | null }) =>
       rejectLibrary(id, reason),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["libraries"] }),
+  });
+}
+
+/** Operatör: reddedilen başvuruyu düzeltip tekrar gönder (→ PENDING). */
+export function useResubmitLibrary() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => resubmitLibrary(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["libraries"] }),
   });
 }

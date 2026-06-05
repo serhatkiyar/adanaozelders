@@ -140,3 +140,19 @@ async def reject(
     await _notify_operators(db, library_id, msg)
     await db.commit()
     return await get_library_admin(db, lib.id)
+
+
+async def resubmit(db: AsyncSession, library_id: int) -> LibraryDetailOut:
+    """Operatör reddedilen başvurusunu düzeltip tekrar gönderir → PENDING (kuyruğa döner).
+    Yalnız REJECTED durumundan; gerekçe temizlenir."""
+    lib = await db.get(Library, library_id)
+    if lib is None or lib.deleted_at is not None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Kütüphane bulunamadı")
+    if lib.status != LibraryStatus.REJECTED.value:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT, "Yalnız reddedilmiş başvuru tekrar gönderilebilir"
+        )
+    lib.status = LibraryStatus.PENDING.value
+    lib.rejection_reason = None
+    await db.commit()
+    return await get_library_admin(db, lib.id)

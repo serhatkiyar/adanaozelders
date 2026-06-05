@@ -163,6 +163,17 @@ async def reject_library(
     return await library_onboarding_service.reject(db, admin, library_id, payload.reason)
 
 
+@router.post("/{library_id}/resubmit", response_model=LibraryDetailOut)
+async def resubmit_library(
+    library_id: int,
+    user: CurrentUser = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Operatör reddedilen başvurusunu düzeltip tekrar gönderir → PENDING (kuyruğa döner)."""
+    _assert_can_manage_library(user, library_id)
+    return await library_onboarding_service.resubmit(db, library_id)
+
+
 # ── Admin küratör listesi (gizliler dahil) — /{id_or_slug}'tan ÖNCE tanımlanmalı ──
 
 

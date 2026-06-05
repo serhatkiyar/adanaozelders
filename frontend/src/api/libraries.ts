@@ -33,6 +33,12 @@ export async function rejectLibrary(
   return data;
 }
 
+/** Operatör: reddedilen başvuruyu düzeltip tekrar gönder (→ PENDING). */
+export async function resubmitLibrary(id: number): Promise<LibraryDetailOut> {
+  const { data } = await apiClient.post<LibraryDetailOut>(`/libraries/${id}/resubmit`);
+  return data;
+}
+
 export interface LibrarySearchParams {
   q?: string;
   amenities?: string[];

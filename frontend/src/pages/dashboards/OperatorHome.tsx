@@ -8,7 +8,11 @@ import {
   type EditorState,
 } from "@/components/LibraryEditorModal";
 import { useOperatorMe, useVerifyAttendance } from "@/hooks/useLibraryExams";
-import { useLibraryAdminDetail, useLibraryEarnings } from "@/hooks/useLibraries";
+import {
+  useLibraryAdminDetail,
+  useLibraryEarnings,
+  useResubmitLibrary,
+} from "@/hooks/useLibraries";
 import { useChangePassword } from "@/hooks/useProfile";
 import {
   useAttendStudyReservation,
@@ -155,7 +159,15 @@ export default function OperatorHome() {
 /* Self-servis başvuru onay durumu: PENDING (inceleniyor) / REJECTED (gerekçe) / ACTIVE (yayında). */
 function LibraryStatusBanner({ libraryId }: { libraryId: number }) {
   const { data: lib } = useLibraryAdminDetail(libraryId);
+  const resubmit = useResubmitLibrary();
   if (!lib) return null;
+
+  const doResubmit = () => {
+    resubmit.mutate(libraryId, {
+      onSuccess: () => toast.success("Başvurun tekrar gönderildi; inceleniyor."),
+      onError: (e) => toast.error(getErrorMessage(e, "Gönderilemedi.")),
+    });
+  };
 
   if (lib.status === "PENDING") {
     return (
@@ -184,8 +196,15 @@ function LibraryStatusBanner({ libraryId }: { libraryId: number }) {
           </p>
         )}
         <p className="mt-1 text-sm text-rose-700/90 dark:text-rose-200/80">
-          Profilini güncelleyip yöneticiyle iletişime geçebilirsin.
+          Aşağıdan profilini düzeltip başvurunu tekrar gönderebilirsin.
         </p>
+        <button
+          onClick={doResubmit}
+          disabled={resubmit.isPending}
+          className="mt-3 rounded-xl bg-rose-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-rose-700 disabled:opacity-60 active:scale-95"
+        >
+          {resubmit.isPending ? "Gönderiliyor…" : "Tekrar başvur"}
+        </button>
       </div>
     );
   }
