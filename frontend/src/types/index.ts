@@ -894,6 +894,7 @@ export interface LibrarySearchOut {
   rating_average?: number | null;
   bayesian_score?: number | null;
   distance_km?: number | null;
+  status?: string; // ACTIVE | HIDDEN | PENDING | REJECTED (admin listesinde anlamlı)
   open_now?: boolean | null;
 }
 

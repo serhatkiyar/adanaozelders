@@ -1,5 +1,5 @@
-"""LibraryDetailOut, LibrarySearchOut'tan türetilirken çift 'open_now' argümanı
-oluşmamalı (servis katmanı base.model_dump(exclude={'open_now'}) kullanır)."""
+"""LibraryDetailOut, LibrarySearchOut'tan türetilirken detayda açıkça verilen alanlar
+(open_now, status) çift argüman oluşturmamalı (servis base.model_dump(exclude=...) kullanır)."""
 
 from schemas.library import LibraryDetailOut, LibraryImageOut, LibrarySearchOut
 
@@ -13,7 +13,7 @@ def _base() -> LibrarySearchOut:
 def test_detail_from_search_no_duplicate_open_now():
     base = _base()
     detail = LibraryDetailOut(
-        **base.model_dump(exclude={"open_now"}),
+        **base.model_dump(exclude={"open_now", "status"}),
         phone=None,
         email=None,
         website=None,
@@ -33,7 +33,7 @@ def test_detail_carries_logo_and_gallery():
     base = _base()
     base.logo_url = "http://x/logo.webp"
     detail = LibraryDetailOut(
-        **base.model_dump(exclude={"open_now"}),
+        **base.model_dump(exclude={"open_now", "status"}),
         status="ACTIVE",
         images=[
             LibraryImageOut(id=2, url="http://x/b.webp", sort_order=1),

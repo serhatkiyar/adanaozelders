@@ -201,6 +201,8 @@ class LibrarySearchOut(BaseModel):
     rating_average: float | None = None
     bayesian_score: float | None = None
     distance_km: float | None = None
+    # Katalog durumu (admin listesi PENDING/REJECTED ayırt etsin; public hep ACTIVE).
+    status: str = "ACTIVE"
     # Şu anda açık mı (sunucuda, kütüphane yerel saatine göre hesaplanır).
     open_now: bool | None = None
 

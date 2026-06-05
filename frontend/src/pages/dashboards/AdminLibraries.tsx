@@ -6,7 +6,12 @@ import {
   toEditorState,
   type EditorState,
 } from "@/components/LibraryEditorModal";
-import { useAdminLibraries, useDeleteLibrary } from "@/hooks/useLibraries";
+import {
+  useAdminLibraries,
+  useApproveLibrary,
+  useDeleteLibrary,
+  useRejectLibrary,
+} from "@/hooks/useLibraries";
 import {
   useCreateOperator,
   useDeleteOperator,
@@ -17,11 +22,46 @@ import { getErrorMessage } from "@/lib/errors";
 import { toast } from "@/store/toastStore";
 import type { LibrarySearchOut } from "@/types";
 
+const STATUS_LABEL: Record<string, string> = {
+  PENDING: "Onay bekliyor",
+  REJECTED: "Reddedildi",
+  HIDDEN: "Gizli",
+};
+const STATUS_BADGE: Record<string, string> = {
+  PENDING: "bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300",
+  REJECTED: "bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-300",
+  HIDDEN: "bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-300",
+};
+
 export default function AdminLibraries() {
   const { data, isLoading, isError, error } = useAdminLibraries();
   const [editor, setEditor] = useState<EditorState | null>(null);
   const [managing, setManaging] = useState<LibrarySearchOut | null>(null);
   const del = useDeleteLibrary();
+  const approve = useApproveLibrary();
+  const reject = useRejectLibrary();
+
+  const pending = data?.filter((l) => l.status === "PENDING") ?? [];
+
+  const onApprove = (lib: LibrarySearchOut) => {
+    if (!window.confirm(`"${lib.name}" başvurusunu onayla? Kütüphane yayına girer.`)) return;
+    approve.mutate(lib.id, {
+      onSuccess: () => toast.success("Başvuru onaylandı, kütüphane yayında."),
+      onError: (e) => toast.error(getErrorMessage(e, "Onay başarısız.")),
+    });
+  };
+
+  const onReject = (lib: LibrarySearchOut) => {
+    const reason = window.prompt(`"${lib.name}" başvurusunu reddet. Gerekçe (operatöre iletilir):`, "");
+    if (reason === null) return; // iptal
+    reject.mutate(
+      { id: lib.id, reason: reason.trim() || null },
+      {
+        onSuccess: () => toast.success("Başvuru reddedildi."),
+        onError: (e) => toast.error(getErrorMessage(e, "Reddetme başarısız.")),
+      }
+    );
+  };
 
   const openCreate = () => setEditor(emptyEditor());
 
@@ -57,6 +97,53 @@ export default function AdminLibraries() {
         </button>
       </div>
 
+      {/* ── Onay bekleyen self-servis başvurular ── */}
+      {pending.length > 0 && (
+        <div className="space-y-3 rounded-2xl border border-amber-200 bg-amber-50/60 p-4 dark:border-amber-500/30 dark:bg-amber-500/5">
+          <p className="flex items-center gap-2 text-sm font-bold text-amber-800 dark:text-amber-200">
+            🔍 Onay bekleyen başvurular
+            <span className="rounded-full bg-amber-200 px-2 text-xs font-bold text-amber-900 dark:bg-amber-500/30 dark:text-amber-100">
+              {pending.length}
+            </span>
+          </p>
+          {pending.map((lib) => (
+            <div
+              key={lib.id}
+              className="flex flex-col gap-3 rounded-xl bg-white p-4 shadow-sm ring-1 ring-amber-100 dark:bg-slate-800 dark:ring-amber-500/20 sm:flex-row sm:items-center sm:justify-between"
+            >
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold text-slate-900 dark:text-white">{lib.name}</p>
+                <p className="truncate text-xs text-slate-500 dark:text-slate-400">
+                  {[lib.city, lib.district].filter(Boolean).join(" · ") || lib.location_text || "Konum belirtilmemiş"}
+                </p>
+              </div>
+              <div className="flex shrink-0 flex-wrap gap-2">
+                <button
+                  onClick={() => openEdit(lib)}
+                  className="rounded-xl border border-slate-200 bg-white px-3.5 py-1.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100"
+                >
+                  İncele
+                </button>
+                <button
+                  onClick={() => onReject(lib)}
+                  disabled={reject.isPending}
+                  className="rounded-xl border border-rose-200 bg-white px-3.5 py-1.5 text-sm font-semibold text-rose-600 shadow-sm transition hover:bg-rose-50 disabled:opacity-60 dark:border-rose-500/30 dark:bg-slate-700"
+                >
+                  Reddet
+                </button>
+                <button
+                  onClick={() => onApprove(lib)}
+                  disabled={approve.isPending}
+                  className="rounded-xl bg-emerald-600 px-3.5 py-1.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:opacity-60 active:scale-95"
+                >
+                  Onayla
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
       {isLoading ? (
         <div className="space-y-3">
           {Array.from({ length: 3 }).map((_, i) => (
@@ -87,8 +174,13 @@ export default function AdminLibraries() {
                   )}
                 </div>
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold text-slate-900 dark:text-white">
-                    {lib.name}
+                  <p className="flex items-center gap-2 truncate text-sm font-semibold text-slate-900 dark:text-white">
+                    <span className="truncate">{lib.name}</span>
+                    {lib.status && lib.status !== "ACTIVE" && (
+                      <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold ${STATUS_BADGE[lib.status] ?? "bg-slate-100 text-slate-500"}`}>
+                        {STATUS_LABEL[lib.status] ?? lib.status}
+                      </span>
+                    )}
                   </p>
                   <p className="truncate text-xs text-slate-500 dark:text-slate-400">
                     {lib.location_text || "Konum yok"} · ★{" "}

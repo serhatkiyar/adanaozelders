@@ -5,6 +5,7 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import {
+  approveLibrary,
   createLibrary,
   createLibraryReview,
   deleteLibrary,
@@ -15,6 +16,7 @@ import {
   fetchLibraryEarnings,
   fetchLibraryReviews,
   listLibrariesAdmin,
+  rejectLibrary,
   reorderLibraryImages,
   searchLibraries,
   updateLibrary,
@@ -128,6 +130,25 @@ export function useDeleteLibrary() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["libraries"] });
     },
+  });
+}
+
+/** Admin: self-servis başvuruyu onayla (→ ACTIVE). */
+export function useApproveLibrary() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => approveLibrary(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["libraries"] }),
+  });
+}
+
+/** Admin: self-servis başvuruyu reddet (→ REJECTED + gerekçe). */
+export function useRejectLibrary() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, reason }: { id: number; reason?: string | null }) =>
+      rejectLibrary(id, reason),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["libraries"] }),
   });
 }
 
