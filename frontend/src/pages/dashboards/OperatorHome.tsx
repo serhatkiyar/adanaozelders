@@ -22,6 +22,10 @@ import type { AttendanceResult } from "@/types";
 
 export default function OperatorHome() {
   const { data: op, isLoading } = useOperatorMe();
+  const { data: lib } = useLibraryAdminDetail(op?.library_id);
+  // Ücretli yönetim (oturum/QR/kazanç) yalnız ONAYLI (ACTIVE) kütüphanede; PENDING/
+  // REJECTED'da operatör sadece profilini tamamlar (backend de bu akışları gate'ler).
+  const isActive = lib?.status === "ACTIVE";
   const verify = useVerifyAttendance();
   const [scanning, setScanning] = useState(false);
   const [code, setCode] = useState("");
@@ -62,10 +66,11 @@ export default function OperatorHome() {
         {/* ── Kütüphane profili (bio/telefon/logo/banner/galeri…) ── */}
         {op && <LibraryProfilePanel libraryId={op.library_id} />}
 
-        {/* ── Kazanç özeti ── */}
-        {op && <EarningsCard libraryId={op.library_id} />}
+        {/* ── Kazanç özeti (yalnız onaylı) ── */}
+        {op && isActive && <EarningsCard libraryId={op.library_id} />}
 
-        {/* ── QR doğrulama ── */}
+        {/* ── QR doğrulama (yalnız onaylı) ── */}
+        {op && isActive && (
         <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700">
           <h2 className="mb-3 text-base font-bold text-slate-900 dark:text-white">
             Katılım Doğrula (QR)
@@ -128,16 +133,17 @@ export default function OperatorHome() {
             </div>
           )}
         </div>
+        )}
 
-        {/* ── Oturum yönetimi ── */}
-        {op && (
+        {/* ── Oturum yönetimi (yalnız onaylı) ── */}
+        {op && isActive && (
           <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700">
             <ExamSessionsManager libraryId={op.library_id} />
           </div>
         )}
 
-        {/* ── Çalışma alanı rezervasyonları ── */}
-        {op && <StudyReservationsList libraryId={op.library_id} />}
+        {/* ── Çalışma alanı rezervasyonları (yalnız onaylı) ── */}
+        {op && isActive && <StudyReservationsList libraryId={op.library_id} />}
 
         {/* ── Hesap: şifre değiştir ── */}
         <PasswordPanel />

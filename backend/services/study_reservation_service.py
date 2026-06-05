@@ -20,7 +20,7 @@ from core import payments
 from core.codes import gen_short_code, normalize_code
 from core.config import settings
 from models.client import Client
-from models.library import Library, LibraryHours
+from models.library import Library, LibraryHours, LibraryStatus
 from models.library_exam import ACTIVE_REGISTRATION_STATUSES, RegistrationStatus
 from models.role import ROLE_IDS, RoleType
 from models.study_reservation import StudyReservation
@@ -236,6 +236,11 @@ async def reserve(
     library = await db.get(Library, library_id)
     if library is None or library.deleted_at is not None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Kütüphane bulunamadı")
+    # Yalnız onaylı (ACTIVE) kütüphanede rezervasyon yapılabilir (onay öncesi ücretli akış yok).
+    if library.status != LibraryStatus.ACTIVE.value:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT, "Kütüphane henüz onaylı değil; rezervasyon yapılamaz."
+        )
     hourly = _ensure_study_enabled(library)
     await _validate_window(db, library, starts, ends)
 

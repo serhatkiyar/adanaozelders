@@ -22,7 +22,7 @@ from core import exam_results, payments, storage
 from core.codes import gen_short_code, normalize_code
 from core.config import settings
 from models.client import Client
-from models.library import Library
+from models.library import Library, LibraryStatus
 from models.library_exam import (
     ACTIVE_REGISTRATION_STATUSES,
     ExamRegistration,
@@ -196,6 +196,13 @@ async def create_session(
     lib = await db.get(Library, library_id)
     if lib is None or lib.deleted_at is not None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Kütüphane bulunamadı")
+    # Yalnız onaylı (ACTIVE) kütüphane public deneme oturumu açabilir — PENDING/REJECTED
+    # self-servis başvuru onay öncesi ücretli akış başlatamaz.
+    if lib.status != LibraryStatus.ACTIVE.value:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Kütüphane henüz onaylı değil; deneme oturumu oluşturulamaz.",
+        )
     if payload.catalog_id is not None:
         await _validate_catalog(db, payload.catalog_id)
     s = LibraryExamSession(
@@ -287,6 +294,11 @@ async def list_public_sessions(
     db: AsyncSession, library_id: int, *, client_id: int | None = None
 ) -> list[ExamSessionOut]:
     """Bir kütüphanenin yaklaşan (gelecek) planlı oturumları — public profil için."""
+    # Savunma katmanı: yalnız onaylı (ACTIVE) kütüphanenin oturumları public görünür
+    # (kütüphane sonradan gizlenir/reddedilirse oturumları da listelenmesin).
+    lib = await db.get(Library, library_id)
+    if lib is None or lib.status != LibraryStatus.ACTIVE.value:
+        return []
     stmt = (
         select(LibraryExamSession)
         .where(
