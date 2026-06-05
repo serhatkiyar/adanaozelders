@@ -406,22 +406,29 @@ async def create_review(
             status.HTTP_409_CONFLICT, "Bu kütüphaneyi zaten değerlendirdiniz"
         )
 
+    # Karma puanlama: yorumu herkes yazabilir ama yıldız ortalaması/Bayesian sıralamaya
+    # yalnız "doğrulanmış ziyaretçi" (ATTENDED deneme/çalışma kaydı) sayılır → sahte
+    # puan şişirmesi etkisiz kalır. Doğrulanmamış yorum yazılır ama agregeyi etkilemez;
+    # öğrenci sonradan katılırsa promote_reviews_for_visitor ile dahil edilir.
+    counts = await _is_verified_visitor(db, library_id, client.id)
     review = LibraryReview(
         library_id=library_id,
         client_id=client.id,
         rating=payload.rating,
         comment_text=payload.comment_text,
+        counts_to_rating=counts,
     )
     db.add(review)
-    lib.rating_count += 1
-    lib.rating_sum += payload.rating
+    if counts:
+        lib.rating_count += 1
+        lib.rating_sum += payload.rating
     await db.commit()
     await db.refresh(review)
 
     item = LibraryReviewOut.model_validate(review)
     item.client_name = client.full_name
     item.client_avatar_url = client.avatar_url
-    item.verified = await _is_verified_visitor(db, library_id, client.id)
+    item.verified = counts
     return item
 
 
@@ -433,9 +440,37 @@ async def delete_review(db: AsyncSession, client: Client, review_id: int) -> Non
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Sizin değerlendirmeniz değil")
     lib = await db.get(Library, review.library_id)
     review.deleted_at = datetime.datetime.now(datetime.timezone.utc)
-    if lib is not None:
+    # Yalnız agregeye katılmış (doğrulanmış) yorumun silinmesi ortalamayı düşürür.
+    if lib is not None and review.counts_to_rating:
         lib.rating_count = max(0, lib.rating_count - 1)
         lib.rating_sum = max(0, lib.rating_sum - review.rating)
+    await db.commit()
+
+
+async def promote_reviews_for_visitor(
+    db: AsyncSession, library_id: int, client_id: int
+) -> None:
+    """Öğrenci bu kütüphanede ATTENDED oldu → daha önce yazdığı ama agregeye katılmamış
+    (``counts_to_rating=False``) aktif yorumlarını artık yıldız ortalamasına/sıralamaya
+    dahil et. Katılım doğrulama akışından best-effort çağrılır; idempotenttir."""
+    reviews = (
+        await db.execute(
+            select(LibraryReview).where(
+                LibraryReview.library_id == library_id,
+                LibraryReview.client_id == client_id,
+                LibraryReview.deleted_at.is_(None),
+                LibraryReview.counts_to_rating.is_(False),
+            )
+        )
+    ).scalars().all()
+    if not reviews:
+        return
+    lib = await db.get(Library, library_id)
+    for r in reviews:
+        r.counts_to_rating = True
+        if lib is not None:
+            lib.rating_count += 1
+            lib.rating_sum += r.rating
     await db.commit()
 
 

@@ -218,6 +218,14 @@ class LibraryReview(Base, TimestampMixin, SoftDeleteMixin):
     )
     rating: Mapped[int] = mapped_column(Integer, nullable=False)
     comment_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Karma puanlama: yorumu HERKES yazabilir ama yıldız ortalaması/Bayesian sıralamaya
+    # yalnız "doğrulanmış ziyaretçi" (ATTENDED deneme/çalışma kaydı olan) sayılır.
+    # Bu bayrak, değerlendirmenin library.rating_sum/rating_count agregesine katkı verip
+    # vermediğini tutar: oluştururken doğrulanmışsa true; öğrenci sonradan katılırsa
+    # promote edilir (bkz. services/library_service.promote_reviews_for_visitor).
+    counts_to_rating: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("true")
+    )
 
     library: Mapped["Library"] = relationship(back_populates="reviews")
     client: Mapped["Client"] = relationship()

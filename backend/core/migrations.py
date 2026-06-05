@@ -45,6 +45,9 @@ _ADDED_COLUMNS_DDL: tuple[str, ...] = (
     "ALTER TABLE libraries ADD COLUMN IF NOT EXISTS study_hourly_price NUMERIC(10,2)",
     # Kurumsal logo (1:1; cover_url banner). library_images tablosu create_all ile gelir.
     "ALTER TABLE libraries ADD COLUMN IF NOT EXISTS logo_url VARCHAR(500)",
+    # Karma puanlama: yorum agregeye (rating_sum/count) katkı veriyor mu — yalnız
+    # doğrulanmış ziyaretçiler sayılır. Mevcut yorumlar saymaya devam etsin → DEFAULT true.
+    "ALTER TABLE library_reviews ADD COLUMN IF NOT EXISTS counts_to_rating BOOLEAN NOT NULL DEFAULT true",
     # QR okutulamazsa elle girilen kısa doğrulama kodu (deneme bileti + çalışma rez.).
     "ALTER TABLE exam_registrations ADD COLUMN IF NOT EXISTS short_code VARCHAR(12)",
     "ALTER TABLE study_reservations ADD COLUMN IF NOT EXISTS short_code VARCHAR(12)",

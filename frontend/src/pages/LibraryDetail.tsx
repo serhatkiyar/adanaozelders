@@ -383,6 +383,11 @@ function ReviewForm({ libraryId }: { libraryId: number }) {
       <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">
         Bu kütüphaneyi değerlendir
       </p>
+      <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+        Yorumun herkese görünür; ancak yıldız puanı ortalamaya yalnız burada{" "}
+        <span className="font-medium">doğrulanmış ziyaretin</span> (deneme/çalışma kaydı)
+        varsa katılır.
+      </p>
       <div className="mt-2 flex gap-1">
         {[1, 2, 3, 4, 5].map((i) => (
           <button

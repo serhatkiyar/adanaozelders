@@ -511,6 +511,16 @@ async def _attend_study(
         link="/biletlerim",
     )
     await db.commit()
+    # Karma puanlama: bu öğrenci daha önce bu kütüphaneye yorum yazdıysa artık yıldız
+    # ortalamasına katsın (best-effort — promotion giriş doğrulamayı asla bozmamalı).
+    try:
+        from services import library_service
+
+        await library_service.promote_reviews_for_visitor(
+            db, res.library_id, res.client_id
+        )
+    except Exception:  # noqa: BLE001
+        await db.rollback()
     return AttendanceResult(
         registration_id=res.id,
         client_name=client_name,
