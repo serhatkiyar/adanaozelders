@@ -36,14 +36,9 @@ import type {
   LibraryReviewOut,
 } from "@/types";
 
-type TabKey = "home" | "exams" | "about" | "announcements";
-
-const TABS: { key: TabKey; label: string }[] = [
-  { key: "home", label: "Ana Sayfa" },
-  { key: "exams", label: "Denemeler" },
-  { key: "about", label: "Hakkında" },
-  { key: "announcements", label: "Duyurular" },
-];
+// Profil sekmeleri: Genel Bakış (default) + Denemeler + (varsa) Çalışma Alanı +
+// Değerlendirmeler. Sekme listesi `lib`'e göre dinamik kurulur (boş sekme gösterilmez).
+type TabKey = "overview" | "exams" | "study" | "reviews";
 
 /** Google Maps yol tarifi linki: koordinat varsa onu, yoksa adres metnini hedef alır. */
 function directionsUrl(lib: {
@@ -75,8 +70,7 @@ export default function LibraryDetail() {
         ? STUDENT_NAV
         : undefined;
 
-  const [tab, setTab] = useState<TabKey>("home");
-  const [reviewsOpen, setReviewsOpen] = useState(false);
+  const [tab, setTab] = useState<TabKey>("overview");
   const todayWeekday = jsDayToWeekday(new Date().getDay());
 
   const content = (() => {
@@ -106,6 +100,16 @@ export default function LibraryDetail() {
 
     const week = normalizeWeek(lib.hours);
     const avgLabel = lib.rating_average != null ? lib.rating_average.toFixed(1) : "Yeni";
+    // Dinamik sekmeler — "Çalışma Alanı" yalnız saatlik koltuk rezervasyonu açıksa.
+    const tabs: { key: TabKey; label: string }[] = [
+      { key: "overview", label: "Genel Bakış" },
+      { key: "exams", label: "Denemeler" },
+      ...(lib.study_hourly_price ? [{ key: "study" as TabKey, label: "Çalışma Alanı" }] : []),
+      {
+        key: "reviews",
+        label: `Değerlendirmeler${lib.rating_count ? ` · ${lib.rating_count}` : ""}`,
+      },
+    ];
 
     return (
       <div className="mx-auto max-w-[900px] space-y-5">
@@ -172,7 +176,7 @@ export default function LibraryDetail() {
             {/* Ortalama puan — tıklanınca değerlendirmeler modal'da açılır */}
             <button
               type="button"
-              onClick={() => setReviewsOpen(true)}
+              onClick={() => setTab("reviews")}
               className="group mt-2 inline-flex items-center gap-1.5 rounded-lg py-1 text-left"
             >
               <StarRating value={lib.rating_average} />
@@ -195,7 +199,7 @@ export default function LibraryDetail() {
 
         {/* ── Sekmeler ── */}
         <div className="flex gap-1 overflow-x-auto rounded-2xl bg-white p-1.5 shadow-sm ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700">
-          {TABS.map((t) => (
+          {tabs.map((t) => (
             <button
               key={t.key}
               onClick={() => setTab(t.key)}
@@ -211,39 +215,16 @@ export default function LibraryDetail() {
         </div>
 
         {/* ── Sekme içeriği ── */}
-        {tab === "home" && (
-          <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 py-16 text-center dark:border-slate-700">
-            <div className="text-3xl">🏠</div>
-            <p className="mt-3 text-sm font-medium text-slate-700 dark:text-slate-300">
-              Ana sayfa yakında
-            </p>
-            <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
-              Bu sekmenin içeriği henüz belirlenmedi.
-            </p>
-          </div>
+        {tab === "overview" && (
+          <OverviewTab lib={lib} week={week} todayWeekday={todayWeekday} />
         )}
 
-        {tab === "exams" && (
-          <div className="space-y-5">
-            <StudySpaceSection library={lib} />
-            <ExamSessionsSection libraryId={lib.id} />
-          </div>
-        )}
+        {tab === "exams" && <ExamSessionsSection libraryId={lib.id} />}
 
-        {tab === "about" && (
-          <AboutTab lib={lib} week={week} todayWeekday={todayWeekday} />
-        )}
+        {tab === "study" && <StudySpaceSection library={lib} />}
 
-        {tab === "announcements" && <AnnouncementsTab />}
-
-        {/* ── Değerlendirme modal'ı (ortalama puana tıklanınca) ── */}
-        {reviewsOpen && (
-          <ReviewsModal
-            lib={lib}
-            reviews={reviews}
-            isClient={isClient}
-            onClose={() => setReviewsOpen(false)}
-          />
+        {tab === "reviews" && (
+          <ReviewsTab lib={lib} reviews={reviews} isClient={isClient} />
         )}
       </div>
     );
@@ -422,9 +403,9 @@ function ReviewForm({ libraryId }: { libraryId: number }) {
   );
 }
 
-/* ── "Hakkında" sekmesi: kapasite · saatler · olanaklar · iletişim · harita ── */
+/* ── "Genel Bakış" sekmesi: galeri · hızlı bilgi · olanaklar · iletişim · saatler · konum/harita ── */
 
-function AboutTab({
+function OverviewTab({
   lib,
   week,
   todayWeekday,
@@ -568,104 +549,78 @@ function AboutTab({
   );
 }
 
-/* ── "Duyurular" sekmesi (şimdilik boş durum) ── */
+/* ── "Değerlendirmeler" sekmesi (first-class — modal değil) ── */
 
-function AnnouncementsTab() {
-  return (
-    <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 py-16 text-center dark:border-slate-700">
-      <div className="text-3xl">📣</div>
-      <p className="mt-3 text-sm font-medium text-slate-700 dark:text-slate-300">
-        Henüz duyuru yok
-      </p>
-      <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
-        Kütüphane yeni etkinlik, kampanya veya değişiklikleri burada paylaşacak.
-      </p>
-    </div>
-  );
-}
-
-/* ── Değerlendirmeler modal'ı (ortalama puana tıklanınca) ── */
-
-function ReviewsModal({
+function ReviewsTab({
   lib,
   reviews,
   isClient,
-  onClose,
 }: {
   lib: LibraryDetailOut;
   reviews: LibraryReviewOut[] | undefined;
   isClient: boolean;
-  onClose: () => void;
 }) {
   return (
-    <div
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm"
-      onClick={onClose}
-    >
-      <div
-        className="relative flex max-h-[88vh] w-full max-w-lg flex-col overflow-hidden rounded-3xl bg-white shadow-2xl dark:bg-slate-800"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4 dark:border-slate-700">
-          <div className="flex items-center gap-2">
-            <StarRating value={lib.rating_average} />
-            <span className="text-base font-bold text-slate-900 dark:text-white">
-              {lib.rating_average != null ? lib.rating_average.toFixed(1) : "Yeni"}
-            </span>
-            <span className="text-sm text-slate-400">
-              · {lib.rating_count} değerlendirme
-            </span>
-          </div>
-          <button
-            onClick={onClose}
-            className="rounded-full p-2 text-slate-400 transition hover:bg-slate-100 dark:hover:bg-slate-700"
-            aria-label="Kapat"
-          >
-            ✕
-          </button>
-        </div>
-
-        <div className="flex-1 space-y-4 overflow-y-auto p-5">
-          {isClient && <ReviewForm libraryId={lib.id} />}
-
-          {reviews && reviews.length > 0 ? (
-            reviews.map((r) => (
-              <div
-                key={r.id}
-                className="rounded-xl border border-slate-100 p-4 dark:border-slate-700"
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-100 text-sm font-bold text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-300">
-                      {(r.client_name ?? "?").charAt(0).toUpperCase()}
-                    </div>
-                    <div className="flex flex-col">
-                      <span className="text-sm font-semibold text-slate-800 dark:text-slate-200">
-                        {r.client_name ?? "Öğrenci"}
-                      </span>
-                      {r.verified && (
-                        <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
-                          ✓ Doğrulanmış ziyaretçi
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <StarRating value={r.rating} />
-                </div>
-                {r.comment_text && (
-                  <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-                    {r.comment_text}
-                  </p>
-                )}
-              </div>
-            ))
-          ) : (
-            <p className="py-6 text-center text-sm text-slate-400">
-              Henüz değerlendirme yok. {isClient ? "İlk değerlendirmeyi sen yap!" : ""}
-            </p>
-          )}
-        </div>
+    <div className="space-y-5">
+      {/* Özet başlık */}
+      <div className="flex items-center gap-3 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700">
+        <StarRating value={lib.rating_average} />
+        <span className="text-xl font-bold text-slate-900 dark:text-white">
+          {lib.rating_average != null ? lib.rating_average.toFixed(1) : "Yeni"}
+        </span>
+        <span className="text-sm text-slate-400">
+          · {lib.rating_count} değerlendirme
+        </span>
       </div>
+
+      {/* Yorum formu (yalnız CLIENT) */}
+      {isClient && <ReviewForm libraryId={lib.id} />}
+
+      {/* Yorum listesi */}
+      {reviews && reviews.length > 0 ? (
+        <div className="space-y-3">
+          {reviews.map((r) => (
+            <div
+              key={r.id}
+              className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700"
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-100 text-sm font-bold text-indigo-600 dark:bg-indigo-500/20 dark:text-indigo-300">
+                    {(r.client_name ?? "?").charAt(0).toUpperCase()}
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+                      {r.client_name ?? "Öğrenci"}
+                    </span>
+                    {r.verified && (
+                      <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
+                        ✓ Doğrulanmış ziyaretçi
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <StarRating value={r.rating} />
+              </div>
+              {r.comment_text && (
+                <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
+                  {r.comment_text}
+                </p>
+              )}
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 py-16 text-center dark:border-slate-700">
+          <div className="text-3xl">⭐</div>
+          <p className="mt-3 text-sm font-medium text-slate-700 dark:text-slate-300">
+            Henüz değerlendirme yok
+          </p>
+          <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
+            {isClient ? "İlk değerlendirmeyi sen yap!" : "Henüz kimse değerlendirme yapmamış."}
+          </p>
+        </div>
+      )}
     </div>
   );
 }
