@@ -15,10 +15,11 @@ from core.token_denylist import is_revoked
 from core import presence
 from models.admin import Admin
 from models.client import Client
+from models.library_operator import LibraryOperator
 from models.role import ROLE_IDS, RoleType
 from models.tutor import Tutor, TutorStatus
 
-CurrentUser = Admin | Tutor | Client
+CurrentUser = Admin | Tutor | Client | LibraryOperator
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"{settings.API_V1_PREFIX}/auth/login")
 
@@ -26,6 +27,7 @@ _ROLE_MODELS: dict[str, type] = {
     RoleType.ADMIN.value: Admin,
     RoleType.TUTOR.value: Tutor,
     RoleType.CLIENT.value: Client,
+    RoleType.LIBRARY_OPERATOR.value: LibraryOperator,
 }
 
 _credentials_exception = HTTPException(

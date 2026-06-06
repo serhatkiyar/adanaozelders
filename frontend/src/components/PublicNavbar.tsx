@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { ROUTES } from "@/lib/routes";
 
 // Anonim (oturumsuz) yüzeyin ortak üst barı — landing'de beğenilen navbar.
 // Hem Landing hem PublicShell (public arama/profil) kullanır; böylece sitenin
@@ -18,6 +19,18 @@ export function PublicNavbar() {
           />
         </Link>
         <div className="flex items-center gap-2">
+          <Link
+            to={ROUTES.tutors}
+            className="hidden rounded-full px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:text-indigo-700 active:scale-95 sm:block dark:text-slate-200 dark:hover:text-indigo-300"
+          >
+            Eğitmenler
+          </Link>
+          <Link
+            to={ROUTES.libraries}
+            className="hidden rounded-full px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:text-indigo-700 active:scale-95 sm:block dark:text-slate-200 dark:hover:text-indigo-300"
+          >
+            Kütüphaneler
+          </Link>
           <Link
             to="?modal=register&role=tutor"
             className="btn-neon-hover rounded-full px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:text-indigo-700 active:scale-95 dark:text-slate-200 dark:hover:text-indigo-300"

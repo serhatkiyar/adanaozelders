@@ -11,5 +11,16 @@ export default defineConfig({
   },
   server: {
     port: 5173,
+    // Ağ paylaşımı (telefon vb.): LAN IP'sinden erişilebilsin diye 0.0.0.0'a bağlan.
+    host: true,
+    // Backend'i aynı origin'den (/api) proxy'le → CORS preflight YOK (daha hızlı),
+    // IP'yi .env'e yazmaya gerek YOK. ws:true ile WebSocket de iletilir.
+    proxy: {
+      "/api": {
+        target: "http://localhost:8000",
+        changeOrigin: true,
+        ws: true,
+      },
+    },
   },
 });

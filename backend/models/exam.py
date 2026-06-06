@@ -33,6 +33,13 @@ class PracticeExam(Base, TimestampMixin, SoftDeleteMixin):
     exam_type: Mapped[str | None] = mapped_column(String(50), nullable=True)
     exam_date: Mapped[datetime.date | None] = mapped_column(Date, nullable=True)
 
+    # Kütüphane deneme oturumu sonucu buraya yansıtıldıysa kaynak kayıt (idempotent
+    # senkron için). Öğrencinin elle girdiği denemelerde NULL. SET NULL: kayıt silinse
+    # bile öğrencinin deneme geçmişi korunur.
+    source_registration_id: Mapped[int | None] = mapped_column(
+        ForeignKey("exam_registrations.id", ondelete="SET NULL"), nullable=True
+    )
+
     correct_count: Mapped[int] = mapped_column(
         Integer, nullable=False, server_default=text("0")
     )
@@ -58,6 +65,13 @@ class PracticeExam(Base, TimestampMixin, SoftDeleteMixin):
             name="ck_practice_exams_non_negative",
         ),
         Index("ix_practice_exams_client_date", "client_id", "exam_date"),
+        # Kütüphane oturumu → PracticeExam projeksiyonu kayıt başına tek (idempotent sync).
+        Index(
+            "uq_practice_exams_source_reg",
+            "source_registration_id",
+            unique=True,
+            postgresql_where=text("source_registration_id IS NOT NULL"),
+        ),
     )
 
 

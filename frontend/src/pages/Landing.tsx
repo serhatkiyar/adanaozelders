@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuthStore } from "@/store/authStore";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useRecentlyViewed } from "@/hooks/useRecentlyViewed";
+import { useUiPrefsStore } from "@/store/uiPrefsStore";
 import { useBookings } from "@/hooks/useBookings";
 import { ROUTES } from "@/lib/routes";
 import { ROLE_IDS, BookingStatus } from "@/types";
@@ -70,8 +71,9 @@ export default function Landing() {
 /* ─── recently viewed listings (under the category bar) ── */
 
 function RecentlyViewed() {
+  const show = useUiPrefsStore((s) => s.showRecentlyViewed);
   const items = useRecentlyViewed();
-  if (items.length === 0) return null;
+  if (!show || items.length === 0) return null;
 
   return (
     <section className="mx-auto max-w-6xl px-6 pt-6 pb-2">

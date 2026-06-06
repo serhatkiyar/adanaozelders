@@ -13,7 +13,25 @@ from models.demand import Demand, DemandStatus
 from models.exam import PracticeExam, PracticeExamSubject
 from models.flashcard import Flashcard, FlashcardDeck
 from models.habit import Habit, HabitEntry
+from models.library import (
+    Library,
+    LibraryAmenity,
+    LibraryHours,
+    LibraryImage,
+    LibraryReview,
+    LibraryStatus,
+)
+from models.library_bookmark import LibraryBookmark
+from models.library_exam import (
+    ExamRegistration,
+    ExamSessionStatus,
+    LibraryExamSession,
+    RegistrationStatus,
+)
+from models.library_exam_catalog import ExamType, LibraryExamCatalog
+from models.library_operator import LibraryOperator
 from models.messaging import Conversation, Message
+from models.study_reservation import StudyReservation
 from models.notification import Notification
 from models.payment import Payment, PaymentStatus
 from models.qa import QAMessage, QAStatus, QAThread
@@ -54,11 +72,26 @@ __all__ = [
     "Conversation",
     "Demand",
     "DemandStatus",
+    "ExamRegistration",
+    "ExamSessionStatus",
+    "ExamType",
     "Flashcard",
     "FlashcardDeck",
     "Habit",
     "HabitEntry",
+    "Library",
+    "LibraryAmenity",
+    "LibraryBookmark",
+    "LibraryExamCatalog",
+    "LibraryExamSession",
+    "LibraryHours",
+    "LibraryImage",
+    "LibraryOperator",
+    "LibraryReview",
+    "LibraryStatus",
     "Message",
+    "RegistrationStatus",
+    "StudyReservation",
     "Notification",
     "Payment",
     "PaymentStatus",

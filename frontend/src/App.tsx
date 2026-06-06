@@ -24,6 +24,11 @@ import { rtcManager } from "@/lib/rtcTransfer";
 // ── Route-level code splitting: ağır modüller talep üzerine yüklenir ──
 const MarketplacePage = lazy(() => import("@/pages/MarketplacePage"));
 const TutorProfilePage = lazy(() => import("@/pages/TutorProfilePage"));
+const Libraries = lazy(() => import("@/pages/Libraries"));
+const LibraryDetail = lazy(() => import("@/pages/LibraryDetail"));
+const LibraryRegister = lazy(() => import("@/pages/LibraryRegister"));
+const Tickets = lazy(() => import("@/pages/Tickets"));
+const OperatorHome = lazy(() => import("@/pages/dashboards/OperatorHome"));
 const Login = lazy(() => import("@/pages/Login"));
 const Register = lazy(() => import("@/pages/Register"));
 const ForgotPassword = lazy(() => import("@/pages/ForgotPassword"));
@@ -51,6 +56,10 @@ const Habits = lazy(() => import("@/pages/Habits"));
 const Tasks = lazy(() => import("@/pages/Tasks"));
 const Profile = lazy(() => import("@/pages/Profile"));
 const Settings = lazy(() => import("@/pages/Settings"));
+// Geliştirme prototipi: "yırtılan kupon" bilet animasyonu (/test-bilet)
+const TicketTearTest = lazy(() => import("@/pages/TicketTearTest"));
+// Geliştirme prototipi: canlı ders (Jitsi) önizleme (/test-canli-ders)
+const TestLiveLesson = lazy(() => import("@/pages/TestLiveLesson"));
 
 function WsManager() {
   const token = useAuthStore((s) => s.token);
@@ -67,31 +76,53 @@ function WsManager() {
 
   useEffect(() => {
     if (!socket) return;
+
+    // Hızlı bildirim seli (ör. art arda mesaj) tek refetch'e insin diye invalidate'leri
+    // kısa bir pencerede birleştir (coalesce): aynı query key 250 ms içinde bir kez
+    // geçersiz kılınır. Böylece her WS mesajında tüm listeler yeniden çekilmez.
+    const pending = new Map<string, readonly unknown[]>();
+    let flush: ReturnType<typeof setTimeout> | null = null;
+    const invalidate = (queryKey: readonly unknown[]) => {
+      pending.set(JSON.stringify(queryKey), queryKey);
+      if (flush) return;
+      flush = setTimeout(() => {
+        const keys = [...pending.values()];
+        pending.clear();
+        flush = null;
+        for (const queryKey of keys) qc.invalidateQueries({ queryKey });
+      }, 250);
+    };
+
     const handleMessage = (event: MessageEvent) => {
       try {
         const msg = JSON.parse(event.data);
         if (msg.type === "NEW_MESSAGE") {
-          qc.invalidateQueries({ queryKey: ["messages"] });
-          qc.invalidateQueries({ queryKey: ["conversations"] });
+          // Yalnız ilgili sohbeti + liste/okunmamış sayacını tazele (tüm thread'leri DEĞİL).
+          const convId = msg.data?.conversation_id;
+          invalidate(convId != null ? ["messages", convId] : ["messages"]);
+          invalidate(["messages", "unread"]);
+          invalidate(["conversations"]);
         } else if (msg.type === "NEW_NOTIFICATION") {
-          qc.invalidateQueries({ queryKey: ["notifications"] });
+          invalidate(["notifications"]);
         } else if (msg.type === "BOOKING_UPDATE" || msg.type === "NEW_BOOKING_COMMENT") {
           // Rezervasyon oluşturma/kabul/red/iptal/tamamlama/yorum → her iki tarafta
-          // liste ve detayı sayfa yenilemeden canlı tazele.
-          if (msg.booking_id) {
-            qc.invalidateQueries({ queryKey: ["bookings", "detail", msg.booking_id] });
-          }
-          qc.invalidateQueries({ queryKey: ["bookings"] });
+          // liste ve detayı sayfa yenilemeden canlı tazele. (["bookings"] öneki detayı
+          // da kapsar.)
+          invalidate(["bookings"]);
         } else if (msg.type === "RTC_SIGNAL" && msg.booking_id && msg.signal) {
-          // Uçtan uca dosya aktarımı sinyalleşmesi (WebRTC) → P2P yöneticisine ilet.
+          // Uçtan uca dosya aktarımı sinyalleşmesi (WebRTC) → gerçek zamanlı, throttle ETME.
           rtcManager.handleSignal(msg.booking_id, msg.signal);
         }
       } catch (err) {
         console.error("WS Parse error", err);
       }
     };
+
     socket.addEventListener("message", handleMessage);
-    return () => socket.removeEventListener("message", handleMessage);
+    return () => {
+      socket.removeEventListener("message", handleMessage);
+      if (flush) clearTimeout(flush);
+    };
   }, [socket, qc]);
 
   return null;
@@ -107,6 +138,7 @@ function RootDispatcher() {
   if (!token) return <Landing />;
   if (isLoading || !user) return <FullScreenSpinner />;
   if (user.role_id === ROLE_IDS.ADMIN) return <AdminHome />;
+  if (user.role_id === ROLE_IDS.LIBRARY_OPERATOR) return <OperatorHome />;
   return <Landing />;
 }
 
@@ -186,6 +218,13 @@ function App() {
           <Route path={PATHS.home} element={<RootDispatcher />} />
           <Route path={PATHS.tutors} element={<MarketplacePage />} />
           <Route path={PATHS.tutor} element={<TutorProfilePage />} />
+          <Route path={PATHS.libraries} element={<Libraries />} />
+          <Route path={PATHS.library} element={<LibraryDetail />} />
+          <Route path={PATHS.libraryRegister} element={<LibraryRegister />} />
+
+          {/* ── Geliştirme prototipi (oturum gerektirmez) ── */}
+          <Route path="/test-bilet" element={<TicketTearTest />} />
+          <Route path="/test-canli-ders" element={<TestLiveLesson />} />
 
           {/* ── Kimlik: giriş yapmış kullanıcı kök workspace'ine yönlendirilir ── */}
           <Route element={<PublicRoute />}>
@@ -222,6 +261,7 @@ function App() {
           <Route element={<ProtectedRoute allowedRoleId={ROLE_IDS.CLIENT} />}>
             <Route path={PATHS.favorites} element={<Favorites />} />
             <Route path={PATHS.exams} element={<Exams />} />
+            <Route path={PATHS.tickets} element={<Tickets />} />
           </Route>
 
           {/* ── Yalnızca TUTOR ── */}

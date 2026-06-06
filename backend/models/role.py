@@ -13,12 +13,16 @@ class RoleType(str, enum.Enum):
     ADMIN = "ADMIN"
     TUTOR = "TUTOR"
     CLIENT = "CLIENT"
+    # Kütüphane operatörü — bir kütüphaneye bağlı; deneme oturumlarında QR okutup
+    # katılımı doğrular. Admin tarafından oluşturulur (self-servis kayıt yok).
+    LIBRARY_OPERATOR = "LIBRARY_OPERATOR"
 
 
 ROLE_IDS: dict[RoleType, int] = {
     RoleType.ADMIN: 1,
     RoleType.TUTOR: 2,
     RoleType.CLIENT: 3,
+    RoleType.LIBRARY_OPERATOR: 4,
 }
 
 # role_id -> RoleType ters haritası (ör. booking comment/resource'ta rol adını yazarken).

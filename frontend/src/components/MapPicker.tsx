@@ -1,11 +1,19 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { MapContainer, Marker, useMapEvents, useMap, GeoJSON } from "react-leaflet";
+import { MapContainer, Marker, useMapEvents, useMap } from "react-leaflet";
 import L from "leaflet";
 
 import markerIcon2x from "leaflet/dist/images/marker-icon-2x.png";
 import markerIcon from "leaflet/dist/images/marker-icon.png";
 import markerShadow from "leaflet/dist/images/marker-shadow.png";
+import {
+  geocodeAutocomplete,
+  geocodeDetails,
+  geocodeForward,
+  geocodeReverse,
+  newGeocodeSession,
+  type GeocodeSuggestion,
+} from "@/api/geocode";
 import "./MapPicker.css";
 
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -22,70 +30,6 @@ interface MapPickerProps {
   initialLng?: number | null;
   onLocationSelect?: (lat: number, lng: number, address?: string) => void;
   readonly?: boolean;
-}
-
-interface NominatimResult {
-  lat: string;
-  lon: string;
-  display_name: string;
-  address?: {
-    house_number?: string;
-    road?: string;
-    building?: string;
-    amenity?: string;
-    shop?: string;
-    office?: string;
-    tourism?: string;
-    leisure?: string;
-    neighbourhood?: string;
-    quarter?: string;
-    suburb?: string;
-    town?: string;
-    county?: string;
-    city_district?: string;
-    city?: string;
-    province?: string;
-    state?: string;
-    postcode?: string;
-  };
-  geojson?: any;
-}
-
-/** Build a clean address label from structured Nominatim address parts. */
-function buildAddressLabel(r: NominatimResult): string {
-  const a = r.address;
-  if (!a) return r.display_name;
-
-  const parts: string[] = [];
-
-  // Building / POI name
-  const poiName = a.building || a.amenity || a.shop || a.office || a.tourism || a.leisure;
-  if (poiName) parts.push(poiName);
-
-  // Street + house number
-  if (a.road) {
-    parts.push(a.house_number ? `${a.road} No: ${a.house_number}` : a.road);
-  }
-
-  // Neighbourhood / quarter / suburb
-  if (a.neighbourhood) parts.push(a.neighbourhood);
-  else if (a.quarter) parts.push(a.quarter);
-  else if (a.suburb) parts.push(a.suburb);
-
-  // District / town
-  if (a.town) parts.push(a.town);
-  else if (a.county) parts.push(a.county);
-  else if (a.city_district) parts.push(a.city_district);
-
-  // City
-  if (a.city) parts.push(a.city);
-  else if (a.province) parts.push(a.province);
-  else if (a.state) parts.push(a.state);
-
-  // Postcode
-  if (a.postcode) parts.push(a.postcode);
-
-  return parts.length > 0 ? parts.join(", ") : r.display_name;
 }
 
 type MapLayer = "street" | "satellite";
@@ -163,57 +107,6 @@ function LayerSwitcher({ layer }: { layer: MapLayer }) {
   return null;
 }
 
-/* ─── reverse geocoding helper ───────────────────────── */
-
-async function reverseGeocode(lat: number, lng: number): Promise<{ label: string; geojson?: any } | null> {
-  try {
-    const res = await fetch(
-      `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1&namedetails=1&extratags=1&polygon_geojson=1&accept-language=tr`
-    );
-    const data = await res.json();
-    if (!data || data.error) return null;
-
-    const a = data.address;
-    if (a) {
-      const parts: string[] = [];
-
-      // Building / POI name (e.g. "Migros", "Ceyhan Devlet Hastanesi")
-      const poiName = a.building || a.amenity || a.shop || a.office || a.tourism || a.leisure;
-      if (poiName) parts.push(poiName);
-
-      // Street + house number
-      if (a.road) {
-        const road = a.house_number ? `${a.road} No: ${a.house_number}` : a.road;
-        parts.push(road);
-      }
-
-      // Neighbourhood / quarter / suburb
-      if (a.neighbourhood) parts.push(a.neighbourhood);
-      else if (a.quarter) parts.push(a.quarter);
-      else if (a.suburb) parts.push(a.suburb);
-
-      // District / town / county
-      if (a.town) parts.push(a.town);
-      else if (a.county) parts.push(a.county);
-      else if (a.city_district) parts.push(a.city_district);
-
-      // City / province / state
-      if (a.city) parts.push(a.city);
-      else if (a.province) parts.push(a.province);
-      else if (a.state) parts.push(a.state);
-
-      // Postcode at the end if available
-      if (a.postcode) parts.push(a.postcode);
-
-      if (parts.length > 0) return { label: parts.join(", "), geojson: data.geojson };
-    }
-
-    return { label: data.display_name ?? null, geojson: data.geojson };
-  } catch {
-    return null;
-  }
-}
-
 /* ─── Street View helper ─────────────────────────────── */
 
 function streetViewUrl(lat: number, lng: number): string {
@@ -244,11 +137,14 @@ export function MapPicker({
 
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearching, setIsSearching] = useState(false);
-  const [suggestions, setSuggestions] = useState<NominatimResult[]>([]);
+  const [suggestions, setSuggestions] = useState<GeocodeSuggestion[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [resolvedAddress, setResolvedAddress] = useState<string | null>(null);
   const [isLocating, setIsLocating] = useState(false);
-  const [selectedGeoJson, setSelectedGeoJson] = useState<any>(null);
+
+  // Google Places autocomplete oturum token'ı — typeahead'ler tek oturumda toplanır,
+  // adres seçilince sıfırlanır (maliyet optimizasyonu). Nominatim fallback'inde önemsiz.
+  const sessionTokenRef = useRef<string>(newGeocodeSession());
 
   // Layer state
   const [activeLayer, setActiveLayer] = useState<MapLayer>("street");
@@ -295,6 +191,9 @@ export function MapPicker({
 
   const searchTimeout = useRef<ReturnType<typeof setTimeout>>();
   const searchBoxRef = useRef<HTMLDivElement>(null);
+  // Yarış koruması: yalnız en son aramanın cevabı uygulansın (eski yavaş cevap
+  // yeni cevabın üstüne yazmasın; arada gelen geçici 403 listeyi boşaltmasın).
+  const searchSeqRef = useRef(0);
 
   /* Close suggestions on outside click */
   useEffect(() => {
@@ -314,14 +213,12 @@ export function MapPicker({
       if (autoOpenSv) setShowStreetView(true);
       onLocationSelect?.(pos.lat, pos.lng);
 
-      const res = await reverseGeocode(pos.lat, pos.lng);
-      if (res) {
-        setResolvedAddress(res.label);
-        setSelectedGeoJson(res.geojson || null);
-        onLocationSelect?.(pos.lat, pos.lng, res.label);
+      const label = await geocodeReverse(pos.lat, pos.lng);
+      if (label) {
+        setResolvedAddress(label);
+        onLocationSelect?.(pos.lat, pos.lng, label);
       } else {
         setResolvedAddress(null);
-        setSelectedGeoJson(null);
       }
     },
     [onLocationSelect]
@@ -330,11 +227,10 @@ export function MapPicker({
   /* Initial reverse geocode */
   useEffect(() => {
     if (position && !resolvedAddress) {
-      reverseGeocode(position.lat, position.lng).then((res) => {
-        if (res) {
-          setResolvedAddress(res.label);
-          setSelectedGeoJson(res.geojson || null);
-          onLocationSelect?.(position.lat, position.lng, res.label);
+      geocodeReverse(position.lat, position.lng).then((label) => {
+        if (label) {
+          setResolvedAddress(label);
+          onLocationSelect?.(position.lat, position.lng, label);
         } else {
           onLocationSelect?.(position.lat, position.lng);
         }
@@ -355,31 +251,49 @@ export function MapPicker({
     }
 
     searchTimeout.current = setTimeout(async () => {
+      const seq = ++searchSeqRef.current;
       try {
-        const res = await fetch(
-          `https://nominatim.openstreetmap.org/search?format=jsonv2&q=${encodeURIComponent(value)}&limit=7&countrycodes=tr&viewbox=35.63,37.16,35.98,36.89&bounded=1&addressdetails=1&namedetails=1&polygon_geojson=1&accept-language=tr`
-        );
-        const data: NominatimResult[] = await res.json();
+        const data = await geocodeAutocomplete(value, sessionTokenRef.current);
+        if (seq !== searchSeqRef.current) return; // bayat cevap — yoksay
         setSuggestions(data);
         setShowSuggestions(data.length > 0);
       } catch {
-        setSuggestions([]);
+        // Geçici hata (ör. propagation 403): mevcut önerileri silme, sadece geç.
       }
-    }, 400);
+    }, 250);
   };
 
-  const selectSuggestion = (s: NominatimResult) => {
-    const lat = parseFloat(s.lat);
-    const lon = parseFloat(s.lon);
-    const newPos = L.latLng(lat, lon);
+  const selectSuggestion = async (s: GeocodeSuggestion) => {
+    // Bekleyen typeahead'i iptal et ki seçimden sonra listeyi geri açmasın.
+    if (searchTimeout.current) clearTimeout(searchTimeout.current);
+    searchSeqRef.current++;
+
+    let lat = s.lat;
+    let lng = s.lng;
+    let label = s.label;
+
+    // Google önerilerinde koordinat gelmez → details ile çöz (aynı session token).
+    if (lat == null || lng == null) {
+      try {
+        const d = await geocodeDetails(s.id, sessionTokenRef.current);
+        lat = d.lat;
+        lng = d.lng;
+        if (d.address) label = d.address;
+      } catch {
+        setShowSuggestions(false);
+        return;
+      }
+    }
+    // Seçim oturumu kapatır → bir sonraki arama için yeni token (maliyet sıfırlama).
+    sessionTokenRef.current = newGeocodeSession();
+
+    const newPos = L.latLng(lat, lng);
     setMapCenter(newPos);
-    const label = buildAddressLabel(s);
     if (!readonly) {
       setPositionRaw(newPos);
       if (autoOpenSv) setShowStreetView(true);
       setResolvedAddress(label);
-      setSelectedGeoJson(s.geojson || null);
-      onLocationSelect?.(lat, lon, label);
+      onLocationSelect?.(lat, lng, label);
     }
     setSearchQuery(label.split(",")[0]);
     setShowSuggestions(false);
@@ -388,26 +302,25 @@ export function MapPicker({
 
   const handleSearch = async () => {
     if (!searchQuery.trim()) return;
+    if (searchTimeout.current) clearTimeout(searchTimeout.current);
+    searchSeqRef.current++;
     setIsSearching(true);
     setShowSuggestions(false);
     try {
-      const res = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=jsonv2&q=${encodeURIComponent(searchQuery)}&limit=7&countrycodes=tr&viewbox=35.63,37.16,35.98,36.89&bounded=1&addressdetails=1&namedetails=1&polygon_geojson=1&accept-language=tr`
-      );
-      const data: NominatimResult[] = await res.json();
-      if (data.length > 0) {
-        const lat = parseFloat(data[0].lat);
-        const lon = parseFloat(data[0].lon);
-        const newPos = L.latLng(lat, lon);
-        setMapCenter(newPos);
-        if (!readonly) {
-          setPositionRaw(newPos);
-          if (autoOpenSv) setShowStreetView(true);
-          const label = buildAddressLabel(data[0]);
-          setResolvedAddress(label);
-          setSelectedGeoJson(data[0].geojson || null);
-          onLocationSelect?.(lat, lon, label);
-        }
+      // "Ara"/Enter = yazılan tam metni noktaya çevir (Geocoding) — kapı no'lu
+      // sokak adresleri için. Autocomplete sadece sokak/bölge seviyesi verir.
+      const fwd = await geocodeForward(searchQuery);
+      if (fwd) {
+        await selectSuggestion({ id: "forward", label: fwd.address, lat: fwd.lat, lng: fwd.lng });
+        return;
+      }
+      // Forward bulamadıysa ilk autocomplete önerisine düş.
+      const list =
+        suggestions.length > 0
+          ? suggestions
+          : await geocodeAutocomplete(searchQuery, sessionTokenRef.current);
+      if (list.length > 0) {
+        await selectSuggestion(list[0]);
       } else {
         setResolvedAddress(null);
       }
@@ -443,13 +356,6 @@ export function MapPicker({
         attributionControl={false}
       >
         <LayerSwitcher layer={activeLayer} />
-        {selectedGeoJson && (
-          <GeoJSON 
-            key={JSON.stringify(selectedGeoJson)} 
-            data={selectedGeoJson} 
-            style={{ color: "#4f46e5", weight: 6, opacity: 0.45, fillOpacity: 0.2 }} 
-          />
-        )}
         <LocationMarker position={position} setPosition={setPosition} readonly={readonly} onDragChange={setIsMapDragging} />
         <MapUpdater center={mapCenter} />
       </MapContainer>
@@ -503,7 +409,12 @@ export function MapPicker({
                 value={searchQuery}
                 onChange={(e) => handleSearchInput(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter") handleSearch();
+                  if (e.key === "Enter") {
+                    // Parent <form> (AddressForm) submit'ini tetiklemesin → "patlama".
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleSearch();
+                  }
                 }}
                 placeholder="Mahalle, sokak veya adres ara…"
                 className="map-picker-search-input"
@@ -527,8 +438,8 @@ export function MapPicker({
             {/* Suggestions dropdown */}
             {showSuggestions && suggestions.length > 0 && (
               <ul className="map-picker-suggestions">
-                {suggestions.map((s, i) => (
-                  <li key={i}>
+                {suggestions.map((s) => (
+                  <li key={s.id}>
                     <button
                       type="button"
                       onClick={() => selectSuggestion(s)}
@@ -538,7 +449,7 @@ export function MapPicker({
                         <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
                         <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" />
                       </svg>
-                      <span className="map-picker-suggestion-text">{buildAddressLabel(s)}</span>
+                      <span className="map-picker-suggestion-text">{s.label}</span>
                     </button>
                   </li>
                 ))}

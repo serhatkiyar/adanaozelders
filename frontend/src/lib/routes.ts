@@ -16,6 +16,12 @@ export const PATHS = {
   tutors: "/egitmenler",
   /** Eğitmen profili — slug ("ahmet-yilmaz-42") veya salt id. */
   tutor: "/egitmenler/:slug",
+  /** Kütüphane / etüt merkezi kataloğu (harita + liste). */
+  libraries: "/kutuphaneler",
+  /** Kütüphane profili — slug veya salt id. */
+  library: "/kutuphaneler/:slug",
+  /** Self-servis "kütüphaneni listele" kaydı (public). */
+  libraryRegister: "/kutuphane-kayit",
 
   // ── Kimlik & token akışları ──
   login: "/giris",
@@ -34,6 +40,8 @@ export const PATHS = {
   favorites: "/favoriler",
   questions: "/sorular",
   exams: "/denemeler",
+  /** Öğrencinin deneme oturumu biletleri (QR). */
+  tickets: "/biletlerim",
   tasks: "/gorevler",
   leaderboard: "/liderlik",
   // Öğren bölümü (kelime kartları / SRS / odak / grafik / alışkanlıklar)
@@ -55,6 +63,10 @@ export const ROUTES = {
   tutors: PATHS.tutors,
   /** Eğitmen profili — slug ("ahmet-yilmaz-42") veya salt id verilebilir. */
   tutor: (slugOrId: string | number) => `/egitmenler/${slugOrId}`,
+  libraries: PATHS.libraries,
+  /** Kütüphane profili — slug veya salt id. */
+  library: (slugOrId: string | number) => `/kutuphaneler/${slugOrId}`,
+  libraryRegister: PATHS.libraryRegister,
 
   // ── Kimlik & token akışları ──
   login: PATHS.login,
@@ -74,6 +86,7 @@ export const ROUTES = {
   favorites: PATHS.favorites,
   questions: PATHS.questions,
   exams: PATHS.exams,
+  tickets: PATHS.tickets,
   tasks: PATHS.tasks,
   leaderboard: PATHS.leaderboard,
   learn: PATHS.learn,

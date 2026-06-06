@@ -36,9 +36,50 @@ _ALEMBIC_INI = _BACKEND_DIR / "alembic.ini"
 # create_all MEVCUT tablolara yeni KOLON eklemez. Sonradan eklenen kolonları, mevcut
 # dev DB'lerde de garanti etmek için idempotent ALTER ile uygularız (fresh DB'de no-op).
 _ADDED_COLUMNS_DDL: tuple[str, ...] = (
+    # Kütüphane operatörü rolü (role_id=4). Mevcut DB'lerde `role_type` PG enum'una 4.
+    # değeri idempotent ekle (fresh DB'de create_all zaten 4 değerle kurar → no-op).
+    # PG12+: ADD VALUE bir transaction içinde çalışabilir; yeni değer ancak commit'ten
+    # sonra (seed aşamasında) kullanılır — ensure_schema bu transaction'ı önce commit eder.
+    "ALTER TYPE role_type ADD VALUE IF NOT EXISTS 'LIBRARY_OPERATOR'",
+    # Kütüphane çalışma alanı saatlik ücreti (Faz 3 — saatlik koltuk rezervasyonu).
+    "ALTER TABLE libraries ADD COLUMN IF NOT EXISTS study_hourly_price NUMERIC(10,2)",
+    # Kurumsal logo (1:1; cover_url banner). library_images tablosu create_all ile gelir.
+    "ALTER TABLE libraries ADD COLUMN IF NOT EXISTS logo_url VARCHAR(500)",
+    # Karma puanlama: yorum agregeye (rating_sum/count) katkı veriyor mu — yalnız
+    # doğrulanmış ziyaretçiler sayılır. Mevcut yorumlar saymaya devam etsin → DEFAULT true.
+    "ALTER TABLE library_reviews ADD COLUMN IF NOT EXISTS counts_to_rating BOOLEAN NOT NULL DEFAULT true",
+    # Self-servis onboarding: reddedilen başvuruda admin gerekçesi (PENDING/REJECTED FSM).
+    "ALTER TABLE libraries ADD COLUMN IF NOT EXISTS rejection_reason VARCHAR(500)",
+    # QR okutulamazsa elle girilen kısa doğrulama kodu (deneme bileti + çalışma rez.).
+    "ALTER TABLE exam_registrations ADD COLUMN IF NOT EXISTS short_code VARCHAR(12)",
+    "ALTER TABLE study_reservations ADD COLUMN IF NOT EXISTS short_code VARCHAR(12)",
+    # Deneme içeriği & sonuç yönetimi. library_exam_catalogs tablosu create_all ile gelir;
+    # mevcut tablolara yeni kolonlar idempotent eklenir.
+    "ALTER TABLE library_exam_sessions ADD COLUMN IF NOT EXISTS catalog_id INTEGER REFERENCES library_exam_catalogs(id) ON DELETE SET NULL",
+    "ALTER TABLE library_exam_sessions ADD COLUMN IF NOT EXISTS answer_key_url VARCHAR(500)",
+    "ALTER TABLE library_exam_sessions ADD COLUMN IF NOT EXISTS results_published_at TIMESTAMPTZ",
+    "ALTER TABLE exam_registrations ADD COLUMN IF NOT EXISTS result_correct INTEGER",
+    "ALTER TABLE exam_registrations ADD COLUMN IF NOT EXISTS result_wrong INTEGER",
+    "ALTER TABLE exam_registrations ADD COLUMN IF NOT EXISTS result_blank INTEGER",
+    "ALTER TABLE exam_registrations ADD COLUMN IF NOT EXISTS result_net NUMERIC(6,2)",
+    "ALTER TABLE exam_registrations ADD COLUMN IF NOT EXISTS result_rank INTEGER",
+    "ALTER TABLE exam_registrations ADD COLUMN IF NOT EXISTS result_document_url VARCHAR(500)",
+    "ALTER TABLE exam_registrations ADD COLUMN IF NOT EXISTS results_entered_by_user_id INTEGER",
+    "ALTER TABLE exam_registrations ADD COLUMN IF NOT EXISTS results_entered_by_role_id INTEGER",
+    "ALTER TABLE exam_registrations ADD COLUMN IF NOT EXISTS results_entered_at TIMESTAMPTZ",
+    # Kütüphane oturumu sonucunun öğrenci /denemeler panosuna idempotent projeksiyonu.
+    "ALTER TABLE practice_exams ADD COLUMN IF NOT EXISTS source_registration_id INTEGER REFERENCES exam_registrations(id) ON DELETE SET NULL",
+    # Kayıt başına tek projeksiyon (create_all mevcut tabloya index eklemez → elle).
+    "CREATE UNIQUE INDEX IF NOT EXISTS uq_practice_exams_source_reg ON practice_exams (source_registration_id) WHERE source_registration_id IS NOT NULL",
     "ALTER TABLE tutors ADD COLUMN IF NOT EXISTS location_text VARCHAR(300)",
     "ALTER TABLE tutors ADD COLUMN IF NOT EXISTS location_lat NUMERIC(9,6)",
     "ALTER TABLE tutors ADD COLUMN IF NOT EXISTS location_lng NUMERIC(9,6)",
+    # Kütüphane yapısal adresi (il/ilçe/mahalle/sokak/no) — elle girilir.
+    "ALTER TABLE libraries ADD COLUMN IF NOT EXISTS city VARCHAR(100)",
+    "ALTER TABLE libraries ADD COLUMN IF NOT EXISTS district VARCHAR(100)",
+    "ALTER TABLE libraries ADD COLUMN IF NOT EXISTS neighborhood VARCHAR(150)",
+    "ALTER TABLE libraries ADD COLUMN IF NOT EXISTS street VARCHAR(200)",
+    "ALTER TABLE libraries ADD COLUMN IF NOT EXISTS building_no VARCHAR(30)",
     # E-posta doğrulama durumu (EmailVerificationMixin) — mevcut DB'lere de uygula.
     "ALTER TABLE admins ADD COLUMN IF NOT EXISTS email_verified_at TIMESTAMPTZ",
     "ALTER TABLE tutors ADD COLUMN IF NOT EXISTS email_verified_at TIMESTAMPTZ",
