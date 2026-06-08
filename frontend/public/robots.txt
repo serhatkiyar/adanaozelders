@@ -4,9 +4,11 @@
 User-agent: *
 Allow: /
 Allow: /egitmenler
+Allow: /kutuphaneler
 
 # ── Oturum-içi / kişisel alanlar (indekslenmesin) ──
 Disallow: /hesabim
+Disallow: /biletlerim
 Disallow: /ayarlar
 Disallow: /mesajlar
 Disallow: /takvim
