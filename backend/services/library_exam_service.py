@@ -492,7 +492,7 @@ async def register(
 
 
 async def pay(
-    db: AsyncSession, client: Client, registration_id: int
+    db: AsyncSession, client: Client, registration_id: int, *, client_ip: str | None = None
 ) -> tuple[RegistrationOut, str | None]:
     reg = await db.get(ExamRegistration, registration_id)
     if reg is None or reg.deleted_at is not None:
@@ -517,6 +517,8 @@ async def pay(
             currency=reg.currency,
             booking_id=reg.id,  # sağlayıcı için tanımlayıcı (description'da kullanılır)
             description=f"Deneme Sinavi #{reg.id}",
+            reference=f"examreg:{reg.id}",
+            buyer=payments.buyer_from_client(client, ip=client_ip),
         )
         if result.redirect_url:
             reg.provider = provider.name
@@ -540,6 +542,29 @@ async def pay(
     await db.commit()
     await db.refresh(reg)
     return _reg_out(reg), None
+
+
+async def complete_checkout(
+    db: AsyncSession, *, registration_id: int, success: bool, provider_ref: str | None
+) -> None:
+    """iyzico callback'i doğrulandıktan sonra kaydı kesinleştirir (bilet üretir).
+
+    Başarıda PENDING_PAYMENT→PAID + QR/kısa kod; ``provider_ref`` iade için işlem
+    kimliğiyle güncellenir. Başarısızlıkta kayıt PENDING_PAYMENT kalır (öğrenci
+    Biletlerim'den yeniden dener). Idempotent.
+    """
+    reg = await db.get(ExamRegistration, registration_id)
+    if reg is None or reg.deleted_at is not None:
+        return
+    if reg.status != RegistrationStatus.PENDING_PAYMENT.value or not success:
+        return
+    reg.status = RegistrationStatus.PAID.value
+    if provider_ref:
+        reg.provider_ref = provider_ref
+    reg.paid_at = _now()
+    reg.qr_token = secrets.token_urlsafe(24)
+    reg.short_code = await _unique_short_code(db)
+    await db.flush()
 
 
 # Ödenmiş kayıt iptalinde tam iade için pencere: oturum başlangıcına bu kadar saatten

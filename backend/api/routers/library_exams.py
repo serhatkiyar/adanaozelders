@@ -7,6 +7,7 @@ from fastapi import (
     File,
     HTTPException,
     Query,
+    Request,
     Response,
     UploadFile,
     status,
@@ -306,11 +307,13 @@ async def register(
 )
 async def pay(
     registration_id: int,
+    request: Request,
     client: Client = Depends(require_roles(RoleType.CLIENT)),
     db: AsyncSession = Depends(get_db),
 ):
     registration, redirect_url = await library_exam_service.pay(
-        db, client, registration_id
+        db, client, registration_id,
+        client_ip=request.client.host if request.client else None,
     )
     return PayResult(registration=registration, redirect_url=redirect_url)
 

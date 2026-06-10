@@ -4,7 +4,7 @@ import logging
 import secrets
 from decimal import Decimal
 
-from core.payments.base import ChargeResult, PaymentProvider
+from core.payments.base import BuyerInfo, ChargeResult, PaymentProvider
 
 logger = logging.getLogger("ceyhan.payments")
 
@@ -19,7 +19,14 @@ class FakePaymentProvider(PaymentProvider):
     name = "fake"
 
     async def charge(
-        self, *, amount: Decimal, currency: str, booking_id: int, description: str
+        self,
+        *,
+        amount: Decimal,
+        currency: str,
+        booking_id: int,
+        description: str,
+        reference: str = "",
+        buyer: BuyerInfo | None = None,
     ) -> ChargeResult:
         ref = f"fake-{booking_id}-{secrets.token_urlsafe(8)}"
         logger.info(

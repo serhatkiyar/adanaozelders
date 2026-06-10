@@ -12,6 +12,7 @@ import { RescheduleModal } from "@/components/RescheduleModal";
 import { useMeetingStore } from "@/store/meetingStore";
 import { useBookings } from "@/hooks/useBookings";
 import { usePayBooking } from "@/hooks/usePayments";
+import { useCheckoutResultToast } from "@/hooks/useCheckoutResult";
 import { PaymentBadge } from "@/components/PaymentBadge";
 import { BookingStatus, PaymentStatus, type BookingOut } from "@/types";
 import { formatRange } from "@/lib/datetime";
@@ -245,6 +246,7 @@ function BookingRow({
 /* ─── page ───────────────────────────────────────────── */
 
 export default function StudentBookings() {
+  useCheckoutResultToast(); // iyzico dönüşü: ?odeme=basarili|basarisiz
   const { data, isLoading, isError, error } = useBookings({ limit: 100 });
   const { joinMeeting } = useMeetingStore();
   const [activeReview, setActiveReview] = useState<number | null>(null);

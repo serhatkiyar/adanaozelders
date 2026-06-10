@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import datetime
 
-from fastapi import APIRouter, Body, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import CurrentUser, require_roles, user_rate_limit
@@ -112,11 +112,13 @@ async def reserve(
 )
 async def pay(
     reservation_id: int,
+    request: Request,
     client: Client = Depends(require_roles(RoleType.CLIENT)),
     db: AsyncSession = Depends(get_db),
 ):
     reservation, redirect_url = await study_reservation_service.pay(
-        db, client, reservation_id
+        db, client, reservation_id,
+        client_ip=request.client.host if request.client else None,
     )
     return StudyPayResult(reservation=reservation, redirect_url=redirect_url)
 

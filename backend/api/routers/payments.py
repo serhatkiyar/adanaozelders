@@ -1,6 +1,9 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, status
+import logging
+
+from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import (
@@ -9,16 +12,24 @@ from api.deps import (
     require_roles,
     user_rate_limit,
 )
+from core import payments
 from core.config import settings
 from core.database import get_db
+from core.payments.iyzico import IyzicoProvider, parse_reference
 from models.booking import Booking
 from models.client import Client
 from models.role import ROLE_IDS, RoleType
 from models.tutor import Tutor
 from schemas.payment import EarningsSummary, PaymentOut, PlatformSummary
-from services import payment_service
+from services import library_exam_service, payment_service, study_reservation_service
+
+logger = logging.getLogger("ceyhan.payments")
 
 router = APIRouter(prefix="/payments", tags=["payments"])
+
+# Callback sonrası kullanıcının döndürüleceği frontend sayfaları (lib/routes.ts).
+_BOOKINGS_PAGE = "/ders-talepleri"
+_TICKETS_PAGE = "/biletlerim"
 
 _pay_limit = user_rate_limit(
     key="payment_pay",
@@ -62,16 +73,67 @@ async def get_booking_payment(
 )
 async def pay_booking(
     booking_id: int,
+    request: Request,
     client: Client = Depends(require_roles(RoleType.CLIENT)),
     db: AsyncSession = Depends(get_db),
 ):
     booking = await _booking_or_404(db, booking_id)
     if booking.client_id != client.id:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Not your booking")
-    payment, redirect_url = await payment_service.pay(db, booking)
+    payment, redirect_url = await payment_service.pay(
+        db, booking, client_ip=request.client.host if request.client else None
+    )
     out = PaymentOut.model_validate(payment)
     out.redirect_url = redirect_url
     return out
+
+
+def _checkout_redirect(page: str, *, ok: bool) -> RedirectResponse:
+    """Kullanıcıyı ödeme sonucuyla frontend'e geri gönderir (303: POST→GET)."""
+    base = settings.FRONTEND_BASE_URL.rstrip("/")
+    result = "basarili" if ok else "basarisiz"
+    return RedirectResponse(f"{base}{page}?odeme={result}", status_code=303)
+
+
+@router.post("/iyzico/callback", include_in_schema=False)
+async def iyzico_callback(request: Request, db: AsyncSession = Depends(get_db)):
+    """iyzico Ödeme Formu dönüşü — kullanıcının TARAYICISI form-POST eder (auth YOK).
+
+    Gelen ``token``'a güvenilmez: sonuç ``retrieve_checkout`` ile iyzico'dan sunucu
+    tarafında doğrulanır; ``conversationId`` ("booking:12" vb.) hangi varlığın
+    kesinleşeceğini söyler. Tamamlama fonksiyonları idempotent olduğundan çift
+    POST/yenileme zararsızdır. Kullanıcı her durumda ilgili sayfaya yönlendirilir.
+    """
+    form = await request.form()
+    token = str(form.get("token") or "").strip()
+    provider = payments.get_payment_provider()
+    if not token or not isinstance(provider, IyzicoProvider):
+        return _checkout_redirect(_TICKETS_PAGE, ok=False)
+
+    result = await provider.retrieve_checkout(token=token)
+    parsed = parse_reference(result.reference)
+    if parsed is None:
+        logger.warning("iyzico callback: çözülemeyen referans %r", result.reference)
+        return _checkout_redirect(_TICKETS_PAGE, ok=False)
+
+    kind, entity_id = parsed
+    if kind == "booking":
+        await payment_service.complete_checkout(
+            db, booking_id=entity_id, success=result.success,
+            provider_ref=result.provider_ref,
+        )
+        return _checkout_redirect(_BOOKINGS_PAGE, ok=result.success)
+    if kind == "examreg":
+        await library_exam_service.complete_checkout(
+            db, registration_id=entity_id, success=result.success,
+            provider_ref=result.provider_ref,
+        )
+    else:  # studyres
+        await study_reservation_service.complete_checkout(
+            db, reservation_id=entity_id, success=result.success,
+            provider_ref=result.provider_ref,
+        )
+    return _checkout_redirect(_TICKETS_PAGE, ok=result.success)
 
 
 @router.get("/earnings", response_model=EarningsSummary)

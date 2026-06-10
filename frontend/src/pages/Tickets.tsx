@@ -14,6 +14,7 @@ import {
   useMyStudyReservations,
   usePayStudy,
 } from "@/hooks/useStudy";
+import { useCheckoutResultToast } from "@/hooks/useCheckoutResult";
 import { formatTRY } from "@/lib/money";
 import { formatDateTime } from "@/lib/datetime";
 import { getErrorMessage } from "@/lib/errors";
@@ -65,6 +66,7 @@ const STATUS_PILL: Record<RegistrationStatus, { label: string; cls: string }> = 
 const PREVIEW_COUNT = 3; // bölüm başına ön gösterim; fazlası "daha fazla göster" ile açılır
 
 export default function Tickets() {
+  useCheckoutResultToast(); // iyzico dönüşü: ?odeme=basarili|basarisiz
   const { data, isLoading } = useMyRegistrations();
   const { data: studyRes, isLoading: studyLoading } = useMyStudyReservations();
   const hasExam = data && data.length > 0;

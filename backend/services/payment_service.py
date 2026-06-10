@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from core import payments
 from core.config import settings
 from models.booking import Booking, BookingStatus
+from models.client import Client
 from models.payment import Payment, PaymentStatus
 from models.role import ROLE_IDS, RoleType
 from services import notification_service
@@ -76,12 +77,13 @@ async def create_for_booking(db: AsyncSession, booking: Booking) -> Payment | No
 
 
 async def pay(
-    db: AsyncSession, booking: Booking
+    db: AsyncSession, booking: Booking, *, client_ip: str | None = None
 ) -> tuple[Payment, str | None]:
     """Öğrenci ödemesi: sağlayıcı charge → HELD (emanet). (payment, redirect_url) döner.
 
-    Fake sağlayıcıda anında HELD; prod'da redirect_url (3DS) dönebilir ve sonuç
-    callback ile kesinleşir. Idempotent: zaten ödenmişse mevcut kayıt döner.
+    Fake sağlayıcıda anında HELD; iyzico'da redirect_url (Checkout Form/3DS) döner ve
+    sonuç callback'te ``complete_checkout`` ile kesinleşir. Idempotent: zaten
+    ödenmişse mevcut kayıt döner.
     """
     payment = await get_for_booking(db, booking.id)
     if payment is None:
@@ -98,16 +100,19 @@ async def pay(
             "Yalnızca onaylanmış bir ders için ödeme yapılabilir",
         )
 
+    client = await db.get(Client, booking.client_id)
     provider = payments.get_payment_provider()
     result = await provider.charge(
         amount=Decimal(str(payment.amount)),
         currency=payment.currency,
         booking_id=booking.id,
         description=f"Ceyhan Ozel Ders #{booking.id}",
+        reference=f"booking:{booking.id}",
+        buyer=payments.buyer_from_client(client, ip=client_ip) if client else None,
     )
     if result.redirect_url:
-        # Prod 3DS: ödeme henüz tamamlanmadı; kullanıcı yönlendirilir, callback'te
-        # HELD'e geçer. (iyzico entegrasyonu tamamlanınca callback endpoint'i eklenir.)
+        # Hosted checkout (iyzico): ödeme henüz tamamlanmadı; kullanıcı yönlendirilir,
+        # callback'te ``complete_checkout`` ile HELD'e geçer.
         payment.provider_ref = result.provider_ref
         await db.flush()
         return payment, result.redirect_url
@@ -130,6 +135,47 @@ async def pay(
         link="/tutor",
     )
     return payment, None
+
+
+async def complete_checkout(
+    db: AsyncSession, *, booking_id: int, success: bool, provider_ref: str | None
+) -> Payment | None:
+    """iyzico callback'i sunucuda doğrulandıktan sonra ödemeyi kesinleştirir.
+
+    Başarıda PENDING→HELD; ``provider_ref`` artık iade için kullanılacak işlem
+    kimliğidir (paymentTransactionId, initialize'daki CF token'ının üzerine yazılır).
+    Başarısızlıkta FAILED — öğrenci "Öde" ile yeniden deneyebilir. Idempotent:
+    HELD/RELEASED/REFUNDED durumlarına dokunmaz.
+    """
+    payment = await get_for_booking(db, booking_id)
+    if payment is None:
+        return None
+    if payment.status in (
+        PaymentStatus.HELD,
+        PaymentStatus.RELEASED,
+        PaymentStatus.REFUNDED,
+    ):
+        return payment
+    if not success:
+        payment.status = PaymentStatus.FAILED
+        await db.flush()
+        return payment
+
+    payment.status = PaymentStatus.HELD
+    if provider_ref:
+        payment.provider_ref = provider_ref
+    payment.paid_at = _now()
+    await db.flush()
+    booking = await db.get(Booking, booking_id)
+    if booking is not None:
+        await notification_service.notify(
+            db,
+            user_id=booking.tutor_id,
+            role_id=ROLE_IDS[RoleType.TUTOR],
+            message="Bir ders için ödeme alındı (emanette). Ders sonunda kazancına geçecek.",
+            link="/tutor",
+        )
+    return payment
 
 
 async def release(db: AsyncSession, booking: Booking) -> Payment | None:

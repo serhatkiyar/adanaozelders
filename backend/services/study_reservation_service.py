@@ -307,7 +307,7 @@ async def reserve(
 
 
 async def pay(
-    db: AsyncSession, client: Client, reservation_id: int
+    db: AsyncSession, client: Client, reservation_id: int, *, client_ip: str | None = None
 ) -> tuple[StudyReservationOut, str | None]:
     res = await db.get(StudyReservation, reservation_id)
     if res is None or res.deleted_at is not None:
@@ -327,6 +327,8 @@ async def pay(
             currency=res.currency,
             booking_id=res.id,
             description=f"Calisma Alani Rez. #{res.id}",
+            reference=f"studyres:{res.id}",
+            buyer=payments.buyer_from_client(client, ip=client_ip),
         )
         if result.redirect_url:
             res.provider = provider.name
@@ -350,6 +352,29 @@ async def pay(
     await db.commit()
     await db.refresh(res)
     return _res_out(res), None
+
+
+async def complete_checkout(
+    db: AsyncSession, *, reservation_id: int, success: bool, provider_ref: str | None
+) -> None:
+    """iyzico callback'i doğrulandıktan sonra rezervasyonu kesinleştirir (QR üretir).
+
+    Başarıda PENDING_PAYMENT→PAID + QR/kısa kod; ``provider_ref`` iade için işlem
+    kimliğiyle güncellenir. Başarısızlıkta PENDING_PAYMENT kalır (yeniden denenir).
+    Idempotent.
+    """
+    res = await db.get(StudyReservation, reservation_id)
+    if res is None or res.deleted_at is not None:
+        return
+    if res.status != RegistrationStatus.PENDING_PAYMENT.value or not success:
+        return
+    res.status = RegistrationStatus.PAID.value
+    if provider_ref:
+        res.provider_ref = provider_ref
+    res.paid_at = _now()
+    res.qr_token = secrets.token_urlsafe(24)
+    res.short_code = await _unique_short_code(db)
+    await db.flush()
 
 
 # Ödenmiş rezervasyon iptalinde tam iade penceresi: başlangıca bu kadar saatten FAZLA

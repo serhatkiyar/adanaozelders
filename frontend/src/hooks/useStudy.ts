@@ -48,9 +48,13 @@ export function usePayStudy() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (reservationId: number) => payStudy(reservationId),
-    onSuccess: () => {
+    onSuccess: (result) => {
       qc.invalidateQueries({ queryKey: ["study-reservations"] });
-      qc.invalidateQueries({ queryKey: ["study-quote"] });
+      // iyzico yönlendirmesi varken quote'u tazeleme: sayfa tam o anda
+      // ayrıldığından iptal edilen istek "Fiyat alınamadı" hatası gösteriyordu.
+      if (!result.redirect_url) {
+        qc.invalidateQueries({ queryKey: ["study-quote"] });
+      }
     },
   });
 }

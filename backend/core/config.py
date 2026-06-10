@@ -70,6 +70,10 @@ class Settings(BaseSettings):
 
     # E-posta linklerinin (doğrulama/şifre sıfırlama) işaret edeceği frontend kökü.
     FRONTEND_BASE_URL: str = "http://localhost:5173"
+    # Backend'in dışarıdan erişilen kökü — iyzico ödeme callback URL'i bundan üretilir.
+    # (Sandbox'ta da çalışır: callback sunucu-sunucu değil, kullanıcının TARAYICISININ
+    # POST'udur; localhost'a erişebilir.)
+    BACKEND_BASE_URL: str = "http://localhost:8000"
 
     # E-posta gönderimi. EMAIL_PROVIDER: "console" (loglar) | "smtp" (MailHog/SES vb.).
     # Geliştirmede "smtp" + MailHog (port 1025) ya da "console" yeterlidir; gerçek
