@@ -7,6 +7,7 @@ import { formatDateTime } from "@/lib/datetime";
 import { getErrorMessage } from "@/lib/errors";
 import { toast } from "@/store/toastStore";
 import { ROUTES } from "@/lib/routes";
+import { PaymentConsentNote } from "@/components/LegalConsent";
 import { ROLE_IDS, type ExamSessionOut, type RegistrationOut } from "@/types";
 
 export function ExamSessionsSection({ libraryId }: { libraryId: number }) {
@@ -44,6 +45,7 @@ export function ExamSessionsSection({ libraryId }: { libraryId: number }) {
           />
         ))}
       </div>
+      <PaymentConsentNote className="mt-3" />
     </div>
   );
 }

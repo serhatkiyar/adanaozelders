@@ -6,6 +6,14 @@ Allow: /
 Allow: /egitmenler
 Allow: /kutuphaneler
 
+# ── Yasal sayfalar (public) ──
+Allow: /kvkk
+Allow: /gizlilik-politikasi
+Allow: /kullanim-kosullari
+Allow: /mesafeli-satis-sozlesmesi
+Allow: /iptal-ve-iade-politikasi
+Allow: /cerez-politikasi
+
 # ── Oturum-içi / kişisel alanlar (indekslenmesin) ──
 Disallow: /hesabim
 Disallow: /biletlerim

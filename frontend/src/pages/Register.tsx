@@ -4,6 +4,7 @@ import { useMutation } from "@tanstack/react-query";
 import { register, type RegisterRole } from "@/api/auth";
 import { getErrorMessage } from "@/lib/errors";
 import { ROUTES } from "@/lib/routes";
+import { ConsentCheckbox } from "@/components/LegalConsent";
 import { Gender } from "@/types";
 
 const GENDERS = [
@@ -190,6 +191,8 @@ export default function Register() {
               </select>
             </div>
           </div>
+
+          <ConsentCheckbox />
 
           {mutation.isError && (
             <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-500/10 dark:text-red-300">

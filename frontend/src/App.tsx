@@ -28,6 +28,8 @@ const Libraries = lazy(() => import("@/pages/Libraries"));
 const LibraryDetail = lazy(() => import("@/pages/LibraryDetail"));
 const LibraryRegister = lazy(() => import("@/pages/LibraryRegister"));
 const Tickets = lazy(() => import("@/pages/Tickets"));
+// Yasal sayfalar — tek chunk, belge prop'la seçilir (içerik lib/legalContent.ts)
+const LegalPage = lazy(() => import("@/pages/LegalPage"));
 const OperatorHome = lazy(() => import("@/pages/dashboards/OperatorHome"));
 const Login = lazy(() => import("@/pages/Login"));
 const Register = lazy(() => import("@/pages/Register"));
@@ -221,6 +223,14 @@ function App() {
           <Route path={PATHS.libraries} element={<Libraries />} />
           <Route path={PATHS.library} element={<LibraryDetail />} />
           <Route path={PATHS.libraryRegister} element={<LibraryRegister />} />
+
+          {/* ── Yasal sayfalar (public, SEO) ── */}
+          <Route path={PATHS.kvkk} element={<LegalPage doc="kvkk" />} />
+          <Route path={PATHS.privacy} element={<LegalPage doc="privacy" />} />
+          <Route path={PATHS.terms} element={<LegalPage doc="terms" />} />
+          <Route path={PATHS.distanceSales} element={<LegalPage doc="distance-sales" />} />
+          <Route path={PATHS.refundPolicy} element={<LegalPage doc="refund" />} />
+          <Route path={PATHS.cookiePolicy} element={<LegalPage doc="cookies" />} />
 
           {/* ── Geliştirme prototipi (oturum gerektirmez) ── */}
           <Route path="/test-bilet" element={<TicketTearTest />} />

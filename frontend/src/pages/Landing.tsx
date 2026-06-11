@@ -18,6 +18,7 @@ import { HScroll } from "@/components/HScroll";
 import { DashboardHeader } from "@/components/DashboardHeader";
 import { PublicNavbar } from "@/components/PublicNavbar";
 import { EXAMS, type ExamCategory } from "@/lib/examTree";
+import { LEGAL_NAV } from "@/lib/legalNav";
 
 // Bir sınavın tüm (benzersiz) derslerini ?subject=A&subject=B… sorgusuna çevirir.
 function examSubjectQuery(exam: ExamCategory): string {
@@ -391,15 +392,26 @@ function Footer() {
         <Link to="/" className="flex items-center gap-2 transition hover:opacity-90">
           <img src="/logo.png" alt="Adana Özel Ders Logo" className="h-8 sm:h-10 w-auto object-contain grayscale opacity-70 hover:grayscale-0 hover:opacity-100 transition" />
         </Link>
-        <div className="border-t border-slate-200 py-8 text-center text-sm text-slate-500 dark:border-slate-800 dark:text-slate-400">
+        <div className="text-center text-sm text-slate-500 dark:text-slate-400 sm:text-right">
           <p>© {new Date().getFullYear()} Adana Özel Ders. Tüm hakları saklıdır.</p>
-          <div className="mt-4 flex justify-center gap-4">
+          <div className="mt-4 flex flex-wrap justify-center gap-4 sm:justify-end">
             <Link to="?modal=login" className="transition hover:text-slate-900 dark:hover:text-white">Giriş Yap</Link>
             <Link to="?modal=register" className="transition hover:text-slate-900 dark:hover:text-white">Kayıt Ol</Link>
-            <Link to="/contact" className="transition hover:text-slate-900 dark:hover:text-white">İletişim</Link>
           </div>
         </div>
       </div>
+      {/* Yasal sayfalar — lansman/iyzico gereği footer'dan her zaman erişilebilir */}
+      <nav className="mx-auto mt-8 flex max-w-6xl flex-wrap justify-center gap-x-5 gap-y-2 border-t border-slate-100 px-6 pt-6 text-xs text-slate-400 dark:border-slate-800 dark:text-slate-500">
+        {LEGAL_NAV.map((item) => (
+          <Link
+            key={item.id}
+            to={item.path}
+            className="transition hover:text-slate-700 dark:hover:text-slate-300"
+          >
+            {item.title}
+          </Link>
+        ))}
+      </nav>
     </footer>
   );
 }

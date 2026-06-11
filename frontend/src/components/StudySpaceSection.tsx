@@ -7,6 +7,7 @@ import { formatTRY } from "@/lib/money";
 import { getErrorMessage } from "@/lib/errors";
 import { toast } from "@/store/toastStore";
 import { ROUTES } from "@/lib/routes";
+import { PaymentConsentNote } from "@/components/LegalConsent";
 import { ROLE_IDS, type LibraryDetailOut } from "@/types";
 
 function todayStr(): string {
@@ -161,6 +162,7 @@ export function StudySpaceSection({ library }: { library: LibraryDetailOut }) {
           </button>
         )}
       </div>
+      <PaymentConsentNote className="mt-2" />
       {token && !isClient && (
         <p className="mt-2 text-xs text-slate-400">Yalnız öğrenci hesapları rezervasyon yapabilir.</p>
       )}

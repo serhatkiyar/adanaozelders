@@ -23,6 +23,14 @@ export const PATHS = {
   /** Self-servis "kütüphaneni listele" kaydı (public). */
   libraryRegister: "/kutuphane-kayit",
 
+  // ── Yasal sayfalar (public, SEO) — içerik lib/legalContent.ts'te ──
+  kvkk: "/kvkk",
+  privacy: "/gizlilik-politikasi",
+  terms: "/kullanim-kosullari",
+  distanceSales: "/mesafeli-satis-sozlesmesi",
+  refundPolicy: "/iptal-ve-iade-politikasi",
+  cookiePolicy: "/cerez-politikasi",
+
   // ── Kimlik & token akışları ──
   login: "/giris",
   register: "/kayit",
@@ -68,6 +76,14 @@ export const ROUTES = {
   library: (slugOrId: string | number) => `/kutuphaneler/${slugOrId}`,
   libraryRegister: PATHS.libraryRegister,
 
+  // ── Yasal sayfalar ──
+  kvkk: PATHS.kvkk,
+  privacy: PATHS.privacy,
+  terms: PATHS.terms,
+  distanceSales: PATHS.distanceSales,
+  refundPolicy: PATHS.refundPolicy,
+  cookiePolicy: PATHS.cookiePolicy,
+
   // ── Kimlik & token akışları ──
   login: PATHS.login,
   register: PATHS.register,
@@ -99,6 +115,17 @@ export const ROUTES = {
   settings: PATHS.settings,
   tutorListing: PATHS.tutorListing,
   studentProfile: (id: string | number) => `/ogrenciler/${id}`,
+} as const;
+
+// Yasal belge id'si (lib/legalContent.ts) → URL. LegalPage kenar gezinmesi ve
+// footer bu eşlemeden üretilir; yeni belge eklerken buraya da ekleyin.
+export const LEGAL_ROUTES = {
+  kvkk: PATHS.kvkk,
+  privacy: PATHS.privacy,
+  terms: PATHS.terms,
+  "distance-sales": PATHS.distanceSales,
+  refund: PATHS.refundPolicy,
+  cookies: PATHS.cookiePolicy,
 } as const;
 
 // Eğitmen için kanonik slug. Backend `slug` döner (isim-soyisim-{id}); yoksa id'ye düş.

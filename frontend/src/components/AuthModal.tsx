@@ -8,6 +8,7 @@ import { ROUTES } from "@/lib/routes";
 import { getErrorMessage } from "@/lib/errors";
 import { buildWelcome } from "@/lib/greeting";
 import { toast } from "@/store/toastStore";
+import { ConsentCheckbox } from "@/components/LegalConsent";
 import { Gender } from "@/types";
 
 const GENDERS = [
@@ -358,6 +359,8 @@ function RegisterForm({ initialRole, onSuccess }: { initialRole: RegisterRole, o
             </select>
           </div>
         </div>
+
+        <ConsentCheckbox />
 
         {mutation.isError && (
           <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-500/10 dark:text-red-300">

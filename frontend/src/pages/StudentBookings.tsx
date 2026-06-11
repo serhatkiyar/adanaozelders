@@ -14,6 +14,7 @@ import { useBookings } from "@/hooks/useBookings";
 import { usePayBooking } from "@/hooks/usePayments";
 import { useCheckoutResultToast } from "@/hooks/useCheckoutResult";
 import { PaymentBadge } from "@/components/PaymentBadge";
+import { PaymentConsentNote } from "@/components/LegalConsent";
 import { BookingStatus, PaymentStatus, type BookingOut } from "@/types";
 import { formatRange } from "@/lib/datetime";
 import { formatTRY, parseMoney } from "@/lib/money";
@@ -387,6 +388,12 @@ export default function StudentBookings() {
                   onJoinMeeting={(bk) => joinMeeting(bk.id, bk.meeting_room!, bk.tutor_name || "Eğitmen", bk.client_name || "Öğrenci")}
                 />
               ))}
+              {/* Ödenecek ders varsa mesafeli satış/iade bilgilendirmesi göster */}
+              {filtered.some(
+                (b) =>
+                  b.status === BookingStatus.ACCEPTED &&
+                  b.payment?.status === PaymentStatus.PENDING
+              ) && <PaymentConsentNote className="pt-1" />}
             </>
           )}
         </div>
