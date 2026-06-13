@@ -478,6 +478,9 @@ export interface TutorSearchOut {
   gender?: Gender | null;
   birth_date?: string | null; // "YYYY-MM-DD"
   last_seen_at?: string | null;
+  // Güven sinyalleri (profilde rozet): hesap açılış tarihi + tamamlanan ders sayısı.
+  created_at?: string | null;
+  completed_lessons?: number;
   rating_count: number;
   rating_average?: number | null;
   bayesian_score: number;

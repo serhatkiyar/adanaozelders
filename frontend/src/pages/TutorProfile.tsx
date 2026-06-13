@@ -7,6 +7,12 @@ import { Avatar } from "@/components/Avatar";
 import { EducationSection } from "@/components/EducationSection";
 import { BookmarkButton } from "@/components/BookmarkButton";
 import { ShareButton } from "@/components/ShareButton";
+import {
+  VerifiedTutorBadge,
+  DocumentedBadge,
+  TutorTrustBar,
+  hasDocumentedEducation,
+} from "@/components/TutorTrust";
 import { ReportModal } from "@/components/ReportModal";
 import { FullScreenSpinner } from "@/components/Spinner";
 import { ReviewListModal } from "@/components/ReviewListModal";
@@ -236,9 +242,13 @@ export default function TutorProfile() {
                 shape="square"
               />
               <div className="flex flex-col justify-center gap-1.5">
-                <h1 className="text-2xl font-bold leading-none text-slate-900 dark:text-white">
-                  {tutor.full_name}
-                </h1>
+                <div className="flex flex-wrap items-center gap-2">
+                  <h1 className="text-2xl font-bold leading-none text-slate-900 dark:text-white">
+                    {tutor.full_name}
+                  </h1>
+                  <VerifiedTutorBadge />
+                  {hasDocumentedEducation(tutor.educations) && <DocumentedBadge />}
+                </div>
 
                 {modeLabel && (
                   <div className="text-sm font-medium text-indigo-600 dark:text-indigo-400">
@@ -291,6 +301,9 @@ export default function TutorProfile() {
               )}
             </div>
           </div>
+
+          {/* ── Güven sinyalleri: tamamlanan ders / değerlendirme / üyelik ── */}
+          <TutorTrustBar tutor={tutor} />
 
           {/* ── Verdiği Dersler (transparan, profil kartının içinde) ── */}
           {tutor.subjects && tutor.subjects.length > 0 && (

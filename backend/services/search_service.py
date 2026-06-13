@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from core.config import settings
+from models.booking import Booking, BookingStatus
 from models.tutor import Gender, Tutor, TutorAvailability, TutorStatus, TutorSubject
 from schemas.education import EducationOut
 from schemas.tutor import AvailabilityOut, TutorSearchOut, TutorSort
@@ -33,6 +34,7 @@ def _to_search_out(
     subjects: list[str] | None = None,
     availability: list | None = None,
     distance_km: float | None = None,
+    completed_lessons: int = 0,
 ) -> TutorSearchOut:
     return TutorSearchOut(
         id=tutor.id,
@@ -45,6 +47,8 @@ def _to_search_out(
         gender=tutor.gender,
         birth_date=tutor.birth_date,
         last_seen_at=tutor.last_seen_at,
+        created_at=tutor.created_at,
+        completed_lessons=completed_lessons,
         rating_count=tutor.rating_count,
         rating_average=(
             tutor.rating_sum / tutor.rating_count if tutor.rating_count else None
@@ -221,6 +225,17 @@ async def get_tutor_public(db: AsyncSession, tutor_id: int) -> TutorSearchOut:
             .order_by(TutorAvailability.weekday, TutorAvailability.start_minute)
         )
     ).scalars().all()
+    # Güven sinyali: tamamlanmış ders sayısı (sosyal kanıt). Detayda hesaplanır;
+    # arama listesinde N+1'den kaçınmak için 0 bırakılır.
+    completed_lessons = (
+        await db.execute(
+            select(func.count(Booking.id)).where(
+                Booking.tutor_id == tutor.id,
+                Booking.status == BookingStatus.COMPLETED,
+                Booking.deleted_at.is_(None),
+            )
+        )
+    ).scalar_one()
     return _to_search_out(
         tutor,
         prior_mean,
@@ -228,4 +243,5 @@ async def get_tutor_public(db: AsyncSession, tutor_id: int) -> TutorSearchOut:
         educations=educations,
         subjects=[r[0] for r in subj_rows.all()],
         availability=list(avail_rows),
+        completed_lessons=completed_lessons,
     )

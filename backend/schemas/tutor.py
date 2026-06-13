@@ -96,6 +96,10 @@ class TutorSearchOut(BaseModel):
     gender: Gender | None = None
     birth_date: datetime.date | None = None
     last_seen_at: datetime.datetime | None = None
+    # Güven sinyalleri: hesabın açılış tarihi ("… tarihinden beri üye") ve
+    # tamamlanmış ders sayısı (sosyal kanıt). Profilde rozet olarak gösterilir.
+    created_at: datetime.datetime | None = None
+    completed_lessons: int = 0
     rating_count: int
     rating_average: float | None = None
     bayesian_score: float

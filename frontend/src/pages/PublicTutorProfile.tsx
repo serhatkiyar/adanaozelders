@@ -12,6 +12,12 @@ import { formatLastSeen } from "@/lib/datetime";
 import { WEEKDAYS_SHORT, summarize } from "@/lib/availability";
 import { formatRate, parseMoney } from "@/lib/money";
 import { ShareButton } from "@/components/ShareButton";
+import {
+  VerifiedTutorBadge,
+  DocumentedBadge,
+  TutorTrustBar,
+  hasDocumentedEducation,
+} from "@/components/TutorTrust";
 import { Seo } from "@/components/Seo";
 import { JsonLd } from "@/components/JsonLd";
 import { absoluteUrl } from "@/lib/seo";
@@ -138,9 +144,13 @@ export default function PublicTutorProfile() {
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
             <Avatar name={tutor.full_name} avatar_url={tutor.avatar_url} size="xl" shape="square" />
             <div className="min-w-0 flex-1">
-              <h1 className="text-xl font-bold text-slate-900 dark:text-white">
-                {tutor.full_name}
-              </h1>
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="text-xl font-bold text-slate-900 dark:text-white">
+                  {tutor.full_name}
+                </h1>
+                <VerifiedTutorBadge />
+                {hasDocumentedEducation(tutor.educations) && <DocumentedBadge />}
+              </div>
 
               <div className="mt-2 flex flex-wrap items-center gap-3">
                 <button
@@ -176,6 +186,9 @@ export default function PublicTutorProfile() {
               </div>
             </div>
           </div>
+
+          {/* ── Güven sinyalleri: tamamlanan ders / değerlendirme / üyelik ── */}
+          <TutorTrustBar tutor={tutor} />
 
           {/* ── Verdiği Dersler (transparan, profil kartının içinde) ── */}
           {tutor.subjects && tutor.subjects.length > 0 && (
