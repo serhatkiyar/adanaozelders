@@ -50,6 +50,10 @@ from models.tutor import (
 )
 from models.verification_token import TokenPurpose, VerificationToken
 
+# PostgreSQL eklentileri: btree_gist (booking GiST exclusion) + pg_trgm (trigram
+# arama). Üretim/açılış yolu artık `alembic upgrade head` olduğundan extension'lar
+# baseline migration'da kurulur; bu `before_create` event'i yalnız doğrudan
+# `Base.metadata.create_all` çağrılırsa (test/yardımcı script) devreye girer.
 for _extension in ("btree_gist", "pg_trgm"):
     event.listen(
         Base.metadata,

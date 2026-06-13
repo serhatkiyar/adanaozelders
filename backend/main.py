@@ -59,7 +59,7 @@ async def _presence_flusher() -> None:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     if settings.AUTO_CREATE_DB:
-        # Şemayı garanti et (create_all + alembic stamp head). Bkz. core/migrations.py.
+        # Şemayı garanti et (alembic upgrade head — migration tek kaynak). Bkz. core/migrations.py.
         await migrations.ensure_schema()
         async with AsyncSessionLocal() as session:
             await seed.seed_roles(session)

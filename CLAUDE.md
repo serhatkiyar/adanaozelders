@@ -58,7 +58,7 @@ audit_logs (admin aksiyon denetim kaydı)   notifications ((user_id, role_id))
 
 - **Unified User Table Yoktur**: Admin, Tutor ve Client ayrı tablolarda tutulur.
 - **Soft-delete**: Tüm tablolarda `deleted_at` kolonu (`deleted_at IS NULL` filtresi önemlidir).
-- **Migration**: Alembic ile izlenir (async, `migrations/`). **Dikkat:** mevcut "initial" revizyonu dolu bir DB'ye karşı üretildiği için tabloları kurmaz; bu yüzden açılışta (`AUTO_CREATE_DB=true`) `core/migrations.py::ensure_schema` çalışır → `Base.metadata.create_all` + idempotent `ALTER ... ADD COLUMN IF NOT EXISTS` + `alembic stamp head`, ardından rol/admin seed. Yeni *tablo* create_all ile gelir; mevcut tabloya yeni *kolon* için `_ADDED_COLUMNS_DDL`'e idempotent ALTER ekleyin. Detay: `backend/CLAUDE.md`.
+- **Migration**: Alembic (async, `migrations/`) **tek doğruluk kaynağıdır**. Tek bir baseline migration (`532b1fa8771d`) boş Postgres'te `alembic upgrade head` ile tüm şemayı kurar (eski bozuk initial + create_all/ALTER yığını squash edildi; create_all yoluyla `pg_dump` diff'i birebir doğrulandı). Açılışta (`AUTO_CREATE_DB=true`) `ensure_schema` yalnız `upgrade head` (subprocess) + seed çalıştırır; eski revizyona stamp'li DB'ler için otomatik `stamp head --purge` guard'ı vardır. Şema değişikliği: modeli güncelle → `alembic revision --autogenerate` → üretileni gözden geçir (extension/exclusion elle). Detay: `backend/CLAUDE.md`.
 - **Concurrency**: Booking çakışmaları PostgreSQL GiST Exclusion Constraint ile veritabanı seviyesinde engellenir.
 
 ## İş Kuralları ve Temel Özellikler
