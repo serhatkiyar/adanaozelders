@@ -19,6 +19,24 @@ export function amenityLabel(slug: string): string {
   return AMENITY_LABELS[slug]?.label ?? slug;
 }
 
-export function amenityIcon(slug: string): string {
-  return AMENITY_LABELS[slug]?.icon ?? "•";
+// Returns a Tabler icon class name for the given amenity slug
+export function amenityTiClass(slug: string): string {
+  const tablerMap: Record<string, string> = {
+    wifi: "wifi",
+    sessiz_alan: "volume-off",
+    grup_calisma: "users",
+    bireysel_kabin: "user",
+    kafeterya: "coffee",
+    otopark: "car",
+    priz: "plug",
+    klima: "snowflake",
+    yemekhane: "restaurant",
+    kutuphane: "books",
+    "7_24": "clock",
+    fotokopi: "printer",
+    erisilebilir: "accessibility",
+  };
+  const base = tablerMap[slug] ?? slug.replace(/_/g, "-");
+  return `ti ti-${base}`;
+
 }

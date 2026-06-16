@@ -19,7 +19,7 @@ import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useAuthStore } from "@/store/authStore";
 import { toast } from "@/store/toastStore";
 import { getErrorMessage } from "@/lib/errors";
-import { amenityLabel } from "@/lib/amenities";
+import { AMENITY_OPTIONS, amenityIcon, amenityLabel, amenityTiClass } from "@/lib/amenities";
 import {
   WEEKDAY_LABELS,
   formatHoursLine,
@@ -69,6 +69,7 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
     <h2 className="mb-3 text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
       {children}
+      <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons@latest/iconfont/tabler-icons.css" />
     </h2>
   );
 }
@@ -207,7 +208,7 @@ export default function LibraryDetail() {
               <button
                 type="button"
                 onClick={() => setShowReserve(true)}
-                className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-5 py-3 text-sm font-bold text-white shadow-sm transition hover:bg-indigo-700 active:scale-[0.99] sm:w-auto"
+                className="mt-5 inline-flex items-center gap-2 rounded-full bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-transform hover:scale-105 sm:w-auto"
               >
                 Rezervasyon Yap
               </button>
@@ -289,7 +290,7 @@ export default function LibraryDetail() {
                     href={directionsUrl(lib)!}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 active:scale-95"
+                    className="mt-3 inline-flex items-center gap-2 rounded-full bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-transform hover:scale-105"
                   >
                     Yol Tarifi Al
                   </a>
@@ -333,8 +334,9 @@ export default function LibraryDetail() {
                     {lib.amenities.map((a) => (
                       <span
                         key={a}
-                        className="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-600 dark:bg-slate-700 dark:text-slate-300"
+                        className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-600 dark:bg-slate-700 dark:text-slate-300"
                       >
+                        <i className={amenityTiClass(a)}></i>
                         {amenityLabel(a)}
                       </span>
                     ))}

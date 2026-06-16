@@ -12,7 +12,8 @@ import { useAuthStore } from "@/store/authStore";
 import { getErrorMessage } from "@/lib/errors";
 import { toast } from "@/store/toastStore";
 import { Seo } from "@/components/Seo";
-import { AMENITY_OPTIONS, amenityIcon, amenityLabel } from "@/lib/amenities";
+import { amenityTiClass, amenityLabel } from "@/lib/amenities";
+import { AmenityTagGrid } from "@/components/AmenityTagGrid";
 import { ROUTES } from "@/lib/routes";
 import { ROLE_IDS } from "@/types";
 import type { LibrarySearchParams } from "@/api/libraries";
@@ -185,7 +186,7 @@ export default function Libraries() {
               onClick={() => toggleAmenity(a)}
               className="inline-flex items-center gap-1.5 rounded-full bg-indigo-50 px-3 py-1 text-xs font-medium text-indigo-700 transition hover:bg-indigo-100 dark:bg-indigo-500/15 dark:text-indigo-300 dark:hover:bg-indigo-500/25"
             >
-              <span>{amenityIcon(a)}</span>
+              <i className={amenityTiClass(a)} aria-hidden="true"></i>
               {amenityLabel(a)}
               <span aria-hidden>✕</span>
             </button>
@@ -286,7 +287,7 @@ export default function Libraries() {
                           : "bg-slate-50 text-slate-600 ring-1 ring-slate-200 hover:bg-slate-100 dark:bg-slate-900 dark:text-slate-300 dark:ring-slate-700 dark:hover:bg-slate-800"
                       }`}
                     >
-                      <span>{amenityIcon(a)}</span>
+                      <i className={amenityTiClass(a)} aria-hidden="true"></i>
                       {amenityLabel(a)}
                     </button>
                   );

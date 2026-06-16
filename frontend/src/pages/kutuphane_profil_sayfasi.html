@@ -1,0 +1,233 @@
+
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: var(--font-sans); }
+  .hero { position: relative; border-radius: var(--border-radius-lg); overflow: hidden; height: 200px; background: linear-gradient(135deg, #1a2a4a 0%, #2d4270 100%); display: flex; align-items: flex-end; padding: 0; }
+  .hero-overlay { position: absolute; inset: 0; background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="60" height="60"><rect width="60" height="60" fill="none"/><rect x="0" y="0" width="30" height="30" fill="%23ffffff08"/></svg>'); }
+  .hero-content { position: relative; z-index: 1; width: 100%; padding: 1.25rem; display: flex; align-items: flex-end; gap: 1rem; }
+  .logo-circle { width: 64px; height: 64px; border-radius: 12px; background: #f5f0e8; display: flex; align-items: center; justify-content: center; font-size: 28px; flex-shrink: 0; border: 3px solid rgba(255,255,255,0.3); }
+  .hero-text { flex: 1; }
+  .hero-text h1 { font-size: 20px; font-weight: 500; color: #fff; margin-bottom: 4px; }
+  .hero-text .location { font-size: 13px; color: rgba(255,255,255,0.7); display: flex; align-items: center; gap: 4px; }
+  .stars { display: flex; align-items: center; gap: 4px; margin-top: 6px; }
+  .star { color: #f5c518; font-size: 14px; }
+  .rating-num { font-size: 13px; font-weight: 500; color: rgba(255,255,255,0.9); }
+  .rating-count { font-size: 12px; color: rgba(255,255,255,0.55); }
+  .action-btns { display: flex; gap: 8px; margin-top: 1rem; }
+  .btn-primary { background: #2d4270; color: #fff; border: none; border-radius: var(--border-radius-md); padding: 8px 16px; font-size: 13px; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 6px; }
+  .btn-primary:hover { background: #3a5490; }
+  .btn-secondary { background: var(--color-background-primary); color: var(--color-text-primary); border: 0.5px solid var(--color-border-secondary); border-radius: var(--border-radius-md); padding: 8px 16px; font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 6px; }
+  .btn-secondary:hover { background: var(--color-background-secondary); }
+  .grid { display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: 16px; margin-top: 16px; }
+  .card { background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); padding: 1rem 1.25rem; }
+  .section-title { font-size: 12px; font-weight: 500; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 12px; }
+  .info-row { display: flex; align-items: flex-start; gap: 10px; padding: 7px 0; border-bottom: 0.5px solid var(--color-border-tertiary); font-size: 13px; color: var(--color-text-primary); }
+  .info-row:last-child { border-bottom: none; }
+  .info-row i { font-size: 16px; color: var(--color-text-secondary); margin-top: 1px; flex-shrink: 0; }
+  .info-row .label { color: var(--color-text-secondary); min-width: 60px; }
+  .open-badge { display: inline-flex; align-items: center; gap: 4px; background: var(--color-background-success); color: var(--color-text-success); border-radius: 99px; padding: 2px 10px; font-size: 11px; font-weight: 500; }
+  .tag-grid { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .tag { background: var(--color-background-secondary); color: var(--color-text-secondary); border-radius: 99px; padding: 4px 10px; font-size: 12px; display: flex; align-items: center; gap: 4px; }
+  .tag i { font-size: 13px; }
+  .map-placeholder { background: var(--color-background-secondary); border-radius: var(--border-radius-md); height: 110px; display: flex; align-items: center; justify-content: center; margin-top: 12px; color: var(--color-text-tertiary); font-size: 13px; gap: 6px; border: 0.5px solid var(--color-border-tertiary); }
+  .bio-text { font-size: 14px; line-height: 1.7; color: var(--color-text-secondary); }
+  .photo-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 12px; }
+  .photo-box { background: var(--color-background-secondary); border-radius: var(--border-radius-md); height: 72px; display: flex; align-items: center; justify-content: center; color: var(--color-text-tertiary); font-size: 11px; border: 0.5px solid var(--color-border-tertiary); }
+  .slots { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 12px; }
+  .slot { border: 0.5px solid var(--color-border-secondary); border-radius: var(--border-radius-md); padding: 8px; text-align: center; cursor: pointer; }
+  .slot:hover { background: var(--color-background-secondary); }
+  .slot.available { border-color: #2d4270; }
+  .slot.full { opacity: 0.45; cursor: default; }
+  .slot .time { font-size: 13px; font-weight: 500; color: var(--color-text-primary); }
+  .slot .cap { font-size: 11px; color: var(--color-text-secondary); margin-top: 2px; }
+  .slot .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--color-background-success); display: inline-block; margin-right: 4px; }
+  .slot.full .dot { background: var(--color-background-danger); }
+  .exam-card { border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-md); padding: 10px 12px; display: flex; align-items: center; gap: 12px; margin-top: 8px; }
+  .exam-date { background: #2d4270; color: #fff; border-radius: var(--border-radius-md); width: 44px; height: 44px; display: flex; flex-direction: column; align-items: center; justify-content: center; flex-shrink: 0; }
+  .exam-date .day { font-size: 18px; font-weight: 500; line-height: 1; }
+  .exam-date .month { font-size: 10px; opacity: 0.8; }
+  .exam-info { flex: 1; }
+  .exam-info .name { font-size: 13px; font-weight: 500; color: var(--color-text-primary); }
+  .exam-info .detail { font-size: 12px; color: var(--color-text-secondary); margin-top: 2px; }
+  .review-item { padding: 10px 0; border-bottom: 0.5px solid var(--color-border-tertiary); }
+  .review-item:last-child { border-bottom: none; }
+  .review-header { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; }
+  .avatar { width: 30px; height: 30px; border-radius: 50%; background: var(--color-background-info); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 500; color: var(--color-text-info); flex-shrink: 0; }
+  .review-name { font-size: 13px; font-weight: 500; color: var(--color-text-primary); }
+  .review-stars { color: #f5c518; font-size: 12px; }
+  .review-text { font-size: 13px; color: var(--color-text-secondary); line-height: 1.6; }
+  .review-date { font-size: 11px; color: var(--color-text-tertiary); margin-left: auto; }
+  .divider { height: 0.5px; background: var(--color-border-tertiary); margin: 16px 0; }
+  .stat-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .stat { background: var(--color-background-secondary); border-radius: var(--border-radius-md); padding: 10px; text-align: center; }
+  .stat .num { font-size: 20px; font-weight: 500; color: var(--color-text-primary); }
+  .stat .lbl { font-size: 11px; color: var(--color-text-secondary); margin-top: 2px; }
+  .hours-row { display: flex; justify-content: space-between; font-size: 12px; padding: 4px 0; color: var(--color-text-secondary); }
+  .hours-row.today { color: var(--color-text-primary); font-weight: 500; }
+</style>
+
+<h2 class="sr-only">Malatya Bilgi Evi Kütüphanesi profil sayfası önizlemesi</h2>
+
+<div class="hero">
+  <div class="hero-overlay"></div>
+  <div class="hero-content">
+    <div class="logo-circle">📚</div>
+    <div class="hero-text">
+      <h1>Malatya Bilgi Evi Kütüphanesi</h1>
+      <div class="location"><i class="ti ti-map-pin" aria-hidden="true"></i> Battalgazi, Malatya</div>
+      <div class="stars">
+        <span class="star">★★★★★</span>
+        <span class="rating-num">4.8</span>
+        <span class="rating-count">(124 değerlendirme)</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="action-btns">
+  <button class="btn-primary"><i class="ti ti-calendar" aria-hidden="true"></i> Randevu Al</button>
+  <button class="btn-primary"><i class="ti ti-clipboard-list" aria-hidden="true"></i> Sınav Rezervasyonu</button>
+  <button class="btn-secondary"><i class="ti ti-phone" aria-hidden="true"></i> Ara</button>
+  <button class="btn-secondary"><i class="ti ti-share" aria-hidden="true"></i> Paylaş</button>
+</div>
+
+<div class="grid">
+
+  <div style="display: flex; flex-direction: column; gap: 12px;">
+
+    <div class="card">
+      <div class="section-title">Genel Bilgi</div>
+      <div class="info-row">
+        <i class="ti ti-clock" aria-hidden="true"></i>
+        <div>
+          <span class="open-badge"><span class="dot" style="background:#22c55e;width:6px;height:6px;border-radius:50%;display:inline-block;"></span> Şu an açık</span>
+          <div style="font-size:12px; color:var(--color-text-secondary); margin-top:3px;">Bugün 08:00 – 22:00</div>
+        </div>
+      </div>
+      <div class="info-row">
+        <i class="ti ti-phone" aria-hidden="true"></i>
+        <span style="color:var(--color-text-info);">0422 312 00 00</span>
+      </div>
+      <div class="info-row">
+        <i class="ti ti-map-pin" aria-hidden="true"></i>
+        <span>Özdemir Mah. Cumhuriyet Cad. No:14, Battalgazi</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="section-title">Çalışma Saatleri</div>
+      <div class="hours-row today"><span>Salı (bugün)</span><span>08:00 – 22:00</span></div>
+      <div class="hours-row"><span>Çarşamba</span><span>08:00 – 22:00</span></div>
+      <div class="hours-row"><span>Perşembe</span><span>08:00 – 22:00</span></div>
+      <div class="hours-row"><span>Cuma</span><span>08:00 – 22:00</span></div>
+      <div class="hours-row"><span>Cumartesi</span><span>09:00 – 18:00</span></div>
+      <div class="hours-row"><span>Pazar</span><span>10:00 – 17:00</span></div>
+      <div class="hours-row" style="color:var(--color-text-danger);"><span>Pazartesi</span><span>Kapalı</span></div>
+    </div>
+
+    <div class="card">
+      <div class="section-title">Olanaklar</div>
+      <div class="tag-grid">
+        <div class="tag"><i class="ti ti-wifi" aria-hidden="true"></i> Wi-Fi</div>
+        <div class="tag"><i class="ti ti-volume-off" aria-hidden="true"></i> Sessiz alan</div>
+        <div class="tag"><i class="ti ti-temperature-snow" aria-hidden="true"></i> Klima</div>
+        <div class="tag"><i class="ti ti-plug" aria-hidden="true"></i> Priz</div>
+        <div class="tag"><i class="ti ti-printer" aria-hidden="true"></i> Fotokopi</div>
+        <div class="tag"><i class="ti ti-coffee" aria-hidden="true"></i> Kafeterya</div>
+        <div class="tag"><i class="ti ti-accessible" aria-hidden="true"></i> Erişilebilir</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="section-title">Konum</div>
+      <div class="map-placeholder">
+        <i class="ti ti-map-2" aria-hidden="true" style="font-size:20px;"></i>
+        Harita görüntüsü
+      </div>
+    </div>
+
+  </div>
+
+  <div style="display: flex; flex-direction: column; gap: 12px;">
+
+    <div class="card">
+      <div class="section-title">Hakkında</div>
+      <p class="bio-text">Malatya Bilgi Evi, 2012 yılından bu yana öğrencilere ve araştırmacılara hizmet veren modern bir çalışma ve kütüphane alanıdır. 3 katlı binasında 180 kişilik çalışma kapasitesi, 12.000'den fazla kitap ve süreli yayın koleksiyonu bulunmaktadır. Deneme sınavları, grup çalışmaları ve bireysel çalışma alanlarıyla her ihtiyaca yönelik hizmet sunmaktadır.</p>
+      <div class="divider"></div>
+      <div class="stat-row">
+        <div class="stat"><div class="num">180</div><div class="lbl">Toplam kapasite</div></div>
+        <div class="stat"><div class="num">12K+</div><div class="lbl">Kitap sayısı</div></div>
+        <div class="stat"><div class="num">2012</div><div class="lbl">Kuruluş yılı</div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="section-title">Fotoğraflar</div>
+      <div class="photo-grid">
+        <div class="photo-box"><i class="ti ti-photo" aria-hidden="true" style="font-size:20px;"></i></div>
+        <div class="photo-box"><i class="ti ti-photo" aria-hidden="true" style="font-size:20px;"></i></div>
+        <div class="photo-box"><i class="ti ti-photo" aria-hidden="true" style="font-size:20px;"></i></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="section-title">Çalışma Alanı Rezervasyonu</div>
+      <div style="font-size:12px; color:var(--color-text-secondary); margin-bottom:10px;">Bugün için müsait slotlar</div>
+      <div class="slots">
+        <div class="slot available"><div class="time">10:00</div><div class="cap"><span class="dot"></span>12/20 kişi</div></div>
+        <div class="slot available"><div class="time">13:00</div><div class="cap"><span class="dot"></span>5/20 kişi</div></div>
+        <div class="slot full"><div class="time">15:00</div><div class="cap"><span class="dot"></span>Dolu</div></div>
+        <div class="slot available"><div class="time">17:00</div><div class="cap"><span class="dot"></span>18/20 kişi</div></div>
+        <div class="slot available"><div class="time">19:00</div><div class="cap"><span class="dot"></span>8/20 kişi</div></div>
+        <div class="slot available"><div class="time">20:30</div><div class="cap"><span class="dot"></span>3/20 kişi</div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="section-title">Yaklaşan Deneme Sınavları</div>
+      <div class="exam-card">
+        <div class="exam-date"><div class="day">21</div><div class="month">HAZ</div></div>
+        <div class="exam-info">
+          <div class="name">TYT Genel Deneme – 5. Oturum</div>
+          <div class="detail"><i class="ti ti-clock" aria-hidden="true" style="font-size:12px; vertical-align:-1px;"></i> 09:30 · 3 saat · 48 koltuk kaldı</div>
+        </div>
+        <button class="btn-primary" style="padding:6px 12px; font-size:12px; flex-shrink:0;">Rezerve</button>
+      </div>
+      <div class="exam-card">
+        <div class="exam-date"><div class="day">28</div><div class="month">HAZ</div></div>
+        <div class="exam-info">
+          <div class="name">AYT Matematik Denemesi</div>
+          <div class="detail"><i class="ti ti-clock" aria-hidden="true" style="font-size:12px; vertical-align:-1px;"></i> 10:00 · 2.5 saat · 12 koltuk kaldı</div>
+        </div>
+        <button class="btn-primary" style="padding:6px 12px; font-size:12px; flex-shrink:0;">Rezerve</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="section-title">Değerlendirmeler</div>
+      <div class="review-item">
+        <div class="review-header">
+          <div class="avatar">AK</div>
+          <div>
+            <div class="review-name">Ayşe K.</div>
+            <div class="review-stars">★★★★★</div>
+          </div>
+          <div class="review-date">3 gün önce</div>
+        </div>
+        <div class="review-text">Sessiz çalışma ortamı mükemmel. Wi-Fi hızlı, prizler her masada mevcut. Deneme sınavı organizasyonu da çok başarılıydı.</div>
+      </div>
+      <div class="review-item">
+        <div class="review-header">
+          <div class="avatar" style="background:var(--color-background-success);color:var(--color-text-success);">ME</div>
+          <div>
+            <div class="review-name">Mehmet E.</div>
+            <div class="review-stars">★★★★☆</div>
+          </div>
+          <div class="review-date">1 hafta önce</div>
+        </div>
+        <div class="review-text">Hafta sonları kalabalık oluyor, rezervasyon yapıp gitmek şart. Kafeterya kaliteli ve fiyatlar uygun.</div>
+      </div>
+    </div>
+
+  </div>
+</div>

@@ -5,7 +5,8 @@ import { StarRating } from "@/components/StarRating";
 import { ShareButton } from "@/components/ShareButton";
 import { LibraryBookmarkButton } from "@/components/LibraryBookmarkButton";
 import { PinIcon } from "@/components/PinIcon";
-import { amenityIcon, amenityLabel } from "@/lib/amenities";
+import { amenityTiClass, amenityLabel } from "@/lib/amenities";
+import { AmenityTagGrid } from "@/components/AmenityTagGrid";
 import {
   WEEKDAY_LABELS,
   formatHoursLine,
@@ -226,20 +227,7 @@ export function LibraryMapPanel({
             </div>
           )}
 
-          {/* Olanaklar */}
-          {library.amenities.length > 0 && (
-            <div className="mt-4 flex flex-wrap gap-1.5">
-              {library.amenities.map((a) => (
-                <span
-                  key={a}
-                  className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300"
-                >
-                  <span>{amenityIcon(a)}</span>
-                  {amenityLabel(a)}
-                </span>
-              ))}
-            </div>
-          )}
+          <AmenityTagGrid amenities={library.amenities} />
 
           {/* Açıklama */}
           {library.description && (
