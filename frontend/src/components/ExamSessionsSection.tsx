@@ -3,7 +3,6 @@ import { usePublicSessions, useMyRegistrations, useRegisterForSession, usePayReg
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useAuthStore } from "@/store/authStore";
 import { formatTRY } from "@/lib/money";
-import { formatDateTime } from "@/lib/datetime";
 import { getErrorMessage } from "@/lib/errors";
 import { toast } from "@/store/toastStore";
 import { ROUTES } from "@/lib/routes";
@@ -24,28 +23,43 @@ export function ExamSessionsSection({ libraryId }: { libraryId: number }) {
   if (isLoading) {
     return <div className="h-24 animate-pulse rounded-2xl bg-slate-100 dark:bg-slate-800" />;
   }
-  if (!sessions || sessions.length === 0) return null;
+
+  const empty = !sessions || sessions.length === 0;
 
   return (
     <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700">
       <h2 className="mb-1 text-base font-bold text-slate-900 dark:text-white">
-        Deneme Sınavları
+        Yaklaşan Deneme Sınavları
       </h2>
-      <p className="mb-4 text-xs text-slate-500 dark:text-slate-400">
-        Kaydol, online öde; oturum günü kütüphanede QR kodunu okutarak katıl.
-      </p>
-      <div className="space-y-3">
-        {sessions.map((s) => (
-          <ExamSessionRow
-            key={s.id}
-            session={s}
-            registration={bySession.get(s.id)}
-            isClient={isClient}
-            isLoggedIn={!!token}
-          />
-        ))}
-      </div>
-      <PaymentConsentNote className="mt-3" />
+      {empty ? (
+        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-slate-300 py-10 text-center dark:border-slate-700">
+          <div className="text-2xl">🗓️</div>
+          <p className="mt-2 text-sm font-medium text-slate-600 dark:text-slate-300">
+            Yaklaşan deneme sınavı yok
+          </p>
+          <p className="mt-0.5 text-xs text-slate-400 dark:text-slate-500">
+            Yeni oturumlar açıldığında burada görünecek.
+          </p>
+        </div>
+      ) : (
+        <>
+          <p className="mb-4 text-xs text-slate-500 dark:text-slate-400">
+            Kaydol, online öde; oturum günü kütüphanede QR kodunu okutarak katıl.
+          </p>
+          <div className="space-y-3">
+            {sessions!.map((s) => (
+              <ExamSessionRow
+                key={s.id}
+                session={s}
+                registration={bySession.get(s.id)}
+                isClient={isClient}
+                isLoggedIn={!!token}
+              />
+            ))}
+          </div>
+          <PaymentConsentNote className="mt-3" />
+        </>
+      )}
     </div>
   );
 }
@@ -97,9 +111,31 @@ function ExamSessionRow({
     }
   };
 
+  const start = new Date(session.starts_at);
+  const day = start.getDate();
+  const month = start
+    .toLocaleDateString("tr-TR", { month: "short" })
+    .replace(".", "")
+    .toUpperCase();
+  const time = start.toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" });
+  const dm = session.duration_minutes;
+  const durLabel =
+    dm % 60 === 0 ? `${dm / 60} saat` : dm < 60 ? `${dm} dk` : `${(dm / 60).toFixed(1)} saat`;
+
   return (
-    <div className="flex flex-col gap-3 rounded-xl border border-slate-100 p-4 dark:border-slate-700 sm:flex-row sm:items-center sm:justify-between">
-      <div className="min-w-0">
+    <div className="flex flex-wrap items-center gap-4 rounded-xl border border-slate-100 p-4 dark:border-slate-700">
+      {/* Tarih kutusu */}
+      <div className="flex h-14 w-14 shrink-0 flex-col items-center justify-center rounded-xl bg-indigo-50 dark:bg-indigo-500/15">
+        <span className="text-xl font-extrabold leading-none text-indigo-700 dark:text-indigo-300">
+          {day}
+        </span>
+        <span className="mt-0.5 text-[10px] font-bold uppercase tracking-wide text-indigo-500 dark:text-indigo-400">
+          {month}
+        </span>
+      </div>
+
+      {/* Orta: tip + başlık + saat/süre/kontenjan */}
+      <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
           <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-bold text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300">
             {session.exam_type}
@@ -108,18 +144,17 @@ function ExamSessionRow({
             {session.title}
           </span>
         </div>
-        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-          🗓️ {formatDateTime(session.starts_at)} · ⏱️ {session.duration_minutes} dk
-        </p>
-        <p className="mt-0.5 text-xs text-slate-400">
+        <p className="mt-1 flex flex-wrap items-center gap-x-1.5 text-xs text-slate-500 dark:text-slate-400">
+          🕐 {time} · {durLabel} ·{" "}
           {full ? (
-            <span className="font-semibold text-rose-500">Kontenjan doldu</span>
+            <span className="font-semibold text-rose-500">kontenjan doldu</span>
           ) : (
-            <>Kalan kontenjan: {session.available}/{session.capacity}</>
+            <span>{session.available} koltuk kaldı</span>
           )}
         </p>
       </div>
 
+      {/* Sağ: fiyat + aksiyon */}
       <div className="flex shrink-0 items-center gap-3">
         <span className="text-lg font-bold text-slate-900 dark:text-white">
           {formatTRY(session.price)}
