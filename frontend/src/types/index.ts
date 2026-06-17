@@ -500,6 +500,8 @@ export interface TutorSearchOut {
   // Güven sinyalleri (profilde rozet): hesap açılış tarihi + tamamlanan ders sayısı.
   created_at?: string | null;
   completed_lessons?: number;
+  // Ortalama ilk-yanıt süresi (saniye); yalnız profil detayında dolu, listede yok.
+  avg_response_seconds?: number | null;
   rating_count: number;
   rating_average?: number | null;
   bayesian_score: number;
@@ -810,6 +812,23 @@ export interface DemandOut {
   budget_max?: string | null; // Decimal -> string
   status: DemandStatus;
   created_at: string;
+  client_name?: string | null; // eğitmen browse'ında öğrencinin görünen adı
+  responded?: boolean; // eğitmen browse'ında: bu eğitmen yanıtladı mı
+  response_count?: number; // öğrenci kendi talebinde: gelen yanıt sayısı
+}
+
+export interface DemandResponseOut {
+  tutor_id: number;
+  tutor_name: string;
+  tutor_avatar_url?: string | null;
+  headline?: string | null;
+  responded_at: string;
+}
+
+export interface DemandRespondResult {
+  conversation_id: number;
+  client_id: number;
+  client_name: string;
 }
 
 /* ============================ EXAM ============================ */

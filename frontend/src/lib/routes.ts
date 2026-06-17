@@ -47,6 +47,8 @@ export const PATHS = {
   calendar: "/takvim",
   favorites: "/favoriler",
   questions: "/sorular",
+  /** Açık talepler (ilan) — CLIENT açar, TUTOR görüp yanıtlar (rol-adaptif). */
+  demands: "/talepler",
   exams: "/denemeler",
   /** Öğrencinin deneme oturumu biletleri (QR). */
   tickets: "/biletlerim",
@@ -103,6 +105,7 @@ export const ROUTES = {
   calendar: PATHS.calendar,
   favorites: PATHS.favorites,
   questions: PATHS.questions,
+  demands: PATHS.demands,
   exams: PATHS.exams,
   tickets: PATHS.tickets,
   tasks: PATHS.tasks,

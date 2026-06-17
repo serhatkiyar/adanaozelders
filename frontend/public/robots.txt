@@ -26,6 +26,7 @@ Disallow: /gorevler
 Disallow: /bakiyem
 Disallow: /liderlik
 Disallow: /sorular
+Disallow: /talepler
 Disallow: /ogren
 Disallow: /ders-talepleri
 Disallow: /ilan-ayarlari
