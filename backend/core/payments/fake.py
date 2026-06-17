@@ -4,7 +4,13 @@ import logging
 import secrets
 from decimal import Decimal
 
-from core.payments.base import BuyerInfo, ChargeResult, PaymentProvider
+from core.payments.base import (
+    BuyerInfo,
+    ChargeResult,
+    PaymentProvider,
+    SubMerchantInfo,
+    SubMerchantResult,
+)
 
 logger = logging.getLogger("ceyhan.payments")
 
@@ -41,3 +47,16 @@ class FakePaymentProvider(PaymentProvider):
     async def refund(self, *, provider_ref: str | None, amount: Decimal) -> bool:
         logger.info("FakePayment refund OK ref=%s amount=%s", provider_ref, amount)
         return True
+
+    async def create_submerchant(self, info: SubMerchantInfo) -> SubMerchantResult:
+        key = f"fake-sm-{info.external_id}-{secrets.token_urlsafe(6)}"
+        logger.info("FakePayment submerchant ACTIVE ext=%s key=%s", info.external_id, key)
+        return SubMerchantResult(success=True, sub_merchant_key=key, status="ACTIVE")
+
+    async def update_submerchant(
+        self, sub_merchant_key: str, info: SubMerchantInfo
+    ) -> SubMerchantResult:
+        logger.info("FakePayment submerchant update OK key=%s", sub_merchant_key)
+        return SubMerchantResult(
+            success=True, sub_merchant_key=sub_merchant_key, status="ACTIVE"
+        )

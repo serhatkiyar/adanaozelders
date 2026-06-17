@@ -22,6 +22,7 @@ from api.routers import (
     messages,
     notifications,
     payments,
+    payout,
     qa,
     reports,
     reviews,
@@ -56,6 +57,7 @@ api_router.include_router(notifications.router)
 api_router.include_router(messages.router)
 api_router.include_router(leaderboard.router)
 api_router.include_router(payments.router)
+api_router.include_router(payout.router)
 api_router.include_router(reports.router)
 api_router.include_router(study_reservations.router)
 api_router.include_router(tasks.router)

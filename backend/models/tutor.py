@@ -24,6 +24,7 @@ from models.mixins import (
     EmailVerificationMixin,
     LastSeenMixin,
     NameMixin,
+    PayoutMixin,
     SoftDeleteMixin,
     TimestampMixin,
 )
@@ -44,7 +45,13 @@ class Gender(str, enum.Enum):
 
 
 class Tutor(
-    Base, NameMixin, TimestampMixin, SoftDeleteMixin, LastSeenMixin, EmailVerificationMixin
+    Base,
+    NameMixin,
+    TimestampMixin,
+    SoftDeleteMixin,
+    LastSeenMixin,
+    EmailVerificationMixin,
+    PayoutMixin,
 ):
     __tablename__ = "tutors"
 
@@ -110,6 +117,12 @@ class Tutor(
         cascade="all, delete-orphan",
         order_by="TutorAvailability.weekday, TutorAvailability.start_minute",
     )
+
+    @property
+    def identity_verified(self) -> bool:
+        """Ödeme hesabı (alt üye işyeri) onaylıysa kimlik doğrulanmış sayılır
+        (iyzico MERNIS/IBAN kontrolünden geçti). Public 'Kimliği Doğrulanmış' rozeti."""
+        return self.payout_status == "ACTIVE"
 
     __table_args__ = (
         Index(

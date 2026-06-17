@@ -183,13 +183,14 @@ Evlilik/soyad değişikliği → MERNIS güncelse hesap adı da güncellenir.
 ## 6. Net "yapılacaklar" özeti (checklist)
 
 - [ ] iyzico başvurusunda Pazaryeri ürününü iste; A5 sorularını sor.
-- [ ] Tutor/Library'ye payout alanları + migration.
-- [ ] `core/payments`'a `create/update/retrieve_submerchant` (fake + iyzico).
-- [ ] Onboarding "Ödeme Bilgileri" adımı (TCKN/IBAN/adres + KVKK rıza) + api/hook/types.
-- [ ] İsim hizalaması: iyzico'ya hesap adını gönder; ACTIVE'de yasal adı hesaba yaz + kilitle;
-      sonradan ad değişimi → yeniden doğrulama + payout PENDING (A6).
-- [ ] Ödeme isteğine subMerchant split + `release`→approval, `refund`→disapproval bağla.
-- [ ] `IdentityVerifiedBadge` (payout ACTIVE'den).
+- [x] Tutor/Library'ye payout alanları + migration (`c3d4e5f6a7b8`, PayoutMixin).  ✅ 2026-06-18
+- [x] `core/payments`'a `create/update_submerchant` (fake=anında ACTIVE, iyzico=Ağustos stub).  ✅
+- [x] Onboarding "Ödeme Bilgileri" adımı (IBAN/TCKN + KVKK rıza) — `Profile`'da `PayoutSection`.  ✅ (eğitmen; kütüphane sonra)
+- [x] İsim hizalaması: sağlayıcıya hesap adı (`tutor.full_name`) gönderilir (A6 — fake'te kontrol yok, gerçek MERNIS iyzico'da).  ✅
+- [ ] Ödeme isteğine subMerchant split + `release`→approval, `refund`→disapproval bağla. (Ağustos/gerçek)
+- [x] `IdentityVerifiedBadge` (payout ACTIVE'den) — public + panel profil.  ✅
+- [ ] Komisyon override uygulaması (kolonlar hazır; 3 ödeme yüzeyine bağlama follow-up).
+- [ ] Kütüphane payout UI (kolonlar hazır; admin/operatör IBAN girişi follow-up).
 - [x] `TutorEducation` doğrulama alanları + migration (`a1b2c3d4e5f6`).  ✅ 2026-06-17
 - [x] Eğitmen formu: e-Devlet belge türü + barkod + durum rozeti (PENDING/VERIFIED/REJECTED).  ✅
 - [x] Admin "Diploma Doğrulama" sekmesi: belge + barkod + e-Devlet teyit linki + doğrula/reddet + audit.  ✅

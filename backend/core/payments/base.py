@@ -53,6 +53,35 @@ class CheckoutResult:
     error: str | None = None
 
 
+@dataclass(slots=True)
+class SubMerchantInfo:
+    """Alt üye işyeri (sub-merchant) oluşturmak için para alan tarafın bilgisi.
+
+    PERSONAL (şahıs) tipi: TCKN + IBAN + iletişim. iyzico bu veriyle MERNIS/IBAN/MASAK
+    kontrolünü KENDİ yapar ve alt üyeyi onaylar/ret eder (kimlik doğrulama onun
+    düzenleyici sorumluluğu). Biz yalnız toplayıp iletir, sonucu saklarız.
+    """
+
+    external_id: str  # bizim stabil referans: "tutor:{id}" / "library:{id}"
+    name: str  # yasal/iletişim adı (hesap adıyla aynı olmalı — A6)
+    email: str
+    gsm: str
+    iban: str
+    identity_number: str  # TCKN (yalnız sağlayıcıya iletilir, biz son4 tutarız)
+    address: str = "Ceyhan, Adana"
+    city: str = "Adana"
+
+
+@dataclass(slots=True)
+class SubMerchantResult:
+    """Alt üye oluşturma/güncelleme sonucu. ``status`` = PENDING | ACTIVE | REJECTED."""
+
+    success: bool
+    sub_merchant_key: str | None = None
+    status: str = "PENDING"
+    error: str | None = None
+
+
 class PaymentProvider(ABC):
     """Ödeme sağlayıcısı soyutlaması (e-posta katmanıyla aynı desen).
 
@@ -81,3 +110,20 @@ class PaymentProvider(ABC):
         self, *, provider_ref: str | None, amount: Decimal
     ) -> bool:  # pragma: no cover - arayüz
         raise NotImplementedError
+
+    # ── Pazaryeri: alt üye işyeri (sub-merchant) ──
+    # Varsayılan: desteklenmiyor (sağlayıcı override eder). Fake anında ACTIVE döner,
+    # iyzico gerçek entegrasyonu (Ağustos) override edecek.
+    async def create_submerchant(
+        self, info: "SubMerchantInfo"
+    ) -> "SubMerchantResult":  # pragma: no cover - varsayılan
+        return SubMerchantResult(
+            success=False, error="Bu sağlayıcı alt üye işyeri desteklemiyor"
+        )
+
+    async def update_submerchant(
+        self, sub_merchant_key: str, info: "SubMerchantInfo"
+    ) -> "SubMerchantResult":  # pragma: no cover - varsayılan
+        return SubMerchantResult(
+            success=False, error="Bu sağlayıcı alt üye işyeri desteklemiyor"
+        )

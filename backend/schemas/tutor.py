@@ -111,6 +111,8 @@ class TutorSearchOut(BaseModel):
     subjects: list[str] = []
     availability: list[AvailabilityOut] = []
     educations: list[EducationOut] = []
+    # Ödeme hesabı (alt üye) onaylı → "Kimliği Doğrulanmış" rozeti.
+    identity_verified: bool = False
 
     @computed_field  # type: ignore[prop-decorator]
     @property

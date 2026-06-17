@@ -13,6 +13,8 @@ from core.payments.base import (
     ChargeResult,
     CheckoutResult,
     PaymentProvider,
+    SubMerchantInfo,
+    SubMerchantResult,
 )
 from core.payments.factory import get_payment_provider
 
@@ -24,6 +26,8 @@ __all__ = [
     "ChargeResult",
     "CheckoutResult",
     "PaymentProvider",
+    "SubMerchantInfo",
+    "SubMerchantResult",
     "get_payment_provider",
     "buyer_from_client",
 ]

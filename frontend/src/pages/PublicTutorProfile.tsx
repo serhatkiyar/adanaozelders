@@ -14,6 +14,7 @@ import { formatRate, parseMoney } from "@/lib/money";
 import { ShareButton } from "@/components/ShareButton";
 import {
   VerifiedTutorBadge,
+  IdentityVerifiedBadge,
   DocumentedBadge,
   TutorTrustBar,
   hasVerifiedEducation,
@@ -149,6 +150,7 @@ export default function PublicTutorProfile() {
                   {tutor.full_name}
                 </h1>
                 <VerifiedTutorBadge />
+                {tutor.identity_verified && <IdentityVerifiedBadge />}
                 {hasVerifiedEducation(tutor.educations) && <DocumentedBadge />}
               </div>
 

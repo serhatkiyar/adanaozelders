@@ -2,6 +2,7 @@ import { FormEvent, ReactNode, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { DashboardShell } from "@/components/DashboardShell";
 import { EducationSection } from "@/components/EducationSection";
+import { PayoutSection } from "@/components/PayoutSection";
 import { STUDENT_NAV, TUTOR_NAV } from "@/lib/nav";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useMyStats, useUpdateProfile } from "@/hooks/useProfile";
@@ -408,6 +409,9 @@ export default function Profile() {
                 withDocument={user.role_id === ROLE_IDS.TUTOR}
               />
             )}
+
+            {/* ── Ödeme Bilgileri (yalnız eğitmen) ── */}
+            {user.role_id === ROLE_IDS.TUTOR && <PayoutSection />}
 
             {/* ── Güvenlik kısa yolu ── */}
             <div className="flex items-center justify-between rounded-2xl bg-white px-6 py-4 shadow-sm ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-slate-700">

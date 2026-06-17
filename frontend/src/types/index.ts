@@ -510,6 +510,23 @@ export interface TutorSearchOut {
   subjects?: string[];
   availability?: Availability[];
   educations?: Education[];
+  /** Ödeme hesabı (alt üye) onaylı → "Kimliği Doğrulanmış" rozeti. */
+  identity_verified?: boolean;
+}
+
+export type PayoutStatus = "NONE" | "PENDING" | "ACTIVE" | "REJECTED";
+
+export interface PayoutOut {
+  payout_status: PayoutStatus;
+  iban_masked?: string | null;
+  identity_last4?: string | null;
+  payout_updated_at?: string | null;
+}
+
+export interface PayoutSubmit {
+  iban: string;
+  tckn: string;
+  gsm?: string | null;
 }
 
 export enum TutorSort {

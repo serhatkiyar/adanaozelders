@@ -26,7 +26,14 @@ from decimal import Decimal
 import httpx
 
 from core.config import settings
-from core.payments.base import BuyerInfo, ChargeResult, CheckoutResult, PaymentProvider
+from core.payments.base import (
+    BuyerInfo,
+    ChargeResult,
+    CheckoutResult,
+    PaymentProvider,
+    SubMerchantInfo,
+    SubMerchantResult,
+)
 
 logger = logging.getLogger("ceyhan.payments")
 
@@ -259,3 +266,21 @@ class IyzicoProvider(PaymentProvider):
                 data.get("errorMessage"),
             )
         return ok
+
+    # ── Pazaryeri alt üye işyeri ── TODO(Ağustos): iyzico Marketplace
+    # /onboarding/submerchant (create/update/retrieve) gerçek entegrasyonu. Pazaryeri
+    # ürünü + şirket onayı gerektirir; şimdilik net hata döner (sessizce başarısız değil).
+    async def create_submerchant(self, info: SubMerchantInfo) -> SubMerchantResult:
+        logger.warning("iyzico sub-merchant create henüz entegre değil (ext=%s)", info.external_id)
+        return SubMerchantResult(
+            success=False,
+            error="iyzico pazaryeri (alt üye) entegrasyonu henüz aktif değil",
+        )
+
+    async def update_submerchant(
+        self, sub_merchant_key: str, info: SubMerchantInfo
+    ) -> SubMerchantResult:
+        return SubMerchantResult(
+            success=False,
+            error="iyzico pazaryeri (alt üye) entegrasyonu henüz aktif değil",
+        )

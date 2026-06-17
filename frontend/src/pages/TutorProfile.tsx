@@ -9,6 +9,7 @@ import { BookmarkButton } from "@/components/BookmarkButton";
 import { ShareButton } from "@/components/ShareButton";
 import {
   VerifiedTutorBadge,
+  IdentityVerifiedBadge,
   DocumentedBadge,
   TutorTrustBar,
   hasVerifiedEducation,
@@ -247,6 +248,7 @@ export default function TutorProfile() {
                     {tutor.full_name}
                   </h1>
                   <VerifiedTutorBadge />
+                  {tutor.identity_verified && <IdentityVerifiedBadge />}
                   {hasVerifiedEducation(tutor.educations) && <DocumentedBadge />}
                 </div>
 

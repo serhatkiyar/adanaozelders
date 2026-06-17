@@ -19,7 +19,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.schema import Computed
 
 from core.database import Base
-from models.mixins import SoftDeleteMixin, TimestampMixin
+from models.mixins import PayoutMixin, SoftDeleteMixin, TimestampMixin
 
 
 class LibraryStatus(str, enum.Enum):
@@ -34,7 +34,7 @@ class LibraryStatus(str, enum.Enum):
     REJECTED = "REJECTED"  # admin reddetti (operatöre gerekçe gösterilir)
 
 
-class Library(Base, TimestampMixin, SoftDeleteMixin):
+class Library(Base, TimestampMixin, SoftDeleteMixin, PayoutMixin):
     """Bölgedeki çalışma kütüphanesi / etüt merkezi. Tutor'ın kardeşi olan üçüncü
     bir tedarik tarafı (supply-side) entity'si: konumu (lat/lng), değerlendirme
     (Bayesian sıralama), çalışma saatleri ve (sonraki fazlarda) ücretli deneme

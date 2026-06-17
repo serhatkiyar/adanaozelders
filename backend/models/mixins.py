@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import datetime
 
-from sqlalchemy import DateTime, String, func
+from decimal import Decimal
+
+from sqlalchemy import DateTime, Numeric, String, func
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -56,5 +58,33 @@ class EmailVerificationMixin:
 
 class LastSeenMixin:
     last_seen_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+
+class PayoutMixin:
+    """Para alan tarafın (eğitmen/kütüphane) ödeme/escrow alma bilgisi.
+
+    Kimlik doğrulamayı sağlayıcı (iyzico) yapar; biz IBAN'ı toplar, sağlayıcıya alt üye
+    işyeri olarak iletir, sonucu (``sub_merchant_key`` + ``payout_status``) saklarız.
+    TCKN KALICI SAKLANMAZ — yalnız son4 (``identity_last4``) tutulur; tam TCKN
+    onboarding sırasında sağlayıcıya iletilir. Para iyzico'dan IBAN'a gider; bizde kasa yok.
+    """
+
+    iban: Mapped[str | None] = mapped_column(String(34), nullable=True)
+    sub_merchant_key: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    # NONE (bilgi yok) | PENDING (sağlayıcıda onay bekliyor) | ACTIVE | REJECTED
+    payout_status: Mapped[str] = mapped_column(
+        String(10), nullable=False, server_default="NONE"
+    )
+    identity_last4: Mapped[str | None] = mapped_column(String(4), nullable=True)
+    payout_updated_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    # Komisyon promosyon override (bitiş tarihli); yoksa global PLATFORM_COMMISSION_RATE.
+    commission_rate_override: Mapped[Decimal | None] = mapped_column(
+        Numeric(5, 4), nullable=True
+    )
+    commission_override_until: Mapped[datetime.datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
