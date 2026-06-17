@@ -19,7 +19,7 @@ import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useAuthStore } from "@/store/authStore";
 import { toast } from "@/store/toastStore";
 import { getErrorMessage } from "@/lib/errors";
-import { AMENITY_OPTIONS, amenityIcon, amenityLabel, amenityTiClass } from "@/lib/amenities";
+import { amenityLabel, amenityTiClass } from "@/lib/amenities";
 import {
   WEEKDAY_LABELS,
   formatHoursLine,

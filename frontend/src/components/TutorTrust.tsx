@@ -62,8 +62,6 @@ function StatCell({
   );
 }
 
-const MONTH_YEAR = new Intl.DateTimeFormat("tr-TR", { month: "long", year: "numeric" });
-
 /**
  * Eğitmen güven istatistikleri şeridi: tamamlanan ders, değerlendirme ve üyelik
  * başlangıcı. Yalnız anlamlı veri olan hücreler gösterilir; hiçbiri yoksa gizlenir.

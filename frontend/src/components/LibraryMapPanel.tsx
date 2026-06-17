@@ -5,7 +5,6 @@ import { StarRating } from "@/components/StarRating";
 import { ShareButton } from "@/components/ShareButton";
 import { LibraryBookmarkButton } from "@/components/LibraryBookmarkButton";
 import { PinIcon } from "@/components/PinIcon";
-import { amenityTiClass, amenityLabel } from "@/lib/amenities";
 import { AmenityTagGrid } from "@/components/AmenityTagGrid";
 import {
   WEEKDAY_LABELS,
