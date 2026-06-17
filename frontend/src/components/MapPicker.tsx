@@ -14,6 +14,7 @@ import {
   newGeocodeSession,
   type GeocodeSuggestion,
 } from "@/api/geocode";
+import { useMapGate, MapGestureController, MapGateHint } from "@/components/map/MapGate";
 import "./MapPicker.css";
 
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -134,6 +135,7 @@ export function MapPicker({
   );
 
   const [isMapDragging, setIsMapDragging] = useState(false);
+  const gate = useMapGate();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearching, setIsSearching] = useState(false);
@@ -151,7 +153,7 @@ export function MapPicker({
 
   // Street View state
   const [showStreetView, setShowStreetView] = useState(false);
-  const [autoOpenSv, setAutoOpenSv] = useState(true);
+  const [autoOpenSv, setAutoOpenSv] = useState(false);
   const [showSvCloseMenu, setShowSvCloseMenu] = useState(false);
   const [svPos, setSvPos] = useState({ 
     left: typeof window !== "undefined" ? window.innerWidth - 340 : 0, 
@@ -355,10 +357,14 @@ export function MapPicker({
         style={{ height: "100%", width: "100%", zIndex: 0 }}
         attributionControl={false}
       >
+        <MapGestureController {...gate} />
         <LayerSwitcher layer={activeLayer} />
         <LocationMarker position={position} setPosition={setPosition} readonly={readonly} onDragChange={setIsMapDragging} />
         <MapUpdater center={mapCenter} />
       </MapContainer>
+
+      {/* Kilitli haritada kazara konum kayması olmasın — tıkla-etkinleştir kapısı. */}
+      <MapGateHint active={gate.active} label={readonly ? "Hareket ettirmek için tıkla" : "Konumu ayarlamak için tıkla"} />
 
       {/* ── Center Marker Overlay ── */}
       {!readonly && (

@@ -8,6 +8,7 @@ import markerIcon from "leaflet/dist/images/marker-icon.png";
 import markerShadow from "leaflet/dist/images/marker-shadow.png";
 import { ROUTES } from "@/lib/routes";
 import { LibraryMapPanel } from "@/components/LibraryMapPanel";
+import { useMapGate, MapGestureController, MapGateHint } from "@/components/map/MapGate";
 import type { LibrarySearchOut } from "@/types";
 
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -94,6 +95,7 @@ export function LibrariesMap({
   enablePanel = true,
 }: LibrariesMapProps) {
   const [selected, setSelected] = useState<LibrarySearchOut | null>(null);
+  const gate = useMapGate();
 
   const located = useMemo(
     () =>
@@ -126,8 +128,8 @@ export function LibrariesMap({
         center={points[0] ?? ADANA}
         zoom={13}
         style={{ height: "100%", width: "100%" }}
-        scrollWheelZoom
       >
+        <MapGestureController {...gate} />
         <TileLayer
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
@@ -184,6 +186,8 @@ export function LibrariesMap({
           </Marker>
         ))}
       </MapContainer>
+
+      <MapGateHint active={gate.active} />
 
       {enablePanel && selected && (
         <LibraryMapPanel library={selected} onClose={() => setSelected(null)} />
