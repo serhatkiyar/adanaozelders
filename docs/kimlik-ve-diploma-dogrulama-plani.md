@@ -20,6 +20,24 @@
 
 ---
 
+## Komisyon politikası (karar — 2026-06-17)
+
+- **Oran: %10 brüt** (`PLATFORM_COMMISSION_RATE`, mevcut). %15 değerlendirildi, **reddedildi**
+  (talep oturmadan yüksek oran arzı kaçırır).
+- **iyzico işlem ücretini (~%1.95 tek çekim) PLATFORM yutar** → eğitmen/kütüphane net
+  rakamı görür; gerçek platform marjı ~%8. (Net %10 isteseydik brüt ~%12 olurdu — şimdilik
+  hayır.)
+- **Komisyon LANSMANDAN İTİBAREN alınır** — "önce bedava sonra ekle" YOK (sonradan eklemek
+  = zam = arzı küstürür). Mekanizma zaten kurulu (escrow + komisyon).
+- **Lansman taktiği: zaman-kutulu açık promosyon** ("ilk 3 ay / ilk N ders %0/%5"),
+  kalıcı bedava değil indirim → arzı çeker, oran zaten tanımlı, ileride zam şoku yok.
+- **Gelecekte zam PLANLAMA.** Gerekirse erken tedarikçileri grandfather'la / kademeleri
+  önceden duyur.
+- **Mühendislik gereği:** komisyon tek global sabit kalmamalı → **promosyon override**
+  (global/tedarikçi-bazlı, **bitiş tarihli**). Öneri: `Tutor`/`Library`'ye
+  `commission_rate_override` + `override_until`; yoksa varsayılana düşer. Lansmanda tek
+  oran, ileride taraf-bazlı.
+
 ## 1. İş parçası A — iyzico alt üye işyeri (sub-merchant) entegrasyonu  [ASIL İŞ]
 
 Kimlik onayının gerçekleştiği yer burası. Mevcut `core/payments` (iyzico, IYZWSv2,
