@@ -29,6 +29,7 @@ export interface NavItem {
 export const STUDENT_NAV: NavItem[] = [
   { to: ROUTES.favorites, label: "Favorilerim", icon: "favorites" },
   { to: ROUTES.messages, label: "Mesajlar", icon: "messages" },
+  { to: ROUTES.demands, label: "Taleplerim", icon: "demand" },
   { to: ROUTES.questions, label: "Sorularım", icon: "questions" },
   { to: ROUTES.exams, label: "Denemelerim", icon: "exams" },
   { to: ROUTES.libraries, label: "Kütüphaneler", icon: "library" },
@@ -43,6 +44,7 @@ export const STUDENT_NAV: NavItem[] = [
 export const TUTOR_NAV: NavItem[] = [
   { to: ROUTES.home, label: "Anasayfa", end: true, icon: "dashboard" },
   { to: ROUTES.bookings, label: "Ders Talepleri", icon: "bookings" },
+  { to: ROUTES.demands, label: "Gelen Talepler", icon: "demand" },
   { to: ROUTES.balance, label: "Bakiyem", icon: "wallet" },
   { to: ROUTES.messages, label: "Mesajlar", icon: "messages" },
   { to: ROUTES.questions, label: "Sorularım", icon: "questions" },

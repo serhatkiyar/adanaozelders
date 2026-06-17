@@ -10,6 +10,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from models.admin import Admin
 from models.booking import Booking, BookingStatus
 from models.client import Client
+from models.demand import Demand
+from models.demand_response import DemandResponse
 from models.messaging import Conversation, Message
 from models.role import ROLE_IDS, RoleType
 from models.tutor import Tutor
@@ -20,20 +22,25 @@ CurrentUser = Admin | Tutor | Client
 
 
 async def _can_message(db: AsyncSession, client_id: int, tutor_id: int) -> bool:
-    return bool(
-        await db.scalar(
-            select(
-                exists().where(
-                    Booking.client_id == client_id,
-                    Booking.tutor_id == tutor_id,
-                    Booking.status.in_(
-                        [BookingStatus.PENDING, BookingStatus.ACCEPTED]
-                    ),
-                    Booking.deleted_at.is_(None),
-                )
-            )
+    """Aktif/bekleyen rezervasyon VEYA eğitmenin bu öğrencinin bir talebine verdiği
+    yanıt mesajlaşmayı açar (talep yanıtı = eğitmen tarafından başlatılan iletişim)."""
+    has_booking = exists().where(
+        Booking.client_id == client_id,
+        Booking.tutor_id == tutor_id,
+        Booking.status.in_([BookingStatus.PENDING, BookingStatus.ACCEPTED]),
+        Booking.deleted_at.is_(None),
+    )
+    has_demand_response = (
+        exists()
+        .where(
+            DemandResponse.tutor_id == tutor_id,
+            DemandResponse.demand_id == Demand.id,
+            DemandResponse.deleted_at.is_(None),
+            Demand.client_id == client_id,
+            Demand.deleted_at.is_(None),
         )
     )
+    return bool(await db.scalar(select(or_(has_booking, has_demand_response))))
 
 
 async def _conversation_id(db: AsyncSession, client_id: int, tutor_id: int) -> int:
