@@ -1,5 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { fetchEarnings, payBooking } from "@/api/payments";
+import {
+  fetchEarnings,
+  fetchEarningsTransactions,
+  payBooking,
+} from "@/api/payments";
 import { useAuthStore } from "@/store/authStore";
 import { ROLE_IDS } from "@/types";
 
@@ -25,6 +29,17 @@ export function useEarnings() {
   return useQuery({
     queryKey: ["payments", "earnings"],
     queryFn: fetchEarnings,
+    enabled,
+  });
+}
+
+// Eğitmenin ödeme hareketleri dökümü (Bakiye sayfası).
+export function useEarningsTransactions() {
+  const user = useAuthStore((s) => s.user);
+  const enabled = user?.role_id === ROLE_IDS.TUTOR;
+  return useQuery({
+    queryKey: ["payments", "earnings", "transactions"],
+    queryFn: fetchEarningsTransactions,
     enabled,
   });
 }

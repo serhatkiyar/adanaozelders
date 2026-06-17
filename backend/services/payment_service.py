@@ -219,19 +219,86 @@ async def refund(db: AsyncSession, booking: Booking) -> Payment | None:
     return payment
 
 
-async def earnings_summary(db: AsyncSession, *, tutor_id: int) -> dict[str, Decimal]:
-    """Eğitmenin kazanç özeti: RELEASED toplamı (net) + HELD toplamı (emanette/bekleyen)."""
+def _month_start(now: datetime.datetime) -> datetime.datetime:
+    return now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+
+
+async def earnings_summary(db: AsyncSession, *, tutor_id: int) -> dict:
+    """Eğitmenin kazanç özeti: RELEASED (net), HELD (emanette), bu ay ve iade toplamı."""
     stmt = (
-        select(Payment.status, func.coalesce(func.sum(Payment.tutor_earning), 0))
+        select(
+            Payment.status,
+            func.coalesce(func.sum(Payment.tutor_earning), 0),
+            func.coalesce(func.sum(Payment.amount), 0),
+        )
         .join(Booking, Booking.id == Payment.booking_id)
         .where(Booking.tutor_id == tutor_id, Payment.deleted_at.is_(None))
         .group_by(Payment.status)
     )
-    by_status = {s: Decimal(str(total)) for s, total in (await db.execute(stmt)).all()}
+    earning_by_status: dict = {}
+    amount_by_status: dict = {}
+    for s, earning_total, amount_total in (await db.execute(stmt)).all():
+        earning_by_status[s] = Decimal(str(earning_total))
+        amount_by_status[s] = Decimal(str(amount_total))
+
+    month_start = _month_start(_now())
+    this_month_stmt = (
+        select(func.coalesce(func.sum(Payment.tutor_earning), 0))
+        .join(Booking, Booking.id == Payment.booking_id)
+        .where(
+            Booking.tutor_id == tutor_id,
+            Payment.deleted_at.is_(None),
+            Payment.status == PaymentStatus.RELEASED,
+            Payment.released_at >= month_start,
+        )
+    )
+    this_month = Decimal(str((await db.execute(this_month_stmt)).scalar_one()))
+
     return {
-        "released": by_status.get(PaymentStatus.RELEASED, Decimal("0")),
-        "pending": by_status.get(PaymentStatus.HELD, Decimal("0")),
+        "released": earning_by_status.get(PaymentStatus.RELEASED, Decimal("0")),
+        "pending": earning_by_status.get(PaymentStatus.HELD, Decimal("0")),
+        "this_month": this_month,
+        "refunded": amount_by_status.get(PaymentStatus.REFUNDED, Decimal("0")),
+        "currency": settings.PAYMENT_CURRENCY,
     }
+
+
+async def earnings_transactions(
+    db: AsyncSession, *, tutor_id: int, limit: int = 200
+) -> list[dict]:
+    """Eğitmenin ödeme hareketleri (en yeni önce) — Bakiye sayfası dökümü.
+
+    Bekleyen (PENDING: öğrenci henüz ödemedi) dahil tüm ödemeler döner; böylece
+    "ödeme bekleniyor" da listede görünür. ``occurred_at`` = serbest/ödeme/oluşturma.
+    """
+    stmt = (
+        select(Payment, Booking, Client)
+        .join(Booking, Booking.id == Payment.booking_id)
+        .join(Client, Client.id == Booking.client_id)
+        .where(Booking.tutor_id == tutor_id, Payment.deleted_at.is_(None))
+        .order_by(Payment.created_at.desc())
+        .limit(limit)
+    )
+    rows = (await db.execute(stmt)).all()
+    out: list[dict] = []
+    for payment, booking, client in rows:
+        occurred = payment.released_at or payment.paid_at or payment.created_at
+        out.append(
+            {
+                "id": payment.id,
+                "source": "LESSON",
+                "title": f"Özel ders #{booking.id}",
+                "counterparty": client.full_name,
+                "gross": Decimal(str(payment.amount)),
+                "commission": Decimal(str(payment.commission_amount)),
+                "net": Decimal(str(payment.tutor_earning)),
+                "status": payment.status.value,
+                "currency": payment.currency,
+                "occurred_at": occurred,
+                "created_at": payment.created_at,
+            }
+        )
+    return out
 
 
 async def platform_summary(db: AsyncSession) -> dict[str, Decimal]:

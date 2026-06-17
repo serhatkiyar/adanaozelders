@@ -58,6 +58,7 @@ const Habits = lazy(() => import("@/pages/Habits"));
 const Tasks = lazy(() => import("@/pages/Tasks"));
 const Profile = lazy(() => import("@/pages/Profile"));
 const Settings = lazy(() => import("@/pages/Settings"));
+const Balance = lazy(() => import("@/pages/Balance"));
 // Geliştirme prototipi: "yırtılan kupon" bilet animasyonu (/test-bilet)
 const TicketTearTest = lazy(() => import("@/pages/TicketTearTest"));
 // Geliştirme prototipi: canlı ders (Jitsi) önizleme (/test-canli-ders)
@@ -258,6 +259,8 @@ function App() {
             <Route path={PATHS.grapher} element={<Grapher />} />
             <Route path={PATHS.habits} element={<Habits />} />
             <Route path={PATHS.tasks} element={<Tasks />} />
+            {/* Bakiyem — rol delegasyonu sayfa içinde (TUTOR + LIBRARY_OPERATOR) */}
+            <Route path={PATHS.balance} element={<Balance />} />
             <Route path={PATHS.leaderboard} element={<Leaderboard />} />
             <Route path={PATHS.profile} element={<Profile />} />
             <Route path={PATHS.settings} element={<Settings />} />

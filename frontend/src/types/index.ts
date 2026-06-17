@@ -645,6 +645,25 @@ export interface Payment {
 export interface EarningsSummary {
   released: string;
   pending: string;
+  this_month?: string;
+  refunded?: string;
+  currency?: string;
+}
+
+// Bakiye sayfasındaki tek bir kazanç hareketi (ders / deneme / çalışma).
+// status backend'de Payment sözlüğüne normalize edilir → PaymentBadge ile tek mantık.
+export interface EarningTransaction {
+  id: number;
+  source: "LESSON" | "EXAM" | "STUDY";
+  title: string;
+  counterparty?: string | null;
+  gross: string;
+  commission: string;
+  net: string;
+  status: PaymentStatus;
+  currency: string;
+  occurred_at?: string | null;
+  created_at: string;
 }
 
 /* ============================ REPORT ============================ */
@@ -991,6 +1010,8 @@ export interface LibraryEarningsOut {
   commission_total: string; // platform komisyonu
   released_count: number;
   held_count: number;
+  this_month_earning?: string; // bu ay serbest bırakılan net kazanç
+  refunded_total?: string; // iade edilen brüt tutar
 }
 
 export interface LibraryWrite {
