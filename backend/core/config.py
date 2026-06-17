@@ -33,6 +33,10 @@ class Settings(BaseSettings):
     DB_MAX_OVERFLOW: int = 20
 
     JWT_SECRET_KEY: str
+    # Alan-düzeyi şifreleme anahtarı (TCKN gibi hassas veri at-rest). Verilmezse
+    # JWT_SECRET_KEY'den türetilir; ÜRETİMDE ayrı, kalıcı bir değer tut (değişirse
+    # eski şifreli veri çözülemez).
+    FIELD_ENCRYPTION_KEY: str | None = None
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
     # Refresh token (DB-tabanlı, rotasyonlu): access süresi dolunca sessizce yenilenir.

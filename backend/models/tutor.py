@@ -19,6 +19,7 @@ from sqlalchemy.dialects.postgresql import TSVECTOR
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.schema import Computed
 
+from core.crypto import EncryptedString
 from core.database import Base
 from models.mixins import (
     EmailVerificationMixin,
@@ -168,8 +169,10 @@ class TutorEducation(Base, TimestampMixin, SoftDeleteMixin):
     verification_code: Mapped[str | None] = mapped_column(String(60), nullable=True)
     # Belge sahibinin TCKN'si — e-Devlet doğrulamasında barkodun yanında 2. faktör.
     # Yalnız admin görür (e-Devlet teyidi); public'e ASLA dönmez. KVKK: amaçla sınırlı.
-    # TODO(kimlik temeli): iyzico kimlik adımıyla tutor seviyesine taşı + şifreli sakla.
-    verification_tckn: Mapped[str | None] = mapped_column(String(11), nullable=True)
+    # DB'de ŞİFRELİ (EncryptedString/Fernet); Python tarafı düz metinle çalışır.
+    verification_tckn: Mapped[str | None] = mapped_column(
+        EncryptedString(255), nullable=True
+    )
     # NONE (belge yok) | PENDING (teyit bekliyor) | VERIFIED | REJECTED.
     verification_status: Mapped[str] = mapped_column(
         String(12), nullable=False, server_default="NONE"
