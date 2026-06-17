@@ -23,9 +23,11 @@ from core.ratelimit import rate_limit
 from core.security import create_access_token
 from models.admin import Admin
 from models.client import Client
+from models.library import Library
 from models.library_operator import LibraryOperator
 from models.role import RoleType
 from schemas.auth import Token
+from schemas.payout import LibraryPayoutSubmitIn, PayoutOut
 from schemas.library import (
     LibraryCreate,
     LibraryDetailOut,
@@ -38,7 +40,12 @@ from schemas.library import (
     LibrarySearchOut,
     LibraryUpdate,
 )
-from services import library_onboarding_service, library_service, refresh_token_service
+from services import (
+    library_onboarding_service,
+    library_service,
+    payout_service,
+    refresh_token_service,
+)
 
 # Tek görsel için üst sınır (yüklemeden önce; optimize sonrası çok daha küçük olur).
 _MAX_IMAGE_BYTES = 12 * 1024 * 1024
@@ -208,6 +215,48 @@ async def create_library(
     db: AsyncSession = Depends(get_db),
 ):
     return await library_service.create_library(db, admin, payload)
+
+
+# ── Payout (alt üye işyeri) — admin küratörlüğünde ───────────────────────────────
+
+
+async def _get_library_or_404(db: AsyncSession, library_id: int) -> Library:
+    lib = await db.get(Library, library_id)
+    if lib is None or lib.deleted_at is not None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Kütüphane bulunamadı")
+    return lib
+
+
+@router.get("/admin/{library_id}/payout", response_model=PayoutOut)
+async def get_library_payout(
+    library_id: int,
+    user: CurrentUser = Depends(
+        require_roles(RoleType.ADMIN, RoleType.LIBRARY_OPERATOR)
+    ),
+    db: AsyncSession = Depends(get_db),
+):
+    _assert_can_manage_library(user, library_id)
+    lib = await _get_library_or_404(db, library_id)
+    return payout_service.to_out(lib)
+
+
+@router.post("/admin/{library_id}/payout", response_model=PayoutOut)
+async def submit_library_payout(
+    library_id: int,
+    payload: LibraryPayoutSubmitIn,
+    _admin: Admin = Depends(require_roles(RoleType.ADMIN)),
+    db: AsyncSession = Depends(get_db),
+):
+    """Admin kütüphanenin ödeme hesabını (IBAN + sorumlu kişi TCKN) kurar."""
+    lib = await _get_library_or_404(db, library_id)
+    return await payout_service.submit(
+        db,
+        lib,
+        external_id=f"library:{library_id}",
+        name=payload.contact_name,
+        email=payload.contact_email,
+        payload=payload,
+    )
 
 
 # ── Public detay ─────────────────────────────────────────────────────────────────

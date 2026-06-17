@@ -37,6 +37,14 @@ class PayoutSubmitIn(BaseModel):
     _v_tckn = field_validator("tckn")(_validate_tckn)
 
 
+class LibraryPayoutSubmitIn(PayoutSubmitIn):
+    """Kütüphane payout — sorumlu kişinin (PERSONAL alt üye) adı + e-postası da gerekir
+    (kütüphanenin kendi e-postası yok)."""
+
+    contact_name: str = Field(min_length=2, max_length=120)
+    contact_email: str = Field(min_length=3, max_length=255)
+
+
 class PayoutOut(BaseModel):
     """Ödeme/escrow alma durumu. IBAN maskeli; TCKN yalnız son4."""
 

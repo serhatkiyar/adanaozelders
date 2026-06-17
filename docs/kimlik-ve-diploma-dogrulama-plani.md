@@ -189,8 +189,10 @@ Evlilik/soyad değişikliği → MERNIS güncelse hesap adı da güncellenir.
 - [x] İsim hizalaması: sağlayıcıya hesap adı (`tutor.full_name`) gönderilir (A6 — fake'te kontrol yok, gerçek MERNIS iyzico'da).  ✅
 - [ ] Ödeme isteğine subMerchant split + `release`→approval, `refund`→disapproval bağla. (Ağustos/gerçek)
 - [x] `IdentityVerifiedBadge` (payout ACTIVE'den) — public + panel profil.  ✅
-- [ ] Komisyon override uygulaması (kolonlar hazır; 3 ödeme yüzeyine bağlama follow-up).
-- [ ] Kütüphane payout UI (kolonlar hazır; admin/operatör IBAN girişi follow-up).
+- [x] Komisyon override uygulaması (3 ödeme yüzeyi `services/commission`) + lansman promosyonu (config-gated).  ✅
+- [x] Kütüphane payout UI (admin `AdminLibraries` → "Ödeme" modalı; `/libraries/admin/{id}/payout`).  ✅
+- [ ] subMerchant split + escrow→approval bağlama (Ağustos/gerçek pazaryeri).
+- [ ] Kazançlarım paneli: "ödendi" (settled) durumu + IBAN gösterimi.
 - [x] `TutorEducation` doğrulama alanları + migration (`a1b2c3d4e5f6`).  ✅ 2026-06-17
 - [x] Eğitmen formu: e-Devlet belge türü + barkod + durum rozeti (PENDING/VERIFIED/REJECTED).  ✅
 - [x] Admin "Diploma Doğrulama" sekmesi: belge + barkod + e-Devlet teyit linki + doğrula/reddet + audit.  ✅

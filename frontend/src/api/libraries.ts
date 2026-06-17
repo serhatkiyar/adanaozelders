@@ -7,8 +7,33 @@ import type {
   LibraryReviewOut,
   LibrarySearchOut,
   LibraryWrite,
+  PayoutOut,
   Token,
 } from "@/types";
+
+export interface LibraryPayoutSubmit {
+  iban: string;
+  tckn: string;
+  gsm?: string | null;
+  contact_name: string;
+  contact_email: string;
+}
+
+export async function fetchLibraryPayout(id: number): Promise<PayoutOut> {
+  const { data } = await apiClient.get<PayoutOut>(`/libraries/admin/${id}/payout`);
+  return data;
+}
+
+export async function submitLibraryPayout(
+  id: number,
+  payload: LibraryPayoutSubmit
+): Promise<PayoutOut> {
+  const { data } = await apiClient.post<PayoutOut>(
+    `/libraries/admin/${id}/payout`,
+    payload
+  );
+  return data;
+}
 
 /** Self-servis kayıt: operatör hesabı + PENDING kütüphane oluşturur, token döner. */
 export async function registerLibrary(payload: LibraryRegisterPayload): Promise<Token> {
