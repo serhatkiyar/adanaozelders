@@ -14,6 +14,7 @@ import {
   fetchLibrary,
   fetchLibraryAdmin,
   fetchLibraryEarnings,
+  fetchLibraryEarningsTransactions,
   fetchLibraryReviews,
   listLibrariesAdmin,
   rejectLibrary,
@@ -90,6 +91,14 @@ export function useLibraryEarnings(libraryId: number | undefined) {
   return useQuery({
     queryKey: ["libraries", "earnings", libraryId],
     queryFn: () => fetchLibraryEarnings(libraryId!),
+    enabled: Number.isFinite(libraryId) && (libraryId ?? 0) > 0,
+  });
+}
+
+export function useLibraryEarningsTransactions(libraryId: number | undefined) {
+  return useQuery({
+    queryKey: ["libraries", "earnings", "transactions", libraryId],
+    queryFn: () => fetchLibraryEarningsTransactions(libraryId!),
     enabled: Number.isFinite(libraryId) && (libraryId ?? 0) > 0,
   });
 }

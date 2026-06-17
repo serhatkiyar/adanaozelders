@@ -51,6 +51,8 @@ export const PATHS = {
   /** Öğrencinin deneme oturumu biletleri (QR). */
   tickets: "/biletlerim",
   tasks: "/gorevler",
+  /** Kazanç & ödeme bakiyesi (TUTOR + LIBRARY_OPERATOR). */
+  balance: "/bakiyem",
   leaderboard: "/liderlik",
   // Öğren bölümü (kelime kartları / SRS / odak / grafik / alışkanlıklar)
   learn: "/ogren",
@@ -104,6 +106,7 @@ export const ROUTES = {
   exams: PATHS.exams,
   tickets: PATHS.tickets,
   tasks: PATHS.tasks,
+  balance: PATHS.balance,
   leaderboard: PATHS.leaderboard,
   learn: PATHS.learn,
   flashcards: PATHS.flashcards,

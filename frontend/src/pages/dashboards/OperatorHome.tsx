@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { DashboardShell } from "@/components/DashboardShell";
 import { ExamSessionsManager } from "@/components/ExamSessionsManager";
 import { LibraryPayoutForm } from "@/components/LibraryPayoutForm";
@@ -21,6 +22,7 @@ import {
 } from "@/hooks/useStudy";
 import { formatTRY } from "@/lib/money";
 import { formatDateTime } from "@/lib/datetime";
+import { ROUTES } from "@/lib/routes";
 import { getErrorMessage } from "@/lib/errors";
 import { toast } from "@/store/toastStore";
 import type { AttendanceResult } from "@/types";
@@ -72,7 +74,19 @@ export default function OperatorHome() {
         {op && <LibraryProfilePanel libraryId={op.library_id} />}
 
         {/* ── Kazanç özeti (yalnız onaylı) ── */}
-        {op && isActive && <EarningsCard libraryId={op.library_id} />}
+        {op && isActive && (
+          <div className="space-y-2">
+            <EarningsCard libraryId={op.library_id} />
+            <div className="text-right">
+              <Link
+                to={ROUTES.balance}
+                className="text-xs font-semibold text-indigo-600 hover:underline dark:text-indigo-400"
+              >
+                Bakiye & işlem dökümü →
+              </Link>
+            </div>
+          </div>
+        )}
 
         {/* ── Ödeme hesabı (IBAN) ── */}
         {op && isActive && (

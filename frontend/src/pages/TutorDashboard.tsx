@@ -302,15 +302,21 @@ export default function TutorDashboard() {
               <StatBox label="Tamamlanan" value={completedCount} tone="emerald" icon="🎓" />
             </div>
 
-            {/* Kazanç özeti (escrow) */}
+            {/* Kazanç özeti (escrow) — tıklayınca Bakiyem (işlem dökümü) açılır */}
             {earnings && (
-              <div className="flex items-center justify-between rounded-2xl bg-gradient-to-br from-emerald-50 to-white px-5 py-4 ring-1 ring-emerald-100 dark:from-emerald-900/10 dark:to-slate-800 dark:ring-emerald-800/30">
+              <Link
+                to={ROUTES.balance}
+                className="flex items-center justify-between rounded-2xl bg-gradient-to-br from-emerald-50 to-white px-5 py-4 ring-1 ring-emerald-100 transition hover:ring-emerald-300 dark:from-emerald-900/10 dark:to-slate-800 dark:ring-emerald-800/30 dark:hover:ring-emerald-700"
+              >
                 <div>
                   <p className="text-xs font-medium text-emerald-700 dark:text-emerald-300">
                     Toplam kazancın (net)
                   </p>
                   <p className="text-2xl font-bold text-emerald-700 dark:text-emerald-300">
                     {formatTRY(earnings.released)}
+                  </p>
+                  <p className="mt-0.5 text-[11px] text-emerald-600/80 dark:text-emerald-400/80">
+                    Bakiyem & işlem dökümü →
                   </p>
                 </div>
                 <div className="text-right">
@@ -321,7 +327,7 @@ export default function TutorDashboard() {
                     {formatTRY(earnings.pending)}
                   </p>
                 </div>
-              </div>
+              </Link>
             )}
 
             {/* Payout durumu: kurulmamışsa kurmaya yönlendir, kuruluysa IBAN'ı göster */}

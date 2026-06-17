@@ -23,6 +23,7 @@ Disallow: /takvim
 Disallow: /favoriler
 Disallow: /denemeler
 Disallow: /gorevler
+Disallow: /bakiyem
 Disallow: /liderlik
 Disallow: /sorular
 Disallow: /ogren

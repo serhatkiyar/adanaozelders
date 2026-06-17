@@ -90,6 +90,8 @@ class LibraryEarningsOut(BaseModel):
     commission_total: str  # serbest bırakılanlardan kesilen platform komisyonu
     released_count: int
     held_count: int
+    this_month_earning: str = "0"  # bu ay serbest bırakılan net kazanç
+    refunded_total: str = "0"  # iade edilen brüt tutar
 
 
 # ── Admin küratör CRUD ───────────────────────────────────────────────────────────

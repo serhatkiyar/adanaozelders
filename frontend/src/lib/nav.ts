@@ -16,7 +16,8 @@ export type NavIcon =
   | "tasks"
   | "habit"
   | "library"
-  | "tickets";
+  | "tickets"
+  | "wallet";
 
 export interface NavItem {
   to: string;
@@ -42,6 +43,7 @@ export const STUDENT_NAV: NavItem[] = [
 export const TUTOR_NAV: NavItem[] = [
   { to: ROUTES.home, label: "Anasayfa", end: true, icon: "dashboard" },
   { to: ROUTES.bookings, label: "Ders Talepleri", icon: "bookings" },
+  { to: ROUTES.balance, label: "Bakiyem", icon: "wallet" },
   { to: ROUTES.messages, label: "Mesajlar", icon: "messages" },
   { to: ROUTES.questions, label: "Sorularım", icon: "questions" },
   { to: ROUTES.tasks, label: "Görevlerim", icon: "tasks" },

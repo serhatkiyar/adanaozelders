@@ -1,5 +1,6 @@
 import { apiClient } from "@/api/axios";
 import type {
+  EarningTransaction,
   LibraryDetailOut,
   LibraryEarningsOut,
   LibraryRegisterPayload,
@@ -150,6 +151,15 @@ export async function fetchLibraryEarnings(
 ): Promise<LibraryEarningsOut> {
   const { data } = await apiClient.get<LibraryEarningsOut>(
     `/libraries/${libraryId}/earnings`
+  );
+  return data;
+}
+
+export async function fetchLibraryEarningsTransactions(
+  libraryId: number
+): Promise<EarningTransaction[]> {
+  const { data } = await apiClient.get<EarningTransaction[]>(
+    `/libraries/${libraryId}/earnings/transactions`
   );
   return data;
 }
