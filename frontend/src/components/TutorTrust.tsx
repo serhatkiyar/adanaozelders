@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { formatResponseTime } from "@/lib/datetime";
 import type { TutorSearchOut } from "@/types";
 
 // Eğitmen güven sinyalleri: hem public (PublicTutorProfile) hem panel
@@ -109,17 +110,19 @@ export function TutorTrustBar({ tutor }: { tutor: TutorSearchOut }) {
       label: `${tutor.rating_count} değerlendirme`,
     });
   }
-  // Ortalama yanıt süresi (placeholder)
-  cells.push({
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="h-5 w-5" aria-hidden>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3" />
-        <path strokeLinecap="round" strokeLinejoin="round" d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z" />
-      </svg>
-    ),
-    value: "--",
-    label: "Ortalama yanıt süresi",
-  });
+  // Ortalama yanıt süresi — mesajlaşma verisinden hesaplanır; veri yoksa gizlenir.
+  if (tutor.avg_response_seconds != null) {
+    cells.push({
+      icon: (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="h-5 w-5" aria-hidden>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z" />
+        </svg>
+      ),
+      value: formatResponseTime(tutor.avg_response_seconds),
+      label: "Ortalama yanıt süresi",
+    });
+  }
 
   if (cells.length === 0) return null;
 

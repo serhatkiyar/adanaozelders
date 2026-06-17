@@ -45,6 +45,15 @@ export function formatChatTime(iso?: string | null): string {
   return sameDay ? tf.format(d) : shortDf.format(d);
 }
 
+// Ortalama yanıt süresi: saniye -> "~5 dk", "~2 saat", "~3 gün" (yaklaşık).
+// Çok kısa süreler "~1 dk"ya yuvarlanır; null/negatif/geçersizde "—".
+export function formatResponseTime(seconds?: number | null): string {
+  if (seconds == null || !Number.isFinite(seconds) || seconds < 0) return "—";
+  if (seconds < 3600) return `~${Math.max(1, Math.round(seconds / 60))} dk`;
+  if (seconds < 86_400) return `~${Math.round(seconds / 3600)} saat`;
+  return `~${Math.round(seconds / 86_400)} gün`;
+}
+
 // Son görülme: ISO -> "az önce", "5 dk önce", "2 saat önce", "3 gün önce", sonra tarih.
 export function formatLastSeen(iso?: string | null): string {
   if (!iso) return "Hiç görülmedi";
