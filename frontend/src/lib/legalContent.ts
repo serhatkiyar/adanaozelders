@@ -79,6 +79,7 @@ const KVKK: LegalDoc = {
           "Eğitim ve kullanım verileri: ders rezervasyonları, deneme sınavı kayıtları ve sonuçları, çalışma alanı rezervasyonları, soru-cevaplar, değerlendirme ve yorumlar, çalışma araçları verileri (görevler, kelime kartları, alışkanlıklar).",
           "Mesajlaşma içerikleri: Platform üzerinden eğitmen-öğrenci yazışmaları (hizmet güvenliği ve uyuşmazlık çözümü amacıyla saklanır).",
           "Finansal işlem bilgileri: ödeme tutarı, ödeme durumu ve ödeme kuruluşu işlem referansı. Kart bilgileriniz Platform tarafından GÖRÜLMEZ ve SAKLANMAZ; ödeme sayfası doğrudan iyzico Ödeme Hizmetleri A.Ş. tarafından sunulur.",
+          "Kimlik ve ödeme doğrulama verileri (yalnızca ödeme alan eğitmen ve kütüphane sorumluları için): T.C. Kimlik Numarası, IBAN ve diploma/denklik/öğrenci belgesi ile e-Devlet doğrulama (barkod) kodu. T.C. Kimlik Numarası veritabanında şifreli (kriptolu) saklanır; arayüzde yalnızca son dört hanesi gösterilir. Ödeme alıcısı hesabının kurulması için ad-soyad, T.C. Kimlik Numarası ve IBAN bilgisi ödeme kuruluşuna (iyzico) aktarılır.",
           "İşlem güvenliği bilgileri: IP adresi, oturum kayıtları, hata/erişim logları."
         ),
       ],
@@ -92,6 +93,7 @@ const KVKK: LegalDoc = {
           "Üyelik sözleşmesinin kurulması ve ifası (hesap oluşturma, kimlik doğrulama, oturum yönetimi).",
           "Eğitmen-öğrenci eşleştirme, rezervasyon, deneme sınavı ve çalışma alanı hizmetlerinin sunulması.",
           "Ödeme ve emanet (escrow) süreçlerinin yürütülmesi, komisyon hesaplanması, mali yükümlülüklerin yerine getirilmesi.",
+          "Para alan tarafların (eğitmen, kütüphane) kimlik ve diploma/öğrenim belgesi doğrulaması ile ödeme alıcısı (alt üye işyeri) hesabının ödeme kuruluşu nezdinde kurulması.",
           "Platform güvenliğinin sağlanması, kötüye kullanımın önlenmesi ve uyuşmazlıkların çözümü.",
           "Yasal yükümlülüklerin yerine getirilmesi ve yetkili kurum taleplerinin karşılanması.",
           "Hizmet kalitesinin ölçülmesi ve geliştirilmesi."
@@ -113,7 +115,7 @@ const KVKK: LegalDoc = {
       blocks: [
         p("Kişisel verileriniz, yalnızca hizmetin gerektirdiği ölçüde aşağıdaki alıcı gruplarına aktarılabilir:"),
         list(
-          "Ödeme kuruluşu: iyzico Ödeme Hizmetleri A.Ş. (ödeme işlemleri ve 6493 sayılı Kanun kapsamındaki yükümlülükler).",
+          "Ödeme kuruluşu: iyzico Ödeme Hizmetleri A.Ş. — ödeme işlemleri ve 6493 sayılı Kanun kapsamındaki yükümlülükler için; ayrıca ödeme alan eğitmen/kütüphane için alt üye işyeri (sub-merchant) kurulumu amacıyla ad-soyad, T.C. Kimlik Numarası ve IBAN bilgisi aktarılır. Kimlik doğrulaması (MERNIS/IBAN kontrolü) mevzuat gereği ödeme kuruluşunca yapılır.",
           "Barındırma ve bulut altyapı sağlayıcıları (sunucu, veritabanı, dosya depolama).",
           "E-posta gönderim altyapısı (doğrulama ve bilgilendirme e-postaları).",
           "Hizmetin doğası gereği diğer kullanıcılar: eğitmen profiliniz öğrencilere; rezervasyon yaptığınızda ad-soyadınız ilgili eğitmene/kütüphaneye gösterilir.",
