@@ -8,6 +8,7 @@ import { CancelModal } from "@/components/CancelModal";
 import { useMeetingStore } from "@/store/meetingStore";
 import { useBookingAction, useBookings } from "@/hooks/useBookings";
 import { useEarnings } from "@/hooks/usePayments";
+import { useMyPayout } from "@/hooks/usePayout";
 import { PaymentBadge } from "@/components/PaymentBadge";
 import { BookingStatus, type BookingOut } from "@/types";
 import { ROUTES } from "@/lib/routes";
@@ -241,6 +242,7 @@ function BookingSection({
 export default function TutorDashboard() {
   const { data, isLoading, isError, error } = useBookings({ limit: 100 });
   const { data: earnings } = useEarnings();
+  const { data: payout } = useMyPayout();
   const { joinMeeting } = useMeetingStore();
 
   const groups = useMemo(() => {
@@ -321,6 +323,28 @@ export default function TutorDashboard() {
                 </div>
               </div>
             )}
+
+            {/* Payout durumu: kurulmamışsa kurmaya yönlendir, kuruluysa IBAN'ı göster */}
+            {payout && payout.payout_status === "ACTIVE" ? (
+              <p className="px-1 text-xs text-slate-500 dark:text-slate-400">
+                Ödemeler şu hesaba yatar:{" "}
+                <span className="font-mono text-slate-700 dark:text-slate-200">
+                  {payout.iban_masked}
+                </span>
+              </p>
+            ) : payout ? (
+              <Link
+                to={ROUTES.profile}
+                className="flex items-center justify-between gap-3 rounded-2xl bg-indigo-50 px-5 py-3.5 ring-1 ring-indigo-100 transition hover:bg-indigo-100 dark:bg-indigo-500/10 dark:ring-indigo-800/30"
+              >
+                <p className="text-sm font-medium text-indigo-800 dark:text-indigo-300">
+                  💳 Ödemeleri alabilmek için <strong>ödeme bilgilerini</strong> ekle (IBAN + kimlik).
+                </p>
+                <span className="shrink-0 text-sm font-bold text-indigo-600 dark:text-indigo-300">
+                  Ekle →
+                </span>
+              </Link>
+            ) : null}
 
             {/* Alert banner for pending */}
             {groups.pending.length > 0 && (
