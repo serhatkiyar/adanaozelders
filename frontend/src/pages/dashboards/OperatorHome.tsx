@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { DashboardShell } from "@/components/DashboardShell";
 import { ExamSessionsManager } from "@/components/ExamSessionsManager";
+import { LibraryPayoutForm } from "@/components/LibraryPayoutForm";
 import { QrScanner } from "@/components/QrScanner";
 import {
   LibraryEditorModal,
@@ -72,6 +73,16 @@ export default function OperatorHome() {
 
         {/* ── Kazanç özeti (yalnız onaylı) ── */}
         {op && isActive && <EarningsCard libraryId={op.library_id} />}
+
+        {/* ── Ödeme hesabı (IBAN) ── */}
+        {op && isActive && (
+          <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-slate-700">
+            <h2 className="mb-3 text-sm font-bold text-slate-900 dark:text-white">
+              Ödeme Hesabı
+            </h2>
+            <LibraryPayoutForm libraryId={op.library_id} />
+          </div>
+        )}
 
         {/* ── QR doğrulama (yalnız onaylı) ── */}
         {op && isActive && (

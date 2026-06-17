@@ -244,10 +244,14 @@ async def get_library_payout(
 async def submit_library_payout(
     library_id: int,
     payload: LibraryPayoutSubmitIn,
-    _admin: Admin = Depends(require_roles(RoleType.ADMIN)),
+    user: CurrentUser = Depends(
+        require_roles(RoleType.ADMIN, RoleType.LIBRARY_OPERATOR)
+    ),
     db: AsyncSession = Depends(get_db),
 ):
-    """Admin kütüphanenin ödeme hesabını (IBAN + sorumlu kişi TCKN) kurar."""
+    """Kütüphanenin ödeme hesabını (IBAN + sorumlu kişi TCKN) kurar. Admin ya da
+    kütüphanenin operatörü yapabilir (operatör yalnız kendi kütüphanesi için)."""
+    _assert_can_manage_library(user, library_id)
     lib = await _get_library_or_404(db, library_id)
     return await payout_service.submit(
         db,
