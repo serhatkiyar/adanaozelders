@@ -63,6 +63,13 @@ const STATUS_PILL: Record<RegistrationStatus, { label: string; cls: string }> = 
   },
 };
 
+// Geçmiş + okutulmamış (no-show) bilet/rezervasyon için nötr rozet — kart zaten
+// gri-tonlandığı için renk soluk görünür.
+const EXPIRED_PILL = {
+  label: "Süresi doldu",
+  cls: "bg-white/10 text-violet-100 ring-1 ring-inset ring-white/15",
+};
+
 const PREVIEW_COUNT = 3; // bölüm başına ön gösterim; fazlası "daha fazla göster" ile açılır
 
 export default function Tickets() {
@@ -200,32 +207,52 @@ const PURPLE_STYLE: CSSProperties = {
   backgroundSize: "16px 16px, 100% 100%",
 };
 
+interface Stamp {
+  label: string;
+  sub?: string | null;
+  tone: "amber" | "slate";
+}
+
 function TicketFrame({
-  isUsed,
-  usedAt,
+  muted = false,
+  stamp,
   main,
   stub,
 }: {
-  isUsed: boolean;
-  usedAt?: string | null;
+  /** Geçmiş/no-show: kartı gri-tonla + soluklaştır. */
+  muted?: boolean;
+  /** Ortaya basılan eğik damga (Kullanıldı / Süresi Doldu). null = damgasız. */
+  stamp?: Stamp | null;
   main: ReactNode;
   stub: ReactNode;
 }) {
   // Damga "basılır" (thump): büyükten normale oturur — geçişin çalışması için gecikmeli tetik.
-  const [stamped, setStamped] = useState(isUsed);
+  const hasStamp = !!stamp;
+  const [stamped, setStamped] = useState(hasStamp);
   const timer = useRef<ReturnType<typeof setTimeout>>();
   useEffect(() => {
     clearTimeout(timer.current);
-    if (isUsed) {
+    if (hasStamp) {
       timer.current = setTimeout(() => setStamped(true), 120);
     } else {
       setStamped(false);
     }
     return () => clearTimeout(timer.current);
-  }, [isUsed]);
+  }, [hasStamp]);
+
+  const stampTone =
+    stamp?.tone === "slate"
+      ? "border-slate-200/80 text-slate-100"
+      : "border-amber-300/90 text-amber-200";
 
   return (
-    <div style={{ filter: "drop-shadow(0 12px 16px rgba(76,29,149,0.25))" }}>
+    <div
+      style={{
+        filter: muted
+          ? "grayscale(0.9) opacity(0.82) drop-shadow(0 10px 14px rgba(15,23,42,0.18))"
+          : "drop-shadow(0 12px 16px rgba(76,29,149,0.25))",
+      }}
+    >
       <div
         style={{ ...SIDE_BITES, ...PURPLE_STYLE }}
         className="relative flex min-h-[11.5rem] w-full text-violet-50"
@@ -247,19 +274,21 @@ function TicketFrame({
         {/* Kupon (stub) */}
         {stub}
 
-        {/* "Kullanıldı" damgası */}
-        {isUsed && (
+        {/* Damga: Kullanıldı (amber) / Süresi Doldu (slate) */}
+        {stamp && (
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center" aria-hidden>
             <div
-              className={`select-none rounded-xl border-4 border-amber-300/90 px-6 py-2.5 text-center font-black uppercase leading-none tracking-[0.15em] text-amber-200 shadow-sm transition-all duration-300 ease-out ${
+              className={`select-none rounded-xl border-4 px-6 py-2.5 text-center font-black uppercase leading-none tracking-[0.15em] shadow-sm transition-all duration-300 ease-out ${stampTone} ${
                 stamped ? "rotate-[-14deg] scale-100 opacity-90" : "rotate-[-14deg] scale-[1.8] opacity-0"
               }`}
               style={{ textShadow: "0 1px 0 rgba(255,255,255,0.15)" }}
             >
-              <span className="block text-2xl">Kullanıldı</span>
-              <span className="mt-1 block whitespace-nowrap text-[10px] font-bold tracking-wide opacity-80">
-                {usedAt ? formatDateTime(usedAt) : "giriş onaylandı"}
-              </span>
+              <span className="block text-2xl">{stamp.label}</span>
+              {stamp.sub && (
+                <span className="mt-1 block whitespace-nowrap text-[10px] font-bold tracking-wide opacity-80">
+                  {stamp.sub}
+                </span>
+              )}
             </div>
           </div>
         )}
@@ -273,13 +302,26 @@ function TicketStub({
   qrToken,
   shortCode,
   regId,
+  inactive,
   onShow,
 }: {
   qrToken?: string | null;
   shortCode?: string | null;
   regId: number;
+  /** Geçmiş/iade/iptal: QR okutulamaz → pasif gösterge (ikon + etiket). */
+  inactive?: { label: string; icon: string } | null;
   onShow: () => void;
 }) {
+  if (inactive) {
+    return (
+      <div className="flex w-[8.75rem] shrink-0 flex-col items-center justify-center gap-1.5 px-4 py-4 text-center">
+        <div className="text-2xl opacity-60">{inactive.icon}</div>
+        <div className="text-[11px] font-medium leading-tight text-violet-100/70">
+          {inactive.label}
+        </div>
+      </div>
+    );
+  }
   if (qrToken) {
     const code = shortCode ?? `${regId}`;
     const pretty = code.length === 8 ? `${code.slice(0, 4)} ${code.slice(4)}` : code;
@@ -325,14 +367,85 @@ function refundableUntilStart(startIso?: string | null): boolean {
   return new Date(startIso).getTime() - Date.now() > REFUND_WINDOW_HOURS * 3600 * 1000;
 }
 
+interface TerminalView {
+  muted: boolean;
+  stamp: Stamp | null;
+  inactive: { label: string; icon: string } | null;
+  pill: { label: string; cls: string };
+}
+
+/**
+ * Bilet/rezervasyonun nihai görünümü: duruma (ve no-show için geçmişliğe) göre
+ * rozet, ortadaki eğik damga ve QR kuponunun pasif hâli. Deneme bileti ile çalışma
+ * rezervasyonu bu mantığı paylaşır.
+ *  - ATTENDED → "Kullanıldı" (amber, kart canlı)
+ *  - REFUNDED → "İade Edildi" (soluk + pasif QR)
+ *  - CANCELLED → "İptal Edildi" (soluk + pasif QR)
+ *  - geçmiş + okutulmamış → "Süresi Doldu" (soluk + pasif QR)
+ *  - aksi (PAID/PENDING geçerli) → damgasız, canlı.
+ */
+function terminalView(
+  status: RegistrationStatus,
+  isExpired: boolean,
+  attendedAt?: string | null
+): TerminalView {
+  if (status === "ATTENDED") {
+    return {
+      muted: false,
+      stamp: {
+        label: "Kullanıldı",
+        sub: attendedAt ? formatDateTime(attendedAt) : "giriş onaylandı",
+        tone: "amber",
+      },
+      inactive: null,
+      pill: STATUS_PILL.ATTENDED,
+    };
+  }
+  if (status === "REFUNDED") {
+    return {
+      muted: true,
+      stamp: { label: "İade Edildi", sub: "ücret iade edildi", tone: "slate" },
+      inactive: { label: "İade edildi", icon: "↩" },
+      pill: STATUS_PILL.REFUNDED,
+    };
+  }
+  if (status === "CANCELLED") {
+    return {
+      muted: true,
+      stamp: { label: "İptal Edildi", sub: null, tone: "slate" },
+      inactive: { label: "İptal edildi", icon: "✕" },
+      pill: STATUS_PILL.CANCELLED,
+    };
+  }
+  if (isExpired) {
+    return {
+      muted: true,
+      stamp: { label: "Süresi Doldu", sub: "katılım sağlanmadı", tone: "slate" },
+      inactive: { label: "Süresi doldu", icon: "⌛" },
+      pill: EXPIRED_PILL,
+    };
+  }
+  return { muted: false, stamp: null, inactive: null, pill: STATUS_PILL[status] };
+}
+
 function TicketCard({ reg }: { reg: RegistrationOut }) {
   const [showQr, setShowQr] = useState(false);
   const [showResult, setShowResult] = useState(false);
   const pay = usePayRegistration();
   const cancel = useCancelRegistration();
-  const pill = STATUS_PILL[reg.status];
   const session = reg.session;
-  const isUsed = reg.status === "ATTENDED";
+  // Oturum bitti mi? (başlangıç + süre). Geçmiş + okutulmamış = no-show.
+  const examEndMs = session
+    ? new Date(session.starts_at).getTime() + (session.duration_minutes ?? 0) * 60_000
+    : null;
+  const isExpired =
+    reg.status !== "ATTENDED" &&
+    reg.status !== "CANCELLED" &&
+    reg.status !== "REFUNDED" &&
+    examEndMs != null &&
+    examEndMs < Date.now();
+  const view = terminalView(reg.status, isExpired, reg.attended_at);
+  const pill = view.pill;
 
   const doPay = async () => {
     try {
@@ -363,8 +476,8 @@ function TicketCard({ reg }: { reg: RegistrationOut }) {
   return (
     <div className="mx-auto w-[28rem] max-w-full space-y-2">
       <TicketFrame
-        isUsed={isUsed}
-        usedAt={reg.attended_at}
+        muted={view.muted}
+        stamp={view.stamp}
         main={
           <>
             <div className="flex flex-wrap items-center gap-2">
@@ -398,7 +511,7 @@ function TicketCard({ reg }: { reg: RegistrationOut }) {
             )}
             <p className="mt-2 text-sm font-bold text-white">{formatTRY(reg.amount)}</p>
 
-            {reg.status === "PENDING_PAYMENT" && (
+            {reg.status === "PENDING_PAYMENT" && !isExpired && (
               <div className="mt-3 flex flex-wrap gap-2">
                 <button onClick={doPay} disabled={pay.isPending} className={PAY_BTN}>
                   {pay.isPending ? "…" : "Ödemeyi tamamla"}
@@ -436,6 +549,7 @@ function TicketCard({ reg }: { reg: RegistrationOut }) {
             qrToken={reg.qr_token}
             shortCode={reg.short_code}
             regId={reg.id}
+            inactive={view.inactive}
             onShow={() => setShowQr(true)}
           />
         }
@@ -460,8 +574,14 @@ function StudyReservationCard({ res }: { res: StudyReservationOut }) {
   const [showQr, setShowQr] = useState(false);
   const pay = usePayStudy();
   const cancel = useCancelStudy();
-  const pill = STATUS_PILL[res.status];
-  const isUsed = res.status === "ATTENDED";
+  // Çalışma penceresi bitti mi? Geçmiş + okutulmamış = no-show.
+  const isExpired =
+    res.status !== "ATTENDED" &&
+    res.status !== "CANCELLED" &&
+    res.status !== "REFUNDED" &&
+    new Date(res.ends_at).getTime() < Date.now();
+  const view = terminalView(res.status, isExpired, res.attended_at);
+  const pill = view.pill;
 
   const doPay = async () => {
     try {
@@ -492,8 +612,8 @@ function StudyReservationCard({ res }: { res: StudyReservationOut }) {
   return (
     <div className="mx-auto w-[28rem] max-w-full">
     <TicketFrame
-      isUsed={isUsed}
-      usedAt={res.attended_at}
+      muted={view.muted}
+      stamp={view.stamp}
       main={
         <>
           <div className="flex flex-wrap items-center gap-2">
@@ -518,7 +638,7 @@ function StudyReservationCard({ res }: { res: StudyReservationOut }) {
           )}
           <p className="mt-2 text-sm font-bold text-white">{formatTRY(res.amount)}</p>
 
-          {res.status === "PENDING_PAYMENT" && (
+          {res.status === "PENDING_PAYMENT" && !isExpired && (
             <div className="mt-3 flex flex-wrap gap-2">
               <button onClick={doPay} disabled={pay.isPending} className={PAY_BTN}>
                 {pay.isPending ? "…" : "Ödemeyi tamamla"}
@@ -543,6 +663,7 @@ function StudyReservationCard({ res }: { res: StudyReservationOut }) {
           qrToken={res.qr_token}
           shortCode={res.short_code}
           regId={res.id}
+          inactive={view.inactive}
           onShow={() => setShowQr(true)}
         />
       }
