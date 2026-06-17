@@ -14,9 +14,10 @@ def test_none_and_empty():
     assert crypto.decrypt("") is None
 
 
-def test_decrypt_plaintext_fallback():
-    # Şifrelenmemiş eski düz-metin değer olduğu gibi döner (geçiş kolaylığı).
-    assert crypto.decrypt("plain-not-a-token") == "plain-not-a-token"
+def test_decrypt_invalid_returns_none():
+    # Çözülemeyen değer (anahtar uyuşmazlığı/bozuk) FAIL-SAFE None döner — çöp düz
+    # metin gibi DÖNMEZ (yanlış TCKN doğrulanmasını önler).
+    assert crypto.decrypt("plain-not-a-token") is None
 
 
 def test_two_encryptions_differ_but_decrypt_same():

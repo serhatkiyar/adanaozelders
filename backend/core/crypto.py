@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import base64
 import hashlib
+import logging
 from functools import lru_cache
 
 from cryptography.fernet import Fernet, InvalidToken
@@ -17,6 +18,8 @@ from sqlalchemy import String
 from sqlalchemy.types import TypeDecorator
 
 from core.config import settings
+
+logger = logging.getLogger("ceyhan.crypto")
 
 
 @lru_cache
@@ -39,8 +42,11 @@ def decrypt(token: str | None) -> str | None:
     try:
         return _fernet().decrypt(token.encode()).decode()
     except InvalidToken:
-        # Geriye dönük: henüz şifrelenmemiş eski düz-metin değer (geçiş kolaylığı).
-        return token
+        # Çözülemedi (anahtar uyuşmazlığı / bozuk veri). FAIL-SAFE: çöp veriyi
+        # düz metin gibi DÖNDÜRME — yoksa ör. yanlış TCKN doğrulanmış sanılır.
+        # None döner ("veri yok" gibi davranılır) ve durum loglanır.
+        logger.error("Alan şifresi çözülemedi (anahtar değişmiş veya bozuk veri olabilir).")
+        return None
 
 
 class EncryptedString(TypeDecorator):

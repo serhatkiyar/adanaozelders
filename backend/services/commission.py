@@ -16,26 +16,36 @@ def effective_commission_rate(
     override: Decimal | None,
     override_until: datetime.datetime | None,
     *,
+    created_at: datetime.datetime | None = None,
     now: datetime.datetime | None = None,
     default: Decimal | None = None,
 ) -> Decimal:
-    """Geçerli komisyon oranı. Bitiş tarihli override aktifse onu, değilse varsayılanı.
+    """Geçerli komisyon oranı. Öncelik sırası:
 
-    - override yoksa → varsayılan (global oran).
-    - override var, until None → süresiz override.
-    - override var, until dolu → ``now < until`` ise override, değilse varsayılan.
+    1. **Tedarikçiye özel** bitiş tarihli override (admin "özel anlaşma") — aktifse o.
+    2. **Global lansman promosyonu** — ``LAUNCH_PROMO_MONTHS`` > 0 ise tedarikçinin
+       ``created_at``'inden itibaren ilk N ay ``LAUNCH_PROMO_COMMISSION_RATE``. Eğitmen
+       ve kütüphane için tek mekanizma (kayıt-anı damgalama yok).
+    3. Aksi halde global ``PLATFORM_COMMISSION_RATE``.
     """
     base = (
         default if default is not None
         else Decimal(str(settings.PLATFORM_COMMISSION_RATE))
     )
-    if override is None:
-        return base
-    if override_until is not None:
-        ref = now or datetime.datetime.now(datetime.timezone.utc)
-        if ref >= override_until:
-            return base
-    return override
+    ref = now or datetime.datetime.now(datetime.timezone.utc)
+
+    # 1) Tedarikçiye özel override (bitiş tarihli) önceliklidir.
+    if override is not None and (override_until is None or ref < override_until):
+        return override
+
+    # 2) Global lansman promosyonu: tedarikçinin ilk N ayı (created_at'ten).
+    months = int(settings.LAUNCH_PROMO_MONTHS or 0)
+    if months > 0 and created_at is not None:
+        window_end = created_at + datetime.timedelta(days=30 * months)
+        if ref < window_end:
+            return Decimal(str(settings.LAUNCH_PROMO_COMMISSION_RATE))
+
+    return base
 
 
 def split(amount: Decimal, rate: Decimal) -> tuple[Decimal, Decimal]:
@@ -46,22 +56,10 @@ def split(amount: Decimal, rate: Decimal) -> tuple[Decimal, Decimal]:
 
 
 def rate_for(entity) -> Decimal:
-    """PayoutMixin'li varlığın (Tutor/Library) geçerli komisyon oranı."""
+    """PayoutMixin'li varlığın (Tutor/Library) geçerli komisyon oranı — tedarikçiye
+    özel override + ``created_at``-bazlı lansman promosyonu dahil."""
     return effective_commission_rate(
         getattr(entity, "commission_rate_override", None),
         getattr(entity, "commission_override_until", None),
+        created_at=getattr(entity, "created_at", None),
     )
-
-
-def launch_promo_stamp(
-    now: datetime.datetime | None = None,
-) -> tuple[Decimal | None, datetime.datetime | None]:
-    """Lansman promosyonu açıksa (``LAUNCH_PROMO_MONTHS`` > 0) kayıt anında
-    tedarikçiye damgalanacak (override_rate, override_until)'i döner; kapalıysa
-    (None, None). Böylece her eğitmenin kendi ilk N ayı indirimli/0 komisyon olur."""
-    months = int(settings.LAUNCH_PROMO_MONTHS or 0)
-    if months <= 0:
-        return None, None
-    ref = now or datetime.datetime.now(datetime.timezone.utc)
-    until = ref + datetime.timedelta(days=30 * months)
-    return Decimal(str(settings.LAUNCH_PROMO_COMMISSION_RATE)), until

@@ -380,9 +380,11 @@ interface TerminalView {
  * rezervasyonu bu mantığı paylaşır.
  *  - ATTENDED → "Kullanıldı" (amber, kart canlı)
  *  - REFUNDED → "İade Edildi" (soluk + pasif QR)
- *  - CANCELLED → "İptal Edildi" (soluk + pasif QR)
  *  - geçmiş + okutulmamış → "Süresi Doldu" (soluk + pasif QR)
  *  - aksi (PAID/PENDING geçerli) → damgasız, canlı.
+ *
+ * Not: CANCELLED listelerden sunucuda elenir (list_my_registrations / list_mine
+ * `status != CANCELLED`), bu yüzden buraya hiç ulaşmaz; ayrı dal tutulmaz.
  */
 function terminalView(
   status: RegistrationStatus,
@@ -407,14 +409,6 @@ function terminalView(
       stamp: { label: "İade Edildi", sub: "ücret iade edildi", tone: "slate" },
       inactive: { label: "İade edildi", icon: "↩" },
       pill: STATUS_PILL.REFUNDED,
-    };
-  }
-  if (status === "CANCELLED") {
-    return {
-      muted: true,
-      stamp: { label: "İptal Edildi", sub: null, tone: "slate" },
-      inactive: { label: "İptal edildi", icon: "✕" },
-      pill: STATUS_PILL.CANCELLED,
     };
   }
   if (isExpired) {

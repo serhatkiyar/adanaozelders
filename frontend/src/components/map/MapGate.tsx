@@ -26,12 +26,14 @@ export function useMapGate() {
   const onActivate = useCallback(() => setActive(true), []);
   const onDeactivate = useCallback(() => setActive(false), []);
 
-  // Sayfa (veya modal) kayınca haritayı yeniden kilitle — mobil + masaüstü ortak güvence.
+  // Sayfa kayınca haritayı yeniden kilitle. capture YOK: scroll bubble etmediğinden
+  // bu dinleyici yalnız belge/pencere scroll'unda tetiklenir — alakasız iç
+  // container'ların (modal/dropdown) scroll'u haritayı kilitlemez.
   useEffect(() => {
     if (!active) return;
     const relock = () => setActive(false);
-    window.addEventListener("scroll", relock, { passive: true, capture: true });
-    return () => window.removeEventListener("scroll", relock, { capture: true } as EventListenerOptions);
+    window.addEventListener("scroll", relock, { passive: true });
+    return () => window.removeEventListener("scroll", relock);
   }, [active]);
 
   return { active, onActivate, onDeactivate };
