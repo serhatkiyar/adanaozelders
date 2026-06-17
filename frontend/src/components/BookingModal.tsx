@@ -11,7 +11,8 @@ import {
 } from "@/lib/availability";
 import { TeachingMode } from "@/types";
 import type { SavedAddress, TutorSearchOut } from "@/types";
-import { ScrollableRow } from "@/components/ScrollableRow";
+import { TimeStepper } from "@/components/booking/TimeStepper";
+import { DateStrip, buildUpcomingDays } from "@/components/booking/DateStrip";
 import { SavedAddressCard } from "@/components/address/SavedAddressCard";
 import { AddressForm } from "@/components/address/AddressForm";
 import {
@@ -29,32 +30,13 @@ const DURATIONS = [
   { label: "2 saat", value: 120 },
 ];
 
-// TIME_SLOTS array removed since we use native time input
+const NEXT_14_DAYS = buildUpcomingDays();
 
+/** Yerel tarihi "YYYY-MM-DD" üretir (DateStrip ile tutarlı; tz kayması yok). */
 function toDateStr(d: Date): string {
-  return d.toISOString().slice(0, 10);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
-
-const today = new Date();
-const MONTHS_SHORT = ["Oca", "Şub", "Mar", "Nis", "May", "Haz", "Tem", "Ağu", "Eyl", "Eki", "Kas", "Ara"];
-
-function generateNext14Days() {
-  const dates = [];
-  for (let i = 0; i < 14; i++) {
-    const d = new Date(today.getTime() + i * 86_400_000);
-    const dateStr = toDateStr(d);
-    const wd = weekdayOfDateStr(dateStr);
-    dates.push({
-      value: dateStr,
-      dayNum: d.getDate(),
-      month: MONTHS_SHORT[d.getMonth()],
-      weekday: WEEKDAYS_SHORT[wd],
-      label: i === 0 ? "Bugün" : i === 1 ? "Yarın" : WEEKDAYS_SHORT[wd],
-    });
-  }
-  return dates;
-}
-const NEXT_14_DAYS = generateNext14Days();
 
 function Pill({
   active,
@@ -80,88 +62,6 @@ function Pill({
     >
       {children}
     </button>
-  );
-}
-
-function TimeStepper({
-  value,
-  onChange,
-}: {
-  value: string;
-  onChange: (val: string) => void;
-}) {
-  const [hStr, mStr] = (value || "09:00").split(":");
-  const h = parseInt(hStr, 10) || 0;
-  const m = parseInt(mStr, 10) || 0;
-
-  useEffect(() => {
-    if (!value) onChange("09:00");
-  }, [value, onChange]);
-
-  const update = (newH: number, newM: number) => {
-    let finalH = newH;
-    let finalM = newM;
-    if (finalH < 0) finalH = 23;
-    if (finalH > 23) finalH = 0;
-    if (finalM < 0) finalM = 45;
-    if (finalM > 45) finalM = 0;
-    onChange(`${String(finalH).padStart(2, "0")}:${String(finalM).padStart(2, "0")}`);
-  };
-
-  return (
-    <div className="flex items-center justify-center gap-4 rounded-2xl border-2 border-slate-200 bg-slate-50/50 p-4 dark:border-slate-700/50 dark:bg-slate-800/20">
-      {/* Saat */}
-      <div className="flex flex-col items-center gap-2">
-        <button
-          type="button"
-          onClick={() => update(h + 1, m)}
-          className="rounded-xl bg-white p-1.5 text-slate-400 shadow-sm ring-1 ring-slate-200 transition hover:bg-indigo-50 hover:text-indigo-600 hover:ring-indigo-200 dark:bg-slate-800 dark:text-slate-500 dark:ring-slate-700 dark:hover:bg-indigo-500/20 dark:hover:text-indigo-300 dark:hover:ring-indigo-500/30"
-        >
-          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" />
-          </svg>
-        </button>
-        <div className="w-14 text-center text-3xl font-black text-slate-800 dark:text-white">
-          {String(h).padStart(2, "0")}
-        </div>
-        <button
-          type="button"
-          onClick={() => update(h - 1, m)}
-          className="rounded-xl bg-white p-1.5 text-slate-400 shadow-sm ring-1 ring-slate-200 transition hover:bg-indigo-50 hover:text-indigo-600 hover:ring-indigo-200 dark:bg-slate-800 dark:text-slate-500 dark:ring-slate-700 dark:hover:bg-indigo-500/20 dark:hover:text-indigo-300 dark:hover:ring-indigo-500/30"
-        >
-          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-          </svg>
-        </button>
-      </div>
-
-      <div className="text-3xl font-black text-slate-300 dark:text-slate-600 pb-1">:</div>
-
-      {/* Dakika */}
-      <div className="flex flex-col items-center gap-2">
-        <button
-          type="button"
-          onClick={() => update(h, m + 15)}
-          className="rounded-xl bg-white p-1.5 text-slate-400 shadow-sm ring-1 ring-slate-200 transition hover:bg-indigo-50 hover:text-indigo-600 hover:ring-indigo-200 dark:bg-slate-800 dark:text-slate-500 dark:ring-slate-700 dark:hover:bg-indigo-500/20 dark:hover:text-indigo-300 dark:hover:ring-indigo-500/30"
-        >
-          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" />
-          </svg>
-        </button>
-        <div className="w-14 text-center text-3xl font-black text-slate-800 dark:text-white">
-          {String(m).padStart(2, "0")}
-        </div>
-        <button
-          type="button"
-          onClick={() => update(h, m - 15)}
-          className="rounded-xl bg-white p-1.5 text-slate-400 shadow-sm ring-1 ring-slate-200 transition hover:bg-indigo-50 hover:text-indigo-600 hover:ring-indigo-200 dark:bg-slate-800 dark:text-slate-500 dark:ring-slate-700 dark:hover:bg-indigo-500/20 dark:hover:text-indigo-300 dark:hover:ring-indigo-500/30"
-        >
-          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-          </svg>
-        </button>
-      </div>
-    </div>
   );
 }
 
@@ -519,32 +419,7 @@ export function BookingModal({ tutor, onClose, initialDate }: BookingModalProps)
                 <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
                   Tarih
                 </p>
-                <div className="-mx-1 px-1">
-                  <ScrollableRow className="gap-3 pb-2 snap-x" showArrows={true}>
-                    {NEXT_14_DAYS.map((d) => (
-                      <button
-                        key={d.value}
-                        type="button"
-                        onClick={() => setSelectedDate(d.value)}
-                        className={`flex-shrink-0 snap-start flex flex-col items-center justify-center w-[72px] h-[84px] rounded-2xl border-2 transition-all ${
-                          selectedDate === d.value
-                            ? "border-indigo-600 bg-indigo-600 shadow-md dark:border-indigo-500 dark:bg-indigo-500"
-                            : "border-slate-100 bg-white hover:border-indigo-200 hover:bg-indigo-50 dark:border-slate-700 dark:bg-slate-800 dark:hover:border-slate-600"
-                        }`}
-                      >
-                        <span className={`text-[10px] font-bold uppercase tracking-wider ${selectedDate === d.value ? "text-indigo-200 dark:text-indigo-100" : "text-slate-400 dark:text-slate-500"}`}>
-                          {d.month}
-                        </span>
-                        <span className={`text-xl font-black mt-0.5 mb-1 ${selectedDate === d.value ? "text-white" : "text-slate-700 dark:text-slate-200"}`}>
-                          {d.dayNum}
-                        </span>
-                        <span className={`text-[11px] font-medium ${selectedDate === d.value ? "text-white" : "text-slate-500 dark:text-slate-400"}`}>
-                          {d.label}
-                        </span>
-                      </button>
-                    ))}
-                  </ScrollableRow>
-                </div>
+                <DateStrip value={selectedDate} onChange={setSelectedDate} days={NEXT_14_DAYS} />
               </div>
 
               {/* Saat */}

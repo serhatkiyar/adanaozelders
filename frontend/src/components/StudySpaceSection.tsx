@@ -8,27 +8,24 @@ import { getErrorMessage } from "@/lib/errors";
 import { toast } from "@/store/toastStore";
 import { ROUTES } from "@/lib/routes";
 import { PaymentConsentNote } from "@/components/LegalConsent";
+import { DateStrip, buildUpcomingDays } from "@/components/booking/DateStrip";
+import { TimeStepper } from "@/components/booking/TimeStepper";
 import { ROLE_IDS, type LibraryDetailOut } from "@/types";
 
-function todayStr(): string {
-  const d = new Date();
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-}
+const NEXT_14_DAYS = buildUpcomingDays();
 
-// 24 saatlik dilim, 30 dk adımlarla (00:00 … 23:30) — tarayıcı yereline bağlı
-// AM/PM görünümünden bağımsız, her zaman 24 saat.
-const TIME_OPTIONS: string[] = Array.from({ length: 48 }, (_, i) => {
-  const h = Math.floor(i / 2);
-  const m = i % 2 ? "30" : "00";
-  return `${String(h).padStart(2, "0")}:${m}`;
-});
+// Çalışma alanı için süre seçenekleri (dakika).
+const DURATIONS = [
+  { label: "1 saat", value: 60 },
+  { label: "2 saat", value: 120 },
+  { label: "3 saat", value: 180 },
+  { label: "4 saat", value: 240 },
+  { label: "6 saat", value: 360 },
+  { label: "8 saat", value: 480 },
+];
 
-/** "YYYY-MM-DD" + "HH:MM" (yerel) → ISO string. Geçersizse null. */
-function toIso(date: string, time: string): string | null {
-  if (!date || !time) return null;
-  const d = new Date(`${date}T${time}`);
-  return isNaN(d.getTime()) ? null : d.toISOString();
+function hhmm(d: Date): string {
+  return d.toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" });
 }
 
 export function StudySpaceSection({ library }: { library: LibraryDetailOut }) {
@@ -36,12 +33,23 @@ export function StudySpaceSection({ library }: { library: LibraryDetailOut }) {
   const { data: user } = useCurrentUser();
   const isClient = user?.role_id === ROLE_IDS.CLIENT;
 
-  const [date, setDate] = useState(todayStr());
+  const [date, setDate] = useState(NEXT_14_DAYS[0].value);
   const [start, setStart] = useState("09:00");
-  const [end, setEnd] = useState("12:00");
+  const [duration, setDuration] = useState(180);
 
-  const startsAt = useMemo(() => toIso(date, start), [date, start]);
-  const endsAt = useMemo(() => toIso(date, end), [date, end]);
+  // Başlangıç (yerel) ve süreden bitiş hesaplanır — gece yarısını da doğru aşar.
+  const startDate = useMemo(() => {
+    if (!date || !start) return null;
+    const d = new Date(`${date}T${start}`);
+    return isNaN(d.getTime()) ? null : d;
+  }, [date, start]);
+  const endDate = useMemo(
+    () => (startDate ? new Date(startDate.getTime() + duration * 60_000) : null),
+    [startDate, duration]
+  );
+
+  const startsAt = startDate ? startDate.toISOString() : null;
+  const endsAt = endDate ? endDate.toISOString() : null;
 
   const { data: quote, isFetching, isError, error } = useStudyQuote(
     library.id,
@@ -73,57 +81,65 @@ export function StudySpaceSection({ library }: { library: LibraryDetailOut }) {
   const canReserve = quote?.available && isClient && !busy;
 
   return (
-    <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700">
-      <div className="flex items-center justify-between">
-        <h2 className="text-base font-bold text-slate-900 dark:text-white">
-          Çalışma Alanı Rezervasyonu
-        </h2>
-        <span className="text-sm font-bold text-indigo-600 dark:text-indigo-300">
-          {formatTRY(library.study_hourly_price)}/saat
+    <div className="space-y-5">
+      {/* Fiyat + bilgilendirme */}
+      <div className="flex items-center justify-between gap-3 rounded-2xl bg-indigo-50 px-4 py-3 dark:bg-indigo-500/10">
+        <p className="text-xs leading-relaxed text-indigo-700 dark:text-indigo-300">
+          Tarih ve saat aralığı seç, online öde; kütüphanede QR kodunu okutarak giriş yap.
+          {library.capacity ? ` ${library.capacity} kişilik kapasite.` : ""}
+        </p>
+        <span className="shrink-0 text-sm font-bold text-indigo-700 dark:text-indigo-300">
+          {formatTRY(library.study_hourly_price)}
+          <span className="font-medium text-indigo-500 dark:text-indigo-400">/saat</span>
         </span>
       </div>
-      <p className="mb-4 mt-1 text-xs text-slate-500 dark:text-slate-400">
-        Saat aralığı seç, online öde; kütüphanede QR kodunu okutarak giriş yap.
-        {library.capacity ? ` ${library.capacity} kişilik kapasite.` : ""}
-      </p>
 
-      <div className="grid grid-cols-3 gap-2">
-        <label className="block">
-          <span className="mb-1 block text-xs font-semibold text-slate-600 dark:text-slate-300">Tarih</span>
-          <input type="date" value={date} min={todayStr()} onChange={(e) => setDate(e.target.value)} className="input" />
-        </label>
-        <label className="block">
-          <span className="mb-1 block text-xs font-semibold text-slate-600 dark:text-slate-300">Başlangıç</span>
-          <select
-            value={start}
-            onChange={(e) => {
-              const v = e.target.value;
-              setStart(v);
-              // Bitiş başlangıçtan sonra kalsın.
-              if (end <= v) {
-                const next = TIME_OPTIONS.find((t) => t > v);
-                if (next) setEnd(next);
-              }
-            }}
-            className="input"
-          >
-            {TIME_OPTIONS.map((t) => (
-              <option key={t} value={t}>{t}</option>
-            ))}
-          </select>
-        </label>
-        <label className="block">
-          <span className="mb-1 block text-xs font-semibold text-slate-600 dark:text-slate-300">Bitiş</span>
-          <select value={end} onChange={(e) => setEnd(e.target.value)} className="input">
-            {TIME_OPTIONS.filter((t) => t > start).map((t) => (
-              <option key={t} value={t}>{t}</option>
-            ))}
-          </select>
-        </label>
+      {/* Tarih */}
+      <div>
+        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+          Tarih
+        </p>
+        <DateStrip value={date} onChange={setDate} days={NEXT_14_DAYS} />
       </div>
 
-      {/* Fiyat / uygunluk */}
-      <div className="mt-4 flex flex-col gap-3 rounded-xl bg-slate-50 p-4 dark:bg-slate-900/40 sm:flex-row sm:items-center sm:justify-between">
+      {/* Başlangıç saati */}
+      <div>
+        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+          Başlangıç Saati
+        </p>
+        <TimeStepper value={start} onChange={setStart} />
+      </div>
+
+      {/* Süre */}
+      <div>
+        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+          Süre
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {DURATIONS.map((d) => (
+            <button
+              key={d.value}
+              type="button"
+              onClick={() => setDuration(d.value)}
+              className={`rounded-xl px-3.5 py-2 text-sm font-medium transition active:scale-95 ${
+                duration === d.value
+                  ? "bg-indigo-600 text-white shadow-sm"
+                  : "bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600"
+              }`}
+            >
+              {d.label}
+            </button>
+          ))}
+        </div>
+        {startDate && endDate && (
+          <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+            {hhmm(startDate)} – {hhmm(endDate)}
+          </p>
+        )}
+      </div>
+
+      {/* Fiyat / uygunluk özeti */}
+      <div className="flex flex-col gap-3 rounded-xl bg-slate-50 p-4 dark:bg-slate-900/40 sm:flex-row sm:items-center sm:justify-between">
         <div className="text-sm">
           {isError ? (
             <span className="text-rose-500">{getErrorMessage(error, "Fiyat alınamadı")}</span>
@@ -162,9 +178,9 @@ export function StudySpaceSection({ library }: { library: LibraryDetailOut }) {
           </button>
         )}
       </div>
-      <PaymentConsentNote className="mt-2" />
+      <PaymentConsentNote />
       {token && !isClient && (
-        <p className="mt-2 text-xs text-slate-400">Yalnız öğrenci hesapları rezervasyon yapabilir.</p>
+        <p className="text-xs text-slate-400">Yalnız öğrenci hesapları rezervasyon yapabilir.</p>
       )}
     </div>
   );
