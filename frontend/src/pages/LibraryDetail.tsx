@@ -364,6 +364,39 @@ export default function LibraryDetail() {
 
 /* ── Fotoğraflar (grid + lightbox) ── */
 
+/** Tek galeri karesi: kapsayıcının verdiği boyutu doldurur; opsiyonel "+N" örtüsü. */
+function GalleryTile({
+  im,
+  onClick,
+  className = "",
+  overlay,
+}: {
+  im: LibraryImageOut;
+  onClick: () => void;
+  className?: string;
+  overlay?: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`group relative overflow-hidden rounded-xl bg-slate-100 ring-1 ring-slate-200 dark:bg-slate-700 dark:ring-slate-600 ${className}`}
+    >
+      <img
+        src={im.url}
+        alt={im.caption ?? ""}
+        loading="lazy"
+        className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+      />
+      {overlay && (
+        <span className="absolute inset-0 flex items-center justify-center bg-slate-900/55 text-xl font-bold text-white backdrop-blur-[1px] transition group-hover:bg-slate-900/65">
+          {overlay}
+        </span>
+      )}
+    </button>
+  );
+}
+
 function LibraryGallery({ images }: { images: LibraryImageOut[] }) {
   const [active, setActive] = useState<number | null>(null);
 
@@ -374,23 +407,40 @@ function LibraryGallery({ images }: { images: LibraryImageOut[] }) {
   return (
     <div className={cardCls}>
       <SectionLabel>Fotoğraflar</SectionLabel>
-      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
-        {images.map((im, i) => (
-          <button
-            key={im.id}
-            type="button"
-            onClick={() => setActive(i)}
-            className="group relative aspect-video overflow-hidden rounded-xl bg-slate-100 ring-1 ring-slate-200 dark:bg-slate-700 dark:ring-slate-600"
-          >
-            <img
-              src={im.url}
-              alt={im.caption ?? ""}
-              loading="lazy"
-              className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+      {images.length >= 5 ? (
+        // Çok fotoğrafta sabit-yükseklikli hero mozaik: 1 büyük + 4 küçük; fazlası
+        // son karede "+N" rozetiyle lightbox'ı açar (yükseklik foto sayısından bağımsız).
+        <div className="grid h-72 grid-cols-4 grid-rows-2 gap-2.5 sm:h-96">
+          <GalleryTile
+            im={images[0]}
+            onClick={() => setActive(0)}
+            className="col-span-2 row-span-2 h-full"
+          />
+          {images.slice(1, 5).map((im, idx) => (
+            <GalleryTile
+              key={im.id}
+              im={im}
+              onClick={() => setActive(idx + 1)}
+              className="h-full"
+              overlay={
+                idx === 3 && images.length > 5 ? `+${images.length - 5}` : undefined
+              }
             />
-          </button>
-        ))}
-      </div>
+          ))}
+        </div>
+      ) : (
+        // ≤4 fotoğraf: basit ızgara (zaten taşmaz).
+        <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
+          {images.map((im, i) => (
+            <GalleryTile
+              key={im.id}
+              im={im}
+              onClick={() => setActive(i)}
+              className="aspect-video"
+            />
+          ))}
+        </div>
+      )}
 
       {active != null && (
         <div
