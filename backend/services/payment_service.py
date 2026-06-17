@@ -7,7 +7,7 @@ Komisyon PLATFORM_COMMISSION_RATE ile hesaplanır; tutar booking.price'tan gelir
 from __future__ import annotations
 
 import datetime
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import Decimal
 
 from fastapi import HTTPException, status
 from sqlalchemy import func, select
@@ -19,19 +19,12 @@ from models.booking import Booking, BookingStatus
 from models.client import Client
 from models.payment import Payment, PaymentStatus
 from models.role import ROLE_IDS, RoleType
-from services import notification_service
+from models.tutor import Tutor
+from services import commission, notification_service
 
 
 def _now() -> datetime.datetime:
     return datetime.datetime.now(datetime.timezone.utc)
-
-
-def _split(amount: Decimal) -> tuple[Decimal, Decimal]:
-    """(komisyon, eğitmen_kazancı) — komisyon = amount × oran, 2 ondalık (HALF_UP)."""
-    rate = Decimal(str(settings.PLATFORM_COMMISSION_RATE))
-    commission = (amount * rate).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-    earning = (amount - commission).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-    return commission, earning
 
 
 async def get_for_booking(db: AsyncSession, booking_id: int) -> Payment | None:
@@ -53,13 +46,15 @@ async def create_for_booking(db: AsyncSession, booking: Booking) -> Payment | No
     if existing is not None:
         return existing
     amount = Decimal(str(booking.price))
-    commission, earning = _split(amount)
+    tutor = await db.get(Tutor, booking.tutor_id)
+    rate = commission.rate_for(tutor) if tutor else commission.effective_commission_rate(None, None)
+    commission_amount, earning = commission.split(amount, rate)
     payment = Payment(
         booking_id=booking.id,
         amount=amount,
-        commission_amount=commission,
+        commission_amount=commission_amount,
         tutor_earning=earning,
-        commission_rate=Decimal(str(settings.PLATFORM_COMMISSION_RATE)),
+        commission_rate=rate,
         currency=settings.PAYMENT_CURRENCY,
         status=PaymentStatus.PENDING,
         provider=payments.get_payment_provider().name,

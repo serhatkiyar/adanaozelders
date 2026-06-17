@@ -5,7 +5,13 @@ from core import payments
 from core.config import settings
 from core.payments.fake import FakePaymentProvider
 from core.payments.iyzico import IyzicoProvider
-from services.payment_service import _split
+from services import commission
+
+
+def _split(amount: Decimal):
+    """Global oranla bölüştürme (komisyon mantığı services.commission'a taşındı)."""
+    rate = commission.effective_commission_rate(None, None)
+    return commission.split(amount, rate)
 
 
 def test_split_default_commission(monkeypatch):

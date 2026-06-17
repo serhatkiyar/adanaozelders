@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import datetime
 import secrets
-from decimal import ROUND_HALF_UP, Decimal
+from decimal import Decimal
 
 from fastapi import HTTPException, status
 from sqlalchemy import func, or_, select
@@ -43,19 +43,11 @@ from schemas.library_exam import (
     ResultSummaryIn,
     RosterRow,
 )
-from services import notification_service
+from services import commission, notification_service
 
 
 def _now() -> datetime.datetime:
     return datetime.datetime.now(datetime.timezone.utc)
-
-
-def _split(amount: Decimal) -> tuple[Decimal, Decimal]:
-    """(komisyon, kütüphane_kazancı). Komisyon = amount × oran, 2 ondalık (HALF_UP)."""
-    rate = Decimal(str(settings.PLATFORM_COMMISSION_RATE))
-    commission = (amount * rate).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-    earning = (amount - commission).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-    return commission, earning
 
 
 def parse_qr_token(payload: str) -> str:
@@ -474,15 +466,17 @@ async def register(
         raise HTTPException(status.HTTP_409_CONFLICT, "Oturum kontenjanı dolu")
 
     amount = Decimal(str(s.price))
-    commission, earning = _split(amount)
+    lib = await db.get(Library, s.library_id)
+    rate = commission.rate_for(lib) if lib else commission.effective_commission_rate(None, None)
+    commission_amount, earning = commission.split(amount, rate)
     reg = ExamRegistration(
         session_id=session_id,
         client_id=client.id,
         status=RegistrationStatus.PENDING_PAYMENT.value,
         amount=amount,
-        commission_amount=commission,
+        commission_amount=commission_amount,
         library_earning=earning,
-        commission_rate=Decimal(str(settings.PLATFORM_COMMISSION_RATE)),
+        commission_rate=rate,
         currency=s.currency,
     )
     db.add(reg)

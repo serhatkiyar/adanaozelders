@@ -13,6 +13,7 @@ from models.library_operator import LibraryOperator
 from models.role import ROLE_IDS, RoleType
 from models.tutor import Gender, Tutor
 from schemas.user import UserUpdate
+from services import commission
 
 _LOGIN_PRECEDENCE: tuple[tuple[RoleType, type], ...] = (
     (RoleType.ADMIN, Admin),
@@ -80,6 +81,11 @@ async def register_tutor(
         gender=gender,
         role_id=ROLE_IDS[RoleType.TUTOR],
     )
+    # Lansman promosyonu açıksa eğitmenin ilk N ayını indirimli/0 komisyona damgala.
+    promo_rate, promo_until = commission.launch_promo_stamp()
+    if promo_rate is not None:
+        tutor.commission_rate_override = promo_rate
+        tutor.commission_override_until = promo_until
     db.add(tutor)
     await db.flush()
     await db.refresh(tutor)

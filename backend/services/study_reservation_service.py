@@ -26,7 +26,7 @@ from models.role import ROLE_IDS, RoleType
 from models.study_reservation import StudyReservation
 from schemas.library_exam import AttendanceResult
 from schemas.study import StudyQuoteOut, StudyReservationOut
-from services import notification_service
+from services import commission, notification_service
 
 try:
     from zoneinfo import ZoneInfo
@@ -41,13 +41,6 @@ _MAX_HOURS = 14
 
 def _now() -> datetime.datetime:
     return datetime.datetime.now(datetime.timezone.utc)
-
-
-def _split(amount: Decimal) -> tuple[Decimal, Decimal]:
-    rate = Decimal(str(settings.PLATFORM_COMMISSION_RATE))
-    commission = (amount * rate).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-    earning = (amount - commission).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-    return commission, earning
 
 
 def _hours(starts: datetime.datetime, ends: datetime.datetime) -> Decimal:
@@ -286,7 +279,9 @@ async def reserve(
         )
 
     amount = compute_amount(hourly, starts, ends)
-    commission, earning = _split(amount)
+    lib = await db.get(Library, library_id)
+    rate = commission.rate_for(lib) if lib else commission.effective_commission_rate(None, None)
+    commission_amount, earning = commission.split(amount, rate)
     res = StudyReservation(
         library_id=library_id,
         client_id=client.id,
@@ -295,9 +290,9 @@ async def reserve(
         status=RegistrationStatus.PENDING_PAYMENT.value,
         hourly_price=hourly,
         amount=amount,
-        commission_amount=commission,
+        commission_amount=commission_amount,
         library_earning=earning,
-        commission_rate=Decimal(str(settings.PLATFORM_COMMISSION_RATE)),
+        commission_rate=rate,
         currency=settings.PAYMENT_CURRENCY,
     )
     db.add(res)

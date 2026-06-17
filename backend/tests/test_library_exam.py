@@ -1,6 +1,13 @@
 from decimal import Decimal
 
-from services.library_exam_service import _split, parse_qr_token
+from services import commission
+from services.library_exam_service import parse_qr_token
+
+
+def _split(amount: Decimal):
+    """Global oranla bölüştürme (komisyon mantığı services.commission'a taşındı)."""
+    rate = commission.effective_commission_rate(None, None)
+    return commission.split(amount, rate)
 
 
 def test_parse_qr_token_plain():

@@ -97,6 +97,10 @@ class Settings(BaseSettings):
     PAYMENT_PROVIDER: str = "fake"
     PAYMENT_CURRENCY: str = "TRY"
     PLATFORM_COMMISSION_RATE: float = 0.10
+    # Lansman promosyonu: kayıttan itibaren ilk N ay indirimli/0 komisyon. MONTHS=0
+    # ise KAPALI (varsayılan: düz %10, kampanya yok). Açmak için .env'de ayarla.
+    LAUNCH_PROMO_MONTHS: int = 0
+    LAUNCH_PROMO_COMMISSION_RATE: float = 0.0
     # iyzico (yalnızca PAYMENT_PROVIDER=iyzico iken gerekir; sandbox URL'i default).
     IYZICO_API_KEY: str | None = None
     IYZICO_SECRET_KEY: str | None = None
