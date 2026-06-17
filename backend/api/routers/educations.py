@@ -10,7 +10,11 @@ from core.database import get_db
 from models.client import Client
 from models.role import RoleType
 from models.tutor import Tutor
-from schemas.education import EducationCreate, EducationOut, EducationUpdate
+from schemas.education import (
+    EducationCreate,
+    EducationUpdate,
+    OwnEducationOut,
+)
 from services import education_service
 
 router = APIRouter(prefix="/me/educations", tags=["educations"])
@@ -18,7 +22,7 @@ router = APIRouter(prefix="/me/educations", tags=["educations"])
 _OwnerUser = Tutor | Client
 
 
-@router.get("", response_model=list[EducationOut])
+@router.get("", response_model=list[OwnEducationOut])
 async def list_my_educations(
     user: _OwnerUser = Depends(require_roles(RoleType.TUTOR, RoleType.CLIENT)),
     db: AsyncSession = Depends(get_db),
@@ -26,7 +30,7 @@ async def list_my_educations(
     return await education_service.list_own(db, user)
 
 
-@router.post("", response_model=EducationOut, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=OwnEducationOut, status_code=status.HTTP_201_CREATED)
 async def add_education(
     payload: EducationCreate,
     user: _OwnerUser = Depends(require_roles(RoleType.TUTOR, RoleType.CLIENT)),
@@ -35,7 +39,7 @@ async def add_education(
     return await education_service.create(db, user, payload)
 
 
-@router.patch("/{education_id}", response_model=EducationOut)
+@router.patch("/{education_id}", response_model=OwnEducationOut)
 async def edit_education(
     education_id: int,
     payload: EducationUpdate,
@@ -54,7 +58,7 @@ async def remove_education(
     await education_service.delete(db, user, education_id)
 
 
-@router.post("/{education_id}/document", response_model=EducationOut)
+@router.post("/{education_id}/document", response_model=OwnEducationOut)
 async def upload_education_document(
     education_id: int,
     file: UploadFile = File(...),

@@ -24,17 +24,18 @@ export function VerifiedTutorBadge() {
   );
 }
 
-/** "Belgeli eğitim" rozeti — en az bir eğitimde diploma/belge yüklüyse. */
+/** "Diploması Doğrulandı" rozeti — en az bir eğitimde belge DOĞRULANMIŞ (admin
+ *  e-Devlet barkodunu teyit etmiş). Yalnız yüklenmiş (doğrulanmamış) belge yetmez. */
 export function DocumentedBadge() {
   return (
     <span
-      title="Eğitim belgesi (diploma) yüklenmiş"
+      title="Diploma/belge e-Devlet üzerinden doğrulandı"
       className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-300 dark:ring-emerald-500/25"
     >
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-3.5 w-3.5" aria-hidden>
         <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
       </svg>
-      Belgeli
+      Diploması Doğrulandı
     </span>
   );
 }
@@ -94,21 +95,17 @@ export function TutorTrustBar({ tutor }: { tutor: TutorSearchOut }) {
       label: `${tutor.rating_count} değerlendirme`,
     });
   }
-
-  if (tutor.created_at) {
-    const d = new Date(tutor.created_at);
-    if (!isNaN(d.getTime())) {
-      cells.push({
-        icon: (
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="h-5 w-5" aria-hidden>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
-          </svg>
-        ),
-        value: MONTH_YEAR.format(d),
-        label: "üyelik başlangıcı",
-      });
-    }
-  }
+  // Ortalama yanıt süresi (placeholder)
+  cells.push({
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="h-5 w-5" aria-hidden>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z" />
+      </svg>
+    ),
+    value: "--",
+    label: "Ortalama yanıt süresi",
+  });
 
   if (cells.length === 0) return null;
 
@@ -121,9 +118,16 @@ export function TutorTrustBar({ tutor }: { tutor: TutorSearchOut }) {
   );
 }
 
-/** Eğitimlerde diploma/belge var mı? (DocumentedBadge'i göstermek için.) */
+/** Eğitimlerde diploma/belge var mı? (yalnız yükleme — zayıf sinyal). */
 export function hasDocumentedEducation(
   educations: { document_url?: string | null }[] | undefined
 ): boolean {
   return !!educations?.some((e) => e.document_url);
+}
+
+/** Eğitimlerde DOĞRULANMIŞ diploma var mı? ("Diploması Doğrulandı" rozeti için). */
+export function hasVerifiedEducation(
+  educations: { verification_status?: string | null }[] | undefined
+): boolean {
+  return !!educations?.some((e) => e.verification_status === "VERIFIED");
 }

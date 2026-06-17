@@ -121,13 +121,13 @@ async def update_profile(
 
 
 async def submit_for_approval(db: AsyncSession, tutor: Tutor) -> Tutor:
-    # Zorunlu kalite kapısı: en az bir eğitim kaydında diploma/belge olmadan
-    # eğitmen onaya gönderilemez.
-    if not await education_service.has_document(db, tutor_id=tutor.id):
+    # Zorunlu kalite kapısı: en az bir eğitim kaydında doğrulama materyali
+    # (yüklenen diploma/belge VEYA e-Devlet barkodu) olmadan onaya gönderilemez.
+    if not await education_service.has_verification_material(db, tutor_id=tutor.id):
         raise HTTPException(
             status.HTTP_422_UNPROCESSABLE_ENTITY,
             "Onaya göndermeden önce eğitim bilgilerinden en az birine diploma/belge "
-            "yüklemelisin. (Profil → Eğitim)",
+            "yükle ya da e-Devlet doğrulama barkodunu gir. (Profil → Eğitim)",
         )
     _transition(tutor, TutorStatus.PENDING_APPROVAL)
     await db.flush()

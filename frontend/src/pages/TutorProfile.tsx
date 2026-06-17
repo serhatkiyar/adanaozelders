@@ -11,7 +11,7 @@ import {
   VerifiedTutorBadge,
   DocumentedBadge,
   TutorTrustBar,
-  hasDocumentedEducation,
+  hasVerifiedEducation,
 } from "@/components/TutorTrust";
 import { ReportModal } from "@/components/ReportModal";
 import { FullScreenSpinner } from "@/components/Spinner";
@@ -247,7 +247,7 @@ export default function TutorProfile() {
                     {tutor.full_name}
                   </h1>
                   <VerifiedTutorBadge />
-                  {hasDocumentedEducation(tutor.educations) && <DocumentedBadge />}
+                  {hasVerifiedEducation(tutor.educations) && <DocumentedBadge />}
                 </div>
 
                 {modeLabel && (

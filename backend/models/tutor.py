@@ -3,7 +3,7 @@ from __future__ import annotations
 import datetime
 import enum
 
-from sqlalchemy import Boolean, CheckConstraint, Date
+from sqlalchemy import Boolean, CheckConstraint, Date, DateTime
 from sqlalchemy import Enum as SAEnum
 from sqlalchemy import (
     ForeignKey,
@@ -147,6 +147,27 @@ class TutorEducation(Base, TimestampMixin, SoftDeleteMixin):
     # eğitimde bu zorunludur (bkz. tutor_service.submit_for_approval).
     document_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     document_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
+    # ── Diploma doğrulama (admin + e-Devlet barkod) ──
+    # Belge türü: DIPLOMA | DENKLIK | OGRENCI_BELGESI (yurt dışı denklik / öğrenci belgesi).
+    document_type: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    # e-Devlet "Belge Doğrulama" barkod/doğrulama kodu (admin resmî sayfada teyit eder).
+    verification_code: Mapped[str | None] = mapped_column(String(60), nullable=True)
+    # Belge sahibinin TCKN'si — e-Devlet doğrulamasında barkodun yanında 2. faktör.
+    # Yalnız admin görür (e-Devlet teyidi); public'e ASLA dönmez. KVKK: amaçla sınırlı.
+    # TODO(kimlik temeli): iyzico kimlik adımıyla tutor seviyesine taşı + şifreli sakla.
+    verification_tckn: Mapped[str | None] = mapped_column(String(11), nullable=True)
+    # NONE (belge yok) | PENDING (teyit bekliyor) | VERIFIED | REJECTED.
+    verification_status: Mapped[str] = mapped_column(
+        String(12), nullable=False, server_default="NONE"
+    )
+    verified_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    # Teyit eden admin id'si (admins ayrı tablo → FK yok, salt iz).
+    verified_by: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # Reddedildiyse admin notu (eğitmene gösterilir).
+    verification_note: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
     tutor: Mapped["Tutor"] = relationship(back_populates="educations")
 

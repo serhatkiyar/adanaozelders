@@ -110,6 +110,9 @@ export interface UserStats {
 
 /* ============================ EDUCATION ============================ */
 
+export type DocumentType = "DIPLOMA" | "DENKLIK" | "OGRENCI_BELGESI";
+export type VerificationStatus = "NONE" | "PENDING" | "VERIFIED" | "REJECTED";
+
 export interface Education {
   id: number;
   school_name: string;
@@ -120,6 +123,13 @@ export interface Education {
   // Yalnız eğitmen eğitimlerinde dolu (diploma/belge).
   document_url?: string | null;
   document_name?: string | null;
+  // Diploma doğrulama (public: tür + durum; barkod/TCKN/not yalnız sahibe/admin'e döner).
+  document_type?: DocumentType | null;
+  verification_status?: VerificationStatus;
+  verified_at?: string | null;
+  verification_code?: string | null;
+  verification_tckn?: string | null;
+  verification_note?: string | null;
 }
 
 export interface EducationCreate {
@@ -128,9 +138,18 @@ export interface EducationCreate {
   field_of_study?: string | null;
   start_year?: number | null;
   end_year?: number | null;
+  document_type?: DocumentType | null;
+  verification_code?: string | null;
+  verification_tckn?: string | null;
 }
 
 export type EducationUpdate = EducationCreate;
+
+/** Admin diploma doğrulama kuyruğu öğesi. */
+export interface AdminEducation extends Education {
+  tutor_id: number;
+  tutor_name?: string | null;
+}
 
 /* ============================ FLASHCARDS (Öğren) ============================ */
 

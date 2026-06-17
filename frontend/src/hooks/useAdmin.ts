@@ -11,6 +11,8 @@ import {
   fetchAdminBookings,
   cancelAdminBooking,
   toggleDisputeAdminBooking,
+  fetchPendingEducations,
+  verifyEducation,
 } from "@/api/admin";
 
 export function useAdminStats() {
@@ -102,8 +104,30 @@ export function useAdminCancelBooking() {
 export function useAdminToggleDisputeBooking() {
   const invalidate = useInvalidateAdmin();
   return useMutation({
-    mutationFn: ({ id, is_disputed, admin_notes }: { id: number; is_disputed: boolean; admin_notes?: string }) => 
+    mutationFn: ({ id, is_disputed, admin_notes }: { id: number; is_disputed: boolean; admin_notes?: string }) =>
       toggleDisputeAdminBooking(id, is_disputed, admin_notes),
     onSuccess: invalidate,
+  });
+}
+
+// ── Diploma doğrulama kuyruğu ──
+
+export function usePendingEducations() {
+  return useQuery({
+    queryKey: ["admin", "educations", "pending"],
+    queryFn: fetchPendingEducations,
+    refetchInterval: 30_000,
+  });
+}
+
+export function useVerifyEducation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, action, note }: { id: number; action: "verify" | "reject"; note?: string }) =>
+      verifyEducation(id, action, note),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["admin", "educations", "pending"] });
+      qc.invalidateQueries({ queryKey: ["admin", "tutors"] });
+    },
   });
 }

@@ -38,7 +38,14 @@ class PasswordResetOut(BaseModel):
 
 from models.report import ReportStatus
 from schemas.report import ReportCountOut, ReportOut, ReportResolve
-from services import admin_service, audit_service, report_service, tutor_service
+from schemas.education import AdminEducationOut, EducationOut, EducationVerifyIn
+from services import (
+    admin_service,
+    audit_service,
+    education_service,
+    report_service,
+    tutor_service,
+)
 
 router = APIRouter(
     prefix="/admin",
@@ -109,6 +116,40 @@ async def reject_tutor(
         db, actor=admin, action="tutor.reject", target_type="tutor", target_id=tutor_id
     )
     return result
+
+
+@router.get("/educations/pending", response_model=list[AdminEducationOut])
+async def list_pending_educations(db: AsyncSession = Depends(get_db)):
+    """Teyit bekleyen (PENDING) diploma belgeleri — sahip eğitmen adıyla."""
+    rows = await education_service.admin_list_pending(db)
+    out: list[AdminEducationOut] = []
+    for edu, tutor in rows:
+        item = AdminEducationOut.model_validate(edu)
+        item.tutor_name = tutor.full_name
+        out.append(item)
+    return out
+
+
+@router.post("/educations/{education_id}/verify", response_model=EducationOut)
+async def verify_education(
+    education_id: int,
+    payload: EducationVerifyIn,
+    admin: Admin = Depends(_current_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """Admin bir diploma belgesini doğrular/reddeder (e-Devlet barkodunu resmî
+    sayfada teyit ettikten sonra)."""
+    edu = await education_service.admin_set_verification(
+        db, education_id, admin, action=payload.action, note=payload.note
+    )
+    await audit_service.record(
+        db,
+        actor=admin,
+        action=f"education.{payload.action}",
+        target_type="tutor_education",
+        target_id=education_id,
+    )
+    return edu
 
 
 @router.post("/tutors/{tutor_id}/suspend", response_model=TutorOut)

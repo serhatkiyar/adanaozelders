@@ -16,7 +16,7 @@ import {
   VerifiedTutorBadge,
   DocumentedBadge,
   TutorTrustBar,
-  hasDocumentedEducation,
+  hasVerifiedEducation,
 } from "@/components/TutorTrust";
 import { Seo } from "@/components/Seo";
 import { JsonLd } from "@/components/JsonLd";
@@ -149,7 +149,7 @@ export default function PublicTutorProfile() {
                   {tutor.full_name}
                 </h1>
                 <VerifiedTutorBadge />
-                {hasDocumentedEducation(tutor.educations) && <DocumentedBadge />}
+                {hasVerifiedEducation(tutor.educations) && <DocumentedBadge />}
               </div>
 
               <div className="mt-2 flex flex-wrap items-center gap-3">

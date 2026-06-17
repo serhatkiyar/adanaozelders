@@ -8,7 +8,7 @@ import {
 } from "@/hooks/useEducations";
 import { getErrorMessage } from "@/lib/errors";
 import { toast } from "@/store/toastStore";
-import type { Education, EducationCreate } from "@/types";
+import type { DocumentType, Education, EducationCreate } from "@/types";
 
 const inputCls =
   "w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 outline-none transition duration-150 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:placeholder-slate-500 dark:focus:border-indigo-500 dark:focus:ring-indigo-900/30";
@@ -57,14 +57,23 @@ const CapIcon = (
 
 /* ─── Form (add + edit) ──────────────────────────────────── */
 
+const DOC_TYPE_OPTIONS: { value: DocumentType; label: string }[] = [
+  { value: "DIPLOMA", label: "Diploma" },
+  { value: "DENKLIK", label: "Denklik Belgesi (yurt dışı)" },
+  { value: "OGRENCI_BELGESI", label: "Öğrenci Belgesi" },
+];
+
 function EducationForm({
   initial,
   pending,
+  showVerification = false,
   onSubmit,
   onCancel,
 }: {
   initial?: Education;
   pending: boolean;
+  // Eğitmen bağlamı: e-Devlet belge türü + barkod alanlarını göster.
+  showVerification?: boolean;
   onSubmit: (payload: EducationCreate) => void;
   onCancel: () => void;
 }) {
@@ -77,6 +86,11 @@ function EducationForm({
   const [endYear, setEndYear] = useState(
     initial?.end_year ? String(initial.end_year) : ""
   );
+  const [docType, setDocType] = useState<DocumentType | "">(
+    initial?.document_type ?? ""
+  );
+  const [barcode, setBarcode] = useState(initial?.verification_code ?? "");
+  const [tckn, setTckn] = useState(initial?.verification_tckn ?? "");
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
@@ -90,12 +104,24 @@ function EducationForm({
       toast.error("Bitiş yılı başlangıçtan önce olamaz.");
       return;
     }
+    const tcknClean = tckn.trim();
+    if (showVerification && tcknClean && !/^\d{11}$/.test(tcknClean)) {
+      toast.error("TCKN 11 haneli rakam olmalı.");
+      return;
+    }
     onSubmit({
       school_name: school.trim(),
       degree: degree.trim() || null,
       field_of_study: field.trim() || null,
       start_year: start,
       end_year: end,
+      ...(showVerification
+        ? {
+            document_type: docType || null,
+            verification_code: barcode.trim() || null,
+            verification_tckn: tcknClean || null,
+          }
+        : {}),
     });
   };
 
@@ -167,6 +193,62 @@ function EducationForm({
           />
         </div>
       </div>
+
+      {showVerification && (
+        <div className="space-y-3 rounded-xl border border-indigo-100 bg-indigo-50/50 p-3 dark:border-indigo-500/20 dark:bg-indigo-500/10">
+          <p className="text-xs font-semibold text-indigo-700 dark:text-indigo-300">
+            Diploma doğrulama (e-Devlet)
+          </p>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div>
+              <label className={fieldLabelCls}>Belge türü</label>
+              <select
+                value={docType}
+                onChange={(e) => setDocType(e.target.value as DocumentType | "")}
+                className={inputCls}
+              >
+                <option value="">Seç…</option>
+                {DOC_TYPE_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className={fieldLabelCls}>e-Devlet doğrulama kodu / barkod</label>
+              <input
+                type="text"
+                maxLength={60}
+                value={barcode}
+                onChange={(e) => setBarcode(e.target.value)}
+                className={inputCls}
+                placeholder="Örn. AB12-CD34-…"
+              />
+            </div>
+          </div>
+          <div>
+            <label className={fieldLabelCls}>T.C. Kimlik No</label>
+            <input
+              type="text"
+              inputMode="numeric"
+              maxLength={11}
+              value={tckn}
+              onChange={(e) => setTckn(e.target.value.replace(/\D/g, ""))}
+              className={inputCls}
+              placeholder="11 haneli"
+              autoComplete="off"
+            />
+          </div>
+          <p className="text-[11px] leading-relaxed text-slate-500 dark:text-slate-400">
+            e-Devlet → "Mezun Belgesi / Öğrenci Belgesi" alıp <strong>barkodlu</strong> PDF'i yükle,
+            doğrulama kodunu ve TCKN'ni gir. e-Devlet doğrulaması barkodun yanında TCKN ister;
+            bu bilgi <strong>yalnız yöneticiye</strong> gösterilir, herkese açık profilde görünmez.
+            Belgedeki ad, hesabındaki adla aynı olmalı.
+          </p>
+        </div>
+      )}
+
       <div className="flex justify-end gap-2">
         <button type="button" onClick={onCancel} className={cancelBtn}>
           İptal
@@ -264,8 +346,48 @@ function DocumentArea({
           className="inline-flex items-center gap-1.5 rounded-lg border border-dashed border-amber-300 bg-amber-50 px-2.5 py-1.5 text-xs font-semibold text-amber-700 transition hover:bg-amber-100 disabled:opacity-50 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300 dark:hover:bg-amber-500/20"
         >
           <DiplomaIcon className="h-3.5 w-3.5" />
-          {uploading ? "Yükleniyor…" : "Diploma / Belge Yükle (zorunlu)"}
+          {uploading ? "Yükleniyor…" : "Diploma / Belge Yükle"}
         </button>
+      )}
+    </div>
+  );
+}
+
+/** Eğitim kaydının diploma doğrulama durumu rozeti. Public (owner=false) yalnız
+ *  VERIFIED'i görür; sahibi (owner=true) PENDING/REJECTED'i de görür. */
+function VerificationStatusPill({ edu, owner }: { edu: Education; owner: boolean }) {
+  const st = edu.verification_status;
+  if (!st || st === "NONE") return null;
+
+  if (st === "VERIFIED") {
+    return (
+      <span className="mt-1.5 inline-flex items-center gap-1 rounded-lg bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} className="h-3 w-3" aria-hidden>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+        </svg>
+        Diploma doğrulandı
+      </span>
+    );
+  }
+  if (!owner) return null; // public yalnız doğrulanmışı görür
+
+  if (st === "PENDING") {
+    return (
+      <span className="mt-1.5 inline-flex items-center gap-1 rounded-lg bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700 dark:bg-amber-500/15 dark:text-amber-300">
+        ⏳ Doğrulama bekleniyor
+      </span>
+    );
+  }
+  // REJECTED
+  return (
+    <div className="mt-1.5">
+      <span className="inline-flex items-center gap-1 rounded-lg bg-rose-50 px-2 py-0.5 text-[11px] font-semibold text-rose-700 dark:bg-rose-500/15 dark:text-rose-300">
+        ✕ Reddedildi
+      </span>
+      {edu.verification_note && (
+        <p className="mt-1 text-[11px] text-rose-600 dark:text-rose-300">
+          {edu.verification_note}
+        </p>
       )}
     </div>
   );
@@ -319,6 +441,9 @@ function EducationItem({
           onUploadDocument={onUploadDocument}
           uploading={uploading}
         />
+        {(withDocument || !editable) && (
+          <VerificationStatusPill edu={edu} owner={editable} />
+        )}
       </div>
       {editable && (
         <div className="flex shrink-0 items-start gap-1">
@@ -458,6 +583,7 @@ export function EducationSection({
                   key={edu.id}
                   initial={edu}
                   pending={updateMutation.isPending}
+                  showVerification={withDocument}
                   onSubmit={(payload) => handleUpdate(edu.id, payload)}
                   onCancel={() => setEditingId(null)}
                 />
@@ -488,6 +614,7 @@ export function EducationSection({
             {editable && adding && (
               <EducationForm
                 pending={addMutation.isPending}
+                showVerification={withDocument}
                 onSubmit={handleAdd}
                 onCancel={() => setAdding(false)}
               />
@@ -496,7 +623,7 @@ export function EducationSection({
             {editable && !adding && list.length === 0 && (
               <p className="text-sm italic text-slate-400 dark:text-slate-500">
                 {withDocument
-                  ? "Henüz eğitim bilgisi eklemedin. Eğitmen olarak en az bir eğitim ekleyip diploma/belge yüklemen gerekir; aksi halde ilanını onaya gönderemezsin."
+                  ? "Henüz eğitim bilgisi eklemedin. Eğitmen olarak en az bir eğitim ekleyip diploma/belge yüklemen ya da e-Devlet doğrulama barkodunu girmen gerekir; aksi halde ilanını onaya gönderemezsin."
                   : "Henüz eğitim bilgisi eklemedin. İstersen okul, derece ve yıl bilgilerini ekleyebilirsin (zorunlu değil)."}
               </p>
             )}

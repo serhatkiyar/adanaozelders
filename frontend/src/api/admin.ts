@@ -1,5 +1,12 @@
 import { apiClient } from "@/api/axios";
-import type { AdminStats, AdminUserOut, TutorOut, AdminBookingOut } from "@/types";
+import type {
+  AdminStats,
+  AdminUserOut,
+  TutorOut,
+  AdminBookingOut,
+  AdminEducation,
+  Education,
+} from "@/types";
 
 export async function fetchAdminStats(): Promise<AdminStats> {
   const { data } = await apiClient.get<AdminStats>("/admin/stats");
@@ -70,5 +77,24 @@ export async function cancelAdminBooking(id: number, reason: string): Promise<Ad
 
 export async function toggleDisputeAdminBooking(id: number, is_disputed: boolean, admin_notes?: string): Promise<AdminBookingOut> {
   const { data } = await apiClient.post<AdminBookingOut>(`/admin/bookings/${id}/dispute`, { is_disputed, admin_notes });
+  return data;
+}
+
+// ── Diploma doğrulama kuyruğu ──
+
+export async function fetchPendingEducations(): Promise<AdminEducation[]> {
+  const { data } = await apiClient.get<AdminEducation[]>("/admin/educations/pending");
+  return data;
+}
+
+export async function verifyEducation(
+  id: number,
+  action: "verify" | "reject",
+  note?: string
+): Promise<Education> {
+  const { data } = await apiClient.post<Education>(`/admin/educations/${id}/verify`, {
+    action,
+    note: note ?? null,
+  });
   return data;
 }
