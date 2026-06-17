@@ -100,6 +100,9 @@ class TutorSearchOut(BaseModel):
     # tamamlanmış ders sayısı (sosyal kanıt). Profilde rozet olarak gösterilir.
     created_at: datetime.datetime | None = None
     completed_lessons: int = 0
+    # Ortalama ilk-yanıt süresi (saniye); mesajlaşma verisinden hesaplanır. Yalnız
+    # profil (detay) yanıtında doldurulur, arama listesinde None (N+1'den kaçınma).
+    avg_response_seconds: int | None = None
     rating_count: int
     rating_average: float | None = None
     bayesian_score: float
