@@ -19,7 +19,7 @@ import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useAuthStore } from "@/store/authStore";
 import { toast } from "@/store/toastStore";
 import { getErrorMessage } from "@/lib/errors";
-import { amenityLabel, amenityTiClass } from "@/lib/amenities";
+import { AmenityTagGrid } from "@/components/AmenityTagGrid";
 import {
   WEEKDAY_LABELS,
   formatHoursLine,
@@ -326,21 +326,11 @@ export default function LibraryDetail() {
                 </ul>
               </div>
 
-              {/* Olanaklar (emojisiz — sade çipler) */}
+              {/* Olanaklar (emojisiz — sade çipler; ortak AmenityTagGrid) */}
               {lib.amenities.length > 0 && (
                 <div className={cardCls}>
                   <SectionLabel>Olanaklar</SectionLabel>
-                  <div className="flex flex-wrap gap-2">
-                    {lib.amenities.map((a) => (
-                      <span
-                        key={a}
-                        className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-600 dark:bg-slate-700 dark:text-slate-300"
-                      >
-                        <i className={amenityTiClass(a)}></i>
-                        {amenityLabel(a)}
-                      </span>
-                    ))}
-                  </div>
+                  <AmenityTagGrid amenities={lib.amenities} />
                 </div>
               )}
             </div>
