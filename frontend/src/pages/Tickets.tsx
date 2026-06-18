@@ -55,11 +55,11 @@ const STATUS_PILL: Record<RegistrationStatus, { label: string; cls: string }> = 
   },
   CANCELLED: {
     label: "İptal",
-    cls: "bg-white/10 text-violet-200 ring-1 ring-inset ring-white/15",
+    cls: "bg-white/10 text-white/80 ring-1 ring-inset ring-white/15",
   },
   REFUNDED: {
     label: "İade edildi",
-    cls: "bg-white/10 text-violet-200 ring-1 ring-inset ring-white/15",
+    cls: "bg-white/10 text-white/80 ring-1 ring-inset ring-white/15",
   },
 };
 
@@ -67,7 +67,7 @@ const STATUS_PILL: Record<RegistrationStatus, { label: string; cls: string }> = 
 // gri-tonlandığı için renk soluk görünür.
 const EXPIRED_PILL = {
   label: "Süresi doldu",
-  cls: "bg-white/10 text-violet-100 ring-1 ring-inset ring-white/15",
+  cls: "bg-white/10 text-white/80 ring-1 ring-inset ring-white/15",
 };
 
 const PREVIEW_COUNT = 3; // bölüm başına ön gösterim; fazlası "daha fazla göster" ile açılır
@@ -200,11 +200,45 @@ const SIDE_BITES: CSSProperties = {
   maskComposite: "intersect",
 };
 
-const PURPLE_STYLE: CSSProperties = {
-  backgroundColor: "#5b21b6",
-  backgroundImage:
-    "radial-gradient(circle at 1px 1px, rgba(255,255,255,0.16) 1.5px, transparent 0), linear-gradient(135deg, #7c3aed 0%, #5b21b6 55%, #4c1d95 100%)",
-  backgroundSize: "16px 16px, 100% 100%",
+/* ── Bilet temaları (türe göre) ──
+ * Deneme bileti = mor, çalışma alanı = teal. Her tema koyu gradyan + açık metin
+ * olduğundan birincil yazılar beyaz kalır; yalnız ikincil/ bağlantı tonları ile
+ * gradyan + gölge renkleri temadan gelir. Aksan (amber kupon/QR halkası) ortaktır. */
+interface TicketTheme {
+  bg: CSSProperties; // gradyan + nokta dokusu
+  shadow: string; // drop-shadow rgba'sı
+  text: string; // çerçeve birincil metin sınıfı
+  soft: string; // ikincil (tarih/süre) metin
+  faint: string; // en soluk (kupon ipucu) metin
+  link: string; // kütüphane bağlantısı
+}
+
+const EXAM_THEME: TicketTheme = {
+  bg: {
+    backgroundColor: "#5b21b6",
+    backgroundImage:
+      "radial-gradient(circle at 1px 1px, rgba(255,255,255,0.16) 1.5px, transparent 0), linear-gradient(135deg, #7c3aed 0%, #5b21b6 55%, #4c1d95 100%)",
+    backgroundSize: "16px 16px, 100% 100%",
+  },
+  shadow: "rgba(76,29,149,0.25)",
+  text: "text-violet-50",
+  soft: "text-violet-200/80",
+  faint: "text-violet-200/70",
+  link: "text-violet-100",
+};
+
+const STUDY_THEME: TicketTheme = {
+  bg: {
+    backgroundColor: "#0f766e",
+    backgroundImage:
+      "radial-gradient(circle at 1px 1px, rgba(255,255,255,0.16) 1.5px, transparent 0), linear-gradient(135deg, #0d9488 0%, #0f766e 55%, #115e59 100%)",
+    backgroundSize: "16px 16px, 100% 100%",
+  },
+  shadow: "rgba(13,148,136,0.30)",
+  text: "text-teal-50",
+  soft: "text-teal-100/80",
+  faint: "text-teal-100/70",
+  link: "text-teal-50",
 };
 
 interface Stamp {
@@ -214,11 +248,14 @@ interface Stamp {
 }
 
 function TicketFrame({
+  theme,
   muted = false,
   stamp,
   main,
   stub,
 }: {
+  /** Bilet türüne göre renk paleti (deneme = mor, çalışma = teal). */
+  theme: TicketTheme;
   /** Geçmiş/no-show: kartı gri-tonla + soluklaştır. */
   muted?: boolean;
   /** Ortaya basılan eğik damga (Kullanıldı / Süresi Doldu). null = damgasız. */
@@ -250,12 +287,12 @@ function TicketFrame({
       style={{
         filter: muted
           ? "grayscale(0.9) opacity(0.82) drop-shadow(0 10px 14px rgba(15,23,42,0.18))"
-          : "drop-shadow(0 12px 16px rgba(76,29,149,0.25))",
+          : `drop-shadow(0 12px 16px ${theme.shadow})`,
       }}
     >
       <div
-        style={{ ...SIDE_BITES, ...PURPLE_STYLE }}
-        className="relative flex min-h-[11.5rem] w-full text-violet-50"
+        style={{ ...SIDE_BITES, ...theme.bg }}
+        className={`relative flex min-h-[11.5rem] w-full ${theme.text}`}
       >
         {/* Ana parça */}
         <div className="relative flex min-w-0 flex-1 flex-col p-5">{main}</div>
@@ -299,12 +336,14 @@ function TicketFrame({
 
 /* QR kuponu (PAID/ATTENDED) — tıklayınca kod modalı açar. Aksi halde kilit placeholder. */
 function TicketStub({
+  theme,
   qrToken,
   shortCode,
   regId,
   inactive,
   onShow,
 }: {
+  theme: TicketTheme;
   qrToken?: string | null;
   shortCode?: string | null;
   regId: number;
@@ -316,7 +355,7 @@ function TicketStub({
     return (
       <div className="flex w-[8.75rem] shrink-0 flex-col items-center justify-center gap-1.5 px-4 py-4 text-center">
         <div className="text-2xl opacity-60">{inactive.icon}</div>
-        <div className="text-[11px] font-medium leading-tight text-violet-100/70">
+        <div className={`text-[11px] font-medium leading-tight ${theme.faint}`}>
           {inactive.label}
         </div>
       </div>
@@ -337,7 +376,7 @@ function TicketStub({
             <QRCodeSVG value={`${regId}:${qrToken}`} size={80} level="M" />
           </div>
           <div className="mt-2 font-mono text-base font-bold tracking-widest text-white">{pretty}</div>
-          <div className="mt-0.5 text-[10px] font-medium uppercase tracking-wide text-violet-200/70 group-hover:text-white">
+          <div className={`mt-0.5 text-[10px] font-medium uppercase tracking-wide ${theme.faint} group-hover:text-white`}>
             Büyütmek için dokun
           </div>
         </div>
@@ -347,7 +386,7 @@ function TicketStub({
   return (
     <div className="flex w-[8.75rem] shrink-0 flex-col items-center justify-center gap-1.5 px-4 py-4 text-center">
       <div className="text-2xl opacity-70">🔒</div>
-      <div className="text-[11px] font-medium leading-tight text-violet-200/80">
+      <div className={`text-[11px] font-medium leading-tight ${theme.soft}`}>
         Ödeme sonrası QR oluşur
       </div>
     </div>
@@ -423,6 +462,7 @@ function terminalView(
 }
 
 function TicketCard({ reg }: { reg: RegistrationOut }) {
+  const theme = EXAM_THEME;
   const [showQr, setShowQr] = useState(false);
   const [showResult, setShowResult] = useState(false);
   const pay = usePayRegistration();
@@ -470,6 +510,7 @@ function TicketCard({ reg }: { reg: RegistrationOut }) {
   return (
     <div className="mx-auto w-[28rem] max-w-full space-y-2">
       <TicketFrame
+        theme={theme}
         muted={view.muted}
         stamp={view.stamp}
         main={
@@ -489,13 +530,13 @@ function TicketCard({ reg }: { reg: RegistrationOut }) {
             </h3>
             {session && (
               <>
-                <p className="mt-1 text-sm text-violet-200/80">
+                <p className={`mt-1 text-sm ${theme.soft}`}>
                   🗓️ {formatDateTime(session.starts_at)} · ⏱️ {session.duration_minutes} dk
                 </p>
                 {session.library_name && (
                   <Link
                     to={ROUTES.library(session.library_slug ?? session.library_id)}
-                    className="mt-0.5 inline-flex items-center gap-1.5 text-sm font-medium text-violet-100 underline-offset-2 hover:text-white hover:underline"
+                    className={`mt-0.5 inline-flex items-center gap-1.5 text-sm font-medium ${theme.link} underline-offset-2 hover:text-white hover:underline`}
                   >
                     <LibraryIcon className="h-4 w-4 shrink-0 opacity-80" />
                     {session.library_name}
@@ -540,6 +581,7 @@ function TicketCard({ reg }: { reg: RegistrationOut }) {
         }
         stub={
           <TicketStub
+            theme={theme}
             qrToken={reg.qr_token}
             shortCode={reg.short_code}
             regId={reg.id}
@@ -565,6 +607,7 @@ function TicketCard({ reg }: { reg: RegistrationOut }) {
 }
 
 function StudyReservationCard({ res }: { res: StudyReservationOut }) {
+  const theme = STUDY_THEME;
   const [showQr, setShowQr] = useState(false);
   const pay = usePayStudy();
   const cancel = useCancelStudy();
@@ -606,6 +649,7 @@ function StudyReservationCard({ res }: { res: StudyReservationOut }) {
   return (
     <div className="mx-auto w-[28rem] max-w-full">
     <TicketFrame
+      theme={theme}
       muted={view.muted}
       stamp={view.stamp}
       main={
@@ -624,7 +668,7 @@ function StudyReservationCard({ res }: { res: StudyReservationOut }) {
           {res.library_name && (
             <Link
               to={ROUTES.library(res.library_slug ?? res.library_id)}
-              className="mt-0.5 inline-flex items-center gap-1.5 text-sm font-medium text-violet-100 underline-offset-2 hover:text-white hover:underline"
+              className={`mt-0.5 inline-flex items-center gap-1.5 text-sm font-medium ${theme.link} underline-offset-2 hover:text-white hover:underline`}
             >
               <LibraryIcon className="h-4 w-4 shrink-0 opacity-80" />
               {res.library_name}
@@ -654,6 +698,7 @@ function StudyReservationCard({ res }: { res: StudyReservationOut }) {
       }
       stub={
         <TicketStub
+          theme={theme}
           qrToken={res.qr_token}
           shortCode={res.short_code}
           regId={res.id}

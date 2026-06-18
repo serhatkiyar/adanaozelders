@@ -81,6 +81,8 @@ export interface UserOut {
   full_name: string; // first_name + last_name (backend hybrid)
   is_active: boolean;
   email_verified: boolean;
+  phone?: string | null;
+  phone_verified?: boolean;
   role_id: number;
   avatar_url?: string | null;
   about?: string | null;
@@ -438,6 +440,44 @@ export interface ConversationOut {
   last_message?: string | null;
   last_message_at?: string | null;
   unread?: number;
+  /** İstek sahibi bu sohbeti arşivlemiş mi? */
+  archived?: boolean;
+}
+
+/** Mesaj aramasında gövdesi eşleşen tek bir mesaj (her eşleşme ayrı satır). */
+export interface MessageSearchHit {
+  message_id: number;
+  conversation_id: number;
+  counterparty_id?: number | null;
+  counterparty_name?: string | null;
+  counterparty_avatar_url?: string | null;
+  sender_role: "CLIENT" | "TUTOR";
+  body: string;
+  created_at: string;
+}
+
+/** Arama sonucu iki bölüm: isim eşleşmeleri (chats) + gövde eşleşmeleri (messages). */
+export interface MessageSearchResults {
+  chats: ConversationOut[];
+  messages: MessageSearchHit[];
+}
+
+/** Okunmamış mesaj sayısı, gelen kutusu (arşivlenmemiş) ve arşiv olarak ayrı. */
+export interface MessagesUnreadCounts {
+  inbox: number;
+  archived: number;
+}
+
+export interface MessageReplyPreview {
+  id: number;
+  sender_role: "CLIENT" | "TUTOR";
+  body: string;
+}
+
+export interface MessageReactionOut {
+  emoji: string;
+  count: number;
+  reacted: boolean;
 }
 
 export interface MessageOut {
@@ -447,6 +487,9 @@ export interface MessageOut {
   sender_id: number;
   body: string;
   created_at: string;
+  reply_to_id?: number | null;
+  reply_preview?: MessageReplyPreview | null;
+  reactions?: MessageReactionOut[];
 }
 
 /* ============================ TUTOR ============================ */
@@ -500,6 +543,8 @@ export interface TutorSearchOut {
   // Güven sinyalleri (profilde rozet): hesap açılış tarihi + tamamlanan ders sayısı.
   created_at?: string | null;
   completed_lessons?: number;
+  // Ortalama ilk-yanıt süresi (saniye); yalnız profil detayında dolu, listede yok.
+  avg_response_seconds?: number | null;
   rating_count: number;
   rating_average?: number | null;
   bayesian_score: number;
@@ -645,6 +690,25 @@ export interface Payment {
 export interface EarningsSummary {
   released: string;
   pending: string;
+  this_month?: string;
+  refunded?: string;
+  currency?: string;
+}
+
+// Bakiye sayfasındaki tek bir kazanç hareketi (ders / deneme / çalışma).
+// status backend'de Payment sözlüğüne normalize edilir → PaymentBadge ile tek mantık.
+export interface EarningTransaction {
+  id: number;
+  source: "LESSON" | "EXAM" | "STUDY";
+  title: string;
+  counterparty?: string | null;
+  gross: string;
+  commission: string;
+  net: string;
+  status: PaymentStatus;
+  currency: string;
+  occurred_at?: string | null;
+  created_at: string;
 }
 
 /* ============================ REPORT ============================ */
@@ -709,6 +773,14 @@ export interface ReviewOut {
   created_at: string;
   client_name?: string | null;
   client_avatar_url?: string | null; // yalnızca liste uçlarında dolu
+}
+
+/** Yıldız puan dağılımı — özet başlık + 5→1 dağılım çubukları için (eğitmen + kütüphane ortak). */
+export interface RatingDistribution {
+  count: number;
+  average?: number | null;
+  /** Yıldız ("1".."5") → adet. */
+  distribution: Record<string, number>;
 }
 
 /* ============================ QA ============================ */
@@ -791,6 +863,23 @@ export interface DemandOut {
   budget_max?: string | null; // Decimal -> string
   status: DemandStatus;
   created_at: string;
+  client_name?: string | null; // eğitmen browse'ında öğrencinin görünen adı
+  responded?: boolean; // eğitmen browse'ında: bu eğitmen yanıtladı mı
+  response_count?: number; // öğrenci kendi talebinde: gelen yanıt sayısı
+}
+
+export interface DemandResponseOut {
+  tutor_id: number;
+  tutor_name: string;
+  tutor_avatar_url?: string | null;
+  headline?: string | null;
+  responded_at: string;
+}
+
+export interface DemandRespondResult {
+  conversation_id: number;
+  client_id: number;
+  client_name: string;
 }
 
 /* ============================ EXAM ============================ */
@@ -907,6 +996,29 @@ export interface LibraryHours {
   close_minute?: number | null;
 }
 
+export interface LibrarySpeedTestOut {
+  id: number;
+  download_mbps: number;
+  upload_mbps: number;
+  ping_ms: number;
+  created_at: string;
+}
+
+export interface LibrarySpeedTestStats {
+  count: number;
+  avg_download_mbps: number | null;
+  avg_upload_mbps: number | null;
+  avg_ping_ms: number | null;
+  last_tested_at: string | null;
+  recent: LibrarySpeedTestOut[];
+}
+
+export interface SpeedTestResult {
+  download_mbps: number;
+  upload_mbps: number;
+  ping_ms: number;
+}
+
 export interface LibraryImageOut {
   id: number;
   url: string;
@@ -991,6 +1103,8 @@ export interface LibraryEarningsOut {
   commission_total: string; // platform komisyonu
   released_count: number;
   held_count: number;
+  this_month_earning?: string; // bu ay serbest bırakılan net kazanç
+  refunded_total?: string; // iade edilen brüt tutar
 }
 
 export interface LibraryWrite {

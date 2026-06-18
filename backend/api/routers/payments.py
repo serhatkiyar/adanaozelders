@@ -20,7 +20,12 @@ from models.booking import Booking
 from models.client import Client
 from models.role import ROLE_IDS, RoleType
 from models.tutor import Tutor
-from schemas.payment import EarningsSummary, PaymentOut, PlatformSummary
+from schemas.payment import (
+    EarningsSummary,
+    EarningTransaction,
+    PaymentOut,
+    PlatformSummary,
+)
 from services import library_exam_service, payment_service, study_reservation_service
 
 logger = logging.getLogger("ceyhan.payments")
@@ -143,6 +148,16 @@ async def my_earnings(
 ):
     data = await payment_service.earnings_summary(db, tutor_id=tutor.id)
     return EarningsSummary(**data)
+
+
+@router.get("/earnings/transactions", response_model=list[EarningTransaction])
+async def my_earnings_transactions(
+    tutor: Tutor = Depends(require_roles(RoleType.TUTOR)),
+    db: AsyncSession = Depends(get_db),
+):
+    """Eğitmenin ödeme hareketleri dökümü (Bakiye sayfası)."""
+    rows = await payment_service.earnings_transactions(db, tutor_id=tutor.id)
+    return [EarningTransaction(**r) for r in rows]
 
 
 @router.get("/admin/summary", response_model=PlatformSummary)

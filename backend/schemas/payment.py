@@ -29,8 +29,32 @@ class PaymentOut(BaseModel):
 
 
 class EarningsSummary(BaseModel):
-    released: Decimal  # tamamlanan derslerden net kazanç
-    pending: Decimal   # emanette bekleyen (HELD) net tutar
+    released: Decimal              # tamamlanan derslerden net kazanç (RELEASED)
+    pending: Decimal               # emanette bekleyen (HELD) net tutar
+    this_month: Decimal = Decimal("0")  # bu ay serbest bırakılan net kazanç
+    refunded: Decimal = Decimal("0")    # iade edilen brüt tutar
+    currency: str = "TRY"
+
+
+class EarningTransaction(BaseModel):
+    """Bakiye sayfasındaki tek bir kazanç hareketi (ders / deneme / çalışma).
+
+    Hem eğitmen (ders ödemeleri) hem kütüphane (deneme + çalışma escrow'u) için ortak
+    biçim. ``status`` daima Payment sözlüğünde normalize edilir
+    (PENDING/HELD/RELEASED/REFUNDED/FAILED/CANCELLED) — frontend tek rozet mantığı kullanır.
+    """
+
+    id: int
+    source: str                    # LESSON | EXAM | STUDY
+    title: str
+    counterparty: str | None = None  # karşı taraf (öğrenci adı)
+    gross: Decimal                 # öğrencinin ödediği toplam
+    commission: Decimal            # platform komisyonu
+    net: Decimal                   # tedarikçi kazancı (tutor/library)
+    status: str
+    currency: str
+    occurred_at: datetime.datetime | None = None  # serbest/ödeme/oluşturma tarihi
+    created_at: datetime.datetime
 
 
 class PlatformSummary(BaseModel):

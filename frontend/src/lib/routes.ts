@@ -47,10 +47,14 @@ export const PATHS = {
   calendar: "/takvim",
   favorites: "/favoriler",
   questions: "/sorular",
+  /** Açık talepler (ilan) — CLIENT açar, TUTOR görüp yanıtlar (rol-adaptif). */
+  demands: "/talepler",
   exams: "/denemeler",
   /** Öğrencinin deneme oturumu biletleri (QR). */
   tickets: "/biletlerim",
   tasks: "/gorevler",
+  /** Kazanç & ödeme bakiyesi (TUTOR + LIBRARY_OPERATOR). */
+  balance: "/bakiyem",
   leaderboard: "/liderlik",
   // Öğren bölümü (kelime kartları / SRS / odak / grafik / alışkanlıklar)
   learn: "/ogren",
@@ -101,9 +105,11 @@ export const ROUTES = {
   calendar: PATHS.calendar,
   favorites: PATHS.favorites,
   questions: PATHS.questions,
+  demands: PATHS.demands,
   exams: PATHS.exams,
   tickets: PATHS.tickets,
   tasks: PATHS.tasks,
+  balance: PATHS.balance,
   leaderboard: PATHS.leaderboard,
   learn: PATHS.learn,
   flashcards: PATHS.flashcards,

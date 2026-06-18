@@ -5,7 +5,9 @@ import { StarRating } from "@/components/StarRating";
 import { EducationSection } from "@/components/EducationSection";
 import { FullScreenSpinner } from "@/components/Spinner";
 import { ReviewListModal } from "@/components/ReviewListModal";
+import { ReviewsSection, type ReviewItem } from "@/components/ReviewsSection";
 import { useEffect, useState } from "react";
+import { useReviewsByTutor, useTutorRatingDistribution } from "@/hooks/useReviews";
 import { useTutorDetail } from "@/hooks/useTutorSearch";
 import { recordViewedTutor } from "@/lib/recentlyViewed";
 import { formatLastSeen } from "@/lib/datetime";
@@ -43,6 +45,8 @@ export default function PublicTutorProfile() {
     if (tutor) recordViewedTutor(tutor);
   }, [tutor]);
   const [showReviews, setShowReviews] = useState(false);
+  const { data: reviews } = useReviewsByTutor(tutorId);
+  const { data: ratingDist } = useTutorRatingDistribution(tutorId);
 
   if (isLoading) return <FullScreenSpinner />;
 
@@ -271,7 +275,26 @@ export default function PublicTutorProfile() {
         {/* Education */}
         <EducationSection educations={tutor.educations} />
 
-
+        {/* Değerlendirmeler (Airbnb-tarzı: özet + dağılım + yorum ızgarası) */}
+        <section className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-slate-700">
+          <ReviewsSection
+            average={tutor.rating_average}
+            count={tutor.rating_count}
+            distribution={ratingDist}
+            reviews={(reviews ?? []).map(
+              (r): ReviewItem => ({
+                id: r.id,
+                name: r.client_name ?? "Anonim",
+                avatarUrl: r.client_avatar_url,
+                rating: r.rating,
+                text: r.comment_text,
+                createdAt: r.created_at,
+                reply: r.tutor_reply,
+              })
+            )}
+            onShowAll={() => setShowReviews(true)}
+          />
+        </section>
       </div>
 
       {showReviews && (

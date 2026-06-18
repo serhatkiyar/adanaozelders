@@ -44,3 +44,31 @@ class DemandOut(BaseModel):
     budget_max: Decimal | None = None
     status: DemandStatus
     created_at: datetime.datetime
+    # Eğitmen browse'ında öğrencinin görünen adı (eşleşen taleplerde doldurulur).
+    client_name: str | None = None
+    # Eğitmen browse'ında: bu eğitmen talebe daha önce yanıt verdi mi.
+    responded: bool = False
+    # Öğrenci kendi talebinde: gelen yanıt sayısı.
+    response_count: int = 0
+
+
+class DemandResponseCreate(BaseModel):
+    body: str = Field(min_length=1, max_length=1000)
+
+
+class DemandResponseOut(BaseModel):
+    """Öğrencinin kendi talebinde gördüğü yanıtlayan eğitmen kartı."""
+
+    tutor_id: int
+    tutor_name: str
+    tutor_avatar_url: str | None = None
+    headline: str | None = None
+    responded_at: datetime.datetime
+
+
+class DemandRespondResult(BaseModel):
+    """Eğitmen yanıt verince dönen sonuç — frontend sohbete yönlendirir."""
+
+    conversation_id: int
+    client_id: int
+    client_name: str

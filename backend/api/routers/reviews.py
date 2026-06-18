@@ -15,7 +15,13 @@ from models.client import Client
 from models.review import Review
 from models.role import RoleType
 from models.tutor import Tutor
-from schemas.review import ReviewCreate, ReviewOut, ReviewUpdate, TutorReply
+from schemas.review import (
+    RatingDistributionOut,
+    ReviewCreate,
+    ReviewOut,
+    ReviewUpdate,
+    TutorReply,
+)
 from services import review_service
 
 router = APIRouter(prefix="/reviews", tags=["reviews"])
@@ -63,6 +69,14 @@ async def list_reviews(
     return await review_service.list_reviews(
         db, tutor_id=tutor_id, limit=limit, offset=offset
     )
+
+
+@router.get("/distribution", response_model=RatingDistributionOut)
+async def review_distribution(
+    tutor_id: int = Query(...),
+    db: AsyncSession = Depends(get_db),
+):
+    return await review_service.rating_distribution(db, tutor_id)
 
 
 @router.get("/booking/{booking_id}", response_model=ReviewOut | None)

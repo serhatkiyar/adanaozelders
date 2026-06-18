@@ -1,5 +1,6 @@
 import { apiClient } from "@/api/axios";
 import type {
+  EarningTransaction,
   LibraryDetailOut,
   LibraryEarningsOut,
   LibraryRegisterPayload,
@@ -8,6 +9,7 @@ import type {
   LibrarySearchOut,
   LibraryWrite,
   PayoutOut,
+  RatingDistribution,
   Token,
 } from "@/types";
 
@@ -106,6 +108,15 @@ export async function fetchLibraryReviews(
   return data;
 }
 
+export async function fetchLibraryRatingDistribution(
+  libraryId: number
+): Promise<RatingDistribution> {
+  const { data } = await apiClient.get<RatingDistribution>(
+    `/libraries/${libraryId}/reviews/distribution`
+  );
+  return data;
+}
+
 export async function createLibraryReview(
   libraryId: number,
   payload: LibraryReviewCreate
@@ -150,6 +161,15 @@ export async function fetchLibraryEarnings(
 ): Promise<LibraryEarningsOut> {
   const { data } = await apiClient.get<LibraryEarningsOut>(
     `/libraries/${libraryId}/earnings`
+  );
+  return data;
+}
+
+export async function fetchLibraryEarningsTransactions(
+  libraryId: number
+): Promise<EarningTransaction[]> {
+  const { data } = await apiClient.get<EarningTransaction[]>(
+    `/libraries/${libraryId}/earnings/transactions`
   );
   return data;
 }

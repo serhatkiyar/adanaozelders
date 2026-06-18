@@ -1,9 +1,28 @@
 import { apiClient } from "@/api/axios";
-import type { ConversationOut, MessageOut } from "@/types";
+import type {
+  ConversationOut,
+  MessageOut,
+  MessageReactionOut,
+  MessageSearchResults,
+  MessagesUnreadCounts,
+} from "@/types";
 
-export async function listConversations(): Promise<ConversationOut[]> {
+export async function listConversations(
+  archived = false
+): Promise<ConversationOut[]> {
   const { data } = await apiClient.get<ConversationOut[]>(
-    "/messages/conversations"
+    "/messages/conversations",
+    { params: archived ? { archived: true } : undefined }
+  );
+  return data;
+}
+
+export async function searchMessages(
+  q: string
+): Promise<MessageSearchResults> {
+  const { data } = await apiClient.get<MessageSearchResults>(
+    "/messages/search",
+    { params: { q } }
   );
   return data;
 }
@@ -20,17 +39,42 @@ export async function listMessages(
 
 export async function sendMessage(
   counterpartyId: number,
-  body: string
+  body: string,
+  replyToId?: number | null
 ): Promise<MessageOut> {
   const { data } = await apiClient.post<MessageOut>(
     `/messages/${counterpartyId}`,
-    { body }
+    { body, reply_to_id: replyToId ?? null }
   );
   return data;
 }
 
-export async function unreadCount(): Promise<number> {
-  const { data } = await apiClient.get<number>("/messages/unread-count");
+export async function toggleReaction(
+  messageId: number,
+  emoji: string
+): Promise<MessageReactionOut[]> {
+  const { data } = await apiClient.post<MessageReactionOut[]>(
+    `/messages/items/${messageId}/reactions`,
+    { emoji }
+  );
+  return data;
+}
+
+export async function setConversationArchived(
+  conversationId: number,
+  archived: boolean
+): Promise<void> {
+  await apiClient.post(
+    `/messages/conversations/${conversationId}/${
+      archived ? "archive" : "unarchive"
+    }`
+  );
+}
+
+export async function unreadCount(): Promise<MessagesUnreadCounts> {
+  const { data } = await apiClient.get<MessagesUnreadCounts>(
+    "/messages/unread-count"
+  );
   return data;
 }
 

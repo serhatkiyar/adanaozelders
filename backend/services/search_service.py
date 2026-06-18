@@ -10,6 +10,7 @@ from sqlalchemy.orm import selectinload
 
 from core.config import settings
 from models.booking import Booking, BookingStatus
+from models.messaging import Conversation, Message
 from models.tutor import Gender, Tutor, TutorAvailability, TutorStatus, TutorSubject
 from schemas.education import EducationOut
 from schemas.tutor import AvailabilityOut, TutorSearchOut, TutorSort
@@ -35,6 +36,7 @@ def _to_search_out(
     availability: list | None = None,
     distance_km: float | None = None,
     completed_lessons: int = 0,
+    avg_response_seconds: int | None = None,
 ) -> TutorSearchOut:
     return TutorSearchOut(
         id=tutor.id,
@@ -49,6 +51,7 @@ def _to_search_out(
         last_seen_at=tutor.last_seen_at,
         created_at=tutor.created_at,
         completed_lessons=completed_lessons,
+        avg_response_seconds=avg_response_seconds,
         rating_count=tutor.rating_count,
         rating_average=(
             tutor.rating_sum / tutor.rating_count if tutor.rating_count else None
@@ -200,6 +203,48 @@ async def search_tutors(
     return results
 
 
+async def tutor_avg_response_seconds(
+    db: AsyncSession,
+    tutor_id: int,
+    *,
+    window_days: int = 90,
+    max_messages: int = 2000,
+) -> int | None:
+    """Eğitmenin ortalama ilk-yanıt süresi (saniye) — mesajlaşma verisinden.
+
+    Her sohbette, yanıtsız bir öğrenci mesajından sonraki ilk eğitmen mesajına kadar
+    geçen süreyi örnekler (art arda öğrenci mesajlarında İLK mesajdan ölçülür) ve tüm
+    sohbetler üzerinden ortalar. Yalnız son ``window_days`` gün; örnek yoksa None.
+    """
+    since = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(
+        days=window_days
+    )
+    rows = (
+        await db.execute(
+            select(Message.conversation_id, Message.sender_role, Message.created_at)
+            .join(Conversation, Conversation.id == Message.conversation_id)
+            .where(Conversation.tutor_id == tutor_id, Message.created_at >= since)
+            .order_by(Message.conversation_id, Message.created_at, Message.id)
+            .limit(max_messages)
+        )
+    ).all()
+
+    samples: list[float] = []
+    pending: dict[int, datetime.datetime] = {}  # conv_id -> yanıtsız ilk öğrenci mesajı
+    for conv_id, role, created_at in rows:
+        if role == "CLIENT":
+            pending.setdefault(conv_id, created_at)
+        elif role == "TUTOR":
+            start = pending.pop(conv_id, None)
+            if start is not None:
+                delta = (created_at - start).total_seconds()
+                if delta >= 0:
+                    samples.append(delta)
+    if not samples:
+        return None
+    return int(sum(samples) / len(samples))
+
+
 async def get_tutor_public(db: AsyncSession, tutor_id: int) -> TutorSearchOut:
     tutor = await db.get(Tutor, tutor_id)
     if (
@@ -236,6 +281,7 @@ async def get_tutor_public(db: AsyncSession, tutor_id: int) -> TutorSearchOut:
             )
         )
     ).scalar_one()
+    avg_response_seconds = await tutor_avg_response_seconds(db, tutor.id)
     return _to_search_out(
         tutor,
         prior_mean,
@@ -244,4 +290,5 @@ async def get_tutor_public(db: AsyncSession, tutor_id: int) -> TutorSearchOut:
         subjects=[r[0] for r in subj_rows.all()],
         availability=list(avail_rows),
         completed_lessons=completed_lessons,
+        avg_response_seconds=avg_response_seconds,
     )

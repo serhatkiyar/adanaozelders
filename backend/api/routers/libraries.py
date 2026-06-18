@@ -27,7 +27,9 @@ from models.library import Library
 from models.library_operator import LibraryOperator
 from models.role import RoleType
 from schemas.auth import Token
+from schemas.payment import EarningTransaction
 from schemas.payout import LibraryPayoutSubmitIn, PayoutOut
+from schemas.review import RatingDistributionOut
 from schemas.library import (
     LibraryCreate,
     LibraryDetailOut,
@@ -277,6 +279,16 @@ async def get_library(
 # ── Değerlendirme ────────────────────────────────────────────────────────────────
 
 
+@router.get(
+    "/{library_id}/reviews/distribution", response_model=RatingDistributionOut
+)
+async def library_review_distribution(
+    library_id: int,
+    db: AsyncSession = Depends(get_db),
+):
+    return await library_service.rating_distribution(db, library_id)
+
+
 @router.get("/{library_id}/reviews", response_model=list[LibraryReviewOut])
 async def list_library_reviews(
     library_id: int,
@@ -329,6 +341,24 @@ async def library_earnings(
     if isinstance(user, LibraryOperator) and user.library_id != library_id:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Bu kütüphanede yetkin yok")
     return await library_service.earnings_summary(db, library_id)
+
+
+@router.get(
+    "/{library_id}/earnings/transactions", response_model=list[EarningTransaction]
+)
+async def library_earnings_transactions(
+    library_id: int,
+    user: CurrentUser = Depends(
+        require_roles(RoleType.ADMIN, RoleType.LIBRARY_OPERATOR)
+    ),
+    db: AsyncSession = Depends(get_db),
+):
+    """Kütüphane escrow hareketleri dökümü (deneme + çalışma). Operatör yalnız kendi
+    kütüphanesini görebilir."""
+    if isinstance(user, LibraryOperator) and user.library_id != library_id:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Bu kütüphanede yetkin yok")
+    rows = await library_service.earnings_transactions(db, library_id)
+    return [EarningTransaction(**r) for r in rows]
 
 
 # ── Admin görsel yönetimi (logo / banner / galeri) ───────────────────────────────

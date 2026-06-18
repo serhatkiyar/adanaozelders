@@ -10,6 +10,7 @@ from models.booking_resource import BookingResource
 from models.bookmark import Bookmark
 from models.client import Client, ClientAddress, ClientEducation
 from models.demand import Demand, DemandStatus
+from models.demand_response import DemandResponse
 from models.exam import PracticeExam, PracticeExamSubject
 from models.flashcard import Flashcard, FlashcardDeck
 from models.habit import Habit, HabitEntry
@@ -75,6 +76,7 @@ __all__ = [
     "ClientEducation",
     "Conversation",
     "Demand",
+    "DemandResponse",
     "DemandStatus",
     "ExamRegistration",
     "ExamSessionStatus",

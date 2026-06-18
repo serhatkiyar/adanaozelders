@@ -46,6 +46,7 @@ from schemas.library import (
     LibrarySearchOut,
     LibraryUpdate,
 )
+from schemas.review import RatingDistributionOut
 from services.ranking import bayesian_average
 
 try:  # Türkiye yerel saati (açık/kapalı hesabı). Yoksa UTC'ye düşer.
@@ -385,6 +386,34 @@ async def list_reviews(
         item.verified = client.id in verified_ids
         out.append(item)
     return out
+
+
+async def rating_distribution(
+    db: AsyncSession, library_id: int
+) -> RatingDistributionOut:
+    """Kütüphanenin yıldız dağılımı. Yalnız ortalamaya sayılan (doğrulanmış
+    ziyaretçi) değerlendirmeleri içerir — özet ortalama/sayı ile tutarlı kalır."""
+    rows = (
+        await db.execute(
+            select(LibraryReview.rating, func.count())
+            .where(
+                LibraryReview.library_id == library_id,
+                LibraryReview.deleted_at.is_(None),
+                LibraryReview.counts_to_rating.is_(True),
+            )
+            .group_by(LibraryReview.rating)
+        )
+    ).all()
+    counts = {star: 0 for star in range(1, 6)}
+    total = 0
+    weighted = 0
+    for rating, count in rows:
+        r, c = int(rating), int(count)
+        counts[r] = c
+        total += c
+        weighted += r * c
+    average = (weighted / total) if total else None
+    return RatingDistributionOut(count=total, average=average, distribution=counts)
 
 
 async def create_review(
@@ -836,6 +865,58 @@ async def earnings_summary(db: AsyncSession, library_id: int) -> LibraryEarnings
         )
     ).one()
 
+    # Bu ay serbest bırakılan (deneme + çalışma)
+    month_start = datetime.datetime.now(datetime.timezone.utc).replace(
+        day=1, hour=0, minute=0, second=0, microsecond=0
+    )
+    exam_month = (
+        await db.execute(
+            select(func.coalesce(func.sum(ExamRegistration.library_earning), 0))
+            .join(
+                LibraryExamSession,
+                LibraryExamSession.id == ExamRegistration.session_id,
+            )
+            .where(
+                LibraryExamSession.library_id == library_id,
+                ExamRegistration.deleted_at.is_(None),
+                ExamRegistration.released_at >= month_start,
+            )
+        )
+    ).scalar_one()
+    study_month = (
+        await db.execute(
+            select(func.coalesce(func.sum(StudyReservation.library_earning), 0)).where(
+                StudyReservation.library_id == library_id,
+                StudyReservation.deleted_at.is_(None),
+                StudyReservation.released_at >= month_start,
+            )
+        )
+    ).scalar_one()
+    # İade edilen brüt tutar (deneme + çalışma)
+    exam_refunded = (
+        await db.execute(
+            select(func.coalesce(func.sum(ExamRegistration.amount), 0))
+            .join(
+                LibraryExamSession,
+                LibraryExamSession.id == ExamRegistration.session_id,
+            )
+            .where(
+                LibraryExamSession.library_id == library_id,
+                ExamRegistration.deleted_at.is_(None),
+                ExamRegistration.status == RegistrationStatus.REFUNDED.value,
+            )
+        )
+    ).scalar_one()
+    study_refunded = (
+        await db.execute(
+            select(func.coalesce(func.sum(StudyReservation.amount), 0)).where(
+                StudyReservation.library_id == library_id,
+                StudyReservation.deleted_at.is_(None),
+                StudyReservation.status == RegistrationStatus.REFUNDED.value,
+            )
+        )
+    ).scalar_one()
+
     def _d(v) -> Decimal:
         return Decimal(str(v)).quantize(Decimal("0.01"))
 
@@ -850,4 +931,118 @@ async def earnings_summary(db: AsyncSession, library_id: int) -> LibraryEarnings
         commission_total=str(commission_total),
         released_count=int(exam_rel[2]) + int(study_rel[2]),
         held_count=int(exam_held[1]) + int(study_held[1]),
+        this_month_earning=str(_d(exam_month) + _d(study_month)),
+        refunded_total=str(_d(exam_refunded) + _d(study_refunded)),
     )
+
+
+def normalize_escrow_status(
+    *,
+    status: str,
+    released_at: datetime.datetime | None,
+    refunded_at: datetime.datetime | None = None,
+) -> str:
+    """Gömülü escrow durumunu (deneme/çalışma) Payment sözlüğüne çevirir.
+
+    Frontend tek rozet mantığı kullanabilsin diye RegistrationStatus →
+    PENDING/HELD/RELEASED/REFUNDED eşlenir. ``released_at`` doluysa (katılım ya da
+    no-show sonrası serbest) RELEASED önceliklidir. Saf fonksiyon — pytest'li.
+    """
+    if released_at is not None:
+        return "RELEASED"
+    if refunded_at is not None or status == RegistrationStatus.REFUNDED.value:
+        return "REFUNDED"
+    if status == RegistrationStatus.PAID.value:
+        return "HELD"
+    if status == RegistrationStatus.PENDING_PAYMENT.value:
+        return "PENDING"
+    if status == RegistrationStatus.CANCELLED.value:
+        return "CANCELLED"
+    return status
+
+
+async def earnings_transactions(
+    db: AsyncSession, library_id: int, *, limit: int = 200
+) -> list[dict]:
+    """Kütüphanenin escrow hareketleri (deneme + çalışma birleşik, en yeni önce).
+
+    Yalnız ödemesi alınmış kayıtlar döner (``paid_at`` dolu) — emanette/serbest/iade;
+    ödeme bekleyen (PENDING_PAYMENT) terk edilmiş kayıtlar listeyi kirletmesin.
+    """
+    await _require_lib(db, library_id)
+    out: list[dict] = []
+
+    exam_rows = (
+        await db.execute(
+            select(ExamRegistration, LibraryExamSession, Client)
+            .join(
+                LibraryExamSession,
+                LibraryExamSession.id == ExamRegistration.session_id,
+            )
+            .join(Client, Client.id == ExamRegistration.client_id)
+            .where(
+                LibraryExamSession.library_id == library_id,
+                ExamRegistration.deleted_at.is_(None),
+                ExamRegistration.paid_at.isnot(None),
+            )
+            .order_by(ExamRegistration.created_at.desc())
+            .limit(limit)
+        )
+    ).all()
+    for reg, session, client in exam_rows:
+        out.append(
+            {
+                "id": reg.id,
+                "source": "EXAM",
+                "title": session.title,
+                "counterparty": client.full_name,
+                "gross": Decimal(str(reg.amount)),
+                "commission": Decimal(str(reg.commission_amount)),
+                "net": Decimal(str(reg.library_earning)),
+                "status": normalize_escrow_status(
+                    status=reg.status,
+                    released_at=reg.released_at,
+                    refunded_at=reg.refunded_at,
+                ),
+                "currency": reg.currency,
+                "occurred_at": reg.released_at or reg.paid_at or reg.created_at,
+                "created_at": reg.created_at,
+            }
+        )
+
+    study_rows = (
+        await db.execute(
+            select(StudyReservation, Client)
+            .join(Client, Client.id == StudyReservation.client_id)
+            .where(
+                StudyReservation.library_id == library_id,
+                StudyReservation.deleted_at.is_(None),
+                StudyReservation.paid_at.isnot(None),
+            )
+            .order_by(StudyReservation.created_at.desc())
+            .limit(limit)
+        )
+    ).all()
+    for res, client in study_rows:
+        out.append(
+            {
+                "id": res.id,
+                "source": "STUDY",
+                "title": "Çalışma alanı rezervasyonu",
+                "counterparty": client.full_name,
+                "gross": Decimal(str(res.amount)),
+                "commission": Decimal(str(res.commission_amount)),
+                "net": Decimal(str(res.library_earning)),
+                "status": normalize_escrow_status(
+                    status=res.status,
+                    released_at=res.released_at,
+                    refunded_at=res.refunded_at,
+                ),
+                "currency": res.currency,
+                "occurred_at": res.released_at or res.paid_at or res.created_at,
+                "created_at": res.created_at,
+            }
+        )
+
+    out.sort(key=lambda r: r["created_at"], reverse=True)
+    return out[:limit]

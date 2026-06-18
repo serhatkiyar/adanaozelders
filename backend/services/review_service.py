@@ -3,7 +3,7 @@ from __future__ import annotations
 import datetime
 
 from fastapi import HTTPException, status
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from models.booking import Booking, BookingStatus
@@ -11,8 +11,22 @@ from models.client import Client
 from models.review import Review
 from models.role import ROLE_IDS, RoleType
 from models.tutor import Tutor
-from schemas.review import ReviewCreate, ReviewUpdate
+from schemas.review import RatingDistributionOut, ReviewCreate, ReviewUpdate
 from services import notification_service
+
+
+def _build_distribution(rows: list[tuple[int, int]]) -> RatingDistributionOut:
+    """`(rating, count)` satırlarından 1..5 dağılımı + ortalama üretir."""
+    counts = {star: 0 for star in range(1, 6)}
+    total = 0
+    weighted = 0
+    for rating, count in rows:
+        r, c = int(rating), int(count)
+        counts[r] = c
+        total += c
+        weighted += r * c
+    average = (weighted / total) if total else None
+    return RatingDistributionOut(count=total, average=average, distribution=counts)
 
 
 def _adjust_tutor_rating(tutor_id: int, count_delta: int, sum_delta: int):
@@ -134,6 +148,20 @@ async def list_reviews(
         review.client_avatar_url = avatar_url
         reviews.append(review)
     return reviews
+
+
+async def rating_distribution(
+    db: AsyncSession, tutor_id: int
+) -> RatingDistributionOut:
+    """Bir eğitmenin yıldız dağılımı (tüm silinmemiş değerlendirmeler)."""
+    rows = (
+        await db.execute(
+            select(Review.rating, func.count())
+            .where(Review.tutor_id == tutor_id, Review.deleted_at.is_(None))
+            .group_by(Review.rating)
+        )
+    ).all()
+    return _build_distribution(rows)
 
 
 async def update_review(

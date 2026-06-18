@@ -21,12 +21,20 @@ const LABEL: Record<PaymentStatus, string> = {
   [PaymentStatus.FAILED]: "Ödeme başarısız",
 };
 
+// CANCELLED gibi normalize edilmiş ek durumlar için yedek (PaymentStatus dışı).
+const FALLBACK = "bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300";
+
 export function PaymentBadge({ payment }: { payment: Payment }) {
+  return <PaymentStatusBadge status={payment.status} />;
+}
+
+/** Yalnız durumdan rozet — Bakiye işlem dökümünde de kullanılır. */
+export function PaymentStatusBadge({ status }: { status: PaymentStatus | string }) {
+  const cls = STYLE[status as PaymentStatus] ?? FALLBACK;
+  const label = LABEL[status as PaymentStatus] ?? "İptal";
   return (
-    <span
-      className={`rounded-full px-2.5 py-1 text-xs font-medium ${STYLE[payment.status]}`}
-    >
-      💳 {LABEL[payment.status]}
+    <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${cls}`}>
+      💳 {label}
     </span>
   );
 }
