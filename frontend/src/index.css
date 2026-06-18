@@ -70,6 +70,27 @@
   to   { opacity: 1; }
 }
 
+/* Mesajlar: aramaya tıklayınca kutunun açılış animasyonu */
+@keyframes searchbar-in {
+  from { opacity: 0; transform: translateY(-6px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+.animate-searchbar {
+  animation: searchbar-in 220ms cubic-bezier(0.2, 0, 0, 1);
+  transform-origin: left center;
+}
+
+/* Aramadan bir mesaja atlandığında o mesajın satırını yatay gri bir bantla
+   kısa süre vurgular (belirip söner) — Slack/Discord "mesaja git" hissi. */
+@keyframes highlight-row {
+  0%   { background-color: rgba(100, 116, 139, 0.22); }
+  60%  { background-color: rgba(100, 116, 139, 0.22); }
+  100% { background-color: rgba(100, 116, 139, 0); }
+}
+.animate-highlight-row {
+  animation: highlight-row 2.6s ease-out;
+}
+
 @keyframes modalSlideUp {
   from {
     opacity: 0;

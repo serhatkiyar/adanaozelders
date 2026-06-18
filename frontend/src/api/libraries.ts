@@ -9,6 +9,7 @@ import type {
   LibrarySearchOut,
   LibraryWrite,
   PayoutOut,
+  RatingDistribution,
   Token,
 } from "@/types";
 
@@ -103,6 +104,15 @@ export async function fetchLibraryReviews(
 ): Promise<LibraryReviewOut[]> {
   const { data } = await apiClient.get<LibraryReviewOut[]>(
     `/libraries/${libraryId}/reviews`
+  );
+  return data;
+}
+
+export async function fetchLibraryRatingDistribution(
+  libraryId: number
+): Promise<RatingDistribution> {
+  const { data } = await apiClient.get<RatingDistribution>(
+    `/libraries/${libraryId}/reviews/distribution`
   );
   return data;
 }

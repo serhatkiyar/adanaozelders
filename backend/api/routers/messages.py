@@ -6,8 +6,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api.deps import CurrentUser, get_current_active_user, user_rate_limit
 from core.config import settings
 from core.database import get_db
-from schemas.messaging import ConversationOut, MessageCreate, MessageOut
-from services import messaging_service
+from schemas.messaging import (
+    ConversationOut,
+    MessageCreate,
+    MessageOut,
+    MessageSearchResults,
+    MessagesUnreadCounts,
+    ReactionOut,
+    ReactionRequest,
+)
+from services import messaging_service, phone_service
 
 router = APIRouter(prefix="/messages", tags=["messages"])
 
@@ -20,18 +28,64 @@ _send_limit = user_rate_limit(
 
 @router.get("/conversations", response_model=list[ConversationOut])
 async def list_conversations(
+    archived: bool = Query(default=False),
     user: CurrentUser = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
-    return await messaging_service.list_conversations(db, user)
+    return await messaging_service.list_conversations(db, user, archived=archived)
 
 
-@router.get("/unread-count", response_model=int)
+@router.get("/search", response_model=MessageSearchResults)
+async def search_messages(
+    q: str = Query(min_length=1, max_length=100),
+    user: CurrentUser = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    return await messaging_service.search_messages(db, user, q)
+
+
+@router.post(
+    "/conversations/{conversation_id}/archive",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def archive_conversation(
+    conversation_id: int,
+    user: CurrentUser = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    await messaging_service.set_archived(db, user, conversation_id, True)
+
+
+@router.post(
+    "/conversations/{conversation_id}/unarchive",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def unarchive_conversation(
+    conversation_id: int,
+    user: CurrentUser = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    await messaging_service.set_archived(db, user, conversation_id, False)
+
+
+@router.post("/items/{message_id}/reactions", response_model=list[ReactionOut])
+async def toggle_reaction(
+    message_id: int,
+    payload: ReactionRequest,
+    user: CurrentUser = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    return await messaging_service.toggle_reaction(
+        db, user, message_id, payload.emoji
+    )
+
+
+@router.get("/unread-count", response_model=MessagesUnreadCounts)
 async def unread_count(
     user: CurrentUser = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
-    return await messaging_service.unread_total(db, user)
+    return await messaging_service.unread_counts(db, user)
 
 
 @router.post(
@@ -71,6 +125,11 @@ async def send_message(
     user: CurrentUser = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
+    phone_service.require_phone_verified(user)
     return await messaging_service.send_message(
-        db, sender=user, counterparty_id=counterparty_id, body=payload.body
+        db,
+        sender=user,
+        counterparty_id=counterparty_id,
+        body=payload.body,
+        reply_to_id=payload.reply_to_id,
     )

@@ -15,6 +15,7 @@ import {
   fetchLibraryAdmin,
   fetchLibraryEarnings,
   fetchLibraryEarningsTransactions,
+  fetchLibraryRatingDistribution,
   fetchLibraryReviews,
   listLibrariesAdmin,
   rejectLibrary,
@@ -53,13 +54,22 @@ export function useLibraryReviews(libraryId: number | undefined) {
   });
 }
 
+export function useLibraryRatingDistribution(libraryId: number | undefined) {
+  return useQuery({
+    queryKey: ["libraries", "reviews", "distribution", libraryId],
+    queryFn: () => fetchLibraryRatingDistribution(libraryId!),
+    enabled: Number.isFinite(libraryId) && (libraryId ?? 0) > 0,
+  });
+}
+
 export function useCreateLibraryReview(libraryId: number) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (payload: LibraryReviewCreate) =>
       createLibraryReview(libraryId, payload),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["libraries", "reviews", libraryId] });
+      // ["libraries","reviews"] öneki hem liste hem dağılım sorgularını kapsar.
+      qc.invalidateQueries({ queryKey: ["libraries", "reviews"] });
       qc.invalidateQueries({ queryKey: ["libraries", "detail"] });
       qc.invalidateQueries({ queryKey: ["libraries", "search"] });
     },
@@ -72,6 +82,9 @@ export function useDeleteLibraryReview(libraryId: number) {
     mutationFn: (reviewId: number) => deleteLibraryReview(reviewId),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["libraries", "reviews", libraryId] });
+      qc.invalidateQueries({
+        queryKey: ["libraries", "reviews", "distribution", libraryId],
+      });
       qc.invalidateQueries({ queryKey: ["libraries", "detail"] });
     },
   });

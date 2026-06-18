@@ -5,14 +5,17 @@ import { PublicShell } from "@/components/PublicShell";
 import { STUDENT_NAV, TUTOR_NAV } from "@/lib/nav";
 import { LibrariesMap } from "@/components/LibrariesMap";
 import { ExamSessionsSection } from "@/components/ExamSessionsSection";
+import { LibrarySpeedTestSection } from "@/components/LibrarySpeedTestSection";
 import { LibraryReservationModal } from "@/components/LibraryReservationModal";
 import { StarRating } from "@/components/StarRating";
 import { LibraryBookmarkButton } from "@/components/LibraryBookmarkButton";
 import { ShareButton } from "@/components/ShareButton";
 import { Seo } from "@/components/Seo";
+import { ReviewsSection, type ReviewItem } from "@/components/ReviewsSection";
 import {
   useCreateLibraryReview,
   useLibraryDetail,
+  useLibraryRatingDistribution,
   useLibraryReviews,
 } from "@/hooks/useLibraries";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
@@ -83,6 +86,7 @@ export default function LibraryDetail() {
   const { data: currentUser } = useCurrentUser();
   const { data: lib, isLoading, isError, error } = useLibraryDetail(slug);
   const { data: reviews } = useLibraryReviews(lib?.id);
+  const { data: ratingDist } = useLibraryRatingDistribution(lib?.id);
 
   const isClient = currentUser?.role_id === ROLE_IDS.CLIENT;
   const navItems =
@@ -223,6 +227,9 @@ export default function LibraryDetail() {
 
               {/* Yaklaşan denemeler — deneme olmasa da kart kendi içinde "yok" gösterir */}
               <ExamSessionsSection libraryId={lib.id} />
+
+              {/* İnternet hız testi (wifi) — çalıştır + kütüphaneye kaydet */}
+              <LibrarySpeedTestSection libraryId={lib.id} canRecord={isClient} />
             </div>
 
             {/* Sol / bilgi kolonu */}
@@ -334,6 +341,28 @@ export default function LibraryDetail() {
                 </div>
               )}
             </div>
+          </div>
+
+          {/* Değerlendirmeler (Airbnb-tarzı: özet + dağılım + yorum ızgarası) */}
+          <div className={cardCls}>
+            <ReviewsSection
+              average={lib.rating_average}
+              count={lib.rating_count}
+              distribution={ratingDist}
+              reviews={(reviews ?? []).map(
+                (r): ReviewItem => ({
+                  id: r.id,
+                  name: r.client_name ?? "Anonim",
+                  avatarUrl: r.client_avatar_url,
+                  rating: r.rating,
+                  text: r.comment_text,
+                  createdAt: r.created_at,
+                  verified: r.verified,
+                })
+              )}
+              form={isClient ? <ReviewForm libraryId={lib.id} /> : undefined}
+              onShowAll={() => setShowReviews(true)}
+            />
           </div>
         </div>
 

@@ -1,5 +1,15 @@
 import { apiClient } from "@/api/axios";
-import type { ReviewCreate, ReviewOut } from "@/types";
+import type { RatingDistribution, ReviewCreate, ReviewOut } from "@/types";
+
+export async function tutorRatingDistribution(
+  tutorId: number
+): Promise<RatingDistribution> {
+  const { data } = await apiClient.get<RatingDistribution>(
+    "/reviews/distribution",
+    { params: { tutor_id: tutorId } }
+  );
+  return data;
+}
 
 export async function createReview(
   payload: ReviewCreate

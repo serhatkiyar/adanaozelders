@@ -4,6 +4,7 @@ import {
   listReviews,
   replyToReview,
   reviewByBooking,
+  tutorRatingDistribution,
 } from "@/api/reviews";
 import type { ReviewCreate } from "@/types";
 
@@ -32,6 +33,14 @@ export function useReviewsByTutor(tutorId: number) {
   return useQuery({
     queryKey: ["reviews", "tutor", tutorId],
     queryFn: () => listReviews({ tutor_id: tutorId, limit: 50 }),
+    enabled: Number.isFinite(tutorId) && tutorId > 0,
+  });
+}
+
+export function useTutorRatingDistribution(tutorId: number) {
+  return useQuery({
+    queryKey: ["reviews", "distribution", "tutor", tutorId],
+    queryFn: () => tutorRatingDistribution(tutorId),
     enabled: Number.isFinite(tutorId) && tutorId > 0,
   });
 }

@@ -46,6 +46,7 @@ from schemas.library import (
     LibrarySearchOut,
     LibraryUpdate,
 )
+from schemas.review import RatingDistributionOut
 from services.ranking import bayesian_average
 
 try:  # Türkiye yerel saati (açık/kapalı hesabı). Yoksa UTC'ye düşer.
@@ -385,6 +386,34 @@ async def list_reviews(
         item.verified = client.id in verified_ids
         out.append(item)
     return out
+
+
+async def rating_distribution(
+    db: AsyncSession, library_id: int
+) -> RatingDistributionOut:
+    """Kütüphanenin yıldız dağılımı. Yalnız ortalamaya sayılan (doğrulanmış
+    ziyaretçi) değerlendirmeleri içerir — özet ortalama/sayı ile tutarlı kalır."""
+    rows = (
+        await db.execute(
+            select(LibraryReview.rating, func.count())
+            .where(
+                LibraryReview.library_id == library_id,
+                LibraryReview.deleted_at.is_(None),
+                LibraryReview.counts_to_rating.is_(True),
+            )
+            .group_by(LibraryReview.rating)
+        )
+    ).all()
+    counts = {star: 0 for star in range(1, 6)}
+    total = 0
+    weighted = 0
+    for rating, count in rows:
+        r, c = int(rating), int(count)
+        counts[r] = c
+        total += c
+        weighted += r * c
+    average = (weighted / total) if total else None
+    return RatingDistributionOut(count=total, average=average, distribution=counts)
 
 
 async def create_review(
