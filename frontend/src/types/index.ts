@@ -81,6 +81,8 @@ export interface UserOut {
   full_name: string; // first_name + last_name (backend hybrid)
   is_active: boolean;
   email_verified: boolean;
+  phone?: string | null;
+  phone_verified?: boolean;
   role_id: number;
   avatar_url?: string | null;
   about?: string | null;
@@ -438,6 +440,44 @@ export interface ConversationOut {
   last_message?: string | null;
   last_message_at?: string | null;
   unread?: number;
+  /** İstek sahibi bu sohbeti arşivlemiş mi? */
+  archived?: boolean;
+}
+
+/** Mesaj aramasında gövdesi eşleşen tek bir mesaj (her eşleşme ayrı satır). */
+export interface MessageSearchHit {
+  message_id: number;
+  conversation_id: number;
+  counterparty_id?: number | null;
+  counterparty_name?: string | null;
+  counterparty_avatar_url?: string | null;
+  sender_role: "CLIENT" | "TUTOR";
+  body: string;
+  created_at: string;
+}
+
+/** Arama sonucu iki bölüm: isim eşleşmeleri (chats) + gövde eşleşmeleri (messages). */
+export interface MessageSearchResults {
+  chats: ConversationOut[];
+  messages: MessageSearchHit[];
+}
+
+/** Okunmamış mesaj sayısı, gelen kutusu (arşivlenmemiş) ve arşiv olarak ayrı. */
+export interface MessagesUnreadCounts {
+  inbox: number;
+  archived: number;
+}
+
+export interface MessageReplyPreview {
+  id: number;
+  sender_role: "CLIENT" | "TUTOR";
+  body: string;
+}
+
+export interface MessageReactionOut {
+  emoji: string;
+  count: number;
+  reacted: boolean;
 }
 
 export interface MessageOut {
@@ -447,6 +487,9 @@ export interface MessageOut {
   sender_id: number;
   body: string;
   created_at: string;
+  reply_to_id?: number | null;
+  reply_preview?: MessageReplyPreview | null;
+  reactions?: MessageReactionOut[];
 }
 
 /* ============================ TUTOR ============================ */
@@ -732,6 +775,14 @@ export interface ReviewOut {
   client_avatar_url?: string | null; // yalnızca liste uçlarında dolu
 }
 
+/** Yıldız puan dağılımı — özet başlık + 5→1 dağılım çubukları için (eğitmen + kütüphane ortak). */
+export interface RatingDistribution {
+  count: number;
+  average?: number | null;
+  /** Yıldız ("1".."5") → adet. */
+  distribution: Record<string, number>;
+}
+
 /* ============================ QA ============================ */
 
 export interface QAThreadCreate {
@@ -943,6 +994,29 @@ export interface LibraryHours {
   is_closed: boolean;
   open_minute?: number | null;
   close_minute?: number | null;
+}
+
+export interface LibrarySpeedTestOut {
+  id: number;
+  download_mbps: number;
+  upload_mbps: number;
+  ping_ms: number;
+  created_at: string;
+}
+
+export interface LibrarySpeedTestStats {
+  count: number;
+  avg_download_mbps: number | null;
+  avg_upload_mbps: number | null;
+  avg_ping_ms: number | null;
+  last_tested_at: string | null;
+  recent: LibrarySpeedTestOut[];
+}
+
+export interface SpeedTestResult {
+  download_mbps: number;
+  upload_mbps: number;
+  ping_ms: number;
 }
 
 export interface LibraryImageOut {

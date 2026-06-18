@@ -29,6 +29,7 @@ from models.role import RoleType
 from schemas.auth import Token
 from schemas.payment import EarningTransaction
 from schemas.payout import LibraryPayoutSubmitIn, PayoutOut
+from schemas.review import RatingDistributionOut
 from schemas.library import (
     LibraryCreate,
     LibraryDetailOut,
@@ -276,6 +277,16 @@ async def get_library(
 
 
 # ── Değerlendirme ────────────────────────────────────────────────────────────────
+
+
+@router.get(
+    "/{library_id}/reviews/distribution", response_model=RatingDistributionOut
+)
+async def library_review_distribution(
+    library_id: int,
+    db: AsyncSession = Depends(get_db),
+):
+    return await library_service.rating_distribution(db, library_id)
 
 
 @router.get("/{library_id}/reviews", response_model=list[LibraryReviewOut])

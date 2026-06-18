@@ -40,7 +40,8 @@ export function DashboardHeader({ navItems, transparent = false }: DashboardHead
   const user = useAuthStore((s) => s.user);
   const logout = useLogout();
   const home = roleHome(user?.role_id);
-  const { data: msgUnread = 0 } = useMessagesUnreadCount();
+  const { data: msgUnreadCounts } = useMessagesUnreadCount();
+  const msgUnread = msgUnreadCounts?.inbox ?? 0;
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);

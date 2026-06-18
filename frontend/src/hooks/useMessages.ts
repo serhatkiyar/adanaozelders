@@ -1,19 +1,39 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  keepPreviousData,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import {
   listConversations,
   listMessages,
   markConversationRead,
+  searchMessages,
   sendMessage,
+  setConversationArchived,
+  toggleReaction,
   unreadCount,
 } from "@/api/messages";
 import { useAuthStore } from "@/store/authStore";
 
-export function useConversations() {
+export function useConversations(archived = false) {
   const token = useAuthStore((s) => s.token);
   return useQuery({
-    queryKey: ["conversations"],
-    queryFn: listConversations,
+    queryKey: ["conversations", archived],
+    queryFn: () => listConversations(archived),
     enabled: !!token,
+  });
+}
+
+export function useMessageSearch(q: string) {
+  const token = useAuthStore((s) => s.token);
+  const term = q.trim();
+  return useQuery({
+    queryKey: ["message-search", term],
+    queryFn: () => searchMessages(term),
+    enabled: !!token && term.length > 0,
+    // Yazarken eski sonuçlar ekranda kalsın (her tuşta skeleton titremesin).
+    placeholderData: keepPreviousData,
   });
 }
 
@@ -51,12 +71,37 @@ export function useSendMessage() {
     mutationFn: ({
       counterpartyId,
       body,
+      replyToId,
     }: {
       counterpartyId: number;
       body: string;
-    }) => sendMessage(counterpartyId, body),
+      replyToId?: number | null;
+    }) => sendMessage(counterpartyId, body, replyToId),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["messages"] });
+      qc.invalidateQueries({ queryKey: ["conversations"] });
+      qc.invalidateQueries({ queryKey: ["message-search"] });
+    },
+  });
+}
+
+export function useToggleReaction(conversationId: number | null) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ messageId, emoji }: { messageId: number; emoji: string }) =>
+      toggleReaction(messageId, emoji),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["messages", conversationId] });
+    },
+  });
+}
+
+export function useArchiveConversation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, archived }: { id: number; archived: boolean }) =>
+      setConversationArchived(id, archived),
+    onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["conversations"] });
     },
   });
