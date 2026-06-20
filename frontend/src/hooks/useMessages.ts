@@ -72,11 +72,13 @@ export function useSendMessage() {
       counterpartyId,
       body,
       replyToId,
+      counterpartyRole,
     }: {
       counterpartyId: number;
       body: string;
       replyToId?: number | null;
-    }) => sendMessage(counterpartyId, body, replyToId),
+      counterpartyRole?: string | null;
+    }) => sendMessage(counterpartyId, body, replyToId, counterpartyRole),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["messages"] });
       qc.invalidateQueries({ queryKey: ["conversations"] });

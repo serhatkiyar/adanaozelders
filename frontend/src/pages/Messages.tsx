@@ -3,7 +3,9 @@ import { Link, useSearchParams } from "react-router-dom";
 import { AxiosError } from "axios";
 import { DashboardShell } from "@/components/DashboardShell";
 import { Avatar } from "@/components/Avatar";
-import { STUDENT_NAV, TUTOR_NAV } from "@/lib/nav";
+import { BookingActionCard } from "@/components/BookingActionCard";
+import { RightContextPanel } from "@/components/RightContextPanel";
+import { STUDENT_NAV, TUTOR_NAV, OPERATOR_NAV } from "@/lib/nav";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import {
   useArchiveConversation,
@@ -26,7 +28,7 @@ import type { ConversationOut, MessageOut, MessageSearchHit } from "@/types";
 
 const REACTION_EMOJIS = ["👍", "❤️", "😄", "🎉", "😮", "😢", "🙏"];
 
-type Role = "CLIENT" | "TUTOR";
+type Role = "CLIENT" | "TUTOR" | "LIBRARY";
 
 export default function Messages() {
   const { data: user } = useCurrentUser();
@@ -35,8 +37,17 @@ export default function Messages() {
       ? "CLIENT"
       : user?.role_id === ROLE_IDS.TUTOR
         ? "TUTOR"
-        : null;
-  const navItems = role === "TUTOR" ? TUTOR_NAV : STUDENT_NAV;
+        : user?.role_id === ROLE_IDS.LIBRARY_OPERATOR
+          ? "LIBRARY"
+          : null;
+  const navItems =
+    role === "TUTOR"
+      ? TUTOR_NAV
+      : role === "CLIENT"
+        ? STUDENT_NAV
+        : role === "LIBRARY"
+          ? OPERATOR_NAV
+          : undefined;
 
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -46,13 +57,16 @@ export default function Messages() {
   const [selectedMeta, setSelectedMeta] = useState<{
     id: number;
     counterpartyId: number | null;
+    counterpartyRole?: string | null;
     name: string | null;
     avatar?: string | null;
     archived: boolean;
   } | null>(null);
-  const [draft, setDraft] = useState<{ counterpartyId: number; name: string } | null>(
-    null
-  );
+  const [draft, setDraft] = useState<{
+    counterpartyId: number;
+    counterpartyRole?: string | null;
+    name: string;
+  } | null>(null);
   // Aramadan bir mesaja atlandığında, mesajlar yüklenince kaydırılacak hedef.
   const [pendingScrollMessageId, setPendingScrollMessageId] = useState<number | null>(
     null
@@ -85,6 +99,7 @@ export default function Messages() {
     meta: {
       id: number;
       counterpartyId: number | null;
+      counterpartyRole?: string | null;
       name: string | null;
       avatar?: string | null;
       archived: boolean;
@@ -104,17 +119,27 @@ export default function Messages() {
     const toParam = searchParams.get("to");
     if (!toParam || conversations === undefined) return;
     const cpId = Number(toParam);
-    const existing = conversations.find((c) => c.counterparty_id === cpId);
+    const toRole = searchParams.get("role"); // CLIENT | TUTOR | LIBRARY (opsiyonel)
+    const existing = conversations.find(
+      (c) =>
+        c.counterparty_id === cpId &&
+        (!toRole || c.counterparty_role === toRole)
+    );
     if (existing) {
       openConversation({
         id: existing.id,
         counterpartyId: existing.counterparty_id ?? cpId,
+        counterpartyRole: existing.counterparty_role,
         name: existing.counterparty_name ?? null,
         avatar: existing.counterparty_avatar_url,
         archived: existing.archived ?? false,
       });
     } else {
-      setDraft({ counterpartyId: cpId, name: searchParams.get("name") ?? "Kullanıcı" });
+      setDraft({
+        counterpartyId: cpId,
+        counterpartyRole: toRole,
+        name: searchParams.get("name") ?? "Kullanıcı",
+      });
       setSelectedId(null);
       setSelectedMeta(null);
     }
@@ -145,14 +170,25 @@ export default function Messages() {
   const activeAvatar =
     browseConv?.counterparty_avatar_url ?? selectedMeta?.avatar ?? null;
   const activeArchived = browseConv?.archived ?? selectedMeta?.archived ?? false;
+  // Karşı tarafın türü: sohbet kaydından, yoksa meta/draft'tan, yoksa rolüme göre
+  // varsayılan (CLIENT→TUTOR, TUTOR→CLIENT). Kütüphane operatörü için zorunlu gelir.
+  const activeCounterpartyRole: string | null =
+    browseConv?.counterparty_role ??
+    selectedMeta?.counterpartyRole ??
+    draft?.counterpartyRole ??
+    (role === "CLIENT" ? "TUTOR" : role === "TUTOR" ? "CLIENT" : null);
 
-  // Karşı tarafın profili: öğrenci için eğitmen ilanı, eğitmen için öğrenci sayfası.
+  // Karşı tarafın profili: kütüphane → kütüphane sayfası; eğitmen → ilan; öğrenci → profil.
   const counterpartyHref =
-    activeCounterpartyId == null || role === null
+    activeCounterpartyId == null
       ? null
-      : role === "CLIENT"
-        ? ROUTES.tutor(activeCounterpartyId)
-        : ROUTES.studentProfile(activeCounterpartyId);
+      : activeCounterpartyRole === "LIBRARY"
+        ? ROUTES.library(activeCounterpartyId)
+        : activeCounterpartyRole === "TUTOR"
+          ? ROUTES.tutor(activeCounterpartyId)
+          : activeCounterpartyRole === "CLIENT"
+            ? ROUTES.studentProfile(activeCounterpartyId)
+            : null;
 
   const { data: messages, isLoading: messagesLoading } = useMessages(selectedId);
   const send = useSendMessage();
@@ -210,11 +246,14 @@ export default function Messages() {
     return () => clearTimeout(t);
   }, [highlightedMessageId]);
 
-  // Sohbet açılınca okundu işaretle (badge sıfırlanır).
+  // Sohbet açılınca VE açıkken yeni mesaj gelince okundu işaretle. Böylece sohbeti
+  // görüntülerken yan listedeki ve navbar'daki okunmamış sayısı artmaya devam etmez.
+  const lastMessageId =
+    messages && messages.length > 0 ? messages[messages.length - 1].id : null;
   useEffect(() => {
     if (selectedId !== null) markRead.mutate(selectedId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedId]);
+  }, [selectedId, lastMessageId]);
 
   const showChat = selectedId !== null || draft !== null;
 
@@ -231,7 +270,12 @@ export default function Messages() {
     const body = text.trim();
     if (!body || activeCounterpartyId == null) return;
     send.mutate(
-      { counterpartyId: activeCounterpartyId, body, replyToId: replyTarget?.id },
+      {
+        counterpartyId: activeCounterpartyId,
+        counterpartyRole: activeCounterpartyRole,
+        body,
+        replyToId: replyTarget?.id,
+      },
       {
         onSuccess: (msg) => {
           setText("");
@@ -240,6 +284,7 @@ export default function Messages() {
           setSelectedMeta({
             id: msg.conversation_id,
             counterpartyId: activeCounterpartyId,
+            counterpartyRole: activeCounterpartyRole,
             name: activeName,
             avatar: activeAvatar,
             archived: false,
@@ -431,6 +476,7 @@ export default function Messages() {
                                 openConversation({
                                   id: c.id,
                                   counterpartyId: c.counterparty_id ?? null,
+                                  counterpartyRole: c.counterparty_role,
                                   name: c.counterparty_name ?? null,
                                   avatar: c.counterparty_avatar_url,
                                   archived: c.archived ?? false,
@@ -460,6 +506,7 @@ export default function Messages() {
                                   {
                                     id: hit.conversation_id,
                                     counterpartyId: hit.counterparty_id ?? null,
+                                    counterpartyRole: hit.counterparty_role,
                                     name: hit.counterparty_name ?? null,
                                     avatar: hit.counterparty_avatar_url,
                                     archived: false,
@@ -640,6 +687,24 @@ export default function Messages() {
                     />
                   ))
                 )}
+                {/* Görüldü/Gönderildi — yalnız son mesaj benimse (WhatsApp tarzı) */}
+                {messages && messages.length > 0 && role && (() => {
+                  const last = messages[messages.length - 1];
+                  if (last.sender_role !== role) return null;
+                  const readAt = browseConv?.counterparty_last_read_at;
+                  const seen =
+                    readAt != null &&
+                    new Date(last.created_at).getTime() <= new Date(readAt).getTime();
+                  return (
+                    <p className="px-1 pb-1 text-right text-[11px] font-medium">
+                      {seen ? (
+                        <span className="text-indigo-500 dark:text-indigo-400">Görüldü</span>
+                      ) : (
+                        <span className="text-slate-400 dark:text-slate-500">Gönderildi</span>
+                      )}
+                    </p>
+                  );
+                })()}
                 <div ref={bottomRef} />
                 </div>
               </div>
@@ -699,6 +764,15 @@ export default function Messages() {
             </>
           )}
         </section>
+
+        {/* Right Context Panel */}
+        {(() => {
+          if (!messages) return null;
+          const lastBookingMsg = [...messages].reverse().find((m) => m.msg_type === "booking_card");
+          const activeBookingId = lastBookingMsg?.meta_data?.booking_id;
+          if (!activeBookingId) return null;
+          return <RightContextPanel bookingId={activeBookingId} />;
+        })()}
       </div>
     </DashboardShell>
   );
@@ -721,6 +795,20 @@ function MessageRow({
 }) {
   const [pickerOpen, setPickerOpen] = useState(false);
   const reactions = m.reactions ?? [];
+
+  // ── Sistem mesajları (booking_card vb.) — özel render ──
+  if (m.msg_type === "booking_card" && m.meta_data) {
+    return (
+      <div
+        id={`msg-${m.id}`}
+        className={`-mx-3 flex scroll-mt-6 justify-center rounded-xl px-3 py-2 ${
+          highlighted ? "animate-highlight-row" : ""
+        }`}
+      >
+        <BookingActionCard meta={m.meta_data} />
+      </div>
+    );
+  }
 
   return (
     <div

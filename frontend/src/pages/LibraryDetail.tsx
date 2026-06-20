@@ -89,12 +89,10 @@ export default function LibraryDetail() {
   const { data: ratingDist } = useLibraryRatingDistribution(lib?.id);
 
   const isClient = currentUser?.role_id === ROLE_IDS.CLIENT;
-  const navItems =
-    currentUser?.role_id === ROLE_IDS.TUTOR
-      ? TUTOR_NAV
-      : isClient
-        ? STUDENT_NAV
-        : undefined;
+  const isTutor = currentUser?.role_id === ROLE_IDS.TUTOR;
+  // Öğrenci ve eğitmen kütüphaneyle mesajlaşabilir (açık).
+  const canMessage = isClient || isTutor;
+  const navItems = isTutor ? TUTOR_NAV : isClient ? STUDENT_NAV : undefined;
 
   const todayWeekday = jsDayToWeekday(new Date().getDay());
   const [showReviews, setShowReviews] = useState(false);
@@ -209,13 +207,26 @@ export default function LibraryDetail() {
                 </p>
               )}
 
-              <button
-                type="button"
-                onClick={() => setShowReserve(true)}
-                className="mt-5 inline-flex items-center gap-2 rounded-full bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-transform hover:scale-105 sm:w-auto"
-              >
-                Rezervasyon Yap
-              </button>
+              <div className="mt-5 flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowReserve(true)}
+                  className="inline-flex items-center gap-2 rounded-full bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-transform hover:scale-105"
+                >
+                  Rezervasyon Yap
+                </button>
+                {canMessage && (
+                  <Link
+                    to={ROUTES.messageWith(lib.id, lib.name, "LIBRARY")}
+                    className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600"
+                  >
+                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 12 3.269 3.125A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0 0h7.5" />
+                    </svg>
+                    Mesaj Gönder
+                  </Link>
+                )}
+              </div>
             </div>
           </div>
 

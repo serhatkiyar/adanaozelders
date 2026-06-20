@@ -4,7 +4,7 @@ import datetime
 from collections import defaultdict
 
 from fastapi import HTTPException, status
-from sqlalchemy import exists, func, or_, select
+from sqlalchemy import exists, func, or_, select, text
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -13,6 +13,8 @@ from models.booking import Booking, BookingStatus
 from models.client import Client
 from models.demand import Demand
 from models.demand_response import DemandResponse
+from models.library import Library
+from models.library_operator import LibraryOperator
 from models.messaging import Conversation, Message, MessageReaction
 from models.role import ROLE_IDS, RoleType
 from models.tutor import Tutor
@@ -28,15 +30,116 @@ from schemas.messaging import (
     ReplyPreview,
 )
 
-CurrentUser = Admin | Tutor | Client
+CurrentUser = Admin | Tutor | Client | LibraryOperator
 
 # Bırakılabilecek emoji seti (kötüye kullanımı sınırlamak için sabit liste).
 ALLOWED_EMOJIS = {"👍", "❤️", "😄", "🎉", "😮", "😢", "🙏"}
 
 _REPLY_PREVIEW_MAX = 140
 
+# ── Taraf (party) modeli: CLIENT, TUTOR, LIBRARY ──
+# Bir sohbette tam iki taraf vardır. Kütüphane tarafına operatör (role_id=4) erişir;
+# party kimliği library_id'dir (tüm operatörler aynı sohbeti görür).
+_ROLE_CLIENT = ROLE_IDS[RoleType.CLIENT]
+_ROLE_TUTOR = ROLE_IDS[RoleType.TUTOR]
+_ROLE_LIBRARY = ROLE_IDS[RoleType.LIBRARY_OPERATOR]
 
-async def _can_message(db: AsyncSession, client_id: int, tutor_id: int) -> bool:
+_SLOT_COL = {"CLIENT": "client_id", "TUTOR": "tutor_id", "LIBRARY": "library_id"}
+_READ_COL = {
+    "CLIENT": "client_last_read_at",
+    "TUTOR": "tutor_last_read_at",
+    "LIBRARY": "library_last_read_at",
+}
+_ARCH_COL = {
+    "CLIENT": "client_archived_at",
+    "TUTOR": "tutor_archived_at",
+    "LIBRARY": "library_archived_at",
+}
+_ROLE_OF_NAME = {"CLIENT": _ROLE_CLIENT, "TUTOR": _ROLE_TUTOR, "LIBRARY": _ROLE_LIBRARY}
+_ALL_SLOTS = ("client_id", "tutor_id", "library_id")
+_VALID_PARTY_ROLES = {_ROLE_CLIENT, _ROLE_TUTOR, _ROLE_LIBRARY}
+
+# Taraf çifti -> kısmî unique index (on_conflict için).
+_CONFLICT = {
+    frozenset({"CLIENT", "TUTOR"}): (
+        ["client_id", "tutor_id"],
+        "client_id IS NOT NULL AND tutor_id IS NOT NULL",
+    ),
+    frozenset({"CLIENT", "LIBRARY"}): (
+        ["client_id", "library_id"],
+        "client_id IS NOT NULL AND library_id IS NOT NULL",
+    ),
+    frozenset({"TUTOR", "LIBRARY"}): (
+        ["tutor_id", "library_id"],
+        "tutor_id IS NOT NULL AND library_id IS NOT NULL",
+    ),
+}
+
+
+def _party_of(user: CurrentUser) -> tuple[str, int]:
+    """Kullanıcının sohbet taraf kimliği (role_name, party_id)."""
+    if user.role_id == _ROLE_CLIENT:
+        return "CLIENT", user.id
+    if user.role_id == _ROLE_TUTOR:
+        return "TUTOR", user.id
+    if user.role_id == _ROLE_LIBRARY:
+        return "LIBRARY", user.library_id
+    raise HTTPException(
+        status.HTTP_403_FORBIDDEN, "Messaging not allowed for this role"
+    )
+
+
+def _slots_for(a: tuple[str, int], b: tuple[str, int]) -> dict[str, int]:
+    return {_SLOT_COL[a[0]]: a[1], _SLOT_COL[b[0]]: b[1]}
+
+
+def _other_party(conv: Conversation, my_role: str) -> tuple[str, int] | None:
+    """Sohbetteki diğer tarafın (role_name, party_id)'si."""
+    for name, col in _SLOT_COL.items():
+        if name == my_role:
+            continue
+        val = getattr(conv, col)
+        if val is not None:
+            return name, val
+    return None
+
+
+async def _operator_ids(db: AsyncSession, library_id: int) -> list[int]:
+    rows = await db.execute(
+        select(LibraryOperator.id).where(
+            LibraryOperator.library_id == library_id,
+            LibraryOperator.deleted_at.is_(None),
+        )
+    )
+    return [r[0] for r in rows.all()]
+
+
+async def _notify_party(
+    db: AsyncSession, payload: dict, party: tuple[str, int]
+) -> None:
+    """Bir tarafa WS push. Kütüphane tarafında o kütüphanenin TÜM operatörlerine."""
+    name, pid = party
+    if name == "LIBRARY":
+        for oid in await _operator_ids(db, pid):
+            ws_outbox.enqueue(db, payload, user_id=oid, role_id=_ROLE_LIBRARY)
+    else:
+        ws_outbox.enqueue(db, payload, user_id=pid, role_id=_ROLE_OF_NAME[name])
+
+
+async def _can_message(
+    db: AsyncSession, a: tuple[str, int], b: tuple[str, int]
+) -> bool:
+    """Kütüphane içeren çiftler AÇIK (herkes yazabilir). CLIENT↔TUTOR ise
+    rezervasyon/talep-yanıtı kuralı geçerlidir."""
+    if "LIBRARY" in {a[0], b[0]}:
+        return True
+    parties = {a[0]: a[1], b[0]: b[1]}
+    return await _can_message_client_tutor(db, parties["CLIENT"], parties["TUTOR"])
+
+
+async def _can_message_client_tutor(
+    db: AsyncSession, client_id: int, tutor_id: int
+) -> bool:
     """Aktif/bekleyen rezervasyon VEYA eğitmenin bu öğrencinin bir talebine verdiği
     yanıt mesajlaşmayı açar (talep yanıtı = eğitmen tarafından başlatılan iletişim)."""
     has_booking = exists().where(
@@ -58,45 +161,26 @@ async def _can_message(db: AsyncSession, client_id: int, tutor_id: int) -> bool:
     return bool(await db.scalar(select(or_(has_booking, has_demand_response))))
 
 
-async def _conversation_id(db: AsyncSession, client_id: int, tutor_id: int) -> int:
+async def _conversation_id(
+    db: AsyncSession, a: tuple[str, int], b: tuple[str, int]
+) -> int:
+    slots = _slots_for(a, b)
+    elems, where = _CONFLICT[frozenset({a[0], b[0]})]
     conv_id = await db.scalar(
         insert(Conversation)
-        .values(client_id=client_id, tutor_id=tutor_id)
-        .on_conflict_do_nothing(index_elements=["client_id", "tutor_id"])
+        .values(**slots)
+        .on_conflict_do_nothing(index_elements=elems, index_where=text(where))
         .returning(Conversation.id)
     )
     if conv_id is None:
-        conv_id = await db.scalar(
-            select(Conversation.id).where(
-                Conversation.client_id == client_id,
-                Conversation.tutor_id == tutor_id,
-            )
-        )
+        conds = [getattr(Conversation, col) == val for col, val in slots.items()]
+        conv_id = await db.scalar(select(Conversation.id).where(*conds))
     return conv_id
 
 
-def _resolve_pair(sender: CurrentUser, counterparty_id: int) -> tuple[int, int, str]:
-    if sender.role_id == ROLE_IDS[RoleType.CLIENT]:
-        return sender.id, counterparty_id, "CLIENT"
-    if sender.role_id == ROLE_IDS[RoleType.TUTOR]:
-        return counterparty_id, sender.id, "TUTOR"
-    raise HTTPException(
-        status.HTTP_403_FORBIDDEN, "Messaging not allowed for this role"
-    )
-
-
 def _is_party(conv: Conversation, user: CurrentUser) -> bool:
-    is_client = user.role_id == ROLE_IDS[RoleType.CLIENT]
-    return (is_client and conv.client_id == user.id) or (
-        user.role_id == ROLE_IDS[RoleType.TUTOR] and conv.tutor_id == user.id
-    )
-
-
-def _counterparty(conv: Conversation, user: CurrentUser) -> tuple[int, int]:
-    """Karşı tarafın (user_id, role_id) — WS push hedefi için."""
-    if user.role_id == ROLE_IDS[RoleType.CLIENT]:
-        return conv.tutor_id, ROLE_IDS[RoleType.TUTOR]
-    return conv.client_id, ROLE_IDS[RoleType.CLIENT]
+    role_name, pid = _party_of(user)
+    return getattr(conv, _SLOT_COL[role_name]) == pid
 
 
 def _preview_body(body: str) -> str:
@@ -134,22 +218,50 @@ async def _reactions_for(
     return out
 
 
+async def _validate_target(
+    db: AsyncSession, target_role: str, target_id: int
+) -> None:
+    """Karşı tarafın geçerli (var + erişilebilir) olduğunu doğrular."""
+    if target_role == "LIBRARY":
+        lib = await db.get(Library, target_id)
+        if lib is None or lib.deleted_at is not None or lib.status != "ACTIVE":
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Kütüphane bulunamadı")
+    elif target_role == "TUTOR":
+        t = await db.get(Tutor, target_id)
+        if t is None or t.deleted_at is not None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Eğitmen bulunamadı")
+    elif target_role == "CLIENT":
+        c = await db.get(Client, target_id)
+        if c is None or c.deleted_at is not None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Öğrenci bulunamadı")
+
+
 async def send_message(
     db: AsyncSession,
     *,
     sender: CurrentUser,
+    counterparty_role: str,
     counterparty_id: int,
     body: str,
     reply_to_id: int | None = None,
 ) -> MessageOut:
-    client_id, tutor_id, sender_role = _resolve_pair(sender, counterparty_id)
-    # Uygunluk gönderim anında değerlendirilir; biten/iptal rezervasyonda sohbet read-only olur.
-    if not await _can_message(db, client_id, tutor_id):
+    sender_party = _party_of(sender)
+    counterparty_role = counterparty_role.upper()
+    if counterparty_role not in _SLOT_COL:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Geçersiz alıcı türü")
+    if counterparty_role == sender_party[0]:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST, "Aynı türdeki taraflar mesajlaşamaz"
+        )
+    target_party = (counterparty_role, counterparty_id)
+    await _validate_target(db, counterparty_role, counterparty_id)
+    # Uygunluk gönderim anında değerlendirilir; CLIENT↔TUTOR'da rezervasyon gerekir.
+    if not await _can_message(db, sender_party, target_party):
         raise HTTPException(
             status.HTTP_403_FORBIDDEN,
             "Mesajlaşmak için aranızda beklemede veya onaylı bir rezervasyon olmalı.",
         )
-    conv_id = await _conversation_id(db, client_id, tutor_id)
+    conv_id = await _conversation_id(db, sender_party, target_party)
 
     # Yanıt hedefi yalnızca aynı sohbetteyse geçerli — değilse sessizce yok say.
     reply_preview: ReplyPreview | None = None
@@ -166,7 +278,7 @@ async def send_message(
 
     message = Message(
         conversation_id=conv_id,
-        sender_role=sender_role,
+        sender_role=sender_party[0],
         sender_id=sender.id,
         body=mask_contact_info(body),
         reply_to_id=valid_reply_id,
@@ -175,15 +287,11 @@ async def send_message(
     await db.flush()
     await db.refresh(message)
 
-    counterparty_role = (
-        ROLE_IDS[RoleType.TUTOR] if sender_role == "CLIENT" else ROLE_IDS[RoleType.CLIENT]
-    )
-    # Commit sonrası gönderilir (bkz. core/ws_outbox).
-    ws_outbox.enqueue(
+    # Commit sonrası gönderilir (bkz. core/ws_outbox). Kütüphane tarafında tüm operatörlere.
+    await _notify_party(
         db,
         {"type": "NEW_MESSAGE", "data": {"conversation_id": conv_id}},
-        user_id=counterparty_id,
-        role_id=counterparty_role,
+        target_party,
     )
 
     return MessageOut(
@@ -196,7 +304,48 @@ async def send_message(
         reply_to_id=valid_reply_id,
         reply_preview=reply_preview,
         reactions=[],
+        msg_type="text",
+        meta_data=None,
     )
+
+
+async def inject_system_message(
+    db: AsyncSession,
+    *,
+    client_id: int,
+    tutor_id: int,
+    msg_type: str,
+    body: str,
+    meta_data: dict | None = None,
+) -> int:
+    """Sistem tarafından sohbete özel mesaj enjekte eder (ör. ders talebi kartı).
+    Erişim denetimi atlanır; yalnız servis katmanından çağrılmalı."""
+    conv_id = await _conversation_id(db, ("CLIENT", client_id), ("TUTOR", tutor_id))
+    message = Message(
+        conversation_id=conv_id,
+        sender_role="SYSTEM",
+        sender_id=0,
+        body=body,
+        msg_type=msg_type,
+        meta_data=meta_data,
+    )
+    db.add(message)
+    await db.flush()
+    await db.refresh(message)
+    # Her iki tarafa da canlı bildirim
+    ws_outbox.enqueue(
+        db,
+        {"type": "NEW_MESSAGE", "data": {"conversation_id": conv_id}},
+        user_id=tutor_id,
+        role_id=ROLE_IDS[RoleType.TUTOR],
+    )
+    ws_outbox.enqueue(
+        db,
+        {"type": "NEW_MESSAGE", "data": {"conversation_id": conv_id}},
+        user_id=client_id,
+        role_id=ROLE_IDS[RoleType.CLIENT],
+    )
+    return conv_id
 
 
 # Mesaj aramasında döndürülecek azami eşleşme satırı sayısı.
@@ -210,35 +359,60 @@ def _escape_like(term: str) -> str:
 
 async def _enrich_conversations(
     db: AsyncSession, user: CurrentUser
-) -> tuple[bool, list[Conversation]]:
+) -> tuple[str, list[Conversation]]:
     """User'ın TÜM sohbetlerini yükler ve türetilmiş alanları (karşı taraf,
     son mesaj, okunmamış sayısı, arşiv durumu) doldurur; son mesaja göre sıralar.
-    `(is_client, convs)` döner. Hem listeleme hem arama bunu paylaşır."""
-    is_client = user.role_id == ROLE_IDS[RoleType.CLIENT]
-    if is_client:
-        stmt = select(Conversation).where(Conversation.client_id == user.id)
-    elif user.role_id == ROLE_IDS[RoleType.TUTOR]:
-        stmt = select(Conversation).where(Conversation.tutor_id == user.id)
-    else:
-        return is_client, []
+    `(my_role, convs)` döner. Karşı taraf CLIENT/TUTOR/LIBRARY olabilir."""
+    if user.role_id not in _VALID_PARTY_ROLES:
+        return "", []
+    my_role, my_id = _party_of(user)
+    stmt = select(Conversation).where(
+        getattr(Conversation, _SLOT_COL[my_role]) == my_id
+    )
     convs = list((await db.execute(stmt)).scalars().all())
     if not convs:
-        return is_client, []
+        return my_role, []
 
-    archived_col = "client_archived_at" if is_client else "tutor_archived_at"
+    archived_col = _ARCH_COL[my_role]
 
-    # Karşı taraf: client isem tutor, tutor isem client. İsimleri tek sorguda çek.
-    counterparty = Tutor if is_client else Client
-    cp_ids = {(c.tutor_id if is_client else c.client_id) for c in convs}
-    name_rows = (
-        await db.execute(
-            select(counterparty.id, counterparty.full_name, counterparty.avatar_url).where(
-                counterparty.id.in_(cp_ids)
+    # Karşı tarafları türlerine göre topla (CLIENT/TUTOR/LIBRARY) ve adlarını çek.
+    cp_for: dict[int, tuple[str, int]] = {}
+    by_type: dict[str, set[int]] = {"CLIENT": set(), "TUTOR": set(), "LIBRARY": set()}
+    for c in convs:
+        other = _other_party(c, my_role)
+        if other is None:
+            continue
+        cp_for[c.id] = other
+        by_type[other[0]].add(other[1])
+
+    names: dict[tuple[str, int], tuple[str, str | None]] = {}
+    if by_type["CLIENT"]:
+        for cid, fn, av in (
+            await db.execute(
+                select(Client.id, Client.full_name, Client.avatar_url).where(
+                    Client.id.in_(by_type["CLIENT"])
+                )
             )
-        )
-    ).all()
-    names = {row[0]: row[1] for row in name_rows}
-    avatars = {row[0]: row[2] for row in name_rows}
+        ).all():
+            names[("CLIENT", cid)] = (fn, av)
+    if by_type["TUTOR"]:
+        for tid, fn, av in (
+            await db.execute(
+                select(Tutor.id, Tutor.full_name, Tutor.avatar_url).where(
+                    Tutor.id.in_(by_type["TUTOR"])
+                )
+            )
+        ).all():
+            names[("TUTOR", tid)] = (fn, av)
+    if by_type["LIBRARY"]:
+        for lid, nm, logo in (
+            await db.execute(
+                select(Library.id, Library.name, Library.logo_url).where(
+                    Library.id.in_(by_type["LIBRARY"])
+                )
+            )
+        ).all():
+            names[("LIBRARY", lid)] = (nm, logo)
 
     # Her sohbetin son mesajı (Postgres DISTINCT ON).
     conv_ids = [c.id for c in convs]
@@ -256,19 +430,14 @@ async def _enrich_conversations(
     ).all()
     last = {row[0]: (row[1], row[2]) for row in last_rows}
 
-    # Okunmamış: karşı taraftan gelen, viewer'ın son okumasından sonraki mesajlar.
-    read_col = (
-        Conversation.client_last_read_at
-        if is_client
-        else Conversation.tutor_last_read_at
-    )
-    other_role = "TUTOR" if is_client else "CLIENT"
+    # Okunmamış: karşı taraftan (=benden ve SYSTEM'den olmayan) son okumamdan sonraki.
+    read_col = getattr(Conversation, _READ_COL[my_role])
     unread_rows = await db.execute(
         select(Message.conversation_id, func.count())
         .join(Conversation, Conversation.id == Message.conversation_id)
         .where(
             Message.conversation_id.in_(conv_ids),
-            Message.sender_role == other_role,
+            Message.sender_role.notin_([my_role, "SYSTEM"]),
             or_(read_col.is_(None), Message.created_at > read_col),
         )
         .group_by(Message.conversation_id)
@@ -276,24 +445,31 @@ async def _enrich_conversations(
     unread = {row[0]: row[1] for row in unread_rows.all()}
 
     for c in convs:
-        cp_id = c.tutor_id if is_client else c.client_id
-        c.counterparty_id = cp_id
-        c.counterparty_name = names.get(cp_id)
-        c.counterparty_avatar_url = avatars.get(cp_id)
+        other = cp_for.get(c.id)
+        nm = names.get(other) if other else None
+        c.counterparty_id = other[1] if other else None
+        c.counterparty_name = nm[0] if nm else None
+        c.counterparty_avatar_url = nm[1] if nm else None
+        # Frontend'in alıcıyı doğru hedeflemesi için karşı taraf rolü.
+        c.counterparty_role = other[0] if other else None
         lm = last.get(c.id)
         c.last_message = lm[0] if lm else None
         c.last_message_at = lm[1] if lm else None
         c.unread = unread.get(c.id, 0)
+        # Karşı tarafın son okuma anı ("Görüldü" göstergesi için).
+        c.counterparty_last_read_at = (
+            getattr(c, _READ_COL[other[0]]) if other else None
+        )
         c.archived = getattr(c, archived_col) is not None
 
     convs.sort(key=lambda c: c.last_message_at or c.created_at, reverse=True)
-    return is_client, convs
+    return my_role, convs
 
 
 async def list_conversations(
     db: AsyncSession, user: CurrentUser, archived: bool = False
 ) -> list[Conversation]:
-    _is_client, convs = await _enrich_conversations(db, user)
+    _role, convs = await _enrich_conversations(db, user)
     # Arşiv filtresi: archived=False → arşivlenmemişler; True → yalnız arşivlenenler.
     return [c for c in convs if c.archived == archived]
 
@@ -308,7 +484,7 @@ async def search_messages(
     if not term:
         return MessageSearchResults(chats=[], messages=[])
 
-    _is_client, convs = await _enrich_conversations(db, user)
+    _role, convs = await _enrich_conversations(db, user)
     active = [c for c in convs if not c.archived]
     if not active:
         return MessageSearchResults(chats=[], messages=[])
@@ -352,6 +528,7 @@ async def search_messages(
                 counterparty_id=c.counterparty_id,
                 counterparty_name=c.counterparty_name,
                 counterparty_avatar_url=c.counterparty_avatar_url,
+                counterparty_role=c.counterparty_role,
                 sender_role=srole,
                 body=body,
                 created_at=created,
@@ -369,10 +546,8 @@ async def set_archived(
     if not _is_party(conv, user):
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Not your conversation")
     now = datetime.datetime.now(datetime.timezone.utc) if archived else None
-    if user.role_id == ROLE_IDS[RoleType.CLIENT]:
-        conv.client_archived_at = now
-    else:
-        conv.tutor_archived_at = now
+    my_role, _ = _party_of(user)
+    setattr(conv, _ARCH_COL[my_role], now)
     await db.flush()
 
 
@@ -410,13 +585,14 @@ async def toggle_reaction(
     await db.flush()
 
     # Karşı tarafa canlı yenileme (mesaj listesini tazeler).
-    cp_id, cp_role = _counterparty(conv, user)
-    ws_outbox.enqueue(
-        db,
-        {"type": "NEW_MESSAGE", "data": {"conversation_id": conv.id}},
-        user_id=cp_id,
-        role_id=cp_role,
-    )
+    my_role, _ = _party_of(user)
+    other = _other_party(conv, my_role)
+    if other is not None:
+        await _notify_party(
+            db,
+            {"type": "NEW_MESSAGE", "data": {"conversation_id": conv.id}},
+            other,
+        )
 
     by_msg = await _reactions_for(db, [message_id], user.role_id, user.id)
     return by_msg.get(message_id, [])
@@ -428,39 +604,32 @@ async def mark_read(
     conv = await db.get(Conversation, conversation_id)
     if conv is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Conversation not found")
-    is_client = user.role_id == ROLE_IDS[RoleType.CLIENT]
-    is_party = (is_client and conv.client_id == user.id) or (
-        user.role_id == ROLE_IDS[RoleType.TUTOR] and conv.tutor_id == user.id
-    )
-    if not is_party:
+    if not _is_party(conv, user):
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Not your conversation")
+    my_role, _ = _party_of(user)
     now = datetime.datetime.now(datetime.timezone.utc)
-    if is_client:
-        conv.client_last_read_at = now
-    else:
-        conv.tutor_last_read_at = now
+    setattr(conv, _READ_COL[my_role], now)
     await db.flush()
+    # Karşı tarafa (gönderene) sinyal: "Görüldü" göstergesi canlı güncellensin.
+    # Yeni mesaj yok; yalnız sohbet/okuma durumu tazelensin diye NEW_MESSAGE yayılır.
+    other = _other_party(conv, my_role)
+    if other is not None:
+        await _notify_party(
+            db,
+            {"type": "NEW_MESSAGE", "data": {"conversation_id": conv.id}},
+            other,
+        )
 
 
 async def unread_counts(db: AsyncSession, user: CurrentUser) -> MessagesUnreadCounts:
     """Okunmamış mesajları gelen kutusu (arşivlenmemiş) ve arşiv olarak ayrı sayar.
     Böylece "Okunmamış" rozeti tıklayınca açılamayan arşiv mesajlarını saymaz."""
-    if user.role_id == ROLE_IDS[RoleType.CLIENT]:
-        party_col, read_col, archived_col, other_role = (
-            Conversation.client_id,
-            Conversation.client_last_read_at,
-            Conversation.client_archived_at,
-            "TUTOR",
-        )
-    elif user.role_id == ROLE_IDS[RoleType.TUTOR]:
-        party_col, read_col, archived_col, other_role = (
-            Conversation.tutor_id,
-            Conversation.tutor_last_read_at,
-            Conversation.tutor_archived_at,
-            "CLIENT",
-        )
-    else:
+    if user.role_id not in _VALID_PARTY_ROLES:
         return MessagesUnreadCounts(inbox=0, archived=0)
+    my_role, my_id = _party_of(user)
+    party_col = getattr(Conversation, _SLOT_COL[my_role])
+    read_col = getattr(Conversation, _READ_COL[my_role])
+    archived_col = getattr(Conversation, _ARCH_COL[my_role])
     archived_expr = archived_col.isnot(None)
     rows = (
         await db.execute(
@@ -468,8 +637,8 @@ async def unread_counts(db: AsyncSession, user: CurrentUser) -> MessagesUnreadCo
             .select_from(Message)
             .join(Conversation, Conversation.id == Message.conversation_id)
             .where(
-                party_col == user.id,
-                Message.sender_role == other_role,
+                party_col == my_id,
+                Message.sender_role.notin_([my_role, "SYSTEM"]),
                 or_(read_col.is_(None), Message.created_at > read_col),
             )
             .group_by(archived_expr)
@@ -540,6 +709,8 @@ async def list_messages(
             reply_to_id=m.reply_to_id,
             reply_preview=reply_map.get(m.reply_to_id) if m.reply_to_id else None,
             reactions=reactions_map.get(m.id, []),
+            msg_type=m.msg_type,
+            meta_data=m.meta_data,
         )
         for m in msgs
     ]
