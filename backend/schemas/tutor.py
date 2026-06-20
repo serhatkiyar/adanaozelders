@@ -2,11 +2,20 @@ from __future__ import annotations
 
 import datetime
 import enum
+import re
 from decimal import Decimal
 
-from pydantic import BaseModel, ConfigDict, Field, computed_field, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    computed_field,
+    field_validator,
+    model_validator,
+)
 
 from core.slug import tutor_slug
+from core.text import HEADLINE_MIN_WORDS, count_words
 from models.tutor import Gender, TutorStatus
 from schemas.education import EducationOut
 from schemas.user import UserOut
@@ -48,10 +57,45 @@ class TeachingMode(str, enum.Enum):
 class TutorProfileUpdate(BaseModel):
     headline: str | None = Field(default=None, max_length=255)
     bio: str | None = None
+    # İlanda "Ders Hakkında" — dersin nasıl işlediği / metodoloji.
+    lesson_info: str | None = Field(default=None, max_length=2000)
+
+    @field_validator("headline")
+    @classmethod
+    def _check_headline_words(cls, v: str | None) -> str | None:
+        # Başlık opsiyoneldir (taslak); ama yazıldıysa anlamlı olmalı:
+        # en az HEADLINE_MIN_WORDS sözcük. Zorunluluk yayın (submit) kapısında.
+        if v is not None and v.strip() and count_words(v) < HEADLINE_MIN_WORDS:
+            raise ValueError(
+                f"Başlık en az {HEADLINE_MIN_WORDS} sözcük olmalı."
+            )
+        return v
     hourly_rate: Decimal | None = Field(
         default=None, ge=0, max_digits=10, decimal_places=2
     )
     teaching_mode: TeachingMode | None = None
+    # Tanıtım videosu (YouTube/Vimeo). Boş string → temizle (None'a çevrilir).
+    intro_video_url: str | None = Field(default=None, max_length=500)
+    # İlk ders ücretsiz mi (opt-in/opt-out).
+    first_lesson_free: bool | None = None
+
+    @field_validator("intro_video_url")
+    @classmethod
+    def _check_intro_video(cls, v: str | None) -> str | None:
+        # Boş bırakılırsa videoyu temizle. Yalnızca https + YouTube/Vimeo kabul
+        # edilir (gömülü oynatıcı; rastgele iframe XSS/phishing riskini önler).
+        if v is None:
+            return None
+        v = v.strip()
+        if not v:
+            return None
+        if not re.match(r"^https://", v, re.IGNORECASE):
+            raise ValueError("Video bağlantısı https:// ile başlamalıdır")
+        allowed = ("youtube.com", "www.youtube.com", "youtu.be", "vimeo.com")
+        host = re.sub(r"^https://", "", v, flags=re.IGNORECASE).split("/")[0].lower()
+        if host not in allowed:
+            raise ValueError("Yalnızca YouTube veya Vimeo bağlantısı desteklenir")
+        return v
     # Yüzyüze ders için baz konum (serbest adres + harita koordinatı).
     location_text: str | None = Field(default=None, max_length=300)
     location_lat: float | None = Field(default=None, ge=-90, le=90)
@@ -66,6 +110,9 @@ class TutorOut(UserOut):
     status: TutorStatus
     headline: str | None = None
     bio: str | None = None
+    lesson_info: str | None = None
+    intro_video_url: str | None = None
+    first_lesson_free: bool = True
     hourly_rate: Decimal | None = None
     teaching_mode: TeachingMode | None = None
     birth_date: datetime.date | None = None
@@ -91,6 +138,12 @@ class TutorSearchOut(BaseModel):
     avatar_url: str | None = None
     headline: str | None = None
     bio: str | None = None
+    # "Ders Hakkında" — yalnız profil (detay) yanıtında anlamlı; listede gösterilmez.
+    lesson_info: str | None = None
+    # Tanıtım videosu — yalnız profil (detay) yanıtında doldurulur.
+    intro_video_url: str | None = None
+    # İlk ders ücretsiz mi? Kart/profilde rozet ve ücretsiz talep akışı için.
+    first_lesson_free: bool = True
     hourly_rate: Decimal | None = None
     teaching_mode: TeachingMode | None = None
     gender: Gender | None = None

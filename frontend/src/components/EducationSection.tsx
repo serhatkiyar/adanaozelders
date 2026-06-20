@@ -496,12 +496,15 @@ interface EducationSectionProps {
   educations?: Education[]; // read-only mod için
   // Eğitmen ise diploma/belge yükleme kontrolünü göster (zorunlu kalite kapısı).
   withDocument?: boolean;
+  /** Kendi kart kabuğu olmadan render et (üst kapsayıcı bölümü kendisi sağlar). */
+  bare?: boolean;
 }
 
 export function EducationSection({
   editable = false,
   educations: readOnlyList,
   withDocument = false,
+  bare = false,
 }: EducationSectionProps) {
   const myEducations = useMyEducations(editable);
   const addMutation = useAddEducation();
@@ -555,7 +558,13 @@ export function EducationSection({
     );
 
   return (
-    <div className="rounded-2xl bg-white px-6 py-5 shadow-sm ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-slate-700">
+    <div
+      className={
+        bare
+          ? ""
+          : "rounded-2xl bg-white px-6 py-5 shadow-sm ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-slate-700"
+      }
+    >
       <div className="flex items-center justify-between">
         <span className={labelCls}>Eğitim</span>
         {editable && !adding && (

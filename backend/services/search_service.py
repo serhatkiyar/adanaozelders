@@ -37,6 +37,7 @@ def _to_search_out(
     distance_km: float | None = None,
     completed_lessons: int = 0,
     avg_response_seconds: int | None = None,
+    include_lesson_info: bool = False,
 ) -> TutorSearchOut:
     return TutorSearchOut(
         id=tutor.id,
@@ -44,6 +45,11 @@ def _to_search_out(
         avatar_url=tutor.avatar_url,
         headline=tutor.headline,
         bio=tutor.bio,
+        # "Ders Hakkında" uzun metin; arama listesinde taşımayız, yalnız detayda.
+        lesson_info=tutor.lesson_info if include_lesson_info else None,
+        # Tanıtım videosu yalnız detayda; ücretsiz ilk ders rozeti listede de gerekli.
+        intro_video_url=tutor.intro_video_url if include_lesson_info else None,
+        first_lesson_free=tutor.first_lesson_free,
         hourly_rate=tutor.hourly_rate,
         teaching_mode=tutor.teaching_mode,
         gender=tutor.gender,
@@ -95,6 +101,7 @@ async def search_tutors(
     min_age: int | None = None,
     max_age: int | None = None,
     subjects: list[str] | None = None,
+    exam: str | None = None,
     sort: TutorSort | None = None,
     lat: float | None = None,
     lng: float | None = None,
@@ -148,6 +155,13 @@ async def search_tutors(
         relevance = func.ts_rank(Tutor.search_vector, tsquery) + func.similarity(
             Tutor.full_name, q
         )
+
+    # Sınav bağlamı: SERT FİLTRE DEĞİL. İlanında ilgili sınavdan (ör. "KPSS")
+    # bahseden eğitmenleri sıralamada öne çıkarır; bahsetmeyenler elenmez.
+    if exam:
+        exam_tsquery = func.websearch_to_tsquery("simple", exam)
+        exam_rank = func.ts_rank(Tutor.search_vector, exam_tsquery)
+        relevance = exam_rank if relevance is None else relevance + exam_rank
 
     if min_rate is not None:
         stmt = stmt.where(Tutor.hourly_rate >= min_rate)
@@ -291,4 +305,5 @@ async def get_tutor_public(db: AsyncSession, tutor_id: int) -> TutorSearchOut:
         availability=list(avail_rows),
         completed_lessons=completed_lessons,
         avg_response_seconds=avg_response_seconds,
+        include_lesson_info=True,
     )

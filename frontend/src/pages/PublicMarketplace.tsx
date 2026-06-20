@@ -23,6 +23,7 @@ export default function PublicMarketplace() {
   const [subjects, setSubjects] = useState<string[]>(() =>
     searchParams.getAll("subject")
   );
+  const [exam, setExam] = useState(() => searchParams.get("exam") ?? "");
   const [sort, setSort] = useState<TutorSort>(TutorSort.RELEVANCE);
   const [limit, setLimit] = useState(20);
   const [showFilters, setShowFilters] = useState(false);
@@ -33,6 +34,7 @@ export default function PublicMarketplace() {
     const sp = searchParams.getAll("subject");
     if (qp !== null) setQ(qp);
     if (sp.length) setSubjects(sp);
+    setExam(searchParams.get("exam") ?? "");
   }, [searchParams]);
 
   const debouncedQ = useDebounce(q);
@@ -44,8 +46,9 @@ export default function PublicMarketplace() {
     const p: TutorSearchParams = { limit, offset: 0, sort };
     if (debouncedQ.trim()) p.q = debouncedQ.trim();
     if (subjects.length) p.subject = subjects;
+    if (exam.trim()) p.exam = exam.trim();
     return p;
-  }, [debouncedQ, subjects, sort, limit]);
+  }, [debouncedQ, subjects, exam, sort, limit]);
 
   const { data, isLoading, isFetching, isError, error } = useTutorSearch(params);
 
@@ -116,9 +119,19 @@ export default function PublicMarketplace() {
           </button>
         </div>
 
-        {/* Selected subjects */}
-        {subjects.length > 0 && (
+        {/* Selected subjects + sınav bağlamı */}
+        {(subjects.length > 0 || !!exam) && (
           <div className="flex flex-wrap gap-2">
+            {exam && (
+              <button
+                onClick={() => setExam("")}
+                title="Sınav bağlamı (sıralamayı etkiler)"
+                className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700 transition hover:bg-amber-100 dark:bg-amber-500/15 dark:text-amber-300 dark:hover:bg-amber-500/25"
+              >
+                {exam}
+                <span aria-hidden>✕</span>
+              </button>
+            )}
             {subjects.map((s) => (
               <button
                 key={s}

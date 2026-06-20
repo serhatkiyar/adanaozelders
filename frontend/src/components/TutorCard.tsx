@@ -91,10 +91,12 @@ export function TutorCard({
               <span className="text-[11px] font-bold">/saat</span>
             )}
           </div>
-          {/* İlk ders ücretsiz etiketi */}
-          <div className="flex items-center text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
-            İlk ders ücretsiz
-          </div>
+          {/* İlk ders ücretsiz etiketi — yalnız eğitmen sunuyorsa */}
+          {tutor.first_lesson_free !== false && (
+            <div className="flex items-center text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
+              İlk ders ücretsiz
+            </div>
+          )}
         </div>
       </div>
     </Link>

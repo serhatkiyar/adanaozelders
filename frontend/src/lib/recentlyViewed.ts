@@ -23,6 +23,7 @@ function trim(t: TutorSearchOut): TutorSearchOut {
     bio: t.bio ?? null,
     hourly_rate: t.hourly_rate ?? null,
     teaching_mode: t.teaching_mode ?? null,
+    first_lesson_free: t.first_lesson_free ?? true,
     rating_count: t.rating_count ?? 0,
     rating_average: t.rating_average ?? null,
     bayesian_score: t.bayesian_score ?? 0,
@@ -45,6 +46,25 @@ export function getRecentlyViewed(): TutorSearchOut[] {
 export function clearRecentlyViewed(): void {
   try {
     localStorage.removeItem(KEY);
+    window.dispatchEvent(new Event(RECENTLY_VIEWED_EVENT));
+  } catch {
+    // storage erişilemez — sessizce yok say.
+  }
+}
+
+// Kayıtlı bir eğitmenin anlık görüntüsünü güncel verilerle tazeler (ilan başlığı,
+// ücret vb. değişince eski snapshot bayat kalmasın). Listede yoksa hiçbir şey yapmaz.
+export function freshenViewedTutor(
+  id: number,
+  patch: Partial<TutorSearchOut>
+): void {
+  if (typeof id !== "number") return;
+  try {
+    const list = getRecentlyViewed();
+    const idx = list.findIndex((t) => t.id === id);
+    if (idx === -1) return;
+    list[idx] = { ...list[idx], ...patch };
+    localStorage.setItem(KEY, JSON.stringify(list));
     window.dispatchEvent(new Event(RECENTLY_VIEWED_EVENT));
   } catch {
     // storage erişilemez — sessizce yok say.

@@ -66,15 +66,14 @@ function StatCell({
   value: string;
   label: string;
 }) {
+  // Sakin, kutusuz satır: küçük ikon + değer + açıklama.
   return (
-    <div className="flex items-center gap-3 rounded-xl bg-slate-50 px-4 py-3 dark:bg-slate-900/40">
-      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white text-indigo-600 shadow-sm ring-1 ring-slate-100 dark:bg-slate-800 dark:text-indigo-300 dark:ring-slate-700">
-        {icon}
-      </span>
-      <div className="min-w-0">
-        <p className="text-sm font-bold leading-tight text-slate-900 dark:text-white">{value}</p>
-        <p className="truncate text-xs text-slate-500 dark:text-slate-400">{label}</p>
-      </div>
+    <div className="flex items-center gap-2.5">
+      <span className="shrink-0 text-slate-400 dark:text-slate-500">{icon}</span>
+      <p className="min-w-0 text-sm text-slate-600 dark:text-slate-300">
+        <span className="font-semibold text-slate-900 dark:text-white">{value}</span>{" "}
+        {label}
+      </p>
     </div>
   );
 }
@@ -83,7 +82,14 @@ function StatCell({
  * Eğitmen güven istatistikleri şeridi: tamamlanan ders, değerlendirme ve üyelik
  * başlangıcı. Yalnız anlamlı veri olan hücreler gösterilir; hiçbiri yoksa gizlenir.
  */
-export function TutorTrustBar({ tutor }: { tutor: TutorSearchOut }) {
+export function TutorTrustBar({
+  tutor,
+  vertical = false,
+}: {
+  tutor: TutorSearchOut;
+  /** Dar kolon (yan sticky kart) için hücreleri tek sütunda diz. */
+  vertical?: boolean;
+}) {
   const cells: { icon: React.ReactNode; value: string; label: string }[] = [];
 
   const completed = tutor.completed_lessons ?? 0;
@@ -99,17 +105,8 @@ export function TutorTrustBar({ tutor }: { tutor: TutorSearchOut }) {
     });
   }
 
-  if (tutor.rating_count > 0 && tutor.rating_average != null) {
-    cells.push({
-      icon: (
-        <svg viewBox="0 0 20 20" fill="currentColor" className="h-5 w-5" aria-hidden>
-          <path d="M10 1.5l2.6 5.27 5.82.85-4.21 4.1.99 5.79L10 14.77l-5.2 2.73.99-5.79L1.58 7.62l5.82-.85L10 1.5z" />
-        </svg>
-      ),
-      value: tutor.rating_average.toFixed(1),
-      label: `${tutor.rating_count} değerlendirme`,
-    });
-  }
+  // NOT: Değerlendirme puanı bilerek burada gösterilmez — profil resminin hemen
+  // altında zaten yıldız+puan var (tekrar etmemek için).
   // Ortalama yanıt süresi — mesajlaşma verisinden hesaplanır; veri yoksa gizlenir.
   if (tutor.avg_response_seconds != null) {
     cells.push({
@@ -127,7 +124,11 @@ export function TutorTrustBar({ tutor }: { tutor: TutorSearchOut }) {
   if (cells.length === 0) return null;
 
   return (
-    <div className="mt-5 grid grid-cols-1 gap-2.5 border-t border-slate-100 pt-5 dark:border-slate-700/60 sm:grid-cols-3">
+    <div
+      className={`mt-5 grid grid-cols-1 gap-2.5 border-t border-slate-100 pt-5 dark:border-slate-700/60 ${
+        vertical ? "" : "sm:grid-cols-3"
+      }`}
+    >
       {cells.map((c) => (
         <StatCell key={c.label + c.value} icon={c.icon} value={c.value} label={c.label} />
       ))}

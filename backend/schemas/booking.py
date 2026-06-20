@@ -7,6 +7,7 @@ from decimal import Decimal
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from models.booking import BookingStatus
+from models.payment import PaymentStatus
 from schemas.payment import PaymentOut
 from schemas.tutor import TeachingMode
 
@@ -81,6 +82,9 @@ class BookingCreate(BaseModel):
     location: str | None = Field(default=None, max_length=300)
     location_lat: float | None = None
     location_lng: float | None = None
+    # Öğrenci ücretsiz ilk dersi talep ediyor mu? Uygunluk sunucuda doğrulanır
+    # (eğitmen ücretsiz ilk ders sunuyor + öğrencinin bu eğitmenle önceki dersi yok).
+    free_lesson: bool = False
 
     @model_validator(mode="after")
     def _validate_window(self) -> "BookingCreate":
@@ -122,6 +126,7 @@ class BookingOut(BaseModel):
     start_at: datetime.datetime
     end_at: datetime.datetime
     price: Decimal | None = None
+    is_free_lesson: bool = False
     notes: str | None = None
     cancel_reason: str | None = None
     mode: str | None = None
@@ -142,3 +147,20 @@ class BookingOut(BaseModel):
     private_notes: list[BookingPrivateNoteOut] = []
     # Escrow ödeme durumu (booking.payment 1:1, selectin yüklenir).
     payment: PaymentOut | None = None
+
+    @model_validator(mode="after")
+    def _gate_meeting_room(self) -> "BookingOut":
+        """Canlı ders odası, ödeme yapılmadan ifşa edilmesin (anti-bedava ders).
+        Oda yalnızca ödeme emanete alındığında (HELD/RELEASED) ya da ders
+        ücretsizse (ilk ders ücretsiz, price==0) görünür. Aksi halde istemci
+        odaya erişemez → ödeme yapmadan canlı ders başlatılamaz."""
+        if not self.meeting_room:
+            return self
+        paid = self.payment is not None and self.payment.status in (
+            PaymentStatus.HELD,
+            PaymentStatus.RELEASED,
+        )
+        free = self.price is not None and self.price == 0
+        if not (paid or free):
+            self.meeting_room = None
+        return self
