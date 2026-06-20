@@ -96,6 +96,16 @@ class Settings(BaseSettings):
     EMAIL_VERIFY_TOKEN_TTL_HOURS: int = 24
     PASSWORD_RESET_TOKEN_TTL_HOURS: int = 2
 
+    # SMS / telefon doğrulama. SMS_PROVIDER: "console" (loglar; dış hesap gerekmez) |
+    # "netgsm" (üretim). Geliştirmede "console" yeterli — kod backend loglarında.
+    SMS_PROVIDER: str = "console"
+    PHONE_OTP_TTL_MINUTES: int = 10
+    PHONE_OTP_MAX_ATTEMPTS: int = 5
+    # Netgsm (yalnızca SMS_PROVIDER=netgsm iken gerekir).
+    NETGSM_USERCODE: str | None = None
+    NETGSM_PASSWORD: str | None = None
+    NETGSM_MSGHEADER: str | None = None
+
     # Ödeme (escrow). PAYMENT_PROVIDER: "fake" (geliştirme; anında başarı) | "iyzico".
     # Geliştirmede dış hesap/anahtar GEREKMEZ ("fake"). Komisyon oranı 0..1 arası.
     PAYMENT_PROVIDER: str = "fake"
@@ -112,6 +122,8 @@ class Settings(BaseSettings):
 
     # E-posta tetikleyen endpoint'ler için IP rate-limit (Redis, fail-open).
     RATE_LIMIT_EMAIL: int = 5
+    # SMS OTP gönderimi — kullanıcı bazlı (spam/maliyet koruması).
+    RATE_LIMIT_SMS: int = 5
     # Adres arama (geocode) proxy'si — kullanıcı bazlı (typeahead için yüksek).
     RATE_LIMIT_GEOCODE: int = 90
 

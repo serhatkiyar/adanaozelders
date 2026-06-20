@@ -90,6 +90,12 @@ export interface UserOut {
   gender?: Gender | null;
   created_at: string;
   last_seen_at?: string | null;
+  // Ad-soyad / kullanıcı adı kaç kez değiştirildi (ilk değişiklik serbest).
+  name_change_count?: number;
+  username_change_count?: number;
+  // update_me yanıtında ilgili alanın admin onayına gönderildiğini bildirir.
+  pending_name_change?: boolean;
+  pending_username_change?: boolean;
 }
 
 export interface UserUpdate {
@@ -99,6 +105,26 @@ export interface UserUpdate {
   about?: string | null;
   birth_date?: string | null; // "YYYY-MM-DD"
   gender?: Gender | null;
+  // Ad-soyad/kullanıcı adının ikinci ve sonraki değişikliği için zorunlu gerekçe.
+  reason?: string | null;
+}
+
+export type NameChangeKind = "NAME" | "USERNAME";
+export type NameChangeStatus = "PENDING" | "APPROVED" | "REJECTED";
+
+export interface NameChangeRequest {
+  id: number;
+  user_id: number;
+  role_id: number;
+  kind: NameChangeKind;
+  new_first_name?: string | null;
+  new_last_name?: string | null;
+  new_username?: string | null;
+  reason: string;
+  status: NameChangeStatus;
+  review_note?: string | null;
+  reviewed_at?: string | null;
+  created_at: string;
 }
 
 export interface PasswordChange {
@@ -437,9 +463,13 @@ export interface ConversationOut {
   counterparty_id?: number | null;
   counterparty_name?: string | null;
   counterparty_avatar_url?: string | null;
+  /** Karşı tarafın türü: CLIENT | TUTOR | LIBRARY. */
+  counterparty_role?: string | null;
   last_message?: string | null;
   last_message_at?: string | null;
   unread?: number;
+  /** Karşı tarafın bu sohbeti en son okuduğu an ("Görüldü" göstergesi için). */
+  counterparty_last_read_at?: string | null;
   /** İstek sahibi bu sohbeti arşivlemiş mi? */
   archived?: boolean;
 }
@@ -451,7 +481,8 @@ export interface MessageSearchHit {
   counterparty_id?: number | null;
   counterparty_name?: string | null;
   counterparty_avatar_url?: string | null;
-  sender_role: "CLIENT" | "TUTOR";
+  counterparty_role?: string | null;
+  sender_role: "CLIENT" | "TUTOR" | "LIBRARY";
   body: string;
   created_at: string;
 }
@@ -483,13 +514,30 @@ export interface MessageReactionOut {
 export interface MessageOut {
   id: number;
   conversation_id: number;
-  sender_role: "CLIENT" | "TUTOR";
+  sender_role: "CLIENT" | "TUTOR" | "SYSTEM";
   sender_id: number;
   body: string;
   created_at: string;
   reply_to_id?: number | null;
   reply_preview?: MessageReplyPreview | null;
   reactions?: MessageReactionOut[];
+  /** Mesaj türü: "text" (varsayılan sohbet), "booking_card" (gömülü ders kartı). */
+  msg_type?: string;
+  /** Zengin mesajlar (booking_card vb.) için JSON yük. */
+  meta_data?: BookingCardMetadata | null;
+}
+
+/** booking_card tipi mesajlarda metadata yapısı. */
+export interface BookingCardMetadata {
+  booking_id: number;
+  status: BookingStatus;
+  start_at: string;
+  end_at: string;
+  price?: string | null;
+  is_free_lesson?: boolean;
+  mode?: string | null;
+  notes?: string | null;
+  client_name?: string | null;
 }
 
 /* ============================ TUTOR ============================ */
@@ -503,6 +551,9 @@ export interface Availability {
 export interface TutorProfileUpdate {
   headline?: string | null;
   bio?: string | null;
+  lesson_info?: string | null;
+  intro_video_url?: string | null;
+  first_lesson_free?: boolean | null;
   hourly_rate?: number | null;
   teaching_mode?: TeachingMode | null;
   location_text?: string | null;
@@ -517,6 +568,9 @@ export interface TutorOut extends UserOut {
   slug: string; // backend computed: isim-soyisim-{id}
   headline?: string | null;
   bio?: string | null;
+  lesson_info?: string | null;
+  intro_video_url?: string | null;
+  first_lesson_free?: boolean;
   hourly_rate?: string | null; // Decimal -> string
   teaching_mode?: TeachingMode | null;
   birth_date?: string | null; // "YYYY-MM-DD"
@@ -535,6 +589,9 @@ export interface TutorSearchOut {
   avatar_url?: string | null;
   headline?: string | null;
   bio?: string | null;
+  lesson_info?: string | null; // "Ders Hakkında" — yalnız detay yanıtında dolu
+  intro_video_url?: string | null; // Tanıtım videosu — yalnız detay yanıtında dolu
+  first_lesson_free?: boolean; // İlk ders ücretsiz mi (kart/profil rozeti)
   hourly_rate?: string | null; // Decimal -> string
   teaching_mode?: TeachingMode | null;
   gender?: Gender | null;
@@ -599,6 +656,8 @@ export interface BookingCreate {
   location?: string | null;
   location_lat?: number | null;
   location_lng?: number | null;
+  // Ücretsiz ilk ders talebi; uygunluk sunucuda doğrulanır.
+  free_lesson?: boolean;
 }
 
 export interface BookingResourceOut {
@@ -641,6 +700,7 @@ export interface BookingOut {
   start_at: string;
   end_at: string;
   price?: string | null; // Decimal -> string
+  is_free_lesson?: boolean;
   notes?: string | null;
   cancel_reason?: string | null;
   mode?: string | null; // ONLINE | IN_PERSON

@@ -125,25 +125,104 @@ export default function Learn() {
             </div>
           </Link>
 
-          {/* Yakında gelecek araçlar */}
-          {["Notlarım", "Mini Testler"].map((label) => (
-            <div
-              key={label}
-              className="relative flex flex-col rounded-3xl border border-dashed border-slate-200 bg-white p-6 dark:border-slate-700 dark:bg-slate-800"
-            >
-              <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 text-slate-400 dark:bg-slate-700 dark:text-slate-500">
+          {/* Görevlerim */}
+          <Link
+            to={ROUTES.tasks}
+            className="group relative overflow-hidden rounded-3xl bg-gradient-to-br from-pink-500 to-rose-600 p-6 text-white shadow-lg shadow-pink-500/20 transition hover:-translate-y-0.5 hover:shadow-xl"
+          >
+            <div className="absolute -right-6 -top-6 h-28 w-28 rounded-full bg-white/10" />
+            <div className="relative">
+              <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/15">
                 <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </span>
-              <h2 className="mt-4 text-lg font-bold text-slate-700 dark:text-slate-200">
-                {label}
-              </h2>
-              <span className="mt-2 inline-block w-fit rounded-full bg-slate-100 px-2.5 py-0.5 text-[11px] font-semibold text-slate-500 dark:bg-slate-700 dark:text-slate-400">
-                Yakında
+              <h2 className="mt-4 text-lg font-bold">Görevlerim</h2>
+              <p className="mt-1 text-sm text-pink-50">
+                Tamamlaman gereken ödevleri, hedefleri ve yapılacakları takip et. Planlı çalış.
+              </p>
+              <span className="mt-4 inline-flex items-center gap-1 text-sm font-semibold">
+                Başla
+                <svg className="h-4 w-4 transition group-hover:translate-x-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                </svg>
               </span>
             </div>
-          ))}
+          </Link>
+
+          {/* Sorularım */}
+          <Link
+            to={ROUTES.questions}
+            className="group relative overflow-hidden rounded-3xl bg-gradient-to-br from-fuchsia-600 to-purple-600 p-6 text-white shadow-lg shadow-purple-500/20 transition hover:-translate-y-0.5 hover:shadow-xl"
+          >
+            <div className="absolute -right-6 -top-6 h-28 w-28 rounded-full bg-white/10" />
+            <div className="relative">
+              <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/15">
+                <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z" />
+                </svg>
+              </span>
+              <h2 className="mt-4 text-lg font-bold">Sorularım</h2>
+              <p className="mt-1 text-sm text-fuchsia-50">
+                Çözemediğin soruları sor, uzman eğitmenlerden adım adım destek al.
+              </p>
+              <span className="mt-4 inline-flex items-center gap-1 text-sm font-semibold">
+                Başla
+                <svg className="h-4 w-4 transition group-hover:translate-x-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                </svg>
+              </span>
+            </div>
+          </Link>
+          {/* Denemelerim */}
+          <Link
+            to={ROUTES.exams}
+            className="group relative overflow-hidden rounded-3xl bg-gradient-to-br from-violet-600 to-indigo-700 p-6 text-white shadow-lg shadow-indigo-500/20 transition hover:-translate-y-0.5 hover:shadow-xl"
+          >
+            <div className="absolute -right-6 -top-6 h-28 w-28 rounded-full bg-white/10" />
+            <div className="relative">
+              <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/15">
+                <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m3.75 9v6m3-3H9m1.5-12H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9z" />
+                </svg>
+              </span>
+              <h2 className="mt-4 text-lg font-bold">Denemelerim</h2>
+              <p className="mt-1 text-sm text-indigo-50">
+                Girdiğin deneme sınavlarını kaydet, netlerini ve ilerlemeni analiz et.
+              </p>
+              <span className="mt-4 inline-flex items-center gap-1 text-sm font-semibold">
+                Başla
+                <svg className="h-4 w-4 transition group-hover:translate-x-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                </svg>
+              </span>
+            </div>
+          </Link>
+
+          {/* Takvim */}
+          <Link
+            to={ROUTES.calendar}
+            className="group relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-500 to-blue-600 p-6 text-white shadow-lg shadow-blue-500/20 transition hover:-translate-y-0.5 hover:shadow-xl"
+          >
+            <div className="absolute -right-6 -top-6 h-28 w-28 rounded-full bg-white/10" />
+            <div className="relative">
+              <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/15">
+                <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
+                </svg>
+              </span>
+              <h2 className="mt-4 text-lg font-bold">Takvim</h2>
+              <p className="mt-1 text-sm text-blue-50">
+                Tüm derslerini, ödevlerini ve deneme sınavlarını takvim üzerinde görerek programını yönet.
+              </p>
+              <span className="mt-4 inline-flex items-center gap-1 text-sm font-semibold">
+                Başla
+                <svg className="h-4 w-4 transition group-hover:translate-x-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                </svg>
+              </span>
+            </div>
+          </Link>
         </div>
       </div>
     </DashboardShell>

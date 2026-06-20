@@ -4,6 +4,7 @@ from fastapi import HTTPException, status
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from core.text import HEADLINE_MIN_WORDS, count_words
 from models.role import ROLE_IDS, RoleType
 from models.tutor import Tutor, TutorAvailability, TutorStatus, TutorSubject
 from schemas.tutor import TutorProfileUpdate
@@ -128,6 +129,13 @@ async def submit_for_approval(db: AsyncSession, tutor: Tutor) -> Tutor:
             status.HTTP_422_UNPROCESSABLE_ENTITY,
             "Onaya göndermeden önce eğitim bilgilerinden en az birine diploma/belge "
             "yükle ya da e-Devlet doğrulama barkodunu gir. (Profil → Eğitim)",
+        )
+    # Zorunlu kalite kapısı: ilan başlığı dolu ve en az HEADLINE_MIN_WORDS sözcük olmalı.
+    if count_words(tutor.headline) < HEADLINE_MIN_WORDS:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            f"İlan başlığın en az {HEADLINE_MIN_WORDS} sözcük olmalı. "
+            "Branşını, sınav türünü ve deneyimini içeren açıklayıcı bir başlık yaz.",
         )
     _transition(tutor, TutorStatus.PENDING_APPROVAL)
     await db.flush()

@@ -2,8 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { QRCodeSVG } from "qrcode.react";
-import { DashboardShell } from "@/components/DashboardShell";
-import { STUDENT_NAV } from "@/lib/nav";
 import {
   useCancelRegistration,
   useMyRegistrations,
@@ -14,7 +12,6 @@ import {
   useMyStudyReservations,
   usePayStudy,
 } from "@/hooks/useStudy";
-import { useCheckoutResultToast } from "@/hooks/useCheckoutResult";
 import { formatTRY } from "@/lib/money";
 import { formatDateTime } from "@/lib/datetime";
 import { getErrorMessage } from "@/lib/errors";
@@ -72,8 +69,7 @@ const EXPIRED_PILL = {
 
 const PREVIEW_COUNT = 3; // bölüm başına ön gösterim; fazlası "daha fazla göster" ile açılır
 
-export default function Tickets() {
-  useCheckoutResultToast(); // iyzico dönüşü: ?odeme=basarili|basarisiz
+export function TicketsContent() {
   const { data, isLoading } = useMyRegistrations();
   const { data: studyRes, isLoading: studyLoading } = useMyStudyReservations();
   const hasExam = data && data.length > 0;
@@ -81,81 +77,103 @@ export default function Tickets() {
   const [showAllExam, setShowAllExam] = useState(false);
   const [showAllStudy, setShowAllStudy] = useState(false);
 
-  return (
-    <DashboardShell title="Biletlerim" navItems={STUDENT_NAV}>
-      <div className="mx-auto max-w-5xl space-y-5">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
-            Biletlerim & Rezervasyonlarım
-          </h1>
-          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-            Deneme oturumları ve çalışma alanı girişlerinde QR kodunu okutarak doğrula.
-          </p>
-        </div>
-
-        {isLoading || studyLoading ? (
-          <div className="space-y-3">
-            {Array.from({ length: 2 }).map((_, i) => (
-              <div key={i} className="h-40 animate-pulse rounded-2xl bg-slate-100 dark:bg-slate-800" />
-            ))}
-          </div>
-        ) : !hasExam && !hasStudy ? (
-          <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 py-16 text-center dark:border-slate-700">
-            <div className="text-4xl">🎟️</div>
-            <p className="mt-3 text-sm font-medium text-slate-700 dark:text-slate-300">
-              Henüz bilet veya rezervasyon yok
-            </p>
-            <Link
-              to={ROUTES.libraries}
-              className="mt-4 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
-            >
-              Kütüphaneleri keşfet
-            </Link>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 items-start gap-x-6 gap-y-10 lg:grid-cols-2">
-            {hasExam && (
-              <section className="space-y-4">
-                <h2 className="text-center text-xl font-extrabold text-slate-900 dark:text-white sm:text-2xl">
-                  Deneme Biletleri
-                </h2>
-                {(showAllExam ? data! : data!.slice(0, PREVIEW_COUNT)).map((r) => (
-                  <TicketCard key={r.id} reg={r} />
-                ))}
-                {data!.length > PREVIEW_COUNT && (
-                  <MoreToggle
-                    expanded={showAllExam}
-                    hidden={data!.length - PREVIEW_COUNT}
-                    onToggle={() => setShowAllExam((v) => !v)}
-                  />
-                )}
-              </section>
-            )}
-            {hasStudy && (
-              <section className="space-y-4">
-                <h2 className="text-center text-xl font-extrabold text-slate-900 dark:text-white sm:text-2xl">
-                  Çalışma Alanı Biletleri
-                </h2>
-                {(showAllStudy ? studyRes! : studyRes!.slice(0, PREVIEW_COUNT)).map((r) => (
-                  <StudyReservationCard key={r.id} res={r} />
-                ))}
-                {studyRes!.length > PREVIEW_COUNT && (
-                  <MoreToggle
-                    expanded={showAllStudy}
-                    hidden={studyRes!.length - PREVIEW_COUNT}
-                    onToggle={() => setShowAllStudy((v) => !v)}
-                  />
-                )}
-              </section>
-            )}
-          </div>
-        )}
+  if (isLoading || studyLoading) {
+    return (
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        {Array.from({ length: 2 }).map((_, i) => (
+          <div
+            key={i}
+            className="mx-auto h-48 w-[28rem] max-w-full animate-pulse rounded-2xl bg-slate-100 dark:bg-slate-800"
+          />
+        ))}
       </div>
-    </DashboardShell>
+    );
+  }
+
+  if (!hasExam && !hasStudy) {
+    return <EmptyTickets />;
+  }
+
+  return (
+    <div className="grid grid-cols-1 items-start gap-x-6 gap-y-10 lg:grid-cols-2">
+      {hasExam && (
+        <section className="space-y-4">
+          <TicketSectionHeader title="Deneme biletleri" count={data!.length} />
+          {(showAllExam ? data! : data!.slice(0, PREVIEW_COUNT)).map((r) => (
+            <TicketCard key={r.id} reg={r} />
+          ))}
+          {data!.length > PREVIEW_COUNT && (
+            <MoreToggle
+              expanded={showAllExam}
+              hidden={data!.length - PREVIEW_COUNT}
+              onToggle={() => setShowAllExam((v) => !v)}
+            />
+          )}
+        </section>
+      )}
+      {hasStudy && (
+        <section className="space-y-4">
+          <TicketSectionHeader title="Çalışma alanı" count={studyRes!.length} />
+          {(showAllStudy ? studyRes! : studyRes!.slice(0, PREVIEW_COUNT)).map((r) => (
+            <StudyReservationCard key={r.id} res={r} />
+          ))}
+          {studyRes!.length > PREVIEW_COUNT && (
+            <MoreToggle
+              expanded={showAllStudy}
+              hidden={studyRes!.length - PREVIEW_COUNT}
+              onToggle={() => setShowAllStudy((v) => !v)}
+            />
+          )}
+        </section>
+      )}
+    </div>
   );
 }
 
-/* Bölüm "daha fazla / daha az" küçük geçişi. */
+/* Bölüm başlığı — bilet kartının sol kenarına hizalı, sakin. */
+function TicketSectionHeader({ title, count }: { title: string; count: number }) {
+  return (
+    <div className="mx-auto flex w-[28rem] max-w-full items-baseline gap-2">
+      <h2 className="text-base font-semibold text-slate-900 dark:text-white">
+        {title}
+      </h2>
+      <span className="text-sm font-normal text-slate-400 dark:text-slate-500">
+        {count}
+      </span>
+    </div>
+  );
+}
+
+/* Boş durum — sakin (ikon + nötr CTA). */
+function EmptyTickets() {
+  return (
+    <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 py-20 text-center dark:border-slate-700">
+      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 text-slate-400 dark:bg-slate-800 dark:text-slate-500">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} className="h-6 w-6" aria-hidden>
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M16.5 6v.75m0 3v.75m0 3v.75m0 3V18m-9-5.25h5.25M7.5 15h3M3.375 5.25c-.621 0-1.125.504-1.125 1.125v3.026a3 3 0 0 1 0 5.198v3.026c0 .621.504 1.125 1.125 1.125h17.25c.621 0 1.125-.504 1.125-1.125v-3.026a3 3 0 0 1 0-5.198V6.375c0-.621-.504-1.125-1.125-1.125H3.375Z"
+          />
+        </svg>
+      </div>
+      <p className="mt-4 text-sm font-medium text-slate-700 dark:text-slate-300">
+        Henüz bilet veya rezervasyon yok
+      </p>
+      <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
+        Kütüphanelerde deneme oturumlarına katıl ya da çalışma alanı ayırt.
+      </p>
+      <Link
+        to={ROUTES.libraries}
+        className="mt-4 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200"
+      >
+        Kütüphaneleri keşfet
+      </Link>
+    </div>
+  );
+}
+
+/* Bölüm "daha fazla / daha az" küçük geçişi (sakin / nötr). */
 function MoreToggle({
   expanded,
   hidden,
@@ -168,7 +186,7 @@ function MoreToggle({
   return (
     <button
       onClick={onToggle}
-      className="mx-auto flex items-center gap-1 pt-1 text-sm font-semibold text-indigo-600 transition hover:text-indigo-700 hover:underline dark:text-indigo-300"
+      className="mx-auto flex items-center gap-1 pt-1 text-sm font-semibold text-slate-600 transition hover:text-slate-900 dark:text-slate-300 dark:hover:text-white"
     >
       {expanded ? "Daha az göster" : `${hidden} bilet daha göster`}
       <svg

@@ -27,7 +27,7 @@ from schemas.booking import (
     BookingLocationUpdate,
     BookingPrivateNoteCreate,
 )
-from services import booking_service
+from services import booking_service, phone_service
 
 router = APIRouter(prefix="/bookings", tags=["bookings"])
 
@@ -77,6 +77,7 @@ async def create_booking(
     client: Client = Depends(require_roles(RoleType.CLIENT)),
     db: AsyncSession = Depends(get_db),
 ):
+    phone_service.require_phone_verified(client)
     return await booking_service.create_booking(db, client, payload)
 
 

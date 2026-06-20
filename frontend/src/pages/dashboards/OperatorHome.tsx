@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { DashboardShell } from "@/components/DashboardShell";
+import { OPERATOR_NAV } from "@/lib/nav";
 import { ExamSessionsManager } from "@/components/ExamSessionsManager";
 import { LibraryPayoutForm } from "@/components/LibraryPayoutForm";
 import { QrScanner } from "@/components/QrScanner";
@@ -25,7 +26,7 @@ import { formatDateTime } from "@/lib/datetime";
 import { ROUTES } from "@/lib/routes";
 import { getErrorMessage } from "@/lib/errors";
 import { toast } from "@/store/toastStore";
-import type { AttendanceResult } from "@/types";
+import type { AttendanceResult, LibraryDetailOut, OperatorOut } from "@/types";
 
 export default function OperatorHome() {
   const { data: op, isLoading } = useOperatorMe();
@@ -56,16 +57,10 @@ export default function OperatorHome() {
   };
 
   return (
-    <DashboardShell title="Kütüphane Paneli">
+    <DashboardShell title="Kütüphane Paneli" navItems={OPERATOR_NAV}>
       <div className="mx-auto max-w-3xl space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
-            {isLoading ? "Yükleniyor…" : op?.library_name ?? "Kütüphane Paneli"}
-          </h1>
-          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-            Deneme oturumlarını yönet ve katılımcıların QR kodlarını okutarak doğrula.
-          </p>
-        </div>
+        {/* ── Kütüphane kimliği + "sayfanı görüntüle" ── */}
+        <OperatorHero op={op} lib={lib} isLoading={isLoading} />
 
         {/* ── Onay durumu (self-servis başvuru) ── */}
         {op && <LibraryStatusBanner libraryId={op.library_id} />}
@@ -178,6 +173,96 @@ export default function OperatorHome() {
         <PasswordPanel />
       </div>
     </DashboardShell>
+  );
+}
+
+/* Kütüphane kimliği: kapak + logo + ad + durum + "sayfanı görüntüle" (öğrencilerin
+   gördüğü public profile). Operatör kendi kütüphanesini güzelce görür. */
+const STATUS_PILL: Record<string, { label: string; cls: string }> = {
+  ACTIVE: { label: "Yayında", cls: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300" },
+  PENDING: { label: "İncelemede", cls: "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300" },
+  REJECTED: { label: "Reddedildi", cls: "bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300" },
+  HIDDEN: { label: "Gizli", cls: "bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-300" },
+};
+
+function OperatorHero({
+  op,
+  lib,
+  isLoading,
+}: {
+  op?: OperatorOut;
+  lib?: LibraryDetailOut;
+  isLoading: boolean;
+}) {
+  const name = op?.library_name ?? lib?.name ?? "Kütüphane Paneli";
+  const initial = (name.trim()[0] ?? "K").toUpperCase();
+  const status = lib?.status;
+  const pill = status ? STATUS_PILL[status] : undefined;
+  const place = [lib?.district, lib?.city].filter(Boolean).join(", ");
+
+  return (
+    <div className="overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700">
+      {/* Kapak */}
+      <div className="relative h-36 w-full bg-gradient-to-br from-indigo-500 to-violet-600">
+        {lib?.cover_url && (
+          <img src={lib.cover_url} alt="" className="h-full w-full object-cover" />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
+        {pill && (
+          <span
+            className={`absolute right-4 top-4 rounded-full px-2.5 py-1 text-xs font-semibold ${pill.cls}`}
+          >
+            {pill.label}
+          </span>
+        )}
+      </div>
+
+      <div className="px-5 pb-5">
+        <div className="-mt-10 flex items-end gap-4">
+          <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-indigo-600 text-2xl font-bold text-white shadow-md ring-4 ring-white dark:ring-slate-800">
+            {lib?.logo_url ? (
+              <img src={lib.logo_url} alt="" className="h-full w-full object-cover" />
+            ) : (
+              initial
+            )}
+          </div>
+          <div className="min-w-0 flex-1 pb-1">
+            <h1 className="truncate text-xl font-bold text-slate-900 dark:text-white">
+              {isLoading ? "Yükleniyor…" : name}
+            </h1>
+            <p className="mt-0.5 truncate text-xs text-slate-500 dark:text-slate-400">
+              {place || "Kütüphane paneli"}
+              {lib && lib.rating_count > 0 && (
+                <>
+                  {" · "}
+                  <span className="text-amber-500">★</span>{" "}
+                  {lib.rating_average?.toFixed(1)} ({lib.rating_count})
+                </>
+              )}
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          {lib && status === "ACTIVE" ? (
+            <Link
+              to={ROUTES.library(lib.slug)}
+              className="inline-flex items-center gap-1.5 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 active:scale-95"
+            >
+              <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+              </svg>
+              Kütüphane sayfanı görüntüle
+            </Link>
+          ) : (
+            <span className="text-xs text-slate-400 dark:text-slate-500">
+              Onaylanınca kütüphane sayfan öğrencilere görünür olacak.
+            </span>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }
 

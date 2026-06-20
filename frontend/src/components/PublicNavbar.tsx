@@ -31,6 +31,14 @@ export function PublicNavbar() {
           >
             Kütüphaneler
           </Link>
+          <a
+            href="https://shopier.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hidden rounded-full px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:text-indigo-700 active:scale-95 sm:block dark:text-slate-200 dark:hover:text-indigo-300"
+          >
+            Mağaza
+          </a>
           <Link
             to="?modal=register&role=tutor"
             className="btn-neon-hover rounded-full px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:text-indigo-700 active:scale-95 dark:text-slate-200 dark:hover:text-indigo-300"

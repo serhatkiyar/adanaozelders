@@ -349,7 +349,11 @@ function SubjectRows() {
                     {EXAM_DESCS[exam.label] ?? "Alanında uzman eğitmenlerle çalış, hedefine ulaş."}
                   </p>
                   <button
-                    onClick={() => navigate(`${ROUTES.tutors}?${examSubjectQuery(exam)}`)}
+                    onClick={() =>
+                      navigate(
+                        `${ROUTES.tutors}?${examSubjectQuery(exam)}&exam=${encodeURIComponent(exam.label)}`
+                      )
+                    }
                     className={`mt-8 rounded-xl px-7 py-3 text-sm font-bold text-white shadow transition active:scale-95 ${s.btn}`}
                   >
                     Eğitmen Bul →
@@ -365,7 +369,11 @@ function SubjectRows() {
                     {allItems.map((it) => (
                       <button
                         key={it.label}
-                        onClick={() => navigate(`${ROUTES.tutors}?subject=${encodeURIComponent(it.q)}`)}
+                        onClick={() =>
+                          navigate(
+                            `${ROUTES.tutors}?subject=${encodeURIComponent(it.q)}&exam=${encodeURIComponent(exam.label)}`
+                          )
+                        }
                         className={`rounded-lg px-3 py-1.5 text-sm font-medium ring-1 transition hover:opacity-80 ${s.card} ${s.text}`}
                       >
                         {it.label}

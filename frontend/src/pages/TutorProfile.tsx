@@ -3,17 +3,11 @@ import { useNavigate, useParams } from "react-router-dom";
 import { DashboardShell } from "@/components/DashboardShell";
 import { STUDENT_NAV, TUTOR_NAV } from "@/lib/nav";
 import { Avatar } from "@/components/Avatar";
+import { StarRating } from "@/components/StarRating";
 import { ReviewsSection, type ReviewItem } from "@/components/ReviewsSection";
-import { EducationSection } from "@/components/EducationSection";
 import { BookmarkButton } from "@/components/BookmarkButton";
 import { ShareButton } from "@/components/ShareButton";
-import {
-  VerifiedTutorBadge,
-  IdentityVerifiedBadge,
-  DocumentedBadge,
-  TutorTrustBar,
-  hasVerifiedEducation,
-} from "@/components/TutorTrust";
+import { TutorTrustBar } from "@/components/TutorTrust";
 import { ReportModal } from "@/components/ReportModal";
 import { FullScreenSpinner } from "@/components/Spinner";
 import { ReviewListModal } from "@/components/ReviewListModal";
@@ -25,7 +19,6 @@ import {
 } from "@/hooks/useReviews";
 import { useBookings } from "@/hooks/useBookings";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
-import { formatLastSeen } from "@/lib/datetime";
 import { formatRate, parseMoney } from "@/lib/money";
 import { getErrorMessage } from "@/lib/errors";
 import { toast } from "@/store/toastStore";
@@ -35,6 +28,7 @@ import { BookingModal } from "@/components/BookingModal";
 import { ROUTES, parseTutorId } from "@/lib/routes";
 import { useCanonicalTutorSlug } from "@/hooks/useCanonicalTutorSlug";
 import { recordViewedTutor } from "@/lib/recentlyViewed";
+import { videoEmbedUrl } from "@/lib/video";
 
 // Removed constants
 
@@ -176,20 +170,27 @@ export default function TutorProfile() {
   }
 
   const rate = parseMoney(tutor.hourly_rate);
-  const modeLabel = tutor.teaching_mode === TeachingMode.ONLINE 
+  // Ücretsiz ilk ders: eğitmen sunuyor + öğrencinin bu eğitmenle (iptal/red dışı) dersi yok.
+  const hadLessonWithTutor = (myBookings ?? []).some(
+    (b) =>
+      b.tutor_id === tutorId &&
+      b.status !== BookingStatus.CANCELLED &&
+      b.status !== BookingStatus.REJECTED
+  );
+  const canRequestFreeLesson =
+    tutor.first_lesson_free !== false && !isOwnerTutor && !hadLessonWithTutor;
+  const embedUrl = videoEmbedUrl(tutor.intro_video_url);
+  const modeLabel = tutor.teaching_mode === TeachingMode.ONLINE
     ? "Uzaktan" 
     : tutor.teaching_mode === TeachingMode.IN_PERSON 
     ? "Yüzyüze" 
     : tutor.teaching_mode === TeachingMode.BOTH 
-    ? "Uzaktan & Yüzyüze" 
+    ? "Uzaktan & Yüzyüze"
     : null;
-  const isOnline =
-    !!tutor.last_seen_at &&
-    Date.now() - new Date(tutor.last_seen_at).getTime() < 120_000;
 
   return (
     <DashboardShell title="Eğitmen Detayı" navItems={navItems}>
-      <div className="mx-auto max-w-4xl space-y-5 pb-12">
+      <div className="mx-auto max-w-6xl pb-12">
         <button
           onClick={() => navigate(-1)}
           className="text-sm font-medium text-indigo-600 hover:text-indigo-700 dark:text-indigo-400"
@@ -197,58 +198,93 @@ export default function TutorProfile() {
           ← Geri dön
         </button>
 
-        {/* ── Header ── */}
-        <section className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-slate-700">
-          <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
-            <div className="flex items-center gap-4">
-              <Avatar
-                name={tutor.full_name}
-                avatar_url={tutor.avatar_url}
-                size="xl"
-                shape="square"
-              />
-              <div className="flex flex-col justify-center gap-1.5">
-                <div className="flex flex-wrap items-center gap-2">
-                  <h1 className="text-2xl font-bold leading-none text-slate-900 dark:text-white">
+        <div className="mt-4 flex flex-col gap-5 lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start lg:gap-6">
+          {/* ── Sağ: eğitmen bilgi + rezervasyon kartı (dikey, sticky) ── */}
+          <aside className="lg:col-start-2 lg:row-start-1 lg:sticky lg:top-6">
+            <section className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-slate-700">
+              {/* Üst aksiyonlar: favori + paylaş (kartın yukarısında) */}
+              <div className="mb-4 flex items-center justify-end gap-2">
+                {!isOwnerTutor && hasActiveBooking && (
+                  <button
+                    type="button"
+                    title="Mesaj Gönder"
+                    aria-label="Mesaj Gönder"
+                    onClick={() =>
+                      navigate(ROUTES.messageWith(tutor.id, tutor.full_name))
+                    }
+                    className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition active:scale-90 hover:bg-slate-200 hover:text-slate-700 dark:bg-slate-700 dark:text-slate-400 dark:hover:bg-slate-600"
+                  >
+                    <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 12 3.269 3.125A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0 0h7.5" />
+                    </svg>
+                  </button>
+                )}
+                <ShareButton size="md" />
+                {!isOwnerTutor && <BookmarkButton tutorId={tutor.id} size="md" />}
+              </div>
+
+              <div className="flex flex-col items-center text-center">
+                <Avatar
+                  name={tutor.full_name}
+                  avatar_url={tutor.avatar_url}
+                  size="xl"
+                  shape="square"
+                />
+                <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
+                  <h1 className="text-xl font-bold text-slate-900 dark:text-white">
                     {tutor.full_name}
                   </h1>
-                  <VerifiedTutorBadge />
-                  {tutor.identity_verified && <IdentityVerifiedBadge />}
-                  {hasVerifiedEducation(tutor.educations) && <DocumentedBadge />}
                 </div>
 
+                <button
+                  type="button"
+                  onClick={() => setShowReviews(true)}
+                  className="mt-2 inline-flex items-center gap-1.5 rounded-lg px-2 py-1 transition hover:bg-slate-50 dark:hover:bg-slate-700/50"
+                >
+                  <StarRating value={tutor.rating_average} single={true} />
+                  <span className="text-sm font-medium text-indigo-600 hover:text-indigo-700 dark:text-indigo-400">
+                    {tutor.rating_count > 0
+                      ? `${tutor.rating_average?.toFixed(1)} (${tutor.rating_count})`
+                      : "Değerlendirme yok"}
+                  </span>
+                </button>
+
                 {modeLabel && (
-                  <div className="text-sm font-medium text-indigo-600 dark:text-indigo-400">
+                  <span className="mt-3 rounded-full bg-indigo-50 px-2.5 py-0.5 text-xs font-medium text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300">
                     {modeLabel}
-                  </div>
+                  </span>
                 )}
-                
-                <div className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">
-                  {isOnline ? "Çevrimiçi" : <span className="text-slate-400 dark:text-slate-500 font-normal">{formatLastSeen(tutor.last_seen_at)}</span>}
-                </div>
               </div>
-            </div>
-            
-            <div className="flex flex-col items-start gap-3 sm:items-end">
+
+              {/* Güven sinyalleri (dikey diziliş) */}
+              <TutorTrustBar tutor={tutor} vertical />
+
+              {/* Ücret + CTA */}
+              <div className="mt-5 border-t border-slate-100 pt-5 text-center dark:border-slate-700/60">
+                <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                  Saatlik ücret
+                </p>
+                <p className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+                  {rate !== null ? formatRate(tutor.hourly_rate) : "Belirtilmemiş"}
+                </p>
+                {tutor.first_lesson_free !== false && (
+                  <p className="mt-1 text-sm font-semibold text-emerald-600 dark:text-emerald-400">
+                    {canRequestFreeLesson ? "İlk dersin ücretsiz" : "İlk ders ücretsiz"}
+                  </p>
+                )}
+              </div>
+              {!isOwnerTutor && (
+                <button
+                  onClick={() => setShowBookingModal(true)}
+                  className="mt-4 block w-full rounded-xl bg-indigo-600 px-5 py-2.5 text-center text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 active:scale-95"
+                >
+                  Ders Talep Et
+                </button>
+              )}
+
+              {/* Şikayet (ikincil; küçük) */}
               {currentUser && !isOwnerTutor && (
-                <div className="flex items-center gap-2">
-                  {hasActiveBooking && (
-                    <button
-                      type="button"
-                      title="Mesaj Gönder"
-                      aria-label="Mesaj Gönder"
-                      onClick={() =>
-                        navigate(ROUTES.messageWith(tutor.id, tutor.full_name))
-                      }
-                      className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition active:scale-90 hover:bg-slate-200 hover:text-slate-700 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700"
-                    >
-                      <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 12 3.269 3.125A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0 0h7.5" />
-                      </svg>
-                    </button>
-                  )}
-                  <ShareButton size="md" />
-                  <BookmarkButton tutorId={tutor.id} size="md" />
+                <div className="mt-3 text-center">
                   <button
                     type="button"
                     onClick={() => setShowReport(true)}
@@ -266,109 +302,117 @@ export default function TutorProfile() {
                   onClose={() => setShowReport(false)}
                 />
               )}
-            </div>
-          </div>
+            </section>
+          </aside>
 
-          {/* ── Güven sinyalleri: tamamlanan ders / değerlendirme / üyelik ── */}
-          <TutorTrustBar tutor={tutor} />
-
-          {/* ── Verdiği Dersler (transparan, profil kartının içinde) ── */}
-          {tutor.subjects && tutor.subjects.length > 0 && (
-            <div className="mt-5 border-t border-slate-100 pt-4 dark:border-slate-700/60">
-              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
-                Verdiği Dersler
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {tutor.subjects.map((s) => (
-                  <span
-                    key={s}
-                    className="rounded-full bg-indigo-50 px-3 py-1 text-sm font-medium text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300"
-                  >
-                    {s}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* ── Booking Section (Inside Card) ── */}
-          <div className="mt-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-t border-slate-100 pt-5 dark:border-slate-700/60">
-            <div>
-              <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
-                Saatlik ücret
-              </p>
-              <p className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">
-                {rate !== null ? formatRate(tutor.hourly_rate) : "Belirtilmemiş"}
-              </p>
-            </div>
-            <button
-              onClick={() => setShowBookingModal(true)}
-              className="rounded-xl bg-indigo-600 px-5 py-2.5 text-center text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 active:scale-95"
-            >
-              Ders Talep Et
-            </button>
-          </div>
-        </section>
-
-        {/* ── Headline / İlan Başlığı (Outside Card) ── */}
-        {(tutor.headline || isOwnerTutor) && (
-          <h2 className="px-2 pt-2 text-3xl font-extrabold leading-tight text-slate-900 dark:text-white">
-            {tutor.headline || "Eğitmen"}
-          </h2>
-        )}
-
-        {/* ── Bio ── */}
-        {tutor.bio && (
-          <section className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-slate-700">
-            <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
-              {tutor.full_name.split(" ")[0]} ile ilgili bilgiler
-            </h2>
-            <p className="mt-3 whitespace-pre-line text-sm leading-relaxed text-slate-600 dark:text-slate-300">
-              {tutor.bio}
-            </p>
-          </section>
-        )}
-
-        {/* ── Eğitim ── */}
-        <EducationSection educations={tutor.educations} />
-
-        {/* ── Reviews (Airbnb-tarzı: özet + dağılım + yorum ızgarası) ── */}
-        <section className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-slate-700">
-          <ReviewsSection
-            average={tutor.rating_average}
-            count={tutor.rating_count}
-            distribution={ratingDist}
-            reviews={(reviews ?? []).map(
-              (r): ReviewItem => ({
-                id: r.id,
-                name: r.client_name ?? "Anonim",
-                avatarUrl: r.client_avatar_url,
-                rating: r.rating,
-                text: r.comment_text,
-                createdAt: r.created_at,
-                reply: r.tutor_reply,
-              })
+          {/* ── Sol: akan içerik (kartsız, alt alta) ── */}
+          <div className="space-y-8 lg:col-start-1 lg:row-start-1">
+            {/* Verdiği Dersler — ilan başlığının üstünde */}
+            {tutor.subjects && tutor.subjects.length > 0 && (
+              <section>
+                <div className="flex flex-wrap gap-2">
+                  {tutor.subjects.map((s) => (
+                    <span
+                      key={s}
+                      className="rounded-full bg-indigo-50 px-3 py-1 text-sm font-medium text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300"
+                    >
+                      {s}
+                    </span>
+                  ))}
+                </div>
+              </section>
             )}
-            onShowAll={() => setShowReviews(true)}
-            renderItemAction={
-              isOwnerTutor
-                ? (item) =>
-                    item.reply ? null : (
-                      <OwnerReplyAction
-                        reviewId={item.id}
-                        replyMutation={replyMutation}
-                      />
-                    )
-                : undefined
-            }
-          />
-        </section>
+
+            {/* Headline / İlan Başlığı */}
+            {(tutor.headline || isOwnerTutor) && (
+              <h2 className="text-3xl font-extrabold leading-tight text-slate-900 dark:text-white">
+                {tutor.headline || "Eğitmen"}
+              </h2>
+            )}
+
+            {/* Bio */}
+            {tutor.bio && (
+              <section className="border-t border-slate-100 pt-6 dark:border-slate-700/60">
+                <h2 className="mb-2 text-xl font-bold text-slate-900 dark:text-white">
+                  {tutor.full_name.split(" ")[0]} ile ilgili bilgiler
+                </h2>
+                <p className="whitespace-pre-line text-[15px] leading-relaxed text-slate-600 dark:text-slate-300">
+                  {tutor.bio}
+                </p>
+              </section>
+            )}
+
+            {/* Ders Hakkında — metodoloji */}
+            {tutor.lesson_info && (
+              <section className="border-t border-slate-100 pt-6 dark:border-slate-700/60">
+                <h2 className="mb-2 text-xl font-bold text-slate-900 dark:text-white">
+                  Ders Hakkında
+                </h2>
+                <p className="whitespace-pre-line text-[15px] leading-relaxed text-slate-600 dark:text-slate-300">
+                  {tutor.lesson_info}
+                </p>
+              </section>
+            )}
+
+            {/* Tanıtım videosu — değerlendirmelerin hemen üstünde, küçük */}
+            {embedUrl && (
+              <section className="border-t border-slate-100 pt-6 dark:border-slate-700/60">
+                <h2 className="mb-3 text-xl font-bold text-slate-900 dark:text-white">
+                  Tanıtım videosu
+                </h2>
+                <div className="aspect-video w-full max-w-md overflow-hidden rounded-xl bg-black">
+                  <iframe
+                    src={embedUrl}
+                    title={`${tutor.full_name} tanıtım videosu`}
+                    className="h-full w-full border-0"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                  />
+                </div>
+              </section>
+            )}
+
+            {/* Değerlendirmeler (Airbnb-tarzı: özet + dağılım + yorum ızgarası) */}
+            <hr className="my-8 border-slate-200 dark:border-slate-700/60" />
+            <section>
+              <ReviewsSection
+                average={tutor.rating_average}
+                count={tutor.rating_count}
+                distribution={ratingDist}
+                reviews={(reviews ?? []).map(
+                  (r): ReviewItem => ({
+                    id: r.id,
+                    name: r.client_name ?? "Anonim",
+                    avatarUrl: r.client_avatar_url,
+                    rating: r.rating,
+                    text: r.comment_text,
+                    createdAt: r.created_at,
+                    reply: r.tutor_reply,
+                  })
+                )}
+                onShowAll={() => setShowReviews(true)}
+                renderItemAction={
+                  isOwnerTutor
+                    ? (item) =>
+                        item.reply ? null : (
+                          <OwnerReplyAction
+                            reviewId={item.id}
+                            replyMutation={replyMutation}
+                          />
+                        )
+                    : undefined
+                }
+              />
+            </section>
+          </div>
+        </div>
       </div>
 
       {showBookingModal && tutor && (
         <BookingModal
           tutor={tutor as TutorSearchOut}
           onClose={() => setShowBookingModal(false)}
+          canRequestFreeLesson={canRequestFreeLesson}
         />
       )}
 

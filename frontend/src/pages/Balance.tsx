@@ -1,23 +1,102 @@
-import { Navigate } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { DashboardShell } from "@/components/DashboardShell";
 import { PaymentStatusBadge } from "@/components/PaymentBadge";
-import { PayoutSection } from "@/components/PayoutSection";
-import { LibraryPayoutForm } from "@/components/LibraryPayoutForm";
 import { useEarnings, useEarningsTransactions } from "@/hooks/usePayments";
+import { useMyPayout } from "@/hooks/usePayout";
 import {
   useLibraryEarnings,
   useLibraryEarningsTransactions,
 } from "@/hooks/useLibraries";
 import { useOperatorMe } from "@/hooks/useLibraryExams";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { fetchLibraryPayout } from "@/api/libraries";
 import { TUTOR_NAV } from "@/lib/nav";
 import { formatTRY } from "@/lib/money";
 import { formatDateTime } from "@/lib/datetime";
 import { ROUTES } from "@/lib/routes";
 import { FullScreenSpinner } from "@/components/Spinner";
-import { ROLE_IDS, type EarningTransaction } from "@/types";
+import { ROLE_IDS, type EarningTransaction, type PayoutStatus } from "@/types";
 import type { NavItem } from "@/lib/nav";
 import type { ReactNode } from "react";
+
+const PAYOUT_STATUS_META: Record<PayoutStatus, { label: string; cls: string }> = {
+  NONE: {
+    label: "Eklenmedi",
+    cls: "bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300",
+  },
+  PENDING: {
+    label: "Doğrulama bekleniyor",
+    cls: "bg-amber-50 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300",
+  },
+  ACTIVE: {
+    label: "Doğrulandı ✓",
+    cls: "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300",
+  },
+  REJECTED: {
+    label: "Reddedildi",
+    cls: "bg-rose-50 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300",
+  },
+};
+
+/** Bakiyem'de ödeme hesabının yalnız özetini gösterir; düzenleme Ayarlar'da. */
+function PayoutSummaryCard({
+  status,
+  ibanMasked,
+}: {
+  status: PayoutStatus;
+  ibanMasked?: string | null;
+}) {
+  const meta = PAYOUT_STATUS_META[status];
+  return (
+    <div className="rounded-2xl bg-white px-6 py-5 shadow-sm ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-slate-700">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+            Ödeme hesabı
+          </p>
+          <p className="mt-1 font-mono text-sm text-slate-700 dark:text-slate-200">
+            {ibanMasked || "Henüz IBAN eklenmedi"}
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${meta.cls}`}>
+            {meta.label}
+          </span>
+          <Link
+            to={ROUTES.settings}
+            className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700"
+          >
+            {status === "NONE" ? "Ekle" : "Ayarlar'da düzenle"}
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TutorPayoutSummary() {
+  const { data: payout } = useMyPayout();
+  return (
+    <PayoutSummaryCard
+      status={payout?.payout_status ?? "NONE"}
+      ibanMasked={payout?.iban_masked}
+    />
+  );
+}
+
+function LibraryPayoutSummary({ libraryId }: { libraryId: number }) {
+  const { data: payout } = useQuery({
+    queryKey: ["library-payout", libraryId],
+    queryFn: () => fetchLibraryPayout(libraryId),
+  });
+  return (
+    <PayoutSummaryCard
+      status={payout?.payout_status ?? "NONE"}
+      ibanMasked={payout?.iban_masked}
+    />
+  );
+}
 
 const SOURCE_LABEL: Record<EarningTransaction["source"], string> = {
   LESSON: "Özel ders",
@@ -51,7 +130,7 @@ function TutorBalance() {
       escrowHint="Ders tamamlanınca kazancına geçer"
       transactions={txns}
       txnLoading={txnLoading}
-      payout={<PayoutSection />}
+      payout={<TutorPayoutSummary />}
     />
   );
 }
@@ -75,16 +154,7 @@ function OperatorBalance() {
       escrowHint="Katılım doğrulandıkça serbest kalır"
       transactions={txns}
       txnLoading={txnLoading}
-      payout={
-        libraryId ? (
-          <div className="rounded-2xl bg-white px-6 py-5 shadow-sm ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-slate-700">
-            <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
-              Ödeme Bilgileri
-            </p>
-            <LibraryPayoutForm libraryId={libraryId} />
-          </div>
-        ) : null
-      }
+      payout={libraryId ? <LibraryPayoutSummary libraryId={libraryId} /> : null}
     />
   );
 }

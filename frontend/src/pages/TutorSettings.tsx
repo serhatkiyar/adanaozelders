@@ -1,10 +1,9 @@
 import { FormEvent, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import type { UseMutationResult } from "@tanstack/react-query";
-import { DashboardShell } from "@/components/DashboardShell";
+import { TutorAccountLayout } from "@/components/TutorAccountLayout";
 import { ProfileCompleteness } from "@/components/ProfileCompleteness";
 import { MapPicker } from "@/components/MapPicker";
-import { TUTOR_NAV } from "@/lib/nav";
 import { ROUTES } from "@/lib/routes";
 import {
   useMyTutorProfile,
@@ -24,6 +23,9 @@ import {
 } from "@/types";
 
 const SUBJECT_OPTIONS = uniqueSubjects();
+
+// İlan başlığı için minimum sözcük kalite kapısı (backend ile aynı).
+const HEADLINE_MIN_WORDS = 10;
 
 /* ─── status metadata ────────────────────────────────── */
 
@@ -112,6 +114,9 @@ export default function TutorSettings() {
 
   const [headline, setHeadline] = useState("");
   const [bio, setBio] = useState("");
+  const [lessonInfo, setLessonInfo] = useState("");
+  const [introVideoUrl, setIntroVideoUrl] = useState("");
+  const [firstLessonFree, setFirstLessonFree] = useState(true);
   const [hourlyRate, setHourlyRate] = useState("");
   const [teachingMode, setTeachingMode] = useState<TeachingMode | "">("");
   const [subjects, setSubjects] = useState<string[]>([]);
@@ -124,6 +129,9 @@ export default function TutorSettings() {
     if (data) {
       setHeadline(data.headline ?? "");
       setBio(data.bio ?? "");
+      setLessonInfo(data.lesson_info ?? "");
+      setIntroVideoUrl(data.intro_video_url ?? "");
+      setFirstLessonFree(data.first_lesson_free ?? true);
       const rate = parseMoney(data.hourly_rate);
       setHourlyRate(rate !== null ? String(rate) : "");
       setTeachingMode(data.teaching_mode ?? "");
@@ -154,8 +162,17 @@ export default function TutorSettings() {
   const actionBusy =
     submitAction.isPending || suspendAction.isPending || activateAction.isPending;
 
+  const headlineWords = headline.trim() ? headline.trim().split(/\s+/).length : 0;
+  const headlineTooShort = headlineWords < HEADLINE_MIN_WORDS;
+
   const handleSave = (e: FormEvent) => {
     e.preventDefault();
+    if (headlineTooShort) {
+      toast.error(
+        `İlan başlığın en az ${HEADLINE_MIN_WORDS} sözcük olmalı (şu an ${headlineWords}).`
+      );
+      return;
+    }
     let rate: number | null = null;
     if (hourlyRate.trim() !== "") {
       const n = Number(hourlyRate);
@@ -173,6 +190,9 @@ export default function TutorSettings() {
       {
         headline: headline.trim() || null,
         bio: bio.trim() || null,
+        lesson_info: lessonInfo.trim() || null,
+        intro_video_url: introVideoUrl.trim() || null,
+        first_lesson_free: firstLessonFree,
         hourly_rate: rate,
         teaching_mode: teachingMode || null,
         location_text: locationText.trim() || null,
@@ -202,8 +222,12 @@ export default function TutorSettings() {
   const cfg = data ? STATUS_CFG[data.status] : null;
 
   return (
-    <DashboardShell title="İlan Ayarları" navItems={TUTOR_NAV}>
-      <div className="mx-auto max-w-xl space-y-4 pb-12">
+    <TutorAccountLayout active="listing" title="İlan Ayarları">
+      <div className="max-w-2xl">
+        <h1 className="mb-6 text-2xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-3xl">
+          İlan ayarları
+        </h1>
+        <div className="space-y-4 pb-12">
         {isLoading || !data ? (
           isError ? (
             <div className="flex items-start gap-3 rounded-2xl bg-red-50 px-5 py-4 text-sm text-red-700 ring-1 ring-red-100 dark:bg-red-900/20 dark:text-red-400 dark:ring-red-800/30">
@@ -329,8 +353,19 @@ export default function TutorSettings() {
                     value={headline}
                     onChange={(e) => setHeadline(e.target.value)}
                     className={inputCls}
-                    placeholder="Örn. TYT-AYT Matematik Eğitmeni"
+                    placeholder="Örn. TYT-AYT Matematik, 8 yıl deneyimli sonuç odaklı özel ders"
                   />
+                  <p
+                    className={`mt-1.5 text-xs ${
+                      headlineTooShort
+                        ? "text-amber-600 dark:text-amber-400"
+                        : "text-slate-400 dark:text-slate-500"
+                    }`}
+                  >
+                    {headlineTooShort
+                      ? `En az ${HEADLINE_MIN_WORDS} sözcük gerekli — şu an ${headlineWords}. Branşını, sınav türünü ve deneyimini ekle.`
+                      : `${headlineWords} sözcük`}
+                  </p>
                 </div>
 
                 {/* Saatlik Ücret */}
@@ -541,6 +576,59 @@ export default function TutorSettings() {
                   />
                 </div>
 
+                {/* Ders Hakkında — metodoloji */}
+                <div>
+                  <label className={labelCls}>Ders Hakkında</label>
+                  <textarea
+                    rows={5}
+                    maxLength={2000}
+                    disabled={!editable}
+                    value={lessonInfo}
+                    onChange={(e) => setLessonInfo(e.target.value)}
+                    className={inputCls}
+                    placeholder="Dersin nasıl işliyor? Hangi seviyeye/sınava yönelik, ilk ders nasıl geçer, hangi materyalleri kullanıyorsun…"
+                  />
+                  <p className="mt-1.5 text-xs text-slate-400 dark:text-slate-500">
+                    Öğrenciler dersinin akışını ve yöntemini buradan görür.
+                  </p>
+                </div>
+
+                {/* Tanıtım videosu */}
+                <div>
+                  <label className={labelCls}>Tanıtım Videosu</label>
+                  <input
+                    type="url"
+                    disabled={!editable}
+                    value={introVideoUrl}
+                    onChange={(e) => setIntroVideoUrl(e.target.value)}
+                    className={inputCls}
+                    placeholder="https://www.youtube.com/watch?v=…"
+                  />
+                  <p className="mt-1.5 text-xs text-slate-400 dark:text-slate-500">
+                    YouTube veya Vimeo bağlantısı. Profilinin üstünde gömülü oynatılır.
+                  </p>
+                </div>
+
+                {/* İlk ders ücretsiz */}
+                <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-slate-200 p-4 dark:border-slate-700">
+                  <input
+                    type="checkbox"
+                    disabled={!editable}
+                    checked={firstLessonFree}
+                    onChange={(e) => setFirstLessonFree(e.target.checked)}
+                    className="mt-0.5 h-5 w-5 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                  />
+                  <span className="text-sm">
+                    <span className="font-semibold text-slate-800 dark:text-slate-200">
+                      İlk ders ücretsiz
+                    </span>
+                    <span className="mt-0.5 block text-xs text-slate-400 dark:text-slate-500">
+                      Açıkken öğrenciler bu eğitmenle ilk derslerini ücretsiz talep
+                      edebilir. Kapatırsan ilanında ücretsiz ders rozeti görünmez.
+                    </span>
+                  </span>
+                </label>
+
                 <div className="flex justify-end pt-1">
                   <button
                     type="submit"
@@ -554,7 +642,8 @@ export default function TutorSettings() {
             </div>
           </>
         )}
+        </div>
       </div>
-    </DashboardShell>
+    </TutorAccountLayout>
   );
 }

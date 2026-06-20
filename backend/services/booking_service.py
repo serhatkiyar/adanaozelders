@@ -21,7 +21,7 @@ from models.booking_resource import BookingResource
 from models.booking_comment import BookingComment
 from models.booking_private_note import BookingPrivateNote
 from schemas.booking import BookingCreate, BookingResourceCreate, BookingCommentCreate, BookingLocationUpdate, BookingPrivateNoteCreate
-from services import notification_service, payment_service
+from services import messaging_service, notification_service, payment_service
 from core import ws_outbox
 
 CurrentUser = "Admin | Tutor | Client"
@@ -123,6 +123,29 @@ def _compute_price(
     return (rate * hours).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
 
+async def _is_eligible_for_free_lesson(
+    db: AsyncSession, tutor_id: int, client_id: int
+) -> bool:
+    """Öğrenci bu eğitmenden ücretsiz ilk ders alabilir mi?
+
+    Yalnızca daha önce bu eğitmenle (iptal/red dışı) hiç dersi yoksa uygundur.
+    PENDING dahil sayılır; böylece arka arkaya ücretsiz talep oluşturulamaz.
+    """
+    stmt = (
+        select(func.count())
+        .select_from(Booking)
+        .where(
+            Booking.tutor_id == tutor_id,
+            Booking.client_id == client_id,
+            Booking.deleted_at.is_(None),
+            Booking.status.notin_(
+                [BookingStatus.REJECTED, BookingStatus.CANCELLED]
+            ),
+        )
+    )
+    return int((await db.scalar(stmt)) or 0) == 0
+
+
 async def create_booking(
     db: AsyncSession, client: Client, data: BookingCreate
 ) -> Booking:
@@ -144,6 +167,21 @@ async def create_booking(
 
     await _assert_within_availability(db, tutor.id, data.start_at, data.end_at)
 
+    # Ücretsiz ilk ders: eğitmen sunuyor + öğrencinin bu eğitmenle geçmiş dersi yok.
+    is_free_lesson = False
+    if data.free_lesson:
+        if not tutor.first_lesson_free:
+            raise HTTPException(
+                status.HTTP_422_UNPROCESSABLE_ENTITY,
+                "Bu eğitmen ücretsiz ilk ders sunmuyor",
+            )
+        if not await _is_eligible_for_free_lesson(db, tutor.id, client.id):
+            raise HTTPException(
+                status.HTTP_409_CONFLICT,
+                "Ücretsiz ilk ders hakkın bu eğitmen için kullanılmış",
+            )
+        is_free_lesson = True
+
     # Ders biçimi: eğitmen tek mod sunuyorsa o sabittir; BOTH/None ise istemci seçer.
     requested = data.mode.value if data.mode else None
     if tutor.teaching_mode in ("ONLINE", "IN_PERSON"):
@@ -156,12 +194,18 @@ async def create_booking(
     else:
         mode = requested or "ONLINE"
 
+    price = (
+        Decimal("0.00")
+        if is_free_lesson
+        else _compute_price(tutor, data.start_at, data.end_at)
+    )
     booking = Booking(
         client_id=client.id,
         tutor_id=data.tutor_id,
         start_at=data.start_at,
         end_at=data.end_at,
-        price=_compute_price(tutor, data.start_at, data.end_at),
+        price=price,
+        is_free_lesson=is_free_lesson,
         notes=data.notes,
         mode=mode,
         location=data.location,
@@ -179,6 +223,25 @@ async def create_booking(
         link="/tutor",
     )
     _notify_booking_update(db, booking)
+    # Sohbete gömülü ders talebi kartı enjekte et (Airbnb tarzı)
+    await messaging_service.inject_system_message(
+        db,
+        client_id=client.id,
+        tutor_id=booking.tutor_id,
+        msg_type="booking_card",
+        body=f"{client.full_name} yeni bir ders talebi gönderdi.",
+        meta_data={
+            "booking_id": booking.id,
+            "status": booking.status.value,
+            "start_at": booking.start_at.isoformat(),
+            "end_at": booking.end_at.isoformat(),
+            "price": str(booking.price) if booking.price else None,
+            "is_free_lesson": booking.is_free_lesson,
+            "mode": booking.mode,
+            "notes": booking.notes,
+            "client_name": client.full_name,
+        },
+    )
     return await get_booking(db, booking.id, viewer=client)
 
 

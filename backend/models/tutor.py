@@ -26,6 +26,7 @@ from models.mixins import (
     LastSeenMixin,
     NameMixin,
     PayoutMixin,
+    PhoneVerificationMixin,
     SoftDeleteMixin,
     TimestampMixin,
 )
@@ -52,6 +53,7 @@ class Tutor(
     SoftDeleteMixin,
     LastSeenMixin,
     EmailVerificationMixin,
+    PhoneVerificationMixin,
     PayoutMixin,
 ):
     __tablename__ = "tutors"
@@ -76,6 +78,16 @@ class Tutor(
     hourly_rate: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)
     teaching_mode: Mapped[str | None] = mapped_column(String(20), nullable=True)
     about: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # İlanda "Ders Hakkında" — dersin nasıl işlediği/metodoloji (Superprof tarzı).
+    # `bio` eğitmenin kendisini, bu alan dersin akışını/yöntemini anlatır.
+    lesson_info: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Tanıtım videosu (YouTube/Vimeo URL) — profilde gömülü oynatıcıyla gösterilir.
+    intro_video_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    # İlk ders ücretsiz mi? Varsayılan açık; eğitmen kapatabilir. Açıkken öğrenci
+    # ilk dersini ücretsiz talep edebilir (price=0, ödeme atlanır).
+    first_lesson_free: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("true")
+    )
 
     birth_date: Mapped[datetime.date | None] = mapped_column(Date, nullable=True)
     gender: Mapped[Gender | None] = mapped_column(

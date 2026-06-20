@@ -117,20 +117,32 @@ async def register_client(
 async def update_me(
     db: AsyncSession, user: Admin | Tutor | Client, data: UserUpdate
 ) -> Admin | Tutor | Client:
+    from services import name_change_service
+
     payload = data.model_dump(exclude_unset=True)
-    new_username = payload.get("username")
-    if (
-        new_username is not None
-        and new_username != user.username
-        and await _username_taken(
-            db, new_username, exclude_model=type(user), exclude_id=user.id
-        )
-    ):
-        raise HTTPException(status.HTTP_409_CONFLICT, "Username already taken")
+    # Ad-soyad/kullanıcı adı kimlik bütünlüğü için kapılıdır: ilk değişiklik serbest,
+    # sonrası admin onayı + gerekçe gerektirir (name_change_service).
+    reason = payload.pop("reason", None)
+    first_name = payload.pop("first_name", None)
+    last_name = payload.pop("last_name", None)
+    username = payload.pop("username", None)
+    result = await name_change_service.apply_or_request(
+        db,
+        user,
+        role_id=user.role_id,
+        first_name=first_name,
+        last_name=last_name,
+        username=username,
+        reason=reason,
+    )
+    # Kalan alanlar (about/birth_date/gender) serbestçe uygulanır.
     for field, value in payload.items():
         setattr(user, field, value)
     await db.flush()
     await db.refresh(user)
+    # Onaya gönderilen alanları yanıtta sinyalle (transient — kalıcı kolon değil).
+    user.pending_name_change = "NAME" in result["pending"]
+    user.pending_username_change = "USERNAME" in result["pending"]
     return user
 
 

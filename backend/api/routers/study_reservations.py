@@ -19,7 +19,7 @@ from schemas.study import (
     StudyReservationCreate,
     StudyReservationOut,
 )
-from services import study_reservation_service
+from services import phone_service, study_reservation_service
 
 router = APIRouter(prefix="/study-reservations", tags=["study-reservations"])
 
@@ -116,6 +116,7 @@ async def pay(
     client: Client = Depends(require_roles(RoleType.CLIENT)),
     db: AsyncSession = Depends(get_db),
 ):
+    phone_service.require_phone_verified(client)
     reservation, redirect_url = await study_reservation_service.pay(
         db, client, reservation_id,
         client_ip=request.client.host if request.client else None,

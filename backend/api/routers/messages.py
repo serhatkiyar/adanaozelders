@@ -1,11 +1,12 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import CurrentUser, get_current_active_user, user_rate_limit
 from core.config import settings
 from core.database import get_db
+from models.role import ROLE_IDS, RoleType
 from schemas.messaging import (
     ConversationOut,
     MessageCreate,
@@ -125,10 +126,24 @@ async def send_message(
     user: CurrentUser = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
-    phone_service.require_phone_verified(user)
+    # Telefon kapısı öğrenci/eğitmen için (anti-spam); operatör admin-oluşturmalı, muaf.
+    if user.role_id != ROLE_IDS[RoleType.LIBRARY_OPERATOR]:
+        phone_service.require_phone_verified(user)
+    # Alıcı türü verilmezse gönderene göre çıkar (CLIENT→TUTOR, TUTOR→CLIENT).
+    role = payload.counterparty_role
+    if role is None:
+        if user.role_id == ROLE_IDS[RoleType.CLIENT]:
+            role = "TUTOR"
+        elif user.role_id == ROLE_IDS[RoleType.TUTOR]:
+            role = "CLIENT"
+        else:
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST, "counterparty_role zorunlu"
+            )
     return await messaging_service.send_message(
         db,
         sender=user,
+        counterparty_role=role,
         counterparty_id=counterparty_id,
         body=payload.body,
         reply_to_id=payload.reply_to_id,

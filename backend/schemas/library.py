@@ -253,3 +253,33 @@ class LibraryRegister(BaseModel):
 
 class LibraryRejectRequest(BaseModel):
     reason: str | None = Field(default=None, max_length=500)
+
+
+# ── İnternet hız testi (wifi) ────────────────────────────────────────────────────
+
+
+class SpeedTestCreate(BaseModel):
+    """Tarayıcıda ölçülen sonuç. Mbps 0..10000, ping 0..100000 ms ile sınırlanır."""
+
+    download_mbps: float = Field(ge=0, le=10000)
+    upload_mbps: float = Field(ge=0, le=10000)
+    ping_ms: int = Field(ge=0, le=100000)
+
+
+class LibrarySpeedTestOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    download_mbps: float
+    upload_mbps: float
+    ping_ms: int
+    created_at: datetime.datetime
+
+
+class LibrarySpeedTestStats(BaseModel):
+    count: int = 0
+    avg_download_mbps: float | None = None
+    avg_upload_mbps: float | None = None
+    avg_ping_ms: int | None = None
+    last_tested_at: datetime.datetime | None = None
+    recent: list[LibrarySpeedTestOut] = []

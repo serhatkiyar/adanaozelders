@@ -46,14 +46,18 @@ export default function Marketplace() {
   const [subjects, setSubjects] = useState<string[]>(() =>
     searchParams.getAll("subject")
   );
+  // Sınav bağlamı (TYT/AYT/KPSS…) — ana sayfadan gelir; sert filtre değil, boost.
+  const [exam, setExam] = useState(() => searchParams.get("exam") ?? "");
   const [showFilters, setShowFilters] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const qParam = searchParams.get("q");
     const subjectParams = searchParams.getAll("subject");
+    const examParam = searchParams.get("exam");
     if (qParam !== null) setQ(qParam);
     if (subjectParams.length) setSubjects(subjectParams);
+    setExam(examParam ?? "");
   }, [searchParams]);
   const [minRate, setMinRate] = useState("");
   const [maxRate, setMaxRate] = useState("");
@@ -105,6 +109,7 @@ export default function Marketplace() {
     const p: TutorSearchParams = { limit, offset: 0, sort };
     if (debouncedQ.trim()) p.q = debouncedQ.trim();
     if (subjects.length) p.subject = subjects;
+    if (exam.trim()) p.exam = exam.trim();
     const min = Number(debouncedMin);
     const max = Number(debouncedMax);
     if (debouncedMin && !Number.isNaN(min) && min >= 0) p.min_rate = min;
@@ -123,6 +128,7 @@ export default function Marketplace() {
     return p;
   }, [
     subjects,
+    exam,
     debouncedQ,
     debouncedMin,
     debouncedMax,
@@ -139,12 +145,13 @@ export default function Marketplace() {
   const { data, isLoading, isFetching, isError, error } = useTutorSearch(params);
 
   const hasFilters =
-    !!q || subjects.length > 0 || !!minRate || !!maxRate || modes.length > 0 ||
+    !!q || subjects.length > 0 || !!exam || !!minRate || !!maxRate || modes.length > 0 ||
     !!gender || !!minAge || !!maxAge || sort !== TutorSort.RELEVANCE;
 
   const clearAll = () => {
     setQ("");
     setSubjects([]);
+    setExam("");
     setMinRate("");
     setMaxRate("");
     setSort(TutorSort.RELEVANCE);
@@ -196,9 +203,19 @@ export default function Marketplace() {
           </button>
         </div>
 
-        {/* ── Selected subjects ── */}
-        {subjects.length > 0 && (
+        {/* ── Selected subjects + sınav bağlamı ── */}
+        {(subjects.length > 0 || !!exam) && (
           <div className="flex flex-wrap gap-2">
+            {exam && (
+              <button
+                onClick={() => setExam("")}
+                title="Sınav bağlamı (sıralamayı etkiler)"
+                className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700 transition hover:bg-amber-100 dark:bg-amber-500/15 dark:text-amber-300 dark:hover:bg-amber-500/25"
+              >
+                {exam}
+                <span aria-hidden>✕</span>
+              </button>
+            )}
             {subjects.map((s) => (
               <button
                 key={s}

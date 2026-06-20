@@ -39,8 +39,8 @@ export const PATHS = {
   verifyEmail: "/e-posta-dogrula",
 
   // ── Oturum-içi (DÜZ, role-adaptive) ──
-  /** Ders talepleri listesi (CLIENT). */
-  bookings: "/ders-talepleri",
+  /** Rezervasyonlar (Ders + Biletler) (CLIENT). Eğitmen için sadece dersler. */
+  bookings: "/rezervasyonlar",
   /** Ders/talep detayı — CLIENT + TUTOR ortak. */
   lesson: "/ders-talepleri/:id",
   messages: "/mesajlar",
@@ -51,8 +51,9 @@ export const PATHS = {
   demands: "/talepler",
   exams: "/denemeler",
   /** Öğrencinin deneme oturumu biletleri (QR). */
-  tickets: "/biletlerim",
   tasks: "/gorevler",
+  /** Bildirimler gelen kutusu (tüm roller). */
+  notifications: "/bildirimler",
   /** Kazanç & ödeme bakiyesi (TUTOR + LIBRARY_OPERATOR). */
   balance: "/bakiyem",
   leaderboard: "/liderlik",
@@ -99,16 +100,22 @@ export const ROUTES = {
   bookings: PATHS.bookings,
   lesson: (id: string | number) => `/ders-talepleri/${id}`,
   messages: PATHS.messages,
-  /** Belirli bir kişiyle sohbeti açar (mesajlaşma sayfası to/name query'siyle). */
-  messageWith: (counterpartId: string | number, name: string) =>
-    `/mesajlar?to=${counterpartId}&name=${encodeURIComponent(name)}`,
+  /** Belirli bir kişiyle/kütüphaneyle sohbeti açar (to/name + opsiyonel role). */
+  messageWith: (
+    counterpartId: string | number,
+    name: string,
+    role?: "CLIENT" | "TUTOR" | "LIBRARY"
+  ) =>
+    `/mesajlar?to=${counterpartId}&name=${encodeURIComponent(name)}${
+      role ? `&role=${role}` : ""
+    }`,
   calendar: PATHS.calendar,
   favorites: PATHS.favorites,
   questions: PATHS.questions,
   demands: PATHS.demands,
   exams: PATHS.exams,
-  tickets: PATHS.tickets,
   tasks: PATHS.tasks,
+  notifications: PATHS.notifications,
   balance: PATHS.balance,
   leaderboard: PATHS.leaderboard,
   learn: PATHS.learn,

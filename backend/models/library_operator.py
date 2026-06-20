@@ -8,13 +8,20 @@ from models.mixins import (
     EmailVerificationMixin,
     LastSeenMixin,
     NameMixin,
+    PhoneVerificationMixin,
     SoftDeleteMixin,
     TimestampMixin,
 )
 
 
 class LibraryOperator(
-    Base, NameMixin, TimestampMixin, SoftDeleteMixin, LastSeenMixin, EmailVerificationMixin
+    Base,
+    NameMixin,
+    TimestampMixin,
+    SoftDeleteMixin,
+    LastSeenMixin,
+    EmailVerificationMixin,
+    PhoneVerificationMixin,
 ):
     """Bir kütüphaneye bağlı operatör (kütüphaneci) giriş hesabı. Admin oluşturur.
 

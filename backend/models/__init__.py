@@ -23,6 +23,7 @@ from models.library import (
     LibraryStatus,
 )
 from models.library_bookmark import LibraryBookmark
+from models.library_speedtest import LibrarySpeedTest
 from models.library_exam import (
     ExamRegistration,
     ExamSessionStatus,
@@ -31,7 +32,8 @@ from models.library_exam import (
 )
 from models.library_exam_catalog import ExamType, LibraryExamCatalog
 from models.library_operator import LibraryOperator
-from models.messaging import Conversation, Message
+from models.messaging import Conversation, Message, MessageReaction
+from models.name_change_request import NameChangeRequest
 from models.study_reservation import StudyReservation
 from models.notification import Notification
 from models.payment import Payment, PaymentStatus
@@ -50,6 +52,7 @@ from models.tutor import (
     TutorSubject,
 )
 from models.verification_token import TokenPurpose, VerificationToken
+from models.phone_otp import PhoneOtp
 
 # PostgreSQL eklentileri: btree_gist (booking GiST exclusion) + pg_trgm (trigram
 # arama). Üretim/açılış yolu artık `alembic upgrade head` olduğundan extension'lar
@@ -88,6 +91,7 @@ __all__ = [
     "Library",
     "LibraryAmenity",
     "LibraryBookmark",
+    "LibrarySpeedTest",
     "LibraryExamCatalog",
     "LibraryExamSession",
     "LibraryHours",
@@ -96,6 +100,7 @@ __all__ = [
     "LibraryReview",
     "LibraryStatus",
     "Message",
+    "MessageReaction",
     "RegistrationStatus",
     "StudyReservation",
     "Notification",
@@ -126,4 +131,6 @@ __all__ = [
     "TutorStatus",
     "TutorSubject",
     "VerificationToken",
+    "PhoneOtp",
+    "NameChangeRequest",
 ]

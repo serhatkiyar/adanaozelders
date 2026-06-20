@@ -40,11 +40,16 @@ export async function listMessages(
 export async function sendMessage(
   counterpartyId: number,
   body: string,
-  replyToId?: number | null
+  replyToId?: number | null,
+  counterpartyRole?: string | null
 ): Promise<MessageOut> {
   const { data } = await apiClient.post<MessageOut>(
     `/messages/${counterpartyId}`,
-    { body, reply_to_id: replyToId ?? null }
+    {
+      body,
+      reply_to_id: replyToId ?? null,
+      counterparty_role: counterpartyRole ?? null,
+    }
   );
   return data;
 }

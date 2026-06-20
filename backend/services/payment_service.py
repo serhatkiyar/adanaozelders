@@ -37,10 +37,11 @@ async def get_for_booking(db: AsyncSession, booking_id: int) -> Payment | None:
 async def create_for_booking(db: AsyncSession, booking: Booking) -> Payment | None:
     """Tutor kabul ettiğinde ödeme kaydı oluşturur (PENDING).
 
-    booking.price yoksa (eğitmen ücreti tanımsız) ödeme kurulmaz. Zaten ödeme varsa
-    (ör. reschedule sonrası tekrar accept) mevcut kayıt döner — idempotent.
+    booking.price yoksa (eğitmen ücreti tanımsız) ya da ücretsiz ilk dersse (price=0)
+    ödeme kurulmaz. Zaten ödeme varsa (ör. reschedule sonrası tekrar accept) mevcut
+    kayıt döner — idempotent.
     """
-    if booking.price is None:
+    if booking.price is None or Decimal(str(booking.price)) == 0:
         return None
     existing = await get_for_booking(db, booking.id)
     if existing is not None:

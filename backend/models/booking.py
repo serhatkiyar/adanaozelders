@@ -52,6 +52,10 @@ class Booking(Base, TimestampMixin, SoftDeleteMixin):
     )
 
     price: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)
+    # İlk ders ücretsiz talebi mi? Açıksa price=0 ve ödeme adımı atlanır.
+    is_free_lesson: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("false")
+    )
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     cancel_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
     # Ders biçimi: 'ONLINE' (uzaktan) | 'IN_PERSON' (yüzyüze). Canlı link yalnız ONLINE'da.

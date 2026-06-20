@@ -9,6 +9,9 @@ class MessageCreate(BaseModel):
     body: str = Field(min_length=1, max_length=4000)
     # Bu mesaj hangi mesaja yanıt (aynı sohbet içinde). Opsiyonel.
     reply_to_id: int | None = None
+    # Alıcının taraf türü: CLIENT | TUTOR | LIBRARY. Verilmezse sunucu gönderene
+    # göre çıkarır (CLIENT→TUTOR, TUTOR→CLIENT); kütüphaneyle yazışmada zorunlu.
+    counterparty_role: str | None = None
 
 
 class ReplyPreview(BaseModel):
@@ -42,6 +45,8 @@ class MessageOut(BaseModel):
     reply_to_id: int | None = None
     reply_preview: ReplyPreview | None = None
     reactions: list[ReactionOut] = []
+    msg_type: str = "text"
+    meta_data: dict | None = None
 
 
 class ConversationOut(BaseModel):
@@ -55,9 +60,13 @@ class ConversationOut(BaseModel):
     counterparty_id: int | None = None
     counterparty_name: str | None = None
     counterparty_avatar_url: str | None = None
+    # Karşı tarafın türü: CLIENT | TUTOR | LIBRARY (frontend doğru hedeflesin).
+    counterparty_role: str | None = None
     last_message: str | None = None
     last_message_at: datetime.datetime | None = None
     unread: int = 0
+    # Karşı tarafın bu sohbeti en son okuduğu an ("Görüldü" göstergesi için).
+    counterparty_last_read_at: datetime.datetime | None = None
     # İstek sahibi bu sohbeti arşivlemiş mi?
     archived: bool = False
 
@@ -71,6 +80,7 @@ class MessageSearchHit(BaseModel):
     counterparty_id: int | None = None
     counterparty_name: str | None = None
     counterparty_avatar_url: str | None = None
+    counterparty_role: str | None = None
     sender_role: str
     body: str
     created_at: datetime.datetime

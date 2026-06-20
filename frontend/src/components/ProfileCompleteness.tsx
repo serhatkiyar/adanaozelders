@@ -13,6 +13,7 @@ export function ProfileCompleteness({
   const items = [
     { label: "Başlık", done: !!tutor.headline?.trim() },
     { label: "Biyografi", done: !!tutor.bio?.trim() },
+    { label: "Ders Hakkında", done: !!tutor.lesson_info?.trim() },
     { label: "Saatlik ücret", done: parseMoney(tutor.hourly_rate) !== null },
     { label: "Eğitim şekli", done: !!tutor.teaching_mode },
     { label: "Verdiğin dersler", done: (tutor.subjects?.length ?? 0) > 0 },
