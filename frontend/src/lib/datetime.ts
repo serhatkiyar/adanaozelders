@@ -36,6 +36,37 @@ export function localInputToIso(value: string): string {
   return new Date(value).toISOString();
 }
 
+// ── Türkiye saati (sabit UTC+3, DST yok — backend APP_UTC_OFFSET_HOURS=3) ──
+// Rezervasyon saatleri TARAYICI saat diliminden BAĞIMSIZ olarak Türkiye duvar-saati
+// kabul edilir. Böylece backend'in sabit UTC+3 müsaitlik kontrolüyle birebir uyumludur
+// ve UTC+3 olmayan tarayıcılarda saat kayması olmaz.
+
+// "YYYY-MM-DDTHH:mm" (Türkiye duvar-saati) -> UTC ISO ("Z"). Tarayıcı tz'inden bağımsız.
+export function istanbulInputToIso(value: string): string {
+  return new Date(`${value}:00+03:00`).toISOString();
+}
+
+// Şu anın Türkiye saatiyle "YYYY-MM-DD" tarihi + saat/dakika (geçmiş kontrolleri için).
+export function istanbulNow(): { dateStr: string; hour: number; minute: number } {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Istanbul",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(new Date());
+  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
+  let hour = parseInt(get("hour"), 10);
+  if (hour === 24) hour = 0; // bazı motorlarda gece yarısı 24 döner
+  return {
+    dateStr: `${get("year")}-${get("month")}-${get("day")}`,
+    hour,
+    minute: parseInt(get("minute"), 10),
+  };
+}
+
 // Sohbet listesi için kısa zaman: bugünse "14:30", değilse "20 Mar".
 export function formatChatTime(iso?: string | null): string {
   if (!iso) return "";

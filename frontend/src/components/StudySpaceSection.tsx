@@ -4,6 +4,7 @@ import { useStudyQuote, useReserveStudy, usePayStudy } from "@/hooks/useStudy";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useAuthStore } from "@/store/authStore";
 import { formatTRY } from "@/lib/money";
+import { istanbulInputToIso } from "@/lib/datetime";
 import { getErrorMessage } from "@/lib/errors";
 import { toast } from "@/store/toastStore";
 import { ROUTES } from "@/lib/routes";
@@ -37,10 +38,11 @@ export function StudySpaceSection({ library }: { library: LibraryDetailOut }) {
   const [start, setStart] = useState("09:00");
   const [duration, setDuration] = useState(180);
 
-  // Başlangıç (yerel) ve süreden bitiş hesaplanır — gece yarısını da doğru aşar.
+  // Başlangıç Türkiye duvar-saati kabul edilir (+03:00, backend de UTC+3); süreden
+  // bitiş hesaplanır (gece yarısını da doğru aşar). Tarayıcı tz'inden bağımsız.
   const startDate = useMemo(() => {
     if (!date || !start) return null;
-    const d = new Date(`${date}T${start}`);
+    const d = new Date(istanbulInputToIso(`${date}T${start}`));
     return isNaN(d.getTime()) ? null : d;
   }, [date, start]);
   const endDate = useMemo(

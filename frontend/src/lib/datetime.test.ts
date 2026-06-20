@@ -2,8 +2,21 @@ import { describe, it, expect } from "vitest";
 import {
   formatLastSeen,
   formatResponseTime,
+  istanbulInputToIso,
   localInputToIso,
 } from "@/lib/datetime";
+
+describe("istanbulInputToIso", () => {
+  it("Türkiye duvar-saatini sabit +03:00 ile UTC'ye çevirir (tarayıcı tz'inden bağımsız)", () => {
+    // 14:00 Türkiye = 11:00 UTC, her zaman.
+    expect(istanbulInputToIso("2026-06-25T14:00")).toBe("2026-06-25T11:00:00.000Z");
+    expect(istanbulInputToIso("2026-01-10T09:30")).toBe("2026-01-10T06:30:00.000Z");
+  });
+  it("gün sınırını doğru taşır", () => {
+    // 01:00 Türkiye = önceki gün 22:00 UTC.
+    expect(istanbulInputToIso("2026-06-25T01:00")).toBe("2026-06-24T22:00:00.000Z");
+  });
+});
 
 const agoMin = (m: number) => new Date(Date.now() - m * 60_000).toISOString();
 

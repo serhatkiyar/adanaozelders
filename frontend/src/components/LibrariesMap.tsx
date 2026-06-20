@@ -95,6 +95,7 @@ export function LibrariesMap({
   enablePanel = true,
 }: LibrariesMapProps) {
   const [selected, setSelected] = useState<LibrarySearchOut | null>(null);
+  const [satellite, setSatellite] = useState(false);
   const gate = useMapGate();
 
   const located = useMemo(
@@ -130,10 +131,20 @@ export function LibrariesMap({
         style={{ height: "100%", width: "100%" }}
       >
         <MapGestureController {...gate} />
-        <TileLayer
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-        />
+        {satellite ? (
+          <TileLayer
+            key="satellite"
+            url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+            attribution='Tiles &copy; Esri — Source: Esri, Maxar, Earthstar Geographics'
+            maxZoom={19}
+          />
+        ) : (
+          <TileLayer
+            key="osm"
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+          />
+        )}
         <FitBounds points={points} />
         {enablePanel && <FlyToSelected lib={selected} />}
         {located.map((lib) => (
@@ -188,6 +199,15 @@ export function LibrariesMap({
       </MapContainer>
 
       <MapGateHint active={gate.active} />
+
+      {/* Harita ↔ Uydu geçişi (sağ-alt; arama sağ-üstte) */}
+      <button
+        type="button"
+        onClick={() => setSatellite((s) => !s)}
+        className="absolute bottom-3 right-3 z-[1000] rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow ring-1 ring-black/10 transition hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-200 dark:ring-white/10 dark:hover:bg-slate-700"
+      >
+        {satellite ? "Harita" : "Uydu"}
+      </button>
 
       {enablePanel && selected && (
         <LibraryMapPanel library={selected} onClose={() => setSelected(null)} />
