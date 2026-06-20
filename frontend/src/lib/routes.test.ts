@@ -27,8 +27,8 @@ describe("PATHS — düz (flat) semantik yapı", () => {
     expect(PATHS.profile).toBe("/hesabim");
     expect(PATHS.messages).toBe("/mesajlar");
     expect(PATHS.settings).toBe("/ayarlar");
-    // Ders talepleri (ortak stem; liste + detay)
-    expect(PATHS.bookings).toBe("/ders-talepleri");
+    // Rezervasyonlar (CLIENT liste: ders + bilet) + ders/talep detayı (ortak stem)
+    expect(PATHS.bookings).toBe("/rezervasyonlar");
     expect(PATHS.lesson).toBe("/ders-talepleri/:id");
     // Tutor yüzeyi
     expect(PATHS.tutorListing).toBe("/ilan-ayarlari");
