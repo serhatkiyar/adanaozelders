@@ -8,6 +8,16 @@ export async function fetchNotifications(): Promise<NotificationOut[]> {
   return data;
 }
 
+export async function fetchNotificationsPaginated(
+  limit: number,
+  offset: number
+): Promise<NotificationOut[]> {
+  const { data } = await apiClient.get<NotificationOut[]>("/notifications", {
+    params: { limit, offset },
+  });
+  return data;
+}
+
 export async function fetchUnreadCount(): Promise<number> {
   const { data } = await apiClient.get<{ count: number }>(
     "/notifications/unread-count"

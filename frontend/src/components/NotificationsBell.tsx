@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   useMarkAllNotificationsRead,
   useMarkNotificationRead,
@@ -7,6 +7,7 @@ import {
   useUnreadCount,
 } from "@/hooks/useNotifications";
 import { formatDateTime } from "@/lib/datetime";
+import { ROUTES } from "@/lib/routes";
 import type { NotificationOut } from "@/types";
 
 export function NotificationsBell() {
@@ -18,6 +19,14 @@ export function NotificationsBell() {
   const { data: items, isLoading } = useNotifications(open);
   const markRead = useMarkNotificationRead();
   const markAll = useMarkAllNotificationsRead();
+
+  // ── Airbnb-style: açılır açılmaz tüm bildirimleri otomatik okundu işaretle ──
+  useEffect(() => {
+    if (open && unread > 0) {
+      markAll.mutate();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -131,6 +140,29 @@ export function NotificationsBell() {
                 ))}
               </ul>
             )}
+          </div>
+
+          {/* ── Tüm bildirimleri gör — özel sayfaya yönlendir ── */}
+          <div className="border-t border-slate-100 dark:border-slate-700">
+            <Link
+              to={ROUTES.notifications}
+              onClick={() => setOpen(false)}
+              className="flex items-center justify-center gap-1.5 px-4 py-3 text-sm font-medium text-indigo-600 transition hover:bg-slate-50 dark:text-indigo-400 dark:hover:bg-slate-700/40"
+            >
+              Tüm bildirimleri gör
+              <svg
+                viewBox="0 0 20 20"
+                fill="currentColor"
+                className="h-4 w-4"
+                aria-hidden
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M5.22 14.78a.75.75 0 0 1 0-1.06l3.22-3.22H4a.75.75 0 0 1 0-1.5h4.44L5.22 5.78a.75.75 0 0 1 1.06-1.06l4.5 4.5a.75.75 0 0 1 0 1.06l-4.5 4.5a.75.75 0 0 1-1.06 0Z"
+                  clipRule="evenodd"
+                />
+              </svg>
+            </Link>
           </div>
         </div>
       )}
