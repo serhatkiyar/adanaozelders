@@ -7,7 +7,12 @@ from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.deps import CurrentUser, get_current_active_user, oauth2_scheme
+from api.deps import (
+    CurrentUser,
+    get_current_active_user,
+    oauth2_scheme,
+    user_rate_limit,
+)
 from core.database import get_db
 from core.config import settings
 from core.ratelimit import rate_limit
@@ -47,12 +52,30 @@ from schemas.auth import (
     Token,
 )
 from schemas.tutor import TutorOut
-from schemas.user import PasswordChange, UserOut, UserStats, UserUpdate
+from schemas.user import (
+    NameChangeRequestOut,
+    PasswordChange,
+    PhoneOtpVerify,
+    PhoneRequestResult,
+    PhoneUpdate,
+    UserOut,
+    UserStats,
+    UserUpdate,
+)
 from services import (
     auth_service,
     booking_service,
+    name_change_service,
+    phone_service,
     refresh_token_service,
     verification_service,
+)
+
+# SMS OTP gönderimi — kullanıcı bazlı rate-limit (spam/maliyet koruması).
+_sms_limit = user_rate_limit(
+    key="sms_otp",
+    limit=settings.RATE_LIMIT_SMS,
+    window_seconds=settings.RATE_LIMIT_WINDOW_SECONDS,
 )
 
 # role_id -> kullanıcı modeli (refresh sırasında kullanıcıyı yüklemek için).
@@ -270,6 +293,43 @@ async def update_me(
     db: AsyncSession = Depends(get_db),
 ):
     return await auth_service.update_me(db, user, payload)
+
+
+@router.get("/me/name-change-requests", response_model=list[NameChangeRequestOut])
+async def my_name_change_requests(
+    user: CurrentUser = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Kullanıcının kendi ad/kullanıcı adı değişiklik talepleri (durumlarıyla)."""
+    return await name_change_service.list_for_user(
+        db, user_id=user.id, role_id=user.role_id
+    )
+
+
+@router.post(
+    "/me/phone",
+    response_model=PhoneRequestResult,
+    dependencies=[Depends(_sms_limit)],
+)
+async def request_phone_otp(
+    payload: PhoneUpdate,
+    user: CurrentUser = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Telefon numarasını kaydeder ve SMS ile OTP gönderir (yeniden gönderim için de
+    bu uç çağrılır). Geliştirmede kod backend loglarında görünür."""
+    masked = await phone_service.request_otp(db, user, payload.phone)
+    return PhoneRequestResult(phone_masked=masked)
+
+
+@router.post("/me/phone/verify", response_model=UserOut)
+async def verify_phone_otp(
+    payload: PhoneOtpVerify,
+    user: CurrentUser = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    await phone_service.verify_otp(db, user, payload.code)
+    return user
 
 
 @router.post("/me/password", status_code=status.HTTP_204_NO_CONTENT)

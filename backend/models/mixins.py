@@ -4,7 +4,7 @@ import datetime
 
 from decimal import Decimal
 
-from sqlalchemy import DateTime, Numeric, String, func
+from sqlalchemy import DateTime, Integer, Numeric, String, func, text
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -14,6 +14,15 @@ class NameMixin:
     last_name: Mapped[str] = mapped_column(String(75), nullable=False)
     username: Mapped[str] = mapped_column(String(50), nullable=False)
     avatar_url: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    # Kimlik bütünlüğü: ad-soyad ve kullanıcı adı serbestçe değiştirilemez. İlk
+    # değişiklik serbest; ikinci ve sonrası admin onayı + gerekçe gerektirir
+    # (bkz. name_change_request + name_change_service).
+    name_change_count: Mapped[int] = mapped_column(
+        Integer, nullable=False, server_default=text("0")
+    )
+    username_change_count: Mapped[int] = mapped_column(
+        Integer, nullable=False, server_default=text("0")
+    )
 
     @hybrid_property
     def full_name(self) -> str:
@@ -54,6 +63,21 @@ class EmailVerificationMixin:
     @property
     def email_verified(self) -> bool:
         return self.email_verified_at is not None
+
+
+class PhoneVerificationMixin:
+    """Telefon doğrulama durumu. ``phone`` (normalize) + ``phone_verified_at`` doluysa
+    numara SMS OTP ile doğrulanmıştır. Numara değişince doğrulama düşer.
+    ``phone_verified`` türetilmiş bool, şemalarda (UserOut) doğrudan sunulur."""
+
+    phone: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    phone_verified_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    @property
+    def phone_verified(self) -> bool:
+        return self.phone_verified_at is not None
 
 
 class LastSeenMixin:

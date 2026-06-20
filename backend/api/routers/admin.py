@@ -39,13 +39,19 @@ class PasswordResetOut(BaseModel):
 from models.report import ReportStatus
 from schemas.report import ReportCountOut, ReportOut, ReportResolve
 from schemas.education import AdminEducationOut, EducationOut, EducationVerifyIn
+from schemas.user import NameChangeRequestOut
 from services import (
     admin_service,
     audit_service,
     education_service,
+    name_change_service,
     report_service,
     tutor_service,
 )
+
+
+class NameChangeReview(BaseModel):
+    note: str | None = Field(default=None, max_length=500)
 
 router = APIRouter(
     prefix="/admin",
@@ -329,3 +335,62 @@ async def resolve_report(
         details=payload.resolution,
     )
     return report
+
+
+# ── Ad / Kullanıcı Adı Değişiklik Onay Kuyruğu ──
+
+
+@router.get("/name-change-requests", response_model=list[NameChangeRequestOut])
+async def list_name_change_requests(
+    status_filter: str | None = Query(default=None, alias="status"),
+    limit: int = Query(default=100, ge=1, le=200),
+    db: AsyncSession = Depends(get_db),
+):
+    return await name_change_service.list_admin(
+        db, status_filter=status_filter, limit=limit
+    )
+
+
+@router.post(
+    "/name-change-requests/{request_id}/approve",
+    response_model=NameChangeRequestOut,
+)
+async def approve_name_change(
+    request_id: int,
+    admin: Admin = Depends(_current_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    req = await name_change_service.approve(db, request_id, admin_id=admin.id)
+    await audit_service.record(
+        db,
+        actor=admin,
+        action="name_change.approve",
+        target_type="name_change_request",
+        target_id=request_id,
+        details=req.kind,
+    )
+    return req
+
+
+@router.post(
+    "/name-change-requests/{request_id}/reject",
+    response_model=NameChangeRequestOut,
+)
+async def reject_name_change(
+    request_id: int,
+    payload: NameChangeReview,
+    admin: Admin = Depends(_current_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    req = await name_change_service.reject(
+        db, request_id, admin_id=admin.id, note=payload.note
+    )
+    await audit_service.record(
+        db,
+        actor=admin,
+        action="name_change.reject",
+        target_type="name_change_request",
+        target_id=request_id,
+        details=payload.note,
+    )
+    return req
