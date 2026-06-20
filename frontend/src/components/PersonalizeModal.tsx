@@ -572,6 +572,34 @@ function DiscoverySection() {
   );
 }
 
+/* ── Ayarlar sayfası için düz panel (modal kabuğu olmadan) ───────────── */
+
+// "Görünüm ve tercihler" kategorisinde kullanılır: tüm bölümleri alt alta
+// dizer. Modaldakiyle aynı bölüm bileşenlerini paylaşır (kod tekrarı yok).
+export function PersonalizePanel({
+  navItems,
+  roleId,
+}: {
+  navItems?: NavItem[];
+  roleId?: number;
+}) {
+  return (
+    <div className="space-y-8">
+      <ThemeSection />
+      <div className="border-t border-slate-100 dark:border-slate-800" />
+      <NavbarWidgetSection />
+      {navItems && navItems.length > 0 && roleId != null && (
+        <>
+          <div className="border-t border-slate-100 dark:border-slate-800" />
+          <NavigationSection roleId={roleId} navItems={navItems} />
+        </>
+      )}
+      <div className="border-t border-slate-100 dark:border-slate-800" />
+      <DiscoverySection />
+    </div>
+  );
+}
+
 /* ── Modal kabuğu (VS Code ayarları düzeni) ──────────────────────────── */
 
 interface SectionDef {

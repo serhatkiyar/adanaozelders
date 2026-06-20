@@ -26,7 +26,12 @@ from schemas.payment import (
     PaymentOut,
     PlatformSummary,
 )
-from services import library_exam_service, payment_service, study_reservation_service
+from services import (
+    library_exam_service,
+    payment_service,
+    phone_service,
+    study_reservation_service,
+)
 
 logger = logging.getLogger("ceyhan.payments")
 
@@ -82,6 +87,7 @@ async def pay_booking(
     client: Client = Depends(require_roles(RoleType.CLIENT)),
     db: AsyncSession = Depends(get_db),
 ):
+    phone_service.require_phone_verified(client)
     booking = await _booking_or_404(db, booking_id)
     if booking.client_id != client.id:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Not your booking")

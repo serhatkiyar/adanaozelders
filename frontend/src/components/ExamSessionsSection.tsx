@@ -161,7 +161,7 @@ function ExamSessionRow({
         </span>
         {status === "PAID" || status === "ATTENDED" ? (
           <Link
-            to={ROUTES.tickets}
+            to={ROUTES.bookings}
             className="rounded-xl bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700 ring-1 ring-emerald-200 transition hover:bg-emerald-100 dark:bg-emerald-500/15 dark:text-emerald-300 dark:ring-emerald-700/40"
           >
             {status === "ATTENDED" ? "✓ Katıldın" : "✓ Biletin hazır"}

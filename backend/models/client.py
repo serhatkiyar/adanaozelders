@@ -12,6 +12,7 @@ from models.mixins import (
     EmailVerificationMixin,
     LastSeenMixin,
     NameMixin,
+    PhoneVerificationMixin,
     SoftDeleteMixin,
     TimestampMixin,
 )
@@ -19,7 +20,13 @@ from models.tutor import Gender
 
 
 class Client(
-    Base, NameMixin, TimestampMixin, SoftDeleteMixin, LastSeenMixin, EmailVerificationMixin
+    Base,
+    NameMixin,
+    TimestampMixin,
+    SoftDeleteMixin,
+    LastSeenMixin,
+    EmailVerificationMixin,
+    PhoneVerificationMixin,
 ):
     __tablename__ = "clients"
 

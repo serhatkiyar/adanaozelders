@@ -114,7 +114,7 @@ export function Toaster() {
   return (
     <div
       aria-live="polite"
-      className="pointer-events-none fixed right-4 top-4 z-50 flex w-full max-w-sm flex-col gap-2.5"
+      className="pointer-events-none fixed left-4 bottom-4 z-[999] flex w-full max-w-sm flex-col-reverse gap-2.5"
     >
       {toasts.map((t) => (
         <ToastItem key={t.id} t={t} dismiss={dismiss} />

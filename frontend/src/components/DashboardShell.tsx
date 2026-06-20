@@ -10,12 +10,18 @@ interface DashboardShellProps {
   title: string;
   navItems?: NavItem[];
   children?: ReactNode;
+  /**
+   * Kenardan-kenara (tam-viewport) yerleşim. true iken sayfa kaydırması kapanır,
+   * içerik üst bar altındaki tüm alanı padding'siz doldurur (ör. mesajlaşma).
+   */
+  flush?: boolean;
 }
 
 export function DashboardShell({
   title,
   navItems,
   children,
+  flush = false,
 }: DashboardShellProps) {
   const user = useAuthStore((s) => s.user);
 
@@ -35,7 +41,13 @@ export function DashboardShell({
   }, [title]);
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-900">
+    <div
+      className={
+        flush
+          ? "flex h-screen flex-col overflow-hidden bg-slate-50 dark:bg-slate-900"
+          : "min-h-screen bg-slate-50 dark:bg-slate-900"
+      }
+    >
       <DashboardHeader navItems={navItems} transparent />
 
       {showVerifyBanner && (
@@ -93,7 +105,9 @@ export function DashboardShell({
         </div>
       )}
 
-      <main className="p-4 sm:p-6">{children}</main>
+      <main className={flush ? "min-h-0 flex-1 overflow-hidden" : "p-4 sm:p-6"}>
+        {children}
+      </main>
     </div>
   );
 }

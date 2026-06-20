@@ -40,7 +40,7 @@ from schemas.library_exam import (
     ResultSummaryIn,
     RosterRow,
 )
-from services import library_exam_service
+from services import library_exam_service, phone_service
 
 # Sonuç belgesi (karne/optik) ve oturum cevap anahtarı: PDF veya görsel, 20MB.
 _MAX_DOC_BYTES = 20 * 1024 * 1024
@@ -311,6 +311,7 @@ async def pay(
     client: Client = Depends(require_roles(RoleType.CLIENT)),
     db: AsyncSession = Depends(get_db),
 ):
+    phone_service.require_phone_verified(client)
     registration, redirect_url = await library_exam_service.pay(
         db, client, registration_id,
         client_ip=request.client.host if request.client else None,

@@ -115,17 +115,16 @@ export function DashboardHeader({ navItems, transparent = false }: DashboardHead
           <Icon name="settings" className="h-5 w-5" />
           Ayarlar
         </NavLink>
-        <button
-          type="button"
-          onClick={() => {
-            onClick();
-            setPersonalizeOpen(true);
-          }}
-          className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm font-medium text-slate-700 transition hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-700"
+        <a
+          href="https://shopier.com"
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={onClick}
+          className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-700"
         >
-          <Icon name="personalize" className="h-5 w-5" />
-          Kişiselleştir
-        </button>
+          <Icon name="shop" className="h-5 w-5" />
+          Mağaza
+        </a>
         <div className="my-1 border-t border-slate-100 dark:border-slate-700" />
         <button
           onClick={() => {
@@ -200,6 +199,19 @@ export function DashboardHeader({ navItems, transparent = false }: DashboardHead
               </NavLink>
             )
           )}
+
+          <a
+            href="https://shopier.com"
+            title="Mağaza"
+            aria-label="Mağaza"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="rounded-lg p-2 transition text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+          >
+            <span className="relative">
+              <Icon name="shop" className="h-5 w-5" />
+            </span>
+          </a>
 
           <NotificationsBell />
 

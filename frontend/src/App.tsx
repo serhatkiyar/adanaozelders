@@ -27,7 +27,6 @@ const TutorProfilePage = lazy(() => import("@/pages/TutorProfilePage"));
 const Libraries = lazy(() => import("@/pages/Libraries"));
 const LibraryDetail = lazy(() => import("@/pages/LibraryDetail"));
 const LibraryRegister = lazy(() => import("@/pages/LibraryRegister"));
-const Tickets = lazy(() => import("@/pages/Tickets"));
 // Yasal sayfalar — tek chunk, belge prop'la seçilir (içerik lib/legalContent.ts)
 const LegalPage = lazy(() => import("@/pages/LegalPage"));
 const OperatorHome = lazy(() => import("@/pages/dashboards/OperatorHome"));
@@ -44,7 +43,7 @@ const Favorites = lazy(() => import("@/pages/Favorites"));
 const StudentProfile = lazy(() => import("@/pages/StudentProfile"));
 const Questions = lazy(() => import("@/pages/Questions"));
 const Exams = lazy(() => import("@/pages/Exams"));
-const StudentBookings = lazy(() => import("@/pages/StudentBookings"));
+const Reservations = lazy(() => import("@/pages/Reservations"));
 const LessonDetail = lazy(() => import("@/pages/LessonDetail"));
 const Messages = lazy(() => import("@/pages/Messages"));
 const Leaderboard = lazy(() => import("@/pages/Leaderboard"));
@@ -60,6 +59,7 @@ const Profile = lazy(() => import("@/pages/Profile"));
 const Settings = lazy(() => import("@/pages/Settings"));
 const Balance = lazy(() => import("@/pages/Balance"));
 const Demands = lazy(() => import("@/pages/Demands"));
+const Notifications = lazy(() => import("@/pages/Notifications"));
 // Geliştirme prototipi: "yırtılan kupon" bilet animasyonu (/test-bilet)
 const TicketTearTest = lazy(() => import("@/pages/TicketTearTest"));
 // Geliştirme prototipi: canlı ders (Jitsi) önizleme (/test-canli-ders)
@@ -153,7 +153,7 @@ function BookingsHome() {
   const { data: user, isLoading } = useCurrentUser();
   if (isLoading || !user) return <FullScreenSpinner />;
   if (user.role_id === ROLE_IDS.TUTOR) return <TutorDashboard />;
-  if (user.role_id === ROLE_IDS.CLIENT) return <StudentBookings />;
+  if (user.role_id === ROLE_IDS.CLIENT) return <Reservations />;
   return <Navigate to={ROUTES.home} replace />;
 }
 
@@ -190,6 +190,7 @@ const LEGACY_STATIC: [string, string][] = [
   ["/messages", ROUTES.messages],
   ["/calendar", ROUTES.calendar],
   ["/leaderboard", ROUTES.leaderboard],
+  ["/biletlerim", ROUTES.bookings],
   // Eski `/panel/*` öneki → yeni düz path
   ["/panel", ROUTES.home],
   ["/panel/profil", ROUTES.profile],
@@ -265,6 +266,7 @@ function App() {
             {/* Talepler — rol delegasyonu sayfa içinde (CLIENT açar, TUTOR yanıtlar) */}
             <Route path={PATHS.demands} element={<Demands />} />
             <Route path={PATHS.leaderboard} element={<Leaderboard />} />
+            <Route path={PATHS.notifications} element={<Notifications />} />
             <Route path={PATHS.profile} element={<Profile />} />
             <Route path={PATHS.settings} element={<Settings />} />
             <Route path={PATHS.questions} element={<PanelQuestions />} />
@@ -277,7 +279,6 @@ function App() {
           <Route element={<ProtectedRoute allowedRoleId={ROLE_IDS.CLIENT} />}>
             <Route path={PATHS.favorites} element={<Favorites />} />
             <Route path={PATHS.exams} element={<Exams />} />
-            <Route path={PATHS.tickets} element={<Tickets />} />
           </Route>
 
           {/* ── Yalnızca TUTOR ── */}
