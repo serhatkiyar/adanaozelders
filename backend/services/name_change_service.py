@@ -1,0 +1,224 @@
+"""Ad-soyad / kullanıcı adı değişiklik kuralı + admin onay kuyruğu.
+
+Kimlik bütünlüğü için bu alanlar serbestçe değiştirilemez:
+- İlk değişiklik doğrudan uygulanır (sayaç artar).
+- İkinci ve sonraki değişiklikler doğrudan uygulanmaz; gerekçeyle birlikte PENDING
+  talep olarak kaydedilir ve admin onaylayınca uygulanır.
+"""
+from __future__ import annotations
+
+import datetime
+
+from fastapi import HTTPException, status
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from models.admin import Admin
+from models.client import Client
+from models.library_operator import LibraryOperator
+from models.name_change_request import NameChangeRequest
+from models.role import ROLE_IDS, RoleType
+from models.tutor import Tutor
+from services import notification_service
+from services.auth_service import _username_taken
+
+# role_id -> kullanıcı modeli (ayrı tablolar; FK yok).
+_ROLE_MODELS: dict[int, type] = {
+    ROLE_IDS[RoleType.ADMIN]: Admin,
+    ROLE_IDS[RoleType.TUTOR]: Tutor,
+    ROLE_IDS[RoleType.CLIENT]: Client,
+    ROLE_IDS[RoleType.LIBRARY_OPERATOR]: LibraryOperator,
+}
+
+
+def _now() -> datetime.datetime:
+    return datetime.datetime.now(datetime.timezone.utc)
+
+
+async def _require_no_pending(
+    db: AsyncSession, user_id: int, role_id: int, kind: str
+) -> None:
+    stmt = select(NameChangeRequest.id).where(
+        NameChangeRequest.user_id == user_id,
+        NameChangeRequest.role_id == role_id,
+        NameChangeRequest.kind == kind,
+        NameChangeRequest.status == "PENDING",
+    )
+    if (await db.execute(stmt)).first() is not None:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Bu alan için zaten admin onayı bekleyen bir talebin var.",
+        )
+
+
+async def apply_or_request(
+    db: AsyncSession,
+    user,
+    *,
+    role_id: int,
+    first_name: str | None,
+    last_name: str | None,
+    username: str | None,
+    reason: str | None,
+) -> dict[str, list[str]]:
+    """Ad-soyad/kullanıcı adı değişikliklerini işler.
+
+    İlk değişiklik doğrudan uygulanır; sonrası gerekçeyle PENDING talebe dönüşür.
+    ``{"applied": [...], "pending": [...]}`` döner (alan adları: NAME / USERNAME).
+    """
+    applied: list[str] = []
+    pending: list[str] = []
+
+    name_changed = (
+        first_name is not None and first_name != user.first_name
+    ) or (last_name is not None and last_name != user.last_name)
+    if name_changed:
+        new_first = first_name if first_name is not None else user.first_name
+        new_last = last_name if last_name is not None else user.last_name
+        if user.name_change_count == 0:
+            user.first_name = new_first
+            user.last_name = new_last
+            user.name_change_count += 1
+            applied.append("NAME")
+        else:
+            if not reason or not reason.strip():
+                raise HTTPException(
+                    status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    "Ad-soyad değişikliği için bir gerekçe yazmalısın.",
+                )
+            await _require_no_pending(db, user.id, role_id, "NAME")
+            db.add(
+                NameChangeRequest(
+                    user_id=user.id,
+                    role_id=role_id,
+                    kind="NAME",
+                    new_first_name=new_first,
+                    new_last_name=new_last,
+                    reason=reason.strip(),
+                )
+            )
+            pending.append("NAME")
+
+    if username is not None and username != user.username:
+        if await _username_taken(
+            db, username, exclude_model=type(user), exclude_id=user.id
+        ):
+            raise HTTPException(status.HTTP_409_CONFLICT, "Username already taken")
+        if user.username_change_count == 0:
+            user.username = username
+            user.username_change_count += 1
+            applied.append("USERNAME")
+        else:
+            if not reason or not reason.strip():
+                raise HTTPException(
+                    status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    "Kullanıcı adı değişikliği için bir gerekçe yazmalısın.",
+                )
+            await _require_no_pending(db, user.id, role_id, "USERNAME")
+            db.add(
+                NameChangeRequest(
+                    user_id=user.id,
+                    role_id=role_id,
+                    kind="USERNAME",
+                    new_username=username,
+                    reason=reason.strip(),
+                )
+            )
+            pending.append("USERNAME")
+
+    await db.flush()
+    return {"applied": applied, "pending": pending}
+
+
+async def list_for_user(
+    db: AsyncSession, *, user_id: int, role_id: int
+) -> list[NameChangeRequest]:
+    """Kullanıcının kendi talepleri (en yeni önce)."""
+    stmt = (
+        select(NameChangeRequest)
+        .where(
+            NameChangeRequest.user_id == user_id,
+            NameChangeRequest.role_id == role_id,
+        )
+        .order_by(NameChangeRequest.created_at.desc())
+    )
+    return list((await db.execute(stmt)).scalars().all())
+
+
+async def list_admin(
+    db: AsyncSession, *, status_filter: str | None = None, limit: int = 100
+) -> list[NameChangeRequest]:
+    stmt = select(NameChangeRequest)
+    if status_filter:
+        stmt = stmt.where(NameChangeRequest.status == status_filter)
+    stmt = stmt.order_by(NameChangeRequest.created_at.desc()).limit(limit)
+    return list((await db.execute(stmt)).scalars().all())
+
+
+async def _get_pending(db: AsyncSession, request_id: int) -> NameChangeRequest:
+    req = await db.get(NameChangeRequest, request_id)
+    if req is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Talep bulunamadı")
+    if req.status != "PENDING":
+        raise HTTPException(status.HTTP_409_CONFLICT, "Talep zaten sonuçlanmış")
+    return req
+
+
+async def approve(
+    db: AsyncSession, request_id: int, *, admin_id: int
+) -> NameChangeRequest:
+    req = await _get_pending(db, request_id)
+    model = _ROLE_MODELS.get(req.role_id)
+    user = await db.get(model, req.user_id) if model else None
+    if user is None or user.deleted_at is not None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Kullanıcı bulunamadı")
+
+    if req.kind == "NAME":
+        if req.new_first_name:
+            user.first_name = req.new_first_name
+        if req.new_last_name:
+            user.last_name = req.new_last_name
+        user.name_change_count += 1
+    elif req.kind == "USERNAME":
+        if req.new_username and await _username_taken(
+            db, req.new_username, exclude_model=type(user), exclude_id=user.id
+        ):
+            raise HTTPException(
+                status.HTTP_409_CONFLICT,
+                "Bu kullanıcı adı bu sırada başkası tarafından alınmış.",
+            )
+        if req.new_username:
+            user.username = req.new_username
+        user.username_change_count += 1
+
+    req.status = "APPROVED"
+    req.reviewed_by = admin_id
+    req.reviewed_at = _now()
+    await db.flush()
+    await notification_service.notify(
+        db,
+        user_id=req.user_id,
+        role_id=req.role_id,
+        message="Ad/kullanıcı adı değişiklik talebin onaylandı.",
+        link="/hesabim",
+    )
+    return req
+
+
+async def reject(
+    db: AsyncSession, request_id: int, *, admin_id: int, note: str | None = None
+) -> NameChangeRequest:
+    req = await _get_pending(db, request_id)
+    req.status = "REJECTED"
+    req.review_note = (note or "").strip() or None
+    req.reviewed_by = admin_id
+    req.reviewed_at = _now()
+    await db.flush()
+    await notification_service.notify(
+        db,
+        user_id=req.user_id,
+        role_id=req.role_id,
+        message="Ad/kullanıcı adı değişiklik talebin reddedildi.",
+        link="/hesabim",
+    )
+    return req
