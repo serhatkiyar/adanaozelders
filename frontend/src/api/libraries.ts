@@ -2,6 +2,7 @@ import { apiClient } from "@/api/axios";
 import type {
   EarningTransaction,
   LibraryDetailOut,
+  LibraryDistrictOut,
   LibraryEarningsOut,
   LibraryRegisterPayload,
   LibraryReviewCreate,
@@ -69,12 +70,19 @@ export async function resubmitLibrary(id: number): Promise<LibraryDetailOut> {
 export interface LibrarySearchParams {
   q?: string;
   amenities?: string[];
+  district?: string;
   lat?: number;
   lng?: number;
   radius_km?: number;
   sort?: "rating" | "distance";
   limit?: number;
   offset?: number;
+}
+
+/** İlçe filtresi dropdown'ı için: aktif kütüphanesi olan ilçeler + sayıları. */
+export async function fetchLibraryDistricts(): Promise<LibraryDistrictOut[]> {
+  const { data } = await apiClient.get<LibraryDistrictOut[]>("/libraries/districts");
+  return data;
 }
 
 export async function searchLibraries(

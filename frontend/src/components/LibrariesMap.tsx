@@ -183,12 +183,16 @@ export function LibrariesMap({
                       Profili gör →
                     </Link>
                     <a
-                      href={`https://www.google.com/maps/dir/?api=1&destination=${lib.location_lat},${lib.location_lng}`}
+                      href={
+                        lib.google_place_id
+                          ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(lib.name)}&query_place_id=${lib.google_place_id}`
+                          : `https://www.google.com/maps/search/?api=1&query=${lib.location_lat},${lib.location_lng}`
+                      }
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-1 rounded-lg bg-slate-100 px-3 py-1 text-xs font-semibold !text-slate-700 hover:bg-slate-200 hover:!text-slate-900"
                     >
-                      🧭 Yol tarifi
+                      🗺️ Haritada Görüntüle
                     </a>
                   </div>
                 </div>

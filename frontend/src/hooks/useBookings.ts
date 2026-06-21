@@ -20,6 +20,30 @@ import {
 } from "@/api/bookings";
 import { BookingStatus, type BookingCreate, type BookingOut } from "@/types";
 
+/**
+ * Optimistic durum güncellemesini ["bookings"] ön ekiyle eşleşen TÜM cache'lere
+ * uygular. Bu cache'ler iki şekilde olabilir: liste sorguları (BookingOut[]) ve
+ * tekil detay sorgusu ["bookings","detail",id] (BookingOut). Tek nesnede `.map`
+ * olmadığı için ayrımı burada yaparız — aksi halde updater TypeError fırlatıp
+ * onMutate'i (dolayısıyla tüm mutation'ı) patlatır.
+ */
+function patchBookingCaches(
+  queryClient: ReturnType<typeof useQueryClient>,
+  id: number,
+  status: BookingStatus
+) {
+  queryClient.setQueriesData<BookingOut[] | BookingOut>(
+    { queryKey: ["bookings"] },
+    (old) => {
+      if (!old) return old;
+      if (Array.isArray(old)) {
+        return old.map((b) => (b.id === id ? { ...b, status } : b));
+      }
+      return old.id === id ? { ...old, status } : old;
+    }
+  );
+}
+
 export function useBookings(params: ListBookingsParams) {
   return useQuery({
     queryKey: ["bookings", params],
@@ -58,16 +82,10 @@ export function useCancelBooking() {
       cancelBooking(id, reason),
     onMutate: async ({ id }) => {
       await queryClient.cancelQueries({ queryKey: ["bookings"] });
-      const snapshots = queryClient.getQueriesData<BookingOut[]>({
+      const snapshots = queryClient.getQueriesData<BookingOut[] | BookingOut>({
         queryKey: ["bookings"],
       });
-      queryClient.setQueriesData<BookingOut[]>(
-        { queryKey: ["bookings"] },
-        (old) =>
-          old?.map((b) =>
-            b.id === id ? { ...b, status: BookingStatus.CANCELLED } : b
-          )
-      );
+      patchBookingCaches(queryClient, id, BookingStatus.CANCELLED);
       return { snapshots };
     },
     onError: (_err, _vars, ctx) =>
@@ -121,16 +139,10 @@ export function useBookingAction(action: BookingActionType) {
     mutationFn: (id: number) => ACTION_FN[action](id),
     onMutate: async (id: number) => {
       await queryClient.cancelQueries({ queryKey: ["bookings"] });
-      const snapshots = queryClient.getQueriesData<BookingOut[]>({
+      const snapshots = queryClient.getQueriesData<BookingOut[] | BookingOut>({
         queryKey: ["bookings"],
       });
-      queryClient.setQueriesData<BookingOut[]>(
-        { queryKey: ["bookings"] },
-        (old) =>
-          old?.map((b) =>
-            b.id === id ? { ...b, status: ACTION_TARGET[action] } : b
-          )
-      );
+      patchBookingCaches(queryClient, id, ACTION_TARGET[action]);
       return { snapshots };
     },
     onError: (_err, _id, ctx) => {

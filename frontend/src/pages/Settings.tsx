@@ -447,9 +447,15 @@ function PersonalSection() {
   const [nameReason, setNameReason] = useState("");
   const [usernameReason, setUsernameReason] = useState("");
 
-  // İlk değişiklik serbest; sonrası admin onayı + gerekçe gerektirir.
-  const nameLocked = (user?.name_change_count ?? 0) >= 1;
-  const usernameLocked = (user?.username_change_count ?? 0) >= 1;
+  // Bir sonraki değişimin onay gerektirip gerektirmediğini backend bildirir
+  // (role/duruma göre: onaylı eğitmen + operatör her zaman onaya; diğerleri ilk
+  // değişim serbest). Eski sayaç sezgisi yerine bu bayrağı kullanırız.
+  const nameLocked = user?.name_change_locked ?? (user?.name_change_count ?? 0) >= 1;
+  const usernameLocked =
+    user?.username_change_locked ?? (user?.username_change_count ?? 0) >= 1;
+  // "Ücretsiz hakkını kullandın" mesajı yalnız sayaç-tabanlı kilitte doğru; onaylı
+  // eğitmen/operatör hiç serbest hak almadı, onlara farklı metin gösteririz.
+  const nameLockByCount = (user?.name_change_count ?? 0) >= 1;
   const pendingName = nameRequests?.find(
     (r) => r.kind === "NAME" && r.status === "PENDING"
   );
@@ -541,8 +547,9 @@ function PersonalSection() {
             ) : (
               nameLocked && (
                 <LockedChangeNote>
-                  Ücretsiz ad değişikliği hakkını kullandın. Bu değişiklik admin
-                  onayından sonra geçerli olacak; lütfen bir gerekçe yaz.
+                  {nameLockByCount
+                    ? "Ücretsiz ad değişikliği hakkını kullandın. Bu değişiklik admin onayından sonra geçerli olacak; lütfen bir gerekçe yaz."
+                    : "Hesabın doğrulanmış olduğundan ad-soyad değişikliği admin onayından sonra geçerli olur; lütfen bir gerekçe yaz."}
                 </LockedChangeNote>
               )
             )}

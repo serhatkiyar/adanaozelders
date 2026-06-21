@@ -61,6 +61,10 @@ class Library(Base, TimestampMixin, SoftDeleteMixin, PayoutMixin):
     location_text: Mapped[str | None] = mapped_column(String(400), nullable=True)
     location_lat: Mapped[float | None] = mapped_column(Numeric(9, 6), nullable=True)
     location_lng: Mapped[float | None] = mapped_column(Numeric(9, 6), nullable=True)
+    # Google Haritalar yer kimliği (place_id) — varsa "Haritada Görüntüle" işletmenin
+    # gerçek Google profil sayfasını açar (yalnız pin değil). Veri setinden gelir;
+    # elle eklenen kayıtlarda boş olabilir (o zaman ad/koordinatla aranır).
+    google_place_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     # Yapısal adres — operatör/admin elle girer (geocode otomatik doldurmaz).
     city: Mapped[str | None] = mapped_column(String(100), nullable=True)          # İl
     district: Mapped[str | None] = mapped_column(String(100), nullable=True)      # İlçe

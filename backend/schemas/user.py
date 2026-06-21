@@ -34,6 +34,11 @@ class UserOut(BaseModel):
     # admin onayı gerektirir). Frontend uyarı/gerekçe akışını buna göre gösterir.
     name_change_count: int = 0
     username_change_count: int = 0
+    # Bu alanın bir sonraki değişiminin doğrudan mı uygulanacağı yoksa admin onayına
+    # mı gideceği — role/duruma göre (örn. onaylı eğitmen + operatör her zaman onaya).
+    # Frontend gerekçe alanını ve "onaya gidecek" uyarısını buna göre gösterir.
+    name_change_locked: bool = False
+    username_change_locked: bool = False
     # update_me yanıtında, ilgili alanın onaya gönderildiğini bildiren transient bayrak.
     pending_name_change: bool = False
     pending_username_change: bool = False

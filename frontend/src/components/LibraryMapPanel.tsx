@@ -18,9 +18,13 @@ import { absoluteUrl } from "@/lib/seo";
 import { formatTRY } from "@/lib/money";
 import type { LibrarySearchOut } from "@/types";
 
-/** Google Maps yol tarifi: koordinat varsa onu, yoksa adres metnini hedefler. */
-function directionsUrl(lib: LibrarySearchOut): string {
-  const base = "https://www.google.com/maps/dir/?api=1&destination=";
+/** Google Haritalar linki: place_id varsa işletmenin gerçek profil sayfasını açar;
+ * yoksa koordinat/adresle konumu gösterir. */
+function mapViewUrl(lib: LibrarySearchOut): string {
+  const base = "https://www.google.com/maps/search/?api=1&query=";
+  if (lib.google_place_id) {
+    return `${base}${encodeURIComponent(lib.name)}&query_place_id=${lib.google_place_id}`;
+  }
   if (lib.location_lat != null && lib.location_lng != null) {
     return `${base}${lib.location_lat},${lib.location_lng}`;
   }
@@ -129,7 +133,7 @@ export function LibraryMapPanel({
 
           {/* Aksiyon butonları (Google Maps tarzı ikon + etiket) */}
           <div className="mt-4 flex gap-2">
-            <PanelAction icon="🧭" label="Yol tarifi" href={directionsUrl(library)} external primary />
+            <PanelAction icon="🗺️" label="Haritada Görüntüle" href={mapViewUrl(library)} external primary />
             <PanelAction
               label="Profil"
               to={ROUTES.library(library.slug)}

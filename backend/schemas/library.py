@@ -196,6 +196,8 @@ class LibrarySearchOut(BaseModel):
     # Kart/hero kısa bölge etiketi için yapısal il/ilçe.
     city: str | None = None
     district: str | None = None
+    # Google Haritalar yer kimliği — varsa "Haritada Görüntüle" gerçek profili açar.
+    google_place_id: str | None = None
     capacity: int | None = None
     study_hourly_price: str | None = None  # Decimal -> string
     amenities: list[str] = Field(default_factory=list)
@@ -283,3 +285,10 @@ class LibrarySpeedTestStats(BaseModel):
     avg_ping_ms: int | None = None
     last_tested_at: datetime.datetime | None = None
     recent: list[LibrarySpeedTestOut] = []
+
+
+class LibraryDistrictOut(BaseModel):
+    """İlçe filtresi dropdown'ı için: ilçe adı + o ilçedeki aktif kütüphane sayısı."""
+
+    district: str
+    count: int

@@ -272,6 +272,7 @@ async def password_reset_confirm(
 
 @router.get("/me", response_model=UserOut)
 async def read_me(user: CurrentUser = Depends(get_current_active_user)):
+    name_change_service.annotate_change_locks(user, user.role_id)
     return user
 
 

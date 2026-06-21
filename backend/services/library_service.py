@@ -168,6 +168,7 @@ def _to_search_out(
         location_lng=float(lib.location_lng) if lib.location_lng is not None else None,
         city=lib.city,
         district=lib.district,
+        google_place_id=lib.google_place_id,
         capacity=lib.capacity,
         study_hourly_price=(
             str(lib.study_hourly_price) if lib.study_hourly_price is not None else None
@@ -191,6 +192,7 @@ async def search_libraries(
     *,
     q: str | None = None,
     amenities: list[str] | None = None,
+    district: str | None = None,
     lat: float | None = None,
     lng: float | None = None,
     radius_km: float | None = None,
@@ -236,13 +238,24 @@ async def search_libraries(
                 )
             )
 
+    # Yapısal ilçe filtresi (dropdown). Değer distinct listeden geldiği için birebir
+    # eşleşme yeterli; Türkçe büyük/küçük harf katlama gerekmez.
+    if district and district.strip():
+        stmt = stmt.where(Library.district == district.strip())
+
     relevance = None
     if q:
         tsquery = func.websearch_to_tsquery("simple", q)
+        like = f"%{q.strip()}%"
         stmt = stmt.where(
             or_(
                 Library.search_vector.op("@@")(tsquery),
                 Library.name.op("%")(q),
+                # Serbest arama konum alanlarını da kapsasın: "seyhan" yazınca adında
+                # geçmese de o ilçedeki/semtteki kütüphaneler gelsin.
+                Library.district.ilike(like),
+                Library.city.ilike(like),
+                Library.neighborhood.ilike(like),
             )
         )
         relevance = func.ts_rank(Library.search_vector, tsquery) + func.similarity(
@@ -275,6 +288,24 @@ async def search_libraries(
         out.open_now = _is_open_now(list(lib.hours))
         results.append(out)
     return results
+
+
+async def list_districts(db: AsyncSession) -> list[dict]:
+    """Aktif kütüphanelerin bulunduğu ilçeleri kütüphane sayısıyla döndürür
+    (ilçe filtresi dropdown'ı için). En çok kütüphaneye sahip ilçe önce."""
+    stmt = (
+        select(Library.district, func.count().label("count"))
+        .where(
+            Library.status == LibraryStatus.ACTIVE.value,
+            Library.deleted_at.is_(None),
+            Library.district.isnot(None),
+            func.trim(Library.district) != "",
+        )
+        .group_by(Library.district)
+        .order_by(func.count().desc(), Library.district.asc())
+    )
+    rows = (await db.execute(stmt)).all()
+    return [{"district": d, "count": c} for d, c in rows]
 
 
 async def _load_full(db: AsyncSession, lib_id: int) -> Library | None:

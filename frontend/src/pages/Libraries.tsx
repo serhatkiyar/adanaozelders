@@ -5,7 +5,7 @@ import { PublicShell } from "@/components/PublicShell";
 import { STUDENT_NAV, TUTOR_NAV } from "@/lib/nav";
 import { LibraryCard } from "@/components/LibraryCard";
 import { LibrariesMap } from "@/components/LibrariesMap";
-import { useLibrarySearch } from "@/hooks/useLibraries";
+import { useLibrarySearch, useLibraryDistricts } from "@/hooks/useLibraries";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useDebounce } from "@/hooks/useDebounce";
 import { useAuthStore } from "@/store/authStore";
@@ -31,7 +31,9 @@ export default function Libraries() {
 
   const [q, setQ] = useState("");
   const [view, setView] = useState<ViewMode>("list");
+  const [district, setDistrict] = useState("");
   const [amenities, setAmenities] = useState<string[]>([]);
+  const { data: districts } = useLibraryDistricts();
   const [sort, setSort] = useState<"rating" | "distance" | "">("");
   const [nearMe, setNearMe] = useState<{ lat: number; lng: number } | null>(null);
   const [radiusKm] = useState<number>(25);
@@ -77,6 +79,7 @@ export default function Libraries() {
   const params = useMemo<LibrarySearchParams>(() => {
     const p: LibrarySearchParams = { limit, offset: 0 };
     if (debouncedQ.trim()) p.q = debouncedQ.trim();
+    if (district) p.district = district;
     if (amenities.length) p.amenities = amenities;
     // Konum yalnız "Yakınlığa göre" sıralamasında uygulanır.
     if (sort === "distance" && nearMe) {
@@ -88,7 +91,7 @@ export default function Libraries() {
       p.sort = "rating";
     }
     return p;
-  }, [debouncedQ, amenities, nearMe, radiusKm, sort, limit]);
+  }, [debouncedQ, district, amenities, nearMe, radiusKm, sort, limit]);
 
   const { data, isLoading, isFetching, isError, error } = useLibrarySearch(params);
 
@@ -144,8 +147,22 @@ export default function Libraries() {
             className="flex-1 bg-transparent px-5 text-sm text-slate-900 outline-none placeholder:text-slate-400 dark:text-white"
           />
         </div>
-        {/* Sıralama dropdown'ı + Filtreler butonu yan yana */}
+        {/* İlçe + Sıralama dropdown'ı + Filtreler butonu yan yana */}
         <div className="flex shrink-0 gap-3">
+          {districts && districts.length > 0 && (
+            <select
+              value={district}
+              onChange={(e) => setDistrict(e.target.value)}
+              className="h-11 flex-1 rounded-full border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 sm:flex-none"
+            >
+              <option value="">Tüm ilçeler</option>
+              {districts.map((d) => (
+                <option key={d.district} value={d.district}>
+                  {d.district} ({d.count})
+                </option>
+              ))}
+            </select>
+          )}
           <select
             value={sort}
             onChange={(e) => handleSortChange(e.target.value as "rating" | "distance" | "")}

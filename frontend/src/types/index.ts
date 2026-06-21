@@ -93,6 +93,10 @@ export interface UserOut {
   // Ad-soyad / kullanıcı adı kaç kez değiştirildi (ilk değişiklik serbest).
   name_change_count?: number;
   username_change_count?: number;
+  // Bir sonraki değişimin admin onayı gerektirip gerektirmediği (role/duruma göre;
+  // örn. onaylı eğitmen ve kütüphane operatörü her zaman onaya gider).
+  name_change_locked?: boolean;
+  username_change_locked?: boolean;
   // update_me yanıtında ilgili alanın admin onayına gönderildiğini bildirir.
   pending_name_change?: boolean;
   pending_username_change?: boolean;
@@ -1098,6 +1102,7 @@ export interface LibrarySearchOut {
   location_lng?: number | null;
   city?: string | null; // İl
   district?: string | null; // İlçe
+  google_place_id?: string | null; // varsa "Haritada Görüntüle" gerçek Google profilini açar
   capacity?: number | null;
   study_hourly_price?: string | null; // Decimal -> string; doluysa çalışma alanı rez. açık
   amenities: string[];
@@ -1107,6 +1112,12 @@ export interface LibrarySearchOut {
   distance_km?: number | null;
   status?: string; // ACTIVE | HIDDEN | PENDING | REJECTED (admin listesinde anlamlı)
   open_now?: boolean | null;
+}
+
+/** İlçe filtresi dropdown'ı: ilçe adı + o ilçedeki aktif kütüphane sayısı. */
+export interface LibraryDistrictOut {
+  district: string;
+  count: number;
 }
 
 export interface LibraryDetailOut extends LibrarySearchOut {

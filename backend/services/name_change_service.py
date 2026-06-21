@@ -18,7 +18,7 @@ from models.client import Client
 from models.library_operator import LibraryOperator
 from models.name_change_request import NameChangeRequest
 from models.role import ROLE_IDS, RoleType
-from models.tutor import Tutor
+from models.tutor import Tutor, TutorStatus
 from services import notification_service
 from services.auth_service import _username_taken
 
@@ -33,6 +33,36 @@ _ROLE_MODELS: dict[int, type] = {
 
 def _now() -> datetime.datetime:
     return datetime.datetime.now(datetime.timezone.utc)
+
+
+# Eğitmen onaylandıktan (veya askıya alındıktan, ki o da onaydan geçmiştir) sonra
+# kimliği admin tarafından teyit edilmiş sayılır.
+_TUTOR_IDENTITY_LOCKED = {TutorStatus.APPROVED, TutorStatus.SUSPENDED}
+
+
+def _name_change_needs_approval(user, role_id: int) -> bool:
+    """Ad-soyad değişiminin doğrudan mı uygulanacağı yoksa admin onayına mı
+    gideceğine role/duruma göre karar verir.
+
+    - TUTOR: kimliği admin onayından geçtiyse (APPROVED/SUSPENDED) HER değişim onaya;
+      onaydan önce (DRAFT/PENDING_APPROVAL/REJECTED) serbest düzeltme.
+    - LIBRARY_OPERATOR: admin tarafından oluşturulan kimliğe bağlı — HER değişim onaya.
+    - CLIENT / ADMIN: ilk değişim serbest, sonrası onay (sayaç tabanlı).
+    """
+    if role_id == ROLE_IDS[RoleType.TUTOR]:
+        return getattr(user, "status", None) in _TUTOR_IDENTITY_LOCKED
+    if role_id == ROLE_IDS[RoleType.LIBRARY_OPERATOR]:
+        return True
+    return user.name_change_count > 0
+
+
+def annotate_change_locks(user, role_id: int) -> None:
+    """Kullanıcı modeline, ad-soyad/kullanıcı adının bir sonraki değişiminin admin
+    onayı gerektirip gerektirmediğini transient bayrak olarak işler (UserOut için).
+    Kural tek kaynak: ``_name_change_needs_approval``."""
+    user.name_change_locked = _name_change_needs_approval(user, role_id)
+    # Kullanıcı adı için kural sayaç-tabanlı kalır (kimlik-kritik değil): ilk serbest.
+    user.username_change_locked = user.username_change_count > 0
 
 
 async def _require_no_pending(
@@ -75,7 +105,7 @@ async def apply_or_request(
     if name_changed:
         new_first = first_name if first_name is not None else user.first_name
         new_last = last_name if last_name is not None else user.last_name
-        if user.name_change_count == 0:
+        if not _name_change_needs_approval(user, role_id):
             user.first_name = new_first
             user.last_name = new_last
             user.name_change_count += 1

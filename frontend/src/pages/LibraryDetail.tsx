@@ -39,14 +39,20 @@ import type {
   LibraryReviewOut,
 } from "@/types";
 
-/** Google Maps yol tarifi linki: koordinat varsa onu, yoksa adres metnini hedef alır. */
-function directionsUrl(lib: {
+/** Google Haritalar linki: place_id varsa işletmenin gerçek profil sayfasını açar;
+ * yoksa koordinat/adresle konumu gösterir (eski davranış). */
+function mapViewUrl(lib: {
   location_lat?: number | null;
   location_lng?: number | null;
   location_text?: string | null;
+  google_place_id?: string | null;
   name: string;
 }): string | null {
-  const base = "https://www.google.com/maps/dir/?api=1&destination=";
+  const base = "https://www.google.com/maps/search/?api=1&query=";
+  if (lib.google_place_id) {
+    // query yine de zorunlu; ad'ı veririz, query_place_id tam profile sabitler.
+    return `${base}${encodeURIComponent(lib.name)}&query_place_id=${lib.google_place_id}`;
+  }
   if (lib.location_lat != null && lib.location_lng != null) {
     return `${base}${lib.location_lat},${lib.location_lng}`;
   }
@@ -303,14 +309,14 @@ export default function LibraryDetail() {
                     <LibrariesMap libraries={[lib]} height="190px" enablePanel={false} />
                   </div>
                 ) : null}
-                {directionsUrl(lib) && (
+                {mapViewUrl(lib) && (
                   <a
-                    href={directionsUrl(lib)!}
+                    href={mapViewUrl(lib)!}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="mt-3 inline-flex items-center gap-2 rounded-full bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-transform hover:scale-105"
                   >
-                    Yol Tarifi Al
+                    Haritada Görüntüle
                   </a>
                 )}
               </div>

@@ -13,6 +13,7 @@ import {
   deleteLibraryReview,
   fetchLibrary,
   fetchLibraryAdmin,
+  fetchLibraryDistricts,
   fetchLibraryEarnings,
   fetchLibraryEarningsTransactions,
   fetchLibraryRatingDistribution,
@@ -35,6 +36,15 @@ export function useLibrarySearch(params: LibrarySearchParams) {
     queryKey: ["libraries", "search", params],
     queryFn: () => searchLibraries(params),
     placeholderData: keepPreviousData,
+  });
+}
+
+/** İlçe filtresi dropdown'ı için ilçe listesi (nadiren değişir → uzun staleTime). */
+export function useLibraryDistricts() {
+  return useQuery({
+    queryKey: ["libraries", "districts"],
+    queryFn: fetchLibraryDistricts,
+    staleTime: 5 * 60 * 1000,
   });
 }
 

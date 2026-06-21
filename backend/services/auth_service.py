@@ -143,6 +143,9 @@ async def update_me(
     # Onaya gönderilen alanları yanıtta sinyalle (transient — kalıcı kolon değil).
     user.pending_name_change = "NAME" in result["pending"]
     user.pending_username_change = "USERNAME" in result["pending"]
+    # Değişim sonrası kilit durumunu da güncelle (ör. öğrencinin ilk değişiminden
+    # sonra artık onay gerekecek; frontend bir sonraki düzenlemede gerekçe ister).
+    name_change_service.annotate_change_locks(user, user.role_id)
     return user
 
 

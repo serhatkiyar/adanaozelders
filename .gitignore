@@ -11,3 +11,6 @@ build/
 .DS_Store
 .idea/
 .vscode/
+
+# Gömülü 3. parti araç (ayrı git deposu)
+scripts/out/instagram-pfp-downloader/

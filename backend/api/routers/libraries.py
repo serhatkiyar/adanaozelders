@@ -33,6 +33,7 @@ from schemas.review import RatingDistributionOut
 from schemas.library import (
     LibraryCreate,
     LibraryDetailOut,
+    LibraryDistrictOut,
     LibraryEarningsOut,
     LibraryImagesReorder,
     LibraryRegister,
@@ -100,6 +101,7 @@ def _assert_can_manage_library(user: CurrentUser, library_id: int) -> None:
 async def search_libraries(
     q: str | None = Query(default=None, max_length=200),
     amenities: list[str] | None = Query(default=None),
+    district: str | None = Query(default=None, max_length=100),
     lat: float | None = Query(default=None, ge=-90, le=90),
     lng: float | None = Query(default=None, ge=-180, le=180),
     radius_km: float | None = Query(default=None, gt=0, le=500),
@@ -109,11 +111,13 @@ async def search_libraries(
     db: AsyncSession = Depends(get_db),
 ):
     """Kütüphane kataloğu/haritası — public. ``lat``/``lng`` verilirse Haversine ile
-    "yakınımdaki kütüphaneler"; ``sort=rating`` Bayesian sıralar."""
+    "yakınımdaki kütüphaneler"; ``sort=rating`` Bayesian sıralar; ``district`` ilçeye
+    göre süzer."""
     return await library_service.search_libraries(
         db,
         q=q,
         amenities=amenities,
+        district=district,
         lat=lat,
         lng=lng,
         radius_km=radius_km,
@@ -121,6 +125,13 @@ async def search_libraries(
         limit=limit,
         offset=offset,
     )
+
+
+@router.get("/districts", response_model=list[LibraryDistrictOut])
+async def list_library_districts(db: AsyncSession = Depends(get_db)):
+    """İlçe filtresi için: aktif kütüphanesi olan ilçeler + sayıları (çok olan önce).
+    NOT: Route sırası kritik — ``/{id_or_slug}``'tan ÖNCE tanımlı olmalı."""
+    return await library_service.list_districts(db)
 
 
 # ── Self-servis onboarding ("kütüphaneni listele") — /{id_or_slug}'tan ÖNCE ──
