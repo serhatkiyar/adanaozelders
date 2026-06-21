@@ -98,6 +98,9 @@ class Tutor(
     location_text: Mapped[str | None] = mapped_column(String(300), nullable=True)
     location_lat: Mapped[float | None] = mapped_column(Numeric(9, 6), nullable=True)
     location_lng: Mapped[float | None] = mapped_column(Numeric(9, 6), nullable=True)
+    # İlçe (Adana ilçeleri) — yapısal filtre; eğitmen onboarding'de seçer. Serbest
+    # metin `location_text`'ten ayrı; aramadaki "İlçe" dropdown'ını besler. Index'li.
+    district: Mapped[str | None] = mapped_column(String(80), nullable=True, index=True)
 
     rating_count: Mapped[int] = mapped_column(
         Integer, nullable=False, server_default=text("0")

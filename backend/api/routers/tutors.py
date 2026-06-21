@@ -32,6 +32,7 @@ async def search_tutors(
     min_age: int | None = Query(default=None, ge=0, le=120),
     max_age: int | None = Query(default=None, ge=0, le=120),
     subject: list[str] | None = Query(default=None),
+    district: str | None = Query(default=None, max_length=80),
     # Sınav bağlamı (TYT/AYT/KPSS…): SERT FİLTRE DEĞİL — yalnız sıralama boost'u
     # (ilgili sınava odaklı eğitmenler üste çıkar; eşleşmeyen elenmez).
     exam: str | None = Query(default=None),
@@ -53,6 +54,7 @@ async def search_tutors(
         min_age=min_age,
         max_age=max_age,
         subjects=subject,
+        district=district,
         exam=exam,
         sort=sort,
         lat=lat,
@@ -71,6 +73,7 @@ async def tutor_price_histogram(
     min_age: int | None = Query(default=None, ge=0, le=120),
     max_age: int | None = Query(default=None, ge=0, le=120),
     subject: list[str] | None = Query(default=None),
+    district: str | None = Query(default=None, max_length=80),
     lat: float | None = Query(default=None, ge=-90, le=90),
     lng: float | None = Query(default=None, ge=-180, le=180),
     radius_km: float | None = Query(default=None, gt=0, le=500),
@@ -86,6 +89,7 @@ async def tutor_price_histogram(
         min_age=min_age,
         max_age=max_age,
         subjects=subject,
+        district=district,
         lat=lat,
         lng=lng,
         radius_km=radius_km,

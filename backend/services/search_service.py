@@ -68,6 +68,7 @@ def _to_search_out(
         location_text=tutor.location_text,
         location_lat=float(tutor.location_lat) if tutor.location_lat is not None else None,
         location_lng=float(tutor.location_lng) if tutor.location_lng is not None else None,
+        district=tutor.district,
         distance_km=round(distance_km, 1) if distance_km is not None else None,
         subjects=subjects or [],
         availability=[
@@ -101,6 +102,7 @@ async def search_tutors(
     min_age: int | None = None,
     max_age: int | None = None,
     subjects: list[str] | None = None,
+    district: str | None = None,
     exam: str | None = None,
     sort: TutorSort | None = None,
     lat: float | None = None,
@@ -142,6 +144,9 @@ async def search_tutors(
                 )
             )
         )
+
+    if district:
+        stmt = stmt.where(Tutor.district == district)
 
     relevance = None
     if q:
@@ -226,6 +231,7 @@ async def price_histogram(
     min_age: int | None = None,
     max_age: int | None = None,
     subjects: list[str] | None = None,
+    district: str | None = None,
     lat: float | None = None,
     lng: float | None = None,
     radius_km: float | None = None,
@@ -261,6 +267,9 @@ async def price_histogram(
                 )
             )
         )
+
+    if district:
+        stmt = stmt.where(Tutor.district == district)
 
     if q:
         tsquery = func.websearch_to_tsquery("simple", q)

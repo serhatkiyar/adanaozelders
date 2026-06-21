@@ -17,9 +17,11 @@ export function TutorCard({
   const hasRatings = tutor.rating_count > 0;
   const rate = parseMoney(tutor.hourly_rate);
   
-  const locationText = tutor.distance_km != null 
-    ? `~${tutor.distance_km} km` 
-    : (tutor.teaching_mode === "ONLINE" ? "Uzaktan (webcam)" : "Yüzyüze & Uzaktan");
+  const locationText = tutor.distance_km != null
+    ? `~${tutor.distance_km} km`
+    : tutor.teaching_mode === "ONLINE"
+      ? "Uzaktan (webcam)"
+      : tutor.district || "Yüzyüze & Uzaktan";
     
   const mainSubject = tutor.subjects?.[0] || "Özel Ders";
   // Superprof usually only shows first name

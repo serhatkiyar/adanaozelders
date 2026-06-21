@@ -9,6 +9,8 @@ import { getErrorMessage } from "@/lib/errors";
 import { TutorSort } from "@/types";
 import type { TutorSearchParams } from "@/api/tutors";
 import { ROUTES } from "@/lib/routes";
+import { ADANA_DISTRICTS } from "@/lib/districts";
+import { TRENDING_SEARCHES } from "@/lib/trendingSearches";
 
 const SORT_OPTIONS: { value: TutorSort; label: string }[] = [
   { value: TutorSort.RELEVANCE, label: "Önerilen" },
@@ -19,6 +21,7 @@ const SORT_OPTIONS: { value: TutorSort; label: string }[] = [
 export default function PublicMarketplace() {
   const [searchParams] = useSearchParams();
   const [q, setQ] = useState(() => searchParams.get("q") ?? "");
+  const [district, setDistrict] = useState(() => searchParams.get("district") ?? "");
   const [subjects, setSubjects] = useState<string[]>(() =>
     searchParams.getAll("subject")
   );
@@ -26,13 +29,16 @@ export default function PublicMarketplace() {
   const [sort, setSort] = useState<TutorSort>(TutorSort.RELEVANCE);
   const [limit, setLimit] = useState(20);
   const [showFilters, setShowFilters] = useState(false);
+  const [searchFocused, setSearchFocused] = useState(false);
   const hasFilters = sort !== TutorSort.RELEVANCE;
 
   useEffect(() => {
     const qp = searchParams.get("q");
     const sp = searchParams.getAll("subject");
+    const dp = searchParams.get("district");
     if (qp !== null) setQ(qp);
     if (sp.length) setSubjects(sp);
+    if (dp !== null) setDistrict(dp);
     setExam(searchParams.get("exam") ?? "");
   }, [searchParams]);
 
@@ -45,9 +51,10 @@ export default function PublicMarketplace() {
     const p: TutorSearchParams = { limit, offset: 0, sort };
     if (debouncedQ.trim()) p.q = debouncedQ.trim();
     if (subjects.length) p.subject = subjects;
+    if (district) p.district = district;
     if (exam.trim()) p.exam = exam.trim();
     return p;
-  }, [debouncedQ, subjects, exam, sort, limit]);
+  }, [debouncedQ, subjects, district, exam, sort, limit]);
 
   const { data, isLoading, isFetching, isError, error } = useTutorSearch(params);
 
@@ -86,8 +93,29 @@ export default function PublicMarketplace() {
           </div>
         </div>
 
-        {/* Search bar & Filter Button */}
+        {/* Search bar (İlçe + Ders) & Filter Button */}
         <div className="flex gap-2">
+          {/* İlçe seçimi */}
+          <div className="relative shrink-0">
+            <select
+              value={district}
+              onChange={(e) => setDistrict(e.target.value)}
+              aria-label="İlçe"
+              className="h-full cursor-pointer appearance-none rounded-2xl border border-slate-200 bg-white py-3 pl-4 pr-9 text-sm font-medium text-slate-700 shadow-sm outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:focus:border-indigo-500"
+            >
+              <option value="">Tüm ilçeler</option>
+              {ADANA_DISTRICTS.map((d) => (
+                <option key={d} value={d}>
+                  {d}
+                </option>
+              ))}
+            </select>
+            <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">
+              <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+              </svg>
+            </span>
+          </div>
           <div className="relative flex-1">
             <span className="pointer-events-none absolute inset-y-0 left-4 flex items-center text-slate-400">
               <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
@@ -98,9 +126,39 @@ export default function PublicMarketplace() {
               type="text"
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder="Eğitmen, konu veya alan ara…"
+              onFocus={() => setSearchFocused(true)}
+              onBlur={() => setSearchFocused(false)}
+              placeholder="Ders ara… (ör. Lise Matematik)"
               className="w-full h-full rounded-2xl border border-slate-200 bg-white py-3 pl-10 pr-4 text-sm text-slate-900 shadow-sm outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:placeholder-slate-500 dark:focus:border-indigo-500"
             />
+            {/* Trend aramalar — Google önerileri stili (kutu boş ve odaklıyken) */}
+            {searchFocused && !q.trim() && (
+              <div className="absolute left-0 right-0 top-full z-30 mt-2 overflow-hidden rounded-2xl bg-white py-2 shadow-xl ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-slate-700">
+                <p className="flex items-center gap-1.5 px-4 pb-1 pt-0.5 text-[11px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+                  <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 17l6-6 4 4 8-8M21 7v5m0-5h-5" />
+                  </svg>
+                  Trend aramalar
+                </p>
+                {TRENDING_SEARCHES.map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => {
+                      setQ(t);
+                      setSearchFocused(false);
+                    }}
+                    className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm text-slate-700 transition hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-700/50"
+                  >
+                    <svg className="h-4 w-4 shrink-0 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0Z" />
+                    </svg>
+                    <span>{t}</span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
           <button
             onClick={() => setShowFilters(true)}

@@ -100,6 +100,8 @@ class TutorProfileUpdate(BaseModel):
     location_text: str | None = Field(default=None, max_length=300)
     location_lat: float | None = Field(default=None, ge=-90, le=90)
     location_lng: float | None = Field(default=None, ge=-180, le=180)
+    # İlçe (Adana) — onboarding'de seçilir; aramadaki "İlçe" filtresini besler.
+    district: str | None = Field(default=None, max_length=80)
     # Verilirse eğitmenin ders/branş kümesini tümüyle değiştirir (replace).
     subjects: list[str] | None = Field(default=None, max_length=40)
     # Verilirse haftalık müsaitlik pencerelerini tümüyle değiştirir (replace).
@@ -120,6 +122,7 @@ class TutorOut(UserOut):
     location_text: str | None = None
     location_lat: float | None = None
     location_lng: float | None = None
+    district: str | None = None
     subjects: list[str] = []
     availability: list[AvailabilityOut] = []
 
@@ -162,6 +165,7 @@ class TutorSearchOut(BaseModel):
     location_text: str | None = None
     location_lat: float | None = None
     location_lng: float | None = None
+    district: str | None = None
     # "Yakınımdaki" araması yapıldığında doldurulur (km).
     distance_km: float | None = None
     subjects: list[str] = []

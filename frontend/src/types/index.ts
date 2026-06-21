@@ -563,6 +563,7 @@ export interface TutorProfileUpdate {
   location_text?: string | null;
   location_lat?: number | null;
   location_lng?: number | null;
+  district?: string | null;
   subjects?: string[] | null;
   availability?: Availability[] | null;
 }
@@ -582,6 +583,7 @@ export interface TutorOut extends UserOut {
   location_text?: string | null;
   location_lat?: number | null;
   location_lng?: number | null;
+  district?: string | null;
   subjects?: string[];
   availability?: Availability[];
 }
@@ -612,6 +614,7 @@ export interface TutorSearchOut {
   location_text?: string | null;
   location_lat?: number | null;
   location_lng?: number | null;
+  district?: string | null;
   distance_km?: number | null;
   subjects?: string[];
   availability?: Availability[];
