@@ -165,3 +165,66 @@
 .dark .btn-neon-hover:hover::after {
   background-color: theme("colors.slate.900");
 }
+
+/* ── Çift-uçlu fiyat aralığı slider'ı (Airbnb tarzı) ──
+   İki <input type=range> üst üste bindirilir; ray (track) görünmez, yalnızca
+   thumb'lar tıklanabilir. Böylece her iki tutamak da bağımsızca sürüklenir. */
+.price-range__input {
+  pointer-events: none;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 32px;
+  margin: 0;
+  background: transparent;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.price-range__input:focus {
+  outline: none;
+}
+/* WebKit thumb */
+.price-range__input::-webkit-slider-thumb {
+  pointer-events: auto;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 28px;
+  width: 28px;
+  border-radius: 9999px;
+  background: #ffffff;
+  border: 1px solid theme("colors.slate.300");
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.18);
+  cursor: grab;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+.price-range__input::-webkit-slider-thumb:hover {
+  transform: scale(1.08);
+}
+.price-range__input::-webkit-slider-thumb:active {
+  cursor: grabbing;
+  transform: scale(1.12);
+  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.35);
+}
+/* Firefox thumb */
+.price-range__input::-moz-range-thumb {
+  pointer-events: auto;
+  height: 26px;
+  width: 26px;
+  border-radius: 9999px;
+  background: #ffffff;
+  border: 1px solid theme("colors.slate.300");
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.18);
+  cursor: grab;
+}
+.price-range__input::-moz-range-track {
+  background: transparent;
+}
+.dark .price-range__input::-webkit-slider-thumb {
+  background: theme("colors.slate.100");
+  border-color: theme("colors.slate.500");
+}
+.dark .price-range__input::-moz-range-thumb {
+  background: theme("colors.slate.100");
+  border-color: theme("colors.slate.500");
+}

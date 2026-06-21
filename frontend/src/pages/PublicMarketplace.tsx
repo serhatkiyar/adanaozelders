@@ -12,9 +12,8 @@ import { ROUTES } from "@/lib/routes";
 
 const SORT_OPTIONS: { value: TutorSort; label: string }[] = [
   { value: TutorSort.RELEVANCE, label: "Önerilen" },
-  { value: TutorSort.RATING_DESC, label: "★ Puana göre" },
+  { value: TutorSort.RATING_DESC, label: "★ En yüksek puan" },
   { value: TutorSort.PRICE_ASC, label: "₺ Ucuzdan pahalıya" },
-  { value: TutorSort.PRICE_DESC, label: "₺ Pahalıdan ucuza" },
 ];
 
 export default function PublicMarketplace() {

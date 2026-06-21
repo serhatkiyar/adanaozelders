@@ -63,6 +63,35 @@ async def search_tutors(
     )
 
 
+@router.get("/price-histogram", response_model=list[float])
+async def tutor_price_histogram(
+    q: str | None = Query(default=None),
+    mode: list[TeachingMode] | None = Query(default=None),
+    gender: Gender | None = Query(default=None),
+    min_age: int | None = Query(default=None, ge=0, le=120),
+    max_age: int | None = Query(default=None, ge=0, le=120),
+    subject: list[str] | None = Query(default=None),
+    lat: float | None = Query(default=None, ge=-90, le=90),
+    lng: float | None = Query(default=None, ge=-180, le=180),
+    radius_km: float | None = Query(default=None, gt=0, le=500),
+    db: AsyncSession = Depends(get_db),
+):
+    # Fiyat aralığı filtresi histogramı için eşleşen eğitmenlerin saatlik ücret
+    # dağılımı (fiyat filtresi HARİÇ aynı sert filtreler uygulanır).
+    return await search_service.price_histogram(
+        db,
+        q=q,
+        modes=[m.value for m in mode] if mode else None,
+        gender=gender,
+        min_age=min_age,
+        max_age=max_age,
+        subjects=subject,
+        lat=lat,
+        lng=lng,
+        radius_km=radius_km,
+    )
+
+
 @router.get("/me", response_model=TutorOut)
 async def read_my_profile(
     tutor: Tutor = Depends(require_roles(RoleType.TUTOR)),

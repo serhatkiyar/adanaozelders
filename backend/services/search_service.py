@@ -217,6 +217,78 @@ async def search_tutors(
     return results
 
 
+async def price_histogram(
+    db: AsyncSession,
+    *,
+    q: str | None = None,
+    modes: list[str] | None = None,
+    gender: Gender | None = None,
+    min_age: int | None = None,
+    max_age: int | None = None,
+    subjects: list[str] | None = None,
+    lat: float | None = None,
+    lng: float | None = None,
+    radius_km: float | None = None,
+) -> list[float]:
+    """Eşleşen eğitmenlerin saatlik ücret dağılımını döndürür.
+
+    Arama ile aynı SERT filtreleri uygular ama **fiyat (min/max) filtresini
+    kasıtlı olarak hariç tutar** — Airbnb tarzı fiyat aralığı histogramı, kullanıcı
+    fiyat aralığını daraltsa da tüm dağılımı göstermelidir. Ücreti olmayan
+    eğitmenler elenir. Sıralama/limit yok; tüm eşleşen ücretler döner.
+    """
+    geo = lat is not None and lng is not None
+    distance_expr = _haversine_km(lat, lng) if geo else None
+
+    stmt = select(Tutor.hourly_rate).where(
+        Tutor.status == TutorStatus.APPROVED,
+        Tutor.is_active.is_(True),
+        Tutor.deleted_at.is_(None),
+        Tutor.hourly_rate.isnot(None),
+    )
+    if geo:
+        stmt = stmt.where(
+            Tutor.location_lat.isnot(None), Tutor.location_lng.isnot(None)
+        )
+        if radius_km is not None:
+            stmt = stmt.where(distance_expr <= radius_km)
+
+    if subjects:
+        stmt = stmt.where(
+            Tutor.id.in_(
+                select(TutorSubject.tutor_id).where(
+                    TutorSubject.subject.in_(subjects)
+                )
+            )
+        )
+
+    if q:
+        tsquery = func.websearch_to_tsquery("simple", q)
+        stmt = stmt.where(
+            or_(
+                Tutor.search_vector.op("@@")(tsquery),
+                Tutor.full_name.op("%")(q),
+            )
+        )
+
+    if modes:
+        acceptable: set[str] = set()
+        for m in modes:
+            acceptable.add(m)
+            acceptable.add("BOTH")
+        stmt = stmt.where(Tutor.teaching_mode.in_(acceptable))
+
+    if gender is not None:
+        stmt = stmt.where(Tutor.gender == gender)
+    if min_age is not None:
+        stmt = stmt.where(Tutor.birth_date <= _years_ago(min_age))
+    if max_age is not None:
+        stmt = stmt.where(Tutor.birth_date > _years_ago(max_age + 1))
+
+    rates = (await db.execute(stmt)).scalars().all()
+    return [float(r) for r in rates if r is not None]
+
+
 async def tutor_avg_response_seconds(
     db: AsyncSession,
     tutor_id: int,

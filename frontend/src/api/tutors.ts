@@ -37,6 +37,23 @@ export async function searchTutors(
   return data;
 }
 
+// Fiyat aralığı histogramı: eşleşen eğitmenlerin saatlik ücret dağılımı
+// (fiyat filtresi hariç aynı sert filtreler). min_rate/max_rate gönderilmez.
+export type PriceHistogramParams = Omit<
+  TutorSearchParams,
+  "min_rate" | "max_rate" | "sort" | "limit" | "offset" | "exam"
+>;
+
+export async function fetchPriceHistogram(
+  params: PriceHistogramParams
+): Promise<number[]> {
+  const { data } = await apiClient.get<number[]>("/tutors/price-histogram", {
+    params,
+    paramsSerializer: { indexes: null },
+  });
+  return data;
+}
+
 export async function fetchTutor(id: number): Promise<TutorSearchOut> {
   const { data } = await apiClient.get<TutorSearchOut>(`/tutors/${id}`);
   return data;

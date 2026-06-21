@@ -3,7 +3,9 @@ import { useSearchParams } from "react-router-dom";
 import { DashboardShell } from "@/components/DashboardShell";
 import { STUDENT_NAV, TUTOR_NAV } from "@/lib/nav";
 import { TutorCard } from "@/components/TutorCard";
-import { useTutorSearch } from "@/hooks/useTutorSearch";
+import { PriceRangeHistogram } from "@/components/PriceRangeHistogram";
+import { SegmentedControl } from "@/components/SegmentedControl";
+import { useTutorSearch, useTutorPriceHistogram } from "@/hooks/useTutorSearch";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useDebounce } from "@/hooks/useDebounce";
 import { getErrorMessage } from "@/lib/errors";
@@ -13,14 +15,19 @@ import type { TutorSearchParams } from "@/api/tutors";
 
 /* ─── options ─────────────────────────────────────────── */
 
+// Özel ders pazar yeri sıralaması — sade ve anlamlı: puan tek yön (en yüksek;
+// "en düşük puan" kimsenin işine yaramaz), fiyat tek yön (ucuzdan pahalıya).
+// Mesafe ayrı seçenek değil; "Yakınımda" seçilince sonuçlar otomatik mesafe sıralı.
 const SORT_OPTIONS: { value: TutorSort; label: string }[] = [
   { value: TutorSort.RELEVANCE, label: "Önerilen" },
-  { value: TutorSort.RATING_DESC, label: "★ Puana göre" },
+  { value: TutorSort.RATING_DESC, label: "★ En yüksek puan" },
   { value: TutorSort.PRICE_ASC, label: "₺ Ucuzdan pahalıya" },
-  { value: TutorSort.PRICE_DESC, label: "₺ Pahalıdan ucuza" },
 ];
 
-const MODE_OPTIONS: { value: TeachingMode; label: string }[] = [
+// Segment kontrolü için "Tümü" sentinel'i + ders işleme şekilleri (tek seçim).
+const MODE_ALL = "ALL" as const;
+const MODE_SEGMENTS: { value: TeachingMode | typeof MODE_ALL; label: string }[] = [
+  { value: MODE_ALL, label: "Tümü" },
   { value: TeachingMode.ONLINE, label: "Uzaktan" },
   { value: TeachingMode.IN_PERSON, label: "Yüzyüze" },
 ];
@@ -91,10 +98,11 @@ export default function Marketplace() {
     );
   };
 
-  const toggleMode = (m: TeachingMode) =>
-    setModes((prev) =>
-      prev.includes(m) ? prev.filter((x) => x !== m) : [...prev, m]
-    );
+  // Segment seçimi modes dizisini günceller → fiyat histogramı (histParams modes'a
+  // bağlı) otomatik yenilenir.
+  const modeSegment: TeachingMode | typeof MODE_ALL = modes[0] ?? MODE_ALL;
+  const selectMode = (v: TeachingMode | typeof MODE_ALL) =>
+    setModes(v === MODE_ALL ? [] : [v]);
 
   const removeSubject = (s: string) =>
     setSubjects((prev) => prev.filter((x) => x !== s));
@@ -144,9 +152,43 @@ export default function Marketplace() {
 
   const { data, isLoading, isFetching, isError, error } = useTutorSearch(params);
 
+  // Fiyat aralığı histogramı için ücret dağılımı (fiyat HARİÇ aynı sert filtreler).
+  // Yalnız filtre modalı açıkken çekilir.
+  const histParams = useMemo(() => {
+    const p: Parameters<typeof useTutorPriceHistogram>[0] = {};
+    if (debouncedQ.trim()) p.q = debouncedQ.trim();
+    if (subjects.length) p.subject = subjects;
+    if (modes.length) p.mode = modes;
+    if (gender) p.gender = gender;
+    const minA = Number(debouncedMinAge);
+    const maxA = Number(debouncedMaxAge);
+    if (debouncedMinAge && !Number.isNaN(minA) && minA >= 0) p.min_age = minA;
+    if (debouncedMaxAge && !Number.isNaN(maxA) && maxA >= 0) p.max_age = maxA;
+    if (nearMe) {
+      p.lat = nearMe.lat;
+      p.lng = nearMe.lng;
+      p.radius_km = radiusKm;
+    }
+    return p;
+  }, [
+    debouncedQ,
+    subjects,
+    modes,
+    gender,
+    debouncedMinAge,
+    debouncedMaxAge,
+    nearMe,
+    radiusKm,
+  ]);
+
+  const { data: rateDist, isLoading: histLoading } = useTutorPriceHistogram(
+    histParams,
+    showFilters
+  );
+
   const hasFilters =
     !!q || subjects.length > 0 || !!exam || !!minRate || !!maxRate || modes.length > 0 ||
-    !!gender || !!minAge || !!maxAge || sort !== TutorSort.RELEVANCE;
+    !!gender || !!minAge || !!maxAge;
 
   const clearAll = () => {
     setQ("");
@@ -269,14 +311,35 @@ export default function Marketplace() {
             </div>
           ) : (
             <>
-              <div className="mb-3 flex items-center justify-between text-xs text-slate-400 dark:text-slate-500">
-                <span>{data.length} eğitmen listeleniyor</span>
-                {isFetching && (
-                  <span className="flex items-center gap-1.5">
-                    <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-indigo-400" />
-                    Güncelleniyor
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <span className="flex items-center gap-2 text-xs text-slate-400 dark:text-slate-500">
+                  {data.length} eğitmen listeleniyor
+                  {isFetching && (
+                    <span className="flex items-center gap-1.5">
+                      <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-indigo-400" />
+                      Güncelleniyor
+                    </span>
+                  )}
+                </span>
+                <div className="relative shrink-0">
+                  <select
+                    value={sort}
+                    onChange={(e) => setSort(e.target.value as TutorSort)}
+                    aria-label="Sırala"
+                    className="cursor-pointer appearance-none rounded-full border border-slate-200 bg-white py-2 pl-4 pr-9 text-xs font-medium text-slate-700 shadow-sm outline-none transition hover:border-slate-300 focus:border-indigo-400 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-slate-600"
+                  >
+                    {SORT_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                  <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">
+                    <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                    </svg>
                   </span>
-                )}
+                </div>
               </div>
               <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
                 {data.map((tutor) => (
@@ -318,26 +381,6 @@ export default function Marketplace() {
             </div>
             
             <div className="flex-1 overflow-y-auto p-6 space-y-8">
-              {/* Sıralama */}
-              <div>
-                <h3 className="mb-3 text-sm font-semibold text-slate-900 dark:text-white">Sıralama</h3>
-                <div className="flex flex-wrap gap-2">
-                  {SORT_OPTIONS.map((opt) => (
-                    <button
-                      key={opt.value}
-                      onClick={() => setSort(opt.value)}
-                      className={`rounded-xl px-4 py-2 text-sm font-medium transition ${
-                        sort === opt.value
-                          ? "bg-indigo-600 text-white shadow-sm ring-1 ring-indigo-600"
-                          : "bg-slate-50 text-slate-600 ring-1 ring-slate-200 hover:bg-slate-100 dark:bg-slate-900 dark:text-slate-300 dark:ring-slate-700 dark:hover:bg-slate-800"
-                      }`}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
               {/* Konum */}
               <div>
                 <h3 className="mb-3 text-sm font-semibold text-slate-900 dark:text-white">Mesafe (Uzaklık)</h3>
@@ -372,51 +415,30 @@ export default function Marketplace() {
                 {nearMe && !geoLoading && <p className="mt-2 text-xs font-medium text-emerald-600">✓ Konumunuz kullanılıyor</p>}
               </div>
 
-              {/* Eğitim Modu */}
+              {/* Ders İşleme Şekli (segment kontrolü) */}
               <div>
                 <h3 className="mb-3 text-sm font-semibold text-slate-900 dark:text-white">Ders İşleme Şekli</h3>
-                <div className="flex flex-wrap gap-2">
-                  {MODE_OPTIONS.map((opt) => (
-                    <button
-                      key={opt.value}
-                      onClick={() => toggleMode(opt.value)}
-                      className={`rounded-xl px-4 py-2 text-sm font-medium transition ${
-                        modes.includes(opt.value)
-                          ? "bg-indigo-600 text-white shadow-sm ring-1 ring-indigo-600"
-                          : "bg-slate-50 text-slate-600 ring-1 ring-slate-200 hover:bg-slate-100 dark:bg-slate-900 dark:text-slate-300 dark:ring-slate-700 dark:hover:bg-slate-800"
-                      }`}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
+                <SegmentedControl
+                  options={MODE_SEGMENTS}
+                  value={modeSegment}
+                  onChange={selectMode}
+                />
               </div>
 
-              {/* Fiyat */}
+              {/* Fiyat aralığı (Airbnb tarzı histogram + çift-uçlu slider) */}
               <div>
-                <div className="mb-3 flex items-center justify-between">
-                  <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Maksimum Saatlik Ücret</h3>
-                  <span className="text-sm font-bold text-indigo-600 dark:text-indigo-400">
-                    {maxRate && Number(maxRate) < 2000 ? `₺${maxRate}` : "Limitsiz"}
-                  </span>
-                </div>
-                <input
-                  type="range"
-                  min="0"
-                  max="2000"
-                  step="50"
-                  value={maxRate || 2000}
-                  onChange={(e) => {
-                    const val = Number(e.target.value);
-                    if (val >= 2000) setMaxRate("");
-                    else setMaxRate(e.target.value);
+                <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Fiyat aralığı</h3>
+                <p className="mt-0.5 mb-4 text-xs text-slate-500 dark:text-slate-400">Saatlik ders ücreti</p>
+                <PriceRangeHistogram
+                  rates={rateDist ?? []}
+                  loading={histLoading}
+                  minRate={minRate}
+                  maxRate={maxRate}
+                  onChange={(mn, mx) => {
+                    setMinRate(mn);
+                    setMaxRate(mx);
                   }}
-                  className="h-2 w-full cursor-pointer appearance-none rounded-lg bg-slate-200 accent-indigo-600 dark:bg-slate-700"
                 />
-                <div className="mt-2 flex justify-between text-xs font-medium text-slate-400">
-                  <span>₺0</span>
-                  <span>₺5000+</span>
-                </div>
               </div>
 
               {/* Cinsiyet */}

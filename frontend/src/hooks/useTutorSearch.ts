@@ -1,11 +1,30 @@
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
-import { fetchTutor, searchTutors, type TutorSearchParams } from "@/api/tutors";
+import {
+  fetchPriceHistogram,
+  fetchTutor,
+  searchTutors,
+  type PriceHistogramParams,
+  type TutorSearchParams,
+} from "@/api/tutors";
 
 export function useTutorSearch(params: TutorSearchParams) {
   return useQuery({
     queryKey: ["tutors", "search", params],
     queryFn: () => searchTutors(params),
     placeholderData: keepPreviousData,
+  });
+}
+
+export function useTutorPriceHistogram(
+  params: PriceHistogramParams,
+  enabled = true
+) {
+  return useQuery({
+    queryKey: ["tutors", "price-histogram", params],
+    queryFn: () => fetchPriceHistogram(params),
+    placeholderData: keepPreviousData,
+    enabled,
+    staleTime: 5 * 60 * 1000,
   });
 }
 
