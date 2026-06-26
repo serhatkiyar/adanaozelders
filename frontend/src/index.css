@@ -42,6 +42,12 @@
   display: none; /* ok ucu kaldır */
 }
 
+/* İlçe polygonları: hover'da renk/kenar değişimi yumuşak geçsin (profesyonel his). */
+path.district-poly {
+  transition: fill 0.15s ease, fill-opacity 0.15s ease, stroke 0.15s ease,
+    stroke-width 0.15s ease;
+}
+
 /* Harita yan paneli (Google Maps tarzı) soldan kayarak girer.
    Not: projede tailwindcss-animate yok, bu yüzden gerçek keyframe tanımlıyoruz. */
 @keyframes panel-slide-in-left {
