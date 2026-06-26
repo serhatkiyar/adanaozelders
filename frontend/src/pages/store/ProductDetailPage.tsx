@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { ROUTES } from "@/lib/routes";
 import { Seo } from "@/components/Seo";
 import { JsonLd } from "@/components/JsonLd";
@@ -9,8 +9,7 @@ import { RatingHistogram } from "@/components/store/RatingHistogram";
 import { ProductCard } from "@/components/store/ProductCard";
 import { FullScreenSpinner } from "@/components/Spinner";
 import { StoreLayout } from "@/pages/store/StoreLayout";
-import { formatTRY } from "@/lib/money";
-import { SHIPPING_FREE_THRESHOLD } from "@/lib/shipping";
+import { formatTL } from "@/lib/money";
 import { buildSpecRows } from "@/lib/productSpecs";
 import { recordViewedProduct } from "@/lib/recentlyViewedProducts";
 import {
@@ -23,14 +22,15 @@ import {
   useNotifyWhenInStock,
 } from "@/hooks/useStore";
 import { useCartStore } from "@/store/cartStore";
+import { useFavoritesStore } from "@/store/favoritesStore";
 import { useAuthStore } from "@/store/authStore";
 import { ROLE_IDS } from "@/types";
-import type { ProductCategory } from "@/types";
+import type { ProductCategory, ProductKind } from "@/types";
 import { toast } from "@/store/toastStore";
 
 const LOW_STOCK = 5;
 
-type DetailTab = "desc" | "specs" | "reviews";
+type DetailTab = "about" | "reviews" | "policy";
 
 export default function ProductDetailPage() {
   const { slug } = useParams<{ slug: string }>();
@@ -38,11 +38,13 @@ export default function ProductDetailPage() {
   const { data: reviews } = useProductReviews(product?.id);
   const { data: distribution } = useProductRatingDistribution(product?.id);
   const { data: categories } = useCategories();
+  const navigate = useNavigate();
   const add = useCartStore((s) => s.add);
+  const toggleFav = useFavoritesStore((s) => s.toggle);
+  const favItems = useFavoritesStore((s) => s.items);
   const user = useAuthStore((s) => s.user);
   const [activeImg, setActiveImg] = useState<string | null>(null);
-  const [qty, setQty] = useState(1);
-  const [tab, setTab] = useState<DetailTab>("desc");
+  const [tab, setTab] = useState<DetailTab>("about");
   const [lightboxOpen, setLightboxOpen] = useState(false);
 
   // Benzer ürünler: aynı kategoriden (kendisi hariç). Kategori yoksa -1 → boş döner.
@@ -136,6 +138,33 @@ export default function ProductDetailPage() {
   // D&R gibi: platform ürününde satıcı adı gösterilmez; yalnız eğitmen (çok-satıcılı) üründe.
   const showSeller = product.seller_type === "TUTOR" && !!product.tutor_name;
   const subtitle = [product.author, product.publisher].filter(Boolean).join(" · ");
+  const isFav = favItems.some((i) => i.id === product.id);
+
+  function addToCart() {
+    add(product!, 1);
+    toast.success("Sepete eklendi");
+  }
+
+  // "Şimdi Al": sepete ekle + doğrudan ödemeye git (giriş/adres gerekirse checkout yönlendirir).
+  function buyNow() {
+    add(product!, 1);
+    navigate(ROUTES.storeCheckout);
+  }
+
+  // Paylaş: native paylaşım varsa onu, yoksa bağlantıyı panoya kopyala.
+  async function shareProduct() {
+    const url = window.location.href;
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: product!.title, url });
+      } else {
+        await navigator.clipboard.writeText(url);
+        toast.success("Bağlantı kopyalandı");
+      }
+    } catch {
+      /* kullanıcı paylaşımı iptal etti — sessiz geç */
+    }
+  }
 
   const specRows = buildSpecRows(product);
   // Alış kutusu yakınında öne çıkan birkaç künye (yazar/yayınevi başlıkta zaten var).
@@ -143,11 +172,12 @@ export default function ProductDetailPage() {
     .filter((r) => r.key !== "author" && r.key !== "publisher")
     .slice(0, 4);
 
-  // Mevcut sekmeler (boş bölümler gizli) — seçili sekme yoksa ilkine düş.
+  // Sekmeler — "Ürün Açıklaması" (serbest metin + künye birlikte) yalnız içerik varsa görünür.
+  const hasAbout = !!product.description || specRows.length > 0;
   const tabDefs: { key: DetailTab; label: string }[] = [
-    ...(product.description ? [{ key: "desc" as const, label: "Açıklama" }] : []),
-    ...(specRows.length ? [{ key: "specs" as const, label: "Özellikler" }] : []),
+    ...(hasAbout ? [{ key: "about" as const, label: "Ürün Açıklaması" }] : []),
     { key: "reviews" as const, label: "Değerlendirmeler" },
+    { key: "policy" as const, label: "İptal ve İade" },
   ];
   const activeTab = tabDefs.some((t) => t.key === tab) ? tab : tabDefs[0].key;
 
@@ -207,7 +237,7 @@ export default function ProductDetailPage() {
         />
       </Seo>
 
-      <div className="mx-auto max-w-5xl px-4 py-6 md:px-0">
+      <div className="mx-auto max-w-[76rem] px-4 py-6 md:px-0">
         {/* Breadcrumb — kategori zinciri */}
         <nav className="flex flex-wrap items-center gap-1.5 text-sm text-slate-500 dark:text-slate-400">
           <Link to={ROUTES.store} className="hover:text-indigo-600 dark:hover:text-indigo-400">
@@ -232,14 +262,54 @@ export default function ProductDetailPage() {
           {/* Galeri */}
           <div className="flex flex-col gap-3">
             {hero ? (
-              <button
-                type="button"
-                onClick={() => setLightboxOpen(true)}
-                aria-label="Görseli büyüt"
-                className="group aspect-square cursor-zoom-in overflow-hidden rounded-2xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900/50"
-              >
-                <img src={hero} alt={product.title} className="h-full w-full object-contain mix-blend-multiply transition-transform duration-300 group-hover:scale-[1.03] dark:mix-blend-normal" />
-              </button>
+              <div className="group relative aspect-square overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900/50">
+                <button
+                  type="button"
+                  onClick={() => setLightboxOpen(true)}
+                  aria-label="Görseli büyüt"
+                  className="absolute inset-0 flex cursor-zoom-in items-center justify-center p-6"
+                >
+                  <img src={hero} alt={product.title} className="h-full w-full object-contain mix-blend-multiply transition-transform duration-300 group-hover:scale-[1.03] dark:mix-blend-normal" />
+                </button>
+                {/* Favori + paylaş — sağ üst köşe */}
+                <div className="absolute right-3 top-3 z-10 flex gap-2">
+                  <button
+                    type="button"
+                    aria-label={isFav ? "Favorilerden çıkar" : "Favorilere ekle"}
+                    aria-pressed={isFav}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleFav(product);
+                    }}
+                    className={`flex h-9 w-9 items-center justify-center rounded-full bg-white shadow-sm ring-1 ring-slate-200 transition-colors dark:bg-slate-800 dark:ring-slate-700 ${
+                      isFav
+                        ? "text-indigo-600 dark:text-indigo-400"
+                        : "text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400"
+                    }`}
+                  >
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill={isFav ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2">
+                      <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+                    </svg>
+                  </button>
+                  <button
+                    type="button"
+                    aria-label="Paylaş"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      shareProduct();
+                    }}
+                    className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-slate-400 shadow-sm ring-1 ring-slate-200 transition-colors hover:text-indigo-600 dark:bg-slate-800 dark:ring-slate-700 dark:hover:text-indigo-400"
+                  >
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="18" cy="5" r="3" />
+                      <circle cx="6" cy="12" r="3" />
+                      <circle cx="18" cy="19" r="3" />
+                      <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
+                      <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
             ) : (
               <div className="flex aspect-square items-center justify-center rounded-2xl border border-slate-200 text-slate-300 dark:border-slate-800">
                 Görsel yok
@@ -297,12 +367,12 @@ export default function ProductDetailPage() {
             {/* Fiyat */}
             <div className="mt-6 flex items-baseline gap-3">
               <span className="text-3xl font-semibold text-slate-900 dark:text-white">
-                {formatTRY(product.price)}
+                {formatTL(product.price)}
               </span>
               {product.compare_at_price &&
                 Number(product.compare_at_price) > Number(product.price) && (
                   <span className="text-base text-slate-400 line-through">
-                    {formatTRY(product.compare_at_price)}
+                    {formatTL(product.compare_at_price)}
                   </span>
                 )}
             </div>
@@ -319,42 +389,23 @@ export default function ProductDetailPage() {
               </p>
             )}
 
-            {/* Adet + sepete ekle */}
-            <div className="mt-5 flex items-center gap-3">
-              {product.kind === "PHYSICAL" && !soldOut && (
-                <div className="flex h-12 w-28 items-center justify-between rounded-lg border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
-                  <button
-                    type="button"
-                    aria-label="Azalt"
-                    onClick={() => setQty((n) => Math.max(1, n - 1))}
-                    disabled={qty <= 1}
-                    className="flex h-full w-10 items-center justify-center text-lg leading-none text-slate-600 transition-colors hover:text-indigo-600 disabled:opacity-40 dark:text-slate-300 dark:hover:text-indigo-400"
-                  >
-                    −
-                  </button>
-                  <span className="text-sm font-semibold text-slate-900 dark:text-white">{qty}</span>
-                  <button
-                    type="button"
-                    aria-label="Artır"
-                    onClick={() => setQty((n) => Math.min(product.stock ?? n, n + 1))}
-                    disabled={!!product.stock && qty >= product.stock}
-                    className="flex h-full w-10 items-center justify-center text-lg leading-none text-slate-600 transition-colors hover:text-indigo-600 disabled:opacity-40 dark:text-slate-300 dark:hover:text-indigo-400"
-                  >
-                    +
-                  </button>
-                </div>
-              )}
-
+            {/* Satın alma — Şimdi Al + Sepete Ekle (adet sepette seçilir) */}
+            <div className="mt-5 flex flex-col gap-3 sm:flex-row">
               <button
                 type="button"
                 disabled={soldOut}
-                onClick={() => {
-                  add(product, product.kind === "PHYSICAL" ? qty : 1);
-                  toast.success("Sepete eklendi");
-                }}
+                onClick={buyNow}
                 className="flex h-12 flex-1 items-center justify-center rounded-lg bg-indigo-600 px-8 text-base font-semibold text-white transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400 dark:disabled:bg-slate-800 dark:disabled:text-slate-500"
               >
-                {soldOut ? "Tükendi" : "Sepete Ekle"}
+                {soldOut ? "Tükendi" : "Şimdi Al"}
+              </button>
+              <button
+                type="button"
+                disabled={soldOut}
+                onClick={addToCart}
+                className="flex h-12 flex-1 items-center justify-center rounded-lg border border-indigo-600 px-8 text-base font-semibold text-indigo-600 transition-colors hover:bg-indigo-50 disabled:cursor-not-allowed disabled:border-slate-200 disabled:text-slate-400 dark:border-indigo-400 dark:text-indigo-400 dark:hover:bg-indigo-500/10 dark:disabled:border-slate-700 dark:disabled:text-slate-500"
+              >
+                Sepete Ekle
               </button>
             </div>
 
@@ -366,14 +417,17 @@ export default function ProductDetailPage() {
             <div className="mt-8 space-y-3 border-t border-slate-100 pt-6 text-sm dark:border-slate-800">
               {product.kind === "PHYSICAL" ? (
                 <div className="flex items-start gap-2.5 text-slate-600 dark:text-slate-300">
-                  <svg className="mt-0.5 shrink-0 text-slate-400" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
-                    <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
-                    <line x1="12" y1="22.08" x2="12" y2="12" />
+                  <svg className="mt-0.5 shrink-0 text-slate-400" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="1" y="3" width="15" height="13" />
+                    <polygon points="16 8 20 8 23 11 23 16 16 16 16 8" />
+                    <circle cx="5.5" cy="18.5" r="2.5" />
+                    <circle cx="18.5" cy="18.5" r="2.5" />
                   </svg>
                   <span>
-                    <span className="font-medium text-slate-900 dark:text-white">{formatTRY(SHIPPING_FREE_THRESHOLD)}</span>{" "}
-                    ve üzeri siparişlerde kargo ücretsiz; aksi halde sepette sabit kargo ücreti uygulanır.
+                    <span className="font-medium text-slate-900 dark:text-white">Gün içi kargo</span>
+                    <span className="block text-slate-500 dark:text-slate-400">
+                      Saat 16:00'dan önceki siparişler aynı gün kargoya teslim edilir.
+                    </span>
                   </span>
                 </div>
               ) : (
@@ -442,22 +496,27 @@ export default function ProductDetailPage() {
         </div>
 
         <div className="pt-6">
-          {activeTab === "desc" && product.description && (
-            <div className="whitespace-pre-line text-sm leading-relaxed text-slate-700 dark:text-slate-300">
-              {product.description}
+          {activeTab === "about" && (
+            <div className="space-y-8">
+              {product.description && (
+                <div className="whitespace-pre-line text-sm leading-relaxed text-slate-700 dark:text-slate-300">
+                  {product.description}
+                </div>
+              )}
+              {specRows.length > 0 && (
+                <dl className="max-w-xl divide-y divide-slate-100 dark:divide-slate-800">
+                  {specRows.map((r) => (
+                    <div key={r.key} className="flex justify-between gap-6 py-2.5 text-sm">
+                      <dt className="text-slate-500 dark:text-slate-400">{r.label}</dt>
+                      <dd className="text-right font-medium text-slate-800 dark:text-slate-200">{r.value}</dd>
+                    </div>
+                  ))}
+                </dl>
+              )}
             </div>
           )}
 
-          {activeTab === "specs" && specRows.length > 0 && (
-            <dl className="max-w-xl divide-y divide-slate-100 dark:divide-slate-800">
-              {specRows.map((r) => (
-                <div key={r.key} className="flex justify-between gap-6 py-2.5 text-sm">
-                  <dt className="text-slate-500 dark:text-slate-400">{r.label}</dt>
-                  <dd className="text-right font-medium text-slate-800 dark:text-slate-200">{r.value}</dd>
-                </div>
-              ))}
-            </dl>
-          )}
+          {activeTab === "policy" && <PolicyPanel kind={product.kind} />}
 
           {activeTab === "reviews" && (
             <div>
@@ -582,6 +641,44 @@ export default function ProductDetailPage() {
           document.body
         )}
     </StoreLayout>
+  );
+}
+
+function PolicyPanel({ kind }: { kind: ProductKind }) {
+  return (
+    <div className="max-w-2xl space-y-4 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
+      {kind === "PHYSICAL" ? (
+        <>
+          <p>
+            <span className="font-medium text-slate-900 dark:text-white">Cayma hakkı:</span>{" "}
+            Fiziksel ürünlerde teslim tarihinden itibaren 14 gün içinde, ürünü kullanılmamış ve
+            yeniden satılabilir durumda iade ederek siparişinizi iptal edebilirsiniz.
+          </p>
+          <p>
+            <span className="font-medium text-slate-900 dark:text-white">İade süreci:</span>{" "}
+            Ödemeniz teslimata kadar emanette tutulur. İade onaylandığında tutar, ödemenin yapıldığı
+            karta iyzico üzerinden iade edilir (bankanıza bağlı olarak genellikle 7-14 iş günü).
+          </p>
+        </>
+      ) : (
+        <p>
+          <span className="font-medium text-slate-900 dark:text-white">Dijital ürün:</span>{" "}
+          Ödeme onayından sonra anında erişime açılan dijital içeriklerde, içeriğe erişim
+          sağlandıktan sonra cayma hakkı kullanılamaz (Mesafeli Sözleşmeler Yönetmeliği m.15/1-ğ).
+        </p>
+      )}
+      <p className="text-slate-500 dark:text-slate-400">
+        Ayrıntılar için{" "}
+        <Link to={ROUTES.refundPolicy} className="font-medium text-indigo-600 hover:underline dark:text-indigo-400">
+          İptal ve İade Politikası
+        </Link>{" "}
+        ve{" "}
+        <Link to={ROUTES.terms} className="font-medium text-indigo-600 hover:underline dark:text-indigo-400">
+          Kullanım Koşulları
+        </Link>{" "}
+        sayfalarını inceleyebilirsiniz.
+      </p>
+    </div>
   );
 }
 

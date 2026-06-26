@@ -27,7 +27,7 @@ export default function SellerStorePage() {
   return (
     <StoreLayout title={sellerName} showCategoryBar={false}>
       <Seo title={`${sellerName} — Mağaza`} noindex />
-      <div className="mx-auto max-w-screen-2xl px-4 py-8 md:px-8">
+      <div className="mx-auto max-w-[1464px] px-4 py-8 md:px-8">
         <nav className="flex items-center gap-1.5 text-sm text-slate-500 dark:text-slate-400">
           <Link to={ROUTES.store} className="hover:text-indigo-600 dark:hover:text-indigo-400">
             Mağaza

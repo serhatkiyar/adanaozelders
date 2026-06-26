@@ -3,7 +3,7 @@ import { useMutation } from "@tanstack/react-query";
 import { DashboardShell } from "@/components/DashboardShell";
 import { TUTOR_NAV } from "@/lib/nav";
 import { Seo } from "@/components/Seo";
-import { formatTRY } from "@/lib/money";
+import { formatTL } from "@/lib/money";
 import {
   createSellerProduct,
   deleteSellerProduct,
@@ -71,8 +71,8 @@ export default function SellerProducts() {
 
         {earnings && earnings.total_units > 0 && (
           <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <EarningStat label="Net kazanç" value={formatTRY(earnings.total_earnings)} accent />
-            <EarningStat label="Ciro" value={formatTRY(earnings.total_gross)} />
+            <EarningStat label="Net kazanç" value={formatTL(earnings.total_earnings)} accent />
+            <EarningStat label="Ciro" value={formatTL(earnings.total_gross)} />
             <EarningStat label="Satılan adet" value={String(earnings.total_units)} />
             <EarningStat label="Sipariş" value={String(earnings.total_orders)} />
           </div>
@@ -217,7 +217,7 @@ function SellerRow({
         <p className="text-sm font-medium text-slate-800 dark:text-slate-200">
           {product.title}
         </p>
-        <p className="text-sm text-slate-500">{formatTRY(product.price)}</p>
+        <p className="text-sm text-slate-500">{formatTL(product.price)}</p>
         <span className="mt-1 inline-block rounded bg-slate-100 px-1.5 py-0.5 text-[11px] text-slate-500 dark:bg-slate-800">
           {STATUS_LABEL[product.status ?? ""] ?? product.status}
         </span>
@@ -225,7 +225,7 @@ function SellerRow({
           <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-400">
             {stat.units_sold} adet satıldı ·{" "}
             <span className="font-medium text-indigo-600 dark:text-indigo-400">
-              {formatTRY(stat.earnings)}
+              {formatTL(stat.earnings)}
             </span>{" "}
             kazanç
           </p>

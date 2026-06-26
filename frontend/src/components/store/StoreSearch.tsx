@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ROUTES } from "@/lib/routes";
 import { searchProducts } from "@/api/store";
 import { useDebounce } from "@/hooks/useDebounce";
-import { formatTRY } from "@/lib/money";
+import { formatTL } from "@/lib/money";
 
 /**
  * Mağaza arama çubuğu + canlı öneriler (typeahead). Mevcut `searchProducts`'ı
@@ -86,12 +86,12 @@ export function StoreSearch() {
           placeholder="Ürün, kategori veya yazar ara..."
           aria-label="Mağazada ara"
           autoComplete="off"
-          className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2.5 pl-4 pr-12 text-sm text-slate-900 outline-none transition focus:border-indigo-400 focus:bg-white focus:ring-2 focus:ring-indigo-100 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:focus:border-indigo-500 dark:focus:ring-indigo-500/20"
+          className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2.5 pl-4 pr-14 text-sm text-slate-900 outline-none transition focus:border-indigo-400 focus:bg-white focus:ring-2 focus:ring-indigo-100 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:focus:border-indigo-500 dark:focus:ring-indigo-500/20"
         />
         <button
           type="submit"
           aria-label="Ara"
-          className="absolute bottom-1.5 right-1.5 top-1.5 flex aspect-square items-center justify-center rounded-md bg-indigo-600 text-white transition-colors hover:bg-indigo-700"
+          className="absolute inset-y-0 right-0 flex aspect-square items-center justify-center rounded-r-lg bg-slate-900 text-white transition-colors hover:bg-slate-800 dark:bg-slate-700 dark:hover:bg-slate-600"
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
             <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -123,7 +123,7 @@ export function StoreSearch() {
                     )}
                   </div>
                   <span className="shrink-0 text-sm font-semibold text-slate-900 dark:text-white">
-                    {formatTRY(p.price)}
+                    {formatTL(p.price)}
                   </span>
                 </Link>
               ))}

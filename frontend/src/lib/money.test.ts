@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseMoney, formatTRY, formatRate } from "@/lib/money";
+import { parseMoney, formatTRY, formatTL, formatRate } from "@/lib/money";
 
 describe("parseMoney", () => {
   it("string sayıyı number'a çevirir", () => {
@@ -26,6 +26,22 @@ describe("formatTRY", () => {
   it("null için fallback", () => {
     expect(formatTRY(null)).toBe("—");
     expect(formatTRY(null, "yok")).toBe("yok");
+  });
+});
+
+describe("formatTL", () => {
+  it("'TL' son ekiyle biçimler (tam sayı)", () => {
+    expect(formatTL(250)).toBe("250 TL");
+  });
+  it("ondalığı tr-TR (virgül) ile gösterir", () => {
+    expect(formatTL(99.99)).toBe("99,99 TL");
+  });
+  it("binlik ayracı uygular", () => {
+    expect(formatTL(1250)).toBe("1.250 TL");
+  });
+  it("null için fallback", () => {
+    expect(formatTL(null)).toBe("—");
+    expect(formatTL(null, "yok")).toBe("yok");
   });
 });
 

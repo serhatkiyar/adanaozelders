@@ -10,7 +10,7 @@ import { getRecentlyViewedProducts } from "@/lib/recentlyViewedProducts";
 import type { ProductKind } from "@/types";
 import type { ProductSearchParams } from "@/api/store";
 
-const CONTAINER = "mx-auto max-w-screen-2xl px-4 md:px-8";
+const CONTAINER = "mx-auto max-w-[1464px] px-4 md:px-8";
 const GRID = "grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4";
 
 type Sort = "" | "price_asc" | "price_desc" | "newest" | "rating";
@@ -293,7 +293,6 @@ export default function StorePage() {
       ) : (
         /* ── Vitrin (filtre yokken): gerçek ürün kuşakları ── */
         <div className={`${CONTAINER} flex flex-col gap-12 py-10`}>
-          <RecentlyViewedRail />
           <ProductScroller
             title="Öne çıkanlar"
             params={{ sort: "rating", limit: 12 }}
@@ -312,6 +311,7 @@ export default function StorePage() {
               to={`${ROUTES.store}?category=${c.id}`}
             />
           ))}
+          <RecentlyViewedRail />
         </div>
       )}
     </StoreLayout>

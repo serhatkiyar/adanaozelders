@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { createPortal } from "react-dom";
 import { useMutation } from "@tanstack/react-query";
-import { formatTRY } from "@/lib/money";
+import { formatTL } from "@/lib/money";
 import { formatDateTime } from "@/lib/datetime";
 import {
   createCategory,
@@ -314,7 +314,7 @@ function AdminProductRow({
         <div className="flex-1">
           <p className="text-sm font-medium text-slate-800 dark:text-slate-200">{product.title}</p>
           <p className="text-xs text-slate-500">
-            {formatTRY(product.price)} · {product.kind === "DIGITAL" ? "Dijital" : "Basılı"}
+            {formatTL(product.price)} · {product.kind === "DIGITAL" ? "Dijital" : "Basılı"}
             {product.seller_type === "TUTOR" ? ` · ${product.tutor_name ?? "Eğitmen"}` : ""}
           </p>
           <span className="text-[11px] text-slate-400">{product.status}</span>
@@ -573,7 +573,7 @@ function OrdersPanel() {
           <div key={o.id} className="rounded-xl border border-slate-100 p-3 dark:border-slate-800">
             <div className="flex items-center justify-between">
               <span className="text-sm font-semibold text-slate-800 dark:text-slate-200">
-                #{o.id} · {formatTRY(o.total)}
+                #{o.id} · {formatTL(o.total)}
               </span>
               <span className="text-xs text-slate-400">{formatDateTime(o.created_at)}</span>
             </div>
@@ -690,7 +690,7 @@ function ReturnsPanel() {
               <div className="flex items-center justify-between">
                 <span className="text-sm font-semibold text-slate-800 dark:text-slate-200">
                   Sipariş #{r.order_id}
-                  {r.order && <> · {formatTRY(r.order.total)}</>}
+                  {r.order && <> · {formatTL(r.order.total)}</>}
                 </span>
                 <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${badge.cls}`}>
                   {badge.label}
@@ -861,10 +861,10 @@ function CouponsPanel() {
               <div className="text-sm">
                 <span className="font-semibold text-slate-900 dark:text-white">{c.code}</span>
                 <span className="ml-2 text-slate-500">
-                  {c.discount_type === "PERCENT" ? `%${c.discount_value}` : formatTRY(c.discount_value)} indirim
+                  {c.discount_type === "PERCENT" ? `%${c.discount_value}` : formatTL(c.discount_value)} indirim
                 </span>
                 <span className="ml-2 text-xs text-slate-400">
-                  min {formatTRY(c.min_subtotal)} · kullanım {c.used_count}
+                  min {formatTL(c.min_subtotal)} · kullanım {c.used_count}
                   {c.max_uses ? `/${c.max_uses}` : ""}
                 </span>
               </div>

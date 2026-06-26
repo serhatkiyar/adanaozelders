@@ -9,7 +9,7 @@ import type { ProductCategory } from "@/types";
  * İlk öğe "Tümü" (catch-all) → /magaza; sonra backend'den gelen üst kategoriler
  * (`parent_id == null`) → /magaza?category=<id>. Çocuğu olan kategoriye hover'da
  * mega menu açılır (alt kategoriler, gerçek veriden). Şerit full-bleed (arka plan
- * kenardan kenara), iç içerik boxed (max-w-screen-2xl). Sakin/indigo aksan.
+ * kenardan kenara), iç içerik boxed (max-w-[1464px]). Sakin/indigo aksan.
  *
  * Not: mega menu paneli, yatay kaydırıcının (overflow-x-auto) DIŞINDA — kardeşi
  * olarak render edilir; aksi halde kaydırma kabı paneli dikeyde kırpar.
@@ -45,10 +45,10 @@ export function StoreCategoryBar() {
 
   return (
     <nav
-      className="sticky top-0 z-30 w-full border-b border-slate-100 bg-white/90 backdrop-blur-md dark:border-slate-800 dark:bg-slate-900/90"
+      className="relative z-20 w-full border-b border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900"
       onMouseLeave={() => setOpenId(null)}
     >
-      <div className="mx-auto max-w-screen-2xl px-4 md:px-8">
+      <div className="mx-auto max-w-[1464px] px-4 md:px-8">
         <div
           className="flex items-stretch gap-6 overflow-x-auto sm:gap-8"
           style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
@@ -94,7 +94,7 @@ export function StoreCategoryBar() {
       {/* Mega menu — kaydırıcının dışında, nav'a göre konumlanır (full-bleed) */}
       {openKids.length > 0 && (
         <div className="absolute inset-x-0 top-full z-40 border-b border-slate-100 bg-white shadow-[0_12px_32px_rgba(0,0,0,0.06)] dark:border-slate-800 dark:bg-slate-900">
-          <div className="mx-auto max-w-screen-2xl px-4 py-6 md:px-8">
+          <div className="mx-auto max-w-[1464px] px-4 py-6 md:px-8">
             <div className="grid grid-cols-2 gap-x-8 gap-y-1 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
               {openKids.map((kid) => (
                 <Link
