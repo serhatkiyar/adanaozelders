@@ -35,6 +35,21 @@ export function uniqueSubjects(): SubjectLeaf[] {
 
 export const EXAMS: ExamCategory[] = [
   {
+    label: "İlkokul",
+    columns: [
+      {
+        items: [
+          leaf("Okuma-Yazma"),
+          leaf("Matematik"),
+          leaf("Türkçe"),
+          leaf("Hayat Bilgisi"),
+          leaf("Fen Bilgisi"),
+          leaf("İngilizce"),
+        ],
+      },
+    ],
+  },
+  {
     label: "TYT",
     columns: [
       {

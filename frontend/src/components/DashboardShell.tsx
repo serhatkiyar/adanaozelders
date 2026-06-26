@@ -15,6 +15,10 @@ interface DashboardShellProps {
    * içerik üst bar altındaki tüm alanı padding'siz doldurur (ör. mesajlaşma).
    */
   flush?: boolean;
+  /** Navbar ortasına yerleşen içerik (ör. arama pill'i). */
+  center?: ReactNode;
+  /** Navbar'ın alt satırına yerleşen içerik (ör. filtre çubuğu). */
+  bottom?: ReactNode;
 }
 
 export function DashboardShell({
@@ -22,6 +26,8 @@ export function DashboardShell({
   navItems,
   children,
   flush = false,
+  center,
+  bottom,
 }: DashboardShellProps) {
   const user = useAuthStore((s) => s.user);
 
@@ -48,7 +54,7 @@ export function DashboardShell({
           : "min-h-screen bg-slate-50 dark:bg-slate-900"
       }
     >
-      <DashboardHeader navItems={navItems} transparent />
+      <DashboardHeader navItems={navItems} transparent center={center} bottom={bottom} expanded />
 
       {showVerifyBanner && (
         <div className="border-b border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-500/20 dark:bg-amber-500/10 sm:px-6">

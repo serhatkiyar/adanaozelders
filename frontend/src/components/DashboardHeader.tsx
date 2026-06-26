@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link, NavLink, useLocation } from "react-router-dom";
 import { Avatar } from "@/components/Avatar";
 import { NotificationsBell } from "@/components/NotificationsBell";
@@ -32,11 +32,17 @@ interface DashboardHeaderProps {
   navItems?: NavItem[];
   /** true iken header şeffaf/sticky (landing üzerinde); değilse panel düz beyaz. */
   transparent?: boolean;
+  /** Navbar'ın ortasına yerleşen içerik (Landing'de kategori çubuğu). */
+  center?: ReactNode;
+  /** Navbar'ın altına yerleşen ikinci satır (Landing'de arama çubuğu). */
+  bottom?: ReactNode;
+  /** false iken alt arama satırı yumuşakça katlanır (Landing scroll daralması). */
+  expanded?: boolean;
 }
 
 // Oturum içi üst bar: logo + rol bazlı nav ikonları + bildirim zili + hesap
 // menüsü (profil, ayarlar, tema, çıkış). Hem DashboardShell hem Landing kullanır.
-export function DashboardHeader({ navItems, transparent = false }: DashboardHeaderProps) {
+export function DashboardHeader({ navItems, transparent = false, center, bottom, expanded = true }: DashboardHeaderProps) {
   const user = useAuthStore((s) => s.user);
   const logout = useLogout();
   const home = roleHome(user?.role_id);
@@ -115,16 +121,6 @@ export function DashboardHeader({ navItems, transparent = false }: DashboardHead
           <Icon name="settings" className="h-5 w-5" />
           Ayarlar
         </NavLink>
-        <a
-          href="https://shopier.com"
-          target="_blank"
-          rel="noopener noreferrer"
-          onClick={onClick}
-          className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-700"
-        >
-          <Icon name="shop" className="h-5 w-5" />
-          Mağaza
-        </a>
         <div className="my-1 border-t border-slate-100 dark:border-slate-700" />
         <button
           onClick={() => {
@@ -142,9 +138,12 @@ export function DashboardHeader({ navItems, transparent = false }: DashboardHead
 
   // transparent (landing) modunda logo ve padding'i public navbar ile birebir
   // eşitleriz; panel modunda mevcut (biraz daha küçük) ölçüler korunur.
+  // px/py header elementine değil iç wrapper'a taşındı; böylece bottom slot
+  // kendi max-width'ini bağımsız yönetebiliyor (çift girintileme önlenir).
   const headerClass = transparent
-    ? "sticky top-0 z-40 border-b border-slate-100 bg-white/80 px-6 py-4 backdrop-blur-md dark:border-slate-800 dark:bg-slate-900/80"
-    : "border-b border-slate-200 bg-white px-4 py-4 dark:border-slate-800 dark:bg-slate-900 sm:px-6";
+    ? "sticky top-0 z-40 border-b border-slate-100 bg-white/80 backdrop-blur-md dark:border-slate-800 dark:bg-slate-900/80"
+    : "border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900";
+  const innerPad = "px-4 md:px-8 pt-5 pb-2";
   const logoClass = transparent
     ? "h-8 sm:h-10 w-auto object-contain"
     : "h-7 sm:h-8 w-auto object-contain";
@@ -152,17 +151,27 @@ export function DashboardHeader({ navItems, transparent = false }: DashboardHead
   return (
     <>
     <header className={headerClass}>
-      <div className="flex w-full items-center justify-between gap-3">
-        <Link
-          to={home}
-          className="group flex shrink-0 items-center gap-2 transition hover:opacity-90"
-          aria-label="Ana sayfa"
-        >
-          <NavbarWidget logoClass={logoClass} />
-        </Link>
+      <div className={innerPad}>
+      <div className="mx-auto flex w-full max-w-screen-2xl items-start justify-between gap-3">
+        <div className="flex-1 flex justify-start">
+          <Link
+            to={home}
+            className="group flex shrink-0 items-center gap-2 transition hover:opacity-90"
+            aria-label="Ana sayfa"
+          >
+            <NavbarWidget logoClass={logoClass} />
+          </Link>
+        </div>
+
+        {/* Navbar ortası — kategori çubuğu (yalnız Landing'de geçilir) */}
+        {center && (
+          <div className="hidden shrink-0 justify-center lg:flex">
+            {center}
+          </div>
+        )}
 
         {/* Masaüstü: nav ikonları + avatar dropdown */}
-        <div className="hidden shrink-0 items-center gap-1 sm:flex">
+        <div className="hidden flex-1 shrink-0 items-center justify-end gap-1 sm:flex">
           {navbarItems.map((l) =>
             l.icon ? (
               <NavLink
@@ -200,19 +209,6 @@ export function DashboardHeader({ navItems, transparent = false }: DashboardHead
             )
           )}
 
-          <a
-            href="https://shopier.com"
-            title="Mağaza"
-            aria-label="Mağaza"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="rounded-lg p-2 transition text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
-          >
-            <span className="relative">
-              <Icon name="shop" className="h-5 w-5" />
-            </span>
-          </a>
-
           <NotificationsBell />
 
           <div ref={accountRef} className="relative ml-1">
@@ -227,14 +223,7 @@ export function DashboardHeader({ navItems, transparent = false }: DashboardHead
             </button>
             {accountOpen && (
               <div className="absolute right-0 top-full z-40 mt-2 w-56 rounded-2xl bg-white p-2 shadow-xl ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700">
-                <div className="border-b border-slate-100 px-3 pb-2 pt-1 dark:border-slate-700">
-                  <p className="truncate text-sm font-semibold text-slate-900 dark:text-white">
-                    {user?.full_name}
-                  </p>
-                  <p className="truncate text-xs text-slate-500 dark:text-slate-400">
-                    {user?.email}
-                  </p>
-                </div>
+
                 <div className="mt-1 flex flex-col">
                   {accountLinks(() => {
                     setAccountOpen(false);
@@ -246,7 +235,7 @@ export function DashboardHeader({ navItems, transparent = false }: DashboardHead
         </div>
 
         {/* Mobil: bildirim + hamburger */}
-        <div className="flex items-center gap-1 sm:hidden">
+        <div className="flex flex-1 items-center justify-end gap-1 sm:hidden">
           <NavLink
             to={ROUTES.favorites}
             title="Favorilerim"
@@ -289,22 +278,22 @@ export function DashboardHeader({ navItems, transparent = false }: DashboardHead
           </button>
         </div>
       </div>
+      </div>{/* /innerPad */}
+
+      {bottom && (
+        <div
+          className={`overflow-hidden transition-all duration-300 ease-out ${
+            expanded ? "max-h-24 opacity-100" : "max-h-0 opacity-0"
+          }`}
+        >
+          {bottom}
+        </div>
+      )}
 
       {/* Mobil açılır menü */}
       {menuOpen && (
-        <div className="mt-3 flex flex-col gap-0.5 sm:hidden">
-          <div className="flex items-center gap-3 px-3 py-2">
-            <Avatar name={user?.full_name ?? "?"} avatar_url={user?.avatar_url} size="sm" />
-            <div className="min-w-0">
-              <p className="truncate text-sm font-semibold text-slate-900 dark:text-white">
-                {user?.full_name}
-              </p>
-              <p className="truncate text-xs text-slate-500 dark:text-slate-400">
-                {user?.email}
-              </p>
-            </div>
-          </div>
-          <div className="mb-1 border-t border-slate-100 dark:border-slate-700" />
+        <div className="mt-3 flex flex-col gap-0.5 px-4 sm:hidden">
+
           {accountLinks(() => {
             setMenuOpen(false);
           })}

@@ -15,3 +15,15 @@ export const TRENDING_SEARCHES = [
   "Almanca",
   "İlkokul",
 ] as const;
+
+// Kütüphane/etüt merkezi arama kutusu için trend öneriler. İnsanlar mekânı
+// adından çok semt/ilçe ve olanak ekseninde arar (sessiz alan, 24 saat açık…).
+export const LIBRARY_TRENDING_SEARCHES = [
+  "Sessiz çalışma alanı",
+  "24 saat açık",
+  "Etüt merkezi",
+  "Seyhan",
+  "Çukurova",
+  "Ücretsiz wifi",
+  "Kafeterya",
+] as const;

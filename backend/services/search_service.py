@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import datetime
+import re
 from decimal import Decimal
 
 from fastapi import HTTPException, status
@@ -102,7 +103,7 @@ async def search_tutors(
     min_age: int | None = None,
     max_age: int | None = None,
     subjects: list[str] | None = None,
-    district: str | None = None,
+    districts: list[str] | None = None,
     exam: str | None = None,
     sort: TutorSort | None = None,
     lat: float | None = None,
@@ -145,21 +146,48 @@ async def search_tutors(
             )
         )
 
-    if district:
-        stmt = stmt.where(Tutor.district == district)
+    if districts:
+        stmt = stmt.where(Tutor.district.in_(districts))
 
     relevance = None
     if q:
+        # ── Katmanlı arama ──────────────────────────────────────────────
+        # websearch_to_tsquery zaten AND mantığıyla çalışıyor. Asıl sorun
+        # pg_trgm `%` operatörünün WHERE OR içinde olması — çok kelimeli
+        # sorguda fuzzy eşleşme istenmeyen sonuçlar getiriyor. Çözüm:
+        # çok kelimeli sorguda fuzzy'yi filtreden çıkar, yalnız skorda tut.
+        words = [re.sub(r"[^\w]", "", w, flags=re.UNICODE)
+                 for w in q.strip().split()]
+        words = [w for w in words if w]
+        like = f"%{q.strip()}%"
+
         tsquery = func.websearch_to_tsquery("simple", q)
-        stmt = stmt.where(
-            or_(
-                Tutor.search_vector.op("@@")(tsquery),
-                Tutor.full_name.op("%")(q),
+
+        if len(words) > 1:
+            phrase_query = func.phraseto_tsquery("simple", q)
+            # pg_trgm % filtreden ÇIKARILDI — fuzzy yalnız skorda.
+            stmt = stmt.where(
+                or_(
+                    Tutor.search_vector.op("@@")(tsquery),
+                    Tutor.full_name.ilike(like),
+                )
             )
-        )
-        relevance = func.ts_rank(Tutor.search_vector, tsquery) + func.similarity(
-            Tutor.full_name, q
-        )
+            relevance = (
+                func.ts_rank(Tutor.search_vector, phrase_query) * 4.0
+                + func.ts_rank(Tutor.search_vector, tsquery) * 2.0
+                + func.similarity(Tutor.full_name, q) * 3.0
+            )
+        else:
+            # Tek kelime — fuzzy filtreden dahil.
+            stmt = stmt.where(
+                or_(
+                    Tutor.search_vector.op("@@")(tsquery),
+                    Tutor.full_name.op("%")(q),
+                )
+            )
+            relevance = func.ts_rank(Tutor.search_vector, tsquery) + func.similarity(
+                Tutor.full_name, q
+            )
 
     # Sınav bağlamı: SERT FİLTRE DEĞİL. İlanında ilgili sınavdan (ör. "KPSS")
     # bahseden eğitmenleri sıralamada öne çıkarır; bahsetmeyenler elenmez.
@@ -231,7 +259,7 @@ async def price_histogram(
     min_age: int | None = None,
     max_age: int | None = None,
     subjects: list[str] | None = None,
-    district: str | None = None,
+    districts: list[str] | None = None,
     lat: float | None = None,
     lng: float | None = None,
     radius_km: float | None = None,
@@ -268,17 +296,31 @@ async def price_histogram(
             )
         )
 
-    if district:
-        stmt = stmt.where(Tutor.district == district)
+    if districts:
+        stmt = stmt.where(Tutor.district.in_(districts))
 
     if q:
+        words = [re.sub(r"[^\w]", "", w, flags=re.UNICODE)
+                 for w in q.strip().split()]
+        words = [w for w in words if w]
+
         tsquery = func.websearch_to_tsquery("simple", q)
-        stmt = stmt.where(
-            or_(
-                Tutor.search_vector.op("@@")(tsquery),
-                Tutor.full_name.op("%")(q),
+
+        if len(words) > 1:
+            like = f"%{q.strip()}%"
+            stmt = stmt.where(
+                or_(
+                    Tutor.search_vector.op("@@")(tsquery),
+                    Tutor.full_name.ilike(like),
+                )
             )
-        )
+        else:
+            stmt = stmt.where(
+                or_(
+                    Tutor.search_vector.op("@@")(tsquery),
+                    Tutor.full_name.op("%")(q),
+                )
+            )
 
     if modes:
         acceptable: set[str] = set()

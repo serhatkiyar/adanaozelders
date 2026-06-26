@@ -16,7 +16,7 @@ export interface TutorSearchParams {
   min_age?: number;
   max_age?: number;
   subject?: string[];
-  district?: string;
+  district?: string[];
   // Sınav bağlamı (TYT/AYT/KPSS…): sert filtre değil, sıralama boost'u.
   exam?: string;
   sort?: TutorSort;

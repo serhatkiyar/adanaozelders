@@ -1,43 +1,115 @@
-import { useState, useMemo } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuthStore } from "@/store/authStore";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
-import { useRecentlyViewed } from "@/hooks/useRecentlyViewed";
-import { useUiPrefsStore } from "@/store/uiPrefsStore";
-import { useBookings } from "@/hooks/useBookings";
 import { ROUTES } from "@/lib/routes";
-import { ROLE_IDS, BookingStatus } from "@/types";
+import { ROLE_IDS } from "@/types";
 import { STUDENT_NAV, TUTOR_NAV } from "@/lib/nav";
-import { firstNameOf, timeGreeting } from "@/lib/greeting";
 import { Seo } from "@/components/Seo";
 import { JsonLd } from "@/components/JsonLd";
 import { SITE_NAME, siteUrl, absoluteUrl } from "@/lib/seo";
-import { SubjectCarousel } from "@/components/SubjectCarousel";
 import { TutorCard } from "@/components/TutorCard";
+import { LibraryCard } from "@/components/LibraryCard";
 import { HScroll } from "@/components/HScroll";
 import { DashboardHeader } from "@/components/DashboardHeader";
 import { PublicNavbar } from "@/components/PublicNavbar";
-import { EXAMS, type ExamCategory } from "@/lib/examTree";
-import { ADANA_DISTRICTS } from "@/lib/districts";
-import { TRENDING_SEARCHES } from "@/lib/trendingSearches";
-import { LEGAL_NAV } from "@/lib/legalNav";
+import { CategoryBar, type CategoryKey } from "@/components/CategoryBar";
+import { BigSearch, CompactSearch } from "@/components/HeroSearch";
+import { useTutorSearch } from "@/hooks/useTutorSearch";
+import { useLibrarySearch } from "@/hooks/useLibraries";
+import type { TutorSearchParams } from "@/api/tutors";
+import type { LibrarySearchParams } from "@/api/libraries";
 
-// Bir sınavın tüm (benzersiz) derslerini ?subject=A&subject=B… sorgusuna çevirir.
-function examSubjectQuery(exam: ExamCategory): string {
-  const qs = [...new Set(exam.columns.flatMap((c) => c.items).map((i) => i.q))];
-  return qs.map((q) => `subject=${encodeURIComponent(q)}`).join("&");
-}
+/* ─── ana sayfa ──────────────────────────────────────────
+   Airbnb mantığı:
+   • Üstte navbar = logo | kategori sekmeleri | hesap, ALTINDA büyük arama hapı.
+   • Aşağı kaydırınca kategoriler gizlenir, arama ortaya KOMPAKT oturur, navbar
+     kısalır. (scroll state)
+   • Kategoriye tıklayınca yeni sayfaya GİTMEZ; içerik yerinde değişir.
+   • İçerik = yatay listeler (Öne çıkan eğitmenler, Ortaokul Matematik, …). */
 
-/* ─── redirect if already authenticated ─────────────── */
+const HERO_PLACEHOLDER: Record<CategoryKey, string> = {
+  hepsi: "Ders, eğitmen, kütüphane ara…",
+  egitmenler: "Ders, eğitmen ya da konu ara…",
+  kutuphaneler: "Kütüphane adı veya semt ara…",
+  denemeler: "TYT, AYT, deneme oturumu ara…",
+};
 
 export default function Landing() {
-  // Landing artık hem anonim hem giriş'li kullanıcının ana keşif ekranıdır;
-  // giriş'li kullanıcı yönlendirilmez, navbar oturuma göre uyarlanır.
+  const [active, setActive] = useState<CategoryKey>("hepsi");
+  const [q, setQ] = useState("");
+  const [district, setDistrict] = useState<string[]>([]);
+  const [scrolled, setScrolled] = useState(false);
+  // Daralmışken kompakt aramaya tıklayınca geniş navbar'ı YERİNDE aç (sayfa
+  // kaymaz). Tekrar kaydırınca kapanır.
+  const [searchOpen, setSearchOpen] = useState(false);
+  const navigate = useNavigate();
+
+  // Airbnb scroll davranışı: birazcık kaydırınca daralt (ve açık aramayı kapat).
+  useEffect(() => {
+    const onScroll = () => {
+      setScrolled(window.scrollY > 56);
+      setSearchOpen(false);
+    };
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const base =
+      active === "kutuphaneler" || active === "denemeler"
+        ? ROUTES.libraries
+        : ROUTES.tutors;
+    const sp = new URLSearchParams();
+    district.forEach((d) => sp.append("district", d));
+    if (q.trim()) sp.set("q", q.trim());
+    const qs = sp.toString();
+    navigate(`${base}${qs ? `?${qs}` : ""}`);
+  };
+
+  const expanded = !scrolled || searchOpen;
+  const placeholder = HERO_PLACEHOLDER[active];
+
+  // key ile swap'te fade-in yeniden tetiklenir; sert geçiş yerine yumuşak.
+  const center = (
+    <div key={expanded ? "cats" : "compact"} className="animate-in fade-in duration-300">
+      {expanded ? (
+        <CategoryBar active={active} onSelect={setActive} />
+      ) : (
+        <CompactSearch
+          active={active}
+          placeholder={placeholder}
+          q={q}
+          district={district}
+          onOpen={() => setSearchOpen(true)}
+        />
+      )}
+    </div>
+  );
+
+  // Büyük arama her zaman mount; navbar daralınca header onu max-height ile
+  // yumuşakça katlar (sert zıplama yerine). Wrapper kendi ortalasını yapar
+  // (bottom slot artık justify-center içermiyor — her sayfa kendi hizalar).
+  const bottom = (
+    <div className="flex justify-center px-4 pb-3 pt-1 sm:px-6">
+      <BigSearch
+        q={q}
+        setQ={setQ}
+        district={district}
+        setDistrict={setDistrict}
+        onSubmit={submit}
+        placeholder={placeholder}
+      />
+    </div>
+  );
+
   return (
     <div className="min-h-screen bg-white antialiased dark:bg-slate-900">
       <Seo
         canonicalPath="/"
-        description="Adana'da TYT, AYT, LGS, KPSS ve daha fazlası için alanında uzman, onaylı eğitmenlerle online veya yüz yüze özel ders. Hedefine ulaş."
+        description="Adana'da TYT, AYT, LGS, KPSS ve daha fazlası için alanında uzman, onaylı eğitmenlerle online veya yüz yüze özel ders. Kütüphaneler ve denemeler tek yerde."
       >
         <JsonLd
           data={[
@@ -62,39 +134,232 @@ export default function Landing() {
           ]}
         />
       </Seo>
-      <Navbar />
-      <SearchHero />
-      <RecentlyViewed />
-      <SubjectRows />
+      <Navbar center={center} bottom={bottom} expanded={expanded} />
+      <CategoryContent active={active} />
       <Footer />
     </div>
   );
 }
 
-/* ─── recently viewed listings (under the category bar) ── */
+/* ─── navbar ─────────────────────────────────────────────
+   Kategoriler/kompakt arama center'a, büyük arama bottom'a geçirilir. */
 
-function RecentlyViewed() {
-  const show = useUiPrefsStore((s) => s.showRecentlyViewed);
-  const items = useRecentlyViewed();
-  if (!show || items.length === 0) return null;
+function Navbar({
+  center,
+  bottom,
+  expanded,
+}: {
+  center: ReactNode;
+  bottom?: ReactNode;
+  expanded: boolean;
+}) {
+  const token = useAuthStore((s) => s.token);
+  const { data: user } = useCurrentUser();
+  const loggedIn = !!token && !!user;
+
+  if (loggedIn) {
+    const navItems =
+      user.role_id === ROLE_IDS.TUTOR
+        ? TUTOR_NAV
+        : user.role_id === ROLE_IDS.CLIENT
+          ? STUDENT_NAV
+          : undefined;
+    return (
+      <DashboardHeader
+        navItems={navItems}
+        transparent
+        center={center}
+        bottom={bottom}
+        expanded={expanded}
+      />
+    );
+  }
+
+  return <PublicNavbar center={center} bottom={bottom} expanded={expanded} />;
+}
+
+/* ─── sekmeye göre değişen içerik = yatay listeler ──────── */
+
+function CategoryContent({ active }: { active: CategoryKey }) {
+  return (
+    <main className="space-y-12 pb-24 pt-8">
+      {active === "hepsi" && (
+        <>
+          <TutorRow
+            heading="Ortaokul Matematik"
+            params={{ limit: 12, offset: 0, subject: ["Matematik"], exam: "LGS" }}
+          />
+          <TutorRow
+            heading="TYT'ye hazırlık"
+            params={{ limit: 12, offset: 0, exam: "TYT" }}
+          />
+          <LibraryRow
+            heading="Kütüphaneler & etüt merkezleri"
+            params={{ limit: 12, offset: 0 }}
+          />
+        </>
+      )}
+
+      {active === "egitmenler" && (
+        <>
+          <TutorRow
+            heading="YKS Hazırlık"
+            params={{ limit: 12, offset: 0, exam: "YKS" }}
+          />
+          {/* "LGS Matematik": subject SERT filtre olduğu için gerçek ders adı
+              ("Matematik") ile süzülür; exam ("LGS") yalnız sıralamayı öne çeker. */}
+          <TutorRow
+            heading="LGS Matematik"
+            params={{ limit: 12, offset: 0, subject: ["Matematik"], exam: "LGS" }}
+          />
+          {/* İlkokul: taksonomiye eklenen ilkokula özgü derslerle (Okuma-Yazma,
+              Hayat Bilgisi) süzülür; eğitmen bu dersleri ilan ettikçe dolar. */}
+          <TutorRow
+            heading="İlkokul Okuma-Yazma ve Tüm Dersler"
+            params={{ limit: 12, offset: 0, subject: ["Okuma-Yazma", "Hayat Bilgisi"] }}
+          />
+        </>
+      )}
+
+      {active === "kutuphaneler" && (
+        <>
+          <LibraryRow
+            heading="Çukurova Kütüphaneleri"
+            params={{ limit: 20, offset: 0, district: ["Çukurova"] }}
+          />
+          <LibraryRow
+            heading="Seyhan Kütüphaneleri"
+            params={{ limit: 20, offset: 0, district: ["Seyhan"] }}
+          />
+          <LibraryRow
+            heading="Yüreğir Kütüphaneleri"
+            params={{ limit: 20, offset: 0, district: ["Yüreğir"] }}
+          />
+          <LibraryRow
+            heading="Sarıçam Kütüphaneleri"
+            params={{ limit: 20, offset: 0, district: ["Sarıçam"] }}
+          />
+        </>
+      )}
+
+      {active === "denemeler" && (
+        <>
+          <LibraryRow
+            heading="Deneme oturumu olan kütüphaneler"
+            params={{ limit: 20, offset: 0 }}
+          />
+          <TutorRow
+            heading="TYT'ye hazırlık"
+            params={{ limit: 12, offset: 0, exam: "TYT" }}
+          />
+          <TutorRow
+            heading="AYT'ye hazırlık"
+            params={{ limit: 12, offset: 0, exam: "AYT" }}
+          />
+        </>
+      )}
+    </main>
+  );
+}
+
+function RowHeader({ heading, href }: { heading: string; href: string }) {
+  return (
+    <div className="mb-4 flex items-center justify-between">
+      <h2 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">
+        {heading}
+      </h2>
+      <Link
+        to={href}
+        className="shrink-0 text-sm font-semibold text-indigo-600 transition hover:text-indigo-700 dark:text-indigo-300"
+      >
+        Tümü →
+      </Link>
+    </div>
+  );
+}
+
+function RowSkeleton() {
+  return (
+    <div className="flex gap-5 overflow-hidden">
+      {Array.from({ length: 7 }).map((_, i) => (
+        <div
+          key={i}
+          className="h-60 w-[175px] shrink-0 animate-pulse rounded-2xl bg-slate-100 dark:bg-slate-800"
+        />
+      ))}
+    </div>
+  );
+}
+
+function TutorRow({
+  heading,
+  params,
+}: {
+  heading: string;
+  params: TutorSearchParams;
+}) {
+  const { data, isLoading } = useTutorSearch(params);
+
+  // Boş satırı hiç gösterme (örn. o branşta eğitmen yoksa).
+  if (!isLoading && (!data || data.length === 0)) return null;
+
+  const sp = new URLSearchParams();
+  params.subject?.forEach((s) => sp.append("subject", s));
+  if (params.exam) sp.set("exam", params.exam);
+  const href = `${ROUTES.tutors}${sp.toString() ? `?${sp}` : ""}`;
 
   return (
-    <section className="mx-auto max-w-6xl px-6 pt-6 pb-2">
-      <h2 className="mb-5 text-left text-xl font-bold tracking-tight text-slate-900 dark:text-white">
-        Son Görüntülenen İlanlar
-      </h2>
-      <HScroll className="gap-5 pb-2">
-        {items.map((tutor) => (
-          <div key={tutor.id} className="w-[230px] shrink-0 sm:w-[250px]">
-            <TutorCard tutor={tutor} />
-          </div>
-        ))}
-      </HScroll>
+    <section className="mx-auto max-w-6xl px-6">
+      <RowHeader heading={heading} href={href} />
+      {isLoading ? (
+        <RowSkeleton />
+      ) : (
+        <HScroll className="gap-5 pb-2">
+          {data!.map((tutor) => (
+            <div key={tutor.id} className="w-[175px] shrink-0 sm:w-[190px]">
+              <TutorCard tutor={tutor} showBookmark={false} />
+            </div>
+          ))}
+        </HScroll>
+      )}
     </section>
   );
 }
 
-/* ─── announcement banner ────────────────────────────── */
+function LibraryRow({
+  heading,
+  params,
+}: {
+  heading: string;
+  params: LibrarySearchParams;
+}) {
+  const { data, isLoading } = useLibrarySearch(params);
+
+  if (!isLoading && (!data || data.length === 0)) return null;
+
+  const sp = new URLSearchParams();
+  params.district?.forEach((d) => sp.append("district", d));
+  const href = `${ROUTES.libraries}${sp.toString() ? `?${sp}` : ""}`;
+
+  return (
+    <section className="mx-auto max-w-6xl px-6">
+      <RowHeader heading={heading} href={href} />
+      {isLoading ? (
+        <RowSkeleton />
+      ) : (
+        <HScroll className="gap-5 pb-2">
+          {data!.map((lib) => (
+            <div key={lib.id} className="w-[215px] shrink-0 sm:w-[235px]">
+              <LibraryCard library={lib} />
+            </div>
+          ))}
+        </HScroll>
+      )}
+    </section>
+  );
+}
+
+/* ─── announcement banner (başka yerden de kullanılabilir) ── */
 
 export function AnnouncementBanner() {
   const [visible, setVisible] = useState(true);
@@ -120,346 +385,15 @@ export function AnnouncementBanner() {
   );
 }
 
-/* ─── navbar ─────────────────────────────────────────── */
+/* ─── footer ─────────────────────────────────────────────── */
 
-function Navbar() {
+function Footer() {
   const token = useAuthStore((s) => s.token);
   const { data: user } = useCurrentUser();
   const loggedIn = !!token && !!user;
 
-  // Giriş'liyken panel ekranının üst barını (nav ikonları + bildirim zili +
-  // hesap menüsü) aynen kullan; anonimken pazarlama navbar'ı (kayıt/giriş).
-  if (loggedIn) {
-    const navItems =
-      user.role_id === ROLE_IDS.TUTOR
-        ? TUTOR_NAV
-        : user.role_id === ROLE_IDS.CLIENT
-          ? STUDENT_NAV
-          : undefined;
-    return <DashboardHeader navItems={navItems} transparent />;
-  }
+  const linkCls = "transition hover:text-slate-900 dark:hover:text-white";
 
-  return <PublicNavbar />;
-}
-
-/* ─── snow effect ──────────────────────────────────────── */
-
-function Snow() {
-  const particles = useMemo(() => Array.from({ length: 40 }).map(() => ({
-    left: `${Math.random() * 100}%`,
-    size: `${Math.random() * 5 + 3}px`,
-    duration: `${Math.random() * 10 + 10}s`,
-    delay: `-${Math.random() * 20}s`,
-  })), []);
-
-  return (
-    <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
-      {particles.map((p, i) => (
-        <div
-          key={i}
-          className="absolute rounded-full bg-indigo-500/60 animate-snow-custom dark:bg-indigo-300/40"
-          style={{
-            left: p.left,
-            width: p.size,
-            height: p.size,
-            animationDuration: p.duration,
-            animationDelay: p.delay,
-          }}
-        />
-      ))}
-    </div>
-  );
-}
-
-/* ─── personalized hero (logged-in) ──────────────────── */
-
-function PersonalHero({
-  firstName,
-  isClient,
-}: {
-  firstName: string;
-  isClient: boolean;
-}) {
-  // Yalnız giriş'liyken mount olur → useBookings güvenle çalışır (authed).
-  const { data: bookings } = useBookings({ limit: 100 });
-  const list = bookings ?? [];
-  const upcoming = list.filter((b) => b.status === BookingStatus.ACCEPTED).length;
-  const pending = list.filter((b) => b.status === BookingStatus.PENDING).length;
-
-  const linkCls =
-    "font-semibold text-indigo-600 transition hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300";
-
-  let subtitle: React.ReactNode = "Bugün hangi konuda ders almak istersin?";
-  if (isClient && upcoming > 0) {
-    subtitle = (
-      <>
-        Yaklaşan {upcoming > 1 ? `${upcoming} dersin` : "bir dersin"} var.{" "}
-        <Link to={ROUTES.calendar} className={linkCls}>
-          Takvime git →
-        </Link>
-      </>
-    );
-  } else if (isClient && pending > 0) {
-    subtitle = (
-      <>
-        Bekleyen {pending > 1 ? `${pending} ders talebin` : "bir ders talebin"} var.{" "}
-        <Link to={ROUTES.bookings} className={linkCls}>
-          Görüntüle →
-        </Link>
-      </>
-    );
-  }
-
-  return (
-    <>
-      <h1 className="text-4xl font-extrabold leading-tight tracking-tight text-slate-900 dark:text-white sm:text-6xl sm:leading-tight">
-        {timeGreeting()},{" "}
-        <span className="bg-gradient-to-r from-indigo-600 to-violet-600 bg-clip-text text-transparent">
-          {firstName}
-        </span>
-      </h1>
-      <p className="mx-auto mt-4 max-w-xl text-lg text-slate-500 dark:text-slate-400">
-        {subtitle}
-      </p>
-    </>
-  );
-}
-
-/* ─── search hero ────────────────────────────────────── */
-
-function SearchHero() {
-  const [q, setQ] = useState("");
-  const [district, setDistrict] = useState("");
-  const [searchFocused, setSearchFocused] = useState(false);
-  const navigate = useNavigate();
-  const token = useAuthStore((s) => s.token);
-  const { data: user } = useCurrentUser();
-  const firstName = firstNameOf(user?.full_name);
-  const personalized = !!token && !!firstName;
-
-  // İlçe + ders ile sonuç sayfasına yönlendir.
-  const go = (query: string) => {
-    const sp = new URLSearchParams();
-    if (district) sp.set("district", district);
-    if (query.trim()) sp.set("q", query.trim());
-    const qs = sp.toString();
-    navigate(`${ROUTES.tutors}${qs ? `?${qs}` : ""}`);
-  };
-
-  const submit = (e: React.FormEvent) => {
-    e.preventDefault();
-    go(q);
-  };
-
-  return (
-    <section className="relative overflow-hidden bg-[radial-gradient(ellipse_80%_60%_at_50%_-10%,rgba(139,92,246,0.10),transparent)] pt-24 pb-12 sm:pt-32 sm:pb-16">
-      <div
-        aria-hidden
-        className="pointer-events-none absolute -left-40 -top-40 h-[28rem] w-[28rem] rounded-full bg-indigo-100/40 blur-3xl"
-      />
-      <Snow />
-      <div
-        aria-hidden
-        className="pointer-events-none absolute -right-40 top-10 h-96 w-96 rounded-full bg-violet-100/40 blur-3xl"
-      />
-
-      {/* Increased max-w to 5xl so the carousel can be wider */}
-      <div className="relative mx-auto max-w-5xl px-6 text-center">
-        {personalized ? (
-          <PersonalHero
-            firstName={firstName}
-            isClient={user?.role_id === ROLE_IDS.CLIENT}
-          />
-        ) : (
-          <h1 className="text-4xl font-extrabold leading-tight tracking-tight text-slate-900 dark:text-white sm:text-6xl sm:leading-tight">
-            Uzman Eğitmenle Öğren,{" "}
-            <span className="bg-gradient-to-r from-indigo-600 to-violet-600 bg-clip-text text-transparent">
-              Hedefine Ulaş.
-            </span>
-          </h1>
-        )}
-
-        {/* Search bar (İlçe + Ders), max-w-3xl, ortalı */}
-        <div className="relative mx-auto mt-12 max-w-3xl">
-          <form onSubmit={submit} className="flex h-14 w-full overflow-hidden rounded-full bg-white shadow-lg shadow-indigo-100 ring-1 ring-slate-200 dark:bg-slate-800 dark:shadow-none dark:ring-slate-700">
-            {/* İlçe seçimi (Tüm ilçeler = farketmez) */}
-            <div className="relative flex h-full shrink-0 items-center">
-              <select
-                value={district}
-                onChange={(e) => setDistrict(e.target.value)}
-                aria-label="İlçe"
-                className="h-full cursor-pointer appearance-none bg-transparent pl-6 pr-9 text-base text-slate-700 outline-none dark:text-slate-200"
-              >
-                <option value="">Tüm ilçeler</option>
-                {ADANA_DISTRICTS.map((d) => (
-                  <option key={d} value={d}>
-                    {d}
-                  </option>
-                ))}
-              </select>
-              <span className="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400">
-                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                </svg>
-              </span>
-            </div>
-            <div className="my-3.5 w-px shrink-0 bg-slate-200 dark:bg-slate-700" />
-            <input
-              type="text"
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              onFocus={() => setSearchFocused(true)}
-              onBlur={() => setSearchFocused(false)}
-              placeholder="Ders ara… (ör. Lise Matematik)"
-              className="min-w-0 flex-1 bg-white px-5 text-base sm:text-lg text-slate-900 outline-none placeholder:text-slate-400 dark:bg-slate-800 dark:text-white dark:placeholder:text-slate-500"
-            />
-            <button
-              type="submit"
-              aria-label="Ara"
-              className="flex w-20 sm:w-24 shrink-0 items-center justify-center bg-gradient-to-r from-indigo-600 to-violet-600 text-white transition hover:from-indigo-700 hover:to-violet-700 active:scale-95"
-            >
-              <svg className="h-6 w-6 -translate-x-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0Z" />
-              </svg>
-            </button>
-          </form>
-
-          {/* Trend aramalar — Google önerileri stili (kutu boş ve odaklıyken).
-              Hero'da tıklama doğrudan sonuç sayfasına gider. */}
-          {searchFocused && !q.trim() && (
-            <div className="absolute left-0 right-0 top-full z-30 mt-2 overflow-hidden rounded-2xl bg-white py-2 text-left shadow-xl ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-slate-700">
-              <p className="flex items-center gap-1.5 px-4 pb-1 pt-0.5 text-[11px] font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
-                <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 17l6-6 4 4 8-8M21 7v5m0-5h-5" />
-                </svg>
-                Trend aramalar
-              </p>
-              {TRENDING_SEARCHES.map((t) => (
-                <button
-                  key={t}
-                  type="button"
-                  onMouseDown={(e) => e.preventDefault()}
-                  onClick={() => go(t)}
-                  className="flex w-full items-center gap-3 px-4 py-2.5 text-sm text-slate-700 transition hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-700/50"
-                >
-                  <svg className="h-4 w-4 shrink-0 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0Z" />
-                  </svg>
-                  <span>{t}</span>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Categories directly under search bar, fills max-w-5xl naturally */}
-        <div className="mt-8">
-          <SubjectCarousel />
-        </div>
-      </div>
-    </section>
-  );
-}
-
-/* ─── subject rows ───────────────────────────────────── */
-
-const ROW_STYLES = [
-  { bg: "bg-indigo-950",   text: "text-indigo-200",  title: "text-white",        btn: "bg-indigo-500 hover:bg-indigo-400",    card: "bg-indigo-900 ring-indigo-800"   },
-  { bg: "bg-violet-50",    text: "text-violet-700",  title: "text-violet-900",   btn: "bg-violet-600 hover:bg-violet-700",   card: "bg-white ring-violet-100"        },
-  { bg: "bg-slate-900",    text: "text-slate-300",   title: "text-white",        btn: "bg-slate-600 hover:bg-slate-500",     card: "bg-slate-800 ring-slate-700"     },
-  { bg: "bg-emerald-50",   text: "text-emerald-700", title: "text-emerald-900",  btn: "bg-emerald-600 hover:bg-emerald-700", card: "bg-white ring-emerald-100"       },
-  { bg: "bg-amber-950",    text: "text-amber-200",   title: "text-white",        btn: "bg-amber-500 hover:bg-amber-400",     card: "bg-amber-900 ring-amber-800"     },
-  { bg: "bg-sky-50",       text: "text-sky-700",     title: "text-sky-900",      btn: "bg-sky-600 hover:bg-sky-700",         card: "bg-white ring-sky-100"           },
-];
-
-const EXAM_DESCS: Record<string, string> = {
-  TYT:  "Üniversite sınavının birinci aşaması. Temel matematik, Türkçe ve fen bilimleri sorularını kapsar.",
-  AYT:  "Alan Yeterlilik Testi. Tercih ettiğin bölüme göre sayısal, eşit ağırlık ya da sözel alanında sınava gir.",
-  KPSS: "Kamu Personeli Seçme Sınavı. Devlet memurluğuna giden yolda lisans, önlisans ve ortaöğretim düzeyinde yapılır.",
-  LGS:  "Liselere Geçiş Sınavı. 8. sınıf öğrencilerinin tercih ettiği liseye yerleşmesini belirler.",
-  YDT:  "Yabancı Dil Testi. Yabancı dil puanıyla öğrenci alan üniversite programları için gereklidir.",
-  DGS:  "Dikey Geçiş Sınavı. Önlisans mezunlarının lisans programına geçişini sağlar.",
-  ALES: "Akademik Personel ve Lisansüstü Eğitimi Giriş Sınavı. Yüksek lisans ve doktora için zorunludur.",
-  YDS:  "Yabancı Dil Bilgisi Seviye Tespit Sınavı. Akademik ve profesyonel kariyer için gerekli dil belgesi.",
-  ÖABT: "Öğretmenlik Alan Bilgisi Testi. KPSS kapsamında öğretmenlik başvuruları için yapılır.",
-  MSÜ:  "Milli Savunma Üniversitesi Sınavı. Harp okulu ve astsubay MYO'larına giriş için gereklidir.",
-};
-
-function SubjectRows() {
-  const navigate = useNavigate();
-  const shown = EXAMS.slice(0, 6);
-
-  return (
-    <div>
-      {/* Wave Transition (only before the first row) */}
-      <div className="-mb-1 w-full overflow-hidden rotate-180">
-        <svg className="w-[125%] -ml-[12.5%] text-indigo-950" height="120" viewBox="0 0 100 100" preserveAspectRatio="none">
-          <path d="M0,0 L100,0 C35,150 35,0 0,100z" fill="currentColor"></path>
-        </svg>
-      </div>
-
-      {shown.map((exam, idx) => {
-        const s = ROW_STYLES[idx % ROW_STYLES.length];
-        const allItems = exam.columns.flatMap((c) => c.items);
-        return (
-          <section key={exam.label} className={`${s.bg} py-16`}>
-            <div className="mx-auto max-w-6xl px-6">
-              <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-2">
-
-                {/* Left */}
-                <div>
-                  <h2 className={`text-8xl font-black leading-none ${s.title}`}>
-                    {exam.label}
-                  </h2>
-                  <p className={`mt-5 text-lg leading-relaxed ${s.text}`}>
-                    {EXAM_DESCS[exam.label] ?? "Alanında uzman eğitmenlerle çalış, hedefine ulaş."}
-                  </p>
-                  <button
-                    onClick={() =>
-                      navigate(
-                        `${ROUTES.tutors}?${examSubjectQuery(exam)}&exam=${encodeURIComponent(exam.label)}`
-                      )
-                    }
-                    className={`mt-8 rounded-xl px-7 py-3 text-sm font-bold text-white shadow transition active:scale-95 ${s.btn}`}
-                  >
-                    Eğitmen Bul →
-                  </button>
-                </div>
-
-                {/* Right — subject card */}
-                <div className={`rounded-2xl p-6 ring-1 ${s.card}`}>
-                  <p className={`mb-4 text-xs font-semibold uppercase tracking-widest ${s.text}`}>
-                    Çalışılan Konular
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {allItems.map((it) => (
-                      <button
-                        key={it.label}
-                        onClick={() =>
-                          navigate(
-                            `${ROUTES.tutors}?subject=${encodeURIComponent(it.q)}&exam=${encodeURIComponent(exam.label)}`
-                          )
-                        }
-                        className={`rounded-lg px-3 py-1.5 text-sm font-medium ring-1 transition hover:opacity-80 ${s.card} ${s.text}`}
-                      >
-                        {it.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-              </div>
-            </div>
-          </section>
-        );
-      })}
-    </div>
-  );
-}
-
-/* ─── footer ─────────────────────────────────────────── */
-
-function Footer() {
   return (
     <footer className="border-t border-slate-100 bg-white py-10 dark:border-slate-800 dark:bg-slate-900">
       <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-6 sm:flex-row">
@@ -468,24 +402,19 @@ function Footer() {
         </Link>
         <div className="text-center text-sm text-slate-500 dark:text-slate-400 sm:text-right">
           <p>© {new Date().getFullYear()} Adana Özel Ders. Tüm hakları saklıdır.</p>
-          <div className="mt-4 flex flex-wrap justify-center gap-4 sm:justify-end">
-            <Link to="?modal=login" className="transition hover:text-slate-900 dark:hover:text-white">Giriş Yap</Link>
-            <Link to="?modal=register" className="transition hover:text-slate-900 dark:hover:text-white">Kayıt Ol</Link>
+          <div className="mt-4 flex flex-wrap justify-center gap-x-4 gap-y-2 sm:justify-end">
+            {/* Yasal: tek giriş noktası — diğer 4 belge bu sayfaların kenar menüsünden. */}
+            <Link to={ROUTES.privacy} className={linkCls}>Gizlilik</Link>
+            <Link to={ROUTES.terms} className={linkCls}>Şartlar</Link>
+            {!loggedIn && (
+              <>
+                <Link to="?modal=login" className={linkCls}>Giriş Yap</Link>
+                <Link to="?modal=register" className={linkCls}>Kayıt Ol</Link>
+              </>
+            )}
           </div>
         </div>
       </div>
-      {/* Yasal sayfalar — lansman/iyzico gereği footer'dan her zaman erişilebilir */}
-      <nav className="mx-auto mt-8 flex max-w-6xl flex-wrap justify-center gap-x-5 gap-y-2 border-t border-slate-100 px-6 pt-6 text-xs text-slate-400 dark:border-slate-800 dark:text-slate-500">
-        {LEGAL_NAV.map((item) => (
-          <Link
-            key={item.id}
-            to={item.path}
-            className="transition hover:text-slate-700 dark:hover:text-slate-300"
-          >
-            {item.title}
-          </Link>
-        ))}
-      </nav>
     </footer>
   );
 }

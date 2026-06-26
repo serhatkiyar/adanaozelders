@@ -319,7 +319,7 @@ export default function Messages() {
 
   return (
     <DashboardShell title="Mesajlar" navItems={navItems} flush>
-      <div className="flex h-full w-full overflow-hidden bg-white dark:bg-slate-900">
+      <div className="mx-auto flex h-full w-full max-w-screen-2xl overflow-hidden bg-white px-4 md:px-8 dark:bg-slate-900">
         {/* ── Sohbet listesi ── */}
         <aside
           aria-label="Konuşma listesi"

@@ -7,8 +7,6 @@ export const ADANA_DISTRICTS = [
   "Çukurova", // ~456.918
   "Yüreğir", // ~425.600
   "Sarıçam", // ~197.384
-  "Kozan", // ~136.221
-  "Ceyhan", // ~124.537
 ] as const;
 
 export type AdanaDistrict = (typeof ADANA_DISTRICTS)[number];
