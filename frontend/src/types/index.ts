@@ -1465,6 +1465,26 @@ export interface ProductDetailOut extends ProductSearchOut, BookSpecFields {
   created_at?: string | null;
 }
 
+/* ── Koleksiyon (Listelerim) ── */
+export interface Collection {
+  id: number;
+  name: string;
+  share_token: string;
+  product_ids: number[];
+  preview: ProductSearchOut[];
+}
+
+export interface CollectionDetail {
+  id: number;
+  name: string;
+  share_token: string;
+  items: ProductSearchOut[];
+}
+
+export interface CollectionCreate {
+  name: string;
+}
+
 export interface ProductCreate extends BookSpecFields {
   title: string;
   description?: string | null;
@@ -1522,6 +1542,7 @@ export interface OrderItemOut {
   id: number;
   product_id?: number | null;
   title: string;
+  cover_url?: string | null;
   unit_price: string;
   quantity: number;
   kind: ProductKind;

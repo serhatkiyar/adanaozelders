@@ -135,6 +135,79 @@ export function useRequestReturn(orderId: number) {
   });
 }
 
+/* ── Koleksiyon (Listelerim) ── */
+
+export function useCollections() {
+  return useQuery({
+    queryKey: ["store", "collections"],
+    queryFn: storeApi.listCollections,
+  });
+}
+
+export function useCollection(id: number | undefined) {
+  return useQuery({
+    queryKey: ["store", "collections", id],
+    queryFn: () => storeApi.fetchCollection(id!),
+    enabled: id != null,
+  });
+}
+
+export function useSharedCollection(token: string | undefined) {
+  return useQuery({
+    queryKey: ["store", "collections", "shared", token],
+    queryFn: () => storeApi.fetchSharedCollection(token!),
+    enabled: !!token,
+  });
+}
+
+function useInvalidateCollections() {
+  const qc = useQueryClient();
+  return () => qc.invalidateQueries({ queryKey: ["store", "collections"] });
+}
+
+export function useCreateCollection() {
+  const invalidate = useInvalidateCollections();
+  return useMutation({
+    mutationFn: (name: string) => storeApi.createCollection(name),
+    onSuccess: invalidate,
+  });
+}
+
+export function useRenameCollection() {
+  const invalidate = useInvalidateCollections();
+  return useMutation({
+    mutationFn: ({ id, name }: { id: number; name: string }) =>
+      storeApi.renameCollection(id, name),
+    onSuccess: invalidate,
+  });
+}
+
+export function useDeleteCollection() {
+  const invalidate = useInvalidateCollections();
+  return useMutation({
+    mutationFn: (id: number) => storeApi.deleteCollection(id),
+    onSuccess: invalidate,
+  });
+}
+
+export function useAddToCollection() {
+  const invalidate = useInvalidateCollections();
+  return useMutation({
+    mutationFn: ({ collectionId, productId }: { collectionId: number; productId: number }) =>
+      storeApi.addToCollection(collectionId, productId),
+    onSuccess: invalidate,
+  });
+}
+
+export function useRemoveFromCollection() {
+  const invalidate = useInvalidateCollections();
+  return useMutation({
+    mutationFn: ({ collectionId, productId }: { collectionId: number; productId: number }) =>
+      storeApi.removeFromCollection(collectionId, productId),
+    onSuccess: invalidate,
+  });
+}
+
 /* ── Admin ── */
 
 export function useAdminProducts() {

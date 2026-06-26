@@ -2,6 +2,8 @@ import { apiClient } from "@/api/axios";
 import type {
   CartLineIn,
   CartValidateOut,
+  Collection,
+  CollectionDetail,
   Coupon,
   CouponCreate,
   OrderCreate,
@@ -100,6 +102,67 @@ export async function notifyWhenInStock(
   email: string
 ): Promise<void> {
   await apiClient.post(`/store/products/${productId}/notify-me`, { email });
+}
+
+/* ── Koleksiyon (Listelerim) ── */
+
+export async function listCollections(): Promise<Collection[]> {
+  const { data } = await apiClient.get<Collection[]>("/store/collections");
+  return data;
+}
+
+export async function fetchCollection(id: number): Promise<CollectionDetail> {
+  const { data } = await apiClient.get<CollectionDetail>(`/store/collections/${id}`);
+  return data;
+}
+
+export async function fetchSharedCollection(
+  token: string
+): Promise<CollectionDetail> {
+  const { data } = await apiClient.get<CollectionDetail>(
+    `/store/collections/shared/${token}`
+  );
+  return data;
+}
+
+export async function createCollection(name: string): Promise<Collection> {
+  const { data } = await apiClient.post<Collection>("/store/collections", { name });
+  return data;
+}
+
+export async function renameCollection(
+  id: number,
+  name: string
+): Promise<Collection> {
+  const { data } = await apiClient.patch<Collection>(`/store/collections/${id}`, {
+    name,
+  });
+  return data;
+}
+
+export async function deleteCollection(id: number): Promise<void> {
+  await apiClient.delete(`/store/collections/${id}`);
+}
+
+export async function addToCollection(
+  collectionId: number,
+  productId: number
+): Promise<Collection> {
+  const { data } = await apiClient.post<Collection>(
+    `/store/collections/${collectionId}/items`,
+    { product_id: productId }
+  );
+  return data;
+}
+
+export async function removeFromCollection(
+  collectionId: number,
+  productId: number
+): Promise<Collection> {
+  const { data } = await apiClient.delete<Collection>(
+    `/store/collections/${collectionId}/items/${productId}`
+  );
+  return data;
 }
 
 /* ── Sepet / sipariş (CLIENT) ── */
