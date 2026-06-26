@@ -44,6 +44,8 @@ from models.report import Report, ReportReason, ReportStatus
 from models.review import Review
 from models.role import Role, RoleType
 from models.store import (
+    Collection,
+    CollectionItem,
     Coupon,
     CouponDiscountType,
     CouponRedemption,
@@ -123,6 +125,8 @@ __all__ = [
     "RegistrationStatus",
     "StudyReservation",
     "Notification",
+    "Collection",
+    "CollectionItem",
     "Coupon",
     "CouponDiscountType",
     "CouponRedemption",

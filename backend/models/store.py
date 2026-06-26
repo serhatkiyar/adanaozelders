@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import datetime
 import enum
+import uuid
 
 from sqlalchemy import (
     Boolean,
@@ -364,6 +365,7 @@ class OrderItem(Base, TimestampMixin):
     )
 
     title: Mapped[str] = mapped_column(String(250), nullable=False)
+    cover_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     unit_price: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False)
     quantity: Mapped[int] = mapped_column(Integer, nullable=False)
     kind: Mapped[str] = mapped_column(String(10), nullable=False)
@@ -522,5 +524,53 @@ class StockNotification(Base, TimestampMixin):
             "email",
             unique=True,
             postgresql_where=text("notified_at IS NULL"),
+        ),
+    )
+
+
+class Collection(Base, TimestampMixin, SoftDeleteMixin):
+    """Müşteri koleksiyonu (Trendyol "Listelerim"). Favorilerden ayrı, kalıcı (DB).
+    ``share_token`` ile public paylaşım linki üretilir; içerik ``collection_items``
+    üzerinden ürünlere bağlanır (ürün silinirse FK CASCADE ile öğe düşer)."""
+
+    __tablename__ = "collections"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    client_id: Mapped[int] = mapped_column(
+        ForeignKey("clients.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    name: Mapped[str] = mapped_column(String(120), nullable=False)
+    share_token: Mapped[str] = mapped_column(
+        String(32), nullable=False, unique=True, index=True,
+        default=lambda: uuid.uuid4().hex,
+    )
+
+    client: Mapped["Client"] = relationship()
+    items: Mapped[list["CollectionItem"]] = relationship(
+        back_populates="collection",
+        cascade="all, delete-orphan",
+        order_by="CollectionItem.created_at.desc()",
+    )
+
+
+class CollectionItem(Base, TimestampMixin):
+    """Koleksiyondaki ürün. Koleksiyon başına ürün tekildir (unique index)."""
+
+    __tablename__ = "collection_items"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    collection_id: Mapped[int] = mapped_column(
+        ForeignKey("collections.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    product_id: Mapped[int] = mapped_column(
+        ForeignKey("products.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+
+    collection: Mapped["Collection"] = relationship(back_populates="items")
+    product: Mapped["Product"] = relationship()
+
+    __table_args__ = (
+        Index(
+            "uq_collection_item", "collection_id", "product_id", unique=True
         ),
     )

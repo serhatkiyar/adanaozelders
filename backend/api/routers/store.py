@@ -28,6 +28,11 @@ from schemas.review import RatingDistributionOut
 from schemas.store import (
     BulkImportResultOut,
     CartValidateOut,
+    CollectionCreate,
+    CollectionDetailOut,
+    CollectionItemAdd,
+    CollectionOut,
+    CollectionUpdate,
     CouponCreate,
     CouponOut,
     CouponUpdate,
@@ -50,7 +55,13 @@ from schemas.store import (
     SellerProductCreate,
     StockNotifyIn,
 )
-from services import coupon_service, order_service, phone_service, store_service
+from services import (
+    collection_service,
+    coupon_service,
+    order_service,
+    phone_service,
+    store_service,
+)
 
 router = APIRouter(prefix="/store", tags=["store"])
 
@@ -633,3 +644,96 @@ async def notify_when_in_stock(
 ):
     """Tükenen ürün için stok-bitince e-posta bildirimi aboneliği (public)."""
     await store_service.subscribe_back_in_stock(db, product_id, email=payload.email)
+
+
+# ── Koleksiyon (Listelerim) ──────────────────────────────────────────────────────
+# Not: /collections/shared/{token} public; /{collection_id} int olduğundan çakışma yok.
+
+
+@router.get("/collections", response_model=list[CollectionOut])
+async def list_collections(
+    client: Client = Depends(require_roles(RoleType.CLIENT)),
+    db: AsyncSession = Depends(get_db),
+):
+    return await collection_service.list_collections(db, client)
+
+
+@router.post(
+    "/collections",
+    response_model=CollectionOut,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_collection(
+    payload: CollectionCreate,
+    client: Client = Depends(require_roles(RoleType.CLIENT)),
+    db: AsyncSession = Depends(get_db),
+):
+    return await collection_service.create_collection(db, client, payload.name)
+
+
+@router.get("/collections/shared/{share_token}", response_model=CollectionDetailOut)
+async def get_shared_collection(
+    share_token: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """Public paylaşım görünümü (auth yok)."""
+    return await collection_service.get_shared(db, share_token)
+
+
+@router.get("/collections/{collection_id}", response_model=CollectionDetailOut)
+async def get_collection(
+    collection_id: int,
+    client: Client = Depends(require_roles(RoleType.CLIENT)),
+    db: AsyncSession = Depends(get_db),
+):
+    return await collection_service.get_collection(db, client, collection_id)
+
+
+@router.patch("/collections/{collection_id}", response_model=CollectionOut)
+async def rename_collection(
+    collection_id: int,
+    payload: CollectionUpdate,
+    client: Client = Depends(require_roles(RoleType.CLIENT)),
+    db: AsyncSession = Depends(get_db),
+):
+    return await collection_service.rename_collection(
+        db, client, collection_id, payload.name
+    )
+
+
+@router.delete(
+    "/collections/{collection_id}", status_code=status.HTTP_204_NO_CONTENT
+)
+async def delete_collection(
+    collection_id: int,
+    client: Client = Depends(require_roles(RoleType.CLIENT)),
+    db: AsyncSession = Depends(get_db),
+):
+    await collection_service.delete_collection(db, client, collection_id)
+
+
+@router.post("/collections/{collection_id}/items", response_model=CollectionOut)
+async def add_collection_item(
+    collection_id: int,
+    payload: CollectionItemAdd,
+    client: Client = Depends(require_roles(RoleType.CLIENT)),
+    db: AsyncSession = Depends(get_db),
+):
+    return await collection_service.add_item(
+        db, client, collection_id, payload.product_id
+    )
+
+
+@router.delete(
+    "/collections/{collection_id}/items/{product_id}",
+    response_model=CollectionOut,
+)
+async def remove_collection_item(
+    collection_id: int,
+    product_id: int,
+    client: Client = Depends(require_roles(RoleType.CLIENT)),
+    db: AsyncSession = Depends(get_db),
+):
+    return await collection_service.remove_item(
+        db, client, collection_id, product_id
+    )

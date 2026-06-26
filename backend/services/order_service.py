@@ -172,6 +172,7 @@ async def validate_cart(
                 id=0,
                 product_id=ln["product_id"],
                 title=ln["title"],
+                cover_url=ln["product"].cover_url,
                 unit_price=str(ln["unit_price"]),
                 quantity=ln["quantity"],
                 kind=ln["kind"],
@@ -251,6 +252,7 @@ async def create_order(
             OrderItem(
                 product_id=ln["product_id"],
                 title=ln["title"],
+                cover_url=ln["product"].cover_url,
                 unit_price=ln["unit_price"],
                 quantity=ln["quantity"],
                 kind=ln["kind"],
@@ -409,6 +411,7 @@ def _to_out(order: Order) -> OrderOut:
                 id=it.id,
                 product_id=it.product_id,
                 title=it.title,
+                cover_url=it.cover_url,
                 unit_price=str(it.unit_price),
                 quantity=it.quantity,
                 kind=it.kind,

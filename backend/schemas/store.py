@@ -238,6 +238,7 @@ class OrderItemOut(BaseModel):
     id: int
     product_id: int | None = None
     title: str
+    cover_url: str | None = None
     unit_price: str
     quantity: int
     kind: str
@@ -353,3 +354,44 @@ class OrderReturnOut(BaseModel):
     resolved_at: datetime.datetime | None = None
     # Admin listesinde sipariş özeti gömülü gelir; müşteri yanıtında None.
     order: OrderOut | None = None
+
+
+# ── Koleksiyon (Listelerim) ──────────────────────────────────────────────────────
+
+
+class CollectionCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+
+    @model_validator(mode="after")
+    def _strip(self) -> "CollectionCreate":
+        self.name = self.name.strip()
+        if not self.name:
+            raise ValueError("Liste adı boş olamaz")
+        return self
+
+
+class CollectionUpdate(CollectionCreate):
+    pass
+
+
+class CollectionItemAdd(BaseModel):
+    product_id: int
+
+
+class CollectionOut(BaseModel):
+    """Liste kartı: ad + paylaşım token'ı + üyelik (product_ids) + önizleme (≤6)."""
+
+    id: int
+    name: str
+    share_token: str
+    product_ids: list[int] = []
+    preview: list[ProductSearchOut] = []
+
+
+class CollectionDetailOut(BaseModel):
+    """Liste detayı (sahibi) ve public paylaşım görünümü."""
+
+    id: int
+    name: str
+    share_token: str
+    items: list[ProductSearchOut] = []
