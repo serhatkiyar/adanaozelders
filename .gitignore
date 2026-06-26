@@ -14,3 +14,6 @@ build/
 
 # Gömülü 3. parti araç (ayrı git deposu)
 scripts/out/instagram-pfp-downloader/
+
+# Claude Code kişisel ayarlar (yerel izinler/tercihler — paylaşılmaz)
+.claude/settings.local.json
