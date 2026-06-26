@@ -4,7 +4,9 @@ import {
   addToCart,
   cartCount,
   removeItem,
+  removeSelected,
   setItemQuantity,
+  toggleItemSelected,
   type CartItem,
 } from "@/lib/cart";
 import type { ProductSearchOut } from "@/types";
@@ -23,6 +25,10 @@ interface CartState {
   add: (product: ProductSearchOut, quantity?: number) => void;
   setQuantity: (productId: number, quantity: number) => void;
   remove: (productId: number) => void;
+  /** Sepet sayfasındaki seçim kutusunu ters çevirir. */
+  toggleSelected: (productId: number) => void;
+  /** Seçili (satın alınan) satırları çıkarır; sepet boşalırsa kuponu da sıfırlar. */
+  removeSelected: () => void;
   setCoupon: (code: string | null) => void;
   clear: () => void;
   totalCount: () => number;
@@ -39,6 +45,13 @@ export const useCartStore = create<CartState>()(
         set((s) => ({ items: setItemQuantity(s.items, productId, quantity) })),
       remove: (productId) =>
         set((s) => ({ items: removeItem(s.items, productId) })),
+      toggleSelected: (productId) =>
+        set((s) => ({ items: toggleItemSelected(s.items, productId) })),
+      removeSelected: () =>
+        set((s) => {
+          const items = removeSelected(s.items);
+          return { items, couponCode: items.length === 0 ? null : s.couponCode };
+        }),
       setCoupon: (code) => set({ couponCode: code }),
       clear: () => set({ items: [], couponCode: null }),
       totalCount: () => cartCount(get().items),
