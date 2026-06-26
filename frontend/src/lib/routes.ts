@@ -34,6 +34,8 @@ export const PATHS = {
   storeFavorites: "/magaza/favoriler",
   /** Ödeme/checkout (CLIENT). */
   storeCheckout: "/magaza/odeme",
+  /** Paylaşılan koleksiyon (public). */
+  storeCollectionShared: "/magaza/liste/:token",
 
   // ── Yasal sayfalar (public, SEO) — içerik lib/legalContent.ts'te ──
   kvkk: "/kvkk",
@@ -82,7 +84,12 @@ export const PATHS = {
   deepwork: "/ogren/zamanlayici",
   grapher: "/ogren/grafik",
   habits: "/ogren/aliskanliklar",
+  /** Hesabım — CLIENT'ta birleşik hub, TUTOR/ADMIN'de profil editörü (dağıtıcı). */
   profile: "/hesabim",
+  /** Profil bilgileri editörü (about/eğitim/avatar) — hub'dan erişilir. */
+  profileEdit: "/hesabim/profil",
+  /** Teslimat adresleri (CLIENT) — mağaza + ders ortak. */
+  addresses: "/adreslerim",
   settings: "/ayarlar",
   tutorListing: "/ilan-ayarlari",
   studentProfile: "/ogrenciler/:id",
@@ -105,6 +112,7 @@ export const ROUTES = {
   storeCart: PATHS.storeCart,
   storeFavorites: PATHS.storeFavorites,
   storeCheckout: PATHS.storeCheckout,
+  storeCollectionShared: (token: string) => `/magaza/liste/${token}`,
 
   // ── Yasal sayfalar ──
   kvkk: PATHS.kvkk,
@@ -153,6 +161,8 @@ export const ROUTES = {
   grapher: PATHS.grapher,
   habits: PATHS.habits,
   profile: PATHS.profile,
+  profileEdit: PATHS.profileEdit,
+  addresses: PATHS.addresses,
   settings: PATHS.settings,
   tutorListing: PATHS.tutorListing,
   studentProfile: (id: string | number) => `/ogrenciler/${id}`,

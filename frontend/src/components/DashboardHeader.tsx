@@ -97,7 +97,7 @@ export function DashboardHeader({ navItems, transparent = false, center, bottom,
       <>
         <NavLink to={ROUTES.profile} onClick={onClick} className={menuItemClass}>
           <Icon name="profile" className="h-5 w-5" />
-          Profil
+          Hesabım
         </NavLink>
         {sidebarItems.map((l) => (
           <NavLink

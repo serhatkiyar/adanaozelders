@@ -8,17 +8,20 @@ import { StoreCategoryBar } from "@/components/store/StoreCategoryBar";
 import { StoreAccountMenu } from "@/components/store/StoreAccountMenu";
 import { StoreSearch } from "@/components/store/StoreSearch";
 
-// Boxed-geniş gövde; banner/şerit full-bleed. Site geneliyle (PublicNavbar) aynı ritim.
-const CONTAINER = "mx-auto max-w-screen-2xl px-4 md:px-8";
+// Boxed gövde; banner/şerit full-bleed. İçerik genişliği ~1400px (1464 − 64 kenar boşluğu).
+const CONTAINER = "mx-auto max-w-[1464px] px-4 md:px-8";
 
 export function StoreLayout({
   title = "Mağaza",
   showCategoryBar = true,
+  minimalHeader = false,
   children,
 }: {
   title?: string;
   /** Kategori şeridi yalnız katalog/vitrin yüzeylerinde anlamlı; detay/sepet vb. kapatır. */
   showCategoryBar?: boolean;
+  /** Ödeme huni sayfası: yalnız logo + "Güvenli ödeme" (arama/aksiyon/kategori yok). */
+  minimalHeader?: boolean;
   children: ReactNode;
 }) {
   const cartCount = useCartStore((s) => s.totalCount());
@@ -28,10 +31,33 @@ export function StoreLayout({
     document.title = `${title} · ${SITE_NAME}`;
   }, [title]);
 
+  if (minimalHeader) {
+    return (
+      <div className="flex min-h-screen flex-col bg-slate-50 font-sans dark:bg-slate-950">
+        <header className="w-full border-b border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
+          <div className={`${CONTAINER} flex h-[76px] items-center justify-between`}>
+            <Link to="/" aria-label="Adana Özel Ders ana sayfa" className="flex items-center transition hover:opacity-90">
+              <img src="/logo.png" alt="Adana Özel Ders" className="h-8 w-auto object-contain md:h-9" />
+            </Link>
+            <span className="flex items-center gap-1.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <rect x="3" y="11" width="18" height="11" rx="2" />
+                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+              </svg>
+              Güvenli ödeme
+            </span>
+          </div>
+        </header>
+        <main className="w-full flex-1 pb-12">{children}</main>
+        <AuthModal />
+      </div>
+    );
+  }
+
   return (
     <div className="flex min-h-screen flex-col bg-slate-50 font-sans dark:bg-slate-950">
       {/* Header: logo + (ortalı) arama + aksiyonlar */}
-      <header className="w-full border-b border-slate-100 bg-white dark:border-slate-800 dark:bg-slate-900">
+      <header className="sticky top-0 z-40 w-full border-b border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
         <div className={`${CONTAINER} flex flex-col gap-3 py-3 md:grid md:h-[76px] md:grid-cols-[auto_minmax(0,1fr)_auto] md:items-center md:gap-8 md:py-0`}>
           {/* Logo lockup: master logo (→ ana site) + ayraç + dükkan ikonu (→ mağaza ana) */}
           <div className="flex shrink-0 items-center gap-3">
@@ -58,9 +84,15 @@ export function StoreLayout({
 
           {/* Aksiyonlar — yatay [ikon · isim] */}
           <nav className="flex shrink-0 items-center gap-5 text-slate-600 md:gap-6 dark:text-slate-300">
+            <Link
+              to={ROUTES.tutors}
+              className="hidden text-sm font-medium transition-colors hover:text-indigo-600 lg:inline dark:hover:text-indigo-400"
+            >
+              Eğitmen Ara
+            </Link>
             <StoreAccountMenu />
 
-            <ActionItem to={ROUTES.storeFavorites} label="Favorilerim">
+            <ActionItem to={ROUTES.storeFavorites} label="Favori Listem">
               <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
             </ActionItem>
 

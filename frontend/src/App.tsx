@@ -33,6 +33,9 @@ const ProductDetailPage = lazy(() => import("@/pages/store/ProductDetailPage"));
 const SellerStorePage = lazy(() => import("@/pages/store/SellerStorePage"));
 const CartPage = lazy(() => import("@/pages/store/CartPage"));
 const FavoritesPage = lazy(() => import("@/pages/store/FavoritesPage"));
+const SharedCollectionPage = lazy(() => import("@/pages/store/SharedCollectionPage"));
+const AccountHub = lazy(() => import("@/pages/AccountHub"));
+const AddressesPage = lazy(() => import("@/pages/AddressesPage"));
 const CheckoutPage = lazy(() => import("@/pages/store/CheckoutPage"));
 const OrdersPage = lazy(() => import("@/pages/store/OrdersPage"));
 const OrderDetailPage = lazy(() => import("@/pages/store/OrderDetailPage"));
@@ -158,6 +161,14 @@ function RootDispatcher() {
   return <Landing />;
 }
 
+// "Hesabım" — CLIENT için birleşik hesap hub'ı; TUTOR/ADMIN için mevcut profil editörü.
+function AccountDispatcher() {
+  const { data: user, isLoading } = useCurrentUser();
+  if (isLoading || !user) return <FullScreenSpinner />;
+  if (user.role_id === ROLE_IDS.CLIENT) return <AccountHub />;
+  return <Profile />;
+}
+
 // "Ders Talepleri" — ortak `/ders-talepleri` URL'i, rol göre içerik:
 //  • TUTOR  → panosu (gelen talepler/kazanç) = TutorDashboard
 //  • CLIENT → kendi talep listesi = StudentBookings
@@ -221,6 +232,9 @@ const LEGACY_STATIC: [string, string][] = [
   ["/panel/ogren/zamanlayici", ROUTES.deepwork],
   ["/panel/ogren/grafik", ROUTES.grapher],
   ["/panel/ogren/aliskanliklar", ROUTES.habits],
+  // Mağaza-scoped hesap yüzeyleri birleşik hesaba taşındı
+  ["/magaza/hesabim", ROUTES.profile],
+  ["/magaza/adreslerim", ROUTES.addresses],
 ];
 
 function App() {
@@ -245,6 +259,7 @@ function App() {
           <Route path={PATHS.storeSeller} element={<SellerStorePage />} />
           <Route path={PATHS.storeCart} element={<CartPage />} />
           <Route path={PATHS.storeFavorites} element={<FavoritesPage />} />
+          <Route path={PATHS.storeCollectionShared} element={<SharedCollectionPage />} />
 
           {/* ── Yasal sayfalar (public, SEO) ── */}
           <Route path={PATHS.kvkk} element={<LegalPage doc="kvkk" />} />
@@ -286,7 +301,8 @@ function App() {
             <Route path={PATHS.demands} element={<Demands />} />
             <Route path={PATHS.leaderboard} element={<Leaderboard />} />
             <Route path={PATHS.notifications} element={<Notifications />} />
-            <Route path={PATHS.profile} element={<Profile />} />
+            <Route path={PATHS.profile} element={<AccountDispatcher />} />
+            <Route path={PATHS.profileEdit} element={<Profile />} />
             <Route path={PATHS.settings} element={<Settings />} />
             <Route path={PATHS.questions} element={<PanelQuestions />} />
             {/* Ders talepleri — CLIENT + TUTOR ortak (rol göre içerik) */}
@@ -301,6 +317,7 @@ function App() {
             <Route path={PATHS.storeCheckout} element={<CheckoutPage />} />
             <Route path={PATHS.orders} element={<OrdersPage />} />
             <Route path={PATHS.orderDetail} element={<OrderDetailPage />} />
+            <Route path={PATHS.addresses} element={<AddressesPage />} />
           </Route>
 
           {/* ── Yalnızca TUTOR ── */}
