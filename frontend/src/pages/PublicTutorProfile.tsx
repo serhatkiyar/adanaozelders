@@ -9,7 +9,7 @@ import { useEffect, useState } from "react";
 import { useReviewsByTutor, useTutorRatingDistribution } from "@/hooks/useReviews";
 import { useTutorDetail } from "@/hooks/useTutorSearch";
 import { recordViewedTutor } from "@/lib/recentlyViewed";
-import { WEEKDAYS_SHORT, summarize } from "@/lib/availability";
+import { WEEKDAYS_SHORT, weeklySchedule } from "@/lib/availability";
 import { formatRate, parseMoney } from "@/lib/money";
 import { ShareButton } from "@/components/ShareButton";
 import { TutorTrustBar } from "@/components/TutorTrust";
@@ -246,20 +246,33 @@ export default function PublicTutorProfile() {
               </section>
             )}
 
-            {/* Müsait Saatler */}
+            {/* Müsait Saatler — Wyzant tarzı haftalık çizelge (7 günün tamamı) */}
             {tutor.availability && tutor.availability.length > 0 && (
               <section className="border-t border-slate-100 pt-6 dark:border-slate-700/60">
                 <h2 className="mb-3 text-xl font-bold text-slate-900 dark:text-white">
                   Müsait Saatler
                 </h2>
-                <div className="flex flex-wrap gap-2">
-                  {summarize(tutor.availability).map((s) => (
-                    <span
-                      key={s.weekday}
-                      className="rounded-full bg-slate-100 px-3 py-1 text-sm font-medium text-slate-600 dark:bg-slate-700 dark:text-slate-300"
+                <div className="max-w-md overflow-hidden rounded-xl ring-1 ring-slate-100 dark:ring-slate-700/60">
+                  {weeklySchedule(tutor.availability).map(({ weekday, ranges }, i) => (
+                    <div
+                      key={weekday}
+                      className={`flex items-baseline gap-4 px-4 py-2.5 text-sm ${
+                        i % 2 ? "bg-slate-50/60 dark:bg-slate-800/40" : ""
+                      }`}
                     >
-                      {WEEKDAYS_SHORT[s.weekday]} {s.ranges}
-                    </span>
+                      <span className="w-10 shrink-0 font-semibold text-slate-700 dark:text-slate-200">
+                        {WEEKDAYS_SHORT[weekday]}
+                      </span>
+                      <span
+                        className={
+                          ranges
+                            ? "text-slate-600 dark:text-slate-300"
+                            : "text-slate-400 dark:text-slate-500"
+                        }
+                      >
+                        {ranges ?? "Müsait değil"}
+                      </span>
+                    </div>
                   ))}
                 </div>
               </section>

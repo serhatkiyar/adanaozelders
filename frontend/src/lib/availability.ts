@@ -35,6 +35,7 @@ export function weekdayOfDateStr(dateStr: string): number {
 }
 
 // Aynı güne ait pencereleri "18:00–22:00" gibi birleştirip etiketler döndürür.
+// Yalnız müsaitlik OLAN günleri döndürür (sıralı).
 export function summarize(availability: Availability[]): {
   weekday: number;
   ranges: string;
@@ -53,4 +54,17 @@ export function summarize(availability: Availability[]): {
         .map((r) => `${minToHHMM(r.start_minute)}–${minToHHMM(r.end_minute)}`)
         .join(", "),
     }));
+}
+
+// Wyzant tarzı haftalık çizelge: 7 günün TAMAMI (Pzt..Paz), müsait olmayan
+// gün için ranges=null. Profilde tablo olarak gösterilir.
+export function weeklySchedule(availability: Availability[]): {
+  weekday: number;
+  ranges: string | null;
+}[] {
+  const byDay = new Map(summarize(availability).map((s) => [s.weekday, s.ranges]));
+  return Array.from({ length: 7 }, (_, weekday) => ({
+    weekday,
+    ranges: byDay.get(weekday) ?? null,
+  }));
 }
