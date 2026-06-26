@@ -70,7 +70,7 @@ export async function resubmitLibrary(id: number): Promise<LibraryDetailOut> {
 export interface LibrarySearchParams {
   q?: string;
   amenities?: string[];
-  district?: string;
+  district?: string[];
   lat?: number;
   lng?: number;
   radius_km?: number;

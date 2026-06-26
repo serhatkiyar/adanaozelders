@@ -101,12 +101,14 @@ def _assert_can_manage_library(user: CurrentUser, library_id: int) -> None:
 async def search_libraries(
     q: str | None = Query(default=None, max_length=200),
     amenities: list[str] | None = Query(default=None),
-    district: str | None = Query(default=None, max_length=100),
+    district: list[str] | None = Query(default=None),
     lat: float | None = Query(default=None, ge=-90, le=90),
     lng: float | None = Query(default=None, ge=-180, le=180),
     radius_km: float | None = Query(default=None, gt=0, le=500),
     sort: str | None = Query(default=None, pattern="^(rating|distance)$"),
-    limit: int = Query(default=30, ge=1, le=100),
+    # Üst sınır 500: harita görünümü tüm eşleşen kütüphaneleri tek seferde çeker
+    # (liste 30'arlı sayfalanır ama harita sayfalamaya takılmamalı).
+    limit: int = Query(default=30, ge=1, le=500),
     offset: int = Query(default=0, ge=0),
     db: AsyncSession = Depends(get_db),
 ):
@@ -117,7 +119,7 @@ async def search_libraries(
         db,
         q=q,
         amenities=amenities,
-        district=district,
+        districts=district,
         lat=lat,
         lng=lng,
         radius_km=radius_km,

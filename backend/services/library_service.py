@@ -192,7 +192,7 @@ async def search_libraries(
     *,
     q: str | None = None,
     amenities: list[str] | None = None,
-    district: str | None = None,
+    districts: list[str] | None = None,
     lat: float | None = None,
     lng: float | None = None,
     radius_km: float | None = None,
@@ -238,29 +238,60 @@ async def search_libraries(
                 )
             )
 
-    # Yapısal ilçe filtresi (dropdown). Değer distinct listeden geldiği için birebir
-    # eşleşme yeterli; Türkçe büyük/küçük harf katlama gerekmez.
-    if district and district.strip():
-        stmt = stmt.where(Library.district == district.strip())
+    # Yapısal ilçe filtresi (çoklu). Değerler distinct listeden/sabit ilçe
+    # listesinden geldiği için birebir eşleşme yeterli; Türkçe katlama gerekmez.
+    if districts:
+        wanted_districts = [d.strip() for d in districts if d and d.strip()]
+        if wanted_districts:
+            stmt = stmt.where(Library.district.in_(wanted_districts))
 
     relevance = None
     if q:
-        tsquery = func.websearch_to_tsquery("simple", q)
         like = f"%{q.strip()}%"
-        stmt = stmt.where(
-            or_(
-                Library.search_vector.op("@@")(tsquery),
-                Library.name.op("%")(q),
-                # Serbest arama konum alanlarını da kapsasın: "seyhan" yazınca adında
-                # geçmese de o ilçedeki/semtteki kütüphaneler gelsin.
-                Library.district.ilike(like),
-                Library.city.ilike(like),
-                Library.neighborhood.ilike(like),
+        # ── Katmanlı arama (AND + phrase + sıralama) ────────────────────
+        # Asıl sorun: pg_trgm `%` (similarity) operatörü WHERE içinde OR
+        # koşulu olarak kullanılınca, "yaşam kütüphanesi" sorgusunda
+        # "kütüphanesi" kelimesi yüzünden fuzzy eşleşme BÜTÜN kütüphaneleri
+        # getiriyordu. Çözüm: fuzzy benzerliği filtreden çıkar, yalnız
+        # SIRALAMA skoruna koy. Filtre: full-text AND + tam isim ilike.
+        words = [re.sub(r"[^\w]", "", w, flags=re.UNICODE)
+                 for w in q.strip().split()]
+        words = [w for w in words if w]
+
+        tsquery = func.websearch_to_tsquery("simple", q)
+
+        if len(words) > 1:
+            phrase_query = func.phraseto_tsquery("simple", q)
+            # Filtre: full-text (zaten AND) VEYA ad tam eşleşme VEYA konum
+            # pg_trgm % operatörü filtreden ÇIKARILDI — fuzzy yalnız skorda.
+            stmt = stmt.where(
+                or_(
+                    Library.search_vector.op("@@")(tsquery),
+                    Library.name.ilike(like),
+                    Library.district.ilike(like),
+                    Library.city.ilike(like),
+                    Library.neighborhood.ilike(like),
+                )
             )
-        )
-        relevance = func.ts_rank(Library.search_vector, tsquery) + func.similarity(
-            Library.name, q
-        )
+            relevance = (
+                func.ts_rank(Library.search_vector, phrase_query) * 4.0
+                + func.ts_rank(Library.search_vector, tsquery) * 2.0
+                + func.similarity(Library.name, q) * 3.0
+            )
+        else:
+            # Tek kelime — fuzzy eşleşme filtreden dahil (tek kelimede sorun yok).
+            stmt = stmt.where(
+                or_(
+                    Library.search_vector.op("@@")(tsquery),
+                    Library.name.op("%")(q),
+                    Library.district.ilike(like),
+                    Library.city.ilike(like),
+                    Library.neighborhood.ilike(like),
+                )
+            )
+            relevance = func.ts_rank(Library.search_vector, tsquery) + func.similarity(
+                Library.name, q
+            )
 
     if sort == "rating":
         stmt = stmt.order_by(score.desc(), Library.created_at.desc())

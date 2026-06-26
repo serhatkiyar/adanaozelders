@@ -31,11 +31,12 @@ import {
 } from "@/api/libraries";
 import type { LibraryDetailOut, LibraryReviewCreate, LibraryWrite } from "@/types";
 
-export function useLibrarySearch(params: LibrarySearchParams) {
+export function useLibrarySearch(params: LibrarySearchParams, enabled = true) {
   return useQuery({
     queryKey: ["libraries", "search", params],
     queryFn: () => searchLibraries(params),
     placeholderData: keepPreviousData,
+    enabled,
   });
 }
 
