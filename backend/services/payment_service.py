@@ -19,6 +19,7 @@ from models.booking import Booking, BookingStatus
 from models.client import Client
 from models.payment import Payment, PaymentStatus
 from models.role import ROLE_IDS, RoleType
+from models.store import Order, OrderItem, SellerType
 from models.tutor import Tutor
 from services import commission, notification_service
 
@@ -255,10 +256,33 @@ async def earnings_summary(db: AsyncSession, *, tutor_id: int) -> dict:
     )
     this_month = Decimal(str((await db.execute(this_month_stmt)).scalar_one()))
 
+    # ── Mağaza dijital satışları (doğrudan satış; escrow yok → PAID anında "released") ──
+    store_stmt = (
+        select(func.coalesce(func.sum(OrderItem.tutor_earning), 0))
+        .join(Order, Order.id == OrderItem.order_id)
+        .where(
+            OrderItem.tutor_id == tutor_id,
+            OrderItem.seller_type == SellerType.TUTOR.value,
+            Order.payment_status == "PAID",
+            Order.deleted_at.is_(None),
+        )
+    )
+    store_released = Decimal(str((await db.execute(store_stmt)).scalar_one()))
+    store_month = Decimal(
+        str(
+            (
+                await db.execute(
+                    store_stmt.where(Order.paid_at >= month_start)
+                )
+            ).scalar_one()
+        )
+    )
+
     return {
-        "released": earning_by_status.get(PaymentStatus.RELEASED, Decimal("0")),
+        "released": earning_by_status.get(PaymentStatus.RELEASED, Decimal("0"))
+        + store_released,
         "pending": earning_by_status.get(PaymentStatus.HELD, Decimal("0")),
-        "this_month": this_month,
+        "this_month": this_month + store_month,
         "refunded": amount_by_status.get(PaymentStatus.REFUNDED, Decimal("0")),
         "currency": settings.PAYMENT_CURRENCY,
     }
@@ -299,7 +323,42 @@ async def earnings_transactions(
                 "created_at": payment.created_at,
             }
         )
-    return out
+
+    # ── Mağaza dijital satışları (kalem başına; PAID = serbest) ──
+    store_rows = (
+        await db.execute(
+            select(OrderItem, Order, Client)
+            .join(Order, Order.id == OrderItem.order_id)
+            .join(Client, Client.id == Order.client_id)
+            .where(
+                OrderItem.tutor_id == tutor_id,
+                OrderItem.seller_type == SellerType.TUTOR.value,
+                Order.payment_status == "PAID",
+                Order.deleted_at.is_(None),
+            )
+            .order_by(Order.created_at.desc())
+            .limit(limit)
+        )
+    ).all()
+    for item, order, client in store_rows:
+        out.append(
+            {
+                "id": item.id,
+                "source": "STORE",
+                "title": item.title,
+                "counterparty": client.full_name,
+                "gross": Decimal(str(item.unit_price)) * item.quantity,
+                "commission": Decimal(str(item.commission_amount or 0)),
+                "net": Decimal(str(item.tutor_earning or 0)),
+                "status": "RELEASED",
+                "currency": order.currency,
+                "occurred_at": order.paid_at or order.created_at,
+                "created_at": order.created_at,
+            }
+        )
+
+    out.sort(key=lambda r: r["created_at"], reverse=True)
+    return out[:limit]
 
 
 async def platform_summary(db: AsyncSession) -> dict[str, Decimal]:
@@ -309,7 +368,22 @@ async def platform_summary(db: AsyncSession) -> dict[str, Decimal]:
         func.coalesce(func.sum(Payment.amount), 0),
     ).where(Payment.status == PaymentStatus.RELEASED, Payment.deleted_at.is_(None))
     commission, volume = (await db.execute(stmt)).one()
+    # Mağaza: PAID siparişlerin hacmi + eğitmen dijital kalemlerinden alınan komisyon.
+    store_volume = (
+        await db.execute(
+            select(func.coalesce(func.sum(Order.total), 0)).where(
+                Order.payment_status == "PAID", Order.deleted_at.is_(None)
+            )
+        )
+    ).scalar_one()
+    store_commission = (
+        await db.execute(
+            select(func.coalesce(func.sum(OrderItem.commission_amount), 0))
+            .join(Order, Order.id == OrderItem.order_id)
+            .where(Order.payment_status == "PAID", Order.deleted_at.is_(None))
+        )
+    ).scalar_one()
     return {
-        "commission_total": Decimal(str(commission)),
-        "volume_total": Decimal(str(volume)),
+        "commission_total": Decimal(str(commission)) + Decimal(str(store_commission)),
+        "volume_total": Decimal(str(volume)) + Decimal(str(store_volume)),
     }

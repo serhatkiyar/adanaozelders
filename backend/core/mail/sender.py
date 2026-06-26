@@ -47,3 +47,20 @@ async def send_password_reset_email(*, to: str, name: str, reset_url: str) -> bo
     return await _safe_send(
         templates.password_reset_email(to=to, name=name, reset_url=reset_url)
     )
+
+
+async def send_order_status_email(
+    *, to: str, name: str, order_id: int, status: str, total: str, currency: str, orders_url: str
+) -> bool:
+    return await _safe_send(
+        templates.order_status_email(
+            to=to, name=name, order_id=order_id, status=status,
+            total=total, currency=currency, orders_url=orders_url,
+        )
+    )
+
+
+async def send_back_in_stock_email(*, to: str, product_title: str, product_url: str) -> bool:
+    return await _safe_send(
+        templates.back_in_stock_email(to=to, product_title=product_title, product_url=product_url)
+    )

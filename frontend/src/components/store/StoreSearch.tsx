@@ -1,0 +1,147 @@
+import { useEffect, useRef, useState } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { ROUTES } from "@/lib/routes";
+import { searchProducts } from "@/api/store";
+import { useDebounce } from "@/hooks/useDebounce";
+import { formatTRY } from "@/lib/money";
+
+/**
+ * Mağaza arama çubuğu + canlı öneriler (typeahead). Mevcut `searchProducts`'ı
+ * kullanır (backend değişmez); debounce'lu, küçük resimli, klavye-gezinmeli
+ * (↑/↓/Enter/Esc), dışına tıkla kapanır. Enter → /magaza?q=, öneri → ürün sayfası.
+ */
+export function StoreSearch() {
+  const [params] = useSearchParams();
+  const [q, setQ] = useState(params.get("q") || "");
+  const [open, setOpen] = useState(false);
+  const [active, setActive] = useState(-1);
+  const ref = useRef<HTMLDivElement>(null);
+  const navigate = useNavigate();
+  const debounced = useDebounce(q);
+  const term = debounced.trim();
+
+  const { data: suggestions = [], isFetching } = useQuery({
+    queryKey: ["store", "suggest", term],
+    queryFn: () => searchProducts({ q: term, limit: 6 }),
+    enabled: term.length >= 2,
+    staleTime: 30_000,
+  });
+
+  useEffect(() => {
+    const onDoc = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, []);
+
+  const showDropdown = open && term.length >= 2;
+
+  const go = (to: string) => {
+    setOpen(false);
+    setActive(-1);
+    navigate(to);
+  };
+  const searchAll = () =>
+    go(q.trim() ? `${ROUTES.store}?q=${encodeURIComponent(q.trim())}` : ROUTES.store);
+
+  const onKeyDown = (e: React.KeyboardEvent) => {
+    if (!showDropdown) return;
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setActive((a) => Math.min(a + 1, suggestions.length - 1));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setActive((a) => Math.max(a - 1, -1));
+    } else if (e.key === "Enter") {
+      if (active >= 0 && suggestions[active]) {
+        e.preventDefault();
+        go(ROUTES.storeProduct(suggestions[active].slug));
+      }
+    } else if (e.key === "Escape") {
+      setOpen(false);
+    }
+  };
+
+  return (
+    <div ref={ref} className="relative mx-auto w-full max-w-2xl">
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          searchAll();
+        }}
+        className="relative"
+      >
+        <input
+          type="text"
+          value={q}
+          onChange={(e) => {
+            setQ(e.target.value);
+            setOpen(true);
+            setActive(-1);
+          }}
+          onFocus={() => setOpen(true)}
+          onKeyDown={onKeyDown}
+          placeholder="Ürün, kategori veya yazar ara..."
+          aria-label="Mağazada ara"
+          autoComplete="off"
+          className="w-full rounded-lg border border-slate-200 bg-slate-50 py-2.5 pl-4 pr-12 text-sm text-slate-900 outline-none transition focus:border-indigo-400 focus:bg-white focus:ring-2 focus:ring-indigo-100 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:focus:border-indigo-500 dark:focus:ring-indigo-500/20"
+        />
+        <button
+          type="submit"
+          aria-label="Ara"
+          className="absolute bottom-1.5 right-1.5 top-1.5 flex aspect-square items-center justify-center rounded-md bg-indigo-600 text-white transition-colors hover:bg-indigo-700"
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+            <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+        </button>
+      </form>
+
+      {showDropdown && (
+        <div className="absolute left-0 right-0 top-full z-40 mt-2 overflow-hidden rounded-xl border border-slate-100 bg-white shadow-xl dark:border-slate-700 dark:bg-slate-800">
+          {suggestions.length > 0 ? (
+            <>
+              {suggestions.map((p, i) => (
+                <Link
+                  key={p.id}
+                  to={ROUTES.storeProduct(p.slug)}
+                  onClick={() => setOpen(false)}
+                  onMouseEnter={() => setActive(i)}
+                  className={`flex items-center gap-3 px-3 py-2 transition-colors ${
+                    i === active ? "bg-slate-50 dark:bg-slate-700/50" : ""
+                  }`}
+                >
+                  <div className="flex h-12 w-9 shrink-0 items-center justify-center overflow-hidden rounded bg-slate-100 dark:bg-slate-700">
+                    {p.cover_url && <img src={p.cover_url} alt="" className="h-full w-full object-contain" />}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm text-slate-800 dark:text-slate-200">{p.title}</p>
+                    {p.tutor_name && (
+                      <p className="truncate text-xs text-slate-400">{p.tutor_name}</p>
+                    )}
+                  </div>
+                  <span className="shrink-0 text-sm font-semibold text-slate-900 dark:text-white">
+                    {formatTRY(p.price)}
+                  </span>
+                </Link>
+              ))}
+              <button
+                type="button"
+                onClick={searchAll}
+                className="w-full border-t border-slate-100 px-3 py-2.5 text-left text-sm font-medium text-indigo-600 transition-colors hover:bg-slate-50 dark:border-slate-700 dark:text-indigo-400 dark:hover:bg-slate-700/50"
+              >
+                "{q.trim()}" için tüm sonuçlar →
+              </button>
+            </>
+          ) : (
+            <p className="px-3 py-4 text-center text-sm text-slate-500">
+              {isFetching ? "Aranıyor…" : "Sonuç bulunamadı"}
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}

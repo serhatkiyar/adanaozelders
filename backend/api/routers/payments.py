@@ -28,6 +28,7 @@ from schemas.payment import (
 )
 from services import (
     library_exam_service,
+    order_service,
     payment_service,
     phone_service,
     study_reservation_service,
@@ -40,6 +41,7 @@ router = APIRouter(prefix="/payments", tags=["payments"])
 # Callback sonrası kullanıcının döndürüleceği frontend sayfaları (lib/routes.ts).
 _BOOKINGS_PAGE = "/ders-talepleri"
 _TICKETS_PAGE = "/biletlerim"
+_ORDERS_PAGE = "/siparislerim"
 
 _pay_limit = user_rate_limit(
     key="payment_pay",
@@ -134,6 +136,12 @@ async def iyzico_callback(request: Request, db: AsyncSession = Depends(get_db)):
             provider_ref=result.provider_ref,
         )
         return _checkout_redirect(_BOOKINGS_PAGE, ok=result.success)
+    if kind == "order":
+        await order_service.complete_checkout(
+            db, order_id=entity_id, success=result.success,
+            provider_ref=result.provider_ref,
+        )
+        return _checkout_redirect(_ORDERS_PAGE, ok=result.success)
     if kind == "examreg":
         await library_exam_service.complete_checkout(
             db, registration_id=entity_id, success=result.success,

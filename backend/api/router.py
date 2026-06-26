@@ -27,6 +27,7 @@ from api.routers import (
     reports,
     reviews,
     speedtests,
+    store,
     study_reservations,
     tasks,
     tutors,
@@ -61,6 +62,7 @@ api_router.include_router(leaderboard.router)
 api_router.include_router(payments.router)
 api_router.include_router(payout.router)
 api_router.include_router(reports.router)
+api_router.include_router(store.router)
 api_router.include_router(study_reservations.router)
 api_router.include_router(tasks.router)
 api_router.include_router(ws.router)

@@ -18,6 +18,7 @@ def test_parse_reference_known_kinds():
     assert parse_reference("booking:12") == ("booking", 12)
     assert parse_reference("examreg:5") == ("examreg", 5)
     assert parse_reference("studyres:7") == ("studyres", 7)
+    assert parse_reference("order:42") == ("order", 42)
 
 
 def test_parse_reference_rejects_garbage():

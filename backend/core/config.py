@@ -111,6 +111,10 @@ class Settings(BaseSettings):
     PAYMENT_PROVIDER: str = "fake"
     PAYMENT_CURRENCY: str = "TRY"
     PLATFORM_COMMISSION_RATE: float = 0.10
+    # Mağaza kargo: eşikli ücretsiz kargo. Eşik (TL) ve üstü sipariş ücretsiz;
+    # altındaki fiziksel siparişe sabit ücret. (Frontend lib/shipping.ts ile aynı.)
+    SHIPPING_FREE_THRESHOLD: float = 500.0
+    SHIPPING_FLAT_FEE: float = 49.90
     # Lansman promosyonu: kayıttan itibaren ilk N ay indirimli/0 komisyon. MONTHS=0
     # ise KAPALI (varsayılan: düz %10, kampanya yok). Açmak için .env'de ayarla.
     LAUNCH_PROMO_MONTHS: int = 0

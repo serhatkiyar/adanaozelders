@@ -3,7 +3,6 @@ import { useSearchParams, useNavigate } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { fetchMe, login, register, type RegisterRole } from "@/api/auth";
 import { useAuthStore } from "@/store/authStore";
-import { roleHome } from "@/lib/roles";
 import { ROUTES } from "@/lib/routes";
 import { getErrorMessage } from "@/lib/errors";
 import { buildWelcome } from "@/lib/greeting";
@@ -87,9 +86,11 @@ function LoginForm({ onSuccess }: { onSuccess: () => void }) {
       return user;
     },
     onSuccess: (user) => {
+      // Modal kapanır, kullanıcı bulunduğu sayfada KALIR (mağaza/ürün/ödeme).
+      // `/` zaten RootDispatcher olduğundan oradakiler otomatik workspace görür.
+      // (Özel /giris sayfası kendi yönlendirmesini ayrıca yapar.)
       onSuccess();
       toast.success(buildWelcome(user.id, user.full_name));
-      navigate(roleHome(user.role_id));
     },
   });
 

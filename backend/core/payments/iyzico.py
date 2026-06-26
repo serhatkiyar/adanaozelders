@@ -42,7 +42,7 @@ _RETRIEVE_PATH = "/payment/iyzipos/checkoutform/auth/ecom/detail"
 _REFUND_PATH = "/payment/refund"
 
 # Callback'te varlık çözümü için referans türleri (conversationId/basketId öneki).
-_REFERENCE_KINDS = ("booking", "examreg", "studyres")
+_REFERENCE_KINDS = ("booking", "examreg", "studyres", "order")
 
 
 def format_price(amount: Decimal | float | str) -> str:

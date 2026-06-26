@@ -1,0 +1,1001 @@
+"""Mağaza katalog + ürün/kategori/değerlendirme iş mantığı.
+
+Eğitmen aramasının/kütüphane servisinin kardeşi: pg_trgm + TSVECTOR full-text,
+Bayesian average sıralama. Ödeme/sipariş mantığı ``order_service``'tedir.
+Satıcı kuralı: PLATFORM yalnız fiziksel, TUTOR yalnız dijital ürün satar.
+"""
+from __future__ import annotations
+
+import datetime
+import re
+import unicodedata
+from decimal import Decimal
+
+from fastapi import HTTPException, status
+from sqlalchemy import Float, cast, func, or_, select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
+
+from core import mail, storage
+from core.config import settings
+from models.admin import Admin
+from models.client import Client
+from models.store import (
+    Order,
+    OrderItem,
+    Product,
+    ProductCategory,
+    ProductImage,
+    ProductKind,
+    ProductReview,
+    ProductStatus,
+    SellerType,
+    StockNotification,
+)
+from models.tutor import Tutor
+from schemas.review import RatingDistributionOut
+from schemas.store import (
+    ProductCategoryCreate,
+    ProductCategoryOut,
+    ProductCategoryUpdate,
+    ProductCreate,
+    ProductDetailOut,
+    ProductImageOut,
+    ProductReviewCreate,
+    ProductReviewOut,
+    ProductSearchOut,
+    ProductUpdate,
+    SellerEarningsOut,
+    SellerProductCreate,
+    SellerProductStat,
+)
+from services.ranking import bayesian_average
+
+
+def _now() -> datetime.datetime:
+    return datetime.datetime.now(datetime.timezone.utc)
+
+
+# ── Slug ─────────────────────────────────────────────────────────────────────────
+
+
+def _slugify(value: str) -> str:
+    table = str.maketrans("çğıİöşüÇĞÖŞÜ", "cgiiosucgosu")
+    value = value.translate(table)
+    value = unicodedata.normalize("NFKD", value).encode("ascii", "ignore").decode()
+    value = re.sub(r"[^a-zA-Z0-9]+", "-", value).strip("-").lower()
+    return value or "urun"
+
+
+async def _unique_product_slug(
+    db: AsyncSession, base: str, *, exclude_id: int | None = None
+) -> str:
+    slug = base
+    n = 1
+    while True:
+        stmt = select(Product.id).where(
+            Product.slug == slug, Product.deleted_at.is_(None)
+        )
+        if exclude_id is not None:
+            stmt = stmt.where(Product.id != exclude_id)
+        if (await db.execute(stmt)).first() is None:
+            return slug
+        n += 1
+        slug = f"{base}-{n}"
+
+
+async def _unique_category_slug(
+    db: AsyncSession, base: str, *, exclude_id: int | None = None
+) -> str:
+    slug = base
+    n = 1
+    while True:
+        stmt = select(ProductCategory.id).where(
+            ProductCategory.slug == slug, ProductCategory.deleted_at.is_(None)
+        )
+        if exclude_id is not None:
+            stmt = stmt.where(ProductCategory.id != exclude_id)
+        if (await db.execute(stmt)).first() is None:
+            return slug
+        n += 1
+        slug = f"{base}-{n}"
+
+
+# ── Bayesian ──────────────────────────────────────────────────────────────────────
+
+
+async def _compute_global_mean(db: AsyncSession) -> float:
+    stmt = select(
+        func.coalesce(func.sum(Product.rating_sum), 0),
+        func.coalesce(func.sum(Product.rating_count), 0),
+    ).where(Product.deleted_at.is_(None))
+    total_sum, total_count = (await db.execute(stmt)).one()
+    if not total_count:
+        return settings.BAYESIAN_PRIOR_MEAN
+    return float(total_sum) / float(total_count)
+
+
+def _bayesian_score_expr(prior_mean: float, confidence: float):
+    return (
+        (Product.rating_sum + confidence * prior_mean)
+        / (cast(Product.rating_count, Float) + confidence)
+    ).label("bayesian_score")
+
+
+def _in_stock(p: Product) -> bool:
+    """Dijital → her zaman stokta; fiziksel → stock > 0 (NULL = sınırsız sayılmaz)."""
+    if p.kind == ProductKind.DIGITAL.value:
+        return True
+    return (p.stock or 0) > 0
+
+
+def _to_search_out(
+    p: Product, prior_mean: float, confidence: float, *, tutor_name: str | None = None
+) -> ProductSearchOut:
+    return ProductSearchOut(
+        id=p.id,
+        slug=p.slug,
+        title=p.title,
+        kind=p.kind,
+        seller_type=p.seller_type,
+        tutor_id=p.tutor_id,
+        tutor_name=tutor_name,
+        price=str(p.price),
+        compare_at_price=(
+            str(p.compare_at_price) if p.compare_at_price is not None else None
+        ),
+        currency=p.currency,
+        cover_url=p.cover_url,
+        in_stock=_in_stock(p),
+        category_id=p.category_id,
+        rating_count=p.rating_count,
+        rating_average=(p.rating_sum / p.rating_count if p.rating_count else None),
+        bayesian_score=bayesian_average(
+            p.rating_sum, p.rating_count, prior_mean, confidence
+        ),
+        status=p.status,
+    )
+
+
+# ── Kategori ─────────────────────────────────────────────────────────────────────
+
+
+async def list_categories(db: AsyncSession) -> list[ProductCategoryOut]:
+    """Kategori ağacı + her kategorideki aktif ürün sayısı (mega-menü)."""
+    cats = (
+        await db.execute(
+            select(ProductCategory)
+            .where(ProductCategory.deleted_at.is_(None))
+            .order_by(ProductCategory.sort_order, ProductCategory.name)
+        )
+    ).scalars().all()
+    counts = dict(
+        (
+            await db.execute(
+                select(Product.category_id, func.count())
+                .where(
+                    Product.deleted_at.is_(None),
+                    Product.status == ProductStatus.ACTIVE.value,
+                    Product.category_id.isnot(None),
+                )
+                .group_by(Product.category_id)
+            )
+        ).all()
+    )
+    return [
+        ProductCategoryOut(
+            id=c.id,
+            slug=c.slug,
+            name=c.name,
+            parent_id=c.parent_id,
+            icon_url=c.icon_url,
+            sort_order=c.sort_order,
+            product_count=int(counts.get(c.id, 0)),
+        )
+        for c in cats
+    ]
+
+
+async def create_category(
+    db: AsyncSession, payload: ProductCategoryCreate
+) -> ProductCategoryOut:
+    slug = await _unique_category_slug(db, _slugify(payload.name))
+    cat = ProductCategory(
+        slug=slug,
+        name=payload.name,
+        parent_id=payload.parent_id,
+        icon_url=payload.icon_url,
+        sort_order=payload.sort_order,
+    )
+    db.add(cat)
+    await db.commit()
+    await db.refresh(cat)
+    return ProductCategoryOut.model_validate(cat)
+
+
+async def update_category(
+    db: AsyncSession, category_id: int, payload: ProductCategoryUpdate
+) -> ProductCategoryOut:
+    cat = await db.get(ProductCategory, category_id)
+    if cat is None or cat.deleted_at is not None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Kategori bulunamadı")
+    data = payload.model_dump(exclude_unset=True)
+    if "name" in data and data["name"]:
+        cat.name = data["name"]
+        cat.slug = await _unique_category_slug(
+            db, _slugify(data["name"]), exclude_id=cat.id
+        )
+    for field in ("parent_id", "icon_url", "sort_order"):
+        if field in data:
+            setattr(cat, field, data[field])
+    await db.commit()
+    await db.refresh(cat)
+    return ProductCategoryOut.model_validate(cat)
+
+
+async def delete_category(db: AsyncSession, category_id: int) -> None:
+    cat = await db.get(ProductCategory, category_id)
+    if cat is None or cat.deleted_at is not None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Kategori bulunamadı")
+    cat.deleted_at = _now()
+    await db.commit()
+
+
+# ── Public arama / detay ─────────────────────────────────────────────────────────
+
+
+async def search_products(
+    db: AsyncSession,
+    *,
+    q: str | None = None,
+    category_id: int | None = None,
+    tutor_id: int | None = None,
+    kind: str | None = None,
+    min_price: Decimal | None = None,
+    max_price: Decimal | None = None,
+    in_stock: bool = False,
+    min_rating: float | None = None,
+    sort: str | None = None,
+    limit: int = 30,
+    offset: int = 0,
+) -> list[ProductSearchOut]:
+    prior_mean = await _compute_global_mean(db)
+    confidence = settings.BAYESIAN_CONFIDENCE
+    score = _bayesian_score_expr(prior_mean, confidence)
+
+    stmt = (
+        select(Product, Tutor.first_name, Tutor.last_name)
+        .outerjoin(Tutor, Tutor.id == Product.tutor_id)
+        .where(
+            Product.status == ProductStatus.ACTIVE.value,
+            Product.deleted_at.is_(None),
+        )
+    )
+    if category_id is not None:
+        stmt = stmt.where(Product.category_id == category_id)
+    if tutor_id is not None:
+        stmt = stmt.where(Product.tutor_id == tutor_id)
+    if kind:
+        stmt = stmt.where(Product.kind == kind)
+    if min_price is not None:
+        stmt = stmt.where(Product.price >= min_price)
+    if max_price is not None:
+        stmt = stmt.where(Product.price <= max_price)
+    if in_stock:
+        # Dijital her zaman stokta; fiziksel → stock > 0 (bkz. _in_stock).
+        stmt = stmt.where(
+            or_(Product.kind == ProductKind.DIGITAL.value, Product.stock > 0)
+        )
+    if min_rating is not None:
+        # Ham ortalama >= min_rating (bölmesiz): rating_sum >= min_rating * count.
+        stmt = stmt.where(
+            Product.rating_count > 0,
+            Product.rating_sum >= min_rating * Product.rating_count,
+        )
+
+    relevance = None
+    if q:
+        tsquery = func.websearch_to_tsquery("simple", q)
+        stmt = stmt.where(
+            or_(
+                Product.search_vector.op("@@")(tsquery),
+                Product.title.op("%")(q),
+            )
+        )
+        relevance = func.ts_rank(Product.search_vector, tsquery) + func.similarity(
+            Product.title, q
+        )
+
+    if sort == "price_asc":
+        stmt = stmt.order_by(Product.price.asc(), score.desc())
+    elif sort == "price_desc":
+        stmt = stmt.order_by(Product.price.desc(), score.desc())
+    elif sort == "newest":
+        stmt = stmt.order_by(Product.created_at.desc())
+    elif sort == "rating":
+        stmt = stmt.order_by(score.desc(), Product.created_at.desc())
+    elif relevance is not None:
+        stmt = stmt.order_by(score.desc(), relevance.desc())
+    else:
+        stmt = stmt.order_by(score.desc(), Product.created_at.desc())
+
+    stmt = stmt.limit(limit).offset(offset)
+    rows = (await db.execute(stmt)).all()
+    out: list[ProductSearchOut] = []
+    for p, fn, ln in rows:
+        name = f"{fn} {ln}".strip() if fn else None
+        out.append(_to_search_out(p, prior_mean, confidence, tutor_name=name))
+    return out
+
+
+async def _load_full(db: AsyncSession, product_id: int) -> Product | None:
+    stmt = (
+        select(Product)
+        .options(selectinload(Product.images))
+        .where(Product.id == product_id, Product.deleted_at.is_(None))
+    )
+    return (await db.execute(stmt)).scalars().first()
+
+
+async def _tutor_name(db: AsyncSession, tutor_id: int | None) -> str | None:
+    if tutor_id is None:
+        return None
+    t = await db.get(Tutor, tutor_id)
+    return t.full_name if t is not None else None
+
+
+async def _to_detail(db: AsyncSession, p: Product) -> ProductDetailOut:
+    prior_mean = await _compute_global_mean(db)
+    base = _to_search_out(
+        p,
+        prior_mean,
+        settings.BAYESIAN_CONFIDENCE,
+        tutor_name=await _tutor_name(db, p.tutor_id),
+    )
+    return ProductDetailOut(
+        **base.model_dump(),
+        description=p.description,
+        stock=p.stock,
+        weight_grams=p.weight_grams,
+        digital_asset_name=p.digital_asset_name,
+        author=p.author,
+        publisher=p.publisher,
+        isbn=p.isbn,
+        page_count=p.page_count,
+        dimensions=p.dimensions,
+        publication_year=p.publication_year,
+        edition=p.edition,
+        language=p.language,
+        cover_type=p.cover_type,
+        images=[ProductImageOut.model_validate(im) for im in p.images],
+        created_at=p.created_at,
+    )
+
+
+async def get_product_admin(db: AsyncSession, product_id: int) -> ProductDetailOut:
+    """Admin tekil ürün detayı (durum filtresiz — gizli/taslak da düzenlenebilsin)."""
+    p = await _load_full(db, product_id)
+    if p is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Ürün bulunamadı")
+    return await _to_detail(db, p)
+
+
+async def get_product_public(db: AsyncSession, id_or_slug: str) -> ProductDetailOut:
+    stmt = (
+        select(Product)
+        .options(selectinload(Product.images))
+        .where(
+            Product.deleted_at.is_(None),
+            Product.status == ProductStatus.ACTIVE.value,
+        )
+    )
+    if id_or_slug.isdigit():
+        stmt = stmt.where(Product.id == int(id_or_slug))
+    else:
+        stmt = stmt.where(Product.slug == id_or_slug)
+    p = (await db.execute(stmt)).scalars().first()
+    if p is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Ürün bulunamadı")
+    return await _to_detail(db, p)
+
+
+# ── Ürün CRUD (admin) ─────────────────────────────────────────────────────────────
+
+# Kitap künyesi alanları (admin formundan gelir; create + admin update'te işlenir).
+_BOOK_SPEC_FIELDS = (
+    "author",
+    "publisher",
+    "isbn",
+    "page_count",
+    "dimensions",
+    "publication_year",
+    "edition",
+    "language",
+    "cover_type",
+)
+
+
+async def create_product(
+    db: AsyncSession, admin: Admin, payload: ProductCreate
+) -> ProductDetailOut:
+    slug = await _unique_product_slug(db, _slugify(payload.title))
+    # Fiziksel ürün yalnız platform tarafından satılır.
+    p = Product(
+        slug=slug,
+        title=payload.title,
+        description=payload.description,
+        kind=payload.kind,
+        seller_type=SellerType.PLATFORM.value,
+        price=payload.price,
+        compare_at_price=payload.compare_at_price,
+        stock=payload.stock if payload.kind == ProductKind.PHYSICAL.value else None,
+        weight_grams=payload.weight_grams,
+        category_id=payload.category_id,
+        status=payload.status,
+        cover_url=payload.cover_url,
+        created_by_admin_id=admin.id,
+    )
+    for field in _BOOK_SPEC_FIELDS:
+        setattr(p, field, getattr(payload, field))
+    db.add(p)
+    await db.commit()
+    full = await _load_full(db, p.id)
+    return await _to_detail(db, full)
+
+
+async def bulk_import_products(db: AsyncSession, admin: Admin, rows: list[dict]) -> dict:
+    """CSV satırlarından platform fiziksel/dijital ürün toplu oluşturur. Her satır
+    kendi savepoint'inde işlenir (biri patlarsa diğerleri etkilenmez). ISBN ile
+    tekrar eklenmez (dedup). (created, skipped, errors[{row,message}]) döner."""
+    cats = (
+        await db.execute(
+            select(ProductCategory).where(ProductCategory.deleted_at.is_(None))
+        )
+    ).scalars().all()
+    cat_by_slug = {c.slug: c.id for c in cats}
+
+    created = 0
+    skipped = 0
+    errors: list[dict] = []
+
+    for i, raw in enumerate(rows, start=1):
+        row = {
+            (k or "").strip().lower(): (v.strip() if isinstance(v, str) else v)
+            for k, v in raw.items()
+        }
+
+        def _g(key: str) -> str | None:
+            v = row.get(key)
+            return v or None
+
+        def _int(key: str) -> int | None:
+            v = row.get(key)
+            return int(v) if v not in (None, "") else None
+
+        def _dec(key: str):
+            v = row.get(key)
+            return Decimal(v.replace(",", ".")) if v not in (None, "") else None
+
+        try:
+            title = _g("title")
+            if not title:
+                raise ValueError("title (ürün adı) zorunlu")
+            price = _dec("price")
+            if price is None or price <= 0:
+                raise ValueError("price (fiyat) 0'dan büyük olmalı")
+            kind = (row.get("kind") or "PHYSICAL").upper()
+            if kind not in ("PHYSICAL", "DIGITAL"):
+                raise ValueError("kind PHYSICAL veya DIGITAL olmalı")
+            status_v = (row.get("status") or "ACTIVE").upper()
+            if status_v not in ("ACTIVE", "HIDDEN", "DRAFT"):
+                raise ValueError("status ACTIVE/HIDDEN/DRAFT olmalı")
+            compare = _dec("compare_at_price")
+            if compare is not None and compare <= price:
+                raise ValueError("compare_at_price fiyattan büyük olmalı")
+
+            isbn = _g("isbn")
+            if isbn:
+                dupe = (
+                    await db.execute(
+                        select(Product.id).where(
+                            Product.isbn == isbn, Product.deleted_at.is_(None)
+                        )
+                    )
+                ).first()
+                if dupe:
+                    skipped += 1
+                    continue
+
+            cat_slug = _g("category_slug")
+            category_id = cat_by_slug.get(cat_slug) if cat_slug else None
+            if cat_slug and category_id is None:
+                raise ValueError(f"kategori bulunamadı: {cat_slug}")
+
+            async with db.begin_nested():
+                slug = await _unique_product_slug(db, _slugify(title))
+                db.add(
+                    Product(
+                        slug=slug,
+                        title=title,
+                        description=_g("description"),
+                        kind=kind,
+                        seller_type=SellerType.PLATFORM.value,
+                        price=price,
+                        compare_at_price=compare,
+                        stock=_int("stock") if kind == "PHYSICAL" else None,
+                        category_id=category_id,
+                        status=status_v,
+                        cover_url=_g("cover_url"),
+                        created_by_admin_id=admin.id,
+                        author=_g("author"),
+                        publisher=_g("publisher"),
+                        isbn=isbn,
+                        page_count=_int("page_count"),
+                        dimensions=_g("dimensions"),
+                        publication_year=_int("publication_year"),
+                        edition=_g("edition"),
+                        language=_g("language"),
+                        cover_type=_g("cover_type"),
+                    )
+                )
+            created += 1
+        except Exception as exc:  # noqa: BLE001 — satır hatası raporlanır, akış sürer
+            errors.append({"row": i, "message": str(exc)})
+
+    await db.commit()
+    return {"created": created, "skipped": skipped, "errors": errors}
+
+
+async def subscribe_back_in_stock(
+    db: AsyncSession, product_id: int, *, email: str, client_id: int | None = None
+) -> None:
+    """Tükenen fiziksel ürüne stok-bitince bildirim aboneliği (idempotent)."""
+    p = await db.get(Product, product_id)
+    if p is None or p.deleted_at is not None or p.status != ProductStatus.ACTIVE.value:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Ürün bulunamadı")
+    if p.kind != ProductKind.PHYSICAL.value:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST, "Yalnızca fiziksel ürün için stok bildirimi alınır"
+        )
+    if (p.stock or 0) > 0:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Ürün zaten stokta")
+    existing = (
+        await db.execute(
+            select(StockNotification.id).where(
+                StockNotification.product_id == product_id,
+                StockNotification.email == email,
+                StockNotification.notified_at.is_(None),
+            )
+        )
+    ).first()
+    if existing:
+        return  # zaten abone
+    db.add(StockNotification(product_id=product_id, email=email, client_id=client_id))
+    await db.commit()
+
+
+async def _notify_back_in_stock(db: AsyncSession, product: Product) -> None:
+    """Ürün 0→>0 stoğa girince bekleyen abonelere e-posta atar (best-effort)."""
+    subs = (
+        await db.execute(
+            select(StockNotification).where(
+                StockNotification.product_id == product.id,
+                StockNotification.notified_at.is_(None),
+            )
+        )
+    ).scalars().all()
+    if not subs:
+        return
+    url = f"{settings.FRONTEND_BASE_URL.rstrip('/')}/magaza/urun/{product.slug}"
+    now = _now()
+    for s in subs:
+        await mail.send_back_in_stock_email(
+            to=s.email, product_title=product.title, product_url=url
+        )
+        s.notified_at = now
+    await db.commit()
+
+
+async def update_product(
+    db: AsyncSession, product_id: int, payload: ProductUpdate, *, owner_tutor_id: int | None = None
+) -> ProductDetailOut:
+    """``owner_tutor_id`` verilirse (eğitmen) yalnız kendi ürününü ve sınırlı alanları
+    günceller; durumu PENDING/HIDDEN dışına çıkaramaz (yayın admin onayında)."""
+    p = await _load_full(db, product_id)
+    if p is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Ürün bulunamadı")
+    if owner_tutor_id is not None and p.tutor_id != owner_tutor_id:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Bu ürün sizin değil")
+
+    old_stock = p.stock
+    data = payload.model_dump(exclude_unset=True)
+    if "title" in data and data["title"]:
+        p.title = data["title"]
+        p.slug = await _unique_product_slug(
+            db, _slugify(data["title"]), exclude_id=p.id
+        )
+    editable = ["description", "price", "compare_at_price", "category_id", "cover_url"]
+    if owner_tutor_id is None:
+        # Admin: stok/ağırlık/durum + kitap künyesi dahil tüm alanlar.
+        editable += ["weight_grams", "status", *_BOOK_SPEC_FIELDS]
+        if p.kind == ProductKind.PHYSICAL.value:
+            editable.append("stock")
+    for field in editable:
+        if field in data:
+            setattr(p, field, data[field])
+    # compare_at_price > price tutarlılığı (DB CHECK de korur ama erken 400 verelim).
+    if p.compare_at_price is not None and Decimal(str(p.compare_at_price)) <= Decimal(
+        str(p.price)
+    ):
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST, "İndirimli fiyat eski fiyattan küçük olmalı"
+        )
+    await db.commit()
+    # Stok 0→>0 olduysa bekleyen stok-bildirim abonelerine haber ver.
+    if (old_stock is None or old_stock <= 0) and (p.stock or 0) > 0:
+        await _notify_back_in_stock(db, p)
+    full = await _load_full(db, p.id)
+    return await _to_detail(db, full)
+
+
+async def delete_product(
+    db: AsyncSession, product_id: int, *, owner_tutor_id: int | None = None
+) -> None:
+    p = await db.get(Product, product_id)
+    if p is None or p.deleted_at is not None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Ürün bulunamadı")
+    if owner_tutor_id is not None and p.tutor_id != owner_tutor_id:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Bu ürün sizin değil")
+    p.deleted_at = _now()
+    await db.commit()
+
+
+async def list_products_admin(
+    db: AsyncSession, *, limit: int = 100, offset: int = 0
+) -> list[ProductSearchOut]:
+    """Admin listesi — gizli/taslak/bekleyen dahil."""
+    prior_mean = await _compute_global_mean(db)
+    confidence = settings.BAYESIAN_CONFIDENCE
+    rows = (
+        await db.execute(
+            select(Product, Tutor.first_name, Tutor.last_name)
+            .outerjoin(Tutor, Tutor.id == Product.tutor_id)
+            .where(Product.deleted_at.is_(None))
+            .order_by(Product.created_at.desc())
+            .limit(limit)
+            .offset(offset)
+        )
+    ).all()
+    return [
+        _to_search_out(
+            p,
+            prior_mean,
+            confidence,
+            tutor_name=(f"{fn} {ln}".strip() if fn else None),
+        )
+        for p, fn, ln in rows
+    ]
+
+
+# ── Eğitmen dijital ürün ─────────────────────────────────────────────────────────
+
+
+async def create_seller_product(
+    db: AsyncSession, tutor: Tutor, payload: SellerProductCreate
+) -> ProductDetailOut:
+    """Eğitmen dijital ürün oluşturur: kind=DIGITAL, seller=TUTOR, status=PENDING
+    (admin onayı — lansman kalite kapısı). Dosya ayrı uçtan yüklenir."""
+    slug = await _unique_product_slug(db, _slugify(payload.title))
+    p = Product(
+        slug=slug,
+        title=payload.title,
+        description=payload.description,
+        kind=ProductKind.DIGITAL.value,
+        seller_type=SellerType.TUTOR.value,
+        tutor_id=tutor.id,
+        price=payload.price,
+        compare_at_price=payload.compare_at_price,
+        category_id=payload.category_id,
+        status=ProductStatus.PENDING.value,
+        cover_url=payload.cover_url,
+    )
+    db.add(p)
+    await db.commit()
+    full = await _load_full(db, p.id)
+    return await _to_detail(db, full)
+
+
+async def list_seller_products(
+    db: AsyncSession, tutor: Tutor
+) -> list[ProductSearchOut]:
+    prior_mean = await _compute_global_mean(db)
+    confidence = settings.BAYESIAN_CONFIDENCE
+    products = (
+        await db.execute(
+            select(Product)
+            .where(
+                Product.tutor_id == tutor.id,
+                Product.deleted_at.is_(None),
+            )
+            .order_by(Product.created_at.desc())
+        )
+    ).scalars().all()
+    return [
+        _to_search_out(p, prior_mean, confidence, tutor_name=tutor.full_name)
+        for p in products
+    ]
+
+
+async def seller_earnings(db: AsyncSession, tutor: Tutor) -> SellerEarningsOut:
+    """Eğitmenin mağaza satış özeti: ürün başına adet/ciro/net kazanç + toplamlar.
+    Yalnız ödenmiş (PAID) siparişler sayılır; iade edilen (REFUNDED) hariç tutulur
+    (REFUNDED'da payment_status PAID olmaktan çıkar)."""
+    base_where = (
+        OrderItem.seller_type == SellerType.TUTOR.value,
+        OrderItem.tutor_id == tutor.id,
+        Order.payment_status == "PAID",
+        Order.deleted_at.is_(None),
+    )
+    rows = (
+        await db.execute(
+            select(
+                OrderItem.product_id,
+                func.max(OrderItem.title).label("title"),
+                func.sum(OrderItem.quantity).label("units"),
+                func.sum(OrderItem.unit_price * OrderItem.quantity).label("gross"),
+                func.coalesce(func.sum(OrderItem.tutor_earning), 0).label("earnings"),
+            )
+            .join(Order, Order.id == OrderItem.order_id)
+            .where(*base_where)
+            .group_by(OrderItem.product_id)
+            .order_by(func.sum(OrderItem.unit_price * OrderItem.quantity).desc())
+        )
+    ).all()
+
+    total_orders = (
+        await db.execute(
+            select(func.count(func.distinct(OrderItem.order_id)))
+            .join(Order, Order.id == OrderItem.order_id)
+            .where(*base_where)
+        )
+    ).scalar_one()
+
+    products: list[SellerProductStat] = []
+    total_units = 0
+    total_gross = Decimal("0.00")
+    total_earnings = Decimal("0.00")
+    for r in rows:
+        units = int(r.units or 0)
+        gross = Decimal(str(r.gross or 0)).quantize(Decimal("0.01"))
+        earnings = Decimal(str(r.earnings or 0)).quantize(Decimal("0.01"))
+        total_units += units
+        total_gross += gross
+        total_earnings += earnings
+        products.append(
+            SellerProductStat(
+                product_id=r.product_id,
+                title=r.title,
+                units_sold=units,
+                gross=str(gross),
+                earnings=str(earnings),
+            )
+        )
+    return SellerEarningsOut(
+        total_units=total_units,
+        total_orders=int(total_orders or 0),
+        total_gross=str(total_gross),
+        total_earnings=str(total_earnings),
+        products=products,
+    )
+
+
+# ── Görsel / dijital dosya ───────────────────────────────────────────────────────
+
+
+async def _require_product(
+    db: AsyncSession, product_id: int, *, owner_tutor_id: int | None = None
+) -> Product:
+    p = await db.get(Product, product_id)
+    if p is None or p.deleted_at is not None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Ürün bulunamadı")
+    if owner_tutor_id is not None and p.tutor_id != owner_tutor_id:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Bu ürün sizin değil")
+    return p
+
+
+async def set_cover(
+    db: AsyncSession, product_id: int, file_bytes: bytes, *, owner_tutor_id: int | None = None
+) -> ProductDetailOut:
+    p = await _require_product(db, product_id, owner_tutor_id=owner_tutor_id)
+    old = p.cover_url
+    p.cover_url = await storage.upload_library_photo(file_bytes, square=False)
+    await db.commit()
+    if old:
+        await storage.delete_file(old)
+    full = await _load_full(db, product_id)
+    return await _to_detail(db, full)
+
+
+async def add_images(
+    db: AsyncSession, product_id: int, files: list[bytes], *, owner_tutor_id: int | None = None
+) -> ProductDetailOut:
+    await _require_product(db, product_id, owner_tutor_id=owner_tutor_id)
+    start = (
+        await db.execute(
+            select(func.coalesce(func.max(ProductImage.sort_order), -1) + 1).where(
+                ProductImage.product_id == product_id
+            )
+        )
+    ).scalar_one()
+    for i, raw in enumerate(files):
+        url = await storage.upload_library_photo(raw, square=False)
+        db.add(ProductImage(product_id=product_id, url=url, sort_order=start + i))
+    await db.commit()
+    full = await _load_full(db, product_id)
+    return await _to_detail(db, full)
+
+
+async def delete_image(
+    db: AsyncSession, product_id: int, image_id: int, *, owner_tutor_id: int | None = None
+) -> ProductDetailOut:
+    await _require_product(db, product_id, owner_tutor_id=owner_tutor_id)
+    img = await db.get(ProductImage, image_id)
+    if img is None or img.product_id != product_id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Görsel bulunamadı")
+    url = img.url
+    await db.delete(img)
+    await db.commit()
+    if url:
+        await storage.delete_file(url)
+    full = await _load_full(db, product_id)
+    return await _to_detail(db, full)
+
+
+async def set_digital_asset(
+    db: AsyncSession,
+    product_id: int,
+    file_bytes: bytes,
+    *,
+    original_name: str | None,
+    content_type: str | None,
+    owner_tutor_id: int | None = None,
+) -> ProductDetailOut:
+    """DIGITAL ürünün teslim dosyasını yükler (MinIO). Eskisini temizler."""
+    p = await _require_product(db, product_id, owner_tutor_id=owner_tutor_id)
+    if p.kind != ProductKind.DIGITAL.value:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST, "Yalnızca dijital ürüne dosya yüklenebilir"
+        )
+    old = p.digital_asset_key
+    p.digital_asset_key = await storage.upload_file(
+        file_bytes, original_name=original_name, content_type=content_type
+    )
+    p.digital_asset_name = original_name
+    await db.commit()
+    if old:
+        await storage.delete_file(old)
+    full = await _load_full(db, product_id)
+    return await _to_detail(db, full)
+
+
+# ── Değerlendirme (satın-alma-gated) ─────────────────────────────────────────────
+
+
+async def _has_purchased(db: AsyncSession, client_id: int, product_id: int) -> bool:
+    """Müşterinin bu ürünü içeren ödenmiş (PAID+) bir siparişi var mı."""
+    stmt = (
+        select(OrderItem.id)
+        .join(Order, Order.id == OrderItem.order_id)
+        .where(
+            OrderItem.product_id == product_id,
+            Order.client_id == client_id,
+            Order.payment_status == "PAID",
+            Order.deleted_at.is_(None),
+        )
+        .limit(1)
+    )
+    return (await db.execute(stmt)).first() is not None
+
+
+async def list_reviews(
+    db: AsyncSession, *, product_id: int, limit: int = 20, offset: int = 0
+) -> list[ProductReviewOut]:
+    rows = (
+        await db.execute(
+            select(ProductReview, Client)
+            .join(Client, Client.id == ProductReview.client_id)
+            .where(
+                ProductReview.product_id == product_id,
+                ProductReview.deleted_at.is_(None),
+            )
+            .order_by(ProductReview.created_at.desc())
+            .limit(limit)
+            .offset(offset)
+        )
+    ).all()
+    out: list[ProductReviewOut] = []
+    for review, client in rows:
+        item = ProductReviewOut.model_validate(review)
+        item.client_name = client.full_name
+        item.client_avatar_url = client.avatar_url
+        out.append(item)
+    return out
+
+
+async def rating_distribution(
+    db: AsyncSession, product_id: int
+) -> RatingDistributionOut:
+    rows = (
+        await db.execute(
+            select(ProductReview.rating, func.count())
+            .where(
+                ProductReview.product_id == product_id,
+                ProductReview.deleted_at.is_(None),
+            )
+            .group_by(ProductReview.rating)
+        )
+    ).all()
+    counts = {star: 0 for star in range(1, 6)}
+    total = 0
+    weighted = 0
+    for rating, count in rows:
+        r, c = int(rating), int(count)
+        counts[r] = c
+        total += c
+        weighted += r * c
+    average = (weighted / total) if total else None
+    return RatingDistributionOut(count=total, average=average, distribution=counts)
+
+
+async def create_review(
+    db: AsyncSession, client: Client, product_id: int, payload: ProductReviewCreate
+) -> ProductReviewOut:
+    p = await db.get(Product, product_id)
+    if p is None or p.deleted_at is not None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Ürün bulunamadı")
+    if not await _has_purchased(db, client.id, product_id):
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            "Yalnızca satın aldığınız ürünü değerlendirebilirsiniz",
+        )
+    existing = (
+        await db.execute(
+            select(ProductReview).where(
+                ProductReview.product_id == product_id,
+                ProductReview.client_id == client.id,
+                ProductReview.deleted_at.is_(None),
+            )
+        )
+    ).scalars().first()
+    if existing is not None:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Bu ürünü zaten değerlendirdiniz")
+
+    review = ProductReview(
+        product_id=product_id,
+        client_id=client.id,
+        rating=payload.rating,
+        comment_text=payload.comment_text,
+    )
+    db.add(review)
+    p.rating_count += 1
+    p.rating_sum += payload.rating
+    await db.commit()
+    await db.refresh(review)
+    item = ProductReviewOut.model_validate(review)
+    item.client_name = client.full_name
+    item.client_avatar_url = client.avatar_url
+    return item
+
+
+async def delete_review(db: AsyncSession, client: Client, review_id: int) -> None:
+    review = await db.get(ProductReview, review_id)
+    if review is None or review.deleted_at is not None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Değerlendirme bulunamadı")
+    if review.client_id != client.id:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Sizin değerlendirmeniz değil")
+    p = await db.get(Product, review.product_id)
+    review.deleted_at = _now()
+    if p is not None:
+        p.rating_count = max(0, p.rating_count - 1)
+        p.rating_sum = max(0, p.rating_sum - review.rating)
+    await db.commit()

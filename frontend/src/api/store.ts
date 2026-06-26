@@ -1,0 +1,417 @@
+import { apiClient } from "@/api/axios";
+import type {
+  CartLineIn,
+  CartValidateOut,
+  Coupon,
+  CouponCreate,
+  OrderCreate,
+  OrderOut,
+  OrderReturn,
+  ProductCategory,
+  ProductCategoryWrite,
+  ProductCreate,
+  ProductDetailOut,
+  ProductReviewCreate,
+  ProductReviewOut,
+  BulkImportResult,
+  ProductSearchOut,
+  ProductUpdate,
+  RatingDistribution,
+  SellerEarnings,
+  SellerProductCreate,
+} from "@/types";
+
+const MULTIPART = { headers: { "Content-Type": "multipart/form-data" } };
+
+/* ── Public katalog ── */
+
+export interface ProductSearchParams {
+  q?: string;
+  category_id?: number;
+  tutor_id?: number;
+  kind?: "PHYSICAL" | "DIGITAL";
+  min_price?: number;
+  max_price?: number;
+  in_stock?: boolean;
+  min_rating?: number;
+  sort?: "price_asc" | "price_desc" | "newest" | "rating";
+  limit?: number;
+  offset?: number;
+}
+
+export async function searchProducts(
+  params: ProductSearchParams
+): Promise<ProductSearchOut[]> {
+  const { data } = await apiClient.get<ProductSearchOut[]>("/store/products", {
+    params,
+  });
+  return data;
+}
+
+export async function fetchProduct(
+  idOrSlug: string | number
+): Promise<ProductDetailOut> {
+  const { data } = await apiClient.get<ProductDetailOut>(
+    `/store/products/${idOrSlug}`
+  );
+  return data;
+}
+
+export async function fetchCategories(): Promise<ProductCategory[]> {
+  const { data } = await apiClient.get<ProductCategory[]>("/store/categories");
+  return data;
+}
+
+export async function fetchProductReviews(
+  productId: number
+): Promise<ProductReviewOut[]> {
+  const { data } = await apiClient.get<ProductReviewOut[]>(
+    `/store/products/${productId}/reviews`
+  );
+  return data;
+}
+
+export async function fetchProductRatingDistribution(
+  productId: number
+): Promise<RatingDistribution> {
+  const { data } = await apiClient.get<RatingDistribution>(
+    `/store/products/${productId}/reviews/distribution`
+  );
+  return data;
+}
+
+export async function createProductReview(
+  productId: number,
+  payload: ProductReviewCreate
+): Promise<ProductReviewOut> {
+  const { data } = await apiClient.post<ProductReviewOut>(
+    `/store/products/${productId}/reviews`,
+    payload
+  );
+  return data;
+}
+
+export async function deleteProductReview(reviewId: number): Promise<void> {
+  await apiClient.delete(`/store/reviews/${reviewId}`);
+}
+
+export async function notifyWhenInStock(
+  productId: number,
+  email: string
+): Promise<void> {
+  await apiClient.post(`/store/products/${productId}/notify-me`, { email });
+}
+
+/* ── Sepet / sipariş (CLIENT) ── */
+
+export async function validateCart(
+  items: CartLineIn[],
+  couponCode?: string | null
+): Promise<CartValidateOut> {
+  const { data } = await apiClient.post<CartValidateOut>("/store/cart/validate", {
+    items,
+    coupon_code: couponCode ?? null,
+  });
+  return data;
+}
+
+export async function createOrder(payload: OrderCreate): Promise<OrderOut> {
+  const { data } = await apiClient.post<OrderOut>("/store/orders", payload);
+  return data;
+}
+
+export async function fetchMyOrders(): Promise<OrderOut[]> {
+  const { data } = await apiClient.get<OrderOut[]>("/store/orders/mine");
+  return data;
+}
+
+export async function fetchOrder(orderId: number): Promise<OrderOut> {
+  const { data } = await apiClient.get<OrderOut>(`/store/orders/${orderId}`);
+  return data;
+}
+
+export async function payOrder(orderId: number): Promise<OrderOut> {
+  const { data } = await apiClient.post<OrderOut>(`/store/orders/${orderId}/pay`);
+  return data;
+}
+
+export async function cancelOrder(orderId: number): Promise<OrderOut> {
+  const { data } = await apiClient.post<OrderOut>(`/store/orders/${orderId}/cancel`);
+  return data;
+}
+
+export async function requestReturn(
+  orderId: number,
+  reason: string
+): Promise<OrderReturn> {
+  const { data } = await apiClient.post<OrderReturn>(
+    `/store/orders/${orderId}/return`,
+    { reason }
+  );
+  return data;
+}
+
+/* ── Admin ── */
+
+export async function listProductsAdmin(): Promise<ProductSearchOut[]> {
+  const { data } = await apiClient.get<ProductSearchOut[]>("/store/admin/products");
+  return data;
+}
+
+export async function fetchProductAdmin(id: number): Promise<ProductDetailOut> {
+  const { data } = await apiClient.get<ProductDetailOut>(`/store/admin/products/${id}`);
+  return data;
+}
+
+export async function bulkImportProducts(file: File): Promise<BulkImportResult> {
+  const form = new FormData();
+  form.append("file", file);
+  const { data } = await apiClient.post<BulkImportResult>(
+    "/store/admin/products/bulk",
+    form,
+    MULTIPART
+  );
+  return data;
+}
+
+export async function createProduct(
+  payload: ProductCreate
+): Promise<ProductDetailOut> {
+  const { data } = await apiClient.post<ProductDetailOut>(
+    "/store/admin/products",
+    payload
+  );
+  return data;
+}
+
+export async function updateProduct(
+  id: number,
+  payload: ProductUpdate
+): Promise<ProductDetailOut> {
+  const { data } = await apiClient.patch<ProductDetailOut>(
+    `/store/admin/products/${id}`,
+    payload
+  );
+  return data;
+}
+
+export async function deleteProduct(id: number): Promise<void> {
+  await apiClient.delete(`/store/admin/products/${id}`);
+}
+
+export async function uploadProductCover(
+  id: number,
+  file: File
+): Promise<ProductDetailOut> {
+  const form = new FormData();
+  form.append("file", file);
+  const { data } = await apiClient.post<ProductDetailOut>(
+    `/store/admin/products/${id}/cover`,
+    form,
+    MULTIPART
+  );
+  return data;
+}
+
+export async function uploadProductImages(
+  id: number,
+  files: File[]
+): Promise<ProductDetailOut> {
+  const form = new FormData();
+  files.forEach((f) => form.append("files", f));
+  const { data } = await apiClient.post<ProductDetailOut>(
+    `/store/admin/products/${id}/images`,
+    form,
+    MULTIPART
+  );
+  return data;
+}
+
+export async function deleteProductImage(
+  id: number,
+  imageId: number
+): Promise<ProductDetailOut> {
+  const { data } = await apiClient.delete<ProductDetailOut>(
+    `/store/admin/products/${id}/images/${imageId}`
+  );
+  return data;
+}
+
+export async function createCategory(
+  payload: ProductCategoryWrite
+): Promise<ProductCategory> {
+  const { data } = await apiClient.post<ProductCategory>(
+    "/store/admin/categories",
+    payload
+  );
+  return data;
+}
+
+export async function updateCategory(
+  id: number,
+  payload: Partial<ProductCategoryWrite>
+): Promise<ProductCategory> {
+  const { data } = await apiClient.patch<ProductCategory>(
+    `/store/admin/categories/${id}`,
+    payload
+  );
+  return data;
+}
+
+export async function deleteCategory(id: number): Promise<void> {
+  await apiClient.delete(`/store/admin/categories/${id}`);
+}
+
+export async function listOrdersAdmin(statusFilter?: string): Promise<OrderOut[]> {
+  const { data } = await apiClient.get<OrderOut[]>("/store/admin/orders", {
+    params: statusFilter ? { status: statusFilter } : undefined,
+  });
+  return data;
+}
+
+export async function shipOrder(
+  id: number,
+  trackingNo?: string | null
+): Promise<OrderOut> {
+  const { data } = await apiClient.post<OrderOut>(
+    `/store/admin/orders/${id}/ship`,
+    { tracking_no: trackingNo ?? null }
+  );
+  return data;
+}
+
+export async function deliverOrder(id: number): Promise<OrderOut> {
+  const { data } = await apiClient.post<OrderOut>(
+    `/store/admin/orders/${id}/deliver`
+  );
+  return data;
+}
+
+export async function refundOrder(id: number): Promise<OrderOut> {
+  const { data } = await apiClient.post<OrderOut>(
+    `/store/admin/orders/${id}/refund`
+  );
+  return data;
+}
+
+/* ── İade talepleri (RMA, ADMIN) ── */
+
+export async function listReturnsAdmin(
+  statusFilter?: string
+): Promise<OrderReturn[]> {
+  const { data } = await apiClient.get<OrderReturn[]>("/store/admin/returns", {
+    params: statusFilter ? { status: statusFilter } : undefined,
+  });
+  return data;
+}
+
+export async function approveReturn(
+  id: number,
+  adminNote?: string | null
+): Promise<OrderReturn> {
+  const { data } = await apiClient.post<OrderReturn>(
+    `/store/admin/returns/${id}/approve`,
+    { admin_note: adminNote ?? null }
+  );
+  return data;
+}
+
+export async function rejectReturn(
+  id: number,
+  adminNote?: string | null
+): Promise<OrderReturn> {
+  const { data } = await apiClient.post<OrderReturn>(
+    `/store/admin/returns/${id}/reject`,
+    { admin_note: adminNote ?? null }
+  );
+  return data;
+}
+
+/* ── Kupon (ADMIN) ── */
+
+export async function listCoupons(): Promise<Coupon[]> {
+  const { data } = await apiClient.get<Coupon[]>("/store/admin/coupons");
+  return data;
+}
+
+export async function createCoupon(payload: CouponCreate): Promise<Coupon> {
+  const { data } = await apiClient.post<Coupon>("/store/admin/coupons", payload);
+  return data;
+}
+
+export async function updateCoupon(
+  id: number,
+  payload: Partial<CouponCreate>
+): Promise<Coupon> {
+  const { data } = await apiClient.patch<Coupon>(`/store/admin/coupons/${id}`, payload);
+  return data;
+}
+
+export async function deleteCoupon(id: number): Promise<void> {
+  await apiClient.delete(`/store/admin/coupons/${id}`);
+}
+
+/* ── Eğitmen dijital ürünleri ── */
+
+export async function listSellerProducts(): Promise<ProductSearchOut[]> {
+  const { data } = await apiClient.get<ProductSearchOut[]>("/store/seller/products");
+  return data;
+}
+
+export async function fetchSellerEarnings(): Promise<SellerEarnings> {
+  const { data } = await apiClient.get<SellerEarnings>("/store/seller/earnings");
+  return data;
+}
+
+export async function createSellerProduct(
+  payload: SellerProductCreate
+): Promise<ProductDetailOut> {
+  const { data } = await apiClient.post<ProductDetailOut>(
+    "/store/seller/products",
+    payload
+  );
+  return data;
+}
+
+export async function updateSellerProduct(
+  id: number,
+  payload: ProductUpdate
+): Promise<ProductDetailOut> {
+  const { data } = await apiClient.patch<ProductDetailOut>(
+    `/store/seller/products/${id}`,
+    payload
+  );
+  return data;
+}
+
+export async function deleteSellerProduct(id: number): Promise<void> {
+  await apiClient.delete(`/store/seller/products/${id}`);
+}
+
+export async function uploadSellerCover(
+  id: number,
+  file: File
+): Promise<ProductDetailOut> {
+  const form = new FormData();
+  form.append("file", file);
+  const { data } = await apiClient.post<ProductDetailOut>(
+    `/store/seller/products/${id}/cover`,
+    form,
+    MULTIPART
+  );
+  return data;
+}
+
+export async function uploadSellerAsset(
+  id: number,
+  file: File
+): Promise<ProductDetailOut> {
+  const form = new FormData();
+  form.append("file", file);
+  const { data } = await apiClient.post<ProductDetailOut>(
+    `/store/seller/products/${id}/asset`,
+    form,
+    MULTIPART
+  );
+  return data;
+}

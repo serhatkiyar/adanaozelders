@@ -79,3 +79,54 @@ def password_reset_email(*, to: str, name: str, reset_url: str) -> EmailMessage:
         ),
     )
     return EmailMessage(to=to, subject=subject, html=html, text=text)
+
+
+# Mağaza sipariş durumu e-postaları. (başlık-eki, heading, intro-kuyruğu)
+_ORDER_COPY: dict[str, tuple[str, str, str]] = {
+    "PAID": ("Siparişin alındı", "Siparişin alındı", "ödemen onaylandı, siparişin hazırlanıyor."),
+    "SHIPPED": ("Siparişin kargoya verildi", "Siparişin yolda", "siparişin kargoya verildi."),
+    "DELIVERED": ("Siparişin teslim edildi", "Siparişin teslim edildi", "siparişin teslim edildi. Afiyet olsun!"),
+    "REFUNDED": ("Ödemen iade edildi", "İaden tamamlandı", "siparişin için ödemen iade edildi."),
+}
+
+
+def order_status_email(
+    *, to: str, name: str, order_id: int, status: str, total: str, currency: str, orders_url: str
+) -> EmailMessage:
+    subject_base, heading, intro_tail = _ORDER_COPY.get(
+        status, ("Sipariş güncellemesi", "Sipariş güncellemesi", "siparişinde bir güncelleme var.")
+    )
+    subject = f"{_BRAND} · {subject_base} (#{order_id})"
+    money = f"{total} {currency}"
+    text = (
+        f"Merhaba {name},\n\n"
+        f"#{order_id} numaralı {intro_tail}\n"
+        f"Tutar: {money}\n\n"
+        f"Siparişlerini görüntüle: {orders_url}\n"
+    )
+    html = _layout(
+        heading=heading,
+        intro=f"Merhaba <b>{name}</b>, <b>#{order_id}</b> numaralı {intro_tail} Tutar: <b>{money}</b>.",
+        button_label="Siparişlerimi gör",
+        button_url=orders_url,
+        outro="Bu e-postayı mağazadaki siparişinle ilgili aldın.",
+    )
+    return EmailMessage(to=to, subject=subject, html=html, text=text)
+
+
+def back_in_stock_email(*, to: str, product_title: str, product_url: str) -> EmailMessage:
+    subject = f"{_BRAND} · '{product_title}' yeniden stokta"
+    text = (
+        f"Merhaba,\n\n"
+        f"İlgilendiğin '{product_title}' yeniden stokta!\n"
+        f"{product_url}\n\n"
+        f"Stoklar tükenmeden sipariş verebilirsin."
+    )
+    html = _layout(
+        heading="Yeniden stokta!",
+        intro=f"İlgilendiğin <b>{product_title}</b> yeniden stokta. Stoklar tükenmeden sipariş verebilirsin.",
+        button_label="Ürüne git",
+        button_url=product_url,
+        outro="Bu e-postayı bu ürün için stok bildirimi istediğin için aldın.",
+    )
+    return EmailMessage(to=to, subject=subject, html=html, text=text)

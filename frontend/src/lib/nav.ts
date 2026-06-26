@@ -17,7 +17,8 @@ export type NavIcon =
   | "habit"
   | "library"
   | "tickets"
-  | "wallet";
+  | "wallet"
+  | "store";
 
 export interface NavItem {
   to: string;
@@ -31,6 +32,7 @@ export const STUDENT_NAV: NavItem[] = [
   { to: ROUTES.messages, label: "Mesajlar", icon: "messages" },
   { to: ROUTES.demands, label: "Taleplerim", icon: "demand" },
   { to: ROUTES.libraries, label: "Kütüphaneler", icon: "library" },
+  { to: ROUTES.store, label: "Mağaza", icon: "store" },
   { to: ROUTES.learn, label: "Öğren", icon: "learn" },
   { to: ROUTES.bookings, label: "Rezervasyonlar", icon: "bookings" },
 ];
@@ -39,6 +41,7 @@ export const TUTOR_NAV: NavItem[] = [
   { to: ROUTES.bookings, label: "Ders Talepleri", icon: "bookings" },
   { to: ROUTES.demands, label: "Gelen Talepler", icon: "demand" },
   { to: ROUTES.balance, label: "Bakiyem", icon: "wallet" },
+  { to: ROUTES.sellerProducts, label: "Dijital Ürünlerim", icon: "store" },
   { to: ROUTES.messages, label: "Mesajlar", icon: "messages" },
   { to: ROUTES.libraries, label: "Kütüphaneler", icon: "library" },
 ];

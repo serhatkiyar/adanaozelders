@@ -5,6 +5,7 @@ User-agent: *
 Allow: /
 Allow: /egitmenler
 Allow: /kutuphaneler
+Allow: /magaza
 
 # ── Yasal sayfalar (public) ──
 Allow: /kvkk
@@ -31,6 +32,10 @@ Disallow: /ogren
 Disallow: /ders-talepleri
 Disallow: /ilan-ayarlari
 Disallow: /ogrenciler
+Disallow: /siparislerim
+Disallow: /dijital-urunlerim
+Disallow: /magaza/sepet
+Disallow: /magaza/odeme
 
 # ── Kimlik & token akışları ──
 Disallow: /giris

@@ -4,7 +4,7 @@ import { useAuthStore } from "@/store/authStore";
 import { logout as logoutRequest } from "@/api/auth";
 import { ROUTES } from "@/lib/routes";
 
-export function useLogout() {
+export function useLogout(redirectTo: string = ROUTES.login) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const logout = useAuthStore((s) => s.logout);
@@ -18,6 +18,7 @@ export function useLogout() {
         logout();
         queryClient.clear();
       });
-    navigate(ROUTES.login, { replace: true });
+    // Varsayılan: /giris (panel). Mağaza gibi public yüzeyler kendi hedefini verir.
+    navigate(redirectTo, { replace: true });
   };
 }

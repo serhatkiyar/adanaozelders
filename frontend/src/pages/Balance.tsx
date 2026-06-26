@@ -102,6 +102,7 @@ const SOURCE_LABEL: Record<EarningTransaction["source"], string> = {
   LESSON: "Özel ders",
   EXAM: "Deneme oturumu",
   STUDY: "Çalışma alanı",
+  STORE: "Mağaza satışı",
 };
 
 /** Rol göre uygun bakiye görünümünü seçen delegator. */

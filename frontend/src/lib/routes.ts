@@ -22,6 +22,18 @@ export const PATHS = {
   library: "/kutuphaneler/:slug",
   /** Self-servis "kütüphaneni listele" kaydı (public). */
   libraryRegister: "/kutuphane-kayit",
+  /** Mağaza katalogu (D&R tarzı; public). */
+  store: "/magaza",
+  /** Ürün detayı — slug veya salt id. */
+  storeProduct: "/magaza/urun/:slug",
+  /** Satıcı (eğitmen) mağaza vitrini. */
+  storeSeller: "/magaza/satici/:tutorId",
+  /** Sepet (public; ödeme için giriş gerekir). */
+  storeCart: "/magaza/sepet",
+  /** Favoriler (public; localStorage tabanlı wishlist). */
+  storeFavorites: "/magaza/favoriler",
+  /** Ödeme/checkout (CLIENT). */
+  storeCheckout: "/magaza/odeme",
 
   // ── Yasal sayfalar (public, SEO) — içerik lib/legalContent.ts'te ──
   kvkk: "/kvkk",
@@ -54,6 +66,12 @@ export const PATHS = {
   tasks: "/gorevler",
   /** Bildirimler gelen kutusu (tüm roller). */
   notifications: "/bildirimler",
+  /** Mağaza siparişlerim (CLIENT). */
+  orders: "/siparislerim",
+  /** Sipariş detayı (CLIENT). */
+  orderDetail: "/siparislerim/:id",
+  /** Eğitmenin dijital ürünleri (TUTOR). */
+  sellerProducts: "/dijital-urunlerim",
   /** Kazanç & ödeme bakiyesi (TUTOR + LIBRARY_OPERATOR). */
   balance: "/bakiyem",
   leaderboard: "/liderlik",
@@ -80,6 +98,13 @@ export const ROUTES = {
   /** Kütüphane profili — slug veya salt id. */
   library: (slugOrId: string | number) => `/kutuphaneler/${slugOrId}`,
   libraryRegister: PATHS.libraryRegister,
+  store: PATHS.store,
+  /** Ürün detayı — slug veya salt id. */
+  storeProduct: (slugOrId: string | number) => `/magaza/urun/${slugOrId}`,
+  storeSeller: (tutorId: number) => `/magaza/satici/${tutorId}`,
+  storeCart: PATHS.storeCart,
+  storeFavorites: PATHS.storeFavorites,
+  storeCheckout: PATHS.storeCheckout,
 
   // ── Yasal sayfalar ──
   kvkk: PATHS.kvkk,
@@ -116,6 +141,9 @@ export const ROUTES = {
   exams: PATHS.exams,
   tasks: PATHS.tasks,
   notifications: PATHS.notifications,
+  orders: PATHS.orders,
+  orderDetail: (id: string | number) => `/siparislerim/${id}`,
+  sellerProducts: PATHS.sellerProducts,
   balance: PATHS.balance,
   leaderboard: PATHS.leaderboard,
   learn: PATHS.learn,

@@ -766,7 +766,7 @@ export interface EarningsSummary {
 // status backend'de Payment sözlüğüne normalize edilir → PaymentBadge ile tek mantık.
 export interface EarningTransaction {
   id: number;
-  source: "LESSON" | "EXAM" | "STUDY";
+  source: "LESSON" | "EXAM" | "STUDY" | "STORE";
   title: string;
   counterparty?: string | null;
   gross: string;
@@ -1391,4 +1391,246 @@ export interface OperatorCreate {
   password: string;
   first_name: string;
   last_name: string;
+}
+
+/* ============================ Mağaza (Store) ============================ */
+
+export type ProductKind = "PHYSICAL" | "DIGITAL";
+export type SellerType = "PLATFORM" | "TUTOR";
+export type ProductStatus = "ACTIVE" | "HIDDEN" | "DRAFT" | "PENDING";
+
+export interface ProductCategory {
+  id: number;
+  slug: string;
+  name: string;
+  parent_id?: number | null;
+  icon_url?: string | null;
+  sort_order: number;
+  product_count?: number | null;
+}
+
+export interface ProductCategoryWrite {
+  name: string;
+  parent_id?: number | null;
+  icon_url?: string | null;
+  sort_order?: number;
+}
+
+export interface ProductImageOut {
+  id: number;
+  url: string;
+  caption?: string | null;
+  sort_order: number;
+}
+
+export interface ProductSearchOut {
+  id: number;
+  slug: string;
+  title: string;
+  kind: ProductKind;
+  seller_type: SellerType;
+  tutor_id?: number | null;
+  tutor_name?: string | null;
+  price: string;
+  compare_at_price?: string | null;
+  currency: string;
+  cover_url?: string | null;
+  in_stock: boolean;
+  category_id?: number | null;
+  rating_count: number;
+  rating_average?: number | null;
+  bayesian_score?: number | null;
+  status?: string | null;
+}
+
+/** Kitap künyesi (opsiyonel) — ürün detayında "Ürün Özellikleri" tablosu + admin formu. */
+export interface BookSpecFields {
+  author?: string | null;
+  publisher?: string | null;
+  isbn?: string | null;
+  page_count?: number | null;
+  dimensions?: string | null;
+  publication_year?: number | null;
+  edition?: string | null;
+  language?: string | null;
+  cover_type?: string | null;
+}
+
+export interface ProductDetailOut extends ProductSearchOut, BookSpecFields {
+  description?: string | null;
+  stock?: number | null;
+  weight_grams?: number | null;
+  digital_asset_name?: string | null;
+  images: ProductImageOut[];
+  created_at?: string | null;
+}
+
+export interface ProductCreate extends BookSpecFields {
+  title: string;
+  description?: string | null;
+  kind: ProductKind;
+  price: string | number;
+  compare_at_price?: string | number | null;
+  stock?: number | null;
+  weight_grams?: number | null;
+  category_id?: number | null;
+  status?: "ACTIVE" | "HIDDEN" | "DRAFT";
+  cover_url?: string | null;
+}
+
+export interface ProductUpdate extends BookSpecFields {
+  title?: string;
+  description?: string | null;
+  price?: string | number;
+  compare_at_price?: string | number | null;
+  stock?: number | null;
+  weight_grams?: number | null;
+  category_id?: number | null;
+  status?: ProductStatus;
+  cover_url?: string | null;
+}
+
+export interface SellerProductCreate {
+  title: string;
+  description?: string | null;
+  price: string | number;
+  compare_at_price?: string | number | null;
+  category_id?: number | null;
+  cover_url?: string | null;
+}
+
+export interface ProductReviewCreate {
+  rating: number;
+  comment_text?: string | null;
+}
+
+export interface ProductReviewOut {
+  id: number;
+  rating: number;
+  comment_text?: string | null;
+  created_at: string;
+  client_name?: string | null;
+  client_avatar_url?: string | null;
+}
+
+export interface CartLineIn {
+  product_id: number;
+  quantity: number;
+}
+
+export interface OrderItemOut {
+  id: number;
+  product_id?: number | null;
+  title: string;
+  unit_price: string;
+  quantity: number;
+  kind: ProductKind;
+  seller_type: SellerType;
+  download_url?: string | null;
+}
+
+export interface OrderOut {
+  id: number;
+  status: string;
+  payment_status: string;
+  subtotal: string;
+  shipping_fee: string;
+  discount?: string;
+  coupon_code?: string | null;
+  total: string;
+  currency: string;
+  has_physical: boolean;
+  ship_recipient?: string | null;
+  ship_phone?: string | null;
+  ship_address?: string | null;
+  ship_city?: string | null;
+  ship_district?: string | null;
+  tracking_no?: string | null;
+  return_status?: string | null;
+  created_at: string;
+  items: OrderItemOut[];
+  redirect_url?: string | null;
+}
+
+export type ReturnStatus = "PENDING" | "APPROVED" | "REJECTED";
+
+export interface OrderReturn {
+  id: number;
+  order_id: number;
+  status: ReturnStatus;
+  reason: string;
+  admin_note?: string | null;
+  created_at: string;
+  resolved_at?: string | null;
+  // Admin listesinde sipariş özeti gömülü; müşteri yanıtında null.
+  order?: OrderOut | null;
+}
+
+export interface CartValidateOut {
+  items: OrderItemOut[];
+  subtotal: string;
+  shipping_fee: string;
+  discount: string;
+  coupon_code?: string | null;
+  coupon_error?: string | null;
+  total: string;
+  currency: string;
+  has_physical: boolean;
+  issues: string[];
+}
+
+export interface OrderCreate {
+  items: CartLineIn[];
+  address_id?: number | null;
+  coupon_code?: string | null;
+}
+
+export type CouponDiscountType = "PERCENT" | "FIXED";
+
+export interface Coupon {
+  id: number;
+  code: string;
+  discount_type: CouponDiscountType;
+  discount_value: string;
+  min_subtotal: string;
+  max_uses?: number | null;
+  per_user_limit?: number | null;
+  used_count: number;
+  valid_from?: string | null;
+  valid_until?: string | null;
+  is_active: boolean;
+}
+
+export interface CouponCreate {
+  code: string;
+  discount_type: CouponDiscountType;
+  discount_value: number;
+  min_subtotal?: number;
+  max_uses?: number | null;
+  per_user_limit?: number | null;
+  valid_from?: string | null;
+  valid_until?: string | null;
+  is_active?: boolean;
+}
+
+export interface SellerProductStat {
+  product_id?: number | null;
+  title: string;
+  units_sold: number;
+  gross: string;
+  earnings: string;
+}
+
+export interface SellerEarnings {
+  total_units: number;
+  total_orders: number;
+  total_gross: string;
+  total_earnings: string;
+  products: SellerProductStat[];
+}
+
+export interface BulkImportResult {
+  created: number;
+  skipped: number;
+  errors: { row: number; message: string }[];
 }

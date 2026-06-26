@@ -27,6 +27,16 @@ const TutorProfilePage = lazy(() => import("@/pages/TutorProfilePage"));
 const Libraries = lazy(() => import("@/pages/Libraries"));
 const LibraryDetail = lazy(() => import("@/pages/LibraryDetail"));
 const LibraryRegister = lazy(() => import("@/pages/LibraryRegister"));
+// Mağaza (D&R tarzı) — katalog/detay/sepet public; ödeme/siparişler oturum-içi
+const StorePage = lazy(() => import("@/pages/store/StorePage"));
+const ProductDetailPage = lazy(() => import("@/pages/store/ProductDetailPage"));
+const SellerStorePage = lazy(() => import("@/pages/store/SellerStorePage"));
+const CartPage = lazy(() => import("@/pages/store/CartPage"));
+const FavoritesPage = lazy(() => import("@/pages/store/FavoritesPage"));
+const CheckoutPage = lazy(() => import("@/pages/store/CheckoutPage"));
+const OrdersPage = lazy(() => import("@/pages/store/OrdersPage"));
+const OrderDetailPage = lazy(() => import("@/pages/store/OrderDetailPage"));
+const SellerProducts = lazy(() => import("@/pages/store/SellerProducts"));
 // Yasal sayfalar — tek chunk, belge prop'la seçilir (içerik lib/legalContent.ts)
 const LegalPage = lazy(() => import("@/pages/LegalPage"));
 const OperatorHome = lazy(() => import("@/pages/dashboards/OperatorHome"));
@@ -64,6 +74,8 @@ const Notifications = lazy(() => import("@/pages/Notifications"));
 const TicketTearTest = lazy(() => import("@/pages/TicketTearTest"));
 // Geliştirme prototipi: canlı ders (Jitsi) önizleme (/test-canli-ders)
 const TestLiveLesson = lazy(() => import("@/pages/TestLiveLesson"));
+// Bilinmeyen URL'ler — shell-uyarlamalı 404 (sessiz redirect yerine)
+const NotFound = lazy(() => import("@/pages/NotFound"));
 
 function WsManager() {
   const token = useAuthStore((s) => s.token);
@@ -227,6 +239,13 @@ function App() {
           <Route path={PATHS.library} element={<LibraryDetail />} />
           <Route path={PATHS.libraryRegister} element={<LibraryRegister />} />
 
+          {/* ── Mağaza (public: katalog/detay/sepet) ── */}
+          <Route path={PATHS.store} element={<StorePage />} />
+          <Route path={PATHS.storeProduct} element={<ProductDetailPage />} />
+          <Route path={PATHS.storeSeller} element={<SellerStorePage />} />
+          <Route path={PATHS.storeCart} element={<CartPage />} />
+          <Route path={PATHS.storeFavorites} element={<FavoritesPage />} />
+
           {/* ── Yasal sayfalar (public, SEO) ── */}
           <Route path={PATHS.kvkk} element={<LegalPage doc="kvkk" />} />
           <Route path={PATHS.privacy} element={<LegalPage doc="privacy" />} />
@@ -279,12 +298,16 @@ function App() {
           <Route element={<ProtectedRoute allowedRoleId={ROLE_IDS.CLIENT} />}>
             <Route path={PATHS.favorites} element={<Favorites />} />
             <Route path={PATHS.exams} element={<Exams />} />
+            <Route path={PATHS.storeCheckout} element={<CheckoutPage />} />
+            <Route path={PATHS.orders} element={<OrdersPage />} />
+            <Route path={PATHS.orderDetail} element={<OrderDetailPage />} />
           </Route>
 
           {/* ── Yalnızca TUTOR ── */}
           <Route element={<ProtectedRoute allowedRoleId={ROLE_IDS.TUTOR} />}>
             <Route path={PATHS.tutorListing} element={<TutorSettings />} />
             <Route path={PATHS.studentProfile} element={<StudentProfile />} />
+            <Route path={PATHS.sellerProducts} element={<SellerProducts />} />
           </Route>
 
           {/* ── Eski URL'ler → yeni düz yapı (geriye dönük uyumluluk, tek hop) ── */}
@@ -320,7 +343,7 @@ function App() {
             element={<LegacyRedirect to={(p) => ROUTES.studentProfile(p.id!)} />}
           />
 
-          <Route path="*" element={<Navigate to={ROUTES.home} replace />} />
+          <Route path="*" element={<NotFound />} />
         </Routes>
         </Suspense>
         <AuthModal />
