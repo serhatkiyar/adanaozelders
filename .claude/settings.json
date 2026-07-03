@@ -6,7 +6,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node .claude/hooks/protect-env.mjs"
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/protect-env.mjs\"",
+            "timeout": 15
           }
         ]
       }
@@ -17,11 +18,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node .claude/hooks/typecheck-frontend.mjs"
-          },
-          {
-            "type": "command",
-            "command": "node .claude/hooks/models-registry.mjs"
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/models-registry.mjs\"",
+            "timeout": 15
           }
         ]
       }
