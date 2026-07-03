@@ -37,8 +37,8 @@ if (-not (Test-Path $TurkeyPath)) {
 
 # 2) Adana bbox kirpma (osmium)
 Write-Host ">> Adana bolgesine kirpiliyor (bbox: $Bbox)..."
-docker run --rm -v "${DataDir}:/data" iboates/osmium-tool:latest `
-  osmium extract -b $Bbox /data/$TurkeyPbf -o /data/$AdanaPbf --overwrite
+docker run --rm -v "${DataDir}:/data" iboates/osmium:latest `
+  extract -b $Bbox /data/$TurkeyPbf -o /data/$AdanaPbf --overwrite
 if ($LASTEXITCODE -ne 0) { throw "osmium extract basarisiz" }
 
 # 3) OSRM on-isleme (MLD algoritmasi — compose'daki osrm-routed ile ayni)

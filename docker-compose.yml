@@ -81,11 +81,8 @@ services:
     ports:
       - "5000:5000"
     healthcheck:
-      test:
-        [
-          "CMD-SHELL",
-          "wget -qO- 'http://localhost:5000/route/v1/driving/35.3253,36.9855;35.33,37.01' >/dev/null 2>&1 || exit 1",
-        ]
+      # İmajda wget/curl yok — bash /dev/tcp ile port kontrolü (imaj debian tabanlı).
+      test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/localhost/5000' || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 10
