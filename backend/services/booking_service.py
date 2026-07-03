@@ -485,6 +485,9 @@ async def reschedule(
     tutor = await db.get(Tutor, booking.tutor_id)
     if tutor is not None:
         booking.price = _compute_price(tutor, start_at, end_at)
+    # Mevcut ödemeyi yeni fiyata eşitle (PENDING) ya da HELD + fiyat değişimini
+    # reddet (409) — Payment.amount ile booking.price sessizce ayrışamaz.
+    await payment_service.sync_amount_with_booking(db, booking)
     # Yeni saat eğitmenin yeniden onayına sunulur; oda/hatırlatma sıfırlanır.
     booking.status = BookingStatus.PENDING
     booking.meeting_room = None

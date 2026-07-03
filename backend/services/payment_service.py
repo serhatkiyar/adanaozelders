@@ -77,6 +77,45 @@ async def create_for_booking(db: AsyncSession, booking: Booking) -> Payment | No
     return payment
 
 
+async def sync_amount_with_booking(db: AsyncSession, booking: Booking) -> None:
+    """Reschedule fiyatı değiştirdiyse ödemeyi sunucu-hesaplı güncel fiyata eşitler.
+
+    - PENDING/FAILED (henüz tahsilat yok): amount + komisyon + kazanç güncel oran
+      üzerinden yeniden hesaplanır (conservation korunur).
+    - HELD (tahsil edilmiş): tutar değişiyorsa 409 — emanetteki para ile ders
+      ücreti sessizce ayrışamaz; öğrenci iptal edip yeni talep oluşturmalı.
+      (Aynı süre/fiyatla saat taşımak serbesttir.)
+    RELEASED/REFUNDING/REFUNDED bu akışta oluşamaz (reschedule yalnız
+    PENDING/ACCEPTED booking'te çağrılır); yine de dokunulmaz.
+    """
+    payment = await get_for_booking(db, booking.id)
+    if payment is None or booking.price is None:
+        return
+    new_amount = Decimal(str(booking.price))
+    if new_amount == Decimal(str(payment.amount)):
+        return
+    if payment.status in (PaymentStatus.PENDING, PaymentStatus.FAILED):
+        tutor = await db.get(Tutor, booking.tutor_id)
+        rate = (
+            commission.rate_for(tutor)
+            if tutor
+            else Decimal(str(payment.commission_rate))
+        )
+        commission_amount, earning = commission.split(new_amount, rate)
+        payment.amount = new_amount
+        payment.commission_amount = commission_amount
+        payment.tutor_earning = earning
+        payment.commission_rate = rate
+        await db.flush()
+        return
+    if payment.status == PaymentStatus.HELD:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Ödemesi alınmış dersin ücreti değiştirilemez; süreyi değiştirmek için "
+            "dersi iptal edip yeni talep oluşturun.",
+        )
+
+
 async def pay(
     db: AsyncSession, booking: Booking, *, client_ip: str | None = None
 ) -> tuple[Payment, str | None]:
