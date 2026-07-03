@@ -9,6 +9,14 @@ from models.booking_private_note import BookingPrivateNote
 from models.booking_resource import BookingResource
 from models.bookmark import Bookmark
 from models.client import Client, ClientAddress, ClientEducation
+from models.delivery import (
+    DeliveryProof,
+    DeliveryRun,
+    DeliveryRunStatus,
+    DeliveryStop,
+    DeliveryStopStatus,
+    DeliveryVehicle,
+)
 from models.demand import Demand, DemandStatus
 from models.demand_response import DemandResponse
 from models.exam import PracticeExam, PracticeExamSubject
@@ -99,6 +107,12 @@ __all__ = [
     "ClientAddress",
     "ClientEducation",
     "Conversation",
+    "DeliveryProof",
+    "DeliveryRun",
+    "DeliveryRunStatus",
+    "DeliveryStop",
+    "DeliveryStopStatus",
+    "DeliveryVehicle",
     "Demand",
     "DemandResponse",
     "DemandStatus",

@@ -1,0 +1,140 @@
+"""Mağaza kendi-filo teslimatı (Faz A): günlük dağıtım turu + duraklar.
+
+Fiziksel kitap siparişleri kargo firmasına verilmez; platformun kendi aracı
+(LADA birincil, COROLLA yoğunlukta) günlük turlarla dağıtır. Bir tur
+(``DeliveryRun``) o günün sıralı duraklarını (``DeliveryStop`` → Order 1:1)
+taşır. Teslim kanıtı iki katmandır: paket etiketi QR'ı (doğru paket kontrolü)
++ müşteriye SMS ile giden OTP kodu (kapıda söylenir, sunucu doğrular).
+Rota sırası Faz A'da elle belirlenir; Faz B'de VROOM optimizasyonu yazacak.
+"""
+from __future__ import annotations
+
+import datetime
+import enum
+from typing import TYPE_CHECKING
+
+from sqlalchemy import (
+    Date,
+    DateTime,
+    ForeignKey,
+    Integer,
+    Numeric,
+    String,
+    Text,
+    UniqueConstraint,
+    text,
+)
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from core.database import Base
+from models.mixins import SoftDeleteMixin, TimestampMixin
+
+if TYPE_CHECKING:
+    from models.store import Order
+
+
+class DeliveryVehicle(str, enum.Enum):
+    """Filo araçları. LADA birincil; COROLLA yalnız yoğun günlerde."""
+
+    LADA = "LADA"
+    COROLLA = "COROLLA"
+
+
+class DeliveryRunStatus(str, enum.Enum):
+    """Tur FSM'i: PLANNED (kuruluyor) → ACTIVE (sahada) → DONE; iptal CANCELLED."""
+
+    PLANNED = "PLANNED"
+    ACTIVE = "ACTIVE"
+    DONE = "DONE"
+    CANCELLED = "CANCELLED"
+
+
+class DeliveryStopStatus(str, enum.Enum):
+    PENDING = "PENDING"
+    DELIVERED = "DELIVERED"
+    FAILED = "FAILED"
+
+
+class DeliveryProof(str, enum.Enum):
+    """Teslim kanıtı türü: müşteri OTP'si ya da (kod ulaşmadığında) notlu admin onayı."""
+
+    OTP = "OTP"
+    ADMIN = "ADMIN"
+
+
+class DeliveryRun(Base, TimestampMixin, SoftDeleteMixin):
+    __tablename__ = "delivery_runs"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    run_date: Mapped[datetime.date] = mapped_column(Date, nullable=False, index=True)
+    vehicle: Mapped[str] = mapped_column(
+        String(20), nullable=False, server_default=text("'LADA'")
+    )
+    status: Mapped[str] = mapped_column(
+        String(10), nullable=False, server_default=text("'PLANNED'")
+    )
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    started_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    completed_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    stops: Mapped[list["DeliveryStop"]] = relationship(
+        back_populates="run",
+        cascade="all, delete-orphan",
+        order_by="DeliveryStop.sequence",
+    )
+
+
+class DeliveryStop(Base, TimestampMixin):
+    """Turun tek durağı — bir fiziksel siparişin teslimi.
+
+    ``qr_token`` paket etiketine basılır (payload ``"{id}:{token}"`` — deneme
+    bileti deseniyle aynı). OTP hash'li ve süreli durur; ham kod yalnız SMS'te.
+    """
+
+    __tablename__ = "delivery_stops"
+    __table_args__ = (
+        # Aynı sipariş aynı tura iki kez eklenemez (aktif turlar arası tekillik
+        # servis katmanında — FAILED sonrası ertesi günün turuna yeniden eklenebilir).
+        UniqueConstraint("run_id", "order_id", name="uq_delivery_stop_run_order"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    run_id: Mapped[int] = mapped_column(
+        ForeignKey("delivery_runs.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    order_id: Mapped[int] = mapped_column(
+        ForeignKey("orders.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    sequence: Mapped[int] = mapped_column(Integer, nullable=False)
+    status: Mapped[str] = mapped_column(
+        String(10), nullable=False, server_default=text("'PENDING'")
+    )
+
+    qr_token: Mapped[str] = mapped_column(
+        String(64), nullable=False, unique=True, index=True
+    )
+
+    # ── Teslim OTP'si (SMS) ──
+    otp_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    otp_sent_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    otp_attempts: Mapped[int] = mapped_column(
+        Integer, nullable=False, server_default=text("0")
+    )
+
+    # ── Sonuç / kanıt ──
+    delivered_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    delivered_lat: Mapped[float | None] = mapped_column(Numeric(9, 6), nullable=True)
+    delivered_lng: Mapped[float | None] = mapped_column(Numeric(9, 6), nullable=True)
+    proof: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    courier_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    run: Mapped["DeliveryRun"] = relationship(back_populates="stops")
+    order: Mapped["Order"] = relationship()

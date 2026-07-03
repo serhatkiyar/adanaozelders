@@ -263,6 +263,8 @@ class OrderOut(BaseModel):
     ship_address: str | None = None
     ship_city: str | None = None
     ship_district: str | None = None
+    ship_lat: float | None = None
+    ship_lng: float | None = None
     tracking_no: str | None = None
     # En güncel iade talebinin durumu (PENDING/APPROVED/REJECTED) — yoksa None.
     return_status: str | None = None

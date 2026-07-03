@@ -49,6 +49,7 @@ const ForgotPassword = lazy(() => import("@/pages/ForgotPassword"));
 const ResetPassword = lazy(() => import("@/pages/ResetPassword"));
 const VerifyEmail = lazy(() => import("@/pages/VerifyEmail"));
 const AdminHome = lazy(() => import("@/pages/dashboards/AdminHome"));
+const DeliveryDriver = lazy(() => import("@/pages/DeliveryDriver"));
 const TutorDashboard = lazy(() => import("@/pages/TutorDashboard"));
 const TutorSettings = lazy(() => import("@/pages/TutorSettings"));
 const TutorQuestions = lazy(() => import("@/pages/TutorQuestions"));
@@ -325,6 +326,12 @@ function App() {
             <Route path={PATHS.tutorListing} element={<TutorSettings />} />
             <Route path={PATHS.studentProfile} element={<StudentProfile />} />
             <Route path={PATHS.sellerProducts} element={<SellerProducts />} />
+          </Route>
+
+          {/* ── Yalnızca ADMIN ── */}
+          <Route element={<ProtectedRoute allowedRoleId={ROLE_IDS.ADMIN} />}>
+            {/* Dağıtıcı saha ekranı (kendi-filo teslimat) — mobil, shell'siz */}
+            <Route path={PATHS.deliveryRun} element={<DeliveryDriver />} />
           </Route>
 
           {/* ── Eski URL'ler → yeni düz yapı (geriye dönük uyumluluk, tek hop) ── */}

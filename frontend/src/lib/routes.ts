@@ -92,6 +92,8 @@ export const PATHS = {
   addresses: "/adreslerim",
   settings: "/ayarlar",
   tutorListing: "/ilan-ayarlari",
+  /** Dağıtıcı saha ekranı — kendi-filo teslimat turu (ADMIN). */
+  deliveryRun: "/dagitim/:id",
   studentProfile: "/ogrenciler/:id",
 } as const;
 
@@ -165,6 +167,7 @@ export const ROUTES = {
   addresses: PATHS.addresses,
   settings: PATHS.settings,
   tutorListing: PATHS.tutorListing,
+  deliveryRun: (id: string | number) => `/dagitim/${id}`,
   studentProfile: (id: string | number) => `/ogrenciler/${id}`,
 } as const;
 

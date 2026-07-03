@@ -332,6 +332,10 @@ class Order(Base, TimestampMixin, SoftDeleteMixin):
     ship_address: Mapped[str | None] = mapped_column(Text, nullable=True)
     ship_city: Mapped[str | None] = mapped_column(String(100), nullable=True)
     ship_district: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    # Harita pin'i (ClientAddress.location_lat/lng snapshot'ı) — kendi-filo
+    # teslimat rotası için otorite; adres metni tarif/yedek.
+    ship_lat: Mapped[float | None] = mapped_column(Numeric(9, 6), nullable=True)
+    ship_lng: Mapped[float | None] = mapped_column(Numeric(9, 6), nullable=True)
     tracking_no: Mapped[str | None] = mapped_column(String(100), nullable=True)
 
     client: Mapped["Client"] = relationship()

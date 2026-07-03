@@ -1568,6 +1568,8 @@ export interface OrderOut {
   ship_address?: string | null;
   ship_city?: string | null;
   ship_district?: string | null;
+  ship_lat?: number | null;
+  ship_lng?: number | null;
   tracking_no?: string | null;
   return_status?: string | null;
   created_at: string;
@@ -1656,4 +1658,67 @@ export interface BulkImportResult {
   created: number;
   skipped: number;
   errors: { row: number; message: string }[];
+}
+
+/* ── Kendi-filo teslimat (mağaza dağıtım turları — ADMIN) ── */
+
+export type DeliveryVehicle = "LADA" | "COROLLA";
+export type DeliveryRunStatus = "PLANNED" | "ACTIVE" | "DONE" | "CANCELLED";
+export type DeliveryStopStatus = "PENDING" | "DELIVERED" | "FAILED";
+
+export interface DeliveryStopItem {
+  title: string;
+  quantity: number;
+}
+
+export interface DeliveryStop {
+  id: number;
+  run_id: number;
+  order_id: number;
+  sequence: number;
+  status: DeliveryStopStatus;
+  /** Paket etiketi QR içeriği ("{id}:{token}"). */
+  qr_payload: string;
+  recipient?: string | null;
+  phone?: string | null;
+  address?: string | null;
+  lat?: number | null;
+  lng?: number | null;
+  items: DeliveryStopItem[];
+  order_total?: string | null;
+  otp_sent_at?: string | null;
+  delivered_at?: string | null;
+  proof?: "OTP" | "ADMIN" | null;
+  courier_note?: string | null;
+}
+
+export interface DeliveryRun {
+  id: number;
+  run_date: string;
+  vehicle: DeliveryVehicle;
+  status: DeliveryRunStatus;
+  notes?: string | null;
+  started_at?: string | null;
+  completed_at?: string | null;
+  created_at: string;
+  depot_lat: number;
+  depot_lng: number;
+  stops: DeliveryStop[];
+}
+
+export interface DeliveryEligibleOrder {
+  order_id: number;
+  recipient?: string | null;
+  phone?: string | null;
+  address?: string | null;
+  lat?: number | null;
+  lng?: number | null;
+  total: string;
+  item_count: number;
+  created_at: string;
+}
+
+export interface DeliveryScanResult {
+  stop: DeliveryStop;
+  run_status: DeliveryRunStatus;
 }

@@ -115,6 +115,13 @@ class Settings(BaseSettings):
     # altındaki fiziksel siparişe sabit ücret. (Frontend lib/shipping.ts ile aynı.)
     SHIPPING_FREE_THRESHOLD: float = 500.0
     SHIPPING_FLAT_FEE: float = 49.90
+    # Kendi-filo teslimat (mağaza kitap dağıtımı). Depo = turun başlangıç noktası
+    # (Seyhan Çakmak Cad. civarı; kesinleşince .env'den güncellenir). Teslim OTP'si
+    # kapıda müşterinin söylediği koddur — telefon doğrulama OTP'sinden ayrıdır.
+    DELIVERY_DEPOT_LAT: float = 36.985500
+    DELIVERY_DEPOT_LNG: float = 35.325300
+    DELIVERY_OTP_TTL_MINUTES: int = 30
+    DELIVERY_OTP_MAX_ATTEMPTS: int = 5
     # Lansman promosyonu: kayıttan itibaren ilk N ay indirimli/0 komisyon. MONTHS=0
     # ise KAPALI (varsayılan: düz %10, kampanya yok). Açmak için .env'de ayarla.
     LAUNCH_PROMO_MONTHS: int = 0

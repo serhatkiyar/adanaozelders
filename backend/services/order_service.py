@@ -246,6 +246,9 @@ async def create_order(
         # ClientAddress yapısal il/ilçe tutmaz; başlık + tarif snapshot'a eklenir.
         if addr.directions:
             order.ship_address = f"{addr.address_line}\n{addr.directions}"
+        # Harita pin'i teslimat rotasının otoritesidir (adres metni tarif).
+        order.ship_lat = addr.location_lat
+        order.ship_lng = addr.location_lng
 
     for ln in lines:
         order.items.append(
@@ -437,6 +440,8 @@ def _to_out(order: Order) -> OrderOut:
         ship_address=order.ship_address,
         ship_city=order.ship_city,
         ship_district=order.ship_district,
+        ship_lat=float(order.ship_lat) if order.ship_lat is not None else None,
+        ship_lng=float(order.ship_lng) if order.ship_lng is not None else None,
         tracking_no=order.tracking_no,
         return_status=return_status,
         created_at=order.created_at,

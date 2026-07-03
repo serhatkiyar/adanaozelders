@@ -7,6 +7,7 @@ from api.routers import (
     bookings,
     bookmarks,
     clients,
+    delivery,
     demands,
     educations,
     exams,
@@ -40,6 +41,7 @@ api_router.include_router(tutors.router)
 api_router.include_router(clients.router)
 api_router.include_router(educations.router)
 api_router.include_router(addresses.router)
+api_router.include_router(delivery.router)
 api_router.include_router(demands.router)
 api_router.include_router(bookings.router)
 api_router.include_router(bookmarks.router)

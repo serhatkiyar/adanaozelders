@@ -28,6 +28,7 @@ import {
 } from "@/hooks/useNameChanges";
 import { REPORT_REASON_LABEL } from "@/components/ReportModal";
 import AdminLibraries from "@/pages/dashboards/AdminLibraries";
+import AdminDelivery from "@/pages/dashboards/AdminDelivery";
 import AdminStore from "@/pages/dashboards/AdminStore";
 import AdminExamCatalogs from "@/pages/dashboards/AdminExamCatalogs";
 import {
@@ -634,6 +635,7 @@ type Tab =
   | "libraries"
   | "catalogs"
   | "store"
+  | "delivery"
   | "bookings"
   | "names"
   | "reports";
@@ -645,6 +647,7 @@ const TABS: { value: Tab; label: string }[] = [
   { value: "libraries", label: "Kütüphaneler" },
   { value: "catalogs", label: "Deneme Katalogları" },
   { value: "store", label: "Mağaza" },
+  { value: "delivery", label: "Dağıtım" },
   { value: "bookings", label: "Ders Talepleri" },
   { value: "names", label: "Ad Değişiklikleri" },
   { value: "reports", label: "Şikayetler" },
@@ -1150,6 +1153,8 @@ export default function AdminHome() {
           <AdminExamCatalogs />
         ) : tab === "store" ? (
           <AdminStore />
+        ) : tab === "delivery" ? (
+          <AdminDelivery />
         ) : tab === "bookings" ? (
           <BookingManagement />
         ) : tab === "names" ? (
