@@ -31,6 +31,10 @@ describe("PaymentBadge", () => {
     render(<PaymentBadge payment={makePayment(PaymentStatus.RELEASED)} />);
     expect(screen.getByText(/Ödeme tamamlandı/)).toBeTruthy();
   });
+  it("REFUNDING -> 'İade ediliyor'", () => {
+    render(<PaymentBadge payment={makePayment(PaymentStatus.REFUNDING)} />);
+    expect(screen.getByText(/İade ediliyor/)).toBeTruthy();
+  });
   it("REFUNDED -> 'İade edildi'", () => {
     render(<PaymentBadge payment={makePayment(PaymentStatus.REFUNDED)} />);
     expect(screen.getByText(/İade edildi/)).toBeTruthy();

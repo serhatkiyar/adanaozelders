@@ -54,6 +54,10 @@ const STATUS_PILL: Record<RegistrationStatus, { label: string; cls: string }> = 
     label: "İptal",
     cls: "bg-white/10 text-white/80 ring-1 ring-inset ring-white/15",
   },
+  REFUNDING: {
+    label: "İade ediliyor",
+    cls: "bg-amber-300/20 text-amber-100 ring-1 ring-inset ring-amber-200/30",
+  },
   REFUNDED: {
     label: "İade edildi",
     cls: "bg-white/10 text-white/80 ring-1 ring-inset ring-white/15",
@@ -468,6 +472,14 @@ function terminalView(
       pill: STATUS_PILL.REFUNDED,
     };
   }
+  if (status === "REFUNDING") {
+    return {
+      muted: true,
+      stamp: { label: "İade Ediliyor", sub: "iade işleme alındı", tone: "slate" },
+      inactive: { label: "İade ediliyor", icon: "↩" },
+      pill: STATUS_PILL.REFUNDING,
+    };
+  }
   if (isExpired) {
     return {
       muted: true,
@@ -493,6 +505,7 @@ function TicketCard({ reg }: { reg: RegistrationOut }) {
   const isExpired =
     reg.status !== "ATTENDED" &&
     reg.status !== "CANCELLED" &&
+    reg.status !== "REFUNDING" &&
     reg.status !== "REFUNDED" &&
     examEndMs != null &&
     examEndMs < Date.now();
@@ -633,6 +646,7 @@ function StudyReservationCard({ res }: { res: StudyReservationOut }) {
   const isExpired =
     res.status !== "ATTENDED" &&
     res.status !== "CANCELLED" &&
+    res.status !== "REFUNDING" &&
     res.status !== "REFUNDED" &&
     new Date(res.ends_at).getTime() < Date.now();
   const view = terminalView(res.status, isExpired, res.attended_at);

@@ -733,6 +733,7 @@ export enum PaymentStatus {
   PENDING = "PENDING", // tutor kabul etti; öğrencinin ödemesi bekleniyor
   HELD = "HELD", // ödendi; tutar emanette (escrow)
   RELEASED = "RELEASED", // ders tamamlandı; eğitmene aktarıldı
+  REFUNDING = "REFUNDING", // iade süreci başladı; sağlayıcı teyidi bekleniyor
   REFUNDED = "REFUNDED", // iptal; öğrenciye iade
   FAILED = "FAILED", // ödeme başarısız
 }
@@ -1248,6 +1249,7 @@ export type RegistrationStatus =
   | "PAID"
   | "ATTENDED"
   | "CANCELLED"
+  | "REFUNDING"
   | "REFUNDED";
 
 export interface ExamSessionOut {

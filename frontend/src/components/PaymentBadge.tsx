@@ -7,6 +7,8 @@ const STYLE: Record<PaymentStatus, string> = {
     "bg-sky-50 text-sky-700 dark:bg-sky-500/10 dark:text-sky-300",
   [PaymentStatus.RELEASED]:
     "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300",
+  [PaymentStatus.REFUNDING]:
+    "bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300",
   [PaymentStatus.REFUNDED]:
     "bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300",
   [PaymentStatus.FAILED]:
@@ -17,6 +19,7 @@ const LABEL: Record<PaymentStatus, string> = {
   [PaymentStatus.PENDING]: "Ödeme bekliyor",
   [PaymentStatus.HELD]: "Ödendi (emanette)",
   [PaymentStatus.RELEASED]: "Ödeme tamamlandı",
+  [PaymentStatus.REFUNDING]: "İade ediliyor",
   [PaymentStatus.REFUNDED]: "İade edildi",
   [PaymentStatus.FAILED]: "Ödeme başarısız",
 };
