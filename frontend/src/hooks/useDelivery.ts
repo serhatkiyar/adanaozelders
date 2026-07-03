@@ -141,3 +141,26 @@ export function useScanDeliveryLabel() {
     mutationFn: (payload: string) => deliveryApi.scanDeliveryLabel(payload),
   });
 }
+
+/* ── Canlı takip (Faz C) ── */
+
+/** Admin rota haritası: kuryenin son konumu (yalnız aktif turda poll'lanır). */
+export function useRunPosition(runId: number | null, active: boolean) {
+  return useQuery({
+    queryKey: [...KEY, "position", runId],
+    queryFn: () => deliveryApi.fetchRunPosition(runId!),
+    enabled: runId != null && active,
+    refetchInterval: 10_000,
+  });
+}
+
+/** Müşteri: sipariş canlı takibi — dağıtımda 15 sn'de bir tazelenir. */
+export function useOrderTracking(orderId: number | null, enabled = true) {
+  return useQuery({
+    queryKey: ["orderTracking", orderId],
+    queryFn: () => deliveryApi.fetchOrderTracking(orderId!),
+    enabled: orderId != null && enabled,
+    refetchInterval: (query) =>
+      query.state.data?.status === "EN_ROUTE" ? 15_000 : false,
+  });
+}

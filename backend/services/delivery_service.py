@@ -19,7 +19,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from core import routing, sms
+from core import courier_position, routing, sms
 from core.config import settings
 from core.routing.haversine import haversine_km
 from models.delivery import (
@@ -36,6 +36,7 @@ from schemas.delivery import (
     DeliveryRunOut,
     DeliveryStopOut,
     EligibleOrderOut,
+    OrderTrackingOut,
     StopItemOut,
 )
 from services import notification_service, order_service
@@ -253,6 +254,7 @@ async def cancel_run(db: AsyncSession, run_id: int) -> DeliveryRunOut:
             stop.courier_note = stop.courier_note or "Tur iptal edildi"
     run.status = DeliveryRunStatus.CANCELLED.value
     await db.commit()
+    await courier_position.clear_position(run_id)
     return await get_run(db, run_id)
 
 
@@ -292,6 +294,7 @@ async def complete_run(db: AsyncSession, run_id: int) -> DeliveryRunOut:
     run.status = DeliveryRunStatus.DONE.value
     run.completed_at = _now()
     await db.commit()
+    await courier_position.clear_position(run_id)
     return await get_run(db, run_id)
 
 
@@ -500,6 +503,96 @@ async def optimize_run(db: AsyncSession, run_id: int) -> DeliveryRunOut:
     run.route_geometry = plan.geometry
     await db.commit()
     return await get_run(db, run_id)
+
+
+# ── Canlı takip (Faz C) ───────────────────────────────────────────────────────────
+
+
+def resolve_tracking_status(
+    *, order_status: str, stop_status: str | None, run_status: str | None
+) -> str:
+    """Müşteriye gösterilecek takip durumu (saf — pytest'li).
+
+    Kurye ancak AKTİF turdaki BEKLEYEN durakta 'yolda'dır; diğer her kombinasyon
+    siparişin kendi durumuna düşer.
+    """
+    if order_status == "DELIVERED" or stop_status == DeliveryStopStatus.DELIVERED.value:
+        return "DELIVERED"
+    if (
+        stop_status == DeliveryStopStatus.PENDING.value
+        and run_status == DeliveryRunStatus.ACTIVE.value
+    ):
+        return "EN_ROUTE"
+    if stop_status == DeliveryStopStatus.FAILED.value:
+        return "FAILED"
+    return "NOT_DISPATCHED"
+
+
+async def track_run(db: AsyncSession, run_id: int, *, lat: float, lng: float) -> None:
+    """Dağıtıcı konum ping'i → Redis (yalnız aktif turda; kalıcı iz tutulmaz)."""
+    run = await _load_run(db, run_id)
+    if run.status != DeliveryRunStatus.ACTIVE.value:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Tur sahada (aktif) değil")
+    await courier_position.set_position(run_id, lat, lng)
+
+
+async def order_tracking(
+    db: AsyncSession, order_id: int, *, client_id: int
+) -> OrderTrackingOut:
+    """Müşterinin sipariş takibi: durum + kurye konumu + sıra/ETA."""
+    order = await db.get(Order, order_id)
+    if order is None or order.deleted_at is not None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Sipariş bulunamadı")
+    if order.client_id != client_id:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Sizin siparişiniz değil")
+
+    # Siparişin en güncel durağı (varsa) + turu.
+    stop = (
+        await db.execute(
+            select(DeliveryStop)
+            .options(selectinload(DeliveryStop.run))
+            .where(DeliveryStop.order_id == order_id)
+            .order_by(DeliveryStop.id.desc())
+            .limit(1)
+        )
+    ).scalars().first()
+
+    run = stop.run if stop is not None else None
+    tracking_status = resolve_tracking_status(
+        order_status=order.status,
+        stop_status=stop.status if stop else None,
+        run_status=run.status if run else None,
+    )
+
+    out = OrderTrackingOut(
+        status=tracking_status,
+        ship_lat=float(order.ship_lat) if order.ship_lat is not None else None,
+        ship_lng=float(order.ship_lng) if order.ship_lng is not None else None,
+    )
+    if tracking_status != "EN_ROUTE" or stop is None or run is None:
+        return out
+
+    out.sequence = stop.sequence
+    out.eta = stop.eta
+    ahead = (
+        await db.execute(
+            select(func.count())
+            .select_from(DeliveryStop)
+            .where(
+                DeliveryStop.run_id == run.id,
+                DeliveryStop.status == DeliveryStopStatus.PENDING.value,
+                DeliveryStop.sequence < stop.sequence,
+            )
+        )
+    ).scalar_one()
+    out.stops_ahead = int(ahead)
+
+    pos = await courier_position.get_position(run.id)
+    if pos is not None:
+        out.courier_lat = pos["lat"]
+        out.courier_lng = pos["lng"]
+        out.courier_age_seconds = pos["age_seconds"]
+    return out
 
 
 # ── Teslim akışı (dağıtıcı) ───────────────────────────────────────────────────────

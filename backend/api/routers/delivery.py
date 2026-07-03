@@ -11,6 +11,7 @@ from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import require_roles
+from core import courier_position
 from core.database import get_db
 from models.role import RoleType
 from schemas.delivery import (
@@ -26,6 +27,7 @@ from schemas.delivery import (
     StopFailIn,
     StopsAddIn,
     StopsReorderIn,
+    TrackIn,
 )
 from services import delivery_service
 
@@ -103,6 +105,19 @@ async def remove_stop(stop_id: int, db: AsyncSession = Depends(get_db)):
 
 
 # ── Saha (dağıtıcı ekranı) ───────────────────────────────────────────────────────
+
+
+@router.post("/runs/{run_id}/track", status_code=status.HTTP_204_NO_CONTENT)
+async def track_run(run_id: int, payload: TrackIn, db: AsyncSession = Depends(get_db)):
+    """Dağıtıcı telefonunun konum ping'i (~10 sn'de bir; Redis, kalıcı iz yok)."""
+    await delivery_service.track_run(db, run_id, lat=payload.lat, lng=payload.lng)
+
+
+@router.get("/runs/{run_id}/position")
+async def run_position(run_id: int):
+    """Kuryenin son bilinen konumu (admin rota haritası) — yoksa null alanlar."""
+    pos = await courier_position.get_position(run_id)
+    return pos or {"lat": None, "lng": None, "age_seconds": None}
 
 
 @router.post("/scan", response_model=ScanOut)

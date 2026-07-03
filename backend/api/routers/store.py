@@ -55,9 +55,11 @@ from schemas.store import (
     SellerProductCreate,
     StockNotifyIn,
 )
+from schemas.delivery import OrderTrackingOut
 from services import (
     collection_service,
     coupon_service,
+    delivery_service,
     order_service,
     phone_service,
     store_service,
@@ -524,6 +526,16 @@ async def list_my_orders(
     db: AsyncSession = Depends(get_db),
 ):
     return await order_service.list_mine(db, client)
+
+
+@router.get("/orders/{order_id}/tracking", response_model=OrderTrackingOut)
+async def order_tracking(
+    order_id: int,
+    client: Client = Depends(require_roles(RoleType.CLIENT)),
+    db: AsyncSession = Depends(get_db),
+):
+    """Kendi-filo teslimat canlı takibi: kurye konumu + sıra + tahmini varış."""
+    return await delivery_service.order_tracking(db, order_id, client_id=client.id)
 
 
 @router.get("/orders/{order_id}", response_model=OrderOut)

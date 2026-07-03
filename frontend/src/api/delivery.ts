@@ -1,10 +1,12 @@
 import { apiClient } from "@/api/axios";
 import type {
+  CourierPosition,
   DeliveryEligibleOrder,
   DeliveryRun,
   DeliveryScanResult,
   DeliveryStop,
   DeliveryVehicle,
+  OrderTracking,
 } from "@/types";
 
 export async function fetchEligibleOrders(): Promise<DeliveryEligibleOrder[]> {
@@ -115,6 +117,30 @@ export async function overrideDeliver(
   const { data } = await apiClient.post<DeliveryStop>(
     `/delivery/stops/${stopId}/override-deliver`,
     { note }
+  );
+  return data;
+}
+
+/** Dağıtıcı telefonunun konum ping'i (sessiz — takip akışı UI'ı bozmasın). */
+export async function trackDeliveryRun(
+  runId: number,
+  lat: number,
+  lng: number
+): Promise<void> {
+  await apiClient.post(`/delivery/runs/${runId}/track`, { lat, lng });
+}
+
+export async function fetchRunPosition(runId: number): Promise<CourierPosition> {
+  const { data } = await apiClient.get<CourierPosition>(
+    `/delivery/runs/${runId}/position`
+  );
+  return data;
+}
+
+/** Müşteri: sipariş canlı takibi. */
+export async function fetchOrderTracking(orderId: number): Promise<OrderTracking> {
+  const { data } = await apiClient.get<OrderTracking>(
+    `/store/orders/${orderId}/tracking`
   );
   return data;
 }

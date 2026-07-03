@@ -111,6 +111,31 @@ class OverrideDeliverIn(BaseModel):
     note: str = Field(min_length=3, max_length=500)
 
 
+class TrackIn(BaseModel):
+    """Dağıtıcı telefonunun anlık konumu (~10 sn'de bir)."""
+
+    lat: float = Field(ge=-90, le=90)
+    lng: float = Field(ge=-180, le=180)
+
+
+class OrderTrackingOut(BaseModel):
+    """Müşterinin sipariş takibi: kurye nerede, kaç durak önde, tahmini varış.
+
+    status: NOT_DISPATCHED (bugünkü tura çıkmadı) | EN_ROUTE (dağıtımda) |
+    DELIVERED | FAILED (bugün teslim edilemedi, yeniden planlanacak).
+    """
+
+    status: str
+    sequence: int | None = None
+    stops_ahead: int | None = None
+    eta: datetime.datetime | None = None
+    courier_lat: float | None = None
+    courier_lng: float | None = None
+    courier_age_seconds: int | None = None
+    ship_lat: float | None = None
+    ship_lng: float | None = None
+
+
 class ScanIn(BaseModel):
     payload: str = Field(min_length=1, max_length=200)
 

@@ -1734,3 +1734,28 @@ export interface DeliveryScanResult {
   stop: DeliveryStop;
   run_status: DeliveryRunStatus;
 }
+
+/** Müşterinin sipariş canlı takibi (Faz C). */
+export type OrderTrackingStatus =
+  | "NOT_DISPATCHED"
+  | "EN_ROUTE"
+  | "DELIVERED"
+  | "FAILED";
+
+export interface OrderTracking {
+  status: OrderTrackingStatus;
+  sequence?: number | null;
+  stops_ahead?: number | null;
+  eta?: string | null;
+  courier_lat?: number | null;
+  courier_lng?: number | null;
+  courier_age_seconds?: number | null;
+  ship_lat?: number | null;
+  ship_lng?: number | null;
+}
+
+export interface CourierPosition {
+  lat: number | null;
+  lng: number | null;
+  age_seconds: number | null;
+}

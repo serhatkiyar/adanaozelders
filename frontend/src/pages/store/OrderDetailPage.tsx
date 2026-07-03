@@ -7,6 +7,7 @@ import { FullScreenSpinner } from "@/components/Spinner";
 import { formatTL } from "@/lib/money";
 import { formatDate } from "@/lib/datetime";
 import { useOrder, useCancelOrder, useRequestReturn } from "@/hooks/useStore";
+import { OrderTrackingSection } from "@/components/OrderTrackingSection";
 import { useCartStore } from "@/store/cartStore";
 import { STATUS_LABELS, OrderItemRow, orderItemToProduct } from "@/pages/store/OrdersPage";
 import { toast } from "@/store/toastStore";
@@ -181,20 +182,29 @@ export default function OrderDetailPage() {
           </div>
         </div>
 
+        {/* Canlı teslimat takibi (kendi filo — kurye dağıtımdayken görünür) */}
+        <OrderTrackingSection order={order} />
+
         {/* Ürünler */}
         <div className="mt-5 rounded-2xl border border-slate-200 p-5 dark:border-slate-800">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-sm font-semibold text-slate-900 dark:text-white">{badge.label}</h2>
-            {order.tracking_no && (
-              <a
-                href={`https://www.google.com/search?q=${encodeURIComponent("kargo takip " + order.tracking_no)}`}
-                target="_blank"
-                rel="noreferrer"
-                className="text-xs font-medium text-indigo-600 hover:underline dark:text-indigo-400"
-              >
-                Kargo takibi: {order.tracking_no}
-              </a>
-            )}
+            {order.tracking_no &&
+              (order.tracking_no.startsWith("ELDEN-") ? (
+                // Kendi filo teslimatı — canlı takip yukarıdaki haritada; dış kargo linki anlamsız.
+                <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                  Kuryemizle teslim · {order.tracking_no}
+                </span>
+              ) : (
+                <a
+                  href={`https://www.google.com/search?q=${encodeURIComponent("kargo takip " + order.tracking_no)}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-xs font-medium text-indigo-600 hover:underline dark:text-indigo-400"
+                >
+                  Kargo takibi: {order.tracking_no}
+                </a>
+              ))}
           </div>
           <div className="space-y-5">
             {order.items.map((it) => (

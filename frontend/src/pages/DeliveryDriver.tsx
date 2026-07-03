@@ -2,9 +2,10 @@
 // Araçta şoför sürer, dağıtıcı bu ekranı kullanır: sıradaki durağı görür,
 // "Yol Tarifi Al" Google Maps'i açar (adım-adım navigasyon YAZILMAZ),
 // kapıda paket QR'ı doğrulanır + müşteriye SMS'lenen kod girilir → teslim.
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
+import { trackDeliveryRun } from "@/api/delivery";
 import { QrScanner } from "@/components/QrScanner";
 import {
   useDeliveryRun,
@@ -41,6 +42,29 @@ function getCoords(): Promise<{ lat: number; lng: number } | undefined> {
 
 function apiDetail(e: any, fallback: string): string {
   return e?.response?.data?.detail ?? fallback;
+}
+
+/** Canlı takip yayını: tur AKTİF iken dağıtıcı telefonunun konumunu ~10 sn'de
+ *  bir sunucuya iletir (müşteri haritası bunu okur). Best-effort — konum izni
+ *  yoksa ya da istek düşerse saha akışı ETKİLENMEZ. */
+function useCourierBroadcast(runId: number | null, active: boolean) {
+  const lastSent = useRef(0);
+  useEffect(() => {
+    if (!active || runId == null || !navigator.geolocation) return;
+    const watchId = navigator.geolocation.watchPosition(
+      (pos) => {
+        const now = Date.now();
+        if (now - lastSent.current < 10_000) return; // ping aralığı
+        lastSent.current = now;
+        trackDeliveryRun(runId, pos.coords.latitude, pos.coords.longitude).catch(
+          () => {} // sessiz — takip yayını asla teslim akışını bozmasın
+        );
+      },
+      () => {}, // izin yok/hata → yayınsız devam
+      { enableHighAccuracy: true, maximumAge: 5000 }
+    );
+    return () => navigator.geolocation.clearWatch(watchId);
+  }, [runId, active]);
 }
 
 /* ─── Aktif durak kartı ──────────────────────────────── */
@@ -271,6 +295,10 @@ export default function DeliveryDriver() {
   const runAction = useRunAction();
   const scanLabel = useScanDeliveryLabel();
   const [showScanner, setShowScanner] = useState(false);
+  useCourierBroadcast(
+    Number.isFinite(runId) ? runId : null,
+    run?.status === "ACTIVE"
+  );
 
   if (isLoading || !run) {
     return (

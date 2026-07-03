@@ -6,7 +6,7 @@ import { MapContainer, Marker, Polyline, TileLayer } from "react-leaflet";
 import L from "leaflet";
 
 import { decodePolyline } from "@/lib/polyline";
-import type { DeliveryRun, DeliveryStop } from "@/types";
+import type { CourierPosition, DeliveryRun, DeliveryStop } from "@/types";
 
 function stopIcon(stop: DeliveryStop): L.DivIcon {
   const tone =
@@ -32,7 +32,21 @@ const depotIcon = L.divIcon({
   iconAnchor: [13, 13],
 });
 
-export function DeliveryRouteMap({ run }: { run: DeliveryRun }) {
+const courierIcon = L.divIcon({
+  className: "",
+  html: `<div style="background:#6366f1;color:white;width:30px;height:30px;border-radius:9999px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,.4);border:2px solid white"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="16" height="16"><path stroke-linecap="round" stroke-linejoin="round" d="M8.25 18.75a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 0 1-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 0 0-3.213-9.193 2.056 2.056 0 0 0-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 0 0-10.026 0 1.106 1.106 0 0 0-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12"/></svg></div>`,
+  iconSize: [30, 30],
+  iconAnchor: [15, 15],
+});
+
+export function DeliveryRouteMap({
+  run,
+  courier,
+}: {
+  run: DeliveryRun;
+  /** Kuryenin canlı konumu (yalnız aktif turda; admin panel poll'lar). */
+  courier?: CourierPosition | null;
+}) {
   const located = useMemo(
     () =>
       [...run.stops]
@@ -83,6 +97,9 @@ export function DeliveryRouteMap({ run }: { run: DeliveryRun }) {
         {located.map((s) => (
           <Marker key={s.id} position={[s.lat!, s.lng!]} icon={stopIcon(s)} />
         ))}
+        {courier?.lat != null && courier?.lng != null && (
+          <Marker position={[courier.lat, courier.lng]} icon={courierIcon} />
+        )}
       </MapContainer>
     </div>
   );

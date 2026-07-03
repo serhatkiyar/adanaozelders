@@ -45,6 +45,40 @@ def test_validate_reorder():
     assert validate_reorder([], []) is True
 
 
+def test_resolve_tracking_status():
+    from services.delivery_service import resolve_tracking_status
+
+    # Yolda: yalnız AKTİF tur + BEKLEYEN durak.
+    assert (
+        resolve_tracking_status(order_status="SHIPPED", stop_status="PENDING", run_status="ACTIVE")
+        == "EN_ROUTE"
+    )
+    # Planlı turda henüz yola çıkmadı.
+    assert (
+        resolve_tracking_status(order_status="PAID", stop_status="PENDING", run_status="PLANNED")
+        == "NOT_DISPATCHED"
+    )
+    # Teslim: sipariş ya da durak hangisi işaretliyse.
+    assert (
+        resolve_tracking_status(order_status="DELIVERED", stop_status=None, run_status=None)
+        == "DELIVERED"
+    )
+    assert (
+        resolve_tracking_status(order_status="SHIPPED", stop_status="DELIVERED", run_status="ACTIVE")
+        == "DELIVERED"
+    )
+    # Teslim edilemedi → FAILED (yeniden planlanacak).
+    assert (
+        resolve_tracking_status(order_status="PAID", stop_status="FAILED", run_status="ACTIVE")
+        == "FAILED"
+    )
+    # Hiç durağı yok.
+    assert (
+        resolve_tracking_status(order_status="PAID", stop_status=None, run_status=None)
+        == "NOT_DISPATCHED"
+    )
+
+
 def test_otp_expired():
     now = datetime.datetime(2026, 7, 3, 12, 0, tzinfo=datetime.timezone.utc)
     assert otp_expired(None, now) is True  # hiç gönderilmemiş
