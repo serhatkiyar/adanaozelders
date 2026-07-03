@@ -6,7 +6,10 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       POSTGRES_DB: ${POSTGRES_DB:-ceyhandb}
     ports:
-      - "5432:5432"
+      # Host 5433: yerel Windows PostgreSQL servisi 5432'yi dinliyor; çakışmada
+      # loopback bağlantıları sessizce YEREL sunucuya gider (yanlış DB). Compose-içi
+      # servisler (backend) yine postgres:5432'ye bağlanır — bu yalnız host yayını.
+      - "5433:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:

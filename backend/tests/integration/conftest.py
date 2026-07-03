@@ -10,7 +10,11 @@ koyduğundan gerçek değerler pytest'ten ÖNCE env ile verilmelidir):
 
     $env:POSTGRES_USER='postgres'; $env:POSTGRES_PASSWORD='...'
     $env:POSTGRES_DB='ceyhandb'; $env:POSTGRES_HOST='localhost'
+    $env:POSTGRES_PORT='5433'   # docker compose host yayını (yerel 5432 çakışması!)
     python -m pytest tests/integration -q
+
+DİKKAT: Hostta ayrıca yerel bir PostgreSQL servisi 5432'yi dinliyorsa loopback
+bağlantıları sessizce ORAYA gider — compose postgres'i bu yüzden 5433'ten yayınlanır.
 
 Postgres'e ulaşılamıyorsa testler FAIL değil SKIP olur.
 """
