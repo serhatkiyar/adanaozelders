@@ -168,7 +168,9 @@ async def reconcile_stale_checkouts(db: AsyncSession) -> int:
         if not result.success:
             continue
         await payment_service.complete_checkout(
-            db, booking_id=p.booking_id, success=True, provider_ref=result.provider_ref
+            db, booking_id=p.booking_id, success=True,
+            provider_ref=result.provider_ref,
+            token=p.provider_ref, paid_price=result.paid_price,
         )
         await db.commit()
         handled += 1
@@ -198,7 +200,9 @@ async def reconcile_stale_checkouts(db: AsyncSession) -> int:
         if not result.success:
             continue
         await library_exam_service.complete_checkout(
-            db, registration_id=reg.id, success=True, provider_ref=result.provider_ref
+            db, registration_id=reg.id, success=True,
+            provider_ref=result.provider_ref,
+            token=reg.provider_ref, paid_price=result.paid_price,
         )
         await db.commit()
         handled += 1
@@ -221,7 +225,9 @@ async def reconcile_stale_checkouts(db: AsyncSession) -> int:
         if not result.success:
             continue
         await study_reservation_service.complete_checkout(
-            db, reservation_id=res.id, success=True, provider_ref=result.provider_ref
+            db, reservation_id=res.id, success=True,
+            provider_ref=result.provider_ref,
+            token=res.provider_ref, paid_price=result.paid_price,
         )
         await db.commit()
         handled += 1

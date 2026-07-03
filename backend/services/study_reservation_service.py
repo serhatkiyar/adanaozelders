@@ -354,13 +354,19 @@ async def pay(
 
 
 async def complete_checkout(
-    db: AsyncSession, *, reservation_id: int, success: bool, provider_ref: str | None
+    db: AsyncSession,
+    *,
+    reservation_id: int,
+    success: bool,
+    provider_ref: str | None,
+    token: str | None = None,
+    paid_price: Decimal | None = None,
 ) -> None:
     """iyzico callback'i doğrulandıktan sonra rezervasyonu kesinleştirir (QR üretir).
 
     Başarıda PENDING_PAYMENT→PAID + QR/kısa kod; ``provider_ref`` iade için işlem
     kimliğiyle güncellenir. Başarısızlıkta PENDING_PAYMENT kalır (yeniden denenir).
-    Idempotent.
+    Idempotent. C3: token/paidPrice uyuşmazlığında kesinleştirilmez, tahsilat iade.
     """
     res = await db.get(StudyReservation, reservation_id)
     if res is None or res.deleted_at is not None or not success:
@@ -372,6 +378,23 @@ async def complete_checkout(
         RegistrationStatus.REFUNDED.value,
     ):
         return  # idempotent
+    if token and res.provider_ref and token != res.provider_ref:
+        await escrow.refund_unexpected_charge(
+            provider_ref=provider_ref,
+            amount=paid_price if paid_price is not None else Decimal(str(res.amount)),
+            context=f"token uyuşmazlığı studyres={reservation_id}",
+        )
+        return
+    if paid_price is not None and paid_price != Decimal(str(res.amount)):
+        await escrow.refund_unexpected_charge(
+            provider_ref=provider_ref,
+            amount=paid_price,
+            context=(
+                f"paidPrice uyuşmazlığı studyres={reservation_id} "
+                f"(beklenen {res.amount}, tahsil {paid_price})"
+            ),
+        )
+        return
 
     if res.status == RegistrationStatus.CANCELLED.value:
         # Rezervasyon bu arada iptal edilmiş (öğrenci ya da reserve()'ün stale-hold

@@ -548,7 +548,13 @@ async def pay(
 
 
 async def complete_checkout(
-    db: AsyncSession, *, registration_id: int, success: bool, provider_ref: str | None
+    db: AsyncSession,
+    *,
+    registration_id: int,
+    success: bool,
+    provider_ref: str | None,
+    token: str | None = None,
+    paid_price: Decimal | None = None,
 ) -> None:
     """iyzico callback'i doğrulandıktan sonra kaydı kesinleştirir (bilet üretir).
 
@@ -556,6 +562,8 @@ async def complete_checkout(
     kimliğiyle güncellenir. Başarısızlıkta kayıt PENDING_PAYMENT kalır (öğrenci
     Biletlerim'den yeniden dener). Idempotent.
 
+    C3: ``token`` saklı CF token'ıyla, ``paid_price`` kayıt tutarıyla eşleşmiyorsa
+    kesinleştirilmez — doğrulanmış tahsilat aynen iade edilir.
     Kayıt bu arada iptal edilmişse ya da oturum artık SCHEDULED değilse tahsil
     edilen para kara delikte bırakılmaz — anında iade akışı başlatılır (C2b).
     """
@@ -569,6 +577,23 @@ async def complete_checkout(
         RegistrationStatus.REFUNDED.value,
     ):
         return  # idempotent: para zaten bir yaşam döngüsüne bağlı
+    if token and reg.provider_ref and token != reg.provider_ref:
+        await escrow.refund_unexpected_charge(
+            provider_ref=provider_ref,
+            amount=paid_price if paid_price is not None else Decimal(str(reg.amount)),
+            context=f"token uyuşmazlığı examreg={registration_id}",
+        )
+        return
+    if paid_price is not None and paid_price != Decimal(str(reg.amount)):
+        await escrow.refund_unexpected_charge(
+            provider_ref=provider_ref,
+            amount=paid_price,
+            context=(
+                f"paidPrice uyuşmazlığı examreg={registration_id} "
+                f"(beklenen {reg.amount}, tahsil {paid_price})"
+            ),
+        )
+        return
 
     session = await db.get(LibraryExamSession, reg.session_id)
     session_dead = (

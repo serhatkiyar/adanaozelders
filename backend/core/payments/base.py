@@ -59,11 +59,14 @@ class CheckoutResult:
 
     ``reference`` charge'a verilen referanstır (hangi varlığa ait olduğunu söyler);
     ``provider_ref`` iade için kullanılacak işlem kimliğidir (paymentTransactionId).
+    ``paid_price`` sağlayıcının GERÇEKTE tahsil ettiği tutardır — varlık tutarıyla
+    eşleşmesi complete_checkout'ta doğrulanır (C3).
     """
 
     success: bool
     reference: str | None = None
     provider_ref: str | None = None
+    paid_price: Decimal | None = None
     error: str | None = None
 
 

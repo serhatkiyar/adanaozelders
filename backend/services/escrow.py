@@ -254,6 +254,28 @@ async def refund_escrow(
     return "refunding"
 
 
+async def refund_unexpected_charge(
+    *, provider_ref: str | None, amount: Decimal, context: str
+) -> bool:
+    """Bizde karşılığı olmayan DOĞRULANMIŞ tahsilatı sağlayıcıya aynen geri gönderir.
+
+    Kullanım: callback'te token uyuşmazlığı (ikinci/bayat CF oturumu ödendi) ya da
+    paidPrice uyuşmazlığı — varlığa bağlanamayan para emanete alınmaz, iade edilir.
+    Satır-durumu yoktur; replay idempotency'si sağlayıcının aşırı-iade reddine
+    yaslanır (aynı işlemin ikinci tam iadesi reddedilir).
+    """
+    provider = payments.get_payment_provider()
+    ok = await provider.refund(provider_ref=provider_ref, amount=amount)
+    logger.error(
+        "escrow: beklenmeyen tahsilat iade edildi=%s (%s ref=%s tutar=%s)",
+        ok,
+        context,
+        provider_ref,
+        amount,
+    )
+    return ok
+
+
 # ── Reconciler saf karar çekirdeği (property-test edilebilir) ───────────────────
 
 ACTION_WAIT = "wait"          # karantina penceresi dolmadı — dokunma

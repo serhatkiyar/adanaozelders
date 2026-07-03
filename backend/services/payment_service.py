@@ -191,7 +191,13 @@ async def pay(
 
 
 async def complete_checkout(
-    db: AsyncSession, *, booking_id: int, success: bool, provider_ref: str | None
+    db: AsyncSession,
+    *,
+    booking_id: int,
+    success: bool,
+    provider_ref: str | None,
+    token: str | None = None,
+    paid_price: Decimal | None = None,
 ) -> Payment | None:
     """iyzico callback'i sunucuda doğrulandıktan sonra ödemeyi kesinleştirir.
 
@@ -199,6 +205,12 @@ async def complete_checkout(
     kimliğidir (paymentTransactionId, initialize'daki CF token'ının üzerine yazılır).
     Başarısızlıkta FAILED — öğrenci "Öde" ile yeniden deneyebilir. Idempotent:
     HELD/RELEASED/REFUNDING/REFUNDED durumlarına dokunmaz.
+
+    C3 doğrulamaları (yalnız verildiğinde):
+    - ``token`` saklı CF token'ı ile eşleşmeli — eşleşmiyorsa bu başka (eski/ikinci)
+      bir checkout oturumunun tahsilatıdır: varlığa DOKUNULMAZ, para aynen iade edilir
+      (çift tahsilat kayıtsız kalamaz).
+    - ``paid_price`` varlık tutarına eşit olmalı — değilse kesinleştirilmez, iade edilir.
 
     Booking bu arada iptal/red edildiyse (öğrenci iyzico sayfasındayken) tahsil
     edilen para HELD'e alınıp kilitlenmez — anında iade akışı başlatılır.
@@ -212,8 +224,36 @@ async def complete_checkout(
         PaymentStatus.REFUNDING,
         PaymentStatus.REFUNDED,
     ):
+        return payment  # idempotent — replay'ler token kontrolünden ÖNCE düşer
+    if (
+        success
+        and token
+        and payment.provider_ref
+        and token != payment.provider_ref
+    ):
+        await escrow.refund_unexpected_charge(
+            provider_ref=provider_ref,
+            amount=paid_price if paid_price is not None else Decimal(str(payment.amount)),
+            context=f"token uyuşmazlığı booking={booking_id}",
+        )
+        return payment
+    if (
+        success
+        and paid_price is not None
+        and paid_price != Decimal(str(payment.amount))
+    ):
+        await escrow.refund_unexpected_charge(
+            provider_ref=provider_ref,
+            amount=paid_price,
+            context=(
+                f"paidPrice uyuşmazlığı booking={booking_id} "
+                f"(beklenen {payment.amount}, tahsil {paid_price})"
+            ),
+        )
         return payment
     if not success:
+        if token and payment.provider_ref and token != payment.provider_ref:
+            return payment  # bayat oturumun başarısızlığı aktif oturumu FAILED'lamasın
         await escrow.claim(
             db,
             Payment,

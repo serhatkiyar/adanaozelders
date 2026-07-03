@@ -134,6 +134,7 @@ async def iyzico_callback(request: Request, db: AsyncSession = Depends(get_db)):
         await payment_service.complete_checkout(
             db, booking_id=entity_id, success=result.success,
             provider_ref=result.provider_ref,
+            token=token, paid_price=result.paid_price,
         )
         return _checkout_redirect(_BOOKINGS_PAGE, ok=result.success)
     if kind == "order":
@@ -146,11 +147,13 @@ async def iyzico_callback(request: Request, db: AsyncSession = Depends(get_db)):
         await library_exam_service.complete_checkout(
             db, registration_id=entity_id, success=result.success,
             provider_ref=result.provider_ref,
+            token=token, paid_price=result.paid_price,
         )
     else:  # studyres
         await study_reservation_service.complete_checkout(
             db, reservation_id=entity_id, success=result.success,
             provider_ref=result.provider_ref,
+            token=token, paid_price=result.paid_price,
         )
     return _checkout_redirect(_TICKETS_PAGE, ok=result.success)
 

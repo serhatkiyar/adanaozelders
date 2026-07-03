@@ -229,6 +229,12 @@ class IyzicoProvider(PaymentProvider):
         txs = data.get("itemTransactions") or []
         ptx = txs[0].get("paymentTransactionId") if txs else None
         provider_ref = str(ptx or data.get("paymentId") or "")
+        paid_price: Decimal | None = None
+        try:
+            if data.get("paidPrice") is not None:
+                paid_price = Decimal(str(data["paidPrice"]))
+        except Exception:  # noqa: BLE001
+            paid_price = None  # doğrulanamıyorsa None — çağıran eşleşme atlar
         logger.info(
             "iyzico ödeme OK ref=%s paymentId=%s ptx=%s paidPrice=%s",
             reference,
@@ -237,7 +243,10 @@ class IyzicoProvider(PaymentProvider):
             data.get("paidPrice"),
         )
         return CheckoutResult(
-            success=True, reference=reference, provider_ref=provider_ref or None
+            success=True,
+            reference=reference,
+            provider_ref=provider_ref or None,
+            paid_price=paid_price,
         )
 
     async def refund(self, *, provider_ref: str | None, amount: Decimal) -> bool:
