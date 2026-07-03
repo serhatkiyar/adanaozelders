@@ -32,6 +32,11 @@ class DeliveryStopOut(BaseModel):
     lng: float | None = None
     items: list[StopItemOut] = []
     order_total: str | None = None
+    # Rota optimizasyonu (Faz B)
+    eta: datetime.datetime | None = None
+    detour_km: float | None = None
+    # detour_km >= DELIVERY_DETOUR_KM → "rotayı bozan" (dış kurye adayı)
+    is_outlier: bool = False
     otp_sent_at: datetime.datetime | None = None
     delivered_at: datetime.datetime | None = None
     proof: str | None = None
@@ -50,6 +55,13 @@ class DeliveryRunOut(BaseModel):
     # Depo = turun başlangıç noktası (navigasyon ilk ayağı için).
     depot_lat: float
     depot_lng: float
+    # Rota optimizasyonu (Faz B) — son optimize snapshot'ı
+    optimized_at: datetime.datetime | None = None
+    optimize_provider: str | None = None
+    total_distance_km: float | None = None
+    total_duration_seconds: int | None = None
+    # Encoded polyline5 (vroom); haversine'de None → istemci düz çizgi çizer.
+    route_geometry: str | None = None
     stops: list[DeliveryStopOut] = []
 
 

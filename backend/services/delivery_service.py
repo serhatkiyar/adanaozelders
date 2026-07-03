@@ -19,8 +19,9 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from core import sms
+from core import routing, sms
 from core.config import settings
+from core.routing.haversine import haversine_km
 from models.delivery import (
     DeliveryProof,
     DeliveryRun,
@@ -82,6 +83,31 @@ def otp_expired(sent_at: datetime.datetime | None, now: datetime.datetime) -> bo
     return sent_at + datetime.timedelta(minutes=settings.DELIVERY_OTP_TTL_MINUTES) <= now
 
 
+def compute_detours(
+    depot: tuple[float, float], ordered: list[tuple[float, float]]
+) -> list[float]:
+    """Sıralı rotada her durağın 'rotaya kattığı ek yol' (km, kuş uçuşu) — saf.
+
+    detour_i = d(önceki, i) + d(i, sonraki) − d(önceki, sonraki). Son durakta
+    sonraki yoktur; ek yol = d(önceki, i). Eşiği aşanlar panelde "rotayı bozan"
+    (dış kuryeye devretme adayı) olarak işaretlenir.
+    """
+    out: list[float] = []
+    for i, cur in enumerate(ordered):
+        prev = depot if i == 0 else ordered[i - 1]
+        nxt = ordered[i + 1] if i + 1 < len(ordered) else None
+        if nxt is None:
+            detour = haversine_km(prev[0], prev[1], cur[0], cur[1])
+        else:
+            detour = (
+                haversine_km(prev[0], prev[1], cur[0], cur[1])
+                + haversine_km(cur[0], cur[1], nxt[0], nxt[1])
+                - haversine_km(prev[0], prev[1], nxt[0], nxt[1])
+            )
+        out.append(round(max(detour, 0.0), 1))
+    return out
+
+
 # ── Dönüştürme ────────────────────────────────────────────────────────────────────
 
 
@@ -105,6 +131,12 @@ def _stop_to_out(stop: DeliveryStop) -> DeliveryStopOut:
             if it.kind == "PHYSICAL"
         ],
         order_total=str(order.total),
+        eta=stop.eta,
+        detour_km=float(stop.detour_km) if stop.detour_km is not None else None,
+        is_outlier=(
+            stop.detour_km is not None
+            and float(stop.detour_km) >= settings.DELIVERY_DETOUR_KM
+        ),
         otp_sent_at=stop.otp_sent_at,
         delivered_at=stop.delivered_at,
         proof=stop.proof,
@@ -124,6 +156,13 @@ def _run_to_out(run: DeliveryRun) -> DeliveryRunOut:
         created_at=run.created_at,
         depot_lat=settings.DELIVERY_DEPOT_LAT,
         depot_lng=settings.DELIVERY_DEPOT_LNG,
+        optimized_at=run.optimized_at,
+        optimize_provider=run.optimize_provider,
+        total_distance_km=(
+            float(run.total_distance_km) if run.total_distance_km is not None else None
+        ),
+        total_duration_seconds=run.total_duration_seconds,
+        route_geometry=run.route_geometry,
         stops=[_stop_to_out(s) for s in run.stops],
     )
 
@@ -391,6 +430,74 @@ async def reorder_stops(db: AsyncSession, run_id: int, stop_ids: list[int]) -> D
     position = {stop_id: i + 1 for i, stop_id in enumerate(stop_ids)}
     for stop in run.stops:
         stop.sequence = position[stop.id]
+    await db.commit()
+    return await get_run(db, run_id)
+
+
+# ── Rota optimizasyonu (Faz B) ────────────────────────────────────────────────────
+
+
+async def optimize_run(db: AsyncSession, run_id: int) -> DeliveryRunOut:
+    """Bekleyen durakları optimal sıraya dizer (VROOM; yoksa haversine fallback).
+
+    Konumu olmayan duraklar optimize edilemez → rotanın SONUNA atılır (panelde
+    "konumsuz" rozetiyle zaten görünürler). Sonuçlanmış duraklar baştaki
+    sıralarını korur. ETA'lar depo çıkışı = şimdi varsayımıyla yazılır; sapma
+    (detour_km) her bekleyen durak için hesaplanır.
+    """
+    run = await _load_run(db, run_id)
+    if run.status not in _ACTIVE_RUN_STATUSES:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Yalnız planlı/aktif tur optimize edilir")
+
+    resolved = [s for s in run.stops if s.status != DeliveryStopStatus.PENDING.value]
+    pending = [s for s in run.stops if s.status == DeliveryStopStatus.PENDING.value]
+    located = [s for s in pending if s.order.ship_lat is not None and s.order.ship_lng is not None]
+    unlocated = [s for s in pending if s.order.ship_lat is None or s.order.ship_lng is None]
+    if len(located) < 2:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            "Optimize edilecek en az 2 konumlu bekleyen durak gerekli",
+        )
+
+    depot = (settings.DELIVERY_DEPOT_LAT, settings.DELIVERY_DEPOT_LNG)
+    points = [
+        routing.RoutePoint(
+            id=s.id, lat=float(s.order.ship_lat), lng=float(s.order.ship_lng)
+        )
+        for s in located
+    ]
+    plan = await routing.plan_route(depot_lat=depot[0], depot_lng=depot[1], points=points)
+
+    by_id = {s.id: s for s in located}
+    ordered_stops = [by_id[i] for i in plan.ordered_ids]
+    ordered_coords = [
+        (float(s.order.ship_lat), float(s.order.ship_lng)) for s in ordered_stops
+    ]
+    detours = compute_detours(depot, ordered_coords)
+
+    now = _now()
+    seq = 0
+    # Sonuçlanmış duraklar geçmiş kaydıdır — sıraları başta sabit kalır.
+    for s in sorted(resolved, key=lambda x: x.sequence):
+        seq += 1
+        s.sequence = seq
+    for s, detour in zip(ordered_stops, detours):
+        seq += 1
+        s.sequence = seq
+        s.detour_km = detour
+        offset = plan.arrival_offsets.get(s.id)
+        s.eta = now + datetime.timedelta(seconds=offset) if offset is not None else None
+    for s in sorted(unlocated, key=lambda x: x.sequence):
+        seq += 1
+        s.sequence = seq
+        s.eta = None
+        s.detour_km = None
+
+    run.optimized_at = now
+    run.optimize_provider = plan.provider
+    run.total_distance_km = plan.total_distance_km
+    run.total_duration_seconds = plan.total_duration_seconds or None
+    run.route_geometry = plan.geometry
     await db.commit()
     return await get_run(db, run_id)
 

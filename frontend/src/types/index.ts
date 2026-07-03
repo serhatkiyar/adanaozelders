@@ -1686,6 +1686,11 @@ export interface DeliveryStop {
   lng?: number | null;
   items: DeliveryStopItem[];
   order_total?: string | null;
+  /** Rota optimizasyonu (Faz B) */
+  eta?: string | null;
+  detour_km?: number | null;
+  /** Rotaya kattığı ek yol eşiği aştı → "rotayı bozan" (dış kurye adayı). */
+  is_outlier?: boolean;
   otp_sent_at?: string | null;
   delivered_at?: string | null;
   proof?: "OTP" | "ADMIN" | null;
@@ -1703,6 +1708,13 @@ export interface DeliveryRun {
   created_at: string;
   depot_lat: number;
   depot_lng: number;
+  /** Rota optimizasyonu (Faz B) — son optimize snapshot'ı */
+  optimized_at?: string | null;
+  optimize_provider?: string | null;
+  total_distance_km?: number | null;
+  total_duration_seconds?: number | null;
+  /** Encoded polyline5 (vroom); haversine'de null → düz çizgi çizilir. */
+  route_geometry?: string | null;
   stops: DeliveryStop[];
 }
 

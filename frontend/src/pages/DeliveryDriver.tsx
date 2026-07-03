@@ -22,6 +22,7 @@ import {
   nextPendingStop,
   runProgress,
 } from "@/lib/deliveryRun";
+import { formatEta } from "@/lib/polyline";
 import { ROUTES } from "@/lib/routes";
 import { toast } from "@/store/toastStore";
 import type { DeliveryStop } from "@/types";
@@ -88,6 +89,11 @@ function CurrentStopCard({ stop }: { stop: DeliveryStop }) {
       <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
         Sipariş #{stop.order_id} ·{" "}
         {stop.items.map((it) => `${it.title} ×${it.quantity}`).join(", ") || "—"}
+        {stop.eta && (
+          <span className="ml-2 font-semibold text-indigo-600 dark:text-indigo-400">
+            tahmini ~{formatEta(stop.eta)}
+          </span>
+        )}
       </p>
 
       {/* Birincil aksiyonlar */}
@@ -377,6 +383,11 @@ export default function DeliveryDriver() {
                 <p className="min-w-0 flex-1 truncate text-sm text-slate-700 dark:text-slate-200">
                   {s.recipient ?? `Sipariş #${s.order_id}`}
                 </p>
+                {s.eta && s.status === "PENDING" && (
+                  <span className="shrink-0 text-xs tabular-nums text-slate-400 dark:text-slate-500">
+                    ~{formatEta(s.eta)}
+                  </span>
+                )}
                 <span
                   className={`text-xs font-medium ${
                     s.status === "DELIVERED"

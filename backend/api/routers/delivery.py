@@ -76,6 +76,12 @@ async def reorder_stops(
     return await delivery_service.reorder_stops(db, run_id, payload.stop_ids)
 
 
+@router.post("/runs/{run_id}/optimize", response_model=DeliveryRunOut)
+async def optimize_run(run_id: int, db: AsyncSession = Depends(get_db)):
+    """Bekleyen durakları optimal sıraya dizer (VROOM; yoksa haversine fallback)."""
+    return await delivery_service.optimize_run(db, run_id)
+
+
 @router.post("/runs/{run_id}/start", response_model=DeliveryRunOut)
 async def start_run(run_id: int, db: AsyncSession = Depends(get_db)):
     return await delivery_service.start_run(db, run_id)

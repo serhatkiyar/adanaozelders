@@ -81,6 +81,16 @@ class DeliveryRun(Base, TimestampMixin, SoftDeleteMixin):
         DateTime(timezone=True), nullable=True
     )
 
+    # ── Rota optimizasyonu (Faz B) — son optimize çıktısının snapshot'ı ──
+    optimized_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    optimize_provider: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    total_distance_km: Mapped[float | None] = mapped_column(Numeric(7, 1), nullable=True)
+    total_duration_seconds: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # Encoded polyline5 (yalnız vroom/OSRM); haversine'de None → istemci düz çizer.
+    route_geometry: Mapped[str | None] = mapped_column(Text, nullable=True)
+
     stops: Mapped[list["DeliveryStop"]] = relationship(
         back_populates="run",
         cascade="all, delete-orphan",
@@ -126,6 +136,13 @@ class DeliveryStop(Base, TimestampMixin):
     otp_attempts: Mapped[int] = mapped_column(
         Integer, nullable=False, server_default=text("0")
     )
+
+    # ── Rota optimizasyonu (Faz B) ──
+    eta: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    # Durağın rotaya kattığı ek yol (km) — eşik üstü "rotayı bozan" işareti.
+    detour_km: Mapped[float | None] = mapped_column(Numeric(6, 1), nullable=True)
 
     # ── Sonuç / kanıt ──
     delivered_at: Mapped[datetime.datetime | None] = mapped_column(

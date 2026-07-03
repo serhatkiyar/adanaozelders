@@ -17,3 +17,6 @@ scripts/out/instagram-pfp-downloader/
 
 # Claude Code kişisel ayarlar (yerel izinler/tercihler — paylaşılmaz)
 .claude/settings.local.json
+
+# OSRM yol agi verileri (buyuk binary'ler - scripts/setup-osrm-adana.ps1 uretir)
+devops/osrm/

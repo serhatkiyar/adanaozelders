@@ -6,15 +6,18 @@ import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
 import { QRCodeSVG } from "qrcode.react";
 
+import { DeliveryRouteMap } from "@/components/DeliveryRouteMap";
 import {
   useAddStops,
   useCreateDeliveryRun,
   useDeliveryRuns,
   useEligibleOrders,
+  useOptimizeRun,
   useRemoveStop,
   useReorderStops,
   useRunAction,
 } from "@/hooks/useDelivery";
+import { formatDuration, formatEta } from "@/lib/polyline";
 import {
   RUN_STATUS_LABEL,
   STOP_STATUS_LABEL,
@@ -168,6 +171,19 @@ function StopRow({
           {stop.address ?? "Adres yok"}
         </p>
       </div>
+      {stop.is_outlier && stop.status === "PENDING" && (
+        <span
+          className="shrink-0 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700 dark:bg-amber-500/10 dark:text-amber-400"
+          title="Bu durak rotaya ciddi ek yol katıyor — dış kuryeye devretmeyi düşünün"
+        >
+          rotayı bozuyor · +{stop.detour_km} km
+        </span>
+      )}
+      {stop.eta && stop.status === "PENDING" && (
+        <span className="shrink-0 text-xs tabular-nums text-slate-500 dark:text-slate-400">
+          ~{formatEta(stop.eta)}
+        </span>
+      )}
       <span
         className={`shrink-0 text-xs font-medium ${
           stop.status === "DELIVERED"
@@ -218,9 +234,11 @@ function StopRow({
 
 function RunDetail({ run }: { run: DeliveryRun }) {
   const [showLabels, setShowLabels] = useState(false);
+  const [showMap, setShowMap] = useState(true);
   const runAction = useRunAction();
   const reorder = useReorderStops();
   const addStops = useAddStops();
+  const optimize = useOptimizeRun();
   const planning = run.status === "PLANNED" || run.status === "ACTIVE";
   const { data: eligible = [], isLoading: eligibleLoading } = useEligibleOrders(planning);
   const [done, total] = runProgress(run);
@@ -228,6 +246,9 @@ function RunDetail({ run }: { run: DeliveryRun }) {
     () => [...run.stops].sort((a, b) => a.sequence - b.sequence),
     [run.stops]
   );
+  const locatedPending = run.stops.filter(
+    (s) => s.status === "PENDING" && s.lat != null
+  ).length;
 
   const move = (stopId: number, dir: -1 | 1) => {
     const ids = sorted.map((s) => s.id);
@@ -283,6 +304,35 @@ function RunDetail({ run }: { run: DeliveryRun }) {
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          {planning && locatedPending >= 2 && (
+            <button
+              onClick={() =>
+                optimize.mutate(run.id, {
+                  onSuccess: (r) =>
+                    toast.success(
+                      r.optimize_provider === "vroom"
+                        ? "Rota optimize edildi (yol ağı)."
+                        : "Rota optimize edildi (yaklaşık — VROOM kapalı)."
+                    ),
+                  onError: (e: any) =>
+                    toast.error(e?.response?.data?.detail ?? "Optimize edilemedi."),
+                })
+              }
+              disabled={optimize.isPending}
+              className={ghostBtn}
+            >
+              {optimize.isPending ? (
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-4 w-4 animate-spin">
+                  <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4" />
+                </svg>
+              ) : (
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} className="h-4 w-4">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 6.75V15m6-6v8.25m.503 3.498 4.875-2.437c.381-.19.622-.58.622-1.006V4.82c0-.836-.88-1.38-1.628-1.006l-3.869 1.934c-.317.159-.69.159-1.006 0L9.503 3.252a1.125 1.125 0 0 0-1.006 0L3.622 5.689C3.24 5.88 3 6.27 3 6.695V19.18c0 .836.88 1.38 1.628 1.006l3.869-1.934c.317-.159.69-.159 1.006 0l4.994 2.497c.317.158.69.158 1.006 0Z" />
+                </svg>
+              )}
+              Rotayı Optimize Et
+            </button>
+          )}
           {run.stops.length > 0 && run.status !== "CANCELLED" && (
             <button onClick={() => setShowLabels(true)} className={ghostBtn}>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} className="h-4 w-4">
@@ -354,6 +404,45 @@ function RunDetail({ run }: { run: DeliveryRun }) {
               style={{ width: `${total ? Math.round((done / total) * 100) : 0}%` }}
             />
           </div>
+        </div>
+      )}
+
+      {/* Rota özeti + harita (optimize sonrası) */}
+      {run.optimized_at && (
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 px-6 pb-3 text-xs text-slate-500 dark:text-slate-400">
+          {run.total_distance_km != null && (
+            <span className="font-medium text-slate-700 dark:text-slate-200">
+              {run.total_distance_km.toLocaleString("tr-TR")} km
+            </span>
+          )}
+          {run.total_duration_seconds != null && (
+            <span>~{formatDuration(run.total_duration_seconds)}</span>
+          )}
+          <span
+            className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${
+              run.optimize_provider === "vroom"
+                ? "bg-indigo-50 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-300"
+                : "bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-300"
+            }`}
+            title={
+              run.optimize_provider === "vroom"
+                ? "Gerçek yol ağı üzerinden hesaplandı (OSRM+VROOM)"
+                : "Kuş uçuşu yaklaşımı — OSRM/VROOM kapalıyken kullanılan tahmindir"
+            }
+          >
+            {run.optimize_provider === "vroom" ? "yol ağı" : "yaklaşık"}
+          </span>
+          <button
+            onClick={() => setShowMap((v) => !v)}
+            className="ml-auto font-semibold text-indigo-600 hover:underline dark:text-indigo-400"
+          >
+            {showMap ? "Haritayı gizle" : "Haritayı göster"}
+          </button>
+        </div>
+      )}
+      {run.optimized_at && showMap && run.stops.some((s) => s.lat != null) && (
+        <div className="px-6 pb-4">
+          <DeliveryRouteMap run={run} />
         </div>
       )}
 

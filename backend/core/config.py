@@ -122,6 +122,16 @@ class Settings(BaseSettings):
     DELIVERY_DEPOT_LNG: float = 35.325300
     DELIVERY_OTP_TTL_MINUTES: int = 30
     DELIVERY_OTP_MAX_ATTEMPTS: int = 5
+    # Rota optimizasyonu (Faz B). ROUTING_PROVIDER: "auto" (VROOM dene, düşerse
+    # haversine — geliştirmede kurulumsuz çalışır) | "vroom" | "haversine".
+    # VROOM+OSRM: `docker compose --profile routing up` + scripts/setup-osrm-adana.ps1
+    ROUTING_PROVIDER: str = "auto"
+    VROOM_URL: str = "http://localhost:3000"
+    # Durak başına paket teslim servis süresi (sn) — ETA hesabına girer.
+    DELIVERY_STOP_SERVICE_SECONDS: int = 180
+    # "Rotayı bozan durak" eşiği: durağın rotaya kattığı ek yol (km) bunu
+    # aşarsa panelde işaretlenir (dış kuryeye devretme adayı).
+    DELIVERY_DETOUR_KM: float = 8.0
     # Lansman promosyonu: kayıttan itibaren ilk N ay indirimli/0 komisyon. MONTHS=0
     # ise KAPALI (varsayılan: düz %10, kampanya yok). Açmak için .env'de ayarla.
     LAUNCH_PROMO_MONTHS: int = 0

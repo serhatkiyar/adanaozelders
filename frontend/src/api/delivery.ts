@@ -55,6 +55,11 @@ export async function reorderDeliveryStops(
   return data;
 }
 
+export async function optimizeDeliveryRun(runId: number): Promise<DeliveryRun> {
+  const { data } = await apiClient.post<DeliveryRun>(`/delivery/runs/${runId}/optimize`);
+  return data;
+}
+
 export async function startDeliveryRun(runId: number): Promise<DeliveryRun> {
   const { data } = await apiClient.post<DeliveryRun>(`/delivery/runs/${runId}/start`);
   return data;

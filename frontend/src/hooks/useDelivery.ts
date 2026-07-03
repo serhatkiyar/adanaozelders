@@ -62,6 +62,14 @@ export function useRunAction() {
   });
 }
 
+export function useOptimizeRun() {
+  const invalidate = useInvalidateDelivery();
+  return useMutation({
+    mutationFn: (runId: number) => deliveryApi.optimizeDeliveryRun(runId),
+    onSuccess: invalidate,
+  });
+}
+
 export function useAddStops() {
   const invalidate = useInvalidateDelivery();
   return useMutation({
