@@ -31,6 +31,7 @@ from core.payments.base import (
     ChargeResult,
     CheckoutResult,
     PaymentProvider,
+    RefundState,
     SubMerchantInfo,
     SubMerchantResult,
 )
@@ -40,6 +41,7 @@ logger = logging.getLogger("ceyhan.payments")
 _INITIALIZE_PATH = "/payment/iyzipos/checkoutform/initialize/auth/ecom"
 _RETRIEVE_PATH = "/payment/iyzipos/checkoutform/auth/ecom/detail"
 _REFUND_PATH = "/payment/refund"
+_PAYMENT_DETAIL_PATH = "/payment/detail"
 
 # Callback'te varlık çözümü için referans türleri (conversationId/basketId öneki).
 _REFERENCE_KINDS = ("booking", "examreg", "studyres", "order")
@@ -266,6 +268,45 @@ class IyzicoProvider(PaymentProvider):
                 data.get("errorMessage"),
             )
         return ok
+
+    async def refund_state(
+        self, *, provider_ref: str | None, reference: str | None = None
+    ) -> RefundState:
+        """Reconciler pozitif-kanıt sorgusu: ilgili işlemde iade görünüyor mu?
+
+        ``/payment/detail`` conversationId ile çekilir; ``provider_ref``
+        (paymentTransactionId) eşleşen kalemde iade tutarı aranır. Yanıt şeması
+        beklenenden farklıysa/erişilemezse UNKNOWN — asla yanlış pozitif kanıt
+        üretme (UNKNOWN reconciler'da sınırlı-retry'a düşer, iade tetiklemez).
+        """
+        if not reference:
+            return RefundState.UNKNOWN
+        try:
+            self._require_config()
+            data = await self._post(
+                _PAYMENT_DETAIL_PATH,
+                {"locale": "tr", "paymentConversationId": reference},
+            )
+        except Exception:
+            logger.exception("iyzico payment detail sorgusu başarısız (ref=%s)", reference)
+            return RefundState.UNKNOWN
+        if data.get("status") != "success":
+            return RefundState.UNKNOWN
+        for tx in data.get("itemTransactions") or []:
+            if provider_ref and str(tx.get("paymentTransactionId")) != str(provider_ref):
+                continue
+            refunded = tx.get("refundedPrice")
+            if refunded is None:
+                return RefundState.UNKNOWN
+            try:
+                return (
+                    RefundState.REFUNDED
+                    if Decimal(str(refunded)) > 0
+                    else RefundState.NOT_REFUNDED
+                )
+            except Exception:  # noqa: BLE001
+                return RefundState.UNKNOWN
+        return RefundState.UNKNOWN
 
     # ── Pazaryeri alt üye işyeri ── TODO(Ağustos): iyzico Marketplace
     # /onboarding/submerchant (create/update/retrieve) gerçek entegrasyonu. Pazaryeri

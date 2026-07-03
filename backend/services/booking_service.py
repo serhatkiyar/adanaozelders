@@ -5,7 +5,7 @@ import secrets
 from decimal import Decimal, ROUND_HALF_UP
 
 from fastapi import HTTPException, status
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -69,6 +69,34 @@ def _transition(booking: Booking, target: BookingStatus) -> None:
             f"Invalid transition: {booking.status.value} -> {target.value}",
         )
     booking.status = target
+
+
+async def _claim_transition(
+    db: AsyncSession, booking: Booking, target: BookingStatus
+) -> bool:
+    """FSM geçişini DB'de atomik claim eder (koşullu UPDATE, tek kazanan).
+
+    Para hareketi tetikleyen geçişlerde (COMPLETED→release, CANCELLED→refund)
+    bellekteki ``_transition`` yeterli değildir: iki eşzamanlı istek (ya da arka
+    plan döngüsü + manuel istek) aynı ACCEPTED'ı okuyup ikisi de geçiş yapabilir.
+    True dönerse geçiş bu çağrıya aittir; False'ta kayıt yarışta kaybetmiştir.
+    """
+    allowed_from = [s for s, targets in _TRANSITIONS.items() if target in targets]
+    result = await db.execute(
+        update(Booking)
+        .where(
+            Booking.id == booking.id,
+            Booking.status.in_(allowed_from),
+            Booking.deleted_at.is_(None),
+        )
+        .values(status=target)
+        .execution_options(synchronize_session=False)
+    )
+    if result.rowcount == 1:
+        booking.status = target
+        return True
+    await db.refresh(booking)
+    return False
 
 
 async def _assert_within_availability(
@@ -416,8 +444,11 @@ async def reject(db: AsyncSession, booking: Booking) -> Booking:
 
 
 async def complete(db: AsyncSession, booking: Booking) -> Booking:
-    _transition(booking, BookingStatus.COMPLETED)
-    await db.flush()
+    if not await _claim_transition(db, booking, BookingStatus.COMPLETED):
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            f"Invalid transition: {booking.status.value} -> {BookingStatus.COMPLETED.value}",
+        )
     await notification_service.notify(
         db,
         user_id=booking.client_id,
@@ -545,8 +576,13 @@ async def auto_complete_past_bookings(db: AsyncSession) -> int:
             )
         )
     ).scalars().all()
+    count = 0
     for booking in rows:
-        booking.status = BookingStatus.COMPLETED
+        # Atomik claim: eşzamanlı bir manuel complete/cancel ile yarışırsa yalnız
+        # biri kazanır (kaybeden para hareketi tetiklemez).
+        if not await _claim_transition(db, booking, BookingStatus.COMPLETED):
+            continue
+        count += 1
         await notification_service.notify(
             db,
             user_id=booking.client_id,
@@ -557,7 +593,7 @@ async def auto_complete_past_bookings(db: AsyncSession) -> int:
         # Emanetteki ödemeyi de eğitmene serbest bırak (varsa).
         await payment_service.release(db, booking)
         _notify_booking_update(db, booking)
-    return len(rows)
+    return count
 
 
 async def cancel(
@@ -567,7 +603,11 @@ async def cancel(
     cancelled_by: "Client | Tutor",
     reason: str | None = None,
 ) -> Booking:
-    _transition(booking, BookingStatus.CANCELLED)
+    if not await _claim_transition(db, booking, BookingStatus.CANCELLED):
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            f"Invalid transition: {booking.status.value} -> {BookingStatus.CANCELLED.value}",
+        )
     if reason:
         booking.cancel_reason = reason
     await db.flush()

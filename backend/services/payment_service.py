@@ -13,6 +13,8 @@ from fastapi import HTTPException, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+import logging
+
 from core import payments
 from core.config import settings
 from models.booking import Booking, BookingStatus
@@ -21,7 +23,9 @@ from models.payment import Payment, PaymentStatus
 from models.role import ROLE_IDS, RoleType
 from models.store import Order, OrderItem, SellerType
 from models.tutor import Tutor
-from services import commission, notification_service
+from services import commission, escrow, notification_service
+
+logger = logging.getLogger("ceyhan.payments")
 
 
 def _now() -> datetime.datetime:
@@ -91,6 +95,10 @@ async def pay(
         return payment, None  # zaten ödenmiş
     if payment.status == PaymentStatus.REFUNDED:
         raise HTTPException(status.HTTP_409_CONFLICT, "Bu ödeme iade edilmiş")
+    if payment.status == PaymentStatus.REFUNDING:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT, "Bu ödemenin iade süreci devam ediyor"
+        )
     if booking.status != BookingStatus.ACCEPTED:
         raise HTTPException(
             status.HTTP_409_CONFLICT,
@@ -120,17 +128,26 @@ async def pay(
             status.HTTP_402_PAYMENT_REQUIRED, result.error or "Ödeme başarısız"
         )
 
-    payment.status = PaymentStatus.HELD
-    payment.provider_ref = result.provider_ref
-    payment.paid_at = _now()
-    await db.flush()
-    await notification_service.notify(
+    claimed = await escrow.claim(
         db,
-        user_id=booking.tutor_id,
-        role_id=ROLE_IDS[RoleType.TUTOR],
-        message="Bir ders için ödeme alındı (emanette). Ders sonunda kazancına geçecek.",
-        link="/tutor",
+        Payment,
+        payment.id,
+        from_statuses=[PaymentStatus.PENDING, PaymentStatus.FAILED],
+        values={
+            "status": PaymentStatus.HELD,
+            "provider_ref": result.provider_ref,
+            "paid_at": _now(),
+        },
     )
+    await db.refresh(payment)
+    if claimed:
+        await notification_service.notify(
+            db,
+            user_id=booking.tutor_id,
+            role_id=ROLE_IDS[RoleType.TUTOR],
+            message="Bir ders için ödeme alındı (emanette). Ders sonunda kazancına geçecek.",
+            link="/tutor",
+        )
     return payment, None
 
 
@@ -142,7 +159,10 @@ async def complete_checkout(
     Başarıda PENDING→HELD; ``provider_ref`` artık iade için kullanılacak işlem
     kimliğidir (paymentTransactionId, initialize'daki CF token'ının üzerine yazılır).
     Başarısızlıkta FAILED — öğrenci "Öde" ile yeniden deneyebilir. Idempotent:
-    HELD/RELEASED/REFUNDED durumlarına dokunmaz.
+    HELD/RELEASED/REFUNDING/REFUNDED durumlarına dokunmaz.
+
+    Booking bu arada iptal/red edildiyse (öğrenci iyzico sayfasındayken) tahsil
+    edilen para HELD'e alınıp kilitlenmez — anında iade akışı başlatılır.
     """
     payment = await get_for_booking(db, booking_id)
     if payment is None:
@@ -150,21 +170,72 @@ async def complete_checkout(
     if payment.status in (
         PaymentStatus.HELD,
         PaymentStatus.RELEASED,
+        PaymentStatus.REFUNDING,
         PaymentStatus.REFUNDED,
     ):
         return payment
     if not success:
-        payment.status = PaymentStatus.FAILED
-        await db.flush()
+        await escrow.claim(
+            db,
+            Payment,
+            payment.id,
+            from_statuses=[PaymentStatus.PENDING],
+            values={"status": PaymentStatus.FAILED},
+        )
+        await db.refresh(payment)
         return payment
 
-    payment.status = PaymentStatus.HELD
-    if provider_ref:
-        payment.provider_ref = provider_ref
-    payment.paid_at = _now()
-    await db.flush()
     booking = await db.get(Booking, booking_id)
-    if booking is not None:
+    booking_dead = (
+        booking is None
+        or booking.deleted_at is not None
+        or booking.status in (BookingStatus.CANCELLED, BookingStatus.REJECTED)
+    )
+    if booking_dead:
+        # Para sağlayıcıda tahsil edildi ama ders artık yok: emanete almak parayı
+        # süresiz kilitler (hiçbir akış release/refund etmez). Doğrudan iade başlat.
+        async def _notify_refund() -> None:
+            if booking is not None:
+                await notification_service.notify(
+                    db,
+                    user_id=booking.client_id,
+                    role_id=ROLE_IDS[RoleType.CLIENT],
+                    message=(
+                        f"İptal edilen ders için ödemen iade edildi: "
+                        f"{payment.amount} {payment.currency}"
+                    ),
+                    link="/student/bookings",
+                )
+
+        outcome = await escrow.refund_escrow(
+            db,
+            payment,
+            escrow.PAYMENT_SPEC,
+            from_statuses=[PaymentStatus.PENDING, PaymentStatus.FAILED],
+            provider_ref=provider_ref,
+            notify=_notify_refund,
+        )
+        logger.error(
+            "iyzico callback: iptal edilmiş booking'e tahsilat geldi; iade akışı=%s "
+            "(booking=%s payment=%s)",
+            outcome,
+            booking_id,
+            payment.id,
+        )
+        return payment
+
+    values: dict = {"status": PaymentStatus.HELD, "paid_at": _now()}
+    if provider_ref:
+        values["provider_ref"] = provider_ref
+    claimed = await escrow.claim(
+        db,
+        Payment,
+        payment.id,
+        from_statuses=[PaymentStatus.PENDING, PaymentStatus.FAILED],
+        values=values,
+    )
+    await db.refresh(payment)
+    if claimed:
         await notification_service.notify(
             db,
             user_id=booking.tutor_id,
@@ -176,13 +247,24 @@ async def complete_checkout(
 
 
 async def release(db: AsyncSession, booking: Booking) -> Payment | None:
-    """Ders tamamlanınca emanetteki tutarı eğitmene serbest bırakır (RELEASED)."""
+    """Ders tamamlanınca emanetteki tutarı eğitmene serbest bırakır (RELEASED).
+
+    Atomik claim (HELD→RELEASED): eşzamanlı bir iade ile yarışırsa yalnız biri
+    kazanır — kaybeden hiçbir para hareketi yapmaz.
+    """
     payment = await get_for_booking(db, booking.id)
-    if payment is None or payment.status != PaymentStatus.HELD:
+    if payment is None:
+        return None
+    claimed = await escrow.claim(
+        db,
+        Payment,
+        payment.id,
+        from_statuses=[PaymentStatus.HELD],
+        values={"status": PaymentStatus.RELEASED, "released_at": _now()},
+    )
+    if not claimed:
         return payment
-    payment.status = PaymentStatus.RELEASED
-    payment.released_at = _now()
-    await db.flush()
+    await db.refresh(payment)
     await notification_service.notify(
         db,
         user_id=booking.tutor_id,
@@ -194,30 +276,30 @@ async def release(db: AsyncSession, booking: Booking) -> Payment | None:
 
 
 async def refund(db: AsyncSession, booking: Booking) -> Payment | None:
-    """İptal durumunda emanetteki ödemeyi öğrenciye iade eder (REFUNDED).
+    """İptal durumunda emanetteki ödemeyi öğrenciye iade eder (iki fazlı).
 
-    Ödeme yoksa ya da emanette değilse (henüz ödenmedi / zaten serbest) no-op.
+    Faz 1 niyeti claim edip commit'ler (HELD→REFUNDING; yarışta tek kazanan),
+    Faz 2 sağlayıcı iadesi + REFUNDED finalize. Sağlayıcı başarısızsa kayıt
+    REFUNDING'de kalır ve reconciler devralır — sessiz kilitli para kalmaz.
+    Ödeme yoksa ya da emanette değilse no-op.
     """
     payment = await get_for_booking(db, booking.id)
-    if payment is None or payment.status != PaymentStatus.HELD:
-        return payment
-    provider = payments.get_payment_provider()
-    ok = await provider.refund(
-        provider_ref=payment.provider_ref, amount=Decimal(str(payment.amount))
-    )
-    if not ok:
-        # Sağlayıcı iadesi başarısız: durumu değiştirme, admin manuel ele alsın.
-        return payment
-    payment.status = PaymentStatus.REFUNDED
-    payment.refunded_at = _now()
-    await db.flush()
-    await notification_service.notify(
-        db,
-        user_id=booking.client_id,
-        role_id=ROLE_IDS[RoleType.CLIENT],
-        message=f"İptal edilen ders için ödemen iade edildi: {payment.amount} {payment.currency}",
-        link="/student/bookings",
-    )
+    if payment is None:
+        return None
+
+    async def _notify() -> None:
+        await notification_service.notify(
+            db,
+            user_id=booking.client_id,
+            role_id=ROLE_IDS[RoleType.CLIENT],
+            message=(
+                f"İptal edilen ders için ödemen iade edildi: "
+                f"{payment.amount} {payment.currency}"
+            ),
+            link="/student/bookings",
+        )
+
+    await escrow.refund_escrow(db, payment, escrow.PAYMENT_SPEC, notify=_notify)
     return payment
 
 
@@ -283,7 +365,10 @@ async def earnings_summary(db: AsyncSession, *, tutor_id: int) -> dict:
         + store_released,
         "pending": earning_by_status.get(PaymentStatus.HELD, Decimal("0")),
         "this_month": this_month + store_month,
-        "refunded": amount_by_status.get(PaymentStatus.REFUNDED, Decimal("0")),
+        # REFUNDING = iade niyeti kesin (para eğitmene gelmeyecek) → iade kalemine
+        # şimdiden dahil; "emanette" göstermek yanıltıcı olurdu.
+        "refunded": amount_by_status.get(PaymentStatus.REFUNDED, Decimal("0"))
+        + amount_by_status.get(PaymentStatus.REFUNDING, Decimal("0")),
         "currency": settings.PAYMENT_CURRENCY,
     }
 

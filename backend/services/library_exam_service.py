@@ -43,7 +43,11 @@ from schemas.library_exam import (
     ResultSummaryIn,
     RosterRow,
 )
-from services import commission, notification_service
+import logging
+
+from services import commission, escrow, notification_service
+
+logger = logging.getLogger("ceyhan.escrow")
 
 
 def _now() -> datetime.datetime:
@@ -247,29 +251,32 @@ async def update_session(
 
 
 async def cancel_session(db: AsyncSession, session_id: int) -> ExamSessionOut:
-    """Oturumu iptal eder ve ödenmiş (PAID) tüm kayıtları iade eder (REFUNDED)."""
+    """Oturumu iptal eder ve ödenmiş (PAID) kayıtları iade eder (iki fazlı escrow).
+
+    Emaneti ZATEN serbest bırakılmış (``released_at`` dolu — katılım ya da no-show
+    release) kayıtlara dokunulmaz: kütüphane kazancı + öğrenci iadesi birlikte
+    gerçekleşemez. Sağlayıcı iadesi başarısız kalan kayıt REFUNDING'de bekler,
+    reconciler devralır.
+    """
     s = await _get_session_or_404(db, session_id)
     if s.status == ExamSessionStatus.CANCELLED.value:
         return _session_out(s, registered_count=await _count_active(db, s.id))
 
     s.status = ExamSessionStatus.CANCELLED.value
+    await db.commit()  # oturum kapandı; iadeler tek tek intent'lenecek
+
     regs = (
         await db.execute(
             select(ExamRegistration).where(
                 ExamRegistration.session_id == s.id,
                 ExamRegistration.status == RegistrationStatus.PAID.value,
+                ExamRegistration.released_at.is_(None),
                 ExamRegistration.deleted_at.is_(None),
             )
         )
     ).scalars().all()
-    provider = payments.get_payment_provider()
     for reg in regs:
-        ok = await provider.refund(
-            provider_ref=reg.provider_ref, amount=Decimal(str(reg.amount))
-        )
-        if ok:
-            reg.status = RegistrationStatus.REFUNDED.value
-            reg.refunded_at = _now()
+        async def _notify(reg=reg) -> None:
             await notification_service.notify(
                 db,
                 user_id=reg.client_id,
@@ -277,6 +284,8 @@ async def cancel_session(db: AsyncSession, session_id: int) -> ExamSessionOut:
                 message=f"'{s.title}' oturumu iptal edildi; ödemen iade edildi.",
                 link="/biletlerim",
             )
+
+        await escrow.refund_escrow(db, reg, escrow.EXAM_SPEC, notify=_notify)
     await db.commit()
     await db.refresh(s)
     return _session_out(s, registered_count=0)
@@ -546,19 +555,61 @@ async def complete_checkout(
     Başarıda PENDING_PAYMENT→PAID + QR/kısa kod; ``provider_ref`` iade için işlem
     kimliğiyle güncellenir. Başarısızlıkta kayıt PENDING_PAYMENT kalır (öğrenci
     Biletlerim'den yeniden dener). Idempotent.
+
+    Kayıt bu arada iptal edilmişse ya da oturum artık SCHEDULED değilse tahsil
+    edilen para kara delikte bırakılmaz — anında iade akışı başlatılır (C2b).
     """
     reg = await db.get(ExamRegistration, registration_id)
-    if reg is None or reg.deleted_at is not None:
+    if reg is None or reg.deleted_at is not None or not success:
         return
-    if reg.status != RegistrationStatus.PENDING_PAYMENT.value or not success:
+    if reg.status in (
+        RegistrationStatus.PAID.value,
+        RegistrationStatus.ATTENDED.value,
+        RegistrationStatus.REFUNDING.value,
+        RegistrationStatus.REFUNDED.value,
+    ):
+        return  # idempotent: para zaten bir yaşam döngüsüne bağlı
+
+    session = await db.get(LibraryExamSession, reg.session_id)
+    session_dead = (
+        session is None
+        or session.deleted_at is not None
+        or session.status != ExamSessionStatus.SCHEDULED.value
+    )
+    if reg.status == RegistrationStatus.CANCELLED.value or session_dead:
+        outcome = await escrow.refund_escrow(
+            db,
+            reg,
+            escrow.EXAM_SPEC,
+            from_statuses=[
+                RegistrationStatus.PENDING_PAYMENT.value,
+                RegistrationStatus.CANCELLED.value,
+            ],
+            provider_ref=provider_ref,
+        )
+        logger.error(
+            "iyzico callback: iptal edilmiş kayda/oturuma tahsilat geldi; "
+            "iade akışı=%s (examreg=%s)",
+            outcome,
+            registration_id,
+        )
         return
-    reg.status = RegistrationStatus.PAID.value
-    if provider_ref:
-        reg.provider_ref = provider_ref
-    reg.paid_at = _now()
-    reg.qr_token = secrets.token_urlsafe(24)
-    reg.short_code = await _unique_short_code(db)
-    await db.flush()
+
+    claimed = await escrow.claim(
+        db,
+        ExamRegistration,
+        reg.id,
+        from_statuses=[RegistrationStatus.PENDING_PAYMENT.value],
+        values={
+            "status": RegistrationStatus.PAID.value,
+            **({"provider_ref": provider_ref} if provider_ref else {}),
+            "paid_at": _now(),
+            "qr_token": secrets.token_urlsafe(24),
+            "short_code": await _unique_short_code(db),
+        },
+    )
+    if claimed:
+        await db.refresh(reg)
 
 
 # Ödenmiş kayıt iptalinde tam iade için pencere: oturum başlangıcına bu kadar saatten
@@ -581,6 +632,11 @@ async def cancel_registration(
         await db.commit()
         return
 
+    if reg.status == RegistrationStatus.REFUNDING.value:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT, "Bu kaydın iade süreci zaten devam ediyor."
+        )
+
     # Ödenmiş kayıt: başlangıca REFUND_WINDOW_HOURS saatten fazla varsa TAM iade.
     if reg.status == RegistrationStatus.PAID.value:
         session = await db.get(LibraryExamSession, reg.session_id)
@@ -591,18 +647,12 @@ async def cancel_registration(
                 status.HTTP_409_CONFLICT,
                 f"Oturuma {REFUND_WINDOW_HOURS} saatten az kaldı; iade yapılamaz.",
             )
-        refunded = True
-        if Decimal(str(reg.amount)) > 0:
-            provider = payments.get_payment_provider()
-            refunded = await provider.refund(
-                provider_ref=reg.provider_ref, amount=Decimal(str(reg.amount))
-            )
-        if not refunded:
-            raise HTTPException(
-                status.HTTP_502_BAD_GATEWAY, "İade alınamadı; lütfen sonra tekrar dene."
-            )
-        reg.status = RegistrationStatus.REFUNDED.value
-        reg.refunded_at = _now()
+        outcome = await escrow.refund_escrow(db, reg, escrow.EXAM_SPEC)
+        if outcome == "not_claimed":
+            # Yarışta kaybetti (eşzamanlı doğrulama/iade) — güncel duruma göre 409.
+            raise HTTPException(status.HTTP_409_CONFLICT, "Bu kayıt iptal edilemez.")
+        # 'refunded' anında kesin; 'refunding' sağlayıcı teyidi bekliyor (reconciler
+        # sürer) — her iki halde de iade süreci bağlandı, müşteri tekrar denememeli.
         await db.commit()
         return
 
@@ -688,8 +738,17 @@ async def auto_release_no_shows(db: AsyncSession) -> int:
     for reg, sess in rows:
         end = sess.starts_at + datetime.timedelta(minutes=sess.duration_minutes)
         if end + grace <= now:
-            reg.released_at = now
-            count += 1
+            # Koşullu damga: eşzamanlı bir iade claim'i (REFUNDING) kazandıysa
+            # released_at yazılmaz — kazanç/iade kesişimi imkânsız kalır.
+            if await escrow.claim(
+                db,
+                ExamRegistration,
+                reg.id,
+                from_statuses=[RegistrationStatus.PAID.value],
+                values={"released_at": now},
+                extra_where=(ExamRegistration.released_at.is_(None),),
+            ):
+                count += 1
     return count
 
 
@@ -1013,15 +1072,37 @@ async def _attend_exam(
             already=True,
             message="Bu katılımcı zaten doğrulanmıştı.",
         )
-    if reg.status != RegistrationStatus.PAID.value:
+    # Atomik claim (PAID→ATTENDED): eşzamanlı oturum-iptali iadesiyle yarışırsa
+    # yalnız biri kazanır. released_at zaten doluysa (no-show release) korunur.
+    now = _now()
+    claimed = await escrow.claim(
+        db,
+        ExamRegistration,
+        reg.id,
+        from_statuses=[RegistrationStatus.PAID.value],
+        values={
+            "status": RegistrationStatus.ATTENDED.value,
+            "attended_at": now,
+            "attended_by_operator_id": operator_id,
+            "released_at": func.coalesce(ExamRegistration.released_at, now),
+        },
+    )
+    if not claimed:
+        await db.refresh(reg)
+        if reg.status == RegistrationStatus.ATTENDED.value:
+            return AttendanceResult(
+                registration_id=reg.id,
+                client_name=client_name,
+                exam_title=reg.session.title,
+                status=reg.status,
+                already=True,
+                message="Bu katılımcı zaten doğrulanmıştı.",
+            )
         raise HTTPException(
-            status.HTTP_409_CONFLICT, "Bu kayıt ödenmemiş; katılım doğrulanamaz"
+            status.HTTP_409_CONFLICT,
+            "Bu kayıt doğrulanabilir durumda değil (ödenmemiş ya da iade sürecinde)",
         )
-
-    reg.status = RegistrationStatus.ATTENDED.value
-    reg.attended_at = _now()
-    reg.attended_by_operator_id = operator_id
-    reg.released_at = _now()
+    await db.refresh(reg)
     await notification_service.notify(
         db,
         user_id=reg.client_id,

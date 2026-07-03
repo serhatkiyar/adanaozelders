@@ -33,6 +33,7 @@ class RegistrationStatus(str, enum.Enum):
     PAID            → öğrenci ödedi, tutar emanette (escrow HELD); kontenjan sayılır.
     ATTENDED        → operatör QR okuttu; emanet kütüphaneye serbest (RELEASED).
     CANCELLED       → ödeme öncesi iptal.
+    REFUNDING       → iade niyeti kalıcı (claim); sağlayıcı teyidi bekleniyor.
     REFUNDED        → (oturum admin tarafından iptal edilirse) iade edildi.
     """
 
@@ -40,6 +41,7 @@ class RegistrationStatus(str, enum.Enum):
     PAID = "PAID"
     ATTENDED = "ATTENDED"
     CANCELLED = "CANCELLED"
+    REFUNDING = "REFUNDING"
     REFUNDED = "REFUNDED"
 
 
@@ -153,6 +155,13 @@ class ExamRegistration(Base, TimestampMixin, SoftDeleteMixin):
     refunded_at: Mapped[datetime.datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    # İade niyeti (intent) — REFUNDING claim'inde damgalanır (bkz. services/escrow.py).
+    refund_requested_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    refund_attempts: Mapped[int] = mapped_column(
+        Integer, nullable=False, server_default=text("0")
+    )
 
     # QR yoklama — öğrencinin gösterdiği bilet kodu (ödeme anında üretilir).
     qr_token: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
@@ -197,4 +206,13 @@ class ExamRegistration(Base, TimestampMixin, SoftDeleteMixin):
         ),
         Index("ix_exam_reg_client", "client_id"),
         Index("ix_exam_reg_status", "status"),
+        # Conservation invariant'ı DB'de: tutar daima komisyon + kütüphane kazancı.
+        CheckConstraint(
+            "amount = commission_amount + library_earning",
+            name="ck_exam_reg_conservation",
+        ),
+        CheckConstraint(
+            "commission_rate >= 0 AND commission_rate <= 1",
+            name="ck_exam_reg_commission_rate_range",
+        ),
     )

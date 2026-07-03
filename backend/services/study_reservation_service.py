@@ -26,7 +26,11 @@ from models.role import ROLE_IDS, RoleType
 from models.study_reservation import StudyReservation
 from schemas.library_exam import AttendanceResult
 from schemas.study import StudyQuoteOut, StudyReservationOut
-from services import commission, notification_service
+import logging
+
+from services import commission, escrow, notification_service
+
+logger = logging.getLogger("ceyhan.escrow")
 
 try:
     from zoneinfo import ZoneInfo
@@ -359,17 +363,49 @@ async def complete_checkout(
     Idempotent.
     """
     res = await db.get(StudyReservation, reservation_id)
-    if res is None or res.deleted_at is not None:
+    if res is None or res.deleted_at is not None or not success:
         return
-    if res.status != RegistrationStatus.PENDING_PAYMENT.value or not success:
+    if res.status in (
+        RegistrationStatus.PAID.value,
+        RegistrationStatus.ATTENDED.value,
+        RegistrationStatus.REFUNDING.value,
+        RegistrationStatus.REFUNDED.value,
+    ):
+        return  # idempotent
+
+    if res.status == RegistrationStatus.CANCELLED.value:
+        # Rezervasyon bu arada iptal edilmiş (öğrenci ya da reserve()'ün stale-hold
+        # temizliği) — tahsil edilen para kara delikte kalmasın, anında iade (C2b).
+        outcome = await escrow.refund_escrow(
+            db,
+            res,
+            escrow.STUDY_SPEC,
+            from_statuses=[RegistrationStatus.CANCELLED.value],
+            provider_ref=provider_ref,
+        )
+        logger.error(
+            "iyzico callback: iptal edilmiş rezervasyona tahsilat geldi; "
+            "iade akışı=%s (studyres=%s)",
+            outcome,
+            reservation_id,
+        )
         return
-    res.status = RegistrationStatus.PAID.value
-    if provider_ref:
-        res.provider_ref = provider_ref
-    res.paid_at = _now()
-    res.qr_token = secrets.token_urlsafe(24)
-    res.short_code = await _unique_short_code(db)
-    await db.flush()
+
+    claimed = await escrow.claim(
+        db,
+        StudyReservation,
+        res.id,
+        from_statuses=[RegistrationStatus.PENDING_PAYMENT.value],
+        values={
+            "status": RegistrationStatus.PAID.value,
+            **({"provider_ref": provider_ref} if provider_ref else {}),
+            "paid_at": _now(),
+            "qr_token": secrets.token_urlsafe(24),
+            "short_code": await _unique_short_code(db),
+        },
+    )
+    if claimed:
+        await db.refresh(res)
 
 
 # Ödenmiş rezervasyon iptalinde tam iade penceresi: başlangıca bu kadar saatten FAZLA
@@ -390,6 +426,11 @@ async def cancel(db: AsyncSession, client: Client, reservation_id: int) -> None:
         await db.commit()
         return
 
+    if res.status == RegistrationStatus.REFUNDING.value:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT, "Bu rezervasyonun iade süreci zaten devam ediyor."
+        )
+
     # Ödenmiş rezervasyon: başlangıca REFUND_WINDOW_HOURS saatten fazla varsa TAM iade.
     if res.status == RegistrationStatus.PAID.value:
         if _now() > res.starts_at - datetime.timedelta(hours=REFUND_WINDOW_HOURS):
@@ -397,18 +438,11 @@ async def cancel(db: AsyncSession, client: Client, reservation_id: int) -> None:
                 status.HTTP_409_CONFLICT,
                 f"Rezervasyona {REFUND_WINDOW_HOURS} saatten az kaldı; iade yapılamaz.",
             )
-        refunded = True
-        if Decimal(str(res.amount)) > 0:
-            provider = payments.get_payment_provider()
-            refunded = await provider.refund(
-                provider_ref=res.provider_ref, amount=Decimal(str(res.amount))
-            )
-        if not refunded:
+        outcome = await escrow.refund_escrow(db, res, escrow.STUDY_SPEC)
+        if outcome == "not_claimed":
             raise HTTPException(
-                status.HTTP_502_BAD_GATEWAY, "İade alınamadı; lütfen sonra tekrar dene."
+                status.HTTP_409_CONFLICT, "Bu rezervasyon iptal edilemez."
             )
-        res.status = RegistrationStatus.REFUNDED.value
-        res.refunded_at = _now()
         await db.commit()
         return
 
@@ -470,9 +504,19 @@ async def auto_release_no_shows(db: AsyncSession) -> int:
             )
         )
     ).scalars().all()
+    count = 0
     for r in rows:
-        r.released_at = now
-    return len(rows)
+        # Koşullu damga: eşzamanlı iade claim'i kazandıysa released_at yazılmaz.
+        if await escrow.claim(
+            db,
+            StudyReservation,
+            r.id,
+            from_statuses=[RegistrationStatus.PAID.value],
+            values={"released_at": now},
+            extra_where=(StudyReservation.released_at.is_(None),),
+        ):
+            count += 1
+    return count
 
 
 def _window_label(res: StudyReservation) -> str:
@@ -547,15 +591,36 @@ async def _attend_study(
             already=True,
             message="Bu giriş zaten doğrulanmıştı.",
         )
-    if res.status != RegistrationStatus.PAID.value:
+    # Atomik claim (PAID→ATTENDED); released_at doluysa (no-show release) korunur.
+    now = _now()
+    claimed = await escrow.claim(
+        db,
+        StudyReservation,
+        res.id,
+        from_statuses=[RegistrationStatus.PAID.value],
+        values={
+            "status": RegistrationStatus.ATTENDED.value,
+            "attended_at": now,
+            "attended_by_operator_id": operator_id,
+            "released_at": func.coalesce(StudyReservation.released_at, now),
+        },
+    )
+    if not claimed:
+        await db.refresh(res)
+        if res.status == RegistrationStatus.ATTENDED.value:
+            return AttendanceResult(
+                registration_id=res.id,
+                client_name=client_name,
+                exam_title=_window_label(res),
+                status=res.status,
+                already=True,
+                message="Bu giriş zaten doğrulanmıştı.",
+            )
         raise HTTPException(
-            status.HTTP_409_CONFLICT, "Bu rezervasyon ödenmemiş; giriş doğrulanamaz"
+            status.HTTP_409_CONFLICT,
+            "Bu rezervasyon doğrulanabilir durumda değil (ödenmemiş ya da iade sürecinde)",
         )
-
-    res.status = RegistrationStatus.ATTENDED.value
-    res.attended_at = _now()
-    res.attended_by_operator_id = operator_id
-    res.released_at = _now()
+    await db.refresh(res)
     await notification_service.notify(
         db,
         user_id=res.client_id,

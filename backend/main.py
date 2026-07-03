@@ -17,6 +17,7 @@ from core import presence
 from core import observability
 from services import (
     booking_service,
+    escrow_reconciler,
     library_exam_service,
     study_reservation_service,
     task_service,
@@ -42,6 +43,11 @@ async def _reminder_loop() -> None:
                 await task_service.send_task_due_reminders(session)
                 await task_service.dispatch_task_reminders(session)
                 await session.commit()
+            # Escrow mutabakatı KENDİ session'ında koşar: kayıt başına commit'ler
+            # (intent deseni) yukarıdaki toplu commit'e karışmasın.
+            async with AsyncSessionLocal() as session:
+                await escrow_reconciler.reconcile_refunding(session)
+                await escrow_reconciler.reconcile_stale_checkouts(session)
         except Exception:
             # best-effort; bir sonraki periyotta tekrar denenir ama sessizce yutma.
             logger.exception("reminder loop iteration failed")

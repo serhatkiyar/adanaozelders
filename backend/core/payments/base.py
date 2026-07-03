@@ -1,8 +1,22 @@
 from __future__ import annotations
 
+import enum
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from decimal import Decimal
+
+
+class RefundState(str, enum.Enum):
+    """Sağlayıcı tarafındaki iade durumunun sunucu-sorgusu sonucu.
+
+    Reconciler için: REFUNDED pozitif kanıttır (finalize edilir); NOT_REFUNDED ve
+    UNKNOWN "iade yok" KANITI DEĞİLDİR — sınırlı retry, sağlayıcının aşırı-iade
+    reddine yaslanarak yapılır (bkz. services/escrow.py).
+    """
+
+    REFUNDED = "REFUNDED"
+    NOT_REFUNDED = "NOT_REFUNDED"
+    UNKNOWN = "UNKNOWN"
 
 
 @dataclass(slots=True)
@@ -110,6 +124,16 @@ class PaymentProvider(ABC):
         self, *, provider_ref: str | None, amount: Decimal
     ) -> bool:  # pragma: no cover - arayüz
         raise NotImplementedError
+
+    async def refund_state(
+        self, *, provider_ref: str | None, reference: str | None = None
+    ) -> RefundState:  # pragma: no cover - varsayılan
+        """Sağlayıcı tarafında iade gerçekleşmiş mi? (reconciler pozitif-kanıt sorgusu)
+
+        Varsayılan UNKNOWN: destek vermeyen sağlayıcıda reconciler sınırlı-retry
+        yoluna düşer. Emin olunamayan her durumda UNKNOWN dönülmeli.
+        """
+        return RefundState.UNKNOWN
 
     # ── Pazaryeri: alt üye işyeri (sub-merchant) ──
     # Varsayılan: desteklenmiyor (sağlayıcı override eder). Fake anında ACTIVE döner,

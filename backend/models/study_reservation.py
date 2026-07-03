@@ -7,6 +7,7 @@ from sqlalchemy import (
     DateTime,
     ForeignKey,
     Index,
+    Integer,
     Numeric,
     String,
     text,
@@ -70,6 +71,13 @@ class StudyReservation(Base, TimestampMixin, SoftDeleteMixin):
     refunded_at: Mapped[datetime.datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    # İade niyeti (intent) — REFUNDING claim'inde damgalanır (bkz. services/escrow.py).
+    refund_requested_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    refund_attempts: Mapped[int] = mapped_column(
+        Integer, nullable=False, server_default=text("0")
+    )
 
     # QR giriş doğrulama
     qr_token: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
@@ -89,4 +97,13 @@ class StudyReservation(Base, TimestampMixin, SoftDeleteMixin):
         CheckConstraint("ends_at > starts_at", name="ck_study_res_window"),
         Index("ix_study_res_window", "library_id", "starts_at", "ends_at"),
         Index("ix_study_res_status", "status"),
+        # Conservation invariant'ı DB'de: tutar daima komisyon + kütüphane kazancı.
+        CheckConstraint(
+            "amount = commission_amount + library_earning",
+            name="ck_study_res_conservation",
+        ),
+        CheckConstraint(
+            "commission_rate >= 0 AND commission_rate <= 1",
+            name="ck_study_res_commission_rate_range",
+        ),
     )

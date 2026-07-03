@@ -3,9 +3,9 @@ from __future__ import annotations
 import datetime
 import enum
 
-from sqlalchemy import DateTime
+from sqlalchemy import CheckConstraint, DateTime
 from sqlalchemy import Enum as SAEnum
-from sqlalchemy import ForeignKey, Index, Numeric, String, text
+from sqlalchemy import ForeignKey, Index, Integer, Numeric, String, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from core.database import Base
@@ -16,6 +16,7 @@ class PaymentStatus(str, enum.Enum):
     PENDING = "PENDING"      # tutor kabul etti; öğrencinin ödemesi bekleniyor
     HELD = "HELD"            # öğrenci ödedi; tutar emanette (escrow)
     RELEASED = "RELEASED"    # ders tamamlandı; komisyon düşülüp eğitmene aktarıldı
+    REFUNDING = "REFUNDING"  # iade niyeti kalıcı (claim); sağlayıcı teyidi bekleniyor
     REFUNDED = "REFUNDED"    # iptal/iade; öğrenciye geri ödendi
     FAILED = "FAILED"        # ödeme denemesi başarısız
 
@@ -63,6 +64,14 @@ class Payment(Base, TimestampMixin, SoftDeleteMixin):
     refunded_at: Mapped[datetime.datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    # İade niyeti (intent) — REFUNDING claim'inde damgalanır; reconciler karantina
+    # penceresi ve deneme sınırı bu iki alandan yürür (bkz. services/escrow.py).
+    refund_requested_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    refund_attempts: Mapped[int] = mapped_column(
+        Integer, nullable=False, server_default=text("0")
+    )
 
     booking: Mapped["Booking"] = relationship(back_populates="payment")
 
@@ -75,4 +84,13 @@ class Payment(Base, TimestampMixin, SoftDeleteMixin):
             postgresql_where=text("deleted_at IS NULL"),
         ),
         Index("ix_payments_status", "status"),
+        # Conservation invariant'ı DB'de: tutar daima komisyon + kazanç.
+        CheckConstraint(
+            "amount = commission_amount + tutor_earning",
+            name="ck_payments_conservation",
+        ),
+        CheckConstraint(
+            "commission_rate >= 0 AND commission_rate <= 1",
+            name="ck_payments_commission_rate_range",
+        ),
     )

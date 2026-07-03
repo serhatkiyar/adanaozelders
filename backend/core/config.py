@@ -124,6 +124,17 @@ class Settings(BaseSettings):
     IYZICO_SECRET_KEY: str | None = None
     IYZICO_BASE_URL: str = "https://sandbox-api.iyzipay.com"
 
+    # Escrow iade mutabakatı (reconciler — bkz. services/escrow.py):
+    # REFUNDING'de sarkan kayıt, niyet damgasından bu kadar dakika geçmeden ellenmesin
+    # (uçuştaki istekle yarışma); deneme sınırı aşılınca yalnız alarm (retry durur).
+    REFUND_RECONCILE_MIN_AGE_MINUTES: int = 15
+    REFUND_MAX_ATTEMPTS: int = 3
+    # Bayat checkout mutabakatı (callback hiç gelmemiş/varlık iptal edilmişken ödenmiş
+    # oturumlar): bu yaştan eski ve şu pencereden yeni kayıtlar sağlayıcıdan doğrulanır.
+    CHECKOUT_RECONCILE_MIN_AGE_MINUTES: int = 15
+    CHECKOUT_RECONCILE_MAX_AGE_HOURS: int = 48
+    CHECKOUT_RECONCILE_INTERVAL_SECONDS: int = 900
+
     # E-posta tetikleyen endpoint'ler için IP rate-limit (Redis, fail-open).
     RATE_LIMIT_EMAIL: int = 5
     # SMS OTP gönderimi — kullanıcı bazlı (spam/maliyet koruması).
