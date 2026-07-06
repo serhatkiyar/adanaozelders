@@ -20,3 +20,6 @@ scripts/out/instagram-pfp-downloader/
 
 # OSRM yol agi verileri (buyuk binary'ler - scripts/setup-osrm-adana.ps1 uretir)
 devops/osrm/
+
+# VROOM konteyner erisim log'u (calisma zamaninda uretilir)
+devops/vroom/access.log
