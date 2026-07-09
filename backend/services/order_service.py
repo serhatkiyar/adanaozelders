@@ -498,6 +498,7 @@ def _to_out(order: Order) -> OrderOut:
         ship_lat=float(order.ship_lat) if order.ship_lat is not None else None,
         ship_lng=float(order.ship_lng) if order.ship_lng is not None else None,
         tracking_no=order.tracking_no,
+        track_token=order.track_token,
         return_status=return_status,
         created_at=order.created_at,
         items=items,

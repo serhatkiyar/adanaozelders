@@ -1571,6 +1571,7 @@ export interface OrderOut {
   ship_lat?: number | null;
   ship_lng?: number | null;
   tracking_no?: string | null;
+  track_token?: string | null;
   return_status?: string | null;
   created_at: string;
   items: OrderItemOut[];

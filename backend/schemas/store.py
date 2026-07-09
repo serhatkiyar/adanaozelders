@@ -266,6 +266,9 @@ class OrderOut(BaseModel):
     ship_lat: float | None = None
     ship_lng: float | None = None
     tracking_no: str | None = None
+    # Oturumsuz kargo takip token'ı — site içi "Kargo Takip" butonu /kargo-takip/{token}
+    # sayfasına bunu kullanarak gider (SMS linkiyle aynı sayfa).
+    track_token: str | None = None
     # En güncel iade talebinin durumu (PENDING/APPROVED/REJECTED) — yoksa None.
     return_status: str | None = None
     created_at: datetime.datetime

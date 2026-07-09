@@ -3,10 +3,11 @@
 // Dağıtımdayken kurye konumu + kaç durak önde + tahmini varış canlı (15 sn poll);
 // diğer durumlarda sade durum şeridi. Kendi-filo teslimat (ELDEN) — dış kargo linki yok.
 import { useMemo } from "react";
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { MapContainer, Marker, TileLayer } from "react-leaflet";
 import L from "leaflet";
 
+import { ROUTES } from "@/lib/routes";
 import { Seo } from "@/components/Seo";
 import { usePublicOrderTracking } from "@/hooks/useDelivery";
 import { formatEta } from "@/lib/polyline";
@@ -130,9 +131,12 @@ export default function CargoTrackingPage() {
       <Seo title="Kargo Takip — Adana Özel Ders" noindex />
       <div className="mx-auto max-w-xl">
         <div className="mb-6 flex items-center justify-center gap-2 text-center">
-          <span className="text-sm font-semibold tracking-tight text-slate-900 dark:text-white">
+          <Link
+            to={ROUTES.home}
+            className="text-sm font-semibold tracking-tight text-slate-900 hover:opacity-70 dark:text-white"
+          >
             Adana Özel Ders
-          </span>
+          </Link>
           <span className="text-slate-300 dark:text-slate-600">·</span>
           <span className="text-sm text-slate-500 dark:text-slate-400">Kargo Takip</span>
         </div>

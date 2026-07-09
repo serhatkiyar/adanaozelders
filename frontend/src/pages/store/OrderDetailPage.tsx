@@ -7,7 +7,6 @@ import { FullScreenSpinner } from "@/components/Spinner";
 import { formatTL } from "@/lib/money";
 import { formatDate } from "@/lib/datetime";
 import { useOrder, useCancelOrder, useRequestReturn } from "@/hooks/useStore";
-import { OrderTrackingSection } from "@/components/OrderTrackingSection";
 import { useCartStore } from "@/store/cartStore";
 import { STATUS_LABELS, OrderItemRow, orderItemToProduct } from "@/pages/store/OrdersPage";
 import { toast } from "@/store/toastStore";
@@ -51,6 +50,19 @@ export default function OrderDetailPage() {
     order.payment_status === "PAID" &&
     order.return_status !== "PENDING" &&
     order.return_status !== "APPROVED";
+
+  // Kargo takibi: ödenmiş fiziksel sipariş, iptal/iade değil, token var.
+  const canTrack =
+    !!order.track_token &&
+    order.has_physical &&
+    order.payment_status === "PAID" &&
+    (order.status === "PAID" || order.status === "SHIPPED" || order.status === "DELIVERED");
+  const trackSub =
+    order.status === "DELIVERED"
+      ? "Teslim edildi — teslimat özetini görüntüle"
+      : order.status === "SHIPPED"
+        ? "Kuryemiz yolda — canlı konumu ve tahmini varışı izle"
+        : "Siparişin hazırlanıyor — kuryeye verildiğinde canlı izle";
 
   function handleCancel() {
     if (!order) return;
@@ -182,8 +194,26 @@ export default function OrderDetailPage() {
           </div>
         </div>
 
-        {/* Canlı teslimat takibi (kendi filo — kurye dağıtımdayken görünür) */}
-        <OrderTrackingSection order={order} />
+        {/* Kargo takibi — tam ekran takip sayfasına götüren belirgin giriş */}
+        {canTrack && (
+          <Link
+            to={ROUTES.cargoTracking(order.track_token!)}
+            className="mt-5 flex items-center gap-4 rounded-2xl border border-slate-200 p-5 transition-colors hover:border-indigo-300 dark:border-slate-800 dark:hover:border-indigo-500/40"
+          >
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" width="22" height="22">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 18.75a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 0 1-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 0 0-3.213-9.193 2.056 2.056 0 0 0-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 0 0-10.026 0 1.106 1.106 0 0 0-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12" />
+              </svg>
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold text-slate-900 dark:text-white">Kargo Takibi</p>
+              <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">{trackSub}</p>
+            </div>
+            <span className="shrink-0 text-sm font-semibold text-indigo-600 dark:text-indigo-400">
+              Takip et →
+            </span>
+          </Link>
+        )}
 
         {/* Ürünler */}
         <div className="mt-5 rounded-2xl border border-slate-200 p-5 dark:border-slate-800">
