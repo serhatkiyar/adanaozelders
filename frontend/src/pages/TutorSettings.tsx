@@ -377,7 +377,7 @@ export default function TutorSettings() {
                   <label className={labelCls}>Saatlik Ücret</label>
                   <div className="relative">
                     <span className="pointer-events-none absolute inset-y-0 left-4 flex items-center text-sm font-semibold text-slate-400">
-                      ₺
+                      TL
                     </span>
                     <input
                       type="number"
@@ -386,7 +386,7 @@ export default function TutorSettings() {
                       disabled={!editable}
                       value={hourlyRate}
                       onChange={(e) => setHourlyRate(e.target.value)}
-                      className={`${inputCls} pl-8`}
+                      className={`${inputCls} pl-11`}
                       placeholder="0"
                     />
                   </div>

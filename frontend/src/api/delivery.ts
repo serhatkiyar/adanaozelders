@@ -145,6 +145,14 @@ export async function fetchOrderTracking(orderId: number): Promise<OrderTracking
   return data;
 }
 
+/** Oturumsuz kargo takibi (SMS'le paylaşılan token). JWT gerektirmez. */
+export async function fetchPublicOrderTracking(token: string): Promise<OrderTracking> {
+  const { data } = await apiClient.get<OrderTracking>(
+    `/store/orders/track/${token}`
+  );
+  return data;
+}
+
 export async function failDeliveryStop(
   stopId: number,
   reason: string

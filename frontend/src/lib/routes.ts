@@ -36,6 +36,8 @@ export const PATHS = {
   storeCheckout: "/magaza/odeme",
   /** Paylaşılan koleksiyon (public). */
   storeCollectionShared: "/magaza/liste/:token",
+  /** Oturumsuz kargo takibi (SMS'le paylaşılan token). */
+  cargoTracking: "/kargo-takip/:token",
 
   // ── Yasal sayfalar (public, SEO) — içerik lib/legalContent.ts'te ──
   kvkk: "/kvkk",
@@ -95,6 +97,10 @@ export const PATHS = {
   /** Dağıtıcı saha ekranı — kendi-filo teslimat turu (ADMIN). */
   deliveryRun: "/dagitim/:id",
   studentProfile: "/ogrenciler/:id",
+  /** Operatörün kendi kütüphane profili (gör + bölüm bölüm düzenle). */
+  operatorLibrary: "/kutuphanem",
+  /** Operatör operasyon ekranı: QR doğrula + deneme oturumları + çalışma rez. */
+  operatorSessions: "/oturumlar",
 } as const;
 
 export const ROUTES = {
@@ -115,6 +121,7 @@ export const ROUTES = {
   storeFavorites: PATHS.storeFavorites,
   storeCheckout: PATHS.storeCheckout,
   storeCollectionShared: (token: string) => `/magaza/liste/${token}`,
+  cargoTracking: (token: string) => `/kargo-takip/${token}`,
 
   // ── Yasal sayfalar ──
   kvkk: PATHS.kvkk,
@@ -169,6 +176,8 @@ export const ROUTES = {
   tutorListing: PATHS.tutorListing,
   deliveryRun: (id: string | number) => `/dagitim/${id}`,
   studentProfile: (id: string | number) => `/ogrenciler/${id}`,
+  operatorLibrary: PATHS.operatorLibrary,
+  operatorSessions: PATHS.operatorSessions,
 } as const;
 
 // Yasal belge id'si (lib/legalContent.ts) → URL. LegalPage kenar gezinmesi ve

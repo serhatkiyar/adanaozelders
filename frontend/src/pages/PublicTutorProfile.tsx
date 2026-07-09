@@ -12,6 +12,8 @@ import { recordViewedTutor } from "@/lib/recentlyViewed";
 import { WEEKDAYS_SHORT, weeklySchedule } from "@/lib/availability";
 import { formatRate, parseMoney } from "@/lib/money";
 import { ShareButton } from "@/components/ShareButton";
+import { BookmarkButton } from "@/components/BookmarkButton";
+import { useNavSearch } from "@/hooks/useNavSearch";
 import { TutorTrustBar } from "@/components/TutorTrust";
 import { Seo } from "@/components/Seo";
 import { JsonLd } from "@/components/JsonLd";
@@ -31,6 +33,8 @@ export default function PublicTutorProfile() {
   const { slug } = useParams();
   const tutorId = parseTutorId(slug);
   const navigate = useNavigate();
+  const { center, bottom, open: searchOpen, setOpen: setSearchOpen } =
+    useNavSearch("egitmenler");
   const { data: tutor, isLoading, isError } = useTutorDetail(tutorId);
   useCanonicalTutorSlug(tutor);
   // "Son görüntülenen ilanlar" için bu eğitmeni kaydet.
@@ -117,7 +121,7 @@ export default function PublicTutorProfile() {
   };
 
   return (
-    <PublicShell>
+    <PublicShell center={center} bottom={bottom}>
       <Seo
         title={tutor.full_name}
         description={seoDesc}
@@ -127,7 +131,14 @@ export default function PublicTutorProfile() {
       >
         <JsonLd data={personLd} />
       </Seo>
-      <div className="mx-auto max-w-6xl pb-12">
+      {/* Geniş arama açıkken sayfayı hafifçe karart; tıklayınca kapat. */}
+      {searchOpen && (
+        <div
+          className="fixed inset-0 z-30 bg-slate-900/10 animate-in fade-in duration-200"
+          onClick={() => setSearchOpen(false)}
+        />
+      )}
+      <div className="mx-auto max-w-[76rem] pb-12">
         <button
           onClick={() => navigate(-1)}
           className="text-sm font-medium text-indigo-600 hover:text-indigo-700 dark:text-indigo-400"
@@ -137,11 +148,12 @@ export default function PublicTutorProfile() {
 
         <div className="mt-4 flex flex-col gap-5 lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start lg:gap-6">
           {/* ── Sağ: eğitmen bilgi + rezervasyon kartı (dikey, sticky) ── */}
-          <aside className="lg:col-start-2 lg:row-start-1 lg:sticky lg:top-6">
+          <aside className="lg:col-start-2 lg:row-start-1 lg:sticky lg:top-24">
             <section className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-slate-700">
-              {/* Üst aksiyon: paylaş (kartın yukarısında) */}
+              {/* Üst aksiyon: favori + paylaş (kartın yukarısında) */}
               <div className="mb-4 flex items-center justify-end gap-2">
                 <ShareButton size="md" />
+                <BookmarkButton tutorId={tutor.id} size="md" onSolid />
               </div>
               <div className="flex flex-col items-center text-center">
                 <Avatar name={tutor.full_name} avatar_url={tutor.avatar_url} size="xl" shape="square" />
@@ -190,7 +202,7 @@ export default function PublicTutorProfile() {
               </div>
               <Link
                 to="?modal=login"
-                className="mt-4 block w-full rounded-xl bg-indigo-600 px-5 py-2.5 text-center text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 active:scale-95"
+                className="mt-4 block w-full rounded-full bg-indigo-600 px-5 py-2.5 text-center text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 active:scale-95"
               >
                 Ders Talep Et
               </Link>

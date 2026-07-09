@@ -9,19 +9,9 @@ export function parseMoney(
   return Number.isFinite(n) ? n : null;
 }
 
-// "₺1.250,50" — sadece tutar.
+// "1.250,50 TL" — sadece tutar. Site genelinde para birimi "TL" sonekiyle gösterilir
+// (₺ sembolü değil): tüketici tarafında daha okunur/tanıdık (Trendyol/Hepsiburada deseni).
 export function formatTRY(
-  value: string | number | null | undefined,
-  fallback = "—"
-): string {
-  const n = parseMoney(value);
-  if (n === null) return fallback;
-  return `₺${n.toLocaleString("tr-TR", { maximumFractionDigits: 2 })}`;
-}
-
-// "1.250,50 TL" — mağaza yüzeyleri (kart/sepet/ödeme/sipariş) bunu kullanır; formatTRY'nin
-// ikizi, son ek "TL". Özel ders/kütüphane/rezervasyon tarafı ₺ (formatTRY) kalır.
-export function formatTL(
   value: string | number | null | undefined,
   fallback = "—"
 ): string {
@@ -30,7 +20,10 @@ export function formatTL(
   return `${n.toLocaleString("tr-TR", { maximumFractionDigits: 2 })} TL`;
 }
 
-// "₺250 / saat" — saatlik ücret etiketi.
+// formatTRY ile aynı çıktı; mağaza yüzeylerinde adı semantik olsun diye korunur.
+export const formatTL = formatTRY;
+
+// "250 TL / saat" — saatlik ücret etiketi.
 export function formatRate(
   value: string | number | null | undefined,
   fallback = "Ücret belirtilmemiş"

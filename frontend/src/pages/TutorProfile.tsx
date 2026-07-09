@@ -29,6 +29,7 @@ import { ROUTES, parseTutorId } from "@/lib/routes";
 import { useCanonicalTutorSlug } from "@/hooks/useCanonicalTutorSlug";
 import { recordViewedTutor } from "@/lib/recentlyViewed";
 import { videoEmbedUrl } from "@/lib/video";
+import { useNavSearch } from "@/hooks/useNavSearch";
 
 // Removed constants
 
@@ -116,6 +117,8 @@ export default function TutorProfile() {
   const { slug } = useParams();
   const tutorId = parseTutorId(slug);
   const navigate = useNavigate();
+  const { center, bottom, open: searchOpen, setOpen: setSearchOpen } =
+    useNavSearch("egitmenler");
 
   const { data: currentUser } = useCurrentUser();
   const navItems =
@@ -189,8 +192,20 @@ export default function TutorProfile() {
     : null;
 
   return (
-    <DashboardShell title="Eğitmen Detayı" navItems={navItems}>
-      <div className="mx-auto max-w-6xl pb-12">
+    <DashboardShell
+      title="Eğitmen Detayı"
+      navItems={navItems}
+      center={center}
+      bottom={bottom}
+    >
+      {/* Geniş arama açıkken sayfayı hafifçe karart; tıklayınca kapat. */}
+      {searchOpen && (
+        <div
+          className="fixed inset-0 z-30 bg-slate-900/10 animate-in fade-in duration-200"
+          onClick={() => setSearchOpen(false)}
+        />
+      )}
+      <div className="mx-auto max-w-[76rem] pb-12">
         <button
           onClick={() => navigate(-1)}
           className="text-sm font-medium text-indigo-600 hover:text-indigo-700 dark:text-indigo-400"
@@ -200,7 +215,7 @@ export default function TutorProfile() {
 
         <div className="mt-4 flex flex-col gap-5 lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start lg:gap-6">
           {/* ── Sağ: eğitmen bilgi + rezervasyon kartı (dikey, sticky) ── */}
-          <aside className="lg:col-start-2 lg:row-start-1 lg:sticky lg:top-6">
+          <aside className="lg:col-start-2 lg:row-start-1 lg:sticky lg:top-24">
             <section className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-slate-700">
               {/* Üst aksiyonlar: favori + paylaş (kartın yukarısında) */}
               <div className="mb-4 flex items-center justify-end gap-2">
@@ -220,7 +235,9 @@ export default function TutorProfile() {
                   </button>
                 )}
                 <ShareButton size="md" />
-                {!isOwnerTutor && <BookmarkButton tutorId={tutor.id} size="md" />}
+                {!isOwnerTutor && (
+                  <BookmarkButton tutorId={tutor.id} size="md" onSolid />
+                )}
               </div>
 
               <div className="flex flex-col items-center text-center">
@@ -276,33 +293,33 @@ export default function TutorProfile() {
               {!isOwnerTutor && (
                 <button
                   onClick={() => setShowBookingModal(true)}
-                  className="mt-4 block w-full rounded-xl bg-indigo-600 px-5 py-2.5 text-center text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 active:scale-95"
+                  className="mt-4 block w-full rounded-full bg-indigo-600 px-5 py-2.5 text-center text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 active:scale-95"
                 >
                   Ders Talep Et
                 </button>
               )}
-
-              {/* Şikayet (ikincil; küçük) */}
-              {currentUser && !isOwnerTutor && (
-                <div className="mt-3 text-center">
-                  <button
-                    type="button"
-                    onClick={() => setShowReport(true)}
-                    className="text-xs font-medium text-slate-400 transition hover:text-rose-600 dark:text-slate-500 dark:hover:text-rose-400"
-                  >
-                    ⚐ Şikayet et
-                  </button>
-                </div>
-              )}
-              {showReport && (
-                <ReportModal
-                  targetType="TUTOR"
-                  targetId={tutorId}
-                  targetLabel={tutor.full_name}
-                  onClose={() => setShowReport(false)}
-                />
-              )}
             </section>
+
+            {/* Şikayet (kartın dışında, altında; ikincil) */}
+            {currentUser && !isOwnerTutor && (
+              <div className="mt-3 text-center">
+                <button
+                  type="button"
+                  onClick={() => setShowReport(true)}
+                  className="text-xs font-medium text-slate-400 transition hover:text-rose-600 dark:text-slate-500 dark:hover:text-rose-400"
+                >
+                  ⚐ Şikayet et
+                </button>
+              </div>
+            )}
+            {showReport && (
+              <ReportModal
+                targetType="TUTOR"
+                targetId={tutorId}
+                targetLabel={tutor.full_name}
+                onClose={() => setShowReport(false)}
+              />
+            )}
           </aside>
 
           {/* ── Sol: akan içerik (kartsız, alt alta) ── */}

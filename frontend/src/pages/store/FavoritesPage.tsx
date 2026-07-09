@@ -39,7 +39,7 @@ export default function FavoritesPage() {
   }
 
   return (
-    <StoreLayout title="Favori Listem" showCategoryBar={false}>
+    <StoreLayout title="Favori Listem">
       <Seo title="Favori Listem — Adana Özel Ders" description="Beğendiğin ürünler ve listelerin." />
 
       <div className={`${CONTAINER} py-8`}>

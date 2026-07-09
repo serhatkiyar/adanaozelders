@@ -36,7 +36,7 @@ const SAMPLE: DemoTicket = {
   title: "Mart Genel Deneme · 1. Oturum",
   library_name: "Yaşam Kütüphanesi",
   when: "12 Mart Cmt · 10:00 · 135 dk",
-  amount: "₺75,00",
+  amount: "75,00 TL",
   short_code: "4F6E8Y3F",
   qr_token: "demo-token-abc123",
   status: "PAID",

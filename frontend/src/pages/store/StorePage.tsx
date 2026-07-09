@@ -4,6 +4,7 @@ import { ROUTES } from "@/lib/routes";
 import { Seo } from "@/components/Seo";
 import { StoreLayout } from "@/pages/store/StoreLayout";
 import { ProductCard } from "@/components/store/ProductCard";
+import { HScroll } from "@/components/HScroll";
 import { useCategories, useProducts, useInfiniteProducts } from "@/hooks/useStore";
 import { useDebounce } from "@/hooks/useDebounce";
 import { getRecentlyViewedProducts } from "@/lib/recentlyViewedProducts";
@@ -352,13 +353,13 @@ function RecentlyViewedRail() {
       <h2 className="mb-6 text-xl font-semibold text-slate-900 md:text-2xl dark:text-white">
         Son görüntülediklerin
       </h2>
-      <div className="hide-scrollbar flex snap-x gap-4 overflow-x-auto pb-4 md:gap-6">
+      <HScroll className="snap-x gap-4 pb-4 md:gap-6">
         {items.map((p) => (
           <div key={p.id} className="w-[160px] shrink-0 snap-start md:w-[200px]">
             <ProductCard product={p} />
           </div>
         ))}
-      </div>
+      </HScroll>
     </div>
   );
 }
@@ -378,7 +379,7 @@ function ProductScroller({
     return (
       <div>
         <h2 className="mb-6 text-xl font-semibold text-slate-900 md:text-2xl dark:text-white">{title}</h2>
-        <div className="hide-scrollbar flex gap-4 overflow-x-auto">
+        <div className="flex gap-4 overflow-hidden">
           {Array.from({ length: 6 }).map((_, i) => (
             <div key={i} className="h-[280px] w-[160px] shrink-0 animate-pulse rounded-xl bg-slate-100 md:w-[200px] dark:bg-slate-800" />
           ))}
@@ -403,13 +404,13 @@ function ProductScroller({
           </svg>
         </Link>
       </div>
-      <div className="hide-scrollbar flex snap-x gap-4 overflow-x-auto pb-4 md:gap-6">
+      <HScroll className="snap-x gap-4 pb-4 md:gap-6">
         {products.map((p) => (
           <div key={p.id} className="w-[160px] shrink-0 snap-start md:w-[200px]">
             <ProductCard product={p} />
           </div>
         ))}
-      </div>
+      </HScroll>
     </div>
   );
 }

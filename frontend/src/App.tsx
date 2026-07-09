@@ -34,6 +34,7 @@ const SellerStorePage = lazy(() => import("@/pages/store/SellerStorePage"));
 const CartPage = lazy(() => import("@/pages/store/CartPage"));
 const FavoritesPage = lazy(() => import("@/pages/store/FavoritesPage"));
 const SharedCollectionPage = lazy(() => import("@/pages/store/SharedCollectionPage"));
+const CargoTrackingPage = lazy(() => import("@/pages/store/CargoTrackingPage"));
 const AccountHub = lazy(() => import("@/pages/AccountHub"));
 const AddressesPage = lazy(() => import("@/pages/AddressesPage"));
 const CheckoutPage = lazy(() => import("@/pages/store/CheckoutPage"));
@@ -43,6 +44,8 @@ const SellerProducts = lazy(() => import("@/pages/store/SellerProducts"));
 // Yasal sayfalar — tek chunk, belge prop'la seçilir (içerik lib/legalContent.ts)
 const LegalPage = lazy(() => import("@/pages/LegalPage"));
 const OperatorHome = lazy(() => import("@/pages/dashboards/OperatorHome"));
+const OperatorLibrary = lazy(() => import("@/pages/dashboards/OperatorLibrary"));
+const OperatorSessions = lazy(() => import("@/pages/dashboards/OperatorSessions"));
 const Login = lazy(() => import("@/pages/Login"));
 const Register = lazy(() => import("@/pages/Register"));
 const ForgotPassword = lazy(() => import("@/pages/ForgotPassword"));
@@ -261,6 +264,8 @@ function App() {
           <Route path={PATHS.storeCart} element={<CartPage />} />
           <Route path={PATHS.storeFavorites} element={<FavoritesPage />} />
           <Route path={PATHS.storeCollectionShared} element={<SharedCollectionPage />} />
+          {/* Oturumsuz kargo takibi (SMS token'ı) — subdomain kökü buraya rewrite'lanır. */}
+          <Route path={PATHS.cargoTracking} element={<CargoTrackingPage />} />
 
           {/* ── Yasal sayfalar (public, SEO) ── */}
           <Route path={PATHS.kvkk} element={<LegalPage doc="kvkk" />} />
@@ -332,6 +337,12 @@ function App() {
           <Route element={<ProtectedRoute allowedRoleId={ROLE_IDS.ADMIN} />}>
             {/* Dağıtıcı saha ekranı (kendi-filo teslimat) — mobil, shell'siz */}
             <Route path={PATHS.deliveryRun} element={<DeliveryDriver />} />
+          </Route>
+
+          {/* ── Yalnızca LIBRARY_OPERATOR ── */}
+          <Route element={<ProtectedRoute allowedRoleId={ROLE_IDS.LIBRARY_OPERATOR} />}>
+            <Route path={PATHS.operatorLibrary} element={<OperatorLibrary />} />
+            <Route path={PATHS.operatorSessions} element={<OperatorSessions />} />
           </Route>
 
           {/* ── Eski URL'ler → yeni düz yapı (geriye dönük uyumluluk, tek hop) ── */}

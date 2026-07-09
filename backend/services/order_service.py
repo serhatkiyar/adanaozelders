@@ -39,7 +39,7 @@ from schemas.store import (
     OrderOut,
     OrderReturnOut,
 )
-from services import commission, coupon_service, notification_service
+from services import commission, coupon_service, notification_service, order_fsm
 
 def _now() -> datetime.datetime:
     return datetime.datetime.now(datetime.timezone.utc)
@@ -337,12 +337,41 @@ async def _finalize_paid(
     db: AsyncSession, order: Order, *, provider_ref: str | None
 ) -> None:
     """Ödeme başarılı: PAID'e geç, stok düş, eğitmen kazançlarını hesapla, bildir.
-    İdempotent değildir — yalnız PENDING→PAID geçişinde çağrılır."""
-    order.payment_status = "PAID"
-    order.status = "PAID"
-    order.paid_at = _now()
+    İdempotent değildir — yalnız PENDING→PAID geçişinde çağrılır.
+
+    **Oversell koruması**: Fiziksel ürün satırlarını kilit altında (SELECT FOR UPDATE)
+    okuyup, PAID'e KESİNLEŞMEDEN ÖNCE stok yeterliliğini doğrular. Ödeme alındıktan
+    sonra (ör. son 1 stoğu iki müşteri aynı anda ödeyince) stok yetmiyorsa hayalet
+    sipariş yerine tam iade + iptal edilir."""
     if provider_ref:
         order.provider_ref = provider_ref
+
+    # ── Oversell guard: fiziksel ürünleri kilitle, stoğu kilit altında doğrula ──
+    needed: dict[int, int] = {}
+    for item in order.items:
+        if item.kind == ProductKind.PHYSICAL.value and item.product_id is not None:
+            needed[item.product_id] = needed.get(item.product_id, 0) + item.quantity
+    locked: dict[int, Product] = {}
+    for pid in needed:
+        p = (
+            await db.execute(
+                select(Product).where(Product.id == pid).with_for_update()
+            )
+        ).scalars().first()
+        if p is not None:
+            locked[pid] = p
+    shortages = [
+        locked[pid].title
+        for pid, qty in needed.items()
+        if pid in locked and locked[pid].stock is not None and locked[pid].stock < qty
+    ]
+    if shortages:
+        await _out_of_stock_refund(db, order, shortages)
+        return
+
+    order.payment_status = "PAID"
+    await order_fsm.transition_order(db, order, "PAID", changed_by="system:payment")
+    order.paid_at = _now()
 
     # Kupon kullanımını PAID'de say (PENDING siparişler kontenjan tüketmez).
     if order.coupon_id is not None:
@@ -351,13 +380,9 @@ async def _finalize_paid(
         )
 
     for item in order.items:
-        # Fiziksel stok düş (satır kilidiyle atomik; eşzamanlı siparişlerde lost-update yok).
+        # Fiziksel stok düş (yukarıda kilitlenen satırlar üzerinden; atomik).
         if item.kind == ProductKind.PHYSICAL.value and item.product_id is not None:
-            p = (
-                await db.execute(
-                    select(Product).where(Product.id == item.product_id).with_for_update()
-                )
-            ).scalars().first()
+            p = locked.get(item.product_id)
             if p is not None and p.stock is not None:
                 p.stock = max(0, p.stock - item.quantity)
         # Eğitmen dijital kalemi → komisyon bölüşümü kazanca yaz.
@@ -388,6 +413,36 @@ async def _finalize_paid(
             )
 
     await _email_order(db, order, "PAID")
+
+
+async def _out_of_stock_refund(
+    db: AsyncSession, order: Order, shortages: list[str]
+) -> None:
+    """Ödeme alındı ama stok (kilit altında) yetersiz → tam iade + iptal.
+
+    Bu noktada henüz PAID'e geçilmedi: kupon tüketilmedi, stok düşülmedi — bu yüzden
+    geri-yükleme/kupon-serbest gerekmez, yalnız sağlayıcı iadesi + CANCELLED."""
+    await _provider_refund(order)
+    order.payment_status = "REFUNDED"
+    order.refunded_at = _now()
+    await order_fsm.transition_order(
+        db,
+        order,
+        "CANCELLED",
+        changed_by="system:oversell",
+        reason="Stok yetersiz: " + ", ".join(shortages),
+    )
+    await notification_service.notify(
+        db,
+        user_id=order.client_id,
+        role_id=ROLE_IDS[RoleType.CLIENT],
+        message=(
+            f"Siparişin #{order.id} için bazı ürünlerde stok kalmadığından "
+            "ödemen iade edildi."
+        ),
+        link="/siparislerim",
+    )
+    await _email_order(db, order, "REFUNDED")
 
 
 # ── Sorgu / dönüştürme ───────────────────────────────────────────────────────────
@@ -515,7 +570,7 @@ async def mark_shipped(
         )
     if order.payment_status != "PAID":
         raise HTTPException(status.HTTP_409_CONFLICT, "Ödenmemiş sipariş kargolanamaz")
-    order.status = "SHIPPED"
+    await order_fsm.transition_order(db, order, "SHIPPED", changed_by="admin")
     order.tracking_no = tracking_no
     await db.commit()
     await notification_service.notify(
@@ -534,7 +589,8 @@ async def mark_delivered(db: AsyncSession, order_id: int) -> OrderOut:
     order = await _load_full(db, order_id)
     if order is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Sipariş bulunamadı")
-    order.status = "DELIVERED"
+    # FSM: yalnız SHIPPED → DELIVERED (önceden ön-koşulsuzdu; PENDING'den bile olurdu).
+    await order_fsm.transition_order(db, order, "DELIVERED", changed_by="admin")
     await db.commit()
     await _email_order(db, order, "DELIVERED")
     return _to_out(order)
@@ -584,7 +640,7 @@ async def refund_order(db: AsyncSession, order_id: int) -> OrderOut:
     if order.payment_status != "PAID":
         raise HTTPException(status.HTTP_409_CONFLICT, "Yalnızca ödenmiş sipariş iade edilebilir")
     await _refund_payment(db, order)
-    order.status = "REFUNDED"
+    await order_fsm.transition_order(db, order, "REFUNDED", changed_by="admin")
     await db.commit()
     await notification_service.notify(
         db,
@@ -611,7 +667,7 @@ async def cancel_by_client(db: AsyncSession, order: Order) -> OrderOut:
 
     if order.payment_status == "PAID":
         await _refund_payment(db, order)
-    order.status = "CANCELLED"
+    await order_fsm.transition_order(db, order, "CANCELLED", changed_by="client")
     await db.commit()
     await notification_service.notify(
         db,
@@ -715,7 +771,7 @@ async def approve_return(
     order = ret.order
     if order.payment_status == "PAID":
         await _refund_payment(db, order)
-        order.status = "REFUNDED"
+        await order_fsm.transition_order(db, order, "REFUNDED", changed_by="admin")
     ret.status = ReturnStatus.APPROVED.value
     ret.admin_note = admin_note
     ret.resolved_at = _now()

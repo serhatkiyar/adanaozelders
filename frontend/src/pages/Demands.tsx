@@ -179,7 +179,7 @@ function DemandForm() {
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className={labelCls}>Bütçe alt (₺/saat)</label>
+          <label className={labelCls}>Bütçe alt (TL/saat)</label>
           <input
             value={budgetMin}
             onChange={(e) => setBudgetMin(e.target.value.replace(/[^\d]/g, ""))}
@@ -189,7 +189,7 @@ function DemandForm() {
           />
         </div>
         <div>
-          <label className={labelCls}>Bütçe üst (₺/saat)</label>
+          <label className={labelCls}>Bütçe üst (TL/saat)</label>
           <input
             value={budgetMax}
             onChange={(e) => setBudgetMax(e.target.value.replace(/[^\d]/g, ""))}

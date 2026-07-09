@@ -309,15 +309,15 @@ function TutorRow({
   const href = `${ROUTES.tutors}${sp.toString() ? `?${sp}` : ""}`;
 
   return (
-    <section className="mx-auto max-w-6xl px-6">
+    <section className="mx-auto max-w-[1216px] px-6">
       <RowHeader heading={heading} href={href} />
       {isLoading ? (
         <RowSkeleton />
       ) : (
         <HScroll className="gap-5 pb-2">
           {data!.map((tutor) => (
-            <div key={tutor.id} className="w-[175px] shrink-0 sm:w-[190px]">
-              <TutorCard tutor={tutor} showBookmark={false} />
+            <div key={tutor.id} className="w-[190px] shrink-0 sm:w-[210px]">
+              <TutorCard tutor={tutor} />
             </div>
           ))}
         </HScroll>
@@ -342,14 +342,14 @@ function LibraryRow({
   const href = `${ROUTES.libraries}${sp.toString() ? `?${sp}` : ""}`;
 
   return (
-    <section className="mx-auto max-w-6xl px-6">
+    <section className="mx-auto max-w-[1216px] px-6">
       <RowHeader heading={heading} href={href} />
       {isLoading ? (
         <RowSkeleton />
       ) : (
         <HScroll className="gap-5 pb-2">
           {data!.map((lib) => (
-            <div key={lib.id} className="w-[215px] shrink-0 sm:w-[235px]">
+            <div key={lib.id} className="w-[235px] shrink-0 sm:w-[255px]">
               <LibraryCard library={lib} />
             </div>
           ))}
@@ -396,7 +396,7 @@ function Footer() {
 
   return (
     <footer className="border-t border-slate-100 bg-white py-10 dark:border-slate-800 dark:bg-slate-900">
-      <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-6 sm:flex-row">
+      <div className="mx-auto flex max-w-[1216px] flex-col items-center justify-between gap-4 px-6 sm:flex-row">
         <Link to="/" className="flex items-center gap-2 transition hover:opacity-90">
           <img src="/logo.png" alt="Adana Özel Ders Logo" className="h-8 sm:h-10 w-auto object-contain grayscale opacity-70 hover:grayscale-0 hover:opacity-100 transition" />
         </Link>

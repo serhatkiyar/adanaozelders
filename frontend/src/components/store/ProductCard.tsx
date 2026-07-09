@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { ROUTES } from "@/lib/routes";
+import { StarRating } from "@/components/StarRating";
 import { formatTL } from "@/lib/money";
 import { useCartStore } from "@/store/cartStore";
 import { useFavoritesStore } from "@/store/favoritesStore";
@@ -88,13 +89,11 @@ export function ProductCard({
           {product.title}
         </Link>
 
-        {/* Değerlendirme — yalnız gerçek veride */}
+        {/* Değerlendirme — yalnız gerçek veride; 5 yıldız (dolu/yarım/boş) */}
         {hasRating && (
-          <div className="mt-1.5 flex items-center gap-1 text-xs text-slate-500">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className="text-amber-400">
-              <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-            </svg>
+          <div className="mt-1.5 flex items-center gap-1.5 text-xs text-slate-500">
             <span className="font-medium text-slate-700 dark:text-slate-300">{product.rating_average!.toFixed(1)}</span>
+            <StarRating value={product.rating_average} size={13} />
             <span className="text-slate-400">({product.rating_count})</span>
           </div>
         )}

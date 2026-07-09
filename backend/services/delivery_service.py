@@ -39,7 +39,7 @@ from schemas.delivery import (
     OrderTrackingOut,
     StopItemOut,
 )
-from services import notification_service, order_service
+from services import notification_service, order_fsm, order_service
 
 _ACTIVE_RUN_STATUSES = (DeliveryRunStatus.PLANNED.value, DeliveryRunStatus.ACTIVE.value)
 
@@ -248,7 +248,9 @@ async def cancel_run(db: AsyncSession, run_id: int) -> DeliveryRunOut:
     for stop in run.stops:
         if stop.status == DeliveryStopStatus.PENDING.value:
             if stop.order.status == "SHIPPED":
-                stop.order.status = "PAID"
+                await order_fsm.transition_order(
+                    db, stop.order, "PAID", changed_by="courier", reason="Tur iptal edildi"
+                )
                 stop.order.tracking_no = None
             stop.status = DeliveryStopStatus.FAILED.value
             stop.courier_note = stop.courier_note or "Tur iptal edildi"
@@ -269,7 +271,7 @@ async def start_run(db: AsyncSession, run_id: int) -> DeliveryRunOut:
     run.started_at = _now()
     for stop in run.stops:
         order = stop.order
-        order.status = "SHIPPED"
+        await order_fsm.transition_order(db, order, "SHIPPED", changed_by="courier")
         order.tracking_no = f"ELDEN-R{run.id}-S{stop.id}"
         await notification_service.notify(
             db,
@@ -278,6 +280,7 @@ async def start_run(db: AsyncSession, run_id: int) -> DeliveryRunOut:
             message=f"Siparişin #{order.id} bugün dağıtımda — kuryemiz yola çıktı.",
             link="/siparislerim",
         )
+        await _send_tracking_link(order)
     await db.commit()
     return await get_run(db, run_id)
 
@@ -400,8 +403,9 @@ async def add_stops(db: AsyncSession, run_id: int, order_ids: list[int]) -> Deli
         # Aktif turda eklenen durak da hemen 'dağıtımda' sayılır.
         if run.status == DeliveryRunStatus.ACTIVE.value:
             await db.flush()
-            order.status = "SHIPPED"
+            await order_fsm.transition_order(db, order, "SHIPPED", changed_by="courier")
             order.tracking_no = f"ELDEN-R{run.id}-S{stop.id}"
+            await _send_tracking_link(order)
     await db.commit()
     return await get_run(db, run_id)
 
@@ -414,7 +418,9 @@ async def remove_stop(db: AsyncSession, stop_id: int) -> DeliveryRunOut:
     if stop.status != DeliveryStopStatus.PENDING.value:
         raise HTTPException(status.HTTP_409_CONFLICT, "Sonuçlanmış durak çıkarılamaz")
     if stop.order.status == "SHIPPED":
-        stop.order.status = "PAID"
+        await order_fsm.transition_order(
+            db, stop.order, "PAID", changed_by="courier", reason="Durak turdan çıkarıldı"
+        )
         stop.order.tracking_no = None
     await db.delete(stop)
     await db.commit()
@@ -536,14 +542,44 @@ async def track_run(db: AsyncSession, run_id: int, *, lat: float, lng: float) ->
     await courier_position.set_position(run_id, lat, lng)
 
 
+async def _send_tracking_link(order: Order) -> None:
+    """Sipariş dağıtıma çıkarken oturumsuz kargo takip linkini SMS'ler (best-effort).
+
+    Link tabanı ``PUBLIC_TRACKING_BASE_URL`` (kargotakip.* subdomain'i); token
+    ``order.track_token`` (tahmin edilemez). Telefonsuz siparişte sessizce atlanır."""
+    if not order.ship_phone or not order.track_token:
+        return
+    base = settings.PUBLIC_TRACKING_BASE_URL.rstrip("/")
+    await sms.send_tracking_link_sms(
+        to=order.ship_phone, order_id=order.id, url=f"{base}/{order.track_token}"
+    )
+
+
 async def order_tracking(
-    db: AsyncSession, order_id: int, *, client_id: int
+    db: AsyncSession,
+    *,
+    order_id: int | None = None,
+    client_id: int | None = None,
+    track_token: str | None = None,
 ) -> OrderTrackingOut:
-    """Müşterinin sipariş takibi: durum + kurye konumu + sıra/ETA."""
-    order = await db.get(Order, order_id)
+    """Sipariş takibi: durum + kurye konumu + sıra/ETA.
+
+    İki giriş: (a) ``track_token`` verilirse **oturumsuz** public takip (SMS linki);
+    (b) ``order_id`` + ``client_id`` verilirse giriş yapmış müşterinin sahiplik
+    kontrollü takibi. Dönen ``OrderTrackingOut`` her iki yolda aynıdır."""
+    if track_token is not None:
+        order = (
+            await db.execute(
+                select(Order).where(
+                    Order.track_token == track_token, Order.deleted_at.is_(None)
+                )
+            )
+        ).scalars().first()
+    else:
+        order = await db.get(Order, order_id)
     if order is None or order.deleted_at is not None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Sipariş bulunamadı")
-    if order.client_id != client_id:
+    if track_token is None and order.client_id != client_id:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Sizin siparişiniz değil")
 
     # Siparişin en güncel durağı (varsa) + turu.
@@ -551,7 +587,7 @@ async def order_tracking(
         await db.execute(
             select(DeliveryStop)
             .options(selectinload(DeliveryStop.run))
-            .where(DeliveryStop.order_id == order_id)
+            .where(DeliveryStop.order_id == order.id)
             .order_by(DeliveryStop.id.desc())
             .limit(1)
         )
@@ -642,7 +678,7 @@ async def _finalize_delivered(
     if note:
         stop.courier_note = note
     order = stop.order
-    order.status = "DELIVERED"
+    await order_fsm.transition_order(db, order, "DELIVERED", changed_by="courier")
     await db.commit()
     await notification_service.notify(
         db,
@@ -698,7 +734,9 @@ async def fail_stop(db: AsyncSession, stop_id: int, *, reason: str) -> DeliveryS
     stop.status = DeliveryStopStatus.FAILED.value
     stop.courier_note = reason
     order = stop.order
-    order.status = "PAID"
+    await order_fsm.transition_order(
+        db, order, "PAID", changed_by="courier", reason=f"Teslim edilemedi: {reason}"
+    )
     order.tracking_no = None
     await db.commit()
     await notification_service.notify(

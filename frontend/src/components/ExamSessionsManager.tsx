@@ -617,7 +617,7 @@ function SessionEditor({
             </select>
           </label>
           <label className="block">
-            <span className="mb-1 block text-xs font-semibold text-slate-600 dark:text-slate-300">Ücret (₺)</span>
+            <span className="mb-1 block text-xs font-semibold text-slate-600 dark:text-slate-300">Ücret (TL)</span>
             <input type="number" min={0} value={f.price} onChange={(e) => set("price", Number(e.target.value))} className="input" />
           </label>
         </div>

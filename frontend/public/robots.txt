@@ -37,6 +37,10 @@ Disallow: /dijital-urunlerim
 Disallow: /magaza/sepet
 Disallow: /magaza/odeme
 
+# ── Token'lı özel bağlantılar (indekslenmesin) ──
+Disallow: /kargo-takip
+Disallow: /magaza/liste
+
 # ── Kimlik & token akışları ──
 Disallow: /giris
 Disallow: /kayit

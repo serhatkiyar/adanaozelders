@@ -23,3 +23,10 @@ devops/osrm/
 
 # VROOM konteyner erisim log'u (calisma zamaninda uretilir)
 devops/vroom/access.log
+
+# Yerel gelistirme TLS sertifikalari (mkcert; ozel anahtar iceriyor)
+devops/certs/
+
+# tsc -b artefakti — vite.config.js olusursa Vite onu .ts'e tercih eder!
+frontend/vite.config.js
+frontend/vite.config.d.ts

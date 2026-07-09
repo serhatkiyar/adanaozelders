@@ -84,15 +84,9 @@ export function StoreLayout({
 
           {/* Aksiyonlar — yatay [ikon · isim] */}
           <nav className="flex shrink-0 items-center gap-5 text-slate-600 md:gap-6 dark:text-slate-300">
-            <Link
-              to={ROUTES.tutors}
-              className="hidden text-sm font-medium transition-colors hover:text-indigo-600 lg:inline dark:hover:text-indigo-400"
-            >
-              Eğitmen Ara
-            </Link>
             <StoreAccountMenu />
 
-            <ActionItem to={ROUTES.storeFavorites} label="Favori Listem">
+            <ActionItem to={ROUTES.storeFavorites} label="Listelerim">
               <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
             </ActionItem>
 

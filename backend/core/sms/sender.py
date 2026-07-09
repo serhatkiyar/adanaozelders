@@ -47,3 +47,11 @@ async def send_delivery_otp_sms(*, to: str, code: str, order_id: int) -> bool:
         f"{settings.DELIVERY_OTP_TTL_MINUTES} dk geçerli."
     )
     return await _safe_send(SmsMessage(to=to, text=text))
+
+
+async def send_tracking_link_sms(*, to: str, order_id: int, url: str) -> bool:
+    """Sipariş dağıtıma çıkınca oturumsuz kargo takip linki (canlı kurye takibi)."""
+    text = (
+        f"#{order_id} siparişin dağıtıma çıktı! Kuryeni canlı takip et:\n{url}"
+    )
+    return await _safe_send(SmsMessage(to=to, text=text))

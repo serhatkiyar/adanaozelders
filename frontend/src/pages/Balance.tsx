@@ -1,7 +1,7 @@
 import { Link, Navigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
 import { DashboardShell } from "@/components/DashboardShell";
 import { PaymentStatusBadge } from "@/components/PaymentBadge";
+import { LibraryPayoutForm } from "@/components/LibraryPayoutForm";
 import { useEarnings, useEarningsTransactions } from "@/hooks/usePayments";
 import { useMyPayout } from "@/hooks/usePayout";
 import {
@@ -10,8 +10,7 @@ import {
 } from "@/hooks/useLibraries";
 import { useOperatorMe } from "@/hooks/useLibraryExams";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
-import { fetchLibraryPayout } from "@/api/libraries";
-import { TUTOR_NAV } from "@/lib/nav";
+import { OPERATOR_NAV, TUTOR_NAV } from "@/lib/nav";
 import { formatTRY } from "@/lib/money";
 import { formatDateTime } from "@/lib/datetime";
 import { ROUTES } from "@/lib/routes";
@@ -85,19 +84,6 @@ function TutorPayoutSummary() {
   );
 }
 
-function LibraryPayoutSummary({ libraryId }: { libraryId: number }) {
-  const { data: payout } = useQuery({
-    queryKey: ["library-payout", libraryId],
-    queryFn: () => fetchLibraryPayout(libraryId),
-  });
-  return (
-    <PayoutSummaryCard
-      status={payout?.payout_status ?? "NONE"}
-      ibanMasked={payout?.iban_masked}
-    />
-  );
-}
-
 const SOURCE_LABEL: Record<EarningTransaction["source"], string> = {
   LESSON: "Özel ders",
   EXAM: "Deneme oturumu",
@@ -146,6 +132,7 @@ function OperatorBalance() {
 
   return (
     <BalanceView
+      navItems={OPERATOR_NAV}
       loading={opLoading || sumLoading}
       net={summary?.released_earning}
       escrow={summary?.held_earning}
@@ -155,7 +142,16 @@ function OperatorBalance() {
       escrowHint="Katılım doğrulandıkça serbest kalır"
       transactions={txns}
       txnLoading={txnLoading}
-      payout={libraryId ? <LibraryPayoutSummary libraryId={libraryId} /> : null}
+      payout={
+        libraryId ? (
+          <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700">
+            <h2 className="mb-3 text-base font-bold text-slate-900 dark:text-white">
+              Ödeme Hesabı
+            </h2>
+            <LibraryPayoutForm libraryId={libraryId} />
+          </div>
+        ) : null
+      }
     />
   );
 }

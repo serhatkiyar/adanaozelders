@@ -313,7 +313,7 @@ export default function Marketplace() {
               : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:border-slate-600"
           }`}
         >
-          {minRate || maxRate ? `₺${minRate || "0"} - ${maxRate ? `₺${maxRate}` : "Üstü"}` : "Fiyat"}
+          {minRate || maxRate ? `${minRate || "0"} TL - ${maxRate ? `${maxRate} TL` : "Üstü"}` : "Fiyat"}
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className={pricePopoverOpen ? "rotate-180 transition-transform" : "transition-transform"}><path d="M6 9l6 6 6-6"/></svg>
         </button>
         

@@ -3,7 +3,6 @@ import { Link, useLocation } from "react-router-dom";
 import { ROUTES } from "@/lib/routes";
 import { useAuthStore } from "@/store/authStore";
 import { useLogout } from "@/hooks/useLogout";
-import { Avatar } from "@/components/Avatar";
 import { ROLE_IDS } from "@/types";
 
 /**
@@ -60,23 +59,13 @@ export function StoreAccountMenu() {
         onClick={() => setOpen((o) => !o)}
         aria-haspopup="menu"
         aria-expanded={open}
-        className="flex items-center gap-2 rounded-full transition hover:opacity-90"
+        className="group flex items-center gap-2 transition-colors hover:text-indigo-600 dark:hover:text-indigo-400"
       >
-        <Avatar name={user.full_name} avatar_url={user.avatar_url} size="sm" />
-        <span className="hidden max-w-[8rem] truncate text-sm font-medium text-slate-700 sm:inline dark:text-slate-200">
-          {user.first_name || "Hesabım"}
-        </span>
-        <svg
-          width="16"
-          height="16"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          className={`hidden text-slate-400 transition-transform sm:block ${open ? "rotate-180" : ""}`}
-        >
-          <path d="M6 9l6 6 6-6" />
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+          <circle cx="12" cy="7" r="4" />
         </svg>
+        <span className="hidden text-sm font-medium sm:inline">Hesabım</span>
       </button>
 
       {open && (
@@ -84,11 +73,6 @@ export function StoreAccountMenu() {
           role="menu"
           className="absolute right-0 top-full z-40 mt-2 w-56 rounded-2xl bg-white p-2 shadow-xl ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700"
         >
-          <div className="px-3 py-2">
-            <p className="truncate text-sm font-semibold text-slate-900 dark:text-white">
-              {user.full_name}
-            </p>
-          </div>
           <div className="my-1 border-t border-slate-100 dark:border-slate-700" />
 
           {isClient && (
@@ -99,21 +83,6 @@ export function StoreAccountMenu() {
                 <line x1="12" y1="22.08" x2="12" y2="12" />
               </svg>
               Siparişlerim
-            </Link>
-          )}
-          <Link to={ROUTES.storeFavorites} onClick={() => setOpen(false)} className={itemClass}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
-              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
-            </svg>
-            Favori Listem
-          </Link>
-          {isClient && (
-            <Link to={ROUTES.addresses} onClick={() => setOpen(false)} className={itemClass}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
-                <path d="M21 10c0 7-9 12-9 12s-9-5-9-12a9 9 0 0 1 18 0z" />
-                <circle cx="12" cy="10" r="3" />
-              </svg>
-              Adreslerim
             </Link>
           )}
           <Link to={ROUTES.profile} onClick={() => setOpen(false)} className={itemClass}>

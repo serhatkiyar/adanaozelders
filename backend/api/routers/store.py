@@ -19,6 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api.deps import require_roles, user_rate_limit
 from core import storage
 from core.config import settings
+from core.ratelimit import rate_limit
 from core.database import get_db
 from models.admin import Admin
 from models.client import Client
@@ -78,6 +79,12 @@ _review_limit = user_rate_limit(
 _pay_limit = user_rate_limit(
     key="store_pay",
     limit=settings.RATE_LIMIT_PAYMENT,
+    window_seconds=settings.RATE_LIMIT_WINDOW_SECONDS,
+)
+# Oturumsuz kargo takibi IP bazlı (token brute-force koruması; auth yok).
+_track_limit = rate_limit(
+    key="order_track",
+    limit=settings.RATE_LIMIT_TRACKING,
     window_seconds=settings.RATE_LIMIT_WINDOW_SECONDS,
 )
 
@@ -528,6 +535,22 @@ async def list_my_orders(
     return await order_service.list_mine(db, client)
 
 
+@router.get(
+    "/orders/track/{token}",
+    response_model=OrderTrackingOut,
+    dependencies=[Depends(_track_limit)],
+)
+async def public_order_tracking(
+    token: str,
+    db: AsyncSession = Depends(get_db),
+):
+    """Oturumsuz kargo takibi (SMS'le paylaşılan token). Kimlik doğrulama YOK —
+    token tahmin edilemez; IP bazlı rate-limit brute-force'a karşı korur. Not:
+    `/orders/{order_id}` (int) route'undan ÖNCE tanımlı (segment çakışması yok ama
+    açık tutulur)."""
+    return await delivery_service.order_tracking(db, track_token=token)
+
+
 @router.get("/orders/{order_id}/tracking", response_model=OrderTrackingOut)
 async def order_tracking(
     order_id: int,
@@ -535,7 +558,9 @@ async def order_tracking(
     db: AsyncSession = Depends(get_db),
 ):
     """Kendi-filo teslimat canlı takibi: kurye konumu + sıra + tahmini varış."""
-    return await delivery_service.order_tracking(db, order_id, client_id=client.id)
+    return await delivery_service.order_tracking(
+        db, order_id=order_id, client_id=client.id
+    )
 
 
 @router.get("/orders/{order_id}", response_model=OrderOut)

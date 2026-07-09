@@ -151,7 +151,7 @@ function NewProductForm({ onDone }: { onDone: () => void }) {
       <input
         value={price}
         onChange={(e) => setPrice(e.target.value)}
-        placeholder="Fiyat (₺)"
+        placeholder="Fiyat (TL)"
         inputMode="decimal"
         className="input mt-3"
       />

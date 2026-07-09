@@ -229,7 +229,7 @@ function ProductForm({
           </option>
         ))}
       </select>
-      <input value={price} onChange={(e) => setPrice(e.target.value)} placeholder="Fiyat (₺)" inputMode="decimal" className="input" />
+      <input value={price} onChange={(e) => setPrice(e.target.value)} placeholder="Fiyat (TL)" inputMode="decimal" className="input" />
       <input value={compareAt} onChange={(e) => setCompareAt(e.target.value)} placeholder="Eski fiyat (opsiyonel)" inputMode="decimal" className="input" />
       {kind === "PHYSICAL" && (
         <input value={stock} onChange={(e) => setStock(e.target.value)} placeholder="Stok" inputMode="numeric" className="input" />

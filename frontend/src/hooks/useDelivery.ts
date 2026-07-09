@@ -164,3 +164,15 @@ export function useOrderTracking(orderId: number | null, enabled = true) {
       query.state.data?.status === "EN_ROUTE" ? 15_000 : false,
   });
 }
+
+/** Oturumsuz kargo takibi (SMS token'ı) — dağıtımda 15 sn'de bir tazelenir. */
+export function usePublicOrderTracking(token: string | null) {
+  return useQuery({
+    queryKey: ["publicOrderTracking", token],
+    queryFn: () => deliveryApi.fetchPublicOrderTracking(token!),
+    enabled: !!token,
+    retry: false,
+    refetchInterval: (query) =>
+      query.state.data?.status === "EN_ROUTE" ? 15_000 : false,
+  });
+}

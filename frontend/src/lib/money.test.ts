@@ -17,8 +17,8 @@ describe("parseMoney", () => {
 });
 
 describe("formatTRY", () => {
-  it("₺ ile biçimler (tam sayı)", () => {
-    expect(formatTRY(250)).toBe("₺250");
+  it("'TL' son ekiyle biçimler (tam sayı)", () => {
+    expect(formatTRY(250)).toBe("250 TL");
   });
   it("ondalığı tr-TR (virgül) ile gösterir", () => {
     expect(formatTRY(99.99)).toContain("99,99");

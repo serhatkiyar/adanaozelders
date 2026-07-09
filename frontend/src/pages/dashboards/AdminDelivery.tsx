@@ -16,6 +16,7 @@ import {
   useRemoveStop,
   useReorderStops,
   useRunAction,
+  useRunPosition,
 } from "@/hooks/useDelivery";
 import { formatDuration, formatEta } from "@/lib/polyline";
 import {
@@ -249,6 +250,8 @@ function RunDetail({ run }: { run: DeliveryRun }) {
   const locatedPending = run.stops.filter(
     (s) => s.status === "PENDING" && s.lat != null
   ).length;
+  // Sahadayken kuryenin canlı konumu haritada gösterilir (10 sn poll).
+  const { data: courierPos } = useRunPosition(run.id, run.status === "ACTIVE");
 
   const move = (stopId: number, dir: -1 | 1) => {
     const ids = sorted.map((s) => s.id);
@@ -442,7 +445,7 @@ function RunDetail({ run }: { run: DeliveryRun }) {
       )}
       {run.optimized_at && showMap && run.stops.some((s) => s.lat != null) && (
         <div className="px-6 pb-4">
-          <DeliveryRouteMap run={run} />
+          <DeliveryRouteMap run={run} courier={courierPos} />
         </div>
       )}
 

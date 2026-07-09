@@ -78,6 +78,9 @@ class Settings(BaseSettings):
     # (Sandbox'ta da çalışır: callback sunucu-sunucu değil, kullanıcının TARAYICISININ
     # POST'udur; localhost'a erişebilir.)
     BACKEND_BASE_URL: str = "http://localhost:8000"
+    # Oturumsuz kargo takip linkinin (SMS'le paylaşılır) kökü. Üretimde ayrı
+    # subdomain; geliştirmede frontend kökü + /kargo-takip yolu kullanılır.
+    PUBLIC_TRACKING_BASE_URL: str = "http://localhost:5173/kargo-takip"
 
     # E-posta gönderimi. EMAIL_PROVIDER: "console" (loglar) | "smtp" (MailHog/SES vb.).
     # Geliştirmede "smtp" + MailHog (port 1025) ya da "console" yeterlidir; gerçek
@@ -158,6 +161,8 @@ class Settings(BaseSettings):
     RATE_LIMIT_SMS: int = 5
     # Adres arama (geocode) proxy'si — kullanıcı bazlı (typeahead için yüksek).
     RATE_LIMIT_GEOCODE: int = 90
+    # Oturumsuz kargo takibi (SMS linki) — IP bazlı (token brute-force koruması).
+    RATE_LIMIT_TRACKING: int = 60
 
     # Adres arama/geocode. Sağlayıcıdan bağımsız (core/payments, core/mail deseni):
     #   GOOGLE_MAPS_API_KEY verilirse Google Places API (New) + Geocoding kullanılır

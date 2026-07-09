@@ -337,6 +337,13 @@ class Order(Base, TimestampMixin, SoftDeleteMixin):
     ship_lat: Mapped[float | None] = mapped_column(Numeric(9, 6), nullable=True)
     ship_lng: Mapped[float | None] = mapped_column(Numeric(9, 6), nullable=True)
     tracking_no: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    # Oturumsuz (SMS'le paylaşılan) kargo takip token'ı — tahmin edilemez, tekil.
+    # tracking_no (ELDEN-R{run}-S{stop}) sıralı/enumerate edilebilir olduğundan public
+    # takipte KULLANILMAZ; bu token Collection.share_token desenini izler.
+    track_token: Mapped[str] = mapped_column(
+        String(32), nullable=False, unique=True, index=True,
+        default=lambda: uuid.uuid4().hex,
+    )
 
     client: Mapped["Client"] = relationship()
     items: Mapped[list["OrderItem"]] = relationship(
@@ -351,6 +358,25 @@ class Order(Base, TimestampMixin, SoftDeleteMixin):
     )
 
     __table_args__ = (Index("ix_orders_status", "status"),)
+
+
+class OrderStatusHistory(Base, TimestampMixin):
+    """Sipariş durum geçiş denetim kaydı. ``order_fsm.transition_order`` her geçerli
+    geçişte bir satır yazar (eski→yeni durum, kim değiştirdi, gerekçe) — "bu sipariş
+    neden/ne zaman şu duruma geçti" sorusunun kalıcı cevabı. audit_logs admin-aksiyon
+    odaklı olduğundan (aktör = admin) sipariş yaşam döngüsü ayrı tabloda tutulur;
+    aktör 'system:payment'/'courier'/'admin'/'client' gibi serbest metindir."""
+
+    __tablename__ = "order_status_history"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    order_id: Mapped[int] = mapped_column(
+        ForeignKey("orders.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    old_status: Mapped[str | None] = mapped_column(String(12), nullable=True)
+    new_status: Mapped[str] = mapped_column(String(12), nullable=False)
+    changed_by: Mapped[str] = mapped_column(String(60), nullable=False)
+    reason: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
 class OrderItem(Base, TimestampMixin):

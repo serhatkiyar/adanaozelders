@@ -186,7 +186,7 @@ export function PriceRangeHistogram({
                 Minimum
               </span>
               <div className="flex items-center gap-1 rounded-full border border-slate-300 px-4 py-2.5 focus-within:border-slate-900 dark:border-slate-600 dark:focus-within:border-slate-300">
-                <span className="text-sm text-slate-400">₺</span>
+                <span className="text-sm text-slate-400">TL</span>
                 <input
                   type="text"
                   inputMode="numeric"
@@ -204,7 +204,7 @@ export function PriceRangeHistogram({
                 Maksimum
               </span>
               <div className="flex items-center gap-1 rounded-full border border-slate-300 px-4 py-2.5 focus-within:border-slate-900 dark:border-slate-600 dark:focus-within:border-slate-300">
-                <span className="text-sm text-slate-400">₺</span>
+                <span className="text-sm text-slate-400">TL</span>
                 <input
                   type="text"
                   inputMode="numeric"

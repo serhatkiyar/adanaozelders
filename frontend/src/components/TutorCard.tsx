@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import type { TutorSearchOut } from "@/types";
 import { BookmarkButton } from "@/components/BookmarkButton";
 import { StarRating } from "@/components/StarRating";
-import { parseMoney } from "@/lib/money";
+import { parseMoney, formatTRY } from "@/lib/money";
 import { ROUTES, tutorSlug } from "@/lib/routes";
 
 interface TutorCardProps {
@@ -43,8 +43,8 @@ export function TutorCard({
         
         {/* Bookmark top right */}
         {showBookmark && (
-          <div className="absolute right-4 top-4 z-10 text-slate-700 transition hover:scale-110 dark:text-white">
-            <BookmarkButton tutorId={tutor.id} />
+          <div className="absolute right-4 top-4 z-10">
+            <BookmarkButton tutorId={tutor.id} size="lg" />
           </div>
         )}
 
@@ -87,7 +87,7 @@ export function TutorCard({
         <div className="mt-1 flex items-center justify-between">
           <div className="flex items-baseline text-slate-900 dark:text-white">
             <span className="text-sm font-bold">
-              {rate !== null ? `${rate}₺` : "Ücret belirtilmemiş"}
+              {rate !== null ? formatTRY(rate) : "Ücret belirtilmemiş"}
             </span>
             {rate !== null && (
               <span className="text-[11px] font-bold">/saat</span>

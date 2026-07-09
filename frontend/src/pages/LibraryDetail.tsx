@@ -19,6 +19,7 @@ import {
   useLibraryReviews,
 } from "@/hooks/useLibraries";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { useNavSearch } from "@/hooks/useNavSearch";
 import { useAuthStore } from "@/store/authStore";
 import { toast } from "@/store/toastStore";
 import { getErrorMessage } from "@/lib/errors";
@@ -78,7 +79,6 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
     <h2 className="mb-3 text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
       {children}
-      <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons@latest/iconfont/tabler-icons.css" />
     </h2>
   );
 }
@@ -100,6 +100,9 @@ export default function LibraryDetail() {
   const canMessage = isClient || isTutor;
   const navItems = isTutor ? TUTOR_NAV : isClient ? STUDENT_NAV : undefined;
 
+  const { center, bottom, open: searchOpen, setOpen: setSearchOpen } =
+    useNavSearch("kutuphaneler");
+
   const todayWeekday = jsDayToWeekday(new Date().getDay());
   const [showReviews, setShowReviews] = useState(false);
   const [showReserve, setShowReserve] = useState(false);
@@ -107,7 +110,7 @@ export default function LibraryDetail() {
   const content = (() => {
     if (isLoading) {
       return (
-        <div className="mx-auto max-w-6xl space-y-5">
+        <div className="mx-auto max-w-[76rem] space-y-5">
           <div className="h-64 animate-pulse rounded-3xl bg-slate-100 dark:bg-slate-800" />
           <div className="grid gap-5 lg:grid-cols-3">
             <div className="h-72 animate-pulse rounded-2xl bg-slate-100 dark:bg-slate-800" />
@@ -118,7 +121,7 @@ export default function LibraryDetail() {
     }
     if (isError || !lib) {
       return (
-        <div className="mx-auto max-w-6xl">
+        <div className="mx-auto max-w-[76rem]">
           <div className="rounded-2xl bg-red-50 px-5 py-4 text-sm text-red-700 dark:bg-red-500/10 dark:text-red-300">
             {getErrorMessage(error, "Kütüphane bulunamadı.")}
           </div>
@@ -139,7 +142,7 @@ export default function LibraryDetail() {
 
     return (
       <>
-        <div className="mx-auto max-w-6xl space-y-5">
+        <div className="mx-auto max-w-[76rem] space-y-5">
           <Seo
             title={lib.name}
             description={
@@ -399,12 +402,29 @@ export default function LibraryDetail() {
     );
   })();
 
+  // Geniş arama açıkken sayfayı hafifçe karart; tıklayınca kapat.
+  const searchOverlay = searchOpen ? (
+    <div
+      className="fixed inset-0 z-30 bg-slate-900/10 animate-in fade-in duration-200"
+      onClick={() => setSearchOpen(false)}
+    />
+  ) : null;
+
   return token ? (
-    <DashboardShell title="Kütüphane" navItems={navItems}>
+    <DashboardShell
+      title="Kütüphane"
+      navItems={navItems}
+      center={center}
+      bottom={bottom}
+    >
+      {searchOverlay}
       {content}
     </DashboardShell>
   ) : (
-    <PublicShell>{content}</PublicShell>
+    <PublicShell center={center} bottom={bottom}>
+      {searchOverlay}
+      {content}
+    </PublicShell>
   );
 }
 

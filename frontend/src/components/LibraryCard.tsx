@@ -2,9 +2,8 @@ import { Link } from "react-router-dom";
 import { ROUTES } from "@/lib/routes";
 import { StarRating } from "@/components/StarRating";
 import { LibraryBookmarkButton } from "@/components/LibraryBookmarkButton";
-import { ShareButton } from "@/components/ShareButton";
-import { absoluteUrl } from "@/lib/seo";
 import { regionLabel } from "@/lib/region";
+import { formatTRY } from "@/lib/money";
 import { PinIcon } from "@/components/PinIcon";
 import type { LibrarySearchOut } from "@/types";
 
@@ -38,15 +37,9 @@ export function LibraryCard({ library }: { library: LibrarySearchOut }) {
             {library.open_now ? "Şu an açık" : "Kapalı"}
           </span>
         )}
-        {/* Favorile + Paylaş — kart bir Link olduğundan butonlar tıklamayı durdurur. */}
-        <div className="absolute right-3 top-3 z-10 flex items-center gap-1.5">
-          <ShareButton
-            url={absoluteUrl(ROUTES.library(library.slug))}
-            title={library.name}
-            heading="Kütüphaneyi paylaş"
-            overlay
-          />
-          <LibraryBookmarkButton libraryId={library.id} />
+        {/* Favorile — kart bir Link olduğundan buton tıklamayı durdurur. */}
+        <div className="absolute right-3 top-3 z-10">
+          <LibraryBookmarkButton libraryId={library.id} size="lg" />
         </div>
         {library.distance_km != null && (
           <span className="absolute bottom-2 right-3 rounded-full bg-slate-900/70 px-2.5 py-1 text-[11px] font-semibold text-white backdrop-blur">
@@ -92,7 +85,7 @@ export function LibraryCard({ library }: { library: LibrarySearchOut }) {
 
         {library.study_hourly_price != null && (
           <p className="mt-2 text-xs font-semibold text-violet-600 dark:text-violet-300">
-            🪑 Çalışma alanı · ₺{Number(library.study_hourly_price).toLocaleString("tr-TR")}/saat
+            🪑 Çalışma alanı · {formatTRY(library.study_hourly_price)}/saat
           </p>
         )}
       </div>

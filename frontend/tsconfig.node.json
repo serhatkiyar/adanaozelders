@@ -2,6 +2,10 @@
   "compilerOptions": {
     "composite": true,
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.node.tsbuildinfo",
+    // composite proje emit'siz olamaz (TS6310); çıktıyı kaynak yanına değil
+    // node_modules altına bas — yoksa vite.config.js oluşur ve Vite onu
+    // vite.config.ts'e TERCİH eder (bayat config sessizce kazanır).
+    "outDir": "./node_modules/.tmp/tsconfig.node",
     "skipLibCheck": true,
     "module": "ESNext",
     "moduleResolution": "bundler",

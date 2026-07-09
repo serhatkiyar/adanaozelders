@@ -31,8 +31,6 @@ export const STUDENT_NAV: NavItem[] = [
   { to: ROUTES.favorites, label: "Favorilerim", icon: "favorites" },
   { to: ROUTES.messages, label: "Mesajlar", icon: "messages" },
   { to: ROUTES.demands, label: "Taleplerim", icon: "demand" },
-  { to: ROUTES.libraries, label: "Kütüphaneler", icon: "library" },
-  { to: ROUTES.store, label: "Mağaza", icon: "store" },
   { to: ROUTES.learn, label: "Öğren", icon: "learn" },
   { to: ROUTES.bookings, label: "Rezervasyonlar", icon: "bookings" },
 ];
@@ -46,9 +44,11 @@ export const TUTOR_NAV: NavItem[] = [
   { to: ROUTES.libraries, label: "Kütüphaneler", icon: "library" },
 ];
 
-// Kütüphane operatörü: panel + mesajlar (öğrenci/eğitmenlerle yazışma).
+// Kütüphane operatörü: özet panel + profil + operasyon + para + mesajlar.
 export const OPERATOR_NAV: NavItem[] = [
   { to: "/", label: "Panel", icon: "dashboard", end: true },
-  { to: ROUTES.messages, label: "Mesajlar", icon: "messages" },
+  { to: ROUTES.operatorLibrary, label: "Kütüphanem", icon: "library" },
+  { to: ROUTES.operatorSessions, label: "Oturumlar & QR", icon: "tickets" },
   { to: ROUTES.balance, label: "Bakiyem", icon: "wallet" },
+  { to: ROUTES.messages, label: "Mesajlar", icon: "messages" },
 ];

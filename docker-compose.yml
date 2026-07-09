@@ -134,6 +134,14 @@ services:
       SMTP_USE_TLS: "False"
       EMAIL_FROM: ${EMAIL_FROM:-no-reply@ceyhan.local}
       FRONTEND_BASE_URL: ${FRONTEND_BASE_URL:-http://localhost:5173}
+      # Rota optimizasyonu: `--profile routing` açıkken backend container'ı VROOM'a
+      # servis adıyla ulaşır (localhost:3000 container içinden çalışmaz). Profil
+      # kapalıyken ROUTING_PROVIDER=auto sessizce haversine'e düşer — hard depends_on
+      # YOK (profilli servise bağımlılık varsayılan `up`'ı bozardı).
+      ROUTING_PROVIDER: ${ROUTING_PROVIDER:-auto}
+      VROOM_URL: ${VROOM_URL:-http://vroom:3000}
+      # Oturumsuz kargo takip linki (SMS). Üretimde kargotakip.* subdomain'i.
+      PUBLIC_TRACKING_BASE_URL: ${PUBLIC_TRACKING_BASE_URL:-http://localhost:5173/kargo-takip}
     ports:
       - "8000:8000"
 

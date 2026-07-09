@@ -218,7 +218,7 @@ export function LibraryEditorModal({
             </Field>
           </div>
 
-          <Field label="Çalışma alanı saatlik ücreti (₺ — boş ise rezervasyon kapalı)">
+          <Field label="Çalışma alanı saatlik ücreti (TL — boş ise rezervasyon kapalı)">
             <input
               type="number"
               min={0}
