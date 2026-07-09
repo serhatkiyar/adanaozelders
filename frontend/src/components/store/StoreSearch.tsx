@@ -5,6 +5,12 @@ import { ROUTES } from "@/lib/routes";
 import { searchProducts } from "@/api/store";
 import { useDebounce } from "@/hooks/useDebounce";
 import { formatTL } from "@/lib/money";
+import {
+  addSearchHistory,
+  clearSearchHistory,
+  getSearchHistory,
+  removeSearchHistory,
+} from "@/lib/storeSearchHistory";
 
 /**
  * Mağaza arama çubuğu + canlı öneriler (typeahead). Mevcut `searchProducts`'ı
@@ -16,6 +22,7 @@ export function StoreSearch() {
   const [q, setQ] = useState(params.get("q") || "");
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(-1);
+  const [history, setHistory] = useState<string[]>(() => getSearchHistory());
   const ref = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const debounced = useDebounce(q);
@@ -37,14 +44,29 @@ export function StoreSearch() {
   }, []);
 
   const showDropdown = open && term.length >= 2;
+  // Arama çubuğu boşken tekrar odaklanınca son aramalar gösterilir.
+  const showHistory = open && q.trim().length === 0 && history.length > 0;
 
   const go = (to: string) => {
     setOpen(false);
     setActive(-1);
     navigate(to);
   };
-  const searchAll = () =>
-    go(q.trim() ? `${ROUTES.store}?q=${encodeURIComponent(q.trim())}` : ROUTES.store);
+  const searchAll = () => {
+    const t = q.trim();
+    if (t) {
+      setHistory(addSearchHistory(t));
+      go(`${ROUTES.store}?q=${encodeURIComponent(t)}`);
+    } else {
+      go(ROUTES.store);
+    }
+  };
+  // Geçmişten bir terime tıklama: kutuya yaz, başa taşı, aramayı çalıştır.
+  const runHistory = (t: string) => {
+    setQ(t);
+    setHistory(addSearchHistory(t));
+    go(`${ROUTES.store}?q=${encodeURIComponent(t)}`);
+  };
 
   const onKeyDown = (e: React.KeyboardEvent) => {
     if (!showDropdown) return;
@@ -140,6 +162,58 @@ export function StoreSearch() {
               {isFetching ? "Aranıyor…" : "Sonuç bulunamadı"}
             </p>
           )}
+        </div>
+      )}
+
+      {showHistory && (
+        <div className="absolute left-0 right-0 top-full z-40 mt-2 overflow-hidden rounded-xl border border-slate-100 bg-white shadow-xl dark:border-slate-700 dark:bg-slate-800">
+          <div className="flex items-center justify-between px-3 py-2">
+            <span className="text-xs font-medium text-slate-400 dark:text-slate-500">
+              Son aramalar
+            </span>
+            <button
+              type="button"
+              onClick={() => setHistory(clearSearchHistory())}
+              className="text-xs font-medium text-slate-400 transition-colors hover:text-slate-600 dark:hover:text-slate-300"
+            >
+              Tümünü temizle
+            </button>
+          </div>
+          {history.map((h) => (
+            <div
+              key={h}
+              className="group flex items-center transition-colors hover:bg-slate-50 dark:hover:bg-slate-700/50"
+            >
+              <button
+                type="button"
+                onClick={() => runHistory(h)}
+                className="flex min-w-0 flex-1 items-center gap-3 px-3 py-2 text-left"
+              >
+                <svg
+                  className="shrink-0 text-slate-400"
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 2m6-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span className="truncate text-sm text-slate-700 dark:text-slate-200">{h}</span>
+              </button>
+              <button
+                type="button"
+                aria-label={`"${h}" aramasını kaldır`}
+                onClick={() => setHistory(removeSearchHistory(h))}
+                className="flex shrink-0 items-center justify-center px-3 py-2 text-slate-400 transition-colors hover:text-slate-700 dark:hover:text-slate-200"
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          ))}
         </div>
       )}
     </div>
