@@ -4,6 +4,7 @@ import { DashboardShell } from "@/components/DashboardShell";
 import { STUDENT_NAV } from "@/lib/nav";
 import { ROUTES } from "@/lib/routes";
 import { ModalShell } from "@/components/store/ModalShell";
+import { AddressForm } from "@/components/address/AddressForm";
 import { FullScreenSpinner } from "@/components/Spinner";
 import {
   useMyAddresses,
@@ -66,6 +67,11 @@ export default function AddressesPage() {
                     </span>
                   )}
                 </div>
+                {(a.recipient_name || a.phone) && (
+                  <p className="mt-1.5 text-sm text-slate-700 dark:text-slate-200">
+                    {[a.recipient_name, a.phone].filter(Boolean).join(" · ")}
+                  </p>
+                )}
                 <p className="mt-2 whitespace-pre-line text-sm text-slate-600 dark:text-slate-300">
                   {a.address_line}
                   {(a.door_no || a.apt_no) && (
@@ -122,93 +128,31 @@ export default function AddressesPage() {
   );
 }
 
+/** Ortak AddressForm ile ekle/düzenle — rezervasyon ve checkout ile aynı tasarım
+ *  (haritadan konum, il/ilçe, alıcı adı + telefon dahil). */
 function AddressFormModal({ address, onClose }: { address?: SavedAddress; onClose: () => void }) {
   const add = useAddAddress();
   const update = useUpdateAddress();
-  const [title, setTitle] = useState(address?.title ?? "");
-  const [line, setLine] = useState(address?.address_line ?? "");
-  const [doorNo, setDoorNo] = useState(address?.door_no ?? "");
-  const [aptNo, setAptNo] = useState(address?.apt_no ?? "");
-  const [directions, setDirections] = useState(address?.directions ?? "");
-  const [isDefault, setIsDefault] = useState(address?.is_default ?? false);
   const pending = add.isPending || update.isPending;
-
-  const inputCls =
-    "w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:focus:ring-indigo-500/20";
-
-  function submit() {
-    if (!title.trim() || !line.trim()) {
-      toast.error("Başlık ve açık adres zorunlu.");
-      return;
-    }
-    const payload = {
-      title: title.trim(),
-      address_line: line.trim(),
-      door_no: doorNo.trim() || null,
-      apt_no: aptNo.trim() || null,
-      directions: directions.trim() || null,
-      is_default: isDefault,
-    };
-    const opts = {
-      onSuccess: () => {
-        toast.success(address ? "Adres güncellendi" : "Adres eklendi");
-        onClose();
-      },
-      onError: () => toast.error("Adres kaydedilemedi"),
-    };
-    if (address) update.mutate({ id: address.id, payload }, opts);
-    else add.mutate(payload, opts);
-  }
 
   return (
     <ModalShell title={address ? "Adresi düzenle" : "Yeni adres"} onClose={onClose}>
-      <div className="space-y-3">
-        <div>
-          <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Başlık</label>
-          <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Ev, İş…" className={inputCls} />
-        </div>
-        <div>
-          <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Açık adres</label>
-          <textarea value={line} onChange={(e) => setLine(e.target.value)} rows={2} placeholder="Mahalle, cadde, sokak, no" className={inputCls} />
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Kapı no</label>
-            <input value={doorNo} onChange={(e) => setDoorNo(e.target.value)} className={inputCls} />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Daire no</label>
-            <input value={aptNo} onChange={(e) => setAptNo(e.target.value)} className={inputCls} />
-          </div>
-        </div>
-        <div>
-          <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">Tarif (opsiyonel)</label>
-          <input value={directions} onChange={(e) => setDirections(e.target.value)} placeholder="Kapıda zili çalın…" className={inputCls} />
-        </div>
-        <label className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
-          <input
-            type="checkbox"
-            checked={isDefault}
-            onChange={(e) => setIsDefault(e.target.checked)}
-            className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 dark:border-slate-600 dark:bg-slate-700"
-          />
-          Varsayılan adres yap
-        </label>
-      </div>
-
-      <div className="mt-5 flex justify-end gap-2">
-        <button type="button" onClick={onClose} className="rounded-lg px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
-          Vazgeç
-        </button>
-        <button
-          type="button"
-          disabled={pending}
-          onClick={submit}
-          className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-indigo-700 disabled:opacity-50"
-        >
-          Kaydet
-        </button>
-      </div>
+      <AddressForm
+        initial={address}
+        pending={pending}
+        onCancel={onClose}
+        onSubmit={(payload) => {
+          const opts = {
+            onSuccess: () => {
+              toast.success(address ? "Adres güncellendi" : "Adres eklendi");
+              onClose();
+            },
+            onError: () => toast.error("Adres kaydedilemedi"),
+          };
+          if (address) update.mutate({ id: address.id, payload }, opts);
+          else add.mutate(payload, opts);
+        }}
+      />
     </ModalShell>
   );
 }

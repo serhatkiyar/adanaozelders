@@ -14,6 +14,7 @@ import { getLegalDoc, OPERATOR } from "@/lib/legalContent";
 import { validateCart } from "@/api/store";
 import { useCreateOrder } from "@/hooks/useStore";
 import { useMyAddresses, useAddAddress } from "@/hooks/useAddresses";
+import { AddressForm } from "@/components/address/AddressForm";
 import { useCartStore } from "@/store/cartStore";
 import { toast } from "@/store/toastStore";
 
@@ -149,6 +150,11 @@ export default function CheckoutPage() {
                               />
                               <div>
                                 <p className="text-sm font-medium text-slate-800 dark:text-slate-200">{a.title}</p>
+                                {(a.recipient_name || a.phone) && (
+                                  <p className="text-sm text-slate-600 dark:text-slate-300">
+                                    {[a.recipient_name, a.phone].filter(Boolean).join(" · ")}
+                                  </p>
+                                )}
                                 <p className="text-sm text-slate-500 dark:text-slate-400">{a.address_line}</p>
                               </div>
                             </label>
@@ -648,45 +654,33 @@ function CouponBox({
   );
 }
 
+/** Kayıtlı adres yokken checkout içinde tam adres formu — ortak AddressForm
+ *  (haritadan konum, il/ilçe, alıcı adı + telefon; teslimat bölgesi kontrolü
+ *  pin'den beslendiği için konum burada da seçilebilmeli). */
 function NewAddressForm({ onCreated }: { onCreated: (id: number) => void }) {
-  const [title, setTitle] = useState("");
-  const [line, setLine] = useState("");
   const add = useAddAddress();
 
   return (
-    <div className="rounded-xl border border-slate-200 p-4 dark:border-slate-700">
-      <p className="text-sm text-slate-500">Kayıtlı adresin yok. Yeni ekle:</p>
-      <input
-        value={title}
-        onChange={(e) => setTitle(e.target.value)}
-        placeholder="Başlık (ör. Ev)"
-        className="mt-3 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-      />
-      <textarea
-        value={line}
-        onChange={(e) => setLine(e.target.value)}
-        placeholder="Açık adres"
-        rows={2}
-        className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-      />
-      <button
-        type="button"
-        disabled={add.isPending || !title || !line}
-        onClick={() =>
+    <div className="rounded-xl border border-slate-200 p-1 dark:border-slate-700">
+      <p className="px-3 pt-3 text-sm text-slate-500">Kayıtlı adresin yok. Yeni ekle:</p>
+      <AddressForm
+        pending={add.isPending}
+        submitLabel="Adresi kaydet"
+        hideDefaultToggle
+        onCancel={() => {}}
+        onSubmit={(payload) =>
           add.mutate(
-            { title, address_line: line, is_default: true },
+            { ...payload, is_default: true },
             {
               onSuccess: (created) => {
                 onCreated(created.id);
                 toast.success("Adres eklendi");
               },
+              onError: () => toast.error("Adres kaydedilemedi"),
             }
           )
         }
-        className="mt-2 rounded-lg bg-indigo-600 px-4 py-1.5 text-sm font-medium text-white disabled:opacity-50 hover:bg-indigo-700"
-      >
-        Adresi kaydet
-      </button>
+      />
     </div>
   );
 }

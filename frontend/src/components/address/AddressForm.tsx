@@ -63,6 +63,8 @@ export function AddressForm({
   onCancel,
 }: AddressFormProps) {
   const [title, setTitle] = useState(initial?.title ?? "");
+  const [recipientName, setRecipientName] = useState(initial?.recipient_name ?? "");
+  const [phone, setPhone] = useState(initial?.phone ?? "");
   const [addressLine, setAddressLine] = useState(initial?.address_line ?? "");
   const [city, setCity] = useState(initial?.city ?? "Adana");
   const [district, setDistrict] = useState(initial?.district ?? "");
@@ -90,6 +92,8 @@ export function AddressForm({
     }
     onSubmit({
       title: title.trim(),
+      recipient_name: recipientName.trim() || null,
+      phone: phone.trim() || null,
       address_line: addressLine.trim(),
       city: city.trim() || null,
       district: district.trim() || null,
@@ -116,6 +120,32 @@ export function AddressForm({
           placeholder="Örn. Ev, Kütüphane, İş"
           autoFocus
         />
+      </div>
+
+      {/* Alıcı — boş bırakılırsa siparişte hesap sahibinin adı/telefonu kullanılır */}
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className={fieldLabelCls}>Alıcı Adı Soyadı</label>
+          <input
+            type="text"
+            maxLength={150}
+            value={recipientName}
+            onChange={(e) => setRecipientName(e.target.value)}
+            className={inputCls}
+            placeholder="Boşsa: hesap sahibi"
+          />
+        </div>
+        <div>
+          <label className={fieldLabelCls}>Telefon</label>
+          <input
+            type="tel"
+            maxLength={30}
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            className={inputCls}
+            placeholder="05xx xxx xx xx"
+          />
+        </div>
       </div>
 
       {/* Konum seçimi + önizleme */}

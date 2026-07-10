@@ -5,6 +5,8 @@ from pydantic import BaseModel, ConfigDict, Field
 
 class AddressCreate(BaseModel):
     title: str = Field(min_length=1, max_length=80)
+    recipient_name: str | None = Field(default=None, max_length=150)
+    phone: str | None = Field(default=None, max_length=30)
     address_line: str = Field(min_length=1, max_length=2000)
     city: str | None = Field(default=None, max_length=100)
     district: str | None = Field(default=None, max_length=100)
@@ -18,6 +20,8 @@ class AddressCreate(BaseModel):
 
 class AddressUpdate(BaseModel):
     title: str | None = Field(default=None, min_length=1, max_length=80)
+    recipient_name: str | None = Field(default=None, max_length=150)
+    phone: str | None = Field(default=None, max_length=30)
     address_line: str | None = Field(default=None, min_length=1, max_length=2000)
     city: str | None = Field(default=None, max_length=100)
     district: str | None = Field(default=None, max_length=100)
@@ -34,6 +38,8 @@ class AddressOut(BaseModel):
 
     id: int
     title: str
+    recipient_name: str | None = None
+    phone: str | None = None
     address_line: str
     city: str | None = None
     district: str | None = None

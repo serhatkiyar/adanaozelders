@@ -413,6 +413,9 @@ export interface ClientPublicOut {
 export interface SavedAddress {
   id: number;
   title: string;
+  /** Alıcı adı + telefon (boşsa sipariş anında hesap sahibi kullanılır). */
+  recipient_name?: string | null;
+  phone?: string | null;
   address_line: string;
   /** Yapısal il/ilçe (Cıncık Teslimat bölge kontrolü; eski adreslerde null). */
   city?: string | null;
@@ -427,6 +430,8 @@ export interface SavedAddress {
 
 export interface SavedAddressCreate {
   title: string;
+  recipient_name?: string | null;
+  phone?: string | null;
   address_line: string;
   city?: string | null;
   district?: string | null;

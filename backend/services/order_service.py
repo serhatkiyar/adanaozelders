@@ -253,8 +253,10 @@ async def create_order(
         addr = await db.get(ClientAddress, payload.address_id)
         if addr is None or addr.deleted_at is not None or addr.client_id != client.id:
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Adres bulunamadı")
-        order.ship_recipient = client.full_name
-        order.ship_phone = client.phone
+        # Adresteki alıcı/telefon öncelikli (adres başkası adına olabilir);
+        # boşsa hesap sahibine düşülür.
+        order.ship_recipient = addr.recipient_name or client.full_name
+        order.ship_phone = addr.phone or client.phone
         order.ship_address = addr.address_line
         if addr.directions:
             order.ship_address = f"{addr.address_line}\n{addr.directions}"
