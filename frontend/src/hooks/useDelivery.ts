@@ -220,6 +220,15 @@ export function useFailStop() {
   });
 }
 
+export function useUploadStopPhoto() {
+  const invalidate = useInvalidateDelivery();
+  return useMutation({
+    mutationFn: ({ stopId, file }: { stopId: number; file: File }) =>
+      deliveryApi.uploadStopPhoto(stopId, file),
+    onSuccess: invalidate,
+  });
+}
+
 export function useScanDeliveryLabel() {
   return useMutation({
     mutationFn: (payload: string) => deliveryApi.scanDeliveryLabel(payload),

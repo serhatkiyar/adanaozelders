@@ -1703,7 +1703,9 @@ export interface DeliveryStop {
   is_outlier?: boolean;
   otp_sent_at?: string | null;
   delivered_at?: string | null;
-  proof?: "OTP" | "ADMIN" | null;
+  proof?: "OTP" | "ADMIN" | "PHOTO" | null;
+  /** Teslim kanıtı fotoğrafı (kapıya/komşuya bırakma; opsiyonel ek kanıt). */
+  photo_url?: string | null;
   courier_note?: string | null;
 }
 
@@ -1811,7 +1813,8 @@ export interface OrderTracking {
   timeline?: TimelineEvent[];
   /** Teslim kanıtı (yalnız DELIVERED'da). */
   delivered_at?: string | null;
-  proof?: "OTP" | "ADMIN" | string | null;
+  proof?: "OTP" | "ADMIN" | "PHOTO" | string | null;
+  proof_photo_url?: string | null;
 }
 
 /** Kurye profili (ADMIN yönetir; müşteri takip sayfasında kimlik kartı). */

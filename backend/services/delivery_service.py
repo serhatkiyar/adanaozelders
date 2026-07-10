@@ -148,6 +148,7 @@ def _stop_to_out(stop: DeliveryStop) -> DeliveryStopOut:
         otp_sent_at=stop.otp_sent_at,
         delivered_at=stop.delivered_at,
         proof=stop.proof,
+        photo_url=stop.photo_url,
         courier_note=stop.courier_note,
     )
 
@@ -757,6 +758,7 @@ async def order_tracking(
     if tracking_status == "DELIVERED" and stop is not None:
         out.delivered_at = stop.delivered_at
         out.proof = stop.proof
+        out.proof_photo_url = stop.photo_url
         return out
 
     if tracking_status != "EN_ROUTE" or stop is None or run is None:
@@ -834,6 +836,21 @@ async def send_otp(db: AsyncSession, stop_id: int) -> str:
     await sms.send_delivery_otp_sms(to=phone, code=code, order_id=stop.order_id)
     # phone_service ile aynı maske biçimi
     return phone[:5] + "***" + phone[-2:] if len(phone) >= 6 else phone
+
+
+async def set_stop_photo(db: AsyncSession, stop_id: int, photo_url: str) -> DeliveryStopOut:
+    """Teslim kanıtı fotoğrafını durağa bağlar (PENDING'ken; yeniden çekimde
+    eskisi best-effort silinir). Yükleme router'da (multipart) yapılır."""
+    from core import storage  # döngüsel importu önlemek için yerel
+
+    stop = await _load_stop(db, stop_id)
+    _require_field_stop(stop)
+    old = stop.photo_url
+    stop.photo_url = photo_url
+    await db.commit()
+    if old:
+        await storage.delete_file(old)
+    return _stop_to_out(stop)
 
 
 async def _finalize_delivered(

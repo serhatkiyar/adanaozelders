@@ -14,6 +14,7 @@ import {
   useRunAction,
   useScanDeliveryLabel,
   useSendDeliveryOtp,
+  useUploadStopPhoto,
   useVerifyDelivery,
 } from "@/hooks/useDelivery";
 import {
@@ -74,6 +75,8 @@ function CurrentStopCard({ stop }: { stop: DeliveryStop }) {
   const verify = useVerifyDelivery();
   const fail = useFailStop();
   const override = useOverrideDeliver();
+  const uploadPhoto = useUploadStopPhoto();
+  const photoRef = useRef<HTMLInputElement>(null);
 
   const [code, setCode] = useState("");
   const [maskedPhone, setMaskedPhone] = useState<string | null>(null);
@@ -154,6 +157,48 @@ function CurrentStopCard({ stop }: { stop: DeliveryStop }) {
           className="rounded-xl py-2.5 text-sm font-semibold text-slate-700 ring-1 ring-slate-200 disabled:opacity-50 dark:text-slate-200 dark:ring-slate-600"
         >
           {sendOtp.isPending ? "Gönderiliyor…" : "Müşteriye Kod Gönder"}
+        </button>
+      </div>
+
+      {/* Teslim kanıtı fotoğrafı — kapıya/komşuya bırakmada zorunlu, normalde opsiyonel */}
+      <input
+        ref={photoRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f)
+            uploadPhoto.mutate(
+              { stopId: stop.id, file: f },
+              {
+                onSuccess: () => toast.success("Kanıt fotoğrafı kaydedildi."),
+                onError: (err: any) =>
+                  toast.error(apiDetail(err, "Fotoğraf yüklenemedi.")),
+              }
+            );
+          e.target.value = "";
+        }}
+      />
+      <div className="mt-3 flex items-center gap-3">
+        {stop.photo_url && (
+          <img
+            src={stop.photo_url}
+            alt="Teslim kanıtı"
+            className="h-12 w-12 shrink-0 rounded-lg object-cover ring-1 ring-slate-200 dark:ring-slate-600"
+          />
+        )}
+        <button
+          onClick={() => photoRef.current?.click()}
+          disabled={uploadPhoto.isPending}
+          className="flex-1 rounded-xl py-2.5 text-sm font-semibold text-slate-700 ring-1 ring-slate-200 disabled:opacity-50 dark:text-slate-200 dark:ring-slate-600"
+        >
+          {uploadPhoto.isPending
+            ? "Yükleniyor…"
+            : stop.photo_url
+              ? "Fotoğrafı Yeniden Çek"
+              : "Kanıt Fotoğrafı Çek"}
         </button>
       </div>
 

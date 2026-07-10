@@ -57,10 +57,12 @@ class DeliveryStopStatus(str, enum.Enum):
 
 
 class DeliveryProof(str, enum.Enum):
-    """Teslim kanıtı türü: müşteri OTP'si ya da (kod ulaşmadığında) notlu admin onayı."""
+    """Teslim kanıtı türü: müşteri OTP'si, (kod ulaşmadığında) notlu admin onayı
+    ya da kapıya/komşuya bırakmada paket fotoğrafı (PoD photo)."""
 
     OTP = "OTP"
     ADMIN = "ADMIN"
+    PHOTO = "PHOTO"
 
 
 class DeliveryRun(Base, TimestampMixin, SoftDeleteMixin):
@@ -158,6 +160,9 @@ class DeliveryStop(Base, TimestampMixin):
     delivered_lat: Mapped[float | None] = mapped_column(Numeric(9, 6), nullable=True)
     delivered_lng: Mapped[float | None] = mapped_column(Numeric(9, 6), nullable=True)
     proof: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    # Teslim kanıtı fotoğrafı (kapıya/komşuya bırakma; normal teslimde opsiyonel).
+    # Ev kapısı görüntüsü — URL uuid'li, yalnız token/sahip yüzeylerinde gösterilir.
+    photo_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     courier_note: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     run: Mapped["DeliveryRun"] = relationship(back_populates="stops")

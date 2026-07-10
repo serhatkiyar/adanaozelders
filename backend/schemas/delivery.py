@@ -72,6 +72,8 @@ class DeliveryStopOut(BaseModel):
     otp_sent_at: datetime.datetime | None = None
     delivered_at: datetime.datetime | None = None
     proof: str | None = None
+    # Teslim kanıtı fotoğrafı (kapıya/komşuya bırakma; opsiyonel ek kanıt).
+    photo_url: str | None = None
     courier_note: str | None = None
 
 
@@ -196,9 +198,10 @@ class OrderTrackingOut(BaseModel):
     courier_plate: str | None = None
     # Olay akışı (ORDER_RECEIVED → … → DELIVERED; Türkçe metin frontend'de).
     timeline: list[TimelineEventOut] = []
-    # Teslim kanıtı (yalnız DELIVERED'da): saat + kanıt türü (OTP/ADMIN).
+    # Teslim kanıtı (yalnız DELIVERED'da): saat + kanıt türü (OTP/ADMIN/PHOTO).
     delivered_at: datetime.datetime | None = None
     proof: str | None = None
+    proof_photo_url: str | None = None
 
 
 class DeliveryInfoOut(BaseModel):

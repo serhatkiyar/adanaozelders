@@ -222,6 +222,21 @@ export async function fetchPublicOrderTracking(token: string): Promise<OrderTrac
   return data;
 }
 
+/** Teslim kanıtı fotoğrafı (PoD) — yeniden çekimde eskisinin yerine geçer. */
+export async function uploadStopPhoto(
+  stopId: number,
+  file: File
+): Promise<DeliveryStop> {
+  const form = new FormData();
+  form.append("file", file);
+  const { data } = await apiClient.post<DeliveryStop>(
+    `/delivery/stops/${stopId}/photo`,
+    form,
+    { headers: { "Content-Type": "multipart/form-data" } }
+  );
+  return data;
+}
+
 export async function failDeliveryStop(
   stopId: number,
   reason: string

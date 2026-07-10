@@ -322,6 +322,21 @@ export default function CargoTrackingPage() {
                     )}
                   </p>
                 )}
+                {t.status === "DELIVERED" && t.proof_photo_url && (
+                  <a
+                    href={t.proof_photo_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-3 inline-block"
+                    title="Büyütmek için tıkla"
+                  >
+                    <img
+                      src={t.proof_photo_url}
+                      alt="Teslim kanıtı fotoğrafı"
+                      className="mx-auto max-h-48 rounded-xl object-cover ring-1 ring-slate-200 dark:ring-slate-700"
+                    />
+                  </a>
+                )}
               </div>
 
               {t.status === "EN_ROUTE" && <CourierCard t={t} />}

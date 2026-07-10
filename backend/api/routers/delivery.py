@@ -167,6 +167,25 @@ async def remove_stop(stop_id: int, db: AsyncSession = Depends(get_db)):
     return await delivery_service.remove_stop(db, stop_id)
 
 
+@router.post("/stops/{stop_id}/photo", response_model=DeliveryStopOut)
+async def upload_stop_photo(
+    stop_id: int,
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+):
+    """Teslim kanıtı fotoğrafı (PoD) — kapıya/komşuya bırakmada zorunlu kanıt,
+    normal teslimde opsiyonel ek. Yeniden çekimde eskisinin yerine geçer."""
+    if file.content_type and not file.content_type.startswith("image/"):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Yalnızca görsel yüklenebilir.")
+    data = await file.read()
+    if not data:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Boş dosya.")
+    if len(data) > _MAX_PHOTO_BYTES:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Görsel 12MB sınırını aşıyor.")
+    url = await storage.upload_delivery_photo(data)
+    return await delivery_service.set_stop_photo(db, stop_id, url)
+
+
 # ── Saha (dağıtıcı ekranı) ───────────────────────────────────────────────────────
 
 

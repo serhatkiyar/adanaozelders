@@ -103,6 +103,12 @@ async def upload_library_photo(file_bytes: bytes, *, square: bool = False) -> st
     return await _put_webp(data, prefix="library-photos")
 
 
+async def upload_delivery_photo(file_bytes: bytes) -> str:
+    """Teslim kanıtı fotoğrafı (PoD) — en-boy korunur, max 1600px WebP,
+    `delivery-proof/` öneki (uuid'li anahtar; müşteri takip sayfasında gösterilir)."""
+    return await _put_webp(optimize_photo(file_bytes), prefix="delivery-proof")
+
+
 async def upload_courier_photo(file_bytes: bytes) -> str:
     """Kurye vesikalık fotoğrafı (müşteri takip sayfasında kimlik kartı) —
     512×512 kare crop + WebP, `couriers/` öneki."""
