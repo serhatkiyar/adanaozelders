@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { ROUTES } from "@/lib/routes";
 import { Seo } from "@/components/Seo";
 import { StoreLayout } from "@/pages/store/StoreLayout";
@@ -22,47 +22,160 @@ import type { Collection, ProductSearchOut } from "@/types";
 import { toast } from "@/store/toastStore";
 
 const CONTAINER = "mx-auto max-w-[76rem] px-4 md:px-8";
-const GRID = "grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5";
+/** Sağ panel ızgarası (kenar çubuğu genişlik aldığı için 4 sütun). */
+const GRID = "grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4";
 
 const tr = (s: string) => s.toLocaleLowerCase("tr");
 
-type Tab = "favorites" | "collections";
+/** Kenar çubuğu seçimi: en üstte varsayılan "Favori Listem", altında koleksiyonlar. */
+type Selection = { kind: "favorites" } | { kind: "collection"; id: number };
 
 export default function FavoritesPage() {
-  const [tab, setTab] = useState<Tab>("favorites");
+  const navigate = useNavigate();
+  const token = useAuthStore((s) => s.token);
+  const user = useAuthStore((s) => s.user);
+  const isClient = !!token && user?.role_id === ROLE_IDS.CLIENT;
+
+  const favCount = useFavoritesStore((s) => s.items.length);
+  const { data: collections } = useCollections(isClient);
+  const createCol = useCreateCollection();
+  const renameCol = useRenameCollection();
+  const deleteCol = useDeleteCollection();
+
+  const [sel, setSel] = useState<Selection>({ kind: "favorites" });
+  const [nameModal, setNameModal] = useState<{ mode: "create" | "rename"; col?: Collection } | null>(null);
+  const [addProductsTo, setAddProductsTo] = useState<Collection | null>(null);
+
+  // Seçili koleksiyon silinmiş/bulunamıyorsa varsayılana (Favori Listem) düş.
+  const selectedCol =
+    sel.kind === "collection" ? ((collections ?? []).find((c) => c.id === sel.id) ?? null) : null;
+  const showFavorites = selectedCol === null;
+
+  const rowClass = (active: boolean) =>
+    `flex w-full items-baseline justify-between gap-2 rounded-lg px-3 py-2.5 text-left text-sm transition-colors ${
+      active
+        ? "bg-slate-100 font-semibold text-slate-900 dark:bg-slate-800 dark:text-white"
+        : "text-slate-600 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/60 dark:hover:text-white"
+    }`;
 
   return (
-    <StoreLayout title="Favori Listem">
-      <Seo title="Favori Listem — Adana Özel Ders" description="Beğendiğin ürünler ve listelerin." />
+    <StoreLayout title="Listelerim">
+      <Seo title="Listelerim — Adana Özel Ders" description="Beğendiğin ürünler ve listelerin." />
 
       <div className={`${CONTAINER} py-8`}>
-        {/* Sekmeler */}
-        <div className="flex gap-1 border-b border-slate-200 dark:border-slate-800">
-          <TabButton active={tab === "favorites"} onClick={() => setTab("favorites")} label="Favori Listem" />
-          <TabButton active={tab === "collections"} onClick={() => setTab("collections")} label="Listelerim" />
-        </div>
+        <div className="grid gap-8 md:grid-cols-[15rem_minmax(0,1fr)]">
+          {/* Sol: Favori Listem + koleksiyonlar alt alta */}
+          <aside className="md:border-r md:border-slate-100 md:pr-6 dark:md:border-slate-800">
+            <button
+              type="button"
+              onClick={() =>
+                isClient ? setNameModal({ mode: "create" }) : navigate("?modal=login")
+              }
+              className="mb-3 inline-flex items-center gap-1.5 text-sm font-semibold text-indigo-600 transition-colors hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300"
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+                <path d="M12 5v14M5 12h14" />
+              </svg>
+              Liste oluştur
+            </button>
 
-        <div className="mt-6">
-          {tab === "favorites" ? <FavoritesTab /> : <CollectionsTab />}
+            <nav className="flex flex-col gap-0.5">
+              <button
+                type="button"
+                onClick={() => setSel({ kind: "favorites" })}
+                className={rowClass(showFavorites)}
+              >
+                <span className="truncate">Favori Listem</span>
+                <span className="shrink-0 text-xs font-normal text-slate-400 dark:text-slate-500">
+                  {favCount}
+                </span>
+              </button>
+              {(collections ?? []).map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => setSel({ kind: "collection", id: c.id })}
+                  className={rowClass(selectedCol?.id === c.id)}
+                >
+                  <span className="truncate">{c.name}</span>
+                  <span className="shrink-0 text-xs font-normal text-slate-400 dark:text-slate-500">
+                    {c.product_ids.length}
+                  </span>
+                </button>
+              ))}
+            </nav>
+
+            {!isClient && (
+              <p className="mt-4 border-t border-slate-100 pt-4 text-xs leading-relaxed text-slate-400 dark:border-slate-800 dark:text-slate-500">
+                Kendi listelerini oluşturmak için{" "}
+                <Link to="?modal=login" className="font-semibold text-indigo-600 hover:underline dark:text-indigo-400">
+                  giriş yap
+                </Link>
+                .
+              </p>
+            )}
+          </aside>
+
+          {/* Sağ: seçili listenin içeriği */}
+          <section className="min-w-0">
+            {showFavorites ? (
+              <FavoritesPane isClient={isClient} />
+            ) : (
+              <CollectionPane
+                key={selectedCol.id}
+                collection={selectedCol}
+                onAddProducts={() => setAddProductsTo(selectedCol)}
+                onRename={() => setNameModal({ mode: "rename", col: selectedCol })}
+                onDelete={() => {
+                  if (confirm(`"${selectedCol.name}" listesini silmek istediğine emin misin?`)) {
+                    deleteCol.mutate(selectedCol.id, {
+                      onSuccess: () => {
+                        setSel({ kind: "favorites" });
+                        toast.success("Liste silindi");
+                      },
+                    });
+                  }
+                }}
+              />
+            )}
+          </section>
         </div>
       </div>
-    </StoreLayout>
-  );
-}
 
-function TabButton({ active, onClick, label }: { active: boolean; onClick: () => void; label: string }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`-mb-px border-b-2 px-4 pb-3 pt-1 text-sm font-semibold transition-colors ${
-        active
-          ? "border-indigo-600 text-slate-900 dark:border-indigo-400 dark:text-white"
-          : "border-transparent text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
-      }`}
-    >
-      {label}
-    </button>
+      {nameModal && (
+        <CollectionNameModal
+          mode={nameModal.mode}
+          initial={nameModal.col?.name}
+          onClose={() => setNameModal(null)}
+          onSubmit={(name) => {
+            if (nameModal.mode === "create") {
+              createCol.mutate(name, {
+                onSuccess: (col) => {
+                  toast.success("Liste oluşturuldu");
+                  setSel({ kind: "collection", id: col.id });
+                  setNameModal(null);
+                },
+                onError: () => toast.error("Liste oluşturulamadı"),
+              });
+            } else if (nameModal.col) {
+              renameCol.mutate(
+                { id: nameModal.col.id, name },
+                {
+                  onSuccess: () => {
+                    toast.success("Liste güncellendi");
+                    setNameModal(null);
+                  },
+                }
+              );
+            }
+          }}
+        />
+      )}
+
+      {addProductsTo && (
+        <AddProductsToCollectionModal collection={addProductsTo} onClose={() => setAddProductsTo(null)} />
+      )}
+    </StoreLayout>
   );
 }
 
@@ -93,8 +206,9 @@ function EmptyBox({ title, desc, cta }: { title: string; desc: string; cta?: Rea
   );
 }
 
-/* ── Sekme 1: Favori Listem (localStorage) ── */
-function FavoritesTab() {
+/* ── Sağ panel: Favori Listem (kalp favorileri, localStorage) ── */
+function FavoritesPane({ isClient }: { isClient: boolean }) {
+  const navigate = useNavigate();
   const items = useFavoritesStore((s) => s.items);
   const removeFav = useFavoritesStore((s) => s.remove);
   const [q, setQ] = useState("");
@@ -107,204 +221,57 @@ function FavoritesTab() {
 
   return (
     <>
-      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="text-xl font-semibold text-slate-900 dark:text-white">
-          Favori Listem
-          {items.length > 0 && (
-            <span className="ml-2 text-base font-normal text-slate-400 dark:text-slate-500">({items.length})</span>
-          )}
-        </h1>
-        {items.length > 0 && <SearchBox value={q} onChange={setQ} placeholder="Favori Listem'de ara" />}
+      <h2 className="text-xl font-semibold text-slate-900 dark:text-white">
+        Favori Listem
+        {items.length > 0 && (
+          <span className="ml-2 text-base font-normal text-slate-400 dark:text-slate-500">({items.length})</span>
+        )}
+      </h2>
+
+      {items.length > 0 && (
+        <div className="mt-4">
+          <SearchBox value={q} onChange={setQ} placeholder="Favori Listem'de ara" />
+        </div>
+      )}
+
+      <div className="mt-5">
+        {items.length === 0 ? (
+          <EmptyBox
+            title="Henüz favorin yok"
+            desc="Beğendiğin ürünleri kalbe dokunarak buraya ekleyebilirsin."
+            cta={
+              <Link to={ROUTES.store} className="mt-6 inline-block rounded-full bg-indigo-600 px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-indigo-700">
+                Mağazaya dön
+              </Link>
+            }
+          />
+        ) : filtered.length === 0 ? (
+          <p className="py-12 text-center text-sm text-slate-500 dark:text-slate-400">"{q}" için sonuç yok.</p>
+        ) : (
+          <div className={GRID}>
+            {filtered.map((p) => (
+              <ProductCard
+                key={p.id}
+                product={p}
+                menu={
+                  <KebabMenu
+                    actions={[
+                      {
+                        label: "Listelerime ekle",
+                        // Koleksiyonlar oturum ister — anonim tıklamada giriş modalı.
+                        onClick: () => (isClient ? setAddTarget(p) : navigate("?modal=login")),
+                      },
+                      { label: "Sil", danger: true, onClick: () => removeFav(p.id) },
+                    ]}
+                  />
+                }
+              />
+            ))}
+          </div>
+        )}
       </div>
 
-      {items.length === 0 ? (
-        <EmptyBox
-          title="Henüz favorin yok"
-          desc="Beğendiğin ürünleri kalbe dokunarak buraya ekleyebilirsin."
-          cta={
-            <Link to={ROUTES.store} className="mt-6 inline-block rounded-full bg-indigo-600 px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-indigo-700">
-              Mağazaya dön
-            </Link>
-          }
-        />
-      ) : filtered.length === 0 ? (
-        <p className="py-12 text-center text-sm text-slate-500 dark:text-slate-400">"{q}" için sonuç yok.</p>
-      ) : (
-        <div className={GRID}>
-          {filtered.map((p) => (
-            <ProductCard
-              key={p.id}
-              product={p}
-              menu={
-                <KebabMenu
-                  actions={[
-                    { label: "Listelerime ekle", onClick: () => setAddTarget(p) },
-                    { label: "Sil", danger: true, onClick: () => removeFav(p.id) },
-                  ]}
-                />
-              }
-            />
-          ))}
-        </div>
-      )}
-
       {addTarget && <AddToCollectionModal product={addTarget} onClose={() => setAddTarget(null)} />}
-    </>
-  );
-}
-
-/* ── Sekme 2: Listelerim — Amazon tarzı master-detail:
-   solda listeler alt alta, sağda seçili listenin içeriği. ── */
-function CollectionsTab() {
-  const token = useAuthStore((s) => s.token);
-  const user = useAuthStore((s) => s.user);
-  const isClient = !!token && user?.role_id === ROLE_IDS.CLIENT;
-
-  if (!isClient) {
-    return (
-      <EmptyBox
-        title="Listelerin için giriş yap"
-        desc="Kendi listelerini oluşturmak ve paylaşmak için öğrenci hesabınla giriş yapmalısın."
-        cta={
-          <Link to="?modal=login" className="mt-6 inline-block rounded-full bg-indigo-600 px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-indigo-700">
-            Giriş yap
-          </Link>
-        }
-      />
-    );
-  }
-
-  return <CollectionsPanel />;
-}
-
-function CollectionsPanel() {
-  const { data: collections, isLoading } = useCollections();
-  const createCol = useCreateCollection();
-  const renameCol = useRenameCollection();
-  const deleteCol = useDeleteCollection();
-  const [selectedId, setSelectedId] = useState<number | null>(null);
-  const [nameModal, setNameModal] = useState<{ mode: "create" | "rename"; col?: Collection } | null>(null);
-  const [addProductsTo, setAddProductsTo] = useState<Collection | null>(null);
-
-  // Seçim yoksa (ilk giriş / silinen liste) ilk listeye düş.
-  const selected =
-    (collections ?? []).find((c) => c.id === selectedId) ?? collections?.[0] ?? null;
-
-  if (isLoading) {
-    return <p className="py-12 text-center text-sm text-slate-400">Yükleniyor…</p>;
-  }
-
-  return (
-    <>
-      {!collections || collections.length === 0 ? (
-        <EmptyBox
-          title="Henüz listen yok"
-          desc="“Liste oluştur” ile ilk listeni yarat, favorilerinden ürün ekle."
-          cta={
-            <button
-              type="button"
-              onClick={() => setNameModal({ mode: "create" })}
-              className="mt-6 inline-block rounded-full bg-indigo-600 px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-indigo-700"
-            >
-              Liste oluştur
-            </button>
-          }
-        />
-      ) : (
-        <div className="grid gap-8 md:grid-cols-[15rem_minmax(0,1fr)]">
-          {/* Sol: listeler alt alta */}
-          <aside className="md:border-r md:border-slate-100 md:pr-6 dark:md:border-slate-800">
-            <button
-              type="button"
-              onClick={() => setNameModal({ mode: "create" })}
-              className="mb-3 inline-flex items-center gap-1.5 text-sm font-semibold text-indigo-600 transition-colors hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300"
-            >
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
-                <path d="M12 5v14M5 12h14" />
-              </svg>
-              Liste oluştur
-            </button>
-            <nav className="flex flex-col gap-0.5">
-              {collections.map((c) => {
-                const active = selected?.id === c.id;
-                return (
-                  <button
-                    key={c.id}
-                    type="button"
-                    onClick={() => setSelectedId(c.id)}
-                    className={`flex items-baseline justify-between gap-2 rounded-lg px-3 py-2.5 text-left text-sm transition-colors ${
-                      active
-                        ? "bg-slate-100 font-semibold text-slate-900 dark:bg-slate-800 dark:text-white"
-                        : "text-slate-600 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/60 dark:hover:text-white"
-                    }`}
-                  >
-                    <span className="truncate">{c.name}</span>
-                    <span className="shrink-0 text-xs font-normal text-slate-400 dark:text-slate-500">
-                      {c.product_ids.length}
-                    </span>
-                  </button>
-                );
-              })}
-            </nav>
-          </aside>
-
-          {/* Sağ: seçili listenin içeriği */}
-          <section className="min-w-0">
-            {selected && (
-              <CollectionPane
-                key={selected.id}
-                collection={selected}
-                onAddProducts={() => setAddProductsTo(selected)}
-                onRename={() => setNameModal({ mode: "rename", col: selected })}
-                onDelete={() => {
-                  if (confirm(`"${selected.name}" listesini silmek istediğine emin misin?`)) {
-                    deleteCol.mutate(selected.id, {
-                      onSuccess: () => {
-                        setSelectedId(null); // kalan ilk listeye düşer
-                        toast.success("Liste silindi");
-                      },
-                    });
-                  }
-                }}
-              />
-            )}
-          </section>
-        </div>
-      )}
-
-      {nameModal && (
-        <CollectionNameModal
-          mode={nameModal.mode}
-          initial={nameModal.col?.name}
-          onClose={() => setNameModal(null)}
-          onSubmit={(name) => {
-            if (nameModal.mode === "create") {
-              createCol.mutate(name, {
-                onSuccess: (col) => {
-                  toast.success("Liste oluşturuldu");
-                  setSelectedId(col.id);
-                  setNameModal(null);
-                },
-                onError: () => toast.error("Liste oluşturulamadı"),
-              });
-            } else if (nameModal.col) {
-              renameCol.mutate(
-                { id: nameModal.col.id, name },
-                {
-                  onSuccess: () => {
-                    toast.success("Liste güncellendi");
-                    setNameModal(null);
-                  },
-                }
-              );
-            }
-          }}
-        />
-      )}
-
-      {addProductsTo && (
-        <AddProductsToCollectionModal collection={addProductsTo} onClose={() => setAddProductsTo(null)} />
-      )}
     </>
   );
 }

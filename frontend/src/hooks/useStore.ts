@@ -137,10 +137,12 @@ export function useRequestReturn(orderId: number) {
 
 /* ── Koleksiyon (Listelerim) ── */
 
-export function useCollections() {
+export function useCollections(enabled = true) {
   return useQuery({
     queryKey: ["store", "collections"],
     queryFn: storeApi.listCollections,
+    // Koleksiyonlar oturum ister; anonim yüzeyde fetch edilmez (401 gürültüsü olmasın).
+    enabled,
   });
 }
 
