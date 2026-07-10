@@ -1,22 +1,34 @@
 import { type ReactNode } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { DashboardShell } from "@/components/DashboardShell";
+import { CompactSearch } from "@/components/HeroSearch";
+import { StoreLayout } from "@/pages/store/StoreLayout";
 import { STUDENT_NAV } from "@/lib/nav";
 import { ROUTES } from "@/lib/routes";
-import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { useSurfaceStore } from "@/store/surfaceStore";
+
+type AccountGroup = "egitim" | "magaza" | "hesap";
 
 interface AccountCard {
   to: string;
+  group: AccountGroup;
   title: string;
   desc: string;
   icon: ReactNode;
 }
+
+const GROUPS: { key: AccountGroup; heading: string }[] = [
+  { key: "egitim", heading: "Eğitim" },
+  { key: "magaza", heading: "Mağaza" },
+  { key: "hesap", heading: "Hesap & Genel" },
+];
 
 const ICON = "h-7 w-7";
 
 const CARDS: AccountCard[] = [
   {
     to: ROUTES.orders,
+    group: "magaza",
     title: "Siparişlerim",
     desc: "Mağaza siparişlerini izle, iade veya iptal et.",
     icon: (
@@ -29,6 +41,7 @@ const CARDS: AccountCard[] = [
   },
   {
     to: ROUTES.bookings,
+    group: "egitim",
     title: "Rezervasyonlarım",
     desc: "Derslerin, biletlerin ve talep durumların.",
     icon: (
@@ -42,6 +55,7 @@ const CARDS: AccountCard[] = [
   },
   {
     to: ROUTES.favorites,
+    group: "egitim",
     title: "Favori eğitmenlerim",
     desc: "Kaydettiğin eğitmenler.",
     icon: (
@@ -52,6 +66,7 @@ const CARDS: AccountCard[] = [
   },
   {
     to: ROUTES.storeFavorites,
+    group: "magaza",
     title: "Mağaza Favorilerim & Listelerim",
     desc: "Beğendiğin ürünler ve oluşturduğun listeler.",
     icon: (
@@ -62,6 +77,7 @@ const CARDS: AccountCard[] = [
   },
   {
     to: ROUTES.addresses,
+    group: "magaza",
     title: "Adreslerim",
     desc: "Teslimat adreslerini ekle, düzenle veya sil.",
     icon: (
@@ -73,6 +89,7 @@ const CARDS: AccountCard[] = [
   },
   {
     to: ROUTES.messages,
+    group: "hesap",
     title: "Mesajlar",
     desc: "Eğitmen ve satıcılarla yazışmaların.",
     icon: (
@@ -83,6 +100,7 @@ const CARDS: AccountCard[] = [
   },
   {
     to: ROUTES.notifications,
+    group: "hesap",
     title: "Bildirimler",
     desc: "Bildirim gelen kutun.",
     icon: (
@@ -94,6 +112,7 @@ const CARDS: AccountCard[] = [
   },
   {
     to: ROUTES.settings,
+    group: "hesap",
     title: "Hesap & Güvenlik",
     desc: "Kimlik, şifre, e-posta/telefon doğrulama, görünüm.",
     icon: (
@@ -105,6 +124,7 @@ const CARDS: AccountCard[] = [
   },
   {
     to: ROUTES.profileEdit,
+    group: "hesap",
     title: "Profil bilgilerim",
     desc: "Herkese açık profil, hakkımda ve eğitim.",
     icon: (
@@ -116,6 +136,7 @@ const CARDS: AccountCard[] = [
   },
   {
     to: ROUTES.terms,
+    group: "hesap",
     title: "Sözleşmeler ve Yardım",
     desc: "Kullanım koşulları, iade politikası ve KVKK.",
     icon: (
@@ -130,53 +151,84 @@ const CARDS: AccountCard[] = [
 ];
 
 export default function AccountHub() {
-  const { data: user } = useCurrentUser();
+  const navigate = useNavigate();
+  const lastSurface = useSurfaceStore((s) => s.lastSurface);
 
-  return (
-    <DashboardShell title="Hesabım" navItems={STUDENT_NAV}>
-      <div className="mx-auto max-w-5xl">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Hesabım</h1>
-            {user && <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">{user.full_name}</p>}
-          </div>
-          {/* Hizmetler arası hızlı geçiş */}
-          <div className="flex gap-2">
-            <Link
-              to={ROUTES.store}
-              className="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition-colors hover:border-indigo-300 hover:text-indigo-600 dark:border-slate-700 dark:text-slate-200 dark:hover:text-indigo-400"
-            >
-              Mağaza
-            </Link>
-            <Link
-              to={ROUTES.tutors}
-              className="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition-colors hover:border-indigo-300 hover:text-indigo-600 dark:border-slate-700 dark:text-slate-200 dark:hover:text-indigo-400"
-            >
-              Eğitmen ara
-            </Link>
-          </div>
-        </div>
-
-        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {CARDS.map((c) => (
-            <Link
-              key={c.to + c.title}
-              to={c.to}
-              className="group flex items-start gap-4 rounded-2xl border border-slate-200 bg-white p-5 transition-colors hover:border-indigo-300 hover:bg-indigo-50/40 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-indigo-500/50 dark:hover:bg-indigo-500/5"
-            >
-              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400">
-                {c.icon}
-              </span>
-              <span>
-                <span className="block font-semibold text-slate-900 group-hover:text-indigo-700 dark:text-white dark:group-hover:text-indigo-300">
-                  {c.title}
-                </span>
-                <span className="mt-0.5 block text-sm text-slate-500 dark:text-slate-400">{c.desc}</span>
-              </span>
-            </Link>
-          ))}
+  const content = (
+    <div className="mx-auto max-w-5xl">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Hesabım</h1>
+        {/* Hizmetler arası hızlı geçiş */}
+        <div className="flex gap-2">
+          <Link
+            to={ROUTES.store}
+            className="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition-colors hover:border-indigo-300 hover:text-indigo-600 dark:border-slate-700 dark:text-slate-200 dark:hover:text-indigo-400"
+          >
+            Mağaza
+          </Link>
+          <Link
+            to={ROUTES.tutors}
+            className="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition-colors hover:border-indigo-300 hover:text-indigo-600 dark:border-slate-700 dark:text-slate-200 dark:hover:text-indigo-400"
+          >
+            Eğitmen ara
+          </Link>
         </div>
       </div>
+
+      {GROUPS.map((g, gi) => (
+        <section key={g.key} className={gi === 0 ? "mt-8" : "mt-10 border-t border-slate-100 pt-8 dark:border-slate-800"}>
+          <h2 className="text-sm font-semibold text-slate-500 dark:text-slate-400">{g.heading}</h2>
+          <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {CARDS.filter((c) => c.group === g.key).map((c) => (
+              <Link
+                key={c.to + c.title}
+                to={c.to}
+                className="group flex items-start gap-4 rounded-2xl border border-slate-200 bg-white p-5 transition-colors hover:border-indigo-300 hover:bg-indigo-50/40 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-indigo-500/50 dark:hover:bg-indigo-500/5"
+              >
+                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400">
+                  {c.icon}
+                </span>
+                <span>
+                  <span className="block font-semibold text-slate-900 group-hover:text-indigo-700 dark:text-white dark:group-hover:text-indigo-300">
+                    {c.title}
+                  </span>
+                  <span className="mt-0.5 block text-sm text-slate-500 dark:text-slate-400">{c.desc}</span>
+                </span>
+              </Link>
+            ))}
+          </div>
+        </section>
+      ))}
+    </div>
+  );
+
+  // Bağlama duyarlı çatı: mağazadan gelindiyse mağaza navbar'ı (arama + sepet),
+  // aksi halde ana sayfadaki kompakt arama pill'li panel navbar'ı.
+  if (lastSurface === "store") {
+    return (
+      <StoreLayout title="Hesabım" showCategoryBar={false}>
+        <div className="px-4 py-6 md:px-8">{content}</div>
+      </StoreLayout>
+    );
+  }
+
+  return (
+    <DashboardShell
+      title="Hesabım"
+      navItems={STUDENT_NAV}
+      center={
+        <div className="flex w-full justify-center">
+          <CompactSearch
+            active="hepsi"
+            placeholder="Ders, eğitmen, kütüphane ara…"
+            q=""
+            district={[]}
+            onOpen={() => navigate(ROUTES.tutors)}
+          />
+        </div>
+      }
+    >
+      {content}
     </DashboardShell>
   );
 }

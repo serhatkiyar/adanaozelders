@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuthStore } from "@/store/authStore";
+import { useSurfaceStore } from "@/store/surfaceStore";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { ROUTES } from "@/lib/routes";
 import { ROLE_IDS } from "@/types";
@@ -44,6 +45,12 @@ export default function Landing() {
   // kaymaz). Tekrar kaydırınca kapanır.
   const [searchOpen, setSearchOpen] = useState(false);
   const navigate = useNavigate();
+  const setSurface = useSurfaceStore((s) => s.setSurface);
+
+  // /hesabim bağlama duyarlı navbar: son yüzey = keşif.
+  useEffect(() => {
+    setSurface("discover");
+  }, [setSurface]);
 
   // Airbnb scroll davranışı: birazcık kaydırınca daralt (ve açık aramayı kapat).
   useEffect(() => {

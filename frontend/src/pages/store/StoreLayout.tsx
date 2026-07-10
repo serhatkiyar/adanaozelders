@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { ROUTES } from "@/lib/routes";
 import { SITE_NAME } from "@/lib/seo";
 import { useCartStore } from "@/store/cartStore";
+import { useSurfaceStore } from "@/store/surfaceStore";
 import { AuthModal } from "@/components/AuthModal";
 import { StoreCategoryBar } from "@/components/store/StoreCategoryBar";
 import { StoreAccountMenu } from "@/components/store/StoreAccountMenu";
@@ -25,11 +26,17 @@ export function StoreLayout({
   children: ReactNode;
 }) {
   const cartCount = useCartStore((s) => s.totalCount());
+  const setSurface = useSurfaceStore((s) => s.setSurface);
 
   // Sekme başlığını sayfaya göre ayarla (caller'lar `title` geçirir).
   useEffect(() => {
     document.title = `${title} · ${SITE_NAME}`;
   }, [title]);
+
+  // /hesabim bağlama duyarlı navbar: son yüzey = mağaza.
+  useEffect(() => {
+    setSurface("store");
+  }, [setSurface]);
 
   if (minimalHeader) {
     return (

@@ -10,6 +10,7 @@ import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useDebounce } from "@/hooks/useDebounce";
 import { getErrorMessage } from "@/lib/errors";
 import { toast } from "@/store/toastStore";
+import { useSurfaceStore } from "@/store/surfaceStore";
 import { Gender, ROLE_IDS, TeachingMode, TutorSort } from "@/types";
 import type { TutorSearchParams } from "@/api/tutors";
 import { CategoryBar } from "@/components/CategoryBar";
@@ -64,6 +65,13 @@ export default function Marketplace() {
   const [pricePopoverOpen, setPricePopoverOpen] = useState(false);
   const [pricePopoverPos, setPricePopoverPos] = useState<{top: number, left: number} | null>(null);
   const pricePopoverRef = useRef<HTMLButtonElement>(null);
+
+  const setSurface = useSurfaceStore((s) => s.setSurface);
+
+  // /hesabim bağlama duyarlı navbar: son yüzey = keşif.
+  useEffect(() => {
+    setSurface("discover");
+  }, [setSurface]);
 
   const togglePricePopover = () => {
     if (pricePopoverOpen) {

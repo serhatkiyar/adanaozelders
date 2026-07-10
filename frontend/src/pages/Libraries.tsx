@@ -11,6 +11,7 @@ import { useDebounce } from "@/hooks/useDebounce";
 import { useAuthStore } from "@/store/authStore";
 import { getErrorMessage } from "@/lib/errors";
 import { toast } from "@/store/toastStore";
+import { useSurfaceStore } from "@/store/surfaceStore";
 import { Seo } from "@/components/Seo";
 import { AMENITY_OPTIONS, amenityTiClass, amenityLabel } from "@/lib/amenities";
 import { ROLE_IDS } from "@/types";
@@ -74,6 +75,12 @@ export default function Libraries() {
   const [searchOpen, setSearchOpen] = useState(false);
 
   const debouncedQ = useDebounce(q);
+  const setSurface = useSurfaceStore((s) => s.setSurface);
+
+  // /hesabim bağlama duyarlı navbar: son yüzey = keşif.
+  useEffect(() => {
+    setSurface("discover");
+  }, [setSurface]);
 
   // ── URL ↔ state senkronizasyonu ──────────────────────────────────────
   // debouncedQ veya district değişince URL'i güncelle; sayfa yenilenince
