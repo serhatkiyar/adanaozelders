@@ -20,7 +20,14 @@ from sqlalchemy.orm import selectinload
 from core import mail, payments
 from core.config import settings
 from models.client import Client, ClientAddress
+from models.delivery import (
+    DeliveryRun,
+    DeliveryRunStatus,
+    DeliveryStop,
+    DeliveryStopStatus,
+)
 from models.store import (
+    DeliveryPref,
     Order,
     OrderItem,
     OrderReturn,
@@ -524,6 +531,9 @@ def _to_out(order: Order) -> OrderOut:
         ship_lng=float(order.ship_lng) if order.ship_lng is not None else None,
         promised_delivery_date=order.promised_delivery_date,
         ship_in_zone=order.ship_in_zone,
+        delivery_pref=order.delivery_pref,
+        delivery_pref_note=order.delivery_pref_note,
+        postpone_count=order.postpone_count,
         tracking_no=order.tracking_no,
         track_token=order.track_token,
         return_status=return_status,
@@ -566,6 +576,186 @@ async def get_order_for_pay(db: AsyncSession, order_id: int, client_id: int) -> 
     if order.client_id != client_id:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Sizin siparişiniz değil")
     return order
+
+
+# ── Teslimat self-servisi (tercih / erteleme / adres değişikliği) ──────────────────
+#
+# Tercih SİPARİŞTE yaşar (durak "deneme"dir; fail/erteleme sonrası yeni durak
+# açılır, talimat kaybolmaz). Oturumsuz (track_token'lı) yüzeyden yalnız
+# davranışsal tercihler + erteleme yapılabilir; ADRES DEĞİŞİKLİĞİ yalnız oturumlu
+# müşteri ucundan (link paylaşılabilir — adres PII+güvenlik sınırıdır).
+
+POSTPONE_LIMIT = 2  # müşteri ertelemesi üst sınırı (sonsuz zincir engeli)
+
+
+async def get_order_by_track_token(db: AsyncSession, token: str) -> Order:
+    """Oturumsuz self-servis girişi: token sahipliği kanıttır (SMS'le telefona
+    gitti; tahmin edilemez). IP rate-limit router'da."""
+    order = (
+        await db.execute(
+            select(Order).where(Order.track_token == token, Order.deleted_at.is_(None))
+        )
+    ).scalars().first()
+    if order is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Sipariş bulunamadı")
+    return order
+
+
+async def _open_stop(db: AsyncSession, order_id: int) -> DeliveryStop | None:
+    """Siparişin planlı/aktif turdaki BEKLEYEN durağı (turuyla birlikte)."""
+    return (
+        await db.execute(
+            select(DeliveryStop)
+            .options(selectinload(DeliveryStop.run))
+            .join(DeliveryRun, DeliveryStop.run_id == DeliveryRun.id)
+            .where(
+                DeliveryStop.order_id == order_id,
+                DeliveryStop.status == DeliveryStopStatus.PENDING.value,
+                DeliveryRun.status.in_(
+                    (DeliveryRunStatus.PLANNED.value, DeliveryRunStatus.ACTIVE.value)
+                ),
+                DeliveryRun.deleted_at.is_(None),
+            )
+            .order_by(DeliveryStop.id.desc())
+            .limit(1)
+        )
+    ).scalars().first()
+
+
+def _require_self_service_order(order: Order) -> None:
+    if not order.has_physical:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Dijital siparişte teslimat tercihi yok")
+    if order.payment_status != "PAID" or order.status not in ("PAID", "SHIPPED"):
+        raise HTTPException(
+            status.HTTP_409_CONFLICT, "Bu sipariş için teslimat tercihi değiştirilemez"
+        )
+
+
+async def set_delivery_pref(
+    db: AsyncSession, order: Order, *, pref: str, note: str | None
+) -> None:
+    """Teslimat talimatını günceller — dağıtım sırasında da serbest (kurye ekranı
+    15 sn poll ile talimatı canlı görür). KOMSUYA_BIRAK'ta not (komşu adı/daire)
+    zorunludur; diğer tercihlerde not temizlenir."""
+    _require_self_service_order(order)
+    if pref == DeliveryPref.KOMSUYA_BIRAK.value:
+        if not note or len(note.strip()) < 3:
+            raise HTTPException(
+                status.HTTP_422_UNPROCESSABLE_ENTITY,
+                "Komşuya bırakma için komşu adı/daire bilgisi gerekli",
+            )
+        order.delivery_pref_note = note.strip()
+    else:
+        order.delivery_pref_note = None
+    order.delivery_pref = pref
+    await db.commit()
+
+
+async def postpone_delivery(db: AsyncSession, order: Order) -> None:
+    """"Yarına ertele": açık durak varsa RESCHEDULED'a kapanır (kurye suçu değil —
+    FAILED'dan ayrı), dağıtımdaysa sipariş PAID'e geri sarılır; söz verilen gün
+    sonraki çalışma gününe alınır. Üst sınır POSTPONE_LIMIT."""
+    _require_self_service_order(order)
+    if order.postpone_count >= POSTPONE_LIMIT:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            f"Erteleme hakkı doldu (en fazla {POSTPONE_LIMIT}) — bizimle iletişime geç",
+        )
+
+    stop = await _open_stop(db, order.id)
+    if stop is not None:
+        # Yarış: kurye tam bu anda teslim etmiş olabilir — tazele ve kontrol et.
+        await db.refresh(stop)
+        if stop.status != DeliveryStopStatus.PENDING.value:
+            raise HTTPException(
+                status.HTTP_409_CONFLICT, "Durak az önce sonuçlandı — sayfayı yenile"
+            )
+        stop.status = DeliveryStopStatus.RESCHEDULED.value
+        if order.status == "SHIPPED":
+            await order_fsm.transition_order(
+                db, order, "PAID", changed_by="client", reason="Müşteri ertesi güne erteledi"
+            )
+            order.tracking_no = None
+
+    order.promised_delivery_date = delivery_promise.next_delivery_day(
+        _now(),
+        non_working_weekdays=settings.DELIVERY_NON_WORKING_WEEKDAYS,
+        utc_offset_hours=settings.APP_UTC_OFFSET_HOURS,
+    )
+    order.postpone_count += 1
+    await db.commit()
+    await notification_service.notify(
+        db,
+        user_id=order.client_id,
+        role_id=ROLE_IDS[RoleType.CLIENT],
+        message=(
+            f"Siparişin #{order.id} isteğinle ertelendi — yeni teslimat günü: "
+            f"{order.promised_delivery_date.strftime('%d.%m.%Y')}."
+        ),
+        link="/siparislerim",
+    )
+    await db.commit()
+
+
+async def change_ship_address(
+    db: AsyncSession, client: Client, order: Order, *, address_id: int, force: bool = False
+) -> OrderOut:
+    """Teslimat adresini değiştirir — yalnız dağıtıma çıkmadan (ACTIVE turda durağı
+    yokken). Yeni adres bölge dışına düşerse 409 (code=OUT_OF_ZONE); müşteri
+    ``force=true`` ile onaylarsa sipariş dış-kargo kuyruğuna geçer."""
+    _require_self_service_order(order)
+    if order.status != "PAID":
+        raise HTTPException(
+            status.HTTP_409_CONFLICT, "Kurye yola çıktı — adres değişikliği kapandı"
+        )
+    stop = await _open_stop(db, order.id)
+    if stop is not None and stop.run.status == DeliveryRunStatus.ACTIVE.value:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT, "Kurye yola çıktı — adres değişikliği kapandı"
+        )
+
+    addr = await db.get(ClientAddress, address_id)
+    if addr is None or addr.deleted_at is not None or addr.client_id != client.id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Adres bulunamadı")
+
+    in_zone = delivery_promise.in_delivery_zone(
+        addr.location_lat,
+        addr.location_lng,
+        addr.city,
+        addr.district,
+        depot_lat=settings.DELIVERY_DEPOT_LAT,
+        depot_lng=settings.DELIVERY_DEPOT_LNG,
+        radius_km=settings.DELIVERY_ZONE_RADIUS_KM,
+        districts=settings.DELIVERY_ZONE_DISTRICTS,
+    )
+    if in_zone is not True and not force:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            {
+                "code": "OUT_OF_ZONE",
+                "message": (
+                    "Yeni adres Cıncık Teslimat bölgesinin dışında — sipariş kargo "
+                    "firmasıyla gönderilir. Onaylıyorsan devam et."
+                ),
+            },
+        )
+
+    order.ship_address = addr.address_line
+    if addr.directions:
+        order.ship_address = f"{addr.address_line}\n{addr.directions}"
+    order.ship_city = addr.city
+    order.ship_district = addr.district
+    order.ship_lat = addr.location_lat
+    order.ship_lng = addr.location_lng
+    order.ship_in_zone = in_zone
+
+    # Planlı turda durağı varsa: bölge dışına çıktıysa duraktan düşür (dış kargo
+    # kuyruğuna geçer); bölge içindeyse durak kalır (koordinatı siparişten okur;
+    # ETA bayatlar — admin yeniden optimize eder).
+    if stop is not None and in_zone is not True:
+        await db.delete(stop)
+    await db.commit()
+    return await get_order(db, order.id, client_id=client.id)
 
 
 # ── Admin ─────────────────────────────────────────────────────────────────────────

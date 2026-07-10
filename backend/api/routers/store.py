@@ -57,7 +57,12 @@ from schemas.store import (
     SellerProductCreate,
     StockNotifyIn,
 )
-from schemas.delivery import DeliveryInfoOut, OrderTrackingOut
+from schemas.delivery import (
+    DeliveryInfoOut,
+    DeliveryPrefIn,
+    OrderTrackingOut,
+    ShipAddressChangeIn,
+)
 from services import (
     collection_service,
     coupon_service,
@@ -573,6 +578,66 @@ async def public_order_tracking(
     `/orders/{order_id}` (int) route'undan ÖNCE tanımlı (segment çakışması yok ama
     açık tutulur)."""
     return await delivery_service.order_tracking(db, track_token=token)
+
+
+@router.post("/orders/track/{token}/delivery-pref", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(_track_limit)])
+async def public_set_delivery_pref(
+    token: str,
+    payload: DeliveryPrefIn,
+    db: AsyncSession = Depends(get_db),
+):
+    """Oturumsuz teslimat talimatı (token'lı takip sayfası). Davranışsal tercihler
+    serbest — mal aynı adrese gider; ADRES DEĞİŞİKLİĞİ burada YOK (oturum gerekir)."""
+    order = await order_service.get_order_by_track_token(db, token)
+    await order_service.set_delivery_pref(db, order, pref=payload.pref, note=payload.note)
+
+
+@router.post("/orders/track/{token}/postpone", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(_track_limit)])
+async def public_postpone(
+    token: str,
+    db: AsyncSession = Depends(get_db),
+):
+    order = await order_service.get_order_by_track_token(db, token)
+    await order_service.postpone_delivery(db, order)
+
+
+@router.post("/orders/{order_id}/delivery-pref", response_model=OrderOut)
+async def set_delivery_pref(
+    order_id: int,
+    payload: DeliveryPrefIn,
+    client: Client = Depends(require_roles(RoleType.CLIENT)),
+    db: AsyncSession = Depends(get_db),
+):
+    order = await order_service.get_order_for_pay(db, order_id, client.id)
+    await order_service.set_delivery_pref(db, order, pref=payload.pref, note=payload.note)
+    return await order_service.get_order(db, order_id, client_id=client.id)
+
+
+@router.post("/orders/{order_id}/postpone", response_model=OrderOut)
+async def postpone_order(
+    order_id: int,
+    client: Client = Depends(require_roles(RoleType.CLIENT)),
+    db: AsyncSession = Depends(get_db),
+):
+    """"Yarına ertele" — açık durak RESCHEDULED olur, söz günü ileri alınır."""
+    order = await order_service.get_order_for_pay(db, order_id, client.id)
+    await order_service.postpone_delivery(db, order)
+    return await order_service.get_order(db, order_id, client_id=client.id)
+
+
+@router.post("/orders/{order_id}/ship-address", response_model=OrderOut)
+async def change_order_address(
+    order_id: int,
+    payload: ShipAddressChangeIn,
+    client: Client = Depends(require_roles(RoleType.CLIENT)),
+    db: AsyncSession = Depends(get_db),
+):
+    """Teslimat adresi değişikliği — yalnız dağıtıma çıkmadan; bölge dışına
+    düşerse 409 OUT_OF_ZONE (force ile onay)."""
+    order = await order_service.get_order_for_pay(db, order_id, client.id)
+    return await order_service.change_ship_address(
+        db, client, order, address_id=payload.address_id, force=payload.force
+    )
 
 
 @router.get("/orders/{order_id}/tracking", response_model=OrderTrackingOut)

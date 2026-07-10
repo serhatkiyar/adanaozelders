@@ -55,6 +55,18 @@ def compute_promised_date(
     return next_working_day(day, non_working_weekdays)
 
 
+def next_delivery_day(
+    now_utc: datetime.datetime,
+    *,
+    non_working_weekdays: list[int],
+    utc_offset_hours: int,
+) -> datetime.date:
+    """Erteleme hedefi: yerel bugünden SONRAKİ ilk çalışma günü ("yarına ertele";
+    cutoff'a bakılmaz — müşteri isteğiyle gün atlanır)."""
+    local_day = _to_local(now_utc, utc_offset_hours).date()
+    return next_working_day(local_day + datetime.timedelta(days=1), non_working_weekdays)
+
+
 def cutoff_countdown_seconds(
     now_utc: datetime.datetime, *, cutoff_hour: int, utc_offset_hours: int
 ) -> int | None:

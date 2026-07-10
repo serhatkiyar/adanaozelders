@@ -7,6 +7,7 @@ import { FullScreenSpinner } from "@/components/Spinner";
 import { formatTL } from "@/lib/money";
 import { formatDate } from "@/lib/datetime";
 import { promisedDateLabel } from "@/lib/deliveryPromise";
+import { DeliveryPrefSection } from "@/components/store/DeliveryPrefSection";
 import { useOrder, useCancelOrder, useRequestReturn } from "@/hooks/useStore";
 import { useCartStore } from "@/store/cartStore";
 import { STATUS_LABELS, OrderItemRow, orderItemToProduct } from "@/pages/store/OrdersPage";
@@ -226,6 +227,9 @@ export default function OrderDetailPage() {
             </span>
           </Link>
         )}
+
+        {/* Teslimat tercihi (kapıya/komşuya bırak, beni ara, ertele, adres değişikliği) */}
+        <DeliveryPrefSection order={order} />
 
         {/* Ürünler */}
         <div className="mt-5 rounded-2xl border border-slate-200 p-5 dark:border-slate-800">

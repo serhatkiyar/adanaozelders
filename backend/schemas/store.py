@@ -269,6 +269,10 @@ class OrderOut(BaseModel):
     # siparişlerde None. in_zone True=kendi filo, False=dış kargo, None=belirsiz.
     promised_delivery_date: datetime.date | None = None
     ship_in_zone: bool | None = None
+    # Müşteri teslimat talimatı + erteleme sayacı (limit: order_service.POSTPONE_LIMIT).
+    delivery_pref: str = "ADRESIMDEYIM"
+    delivery_pref_note: str | None = None
+    postpone_count: int = 0
     tracking_no: str | None = None
     # Oturumsuz kargo takip token'ı — site içi "Kargo Takip" butonu /kargo-takip/{token}
     # sayfasına bunu kullanarak gider (SMS linkiyle aynı sayfa).

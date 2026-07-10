@@ -33,6 +33,7 @@ def project_customer_timeline(
     *,
     planned_at: datetime.datetime | None = None,
     last_stop_status: str | None = None,
+    postponed_at: datetime.datetime | None = None,
 ) -> list[TimelineEvent]:
     """History satırlarını (old_status, new_status, created_at) müşteri olaylarına
     projekte eder. Whitelist dışı geçişler sessizce düşer.
@@ -41,6 +42,9 @@ def project_customer_timeline(
     "dağıtım planlandı" sentetik olayı, varsa OUT_FOR_DELIVERY'den önce eklenir.
     ``last_stop_status``: SHIPPED→PAID geri sarımının nedeni durağın son halinden
     okunur (FAILED → teslim edilemedi, RESCHEDULED → müşteri erteledi).
+    ``postponed_at``: PLANNED turdayken (henüz SHIPPED olmadan) ertelemede history
+    satırı oluşmaz — sentetik POSTPONED bu damgayla eklenir (history'den zaten
+    POSTPONED üretildiyse eklenmez; çift satır olmaz).
     """
     events: list[TimelineEvent] = []
     for old, new, at in history:
@@ -67,6 +71,9 @@ def project_customer_timeline(
         # Sentetik "dağıtım planlandı" — ilk OUT_FOR_DELIVERY'den önce ve
         # PAYMENT_CONFIRMED'dan sonra anlamlı; kendi damgasıyla sıraya girer.
         events.append(TimelineEvent(code="PLANNED_FOR_DELIVERY", at=planned_at))
+
+    if postponed_at is not None and not any(e.code == "POSTPONED" for e in events):
+        events.append(TimelineEvent(code="POSTPONED", at=postponed_at))
 
     events.sort(key=lambda e: e.at)
     return events

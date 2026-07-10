@@ -223,6 +223,12 @@ async def verify_delivery(
     )
 
 
+@router.post("/stops/{stop_id}/deliver-drop", response_model=DeliveryStopOut)
+async def deliver_drop(stop_id: int, db: AsyncSession = Depends(get_db)):
+    """Kapıya/komşuya bırakma teslimi (müşteri talimatlıysa; foto kanıt zorunlu)."""
+    return await delivery_service.deliver_drop(db, stop_id)
+
+
 @router.post("/stops/{stop_id}/override-deliver", response_model=DeliveryStopOut)
 async def override_deliver(
     stop_id: int, payload: OverrideDeliverIn, db: AsyncSession = Depends(get_db)

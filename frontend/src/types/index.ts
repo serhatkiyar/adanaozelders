@@ -1579,6 +1579,10 @@ export interface OrderOut {
   promised_delivery_date?: string | null;
   /** true=Cıncık bölgesi (kendi filo), false=dış kargo, null=belirsiz. */
   ship_in_zone?: boolean | null;
+  /** Teslimat talimatı + KOMSUYA notunda komşu adı/daire; erteleme sayacı (max 2). */
+  delivery_pref?: DeliveryPref | string;
+  delivery_pref_note?: string | null;
+  postpone_count?: number;
   tracking_no?: string | null;
   track_token?: string | null;
   return_status?: string | null;
@@ -1674,7 +1678,7 @@ export interface BulkImportResult {
 
 export type DeliveryVehicle = "LADA" | "COROLLA";
 export type DeliveryRunStatus = "PLANNED" | "ACTIVE" | "DONE" | "CANCELLED";
-export type DeliveryStopStatus = "PENDING" | "DELIVERED" | "FAILED";
+export type DeliveryStopStatus = "PENDING" | "DELIVERED" | "FAILED" | "RESCHEDULED";
 
 export interface DeliveryStopItem {
   title: string;
@@ -1696,6 +1700,9 @@ export interface DeliveryStop {
   lng?: number | null;
   items: DeliveryStopItem[];
   order_total?: string | null;
+  /** Müşteri teslimat talimatı (siparişten; kurye ekranında belirgin bant). */
+  delivery_pref?: DeliveryPref | string | null;
+  delivery_pref_note?: string | null;
   /** Rota optimizasyonu (Faz B) */
   eta?: string | null;
   detour_km?: number | null;
@@ -1764,12 +1771,20 @@ export interface DeliveryScanResult {
   run_status: DeliveryRunStatus;
 }
 
-/** Müşterinin sipariş canlı takibi (Faz C). */
+/** Müşterinin sipariş canlı takibi (Faz C). POSTPONED = müşteri erteledi. */
 export type OrderTrackingStatus =
   | "NOT_DISPATCHED"
   | "EN_ROUTE"
   | "DELIVERED"
-  | "FAILED";
+  | "FAILED"
+  | "POSTPONED";
+
+/** Müşteri teslimat talimatı (siparişte yaşar; kurye ekranında bant olarak görünür). */
+export type DeliveryPref =
+  | "ADRESIMDEYIM"
+  | "KAPIYA_BIRAK"
+  | "KOMSUYA_BIRAK"
+  | "BENI_ARA";
 
 /** Müşteri olay akışı kodları (Türkçe metin lib/deliveryTimeline.ts sözlüğünde). */
 export type TimelineEventCode =
@@ -1810,6 +1825,10 @@ export interface OrderTracking {
   courier_name?: string | null;
   courier_photo_url?: string | null;
   courier_plate?: string | null;
+  /** Self-servis (token'lı sayfadan da): mevcut talimat + erteleme hakkı. */
+  delivery_pref?: DeliveryPref | string | null;
+  delivery_pref_note?: string | null;
+  can_postpone?: boolean;
   timeline?: TimelineEvent[];
   /** Teslim kanıtı (yalnız DELIVERED'da). */
   delivered_at?: string | null;

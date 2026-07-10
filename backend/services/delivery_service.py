@@ -31,7 +31,7 @@ from models.delivery import (
     DeliveryStopStatus,
 )
 from models.role import ROLE_IDS, RoleType
-from models.store import Order, OrderStatusHistory
+from models.store import DeliveryPref, Order, OrderStatusHistory
 from schemas.delivery import (
     CourierCreate,
     CourierOut,
@@ -139,6 +139,8 @@ def _stop_to_out(stop: DeliveryStop) -> DeliveryStopOut:
             if it.kind == "PHYSICAL"
         ],
         order_total=str(order.total),
+        delivery_pref=order.delivery_pref,
+        delivery_pref_note=order.delivery_pref_note,
         eta=stop.eta,
         detour_km=float(stop.detour_km) if stop.detour_km is not None else None,
         is_outlier=(
@@ -646,7 +648,8 @@ def resolve_tracking_status(
     """Müşteriye gösterilecek takip durumu (saf — pytest'li).
 
     Kurye ancak AKTİF turdaki BEKLEYEN durakta 'yolda'dır; diğer her kombinasyon
-    siparişin kendi durumuna düşer.
+    siparişin kendi durumuna düşer. RESCHEDULED (müşteri erteledi) FAILED'dan
+    ayrı kopya alır (POSTPONED).
     """
     if order_status == "DELIVERED" or stop_status == DeliveryStopStatus.DELIVERED.value:
         return "DELIVERED"
@@ -657,6 +660,8 @@ def resolve_tracking_status(
         return "EN_ROUTE"
     if stop_status == DeliveryStopStatus.FAILED.value:
         return "FAILED"
+    if stop_status == DeliveryStopStatus.RESCHEDULED.value:
+        return "POSTPONED"
     return "NOT_DISPATCHED"
 
 
@@ -743,6 +748,12 @@ async def order_tracking(
         [(r[0], r[1], r[2]) for r in history_rows],
         planned_at=stop.created_at if stop is not None else None,
         last_stop_status=stop.status if stop is not None else None,
+        postponed_at=(
+            stop.updated_at
+            if stop is not None
+            and stop.status == DeliveryStopStatus.RESCHEDULED.value
+            else None
+        ),
     )
 
     out = OrderTrackingOut(
@@ -752,6 +763,13 @@ async def order_tracking(
         tracking_no=order.tracking_no,
         recipient_masked=mask_recipient(order.ship_recipient),
         promised_delivery_date=order.promised_delivery_date,
+        delivery_pref=order.delivery_pref,
+        delivery_pref_note=order.delivery_pref_note,
+        can_postpone=(
+            order.payment_status == "PAID"
+            and order.status in ("PAID", "SHIPPED")
+            and order.postpone_count < order_service.POSTPONE_LIMIT
+        ),
         timeline=[TimelineEventOut(code=e.code, at=e.at) for e in timeline],
     )
 
@@ -916,6 +934,30 @@ async def override_deliver(db: AsyncSession, stop_id: int, *, note: str) -> Deli
     stop = await _load_stop(db, stop_id)
     _require_field_stop(stop)
     await _finalize_delivered(db, stop, proof=DeliveryProof.ADMIN, note=note)
+    return _stop_to_out(await _load_stop(db, stop_id))
+
+
+async def deliver_drop(db: AsyncSession, stop_id: int) -> DeliveryStopOut:
+    """Kapıya/komşuya bırakma teslimi: müşteri talimatı varsa OTP alınmaz —
+    kanıt zorunlu paket fotoğrafıdır (proof=PHOTO)."""
+    stop = await _load_stop(db, stop_id)
+    _require_field_stop(stop)
+    pref = stop.order.delivery_pref
+    if pref not in (DeliveryPref.KAPIYA_BIRAK.value, DeliveryPref.KOMSUYA_BIRAK.value):
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Müşterinin bırakma talimatı yok — OTP ile teslim et",
+        )
+    if not stop.photo_url:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT, "Önce kanıt fotoğrafı çek — bırakma tesliminde zorunlu"
+        )
+    note = (
+        f"Komşuya bırakıldı: {stop.order.delivery_pref_note}"
+        if pref == DeliveryPref.KOMSUYA_BIRAK.value
+        else "Kapıya bırakıldı (müşteri talimatı)"
+    )
+    await _finalize_delivered(db, stop, proof=DeliveryProof.PHOTO, note=note)
     return _stop_to_out(await _load_stop(db, stop_id))
 
 

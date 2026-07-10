@@ -64,6 +64,9 @@ class DeliveryStopOut(BaseModel):
     lng: float | None = None
     items: list[StopItemOut] = []
     order_total: str | None = None
+    # Müşteri teslimat talimatı (siparişten okunur; kurye ekranında belirgin bant).
+    delivery_pref: str | None = None
+    delivery_pref_note: str | None = None
     # Rota optimizasyonu (Faz B)
     eta: datetime.datetime | None = None
     detour_km: float | None = None
@@ -196,12 +199,31 @@ class OrderTrackingOut(BaseModel):
     courier_name: str | None = None
     courier_photo_url: str | None = None
     courier_plate: str | None = None
+    # Self-servis (token'lı sayfadan da): mevcut talimat + erteleme hakkı.
+    delivery_pref: str | None = None
+    delivery_pref_note: str | None = None
+    can_postpone: bool = False
     # Olay akışı (ORDER_RECEIVED → … → DELIVERED; Türkçe metin frontend'de).
     timeline: list[TimelineEventOut] = []
     # Teslim kanıtı (yalnız DELIVERED'da): saat + kanıt türü (OTP/ADMIN/PHOTO).
     delivered_at: datetime.datetime | None = None
     proof: str | None = None
     proof_photo_url: str | None = None
+
+
+class DeliveryPrefIn(BaseModel):
+    """Müşteri teslimat talimatı. KOMSUYA_BIRAK'ta note (komşu adı/daire) zorunlu."""
+
+    pref: str = Field(pattern="^(ADRESIMDEYIM|KAPIYA_BIRAK|KOMSUYA_BIRAK|BENI_ARA)$")
+    note: str | None = Field(default=None, max_length=200)
+
+
+class ShipAddressChangeIn(BaseModel):
+    """Adres değişikliği (yalnız oturumlu, dağıtıma çıkmadan). Bölge dışına
+    düşerse 409 code=OUT_OF_ZONE; müşteri onaylarsa force=true ile yinelenir."""
+
+    address_id: int
+    force: bool = False
 
 
 class DeliveryInfoOut(BaseModel):

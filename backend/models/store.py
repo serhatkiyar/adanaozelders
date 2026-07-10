@@ -76,6 +76,18 @@ class OrderPaymentStatus(str, enum.Enum):
     REFUNDED = "REFUNDED"
 
 
+class DeliveryPref(str, enum.Enum):
+    """Müşterinin teslimat talimatı (Hepsijet paritesi). Sipariş üzerinde yaşar —
+    durak "deneme"dir, talimat kalıcıdır; kurye ekranı stop.order'dan okur.
+    KAPIYA/KOMSUYA'da teslim OTP'siz foto kanıtla (proof=PHOTO) kapanır.
+    ERTESI_GUN ve adres değişikliği tercih değil AKSİYONDUR (ayrı uçlar)."""
+
+    ADRESIMDEYIM = "ADRESIMDEYIM"
+    KAPIYA_BIRAK = "KAPIYA_BIRAK"
+    KOMSUYA_BIRAK = "KOMSUYA_BIRAK"
+    BENI_ARA = "BENI_ARA"
+
+
 class ReturnStatus(str, enum.Enum):
     """İade talebi (RMA) durumu. Müşteri PENDING açar; admin onaylar/reddeder."""
 
@@ -345,6 +357,15 @@ class Order(Base, TimestampMixin, SoftDeleteMixin):
     # cutoff kuralıyla hesaplanır (delivery_promise.compute_promised_date).
     promised_delivery_date: Mapped[datetime.date | None] = mapped_column(
         Date, nullable=True, index=True
+    )
+    # Müşteri teslimat talimatı (DeliveryPref) + notu (KOMSUYA_BIRAK'ta komşu
+    # adı/daire zorunlu). Erteleme sayacı kötüye kullanım sınırı içindir (max 2).
+    delivery_pref: Mapped[str] = mapped_column(
+        String(20), nullable=False, server_default=text("'ADRESIMDEYIM'")
+    )
+    delivery_pref_note: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    postpone_count: Mapped[int] = mapped_column(
+        Integer, nullable=False, server_default=text("0")
     )
     tracking_no: Mapped[str | None] = mapped_column(String(100), nullable=True)
     # Oturumsuz (SMS'le paylaşılan) kargo takip token'ı — tahmin edilemez, tekil.

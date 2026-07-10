@@ -51,9 +51,14 @@ class DeliveryRunStatus(str, enum.Enum):
 
 
 class DeliveryStopStatus(str, enum.Enum):
+    """FAILED = kurye ulaşamadı (performans metriği); RESCHEDULED = müşteri
+    erteledi (kurye suçu değil) — ikisi de siparişi PAID'e geri sarar ama
+    müşteri kopyası ve raporlama ayrışır."""
+
     PENDING = "PENDING"
     DELIVERED = "DELIVERED"
     FAILED = "FAILED"
+    RESCHEDULED = "RESCHEDULED"
 
 
 class DeliveryProof(str, enum.Enum):
@@ -129,8 +134,9 @@ class DeliveryStop(Base, TimestampMixin):
         ForeignKey("orders.id", ondelete="CASCADE"), nullable=False, index=True
     )
     sequence: Mapped[int] = mapped_column(Integer, nullable=False)
+    # String(20): "RESCHEDULED" (11 kr) String(10)'a sığmaz.
     status: Mapped[str] = mapped_column(
-        String(10), nullable=False, server_default=text("'PENDING'")
+        String(20), nullable=False, server_default=text("'PENDING'")
     )
 
     qr_token: Mapped[str] = mapped_column(

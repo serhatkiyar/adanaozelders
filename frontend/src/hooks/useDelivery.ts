@@ -220,6 +220,14 @@ export function useFailStop() {
   });
 }
 
+export function useDeliverDrop() {
+  const invalidate = useInvalidateDelivery();
+  return useMutation({
+    mutationFn: (stopId: number) => deliveryApi.deliverDrop(stopId),
+    onSuccess: invalidate,
+  });
+}
+
 export function useUploadStopPhoto() {
   const invalidate = useInvalidateDelivery();
   return useMutation({
@@ -255,6 +263,81 @@ export function useOrderTracking(orderId: number | null, enabled = true) {
     enabled: orderId != null && enabled,
     refetchInterval: (query) =>
       query.state.data?.status === "EN_ROUTE" ? 15_000 : false,
+  });
+}
+
+/* ── Teslimat self-servisi (tercih / erteleme / adres) ── */
+
+function useInvalidateOrders() {
+  const qc = useQueryClient();
+  return () => {
+    qc.invalidateQueries({ queryKey: ["store", "orders"] });
+    qc.invalidateQueries({ queryKey: ["orderTracking"] });
+    qc.invalidateQueries({ queryKey: ["publicOrderTracking"] });
+  };
+}
+
+export function useSetDeliveryPref() {
+  const invalidate = useInvalidateOrders();
+  return useMutation({
+    mutationFn: ({
+      orderId,
+      pref,
+      note,
+    }: {
+      orderId: number;
+      pref: import("@/types").DeliveryPref;
+      note?: string | null;
+    }) => deliveryApi.setDeliveryPref(orderId, pref, note),
+    onSuccess: invalidate,
+  });
+}
+
+export function usePostponeOrder() {
+  const invalidate = useInvalidateOrders();
+  return useMutation({
+    mutationFn: (orderId: number) => deliveryApi.postponeOrder(orderId),
+    onSuccess: invalidate,
+  });
+}
+
+export function useChangeShipAddress() {
+  const invalidate = useInvalidateOrders();
+  return useMutation({
+    mutationFn: ({
+      orderId,
+      addressId,
+      force,
+    }: {
+      orderId: number;
+      addressId: number;
+      force?: boolean;
+    }) => deliveryApi.changeShipAddress(orderId, addressId, force),
+    onSuccess: invalidate,
+  });
+}
+
+export function usePublicSetDeliveryPref() {
+  const invalidate = useInvalidateOrders();
+  return useMutation({
+    mutationFn: ({
+      token,
+      pref,
+      note,
+    }: {
+      token: string;
+      pref: import("@/types").DeliveryPref;
+      note?: string | null;
+    }) => deliveryApi.publicSetDeliveryPref(token, pref, note),
+    onSuccess: invalidate,
+  });
+}
+
+export function usePublicPostpone() {
+  const invalidate = useInvalidateOrders();
+  return useMutation({
+    mutationFn: (token: string) => deliveryApi.publicPostpone(token),
+    onSuccess: invalidate,
   });
 }
 

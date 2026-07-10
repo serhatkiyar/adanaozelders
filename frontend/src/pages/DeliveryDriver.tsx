@@ -8,6 +8,7 @@ import { Link, useParams } from "react-router-dom";
 import { trackDeliveryRun } from "@/api/delivery";
 import { QrScanner } from "@/components/QrScanner";
 import {
+  useDeliverDrop,
   useDeliveryRun,
   useFailStop,
   useOverrideDeliver,
@@ -17,6 +18,7 @@ import {
   useUploadStopPhoto,
   useVerifyDelivery,
 } from "@/hooks/useDelivery";
+import { isDropPref, prefBannerText } from "@/lib/deliveryPref";
 import {
   RUN_STATUS_LABEL,
   STOP_STATUS_LABEL,
@@ -76,7 +78,10 @@ function CurrentStopCard({ stop }: { stop: DeliveryStop }) {
   const fail = useFailStop();
   const override = useOverrideDeliver();
   const uploadPhoto = useUploadStopPhoto();
+  const deliverDrop = useDeliverDrop();
   const photoRef = useRef<HTMLInputElement>(null);
+  const dropMode = isDropPref(stop.delivery_pref);
+  const banner = prefBannerText(stop.delivery_pref, stop.delivery_pref_note);
 
   const [code, setCode] = useState("");
   const [maskedPhone, setMaskedPhone] = useState<string | null>(null);
@@ -123,6 +128,13 @@ function CurrentStopCard({ stop }: { stop: DeliveryStop }) {
         )}
       </p>
 
+      {/* Müşteri talimatı — belirgin bant (15 sn poll ile canlı güncellenir) */}
+      {banner && (
+        <p className="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-800 ring-1 ring-amber-200 dark:bg-amber-500/10 dark:text-amber-300 dark:ring-amber-500/30">
+          {banner}
+        </p>
+      )}
+
       {/* Birincil aksiyonlar */}
       <div className="mt-4 grid grid-cols-2 gap-2">
         {navUrl && (
@@ -143,21 +155,23 @@ function CurrentStopCard({ stop }: { stop: DeliveryStop }) {
             Müşteriyi Ara
           </a>
         )}
-        <button
-          onClick={() =>
-            sendOtp.mutate(stop.id, {
-              onSuccess: (r) => {
-                setMaskedPhone(r.masked_phone);
-                toast.success(`Kod gönderildi (${r.masked_phone}).`);
-              },
-              onError: (e: any) => toast.error(apiDetail(e, "Kod gönderilemedi.")),
-            })
-          }
-          disabled={sendOtp.isPending}
-          className="rounded-xl py-2.5 text-sm font-semibold text-slate-700 ring-1 ring-slate-200 disabled:opacity-50 dark:text-slate-200 dark:ring-slate-600"
-        >
-          {sendOtp.isPending ? "Gönderiliyor…" : "Müşteriye Kod Gönder"}
-        </button>
+        {!dropMode && (
+          <button
+            onClick={() =>
+              sendOtp.mutate(stop.id, {
+                onSuccess: (r) => {
+                  setMaskedPhone(r.masked_phone);
+                  toast.success(`Kod gönderildi (${r.masked_phone}).`);
+                },
+                onError: (e: any) => toast.error(apiDetail(e, "Kod gönderilemedi.")),
+              })
+            }
+            disabled={sendOtp.isPending}
+            className="rounded-xl py-2.5 text-sm font-semibold text-slate-700 ring-1 ring-slate-200 disabled:opacity-50 dark:text-slate-200 dark:ring-slate-600"
+          >
+            {sendOtp.isPending ? "Gönderiliyor…" : "Müşteriye Kod Gönder"}
+          </button>
+        )}
       </div>
 
       {/* Teslim kanıtı fotoğrafı — kapıya/komşuya bırakmada zorunlu, normalde opsiyonel */}
@@ -203,7 +217,35 @@ function CurrentStopCard({ stop }: { stop: DeliveryStop }) {
       </div>
 
       {/* Teslim / sorun akışları */}
-      {mode === "deliver" && (
+      {mode === "deliver" && dropMode && (
+        <div className="mt-4 space-y-2">
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            Müşteri talimatı: bırakma teslimi — OTP alınmaz, kanıt fotoğrafı zorunlu.
+          </p>
+          <button
+            onClick={() =>
+              deliverDrop.mutate(stop.id, {
+                onSuccess: () => toast.success("Bırakma teslimi kaydedildi ✓"),
+                onError: (e: any) => toast.error(apiDetail(e, "Teslim edilemedi.")),
+              })
+            }
+            disabled={busy || deliverDrop.isPending || !stop.photo_url}
+            className="w-full rounded-xl bg-emerald-600 py-3 text-base font-bold text-white hover:bg-emerald-700 disabled:opacity-50"
+          >
+            {stop.photo_url ? "Bırak & Teslim Et" : "Önce kanıt fotoğrafı çek"}
+          </button>
+          <div className="flex justify-end pt-1 text-xs">
+            <button
+              onClick={() => setMode("fail")}
+              className="font-medium text-rose-600 hover:underline dark:text-rose-400"
+            >
+              Teslim edilemedi
+            </button>
+          </div>
+        </div>
+      )}
+
+      {mode === "deliver" && !dropMode && (
         <div className="mt-4 space-y-2">
           {maskedPhone && (
             <p className="text-xs text-slate-500 dark:text-slate-400">

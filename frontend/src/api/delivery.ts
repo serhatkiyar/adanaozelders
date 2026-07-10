@@ -6,10 +6,12 @@ import type {
   CourierUpdate,
   DeliveryEligibleOrder,
   DeliveryInfo,
+  DeliveryPref,
   DeliveryRun,
   DeliveryScanResult,
   DeliveryStop,
   DeliveryVehicle,
+  OrderOut,
   OrderTracking,
 } from "@/types";
 
@@ -222,6 +224,53 @@ export async function fetchPublicOrderTracking(token: string): Promise<OrderTrac
   return data;
 }
 
+/* ── Teslimat self-servisi (tercih / erteleme / adres) ── */
+
+export async function setDeliveryPref(
+  orderId: number,
+  pref: DeliveryPref,
+  note?: string | null
+): Promise<OrderOut> {
+  const { data } = await apiClient.post<OrderOut>(
+    `/store/orders/${orderId}/delivery-pref`,
+    { pref, note: note ?? null }
+  );
+  return data;
+}
+
+export async function postponeOrder(orderId: number): Promise<OrderOut> {
+  const { data } = await apiClient.post<OrderOut>(`/store/orders/${orderId}/postpone`);
+  return data;
+}
+
+export async function changeShipAddress(
+  orderId: number,
+  addressId: number,
+  force = false
+): Promise<OrderOut> {
+  const { data } = await apiClient.post<OrderOut>(
+    `/store/orders/${orderId}/ship-address`,
+    { address_id: addressId, force }
+  );
+  return data;
+}
+
+/** Oturumsuz (token'lı) tercih — takip sayfasından; adres değişikliği YOK. */
+export async function publicSetDeliveryPref(
+  token: string,
+  pref: DeliveryPref,
+  note?: string | null
+): Promise<void> {
+  await apiClient.post(`/store/orders/track/${token}/delivery-pref`, {
+    pref,
+    note: note ?? null,
+  });
+}
+
+export async function publicPostpone(token: string): Promise<void> {
+  await apiClient.post(`/store/orders/track/${token}/postpone`);
+}
+
 /** Teslim kanıtı fotoğrafı (PoD) — yeniden çekimde eskisinin yerine geçer. */
 export async function uploadStopPhoto(
   stopId: number,
@@ -233,6 +282,14 @@ export async function uploadStopPhoto(
     `/delivery/stops/${stopId}/photo`,
     form,
     { headers: { "Content-Type": "multipart/form-data" } }
+  );
+  return data;
+}
+
+/** Kapıya/komşuya bırakma teslimi — müşteri talimatlıysa, foto kanıt zorunlu. */
+export async function deliverDrop(stopId: number): Promise<DeliveryStop> {
+  const { data } = await apiClient.post<DeliveryStop>(
+    `/delivery/stops/${stopId}/deliver-drop`
   );
   return data;
 }
