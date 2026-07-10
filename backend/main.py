@@ -15,6 +15,7 @@ from core.exceptions import register_exception_handlers
 from core import migrations, seed
 from core import presence
 from core import observability
+from core import storage
 from services import (
     booking_service,
     escrow_reconciler,
@@ -72,6 +73,8 @@ async def lifespan(app: FastAPI):
             await seed.seed_admin(session)
             await seed.seed_tutors(session)
             await session.commit()
+    # MinIO bucket + anonim-okuma policy'si (best-effort; minio-init'e bağımlılık yok).
+    await storage.ensure_bucket()
     task1 = asyncio.create_task(_reminder_loop())
     task2 = asyncio.create_task(_presence_flusher())
     yield

@@ -1,4 +1,5 @@
 import io
+import json
 import logging
 import os
 import uuid
@@ -9,6 +10,68 @@ from PIL import Image
 from core.config import settings
 
 logger = logging.getLogger(__name__)
+
+
+def public_read_policy(bucket: str) -> str:
+    """Bucket'a anonim okuma izni veren S3 bucket policy JSON'u
+    (``mc anonymous set download`` eşleniği). Modern MinIO obje ACL'lerini
+    yok sayar — anonim erişim yalnız bucket policy ile açılır."""
+    return json.dumps(
+        {
+            "Version": "2012-10-17",
+            "Statement": [
+                {
+                    "Effect": "Allow",
+                    "Principal": {"AWS": ["*"]},
+                    "Action": ["s3:GetBucketLocation"],
+                    "Resource": [f"arn:aws:s3:::{bucket}"],
+                },
+                {
+                    "Effect": "Allow",
+                    "Principal": {"AWS": ["*"]},
+                    "Action": ["s3:GetObject"],
+                    "Resource": [f"arn:aws:s3:::{bucket}/*"],
+                },
+            ],
+        }
+    )
+
+
+async def ensure_bucket() -> None:
+    """Açılışta bucket'ı ve anonim-okuma policy'sini garanti eder (best-effort).
+
+    Yalnız self-hosted uçta (``AWS_ENDPOINT_URL`` dolu — MinIO) çalışır; gerçek
+    AWS S3'te bucket/policy konsoldan yönetilir. Hata uygulamayı durdurmaz
+    (loglanır) — compose'daki tek-seferlik ``minio-init`` konteynerine
+    bağımlılığı kaldırır (volume sıfırlanınca fotoğraflar 403 vermesin).
+    """
+    if not settings.AWS_ENDPOINT_URL:
+        return
+    session = aioboto3.Session()
+    try:
+        async with session.client(
+            "s3",
+            endpoint_url=settings.AWS_ENDPOINT_URL,
+            aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+            aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+            region_name=settings.AWS_REGION_NAME,
+        ) as s3:
+            try:
+                await s3.head_bucket(Bucket=settings.AWS_BUCKET_NAME)
+            except Exception:
+                await s3.create_bucket(Bucket=settings.AWS_BUCKET_NAME)
+            await s3.put_bucket_policy(
+                Bucket=settings.AWS_BUCKET_NAME,
+                Policy=public_read_policy(settings.AWS_BUCKET_NAME),
+            )
+            logger.info(
+                "MinIO bucket hazır: %s (anonim okuma açık)", settings.AWS_BUCKET_NAME
+            )
+    except Exception:
+        logger.warning(
+            "MinIO bucket/policy garantilenemedi (storage kapalı olabilir)",
+            exc_info=True,
+        )
 
 # Ders materyali olarak kabul edilen uzantılar (public bucket'a keyfi yürütülebilir
 # dosya konmasın diye whitelist). Üretimde private bucket + signed URL önerilir.
