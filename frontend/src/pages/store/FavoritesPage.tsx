@@ -30,13 +30,6 @@ type Tab = "favorites" | "collections";
 
 export default function FavoritesPage() {
   const [tab, setTab] = useState<Tab>("favorites");
-  const [openCollectionId, setOpenCollectionId] = useState<number | null>(null);
-
-  // Sekme değişince koleksiyon detayından çık.
-  function switchTab(t: Tab) {
-    setTab(t);
-    setOpenCollectionId(null);
-  }
 
   return (
     <StoreLayout title="Favori Listem">
@@ -45,20 +38,12 @@ export default function FavoritesPage() {
       <div className={`${CONTAINER} py-8`}>
         {/* Sekmeler */}
         <div className="flex gap-1 border-b border-slate-200 dark:border-slate-800">
-          <TabButton active={tab === "favorites"} onClick={() => switchTab("favorites")} label="Favori Listem" />
-          <TabButton active={tab === "collections"} onClick={() => switchTab("collections")} label="Listelerim" />
+          <TabButton active={tab === "favorites"} onClick={() => setTab("favorites")} label="Favori Listem" />
+          <TabButton active={tab === "collections"} onClick={() => setTab("collections")} label="Listelerim" />
         </div>
 
         <div className="mt-6">
-          {tab === "favorites" ? (
-            <FavoritesTab />
-          ) : (
-            <CollectionsTab
-              openCollectionId={openCollectionId}
-              onOpen={setOpenCollectionId}
-              onBack={() => setOpenCollectionId(null)}
-            />
-          )}
+          {tab === "favorites" ? <FavoritesTab /> : <CollectionsTab />}
         </div>
       </div>
     </StoreLayout>
@@ -168,16 +153,9 @@ function FavoritesTab() {
   );
 }
 
-/* ── Sekme 2: Listelerim ── */
-function CollectionsTab({
-  openCollectionId,
-  onOpen,
-  onBack,
-}: {
-  openCollectionId: number | null;
-  onOpen: (id: number) => void;
-  onBack: () => void;
-}) {
+/* ── Sekme 2: Listelerim — Amazon tarzı master-detail:
+   solda listeler alt alta, sağda seçili listenin içeriği. ── */
+function CollectionsTab() {
   const token = useAuthStore((s) => s.token);
   const user = useAuthStore((s) => s.user);
   const isClient = !!token && user?.role_id === ROLE_IDS.CLIENT;
@@ -196,61 +174,101 @@ function CollectionsTab({
     );
   }
 
-  if (openCollectionId != null) {
-    return <CollectionDetail collectionId={openCollectionId} onBack={onBack} />;
-  }
-  return <CollectionList onOpen={onOpen} />;
+  return <CollectionsPanel />;
 }
 
-function CollectionList({ onOpen }: { onOpen: (id: number) => void }) {
+function CollectionsPanel() {
   const { data: collections, isLoading } = useCollections();
   const createCol = useCreateCollection();
   const renameCol = useRenameCollection();
   const deleteCol = useDeleteCollection();
+  const [selectedId, setSelectedId] = useState<number | null>(null);
   const [nameModal, setNameModal] = useState<{ mode: "create" | "rename"; col?: Collection } | null>(null);
   const [addProductsTo, setAddProductsTo] = useState<Collection | null>(null);
 
+  // Seçim yoksa (ilk giriş / silinen liste) ilk listeye düş.
+  const selected =
+    (collections ?? []).find((c) => c.id === selectedId) ?? collections?.[0] ?? null;
+
+  if (isLoading) {
+    return <p className="py-12 text-center text-sm text-slate-400">Yükleniyor…</p>;
+  }
+
   return (
     <>
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-xl font-semibold text-slate-900 dark:text-white">
-          Listelerim
-          {collections && collections.length > 0 && (
-            <span className="ml-2 text-base font-normal text-slate-400 dark:text-slate-500">({collections.length})</span>
-          )}
-        </h1>
-        <button
-          type="button"
-          onClick={() => setNameModal({ mode: "create" })}
-          className="inline-flex items-center gap-1.5 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-indigo-700"
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
-            <path d="M12 5v14M5 12h14" />
-          </svg>
-          Liste oluştur
-        </button>
-      </div>
-
-      {isLoading ? (
-        <p className="py-12 text-center text-sm text-slate-400">Yükleniyor…</p>
-      ) : !collections || collections.length === 0 ? (
-        <EmptyBox title="Henüz listen yok" desc="“Liste oluştur” ile ilk listeni yarat, favorilerinden ürün ekle." />
+      {!collections || collections.length === 0 ? (
+        <EmptyBox
+          title="Henüz listen yok"
+          desc="“Liste oluştur” ile ilk listeni yarat, favorilerinden ürün ekle."
+          cta={
+            <button
+              type="button"
+              onClick={() => setNameModal({ mode: "create" })}
+              className="mt-6 inline-block rounded-full bg-indigo-600 px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-indigo-700"
+            >
+              Liste oluştur
+            </button>
+          }
+        />
       ) : (
-        <div className="grid gap-5 md:grid-cols-2">
-          {collections.map((c) => (
-            <CollectionCard
-              key={c.id}
-              collection={c}
-              onOpen={() => onOpen(c.id)}
-              onAddProducts={() => setAddProductsTo(c)}
-              onRename={() => setNameModal({ mode: "rename", col: c })}
-              onDelete={() => {
-                if (confirm(`"${c.name}" listesini silmek istediğine emin misin?`)) {
-                  deleteCol.mutate(c.id, { onSuccess: () => toast.success("Liste silindi") });
-                }
-              }}
-            />
-          ))}
+        <div className="grid gap-8 md:grid-cols-[15rem_minmax(0,1fr)]">
+          {/* Sol: listeler alt alta */}
+          <aside className="md:border-r md:border-slate-100 md:pr-6 dark:md:border-slate-800">
+            <button
+              type="button"
+              onClick={() => setNameModal({ mode: "create" })}
+              className="mb-3 inline-flex items-center gap-1.5 text-sm font-semibold text-indigo-600 transition-colors hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300"
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+                <path d="M12 5v14M5 12h14" />
+              </svg>
+              Liste oluştur
+            </button>
+            <nav className="flex flex-col gap-0.5">
+              {collections.map((c) => {
+                const active = selected?.id === c.id;
+                return (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => setSelectedId(c.id)}
+                    className={`flex items-baseline justify-between gap-2 rounded-lg px-3 py-2.5 text-left text-sm transition-colors ${
+                      active
+                        ? "bg-slate-100 font-semibold text-slate-900 dark:bg-slate-800 dark:text-white"
+                        : "text-slate-600 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/60 dark:hover:text-white"
+                    }`}
+                  >
+                    <span className="truncate">{c.name}</span>
+                    <span className="shrink-0 text-xs font-normal text-slate-400 dark:text-slate-500">
+                      {c.product_ids.length}
+                    </span>
+                  </button>
+                );
+              })}
+            </nav>
+          </aside>
+
+          {/* Sağ: seçili listenin içeriği */}
+          <section className="min-w-0">
+            {selected && (
+              <CollectionPane
+                key={selected.id}
+                collection={selected}
+                onAddProducts={() => setAddProductsTo(selected)}
+                onRename={() => setNameModal({ mode: "rename", col: selected })}
+                onDelete={() => {
+                  if (confirm(`"${selected.name}" listesini silmek istediğine emin misin?`)) {
+                    deleteCol.mutate(selected.id, {
+                      onSuccess: () => {
+                        setSelectedId(null); // kalan ilk listeye düşer
+                        toast.success("Liste silindi");
+                      },
+                    });
+                  }
+                }}
+              />
+            )}
+          </section>
         </div>
       )}
 
@@ -262,8 +280,9 @@ function CollectionList({ onOpen }: { onOpen: (id: number) => void }) {
           onSubmit={(name) => {
             if (nameModal.mode === "create") {
               createCol.mutate(name, {
-                onSuccess: () => {
+                onSuccess: (col) => {
                   toast.success("Liste oluşturuldu");
+                  setSelectedId(col.id);
                   setNameModal(null);
                 },
                 onError: () => toast.error("Liste oluşturulamadı"),
@@ -290,21 +309,27 @@ function CollectionList({ onOpen }: { onOpen: (id: number) => void }) {
   );
 }
 
-function CollectionCard({
+/** Seçili listenin sağ paneli: başlık + aksiyonlar + ürün ızgarası. */
+function CollectionPane({
   collection,
-  onOpen,
   onAddProducts,
   onRename,
   onDelete,
 }: {
   collection: Collection;
-  onOpen: () => void;
   onAddProducts: () => void;
   onRename: () => void;
   onDelete: () => void;
 }) {
-  const count = collection.product_ids.length;
-  const slots = Array.from({ length: 6 }, (_, i) => collection.preview[i] ?? null);
+  const { data, isLoading } = useCollection(collection.id);
+  const removeItem = useRemoveFromCollection();
+  const [q, setQ] = useState("");
+
+  const items = data?.items ?? [];
+  const filtered = useMemo(
+    () => (q.trim() ? items.filter((p) => tr(p.title).includes(tr(q))) : items),
+    [items, q]
+  );
 
   function share() {
     const url = `${window.location.origin}${ROUTES.storeCollectionShared(collection.share_token)}`;
@@ -316,22 +341,27 @@ function CollectionCard({
   }
 
   return (
-    <div className="rounded-2xl border border-slate-200 p-4 dark:border-slate-800">
-      {/* Üst sıra: ad · paylaş + 3-nokta */}
-      <div className="flex items-start justify-between gap-2">
-        <button
-          type="button"
-          onClick={onOpen}
-          className="truncate text-left text-base font-semibold text-slate-900 transition-colors hover:text-indigo-600 dark:text-white dark:hover:text-indigo-400"
-        >
+    <>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <h2 className="min-w-0 truncate text-xl font-semibold text-slate-900 dark:text-white">
           {collection.name}
-        </button>
-        <div className="flex shrink-0 items-center gap-1.5">
+          {items.length > 0 && (
+            <span className="ml-2 text-base font-normal text-slate-400 dark:text-slate-500">({items.length})</span>
+          )}
+        </h2>
+        <div className="flex shrink-0 items-center gap-2">
+          <button
+            type="button"
+            onClick={onAddProducts}
+            className="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition-colors hover:border-indigo-300 hover:text-indigo-600 dark:border-slate-700 dark:text-slate-200 dark:hover:text-indigo-400"
+          >
+            Ürün ekle
+          </button>
           <button
             type="button"
             aria-label="Paylaş"
             onClick={share}
-            className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-slate-500 shadow-sm ring-1 ring-slate-200 transition-colors hover:text-indigo-600 dark:bg-slate-800 dark:text-slate-300 dark:ring-slate-700 dark:hover:text-indigo-400"
+            className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition-colors hover:border-indigo-300 hover:text-indigo-600 dark:border-slate-700 dark:text-slate-300 dark:hover:text-indigo-400"
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="18" cy="5" r="3" />
@@ -343,7 +373,6 @@ function CollectionCard({
           </button>
           <KebabMenu
             actions={[
-              { label: "Yeni ürün ekle", onClick: onAddProducts },
               { label: "Liste ismini düzenle", onClick: onRename },
               { label: "Listeyi sil", danger: true, onClick: onDelete },
             ]}
@@ -351,91 +380,42 @@ function CollectionCard({
         </div>
       </div>
 
-      {/* 6 slot önizleme (3×2) */}
-      <button type="button" onClick={onOpen} className="mt-4 grid w-full grid-cols-3 gap-2">
-        {slots.map((p, i) => (
-          <div
-            key={i}
-            className="flex aspect-square items-center justify-center overflow-hidden rounded-lg border border-slate-100 bg-slate-50 dark:border-slate-800 dark:bg-slate-800/50"
-          >
-            {p?.cover_url ? (
-              <img src={p.cover_url} alt="" className="h-full w-full object-contain mix-blend-multiply dark:mix-blend-normal" />
-            ) : null}
-          </div>
-        ))}
-      </button>
-
-      {/* Ürün sayısı */}
-      <p className="mt-3 text-xs text-slate-400 dark:text-slate-500">
-        {count} ürün
-      </p>
-    </div>
-  );
-}
-
-function CollectionDetail({ collectionId, onBack }: { collectionId: number; onBack: () => void }) {
-  const { data, isLoading } = useCollection(collectionId);
-  const removeItem = useRemoveFromCollection();
-  const [q, setQ] = useState("");
-
-  const items = data?.items ?? [];
-  const filtered = useMemo(
-    () => (q.trim() ? items.filter((p) => tr(p.title).includes(tr(q))) : items),
-    [items, q]
-  );
-
-  return (
-    <>
-      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            aria-label="Listelerime dön"
-            onClick={onBack}
-            className="flex h-9 w-9 items-center justify-center rounded-full text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900 dark:hover:bg-slate-800 dark:hover:text-white"
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="15 18 9 12 15 6" />
-            </svg>
-          </button>
-          <h1 className="text-xl font-semibold text-slate-900 dark:text-white">
-            {data?.name ?? "Liste"}
-            {items.length > 0 && (
-              <span className="ml-2 text-base font-normal text-slate-400 dark:text-slate-500">({items.length})</span>
-            )}
-          </h1>
-        </div>
-        {items.length > 0 && <SearchBox value={q} onChange={setQ} placeholder="Listede ara" />}
-      </div>
-
-      {isLoading ? (
-        <p className="py-12 text-center text-sm text-slate-400">Yükleniyor…</p>
-      ) : items.length === 0 ? (
-        <EmptyBox title="Bu liste boş" desc="Favorilerinden bu listeye ürün ekleyebilirsin." />
-      ) : filtered.length === 0 ? (
-        <p className="py-12 text-center text-sm text-slate-500 dark:text-slate-400">"{q}" için sonuç yok.</p>
-      ) : (
-        <div className={GRID}>
-          {filtered.map((p) => (
-            <ProductCard
-              key={p.id}
-              product={p}
-              menu={
-                <KebabMenu
-                  actions={[
-                    {
-                      label: "Listeden çıkar",
-                      danger: true,
-                      onClick: () =>
-                        removeItem.mutate({ collectionId, productId: p.id }),
-                    },
-                  ]}
-                />
-              }
-            />
-          ))}
+      {items.length > 0 && (
+        <div className="mt-4">
+          <SearchBox value={q} onChange={setQ} placeholder="Bu listede ara" />
         </div>
       )}
+
+      <div className="mt-5">
+        {isLoading ? (
+          <p className="py-12 text-center text-sm text-slate-400">Yükleniyor…</p>
+        ) : items.length === 0 ? (
+          <EmptyBox title="Bu liste boş" desc="“Ürün ekle” ile favorilerinden bu listeye ürün ekleyebilirsin." />
+        ) : filtered.length === 0 ? (
+          <p className="py-12 text-center text-sm text-slate-500 dark:text-slate-400">"{q}" için sonuç yok.</p>
+        ) : (
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+            {filtered.map((p) => (
+              <ProductCard
+                key={p.id}
+                product={p}
+                menu={
+                  <KebabMenu
+                    actions={[
+                      {
+                        label: "Listeden çıkar",
+                        danger: true,
+                        onClick: () =>
+                          removeItem.mutate({ collectionId: collection.id, productId: p.id }),
+                      },
+                    ]}
+                  />
+                }
+              />
+            ))}
+          </div>
+        )}
+      </div>
     </>
   );
 }
