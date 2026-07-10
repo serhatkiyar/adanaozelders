@@ -7,6 +7,7 @@ import { JsonLd } from "@/components/JsonLd";
 import { StarRating } from "@/components/StarRating";
 import { RatingHistogram } from "@/components/store/RatingHistogram";
 import { ProductCard } from "@/components/store/ProductCard";
+import { HoverZoomImage } from "@/components/store/HoverZoomImage";
 import { DeliveryPromiseBadge } from "@/components/store/DeliveryPromiseBadge";
 import { FullScreenSpinner } from "@/components/Spinner";
 import { StoreLayout } from "@/pages/store/StoreLayout";
@@ -263,15 +264,7 @@ export default function ProductDetailPage() {
           {/* Galeri */}
           <div className="flex flex-col gap-3">
             {hero ? (
-              <div className="group relative aspect-square overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900/50">
-                <button
-                  type="button"
-                  onClick={() => setLightboxOpen(true)}
-                  aria-label="Görseli büyüt"
-                  className="absolute inset-0 flex cursor-zoom-in items-center justify-center p-6"
-                >
-                  <img src={hero} alt={product.title} className="h-full w-full object-contain mix-blend-multiply transition-transform duration-300 group-hover:scale-[1.03] dark:mix-blend-normal" />
-                </button>
+              <HoverZoomImage src={hero} alt={product.title} onOpen={() => setLightboxOpen(true)}>
                 {/* Favori + paylaş — sağ üst köşe */}
                 <div className="absolute right-3 top-3 z-10 flex gap-2">
                   <button
@@ -310,7 +303,7 @@ export default function ProductDetailPage() {
                     </svg>
                   </button>
                 </div>
-              </div>
+              </HoverZoomImage>
             ) : (
               <div className="flex aspect-square items-center justify-center rounded-2xl border border-slate-200 text-slate-300 dark:border-slate-800">
                 Görsel yok

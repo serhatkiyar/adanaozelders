@@ -37,7 +37,7 @@ export function ProductCard({
             src={product.cover_url}
             alt={product.title}
             loading="lazy"
-            className="pointer-events-none z-0 max-h-full max-w-full object-contain mix-blend-multiply transition-transform duration-500 group-hover:scale-[1.02] dark:mix-blend-normal"
+            className="pointer-events-none z-0 max-h-full max-w-full object-contain mix-blend-multiply dark:mix-blend-normal"
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center text-slate-200 dark:text-slate-700">
@@ -89,6 +89,13 @@ export function ProductCard({
           {product.title}
         </Link>
 
+        {/* Yazar — başlığın hemen altında, sade */}
+        {product.author && (
+          <span className="mt-0.5 truncate text-xs text-slate-500 dark:text-slate-400">
+            {product.author}
+          </span>
+        )}
+
         {/* Değerlendirme — yalnız gerçek veride; 5 yıldız (dolu/yarım/boş) */}
         {hasRating && (
           <div className="mt-1.5 flex items-center gap-1.5 text-xs text-slate-500">
@@ -119,7 +126,7 @@ export function ProductCard({
               add(product);
               toast.success("Sepete eklendi");
             }}
-            className="w-full rounded-lg bg-indigo-600 py-2 text-sm font-semibold text-white transition-colors hover:bg-indigo-700 active:scale-[0.99] disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400 dark:disabled:bg-slate-800 dark:disabled:text-slate-500"
+            className="w-full rounded-full bg-indigo-600 py-2 text-sm font-semibold text-white transition-colors hover:bg-indigo-700 active:scale-[0.99] disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400 dark:disabled:bg-slate-800 dark:disabled:text-slate-500"
           >
             {soldOut ? "Tükendi" : "Sepete Ekle"}
           </button>

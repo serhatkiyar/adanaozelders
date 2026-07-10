@@ -154,6 +154,7 @@ def _to_search_out(
             p.rating_sum, p.rating_count, prior_mean, confidence
         ),
         status=p.status,
+        author=p.author,
     )
 
 
@@ -358,7 +359,6 @@ async def _to_detail(db: AsyncSession, p: Product) -> ProductDetailOut:
         stock=p.stock,
         weight_grams=p.weight_grams,
         digital_asset_name=p.digital_asset_name,
-        author=p.author,
         publisher=p.publisher,
         isbn=p.isbn,
         page_count=p.page_count,

@@ -1448,6 +1448,8 @@ export interface ProductSearchOut {
   rating_average?: number | null;
   bayesian_score?: number | null;
   status?: string | null;
+  /** Kitapta yazar — kartta başlığın altında gösterilir. */
+  author?: string | null;
 }
 
 /** Kitap künyesi (opsiyonel) — ürün detayında "Ürün Özellikleri" tablosu + admin formu. */

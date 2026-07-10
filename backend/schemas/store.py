@@ -72,6 +72,8 @@ class ProductSearchOut(BaseModel):
     rating_average: float | None = None
     bayesian_score: float | None = None
     status: str | None = None
+    # Kitapta yazar kartta da gösterilir (başlığın altı).
+    author: str | None = None
 
 
 class ProductDetailOut(ProductSearchOut):
@@ -80,7 +82,6 @@ class ProductDetailOut(ProductSearchOut):
     weight_grams: int | None = None
     digital_asset_name: str | None = None
     # Kitap künyesi (dolu olanlar detayda "Ürün Özellikleri" tablosunda gösterilir).
-    author: str | None = None
     publisher: str | None = None
     isbn: str | None = None
     page_count: int | None = None
