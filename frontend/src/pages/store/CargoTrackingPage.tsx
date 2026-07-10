@@ -16,6 +16,7 @@ import {
 } from "@/hooks/useDelivery";
 import { PREF_OPTIONS } from "@/lib/deliveryPref";
 import { promisedDateLabel } from "@/lib/deliveryPromise";
+import { useAuthStore } from "@/store/authStore";
 import { toast } from "@/store/toastStore";
 import {
   TIMELINE_LABELS,
@@ -214,6 +215,7 @@ const COPY: Record<
 function PrefControls({ t, token }: { t: OrderTracking; token: string }) {
   const setPref = usePublicSetDeliveryPref();
   const postpone = usePublicPostpone();
+  const loggedIn = useAuthStore((s) => !!s.token && !!s.user);
   if (t.status === "DELIVERED" || (!t.can_postpone && t.status === "FAILED")) return null;
   if (t.status !== "NOT_DISPATCHED" && t.status !== "EN_ROUTE" && t.status !== "POSTPONED")
     return null;
@@ -283,14 +285,29 @@ function PrefControls({ t, token }: { t: OrderTracking; token: string }) {
           </button>
         )}
         <span className="text-slate-400 dark:text-slate-500">
-          Adres değiştirmek için{" "}
-          <Link
-            to={ROUTES.login}
-            className="font-medium text-indigo-600 hover:underline dark:text-indigo-400"
-          >
-            giriş yap
-          </Link>
-          .
+          {loggedIn ? (
+            <>
+              Adres değişikliği{" "}
+              <Link
+                to={ROUTES.orders}
+                className="font-medium text-indigo-600 hover:underline dark:text-indigo-400"
+              >
+                Siparişlerim
+              </Link>
+              &rsquo;deki sipariş detayından yapılır.
+            </>
+          ) : (
+            <>
+              Adres değiştirmek için{" "}
+              <Link
+                to={ROUTES.login}
+                className="font-medium text-indigo-600 hover:underline dark:text-indigo-400"
+              >
+                giriş yap
+              </Link>
+              .
+            </>
+          )}
         </span>
       </div>
     </div>

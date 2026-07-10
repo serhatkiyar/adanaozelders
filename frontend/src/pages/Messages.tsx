@@ -30,7 +30,7 @@ const REACTION_EMOJIS = ["👍", "❤️", "😄", "🎉", "😮", "😢", "🙏
 
 type Role = "CLIENT" | "TUTOR" | "LIBRARY";
 
-export default function Messages() {
+export default function Messages({ embedded = false }: { embedded?: boolean }) {
   const { data: user } = useCurrentUser();
   const role: Role | null =
     user?.role_id === ROLE_IDS.CLIENT
@@ -306,19 +306,19 @@ export default function Messages() {
   };
 
   if (role === null) {
-    return (
-      <DashboardShell title="Mesajlar">
-        <div className="mx-auto max-w-md rounded-2xl border border-dashed border-slate-300 py-16 text-center dark:border-slate-700">
-          <p className="text-sm text-slate-500 dark:text-slate-400">
-            Mesajlaşma yalnızca öğrenci ve eğitmenler içindir.
-          </p>
-        </div>
-      </DashboardShell>
+    const notice = (
+      <div className="mx-auto max-w-md rounded-2xl border border-dashed border-slate-300 py-16 text-center dark:border-slate-700">
+        <p className="text-sm text-slate-500 dark:text-slate-400">
+          Mesajlaşma yalnızca öğrenci ve eğitmenler içindir.
+        </p>
+      </div>
     );
+    if (embedded) return notice;
+    return <DashboardShell title="Mesajlar">{notice}</DashboardShell>;
   }
 
-  return (
-    <DashboardShell title="Mesajlar" navItems={navItems} flush>
+  // Gövde shell'den ayrı: Mesaj Merkezi (embedded) kendi yüksekliğini verir.
+  const body = (
       <div className="mx-auto flex h-full w-full max-w-screen-2xl overflow-hidden bg-white px-4 md:px-8 dark:bg-slate-900">
         {/* ── Sohbet listesi ── */}
         <aside
@@ -774,6 +774,12 @@ export default function Messages() {
           return <RightContextPanel bookingId={activeBookingId} />;
         })()}
       </div>
+  );
+
+  if (embedded) return body;
+  return (
+    <DashboardShell title="Mesajlar" navItems={navItems} flush>
+      {body}
     </DashboardShell>
   );
 }

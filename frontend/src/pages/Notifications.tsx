@@ -44,7 +44,6 @@ function relativeDate(iso: string): string {
 
 export default function Notifications() {
   const { data: user } = useCurrentUser();
-  const navigate = useNavigate();
   const navItems =
     user?.role_id === ROLE_IDS.TUTOR
       ? TUTOR_NAV
@@ -52,6 +51,17 @@ export default function Notifications() {
         ? STUDENT_NAV
         : undefined;
 
+  return (
+    <DashboardShell title="Bildirimler" navItems={navItems}>
+      <NotificationsPanel />
+    </DashboardShell>
+  );
+}
+
+/** Bildirim gelen kutusu içeriği — hem /bildirimler sayfası hem Mesaj Merkezi
+ *  sağ paneli kullanır (shell'siz). */
+export function NotificationsPanel() {
+  const navigate = useNavigate();
   const { data: unread = 0 } = useUnreadCount();
   const markRead = useMarkNotificationRead();
   const markAll = useMarkAllNotificationsRead();
@@ -99,8 +109,7 @@ export default function Notifications() {
   };
 
   return (
-    <DashboardShell title="Bildirimler" navItems={navItems}>
-      <div className="mx-auto max-w-3xl">
+    <div className="mx-auto max-w-3xl">
         {/* ── Başlık alanı ── */}
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
           <div>
@@ -253,7 +262,6 @@ export default function Notifications() {
             )}
           </div>
         )}
-      </div>
-    </DashboardShell>
+    </div>
   );
 }

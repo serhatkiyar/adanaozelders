@@ -7,29 +7,18 @@ import { STUDENT_NAV } from "@/lib/nav";
 import { ROUTES } from "@/lib/routes";
 import { useSurfaceStore } from "@/store/surfaceStore";
 
-type AccountGroup = "egitim" | "magaza" | "hesap";
-
 interface AccountCard {
   to: string;
-  group: AccountGroup;
   title: string;
   desc: string;
   icon: ReactNode;
 }
 
-const GROUPS: { key: AccountGroup; heading: string }[] = [
-  { key: "egitim", heading: "Eğitim" },
-  { key: "magaza", heading: "Mağaza" },
-  { key: "hesap", heading: "Hesap & Genel" },
-];
-
 const ICON = "h-7 w-7";
 
 const CARDS: AccountCard[] = [
   {
-    to: ROUTES.orders,
-    group: "magaza",
-    title: "Siparişlerim",
+    to: ROUTES.orders,    title: "Siparişlerim",
     desc: "Mağaza siparişlerini izle, iade veya iptal et.",
     icon: (
       <svg className={ICON} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -40,9 +29,7 @@ const CARDS: AccountCard[] = [
     ),
   },
   {
-    to: ROUTES.bookings,
-    group: "egitim",
-    title: "Rezervasyonlarım",
+    to: ROUTES.bookings,    title: "Rezervasyonlarım",
     desc: "Derslerin, biletlerin ve talep durumların.",
     icon: (
       <svg className={ICON} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -54,9 +41,7 @@ const CARDS: AccountCard[] = [
     ),
   },
   {
-    to: ROUTES.favorites,
-    group: "egitim",
-    title: "Favori eğitmenlerim",
+    to: ROUTES.favorites,    title: "Favori eğitmenlerim",
     desc: "Kaydettiğin eğitmenler.",
     icon: (
       <svg className={ICON} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -65,9 +50,7 @@ const CARDS: AccountCard[] = [
     ),
   },
   {
-    to: ROUTES.storeFavorites,
-    group: "magaza",
-    title: "Mağaza Favorilerim & Listelerim",
+    to: ROUTES.storeFavorites,    title: "Mağaza Favorilerim & Listelerim",
     desc: "Beğendiğin ürünler ve oluşturduğun listeler.",
     icon: (
       <svg className={ICON} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -76,9 +59,7 @@ const CARDS: AccountCard[] = [
     ),
   },
   {
-    to: ROUTES.addresses,
-    group: "magaza",
-    title: "Adreslerim",
+    to: ROUTES.addresses,    title: "Adreslerim",
     desc: "Teslimat adreslerini ekle, düzenle veya sil.",
     icon: (
       <svg className={ICON} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -88,32 +69,19 @@ const CARDS: AccountCard[] = [
     ),
   },
   {
-    to: ROUTES.messages,
-    group: "hesap",
-    title: "Mesajlar",
-    desc: "Eğitmen ve satıcılarla yazışmaların.",
+    to: ROUTES.messageCenter,
+    title: "Mesaj Merkezi",
+    desc: "Mesajların ve bildirimlerin tek yerde.",
     icon: (
       <svg className={ICON} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
         <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+        <line x1="9" y1="9" x2="15" y2="9" />
+        <line x1="9" y1="13" x2="13" y2="13" />
       </svg>
     ),
   },
   {
-    to: ROUTES.notifications,
-    group: "hesap",
-    title: "Bildirimler",
-    desc: "Bildirim gelen kutun.",
-    icon: (
-      <svg className={ICON} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
-        <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-      </svg>
-    ),
-  },
-  {
-    to: ROUTES.settings,
-    group: "hesap",
-    title: "Hesap & Güvenlik",
+    to: ROUTES.settings,    title: "Hesap & Güvenlik",
     desc: "Kimlik, şifre, e-posta/telefon doğrulama, görünüm.",
     icon: (
       <svg className={ICON} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -123,9 +91,7 @@ const CARDS: AccountCard[] = [
     ),
   },
   {
-    to: ROUTES.profileEdit,
-    group: "hesap",
-    title: "Profil bilgilerim",
+    to: ROUTES.profileEdit,    title: "Profil bilgilerim",
     desc: "Herkese açık profil, hakkımda ve eğitim.",
     icon: (
       <svg className={ICON} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -135,9 +101,7 @@ const CARDS: AccountCard[] = [
     ),
   },
   {
-    to: ROUTES.terms,
-    group: "hesap",
-    title: "Sözleşmeler ve Yardım",
+    to: ROUTES.terms,    title: "Sözleşmeler ve Yardım",
     desc: "Kullanım koşulları, iade politikası ve KVKK.",
     icon: (
       <svg className={ICON} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -175,30 +139,25 @@ export default function AccountHub() {
         </div>
       </div>
 
-      {GROUPS.map((g, gi) => (
-        <section key={g.key} className={gi === 0 ? "mt-8" : "mt-10 border-t border-slate-100 pt-8 dark:border-slate-800"}>
-          <h2 className="text-sm font-semibold text-slate-500 dark:text-slate-400">{g.heading}</h2>
-          <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {CARDS.filter((c) => c.group === g.key).map((c) => (
-              <Link
-                key={c.to + c.title}
-                to={c.to}
-                className="group flex items-start gap-4 rounded-2xl border border-slate-200 bg-white p-5 transition-colors hover:border-indigo-300 hover:bg-indigo-50/40 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-indigo-500/50 dark:hover:bg-indigo-500/5"
-              >
-                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400">
-                  {c.icon}
-                </span>
-                <span>
-                  <span className="block font-semibold text-slate-900 group-hover:text-indigo-700 dark:text-white dark:group-hover:text-indigo-300">
-                    {c.title}
-                  </span>
-                  <span className="mt-0.5 block text-sm text-slate-500 dark:text-slate-400">{c.desc}</span>
-                </span>
-              </Link>
-            ))}
-          </div>
-        </section>
-      ))}
+      <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {CARDS.map((c) => (
+          <Link
+            key={c.to + c.title}
+            to={c.to}
+            className="group flex items-start gap-4 rounded-2xl border border-slate-200 bg-white p-5 transition-colors hover:border-indigo-300 hover:bg-indigo-50/40 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-indigo-500/50 dark:hover:bg-indigo-500/5"
+          >
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400">
+              {c.icon}
+            </span>
+            <span>
+              <span className="block font-semibold text-slate-900 group-hover:text-indigo-700 dark:text-white dark:group-hover:text-indigo-300">
+                {c.title}
+              </span>
+              <span className="mt-0.5 block text-sm text-slate-500 dark:text-slate-400">{c.desc}</span>
+            </span>
+          </Link>
+        ))}
+      </div>
     </div>
   );
 

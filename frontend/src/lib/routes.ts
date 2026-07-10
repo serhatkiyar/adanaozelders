@@ -70,6 +70,8 @@ export const PATHS = {
   tasks: "/gorevler",
   /** Bildirimler gelen kutusu (tüm roller). */
   notifications: "/bildirimler",
+  /** Mesaj Merkezi — Mesajlar + Bildirimler tek çatıda (kenar çubuklu). */
+  messageCenter: "/mesaj-merkezi",
   /** Mağaza siparişlerim (CLIENT). */
   orders: "/siparislerim",
   /** Sipariş detayı (CLIENT). */
@@ -158,6 +160,7 @@ export const ROUTES = {
   exams: PATHS.exams,
   tasks: PATHS.tasks,
   notifications: PATHS.notifications,
+  messageCenter: PATHS.messageCenter,
   orders: PATHS.orders,
   orderDetail: (id: string | number) => `/siparislerim/${id}`,
   sellerProducts: PATHS.sellerProducts,

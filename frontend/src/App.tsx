@@ -74,6 +74,7 @@ const Grapher = lazy(() => import("@/pages/Grapher"));
 const Habits = lazy(() => import("@/pages/Habits"));
 const Tasks = lazy(() => import("@/pages/Tasks"));
 const Profile = lazy(() => import("@/pages/Profile"));
+const MessageCenter = lazy(() => import("@/pages/MessageCenter"));
 const Settings = lazy(() => import("@/pages/Settings"));
 const Balance = lazy(() => import("@/pages/Balance"));
 const Demands = lazy(() => import("@/pages/Demands"));
@@ -294,6 +295,7 @@ function App() {
           {/* ── Oturum-içi (DÜZ). Yalnızca kimlik gerektiren ortak uçlar ── */}
           <Route element={<ProtectedRoute />}>
             <Route path={PATHS.messages} element={<Messages />} />
+            <Route path={PATHS.messageCenter} element={<MessageCenter />} />
             <Route path={PATHS.calendar} element={<Calendar />} />
             <Route path={PATHS.learn} element={<Learn />} />
             <Route path={PATHS.flashcards} element={<Flashcards />} />
