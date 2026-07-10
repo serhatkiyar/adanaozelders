@@ -9,6 +9,7 @@ from models.booking_private_note import BookingPrivateNote
 from models.booking_resource import BookingResource
 from models.bookmark import Bookmark
 from models.client import Client, ClientAddress, ClientEducation
+from models.product_bookmark import ProductBookmark
 from models.courier import Courier
 from models.delivery import (
     DeliveryProof,
@@ -106,6 +107,7 @@ __all__ = [
     "BookingResource",
     "BookingStatus",
     "Bookmark",
+    "ProductBookmark",
     "Client",
     "ClientAddress",
     "ClientEducation",

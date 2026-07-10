@@ -20,6 +20,7 @@ from core import mail, storage
 from core.config import settings
 from models.admin import Admin
 from models.client import Client
+from models.product_bookmark import ProductBookmark
 from models.store import (
     Order,
     OrderItem,
@@ -675,6 +676,63 @@ async def list_products_admin(
         )
         for p, fn, ln in rows
     ]
+
+
+# ── Mağaza favorileri (client→product; hesapla senkron kalp) ────────────────────
+
+
+async def list_favorites(db: AsyncSession, client_id: int) -> list[ProductSearchOut]:
+    """Kullanıcının favori ürünleri (yeni eklenen önce). Silinmiş/pasif ürünler
+    listeden düşer (kayıt durur, ürün geri gelirse yeniden görünür)."""
+    prior_mean = await _compute_global_mean(db)
+    confidence = settings.BAYESIAN_CONFIDENCE
+    rows = (
+        await db.execute(
+            select(Product, Tutor.first_name, Tutor.last_name)
+            .join(ProductBookmark, ProductBookmark.product_id == Product.id)
+            .outerjoin(Tutor, Tutor.id == Product.tutor_id)
+            .where(
+                ProductBookmark.client_id == client_id,
+                Product.deleted_at.is_(None),
+                Product.status == ProductStatus.ACTIVE.value,
+            )
+            .order_by(ProductBookmark.created_at.desc())
+        )
+    ).all()
+    return [
+        _to_search_out(
+            p,
+            prior_mean,
+            confidence,
+            tutor_name=(f"{fn} {ln}".strip() if fn else None),
+        )
+        for p, fn, ln in rows
+    ]
+
+
+async def add_favorite(db: AsyncSession, client_id: int, product_id: int) -> None:
+    """Favoriye ekle — idempotent (PUT; zaten ekliyse sessizce geçer)."""
+    p = (
+        await db.execute(
+            select(Product.id).where(
+                Product.id == product_id, Product.deleted_at.is_(None)
+            )
+        )
+    ).scalar_one_or_none()
+    if p is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Ürün bulunamadı")
+    existing = await db.get(ProductBookmark, (client_id, product_id))
+    if existing is None:
+        db.add(ProductBookmark(client_id=client_id, product_id=product_id))
+        await db.commit()
+
+
+async def remove_favorite(db: AsyncSession, client_id: int, product_id: int) -> None:
+    """Favoriden çıkar — idempotent (yoksa da 204)."""
+    existing = await db.get(ProductBookmark, (client_id, product_id))
+    if existing is not None:
+        await db.delete(existing)
+        await db.commit()
 
 
 # ── Eğitmen dijital ürün ─────────────────────────────────────────────────────────

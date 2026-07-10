@@ -772,6 +772,35 @@ async def notify_when_in_stock(
     await store_service.subscribe_back_in_stock(db, product_id, email=payload.email)
 
 
+# ── Mağaza favorileri (kalp) — hesapla senkron ──────────────────────────────────
+
+
+@router.get("/favorites", response_model=list[ProductSearchOut])
+async def list_favorites(
+    client: Client = Depends(require_roles(RoleType.CLIENT)),
+    db: AsyncSession = Depends(get_db),
+):
+    return await store_service.list_favorites(db, client.id)
+
+
+@router.put("/favorites/{product_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def add_favorite(
+    product_id: int,
+    client: Client = Depends(require_roles(RoleType.CLIENT)),
+    db: AsyncSession = Depends(get_db),
+):
+    await store_service.add_favorite(db, client.id, product_id)
+
+
+@router.delete("/favorites/{product_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def remove_favorite(
+    product_id: int,
+    client: Client = Depends(require_roles(RoleType.CLIENT)),
+    db: AsyncSession = Depends(get_db),
+):
+    await store_service.remove_favorite(db, client.id, product_id)
+
+
 # ── Koleksiyon (Listelerim) ──────────────────────────────────────────────────────
 # Not: /collections/shared/{token} public; /{collection_id} int olduğundan çakışma yok.
 

@@ -104,6 +104,21 @@ export async function notifyWhenInStock(
   await apiClient.post(`/store/products/${productId}/notify-me`, { email });
 }
 
+/* ── Mağaza favorileri (kalp) — hesapla senkron ── */
+
+export async function listFavorites(): Promise<ProductSearchOut[]> {
+  const { data } = await apiClient.get<ProductSearchOut[]>("/store/favorites");
+  return data;
+}
+
+export async function addFavorite(productId: number): Promise<void> {
+  await apiClient.put(`/store/favorites/${productId}`);
+}
+
+export async function removeFavorite(productId: number): Promise<void> {
+  await apiClient.delete(`/store/favorites/${productId}`);
+}
+
 /* ── Koleksiyon (Listelerim) ── */
 
 export async function listCollections(): Promise<Collection[]> {

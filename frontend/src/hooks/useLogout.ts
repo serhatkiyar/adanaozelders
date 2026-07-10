@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuthStore } from "@/store/authStore";
+import { useFavoritesStore } from "@/store/favoritesStore";
 import { logout as logoutRequest } from "@/api/auth";
 import { ROUTES } from "@/lib/routes";
 
@@ -17,6 +18,8 @@ export function useLogout(redirectTo: string = ROUTES.login) {
       .finally(() => {
         logout();
         queryClient.clear();
+        // Mağaza favorileri hesapla senkron — sonraki kullanıcıya sızmasın.
+        useFavoritesStore.getState().clear();
       });
     // Varsayılan: /giris (panel). Mağaza gibi public yüzeyler kendi hedefini verir.
     navigate(redirectTo, { replace: true });
