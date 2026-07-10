@@ -4,6 +4,7 @@ import {
   useToggleLibraryBookmark,
 } from "@/hooks/useLibraryBookmarks";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { setPendingFavorite } from "@/lib/pendingFavorite";
 import { ROLE_IDS } from "@/types";
 
 interface LibraryBookmarkButtonProps {
@@ -33,6 +34,8 @@ export function LibraryBookmarkButton({
     e.preventDefault();
     e.stopPropagation();
     if (!user) {
+      // Niyeti sakla: giriş tamamlanınca PendingFavoriteApplier uygular.
+      setPendingFavorite({ type: "library", id: libraryId });
       navigate("?modal=login");
       return;
     }

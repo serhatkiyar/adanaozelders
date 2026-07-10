@@ -272,9 +272,10 @@ export default function PublicMarketplace() {
                   </span>
                 )}
               </div>
+              {/* Anonim de kalbi görür — tıklayınca giriş modalı, giriş sonrası niyet uygulanır */}
               <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
                 {data.map((tutor) => (
-                  <TutorCard key={tutor.id} tutor={tutor} showBookmark={false} />
+                  <TutorCard key={tutor.id} tutor={tutor} />
                 ))}
               </div>
               {data.length === limit && (

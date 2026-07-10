@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { useBookmarks, useToggleBookmark } from "@/hooks/useBookmarks";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { setPendingFavorite } from "@/lib/pendingFavorite";
 import { ROLE_IDS } from "@/types";
 
 interface BookmarkButtonProps {
@@ -51,6 +52,8 @@ export function BookmarkButton({
         e.preventDefault();
         e.stopPropagation();
         if (!user) {
+          // Niyeti sakla: giriş tamamlanınca PendingFavoriteApplier uygular.
+          setPendingFavorite({ type: "tutor", id: tutorId });
           navigate("?modal=login");
           return;
         }

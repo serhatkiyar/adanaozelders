@@ -19,6 +19,7 @@ import Landing from "@/pages/Landing";
 import { GlobalMeeting } from "@/components/GlobalMeeting";
 import { DeepWorkTimer } from "@/components/DeepWorkTimer";
 import { AuthModal } from "@/components/AuthModal";
+import { PendingFavoriteApplier } from "@/components/PendingFavoriteApplier";
 import { rtcManager } from "@/lib/rtcTransfer";
 
 // ── Route-level code splitting: ağır modüller talep üzerine yüklenir ──
@@ -382,6 +383,7 @@ function App() {
         </Routes>
         </Suspense>
         <AuthModal />
+        <PendingFavoriteApplier />
         <DeepWorkTimer />
       </BrowserRouter>
       <GlobalMeeting />
