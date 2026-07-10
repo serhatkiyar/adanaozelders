@@ -42,6 +42,18 @@ class RoutePlan:
     provider: str = ""
 
 
+@dataclass
+class FleetPlan:
+    """Çok araçlı dağıtım sonucu: araç id → o aracın rotası.
+
+    Araç id'leri çağıranın anahtarıdır (delivery: 1=LADA, 2=COROLLA).
+    Boş kalan araç routes'ta görünmez.
+    """
+
+    routes: dict[int, RoutePlan] = field(default_factory=dict)
+    provider: str = ""
+
+
 class RoutingProvider(ABC):
     name: str = "base"
 
@@ -50,3 +62,20 @@ class RoutingProvider(ABC):
         self, *, depot_lat: float, depot_lng: float, points: list[RoutePoint]
     ) -> RoutePlan:
         """Durakları optimal sıraya dizer. Boş listeye boş plan döner."""
+
+    async def plan_fleet(
+        self,
+        *,
+        depot_lat: float,
+        depot_lng: float,
+        points: list[RoutePoint],
+        vehicle_ids: list[int],
+    ) -> FleetPlan:
+        """Durakları araçlara bölüştürüp her araç için rota planlar.
+        Varsayılan: tek araçsa ``plan``'a düşer; çok araç sağlayıcıda override edilir."""
+        if len(vehicle_ids) == 1:
+            single = await self.plan(
+                depot_lat=depot_lat, depot_lng=depot_lng, points=points
+            )
+            return FleetPlan(routes={vehicle_ids[0]: single}, provider=self.name)
+        raise NotImplementedError

@@ -12,7 +12,7 @@ from __future__ import annotations
 import math
 
 from core.config import settings
-from core.routing.base import RoutePlan, RoutePoint, RoutingProvider
+from core.routing.base import FleetPlan, RoutePlan, RoutePoint, RoutingProvider
 
 # Şehir içi ortalama sürüş hızı (dur-kalk dahil, iyimser değil).
 _AVG_SPEED_KMH = 28.0
@@ -83,8 +83,56 @@ def two_opt(
     return best
 
 
+def partition_by_angle(
+    depot: tuple[float, float], points: list[RoutePoint], k: int
+) -> list[list[RoutePoint]]:
+    """Durakları depo etrafındaki kutupsal açıya göre sıralayıp k bitişik ve
+    dengeli dilime böler (saf). Açısal bitişiklik dilim içi yakınlığı korur —
+    kaba ama etkili bölüştürme; dilim içi sıralamayı NN+2-opt yapar."""
+    if k <= 1 or len(points) <= 1:
+        return [list(points)] + [[] for _ in range(max(k - 1, 0))]
+    ordered = sorted(
+        points, key=lambda p: math.atan2(p.lat - depot[0], p.lng - depot[1])
+    )
+    n = len(ordered)
+    base, extra = divmod(n, k)
+    slices: list[list[RoutePoint]] = []
+    start = 0
+    for i in range(k):
+        size = base + (1 if i < extra else 0)
+        slices.append(ordered[start : start + size])
+        start += size
+    return slices
+
+
 class HaversineRoutingProvider(RoutingProvider):
     name = "haversine"
+
+    async def plan_fleet(
+        self,
+        *,
+        depot_lat: float,
+        depot_lng: float,
+        points: list[RoutePoint],
+        vehicle_ids: list[int],
+    ) -> FleetPlan:
+        if not points:
+            return FleetPlan(routes={}, provider=self.name)
+        if len(vehicle_ids) == 1:
+            return await super().plan_fleet(
+                depot_lat=depot_lat,
+                depot_lng=depot_lng,
+                points=points,
+                vehicle_ids=vehicle_ids,
+            )
+        slices = partition_by_angle((depot_lat, depot_lng), points, len(vehicle_ids))
+        routes: dict[int, RoutePlan] = {}
+        for vid, chunk in zip(vehicle_ids, slices):
+            if chunk:
+                routes[vid] = await self.plan(
+                    depot_lat=depot_lat, depot_lng=depot_lng, points=chunk
+                )
+        return FleetPlan(routes=routes, provider=self.name)
 
     async def plan(
         self, *, depot_lat: float, depot_lng: float, points: list[RoutePoint]

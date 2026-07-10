@@ -133,6 +133,14 @@ export async function optimizeDeliveryRun(runId: number): Promise<DeliveryRun> {
   return data;
 }
 
+/** Günü Optimize Et: uygun siparişleri araçlara bölüştürüp optimize turlar kurar. */
+export async function dispatchDay(runDate: string): Promise<DeliveryRun[]> {
+  const { data } = await apiClient.post<DeliveryRun[]>("/delivery/dispatch-day", {
+    run_date: runDate,
+  });
+  return data;
+}
+
 export async function startDeliveryRun(runId: number): Promise<DeliveryRun> {
   const { data } = await apiClient.post<DeliveryRun>(`/delivery/runs/${runId}/start`);
   return data;

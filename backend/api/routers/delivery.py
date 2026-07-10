@@ -22,6 +22,7 @@ from schemas.delivery import (
     DeliveryRunOut,
     DeliveryRunUpdate,
     DeliveryStopOut,
+    DispatchDayIn,
     EligibleOrderOut,
     OtpSendOut,
     OtpVerifyIn,
@@ -56,6 +57,14 @@ async def eligible_orders(db: AsyncSession = Depends(get_db)):
 async def outsourced_orders(db: AsyncSession = Depends(get_db)):
     """Bölge dışı ödenmiş fiziksel siparişler — dış kargo bekleyen kuyruk."""
     return await delivery_service.outsourced_orders(db)
+
+
+@router.post("/dispatch-day", response_model=list[DeliveryRunOut])
+async def dispatch_day(
+    payload: DispatchDayIn, db: AsyncSession = Depends(get_db)
+):
+    """Günü Optimize Et: uygun siparişleri araçlara bölüştürüp optimize turlar kurar."""
+    return await delivery_service.dispatch_day(db, payload.run_date)
 
 
 @router.get("/runs", response_model=list[DeliveryRunOut])

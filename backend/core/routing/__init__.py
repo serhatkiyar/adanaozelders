@@ -9,6 +9,7 @@ import logging
 
 from core.config import settings
 from core.routing.base import (
+    FleetPlan,
     RoutePlan,
     RoutePoint,
     RoutingProvider,
@@ -20,6 +21,7 @@ from core.routing.vroom import VroomRoutingProvider
 logger = logging.getLogger("ceyhan.routing")
 
 __all__ = [
+    "FleetPlan",
     "RoutePlan",
     "RoutePoint",
     "RoutingProvider",
@@ -27,6 +29,7 @@ __all__ = [
     "HaversineRoutingProvider",
     "VroomRoutingProvider",
     "plan_route",
+    "plan_fleet",
 ]
 
 
@@ -50,4 +53,32 @@ async def plan_route(
         logger.warning("VROOM kullanılamadı, haversine fallback: %s", exc)
         return await HaversineRoutingProvider().plan(
             depot_lat=depot_lat, depot_lng=depot_lng, points=points
+        )
+
+
+async def plan_fleet(
+    *,
+    depot_lat: float,
+    depot_lng: float,
+    points: list[RoutePoint],
+    vehicle_ids: list[int],
+) -> FleetPlan:
+    """Çok araçlı bölüştürme + rota (plan_route ile aynı sağlayıcı seçimi/fallback).
+    VROOM işleri araçlara kendisi optimal dağıtır; haversine kutupsal-açı dilimleme
+    + NN/2-opt ile yaklaşır."""
+    mode = (settings.ROUTING_PROVIDER or "auto").strip().lower()
+    if mode == "haversine":
+        return await HaversineRoutingProvider().plan_fleet(
+            depot_lat=depot_lat, depot_lng=depot_lng, points=points, vehicle_ids=vehicle_ids
+        )
+    try:
+        return await VroomRoutingProvider().plan_fleet(
+            depot_lat=depot_lat, depot_lng=depot_lng, points=points, vehicle_ids=vehicle_ids
+        )
+    except RoutingUnavailable as exc:
+        if mode == "vroom":
+            raise
+        logger.warning("VROOM kullanılamadı, haversine fleet fallback: %s", exc)
+        return await HaversineRoutingProvider().plan_fleet(
+            depot_lat=depot_lat, depot_lng=depot_lng, points=points, vehicle_ids=vehicle_ids
         )

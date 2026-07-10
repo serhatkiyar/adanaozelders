@@ -149,6 +149,9 @@ class Settings(BaseSettings):
     # 15 dk'ya yuvarlı ("18:00–19:00"). Nokta ETA müşteriye gösterilmez.
     DELIVERY_ETA_WINDOW_EARLY_MINUTES: int = 15
     DELIVERY_ETA_WINDOW_LATE_MINUTES: int = 45
+    # "Günü Optimize Et": konumlu sipariş sayısı bu eşiği aşarsa ikinci araç
+    # (COROLLA) devreye girer; altındaysa tek LADA turu kurulur.
+    DELIVERY_SINGLE_VEHICLE_MAX_STOPS: int = 12
     # Lansman promosyonu: kayıttan itibaren ilk N ay indirimli/0 komisyon. MONTHS=0
     # ise KAPALI (varsayılan: düz %10, kampanya yok). Açmak için .env'de ayarla.
     LAUNCH_PROMO_MONTHS: int = 0

@@ -639,6 +639,83 @@ async def optimize_run(db: AsyncSession, run_id: int) -> DeliveryRunOut:
     return await get_run(db, run_id)
 
 
+# ── Günü optimize et: çoklu araç dispatch ─────────────────────────────────────────
+
+# routing.plan_fleet araç anahtarları (VROOM vehicle id int ister).
+_VEHICLE_IDS = {1: "LADA", 2: "COROLLA"}
+
+
+async def dispatch_day(db: AsyncSession, run_date: datetime.date) -> list[DeliveryRunOut]:
+    """Günün uygun siparişlerini araçlara bölüştürüp optimize turlar kurar.
+
+    Konumlu + bölge-içi + söz günü ``run_date``'i geçmeyen siparişler alınır;
+    sayı ``DELIVERY_SINGLE_VEHICLE_MAX_STOPS``'u aşarsa COROLLA da devreye girer.
+    Araç başına o günün PLANNED turu bulunur ya da açılır (ACTIVE turlara
+    dokunulmaz), bölüştürme sırasına göre duraklar eklenir ve her tur kendi
+    başına optimize edilir (ETA + geometri + sapma). Konumsuz siparişler elle
+    eklenmek üzere eligible listesinde kalır.
+    """
+    eligible = await eligible_orders(db)
+    candidates = [
+        o
+        for o in eligible
+        if o.lat is not None
+        and o.lng is not None
+        and (o.promised_delivery_date is None or o.promised_delivery_date <= run_date)
+    ]
+    if not candidates:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST, "Dağıtılacak konumlu sipariş yok"
+        )
+
+    vehicle_ids = (
+        [1]
+        if len(candidates) <= settings.DELIVERY_SINGLE_VEHICLE_MAX_STOPS
+        else [1, 2]
+    )
+    points = [
+        routing.RoutePoint(id=o.order_id, lat=o.lat, lng=o.lng) for o in candidates
+    ]
+    fleet = await routing.plan_fleet(
+        depot_lat=settings.DELIVERY_DEPOT_LAT,
+        depot_lng=settings.DELIVERY_DEPOT_LNG,
+        points=points,
+        vehicle_ids=vehicle_ids,
+    )
+
+    out: list[DeliveryRunOut] = []
+    for vid, plan in fleet.routes.items():
+        if not plan.ordered_ids:
+            continue
+        vehicle = _VEHICLE_IDS[vid]
+        run = (
+            await db.execute(
+                select(DeliveryRun).where(
+                    DeliveryRun.run_date == run_date,
+                    DeliveryRun.vehicle == vehicle,
+                    DeliveryRun.status == DeliveryRunStatus.PLANNED.value,
+                    DeliveryRun.deleted_at.is_(None),
+                )
+            )
+        ).scalars().first()
+        if run is None:
+            run = DeliveryRun(
+                run_date=run_date,
+                vehicle=vehicle,
+                status=DeliveryRunStatus.PLANNED.value,
+            )
+            db.add(run)
+            await db.commit()
+        await add_stops(db, run.id, plan.ordered_ids)
+        # Tur kendi başına optimize edilir (test edilmiş yazım yolu: ETA +
+        # geometri + detour); tek duraklı tur optimize edilemez — sade kalır.
+        try:
+            out.append(await optimize_run(db, run.id))
+        except HTTPException:
+            out.append(await get_run(db, run.id))
+    return out
+
+
 # ── Canlı takip (Faz C) ───────────────────────────────────────────────────────────
 
 

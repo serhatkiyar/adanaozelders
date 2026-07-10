@@ -19,6 +19,12 @@ class DeliveryRunUpdate(BaseModel):
     courier_id: int | None = None
 
 
+class DispatchDayIn(BaseModel):
+    """Günü Optimize Et girdisi."""
+
+    run_date: datetime.date
+
+
 # ── Kurye profili ─────────────────────────────────────────────────────────────────
 
 

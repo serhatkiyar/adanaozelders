@@ -116,3 +116,109 @@ def test_compute_detours_on_line_vs_outlier():
 def test_compute_detours_never_negative():
     route = [(37.01, 35.33), (37.02, 35.35), (36.99, 35.30)]
     assert all(d >= 0 for d in compute_detours(DEPOT, route))
+
+
+# ── Çoklu araç (Faz: Günü Optimize Et) ───────────────────────────────────────────
+
+
+def test_build_vroom_payload_single_vehicle_unchanged():
+    """vehicle_ids verilmediğinde payload bugüne kadarki tek-araç biçiminin
+    BİREBİR aynısı olmalı (geriye uyumluluk regresyonu)."""
+    pts = [p(11, 37.01, 35.33)]
+    payload = build_vroom_payload(depot_lat=DEPOT[0], depot_lng=DEPOT[1], points=pts)
+    assert payload["vehicles"] == [
+        {"id": 1, "profile": "car", "start": [DEPOT[1], DEPOT[0]]}
+    ]
+    assert payload["options"] == {"g": True}
+    assert [j["id"] for j in payload["jobs"]] == [11]
+
+
+def test_build_vroom_payload_multi_vehicle():
+    pts = [p(11, 37.01, 35.33), p(12, 36.99, 35.30)]
+    payload = build_vroom_payload(
+        depot_lat=DEPOT[0], depot_lng=DEPOT[1], points=pts, vehicle_ids=[1, 2]
+    )
+    assert [v["id"] for v in payload["vehicles"]] == [1, 2]
+    assert all(v["start"] == [DEPOT[1], DEPOT[0]] for v in payload["vehicles"])
+
+
+def test_parse_vroom_fleet_maps_routes_to_vehicles():
+    from core.routing.vroom import parse_vroom_fleet
+
+    data = {
+        "code": 0,
+        "summary": {"unassigned": 0},
+        "routes": [
+            {
+                "vehicle": 1,
+                "duration": 600,
+                "service": 180,
+                "distance": 5000,
+                "geometry": "abc",
+                "steps": [
+                    {"type": "start"},
+                    {"type": "job", "id": 11, "arrival": 300},
+                ],
+            },
+            {
+                "vehicle": 2,
+                "duration": 400,
+                "service": 180,
+                "distance": 3000,
+                "geometry": "def",
+                "steps": [
+                    {"type": "start"},
+                    {"type": "job", "id": 12, "arrival": 200},
+                ],
+            },
+        ],
+    }
+    fleet = parse_vroom_fleet(data)
+    assert set(fleet) == {1, 2}
+    assert fleet[1].ordered_ids == [11]
+    assert fleet[2].ordered_ids == [12]
+    assert fleet[2].total_distance_km == 3.0
+
+
+def test_parse_vroom_fleet_unassigned_raises():
+    from core.routing.vroom import parse_vroom_fleet
+
+    with pytest.raises(RoutingUnavailable):
+        parse_vroom_fleet({"code": 0, "summary": {"unassigned": 2}, "routes": []})
+
+
+def test_partition_by_angle_balanced_and_complete():
+    from core.routing.haversine import partition_by_angle
+
+    pts = [p(i, DEPOT[0] + 0.01 * math.sin(i), DEPOT[1] + 0.01 * math.cos(i)) for i in range(7)]
+    slices = partition_by_angle(DEPOT, pts, 2)
+    assert len(slices) == 2
+    sizes = sorted(len(s) for s in slices)
+    assert sizes == [3, 4]  # dengeli bölme
+    got = sorted(pt.id for s in slices for pt in s)
+    assert got == list(range(7))  # kayıp/tekrar yok
+
+
+def test_partition_by_angle_single_vehicle_passthrough():
+    from core.routing.haversine import partition_by_angle
+
+    pts = [p(1, 37.0, 35.3), p(2, 37.1, 35.4)]
+    slices = partition_by_angle(DEPOT, pts, 1)
+    assert len(slices) == 1 and len(slices[0]) == 2
+
+
+@pytest.mark.asyncio
+async def test_haversine_plan_fleet_two_vehicles():
+    pts = [
+        p(1, 36.99, 35.30),
+        p(2, 36.98, 35.29),
+        p(3, 37.00, 35.40),
+        p(4, 37.01, 35.41),
+    ]
+    fleet = await HaversineRoutingProvider().plan_fleet(
+        depot_lat=DEPOT[0], depot_lng=DEPOT[1], points=pts, vehicle_ids=[1, 2]
+    )
+    assert fleet.provider == "haversine"
+    assert set(fleet.routes) == {1, 2}
+    all_ids = sorted(i for r in fleet.routes.values() for i in r.ordered_ids)
+    assert all_ids == [1, 2, 3, 4]

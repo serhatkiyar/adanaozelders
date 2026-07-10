@@ -13,6 +13,7 @@ import {
   useCouriers,
   useCreateDeliveryRun,
   useDeliveryRuns,
+  useDispatchDay,
   useEligibleOrders,
   useOptimizeRun,
   useOutsourcedOrders,
@@ -682,7 +683,33 @@ export default function AdminDelivery() {
   const [vehicle, setVehicle] = useState<DeliveryVehicle>("LADA");
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const { data: runs = [], isLoading } = useDeliveryRuns(date);
+  const { data: eligibleAll = [] } = useEligibleOrders();
   const createRun = useCreateDeliveryRun();
+  const dispatchDay = useDispatchDay();
+
+  const dispatchable = eligibleAll.filter((o) => o.lat != null && o.lng != null).length;
+
+  const doDispatch = () => {
+    if (
+      !window.confirm(
+        `${dispatchable} konumlu sipariş araçlara bölüştürülüp optimize turlar kurulacak` +
+          ` (${dispatchable > 12 ? "Lada + Corolla" : "yalnız Lada"}). Devam?`
+      )
+    )
+      return;
+    dispatchDay.mutate(date, {
+      onSuccess: (createdRuns) => {
+        if (createdRuns[0]) setSelectedId(createdRuns[0].id);
+        toast.success(
+          createdRuns.length > 1
+            ? `Gün ${createdRuns.length} araca bölüştürüldü.`
+            : "Günün turu kuruldu ve optimize edildi."
+        );
+      },
+      onError: (e: any) =>
+        toast.error(e?.response?.data?.detail ?? "Dispatch başarısız."),
+    });
+  };
 
   const selected = useMemo(
     () => runs.find((r) => r.id === selectedId) ?? runs[0] ?? null,
@@ -737,12 +764,36 @@ export default function AdminDelivery() {
         <button
           onClick={create}
           disabled={createRun.isPending}
-          className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-semibold text-slate-700 ring-1 ring-slate-200 transition hover:bg-slate-50 disabled:opacity-50 dark:text-slate-200 dark:ring-slate-600 dark:hover:bg-slate-700/60"
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-4 w-4">
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
           </svg>
           Tur Oluştur
+        </button>
+        <button
+          onClick={doDispatch}
+          disabled={dispatchDay.isPending || dispatchable === 0}
+          title={
+            dispatchable === 0
+              ? "Dağıtılacak konumlu sipariş yok"
+              : `${dispatchable} sipariş araçlara bölüştürülür`
+          }
+          className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 disabled:opacity-50"
+        >
+          {dispatchDay.isPending ? (
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-4 w-4 animate-spin">
+              <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4" />
+            </svg>
+          ) : (
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="h-4 w-4">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" />
+            </svg>
+          )}
+          Günü Optimize Et
+          {dispatchable > 0 && (
+            <span className="rounded-full bg-white/20 px-1.5 text-xs">{dispatchable}</span>
+          )}
         </button>
       </div>
 

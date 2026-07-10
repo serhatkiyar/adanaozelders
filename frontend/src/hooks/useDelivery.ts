@@ -154,6 +154,14 @@ export function useOptimizeRun() {
   });
 }
 
+export function useDispatchDay() {
+  const invalidate = useInvalidateDelivery();
+  return useMutation({
+    mutationFn: (runDate: string) => deliveryApi.dispatchDay(runDate),
+    onSuccess: invalidate,
+  });
+}
+
 export function useAddStops() {
   const invalidate = useInvalidateDelivery();
   return useMutation({
