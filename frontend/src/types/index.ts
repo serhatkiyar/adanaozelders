@@ -414,6 +414,9 @@ export interface SavedAddress {
   id: number;
   title: string;
   address_line: string;
+  /** Yapısal il/ilçe (Cıncık Teslimat bölge kontrolü; eski adreslerde null). */
+  city?: string | null;
+  district?: string | null;
   door_no?: string | null;
   apt_no?: string | null;
   directions?: string | null;
@@ -425,6 +428,8 @@ export interface SavedAddress {
 export interface SavedAddressCreate {
   title: string;
   address_line: string;
+  city?: string | null;
+  district?: string | null;
   door_no?: string | null;
   apt_no?: string | null;
   directions?: string | null;
@@ -1570,6 +1575,10 @@ export interface OrderOut {
   ship_district?: string | null;
   ship_lat?: number | null;
   ship_lng?: number | null;
+  /** Söz verilen teslim günü (Cıncık Teslimat 16:00 cutoff) — dijital/eski siparişlerde null. */
+  promised_delivery_date?: string | null;
+  /** true=Cıncık bölgesi (kendi filo), false=dış kargo, null=belirsiz. */
+  ship_in_zone?: boolean | null;
   tracking_no?: string | null;
   track_token?: string | null;
   return_status?: string | null;
@@ -1724,11 +1733,27 @@ export interface DeliveryEligibleOrder {
   recipient?: string | null;
   phone?: string | null;
   address?: string | null;
+  city?: string | null;
+  district?: string | null;
   lat?: number | null;
   lng?: number | null;
   total: string;
   item_count: number;
   created_at: string;
+  /** Söz verilen teslim günü (16:00 cutoff) — eski siparişlerde null. */
+  promised_delivery_date?: string | null;
+  /** true=Cıncık bölgesi, false=bölge dışı, null=belirlenemedi. */
+  in_zone?: boolean | null;
+}
+
+/** Public teslimat sözü bilgisi (GET /store/delivery-info — sunucu saati esas). */
+export interface DeliveryInfo {
+  cutoff_hour: number;
+  /** Şimdi ödenirse söz verilen teslim günü (yerel takvim günü, ISO date). */
+  promised_date_now: string;
+  /** Bugünkü cutoff'a kalan saniye; cutoff geçtiyse null. */
+  countdown_seconds?: number | null;
+  districts: string[];
 }
 
 export interface DeliveryScanResult {

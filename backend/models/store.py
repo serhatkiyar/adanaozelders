@@ -15,6 +15,7 @@ import uuid
 from sqlalchemy import (
     Boolean,
     CheckConstraint,
+    Date,
     DateTime,
     ForeignKey,
     Index,
@@ -336,6 +337,15 @@ class Order(Base, TimestampMixin, SoftDeleteMixin):
     # teslimat rotası için otorite; adres metni tarif/yedek.
     ship_lat: Mapped[float | None] = mapped_column(Numeric(9, 6), nullable=True)
     ship_lng: Mapped[float | None] = mapped_column(Numeric(9, 6), nullable=True)
+    # Kendi-filo bölge snapshot'ı (sipariş anında delivery_promise.in_delivery_zone):
+    # True=Adana Merkez (Cıncık Teslimat), False=bölge dışı (dış kargo kuyruğu),
+    # None=belirlenemedi (pin+il/ilçe yok). Adres değişirse yeniden hesaplanır.
+    ship_in_zone: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    # Söz verilen teslim günü (yerel takvim günü) — ödeme kesinleşince 16:00
+    # cutoff kuralıyla hesaplanır (delivery_promise.compute_promised_date).
+    promised_delivery_date: Mapped[datetime.date | None] = mapped_column(
+        Date, nullable=True, index=True
+    )
     tracking_no: Mapped[str | None] = mapped_column(String(100), nullable=True)
     # Oturumsuz (SMS'le paylaşılan) kargo takip token'ı — tahmin edilemez, tekil.
     # tracking_no (ELDEN-R{run}-S{stop}) sıralı/enumerate edilebilir olduğundan public

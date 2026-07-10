@@ -9,6 +9,7 @@ import { getRecentlyViewedProducts } from "@/lib/recentlyViewedProducts";
 import { formatTL } from "@/lib/money";
 import { shippingFor } from "@/lib/shipping";
 import { estimateDelivery } from "@/lib/delivery";
+import { DeliveryPromiseBadge } from "@/components/store/DeliveryPromiseBadge";
 import { isSelected, selectedSubtotal, type CartItem } from "@/lib/cart";
 import { useCartStore } from "@/store/cartStore";
 import { useAuthStore } from "@/store/authStore";
@@ -262,7 +263,11 @@ function CartLine({
           {item.title}
         </Link>
         <span className="mt-1.5 text-xs text-slate-500 dark:text-slate-400">
-          Tahmini teslimat: {estimateDelivery(item.kind)}
+          {item.kind === "PHYSICAL" ? (
+            <DeliveryPromiseBadge variant="inline" />
+          ) : (
+            <>Teslimat: {estimateDelivery(item.kind)}</>
+          )}
         </span>
       </div>
 

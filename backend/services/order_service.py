@@ -39,7 +39,13 @@ from schemas.store import (
     OrderOut,
     OrderReturnOut,
 )
-from services import commission, coupon_service, notification_service, order_fsm
+from services import (
+    commission,
+    coupon_service,
+    delivery_promise,
+    notification_service,
+    order_fsm,
+)
 
 def _now() -> datetime.datetime:
     return datetime.datetime.now(datetime.timezone.utc)
@@ -243,12 +249,23 @@ async def create_order(
         order.ship_recipient = client.full_name
         order.ship_phone = client.phone
         order.ship_address = addr.address_line
-        # ClientAddress yapısal il/ilçe tutmaz; başlık + tarif snapshot'a eklenir.
         if addr.directions:
             order.ship_address = f"{addr.address_line}\n{addr.directions}"
+        order.ship_city = addr.city
+        order.ship_district = addr.district
         # Harita pin'i teslimat rotasının otoritesidir (adres metni tarif).
         order.ship_lat = addr.location_lat
         order.ship_lng = addr.location_lng
+        order.ship_in_zone = delivery_promise.in_delivery_zone(
+            addr.location_lat,
+            addr.location_lng,
+            addr.city,
+            addr.district,
+            depot_lat=settings.DELIVERY_DEPOT_LAT,
+            depot_lng=settings.DELIVERY_DEPOT_LNG,
+            radius_km=settings.DELIVERY_ZONE_RADIUS_KM,
+            districts=settings.DELIVERY_ZONE_DISTRICTS,
+        )
 
     for ln in lines:
         order.items.append(
@@ -372,6 +389,14 @@ async def _finalize_paid(
     order.payment_status = "PAID"
     await order_fsm.transition_order(db, order, "PAID", changed_by="system:payment")
     order.paid_at = _now()
+    # Cıncık Teslimat sözü: ödeme anına göre bugün/yarın (16:00 cutoff, Pazar sarması).
+    if order.has_physical:
+        order.promised_delivery_date = delivery_promise.compute_promised_date(
+            order.paid_at,
+            cutoff_hour=settings.DELIVERY_CUTOFF_HOUR,
+            non_working_weekdays=settings.DELIVERY_NON_WORKING_WEEKDAYS,
+            utc_offset_hours=settings.APP_UTC_OFFSET_HOURS,
+        )
 
     # Kupon kullanımını PAID'de say (PENDING siparişler kontenjan tüketmez).
     if order.coupon_id is not None:
@@ -497,6 +522,8 @@ def _to_out(order: Order) -> OrderOut:
         ship_district=order.ship_district,
         ship_lat=float(order.ship_lat) if order.ship_lat is not None else None,
         ship_lng=float(order.ship_lng) if order.ship_lng is not None else None,
+        promised_delivery_date=order.promised_delivery_date,
+        ship_in_zone=order.ship_in_zone,
         tracking_no=order.tracking_no,
         track_token=order.track_token,
         return_status=return_status,

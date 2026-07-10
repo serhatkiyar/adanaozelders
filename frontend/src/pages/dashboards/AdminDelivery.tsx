@@ -13,11 +13,13 @@ import {
   useDeliveryRuns,
   useEligibleOrders,
   useOptimizeRun,
+  useOutsourcedOrders,
   useRemoveStop,
   useReorderStops,
   useRunAction,
   useRunPosition,
 } from "@/hooks/useDelivery";
+import { promisedDateLabel } from "@/lib/deliveryPromise";
 import { formatDuration, formatEta } from "@/lib/polyline";
 import {
   RUN_STATUS_LABEL,
@@ -56,6 +58,24 @@ function RunStatusChip({ status }: { status: string }) {
     <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ${c.bg} ${c.text}`}>
       <span className={`h-1.5 w-1.5 rounded-full ${c.dot}`} />
       {RUN_STATUS_LABEL[status] ?? status}
+    </span>
+  );
+}
+
+/** Söz verilen teslim günü chip'i — bugün=vurgulu, geçmiş=amber (söz riskte). */
+function PromiseChip({ date }: { date?: string | null }) {
+  const label = promisedDateLabel(date);
+  if (!label) return null;
+  const overdue =
+    !!date && new Date(`${date}T23:59:59`).getTime() < Date.now() && label !== "bugün";
+  const tone = overdue
+    ? "bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400"
+    : label === "bugün"
+      ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400"
+      : "bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-300";
+  return (
+    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${tone}`}>
+      Söz: {overdue ? `${label} (gecikti)` : label}
     </span>
   );
 }
@@ -530,6 +550,9 @@ function RunDetail({ run }: { run: DeliveryRun }) {
                           konumsuz
                         </span>
                       )}
+                      <span className="ml-2">
+                        <PromiseChip date={o.promised_delivery_date} />
+                      </span>
                     </p>
                     <p className="truncate text-xs text-slate-500 dark:text-slate-400">
                       {o.address ?? "Adres yok"}
@@ -565,6 +588,54 @@ function RunDetail({ run }: { run: DeliveryRun }) {
   );
 }
 
+/* ─── Dış kargo kuyruğu ──────────────────────────────── */
+
+/** Bölge dışı (Cıncık kapsamına girmeyen) ödenmiş siparişler. Salt liste —
+ * aksiyon Mağaza sekmesindeki manuel "Kargola" akışıdır; kargo firması API
+ * entegrasyonu şirket kurulup sandbox alınınca yazılacak. */
+function OutsourcedQueue() {
+  const { data: orders = [], isLoading } = useOutsourcedOrders();
+  if (isLoading || orders.length === 0) return null;
+  return (
+    <section className="mt-6 rounded-2xl bg-white shadow-sm ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-slate-700">
+      <div className="border-b border-slate-100 px-6 py-4 dark:border-slate-700">
+        <h2 className="text-base font-bold text-slate-900 dark:text-white">
+          Dış kargo bekleyenler
+          <span className="ml-2 rounded-full bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-700 dark:bg-amber-500/10 dark:text-amber-400">
+            {orders.length}
+          </span>
+        </h2>
+        <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+          Adana Merkez dışı siparişler — Mağaza sekmesinden kargo firmasıyla gönderilir.
+        </p>
+      </div>
+      <ul className="divide-y divide-slate-100 px-6 dark:divide-slate-700/60">
+        {orders.map((o) => (
+          <li key={o.order_id} className="flex items-center gap-3 py-3">
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-medium text-slate-900 dark:text-white">
+                {o.recipient ?? "—"}
+                <span className="ml-2 text-xs font-normal text-slate-400">#{o.order_id}</span>
+                {(o.district || o.city) && (
+                  <span className="ml-2 inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-500 dark:bg-slate-700 dark:text-slate-300">
+                    {[o.district, o.city].filter(Boolean).join(" / ")}
+                  </span>
+                )}
+              </p>
+              <p className="truncate text-xs text-slate-500 dark:text-slate-400">
+                {o.address ?? "Adres yok"}
+              </p>
+            </div>
+            <span className="shrink-0 text-xs text-slate-500 tabular-nums dark:text-slate-400">
+              {o.item_count} parça · ₺{o.total}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
 /* ─── Ana bileşen ────────────────────────────────────── */
 
 export default function AdminDelivery() {
@@ -593,6 +664,7 @@ export default function AdminDelivery() {
     );
 
   return (
+    <>
     <section className="rounded-2xl bg-white shadow-sm ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-slate-700">
       {/* Başlık şeridi */}
       <div className="flex flex-wrap items-center gap-3 border-b border-slate-100 px-6 py-4 dark:border-slate-700">
@@ -675,6 +747,8 @@ export default function AdminDelivery() {
       ) : (
         <RunDetail run={selected} />
       )}
-    </section>
+      </section>
+      <OutsourcedQueue />
+    </>
   );
 }

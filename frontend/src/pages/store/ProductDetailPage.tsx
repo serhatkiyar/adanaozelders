@@ -7,6 +7,7 @@ import { JsonLd } from "@/components/JsonLd";
 import { StarRating } from "@/components/StarRating";
 import { RatingHistogram } from "@/components/store/RatingHistogram";
 import { ProductCard } from "@/components/store/ProductCard";
+import { DeliveryPromiseBadge } from "@/components/store/DeliveryPromiseBadge";
 import { FullScreenSpinner } from "@/components/Spinner";
 import { StoreLayout } from "@/pages/store/StoreLayout";
 import { formatTL } from "@/lib/money";
@@ -416,20 +417,7 @@ export default function ProductDetailPage() {
             {/* Teslimat & satıcı — kutu yok, saç-teli ayraçlı, yalnız gerçek bilgi */}
             <div className="mt-8 space-y-3 border-t border-slate-100 pt-6 text-sm dark:border-slate-800">
               {product.kind === "PHYSICAL" ? (
-                <div className="flex items-start gap-2.5 text-slate-600 dark:text-slate-300">
-                  <svg className="mt-0.5 shrink-0 text-slate-400" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="1" y="3" width="15" height="13" />
-                    <polygon points="16 8 20 8 23 11 23 16 16 16 16 8" />
-                    <circle cx="5.5" cy="18.5" r="2.5" />
-                    <circle cx="18.5" cy="18.5" r="2.5" />
-                  </svg>
-                  <span>
-                    <span className="font-medium text-slate-900 dark:text-white">Gün içi kargo</span>
-                    <span className="block text-slate-500 dark:text-slate-400">
-                      Saat 16:00'dan önceki siparişler aynı gün kargoya teslim edilir.
-                    </span>
-                  </span>
-                </div>
+                <DeliveryPromiseBadge />
               ) : (
                 <div className="flex items-start gap-2.5 text-slate-600 dark:text-slate-300">
                   <svg className="mt-0.5 shrink-0 text-slate-400" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">

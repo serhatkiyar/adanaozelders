@@ -265,6 +265,10 @@ class OrderOut(BaseModel):
     ship_district: str | None = None
     ship_lat: float | None = None
     ship_lng: float | None = None
+    # Söz verilen teslim günü (Cıncık Teslimat 16:00 cutoff) — dijital/eski
+    # siparişlerde None. in_zone True=kendi filo, False=dış kargo, None=belirsiz.
+    promised_delivery_date: datetime.date | None = None
+    ship_in_zone: bool | None = None
     tracking_no: str | None = None
     # Oturumsuz kargo takip token'ı — site içi "Kargo Takip" butonu /kargo-takip/{token}
     # sayfasına bunu kullanarak gider (SMS linkiyle aynı sayfa).

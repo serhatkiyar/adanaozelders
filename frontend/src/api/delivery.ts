@@ -2,6 +2,7 @@ import { apiClient } from "@/api/axios";
 import type {
   CourierPosition,
   DeliveryEligibleOrder,
+  DeliveryInfo,
   DeliveryRun,
   DeliveryScanResult,
   DeliveryStop,
@@ -13,6 +14,20 @@ export async function fetchEligibleOrders(): Promise<DeliveryEligibleOrder[]> {
   const { data } = await apiClient.get<DeliveryEligibleOrder[]>(
     "/delivery/eligible-orders"
   );
+  return data;
+}
+
+/** Bölge dışı ödenmiş fiziksel siparişler — "dış kargo bekliyor" kuyruğu (ADMIN). */
+export async function fetchOutsourcedOrders(): Promise<DeliveryEligibleOrder[]> {
+  const { data } = await apiClient.get<DeliveryEligibleOrder[]>(
+    "/delivery/outsourced-orders"
+  );
+  return data;
+}
+
+/** Public teslimat sözü ("şimdi sipariş verirsen ne zaman gelir") — sunucu saati esas. */
+export async function fetchDeliveryInfo(): Promise<DeliveryInfo> {
+  const { data } = await apiClient.get<DeliveryInfo>("/store/delivery-info");
   return data;
 }
 

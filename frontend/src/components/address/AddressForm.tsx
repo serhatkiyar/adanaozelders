@@ -16,6 +16,26 @@ const saveBtn =
 const cancelBtn =
   "rounded-xl px-4 py-2 text-sm font-medium text-slate-500 transition hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700";
 
+// Yapısal il/ilçe: Cıncık Teslimat bölge kontrolünün fallback'i (harita pin'i
+// otorite). Merkez ilçeler önde; datalist serbest yazıma da izin verir.
+const ADANA_DISTRICTS = [
+  "Seyhan",
+  "Yüreğir",
+  "Çukurova",
+  "Sarıçam",
+  "Ceyhan",
+  "Kozan",
+  "İmamoğlu",
+  "Karaisalı",
+  "Karataş",
+  "Pozantı",
+  "Saimbeyli",
+  "Tufanbeyli",
+  "Yumurtalık",
+  "Aladağ",
+  "Feke",
+];
+
 interface AddressFormProps {
   initial?: Partial<SavedAddress> | null;
   pending: boolean;
@@ -44,6 +64,8 @@ export function AddressForm({
 }: AddressFormProps) {
   const [title, setTitle] = useState(initial?.title ?? "");
   const [addressLine, setAddressLine] = useState(initial?.address_line ?? "");
+  const [city, setCity] = useState(initial?.city ?? "Adana");
+  const [district, setDistrict] = useState(initial?.district ?? "");
   const [doorNo, setDoorNo] = useState(initial?.door_no ?? "");
   const [aptNo, setAptNo] = useState(initial?.apt_no ?? "");
   const [directions, setDirections] = useState(initial?.directions ?? "");
@@ -69,6 +91,8 @@ export function AddressForm({
     onSubmit({
       title: title.trim(),
       address_line: addressLine.trim(),
+      city: city.trim() || null,
+      district: district.trim() || null,
       door_no: doorNo.trim() || null,
       apt_no: aptNo.trim() || null,
       directions: directions.trim() || null,
@@ -124,6 +148,39 @@ export function AddressForm({
             <LocationPreview lat={lat} lng={lng} height={140} />
           </div>
         )}
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className={fieldLabelCls}>İl</label>
+          <input
+            type="text"
+            maxLength={100}
+            value={city}
+            onChange={(e) => setCity(e.target.value)}
+            className={inputCls}
+            placeholder="Adana"
+          />
+        </div>
+        <div>
+          <label className={fieldLabelCls}>İlçe</label>
+          <input
+            type="text"
+            maxLength={100}
+            value={district}
+            onChange={(e) => setDistrict(e.target.value)}
+            className={inputCls}
+            placeholder="Örn. Seyhan"
+            list="address-district-options"
+          />
+          {city.trim().toLocaleLowerCase("tr") === "adana" && (
+            <datalist id="address-district-options">
+              {ADANA_DISTRICTS.map((d) => (
+                <option key={d} value={d} />
+              ))}
+            </datalist>
+          )}
+        </div>
       </div>
 
       <div>

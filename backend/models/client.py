@@ -106,6 +106,10 @@ class ClientAddress(Base, TimestampMixin, SoftDeleteMixin):
     )
     title: Mapped[str] = mapped_column(String(80), nullable=False)
     address_line: Mapped[str] = mapped_column(Text, nullable=False)
+    # Yapısal il/ilçe (Cıncık Teslimat bölge kontrolü fallback'i; pin otorite).
+    # Eski adreslerde NULL — müşteri adresi ilk düzenlediğinde dolar.
+    city: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    district: Mapped[str | None] = mapped_column(String(100), nullable=True)
     door_no: Mapped[str | None] = mapped_column(String(20), nullable=True)
     apt_no: Mapped[str | None] = mapped_column(String(20), nullable=True)
     directions: Mapped[str | None] = mapped_column(Text, nullable=True)

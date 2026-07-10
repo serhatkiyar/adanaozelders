@@ -66,17 +66,24 @@ class DeliveryRunOut(BaseModel):
 
 
 class EligibleOrderOut(BaseModel):
-    """Tura eklenebilecek (ödenmiş + fiziksel + açıkta) sipariş özeti."""
+    """Tura eklenebilecek (ödenmiş + fiziksel + açıkta) sipariş özeti.
+    Dış-kargo kuyruğu (`outsourced_orders`) da aynı şekli kullanır."""
 
     order_id: int
     recipient: str | None = None
     phone: str | None = None
     address: str | None = None
+    city: str | None = None
+    district: str | None = None
     lat: float | None = None
     lng: float | None = None
     total: str
     item_count: int
     created_at: datetime.datetime
+    # Söz verilen teslim günü (16:00 cutoff kuralı) — eski siparişlerde None.
+    promised_delivery_date: datetime.date | None = None
+    # True=Cıncık bölgesi, False=bölge dışı, None=belirlenemedi.
+    in_zone: bool | None = None
 
 
 class StopsAddIn(BaseModel):
@@ -134,6 +141,20 @@ class OrderTrackingOut(BaseModel):
     courier_age_seconds: int | None = None
     ship_lat: float | None = None
     ship_lng: float | None = None
+
+
+class DeliveryInfoOut(BaseModel):
+    """Public teslimat sözü bilgisi ("şimdi sipariş verirsen ne zaman gelir").
+    Ürün/checkout yüzeyindeki rozet sunucu gerçeğinden beslenir — istemci saat
+    dilimine/saatine güvenilmez."""
+
+    cutoff_hour: int
+    # Şimdi ödenirse söz verilen teslim günü (yerel takvim günü).
+    promised_date_now: datetime.date
+    # Bugünkü cutoff'a kalan saniye; cutoff geçtiyse None.
+    countdown_seconds: int | None = None
+    # Cıncık Teslimat bölgesi (bilgi amaçlı; "Adana Merkez'e özel").
+    districts: list[str]
 
 
 class ScanIn(BaseModel):

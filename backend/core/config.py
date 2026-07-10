@@ -135,6 +135,16 @@ class Settings(BaseSettings):
     # "Rotayı bozan durak" eşiği: durağın rotaya kattığı ek yol (km) bunu
     # aşarsa panelde işaretlenir (dış kuryeye devretme adayı).
     DELIVERY_DETOUR_KM: float = 8.0
+    # Cıncık Teslimat sözü: yerel saatle bu saatten ÖNCE ödenen Adana-içi sipariş
+    # aynı gün, sonrası ertesi gün teslim edilir; çalışılmayan güne (weekday();
+    # 6=Pazar) denk gelirse ileri sarılır (services/delivery_promise.py).
+    DELIVERY_CUTOFF_HOUR: int = 16
+    DELIVERY_NON_WORKING_WEEKDAYS: list[int] = [6]
+    # Kendi-filo teslimat bölgesi: pin varsa depoya Haversine yarıçapı (otorite),
+    # pin yoksa il=Adana + ilçe listesi fallback'i. Bölge dışı sipariş eligible
+    # listesine girmez; admin "dış kargo bekliyor" kuyruğunda görür.
+    DELIVERY_ZONE_RADIUS_KM: float = 25.0
+    DELIVERY_ZONE_DISTRICTS: list[str] = ["Seyhan", "Yüreğir", "Çukurova", "Sarıçam"]
     # Lansman promosyonu: kayıttan itibaren ilk N ay indirimli/0 komisyon. MONTHS=0
     # ise KAPALI (varsayılan: düz %10, kampanya yok). Açmak için .env'de ayarla.
     LAUNCH_PROMO_MONTHS: int = 0

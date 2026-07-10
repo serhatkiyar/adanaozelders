@@ -13,6 +13,27 @@ export function useEligibleOrders(enabled = true) {
   });
 }
 
+/** "Dış kargo bekliyor" kuyruğu (bölge dışı ödenmiş fiziksel siparişler) — ADMIN. */
+export function useOutsourcedOrders(enabled = true) {
+  return useQuery({
+    queryKey: [...KEY, "outsourced"],
+    queryFn: deliveryApi.fetchOutsourcedOrders,
+    enabled,
+  });
+}
+
+/** Public teslimat sözü rozeti. Sunucu verisi; geri sayımı istemci saniyeler
+ * bazında kendisi eritir (staleTime ile gereksiz istek atılmaz). */
+export function useDeliveryInfo(enabled = true) {
+  return useQuery({
+    queryKey: ["deliveryInfo"],
+    queryFn: deliveryApi.fetchDeliveryInfo,
+    enabled,
+    staleTime: 5 * 60_000,
+    refetchInterval: 5 * 60_000,
+  });
+}
+
 export function useDeliveryRuns(runDate?: string) {
   return useQuery({
     queryKey: [...KEY, "runs", runDate ?? "all"],

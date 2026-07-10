@@ -6,6 +6,7 @@ import { StoreLayout } from "@/pages/store/StoreLayout";
 import { FullScreenSpinner } from "@/components/Spinner";
 import { formatTL } from "@/lib/money";
 import { formatDate } from "@/lib/datetime";
+import { promisedDateLabel } from "@/lib/deliveryPromise";
 import { useOrder, useCancelOrder, useRequestReturn } from "@/hooks/useStore";
 import { useCartStore } from "@/store/cartStore";
 import { STATUS_LABELS, OrderItemRow, orderItemToProduct } from "@/pages/store/OrdersPage";
@@ -141,6 +142,17 @@ export default function OrderDetailPage() {
                 {(order.ship_district || order.ship_city) && (
                   <p>{[order.ship_district, order.ship_city].filter(Boolean).join(" / ")}</p>
                 )}
+                {order.promised_delivery_date &&
+                  order.status !== "DELIVERED" &&
+                  order.status !== "CANCELLED" &&
+                  order.status !== "REFUNDED" && (
+                    <p className="pt-1 text-emerald-700 dark:text-emerald-400">
+                      Söz verilen teslimat:{" "}
+                      <span className="font-medium">
+                        {promisedDateLabel(order.promised_delivery_date)}
+                      </span>
+                    </p>
+                  )}
               </div>
             ) : (
               <p className="text-sm text-slate-500 dark:text-slate-400">

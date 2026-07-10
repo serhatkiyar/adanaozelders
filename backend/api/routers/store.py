@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import csv
+import datetime
 import io
 from decimal import Decimal
 
@@ -56,10 +57,11 @@ from schemas.store import (
     SellerProductCreate,
     StockNotifyIn,
 )
-from schemas.delivery import OrderTrackingOut
+from schemas.delivery import DeliveryInfoOut, OrderTrackingOut
 from services import (
     collection_service,
     coupon_service,
+    delivery_promise,
     delivery_service,
     order_service,
     phone_service,
@@ -533,6 +535,28 @@ async def list_my_orders(
     db: AsyncSession = Depends(get_db),
 ):
     return await order_service.list_mine(db, client)
+
+
+@router.get("/delivery-info", response_model=DeliveryInfoOut)
+async def delivery_info():
+    """Cıncık Teslimat sözü (public, DB'siz): şimdi sipariş verilirse teslim günü +
+    bugünkü cutoff'a geri sayım. Ürün/checkout rozetini sunucu saati besler."""
+    now = datetime.datetime.now(datetime.timezone.utc)
+    return DeliveryInfoOut(
+        cutoff_hour=settings.DELIVERY_CUTOFF_HOUR,
+        promised_date_now=delivery_promise.compute_promised_date(
+            now,
+            cutoff_hour=settings.DELIVERY_CUTOFF_HOUR,
+            non_working_weekdays=settings.DELIVERY_NON_WORKING_WEEKDAYS,
+            utc_offset_hours=settings.APP_UTC_OFFSET_HOURS,
+        ),
+        countdown_seconds=delivery_promise.cutoff_countdown_seconds(
+            now,
+            cutoff_hour=settings.DELIVERY_CUTOFF_HOUR,
+            utc_offset_hours=settings.APP_UTC_OFFSET_HOURS,
+        ),
+        districts=settings.DELIVERY_ZONE_DISTRICTS,
+    )
 
 
 @router.get(

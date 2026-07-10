@@ -8,6 +8,8 @@ import { ModalShell } from "@/components/store/ModalShell";
 import { formatTL } from "@/lib/money";
 import { isSelected } from "@/lib/cart";
 import { estimateDelivery } from "@/lib/delivery";
+import { promiseDayLabel } from "@/lib/deliveryPromise";
+import { useDeliveryInfo } from "@/hooks/useDelivery";
 import { getLegalDoc, OPERATOR } from "@/lib/legalContent";
 import { validateCart } from "@/api/store";
 import { useCreateOrder } from "@/hooks/useStore";
@@ -482,6 +484,7 @@ function PreInfoForm({
   validation: import("@/types").CartValidateOut;
   hasPhysical: boolean;
 }) {
+  const { data: deliveryInfo } = useDeliveryInfo(hasPhysical);
   const fact = "flex justify-between gap-4 py-1.5 text-xs";
   return (
     <div className="text-xs leading-relaxed text-slate-600 dark:text-slate-300">
@@ -535,7 +538,9 @@ function PreInfoForm({
           <dt className="text-slate-400">Teslimat</dt>
           <dd className="text-right font-medium text-slate-700 dark:text-slate-200">
             {hasPhysical
-              ? `Adrese kargo · tahmini ${estimateDelivery("PHYSICAL")}`
+              ? deliveryInfo
+                ? `Cıncık Teslimat · ${promiseDayLabel(deliveryInfo.promised_date_now)} kapında`
+                : `Adrese teslimat · tahmini ${estimateDelivery("PHYSICAL")}`
               : "Dijital — ödeme onayında anında erişim"}
           </dd>
         </div>

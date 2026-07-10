@@ -321,8 +321,27 @@ async def _has_open_stop(db: AsyncSession, order_id: int) -> bool:
     return row is not None
 
 
+def _eligible_out(o: Order) -> EligibleOrderOut:
+    return EligibleOrderOut(
+        order_id=o.id,
+        recipient=o.ship_recipient,
+        phone=o.ship_phone,
+        address=o.ship_address,
+        city=o.ship_city,
+        district=o.ship_district,
+        lat=float(o.ship_lat) if o.ship_lat is not None else None,
+        lng=float(o.ship_lng) if o.ship_lng is not None else None,
+        total=str(o.total),
+        item_count=sum(it.quantity for it in o.items if it.kind == "PHYSICAL"),
+        created_at=o.created_at,
+        promised_delivery_date=o.promised_delivery_date,
+        in_zone=o.ship_in_zone,
+    )
+
+
 async def eligible_orders(db: AsyncSession) -> list[EligibleOrderOut]:
-    """Tura eklenebilir siparişler: ödenmiş + fiziksel + henüz açık durağı yok."""
+    """Tura eklenebilir siparişler: ödenmiş + fiziksel + Adana-içi (Cıncık bölgesi)
+    + henüz açık durağı yok. Söz verilen günü yaklaşan/geçen en önde."""
     orders = (
         await db.execute(
             select(Order)
@@ -332,28 +351,39 @@ async def eligible_orders(db: AsyncSession) -> list[EligibleOrderOut]:
                 Order.has_physical.is_(True),
                 Order.payment_status == "PAID",
                 Order.status == "PAID",
+                Order.ship_in_zone.is_(True),
+            )
+            .order_by(
+                Order.promised_delivery_date.asc().nulls_last(),
+                Order.created_at.asc(),
+            )
+        )
+    ).scalars().all()
+    return [
+        _eligible_out(o) for o in orders if not await _has_open_stop(db, o.id)
+    ]
+
+
+async def outsourced_orders(db: AsyncSession) -> list[EligibleOrderOut]:
+    """Bölge dışı (ya da bölgesi belirlenemeyen) ödenmiş fiziksel siparişler —
+    "dış kargo bekliyor" kuyruğu. Aksiyon mevcut manuel kargolama akışıdır
+    (`/store/admin/orders/{id}/ship`); kargo API entegrasyonu şirket kurulup
+    sandbox alınınca yazılacak."""
+    orders = (
+        await db.execute(
+            select(Order)
+            .options(selectinload(Order.items))
+            .where(
+                Order.deleted_at.is_(None),
+                Order.has_physical.is_(True),
+                Order.payment_status == "PAID",
+                Order.status == "PAID",
+                Order.ship_in_zone.is_not(True),
             )
             .order_by(Order.created_at.asc())
         )
     ).scalars().all()
-    out: list[EligibleOrderOut] = []
-    for o in orders:
-        if await _has_open_stop(db, o.id):
-            continue
-        out.append(
-            EligibleOrderOut(
-                order_id=o.id,
-                recipient=o.ship_recipient,
-                phone=o.ship_phone,
-                address=o.ship_address,
-                lat=float(o.ship_lat) if o.ship_lat is not None else None,
-                lng=float(o.ship_lng) if o.ship_lng is not None else None,
-                total=str(o.total),
-                item_count=sum(it.quantity for it in o.items if it.kind == "PHYSICAL"),
-                created_at=o.created_at,
-            )
-        )
-    return out
+    return [_eligible_out(o) for o in orders]
 
 
 async def add_stops(db: AsyncSession, run_id: int, order_ids: list[int]) -> DeliveryRunOut:
