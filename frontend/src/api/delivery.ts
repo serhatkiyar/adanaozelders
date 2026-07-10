@@ -1,6 +1,9 @@
 import { apiClient } from "@/api/axios";
 import type {
+  Courier,
+  CourierCreate,
   CourierPosition,
+  CourierUpdate,
   DeliveryEligibleOrder,
   DeliveryInfo,
   DeliveryRun,
@@ -47,8 +50,59 @@ export async function createDeliveryRun(payload: {
   run_date: string;
   vehicle: DeliveryVehicle;
   notes?: string | null;
+  courier_id?: number | null;
 }): Promise<DeliveryRun> {
   const { data } = await apiClient.post<DeliveryRun>("/delivery/runs", payload);
+  return data;
+}
+
+/** Tur meta güncellemesi (kurye ataması). */
+export async function updateDeliveryRun(
+  runId: number,
+  payload: { courier_id?: number | null }
+): Promise<DeliveryRun> {
+  const { data } = await apiClient.patch<DeliveryRun>(`/delivery/runs/${runId}`, payload);
+  return data;
+}
+
+/* ── Kurye profilleri (ADMIN) ── */
+
+export async function fetchCouriers(): Promise<Courier[]> {
+  const { data } = await apiClient.get<Courier[]>("/delivery/couriers");
+  return data;
+}
+
+export async function createCourier(payload: CourierCreate): Promise<Courier> {
+  const { data } = await apiClient.post<Courier>("/delivery/couriers", payload);
+  return data;
+}
+
+export async function updateCourier(
+  courierId: number,
+  payload: CourierUpdate
+): Promise<Courier> {
+  const { data } = await apiClient.patch<Courier>(
+    `/delivery/couriers/${courierId}`,
+    payload
+  );
+  return data;
+}
+
+export async function deleteCourier(courierId: number): Promise<void> {
+  await apiClient.delete(`/delivery/couriers/${courierId}`);
+}
+
+export async function uploadCourierPhoto(
+  courierId: number,
+  file: File
+): Promise<Courier> {
+  const form = new FormData();
+  form.append("file", file);
+  const { data } = await apiClient.post<Courier>(
+    `/delivery/couriers/${courierId}/photo`,
+    form,
+    { headers: { "Content-Type": "multipart/form-data" } }
+  );
   return data;
 }
 

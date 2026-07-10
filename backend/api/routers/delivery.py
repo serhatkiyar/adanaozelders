@@ -7,16 +7,20 @@ from __future__ import annotations
 
 import datetime
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import require_roles
-from core import courier_position
+from core import courier_position, storage
 from core.database import get_db
 from models.role import RoleType
 from schemas.delivery import (
+    CourierCreate,
+    CourierOut,
+    CourierUpdate,
     DeliveryRunCreate,
     DeliveryRunOut,
+    DeliveryRunUpdate,
     DeliveryStopOut,
     EligibleOrderOut,
     OtpSendOut,
@@ -30,6 +34,8 @@ from schemas.delivery import (
     TrackIn,
 )
 from services import delivery_service
+
+_MAX_PHOTO_BYTES = 12 * 1024 * 1024
 
 router = APIRouter(
     prefix="/delivery",
@@ -68,6 +74,57 @@ async def create_run(payload: DeliveryRunCreate, db: AsyncSession = Depends(get_
 @router.get("/runs/{run_id}", response_model=DeliveryRunOut)
 async def get_run(run_id: int, db: AsyncSession = Depends(get_db)):
     return await delivery_service.get_run(db, run_id)
+
+
+@router.patch("/runs/{run_id}", response_model=DeliveryRunOut)
+async def update_run(
+    run_id: int, payload: DeliveryRunUpdate, db: AsyncSession = Depends(get_db)
+):
+    """Tur meta güncellemesi (kurye ataması)."""
+    return await delivery_service.update_run(db, run_id, payload)
+
+
+# ── Kurye profilleri ─────────────────────────────────────────────────────────────
+
+
+@router.get("/couriers", response_model=list[CourierOut])
+async def list_couriers(db: AsyncSession = Depends(get_db)):
+    return await delivery_service.list_couriers(db)
+
+
+@router.post("/couriers", response_model=CourierOut, status_code=status.HTTP_201_CREATED)
+async def create_courier(payload: CourierCreate, db: AsyncSession = Depends(get_db)):
+    return await delivery_service.create_courier(db, payload)
+
+
+@router.patch("/couriers/{courier_id}", response_model=CourierOut)
+async def update_courier(
+    courier_id: int, payload: CourierUpdate, db: AsyncSession = Depends(get_db)
+):
+    return await delivery_service.update_courier(db, courier_id, payload)
+
+
+@router.delete("/couriers/{courier_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_courier(courier_id: int, db: AsyncSession = Depends(get_db)):
+    await delivery_service.delete_courier(db, courier_id)
+
+
+@router.post("/couriers/{courier_id}/photo", response_model=CourierOut)
+async def upload_courier_photo(
+    courier_id: int,
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+):
+    """Kurye vesikalık fotoğrafı (müşteri takip sayfasındaki kimlik kartı)."""
+    if file.content_type and not file.content_type.startswith("image/"):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Yalnızca görsel yüklenebilir.")
+    data = await file.read()
+    if not data:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Boş dosya.")
+    if len(data) > _MAX_PHOTO_BYTES:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Görsel 12MB sınırını aşıyor.")
+    url = await storage.upload_courier_photo(data)
+    return await delivery_service.set_courier_photo(db, courier_id, url)
 
 
 @router.post("/runs/{run_id}/stops", response_model=DeliveryRunOut)

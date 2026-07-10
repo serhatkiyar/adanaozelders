@@ -30,6 +30,7 @@ from core.database import Base
 from models.mixins import SoftDeleteMixin, TimestampMixin
 
 if TYPE_CHECKING:
+    from models.courier import Courier
     from models.store import Order
 
 
@@ -74,6 +75,11 @@ class DeliveryRun(Base, TimestampMixin, SoftDeleteMixin):
         String(10), nullable=False, server_default=text("'PLANNED'")
     )
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Turu süren kurye (müşteri takip sayfasında kimlik kartı olarak gösterilir).
+    # Kurye silinirse tur kalır (SET NULL) — geçmiş turlar bozulmaz.
+    courier_id: Mapped[int | None] = mapped_column(
+        ForeignKey("couriers.id", ondelete="SET NULL"), nullable=True
+    )
     started_at: Mapped[datetime.datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
@@ -96,6 +102,7 @@ class DeliveryRun(Base, TimestampMixin, SoftDeleteMixin):
         cascade="all, delete-orphan",
         order_by="DeliveryStop.sequence",
     )
+    courier: Mapped["Courier | None"] = relationship()
 
 
 class DeliveryStop(Base, TimestampMixin):

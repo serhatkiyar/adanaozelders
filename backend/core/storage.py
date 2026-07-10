@@ -103,6 +103,12 @@ async def upload_library_photo(file_bytes: bytes, *, square: bool = False) -> st
     return await _put_webp(data, prefix="library-photos")
 
 
+async def upload_courier_photo(file_bytes: bytes) -> str:
+    """Kurye vesikalık fotoğrafı (müşteri takip sayfasında kimlik kartı) —
+    512×512 kare crop + WebP, `couriers/` öneki."""
+    return await _put_webp(optimize_image(file_bytes, size=(512, 512)), prefix="couriers")
+
+
 async def upload_avatar(file_bytes: bytes) -> str:
     """Optimize edilmiş resmi S3/MinIO bucket'ına yükler ve Public URL döner."""
     optimized_bytes = optimize_image(file_bytes)

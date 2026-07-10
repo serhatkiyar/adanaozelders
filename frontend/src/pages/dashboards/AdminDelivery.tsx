@@ -7,8 +7,10 @@ import { Link } from "react-router-dom";
 import { QRCodeSVG } from "qrcode.react";
 
 import { DeliveryRouteMap } from "@/components/DeliveryRouteMap";
+import { CourierManager } from "@/components/admin/CourierManager";
 import {
   useAddStops,
+  useCouriers,
   useCreateDeliveryRun,
   useDeliveryRuns,
   useEligibleOrders,
@@ -18,6 +20,7 @@ import {
   useReorderStops,
   useRunAction,
   useRunPosition,
+  useUpdateDeliveryRun,
 } from "@/hooks/useDelivery";
 import { promisedDateLabel } from "@/lib/deliveryPromise";
 import { formatDuration, formatEta } from "@/lib/polyline";
@@ -253,6 +256,41 @@ function StopRow({
 
 /* ─── Tur detayı ─────────────────────────────────────── */
 
+/** Tur kurye ataması — isim satırı + hover'da değiştirme select'i. */
+function RunCourier({ run }: { run: DeliveryRun }) {
+  const { data: couriers = [] } = useCouriers();
+  const updateRun = useUpdateDeliveryRun();
+  const active = couriers.filter((c) => c.is_active || c.id === run.courier?.id);
+  if (active.length === 0) return null;
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      <span className="text-slate-300 dark:text-slate-600">·</span>
+      <select
+        value={run.courier?.id ?? ""}
+        onChange={(e) =>
+          updateRun.mutate(
+            {
+              runId: run.id,
+              courierId: e.target.value ? Number(e.target.value) : null,
+            },
+            { onError: (err: any) => toast.error(err?.response?.data?.detail ?? "Atanamadı.") }
+          )
+        }
+        aria-label="Kurye"
+        className="cursor-pointer rounded-md border-0 bg-transparent py-0 pl-0 pr-6 text-xs text-slate-500 focus:ring-0 dark:text-slate-400"
+      >
+        <option value="">Kurye seç…</option>
+        {active.map((c) => (
+          <option key={c.id} value={c.id}>
+            {c.name}
+            {c.vehicle_plate ? ` · ${c.vehicle_plate}` : ""}
+          </option>
+        ))}
+      </select>
+    </span>
+  );
+}
+
 function RunDetail({ run }: { run: DeliveryRun }) {
   const [showLabels, setShowLabels] = useState(false);
   const [showMap, setShowMap] = useState(true);
@@ -324,6 +362,7 @@ function RunDetail({ run }: { run: DeliveryRun }) {
                 {done}/{total} durak
               </span>
             )}
+            <RunCourier run={run} />
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -749,6 +788,7 @@ export default function AdminDelivery() {
       )}
       </section>
       <OutsourcedQueue />
+      <CourierManager />
     </>
   );
 }

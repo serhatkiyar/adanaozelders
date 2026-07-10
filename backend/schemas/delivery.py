@@ -10,6 +10,38 @@ class DeliveryRunCreate(BaseModel):
     run_date: datetime.date
     vehicle: str = Field(default="LADA", pattern="^(LADA|COROLLA)$")
     notes: str | None = Field(default=None, max_length=2000)
+    courier_id: int | None = None
+
+
+class DeliveryRunUpdate(BaseModel):
+    """Tur meta güncellemesi (şimdilik yalnız kurye ataması)."""
+
+    courier_id: int | None = None
+
+
+# ── Kurye profili ─────────────────────────────────────────────────────────────────
+
+
+class CourierCreate(BaseModel):
+    name: str = Field(min_length=2, max_length=150)
+    phone: str | None = Field(default=None, max_length=30)
+    vehicle_plate: str | None = Field(default=None, max_length=20)
+
+
+class CourierUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=2, max_length=150)
+    phone: str | None = Field(default=None, max_length=30)
+    vehicle_plate: str | None = Field(default=None, max_length=20)
+    is_active: bool | None = None
+
+
+class CourierOut(BaseModel):
+    id: int
+    name: str
+    phone: str | None = None
+    photo_url: str | None = None
+    vehicle_plate: str | None = None
+    is_active: bool
 
 
 class StopItemOut(BaseModel):
@@ -62,6 +94,7 @@ class DeliveryRunOut(BaseModel):
     total_duration_seconds: int | None = None
     # Encoded polyline5 (vroom); haversine'de None → istemci düz çizgi çizer.
     route_geometry: str | None = None
+    courier: CourierOut | None = None
     stops: list[DeliveryStopOut] = []
 
 
@@ -125,6 +158,14 @@ class TrackIn(BaseModel):
     lng: float = Field(ge=-180, le=180)
 
 
+class TimelineEventOut(BaseModel):
+    """Müşteri olay akışı kalemi — yalnız kod + zaman (iç gerekçe/aktör SIZMAZ;
+    bkz. services/delivery_timeline.py whitelist projeksiyonu)."""
+
+    code: str
+    at: datetime.datetime
+
+
 class OrderTrackingOut(BaseModel):
     """Müşterinin sipariş takibi: kurye nerede, kaç durak önde, tahmini varış.
 
@@ -135,12 +176,29 @@ class OrderTrackingOut(BaseModel):
     status: str
     sequence: int | None = None
     stops_ahead: int | None = None
+    # Turdaki toplam durak ("önünde 3 / toplam 12" bağlamı).
+    total_stops: int | None = None
     eta: datetime.datetime | None = None
+    # Müşteri sözü penceresi ("18:00–19:00") — nokta ETA yerine bu gösterilir.
+    eta_window_start: datetime.datetime | None = None
+    eta_window_end: datetime.datetime | None = None
     courier_lat: float | None = None
     courier_lng: float | None = None
     courier_age_seconds: int | None = None
     ship_lat: float | None = None
     ship_lng: float | None = None
+    # Kimlik/bağlam (oturumsuz sayfada da güvenli: alıcı maskeli, kurye public kimlik).
+    tracking_no: str | None = None
+    recipient_masked: str | None = None
+    promised_delivery_date: datetime.date | None = None
+    courier_name: str | None = None
+    courier_photo_url: str | None = None
+    courier_plate: str | None = None
+    # Olay akışı (ORDER_RECEIVED → … → DELIVERED; Türkçe metin frontend'de).
+    timeline: list[TimelineEventOut] = []
+    # Teslim kanıtı (yalnız DELIVERED'da): saat + kanıt türü (OTP/ADMIN).
+    delivered_at: datetime.datetime | None = None
+    proof: str | None = None
 
 
 class DeliveryInfoOut(BaseModel):

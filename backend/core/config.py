@@ -145,6 +145,10 @@ class Settings(BaseSettings):
     # listesine girmez; admin "dış kargo bekliyor" kuyruğunda görür.
     DELIVERY_ZONE_RADIUS_KM: float = 25.0
     DELIVERY_ZONE_DISTRICTS: list[str] = ["Seyhan", "Yüreğir", "Çukurova", "Sarıçam"]
+    # Müşteriye gösterilen varış penceresi: stop.eta − early … eta + late,
+    # 15 dk'ya yuvarlı ("18:00–19:00"). Nokta ETA müşteriye gösterilmez.
+    DELIVERY_ETA_WINDOW_EARLY_MINUTES: int = 15
+    DELIVERY_ETA_WINDOW_LATE_MINUTES: int = 45
     # Lansman promosyonu: kayıttan itibaren ilk N ay indirimli/0 komisyon. MONTHS=0
     # ise KAPALI (varsayılan: düz %10, kampanya yok). Açmak için .env'de ayarla.
     LAUNCH_PROMO_MONTHS: int = 0

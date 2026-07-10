@@ -64,6 +64,69 @@ export function useCreateDeliveryRun() {
   });
 }
 
+export function useUpdateDeliveryRun() {
+  const invalidate = useInvalidateDelivery();
+  return useMutation({
+    mutationFn: ({
+      runId,
+      courierId,
+    }: {
+      runId: number;
+      courierId: number | null;
+    }) => deliveryApi.updateDeliveryRun(runId, { courier_id: courierId }),
+    onSuccess: invalidate,
+  });
+}
+
+/* ── Kurye profilleri (ADMIN) ── */
+
+export function useCouriers(enabled = true) {
+  return useQuery({
+    queryKey: [...KEY, "couriers"],
+    queryFn: deliveryApi.fetchCouriers,
+    enabled,
+  });
+}
+
+export function useCreateCourier() {
+  const invalidate = useInvalidateDelivery();
+  return useMutation({
+    mutationFn: deliveryApi.createCourier,
+    onSuccess: invalidate,
+  });
+}
+
+export function useUpdateCourier() {
+  const invalidate = useInvalidateDelivery();
+  return useMutation({
+    mutationFn: ({
+      courierId,
+      payload,
+    }: {
+      courierId: number;
+      payload: import("@/types").CourierUpdate;
+    }) => deliveryApi.updateCourier(courierId, payload),
+    onSuccess: invalidate,
+  });
+}
+
+export function useDeleteCourier() {
+  const invalidate = useInvalidateDelivery();
+  return useMutation({
+    mutationFn: (courierId: number) => deliveryApi.deleteCourier(courierId),
+    onSuccess: invalidate,
+  });
+}
+
+export function useUploadCourierPhoto() {
+  const invalidate = useInvalidateDelivery();
+  return useMutation({
+    mutationFn: ({ courierId, file }: { courierId: number; file: File }) =>
+      deliveryApi.uploadCourierPhoto(courierId, file),
+    onSuccess: invalidate,
+  });
+}
+
 export function useRunAction() {
   const invalidate = useInvalidateDelivery();
   return useMutation({

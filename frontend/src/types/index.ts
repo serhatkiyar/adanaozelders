@@ -1725,6 +1725,7 @@ export interface DeliveryRun {
   total_duration_seconds?: number | null;
   /** Encoded polyline5 (vroom); haversine'de null → düz çizgi çizilir. */
   route_geometry?: string | null;
+  courier?: Courier | null;
   stops: DeliveryStop[];
 }
 
@@ -1768,17 +1769,68 @@ export type OrderTrackingStatus =
   | "DELIVERED"
   | "FAILED";
 
+/** Müşteri olay akışı kodları (Türkçe metin lib/deliveryTimeline.ts sözlüğünde). */
+export type TimelineEventCode =
+  | "ORDER_RECEIVED"
+  | "PAYMENT_CONFIRMED"
+  | "PLANNED_FOR_DELIVERY"
+  | "OUT_FOR_DELIVERY"
+  | "DELIVERY_FAILED"
+  | "POSTPONED"
+  | "DELIVERED"
+  | "CANCELLED"
+  | "REFUNDED";
+
+export interface TimelineEvent {
+  code: TimelineEventCode | string;
+  at: string;
+}
+
 export interface OrderTracking {
   status: OrderTrackingStatus;
   sequence?: number | null;
   stops_ahead?: number | null;
+  /** Turdaki toplam durak ("önünde 3 / toplam 12" bağlamı). */
+  total_stops?: number | null;
   eta?: string | null;
+  /** Müşteri sözü penceresi ("18:00–19:00") — nokta ETA yerine bu gösterilir. */
+  eta_window_start?: string | null;
+  eta_window_end?: string | null;
   courier_lat?: number | null;
   courier_lng?: number | null;
   courier_age_seconds?: number | null;
   ship_lat?: number | null;
   ship_lng?: number | null;
+  tracking_no?: string | null;
+  recipient_masked?: string | null;
+  promised_delivery_date?: string | null;
+  /** Kurye kimlik kartı (yalnız EN_ROUTE'ta dolu). */
+  courier_name?: string | null;
+  courier_photo_url?: string | null;
+  courier_plate?: string | null;
+  timeline?: TimelineEvent[];
+  /** Teslim kanıtı (yalnız DELIVERED'da). */
+  delivered_at?: string | null;
+  proof?: "OTP" | "ADMIN" | string | null;
 }
+
+/** Kurye profili (ADMIN yönetir; müşteri takip sayfasında kimlik kartı). */
+export interface Courier {
+  id: number;
+  name: string;
+  phone?: string | null;
+  photo_url?: string | null;
+  vehicle_plate?: string | null;
+  is_active: boolean;
+}
+
+export interface CourierCreate {
+  name: string;
+  phone?: string | null;
+  vehicle_plate?: string | null;
+}
+
+export type CourierUpdate = Partial<CourierCreate> & { is_active?: boolean };
 
 export interface CourierPosition {
   lat: number | null;

@@ -22,6 +22,7 @@ from sqlalchemy.orm import selectinload
 from core import courier_position, routing, sms
 from core.config import settings
 from core.routing.haversine import haversine_km
+from models.courier import Courier
 from models.delivery import (
     DeliveryProof,
     DeliveryRun,
@@ -30,16 +31,22 @@ from models.delivery import (
     DeliveryStopStatus,
 )
 from models.role import ROLE_IDS, RoleType
-from models.store import Order
+from models.store import Order, OrderStatusHistory
 from schemas.delivery import (
+    CourierCreate,
+    CourierOut,
+    CourierUpdate,
     DeliveryRunCreate,
     DeliveryRunOut,
+    DeliveryRunUpdate,
     DeliveryStopOut,
     EligibleOrderOut,
     OrderTrackingOut,
     StopItemOut,
+    TimelineEventOut,
 )
 from services import notification_service, order_fsm, order_service
+from services.delivery_timeline import eta_window, mask_recipient, project_customer_timeline
 
 _ACTIVE_RUN_STATUSES = (DeliveryRunStatus.PLANNED.value, DeliveryRunStatus.ACTIVE.value)
 
@@ -145,8 +152,20 @@ def _stop_to_out(stop: DeliveryStop) -> DeliveryStopOut:
     )
 
 
+def _courier_to_out(c: Courier) -> CourierOut:
+    return CourierOut(
+        id=c.id,
+        name=c.name,
+        phone=c.phone,
+        photo_url=c.photo_url,
+        vehicle_plate=c.vehicle_plate,
+        is_active=c.is_active,
+    )
+
+
 def _run_to_out(run: DeliveryRun) -> DeliveryRunOut:
     return DeliveryRunOut(
+        courier=_courier_to_out(run.courier) if run.courier is not None else None,
         id=run.id,
         run_date=run.run_date,
         vehicle=run.vehicle,
@@ -172,6 +191,7 @@ _RUN_LOAD = (
     selectinload(DeliveryRun.stops)
     .selectinload(DeliveryStop.order)
     .selectinload(Order.items),
+    selectinload(DeliveryRun.courier),
 )
 
 
@@ -207,16 +227,91 @@ async def _load_stop(db: AsyncSession, stop_id: int) -> DeliveryStop:
 # ── Tur CRUD / FSM ────────────────────────────────────────────────────────────────
 
 
+async def _require_courier(db: AsyncSession, courier_id: int) -> Courier:
+    c = await db.get(Courier, courier_id)
+    if c is None or c.deleted_at is not None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Kurye bulunamadı")
+    if not c.is_active:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Kurye pasif — tura atanamaz")
+    return c
+
+
 async def create_run(db: AsyncSession, payload: DeliveryRunCreate) -> DeliveryRunOut:
+    if payload.courier_id is not None:
+        await _require_courier(db, payload.courier_id)
     run = DeliveryRun(
         run_date=payload.run_date,
         vehicle=payload.vehicle,
         notes=payload.notes,
+        courier_id=payload.courier_id,
         status=DeliveryRunStatus.PLANNED.value,
     )
     db.add(run)
     await db.commit()
     return await get_run(db, run.id)
+
+
+async def update_run(
+    db: AsyncSession, run_id: int, payload: DeliveryRunUpdate
+) -> DeliveryRunOut:
+    """Tur meta güncellemesi — şimdilik yalnız kurye ataması (DONE/CANCELLED'da
+    da serbest: geçmiş tura kayıt düzeltmesi zararsız)."""
+    run = await _load_run(db, run_id)
+    if payload.courier_id is not None:
+        await _require_courier(db, payload.courier_id)
+    run.courier_id = payload.courier_id
+    await db.commit()
+    return await get_run(db, run_id)
+
+
+# ── Kurye profili CRUD ────────────────────────────────────────────────────────────
+
+
+async def list_couriers(db: AsyncSession, *, include_inactive: bool = True) -> list[CourierOut]:
+    stmt = select(Courier).where(Courier.deleted_at.is_(None)).order_by(Courier.id)
+    if not include_inactive:
+        stmt = stmt.where(Courier.is_active.is_(True))
+    rows = (await db.execute(stmt)).scalars().all()
+    return [_courier_to_out(c) for c in rows]
+
+
+async def create_courier(db: AsyncSession, payload: CourierCreate) -> CourierOut:
+    c = Courier(name=payload.name, phone=payload.phone, vehicle_plate=payload.vehicle_plate)
+    db.add(c)
+    await db.commit()
+    await db.refresh(c)
+    return _courier_to_out(c)
+
+
+async def update_courier(
+    db: AsyncSession, courier_id: int, payload: CourierUpdate
+) -> CourierOut:
+    c = await db.get(Courier, courier_id)
+    if c is None or c.deleted_at is not None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Kurye bulunamadı")
+    for field, value in payload.model_dump(exclude_unset=True).items():
+        setattr(c, field, value)
+    await db.commit()
+    await db.refresh(c)
+    return _courier_to_out(c)
+
+
+async def set_courier_photo(db: AsyncSession, courier_id: int, photo_url: str) -> CourierOut:
+    c = await db.get(Courier, courier_id)
+    if c is None or c.deleted_at is not None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Kurye bulunamadı")
+    c.photo_url = photo_url
+    await db.commit()
+    await db.refresh(c)
+    return _courier_to_out(c)
+
+
+async def delete_courier(db: AsyncSession, courier_id: int) -> None:
+    c = await db.get(Courier, courier_id)
+    if c is None or c.deleted_at is not None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Kurye bulunamadı")
+    c.deleted_at = _now()
+    await db.commit()
 
 
 async def list_runs(
@@ -630,16 +725,51 @@ async def order_tracking(
         run_status=run.status if run else None,
     )
 
+    # Olay akışı: history satırları (tek sorgu) + sentetik "dağıtım planlandı".
+    # Yalnız whitelist kodu + zaman sızar (reason/changed_by ASLA — iç not olabilir).
+    history_rows = (
+        await db.execute(
+            select(
+                OrderStatusHistory.old_status,
+                OrderStatusHistory.new_status,
+                OrderStatusHistory.created_at,
+            )
+            .where(OrderStatusHistory.order_id == order.id)
+            .order_by(OrderStatusHistory.id)
+        )
+    ).all()
+    timeline = project_customer_timeline(
+        [(r[0], r[1], r[2]) for r in history_rows],
+        planned_at=stop.created_at if stop is not None else None,
+        last_stop_status=stop.status if stop is not None else None,
+    )
+
     out = OrderTrackingOut(
         status=tracking_status,
         ship_lat=float(order.ship_lat) if order.ship_lat is not None else None,
         ship_lng=float(order.ship_lng) if order.ship_lng is not None else None,
+        tracking_no=order.tracking_no,
+        recipient_masked=mask_recipient(order.ship_recipient),
+        promised_delivery_date=order.promised_delivery_date,
+        timeline=[TimelineEventOut(code=e.code, at=e.at) for e in timeline],
     )
+
+    if tracking_status == "DELIVERED" and stop is not None:
+        out.delivered_at = stop.delivered_at
+        out.proof = stop.proof
+        return out
+
     if tracking_status != "EN_ROUTE" or stop is None or run is None:
         return out
 
     out.sequence = stop.sequence
     out.eta = stop.eta
+    if stop.eta is not None:
+        out.eta_window_start, out.eta_window_end = eta_window(
+            stop.eta,
+            early_minutes=settings.DELIVERY_ETA_WINDOW_EARLY_MINUTES,
+            late_minutes=settings.DELIVERY_ETA_WINDOW_LATE_MINUTES,
+        )
     ahead = (
         await db.execute(
             select(func.count())
@@ -652,6 +782,21 @@ async def order_tracking(
         )
     ).scalar_one()
     out.stops_ahead = int(ahead)
+    out.total_stops = (
+        await db.execute(
+            select(func.count())
+            .select_from(DeliveryStop)
+            .where(DeliveryStop.run_id == run.id)
+        )
+    ).scalar_one()
+
+    # Kurye kimlik kartı (public kimlik: isim + foto + plaka).
+    if run.courier_id is not None:
+        c = await db.get(Courier, run.courier_id)
+        if c is not None and c.deleted_at is None:
+            out.courier_name = c.name
+            out.courier_photo_url = c.photo_url
+            out.courier_plate = c.vehicle_plate
 
     pos = await courier_position.get_position(run.id)
     if pos is not None:

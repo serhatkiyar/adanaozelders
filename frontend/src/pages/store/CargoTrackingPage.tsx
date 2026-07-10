@@ -10,8 +10,14 @@ import L from "leaflet";
 import { ROUTES } from "@/lib/routes";
 import { Seo } from "@/components/Seo";
 import { usePublicOrderTracking } from "@/hooks/useDelivery";
-import { formatEta } from "@/lib/polyline";
-import type { OrderTrackingStatus } from "@/types";
+import { promisedDateLabel } from "@/lib/deliveryPromise";
+import {
+  TIMELINE_LABELS,
+  formatEtaWindow,
+  formatEventTime,
+  proofLabel,
+} from "@/lib/deliveryTimeline";
+import type { OrderTracking, OrderTrackingStatus } from "@/types";
 
 const homeIcon = L.divIcon({
   className: "",
@@ -87,6 +93,85 @@ function Stepper({ status }: { status: OrderTrackingStatus }) {
   );
 }
 
+/** Kurye kimlik kartı — sakin satır: foto + isim + plaka (kart yığını değil). */
+function CourierCard({ t }: { t: OrderTracking }) {
+  if (!t.courier_name) return null;
+  return (
+    <div className="mx-6 mb-5 flex items-center gap-3 border-t border-slate-100 pt-4 text-left dark:border-slate-800">
+      {t.courier_photo_url ? (
+        <img
+          src={t.courier_photo_url}
+          alt={t.courier_name}
+          className="h-11 w-11 shrink-0 rounded-full object-cover ring-1 ring-slate-200 dark:ring-slate-700"
+        />
+      ) : (
+        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-slate-100 text-sm font-semibold text-slate-500 dark:bg-slate-800 dark:text-slate-300">
+          {t.courier_name.charAt(0).toLocaleUpperCase("tr")}
+        </span>
+      )}
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-medium text-slate-900 dark:text-white">
+          {t.courier_name}
+        </p>
+        <p className="text-xs text-slate-500 dark:text-slate-400">Cıncık Teslimat kuryen</p>
+      </div>
+      {t.courier_plate && (
+        <span className="shrink-0 rounded-md border border-slate-300 px-2 py-1 font-mono text-xs font-semibold tracking-wider text-slate-700 dark:border-slate-600 dark:text-slate-200">
+          {t.courier_plate}
+        </span>
+      )}
+    </div>
+  );
+}
+
+/** Olay akışı — dikey, saç-teli çizgili; bilinmeyen kodlar sessizce atlanır. */
+function Timeline({ t }: { t: OrderTracking }) {
+  const events = (t.timeline ?? []).filter((e) => TIMELINE_LABELS[e.code]);
+  if (events.length === 0) return null;
+  return (
+    <div className="border-t border-slate-100 px-6 py-5 text-left dark:border-slate-800">
+      <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+        Sipariş geçmişi
+      </h2>
+      <ol className="mt-3">
+        {events.map((e, i) => {
+          const last = i === events.length - 1;
+          return (
+            <li key={`${e.code}-${e.at}`} className="relative flex gap-3 pb-4 last:pb-0">
+              {!last && (
+                <span className="absolute left-[5px] top-4 h-full w-px bg-slate-200 dark:bg-slate-800" />
+              )}
+              <span
+                className={[
+                  "relative mt-1 h-[11px] w-[11px] shrink-0 rounded-full ring-2 ring-white dark:ring-slate-900",
+                  last
+                    ? "bg-indigo-500"
+                    : "bg-slate-300 dark:bg-slate-700",
+                ].join(" ")}
+              />
+              <div className="flex min-w-0 flex-1 items-baseline justify-between gap-3">
+                <span
+                  className={[
+                    "text-sm",
+                    last
+                      ? "font-medium text-slate-900 dark:text-white"
+                      : "text-slate-600 dark:text-slate-300",
+                  ].join(" ")}
+                >
+                  {TIMELINE_LABELS[e.code]}
+                </span>
+                <span className="shrink-0 text-xs tabular-nums text-slate-400 dark:text-slate-500">
+                  {formatEventTime(e.at)}
+                </span>
+              </div>
+            </li>
+          );
+        })}
+      </ol>
+    </div>
+  );
+}
+
 const COPY: Record<
   OrderTrackingStatus,
   { title: string; sub: string; tone: "neutral" | "live" | "done" | "warn" }
@@ -158,6 +243,24 @@ export default function CargoTrackingPage() {
             </div>
           ) : (
             <>
+              {(t.tracking_no || t.recipient_masked) && (
+                <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 border-b border-slate-100 px-6 py-3 text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400">
+                  <span>
+                    {t.tracking_no ? (
+                      <>
+                        Gönderi no{" "}
+                        <span className="font-mono font-medium text-slate-700 dark:text-slate-200">
+                          {t.tracking_no}
+                        </span>
+                      </>
+                    ) : (
+                      "Cıncık Teslimat"
+                    )}
+                  </span>
+                  {t.recipient_masked && <span>Alıcı: {t.recipient_masked}</span>}
+                </div>
+              )}
+
               <div className="px-6 pt-7">
                 <Stepper status={t.status} />
               </div>
@@ -170,16 +273,31 @@ export default function CargoTrackingPage() {
                   {COPY[t.status].sub}
                 </p>
 
+                {t.status === "NOT_DISPATCHED" && t.promised_delivery_date && (
+                  <p className="mt-3 text-sm text-emerald-700 dark:text-emerald-400">
+                    Söz verilen teslimat:{" "}
+                    <span className="font-medium">
+                      {promisedDateLabel(t.promised_delivery_date)}
+                    </span>
+                  </p>
+                )}
+
                 {t.status === "EN_ROUTE" && (
                   <div className="mt-4 inline-flex flex-wrap items-center justify-center gap-x-3 gap-y-1 rounded-full border border-slate-200 px-4 py-1.5 text-xs dark:border-slate-800">
                     <span className="font-medium text-slate-700 dark:text-slate-200">
                       {t.stops_ahead != null && t.stops_ahead > 0
-                        ? `Senden önce ${t.stops_ahead} teslimat var`
+                        ? `Kuryenin gelmesine ${t.stops_ahead} durak var`
                         : "Sıradaki teslimat sensin"}
+                      {t.total_stops != null && t.stops_ahead != null && t.stops_ahead > 0 && (
+                        <span className="font-normal text-slate-400 dark:text-slate-500">
+                          {" "}
+                          · toplam {t.total_stops}
+                        </span>
+                      )}
                     </span>
-                    {t.eta && (
+                    {formatEtaWindow(t.eta_window_start, t.eta_window_end) && (
                       <span className="text-slate-500 dark:text-slate-400">
-                        tahmini varış ~{formatEta(t.eta)}
+                        {formatEtaWindow(t.eta_window_start, t.eta_window_end)}
                       </span>
                     )}
                     {t.courier_age_seconds != null && (
@@ -192,7 +310,21 @@ export default function CargoTrackingPage() {
                     )}
                   </div>
                 )}
+
+                {t.status === "DELIVERED" && t.delivered_at && (
+                  <p className="mt-3 text-sm text-slate-500 dark:text-slate-400">
+                    {formatEventTime(t.delivered_at)}
+                    {proofLabel(t.proof) && (
+                      <>
+                        {" — "}
+                        {proofLabel(t.proof)}
+                      </>
+                    )}
+                  </p>
+                )}
               </div>
+
+              {t.status === "EN_ROUTE" && <CourierCard t={t} />}
 
               {t.status === "EN_ROUTE" && bounds && (
                 <MapContainer
@@ -210,6 +342,8 @@ export default function CargoTrackingPage() {
                   )}
                 </MapContainer>
               )}
+
+              <Timeline t={t} />
             </>
           )}
         </div>
