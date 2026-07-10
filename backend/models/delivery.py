@@ -152,6 +152,11 @@ class DeliveryStop(Base, TimestampMixin):
         Integer, nullable=False, server_default=text("0")
     )
 
+    # "Kuryen yaklaşıyor" bildirimi damgası — çift SMS engeli (bir kez gider).
+    approach_notified_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
     # ── Rota optimizasyonu (Faz B) ──
     eta: Mapped[datetime.datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True

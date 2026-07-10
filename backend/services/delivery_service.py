@@ -948,6 +948,52 @@ async def set_stop_photo(db: AsyncSession, stop_id: int, photo_url: str) -> Deli
     return _stop_to_out(stop)
 
 
+async def _notify_upcoming(db: AsyncSession, run_id: int) -> None:
+    """Bir durak sonuçlanınca sıradaki 1-2 müşteriye "kuryen yaklaşıyor"
+    SMS+bildirimi (durak başına TEK sefer — ``approach_notified_at`` damgası).
+    Best-effort: hata teslim akışını bozmaz."""
+    stops = (
+        (
+            await db.execute(
+                select(DeliveryStop)
+                .options(selectinload(DeliveryStop.order))
+                .where(
+                    DeliveryStop.run_id == run_id,
+                    DeliveryStop.status == DeliveryStopStatus.PENDING.value,
+                )
+                .order_by(DeliveryStop.sequence)
+                .limit(settings.DELIVERY_NEXT_NOTIFY_COUNT)
+            )
+        )
+        .scalars()
+        .all()
+    )
+    base = settings.PUBLIC_TRACKING_BASE_URL.rstrip("/")
+    for ahead, stop in enumerate(stops):
+        if stop.approach_notified_at is not None:
+            continue
+        stop.approach_notified_at = _now()
+        order = stop.order
+        await notification_service.notify(
+            db,
+            user_id=order.client_id,
+            role_id=ROLE_IDS[RoleType.CLIENT],
+            message=(
+                f"Siparişin #{order.id}: kuryen yaklaşıyor — "
+                + ("sıradaki teslimat sensin!" if ahead == 0 else f"önünde {ahead} durak var.")
+            ),
+            link="/siparislerim",
+        )
+        if order.ship_phone and order.track_token:
+            await sms.send_approach_sms(
+                to=order.ship_phone,
+                order_id=order.id,
+                stops_ahead=ahead,
+                url=f"{base}/{order.track_token}",
+            )
+    await db.commit()
+
+
 async def _finalize_delivered(
     db: AsyncSession,
     stop: DeliveryStop,
@@ -976,6 +1022,7 @@ async def _finalize_delivered(
     )
     await db.commit()
     await order_service._email_order(db, order, "DELIVERED")
+    await _notify_upcoming(db, stop.run_id)
 
 
 async def verify_delivery(
@@ -1058,6 +1105,9 @@ async def fail_stop(db: AsyncSession, stop_id: int, *, reason: str) -> DeliveryS
         link="/siparislerim",
     )
     await db.commit()
+    if order.ship_phone:
+        await sms.send_failed_sms(to=order.ship_phone, order_id=order.id)
+    await _notify_upcoming(db, stop.run_id)
     return _stop_to_out(await _load_stop(db, stop_id))
 
 

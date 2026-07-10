@@ -17,7 +17,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from core import mail, payments
+from core import mail, payments, sms
 from core.config import settings
 from models.client import Client, ClientAddress
 from models.delivery import (
@@ -684,17 +684,24 @@ async def postpone_delivery(db: AsyncSession, order: Order) -> None:
     )
     order.postpone_count += 1
     await db.commit()
+    new_date = order.promised_delivery_date.strftime("%d.%m.%Y")
     await notification_service.notify(
         db,
         user_id=order.client_id,
         role_id=ROLE_IDS[RoleType.CLIENT],
         message=(
-            f"Siparişin #{order.id} isteğinle ertelendi — yeni teslimat günü: "
-            f"{order.promised_delivery_date.strftime('%d.%m.%Y')}."
+            f"Siparişin #{order.id} isteğinle ertelendi — yeni teslimat günü: {new_date}."
         ),
         link="/siparislerim",
     )
     await db.commit()
+    if order.ship_phone:
+        await sms.send_postponed_sms(to=order.ship_phone, order_id=order.id, new_date=new_date)
+    # Aktif turdan durak düştüyse sıradaki müşterilerin sırası bir öne kaydı.
+    if stop is not None and stop.run.status == DeliveryRunStatus.ACTIVE.value:
+        from services import delivery_service  # döngüsel import önlemi (yerel)
+
+        await delivery_service._notify_upcoming(db, stop.run_id)
 
 
 async def change_ship_address(

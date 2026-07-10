@@ -55,3 +55,34 @@ async def send_tracking_link_sms(*, to: str, order_id: int, url: str) -> bool:
         f"#{order_id} siparişin dağıtıma çıktı! Kuryeni canlı takip et:\n{url}"
     )
     return await _safe_send(SmsMessage(to=to, text=text))
+
+
+async def send_approach_sms(
+    *, to: str, order_id: int, stops_ahead: int, url: str
+) -> bool:
+    """"Kuryen yaklaşıyor" — bir durak sonuçlanınca sıradaki müşterilere gider."""
+    lead = (
+        "Sıradaki teslimat sensin!"
+        if stops_ahead <= 0
+        else f"Kuryenin gelmesine {stops_ahead} durak kaldı."
+    )
+    text = f"#{order_id} siparişin yaklaşıyor. {lead} Canlı takip:\n{url}"
+    return await _safe_send(SmsMessage(to=to, text=text))
+
+
+async def send_failed_sms(*, to: str, order_id: int) -> bool:
+    """Teslim edilemedi bilgilendirmesi (kurye ulaşamadı; yeniden planlanacak)."""
+    text = (
+        f"#{order_id} siparişini bugün teslim edemedik — adresinde sana ulaşamadık. "
+        f"Teslimat bir sonraki dağıtım gününe planlanacak."
+    )
+    return await _safe_send(SmsMessage(to=to, text=text))
+
+
+async def send_postponed_sms(*, to: str, order_id: int, new_date: str) -> bool:
+    """Müşteri ertelemesi onayı (yeni teslim günüyle)."""
+    text = (
+        f"#{order_id} siparişinin teslimatı isteğinle ertelendi. "
+        f"Yeni teslimat günü: {new_date}."
+    )
+    return await _safe_send(SmsMessage(to=to, text=text))

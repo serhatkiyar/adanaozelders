@@ -152,6 +152,9 @@ class Settings(BaseSettings):
     # "Günü Optimize Et": konumlu sipariş sayısı bu eşiği aşarsa ikinci araç
     # (COROLLA) devreye girer; altındaysa tek LADA turu kurulur.
     DELIVERY_SINGLE_VEHICLE_MAX_STOPS: int = 12
+    # Bir durak sonuçlanınca sıradaki bu kadar müşteriye "kuryen yaklaşıyor"
+    # SMS+bildirimi gider (durak başına tek sefer — approach_notified_at damgası).
+    DELIVERY_NEXT_NOTIFY_COUNT: int = 2
     # Lansman promosyonu: kayıttan itibaren ilk N ay indirimli/0 komisyon. MONTHS=0
     # ise KAPALI (varsayılan: düz %10, kampanya yok). Açmak için .env'de ayarla.
     LAUNCH_PROMO_MONTHS: int = 0
