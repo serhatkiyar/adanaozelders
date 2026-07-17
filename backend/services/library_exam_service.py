@@ -47,7 +47,7 @@ import logging
 
 from services import commission, escrow, notification_service
 
-logger = logging.getLogger("ceyhan.escrow")
+logger = logging.getLogger("adana.escrow")
 
 
 def _now() -> datetime.datetime:

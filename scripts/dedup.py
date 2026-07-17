@@ -15,7 +15,9 @@ import re
 import unicodedata
 from pathlib import Path
 
-OUT = Path(r"C:\Users\kiyar\Desktop\ceyhan-tutor-market\scripts\out")
+_HERE = Path(__file__).resolve().parent
+
+OUT = _HERE / "out"
 VAULT = Path(r"C:\Users\kiyar\adana-obsidian-kasa\Adana")
 JSON_PATH = OUT / "adana_venues_all.json"
 

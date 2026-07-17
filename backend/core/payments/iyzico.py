@@ -36,7 +36,7 @@ from core.payments.base import (
     SubMerchantResult,
 )
 
-logger = logging.getLogger("ceyhan.payments")
+logger = logging.getLogger("adana.payments")
 
 _INITIALIZE_PATH = "/payment/iyzipos/checkoutform/initialize/auth/ecom"
 _RETRIEVE_PATH = "/payment/iyzipos/checkoutform/auth/ecom/detail"

@@ -12,7 +12,9 @@ import time
 import urllib.request
 from pathlib import Path
 
-OUT = Path(r"C:\Users\kiyar\Desktop\ceyhan-tutor-market\scripts\out")
+_HERE = Path(__file__).resolve().parent
+
+OUT = _HERE / "out"
 JSON_PATH = OUT / "adana_venues_all.json"
 
 LL = re.compile(r"!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)")

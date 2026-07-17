@@ -18,8 +18,10 @@ import re
 import sys
 from pathlib import Path
 
+_HERE = Path(__file__).resolve().parent
+
 VAULT = Path(r"C:\Users\kiyar\adana-obsidian-kasa\Adana")
-OUT_DIR = Path(r"C:\Users\kiyar\Desktop\ceyhan-tutor-market\scripts\out")
+OUT_DIR = _HERE / "out"
 
 LATLNG_RE = re.compile(r"!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)")
 # Yedek: @lat,lng,zoom kalıbı (place name içeren linklerde 3d/4d daha doğru)

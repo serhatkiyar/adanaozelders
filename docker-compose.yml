@@ -1,3 +1,8 @@
+# Proje adı AÇIKÇA sabitlenir: varsayılanı klasör adıdır ve klasör yeniden
+# adlandırılınca compose eski container/volume'ları TANIMAZ (boş yeni volume açar,
+# MinIO verisi "kaybolmuş" görünür). Buradaki ad klasörden bağımsızdır.
+name: adana-ozel-ders
+
 services:
   postgres:
     image: postgres:16-alpine
@@ -132,7 +137,7 @@ services:
       SMTP_HOST: ${SMTP_HOST:-mailhog}
       SMTP_PORT: ${SMTP_PORT:-1025}
       SMTP_USE_TLS: "False"
-      EMAIL_FROM: ${EMAIL_FROM:-no-reply@ceyhan.local}
+      EMAIL_FROM: ${EMAIL_FROM:-no-reply@adanaozelders.com.tr}
       FRONTEND_BASE_URL: ${FRONTEND_BASE_URL:-http://localhost:5173}
       # Rota optimizasyonu: `--profile routing` açıkken backend container'ı VROOM'a
       # servis adıyla ulaşır (localhost:3000 container içinden çalışmaz). Profil

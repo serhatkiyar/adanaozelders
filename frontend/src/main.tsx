@@ -6,7 +6,7 @@ import "@/index.css";
 
 // Flash önle: kayıtlı tema tercihini render'dan önce uygula.
 try {
-  const saved = localStorage.getItem("ceyhan-theme");
+  const saved = localStorage.getItem("adana-theme");
   const state = saved ? JSON.parse(saved)?.state : null;
   // Yeni şema `preference` tutar; eski kayıtlar yalnız `theme` içerirdi.
   const pref = state?.preference ?? state?.theme ?? "light";

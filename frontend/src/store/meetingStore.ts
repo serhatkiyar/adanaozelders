@@ -52,6 +52,6 @@ export const useMeetingStore = create<MeetingState>()(
       toggleMinimize: () => set((state) => ({ isMinimized: !state.isMinimized })),
       toggleDrawer: () => set((state) => ({ isDrawerOpen: !state.isDrawerOpen })),
     }),
-    { name: "ceyhan-meeting" }
+    { name: "adana-meeting" }
   )
 );

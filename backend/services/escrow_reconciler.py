@@ -34,7 +34,7 @@ from models.payment import Payment, PaymentStatus
 from models.study_reservation import StudyReservation
 from services import escrow
 
-logger = logging.getLogger("ceyhan.escrow")
+logger = logging.getLogger("adana.escrow")
 
 # Bayat checkout taraması her CHECKOUT_RECONCILE_INTERVAL_SECONDS'ta bir koşar
 # (60 sn'lik loop'tan daha seyrek — sağlayıcıya gereksiz okuma yapmamak için).

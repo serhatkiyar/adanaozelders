@@ -12,8 +12,10 @@ import re
 from datetime import date
 from pathlib import Path
 
+_HERE = Path(__file__).resolve().parent
+
 VAULT = Path(r"C:\Users\kiyar\adana-obsidian-kasa\Adana")
-JSON_PATH = Path(r"C:\Users\kiyar\Desktop\ceyhan-tutor-market\scripts\out\adana_venues_all.json")
+JSON_PATH = _HERE / "out" / "adana_venues_all.json"
 TODAY = date.today().isoformat()
 
 # kategori (klasör) -> tür (modelimize yakın etiket)
@@ -199,7 +201,7 @@ WHERE !lat
 ---
 
 _Toplam {len(rows)} kayıt · {sum(1 for r in rows if r['lat'] is not None)} tanesi koordinatlı._
-_Kaynak veri: `ceyhan-tutor-market/scripts/out/adana_venues_geo.csv`_
+_Kaynak veri: `scripts/out/adana_venues_geo.csv`_
 """
     (VAULT / "00 Adana Mekân Veritabanı.md").write_text(index, encoding="utf-8")
     print("Ana indeks yazıldı: 00 Adana Mekân Veritabanı.md")

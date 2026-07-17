@@ -57,6 +57,6 @@ export const useFavoritesStore = create<FavoritesState>()(
       clear: () => set({ items: [] }),
       count: () => favoritesCount(get().items),
     }),
-    { name: "ceyhan-favorites" }
+    { name: "adana-favorites" }
   )
 );

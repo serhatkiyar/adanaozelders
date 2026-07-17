@@ -16,6 +16,6 @@ export const useUiPrefsStore = create<UiPrefsState>()(
       showRecentlyViewed: true,
       setShowRecentlyViewed: (v) => set({ showRecentlyViewed: v }),
     }),
-    { name: "ceyhan-ui-prefs" }
+    { name: "adana-ui-prefs" }
   )
 );

@@ -53,7 +53,7 @@ export const useThemeStore = create<ThemeState>()(
       },
     }),
     {
-      name: "ceyhan-theme",
+      name: "adana-theme",
       // Yalnız tercihi kaydet; gerçek tema her açılışta tercihten çözülür.
       partialize: (s) => ({ preference: s.preference }),
       onRehydrateStorage: () => (state) => {

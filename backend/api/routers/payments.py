@@ -34,7 +34,7 @@ from services import (
     study_reservation_service,
 )
 
-logger = logging.getLogger("ceyhan.payments")
+logger = logging.getLogger("adana.payments")
 
 router = APIRouter(prefix="/payments", tags=["payments"])
 

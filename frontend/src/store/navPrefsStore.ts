@@ -59,6 +59,6 @@ export const useNavPrefsStore = create<NavPrefsState>()(
           return { byRole: next };
         }),
     }),
-    { name: "ceyhan-nav-prefs-v2" }
+    { name: "adana-nav-prefs-v2" }
   )
 );

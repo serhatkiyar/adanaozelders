@@ -4,7 +4,7 @@ import logging
 
 from core.mail.base import EmailMessage, EmailSender
 
-logger = logging.getLogger("ceyhan.mail")
+logger = logging.getLogger("adana.mail")
 
 
 class ConsoleEmailSender(EmailSender):

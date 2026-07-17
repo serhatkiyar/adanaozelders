@@ -82,7 +82,7 @@ async def main() -> None:
 
         await db.flush()  # id'ler için
 
-        room = f"CeyhanCanliDersTest-{tutor.id}-{client.id}"
+        room = f"AdanaCanliDersTest-{tutor.id}-{client.id}"
         start_at = now - datetime.timedelta(hours=1)
         end_at = now + datetime.timedelta(days=7)
 

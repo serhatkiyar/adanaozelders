@@ -19,7 +19,7 @@ from fastapi import FastAPI
 
 from core.config import settings
 
-logger = logging.getLogger("ceyhan")
+logger = logging.getLogger("adana")
 
 # İstek başına korelasyon kimliği (varsayılan "-": istek dışı/startup logları).
 request_id_ctx: ContextVar[str] = ContextVar("request_id", default="-")

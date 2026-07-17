@@ -7,7 +7,7 @@ import httpx
 from core.config import settings
 from core.sms.base import SmsMessage, SmsSender
 
-logger = logging.getLogger("ceyhan.sms")
+logger = logging.getLogger("adana.sms")
 
 
 class NetgsmSmsSender(SmsSender):

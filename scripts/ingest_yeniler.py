@@ -9,9 +9,11 @@ import json
 import re
 from pathlib import Path
 
+_HERE = Path(__file__).resolve().parent
+
 VAULT = Path(r"C:\Users\kiyar\adana-obsidian-kasa\Adana")
 YENILER = VAULT / "yeniler"
-JSON_PATH = Path(r"C:\Users\kiyar\Desktop\ceyhan-tutor-market\scripts\out\adana_venues_all.json")
+JSON_PATH = _HERE / "out" / "adana_venues_all.json"
 
 URL_RE = re.compile(r"https?://\S+")
 LL = re.compile(r"!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)")

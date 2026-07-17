@@ -18,6 +18,6 @@ export const useSurfaceStore = create<SurfaceState>()(
       lastSurface: "discover",
       setSurface: (s) => set({ lastSurface: s }),
     }),
-    { name: "ceyhan-last-surface" }
+    { name: "adana-last-surface" }
   )
 );

@@ -5,8 +5,10 @@ import json
 import shutil
 from pathlib import Path
 
+_HERE = Path(__file__).resolve().parent
+
 VAULT = Path(r"C:\Users\kiyar\adana-obsidian-kasa\Adana")
-OUT = Path(r"C:\Users\kiyar\Desktop\ceyhan-tutor-market\scripts\out")
+OUT = _HERE / "out"
 JSON_PATH = OUT / "adana_venues_all.json"
 
 rows = json.loads(JSON_PATH.read_text(encoding="utf-8"))

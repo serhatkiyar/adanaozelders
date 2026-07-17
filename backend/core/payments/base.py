@@ -35,7 +35,7 @@ class BuyerInfo:
     ip: str = "127.0.0.1"
     identity_number: str | None = None
     city: str = "Adana"
-    address: str = "Ceyhan, Adana"
+    address: str = "Adana, Türkiye"
 
 
 @dataclass(slots=True)
@@ -85,7 +85,7 @@ class SubMerchantInfo:
     gsm: str
     iban: str
     identity_number: str  # TCKN (yalnız sağlayıcıya iletilir, biz son4 tutarız)
-    address: str = "Ceyhan, Adana"
+    address: str = "Adana, Türkiye"
     city: str = "Adana"
 
 

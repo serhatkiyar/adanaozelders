@@ -19,7 +19,7 @@ export default function TestLiveLesson() {
   const { roomName, bookingId, joinMeeting, leaveMeeting, toggleMinimize } = useMeetingStore();
   const active = !!roomName;
 
-  const [room, setRoom] = useState("ceyhan-test-oda");
+  const [room, setRoom] = useState("adana-test-oda");
   const [tutor, setTutor] = useState("Eğitmen Test");
   const [client, setClient] = useState("Öğrenci Test");
   // Çekmecedeki Kaynaklar/Notlar gerçek booking'den çekilir; boşsa yalnız
@@ -28,7 +28,7 @@ export default function TestLiveLesson() {
 
   const start = () => {
     const bid = booking.trim() ? Number(booking.trim()) : 0;
-    joinMeeting(Number.isFinite(bid) ? bid : 0, room.trim() || "ceyhan-test-oda", tutor, client);
+    joinMeeting(Number.isFinite(bid) ? bid : 0, room.trim() || "adana-test-oda", tutor, client);
   };
 
   return (
@@ -105,12 +105,12 @@ export default function TestLiveLesson() {
         <p className="text-center text-xs text-slate-400 dark:text-slate-500">
           Oda bağlantısı:{" "}
           <a
-            href={jitsiUrl(room.trim() || "ceyhan-test-oda")}
+            href={jitsiUrl(room.trim() || "adana-test-oda")}
             target="_blank"
             rel="noopener noreferrer"
             className="underline hover:text-indigo-500"
           >
-            {jitsiUrl(room.trim() || "ceyhan-test-oda")}
+            {jitsiUrl(room.trim() || "adana-test-oda")}
           </a>
         </p>
       </div>

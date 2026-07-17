@@ -19,7 +19,7 @@ from sqlalchemy.types import TypeDecorator
 
 from core.config import settings
 
-logger = logging.getLogger("ceyhan.crypto")
+logger = logging.getLogger("adana.crypto")
 
 
 @lru_cache

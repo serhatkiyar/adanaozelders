@@ -2,18 +2,19 @@
 // Sayfa düzeni `pages/LegalPage.tsx`'tedir; metin değişiklikleri yalnız burada yapılır.
 //
 // NOT: Bu metinler lansman öncesi bir avukat tarafından gözden geçirilmelidir.
-// TODO(prod): Şahıs şirketi kurulunca (plan: Temmuz 2026) OPERATOR'a ticari
-// unvan, vergi dairesi/no ve MERSİS eklenecek; e-posta gerçek alan adı kutusuna
-// bağlanacak. Metinlerdeki "işletme" ifadeleri unvanla güncellenecek.
+// TODO(prod): Şirket (limited, merkez Ceyhan/Adana) tescil edilince OPERATOR'a
+// MERSİS no, ticaret sicil no + sicil müdürlüğü, vergi dairesi/no ve KEP adresi
+// eklenecek; e-posta gerçek alan adı kutusuna bağlanacak. Unvan Ticaret Sicili'nce
+// tescil EDİLENE KADAR "kuruluş sürecinde" ibaresi kalmalı (benzerlikten reddedilebilir).
 
 import { SITE_NAME } from "@/lib/seo";
 
 /** Platform işletmecisi kimlik/iletişim sabitleri (yasal metinlerde geçer). */
 export const OPERATOR = {
   name: SITE_NAME,
-  entity: "Adana Özel Ders (şahıs işletmesi — kuruluş sürecinde)",
+  entity: "Çukurova Dijital Pazarlama ve Yazılım Ltd. Şti. (kuruluş sürecinde)",
   address: "Ceyhan, Adana, Türkiye",
-  email: "destek@adanaozelders.com",
+  email: "bilgi@adanaozelders.com.tr",
 } as const;
 
 export type LegalBlock =

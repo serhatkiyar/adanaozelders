@@ -178,6 +178,6 @@ export const useTimerStore = create<TimerState>()(
         });
       },
     }),
-    { name: "ceyhan-deepwork" }
+    { name: "adana-deepwork" }
   )
 );

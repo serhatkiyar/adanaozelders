@@ -12,7 +12,7 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    PROJECT_NAME: str = "Ceyhan Tutoring Marketplace"
+    PROJECT_NAME: str = "Adana Özel Ders"
     API_V1_PREFIX: str = "/api/v1"
 
     BACKEND_CORS_ORIGINS: list[str] = [
@@ -86,8 +86,8 @@ class Settings(BaseSettings):
     # Geliştirmede "smtp" + MailHog (port 1025) ya da "console" yeterlidir; gerçek
     # sağlayıcı yalnızca üretimde gerekir.
     EMAIL_PROVIDER: str = "console"
-    EMAIL_FROM: str = "no-reply@ceyhan.local"
-    EMAIL_FROM_NAME: str = "Ceyhan Özel Ders"
+    EMAIL_FROM: str = "no-reply@adanaozelders.com.tr"
+    EMAIL_FROM_NAME: str = "Adana Özel Ders"
     SMTP_HOST: str = "localhost"
     SMTP_PORT: int = 1025
     SMTP_USERNAME: str | None = None
@@ -211,9 +211,9 @@ class Settings(BaseSettings):
     GEOCODE_REVERSE_USE_NOMINATIM: bool = True
     GEOCODE_COUNTRY: str = "tr"
     GEOCODE_LANGUAGE: str = "tr"
-    # Sonuçları yerele yaklaştırmak için arama yanlılığı (Ceyhan merkezli).
-    GEOCODE_BIAS_LAT: float = 37.029003
-    GEOCODE_BIAS_LNG: float = 35.820839
+    # Sonuçları yerele yaklaştırmak için arama yanlılığı (Adana merkezli — depo çevresi).
+    GEOCODE_BIAS_LAT: float = 36.985500
+    GEOCODE_BIAS_LNG: float = 35.325300
     GEOCODE_BIAS_RADIUS_M: int = 30000
 
     # Gözlemlenebilirlik. Sentry yalnızca SENTRY_DSN verilirse etkinleşir (yoksa

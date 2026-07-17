@@ -1,4 +1,4 @@
-# Frontend — Ceyhan Tutoring Marketplace
+# Frontend — Adana Özel Ders
 
 React 18 + Vite + TypeScript + Tailwind CSS 3. Durum (State) yönetimi için Zustand, veri çekme/senkronizasyon için React Query (`@tanstack/react-query`), API iletişimi için Axios kullanılır.
 

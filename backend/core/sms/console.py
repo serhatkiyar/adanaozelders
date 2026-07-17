@@ -4,7 +4,7 @@ import logging
 
 from core.sms.base import SmsMessage, SmsSender
 
-logger = logging.getLogger("ceyhan.sms")
+logger = logging.getLogger("adana.sms")
 
 
 class ConsoleSmsSender(SmsSender):

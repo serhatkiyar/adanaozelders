@@ -365,7 +365,7 @@ async def _charge(
         amount=Decimal(str(order.total)),
         currency=order.currency,
         booking_id=order.id,
-        description=f"Ceyhan Magaza Siparis #{order.id}",
+        description=f"Adana Ozel Ders Magaza #{order.id}",
         reference=f"order:{order.id}",
         buyer=payments.buyer_from_client(client, ip=client_ip),
     )

@@ -33,6 +33,6 @@ export const useNavbarWidgetStore = create<NavbarWidgetState>()(
       setLgsDate: (d) => set({ lgsDate: d }),
       setCity: (c) => set({ city: c }),
     }),
-    { name: "ceyhan-navbar-widget" }
+    { name: "adana-navbar-widget" }
   )
 );

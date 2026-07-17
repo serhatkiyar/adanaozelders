@@ -1,4 +1,4 @@
-# Backend — Ceyhan Tutoring Marketplace
+# Backend — Adana Özel Ders
 
 FastAPI + SQLAlchemy 2.0 Async + PostgreSQL. JWT tabanlı RBAC (Admin, Tutor, Client ayrı tablolar).
 

@@ -6,7 +6,9 @@ from collections import Counter, defaultdict
 from datetime import date
 from pathlib import Path
 
-OUT = Path(r"C:\Users\kiyar\Desktop\ceyhan-tutor-market\scripts\out")
+_HERE = Path(__file__).resolve().parent
+
+OUT = _HERE / "out"
 ROWS = json.loads((OUT / "adana_venues_all.json").read_text(encoding="utf-8"))
 
 # Çalışma mekânı arzı = öğrencinin ders çalışacağı yerler

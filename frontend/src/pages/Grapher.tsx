@@ -18,7 +18,7 @@ import {
 
 const PALETTE = ["#6366f1", "#10b981", "#f59e0b", "#ef4444", "#0ea5e9", "#a855f7", "#ec4899"];
 const DEFAULT_VIEW: Viewport = { xMin: -10, xMax: 10, yMin: -10, yMax: 10 };
-const STORAGE_KEY = "ceyhan-grapher";
+const STORAGE_KEY = "adana-grapher";
 
 interface FnRow {
   id: number;

@@ -25,7 +25,7 @@ from models.store import Order, OrderItem, SellerType
 from models.tutor import Tutor
 from services import commission, escrow, notification_service
 
-logger = logging.getLogger("ceyhan.payments")
+logger = logging.getLogger("adana.payments")
 
 
 def _now() -> datetime.datetime:
@@ -150,7 +150,7 @@ async def pay(
         amount=Decimal(str(payment.amount)),
         currency=payment.currency,
         booking_id=booking.id,
-        description=f"Ceyhan Ozel Ders #{booking.id}",
+        description=f"Adana Ozel Ders #{booking.id}",
         reference=f"booking:{booking.id}",
         buyer=payments.buyer_from_client(client, ip=client_ip) if client else None,
     )

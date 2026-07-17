@@ -30,14 +30,14 @@ from core.config import settings
 logger = logging.getLogger(__name__)
 
 _TIMEOUT = httpx.Timeout(8.0)
-_USER_AGENT = "CeyhanTutoringMarketplace/1.0 (+geocode-proxy)"
+_USER_AGENT = "AdanaOzelDers/1.0 (+geocode-proxy)"
 
 _PLACES_BASE = "https://places.googleapis.com/v1"
 _GOOGLE_GEOCODE_URL = "https://maps.googleapis.com/maps/api/geocode/json"
 _NOMINATIM_BASE = "https://nominatim.openstreetmap.org"
 
-# Nominatim viewbox: lon1,lat1,lon2,lat2 (Ceyhan çevresi) — yazarken öneri yanlılığı.
-_NOMINATIM_VIEWBOX = "35.63,37.16,35.98,36.89"
+# Nominatim viewbox: lon1,lat1,lon2,lat2 (Adana merkez çevresi) — yazarken öneri yanlılığı.
+_NOMINATIM_VIEWBOX = "35.13,37.16,35.53,36.81"
 
 # Paylaşılan, kalıcı HTTP istemcisi (keep-alive). Her çağrıda yeniden açmak yerine
 # bağlantı havuzunu yeniden kullanır → Google/Nominatim'e tekrarlı TLS el sıkışması yok.
@@ -107,7 +107,7 @@ async def _google_autocomplete(query: str, session_token: str | None) -> list[di
         "includedRegionCodes": [settings.GEOCODE_COUNTRY],
         "languageCode": settings.GEOCODE_LANGUAGE,
     }
-    # Yanlılık opsiyonel: radius>0 ise yerele (Ceyhan) yaklaştır; 0 ise ülke geneli.
+    # Yanlılık opsiyonel: radius>0 ise yerele (Adana) yaklaştır; 0 ise ülke geneli.
     if settings.GEOCODE_BIAS_RADIUS_M and settings.GEOCODE_BIAS_RADIUS_M > 0:
         body["locationBias"] = {
             "circle": {
@@ -314,7 +314,7 @@ async def _nominatim_reverse(lat: float, lng: float) -> dict | None:
 
 
 async def _nominatim_forward(query: str) -> dict | None:
-    # Forward ücretsiz fallback — ülke geneli (bounded YOK; Ceyhan dışı adresler de çözülsün).
+    # Forward ücretsiz fallback — ülke geneli (bounded YOK; Adana dışı adresler de çözülsün).
     try:
         resp = await _http().get(
             f"{_NOMINATIM_BASE}/search",

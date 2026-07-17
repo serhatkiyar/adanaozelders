@@ -3,8 +3,10 @@
 import json
 from pathlib import Path
 
+_HERE = Path(__file__).resolve().parent
+
 VAULT = Path(r"C:\Users\kiyar\adana-obsidian-kasa\Adana")
-JSON_PATH = Path(r"C:\Users\kiyar\Desktop\ceyhan-tutor-market\scripts\out\adana_venues_all.json")
+JSON_PATH = _HERE / "out" / "adana_venues_all.json"
 TARGET = "_Maps Eksik"
 
 rows = json.loads(JSON_PATH.read_text(encoding="utf-8"))

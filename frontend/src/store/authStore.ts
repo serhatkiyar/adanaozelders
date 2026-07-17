@@ -6,7 +6,7 @@ import {
 } from "zustand/middleware";
 import type { UserOut } from "@/types";
 
-const REMEMBER_KEY = "ceyhan-remember";
+const REMEMBER_KEY = "adana-remember";
 
 // "Beni hatırla" kapalıysa token sessionStorage'da tutulur (sekme/tarayıcı
 // kapanınca silinir); açıksa (varsayılan, geriye dönük uyumlu) localStorage'da
@@ -67,7 +67,7 @@ export const useAuthStore = create<AuthState>()(
         }),
     }),
     {
-      name: "ceyhan-auth",
+      name: "adana-auth",
       storage: createJSONStorage(() => switchingStorage),
       partialize: (state) => ({
         token: state.token,

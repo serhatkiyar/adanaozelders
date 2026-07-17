@@ -9,7 +9,7 @@ from core.mail.base import EmailMessage, EmailSender
 from core.mail.console import ConsoleEmailSender
 from core.mail.smtp import SMTPEmailSender
 
-logger = logging.getLogger("ceyhan.mail")
+logger = logging.getLogger("adana.mail")
 
 
 @lru_cache

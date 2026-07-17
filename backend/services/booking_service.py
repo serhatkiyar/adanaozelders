@@ -414,7 +414,7 @@ async def accept(db: AsyncSession, booking: Booking) -> Booking:
     _transition(booking, BookingStatus.ACCEPTED)
     # Canlı ders odası yalnızca uzaktan (ONLINE) derslerde üretilir.
     if booking.mode != "IN_PERSON" and not booking.meeting_room:
-        booking.meeting_room = f"ceyhan-{booking.id}-{secrets.token_urlsafe(6)}"
+        booking.meeting_room = f"adana-{booking.id}-{secrets.token_urlsafe(6)}"
     await db.flush()
     await notification_service.notify(
         db,

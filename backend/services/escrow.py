@@ -32,7 +32,7 @@ from core.payments.base import RefundState
 from models.library_exam import RegistrationStatus
 from models.payment import PaymentStatus
 
-logger = logging.getLogger("ceyhan.escrow")
+logger = logging.getLogger("adana.escrow")
 
 
 def _now() -> datetime.datetime:

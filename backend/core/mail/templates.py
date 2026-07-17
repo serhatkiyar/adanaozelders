@@ -3,7 +3,7 @@ from __future__ import annotations
 from core.config import settings
 from core.mail.base import EmailMessage
 
-_BRAND = "Ceyhan Özel Ders"
+_BRAND = "Adana Özel Ders"
 
 
 def _layout(*, heading: str, intro: str, button_label: str, button_url: str, outro: str) -> str:

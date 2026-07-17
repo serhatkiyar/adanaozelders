@@ -56,6 +56,6 @@ export const useCartStore = create<CartState>()(
       clear: () => set({ items: [], couponCode: null }),
       totalCount: () => cartCount(get().items),
     }),
-    { name: "ceyhan-cart" }
+    { name: "adana-cart" }
   )
 );

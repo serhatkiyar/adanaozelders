@@ -18,7 +18,7 @@ from core.routing.base import (
 from core.routing.haversine import HaversineRoutingProvider
 from core.routing.vroom import VroomRoutingProvider
 
-logger = logging.getLogger("ceyhan.routing")
+logger = logging.getLogger("adana.routing")
 
 __all__ = [
     "FleetPlan",

@@ -8,7 +8,7 @@ from core.sms.base import SmsMessage, SmsSender
 from core.sms.console import ConsoleSmsSender
 from core.sms.netgsm import NetgsmSmsSender
 
-logger = logging.getLogger("ceyhan.sms")
+logger = logging.getLogger("adana.sms")
 
 
 @lru_cache

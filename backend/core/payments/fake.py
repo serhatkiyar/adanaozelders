@@ -12,7 +12,7 @@ from core.payments.base import (
     SubMerchantResult,
 )
 
-logger = logging.getLogger("ceyhan.payments")
+logger = logging.getLogger("adana.payments")
 
 
 class FakePaymentProvider(PaymentProvider):
