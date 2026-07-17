@@ -67,6 +67,30 @@ def next_delivery_day(
     return next_working_day(local_day + datetime.timedelta(days=1), non_working_weekdays)
 
 
+def first_day_with_capacity(
+    day: datetime.date,
+    booked: dict[datetime.date, int],
+    *,
+    capacity: int,
+    non_working_weekdays: list[int],
+    max_days: int = 14,
+) -> datetime.date:
+    """Kapasiteye duyarlı söz: ``day``'den ileri, kontenjanı dolmamış İLK çalışma
+    günü. ``booked`` gün → verilmiş söz sayısı (yalnız bölge-içi açık siparişler).
+    Cutoff kuralı tek başına kampanya gününde herkese aynı günü söyler; kapasite
+    dolduğunda söz DÜRÜSTÇE sonraki güne kayar (Amazon promise = f(cutoff,
+    kalan kapasite) ilkesi). capacity <= 0 → kontrol kapalı. ``max_days``
+    emniyet supabıdır (her gün doluysa sonsuz döngü yok — son aday döner)."""
+    day = next_working_day(day, non_working_weekdays)
+    if capacity <= 0:
+        return day
+    for _ in range(max_days):
+        if booked.get(day, 0) < capacity:
+            return day
+        day = next_working_day(day + datetime.timedelta(days=1), non_working_weekdays)
+    return day
+
+
 def cutoff_countdown_seconds(
     now_utc: datetime.datetime, *, cutoff_hour: int, utc_offset_hours: int
 ) -> int | None:

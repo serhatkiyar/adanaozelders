@@ -2,6 +2,8 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { computeZoom, type ZoomState } from "@/lib/imageZoom";
 
 const ZOOM = 2.4;
+/** Zoom paneli hero kutusunun bu oranı kadar büyük çizilir — 1 iken ekrandan taşabiliyordu. */
+const PANEL_SCALE = 0.75;
 
 /** Ürün detay hero görseli: imleç üzerindeyken lens + sağdaki bilgi sütununun
  * üzerine açılan zoom önizleme paneli (Amazon deseni). Tıklama lightbox'ı açar.
@@ -52,8 +54,8 @@ export function HoverZoomImage({
         naturalHeight: img.naturalHeight,
         boxLeft: bb.left,
         boxTop: bb.top,
-        panelWidth: bb.width,
-        panelHeight: bb.height,
+        panelWidth: bb.width * PANEL_SCALE,
+        panelHeight: bb.height * PANEL_SCALE,
         zoom: ZOOM,
       })
     );
@@ -98,8 +100,10 @@ export function HoverZoomImage({
       {zoom && (
         <div
           aria-hidden
-          className="pointer-events-none absolute left-full top-0 z-30 ml-10 hidden h-full w-full overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl md:block dark:border-slate-700"
+          className="pointer-events-none absolute left-full top-0 z-30 ml-10 hidden overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl md:block dark:border-slate-700"
           style={{
+            width: `${PANEL_SCALE * 100}%`,
+            height: `${PANEL_SCALE * 100}%`,
             backgroundImage: `url(${src})`,
             backgroundRepeat: "no-repeat",
             backgroundSize: `${zoom.bgWidth}px ${zoom.bgHeight}px`,

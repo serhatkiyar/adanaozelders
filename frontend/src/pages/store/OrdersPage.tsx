@@ -21,9 +21,7 @@ export const STATUS_LABELS: Record<string, { label: string; cls: string }> = {
 };
 
 const TABS: { key: string; label: string; match: (s: string) => boolean }[] = [
-  { key: "all", label: "Tümü", match: () => true },
-  { key: "ongoing", label: "Devam eden", match: (s) => ["PENDING", "PAID", "SHIPPED"].includes(s) },
-  { key: "delivered", label: "Teslim edildi", match: (s) => s === "DELIVERED" },
+  { key: "all", label: "Siparişler", match: () => true },
   { key: "cancelled", label: "İptal/İade", match: (s) => ["CANCELLED", "REFUNDED"].includes(s) },
 ];
 
@@ -116,38 +114,40 @@ export default function OrdersPage() {
         ) : (
           <>
             {/* Filtre satırı */}
-            <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-3 border-b border-slate-200 pb-3 dark:border-slate-800">
+            <div className="mt-5 flex flex-col gap-2 border-b border-slate-200 pb-3 dark:border-slate-800">
+              <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
+                {years.length > 1 && (
+                  <select
+                    value={year}
+                    onChange={(e) => setYear(e.target.value)}
+                    className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                  >
+                    <option value="all">Tüm yıllar</option>
+                    {years.map((y) => (
+                      <option key={y} value={y}>{y}</option>
+                    ))}
+                  </select>
+                )}
+                <div className="flex flex-wrap gap-1">
+                  {TABS.map((t) => (
+                    <button
+                      key={t.key}
+                      type="button"
+                      onClick={() => setTab(t.key)}
+                      className={`rounded-full px-3 py-1.5 text-sm font-medium transition-colors ${
+                        tab === t.key
+                          ? "bg-indigo-600 text-white"
+                          : "text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
+                      }`}
+                    >
+                      {t.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
               <span className="text-sm font-medium text-slate-700 dark:text-slate-200">
                 {filtered.length} sipariş
               </span>
-              {years.length > 1 && (
-                <select
-                  value={year}
-                  onChange={(e) => setYear(e.target.value)}
-                  className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-sm outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-                >
-                  <option value="all">Tüm yıllar</option>
-                  {years.map((y) => (
-                    <option key={y} value={y}>{y}</option>
-                  ))}
-                </select>
-              )}
-              <div className="flex flex-wrap gap-1">
-                {TABS.map((t) => (
-                  <button
-                    key={t.key}
-                    type="button"
-                    onClick={() => setTab(t.key)}
-                    className={`rounded-full px-3 py-1.5 text-sm font-medium transition-colors ${
-                      tab === t.key
-                        ? "bg-indigo-600 text-white"
-                        : "text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
-                    }`}
-                  >
-                    {t.label}
-                  </button>
-                ))}
-              </div>
             </div>
 
             {filtered.length === 0 ? (
@@ -172,11 +172,6 @@ function OrderCard({ order }: { order: OrderOut }) {
   const pay = usePayOrder();
   const add = useCartStore((s) => s.add);
   const badge = STATUS_LABELS[order.status] ?? { label: order.status, cls: "bg-slate-100 text-slate-500" };
-  const canTrack =
-    !!order.track_token &&
-    order.has_physical &&
-    order.payment_status === "PAID" &&
-    (order.status === "PAID" || order.status === "SHIPPED" || order.status === "DELIVERED");
 
   return (
     <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800">
@@ -220,18 +215,6 @@ function OrderCard({ order }: { order: OrderOut }) {
             />
           ))}
         </div>
-
-        {canTrack && (
-          <Link
-            to={ROUTES.cargoTracking(order.track_token!)}
-            className="mt-4 inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition-colors hover:border-indigo-300 hover:text-indigo-600 dark:border-slate-700 dark:text-slate-200 dark:hover:text-indigo-400"
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" width="16" height="16">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 18.75a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 0 1-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 0 0-3.213-9.193 2.056 2.056 0 0 0-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 0 0-10.026 0 1.106 1.106 0 0 0-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12" />
-            </svg>
-            Kargo Takip
-          </Link>
-        )}
 
         {order.payment_status === "PENDING" && order.status !== "CANCELLED" && (
           <button

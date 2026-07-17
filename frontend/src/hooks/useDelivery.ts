@@ -285,30 +285,6 @@ function useInvalidateOrders() {
   };
 }
 
-export function useSetDeliveryPref() {
-  const invalidate = useInvalidateOrders();
-  return useMutation({
-    mutationFn: ({
-      orderId,
-      pref,
-      note,
-    }: {
-      orderId: number;
-      pref: import("@/types").DeliveryPref;
-      note?: string | null;
-    }) => deliveryApi.setDeliveryPref(orderId, pref, note),
-    onSuccess: invalidate,
-  });
-}
-
-export function usePostponeOrder() {
-  const invalidate = useInvalidateOrders();
-  return useMutation({
-    mutationFn: (orderId: number) => deliveryApi.postponeOrder(orderId),
-    onSuccess: invalidate,
-  });
-}
-
 export function useChangeShipAddress() {
   const invalidate = useInvalidateOrders();
   return useMutation({

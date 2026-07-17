@@ -280,6 +280,10 @@ class OrderOut(BaseModel):
     track_token: str | None = None
     # En güncel iade talebinin durumu (PENDING/APPROVED/REJECTED) — yoksa None.
     return_status: str | None = None
+    # Teslim anı + son iade tarihi (teslim + 14 gün). Teslim edilmemiş/eski
+    # siparişlerde None. Frontend "son iade tarihi" bilgisini bundan gösterir.
+    delivered_at: datetime.datetime | None = None
+    return_deadline: datetime.datetime | None = None
     created_at: datetime.datetime
     items: list[OrderItemOut] = []
     # Hosted checkout (iyzico) yönlendirme URL'i — fake sağlayıcıda None.

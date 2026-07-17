@@ -17,6 +17,7 @@ from sqlalchemy import (
     Date,
     DateTime,
     ForeignKey,
+    Index,
     Integer,
     Numeric,
     String,
@@ -53,12 +54,15 @@ class DeliveryRunStatus(str, enum.Enum):
 class DeliveryStopStatus(str, enum.Enum):
     """FAILED = kurye ulaşamadı (performans metriği); RESCHEDULED = müşteri
     erteledi (kurye suçu değil) — ikisi de siparişi PAID'e geri sarar ama
-    müşteri kopyası ve raporlama ayrışır."""
+    müşteri kopyası ve raporlama ayrışır. CANCELLED = sipariş iptal/iade
+    edildiği için durak düştü (kurye performansına SAYILMAZ; order_fsm
+    CANCELLED/REFUNDED geçişinde otomatik kapatır)."""
 
     PENDING = "PENDING"
     DELIVERED = "DELIVERED"
     FAILED = "FAILED"
     RESCHEDULED = "RESCHEDULED"
+    CANCELLED = "CANCELLED"
 
 
 class DeliveryProof(str, enum.Enum):
@@ -72,6 +76,17 @@ class DeliveryProof(str, enum.Enum):
 
 class DeliveryRun(Base, TimestampMixin, SoftDeleteMixin):
     __tablename__ = "delivery_runs"
+    __table_args__ = (
+        # Gün+araç başına tek PLANLI tur — dispatch-day'in find-or-create'i
+        # yarışta iki tur üretmesin (servis kontrolü UX, index otorite).
+        Index(
+            "uq_delivery_run_planned",
+            "run_date",
+            "vehicle",
+            unique=True,
+            postgresql_where=text("status = 'PLANNED' AND deleted_at IS NULL"),
+        ),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     run_date: Mapped[datetime.date] = mapped_column(Date, nullable=False, index=True)
@@ -124,6 +139,15 @@ class DeliveryStop(Base, TimestampMixin):
         # Aynı sipariş aynı tura iki kez eklenemez (aktif turlar arası tekillik
         # servis katmanında — FAILED sonrası ertesi günün turuna yeniden eklenebilir).
         UniqueConstraint("run_id", "order_id", name="uq_delivery_stop_run_order"),
+        # Bir siparişin aynı anda TEK açık (PENDING) durağı olabilir — turlar
+        # arası tekillik. Servisteki _has_open_stop kontrolü UX içindir; yarışta
+        # (çift dispatch-day / iki admin) son söz bu index'indir.
+        Index(
+            "uq_delivery_stop_open",
+            "order_id",
+            unique=True,
+            postgresql_where=text("status = 'PENDING'"),
+        ),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)

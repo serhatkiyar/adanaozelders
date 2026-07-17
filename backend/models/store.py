@@ -368,6 +368,11 @@ class Order(Base, TimestampMixin, SoftDeleteMixin):
         Integer, nullable=False, server_default=text("0")
     )
     tracking_no: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    # Teslim anı (DELIVERED geçişinde order_fsm damgalar) — iade penceresinin
+    # (RETURN_WINDOW_DAYS) başlangıcı ve "son iade tarihi" bilgisinin dayanağı.
+    delivered_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     # Oturumsuz (SMS'le paylaşılan) kargo takip token'ı — tahmin edilemez, tekil.
     # tracking_no (ELDEN-R{run}-S{stop}) sıralı/enumerate edilebilir olduğundan public
     # takipte KULLANILMAZ; bu token Collection.share_token desenini izler.
@@ -388,7 +393,20 @@ class Order(Base, TimestampMixin, SoftDeleteMixin):
         order_by="OrderReturn.id",
     )
 
-    __table_args__ = (Index("ix_orders_status", "status"),)
+    __table_args__ = (
+        Index("ix_orders_status", "status"),
+        # Dağıtım kuyruğu sorguları (eligible/outsourced/kapasite sayımı):
+        # açık fiziksel siparişler söz gününe göre — kısmi index, orders
+        # tablosu (dijital dahil) büyüse de kuyruk sorgusu index'te kalır.
+        Index(
+            "ix_orders_fulfillment_queue",
+            "promised_delivery_date",
+            postgresql_where=text(
+                "status = 'PAID' AND payment_status = 'PAID' "
+                "AND has_physical AND deleted_at IS NULL"
+            ),
+        ),
+    )
 
 
 class OrderStatusHistory(Base, TimestampMixin):

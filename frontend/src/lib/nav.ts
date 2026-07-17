@@ -18,7 +18,8 @@ export type NavIcon =
   | "library"
   | "tickets"
   | "wallet"
-  | "store";
+  | "store"
+  | "shop";
 
 export interface NavItem {
   to: string;
@@ -33,6 +34,7 @@ export const STUDENT_NAV: NavItem[] = [
   { to: ROUTES.demands, label: "Taleplerim", icon: "demand" },
   { to: ROUTES.learn, label: "Öğren", icon: "learn" },
   { to: ROUTES.bookings, label: "Rezervasyonlar", icon: "bookings" },
+  { to: ROUTES.store, label: "Mağaza", icon: "store" },
 ];
 
 export const TUTOR_NAV: NavItem[] = [
@@ -42,6 +44,7 @@ export const TUTOR_NAV: NavItem[] = [
   { to: ROUTES.sellerProducts, label: "Dijital Ürünlerim", icon: "store" },
   { to: ROUTES.messages, label: "Mesajlar", icon: "messages" },
   { to: ROUTES.libraries, label: "Kütüphaneler", icon: "library" },
+  { to: ROUTES.store, label: "Mağaza", icon: "shop" },
 ];
 
 // Kütüphane operatörü: özet panel + profil + operasyon + para + mesajlar.

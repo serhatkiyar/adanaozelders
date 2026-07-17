@@ -232,24 +232,7 @@ export async function fetchPublicOrderTracking(token: string): Promise<OrderTrac
   return data;
 }
 
-/* ── Teslimat self-servisi (tercih / erteleme / adres) ── */
-
-export async function setDeliveryPref(
-  orderId: number,
-  pref: DeliveryPref,
-  note?: string | null
-): Promise<OrderOut> {
-  const { data } = await apiClient.post<OrderOut>(
-    `/store/orders/${orderId}/delivery-pref`,
-    { pref, note: note ?? null }
-  );
-  return data;
-}
-
-export async function postponeOrder(orderId: number): Promise<OrderOut> {
-  const { data } = await apiClient.post<OrderOut>(`/store/orders/${orderId}/postpone`);
-  return data;
-}
+/* ── Teslimat self-servisi (adres) ── */
 
 export async function changeShipAddress(
   orderId: number,

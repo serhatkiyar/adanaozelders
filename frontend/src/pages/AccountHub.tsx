@@ -120,24 +120,7 @@ export default function AccountHub() {
 
   const content = (
     <div className="mx-auto max-w-5xl">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Hesabım</h1>
-        {/* Hizmetler arası hızlı geçiş */}
-        <div className="flex gap-2">
-          <Link
-            to={ROUTES.store}
-            className="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition-colors hover:border-indigo-300 hover:text-indigo-600 dark:border-slate-700 dark:text-slate-200 dark:hover:text-indigo-400"
-          >
-            Mağaza
-          </Link>
-          <Link
-            to={ROUTES.tutors}
-            className="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition-colors hover:border-indigo-300 hover:text-indigo-600 dark:border-slate-700 dark:text-slate-200 dark:hover:text-indigo-400"
-          >
-            Eğitmen ara
-          </Link>
-        </div>
-      </div>
+      <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Hesabım</h1>
 
       <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {CARDS.map((c) => (

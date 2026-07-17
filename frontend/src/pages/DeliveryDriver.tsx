@@ -160,8 +160,17 @@ function CurrentStopCard({ stop }: { stop: DeliveryStop }) {
             onClick={() =>
               sendOtp.mutate(stop.id, {
                 onSuccess: (r) => {
-                  setMaskedPhone(r.masked_phone);
-                  toast.success(`Kod gönderildi (${r.masked_phone}).`);
+                  // `sent` gerçek gönderim sonucu — SMS sağlayıcısı düşükken
+                  // "gönderildi" deyip müşteriyi kapıda kod bekletmeyelim.
+                  if (r.sent) {
+                    setMaskedPhone(r.masked_phone);
+                    toast.success(`Kod gönderildi (${r.masked_phone}).`);
+                  } else {
+                    setMaskedPhone(null);
+                    toast.error(
+                      "SMS gönderilemedi — tekrar dene ya da notlu teslime geç."
+                    );
+                  }
                 },
                 onError: (e: any) => toast.error(apiDetail(e, "Kod gönderilemedi.")),
               })

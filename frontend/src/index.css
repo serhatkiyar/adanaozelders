@@ -248,3 +248,24 @@ path.district-poly {
   background: theme("colors.slate.100");
   border-color: theme("colors.slate.500");
 }
+
+/* Fatura yazdırma: yalnız #order-invoice basılır; tema fark etmeksizin beyaz
+   zemin + koyu metin (dark modda beyaz metin kâğıtta görünmez olmasın). */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #order-invoice,
+  #order-invoice * {
+    visibility: visible !important;
+    color: #1e293b !important;
+  }
+  #order-invoice {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    padding: 0 !important;
+    background: #ffffff !important;
+  }
+}

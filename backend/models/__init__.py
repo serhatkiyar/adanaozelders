@@ -46,6 +46,7 @@ from models.messaging import Conversation, Message, MessageReaction
 from models.name_change_request import NameChangeRequest
 from models.study_reservation import StudyReservation
 from models.notification import Notification
+from models.outbox import OutboxEvent, OutboxStatus
 from models.payment import Payment, PaymentStatus
 from models.qa import QAMessage, QAStatus, QAThread
 from models.refresh_token import RefreshToken
@@ -145,6 +146,8 @@ __all__ = [
     "RegistrationStatus",
     "StudyReservation",
     "Notification",
+    "OutboxEvent",
+    "OutboxStatus",
     "Collection",
     "CollectionItem",
     "Coupon",

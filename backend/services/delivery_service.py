@@ -15,13 +15,15 @@ import hashlib
 import secrets
 
 from fastapi import HTTPException, status
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from core import courier_position, routing, sms
+from core import courier_position, outbox, routing, sms
 from core.config import settings
 from core.routing.haversine import haversine_km
+from models.admin import Admin
 from models.courier import Courier
 from models.delivery import (
     DeliveryProof,
@@ -242,6 +244,23 @@ async def _require_courier(db: AsyncSession, courier_id: int) -> Courier:
 async def create_run(db: AsyncSession, payload: DeliveryRunCreate) -> DeliveryRunOut:
     if payload.courier_id is not None:
         await _require_courier(db, payload.courier_id)
+    # Gün+araç başına tek PLANLI tur (uq_delivery_run_planned otorite; bu
+    # kontrol dostça Türkçe mesaj için). Önceki tur ACTIVE/DONE ise yenisi serbest.
+    existing = (
+        await db.execute(
+            select(DeliveryRun.id).where(
+                DeliveryRun.run_date == payload.run_date,
+                DeliveryRun.vehicle == payload.vehicle,
+                DeliveryRun.status == DeliveryRunStatus.PLANNED.value,
+                DeliveryRun.deleted_at.is_(None),
+            )
+        )
+    ).scalar_one_or_none()
+    if existing is not None:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            f"Bu gün için {payload.vehicle} aracında zaten planlı bir tur var (#{existing})",
+        )
     run = DeliveryRun(
         run_date=payload.run_date,
         vehicle=payload.vehicle,
@@ -344,14 +363,20 @@ async def cancel_run(db: AsyncSession, run_id: int) -> DeliveryRunOut:
     if run.status not in _ACTIVE_RUN_STATUSES:
         raise HTTPException(status.HTTP_409_CONFLICT, "Yalnız planlı/aktif tur iptal edilebilir")
     for stop in run.stops:
-        if stop.status == DeliveryStopStatus.PENDING.value:
-            if stop.order.status == "SHIPPED":
-                await order_fsm.transition_order(
-                    db, stop.order, "PAID", changed_by="courier", reason="Tur iptal edildi"
-                )
-                stop.order.tracking_no = None
-            stop.status = DeliveryStopStatus.FAILED.value
-            stop.courier_note = stop.courier_note or "Tur iptal edildi"
+        if stop.status != DeliveryStopStatus.PENDING.value:
+            continue
+        # Kilit + taze durum: kurye tam bu anda teslim etmiş olabilir —
+        # sonuçlanmış durak/sipariş iptal geri sarımıyla EZİLMEZ.
+        await _lock_stop_and_order(db, stop)
+        if stop.status != DeliveryStopStatus.PENDING.value:
+            continue
+        if stop.order.status == "SHIPPED":
+            await order_fsm.transition_order(
+                db, stop.order, "PAID", changed_by="admin", reason="Tur iptal edildi"
+            )
+            stop.order.tracking_no = None
+        stop.status = DeliveryStopStatus.FAILED.value
+        stop.courier_note = stop.courier_note or "Tur iptal edildi"
     run.status = DeliveryRunStatus.CANCELLED.value
     await db.commit()
     await courier_position.clear_position(run_id)
@@ -359,16 +384,33 @@ async def cancel_run(db: AsyncSession, run_id: int) -> DeliveryRunOut:
 
 
 async def start_run(db: AsyncSession, run_id: int) -> DeliveryRunOut:
-    """PLANNED → ACTIVE: siparişler 'dağıtımda' (SHIPPED) olur, müşteriler bilgilenir."""
+    """PLANNED → ACTIVE: siparişler 'dağıtımda' (SHIPPED) olur, müşteriler bilgilenir.
+
+    Savunma: dağıtıma uygun olmayan (ör. bu arada iptal/iade edilmiş) siparişin
+    durağı turu BLOKLAMAZ — durak CANCELLED'a kapanır, kalanlarla devam edilir.
+    SMS'ler outbox'ta aynı transaction'a yazılır: tur geri alınırsa "kurye yola
+    çıktı" SMS'i de gitmez. ETA'lar optimize anına göre hesaplanmıştı — tur
+    fiilen şimdi başladığından aradaki gecikme kadar ileri kaydırılır (müşteriye
+    bayat pencere sözü verilmez)."""
     run = await _load_run(db, run_id)
     if run.status != DeliveryRunStatus.PLANNED.value:
         raise HTTPException(status.HTTP_409_CONFLICT, "Yalnız planlı tur başlatılabilir")
     if not run.stops:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Turda hiç durak yok")
-    run.status = DeliveryRunStatus.ACTIVE.value
-    run.started_at = _now()
+
+    shipped = 0
     for stop in run.stops:
+        if stop.status != DeliveryStopStatus.PENDING.value:
+            continue
         order = stop.order
+        if not order_fsm.can_transition(order.status, "SHIPPED"):
+            # order_fsm iptal/iadede durağı kapatır; yine de kaçak kaldıysa
+            # (eski veri) tek durak tüm turu düşürmesin.
+            stop.status = DeliveryStopStatus.CANCELLED.value
+            stop.courier_note = (
+                stop.courier_note or f"Dağıtıma uygun değil (sipariş {order.status})"
+            )
+            continue
         await order_fsm.transition_order(db, order, "SHIPPED", changed_by="courier")
         order.tracking_no = f"ELDEN-R{run.id}-S{stop.id}"
         await notification_service.notify(
@@ -378,7 +420,24 @@ async def start_run(db: AsyncSession, run_id: int) -> DeliveryRunOut:
             message=f"Siparişin #{order.id} bugün dağıtımda — kuryemiz yola çıktı.",
             link="/siparislerim",
         )
-        await _send_tracking_link(order)
+        _enqueue_tracking_link(db, order)
+        shipped += 1
+
+    if shipped == 0:
+        # Kapanan kaçak duraklar kalıcı olsun; tur PLANNED kalır.
+        await db.commit()
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST, "Turda dağıtıma uygun durak kalmadı"
+        )
+    run.status = DeliveryRunStatus.ACTIVE.value
+    run.started_at = _now()
+    if run.optimized_at is not None:
+        # ETA'lar "depo çıkışı = optimize anı" varsayımıyla yazılmıştı;
+        # gerçek çıkış anına taşı (offset'ler korunur).
+        delta = run.started_at - run.optimized_at
+        for stop in run.stops:
+            if stop.status == DeliveryStopStatus.PENDING.value and stop.eta is not None:
+                stop.eta = stop.eta + delta
     await db.commit()
     return await get_run(db, run_id)
 
@@ -397,6 +456,83 @@ async def complete_run(db: AsyncSession, run_id: int) -> DeliveryRunOut:
     await db.commit()
     await courier_position.clear_position(run_id)
     return await get_run(db, run_id)
+
+
+async def expire_stale_runs(db: AsyncSession) -> int:
+    """Watchdog (main.py arka plan döngüsü): ``DELIVERY_STALE_RUN_HOURS``'tan
+    uzun süredir ACTIVE kalan turları kapatır — kurye telefonu öldü ya da tur
+    tamamlanmadı; siparişler SHIPPED'de süresiz asılı kalmasın.
+
+    Bekleyen duraklar FAILED olur, siparişler PAID'e döner (yeniden planlanır),
+    müşteriye bildirim + SMS (outbox) gider, adminlere alarm düşer. Kapatılan
+    tur sayısını döner. 0 = kapalı."""
+    hours = settings.DELIVERY_STALE_RUN_HOURS
+    if hours <= 0:
+        return 0
+    cutoff = _now() - datetime.timedelta(hours=hours)
+    runs = (
+        await db.execute(
+            select(DeliveryRun)
+            .options(*_RUN_LOAD)
+            .where(
+                DeliveryRun.status == DeliveryRunStatus.ACTIVE.value,
+                DeliveryRun.started_at.is_not(None),
+                DeliveryRun.started_at < cutoff,
+                DeliveryRun.deleted_at.is_(None),
+            )
+        )
+    ).scalars().all()
+    if not runs:
+        return 0
+    admin_ids = (
+        await db.execute(select(Admin.id).where(Admin.deleted_at.is_(None)))
+    ).scalars().all()
+    for run in runs:
+        for stop in run.stops:
+            if stop.status != DeliveryStopStatus.PENDING.value:
+                continue
+            await _lock_stop_and_order(db, stop)
+            if stop.status != DeliveryStopStatus.PENDING.value:
+                continue
+            order = stop.order
+            if order.status == "SHIPPED":
+                await order_fsm.transition_order(
+                    db, order, "PAID",
+                    changed_by="system:watchdog",
+                    reason="Tur zaman aşımıyla kapatıldı",
+                )
+                order.tracking_no = None
+            stop.status = DeliveryStopStatus.FAILED.value
+            stop.courier_note = stop.courier_note or "Tur zaman aşımıyla kapatıldı"
+            await notification_service.notify(
+                db,
+                user_id=order.client_id,
+                role_id=ROLE_IDS[RoleType.CLIENT],
+                message=f"Siparişin #{order.id} bugün teslim edilemedi; yeniden planlanacak.",
+                link="/siparislerim",
+            )
+            if order.ship_phone:
+                outbox.enqueue(
+                    db, "sms:failed", {"to": order.ship_phone, "order_id": order.id}
+                )
+        run.status = DeliveryRunStatus.CANCELLED.value
+        run.completed_at = _now()
+        stamp = f"Watchdog: {hours} saati aşan aktif tur otomatik kapatıldı."
+        run.notes = f"{run.notes}\n{stamp}" if run.notes else stamp
+        for admin_id in admin_ids:
+            await notification_service.notify(
+                db,
+                user_id=admin_id,
+                role_id=ROLE_IDS[RoleType.ADMIN],
+                message=(
+                    f"Dağıtım turu #{run.id} {hours} saattir açıktı — otomatik "
+                    "kapatıldı; teslim edilemeyen siparişler yeniden planlanmalı."
+                ),
+                link="/",
+            )
+        await db.commit()
+        await courier_position.clear_position(run.id)
+    return len(runs)
 
 
 # ── Durak yönetimi ────────────────────────────────────────────────────────────────
@@ -439,7 +575,21 @@ def _eligible_out(o: Order) -> EligibleOrderOut:
 
 async def eligible_orders(db: AsyncSession) -> list[EligibleOrderOut]:
     """Tura eklenebilir siparişler: ödenmiş + fiziksel + Adana-içi (Cıncık bölgesi)
-    + henüz açık durağı yok. Söz verilen günü yaklaşan/geçen en önde."""
+    + henüz açık durağı yok. Söz verilen günü yaklaşan/geçen en önde.
+
+    Açık-durak elemesi tek sorguda anti-join (NOT EXISTS) ile yapılır — sipariş
+    başına ayrı ``_has_open_stop`` sorgusu (N+1) 500 siparişte 501 sorgu demekti."""
+    open_stop_exists = (
+        select(DeliveryStop.id)
+        .join(DeliveryRun, DeliveryStop.run_id == DeliveryRun.id)
+        .where(
+            DeliveryStop.order_id == Order.id,
+            DeliveryStop.status == DeliveryStopStatus.PENDING.value,
+            DeliveryRun.status.in_(_ACTIVE_RUN_STATUSES),
+            DeliveryRun.deleted_at.is_(None),
+        )
+        .exists()
+    )
     orders = (
         await db.execute(
             select(Order)
@@ -450,6 +600,7 @@ async def eligible_orders(db: AsyncSession) -> list[EligibleOrderOut]:
                 Order.payment_status == "PAID",
                 Order.status == "PAID",
                 Order.ship_in_zone.is_(True),
+                ~open_stop_exists,
             )
             .order_by(
                 Order.promised_delivery_date.asc().nulls_last(),
@@ -457,9 +608,7 @@ async def eligible_orders(db: AsyncSession) -> list[EligibleOrderOut]:
             )
         )
     ).scalars().all()
-    return [
-        _eligible_out(o) for o in orders if not await _has_open_stop(db, o.id)
-    ]
+    return [_eligible_out(o) for o in orders]
 
 
 async def outsourced_orders(db: AsyncSession) -> list[EligibleOrderOut]:
@@ -528,12 +677,15 @@ async def add_stops(db: AsyncSession, run_id: int, order_ids: list[int]) -> Deli
         )
         next_seq += 1
         db.add(stop)
-        # Aktif turda eklenen durak da hemen 'dağıtımda' sayılır.
+        # Aktif turda eklenen durak da hemen 'dağıtımda' sayılır; takip SMS'i
+        # outbox'a aynı transaction'da yazılır (geri sarımda SMS de gitmez).
         if run.status == DeliveryRunStatus.ACTIVE.value:
             await db.flush()
             await order_fsm.transition_order(db, order, "SHIPPED", changed_by="courier")
             order.tracking_no = f"ELDEN-R{run.id}-S{stop.id}"
-            await _send_tracking_link(order)
+            _enqueue_tracking_link(db, order)
+    # Yarışta (_has_open_stop iki istekte de geçtiyse) son sözü
+    # uq_delivery_stop_open söyler → IntegrityError, global handler 409'lar.
     await db.commit()
     return await get_run(db, run_id)
 
@@ -688,16 +840,20 @@ async def dispatch_day(db: AsyncSession, run_date: datetime.date) -> list[Delive
         if not plan.ordered_ids:
             continue
         vehicle = _VEHICLE_IDS[vid]
-        run = (
-            await db.execute(
-                select(DeliveryRun).where(
-                    DeliveryRun.run_date == run_date,
-                    DeliveryRun.vehicle == vehicle,
-                    DeliveryRun.status == DeliveryRunStatus.PLANNED.value,
-                    DeliveryRun.deleted_at.is_(None),
+
+        async def _find_planned() -> DeliveryRun | None:
+            return (
+                await db.execute(
+                    select(DeliveryRun).where(
+                        DeliveryRun.run_date == run_date,
+                        DeliveryRun.vehicle == vehicle,
+                        DeliveryRun.status == DeliveryRunStatus.PLANNED.value,
+                        DeliveryRun.deleted_at.is_(None),
+                    )
                 )
-            )
-        ).scalars().first()
+            ).scalars().first()
+
+        run = await _find_planned()
         if run is None:
             run = DeliveryRun(
                 run_date=run_date,
@@ -705,7 +861,15 @@ async def dispatch_day(db: AsyncSession, run_date: datetime.date) -> list[Delive
                 status=DeliveryRunStatus.PLANNED.value,
             )
             db.add(run)
-            await db.commit()
+            try:
+                await db.commit()
+            except IntegrityError:
+                # Yarış: eşzamanlı dispatch-day aynı turu az önce kurdu
+                # (uq_delivery_run_planned) — onunkini kullan.
+                await db.rollback()
+                run = await _find_planned()
+                if run is None:
+                    raise
         await add_stops(db, run.id, plan.ordered_ids)
         # Tur kendi başına optimize edilir (test edilmiş yazım yolu: ETA +
         # geometri + detour); tek duraklı tur optimize edilemez — sade kalır.
@@ -750,16 +914,21 @@ async def track_run(db: AsyncSession, run_id: int, *, lat: float, lng: float) ->
     await courier_position.set_position(run_id, lat, lng)
 
 
-async def _send_tracking_link(order: Order) -> None:
-    """Sipariş dağıtıma çıkarken oturumsuz kargo takip linkini SMS'ler (best-effort).
-
-    Link tabanı ``PUBLIC_TRACKING_BASE_URL`` (kargotakip.* subdomain'i); token
-    ``order.track_token`` (tahmin edilemez). Telefonsuz siparişte sessizce atlanır."""
+def _enqueue_tracking_link(db: AsyncSession, order: Order) -> None:
+    """Sipariş dağıtıma çıkarken oturumsuz kargo takip linki SMS'ini outbox'lar
+    (SHIPPED geçişiyle AYNI transaction'da — tur geri alınırsa SMS de gitmez;
+    gönderim + retry worker'da). Telefonsuz siparişte sessizce atlanır."""
     if not order.ship_phone or not order.track_token:
         return
     base = settings.PUBLIC_TRACKING_BASE_URL.rstrip("/")
-    await sms.send_tracking_link_sms(
-        to=order.ship_phone, order_id=order.id, url=f"{base}/{order.track_token}"
+    outbox.enqueue(
+        db,
+        "sms:tracking_link",
+        {
+            "to": order.ship_phone,
+            "order_id": order.id,
+            "url": f"{base}/{order.track_token}",
+        },
     )
 
 
@@ -914,8 +1083,35 @@ def _require_field_stop(stop: DeliveryStop) -> None:
         raise HTTPException(status.HTTP_409_CONFLICT, "Bu durak zaten sonuçlanmış")
 
 
-async def send_otp(db: AsyncSession, stop_id: int) -> str:
-    """Müşteriye teslim OTP'si SMS'ler; maskeli numarayı döner."""
+async def _lock_stop_and_order(db: AsyncSession, stop: DeliveryStop) -> None:
+    """Durağın siparişini + durağın kendisini FOR UPDATE ile kilitler ve TAZE
+    durumlarını yükler. Durum değiştiren her yol (verify/fail/override/drop,
+    postpone, iptal temizliği) bu kilitten geçer — eşzamanlı iki akış birbirinin
+    sonucunu EZEMEZ (ör. teslim edilmiş sipariş ertelemeyle PAID'e geri sarılamaz).
+    Kilit sırası her yerde aynıdır: önce Order, sonra DeliveryStop (deadlock önlemi)."""
+    await db.execute(
+        select(Order.id).where(Order.id == stop.order_id).with_for_update()
+    )
+    await db.execute(
+        select(DeliveryStop.id).where(DeliveryStop.id == stop.id).with_for_update()
+    )
+    await db.refresh(stop)
+    await db.refresh(stop.order)
+
+
+async def _lock_field_stop(db: AsyncSession, stop_id: int) -> DeliveryStop:
+    """Saha aksiyonu girişi: durağı yükle, kilitle, taze durumla guard'ı çalıştır."""
+    stop = await _load_stop(db, stop_id)
+    await _lock_stop_and_order(db, stop)
+    _require_field_stop(stop)
+    return stop
+
+
+async def send_otp(db: AsyncSession, stop_id: int) -> tuple[str, bool]:
+    """Müşteriye teslim OTP'si SMS'ler; (maskeli numara, gerçekten gönderildi mi)
+    döner. OTP bilinçli olarak outbox'a girmez — kurye kapıda saniyeler içinde
+    sonuç bekler; gönderim başarısızsa kurye DÜRÜSTÇE uyarılır (yeniden dener
+    ya da notlu teslime geçer), 'gönderildi' yalanı söylenmez."""
     stop = await _load_stop(db, stop_id)
     _require_field_stop(stop)
     phone = stop.order.ship_phone
@@ -928,9 +1124,10 @@ async def send_otp(db: AsyncSession, stop_id: int) -> str:
     stop.otp_sent_at = _now()
     stop.otp_attempts = 0
     await db.commit()
-    await sms.send_delivery_otp_sms(to=phone, code=code, order_id=stop.order_id)
+    sent = await sms.send_delivery_otp_sms(to=phone, code=code, order_id=stop.order_id)
     # phone_service ile aynı maske biçimi
-    return phone[:5] + "***" + phone[-2:] if len(phone) >= 6 else phone
+    masked = phone[:5] + "***" + phone[-2:] if len(phone) >= 6 else phone
+    return masked, sent
 
 
 async def set_stop_photo(db: AsyncSession, stop_id: int, photo_url: str) -> DeliveryStopOut:
@@ -985,13 +1182,40 @@ async def _notify_upcoming(db: AsyncSession, run_id: int) -> None:
             link="/siparislerim",
         )
         if order.ship_phone and order.track_token:
-            await sms.send_approach_sms(
-                to=order.ship_phone,
-                order_id=order.id,
-                stops_ahead=ahead,
-                url=f"{base}/{order.track_token}",
+            # Damga (approach_notified_at) ile AYNI transaction'da outbox'a —
+            # damga var ama SMS yok / SMS var ama damga yok durumu olamaz.
+            outbox.enqueue(
+                db,
+                "sms:approach",
+                {
+                    "to": order.ship_phone,
+                    "order_id": order.id,
+                    "stops_ahead": ahead,
+                    "url": f"{base}/{order.track_token}",
+                },
             )
     await db.commit()
+
+
+async def _shift_pending_etas(
+    db: AsyncSession, run_id: int, drift: datetime.timedelta, *, exclude_stop_id: int
+) -> None:
+    """Gerçekleşen ile planlanan varış arasındaki sapmayı kalan bekleyen
+    durakların ETA'larına yansıtır (kurye erken → pencereler öne, geç → geriye).
+    Müşteri pencereleri (eta_window) canlı kalır — optimize anına çakılı değil.
+    1 dk altı sapma gürültüdür, dokunulmaz."""
+    if abs(drift.total_seconds()) < 60:
+        return
+    await db.execute(
+        update(DeliveryStop)
+        .where(
+            DeliveryStop.run_id == run_id,
+            DeliveryStop.id != exclude_stop_id,
+            DeliveryStop.status == DeliveryStopStatus.PENDING.value,
+            DeliveryStop.eta.is_not(None),
+        )
+        .values(eta=DeliveryStop.eta + drift)
+    )
 
 
 async def _finalize_delivered(
@@ -1003,8 +1227,13 @@ async def _finalize_delivered(
     lng: float | None = None,
     note: str | None = None,
 ) -> None:
+    """Tek transaction: durak DELIVERED + sipariş DELIVERED + bildirim + e-posta
+    outbox olayı + kalan ETA'ların drift'i — ya hepsi kalıcı olur ya hiçbiri
+    (eski hali üç ayrı commit'ti; ara adım patlarsa yan etkiler kayıp kalıyordu)."""
+    now = _now()
+    eta_drift = (now - stop.eta) if stop.eta is not None else None
     stop.status = DeliveryStopStatus.DELIVERED.value
-    stop.delivered_at = _now()
+    stop.delivered_at = now
     stop.delivered_lat = lat
     stop.delivered_lng = lng
     stop.proof = proof.value
@@ -1012,7 +1241,6 @@ async def _finalize_delivered(
         stop.courier_note = note
     order = stop.order
     await order_fsm.transition_order(db, order, "DELIVERED", changed_by="courier")
-    await db.commit()
     await notification_service.notify(
         db,
         user_id=order.client_id,
@@ -1020,8 +1248,10 @@ async def _finalize_delivered(
         message=f"Siparişin #{order.id} teslim edildi. İyi çalışmalar!",
         link="/siparislerim",
     )
-    await db.commit()
     await order_service._email_order(db, order, "DELIVERED")
+    if eta_drift is not None:
+        await _shift_pending_etas(db, stop.run_id, eta_drift, exclude_stop_id=stop.id)
+    await db.commit()
     await _notify_upcoming(db, stop.run_id)
 
 
@@ -1034,8 +1264,7 @@ async def verify_delivery(
     lng: float | None = None,
 ) -> DeliveryStopOut:
     """Kapıda müşterinin söylediği OTP'yi doğrular → durak DELIVERED, sipariş DELIVERED."""
-    stop = await _load_stop(db, stop_id)
-    _require_field_stop(stop)
+    stop = await _lock_field_stop(db, stop_id)
     now = _now()
     if stop.otp_hash is None or otp_expired(stop.otp_sent_at, now):
         raise HTTPException(
@@ -1055,8 +1284,7 @@ async def verify_delivery(
 
 async def override_deliver(db: AsyncSession, stop_id: int, *, note: str) -> DeliveryStopOut:
     """OTP ulaşmadığında kaçış yolu: notlu yönetici teslimi (proof=ADMIN)."""
-    stop = await _load_stop(db, stop_id)
-    _require_field_stop(stop)
+    stop = await _lock_field_stop(db, stop_id)
     await _finalize_delivered(db, stop, proof=DeliveryProof.ADMIN, note=note)
     return _stop_to_out(await _load_stop(db, stop_id))
 
@@ -1064,8 +1292,7 @@ async def override_deliver(db: AsyncSession, stop_id: int, *, note: str) -> Deli
 async def deliver_drop(db: AsyncSession, stop_id: int) -> DeliveryStopOut:
     """Kapıya/komşuya bırakma teslimi: müşteri talimatı varsa OTP alınmaz —
     kanıt zorunlu paket fotoğrafıdır (proof=PHOTO)."""
-    stop = await _load_stop(db, stop_id)
-    _require_field_stop(stop)
+    stop = await _lock_field_stop(db, stop_id)
     pref = stop.order.delivery_pref
     if pref not in (DeliveryPref.KAPIYA_BIRAK.value, DeliveryPref.KOMSUYA_BIRAK.value):
         raise HTTPException(
@@ -1086,9 +1313,10 @@ async def deliver_drop(db: AsyncSession, stop_id: int) -> DeliveryStopOut:
 
 
 async def fail_stop(db: AsyncSession, stop_id: int, *, reason: str) -> DeliveryStopOut:
-    """Teslim edilemedi: durak FAILED, sipariş PAID'e döner (ertesi tura eklenebilir)."""
-    stop = await _load_stop(db, stop_id)
-    _require_field_stop(stop)
+    """Teslim edilemedi: durak FAILED, sipariş PAID'e döner (ertesi tura eklenebilir).
+    Tek transaction; SMS outbox'a aynı tx'te yazılır, kalan ETA'lar drift'lenir."""
+    stop = await _lock_field_stop(db, stop_id)
+    eta_drift = (_now() - stop.eta) if stop.eta is not None else None
     stop.status = DeliveryStopStatus.FAILED.value
     stop.courier_note = reason
     order = stop.order
@@ -1096,7 +1324,6 @@ async def fail_stop(db: AsyncSession, stop_id: int, *, reason: str) -> DeliveryS
         db, order, "PAID", changed_by="courier", reason=f"Teslim edilemedi: {reason}"
     )
     order.tracking_no = None
-    await db.commit()
     await notification_service.notify(
         db,
         user_id=order.client_id,
@@ -1104,9 +1331,11 @@ async def fail_stop(db: AsyncSession, stop_id: int, *, reason: str) -> DeliveryS
         message=f"Siparişin #{order.id} bugün teslim edilemedi; yeniden planlanacak.",
         link="/siparislerim",
     )
-    await db.commit()
     if order.ship_phone:
-        await sms.send_failed_sms(to=order.ship_phone, order_id=order.id)
+        outbox.enqueue(db, "sms:failed", {"to": order.ship_phone, "order_id": order.id})
+    if eta_drift is not None:
+        await _shift_pending_etas(db, stop.run_id, eta_drift, exclude_stop_id=stop.id)
+    await db.commit()
     await _notify_upcoming(db, stop.run_id)
     return _stop_to_out(await _load_stop(db, stop_id))
 

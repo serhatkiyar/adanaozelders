@@ -73,6 +73,13 @@ class PostponeFactory:
                 {"c": self.client_ids or [0]},
             )
             await s.execute(
+                text(
+                    "DELETE FROM outbox_events "
+                    "WHERE (payload->>'order_id')::int = ANY(:ids)"
+                ),
+                {"ids": self.order_ids or [0]},
+            )
+            await s.execute(
                 text("DELETE FROM delivery_stops WHERE order_id = ANY(:ids)"),
                 {"ids": self.order_ids or [0]},
             )

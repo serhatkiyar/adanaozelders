@@ -45,6 +45,7 @@ export const STOP_STATUS_LABEL: Record<string, string> = {
   DELIVERED: "Teslim edildi",
   FAILED: "Teslim edilemedi",
   RESCHEDULED: "Müşteri erteledi",
+  CANCELLED: "Sipariş iptal",
 };
 
 export const VEHICLE_LABEL: Record<string, string> = {

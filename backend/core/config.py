@@ -155,6 +155,18 @@ class Settings(BaseSettings):
     # Bir durak sonuçlanınca sıradaki bu kadar müşteriye "kuryen yaklaşıyor"
     # SMS+bildirimi gider (durak başına tek sefer — approach_notified_at damgası).
     DELIVERY_NEXT_NOTIFY_COUNT: int = 2
+    # Kapasiteye duyarlı söz: bir güne en fazla bu kadar bölge-içi teslimat sözü
+    # verilir (16:00 cutoff'u geçen HERKESE "yarın" demek kampanya günü toplu söz
+    # ihlali üretir — dolu gün atlanıp sonraki çalışma gününe söz verilir).
+    # 0 = kapasite kontrolü KAPALI (sınırsız).
+    DELIVERY_DAILY_CAPACITY: int = 30
+    # Watchdog: bu kadar saattir hâlâ ACTIVE olan tur (kurye telefonu öldü,
+    # tamamlamayı unuttu…) otomatik iptal edilir — bekleyen duraklar FAILED,
+    # siparişler PAID'e döner, adminlere alarm bildirimi gider. 0 = kapalı.
+    DELIVERY_STALE_RUN_HOURS: int = 14
+    # Outbox worker'ı: bekleyen SMS/e-posta olaylarını bu aralıkla gönderir.
+    OUTBOX_DISPATCH_INTERVAL_SECONDS: int = 15
+    OUTBOX_MAX_ATTEMPTS: int = 8
     # Lansman promosyonu: kayıttan itibaren ilk N ay indirimli/0 komisyon. MONTHS=0
     # ise KAPALI (varsayılan: düz %10, kampanya yok). Açmak için .env'de ayarla.
     LAUNCH_PROMO_MONTHS: int = 0

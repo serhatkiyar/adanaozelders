@@ -16,6 +16,7 @@ import {
 } from "@/hooks/useDelivery";
 import { PREF_OPTIONS } from "@/lib/deliveryPref";
 import { promisedDateLabel } from "@/lib/deliveryPromise";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useAuthStore } from "@/store/authStore";
 import { toast } from "@/store/toastStore";
 import {
@@ -215,7 +216,10 @@ const COPY: Record<
 function PrefControls({ t, token }: { t: OrderTracking; token: string }) {
   const setPref = usePublicSetDeliveryPref();
   const postpone = usePublicPostpone();
-  const loggedIn = useAuthStore((s) => !!s.token && !!s.user);
+  // Token varsa oturum geçerlidir; `user` bu sayfada hiç çekilmediği için
+  // (persist edilmiyor) yalnız ona bakmak her zaman "girişsiz" görünürdü.
+  useCurrentUser();
+  const loggedIn = useAuthStore((s) => !!s.token);
   if (t.status === "DELIVERED" || (!t.can_postpone && t.status === "FAILED")) return null;
   if (t.status !== "NOT_DISPATCHED" && t.status !== "EN_ROUTE" && t.status !== "POSTPONED")
     return null;

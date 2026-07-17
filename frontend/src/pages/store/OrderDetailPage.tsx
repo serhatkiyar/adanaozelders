@@ -7,8 +7,10 @@ import { FullScreenSpinner } from "@/components/Spinner";
 import { formatTL } from "@/lib/money";
 import { formatDate } from "@/lib/datetime";
 import { promisedDateLabel } from "@/lib/deliveryPromise";
-import { DeliveryPrefSection } from "@/components/store/DeliveryPrefSection";
+import { ShipAddressUpdate } from "@/components/store/ShipAddressUpdate";
+import { OrderInvoiceModal } from "@/components/store/OrderInvoiceModal";
 import { useOrder, useCancelOrder, useRequestReturn } from "@/hooks/useStore";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useCartStore } from "@/store/cartStore";
 import { STATUS_LABELS, OrderItemRow, orderItemToProduct } from "@/pages/store/OrdersPage";
 import { toast } from "@/store/toastStore";
@@ -27,7 +29,9 @@ export default function OrderDetailPage() {
   const add = useCartStore((s) => s.add);
   const cancel = useCancelOrder();
   const navigate = useNavigate();
+  const { data: user } = useCurrentUser();
   const [returnOpen, setReturnOpen] = useState(false);
+  const [invoiceOpen, setInvoiceOpen] = useState(false);
 
   if (isLoading) return <FullScreenSpinner />;
   if (isError || !order) {
@@ -44,14 +48,24 @@ export default function OrderDetailPage() {
   }
 
   const badge = STATUS_LABELS[order.status] ?? { label: order.status, cls: "bg-slate-100 text-slate-500" };
+  // Sipariş oluşturuldu (PENDING) / hazırlanıyor (PAID) → iptal edilebilir.
   const cancellable = order.status === "PENDING" || order.status === "PAID";
+  // Dağıtımda (SHIPPED) / teslim edildi (DELIVERED) → iade talebi + fatura yüzeyi.
+  const isFulfilled = order.status === "SHIPPED" || order.status === "DELIVERED";
   const returnBadge = order.return_status ? RETURN_BADGE[order.return_status] : null;
+  // Teslim edilmişse iade penceresi (teslim + 14 gün) kapanmış olabilir.
+  const returnWindowClosed =
+    order.status === "DELIVERED" &&
+    !!order.return_deadline &&
+    new Date() > new Date(order.return_deadline);
   const canRequestReturn =
     order.has_physical &&
-    (order.status === "SHIPPED" || order.status === "DELIVERED") &&
+    isFulfilled &&
     order.payment_status === "PAID" &&
     order.return_status !== "PENDING" &&
-    order.return_status !== "APPROVED";
+    order.return_status !== "APPROVED" &&
+    !returnWindowClosed;
+  const showInvoice = isFulfilled;
 
   // Kargo takibi: ödenmiş fiziksel sipariş, iptal/iade değil, token var.
   const canTrack =
@@ -160,6 +174,7 @@ export default function OrderDetailPage() {
                 Dijital teslimat — ürünler hesabından indirilir.
               </p>
             )}
+            <ShipAddressUpdate order={order} />
           </div>
 
           {/* Ödeme */}
@@ -228,9 +243,6 @@ export default function OrderDetailPage() {
           </Link>
         )}
 
-        {/* Teslimat tercihi (kapıya/komşuya bırak, beni ara, ertele, adres değişikliği) */}
-        <DeliveryPrefSection order={order} />
-
         {/* Ürünler */}
         <div className="mt-5 rounded-2xl border border-slate-200 p-5 dark:border-slate-800">
           <div className="mb-4 flex items-center justify-between">
@@ -266,38 +278,78 @@ export default function OrderDetailPage() {
           </div>
         </div>
 
-        {/* Aksiyonlar */}
-        <div className="mt-5 flex flex-wrap items-center justify-end gap-3">
-          {cancellable && (
+        {/* Aksiyonlar — sipariş durumuna göre gruplu */}
+        <div className="mt-5 flex flex-col items-end gap-2">
+          {/* İade penceresi bilgisi — iade talebi seçeneğinin yanında (teslim edildi) */}
+          {order.status === "DELIVERED" && order.has_physical && order.return_deadline && (
+            <p
+              className={
+                returnWindowClosed
+                  ? "text-xs text-slate-400 dark:text-slate-500"
+                  : "text-xs text-slate-500 dark:text-slate-400"
+              }
+            >
+              {returnWindowClosed ? (
+                <>İade süresi doldu — son iade tarihi {formatDate(order.return_deadline)} idi.</>
+              ) : (
+                <>
+                  Son iade tarihi:{" "}
+                  <span className="font-medium text-slate-700 dark:text-slate-200">
+                    {formatDate(order.return_deadline)}
+                  </span>
+                </>
+              )}
+            </p>
+          )}
+
+          <div className="flex flex-wrap items-center justify-end gap-3">
+            {cancellable && (
+              <button
+                type="button"
+                onClick={handleCancel}
+                disabled={cancel.isPending}
+                className="rounded-full border border-rose-200 px-5 py-2 text-sm font-semibold text-rose-600 transition-colors hover:bg-rose-50 disabled:opacity-50 dark:border-rose-500/30 dark:text-rose-400 dark:hover:bg-rose-500/10"
+              >
+                Siparişi iptal et
+              </button>
+            )}
+            {showInvoice && (
+              <button
+                type="button"
+                onClick={() => setInvoiceOpen(true)}
+                className="rounded-full border border-slate-200 px-5 py-2 text-sm font-semibold text-slate-700 transition-colors hover:border-indigo-300 hover:text-indigo-600 dark:border-slate-700 dark:text-slate-200 dark:hover:text-indigo-400"
+              >
+                Fatura
+              </button>
+            )}
+            {canRequestReturn && (
+              <button
+                type="button"
+                onClick={() => setReturnOpen(true)}
+                className="rounded-full border border-slate-200 px-5 py-2 text-sm font-semibold text-slate-700 transition-colors hover:border-rose-300 hover:text-rose-600 dark:border-slate-700 dark:text-slate-200 dark:hover:text-rose-400"
+              >
+                İade talebi oluştur
+              </button>
+            )}
             <button
               type="button"
-              onClick={handleCancel}
-              disabled={cancel.isPending}
-              className="rounded-full border border-rose-200 px-5 py-2 text-sm font-semibold text-rose-600 transition-colors hover:bg-rose-50 disabled:opacity-50 dark:border-rose-500/30 dark:text-rose-400 dark:hover:bg-rose-500/10"
+              onClick={reorder}
+              className="rounded-full bg-indigo-600 px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-indigo-700"
             >
-              Siparişi iptal et
+              Tekrar sipariş et
             </button>
-          )}
-          {canRequestReturn && (
-            <button
-              type="button"
-              onClick={() => setReturnOpen(true)}
-              className="rounded-full border border-slate-200 px-5 py-2 text-sm font-semibold text-slate-700 transition-colors hover:border-rose-300 hover:text-rose-600 dark:border-slate-700 dark:text-slate-200 dark:hover:text-rose-400"
-            >
-              İade talebi oluştur
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={reorder}
-            className="rounded-full bg-indigo-600 px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-indigo-700"
-          >
-            Tekrar sipariş et
-          </button>
+          </div>
         </div>
       </div>
 
       {returnOpen && <ReturnModal order={order} onClose={() => setReturnOpen(false)} />}
+      {invoiceOpen && (
+        <OrderInvoiceModal
+          order={order}
+          buyerFallbackName={user?.full_name}
+          onClose={() => setInvoiceOpen(false)}
+        />
+      )}
     </StoreLayout>
   );
 }

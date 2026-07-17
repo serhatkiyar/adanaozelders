@@ -1593,6 +1593,9 @@ export interface OrderOut {
   tracking_no?: string | null;
   track_token?: string | null;
   return_status?: string | null;
+  /** Teslim anı + son iade tarihi (teslim + 14 gün). Teslim edilmemiş/eski siparişlerde null. */
+  delivered_at?: string | null;
+  return_deadline?: string | null;
   created_at: string;
   items: OrderItemOut[];
   redirect_url?: string | null;
@@ -1685,7 +1688,13 @@ export interface BulkImportResult {
 
 export type DeliveryVehicle = "LADA" | "COROLLA";
 export type DeliveryRunStatus = "PLANNED" | "ACTIVE" | "DONE" | "CANCELLED";
-export type DeliveryStopStatus = "PENDING" | "DELIVERED" | "FAILED" | "RESCHEDULED";
+export type DeliveryStopStatus =
+  | "PENDING"
+  | "DELIVERED"
+  | "FAILED"
+  | "RESCHEDULED"
+  /** Sipariş iptal/iade edildiği için durak düştü (kurye performansına sayılmaz). */
+  | "CANCELLED";
 
 export interface DeliveryStopItem {
   title: string;

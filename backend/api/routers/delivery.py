@@ -219,8 +219,10 @@ async def scan(payload: ScanIn, db: AsyncSession = Depends(get_db)):
 
 @router.post("/stops/{stop_id}/send-otp", response_model=OtpSendOut)
 async def send_otp(stop_id: int, db: AsyncSession = Depends(get_db)):
-    masked = await delivery_service.send_otp(db, stop_id)
-    return OtpSendOut(masked_phone=masked, sent=True)
+    """``sent`` GERÇEK gönderim sonucudur — SMS sağlayıcısı düşükken kuryeye
+    "gönderildi" denmez (müşteri kapıda hiç gelmeyecek kodu beklemesin)."""
+    masked, sent = await delivery_service.send_otp(db, stop_id)
+    return OtpSendOut(masked_phone=masked, sent=sent)
 
 
 @router.post("/stops/{stop_id}/verify", response_model=DeliveryStopOut)

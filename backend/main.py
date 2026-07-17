@@ -13,11 +13,13 @@ from core.config import settings
 from core.database import AsyncSessionLocal, engine
 from core.exceptions import register_exception_handlers
 from core import migrations, seed
+from core import outbox
 from core import presence
 from core import observability
 from core import storage
 from services import (
     booking_service,
+    delivery_service,
     escrow_reconciler,
     library_exam_service,
     study_reservation_service,
@@ -49,9 +51,25 @@ async def _reminder_loop() -> None:
             async with AsyncSessionLocal() as session:
                 await escrow_reconciler.reconcile_refunding(session)
                 await escrow_reconciler.reconcile_stale_checkouts(session)
+            # Teslimat watchdog'u: saatlerce ACTIVE kalan turları kapat (kendi
+            # session'ı — tur başına commit'ler yukarıya karışmasın).
+            async with AsyncSessionLocal() as session:
+                await delivery_service.expire_stale_runs(session)
         except Exception:
             # best-effort; bir sonraki periyotta tekrar denenir ama sessizce yutma.
             logger.exception("reminder loop iteration failed")
+
+
+async def _outbox_loop() -> None:
+    """Transactional outbox worker'ı: bekleyen SMS/e-posta olaylarını gönderir
+    (at-least-once + üstel backoff; bkz. core/outbox.py)."""
+    while True:
+        await asyncio.sleep(settings.OUTBOX_DISPATCH_INTERVAL_SECONDS)
+        try:
+            async with AsyncSessionLocal() as session:
+                await outbox.dispatch_pending(session)
+        except Exception:
+            logger.exception("outbox dispatch iteration failed")
 
 
 async def _presence_flusher() -> None:
@@ -77,12 +95,15 @@ async def lifespan(app: FastAPI):
     await storage.ensure_bucket()
     task1 = asyncio.create_task(_reminder_loop())
     task2 = asyncio.create_task(_presence_flusher())
+    task3 = asyncio.create_task(_outbox_loop())
     yield
     task1.cancel()
     task2.cancel()
+    task3.cancel()
     with contextlib.suppress(asyncio.CancelledError):
         await task1
         await task2
+        await task3
     await engine.dispose()
 
 

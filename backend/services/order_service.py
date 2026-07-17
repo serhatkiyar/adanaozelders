@@ -13,11 +13,11 @@ import datetime
 from decimal import Decimal
 
 from fastapi import HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from core import mail, payments, sms
+from core import outbox, payments
 from core.config import settings
 from models.client import Client, ClientAddress
 from models.delivery import (
@@ -58,20 +58,78 @@ def _now() -> datetime.datetime:
     return datetime.datetime.now(datetime.timezone.utc)
 
 
+# Teslimden sonra iade talebi penceresi (mesafeli satış cayma hakkı — 14 gün).
+RETURN_WINDOW_DAYS = 14
+
+
+def _return_deadline(order: Order) -> datetime.datetime | None:
+    """Teslim edilmiş siparişin son iade tarihi (teslim + pencere). Teslim
+    damgası yoksa (dijital/eski sipariş) None."""
+    if order.delivered_at is None:
+        return None
+    return order.delivered_at + datetime.timedelta(days=RETURN_WINDOW_DAYS)
+
+
 async def _email_order(db: AsyncSession, order: Order, status: str) -> None:
-    """Sipariş durumu e-postası (best-effort; mail katmanı kendi içinde fail-soft)."""
+    """Sipariş durumu e-postasını outbox'lar (çağıranın transaction'ında —
+    gönderim + retry worker'da; durum değişikliğiyle atomik)."""
     client = await db.get(Client, order.client_id)
     if client is None or not getattr(client, "email", None):
         return
-    await mail.send_order_status_email(
-        to=client.email,
-        name=client.full_name,
-        order_id=order.id,
-        status=status,
-        total=str(order.total),
-        currency=order.currency,
-        orders_url=f"{settings.FRONTEND_BASE_URL.rstrip('/')}/siparislerim",
+    outbox.enqueue(
+        db,
+        "email:order_status",
+        {
+            "to": client.email,
+            "name": client.full_name,
+            "order_id": order.id,
+            "status": status,
+            "total": str(order.total),
+            "currency": order.currency,
+            "orders_url": f"{settings.FRONTEND_BASE_URL.rstrip('/')}/siparislerim",
+        },
     )
+
+
+async def _first_capacity_day(db: AsyncSession, candidate: datetime.date) -> datetime.date:
+    """``candidate``'tan ileri, günlük söz kontenjanı (DELIVERY_DAILY_CAPACITY)
+    dolmamış ilk çalışma günü. Kontenjanı yalnız bölge-içi, açık (PAID/SHIPPED)
+    fiziksel siparişlerin söz günleri tüketir."""
+    if settings.DELIVERY_DAILY_CAPACITY <= 0:
+        return candidate
+    rows = (
+        await db.execute(
+            select(Order.promised_delivery_date, func.count())
+            .where(
+                Order.deleted_at.is_(None),
+                Order.has_physical.is_(True),
+                Order.ship_in_zone.is_(True),
+                Order.status.in_(("PAID", "SHIPPED")),
+                Order.promised_delivery_date >= candidate,
+            )
+            .group_by(Order.promised_delivery_date)
+        )
+    ).all()
+    booked = {day: int(count) for day, count in rows}
+    return delivery_promise.first_day_with_capacity(
+        candidate,
+        booked,
+        capacity=settings.DELIVERY_DAILY_CAPACITY,
+        non_working_weekdays=settings.DELIVERY_NON_WORKING_WEEKDAYS,
+    )
+
+
+async def promised_date_for(db: AsyncSession, paid_at_utc: datetime.datetime) -> datetime.date:
+    """Ödeme anına göre söz günü — cutoff kuralı + kapasite kontrolü birlikte.
+    Hem sipariş kesinleşmesi (_finalize_paid) hem public /store/delivery-info
+    rozeti bunu kullanır (rozet dolu günü 'bugün gelir' diye satamaz)."""
+    candidate = delivery_promise.compute_promised_date(
+        paid_at_utc,
+        cutoff_hour=settings.DELIVERY_CUTOFF_HOUR,
+        non_working_weekdays=settings.DELIVERY_NON_WORKING_WEEKDAYS,
+        utc_offset_hours=settings.APP_UTC_OFFSET_HOURS,
+    )
+    return await _first_capacity_day(db, candidate)
 
 
 def compute_shipping(subtotal: Decimal, has_physical: bool) -> Decimal:
@@ -398,14 +456,20 @@ async def _finalize_paid(
     order.payment_status = "PAID"
     await order_fsm.transition_order(db, order, "PAID", changed_by="system:payment")
     order.paid_at = _now()
-    # Cıncık Teslimat sözü: ödeme anına göre bugün/yarın (16:00 cutoff, Pazar sarması).
+    # Cıncık Teslimat sözü: ödeme anına göre bugün/yarın (16:00 cutoff, Pazar
+    # sarması). Bölge-içi siparişte günlük kapasite de sayılır — dolu güne söz
+    # verilmez (kampanya günü toplu söz ihlali yerine dürüst ileri tarih).
     if order.has_physical:
-        order.promised_delivery_date = delivery_promise.compute_promised_date(
-            order.paid_at,
-            cutoff_hour=settings.DELIVERY_CUTOFF_HOUR,
-            non_working_weekdays=settings.DELIVERY_NON_WORKING_WEEKDAYS,
-            utc_offset_hours=settings.APP_UTC_OFFSET_HOURS,
-        )
+        if order.ship_in_zone is True:
+            order.promised_delivery_date = await promised_date_for(db, order.paid_at)
+        else:
+            # Bölge dışı: dış kargoyla gider, kendi-filo kontenjanını tüketmez.
+            order.promised_delivery_date = delivery_promise.compute_promised_date(
+                order.paid_at,
+                cutoff_hour=settings.DELIVERY_CUTOFF_HOUR,
+                non_working_weekdays=settings.DELIVERY_NON_WORKING_WEEKDAYS,
+                utc_offset_hours=settings.APP_UTC_OFFSET_HOURS,
+            )
 
     # Kupon kullanımını PAID'de say (PENDING siparişler kontenjan tüketmez).
     if order.coupon_id is not None:
@@ -539,6 +603,8 @@ def _to_out(order: Order) -> OrderOut:
         tracking_no=order.tracking_no,
         track_token=order.track_token,
         return_status=return_status,
+        delivered_at=order.delivered_at,
+        return_deadline=_return_deadline(order),
         created_at=order.created_at,
         items=items,
     )
@@ -624,6 +690,17 @@ async def _open_stop(db: AsyncSession, order_id: int) -> DeliveryStop | None:
     ).scalars().first()
 
 
+async def _lock_order(db: AsyncSession, order: Order) -> None:
+    """Sipariş satırını FOR UPDATE ile kilitleyip TAZE durumunu yükler.
+
+    Durum değiştiren yollar (erteleme, iptal, iade) bununla başlar — kurye tam
+    o anda teslim etmiş olabilir; kilit + taze okuma olmadan buradaki yazım
+    DELIVERED'ı ezerek siparişi PAID'e geri sarabilirdi (lost update).
+    Kilit sırası delivery_service ile aynıdır: önce Order, sonra DeliveryStop."""
+    await db.execute(select(Order.id).where(Order.id == order.id).with_for_update())
+    await db.refresh(order)
+
+
 def _require_self_service_order(order: Order) -> None:
     if not order.has_physical:
         raise HTTPException(status.HTTP_409_CONFLICT, "Dijital siparişte teslimat tercihi yok")
@@ -657,6 +734,7 @@ async def postpone_delivery(db: AsyncSession, order: Order) -> None:
     """"Yarına ertele": açık durak varsa RESCHEDULED'a kapanır (kurye suçu değil —
     FAILED'dan ayrı), dağıtımdaysa sipariş PAID'e geri sarılır; söz verilen gün
     sonraki çalışma gününe alınır. Üst sınır POSTPONE_LIMIT."""
+    await _lock_order(db, order)
     _require_self_service_order(order)
     if order.postpone_count >= POSTPONE_LIMIT:
         raise HTTPException(
@@ -666,7 +744,11 @@ async def postpone_delivery(db: AsyncSession, order: Order) -> None:
 
     stop = await _open_stop(db, order.id)
     if stop is not None:
-        # Yarış: kurye tam bu anda teslim etmiş olabilir — tazele ve kontrol et.
+        # Yarış: kurye tam bu anda teslim etmiş olabilir — durağı KİLİTLE,
+        # taze durumla kontrol et (sipariş satırı yukarıda zaten kilitli).
+        await db.execute(
+            select(DeliveryStop.id).where(DeliveryStop.id == stop.id).with_for_update()
+        )
         await db.refresh(stop)
         if stop.status != DeliveryStopStatus.PENDING.value:
             raise HTTPException(
@@ -679,13 +761,16 @@ async def postpone_delivery(db: AsyncSession, order: Order) -> None:
             )
             order.tracking_no = None
 
-    order.promised_delivery_date = delivery_promise.next_delivery_day(
-        _now(),
-        non_working_weekdays=settings.DELIVERY_NON_WORKING_WEEKDAYS,
-        utc_offset_hours=settings.APP_UTC_OFFSET_HOURS,
+    # Hedef gün: sonraki çalışma günü — kontenjanı doluysa ondan da ileri.
+    order.promised_delivery_date = await _first_capacity_day(
+        db,
+        delivery_promise.next_delivery_day(
+            _now(),
+            non_working_weekdays=settings.DELIVERY_NON_WORKING_WEEKDAYS,
+            utc_offset_hours=settings.APP_UTC_OFFSET_HOURS,
+        ),
     )
     order.postpone_count += 1
-    await db.commit()
     new_date = order.promised_delivery_date.strftime("%d.%m.%Y")
     await notification_service.notify(
         db,
@@ -696,9 +781,14 @@ async def postpone_delivery(db: AsyncSession, order: Order) -> None:
         ),
         link="/siparislerim",
     )
-    await db.commit()
     if order.ship_phone:
-        await sms.send_postponed_sms(to=order.ship_phone, order_id=order.id, new_date=new_date)
+        # Durum değişikliğiyle AYNI transaction'da outbox'a (tek commit).
+        outbox.enqueue(
+            db,
+            "sms:postponed",
+            {"to": order.ship_phone, "order_id": order.id, "new_date": new_date},
+        )
+    await db.commit()
     # Aktif turdan durak düştüyse sıradaki müşterilerin sırası bir öne kaydı.
     if stop is not None and stop.run.status == DeliveryRunStatus.ACTIVE.value:
         from services import delivery_service  # döngüsel import önlemi (yerel)
@@ -712,6 +802,7 @@ async def change_ship_address(
     """Teslimat adresini değiştirir — yalnız dağıtıma çıkmadan (ACTIVE turda durağı
     yokken). Yeni adres bölge dışına düşerse 409 (code=OUT_OF_ZONE); müşteri
     ``force=true`` ile onaylarsa sipariş dış-kargo kuyruğuna geçer."""
+    await _lock_order(db, order)
     _require_self_service_order(order)
     if order.status != "PAID":
         raise HTTPException(
@@ -864,6 +955,7 @@ async def refund_order(db: AsyncSession, order_id: int) -> OrderOut:
     order = await _load_full(db, order_id)
     if order is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Sipariş bulunamadı")
+    await _lock_order(db, order)
     if order.payment_status != "PAID":
         raise HTTPException(status.HTTP_409_CONFLICT, "Yalnızca ödenmiş sipariş iade edilebilir")
     await _refund_payment(db, order)
@@ -884,6 +976,7 @@ async def refund_order(db: AsyncSession, order_id: int) -> OrderOut:
 async def cancel_by_client(db: AsyncSession, order: Order) -> OrderOut:
     """Müşteri sipariş iptali: yalnız kargolanmadan. Ödenmişse sağlayıcı iadesi + stok
     geri yükleme. Kargolanmış/teslim sipariş iptal edilemez (iade talebi gerekir)."""
+    await _lock_order(db, order)
     if order.status in ("SHIPPED", "DELIVERED"):
         raise HTTPException(
             status.HTTP_409_CONFLICT,
@@ -959,6 +1052,14 @@ async def request_return(db: AsyncSession, order: Order, reason: str) -> OrderRe
         )
     if any(r.status == ReturnStatus.APPROVED.value for r in order.returns):
         raise HTTPException(status.HTTP_409_CONFLICT, "Bu sipariş zaten iade edildi.")
+    # Teslim edilmişse iade penceresi (RETURN_WINDOW_DAYS) geçmiş olmamalı. Teslim
+    # damgası olmayan eski/dijital siparişlerde pencere uygulanmaz.
+    deadline = _return_deadline(order)
+    if order.status == "DELIVERED" and deadline is not None and _now() > deadline:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            f"İade süresi doldu (teslimden sonra {RETURN_WINDOW_DAYS} gün).",
+        )
 
     ret = OrderReturn(
         order_id=order.id,
@@ -996,6 +1097,7 @@ async def approve_return(
     if ret.status != ReturnStatus.PENDING.value:
         raise HTTPException(status.HTTP_409_CONFLICT, "Bu talep zaten sonuçlandırılmış")
     order = ret.order
+    await _lock_order(db, order)
     if order.payment_status == "PAID":
         await _refund_payment(db, order)
         await order_fsm.transition_order(db, order, "REFUNDED", changed_by="admin")

@@ -543,23 +543,32 @@ async def list_my_orders(
 
 
 @router.get("/delivery-info", response_model=DeliveryInfoOut)
-async def delivery_info():
-    """Cıncık Teslimat sözü (public, DB'siz): şimdi sipariş verilirse teslim günü +
-    bugünkü cutoff'a geri sayım. Ürün/checkout rozetini sunucu saati besler."""
+async def delivery_info(db: AsyncSession = Depends(get_db)):
+    """Cıncık Teslimat sözü (public): şimdi sipariş verilirse teslim günü +
+    bugünkü cutoff'a geri sayım. Söz günü KAPASİTE dahil hesaplanır
+    (order_service.promised_date_for) — dolu gün 'bugün gelir' diye satılmaz;
+    kapasite günü ileri attıysa geri sayım da gösterilmez (cutoff anlamsız)."""
     now = datetime.datetime.now(datetime.timezone.utc)
+    cutoff_candidate = delivery_promise.compute_promised_date(
+        now,
+        cutoff_hour=settings.DELIVERY_CUTOFF_HOUR,
+        non_working_weekdays=settings.DELIVERY_NON_WORKING_WEEKDAYS,
+        utc_offset_hours=settings.APP_UTC_OFFSET_HOURS,
+    )
+    promised = await order_service.promised_date_for(db, now)
+    countdown = (
+        delivery_promise.cutoff_countdown_seconds(
+            now,
+            cutoff_hour=settings.DELIVERY_CUTOFF_HOUR,
+            utc_offset_hours=settings.APP_UTC_OFFSET_HOURS,
+        )
+        if promised == cutoff_candidate
+        else None
+    )
     return DeliveryInfoOut(
         cutoff_hour=settings.DELIVERY_CUTOFF_HOUR,
-        promised_date_now=delivery_promise.compute_promised_date(
-            now,
-            cutoff_hour=settings.DELIVERY_CUTOFF_HOUR,
-            non_working_weekdays=settings.DELIVERY_NON_WORKING_WEEKDAYS,
-            utc_offset_hours=settings.APP_UTC_OFFSET_HOURS,
-        ),
-        countdown_seconds=delivery_promise.cutoff_countdown_seconds(
-            now,
-            cutoff_hour=settings.DELIVERY_CUTOFF_HOUR,
-            utc_offset_hours=settings.APP_UTC_OFFSET_HOURS,
-        ),
+        promised_date_now=promised,
+        countdown_seconds=countdown,
         districts=settings.DELIVERY_ZONE_DISTRICTS,
     )
 
