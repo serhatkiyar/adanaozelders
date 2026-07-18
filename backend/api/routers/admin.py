@@ -1,16 +1,32 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.deps import require_roles
+from api.deps import require_admin_permission, require_roles
 from core.database import get_db
 from models.admin import Admin
 from models.role import RoleType
 from models.tutor import Tutor, TutorStatus
-from models.booking import Booking
-from schemas.admin import AdminStats, AdminUserOut, AdminBookingOut, AuditLogOut
+from models.booking import Booking, BookingStatus
+from schemas.admin import (
+    AdminBookingOut,
+    AdminDashboardOut,
+    AdminDemandOut,
+    AdminStats,
+    AdminUserDetailOut,
+    AdminUserOut,
+    AuditLogOut,
+)
+from schemas.admin_access import (
+    AdminPermissionOut,
+    AdminRoleAssignmentOut,
+    AdminRoleAssignmentUpdate,
+    AdminRoleCreate,
+    AdminRoleOut,
+    AdminRoleUpdate,
+)
 from schemas.tutor import TutorOut
 from schemas.booking import BookingCancel
 from typing import Literal
@@ -40,10 +56,13 @@ from models.report import ReportStatus
 from schemas.report import ReportCountOut, ReportOut, ReportResolve
 from schemas.education import AdminEducationOut, EducationOut, EducationVerifyIn
 from schemas.user import NameChangeRequestOut
+from models.demand import DemandStatus
 from services import (
     admin_service,
+    admin_access_service,
     audit_service,
     education_service,
+    demand_service,
     name_change_service,
     report_service,
     tutor_service,
@@ -52,6 +71,10 @@ from services import (
 
 class NameChangeReview(BaseModel):
     note: str | None = Field(default=None, max_length=500)
+
+
+class AdminDemandCancelIn(BaseModel):
+    reason: str = Field(min_length=3, max_length=500)
 
 router = APIRouter(
     prefix="/admin",
@@ -70,21 +93,204 @@ async def _get_tutor_or_404(db: AsyncSession, tutor_id: int) -> Tutor:
     return tutor
 
 
-@router.get("/stats", response_model=AdminStats)
+@router.get(
+    "/stats",
+    response_model=AdminStats,
+    dependencies=[Depends(require_admin_permission("dashboard.view"))],
+)
 async def get_stats(db: AsyncSession = Depends(get_db)):
     return await admin_service.get_stats(db)
 
 
-@router.get("/users", response_model=list[AdminUserOut])
-async def list_users(
-    limit: int = Query(default=50, ge=1, le=200),
-    offset: int = Query(default=0, ge=0),
+@router.get(
+    "/dashboard",
+    response_model=AdminDashboardOut,
+    dependencies=[Depends(require_admin_permission("dashboard.view"))],
+)
+async def get_dashboard(
+    range_name: Literal["day", "week", "month"] = Query(default="week", alias="range"),
     db: AsyncSession = Depends(get_db),
 ):
-    return await admin_service.list_users(db, limit=limit, offset=offset)
+    return await admin_service.get_dashboard(db, range_name=range_name)
 
 
-@router.get("/tutors", response_model=list[TutorOut])
+@router.get(
+    "/access/permissions",
+    response_model=list[AdminPermissionOut],
+    dependencies=[Depends(require_admin_permission("admin_roles.view"))],
+)
+async def list_admin_permissions(db: AsyncSession = Depends(get_db)):
+    return await admin_access_service.list_permissions(db)
+
+
+@router.get(
+    "/access/roles",
+    response_model=list[AdminRoleOut],
+    dependencies=[Depends(require_admin_permission("admin_roles.view"))],
+)
+async def list_admin_roles(db: AsyncSession = Depends(get_db)):
+    return await admin_access_service.list_roles(db)
+
+
+@router.get(
+    "/access/assignments",
+    response_model=list[AdminRoleAssignmentOut],
+    dependencies=[Depends(require_admin_permission("admin_roles.view"))],
+)
+async def list_admin_role_assignments(db: AsyncSession = Depends(get_db)):
+    return await admin_access_service.list_assignments(db)
+
+
+@router.post("/access/roles", response_model=AdminRoleOut, status_code=status.HTTP_201_CREATED)
+async def create_admin_role(
+    payload: AdminRoleCreate,
+    admin: Admin = Depends(require_admin_permission("admin_roles.manage")),
+    db: AsyncSession = Depends(get_db),
+):
+    role = await admin_access_service.create_role(db, payload)
+    await audit_service.record(
+        db, actor=admin, action="admin_role.create", target_type="admin_role", target_id=role.id, details=role.code
+    )
+    return next(item for item in await admin_access_service.list_roles(db) if item.id == role.id)
+
+
+@router.put("/access/roles/{role_id}", response_model=AdminRoleOut)
+async def update_admin_role(
+    role_id: int,
+    payload: AdminRoleUpdate,
+    admin: Admin = Depends(require_admin_permission("admin_roles.manage")),
+    db: AsyncSession = Depends(get_db),
+):
+    role = await admin_access_service.update_role(db, role_id, payload)
+    await audit_service.record(
+        db, actor=admin, action="admin_role.update", target_type="admin_role", target_id=role.id, details=role.code
+    )
+    return next(item for item in await admin_access_service.list_roles(db) if item.id == role.id)
+
+
+@router.put("/access/admins/{admin_id}/role", response_model=AdminRoleAssignmentOut)
+async def assign_admin_role(
+    admin_id: int,
+    payload: AdminRoleAssignmentUpdate,
+    admin: Admin = Depends(require_admin_permission("admin_roles.manage")),
+    db: AsyncSession = Depends(get_db),
+):
+    await admin_access_service.assign_role(
+        db, admin_id=admin_id, role_id=payload.role_id, assigned_by_admin_id=admin.id
+    )
+    await audit_service.record(
+        db, actor=admin, action="admin_role.assign", target_type="admin", target_id=admin_id, details=f"role_id={payload.role_id}"
+    )
+    return next(item for item in await admin_access_service.list_assignments(db) if item.admin_id == admin_id)
+
+
+@router.get(
+    "/users",
+    response_model=list[AdminUserOut],
+    dependencies=[Depends(require_admin_permission("users.view"))],
+)
+async def list_users(
+    response: Response,
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    q: str | None = Query(default=None, max_length=100),
+    role: Literal["ADMIN", "TUTOR", "CLIENT"] | None = Query(default=None),
+    is_active: bool | None = Query(default=None),
+    sort: Literal["created_at", "full_name", "email", "role"] = Query(
+        default="created_at"
+    ),
+    order: Literal["asc", "desc"] = Query(default="desc"),
+    db: AsyncSession = Depends(get_db),
+):
+    items, total = await admin_service.list_users(
+        db,
+        limit=limit,
+        offset=offset,
+        q=q,
+        role=role,
+        is_active=is_active,
+        sort=sort,
+        order=order,
+    )
+    response.headers["X-Total-Count"] = str(total)
+    return items
+
+
+@router.get(
+    "/users/{role}/{user_id}",
+    response_model=AdminUserDetailOut,
+    dependencies=[Depends(require_admin_permission("users.view"))],
+)
+async def get_user_detail(
+    role: Literal["admin", "tutor", "client"],
+    user_id: int,
+    db: AsyncSession = Depends(get_db),
+):
+    return await admin_service.get_user_detail(db, role=role, user_id=user_id)
+
+
+@router.get(
+    "/demands",
+    response_model=list[AdminDemandOut],
+    dependencies=[Depends(require_admin_permission("demands.view"))],
+)
+async def list_demands(
+    response: Response,
+    limit: int = Query(default=25, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+    q: str | None = Query(default=None, max_length=100),
+    status_filter: DemandStatus | None = Query(default=None, alias="status"),
+    sort: Literal["created_at", "title", "subject", "status", "response_count"] = Query(default="created_at"),
+    order: Literal["asc", "desc"] = Query(default="desc"),
+    db: AsyncSession = Depends(get_db),
+):
+    items, total = await demand_service.list_admin_demands(
+        db,
+        limit=limit,
+        offset=offset,
+        q=q,
+        status_filter=status_filter,
+        sort=sort,
+        order=order,
+    )
+    response.headers["X-Total-Count"] = str(total)
+    return items
+
+
+@router.post("/demands/{demand_id}/cancel", response_model=AdminDemandOut)
+async def cancel_demand(
+    demand_id: int,
+    payload: AdminDemandCancelIn,
+    admin: Admin = Depends(require_admin_permission("demands.manage")),
+    db: AsyncSession = Depends(get_db),
+):
+    await demand_service.cancel_demand_for_admin(db, demand_id)
+    await audit_service.record(
+        db,
+        actor=admin,
+        action="demand.cancel",
+        target_type="demand",
+        target_id=demand_id,
+        details=payload.reason,
+    )
+    items, _ = await demand_service.list_admin_demands(
+        db,
+        limit=1,
+        offset=0,
+        q=None,
+        status_filter=None,
+        demand_id=demand_id,
+        sort="created_at",
+        order="desc",
+    )
+    return items[0]
+
+
+@router.get(
+    "/tutors",
+    response_model=list[TutorOut],
+    dependencies=[Depends(require_admin_permission("tutors.view"))],
+)
 async def list_tutors(
     status_filter: TutorStatus | None = Query(default=None, alias="status"),
     db: AsyncSession = Depends(get_db),
@@ -99,7 +305,7 @@ async def list_tutors(
 @router.post("/tutors/{tutor_id}/approve", response_model=TutorOut)
 async def approve_tutor(
     tutor_id: int,
-    admin: Admin = Depends(_current_admin),
+    admin: Admin = Depends(require_admin_permission("tutors.manage")),
     db: AsyncSession = Depends(get_db),
 ):
     tutor = await _get_tutor_or_404(db, tutor_id)
@@ -113,7 +319,7 @@ async def approve_tutor(
 @router.post("/tutors/{tutor_id}/reject", response_model=TutorOut)
 async def reject_tutor(
     tutor_id: int,
-    admin: Admin = Depends(_current_admin),
+    admin: Admin = Depends(require_admin_permission("tutors.manage")),
     db: AsyncSession = Depends(get_db),
 ):
     tutor = await _get_tutor_or_404(db, tutor_id)
@@ -124,7 +330,11 @@ async def reject_tutor(
     return result
 
 
-@router.get("/educations/pending", response_model=list[AdminEducationOut])
+@router.get(
+    "/educations/pending",
+    response_model=list[AdminEducationOut],
+    dependencies=[Depends(require_admin_permission("tutors.view"))],
+)
 async def list_pending_educations(db: AsyncSession = Depends(get_db)):
     """Teyit bekleyen (PENDING) diploma belgeleri — sahip eğitmen adıyla."""
     rows = await education_service.admin_list_pending(db)
@@ -140,7 +350,7 @@ async def list_pending_educations(db: AsyncSession = Depends(get_db)):
 async def verify_education(
     education_id: int,
     payload: EducationVerifyIn,
-    admin: Admin = Depends(_current_admin),
+    admin: Admin = Depends(require_admin_permission("tutors.manage")),
     db: AsyncSession = Depends(get_db),
 ):
     """Admin bir diploma belgesini doğrular/reddeder (e-Devlet barkodunu resmî
@@ -161,7 +371,7 @@ async def verify_education(
 @router.post("/tutors/{tutor_id}/suspend", response_model=TutorOut)
 async def suspend_tutor(
     tutor_id: int,
-    admin: Admin = Depends(_current_admin),
+    admin: Admin = Depends(require_admin_permission("tutors.manage")),
     db: AsyncSession = Depends(get_db),
 ):
     # Yayındaki (APPROVED) bir ilanı yayından kaldırır (-> SUSPENDED).
@@ -176,7 +386,7 @@ async def suspend_tutor(
 @router.post("/tutors/{tutor_id}/activate", response_model=TutorOut)
 async def activate_tutor(
     tutor_id: int,
-    admin: Admin = Depends(_current_admin),
+    admin: Admin = Depends(require_admin_permission("tutors.manage")),
     db: AsyncSession = Depends(get_db),
 ):
     # Pasif (SUSPENDED) bir ilanı yeniden yayına alır (-> APPROVED).
@@ -191,7 +401,7 @@ async def activate_tutor(
 @router.delete("/tutors/{tutor_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_tutor(
     tutor_id: int,
-    admin: Admin = Depends(_current_admin),
+    admin: Admin = Depends(require_admin_permission("tutors.manage")),
     db: AsyncSession = Depends(get_db),
 ):
     tutor = await _get_tutor_or_404(db, tutor_id)
@@ -208,20 +418,41 @@ async def _get_booking_or_404(db: AsyncSession, booking_id: int) -> Booking:
     return booking
 
 
-@router.get("/bookings", response_model=list[AdminBookingOut])
+@router.get(
+    "/bookings",
+    response_model=list[AdminBookingOut],
+    dependencies=[Depends(require_admin_permission("bookings.view"))],
+)
 async def list_bookings(
+    response: Response,
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
+    q: str | None = Query(default=None, max_length=100),
+    status_filter: BookingStatus | None = Query(default=None, alias="status"),
+    is_disputed: bool | None = Query(default=None),
+    sort: Literal["created_at", "start_at", "status", "price"] = Query(default="created_at"),
+    order: Literal["asc", "desc"] = Query(default="desc"),
     db: AsyncSession = Depends(get_db),
 ):
-    return await admin_service.list_bookings(db, limit=limit, offset=offset)
+    items, total = await admin_service.list_bookings(
+        db,
+        limit=limit,
+        offset=offset,
+        q=q,
+        status_filter=status_filter,
+        is_disputed=is_disputed,
+        sort=sort,
+        order=order,
+    )
+    response.headers["X-Total-Count"] = str(total)
+    return items
 
 
 @router.post("/bookings/{booking_id}/cancel", response_model=AdminBookingOut)
 async def cancel_booking(
     booking_id: int,
     payload: BookingCancel,
-    admin: Admin = Depends(_current_admin),
+    admin: Admin = Depends(require_admin_permission("bookings.manage")),
     db: AsyncSession = Depends(get_db),
 ):
     booking = await _get_booking_or_404(db, booking_id)
@@ -234,14 +465,15 @@ async def cancel_booking(
         target_id=booking_id,
         details=payload.reason,
     )
-    return (await admin_service.list_bookings(db, limit=1, offset=0, booking_id=booking.id))[0]
+    items, _ = await admin_service.list_bookings(db, limit=1, offset=0, booking_id=booking.id)
+    return items[0]
 
 
 @router.post("/bookings/{booking_id}/dispute", response_model=AdminBookingOut)
 async def dispute_booking(
     booking_id: int,
     payload: DisputeToggle,
-    admin: Admin = Depends(_current_admin),
+    admin: Admin = Depends(require_admin_permission("bookings.manage")),
     db: AsyncSession = Depends(get_db),
 ):
     booking = await _get_booking_or_404(db, booking_id)
@@ -256,22 +488,48 @@ async def dispute_booking(
         target_id=booking_id,
         details=payload.admin_notes,
     )
-    return (await admin_service.list_bookings(db, limit=1, offset=0, booking_id=booking.id))[0]
+    items, _ = await admin_service.list_bookings(db, limit=1, offset=0, booking_id=booking.id)
+    return items[0]
 
 
-@router.get("/audit-logs", response_model=list[AuditLogOut])
+@router.get(
+    "/audit-logs",
+    response_model=list[AuditLogOut],
+    dependencies=[Depends(require_admin_permission("audit.view"))],
+)
 async def list_audit_logs(
+    response: Response,
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
+    q: str | None = Query(default=None, max_length=100),
+    action: str | None = Query(default=None, max_length=50),
+    target_type: str | None = Query(default=None, max_length=30),
+    actor_id: int | None = Query(default=None, ge=1),
+    sort: Literal["created_at", "action", "target_type", "actor_id"] = Query(
+        default="created_at"
+    ),
+    order: Literal["asc", "desc"] = Query(default="desc"),
     db: AsyncSession = Depends(get_db),
 ):
-    return await audit_service.list_logs(db, limit=limit, offset=offset)
+    items, total = await audit_service.list_logs(
+        db,
+        limit=limit,
+        offset=offset,
+        q=q,
+        action=action,
+        target_type=target_type,
+        actor_id=actor_id,
+        sort=sort,
+        order=order,
+    )
+    response.headers["X-Total-Count"] = str(total)
+    return items
 
 
 @router.post("/users/reset-password", response_model=PasswordResetOut)
 async def reset_user_password(
     payload: PasswordResetIn,
-    admin: Admin = Depends(_current_admin),
+    admin: Admin = Depends(require_admin_permission("users.manage")),
     db: AsyncSession = Depends(get_db),
 ):
     # E-postasız şifre sıfırlama: temp şifre üretilir/atanır ve admin'e döner.
@@ -295,19 +553,35 @@ async def reset_user_password(
 # ── Şikayet moderasyonu ──────────────────────────────────────────────
 
 
-@router.get("/reports", response_model=list[ReportOut])
+@router.get(
+    "/reports",
+    response_model=list[ReportOut],
+    dependencies=[Depends(require_admin_permission("reports.view"))],
+)
 async def list_reports(
+    response: Response,
     status_filter: ReportStatus | None = Query(default=None, alias="status"),
+    target_type: str | None = Query(default=None, max_length=30),
     limit: int = Query(default=50, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
     db: AsyncSession = Depends(get_db),
 ):
-    return await report_service.list_for_admin(
-        db, status_filter=status_filter, limit=limit, offset=offset
+    items, total = await report_service.list_for_admin(
+        db,
+        status_filter=status_filter,
+        target_type=target_type,
+        limit=limit,
+        offset=offset,
     )
+    response.headers["X-Total-Count"] = str(total)
+    return items
 
 
-@router.get("/reports/count", response_model=ReportCountOut)
+@router.get(
+    "/reports/count",
+    response_model=ReportCountOut,
+    dependencies=[Depends(require_admin_permission("reports.view"))],
+)
 async def open_report_count(db: AsyncSession = Depends(get_db)):
     return ReportCountOut(open=await report_service.count_open(db))
 
@@ -316,7 +590,7 @@ async def open_report_count(db: AsyncSession = Depends(get_db)):
 async def resolve_report(
     report_id: int,
     payload: ReportResolve,
-    admin: Admin = Depends(_current_admin),
+    admin: Admin = Depends(require_admin_permission("reports.manage")),
     db: AsyncSession = Depends(get_db),
 ):
     report = await report_service.resolve(
@@ -340,7 +614,11 @@ async def resolve_report(
 # ── Ad / Kullanıcı Adı Değişiklik Onay Kuyruğu ──
 
 
-@router.get("/name-change-requests", response_model=list[NameChangeRequestOut])
+@router.get(
+    "/name-change-requests",
+    response_model=list[NameChangeRequestOut],
+    dependencies=[Depends(require_admin_permission("users.view"))],
+)
 async def list_name_change_requests(
     status_filter: str | None = Query(default=None, alias="status"),
     limit: int = Query(default=100, ge=1, le=200),
@@ -357,7 +635,7 @@ async def list_name_change_requests(
 )
 async def approve_name_change(
     request_id: int,
-    admin: Admin = Depends(_current_admin),
+    admin: Admin = Depends(require_admin_permission("users.manage")),
     db: AsyncSession = Depends(get_db),
 ):
     req = await name_change_service.approve(db, request_id, admin_id=admin.id)
@@ -379,7 +657,7 @@ async def approve_name_change(
 async def reject_name_change(
     request_id: int,
     payload: NameChangeReview,
-    admin: Admin = Depends(_current_admin),
+    admin: Admin = Depends(require_admin_permission("users.manage")),
     db: AsyncSession = Depends(get_db),
 ):
     req = await name_change_service.reject(

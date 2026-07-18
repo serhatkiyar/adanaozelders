@@ -1,0 +1,76 @@
+from __future__ import annotations
+
+from sqlalchemy import Boolean, ForeignKey, Index, Integer, String, text
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from core.database import Base
+from models.mixins import (
+    EmailVerificationMixin,
+    LastSeenMixin,
+    NameMixin,
+    SoftDeleteMixin,
+    TimestampMixin,
+)
+
+
+class CourierAccount(
+    Base,
+    NameMixin,
+    TimestampMixin,
+    SoftDeleteMixin,
+    LastSeenMixin,
+    EmailVerificationMixin,
+):
+    """Kurye giriş hesabı (role_id=5) — LibraryOperator deseninin birebiri.
+
+    Auth kimliği ile müşteriye görünen kurye kartı AYRIDIR: ``Courier`` profili
+    (isim/foto/plaka) operasyon kimliğidir, bu tablo yalnız girişi taşır ve
+    ``courier_id`` ile profile bağlanır. Admin oluşturur (self-servis yok).
+
+    ``auth_version``: hesap kapatma/şifre sıfırlama bunu artırır; kurye access
+    token'ı bu sürümü claim olarak taşır — eşleşmeyen token ANINDA ölür (yalnız
+    refresh değil; kurye işten ayrılınca telefonundaki oturum da kapanır).
+    """
+
+    __tablename__ = "courier_accounts"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    email: Mapped[str] = mapped_column(String(255), nullable=False)
+    hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
+    is_active: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("true")
+    )
+    role_id: Mapped[int] = mapped_column(
+        ForeignKey("roles.id", ondelete="RESTRICT"), nullable=False
+    )
+    courier_id: Mapped[int] = mapped_column(
+        ForeignKey("couriers.id", ondelete="CASCADE"), nullable=False
+    )
+    auth_version: Mapped[int] = mapped_column(
+        Integer, nullable=False, server_default=text("1")
+    )
+
+    courier: Mapped["Courier"] = relationship()
+
+    __table_args__ = (
+        Index(
+            "uq_courier_accounts_email_active",
+            "email",
+            unique=True,
+            postgresql_where=text("deleted_at IS NULL"),
+        ),
+        Index(
+            "uq_courier_accounts_username_active",
+            "username",
+            unique=True,
+            postgresql_where=text("deleted_at IS NULL"),
+        ),
+        # Profil başına tek aktif hesap (işten ayrılan soft-delete edilir,
+        # yeniden işe alımda YENİ satır açılır — eski token'lar dirilmez).
+        Index(
+            "uq_courier_accounts_courier_active",
+            "courier_id",
+            unique=True,
+            postgresql_where=text("deleted_at IS NULL"),
+        ),
+    )

@@ -367,6 +367,20 @@ class Order(Base, TimestampMixin, SoftDeleteMixin):
     postpone_count: Mapped[int] = mapped_column(
         Integer, nullable=False, server_default=text("0")
     )
+    # Başarısız teslim DENEMESİ sayacı (kurye/sistem kaynaklı FAILED; müşteri
+    # ertelemesi RESCHEDULED'dır, SAYILMAZ). Üç-deneme kuralının (Faz 5) ve
+    # ilk-denemede-teslim KPI'ının hammaddesi.
+    failed_delivery_count: Mapped[int] = mapped_column(
+        Integer, nullable=False, server_default=text("0")
+    )
+    # Hazırlama istasyonu (Faz 2, PDS O1): depo görevlisi paketi toplayıp etiketi
+    # basınca damgalanır. Yalnız hazırlanmış (prepared_at NOT NULL) fiziksel
+    # sipariş tura eklenebilir — hazırlanmamış paket sahaya çıkamaz. Teslim
+    # başarısız olup sipariş PAID'e dönerse sıfırlanır (paket depoya geri döner).
+    prepared_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    prepared_by: Mapped[str | None] = mapped_column(String(60), nullable=True)
     tracking_no: Mapped[str | None] = mapped_column(String(100), nullable=True)
     # Teslim anı (DELIVERED geçişinde order_fsm damgalar) — iade penceresinin
     # (RETURN_WINDOW_DAYS) başlangıcı ve "son iade tarihi" bilgisinin dayanağı.

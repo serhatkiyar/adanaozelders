@@ -2,13 +2,14 @@
 // (kargotakip.adanaozelders.com.tr/<token>) buraya düşer. Giriş GEREKTİRMEZ.
 // Dağıtımdayken kurye konumu + kaç durak önde + tahmini varış canlı (15 sn poll);
 // diğer durumlarda sade durum şeridi. Kendi-filo teslimat (ELDEN) — dış kargo linki yok.
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { MapContainer, Marker, TileLayer } from "react-leaflet";
 import L from "leaflet";
 
 import { ROUTES } from "@/lib/routes";
 import { Seo } from "@/components/Seo";
+import { DeliveryFeedbackSection } from "@/components/store/DeliveryFeedbackSection";
 import {
   usePublicOrderTracking,
   usePublicPostpone,
@@ -16,6 +17,7 @@ import {
 } from "@/hooks/useDelivery";
 import { PREF_OPTIONS } from "@/lib/deliveryPref";
 import { promisedDateLabel } from "@/lib/deliveryPromise";
+import { stopsAheadIncreased } from "@/lib/trackingSignals";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useAuthStore } from "@/store/authStore";
 import { toast } from "@/store/toastStore";
@@ -322,6 +324,21 @@ export default function CargoTrackingPage() {
   const { token } = useParams<{ token: string }>();
   const { data: t, isLoading, isError } = usePublicOrderTracking(token ?? null);
 
+  // PDS E8: kurye bir durağı sona atınca "önünde N durak" ARTABİLİR. Sayacı
+  // sessizce büyütmek yerine "sıra güncellendi" mikro-metni gösteririz.
+  const prevAhead = useRef<number | null>(null);
+  const [reordered, setReordered] = useState(false);
+  useEffect(() => {
+    const next = t?.stops_ahead ?? null;
+    if (stopsAheadIncreased(prevAhead.current, next)) {
+      setReordered(true);
+      const timer = setTimeout(() => setReordered(false), 12_000);
+      prevAhead.current = next;
+      return () => clearTimeout(timer);
+    }
+    prevAhead.current = next;
+  }, [t?.stops_ahead]);
+
   const bounds = useMemo(() => {
     if (!t) return null;
     const pts: [number, number][] = [];
@@ -404,6 +421,7 @@ export default function CargoTrackingPage() {
                 )}
 
                 {t.status === "EN_ROUTE" && (
+                  <>
                   <div className="mt-4 inline-flex flex-wrap items-center justify-center gap-x-3 gap-y-1 rounded-full border border-slate-200 px-4 py-1.5 text-xs dark:border-slate-800">
                     <span className="font-medium text-slate-700 dark:text-slate-200">
                       {t.stops_ahead != null && t.stops_ahead > 0
@@ -430,6 +448,12 @@ export default function CargoTrackingPage() {
                       </span>
                     )}
                   </div>
+                  {reordered && (
+                    <p className="mt-2 text-xs text-amber-600 dark:text-amber-400">
+                      Teslimat sırası güncellendi — kuryen az sonra sende.
+                    </p>
+                  )}
+                  </>
                 )}
 
                 {t.status === "DELIVERED" && t.delivered_at && (
@@ -459,6 +483,15 @@ export default function CargoTrackingPage() {
                   </a>
                 )}
               </div>
+
+              {t.status === "DELIVERED" && token && (
+                <DeliveryFeedbackSection
+                  mode="token"
+                  token={token}
+                  canFeedback={t.can_feedback}
+                  feedbackGiven={t.feedback_given}
+                />
+              )}
 
               {t.status === "EN_ROUTE" && <CourierCard t={t} />}
 

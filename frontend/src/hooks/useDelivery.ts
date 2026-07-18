@@ -22,6 +22,164 @@ export function useOutsourcedOrders(enabled = true) {
   });
 }
 
+/** İstisna kuyruğu — deneme hakkı dolmuş, karar bekleyen siparişler (ADMIN). */
+export function useAttentionOrders(enabled = true) {
+  return useQuery({
+    queryKey: [...KEY, "attention"],
+    queryFn: deliveryApi.fetchAttentionOrders,
+    enabled,
+  });
+}
+
+/** Deneme hakkı dolmuş siparişe bir tur daha hak tanı. */
+export function useRetryExhausted() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (orderId: number) => deliveryApi.retryExhaustedOrder(orderId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
+  });
+}
+
+/** Hazırlama istasyonu kuyruğu — henüz hazırlanmamış siparişler (ADMIN). */
+export function usePrepQueue(enabled = true) {
+  return useQuery({
+    queryKey: [...KEY, "prep-queue"],
+    queryFn: deliveryApi.fetchPrepQueue,
+    enabled,
+  });
+}
+
+/** Sipariş hazır/hazır-değil işaretle. eligible + prep-queue + kapasite tazelenir. */
+export function useMarkPrepared() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ orderId, prepared }: { orderId: number; prepared: boolean }) =>
+      prepared
+        ? deliveryApi.markOrderPrepared(orderId)
+        : deliveryApi.unmarkOrderPrepared(orderId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
+  });
+}
+
+/* ── Kurye workspace + hesap yaşam döngüsü ── */
+
+/** Kurye açılış ekranı — güncel tur değişebilir, 20 sn'de bir tazele. */
+export function useCourierWorkspace(enabled = true) {
+  return useQuery({
+    queryKey: [...KEY, "me"],
+    queryFn: deliveryApi.fetchCourierWorkspace,
+    enabled,
+    refetchInterval: 20_000,
+  });
+}
+
+export function useCourierAccount(courierId: number | null) {
+  return useQuery({
+    queryKey: [...KEY, "account", courierId],
+    queryFn: () => deliveryApi.fetchCourierAccount(courierId!),
+    enabled: courierId != null,
+  });
+}
+
+export function useCreateCourierAccount() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      courierId,
+      ...payload
+    }: {
+      courierId: number;
+      email: string;
+      password: string;
+      first_name: string;
+      last_name: string;
+    }) => deliveryApi.createCourierAccount(courierId, payload),
+    onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
+  });
+}
+
+export function useCloseCourierAccount() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (accountId: number) => deliveryApi.closeCourierAccount(accountId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
+  });
+}
+
+export function useResetCourierPassword() {
+  return useMutation({
+    mutationFn: ({ accountId, newPassword }: { accountId: number; newPassword: string }) =>
+      deliveryApi.resetCourierPassword(accountId, newPassword),
+  });
+}
+
+/* ── Teslimat takvimi (kapalı günler) ── */
+
+export function useClosedDays(enabled = true) {
+  return useQuery({
+    queryKey: [...KEY, "calendar"],
+    queryFn: deliveryApi.fetchClosedDays,
+    enabled,
+  });
+}
+
+function useInvalidateCalendar() {
+  const qc = useQueryClient();
+  // Takvim değişince kapasite şeridi/söz de tazelenmeli (kapalı gün söze etki eder).
+  return () => qc.invalidateQueries({ queryKey: KEY });
+}
+
+export function useAddClosedDay() {
+  const invalidate = useInvalidateCalendar();
+  return useMutation({
+    mutationFn: ({ day, label }: { day: string; label?: string }) =>
+      deliveryApi.addClosedDay(day, label),
+    onSuccess: invalidate,
+  });
+}
+
+export function useRemoveClosedDay() {
+  const invalidate = useInvalidateCalendar();
+  return useMutation({
+    mutationFn: (id: number) => deliveryApi.removeClosedDay(id),
+    onSuccess: invalidate,
+  });
+}
+
+export function useSeedHolidays() {
+  const invalidate = useInvalidateCalendar();
+  return useMutation({
+    mutationFn: (year: number) => deliveryApi.seedHolidays(year),
+    onSuccess: invalidate,
+  });
+}
+
+/** Teslimat KPI özeti — söz tutma / ilk denemede teslim / neden dağılımı (ADMIN). */
+export function useDeliveryKpi(days = 30) {
+  return useQuery({
+    queryKey: [...KEY, "kpi", days],
+    queryFn: () => deliveryApi.fetchDeliveryKpi(days),
+    staleTime: 60_000,
+  });
+}
+
+export function useRecentDeliveryFeedback(limit = 50) {
+  return useQuery({
+    queryKey: [...KEY, "feedback", limit],
+    queryFn: () => deliveryApi.fetchRecentDeliveryFeedback(limit),
+  });
+}
+
+/** Admin kapasite şeridi — önümüzdeki günlerin söz doluluğu. Dakikada bir tazelenir. */
+export function useCapacityOverview(days = 14) {
+  return useQuery({
+    queryKey: [...KEY, "capacity", days],
+    queryFn: () => deliveryApi.fetchCapacityOverview(days),
+    staleTime: 60_000,
+    refetchInterval: 60_000,
+  });
+}
+
 /** Public teslimat sözü rozeti. Sunucu verisi; geri sayımı istemci saniyeler
  * bazında kendisi eritir (staleTime ile gereksiz istek atılmaz). */
 export function useDeliveryInfo(enabled = true) {
@@ -222,8 +380,15 @@ export function useOverrideDeliver() {
 export function useFailStop() {
   const invalidate = useInvalidateDelivery();
   return useMutation({
-    mutationFn: ({ stopId, reason }: { stopId: number; reason: string }) =>
-      deliveryApi.failDeliveryStop(stopId, reason),
+    mutationFn: ({
+      stopId,
+      reason,
+      reasonCode,
+    }: {
+      stopId: number;
+      reason: string;
+      reasonCode: string;
+    }) => deliveryApi.failDeliveryStop(stopId, reason, reasonCode),
     onSuccess: invalidate,
   });
 }
@@ -271,6 +436,35 @@ export function useOrderTracking(orderId: number | null, enabled = true) {
     enabled: orderId != null && enabled,
     refetchInterval: (query) =>
       query.state.data?.status === "EN_ROUTE" ? 15_000 : false,
+  });
+}
+
+export function useDeliveryFeedback(orderId: number | null) {
+  return useQuery({
+    queryKey: ["deliveryFeedback", orderId],
+    queryFn: () => deliveryApi.fetchDeliveryFeedback(orderId!),
+    enabled: orderId != null,
+  });
+}
+
+type FeedbackTarget =
+  | { mode: "order"; orderId: number }
+  | { mode: "token"; token: string };
+
+export function useSubmitDeliveryFeedback(target: FeedbackTarget) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: deliveryApi.DeliveryFeedbackPayload) =>
+      target.mode === "order"
+        ? deliveryApi.submitDeliveryFeedback(target.orderId, payload)
+        : deliveryApi.submitPublicDeliveryFeedback(target.token, payload),
+    onSuccess: (feedback) => {
+      qc.invalidateQueries({ queryKey: ["orderTracking"] });
+      qc.invalidateQueries({ queryKey: ["publicOrderTracking"] });
+      qc.invalidateQueries({ queryKey: ["deliveryFeedback", feedback.order_id] });
+      qc.invalidateQueries({ queryKey: [...KEY, "feedback"] });
+      qc.invalidateQueries({ queryKey: [...KEY, "kpi"] });
+    },
   });
 }
 

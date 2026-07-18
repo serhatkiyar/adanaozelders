@@ -136,10 +136,12 @@ class Settings(BaseSettings):
     # aşarsa panelde işaretlenir (dış kuryeye devretme adayı).
     DELIVERY_DETOUR_KM: float = 8.0
     # Cıncık Teslimat sözü: yerel saatle bu saatten ÖNCE ödenen Adana-içi sipariş
-    # aynı gün, sonrası ertesi gün teslim edilir; çalışılmayan güne (weekday();
-    # 6=Pazar) denk gelirse ileri sarılır (services/delivery_promise.py).
+    # aynı gün, sonrası ertesi gün teslim edilir (services/delivery_promise.py).
     DELIVERY_CUTOFF_HOUR: int = 16
-    DELIVERY_NON_WORKING_WEEKDAYS: list[int] = [6]
+    # Haftalık kapalı günler (weekday(); 6=Pazar). VARSAYILAN BOŞ = 7 gün açık.
+    # Tatiller haftalık kural DEĞİL, admin'in yönettiği tarih-bazlı takvimdir
+    # (delivery_closed_days tablosu) — operasyon kendi günlerini kontrol eder.
+    DELIVERY_NON_WORKING_WEEKDAYS: list[int] = []
     # Kendi-filo teslimat bölgesi: pin varsa depoya Haversine yarıçapı (otorite),
     # pin yoksa il=Adana + ilçe listesi fallback'i. Bölge dışı sipariş eligible
     # listesine girmez; admin "dış kargo bekliyor" kuyruğunda görür.
@@ -164,9 +166,21 @@ class Settings(BaseSettings):
     # tamamlamayı unuttu…) otomatik iptal edilir — bekleyen duraklar FAILED,
     # siparişler PAID'e döner, adminlere alarm bildirimi gider. 0 = kapalı.
     DELIVERY_STALE_RUN_HOURS: int = 14
+    # Üç-deneme kuralı (PDS F1/§3.4): bu kadar başarısız teslim DENEMESİnden
+    # sonra sipariş otomatik yeniden kuyruğa girmez — operatör istisna kuyruğuna
+    # düşer (sonsuz PAID↔FAILED döngüsü engeli). Çözüm operatör kararıdır
+    # (teslim-alma noktası / iptal+iade). 0 = tavan kapalı (sınırsız deneme).
+    DELIVERY_MAX_DELIVERY_ATTEMPTS: int = 3
     # Outbox worker'ı: bekleyen SMS/e-posta olaylarını bu aralıkla gönderir.
     OUTBOX_DISPATCH_INTERVAL_SECONDS: int = 15
     OUTBOX_MAX_ATTEMPTS: int = 8
+    # Sessiz saat (PDS §3.8): müşteriye SMS gece yarısı yağmaz — bu aralıkta
+    # bekleyen SMS'ler ertesi sabah bitiş saatine ERTELENİR (gönderim iptal
+    # değil, zaman kaydırma). Aralık gece yarısını sarar: 21:00 → 08:30.
+    # 0 = sessiz saat kapalı (her an gönder).
+    DELIVERY_QUIET_START_HOUR: int = 21
+    DELIVERY_QUIET_END_HOUR: int = 8
+    DELIVERY_QUIET_END_MINUTE: int = 30
     # Lansman promosyonu: kayıttan itibaren ilk N ay indirimli/0 komisyon. MONTHS=0
     # ise KAPALI (varsayılan: düz %10, kampanya yok). Açmak için .env'de ayarla.
     LAUNCH_PROMO_MONTHS: int = 0

@@ -2,11 +2,14 @@ import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { ROUTES } from "@/lib/routes";
 import { Seo } from "@/components/Seo";
+import { DeliveryFeedbackSection } from "@/components/store/DeliveryFeedbackSection";
 import { StoreLayout } from "@/pages/store/StoreLayout";
 import { FullScreenSpinner } from "@/components/Spinner";
 import { formatTL } from "@/lib/money";
 import { formatDate } from "@/lib/datetime";
 import { promisedDateLabel } from "@/lib/deliveryPromise";
+import { formatEventTime, proofLabel } from "@/lib/deliveryTimeline";
+import { useOrderTracking } from "@/hooks/useDelivery";
 import { ShipAddressUpdate } from "@/components/store/ShipAddressUpdate";
 import { OrderInvoiceModal } from "@/components/store/OrderInvoiceModal";
 import { useOrder, useCancelOrder, useRequestReturn } from "@/hooks/useStore";
@@ -32,6 +35,12 @@ export default function OrderDetailPage() {
   const { data: user } = useCurrentUser();
   const [returnOpen, setReturnOpen] = useState(false);
   const [invoiceOpen, setInvoiceOpen] = useState(false);
+  // Teslim kanıtı (foto/OTP/yönetici) yalnız oturumlu sahibe döner — public
+  // token projeksiyonunda foto yoktur (PII), bu yüzden kanıt burada gösterilir.
+  const { data: tracking } = useOrderTracking(
+    orderId ?? null,
+    order?.status === "DELIVERED" && !!order?.has_physical
+  );
 
   if (isLoading) return <FullScreenSpinner />;
   if (isError || !order) {
@@ -241,6 +250,53 @@ export default function OrderDetailPage() {
               Takip et →
             </span>
           </Link>
+        )}
+
+        {/* Teslim kanıtı — foto + yöntem + saat (yalnız sahibin oturumlu görünümünde) */}
+        {order.status === "DELIVERED" && tracking?.delivered_at && (
+          <div className="mt-5 flex items-center gap-4 rounded-2xl border border-slate-200 p-5 dark:border-slate-800">
+            {tracking.proof_photo_url ? (
+              <a
+                href={tracking.proof_photo_url}
+                target="_blank"
+                rel="noreferrer"
+                title="Teslim fotoğrafını büyüt"
+                className="block h-16 w-16 shrink-0 overflow-hidden rounded-xl ring-1 ring-slate-200 dark:ring-slate-700"
+              >
+                <img
+                  src={tracking.proof_photo_url}
+                  alt="Teslim kanıtı fotoğrafı"
+                  className="h-full w-full object-cover"
+                  loading="lazy"
+                />
+              </a>
+            ) : (
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" width="22" height="22">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                </svg>
+              </span>
+            )}
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold text-slate-900 dark:text-white">Teslim Kanıtı</p>
+              <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
+                {proofLabel(tracking.proof) ?? "Teslim edildi"}
+                {" · "}
+                {formatEventTime(tracking.delivered_at)}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {order.status === "DELIVERED" && order.has_physical && tracking && (
+          <div className="mt-5">
+            <DeliveryFeedbackSection
+              mode="order"
+              orderId={order.id}
+              canFeedback={tracking.can_feedback}
+              feedbackGiven={tracking.feedback_given}
+            />
+          </div>
         )}
 
         {/* Ürünler */}

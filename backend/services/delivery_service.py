@@ -15,7 +15,7 @@ import hashlib
 import secrets
 
 from fastapi import HTTPException, status
-from sqlalchemy import func, select, update
+from sqlalchemy import func, select, true as sa_true, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -31,6 +31,7 @@ from models.delivery import (
     DeliveryRunStatus,
     DeliveryStop,
     DeliveryStopStatus,
+    FailReason,
 )
 from models.role import ROLE_IDS, RoleType
 from models.store import DeliveryPref, Order, OrderStatusHistory
@@ -42,12 +43,19 @@ from schemas.delivery import (
     DeliveryRunOut,
     DeliveryRunUpdate,
     DeliveryStopOut,
+    CapacityDayOut,
     EligibleOrderOut,
     OrderTrackingOut,
     StopItemOut,
     TimelineEventOut,
 )
-from services import notification_service, order_fsm, order_service
+from services import (
+    delivery_calendar,
+    delivery_promise,
+    notification_service,
+    order_fsm,
+    order_service,
+)
 from services.delivery_timeline import eta_window, mask_recipient, project_customer_timeline
 
 _ACTIVE_RUN_STATUSES = (DeliveryRunStatus.PLANNED.value, DeliveryRunStatus.ACTIVE.value)
@@ -154,6 +162,9 @@ def _stop_to_out(stop: DeliveryStop) -> DeliveryStopOut:
         proof=stop.proof,
         photo_url=stop.photo_url,
         courier_note=stop.courier_note,
+        promised_delivery_date=order.promised_delivery_date,
+        failed_attempts=order.failed_delivery_count,
+        fail_reason=stop.fail_reason,
     )
 
 
@@ -487,6 +498,7 @@ async def expire_stale_runs(db: AsyncSession) -> int:
     admin_ids = (
         await db.execute(select(Admin.id).where(Admin.deleted_at.is_(None)))
     ).scalars().all()
+    closed_dates = await _closed_dates_now(db)
     for run in runs:
         for stop in run.stops:
             if stop.status != DeliveryStopStatus.PENDING.value:
@@ -502,19 +514,29 @@ async def expire_stale_runs(db: AsyncSession) -> int:
                     reason="Tur zaman aşımıyla kapatıldı",
                 )
                 order.tracking_no = None
+                # Sistem kaynaklı başarısızlık da söz borcudur (kurye FAILED ile aynı);
+                # tavana ulaşırsa yeniden kuyruğa girmez → istisna kuyruğu.
+                requeued = order_service.roll_promise_after_failed_attempt(
+                    order, closed_dates
+                )
+            else:
+                requeued = True
             stop.status = DeliveryStopStatus.FAILED.value
             stop.courier_note = stop.courier_note or "Tur zaman aşımıyla kapatıldı"
-            await notification_service.notify(
-                db,
-                user_id=order.client_id,
-                role_id=ROLE_IDS[RoleType.CLIENT],
-                message=f"Siparişin #{order.id} bugün teslim edilemedi; yeniden planlanacak.",
-                link="/siparislerim",
-            )
-            if order.ship_phone:
-                outbox.enqueue(
-                    db, "sms:failed", {"to": order.ship_phone, "order_id": order.id}
+            if requeued:
+                await notification_service.notify(
+                    db,
+                    user_id=order.client_id,
+                    role_id=ROLE_IDS[RoleType.CLIENT],
+                    message=f"Siparişin #{order.id} bugün teslim edilemedi; yeniden planlanacak.",
+                    link="/siparislerim",
                 )
+                if order.ship_phone:
+                    outbox.enqueue(
+                        db, "sms:failed", {"to": order.ship_phone, "order_id": order.id}
+                    )
+            else:
+                await _notify_admins_attention(db, order)
         run.status = DeliveryRunStatus.CANCELLED.value
         run.completed_at = _now()
         stamp = f"Watchdog: {hours} saati aşan aktif tur otomatik kapatıldı."
@@ -570,12 +592,147 @@ def _eligible_out(o: Order) -> EligibleOrderOut:
         created_at=o.created_at,
         promised_delivery_date=o.promised_delivery_date,
         in_zone=o.ship_in_zone,
+        prepared_at=o.prepared_at,
     )
+
+
+def _within_attempt_cap():
+    """Deneme hakkı DOLMAMIŞ siparişler için SQL koşulu (üç-deneme kuralı).
+    Tavan 0 ise kural kapalı → hep True. Prep/eligible bunu paylaşır; tavanı
+    aşanlar otomatik kuyruklardan düşer, istisna kuyruğunda görünür."""
+    cap = settings.DELIVERY_MAX_DELIVERY_ATTEMPTS
+    if cap <= 0:
+        return sa_true()
+    return Order.failed_delivery_count < cap
+
+
+async def prep_queue(db: AsyncSession) -> list[EligibleOrderOut]:
+    """Hazırlama istasyonu kuyruğu (PDS O1): ödenmiş + fiziksel + Adana-içi ama
+    HENÜZ hazırlanmamış + deneme hakkı DOLMAMIŞ siparişler. Depo görevlisi
+    paketi toplayıp etiketi basınca ``mark_prepared`` ile hazır işaretlenir."""
+    orders = (
+        await db.execute(
+            select(Order)
+            .options(selectinload(Order.items))
+            .where(
+                Order.deleted_at.is_(None),
+                Order.has_physical.is_(True),
+                Order.payment_status == "PAID",
+                Order.status == "PAID",
+                Order.ship_in_zone.is_(True),
+                Order.prepared_at.is_(None),
+                _within_attempt_cap(),
+            )
+            .order_by(
+                Order.promised_delivery_date.asc().nulls_last(),
+                Order.failed_delivery_count.desc(),
+                Order.created_at.asc(),
+            )
+        )
+    ).scalars().all()
+    return [_eligible_out(o) for o in orders]
+
+
+async def _closed_dates_now(db: AsyncSession) -> frozenset[datetime.date]:
+    """Bugünden ileri kapalı günler (yeniden söz veren yollar için)."""
+    today = (
+        _now() + datetime.timedelta(hours=settings.APP_UTC_OFFSET_HOURS)
+    ).date()
+    return await delivery_calendar.load_closed_dates(
+        db, start=today, end=today + datetime.timedelta(days=45)
+    )
+
+
+async def attention_orders(db: AsyncSession) -> list[EligibleOrderOut]:
+    """İstisna kuyruğu (PDS O3 çekirdeği): deneme hakkı DOLMUŞ siparişler —
+    otomatik yeniden kuyruğa girmezler, operatör kararı bekler (teslim-alma
+    noktası / iptal+iade). Sonsuz PAID↔FAILED döngüsünün kırıldığı yer."""
+    cap = settings.DELIVERY_MAX_DELIVERY_ATTEMPTS
+    if cap <= 0:
+        return []
+    orders = (
+        await db.execute(
+            select(Order)
+            .options(selectinload(Order.items))
+            .where(
+                Order.deleted_at.is_(None),
+                Order.has_physical.is_(True),
+                Order.payment_status == "PAID",
+                Order.status == "PAID",
+                Order.ship_in_zone.is_(True),
+                Order.failed_delivery_count >= cap,
+            )
+            .order_by(Order.promised_delivery_date.asc().nulls_last())
+        )
+    ).scalars().all()
+    return [_eligible_out(o) for o in orders]
+
+
+async def retry_exhausted_order(db: AsyncSession, order_id: int) -> EligibleOrderOut:
+    """Operatör kararı: deneme hakkı dolmuş siparişe BİR tur daha hak tanı
+    (müşteriyle görüşüldü, yeni randevu). Sayaç bir azaltılır (tavanın altına
+    iner → yeniden kuyruğa girer) ve söz günü ertesi çalışma gününe alınır.
+    İptal/iade isteniyorsa ayrı akış (store admin refund) kullanılır."""
+    order = await db.get(Order, order_id)
+    if order is None or order.deleted_at is not None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, f"Sipariş #{order_id} bulunamadı")
+    if not order_service.attempts_exhausted(order.failed_delivery_count):
+        raise HTTPException(
+            status.HTTP_409_CONFLICT, "Bu siparişin deneme hakkı zaten var"
+        )
+    # Tavanın hemen altına indir → tek tur daha; sonraki başarısızlıkta yeniden düşer.
+    order.failed_delivery_count = settings.DELIVERY_MAX_DELIVERY_ATTEMPTS - 1
+    order.promised_delivery_date = delivery_promise.next_delivery_day(
+        _now(),
+        non_working_weekdays=settings.DELIVERY_NON_WORKING_WEEKDAYS,
+        utc_offset_hours=settings.APP_UTC_OFFSET_HOURS,
+        closed_dates=await _closed_dates_now(db),
+    )
+    await db.commit()
+    await db.refresh(order, ["items"])
+    return _eligible_out(order)
+
+
+async def mark_prepared(
+    db: AsyncSession, order_id: int, *, prepared: bool, actor: str = "admin"
+) -> EligibleOrderOut:
+    """Siparişi hazır/hazır-değil işaretler. Hazır ederken sipariş gerçekten
+    dağıtıma uygun olmalı (ödenmiş, fiziksel, bölge-içi, açık); değilse 409.
+    Geri alma yalnız henüz TURA GİRMEMİŞ siparişte serbest (durak varsa paket
+    zaten araçta/sahada)."""
+    order = await db.get(Order, order_id)
+    if order is None or order.deleted_at is not None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, f"Sipariş #{order_id} bulunamadı")
+    if prepared:
+        if not order.has_physical or order.ship_in_zone is not True:
+            raise HTTPException(
+                status.HTTP_409_CONFLICT,
+                f"Sipariş #{order_id} kendi-filo teslimatına uygun değil",
+            )
+        if order.payment_status != "PAID" or order.status != "PAID":
+            raise HTTPException(
+                status.HTTP_409_CONFLICT,
+                f"Sipariş #{order_id} ödenmiş ve açıkta olmalı",
+            )
+        if order.prepared_at is None:
+            order.prepared_at = _now()
+            order.prepared_by = actor
+    else:
+        if await _has_open_stop(db, order_id):
+            raise HTTPException(
+                status.HTTP_409_CONFLICT,
+                f"Sipariş #{order_id} zaten bir turda — hazırlık geri alınamaz",
+            )
+        order.prepared_at = None
+        order.prepared_by = None
+    await db.commit()
+    await db.refresh(order, ["items"])
+    return _eligible_out(order)
 
 
 async def eligible_orders(db: AsyncSession) -> list[EligibleOrderOut]:
     """Tura eklenebilir siparişler: ödenmiş + fiziksel + Adana-içi (Cıncık bölgesi)
-    + henüz açık durağı yok. Söz verilen günü yaklaşan/geçen en önde.
+    + HAZIRLANMIŞ + henüz açık durağı yok. Söz verilen günü yaklaşan/geçen en önde.
 
     Açık-durak elemesi tek sorguda anti-join (NOT EXISTS) ile yapılır — sipariş
     başına ayrı ``_has_open_stop`` sorgusu (N+1) 500 siparişte 501 sorgu demekti."""
@@ -600,15 +757,150 @@ async def eligible_orders(db: AsyncSession) -> list[EligibleOrderOut]:
                 Order.payment_status == "PAID",
                 Order.status == "PAID",
                 Order.ship_in_zone.is_(True),
+                # Yalnız hazırlanmış (etiketi basılmış) paket tura eklenebilir.
+                Order.prepared_at.is_not(None),
+                # Deneme hakkı dolanlar istisna kuyruğunda — otomatik dağıtılmaz.
+                _within_attempt_cap(),
                 ~open_stop_exists,
             )
             .order_by(
                 Order.promised_delivery_date.asc().nulls_last(),
+                # Aynı söz gününde yeniden denemeler önce: söz borcu yeni satıştan
+                # önce gelir (PDS B7) — dispatch kuyruğu da bu sırayla dolar.
+                Order.failed_delivery_count.desc(),
                 Order.created_at.asc(),
             )
         )
     ).scalars().all()
     return [_eligible_out(o) for o in orders]
+
+
+async def kpi_summary(db: AsyncSession, *, days: int = 30) -> dict:
+    """Teslimat KPI özeti (PDS §14) — son ``days`` gün. Ham sayı + oran (hedef
+    yok). Durak sonuçları stops'tan, söz-tutma/ilk-deneme sipariş bazından gelir."""
+    from models.delivery import FAIL_REASONS_NOT_COURIER_FAULT
+    from services import delivery_metrics
+
+    since = _now() - datetime.timedelta(days=days)
+    kpi = delivery_metrics.DeliveryKpi(window_days=days)
+
+    # Durak sonuçları (bu pencerede güncellenmiş sonuçlanmış duraklar).
+    status_rows = (
+        await db.execute(
+            select(DeliveryStop.status, func.count())
+            .where(
+                DeliveryStop.updated_at >= since,
+                DeliveryStop.status.in_(
+                    (
+                        DeliveryStopStatus.DELIVERED.value,
+                        DeliveryStopStatus.FAILED.value,
+                        DeliveryStopStatus.RESCHEDULED.value,
+                    )
+                ),
+            )
+            .group_by(DeliveryStop.status)
+        )
+    ).all()
+    by_status = {s: int(c) for s, c in status_rows}
+    kpi.delivered = by_status.get(DeliveryStopStatus.DELIVERED.value, 0)
+    kpi.failed = by_status.get(DeliveryStopStatus.FAILED.value, 0)
+    kpi.rescheduled = by_status.get(DeliveryStopStatus.RESCHEDULED.value, 0)
+
+    # FAILED neden dağılımı (Pareto) + kurye kusuru sayılmayanlar.
+    reason_rows = (
+        await db.execute(
+            select(DeliveryStop.fail_reason, func.count())
+            .where(
+                DeliveryStop.updated_at >= since,
+                DeliveryStop.status == DeliveryStopStatus.FAILED.value,
+            )
+            .group_by(DeliveryStop.fail_reason)
+        )
+    ).all()
+    for reason, count in reason_rows:
+        key = reason or "DIGER"
+        kpi.fail_by_reason[key] = kpi.fail_by_reason.get(key, 0) + int(count)
+        if key in FAIL_REASONS_NOT_COURIER_FAULT:
+            kpi.failed_not_courier_fault += int(count)
+
+    # Söz tutma + ilk denemede teslim — teslim edilmiş siparişler üzerinden.
+    delivered_orders = (
+        await db.execute(
+            select(
+                Order.delivered_at,
+                Order.promised_delivery_date,
+                Order.failed_delivery_count,
+            ).where(
+                Order.deleted_at.is_(None),
+                Order.status == "DELIVERED",
+                Order.has_physical.is_(True),
+                Order.delivered_at >= since,
+            )
+        )
+    ).all()
+    for delivered_at, promised, failed_count in delivered_orders:
+        kpi.delivered_count += 1
+        if (failed_count or 0) == 0:
+            kpi.first_attempt_delivered += 1
+        on_time = delivery_metrics.is_on_time(
+            delivered_at, promised, settings.APP_UTC_OFFSET_HOURS
+        )
+        if on_time is not None:
+            kpi.promised_delivered += 1
+            if on_time:
+                kpi.on_time_delivered += 1
+
+    # Teslim sonrası değerlendirme (Faz 7): 👍/👎 + sorun Pareto'su.
+    from services import delivery_feedback_service
+
+    kpi.feedback_up, kpi.feedback_down, kpi.feedback_problems = (
+        await delivery_feedback_service.kpi_counts(db, since)
+    )
+    return kpi.to_dict()
+
+
+async def capacity_overview(db: AsyncSession, *, days: int = 14) -> list[CapacityDayOut]:
+    """Önümüzdeki ``days`` günün söz doluluğu (bugün dahil) — admin kapasite
+    şeridi. Sayım filtresi ``_first_capacity_day`` ile birebir aynıdır (bölge-içi,
+    açık PAID/SHIPPED, fiziksel); ayrışırlarsa şerit yalan söyler."""
+    local_today = (
+        _now() + datetime.timedelta(hours=settings.APP_UTC_OFFSET_HOURS)
+    ).date()
+    end = local_today + datetime.timedelta(days=days - 1)
+    rows = (
+        await db.execute(
+            select(
+                Order.promised_delivery_date,
+                func.count(),
+                func.count().filter(Order.failed_delivery_count > 0),
+            )
+            .where(
+                Order.deleted_at.is_(None),
+                Order.has_physical.is_(True),
+                Order.ship_in_zone.is_(True),
+                Order.status.in_(("PAID", "SHIPPED")),
+                Order.promised_delivery_date >= local_today,
+                Order.promised_delivery_date <= end,
+            )
+            .group_by(Order.promised_delivery_date)
+        )
+    ).all()
+    by_day = {d: (int(total), int(retry)) for d, total, retry in rows}
+    out: list[CapacityDayOut] = []
+    for i in range(days):
+        day = local_today + datetime.timedelta(days=i)
+        booked, retry = by_day.get(day, (0, 0))
+        out.append(
+            CapacityDayOut(
+                day=day,
+                is_working_day=day.weekday()
+                not in settings.DELIVERY_NON_WORKING_WEEKDAYS,
+                capacity=settings.DELIVERY_DAILY_CAPACITY,
+                booked=booked,
+                retry_debt=retry,
+            )
+        )
+    return out
 
 
 async def outsourced_orders(db: AsyncSession) -> list[EligibleOrderOut]:
@@ -663,6 +955,11 @@ async def add_stops(db: AsyncSession, run_id: int, order_ids: list[int]) -> Deli
             raise HTTPException(
                 status.HTTP_409_CONFLICT,
                 f"Sipariş #{order_id} dağıtıma uygun değil (ödenmiş ve açıkta olmalı)",
+            )
+        if order.prepared_at is None:
+            raise HTTPException(
+                status.HTTP_409_CONFLICT,
+                f"Sipariş #{order_id} henüz hazırlanmadı — önce paketi hazırlayıp etiketle",
             )
         if await _has_open_stop(db, order_id):
             raise HTTPException(
@@ -1022,7 +1319,16 @@ async def order_tracking(
     if tracking_status == "DELIVERED" and stop is not None:
         out.delivered_at = stop.delivered_at
         out.proof = stop.proof
-        out.proof_photo_url = stop.photo_url
+        # Kapı önü fotoğrafı PII'dır: yalnız oturumlu sahibe döner, SMS linkiyle
+        # gezen public token'a ASLA (token sızarsa kanıt fotoğrafı da sızmasın).
+        if track_token is None:
+            out.proof_photo_url = stop.photo_url
+        # Teslim sonrası değerlendirme (Faz 7) — verilmişse tekrar sorulmaz.
+        from services import delivery_feedback_service
+
+        existing_fb = await delivery_feedback_service.get_for_order(db, order.id)
+        out.feedback_given = existing_fb is not None
+        out.can_feedback = existing_fb is None
         return out
 
     if tracking_status != "EN_ROUTE" or stop is None or run is None:
@@ -1107,13 +1413,34 @@ async def _lock_field_stop(db: AsyncSession, stop_id: int) -> DeliveryStop:
     return stop
 
 
+#: Art arda OTP SMS'i arasındaki asgari süre — resend throttle. Amaç: her
+#: yeniden gönderimin deneme sayacını sıfırlaması (otp_attempts=0) suistimal
+#: edilip brute-force penceresi sonsuz tazelenemesin.
+OTP_RESEND_INTERVAL_SECONDS = 60
+
+
+def otp_resend_blocked(
+    sent_at: datetime.datetime | None,
+    now: datetime.datetime,
+    interval_seconds: int = OTP_RESEND_INTERVAL_SECONDS,
+) -> bool:
+    """Saf: son gönderimden bu yana asgari süre geçmediyse True."""
+    if sent_at is None:
+        return False
+    return (now - sent_at).total_seconds() < interval_seconds
+
+
 async def send_otp(db: AsyncSession, stop_id: int) -> tuple[str, bool]:
     """Müşteriye teslim OTP'si SMS'ler; (maskeli numara, gerçekten gönderildi mi)
     döner. OTP bilinçli olarak outbox'a girmez — kurye kapıda saniyeler içinde
     sonuç bekler; gönderim başarısızsa kurye DÜRÜSTÇE uyarılır (yeniden dener
     ya da notlu teslime geçer), 'gönderildi' yalanı söylenmez."""
-    stop = await _load_stop(db, stop_id)
-    _require_field_stop(stop)
+    stop = await _lock_field_stop(db, stop_id)
+    if otp_resend_blocked(stop.otp_sent_at, _now()):
+        raise HTTPException(
+            status.HTTP_429_TOO_MANY_REQUESTS,
+            "Kod az önce gönderildi — 1 dakika sonra yeniden dene",
+        )
     phone = stop.order.ship_phone
     if not phone:
         raise HTTPException(
@@ -1312,32 +1639,80 @@ async def deliver_drop(db: AsyncSession, stop_id: int) -> DeliveryStopOut:
     return _stop_to_out(await _load_stop(db, stop_id))
 
 
-async def fail_stop(db: AsyncSession, stop_id: int, *, reason: str) -> DeliveryStopOut:
+async def fail_stop(
+    db: AsyncSession,
+    stop_id: int,
+    *,
+    reason: str,
+    reason_code: str = FailReason.DIGER.value,
+) -> DeliveryStopOut:
     """Teslim edilemedi: durak FAILED, sipariş PAID'e döner (ertesi tura eklenebilir).
-    Tek transaction; SMS outbox'a aynı tx'te yazılır, kalan ETA'lar drift'lenir."""
+    Tek transaction; SMS outbox'a aynı tx'te yazılır, kalan ETA'lar drift'lenir.
+    ``reason_code`` yapısal neden (FailReason) — raporlama/KPI için; ``reason``
+    serbest metin kurye notu (müşteriye sızmaz)."""
+    if reason_code not in {r.value for r in FailReason}:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Geçersiz neden kodu")
     stop = await _lock_field_stop(db, stop_id)
     eta_drift = (_now() - stop.eta) if stop.eta is not None else None
     stop.status = DeliveryStopStatus.FAILED.value
     stop.courier_note = reason
+    stop.fail_reason = reason_code
     order = stop.order
     await order_fsm.transition_order(
         db, order, "PAID", changed_by="courier", reason=f"Teslim edilemedi: {reason}"
     )
     order.tracking_no = None
-    await notification_service.notify(
-        db,
-        user_id=order.client_id,
-        role_id=ROLE_IDS[RoleType.CLIENT],
-        message=f"Siparişin #{order.id} bugün teslim edilemedi; yeniden planlanacak.",
-        link="/siparislerim",
+    # Söz borcu: yarına öncelikli yeniden deneme + başarısızlık sayacı (PDS B7).
+    # Tavana ulaşırsa (üç-deneme) yeniden kuyruğa GİRMEZ → operatör istisna kuyruğu.
+    requeued = order_service.roll_promise_after_failed_attempt(
+        order, await _closed_dates_now(db)
     )
-    if order.ship_phone:
-        outbox.enqueue(db, "sms:failed", {"to": order.ship_phone, "order_id": order.id})
+    if requeued:
+        await notification_service.notify(
+            db,
+            user_id=order.client_id,
+            role_id=ROLE_IDS[RoleType.CLIENT],
+            message=f"Siparişin #{order.id} bugün teslim edilemedi; yeniden planlanacak.",
+            link="/siparislerim",
+        )
+        if order.ship_phone:
+            outbox.enqueue(db, "sms:failed", {"to": order.ship_phone, "order_id": order.id})
+    else:
+        # Deneme hakkı bitti — müşteriye dürüst, operatöre eyleme çağıran bildirim.
+        await notification_service.notify(
+            db,
+            user_id=order.client_id,
+            role_id=ROLE_IDS[RoleType.CLIENT],
+            message=(
+                f"Siparişin #{order.id} birkaç kez teslim edilemedi; "
+                "ekibimiz seninle iletişime geçecek."
+            ),
+            link="/siparislerim",
+        )
+        await _notify_admins_attention(db, order)
     if eta_drift is not None:
         await _shift_pending_etas(db, stop.run_id, eta_drift, exclude_stop_id=stop.id)
     await db.commit()
     await _notify_upcoming(db, stop.run_id)
     return _stop_to_out(await _load_stop(db, stop_id))
+
+
+async def _notify_admins_attention(db: AsyncSession, order: Order) -> None:
+    """Deneme hakkı biten sipariş için tüm adminlere istisna kuyruğu bildirimi."""
+    admin_ids = (
+        await db.execute(select(Admin.id).where(Admin.deleted_at.is_(None)))
+    ).scalars().all()
+    for admin_id in admin_ids:
+        await notification_service.notify(
+            db,
+            user_id=admin_id,
+            role_id=ROLE_IDS[RoleType.ADMIN],
+            message=(
+                f"Sipariş #{order.id} {order.failed_delivery_count} kez teslim "
+                "edilemedi — istisna kuyruğunda karar bekliyor (yeniden dene / iade)."
+            ),
+            link="/",
+        )
 
 
 async def scan(db: AsyncSession, payload: str) -> tuple[DeliveryStopOut, str]:

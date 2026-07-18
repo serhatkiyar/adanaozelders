@@ -2,6 +2,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   createReport,
   fetchAdminReports,
+  fetchAdminReportList,
+  type AdminReportsParams,
   fetchOpenReportCount,
   resolveReport,
 } from "@/api/reports";
@@ -28,8 +30,18 @@ export function useAdminReports(status?: ReportStatus) {
   });
 }
 
-export function useOpenReportCount() {
+export function useAdminReportList(params: AdminReportsParams) {
   const enabled = useIsAdmin();
+  return useQuery({
+    queryKey: ["admin", "reports", "list", params],
+    queryFn: () => fetchAdminReportList(params),
+    enabled,
+    placeholderData: (previous) => previous,
+  });
+}
+
+export function useOpenReportCount(permissionEnabled = true) {
+  const enabled = useIsAdmin() && permissionEnabled;
   return useQuery({
     queryKey: ["admin", "reports", "count"],
     queryFn: fetchOpenReportCount,

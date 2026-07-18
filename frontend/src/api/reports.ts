@@ -11,10 +11,24 @@ export async function createReport(payload: ReportCreate): Promise<ReportOut> {
 export async function fetchAdminReports(
   status?: ReportStatus
 ): Promise<ReportOut[]> {
-  const { data } = await apiClient.get<ReportOut[]>("/admin/reports", {
-    params: status ? { status } : undefined,
-  });
-  return data;
+  return (await fetchAdminReportList(status ? { status } : {})).items;
+}
+
+export interface AdminReportsParams {
+  status?: ReportStatus;
+  target_type?: string;
+  limit?: number;
+  offset?: number;
+}
+
+export async function fetchAdminReportList(
+  params: AdminReportsParams = {}
+): Promise<{ items: ReportOut[]; total: number }> {
+  const response = await apiClient.get<ReportOut[]>("/admin/reports", { params });
+  return {
+    items: response.data,
+    total: Number(response.headers["x-total-count"] ?? response.data.length),
+  };
 }
 
 export async function fetchOpenReportCount(): Promise<number> {

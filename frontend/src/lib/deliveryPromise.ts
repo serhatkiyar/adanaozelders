@@ -49,6 +49,16 @@ export function promiseText(info: DeliveryInfo, today: Date = new Date()): strin
   return `Şimdi sipariş ver, ${day} kapında`;
 }
 
+/** E1: cutoff'a bu kadar sn ve daha az kaldıysa rozet "bugün garantisi kapanmak
+ *  üzere" uyarı tonuna geçer (PDS §12/E1 — son 15 dk). */
+export const CUTOFF_CLOSING_SECONDS = 15 * 60;
+
+export function isCutoffClosing(
+  remainingSeconds: number | null | undefined,
+): boolean {
+  return remainingSeconds != null && remainingSeconds <= CUTOFF_CLOSING_SECONDS;
+}
+
 /** Sipariş sonrası söz satırı; tarih yoksa null (eski/dijital sipariş). */
 export function promisedDateLabel(
   isoDate: string | null | undefined,

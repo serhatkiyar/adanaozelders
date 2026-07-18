@@ -8,9 +8,12 @@ import { FullScreenSpinner } from "@/components/Spinner";
 interface ProtectedRouteProps {
   // Yalnızca bu role_id erişebilir. Boşsa: yalnızca kimlik doğrulaması yeter.
   allowedRoleId?: number;
+  // Birden çok role izin (ör. saha ekranı: ADMIN + COURIER). allowedRoleId ile
+  // birlikte verilirse ikisi de kabul kümesine girer (geriye uyumlu).
+  allowedRoleIds?: number[];
 }
 
-export function ProtectedRoute({ allowedRoleId }: ProtectedRouteProps) {
+export function ProtectedRoute({ allowedRoleId, allowedRoleIds }: ProtectedRouteProps) {
   const token = useAuthStore((s) => s.token);
   const { data: user, isLoading, isError } = useCurrentUser();
 
@@ -27,7 +30,10 @@ export function ProtectedRoute({ allowedRoleId }: ProtectedRouteProps) {
     return <Navigate to={ROUTES.login} replace />;
   }
 
-  if (allowedRoleId !== undefined && user.role_id !== allowedRoleId) {
+  const allowed = new Set(
+    [...(allowedRoleIds ?? []), ...(allowedRoleId !== undefined ? [allowedRoleId] : [])]
+  );
+  if (allowed.size > 0 && !allowed.has(user.role_id)) {
     return <Navigate to={roleHome(user.role_id)} replace />;
   }
 

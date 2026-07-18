@@ -5,7 +5,7 @@ import datetime
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.deps import CurrentUser, require_roles, user_rate_limit
+from api.deps import CurrentUser, require_roles, require_roles_or_admin_permission, user_rate_limit
 from core.config import settings
 from core.database import get_db
 from models.admin import Admin
@@ -57,7 +57,7 @@ async def quote(
 @router.get("/manage", response_model=list[StudyReservationOut])
 async def list_manage(
     library_id: int = Query(...),
-    user: CurrentUser = Depends(require_roles(RoleType.ADMIN, RoleType.LIBRARY_OPERATOR)),
+    user: CurrentUser = Depends(require_roles_or_admin_permission("libraries.manage", RoleType.LIBRARY_OPERATOR)),
     db: AsyncSession = Depends(get_db),
 ):
     _assert_can_manage(user, library_id)

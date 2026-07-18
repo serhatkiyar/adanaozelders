@@ -13,7 +13,7 @@ import datetime
 from decimal import Decimal
 
 from fastapi import HTTPException, status
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -49,6 +49,7 @@ from schemas.store import (
 from services import (
     commission,
     coupon_service,
+    delivery_calendar,
     delivery_promise,
     notification_service,
     order_fsm,
@@ -56,6 +57,20 @@ from services import (
 
 def _now() -> datetime.datetime:
     return datetime.datetime.now(datetime.timezone.utc)
+
+
+#: Söz motoru en çok kaç gün ileriye bakar (cutoff + kapasite max_days + tatil
+#: tamponu). Kapalı gün penceresi bu genişlikte yüklenir.
+_PROMISE_LOOKAHEAD_DAYS = 45
+
+
+async def _closed_dates_from(
+    db: AsyncSession, start: datetime.date
+) -> frozenset[datetime.date]:
+    """Söz penceresi için kapalı günleri yükle (admin takvimi)."""
+    return await delivery_calendar.load_closed_dates(
+        db, start=start, end=start + datetime.timedelta(days=_PROMISE_LOOKAHEAD_DAYS)
+    )
 
 
 # Teslimden sonra iade talebi penceresi (mesafeli satış cayma hakkı — 14 gün).
@@ -91,6 +106,59 @@ async def _email_order(db: AsyncSession, order: Order, status: str) -> None:
     )
 
 
+#: pg_advisory_xact_lock anahtarı — söz kontenjanı SAYIMI + ATAMASI bu kilit
+#: altında yapılır ki eşzamanlı ödemeler serileşsin: son slotu iki sipariş aynı
+#: anda sayıp ikisi de aynı güne söz alamaz (overbooking). Kilit transaction
+#: sonunda (commit/rollback) otomatik bırakılır; salt-okur rozet ucu KİLİTSİZDİR.
+PROMISE_LOCK_KEY = 0x5AD001
+
+
+async def _lock_promise_counter(db: AsyncSession) -> None:
+    await db.execute(
+        text("SELECT pg_advisory_xact_lock(:k)"), {"k": PROMISE_LOCK_KEY}
+    )
+
+
+def attempts_exhausted(failed_count: int) -> bool:
+    """Üç-deneme kuralı: bu başarısızlık sayısı tavana ulaştı mı? Ulaştıysa
+    sipariş otomatik yeniden kuyruğa GİRMEZ, operatör istisna kuyruğuna düşer
+    (sonsuz PAID↔FAILED engeli). Tavan 0 ise kural kapalı (sınırsız)."""
+    cap = settings.DELIVERY_MAX_DELIVERY_ATTEMPTS
+    return cap > 0 and failed_count >= cap
+
+
+def roll_promise_after_failed_attempt(
+    order: Order,
+    closed_dates: frozenset[datetime.date] = frozenset(),
+) -> bool:
+    """Teslim denemesi KURYE/SİSTEM kaynaklı başarısız oldu: söz borcu yeni
+    satıştan önce gelir (PDS B7) — söz, ertesi çalışma gününe KAPASİTE
+    KONTROLSÜZ yazılır (retry dolu günle ötelenmez; sayımda görünür ve yeni
+    satışın kontenjanını daraltır) ve başarısızlık sayacı artar (üç-deneme
+    kuralı [Faz 5] + ilk-denemede-teslim KPI'ı bu sayaçtan beslenir).
+    Müşteri ertelemesi (RESCHEDULED) bu yoldan GEÇMEZ.
+
+    Dönüş: yeniden kuyruğa girdi mi (True) yoksa deneme hakkı bitip istisna
+    kuyruğuna mı düştü (False). Tavana ulaşınca söz günü İLERLEMEZ (son söz
+    günü işaretli kalır) ve paket depoda kalır ama hazırlanmamış — operatör
+    kararına (teslim-alma / iptal+iade) kadar eligible olmaz."""
+    order.failed_delivery_count += 1
+    # Paket depoya geri döndü: hazırlık damgası düşer.
+    order.prepared_at = None
+    order.prepared_by = None
+    if attempts_exhausted(order.failed_delivery_count):
+        # Deneme hakkı bitti — otomatik yeniden söz VERİLMEZ; istisna kuyruğu
+        # (eligible/prep sorguları failed_delivery_count tavanını hariç tutar).
+        return False
+    order.promised_delivery_date = delivery_promise.next_delivery_day(
+        _now(),
+        non_working_weekdays=settings.DELIVERY_NON_WORKING_WEEKDAYS,
+        utc_offset_hours=settings.APP_UTC_OFFSET_HOURS,
+        closed_dates=closed_dates,
+    )
+    return True
+
+
 async def _first_capacity_day(db: AsyncSession, candidate: datetime.date) -> datetime.date:
     """``candidate``'tan ileri, günlük söz kontenjanı (DELIVERY_DAILY_CAPACITY)
     dolmamış ilk çalışma günü. Kontenjanı yalnız bölge-içi, açık (PAID/SHIPPED)
@@ -116,6 +184,7 @@ async def _first_capacity_day(db: AsyncSession, candidate: datetime.date) -> dat
         booked,
         capacity=settings.DELIVERY_DAILY_CAPACITY,
         non_working_weekdays=settings.DELIVERY_NON_WORKING_WEEKDAYS,
+        closed_dates=await _closed_dates_from(db, candidate),
     )
 
 
@@ -123,11 +192,13 @@ async def promised_date_for(db: AsyncSession, paid_at_utc: datetime.datetime) ->
     """Ödeme anına göre söz günü — cutoff kuralı + kapasite kontrolü birlikte.
     Hem sipariş kesinleşmesi (_finalize_paid) hem public /store/delivery-info
     rozeti bunu kullanır (rozet dolu günü 'bugün gelir' diye satamaz)."""
+    local_today = (paid_at_utc + datetime.timedelta(hours=settings.APP_UTC_OFFSET_HOURS)).date()
     candidate = delivery_promise.compute_promised_date(
         paid_at_utc,
         cutoff_hour=settings.DELIVERY_CUTOFF_HOUR,
         non_working_weekdays=settings.DELIVERY_NON_WORKING_WEEKDAYS,
         utc_offset_hours=settings.APP_UTC_OFFSET_HOURS,
+        closed_dates=await _closed_dates_from(db, local_today),
     )
     return await _first_capacity_day(db, candidate)
 
@@ -461,6 +532,9 @@ async def _finalize_paid(
     # verilmez (kampanya günü toplu söz ihlali yerine dürüst ileri tarih).
     if order.has_physical:
         if order.ship_in_zone is True:
+            # Atomik rezervasyon: sayım+atama advisory kilit altında — eşzamanlı
+            # ödemeler serileşir, son slota iki söz verilemez (overbooking yok).
+            await _lock_promise_counter(db)
             order.promised_delivery_date = await promised_date_for(db, order.paid_at)
         else:
             # Bölge dışı: dış kargoyla gider, kendi-filo kontenjanını tüketmez.
@@ -710,12 +784,36 @@ def _require_self_service_order(order: Order) -> None:
         )
 
 
+#: Paketi gözetimsiz bırakan tercihler. SMS takip linkini (public token) ele
+#: geçiren biri paketi kapıya/komşuya yönlendirememeli — bu tercihlere geçiş
+#: yalnız OTURUMLU sahibin hakkıdır; token yetkisi izleme+erteleme+beni-ara'dır.
+DROP_PREFS = frozenset(
+    {DeliveryPref.KAPIYA_BIRAK.value, DeliveryPref.KOMSUYA_BIRAK.value}
+)
+
+
+def is_drop_pref(pref: str) -> bool:
+    """Saf: tercih paketi gözetimsiz bırakıyor mu?"""
+    return pref in DROP_PREFS
+
+
 async def set_delivery_pref(
-    db: AsyncSession, order: Order, *, pref: str, note: str | None
+    db: AsyncSession,
+    order: Order,
+    *,
+    pref: str,
+    note: str | None,
+    from_public_token: bool = False,
 ) -> None:
     """Teslimat talimatını günceller — dağıtım sırasında da serbest (kurye ekranı
     15 sn poll ile talimatı canlı görür). KOMSUYA_BIRAK'ta not (komşu adı/daire)
-    zorunludur; diğer tercihlerde not temizlenir."""
+    zorunludur; diğer tercihlerde not temizlenir. Public token yolunda bırakma
+    tercihlerine YÜKSELTME yasaktır (hırsızlık vektörü)."""
+    if from_public_token and is_drop_pref(pref):
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            "Kapıya/komşuya bırakma yalnız hesabınla giriş yaparak seçilebilir",
+        )
     _require_self_service_order(order)
     if pref == DeliveryPref.KOMSUYA_BIRAK.value:
         if not note or len(note.strip()) < 3:
@@ -762,12 +860,17 @@ async def postpone_delivery(db: AsyncSession, order: Order) -> None:
             order.tracking_no = None
 
     # Hedef gün: sonraki çalışma günü — kontenjanı doluysa ondan da ileri.
+    # (Müşteri isteği: kapasite kontrolü ADİLDİR; kurye kaynaklı FAILED'ın
+    #  aksine öncelik almaz.) Sayım+atama atomik olsun diye advisory kilit.
+    await _lock_promise_counter(db)
+    _postpone_today = (_now() + datetime.timedelta(hours=settings.APP_UTC_OFFSET_HOURS)).date()
     order.promised_delivery_date = await _first_capacity_day(
         db,
         delivery_promise.next_delivery_day(
             _now(),
             non_working_weekdays=settings.DELIVERY_NON_WORKING_WEEKDAYS,
             utc_offset_hours=settings.APP_UTC_OFFSET_HOURS,
+            closed_dates=await _closed_dates_from(db, _postpone_today),
         ),
     )
     order.postpone_count += 1

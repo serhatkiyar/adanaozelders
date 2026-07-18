@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import datetime
+from decimal import Decimal
 
 from pydantic import BaseModel, ConfigDict
 
@@ -17,6 +18,30 @@ class AdminStats(BaseModel):
     total_reviews: int
 
 
+class AdminDashboardOut(BaseModel):
+    range: str
+    period_start: datetime.datetime
+    previous_period_start: datetime.datetime
+    new_clients: int
+    previous_new_clients: int
+    new_tutors: int
+    previous_new_tutors: int
+    new_orders: int
+    previous_new_orders: int
+    pending_tutors: int
+    pending_diplomas: int
+    active_bookings: int
+    open_demands: int
+    disputed_bookings: int
+    open_reports: int
+    paid_orders: int
+    pending_returns: int
+    low_stock_products: int
+    pending_libraries: int
+    active_delivery_runs: int
+    period_audit_logs: int
+
+
 class AdminUserOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -28,6 +53,33 @@ class AdminUserOut(BaseModel):
     email: str
     role: str
     is_active: bool
+    created_at: datetime.datetime
+
+
+class AdminUserDetailOut(AdminUserOut):
+    updated_at: datetime.datetime
+    last_seen_at: datetime.datetime | None = None
+    email_verified: bool
+    tutor_status: str | None = None
+    booking_count: int = 0
+    review_count: int = 0
+    demand_count: int = 0
+    order_count: int = 0
+
+
+class AdminDemandOut(BaseModel):
+    id: int
+    client_id: int
+    client_name: str
+    client_email: str
+    title: str
+    description: str | None = None
+    subject: str
+    level: str | None = None
+    budget_min: Decimal | None = None
+    budget_max: Decimal | None = None
+    status: str
+    response_count: int
     created_at: datetime.datetime
 
 

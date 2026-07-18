@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { ExamSessionsManager } from "@/components/ExamSessionsManager";
+import { ConfirmDialog, ReasonDialog } from "@/components/admin/ui";
 import { LibraryPayoutForm } from "@/components/LibraryPayoutForm";
 import {
   LibraryEditorModal,
@@ -35,6 +36,10 @@ const STATUS_BADGE: Record<string, string> = {
 };
 
 export default function AdminLibraries() {
+  const [decision, setDecision] = useState<{
+    kind: "approve" | "reject" | "delete";
+    library: LibrarySearchOut;
+  } | null>(null);
   const { data, isLoading, isError, error } = useAdminLibraries();
   const [editor, setEditor] = useState<EditorState | null>(null);
   const [managing, setManaging] = useState<LibrarySearchOut | null>(null);
@@ -46,20 +51,17 @@ export default function AdminLibraries() {
   const pending = data?.filter((l) => l.status === "PENDING") ?? [];
 
   const onApprove = (lib: LibrarySearchOut) => {
-    if (!window.confirm(`"${lib.name}" başvurusunu onayla? Kütüphane yayına girer.`)) return;
     approve.mutate(lib.id, {
-      onSuccess: () => toast.success("Başvuru onaylandı, kütüphane yayında."),
+      onSuccess: () => { toast.success("Başvuru onaylandı, kütüphane yayında."); setDecision(null); },
       onError: (e) => toast.error(getErrorMessage(e, "Onay başarısız.")),
     });
   };
 
-  const onReject = (lib: LibrarySearchOut) => {
-    const reason = window.prompt(`"${lib.name}" başvurusunu reddet. Gerekçe (operatöre iletilir):`, "");
-    if (reason === null) return; // iptal
+  const onReject = (lib: LibrarySearchOut, reason: string) => {
     reject.mutate(
-      { id: lib.id, reason: reason.trim() || null },
+      { id: lib.id, reason: reason || null },
       {
-        onSuccess: () => toast.success("Başvuru reddedildi."),
+        onSuccess: () => { toast.success("Başvuru reddedildi."); setDecision(null); },
         onError: (e) => toast.error(getErrorMessage(e, "Reddetme başarısız.")),
       }
     );
@@ -78,9 +80,8 @@ export default function AdminLibraries() {
   };
 
   const onDelete = (lib: LibrarySearchOut) => {
-    if (!window.confirm(`"${lib.name}" kütüphanesini silmek istiyor musun?`)) return;
     del.mutate(lib.id, {
-      onSuccess: () => toast.success("Kütüphane silindi."),
+      onSuccess: () => { toast.success("Kütüphane silindi."); setDecision(null); },
       onError: (e) => toast.error(getErrorMessage(e, "Silme başarısız.")),
     });
   };
@@ -127,14 +128,14 @@ export default function AdminLibraries() {
                   İncele
                 </button>
                 <button
-                  onClick={() => onReject(lib)}
+                  onClick={() => setDecision({ kind: "reject", library: lib })}
                   disabled={reject.isPending}
                   className="rounded-xl border border-rose-200 bg-white px-3.5 py-1.5 text-sm font-semibold text-rose-600 shadow-sm transition hover:bg-rose-50 disabled:opacity-60 dark:border-rose-500/30 dark:bg-slate-700"
                 >
                   Reddet
                 </button>
                 <button
-                  onClick={() => onApprove(lib)}
+                  onClick={() => setDecision({ kind: "approve", library: lib })}
                   disabled={approve.isPending}
                   className="rounded-xl bg-emerald-600 px-3.5 py-1.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:opacity-60 active:scale-95"
                 >
@@ -210,7 +211,7 @@ export default function AdminLibraries() {
                   Düzenle
                 </button>
                 <button
-                  onClick={() => onDelete(lib)}
+                  onClick={() => setDecision({ kind: "delete", library: lib })}
                   className="rounded-xl border border-slate-200 bg-white px-3.5 py-1.5 text-sm font-semibold text-red-600 shadow-sm transition hover:bg-red-50 dark:border-slate-600 dark:bg-slate-700"
                 >
                   Sil
@@ -235,6 +236,37 @@ export default function AdminLibraries() {
       {payouting && (
         <LibraryPayoutModal library={payouting} onClose={() => setPayouting(null)} />
       )}
+      <ConfirmDialog
+        open={decision?.kind === "approve"}
+        title="Kütüphane başvurusunu onayla"
+        description={decision ? `${decision.library.name} onaylanıp public kataloğa alınacak.` : ""}
+        confirmLabel="Onayla ve yayınla"
+        isPending={approve.isPending}
+        onClose={() => setDecision(null)}
+        onConfirm={() => decision && onApprove(decision.library)}
+      />
+      <ConfirmDialog
+        open={decision?.kind === "delete"}
+        title="Kütüphaneyi sil"
+        description={decision ? `${decision.library.name} katalogdan kaldırılacak.` : ""}
+        confirmLabel="Kütüphaneyi sil"
+        danger
+        isPending={del.isPending}
+        onClose={() => setDecision(null)}
+        onConfirm={() => decision && onDelete(decision.library)}
+      />
+      <ReasonDialog
+        open={decision?.kind === "reject"}
+        title="Kütüphane başvurusunu reddet"
+        description={decision ? `${decision.library.name} için gerekçe operatöre iletilecek.` : ""}
+        label="Red gerekçesi"
+        required
+        danger
+        confirmLabel="Başvuruyu reddet"
+        isPending={reject.isPending}
+        onClose={() => setDecision(null)}
+        onConfirm={(reason) => decision && onReject(decision.library, reason)}
+      />
     </section>
   );
 }
@@ -312,6 +344,7 @@ function OperatorsManager({ libraryId }: { libraryId: number }) {
     last_name: "",
   });
   const [open, setOpen] = useState(false);
+  const [deleting, setDeleting] = useState<{ id: number; name: string } | null>(null);
 
   const submit = () => {
     if (!form.email || form.password.length < 8 || !form.first_name || !form.last_name) {
@@ -328,10 +361,9 @@ function OperatorsManager({ libraryId }: { libraryId: number }) {
     });
   };
 
-  const onDelete = (id: number, name: string) => {
-    if (!window.confirm(`${name} operatör hesabını sil?`)) return;
+  const onDelete = (id: number) => {
     del.mutate(id, {
-      onSuccess: () => toast.success("Operatör silindi."),
+      onSuccess: () => { toast.success("Operatör silindi."); setDeleting(null); },
       onError: (e) => toast.error(getErrorMessage(e, "Silme başarısız.")),
     });
   };
@@ -368,7 +400,7 @@ function OperatorsManager({ libraryId }: { libraryId: number }) {
                 <p className="truncate text-sm font-medium text-slate-800 dark:text-slate-200">{op.full_name}</p>
                 <p className="truncate text-xs text-slate-400">{op.email}</p>
               </div>
-              <button onClick={() => onDelete(op.id, op.full_name)} className="rounded-lg px-2 py-1 text-xs font-semibold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/10">
+              <button onClick={() => setDeleting({ id: op.id, name: op.full_name })} className="rounded-lg px-2 py-1 text-xs font-semibold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/10">
                 Sil
               </button>
             </li>
@@ -377,6 +409,16 @@ function OperatorsManager({ libraryId }: { libraryId: number }) {
       ) : (
         <p className="text-xs text-slate-400">Henüz operatör yok. Kütüphaneci için hesap oluşturun.</p>
       )}
+      <ConfirmDialog
+        open={deleting !== null}
+        title="Operatör hesabını sil"
+        description={deleting ? `${deleting.name} operatör hesabı kalıcı olarak kapatılacak.` : ""}
+        confirmLabel="Hesabı sil"
+        danger
+        isPending={del.isPending}
+        onClose={() => setDeleting(null)}
+        onConfirm={() => deleting && onDelete(deleting.id)}
+      />
     </div>
   );
 }

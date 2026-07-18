@@ -38,6 +38,8 @@ _email_limit = rate_limit(
 )
 from models.admin import Admin
 from models.client import Client
+from models.courier_account import CourierAccount
+from models.library_operator import LibraryOperator
 from models.role import ROLE_IDS, RoleType, role_name
 from models.tutor import Tutor
 from models.verification_token import TokenPurpose
@@ -83,6 +85,10 @@ _MODEL_BY_ROLE_ID: dict[int, type] = {
     ROLE_IDS[RoleType.ADMIN]: Admin,
     ROLE_IDS[RoleType.TUTOR]: Tutor,
     ROLE_IDS[RoleType.CLIENT]: Client,
+    # Rol 4/5 buradan eksikti → operatör refresh'i sessizce kırıktı (drift bug).
+    # Kural: _ROLE_MODELS (deps) ve _LOGIN_PRECEDENCE ile daima aynı küme.
+    ROLE_IDS[RoleType.LIBRARY_OPERATOR]: LibraryOperator,
+    ROLE_IDS[RoleType.COURIER]: CourierAccount,
 }
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -153,7 +159,10 @@ async def login(
 
     user.last_seen_at = datetime.datetime.now(datetime.timezone.utc)
     token = create_access_token(
-        subject=user.id, role=role.value, role_id=user.role_id
+        subject=user.id,
+        role=role.value,
+        role_id=user.role_id,
+        auth_version=getattr(user, "auth_version", None),
     )
     refresh = await refresh_token_service.issue(
         db, role_id=user.role_id, user_id=user.id
@@ -178,7 +187,10 @@ async def refresh_token(payload: RefreshRequest, db: AsyncSession = Depends(get_
     if user is None or user.deleted_at is not None or not user.is_active:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Hesap bulunamadı veya pasif")
     access = create_access_token(
-        subject=user.id, role=role_name(role_id), role_id=role_id
+        subject=user.id,
+        role=role_name(role_id),
+        role_id=role_id,
+        auth_version=getattr(user, "auth_version", None),
     )
     return Token(access_token=access, refresh_token=new_refresh)
 
@@ -271,8 +283,17 @@ async def password_reset_confirm(
 
 
 @router.get("/me", response_model=UserOut)
-async def read_me(user: CurrentUser = Depends(get_current_active_user)):
+async def read_me(
+    user: CurrentUser = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
     name_change_service.annotate_change_locks(user, user.role_id)
+    if isinstance(user, Admin):
+        from services import admin_access_service
+
+        role_code, permissions = await admin_access_service.get_admin_access(db, user.id)
+        user.admin_role_code = role_code
+        user.admin_permissions = sorted(permissions)
     return user
 
 

@@ -2,7 +2,14 @@ import { describe, expect, it } from "vitest";
 
 import type { DeliveryInfo } from "@/types";
 
-import { formatCountdown, promiseDayLabel, promiseText, promisedDateLabel } from "./deliveryPromise";
+import {
+  CUTOFF_CLOSING_SECONDS,
+  formatCountdown,
+  isCutoffClosing,
+  promiseDayLabel,
+  promiseText,
+  promisedDateLabel,
+} from "./deliveryPromise";
 
 const TODAY = new Date(2026, 6, 8, 14, 0); // 8 Tem 2026 Çarşamba 14:00
 
@@ -57,6 +64,20 @@ describe("promiseText", () => {
         TODAY,
       ),
     ).toBe("Şimdi sipariş ver, yarın kapında");
+  });
+});
+
+describe("isCutoffClosing (E1 — son 15 dk uyarısı)", () => {
+  it("geri sayım yoksa (cutoff geçti) kapanma uyarısı verilmez", () => {
+    expect(isCutoffClosing(null)).toBe(false);
+    expect(isCutoffClosing(undefined)).toBe(false);
+  });
+  it("tam eşikte ve altında uyarır", () => {
+    expect(isCutoffClosing(CUTOFF_CLOSING_SECONDS)).toBe(true);
+    expect(isCutoffClosing(60)).toBe(true);
+  });
+  it("eşiğin üstünde uyarmaz", () => {
+    expect(isCutoffClosing(CUTOFF_CLOSING_SECONDS + 1)).toBe(false);
   });
 });
 

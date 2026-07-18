@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from core.security import hash_password, verify_password
 from models.admin import Admin
 from models.client import Client
+from models.courier_account import CourierAccount
 from models.library_operator import LibraryOperator
 from models.role import ROLE_IDS, RoleType
 from models.tutor import Gender, Tutor
@@ -19,6 +20,7 @@ _LOGIN_PRECEDENCE: tuple[tuple[RoleType, type], ...] = (
     (RoleType.TUTOR, Tutor),
     (RoleType.CLIENT, Client),
     (RoleType.LIBRARY_OPERATOR, LibraryOperator),
+    (RoleType.COURIER, CourierAccount),
 )
 
 

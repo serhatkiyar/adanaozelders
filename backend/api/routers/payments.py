@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api.deps import (
     CurrentUser,
     get_current_active_user,
+    require_admin_permission,
     require_roles,
     user_rate_limit,
 )
@@ -57,13 +58,17 @@ async def _booking_or_404(db: AsyncSession, booking_id: int) -> Booking:
     return booking
 
 
-def _assert_party(booking: Booking, user: CurrentUser) -> None:
+async def _assert_party(db: AsyncSession, booking: Booking, user: CurrentUser) -> None:
     if user.role_id == ROLE_IDS[RoleType.CLIENT] and booking.client_id == user.id:
         return
     if user.role_id == ROLE_IDS[RoleType.TUTOR] and booking.tutor_id == user.id:
         return
     if user.role_id == ROLE_IDS[RoleType.ADMIN]:
-        return
+        from services import admin_access_service
+
+        _role_code, permissions = await admin_access_service.get_admin_access(db, user.id)
+        if "bookings.view" in permissions:
+            return
     raise HTTPException(status.HTTP_403_FORBIDDEN, "Not your booking")
 
 
@@ -74,7 +79,7 @@ async def get_booking_payment(
     db: AsyncSession = Depends(get_db),
 ):
     booking = await _booking_or_404(db, booking_id)
-    _assert_party(booking, user)
+    await _assert_party(db, booking, user)
     return await payment_service.get_for_booking(db, booking_id)
 
 
@@ -179,7 +184,7 @@ async def my_earnings_transactions(
 
 @router.get("/admin/summary", response_model=PlatformSummary)
 async def admin_platform_summary(
-    _admin: CurrentUser = Depends(require_roles(RoleType.ADMIN)),
+    _admin: CurrentUser = Depends(require_admin_permission("dashboard.view")),
     db: AsyncSession = Depends(get_db),
 ):
     data = await payment_service.platform_summary(db)

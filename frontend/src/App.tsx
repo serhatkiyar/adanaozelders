@@ -46,6 +46,8 @@ const SellerProducts = lazy(() => import("@/pages/store/SellerProducts"));
 // Yasal sayfalar — tek chunk, belge prop'la seçilir (içerik lib/legalContent.ts)
 const LegalPage = lazy(() => import("@/pages/LegalPage"));
 const OperatorHome = lazy(() => import("@/pages/dashboards/OperatorHome"));
+// Kurye açılış ekranı (rol 5) — menüsüz; aktif tura yönlendirir.
+const CourierHome = lazy(() => import("@/pages/dashboards/CourierHome"));
 const OperatorLibrary = lazy(() => import("@/pages/dashboards/OperatorLibrary"));
 const OperatorSessions = lazy(() => import("@/pages/dashboards/OperatorSessions"));
 const Login = lazy(() => import("@/pages/Login"));
@@ -53,7 +55,20 @@ const Register = lazy(() => import("@/pages/Register"));
 const ForgotPassword = lazy(() => import("@/pages/ForgotPassword"));
 const ResetPassword = lazy(() => import("@/pages/ResetPassword"));
 const VerifyEmail = lazy(() => import("@/pages/VerifyEmail"));
-const AdminHome = lazy(() => import("@/pages/dashboards/AdminHome"));
+const AdminLayout = lazy(() => import("@/components/admin/layout/AdminLayout"));
+const AdminDashboardPage = lazy(() => import("@/pages/admin/AdminDashboardPage"));
+const AdminSectionPage = lazy(() => import("@/pages/admin/AdminSectionPage"));
+const AdminUsersPage = lazy(() => import("@/pages/admin/AdminUsersPage"));
+const AdminUserDetailPage = lazy(() => import("@/pages/admin/AdminUserDetailPage"));
+const AdminAuditLogsPage = lazy(() => import("@/pages/admin/AdminAuditLogsPage"));
+const AdminReportsPage = lazy(() => import("@/pages/admin/AdminReportsPage"));
+const AdminDemandsPage = lazy(() => import("@/pages/admin/AdminDemandsPage"));
+const AdminBookingsPage = lazy(() => import("@/pages/admin/AdminBookingsPage"));
+const AdminAccessPage = lazy(() => import("@/pages/admin/AdminAccessPage"));
+const AdminLibraries = lazy(() => import("@/pages/dashboards/AdminLibraries"));
+const AdminExamCatalogs = lazy(() => import("@/pages/dashboards/AdminExamCatalogs"));
+const AdminStore = lazy(() => import("@/pages/dashboards/AdminStore"));
+const AdminDelivery = lazy(() => import("@/pages/dashboards/AdminDelivery"));
 const DeliveryDriver = lazy(() => import("@/pages/DeliveryDriver"));
 const TutorDashboard = lazy(() => import("@/pages/TutorDashboard"));
 const TutorSettings = lazy(() => import("@/pages/TutorSettings"));
@@ -84,6 +99,8 @@ const Notifications = lazy(() => import("@/pages/Notifications"));
 const TicketTearTest = lazy(() => import("@/pages/TicketTearTest"));
 // Geliştirme prototipi: canlı ders (Jitsi) önizleme (/test-canli-ders)
 const TestLiveLesson = lazy(() => import("@/pages/TestLiveLesson"));
+// Geliştirme prototipi: kütüphane kartı tasarım karşılaştırması (/test-kutuphane-karti)
+const LibraryCardTest = lazy(() => import("@/pages/LibraryCardTest"));
 // Bilinmeyen URL'ler — shell-uyarlamalı 404 (sessiz redirect yerine)
 const NotFound = lazy(() => import("@/pages/NotFound"));
 
@@ -163,8 +180,9 @@ function RootDispatcher() {
   const { data: user, isLoading } = useCurrentUser();
   if (!token) return <Landing />;
   if (isLoading || !user) return <FullScreenSpinner />;
-  if (user.role_id === ROLE_IDS.ADMIN) return <AdminHome />;
+  if (user.role_id === ROLE_IDS.ADMIN) return <Navigate to={ROUTES.admin} replace />;
   if (user.role_id === ROLE_IDS.LIBRARY_OPERATOR) return <OperatorHome />;
+  if (user.role_id === ROLE_IDS.COURIER) return <CourierHome />;
   return <Landing />;
 }
 
@@ -206,7 +224,7 @@ const LEGACY_STATIC: [string, string][] = [
   ["/reset-password", ROUTES.resetPassword],
   ["/verify-email", ROUTES.verifyEmail],
   ["/kesfet", ROUTES.tutors],
-  ["/admin", ROUTES.home],
+  ["/admin", ROUTES.admin],
   ["/tutor", ROUTES.home],
   ["/student", ROUTES.tutors],
   ["/student/favorites", ROUTES.favorites],
@@ -281,6 +299,7 @@ function App() {
           {/* ── Geliştirme prototipi (oturum gerektirmez) ── */}
           <Route path="/test-bilet" element={<TicketTearTest />} />
           <Route path="/test-canli-ders" element={<TestLiveLesson />} />
+          <Route path="/test-kutuphane-karti" element={<LibraryCardTest />} />
 
           {/* ── Kimlik: giriş yapmış kullanıcı kök workspace'ine yönlendirilir ── */}
           <Route element={<PublicRoute />}>
@@ -337,8 +356,38 @@ function App() {
             <Route path={PATHS.sellerProducts} element={<SellerProducts />} />
           </Route>
 
-          {/* ── Yalnızca ADMIN ── */}
+          {/* ── Yalnızca ADMIN: kanonik, deep-link destekli yönetim alanı ── */}
           <Route element={<ProtectedRoute allowedRoleId={ROLE_IDS.ADMIN} />}>
+            <Route path={PATHS.admin} element={<AdminLayout />}>
+              <Route index element={<AdminDashboardPage />} />
+              <Route path="kullanicilar" element={<AdminUsersPage />} />
+              <Route path="kullanicilar/:role/:id" element={<AdminUserDetailPage />} />
+              <Route path="egitmenler" element={<AdminSectionPage section="listings" />} />
+              <Route path="diplomalar" element={<AdminSectionPage section="diplomas" />} />
+              <Route path="kutuphaneler" element={<AdminLibraries />} />
+              <Route path="deneme-kataloglari" element={<AdminExamCatalogs />} />
+              <Route path="magaza/urunler" element={<AdminStore />} />
+              <Route path="magaza/kategoriler" element={<AdminStore />} />
+              <Route path="magaza/siparisler" element={<AdminStore />} />
+              <Route path="magaza/iadeler" element={<AdminStore />} />
+              <Route path="magaza/kuponlar" element={<AdminStore />} />
+              <Route path="dagitim" element={<AdminDelivery />} />
+              <Route path="rezervasyonlar" element={<AdminBookingsPage />} />
+              <Route path="talepler" element={<AdminDemandsPage />} />
+              <Route path="ad-degisiklikleri" element={<AdminSectionPage section="names" />} />
+              <Route path="moderasyon/sikayetler" element={<AdminReportsPage />} />
+              <Route path="denetim-kayitlari" element={<AdminAuditLogsPage />} />
+              <Route path="yetkiler" element={<AdminAccessPage />} />
+            </Route>
+          </Route>
+
+          {/* ── Saha ekranı: ADMIN + KURYE (kurye yalnız kendi turunu açabilir —
+                backend sahiplik kontrolü yabancı tura 404 döner) ── */}
+          <Route
+            element={
+              <ProtectedRoute allowedRoleIds={[ROLE_IDS.ADMIN, ROLE_IDS.COURIER]} />
+            }
+          >
             {/* Dağıtıcı saha ekranı (kendi-filo teslimat) — mobil, shell'siz */}
             <Route path={PATHS.deliveryRun} element={<DeliveryDriver />} />
           </Route>

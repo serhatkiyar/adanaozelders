@@ -2,8 +2,9 @@
 from __future__ import annotations
 
 import datetime
+import re
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class DeliveryRunCreate(BaseModel):
@@ -84,6 +85,13 @@ class DeliveryStopOut(BaseModel):
     # Teslim kanıtı fotoğrafı (kapıya/komşuya bırakma; opsiyonel ek kanıt).
     photo_url: str | None = None
     courier_note: str | None = None
+    # ── Dispatch board istisna sinyalleri (Faz 2) ──
+    # Söz verilen teslim günü (geçmişse "söz riski" → operatör dikkat etmeli).
+    promised_delivery_date: datetime.date | None = None
+    # Bu sipariş kaç kez teslim edilemedi (>0 → öncelikli yeniden deneme).
+    failed_attempts: int = 0
+    # FAILED durakta yapısal neden kodu (FailReason).
+    fail_reason: str | None = None
 
 
 class DeliveryRunOut(BaseModel):
@@ -128,6 +136,8 @@ class EligibleOrderOut(BaseModel):
     promised_delivery_date: datetime.date | None = None
     # True=Cıncık bölgesi, False=bölge dışı, None=belirlenemedi.
     in_zone: bool | None = None
+    # Hazırlama istasyonu damgası (PDS O1) — None ise henüz toplanmadı/etiketlenmedi.
+    prepared_at: datetime.datetime | None = None
 
 
 class StopsAddIn(BaseModel):
@@ -154,6 +164,11 @@ class OtpVerifyIn(BaseModel):
 
 class StopFailIn(BaseModel):
     reason: str = Field(min_length=3, max_length=500)
+    # Yapısal neden kodu (FailReason). Verilmezse DIGER — geriye uyumlu.
+    reason_code: str = Field(
+        default="DIGER",
+        pattern="^(EVDE_YOK|ADRES_SORUNU|ERISIM_SORUNU|ERKEN_DENEME|MUSTERI_TALEBI|GUVENLIK|PAKET_SORUNU|ARAC_SORUNU|DIGER)$",
+    )
 
 
 class OverrideDeliverIn(BaseModel):
@@ -215,6 +230,9 @@ class OrderTrackingOut(BaseModel):
     delivered_at: datetime.datetime | None = None
     proof: str | None = None
     proof_photo_url: str | None = None
+    # Teslim sonrası değerlendirme (Faz 7): verilebilir mi + verilmiş mi.
+    can_feedback: bool = False
+    feedback_given: bool = False
 
 
 class DeliveryPrefIn(BaseModel):
@@ -230,6 +248,127 @@ class ShipAddressChangeIn(BaseModel):
 
     address_id: int
     force: bool = False
+
+
+class CourierAccountCreate(BaseModel):
+    """Admin, kurye profiline giriş hesabı açar (self-servis yok)."""
+
+    email: str = Field(min_length=5, max_length=255)
+    password: str = Field(min_length=8, max_length=128)
+    first_name: str = Field(min_length=1, max_length=75)
+    last_name: str = Field(min_length=1, max_length=75)
+
+
+class CourierAccountOut(BaseModel):
+    """Şifre/hash ASLA dönmez."""
+
+    id: int
+    email: str
+    username: str
+    first_name: str
+    last_name: str
+    is_active: bool
+    courier_id: int
+    created_at: datetime.datetime
+
+
+class CourierPasswordResetIn(BaseModel):
+    new_password: str = Field(min_length=8, max_length=128)
+
+
+class CourierWorkspaceOut(BaseModel):
+    """Kurye açılış ekranı: hesabım + profilim + güncel turum (yoksa null)."""
+
+    account: CourierAccountOut
+    courier: CourierOut | None = None
+    run: DeliveryRunOut | None = None
+
+
+class ClosedDayOut(BaseModel):
+    """Teslimata kapalı gün (admin takvimi)."""
+
+    id: int
+    day: datetime.date
+    label: str | None = None
+    source: str  # 'holiday' | 'manual'
+
+
+class ClosedDayIn(BaseModel):
+    day: datetime.date
+    label: str | None = Field(default=None, max_length=120)
+
+
+class CapacityDayOut(BaseModel):
+    """Admin kapasite görünümü satırı — bir günün söz doluluğu (Faz 1).
+
+    ``retry_debt``: o güne sözlü siparişlerden en az bir başarısız teslim
+    denemesi olanlar — söz borcu; yeni satıştan önce gelir (PDS B7)."""
+
+    day: datetime.date
+    is_working_day: bool
+    capacity: int  # 0 = kapasite kontrolü kapalı
+    booked: int
+    retry_debt: int
+
+
+class DeliveryKpiOut(BaseModel):
+    """Teslimat KPI özeti (PDS §14) — ham sayı + oran; HEDEF YOK (baseline).
+    Oranlar payda 0 iken None (henüz veri yok)."""
+
+    window_days: int
+    delivered: int
+    failed: int
+    rescheduled: int
+    delivered_count: int
+    first_attempt_delivered: int
+    first_attempt_rate: float | None = None
+    on_time_delivered: int
+    promised_delivered: int
+    on_time_rate: float | None = None
+    failure_rate: float | None = None
+    failed_not_courier_fault: int
+    fail_by_reason: dict[str, int] = {}
+    # Teslim sonrası değerlendirme (Faz 7): 👍/👎 sayıları + sorun Pareto'su.
+    feedback_up: int = 0
+    feedback_down: int = 0
+    satisfaction_rate: float | None = None
+    feedback_problems: dict[str, int] = {}
+
+
+_FEEDBACK_PROBLEM_PATTERN = (
+    "^(GEC_TESLIMAT|HASARLI_PAKET|YANLIS_EKSIK_URUN|KURYE_DAVRANISI|"
+    "TESLIM_YERI|BILDIRIM_SORUNU|DIGER)$"
+)
+
+
+class DeliveryFeedbackIn(BaseModel):
+    """Teslim sonrası müşteri değerlendirmesi. 👎'de en az bir sorun kodu
+    beklenir (yapısal Pareto; serbest metin opsiyonel ektir)."""
+
+    thumbs_up: bool
+    problem_codes: list[str] = Field(default_factory=list, max_length=7)
+    comment: str | None = Field(default=None, max_length=500)
+
+    @field_validator("problem_codes")
+    @classmethod
+    def _valid_codes(cls, v: list[str]) -> list[str]:
+        seen: list[str] = []
+        for code in v:
+            if not re.match(_FEEDBACK_PROBLEM_PATTERN, code):
+                raise ValueError(f"Geçersiz sorun kodu: {code}")
+            if code not in seen:
+                seen.append(code)
+        return seen
+
+
+class DeliveryFeedbackOut(BaseModel):
+    id: int
+    order_id: int
+    thumbs_up: bool
+    problem_codes: list[str]
+    comment: str | None = None
+    source: str
+    created_at: datetime.datetime
 
 
 class DeliveryInfoOut(BaseModel):

@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { ConfirmDialog } from "@/components/admin/ui";
 import {
   useCatalogs,
   useCreateCatalog,
@@ -95,14 +96,14 @@ function toForm(c: CatalogOut): FormState {
 }
 
 function CatalogCard({ catalog, onEdit }: { catalog: CatalogOut; onEdit: () => void }) {
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const del = useDeleteCatalog();
   const uploadKey = useUploadCatalogAnswerKey();
   const keyInput = useRef<HTMLInputElement>(null);
 
   const onDelete = () => {
-    if (!window.confirm(`"${catalog.exam_name}" katalogunu sil?`)) return;
     del.mutate(catalog.id, {
-      onSuccess: () => toast.success("Katalog silindi."),
+      onSuccess: () => { toast.success("Katalog silindi."); setDeleteOpen(false); },
       onError: (e) => toast.error(getErrorMessage(e, "Silinemedi.")),
     });
   };
@@ -118,6 +119,7 @@ function CatalogCard({ catalog, onEdit }: { catalog: CatalogOut; onEdit: () => v
   };
 
   return (
+    <>
     <div className="flex flex-col rounded-2xl border border-slate-100 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800">
       <div className="flex flex-wrap items-center gap-2">
         <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-bold text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300">
@@ -185,7 +187,7 @@ function CatalogCard({ catalog, onEdit }: { catalog: CatalogOut; onEdit: () => v
             Düzenle
           </button>
           <button
-            onClick={onDelete}
+          onClick={() => setDeleteOpen(true)}
             className="rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-semibold text-rose-600 hover:bg-rose-50 dark:border-slate-600"
           >
             Sil
@@ -193,6 +195,17 @@ function CatalogCard({ catalog, onEdit }: { catalog: CatalogOut; onEdit: () => v
         </div>
       </div>
     </div>
+    <ConfirmDialog
+      open={deleteOpen}
+      title="Deneme kataloğunu sil"
+      description={`“${catalog.exam_name}” kataloğu silinecek.`}
+      confirmLabel="Kataloğu sil"
+      danger
+      isPending={del.isPending}
+      onClose={() => setDeleteOpen(false)}
+      onConfirm={onDelete}
+    />
+    </>
   );
 }
 

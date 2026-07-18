@@ -9,6 +9,7 @@ export enum RoleType {
   TUTOR = "TUTOR",
   CLIENT = "CLIENT",
   LIBRARY_OPERATOR = "LIBRARY_OPERATOR",
+  COURIER = "COURIER",
 }
 
 export const ROLE_IDS = {
@@ -16,6 +17,7 @@ export const ROLE_IDS = {
   TUTOR: 2,
   CLIENT: 3,
   LIBRARY_OPERATOR: 4,
+  COURIER: 5,
 } as const;
 
 export enum TutorStatus {
@@ -100,6 +102,8 @@ export interface UserOut {
   // update_me yanıtında ilgili alanın admin onayına gönderildiğini bildirir.
   pending_name_change?: boolean;
   pending_username_change?: boolean;
+  admin_role_code?: string | null;
+  admin_permissions?: string[];
 }
 
 export interface UserUpdate {
@@ -946,6 +950,12 @@ export interface DemandOut {
   response_count?: number; // öğrenci kendi talebinde: gelen yanıt sayısı
 }
 
+export interface AdminDemandOut extends Omit<DemandOut, "client_name" | "response_count"> {
+  client_name: string;
+  client_email: string;
+  response_count: number;
+}
+
 export interface DemandResponseOut {
   tutor_id: number;
   tutor_name: string;
@@ -1007,6 +1017,43 @@ export interface PracticeExamOut {
 
 /* ============================ ADMIN ============================ */
 
+export interface AdminPermissionOut {
+  id: number;
+  code: string;
+  name: string;
+  group: string;
+  description?: string | null;
+}
+
+export interface AdminRoleOut {
+  id: number;
+  code: string;
+  name: string;
+  description?: string | null;
+  is_system: boolean;
+  permission_codes: string[];
+  assignment_count: number;
+}
+
+export interface AdminRoleInput {
+  name: string;
+  description?: string | null;
+  permission_codes: string[];
+}
+
+export interface AdminRoleCreate extends AdminRoleInput {
+  code: string;
+}
+
+export interface AdminRoleAssignmentOut {
+  admin_id: number;
+  admin_name: string;
+  admin_email: string;
+  role_id?: number | null;
+  role_code?: string | null;
+  role_name?: string | null;
+}
+
 export interface AdminStats {
   total_clients: number;
   total_tutors: number;
@@ -1036,6 +1083,9 @@ export interface LeaderboardOut {
 
 /* ============================ ADMIN ============================ */
 
+export type AdminUserRole = "ADMIN" | "TUTOR" | "CLIENT";
+export type AdminUserRolePath = "admin" | "tutor" | "client";
+
 export interface AdminUserOut {
   id: number;
   first_name: string;
@@ -1043,7 +1093,7 @@ export interface AdminUserOut {
   username: string;
   full_name: string;
   email: string;
-  role: string;
+  role: AdminUserRole;
   is_active: boolean;
   created_at: string;
 }
@@ -1730,6 +1780,10 @@ export interface DeliveryStop {
   /** Teslim kanıtı fotoğrafı (kapıya/komşuya bırakma; opsiyonel ek kanıt). */
   photo_url?: string | null;
   courier_note?: string | null;
+  /** Söz verilen teslim günü (geçmişse "söz riski"). */
+  promised_delivery_date?: string | null;
+  /** Bu sipariş kaç kez teslim edilemedi (>0 → öncelikli yeniden deneme). */
+  failed_attempts?: number;
 }
 
 export interface DeliveryRun {
@@ -1782,6 +1836,103 @@ export interface DeliveryInfo {
   districts: string[];
 }
 
+/** Admin kapasite şeridi satırı (GET /delivery/capacity) — bir günün söz doluluğu.
+ *  retry_debt: o güne sözlü siparişlerden başarısız denemesi olanlar (söz borcu). */
+export interface CapacityDay {
+  day: string; // ISO tarih
+  is_working_day: boolean;
+  /** 0 = kapasite kontrolü kapalı. */
+  capacity: number;
+  booked: number;
+  retry_debt: number;
+}
+
+/** Teslimat KPI özeti (GET /delivery/kpi) — ham sayı + oran; hedef YOK (baseline).
+ *  Oranlar payda 0 iken null (henüz veri yok). */
+export interface DeliveryKpi {
+  window_days: number;
+  delivered: number;
+  failed: number;
+  rescheduled: number;
+  delivered_count: number;
+  first_attempt_delivered: number;
+  first_attempt_rate: number | null;
+  on_time_delivered: number;
+  promised_delivered: number;
+  on_time_rate: number | null;
+  failure_rate: number | null;
+  failed_not_courier_fault: number;
+  fail_by_reason: Record<string, number>;
+  feedback_up: number;
+  feedback_down: number;
+  satisfaction_rate: number | null;
+  feedback_problems: Record<string, number>;
+}
+
+export interface AdminDashboardOut {
+  range: "day" | "week" | "month";
+  period_start: string;
+  previous_period_start: string;
+  new_clients: number;
+  previous_new_clients: number;
+  new_tutors: number;
+  previous_new_tutors: number;
+  new_orders: number;
+  previous_new_orders: number;
+  pending_tutors: number;
+  pending_diplomas: number;
+  active_bookings: number;
+  open_demands: number;
+  disputed_bookings: number;
+  open_reports: number;
+  paid_orders: number;
+  pending_returns: number;
+  low_stock_products: number;
+  pending_libraries: number;
+  active_delivery_runs: number;
+  period_audit_logs: number;
+}
+
+export interface DeliveryFeedback {
+  id: number;
+  order_id: number;
+  thumbs_up: boolean;
+  problem_codes: string[];
+  comment: string | null;
+  source: "CLIENT" | "PUBLIC";
+  created_at: string;
+}
+
+export interface AdminUserDetailOut extends AdminUserOut {
+  updated_at: string;
+  last_seen_at?: string | null;
+  email_verified: boolean;
+  tutor_status?: string | null;
+  booking_count: number;
+  review_count: number;
+  demand_count: number;
+  order_count: number;
+}
+
+export interface AuditLogOut {
+  id: number;
+  actor_id: number;
+  actor_role: number;
+  action: string;
+  target_type: string;
+  target_id?: number | null;
+  details?: string | null;
+  created_at: string;
+}
+
+/** Teslimata kapalı gün (admin takvimi). source: 'holiday' | 'manual'. */
+export interface ClosedDay {
+  id: number;
+  day: string; // ISO tarih
+  label: string | null;
+  source: string;
+}
+
 export interface DeliveryScanResult {
   stop: DeliveryStop;
   run_status: DeliveryRunStatus;
@@ -1821,6 +1972,8 @@ export interface TimelineEvent {
 
 export interface OrderTracking {
   status: OrderTrackingStatus;
+  can_feedback: boolean;
+  feedback_given: boolean;
   sequence?: number | null;
   stops_ahead?: number | null;
   /** Turdaki toplam durak ("önünde 3 / toplam 12" bağlamı). */

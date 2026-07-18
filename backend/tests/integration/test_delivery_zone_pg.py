@@ -49,6 +49,8 @@ class ZoneFactory:
                 has_physical=True, ship_recipient="Bölge Testi",
                 ship_address=f"Test adres {u}", ship_in_zone=in_zone,
                 promised_delivery_date=promised,
+                # Faz 2: yalnız hazırlanmış sipariş eligible olur.
+                prepared_at=datetime.datetime.now(datetime.timezone.utc),
             )
             s.add(order)
             await s.flush()

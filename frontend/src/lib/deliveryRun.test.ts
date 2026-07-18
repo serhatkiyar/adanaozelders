@@ -1,7 +1,15 @@
 import { describe, expect, it } from "vitest";
 
 import type { DeliveryRun, DeliveryStop } from "@/types";
-import { googleNavUrl, nextPendingStop, runProgress } from "./deliveryRun";
+import {
+  FAIL_REASON_LABEL,
+  FAIL_REASONS,
+  googleNavUrl,
+  hasRunExceptions,
+  nextPendingStop,
+  runExceptions,
+  runProgress,
+} from "./deliveryRun";
 
 function stop(partial: Partial<DeliveryStop>): DeliveryStop {
   return {
@@ -68,5 +76,68 @@ describe("runProgress", () => {
       stop({ id: 3, status: "PENDING" }),
     ]);
     expect(runProgress(r)).toEqual([2, 3]);
+  });
+});
+
+describe("runExceptions (PDS O2 istisna şeridi)", () => {
+  const TODAY = new Date(2026, 6, 10, 9, 0); // 10 Tem 2026, yerel
+
+  it("yalnız PENDING durakları sayar; sonuçlananları yok sayar", () => {
+    const r = run([
+      stop({ id: 1, status: "DELIVERED", lat: null, lng: null }), // sonuçlandı → sayılmaz
+      stop({ id: 2, status: "PENDING", lat: null, lng: null }), // pinsiz
+    ]);
+    const x = runExceptions(r, TODAY);
+    expect(x.pinless).toBe(1);
+    expect(hasRunExceptions(x)).toBe(true);
+  });
+
+  it("söz riski: geçmiş söz günü bekleyen durak", () => {
+    const r = run([
+      stop({ id: 1, lat: 37, lng: 35, promised_delivery_date: "2026-07-09" }), // dün
+      stop({ id: 2, lat: 37, lng: 35, promised_delivery_date: "2026-07-10" }), // bugün
+      stop({ id: 3, lat: 37, lng: 35, promised_delivery_date: "2026-07-11" }), // yarın
+    ]);
+    expect(runExceptions(r, TODAY).promiseRisk).toBe(1);
+  });
+
+  it("retry ve outlier sayımı", () => {
+    const r = run([
+      stop({ id: 1, lat: 37, lng: 35, failed_attempts: 2 }),
+      stop({ id: 2, lat: 37, lng: 35, is_outlier: true }),
+      stop({ id: 3, lat: 37, lng: 35 }),
+    ]);
+    const x = runExceptions(r, TODAY);
+    expect(x.retry).toBe(1);
+    expect(x.outlier).toBe(1);
+  });
+
+  it("sorun yoksa hasRunExceptions false", () => {
+    const r = run([stop({ id: 1, lat: 37, lng: 35, promised_delivery_date: "2026-07-11" })]);
+    expect(hasRunExceptions(runExceptions(r, TODAY))).toBe(false);
+  });
+});
+
+describe("FAIL_REASONS (neden kodları)", () => {
+  it("backend FailReason kümesiyle birebir eşleşir", () => {
+    const codes = new Set(FAIL_REASONS.map((r) => r.code));
+    expect(codes).toEqual(
+      new Set([
+        "EVDE_YOK",
+        "ADRES_SORUNU",
+        "ERISIM_SORUNU",
+        "ERKEN_DENEME",
+        "MUSTERI_TALEBI",
+        "GUVENLIK",
+        "PAKET_SORUNU",
+        "ARAC_SORUNU",
+        "DIGER",
+      ]),
+    );
+  });
+  it("her kodun etiket eşlemesi var", () => {
+    for (const r of FAIL_REASONS) {
+      expect(FAIL_REASON_LABEL[r.code]).toBe(r.label);
+    }
   });
 });

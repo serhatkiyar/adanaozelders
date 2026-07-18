@@ -26,15 +26,32 @@ def _to_local(dt_utc: datetime.datetime, utc_offset_hours: int) -> datetime.date
     return dt_utc.astimezone(tz)
 
 
+#: Kapalı günler için makul üst sınır — üst üste bu kadar gün kapalıysa
+#: (uzun bayram + hafta kapalılığı) yine de bir gün döner (sonsuz döngü yok).
+_MAX_CLOSED_LOOKAHEAD = 30
+
+
+def is_closed(
+    day: datetime.date,
+    non_working_weekdays: list[int],
+    closed_dates: frozenset[datetime.date] = frozenset(),
+) -> bool:
+    """Gün teslimata kapalı mı? Haftalık kural (weekday) VEYA admin'in kapalı
+    işaretlediği tarih (resmî tatil / özel gün)."""
+    return day.weekday() in non_working_weekdays or day in closed_dates
+
+
 def next_working_day(
-    day: datetime.date, non_working_weekdays: list[int]
+    day: datetime.date,
+    non_working_weekdays: list[int],
+    closed_dates: frozenset[datetime.date] = frozenset(),
 ) -> datetime.date:
-    """Günü, çalışılmayan günleri (weekday(); 6=Pazar) atlayarak ileri sarar.
-    Tüm hafta kapalıysa sonsuz döngüye girmemek için 7 denemede vazgeçer."""
+    """Günü, kapalı günleri (haftalık kural + admin takvimi) atlayarak ileri sarar.
+    Hepsi kapalıysa sonsuz döngüye girmemek için sınırlı denemede vazgeçer."""
     if len(set(non_working_weekdays)) >= 7:
         return day
-    for _ in range(7):
-        if day.weekday() not in non_working_weekdays:
+    for _ in range(_MAX_CLOSED_LOOKAHEAD):
+        if not is_closed(day, non_working_weekdays, closed_dates):
             return day
         day += datetime.timedelta(days=1)
     return day
@@ -46,13 +63,14 @@ def compute_promised_date(
     cutoff_hour: int,
     non_working_weekdays: list[int],
     utc_offset_hours: int,
+    closed_dates: frozenset[datetime.date] = frozenset(),
 ) -> datetime.date:
     """Ödeme anına göre söz verilen teslim günü (yerel takvim günü)."""
     local = _to_local(paid_at_utc, utc_offset_hours)
     day = local.date()
     if local.hour >= cutoff_hour:
         day += datetime.timedelta(days=1)
-    return next_working_day(day, non_working_weekdays)
+    return next_working_day(day, non_working_weekdays, closed_dates)
 
 
 def next_delivery_day(
@@ -60,11 +78,14 @@ def next_delivery_day(
     *,
     non_working_weekdays: list[int],
     utc_offset_hours: int,
+    closed_dates: frozenset[datetime.date] = frozenset(),
 ) -> datetime.date:
     """Erteleme hedefi: yerel bugünden SONRAKİ ilk çalışma günü ("yarına ertele";
     cutoff'a bakılmaz — müşteri isteğiyle gün atlanır)."""
     local_day = _to_local(now_utc, utc_offset_hours).date()
-    return next_working_day(local_day + datetime.timedelta(days=1), non_working_weekdays)
+    return next_working_day(
+        local_day + datetime.timedelta(days=1), non_working_weekdays, closed_dates
+    )
 
 
 def first_day_with_capacity(
@@ -73,6 +94,7 @@ def first_day_with_capacity(
     *,
     capacity: int,
     non_working_weekdays: list[int],
+    closed_dates: frozenset[datetime.date] = frozenset(),
     max_days: int = 14,
 ) -> datetime.date:
     """Kapasiteye duyarlı söz: ``day``'den ileri, kontenjanı dolmamış İLK çalışma
@@ -81,13 +103,15 @@ def first_day_with_capacity(
     dolduğunda söz DÜRÜSTÇE sonraki güne kayar (Amazon promise = f(cutoff,
     kalan kapasite) ilkesi). capacity <= 0 → kontrol kapalı. ``max_days``
     emniyet supabıdır (her gün doluysa sonsuz döngü yok — son aday döner)."""
-    day = next_working_day(day, non_working_weekdays)
+    day = next_working_day(day, non_working_weekdays, closed_dates)
     if capacity <= 0:
         return day
     for _ in range(max_days):
         if booked.get(day, 0) < capacity:
             return day
-        day = next_working_day(day + datetime.timedelta(days=1), non_working_weekdays)
+        day = next_working_day(
+            day + datetime.timedelta(days=1), non_working_weekdays, closed_dates
+        )
     return day
 
 

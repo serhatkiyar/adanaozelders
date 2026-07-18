@@ -3,7 +3,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.deps import require_roles
+from api.deps import require_admin_permission, require_roles, require_roles_or_admin_permission
 from core.database import get_db
 from models.admin import Admin
 from models.role import RoleType
@@ -37,7 +37,7 @@ async def _read_answer_key(file: UploadFile) -> bytes:
 
 @router.get("/usable", response_model=list[CatalogOut])
 async def list_usable_catalogs(
-    _user=Depends(require_roles(RoleType.ADMIN, RoleType.LIBRARY_OPERATOR)),
+    _user=Depends(require_roles_or_admin_permission("catalogs.view", RoleType.LIBRARY_OPERATOR)),
     db: AsyncSession = Depends(get_db),
 ):
     return await library_exam_catalog_service.list_usable(db)
@@ -48,7 +48,7 @@ async def list_usable_catalogs(
 
 @router.get("", response_model=list[CatalogOut])
 async def list_catalogs(
-    _admin: Admin = Depends(require_roles(RoleType.ADMIN)),
+    _admin: Admin = Depends(require_admin_permission("catalogs.view")),
     db: AsyncSession = Depends(get_db),
 ):
     return await library_exam_catalog_service.list_catalogs(db)
@@ -57,7 +57,7 @@ async def list_catalogs(
 @router.post("", response_model=CatalogOut, status_code=status.HTTP_201_CREATED)
 async def create_catalog(
     payload: CatalogCreate,
-    admin: Admin = Depends(require_roles(RoleType.ADMIN)),
+    admin: Admin = Depends(require_admin_permission("catalogs.manage")),
     db: AsyncSession = Depends(get_db),
 ):
     return await library_exam_catalog_service.create_catalog(db, admin, payload)
@@ -67,7 +67,7 @@ async def create_catalog(
 async def update_catalog(
     catalog_id: int,
     payload: CatalogUpdate,
-    _admin: Admin = Depends(require_roles(RoleType.ADMIN)),
+    _admin: Admin = Depends(require_admin_permission("catalogs.manage")),
     db: AsyncSession = Depends(get_db),
 ):
     return await library_exam_catalog_service.update_catalog(db, catalog_id, payload)
@@ -76,7 +76,7 @@ async def update_catalog(
 @router.delete("/{catalog_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_catalog(
     catalog_id: int,
-    _admin: Admin = Depends(require_roles(RoleType.ADMIN)),
+    _admin: Admin = Depends(require_admin_permission("catalogs.manage")),
     db: AsyncSession = Depends(get_db),
 ):
     await library_exam_catalog_service.delete_catalog(db, catalog_id)
@@ -86,7 +86,7 @@ async def delete_catalog(
 async def upload_answer_key(
     catalog_id: int,
     file: UploadFile = File(...),
-    _admin: Admin = Depends(require_roles(RoleType.ADMIN)),
+    _admin: Admin = Depends(require_admin_permission("catalogs.manage")),
     db: AsyncSession = Depends(get_db),
 ):
     data = await _read_answer_key(file)

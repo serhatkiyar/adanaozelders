@@ -20,6 +20,8 @@ import {
 } from "@/hooks/useDelivery";
 import { isDropPref, prefBannerText } from "@/lib/deliveryPref";
 import {
+  FAIL_REASON_LABEL,
+  FAIL_REASONS,
   RUN_STATUS_LABEL,
   STOP_STATUS_LABEL,
   googleNavUrl,
@@ -28,8 +30,14 @@ import {
 } from "@/lib/deliveryRun";
 import { formatEta } from "@/lib/polyline";
 import { ROUTES } from "@/lib/routes";
+import { useAuthStore } from "@/store/authStore";
 import { toast } from "@/store/toastStore";
-import type { DeliveryStop } from "@/types";
+import { ROLE_IDS, type DeliveryStop } from "@/types";
+
+/** Saha ekranı ADMIN + COURIER ortak; yönetici-özel aksiyonlar bununla kapılanır. */
+function useIsAdmin() {
+  return useAuthStore((s) => s.user?.role_id === ROLE_IDS.ADMIN);
+}
 
 /** Teslim anı konumu (kanıt) — alınamazsa konumsuz devam edilir, akış bekletilmez. */
 function getCoords(): Promise<{ lat: number; lng: number } | undefined> {
@@ -73,6 +81,7 @@ function useCourierBroadcast(runId: number | null, active: boolean) {
 /* ─── Aktif durak kartı ──────────────────────────────── */
 
 function CurrentStopCard({ stop }: { stop: DeliveryStop }) {
+  const isAdmin = useIsAdmin();
   const sendOtp = useSendDeliveryOtp();
   const verify = useVerifyDelivery();
   const fail = useFailStop();
@@ -87,6 +96,7 @@ function CurrentStopCard({ stop }: { stop: DeliveryStop }) {
   const [maskedPhone, setMaskedPhone] = useState<string | null>(null);
   const [mode, setMode] = useState<"deliver" | "fail" | "override">("deliver");
   const [note, setNote] = useState("");
+  const [failCode, setFailCode] = useState(FAIL_REASONS[0].code);
 
   const navUrl = googleNavUrl(stop.lat, stop.lng, stop.address);
   const busy = verify.isPending || fail.isPending || override.isPending;
@@ -279,12 +289,19 @@ function CurrentStopCard({ stop }: { stop: DeliveryStop }) {
             </button>
           </div>
           <div className="flex justify-between pt-1 text-xs">
-            <button
-              onClick={() => setMode("override")}
-              className="font-medium text-slate-500 hover:underline dark:text-slate-400"
-            >
-              Kod ulaşmıyor mu?
-            </button>
+            {isAdmin ? (
+              <button
+                onClick={() => setMode("override")}
+                className="font-medium text-slate-500 hover:underline dark:text-slate-400"
+              >
+                Kod ulaşmıyor mu?
+              </button>
+            ) : (
+              // Notlu teslim (OTP bypass) yalnız yönetici yetkisi — kurye arar.
+              <span className="text-slate-400 dark:text-slate-500">
+                Kod ulaşmıyorsa yöneticini ara
+              </span>
+            )}
             <button
               onClick={() => setMode("fail")}
               className="font-medium text-rose-600 hover:underline dark:text-rose-400"
@@ -296,11 +313,32 @@ function CurrentStopCard({ stop }: { stop: DeliveryStop }) {
       )}
 
       {mode === "fail" && (
-        <div className="mt-4 space-y-2">
+        <div className="mt-4 space-y-3">
+          <div>
+            <p className="mb-1.5 text-sm font-semibold text-slate-700 dark:text-slate-200">
+              Neden teslim edilemedi?
+            </p>
+            <div className="grid grid-cols-1 gap-1.5">
+              {FAIL_REASONS.map((r) => (
+                <button
+                  key={r.code}
+                  type="button"
+                  onClick={() => setFailCode(r.code)}
+                  className={`rounded-xl px-4 py-3 text-left text-sm font-medium ring-1 transition ${
+                    failCode === r.code
+                      ? "bg-rose-50 text-rose-700 ring-rose-300 dark:bg-rose-500/15 dark:text-rose-300 dark:ring-rose-500/50"
+                      : "text-slate-700 ring-slate-200 dark:text-slate-200 dark:ring-slate-600"
+                  }`}
+                >
+                  {r.label}
+                </button>
+              ))}
+            </div>
+          </div>
           <textarea
             value={note}
             onChange={(e) => setNote(e.target.value)}
-            placeholder="Neden teslim edilemedi? (adres bulunamadı, kimse yok…)"
+            placeholder="Ek not (isteğe bağlı) — yalnız operasyon görür, müşteriye gitmez."
             rows={2}
             className="input w-full"
           />
@@ -308,19 +346,25 @@ function CurrentStopCard({ stop }: { stop: DeliveryStop }) {
             <button
               onClick={() =>
                 fail.mutate(
-                  { stopId: stop.id, reason: note.trim() },
+                  {
+                    stopId: stop.id,
+                    // Serbest not boşsa neden etiketini gönder (min 3 char kuralı).
+                    reason: note.trim() || FAIL_REASON_LABEL[failCode],
+                    reasonCode: failCode,
+                  },
                   {
                     onSuccess: () => {
                       toast.success("Durak 'teslim edilemedi' olarak işaretlendi.");
                       setNote("");
+                      setFailCode(FAIL_REASONS[0].code);
                       setMode("deliver");
                     },
                     onError: (e: any) => toast.error(apiDetail(e, "İşaretlenemedi.")),
                   }
                 )
               }
-              disabled={busy || note.trim().length < 3}
-              className="flex-1 rounded-xl bg-rose-600 py-2.5 text-sm font-bold text-white disabled:opacity-50"
+              disabled={busy}
+              className="flex-1 rounded-xl bg-rose-600 py-3 text-sm font-bold text-white disabled:opacity-50"
             >
               Onayla
             </button>
@@ -382,6 +426,8 @@ function CurrentStopCard({ stop }: { stop: DeliveryStop }) {
 /* ─── Sayfa ──────────────────────────────────────────── */
 
 export default function DeliveryDriver() {
+  const isAdmin = useIsAdmin();
+  const logout = useAuthStore((s) => s.logout);
   const { id } = useParams();
   const runId = Number(id);
   const { data: run, isLoading } = useDeliveryRun(
@@ -430,12 +476,22 @@ export default function DeliveryDriver() {
       {/* Üst çubuk */}
       <header className="sticky top-0 z-10 border-b border-slate-200 bg-white/95 px-4 py-3 backdrop-blur dark:border-slate-700 dark:bg-slate-800/95">
         <div className="mx-auto flex max-w-md items-center justify-between">
-          <Link
-            to={ROUTES.home}
-            className="text-sm font-semibold text-slate-500 dark:text-slate-400"
-          >
-            ← Panel
-          </Link>
+          {isAdmin ? (
+            <Link
+              to={ROUTES.home}
+              className="text-sm font-semibold text-slate-500 dark:text-slate-400"
+            >
+              ← Panel
+            </Link>
+          ) : (
+            // Kurye panel görmez; tek çıkışı oturumu kapatmak.
+            <button
+              onClick={() => logout()}
+              className="text-sm font-semibold text-slate-500 dark:text-slate-400"
+            >
+              Çıkış
+            </button>
+          )}
           <p className="text-sm font-bold text-slate-900 dark:text-white">
             Tur #{run.id} · {done}/{total}
           </p>
@@ -449,7 +505,9 @@ export default function DeliveryDriver() {
         {run.status !== "ACTIVE" ? (
           <p className="rounded-2xl bg-white p-6 text-center text-sm text-slate-500 ring-1 ring-slate-100 dark:bg-slate-800 dark:text-slate-400 dark:ring-slate-700">
             {run.status === "PLANNED"
-              ? "Tur henüz başlatılmadı — admin panelinden başlatın."
+              ? isAdmin
+                ? "Tur henüz başlatılmadı — admin panelinden başlatın."
+                : "Tur henüz başlatılmadı — yönetici başlatınca burada görünecek."
               : "Bu tur sonuçlandı."}
           </p>
         ) : current ? (

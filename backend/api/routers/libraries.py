@@ -13,8 +13,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import (
     CurrentUser,
-    get_current_active_user,
+    require_admin_permission,
     require_roles,
+    require_roles_or_admin_permission,
     user_rate_limit,
 )
 from core.config import settings
@@ -167,7 +168,7 @@ async def register_library(
 @router.post("/{library_id}/approve", response_model=LibraryDetailOut)
 async def approve_library(
     library_id: int,
-    admin: Admin = Depends(require_roles(RoleType.ADMIN)),
+    admin: Admin = Depends(require_admin_permission("libraries.manage")),
     db: AsyncSession = Depends(get_db),
 ):
     """Bekleyen self-servis başvuruyu onaylar → ACTIVE (public)."""
@@ -178,7 +179,7 @@ async def approve_library(
 async def reject_library(
     library_id: int,
     payload: LibraryRejectRequest,
-    admin: Admin = Depends(require_roles(RoleType.ADMIN)),
+    admin: Admin = Depends(require_admin_permission("libraries.manage")),
     db: AsyncSession = Depends(get_db),
 ):
     """Bekleyen başvuruyu reddeder → REJECTED + gerekçe (operatöre bildirilir)."""
@@ -188,7 +189,9 @@ async def reject_library(
 @router.post("/{library_id}/resubmit", response_model=LibraryDetailOut)
 async def resubmit_library(
     library_id: int,
-    user: CurrentUser = Depends(get_current_active_user),
+    user: CurrentUser = Depends(
+        require_roles_or_admin_permission("libraries.manage", RoleType.LIBRARY_OPERATOR)
+    ),
     db: AsyncSession = Depends(get_db),
 ):
     """Operatör reddedilen başvurusunu düzeltip tekrar gönderir → PENDING (kuyruğa döner)."""
@@ -203,7 +206,7 @@ async def resubmit_library(
 async def list_libraries_admin(
     limit: int = Query(default=100, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
-    _admin: Admin = Depends(require_roles(RoleType.ADMIN)),
+    _admin: Admin = Depends(require_admin_permission("libraries.view")),
     db: AsyncSession = Depends(get_db),
 ):
     return await library_service.list_libraries_admin(db, limit=limit, offset=offset)
@@ -213,7 +216,7 @@ async def list_libraries_admin(
 async def get_library_admin_detail(
     library_id: int,
     user: CurrentUser = Depends(
-        require_roles(RoleType.ADMIN, RoleType.LIBRARY_OPERATOR)
+        require_roles_or_admin_permission("libraries.view", RoleType.LIBRARY_OPERATOR)
     ),
     db: AsyncSession = Depends(get_db),
 ):
@@ -226,7 +229,7 @@ async def get_library_admin_detail(
 @router.post("", response_model=LibraryDetailOut, status_code=status.HTTP_201_CREATED)
 async def create_library(
     payload: LibraryCreate,
-    admin: Admin = Depends(require_roles(RoleType.ADMIN)),
+    admin: Admin = Depends(require_admin_permission("libraries.manage")),
     db: AsyncSession = Depends(get_db),
 ):
     return await library_service.create_library(db, admin, payload)
@@ -246,7 +249,7 @@ async def _get_library_or_404(db: AsyncSession, library_id: int) -> Library:
 async def get_library_payout(
     library_id: int,
     user: CurrentUser = Depends(
-        require_roles(RoleType.ADMIN, RoleType.LIBRARY_OPERATOR)
+        require_roles_or_admin_permission("libraries.view", RoleType.LIBRARY_OPERATOR)
     ),
     db: AsyncSession = Depends(get_db),
 ):
@@ -260,7 +263,7 @@ async def submit_library_payout(
     library_id: int,
     payload: LibraryPayoutSubmitIn,
     user: CurrentUser = Depends(
-        require_roles(RoleType.ADMIN, RoleType.LIBRARY_OPERATOR)
+        require_roles_or_admin_permission("libraries.manage", RoleType.LIBRARY_OPERATOR)
     ),
     db: AsyncSession = Depends(get_db),
 ):
@@ -345,7 +348,7 @@ async def delete_library_review(
 async def library_earnings(
     library_id: int,
     user: CurrentUser = Depends(
-        require_roles(RoleType.ADMIN, RoleType.LIBRARY_OPERATOR)
+        require_roles_or_admin_permission("libraries.view", RoleType.LIBRARY_OPERATOR)
     ),
     db: AsyncSession = Depends(get_db),
 ):
@@ -362,7 +365,7 @@ async def library_earnings(
 async def library_earnings_transactions(
     library_id: int,
     user: CurrentUser = Depends(
-        require_roles(RoleType.ADMIN, RoleType.LIBRARY_OPERATOR)
+        require_roles_or_admin_permission("libraries.view", RoleType.LIBRARY_OPERATOR)
     ),
     db: AsyncSession = Depends(get_db),
 ):
@@ -382,7 +385,7 @@ async def upload_library_logo(
     library_id: int,
     file: UploadFile = File(...),
     user: CurrentUser = Depends(
-        require_roles(RoleType.ADMIN, RoleType.LIBRARY_OPERATOR)
+        require_roles_or_admin_permission("libraries.manage", RoleType.LIBRARY_OPERATOR)
     ),
     db: AsyncSession = Depends(get_db),
 ):
@@ -395,7 +398,7 @@ async def upload_library_cover(
     library_id: int,
     file: UploadFile = File(...),
     user: CurrentUser = Depends(
-        require_roles(RoleType.ADMIN, RoleType.LIBRARY_OPERATOR)
+        require_roles_or_admin_permission("libraries.manage", RoleType.LIBRARY_OPERATOR)
     ),
     db: AsyncSession = Depends(get_db),
 ):
@@ -408,7 +411,7 @@ async def upload_library_images(
     library_id: int,
     files: list[UploadFile] = File(...),
     user: CurrentUser = Depends(
-        require_roles(RoleType.ADMIN, RoleType.LIBRARY_OPERATOR)
+        require_roles_or_admin_permission("libraries.manage", RoleType.LIBRARY_OPERATOR)
     ),
     db: AsyncSession = Depends(get_db),
 ):
@@ -424,7 +427,7 @@ async def reorder_library_images(
     library_id: int,
     payload: LibraryImagesReorder,
     user: CurrentUser = Depends(
-        require_roles(RoleType.ADMIN, RoleType.LIBRARY_OPERATOR)
+        require_roles_or_admin_permission("libraries.manage", RoleType.LIBRARY_OPERATOR)
     ),
     db: AsyncSession = Depends(get_db),
 ):
@@ -437,7 +440,7 @@ async def delete_library_image(
     library_id: int,
     image_id: int,
     user: CurrentUser = Depends(
-        require_roles(RoleType.ADMIN, RoleType.LIBRARY_OPERATOR)
+        require_roles_or_admin_permission("libraries.manage", RoleType.LIBRARY_OPERATOR)
     ),
     db: AsyncSession = Depends(get_db),
 ):
@@ -453,7 +456,7 @@ async def update_library(
     library_id: int,
     payload: LibraryUpdate,
     user: CurrentUser = Depends(
-        require_roles(RoleType.ADMIN, RoleType.LIBRARY_OPERATOR)
+        require_roles_or_admin_permission("libraries.manage", RoleType.LIBRARY_OPERATOR)
     ),
     db: AsyncSession = Depends(get_db),
 ):
@@ -467,7 +470,7 @@ async def update_library(
 @router.delete("/{library_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_library(
     library_id: int,
-    _admin: Admin = Depends(require_roles(RoleType.ADMIN)),
+    _admin: Admin = Depends(require_admin_permission("libraries.manage")),
     db: AsyncSession = Depends(get_db),
 ):
     await library_service.delete_library(db, library_id)

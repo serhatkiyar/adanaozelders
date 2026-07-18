@@ -42,6 +42,8 @@ api_router.include_router(clients.router)
 api_router.include_router(educations.router)
 api_router.include_router(addresses.router)
 api_router.include_router(delivery.router)
+# Saha router'ı ayrı: ADMIN+KURYE (router-level ADMIN dependency'sinden bağımsız).
+api_router.include_router(delivery.field_router)
 api_router.include_router(demands.router)
 api_router.include_router(bookings.router)
 api_router.include_router(bookmarks.router)

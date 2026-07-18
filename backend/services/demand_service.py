@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from fastapi import HTTPException, status
-from sqlalchemy import func, select
+from sqlalchemy import asc, desc, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from models.client import Client
@@ -10,6 +10,7 @@ from models.demand_response import DemandResponse
 from models.role import ROLE_IDS, RoleType
 from models.tutor import Tutor
 from schemas.demand import DemandCreate
+from schemas.admin import AdminDemandOut
 from services import messaging_service, notification_service
 
 
@@ -104,6 +105,96 @@ async def list_client_demands(
     for d in demands:
         d.response_count = counts.get(d.id, 0)
     return demands
+
+
+async def list_admin_demands(
+    db: AsyncSession,
+    *,
+    limit: int = 25,
+    offset: int = 0,
+    q: str | None = None,
+    status_filter: DemandStatus | None = None,
+    demand_id: int | None = None,
+    sort: str = "created_at",
+    order: str = "desc",
+) -> tuple[list[AdminDemandOut], int]:
+    """Öğrenci taleplerini admin için ilişkili kullanıcı ve yanıt sayısıyla sayfalar."""
+    response_counts = (
+        select(DemandResponse.demand_id, func.count(DemandResponse.id).label("count"))
+        .where(DemandResponse.deleted_at.is_(None))
+        .group_by(DemandResponse.demand_id)
+        .subquery("demand_response_counts")
+    )
+    filters = [Demand.deleted_at.is_(None), Client.deleted_at.is_(None)]
+    normalized_q = q.strip() if q and q.strip() else None
+    if normalized_q:
+        pattern = f"%{normalized_q}%"
+        filters.append(
+            or_(
+                Demand.title.ilike(pattern),
+                Demand.subject.ilike(pattern),
+                Demand.description.ilike(pattern),
+                Client.full_name.ilike(pattern),
+                Client.email.ilike(pattern),
+            )
+        )
+    if status_filter is not None:
+        filters.append(Demand.status == status_filter)
+    if demand_id is not None:
+        filters.append(Demand.id == demand_id)
+
+    base = (
+        select(
+            Demand.id,
+            Demand.client_id,
+            Client.full_name.label("client_name"),
+            Client.email.label("client_email"),
+            Demand.title,
+            Demand.description,
+            Demand.subject,
+            Demand.level,
+            Demand.budget_min,
+            Demand.budget_max,
+            Demand.status,
+            func.coalesce(response_counts.c.count, 0).label("response_count"),
+            Demand.created_at,
+        )
+        .join(Client, Client.id == Demand.client_id)
+        .outerjoin(response_counts, response_counts.c.demand_id == Demand.id)
+        .where(*filters)
+    )
+    total = int(
+        (await db.scalar(select(func.count()).select_from(Demand).join(Client).where(*filters)))
+        or 0
+    )
+    sort_columns = {
+        "created_at": Demand.created_at,
+        "title": Demand.title,
+        "subject": Demand.subject,
+        "status": Demand.status,
+        "response_count": func.coalesce(response_counts.c.count, 0),
+    }
+    sort_column = sort_columns[sort]
+    order_by = asc(sort_column) if order == "asc" else desc(sort_column)
+    rows = (
+        await db.execute(
+            base.order_by(order_by, Demand.id.desc()).limit(limit).offset(offset)
+        )
+    ).mappings().all()
+    return [AdminDemandOut(**dict(row)) for row in rows], total
+
+
+async def cancel_demand_for_admin(db: AsyncSession, demand_id: int) -> Demand:
+    demand = await db.get(Demand, demand_id)
+    if demand is None or demand.deleted_at is not None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Demand not found")
+    if demand.status != DemandStatus.OPEN:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT, "Only OPEN demands can be cancelled"
+        )
+    demand.status = DemandStatus.CANCELLED
+    await db.flush()
+    return demand
 
 
 async def close_demand(db: AsyncSession, client: Client, demand_id: int) -> Demand:

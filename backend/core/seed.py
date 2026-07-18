@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from core.config import settings
 from core.security import hash_password
 from models.admin import Admin
+from models.admin_access import AdminRole, AdminRoleAssignment
 from models.role import ROLE_IDS, Role, RoleType
 from models.tutor import (
     Gender,
@@ -28,17 +29,16 @@ async def seed_roles(session: AsyncSession) -> None:
 async def seed_admin(session: AsyncSession) -> None:
     if not (settings.ADMIN_EMAIL and settings.ADMIN_PASSWORD):
         return
-    stmt = select(Admin.id).where(
+    stmt = select(Admin).where(
         Admin.email == settings.ADMIN_EMAIL, Admin.deleted_at.is_(None)
     )
-    if (await session.execute(stmt)).first() is not None:
-        return
-    parts = settings.ADMIN_FULL_NAME.split(" ", 1)
-    first_name = parts[0] or "System"
-    last_name = parts[1] if len(parts) > 1 else "Admin"
-    username = settings.ADMIN_EMAIL.split("@", 1)[0] or "admin"
-    session.add(
-        Admin(
+    admin = await session.scalar(stmt)
+    if admin is None:
+        parts = settings.ADMIN_FULL_NAME.split(" ", 1)
+        first_name = parts[0] or "System"
+        last_name = parts[1] if len(parts) > 1 else "Admin"
+        username = settings.ADMIN_EMAIL.split("@", 1)[0] or "admin"
+        admin = Admin(
             email=settings.ADMIN_EMAIL,
             hashed_password=hash_password(settings.ADMIN_PASSWORD),
             first_name=first_name,
@@ -48,7 +48,29 @@ async def seed_admin(session: AsyncSession) -> None:
             # Seed admin'i doğrulanmış kabul et (kendine doğrulama maili göndermez).
             email_verified_at=datetime.datetime.now(datetime.timezone.utc),
         )
+        session.add(admin)
+        await session.flush()
+
+    super_admin_role_id = await session.scalar(
+        select(AdminRole.id).where(
+            AdminRole.code == "SUPER_ADMIN", AdminRole.deleted_at.is_(None)
+        )
     )
+    if super_admin_role_id is not None:
+        assignment_id = await session.scalar(
+            select(AdminRoleAssignment.id).where(
+                AdminRoleAssignment.admin_id == admin.id,
+                AdminRoleAssignment.deleted_at.is_(None),
+            )
+        )
+        if assignment_id is None:
+            session.add(
+                AdminRoleAssignment(
+                    admin_id=admin.id,
+                    admin_role_id=super_admin_role_id,
+                    assigned_by_admin_id=admin.id,
+                )
+            )
 
 
 # Demo/başlangıç eğitmenleri. APPROVED + is_active → aramada ve liderlikte görünür;

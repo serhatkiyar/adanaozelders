@@ -119,6 +119,7 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["X-Total-Count"],
 )
 
 # Logging + Sentry (opsiyonel) + request-id middleware (en dışta, ilk çalışır).

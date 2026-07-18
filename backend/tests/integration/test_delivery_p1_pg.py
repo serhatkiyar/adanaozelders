@@ -159,7 +159,10 @@ async def p1(pg) -> P1Factory:
 
 
 @pytest.mark.asyncio
-async def test_outbox_dispatch_sends_and_marks_sent(p1):
+async def test_outbox_dispatch_sends_and_marks_sent(p1, monkeypatch):
+    # Bu test sessiz saatle ilgili değil; deterministik olsun diye kapat
+    # (aksi halde gerçek saat gece ise SMS ertelenir → test zamana bağımlı olur).
+    monkeypatch.setattr(settings, "DELIVERY_QUIET_START_HOUR", 0)
     marker = 987650001  # cleanup payload order_id ile siler
     p1.order_ids.append(marker)
     async with AsyncSessionLocal() as s:
@@ -182,6 +185,8 @@ async def test_outbox_dispatch_sends_and_marks_sent(p1):
 
 @pytest.mark.asyncio
 async def test_outbox_retries_with_backoff_then_succeeds(p1, monkeypatch):
+    # Sessiz saat bu testin konusu değil — kapat (bkz. yukarıdaki not).
+    monkeypatch.setattr(settings, "DELIVERY_QUIET_START_HOUR", 0)
     marker = 987650002
     p1.order_ids.append(marker)
     calls = {"n": 0}

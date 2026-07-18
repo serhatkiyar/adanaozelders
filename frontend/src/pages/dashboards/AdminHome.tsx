@@ -1,45 +1,28 @@
 import { useState } from "react";
-import { DashboardShell } from "@/components/DashboardShell";
 import { Avatar } from "@/components/Avatar";
+import { ConfirmDialog } from "@/components/admin/ui";
 import {
   useActivateTutor,
   useAdminStats,
   useAdminTutors,
-  useAdminUsers,
   useApproveTutor,
   useDeleteTutor,
   useRejectTutor,
   useSuspendTutor,
-  useAdminBookings,
-  useAdminCancelBooking,
-  useAdminToggleDisputeBooking,
   usePendingEducations,
   useVerifyEducation,
 } from "@/hooks/useAdmin";
-import {
-  useAdminReports,
-  useResolveReport,
-  useOpenReportCount,
-} from "@/hooks/useReports";
 import {
   useAdminNameChangeRequests,
   useApproveNameChange,
   useRejectNameChange,
 } from "@/hooks/useNameChanges";
-import { REPORT_REASON_LABEL } from "@/components/ReportModal";
-import AdminLibraries from "@/pages/dashboards/AdminLibraries";
-import AdminDelivery from "@/pages/dashboards/AdminDelivery";
-import AdminStore from "@/pages/dashboards/AdminStore";
-import AdminExamCatalogs from "@/pages/dashboards/AdminExamCatalogs";
 import {
   TutorStatus,
-  ReportStatus,
   type AdminEducation,
-  type AdminUserOut,
   type DocumentType,
   type NameChangeRequest,
   type NameChangeStatus,
-  type ReportOut,
   type TutorOut,
 } from "@/types";
 import { formatDateTime } from "@/lib/datetime";
@@ -68,20 +51,6 @@ const TUTOR_STATUS_META: Record<TutorStatus, { label: string; cls: string }> = {
     label: "Pasif",
     cls: "bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400",
   },
-};
-
-/* ─── role meta ───────────────────────────────────────── */
-
-const ROLE_LABEL: Record<string, string> = {
-  ADMIN: "Yönetici",
-  TUTOR: "Eğitmen",
-  CLIENT: "Öğrenci",
-};
-
-const ROLE_STYLE: Record<string, string> = {
-  ADMIN: "bg-violet-50 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300",
-  TUTOR: "bg-indigo-50 text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300",
-  CLIENT: "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300",
 };
 
 /* ─── stat items ─────────────────────────────────────── */
@@ -312,121 +281,10 @@ function PendingTutorsSection() {
   );
 }
 
-/* ─── users table ────────────────────────────────────── */
-
-function UserRow({ user }: { user: AdminUserOut }) {
-  return (
-    <tr className="border-t border-slate-100 transition hover:bg-slate-50 dark:border-slate-700 dark:hover:bg-slate-700/30">
-      <td className="px-4 py-3">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-100 text-sm font-semibold text-slate-600 dark:bg-slate-700 dark:text-slate-300">
-            {user.first_name[0]}{user.last_name[0]}
-          </div>
-          <div className="min-w-0">
-            <p className="text-sm font-medium text-slate-900 dark:text-white">
-              {user.full_name}
-            </p>
-            <p className="truncate text-xs text-slate-500 dark:text-slate-400">
-              {user.email}
-            </p>
-          </div>
-        </div>
-      </td>
-      <td className="px-4 py-3">
-        <span
-          className={`rounded-full px-2.5 py-1 text-xs font-medium ${
-            ROLE_STYLE[user.role] ?? "bg-slate-100 text-slate-600"
-          }`}
-        >
-          {ROLE_LABEL[user.role] ?? user.role}
-        </span>
-      </td>
-      <td className="px-4 py-3">
-        {user.is_active ? (
-          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-700 dark:text-emerald-400">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-            Aktif
-          </span>
-        ) : (
-          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-400">
-            <span className="h-1.5 w-1.5 rounded-full bg-slate-300" />
-            Pasif
-          </span>
-        )}
-      </td>
-      <td className="px-4 py-3 text-xs text-slate-500 dark:text-slate-400">
-        {formatDateTime(user.created_at)}
-      </td>
-    </tr>
-  );
-}
-
-function UsersTable() {
-  const { data, isLoading, isError, error } = useAdminUsers();
-
-  return (
-    <section>
-      <div className="flex items-baseline gap-2">
-        <h2 className="text-base font-semibold text-slate-900 dark:text-white">
-          Kullanıcılar
-        </h2>
-        {data && (
-          <span className="text-sm font-medium text-slate-400">{data.length}</span>
-        )}
-      </div>
-
-      <div className="mt-3 overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-slate-700">
-        {isLoading ? (
-          <div className="divide-y divide-slate-100 dark:divide-slate-700">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <div key={i} className="h-16 animate-pulse bg-slate-50 dark:bg-slate-800/50" />
-            ))}
-          </div>
-        ) : isError ? (
-          <div className="px-5 py-4 text-sm text-red-700 dark:text-red-400">
-            {getErrorMessage(error, "Kullanıcılar yüklenemedi.")}
-          </div>
-        ) : !data || data.length === 0 ? (
-          <div className="py-16 text-center text-sm text-slate-500 dark:text-slate-400">
-            Kayıtlı kullanıcı yok.
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[640px] text-left">
-              <thead className="border-b border-slate-100 dark:border-slate-700">
-                <tr>
-                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
-                    Kullanıcı
-                  </th>
-                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
-                    Rol
-                  </th>
-                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
-                    Durum
-                  </th>
-                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
-                    Kayıt
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.map((u) => (
-                  <UserRow key={`${u.role}-${u.id}`} user={u} />
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-    </section>
-  );
-}
-
-/* ─── page ───────────────────────────────────────────── */
-
 /* ─── listing management ─────────────────────────────── */
 
 function ListingRow({ tutor }: { tutor: TutorOut }) {
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const suspend = useSuspendTutor();
   const activate = useActivateTutor();
   const del = useDeleteTutor();
@@ -443,17 +301,8 @@ function ListingRow({ tutor }: { tutor: TutorOut }) {
       onError: (err: unknown) => toast.error(getErrorMessage(err, errMsg)),
     });
 
-  const onDelete = () => {
-    if (
-      !window.confirm(
-        `${tutor.full_name} ilanını silmek istediğine emin misin? Bu işlem ilanı yayından kaldırır.`
-      )
-    )
-      return;
-    run(del, "İlan silindi.", "Silme başarısız.");
-  };
-
   return (
+    <>
     <div className="flex flex-col gap-4 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-slate-700 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex min-w-0 items-start gap-3">
         <Avatar name={tutor.full_name} avatar_url={tutor.avatar_url} size="sm" />
@@ -504,13 +353,27 @@ function ListingRow({ tutor }: { tutor: TutorOut }) {
         )}
         <button
           disabled={busy}
-          onClick={onDelete}
+          onClick={() => setDeleteOpen(true)}
           className="rounded-xl border border-slate-200 bg-white px-3.5 py-1.5 text-sm font-semibold text-red-600 shadow-sm transition hover:bg-red-50 active:scale-95 disabled:opacity-60 dark:border-slate-600 dark:bg-slate-700 dark:hover:bg-red-900/20"
         >
           Sil
         </button>
       </div>
     </div>
+    <ConfirmDialog
+      open={deleteOpen}
+      title="İlanı yayından kaldır"
+      description={`${tutor.full_name} ilanı silinecek ve yayından kaldırılacak.`}
+      confirmLabel="İlanı sil"
+      danger
+      isPending={del.isPending}
+      onClose={() => setDeleteOpen(false)}
+      onConfirm={() => del.mutate(tutor.id, {
+        onSuccess: () => { toast.success("İlan silindi."); setDeleteOpen(false); },
+        onError: (error) => toast.error(getErrorMessage(error, "Silme başarısız.")),
+      })}
+    />
+    </>
   );
 }
 
@@ -574,84 +437,13 @@ function ListingManagement() {
 
 /* ─── booking management ────────────────────────────── */
 
-function BookingManagement() {
-  const { data, isLoading, isError, error } = useAdminBookings();
-  const cancel = useAdminCancelBooking();
-  const dispute = useAdminToggleDisputeBooking();
-
-  if (isLoading) return <div>Yükleniyor...</div>;
-  if (isError) return <div className="text-red-500">Hata: {getErrorMessage(error, "")}</div>;
-
-  const bookings = data ?? [];
-
-  return (
-    <div className="space-y-4">
-      {bookings.length === 0 && <p className="text-slate-500">Kayıtlı rezervasyon yok.</p>}
-      {bookings.map(b => (
-        <div key={b.id} className="rounded-xl border p-4 bg-white dark:bg-slate-800 dark:border-slate-700 flex flex-col sm:flex-row justify-between sm:items-center gap-4">
-          <div>
-            <div className="flex gap-2 items-center mb-1">
-              <span className="font-semibold text-sm">{b.tutor_name} ↔ {b.client_name}</span>
-              <span className={`text-xs px-2 py-0.5 rounded-full ${b.status === 'CANCELLED' ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-700'}`}>
-                {b.status}
-              </span>
-              {b.is_disputed && <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">İhtilaflı</span>}
-            </div>
-            <p className="text-xs text-slate-500">{formatDateTime(b.start_at)} - {formatDateTime(b.end_at)}</p>
-            {b.cancel_reason && <p className="text-xs text-red-500 mt-1">İptal: {b.cancel_reason}</p>}
-            {b.admin_notes && <p className="text-xs text-amber-600 mt-1">Not: {b.admin_notes}</p>}
-          </div>
-          <div className="flex gap-2">
-            {!b.is_disputed ? (
-              <button onClick={() => dispute.mutate({ id: b.id, is_disputed: true, admin_notes: window.prompt("İhtilaf notu:") || "" })} className="text-xs px-3 py-1.5 rounded-lg bg-amber-500 text-white">
-                İhtilaf İşaretle
-              </button>
-            ) : (
-              <button onClick={() => dispute.mutate({ id: b.id, is_disputed: false })} className="text-xs px-3 py-1.5 rounded-lg border border-amber-500 text-amber-600">
-                İhtilafı Kaldır
-              </button>
-            )}
-            {b.status !== "CANCELLED" && b.status !== "REJECTED" && (
-              <button onClick={() => {
-                const reason = window.prompt("İptal nedeni?");
-                if(reason) cancel.mutate({ id: b.id, reason });
-              }} className="text-xs px-3 py-1.5 rounded-lg bg-red-600 text-white">
-                İptal / İade
-              </button>
-            )}
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
 /* ─── tabs ────────────────────────────────────────────── */
 
-type Tab =
+export type Tab =
   | "overview"
   | "listings"
   | "diplomas"
-  | "libraries"
-  | "catalogs"
-  | "store"
-  | "delivery"
-  | "bookings"
-  | "names"
-  | "reports";
-
-const TABS: { value: Tab; label: string }[] = [
-  { value: "overview", label: "Genel Bakış" },
-  { value: "listings", label: "İlan Yönetimi" },
-  { value: "diplomas", label: "Diploma Doğrulama" },
-  { value: "libraries", label: "Kütüphaneler" },
-  { value: "catalogs", label: "Deneme Katalogları" },
-  { value: "store", label: "Mağaza" },
-  { value: "delivery", label: "Dağıtım" },
-  { value: "bookings", label: "Ders Talepleri" },
-  { value: "names", label: "Ad Değişiklikleri" },
-  { value: "reports", label: "Şikayetler" },
-];
+  | "names";
 
 /* ─── diploma doğrulama kuyruğu ───────────────────────── */
 
@@ -830,148 +622,6 @@ function DiplomaVerificationSection() {
 
 /* ─── moderasyon (şikayet) kuyruğu ───────────────────── */
 
-const REPORT_STATUS_STYLE: Record<ReportStatus, string> = {
-  [ReportStatus.OPEN]:
-    "bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300",
-  [ReportStatus.RESOLVED]:
-    "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-300",
-  [ReportStatus.DISMISSED]:
-    "bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300",
-};
-
-const REPORT_STATUS_LABEL: Record<ReportStatus, string> = {
-  [ReportStatus.OPEN]: "Açık",
-  [ReportStatus.RESOLVED]: "Çözüldü",
-  [ReportStatus.DISMISSED]: "Reddedildi",
-};
-
-function ReportCard({ report }: { report: ReportOut }) {
-  const [note, setNote] = useState("");
-  const resolve = useResolveReport();
-  const isOpen = report.status === ReportStatus.OPEN;
-
-  const act = (status: ReportStatus) =>
-    resolve.mutate(
-      { id: report.id, status, resolution: note.trim() || undefined },
-      {
-        onSuccess: () => toast.success("Şikayet güncellendi."),
-        onError: (e) => toast.error(getErrorMessage(e, "Güncellenemedi.")),
-      }
-    );
-
-  return (
-    <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-slate-700">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-700 dark:bg-slate-700 dark:text-slate-200">
-              {report.target_type} #{report.target_id}
-            </span>
-            <span className="text-sm font-semibold text-rose-600 dark:text-rose-400">
-              {REPORT_REASON_LABEL[report.reason]}
-            </span>
-          </div>
-          {report.description && (
-            <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-              {report.description}
-            </p>
-          )}
-          <p className="mt-2 text-xs text-slate-400 dark:text-slate-500">
-            Şikayet eden: rol {report.reporter_role} · #{report.reporter_id} ·{" "}
-            {formatDateTime(report.created_at)}
-          </p>
-        </div>
-        <span
-          className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${REPORT_STATUS_STYLE[report.status]}`}
-        >
-          {REPORT_STATUS_LABEL[report.status]}
-        </span>
-      </div>
-
-      {isOpen ? (
-        <div className="mt-4 flex flex-col gap-2 border-t border-slate-100 pt-3 dark:border-slate-700 sm:flex-row">
-          <input
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            placeholder="Çözüm notu (opsiyonel)"
-            className="flex-1 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-indigo-500 dark:border-slate-600 dark:bg-slate-900 dark:text-white"
-          />
-          <div className="flex gap-2">
-            <button
-              disabled={resolve.isPending}
-              onClick={() => act(ReportStatus.RESOLVED)}
-              className="rounded-xl bg-emerald-600 px-3.5 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-60"
-            >
-              Çöz
-            </button>
-            <button
-              disabled={resolve.isPending}
-              onClick={() => act(ReportStatus.DISMISSED)}
-              className="rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 disabled:opacity-60 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-300"
-            >
-              Reddet
-            </button>
-          </div>
-        </div>
-      ) : (
-        report.resolution && (
-          <p className="mt-3 border-t border-slate-100 pt-3 text-xs text-slate-500 dark:border-slate-700 dark:text-slate-400">
-            Çözüm notu: {report.resolution}
-          </p>
-        )
-      )}
-    </div>
-  );
-}
-
-function ReportsSection() {
-  const [filter, setFilter] = useState<ReportStatus | undefined>(
-    ReportStatus.OPEN
-  );
-  const { data, isLoading } = useAdminReports(filter);
-
-  const FILTERS: { value: ReportStatus | undefined; label: string }[] = [
-    { value: ReportStatus.OPEN, label: "Açık" },
-    { value: ReportStatus.RESOLVED, label: "Çözülen" },
-    { value: ReportStatus.DISMISSED, label: "Reddedilen" },
-    { value: undefined, label: "Tümü" },
-  ];
-
-  return (
-    <section className="space-y-4">
-      <div className="flex flex-wrap gap-1.5">
-        {FILTERS.map((f) => (
-          <button
-            key={f.label}
-            onClick={() => setFilter(f.value)}
-            className={`rounded-xl px-3 py-1.5 text-sm font-semibold transition ${
-              filter === f.value
-                ? "bg-indigo-600 text-white"
-                : "bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-300 dark:ring-slate-700"
-            }`}
-          >
-            {f.label}
-          </button>
-        ))}
-      </div>
-
-      {isLoading ? (
-        <div className="h-24 animate-pulse rounded-2xl bg-slate-100 dark:bg-slate-800" />
-      ) : data && data.length > 0 ? (
-        <div className="space-y-3">
-          {data.map((r) => (
-            <ReportCard key={r.id} report={r} />
-          ))}
-        </div>
-      ) : (
-        <p className="rounded-2xl bg-white p-8 text-center text-sm text-slate-500 ring-1 ring-slate-100 dark:bg-slate-800 dark:text-slate-400 dark:ring-slate-700">
-          Bu durumda şikayet yok.
-        </p>
-      )}
-    </section>
-  );
-}
-
 function NameChangeCard({ req }: { req: NameChangeRequest }) {
   const [note, setNote] = useState("");
   const approve = useApproveNameChange();
@@ -1109,61 +759,22 @@ function NameChangesSection() {
   );
 }
 
-export default function AdminHome() {
-  const [tab, setTab] = useState<Tab>("overview");
-  const { data: openReports = 0 } = useOpenReportCount();
-
+export default function AdminHome({ section = "overview" }: { section?: Tab }) {
   return (
-    <DashboardShell title="Admin Paneli">
-      <div className="mx-auto max-w-5xl space-y-6 pb-12">
-        <div className="flex gap-1.5 rounded-2xl bg-white p-1.5 shadow-sm ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-slate-700">
-          {TABS.map((t) => (
-            <button
-              key={t.value}
-              onClick={() => setTab(t.value)}
-              className={`flex flex-1 items-center justify-center gap-1.5 rounded-xl px-4 py-2 text-sm font-semibold transition ${
-                tab === t.value
-                  ? "bg-indigo-600 text-white shadow-sm"
-                  : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700"
-              }`}
-            >
-              {t.label}
-              {t.value === "reports" && openReports > 0 && (
-                <span className="inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-rose-500 px-1.5 text-[10px] font-bold text-white">
-                  {openReports > 9 ? "9+" : openReports}
-                </span>
-              )}
-            </button>
-          ))}
-        </div>
-
-        {tab === "overview" ? (
+    <div className="mx-auto max-w-6xl space-y-6 pb-12">
+        {section === "overview" ? (
           <>
             <StatsSection />
             <PendingTutorsSection />
-            <UsersTable />
           </>
-        ) : tab === "listings" ? (
+        ) : section === "listings" ? (
           <ListingManagement />
-        ) : tab === "diplomas" ? (
+        ) : section === "diplomas" ? (
           <DiplomaVerificationSection />
-        ) : tab === "libraries" ? (
-          <AdminLibraries />
-        ) : tab === "catalogs" ? (
-          <AdminExamCatalogs />
-        ) : tab === "store" ? (
-          <AdminStore />
-        ) : tab === "delivery" ? (
-          <AdminDelivery />
-        ) : tab === "bookings" ? (
-          <BookingManagement />
-        ) : tab === "names" ? (
-          <NameChangesSection />
         ) : (
-          <ReportsSection />
+          <NameChangesSection />
         )}
-      </div>
-    </DashboardShell>
+    </div>
   );
 }
 

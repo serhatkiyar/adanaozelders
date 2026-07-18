@@ -7,6 +7,8 @@ describe("roleHome", () => {
     expect(roleHome(ROLE_IDS.ADMIN)).toBe("/");
     expect(roleHome(ROLE_IDS.TUTOR)).toBe("/");
     expect(roleHome(ROLE_IDS.CLIENT)).toBe("/");
+    expect(roleHome(ROLE_IDS.LIBRARY_OPERATOR)).toBe("/");
+    expect(roleHome(ROLE_IDS.COURIER)).toBe("/");
   });
   it("bilinmeyen/eksik rol -> /giris", () => {
     expect(roleHome(undefined)).toBe("/giris");

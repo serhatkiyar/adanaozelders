@@ -14,6 +14,7 @@ import enum
 from typing import TYPE_CHECKING
 
 from sqlalchemy import (
+    Boolean,
     Date,
     DateTime,
     ForeignKey,
@@ -25,6 +26,7 @@ from sqlalchemy import (
     UniqueConstraint,
     text,
 )
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from core.database import Base
@@ -65,6 +67,35 @@ class DeliveryStopStatus(str, enum.Enum):
     CANCELLED = "CANCELLED"
 
 
+class FailReason(str, enum.Enum):
+    """Teslim edilememe neden kodu (serbest metnin yerine yapısal — istisna
+    kuyruğu [Faz 5] + kurye KPI [Faz 6] için). Müşteriye ASLA sızmaz (timeline
+    whitelist yalnız 'teslim edilemedi' gösterir).
+
+    ``counts_against_courier`` False olanlar kurye performansına sayılmaz:
+    - ERKEN_DENEME: kurye pencereden önce geldi (E4) — deneme sayılır ama kusur değil
+    - GUVENLIK: saha tehdidi (D8) — güvenlik hızdan önce gelir
+    - MUSTERI_TALEBI: müşteri kapıda "sonra gel" dedi (kurye kusuru değil)
+    Diğerleri (EVDE_YOK/ADRES_SORUNU/ERISIM_SORUNU/PAKET/ARAC/DIGER) sayılır.
+    """
+
+    EVDE_YOK = "EVDE_YOK"
+    ADRES_SORUNU = "ADRES_SORUNU"
+    ERISIM_SORUNU = "ERISIM_SORUNU"  # zil bozuk, siteye giriş yok, kapı açılmadı
+    ERKEN_DENEME = "ERKEN_DENEME"
+    MUSTERI_TALEBI = "MUSTERI_TALEBI"
+    GUVENLIK = "GUVENLIK"
+    PAKET_SORUNU = "PAKET_SORUNU"
+    ARAC_SORUNU = "ARAC_SORUNU"
+    DIGER = "DIGER"
+
+
+#: Kurye performansına SAYILMAYAN neden kodları (KPI hariç tutma seti).
+FAIL_REASONS_NOT_COURIER_FAULT = frozenset(
+    {FailReason.ERKEN_DENEME.value, FailReason.GUVENLIK.value, FailReason.MUSTERI_TALEBI.value}
+)
+
+
 class DeliveryProof(str, enum.Enum):
     """Teslim kanıtı türü: müşteri OTP'si, (kod ulaşmadığında) notlu admin onayı
     ya da kapıya/komşuya bırakmada paket fotoğrafı (PoD photo)."""
@@ -85,6 +116,16 @@ class DeliveryRun(Base, TimestampMixin, SoftDeleteMixin):
             "vehicle",
             unique=True,
             postgresql_where=text("status = 'PLANNED' AND deleted_at IS NULL"),
+        ),
+        # Kurye başına tek AKTİF tur (migration 8590183c3cc1'de eklendi;
+        # deklarasyon autogenerate'in index'i "silinmiş" sanmasını önler).
+        Index(
+            "uq_delivery_run_active_courier",
+            "courier_id",
+            unique=True,
+            postgresql_where=text(
+                "courier_id IS NOT NULL AND status = 'ACTIVE' AND deleted_at IS NULL"
+            ),
         ),
     )
 
@@ -199,6 +240,86 @@ class DeliveryStop(Base, TimestampMixin):
     # Ev kapısı görüntüsü — URL uuid'li, yalnız token/sahip yüzeylerinde gösterilir.
     photo_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     courier_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Teslim edilememe neden kodu (FailReason) — FAILED durakta dolu; yapısal
+    # raporlama + KPI hariç tutması için. Serbest metin courier_note'ta kalır.
+    fail_reason: Mapped[str | None] = mapped_column(String(20), nullable=True)
 
     run: Mapped["DeliveryRun"] = relationship(back_populates="stops")
+    order: Mapped["Order"] = relationship()
+
+
+class DeliveryClosedDay(Base, TimestampMixin, SoftDeleteMixin):
+    """Teslimata kapalı gün — admin yönetir (resmî tatil / özel gün). Söz motoru
+    bu günleri atlar (haftalık kural değil, tarih-bazlı; operasyon kendi
+    takvimini kontrol eder). ``source`` = 'holiday' (seed'lenen resmî tatil) veya
+    'manual' (admin elle ekledi) — ayrım yalnız bilgi/etikettir."""
+
+    __tablename__ = "delivery_closed_days"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    day: Mapped[datetime.date] = mapped_column(Date, nullable=False)
+    label: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    source: Mapped[str] = mapped_column(
+        String(10), nullable=False, server_default=text("'manual'")
+    )
+
+    __table_args__ = (
+        # Aynı gün iki kez kapatılamaz (silinenler hariç — soft-delete).
+        Index(
+            "uq_delivery_closed_day",
+            "day",
+            unique=True,
+            postgresql_where=text("deleted_at IS NULL"),
+        ),
+    )
+
+
+class FeedbackProblem(str, enum.Enum):
+    """Teslimat değerlendirmesindeki yapısal sorun kodları (Faz 7). Serbest
+    metin yerine kod: KPI Pareto'su üretilebilir, operasyon aksiyon alabilir.
+    FailReason'dan AYRIDIR — o kuryenin teslim edememe nedeni, bu müşterinin
+    teslim SONRASI deneyim şikâyetidir."""
+
+    GEC_TESLIMAT = "GEC_TESLIMAT"  # söz gününden/penceresinden geç geldi
+    HASARLI_PAKET = "HASARLI_PAKET"
+    YANLIS_EKSIK_URUN = "YANLIS_EKSIK_URUN"
+    KURYE_DAVRANISI = "KURYE_DAVRANISI"
+    TESLIM_YERI = "TESLIM_YERI"  # yanlış yere bırakıldı / kapı bulunamadı
+    BILDIRIM_SORUNU = "BILDIRIM_SORUNU"  # SMS/kod/bilgilendirme ulaşmadı
+    DIGER = "DIGER"
+
+
+class DeliveryFeedback(Base, TimestampMixin, SoftDeleteMixin):
+    """Teslim sonrası müşteri değerlendirmesi: 👍/👎 + yapısal sorun kodları.
+
+    Sipariş başına TEK değerlendirme (partial unique — yarışta son söz index'in).
+    Hem oturumlu müşteri hem token'lı public takip sayfasından verilebilir
+    (yetki yükseltme değil: durum değiştirmez, yalnız geri bildirim). ``source``
+    hangi yüzeyden geldiğini kaydeder (audit/istismar analizi)."""
+
+    __tablename__ = "delivery_feedback"
+    __table_args__ = (
+        Index(
+            "uq_delivery_feedback_order",
+            "order_id",
+            unique=True,
+            postgresql_where=text("deleted_at IS NULL"),
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    order_id: Mapped[int] = mapped_column(
+        ForeignKey("orders.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    thumbs_up: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    # FeedbackProblem kodları listesi (JSONB) — 👍'de tipik olarak boş.
+    problem_codes: Mapped[list[str]] = mapped_column(
+        JSONB, nullable=False, server_default=text("'[]'::jsonb")
+    )
+    comment: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Geldiği yüzey: CLIENT (oturumlu) | PUBLIC (SMS token'lı takip sayfası).
+    source: Mapped[str] = mapped_column(
+        String(10), nullable=False, server_default=text("'CLIENT'")
+    )
+
     order: Mapped["Order"] = relationship()

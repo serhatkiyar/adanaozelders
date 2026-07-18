@@ -3,7 +3,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.deps import require_roles
+from api.deps import require_roles_or_admin_permission
 from core.database import get_db
 from models.client import Client
 from models.role import RoleType
@@ -23,7 +23,7 @@ async def search_clients(
     max_age: int | None = Query(default=None, ge=0, le=120),
     limit: int = Query(default=20, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
-    _viewer=Depends(require_roles(RoleType.TUTOR, RoleType.ADMIN)),
+    _viewer=Depends(require_roles_or_admin_permission("users.view", RoleType.TUTOR)),
     db: AsyncSession = Depends(get_db),
 ):
     return await client_service.search_clients(
@@ -41,7 +41,7 @@ async def search_clients(
 @router.get("/{client_id}", response_model=ClientPublicOut)
 async def get_client_public(
     client_id: int,
-    _viewer=Depends(require_roles(RoleType.TUTOR, RoleType.ADMIN)),
+    _viewer=Depends(require_roles_or_admin_permission("users.view", RoleType.TUTOR)),
     db: AsyncSession = Depends(get_db),
 ):
     client = await db.get(Client, client_id)

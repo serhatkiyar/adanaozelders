@@ -65,19 +65,28 @@ async def list_for_admin(
     db: AsyncSession,
     *,
     status_filter: ReportStatus | None = None,
+    target_type: str | None = None,
     limit: int = 50,
     offset: int = 0,
-) -> list[Report]:
+) -> tuple[list[Report], int]:
     stmt = select(Report)
+    count_stmt = select(func.count()).select_from(Report)
+    filters = []
     if status_filter is not None:
-        stmt = stmt.where(Report.status == status_filter)
+        filters.append(Report.status == status_filter)
+    if target_type:
+        filters.append(Report.target_type == target_type)
+    stmt = stmt.where(*filters)
+    count_stmt = count_stmt.where(*filters)
     # Açık şikayetler önce (enum sırası), sonra en yeni.
     stmt = (
         stmt.order_by(Report.status.asc(), Report.created_at.desc())
         .limit(limit)
         .offset(offset)
     )
-    return list((await db.execute(stmt)).scalars().all())
+    items = list((await db.execute(stmt)).scalars().all())
+    total = int((await db.scalar(count_stmt)) or 0)
+    return items, total
 
 
 async def count_open(db: AsyncSession) -> int:

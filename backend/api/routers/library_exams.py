@@ -17,6 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api.deps import (
     CurrentUser,
     require_roles,
+    require_roles_or_admin_permission,
     user_rate_limit,
 )
 from core.config import settings
@@ -107,7 +108,7 @@ async def list_public_sessions(
 @router.get("/exam-sessions/manage", response_model=list[ExamSessionOut])
 async def list_sessions_manage(
     library_id: int = Query(...),
-    user: CurrentUser = Depends(require_roles(RoleType.ADMIN, RoleType.LIBRARY_OPERATOR)),
+    user: CurrentUser = Depends(require_roles_or_admin_permission("libraries.manage", RoleType.LIBRARY_OPERATOR)),
     db: AsyncSession = Depends(get_db),
 ):
     _assert_can_manage(user, library_id)
@@ -120,7 +121,7 @@ async def list_sessions_manage(
 async def create_session(
     library_id: int = Query(...),
     payload: ExamSessionCreate = Body(...),
-    user: CurrentUser = Depends(require_roles(RoleType.ADMIN, RoleType.LIBRARY_OPERATOR)),
+    user: CurrentUser = Depends(require_roles_or_admin_permission("libraries.manage", RoleType.LIBRARY_OPERATOR)),
     db: AsyncSession = Depends(get_db),
 ):
     _assert_can_manage(user, library_id)
@@ -131,7 +132,7 @@ async def create_session(
 async def update_session(
     session_id: int,
     payload: ExamSessionUpdate,
-    user: CurrentUser = Depends(require_roles(RoleType.ADMIN, RoleType.LIBRARY_OPERATOR)),
+    user: CurrentUser = Depends(require_roles_or_admin_permission("libraries.manage", RoleType.LIBRARY_OPERATOR)),
     db: AsyncSession = Depends(get_db),
 ):
     s = await _get_session_or_404(db, session_id)
@@ -142,7 +143,7 @@ async def update_session(
 @router.post("/exam-sessions/{session_id}/cancel", response_model=ExamSessionOut)
 async def cancel_session(
     session_id: int,
-    user: CurrentUser = Depends(require_roles(RoleType.ADMIN, RoleType.LIBRARY_OPERATOR)),
+    user: CurrentUser = Depends(require_roles_or_admin_permission("libraries.manage", RoleType.LIBRARY_OPERATOR)),
     db: AsyncSession = Depends(get_db),
 ):
     s = await _get_session_or_404(db, session_id)
@@ -153,7 +154,7 @@ async def cancel_session(
 @router.get("/exam-sessions/{session_id}/roster", response_model=list[RosterRow])
 async def session_roster(
     session_id: int,
-    user: CurrentUser = Depends(require_roles(RoleType.ADMIN, RoleType.LIBRARY_OPERATOR)),
+    user: CurrentUser = Depends(require_roles_or_admin_permission("libraries.manage", RoleType.LIBRARY_OPERATOR)),
     db: AsyncSession = Depends(get_db),
 ):
     s = await _get_session_or_404(db, session_id)
@@ -167,7 +168,7 @@ async def session_roster(
 @router.get("/exam-sessions/{session_id}/results/reference")
 async def results_reference(
     session_id: int,
-    user: CurrentUser = Depends(require_roles(RoleType.ADMIN, RoleType.LIBRARY_OPERATOR)),
+    user: CurrentUser = Depends(require_roles_or_admin_permission("libraries.manage", RoleType.LIBRARY_OPERATOR)),
     db: AsyncSession = Depends(get_db),
 ):
     """Toplu karne yükleme için referans CSV'si (registration_id + öğrenci adı).
@@ -193,7 +194,7 @@ async def set_result_summary(
     session_id: int,
     registration_id: int,
     payload: ResultSummaryIn,
-    user: CurrentUser = Depends(require_roles(RoleType.ADMIN, RoleType.LIBRARY_OPERATOR)),
+    user: CurrentUser = Depends(require_roles_or_admin_permission("libraries.manage", RoleType.LIBRARY_OPERATOR)),
     db: AsyncSession = Depends(get_db),
 ):
     """Opsiyonel hızlı özet: toplam net + sıralama (karne başlığından)."""
@@ -213,7 +214,7 @@ async def upload_result_document(
     session_id: int,
     registration_id: int,
     file: UploadFile = File(...),
-    user: CurrentUser = Depends(require_roles(RoleType.ADMIN, RoleType.LIBRARY_OPERATOR)),
+    user: CurrentUser = Depends(require_roles_or_admin_permission("libraries.manage", RoleType.LIBRARY_OPERATOR)),
     db: AsyncSession = Depends(get_db),
 ):
     """Bir öğrencinin bireysel karnesini (PDF/görsel) yükler — birincil sonuç."""
@@ -237,7 +238,7 @@ async def upload_result_document(
 async def bulk_upload_documents(
     session_id: int,
     files: list[UploadFile] = File(...),
-    user: CurrentUser = Depends(require_roles(RoleType.ADMIN, RoleType.LIBRARY_OPERATOR)),
+    user: CurrentUser = Depends(require_roles_or_admin_permission("libraries.manage", RoleType.LIBRARY_OPERATOR)),
     db: AsyncSession = Depends(get_db),
 ):
     """Toplu karne yükleme — her dosya adının başındaki kayıt no ile eşlenir."""
@@ -257,7 +258,7 @@ async def bulk_upload_documents(
 @router.post("/exam-sessions/{session_id}/results/publish", response_model=PublishResultsOut)
 async def publish_results(
     session_id: int,
-    user: CurrentUser = Depends(require_roles(RoleType.ADMIN, RoleType.LIBRARY_OPERATOR)),
+    user: CurrentUser = Depends(require_roles_or_admin_permission("libraries.manage", RoleType.LIBRARY_OPERATOR)),
     db: AsyncSession = Depends(get_db),
 ):
     s = await _get_session_or_404(db, session_id)
@@ -269,7 +270,7 @@ async def publish_results(
 async def upload_session_answer_key(
     session_id: int,
     file: UploadFile = File(...),
-    user: CurrentUser = Depends(require_roles(RoleType.ADMIN, RoleType.LIBRARY_OPERATOR)),
+    user: CurrentUser = Depends(require_roles_or_admin_permission("libraries.manage", RoleType.LIBRARY_OPERATOR)),
     db: AsyncSession = Depends(get_db),
 ):
     s = await _get_session_or_404(db, session_id)

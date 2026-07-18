@@ -17,7 +17,7 @@ from fastapi import (
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.deps import require_roles, user_rate_limit
+from api.deps import require_admin_permission, require_roles, user_rate_limit
 from core import storage
 from core.config import settings
 from core.ratelimit import rate_limit
@@ -58,6 +58,8 @@ from schemas.store import (
     StockNotifyIn,
 )
 from schemas.delivery import (
+    DeliveryFeedbackIn,
+    DeliveryFeedbackOut,
     DeliveryInfoOut,
     DeliveryPrefIn,
     OrderTrackingOut,
@@ -66,6 +68,7 @@ from schemas.delivery import (
 from services import (
     collection_service,
     coupon_service,
+    delivery_feedback_service,
     delivery_promise,
     delivery_service,
     order_service,
@@ -155,7 +158,7 @@ async def search_products(
 async def list_products_admin(
     limit: int = Query(default=100, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
-    _admin: Admin = Depends(require_roles(RoleType.ADMIN)),
+    _admin: Admin = Depends(require_admin_permission("products.view")),
     db: AsyncSession = Depends(get_db),
 ):
     return await store_service.list_products_admin(db, limit=limit, offset=offset)
@@ -164,7 +167,7 @@ async def list_products_admin(
 @router.post("/admin/products/bulk", response_model=BulkImportResultOut)
 async def bulk_import_products(
     file: UploadFile = File(...),
-    admin: Admin = Depends(require_roles(RoleType.ADMIN)),
+    admin: Admin = Depends(require_admin_permission("products.manage")),
     db: AsyncSession = Depends(get_db),
 ):
     if file.filename and not file.filename.lower().endswith(".csv"):
@@ -185,7 +188,7 @@ async def bulk_import_products(
 @router.get("/admin/products/{product_id}", response_model=ProductDetailOut)
 async def get_product_admin(
     product_id: int,
-    _admin: Admin = Depends(require_roles(RoleType.ADMIN)),
+    _admin: Admin = Depends(require_admin_permission("products.view")),
     db: AsyncSession = Depends(get_db),
 ):
     return await store_service.get_product_admin(db, product_id)
@@ -196,7 +199,7 @@ async def get_product_admin(
 )
 async def create_product(
     payload: ProductCreate,
-    admin: Admin = Depends(require_roles(RoleType.ADMIN)),
+    admin: Admin = Depends(require_admin_permission("products.manage")),
     db: AsyncSession = Depends(get_db),
 ):
     return await store_service.create_product(db, admin, payload)
@@ -206,7 +209,7 @@ async def create_product(
 async def update_product(
     product_id: int,
     payload: ProductUpdate,
-    _admin: Admin = Depends(require_roles(RoleType.ADMIN)),
+    _admin: Admin = Depends(require_admin_permission("products.manage")),
     db: AsyncSession = Depends(get_db),
 ):
     return await store_service.update_product(db, product_id, payload)
@@ -215,7 +218,7 @@ async def update_product(
 @router.delete("/admin/products/{product_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_product(
     product_id: int,
-    _admin: Admin = Depends(require_roles(RoleType.ADMIN)),
+    _admin: Admin = Depends(require_admin_permission("products.manage")),
     db: AsyncSession = Depends(get_db),
 ):
     await store_service.delete_product(db, product_id)
@@ -225,7 +228,7 @@ async def delete_product(
 async def upload_product_cover(
     product_id: int,
     file: UploadFile = File(...),
-    _admin: Admin = Depends(require_roles(RoleType.ADMIN)),
+    _admin: Admin = Depends(require_admin_permission("products.manage")),
     db: AsyncSession = Depends(get_db),
 ):
     return await store_service.set_cover(db, product_id, await _read_image(file))
@@ -235,7 +238,7 @@ async def upload_product_cover(
 async def upload_product_images(
     product_id: int,
     files: list[UploadFile] = File(...),
-    _admin: Admin = Depends(require_roles(RoleType.ADMIN)),
+    _admin: Admin = Depends(require_admin_permission("products.manage")),
     db: AsyncSession = Depends(get_db),
 ):
     if not files:
@@ -250,7 +253,7 @@ async def upload_product_images(
 async def delete_product_image(
     product_id: int,
     image_id: int,
-    _admin: Admin = Depends(require_roles(RoleType.ADMIN)),
+    _admin: Admin = Depends(require_admin_permission("products.manage")),
     db: AsyncSession = Depends(get_db),
 ):
     return await store_service.delete_image(db, product_id, image_id)
@@ -263,7 +266,7 @@ async def delete_product_image(
 )
 async def create_category(
     payload: ProductCategoryCreate,
-    _admin: Admin = Depends(require_roles(RoleType.ADMIN)),
+    _admin: Admin = Depends(require_admin_permission("products.manage")),
     db: AsyncSession = Depends(get_db),
 ):
     return await store_service.create_category(db, payload)
@@ -273,7 +276,7 @@ async def create_category(
 async def update_category(
     category_id: int,
     payload: ProductCategoryUpdate,
-    _admin: Admin = Depends(require_roles(RoleType.ADMIN)),
+    _admin: Admin = Depends(require_admin_permission("products.manage")),
     db: AsyncSession = Depends(get_db),
 ):
     return await store_service.update_category(db, category_id, payload)
@@ -284,7 +287,7 @@ async def update_category(
 )
 async def delete_category(
     category_id: int,
-    _admin: Admin = Depends(require_roles(RoleType.ADMIN)),
+    _admin: Admin = Depends(require_admin_permission("products.manage")),
     db: AsyncSession = Depends(get_db),
 ):
     await store_service.delete_category(db, category_id)
@@ -298,7 +301,7 @@ async def list_orders_admin(
     status_filter: str | None = Query(default=None, alias="status"),
     limit: int = Query(default=100, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
-    _admin: Admin = Depends(require_roles(RoleType.ADMIN)),
+    _admin: Admin = Depends(require_admin_permission("orders.view")),
     db: AsyncSession = Depends(get_db),
 ):
     return await order_service.list_orders_admin(
@@ -310,7 +313,7 @@ async def list_orders_admin(
 async def ship_order(
     order_id: int,
     payload: OrderShipIn,
-    _admin: Admin = Depends(require_roles(RoleType.ADMIN)),
+    _admin: Admin = Depends(require_admin_permission("orders.manage")),
     db: AsyncSession = Depends(get_db),
 ):
     return await order_service.mark_shipped(db, order_id, tracking_no=payload.tracking_no)
@@ -319,7 +322,7 @@ async def ship_order(
 @router.post("/admin/orders/{order_id}/deliver", response_model=OrderOut)
 async def deliver_order(
     order_id: int,
-    _admin: Admin = Depends(require_roles(RoleType.ADMIN)),
+    _admin: Admin = Depends(require_admin_permission("orders.manage")),
     db: AsyncSession = Depends(get_db),
 ):
     return await order_service.mark_delivered(db, order_id)
@@ -328,7 +331,7 @@ async def deliver_order(
 @router.post("/admin/orders/{order_id}/refund", response_model=OrderOut)
 async def refund_order(
     order_id: int,
-    _admin: Admin = Depends(require_roles(RoleType.ADMIN)),
+    _admin: Admin = Depends(require_admin_permission("orders.manage")),
     db: AsyncSession = Depends(get_db),
 ):
     return await order_service.refund_order(db, order_id)
@@ -342,7 +345,7 @@ async def list_returns_admin(
     status_filter: str | None = Query(default=None, alias="status"),
     limit: int = Query(default=100, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
-    _admin: Admin = Depends(require_roles(RoleType.ADMIN)),
+    _admin: Admin = Depends(require_admin_permission("returns.view")),
     db: AsyncSession = Depends(get_db),
 ):
     return await order_service.list_returns_admin(
@@ -354,7 +357,7 @@ async def list_returns_admin(
 async def approve_return(
     return_id: int,
     payload: OrderReturnResolve,
-    _admin: Admin = Depends(require_roles(RoleType.ADMIN)),
+    _admin: Admin = Depends(require_admin_permission("returns.manage")),
     db: AsyncSession = Depends(get_db),
 ):
     return await order_service.approve_return(db, return_id, admin_note=payload.admin_note)
@@ -364,7 +367,7 @@ async def approve_return(
 async def reject_return(
     return_id: int,
     payload: OrderReturnResolve,
-    _admin: Admin = Depends(require_roles(RoleType.ADMIN)),
+    _admin: Admin = Depends(require_admin_permission("returns.manage")),
     db: AsyncSession = Depends(get_db),
 ):
     return await order_service.reject_return(db, return_id, admin_note=payload.admin_note)
@@ -375,7 +378,7 @@ async def reject_return(
 
 @router.get("/admin/coupons", response_model=list[CouponOut])
 async def list_coupons(
-    _admin: Admin = Depends(require_roles(RoleType.ADMIN)),
+    _admin: Admin = Depends(require_admin_permission("coupons.view")),
     db: AsyncSession = Depends(get_db),
 ):
     return await coupon_service.list_coupons(db)
@@ -386,7 +389,7 @@ async def list_coupons(
 )
 async def create_coupon(
     payload: CouponCreate,
-    _admin: Admin = Depends(require_roles(RoleType.ADMIN)),
+    _admin: Admin = Depends(require_admin_permission("coupons.manage")),
     db: AsyncSession = Depends(get_db),
 ):
     return await coupon_service.create_coupon(db, payload)
@@ -396,7 +399,7 @@ async def create_coupon(
 async def update_coupon(
     coupon_id: int,
     payload: CouponUpdate,
-    _admin: Admin = Depends(require_roles(RoleType.ADMIN)),
+    _admin: Admin = Depends(require_admin_permission("coupons.manage")),
     db: AsyncSession = Depends(get_db),
 ):
     return await coupon_service.update_coupon(db, coupon_id, payload)
@@ -405,7 +408,7 @@ async def update_coupon(
 @router.delete("/admin/coupons/{coupon_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_coupon(
     coupon_id: int,
-    _admin: Admin = Depends(require_roles(RoleType.ADMIN)),
+    _admin: Admin = Depends(require_admin_permission("coupons.manage")),
     db: AsyncSession = Depends(get_db),
 ):
     await coupon_service.delete_coupon(db, coupon_id)
@@ -595,10 +598,13 @@ async def public_set_delivery_pref(
     payload: DeliveryPrefIn,
     db: AsyncSession = Depends(get_db),
 ):
-    """Oturumsuz teslimat talimatı (token'lı takip sayfası). Davranışsal tercihler
-    serbest — mal aynı adrese gider; ADRES DEĞİŞİKLİĞİ burada YOK (oturum gerekir)."""
+    """Oturumsuz teslimat talimatı (token'lı takip sayfası). Token yetkisi
+    sınırlıdır: bırakma tercihleri (KAPIYA/KOMSUYA) 403 — link sızarsa paket
+    kapıya yönlendirilemesin; ADRES DEĞİŞİKLİĞİ de burada YOK (oturum gerekir)."""
     order = await order_service.get_order_by_track_token(db, token)
-    await order_service.set_delivery_pref(db, order, pref=payload.pref, note=payload.note)
+    await order_service.set_delivery_pref(
+        db, order, pref=payload.pref, note=payload.note, from_public_token=True
+    )
 
 
 @router.post("/orders/track/{token}/postpone", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(_track_limit)])
@@ -608,6 +614,24 @@ async def public_postpone(
 ):
     order = await order_service.get_order_by_track_token(db, token)
     await order_service.postpone_delivery(db, order)
+
+
+@router.post(
+    "/orders/track/{token}/feedback",
+    response_model=DeliveryFeedbackOut,
+    dependencies=[Depends(_track_limit)],
+)
+async def public_delivery_feedback(
+    token: str,
+    payload: DeliveryFeedbackIn,
+    db: AsyncSession = Depends(get_db),
+):
+    """Token'lı takip sayfasından teslim sonrası değerlendirme (Faz 7). Durum
+    değiştirmez — yetki yükseltme değil; sipariş başına tek, IP rate-limit'li."""
+    order = await order_service.get_order_by_track_token(db, token)
+    return await delivery_feedback_service.create_feedback(
+        db, order, payload, source="PUBLIC"
+    )
 
 
 @router.post("/orders/{order_id}/delivery-pref", response_model=OrderOut)
@@ -647,6 +671,30 @@ async def change_order_address(
     return await order_service.change_ship_address(
         db, client, order, address_id=payload.address_id, force=payload.force
     )
+
+
+@router.post("/orders/{order_id}/feedback", response_model=DeliveryFeedbackOut)
+async def delivery_feedback(
+    order_id: int,
+    payload: DeliveryFeedbackIn,
+    client: Client = Depends(require_roles(RoleType.CLIENT)),
+    db: AsyncSession = Depends(get_db),
+):
+    """Teslim sonrası değerlendirme (👍/👎 + yapısal sorun) — sipariş başına tek."""
+    order = await order_service.get_order_for_pay(db, order_id, client.id)
+    return await delivery_feedback_service.create_feedback(
+        db, order, payload, source="CLIENT"
+    )
+
+
+@router.get("/orders/{order_id}/feedback", response_model=DeliveryFeedbackOut | None)
+async def get_delivery_feedback(
+    order_id: int,
+    client: Client = Depends(require_roles(RoleType.CLIENT)),
+    db: AsyncSession = Depends(get_db),
+):
+    order = await order_service.get_order_for_pay(db, order_id, client.id)
+    return await delivery_feedback_service.get_feedback_out(db, order.id)
 
 
 @router.get("/orders/{order_id}/tracking", response_model=OrderTrackingOut)

@@ -83,6 +83,7 @@ class DeliveryFactory:
                 subtotal=Decimal("100.00"), total=Decimal("100.00"),
                 has_physical=True, ship_recipient="Teslimat Testi",
                 ship_address="Test adres", ship_in_zone=True,
+                prepared_at=_now(),
                 tracking_no="ELDEN-TEST" if order_status == "SHIPPED" else None,
             )
             s.add(order)

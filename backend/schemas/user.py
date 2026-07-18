@@ -42,6 +42,8 @@ class UserOut(BaseModel):
     # update_me yanıtında, ilgili alanın onaya gönderildiğini bildiren transient bayrak.
     pending_name_change: bool = False
     pending_username_change: bool = False
+    admin_role_code: str | None = None
+    admin_permissions: list[str] = Field(default_factory=list)
 
 
 class UserUpdate(BaseModel):

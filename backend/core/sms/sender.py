@@ -39,12 +39,21 @@ async def send_otp_sms(*, to: str, code: str) -> bool:
     return await _safe_send(SmsMessage(to=to, text=text))
 
 
-async def send_delivery_otp_sms(*, to: str, code: str, order_id: int) -> bool:
-    """Kapıda teslim kodu: müşteri kodu kuryeye söyler, sunucu doğrular."""
-    text = (
+def delivery_otp_sms_text(*, order_id: int, code: str, ttl_minutes: int) -> str:
+    """Saf şablon (pytest'li). Son cümle sosyal mühendislik kalkanıdır — sahte
+    'kurye' aramalarıyla kod sızdırılmasına karşı her OTP SMS'inde sabit durur."""
+    return (
         f"#{order_id} siparişin teslimat kodun: {code}\n"
         f"Paketi teslim alırken bu kodu kuryemize söyle. "
-        f"{settings.DELIVERY_OTP_TTL_MINUTES} dk geçerli."
+        f"{ttl_minutes} dk geçerli.\n"
+        f"Bu kodu yalnız kapındaki kuryeye söyle — kuryemiz seni arayıp kod istemez."
+    )
+
+
+async def send_delivery_otp_sms(*, to: str, code: str, order_id: int) -> bool:
+    """Kapıda teslim kodu: müşteri kodu kuryeye söyler, sunucu doğrular."""
+    text = delivery_otp_sms_text(
+        order_id=order_id, code=code, ttl_minutes=settings.DELIVERY_OTP_TTL_MINUTES
     )
     return await _safe_send(SmsMessage(to=to, text=text))
 

@@ -46,6 +46,9 @@ class PostponeFactory:
                 subtotal=Decimal("100.00"), total=Decimal("100.00"),
                 has_physical=True, ship_recipient="Ertele Testi",
                 ship_address="Test adres", ship_in_zone=True,
+                # Turdaki sipariş hazırlanmıştır; müşteri ertelemesi (RESCHEDULED)
+                # paketi depoya döndürmez → hazırlık korunur, yeniden eligible olur.
+                prepared_at=datetime.datetime.now(datetime.timezone.utc),
                 tracking_no="ELDEN-TEST",
             )
             run = DeliveryRun(

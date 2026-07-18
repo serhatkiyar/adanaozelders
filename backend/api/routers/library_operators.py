@@ -3,7 +3,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.deps import require_roles
+from api.deps import require_admin_permission, require_roles
 from core.database import get_db
 from models.admin import Admin
 from models.library_operator import LibraryOperator
@@ -25,7 +25,7 @@ router = APIRouter(tags=["library-operators"])
 async def create_operator(
     library_id: int,
     payload: OperatorCreate,
-    _admin: Admin = Depends(require_roles(RoleType.ADMIN)),
+    _admin: Admin = Depends(require_admin_permission("libraries.manage")),
     db: AsyncSession = Depends(get_db),
 ):
     return await library_operator_service.create_operator(db, library_id, payload)
@@ -36,7 +36,7 @@ async def create_operator(
 )
 async def list_operators(
     library_id: int,
-    _admin: Admin = Depends(require_roles(RoleType.ADMIN)),
+    _admin: Admin = Depends(require_admin_permission("libraries.view")),
     db: AsyncSession = Depends(get_db),
 ):
     return await library_operator_service.list_operators(db, library_id)
@@ -47,7 +47,7 @@ async def list_operators(
 )
 async def delete_operator(
     operator_id: int,
-    _admin: Admin = Depends(require_roles(RoleType.ADMIN)),
+    _admin: Admin = Depends(require_admin_permission("libraries.manage")),
     db: AsyncSession = Depends(get_db),
 ):
     await library_operator_service.delete_operator(db, operator_id)

@@ -11,9 +11,19 @@ import type {
   DeliveryScanResult,
   DeliveryStop,
   DeliveryVehicle,
+  CapacityDay,
+  ClosedDay,
+  DeliveryFeedback,
+  DeliveryKpi,
   OrderOut,
   OrderTracking,
 } from "@/types";
+
+export interface DeliveryFeedbackPayload {
+  thumbs_up: boolean;
+  problem_codes: string[];
+  comment?: string | null;
+}
 
 export async function fetchEligibleOrders(): Promise<DeliveryEligibleOrder[]> {
   const { data } = await apiClient.get<DeliveryEligibleOrder[]>(
@@ -27,6 +37,164 @@ export async function fetchOutsourcedOrders(): Promise<DeliveryEligibleOrder[]> 
   const { data } = await apiClient.get<DeliveryEligibleOrder[]>(
     "/delivery/outsourced-orders"
   );
+  return data;
+}
+
+/** Hazırlama istasyonu kuyruğu — henüz toplanmamış/etiketlenmemiş siparişler (ADMIN). */
+export async function fetchPrepQueue(): Promise<DeliveryEligibleOrder[]> {
+  const { data } = await apiClient.get<DeliveryEligibleOrder[]>("/delivery/prep-queue");
+  return data;
+}
+
+/** İstisna kuyruğu — deneme hakkı dolmuş, operatör kararı bekleyen siparişler (ADMIN). */
+export async function fetchAttentionOrders(): Promise<DeliveryEligibleOrder[]> {
+  const { data } = await apiClient.get<DeliveryEligibleOrder[]>(
+    "/delivery/attention-orders"
+  );
+  return data;
+}
+
+/** Deneme hakkı dolmuş siparişe bir tur daha hak tanı (müşteriyle görüşüldü). */
+export async function retryExhaustedOrder(
+  orderId: number
+): Promise<DeliveryEligibleOrder> {
+  const { data } = await apiClient.post<DeliveryEligibleOrder>(
+    `/delivery/orders/${orderId}/retry`
+  );
+  return data;
+}
+
+/** Siparişi 'hazır' işaretle (etiket basıldı → tura eklenebilir). */
+export async function markOrderPrepared(orderId: number): Promise<DeliveryEligibleOrder> {
+  const { data } = await apiClient.post<DeliveryEligibleOrder>(
+    `/delivery/orders/${orderId}/prepare`
+  );
+  return data;
+}
+
+/** Hazırlığı geri al (yalnız tura girmemiş sipariş). */
+export async function unmarkOrderPrepared(orderId: number): Promise<DeliveryEligibleOrder> {
+  const { data } = await apiClient.post<DeliveryEligibleOrder>(
+    `/delivery/orders/${orderId}/unprepare`
+  );
+  return data;
+}
+
+/* ── Kurye workspace (rol 5) ── */
+
+export interface CourierWorkspace {
+  account: {
+    id: number;
+    email: string;
+    username: string;
+    first_name: string;
+    last_name: string;
+    is_active: boolean;
+    courier_id: number;
+    created_at: string;
+  };
+  courier: { id: number; name: string; photo_url?: string | null; vehicle_plate?: string | null } | null;
+  run: DeliveryRun | null;
+}
+
+/** Kurye açılış ekranı: hesabım + profilim + güncel turum (yoksa null). */
+export async function fetchCourierWorkspace(): Promise<CourierWorkspace> {
+  const { data } = await apiClient.get<CourierWorkspace>("/delivery/me");
+  return data;
+}
+
+/* ── Kurye hesabı yaşam döngüsü (ADMIN) ── */
+
+export interface CourierAccountInfo {
+  id: number;
+  email: string;
+  username: string;
+  first_name: string;
+  last_name: string;
+  is_active: boolean;
+  courier_id: number;
+  created_at: string;
+}
+
+export async function fetchCourierAccount(
+  courierId: number
+): Promise<CourierAccountInfo | null> {
+  const { data } = await apiClient.get<CourierAccountInfo | null>(
+    `/delivery/couriers/${courierId}/account`
+  );
+  return data;
+}
+
+export async function createCourierAccount(
+  courierId: number,
+  payload: { email: string; password: string; first_name: string; last_name: string }
+): Promise<CourierAccountInfo> {
+  const { data } = await apiClient.post<CourierAccountInfo>(
+    `/delivery/couriers/${courierId}/account`,
+    payload
+  );
+  return data;
+}
+
+export async function closeCourierAccount(accountId: number): Promise<void> {
+  await apiClient.post(`/delivery/accounts/${accountId}/close`);
+}
+
+export async function resetCourierPassword(
+  accountId: number,
+  newPassword: string
+): Promise<void> {
+  await apiClient.post(`/delivery/accounts/${accountId}/reset-password`, {
+    new_password: newPassword,
+  });
+}
+
+/* ── Teslimat takvimi (kapalı günler) ── */
+
+export async function fetchClosedDays(): Promise<ClosedDay[]> {
+  const { data } = await apiClient.get<ClosedDay[]>("/delivery/calendar");
+  return data;
+}
+
+export async function addClosedDay(day: string, label?: string): Promise<ClosedDay> {
+  const { data } = await apiClient.post<ClosedDay>("/delivery/calendar", { day, label });
+  return data;
+}
+
+export async function removeClosedDay(id: number): Promise<void> {
+  await apiClient.delete(`/delivery/calendar/${id}`);
+}
+
+export async function seedHolidays(year = 2026): Promise<ClosedDay[]> {
+  const { data } = await apiClient.post<ClosedDay[]>(
+    "/delivery/calendar/seed-holidays",
+    null,
+    { params: { year } }
+  );
+  return data;
+}
+
+/** Teslimat KPI özeti — söz tutma / ilk denemede teslim / başarısızlık nedenleri. */
+export async function fetchDeliveryKpi(days = 30): Promise<DeliveryKpi> {
+  const { data } = await apiClient.get<DeliveryKpi>("/delivery/kpi", {
+    params: { days },
+  });
+  return data;
+}
+
+/** Admin: en yeni teslimat değerlendirmeleri. */
+export async function fetchRecentDeliveryFeedback(limit = 50): Promise<DeliveryFeedback[]> {
+  const { data } = await apiClient.get<DeliveryFeedback[]>("/delivery/feedback", {
+    params: { limit },
+  });
+  return data;
+}
+
+/** Önümüzdeki günlerin söz doluluğu — admin kapasite şeridi (booked/capacity + söz borcu). */
+export async function fetchCapacityOverview(days = 14): Promise<CapacityDay[]> {
+  const { data } = await apiClient.get<CapacityDay[]>("/delivery/capacity", {
+    params: { days },
+  });
   return data;
 }
 
@@ -232,6 +400,35 @@ export async function fetchPublicOrderTracking(token: string): Promise<OrderTrac
   return data;
 }
 
+export async function submitDeliveryFeedback(
+  orderId: number,
+  payload: DeliveryFeedbackPayload,
+): Promise<DeliveryFeedback> {
+  const { data } = await apiClient.post<DeliveryFeedback>(
+    `/store/orders/${orderId}/feedback`,
+    payload,
+  );
+  return data;
+}
+
+export async function submitPublicDeliveryFeedback(
+  token: string,
+  payload: DeliveryFeedbackPayload,
+): Promise<DeliveryFeedback> {
+  const { data } = await apiClient.post<DeliveryFeedback>(
+    `/store/orders/track/${token}/feedback`,
+    payload,
+  );
+  return data;
+}
+
+export async function fetchDeliveryFeedback(orderId: number): Promise<DeliveryFeedback | null> {
+  const { data } = await apiClient.get<DeliveryFeedback | null>(
+    `/store/orders/${orderId}/feedback`,
+  );
+  return data;
+}
+
 /* ── Teslimat self-servisi (adres) ── */
 
 export async function changeShipAddress(
@@ -287,10 +484,12 @@ export async function deliverDrop(stopId: number): Promise<DeliveryStop> {
 
 export async function failDeliveryStop(
   stopId: number,
-  reason: string
+  reason: string,
+  reasonCode: string
 ): Promise<DeliveryStop> {
   const { data } = await apiClient.post<DeliveryStop>(`/delivery/stops/${stopId}/fail`, {
     reason,
+    reason_code: reasonCode,
   });
   return data;
 }

@@ -4,6 +4,22 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    --admin-surface: 255 255 255;
+    --admin-surface-muted: 248 250 252;
+    --admin-border: 226 232 240;
+    --admin-focus: 79 70 229;
+    --admin-danger: 225 29 72;
+    --admin-success: 5 150 105;
+  }
+  .dark {
+    --admin-surface: 15 23 42;
+    --admin-surface-muted: 2 6 23;
+    --admin-border: 51 65 85;
+    --admin-focus: 129 140 248;
+    --admin-danger: 251 113 133;
+    --admin-success: 52 211 153;
+  }
   html {
     scroll-behavior: smooth;
   }
@@ -267,5 +283,24 @@ path.district-poly {
     width: 100%;
     padding: 0 !important;
     background: #ffffff !important;
+  }
+}
+
+@keyframes admin-drawer-enter {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+.admin-drawer-enter {
+  animation: admin-drawer-enter 180ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-drawer-enter {
+    animation: none;
   }
 }

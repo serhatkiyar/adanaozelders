@@ -8,27 +8,43 @@ import { QRCodeSVG } from "qrcode.react";
 
 import { DeliveryRouteMap } from "@/components/DeliveryRouteMap";
 import { CourierManager } from "@/components/admin/CourierManager";
+import { ConfirmDialog } from "@/components/admin/ui";
 import {
+  useAddClosedDay,
   useAddStops,
+  useAttentionOrders,
+  useCapacityOverview,
+  useClosedDays,
   useCouriers,
   useCreateDeliveryRun,
+  useDeliveryKpi,
+  useRecentDeliveryFeedback,
   useDeliveryRuns,
   useDispatchDay,
   useEligibleOrders,
+  useMarkPrepared,
   useOptimizeRun,
   useOutsourcedOrders,
+  usePrepQueue,
+  useRemoveClosedDay,
   useRemoveStop,
   useReorderStops,
+  useRetryExhausted,
+  useSeedHolidays,
   useRunAction,
   useRunPosition,
   useUpdateDeliveryRun,
 } from "@/hooks/useDelivery";
+import { FEEDBACK_PROBLEM_LABEL } from "@/lib/deliveryFeedback";
 import { promisedDateLabel } from "@/lib/deliveryPromise";
 import { formatDuration, formatEta } from "@/lib/polyline";
 import {
+  FAIL_REASON_LABEL,
   RUN_STATUS_LABEL,
   STOP_STATUS_LABEL,
   VEHICLE_LABEL,
+  hasRunExceptions,
+  runExceptions,
   runProgress,
 } from "@/lib/deliveryRun";
 import { ROUTES } from "@/lib/routes";
@@ -37,6 +53,72 @@ import type { DeliveryRun, DeliveryStop, DeliveryVehicle } from "@/types";
 
 function todayIso(): string {
   return new Date().toLocaleDateString("sv-SE"); // YYYY-MM-DD (yerel gün)
+}
+
+/* ─── Kapasite şeridi (Faz 1): 14 günlük söz doluluğu ──────────────────────
+   Renk yalnız istisna için: ≥%90 amber, dolu rose; ↻ = söz borcu (başarısız
+   denemesi olan, ertesi güne öncelikli sipariş). Kapasite kontrolü kapalıysa
+   (capacity=0) yalnız sayı gösterilir. */
+
+const WEEKDAY_FMT = new Intl.DateTimeFormat("tr-TR", { weekday: "short" });
+
+function CapacityStrip() {
+  const { data: days } = useCapacityOverview();
+  if (!days || days.length === 0) return null;
+
+  return (
+    <div
+      className="flex items-stretch gap-1.5 overflow-x-auto border-b border-slate-100 px-6 py-3 dark:border-slate-700"
+      aria-label="Önümüzdeki günlerin teslimat kapasitesi"
+    >
+      {days.map((d, i) => {
+        const date = new Date(`${d.day}T00:00:00`);
+        const ratio = d.capacity > 0 ? d.booked / d.capacity : null;
+        const full = ratio != null && ratio >= 1;
+        const tight = ratio != null && ratio >= 0.9 && !full;
+        const label = !d.is_working_day
+          ? "kapalı gün"
+          : d.capacity > 0
+            ? `${d.booked} söz / ${d.capacity} kapasite`
+            : `${d.booked} söz (kapasite kontrolü kapalı)`;
+        return (
+          <div
+            key={d.day}
+            title={`${label}${d.retry_debt > 0 ? ` · ${d.retry_debt} öncelikli yeniden deneme` : ""}`}
+            className={`min-w-[3.6rem] shrink-0 rounded-lg px-2 py-1.5 text-center ring-1 ${
+              i === 0
+                ? "ring-slate-300 dark:ring-slate-500"
+                : "ring-slate-100 dark:ring-slate-700"
+            } ${!d.is_working_day ? "opacity-40" : ""}`}
+          >
+            <p className="text-[10px] uppercase tracking-wide text-slate-400 dark:text-slate-500">
+              {WEEKDAY_FMT.format(date)} {date.getDate()}
+            </p>
+            <p
+              className={`mt-0.5 text-xs font-semibold tabular-nums ${
+                full
+                  ? "text-rose-600 dark:text-rose-400"
+                  : tight
+                    ? "text-amber-600 dark:text-amber-400"
+                    : "text-slate-700 dark:text-slate-200"
+              }`}
+            >
+              {!d.is_working_day
+                ? "—"
+                : d.capacity > 0
+                  ? `${d.booked}/${d.capacity}`
+                  : d.booked}
+            </p>
+            {d.retry_debt > 0 && (
+              <p className="text-[10px] font-medium text-amber-600 dark:text-amber-400">
+                ↻ {d.retry_debt}
+              </p>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
 }
 
 /* ─── küçük görsel parçalar ──────────────────────────── */
@@ -292,7 +374,43 @@ function RunCourier({ run }: { run: DeliveryRun }) {
   );
 }
 
+/* İstisna şeridi (PDS O2): turun bekleyen duraklarındaki sorunları renk = aksiyon
+   diliyle özetler. Sorun yoksa hiç render olmaz (sakin varsayılan). */
+function RunExceptionStrip({ run }: { run: DeliveryRun }) {
+  const x = runExceptions(run);
+  if (!hasRunExceptions(x)) return null;
+
+  const chips = (
+    [
+      { key: "promise", n: x.promiseRisk, label: "söz riski", tone: "rose" },
+      { key: "pinless", n: x.pinless, label: "pinsiz", tone: "amber" },
+      { key: "retry", n: x.retry, label: "yeniden deneme", tone: "amber" },
+      { key: "outlier", n: x.outlier, label: "rotayı bozan", tone: "amber" },
+    ] as const
+  ).filter((c) => c.n > 0);
+
+  const toneCls = {
+    amber: "bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400",
+    rose: "bg-rose-50 text-rose-700 dark:bg-rose-500/10 dark:text-rose-400",
+  } as const;
+
+  return (
+    <div className="flex flex-wrap items-center gap-2 px-6 pb-3">
+      {chips.map((c) => (
+        <span
+          key={c.key}
+          className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium ${toneCls[c.tone]}`}
+        >
+          <span className="font-semibold tabular-nums">{c.n}</span>
+          {c.label}
+        </span>
+      ))}
+    </div>
+  );
+}
+
 function RunDetail({ run }: { run: DeliveryRun }) {
+  const [cancelOpen, setCancelOpen] = useState(false);
   const [showLabels, setShowLabels] = useState(false);
   const [showMap, setShowMap] = useState(true);
   const runAction = useRunAction();
@@ -321,19 +439,20 @@ function RunDetail({ run }: { run: DeliveryRun }) {
     reorder.mutate({ runId: run.id, stopIds: ids });
   };
 
-  const act = (action: "start" | "complete" | "cancel", confirmText?: string) => {
-    if (confirmText && !window.confirm(confirmText)) return;
+  const act = (action: "start" | "complete" | "cancel") => {
     runAction.mutate(
       { runId: run.id, action },
       {
-        onSuccess: () =>
+        onSuccess: () => {
+          if (action === "cancel") setCancelOpen(false);
           toast.success(
             action === "start"
               ? "Tur başlatıldı — siparişler 'dağıtımda' olarak işaretlendi."
               : action === "complete"
                 ? "Tur tamamlandı."
                 : "Tur iptal edildi."
-          ),
+          );
+        },
         onError: (e: any) => toast.error(e?.response?.data?.detail ?? "İşlem başarısız."),
       }
     );
@@ -438,12 +557,7 @@ function RunDetail({ run }: { run: DeliveryRun }) {
           )}
           {planning && (
             <button
-              onClick={() =>
-                act(
-                  "cancel",
-                  "Tur iptal edilsin mi? Bekleyen duraklar 'teslim edilemedi' sayılır ve siparişler yeniden planlanabilir."
-                )
-              }
+              onClick={() => setCancelOpen(true)}
               disabled={runAction.isPending}
               title="Turu iptal et"
               className="rounded-lg p-2 text-slate-400 ring-1 ring-slate-200 transition hover:bg-rose-50 hover:text-rose-600 hover:ring-rose-200 dark:ring-slate-600 dark:hover:bg-rose-500/10 dark:hover:text-rose-400"
@@ -455,6 +569,9 @@ function RunDetail({ run }: { run: DeliveryRun }) {
           )}
         </div>
       </div>
+
+      {/* İstisna şeridi (PDS O2) — turu başlatmadan görülmesi gereken sorunlar */}
+      <RunExceptionStrip run={run} />
 
       {/* İlerleme çubuğu */}
       {total > 0 && (
@@ -624,7 +741,359 @@ function RunDetail({ run }: { run: DeliveryRun }) {
       )}
 
       {showLabels && <LabelSheet run={run} onClose={() => setShowLabels(false)} />}
+      <ConfirmDialog
+        open={cancelOpen}
+        title="Dağıtım turunu iptal et"
+        description="Bekleyen duraklar teslim edilemedi olarak kapanacak ve siparişler yeniden planlanabilir hale gelecek."
+        confirmLabel="Turu iptal et"
+        danger
+        isPending={runAction.isPending}
+        onClose={() => setCancelOpen(false)}
+        onConfirm={() => act("cancel")}
+      />
     </div>
+  );
+}
+
+/* ─── Hazırlama istasyonu (Faz 2, PDS O1) ──────────────────────────────────
+   Ödenmiş fiziksel Adana-içi siparişler önce burada toplanır + etiketlenir;
+   "hazır" işaretlenene dek tura EKLENEMEZ. Depo görevlisinin tek yüzeyi. */
+
+function PrepStation() {
+  const { data: queue = [], isLoading } = usePrepQueue();
+  const mark = useMarkPrepared();
+
+  const prepare = (orderId: number) =>
+    mark.mutate(
+      { orderId, prepared: true },
+      {
+        onSuccess: () => toast.success(`#${orderId} hazır — artık tura eklenebilir.`),
+        onError: (e: any) =>
+          toast.error(e?.response?.data?.detail ?? "Hazır işaretlenemedi."),
+      }
+    );
+
+  if (!isLoading && queue.length === 0) return null;
+
+  return (
+    <section className="mb-6 rounded-2xl bg-white shadow-sm ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-slate-700">
+      <div className="flex items-center gap-2 border-b border-slate-100 px-6 py-4 dark:border-slate-700">
+        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} className="h-5 w-5">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M20 7 12 3 4 7m16 0-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+          </svg>
+        </div>
+        <div className="mr-auto">
+          <h2 className="text-base font-bold text-slate-900 dark:text-white">
+            Hazırlama İstasyonu
+          </h2>
+          <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+            Paketi topla, etiketi bas, hazır işaretle — hazır olmayan sipariş sahaya çıkmaz.
+          </p>
+        </div>
+        {queue.length > 0 && (
+          <span className="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold text-amber-700 dark:bg-amber-500/15 dark:text-amber-400">
+            {queue.length} bekliyor
+          </span>
+        )}
+      </div>
+      {isLoading ? (
+        <div className="space-y-2 p-4">
+          {[0, 1].map((i) => (
+            <div key={i} className="h-12 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-700/50" />
+          ))}
+        </div>
+      ) : (
+        <ul className="divide-y divide-slate-100 px-6 dark:divide-slate-700/60">
+          {queue.map((o) => (
+            <li key={o.order_id} className="flex items-center gap-3 py-3">
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium text-slate-900 dark:text-white">
+                  {o.recipient ?? "—"}
+                  <span className="ml-2 text-xs font-normal text-slate-400">#{o.order_id}</span>
+                  <span className="ml-2">
+                    <PromiseChip date={o.promised_delivery_date} />
+                  </span>
+                </p>
+                <p className="truncate text-xs text-slate-500 dark:text-slate-400">
+                  {o.address ?? "Adres yok"}
+                </p>
+              </div>
+              <span className="shrink-0 text-xs text-slate-500 tabular-nums dark:text-slate-400">
+                {o.item_count} parça · ₺{o.total}
+              </span>
+              <button
+                onClick={() => prepare(o.order_id)}
+                disabled={mark.isPending}
+                className="shrink-0 rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-slate-700 disabled:opacity-50 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200"
+              >
+                Hazır & Etiketle
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+/* ─── KPI paneli (Faz 6, PDS §14) ──────────────────────────────────────────
+   Ham sayı + oran; HEDEF YOK (ilk 90 gün baseline). Renk yalnız neden dağılımı
+   Pareto çubuğunda; sayılar nötr. Grafik değil, etiketli sayı ritmi. */
+
+function pct(rate: number | null): string {
+  return rate == null ? "—" : `%${Math.round(rate * 100)}`;
+}
+
+function KpiPanel() {
+  const { data: k, isLoading } = useDeliveryKpi(30);
+  const { data: feedback = [] } = useRecentDeliveryFeedback(50);
+  if (isLoading || !k) return null;
+  // Hiç sonuçlanmış teslim yoksa panel gösterme (baseline birikmemiş).
+  if (k.delivered + k.failed + k.rescheduled === 0) return null;
+
+  const tiles = [
+    { label: "Söz tutma", value: pct(k.on_time_rate), sub: `${k.on_time_delivered}/${k.promised_delivered} teslim` },
+    { label: "İlk denemede teslim", value: pct(k.first_attempt_rate), sub: `${k.first_attempt_delivered}/${k.delivered_count} sipariş` },
+    { label: "Teslim edildi", value: String(k.delivered), sub: "son 30 gün" },
+    { label: "Teslim edilemedi", value: String(k.failed), sub: `${k.failed_not_courier_fault} kurye dışı` },
+  ];
+
+  const reasons = Object.entries(k.fail_by_reason).sort((a, b) => b[1] - a[1]);
+  const maxReason = reasons.length ? reasons[0][1] : 0;
+  const feedbackProblems = Object.entries(k.feedback_problems).sort((a, b) => b[1] - a[1]);
+  const maxFeedbackProblem = feedbackProblems.length ? feedbackProblems[0][1] : 0;
+  const recentFeedback = [...feedback].sort(
+    (a, b) =>
+      Number(a.thumbs_up) - Number(b.thumbs_up) ||
+      new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+  );
+
+  return (
+    <section className="mt-6 rounded-2xl bg-white shadow-sm ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-slate-700">
+      <div className="border-b border-slate-100 px-6 py-4 dark:border-slate-700">
+        <h2 className="text-base font-bold text-slate-900 dark:text-white">
+          Teslimat Göstergeleri
+        </h2>
+        <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+          Son 30 gün · baseline ölçümü (hedef konmadı — yalnız yön)
+        </p>
+      </div>
+      <div className="grid grid-cols-2 gap-px bg-slate-100 dark:bg-slate-700/60 sm:grid-cols-4">
+        {tiles.map((t) => (
+          <div key={t.label} className="bg-white px-6 py-4 dark:bg-slate-800">
+            <p className="text-2xl font-semibold tabular-nums text-slate-900 dark:text-white">
+              {t.value}
+            </p>
+            <p className="mt-1 text-xs font-medium text-slate-600 dark:text-slate-300">
+              {t.label}
+            </p>
+            <p className="text-xs text-slate-400 dark:text-slate-500">{t.sub}</p>
+          </div>
+        ))}
+      </div>
+      <div className="border-t border-slate-100 px-6 py-4 dark:border-slate-700">
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+              Teslimat memnuniyeti
+            </p>
+            {k.satisfaction_rate == null ? (
+              <p className="mt-1 text-sm text-slate-400 dark:text-slate-500">henüz veri yok</p>
+            ) : (
+              <p className="mt-1 text-2xl font-semibold tabular-nums text-slate-900 dark:text-white">
+                👍 {pct(k.satisfaction_rate)}
+              </p>
+            )}
+          </div>
+          <p className="text-sm tabular-nums text-slate-500 dark:text-slate-400">
+            👍 {k.feedback_up} · 👎 {k.feedback_down}
+          </p>
+        </div>
+
+        {feedbackProblems.length > 0 && (
+          <div className="mt-4">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+              Bildirilen sorunlar
+            </p>
+            <ul className="space-y-1.5">
+              {feedbackProblems.map(([code, count]) => (
+                <li key={code} className="flex items-center gap-3 text-sm">
+                  <span className="w-44 shrink-0 truncate text-slate-600 dark:text-slate-300">
+                    {FEEDBACK_PROBLEM_LABEL[code] ?? code}
+                  </span>
+                  <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-700">
+                    <span
+                      className="block h-full rounded-full bg-slate-400 dark:bg-slate-500"
+                      style={{
+                        width: `${maxFeedbackProblem ? (count / maxFeedbackProblem) * 100 : 0}%`,
+                      }}
+                    />
+                  </span>
+                  <span className="w-6 shrink-0 text-right tabular-nums text-slate-500 dark:text-slate-400">
+                    {count}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+      {reasons.length > 0 && (
+        <div className="border-t border-slate-100 px-6 py-4 dark:border-slate-700">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+            Teslim edilememe nedenleri
+          </p>
+          <ul className="space-y-1.5">
+            {reasons.map(([code, count]) => (
+              <li key={code} className="flex items-center gap-3 text-sm">
+                <span className="w-44 shrink-0 truncate text-slate-600 dark:text-slate-300">
+                  {FAIL_REASON_LABEL[code] ?? code}
+                </span>
+                <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-700">
+                  <span
+                    className="block h-full rounded-full bg-slate-400 dark:bg-slate-500"
+                    style={{ width: `${maxReason ? (count / maxReason) * 100 : 0}%` }}
+                  />
+                </span>
+                <span className="w-6 shrink-0 text-right tabular-nums text-slate-500 dark:text-slate-400">
+                  {count}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      <div className="border-t border-slate-100 px-6 py-4 dark:border-slate-700">
+        <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+          Son değerlendirmeler
+        </p>
+        {recentFeedback.length === 0 ? (
+          <p className="mt-2 text-sm text-slate-400 dark:text-slate-500">Henüz değerlendirme yok.</p>
+        ) : (
+          <ul className="mt-2 divide-y divide-slate-100 dark:divide-slate-700">
+            {recentFeedback.map((item) => (
+              <li key={item.id} className="py-3 first:pt-1 last:pb-0">
+                <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                  <p className="text-sm font-medium text-slate-800 dark:text-slate-100">
+                    {item.thumbs_up ? "👍" : "👎"} Sipariş #{item.order_id}
+                  </p>
+                  <time
+                    dateTime={item.created_at}
+                    className="text-xs tabular-nums text-slate-400 dark:text-slate-500"
+                  >
+                    {new Date(item.created_at).toLocaleString("tr-TR", {
+                      dateStyle: "medium",
+                      timeStyle: "short",
+                    })}
+                  </time>
+                </div>
+                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                  {item.problem_codes.length > 0
+                    ? item.problem_codes
+                        .map((code) => FEEDBACK_PROBLEM_LABEL[code] ?? code)
+                        .join(" · ")
+                    : "Sorun bildirilmedi"}
+                </p>
+                {item.comment && (
+                  <p className="mt-1 text-sm leading-5 text-slate-700 dark:text-slate-300">
+                    {item.comment}
+                  </p>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </section>
+  );
+}
+
+/* ─── İstisna kuyruğu (Faz 5, PDS O3) ──────────────────────────────────────
+   Deneme hakkı dolmuş (3 kez teslim edilemeyen) siparişler otomatik yeniden
+   dağıtılmaz — operatör kararı bekler: bir tur daha hak tanı (müşteriyle
+   görüşüldü) ya da iptal+iade (mağaza yönetimi). Sonsuz döngünün kırıldığı yer. */
+
+function AttentionQueue() {
+  const [retrying, setRetrying] = useState<number | null>(null);
+  const { data: orders = [], isLoading } = useAttentionOrders();
+  const retry = useRetryExhausted();
+
+  const doRetry = (orderId: number) => {
+    retry.mutate(orderId, {
+      onSuccess: () => { toast.success(`#${orderId} yeniden dağıtım kuyruğuna alındı.`); setRetrying(null); },
+      onError: (e: any) =>
+        toast.error(e?.response?.data?.detail ?? "İşlem başarısız."),
+    });
+  };
+
+  if (!isLoading && orders.length === 0) return null;
+
+  return (
+    <section className="mb-6 rounded-2xl bg-white shadow-sm ring-1 ring-rose-200 dark:bg-slate-800 dark:ring-rose-500/30">
+      <div className="flex items-center gap-2 border-b border-slate-100 px-6 py-4 dark:border-slate-700">
+        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-rose-50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} className="h-5 w-5">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m0 3.75h.008M10.34 3.94 1.7 18.94A1.5 1.5 0 0 0 3 21.19h18a1.5 1.5 0 0 0 1.3-2.25L13.66 3.94a1.5 1.5 0 0 0-2.62 0Z" />
+          </svg>
+        </div>
+        <div className="mr-auto">
+          <h2 className="text-base font-bold text-slate-900 dark:text-white">
+            İstisna Kuyruğu
+          </h2>
+          <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+            Birkaç kez teslim edilemeyen siparişler — karar bekliyor (yeniden dene / iade).
+          </p>
+        </div>
+        {orders.length > 0 && (
+          <span className="rounded-full bg-rose-100 px-2.5 py-1 text-xs font-semibold text-rose-700 dark:bg-rose-500/15 dark:text-rose-400">
+            {orders.length}
+          </span>
+        )}
+      </div>
+      {isLoading ? (
+        <div className="space-y-2 p-4">
+          {[0, 1].map((i) => (
+            <div key={i} className="h-12 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-700/50" />
+          ))}
+        </div>
+      ) : (
+        <ul className="divide-y divide-slate-100 px-6 dark:divide-slate-700/60">
+          {orders.map((o) => (
+            <li key={o.order_id} className="flex items-center gap-3 py-3">
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium text-slate-900 dark:text-white">
+                  {o.recipient ?? "—"}
+                  <span className="ml-2 text-xs font-normal text-slate-400">#{o.order_id}</span>
+                </p>
+                <p className="truncate text-xs text-slate-500 dark:text-slate-400">
+                  {o.address ?? "Adres yok"}
+                </p>
+              </div>
+              <span className="shrink-0 text-xs text-slate-500 tabular-nums dark:text-slate-400">
+                ₺{o.total}
+              </span>
+              <button
+                onClick={() => setRetrying(o.order_id)}
+                disabled={retry.isPending}
+                className="shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold text-indigo-600 ring-1 ring-indigo-200 transition hover:bg-indigo-50 disabled:opacity-50 dark:text-indigo-400 dark:ring-indigo-500/40 dark:hover:bg-indigo-500/10"
+              >
+                Yeniden Dene
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <ConfirmDialog
+        open={retrying !== null}
+        title="Yeni teslimat denemesi planla"
+        description={retrying ? `Sipariş #${retrying} müşteriyle görüşüldüğü kabul edilerek yeniden dağıtım kuyruğuna alınacak.` : ""}
+        confirmLabel="Yeniden dene"
+        isPending={retry.isPending}
+        onClose={() => setRetrying(null)}
+        onConfirm={() => retrying !== null && doRetry(retrying)}
+      />
+    </section>
   );
 }
 
@@ -676,9 +1145,144 @@ function OutsourcedQueue() {
   );
 }
 
+/* ─── Teslimat takvimi (kapalı günler) — admin yönetir ─────────────────────
+   Operasyon kendi takvimini kontrol eder: hangi gün teslimata kapalı (resmî
+   tatil / özel gün). Söz motoru bu günleri atlar. "Her şey otomatik" değil —
+   resmî tatiller tek tıkla yüklenir ama admin istemediğini siler, ek gün ekler. */
+
+const CLOSED_DAY_FMT = new Intl.DateTimeFormat("tr-TR", {
+  day: "numeric",
+  month: "long",
+  weekday: "long",
+});
+
+function CalendarManager() {
+  const { data: days = [], isLoading } = useClosedDays();
+  const add = useAddClosedDay();
+  const remove = useRemoveClosedDay();
+  const seed = useSeedHolidays();
+  const [newDay, setNewDay] = useState("");
+  const [newLabel, setNewLabel] = useState("");
+
+  const doAdd = () => {
+    if (!newDay) return;
+    add.mutate(
+      { day: newDay, label: newLabel.trim() || undefined },
+      {
+        onSuccess: () => {
+          toast.success("Gün teslimata kapatıldı.");
+          setNewDay("");
+          setNewLabel("");
+        },
+        onError: (e: any) => toast.error(e?.response?.data?.detail ?? "Eklenemedi."),
+      }
+    );
+  };
+
+  return (
+    <section className="mt-6 rounded-2xl bg-white shadow-sm ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-slate-700">
+      <div className="flex flex-wrap items-center gap-3 border-b border-slate-100 px-6 py-4 dark:border-slate-700">
+        <div className="mr-auto">
+          <h2 className="text-base font-bold text-slate-900 dark:text-white">
+            Teslimat Takvimi
+          </h2>
+          <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+            Kapalı günler — söz motoru bu tarihlere teslimat sözü vermez. Hafta 7 gün açık.
+          </p>
+        </div>
+        <button
+          onClick={() =>
+            seed.mutate(new Date().getFullYear(), {
+              onSuccess: (r) => toast.success(`${r.length} resmî tatil yüklendi.`),
+              onError: (e: any) =>
+                toast.error(e?.response?.data?.detail ?? "Yüklenemedi."),
+            })
+          }
+          disabled={seed.isPending}
+          className="rounded-lg px-3 py-1.5 text-sm font-semibold text-slate-700 ring-1 ring-slate-200 transition hover:bg-slate-50 disabled:opacity-50 dark:text-slate-200 dark:ring-slate-600 dark:hover:bg-slate-700/60"
+        >
+          Resmî tatilleri yükle
+        </button>
+      </div>
+
+      {/* Ekleme satırı */}
+      <div className="flex flex-wrap items-end gap-2 border-b border-slate-100 px-6 py-4 dark:border-slate-700">
+        <label className="text-sm">
+          <span className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">
+            Kapatılacak gün
+          </span>
+          <input
+            type="date"
+            value={newDay}
+            onChange={(e) => setNewDay(e.target.value)}
+            className="input w-auto"
+          />
+        </label>
+        <label className="min-w-[10rem] flex-1 text-sm">
+          <span className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">
+            Açıklama (isteğe bağlı)
+          </span>
+          <input
+            type="text"
+            value={newLabel}
+            onChange={(e) => setNewLabel(e.target.value)}
+            placeholder="ör. Kurban Bayramı, yıllık bakım…"
+            maxLength={120}
+            className="input w-full"
+          />
+        </label>
+        <button
+          onClick={doAdd}
+          disabled={add.isPending || !newDay}
+          className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-700 disabled:opacity-50 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200"
+        >
+          Kapat
+        </button>
+      </div>
+
+      {/* Yaklaşan kapalı günler */}
+      {isLoading ? (
+        <div className="space-y-2 p-4">
+          {[0, 1].map((i) => (
+            <div key={i} className="h-10 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-700/50" />
+          ))}
+        </div>
+      ) : days.length === 0 ? (
+        <p className="px-6 py-6 text-center text-sm text-slate-400 dark:text-slate-500">
+          Yaklaşan kapalı gün yok — teslimat her gün açık.
+        </p>
+      ) : (
+        <ul className="divide-y divide-slate-100 px-6 dark:divide-slate-700/60">
+          {days.map((d) => (
+            <li key={d.id} className="flex items-center gap-3 py-3">
+              <span className="w-52 shrink-0 text-sm font-medium text-slate-900 dark:text-white">
+                {CLOSED_DAY_FMT.format(new Date(`${d.day}T00:00:00`))}
+              </span>
+              <span className="min-w-0 flex-1 truncate text-sm text-slate-500 dark:text-slate-400">
+                {d.label ?? (d.source === "holiday" ? "Resmî tatil" : "Kapalı")}
+              </span>
+              <button
+                onClick={() => remove.mutate(d.id)}
+                disabled={remove.isPending}
+                title="Bu günü yeniden aç"
+                className="shrink-0 rounded-lg p-1.5 text-slate-400 transition hover:bg-rose-50 hover:text-rose-600 disabled:opacity-50 dark:hover:bg-rose-500/10 dark:hover:text-rose-400"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-4 w-4">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
 /* ─── Ana bileşen ────────────────────────────────────── */
 
 export default function AdminDelivery() {
+  const [dispatchOpen, setDispatchOpen] = useState(false);
   const [date, setDate] = useState(todayIso());
   const [vehicle, setVehicle] = useState<DeliveryVehicle>("LADA");
   const [selectedId, setSelectedId] = useState<number | null>(null);
@@ -690,15 +1294,9 @@ export default function AdminDelivery() {
   const dispatchable = eligibleAll.filter((o) => o.lat != null && o.lng != null).length;
 
   const doDispatch = () => {
-    if (
-      !window.confirm(
-        `${dispatchable} konumlu sipariş araçlara bölüştürülüp optimize turlar kurulacak` +
-          ` (${dispatchable > 12 ? "Lada + Corolla" : "yalnız Lada"}). Devam?`
-      )
-    )
-      return;
     dispatchDay.mutate(date, {
       onSuccess: (createdRuns) => {
+        setDispatchOpen(false);
         if (createdRuns[0]) setSelectedId(createdRuns[0].id);
         toast.success(
           createdRuns.length > 1
@@ -731,6 +1329,8 @@ export default function AdminDelivery() {
 
   return (
     <>
+    <AttentionQueue />
+    <PrepStation />
     <section className="rounded-2xl bg-white shadow-sm ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-slate-700">
       {/* Başlık şeridi */}
       <div className="flex flex-wrap items-center gap-3 border-b border-slate-100 px-6 py-4 dark:border-slate-700">
@@ -772,7 +1372,7 @@ export default function AdminDelivery() {
           Tur Oluştur
         </button>
         <button
-          onClick={doDispatch}
+          onClick={() => setDispatchOpen(true)}
           disabled={dispatchDay.isPending || dispatchable === 0}
           title={
             dispatchable === 0
@@ -796,6 +1396,9 @@ export default function AdminDelivery() {
           )}
         </button>
       </div>
+
+      {/* Kapasite şeridi — 14 günlük söz doluluğu + söz borcu */}
+      <CapacityStrip />
 
       {/* Birden çok tur → seçici şerit */}
       {runs.length > 1 && (
@@ -839,7 +1442,18 @@ export default function AdminDelivery() {
       )}
       </section>
       <OutsourcedQueue />
+      <KpiPanel />
+      <CalendarManager />
       <CourierManager />
+      <ConfirmDialog
+        open={dispatchOpen}
+        title="Günü optimize et"
+        description={`${dispatchable} konumlu sipariş ${dispatchable > 12 ? "Lada ve Corolla" : "Lada"} araçlarına bölüştürülüp optimize turlar kurulacak.`}
+        confirmLabel="Turları kur"
+        isPending={dispatchDay.isPending}
+        onClose={() => setDispatchOpen(false)}
+        onConfirm={doDispatch}
+      />
     </>
   );
 }

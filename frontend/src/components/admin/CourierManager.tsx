@@ -1,11 +1,16 @@
 // Kurye profilleri yönetimi (ADMIN) — hafif liste + satır içi ekleme/düzenleme.
 // Müşteri takip sayfasındaki kimlik kartını (isim + vesikalık + plaka) besler.
 import { useRef, useState } from "react";
+import { ConfirmDialog } from "@/components/admin/ui";
 
 import {
+  useCloseCourierAccount,
+  useCourierAccount,
   useCouriers,
   useCreateCourier,
+  useCreateCourierAccount,
   useDeleteCourier,
+  useResetCourierPassword,
   useUpdateCourier,
   useUploadCourierPhoto,
 } from "@/hooks/useDelivery";
@@ -31,12 +36,190 @@ function CourierAvatar({ c, size = "h-10 w-10" }: { c: Courier; size?: string })
   );
 }
 
+/** Kuryenin giriş hesabı (rol 5) — satır altında açılan yaşam döngüsü bölümü.
+ *  Hesap sorgusu yalnız bölüm açıkken atılır (satır başına otomatik istek yok). */
+function CourierAccountPanel({ c }: { c: Courier }) {
+  const [closeOpen, setCloseOpen] = useState(false);
+  const { data: account, isLoading } = useCourierAccount(c.id);
+  const createAccount = useCreateCourierAccount();
+  const closeAccount = useCloseCourierAccount();
+  const resetPassword = useResetCourierPassword();
+
+  const nameParts = c.name.trim().split(/\s+/);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [firstName, setFirstName] = useState(nameParts.slice(0, -1).join(" ") || c.name);
+  const [lastName, setLastName] = useState(nameParts.length > 1 ? nameParts[nameParts.length - 1] : "");
+  const [resetting, setResetting] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
+
+  if (isLoading) {
+    return <div className="mb-3 h-9 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-700/50" />;
+  }
+
+  if (account?.is_active) {
+    return (
+      <>
+      <div className="mb-3 space-y-2 border-t border-slate-100 pt-3 dark:border-slate-700/60">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            <span className="font-semibold text-slate-700 dark:text-slate-200">Giriş hesabı:</span>{" "}
+            {account.email}
+          </p>
+          <button
+            onClick={() => setResetting((v) => !v)}
+            className="text-xs font-semibold text-indigo-600 hover:underline dark:text-indigo-400"
+          >
+            Şifre sıfırla
+          </button>
+          <button
+            onClick={() => setCloseOpen(true)}
+            disabled={closeAccount.isPending}
+            className="text-xs font-semibold text-rose-600 hover:underline disabled:opacity-50 dark:text-rose-400"
+          >
+            Hesabı kapat
+          </button>
+        </div>
+        {resetting && (
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              type="password"
+              autoComplete="new-password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              className="input w-48"
+              placeholder="Yeni şifre (en az 8)"
+              autoFocus
+            />
+            <button
+              onClick={() => {
+                if (newPassword.length < 8) {
+                  toast.error("Şifre en az 8 karakter olmalı.");
+                  return;
+                }
+                resetPassword.mutate(
+                  { accountId: account.id, newPassword },
+                  {
+                    onSuccess: () => {
+                      setResetting(false);
+                      setNewPassword("");
+                      toast.success("Şifre güncellendi.");
+                    },
+                    onError: (e: any) =>
+                      toast.error(e?.response?.data?.detail ?? "Şifre güncellenemedi."),
+                  }
+                );
+              }}
+              disabled={resetPassword.isPending}
+              className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-700 disabled:opacity-50"
+            >
+              Kaydet
+            </button>
+            <button
+              onClick={() => {
+                setResetting(false);
+                setNewPassword("");
+              }}
+              className="text-xs font-medium text-slate-500 hover:underline dark:text-slate-400"
+            >
+              Vazgeç
+            </button>
+          </div>
+        )}
+      </div>
+      <ConfirmDialog
+        open={closeOpen}
+        title="Kurye giriş hesabını kapat"
+        description={`${c.name} için açık oturumlar anında sonlandırılacak.`}
+        confirmLabel="Hesabı kapat"
+        danger
+        isPending={closeAccount.isPending}
+        onClose={() => setCloseOpen(false)}
+        onConfirm={() => closeAccount.mutate(account.id, {
+          onSuccess: () => { toast.success("Hesap kapatıldı — oturumları sonlandırıldı."); setCloseOpen(false); },
+          onError: (e: any) => toast.error(e?.response?.data?.detail ?? "Hesap kapatılamadı."),
+        })}
+      />
+      </>
+    );
+  }
+
+  return (
+    <div className="mb-3 space-y-2 border-t border-slate-100 pt-3 dark:border-slate-700/60">
+      <p className="text-xs text-slate-500 dark:text-slate-400">
+        Giriş hesabı yok — kurye saha ekranına kendi hesabıyla girsin diye oluşturun.
+      </p>
+      <div className="flex flex-wrap items-center gap-2">
+        <input
+          value={firstName}
+          onChange={(e) => setFirstName(e.target.value)}
+          className="input w-28"
+          placeholder="Ad"
+        />
+        <input
+          value={lastName}
+          onChange={(e) => setLastName(e.target.value)}
+          className="input w-28"
+          placeholder="Soyad"
+        />
+        <input
+          type="email"
+          autoComplete="off"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          className="input w-52"
+          placeholder="E-posta"
+        />
+        <input
+          type="password"
+          autoComplete="new-password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          className="input w-44"
+          placeholder="Şifre (en az 8)"
+        />
+        <button
+          onClick={() => {
+            if (!email.includes("@")) return toast.error("Geçerli bir e-posta gir.");
+            if (password.length < 8) return toast.error("Şifre en az 8 karakter olmalı.");
+            if (!firstName.trim() || !lastName.trim())
+              return toast.error("Ad ve soyad gerekli.");
+            createAccount.mutate(
+              {
+                courierId: c.id,
+                email: email.trim().toLowerCase(),
+                password,
+                first_name: firstName.trim(),
+                last_name: lastName.trim(),
+              },
+              {
+                onSuccess: () => {
+                  setPassword("");
+                  toast.success("Giriş hesabı oluşturuldu.");
+                },
+                onError: (e: any) =>
+                  toast.error(e?.response?.data?.detail ?? "Hesap oluşturulamadı."),
+              }
+            );
+          }}
+          disabled={createAccount.isPending}
+          className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-700 disabled:opacity-50"
+        >
+          Hesap oluştur
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function CourierRow({ c }: { c: Courier }) {
   const update = useUpdateCourier();
   const remove = useDeleteCourier();
   const uploadPhoto = useUploadCourierPhoto();
   const fileRef = useRef<HTMLInputElement>(null);
   const [editing, setEditing] = useState(false);
+  const [showAccount, setShowAccount] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const [name, setName] = useState(c.name);
   const [phone, setPhone] = useState(c.phone ?? "");
   const [plate, setPlate] = useState(c.vehicle_plate ?? "");
@@ -102,7 +285,9 @@ function CourierRow({ c }: { c: Courier }) {
   }
 
   return (
-    <li className="group flex items-center gap-3 py-3">
+    <>
+    <li>
+      <div className="group flex items-center gap-3 py-3">
       <button
         type="button"
         title="Fotoğraf yükle"
@@ -147,7 +332,17 @@ function CourierRow({ c }: { c: Courier }) {
           {[c.vehicle_plate, c.phone].filter(Boolean).join(" · ") || "—"}
         </p>
       </div>
-      <div className="flex shrink-0 items-center gap-2 opacity-0 transition group-hover:opacity-100">
+      <div className="flex shrink-0 items-center gap-2 opacity-0 transition focus-within:opacity-100 group-hover:opacity-100">
+        <button
+          onClick={() => setShowAccount((v) => !v)}
+          className={`text-xs font-semibold hover:underline ${
+            showAccount
+              ? "text-slate-900 dark:text-white"
+              : "text-indigo-600 dark:text-indigo-400"
+          }`}
+        >
+          Hesap
+        </button>
         <button
           onClick={() => setEditing(true)}
           className="text-xs font-semibold text-indigo-600 hover:underline dark:text-indigo-400"
@@ -163,18 +358,29 @@ function CourierRow({ c }: { c: Courier }) {
           {c.is_active ? "Pasifleştir" : "Aktifleştir"}
         </button>
         <button
-          onClick={() => {
-            if (window.confirm(`${c.name} silinsin mi?`))
-              remove.mutate(c.id, {
-                onError: () => toast.error("Silinemedi."),
-              });
-          }}
+          onClick={() => setDeleteOpen(true)}
           className="text-xs font-semibold text-rose-500 hover:underline"
         >
           Sil
         </button>
       </div>
+      </div>
+      {showAccount && <CourierAccountPanel c={c} />}
     </li>
+    <ConfirmDialog
+      open={deleteOpen}
+      title="Kurye profilini sil"
+      description={`${c.name} kurye profili silinecek.`}
+      confirmLabel="Kuryeyi sil"
+      danger
+      isPending={remove.isPending}
+      onClose={() => setDeleteOpen(false)}
+      onConfirm={() => remove.mutate(c.id, {
+        onSuccess: () => setDeleteOpen(false),
+        onError: () => toast.error("Silinemedi."),
+      })}
+    />
+    </>
   );
 }
 
@@ -210,7 +416,7 @@ export function CourierManager() {
         <div>
           <h2 className="text-base font-bold text-slate-900 dark:text-white">Kuryeler</h2>
           <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
-            Müşteri takip sayfasında görünen kimlik: isim, fotoğraf, plaka.
+            Müşteri takip kimliği (isim, fotoğraf, plaka) + saha ekranı giriş hesabı.
           </p>
         </div>
         {!adding && (

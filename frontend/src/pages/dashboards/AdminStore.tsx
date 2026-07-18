@@ -1,8 +1,11 @@
 import { useState } from "react";
 import { createPortal } from "react-dom";
 import { useMutation } from "@tanstack/react-query";
+import { NavLink, useLocation } from "react-router-dom";
+import { ConfirmDialog, ReasonDialog } from "@/components/admin/ui";
 import { formatTL } from "@/lib/money";
 import { formatDateTime } from "@/lib/datetime";
+import { ROUTES } from "@/lib/routes";
 import {
   createCategory,
   createProduct,
@@ -40,8 +43,20 @@ import type {
 
 type SubTab = "products" | "categories" | "orders" | "returns" | "coupons";
 
+const STORE_ROUTES: Record<SubTab, string> = {
+  products: ROUTES.adminStoreProducts,
+  categories: ROUTES.adminStoreCategories,
+  orders: ROUTES.adminStoreOrders,
+  returns: ROUTES.adminStoreReturns,
+  coupons: ROUTES.adminStoreCoupons,
+};
+
 export default function AdminStore() {
-  const [sub, setSub] = useState<SubTab>("products");
+  const { pathname } = useLocation();
+  const sub =
+    (Object.entries(STORE_ROUTES).find(([, route]) => pathname === route)?.[0] as
+      | SubTab
+      | undefined) ?? "products";
   return (
     <div>
       <div className="mb-4 flex gap-2">
@@ -54,10 +69,10 @@ export default function AdminStore() {
             ["coupons", "Kuponlar"],
           ] as [SubTab, string][]
         ).map(([v, label]) => (
-          <button
+          <NavLink
             key={v}
-            type="button"
-            onClick={() => setSub(v)}
+            to={STORE_ROUTES[v]}
+            aria-current={sub === v ? "page" : undefined}
             className={`rounded-lg px-3 py-1.5 text-sm ${
               sub === v
                 ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900"
@@ -65,7 +80,7 @@ export default function AdminStore() {
             }`}
           >
             {label}
-          </button>
+          </NavLink>
         ))}
       </div>
       {sub === "products" ? (
@@ -636,16 +651,16 @@ const RETURN_STATUS_LABELS: Record<string, { label: string; cls: string }> = {
 };
 
 function ReturnsPanel() {
+  const [decision, setDecision] = useState<{ id: number; action: "approve" | "reject" } | null>(null);
   const [onlyPending, setOnlyPending] = useState(true);
   const { data: returns, isLoading } = useAdminReturns(onlyPending ? "PENDING" : undefined);
   const resolve = useResolveReturn();
 
   function approve(id: number) {
-    if (!window.confirm("İade talebini onayla? Müşteriye ödeme iadesi yapılacak ve stok geri yüklenecek.")) return;
     resolve.mutate(
       { id, action: "approve" },
       {
-        onSuccess: () => toast.success("İade onaylandı, ödeme iade edildi"),
+        onSuccess: () => { toast.success("İade onaylandı, ödeme iade edildi"); setDecision(null); },
         onError: (err: unknown) => {
           const detail =
             (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ??
@@ -656,13 +671,11 @@ function ReturnsPanel() {
     );
   }
 
-  function reject(id: number) {
-    const note = window.prompt("Red gerekçesi (opsiyonel, müşteriye iletilir):");
-    if (note === null) return; // iptal
+  function reject(id: number, note: string) {
     resolve.mutate(
       { id, action: "reject", adminNote: note || null },
       {
-        onSuccess: () => toast.success("İade talebi reddedildi"),
+        onSuccess: () => { toast.success("İade talebi reddedildi"); setDecision(null); },
         onError: () => toast.error("İşlem başarısız"),
       }
     );
@@ -716,7 +729,7 @@ function ReturnsPanel() {
                   <button
                     type="button"
                     disabled={resolve.isPending}
-                    onClick={() => approve(r.id)}
+                    onClick={() => setDecision({ id: r.id, action: "approve" })}
                     className="rounded-lg bg-emerald-600 px-3 py-1 text-xs font-medium text-white transition-colors hover:bg-emerald-700 disabled:opacity-50"
                   >
                     Onayla & iade et
@@ -724,7 +737,7 @@ function ReturnsPanel() {
                   <button
                     type="button"
                     disabled={resolve.isPending}
-                    onClick={() => reject(r.id)}
+                    onClick={() => setDecision({ id: r.id, action: "reject" })}
                     className="rounded-lg border border-rose-200 px-3 py-1 text-xs text-rose-600 transition-colors hover:bg-rose-50 disabled:opacity-50 dark:border-rose-500/30 dark:hover:bg-rose-500/10"
                   >
                     Reddet
@@ -739,6 +752,27 @@ function ReturnsPanel() {
           {onlyPending ? "Bekleyen iade talebi yok." : "İade talebi yok."}
         </p>
       )}
+      <ConfirmDialog
+        open={decision?.action === "approve"}
+        title="İade talebini onayla"
+        description="Müşteriye ödeme iadesi yapılacak ve ürün stoğu geri yüklenecek."
+        confirmLabel="Onayla ve iade et"
+        danger
+        isPending={resolve.isPending}
+        onClose={() => setDecision(null)}
+        onConfirm={() => decision && approve(decision.id)}
+      />
+      <ReasonDialog
+        open={decision?.action === "reject"}
+        title="İade talebini reddet"
+        description="Moderasyon notu müşteriye iletilecek."
+        label="Red gerekçesi"
+        confirmLabel="Talebi reddet"
+        danger
+        isPending={resolve.isPending}
+        onClose={() => setDecision(null)}
+        onConfirm={(note) => decision && reject(decision.id, note)}
+      />
     </div>
   );
 }
@@ -761,6 +795,7 @@ function CouponsPanel() {
   const update = useUpdateCoupon();
   const del = useDeleteCoupon();
   const [form, setForm] = useState<CouponCreate>(EMPTY_COUPON);
+  const [deleting, setDeleting] = useState<{ id: number; code: string } | null>(null);
 
   function submit() {
     if (!form.code.trim()) {
@@ -882,9 +917,7 @@ function CouponsPanel() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => {
-                    if (window.confirm(`${c.code} kuponunu sil?`)) del.mutate(c.id);
-                  }}
+                  onClick={() => setDeleting({ id: c.id, code: c.code })}
                   className="rounded-lg px-3 py-1 text-xs font-medium text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/10"
                 >
                   Sil
@@ -894,6 +927,16 @@ function CouponsPanel() {
           ))}
         </div>
       )}
+      <ConfirmDialog
+        open={deleting !== null}
+        title="Kuponu sil"
+        description={deleting ? `${deleting.code} kuponu silinecek.` : ""}
+        confirmLabel="Kuponu sil"
+        danger
+        isPending={del.isPending}
+        onClose={() => setDeleting(null)}
+        onConfirm={() => deleting && del.mutate(deleting.id, { onSuccess: () => setDeleting(null) })}
+      />
     </div>
   );
 }

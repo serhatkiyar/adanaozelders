@@ -38,6 +38,48 @@ def next_backoff_seconds(attempts: int) -> int:
     return min(_BACKOFF_BASE_SECONDS * (2 ** max(attempts - 1, 0)), _BACKOFF_MAX_SECONDS)
 
 
+# ── Sessiz saat (PDS §3.8) — saf, pytest'li ──────────────────────────────────
+#: Müşteri SMS'i gece yarısı gitmesin: kind bu önekle başlıyorsa sessiz saatte
+#: ertelenir. E-posta (email:*) gürültüsüz sayılır, ertelenmez.
+_QUIET_KINDS_PREFIX = "sms:"
+
+
+def in_quiet_hours(
+    local: datetime.datetime, *, start_hour: int, end_hour: int, end_minute: int
+) -> bool:
+    """Yerel zaman sessiz aralıkta mı? Aralık gece yarısını sarar (21:00–08:30):
+    saat >= başlangıç VEYA saat/dakika < bitiş. ``start_hour <= 0`` → kapalı."""
+    if start_hour <= 0:
+        return False
+    after_start = local.hour >= start_hour
+    before_end = (local.hour, local.minute) < (end_hour, end_minute)
+    return after_start or before_end
+
+
+def next_allowed_send(
+    now_utc: datetime.datetime,
+    *,
+    utc_offset_hours: int,
+    start_hour: int,
+    end_hour: int,
+    end_minute: int,
+) -> datetime.datetime | None:
+    """Sessiz saatteyse bir SONRAKİ izinli gönderim anını (UTC) döner; değilse
+    None (hemen gönder). Bitiş bugünse bugünün, akşamsa yarının sabahı."""
+    tz = datetime.timezone(datetime.timedelta(hours=utc_offset_hours))
+    if now_utc.tzinfo is None:
+        now_utc = now_utc.replace(tzinfo=datetime.timezone.utc)
+    local = now_utc.astimezone(tz)
+    if not in_quiet_hours(
+        local, start_hour=start_hour, end_hour=end_hour, end_minute=end_minute
+    ):
+        return None
+    target = local.replace(hour=end_hour, minute=end_minute, second=0, microsecond=0)
+    if local.hour >= start_hour:  # akşam → yarının sabahı
+        target += datetime.timedelta(days=1)
+    return target.astimezone(datetime.timezone.utc)
+
+
 # ── Handler kayıtları: kind → async fn(payload) -> bool (gönderildi mi) ──────────
 
 
@@ -109,6 +151,19 @@ async def dispatch_pending(db: AsyncSession, *, limit: int = 50) -> int:
     )
     sent = 0
     for ev in events:
+        # Sessiz saat: müşteri SMS'i gece yarısı gitmez → sabaha ertele (deneme
+        # SAYILMAZ, hata değil; yalnız zaman kaydırma). E-posta ertelenmez.
+        if ev.kind.startswith(_QUIET_KINDS_PREFIX):
+            defer_to = next_allowed_send(
+                _now(),
+                utc_offset_hours=settings.APP_UTC_OFFSET_HOURS,
+                start_hour=settings.DELIVERY_QUIET_START_HOUR,
+                end_hour=settings.DELIVERY_QUIET_END_HOUR,
+                end_minute=settings.DELIVERY_QUIET_END_MINUTE,
+            )
+            if defer_to is not None:
+                ev.next_attempt_at = defer_to
+                continue
         handler = _HANDLERS.get(ev.kind)
         ev.attempts += 1
         try:

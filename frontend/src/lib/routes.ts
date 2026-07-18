@@ -103,6 +103,27 @@ export const PATHS = {
   operatorLibrary: "/kutuphanem",
   /** Operatör operasyon ekranı: QR doğrula + deneme oturumları + çalışma rez. */
   operatorSessions: "/oturumlar",
+
+  // ── Yönetim (ADMIN, route tabanlı bilgi mimarisi) ──
+  admin: "/yonetim",
+  adminUsers: "/yonetim/kullanicilar",
+  adminUser: "/yonetim/kullanicilar/:role/:id",
+  adminTutors: "/yonetim/egitmenler",
+  adminDiplomas: "/yonetim/diplomalar",
+  adminLibraries: "/yonetim/kutuphaneler",
+  adminExamCatalogs: "/yonetim/deneme-kataloglari",
+  adminStoreProducts: "/yonetim/magaza/urunler",
+  adminStoreCategories: "/yonetim/magaza/kategoriler",
+  adminStoreOrders: "/yonetim/magaza/siparisler",
+  adminStoreReturns: "/yonetim/magaza/iadeler",
+  adminStoreCoupons: "/yonetim/magaza/kuponlar",
+  adminDelivery: "/yonetim/dagitim",
+  adminBookings: "/yonetim/rezervasyonlar",
+  adminDemands: "/yonetim/talepler",
+  adminNameChanges: "/yonetim/ad-degisiklikleri",
+  adminReports: "/yonetim/moderasyon/sikayetler",
+  adminAuditLogs: "/yonetim/denetim-kayitlari",
+  adminAccess: "/yonetim/yetkiler",
 } as const;
 
 export const ROUTES = {
@@ -181,6 +202,26 @@ export const ROUTES = {
   studentProfile: (id: string | number) => `/ogrenciler/${id}`,
   operatorLibrary: PATHS.operatorLibrary,
   operatorSessions: PATHS.operatorSessions,
+  admin: PATHS.admin,
+  adminUsers: PATHS.adminUsers,
+  adminUser: (role: "admin" | "tutor" | "client", id: string | number) =>
+    `/yonetim/kullanicilar/${role}/${id}`,
+  adminTutors: PATHS.adminTutors,
+  adminDiplomas: PATHS.adminDiplomas,
+  adminLibraries: PATHS.adminLibraries,
+  adminExamCatalogs: PATHS.adminExamCatalogs,
+  adminStoreProducts: PATHS.adminStoreProducts,
+  adminStoreCategories: PATHS.adminStoreCategories,
+  adminStoreOrders: PATHS.adminStoreOrders,
+  adminStoreReturns: PATHS.adminStoreReturns,
+  adminStoreCoupons: PATHS.adminStoreCoupons,
+  adminDelivery: PATHS.adminDelivery,
+  adminBookings: PATHS.adminBookings,
+  adminDemands: PATHS.adminDemands,
+  adminNameChanges: PATHS.adminNameChanges,
+  adminReports: PATHS.adminReports,
+  adminAuditLogs: PATHS.adminAuditLogs,
+  adminAccess: PATHS.adminAccess,
 } as const;
 
 // Yasal belge id'si (lib/legalContent.ts) → URL. LegalPage kenar gezinmesi ve

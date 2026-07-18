@@ -16,6 +16,9 @@ class RoleType(str, enum.Enum):
     # Kütüphane operatörü — bir kütüphaneye bağlı; deneme oturumlarında QR okutup
     # katılımı doğrular. Admin tarafından oluşturulur (self-servis kayıt yok).
     LIBRARY_OPERATOR = "LIBRARY_OPERATOR"
+    # Kurye — kendi-filo teslimat saha hesabı. Admin oluşturur; yalnız kendi
+    # atanmış turunun saha uçlarına erişir (minimum yetki; IDOR 404).
+    COURIER = "COURIER"
 
 
 ROLE_IDS: dict[RoleType, int] = {
@@ -23,6 +26,7 @@ ROLE_IDS: dict[RoleType, int] = {
     RoleType.TUTOR: 2,
     RoleType.CLIENT: 3,
     RoleType.LIBRARY_OPERATOR: 4,
+    RoleType.COURIER: 5,
 }
 
 # role_id -> RoleType ters haritası (ör. booking comment/resource'ta rol adını yazarken).

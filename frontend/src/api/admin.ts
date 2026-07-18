@@ -1,30 +1,152 @@
 import { apiClient } from "@/api/axios";
 import type {
   AdminStats,
+  AdminDashboardOut,
   AdminUserOut,
   TutorOut,
   AdminBookingOut,
   AdminEducation,
   Education,
+  AdminUserDetailOut,
+  AdminUserRole,
+  AdminUserRolePath,
+  AuditLogOut,
+  AdminDemandOut,
+  DemandStatus,
+  BookingStatus,
+  AdminPermissionOut,
+  AdminRoleAssignmentOut,
+  AdminRoleCreate,
+  AdminRoleInput,
+  AdminRoleOut,
 } from "@/types";
+
+export async function fetchAdminPermissions(): Promise<AdminPermissionOut[]> {
+  const { data } = await apiClient.get<AdminPermissionOut[]>("/admin/access/permissions");
+  return data;
+}
+
+export async function fetchAdminRoles(): Promise<AdminRoleOut[]> {
+  const { data } = await apiClient.get<AdminRoleOut[]>("/admin/access/roles");
+  return data;
+}
+
+export async function fetchAdminRoleAssignments(): Promise<AdminRoleAssignmentOut[]> {
+  const { data } = await apiClient.get<AdminRoleAssignmentOut[]>("/admin/access/assignments");
+  return data;
+}
+
+export async function createAdminRole(payload: AdminRoleCreate): Promise<AdminRoleOut> {
+  const { data } = await apiClient.post<AdminRoleOut>("/admin/access/roles", payload);
+  return data;
+}
+
+export async function updateAdminRole(id: number, payload: AdminRoleInput): Promise<AdminRoleOut> {
+  const { data } = await apiClient.put<AdminRoleOut>(`/admin/access/roles/${id}`, payload);
+  return data;
+}
+
+export async function assignAdminRole(adminId: number, roleId: number): Promise<AdminRoleAssignmentOut> {
+  const { data } = await apiClient.put<AdminRoleAssignmentOut>(`/admin/access/admins/${adminId}/role`, { role_id: roleId });
+  return data;
+}
 
 export async function fetchAdminStats(): Promise<AdminStats> {
   const { data } = await apiClient.get<AdminStats>("/admin/stats");
   return data;
 }
 
+export async function fetchAdminDashboard(
+  range: "day" | "week" | "month"
+): Promise<AdminDashboardOut> {
+  const { data } = await apiClient.get<AdminDashboardOut>("/admin/dashboard", {
+    params: { range },
+  });
+  return data;
+}
+
 export interface AdminUsersParams {
   limit?: number;
   offset?: number;
+  q?: string;
+  role?: AdminUserRole;
+  is_active?: boolean;
+  sort?: "created_at" | "full_name" | "email" | "role";
+  order?: "asc" | "desc";
+}
+
+export interface AdminUsersResult {
+  items: AdminUserOut[];
+  total: number;
 }
 
 export async function fetchAdminUsers(
   params: AdminUsersParams = {}
-): Promise<AdminUserOut[]> {
-  const { data } = await apiClient.get<AdminUserOut[]>("/admin/users", {
+): Promise<AdminUsersResult> {
+  const response = await apiClient.get<AdminUserOut[]>("/admin/users", {
     params,
   });
+  return {
+    items: response.data,
+    total: Number(response.headers["x-total-count"] ?? response.data.length),
+  };
+}
+
+export async function fetchAdminUser(
+  role: AdminUserRolePath,
+  id: number
+): Promise<AdminUserDetailOut> {
+  const { data } = await apiClient.get<AdminUserDetailOut>(`/admin/users/${role}/${id}`);
   return data;
+}
+
+export type AdminDemandSort = "created_at" | "title" | "subject" | "status" | "response_count";
+
+export interface AdminDemandsParams {
+  limit?: number;
+  offset?: number;
+  q?: string;
+  status?: DemandStatus;
+  sort?: AdminDemandSort;
+  order?: "asc" | "desc";
+}
+
+export async function fetchAdminDemands(
+  params: AdminDemandsParams = {}
+): Promise<{ items: AdminDemandOut[]; total: number }> {
+  const response = await apiClient.get<AdminDemandOut[]>("/admin/demands", { params });
+  return {
+    items: response.data,
+    total: Number(response.headers["x-total-count"] ?? response.data.length),
+  };
+}
+
+export async function cancelAdminDemand(id: number, reason: string): Promise<AdminDemandOut> {
+  const { data } = await apiClient.post<AdminDemandOut>(`/admin/demands/${id}/cancel`, { reason });
+  return data;
+}
+
+export interface AdminAuditParams {
+  limit?: number;
+  offset?: number;
+  q?: string;
+  action?: string;
+  target_type?: string;
+  actor_id?: number;
+  sort?: "created_at" | "action" | "target_type" | "actor_id";
+  order?: "asc" | "desc";
+}
+
+export async function fetchAdminAuditLogs(
+  params: AdminAuditParams = {}
+): Promise<{ items: AuditLogOut[]; total: number }> {
+  const response = await apiClient.get<AuditLogOut[]>("/admin/audit-logs", {
+    params,
+  });
+  return {
+    items: response.data,
+    total: Number(response.headers["x-total-count"] ?? response.data.length),
+  };
 }
 
 export async function fetchAdminTutors(): Promise<TutorOut[]> {
@@ -65,9 +187,30 @@ export async function fetchAdminTutorsByStatus(
   return data;
 }
 
-export async function fetchAdminBookings(params: { limit?: number; offset?: number } = {}): Promise<AdminBookingOut[]> {
-  const { data } = await apiClient.get<AdminBookingOut[]>("/admin/bookings", { params });
-  return data;
+export type AdminBookingSort = "created_at" | "start_at" | "status" | "price";
+
+export interface AdminBookingsParams {
+  limit?: number;
+  offset?: number;
+  q?: string;
+  status?: BookingStatus;
+  is_disputed?: boolean;
+  sort?: AdminBookingSort;
+  order?: "asc" | "desc";
+}
+
+export async function fetchAdminBookingList(
+  params: AdminBookingsParams = {}
+): Promise<{ items: AdminBookingOut[]; total: number }> {
+  const response = await apiClient.get<AdminBookingOut[]>("/admin/bookings", { params });
+  return {
+    items: response.data,
+    total: Number(response.headers["x-total-count"] ?? response.data.length),
+  };
+}
+
+export async function fetchAdminBookings(params: AdminBookingsParams = {}): Promise<AdminBookingOut[]> {
+  return (await fetchAdminBookingList(params)).items;
 }
 
 export async function cancelAdminBooking(id: number, reason: string): Promise<AdminBookingOut> {

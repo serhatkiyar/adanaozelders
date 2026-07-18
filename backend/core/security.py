@@ -21,7 +21,9 @@ def verify_password(password: str, hashed_password: str) -> bool:
     return bcrypt.checkpw(pwd, hashed_password.encode("utf-8"))
 
 
-def create_access_token(*, subject: int, role: str, role_id: int) -> str:
+def create_access_token(
+    *, subject: int, role: str, role_id: int, auth_version: int | None = None
+) -> str:
     now = datetime.datetime.now(datetime.timezone.utc)
     payload = {
         "sub": str(subject),
@@ -33,6 +35,10 @@ def create_access_token(*, subject: int, role: str, role_id: int) -> str:
         "iat": now,
         "exp": now + datetime.timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES),
     }
+    # Oturum sürümlü hesaplar (KURYE): hesap kapatma auth_version'ı artırır,
+    # eski sürümlü token get_current_user'da anında reddedilir.
+    if auth_version is not None:
+        payload["auth_ver"] = auth_version
     return jwt.encode(payload, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
 
 

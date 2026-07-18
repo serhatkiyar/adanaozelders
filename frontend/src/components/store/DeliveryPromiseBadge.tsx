@@ -4,7 +4,11 @@
 import { useEffect, useState } from "react";
 
 import { useDeliveryInfo } from "@/hooks/useDelivery";
-import { formatCountdown, promiseDayLabel } from "@/lib/deliveryPromise";
+import {
+  formatCountdown,
+  isCutoffClosing,
+  promiseDayLabel,
+} from "@/lib/deliveryPromise";
 
 function useRemainingSeconds(
   serverSeconds: number | null | undefined,
@@ -34,10 +38,14 @@ export function DeliveryPromiseBadge({
   if (!info) return null;
 
   const day = promiseDayLabel(info.promised_date_now);
+  // E1: son 15 dk — söz hâlâ geçerli ama kapanmak üzere; dürüst aciliyet tonu.
+  const closing = isCutoffClosing(remaining);
   const title = `Cıncık Teslimat · ${day} kapında`;
   const sub =
     remaining != null
-      ? `${formatCountdown(remaining)} içinde sipariş ver — Adana Merkez'e kendi kuryemizle.`
+      ? closing
+        ? `${day} garantisi kapanmak üzere — son ${formatCountdown(remaining)}.`
+        : `${formatCountdown(remaining)} içinde sipariş ver — Adana Merkez'e kendi kuryemizle.`
       : "Adana Merkez'e kendi kuryemizle; 16:00 sonrası siparişler ertesi gün.";
 
   if (variant === "inline") {
@@ -45,7 +53,13 @@ export function DeliveryPromiseBadge({
       <span className="text-emerald-700 dark:text-emerald-400">
         Cıncık Teslimat · {day} kapında
         {remaining != null && (
-          <span className="text-slate-400 dark:text-slate-500">
+          <span
+            className={
+              closing
+                ? "font-medium text-amber-600 dark:text-amber-400"
+                : "text-slate-400 dark:text-slate-500"
+            }
+          >
             {" "}
             · son {formatCountdown(remaining)}
           </span>
@@ -74,7 +88,15 @@ export function DeliveryPromiseBadge({
       </svg>
       <span>
         <span className="font-medium text-slate-900 dark:text-white">{title}</span>
-        <span className="block text-slate-500 dark:text-slate-400">{sub}</span>
+        <span
+          className={`block ${
+            closing
+              ? "font-medium text-amber-600 dark:text-amber-400"
+              : "text-slate-500 dark:text-slate-400"
+          }`}
+        >
+          {sub}
+        </span>
       </span>
     </div>
   );

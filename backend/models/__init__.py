@@ -2,6 +2,12 @@ from sqlalchemy import DDL, event
 
 from core.database import Base
 from models.admin import Admin
+from models.admin_access import (
+    AdminPermission,
+    AdminRole,
+    AdminRoleAssignment,
+    AdminRolePermission,
+)
 from models.audit_log import AuditLog
 from models.booking import Booking, BookingStatus
 from models.booking_comment import BookingComment
@@ -11,13 +17,17 @@ from models.bookmark import Bookmark
 from models.client import Client, ClientAddress, ClientEducation
 from models.product_bookmark import ProductBookmark
 from models.courier import Courier
+from models.courier_account import CourierAccount
 from models.delivery import (
+    DeliveryClosedDay,
+    DeliveryFeedback,
     DeliveryProof,
     DeliveryRun,
     DeliveryRunStatus,
     DeliveryStop,
     DeliveryStopStatus,
     DeliveryVehicle,
+    FeedbackProblem,
 )
 from models.demand import Demand, DemandStatus
 from models.demand_response import DemandResponse
@@ -101,6 +111,10 @@ for _extension in ("btree_gist", "pg_trgm"):
 
 __all__ = [
     "Admin",
+    "AdminPermission",
+    "AdminRole",
+    "AdminRoleAssignment",
+    "AdminRolePermission",
     "AuditLog",
     "Booking",
     "BookingComment",
@@ -114,6 +128,9 @@ __all__ = [
     "ClientEducation",
     "Conversation",
     "Courier",
+    "CourierAccount",
+    "DeliveryClosedDay",
+    "DeliveryFeedback",
     "DeliveryProof",
     "DeliveryRun",
     "DeliveryRunStatus",
@@ -126,6 +143,7 @@ __all__ = [
     "ExamRegistration",
     "ExamSessionStatus",
     "ExamType",
+    "FeedbackProblem",
     "Flashcard",
     "FlashcardDeck",
     "Habit",
