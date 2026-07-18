@@ -383,6 +383,7 @@ function RunExceptionStrip({ run }: { run: DeliveryRun }) {
   const chips = (
     [
       { key: "promise", n: x.promiseRisk, label: "söz riski", tone: "rose" },
+      { key: "eta", n: x.etaDelayed, label: "ETA aşıldı", tone: "rose" },
       { key: "pinless", n: x.pinless, label: "pinsiz", tone: "amber" },
       { key: "retry", n: x.retry, label: "yeniden deneme", tone: "amber" },
       { key: "outlier", n: x.outlier, label: "rotayı bozan", tone: "amber" },

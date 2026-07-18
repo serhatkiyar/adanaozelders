@@ -83,7 +83,14 @@ export interface RunExceptions {
   retry: number;
   /** Rotaya kattığı ek yol eşiği aşan durak (dış kurye adayı). */
   outlier: number;
+  /** AKTİF turda planlanan ETA'sı eşikten fazla geçmiş bekleyen durak —
+   *  rota planın gerisinde, müşteri pencereleri kaçabilir (proaktif alarm). */
+  etaDelayed: number;
 }
+
+/** ETA sapma alarmı eşiği (dk) — açıklanabilir sabit; "AI tahmini" değil.
+ *  Müşteri penceresinin geç kanadıyla (±45 dk) uyumlu erken uyarı payı. */
+export const ETA_DELAY_ALERT_MINUTES = 15;
 
 export function runExceptions(
   run: DeliveryRun,
@@ -91,6 +98,7 @@ export function runExceptions(
 ): RunExceptions {
   const todayIso = today.toLocaleDateString("sv-SE"); // yerel YYYY-MM-DD
   const pending = run.stops.filter((s) => s.status === "PENDING");
+  const etaLimitMs = today.getTime() - ETA_DELAY_ALERT_MINUTES * 60_000;
   return {
     pinless: pending.filter((s) => s.lat == null || s.lng == null).length,
     promiseRisk: pending.filter(
@@ -98,10 +106,24 @@ export function runExceptions(
     ).length,
     retry: pending.filter((s) => (s.failed_attempts ?? 0) > 0).length,
     outlier: pending.filter((s) => s.is_outlier).length,
+    // Yalnız AKTİF turda anlamlı: PLANNED'da ETA'lar optimize-anı taslağıdır,
+    // start_run gerçek çıkışa kaydırır — orada alarm gürültü olur.
+    etaDelayed:
+      run.status === "ACTIVE"
+        ? pending.filter(
+            (s) => s.eta != null && new Date(s.eta).getTime() < etaLimitMs,
+          ).length
+        : 0,
   };
 }
 
 /** İstisna özetinde işaretlenecek bir şey var mı? */
 export function hasRunExceptions(x: RunExceptions): boolean {
-  return x.pinless > 0 || x.promiseRisk > 0 || x.retry > 0 || x.outlier > 0;
+  return (
+    x.pinless > 0 ||
+    x.promiseRisk > 0 ||
+    x.retry > 0 ||
+    x.outlier > 0 ||
+    x.etaDelayed > 0
+  );
 }

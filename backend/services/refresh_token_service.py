@@ -9,7 +9,7 @@ import datetime
 import hashlib
 import secrets
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.config import settings
@@ -38,6 +38,21 @@ async def issue(db: AsyncSession, *, role_id: int, user_id: int) -> str:
     )
     await db.flush()
     return raw
+
+
+async def revoke_all_for_user(db: AsyncSession, *, role_id: int, user_id: int) -> None:
+    """Kullanıcının TÜM aktif refresh token'larını iptal eder (bulk; commit
+    çağıranın). Şifre sıfırlama / hesap kapatma gibi güvenlik olaylarında
+    oturum sürekliliği kesilir — kısa ömürlü access token doğal ölür."""
+    await db.execute(
+        update(RefreshToken)
+        .where(
+            RefreshToken.role_id == role_id,
+            RefreshToken.user_id == user_id,
+            RefreshToken.revoked_at.is_(None),
+        )
+        .values(revoked_at=_now())
+    )
 
 
 async def _lookup_valid(db: AsyncSession, raw_token: str) -> RefreshToken | None:

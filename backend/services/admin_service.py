@@ -1,13 +1,11 @@
 from __future__ import annotations
 
 import datetime
-import secrets
 
 from fastapi import HTTPException, status
 from sqlalchemy import String, asc, cast, desc, func, literal, or_, select, union_all
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from core.security import hash_password
 from models.admin import Admin
 from models.audit_log import AuditLog
 from models.booking import Booking, BookingStatus
@@ -31,21 +29,36 @@ from schemas.admin import (
 _RESET_MODELS: dict[str, type] = {"tutor": Tutor, "client": Client}
 
 
-async def reset_user_password(
-    db: AsyncSession, *, role: str, user_id: int, new_password: str | None
-) -> str:
-    """Admin tarafından e-postasız şifre sıfırlama. new_password verilmezse rastgele
-    geçici şifre üretir ve döndürür (admin kullanıcıya iletir)."""
+def _mask_email(email: str) -> str:
+    """kiyarserhat@gmail.com → k***t@gmail.com (admin ekranında teyit için)."""
+    local, _, domain = email.partition("@")
+    if len(local) <= 2:
+        return f"{local[:1]}***@{domain}"
+    return f"{local[0]}***{local[-1]}@{domain}"
+
+
+async def initiate_password_reset(db: AsyncSession, *, role: str, user_id: int) -> str:
+    """Güvenli admin şifre sıfırlama: geçici parola ÜRETİLMEZ ve ekrana DÖNMEZ.
+
+    Kullanıcıya tek kullanımlık, süreli self-service sıfırlama linki e-postalanır
+    (verification_tokens — hash'li, tek kullanımlık) ve TÜM aktif refresh
+    token'ları iptal edilir (çalıntı oturum şifreyle birlikte ölür; kısa ömürlü
+    access token doğal süresinde düşer). Maskeli e-posta döner."""
+    from models.role import ROLE_IDS, RoleType
+    from services import refresh_token_service, verification_service
+
     model = _RESET_MODELS.get(role)
     if model is None:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid role")
     user = await db.get(model, user_id)
     if user is None or user.deleted_at is not None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")
-    password = new_password or secrets.token_urlsafe(9)
-    user.hashed_password = hash_password(password)
-    await db.flush()
-    return password
+    role_id = ROLE_IDS[RoleType.TUTOR if role == "tutor" else RoleType.CLIENT]
+    await refresh_token_service.revoke_all_for_user(
+        db, role_id=role_id, user_id=user.id
+    )
+    await verification_service.send_password_reset(db, user)
+    return _mask_email(user.email)
 
 
 async def _count(db: AsyncSession, model, *conditions) -> int:

@@ -30,7 +30,7 @@ from schemas.admin_access import (
 from schemas.tutor import TutorOut
 from schemas.booking import BookingCancel
 from typing import Literal
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field
 
 class DisputeToggle(BaseModel):
     is_disputed: bool
@@ -40,17 +40,15 @@ class DisputeToggle(BaseModel):
 class PasswordResetIn(BaseModel):
     role: Literal["tutor", "client"]
     user_id: int
-    # Verilmezse rastgele geçici şifre üretilir; verilirse en az 8 karakter.
-    new_password: str | None = Field(default=None, min_length=8, max_length=128)
-
-    @field_validator("new_password")
-    @classmethod
-    def _strip_empty(cls, v: str | None) -> str | None:
-        return v or None
+    # Hassas işlem: gerekçe zorunlu (audit'e yazılır — kim, neden).
+    reason: str = Field(min_length=3, max_length=300)
 
 
 class PasswordResetOut(BaseModel):
-    temporary_password: str
+    """Parola ASLA dönmez — kullanıcıya tek kullanımlık sıfırlama linki
+    e-postalanır; admin yalnız maskeli adresi görür (teyit için)."""
+
+    email_masked: str
 
 from models.report import ReportStatus
 from schemas.report import ReportCountOut, ReportOut, ReportResolve
@@ -532,13 +530,10 @@ async def reset_user_password(
     admin: Admin = Depends(require_admin_permission("users.manage")),
     db: AsyncSession = Depends(get_db),
 ):
-    # E-postasız şifre sıfırlama: temp şifre üretilir/atanır ve admin'e döner.
-    # Not: Kullanıcının mevcut (kısa ömürlü) token'ları otomatik iptal edilmez.
-    password = await admin_service.reset_user_password(
-        db,
-        role=payload.role,
-        user_id=payload.user_id,
-        new_password=payload.new_password,
+    # Güvenli akış: parola üretilmez/dönmez; kullanıcıya tek kullanımlık
+    # sıfırlama linki e-postalanır + tüm refresh token'ları iptal edilir.
+    email_masked = await admin_service.initiate_password_reset(
+        db, role=payload.role, user_id=payload.user_id
     )
     await audit_service.record(
         db,
@@ -546,8 +541,9 @@ async def reset_user_password(
         action="user.reset_password",
         target_type=payload.role,
         target_id=payload.user_id,
+        details=payload.reason,
     )
-    return PasswordResetOut(temporary_password=password)
+    return PasswordResetOut(email_masked=email_masked)
 
 
 # ── Şikayet moderasyonu ──────────────────────────────────────────────

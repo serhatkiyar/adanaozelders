@@ -116,6 +116,28 @@ describe("runExceptions (PDS O2 istisna şeridi)", () => {
     const r = run([stop({ id: 1, lat: 37, lng: 35, promised_delivery_date: "2026-07-11" })]);
     expect(hasRunExceptions(runExceptions(r, TODAY))).toBe(false);
   });
+
+  it("ETA sapması: AKTİF turda eşikten eski ETA'lı bekleyen durak sayılır", () => {
+    // TODAY = 09:00 yerel; eşik 15 dk → 08:44 gecikmiş, 08:50 henüz değil.
+    const r = run([
+      stop({ id: 1, lat: 37, lng: 35, eta: new Date(2026, 6, 10, 8, 44).toISOString() }),
+      stop({ id: 2, lat: 37, lng: 35, eta: new Date(2026, 6, 10, 8, 50).toISOString() }),
+      stop({ id: 3, lat: 37, lng: 35, eta: null }),
+    ]);
+    const x = runExceptions(r, TODAY);
+    expect(x.etaDelayed).toBe(1);
+    expect(hasRunExceptions(x)).toBe(true);
+  });
+
+  it("ETA sapması PLANNED turda alarm üretmez (taslak ETA gürültü olur)", () => {
+    const r = {
+      ...run([
+        stop({ id: 1, lat: 37, lng: 35, eta: new Date(2026, 6, 10, 7, 0).toISOString() }),
+      ]),
+      status: "PLANNED" as const,
+    };
+    expect(runExceptions(r, TODAY).etaDelayed).toBe(0);
+  });
 });
 
 describe("FAIL_REASONS (neden kodları)", () => {
