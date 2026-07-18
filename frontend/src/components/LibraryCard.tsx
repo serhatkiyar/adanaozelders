@@ -3,7 +3,6 @@ import { ROUTES } from "@/lib/routes";
 import { StarRating } from "@/components/StarRating";
 import { LibraryBookmarkButton } from "@/components/LibraryBookmarkButton";
 import { regionLabel } from "@/lib/region";
-import { formatTRY } from "@/lib/money";
 import { PinIcon } from "@/components/PinIcon";
 import type { LibrarySearchOut } from "@/types";
 
@@ -13,7 +12,7 @@ export function LibraryCard({ library }: { library: LibrarySearchOut }) {
       to={ROUTES.library(library.slug)}
       className="group flex flex-col overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-200 transition hover:-translate-y-0.5 hover:shadow-lg dark:bg-slate-800 dark:ring-slate-700"
     >
-      <div className="relative h-36 w-full overflow-hidden bg-gradient-to-br from-indigo-100 to-violet-100 dark:from-slate-700 dark:to-slate-800">
+      <div className="relative aspect-square w-full overflow-hidden bg-gradient-to-br from-indigo-100 to-violet-100 dark:from-slate-700 dark:to-slate-800">
         {library.cover_url ? (
           <img
             src={library.cover_url}
@@ -82,12 +81,6 @@ export function LibraryCard({ library }: { library: LibrarySearchOut }) {
             </span>
           )}
         </div>
-
-        {library.study_hourly_price != null && (
-          <p className="mt-2 text-xs font-semibold text-violet-600 dark:text-violet-300">
-            🪑 Çalışma alanı · {formatTRY(library.study_hourly_price)}/saat
-          </p>
-        )}
       </div>
     </Link>
   );

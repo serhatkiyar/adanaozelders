@@ -3,9 +3,8 @@ import { Link, useParams } from "react-router-dom";
 import { DashboardShell } from "@/components/DashboardShell";
 import { PublicShell } from "@/components/PublicShell";
 import { STUDENT_NAV, TUTOR_NAV } from "@/lib/nav";
-import { LibrariesMap } from "@/components/LibrariesMap";
+import { StaticLocationMap } from "@/components/StaticLocationMap";
 import { ExamSessionsSection } from "@/components/ExamSessionsSection";
-import { LibrarySpeedTestSection } from "@/components/LibrarySpeedTestSection";
 import { LibraryReservationModal } from "@/components/LibraryReservationModal";
 import { StarRating } from "@/components/StarRating";
 import { LibraryBookmarkButton } from "@/components/LibraryBookmarkButton";
@@ -248,8 +247,8 @@ export default function LibraryDetail() {
               {/* Yaklaşan denemeler — deneme olmasa da kart kendi içinde "yok" gösterir */}
               <ExamSessionsSection libraryId={lib.id} />
 
-              {/* İnternet hız testi (wifi) — çalıştır + kütüphaneye kaydet */}
-              <LibrarySpeedTestSection libraryId={lib.id} canRecord={isClient} />
+              {/* NOT: İnternet hız testi (LibrarySpeedTestSection) bilinçli olarak
+                  arşivde — bileşen ve backend duruyor, sayfada gösterilmiyor. */}
             </div>
 
             {/* Sol / bilgi kolonu */}
@@ -307,21 +306,19 @@ export default function LibraryDetail() {
                   )}
                 </div>
 
-                {lib.location_lat != null && lib.location_lng != null ? (
-                  <div className="mt-4 overflow-hidden rounded-xl ring-1 ring-slate-200 dark:ring-slate-700">
-                    <LibrariesMap libraries={[lib]} height="190px" enablePanel={false} />
-                  </div>
-                ) : null}
-                {mapViewUrl(lib) && (
-                  <a
-                    href={mapViewUrl(lib)!}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="mt-3 inline-flex items-center gap-2 rounded-full bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-transform hover:scale-105"
-                  >
-                    Haritada Görüntüle
-                  </a>
-                )}
+                {/* Salt-gösterim harita: oynatılamaz, tıklanınca Google Haritalar açılır.
+                    Ayrı bir "Haritada Görüntüle" butonu yok — haritanın kendisi bağlantı. */}
+                {lib.location_lat != null &&
+                  lib.location_lng != null &&
+                  mapViewUrl(lib) && (
+                    <div className="mt-4">
+                      <StaticLocationMap
+                        lat={lib.location_lat}
+                        lng={lib.location_lng}
+                        href={mapViewUrl(lib)!}
+                      />
+                    </div>
+                  )}
               </div>
 
               {/* Çalışma Saatleri */}
@@ -721,7 +718,7 @@ function ReviewForm({ libraryId }: { libraryId: number }) {
       <button
         onClick={submit}
         disabled={create.isPending}
-        className="mt-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:opacity-60"
+        className="mt-2 rounded-lg bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-200 disabled:opacity-60 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600"
       >
         {create.isPending ? "Gönderiliyor…" : "Değerlendir"}
       </button>
