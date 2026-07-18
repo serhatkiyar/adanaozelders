@@ -1,9 +1,46 @@
 from __future__ import annotations
 
+import re
+
 from sqlalchemy import asc, desc, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from core.observability import request_id_ctx
 from models.audit_log import AuditLog
+
+#: Audit'e ASLA girmeyecek alan adları (alt-string eşleşme, case-insensitive):
+#: kimlik bilgisi, oturum sırrı ve yasal hassas veri (TCKN/IBAN). Değer yerine
+#: "[gizlendi]" yazılır — alanın DEĞİŞTİĞİ görünür, içeriği görünmez.
+_SENSITIVE_KEY_RE = re.compile(
+    r"password|passwd|secret|token|authorization|api_key|apikey|tckn|iban|otp|jti|hash",
+    re.IGNORECASE,
+)
+_REDACTED = "[gizlendi]"
+#: JSONB'ye kontrolsüz derinlik/nesne yazılmasın (audit özet içindir, dump değil).
+_MAX_DEPTH = 4
+
+
+def redact(values: dict | None) -> dict | None:
+    """Yapılandırılmış audit değerlerinden hassas alanları maskeler (saf, pytest'li).
+
+    İç içe dict/list yapıları gezilir; anahtar adı hassas desenle eşleşirse değer
+    maskelenir. Derinlik sınırı aşılırsa dal "[derin]" olarak kırpılır."""
+    if values is None:
+        return None
+
+    def _walk(v, depth: int):
+        if depth > _MAX_DEPTH:
+            return "[derin]"
+        if isinstance(v, dict):
+            return {
+                k: (_REDACTED if _SENSITIVE_KEY_RE.search(str(k)) else _walk(x, depth + 1))
+                for k, x in v.items()
+            }
+        if isinstance(v, (list, tuple)):
+            return [_walk(x, depth + 1) for x in v]
+        return v
+
+    return _walk(values, 1)
 
 
 async def record(
@@ -14,8 +51,17 @@ async def record(
     target_type: str,
     target_id: int | None = None,
     details: str | None = None,
+    reason: str | None = None,
+    before: dict | None = None,
+    after: dict | None = None,
+    meta: dict | None = None,
+    ip_address: str | None = None,
 ) -> None:
-    """Admin kritik aksiyonunu audit_logs'a yazar."""
+    """Admin kritik aksiyonunu audit_logs'a yazar (append-only).
+
+    before/after/meta HER ZAMAN redaction'dan geçer; request_id aktif istekten
+    (observability ContextVar) otomatik alınır — çağıranın taşıması gerekmez."""
+    rid = request_id_ctx.get()
     db.add(
         AuditLog(
             actor_id=actor.id,
@@ -24,6 +70,12 @@ async def record(
             target_type=target_type,
             target_id=target_id,
             details=details,
+            reason=reason,
+            before_values=redact(before),
+            after_values=redact(after),
+            meta=redact(meta),
+            ip_address=ip_address,
+            request_id=rid if rid != "-" else None,
         )
     )
     await db.flush()
@@ -50,6 +102,7 @@ async def list_logs(
                 AuditLog.action.ilike(pattern),
                 AuditLog.target_type.ilike(pattern),
                 AuditLog.details.ilike(pattern),
+                AuditLog.reason.ilike(pattern),
             )
         )
     if action:

@@ -541,7 +541,8 @@ async def reset_user_password(
         action="user.reset_password",
         target_type=payload.role,
         target_id=payload.user_id,
-        details=payload.reason,
+        reason=payload.reason,
+        meta={"email_masked": email_masked, "sessions_revoked": True},
     )
     return PasswordResetOut(email_masked=email_masked)
 
