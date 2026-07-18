@@ -4,6 +4,7 @@ import type { DeliveryRun, DeliveryStop } from "@/types";
 import {
   FAIL_REASON_LABEL,
   FAIL_REASONS,
+  coLocatedPendingStops,
   googleNavUrl,
   hasRunExceptions,
   nextPendingStop,
@@ -137,6 +138,29 @@ describe("runExceptions (PDS O2 istisna şeridi)", () => {
       status: "PLANNED" as const,
     };
     expect(runExceptions(r, TODAY).etaDelayed).toBe(0);
+  });
+});
+
+describe("coLocatedPendingStops (çoklu paket — aynı nokta)", () => {
+  it("aynı pin (~30 m) bekleyen duraklar eşleşir; sonuçlanan/uzak eşleşmez", () => {
+    const base = stop({ id: 1, lat: 37.0001, lng: 35.32, recipient: "Ali Veli" });
+    const r = run([
+      base,
+      stop({ id: 2, lat: 37.00015, lng: 35.32005, recipient: "Ali Veli" }), // aynı bina
+      stop({ id: 3, lat: 37.0001, lng: 35.32, status: "DELIVERED" }), // sonuçlandı
+      stop({ id: 4, lat: 37.01, lng: 35.32 }), // uzak
+    ]);
+    expect(coLocatedPendingStops(r, base).map((s) => s.id)).toEqual([2]);
+  });
+
+  it("pin yoksa alıcı adı eşleşmesi kullanılır", () => {
+    const base = stop({ id: 1, lat: null, lng: null, recipient: "Ayşe Kaya" });
+    const r = run([
+      base,
+      stop({ id: 2, lat: null, lng: null, recipient: "Ayşe Kaya" }),
+      stop({ id: 3, lat: null, lng: null, recipient: "Başkası" }),
+    ]);
+    expect(coLocatedPendingStops(r, base).map((s) => s.id)).toEqual([2]);
   });
 });
 

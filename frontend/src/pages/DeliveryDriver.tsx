@@ -24,6 +24,7 @@ import {
   FAIL_REASONS,
   RUN_STATUS_LABEL,
   STOP_STATUS_LABEL,
+  coLocatedPendingStops,
   googleNavUrl,
   nextPendingStop,
   runProgress,
@@ -512,6 +513,19 @@ export default function DeliveryDriver() {
           </p>
         ) : current ? (
           <>
+            {/* Çoklu paket (Faz 7): aynı noktaya giden diğer bekleyen paketler —
+                kurye kapıya TEK seferde çıksın; her paket yine ayrı okutulur. */}
+            {(() => {
+              const siblings = coLocatedPendingStops(run, current);
+              if (siblings.length === 0) return null;
+              return (
+                <p className="rounded-xl bg-amber-50 px-4 py-2.5 text-sm font-medium text-amber-800 dark:bg-amber-500/10 dark:text-amber-300">
+                  Bu adrese bu turda {siblings.length} paket daha var (durak{" "}
+                  {siblings.map((s) => `#${s.sequence}`).join(", ")}) — hepsini
+                  birlikte götür, her paketi ayrı okut.
+                </p>
+              );
+            })()}
             <CurrentStopCard key={current.id} stop={current} />
             <button
               onClick={() => setShowScanner(true)}

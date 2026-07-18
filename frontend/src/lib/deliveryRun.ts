@@ -117,6 +117,31 @@ export function runExceptions(
   };
 }
 
+/** İki durak aynı teslimat noktası mı? Pin varsa ~30 m tolerans (aynı adres
+ *  kaydı aynı pin'i taşır; float yuvarlaması için pay), pin yoksa alıcı adı.
+ *  (Faz 7 "çoklu paket": durak→sipariş 1:1 ve kanıt zinciri AYNEN kalır —
+ *  bu yalnız saha/panel farkındalığıdır, veri modeli birleştirmez.) */
+function sameDeliveryPoint(a: DeliveryStop, b: DeliveryStop): boolean {
+  if (a.lat != null && a.lng != null && b.lat != null && b.lng != null) {
+    // 0.0003° ≈ 33 m (enlem) — aynı bina/pin için yeterli, komşu binayı almaz.
+    return Math.abs(a.lat - b.lat) < 0.0003 && Math.abs(a.lng - b.lng) < 0.0003;
+  }
+  return a.recipient != null && a.recipient === b.recipient;
+}
+
+/** Sıradaki durakla AYNI noktaya gidecek diğer bekleyen duraklar (çoklu paket).
+ *  Kurye ekranı "bu adrese N paket daha var — birlikte götür" bandını,
+ *  admin durak listesi grup rozetini bundan besler. */
+export function coLocatedPendingStops(
+  run: DeliveryRun,
+  stop: DeliveryStop,
+): DeliveryStop[] {
+  return run.stops.filter(
+    (s) =>
+      s.id !== stop.id && s.status === "PENDING" && sameDeliveryPoint(s, stop),
+  );
+}
+
 /** İstisna özetinde işaretlenecek bir şey var mı? */
 export function hasRunExceptions(x: RunExceptions): boolean {
   return (

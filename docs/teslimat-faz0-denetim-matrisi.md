@@ -244,7 +244,14 @@ Kullanıcı kararları ([[project_delivery_decisions]] hafızada):
 - Uçlar: POST/GET `/store/orders/{id}/feedback` (CLIENT), POST `/store/orders/track/{token}/feedback` (public, IP rate-limit — durum değiştirmez, yetki yükseltme değil), GET `/delivery/feedback` (ADMIN son değerlendirmeler). `OrderTrackingOut.can_feedback/feedback_given`; KPI'ya `feedback_up/down/satisfaction_rate/feedback_problems` (payda 0 → None, hedef yok).
 - Frontend (Codex'e devredildi, yerelde doğrulandı): `lib/deliveryFeedback.ts` (+Vitest), `DeliveryFeedbackSection` (👍/👎 + chip'ler + not; 409→idempotent teşekkür), CargoTrackingPage (token) + OrderDetailPage (oturum) entegre, AdminDelivery KPI'da memnuniyet + sorun dağılımı + son değerlendirmeler.
 - Test: backend 15 yeni (saf 5 + PG 4 + metrics) — tamamı yeşil; frontend typecheck temiz + 288 Vitest yeşil.
-- **Faz 7'de kalan:** birleşik durak/çoklu paket, ETA sapma alarmı (açıklanabilir eşik). Yasak/bekleyen: AI-predictive + slot (90 gün baseline şart), iade+para timeline'ı (gerçek iade süreci yok), pickup/değişim.
+- ~~Faz 7'de kalan: birleşik durak/çoklu paket, ETA sapma alarmı~~ → ✅ **18 Tem gecesi tamamlandı:**
+  - **ETA sapma alarmı:** dispatch istisna şeridine "ETA aşıldı" (AKTİF turda planlanan ETA'sı 15+ dk geçmiş bekleyen durak; açıklanabilir eşik `ETA_DELAY_ALERT_MINUTES` — PLANNED'da kapalı, taslak ETA gürültü yapmaz). Saf + Vitest.
+  - **Çoklu paket farkındalığı:** `coLocatedPendingStops` (aynı pin ~30 m / pin yoksa alıcı adı) — kurye ekranında "bu adrese N paket daha var, birlikte götür, her paketi ayrı okut" bandı. **Bilinçli karar:** durak→sipariş 1:1 ve kanıt zinciri (QR/OTP/PoD) AYNEN korundu — veri modeli birleştirme (stop→orders 1:N) V2'ye; rota tarafında VROOM/NN aynı koordinatı zaten ardışık çözüyor, operasyonel değer bandla sağlandı.
+  - **Faz 7 KAPANDI.** V2'ye bilinçli kalanlar: tam birleşik durak veri modeli, kapasite bazlı slot (gerçek rezervasyon şart), AI-predictive (90 gün baseline şart), iade+para timeline'ı (gerçek iade süreci kurulunca), pickup/değişim.
+
+**Codex devir işleri ilerlemesi (18 Tem gecesi):**
+- **Öncelik 2 ✅ Güvenli admin şifre sıfırlama:** geçici parola üretilmez/dönmez; tek kullanımlık e-posta linki (`verification_tokens`) + tüm refresh token iptali (`refresh_token_service.revoke_all_for_user`) + zorunlu gerekçe → audit. PG testli.
+- **Öncelik 1 (çekirdek) ✅ Audit sertleştirme:** AuditLog'a reason/before_values/after_values/metadata/ip_address/request_id (migration `fd59af5bab5f`); `audit_service.redact` (şifre/token/TCKN/IBAN/OTP maskeleme, saf+testli); request_id ContextVar'dan otomatik. **Kalan:** store/library/catalog/delivery mutasyonlarının ortak audit politikasına bağlanması + audit sayfası filtreleri (Öncelik 1'in kuyruğu), sonra Öncelik 3+ (devir belgesi §9).
 
 ## 9. Kurye rolü (role_id=5) — ✅ 18 Tem 2026
 
