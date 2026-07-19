@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import datetime
+import enum
 import re
 
 from sqlalchemy import asc, desc, func, or_, select
@@ -20,6 +22,18 @@ _REDACTED = "[gizlendi]"
 _MAX_DEPTH = 4
 
 
+def _scalar(v):
+    """Yaprak değeri JSONB'ye güvenli hale getirir — çağıranlar Pydantic dump'ını
+    olduğu gibi verebilsin diye Decimal/datetime/enum burada dönüştürülür."""
+    if v is None or isinstance(v, (str, int, float, bool)):
+        return v
+    if isinstance(v, enum.Enum):
+        return _scalar(v.value)
+    if isinstance(v, (datetime.datetime, datetime.date, datetime.time)):
+        return v.isoformat()
+    return str(v)  # Decimal, UUID vb.
+
+
 def redact(values: dict | None) -> dict | None:
     """Yapılandırılmış audit değerlerinden hassas alanları maskeler (saf, pytest'li).
 
@@ -38,7 +52,7 @@ def redact(values: dict | None) -> dict | None:
             }
         if isinstance(v, (list, tuple)):
             return [_walk(x, depth + 1) for x in v]
-        return v
+        return _scalar(v)
 
     return _walk(values, 1)
 
@@ -90,6 +104,7 @@ async def list_logs(
     action: str | None = None,
     target_type: str | None = None,
     actor_id: int | None = None,
+    request_id: str | None = None,
     sort: str = "created_at",
     order: str = "desc",
 ) -> tuple[list[AuditLog], int]:
@@ -111,6 +126,9 @@ async def list_logs(
         filters.append(AuditLog.target_type == target_type)
     if actor_id is not None:
         filters.append(AuditLog.actor_id == actor_id)
+    if request_id and request_id.strip():
+        # Kısmi yapıştırma da eşleşsin (log satırından kopyalanan kısa önek).
+        filters.append(AuditLog.request_id.ilike(f"%{request_id.strip()}%"))
 
     total = int(
         (await db.scalar(select(func.count()).select_from(AuditLog).where(*filters)))

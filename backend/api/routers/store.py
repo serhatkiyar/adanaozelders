@@ -66,6 +66,7 @@ from schemas.delivery import (
     ShipAddressChangeIn,
 )
 from services import (
+    audit_service,
     collection_service,
     coupon_service,
     delivery_feedback_service,
@@ -182,7 +183,13 @@ async def bulk_import_products(
         raise HTTPException(
             status.HTTP_400_BAD_REQUEST, "CSV boş (başlık satırı + en az bir ürün gerekli)."
         )
-    return await store_service.bulk_import_products(db, admin, rows)
+    result = await store_service.bulk_import_products(db, admin, rows)
+    await audit_service.record(
+        db, actor=admin, action="product.bulk_import", target_type="product",
+        details=file.filename,
+        meta={"created": result.created, "skipped": result.skipped, "errors": len(result.errors)},
+    )
+    return result
 
 
 @router.get("/admin/products/{product_id}", response_model=ProductDetailOut)
@@ -202,49 +209,73 @@ async def create_product(
     admin: Admin = Depends(require_admin_permission("products.manage")),
     db: AsyncSession = Depends(get_db),
 ):
-    return await store_service.create_product(db, admin, payload)
+    product = await store_service.create_product(db, admin, payload)
+    await audit_service.record(
+        db, actor=admin, action="product.create", target_type="product",
+        target_id=product.id, details=product.title,
+        after=payload.model_dump(exclude_unset=True),
+    )
+    return product
 
 
 @router.patch("/admin/products/{product_id}", response_model=ProductDetailOut)
 async def update_product(
     product_id: int,
     payload: ProductUpdate,
-    _admin: Admin = Depends(require_admin_permission("products.manage")),
+    admin: Admin = Depends(require_admin_permission("products.manage")),
     db: AsyncSession = Depends(get_db),
 ):
-    return await store_service.update_product(db, product_id, payload)
+    product = await store_service.update_product(db, product_id, payload)
+    await audit_service.record(
+        db, actor=admin, action="product.update", target_type="product",
+        target_id=product_id, after=payload.model_dump(exclude_unset=True),
+    )
+    return product
 
 
 @router.delete("/admin/products/{product_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_product(
     product_id: int,
-    _admin: Admin = Depends(require_admin_permission("products.manage")),
+    admin: Admin = Depends(require_admin_permission("products.manage")),
     db: AsyncSession = Depends(get_db),
 ):
     await store_service.delete_product(db, product_id)
+    await audit_service.record(
+        db, actor=admin, action="product.delete", target_type="product", target_id=product_id
+    )
 
 
 @router.post("/admin/products/{product_id}/cover", response_model=ProductDetailOut)
 async def upload_product_cover(
     product_id: int,
     file: UploadFile = File(...),
-    _admin: Admin = Depends(require_admin_permission("products.manage")),
+    admin: Admin = Depends(require_admin_permission("products.manage")),
     db: AsyncSession = Depends(get_db),
 ):
-    return await store_service.set_cover(db, product_id, await _read_image(file))
+    product = await store_service.set_cover(db, product_id, await _read_image(file))
+    await audit_service.record(
+        db, actor=admin, action="product.media_update", target_type="product",
+        target_id=product_id, meta={"op": "cover", "filename": file.filename},
+    )
+    return product
 
 
 @router.post("/admin/products/{product_id}/images", response_model=ProductDetailOut)
 async def upload_product_images(
     product_id: int,
     files: list[UploadFile] = File(...),
-    _admin: Admin = Depends(require_admin_permission("products.manage")),
+    admin: Admin = Depends(require_admin_permission("products.manage")),
     db: AsyncSession = Depends(get_db),
 ):
     if not files:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "En az bir görsel seçin.")
     blobs = [await _read_image(f) for f in files]
-    return await store_service.add_images(db, product_id, blobs)
+    product = await store_service.add_images(db, product_id, blobs)
+    await audit_service.record(
+        db, actor=admin, action="product.media_update", target_type="product",
+        target_id=product_id, meta={"op": "images_add", "count": len(files)},
+    )
+    return product
 
 
 @router.delete(
@@ -253,10 +284,15 @@ async def upload_product_images(
 async def delete_product_image(
     product_id: int,
     image_id: int,
-    _admin: Admin = Depends(require_admin_permission("products.manage")),
+    admin: Admin = Depends(require_admin_permission("products.manage")),
     db: AsyncSession = Depends(get_db),
 ):
-    return await store_service.delete_image(db, product_id, image_id)
+    product = await store_service.delete_image(db, product_id, image_id)
+    await audit_service.record(
+        db, actor=admin, action="product.media_update", target_type="product",
+        target_id=product_id, meta={"op": "image_delete", "image_id": image_id},
+    )
+    return product
 
 
 @router.post(
@@ -266,20 +302,30 @@ async def delete_product_image(
 )
 async def create_category(
     payload: ProductCategoryCreate,
-    _admin: Admin = Depends(require_admin_permission("products.manage")),
+    admin: Admin = Depends(require_admin_permission("products.manage")),
     db: AsyncSession = Depends(get_db),
 ):
-    return await store_service.create_category(db, payload)
+    category = await store_service.create_category(db, payload)
+    await audit_service.record(
+        db, actor=admin, action="category.create", target_type="product_category",
+        target_id=category.id, details=category.name,
+    )
+    return category
 
 
 @router.patch("/admin/categories/{category_id}", response_model=ProductCategoryOut)
 async def update_category(
     category_id: int,
     payload: ProductCategoryUpdate,
-    _admin: Admin = Depends(require_admin_permission("products.manage")),
+    admin: Admin = Depends(require_admin_permission("products.manage")),
     db: AsyncSession = Depends(get_db),
 ):
-    return await store_service.update_category(db, category_id, payload)
+    category = await store_service.update_category(db, category_id, payload)
+    await audit_service.record(
+        db, actor=admin, action="category.update", target_type="product_category",
+        target_id=category_id, after=payload.model_dump(exclude_unset=True),
+    )
+    return category
 
 
 @router.delete(
@@ -287,10 +333,14 @@ async def update_category(
 )
 async def delete_category(
     category_id: int,
-    _admin: Admin = Depends(require_admin_permission("products.manage")),
+    admin: Admin = Depends(require_admin_permission("products.manage")),
     db: AsyncSession = Depends(get_db),
 ):
     await store_service.delete_category(db, category_id)
+    await audit_service.record(
+        db, actor=admin, action="category.delete", target_type="product_category",
+        target_id=category_id,
+    )
 
 
 # ── Admin: sipariş yönetimi ──────────────────────────────────────────────────────
@@ -313,28 +363,43 @@ async def list_orders_admin(
 async def ship_order(
     order_id: int,
     payload: OrderShipIn,
-    _admin: Admin = Depends(require_admin_permission("orders.manage")),
+    admin: Admin = Depends(require_admin_permission("orders.manage")),
     db: AsyncSession = Depends(get_db),
 ):
-    return await order_service.mark_shipped(db, order_id, tracking_no=payload.tracking_no)
+    order = await order_service.mark_shipped(db, order_id, tracking_no=payload.tracking_no)
+    await audit_service.record(
+        db, actor=admin, action="order.ship", target_type="order", target_id=order_id,
+        after={"status": order.status, "tracking_no": payload.tracking_no},
+    )
+    return order
 
 
 @router.post("/admin/orders/{order_id}/deliver", response_model=OrderOut)
 async def deliver_order(
     order_id: int,
-    _admin: Admin = Depends(require_admin_permission("orders.manage")),
+    admin: Admin = Depends(require_admin_permission("orders.manage")),
     db: AsyncSession = Depends(get_db),
 ):
-    return await order_service.mark_delivered(db, order_id)
+    order = await order_service.mark_delivered(db, order_id)
+    await audit_service.record(
+        db, actor=admin, action="order.deliver", target_type="order", target_id=order_id,
+        after={"status": order.status},
+    )
+    return order
 
 
 @router.post("/admin/orders/{order_id}/refund", response_model=OrderOut)
 async def refund_order(
     order_id: int,
-    _admin: Admin = Depends(require_admin_permission("orders.manage")),
+    admin: Admin = Depends(require_admin_permission("orders.manage")),
     db: AsyncSession = Depends(get_db),
 ):
-    return await order_service.refund_order(db, order_id)
+    order = await order_service.refund_order(db, order_id)
+    await audit_service.record(
+        db, actor=admin, action="order.refund", target_type="order", target_id=order_id,
+        after={"status": order.status, "total": order.total},
+    )
+    return order
 
 
 # ── İade talepleri (RMA) yönetimi (ADMIN) ────────────────────────────────────────
@@ -357,20 +422,32 @@ async def list_returns_admin(
 async def approve_return(
     return_id: int,
     payload: OrderReturnResolve,
-    _admin: Admin = Depends(require_admin_permission("returns.manage")),
+    admin: Admin = Depends(require_admin_permission("returns.manage")),
     db: AsyncSession = Depends(get_db),
 ):
-    return await order_service.approve_return(db, return_id, admin_note=payload.admin_note)
+    ret = await order_service.approve_return(db, return_id, admin_note=payload.admin_note)
+    await audit_service.record(
+        db, actor=admin, action="return.approve", target_type="order_return",
+        target_id=return_id, reason=payload.admin_note,
+        meta={"order_id": ret.order_id},
+    )
+    return ret
 
 
 @router.post("/admin/returns/{return_id}/reject", response_model=OrderReturnOut)
 async def reject_return(
     return_id: int,
     payload: OrderReturnResolve,
-    _admin: Admin = Depends(require_admin_permission("returns.manage")),
+    admin: Admin = Depends(require_admin_permission("returns.manage")),
     db: AsyncSession = Depends(get_db),
 ):
-    return await order_service.reject_return(db, return_id, admin_note=payload.admin_note)
+    ret = await order_service.reject_return(db, return_id, admin_note=payload.admin_note)
+    await audit_service.record(
+        db, actor=admin, action="return.reject", target_type="order_return",
+        target_id=return_id, reason=payload.admin_note,
+        meta={"order_id": ret.order_id},
+    )
+    return ret
 
 
 # ── Kupon yönetimi (ADMIN) ───────────────────────────────────────────────────────
@@ -389,29 +466,43 @@ async def list_coupons(
 )
 async def create_coupon(
     payload: CouponCreate,
-    _admin: Admin = Depends(require_admin_permission("coupons.manage")),
+    admin: Admin = Depends(require_admin_permission("coupons.manage")),
     db: AsyncSession = Depends(get_db),
 ):
-    return await coupon_service.create_coupon(db, payload)
+    coupon = await coupon_service.create_coupon(db, payload)
+    await audit_service.record(
+        db, actor=admin, action="coupon.create", target_type="coupon",
+        target_id=coupon.id, details=coupon.code,
+        after=payload.model_dump(exclude_unset=True),
+    )
+    return coupon
 
 
 @router.patch("/admin/coupons/{coupon_id}", response_model=CouponOut)
 async def update_coupon(
     coupon_id: int,
     payload: CouponUpdate,
-    _admin: Admin = Depends(require_admin_permission("coupons.manage")),
+    admin: Admin = Depends(require_admin_permission("coupons.manage")),
     db: AsyncSession = Depends(get_db),
 ):
-    return await coupon_service.update_coupon(db, coupon_id, payload)
+    coupon = await coupon_service.update_coupon(db, coupon_id, payload)
+    await audit_service.record(
+        db, actor=admin, action="coupon.update", target_type="coupon",
+        target_id=coupon_id, after=payload.model_dump(exclude_unset=True),
+    )
+    return coupon
 
 
 @router.delete("/admin/coupons/{coupon_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_coupon(
     coupon_id: int,
-    _admin: Admin = Depends(require_admin_permission("coupons.manage")),
+    admin: Admin = Depends(require_admin_permission("coupons.manage")),
     db: AsyncSession = Depends(get_db),
 ):
     await coupon_service.delete_coupon(db, coupon_id)
+    await audit_service.record(
+        db, actor=admin, action="coupon.delete", target_type="coupon", target_id=coupon_id
+    )
 
 
 # ── Eğitmen dijital ürünleri ─────────────────────────────────────────────────────

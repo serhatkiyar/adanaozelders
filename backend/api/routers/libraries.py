@@ -45,6 +45,7 @@ from schemas.library import (
     LibraryUpdate,
 )
 from services import (
+    audit_service,
     library_onboarding_service,
     library_service,
     payout_service,
@@ -232,7 +233,12 @@ async def create_library(
     admin: Admin = Depends(require_admin_permission("libraries.manage")),
     db: AsyncSession = Depends(get_db),
 ):
-    return await library_service.create_library(db, admin, payload)
+    library = await library_service.create_library(db, admin, payload)
+    await audit_service.record(
+        db, actor=admin, action="library.create", target_type="library",
+        target_id=library.id, details=library.name,
+    )
+    return library
 
 
 # ── Payout (alt üye işyeri) — admin küratörlüğünde ───────────────────────────────
@@ -271,7 +277,7 @@ async def submit_library_payout(
     kütüphanenin operatörü yapabilir (operatör yalnız kendi kütüphanesi için)."""
     _assert_can_manage_library(user, library_id)
     lib = await _get_library_or_404(db, library_id)
-    return await payout_service.submit(
+    result = await payout_service.submit(
         db,
         lib,
         external_id=f"library:{library_id}",
@@ -279,6 +285,12 @@ async def submit_library_payout(
         email=payload.contact_email,
         payload=payload,
     )
+    # IBAN/TCKN redaction ile maskelenir — audit'te yalnız "değişti" bilgisi kalır.
+    await audit_service.record(
+        db, actor=user, action="library.payout_submit", target_type="library",
+        target_id=library_id, after=payload.model_dump(exclude_unset=True),
+    )
+    return result
 
 
 # ── Public detay ─────────────────────────────────────────────────────────────────
@@ -462,15 +474,23 @@ async def update_library(
 ):
     _assert_can_manage_library(user, library_id)
     # Operatör ad/slug ve görünürlük (status) DEĞİŞTİREMEZ (kimlik + yayın admin'de).
-    return await library_service.update_library(
+    library = await library_service.update_library(
         db, library_id, payload, allow_identity=isinstance(user, Admin)
     )
+    await audit_service.record(
+        db, actor=user, action="library.update", target_type="library",
+        target_id=library_id, after=payload.model_dump(exclude_unset=True),
+    )
+    return library
 
 
 @router.delete("/{library_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_library(
     library_id: int,
-    _admin: Admin = Depends(require_admin_permission("libraries.manage")),
+    admin: Admin = Depends(require_admin_permission("libraries.manage")),
     db: AsyncSession = Depends(get_db),
 ):
     await library_service.delete_library(db, library_id)
+    await audit_service.record(
+        db, actor=admin, action="library.delete", target_type="library", target_id=library_id
+    )

@@ -113,4 +113,10 @@ class AuditLogOut(BaseModel):
     target_type: str
     target_id: int | None = None
     details: str | None = None
+    reason: str | None = None
+    before_values: dict | None = None
+    after_values: dict | None = None
+    meta: dict | None = None
+    ip_address: str | None = None
+    request_id: str | None = None
     created_at: datetime.datetime

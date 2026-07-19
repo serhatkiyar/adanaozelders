@@ -9,7 +9,7 @@ from models.admin import Admin
 from models.library_operator import LibraryOperator
 from models.role import RoleType
 from schemas.library_operator import OperatorCreate, OperatorOut
-from services import library_operator_service
+from services import audit_service, library_operator_service
 
 router = APIRouter(tags=["library-operators"])
 
@@ -25,10 +25,15 @@ router = APIRouter(tags=["library-operators"])
 async def create_operator(
     library_id: int,
     payload: OperatorCreate,
-    _admin: Admin = Depends(require_admin_permission("libraries.manage")),
+    admin: Admin = Depends(require_admin_permission("libraries.manage")),
     db: AsyncSession = Depends(get_db),
 ):
-    return await library_operator_service.create_operator(db, library_id, payload)
+    operator = await library_operator_service.create_operator(db, library_id, payload)
+    await audit_service.record(
+        db, actor=admin, action="library_operator.create", target_type="library_operator",
+        target_id=operator.id, meta={"library_id": library_id},
+    )
+    return operator
 
 
 @router.get(
@@ -47,10 +52,14 @@ async def list_operators(
 )
 async def delete_operator(
     operator_id: int,
-    _admin: Admin = Depends(require_admin_permission("libraries.manage")),
+    admin: Admin = Depends(require_admin_permission("libraries.manage")),
     db: AsyncSession = Depends(get_db),
 ):
     await library_operator_service.delete_operator(db, operator_id)
+    await audit_service.record(
+        db, actor=admin, action="library_operator.delete", target_type="library_operator",
+        target_id=operator_id,
+    )
 
 
 # ── Operatör: kendi bilgisi (hangi kütüphane) ────────────────────────────────────

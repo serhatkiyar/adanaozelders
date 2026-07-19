@@ -133,6 +133,7 @@ export interface AdminAuditParams {
   action?: string;
   target_type?: string;
   actor_id?: number;
+  request_id?: string;
   sort?: "created_at" | "action" | "target_type" | "actor_id";
   order?: "asc" | "desc";
 }

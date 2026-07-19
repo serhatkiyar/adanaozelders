@@ -11,6 +11,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import (
+    get_current_active_user,
     require_admin_method_permission,
     require_admin_permission,
     require_roles,
@@ -49,6 +50,7 @@ from schemas.delivery import (
     TrackIn,
 )
 from services import (
+    audit_service,
     courier_account_service,
     delivery_calendar,
     delivery_feedback_service,
@@ -93,15 +95,31 @@ async def prep_queue(db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/orders/{order_id}/prepare", response_model=EligibleOrderOut)
-async def mark_prepared(order_id: int, db: AsyncSession = Depends(get_db)):
+async def mark_prepared(
+    order_id: int,
+    actor=Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
     """Siparişi 'hazır' işaretle — paket toplandı, etiket basıldı; artık tura eklenebilir."""
-    return await delivery_service.mark_prepared(db, order_id, prepared=True)
+    result = await delivery_service.mark_prepared(db, order_id, prepared=True)
+    await audit_service.record(
+        db, actor=actor, action="delivery_order.prepare", target_type="order", target_id=order_id
+    )
+    return result
 
 
 @router.post("/orders/{order_id}/unprepare", response_model=EligibleOrderOut)
-async def unmark_prepared(order_id: int, db: AsyncSession = Depends(get_db)):
+async def unmark_prepared(
+    order_id: int,
+    actor=Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
     """Hazırlığı geri al (yalnız tura girmemiş sipariş)."""
-    return await delivery_service.mark_prepared(db, order_id, prepared=False)
+    result = await delivery_service.mark_prepared(db, order_id, prepared=False)
+    await audit_service.record(
+        db, actor=actor, action="delivery_order.unprepare", target_type="order", target_id=order_id
+    )
+    return result
 
 
 @router.get("/attention-orders", response_model=list[EligibleOrderOut])
@@ -111,9 +129,18 @@ async def attention_orders(db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/orders/{order_id}/retry", response_model=EligibleOrderOut)
-async def retry_exhausted_order(order_id: int, db: AsyncSession = Depends(get_db)):
+async def retry_exhausted_order(
+    order_id: int,
+    actor=Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
     """Deneme hakkı dolmuş siparişe bir tur daha hak tanı (müşteriyle görüşüldü)."""
-    return await delivery_service.retry_exhausted_order(db, order_id)
+    result = await delivery_service.retry_exhausted_order(db, order_id)
+    await audit_service.record(
+        db, actor=actor, action="delivery_order.retry_grant", target_type="order",
+        target_id=order_id,
+    )
+    return result
 
 
 @router.get("/calendar", response_model=list[ClosedDayOut])
@@ -123,26 +150,49 @@ async def list_closed_days(db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/calendar", response_model=ClosedDayOut, status_code=status.HTTP_201_CREATED)
-async def add_closed_day(payload: ClosedDayIn, db: AsyncSession = Depends(get_db)):
+async def add_closed_day(
+    payload: ClosedDayIn,
+    actor=Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
     """Bir günü teslimata kapalı işaretle (özel gün / elle tatil)."""
-    return await delivery_calendar.add_closed_day(
+    closed = await delivery_calendar.add_closed_day(
         db, day=payload.day, label=payload.label
     )
+    await audit_service.record(
+        db, actor=actor, action="delivery_calendar.close", target_type="closed_day",
+        target_id=closed.id, details=payload.label, meta={"day": payload.day},
+    )
+    return closed
 
 
 @router.delete("/calendar/{closed_day_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def remove_closed_day(closed_day_id: int, db: AsyncSession = Depends(get_db)):
+async def remove_closed_day(
+    closed_day_id: int,
+    actor=Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
     """Kapalı gün işaretini kaldır (o gün yeniden teslimata açılır)."""
     await delivery_calendar.remove_closed_day(db, closed_day_id)
+    await audit_service.record(
+        db, actor=actor, action="delivery_calendar.reopen", target_type="closed_day",
+        target_id=closed_day_id,
+    )
 
 
 @router.post("/calendar/seed-holidays", response_model=list[ClosedDayOut])
 async def seed_holidays(
     year: int = Query(default=2026, ge=2025, le=2030),
+    actor=Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Yılın resmî tatillerini yükle (idempotent). Admin tetikler; istemediğini siler."""
-    return await delivery_calendar.seed_holidays(db, year)
+    days = await delivery_calendar.seed_holidays(db, year)
+    await audit_service.record(
+        db, actor=actor, action="delivery_calendar.seed_holidays", target_type="closed_day",
+        meta={"year": year, "count": len(days)},
+    )
+    return days
 
 
 @router.get("/kpi", response_model=DeliveryKpiOut)
@@ -176,10 +226,17 @@ async def capacity_overview(
 
 @router.post("/dispatch-day", response_model=list[DeliveryRunOut])
 async def dispatch_day(
-    payload: DispatchDayIn, db: AsyncSession = Depends(get_db)
+    payload: DispatchDayIn,
+    actor=Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
 ):
     """Günü Optimize Et: uygun siparişleri araçlara bölüştürüp optimize turlar kurar."""
-    return await delivery_service.dispatch_day(db, payload.run_date)
+    runs = await delivery_service.dispatch_day(db, payload.run_date)
+    await audit_service.record(
+        db, actor=actor, action="delivery.dispatch_day", target_type="delivery_run",
+        meta={"run_date": payload.run_date, "run_ids": [r.id for r in runs]},
+    )
+    return runs
 
 
 @router.get("/runs", response_model=list[DeliveryRunOut])
@@ -191,8 +248,17 @@ async def list_runs(
 
 
 @router.post("/runs", response_model=DeliveryRunOut, status_code=status.HTTP_201_CREATED)
-async def create_run(payload: DeliveryRunCreate, db: AsyncSession = Depends(get_db)):
-    return await delivery_service.create_run(db, payload)
+async def create_run(
+    payload: DeliveryRunCreate,
+    actor=Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    run = await delivery_service.create_run(db, payload)
+    await audit_service.record(
+        db, actor=actor, action="delivery_run.create", target_type="delivery_run",
+        target_id=run.id, after=payload.model_dump(exclude_unset=True),
+    )
+    return run
 
 
 @field_router.get("/runs/{run_id}", response_model=DeliveryRunOut)
@@ -207,10 +273,18 @@ async def get_run(
 
 @router.patch("/runs/{run_id}", response_model=DeliveryRunOut)
 async def update_run(
-    run_id: int, payload: DeliveryRunUpdate, db: AsyncSession = Depends(get_db)
+    run_id: int,
+    payload: DeliveryRunUpdate,
+    actor=Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
 ):
     """Tur meta güncellemesi (kurye ataması)."""
-    return await delivery_service.update_run(db, run_id, payload)
+    run = await delivery_service.update_run(db, run_id, payload)
+    await audit_service.record(
+        db, actor=actor, action="delivery_run.update", target_type="delivery_run",
+        target_id=run_id, after=payload.model_dump(exclude_unset=True),
+    )
+    return run
 
 
 # ── Kurye profilleri ─────────────────────────────────────────────────────────────
@@ -222,26 +296,51 @@ async def list_couriers(db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/couriers", response_model=CourierOut, status_code=status.HTTP_201_CREATED)
-async def create_courier(payload: CourierCreate, db: AsyncSession = Depends(get_db)):
-    return await delivery_service.create_courier(db, payload)
+async def create_courier(
+    payload: CourierCreate,
+    actor=Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    courier = await delivery_service.create_courier(db, payload)
+    await audit_service.record(
+        db, actor=actor, action="courier.create", target_type="courier",
+        target_id=courier.id, details=courier.name,
+    )
+    return courier
 
 
 @router.patch("/couriers/{courier_id}", response_model=CourierOut)
 async def update_courier(
-    courier_id: int, payload: CourierUpdate, db: AsyncSession = Depends(get_db)
+    courier_id: int,
+    payload: CourierUpdate,
+    actor=Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
 ):
-    return await delivery_service.update_courier(db, courier_id, payload)
+    courier = await delivery_service.update_courier(db, courier_id, payload)
+    await audit_service.record(
+        db, actor=actor, action="courier.update", target_type="courier",
+        target_id=courier_id, after=payload.model_dump(exclude_unset=True),
+    )
+    return courier
 
 
 @router.delete("/couriers/{courier_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_courier(courier_id: int, db: AsyncSession = Depends(get_db)):
+async def delete_courier(
+    courier_id: int,
+    actor=Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
     await delivery_service.delete_courier(db, courier_id)
+    await audit_service.record(
+        db, actor=actor, action="courier.delete", target_type="courier", target_id=courier_id
+    )
 
 
 @router.post("/couriers/{courier_id}/photo", response_model=CourierOut)
 async def upload_courier_photo(
     courier_id: int,
     file: UploadFile = File(...),
+    actor=Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Kurye vesikalık fotoğrafı (müşteri takip sayfasındaki kimlik kartı)."""
@@ -253,32 +352,75 @@ async def upload_courier_photo(
     if len(data) > _MAX_PHOTO_BYTES:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Görsel 12MB sınırını aşıyor.")
     url = await storage.upload_courier_photo(data)
-    return await delivery_service.set_courier_photo(db, courier_id, url)
+    courier = await delivery_service.set_courier_photo(db, courier_id, url)
+    await audit_service.record(
+        db, actor=actor, action="courier.photo_update", target_type="courier",
+        target_id=courier_id, meta={"filename": file.filename},
+    )
+    return courier
 
 
 @router.post("/runs/{run_id}/stops", response_model=DeliveryRunOut)
 async def add_stops(
-    run_id: int, payload: StopsAddIn, db: AsyncSession = Depends(get_db)
+    run_id: int,
+    payload: StopsAddIn,
+    actor=Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
 ):
-    return await delivery_service.add_stops(db, run_id, payload.order_ids)
+    run = await delivery_service.add_stops(db, run_id, payload.order_ids)
+    await audit_service.record(
+        db, actor=actor, action="delivery_run.add_stops", target_type="delivery_run",
+        target_id=run_id, meta={"order_ids": payload.order_ids},
+    )
+    return run
 
 
 @router.put("/runs/{run_id}/reorder", response_model=DeliveryRunOut)
 async def reorder_stops(
-    run_id: int, payload: StopsReorderIn, db: AsyncSession = Depends(get_db)
+    run_id: int,
+    payload: StopsReorderIn,
+    actor=Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
 ):
-    return await delivery_service.reorder_stops(db, run_id, payload.stop_ids)
+    run = await delivery_service.reorder_stops(db, run_id, payload.stop_ids)
+    await audit_service.record(
+        db, actor=actor, action="delivery_run.reorder", target_type="delivery_run",
+        target_id=run_id, meta={"stop_ids": payload.stop_ids},
+    )
+    return run
 
 
 @router.post("/runs/{run_id}/optimize", response_model=DeliveryRunOut)
-async def optimize_run(run_id: int, db: AsyncSession = Depends(get_db)):
+async def optimize_run(
+    run_id: int,
+    actor=Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
     """Bekleyen durakları optimal sıraya dizer (VROOM; yoksa haversine fallback)."""
-    return await delivery_service.optimize_run(db, run_id)
+    run = await delivery_service.optimize_run(db, run_id)
+    await audit_service.record(
+        db, actor=actor, action="delivery_run.optimize", target_type="delivery_run",
+        target_id=run_id,
+        meta={
+            "provider": run.optimize_provider,
+            "total_distance_km": run.total_distance_km,
+        },
+    )
+    return run
 
 
 @router.post("/runs/{run_id}/start", response_model=DeliveryRunOut)
-async def start_run(run_id: int, db: AsyncSession = Depends(get_db)):
-    return await delivery_service.start_run(db, run_id)
+async def start_run(
+    run_id: int,
+    actor=Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    run = await delivery_service.start_run(db, run_id)
+    await audit_service.record(
+        db, actor=actor, action="delivery_run.start", target_type="delivery_run",
+        target_id=run_id, after={"status": run.status},
+    )
+    return run
 
 
 @field_router.post("/runs/{run_id}/complete", response_model=DeliveryRunOut)
@@ -293,13 +435,31 @@ async def complete_run(
 
 
 @router.post("/runs/{run_id}/cancel", response_model=DeliveryRunOut)
-async def cancel_run(run_id: int, db: AsyncSession = Depends(get_db)):
-    return await delivery_service.cancel_run(db, run_id)
+async def cancel_run(
+    run_id: int,
+    actor=Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    run = await delivery_service.cancel_run(db, run_id)
+    await audit_service.record(
+        db, actor=actor, action="delivery_run.cancel", target_type="delivery_run",
+        target_id=run_id, after={"status": run.status},
+    )
+    return run
 
 
 @router.delete("/stops/{stop_id}", response_model=DeliveryRunOut)
-async def remove_stop(stop_id: int, db: AsyncSession = Depends(get_db)):
-    return await delivery_service.remove_stop(db, stop_id)
+async def remove_stop(
+    stop_id: int,
+    actor=Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    run = await delivery_service.remove_stop(db, stop_id)
+    await audit_service.record(
+        db, actor=actor, action="delivery_stop.remove", target_type="delivery_stop",
+        target_id=stop_id, meta={"run_id": run.id},
+    )
+    return run
 
 
 @field_router.post("/stops/{stop_id}/photo", response_model=DeliveryStopOut)
@@ -422,11 +582,19 @@ async def deliver_drop(
 
 @router.post("/stops/{stop_id}/override-deliver", response_model=DeliveryStopOut)
 async def override_deliver(
-    stop_id: int, payload: OverrideDeliverIn, db: AsyncSession = Depends(get_db)
+    stop_id: int,
+    payload: OverrideDeliverIn,
+    actor=Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
 ):
     """Notlu YÖNETİCİ teslimi — OTP bypass'ı olduğundan bilinçli ADMIN-only;
     kurye kod ulaşmadığında yöneticiyle iletişime geçer (UI yönlendirir)."""
-    return await delivery_service.override_deliver(db, stop_id, note=payload.note)
+    stop = await delivery_service.override_deliver(db, stop_id, note=payload.note)
+    await audit_service.record(
+        db, actor=actor, action="delivery_stop.override_deliver", target_type="delivery_stop",
+        target_id=stop_id, reason=payload.note, meta={"order_id": stop.order_id},
+    )
+    return stop
 
 
 @field_router.post("/stops/{stop_id}/fail", response_model=DeliveryStopOut)

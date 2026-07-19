@@ -503,6 +503,7 @@ async def list_audit_logs(
     action: str | None = Query(default=None, max_length=50),
     target_type: str | None = Query(default=None, max_length=30),
     actor_id: int | None = Query(default=None, ge=1),
+    request_id: str | None = Query(default=None, max_length=64),
     sort: Literal["created_at", "action", "target_type", "actor_id"] = Query(
         default="created_at"
     ),
@@ -517,6 +518,7 @@ async def list_audit_logs(
         action=action,
         target_type=target_type,
         actor_id=actor_id,
+        request_id=request_id,
         sort=sort,
         order=order,
     )

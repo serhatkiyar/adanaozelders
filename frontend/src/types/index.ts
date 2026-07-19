@@ -1922,6 +1922,15 @@ export interface AuditLogOut {
   target_type: string;
   target_id?: number | null;
   details?: string | null;
+  /** Zorunlu gerekçe (şifre reset, iade kararı vb. kritik aksiyonlarda dolu). */
+  reason?: string | null;
+  /** Yapılandırılmış önce/sonra özetleri — hassas alanlar sunucuda maskelenir. */
+  before_values?: Record<string, unknown> | null;
+  after_values?: Record<string, unknown> | null;
+  meta?: Record<string, unknown> | null;
+  ip_address?: string | null;
+  /** HTTP request-id — sunucu loglarıyla korelasyon için. */
+  request_id?: string | null;
   created_at: string;
 }
 

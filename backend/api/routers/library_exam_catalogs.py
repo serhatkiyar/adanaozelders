@@ -8,7 +8,7 @@ from core.database import get_db
 from models.admin import Admin
 from models.role import RoleType
 from schemas.library_exam_catalog import CatalogCreate, CatalogOut, CatalogUpdate
-from services import library_exam_catalog_service
+from services import audit_service, library_exam_catalog_service
 
 router = APIRouter(prefix="/exam-catalogs", tags=["exam-catalogs"])
 
@@ -60,40 +60,59 @@ async def create_catalog(
     admin: Admin = Depends(require_admin_permission("catalogs.manage")),
     db: AsyncSession = Depends(get_db),
 ):
-    return await library_exam_catalog_service.create_catalog(db, admin, payload)
+    catalog = await library_exam_catalog_service.create_catalog(db, admin, payload)
+    await audit_service.record(
+        db, actor=admin, action="exam_catalog.create", target_type="exam_catalog",
+        target_id=catalog.id, details=catalog.exam_name,
+    )
+    return catalog
 
 
 @router.patch("/{catalog_id}", response_model=CatalogOut)
 async def update_catalog(
     catalog_id: int,
     payload: CatalogUpdate,
-    _admin: Admin = Depends(require_admin_permission("catalogs.manage")),
+    admin: Admin = Depends(require_admin_permission("catalogs.manage")),
     db: AsyncSession = Depends(get_db),
 ):
-    return await library_exam_catalog_service.update_catalog(db, catalog_id, payload)
+    catalog = await library_exam_catalog_service.update_catalog(db, catalog_id, payload)
+    await audit_service.record(
+        db, actor=admin, action="exam_catalog.update", target_type="exam_catalog",
+        target_id=catalog_id, after=payload.model_dump(exclude_unset=True),
+    )
+    return catalog
 
 
 @router.delete("/{catalog_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_catalog(
     catalog_id: int,
-    _admin: Admin = Depends(require_admin_permission("catalogs.manage")),
+    admin: Admin = Depends(require_admin_permission("catalogs.manage")),
     db: AsyncSession = Depends(get_db),
 ):
     await library_exam_catalog_service.delete_catalog(db, catalog_id)
+    await audit_service.record(
+        db, actor=admin, action="exam_catalog.delete", target_type="exam_catalog",
+        target_id=catalog_id,
+    )
 
 
 @router.post("/{catalog_id}/answer-key", response_model=CatalogOut)
 async def upload_answer_key(
     catalog_id: int,
     file: UploadFile = File(...),
-    _admin: Admin = Depends(require_admin_permission("catalogs.manage")),
+    admin: Admin = Depends(require_admin_permission("catalogs.manage")),
     db: AsyncSession = Depends(get_db),
 ):
     data = await _read_answer_key(file)
-    return await library_exam_catalog_service.set_answer_key(
+    catalog = await library_exam_catalog_service.set_answer_key(
         db,
         catalog_id,
         file_bytes=data,
         original_name=file.filename,
         content_type=file.content_type,
     )
+    await audit_service.record(
+        db, actor=admin, action="exam_catalog.answer_key", target_type="exam_catalog",
+        target_id=catalog_id, meta={"filename": file.filename},
+    )
+    return catalog

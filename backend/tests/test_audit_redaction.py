@@ -39,3 +39,29 @@ def test_derinlik_siniri_kirpilir():
 
 def test_none_gecirgen():
     assert redact(None) is None
+
+
+def test_json_disi_skalarlar_donusturulur():
+    """Router'lar Pydantic dump'ını olduğu gibi verir — Decimal/datetime/date/enum
+    JSONB'ye yazılabilir biçime çevrilmeli (aksi halde serialize hatası)."""
+    import datetime
+    import enum
+    from decimal import Decimal
+
+    class Renk(enum.Enum):
+        KIRMIZI = "KIRMIZI"
+
+    out = redact(
+        {
+            "price": Decimal("149.90"),
+            "day": datetime.date(2026, 7, 19),
+            "at": datetime.datetime(2026, 7, 19, 16, 0),
+            "color": Renk.KIRMIZI,
+            "plain": 5,
+        }
+    )
+    assert out["price"] == "149.90"
+    assert out["day"] == "2026-07-19"
+    assert out["at"].startswith("2026-07-19T16:00")
+    assert out["color"] == "KIRMIZI"
+    assert out["plain"] == 5

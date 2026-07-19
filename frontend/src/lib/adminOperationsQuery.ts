@@ -42,6 +42,7 @@ export function parseAdminAuditQuery(params: URLSearchParams) {
     action: (params.get("action") ?? "").slice(0, 50),
     targetType: (params.get("target") ?? "").slice(0, 30),
     actorId: actorId || undefined,
+    requestId: (params.get("rid") ?? "").slice(0, 64),
     sort: rawSort && AUDIT_SORTS.has(rawSort) ? rawSort : "created_at",
     order: params.get("order") === "asc" ? "asc" as const : "desc" as const,
   };

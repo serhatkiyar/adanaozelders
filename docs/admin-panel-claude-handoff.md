@@ -565,8 +565,8 @@ Eksik güvenlik testleri:
 | Liste state URL’de korunur | Kısmi | Yeni sayfalarda var, legacy listelerde eksik |
 | Pending mutasyon çift gönderimi engeller | Kısmi | Yeni sayfalarda var, legacy alanlar gözden geçirilmeli |
 | Backend izni olmayan admin işlem yapamaz | Büyük ölçüde tamamlandı | Temsilî 403 testleri artırılmalı |
-| Tüm kritik mutasyonlar audit üretir | Eksik | Store/library/catalog/delivery kapsamı tamamlanmalı |
-| Audit hassas veri içermez | Eksik | Yapılandırılmış redaction henüz yok |
+| Tüm kritik mutasyonlar audit üretir | Tamamlandı (19 Tem, Claude) | Store (ürün/kategori/sipariş/iade/kupon/medya), library (CRUD/payout/operatör), catalog, delivery (tur/durak/kurye/takvim/override) kabloland; kurye hesabı + kütüphane onay/red zaten servis içindeydi |
+| Audit hassas veri içermez | Tamamlandı (18-19 Tem, Claude) | `audit_service.redact` (şifre/token/TCKN/IBAN/OTP maskesi) + JSONB-güvenli skaler dönüşüm; saf + PG testli |
 | Binlerce kayıt DB pagination kullanır | Kısmi | Kullanıcı/booking/demand/report/audit tamam; legacy listeler eksik |
 | Ödeme/rezervasyon/teslimat regresyonu yok | Doğrulandı | Testler geçti; 1 bilinen ilgisiz test hariç |
 

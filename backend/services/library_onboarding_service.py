@@ -135,6 +135,7 @@ async def reject(
         target_type="LIBRARY",
         target_id=lib.id,
         details=reason,
+        reason=reason,
     )
     msg = f"'{lib.name}' başvurun reddedildi." + (f" Gerekçe: {reason}" if reason else "")
     await _notify_operators(db, library_id, msg)
