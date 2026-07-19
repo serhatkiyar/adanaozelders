@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { ExamSessionsManager } from "@/components/ExamSessionsManager";
+import { AccessDenied, ReadOnlyNotice, useAdminAreaAccess } from "@/components/admin/AccessState";
 import { ConfirmDialog, ReasonDialog } from "@/components/admin/ui";
 import { LibraryPayoutForm } from "@/components/LibraryPayoutForm";
 import {
@@ -36,6 +37,7 @@ const STATUS_BADGE: Record<string, string> = {
 };
 
 export default function AdminLibraries() {
+  const { canView, canManage } = useAdminAreaAccess("libraries");
   const [decision, setDecision] = useState<{
     kind: "approve" | "reject" | "delete";
     library: LibrarySearchOut;
@@ -86,19 +88,24 @@ export default function AdminLibraries() {
     });
   };
 
+  if (!canView) return <AccessDenied area="Kütüphaneler" />;
+
   return (
     <section className="space-y-4">
       <div className="flex items-center justify-between">
         <p className="text-xs text-slate-400 dark:text-slate-500">
           {data?.length ?? 0} kütüphane · sahada gezip kaydettiğin mekânları buradan yönet.
         </p>
-        <button
-          onClick={openCreate}
-          className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 active:scale-95"
-        >
-          + Kütüphane Ekle
-        </button>
+        {canManage && (
+          <button
+            onClick={openCreate}
+            className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 active:scale-95"
+          >
+            + Kütüphane Ekle
+          </button>
+        )}
       </div>
+      {!canManage && <ReadOnlyNotice />}
 
       {/* ── Onay bekleyen self-servis başvurular ── */}
       {pending.length > 0 && (
@@ -120,28 +127,30 @@ export default function AdminLibraries() {
                   {[lib.city, lib.district].filter(Boolean).join(" · ") || lib.location_text || "Konum belirtilmemiş"}
                 </p>
               </div>
-              <div className="flex shrink-0 flex-wrap gap-2">
-                <button
-                  onClick={() => openEdit(lib)}
-                  className="rounded-xl border border-slate-200 bg-white px-3.5 py-1.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100"
-                >
-                  İncele
-                </button>
-                <button
-                  onClick={() => setDecision({ kind: "reject", library: lib })}
-                  disabled={reject.isPending}
-                  className="rounded-xl border border-rose-200 bg-white px-3.5 py-1.5 text-sm font-semibold text-rose-600 shadow-sm transition hover:bg-rose-50 disabled:opacity-60 dark:border-rose-500/30 dark:bg-slate-700"
-                >
-                  Reddet
-                </button>
-                <button
-                  onClick={() => setDecision({ kind: "approve", library: lib })}
-                  disabled={approve.isPending}
-                  className="rounded-xl bg-emerald-600 px-3.5 py-1.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:opacity-60 active:scale-95"
-                >
-                  Onayla
-                </button>
-              </div>
+              {canManage && (
+                <div className="flex shrink-0 flex-wrap gap-2">
+                  <button
+                    onClick={() => openEdit(lib)}
+                    className="rounded-xl border border-slate-200 bg-white px-3.5 py-1.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100"
+                  >
+                    İncele
+                  </button>
+                  <button
+                    onClick={() => setDecision({ kind: "reject", library: lib })}
+                    disabled={reject.isPending}
+                    className="rounded-xl border border-rose-200 bg-white px-3.5 py-1.5 text-sm font-semibold text-rose-600 shadow-sm transition hover:bg-rose-50 disabled:opacity-60 dark:border-rose-500/30 dark:bg-slate-700"
+                  >
+                    Reddet
+                  </button>
+                  <button
+                    onClick={() => setDecision({ kind: "approve", library: lib })}
+                    disabled={approve.isPending}
+                    className="rounded-xl bg-emerald-600 px-3.5 py-1.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:opacity-60 active:scale-95"
+                  >
+                    Onayla
+                  </button>
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -191,32 +200,34 @@ export default function AdminLibraries() {
                   </p>
                 </div>
               </div>
-              <div className="flex shrink-0 flex-wrap gap-2">
-                <button
-                  onClick={() => setManaging(lib)}
-                  className="rounded-xl bg-indigo-50 px-3.5 py-1.5 text-sm font-semibold text-indigo-700 transition hover:bg-indigo-100 dark:bg-indigo-500/15 dark:text-indigo-300"
-                >
-                  Oturumlar & Operatörler
-                </button>
-                <button
-                  onClick={() => setPayouting(lib)}
-                  className="rounded-xl bg-emerald-50 px-3.5 py-1.5 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-100 dark:bg-emerald-500/15 dark:text-emerald-300"
-                >
-                  Ödeme
-                </button>
-                <button
-                  onClick={() => openEdit(lib)}
-                  className="rounded-xl border border-slate-200 bg-white px-3.5 py-1.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100"
-                >
-                  Düzenle
-                </button>
-                <button
-                  onClick={() => setDecision({ kind: "delete", library: lib })}
-                  className="rounded-xl border border-slate-200 bg-white px-3.5 py-1.5 text-sm font-semibold text-red-600 shadow-sm transition hover:bg-red-50 dark:border-slate-600 dark:bg-slate-700"
-                >
-                  Sil
-                </button>
-              </div>
+              {canManage && (
+                <div className="flex shrink-0 flex-wrap gap-2">
+                  <button
+                    onClick={() => setManaging(lib)}
+                    className="rounded-xl bg-indigo-50 px-3.5 py-1.5 text-sm font-semibold text-indigo-700 transition hover:bg-indigo-100 dark:bg-indigo-500/15 dark:text-indigo-300"
+                  >
+                    Oturumlar & Operatörler
+                  </button>
+                  <button
+                    onClick={() => setPayouting(lib)}
+                    className="rounded-xl bg-emerald-50 px-3.5 py-1.5 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-100 dark:bg-emerald-500/15 dark:text-emerald-300"
+                  >
+                    Ödeme
+                  </button>
+                  <button
+                    onClick={() => openEdit(lib)}
+                    className="rounded-xl border border-slate-200 bg-white px-3.5 py-1.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100"
+                  >
+                    Düzenle
+                  </button>
+                  <button
+                    onClick={() => setDecision({ kind: "delete", library: lib })}
+                    className="rounded-xl border border-slate-200 bg-white px-3.5 py-1.5 text-sm font-semibold text-red-600 shadow-sm transition hover:bg-red-50 dark:border-slate-600 dark:bg-slate-700"
+                  >
+                    Sil
+                  </button>
+                </div>
+              )}
             </div>
           ))}
         </div>

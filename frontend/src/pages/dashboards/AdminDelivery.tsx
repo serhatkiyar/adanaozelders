@@ -7,6 +7,7 @@ import { Link } from "react-router-dom";
 import { QRCodeSVG } from "qrcode.react";
 
 import { DeliveryRouteMap } from "@/components/DeliveryRouteMap";
+import { AccessDenied, ReadOnlyNotice, useAdminAreaAccess } from "@/components/admin/AccessState";
 import { CourierManager } from "@/components/admin/CourierManager";
 import { ConfirmDialog } from "@/components/admin/ui";
 import {
@@ -254,8 +255,10 @@ function StopRow({
   isFirst: boolean;
   isLast: boolean;
 }) {
+  const { canManage } = useAdminAreaAccess("delivery");
   const removeStop = useRemoveStop();
   const editable =
+    canManage &&
     (run.status === "PLANNED" || run.status === "ACTIVE") && stop.status === "PENDING";
 
   const iconBtn =
@@ -341,9 +344,18 @@ function StopRow({
 
 /** Tur kurye ataması — isim satırı + hover'da değiştirme select'i. */
 function RunCourier({ run }: { run: DeliveryRun }) {
+  const { canManage } = useAdminAreaAccess("delivery");
   const { data: couriers = [] } = useCouriers();
   const updateRun = useUpdateDeliveryRun();
   const active = couriers.filter((c) => c.is_active || c.id === run.courier?.id);
+  if (!canManage) {
+    return run.courier ? (
+      <span className="inline-flex items-center gap-1.5">
+        <span className="text-slate-300 dark:text-slate-600">·</span>
+        <span className="text-xs text-slate-500 dark:text-slate-400">{run.courier.name}</span>
+      </span>
+    ) : null;
+  }
   if (active.length === 0) return null;
   return (
     <span className="inline-flex items-center gap-1.5">
@@ -411,6 +423,7 @@ function RunExceptionStrip({ run }: { run: DeliveryRun }) {
 }
 
 function RunDetail({ run }: { run: DeliveryRun }) {
+  const { canManage } = useAdminAreaAccess("delivery");
   const [cancelOpen, setCancelOpen] = useState(false);
   const [showLabels, setShowLabels] = useState(false);
   const [showMap, setShowMap] = useState(true);
@@ -418,7 +431,7 @@ function RunDetail({ run }: { run: DeliveryRun }) {
   const reorder = useReorderStops();
   const addStops = useAddStops();
   const optimize = useOptimizeRun();
-  const planning = run.status === "PLANNED" || run.status === "ACTIVE";
+  const planning = canManage && (run.status === "PLANNED" || run.status === "ACTIVE");
   const { data: eligible = [], isLoading: eligibleLoading } = useEligibleOrders(planning);
   const [done, total] = runProgress(run);
   const sorted = useMemo(
@@ -535,7 +548,7 @@ function RunDetail({ run }: { run: DeliveryRun }) {
               </svg>
             </Link>
           )}
-          {run.status === "PLANNED" && (
+          {canManage && run.status === "PLANNED" && (
             <button
               onClick={() => act("start")}
               disabled={runAction.isPending || run.stops.length === 0}
@@ -547,7 +560,7 @@ function RunDetail({ run }: { run: DeliveryRun }) {
               Turu Başlat
             </button>
           )}
-          {run.status === "ACTIVE" && (
+          {canManage && run.status === "ACTIVE" && (
             <button
               onClick={() => act("complete")}
               disabled={runAction.isPending}
@@ -761,6 +774,7 @@ function RunDetail({ run }: { run: DeliveryRun }) {
    "hazır" işaretlenene dek tura EKLENEMEZ. Depo görevlisinin tek yüzeyi. */
 
 function PrepStation() {
+  const { canManage } = useAdminAreaAccess("delivery");
   const { data: queue = [], isLoading } = usePrepQueue();
   const mark = useMarkPrepared();
 
@@ -823,13 +837,15 @@ function PrepStation() {
               <span className="shrink-0 text-xs text-slate-500 tabular-nums dark:text-slate-400">
                 {o.item_count} parça · ₺{o.total}
               </span>
-              <button
-                onClick={() => prepare(o.order_id)}
-                disabled={mark.isPending}
-                className="shrink-0 rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-slate-700 disabled:opacity-50 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200"
-              >
-                Hazır & Etiketle
-              </button>
+              {canManage && (
+                <button
+                  onClick={() => prepare(o.order_id)}
+                  disabled={mark.isPending}
+                  className="shrink-0 rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-slate-700 disabled:opacity-50 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200"
+                >
+                  Hazır & Etiketle
+                </button>
+              )}
             </li>
           ))}
         </ul>
@@ -1016,6 +1032,7 @@ function KpiPanel() {
    görüşüldü) ya da iptal+iade (mağaza yönetimi). Sonsuz döngünün kırıldığı yer. */
 
 function AttentionQueue() {
+  const { canManage } = useAdminAreaAccess("delivery");
   const [retrying, setRetrying] = useState<number | null>(null);
   const { data: orders = [], isLoading } = useAttentionOrders();
   const retry = useRetryExhausted();
@@ -1074,13 +1091,15 @@ function AttentionQueue() {
               <span className="shrink-0 text-xs text-slate-500 tabular-nums dark:text-slate-400">
                 ₺{o.total}
               </span>
-              <button
-                onClick={() => setRetrying(o.order_id)}
-                disabled={retry.isPending}
-                className="shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold text-indigo-600 ring-1 ring-indigo-200 transition hover:bg-indigo-50 disabled:opacity-50 dark:text-indigo-400 dark:ring-indigo-500/40 dark:hover:bg-indigo-500/10"
-              >
-                Yeniden Dene
-              </button>
+              {canManage && (
+                <button
+                  onClick={() => setRetrying(o.order_id)}
+                  disabled={retry.isPending}
+                  className="shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold text-indigo-600 ring-1 ring-indigo-200 transition hover:bg-indigo-50 disabled:opacity-50 dark:text-indigo-400 dark:ring-indigo-500/40 dark:hover:bg-indigo-500/10"
+                >
+                  Yeniden Dene
+                </button>
+              )}
             </li>
           ))}
         </ul>
@@ -1158,6 +1177,7 @@ const CLOSED_DAY_FMT = new Intl.DateTimeFormat("tr-TR", {
 });
 
 function CalendarManager() {
+  const { canManage } = useAdminAreaAccess("delivery");
   const { data: days = [], isLoading } = useClosedDays();
   const add = useAddClosedDay();
   const remove = useRemoveClosedDay();
@@ -1191,22 +1211,25 @@ function CalendarManager() {
             Kapalı günler — söz motoru bu tarihlere teslimat sözü vermez. Hafta 7 gün açık.
           </p>
         </div>
-        <button
-          onClick={() =>
-            seed.mutate(new Date().getFullYear(), {
-              onSuccess: (r) => toast.success(`${r.length} resmî tatil yüklendi.`),
-              onError: (e: any) =>
-                toast.error(e?.response?.data?.detail ?? "Yüklenemedi."),
-            })
-          }
-          disabled={seed.isPending}
-          className="rounded-lg px-3 py-1.5 text-sm font-semibold text-slate-700 ring-1 ring-slate-200 transition hover:bg-slate-50 disabled:opacity-50 dark:text-slate-200 dark:ring-slate-600 dark:hover:bg-slate-700/60"
-        >
-          Resmî tatilleri yükle
-        </button>
+        {canManage && (
+          <button
+            onClick={() =>
+              seed.mutate(new Date().getFullYear(), {
+                onSuccess: (r) => toast.success(`${r.length} resmî tatil yüklendi.`),
+                onError: (e: any) =>
+                  toast.error(e?.response?.data?.detail ?? "Yüklenemedi."),
+              })
+            }
+            disabled={seed.isPending}
+            className="rounded-lg px-3 py-1.5 text-sm font-semibold text-slate-700 ring-1 ring-slate-200 transition hover:bg-slate-50 disabled:opacity-50 dark:text-slate-200 dark:ring-slate-600 dark:hover:bg-slate-700/60"
+          >
+            Resmî tatilleri yükle
+          </button>
+        )}
       </div>
 
       {/* Ekleme satırı */}
+      {canManage && (
       <div className="flex flex-wrap items-end gap-2 border-b border-slate-100 px-6 py-4 dark:border-slate-700">
         <label className="text-sm">
           <span className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">
@@ -1240,6 +1263,7 @@ function CalendarManager() {
           Kapat
         </button>
       </div>
+      )}
 
       {/* Yaklaşan kapalı günler */}
       {isLoading ? (
@@ -1262,16 +1286,18 @@ function CalendarManager() {
               <span className="min-w-0 flex-1 truncate text-sm text-slate-500 dark:text-slate-400">
                 {d.label ?? (d.source === "holiday" ? "Resmî tatil" : "Kapalı")}
               </span>
-              <button
-                onClick={() => remove.mutate(d.id)}
-                disabled={remove.isPending}
-                title="Bu günü yeniden aç"
-                className="shrink-0 rounded-lg p-1.5 text-slate-400 transition hover:bg-rose-50 hover:text-rose-600 disabled:opacity-50 dark:hover:bg-rose-500/10 dark:hover:text-rose-400"
-              >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-4 w-4">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
-                </svg>
-              </button>
+              {canManage && (
+                <button
+                  onClick={() => remove.mutate(d.id)}
+                  disabled={remove.isPending}
+                  title="Bu günü yeniden aç"
+                  className="shrink-0 rounded-lg p-1.5 text-slate-400 transition hover:bg-rose-50 hover:text-rose-600 disabled:opacity-50 dark:hover:bg-rose-500/10 dark:hover:text-rose-400"
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-4 w-4">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              )}
             </li>
           ))}
         </ul>
@@ -1283,6 +1309,7 @@ function CalendarManager() {
 /* ─── Ana bileşen ────────────────────────────────────── */
 
 export default function AdminDelivery() {
+  const { canView, canManage } = useAdminAreaAccess("delivery");
   const [dispatchOpen, setDispatchOpen] = useState(false);
   const [date, setDate] = useState(todayIso());
   const [vehicle, setVehicle] = useState<DeliveryVehicle>("LADA");
@@ -1328,8 +1355,11 @@ export default function AdminDelivery() {
       }
     );
 
+  if (!canView) return <AccessDenied area="Dağıtım" />;
+
   return (
     <>
+    {!canManage && <div className="mb-4"><ReadOnlyNotice /></div>}
     <AttentionQueue />
     <PrepStation />
     <section className="rounded-2xl bg-white shadow-sm ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-slate-700">
@@ -1353,6 +1383,8 @@ export default function AdminDelivery() {
           aria-label="Tur tarihi"
           className="input w-auto"
         />
+        {canManage && (
+        <>
         <select
           value={vehicle}
           onChange={(e) => setVehicle(e.target.value as DeliveryVehicle)}
@@ -1396,6 +1428,8 @@ export default function AdminDelivery() {
             <span className="rounded-full bg-white/20 px-1.5 text-xs">{dispatchable}</span>
           )}
         </button>
+        </>
+        )}
       </div>
 
       {/* Kapasite şeridi — 14 günlük söz doluluğu + söz borcu */}

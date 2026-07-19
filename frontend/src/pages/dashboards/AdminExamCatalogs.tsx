@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { AccessDenied, ReadOnlyNotice, useAdminAreaAccess } from "@/components/admin/AccessState";
 import { ConfirmDialog } from "@/components/admin/ui";
 import {
   useCatalogs,
@@ -39,8 +40,11 @@ function emptyForm(): FormState {
 }
 
 export default function AdminExamCatalogs() {
+  const { canView, canManage } = useAdminAreaAccess("catalogs");
   const { data: catalogs, isLoading } = useCatalogs();
   const [editor, setEditor] = useState<FormState | null>(null);
+
+  if (!canView) return <AccessDenied area="Deneme katalogları" />;
 
   return (
     <div className="space-y-4">
@@ -54,13 +58,16 @@ export default function AdminExamCatalogs() {
             seçer; cevap anahtarı tüm oturumlarda paylaşılır.
           </p>
         </div>
-        <button
-          onClick={() => setEditor(emptyForm())}
-          className="shrink-0 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
-        >
-          + Katalog
-        </button>
+        {canManage && (
+          <button
+            onClick={() => setEditor(emptyForm())}
+            className="shrink-0 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
+          >
+            + Katalog
+          </button>
+        )}
       </div>
+      {!canManage && <ReadOnlyNotice />}
 
       {isLoading ? (
         <div className="h-32 animate-pulse rounded-2xl bg-slate-100 dark:bg-slate-800" />
@@ -71,7 +78,7 @@ export default function AdminExamCatalogs() {
       ) : (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {catalogs.map((c) => (
-            <CatalogCard key={c.id} catalog={c} onEdit={() => setEditor(toForm(c))} />
+            <CatalogCard key={c.id} catalog={c} canManage={canManage} onEdit={() => setEditor(toForm(c))} />
           ))}
         </div>
       )}
@@ -95,7 +102,7 @@ function toForm(c: CatalogOut): FormState {
   };
 }
 
-function CatalogCard({ catalog, onEdit }: { catalog: CatalogOut; onEdit: () => void }) {
+function CatalogCard({ catalog, canManage, onEdit }: { catalog: CatalogOut; canManage: boolean; onEdit: () => void }) {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const del = useDeleteCatalog();
   const uploadKey = useUploadCatalogAnswerKey();
@@ -157,42 +164,46 @@ function CatalogCard({ catalog, onEdit }: { catalog: CatalogOut; onEdit: () => v
             🔑 Cevap anahtarı ✓
           </a>
         ) : null}
-        <button
-          onClick={() => keyInput.current?.click()}
-          disabled={uploadKey.isPending}
-          className="rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-60 dark:border-slate-600 dark:text-slate-300"
-        >
-          {uploadKey.isPending
-            ? "Yükleniyor…"
-            : catalog.answer_key_url
-              ? "Değiştir"
-              : "🔑 Cevap Anahtarı"}
-        </button>
-        <input
-          ref={keyInput}
-          type="file"
-          accept="application/pdf,image/*"
-          hidden
-          onChange={(e) => {
-            const f = e.target.files?.[0];
-            if (f) onKey(f);
-            e.target.value = "";
-          }}
-        />
-        <div className="ml-auto flex gap-1.5">
-          <button
-            onClick={onEdit}
-            className="rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300"
-          >
-            Düzenle
-          </button>
-          <button
-          onClick={() => setDeleteOpen(true)}
-            className="rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-semibold text-rose-600 hover:bg-rose-50 dark:border-slate-600"
-          >
-            Sil
-          </button>
-        </div>
+        {canManage && (
+          <>
+            <button
+              onClick={() => keyInput.current?.click()}
+              disabled={uploadKey.isPending}
+              className="rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-60 dark:border-slate-600 dark:text-slate-300"
+            >
+              {uploadKey.isPending
+                ? "Yükleniyor…"
+                : catalog.answer_key_url
+                  ? "Değiştir"
+                  : "🔑 Cevap Anahtarı"}
+            </button>
+            <input
+              ref={keyInput}
+              type="file"
+              accept="application/pdf,image/*"
+              hidden
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) onKey(f);
+                e.target.value = "";
+              }}
+            />
+            <div className="ml-auto flex gap-1.5">
+              <button
+                onClick={onEdit}
+                className="rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300"
+              >
+                Düzenle
+              </button>
+              <button
+                onClick={() => setDeleteOpen(true)}
+                className="rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-semibold text-rose-600 hover:bg-rose-50 dark:border-slate-600"
+              >
+                Sil
+              </button>
+            </div>
+          </>
+        )}
       </div>
     </div>
     <ConfirmDialog

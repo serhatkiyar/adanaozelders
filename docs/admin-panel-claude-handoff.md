@@ -486,6 +486,16 @@ Hedef:
 
 ### Öncelik 3 — Permission frontend tamamlaması
 
+**DURUM: TAMAMLANDI (19 Tem, Claude).** `lib/adminAccess.ts` (saf, Vitest'li) +
+`components/admin/AccessState.tsx` (`useAdminAreaAccess` / `AccessDenied` /
+`ReadOnlyNotice`) ortak katmanı eklendi; AdminHome (bölüm bazlı: tutors/users),
+AdminStore (sekme bazlı: products/orders/returns/coupons — izinsiz sekme nav'dan
+da düşer), AdminLibraries, AdminExamCatalogs, AdminDelivery (+CourierManager
+salt-okunur kimlik listesi) kapılandı. `admin_permissions` undefined ise
+fail-open (AdminSidebar sözleşmesi; kesin karar backend'de).
+
+Orijinal kapsam:
+
 Backend güvenlidir fakat frontend şu legacy alanlarda tam permission-aware değildir:
 
 - `AdminHome` içindeki eğitmen/diploma/ad değişikliği aksiyonları.

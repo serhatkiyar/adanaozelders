@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Avatar } from "@/components/Avatar";
+import { AccessDenied, ReadOnlyNotice, useAdminAreaAccess } from "@/components/admin/AccessState";
 import { ConfirmDialog } from "@/components/admin/ui";
 import {
   useActivateTutor,
@@ -97,6 +98,7 @@ function StatBox({ label, value, sub, tone, icon }: StatItem) {
 /* ─── pending tutor card ─────────────────────────────── */
 
 function PendingTutorCard({ tutor }: { tutor: TutorOut }) {
+  const { canManage } = useAdminAreaAccess("tutors");
   const approve = useApproveTutor();
   const reject = useRejectTutor();
   const busy = approve.isPending || reject.isPending;
@@ -138,26 +140,28 @@ function PendingTutorCard({ tutor }: { tutor: TutorOut }) {
           </p>
         </div>
       </div>
-      <div className="flex shrink-0 gap-2">
-        <button
-          disabled={busy}
-          onClick={() =>
-            run(approve, `${tutor.full_name} onaylandı.`, "Onaylama başarısız.")
-          }
-          className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {approve.isPending ? "…" : "Onayla"}
-        </button>
-        <button
-          disabled={busy}
-          onClick={() =>
-            run(reject, `${tutor.full_name} reddedildi.`, "Reddetme başarısız.")
-          }
-          className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-red-600 shadow-sm transition hover:bg-red-50 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-600 dark:bg-slate-700 dark:hover:bg-red-900/20"
-        >
-          {reject.isPending ? "…" : "Reddet"}
-        </button>
-      </div>
+      {canManage && (
+        <div className="flex shrink-0 gap-2">
+          <button
+            disabled={busy}
+            onClick={() =>
+              run(approve, `${tutor.full_name} onaylandı.`, "Onaylama başarısız.")
+            }
+            className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {approve.isPending ? "…" : "Onayla"}
+          </button>
+          <button
+            disabled={busy}
+            onClick={() =>
+              run(reject, `${tutor.full_name} reddedildi.`, "Reddetme başarısız.")
+            }
+            className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-red-600 shadow-sm transition hover:bg-red-50 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-600 dark:bg-slate-700 dark:hover:bg-red-900/20"
+          >
+            {reject.isPending ? "…" : "Reddet"}
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -284,6 +288,7 @@ function PendingTutorsSection() {
 /* ─── listing management ─────────────────────────────── */
 
 function ListingRow({ tutor }: { tutor: TutorOut }) {
+  const { canManage } = useAdminAreaAccess("tutors");
   const [deleteOpen, setDeleteOpen] = useState(false);
   const suspend = useSuspendTutor();
   const activate = useActivateTutor();
@@ -328,6 +333,7 @@ function ListingRow({ tutor }: { tutor: TutorOut }) {
         </div>
       </div>
 
+      {canManage && (
       <div className="flex shrink-0 flex-wrap items-center gap-2">
         {tutor.status === TutorStatus.APPROVED && (
           <button
@@ -359,6 +365,7 @@ function ListingRow({ tutor }: { tutor: TutorOut }) {
           Sil
         </button>
       </div>
+      )}
     </div>
     <ConfirmDialog
       open={deleteOpen}
@@ -454,6 +461,7 @@ const DOC_TYPE_LABEL: Record<DocumentType, string> = {
 };
 
 function EducationVerifyCard({ edu }: { edu: AdminEducation }) {
+  const { canManage } = useAdminAreaAccess("tutors");
   const [rejecting, setRejecting] = useState(false);
   const [note, setNote] = useState("");
   const verify = useVerifyEducation();
@@ -542,7 +550,7 @@ function EducationVerifyCard({ edu }: { edu: AdminEducation }) {
         barkodu e-Devlet'te teyit et (sahihlik).
       </p>
 
-      {rejecting ? (
+      {!canManage ? null : rejecting ? (
         <div className="mt-3 space-y-2">
           <input
             value={note}
@@ -623,10 +631,11 @@ function DiplomaVerificationSection() {
 /* ─── moderasyon (şikayet) kuyruğu ───────────────────── */
 
 function NameChangeCard({ req }: { req: NameChangeRequest }) {
+  const { canManage } = useAdminAreaAccess("users");
   const [note, setNote] = useState("");
   const approve = useApproveNameChange();
   const reject = useRejectNameChange();
-  const isPending = req.status === "PENDING";
+  const isPending = canManage && req.status === "PENDING";
   const busy = approve.isPending || reject.isPending;
 
   const target =
@@ -759,9 +768,25 @@ function NameChangesSection() {
   );
 }
 
+const SECTION_AREA: Record<Tab, string> = {
+  overview: "dashboard",
+  listings: "tutors",
+  diplomas: "tutors",
+  names: "users",
+};
+const SECTION_LABEL: Record<Tab, string> = {
+  overview: "Genel bakış",
+  listings: "Eğitmen ilanları",
+  diplomas: "Diploma doğrulama",
+  names: "Ad değişiklikleri",
+};
+
 export default function AdminHome({ section = "overview" }: { section?: Tab }) {
+  const { canView, canManage } = useAdminAreaAccess(SECTION_AREA[section]);
+  if (!canView) return <AccessDenied area={SECTION_LABEL[section]} />;
   return (
     <div className="mx-auto max-w-6xl space-y-6 pb-12">
+        {!canManage && section !== "overview" && <ReadOnlyNotice />}
         {section === "overview" ? (
           <>
             <StatsSection />

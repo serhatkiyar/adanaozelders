@@ -2,7 +2,10 @@ import { useState } from "react";
 import { createPortal } from "react-dom";
 import { useMutation } from "@tanstack/react-query";
 import { NavLink, useLocation } from "react-router-dom";
+import { AccessDenied, ReadOnlyNotice, useAdminAreaAccess } from "@/components/admin/AccessState";
 import { ConfirmDialog, ReasonDialog } from "@/components/admin/ui";
+import { adminAreaAccess } from "@/lib/adminAccess";
+import { useAuthStore } from "@/store/authStore";
 import { formatTL } from "@/lib/money";
 import { formatDateTime } from "@/lib/datetime";
 import { ROUTES } from "@/lib/routes";
@@ -51,12 +54,25 @@ const STORE_ROUTES: Record<SubTab, string> = {
   coupons: ROUTES.adminStoreCoupons,
 };
 
+// Sekme → backend izin alanı (kategoriler backend'de products.manage kapsamında).
+const TAB_AREA: Record<SubTab, string> = {
+  products: "products",
+  categories: "products",
+  orders: "orders",
+  returns: "returns",
+  coupons: "coupons",
+};
+
 export default function AdminStore() {
   const { pathname } = useLocation();
+  const permissions = useAuthStore((state) => state.user?.admin_permissions);
   const sub =
     (Object.entries(STORE_ROUTES).find(([, route]) => pathname === route)?.[0] as
       | SubTab
       | undefined) ?? "products";
+  if (!adminAreaAccess(permissions, ...Object.values(TAB_AREA)).canView) {
+    return <AccessDenied area="Mağaza" />;
+  }
   return (
     <div>
       <div className="mb-4 flex gap-2">
@@ -68,7 +84,7 @@ export default function AdminStore() {
             ["returns", "İadeler"],
             ["coupons", "Kuponlar"],
           ] as [SubTab, string][]
-        ).map(([v, label]) => (
+        ).filter(([v]) => adminAreaAccess(permissions, TAB_AREA[v]).canView).map(([v, label]) => (
           <NavLink
             key={v}
             to={STORE_ROUTES[v]}
@@ -101,30 +117,37 @@ export default function AdminStore() {
 /* ── Ürünler ── */
 
 function ProductsPanel() {
+  const { canView, canManage } = useAdminAreaAccess("products");
   const { data: products, isLoading } = useAdminProducts();
   const invalidate = useInvalidateAdminStore();
   const [showForm, setShowForm] = useState(false);
   const [showImport, setShowImport] = useState(false);
 
+  if (!canView) return <AccessDenied area="Ürünler" />;
+
   return (
     <div>
-      <div className="flex justify-end gap-2">
-        <button
-          type="button"
-          onClick={() => setShowImport((v) => !v)}
-          className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 dark:border-slate-700 dark:text-slate-200"
-        >
-          {showImport ? "Kapat" : "Toplu içe aktar"}
-        </button>
-        <button
-          type="button"
-          onClick={() => setShowForm((v) => !v)}
-          className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white dark:bg-white dark:text-slate-900"
-        >
-          {showForm ? "Kapat" : "Yeni ürün"}
-        </button>
-      </div>
-      {showImport && <BulkImportPanel onDone={invalidate} />}
+      {canManage ? (
+        <div className="flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={() => setShowImport((v) => !v)}
+            className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 dark:border-slate-700 dark:text-slate-200"
+          >
+            {showImport ? "Kapat" : "Toplu içe aktar"}
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowForm((v) => !v)}
+            className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white dark:bg-white dark:text-slate-900"
+          >
+            {showForm ? "Kapat" : "Yeni ürün"}
+          </button>
+        </div>
+      ) : (
+        <ReadOnlyNotice />
+      )}
+      {canManage && showImport && <BulkImportPanel onDone={invalidate} />}
       {showForm && (
         <div className="mt-4 rounded-xl border border-slate-200 p-4 dark:border-slate-700">
           <ProductForm
@@ -141,7 +164,7 @@ function ProductsPanel() {
           <p className="text-sm text-slate-400">Yükleniyor…</p>
         ) : products && products.length > 0 ? (
           products.map((p) => (
-            <AdminProductRow key={p.id} product={p} onChange={invalidate} />
+            <AdminProductRow key={p.id} product={p} canManage={canManage} onChange={invalidate} />
           ))
         ) : (
           <p className="py-8 text-center text-sm text-slate-500">Ürün yok.</p>
@@ -292,9 +315,11 @@ function ProductForm({
 
 function AdminProductRow({
   product,
+  canManage,
   onChange,
 }: {
   product: ProductSearchOut;
+  canManage: boolean;
   onChange: () => void;
 }) {
   const cover = useMutation({
@@ -334,21 +359,23 @@ function AdminProductRow({
           </p>
           <span className="text-[11px] text-slate-400">{product.status}</span>
         </div>
-        <div className="flex flex-col items-end gap-1 text-xs">
-          <label className="cursor-pointer font-medium text-slate-600 hover:underline dark:text-slate-300">
-            Kapak
-            <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && cover.mutate(e.target.files[0])} />
-          </label>
-          <button type="button" onClick={() => setEditing(true)} className="font-medium text-indigo-600 hover:underline dark:text-indigo-400">
-            Düzenle
-          </button>
-          <button type="button" onClick={() => toggle.mutate()} className="font-medium text-slate-600 hover:underline dark:text-slate-300">
-            {product.status === "ACTIVE" ? "Gizle" : "Yayınla"}
-          </button>
-          <button type="button" onClick={() => remove.mutate()} className="font-medium text-rose-500 hover:underline">
-            Sil
-          </button>
-        </div>
+        {canManage && (
+          <div className="flex flex-col items-end gap-1 text-xs">
+            <label className="cursor-pointer font-medium text-slate-600 hover:underline dark:text-slate-300">
+              Kapak
+              <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && cover.mutate(e.target.files[0])} />
+            </label>
+            <button type="button" onClick={() => setEditing(true)} className="font-medium text-indigo-600 hover:underline dark:text-indigo-400">
+              Düzenle
+            </button>
+            <button type="button" onClick={() => toggle.mutate()} className="font-medium text-slate-600 hover:underline dark:text-slate-300">
+              {product.status === "ACTIVE" ? "Gizle" : "Yayınla"}
+            </button>
+            <button type="button" onClick={() => remove.mutate()} className="font-medium text-rose-500 hover:underline">
+              Sil
+            </button>
+          </div>
+        )}
       </div>
 
       {editing && (
@@ -504,6 +531,7 @@ function BulkImportPanel({ onDone }: { onDone: () => void }) {
 /* ── Kategoriler ── */
 
 function CategoriesPanel() {
+  const { canView, canManage } = useAdminAreaAccess("products");
   const { data: categories } = useCategories();
   const invalidate = useInvalidateAdminStore();
   const [name, setName] = useState("");
@@ -524,28 +552,36 @@ function CategoriesPanel() {
     },
   });
 
+  if (!canView) return <AccessDenied area="Kategoriler" />;
+
   return (
     <div>
-      <div className="flex gap-2">
-        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Kategori adı" className="input flex-1" />
-        <button
-          type="button"
-          disabled={!name || create.isPending}
-          onClick={() => create.mutate()}
-          className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50 dark:bg-white dark:text-slate-900"
-        >
-          Ekle
-        </button>
-      </div>
+      {canManage ? (
+        <div className="flex gap-2">
+          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Kategori adı" className="input flex-1" />
+          <button
+            type="button"
+            disabled={!name || create.isPending}
+            onClick={() => create.mutate()}
+            className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50 dark:bg-white dark:text-slate-900"
+          >
+            Ekle
+          </button>
+        </div>
+      ) : (
+        <ReadOnlyNotice />
+      )}
       <div className="mt-4 space-y-2">
         {(categories ?? []).map((c) => (
           <div key={c.id} className="flex items-center justify-between rounded-lg border border-slate-100 px-3 py-2 dark:border-slate-800">
             <span className="text-sm text-slate-700 dark:text-slate-300">
               {c.name} <span className="text-slate-400">({c.product_count ?? 0})</span>
             </span>
-            <button type="button" onClick={() => remove.mutate(c.id)} className="text-xs font-medium text-rose-500 hover:underline">
-              Sil
-            </button>
+            {canManage && (
+              <button type="button" onClick={() => remove.mutate(c.id)} className="text-xs font-medium text-rose-500 hover:underline">
+                Sil
+              </button>
+            )}
           </div>
         ))}
       </div>
@@ -556,6 +592,7 @@ function CategoriesPanel() {
 /* ── Siparişler ── */
 
 function OrdersPanel() {
+  const { canView, canManage } = useAdminAreaAccess("orders");
   const { data: orders, isLoading } = useAdminOrders();
   const invalidate = useInvalidateAdminStore();
 
@@ -579,10 +616,12 @@ function OrdersPanel() {
     onError: () => toast.error("İade başarısız"),
   });
 
+  if (!canView) return <AccessDenied area="Siparişler" />;
   if (isLoading) return <p className="text-sm text-slate-400">Yükleniyor…</p>;
 
   return (
     <div className="space-y-3">
+      {!canManage && <ReadOnlyNotice />}
       {orders && orders.length > 0 ? (
         orders.map((o) => (
           <div key={o.id} className="rounded-xl border border-slate-100 p-3 dark:border-slate-800">
@@ -601,21 +640,23 @@ function OrdersPanel() {
                 {o.ship_recipient} — {o.ship_address}
               </p>
             )}
-            <div className="mt-2 flex flex-wrap gap-2">
-              {o.has_physical && o.payment_status === "PAID" && o.status === "PAID" && (
-                <ShipButton onShip={(tracking) => ship.mutate({ id: o.id, tracking })} />
-              )}
-              {o.status === "SHIPPED" && (
-                <button type="button" onClick={() => deliver.mutate(o.id)} className="rounded-lg border border-slate-200 px-3 py-1 text-xs dark:border-slate-700">
-                  Teslim edildi
-                </button>
-              )}
-              {o.payment_status === "PAID" && (
-                <button type="button" onClick={() => refund.mutate(o.id)} className="rounded-lg border border-rose-200 px-3 py-1 text-xs text-rose-600 dark:border-rose-500/30">
-                  İade et
-                </button>
-              )}
-            </div>
+            {canManage && (
+              <div className="mt-2 flex flex-wrap gap-2">
+                {o.has_physical && o.payment_status === "PAID" && o.status === "PAID" && (
+                  <ShipButton onShip={(tracking) => ship.mutate({ id: o.id, tracking })} />
+                )}
+                {o.status === "SHIPPED" && (
+                  <button type="button" onClick={() => deliver.mutate(o.id)} className="rounded-lg border border-slate-200 px-3 py-1 text-xs dark:border-slate-700">
+                    Teslim edildi
+                  </button>
+                )}
+                {o.payment_status === "PAID" && (
+                  <button type="button" onClick={() => refund.mutate(o.id)} className="rounded-lg border border-rose-200 px-3 py-1 text-xs text-rose-600 dark:border-rose-500/30">
+                    İade et
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         ))
       ) : (
@@ -651,6 +692,7 @@ const RETURN_STATUS_LABELS: Record<string, { label: string; cls: string }> = {
 };
 
 function ReturnsPanel() {
+  const { canView, canManage } = useAdminAreaAccess("returns");
   const [decision, setDecision] = useState<{ id: number; action: "approve" | "reject" } | null>(null);
   const [onlyPending, setOnlyPending] = useState(true);
   const { data: returns, isLoading } = useAdminReturns(onlyPending ? "PENDING" : undefined);
@@ -681,10 +723,12 @@ function ReturnsPanel() {
     );
   }
 
+  if (!canView) return <AccessDenied area="İadeler" />;
   if (isLoading) return <p className="text-sm text-slate-400">Yükleniyor…</p>;
 
   return (
     <div className="space-y-3">
+      {!canManage && <ReadOnlyNotice />}
       <label className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
         <input
           type="checkbox"
@@ -724,7 +768,7 @@ function ReturnsPanel() {
                   <span className="font-medium">Not:</span> {r.admin_note}
                 </p>
               )}
-              {r.status === "PENDING" && (
+              {canManage && r.status === "PENDING" && (
                 <div className="mt-3 flex flex-wrap gap-2">
                   <button
                     type="button"
@@ -790,6 +834,7 @@ const EMPTY_COUPON: CouponCreate = {
 };
 
 function CouponsPanel() {
+  const { canView, canManage } = useAdminAreaAccess("coupons");
   const { data: coupons, isLoading } = useCoupons();
   const create = useCreateCoupon();
   const update = useUpdateCoupon();
@@ -822,9 +867,13 @@ function CouponsPanel() {
   const inputCls =
     "rounded-lg border border-slate-200 px-2 py-1.5 text-sm outline-none focus:border-indigo-400 dark:border-slate-700 dark:bg-slate-800 dark:text-white";
 
+  if (!canView) return <AccessDenied area="Kuponlar" />;
+
   return (
     <div className="space-y-6">
+      {!canManage && <ReadOnlyNotice />}
       {/* Oluştur */}
+      {canManage && (
       <div className="rounded-2xl border border-slate-100 p-4 dark:border-slate-800">
         <h3 className="mb-3 text-sm font-semibold text-slate-900 dark:text-white">Yeni kupon</h3>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
@@ -880,6 +929,7 @@ function CouponsPanel() {
           Kupon oluştur
         </button>
       </div>
+      )}
 
       {/* Liste */}
       {isLoading ? (
@@ -903,26 +953,28 @@ function CouponsPanel() {
                   {c.max_uses ? `/${c.max_uses}` : ""}
                 </span>
               </div>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => update.mutate({ id: c.id, payload: { is_active: !c.is_active } })}
-                  className={`rounded-lg px-3 py-1 text-xs font-medium ${
-                    c.is_active
-                      ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400"
-                      : "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400"
-                  }`}
-                >
-                  {c.is_active ? "Aktif" : "Pasif"}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setDeleting({ id: c.id, code: c.code })}
-                  className="rounded-lg px-3 py-1 text-xs font-medium text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/10"
-                >
-                  Sil
-                </button>
-              </div>
+              {canManage && (
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => update.mutate({ id: c.id, payload: { is_active: !c.is_active } })}
+                    className={`rounded-lg px-3 py-1 text-xs font-medium ${
+                      c.is_active
+                        ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400"
+                        : "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400"
+                    }`}
+                  >
+                    {c.is_active ? "Aktif" : "Pasif"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDeleting({ id: c.id, code: c.code })}
+                    className="rounded-lg px-3 py-1 text-xs font-medium text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/10"
+                  >
+                    Sil
+                  </button>
+                </div>
+              )}
             </div>
           ))}
         </div>

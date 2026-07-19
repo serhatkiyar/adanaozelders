@@ -1,6 +1,7 @@
 // Kurye profilleri yönetimi (ADMIN) — hafif liste + satır içi ekleme/düzenleme.
 // Müşteri takip sayfasındaki kimlik kartını (isim + vesikalık + plaka) besler.
 import { useRef, useState } from "react";
+import { useAdminAreaAccess } from "@/components/admin/AccessState";
 import { ConfirmDialog } from "@/components/admin/ui";
 
 import {
@@ -385,6 +386,7 @@ function CourierRow({ c }: { c: Courier }) {
 }
 
 export function CourierManager() {
+  const { canManage } = useAdminAreaAccess("delivery");
   const { data: couriers = [], isLoading } = useCouriers();
   const create = useCreateCourier();
   const [adding, setAdding] = useState(false);
@@ -419,7 +421,7 @@ export function CourierManager() {
             Müşteri takip kimliği (isim, fotoğraf, plaka) + saha ekranı giriş hesabı.
           </p>
         </div>
-        {!adding && (
+        {canManage && !adding && (
           <button
             onClick={() => setAdding(true)}
             className="text-xs font-semibold text-indigo-600 hover:underline dark:text-indigo-400"
@@ -469,6 +471,21 @@ export function CourierManager() {
           <p className="py-6 text-center text-sm text-slate-400 dark:text-slate-500">
             Henüz kurye yok — takip sayfasında kimlik göstermek için ekleyin.
           </p>
+        ) : !canManage ? (
+          // Salt-okunur rol: kimlik listesi görünür, düzenleme/hesap yüzeyi açılmaz.
+          <ul className="divide-y divide-slate-100 dark:divide-slate-700/60">
+            {couriers.map((c) => (
+              <li key={c.id} className="flex items-center gap-3 py-3">
+                <CourierAvatar c={c} />
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium text-slate-900 dark:text-white">{c.name}</p>
+                  {c.vehicle_plate && (
+                    <p className="font-mono text-xs text-slate-500 dark:text-slate-400">{c.vehicle_plate}</p>
+                  )}
+                </div>
+              </li>
+            ))}
+          </ul>
         ) : (
           <ul className="divide-y divide-slate-100 dark:divide-slate-700/60">
             {couriers.map((c) => (
