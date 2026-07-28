@@ -399,10 +399,16 @@ fazlı iade, reconciler kapsamı.*
 23. ✅ `/iletisim` + `/sss` — *commit `43981f3`*. Canlı sohbet widget'ı **bilinçli olarak
     eklenmedi**: üçüncü taraf script çerez kullanır ve çerezsiz analitik tercihini bozup
     çerez onay bandını zorunlu hale getirir (bkz. madde 20). Ayrı bir karar olarak ele alınmalı.
-24. Dinamik `GET /sitemap.xml` + `robots.txt`'e `Sitemap:` + liste sayfalarına `?sayfa=N` linkleri
-    — **`react-router` v6→v7 yükseltmesiyle birlikte** (Hafta 1'den devreden madde; ikisi de
-    router'a dokunuyor, tek seferde test edilmeli)
-25. Public rotalar için prerender
+24. ✅ Dinamik `/sitemap.xml` (96 URL) + `robots.txt`'e `Sitemap:` + `?sayfa=N` +
+    `react-router` v7.18.1 — *commit `5f71d29`*.
+    ⚠️ **react-router açığı kapanmadı, bilinçli:** `npm audit fix --force` 7.11.0'a düşürüyor ve
+    o sürümde bizi gerçekten etkileyen 10 açık var (`<Link>` open redirect, XSS). 7.18.1'de
+    raporlanan tek açık **RSC Mode**'a özgü; bu proje RSC kullanmıyor. Geri inmek güvenliği
+    azaltırdı — gerekçe `ci.yml`'a yazıldı.
+25. ✅ Sosyal paylaşım önizlemesi — *commit `d91ff5b`*. **Tam SSR/prerender kurulmadı**
+    (mimari değişiklik + sürekli bakım); sorun "bot'a doğru meta'yı vermek" olduğundan Caddy
+    yalnız sosyal önizleme botlarını `/__meta`'ya yönlendiriyor, gerçek kullanıcılar SPA'yı alıyor.
+    *Googlebot bilinçli olarak listede yok — JS render ediyor, ona farklı içerik sunmak cloaking'dir.*
 26. ✅ İkonlar WebP (4,21 MB→19 KB) · Tabler CDN→tree-shakeable npm · test rotaları `DEV` arkasında — *commit `c29bf48`*
 27. Hakediş kararı: marketplace'i kıs **veya** "ödenecekler" raporu
 28. ETBİS başvurusu + e-Arşiv (paralel süreç — şirket tesciline bağlı)
