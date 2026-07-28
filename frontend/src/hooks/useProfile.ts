@@ -1,6 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   changePassword,
+  checkDeletionEligibility,
+  deleteMyAccount,
+  downloadMyData,
   listMyNameChangeRequests,
   requestPhoneOtp,
   updateMe,
@@ -72,6 +75,45 @@ export function useVerifyPhone() {
     onSuccess: (user) => {
       setUser(user);
       queryClient.setQueryData(["me"], user);
+    },
+  });
+}
+
+// ── KVKK: veri indirme ve hesap silme ──
+
+/** Verilerini JSON dosyası olarak indirir (tarayıcıda kaydettirir). */
+export function useDownloadMyData() {
+  return useMutation({
+    mutationFn: async () => {
+      const blob = await downloadMyData();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "verilerim.json";
+      a.click();
+      URL.revokeObjectURL(url);
+    },
+  });
+}
+
+/** Hesap silinebilir mi — buton tıklanmadan önce sorulur. */
+export function useDeletionEligibility() {
+  const token = useAuthStore((s) => s.token);
+  return useQuery({
+    queryKey: ["me", "deletion-eligibility"],
+    queryFn: checkDeletionEligibility,
+    enabled: !!token,
+    staleTime: 60_000,
+  });
+}
+
+/** Hesabı siler ve oturumu kapatır (sunucu tüm token'ları iptal etti). */
+export function useDeleteMyAccount() {
+  const logout = useAuthStore((s) => s.logout);
+  return useMutation({
+    mutationFn: (password: string) => deleteMyAccount(password),
+    onSuccess: () => {
+      logout();
     },
   });
 }

@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { LEGAL_DOCS, OPERATOR, getLegalDoc } from "@/lib/legalContent";
+import {
+  LEGAL_DOCS,
+  OPERATOR,
+  SIGNUP_CONSENT_DOCS,
+  currentConsentVersion,
+  getLegalDoc,
+} from "@/lib/legalContent";
 import { LEGAL_NAV } from "@/lib/legalNav";
 import { LEGAL_ROUTES } from "@/lib/routes";
 
@@ -63,5 +69,27 @@ describe("legalContent", () => {
     const refundText = JSON.stringify(getLegalDoc("refund"));
     expect(kvkkText).toContain(OPERATOR.email);
     expect(refundText).toContain(OPERATOR.email);
+  });
+});
+
+describe("currentConsentVersion", () => {
+  it("zorunlu üç belgenin en yeni sürümünü verir", () => {
+    const versions = SIGNUP_CONSENT_DOCS.map((id) => getLegalDoc(id).updatedAt);
+    const enYeni = versions.reduce((a, b) => (a > b ? a : b));
+    expect(currentConsentVersion()).toBe(enYeni);
+  });
+
+  it("backend'in beklediği YYYY-MM-DD biçiminde", () => {
+    // schemas/auth.py::RegisterRequest bu deseni zorunlu kılar; uyuşmazsa
+    // kayıt 422 döner.
+    expect(currentConsentVersion()).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+
+  it("kayıtta onaylanan belgeler KVKK, koşullar ve gizlilik", () => {
+    expect([...SIGNUP_CONSENT_DOCS].sort()).toEqual([
+      "kvkk",
+      "privacy",
+      "terms",
+    ]);
   });
 });

@@ -9,6 +9,7 @@ import { buildWelcome } from "@/lib/greeting";
 import { toast } from "@/store/toastStore";
 import { ConsentCheckbox } from "@/components/LegalConsent";
 import { Gender } from "@/types";
+import { currentConsentVersion } from "@/lib/legalContent";
 
 const GENDERS = [
   { value: Gender.MALE, label: "Erkek" },
@@ -209,6 +210,8 @@ function RegisterForm({ initialRole, onSuccess }: { initialRole: RegisterRole, o
         username: username.trim(),
         birth_date: birthDate || null,
         gender: gender || null,
+        // KVKK ispat kaydı (bkz. Register.tsx).
+        consent_version: currentConsentVersion(),
       }),
     onSuccess,
   });

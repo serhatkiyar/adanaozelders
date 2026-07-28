@@ -55,6 +55,7 @@ from services import (
     escrow,
     notification_service,
     order_fsm,
+    tax,
 )
 
 logger = logging.getLogger("adana.order")
@@ -281,6 +282,9 @@ async def _resolve_lines(db: AsyncSession, items: list) -> tuple[list[dict], lis
                 "kind": p.kind,
                 "seller_type": p.seller_type,
                 "tutor_id": p.tutor_id,
+                # KDV oranı sipariş anında snapshot'lanır: ürünün oranı sonradan
+                # değişse bile fatura sipariş anındaki oranla kesilmelidir.
+                "tax_rate": Decimal(str(p.tax_rate or 0)),
                 "digital_asset_key": p.digital_asset_key,
                 "digital_asset_name": p.digital_asset_name,
             }
@@ -421,6 +425,12 @@ async def create_order(
                 kind=ln["kind"],
                 seller_type=ln["seller_type"],
                 tutor_id=ln["tutor_id"],
+                # Fatura için vergi snapshot'ı (fiyat KDV dahildir; tax_amount
+                # o tutarın İÇİNDEKİ vergidir — bkz. services/tax.py).
+                tax_rate=ln.get("tax_rate") or Decimal("0"),
+                tax_amount=tax.line_tax(
+                    ln["unit_price"], ln["quantity"], ln.get("tax_rate") or Decimal("0")
+                ),
                 digital_asset_key=ln["digital_asset_key"],
                 digital_asset_name=ln["digital_asset_name"],
             )

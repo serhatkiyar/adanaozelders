@@ -57,8 +57,8 @@ def _is_trusted_proxy(peer: str | None) -> bool:
     return False
 
 
-def _client_ip(request: Request) -> str:
-    """Rate-limit kovası için istemci IP'si.
+def client_ip(request: Request) -> str:
+    """İstemcinin gerçek IP'si (rate-limit kovası ve rıza ispat kaydı için).
 
     X-Forwarded-For YALNIZCA bağlantı güvenilir bir proxy'den geliyorsa okunur.
     Aksi halde herkes kendi IP'sini uydurup her istekte yeni bir kova açar ve
@@ -74,6 +74,10 @@ def _client_ip(request: Request) -> str:
             if client:
                 return client
     return peer or "unknown"
+
+
+#: Geriye dönük ad (modül içi çağrılar ve testler).
+_client_ip = client_ip
 
 
 async def enforce(*, bucket: str, limit: int, window_seconds: int) -> None:

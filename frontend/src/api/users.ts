@@ -46,3 +46,31 @@ export async function verifyPhoneOtp(code: string): Promise<UserOut> {
   });
   return data;
 }
+
+// ── KVKK: veri taşınabilirliği ve hesap silme ──
+
+/** Kullanıcının kendi verisini JSON olarak indirir (KVKK m.20). */
+export async function downloadMyData(): Promise<Blob> {
+  const { data } = await apiClient.get("/auth/me/data-export", {
+    responseType: "blob",
+  });
+  return data as Blob;
+}
+
+export interface DeletionEligibility {
+  can_delete: boolean;
+  reason?: string | null;
+}
+
+/** Hesap şu an silinebilir mi (açık sipariş/ders var mı)? */
+export async function checkDeletionEligibility(): Promise<DeletionEligibility> {
+  const { data } = await apiClient.get<DeletionEligibility>(
+    "/auth/me/deletion-eligibility"
+  );
+  return data;
+}
+
+/** Hesabı anonimleştirip kapatır — GERİ ALINAMAZ. Parola doğrulaması ister. */
+export async function deleteMyAccount(password: string): Promise<void> {
+  await apiClient.post("/auth/me/delete", { password });
+}

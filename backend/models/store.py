@@ -164,7 +164,17 @@ class Product(Base, TimestampMixin, SoftDeleteMixin):
 
     price: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False)
     # Üzeri çizili "eski fiyat" (D&R indirim rozeti). Doluysa price'tan büyük olmalı.
+    # NOT: Fiyat Etiketi Yönetmeliği indirim duyurusunda son 30 günün EN DÜŞÜK
+    # fiyatının esas alınmasını ister; serbest girilen bir "eski fiyat" denetimde
+    # sorun çıkarır. Gerçek referans `product_price_history`'den türetilmelidir.
     compare_at_price: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)
+    # KDV oranı (0.00–1.00). Türkiye'de basılı kitap %0, kırtasiye ve dijital
+    # ürün %20'dir; tek oran varsayımıyla yasal fatura kesilemez. Fiyatlar KDV
+    # DAHİL gösterilir (perakende zorunluluğu), bu oran faturadaki matrah/vergi
+    # ayrıştırması için tutulur.
+    tax_rate: Mapped[float] = mapped_column(
+        Numeric(5, 4), nullable=False, server_default=text("0")
+    )
     currency: Mapped[str] = mapped_column(
         String(3), nullable=False, server_default=text("'TRY'")
     )
@@ -489,6 +499,16 @@ class OrderItem(Base, TimestampMixin):
     digital_asset_key: Mapped[str | None] = mapped_column(String(500), nullable=True)
     digital_asset_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
+    # KDV snapshot'ı: ürünün oranı sonradan değişse bile FATURA sipariş anındaki
+    # oranla kesilmelidir. `unit_price` KDV DAHİL tutardır; `tax_amount` o
+    # tutarın içindeki vergiyi gösterir (matrah = satır toplamı − tax_amount).
+    tax_rate: Mapped[float] = mapped_column(
+        Numeric(5, 4), nullable=False, server_default=text("0")
+    )
+    tax_amount: Mapped[float] = mapped_column(
+        Numeric(10, 2), nullable=False, server_default=text("0")
+    )
+
     # Eğitmen payı (yalnız seller_type=TUTOR); platform kaleminde NULL.
     commission_rate: Mapped[float | None] = mapped_column(Numeric(5, 4), nullable=True)
     commission_amount: Mapped[float | None] = mapped_column(
@@ -685,4 +705,38 @@ class CollectionItem(Base, TimestampMixin):
         Index(
             "uq_collection_item", "collection_id", "product_id", unique=True
         ),
+    )
+
+
+class ProductPriceHistory(Base):
+    """Ürün fiyat değişikliği kaydı — indirim duyurusunun yasal dayanağı.
+
+    Fiyat Etiketi Yönetmeliği, indirimli satış duyurusunda indirimden ÖNCEKİ
+    30 gün içindeki EN DÜŞÜK fiyatın esas alınmasını ister. Önceden fiyat
+    ``update_product`` içinde yerinde eziliyordu ve hiçbir iz kalmıyordu; buna
+    karşılık ürün sayfasında serbestçe girilen bir ``compare_at_price`` üzeri
+    çizili gösteriliyordu. Bu, Ticaret Bakanlığı denetiminde doğrudan ceza
+    kalemidir.
+
+    Satırlar SİLİNMEZ (soft-delete yok): geçmiş fiyat kanıtıdır.
+    """
+
+    __tablename__ = "product_price_history"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    product_id: Mapped[int] = mapped_column(
+        ForeignKey("products.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    price: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False)
+    #: Değişikliği yapan admin (sistem/seed kaynaklıysa NULL).
+    changed_by_admin_id: Mapped[int | None] = mapped_column(
+        ForeignKey("admins.id", ondelete="SET NULL"), nullable=True
+    )
+    changed_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=text("now()")
+    )
+
+    __table_args__ = (
+        # "Son 30 günün en düşüğü" sorgusu: ürün + tarih aralığı.
+        Index("ix_product_price_history_lookup", "product_id", "changed_at"),
     )

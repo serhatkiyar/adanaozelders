@@ -26,6 +26,7 @@ from models.store import (
     OrderItem,
     Product,
     ProductCategory,
+    ProductPriceHistory,
     ProductImage,
     ProductKind,
     ProductReview,
@@ -655,7 +656,12 @@ async def _notify_back_in_stock(db: AsyncSession, product: Product) -> None:
 
 
 async def update_product(
-    db: AsyncSession, product_id: int, payload: ProductUpdate, *, owner_tutor_id: int | None = None
+    db: AsyncSession,
+    product_id: int,
+    payload: ProductUpdate,
+    *,
+    owner_tutor_id: int | None = None,
+    admin_id: int | None = None,
 ) -> ProductDetailOut:
     """``owner_tutor_id`` verilirse (eğitmen) yalnız kendi ürününü ve sınırlı alanları
     günceller; durumu PENDING/HIDDEN dışına çıkaramaz (yayın admin onayında)."""
@@ -666,6 +672,7 @@ async def update_product(
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Bu ürün sizin değil")
 
     old_stock = p.stock
+    old_price = Decimal(str(p.price))
     data = payload.model_dump(exclude_unset=True)
     if "title" in data and data["title"]:
         p.title = data["title"]
@@ -688,6 +695,19 @@ async def update_product(
         raise HTTPException(
             status.HTTP_400_BAD_REQUEST, "İndirimli fiyat eski fiyattan küçük olmalı"
         )
+
+    # Fiyat değiştiyse iz bırak: indirim duyurusunda "son 30 günün en düşük
+    # fiyatı" ancak geçmiş kayıtlıysa gösterilebilir (Fiyat Etiketi Yönetmeliği).
+    # Önceden fiyat yerinde eziliyordu ve hiçbir kanıt kalmıyordu.
+    if Decimal(str(p.price)) != old_price:
+        db.add(
+            ProductPriceHistory(
+                product_id=p.id,
+                price=p.price,
+                changed_by_admin_id=None if owner_tutor_id is not None else admin_id,
+            )
+        )
+
     await db.commit()
     # Stok 0→>0 olduysa bekleyen stok-bildirim abonelerine haber ver.
     if (old_stock is None or old_stock <= 0) and (p.stock or 0) > 0:
@@ -1114,3 +1134,49 @@ async def delete_review(db: AsyncSession, client: Client, review_id: int) -> Non
         p.rating_count = max(0, p.rating_count - 1)
         p.rating_sum = max(0, p.rating_sum - review.rating)
     await db.commit()
+
+
+# ── Fiyat geçmişi (Fiyat Etiketi Yönetmeliği) ────────────────────────────────
+
+#: İndirim duyurusunda referans alınacak geçmiş pencere (gün).
+PRICE_REFERENCE_WINDOW_DAYS = 30
+
+
+async def lowest_price_in_window(
+    db: AsyncSession, product_id: int, *, days: int = PRICE_REFERENCE_WINDOW_DAYS
+) -> Decimal | None:
+    """Ürünün son ``days`` gündeki EN DÜŞÜK fiyatı.
+
+    İndirim duyurusu yapılırken üzeri çizili gösterilecek referans budur.
+    Serbestçe girilen ``compare_at_price`` denetimde kabul edilmez: yönetmelik
+    indirimden önceki 30 gün içindeki en düşük fiyatın esas alınmasını ister.
+
+    Kayıt yoksa None (ürün hiç fiyat değiştirmemiş ve migration öncesi
+    oluşmuş olabilir) — çağıran bu durumda indirim rozeti göstermemelidir.
+    """
+    since = _now() - datetime.timedelta(days=days)
+    value = (
+        await db.execute(
+            select(func.min(ProductPriceHistory.price)).where(
+                ProductPriceHistory.product_id == product_id,
+                ProductPriceHistory.changed_at >= since,
+            )
+        )
+    ).scalar()
+    return Decimal(str(value)) if value is not None else None
+
+
+def legal_compare_price(
+    current_price: Decimal, lowest_30d: Decimal | None
+) -> Decimal | None:
+    """Gösterilebilir "eski fiyat" (saf; pytest'li).
+
+    Kural: referans, son 30 günün en düşük fiyatıdır ve ancak GÜNCEL fiyattan
+    yüksekse indirim vardır. Aksi halde (fiyat düşmemiş ya da geçmiş yok)
+    üzeri çizili fiyat gösterilmez — dayanaksız indirim iddiası ceza konusudur.
+    """
+    if lowest_30d is None:
+        return None
+    current = Decimal(str(current_price))
+    lowest = Decimal(str(lowest_30d))
+    return lowest if lowest > current else None

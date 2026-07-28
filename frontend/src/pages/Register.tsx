@@ -6,6 +6,7 @@ import { getErrorMessage } from "@/lib/errors";
 import { ROUTES } from "@/lib/routes";
 import { ConsentCheckbox } from "@/components/LegalConsent";
 import { Gender } from "@/types";
+import { currentConsentVersion } from "@/lib/legalContent";
 
 const GENDERS = [
   { value: Gender.MALE, label: "Erkek" },
@@ -36,6 +37,8 @@ export default function Register() {
         username: username.trim(),
         birth_date: birthDate || null,
         gender: gender || null,
+        // KVKK ispat kaydı: onaylanan metinlerin sürümü sunucuya yazılır.
+        consent_version: currentConsentVersion(),
       }),
     onSuccess: () => {
       navigate(ROUTES.login, {

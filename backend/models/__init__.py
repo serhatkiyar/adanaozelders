@@ -15,6 +15,7 @@ from models.booking_private_note import BookingPrivateNote
 from models.booking_resource import BookingResource
 from models.bookmark import Bookmark
 from models.client import Client, ClientAddress, ClientEducation
+from models.consent import ConsentDoc, UserConsent
 from models.product_bookmark import ProductBookmark
 from models.courier import Courier
 from models.courier_account import CourierAccount
@@ -81,6 +82,7 @@ from models.store import (
     ProductCategory,
     ProductImage,
     ProductKind,
+    ProductPriceHistory,
     ProductReview,
     ProductStatus,
     ReturnStatus,
@@ -166,6 +168,7 @@ __all__ = [
     "Notification",
     "OutboxEvent",
     "OutboxStatus",
+    "ConsentDoc",
     "Collection",
     "CollectionItem",
     "Coupon",
@@ -180,7 +183,9 @@ __all__ = [
     "OrderStatusHistory",
     "Payment",
     "PaymentStatus",
+    "UserConsent",
     "Product",
+    "ProductPriceHistory",
     "ProductCategory",
     "ProductImage",
     "ProductKind",

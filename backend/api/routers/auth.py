@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import datetime
+import logging
 
 import jwt
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, Request, status, UploadFile, File
+from fastapi.responses import JSONResponse
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -15,8 +17,8 @@ from api.deps import (
 )
 from core.database import get_db
 from core.config import settings
-from core.ratelimit import rate_limit
-from core.security import create_access_token, decode_access_token
+from core.ratelimit import client_ip, rate_limit
+from core.security import create_access_token, decode_access_token, verify_password
 from core.token_denylist import revoke
 from core.storage import upload_avatar, delete_avatar
 
@@ -44,6 +46,7 @@ from models.role import ROLE_IDS, RoleType, role_name
 from models.tutor import Tutor
 from models.verification_token import TokenPurpose
 from schemas.auth import (
+    AccountDeleteRequest,
     EmailVerifyConfirm,
     LogoutRequest,
     MessageResponse,
@@ -65,8 +68,10 @@ from schemas.user import (
     UserUpdate,
 )
 from services import (
+    account_deletion_service,
     auth_service,
     booking_service,
+    consent_service,
     name_change_service,
     phone_service,
     refresh_token_service,
@@ -91,7 +96,29 @@ _MODEL_BY_ROLE_ID: dict[int, type] = {
     ROLE_IDS[RoleType.COURIER]: CourierAccount,
 }
 
+logger = logging.getLogger("adana.auth")
+
 router = APIRouter(prefix="/auth", tags=["auth"])
+
+
+async def _record_signup_consents(
+    db: AsyncSession, request: Request, *, user, payload: RegisterRequest
+) -> None:
+    """Kayıt anındaki zorunlu onayları ispat kaydı olarak yazar.
+
+    KVKK'da ispat yükü veri sorumlusundadır: "onayladım/onaylamadım"
+    tartışmasında gösterilecek bir kayıt olmalıdır. IP ve user-agent yalnız bu
+    amaçla tutulur ve hesap anonimleştirmesinde temizlenir.
+    """
+    await consent_service.record_signup_consents(
+        db,
+        user_id=user.id,
+        role_id=user.role_id,
+        doc_version=payload.consent_version,
+        ip=client_ip(request),
+        user_agent=request.headers.get("user-agent"),
+    )
+    await db.commit()
 
 
 @router.post(
@@ -101,7 +128,9 @@ router = APIRouter(prefix="/auth", tags=["auth"])
     dependencies=[Depends(_register_limit)],
 )
 async def register_tutor(
-    payload: RegisterRequest, db: AsyncSession = Depends(get_db)
+    payload: RegisterRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
 ):
     tutor = await auth_service.register_tutor(
         db,
@@ -113,6 +142,7 @@ async def register_tutor(
         birth_date=payload.birth_date,
         gender=payload.gender,
     )
+    await _record_signup_consents(db, request, user=tutor, payload=payload)
     await verification_service.send_email_verification(db, tutor)
     return tutor
 
@@ -124,7 +154,9 @@ async def register_tutor(
     dependencies=[Depends(_register_limit)],
 )
 async def register_client(
-    payload: RegisterRequest, db: AsyncSession = Depends(get_db)
+    payload: RegisterRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
 ):
     client = await auth_service.register_client(
         db,
@@ -136,6 +168,7 @@ async def register_client(
         birth_date=payload.birth_date,
         gender=payload.gender,
     )
+    await _record_signup_consents(db, request, user=client, payload=payload)
     await verification_service.send_email_verification(db, client)
     return client
 
@@ -419,3 +452,63 @@ async def delete_my_avatar(
         await db.commit()
         await db.refresh(user)
     return user
+
+
+# ── KVKK: veri taşınabilirliği (m.20) ve silme hakkı (m.7/m.11) ─────────────
+# `legalContent.ts` kullanıcıya silme taahhüdü veriyordu ama karşılığı olan uç
+# yoktu; tek yol admin'in soft-delete'iydi ve soft-delete SİLME DEĞİLDİR.
+
+
+@router.get("/me/data-export")
+async def export_my_data(
+    user: CurrentUser = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Kullanıcının kendi verisinin makine-okunur dökümü (KVKK m.20)."""
+    data = await account_deletion_service.export_personal_data(db, user)
+    filename = f"verilerim-{user.role_id}-{user.id}.json"
+    return JSONResponse(
+        content=data,
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@router.get("/me/deletion-eligibility")
+async def my_deletion_eligibility(
+    user: CurrentUser = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Hesap şu an silinebilir mi? (Arayüz butonu bunu önceden sorar.)"""
+    ok, reason = await account_deletion_service.can_delete(db, user)
+    return {"can_delete": ok, "reason": reason}
+
+
+@router.post("/me/delete", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_my_account(
+    payload: AccountDeleteRequest,
+    user: CurrentUser = Depends(get_current_active_user),
+    token: str = Depends(oauth2_scheme),
+    db: AsyncSession = Depends(get_db),
+):
+    """Hesabı anonimleştirir ve kapatır (geri alınamaz).
+
+    Parola yeniden istenir: oturumu ele geçiren birinin hesabı yok etmesini
+    zorlaştırır. Mali kayıtlar (sipariş/ödeme) mevzuat gereği SİLİNMEZ; yalnız
+    kimlik/iletişim verisi geri döndürülemez biçimde temizlenir.
+    """
+    if not verify_password(payload.password, user.hashed_password):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Parola hatalı")
+
+    ok, reason = await account_deletion_service.can_delete(db, user)
+    if not ok:
+        raise HTTPException(status.HTTP_409_CONFLICT, reason or "Hesap şu an silinemez")
+
+    await account_deletion_service.anonymize_account(db, user)
+    await db.commit()
+
+    # Mevcut access token'ı da anında iptal et (refresh'ler zaten revoke edildi).
+    try:
+        payload_jwt = decode_access_token(token)
+        await revoke(payload_jwt.get("jti"), payload_jwt.get("exp"))
+    except Exception:  # noqa: BLE001 — silme başarılı, iptal best-effort
+        logger.warning("hesap silme: access token iptal edilemedi", exc_info=True)

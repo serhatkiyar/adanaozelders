@@ -70,6 +70,12 @@ export interface RegisterRequest {
   username: string;
   birth_date?: string | null; // "YYYY-MM-DD"
   gender?: Gender | null;
+  /**
+   * Onaylanan yasal metinlerin sürümü ("YYYY-MM-DD").
+   * Backend bunu `user_consents`'a ispat kaydı olarak yazar (KVKK); ZORUNLUDUR
+   * — gönderilmezse kayıt 422 döner. Değeri `currentConsentVersion()` verir.
+   */
+  consent_version: string;
 }
 
 /* ============================ USER ============================ */

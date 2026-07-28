@@ -619,3 +619,22 @@ export function getLegalDoc(id: LegalDocId): LegalDoc {
   if (!doc) throw new Error(`Bilinmeyen yasal belge: ${id}`);
   return doc;
 }
+
+/**
+ * Kayıtta onaylanan metinlerin geçerli sürümü.
+ *
+ * Backend `user_consents.doc_version` alanına bunu yazar (KVKK ispat yükü).
+ * Zorunlu üç belgenin (KVKK / kullanım koşulları / gizlilik) EN YENİ
+ * `updatedAt` değeri kullanılır: biri güncellendiğinde sürüm ilerler ve
+ * kullanıcıdan yeni onay istenebilir hale gelir.
+ */
+export const SIGNUP_CONSENT_DOCS: readonly LegalDocId[] = [
+  "kvkk",
+  "terms",
+  "privacy",
+];
+
+export function currentConsentVersion(): string {
+  const versions = SIGNUP_CONSENT_DOCS.map((id) => getLegalDoc(id).updatedAt);
+  return versions.reduce((a, b) => (a > b ? a : b));
+}
