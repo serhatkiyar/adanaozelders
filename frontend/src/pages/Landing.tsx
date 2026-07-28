@@ -410,6 +410,9 @@ function Footer() {
         <div className="text-center text-sm text-slate-500 dark:text-slate-400 sm:text-right">
           <p>© {new Date().getFullYear()} Adana Özel Ders. Tüm hakları saklıdır.</p>
           <div className="mt-4 flex flex-wrap justify-center gap-x-4 gap-y-2 sm:justify-end">
+            {/* Destek: mesafeli satışta erişilebilir iletişim kanalı zorunlu. */}
+            <Link to={ROUTES.faq} className={linkCls}>SSS</Link>
+            <Link to={ROUTES.contact} className={linkCls}>İletişim</Link>
             {/* Yasal: tek giriş noktası — diğer 4 belge bu sayfaların kenar menüsünden. */}
             <Link to={ROUTES.privacy} className={linkCls}>Gizlilik</Link>
             <Link to={ROUTES.terms} className={linkCls}>Şartlar</Link>

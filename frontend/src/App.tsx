@@ -45,6 +45,8 @@ const OrderDetailPage = lazy(() => import("@/pages/store/OrderDetailPage"));
 const SellerProducts = lazy(() => import("@/pages/store/SellerProducts"));
 // Yasal sayfalar — tek chunk, belge prop'la seçilir (içerik lib/legalContent.ts)
 const LegalPage = lazy(() => import("@/pages/LegalPage"));
+const FaqPage = lazy(() => import("@/pages/FaqPage"));
+const ContactPage = lazy(() => import("@/pages/ContactPage"));
 const OperatorHome = lazy(() => import("@/pages/dashboards/OperatorHome"));
 // Kurye açılış ekranı (rol 5) — menüsüz; aktif tura yönlendirir.
 const CourierHome = lazy(() => import("@/pages/dashboards/CourierHome"));
@@ -295,6 +297,10 @@ function App() {
           <Route path={PATHS.distanceSales} element={<LegalPage doc="distance-sales" />} />
           <Route path={PATHS.refundPolicy} element={<LegalPage doc="refund" />} />
           <Route path={PATHS.cookiePolicy} element={<LegalPage doc="cookies" />} />
+
+          {/* ── Destek (public) ── */}
+          <Route path={PATHS.faq} element={<FaqPage />} />
+          <Route path={PATHS.contact} element={<ContactPage />} />
 
           {/* ── Geliştirme prototipleri ──
               YALNIZ dev sunucusunda. Üretimde bu rotalar kimlik doğrulamasız

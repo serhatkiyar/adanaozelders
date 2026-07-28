@@ -47,6 +47,10 @@ export const PATHS = {
   refundPolicy: "/iptal-ve-iade-politikasi",
   cookiePolicy: "/cerez-politikasi",
 
+  // ── Destek (public, SEO) — mesafeli satışta erişilebilir iletişim zorunlu ──
+  faq: "/sss",
+  contact: "/iletisim",
+
   // ── Kimlik & token akışları ──
   login: "/giris",
   register: "/kayit",
@@ -153,6 +157,10 @@ export const ROUTES = {
   distanceSales: PATHS.distanceSales,
   refundPolicy: PATHS.refundPolicy,
   cookiePolicy: PATHS.cookiePolicy,
+
+  // ── Destek ──
+  faq: PATHS.faq,
+  contact: PATHS.contact,
 
   // ── Kimlik & token akışları ──
   login: PATHS.login,

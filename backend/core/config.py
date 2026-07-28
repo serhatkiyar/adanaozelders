@@ -103,6 +103,9 @@ class Settings(BaseSettings):
     # sağlayıcı yalnızca üretimde gerekir.
     EMAIL_PROVIDER: str = "console"
     EMAIL_FROM: str = "no-reply@adanaozelders.com.tr"
+    # İletişim formu mesajlarının düşeceği kutu. Boşsa EMAIL_FROM kullanılır
+    # (yapılandırma eksikse bile mesaj kaybolmaz).
+    SUPPORT_EMAIL: str | None = None
     EMAIL_FROM_NAME: str = "Adana Özel Ders"
     SMTP_HOST: str = "localhost"
     SMTP_PORT: int = 1025

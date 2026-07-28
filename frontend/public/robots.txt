@@ -7,6 +7,10 @@ Allow: /egitmenler
 Allow: /kutuphaneler
 Allow: /magaza
 
+# ── Destek (public) ──
+Allow: /sss
+Allow: /iletisim
+
 # ── Yasal sayfalar (public) ──
 Allow: /kvkk
 Allow: /gizlilik-politikasi

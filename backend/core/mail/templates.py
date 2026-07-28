@@ -130,3 +130,48 @@ def back_in_stock_email(*, to: str, product_title: str, product_url: str) -> Ema
         outro="Bu e-postayı bu ürün için stok bildirimi istediğin için aldın.",
     )
     return EmailMessage(to=to, subject=subject, html=html, text=text)
+
+
+def contact_message_email(
+    *,
+    to: str,
+    from_name: str,
+    from_email: str,
+    subject: str,
+    message: str,
+    user_ref: str | None = None,
+) -> EmailMessage:
+    """İletişim formundan gelen mesajı işletmeye iletir.
+
+    ``to`` platformun destek adresidir; gönderen alanı DEĞİŞTİRİLMEZ (SPF/DKIM
+    kırılmasın) — kullanıcının adresi gövdede ve Reply-To semantiğiyle metinde
+    verilir.
+    """
+    who = f"{from_name} <{from_email}>"
+    if user_ref:
+        who += f" (hesap: {user_ref})"
+    body = (
+        f"Yeni iletişim formu mesajı\n"
+        f"{'-' * 40}\n"
+        f"Gönderen: {who}\n"
+        f"Konu: {subject}\n\n"
+        f"{message}\n\n"
+        f"{'-' * 40}\n"
+        f"Yanıtlamak için doğrudan {from_email} adresine yazın."
+    )
+    return EmailMessage(
+        to=to,
+        subject=f"[İletişim] {subject}",
+        body=body,
+    )
+
+
+def contact_ack_email(*, to: str, name: str, subject: str) -> EmailMessage:
+    """Gönderene 'mesajını aldık' teyidi (kullanıcı boşluğa yazmasın)."""
+    body = (
+        f"Merhaba {name},\n\n"
+        f"\"{subject}\" konulu mesajını aldık. En kısa sürede dönüş yapacağız.\n\n"
+        f"Bu otomatik bir bilgilendirmedir; yanıtlaman gerekmiyor.\n\n"
+        f"Adana Özel Ders"
+    )
+    return EmailMessage(to=to, subject="Mesajını aldık", body=body)

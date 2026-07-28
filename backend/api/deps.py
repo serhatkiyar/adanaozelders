@@ -193,6 +193,27 @@ async def get_current_active_operator(
     return operator
 
 
+
+async def get_optional_user(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+) -> CurrentUser | None:
+    """Oturum VARSA kullanıcıyı döndürür, yoksa None — hata fırlatmaz.
+
+    Public uçlarda (iletişim formu gibi) "giriş yapmışsa kim olduğunu bil, ama
+    giriş şart olmasın" davranışı için. `oauth2_scheme` eksik token'da 401
+    attığından burada başlığı kendimiz okuyoruz.
+    """
+    header = request.headers.get("authorization") or ""
+    scheme, _, token = header.partition(" ")
+    if scheme.lower() != "bearer" or not token:
+        return None
+    try:
+        return await get_current_user(token=token, db=db)
+    except HTTPException:
+        # Geçersiz/süresi dolmuş token public uçta akışı kesmemeli.
+        return None
+
 def user_rate_limit(*, key: str, limit: int, window_seconds: int):
     """Kullanıcı (role_id+user_id) bazlı fixed-window limiter — kimlik doğrulamalı
     yazma uçları için (booking/mesaj/qa/demand/review/ödeme). IP bazlı limiter'ın
