@@ -312,17 +312,31 @@ Kubernetes/Terraform, Elasticsearch, Prometheus/Grafana. Bu ölçekte hepsi net 
 
 ## 7. Uygulama Sırası
 
-**Hafta 1 — Kanamayı durdur (güvenlik + para)**
-1. `ENVIRONMENT` ayarı + production fail-fast guard'ı (fake/console sağlayıcı, `AUTO_CREATE_DB`,
-   varsayılan `JWT_SECRET_KEY`, CORS'ta localhost → **açılmasın**)
-2. `seed_tutors`'ı `SEED_DEMO_DATA` bayrağı arkasına al
-3. XFF düzeltmesi (`--proxy-headers --forwarded-allow-ips`)
-4. `/libraries/register` + `/exam-catalogs/usable` yetki kapısı; `answer_key_url`'i listeden çıkar
-5. `website`/`cover_url`/`logo_url` için `^https?://` validator
-6. `clients/search` → onaylı eğitmen; `reset_password`/`change_password` → `revoke_all_for_user`
-7. `/docs`,`/redoc` prod'da kapalı; `npm audit fix`
+**Hafta 1 — Kanamayı durdur (güvenlik) — ✅ TAMAMLANDI** *(commit `757c009`, 28 Tem 2026)*
+1. ✅ `ENVIRONMENT` ayarı + `Settings._guard_production` — production'da 13 kontrol, ihlalde
+   uygulama açılmaz ve eksiklerin **tamamını tek hatada** listeler
+2. ✅ `seed_tutors` → `SEED_DEMO_DATA` bayrağı arkasında
+3. ✅ XFF spoofing kapatıldı — `TRUSTED_PROXY_IPS` (adres/CIDR/`*`); uvicorn `--proxy-headers`
+   ile de, onsuz da doğru çalışır *(uygulama katmanında çözüldü; Dockerfile bayrağı gerekmiyor)*
+4. ✅ `/exam-catalogs/usable` → kütüphane `ACTIVE` şartı + `answer_key_url` operatöre hiç dönmüyor
+   (yerine `has_answer_key`). *Not: `/libraries/register` bilinçli bir özellikmiş — kaldırılmadı,
+   CLAUDE.md gerçeğe uyduruldu.*
+5. ✅ `core/urls.ensure_http_url` → `website`/`cover_url`/`logo_url` şema whitelist'inde
+6. ✅ `/clients/*` onaysız eğitmene kapalı; `change_password`/`reset_password` → `revoke_all_for_user`
+   *(davranış değişikliği: `POST /auth/me/password` artık `Token` döner)*
+7. ✅ `/docs`,`/redoc`,OpenAPI prod'da kapalı; `npm audit fix` → prod açık 3 → 2
 
-**Hafta 2 — Sipariş para yolunu escrow'a bağla**
+*Sonuç: +47 test (329 backend / 308 frontend geçiyor), tsc temiz, build başarılı.*
+
+**Hafta 1'den devreden iki madde** *(bilinçli olarak ertelendi, kaybolmasın)*
+- **`react-router` v6 → v7** — kalan tek prod açığı (orta şiddet, `<Link>` open redirect).
+  Major yükseltme; routing davranışı değişebilir → **Hafta 4'te**, SEO/sayfalama işiyle
+  (madde 24: `?sayfa=N` linkleri) **birlikte** yapılmalı; ikisi de router'a dokunuyor.
+- **`docker-compose.yml` varsayılan sırları** (`change-this-*`, `minioadmin`, `postgres`) —
+  guard artık üretimde bunları yakalıyor, yani akut risk kapandı. Fallback'lerin kaldırılması
+  prod compose dosyasının yazılmasıyla aynı iş → **Hafta 3, madde 14**.
+
+**Hafta 2 — Sipariş para yolunu escrow'a bağla** ← *sıradaki*
 8. `ORDER_SPEC` + `escrow.claim` ile atomik PAID geçişi
 9. `complete_checkout`'a `token`/`paid_price` + `refund_unexpected_charge`
 10. `Order`'ı reconciler hedeflerine ekle
@@ -331,7 +345,8 @@ Kubernetes/Terraform, Elasticsearch, Prometheus/Grafana. Bu ölçekte hepsi net 
 13. **Bu 6 maddenin her biri için önce test yaz** — `order_service` %19'dan çıkmalı
 
 **Hafta 3 — İşletme katmanı**
-14. Caddy + TLS + güvenlik başlıkları + gzip · prod compose (varsayılan sırlar yok) · non-root
+14. Caddy + TLS + güvenlik başlıkları + gzip · **prod compose: `:-change-this-*` / `minioadmin` /
+    `postgres` fallback'lerini kaldır** (env eksikse compose hata versin) · non-root
     konteyner + healthcheck + `restart: unless-stopped`
 15. Yedekleme + **geri yükleme provası** (provası yapılmamış yedek yedek değildir)
 16. Sentry (backend + frontend) · Plausible · UptimeRobot
@@ -346,6 +361,8 @@ Kubernetes/Terraform, Elasticsearch, Prometheus/Grafana. Bu ölçekte hepsi net 
 22. Cayma hakkını ret'siz akışa ayır (`OrderReturn.type`)
 23. `/iletisim` + `/sss` + canlı sohbet widget'ı
 24. Dinamik `GET /sitemap.xml` + `robots.txt`'e `Sitemap:` + liste sayfalarına `?sayfa=N` linkleri
+    — **`react-router` v6→v7 yükseltmesiyle birlikte** (Hafta 1'den devreden madde; ikisi de
+    router'a dokunuyor, tek seferde test edilmeli)
 25. Public rotalar için prerender
 26. 5 ikonu WebP'ye indir · Tabler CDN'i sil · test rotalarını `DEV` arkasına al
 27. Hakediş kararı: marketplace'i kıs **veya** "ödenecekler" raporu
