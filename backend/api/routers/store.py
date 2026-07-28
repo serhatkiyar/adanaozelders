@@ -852,7 +852,13 @@ async def request_order_return(
     db: AsyncSession = Depends(get_db),
 ):
     order = await order_service.get_order_for_pay(db, order_id, client.id)
-    return await order_service.request_return(db, order, payload.reason)
+    return await order_service.request_return(
+        db,
+        order,
+        payload.reason,
+        return_type=payload.type,
+        items=payload.items,
+    )
 
 
 # ── Ürün detayı + değerlendirme (en sonda — /{id_or_slug} catch-all) ─────────────

@@ -31,7 +31,7 @@ from core import payments
 from core.config import settings
 from models.library_exam import ExamRegistration, RegistrationStatus
 from models.payment import Payment, PaymentStatus
-from models.store import Order, OrderPaymentStatus
+from models.store import Order, OrderPaymentStatus, OrderReturn
 from models.study_reservation import StudyReservation
 from services import escrow
 
@@ -57,6 +57,9 @@ _REFUNDING_TARGETS: tuple[tuple[type, escrow.EscrowSpec], ...] = (
     (ExamRegistration, escrow.EXAM_SPEC),
     (StudyReservation, escrow.STUDY_SPEC),
     (Order, escrow.ORDER_SPEC),
+    # Sarkan iade talepleri: kısmi iade sağlayıcı çağrısında süreç ölürse
+    # talep REFUNDING'de kalır ve buradan devralınır.
+    (OrderReturn, escrow.RETURN_SPEC),
 )
 
 
@@ -68,15 +71,14 @@ async def reconcile_refunding(db: AsyncSession) -> int:
     handled = 0
 
     for model, spec in _REFUNDING_TARGETS:
-        # Para durumunun kolonu modele göre değişir (Order'da `payment_status`).
+        # Para durumunun kolonu modele göre değişir (Order'da `payment_status`,
+        # OrderReturn'de `refund_status`). Soft-delete de her modelde yok.
         status_col = getattr(model, spec.status_attr)
+        conditions = [status_col == spec.refunding]
+        if hasattr(model, "deleted_at"):
+            conditions.append(model.deleted_at.is_(None))
         rows = (
-            await db.execute(
-                select(model).where(
-                    status_col == spec.refunding,
-                    model.deleted_at.is_(None),
-                )
-            )
+            await db.execute(select(model).where(*conditions))
         ).scalars().all()
         for obj in rows:
             reference = await _reference_for(db, obj, spec)

@@ -354,22 +354,56 @@ class CouponUpdate(BaseModel):
 # ── İade talebi (RMA) ──
 
 
+class OrderReturnItemIn(BaseModel):
+    """İade edilecek kalem ve adedi (kısmi iade)."""
+
+    order_item_id: int
+    quantity: int = Field(ge=1)
+
+
 class OrderReturnCreate(BaseModel):
-    reason: str = Field(min_length=3, max_length=1000)
+    """İade talebi.
+
+    ``type=CAYMA`` (Mesafeli Sözleşmeler Yönetmeliği m.9) koşulsuzdur: gerekçe
+    ZORUNLU DEĞİLDİR ve talep otomatik onaylanır. Ayıplı/diğer taleplerde
+    gerekçe istenir (servis katmanı doğrular).
+
+    ``items`` boş bırakılırsa siparişin TAMAMI iade edilir (geriye dönük
+    uyumluluk: eski istemci yalnız `reason` gönderiyordu).
+    """
+
+    type: str = Field(default="DIGER", pattern="^(CAYMA|AYIPLI|DIGER)$")
+    reason: str = Field(default="", max_length=1000)
+    items: list[OrderReturnItemIn] = Field(default_factory=list)
 
 
 class OrderReturnResolve(BaseModel):
     admin_note: str | None = Field(default=None, max_length=1000)
 
 
+class OrderReturnItemOut(BaseModel):
+    order_item_id: int
+    title: str | None = None
+    quantity: int
+    amount: str
+
+
 class OrderReturnOut(BaseModel):
     id: int
     order_id: int
+    type: str = "DIGER"
     status: str
     reason: str
     admin_note: str | None = None
     created_at: datetime.datetime
     resolved_at: datetime.datetime | None = None
+    # Para durumu talebin durumundan AYRIDIR (talep onaylı olabilir ama iade
+    # sağlayıcıda henüz kesinleşmemiş olabilir).
+    refund_status: str = "NONE"
+    refund_amount: str = "0.00"
+    refunded_at: datetime.datetime | None = None
+    is_partial: bool = False
+    items: list[OrderReturnItemOut] = Field(default_factory=list)
     # Admin listesinde sipariş özeti gömülü gelir; müşteri yanıtında None.
     order: OrderOut | None = None
 

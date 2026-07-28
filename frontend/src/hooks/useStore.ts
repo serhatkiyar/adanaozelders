@@ -6,6 +6,7 @@ import {
 } from "@tanstack/react-query";
 import * as storeApi from "@/api/store";
 import type { ProductSearchParams } from "@/api/store";
+import type { OrderReturnCreate } from "@/types";
 
 /* ── Public katalog ── */
 
@@ -127,7 +128,8 @@ export function useCancelOrder() {
 export function useRequestReturn(orderId: number) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (reason: string) => storeApi.requestReturn(orderId, reason),
+    mutationFn: (payload: OrderReturnCreate) =>
+      storeApi.requestReturn(orderId, payload),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["store", "orders", "mine"] });
       qc.invalidateQueries({ queryKey: ["store", "orders", orderId] });

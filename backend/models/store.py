@@ -99,11 +99,52 @@ class DeliveryPref(str, enum.Enum):
 
 
 class ReturnStatus(str, enum.Enum):
-    """İade talebi (RMA) durumu. Müşteri PENDING açar; admin onaylar/reddeder."""
+    """İade TALEBİNİN durumu (paranın durumu ayrı: ``ReturnRefundStatus``).
+
+    ``CAYMA`` türündeki talepler doğrudan APPROVED açılır — satıcının ret
+    yetkisi yoktur (bkz. ReturnType).
+    """
 
     PENDING = "PENDING"
     APPROVED = "APPROVED"
     REJECTED = "REJECTED"
+
+
+class ReturnType(str, enum.Enum):
+    """İadenin hukuki dayanağı — onay akışını belirler.
+
+    ``CAYMA``: Mesafeli Sözleşmeler Yönetmeliği m.9 uyarınca tüketici, teslimden
+    itibaren 14 gün içinde **hiçbir gerekçe göstermeden ve cezai şart ödemeden**
+    cayabilir. Satıcı bunu REDDEDEMEZ; yalnızca yönetmelik m.15'teki istisnalar
+    (dijital içerik, kişiye özel üretim, hijyen ürünleri…) uygulanır. Bu yüzden
+    talep otomatik onaylanır ve iade süreci hemen başlar.
+
+    ``AYIPLI``: Tüketicinin Korunması Hakkında Kanun m.8-11 (ayıplı mal). Süre
+    daha uzundur ve satıcının ürünü inceleme hakkı vardır → admin onay akışı.
+
+    ``DIGER``: yanlış ürün, eksik gönderim vb. → admin onay akışı.
+
+    ÖNEMLİ: Eski akış tek tipti ve admin CAYMA taleplerini de reddedebiliyordu;
+    bu, koşulsuz cayma hakkının ihlaliydi.
+    """
+
+    CAYMA = "CAYMA"
+    AYIPLI = "AYIPLI"
+    DIGER = "DIGER"
+
+
+class ReturnRefundStatus(str, enum.Enum):
+    """İade talebine bağlı PARANIN durumu (iki fazlı; bkz. services/escrow.py).
+
+    Talebin durumundan ayrıdır: bir talep APPROVED olabilir ama para henüz
+    sağlayıcıda kesinleşmemiş olabilir. Kısmi iade mümkün olduğundan sipariş
+    tek başına "iade edildi mi?" sorusunu cevaplayamaz — bu yüzden para durumu
+    TALEP üzerinde izlenir ve bir siparişte birden çok kısmi iade olabilir.
+    """
+
+    NONE = "NONE"
+    REFUNDING = "REFUNDING"
+    REFUNDED = "REFUNDED"
 
 
 class CouponDiscountType(str, enum.Enum):
@@ -354,6 +395,12 @@ class Order(Base, TimestampMixin, SoftDeleteMixin):
     )
     refunded_at: Mapped[datetime.datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
+    )
+    #: Bu siparişten şimdiye dek iade edilen TOPLAM tutar (kısmi iadeler dahil).
+    #: Kısmi iade sonrası sipariş PAID kalır — mal kısmen müşterededir — bu
+    #: yüzden "iade edildi mi?" sorusu tek başına payment_status'ten okunamaz.
+    refunded_amount: Mapped[float] = mapped_column(
+        Numeric(10, 2), nullable=False, server_default=text("0")
     )
     # ── İki fazlı iade niyeti (bkz. services/escrow.py) ──
     # REFUNDING'e geçiş bu damgayla birlikte COMMIT edilir; sağlayıcı çağrısı
@@ -607,7 +654,13 @@ class OrderReturn(Base, TimestampMixin):
     client_id: Mapped[int] = mapped_column(
         ForeignKey("clients.id", ondelete="CASCADE"), nullable=False, index=True
     )
-    reason: Mapped[str] = mapped_column(Text, nullable=False)
+    #: Cayma hakkında gerekçe ZORUNLU DEĞİLDİR (koşulsuzdur); yine de müşteri
+    #: isterse yazabilir. Ayıplı/diğer taleplerde servis katmanı zorunlu kılar.
+    reason: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("''"))
+    #: Hukuki dayanak — onay akışını belirler (bkz. ReturnType).
+    type: Mapped[str] = mapped_column(
+        String(10), nullable=False, server_default=text("'DIGER'")
+    )
     status: Mapped[str] = mapped_column(
         String(10), nullable=False, server_default=text("'PENDING'")
     )
@@ -616,7 +669,36 @@ class OrderReturn(Base, TimestampMixin):
         DateTime(timezone=True), nullable=True
     )
 
+    # ── Para (iki fazlı iade; talep bazında izlenir) ──
+    #: Bu talep için iade edilecek/edilen tutar. Kısmi iadede seçilen kalemlerin
+    #: toplamı, tam iadede sipariş toplamıdır (kargo dahil).
+    refund_amount: Mapped[float] = mapped_column(
+        Numeric(10, 2), nullable=False, server_default=text("0")
+    )
+    refund_status: Mapped[str] = mapped_column(
+        String(10), nullable=False, server_default=text("'NONE'")
+    )
+    refund_requested_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    refund_attempts: Mapped[int] = mapped_column(
+        Integer, nullable=False, server_default=text("0")
+    )
+    #: Sağlayıcıdaki iade işlem kimliği (kısmi iadede tam-tutar idempotency'si
+    #: geçersizdir; her iade ayrı izlenmelidir).
+    provider_ref: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    refunded_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    #: Tüm sipariş mi iade edildi (kargo dahil) yoksa bazı kalemler mi?
+    is_partial: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("false")
+    )
+
     order: Mapped["Order"] = relationship(back_populates="returns")
+    items: Mapped[list["OrderReturnItem"]] = relationship(
+        back_populates="order_return", cascade="all, delete-orphan"
+    )
 
     __table_args__ = (
         Index("ix_order_returns_status", "status"),
@@ -626,6 +708,42 @@ class OrderReturn(Base, TimestampMixin):
             "order_id",
             unique=True,
             postgresql_where=text("status = 'PENDING'"),
+        ),
+    )
+
+
+class OrderReturnItem(Base):
+    """Kısmi iadede hangi kalemden kaç adet iade edildiği.
+
+    Önceden iade daima TÜM sipariş tutarıydı: 3 kitaplık siparişten 1 kitap
+    iade edilince ya tamamı geri ödeniyordu (doğrudan zarar) ya da talep
+    reddediliyordu — ki cayma hakkında reddetmek de yasal değil.
+    """
+
+    __tablename__ = "order_return_items"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    return_id: Mapped[int] = mapped_column(
+        ForeignKey("order_returns.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    order_item_id: Mapped[int] = mapped_column(
+        ForeignKey("order_items.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    quantity: Mapped[int] = mapped_column(Integer, nullable=False)
+    #: Bu satırın iade tutarı (birim fiyat × adet, KDV dahil) — sipariş anındaki
+    #: fiyattan hesaplanır ve snapshot'lanır.
+    amount: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False)
+
+    order_return: Mapped["OrderReturn"] = relationship(back_populates="items")
+
+    __table_args__ = (
+        CheckConstraint("quantity > 0", name="ck_order_return_items_quantity"),
+        # Aynı kalem bir talepte iki kez yer alamaz.
+        Index(
+            "uq_order_return_item",
+            "return_id",
+            "order_item_id",
+            unique=True,
         ),
     )
 

@@ -136,6 +136,19 @@ ORDER_SPEC = EscrowSpec(
     has_released_guard=False,
     amount_attr="total",
 )
+# İade TALEBİ (kısmi iade dahil). Bir siparişte birden çok kısmi iade
+# olabildiğinden para durumu sipariş değil TALEP üzerinde izlenir; ayrıca kısmi
+# tutar, "sağlayıcı ikinci TAM iadeyi reddeder" idempotency'sini geçersiz kılar
+# — her talebin kendi durumu ve deneme sayacı olmak zorundadır.
+RETURN_SPEC = EscrowSpec(
+    held="NONE",
+    refunding="REFUNDING",
+    refunded="REFUNDED",
+    reference_prefix="return",
+    status_attr="refund_status",
+    has_released_guard=False,
+    amount_attr="refund_amount",
+)
 
 
 # ── Atomik claim ─────────────────────────────────────────────────────────────────
@@ -160,12 +173,17 @@ async def claim(
     ödeme durumunu ayrı tutan modellerde ``payment_status`` verilir.
     """
     status_col = getattr(model, status_attr)
+    # Soft-delete her modelde yok (ör. OrderReturn yalnız TimestampMixin taşır);
+    # kolon varsa filtreye eklenir, yoksa atlanır.
+    soft_delete = (
+        (model.deleted_at.is_(None),) if hasattr(model, "deleted_at") else ()
+    )
     stmt = (
         update(model)
         .where(
             model.id == row_id,
             status_col.in_(from_statuses),
-            model.deleted_at.is_(None),
+            *soft_delete,
             *extra_where,
         )
         .values(**values)

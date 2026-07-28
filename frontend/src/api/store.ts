@@ -9,6 +9,7 @@ import type {
   OrderCreate,
   OrderOut,
   OrderReturn,
+  OrderReturnCreate,
   ProductCategory,
   ProductCategoryWrite,
   ProductCreate,
@@ -220,11 +221,11 @@ export async function cancelOrder(orderId: number): Promise<OrderOut> {
 
 export async function requestReturn(
   orderId: number,
-  reason: string
+  payload: OrderReturnCreate
 ): Promise<OrderReturn> {
   const { data } = await apiClient.post<OrderReturn>(
     `/store/orders/${orderId}/return`,
-    { reason }
+    payload
   );
   return data;
 }

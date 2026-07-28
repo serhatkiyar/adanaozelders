@@ -1663,14 +1663,50 @@ export interface OrderOut {
 
 export type ReturnStatus = "PENDING" | "APPROVED" | "REJECTED";
 
+/**
+ * İadenin hukuki dayanağı.
+ * CAYMA: 14 gün koşulsuz cayma (Mesafeli Sözleşmeler Yönetmeliği m.9) —
+ * otomatik onaylanır, satıcı REDDEDEMEZ.
+ * AYIPLI / DIGER: admin incelemesi gerektirir.
+ */
+export type ReturnType = "CAYMA" | "AYIPLI" | "DIGER";
+
+/** İade talebine bağlı paranın durumu (talebin durumundan ayrıdır). */
+export type ReturnRefundStatus = "NONE" | "REFUNDING" | "REFUNDED";
+
+export interface OrderReturnItem {
+  order_item_id: number;
+  title?: string | null;
+  quantity: number;
+  amount: string;
+}
+
+export interface OrderReturnItemIn {
+  order_item_id: number;
+  quantity: number;
+}
+
+export interface OrderReturnCreate {
+  type: ReturnType;
+  reason?: string;
+  /** Boş bırakılırsa siparişin tamamı iade edilir. */
+  items?: OrderReturnItemIn[];
+}
+
 export interface OrderReturn {
   id: number;
   order_id: number;
+  type: ReturnType;
   status: ReturnStatus;
   reason: string;
   admin_note?: string | null;
   created_at: string;
   resolved_at?: string | null;
+  refund_status: ReturnRefundStatus;
+  refund_amount: string;
+  refunded_at?: string | null;
+  is_partial: boolean;
+  items: OrderReturnItem[];
   // Admin listesinde sipariş özeti gömülü; müşteri yanıtında null.
   order?: OrderOut | null;
 }

@@ -31,10 +31,13 @@ from models.store import (
     DeliveryPref,
     Order,
     OrderItem,
+    OrderPaymentStatus,
     OrderReturn,
+    OrderReturnItem,
     Product,
     ProductKind,
     ProductStatus,
+    ReturnRefundStatus,
     ReturnStatus,
     SellerType,
 )
@@ -45,6 +48,7 @@ from schemas.store import (
     OrderCreate,
     OrderItemOut,
     OrderOut,
+    OrderReturnItemOut,
     OrderReturnOut,
 )
 from services import (
@@ -55,6 +59,7 @@ from services import (
     escrow,
     notification_service,
     order_fsm,
+    returns,
     tax,
 )
 
@@ -1243,14 +1248,31 @@ async def cancel_by_client(db: AsyncSession, order: Order) -> OrderOut:
 
 
 def _return_to_out(ret: OrderReturn, *, order: Order | None) -> OrderReturnOut:
+    titles: dict[int, str] = {}
+    if order is not None:
+        titles = {it.id: it.title for it in order.items}
     return OrderReturnOut(
         id=ret.id,
         order_id=ret.order_id,
+        type=ret.type,
         status=ret.status,
         reason=ret.reason,
         admin_note=ret.admin_note,
         created_at=ret.created_at,
         resolved_at=ret.resolved_at,
+        refund_status=ret.refund_status,
+        refund_amount=str(ret.refund_amount),
+        refunded_at=ret.refunded_at,
+        is_partial=ret.is_partial,
+        items=[
+            OrderReturnItemOut(
+                order_item_id=ri.order_item_id,
+                title=titles.get(ri.order_item_id),
+                quantity=ri.quantity,
+                amount=str(ri.amount),
+            )
+            for ri in (ret.items or [])
+        ],
         order=_to_out(order) if order is not None else None,
     )
 
@@ -1267,9 +1289,20 @@ async def _load_return(db: AsyncSession, return_id: int) -> OrderReturn | None:
     return (await db.execute(stmt)).scalars().first()
 
 
-async def request_return(db: AsyncSession, order: Order, reason: str) -> OrderReturnOut:
-    """Müşteri iade talebi oluştur. Yalnız kargolanmış/teslim edilmiş, ödenmiş fiziksel
-    sipariş için; sipariş başına tek açık talep (DB kısmi unique index de korur)."""
+async def request_return(
+    db: AsyncSession,
+    order: Order,
+    reason: str,
+    *,
+    return_type: str = "DIGER",
+    items: list | None = None,
+) -> OrderReturnOut:
+    """Müşteri iade talebi oluştur.
+
+    ``return_type=CAYMA`` ise talep otomatik onaylanır ve iade hemen başlatılır
+    (m.9 koşulsuz cayma hakkı). Diğer türlerde admin incelemesi beklenir.
+    ``items`` boşsa siparişin tamamı iade edilir.
+    """
     if not order.has_physical:
         raise HTTPException(
             status.HTTP_400_BAD_REQUEST,
@@ -1286,8 +1319,18 @@ async def request_return(db: AsyncSession, order: Order, reason: str) -> OrderRe
         raise HTTPException(
             status.HTTP_409_CONFLICT, "Bu sipariş için zaten bekleyen bir iade talebin var."
         )
-    if any(r.status == ReturnStatus.APPROVED.value for r in order.returns):
+    # Tamamı iade edilmiş sipariş için yeni talep açılamaz; kısmen iade
+    # edilmişse kalan tutar için açılabilir.
+    if returns.remaining_refundable(
+        Decimal(str(order.total)), Decimal(str(order.refunded_amount or 0))
+    ) <= 0:
         raise HTTPException(status.HTTP_409_CONFLICT, "Bu sipariş zaten iade edildi.")
+    # Cayma hakkında gerekçe İSTENMEZ (koşulsuzdur); diğer türlerde zorunlu.
+    if not returns.auto_approved(return_type) and len((reason or "").strip()) < 3:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            "Bu iade türü için gerekçe yazman gerekiyor.",
+        )
     # Teslim edilmişse iade penceresi (RETURN_WINDOW_DAYS) geçmiş olmamalı. Teslim
     # damgası olmayan eski/dijital siparişlerde pencere uygulanmaz.
     deadline = _return_deadline(order)
@@ -1297,16 +1340,19 @@ async def request_return(db: AsyncSession, order: Order, reason: str) -> OrderRe
             f"İade süresi doldu (teslimden sonra {RETURN_WINDOW_DAYS} gün).",
         )
 
-    ret = OrderReturn(
-        order_id=order.id,
-        client_id=order.client_id,
-        reason=reason,
-        status=ReturnStatus.PENDING.value,
-    )
+    ret = await _build_return(db, order, return_type=return_type, reason=reason, items=items)
     db.add(ret)
     await db.commit()
     await db.refresh(ret)
-    return _return_to_out(ret, order=None)
+
+    # Cayma hakkı KOŞULSUZDUR (Mesafeli Sözleşmeler Yönetmeliği m.9): satıcının
+    # ret yetkisi olmadığı için admin onayı beklemek hukuken savunulamaz —
+    # talep anında onaylanır ve iade süreci başlar.
+    if returns.auto_approved(ret.type):
+        await _settle_return(db, ret, order, admin_note=None)
+
+    full = await _load_return(db, ret.id)
+    return _return_to_out(full or ret, order=order)
 
 
 async def list_returns_admin(
@@ -1333,14 +1379,7 @@ async def approve_return(
     if ret.status != ReturnStatus.PENDING.value:
         raise HTTPException(status.HTTP_409_CONFLICT, "Bu talep zaten sonuçlandırılmış")
     order = ret.order
-    await _lock_order(db, order)
-    if order.payment_status == "PAID":
-        await _refund_payment(db, order)
-        await order_fsm.transition_order(db, order, "REFUNDED", changed_by="admin")
-    ret.status = ReturnStatus.APPROVED.value
-    ret.admin_note = admin_note
-    ret.resolved_at = _now()
-    await db.commit()
+    await _settle_return(db, ret, order, admin_note=admin_note)
     await notification_service.notify(
         db,
         user_id=order.client_id,
@@ -1362,6 +1401,14 @@ async def reject_return(
         raise HTTPException(status.HTTP_404_NOT_FOUND, "İade talebi bulunamadı")
     if ret.status != ReturnStatus.PENDING.value:
         raise HTTPException(status.HTTP_409_CONFLICT, "Bu talep zaten sonuçlandırılmış")
+    if returns.auto_approved(ret.type):
+        # m.9: cayma hakkı koşulsuzdur, satıcı reddedemez. Bu durum normalde
+        # oluşmaz (cayma talepleri otomatik onaylanır) ama veri elle
+        # değiştirilirse yasal ihlali kod düzeyinde engelliyoruz.
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Cayma hakkı kapsamındaki talep reddedilemez (14 gün koşulsuzdur).",
+        )
     ret.status = ReturnStatus.REJECTED.value
     ret.admin_note = admin_note
     ret.resolved_at = _now()
@@ -1377,3 +1424,217 @@ async def reject_return(
     )
     await db.commit()
     return _return_to_out(ret, order=order)
+
+
+# ── İade talebi kurulumu ve yürütülmesi ──────────────────────────────────────
+
+
+class _Selection:
+    """Kalem seçimi (istemci göndermezse siparişin tamamı için üretilir)."""
+
+    __slots__ = ("order_item_id", "quantity")
+
+    def __init__(self, order_item_id: int, quantity: int) -> None:
+        self.order_item_id = order_item_id
+        self.quantity = quantity
+
+
+async def _build_return(
+    db: AsyncSession,
+    order: Order,
+    *,
+    return_type: str,
+    reason: str,
+    items: list | None,
+) -> OrderReturn:
+    """Talebi ve kalemlerini kurar; tutarı SUNUCUDA hesaplar.
+
+    İstemci tutar göndermez — yalnız hangi kalemden kaç adet istediğini söyler.
+    Tutar sipariş anındaki fiyatlardan, kupon payı düşülerek hesaplanır.
+    """
+    by_id = {it.id: it for it in order.items}
+    selection = items or [_Selection(it.id, it.quantity) for it in order.items]
+
+    lines: list[dict] = []
+    for sel in selection:
+        item = by_id.get(sel.order_item_id)
+        if item is None:
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST, "Bu siparişte olmayan bir kalem seçildi."
+            )
+        if sel.quantity > item.quantity:
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST,
+                f"'{item.title}' için en fazla {item.quantity} adet iade edilebilir.",
+            )
+        lines.append(
+            {
+                "item": item,
+                "unit_price": Decimal(str(item.unit_price)),
+                "quantity": item.quantity,
+                "refund_quantity": int(sel.quantity),
+            }
+        )
+
+    is_full = returns.is_full_return(lines)
+    amount = returns.compute_refund(
+        lines=lines,
+        order_subtotal=Decimal(str(order.subtotal)),
+        order_discount=Decimal(str(order.discount or 0)),
+        order_shipping=Decimal(str(order.shipping_fee or 0)),
+        is_full_order=is_full,
+    )
+    # Kümülatif tavan: birden çok kısmi iadenin toplamı sipariş tutarını aşamaz
+    # (aşırı iade sağlayıcıda reddedilir ve mutabakatı bozar).
+    cap = returns.remaining_refundable(
+        Decimal(str(order.total)), Decimal(str(order.refunded_amount or 0))
+    )
+    amount = min(amount, cap)
+
+    ret = OrderReturn(
+        order_id=order.id,
+        client_id=order.client_id,
+        type=return_type,
+        reason=(reason or "").strip(),
+        status=(
+            ReturnStatus.APPROVED.value
+            if returns.auto_approved(return_type)
+            else ReturnStatus.PENDING.value
+        ),
+        refund_amount=amount,
+        is_partial=not is_full,
+    )
+    for ln in lines:
+        ret.items.append(
+            OrderReturnItem(
+                order_item_id=ln["item"].id,
+                quantity=ln["refund_quantity"],
+                amount=returns.line_refund_amount(
+                    ln["unit_price"],
+                    ln["quantity"],
+                    refund_quantity=ln["refund_quantity"],
+                ),
+            )
+        )
+    return ret
+
+
+async def _restock_items(db: AsyncSession, order: Order, ret: OrderReturn) -> None:
+    """İade edilen FİZİKSEL kalemlerin stoğunu geri yükler (yalnız seçilenler)."""
+    by_id = {it.id: it for it in order.items}
+    for ri in ret.items:
+        item = by_id.get(ri.order_item_id)
+        if item is None or item.kind != ProductKind.PHYSICAL.value:
+            continue
+        if item.product_id is None:
+            continue
+        p = (
+            await db.execute(
+                select(Product).where(Product.id == item.product_id).with_for_update()
+            )
+        ).scalars().first()
+        if p is not None and p.stock is not None:
+            p.stock += ri.quantity
+
+
+async def _settle_return(
+    db: AsyncSession,
+    ret: OrderReturn,
+    order: Order,
+    *,
+    admin_note: str | None,
+) -> None:
+    """Onaylanmış talebin parasını iade eder (iki fazlı) ve stoğu geri yükler.
+
+    Para durumu TALEP üzerinde izlenir: bir siparişte birden çok kısmi iade
+    olabileceğinden ``order.payment_status`` tek başına yeterli değildir. Kısmi
+    iadede sipariş PAID kalır (mal kısmen müşterededir); yalnız kalan iade
+    edilebilir tutar sıfırlanınca REFUNDED'a geçer.
+    """
+    await _lock_order(db, order)
+
+    amount = Decimal(str(ret.refund_amount or 0))
+    if order.payment_status not in ("PAID", "REFUNDING") or amount <= 0:
+        # Ödeme yok ya da iade edilecek tutar kalmadı → yalnız talebi kapat.
+        ret.status = ReturnStatus.APPROVED.value
+        ret.admin_note = admin_note
+        ret.resolved_at = _now()
+        await db.commit()
+        return
+
+    # ── Faz 1: niyet (talep bazında) ──
+    # Kısmi iade, "sağlayıcı ikinci TAM iadeyi reddeder" idempotency'sini
+    # geçersiz kılar; bu yüzden her iade kendi durumu ve deneme sayacıyla
+    # izlenir.
+    claimed = await escrow.claim(
+        db,
+        OrderReturn,
+        ret.id,
+        from_statuses=[ReturnRefundStatus.NONE.value],
+        values={
+            "refund_status": ReturnRefundStatus.REFUNDING.value,
+            "refund_requested_at": _now(),
+            "refund_attempts": OrderReturn.refund_attempts + 1,
+        },
+        status_attr="refund_status",
+    )
+    if not claimed:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT, "Bu talebin iadesi zaten işleniyor."
+        )
+    ret.status = ReturnStatus.APPROVED.value
+    ret.admin_note = admin_note
+    ret.resolved_at = _now()
+    await db.commit()  # niyet kalıcı — süreç burada ölse kayıt REFUNDING kalır
+    await db.refresh(ret)
+
+    # ── Yerel telafiler ──
+    await _restock_items(db, order, ret)
+    if not ret.is_partial and order.coupon_id is not None:
+        # Kupon yalnız TAM iadede serbest bırakılır; kısmi iadede sipariş
+        # ayaktadır ve kupon tüketilmiş sayılır.
+        await coupon_service.release(db, coupon_id=order.coupon_id, order_id=order.id)
+
+    # ── Faz 2: sağlayıcı ──
+    provider = payments.get_payment_provider()
+    ok = await provider.refund(provider_ref=order.provider_ref, amount=amount)
+    if not ok:
+        await db.commit()
+        logger.error(
+            "iade talebi %s: sağlayıcı reddetti — REFUNDING'de bırakıldı (order=%s)",
+            ret.id,
+            order.id,
+        )
+        raise HTTPException(
+            status.HTTP_502_BAD_GATEWAY,
+            "İade şu an tamamlanamadı; kaydedildi ve yeniden denenecek.",
+        )
+
+    ret.refund_status = ReturnRefundStatus.REFUNDED.value
+    ret.refunded_at = _now()
+    order.refunded_amount = Decimal(str(order.refunded_amount or 0)) + amount
+
+    # Sipariş tamamen iade edildiyse durumunu da güncelle.
+    if (
+        returns.remaining_refundable(
+            Decimal(str(order.total)), Decimal(str(order.refunded_amount))
+        )
+        <= 0
+    ):
+        order.payment_status = OrderPaymentStatus.REFUNDED.value
+        order.refunded_at = _now()
+        await order_fsm.transition_order(db, order, "REFUNDED", changed_by="admin")
+
+    await db.commit()
+    await notification_service.notify(
+        db,
+        user_id=order.client_id,
+        role_id=ROLE_IDS[RoleType.CLIENT],
+        message=(
+            f"#{order.id} siparişin için {amount} {order.currency} iade edildi."
+            if ret.is_partial
+            else f"#{order.id} siparişin için ödemen iade edildi."
+        ),
+        link="/siparislerim",
+    )
+    await db.commit()
