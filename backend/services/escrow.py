@@ -232,7 +232,18 @@ async def begin_refund(
     if claimed:
         # Intent'i kalıcılaştır: süreç sağlayıcı çağrısında ölürse reconciler bulur.
         await db.commit()
-        await db.refresh(obj)
+        # YALNIZ claim'in yazdığı skaler alanlar tazelenir. Parametresiz
+        # `refresh` İLİŞKİLERİ de expire eder; çağıran (ör. order_service
+        # `_restock`) hemen ardından `order.items` okuyor ve async oturumda
+        # lazy-load MissingGreenlet ile 500 üretiyordu.
+        await db.refresh(
+            obj,
+            attribute_names=[
+                spec.status_attr,
+                "refund_requested_at",
+                "refund_attempts",
+            ],
+        )
     return claimed
 
 
@@ -282,7 +293,9 @@ async def finalize_refund(
         status_attr=spec.status_attr,
     )
     if finalized:
-        await db.refresh(obj)
+        # Skaler alanlarla sınırlı (parametresiz refresh ilişkileri expire eder
+        # ve çağıran taraf lazy-load ile MissingGreenlet alır).
+        await db.refresh(obj, attribute_names=[spec.status_attr, "refunded_at"])
         if notify is not None:
             await notify()
     return finalized

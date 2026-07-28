@@ -49,6 +49,10 @@ def main() -> int:
     cmd = [
         sys.executable, "-m", "pytest",
         "tests/verify", "-q", "-p", "no:cacheprovider",
+        # Tek event loop: her testte yeni loop + engine.dispose()
+        # kombinasyonu Windows/asyncpg'de bağlantıyı asıyor.
+        "-o", "asyncio_default_fixture_loop_scope=session",
+        "-o", "asyncio_default_test_loop_scope=session",
         *sys.argv[1:],
     ]
     print(f">> {' '.join(cmd)}  (POSTGRES_DB={VERIFY_DB})", flush=True)

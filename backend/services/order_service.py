@@ -893,6 +893,10 @@ async def _lock_order(db: AsyncSession, order: Order) -> None:
     Kilit sırası delivery_service ile aynıdır: önce Order, sonra DeliveryStop."""
     await db.execute(select(Order.id).where(Order.id == order.id).with_for_update())
     await db.refresh(order)
+    # `refresh` İLİŞKİLERİ de expire eder; bu fonksiyondan sonra `items`
+    # (stok geri yükleme) ve `returns` (_to_out) okunuyor. Async oturumda
+    # expire edilmiş ilişkiye erişim lazy-load → MissingGreenlet (500).
+    await db.refresh(order, attribute_names=["items", "returns"])
 
 
 def _require_self_service_order(order: Order) -> None:
@@ -1281,6 +1285,9 @@ async def _load_return(db: AsyncSession, return_id: int) -> OrderReturn | None:
     stmt = (
         select(OrderReturn)
         .options(
+            # `items` ŞART: _return_to_out onu okur; async oturumda lazy-load
+            # MissingGreenlet (500) üretir.
+            selectinload(OrderReturn.items),
             selectinload(OrderReturn.order).selectinload(Order.items),
             selectinload(OrderReturn.order).selectinload(Order.returns),
         )
@@ -1343,7 +1350,11 @@ async def request_return(
     ret = await _build_return(db, order, return_type=return_type, reason=reason, items=items)
     db.add(ret)
     await db.commit()
-    await db.refresh(ret)
+    # Yalnız sunucu-varsayılanlı skaler alanlar; parametresiz `refresh`
+    # `items` ilişkisini expire eder (bkz. _lock_order notu).
+    await db.refresh(
+        ret, attribute_names=["created_at", "refund_status", "refund_attempts"]
+    )
 
     # Cayma hakkı KOŞULSUZDUR (Mesafeli Sözleşmeler Yönetmeliği m.9): satıcının
     # ret yetkisi olmadığı için admin onayı beklemek hukuken savunulamaz —
@@ -1359,6 +1370,7 @@ async def list_returns_admin(
     db: AsyncSession, *, status_filter: str | None = None, limit: int = 100, offset: int = 0
 ) -> list[OrderReturnOut]:
     stmt = select(OrderReturn).options(
+        selectinload(OrderReturn.items),
         selectinload(OrderReturn.order).selectinload(Order.items),
         selectinload(OrderReturn.order).selectinload(Order.returns),
     )
@@ -1586,7 +1598,9 @@ async def _settle_return(
     ret.admin_note = admin_note
     ret.resolved_at = _now()
     await db.commit()  # niyet kalıcı — süreç burada ölse kayıt REFUNDING kalır
-    await db.refresh(ret)
+    await db.refresh(
+        ret, attribute_names=["refund_status", "refund_attempts", "refund_requested_at"]
+    )
 
     # ── Yerel telafiler ──
     await _restock_items(db, order, ret)

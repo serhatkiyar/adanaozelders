@@ -70,9 +70,9 @@ async def db():
     ayağa kaldırmadığından FK'ler (clients.role_id → roles.id) aksi halde
     üretimdekinden farklı davranırdı. Seed idempotenttir.
 
-    `engine.dispose()` her testin SONUNDA çağrılır: pytest-asyncio her test
-    için yeni event loop kurar, asyncpg bağlantıları ise loop'a bağlıdır —
-    dispose edilmezse sonraki test kırık bağlantı alır (MissingGreenlet).
+    NOT: `engine.dispose()` ÇAĞRILMAZ. Paket tek (session kapsamlı) event
+    loop'ta koşar; her testte dispose etmek Windows/asyncpg'de bağlantıyı
+    asılı bırakıyordu.
     """
     try:
         async with engine.connect() as conn:
@@ -88,7 +88,6 @@ async def db():
 
     async with AsyncSessionLocal() as session:
         yield session
-    await engine.dispose()
 
 
 class Factory:
@@ -295,9 +294,16 @@ class Factory:
 
 
 @pytest.fixture
-async def factory():
+async def factory(db):
+    """Test verisi üreticisi.
+
+    `db`'ye BAĞIMLIDIR ve temizlikten önce onu rollback eder: test içinde
+    `_lock_order` gibi yollar `FOR UPDATE` kilidi alır; açık transaction
+    kapatılmadan DELETE çalıştırmak kilit beklemesine (deadlock) düşer.
+    """
     f = Factory()
     yield f
+    await db.rollback()
     await f.cleanup()
 
 
