@@ -14,6 +14,8 @@ from models.library_operator import LibraryOperator
 from models.role import ROLE_IDS, RoleType
 from models.tutor import Gender, Tutor
 from schemas.user import UserUpdate
+# refresh_token_service yalnız core/models'e bağlı — döngüsel import yok.
+from services import refresh_token_service
 
 _LOGIN_PRECEDENCE: tuple[tuple[RoleType, type], ...] = (
     (RoleType.ADMIN, Admin),
@@ -164,6 +166,12 @@ async def change_password(
         )
     user.hashed_password = hash_password(new_password)
     await db.flush()
+    # Şifre değişimi TÜM oturumları kapatır: aksi halde çalınmış 30 günlük bir
+    # refresh token, kurban şifresini değiştirdikten sonra da /auth/refresh ile
+    # erişim üretmeye devam ederdi. (Çağıran, isterse aynı istekte yeni token verir.)
+    await refresh_token_service.revoke_all_for_user(
+        db, role_id=user.role_id, user_id=user.id
+    )
 
 
 async def authenticate(db: AsyncSession, *, email: str, password: str):
@@ -190,6 +198,13 @@ async def find_by_email(db: AsyncSession, *, email: str):
 async def reset_password(
     db: AsyncSession, user: Admin | Tutor | Client, *, new_password: str
 ) -> None:
-    """Token ile doğrulanmış şifre sıfırlama (mevcut şifre sorulmaz)."""
+    """Token ile doğrulanmış şifre sıfırlama (mevcut şifre sorulmaz).
+
+    Hesabı ele geçiren saldırganın oturumunu da düşürmek için tüm refresh
+    token'ları iptal edilir — "şifremi unuttum" akışının asıl amacı budur.
+    """
     user.hashed_password = hash_password(new_password)
     await db.flush()
+    await refresh_token_service.revoke_all_for_user(
+        db, role_id=user.role_id, user_id=user.id
+    )

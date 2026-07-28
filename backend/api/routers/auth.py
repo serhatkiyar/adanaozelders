@@ -354,18 +354,36 @@ async def verify_phone_otp(
     return user
 
 
-@router.post("/me/password", status_code=status.HTTP_204_NO_CONTENT)
+@router.post("/me/password", response_model=Token)
 async def change_my_password(
     payload: PasswordChange,
     user: CurrentUser = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
+    """Şifreyi değiştirir ve DİĞER tüm oturumları kapatır.
+
+    ``change_password`` kullanıcının tüm refresh token'larını iptal eder (çalınmış
+    bir token şifre değişiminden sonra da geçerli kalmasın diye). İşlemi yapan
+    cihazın atılmaması için burada yeni bir oturum çifti üretilir — istemci
+    döndürülen token'ları saklamalıdır.
+    """
     await auth_service.change_password(
         db,
         user,
         current_password=payload.current_password,
         new_password=payload.new_password,
     )
+    access = create_access_token(
+        subject=user.id,
+        role=role_name(user.role_id),
+        role_id=user.role_id,
+        auth_version=getattr(user, "auth_version", None),
+    )
+    refresh = await refresh_token_service.issue(
+        db, role_id=user.role_id, user_id=user.id
+    )
+    await db.commit()
+    return Token(access_token=access, refresh_token=refresh)
 
 
 @router.post("/me/avatar", response_model=UserOut)

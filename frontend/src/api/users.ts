@@ -2,6 +2,7 @@ import { apiClient } from "@/api/axios";
 import type {
   NameChangeRequest,
   PasswordChange,
+  Token,
   UserOut,
   UserUpdate,
 } from "@/types";
@@ -19,8 +20,12 @@ export async function listMyNameChangeRequests(): Promise<NameChangeRequest[]> {
   return data;
 }
 
-export async function changePassword(payload: PasswordChange): Promise<void> {
-  await apiClient.post("/auth/me/password", payload);
+// Şifre değişimi sunucuda TÜM refresh token'ları iptal eder (çalınmış oturum
+// şifre değişiminden sonra yaşamasın) ve bu cihaz için yeni bir çift döner —
+// çağıran tarafın döneni store'a yazması gerekir, yoksa oturum kopar.
+export async function changePassword(payload: PasswordChange): Promise<Token> {
+  const { data } = await apiClient.post<Token>("/auth/me/password", payload);
+  return data;
 }
 
 // Telefon doğrulama: numara kaydet + SMS OTP iste (maskeli numara döner).

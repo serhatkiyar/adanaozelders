@@ -1381,7 +1381,11 @@ export interface CatalogOut {
   duration_minutes?: number | null;
   is_public: boolean;
   is_nationwide: boolean;
+  // Yalnız admin küratör listesinde (GET /exam-catalogs) dolu gelir;
+  // operatörün gördüğü /exam-catalogs/usable listesinde daima null.
   answer_key_url?: string | null;
+  // Anahtar yüklenmiş mi — URL vermeden gösterilebilen güvenli bilgi.
+  has_answer_key: boolean;
   has_answer_key_data: boolean;
   created_at?: string | null;
   session_count: number;

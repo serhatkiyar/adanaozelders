@@ -1,6 +1,7 @@
 from functools import lru_cache
+from typing import Literal
 
-from pydantic import computed_field
+from pydantic import computed_field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -14,6 +15,12 @@ class Settings(BaseSettings):
 
     PROJECT_NAME: str = "Adana Özel Ders"
     API_V1_PREFIX: str = "/api/v1"
+
+    # Çalışma ortamı. "production" iken açılışta sertleştirme guard'ı koşar
+    # (bkz. _guard_production): geliştirme kolaylığı için konmuş fail-open
+    # varsayılanların (sahte ödeme, console SMS/e-posta, demo seed, otomatik
+    # şema kurulumu, zayıf sır) üretime sızması UYGULAMAYI AÇTIRMAZ.
+    ENVIRONMENT: Literal["development", "staging", "production"] = "development"
 
     BACKEND_CORS_ORIGINS: list[str] = [
         "http://localhost:5173",
@@ -46,6 +53,15 @@ class Settings(BaseSettings):
     REDIS_URL: str = "redis://localhost:6379/0"
     PRESENCE_ONLINE_TTL_SECONDS: int = 300
     PRESENCE_FLUSH_INTERVAL_SECONDS: int = 300
+
+    # Ters proxy arkasında istemci IP'si: X-Forwarded-For YALNIZCA bağlantı bu
+    # listedeki bir adresten geliyorsa okunur. Boş liste = XFF'e hiç güvenme
+    # (doğrudan bağlantı IP'si kullanılır). Aksi halde saldırgan her istekte
+    # sahte XFF göndererek TÜM IP bazlı rate-limit'leri (login brute-force,
+    # kayıt spam'i, e-posta maliyeti, takip token'ı) etkisiz kılar.
+    # Örn. tek VPS'te Caddy/nginx önde ise: ["127.0.0.1"]; Docker ağında
+    # proxy'nin konteyner IP'si veya "172.16.0.0/12" gibi bir CIDR.
+    TRUSTED_PROXY_IPS: list[str] = []
 
     # Rate limiting (Redis fixed-window). Redis erişilemezse fail-open.
     # IP bazlı (auth uçları):
@@ -238,6 +254,10 @@ class Settings(BaseSettings):
     SENTRY_TRACES_SAMPLE_RATE: float = 0.0
 
     AUTO_CREATE_DB: bool = True
+    # Demo/başlangıç eğitmenleri (core/seed.py::seed_tutors). Şifreleri kodda AÇIK
+    # yazılıdır ve kayıtlar APPROVED gelir → üretimde ASLA açılmamalı; guard da
+    # production'da True olmasını engeller.
+    SEED_DEMO_DATA: bool = True
     ADMIN_EMAIL: str | None = None
     ADMIN_PASSWORD: str | None = None
     ADMIN_FULL_NAME: str = "System Admin"
@@ -267,6 +287,79 @@ class Settings(BaseSettings):
             f"postgresql+asyncpg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}"
             f"@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
         )
+
+    @property
+    def is_production(self) -> bool:
+        return self.ENVIRONMENT == "production"
+
+    @model_validator(mode="after")
+    def _guard_production(self) -> "Settings":
+        """ENVIRONMENT=production iken tehlikeli geliştirme varsayılanlarını reddet.
+
+        Bu ayarların her biri geliştirmeyi kolaylaştırmak için fail-OPEN seçildi
+        (dış hesap gerekmesin diye). Üretimde aynı varsayılanlar sessiz felakete
+        dönüşür: `PAYMENT_PROVIDER=fake` para tahsil etmeden sipariş kapatır,
+        `SMS_PROVIDER=console` teslimat OTP'sini müşteriye değil loga yazar.
+        Sessizce yanlış çalışmaktansa AÇILMAMAK doğru davranıştır.
+        """
+        if not self.is_production:
+            return self
+
+        problems: list[str] = []
+
+        if self.PAYMENT_PROVIDER.strip().lower() != "iyzico":
+            problems.append(
+                f"PAYMENT_PROVIDER={self.PAYMENT_PROVIDER!r} — üretimde 'iyzico' olmalı "
+                "(aksi halde sahte sağlayıcı para tahsil etmeden başarı döner)"
+            )
+        if self.PAYMENT_PROVIDER.strip().lower() == "iyzico" and not (
+            self.IYZICO_API_KEY and self.IYZICO_SECRET_KEY
+        ):
+            problems.append("IYZICO_API_KEY / IYZICO_SECRET_KEY boş")
+        if self.EMAIL_PROVIDER.strip().lower() == "console":
+            problems.append("EMAIL_PROVIDER=console — e-postalar yalnız loga yazılır")
+        if self.SMS_PROVIDER.strip().lower() == "console":
+            problems.append("SMS_PROVIDER=console — OTP'ler müşteriye gitmez, loga yazılır")
+        if self.AUTO_CREATE_DB:
+            problems.append(
+                "AUTO_CREATE_DB=True — migration açılışta çalışmamalı; "
+                "deploy adımı olarak `alembic upgrade head` çalıştırın"
+            )
+        if self.SEED_DEMO_DATA:
+            problems.append(
+                "SEED_DEMO_DATA=True — şifresi kodda açık olan APPROVED demo "
+                "eğitmenleri canlı aramaya girer"
+            )
+        if len(self.JWT_SECRET_KEY) < 32 or "change-this" in self.JWT_SECRET_KEY:
+            problems.append(
+                "JWT_SECRET_KEY zayıf veya varsayılan (en az 32 karakter, rastgele olmalı)"
+            )
+        if self.ADMIN_PASSWORD and "change-this" in self.ADMIN_PASSWORD:
+            problems.append("ADMIN_PASSWORD varsayılan değerde")
+        if "minioadmin" in (self.AWS_ACCESS_KEY_ID, self.AWS_SECRET_ACCESS_KEY):
+            problems.append("AWS_ACCESS_KEY_ID/SECRET varsayılan 'minioadmin' değerinde")
+        local_origins = [
+            o for o in self.BACKEND_CORS_ORIGINS if "localhost" in o or "127.0.0.1" in o
+        ]
+        if local_origins:
+            problems.append(f"BACKEND_CORS_ORIGINS yerel köken içeriyor: {local_origins}")
+        if not self.TRUSTED_PROXY_IPS:
+            problems.append(
+                "TRUSTED_PROXY_IPS boş — ters proxy arkasında istemci IP'si "
+                "çözülemez, IP bazlı rate-limit'ler tek bir IP'de toplanır "
+                "(proxy yoksa bilinçli olarak ['*'] verilebilir)"
+            )
+        if self.FRONTEND_BASE_URL.startswith("http://") or self.BACKEND_BASE_URL.startswith(
+            "http://"
+        ):
+            problems.append("FRONTEND_BASE_URL / BACKEND_BASE_URL https:// olmalı")
+
+        if problems:
+            raise ValueError(
+                "ENVIRONMENT=production için güvenli olmayan yapılandırma:\n  - "
+                + "\n  - ".join(problems)
+            )
+        return self
 
 
 @lru_cache

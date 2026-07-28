@@ -44,9 +44,15 @@ export function useMyNameChangeRequests() {
   });
 }
 
+// Şifre değişimi diğer tüm oturumları düşürür; sunucunun bu cihaz için ürettiği
+// yeni token çiftini store'a yazmazsak kullanıcı kendi oturumundan da atılır.
 export function useChangePassword() {
+  const setTokens = useAuthStore((s) => s.setTokens);
   return useMutation({
     mutationFn: (payload: PasswordChange) => changePassword(payload),
+    onSuccess: (token) => {
+      setTokens(token.access_token, token.refresh_token ?? null);
+    },
   });
 }
 

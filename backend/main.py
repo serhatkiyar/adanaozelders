@@ -89,7 +89,10 @@ async def lifespan(app: FastAPI):
         async with AsyncSessionLocal() as session:
             await seed.seed_roles(session)
             await seed.seed_admin(session)
-            await seed.seed_tutors(session)
+            if settings.SEED_DEMO_DATA:
+                # Demo eğitmenler: şifreleri kodda açık ve kayıtlar APPROVED
+                # gelir — yalnız geliştirme/demo ortamında.
+                await seed.seed_tutors(session)
             await session.commit()
     # MinIO bucket + anonim-okuma policy'si (best-effort; minio-init'e bağımlılık yok).
     await storage.ensure_bucket()
@@ -107,9 +110,16 @@ async def lifespan(app: FastAPI):
     await engine.dispose()
 
 
+# Üretimde interaktif dokümantasyon ve OpenAPI şeması kapalı: aksi halde admin,
+# kurye, operatör ve ödeme uçlarının tam haritası (alan adları, TCKN/IBAN/escrow
+# şemaları dahil) anonim ziyaretçiye sunulur.
+_docs_enabled = not settings.is_production
+
 app = FastAPI(
     title=settings.PROJECT_NAME,
-    openapi_url=f"{settings.API_V1_PREFIX}/openapi.json",
+    openapi_url=(f"{settings.API_V1_PREFIX}/openapi.json" if _docs_enabled else None),
+    docs_url="/docs" if _docs_enabled else None,
+    redoc_url="/redoc" if _docs_enabled else None,
     lifespan=lifespan,
 )
 

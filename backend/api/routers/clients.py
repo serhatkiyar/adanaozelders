@@ -7,12 +7,30 @@ from api.deps import require_roles_or_admin_permission
 from core.database import get_db
 from models.client import Client
 from models.role import RoleType
-from models.tutor import Gender
+from models.tutor import Gender, Tutor, TutorStatus
 from schemas.education import EducationOut
 from schemas.user import ClientPublicOut, ClientSearchOut
 from services import booking_service, client_service, education_service
 
 router = APIRouter(prefix="/clients", tags=["clients"])
+
+
+async def _approved_viewer(
+    user=Depends(require_roles_or_admin_permission("users.view", RoleType.TUTOR)),
+):
+    """Admin geçer; eğitmen YALNIZ onaylıysa (APPROVED) geçer.
+
+    Bu uçlar öğrencilerin ad-soyad, doğum tarihi ve cinsiyetini döndürüyor.
+    Rol kontrolü tek başına yeterli değildi: herkes TUTOR olarak kayıt olup
+    (DRAFT/PENDING durumda, admin onayı beklemeden) tüm öğrenci tabanını
+    sayfalayabiliyordu. Kitlenin bir kısmı reşit değil.
+    """
+    if isinstance(user, Tutor) and user.status != TutorStatus.APPROVED:
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            "Bu bilgiye yalnız onaylı eğitmenler erişebilir.",
+        )
+    return user
 
 
 @router.get("/search", response_model=list[ClientSearchOut])
@@ -23,7 +41,7 @@ async def search_clients(
     max_age: int | None = Query(default=None, ge=0, le=120),
     limit: int = Query(default=20, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
-    _viewer=Depends(require_roles_or_admin_permission("users.view", RoleType.TUTOR)),
+    _viewer=Depends(_approved_viewer),
     db: AsyncSession = Depends(get_db),
 ):
     return await client_service.search_clients(
@@ -41,7 +59,7 @@ async def search_clients(
 @router.get("/{client_id}", response_model=ClientPublicOut)
 async def get_client_public(
     client_id: int,
-    _viewer=Depends(require_roles_or_admin_permission("users.view", RoleType.TUTOR)),
+    _viewer=Depends(_approved_viewer),
     db: AsyncSession = Depends(get_db),
 ):
     client = await db.get(Client, client_id)

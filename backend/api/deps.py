@@ -167,6 +167,30 @@ async def get_current_approved_tutor(
     return tutor
 
 
+async def get_current_active_operator(
+    operator: LibraryOperator = Depends(require_roles(RoleType.LIBRARY_OPERATOR)),
+    db: AsyncSession = Depends(get_db),
+) -> LibraryOperator:
+    """Kütüphanesi admin onayından geçmiş (ACTIVE) operatör.
+
+    Self-servis kayıt (``POST /libraries/register``) anında oturum açtığı için
+    rol kontrolü tek başına yetmez: onay beklemekte olan (PENDING) — ya da
+    reddedilmiş/askıya alınmış — bir kütüphanenin operatörü de geçerli bir
+    LIBRARY_OPERATOR token'ına sahiptir. Onaya bağlı yüzeyler bunu kullanmalı.
+    """
+    from models.library import Library, LibraryStatus
+
+    lib = await db.get(Library, operator.library_id)
+    if lib is None or lib.deleted_at is not None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Kütüphane bulunamadı")
+    if lib.status != LibraryStatus.ACTIVE.value:
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            "Kütüphaneniz henüz onaylanmadı; bu işlem onaydan sonra kullanılabilir.",
+        )
+    return operator
+
+
 def user_rate_limit(*, key: str, limit: int, window_seconds: int):
     """Kullanıcı (role_id+user_id) bazlı fixed-window limiter — kimlik doğrulamalı
     yazma uçları için (booking/mesaj/qa/demand/review/ödeme). IP bazlı limiter'ın

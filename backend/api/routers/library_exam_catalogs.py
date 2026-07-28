@@ -6,6 +6,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api.deps import require_admin_permission, require_roles, require_roles_or_admin_permission
 from core.database import get_db
 from models.admin import Admin
+from models.library import Library, LibraryStatus
+from models.library_operator import LibraryOperator
 from models.role import RoleType
 from schemas.library_exam_catalog import CatalogCreate, CatalogOut, CatalogUpdate
 from services import audit_service, library_exam_catalog_service
@@ -35,12 +37,37 @@ async def _read_answer_key(file: UploadFile) -> bytes:
 # NOT: /{catalog_id} route'larından ÖNCE tanımlı olmalı.
 
 
-@router.get("/usable", response_model=list[CatalogOut])
-async def list_usable_catalogs(
-    _user=Depends(require_roles_or_admin_permission("catalogs.view", RoleType.LIBRARY_OPERATOR)),
+async def _usable_viewer(
+    user=Depends(require_roles_or_admin_permission("catalogs.view", RoleType.LIBRARY_OPERATOR)),
     db: AsyncSession = Depends(get_db),
 ):
-    return await library_exam_catalog_service.list_usable(db)
+    """Admin geçer; operatör YALNIZ kütüphanesi ACTIVE ise geçer.
+
+    Self-servis kayıt anında LIBRARY_OPERATOR token'ı verdiğinden, rol kontrolü
+    tek başına herkesin katalog listesine ulaşmasına izin verirdi.
+    """
+    if isinstance(user, LibraryOperator):
+        lib = await db.get(Library, user.library_id)
+        if lib is None or lib.deleted_at is not None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Kütüphane bulunamadı")
+        if lib.status != LibraryStatus.ACTIVE.value:
+            raise HTTPException(
+                status.HTTP_403_FORBIDDEN,
+                "Kütüphaneniz henüz onaylanmadı; katalogları onaydan sonra görebilirsiniz.",
+            )
+    return user
+
+
+@router.get("/usable", response_model=list[CatalogOut])
+async def list_usable_catalogs(
+    user=Depends(_usable_viewer),
+    db: AsyncSession = Depends(get_db),
+):
+    # Cevap anahtarı URL'i operatöre VERİLMEZ (yalnız "var mı" bilgisi); admin
+    # küratör listesinde (`GET ""`) görünür. Bkz. list_usable(include_answer_key).
+    return await library_exam_catalog_service.list_usable(
+        db, include_answer_key=isinstance(user, Admin)
+    )
 
 
 # ── Admin küratör CRUD ───────────────────────────────────────────────────────────

@@ -21,9 +21,24 @@ from models.library_exam_catalog import LibraryExamCatalog
 from schemas.library_exam_catalog import CatalogCreate, CatalogOut, CatalogUpdate
 
 
-def _to_out(cat: LibraryExamCatalog, *, session_count: int = 0) -> CatalogOut:
+def _to_out(
+    cat: LibraryExamCatalog,
+    *,
+    session_count: int = 0,
+    include_answer_key: bool = True,
+) -> CatalogOut:
+    """``include_answer_key=False`` cevap anahtarı URL'ini çıktıdan düşürür.
+
+    Dosya public-read bucket'ta durduğundan URL'i görmek = anahtarı indirmek
+    demektir. Operatöre yalnız "anahtar yüklenmiş mi" bilgisi gider; gerçek
+    bağlantı admin küratör listesinde kalır (oturum yayınlandıktan sonra
+    öğrenciye ayrıca `library_exam_service` üzerinden açılır).
+    """
     out = CatalogOut.model_validate(cat)
     out.has_answer_key_data = bool(cat.answer_key_data)
+    out.has_answer_key = bool(cat.answer_key_url)
+    if not include_answer_key:
+        out.answer_key_url = None
     out.session_count = session_count
     return out
 
@@ -142,8 +157,14 @@ async def set_answer_key(
 # ── Oturum oluştururken kullanılabilir kataloglar (admin / operatör) ─────────────
 
 
-async def list_usable(db: AsyncSession) -> list[CatalogOut]:
-    """Oturum açarken seçilebilecek public kataloglar (operatör + admin)."""
+async def list_usable(
+    db: AsyncSession, *, include_answer_key: bool = False
+) -> list[CatalogOut]:
+    """Oturum açarken seçilebilecek public kataloglar (operatör + admin).
+
+    Varsayılan olarak cevap anahtarı URL'i DÖNMEZ — bu listeyi operatör de
+    çeker ve anahtarın sızması denemenin bütünlüğünü bozar.
+    """
     cats = (
         await db.execute(
             select(LibraryExamCatalog)
@@ -158,4 +179,11 @@ async def list_usable(db: AsyncSession) -> list[CatalogOut]:
         )
     ).scalars().all()
     counts = await _session_counts(db, [c.id for c in cats])
-    return [_to_out(c, session_count=counts.get(c.id, 0)) for c in cats]
+    return [
+        _to_out(
+            c,
+            session_count=counts.get(c.id, 0),
+            include_answer_key=include_answer_key,
+        )
+        for c in cats
+    ]

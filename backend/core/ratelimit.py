@@ -9,6 +9,7 @@ sorunu yüzünden girişleri tamamen kesmez.
 """
 from __future__ import annotations
 
+import ipaddress
 import logging
 
 import redis.asyncio as aioredis
@@ -31,12 +32,48 @@ def _redis() -> aioredis.Redis | None:
     return _client
 
 
+def _is_trusted_proxy(peer: str | None) -> bool:
+    """Bağlantının doğrudan geldiği adres güvenilir proxy listesinde mi?
+
+    ``TRUSTED_PROXY_IPS`` tek adres ("127.0.0.1"), CIDR ("172.16.0.0/12") veya
+    "*" (her bağlantıya güven — yalnız proxy'nin dışarıdan erişilemediği
+    dağıtımlarda) içerebilir. Liste boşsa hiçbir peer güvenilir değildir.
+    """
+    trusted = settings.TRUSTED_PROXY_IPS
+    if not trusted or peer is None:
+        return False
+    if "*" in trusted:
+        return True
+    try:
+        addr = ipaddress.ip_address(peer)
+    except ValueError:
+        return False
+    for entry in trusted:
+        try:
+            if addr in ipaddress.ip_network(entry, strict=False):
+                return True
+        except ValueError:
+            continue
+    return False
+
+
 def _client_ip(request: Request) -> str:
-    # Proxy arkasında ise ilk X-Forwarded-For; yoksa doğrudan bağlantı IP'si.
-    forwarded = request.headers.get("x-forwarded-for")
-    if forwarded:
-        return forwarded.split(",")[0].strip()
-    return request.client.host if request.client else "unknown"
+    """Rate-limit kovası için istemci IP'si.
+
+    X-Forwarded-For YALNIZCA bağlantı güvenilir bir proxy'den geliyorsa okunur.
+    Aksi halde herkes kendi IP'sini uydurup her istekte yeni bir kova açar ve
+    IP bazlı limitlerin tamamı (login brute-force dahil) etkisiz kalır.
+    """
+    peer = request.client.host if request.client else None
+    if _is_trusted_proxy(peer):
+        forwarded = request.headers.get("x-forwarded-for")
+        if forwarded:
+            # Zincirin EN SAĞDAKİ güvenilmeyen adresi gerçek istemcidir; tek
+            # proxy varsayımıyla ilk değer yeterli (proxy kendi ekini sona koyar).
+            client = forwarded.split(",")[0].strip()
+            if client:
+                return client
+    return peer or "unknown"
 
 
 async def enforce(*, bucket: str, limit: int, window_seconds: int) -> None:
