@@ -1,4 +1,6 @@
-FROM python:3.11-slim
+# Python sürümü CI ve geliştirme ortamıyla AYNI olmalı: farklı sürüm,
+# testlerin doğruladığı davranışın üretimde geçerli olmadığı anlamına gelir.
+FROM python:3.12-slim
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \

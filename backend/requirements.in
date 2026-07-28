@@ -1,0 +1,46 @@
+# Dogrudan bagimliliklar - TEK dogruluk kaynagi.
+#
+# `requirements.txt` bundan uretilir ve TUM bagimliliklari (transitive dahil)
+# tam surumle kilitler:
+#
+#     pip-compile requirements.in -o requirements.txt
+#
+# Neden: surumler `>=` ile acik birakildiginda ayni `docker build` iki ayri gun
+# iki farkli imaj uretir ve bir kirilma ilk kez CANLIDA gorunur. Ayrica
+# gelistirme makinesinde kurulu surumler pin'lerden ileri gitmisti
+# (fastapi 0.115.6 pin vs 0.137.2 kurulu) - yani testler hicbir zaman uretimde
+# kosacak surumlerle kosmamisti.
+#
+# Surum yukseltmek icin: buradaki siniri degistir, pip-compile'i yeniden calistir,
+# testleri kostur.
+
+# ── Web catisi ──
+fastapi==0.137.2
+uvicorn[standard]==0.34.0
+python-multipart==0.0.32
+
+# ── Veri katmani ──
+sqlalchemy[asyncio]==2.0.47
+asyncpg==0.31.0
+alembic==1.18.4
+
+# ── Dogrulama / ayarlar ──
+pydantic==2.13.4
+pydantic-settings==2.14.1
+email-validator==2.2.0
+
+# ── Kimlik / kripto ──
+pyjwt==2.13.0
+bcrypt==4.2.1
+# Alan-duzeyi sifreleme (TCKN at-rest) - core/crypto.py
+cryptography==46.0.7
+
+# ── Altyapi istemcileri ──
+redis==5.2.1
+aioboto3==15.5.0
+httpx==0.28.1
+aiosmtplib==5.1.0
+Pillow==12.2.0
+
+# ── Gozlemlenebilirlik ──
+sentry-sdk==2.61.0
