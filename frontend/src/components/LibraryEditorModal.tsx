@@ -2,7 +2,8 @@ import { useState } from "react";
 import { MapPicker } from "@/components/MapPicker";
 import { LibraryMediaManager } from "@/components/LibraryMediaManager";
 import { useCreateLibrary, useUpdateLibrary } from "@/hooks/useLibraries";
-import { AMENITY_OPTIONS, amenityTiClass, amenityLabel } from "@/lib/amenities";
+import { AMENITY_OPTIONS, amenityLabel } from "@/lib/amenities";
+import { amenityIcon } from "@/lib/amenityIcons";
 import {
   WEEKDAY_LABELS,
   hhmmToMinute,
@@ -343,7 +344,7 @@ export function LibraryEditorModal({
                         : "bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300"
                     }`}
                   >
-                    <span><i className={amenityTiClass(a)}></i></span>
+                    <span>{(() => { const I = amenityIcon(a); return <I size={14} stroke={1.75} aria-hidden />; })()}</span>
                     {amenityLabel(a)}
                   </button>
                 );

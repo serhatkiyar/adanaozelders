@@ -13,7 +13,8 @@ import { getErrorMessage } from "@/lib/errors";
 import { toast } from "@/store/toastStore";
 import { useSurfaceStore } from "@/store/surfaceStore";
 import { Seo } from "@/components/Seo";
-import { AMENITY_OPTIONS, amenityTiClass, amenityLabel } from "@/lib/amenities";
+import { AMENITY_OPTIONS, amenityLabel } from "@/lib/amenities";
+import { amenityIcon } from "@/lib/amenityIcons";
 import { ROLE_IDS } from "@/types";
 import { CategoryBar } from "@/components/CategoryBar";
 import { BigSearch, CompactSearch } from "@/components/HeroSearch";
@@ -259,7 +260,7 @@ export default function Libraries() {
           onClick={() => toggleAmenity(a)}
           className="shrink-0 inline-flex items-center gap-1.5 rounded-full border border-indigo-200 bg-indigo-50 px-3.5 py-1.5 text-sm font-medium text-indigo-700 transition hover:bg-indigo-100 dark:border-indigo-500/40 dark:bg-indigo-500/10 dark:text-indigo-300"
         >
-          <i className={amenityTiClass(a)} aria-hidden="true"></i>
+          {(() => { const I = amenityIcon(a); return <I size={14} stroke={1.75} aria-hidden />; })()}
           {amenityLabel(a)}
           <span aria-hidden className="ml-0.5 text-xs">✕</span>
         </button>
@@ -396,7 +397,7 @@ export default function Libraries() {
                             : "bg-slate-50 text-slate-600 ring-1 ring-slate-200 hover:bg-slate-100 dark:bg-slate-900 dark:text-slate-300 dark:ring-slate-700 dark:hover:bg-slate-800"
                         }`}
                       >
-                        <i className={amenityTiClass(a)} aria-hidden="true"></i>
+                        {(() => { const I = amenityIcon(a); return <I size={14} stroke={1.75} aria-hidden />; })()}
                         {amenityLabel(a)}
                       </button>
                     );

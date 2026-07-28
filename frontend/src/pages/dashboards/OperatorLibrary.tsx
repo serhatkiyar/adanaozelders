@@ -15,7 +15,8 @@ import {
 } from "@/components/LibraryEditorModal";
 import { useOperatorMe } from "@/hooks/useLibraryExams";
 import { useLibraryAdminDetail, useUpdateLibrary } from "@/hooks/useLibraries";
-import { AMENITY_OPTIONS, amenityLabel, amenityTiClass } from "@/lib/amenities";
+import { AMENITY_OPTIONS, amenityLabel } from "@/lib/amenities";
+import { amenityIcon } from "@/lib/amenityIcons";
 import {
   WEEKDAY_LABELS,
   formatHoursLine,
@@ -644,7 +645,7 @@ function AmenitiesSection({ lib }: { lib: LibraryDetailOut }) {
                       : "bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300"
                   }`}
                 >
-                  <i className={amenityTiClass(a)} />
+                  {(() => { const I = amenityIcon(a); return <I size={14} stroke={1.75} aria-hidden />; })()}
                   {amenityLabel(a)}
                 </button>
               );

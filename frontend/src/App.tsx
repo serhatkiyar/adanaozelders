@@ -296,10 +296,17 @@ function App() {
           <Route path={PATHS.refundPolicy} element={<LegalPage doc="refund" />} />
           <Route path={PATHS.cookiePolicy} element={<LegalPage doc="cookies" />} />
 
-          {/* ── Geliştirme prototipi (oturum gerektirmez) ── */}
-          <Route path="/test-bilet" element={<TicketTearTest />} />
-          <Route path="/test-canli-ders" element={<TestLiveLesson />} />
-          <Route path="/test-kutuphane-karti" element={<LibraryCardTest />} />
+          {/* ── Geliştirme prototipleri ──
+              YALNIZ dev sunucusunda. Üretimde bu rotalar kimlik doğrulamasız
+              açıktı ve robots.txt'te dışlanmadığından indekslenebiliyordu;
+              LibraryCardTest gerçek arama API'sini de çağırıyor. */}
+          {import.meta.env.DEV && (
+            <>
+              <Route path="/test-bilet" element={<TicketTearTest />} />
+              <Route path="/test-canli-ders" element={<TestLiveLesson />} />
+              <Route path="/test-kutuphane-karti" element={<LibraryCardTest />} />
+            </>
+          )}
 
           {/* ── Kimlik: giriş yapmış kullanıcı kök workspace'ine yönlendirilir ── */}
           <Route element={<PublicRoute />}>

@@ -162,8 +162,59 @@ def _to_search_out(
 # ── Kategori ─────────────────────────────────────────────────────────────────────
 
 
+def rollup_category_counts(
+    rows: list[tuple[int | None, int]], parents: dict[int, int | None]
+) -> dict[int, int]:
+    """Yaprak ürün sayılarını üst kategorilere toplar (saf; pytest'li).
+
+    Ürünler YAPRAK kategorilere atanır ("YKS Kitapları"), oysa gezinme üst
+    kategoriden başlar ("Sınav Kitapları"). Toplama yapılmazsa üst kategoriler
+    mega-menüde 0 görünür ve tıklanmaz.
+
+    ``parents``: kategori id → üst id (kök için None). Döngüye karşı korumalı.
+    """
+    counts: dict[int, int] = {}
+    for cat_id, n in rows:
+        if cat_id is None:
+            continue
+        seen: set[int] = set()
+        node: int | None = cat_id
+        # Kendisi + tüm ataları: her seviyeye ekle.
+        while node is not None and node not in seen:
+            seen.add(node)
+            counts[node] = counts.get(node, 0) + int(n)
+            node = parents.get(node)
+    return counts
+
+
+async def _category_and_descendants(db: AsyncSession, category_id: int) -> list[int]:
+    """Kategori + tüm alt kategorileri (recursive CTE).
+
+    Model bugün iki seviyeli ama sorgu derinlikten bağımsız yazıldı: üçüncü
+    seviye eklenirse filtre sessizce eksik sonuç vermeye başlamasın.
+    """
+    base = (
+        select(ProductCategory.id)
+        .where(
+            ProductCategory.id == category_id,
+            ProductCategory.deleted_at.is_(None),
+        )
+        .cte("cat_tree", recursive=True)
+    )
+    child = select(ProductCategory.id).where(
+        ProductCategory.parent_id == base.c.id,
+        ProductCategory.deleted_at.is_(None),
+    )
+    tree = base.union_all(child)
+    ids = (await db.execute(select(tree.c.id))).scalars().all()
+    return list(ids) or [category_id]
+
+
 async def list_categories(db: AsyncSession) -> list[ProductCategoryOut]:
-    """Kategori ağacı + her kategorideki aktif ürün sayısı (mega-menü)."""
+    """Kategori ağacı + her kategorideki aktif ürün sayısı (mega-menü).
+
+    Sayılar alt kategorilerden yukarı TOPLANIR (bkz. rollup_category_counts).
+    """
     cats = (
         await db.execute(
             select(ProductCategory)
@@ -171,19 +222,19 @@ async def list_categories(db: AsyncSession) -> list[ProductCategoryOut]:
             .order_by(ProductCategory.sort_order, ProductCategory.name)
         )
     ).scalars().all()
-    counts = dict(
-        (
-            await db.execute(
-                select(Product.category_id, func.count())
-                .where(
-                    Product.deleted_at.is_(None),
-                    Product.status == ProductStatus.ACTIVE.value,
-                    Product.category_id.isnot(None),
-                )
-                .group_by(Product.category_id)
+    rows = (
+        await db.execute(
+            select(Product.category_id, func.count())
+            .where(
+                Product.deleted_at.is_(None),
+                Product.status == ProductStatus.ACTIVE.value,
+                Product.category_id.isnot(None),
             )
-        ).all()
-    )
+            .group_by(Product.category_id)
+        )
+    ).all()
+    parents = {c.id: c.parent_id for c in cats}
+    counts = rollup_category_counts([(cid, n) for cid, n in rows], parents)
     return [
         ProductCategoryOut(
             id=c.id,
@@ -274,7 +325,13 @@ async def search_products(
         )
     )
     if category_id is not None:
-        stmt = stmt.where(Product.category_id == category_id)
+        # Üst kategori seçilince alt kategorilerdeki ürünler de gelmeli.
+        # Tam eşitlik kullanıldığında ("Sınav Kitapları" gibi) hiçbir üst
+        # kategori ürün göstermiyordu: ürünler yaprak kategorilere atanır
+        # (seed_kitapsec.py) ama gezinme üst kategoriden başlar.
+        stmt = stmt.where(
+            Product.category_id.in_(await _category_and_descendants(db, category_id))
+        )
     if tutor_id is not None:
         stmt = stmt.where(Product.tutor_id == tutor_id)
     if kind:
