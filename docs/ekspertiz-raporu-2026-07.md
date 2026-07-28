@@ -383,11 +383,11 @@ fazlı iade, reconciler kapsamı.*
   cron'u, ilk `restore-drill.sh` provası.
 
 **Hafta 4 — Yasal + SEO + canlı hata**
-18. Kategori filtresi düzeltmesi (recursive CTE) — *2 saat, en ucuz kazanç*
-19. `Product.tax_rate` + `OrderItem` KDV snapshot'ı · fiyat geçmişi tablosu
-20. `user_consents` tablosu + `legalContent.ts`'e `version`
-21. Hesap silme/anonimleştirme + veri indirme
-22. **`OrderReturn` bloğu — tek seferde** (Hafta 2 madde 11'den devreden kısmi iade
+18. ✅ Kategori filtresi düzeltildi (recursive CTE + sayaç toplama) — *commit `c29bf48`*
+19. ✅ `Product.tax_rate` + `OrderItem` KDV snapshot'ı · fiyat geçmişi — *commit `c9beb26`*
+20. ✅ `user_consents` tablosu + `currentConsentVersion()` — *commit `c9beb26`*
+21. ✅ Hesap silme/anonimleştirme + veri indirme — *commit `c9beb26`*
+22. ✅ **`OrderReturn` bloğu — TAMAMLANDI** *(commit `e008cba`)* (Hafta 2 madde 11'den devreden kısmi iade
     burada birleşti; ikisi de aynı modele ve aynı admin ekranına dokunuyor):
     (a) cayma hakkını ret'siz akışa ayır (`OrderReturn.type`: `CAYMA` otomatik onaylı
     — 14 gün koşulsuzdur, satıcının ret yetkisi yok — vs. `AYIPLI/DIGER` onay akışı);
@@ -401,7 +401,7 @@ fazlı iade, reconciler kapsamı.*
     — **`react-router` v6→v7 yükseltmesiyle birlikte** (Hafta 1'den devreden madde; ikisi de
     router'a dokunuyor, tek seferde test edilmeli)
 25. Public rotalar için prerender
-26. 5 ikonu WebP'ye indir · Tabler CDN'i sil · test rotalarını `DEV` arkasına al
+26. ✅ İkonlar WebP (4,21 MB→19 KB) · Tabler CDN→tree-shakeable npm · test rotaları `DEV` arkasında — *commit `c29bf48`*
 27. Hakediş kararı: marketplace'i kıs **veya** "ödenecekler" raporu
 28. ETBİS başvurusu + e-Arşiv (paralel süreç — şirket tesciline bağlı)
 
