@@ -261,6 +261,11 @@ class Factory:
     async def cleanup(self) -> None:
         async with AsyncSessionLocal() as s:
             stmts = [
+                # Ders/ödeme kayıtları: eğitmen silinmeden önce temizlenmeli (FK).
+                ("DELETE FROM payments WHERE booking_id IN "
+                 "(SELECT id FROM bookings WHERE tutor_id = ANY(:t) OR client_id = ANY(:c))", None),
+                ("DELETE FROM bookings WHERE tutor_id = ANY(:t) OR client_id = ANY(:c)", None),
+                ("DELETE FROM payout_records WHERE payee_id = ANY(:t) AND payee_type = 'TUTOR'", None),
                 ("DELETE FROM order_return_items WHERE return_id IN "
                  "(SELECT id FROM order_returns WHERE order_id = ANY(:o))", "o"),
                 ("DELETE FROM order_returns WHERE order_id = ANY(:o)", "o"),

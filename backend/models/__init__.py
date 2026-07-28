@@ -59,6 +59,7 @@ from models.study_reservation import StudyReservation
 from models.notification import Notification
 from models.outbox import OutboxEvent, OutboxStatus
 from models.payment import Payment, PaymentStatus
+from models.payout import PayeeType, PayoutRecord
 from models.qa import QAMessage, QAStatus, QAThread
 from models.refresh_token import RefreshToken
 from models.reminder import TaskReminder
@@ -188,6 +189,8 @@ __all__ = [
     "Payment",
     "PaymentStatus",
     "UserConsent",
+    "PayeeType",
+    "PayoutRecord",
     "Product",
     "ProductPriceHistory",
     "ProductCategory",

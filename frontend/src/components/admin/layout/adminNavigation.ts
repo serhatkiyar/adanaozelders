@@ -16,6 +16,14 @@ export interface AdminNavItem {
 
 export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
   {
+    label: "Hakedişler",
+    to: ROUTES.adminPayouts,
+    group: "Ticaret",
+    description: "Eğitmen ve kütüphanelere ödenecek tutarlar; yapılan havaleleri kaydedin.",
+    icon: "store",
+    requiredPermission: "payments.view",
+  },
+  {
     label: "Genel Bakış",
     to: ROUTES.admin,
     group: "Platform",

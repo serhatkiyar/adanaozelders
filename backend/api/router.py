@@ -23,6 +23,7 @@ from api.routers import (
     messages,
     notifications,
     payments,
+    payouts,
     payout,
     qa,
     reports,
@@ -66,6 +67,7 @@ api_router.include_router(notifications.router)
 api_router.include_router(messages.router)
 api_router.include_router(leaderboard.router)
 api_router.include_router(payments.router)
+api_router.include_router(payouts.router)
 api_router.include_router(payout.router)
 api_router.include_router(reports.router)
 api_router.include_router(store.router)

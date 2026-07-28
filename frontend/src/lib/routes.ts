@@ -127,6 +127,7 @@ export const PATHS = {
   adminNameChanges: "/yonetim/ad-degisiklikleri",
   adminReports: "/yonetim/moderasyon/sikayetler",
   adminAuditLogs: "/yonetim/denetim-kayitlari",
+  adminPayouts: "/yonetim/hakedisler",
   adminAccess: "/yonetim/yetkiler",
 } as const;
 
@@ -229,6 +230,7 @@ export const ROUTES = {
   adminNameChanges: PATHS.adminNameChanges,
   adminReports: PATHS.adminReports,
   adminAuditLogs: PATHS.adminAuditLogs,
+  adminPayouts: PATHS.adminPayouts,
   adminAccess: PATHS.adminAccess,
 } as const;
 
