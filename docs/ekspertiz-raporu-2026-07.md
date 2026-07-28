@@ -354,14 +354,33 @@ Kubernetes/Terraform, Elasticsearch, Prometheus/Grafana. Bu ölçekte hepsi net 
 escrow disiplininde: atomik claim, token binding, paidPrice doğrulaması, iki
 fazlı iade, reconciler kapsamı.*
 
-**Hafta 3 — İşletme katmanı** ← *sıradaki*
-14. Caddy + TLS + güvenlik başlıkları + gzip · **prod compose: `:-change-this-*` / `minioadmin` /
-    `postgres` fallback'lerini kaldır** (env eksikse compose hata versin) · non-root
-    konteyner + healthcheck + `restart: unless-stopped`
-15. Yedekleme + **geri yükleme provası** (provası yapılmamış yedek yedek değildir)
-16. Sentry (backend + frontend) · Plausible · UptimeRobot
-17. CI'ya Postgres servisi (62 entegrasyon testi koşsun) + boş DB'ye `alembic upgrade head` +
-    `ruff` + `pip-audit`; bağımlılıkları `pip-compile` ile kilitle, Python sürümünü eşitle
+**Hafta 3 — İşletme katmanı — ✅ TAMAMLANDI (kod tarafı)**
+*(commit'ler `c8b5cdf`, `2f1054f`; 28 Tem 2026)*
+14. ✅ `devops/Caddyfile` (otomatik Let's Encrypt, HSTS + güvenlik başlıkları) ·
+    `docker-compose.prod.yml` (fallback YOK — eksik env'de compose hata verir; hiçbir
+    servis portu host'a yayılmaz) · backend imajı non-root + healthcheck ·
+    nginx gzip + `index.html` no-cache · `.env.prod.example`
+15. ✅ `scripts/backup-postgres.sh` (pg_dump + MinIO mirror + restic/B2, bozuk dump
+    doğrulaması) · `scripts/restore-drill.sh` (geçici DB'ye geri yükleme provası)
+16. ✅ Sentry frontend'e bağlandı (opt-in; URL'lerdeki token/OTP parametreleri
+    maskeleniyor — hata paneli oturum anahtarı deposuna dönmesin). Backend zaten hazırdı.
+17. ✅ CI: **postgres:16 servisi** (62 entegrasyon testi artık koşuyor) + boş DB'ye
+    `alembic upgrade head` + `alembic check` + `ruff` + `pip-audit`/`npm audit`
+    ⚠️ **`alembic check` gerçek bir bug ortaya çıkardı:** `migrations/env.py` `models`
+    paketini import etmiyordu → `Base.metadata` şemanın yarısını görmüyor, autogenerate
+    eksik/yanlış migration üretebiliyordu. Düzeltildi.
+    ✅ `ruff.toml`: 1421 uyarı → 0 (dar kural seti; ignore'lar gerekçeli)
+
+**Hafta 3'ten devreden**
+- **Bağımlılık kilitleme** (`pip-compile`) + dev/prod Python sürümünü eşitleme.
+  Dev ortamında kurulu sürümler pin'lerden ileride (fastapi 0.137.2 vs pin 0.115.6;
+  dev Python 3.12.3 vs Docker 3.11) — yani **282 test hiçbir zaman üretimde koşacak
+  sürümlerle koşmadı.** Pin'leri hangi yöne hizalayacağı (ileri mi, geri mi) davranış
+  değişikliği riski taşıdığından ayrı ve dikkatli bir iş; CI'daki `pip-audit`
+  `continue-on-error` da bu kapanınca sertleştirilmeli.
+- **Uygulama adımları** (kod değil, operasyon): sunucu kurulumu, DNS, `.env.prod`
+  doldurma, Sentry DSN alma, UptimeRobot'a `/health` ekleme, `backup-postgres.sh`
+  cron'u, ilk `restore-drill.sh` provası.
 
 **Hafta 4 — Yasal + SEO + canlı hata**
 18. Kategori filtresi düzeltmesi (recursive CTE) — *2 saat, en ucuz kazanç*
