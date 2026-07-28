@@ -396,7 +396,9 @@ fazlı iade, reconciler kapsamı.*
     *Not: `escrow.refund_escrow` idempotency'si "sağlayıcı ikinci tam iadeyi reddeder"
     varsayımına yaslanıyor — kısmi iade bunu kırar, `refund_attempts` kaydı şart
     (kolon Hafta 2'de eklendi).*
-23. `/iletisim` + `/sss` + canlı sohbet widget'ı
+23. ✅ `/iletisim` + `/sss` — *commit `43981f3`*. Canlı sohbet widget'ı **bilinçli olarak
+    eklenmedi**: üçüncü taraf script çerez kullanır ve çerezsiz analitik tercihini bozup
+    çerez onay bandını zorunlu hale getirir (bkz. madde 20). Ayrı bir karar olarak ele alınmalı.
 24. Dinamik `GET /sitemap.xml` + `robots.txt`'e `Sitemap:` + liste sayfalarına `?sayfa=N` linkleri
     — **`react-router` v6→v7 yükseltmesiyle birlikte** (Hafta 1'den devreden madde; ikisi de
     router'a dokunuyor, tek seferde test edilmeli)
