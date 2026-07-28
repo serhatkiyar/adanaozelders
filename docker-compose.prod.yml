@@ -1,0 +1,125 @@
+# Adana Özel Ders — ÜRETİM compose'u.
+#
+# Geliştirme dosyasından (docker-compose.yml) üç temel farkı vardır:
+#
+#   1. `:-varsayilan` FALLBACK YOKTUR. Bir env eksikse compose hata verir.
+#      Geliştirmedeki `JWT_SECRET_KEY:-change-this-...` benzeri fallback'ler
+#      üretime taşınırsa JWT forge edilebilir hale gelir (herkes admin token'ı
+#      üretir) — bu yüzden burada değişkenler `${VAR:?...}` ile ZORUNLUDUR.
+#   2. Hiçbir servis portu host'a yayınlanmaz. Postgres/Redis/MinIO yalnız iç
+#      ağdadır; dışarıya açılan tek şey Caddy'nin 80/443'üdür.
+#   3. MailHog yoktur; e-posta gerçek SMTP'ye gider (guard `EMAIL_PROVIDER=console`
+#      olmasını zaten reddeder).
+#
+# Kullanım:
+#   cp .env.prod.example .env.prod && nano .env.prod      # sırları doldur
+#   docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
+#   docker compose -f docker-compose.prod.yml --env-file .env.prod \
+#       run --rm backend python -m alembic upgrade head   # migration AYRI adım
+#
+# Yedekleme: scripts/backup-postgres.sh (cron ile günlük).
+
+name: adana-ozel-ders-prod
+
+services:
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN:?DOMAIN gerekli (ör. adanaozelders.com.tr)}
+      ACME_EMAIL: ${ACME_EMAIL:?ACME_EMAIL gerekli (Let's Encrypt bildirimleri)}
+    volumes:
+      - ./devops/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data      # sertifikalar — SİLMEYİN, oran sınırına takılırsınız
+      - caddy_config:/config
+      - caddy_logs:/var/log/caddy
+    depends_on:
+      - backend
+      - frontend
+
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER gerekli}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD gerekli}
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB gerekli}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    # Kalıcılık: rate-limit sayaçları kaybolabilir ama token denylist'i
+    # (logout edilmiş oturumlar) kaybolmamalı — AOF ile diske yazılır.
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+  minio:
+    image: minio/minio:latest
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${AWS_ACCESS_KEY_ID:?AWS_ACCESS_KEY_ID gerekli}
+      MINIO_ROOT_PASSWORD: ${AWS_SECRET_ACCESS_KEY:?AWS_SECRET_ACCESS_KEY gerekli}
+    volumes:
+      - miniodata:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend
+    restart: unless-stopped
+    env_file:
+      - .env.prod
+    environment:
+      # Guard'ın açılışta doğruladığı değerler (bkz. core/config.py::_guard_production).
+      ENVIRONMENT: production
+      AUTO_CREATE_DB: "False"
+      SEED_DEMO_DATA: "False"
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      REDIS_URL: redis://redis:6379/0
+      AWS_ENDPOINT_URL: http://minio:9000
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        # Aynı origin: Caddy /api/* yolunu backend'e proxy'ler.
+        VITE_API_BASE_URL: /api/v1
+        VITE_SITE_URL: https://${DOMAIN}
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  redisdata:
+  miniodata:
+  caddy_data:
+  caddy_config:
+  caddy_logs:

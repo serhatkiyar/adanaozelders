@@ -2,7 +2,11 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { HelmetProvider } from "react-helmet-async";
 import App from "@/App";
+import { initMonitoring } from "@/lib/monitoring";
 import "@/index.css";
+
+// Hata izleme mümkün olduğunca erken başlar (VITE_SENTRY_DSN yoksa no-op).
+initMonitoring();
 
 // Flash önle: kayıtlı tema tercihini render'dan önce uygula.
 try {

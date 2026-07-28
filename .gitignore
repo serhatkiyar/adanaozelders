@@ -2,6 +2,14 @@ node_modules/
 __pycache__/
 *.pyc
 .env
+# Üretim sırları — .env kalıbı bu adları KAPSAMAZ, açıkça yazılmalı.
+.env.prod
+.env.production
+.env.*.local
+!.env.prod.example
+# Test kapsama çıktısı
+.coverage
+htmlcov/
 .venv/
 venv/
 env/

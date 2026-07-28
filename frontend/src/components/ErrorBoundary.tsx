@@ -1,4 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
+import { reportError } from "@/lib/monitoring";
 
 interface Props {
   children: ReactNode;
@@ -22,6 +23,9 @@ export class ErrorBoundary extends Component<Props, State> {
   componentDidCatch(error: Error, info: ErrorInfo) {
     // Geliştirme/üretimde teşhis için konsola yaz (sessizce yutma).
     console.error("Yakalanmamış UI hatası:", error, info);
+    // Canlıda konsol kimsenin görmediği yerdir: hatayı izleme servisine de
+    // gönder (DSN yoksa no-op).
+    reportError(error, { componentStack: info.componentStack });
   }
 
   private handleReload = () => {
