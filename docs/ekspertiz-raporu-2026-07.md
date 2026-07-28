@@ -336,15 +336,25 @@ Kubernetes/Terraform, Elasticsearch, Prometheus/Grafana. Bu ölçekte hepsi net 
   guard artık üretimde bunları yakalıyor, yani akut risk kapandı. Fallback'lerin kaldırılması
   prod compose dosyasının yazılmasıyla aynı iş → **Hafta 3, madde 14**.
 
-**Hafta 2 — Sipariş para yolunu escrow'a bağla** ← *sıradaki*
-8. `ORDER_SPEC` + `escrow.claim` ile atomik PAID geçişi
-9. `complete_checkout`'a `token`/`paid_price` + `refund_unexpected_charge`
-10. `Order`'ı reconciler hedeflerine ekle
-11. `Order.REFUNDING` + iki fazlı iade; kısmi/kalem bazlı iade
-12. `coupon.redeem`'i koşullu UPDATE'e çevir
-13. **Bu 6 maddenin her biri için önce test yaz** — `order_service` %19'dan çıkmalı
+**Hafta 2 — Sipariş para yolunu escrow'a bağla — ✅ TAMAMLANDI**
+*(commit'ler `9f62464`, `91b53de`; 28 Tem 2026)*
+8. ✅ `ORDER_SPEC` + `escrow.claim` ile atomik PAID geçişi — `claim()` artık
+   `status_attr` alıyor (Order'da para durumu `payment_status` kolonunda)
+9. ✅ `complete_checkout`'a `token`/`paid_price` + `refund_unexpected_charge`;
+   replay'ler token kontrolünden önce düşüyor
+10. ✅ `Order` reconciler'da — hem kayıp callback taraması hem sarkan REFUNDING
+11. ✅ `Order.REFUNDING` + iki fazlı iade (migration `700ea951dfff`) ·
+    ⏭️ **kısmi/kalem bazlı iade Hafta 4'e taşındı** (madde 22 ile aynı modele
+    dokunuyor — tek migration, tek UI değişikliği)
+12. ✅ `coupon.redeem` limitleri kilit altında yeniden doğruluyor, bool dönüyor
+13. ✅ Her madde için test — 29 yeni test; `order_service` %19 → %23,
+    `coupon_service` %32 → %45, `escrow` %52 → %54
 
-**Hafta 3 — İşletme katmanı**
+*Sonuç: backend 352 / frontend 314 test geçiyor. Dört ödeme yüzeyi de artık aynı
+escrow disiplininde: atomik claim, token binding, paidPrice doğrulaması, iki
+fazlı iade, reconciler kapsamı.*
+
+**Hafta 3 — İşletme katmanı** ← *sıradaki*
 14. Caddy + TLS + güvenlik başlıkları + gzip · **prod compose: `:-change-this-*` / `minioadmin` /
     `postgres` fallback'lerini kaldır** (env eksikse compose hata versin) · non-root
     konteyner + healthcheck + `restart: unless-stopped`
@@ -358,7 +368,15 @@ Kubernetes/Terraform, Elasticsearch, Prometheus/Grafana. Bu ölçekte hepsi net 
 19. `Product.tax_rate` + `OrderItem` KDV snapshot'ı · fiyat geçmişi tablosu
 20. `user_consents` tablosu + `legalContent.ts`'e `version`
 21. Hesap silme/anonimleştirme + veri indirme
-22. Cayma hakkını ret'siz akışa ayır (`OrderReturn.type`)
+22. **`OrderReturn` bloğu — tek seferde** (Hafta 2 madde 11'den devreden kısmi iade
+    burada birleşti; ikisi de aynı modele ve aynı admin ekranına dokunuyor):
+    (a) cayma hakkını ret'siz akışa ayır (`OrderReturn.type`: `CAYMA` otomatik onaylı
+    — 14 gün koşulsuzdur, satıcının ret yetkisi yok — vs. `AYIPLI/DIGER` onay akışı);
+    (b) kalem bazlı kısmi iade (`OrderReturn.items` + `refund_amount`,
+    `_refund_payment`'a tutar parametresi, admin onayında kalem seçimi).
+    *Not: `escrow.refund_escrow` idempotency'si "sağlayıcı ikinci tam iadeyi reddeder"
+    varsayımına yaslanıyor — kısmi iade bunu kırar, `refund_attempts` kaydı şart
+    (kolon Hafta 2'de eklendi).*
 23. `/iletisim` + `/sss` + canlı sohbet widget'ı
 24. Dinamik `GET /sitemap.xml` + `robots.txt`'e `Sitemap:` + liste sayfalarına `?sayfa=N` linkleri
     — **`react-router` v6→v7 yükseltmesiyle birlikte** (Hafta 1'den devreden madde; ikisi de
