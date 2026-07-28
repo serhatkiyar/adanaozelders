@@ -682,10 +682,26 @@ async def _out_of_stock_refund(
     """Ödeme alındı ama stok (kilit altında) yetersiz → tam iade + iptal.
 
     Bu noktada henüz PAID'e geçilmedi: kupon tüketilmedi, stok düşülmedi — bu yüzden
-    geri-yükleme/kupon-serbest gerekmez, yalnız sağlayıcı iadesi + CANCELLED."""
-    await _provider_refund(order)
-    order.payment_status = "REFUNDED"
-    order.refunded_at = _now()
+    geri-yükleme/kupon-serbest gerekmez, yalnız sağlayıcı iadesi + CANCELLED.
+
+    İade yine iki fazlıdır (niyet önce commit edilir): tahsil edilmiş paranın
+    iadesi süreç ölürse kaybolmamalı. Kaynak durum PAID değil PENDING/FAILED'dır.
+    """
+    if not await escrow.begin_refund(
+        db, order, escrow.ORDER_SPEC, from_statuses=["PENDING", "FAILED"]
+    ):
+        logger.error(
+            "order %s: oversell iadesi claim edilemedi (durum=%s) — para hareketi "
+            "yapılmadı, elle inceleyin",
+            order.id, order.payment_status,
+        )
+        return
+    if not await escrow.perform_refund(db, order, escrow.ORDER_SPEC):
+        # REFUNDING'de bırakıldı; reconciler devralır. Sipariş yine iptal edilir.
+        logger.error(
+            "order %s: oversell iadesi sağlayıcıda tamamlanamadı — REFUNDING",
+            order.id,
+        )
     await order_fsm.transition_order(
         db,
         order,
@@ -1119,27 +1135,45 @@ async def _restock(db: AsyncSession, order: Order) -> None:
                 p.stock += item.quantity
 
 
-async def _provider_refund(order: Order) -> None:
-    """Sağlayıcı iadesini çağır; başarısızsa 502."""
-    provider = payments.get_payment_provider()
-    ok = await provider.refund(
-        provider_ref=order.provider_ref, amount=Decimal(str(order.total))
-    )
-    if not ok:
-        raise HTTPException(status.HTTP_502_BAD_GATEWAY, "Sağlayıcı iadesi başarısız")
-
-
 async def _refund_payment(db: AsyncSession, order: Order) -> None:
-    """Sağlayıcı iadesi + payment_status REFUNDED + stok geri yükleme + kupon serbest.
-    Sipariş ``status``'ünü ve bildirimi çağıran ayarlar (iptal=CANCELLED, iade=REFUNDED).
-    Yalnız ``payment_status == 'PAID'`` iken çağrılmalıdır."""
-    await _provider_refund(order)
-    order.payment_status = "REFUNDED"
-    order.refunded_at = _now()
+    """İki fazlı iade + stok geri yükleme + kupon serbest bırakma.
+
+    Faz 1 (``escrow.begin_refund``): PAID→REFUNDING + niyet damgası atomik claim
+    edilir ve HEMEN commit edilir. Faz 2 (``escrow.perform_refund``): sağlayıcı
+    iadesi → başarıda REFUNDING→REFUNDED.
+
+    Önceki tek fazlı akışta önce sağlayıcı çağrılıp sonra durum yazılıyordu:
+    iade başarılı olup commit düşerse para gitmiş, sipariş PAID, stok geri
+    yüklenmemiş ve hiçbir iz kalmamış oluyordu — yönetici tekrar denediğinde
+    ikinci iade gönderiliyordu. Artık süreç nerede ölürse ölsün kayıt sarkan
+    REFUNDING olarak kalır ve reconciler devralır.
+
+    Sipariş ``status``'ünü ve bildirimi çağıran ayarlar (iptal=CANCELLED,
+    iade=REFUNDED). Yalnız ``payment_status == 'PAID'`` iken çağrılmalıdır.
+    """
+    if not await escrow.begin_refund(db, order, escrow.ORDER_SPEC):
+        # Başka bir transaction kazandı (eşzamanlı iptal/iade) — para hareketi YOK.
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Bu siparişin iadesi zaten işleniyor veya tamamlanmış",
+        )
+
+    # Yerel telafiler iadeyle AYNI transaction'da: sağlayıcı onayladıysa stok ve
+    # kupon da geri döner; onaylamadıysa REFUNDING'de kalır ve reconciler retry'lar.
     await _restock(db, order)
-    # Kupon kullanımı yalnız PAID'de sayılmıştı → geri sal.
     if order.coupon_id is not None:
+        # Kupon kullanımı yalnız PAID'de sayılmıştı → geri sal.
         await coupon_service.release(db, coupon_id=order.coupon_id, order_id=order.id)
+
+    if not await escrow.perform_refund(db, order, escrow.ORDER_SPEC):
+        # Sağlayıcı reddetti/ulaşılamadı: REFUNDING'de bırakılır (HELD'e geri
+        # dönüş YOK). Reconciler karantina penceresi sonrası devralır.
+        await db.commit()
+        raise HTTPException(
+            status.HTTP_502_BAD_GATEWAY,
+            "Sağlayıcı iadesi şu an tamamlanamadı; iade kaydedildi ve "
+            "otomatik olarak yeniden denenecek.",
+        )
 
 
 async def refund_order(db: AsyncSession, order_id: int) -> OrderOut:

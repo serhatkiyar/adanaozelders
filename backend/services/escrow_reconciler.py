@@ -56,6 +56,7 @@ _REFUNDING_TARGETS: tuple[tuple[type, escrow.EscrowSpec], ...] = (
     (Payment, escrow.PAYMENT_SPEC),
     (ExamRegistration, escrow.EXAM_SPEC),
     (StudyReservation, escrow.STUDY_SPEC),
+    (Order, escrow.ORDER_SPEC),
 )
 
 
@@ -67,10 +68,12 @@ async def reconcile_refunding(db: AsyncSession) -> int:
     handled = 0
 
     for model, spec in _REFUNDING_TARGETS:
+        # Para durumunun kolonu modele göre değişir (Order'da `payment_status`).
+        status_col = getattr(model, spec.status_attr)
         rows = (
             await db.execute(
                 select(model).where(
-                    model.status == spec.refunding,
+                    status_col == spec.refunding,
                     model.deleted_at.is_(None),
                 )
             )
@@ -118,6 +121,7 @@ async def reconcile_refunding(db: AsyncSession) -> int:
                     "refund_requested_at": now,
                     "refund_attempts": model.refund_attempts + 1,
                 },
+                status_attr=spec.status_attr,
             )
             if not claimed:
                 continue

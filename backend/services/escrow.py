@@ -100,6 +100,8 @@ class EscrowSpec:
     reference_prefix: str
     status_attr: str = "status"
     has_released_guard: bool = True
+    #: İade edilecek tutarın kolonu (``Order``'da sipariş toplamı ``total``).
+    amount_attr: str = "amount"
 
 
 PAYMENT_SPEC = EscrowSpec(
@@ -127,11 +129,12 @@ STUDY_SPEC = EscrowSpec(
 # gelir; o zamana dek yalnız `claim` (PAID geçişi) tarafı kullanılır.
 ORDER_SPEC = EscrowSpec(
     held=OrderPaymentStatus.PAID.value,
-    refunding="REFUNDING",
+    refunding=OrderPaymentStatus.REFUNDING.value,
     refunded=OrderPaymentStatus.REFUNDED.value,
     reference_prefix="order",
     status_attr="payment_status",
     has_released_guard=False,
+    amount_attr="total",
 )
 
 
@@ -227,7 +230,7 @@ async def perform_refund(
     Sağlayıcı reddederse/ulaşılamazsa False: kayıt REFUNDING'de kalır ve reconciler
     devralır — HİÇBİR yerde HELD'e geri dönüş yoktur.
     """
-    amount = Decimal(str(obj.amount))
+    amount = Decimal(str(getattr(obj, spec.amount_attr)))
     ok = True
     if amount > 0:
         provider = payments.get_payment_provider()

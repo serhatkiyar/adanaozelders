@@ -70,9 +70,19 @@ class OrderStatus(str, enum.Enum):
 
 
 class OrderPaymentStatus(str, enum.Enum):
+    """Siparişin ödeme durumu (sipariş yaşam döngüsü ``OrderStatus``'ten ayrıdır).
+
+    ``REFUNDING`` iki fazlı iadenin niyet (intent) durumudur: sağlayıcıya iade
+    çağrısı yapılmadan ÖNCE commit edilir, böylece süreç HTTP çağrısı sırasında
+    ölse bile kayıt sarkan REFUNDING olarak kalır ve reconciler devralır.
+    Onsuz, sağlayıcıda para iade edilip commit düşerse sipariş PAID görünür,
+    stok geri yüklenmez ve yeniden denendiğinde ikinci iade gönderilirdi.
+    """
+
     PENDING = "PENDING"
     PAID = "PAID"
     FAILED = "FAILED"
+    REFUNDING = "REFUNDING"
     REFUNDED = "REFUNDED"
 
 
@@ -334,6 +344,15 @@ class Order(Base, TimestampMixin, SoftDeleteMixin):
     )
     refunded_at: Mapped[datetime.datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
+    )
+    # ── İki fazlı iade niyeti (bkz. services/escrow.py) ──
+    # REFUNDING'e geçiş bu damgayla birlikte COMMIT edilir; sağlayıcı çağrısı
+    # sonra yapılır. Sarkan kayıtları reconciler bu iki alandan bulur.
+    refund_requested_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    refund_attempts: Mapped[int] = mapped_column(
+        Integer, nullable=False, server_default=text("0")
     )
 
     # ── Kargo adresi snapshot (yalnız fiziksel kalem varsa dolu) ──
