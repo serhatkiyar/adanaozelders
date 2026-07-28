@@ -72,3 +72,4 @@ async def submit_contact(
     return ContactResponse(
         detail="Mesajın bize ulaştı. En kısa sürede dönüş yapacağız."
     )
+

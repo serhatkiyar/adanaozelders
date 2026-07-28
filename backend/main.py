@@ -3,7 +3,7 @@ import contextlib
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
@@ -137,6 +137,25 @@ observability.install(app)
 
 register_exception_handlers(app)
 app.include_router(api_router, prefix=settings.API_V1_PREFIX)
+
+# ── SEO: sitemap (KÖK yolda) ────────────────────────────────────────────────
+# Arama motorları sitemap'i alan adının kökünde arar; /api/v1 altında kalırsa
+# robots.txt'ten referans verilse bile alışılmış konumda bulunmaz. Caddy bu
+# yolu backend'e proxy'ler (bkz. devops/Caddyfile).
+
+
+@app.get("/sitemap.xml", include_in_schema=False)
+async def sitemap() -> Response:
+    from services import sitemap_service
+
+    async with AsyncSessionLocal() as session:
+        xml = await sitemap_service.build_sitemap(session)
+    return Response(
+        content=xml,
+        media_type="application/xml",
+        headers={"Cache-Control": "public, max-age=3600"},
+    )
+
 
 
 async def _check_database() -> bool:

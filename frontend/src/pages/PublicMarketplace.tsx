@@ -1,5 +1,11 @@
 import { type CSSProperties, useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
+import {
+  PAGE_PARAM,
+  limitForPage,
+  nextPageSearch,
+  pageFromParam,
+} from "@/lib/pagination";
 import { PublicShell } from "@/components/PublicShell";
 import { Seo } from "@/components/Seo";
 import { TutorCard } from "@/components/TutorCard";
@@ -31,6 +37,9 @@ const FilterIconSvg = () => (
 
 /* ─── main page ─────────────────────────────────────────── */
 
+/** Sayfa başına eğitmen sayısı. */
+const PER_PAGE = 20;
+
 export default function PublicMarketplace() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [q, setQ] = useState(() => searchParams.get("q") ?? "");
@@ -38,7 +47,11 @@ export default function PublicMarketplace() {
   const [subjects, setSubjects] = useState<string[]>(() => searchParams.getAll("subject"));
   const [exam, setExam] = useState(() => searchParams.get("exam") ?? "");
   const [sort, setSort] = useState<TutorSort>(TutorSort.RELEVANCE);
-  const [limit, setLimit] = useState(20);
+  // Sayfa durumu URL'de: filtreler zaten query string'de tutuluyordu ama
+  // kaçıncı sayfada olunduğu state'teydi — paylaşılan bağlantı karşı tarafta
+  // ilk 20 sonuca dönüyordu (bkz. lib/pagination.ts).
+  const page = pageFromParam(searchParams.get(PAGE_PARAM));
+  const limit = limitForPage(page, PER_PAGE);
   const [showFilters, setShowFilters] = useState(false);
   // Daralmış arama pill'ine tıklayınca geniş navbar'ı (kategoriler + büyük
   // arama) yerinde açar — ana sayfadaki davranışın aynısı.
@@ -280,14 +293,14 @@ export default function PublicMarketplace() {
               </div>
               {data.length === limit && (
                 <div className="mt-6 flex justify-center">
-                  <button
-                    type="button"
-                    onClick={() => setLimit((l) => l + 20)}
-                    disabled={isFetching}
+                  {/* Gerçek bağlantı: crawler takip edebilsin ve kullanıcı
+                      yeni sekmede açabilsin. Tıklama SPA içinde kalır. */}
+                  <Link
+                    to={nextPageSearch(searchParams, page)}
                     className="rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-indigo-600 shadow-sm ring-1 ring-slate-200 transition hover:bg-indigo-50 active:scale-95 disabled:opacity-60 dark:bg-slate-800 dark:text-indigo-300 dark:ring-slate-700 dark:hover:bg-slate-700"
                   >
                     {isFetching ? "Yükleniyor…" : "Daha fazla göster"}
-                  </button>
+                  </Link>
                 </div>
               )}
             </>

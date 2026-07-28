@@ -1,5 +1,11 @@
 import { type CSSProperties, useMemo, useState, useEffect } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
+import {
+  PAGE_PARAM,
+  limitForPage,
+  nextPageSearch,
+  pageFromParam,
+} from "@/lib/pagination";
 import { DashboardShell } from "@/components/DashboardShell";
 import { PublicShell } from "@/components/PublicShell";
 import { STUDENT_NAV, TUTOR_NAV } from "@/lib/nav";
@@ -38,6 +44,9 @@ const FilterIconSvg = () => (
   </svg>
 );
 
+/** Sayfa başına kütüphane sayısı. */
+const PER_PAGE = 30;
+
 export default function Libraries() {
   const token = useAuthStore((s) => s.token);
   const { data: currentUser } = useCurrentUser();
@@ -70,7 +79,10 @@ export default function Libraries() {
   const [radiusKm] = useState<number>(25);
   const [geoLoading, setGeoLoading] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
-  const [limit, setLimit] = useState(30);
+  // Sayfa durumu URL'de (bkz. lib/pagination.ts) — paylaşılan bağlantı
+  // karşı tarafta ilk sayfaya dönmesin, geri tuşu listeyi sıfırlamasın.
+  const page = pageFromParam(searchParams.get(PAGE_PARAM));
+  const limit = limitForPage(page, PER_PAGE);
   // Daralmış arama pill'ine tıklayınca geniş navbar'ı (kategoriler + büyük
   // arama) yerinde açar — eğitmen aramasındaki davranışın aynısı.
   const [searchOpen, setSearchOpen] = useState(false);
@@ -350,13 +362,14 @@ export default function Libraries() {
             </div>
             {data.length === limit && (
               <div className="mt-2 flex justify-center">
-                <button
-                  onClick={() => setLimit((l) => l + 30)}
-                  disabled={isFetching}
+                {/* Gerçek bağlantı: crawler takip edebilsin, kullanıcı yeni
+                    sekmede açabilsin. Tıklama SPA içinde kalır. */}
+                <Link
+                  to={nextPageSearch(searchParams, page)}
                   className="rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-indigo-600 shadow-sm ring-1 ring-slate-200 transition hover:bg-indigo-50 disabled:opacity-60 dark:bg-slate-800 dark:text-indigo-300 dark:ring-slate-700"
                 >
                   {isFetching ? "Yükleniyor…" : "Daha fazla göster"}
-                </button>
+                </Link>
               </div>
             )}
           </>

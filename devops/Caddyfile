@@ -55,6 +55,13 @@
 		reverse_proxy backend:8000
 	}
 
+	# Sitemap dinamik üretilir (onaylı eğitmenler + ACTIVE kütüphane/ürün).
+	# Arama motorları alan adının KÖKÜNDE arar; /api/v1 altında kalırsa
+	# alışılmış konumda bulunmaz.
+	handle /sitemap.xml {
+		reverse_proxy backend:8000
+	}
+
 	# ── SPA ──
 	handle {
 		reverse_proxy frontend:80

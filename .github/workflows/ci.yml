@@ -104,9 +104,15 @@ jobs:
       - name: Type-check & build
         run: npm run build
 
-      # Üretim bundle'ına giren paketlerdeki açıklar. Şu an react-router v7
-      # major yükseltmesi bekliyor (bkz. docs/ekspertiz-raporu-2026-07.md
-      # Hafta 4 madde 24) — o kapanınca --audit-level=moderate sertleştirilir.
+      # Üretim bundle'ına giren paketlerdeki açıklar.
+      #
+      # BİLİNEN İSTİSNA: react-router 7.12+ için "RSC Mode CSRF Bypass"
+      # (GHSA-qwww-vcr4-c8h2) raporlanıyor. Bu proje RSC kullanmıyor —
+      # declarative SPA (BrowserRouter + Routes), server action yok. `npm audit
+      # fix --force` 7.11.0'a düşürür ki O SÜRÜMDE BİZİ GERÇEKTEN ETKİLEYEN 10
+      # açık var (<Link> open redirect, useNavigate, XSS). Yani "audit temiz
+      # görünsün" diye geri inmek güvenliği AZALTIR. Bu yüzden en güncel sürümde
+      # kalıp uyarıyı bilinçli taşıyoruz.
       - name: Dependency audit (npm)
         continue-on-error: true
         run: npm audit --omit=dev --audit-level=high
