@@ -41,6 +41,8 @@ ignore = [
 [lint.per-file-ignores]
 # Testlerde kasıtlı kullanılmayan değişkenler ve yeniden tanımlar olur.
 "tests/*" = ["F841", "B011"]
+# Doğrulama runner'ı bir CLI aracıdır; komutu kullanıcıya yazdırır.
+"tests/verify/run.py" = ["T20"]
 # Seed/bakım script'leri konsola yazar.
 "seed_*.py" = ["T20"]
 "add_*.py" = ["T20"]
