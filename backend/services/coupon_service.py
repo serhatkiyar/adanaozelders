@@ -8,6 +8,7 @@ geri salar. Tutar otoritesi sunucudadır.
 from __future__ import annotations
 
 import datetime
+import logging
 from decimal import Decimal
 
 from fastapi import HTTPException, status
@@ -16,6 +17,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from models.store import Coupon, CouponDiscountType, CouponRedemption
 from schemas.store import CouponCreate, CouponOut, CouponUpdate
+
+logger = logging.getLogger("adana.coupon")
 
 _CENT = Decimal("0.01")
 
@@ -95,16 +98,55 @@ async def evaluate(
 
 async def redeem(
     db: AsyncSession, *, coupon_id: int, client_id: int, order_id: int
-) -> None:
-    """Sipariş PAID olunca kullanımı say (used_count++ + redemption satırı)."""
+) -> bool:
+    """Sipariş PAID olunca kullanımı say (used_count++ + redemption satırı).
+
+    Limitler burada, kilit altında YENİDEN doğrulanır. ``evaluate`` sipariş
+    *oluşturulurken* çalışır ama redemption satırı ancak ödeme kesinleşince
+    yazılır; arada geniş bir pencere vardır. Önceden bu pencerede kullanıcı
+    aynı kuponla N sipariş açıp (hiçbiri redemption yazmadığından ``evaluate``
+    hepsini geçirir) sonra N'ini de ödeyerek ``max_uses`` ve ``per_user_limit``
+    sınırlarını aşabiliyordu.
+
+    Dönüş: kullanım sayıldıysa True. False = limit dolmuş; çağıran indirimi
+    geri almalıdır (para yolu bunu ``_finalize_paid`` içinde yapar).
+    """
     coupon = (
         await db.execute(select(Coupon).where(Coupon.id == coupon_id).with_for_update())
     ).scalars().first()
-    if coupon is not None:
-        coupon.used_count += 1
+    if coupon is None:
+        return False
+
+    if coupon.max_uses is not None and coupon.used_count >= coupon.max_uses:
+        logger.warning(
+            "kupon %s global limitte (%s/%s) — sipariş %s indirimsiz sayılacak",
+            coupon.code, coupon.used_count, coupon.max_uses, order_id,
+        )
+        return False
+    if coupon.per_user_limit is not None:
+        used = (
+            await db.execute(
+                select(func.count())
+                .select_from(CouponRedemption)
+                .where(
+                    CouponRedemption.coupon_id == coupon_id,
+                    CouponRedemption.client_id == client_id,
+                )
+            )
+        ).scalar() or 0
+        if used >= coupon.per_user_limit:
+            logger.warning(
+                "kupon %s kullanıcı limitinde (client=%s %s/%s) — sipariş %s "
+                "indirimsiz sayılacak",
+                coupon.code, client_id, used, coupon.per_user_limit, order_id,
+            )
+            return False
+
+    coupon.used_count += 1
     db.add(
         CouponRedemption(coupon_id=coupon_id, client_id=client_id, order_id=order_id)
     )
+    return True
 
 
 async def release(db: AsyncSession, *, coupon_id: int, order_id: int) -> None:

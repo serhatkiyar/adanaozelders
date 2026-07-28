@@ -31,6 +31,7 @@ from core import payments
 from core.payments.base import RefundState
 from models.library_exam import RegistrationStatus
 from models.payment import PaymentStatus
+from models.store import OrderPaymentStatus
 
 logger = logging.getLogger("adana.escrow")
 
@@ -80,12 +81,25 @@ REGISTRATION_TRANSITIONS: dict[str, frozenset[str]] = {
 
 @dataclasses.dataclass(frozen=True)
 class EscrowSpec:
-    """Bir escrow modelinin durum sözlüğü (Payment enum, reg modelleri string)."""
+    """Bir escrow modelinin durum sözlüğü (Payment enum, reg modelleri string).
+
+    ``status_attr``: para durumunun tutulduğu kolon. ``Order``'da sipariş yaşam
+    döngüsü (``status``) ile ödeme durumu (``payment_status``) AYRI kolonlardır;
+    claim daima ödeme kolonuna uygulanır.
+
+    ``has_released_guard``: modelde ``released_at`` var mı. Ders/bilet/rezervasyon
+    gerçek escrow'dur (para eğitmene/kütüphaneye serbest bırakılır) ve serbest
+    bırakılmış satır asla iadeye claim edilemez. Mağaza siparişi ise doğrudan
+    satıştır — hak ediş dağıtımı yoktur, dolayısıyla ``released_at`` kolonu da
+    yoktur ve bu guard uygulanmaz.
+    """
 
     held: object
     refunding: object
     refunded: object
     reference_prefix: str
+    status_attr: str = "status"
+    has_released_guard: bool = True
 
 
 PAYMENT_SPEC = EscrowSpec(
@@ -106,6 +120,19 @@ STUDY_SPEC = EscrowSpec(
     refunded=RegistrationStatus.REFUNDED.value,
     reference_prefix="studyres",
 )
+# Mağaza siparişi: doğrudan satış (emanet/hak ediş yok) ama aynı atomik claim ve
+# iki fazlı iade disiplinine tabi. Para durumu `payment_status` kolonunda;
+# `status` sipariş yaşam döngüsüdür (PENDING/PAID/SHIPPED/DELIVERED/…).
+# REFUNDING durumu ve refund_attempts/refund_requested_at kolonları migration ile
+# gelir; o zamana dek yalnız `claim` (PAID geçişi) tarafı kullanılır.
+ORDER_SPEC = EscrowSpec(
+    held=OrderPaymentStatus.PAID.value,
+    refunding="REFUNDING",
+    refunded=OrderPaymentStatus.REFUNDED.value,
+    reference_prefix="order",
+    status_attr="payment_status",
+    has_released_guard=False,
+)
 
 
 # ── Atomik claim ─────────────────────────────────────────────────────────────────
@@ -119,17 +146,22 @@ async def claim(
     from_statuses: list,
     values: dict,
     extra_where: tuple = (),
+    status_attr: str = "status",
 ) -> bool:
     """Koşullu UPDATE: satır ancak beklenen durumdaysa geçer; tek kazanan olur.
 
     True dönerse geçiş BU transaction'a aittir. Çağıranın elindeki ORM nesnesi
     bayatlar — gerekiyorsa ``db.refresh`` etmelidir.
+
+    ``status_attr`` para durumunun kolonudur; ``Order`` gibi sipariş durumu ile
+    ödeme durumunu ayrı tutan modellerde ``payment_status`` verilir.
     """
+    status_col = getattr(model, status_attr)
     stmt = (
         update(model)
         .where(
             model.id == row_id,
-            model.status.in_(from_statuses),
+            status_col.in_(from_statuses),
             model.deleted_at.is_(None),
             *extra_where,
         )
@@ -159,7 +191,7 @@ async def begin_refund(
     """
     model = type(obj)
     values: dict = {
-        "status": spec.refunding,
+        spec.status_attr: spec.refunding,
         "refund_requested_at": _now(),
         "refund_attempts": model.refund_attempts + 1,
     }
@@ -171,7 +203,10 @@ async def begin_refund(
         obj.id,
         from_statuses=from_statuses or [spec.held],
         values=values,
-        extra_where=(model.released_at.is_(None),),
+        extra_where=(
+            (model.released_at.is_(None),) if spec.has_released_guard else ()
+        ),
+        status_attr=spec.status_attr,
     )
     if claimed:
         # Intent'i kalıcılaştır: süreç sağlayıcı çağrısında ölürse reconciler bulur.
@@ -222,7 +257,8 @@ async def finalize_refund(
         type(obj),
         obj.id,
         from_statuses=[spec.refunding],
-        values={"status": spec.refunded, "refunded_at": _now()},
+        values={spec.status_attr: spec.refunded, "refunded_at": _now()},
+        status_attr=spec.status_attr,
     )
     if finalized:
         await db.refresh(obj)

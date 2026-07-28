@@ -31,6 +31,7 @@ from core import payments
 from core.config import settings
 from models.library_exam import ExamRegistration, RegistrationStatus
 from models.payment import Payment, PaymentStatus
+from models.store import Order, OrderPaymentStatus
 from models.study_reservation import StudyReservation
 from services import escrow
 
@@ -150,7 +151,13 @@ async def reconcile_stale_checkouts(db: AsyncSession) -> int:
     handled = 0
 
     # Booking ödemeleri: CF token'ı yazılmış ama hâlâ PENDING/FAILED olanlar.
-    from services import library_exam_service, payment_service, study_reservation_service
+    # (Yerel import: order_service → delivery_service → ... zincirinde döngü var.)
+    from services import (
+        library_exam_service,
+        order_service,
+        payment_service,
+        study_reservation_service,
+    )
 
     payments_rows = (
         await db.execute(
@@ -232,5 +239,36 @@ async def reconcile_stale_checkouts(db: AsyncSession) -> int:
         await db.commit()
         handled += 1
         logger.warning("reconciler: kayıp callback tamamlandı (studyres#%s)", res.id)
+
+    # Mağaza siparişleri: en yüksek hacimli ödeme yüzeyi ve en uzun süre
+    # kapsam dışında kalmış olan. Müşteri iyzico'da öder, tarayıcıyı kapatır →
+    # para çekilmiştir ama sipariş sonsuza dek PENDING kalır, kitap gönderilmez
+    # ve kimse fark etmezdi.
+    order_rows = (
+        await db.execute(
+            select(Order).where(
+                Order.payment_status.in_(
+                    [OrderPaymentStatus.PENDING.value, OrderPaymentStatus.FAILED.value]
+                ),
+                Order.provider_ref.isnot(None),
+                Order.paid_at.is_(None),
+                Order.deleted_at.is_(None),
+                Order.updated_at <= newest,
+                Order.updated_at >= oldest,
+            )
+        )
+    ).scalars().all()
+    for order in order_rows:
+        result = await retrieve(token=order.provider_ref)
+        if not result.success:
+            continue
+        await order_service.complete_checkout(
+            db, order_id=order.id, success=True,
+            provider_ref=result.provider_ref,
+            token=order.provider_ref, paid_price=result.paid_price,
+        )
+        await db.commit()
+        handled += 1
+        logger.warning("reconciler: kayıp callback tamamlandı (order#%s)", order.id)
 
     return handled

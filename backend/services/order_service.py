@@ -10,6 +10,7 @@ düşülerek) hesaplanıp kazanca yazılır (Balance sayfası ``payment_service`
 from __future__ import annotations
 
 import datetime
+import logging
 from decimal import Decimal
 
 from fastapi import HTTPException, status
@@ -51,9 +52,13 @@ from services import (
     coupon_service,
     delivery_calendar,
     delivery_promise,
+    escrow,
     notification_service,
     order_fsm,
 )
+
+logger = logging.getLogger("adana.order")
+
 
 def _now() -> datetime.datetime:
     return datetime.datetime.now(datetime.timezone.utc)
@@ -470,19 +475,71 @@ async def pay(
 
 
 async def complete_checkout(
-    db: AsyncSession, *, order_id: int, success: bool, provider_ref: str | None
+    db: AsyncSession,
+    *,
+    order_id: int,
+    success: bool,
+    provider_ref: str | None,
+    token: str | None = None,
+    paid_price: Decimal | None = None,
 ) -> Order | None:
-    """iyzico callback'i sunucuda doğrulandıktan sonra siparişi kesinleştirir
-    (idempotent). Başarısızlıkta FAILED — müşteri yeniden ödeyebilir."""
+    """iyzico callback'i sunucuda doğrulandıktan sonra siparişi kesinleştirir.
+
+    Ders/bilet/rezervasyon yollarıyla AYNI sertleştirmelere tabidir
+    (bkz. ``payment_service.complete_checkout``):
+
+    C3 doğrulamaları (yalnız verildiğinde):
+    - ``token`` saklı CF token'ı ile eşleşmeli — eşleşmiyorsa bu başka (eski ya da
+      ikinci) bir checkout oturumunun tahsilatıdır: siparişe DOKUNULMAZ, para
+      aynen iade edilir. Önceden bu para sessizce yutuluyordu: müşteri iki kez
+      ödeyebiliyor, ikinci tahsilat ne emanete alınıyor ne iade ediliyordu.
+    - ``paid_price`` sipariş toplamına eşit olmalı — değilse kesinleştirilmez.
+
+    PENDING/FAILED → PAID geçişi ``_finalize_paid`` içinde **atomik claim** ile
+    yapılır; eşzamanlı iki callback'ten yalnız biri stok düşer ve kupon harcar.
+    """
     order = await _load_full(db, order_id)
     if order is None:
         return None
-    if order.payment_status == "PAID":
+    # İdempotent: replay'ler token kontrolünden ÖNCE düşer (yeniden iade denenmesin).
+    if order.payment_status in ("PAID", "REFUNDING", "REFUNDED"):
         return order
+
+    order_total = Decimal(str(order.total))
+    if success and token and order.provider_ref and token != order.provider_ref:
+        await escrow.refund_unexpected_charge(
+            provider_ref=provider_ref,
+            amount=paid_price if paid_price is not None else order_total,
+            context=f"token uyuşmazlığı order={order_id}",
+        )
+        return order
+    if success and paid_price is not None and paid_price != order_total:
+        await escrow.refund_unexpected_charge(
+            provider_ref=provider_ref,
+            amount=paid_price,
+            context=(
+                f"paidPrice uyuşmazlığı order={order_id} "
+                f"(beklenen {order_total}, tahsil {paid_price})"
+            ),
+        )
+        return order
+
     if not success:
-        order.payment_status = "FAILED"
+        if token and order.provider_ref and token != order.provider_ref:
+            # Bayat oturumun başarısızlığı aktif oturumu FAILED'lamasın.
+            return order
+        await escrow.claim(
+            db,
+            Order,
+            order.id,
+            from_statuses=["PENDING"],
+            values={"payment_status": "FAILED"},
+            status_attr="payment_status",
+        )
         await db.commit()
+        await db.refresh(order)
         return order
+
     await _finalize_paid(db, order, provider_ref=provider_ref)
     await db.commit()
     return order
@@ -524,9 +581,31 @@ async def _finalize_paid(
         await _out_of_stock_refund(db, order, shortages)
         return
 
+    # ── Atomik PAID claim'i ──
+    # Önceden burada düz atama vardı ve tek koruma çağıranın "zaten PAID mi?"
+    # kontrolüydü (check-then-act). Eşzamanlı iki callback (tarayıcı çift POST,
+    # reconciler + callback yarışı) ikisi de kontrolden geçip stoğu İKİ KEZ
+    # düşürebiliyor ve kuponu iki kez harcayabiliyordu. Koşullu UPDATE ile
+    # yalnız tek transaction kazanır; kaybeden hiçbir yan etki uygulamaz.
+    paid_at = _now()
+    claimed = await escrow.claim(
+        db,
+        Order,
+        order.id,
+        from_statuses=["PENDING", "FAILED"],
+        values={"payment_status": "PAID", "paid_at": paid_at},
+        status_attr="payment_status",
+    )
+    if not claimed:
+        logger.info(
+            "order %s PAID claim edilemedi (eşzamanlı callback kazandı) — "
+            "yan etki uygulanmadı",
+            order.id,
+        )
+        return
     order.payment_status = "PAID"
+    order.paid_at = paid_at
     await order_fsm.transition_order(db, order, "PAID", changed_by="system:payment")
-    order.paid_at = _now()
     # Cıncık Teslimat sözü: ödeme anına göre bugün/yarın (16:00 cutoff, Pazar
     # sarması). Bölge-içi siparişte günlük kapasite de sayılır — dolu güne söz
     # verilmez (kampanya günü toplu söz ihlali yerine dürüst ileri tarih).
@@ -546,10 +625,20 @@ async def _finalize_paid(
             )
 
     # Kupon kullanımını PAID'de say (PENDING siparişler kontenjan tüketmez).
+    # redeem limitleri kilit altında yeniden doğrular; reddederse müşteri parayı
+    # zaten ödemiştir — siparişi indirimsiz fiyata çekmek yerine kuponun izini
+    # düşürüp admin'e bırakıyoruz (tahsil edilen tutar sipariş toplamıdır ve
+    # değişmemelidir; aksi halde ödenen ile kayıt tutmaz).
     if order.coupon_id is not None:
-        await coupon_service.redeem(
+        counted = await coupon_service.redeem(
             db, coupon_id=order.coupon_id, client_id=order.client_id, order_id=order.id
         )
+        if not counted:
+            logger.error(
+                "order %s: kupon %s limitte — indirim %s TL uygulanmış ama kullanım "
+                "sayılamadı (sipariş tutarı değiştirilmedi)",
+                order.id, order.coupon_code, order.discount,
+            )
 
     for item in order.items:
         # Fiziksel stok düş (yukarıda kilitlenen satırlar üzerinden; atomik).

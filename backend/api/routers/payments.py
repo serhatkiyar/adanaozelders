@@ -146,6 +146,7 @@ async def iyzico_callback(request: Request, db: AsyncSession = Depends(get_db)):
         await order_service.complete_checkout(
             db, order_id=entity_id, success=result.success,
             provider_ref=result.provider_ref,
+            token=token, paid_price=result.paid_price,
         )
         return _checkout_redirect(_ORDERS_PAGE, ok=result.success)
     if kind == "examreg":
