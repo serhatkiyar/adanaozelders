@@ -19,7 +19,6 @@ from models.tutor import Tutor
 from schemas.booking import (
     BookingCancel,
     BookingCreate,
-    BookingLocation,
     BookingOut,
     BookingReschedule,
     BookingResourceCreate,

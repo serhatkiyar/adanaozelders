@@ -17,7 +17,13 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from core.config import settings
 from core.database import Base
-import models
+
+# Autogenerate/check YALNIZCA import edilmiş modelleri görür: Base.metadata
+# tablolarla ancak modelleri tanımlayan modüller yüklendiğinde dolar.
+# `models` paketi __init__.py'de hepsini import eder (bkz. CLAUDE.md kuralı).
+# Bu satır olmadan `alembic check` şemanın yarısını "silinmiş tablo" sanar ve
+# autogenerate eksik/yanlış migration üretir.
+import models  # noqa: F401  (yan etki: tüm modelleri metadata'ya kaydeder)
 
 config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
 

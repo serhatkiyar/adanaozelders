@@ -11,7 +11,6 @@ import pytest
 from sqlalchemy import text
 
 from core import outbox
-from core.config import settings
 from core.database import AsyncSessionLocal
 from models.outbox import OutboxEvent, OutboxStatus
 

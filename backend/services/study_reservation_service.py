@@ -17,7 +17,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core import payments
-from core.codes import gen_short_code, normalize_code
+from core.codes import gen_short_code
 from core.config import settings
 from models.client import Client
 from models.library import Library, LibraryHours, LibraryStatus

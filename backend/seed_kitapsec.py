@@ -1,5 +1,5 @@
 import asyncio
-from sqlalchemy import select, delete, update
+from sqlalchemy import select, delete
 from core.database import AsyncSessionLocal
 from models.store import Product, ProductCategory
 

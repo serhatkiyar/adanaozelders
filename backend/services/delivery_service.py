@@ -1067,7 +1067,9 @@ async def optimize_run(db: AsyncSession, run_id: int) -> DeliveryRunOut:
     for s in sorted(resolved, key=lambda x: x.sequence):
         seq += 1
         s.sequence = seq
-    for s, detour in zip(ordered_stops, detours):
+    # compute_detours girdisiyle birebir aynı uzunlukta döner; strict=True bu
+    # sözleşme bozulursa sessizce kısa kesmek yerine hata versin.
+    for s, detour in zip(ordered_stops, detours, strict=True):
         seq += 1
         s.sequence = seq
         s.detour_km = detour

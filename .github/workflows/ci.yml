@@ -11,20 +11,76 @@ jobs:
     defaults:
       run:
         working-directory: backend
+
+    # Gerçek Postgres: entegrasyon testleri (para yolu, teslimat invariant'ları,
+    # kurye rolü, outbox) bunsuz SKIP oluyordu — yani en riskli kod yolları
+    # CI'da korumasızdı. Extension'lar (pg_trgm, btree_gist) baseline migration
+    # tarafından kurulur, image'da ayrıca bir şey gerekmez.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      POSTGRES_USER: test
+      POSTGRES_PASSWORD: test
+      POSTGRES_DB: test
+      POSTGRES_HOST: localhost
+      POSTGRES_PORT: 5432
+      JWT_SECRET_KEY: ci-secret-key-not-for-production
+      AUTO_CREATE_DB: "False"
+
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
+          # Docker imajıyla aynı sürüm — "bende çalışıyordu" farkını kapatır.
           python-version: "3.11"
           cache: pip
+
       - name: Install dependencies
         run: |
           pip install -r requirements.txt
-          pip install pytest pytest-asyncio hypothesis
+          pip install pytest pytest-asyncio hypothesis ruff pip-audit
+
+      - name: Lint (ruff)
+        run: ruff check .
+
       - name: Byte-compile
         run: python -m compileall -q .
-      - name: Run tests
-        run: pytest -q
+
+      # Baseline migration boş bir DB'yi kurabiliyor mu? Şema tek doğruluk
+      # kaynağı olduğundan bu, üretim provizyonunun provasıdır.
+      - name: Migration — boş DB'ye upgrade head
+        run: python -m alembic upgrade head
+
+      # Model ile migration arasında drift kaldı mı? (autogenerate boş çıkmalı)
+      - name: Migration — drift kontrolü
+        run: python -m alembic check
+
+      # pytest.ini'de testpaths=tests olduğundan integration'ı açıkça dışlıyoruz;
+      # yoksa iki adımda da koşar.
+      - name: Unit tests
+        run: pytest -q --ignore=tests/integration
+
+      - name: Integration tests (gerçek Postgres)
+        run: pytest tests/integration -q
+
+      # Bilinen açıklar: şimdilik raporlar, CI'yı kırmaz. Bağımlılıklar
+      # pip-compile ile kilitlendikten sonra continue-on-error kaldırılmalı.
+      - name: Dependency audit (pip-audit)
+        continue-on-error: true
+        run: pip-audit --desc || true
 
   frontend:
     runs-on: ubuntu-latest
@@ -38,9 +94,19 @@ jobs:
           node-version: "20"
           cache: npm
           cache-dependency-path: frontend/package-lock.json
+
       - name: Install dependencies
         run: npm ci
+
       - name: Unit tests (Vitest)
         run: npm run test
+
       - name: Type-check & build
         run: npm run build
+
+      # Üretim bundle'ına giren paketlerdeki açıklar. Şu an react-router v7
+      # major yükseltmesi bekliyor (bkz. docs/ekspertiz-raporu-2026-07.md
+      # Hafta 4 madde 24) — o kapanınca --audit-level=moderate sertleştirilir.
+      - name: Dependency audit (npm)
+        continue-on-error: true
+        run: npm audit --omit=dev --audit-level=high

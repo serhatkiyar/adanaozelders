@@ -1,0 +1,51 @@
+# Ruff — CI'da koşan lint yapılandırması.
+#
+# Amaç GERÇEK HATA yakalamak, stil tartışması açmak değil. Varsayılan kural
+# seti bu kod tabanında 1400+ uyarı üretiyor ve ezici çoğunluğu kozmetik
+# (tırnaklı annotation, import sırası); onları CI'da zorlamak her PR'ı
+# alakasız gürültüyle doldururdu. Aşağıdaki dar set, kırıcı sınıfları tutar.
+#
+# Kural eklemek serbest — ama yeni bir kural açarken mevcut ihlalleri de
+# temizleyin; CI'nın sürekli kırmızı olması onu işe yaramaz hale getirir.
+
+line-length = 100
+target-version = "py311"
+
+exclude = [
+    "migrations/versions",  # autogenerate çıktısı — biçimi Alembic belirler
+    ".venv",
+    "__pycache__",
+]
+
+[lint]
+select = [
+    "E9",   # syntax / IO hataları
+    "F",    # Pyflakes: tanımsız ad, kullanılmayan import/değişken
+    "B",    # flake8-bugbear: gerçek tuzaklar (mutable default, loop capture…)
+    "PLE",  # Pylint error sınıfı
+    "T20",  # print() üretimde loglama yerine geçmesin
+]
+
+ignore = [
+    # SQLAlchemy ilişkileri string forward-reference kullanır
+    # (`Mapped["Tutor"]`); registry runtime'da çözer, tanımsız ad DEĞİLDİR.
+    "F821",
+    # FastAPI'nin bel kemiği: `x = Depends(...)` varsayılan argümanda çağrıdır.
+    "B008",
+    # Döngü içinde tanımlanıp AYNI iterasyonda çağrılan closure'lar var
+    # (delivery_service._find_planned, store_service._g/_int/_dec);
+    # doğrulandı, geç bağlama sorunu yok.
+    "B023",
+]
+
+[lint.per-file-ignores]
+# Testlerde kasıtlı kullanılmayan değişkenler ve yeniden tanımlar olur.
+"tests/*" = ["F841", "B011"]
+# Seed/bakım script'leri konsola yazar.
+"seed_*.py" = ["T20"]
+"add_*.py" = ["T20"]
+"fix_*.py" = ["T20"]
+"get_*.py" = ["T20"]
+"cleanup_*.py" = ["T20"]
+"backfill_*.py" = ["T20"]
+"update_*.py" = ["T20"]

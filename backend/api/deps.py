@@ -46,7 +46,9 @@ async def get_current_user(
     try:
         payload = decode_access_token(token)
     except jwt.PyJWTError:
-        raise _credentials_exception
+        # `from None`: JWT ayrıştırma detayı (süresi doldu / imza geçersiz /
+        # bozuk payload) istemciye sızmasın — hepsi tek tip 401 döner.
+        raise _credentials_exception from None
 
     # Logout ile iptal edilmiş (denylist'teki) token reddedilir.
     if await is_revoked(payload.get("jti")):

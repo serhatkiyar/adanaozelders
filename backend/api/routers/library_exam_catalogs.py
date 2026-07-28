@@ -3,7 +3,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.deps import require_admin_permission, require_roles, require_roles_or_admin_permission
+from api.deps import require_admin_permission, require_roles_or_admin_permission
 from core.database import get_db
 from models.admin import Admin
 from models.library import Library, LibraryStatus
