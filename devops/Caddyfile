@@ -62,6 +62,20 @@
 		reverse_proxy backend:8000
 	}
 
+	# ── Sosyal paylaşım önizlemesi ──
+	# WhatsApp/Twitter/Facebook/LinkedIn/Telegram önizleme botları JS
+	# ÇALIŞTIRMAZ: SPA'nın runtime meta etiketleri onlara görünmez ve her
+	# paylaşım jenerik site başlığıyla çıkar. Bu botlara sunucuda üretilmiş
+	# meta HTML'i veriyoruz.
+	#
+	# GOOGLEBOT BİLEREK LİSTEDE YOK: Google JS render eder ve gerçek sayfayı
+	# görmelidir. Ona farklı içerik sunmak "cloaking" sayılır ve cezalandırılır.
+	@social_bot header_regexp User-Agent (?i)(facebookexternalhit|twitterbot|whatsapp|linkedinbot|slackbot|telegrambot|discordbot|pinterest|redditbot|skypeuripreview|embedly|quora link preview|vkshare)
+	handle @social_bot {
+		rewrite * /__meta?path={uri}
+		reverse_proxy backend:8000
+	}
+
 	# ── SPA ──
 	handle {
 		reverse_proxy frontend:80

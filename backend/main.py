@@ -144,6 +144,26 @@ app.include_router(api_router, prefix=settings.API_V1_PREFIX)
 # yolu backend'e proxy'ler (bkz. devops/Caddyfile).
 
 
+# ── Sosyal paylaşım önizlemesi (bot'lar için) ───────────────────────────────
+# WhatsApp/Twitter/Facebook/LinkedIn önizleme botları JS ÇALIŞTIRMAZ; SPA'nın
+# runtime meta'ları onlara görünmez ve her paylaşım jenerik site başlığıyla
+# çıkar. Caddy yalnız bot user-agent'larını buraya yönlendirir (bkz. Caddyfile);
+# gerçek kullanıcılar normal SPA'yı alır.
+
+
+@app.get("/__meta", include_in_schema=False)
+async def social_meta(path: str = "/") -> Response:
+    from services import social_meta as meta
+
+    async with AsyncSessionLocal() as session:
+        html = await meta.meta_for_path(session, path)
+    return Response(
+        content=html,
+        media_type="text/html; charset=utf-8",
+        headers={"Cache-Control": "public, max-age=600"},
+    )
+
+
 @app.get("/sitemap.xml", include_in_schema=False)
 async def sitemap() -> Response:
     from services import sitemap_service
