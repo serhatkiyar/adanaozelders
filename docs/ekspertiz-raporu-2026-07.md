@@ -69,7 +69,7 @@ Saf yardımcı fonksiyonlar test edilmiş (`delivery_metrics` %100, `delivery_pr
 
 ### 3.1 Para yolu
 
-**P0-1 · Mağaza siparişinde sessiz çift tahsilat.**
+**P0-1 · Mağaza siparişinde sessiz çift tahsilat.** — ✅ *Hafta 2*
 `api/routers/payments.py:145-150` — callback'te booking/examreg/studyres dallarının üçü de
 `token=token, paid_price=result.paid_price` geçiriyor. **Sipariş dalı geçirmiyor**; çünkü
 `order_service.complete_checkout` (`:472`) imzasında bu parametreler yok. Booking yolunda
@@ -79,24 +79,24 @@ Saf yardımcı fonksiyonlar test edilmiş (`delivery_metrics` %100, `delivery_pr
 siparişi PAID yapar, ikinci callback `if order.payment_status == "PAID": return` ile sessizce
 yutulur. İkinci tahsilat ne emanete alınır ne iade edilir, hiçbir kayıt tutulmaz.
 
-**P0-2 · Kaybolan callback'te sipariş sonsuza dek PENDING.**
+**P0-2 · Kaybolan callback'te sipariş sonsuza dek PENDING.** — ✅ *Hafta 2; regresyon testi Hafta 13*
 `grep -c "Order" services/escrow_reconciler.py` → **0**. Reconciler `Payment`, `ExamRegistration`
 ve `StudyReservation`'ı tarıyor; `Order`'ı taramıyor. Müşteri iyzico'da öder, tarayıcıyı kapatır →
 para çekilmiştir, sipariş PENDING kalır, kitap gönderilmez, kimse fark etmez.
 
-**P0-3 · Sipariş PENDING→PAID atomik claim edilmiyor.**
+**P0-3 · Sipariş PENDING→PAID atomik claim edilmiyor.** — ✅ *Hafta 2*
 `order_service.py:480-486` klasik check-then-act; satır kilidi ve koşullu UPDATE yok. Eşzamanlı iki
 callback ikisi de kontrolden geçer → `p.stock = max(0, p.stock - qty)` (`:559`) **iki kez** uygulanır,
 `coupon_service.redeem` (`:550`) `used_count`'u iki kez artırır. Proje kendi çözümüne sahip:
 `escrow.claim(...)`.
 
-**P0-4 · Sipariş iadesi tek fazlı — çökmede iz kalmıyor.**
+**P0-4 · Sipariş iadesi tek fazlı — çökmede iz kalmıyor.** — ✅ *Hafta 2*
 `order_service.py:1047-1053` önce sağlayıcıyı çağırıp sonra durumu yazıyor. `Order`'da `REFUNDING`
 durumu, `refund_attempts`, `refund_requested_at` **yok**. Commit düşerse: para iade edilmiş, sipariş
 PAID, stok geri yüklenmemiş, yönetici tekrar denerse ikinci iade gider. `escrow.py`'deki iki fazlı
 intent deseni bu yüzeye uygulanmamış.
 
-**P0-5 · Kupon limitinde TOCTOU.**
+**P0-5 · Kupon limitinde TOCTOU.** — ✅ *Hafta 2*
 `coupon_service.py:74` limitleri sipariş **oluşturulurken** kontrol ediyor; `CouponRedemption`
 satırı ancak PAID'de yazılıyor ve `redeem` (`:96-107`) `FOR UPDATE` alıyor ama limiti **yeniden
 kontrol etmiyor**. *Sömürü:* `per_user_limit=1` kuponla 10 sipariş oluştur (hepsi PENDING, hiç
@@ -107,7 +107,7 @@ redemption yok → `evaluate` her seferinde geçer), sonra 10'unu da öde.
 > `refund_unexpected_charge`) arkasına al, reconciler hedeflerine dahil et. Yeni kod yazmak değil,
 > mevcut doğru kodu bağlamak. **Tahmini: 2-3 gün.**
 
-**P0-6 · Para çıkışı hiç kodlanmamış.**
+**P0-6 · Para çıkışı hiç kodlanmamış.** — ⚠️ *Hafta 4/madde 27: defter olarak çözüldü; otomatik ödeme iyzico alt üye işyerine bağlı, AÇIK*
 `core/payments/iyzico.py:323` — `create_submerchant` bilinçli olarak `success=False` dönüyor;
 charge payload'ında `subMerchantKey` yok; `main.py`'de payout job yok. Escrow "RELEASED" yalnızca
 **defter kaydı** — eğitmen ve kütüphanelerin kazandığı para hiçbir otomatik yolla ödenmiyor.
@@ -117,20 +117,20 @@ charge payload'ında `subMerchantKey` yok; `main.py`'de payout job yok. Escrow "
 
 ### 3.2 Güvenlik
 
-**P0-7 · Tek header ile tüm anonim koruma iptal.**
+**P0-7 · Tek header ile tüm anonim koruma iptal.** — ✅ *Hafta 1*
 `core/ratelimit.py:34-39` `X-Forwarded-For`'u doğrulamasız kabul ediyor; `Dockerfile:18`'de
 `--proxy-headers`/`--forwarded-allow-ips` yok, ters proxy de yok. Her istekte rastgele XFF gönderen
 biri şunları sıfırlar: login brute-force koruması (10/dk), kayıt spam'i, şifre sıfırlama /
 doğrulama maili maliyeti (5/dk), sipariş takip token'ı (60/dk). *Anonim yüzeydeki tek koruma bu.*
 
-**P0-8 · Üretimde sessizce "sahte ödeme" moduna düşülebilir.**
+**P0-8 · Üretimde sessizce "sahte ödeme" moduna düşülebilir.** — ✅ *Hafta 1*
 `core/config.py:114` → `PAYMENT_PROVIDER: str = "fake"`; `payments/factory.py:17` → `iyzico`
 değilse **sessizce** `FakePaymentProvider` (her zaman başarı döner, para tahsil etmez).
 `config.py`'de `ENVIRONMENT` alanı **yok**. Aynı sorun `EMAIL_PROVIDER=console` (`:88`) ve
 `SMS_PROVIDER=console` (`:104`) için de geçerli — üretimde OTP'ler müşteriye gitmez, **log'a**
 yazılır. `.env`'de tek satır unutulursa platform para tahsil etmeden satış yapar.
 
-**P0-9 · Public kütüphane kaydı → deneme sınavı cevap anahtarları.**
+**P0-9 · Public kütüphane kaydı → deneme sınavı cevap anahtarları.** — ✅ *Hafta 1*
 `api/routers/libraries.py:143` — auth'suz `POST /libraries/register`, anında access+refresh token
 dönüyor. `api/routers/library_exam_catalogs.py:38` `/usable` yalnız **rol** kontrolü yapıyor,
 kütüphanenin `status`'una bakmıyor; `schemas/library_exam_catalog.py:45` `answer_key_url`
@@ -146,26 +146,26 @@ token çereze taşındı Hafta 12*
 ham `href={detail.website}`. `authStore.ts:72-75` **refresh token'ı** localStorage'da tutuyor.
 `nginx.conf`'ta CSP yok. Zincir: `javascript:` URL'i → token hırsızlığı → 30 günlük kalıcı hesap devri.
 
-**P0-11 · `Tutor1234!` şifreli sahte eğitmenler canlıda.**
+**P0-11 · `Tutor1234!` şifreli sahte eğitmenler canlıda.** — ✅ *Hafta 1*
 `main.py:92` her açılışta `seed_tutors` çağırıyor; `core/seed.py:80` `_SEED_TUTOR_PASSWORD =
 "Tutor1234!"` repoda açık; `:216` `status=APPROVED`. Canlı DB ilk açılışta arama sonuçlarında
 görünen, şifresi herkesçe bilinen sahte eğitmenlerle dolar. `AUTO_CREATE_DB` da varsayılan `True`
 (`config.py:240`).
 
-**P0-12 · Compose'da varsayılan sırlar.**
+**P0-12 · Compose'da varsayılan sırlar.** — ✅ *Hafta 1 (guard) + Hafta 3 (prod compose)*
 `docker-compose.yml:125` `JWT_SECRET_KEY:-change-this-...`, `:128` `ADMIN_PASSWORD:-change-this-...`,
 `:11` `POSTGRES_PASSWORD:-postgres`, `:48` `minioadmin/minioadmin`. Olduğu gibi sunucuya alınırsa
 JWT forge edilebilir → herkes admin.
 
-**P0-13 · `/docs` ve `/redoc` ortamdan bağımsız açık** (`main.py:110`) — tüm admin/kurye/ödeme
+**P0-13 · `/docs` ve `/redoc` ortamdan bağımsız açık** — ✅ *Hafta 1* (`main.py:110`) — tüm admin/kurye/ödeme
 uç haritası anonim ziyaretçiye sunuluyor. Güvenlik başlıkları (CSP/HSTS/X-Frame-Options) hiç yok.
 
-**P0-14 · Onaysız TUTOR tüm öğrenci tabanını çekebiliyor.**
+**P0-14 · Onaysız TUTOR tüm öğrenci tabanını çekebiliyor.** — ✅ *Hafta 1*
 `api/routers/clients.py:26` yalnız `role_id`'ye bakıyor, `Tutor.status` kontrolü yok (proje
 `get_current_approved_tutor`'a sahip, kullanılmamış). Kayıt ol → login → `/clients/search`
 döngüsü → tüm öğrencilerin adı, **doğum tarihi**, cinsiyeti. Kitlenin çoğu reşit olmayabilir.
 
-**P0-15 · Şifre sıfırlama mevcut oturumları iptal etmiyor.**
+**P0-15 · Şifre sıfırlama mevcut oturumları iptal etmiyor.** — ✅ *Hafta 1*
 `auth_service.py:190` yalnız hash'i değiştiriyor. Hesabı ele geçiren saldırganın 30 günlük refresh
 token'ı, kurban şifresini değiştirdikten **sonra da** çalışır.
 
@@ -179,19 +179,19 @@ cevap anahtarları, **teslimat kapı fotoğrafları**, kurye vesikalığı, ücr
 
 | # | Konu | Kanıt | Etki |
 |---|---|---|---|
-| P0-17 | **KDV alanı hiç yok** | `models/store.py`'de `tax_rate` yok | Kitap %0, kırtasiye/dijital %20 — doğru fatura kesilemez |
-| P0-18 | **Fatura üretimi yok** | `invoice\|fatura` grep'i boş; `OrderInvoiceModal.tsx:142` "resmi belge değildir" | Her B2C satışta vergi ihlali |
-| P0-19 | **Rıza kaydı saklanmıyor** | `LegalConsent.tsx:12` "state gerekmez"; modellerde `consent` kolonu yok | KVKK'da ispat yükü veri sorumlusunda |
-| P0-20 | **Hesap silme ucu yok** | `/auth/me/delete` yok; tek silme `DELETE /me/avatar` | `legalContent.ts:133` bunu taahhüt ediyor — kod çelişiyor |
-| P0-21 | **Cayma hakkı reddedilebiliyor** | `order_service.py:1193` admin `reject_return` | 14 günlük cayma **koşulsuzdur**, satıcının ret yetkisi yok |
-| P0-22 | **Kısmi iade imkânsız** | `order_service.py:1037` daima `order.total` | 3 kitaptan 1'i iade edilince tümü geri ödeniyor |
-| P0-23 | **Fiyat geçmişi yok** | `compare_at_price` serbest düzenlenebiliyor | İndirimde son 30 günün en düşük fiyatı gösterilmeli |
-| P0-24 | **ETBİS kaydı yok** | Repoda 0 iz | E-ticaret için zorunlu; süreç işi, **şimdi başlatın** |
-| P0-25 | **Destek kanalı yok** | `/iletisim`, `/sss` rotası yok; `Tickets.tsx` = biletlerim | Mesafeli satışta erişilebilir iletişim zorunlu |
+| P0-17 | ✅ *Hafta 4* · **KDV alanı hiç yok** | `models/store.py`'de `tax_rate` yok | Kitap %0, kırtasiye/dijital %20 — doğru fatura kesilemez |
+| P0-18 | ⚠️ **AÇIK** (şirket tescili) · **Fatura üretimi yok** | `invoice\|fatura` grep'i boş; `OrderInvoiceModal.tsx:142` "resmi belge değildir" | Her B2C satışta vergi ihlali |
+| P0-19 | ✅ *Hafta 4* · **Rıza kaydı saklanmıyor** | `LegalConsent.tsx:12` "state gerekmez"; modellerde `consent` kolonu yok | KVKK'da ispat yükü veri sorumlusunda |
+| P0-20 | ✅ *Hafta 4* · **Hesap silme ucu yok** | `/auth/me/delete` yok; tek silme `DELETE /me/avatar` | `legalContent.ts:133` bunu taahhüt ediyor — kod çelişiyor |
+| P0-21 | ✅ *Hafta 4* · **Cayma hakkı reddedilebiliyor** | `order_service.py:1193` admin `reject_return` | 14 günlük cayma **koşulsuzdur**, satıcının ret yetkisi yok |
+| P0-22 | ✅ *Hafta 4* · **Kısmi iade imkânsız** | `order_service.py:1037` daima `order.total` | 3 kitaptan 1'i iade edilince tümü geri ödeniyor |
+| P0-23 | ✅ *Hafta 4* · **Fiyat geçmişi yok** | `compare_at_price` serbest düzenlenebiliyor | İndirimde son 30 günün en düşük fiyatı gösterilmeli |
+| P0-24 | ⚠️ **AÇIK** (başvuru süreci) · **ETBİS kaydı yok** | Repoda 0 iz | E-ticaret için zorunlu; süreç işi, **şimdi başlatın** |
+| P0-25 | ✅ *Hafta 4* · **Destek kanalı yok** | `/iletisim`, `/sss` rotası yok; `Tickets.tsx` = biletlerim | Mesafeli satışta erişilebilir iletişim zorunlu |
 
 ### 3.4 Canlı hata ve körlük
 
-**P0-26 · Kategori filtresi kırık.** `store_service.py:276` tam eşitlik (`category_id == X`), alt
+**P0-26 · Kategori filtresi kırık.** — ✅ *Hafta 4* `store_service.py:276` tam eşitlik (`category_id == X`), alt
 kategoriye genişletme yok; frontend yalnız **üst** kategorileri chip yapıyor
 (`StorePage.tsx:60-63`), seed ürünleri **yaprak** kategorilere atıyor (`seed_kitapsec.py:87`).
 Sonuç: mağazanın birincil gezinme yolu 0 ürün gösteriyor. *Bu bir boşluk değil, canlı hata.*
@@ -203,23 +203,23 @@ Backend Sentry opt-in ve DSN boş; frontend'de
 grep'i **0**. Canlıda ödeme ekranında beyaz ekran görülse haberiniz olmaz; lansman gününün verisi
 geri dönülmez şekilde kaybolur. **~1,5 saat toplam.**
 
-**P0-28 · Yedekleme stratejisi yok.** Repoda hiç `pg_dump`/backup script'i, cron'u veya compose
+**P0-28 · Yedekleme stratejisi yok.** — ⚠️ *Hafta 3: script'ler yazıldı; CRON KURULUMU + ilk restore provası OPERASYON* Repoda hiç `pg_dump`/backup script'i, cron'u veya compose
 servisi yok. Escrow para kayıtları, audit log ve KVKK kapsamındaki veri tek diskte, kopyasız.
 
-**P0-29 · TLS ve üretim dağıtım hattı yok.** `nginx.conf` yalnız `listen 80`, sertifika yok;
+**P0-29 · TLS ve üretim dağıtım hattı yok.** — ⚠️ *Hafta 3: Caddyfile + prod compose hazır; SUNUCU/DNS OPERASYON* `nginx.conf` yalnız `listen 80`, sertifika yok;
 `.github/workflows/` içinde deploy job'u yok; prod compose yok. iyzico üretim başvurusu da HTTPS
 olmadan geçmez.
 
 ### 3.5 SEO — pazaryeri için varoluşsal
 
-**P0-30 · Derin envanter arama motoruna görünmez.**
+**P0-30 · Derin envanter arama motoruna görünmez.** — ✅ *Hafta 4*
 Monorepo'da **sitemap yok** (`robots.txt` özenle yazılmış ama `Sitemap:` satırı yok). Üç public
 liste sayfası da buton tabanlı: `PublicMarketplace.tsx:289`, `Libraries.tsx:357`,
 `StorePage.tsx:268` → crawler yalnız **ilk sayfayı** görüyor. İkinci sayfadan sonraki her eğitmen,
 kütüphane ve ürün organik olarak erişilemez. Bir pazaryerinin değeri uzun kuyruk sorgularındadır
 ("adana matematik özel ders") — bu tek kusur o kanalı kapatıyor.
 
-**P0-31 · SSR/prerender yok.** `dist/index.html` her rota için aynı jenerik başlık; `Seo.tsx`
+**P0-31 · SSR/prerender yok.** — ✅ *Hafta 4: sosyal bot yönlendirmesi; tam SSR bilinçli yapılmadı* `dist/index.html` her rota için aynı jenerik başlık; `Seo.tsx`
 meta'ları yalnız runtime enjekte ediyor. WhatsApp/Twitter/Facebook botları JS çalıştırmaz →
 paylaşılan eğitmen/ürün linki **jenerik önizleme** olarak çıkar.
 
@@ -228,29 +228,29 @@ paylaşılan eğitmen/ürün linki **jenerik önizleme** olarak çıkar.
 ## 4. P1 — Lansmandan Hemen Sonra
 
 **Dayanıklılık**
-- `main.py:38-60` tek `try` bloğu: `dispatch_task_reminders` patlarsa escrow mutabakatı ve teslimat
+- ✅ ~~`main.py:38-60` tek `try` bloğu~~ *(Hafta 5)*: `dispatch_task_reminders` patlarsa escrow mutabakatı ve teslimat
   watchdog'u o turda hiç çalışmaz → emanetteki para kilitlenir. *(Session'lar ayrılmış, `try` ayrılmamış.)*
-- Arka plan döngüleri her replikada koşuyor, lider seçimi yok (`main.py:96-98`). `send_due_reminders`
+- ✅ ~~Arka plan döngüleri her replikada koşuyor, lider seçimi yok~~ *(Hafta 5)* (`main.py:96-98`). `send_due_reminders`
   ve `dispatch_task_reminders` atomik claim etmiyor → 2 worker = 2 kat bildirim. Proje
   `pg_advisory_xact_lock`'u zaten kullanıyor (`order_service.py:118`).
-- bcrypt (`core/security.py:14`) ve Pillow (`core/storage.py:95`) event loop'u blokluyor;
+- ✅ ~~bcrypt ve Pillow event loop'u blokluyor~~ — *Pillow Hafta 5, **bcrypt Hafta 18** (`*_async` sarmalayıcılar)*;
   sağlayıcı HTTP çağrıları açık transaction + satır kilidi altında (`order_service.py:423`, `:1047`).
   Üçü birlikte ilk trafik dalgasında havuz tükenmesi üretir.
-- S3/MinIO'da timeout/retry yapılandırması yok (`storage.py`, 5 client) → erişilemez MinIO'da tek
+- ✅ ~~S3/MinIO'da timeout/retry yapılandırması yok~~ *(Hafta 5)* (`storage.py`, 5 client) → erişilemez MinIO'da tek
   istek ~240 sn DB session tutar.
-- DB'de `pool_recycle`, `pool_timeout`, `statement_timeout` yok (`core/database.py:12`).
-- 24 indekssiz FK; `booking_comments/resources/private_notes.booking_id` her ders detayında sorgulanıyor.
+- ✅ ~~DB'de `pool_recycle`, `pool_timeout`, `statement_timeout` yok~~ *(Hafta 5)* (`core/database.py:12`).
+- ✅ ~~24 indekssiz FK~~ — *Hafta 5: 12 eklendi, kalan 12 bilinçli (bkz. madde 29)*; `booking_comments/resources/private_notes.booking_id` her ders detayında sorgulanıyor.
 
 **Frontend**
-- **4,21 MB ikon ana sayfada**: `CategoryBar.tsx:63` beş adet 1024×1024 PNG'yi 48×48'e çiziyor.
+- ✅ ~~**4,21 MB ikon ana sayfada**~~ *(Hafta 4: WebP, 19 KB)*: `CategoryBar.tsx:63` beş adet 1024×1024 PNG'yi 48×48'e çiziyor.
   `public/` 16 MB, WebP/AVIF **hiç yok**, 57 `<img>`'nin 16'sında lazy, 1'inde width.
 - ✅ ~~Leaflet (144 KB) entry chunk'ta~~ — *29 Tem, commit `0dead97`*: `DistrictMapModal` lazy
   yüklenir; harita açılmadıkça hiçbir harita kodu inmez. **Giriş paketi 613 → 504 KB
   (gzip 188 → 158 KB).**
-- `index.html:19` `@tabler/icons@latest` — 150 KB render-blocking, pinlenmemiş, SRI'siz CDN CSS;
+- ✅ ~~`index.html:19` `@tabler/icons@latest`~~ *(Hafta 4: npm'e taşındı)* — 150 KB render-blocking, pinlenmemiş, SRI'siz CDN CSS;
   karşılığında **3 kullanım** ve üçü de ölü prototip dosyalarında.
-- `nginx.conf`'ta **gzip yok** — 613 KB JS sıkıştırılmadan gidiyor (gzip'lense 188 KB).
-- Test prototipleri prod'da açık ve indekslenebilir: `App.tsx:300-302` (`/test-bilet`,
+- ✅ ~~`nginx.conf`'ta **gzip yok**~~ *(Hafta 3)* — 613 KB JS sıkıştırılmadan gidiyor (gzip'lense 188 KB).
+- ✅ ~~Test prototipleri prod'da açık~~ *(Hafta 4: `DEV` arkasında)*: `App.tsx:300-302` (`/test-bilet`,
   `/test-canli-ders`, `/test-kutuphane-karti`), `DEV` koruması yok.
 - `tile.openstreetmap.org` 6 dosyada — OSMF politikası ticari kullanımı yasaklar. Engellendiği an
   kütüphane haritası, **checkout adres pin'i** ve **canlı kurye takibi** aynı anda çöker.
@@ -835,11 +835,55 @@ altı dosya birden değişecekti. Tek kaynağa alındı (`lib/mapTiles.ts`, `cor
     `{z}/{x}/{y}` yer tutucularını içeriyor. `http://` kontrolü doğrudan (a) maddesinin
     regresyon testidir.
 
+**Hafta 18 — bcrypt event loop'u bloklamıyor (29 Tem 2026)** *(commit `HAFTA18`)*
+
+75. ✅ **P1'in son açık maddesi.** bcrypt kasıtlı olarak yavaştır (güvenliğinin kaynağı bu);
+    saf Python'dan çağrıldığında event loop'u ~250 ms bloklar — yani **bir kullanıcı giriş
+    yaparken o anki tüm isteklerin yanıtı bekler**. Pillow için Hafta 5'te alınan karar
+    parolaya uygulanmamıştı. `hash_password_async`/`verify_password_async` sarmalayıcıları
+    eklendi ve beş dosyadaki sıcak yollar (login, kayıt, şifre değişimi/sıfırlama, operatör
+    ve kurye hesabı açma) bunlara geçirildi. *Senkron sürümler bilerek duruyor:* seed ve
+    bakım betikleri event loop dışında çalışır.
+    **Teste bağlandı:** hash sürerken bir sayaç coroutine'i ilerleyebiliyor mu — ilerlemiyorsa
+    sarmalayıcı iş parçacığına taşımayı bırakmış demektir (6 test).
+
 **Sürekli**
-- Yeni yazılan her para/auth kodu testsiz merge edilmesin. *(29 Tem sonu: 483 birim +
+- Yeni yazılan her para/auth kodu testsiz merge edilmesin. *(29 Tem sonu: 489 birim +
   124 doğrulama + 366 frontend testi; `services` kapsaması %27 ve CI'da raporlanıyor.)*
 - ✅ Gerçekçi hacimde seed **yapıldı ve araca dönüştürüldü** — şema değişince ölçüm
   tekrarlanabilir: `python scripts/scale/run.py --create && ... seed && ... probe`.
+
+---
+
+## 7b. Kalan İşler — tek bakışta (29 Temmuz 2026)
+
+**Kod tarafında açık P0/P1 kalmadı.** 31 P0'ın tamamı ve P1 listesinin tamamı ya kapatıldı
+ya da gerekçesiyle bilinçli borç olarak kayda geçti. Kalanlar üç kategoride:
+
+### A. Şirket tesciline / dış sürece bağlı (kod işi değil)
+| # | Konu | Not |
+|---|---|---|
+| P0-18 | **Fatura (e-Arşiv)** | Lansmanda GİB portalı elle; API entegrasyonu (Nilvera/Paraşüt) 90 günde |
+| P0-24 | **ETBİS kaydı** | Başvuru süreci — e-ticaret için zorunlu, **şirket tescili sonrası ilk iş** |
+| P0-6 | **Otomatik hakediş ödemesi** | iyzico alt üye işyeri kapalı; şu an "ödenecekler defteri" + elle havale |
+| — | **Yasal metin avukat onayı** | 6 metin + Hafta 15'te güncellenen iade kuralı |
+
+### B. Operasyon (kod hazır, kurulum bekliyor)
+Sunucu + DNS (`depo.` alt alanı dahil) · `.env.prod` doldurma · Sentry DSN · UptimeRobot ·
+`backup-postgres.sh` cron'u · **ilk `restore-drill.sh` provası** · lansman öncesi bir kez daha
+`scripts/scale/probe` · analitik sunucusu (Umami) kurulumu · harita döşeme sağlayıcısı seçimi
+(Protomaps self-host / MapTiler — kod tarafı Hafta 17'de hazır, tek satır `.env`).
+
+### C. Bilinçli borç (ölçüldü, gerekçesi yazıldı)
+- **Ölçek**: liderlik tablosu 132 ms (önbellek gerekecek) · hakediş defteri sayfalanmıyor ·
+  mağaza sıralaması 200.000 üründe kalıcı `rating_score` isteyecek *(Hafta 5)*
+- **Kapsama** `services` %27 — sayı yanıltıcı: en güçlü testler (124 doğrulama testi) ayrı
+  DB'de koştuğu için orana girmiyor *(Hafta 13'teki düzeltme)*
+- **a11y**: 31 uyarı (24'ü `autoFocus`, 7'si tıklanabilir `<div>`) — hata değil *(Hafta 7)*
+- **Giriş paketi** 259 KB: kalanı uygulama kabuğu; daha fazla bölmek her gezinmeye ağ isteği
+  ekler *(Hafta 16)*
+- **CI**: `pip-audit` hâlâ `continue-on-error` *(Hafta 3'ten devreden)*
+- **P2 listesi** (§5) hiç başlanmadı — bilinçli.
 
 ---
 

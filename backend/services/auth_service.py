@@ -6,7 +6,7 @@ from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from core.security import hash_password, verify_password
+from core.security import hash_password_async, verify_password_async
 from models.admin import Admin
 from models.client import Client
 from models.courier_account import CourierAccount
@@ -76,7 +76,7 @@ async def register_tutor(
     await _ensure_unique(db, Tutor, email=email, username=username)
     tutor = Tutor(
         email=email,
-        hashed_password=hash_password(password),
+        hashed_password=await hash_password_async(password),
         first_name=first_name,
         last_name=last_name,
         username=username,
@@ -104,7 +104,7 @@ async def register_client(
     await _ensure_unique(db, Client, email=email, username=username)
     client = Client(
         email=email,
-        hashed_password=hash_password(password),
+        hashed_password=await hash_password_async(password),
         first_name=first_name,
         last_name=last_name,
         username=username,
@@ -160,11 +160,11 @@ async def change_password(
     current_password: str,
     new_password: str,
 ) -> None:
-    if not verify_password(current_password, user.hashed_password):
+    if not await verify_password_async(current_password, user.hashed_password):
         raise HTTPException(
             status.HTTP_400_BAD_REQUEST, "Current password is incorrect"
         )
-    user.hashed_password = hash_password(new_password)
+    user.hashed_password = await hash_password_async(new_password)
     await db.flush()
     # Şifre değişimi TÜM oturumları kapatır: aksi halde çalınmış 30 günlük bir
     # refresh token, kurban şifresini değiştirdikten sonra da /auth/refresh ile
@@ -178,7 +178,7 @@ async def authenticate(db: AsyncSession, *, email: str, password: str):
     for role, model in _LOGIN_PRECEDENCE:
         stmt = select(model).where(model.email == email, model.deleted_at.is_(None))
         user = (await db.execute(stmt)).scalar_one_or_none()
-        if user is not None and verify_password(password, user.hashed_password):
+        if user is not None and await verify_password_async(password, user.hashed_password):
             return user, role
     return None, None
 
@@ -203,7 +203,7 @@ async def reset_password(
     Hesabı ele geçiren saldırganın oturumunu da düşürmek için tüm refresh
     token'ları iptal edilir — "şifremi unuttum" akışının asıl amacı budur.
     """
-    user.hashed_password = hash_password(new_password)
+    user.hashed_password = await hash_password_async(new_password)
     await db.flush()
     await refresh_token_service.revoke_all_for_user(
         db, role_id=user.role_id, user_id=user.id

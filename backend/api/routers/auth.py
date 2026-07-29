@@ -34,7 +34,11 @@ from core.cookies import (
 from core.database import get_db
 from core.config import settings
 from core.ratelimit import client_ip, rate_limit
-from core.security import create_access_token, decode_access_token, verify_password
+from core.security import (
+    create_access_token,
+    decode_access_token,
+    verify_password_async,
+)
 from core.token_denylist import revoke
 from core.storage import upload_avatar, delete_avatar
 
@@ -553,7 +557,7 @@ async def delete_my_account(
     zorlaştırır. Mali kayıtlar (sipariş/ödeme) mevzuat gereği SİLİNMEZ; yalnız
     kimlik/iletişim verisi geri döndürülemez biçimde temizlenir.
     """
-    if not verify_password(payload.password, user.hashed_password):
+    if not await verify_password_async(payload.password, user.hashed_password):
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Parola hatalı")
 
     ok, reason = await account_deletion_service.can_delete(db, user)

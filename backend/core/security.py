@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import datetime
 import secrets
 
@@ -19,6 +20,26 @@ def hash_password(password: str) -> str:
 def verify_password(password: str, hashed_password: str) -> bool:
     pwd = password.encode("utf-8")[:_BCRYPT_MAX_BYTES]
     return bcrypt.checkpw(pwd, hashed_password.encode("utf-8"))
+
+
+# ── Async sarmalayıcılar (istek yollarında BUNLAR kullanılır) ───────────────────
+#
+# bcrypt kasıtlı olarak YAVAŞTIR — güvenliğinin kaynağı bu. Varsayılan maliyet
+# çarpanında tek bir hash ~250 ms CPU harcar ve saf Python'dan çağrıldığında
+# event loop'u o süre boyunca BLOKLAR: yani bir kullanıcı giriş yaparken o anki
+# TÜM isteklerin yanıtı bekler. Aynı anda birkaç login, sunucuyu yanıt veremez
+# hale getirir (`optimize_image` için Pillow'da alınan kararın aynısı).
+#
+# Senkron sürümler bilerek duruyor: seed ve bakım betikleri event loop dışında
+# çalışır, orada sarmalayıcı gereksiz bir karmaşıklık olurdu.
+
+
+async def hash_password_async(password: str) -> str:
+    return await asyncio.to_thread(hash_password, password)
+
+
+async def verify_password_async(password: str, hashed_password: str) -> bool:
+    return await asyncio.to_thread(verify_password, password, hashed_password)
 
 
 def create_access_token(
