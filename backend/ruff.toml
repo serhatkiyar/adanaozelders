@@ -43,6 +43,9 @@ ignore = [
 "tests/*" = ["F841", "B011"]
 # Doğrulama runner'ı bir CLI aracıdır; komutu kullanıcıya yazdırır.
 "tests/verify/run.py" = ["T20"]
+# Ölçek provası araçları (seed + sorgu ölçümü) CLI'dır: ölçüm tablosunu ve
+# EXPLAIN planlarını konsola basar — çıktı zaten ürünün kendisidir.
+"scripts/scale/*.py" = ["T20"]
 # Seed/bakım script'leri konsola yazar.
 "seed_*.py" = ["T20"]
 "add_*.py" = ["T20"]

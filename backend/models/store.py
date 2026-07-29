@@ -287,7 +287,24 @@ class Product(Base, TimestampMixin, SoftDeleteMixin):
             postgresql_where=text("deleted_at IS NULL"),
         ),
         Index("ix_products_search_vector", "search_vector", postgresql_using="gin"),
+        # Başlık üzerinde trigram: mağaza araması `search_vector @@ tsquery OR
+        # title % :q` şeklinde çalışır. TSVECTOR index'i tek başına OR'un ikinci
+        # kolunu karşılamadığı için planlayıcı tüm ürünleri tarıyordu; iki GIN
+        # index birlikte BitmapOr'a izin verir. Yazım hatasına toleransı da bu
+        # kol sağlar ("matematık" → "matematik").
+        Index(
+            "ix_products_title_trgm",
+            "title",
+            postgresql_using="gin",
+            postgresql_ops={"title": "gin_trgm_ops"},
+        ),
         Index("ix_products_status", "status"),
+        # Yönetim ürün listesi ve "yeni eklenenler" sıralaması.
+        Index(
+            "ix_products_created_desc",
+            text("created_at DESC"),
+            postgresql_where=text("deleted_at IS NULL"),
+        ),
         Index("ix_products_category", "category_id"),
         Index("ix_products_tutor", "tutor_id"),
         CheckConstraint(
@@ -326,8 +343,9 @@ class ProductReview(Base, TimestampMixin, SoftDeleteMixin):
     product_id: Mapped[int] = mapped_column(
         ForeignKey("products.id", ondelete="CASCADE"), nullable=False
     )
+    # index: "bu müşteri bu ürüne yorum yapmış mı" ve müşterinin yorum listesi.
     client_id: Mapped[int] = mapped_column(
-        ForeignKey("clients.id", ondelete="CASCADE"), nullable=False
+        ForeignKey("clients.id", ondelete="CASCADE"), nullable=False, index=True
     )
     rating: Mapped[int] = mapped_column(Integer, nullable=False)
     comment_text: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -496,6 +514,20 @@ class Order(Base, TimestampMixin, SoftDeleteMixin):
                 "AND has_physical AND deleted_at IS NULL"
             ),
         ),
+        # Admin sipariş listesi (created_at DESC LIMIT n) — bu index olmadan
+        # 50.000 satırın tamamı okunup sıralanıyordu (ölçüm: 140 ms).
+        Index(
+            "ix_orders_created_desc",
+            text("created_at DESC"),
+            postgresql_where=text("deleted_at IS NULL"),
+        ),
+        # Müşterinin "siparişlerim" listesi: sahibine göre en yeniden eskiye.
+        Index(
+            "ix_orders_client_created",
+            "client_id",
+            text("created_at DESC"),
+            postgresql_where=text("deleted_at IS NULL"),
+        ),
     )
 
 
@@ -632,8 +664,9 @@ class CouponRedemption(Base, TimestampMixin):
     client_id: Mapped[int] = mapped_column(
         ForeignKey("clients.id", ondelete="CASCADE"), nullable=False, index=True
     )
+    # index: iade/iptal yolu kuponu siparişten geri almak için buradan arar.
     order_id: Mapped[int | None] = mapped_column(
-        ForeignKey("orders.id", ondelete="SET NULL"), nullable=True
+        ForeignKey("orders.id", ondelete="SET NULL"), nullable=True, index=True
     )
 
     coupon: Mapped["Coupon"] = relationship(back_populates="redemptions")
@@ -761,7 +794,7 @@ class StockNotification(Base, TimestampMixin):
     )
     email: Mapped[str] = mapped_column(String(255), nullable=False)
     client_id: Mapped[int | None] = mapped_column(
-        ForeignKey("clients.id", ondelete="SET NULL"), nullable=True
+        ForeignKey("clients.id", ondelete="SET NULL"), nullable=True, index=True
     )
     notified_at: Mapped[datetime.datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True

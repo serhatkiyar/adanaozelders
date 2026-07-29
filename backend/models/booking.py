@@ -109,6 +109,26 @@ class Booking(Base, TimestampMixin, SoftDeleteMixin):
         ),
         Index("ix_bookings_tutor_status", "tutor_id", "status"),
         Index("ix_bookings_client", "client_id"),
+        # Admin ders listesi (created_at DESC LIMIT 50). Bu index olmadan
+        # Postgres 60.000 satırın tamamını okuyup eğitmen/öğrenci ile join
+        # ediyor, sonra 50 tanesini alıyordu (ölçüm: 250 ms).
+        Index(
+            "ix_bookings_created_desc",
+            text("created_at DESC"),
+            text("id DESC"),
+            postgresql_where=text("deleted_at IS NULL"),
+        ),
+        # Liderlik tablosu: tamamlanan ders sayısına göre öğrenci/eğitmen sıralaması.
+        Index(
+            "ix_bookings_completed_client",
+            "client_id",
+            postgresql_where=text("status = 'COMPLETED' AND deleted_at IS NULL"),
+        ),
+        Index(
+            "ix_bookings_completed_tutor",
+            "tutor_id",
+            postgresql_where=text("status = 'COMPLETED' AND deleted_at IS NULL"),
+        ),
         Index(
             "ix_bookings_pair_status",
             "client_id",

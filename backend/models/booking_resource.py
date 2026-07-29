@@ -11,8 +11,9 @@ class BookingResource(Base, TimestampMixin):
     __tablename__ = "booking_resources"
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    # index: ders detayında kaynak listesi booking_id ile çekilir.
     booking_id: Mapped[int] = mapped_column(
-        ForeignKey("bookings.id", ondelete="CASCADE"), nullable=False
+        ForeignKey("bookings.id", ondelete="CASCADE"), nullable=False, index=True
     )
     uploader_role: Mapped[str] = mapped_column(String(10), nullable=False)
     uploader_id: Mapped[int] = mapped_column(nullable=False)

@@ -69,7 +69,7 @@ class LibraryExamSession(Base, TimestampMixin, SoftDeleteMixin):
     # Opsiyonel katalog (blueprint) bağı. Doluysa ortak deneme/cevap anahtarı paylaşılır;
     # boşsa oturum tek-seferlik çalışır (geriye uyumlu).
     catalog_id: Mapped[int | None] = mapped_column(
-        ForeignKey("library_exam_catalogs.id", ondelete="SET NULL"), nullable=True
+        ForeignKey("library_exam_catalogs.id", ondelete="SET NULL"), nullable=True, index=True
     )
     exam_type: Mapped[str] = mapped_column(String(20), nullable=False)  # TYT/AYT/YKS…
     title: Mapped[str] = mapped_column(String(200), nullable=False)

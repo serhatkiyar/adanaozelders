@@ -26,7 +26,7 @@ class PracticeExam(Base, TimestampMixin, SoftDeleteMixin):
         ForeignKey("clients.id", ondelete="CASCADE"), nullable=False
     )
     tutor_id: Mapped[int | None] = mapped_column(
-        ForeignKey("tutors.id", ondelete="SET NULL"), nullable=True
+        ForeignKey("tutors.id", ondelete="SET NULL"), nullable=True, index=True
     )
 
     title: Mapped[str] = mapped_column(String(200), nullable=False)

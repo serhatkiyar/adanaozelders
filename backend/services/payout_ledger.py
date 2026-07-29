@@ -87,7 +87,14 @@ async def _tutor_earned(db: AsyncSession) -> tuple[dict[int, Decimal], dict[int,
                 func.coalesce(func.sum(Payment.tutor_earning), 0),
             )
             .join(Booking, Booking.id == Payment.booking_id)
-            .where(Payment.deleted_at.is_(None))
+            .where(
+                Payment.deleted_at.is_(None),
+                # Yalnız defteri ilgilendiren iki durum: hak edilmiş (RELEASED)
+                # ve emanetteki (HELD). PENDING/REFUNDED satırlar borç hesabına
+                # girmediği hâlde taranıyordu — ödeme tablosu büyüdükçe bu fark
+                # doğrusal olarak büyür.
+                Payment.status.in_([PaymentStatus.RELEASED, PaymentStatus.HELD]),
+            )
             .group_by(Booking.tutor_id, Payment.status)
         )
     ).all()

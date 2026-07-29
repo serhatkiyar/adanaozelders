@@ -8,8 +8,9 @@ class BookingPrivateNote(Base):
     __tablename__ = "booking_private_notes"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    # index: ders detayında her açılışta sorgulanır (lazy="selectin").
     booking_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("bookings.id", ondelete="CASCADE"), nullable=False
+        Integer, ForeignKey("bookings.id", ondelete="CASCADE"), nullable=False, index=True
     )
     # Hangi role sahip kullanıcının notu? (RoleType.TUTOR veya RoleType.CLIENT'in veritabanı ID'si)
     owner_role: Mapped[int] = mapped_column(Integer, nullable=False)

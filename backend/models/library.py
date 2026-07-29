@@ -222,8 +222,9 @@ class LibraryReview(Base, TimestampMixin, SoftDeleteMixin):
     library_id: Mapped[int] = mapped_column(
         ForeignKey("libraries.id", ondelete="CASCADE"), nullable=False
     )
+    # index: öğrencinin kütüphane yorumları + "daha önce yorumlamış mı" kontrolü.
     client_id: Mapped[int] = mapped_column(
-        ForeignKey("clients.id", ondelete="CASCADE"), nullable=False
+        ForeignKey("clients.id", ondelete="CASCADE"), nullable=False, index=True
     )
     rating: Mapped[int] = mapped_column(Integer, nullable=False)
     comment_text: Mapped[str | None] = mapped_column(Text, nullable=True)

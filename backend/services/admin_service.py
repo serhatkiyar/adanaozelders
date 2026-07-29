@@ -71,25 +71,39 @@ async def _count(db: AsyncSession, model, *conditions) -> int:
 
 
 async def get_stats(db: AsyncSession) -> AdminStats:
-    return AdminStats(
-        total_clients=await _count(db, Client),
-        total_tutors=await _count(db, Tutor),
-        total_admins=await _count(db, Admin),
-        approved_tutors=await _count(db, Tutor, Tutor.status == TutorStatus.APPROVED),
-        pending_tutors=await _count(
-            db, Tutor, Tutor.status == TutorStatus.PENDING_APPROVAL
-        ),
-        total_bookings=await _count(db, Booking),
-        active_bookings=await _count(
-            db,
-            Booking,
-            Booking.status.in_([BookingStatus.PENDING, BookingStatus.ACCEPTED]),
-        ),
-        completed_bookings=await _count(
-            db, Booking, Booking.status == BookingStatus.COMPLETED
-        ),
-        total_reviews=await _count(db, Review),
-    )
+    """Yönetim özeti — dokuz sayaç TEK sorguda.
+
+    Önceden her sayaç ayrı bir gidiş-dönüştü: dokuz sorgu, dokuz ağ turu ve
+    `bookings` tablosunun üç kez taranması. `get_dashboard` zaten scalar
+    subquery deseniyle yazılmış; bu fonksiyon aynı desene getirildi.
+    """
+    row = (
+        await db.execute(
+            select(
+                _count_scalar(Client).label("total_clients"),
+                _count_scalar(Tutor).label("total_tutors"),
+                _count_scalar(Admin).label("total_admins"),
+                _count_scalar(Tutor, Tutor.status == TutorStatus.APPROVED).label(
+                    "approved_tutors"
+                ),
+                _count_scalar(
+                    Tutor, Tutor.status == TutorStatus.PENDING_APPROVAL
+                ).label("pending_tutors"),
+                _count_scalar(Booking).label("total_bookings"),
+                _count_scalar(
+                    Booking,
+                    Booking.status.in_(
+                        [BookingStatus.PENDING, BookingStatus.ACCEPTED]
+                    ),
+                ).label("active_bookings"),
+                _count_scalar(Booking, Booking.status == BookingStatus.COMPLETED).label(
+                    "completed_bookings"
+                ),
+                _count_scalar(Review).label("total_reviews"),
+            )
+        )
+    ).one()
+    return AdminStats(**row._mapping)
 
 
 def _count_scalar(model, *conditions, soft_delete: bool = True):
