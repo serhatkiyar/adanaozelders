@@ -17,12 +17,23 @@ import { useWsStore } from "@/store/wsStore";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 // Landing kök (`/`) yüzeyidir + prerender/SEO hedefi → eager (kod bölünmez).
 import Landing from "@/pages/Landing";
-import { GlobalMeeting } from "@/components/GlobalMeeting";
-import { DeepWorkTimer } from "@/components/DeepWorkTimer";
-import { AuthModal } from "@/components/AuthModal";
 import { PendingFavoriteApplier } from "@/components/PendingFavoriteApplier";
 import { StoreFavoritesSync } from "@/components/StoreFavoritesSync";
 import { rtcManager } from "@/lib/rtcTransfer";
+
+// Her ziyaretçiye inen ama NADİREN açılan üç yüzey. Giriş paketinden çıkarıldı:
+// canlı ders penceresi yalnız derse katılınca, odak zamanlayıcı yalnız
+// başlatılınca, giriş modalı yalnız tıklanınca gerekir. Üçü de kapalıyken
+// `null` render ettiğinden Suspense fallback'i de `null`.
+const GlobalMeeting = lazy(() =>
+  import("@/components/GlobalMeeting").then((m) => ({ default: m.GlobalMeeting }))
+);
+const DeepWorkTimer = lazy(() =>
+  import("@/components/DeepWorkTimer").then((m) => ({ default: m.DeepWorkTimer }))
+);
+const AuthModal = lazy(() =>
+  import("@/components/AuthModal").then((m) => ({ default: m.AuthModal }))
+);
 
 // ── Route-level code splitting: ağır modüller talep üzerine yüklenir ──
 const MarketplacePage = lazy(() => import("@/pages/MarketplacePage"));
@@ -470,12 +481,18 @@ function App() {
         </Routes>
         </Suspense>
         </RouteErrorBoundary>
-        <AuthModal />
+        <Suspense fallback={null}>
+          <AuthModal />
+        </Suspense>
         <PendingFavoriteApplier />
         <StoreFavoritesSync />
-        <DeepWorkTimer />
+        <Suspense fallback={null}>
+          <DeepWorkTimer />
+        </Suspense>
       </BrowserRouter>
-      <GlobalMeeting />
+      <Suspense fallback={null}>
+        <GlobalMeeting />
+      </Suspense>
       <Toaster />
       <ReactQueryDevtools initialIsOpen={false} />
     </QueryClientProvider>

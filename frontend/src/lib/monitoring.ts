@@ -8,14 +8,34 @@
  * `console.error` yapıyordu. Yani bir kullanıcının ödeme ekranında beyaz ekran
  * görmesini, o kişi size ulaşmadıkça ÖĞRENEMİYORDUNUZ.
  */
-import * as Sentry from "@sentry/react";
+type SentryModule = typeof import("@sentry/react");
 
+let sentry: SentryModule | null = null;
 let initialized = false;
 
+/**
+ * Sentry KOŞULLU ve DİNAMİK yüklenir (statik import değil).
+ *
+ * Sebep ölçüldü: statik import'ta SDK giriş paketine giriyor ve DSN
+ * verilmemiş olsa bile — yani geliştirmede ve DSN girilene kadar üretimde —
+ * her ziyaretçi onu indiriyordu. Dinamik import'ta Vite ayrı bir chunk üretir;
+ * DSN yoksa o chunk'a hiç istek gitmez, varsa da ilk boyamayı bloklamaz.
+ *
+ * Bedeli: SDK yüklenene kadar geçen birkaç yüz ms içindeki hatalar
+ * yakalanmaz. Kabul edildi — bu penceredeki hatalar neredeyse tamamen
+ * modül yükleme hatalarıdır ve zaten Sentry'ye de ulaşamazlardı.
+ */
 export function initMonitoring(): void {
   const dsn = import.meta.env.VITE_SENTRY_DSN;
   if (!dsn || initialized) return;
+  initialized = true;
+  void import("@sentry/react").then((Sentry) => {
+    sentry = Sentry;
+    _init(Sentry, dsn);
+  });
+}
 
+function _init(Sentry: SentryModule, dsn: string): void {
   Sentry.init({
     dsn,
     environment: import.meta.env.VITE_SENTRY_ENVIRONMENT ?? import.meta.env.MODE,
@@ -40,7 +60,6 @@ export function initMonitoring(): void {
       return event;
     },
   });
-  initialized = true;
 }
 
 const SENSITIVE_PARAMS = ["token", "access_token", "refresh_token", "code", "otp"];
@@ -64,6 +83,7 @@ export function stripSensitiveParams(rawUrl: string): string {
 
 /** Yakalanan bir hatayı raporlar (DSN yoksa no-op). */
 export function reportError(error: unknown, context?: Record<string, unknown>): void {
-  if (!initialized) return;
-  Sentry.captureException(error, context ? { extra: context } : undefined);
+  // SDK henüz yüklenmemişse (veya DSN yoksa) sessizce geç: hata raporlamanın
+  // kendisi uygulamayı düşürmemeli.
+  sentry?.captureException(error, context ? { extra: context } : undefined);
 }

@@ -9,6 +9,35 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        // Çerçeve kodunu uygulama kodundan ayır.
+        //
+        // Kazanç ilk açılışta DEĞİL, sonraki ziyaretlerdedir: uygulama kodu her
+        // deploy'da değişir, çerçeve ayda bir. Tek dosyada olduklarında her
+        // deploy tüm paketin yeniden indirilmesine yol açıyordu; ayrıldığında
+        // dönen ziyaretçi yalnız değişen parçayı indirir.
+        //
+        // Neden TEK bir "vendor" chunk'ı (react'i router'dan ayırmak yerine):
+        // bu paketler birbirine bağımlı ve daha ince bölmek modül başlatma
+        // sırasını kırılgan hale getirir (React context'leri iki ayrı chunk'ta
+        // başlatılırsa "invalid hook call" gibi teşhisi zor hatalar üretir).
+        // Sayfa bazlı bölünme zaten React.lazy ile yapılıyor; buradaki amaç
+        // önbellek ömrü, daha fazla parça değil.
+        manualChunks(id: string) {
+          if (!id.includes("node_modules")) return;
+          if (
+            /[\\/]node_modules[\\/](react|react-dom|scheduler|react-router|react-router-dom)[\\/]/.test(
+              id
+            )
+          ) {
+            return "vendor";
+          }
+        },
+      },
+    },
+  },
   server: {
     port: 5173,
     // Ağ paylaşımı (telefon vb.): LAN IP'sinden erişilebilsin diye 0.0.0.0'a bağlan.

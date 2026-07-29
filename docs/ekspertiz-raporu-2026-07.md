@@ -41,7 +41,7 @@ hata izleme, ortam ayrımı — hiçbiri mevcut değil. Eylül lansmanına kadar
 | Doğrulama paketi (gerçek DB + depo + HTTP) | *29 Tem: **92 test*** | Mock'suz, izole DB |
 | **Test kapsaması** | **%19** → *29 Tem: **%22*** | 🔴 |
 | `tsc --noEmit` | **0 hata** (strict açık) | Güçlü |
-| Frontend build | 613 KB JS (gzip 188 KB) + 144 KB CSS · `dist/` 18 MB | |
+| Frontend build | 613 KB JS (gzip 188 KB) → *29 Tem: **giriş 259 KB**, ilk açılış **140 KB gzip*** | |
 | `npm audit --omit=dev` | **9 açık** (1 kritik, 3 yüksek, 5 orta) | axios + react-router prod'da |
 | Canlı DB | 14 eğitmen · 27 rezervasyon · 8 sipariş · 89 mesaj | Hiç ANALYZE görmemiş |
 | İndekssiz FK | **24 adet** | `booking_comments.booking_id` dahil |
@@ -556,7 +556,7 @@ disiplini tutmuş.*
 - **`tile.openstreetmap.org` 6 dosyada** — OSMF politikası ticari kullanımı yasaklar. Engellendiği
   an kütüphane haritası, checkout adres pin'i ve canlı kurye takibi aynı anda çöker. Sağlayıcı
   kararı gerektirir (Protomaps self-host / MapTiler), kod işi değil.
-- **Giriş paketi hâlâ 504 KB**: vendor bölme (`manualChunks`) P2'de.
+- ✅ ~~**Giriş paketi hâlâ 504 KB**~~ — *Hafta 16*: 259 KB (ilk açılış gzip 158 → 140 KB).
 
 **Hafta 8 — Türkçe arama + keşfedilebilirlik (29 Tem 2026)** *(commit `ef9a9c5`)*
 41. ✅ **Diakritik-duyarsız arama** (`tr_normalize`, migration `dd737c387ff5`) — eğitmen, kütüphane
@@ -778,6 +778,40 @@ Dört yüzeyin dördü de artık gerçek DB + gerçek servis katmanıyla doğrul
 ders *(Hafta 15)* · mağaza siparişi *(Hafta 2/4)* · deneme bileti ve çalışma rezervasyonu
 *(Hafta 14)* · ve hepsinin arkasındaki mutabakat *(Hafta 13)*. Ortak değişmez her yüzeyde
 ayrı ayrı sınandı: **emanetten çıkış atomik claim'dir ve tek yönlüdür.**
+
+**Hafta 16 — Giriş paketi (29 Tem 2026)** *(commit `HAFTA16`)*
+
+P1'den devreden son performans maddesi. Ölçüm birimi **ilk açılışta inen gzip'li JS**:
+Adana'da mobil bağlantıda ilk boyamayı doğrudan belirleyen sayı bu.
+
+| | Giriş (ham) | İlk açılış (gzip) |
+|---|---|---|
+| Hafta 7 (Leaflet lazy sonrası) | 504 KB | 158 KB |
+| **Hafta 16** | **259 KB** | **140 KB** |
+
+70. ✅ **Sentry koşullu-dinamik yüklendi.** Statik `import` ile SDK giriş paketine giriyordu
+    ve **DSN verilmemiş olsa bile** — yani geliştirmede ve DSN girilene kadar üretimde —
+    her ziyaretçi onu indiriyordu. Artık ayrı chunk (6,3 KB gzip) ve DSN yoksa o chunk'a
+    hiç istek gitmiyor. *Bedeli kabul edildi:* SDK yüklenene kadarki birkaç yüz ms'lik
+    pencerede hata yakalanmaz — o penceredeki hatalar zaten çoğunlukla modül yükleme
+    hatalarıdır ve Sentry'ye de ulaşamazlardı.
+71. ✅ **Üç global yüzey giriş paketinden çıktı** — canlı ders penceresi, odak zamanlayıcı
+    ve giriş modalı. Üçü de her ziyaretçiye iniyordu ama sırasıyla derse katılınca,
+    zamanlayıcı başlatılınca ve giriş'e tıklanınca gerekiyor. Kapalıyken `null` render
+    ettiklerinden `Suspense` fallback'i de `null` — görsel bir değişiklik yok.
+72. ✅ **Çerçeve ayrı chunk'ta** (`vendor`, 59 KB gzip). ⚠️ *Dürüst kayıt:* bu madde
+    **ilk açılışı hızlandırmaz**, toplam bayt aynıdır. Kazanç dönen ziyaretçidedir:
+    uygulama kodu her deploy'da değişir, çerçeve ayda bir; tek dosyadayken her deploy
+    tüm paketin yeniden indirilmesine yol açıyordu. *React router/query'den ayrılmadı —
+    daha ince bölme modül başlatma sırasını kırılganlaştırır ("invalid hook call" ailesi)
+    ve buradaki amaç önbellek ömrü, daha fazla parça değil.*
+
+**Kalan** *(ölçüldü, bilinçli)*
+- Giriş paketi 259 KB'ın büyük kısmı **uygulama kabuğudur** (router tablosu, shell'ler,
+  store'lar, api katmanı, ortak bileşenler) — daha fazla bölmek her gezinmede ağ isteği
+  ekler, kazancı yer.
+- `public/` 4,1 MB'a inmiş durumda (Hafta 4'teki ikon işiyle 16 MB'dan). Kalan büyük
+  dosyalar nadir yüzeylerde; öncelik değil.
 
 **Sürekli**
 - Yeni yazılan her para/auth kodu testsiz merge edilmesin. *(29 Tem sonu: 483 birim +
