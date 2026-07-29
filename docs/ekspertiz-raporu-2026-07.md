@@ -753,7 +753,7 @@ Buradaki bir hata ekrana yansımaz: para ya kütüphaneye hiç geçmez ya da kat
     onay metninde 24 saat kuralını söylüyor. Geride kalan yalnız sözleşme metinleriydi;
     yani müşteri hakkını **arayüzden** kullanabiliyordu ama **sözleşmede** aksi yazıyordu.
 
-**Hafta 15 — Ders para yolu + yasal metin hizalaması (29 Tem 2026)** *(commit `HAFTA15`)*
+**Hafta 15 — Ders para yolu + yasal metin hizalaması (29 Tem 2026)** *(commit `c472cce`)*
 
 68. ✅ **Dört para yüzeyinin sonuncusu doğrulandı** (`test_verify_booking_money.py`, 13 test).
     Ders yolu en eski ve en çok kullanılan yüzeydi ama `payment_service` %17 kapsamayla
