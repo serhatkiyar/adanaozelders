@@ -1,4 +1,6 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
+import { Field } from "@/components/ui/Field";
+import { Modal } from "@/components/ui/Modal";
 import { useCreateBooking } from "@/hooks/useBookings";
 import { toast } from "@/store/toastStore";
 import { getErrorMessage } from "@/lib/errors";
@@ -294,14 +296,13 @@ export function BookingModal({
   };
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
-      onClick={onClose}
+    <Modal
+      open
+      onClose={onClose}
+      ariaLabel="Ders talebi"
+      hideCloseButton
+      panelClassName="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl ring-1 ring-slate-100 dark:bg-slate-900 dark:ring-slate-800 max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-200"
     >
-      <div
-        className="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl ring-1 ring-slate-100 dark:bg-slate-900 dark:ring-slate-800 max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-200"
-        onClick={(e) => e.stopPropagation()}
-      >
         <div className="flex items-center justify-between mb-4">
           {step > 1 ? (
             <button
@@ -606,19 +607,19 @@ export function BookingModal({
               )}
 
               {/* Ek Not */}
-              <div>
-                <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
-                  Eğitmene Mesaj (Opsiyonel)
-                </label>
-                <textarea
-                  rows={8}
-                  maxLength={1000}
-                  placeholder="Kendinizi kısaca tanıtın, ders beklentilerinizi veya hedeflerinizi yazın..."
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200"
-                />
-              </div>
+              <Field label="Eğitmene Mesaj (Opsiyonel)" labelClassName="mb-2 block text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+                {(id) => (
+                    <textarea
+                    id={id}
+                      rows={8}
+                      maxLength={1000}
+                      placeholder="Kendinizi kısaca tanıtın, ders beklentilerinizi veya hedeflerinizi yazın..."
+                      value={notes}
+                      onChange={(e) => setNotes(e.target.value)}
+                      className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200"
+                    />
+                )}
+              </Field>
 
               <button
                 type="submit"
@@ -634,8 +635,6 @@ export function BookingModal({
             </div>
           )}
         </form>
-
-      </div>
-    </div>
+    </Modal>
   );
 }

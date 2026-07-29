@@ -1,4 +1,5 @@
 import { FormEvent, useState } from "react";
+import { Field } from "@/components/ui/Field";
 import { Link, useNavigate } from "react-router-dom";
 import { useMutation } from "@tanstack/react-query";
 import { register, type RegisterRole } from "@/api/auth";
@@ -82,117 +83,117 @@ export default function Register() {
 
         <form onSubmit={handleSubmit} className="mt-6 space-y-4">
           <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-                Ad <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                required
-                minLength={1}
-                maxLength={75}
-                value={firstName}
-                onChange={(e) => setFirstName(e.target.value)}
-                className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:placeholder-slate-500"
-                placeholder="Adınız"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-                Soyad <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                required
-                minLength={1}
-                maxLength={75}
-                value={lastName}
-                onChange={(e) => setLastName(e.target.value)}
-                className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:placeholder-slate-500"
-                placeholder="Soyadınız"
-              />
-            </div>
+            <Field label="Ad" required>
+              {(id) => (
+                  <input
+                    id={id}
+                    type="text"
+                    required
+                    minLength={1}
+                    maxLength={75}
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                    className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:placeholder-slate-500"
+                    placeholder="Adınız"
+                  />
+              )}
+            </Field>
+            <Field label="Soyad" required>
+              {(id) => (
+                  <input
+                    id={id}
+                    type="text"
+                    required
+                    minLength={1}
+                    maxLength={75}
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                    className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:placeholder-slate-500"
+                    placeholder="Soyadınız"
+                  />
+              )}
+            </Field>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-              Kullanıcı Adı <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              required
-              minLength={3}
-              maxLength={50}
-              pattern="[a-zA-Z0-9_]+"
-              title="Yalnızca harf, rakam ve alt çizgi (_)"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:placeholder-slate-500"
-              placeholder="kullanici_adi"
-            />
-          </div>
+          <Field label="Kullanıcı Adı" required>
+            {(id) => (
+                <input
+                    id={id}
+                  type="text"
+                  required
+                  minLength={3}
+                  maxLength={50}
+                  pattern="[a-zA-Z0-9_]+"
+                  title="Yalnızca harf, rakam ve alt çizgi (_)"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:placeholder-slate-500"
+                  placeholder="kullanici_adi"
+                />
+            )}
+          </Field>
 
-          <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-              E-posta <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:placeholder-slate-500"
-              placeholder="ornek@eposta.com"
-            />
-          </div>
+          <Field label="E-posta" required>
+            {(id) => (
+                <input
+                    id={id}
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:placeholder-slate-500"
+                  placeholder="ornek@eposta.com"
+                />
+            )}
+          </Field>
 
-          <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-              Parola <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="password"
-              required
-              minLength={8}
-              maxLength={128}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:placeholder-slate-500"
-              placeholder="En az 8 karakter"
-            />
-          </div>
+          <Field label="Parola" required>
+            {(id) => (
+                <input
+                    id={id}
+                  type="password"
+                  required
+                  minLength={8}
+                  maxLength={128}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:placeholder-slate-500"
+                  placeholder="En az 8 karakter"
+                />
+            )}
+          </Field>
 
           {/* Opsiyonel demografi */}
           <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-                Doğum Tarihi
-              </label>
-              <input
-                type="date"
-                max={todayStr}
-                value={birthDate}
-                onChange={(e) => setBirthDate(e.target.value)}
-                className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-                Cinsiyet
-              </label>
-              <select
-                value={gender}
-                onChange={(e) => setGender(e.target.value as Gender | "")}
-                className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white"
-              >
-                <option value="">Seçilmedi</option>
-                {GENDERS.map((g) => (
-                  <option key={g.value} value={g.value}>
-                    {g.label}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <Field label="Doğum Tarihi">
+              {(id) => (
+                  <input
+                    id={id}
+                    type="date"
+                    max={todayStr}
+                    value={birthDate}
+                    onChange={(e) => setBirthDate(e.target.value)}
+                    className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white"
+                  />
+              )}
+            </Field>
+            <Field label="Cinsiyet">
+              {(id) => (
+                  <select
+                    id={id}
+                    value={gender}
+                    onChange={(e) => setGender(e.target.value as Gender | "")}
+                    className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white"
+                  >
+                    <option value="">Seçilmedi</option>
+                    {GENDERS.map((g) => (
+                      <option key={g.value} value={g.value}>
+                        {g.label}
+                      </option>
+                    ))}
+                  </select>
+              )}
+            </Field>
           </div>
 
           <ConsentCheckbox />

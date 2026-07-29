@@ -1,4 +1,5 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
+import { Field } from "@/components/ui/Field";
 import { DashboardShell } from "@/components/DashboardShell";
 import { STUDENT_NAV } from "@/lib/nav";
 import { useCreateExam, useExams } from "@/hooks/useExams";
@@ -336,45 +337,45 @@ export default function Exams() {
           </h2>
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <div>
-              <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
-                Sınav türü
-              </label>
-              <select
-                value={templateKey}
-                onChange={(e) => setTemplateKey(e.target.value)}
-                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:border-slate-600 dark:bg-slate-700 dark:text-white"
-              >
-                {EXAM_TEMPLATES.map((t) => (
-                  <option key={t.key} value={t.key}>
-                    {t.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
-                Başlık
-              </label>
-              <input
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="ör. TYT Denemesi 3"
-                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:placeholder-slate-500"
-              />
-            </div>
-            <div>
-              <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
-                Tarih
-              </label>
-              <input
-                type="date"
-                value={examDate}
-                max={toDateStr(new Date())}
-                onChange={(e) => setExamDate(e.target.value)}
-                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200"
-              />
-            </div>
+            <Field label="Sınav türü" labelClassName="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+              {(id) => (
+                  <select
+                    id={id}
+                    value={templateKey}
+                    onChange={(e) => setTemplateKey(e.target.value)}
+                    className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:border-slate-600 dark:bg-slate-700 dark:text-white"
+                  >
+                    {EXAM_TEMPLATES.map((t) => (
+                      <option key={t.key} value={t.key}>
+                        {t.label}
+                      </option>
+                    ))}
+                  </select>
+              )}
+            </Field>
+            <Field label="Başlık" labelClassName="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+              {(id) => (
+                  <input
+                    id={id}
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    placeholder="ör. TYT Denemesi 3"
+                    className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:placeholder-slate-500"
+                  />
+              )}
+            </Field>
+            <Field label="Tarih" labelClassName="mb-1 block text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+              {(id) => (
+                  <input
+                    id={id}
+                    type="date"
+                    value={examDate}
+                    max={toDateStr(new Date())}
+                    onChange={(e) => setExamDate(e.target.value)}
+                    className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200"
+                  />
+              )}
+            </Field>
           </div>
 
           {/* Konu satırları */}

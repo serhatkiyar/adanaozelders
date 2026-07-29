@@ -1,4 +1,5 @@
 import { FormEvent, useState } from "react";
+import { Field } from "@/components/ui/Field";
 import { Link, useNavigate } from "react-router-dom";
 import { DashboardShell } from "@/components/DashboardShell";
 import { FullScreenSpinner } from "@/components/Spinner";
@@ -133,71 +134,83 @@ function DemandForm() {
     >
       <p className="text-sm font-bold text-slate-900 dark:text-white">Yeni talep aç</p>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <div>
-          <label className={labelCls}>Alan</label>
-          <select
-            value={subject}
-            onChange={(e) => setSubject(e.target.value)}
-            className={inputCls}
-          >
-            <option value="">Alan seç…</option>
-            {SUBJECT_OPTIONS.map((s) => (
-              <option key={s.q} value={s.q}>
-                {s.label}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className={labelCls}>Seviye (opsiyonel)</label>
-          <input
-            value={level}
-            onChange={(e) => setLevel(e.target.value)}
-            className={inputCls}
-            placeholder="ör. 11. sınıf, TYT"
-          />
-        </div>
+        <Field label="Alan" labelClassName={labelCls}>
+          {(id) => (
+              <select
+                    id={id}
+                value={subject}
+                onChange={(e) => setSubject(e.target.value)}
+                className={inputCls}
+              >
+                <option value="">Alan seç…</option>
+                {SUBJECT_OPTIONS.map((s) => (
+                  <option key={s.q} value={s.q}>
+                    {s.label}
+                  </option>
+                ))}
+              </select>
+          )}
+        </Field>
+        <Field label="Seviye (opsiyonel)" labelClassName={labelCls}>
+          {(id) => (
+              <input
+                    id={id}
+                value={level}
+                onChange={(e) => setLevel(e.target.value)}
+                className={inputCls}
+                placeholder="ör. 11. sınıf, TYT"
+              />
+          )}
+        </Field>
       </div>
-      <div>
-        <label className={labelCls}>Başlık</label>
-        <input
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          className={inputCls}
-          placeholder="ör. TYT Matematik için haftada 2 ders arıyorum"
-        />
-      </div>
-      <div>
-        <label className={labelCls}>Açıklama (opsiyonel)</label>
-        <textarea
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          rows={3}
-          className={inputCls}
-          placeholder="Hedefin, mevcut durumun, tercih ettiğin gün/saatler…"
-        />
-      </div>
+      <Field label="Başlık" labelClassName={labelCls}>
+        {(id) => (
+            <input
+                    id={id}
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className={inputCls}
+              placeholder="ör. TYT Matematik için haftada 2 ders arıyorum"
+            />
+        )}
+      </Field>
+      <Field label="Açıklama (opsiyonel)" labelClassName={labelCls}>
+        {(id) => (
+            <textarea
+                    id={id}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={3}
+              className={inputCls}
+              placeholder="Hedefin, mevcut durumun, tercih ettiğin gün/saatler…"
+            />
+        )}
+      </Field>
       <div className="grid grid-cols-2 gap-4">
-        <div>
-          <label className={labelCls}>Bütçe alt (TL/saat)</label>
-          <input
-            value={budgetMin}
-            onChange={(e) => setBudgetMin(e.target.value.replace(/[^\d]/g, ""))}
-            inputMode="numeric"
-            className={inputCls}
-            placeholder="ör. 200"
-          />
-        </div>
-        <div>
-          <label className={labelCls}>Bütçe üst (TL/saat)</label>
-          <input
-            value={budgetMax}
-            onChange={(e) => setBudgetMax(e.target.value.replace(/[^\d]/g, ""))}
-            inputMode="numeric"
-            className={inputCls}
-            placeholder="ör. 400"
-          />
-        </div>
+        <Field label="Bütçe alt (TL/saat)" labelClassName={labelCls}>
+          {(id) => (
+              <input
+                    id={id}
+                value={budgetMin}
+                onChange={(e) => setBudgetMin(e.target.value.replace(/[^\d]/g, ""))}
+                inputMode="numeric"
+                className={inputCls}
+                placeholder="ör. 200"
+              />
+          )}
+        </Field>
+        <Field label="Bütçe üst (TL/saat)" labelClassName={labelCls}>
+          {(id) => (
+              <input
+                    id={id}
+                value={budgetMax}
+                onChange={(e) => setBudgetMax(e.target.value.replace(/[^\d]/g, ""))}
+                inputMode="numeric"
+                className={inputCls}
+                placeholder="ör. 400"
+              />
+          )}
+        </Field>
       </div>
       <div className="flex justify-end">
         <button

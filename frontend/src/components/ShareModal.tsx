@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Modal } from "@/components/ui/Modal";
 
 interface ShareModalProps {
   url: string;
@@ -25,14 +26,13 @@ export function ShareModal({
   const encodedTitle = encodeURIComponent(titleText);
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-      onClick={onClose}
+    <Modal
+      open
+      onClose={onClose}
+      ariaLabel="Paylaş"
+      hideCloseButton
+      panelClassName="w-full max-w-sm rounded-3xl bg-white p-6 shadow-xl ring-1 ring-slate-100 dark:bg-slate-900 dark:ring-slate-800 animate-in zoom-in-95 duration-200"
     >
-      <div
-        className="w-full max-w-sm rounded-3xl bg-white p-6 shadow-xl ring-1 ring-slate-100 dark:bg-slate-900 dark:ring-slate-800 animate-in zoom-in-95 duration-200"
-        onClick={(e) => e.stopPropagation()}
-      >
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-bold text-slate-900 dark:text-white">
             {heading}
@@ -114,7 +114,6 @@ export function ShareModal({
             {copied ? "Kopyalandı" : "Kopyala"}
           </button>
         </div>
-      </div>
-    </div>
+    </Modal>
   );
 }

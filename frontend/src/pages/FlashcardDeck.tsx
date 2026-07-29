@@ -1,4 +1,5 @@
 import { FormEvent, useEffect, useState } from "react";
+import { Field } from "@/components/ui/Field";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { DashboardShell } from "@/components/DashboardShell";
 import { STUDENT_NAV, TUTOR_NAV } from "@/lib/nav";
@@ -54,14 +55,18 @@ function CardForm({
   return (
     <form onSubmit={submit} className="space-y-3 rounded-2xl bg-slate-50 p-4 dark:bg-slate-800/60">
       <div className="grid gap-3 sm:grid-cols-2">
-        <div>
-          <label className="mb-1.5 block text-xs font-medium text-slate-500 dark:text-slate-400">Ön yüz (soru)</label>
-          <textarea rows={2} maxLength={2000} value={front} onChange={(e) => setFront(e.target.value)} placeholder="apple" className={inputCls} autoFocus={!initial} />
-        </div>
-        <div>
-          <label className="mb-1.5 block text-xs font-medium text-slate-500 dark:text-slate-400">Arka yüz (cevap)</label>
-          <textarea rows={2} maxLength={2000} value={back} onChange={(e) => setBack(e.target.value)} placeholder="elma" className={inputCls} />
-        </div>
+        <Field label="Ön yüz (soru)" labelClassName="mb-1.5 block text-xs font-medium text-slate-500 dark:text-slate-400">
+          {(id) => (
+              <textarea
+                    id={id} rows={2} maxLength={2000} value={front} onChange={(e) => setFront(e.target.value)} placeholder="apple" className={inputCls} autoFocus={!initial} />
+          )}
+        </Field>
+        <Field label="Arka yüz (cevap)" labelClassName="mb-1.5 block text-xs font-medium text-slate-500 dark:text-slate-400">
+          {(id) => (
+              <textarea
+                    id={id} rows={2} maxLength={2000} value={back} onChange={(e) => setBack(e.target.value)} placeholder="elma" className={inputCls} />
+          )}
+        </Field>
       </div>
       <div className="flex justify-end gap-2">
         {onCancel && (

@@ -4,7 +4,7 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { Suspense, lazy, useEffect } from "react";
 import { queryClient } from "@/lib/queryClient";
 import { Toaster } from "@/components/Toaster";
-import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { ErrorBoundary, RouteErrorBoundary } from "@/components/ErrorBoundary";
 import { FullScreenSpinner } from "@/components/Spinner";
 import { ROLE_IDS } from "@/types";
 import { ROUTES, PATHS } from "@/lib/routes";
@@ -271,6 +271,11 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <WsManager />
       <BrowserRouter>
+        {/* İkinci sınır ROUTER'IN İÇİNDE: dıştaki sınır tek başınayken bir
+            sayfa çöktüğünde router da düşüyordu, yani "ana sayfaya dön"
+            tam sayfa yenilemeye zorlanıyordu. İçteki sınır rota değişince
+            sıfırlanır ve kullanıcı uygulamada kalır. */}
+        <RouteErrorBoundary>
         <Suspense fallback={<FullScreenSpinner />}>
         <Routes>
           {/* ── Kök dağıtıcı + public (SEO) — oturumdan bağımsız ── */}
@@ -449,6 +454,7 @@ function App() {
           <Route path="*" element={<NotFound />} />
         </Routes>
         </Suspense>
+        </RouteErrorBoundary>
         <AuthModal />
         <PendingFavoriteApplier />
         <StoreFavoritesSync />

@@ -1,4 +1,5 @@
 import { useRef, useState, useCallback } from "react";
+import { useModalPanel } from "@/hooks/useModalA11y";
 import Cropper, { ReactCropperElement } from "react-cropper";
 import "cropperjs/dist/cropper.css";
 
@@ -31,6 +32,8 @@ export function ImageCropModal({
   title = "Fotoğrafı Düzenle",
 }: ImageCropModalProps) {
   const cropperRef = useRef<ReactCropperElement>(null);
+  // Odak tuzağı: kırpma penceresi açıkken Tab arkadaki forma kaçmasın.
+  const panelRef = useModalPanel({ onClose });
   const [zoom, setZoom] = useState(0);
   const [rotation, setRotation] = useState(0);
 
@@ -84,7 +87,12 @@ export function ImageCropModal({
       />
 
       {/* Modal */}
-      <div className="relative z-10 mx-4 flex w-full max-w-lg flex-col overflow-hidden rounded-2xl bg-white shadow-2xl dark:bg-slate-800">
+      <div
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        className="relative z-10 mx-4 flex w-full max-w-lg flex-col overflow-hidden rounded-2xl bg-white shadow-2xl dark:bg-slate-800"
+      >
         {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4 dark:border-slate-700">
           <h3 className="text-base font-semibold text-slate-900 dark:text-white">

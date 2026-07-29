@@ -1,4 +1,5 @@
 import { FormEvent, useState } from "react";
+import { Field } from "@/components/ui/Field";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { fetchMe, login } from "@/api/auth";
@@ -55,33 +56,35 @@ export default function Login() {
         )}
 
         <form onSubmit={handleSubmit} className="mt-6 space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-              E-posta <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:placeholder-slate-500"
-              placeholder="ornek@eposta.com"
-            />
-          </div>
+          <Field label="E-posta" required>
+            {(id) => (
+              <input
+                id={id}
+                type="email"
+                required
+                autoComplete="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:placeholder-slate-500"
+                placeholder="ornek@eposta.com"
+              />
+            )}
+          </Field>
 
-          <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-              Parola <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:placeholder-slate-500"
-              placeholder="••••••••"
-            />
-          </div>
+          <Field label="Parola" required>
+            {(id) => (
+              <input
+                id={id}
+                type="password"
+                required
+                autoComplete="current-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:placeholder-slate-500"
+                placeholder="••••••••"
+              />
+            )}
+          </Field>
 
           <div className="flex items-center justify-between">
             <label className="flex select-none items-center gap-2 text-sm text-slate-600 dark:text-slate-300">

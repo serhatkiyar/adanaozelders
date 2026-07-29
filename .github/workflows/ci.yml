@@ -104,6 +104,14 @@ jobs:
       - name: Unit tests (Vitest)
         run: npm run test
 
+      # Erişilebilirlik regresyonu (eslint-plugin-jsx-a11y). Kural seti dar ve
+      # HATA seviyesinde temiz: bir form alanı etiketsiz eklenirse CI kırılır.
+      # Gerekçe: kod tabanında 178 <label> vardı ve htmlFor kullanımı sıfırdı;
+      # görsel olarak etiketli her alan ekran okuyucu için adsızdı. Gözle
+      # yakalanmayan bu sınıf hatayı ancak bir kural tutar.
+      - name: Accessibility lint (ESLint)
+        run: npm run lint
+
       - name: Type-check & build
         run: npm run build
 

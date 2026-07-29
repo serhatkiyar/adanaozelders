@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { Field } from "@/components/ui/Field";
 import {
   useThemeStore,
   type ThemePreference,
@@ -326,25 +327,25 @@ function NavbarWidgetSection() {
       )}
 
       {widget === "weather" && (
-        <div className="mt-3">
-          <label className="block text-xs font-medium text-slate-600 dark:text-slate-300">
-            Şehir
-          </label>
-          <select
-            value={city.name}
-            onChange={(e) => {
-              const next = CITIES.find((c) => c.name === e.target.value);
-              if (next) setCity(next);
-            }}
-            className={`${subInputClass} mt-1`}
-          >
-            {CITIES.map((c) => (
-              <option key={c.name} value={c.name}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-        </div>
+        <Field label="Şehir" labelClassName="block text-xs font-medium text-slate-600 dark:text-slate-300" className="mt-3">
+          {(id) => (
+              <select
+                    id={id}
+                value={city.name}
+                onChange={(e) => {
+                  const next = CITIES.find((c) => c.name === e.target.value);
+                  if (next) setCity(next);
+                }}
+                className={`${subInputClass} mt-1`}
+              >
+                {CITIES.map((c) => (
+                  <option key={c.name} value={c.name}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+          )}
+        </Field>
       )}
     </div>
   );

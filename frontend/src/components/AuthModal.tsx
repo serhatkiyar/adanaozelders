@@ -1,4 +1,6 @@
 import { FormEvent, useState, useEffect } from "react";
+import { Field } from "@/components/ui/Field";
+import { Modal } from "@/components/ui/Modal";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { fetchMe, login, register, type RegisterRole } from "@/api/auth";
@@ -41,16 +43,20 @@ export function AuthModal() {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm animate-in fade-in duration-200">
-      {/* Click outside to close */}
-      <div className="absolute inset-0" onClick={close} />
-      
-      <div className="relative w-full max-w-md scale-100 overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-slate-100 animate-in zoom-in-95 duration-200 dark:bg-slate-800 dark:ring-slate-700">
+    <Modal
+      open
+      onClose={close}
+      ariaLabel={modal === "login" ? "Giriş yap" : "Kayıt ol"}
+      hideCloseButton
+      panelClassName="w-full max-w-md scale-100 overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-slate-100 animate-in zoom-in-95 duration-200 dark:bg-slate-800 dark:ring-slate-700"
+    >
         <button
+          type="button"
           onClick={close}
-          className="absolute right-4 top-4 rounded-full p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-700 dark:hover:text-slate-300"
+          className="absolute right-4 top-4 z-10 rounded-full p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:hover:bg-slate-700 dark:hover:text-slate-300"
         >
-          <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+          <span className="sr-only">Kapat</span>
+          <svg aria-hidden="true" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
           </svg>
         </button>
@@ -61,8 +67,7 @@ export function AuthModal() {
             setSearchParams(searchParams, { replace: true });
           }} />}
         </div>
-      </div>
-    </div>
+    </Modal>
   );
 }
 
@@ -107,33 +112,33 @@ function LoginForm({ onSuccess }: { onSuccess: () => void }) {
       <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Giriş Yap</h2>
 
       <form onSubmit={handleSubmit} className="mt-6 space-y-4">
-        <div>
-          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-            E-posta <span className="text-red-500">*</span>
-          </label>
-          <input
-            type="email"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:placeholder-slate-500"
-            placeholder="ornek@eposta.com"
-          />
-        </div>
+        <Field label="E-posta" required>
+          {(id) => (
+              <input
+                    id={id}
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:placeholder-slate-500"
+                placeholder="ornek@eposta.com"
+              />
+          )}
+        </Field>
 
-        <div>
-          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-            Parola <span className="text-red-500">*</span>
-          </label>
-          <input
-            type="password"
-            required
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:placeholder-slate-500"
-            placeholder="••••••••"
-          />
-        </div>
+        <Field label="Parola" required>
+          {(id) => (
+              <input
+                    id={id}
+                type="password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:placeholder-slate-500"
+                placeholder="••••••••"
+              />
+          )}
+        </Field>
 
         <div className="flex items-center justify-between">
           <label className="flex select-none items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
@@ -251,117 +256,117 @@ function RegisterForm({ initialRole, onSuccess }: { initialRole: RegisterRole, o
 
       <form onSubmit={handleSubmit} className="mt-6 space-y-4">
         <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-              Ad <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              required
-              minLength={1}
-              maxLength={75}
-              value={firstName}
-              onChange={(e) => setFirstName(e.target.value)}
-              className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:placeholder-slate-500"
-              placeholder="Adınız"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-              Soyad <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              required
-              minLength={1}
-              maxLength={75}
-              value={lastName}
-              onChange={(e) => setLastName(e.target.value)}
-              className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:placeholder-slate-500"
-              placeholder="Soyadınız"
-            />
-          </div>
+          <Field label="Ad" required>
+            {(id) => (
+                <input
+                    id={id}
+                  type="text"
+                  required
+                  minLength={1}
+                  maxLength={75}
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:placeholder-slate-500"
+                  placeholder="Adınız"
+                />
+            )}
+          </Field>
+          <Field label="Soyad" required>
+            {(id) => (
+                <input
+                    id={id}
+                  type="text"
+                  required
+                  minLength={1}
+                  maxLength={75}
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:placeholder-slate-500"
+                  placeholder="Soyadınız"
+                />
+            )}
+          </Field>
         </div>
 
-        <div>
-          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-            Kullanıcı Adı <span className="text-red-500">*</span>
-          </label>
-          <input
-            type="text"
-            required
-            minLength={3}
-            maxLength={50}
-            pattern="[a-zA-Z0-9_]+"
-            title="Yalnızca harf, rakam ve alt çizgi (_)"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:placeholder-slate-500"
-            placeholder="kullanici_adi"
-          />
-        </div>
+        <Field label="Kullanıcı Adı" required>
+          {(id) => (
+              <input
+                    id={id}
+                type="text"
+                required
+                minLength={3}
+                maxLength={50}
+                pattern="[a-zA-Z0-9_]+"
+                title="Yalnızca harf, rakam ve alt çizgi (_)"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:placeholder-slate-500"
+                placeholder="kullanici_adi"
+              />
+          )}
+        </Field>
 
-        <div>
-          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-            E-posta <span className="text-red-500">*</span>
-          </label>
-          <input
-            type="email"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:placeholder-slate-500"
-            placeholder="ornek@eposta.com"
-          />
-        </div>
+        <Field label="E-posta" required>
+          {(id) => (
+              <input
+                    id={id}
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:placeholder-slate-500"
+                placeholder="ornek@eposta.com"
+              />
+          )}
+        </Field>
 
-        <div>
-          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-            Parola <span className="text-red-500">*</span>
-          </label>
-          <input
-            type="password"
-            required
-            minLength={8}
-            maxLength={128}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:placeholder-slate-500"
-            placeholder="En az 8 karakter"
-          />
-        </div>
+        <Field label="Parola" required>
+          {(id) => (
+              <input
+                    id={id}
+                type="password"
+                required
+                minLength={8}
+                maxLength={128}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:placeholder-slate-500"
+                placeholder="En az 8 karakter"
+              />
+          )}
+        </Field>
 
         {/* Opsiyonel demografi */}
         <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-              Doğum Tarihi
-            </label>
-            <input
-              type="date"
-              max={todayStr}
-              value={birthDate}
-              onChange={(e) => setBirthDate(e.target.value)}
-              className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-              Cinsiyet
-            </label>
-            <select
-              value={gender}
-              onChange={(e) => setGender(e.target.value as Gender | "")}
-              className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white"
-            >
-              <option value="">Seçilmedi</option>
-              {GENDERS.map((g) => (
-                <option key={g.value} value={g.value}>
-                  {g.label}
-                </option>
-              ))}
-            </select>
-          </div>
+          <Field label="Doğum Tarihi">
+            {(id) => (
+                <input
+                    id={id}
+                  type="date"
+                  max={todayStr}
+                  value={birthDate}
+                  onChange={(e) => setBirthDate(e.target.value)}
+                  className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white"
+                />
+            )}
+          </Field>
+          <Field label="Cinsiyet">
+            {(id) => (
+                <select
+                    id={id}
+                  value={gender}
+                  onChange={(e) => setGender(e.target.value as Gender | "")}
+                  className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 dark:border-slate-600 dark:bg-slate-700 dark:text-white"
+                >
+                  <option value="">Seçilmedi</option>
+                  {GENDERS.map((g) => (
+                    <option key={g.value} value={g.value}>
+                      {g.label}
+                    </option>
+                  ))}
+                </select>
+            )}
+          </Field>
         </div>
 
         <ConsentCheckbox />

@@ -1,4 +1,4 @@
-import { FormEvent, ReactNode, useEffect, useState } from "react";
+import { FormEvent, ReactNode, useEffect, useState, useId } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { AxiosError } from "axios";
 import { DashboardShell } from "@/components/DashboardShell";
@@ -295,6 +295,7 @@ function PhoneEditor({
   initialPhone: string;
   onDone: () => void;
 }) {
+  const uid = useId();
   const requestOtp = useRequestPhoneOtp();
   const verify = useVerifyPhone();
   const [step, setStep] = useState<"phone" | "code">("phone");
@@ -326,8 +327,8 @@ function PhoneEditor({
           sendCode();
         }}
       >
-        <label className={fieldLabelCls}>Cep telefonu</label>
-        <input
+        <label htmlFor={`${uid}-cep-telefonu`} className={fieldLabelCls}>Cep telefonu</label>
+        <input id={`${uid}-cep-telefonu`}
           type="tel"
           inputMode="tel"
           className={inputCls}
@@ -377,8 +378,8 @@ function PhoneEditor({
         <span className="font-medium text-slate-700 dark:text-slate-200">{masked}</span>{" "}
         numarasına gönderilen 6 haneli kodu gir.
       </p>
-      <label className={fieldLabelCls}>SMS kodu</label>
-      <input
+      <label htmlFor={`${uid}-sms-kodu`} className={fieldLabelCls}>SMS kodu</label>
+      <input id={`${uid}-sms-kodu`}
         type="text"
         inputMode="numeric"
         maxLength={6}
@@ -435,6 +436,7 @@ function PendingChangeNote({ children }: { children: React.ReactNode }) {
 
 // ── Kişisel bilgiler ──
 function PersonalSection() {
+  const uid = useId();
   const { data: user } = useCurrentUser();
   const updateProfile = useUpdateProfile();
   const { data: nameRequests } = useMyNameChangeRequests();
@@ -558,8 +560,8 @@ function PersonalSection() {
             )}
             <div className="grid gap-3 sm:grid-cols-2">
               <div>
-                <label className={fieldLabelCls}>Ad</label>
-                <input
+                <label htmlFor={`${uid}-ad`} className={fieldLabelCls}>Ad</label>
+                <input id={`${uid}-ad`}
                   className={inputCls}
                   value={firstName}
                   maxLength={75}
@@ -569,8 +571,8 @@ function PersonalSection() {
                 />
               </div>
               <div>
-                <label className={fieldLabelCls}>Soyad</label>
-                <input
+                <label htmlFor={`${uid}-soyad`} className={fieldLabelCls}>Soyad</label>
+                <input id={`${uid}-soyad`}
                   className={inputCls}
                   value={lastName}
                   maxLength={75}
@@ -581,8 +583,8 @@ function PersonalSection() {
             </div>
             {nameLocked && !pendingName && (
               <div className="mt-3">
-                <label className={fieldLabelCls}>Değişiklik gerekçesi</label>
-                <textarea
+                <label htmlFor={`${uid}-degisiklik-gerekcesi`} className={fieldLabelCls}>Değişiklik gerekçesi</label>
+                <textarea id={`${uid}-degisiklik-gerekcesi`}
                   className={inputCls}
                   rows={2}
                   maxLength={500}
@@ -635,8 +637,8 @@ function PersonalSection() {
                 </LockedChangeNote>
               )
             )}
-            <label className={fieldLabelCls}>Kullanıcı adı</label>
-            <input
+            <label htmlFor={`${uid}-kullanici-adi`} className={fieldLabelCls}>Kullanıcı adı</label>
+            <input id={`${uid}-kullanici-adi`}
               className={inputCls}
               value={username}
               minLength={3}
@@ -649,8 +651,8 @@ function PersonalSection() {
             />
             {usernameLocked && !pendingUsername && (
               <div className="mt-3">
-                <label className={fieldLabelCls}>Değişiklik gerekçesi</label>
-                <textarea
+                <label htmlFor={`${uid}-degisiklik-gerekcesi-2`} className={fieldLabelCls}>Değişiklik gerekçesi</label>
+                <textarea id={`${uid}-degisiklik-gerekcesi-2`}
                   className={inputCls}
                   rows={2}
                   maxLength={500}
@@ -745,8 +747,8 @@ function PersonalSection() {
               save({ birth_date: birthDate || null });
             }}
           >
-            <label className={fieldLabelCls}>Doğum tarihi</label>
-            <input
+            <label htmlFor={`${uid}-dogum-tarihi`} className={fieldLabelCls}>Doğum tarihi</label>
+            <input id={`${uid}-dogum-tarihi`}
               type="date"
               max={todayStr}
               className={inputCls}
@@ -772,8 +774,8 @@ function PersonalSection() {
               save({ gender: gender || null });
             }}
           >
-            <label className={fieldLabelCls}>Cinsiyet</label>
-            <select
+            <label htmlFor={`${uid}-cinsiyet`} className={fieldLabelCls}>Cinsiyet</label>
+            <select id={`${uid}-cinsiyet`}
               className={inputCls}
               value={gender}
               autoFocus
@@ -836,6 +838,7 @@ function OperatorPayout() {
 
 // ── Oturum açma ve güvenlik ──
 function SecuritySection() {
+  const uid = useId();
   const { data: user } = useCurrentUser();
   const changePassword = useChangePassword();
   const [open, setOpen] = useState<string | null>(null);
@@ -912,8 +915,8 @@ function SecuritySection() {
           <form onSubmit={submitPassword} className="max-w-md">
             <div className="space-y-3">
               <div>
-                <label className={fieldLabelCls}>Mevcut şifre</label>
-                <input
+                <label htmlFor={`${uid}-mevcut-sifre`} className={fieldLabelCls}>Mevcut şifre</label>
+                <input id={`${uid}-mevcut-sifre`}
                   type="password"
                   required
                   autoComplete="current-password"
@@ -924,8 +927,8 @@ function SecuritySection() {
                 />
               </div>
               <div>
-                <label className={fieldLabelCls}>Yeni şifre</label>
-                <input
+                <label htmlFor={`${uid}-yeni-sifre`} className={fieldLabelCls}>Yeni şifre</label>
+                <input id={`${uid}-yeni-sifre`}
                   type="password"
                   required
                   minLength={8}
@@ -938,8 +941,8 @@ function SecuritySection() {
                 />
               </div>
               <div>
-                <label className={fieldLabelCls}>Yeni şifre (tekrar)</label>
-                <input
+                <label htmlFor={`${uid}-yeni-sifre-tekrar`} className={fieldLabelCls}>Yeni şifre (tekrar)</label>
+                <input id={`${uid}-yeni-sifre-tekrar`}
                   type="password"
                   required
                   autoComplete="new-password"
@@ -997,6 +1000,7 @@ function SecuritySection() {
  * hesabın adını harfi harfine yazma.
  */
 function DataAndAccountSection() {
+  const uid = useId();
   const { data: user } = useCurrentUser();
   const download = useDownloadMyData();
   const { data: eligibility } = useDeletionEligibility();
@@ -1081,8 +1085,8 @@ function DataAndAccountSection() {
             </p>
             <div className="space-y-3">
               <div>
-                <label className={fieldLabelCls}>Parolan</label>
-                <input
+                <label htmlFor={`${uid}-parolan`} className={fieldLabelCls}>Parolan</label>
+                <input id={`${uid}-parolan`}
                   type="password"
                   required
                   autoComplete="current-password"

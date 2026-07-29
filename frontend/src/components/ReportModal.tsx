@@ -1,4 +1,6 @@
 import { FormEvent, useState } from "react";
+import { Field } from "@/components/ui/Field";
+import { Modal } from "@/components/ui/Modal";
 import { useCreateReport } from "@/hooks/useReports";
 import { ReportReason } from "@/types";
 import { toast } from "@/store/toastStore";
@@ -52,54 +54,38 @@ export function ReportModal({
   };
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-      onClick={onClose}
-    >
-      <div
-        className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-slate-700"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h2 className="text-lg font-bold text-slate-900 dark:text-white">
-          Şikayet et
-        </h2>
-        {targetLabel && (
-          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-            {targetLabel}
-          </p>
-        )}
+    <Modal open onClose={onClose} title="Şikayet et" description={targetLabel}>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <Field label="Neden">
+            {(id) => (
+              <select
+                id={id}
+                value={reason}
+                onChange={(e) => setReason(e.target.value as ReportReason)}
+                className={inputCls}
+              >
+                {Object.values(ReportReason).map((r) => (
+                  <option key={r} value={r}>
+                    {REPORT_REASON_LABEL[r]}
+                  </option>
+                ))}
+              </select>
+            )}
+          </Field>
 
-        <form onSubmit={handleSubmit} className="mt-4 space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-              Neden
-            </label>
-            <select
-              value={reason}
-              onChange={(e) => setReason(e.target.value as ReportReason)}
-              className={inputCls}
-            >
-              {Object.values(ReportReason).map((r) => (
-                <option key={r} value={r}>
-                  {REPORT_REASON_LABEL[r]}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-              Açıklama (opsiyonel)
-            </label>
-            <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              rows={3}
-              maxLength={2000}
-              placeholder="Ne olduğunu kısaca anlat…"
-              className={inputCls}
-            />
-          </div>
+          <Field label="Açıklama (opsiyonel)">
+            {(id) => (
+              <textarea
+                id={id}
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                rows={3}
+                maxLength={2000}
+                placeholder="Ne olduğunu kısaca anlat…"
+                className={inputCls}
+              />
+            )}
+          </Field>
 
           <div className="flex justify-end gap-2 pt-1">
             <button
@@ -118,7 +104,6 @@ export function ReportModal({
             </button>
           </div>
         </form>
-      </div>
-    </div>
+    </Modal>
   );
 }

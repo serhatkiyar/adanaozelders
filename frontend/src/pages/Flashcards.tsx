@@ -1,4 +1,5 @@
 import { FormEvent, useState } from "react";
+import { Field } from "@/components/ui/Field";
 import { Link } from "react-router-dom";
 import { DashboardShell } from "@/components/DashboardShell";
 import { STUDENT_NAV, TUTOR_NAV } from "@/lib/nav";
@@ -40,31 +41,31 @@ function CreateDeckModal({ onClose }: { onClose: () => void }) {
       >
         <h2 className="text-lg font-bold text-slate-900 dark:text-white">Yeni Deste</h2>
         <form onSubmit={submit} className="mt-4 space-y-4">
-          <div>
-            <label className="mb-1.5 block text-xs font-medium text-slate-500 dark:text-slate-400">
-              Deste adı *
-            </label>
-            <input
-              autoFocus
-              maxLength={120}
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Örn. YDS Kelimeler"
-              className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:border-slate-600 dark:bg-slate-700 dark:text-white"
-            />
-          </div>
-          <div>
-            <label className="mb-1.5 block text-xs font-medium text-slate-500 dark:text-slate-400">
-              Açıklama (opsiyonel)
-            </label>
-            <textarea
-              rows={2}
-              maxLength={2000}
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:border-slate-600 dark:bg-slate-700 dark:text-white"
-            />
-          </div>
+          <Field label="Deste adı *" required labelClassName="mb-1.5 block text-xs font-medium text-slate-500 dark:text-slate-400">
+            {(id) => (
+                <input
+                    id={id}
+                  autoFocus
+                  maxLength={120}
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Örn. YDS Kelimeler"
+                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:border-slate-600 dark:bg-slate-700 dark:text-white"
+                />
+            )}
+          </Field>
+          <Field label="Açıklama (opsiyonel)" labelClassName="mb-1.5 block text-xs font-medium text-slate-500 dark:text-slate-400">
+            {(id) => (
+                <textarea
+                    id={id}
+                  rows={2}
+                  maxLength={2000}
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:border-slate-600 dark:bg-slate-700 dark:text-white"
+                />
+            )}
+          </Field>
           <div className="flex justify-end gap-2">
             <button type="button" onClick={onClose} className="rounded-xl px-4 py-2 text-sm font-medium text-slate-500 transition hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700">
               İptal

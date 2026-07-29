@@ -1,6 +1,15 @@
-import { useRef, useState } from "react";
+import { Suspense, lazy, useRef, useState } from "react";
 import { ADANA_DISTRICTS } from "@/lib/districts";
-import { DistrictMapModal } from "@/components/DistrictMapModal";
+
+/* Harita modalı TEMBEL yüklenir. Ana sayfanın arama kutusu bu bileşeni
+   kullanıyor; doğrudan import edildiğinde Leaflet + react-leaflet + ilçe
+   GeoJSON'u (~144 KB) giriş paketine giriyor ve HARİTAYI HİÇ AÇMAYAN
+   ziyaretçiler dahil herkes indiriyordu. */
+const DistrictMapModal = lazy(() =>
+  import("@/components/DistrictMapModal").then((m) => ({
+    default: m.DistrictMapModal,
+  }))
+);
 
 /* ─────────────────────────────────────────────────────────────────────────
    Çoklu ilçe seçici. Tetik butonu seçimi özetler ("Tüm ilçeler" / "Seyhan" /
@@ -117,12 +126,17 @@ export function DistrictSelect({ value, onChange, triggerClassName = "" }: Props
         </>
       )}
 
-      <DistrictMapModal
-        open={mapOpen}
-        value={value}
-        onApply={onChange}
-        onClose={() => setMapOpen(false)}
-      />
+      {/* Yalnız açıldığında yüklenir; kapalıyken hiçbir harita kodu inmez. */}
+      {mapOpen && (
+        <Suspense fallback={null}>
+          <DistrictMapModal
+            open
+            value={value}
+            onApply={onChange}
+            onClose={() => setMapOpen(false)}
+          />
+        </Suspense>
+      )}
     </>
   );
 }

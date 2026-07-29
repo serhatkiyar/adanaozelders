@@ -1,4 +1,5 @@
 import { FormEvent, useRef, useState } from "react";
+import { Field } from "@/components/ui/Field";
 import {
   useAddEducation,
   useDeleteEducation,
@@ -130,68 +131,78 @@ function EducationForm({
       onSubmit={handleSubmit}
       className="space-y-3 rounded-xl bg-slate-50 p-4 dark:bg-slate-700/40"
     >
-      <div>
-        <label className={fieldLabelCls}>Okul *</label>
-        <input
-          type="text"
-          required
-          maxLength={200}
-          value={school}
-          onChange={(e) => setSchool(e.target.value)}
-          className={inputCls}
-          placeholder="Örn. Boğaziçi Üniversitesi"
-          autoFocus
-        />
+      <Field label="Okul" required labelClassName={fieldLabelCls}>
+        {(id) => (
+            <input
+                    id={id}
+              type="text"
+              required
+              maxLength={200}
+              value={school}
+              onChange={(e) => setSchool(e.target.value)}
+              className={inputCls}
+              placeholder="Örn. Boğaziçi Üniversitesi"
+              autoFocus
+            />
+        )}
+      </Field>
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="Derece" labelClassName={fieldLabelCls}>
+          {(id) => (
+              <input
+                    id={id}
+                type="text"
+                maxLength={100}
+                value={degree}
+                onChange={(e) => setDegree(e.target.value)}
+                className={inputCls}
+                placeholder="Lisans, Yüksek Lisans…"
+              />
+          )}
+        </Field>
+        <Field label="Bölüm / Alan" labelClassName={fieldLabelCls}>
+          {(id) => (
+              <input
+                    id={id}
+                type="text"
+                maxLength={150}
+                value={field}
+                onChange={(e) => setField(e.target.value)}
+                className={inputCls}
+                placeholder="Matematik…"
+              />
+          )}
+        </Field>
       </div>
       <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className={fieldLabelCls}>Derece</label>
-          <input
-            type="text"
-            maxLength={100}
-            value={degree}
-            onChange={(e) => setDegree(e.target.value)}
-            className={inputCls}
-            placeholder="Lisans, Yüksek Lisans…"
-          />
-        </div>
-        <div>
-          <label className={fieldLabelCls}>Bölüm / Alan</label>
-          <input
-            type="text"
-            maxLength={150}
-            value={field}
-            onChange={(e) => setField(e.target.value)}
-            className={inputCls}
-            placeholder="Matematik…"
-          />
-        </div>
-      </div>
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className={fieldLabelCls}>Başlangıç Yılı</label>
-          <input
-            type="number"
-            min={1950}
-            max={2100}
-            value={startYear}
-            onChange={(e) => setStartYear(e.target.value)}
-            className={inputCls}
-            placeholder="2018"
-          />
-        </div>
-        <div>
-          <label className={fieldLabelCls}>Bitiş Yılı</label>
-          <input
-            type="number"
-            min={1950}
-            max={2100}
-            value={endYear}
-            onChange={(e) => setEndYear(e.target.value)}
-            className={inputCls}
-            placeholder="2022"
-          />
-        </div>
+        <Field label="Başlangıç Yılı" labelClassName={fieldLabelCls}>
+          {(id) => (
+              <input
+                    id={id}
+                type="number"
+                min={1950}
+                max={2100}
+                value={startYear}
+                onChange={(e) => setStartYear(e.target.value)}
+                className={inputCls}
+                placeholder="2018"
+              />
+          )}
+        </Field>
+        <Field label="Bitiş Yılı" labelClassName={fieldLabelCls}>
+          {(id) => (
+              <input
+                    id={id}
+                type="number"
+                min={1950}
+                max={2100}
+                value={endYear}
+                onChange={(e) => setEndYear(e.target.value)}
+                className={inputCls}
+                placeholder="2022"
+              />
+          )}
+        </Field>
       </div>
 
       {showVerification && (
@@ -200,46 +211,52 @@ function EducationForm({
             Diploma doğrulama (e-Devlet)
           </p>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <div>
-              <label className={fieldLabelCls}>Belge türü</label>
-              <select
-                value={docType}
-                onChange={(e) => setDocType(e.target.value as DocumentType | "")}
-                className={inputCls}
-              >
-                <option value="">Seç…</option>
-                {DOC_TYPE_OPTIONS.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className={fieldLabelCls}>e-Devlet doğrulama kodu / barkod</label>
-              <input
-                type="text"
-                maxLength={60}
-                value={barcode}
-                onChange={(e) => setBarcode(e.target.value)}
-                className={inputCls}
-                placeholder="Örn. AB12-CD34-…"
-              />
-            </div>
+            <Field label="Belge türü" labelClassName={fieldLabelCls}>
+              {(id) => (
+                  <select
+                    id={id}
+                    value={docType}
+                    onChange={(e) => setDocType(e.target.value as DocumentType | "")}
+                    className={inputCls}
+                  >
+                    <option value="">Seç…</option>
+                    {DOC_TYPE_OPTIONS.map((o) => (
+                      <option key={o.value} value={o.value}>
+                        {o.label}
+                      </option>
+                    ))}
+                  </select>
+              )}
+            </Field>
+            <Field label="e-Devlet doğrulama kodu / barkod" labelClassName={fieldLabelCls}>
+              {(id) => (
+                  <input
+                    id={id}
+                    type="text"
+                    maxLength={60}
+                    value={barcode}
+                    onChange={(e) => setBarcode(e.target.value)}
+                    className={inputCls}
+                    placeholder="Örn. AB12-CD34-…"
+                  />
+              )}
+            </Field>
           </div>
-          <div>
-            <label className={fieldLabelCls}>T.C. Kimlik No</label>
-            <input
-              type="text"
-              inputMode="numeric"
-              maxLength={11}
-              value={tckn}
-              onChange={(e) => setTckn(e.target.value.replace(/\D/g, ""))}
-              className={inputCls}
-              placeholder="11 haneli"
-              autoComplete="off"
-            />
-          </div>
+          <Field label="T.C. Kimlik No" labelClassName={fieldLabelCls}>
+            {(id) => (
+                <input
+                    id={id}
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={11}
+                  value={tckn}
+                  onChange={(e) => setTckn(e.target.value.replace(/\D/g, ""))}
+                  className={inputCls}
+                  placeholder="11 haneli"
+                  autoComplete="off"
+                />
+            )}
+          </Field>
           <p className="text-[11px] leading-relaxed text-slate-500 dark:text-slate-400">
             e-Devlet → "Mezun Belgesi / Öğrenci Belgesi" alıp <strong>barkodlu</strong> PDF'i yükle,
             doğrulama kodunu ve TCKN'ni gir. e-Devlet doğrulaması barkodun yanında TCKN ister;

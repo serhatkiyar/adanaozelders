@@ -1,8 +1,12 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+
 import { reportError } from "@/lib/monitoring";
 
 interface Props {
   children: ReactNode;
+  /** Verilirse varsayılan tam ekran görünüm yerine bu çizilir. */
+  fallback?: ReactNode;
 }
 
 interface State {
@@ -35,6 +39,7 @@ export class ErrorBoundary extends Component<Props, State> {
 
   render() {
     if (!this.state.hasError) return this.props.children;
+    if (this.props.fallback) return this.props.fallback;
 
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-slate-50 p-6 text-center dark:bg-slate-900">
@@ -55,4 +60,46 @@ export class ErrorBoundary extends Component<Props, State> {
       </div>
     );
   }
+}
+
+/**
+ * Router İÇİNDEKİ hata sınırı.
+ *
+ * Dıştaki `ErrorBoundary` tek başınayken bir sayfa çöktüğünde router da
+ * ağaçtan düşüyordu: kullanıcıya kalan tek çare tam sayfa yenilemeydi ve
+ * uygulama durumu (oturum önbelleği, açık ders penceresi) sıfırlanıyordu.
+ * Bu sınır rota değişiminde kendini sıfırlar — kullanıcı gezinerek toparlanır,
+ * sayfa yeniden yüklenmez.
+ */
+function RouteErrorFallback() {
+  const navigate = useNavigate();
+  return (
+    <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 p-6 text-center">
+      <div className="text-4xl">😕</div>
+      <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100">
+        Bu sayfa yüklenemedi
+      </h2>
+      <p className="max-w-md text-sm text-slate-500 dark:text-slate-400">
+        Beklenmeyen bir hata oluştu. Başka bir sayfaya geçebilir ya da tekrar
+        deneyebilirsin.
+      </p>
+      <button
+        onClick={() => navigate(-1)}
+        className="rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 active:scale-95"
+      >
+        Geri dön
+      </button>
+    </div>
+  );
+}
+
+export function RouteErrorBoundary({ children }: Props) {
+  // `key` rota değişince sınırı sıfırlar: hata veren sayfadan çıkınca
+  // uygulama kendiliğinden toparlanır.
+  const location = useLocation();
+  return (
+    <ErrorBoundary key={location.pathname} fallback={<RouteErrorFallback />}>
+      {children}
+    </ErrorBoundary>
+  );
 }
