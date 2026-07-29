@@ -314,7 +314,7 @@ const TERMS: LegalDoc = {
       heading: "6. Deneme Sınavı Oturumları ve Çalışma Alanı",
       blocks: [
         p(
-          "Kütüphane/etüt merkezlerinin açtığı ücretli deneme sınavı oturumlarına kayıt ve saatlik çalışma alanı rezervasyonları da emanet modeliyle çalışır: ödeme önce emanete alınır, hizmet günü QR kod doğrulamasıyla katılım teyit edildiğinde kuruma aktarılır. ÖDEME YAPILDIKTAN SONRA bu hizmetler, belirli bir tarihte ifa edilmeleri nedeniyle kullanıcı tarafından iptal edilemez ve KATILIM SAĞLANMAMASI (no-show) hâlinde ücret iadesi yapılmaz. Oturumun kurum veya Platform tarafından iptali hâlinde ücretin tamamı iade edilir."
+          "Kütüphane/etüt merkezlerinin açtığı ücretli deneme sınavı oturumlarına kayıt ve saatlik çalışma alanı rezervasyonları da emanet modeliyle çalışır: ödeme önce emanete alınır, hizmet günü QR kod doğrulamasıyla katılım teyit edildiğinde kuruma aktarılır. Ödeme yapıldıktan sonra, oturum/rezervasyon başlangıcına 24 SAATTEN FAZLA süre varsa kayıt iptal edilebilir ve ücretin tamamı iade edilir. Bu süreden sonra hizmet belirli bir tarihte ifa edileceğinden iptal edilemez ve KATILIM SAĞLANMAMASI (no-show) hâlinde ücret iadesi yapılmaz. Oturumun kurum veya Platform tarafından iptali hâlinde ücretin tamamı iade edilir."
         ),
       ],
     },
@@ -433,7 +433,7 @@ const DISTANCE_SALES: LegalDoc = {
       heading: "5. Cayma Hakkı ve İstisnaları",
       blocks: [
         p(
-          "Mesafeli Sözleşmeler Yönetmeliği m.15/1-g uyarınca; BELİRLİ BİR TARİHTE veya dönemde yapılması gereken, konaklama, eşya taşıma, araba kiralama, yiyecek-içecek tedariki ve eğlence veya dinlenme amacıyla yapılan BOŞ ZAMANIN DEĞERLENDİRİLMESİNE İLİŞKİN hizmetlere dair sözleşmelerde cayma hakkı kullanılamaz. Bu kapsamda, belirli tarih ve saate bağlanan deneme sınavı oturumu katılım hakkı ve çalışma alanı rezervasyonlarında ödeme tamamlandıktan sonra cayma hakkı BULUNMAZ; oturuma/rezervasyona katılım sağlanmaması (no-show) hâlinde iade yapılmaz."
+          "Mesafeli Sözleşmeler Yönetmeliği m.15/1-g uyarınca; BELİRLİ BİR TARİHTE veya dönemde yapılması gereken, konaklama, eşya taşıma, araba kiralama, yiyecek-içecek tedariki ve eğlence veya dinlenme amacıyla yapılan BOŞ ZAMANIN DEĞERLENDİRİLMESİNE İLİŞKİN hizmetlere dair sözleşmelerde cayma hakkı kullanılamaz. Bu kapsamda, belirli tarih ve saate bağlanan deneme sınavı oturumu katılım hakkı ve çalışma alanı rezervasyonlarında cayma hakkı BULUNMAZ. Bununla birlikte SATICI, kanuni bir zorunluluk olmaksızın kendi ticari politikası gereği, oturum/rezervasyon başlangıcına 24 SAATTEN FAZLA süre kalması hâlinde iptal ve tam iade imkânı tanır; bu süreden sonra iptal yapılamaz ve katılım sağlanmaması (no-show) hâlinde iade yapılmaz."
         ),
         p(
           "Özel ders rezervasyonlarında ders henüz ifa edilmeden yapılan iptallerde ödeme emanetten iade edilir. Hizmetin ifasına ALICI onayı ile başlanmış ve hizmet tamamlanmışsa cayma hakkı kullanılamaz (Yönetmelik m.15/1-h). Ayrıntılı iptal/iade kuralları İptal ve İade Politikası'nda yer alır ve bu sözleşmenin ayrılmaz parçasıdır."
@@ -506,7 +506,8 @@ const REFUND: LegalDoc = {
       blocks: [
         list(
           "Kayıt yaptırdınız ancak henüz ödemediniz: kaydı serbestçe iptal edebilirsiniz.",
-          "Ödeme tamamlandıysa: oturum belirli bir tarihte ifa edilen bir hizmet olduğundan kayıt İPTAL EDİLEMEZ ve cayma hakkı bulunmaz (Mesafeli Sözleşmeler Yönetmeliği m.15/1-g).",
+          "Ödeme tamamlandıysa ve oturum başlangıcına 24 SAATTEN FAZLA süre varsa: kaydı iptal edebilirsiniz, ücretin TAMAMI iade edilir.",
+          "Oturum başlangıcına 24 saatten az kaldıysa: kayıt İPTAL EDİLEMEZ. Oturum belirli bir tarihte ifa edilen bir hizmettir ve bu aşamadan sonra cayma hakkı bulunmaz (Mesafeli Sözleşmeler Yönetmeliği m.15/1-g).",
           "Oturuma katılmazsanız (no-show): ücret İADE EDİLMEZ.",
           "Oturum kurum veya Platform tarafından iptal edilirse: ücretin TAMAMI otomatik olarak iade edilir."
         ),
@@ -517,7 +518,8 @@ const REFUND: LegalDoc = {
       heading: "4. Çalışma Alanı Rezervasyonları",
       blocks: [
         list(
-          "Ödeme tamamlandıktan sonra rezervasyon, belirli saat aralığına bağlı bir hizmet olduğundan İPTAL EDİLEMEZ ve cayma hakkı bulunmaz.",
+          "Ödeme tamamlandıysa ve rezervasyon başlangıcına 24 SAATTEN FAZLA süre varsa: rezervasyonu iptal edebilirsiniz, ücretin TAMAMI iade edilir.",
+          "Başlangıca 24 saatten az kaldıysa: rezervasyon İPTAL EDİLEMEZ. Belirli saat aralığına bağlı bir hizmet olduğundan bu aşamadan sonra cayma hakkı bulunmaz.",
           "Rezerve ettiğiniz saatte gelmezseniz (no-show): ücret İADE EDİLMEZ.",
           "Kütüphane rezervasyonu karşılayamazsa (kapanma, mücbir sebep vb.): ücretin TAMAMI iade edilir."
         ),

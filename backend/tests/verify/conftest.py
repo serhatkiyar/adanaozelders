@@ -322,6 +322,9 @@ def fake_provider(monkeypatch):
     from core import payments
 
     class Provider:
+        # Ödeme kayıtlarına yazılan sağlayıcı adı (payment_service.create_for_booking).
+        name = "fake"
+
         def __init__(self) -> None:
             self.refunds: list[tuple[str | None, Decimal]] = []
             self.refund_ok = True

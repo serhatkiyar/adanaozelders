@@ -746,12 +746,42 @@ Buradaki bir hata ekrana yansımaz: para ya kütüphaneye hiç geçmez ya da kat
     Kod sözleşmeden **daha cömert** — hukuken ihlal değil, ama müşteri iptal hakkı
     olmadığını okuyup hakkını kullanmıyor olabilir. `CLAUDE.md` gerçeğe uyduruldu;
     **yasal metin kararı bekliyor** (ikisi de savunulabilir: pencereyi metne yazmak
-    ya da koddan kaldırmak). Metinler zaten avukat onayına gidecek — bu madde o listeye
-    eklenmeli.
+    ya da koddan kaldırmak). **Karar: kod doğru kabul edildi** — 24 saatlik pencere müşteri
+    lehine ve zaten çalışıyor; dört yasal metin maddesi (kullanım koşulları, mesafeli satış
+    sözleşmesi, iade politikasının iki bölümü) buna göre güncellendi *(Hafta 15)*.
+    *Yan doğrulama:* arayüz zaten doğruydu — `Tickets.tsx` iptal butonunu gösteriyor ve
+    onay metninde 24 saat kuralını söylüyor. Geride kalan yalnız sözleşme metinleriydi;
+    yani müşteri hakkını **arayüzden** kullanabiliyordu ama **sözleşmede** aksi yazıyordu.
+
+**Hafta 15 — Ders para yolu + yasal metin hizalaması (29 Tem 2026)** *(commit `HAFTA15`)*
+
+68. ✅ **Dört para yüzeyinin sonuncusu doğrulandı** (`test_verify_booking_money.py`, 13 test).
+    Ders yolu en eski ve en çok kullanılan yüzeydi ama `payment_service` %17 kapsamayla
+    gerçek davranışıyla hiç sınanmamıştı. Zincir uçtan uca doğrulandı: kabul → `PENDING`,
+    ödeme → `HELD`, tamamlama → `RELEASED`, iptal → `REFUNDED`.
+    Kapsanan değişmezler: **emanetten çıkış tek yönlü** — serbest bırakılmış tutar iade
+    edilemiyor, iade edilmiş ödeme sonradan (ör. auto-complete) eğitmene açılamıyor;
+    `release` iki kez çağrılsa damga değişmiyor (auto-complete ile elle tamamlama aynı derse
+    denk gelebilir); ödenmemiş ders tamamlansa bile para açılmıyor; ücretsiz derste
+    (`price=0`) ödeme hiç kurulmuyor ve para yolları sessizce geçiyor; ikinci kabul yeni
+    ödeme üretmiyor (reschedule idempotensi); iade **tam tutar** (ders yolunda kısmi iade
+    yok); `PENDING` bir kayıt iade akışına claim **edilemiyor** — tahsil edilmemiş parayı
+    iade etmek sağlayıcıda hatalı harekettir.
+69. ✅ **Yasal metinler kodla hizalandı** (Hafta 14/madde 67'nin kararı). Dört madde
+    güncellendi: kullanım koşulları, mesafeli satış sözleşmesi ve iade politikasının iki
+    bölümü. Mesafeli satış metninde cayma hakkı istisnası korundu, 24 saatlik iptal
+    imkânı **satıcının kendi ticari politikası** olarak eklendi — kanuni bir cayma hakkı
+    gibi sunmak yanlış olurdu.
+
+**Para yolu doğrulaması — tamamlandı**
+Dört yüzeyin dördü de artık gerçek DB + gerçek servis katmanıyla doğrulanıyor:
+ders *(Hafta 15)* · mağaza siparişi *(Hafta 2/4)* · deneme bileti ve çalışma rezervasyonu
+*(Hafta 14)* · ve hepsinin arkasındaki mutabakat *(Hafta 13)*. Ortak değişmez her yüzeyde
+ayrı ayrı sınandı: **emanetten çıkış atomik claim'dir ve tek yönlüdür.**
 
 **Sürekli**
 - Yeni yazılan her para/auth kodu testsiz merge edilmesin. *(29 Tem sonu: 483 birim +
-  111 doğrulama + 360 frontend testi; `services` kapsaması %27 ve CI'da raporlanıyor.)*
+  124 doğrulama + 360 frontend testi; `services` kapsaması %27 ve CI'da raporlanıyor.)*
 - ✅ Gerçekçi hacimde seed **yapıldı ve araca dönüştürüldü** — şema değişince ölçüm
   tekrarlanabilir: `python scripts/scale/run.py --create && ... seed && ... probe`.
 
