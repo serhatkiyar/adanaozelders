@@ -266,14 +266,23 @@ paylaşılan eğitmen/ürün linki **jenerik önizleme** olarak çıkar.
 **Ürün**
 - Türkçe arama kör: TSVECTOR `'simple'` ile üretiliyor, `unaccent` yok, `products.title` üzerinde
   trigram indeksi **yok** → "kitab", "matematık" sonuç getirmiyor.
+  *(29 Tem: `products.title` trigram indeksi eklendi — `unaccent` ve eğitmen/kütüphane tarafı açık.)*
 - `publisher`/`author`/`cover_type` kolonları var ama filtre olarak açılmamış.
 - Admin panelde para metriği yok — tümü `COUNT` tabanlı; GMV/AOV/iptal oranı görünmüyor.
-- Yorum moderasyonu yok: `Review`'da `is_hidden` yok, admin ucu yok; rapor çözümüne içerik aksiyonu
-  bağlı değil.
-- Anti-disintermediation maskesi 4 yüzeyde var; QA mesajları, ürün yorumları, eğitmen yorumları,
-  biyografi, talep açıklaması **maskesiz** — eğitmen biyografisine telefon yazarak komisyon atlanır.
-- IBAN düz metin (`models/mixins.py:98`, TCKN şifreliyken), değişikliği audit'siz ve bildirimsiz
-  (`payout_service.py:62`) → ele geçirilen hesapta para hedefi sessizce değiştirilir.
+- ✅ ~~Yorum moderasyonu yok~~ — *29 Tem, commit `6a8a49b`*: `ModeratableMixin`
+  (`hidden_at`/`hidden_by`/`hidden_reason`) üç yorum tablosunda, `content_moderation` servisi,
+  admin uçları + şikayet çözümüne `hide_target` bayrağı. **Gizlenen yorum puan ortalamasından da
+  düşülür** — aksi halde ekrandan kalkan 1 yıldızlı yorum eğitmenin puanını düşürmeye devam ederdi.
+- ✅ ~~Anti-disintermediation maskesi 4 yüzeyde~~ — *29 Tem, commit `ddd757a`*: 9 yüzeye çıktı
+  (eğitmen profili, QA, eğitmen/ürün/kütüphane yorumu, öğrenci talebi).
+  ⚠️ *Yolda bulunan sorun:* mevcut regex **"2020 - 2024 arası lisans"** ifadesini de gizliyordu;
+  maskeyi profil metinlerine olduğu gibi yaymak ürünü sessizce bozardı. Karar iki aşamalı hale
+  getirildi (aday yakalama → `_looks_like_phone` saf fonksiyonu); yıl aralığı, soru numarası,
+  saat ve fiyat korunur, boşluksuz numara ve `wa.me`/`t.me` kısayolları yakalanır.
+- ✅ ~~IBAN düz metin~~ — *29 Tem, commit `ddd757a`*: üç kolon şifrelendi (`tutors.iban`,
+  `libraries.iban`, `payout_records.iban_snapshot`; migration `3fe0fd1ed73b` mevcut veriyi taşır).
+  Değişiklik artık **sahibine güvenlik e-postası** + uygulama içi bildirim + audit üretiyor
+  (audit kütüphane yolunda vardı, eğitmen yolunda yoktu).
 
 ---
 
@@ -499,9 +508,24 @@ disiplini tutmuş.*
   global ortalamayı içerdiği için indekslenemez. 20.000 üründe kabul edilebilir; 200.000'de
   kalıcı `rating_score` kolonu gerekir.
 
+**Hafta 6 — Gelir kaçağı + içerik güvenliği (29 Tem 2026)**
+*(commit'ler `ddd757a`, `6a8a49b`)*
+32. ✅ **Anti-disintermediation maskesi 4 → 9 yüzey** · maske mantığı yanlış pozitiflere karşı
+    yeniden yazıldı (bkz. P1/Ürün). Eğitmen biyografisine numara yazarak komisyon atlatma yolu
+    kapandı.
+33. ✅ **IBAN at-rest şifrelendi** + değişikliğinde güvenlik e-postası, bildirim ve audit.
+34. ✅ **Yorum moderasyonu** — gizleme (silme değil), puan ortalamasından düşme, geri alma,
+    şikayet çözümüne bağlı aksiyon, admin panel seçeneği.
+35. ⚠️ **Yolda bulunan ikinci sessiz hata:** `/iletisim` formu **hiç e-posta göndermiyordu.**
+    `contact_message_email` ve `contact_ack_email` `EmailMessage(body=...)` çağırıyordu ama
+    dataclass `text`/`html` bekliyor → `TypeError`. Gönderim bilinçli olarak best-effort olduğu
+    için (`_safe_send` istisnayı yutar, akışı bozmaz) hata görünmüyordu: kullanıcı "mesajın
+    alındı" ekranını görüyor, mesaj kimseye ulaşmıyordu. Düzeltildi + tüm şablonları üreten
+    regresyon testi eklendi.
+
 **Sürekli**
 - Yeni yazılan her para/auth kodu testsiz merge edilmesin. Kapsama hedefi %22 → %60;
-  `--cov-fail-under=60` CI'da. *(Bu turda 443 birim + 46 doğrulama testi geçiyor.)*
+  `--cov-fail-under=60` CI'da. *(29 Tem sonu: 459 birim + 59 doğrulama + 340 frontend testi.)*
 - ✅ Gerçekçi hacimde seed **yapıldı ve araca dönüştürüldü** — şema değişince ölçüm
   tekrarlanabilir: `python scripts/scale/run.py --create && ... seed && ... probe`.
 
