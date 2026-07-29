@@ -36,14 +36,16 @@ hata izleme, ortam ayrımı — hiçbiri mevcut değil. Eylül lansmanına kadar
 | Backend | 46.577 satır Python · 336 dosya · 38 servis · 33 router | |
 | Frontend | 66.255 satır TS/TSX · 396 dosya | |
 | Şema | 79 tablo · 132 FK · 91 index · 46 migration | |
-| Birim testleri | **282/282 geçiyor** (7,5 sn) | Yeşil |
-| Entegrasyon testleri | **62 test — CI'da hiç koşmuyor** (SKIP) | Postgres servisi yok |
-| **Test kapsaması** | **%19** | 🔴 |
+| Birim testleri | **282/282 geçiyor** (7,5 sn) → *29 Tem: **443/443*** | Yeşil |
+| Entegrasyon testleri | **62 test — CI'da hiç koşmuyor** (SKIP) → *Hafta 3'te CI'ya bağlandı* | Postgres servisi yok |
+| Doğrulama paketi (gerçek DB) | *29 Tem: **46 test*** | Mock'suz, izole DB |
+| **Test kapsaması** | **%19** → *29 Tem: **%22*** | 🔴 |
 | `tsc --noEmit` | **0 hata** (strict açık) | Güçlü |
 | Frontend build | 613 KB JS (gzip 188 KB) + 144 KB CSS · `dist/` 18 MB | |
 | `npm audit --omit=dev` | **9 açık** (1 kritik, 3 yüksek, 5 orta) | axios + react-router prod'da |
 | Canlı DB | 14 eğitmen · 27 rezervasyon · 8 sipariş · 89 mesaj | Hiç ANALYZE görmemiş |
 | İndekssiz FK | **24 adet** | `booking_comments.booking_id` dahil |
+| *29 Tem — ölçek provası* | *10× hacimde 36 uç ölçüldü; 12 FK + 5 sıralama indeksi eklendi* | *Bkz. Hafta 5* |
 
 ### Kapsama detayı — testler yanlış yerde
 
@@ -372,12 +374,15 @@ fazlı iade, reconciler kapsamı.*
     ✅ `ruff.toml`: 1421 uyarı → 0 (dar kural seti; ignore'lar gerekçeli)
 
 **Hafta 3'ten devreden**
-- **Bağımlılık kilitleme** (`pip-compile`) + dev/prod Python sürümünü eşitleme.
-  Dev ortamında kurulu sürümler pin'lerden ileride (fastapi 0.137.2 vs pin 0.115.6;
-  dev Python 3.12.3 vs Docker 3.11) — yani **282 test hiçbir zaman üretimde koşacak
-  sürümlerle koşmadı.** Pin'leri hangi yöne hizalayacağı (ileri mi, geri mi) davranış
-  değişikliği riski taşıdığından ayrı ve dikkatli bir iş; CI'daki `pip-audit`
-  `continue-on-error` da bu kapanınca sertleştirilmeli.
+- ✅ **Bağımlılık kilitleme** (`pip-compile`) + dev/prod Python sürümü eşitlendi —
+  *commit `0caddcb`*. `requirements.in` (17 doğrudan bağımlılık) → `requirements.txt`
+  (61 paket, transitive dahil tam kilitli). Yön **ileriye** hizalandı (fastapi 0.137.2,
+  pydantic 2.13.4, SQLAlchemy 2.0.47): testler zaten bu sürümlerle geçiyordu, pin'ler
+  hiç doğrulanmamıştı. Docker 3.11 → 3.12, CI 3.11 → 3.12. Temiz sanal ortamda yalnız
+  `requirements.txt`'ten kurulumla 436 test doğrulandı.
+  *Yan bulgu:* `requirements.txt`'te Türkçe yorum Windows'ta `pip install`'ı kırıyor
+  (cp1254) — iki dosya da ASCII'ye çevrildi.
+  ⏭️ CI'daki `pip-audit` `continue-on-error` **hâlâ açık** — sertleştirilmeli.
 - **Uygulama adımları** (kod değil, operasyon): sunucu kurulumu, DNS, `.env.prod`
   doldurma, Sentry DSN alma, UptimeRobot'a `/health` ekleme, `backup-postgres.sh`
   cron'u, ilk `restore-drill.sh` provası.
@@ -410,14 +415,95 @@ fazlı iade, reconciler kapsamı.*
     yalnız sosyal önizleme botlarını `/__meta`'ya yönlendiriyor, gerçek kullanıcılar SPA'yı alıyor.
     *Googlebot bilinçli olarak listede yok — JS render ediyor, ona farklı içerik sunmak cloaking'dir.*
 26. ✅ İkonlar WebP (4,21 MB→19 KB) · Tabler CDN→tree-shakeable npm · test rotaları `DEV` arkasında — *commit `c29bf48`*
-27. Hakediş kararı: marketplace'i kıs **veya** "ödenecekler" raporu
+27. ✅ **Hakediş — (b) şıkkı seçildi: "ödenecekler" defteri** *(commit `9c24e0f`)*.
+    Otomatik para çıkışı **bilinçli olarak yazılmadı**: iyzico alt üye işyeri kapalı
+    (`create_submerchant` → `success=False`) ve banka sanal POS'larında bu özellik zaten
+    yok — para tek hesaba gelir. Yerine defter: `payout_records` tablosu (migration
+    `1327cbb29263`, **IBAN snapshot'lı**), `services/payout_ledger.py`, `GET /payouts/pending`
+    · `GET /payouts` · `POST /payouts` (audit'li), Admin > Hakedişler ekranı.
+    **Borç = hak edilmiş − ödenen**; hak ediş kaynağa göre: ders `RELEASED`, dijital ürün
+    `PAID`, kütüphane `released_at`. **Emanetteki para borç sayılmaz** (ders yapılmadı,
+    iade edilebilir) — arayüzde ayrı sütunda bilgi olarak durur. Kısmi ödeme meşru,
+    borçtan fazlası reddedilir. 8 doğrulama testi (gerçek DB).
+    *Kalan operasyon: havaleler elle yapılır; ödeme günü listesi admin panelden alınır.*
 28. ETBİS başvurusu + e-Arşiv (paralel süreç — şirket tesciline bağlı)
 
+**Hafta 4'ten sonra eklenen — doğrulama katmanı** *(commit'ler `a11d3cd`, `7eaaeaa`, `7918ca8`)*
+- **Gerçek servis katmanıyla, izole DB'de doğrulama paketi (44 test).** Mock'suz: sipariş
+  para yolu (A1-A6), KVKK/rıza, sitemap, üretim guard'ı (F/G/H) senaryoları uçtan uca koşuyor.
+- ⚠️ **Bu paket gerçek bir üretim bug'ı yakaladı:** iade/iptal yollarında 6 noktada
+  async lazy-load 500'ü (`MissingGreenlet`) — birim testler mock'la geçtiği için görünmüyordu.
+  *Ders: para yollarında mock'lu test yeterli değil.*
+
+**Hafta 5 — Ölçek provası + dayanıklılık (29 Tem 2026)**
+
+Raporun "en büyük risk" dediği **ölçek körlüğü** kapatıldı: sistem ilk kez gerçekçi hacimde
+çalıştırıldı ve ölçüldü.
+
+**Araçlar** (`backend/scripts/scale/`, izole `adana_scale` veritabanı — geliştirme verisine
+dokunmaz, `tests/verify` ile aynı guard deseni):
+- `seed_scale.py` — deterministik, gerçekçi veri üretici. 1× hacim 15 sn'de, 10× hacim
+  166 sn'de kurulur (`--scale` ile ölçeklenir).
+- `probe.py` — uygulamayı ASGI üzerinden çağırır (lifespan yok → arka plan döngüleri ölçümü
+  kirletmez) ve her istekte çalışan **her sorguyu sayar + süresini toplar**. Sorgu sayısı
+  ayrı raporlanır çünkü yavaşlığın iki sebebi vardır ve tedavileri farklıdır: tek sorgu
+  yavaşsa indeks eksiktir, sorgu sayısı listeyle birlikte artıyorsa N+1 vardır.
+  `--explain` yavaş bulunan senaryonun gerçek `EXPLAIN ANALYZE` planını basar.
+
+**Ölçüm — 10× hacim** (2.000 eğitmen · 30.000 öğrenci · 20.000 ürün · **50.000 sipariş** ·
+60.000 ders · 50.000 ödeme · 200.000 mesaj · 200.000 bildirim). 36 uç ölçüldü:
+
+| Senaryo | Önce | Sonra | Neden |
+|---|---|---|---|
+| Admin ders listesi | 333 ms | **74 ms** | 60.000 satır tam taranıp sıralanıyordu → `ix_bookings_created_desc` |
+| Mağaza metin araması | 245 ms | **45 ms** | `title` trigram indeksi yoktu; OR'un ikinci kolu her ürünü tarıyordu |
+| Admin sipariş listesi | 149 ms | **~40 ms** | `ix_orders_created_desc` |
+| Admin istatistik | 80 ms · **11 sorgu** | 57 ms · **3 sorgu** | 9 ayrı `COUNT` → tek sorgu (`get_dashboard` deseni) |
+| Hakediş defteri | 170 ms | **129 ms** | defter yalnız RELEASED/HELD tarıyor (PENDING/REFUNDED gereksizdi) |
+
+*Sonuç: 10× hacimde 150 ms eşiğini aşan uç kalmadı. **N+1 bulunamadı** — `selectin`
+disiplini tutmuş.*
+
+29. ✅ **Ölçek provası + indeksler** — 17 indeks (migration `fe604508a162`): 12 eksik FK
+    (ders detayının yorum/kaynak/not tabloları, kupon iadesi, ürün/kütüphane yorumu…) +
+    5 sıralama/arama indeksi. `*.role_id` ve `*_by_admin_id` **bilinçli olarak
+    eklenmedi** (roles 5 satır ve hiç silinmez; admin silme yok denecek kadar nadir →
+    yazma maliyeti getirir, okuma faydası yoktur).
+30. ✅ **P1 dayanıklılık**:
+    (a) arka plan döngüsündeki tek `try` bloğu **ayrıldı** — hatırlatma servisi patlasa da
+    escrow mutabakatı ve teslimat watchdog'u koşar (eskiden ilgisiz bir bildirim hatası
+    emanetteki paranın çözülmesini erteliyordu);
+    (b) **lider seçimi**: periyodik işler `pg_try_advisory_lock` ile tek replikada koşar —
+    iki worker artık iki kat bildirim göndermez;
+    (c) `pool_recycle` / `pool_timeout` / sunucu tarafı `statement_timeout`;
+    (d) S3/MinIO'ya **timeout + deneme sınırı** (varsayılan ~60 sn × 5 deneme, erişilemez
+    MinIO'da tek isteğin DB session'ını dakikalarca tutmasına yol açıyordu);
+    (e) Pillow görsel işleme **iş parçacığına** taşındı (event loop'u bloklamıyordu artık).
+    5 yeni test (hata izolasyonu, kilit alınamazsa atlama, kilidin daima bırakılması).
+31. ⚠️ **Ölçek provası bir P0 bug ortaya çıkardı** — *madde 27'nin (hakediş defteri) kendisi
+    erişilemezdi.* `payouts` router'ı `payments.view`/`payments.manage` izinlerini istiyor ama
+    bu izinler **izin kataloğuna hiç eklenmemişti**; yetki role bağlı izin satırından
+    okunduğu için **SUPER_ADMIN dahil herkes 403 alıyordu** ve menü öğesi de gizlendiğinden
+    hata görünmüyordu. Düzeltildi (migration `266eeeac2a47`) ve **tekrarı iki testle
+    kapatıldı**: izin kataloğu artık tek kaynakta (`core/admin_permissions.py`), statik test
+    router'ların istediği her iznin katalogda olduğunu, doğrulama testi de katalogdakilerin
+    DB'de ve SUPER_ADMIN'de olduğunu denetliyor.
+
+**Ölçek provasından çıkan, kapatılmayanlar** *(kabul edilen borç — hepsi ölçülmüş)*
+- **Liderlik tablosu 132 ms**: "tamamlanan derse göre sırala" agregasyonu 36.000 satırı
+  gruplar; COMPLETED oranı %60 olduğundan indeks işe yaramaz. Doğru çözüm önbellek
+  (5 dk TTL, Redis zaten var) — gerçek zamanlı olması gerekmeyen tek yüzey.
+- **Hakediş defteri 129 ms / 286 KB**: 2.000 borçlu tek yanıtta, sayfalama yok ve toplam
+  her açılışta baştan hesaplanıyor. Doğrusal büyür; kalıcı bakiye tablosu gerekecek.
+- **Mağaza listeleme ~70 ms**: varsayılan sıralama Bayesian skoru, çalışma anında hesaplanan
+  global ortalamayı içerdiği için indekslenemez. 20.000 üründe kabul edilebilir; 200.000'de
+  kalıcı `rating_score` kolonu gerekir.
+
 **Sürekli**
-- Yeni yazılan her para/auth kodu testsiz merge edilmesin. Kapsama hedefi %19 → %60;
-  `--cov-fail-under=60` CI'da.
-- Lansmandan önce **gerçekçi hacimde seed** (2000 ürün, 5000 sipariş, 200 eğitmen) üretip
-  `pg_stat_statements` ile yavaş sorgu avı yap. Şu anki 8 siparişlik veride hiçbir N+1 görünmüyor.
+- Yeni yazılan her para/auth kodu testsiz merge edilmesin. Kapsama hedefi %22 → %60;
+  `--cov-fail-under=60` CI'da. *(Bu turda 443 birim + 46 doğrulama testi geçiyor.)*
+- ✅ Gerçekçi hacimde seed **yapıldı ve araca dönüştürüldü** — şema değişince ölçüm
+  tekrarlanabilir: `python scripts/scale/run.py --create && ... seed && ... probe`.
 
 ---
 
@@ -434,3 +520,15 @@ disiplin yüksek. Yapılacak iş üç başlıkta toplanıyor:
 En büyük tek risk teknik değil, **bilgi riski**: sistem hiç gerçek veri hacminde çalışmadı, canlıda
 hiçbir hata izleme yok ve para çıkışı hiç kodlanmadı. Lansmandan önce en azından bu üçünün
 görünür hale gelmesi gerekiyor.
+
+**29 Temmuz 2026 — bilgi riski üzerine güncelleme.** Üçü de kapandı: para çıkışı **defter olarak**
+kodlandı (madde 27), hata izleme **bağlandı** (Hafta 3; kalan iş DSN girmek), sistem ilk kez
+**10× hacimde ölçüldü** (Hafta 5) — ve o ölçüm iki şey gösterdi. İyi haber: mimari sağlam, N+1 yok,
+tek eksik indekslerdi. Kötü haber: **dün yazılan hakediş ekranı hiçbir admin tarafından
+açılamıyordu** ve bunu ne testler ne de gözle bakmak yakalamıştı — çünkü yetkisiz menü öğesi
+gizleniyor, uç ise sessizce 403 dönüyordu.
+
+Buradaki asıl ders, ölçek değil **görünürlük**: bu kod tabanında hatalar gürültüyle değil,
+sessizce oluyor. Kalan riskin merkezi de orada — canlıda ne olduğunu gösterecek şey artık
+yazılacak kod değil, açılması gereken hesaplar (Sentry DSN, UptimeRobot, yedek cron'u) ve
+lansman öncesi bir kez daha koşturulacak `probe`.
