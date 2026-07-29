@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import datetime
 import hashlib
+import logging
 import secrets
 
 from fastapi import HTTPException, status
@@ -59,6 +60,8 @@ from services import (
 from services.delivery_timeline import eta_window, mask_recipient, project_customer_timeline
 
 _ACTIVE_RUN_STATUSES = (DeliveryRunStatus.PLANNED.value, DeliveryRunStatus.ACTIVE.value)
+
+logger = logging.getLogger("adana.delivery")
 
 
 def _now() -> datetime.datetime:
@@ -212,11 +215,21 @@ _RUN_LOAD = (
 
 
 async def _load_run(db: AsyncSession, run_id: int) -> DeliveryRun:
+    """Turu duraklarıyla birlikte TAZE yükler.
+
+    ``populate_existing()`` şart: session ``expire_on_commit=False`` ile kurulur,
+    bu yüzden commit sonrası kimlik haritasındaki nesne eski kalır ve
+    ``selectinload`` ZATEN YÜKLENMİŞ bir koleksiyonu yeniden doldurmaz. Onsuz
+    `add_stops` durakları DB'ye yazar ama aynı session'da geri okuyan
+    `optimize_run` turu BOŞ görür — "Günü Optimize Et" turları kurar, hiçbirini
+    optimize etmez ve hata da vermez (sessiz bozulma).
+    """
     run = (
         await db.execute(
             select(DeliveryRun)
             .options(*_RUN_LOAD)
             .where(DeliveryRun.id == run_id, DeliveryRun.deleted_at.is_(None))
+            .execution_options(populate_existing=True)
         )
     ).scalars().first()
     if run is None:
@@ -233,6 +246,8 @@ async def _load_stop(db: AsyncSession, stop_id: int) -> DeliveryStop:
                 selectinload(DeliveryStop.order).selectinload(Order.items),
             )
             .where(DeliveryStop.id == stop_id)
+            # Bkz. _load_run: expire_on_commit=False → bayat kimlik haritası.
+            .execution_options(populate_existing=True)
         )
     ).scalars().first()
     if stop is None:
@@ -1119,6 +1134,22 @@ async def dispatch_day(db: AsyncSession, run_date: datetime.date) -> list[Delive
             status.HTTP_400_BAD_REQUEST, "Dağıtılacak konumlu sipariş yok"
         )
 
+    # Günün fiziksel tavanı. Biriken söz borcu (ertelenen/başarısız denemeler)
+    # eligible listesini şişirir; sınırsız bırakılırsa "Günü Optimize Et" 150
+    # duraklı, tek günde bitirilemeyecek bir tur kurar ve HEPSİNE söz verilmiş
+    # görünür. Liste zaten aciliyet sırasında (söz günü → deneme borcu → tarih);
+    # tavanı aşanlar eligible kuyruğunda kalır, yarın en önde girer.
+    max_total = max(len(_VEHICLE_IDS), 1) * settings.DELIVERY_MAX_STOPS_PER_RUN
+    if settings.DELIVERY_MAX_STOPS_PER_RUN > 0 and len(candidates) > max_total:
+        logger.warning(
+            "dispatch_day: %s uygun siparişten %s'i günlük tavana (%s) sığmadı — "
+            "eligible kuyruğunda bekliyor",
+            len(candidates),
+            len(candidates) - max_total,
+            max_total,
+        )
+        candidates = candidates[:max_total]
+
     vehicle_ids = (
         [1]
         if len(candidates) <= settings.DELIVERY_SINGLE_VEHICLE_MAX_STOPS
@@ -1477,7 +1508,20 @@ async def set_stop_photo(db: AsyncSession, stop_id: int, photo_url: str) -> Deli
 async def _notify_upcoming(db: AsyncSession, run_id: int) -> None:
     """Bir durak sonuçlanınca sıradaki 1-2 müşteriye "kuryen yaklaşıyor"
     SMS+bildirimi (durak başına TEK sefer — ``approach_notified_at`` damgası).
-    Best-effort: hata teslim akışını bozmaz."""
+
+    GERÇEKTEN best-effort: teslim ZATEN commit edilmiş olarak çağrılır. Buradan
+    kaçan bir hata kuryeye 500 döndürür; kurye teslimi başarısız sanıp aynı
+    paketi yeniden dener ya da yöneticiyi arar — oysa sipariş kapanmıştır.
+    Bildirim gecikmesi, yanlış saha kararından iyidir.
+    """
+    try:
+        await _notify_upcoming_inner(db, run_id)
+    except Exception:  # noqa: BLE001 — teslim tamamlandı; bildirim ikincildir
+        logger.exception("yaklaşan durak bildirimi gönderilemedi (tur %s)", run_id)
+        await db.rollback()
+
+
+async def _notify_upcoming_inner(db: AsyncSession, run_id: int) -> None:
     stops = (
         (
             await db.execute(
