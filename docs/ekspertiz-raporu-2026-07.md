@@ -722,9 +722,36 @@ Sayıyı kovalamak mock'lu birim testi yazmayı teşvik ederek kaliteyi **düş�
 "en riskli para yollarını gerçek davranışla kapat" olarak değiştirildi; oran eşik değil
 gösterge olarak izlenecek.
 
+**Hafta 14 — Kütüphane para yolları (29 Tem 2026)** *(commit `HAFTA14`)*
+
+Dört para yüzeyinden ikisi — deneme bileti ve çalışma rezervasyonu — bugüne dek hiç
+doğrulanmamıştı (`library_exam_service` %15, `study_reservation_service` %19 kapsama).
+Buradaki bir hata ekrana yansımaz: para ya kütüphaneye hiç geçmez ya da katılmayan
+öğrenciye iade edilir.
+
+64. ✅ **Emanetin açılma kuralları doğrulandı** (`test_verify_library_money.py`, 10 test):
+    katılım QR ile doğrulanınca `released_at` damgalanıyor; **ikinci okutma damgayı
+    değiştirmiyor** (değiştirseydi kazanç kaydı da kayardı); operatör başka kütüphanenin
+    biletini okutamıyor; etkinlik bitip tolerans süresi geçince no-show parası kütüphaneye
+    geçiyor ama kayıt `ATTENDED` sayılmıyor; etkinlik bitmeden release yapılmıyor.
+65. ✅ **`has_released_guard` gerçekten tutuyor:** serbest bırakılmış emanet için iade
+    denendiğinde `not_claimed` dönüyor ve **sağlayıcıya hiç çağrı gitmiyor** — aksi halde
+    kütüphaneye ödenen tutar ikinci kez öğrenciye giderdi.
+66. ✅ **İade penceresi** iki yönde de doğrulandı (kapalıyken 409 + durum korunuyor, açıkken
+    iade süreci başlıyor) ve başkasının bileti iptal edilemiyor.
+67. ⚠️ **Doküman ile kod çelişiyor — ve bu sefer müşteri aleyhine.**
+    `CLAUDE.md` ve **yasal metinler** (`legalContent.ts`) "ödeme yapıldıktan sonra bu
+    hizmetler iptal edilemez" diyor; kod ise `REFUND_WINDOW_HOURS = 24` ile oturuma 24
+    saatten fazla varsa **tam iade** veriyor (hem bilet hem çalışma rezervasyonunda).
+    Kod sözleşmeden **daha cömert** — hukuken ihlal değil, ama müşteri iptal hakkı
+    olmadığını okuyup hakkını kullanmıyor olabilir. `CLAUDE.md` gerçeğe uyduruldu;
+    **yasal metin kararı bekliyor** (ikisi de savunulabilir: pencereyi metne yazmak
+    ya da koddan kaldırmak). Metinler zaten avukat onayına gidecek — bu madde o listeye
+    eklenmeli.
+
 **Sürekli**
 - Yeni yazılan her para/auth kodu testsiz merge edilmesin. *(29 Tem sonu: 483 birim +
-  101 doğrulama + 360 frontend testi; `services` kapsaması %27 ve CI'da raporlanıyor.)*
+  111 doğrulama + 360 frontend testi; `services` kapsaması %27 ve CI'da raporlanıyor.)*
 - ✅ Gerçekçi hacimde seed **yapıldı ve araca dönüştürüldü** — şema değişince ölçüm
   tekrarlanabilir: `python scripts/scale/run.py --create && ... seed && ... probe`.
 
