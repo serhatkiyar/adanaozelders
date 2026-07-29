@@ -620,7 +620,7 @@ duruyordu.
     kök **listelenemez**. *Birim testi policy JSON'unun metnini doğrular, uygulanıp
     uygulanmadığını değil — bu ayrım P0-16'nın ilk etapta gözden kaçma sebebiydi.*
 
-**Hafta 11 — CSP + lansman görünürlüğü (29 Tem 2026)** *(commit `HAFTA11`)*
+**Hafta 11 — CSP + lansman görünürlüğü (29 Tem 2026)** *(commit `d9f8004`)*
 
 54. ✅ **İçerik Güvenlik Politikası** (`frontend/nginx-security-headers.conf`). `script-src 'self'`:
     satır içi script ve dış CDN yok. P0-10'un XSS ayağı Hafta 1'de kapatılmıştı (URL şeması
