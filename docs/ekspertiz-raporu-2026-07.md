@@ -36,9 +36,9 @@ hata izleme, ortam ayrımı — hiçbiri mevcut değil. Eylül lansmanına kadar
 | Backend | 46.577 satır Python · 336 dosya · 38 servis · 33 router | |
 | Frontend | 66.255 satır TS/TSX · 396 dosya | |
 | Şema | 79 tablo · 132 FK · 91 index · 46 migration | |
-| Birim testleri | **282/282 geçiyor** (7,5 sn) → *29 Tem: **443/443*** | Yeşil |
+| Birim testleri | **282/282 geçiyor** (7,5 sn) → *29 Tem: **480/480*** | Yeşil |
 | Entegrasyon testleri | **62 test — CI'da hiç koşmuyor** (SKIP) → *Hafta 3'te CI'ya bağlandı* | Postgres servisi yok |
-| Doğrulama paketi (gerçek DB) | *29 Tem: **46 test*** | Mock'suz, izole DB |
+| Doğrulama paketi (gerçek DB + depo) | *29 Tem: **82 test*** | Mock'suz, izole DB |
 | **Test kapsaması** | **%19** → *29 Tem: **%22*** | 🔴 |
 | `tsc --noEmit` | **0 hata** (strict açık) | Güçlü |
 | Frontend build | 613 KB JS (gzip 188 KB) + 144 KB CSS · `dist/` 18 MB | |
@@ -168,7 +168,7 @@ döngüsü → tüm öğrencilerin adı, **doğum tarihi**, cinsiyeti. Kitlenin 
 `auth_service.py:190` yalnız hash'i değiştiriyor. Hesabı ele geçiren saldırganın 30 günlük refresh
 token'ı, kurban şifresini değiştirdikten **sonra da** çalışır.
 
-**P0-16 · Tek public-read bucket.**
+**P0-16 · Tek public-read bucket.** — ✅ *29 Tem, commit `a3561b9`; bkz. Hafta 10*
 `core/storage.py:29-34` her açılışta tüm bucket'a `s3:GetObject` for `*` uyguluyor; kodda hiç
 presigned URL üretimi yok. Aynı bucket'ta: eğitmen diploması, öğrenci karne/optik belgesi, sınav
 cevap anahtarları, **teslimat kapı fotoğrafları**, kurye vesikalığı, ücretli dijital ürünler.
@@ -574,9 +574,53 @@ disiplini tutmuş.*
     dersi: `FILTER` yalnız *topladığını* seçer, **taramayı daraltmaz** — alt sınır olmadan
     sorgular tüm geçmişi okuyup sonra filtreliyordu.
 
+**Hafta 10 — Dosya erişim kontrolü (29 Tem 2026)** *(commit `a3561b9`)*
+
+Raporun kalan son P0'ı (P0-16) kapatıldı. Bulgu şuydu: tek bucket'a "her şey herkese açık"
+politikası uygulanıyor ve kodda hiç imzalı adres üretimi yok. Sömürü zinciri en net dijital
+üründe görünüyordu — `order_service.py:758` ödeme sonrası **ham adresi** döndürüyordu; o
+bağlantıyı paylaşan herkes ücretli ürünü indirebiliyordu (doğrudan gelir kaçağı). Aynı bucket'ta
+diploma, öğrenci karnesi, sınav cevap anahtarı, kurye vesikalığı ve **müşterinin kapı fotoğrafı**
+duruyordu.
+
+48. ✅ **İki erişim sınıfı** — anonim okuma bucket policy'sinde yalnız `avatars/` ve
+    `library-photos/` öneklerine verilir; **listelenmeyen her önek kapalıdır**. `upload_file`
+    çıktısının tamamı ve iki fotoğraf yüzeyi `private/` altına taşındı.
+    *Karar notu:* koruma `private/*` üzerine **Deny** yazarak değil, **Allow'u daraltarak**
+    kuruldu. `Principal: *` ile yazılan bir Deny, imzalı (kimlikli) isteği de kapsayıp her
+    presigned adresi sessizce kırabilir; whitelist aynı sonucu sürpriz etkileşim olmadan verir.
+49. ✅ **İmzalama tek noktada** (`core/private_urls.py`, ASGI katmanı). Veritabanında kalıcı
+    adres durur, istemciye giderken imzalanır. Uç uç imzalama **bilinçli olarak seçilmedi**:
+    adresler iç içe yapılarda taşınıyor (sipariş kalemleri, yoklama listesi, durak listesi) ve
+    bir yüzey unutulduğunda hata sessiz oluyor. Katman yalnız JSON gövdesine dokunur, akış
+    yanıtlarını tamponlamaz ve `content-length`'i yeniden yazar.
+    *Bu bir yetki katmanı değildir* — adresin yanıta konup konmayacağı kararı uçta kalır
+    (cevap anahtarı operatöre hiç dönmez, kanıt fotoğrafı public takip token'ına dönmez).
+50. ⚠️ **Yolda bulunan performans tuzağı:** imza her yanıtta yeniden üretilseydi aynı fotoğrafın
+    adresi her istekte değişecekti. Canlı takip sayfası 15 sn'de bir yenilendiğinden tarayıcı
+    kurye vesikalığını ve kanıt fotoğrafını **her turda baştan indirir**, görsel gözle görülür
+    biçimde titrerdi. İmzalar anahtar başına önbelleğe alındı (ömrünün yarısında yenilenir).
+51. ⚠️ **Yolda bulunan ikinci üretim boşluğu — dosyalar canlıda hiç açılmayacaktı.**
+    `docker-compose.prod.yml` hiçbir servis portunu host'a yayınlamıyor ve `devops/Caddyfile`'da
+    MinIO'ya giden bir yol **yoktu**: üretimde yüklenen hiçbir görsel/belge tarayıcıdan
+    erişilemezdi. Caddy'ye `depo.<alan-adı>` bloğu eklendi. *Alt alan adı seçimi zorunluydu:*
+    imza hem host'u hem yolu kapsadığından `/depo/*` gibi bir yol önekini strip ederek
+    proxy'lemek **her imzalı adresi reddettirirdi**. Üretim guard'ı da `S3_PUBLIC_ENDPOINT_URL`
+    eksikse/`https://` değilse açılışı durduruyor — aksi halde hata sessizdi (API 200 döner,
+    yalnız dosyalar açılmaz).
+52. ✅ **Mevcut veri taşındı** — `scripts/migrate_storage_visibility.py` (idempotent, dry-run
+    varsayılan; kopyala → adresi güncelle → sil sırasıyla, arada kesilirse kayıp olmaz).
+    Geliştirme verisinde 6 nesne taşındı. Avatarlar da bucket **kökünden** `avatars/` önekine
+    alındı: yeni politikada kök hiçbir Allow kapsamında değil, oldukları yerde kalsalardı
+    profil fotoğrafları 403 olurdu.
+53. ✅ **Gerçek depoya karşı doğrulandı** (`tests/verify/test_verify_storage_access.py`, 6 test).
+    Ölçüm: private nesne anonim **403**, aynı nesne imzalı adresle **200**, public önek **açık**,
+    kök **listelenemez**. *Birim testi policy JSON'unun metnini doğrular, uygulanıp
+    uygulanmadığını değil — bu ayrım P0-16'nın ilk etapta gözden kaçma sebebiydi.*
+
 **Sürekli**
 - Yeni yazılan her para/auth kodu testsiz merge edilmesin. Kapsama hedefi %22 → %60;
-  `--cov-fail-under=60` CI'da. *(29 Tem sonu: 459 birim + 59 doğrulama + 340 frontend testi.)*
+  `--cov-fail-under=60` CI'da. *(29 Tem sonu: 480 birim + 82 doğrulama + 340 frontend testi.)*
 - ✅ Gerçekçi hacimde seed **yapıldı ve araca dönüştürüldü** — şema değişince ölçüm
   tekrarlanabilir: `python scripts/scale/run.py --create && ... seed && ... probe`.
 
