@@ -84,6 +84,13 @@ class Payment(Base, TimestampMixin, SoftDeleteMixin):
             postgresql_where=text("deleted_at IS NULL"),
         ),
         Index("ix_payments_status", "status"),
+        # Para raporu dönem filtresi (services/revenue_service.py):
+        # "son 30 günde ne kadar komisyon kazandık" sorusu bu kolondan geçer.
+        Index(
+            "ix_payments_created_at",
+            "created_at",
+            postgresql_where=text("deleted_at IS NULL"),
+        ),
         # Conservation invariant'ı DB'de: tutar daima komisyon + kazanç.
         CheckConstraint(
             "amount = commission_amount + tutor_earning",

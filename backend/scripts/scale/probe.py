@@ -228,6 +228,7 @@ def build_cases(ctx: dict) -> list[Case]:
         Case("admin.siparisler", "GET", "/api/v1/store/admin/orders?limit=50", role="admin"),
         Case("admin.urunler", "GET", "/api/v1/store/admin/products?limit=100", role="admin"),
         Case("admin.hakedis", "GET", "/api/v1/payouts/pending", role="admin"),
+        Case("admin.gelir", "GET", "/api/v1/admin/revenue?range=month", role="admin"),
         Case("admin.teslimat-uygun", "GET", "/api/v1/delivery/eligible-orders", role="admin"),
     ]
 

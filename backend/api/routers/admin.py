@@ -14,6 +14,7 @@ from schemas.admin import (
     AdminBookingOut,
     AdminDashboardOut,
     AdminDemandOut,
+    AdminRevenueOut,
     AdminStats,
     AdminUserDetailOut,
     AdminUserOut,
@@ -64,6 +65,7 @@ from services import (
     demand_service,
     name_change_service,
     report_service,
+    revenue_service,
     tutor_service,
 )
 
@@ -115,6 +117,19 @@ async def get_dashboard(
     db: AsyncSession = Depends(get_db),
 ):
     return await admin_service.get_dashboard(db, range_name=range_name)
+
+
+@router.get(
+    "/revenue",
+    response_model=AdminRevenueOut,
+    dependencies=[Depends(require_admin_permission("payments.view"))],
+)
+async def get_revenue(
+    range_name: Literal["day", "week", "month"] = Query(default="week", alias="range"),
+    db: AsyncSession = Depends(get_db),
+):
+    """Para metrikleri: GMV, gelir, emanet, iade oranı, sepet ortalaması."""
+    return await revenue_service.get_revenue(db, range_name=range_name)
 
 
 @router.get(

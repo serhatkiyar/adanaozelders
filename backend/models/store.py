@@ -530,6 +530,13 @@ class Order(Base, TimestampMixin, SoftDeleteMixin):
             text("created_at DESC"),
             postgresql_where=text("deleted_at IS NULL"),
         ),
+        # Para raporu dönem filtresi (services/revenue_service.py). Kısmi:
+        # ödenmemiş siparişler ciroya girmez, indekste yer kaplamasın.
+        Index(
+            "ix_orders_paid_at",
+            "paid_at",
+            postgresql_where=text("paid_at IS NOT NULL AND deleted_at IS NULL"),
+        ),
     )
 
 

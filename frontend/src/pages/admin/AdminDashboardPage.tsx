@@ -1,8 +1,10 @@
 import { Link, useSearchParams } from "react-router-dom";
 import { Badge, ErrorState, PageSkeleton } from "@/components/admin/ui";
-import { useAdminDashboard } from "@/hooks/useAdmin";
+import { useAdminDashboard, useAdminRevenue } from "@/hooks/useAdmin";
+import { formatTRY, parseMoney } from "@/lib/money";
 import { getErrorMessage } from "@/lib/errors";
 import { ROUTES } from "@/lib/routes";
+import type { AdminRevenueOut } from "@/types";
 
 type Range = "day" | "week" | "month";
 const RANGES: { value: Range; label: string; period: string }[] = [
@@ -58,6 +60,7 @@ export default function AdminDashboardPage() {
   const rawRange = params.get("range");
   const range: Range = rawRange === "day" || rawRange === "month" ? rawRange : "week";
   const query = useAdminDashboard(range);
+  const revenue = useAdminRevenue(range);
   const selected = RANGES.find((item) => item.value === range)!;
 
   if (query.isLoading) return <PageSkeleton rows={6} />;
@@ -84,6 +87,8 @@ export default function AdminDashboardPage() {
         </div>
       </section>
 
+      {revenue.data && <MoneySection data={revenue.data} periodLabel={selected.period} />}
+
       <section aria-labelledby="queue-title">
         <div className="mb-4"><h2 id="queue-title" className="text-lg font-bold text-slate-950 dark:text-white">Operasyon kuyrukları</h2><p className="text-sm text-slate-500">Karar veya takip bekleyen gerçek zamanlı iş yükü.</p></div>
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
@@ -99,6 +104,154 @@ export default function AdminDashboardPage() {
           <QueueCard label="Denetim kayıtları" value={data.period_audit_logs} to={ROUTES.adminAuditLogs} description={`Son ${selected.label} içindeki yönetim işlemleri.`} />
         </div>
       </section>
+    </div>
+  );
+}
+
+
+/** Para kartı — tutar + önceki döneme göre yüzde değişim.
+ *
+ *  Sayaç kartlarından ayrı bir bileşen: para farkı adet farkı gibi "+3"
+ *  okunmaz, oransal okunur ("%12 arttı"). Önceki dönem sıfırsa yüzde
+ *  tanımsızdır; "yeni" denir — %∞ göstermek yanıltıcıdır.
+ */
+function MoneyCard({
+  label,
+  value,
+  previous,
+  hint,
+  tone = "neutral",
+}: {
+  label: string;
+  value: string;
+  previous?: string;
+  hint?: string;
+  tone?: "neutral" | "positive" | "muted";
+}) {
+  const current = parseMoney(value) ?? 0;
+  const before = previous === undefined ? null : parseMoney(previous) ?? 0;
+  const pct =
+    before === null || before === 0
+      ? null
+      : Math.round(((current - before) / before) * 100);
+
+  const valueTone =
+    tone === "positive"
+      ? "text-emerald-600 dark:text-emerald-400"
+      : tone === "muted"
+        ? "text-slate-500 dark:text-slate-400"
+        : "text-slate-950 dark:text-white";
+
+  return (
+    <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+      <p className="text-xs font-bold uppercase tracking-wide text-slate-400">{label}</p>
+      <p className={`mt-2 text-2xl font-bold ${valueTone}`}>{formatTRY(value)}</p>
+      <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+        {before !== null && (
+          <span
+            className={`text-xs font-semibold ${
+              pct === null
+                ? "text-slate-400"
+                : pct > 0
+                  ? "text-emerald-600"
+                  : pct < 0
+                    ? "text-rose-600"
+                    : "text-slate-400"
+            }`}
+          >
+            {pct === null
+              ? before === 0 && current > 0
+                ? "yeni"
+                : "değişim yok"
+              : `${pct > 0 ? "+" : ""}%${pct}`}
+          </span>
+        )}
+        {hint && <span className="text-xs text-slate-400">{hint}</span>}
+      </div>
+    </article>
+  );
+}
+
+function MoneySection({
+  data,
+  periodLabel,
+}: {
+  data: AdminRevenueOut;
+  periodLabel: string;
+}) {
+  const refundPct = Math.round(data.refund_rate * 1000) / 10;
+  return (
+    <section aria-labelledby="money-title">
+      <div className="mb-4">
+        <h2 id="money-title" className="text-lg font-bold text-slate-950 dark:text-white">
+          Para
+        </h2>
+        <p className="text-sm text-slate-500">
+          İşlem hacmi ve platform geliri — {periodLabel}.
+        </p>
+      </div>
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <MoneyCard
+          label="İşlem hacmi (GMV)"
+          value={data.gmv}
+          previous={data.previous_gmv}
+          hint="ders + kütüphane + mağaza"
+        />
+        <MoneyCard
+          label="Platform geliri"
+          value={data.revenue}
+          previous={data.previous_revenue}
+          tone="positive"
+          hint="komisyon + kendi satış"
+        />
+        <MoneyCard
+          label="Emanetteki para"
+          value={data.held}
+          previous={data.previous_held}
+          tone="muted"
+          hint="henüz gelir değil"
+        />
+        <MoneyCard
+          label="Sepet ortalaması"
+          value={data.aov}
+          previous={data.previous_aov}
+          hint={`${data.orders} sipariş`}
+        />
+      </div>
+
+      {/* Kırılım: gelirin nereden geldiği ve hacmin nasıl dağıldığı. Tek bir
+          GMV rakamı hangi dikeyin çalıştığını göstermez. */}
+      <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+        <BreakdownRow label="Ders hacmi" value={data.lesson_gmv} />
+        <BreakdownRow label="Kütüphane hacmi" value={data.library_gmv} />
+        <BreakdownRow label="Mağaza hacmi" value={data.store_gmv} />
+        <BreakdownRow label="Komisyon geliri" value={data.commission_revenue} />
+        <BreakdownRow
+          label="İade"
+          value={data.refunded}
+          suffix={`hacmin %${refundPct}'i`}
+        />
+      </div>
+    </section>
+  );
+}
+
+function BreakdownRow({
+  label,
+  value,
+  suffix,
+}: {
+  label: string;
+  value: string;
+  suffix?: string;
+}) {
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-900">
+      <p className="text-xs text-slate-400">{label}</p>
+      <p className="mt-1 font-semibold text-slate-900 dark:text-white">
+        {formatTRY(value)}
+      </p>
+      {suffix && <p className="mt-0.5 text-xs text-slate-400">{suffix}</p>}
     </div>
   );
 }

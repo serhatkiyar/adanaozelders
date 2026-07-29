@@ -2083,3 +2083,36 @@ export interface CourierPosition {
   lng: number | null;
   age_seconds: number | null;
 }
+
+
+/** Yönetim para metrikleri (/admin/revenue). Tutarlar string: Decimal
+ *  yuvarlama hatası para raporunda kabul edilemez, formatlama istemcide. */
+export interface AdminRevenueOut {
+  range: string;
+  period_start: string;
+  previous_period_start: string;
+  gmv: string;
+  revenue: string;
+  commission_revenue: string;
+  direct_sales_revenue: string;
+  /** Emanetteki para — henüz gelir değil. */
+  held: string;
+  refunded: string;
+  refund_rate: number;
+  orders: number;
+  aov: string;
+  lesson_gmv: string;
+  library_gmv: string;
+  store_gmv: string;
+  previous_gmv: string;
+  previous_revenue: string;
+  previous_commission_revenue: string;
+  previous_direct_sales_revenue: string;
+  previous_held: string;
+  previous_refunded: string;
+  previous_orders: number;
+  previous_aov: string;
+  previous_lesson_gmv: string;
+  previous_library_gmv: string;
+  previous_store_gmv: string;
+}
