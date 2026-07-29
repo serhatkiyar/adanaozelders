@@ -242,9 +242,9 @@ paylaşılan eğitmen/ürün linki **jenerik önizleme** olarak çıkar.
 **Frontend**
 - **4,21 MB ikon ana sayfada**: `CategoryBar.tsx:63` beş adet 1024×1024 PNG'yi 48×48'e çiziyor.
   `public/` 16 MB, WebP/AVIF **hiç yok**, 57 `<img>`'nin 16'sında lazy, 1'inde width.
-- Leaflet (144 KB) entry chunk'ta — `Landing.tsx:18` → `HeroSearch` → `DistrictSelect` →
-  `DistrictMapModal` zinciri yüzünden harita görmeyen herkes indiriyor. `vite.config.ts`'te
-  `build:` bloğu hiç yok.
+- ✅ ~~Leaflet (144 KB) entry chunk'ta~~ — *29 Tem, commit `0dead97`*: `DistrictMapModal` lazy
+  yüklenir; harita açılmadıkça hiçbir harita kodu inmez. **Giriş paketi 613 → 504 KB
+  (gzip 188 → 158 KB).**
 - `index.html:19` `@tabler/icons@latest` — 150 KB render-blocking, pinlenmemiş, SRI'siz CDN CSS;
   karşılığında **3 kullanım** ve üçü de ölü prototip dosyalarında.
 - `nginx.conf`'ta **gzip yok** — 613 KB JS sıkıştırılmadan gidiyor (gzip'lense 188 KB).
@@ -252,16 +252,22 @@ paylaşılan eğitmen/ürün linki **jenerik önizleme** olarak çıkar.
   `/test-canli-ders`, `/test-kutuphane-karti`), `DEV` koruması yok.
 - `tile.openstreetmap.org` 6 dosyada — OSMF politikası ticari kullanımı yasaklar. Engellendiği an
   kütüphane haritası, **checkout adres pin'i** ve **canlı kurye takibi** aynı anda çöker.
-- Global sorgu hata yönetimi yok: `isLoading` 76 dosyada, `isError` 37'de → ~39 bileşen backend 500
-  verdiğinde sessizce boş kalıyor. `queryClient.ts`'te `QueryCache.onError` yok.
-- ErrorBoundary router'ın **dışında** → çökünce client-side toparlanma imkânsız, tam sayfa yenileme.
+- ✅ ~~Global sorgu hata yönetimi yok~~ — *29 Tem, commit `0dead97`*: `QueryCache`/`MutationCache`
+  `onError` → tek bildirim + Sentry. 401/403/404 ve iptal edilen istekler bilinçli olarak sessiz;
+  aynı mesaj 4 sn içinde tekrarlanmaz; bileşen `meta: { silentError: true }` ile devre dışı bırakabilir.
+- ✅ ~~ErrorBoundary router'ın dışında~~ — ikinci sınır (`RouteErrorBoundary`) router'ın içinde ve
+  rota değişince sıfırlanır; kullanıcı gezinerek toparlanır, tam sayfa yenileme gerekmez.
 
-**Erişilebilirlik**
-- `htmlFor` kullanımı tüm kod tabanında **0** (165 `<label>`, 248 `<input>` var). Ekran okuyucu
-  hiçbir form alanının adını okuyamıyor.
-- 18 tüketici modalının **0'ında** focus trap, 2'sinde portal. Doğru uygulama aynı repoda:
-  `components/admin/ui/Dialog.tsx:22-57` — ama yalnız admin kullanıyor.
-- `HeroSearch.tsx:64` — ana sayfanın birincil arama kutusunda focus göstergesi yok.
+**Erişilebilirlik** — ✅ *29 Tem, commit `0dead97`*
+- ✅ ~~`htmlFor` kullanımı 0~~ → `components/ui/Field` (useId + `aria-describedby` + `role="alert"`)
+  ve 60+ alan bağlandı. Düğme gruplarını etiketleyen `<label>`'lar **yanlış elemandı** (bir
+  kontrole bağlanamadıkları için ekran okuyucuda hiçbir şey yapmıyorlardı) → `role="group"` +
+  `aria-label`. **eslint-plugin-jsx-a11y CI'da**: 69 ihlal → **0 hata**.
+- ✅ ~~18 modalda focus trap yok~~ → ortak `useModalA11y` (admin `Dialog` da artık onu kullanır)
+  + tüketici `components/ui/Modal` (portal, `aria-modal`, Esc, odak iadesi, kaydırma kilidi).
+  ⚠️ *Yolda bulunan hata:* `panelClassName` verilince panel `relative`'i kaybediyor, arka planın
+  altında kalıp **tıklanamaz** hale geliyordu — regresyon testi yazıldı.
+- ✅ ~~`HeroSearch` focus göstergesi yok~~ → `focus-within` halkası + `aria-label`.
 
 **Ürün**
 - Türkçe arama kör: TSVECTOR `'simple'` ile üretiliyor, `unaccent` yok, `products.title` üzerinde
@@ -522,6 +528,25 @@ disiplini tutmuş.*
     için (`_safe_send` istisnayı yutar, akışı bozmaz) hata görünmüyordu: kullanıcı "mesajın
     alındı" ekranını görüyor, mesaj kimseye ulaşmıyordu. Düzeltildi + tüm şablonları üreten
     regresyon testi eklendi.
+
+**Hafta 7 — Erişilebilirlik + hata görünürlüğü (29 Tem 2026)**
+*(commit `0dead97`)*
+36. ✅ **Sessiz sorgu hataları bitti** — global `QueryCache`/`MutationCache` yakalayıcı.
+    ~39 bileşen backend 500'de hiçbir şey söylemeden boş kalıyordu.
+37. ✅ **ErrorBoundary router'ın içine** alındı (ikinci sınır; rota değişince sıfırlanır).
+38. ✅ **Odak tuzağı** — `useModalA11y` + `components/ui/Modal`; 12 modal taşındı, kendi kabuğunu
+    çizenlere `useModalPanel`. Admin `Dialog` da aynı hook'u kullanıyor (kod tekrarı kalktı).
+39. ✅ **Etiket bağlama** — `components/ui/Field` + 60'tan fazla alan; düğme gruplarında
+    `role="group"`. **eslint-plugin-jsx-a11y CI adımı**: 69 ihlal → 0 hata.
+40. ✅ **Leaflet lazy** (giriş paketi 613 → 504 KB) + ana sayfa arama kutusunda focus göstergesi.
+
+**Hafta 7'den kalanlar** *(ölçülmüş, bilinçli)*
+- **31 a11y uyarısı**: 24'ü `autoFocus` (modal açılışında alana odaklanma — kullanışlı ama ekran
+  okuyucu kullanıcısını bağlamdan koparabilir), 7'si tıklanabilir `<div>`. Hata değil, uyarı.
+- **`tile.openstreetmap.org` 6 dosyada** — OSMF politikası ticari kullanımı yasaklar. Engellendiği
+  an kütüphane haritası, checkout adres pin'i ve canlı kurye takibi aynı anda çöker. Sağlayıcı
+  kararı gerektirir (Protomaps self-host / MapTiler), kod işi değil.
+- **Giriş paketi hâlâ 504 KB**: vendor bölme (`manualChunks`) P2'de.
 
 **Sürekli**
 - Yeni yazılan her para/auth kodu testsiz merge edilmesin. Kapsama hedefi %22 → %60;
