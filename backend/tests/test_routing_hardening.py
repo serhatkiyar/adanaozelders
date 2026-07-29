@@ -358,3 +358,58 @@ async def test_verbose_varsayilani_ortama_bagli(routing_module, monkeypatch):
     assert "detail" not in await routing_module.health_snapshot()
     monkeypatch.setattr(settings, "ENVIRONMENT", "development")
     assert "detail" in await routing_module.health_snapshot()
+
+
+# ── OSRM kapali (VROOM ayakta) — ayri bir ariza modu ─────────────────────────────
+
+
+def test_osrm_kapali_vroom_ayakta_hatasi_anlasilir_kaliyor():
+    """VROOM'un kendisi ayaktayken arkasindaki OSRM olurse VROOM 500 + kendi
+    hata govdesini doner: {"code":3,"error":"Failed to connect to osrm:5000"}.
+
+    Bu, "VROOM kapali"dan AYRI bir ariza modudur ve operatorun teshisi buna
+    bagli: biri konteyner sorunu, digeri veri/ag sorunu. Hata govdesi
+    korunmazsa ikisi de "ulasilamadi" gorunur."""
+    import httpx
+
+    from core.routing.vroom import _error_detail
+
+    detail = _error_detail(
+        httpx.Response(500, json={"code": 3, "error": "Failed to connect to osrm:5000"})
+    )
+    assert "code=3" in detail
+    assert "osrm" in detail, "OSRM'e ozgu neden kaybolmamali"
+
+
+@pytest.mark.asyncio
+async def test_osrm_kapali_yaniti_auto_modda_fallback_uretir(routing_module, monkeypatch):
+    """OSRM kapaliyken VROOM'un dondugu gercek govde ile: auto modda akis
+    kesilmez (haversine), vroom modunda hata NEDENIYLE birlikte yukselir."""
+    import httpx
+
+    from core.config import settings
+    from core.routing import vroom as vroom_mod
+
+    async def _sahte_post(payload, *, timeout=None):
+        raise RoutingUnavailable(
+            "VROOM 500: "
+            + vroom_mod._error_detail(
+                httpx.Response(500, json={"code": 3, "error": "Failed to connect to osrm:5000"})
+            )
+        )
+
+    monkeypatch.setattr(vroom_mod, "_post_vroom", _sahte_post)
+    pts = [p(1, 37.01, 35.33), p(2, 37.02, 35.34)]
+
+    monkeypatch.setattr(settings, "ROUTING_PROVIDER", "auto")
+    plan = await routing_module.plan_route(depot_lat=DEPOT[0], depot_lng=DEPOT[1], points=pts)
+    assert plan.provider == "haversine"
+
+    routing_module.reset_state()
+    monkeypatch.setattr(settings, "ROUTING_PROVIDER", "vroom")
+    with pytest.raises(RoutingUnavailable, match="osrm"):
+        await routing_module.plan_route(depot_lat=DEPOT[0], depot_lng=DEPOT[1], points=pts)
+
+    # Ve /health bunu bozulma olarak bildirmeli (sessiz kalmamali).
+    snap = await routing_module.health_snapshot(verbose=True)
+    assert snap["degraded"] is True and "osrm" in snap["detail"]
