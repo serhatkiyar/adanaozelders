@@ -2,20 +2,58 @@
 // Sayfa düzeni `pages/LegalPage.tsx`'tedir; metin değişiklikleri yalnız burada yapılır.
 //
 // NOT: Bu metinler lansman öncesi bir avukat tarafından gözden geçirilmelidir.
-// TODO(prod): Şirket (limited, merkez Ceyhan/Adana) tescil edilince OPERATOR'a
-// MERSİS no, ticaret sicil no + sicil müdürlüğü, vergi dairesi/no ve KEP adresi
-// eklenecek; e-posta gerçek alan adı kutusuna bağlanacak. Unvan Ticaret Sicili'nce
-// tescil EDİLENE KADAR "kuruluş sürecinde" ibaresi kalmalı (benzerlikten reddedilebilir).
-
 import { SITE_NAME } from "@/lib/seo";
 
-/** Platform işletmecisi kimlik/iletişim sabitleri (yasal metinlerde geçer). */
+/**
+ * Platform işletmecisi kimlik/iletişim sabitleri (yasal metinlerde geçer).
+ *
+ * İşletme **şahıs şirketi** olarak kuruldu ve vergi kaydı aktif (29 Tem 2026).
+ * Önceki plan limited şirketti; metinlerde bir süre var olmayan bir tüzel kişi
+ * (`… Ltd. Şti.`) satıcı ve veri sorumlusu olarak görünüyordu — düzeltildi.
+ *
+ * TODO(lansman): boş alanlar Mesafeli Sözleşmeler Yönetmeliği m.5 uyarınca
+ * ZORUNLUDUR, lansmandan önce doldurulmalı:
+ *   - `address`: vergi kaydındaki AÇIK adres (kayıt hangi adresteyse o; farklı
+ *     bir adres göstermek yanlış beyandır — adres değişecekse önce vergi
+ *     dairesine bildirilmeli)
+ *   - `phone`: erişilebilir telefon (mesafeli satışta zorunlu)
+ *   - `mersis`: ticaret sicili tescili ONAY SÜRECİNDE; numara gelince yazılacak
+ *   - `taxOffice`: vergi dairesi adı
+ * `kep` şahıs şirketi için ZORUNLU DEĞİLDİR (sermaye şirketlerine zorunlu);
+ * alınırsa `@…kep.tr` uzantılı gerçek KEP adresi yazılmalı — normal e-posta değil.
+ */
 export const OPERATOR = {
   name: SITE_NAME,
-  entity: "Çukurova Dijital Pazarlama ve Yazılım Ltd. Şti. (kuruluş sürecinde)",
-  address: "Ceyhan, Adana, Türkiye",
+  entity: "Serhat Kıyar Çukurova Dijital Pazarlama ve Yazılım",
+  address: "Adana, Türkiye",
   email: "bilgi@adanaozelders.com.tr",
+  phone: "",
+  taxNumber: "5590521517",
+  taxOffice: "",
+  mersis: "",
+  kep: "",
 } as const;
+
+/**
+ * Satıcı/aracı hizmet sağlayıcı kimlik satırı — yalnız DOLU alanları yazar.
+ *
+ * Mesafeli satış sözleşmesinde bu bilgiler zorunludur; eksik olanı boş
+ * göstermek yerine hiç yazmıyoruz ki metin "MERSİS: —" gibi yarım ifadelerle
+ * yayımlanmasın.
+ */
+export function operatorIdentity(): string {
+  const parts = [
+    `Unvan: ${OPERATOR.entity}`,
+    OPERATOR.address && `Adres: ${OPERATOR.address}`,
+    OPERATOR.mersis && `MERSİS: ${OPERATOR.mersis}`,
+    OPERATOR.taxNumber &&
+      `Vergi No: ${OPERATOR.taxNumber}${OPERATOR.taxOffice ? ` (${OPERATOR.taxOffice})` : ""}`,
+    OPERATOR.phone && `Telefon: ${OPERATOR.phone}`,
+    `E-posta: ${OPERATOR.email}`,
+    OPERATOR.kep && `KEP: ${OPERATOR.kep}`,
+  ].filter(Boolean);
+  return parts.join(" · ");
+}
 
 export type LegalBlock =
   | { type: "p"; text: string }
@@ -389,7 +427,7 @@ const DISTANCE_SALES: LegalDoc = {
         list(
           "ALICI: Platform üzerinden hizmet satın alan öğrenci (18 yaşından küçükse veli/vasisi).",
           "HİZMET SAĞLAYICI (SATICI): Hizmeti fiilen sunan, Platformda ilanı yayımlanan eğitmen veya kütüphane/etüt merkezi.",
-          `ARACI HİZMET SAĞLAYICI: ${OPERATOR.entity} (${OPERATOR.name} platformu işletmecisi, e-posta: ${OPERATOR.email}). Platform, satışa aracılık eder ve ödemeyi emanet (escrow) modeliyle güvence altına alır.`
+          `ARACI HİZMET SAĞLAYICI: ${OPERATOR.name} platformu işletmecisi. ${operatorIdentity()}. Platform, satışa aracılık eder ve ödemeyi emanet (escrow) modeliyle güvence altına alır.`
         ),
       ],
     },

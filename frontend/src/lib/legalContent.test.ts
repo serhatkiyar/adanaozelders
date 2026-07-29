@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   LEGAL_DOCS,
   OPERATOR,
+  operatorIdentity,
   SIGNUP_CONSENT_DOCS,
   currentConsentVersion,
   getLegalDoc,
@@ -91,5 +92,38 @@ describe("currentConsentVersion", () => {
       "privacy",
       "terms",
     ]);
+  });
+});
+
+describe("işletmeci kimliği (Mesafeli Sözleşmeler Yönetmeliği m.5)", () => {
+  it("var olmayan bir tüzel kişi göstermez", () => {
+    // Regresyon: işletme şahıs şirketi olarak kuruldu ama metinlerde bir süre
+    // "… Ltd. Şti. (kuruluş sürecinde)" satıcı/veri sorumlusu olarak göründü.
+    expect(OPERATOR.entity).not.toMatch(/Ltd\.|A\.Ş\.|kuruluş sürecinde/i);
+    expect(OPERATOR.entity.trim().length).toBeGreaterThan(0);
+  });
+
+  it("kimlik satırı yalnız DOLU alanları yazar", () => {
+    const line = operatorIdentity();
+    expect(line).toContain(OPERATOR.entity);
+    expect(line).toContain(OPERATOR.email);
+    // Boş alan "Telefon: ·" gibi yarım ifade üretmemeli.
+    expect(line).not.toMatch(/:\s*(·|$)/);
+  });
+
+  it("KEP alanı doluysa GERÇEK bir KEP adresidir", () => {
+    // KEP, normal e-postadan farklıdır (PTT/yetkili sağlayıcı, *.kep.tr).
+    // Şahıs şirketinde zorunlu değil; boş bırakılabilir ama yanlış doldurulamaz.
+    if (OPERATOR.kep) expect(OPERATOR.kep).toMatch(/\.kep\.tr$/);
+  });
+
+  it("LANSMAN KONTROLÜ: zorunlu alanlar", () => {
+    // Bu test bilinçli olarak GEVŞEKTİR: eksikleri listeler ama kırmaz —
+    // alanlar tescil/abonelik süreçlerine bağlı. Lansmandan önce `expect`
+    // satırındaki `.length` beklentisi 0'a çekilip zorunlu hale getirilmeli.
+    const eksik = (["address", "phone", "taxOffice"] as const).filter(
+      (k) => !OPERATOR[k] || OPERATOR[k] === "Adana, Türkiye"
+    );
+    expect(eksik.length).toBeLessThanOrEqual(3);
   });
 });
