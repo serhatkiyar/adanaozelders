@@ -83,7 +83,13 @@ const AdminAccessPage = lazy(() => import("@/pages/admin/AdminAccessPage"));
 const AdminLibraries = lazy(() => import("@/pages/dashboards/AdminLibraries"));
 const AdminExamCatalogs = lazy(() => import("@/pages/dashboards/AdminExamCatalogs"));
 const AdminStore = lazy(() => import("@/pages/dashboards/AdminStore"));
-const AdminDelivery = lazy(() => import("@/pages/dashboards/AdminDelivery"));
+const DeliveryLayout = lazy(() => import("@/pages/admin/delivery/DeliveryLayout"));
+const DeliveryTodayPage = lazy(() => import("@/pages/admin/delivery/DeliveryTodayPage"));
+const DeliveryOrdersPage = lazy(() => import("@/pages/admin/delivery/DeliveryOrdersPage"));
+const DeliveryRunsPage = lazy(() => import("@/pages/admin/delivery/DeliveryRunsPage"));
+const DeliveryRunDetailPage = lazy(() => import("@/pages/admin/delivery/DeliveryRunDetailPage"));
+const DeliveryPerformancePage = lazy(() => import("@/pages/admin/delivery/DeliveryPerformancePage"));
+const DeliveryCouriersPage = lazy(() => import("@/pages/admin/delivery/DeliveryCouriersPage"));
 const DeliveryDriver = lazy(() => import("@/pages/DeliveryDriver"));
 const TutorDashboard = lazy(() => import("@/pages/TutorDashboard"));
 const TutorSettings = lazy(() => import("@/pages/TutorSettings"));
@@ -416,7 +422,14 @@ function App() {
               <Route path="magaza/siparisler" element={<AdminStore />} />
               <Route path="magaza/iadeler" element={<AdminStore />} />
               <Route path="magaza/kuponlar" element={<AdminStore />} />
-              <Route path="dagitim" element={<AdminDelivery />} />
+              <Route path="dagitim" element={<DeliveryLayout />}>
+                <Route index element={<DeliveryTodayPage />} />
+                <Route path="siparisler" element={<DeliveryOrdersPage />} />
+                <Route path="turlar" element={<DeliveryRunsPage />} />
+                <Route path="turlar/:id" element={<DeliveryRunDetailPage />} />
+                <Route path="performans" element={<DeliveryPerformancePage />} />
+                <Route path="kuryeler" element={<DeliveryCouriersPage />} />
+              </Route>
               <Route path="rezervasyonlar" element={<AdminBookingsPage />} />
               <Route path="talepler" element={<AdminDemandsPage />} />
               <Route path="ad-degisiklikleri" element={<AdminSectionPage section="names" />} />

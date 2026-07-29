@@ -1836,6 +1836,8 @@ export interface DeliveryStop {
   promised_delivery_date?: string | null;
   /** Bu sipariş kaç kez teslim edilemedi (>0 → öncelikli yeniden deneme). */
   failed_attempts?: number;
+  /** Teslim edilememe neden kodu (FailReason) — FAILED durakta dolu. */
+  fail_reason?: string | null;
 }
 
 export interface DeliveryRun {
