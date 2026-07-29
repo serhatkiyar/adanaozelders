@@ -813,7 +813,7 @@ Adana'da mobil bağlantıda ilk boyamayı doğrudan belirleyen sayı bu.
 - `public/` 4,1 MB'a inmiş durumda (Hafta 4'teki ikon işiyle 16 MB'dan). Kalan büyük
   dosyalar nadir yüzeylerde; öncelik değil.
 
-**Hafta 17 — Harita döşeme sağlayıcısı soyutlandı (29 Tem 2026)** *(commit `HAFTA17`)*
+**Hafta 17 — Harita döşeme sağlayıcısı soyutlandı (29 Tem 2026)** *(commit `67368e4`)*
 
 Raporun "kod işi değil, sağlayıcı kararı gerektirir" dediği madde. Karar hâlâ verilmedi ama
 **riskin kendisi kod işiyle küçültülebiliyordu**: adres altı bileşende gömülüydü, geçiş günü
