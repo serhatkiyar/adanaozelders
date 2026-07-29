@@ -1,5 +1,4 @@
 import { apiClient } from "@/api/axios";
-import { useAuthStore } from "@/store/authStore";
 import type {
   RegisterRequest,
   Token,
@@ -12,11 +11,16 @@ export type RegisterRole = "tutor" | "client";
 
 export async function login(
   username: string,
-  password: string
+  password: string,
+  remember = true
 ): Promise<Token> {
   const body = new URLSearchParams();
   body.append("username", username);
   body.append("password", password);
+  // "Beni hatırla" sunucuya gider: refresh token çerezinin kalıcı mı yoksa
+  // oturumluk mu olacağını belirler. Bu tercih istemcide tutulamaz — çerezi
+  // yazan taraf sunucudur.
+  body.append("remember", remember ? "true" : "false");
 
   const { data } = await apiClient.post<Token>("/auth/login", body, {
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -36,10 +40,10 @@ export async function register(
 }
 
 export async function logout(): Promise<void> {
-  // Sunucu tarafında access token'ı (denylist) ve refresh token'ı iptal eder.
-  // Hata olsa da akış bozulmamalı.
-  const refresh_token = useAuthStore.getState().refreshToken;
-  await apiClient.post("/auth/logout", { refresh_token });
+  // Sunucu tarafında access token'ı (denylist) ve refresh token'ı iptal eder,
+  // ayrıca çerezi siler. Refresh token gövdede GÖNDERİLMEZ — sunucu onu
+  // `httpOnly` çerezden okur. Hata olsa da akış bozulmamalı.
+  await apiClient.post("/auth/logout");
 }
 
 export async function fetchMe(): Promise<UserOut> {

@@ -36,9 +36,9 @@ hata izleme, ortam ayrımı — hiçbiri mevcut değil. Eylül lansmanına kadar
 | Backend | 46.577 satır Python · 336 dosya · 38 servis · 33 router | |
 | Frontend | 66.255 satır TS/TSX · 396 dosya | |
 | Şema | 79 tablo · 132 FK · 91 index · 46 migration | |
-| Birim testleri | **282/282 geçiyor** (7,5 sn) → *29 Tem: **480/480*** | Yeşil |
+| Birim testleri | **282/282 geçiyor** (7,5 sn) → *29 Tem: **483/483*** | Yeşil |
 | Entegrasyon testleri | **62 test — CI'da hiç koşmuyor** (SKIP) → *Hafta 3'te CI'ya bağlandı* | Postgres servisi yok |
-| Doğrulama paketi (gerçek DB + depo) | *29 Tem: **82 test*** | Mock'suz, izole DB |
+| Doğrulama paketi (gerçek DB + depo + HTTP) | *29 Tem: **92 test*** | Mock'suz, izole DB |
 | **Test kapsaması** | **%19** → *29 Tem: **%22*** | 🔴 |
 | `tsc --noEmit` | **0 hata** (strict açık) | Güçlü |
 | Frontend build | 613 KB JS (gzip 188 KB) + 144 KB CSS · `dist/` 18 MB | |
@@ -139,8 +139,8 @@ indir. Aynı alanın oturum çıktısında yayın kapısına bağlı olması (`l
 bunun kasıtlı olmadığını gösteriyor.
 *Ek not:* `CLAUDE.md` "self-servis onboarding yok" diyor — **doküman ile kod çelişiyor.**
 
-**P0-10 · Depolanmış XSS + localStorage'da refresh token.** — ✅ *XSS Hafta 1, CSP Hafta 11;
-⚠️ token depolaması bilinçli olarak açık bırakıldı, bkz. Hafta 11*
+**P0-10 · Depolanmış XSS + localStorage'da refresh token.** — ✅ *XSS Hafta 1, CSP Hafta 11,
+token çereze taşındı Hafta 12*
 `schemas/library.py:105` → `website` alanında yalnız `max_length`, URL şeması doğrulaması yok
 (karşı örnek aynı repoda: `schemas/booking.py:18` `^https?://` zorunlu). `LibraryMapPanel.tsx:147`
 ham `href={detail.website}`. `authStore.ts:72-75` **refresh token'ı** localStorage'da tutuyor.
@@ -656,17 +656,44 @@ duruyordu.
     olayı olurdu. Bu davranış teste bağlandı (7 test).
     `docker compose --profile analytics up -d umami` ile yerelde de çalışır.
 
-**Hafta 11'den kalan** *(bilinçli, gerekçeli)*
-- **Refresh token hâlâ `localStorage`'da.** Doğru çözüm `httpOnly` cookie'dir ve uygulanabilir
-  (prod'da aynı origin — Caddy `/api/*` proxy'liyor — dolayısıyla `SameSite=Lax` yeterli olurdu).
-  Bu turda **yapılmadı**: değişiklik oturum akışının tamamına dokunuyor (login, sessiz yenileme,
-  logout, "beni hatırla") ve regresyon riski, CSP devreye girdikten sonraki marjinal kazançtan
-  yüksek. XSS→token hırsızlığı zinciri artık script çalıştırma adımında kesiliyor.
-  **Karar bekliyor** — lansman öncesi ayrı bir iş olarak ele alınmalı.
+**Hafta 12 — Refresh token çereze taşındı (29 Tem 2026)** *(commit `HAFTA12`)*
+
+P0-10'un son parçası. Refresh token 30 gün geçerlidir ve tek başına yeni access token üretir —
+yani hesabın kendisi kadar değerlidir. `localStorage`'da durduğu sürece tek bir XSS onu dışarı
+sızdırabilir; `httpOnly` çerez JavaScript'e görünmez, aynı XSS o oturumda istek yapabilir ama
+**token'ı çıkaramaz**.
+
+56. ✅ **Token gövdeden tamamen kalktı** — `Token` şemasında `refresh_token` alanı yok
+    (regresyon testi var) ve `/auth/refresh` **gövdeden token kabul etmiyor**. İkincisi kritik:
+    gövde yolu açık bırakılsaydı, çereze geçmenin sağladığı koruma çalınmış bir token elle
+    gönderilerek atlatılabilirdi. Beş yüzey birden geçirildi: login, refresh, logout,
+    şifre değişimi ve kütüphane self-servis kaydı.
+57. ✅ **CSRF için ayrı token gerekmedi** — `SameSite=Lax` + POST: Lax çerezler site-dışı POST'ta
+    gönderilmez. `Strict` bilinçli olarak seçilmedi (e-postadaki linkten gelen kullanıcı oturumu
+    düşmüş görürdü). Çerez dar `path`'li (`/api/v1/auth`) ve üretimde `Secure`.
+58. ⚠️ **"Beni hatırla" sunucuya taşınmak zorunda kaldı** (`refresh_tokens.persistent`,
+    migration `91fde114b0c4`). Sebep ilk tasarımda gözden kaçtı: rotasyonda yeni çerezin ömrünü
+    seçmek gerekiyor, ama **gelen çerezin kalıcı mı oturumluk mu olduğu HTTP'de görünmez**.
+    İsteğe bakarak seçmek imkânsız; tercih token zincirinde devredilmeli. Aksi halde
+    "beni hatırla"yı işaretlemeyen kullanıcının oturumu ilk yenilemede kalıcı hale gelirdi.
+59. ⚠️ **Doğrulama testi gerçek bir kusur yakaladı:** bir uç `HTTPException` fırlattığında,
+    imzasındaki `Response` nesnesine yazılmış başlıklar yanıta **gitmez** — hata yanıtını
+    exception handler sıfırdan üretir. Yani "geçersiz çerezi temizle" niyeti tam da
+    temizlenmesi gereken durumda (401) sessizce kayboluyordu. Silme başlığı artık exception
+    üzerinden gidiyor (`clear_refresh_cookie_headers`).
+60. ✅ **Uçtan uca doğrulandı** (`tests/verify/test_verify_session_cookie.py`, 10 test) — bu
+    paketteki ilk **HTTP seviyesi** testler: doğrulanan şey HTTP'nin kendisinde yaşıyor (çerezin
+    yazılması, tarayıcının geri göndermesi, rotasyon, silinme). Kapsanan: gövdede token dönmüyor,
+    çerez `httpOnly`, rotasyon çalışıyor, **eski token ikinci kez kabul edilmiyor**, gövdeden
+    token reddediliyor, logout kopyayı da geçersiz kılıyor, pasif hesap yenileyemiyor,
+    "beni hatırla" tercihi rotasyonda korunuyor.
+
+**Sürekli**
+- Yeni yazılan her para/auth kodu testsiz merge edilmesin.
 
 **Sürekli**
 - Yeni yazılan her para/auth kodu testsiz merge edilmesin. Kapsama hedefi %22 → %60;
-  `--cov-fail-under=60` CI'da. *(29 Tem sonu: 480 birim + 82 doğrulama + 360 frontend testi.)*
+  `--cov-fail-under=60` CI'da. *(29 Tem sonu: 480 birim + 92 doğrulama + 360 frontend testi.)*
 - ✅ Gerçekçi hacimde seed **yapıldı ve araca dönüştürüldü** — şema değişince ölçüm
   tekrarlanabilir: `python scripts/scale/run.py --create && ... seed && ... probe`.
 

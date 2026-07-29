@@ -9,17 +9,15 @@ from schemas.user import USERNAME_PATTERN
 
 
 class Token(BaseModel):
+    """Oturum yanıtı — YALNIZ access token.
+
+    Refresh token bilinçli olarak burada yoktur: ``httpOnly`` çerezde taşınır
+    (bkz. ``core/cookies.py``). Gövdede dönseydi JavaScript onu okuyup saklamak
+    zorunda kalırdı ve tek bir XSS 30 günlük hesap devrine yeterdi.
+    """
+
     access_token: str
     token_type: str = "bearer"
-    refresh_token: str | None = None
-
-
-class RefreshRequest(BaseModel):
-    refresh_token: str = Field(min_length=1, max_length=512)
-
-
-class LogoutRequest(BaseModel):
-    refresh_token: str | None = Field(default=None, max_length=512)
 
 
 class RegisterRequest(BaseModel):

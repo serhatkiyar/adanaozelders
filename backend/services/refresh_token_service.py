@@ -24,14 +24,21 @@ def _now() -> datetime.datetime:
     return datetime.datetime.now(datetime.timezone.utc)
 
 
-async def issue(db: AsyncSession, *, role_id: int, user_id: int) -> str:
-    """Yeni refresh token üretir, hash'ini saklar, ham token döner."""
+async def issue(
+    db: AsyncSession, *, role_id: int, user_id: int, persistent: bool = True
+) -> str:
+    """Yeni refresh token üretir, hash'ini saklar, ham token döner.
+
+    ``persistent`` "beni hatırla" tercihidir ve çerezin ömrünü belirler; rotasyon
+    zinciri boyunca taşınır (bkz. :func:`rotate`).
+    """
     raw = secrets.token_urlsafe(48)
     db.add(
         RefreshToken(
             role_id=role_id,
             user_id=user_id,
             token_hash=_hash(raw),
+            persistent=persistent,
             expires_at=_now()
             + datetime.timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS),
         )
@@ -65,17 +72,34 @@ async def _lookup_valid(db: AsyncSession, raw_token: str) -> RefreshToken | None
 
 async def rotate(
     db: AsyncSession, *, raw_token: str
-) -> tuple[int, int, str] | None:
+) -> tuple[int, int, str, bool] | None:
     """Geçerli token'ı doğrular, REVOKE eder ve yenisini üretir.
 
-    (role_id, user_id, yeni_ham_token) döner; geçersiz/expired/revoked ise None.
+    (role_id, user_id, yeni_ham_token, persistent) döner; geçersiz/expired/
+    revoked ise None. ``persistent`` devredilir: kullanıcının giriş anındaki
+    "beni hatırla" tercihi, oturum yenilendikçe kaybolmamalı.
     """
     tok = await _lookup_valid(db, raw_token)
     if tok is None:
         return None
     tok.revoked_at = _now()
-    new_raw = await issue(db, role_id=tok.role_id, user_id=tok.user_id)
-    return tok.role_id, tok.user_id, new_raw
+    new_raw = await issue(
+        db, role_id=tok.role_id, user_id=tok.user_id, persistent=tok.persistent
+    )
+    return tok.role_id, tok.user_id, new_raw, tok.persistent
+
+
+async def is_persistent(db: AsyncSession, *, raw_token: str | None) -> bool:
+    """Token'ın "beni hatırla" tercihi. Token yok/geçersizse ``True``.
+
+    Varsayılanın ``True`` olması bilinçli: tercih okunamadığında kullanıcıyı
+    tarayıcıyı kapattığı anda oturumdan atmak, tanımsız durumda verilecek en
+    can sıkıcı karardır — ve bu bir güvenlik sınırı değil, konfor tercihidir.
+    """
+    if not raw_token:
+        return True
+    tok = await _lookup_valid(db, raw_token)
+    return True if tok is None else tok.persistent
 
 
 async def revoke(db: AsyncSession, *, raw_token: str) -> None:

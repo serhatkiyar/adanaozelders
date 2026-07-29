@@ -56,10 +56,16 @@ export enum Gender {
 
 /* ============================ AUTH ============================ */
 
+/**
+ * Oturum yanıtı — yalnız access token.
+ *
+ * Refresh token burada YOKTUR: `httpOnly` çerezde taşınır ve JavaScript onu
+ * hiç görmez. Gövdede dönseydi saklamak zorunda kalırdık ve tek bir XSS
+ * 30 günlük hesap devrine yeterdi.
+ */
 export interface Token {
   access_token: string;
   token_type: string;
-  refresh_token?: string | null;
 }
 
 export interface RegisterRequest {

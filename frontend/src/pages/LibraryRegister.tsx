@@ -20,7 +20,7 @@ import { toast } from "@/store/toastStore";
 export default function LibraryRegister() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const setTokens = useAuthStore((s) => s.setTokens);
+  const setToken = useAuthStore((s) => s.setToken);
   const setUser = useAuthStore((s) => s.setUser);
 
   const [form, setForm] = useState({
@@ -59,7 +59,7 @@ export default function LibraryRegister() {
         location_lng: loc.lng,
         location_text: loc.text.trim() || null,
       });
-      setTokens(token.access_token, token.refresh_token ?? null);
+      setToken(token.access_token);
       const user = await fetchMe();
       setUser(user);
       queryClient.setQueryData(["me"], user);

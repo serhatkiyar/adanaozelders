@@ -4,7 +4,17 @@ import datetime
 import logging
 
 import jwt
-from fastapi import APIRouter, Depends, HTTPException, Request, status, UploadFile, File
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    Form,
+    HTTPException,
+    Request,
+    Response,
+    UploadFile,
+    status,
+)
 from fastapi.responses import JSONResponse
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,6 +24,12 @@ from api.deps import (
     get_current_active_user,
     oauth2_scheme,
     user_rate_limit,
+)
+from core.cookies import (
+    clear_refresh_cookie,
+    clear_refresh_cookie_headers,
+    get_refresh_cookie,
+    set_refresh_cookie,
 )
 from core.database import get_db
 from core.config import settings
@@ -48,11 +64,9 @@ from models.verification_token import TokenPurpose
 from schemas.auth import (
     AccountDeleteRequest,
     EmailVerifyConfirm,
-    LogoutRequest,
     MessageResponse,
     PasswordResetConfirm,
     PasswordResetRequest,
-    RefreshRequest,
     RegisterRequest,
     Token,
 )
@@ -175,7 +189,9 @@ async def register_client(
 
 @router.post("/login", response_model=Token, dependencies=[Depends(_login_limit)])
 async def login(
+    response: Response,
     form: OAuth2PasswordRequestForm = Depends(),
+    remember: bool = Form(False),
     db: AsyncSession = Depends(get_db),
 ):
     user, role = await auth_service.authenticate(
@@ -198,39 +214,66 @@ async def login(
         auth_version=getattr(user, "auth_version", None),
     )
     refresh = await refresh_token_service.issue(
-        db, role_id=user.role_id, user_id=user.id
+        db, role_id=user.role_id, user_id=user.id, persistent=remember
     )
     await db.commit()
-    return Token(access_token=token, refresh_token=refresh)
+    # Refresh token YANITTA DÖNMEZ, çereze yazılır: gövdede dönseydi JS onu
+    # okuyup saklamak zorunda kalırdı ve tek bir XSS 30 günlük hesap devrine
+    # yeterdi (bkz. core/cookies.py).
+    set_refresh_cookie(response, refresh, remember=remember)
+    return Token(access_token=token)
 
 
 @router.post("/refresh", response_model=Token)
-async def refresh_token(payload: RefreshRequest, db: AsyncSession = Depends(get_db)):
-    # Refresh token'ı rotasyonla yenile (eski revoke, yeni üret) ve yeni access üret.
-    result = await refresh_token_service.rotate(db, raw_token=payload.refresh_token)
+async def refresh_token(
+    request: Request,
+    response: Response,
+    db: AsyncSession = Depends(get_db),
+):
+    """Refresh token'ı rotasyonla yeniler (eski revoke, yeni üret).
+
+    Token yalnız ``httpOnly`` çerezden okunur; gövdeden kabul EDİLMEZ. Gövde
+    yolu açık bırakılsaydı, çereze geçmenin sağladığı korumayı bir saldırgan
+    çalınmış bir token'ı elle göndererek atlatabilirdi.
+    """
+    raw = get_refresh_cookie(request)
+    result = await refresh_token_service.rotate(db, raw_token=raw) if raw else None
     if result is None:
+        # Geçersiz/eksik çerezi temizle: tarayıcı ölü bir token'ı her istekte
+        # taşımaya devam etmesin. Silme başlığı EXCEPTION ÜZERİNDEN gider —
+        # `response`'a yazılan başlıklar hata yanıtında kaybolur.
         raise HTTPException(
             status.HTTP_401_UNAUTHORIZED,
             "Oturum süresi doldu, lütfen tekrar giriş yap.",
-            headers={"WWW-Authenticate": "Bearer"},
+            headers={"WWW-Authenticate": "Bearer", **clear_refresh_cookie_headers()},
         )
-    role_id, user_id, new_refresh = result
+    role_id, user_id, new_refresh, persistent = result
     model = _MODEL_BY_ROLE_ID.get(role_id)
     user = await db.get(model, user_id) if model else None
     if user is None or user.deleted_at is not None or not user.is_active:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Hesap bulunamadı veya pasif")
+        raise HTTPException(
+            status.HTTP_401_UNAUTHORIZED,
+            "Hesap bulunamadı veya pasif",
+            headers=clear_refresh_cookie_headers(),
+        )
     access = create_access_token(
         subject=user.id,
         role=role_name(role_id),
         role_id=role_id,
         auth_version=getattr(user, "auth_version", None),
     )
-    return Token(access_token=access, refresh_token=new_refresh)
+    await db.commit()
+    # "Beni hatırla" tercihi token zincirinden gelir: gelen çerezin kalıcı mı
+    # oturumluk mu olduğu HTTP'de görünmez, dolayısıyla isteğe bakarak doğru
+    # ömrü seçmek mümkün değil (bkz. refresh_token_service.rotate).
+    set_refresh_cookie(response, new_refresh, remember=persistent)
+    return Token(access_token=access)
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
 async def logout(
-    payload: LogoutRequest | None = None,
+    request: Request,
+    response: Response,
     token: str = Depends(oauth2_scheme),
     db: AsyncSession = Depends(get_db),
 ):
@@ -245,9 +288,14 @@ async def logout(
         if jti and exp:
             now = int(datetime.datetime.now(datetime.timezone.utc).timestamp())
             await revoke(jti, max(int(exp) - now, 1))
-    # Refresh token verildiyse onu da kalıcı olarak geçersiz kıl.
-    if payload and payload.refresh_token:
-        await refresh_token_service.revoke(db, raw_token=payload.refresh_token)
+    # Refresh token'ı da kalıcı olarak geçersiz kıl ve çerezi sil. İkisi de
+    # gerekli: yalnız çerezi silmek, token'ı DB'de geçerli bırakırdı (kopyası
+    # alınmışsa hâlâ kullanılabilirdi); yalnız revoke etmek ise tarayıcıda ölü
+    # bir çerez bırakırdı.
+    raw = get_refresh_cookie(request)
+    if raw:
+        await refresh_token_service.revoke(db, raw_token=raw)
+    clear_refresh_cookie(response)
 
 
 @router.post("/verify-email/confirm", response_model=MessageResponse)
@@ -390,6 +438,8 @@ async def verify_phone_otp(
 @router.post("/me/password", response_model=Token)
 async def change_my_password(
     payload: PasswordChange,
+    request: Request,
+    response: Response,
     user: CurrentUser = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -397,9 +447,15 @@ async def change_my_password(
 
     ``change_password`` kullanıcının tüm refresh token'larını iptal eder (çalınmış
     bir token şifre değişiminden sonra da geçerli kalmasın diye). İşlemi yapan
-    cihazın atılmaması için burada yeni bir oturum çifti üretilir — istemci
-    döndürülen token'ları saklamalıdır.
+    cihazın atılmaması için burada yeni bir oturum üretilir: access token gövdede,
+    refresh token çerezde döner.
     """
+    # Tercih, token'lar iptal edilmeden ÖNCE okunur: change_password kullanıcının
+    # tüm refresh token'larını revoke eder ve sonrasında eski çerezin kaydı
+    # "geçerli" aramasında bulunamaz.
+    persistent = await refresh_token_service.is_persistent(
+        db, raw_token=get_refresh_cookie(request)
+    )
     await auth_service.change_password(
         db,
         user,
@@ -413,10 +469,11 @@ async def change_my_password(
         auth_version=getattr(user, "auth_version", None),
     )
     refresh = await refresh_token_service.issue(
-        db, role_id=user.role_id, user_id=user.id
+        db, role_id=user.role_id, user_id=user.id, persistent=persistent
     )
     await db.commit()
-    return Token(access_token=access, refresh_token=refresh)
+    set_refresh_cookie(response, refresh, remember=persistent)
+    return Token(access_token=access)
 
 
 @router.post("/me/avatar", response_model=UserOut)

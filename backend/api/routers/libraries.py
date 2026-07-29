@@ -6,6 +6,7 @@ from fastapi import (
     File,
     HTTPException,
     Query,
+    Response,
     UploadFile,
     status,
 )
@@ -19,6 +20,7 @@ from api.deps import (
     user_rate_limit,
 )
 from core.config import settings
+from core.cookies import set_refresh_cookie
 from core.database import get_db
 from core.ratelimit import rate_limit
 from core.security import create_access_token
@@ -148,7 +150,9 @@ async def list_library_districts(db: AsyncSession = Depends(get_db)):
     dependencies=[Depends(_register_limit)],
 )
 async def register_library(
-    payload: LibraryRegister, db: AsyncSession = Depends(get_db)
+    payload: LibraryRegister,
+    response: Response,
+    db: AsyncSession = Depends(get_db),
 ):
     """Public self-servis kayıt: operatör hesabı + PENDING kütüphane oluşturur ve
     oturumu açar (login deseniyle token döner). Kütüphane admin onayına dek public
@@ -163,7 +167,9 @@ async def register_library(
         db, role_id=operator.role_id, user_id=operator.id
     )
     await db.commit()
-    return Token(access_token=token, refresh_token=refresh)
+    # Login ile aynı sözleşme: refresh token gövdede değil, httpOnly çerezde.
+    set_refresh_cookie(response, refresh, remember=True)
+    return Token(access_token=token)
 
 
 @router.post("/{library_id}/approve", response_model=LibraryDetailOut)

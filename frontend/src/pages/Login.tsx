@@ -19,15 +19,17 @@ export default function Login() {
     ?.registered;
   const [rememberMe, setRememberMe] = useState(true);
   const queryClient = useQueryClient();
-  const setTokens = useAuthStore((s) => s.setTokens);
+  const setToken = useAuthStore((s) => s.setToken);
   const setUser = useAuthStore((s) => s.setUser);
   const persistRemember = useAuthStore((s) => s.setRemember);
 
   const mutation = useMutation({
     mutationFn: async () => {
-      const token = await login(email, password);
+      // Tercih iki yere birden gider: sunucuya (refresh çerezinin ömrü) ve
+      // yerele (access token'ın local mi session storage'da mı duracağı).
+      const token = await login(email, password, rememberMe);
       persistRemember(rememberMe);
-      setTokens(token.access_token, token.refresh_token ?? null);
+      setToken(token.access_token);
       const user = await fetchMe();
       setUser(user);
       queryClient.setQueryData(["me"], user);

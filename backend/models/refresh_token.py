@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import datetime
 
-from sqlalchemy import DateTime, Index, Integer, String
+from sqlalchemy import Boolean, DateTime, Index, Integer, String, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from core.database import Base
@@ -29,6 +29,13 @@ class RefreshToken(Base, TimestampMixin):
     )
     revoked_at: Mapped[datetime.datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
+    )
+    # "Beni hatırla" tercihi. Token çerezde taşındığı için tercihin sunucuda
+    # yaşaması gerekir: rotasyon sırasında gelen çerezin kalıcı mı yoksa
+    # oturumluk mu olduğu HTTP'de görünmez, dolayısıyla yalnız isteğe bakarak
+    # yeni çerezin ömrü doğru seçilemez. Tercih token zincirinde devredilir.
+    persistent: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("true")
     )
 
     __table_args__ = (

@@ -77,15 +77,15 @@ function LoginForm({ onSuccess }: { onSuccess: () => void }) {
   const [rememberMe, setRememberMe] = useState(true);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const setTokens = useAuthStore((s) => s.setTokens);
+  const setToken = useAuthStore((s) => s.setToken);
   const setUser = useAuthStore((s) => s.setUser);
   const persistRemember = useAuthStore((s) => s.setRemember);
 
   const mutation = useMutation({
     mutationFn: async () => {
-      const token = await login(email, password);
+      const token = await login(email, password, rememberMe);
       persistRemember(rememberMe);
-      setTokens(token.access_token, token.refresh_token ?? null);
+      setToken(token.access_token);
       const user = await fetchMe();
       setUser(user);
       queryClient.setQueryData(["me"], user);
