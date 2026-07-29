@@ -242,9 +242,14 @@ async def dispatch_day(
 @router.get("/runs", response_model=list[DeliveryRunOut])
 async def list_runs(
     run_date: datetime.date | None = Query(default=None),
+    limit: int = Query(default=30, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
     db: AsyncSession = Depends(get_db),
 ):
-    return await delivery_service.list_runs(db, run_date=run_date)
+    """Tur listesi/arşivi. Dönen liste ``limit``'ten kısaysa son sayfadır."""
+    return await delivery_service.list_runs(
+        db, run_date=run_date, limit=limit, offset=offset
+    )
 
 
 @router.post("/runs", response_model=DeliveryRunOut, status_code=status.HTTP_201_CREATED)
@@ -316,7 +321,9 @@ async def update_courier(
     actor=Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
-    courier = await delivery_service.update_courier(db, courier_id, payload)
+    """Pasifleştirme (is_active=False) bağlı giriş hesabını da kapatır —
+    servis katmanı zinciri (actor audit için geçirilir)."""
+    courier = await delivery_service.update_courier(db, courier_id, payload, actor=actor)
     await audit_service.record(
         db, actor=actor, action="courier.update", target_type="courier",
         target_id=courier_id, after=payload.model_dump(exclude_unset=True),
@@ -330,7 +337,8 @@ async def delete_courier(
     actor=Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
-    await delivery_service.delete_courier(db, courier_id)
+    """Kurye silme bağlı rol-5 giriş hesabını da kapatır (oturumlar düşer)."""
+    await delivery_service.delete_courier(db, courier_id, actor=actor)
     await audit_service.record(
         db, actor=actor, action="courier.delete", target_type="courier", target_id=courier_id
     )
@@ -431,7 +439,14 @@ async def complete_run(
 ):
     """Kurye kendi ACTIVE turunu son durak bitince kapatır; admin her turu."""
     await courier_account_service.ensure_run_access(db, user, run_id)
-    return await delivery_service.complete_run(db, run_id)
+    run = await delivery_service.complete_run(db, run_id)
+    # Saha aksiyonları da audit'e yazılır (actor_role=5 kurye olabilir):
+    # "turu kim, ne zaman kapattı" sorusunun tek yapısal izi budur.
+    await audit_service.record(
+        db, actor=user, action="delivery_run.complete", target_type="delivery_run",
+        target_id=run_id, after={"status": run.status},
+    )
+    return run
 
 
 @router.post("/runs/{run_id}/cancel", response_model=DeliveryRunOut)
@@ -564,9 +579,14 @@ async def verify_delivery(
     db: AsyncSession = Depends(get_db),
 ):
     await courier_account_service.ensure_stop_access(db, user, stop_id)
-    return await delivery_service.verify_delivery(
+    stop = await delivery_service.verify_delivery(
         db, stop_id, code=payload.code, lat=payload.lat, lng=payload.lng
     )
+    await audit_service.record(
+        db, actor=user, action="delivery_stop.deliver", target_type="delivery_stop",
+        target_id=stop_id, meta={"order_id": stop.order_id, "proof": stop.proof},
+    )
+    return stop
 
 
 @field_router.post("/stops/{stop_id}/deliver-drop", response_model=DeliveryStopOut)
@@ -577,7 +597,12 @@ async def deliver_drop(
 ):
     """Kapıya/komşuya bırakma teslimi (müşteri talimatlıysa; foto kanıt zorunlu)."""
     await courier_account_service.ensure_stop_access(db, user, stop_id)
-    return await delivery_service.deliver_drop(db, stop_id)
+    stop = await delivery_service.deliver_drop(db, stop_id)
+    await audit_service.record(
+        db, actor=user, action="delivery_stop.deliver_drop", target_type="delivery_stop",
+        target_id=stop_id, meta={"order_id": stop.order_id, "proof": stop.proof},
+    )
+    return stop
 
 
 @router.post("/stops/{stop_id}/override-deliver", response_model=DeliveryStopOut)
@@ -605,9 +630,15 @@ async def fail_stop(
     db: AsyncSession = Depends(get_db),
 ):
     await courier_account_service.ensure_stop_access(db, user, stop_id)
-    return await delivery_service.fail_stop(
+    stop = await delivery_service.fail_stop(
         db, stop_id, reason=payload.reason, reason_code=payload.reason_code
     )
+    await audit_service.record(
+        db, actor=user, action="delivery_stop.fail", target_type="delivery_stop",
+        target_id=stop_id, reason=payload.reason,
+        meta={"order_id": stop.order_id, "reason_code": payload.reason_code},
+    )
+    return stop
 
 
 # ── Kurye hesabı yaşam döngüsü (ADMIN) ───────────────────────────────────────────

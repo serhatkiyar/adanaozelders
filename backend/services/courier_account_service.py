@@ -154,9 +154,16 @@ async def close_account(db: AsyncSession, account_id: int, *, actor) -> None:
     await db.commit()
 
 
-async def close_for_courier_profile(db: AsyncSession, courier_id: int, *, actor) -> None:
+async def close_for_courier_profile(
+    db: AsyncSession, courier_id: int, *, actor=None
+) -> None:
     """Kurye PROFİLİ pasifleştirilir/silinirse bağlı hesabı da kapat (commit
-    çağıranda — profil değişikliğiyle aynı transaction)."""
+    çağıranda — profil değişikliğiyle aynı transaction).
+
+    ``delivery_service.delete_courier`` ve ``update_courier`` (is_active→False)
+    bu zinciri çağırır: profil kapanıp hesap açık kalırsa işten ayrılan kuryenin
+    telefonundaki oturum çalışmaya devam eder. ``actor`` None olabilir (arka plan
+    /test bağlamı) — o durumda audit satırı atlanır, kapatma yine yapılır."""
     acc = (
         await db.execute(
             select(CourierAccount).where(
@@ -171,11 +178,12 @@ async def close_for_courier_profile(db: AsyncSession, courier_id: int, *, actor)
     acc.is_active = False
     acc.auth_version += 1
     await _revoke_all_refresh(db, role_id=ROLE_IDS[RoleType.COURIER], user_id=acc.id)
-    await audit_service.record(
-        db, actor=actor, action="courier_account_close",
-        target_type="courier_account", target_id=acc.id,
-        details=f"kurye #{courier_id} profili kapandı; hesap da kapatıldı",
-    )
+    if actor is not None:
+        await audit_service.record(
+            db, actor=actor, action="courier_account_close",
+            target_type="courier_account", target_id=acc.id,
+            details=f"kurye #{courier_id} profili kapandı; hesap da kapatıldı",
+        )
 
 
 async def reset_password(

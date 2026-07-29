@@ -332,13 +332,27 @@ async def create_courier(db: AsyncSession, payload: CourierCreate) -> CourierOut
 
 
 async def update_courier(
-    db: AsyncSession, courier_id: int, payload: CourierUpdate
+    db: AsyncSession, courier_id: int, payload: CourierUpdate, *, actor=None
 ) -> CourierOut:
+    """Kurye profili güncellemesi.
+
+    ``is_active`` False'a DÜŞÜYORSA bağlı rol-5 giriş hesabı da AYNI transaction'da
+    kapatılır (``close_for_courier_profile``): işten ayrılan/pasifleştirilen
+    kuryenin telefonundaki oturum yaşamaya devam etmemeli. Bu zincir daha önce
+    hiç çağrılmıyordu — profil pasifken hesap açık kalıyordu (güvenlik boşluğu).
+    """
+    from services import courier_account_service  # döngüsel import önlemi
+
     c = await db.get(Courier, courier_id)
     if c is None or c.deleted_at is not None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Kurye bulunamadı")
+    was_active = c.is_active
     for field, value in payload.model_dump(exclude_unset=True).items():
         setattr(c, field, value)
+    if was_active and c.is_active is False:
+        await courier_account_service.close_for_courier_profile(
+            db, courier_id, actor=actor
+        )
     await db.commit()
     await db.refresh(c)
     return _courier_to_out(c)
@@ -354,22 +368,35 @@ async def set_courier_photo(db: AsyncSession, courier_id: int, photo_url: str) -
     return _courier_to_out(c)
 
 
-async def delete_courier(db: AsyncSession, courier_id: int) -> None:
+async def delete_courier(db: AsyncSession, courier_id: int, *, actor=None) -> None:
+    """Kurye profilini soft-delete eder ve bağlı rol-5 giriş hesabını AYNI
+    transaction'da kapatır (bkz. ``update_courier`` — aynı güvenlik zinciri)."""
+    from services import courier_account_service  # döngüsel import önlemi
+
     c = await db.get(Courier, courier_id)
     if c is None or c.deleted_at is not None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Kurye bulunamadı")
     c.deleted_at = _now()
+    c.is_active = False
+    await courier_account_service.close_for_courier_profile(db, courier_id, actor=actor)
     await db.commit()
 
 
 async def list_runs(
-    db: AsyncSession, *, run_date: datetime.date | None = None, limit: int = 30
+    db: AsyncSession,
+    *,
+    run_date: datetime.date | None = None,
+    limit: int = 30,
+    offset: int = 0,
 ) -> list[DeliveryRunOut]:
+    """Tur listesi (en yeni önce). ``offset`` arşiv sayfalaması içindir —
+    dönen liste ``limit``'ten kısaysa son sayfadır (toplam sayı tutulmaz)."""
     stmt = (
         select(DeliveryRun)
         .options(*_RUN_LOAD)
         .where(DeliveryRun.deleted_at.is_(None))
         .order_by(DeliveryRun.run_date.desc(), DeliveryRun.id.desc())
+        .offset(offset)
         .limit(limit)
     )
     if run_date is not None:
