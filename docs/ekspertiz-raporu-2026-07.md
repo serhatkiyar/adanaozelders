@@ -835,7 +835,7 @@ altı dosya birden değişecekti. Tek kaynağa alındı (`lib/mapTiles.ts`, `cor
     `{z}/{x}/{y}` yer tutucularını içeriyor. `http://` kontrolü doğrudan (a) maddesinin
     regresyon testidir.
 
-**Hafta 18 — bcrypt event loop'u bloklamıyor (29 Tem 2026)** *(commit `HAFTA18`)*
+**Hafta 18 — bcrypt event loop'u bloklamıyor (29 Tem 2026)** *(commit `d864d0a`)*
 
 75. ✅ **P1'in son açık maddesi.** bcrypt kasıtlı olarak yavaştır (güvenliğinin kaynağı bu);
     saf Python'dan çağrıldığında event loop'u ~250 ms bloklar — yani **bir kullanıcı giriş
