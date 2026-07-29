@@ -779,7 +779,7 @@ ders *(Hafta 15)* · mağaza siparişi *(Hafta 2/4)* · deneme bileti ve çalı�
 *(Hafta 14)* · ve hepsinin arkasındaki mutabakat *(Hafta 13)*. Ortak değişmez her yüzeyde
 ayrı ayrı sınandı: **emanetten çıkış atomik claim'dir ve tek yönlüdür.**
 
-**Hafta 16 — Giriş paketi (29 Tem 2026)** *(commit `HAFTA16`)*
+**Hafta 16 — Giriş paketi (29 Tem 2026)** *(commit `5b16cd8`)*
 
 P1'den devreden son performans maddesi. Ölçüm birimi **ilk açılışta inen gzip'li JS**:
 Adana'da mobil bağlantıda ilk boyamayı doğrudan belirleyen sayı bu.
