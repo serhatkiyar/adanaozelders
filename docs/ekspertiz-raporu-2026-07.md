@@ -656,7 +656,7 @@ duruyordu.
     olayı olurdu. Bu davranış teste bağlandı (7 test).
     `docker compose --profile analytics up -d umami` ile yerelde de çalışır.
 
-**Hafta 12 — Refresh token çereze taşındı (29 Tem 2026)** *(commit `HAFTA12`)*
+**Hafta 12 — Refresh token çereze taşındı (29 Tem 2026)** *(commit `2433b75`)*
 
 P0-10'un son parçası. Refresh token 30 gün geçerlidir ve tek başına yeni access token üretir —
 yani hesabın kendisi kadar değerlidir. `localStorage`'da durduğu sürece tek bir XSS onu dışarı
