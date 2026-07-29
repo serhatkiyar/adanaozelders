@@ -85,3 +85,9 @@ async def send_contact_message_email(
 
 async def send_contact_ack_email(*, to: str, name: str, subject: str) -> bool:
     return await _safe_send(templates.contact_ack_email(to=to, name=name, subject=subject))
+
+
+async def send_payout_changed_email(*, to: str, name: str, iban_masked: str) -> bool:
+    return await _safe_send(
+        templates.payout_changed_email(to=to, name=name, iban_masked=iban_masked)
+    )

@@ -23,6 +23,7 @@ import enum
 from sqlalchemy import DateTime, ForeignKey, Index, Numeric, String, Text, text
 from sqlalchemy.orm import Mapped, mapped_column
 
+from core.crypto import EncryptedString
 from core.database import Base
 from models.mixins import TimestampMixin
 
@@ -50,7 +51,11 @@ class PayoutRecord(Base, TimestampMixin):
 
     #: Ödemenin yapıldığı IBAN — SNAPSHOT. Alıcı sonradan IBAN'ını değiştirirse
     #: geçmiş ödemenin nereye gittiği kaybolmamalı (mutabakat kanıtı).
-    iban_snapshot: Mapped[str | None] = mapped_column(String(34), nullable=True)
+    #: Şifreli saklanır — kaynak alan (`PayoutMixin.iban`) da şifreli; snapshot'ı
+    #: düz metin bırakmak şifrelemeyi anlamsız kılardı (aynı IBAN burada okunurdu).
+    iban_snapshot: Mapped[str | None] = mapped_column(
+        EncryptedString(255), nullable=True
+    )
     #: Banka havale/EFT referansı — dekontla eşleştirmek için.
     reference: Mapped[str | None] = mapped_column(String(120), nullable=True)
     note: Mapped[str | None] = mapped_column(Text, nullable=True)

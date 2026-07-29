@@ -39,6 +39,23 @@ def _layout(*, heading: str, intro: str, button_label: str, button_url: str, out
 </html>"""
 
 
+def _plain_html(text: str) -> str:
+    """Düz metin gövdeyi asgari HTML'e sarar.
+
+    `EmailMessage` çoklu-parçadır: hem `text` hem `html` ister. Butonlu markalı
+    şablona ihtiyaç duymayan bildirimler (iletişim formu, güvenlik uyarısı)
+    buradan geçer — alanı boş bırakmak yerine okunabilir bir karşılık üretir.
+    """
+    escaped = (
+        text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+    )
+    return (
+        '<div style="font-family:Segoe UI,Roboto,Helvetica,Arial,sans-serif;'
+        'font-size:14px;line-height:22px;color:#0f172a;white-space:pre-wrap;">'
+        f"{escaped}</div>"
+    )
+
+
 def verification_email(*, to: str, name: str, verify_url: str) -> EmailMessage:
     ttl = settings.EMAIL_VERIFY_TOKEN_TTL_HOURS
     subject = f"{_BRAND} · E-posta adresini doğrula"
@@ -162,7 +179,8 @@ def contact_message_email(
     return EmailMessage(
         to=to,
         subject=f"[İletişim] {subject}",
-        body=body,
+        text=body,
+        html=_plain_html(body),
     )
 
 
@@ -174,4 +192,25 @@ def contact_ack_email(*, to: str, name: str, subject: str) -> EmailMessage:
         f"Bu otomatik bir bilgilendirmedir; yanıtlaman gerekmiyor.\n\n"
         f"Adana Özel Ders"
     )
-    return EmailMessage(to=to, subject="Mesajını aldık", body=body)
+    return EmailMessage(
+        to=to, subject="Mesajını aldık", text=body, html=_plain_html(body)
+    )
+
+
+def payout_changed_email(*, to: str, name: str, iban_masked: str) -> EmailMessage:
+    """Ödeme hesabı (IBAN) değişti bildirimi — güvenlik uyarısıdır, pazarlama değil.
+
+    Ele geçirilmiş bir hesapta saldırganın ilk yapacağı şey para hedefini kendi
+    IBAN'ına çevirmektir. Uygulama içi bildirim burada yetmez (saldırgan onu görür
+    ve okundu işaretler); asıl koruma, sahibinin e-posta kutusuna düşen bu mesajdır.
+    """
+    subject = f"{_BRAND} · Ödeme hesabın güncellendi"
+    body = (
+        f"Merhaba {name},\n\n"
+        "Hesabındaki ödeme bilgisi (IBAN) güncellendi.\n"
+        f"Yeni IBAN: {iban_masked}\n\n"
+        "Bu işlemi sen yapmadıysan hesabın başkasının eline geçmiş olabilir: "
+        "hemen şifreni değiştir ve bizimle iletişime geç.\n\n"
+        f"{_BRAND}"
+    )
+    return EmailMessage(to=to, subject=subject, text=body, html=_plain_html(body))

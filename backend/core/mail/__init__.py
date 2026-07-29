@@ -12,6 +12,7 @@ from core.mail.sender import (
     send_contact_message_email,
     send_order_status_email,
     send_password_reset_email,
+    send_payout_changed_email,
     send_verification_email,
 )
 
@@ -24,5 +25,6 @@ __all__ = [
     "send_contact_message_email",
     "send_order_status_email",
     "send_password_reset_email",
+    "send_payout_changed_email",
     "send_verification_email",
 ]

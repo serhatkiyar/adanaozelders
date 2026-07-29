@@ -18,6 +18,7 @@ from sqlalchemy.orm import selectinload
 
 from core import mail, storage
 from core.config import settings
+from core.moderation import mask_contact_info
 from models.admin import Admin
 from models.client import Client
 from models.product_bookmark import ProductBookmark
@@ -1109,7 +1110,7 @@ async def create_review(
         product_id=product_id,
         client_id=client.id,
         rating=payload.rating,
-        comment_text=payload.comment_text,
+        comment_text=mask_contact_info(payload.comment_text),
     )
     db.add(review)
     p.rating_count += 1

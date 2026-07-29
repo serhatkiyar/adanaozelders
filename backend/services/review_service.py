@@ -6,6 +6,7 @@ from fastapi import HTTPException, status
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from core.moderation import mask_contact_info
 from models.booking import Booking, BookingStatus
 from models.client import Client
 from models.review import Review
@@ -71,7 +72,8 @@ async def create_review(
         client_id=booking.client_id,
         tutor_id=booking.tutor_id,
         rating=data.rating,
-        comment_text=data.comment_text,
+        # Yorumlar public profilde görünür — maskesiz kalan bir kanaldı.
+        comment_text=mask_contact_info(data.comment_text),
     )
     db.add(review)
     await db.flush()
@@ -175,7 +177,7 @@ async def update_review(
         )
         review.rating = new_rating
     if "comment_text" in payload:
-        review.comment_text = payload["comment_text"]
+        review.comment_text = mask_contact_info(payload["comment_text"])
     await db.flush()
     return review
 

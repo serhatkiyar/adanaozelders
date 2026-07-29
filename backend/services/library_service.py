@@ -18,6 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from core.config import settings
+from core.moderation import mask_contact_info
 from models.admin import Admin
 from models.client import Client
 from core import storage
@@ -508,7 +509,9 @@ async def create_review(
         library_id=library_id,
         client_id=client.id,
         rating=payload.rating,
-        comment_text=payload.comment_text,
+        # Kütüphanenin KENDİ iletişim bilgisi açıkça gösterilir (küratörlü
+        # işletme); maskelenen, öğrencinin yorumuna yazdığı serbest metindir.
+        comment_text=mask_contact_info(payload.comment_text),
         counts_to_rating=counts,
     )
     db.add(review)

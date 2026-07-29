@@ -8,6 +8,8 @@ from sqlalchemy import DateTime, Integer, Numeric, String, func, text
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import Mapped, mapped_column
 
+from core.crypto import EncryptedString
+
 
 class NameMixin:
     first_name: Mapped[str] = mapped_column(String(75), nullable=False)
@@ -95,7 +97,12 @@ class PayoutMixin:
     onboarding sırasında sağlayıcıya iletilir. Para iyzico'dan IBAN'a gider; bizde kasa yok.
     """
 
-    iban: Mapped[str | None] = mapped_column(String(34), nullable=True)
+    # DB'de ŞİFRELİ (EncryptedString/Fernet), Python tarafı düz metinle çalışır.
+    # TCKN şifreliyken IBAN düz metin duruyordu; oysa IBAN da ad-soyadla birlikte
+    # doğrudan finansal kimlik verisidir ve bir veritabanı sızıntısında para
+    # hedefini değiştirmek için tek başına yeterli bilgidir.
+    # Uzunluk: IBAN 34 karaktere kadar; Fernet token'ı ~150 karaktere şişer.
+    iban: Mapped[str | None] = mapped_column(EncryptedString(255), nullable=True)
     sub_merchant_key: Mapped[str | None] = mapped_column(String(120), nullable=True)
     # NONE (bilgi yok) | PENDING (sağlayıcıda onay bekliyor) | ACTIVE | REJECTED
     payout_status: Mapped[str] = mapped_column(

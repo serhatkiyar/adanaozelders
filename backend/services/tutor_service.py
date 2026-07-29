@@ -4,6 +4,7 @@ from fastapi import HTTPException, status
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from core.moderation import mask_contact_info
 from core.text import HEADLINE_MIN_WORDS, count_words
 from models.role import ROLE_IDS, RoleType
 from models.tutor import Tutor, TutorAvailability, TutorStatus, TutorSubject
@@ -12,6 +13,11 @@ from services import education_service, notification_service
 
 _MAX_SUBJECTS = 40
 _MAX_AVAILABILITY = 60
+
+# Public profilde görünen serbest-metin alanları (bkz. update_profile).
+# `location_text` bilinçli olarak DIŞARIDA: adres bilgisi buluşma için gerekli
+# ve içinde telefon deseni bulunmaz.
+_MASKED_PROFILE_FIELDS = frozenset({"headline", "bio", "about", "lesson_info"})
 
 
 async def attach_subjects(db: AsyncSession, tutor: Tutor) -> Tutor:
@@ -110,6 +116,12 @@ async def update_profile(
     subjects = payload.pop("subjects", None)
     availability = payload.pop("availability", None)
     for field, value in payload.items():
+        # Public profil metinleri maskeden geçer. Bu, anti-disintermediation'ın
+        # EN BÜYÜK açığıydı: mesajlaşma maskeliyken biyografiye telefon yazan
+        # bir eğitmen, hiç mesajlaşmadan doğrudan iletişime yönlendirip
+        # komisyonu tamamen atlayabiliyordu.
+        if field in _MASKED_PROFILE_FIELDS and isinstance(value, str):
+            value = mask_contact_info(value)
         setattr(tutor, field, value)
     if subjects is not None:
         await _replace_subjects(db, tutor, subjects)
