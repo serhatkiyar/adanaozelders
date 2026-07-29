@@ -688,12 +688,43 @@ sızdırabilir; `httpOnly` çerez JavaScript'e görünmez, aynı XSS o oturumda 
     token reddediliyor, logout kopyayı da geçersiz kılıyor, pasif hesap yenileyemiyor,
     "beni hatırla" tercihi rotasyonda korunuyor.
 
-**Sürekli**
-- Yeni yazılan her para/auth kodu testsiz merge edilmesin.
+**Hafta 13 — Mutabakat testleri + doğrulama paketi CI'da (29 Tem 2026)** *(commit `HAFTA13`)*
+
+Hedef "kapsamayı %60'a çıkarmak"tı; ölçüm başka bir şey gösterdi ve iş yeniden çerçevelendi.
+
+61. ⚠️ **En değerli testler CI'da hiç koşmuyormuş.** Doğrulama paketi (gerçek servis katmanı +
+    gerçek DB + HTTP) yalnız yerelde çalışıyordu: escrow claim, iade mutabakatı, oturum çerezi
+    ve sipariş para yolu güvenceleri CI'da **hiç doğrulanmıyordu** — bir regresyon fark
+    edilmeden merge edilebilirdi. Hafta 3'te entegrasyon testleri için bulunan boşluğun aynısı.
+    CI'ya bağlandı (izole `adana_verify` DB'si + `alembic upgrade head` + paket).
+62. ✅ **Escrow mutabakatı doğrulandı** (`tests/verify/test_verify_reconciler.py`, 9 test).
+    Reconciler para yolundaki **sessiz** hataların son savunma hattıdır: buradaki bir kusur
+    ekrana hata basmaz, para emanette kilitli kalır ya da ikinci kez iade edilir. İki iddia:
+    *(a) Kapsam* — **her `EscrowSpec` tarama listesinde mi?** Bu doğrudan P0-2'nin regresyon
+    testi (reconciler `Order`'ı taramıyordu). Yeni bir para yüzeyi eklenip listeye yazılmazsa
+    test kırılır. Hedef modellerdeki kolon adları da denetleniyor — yanlış yazım yalnız arka
+    plan döngüsünde patlar, yani kullanıcıya değil log'a gider.
+    *(b) Karar* — kritik asimetri: **"iade görünmüyor" kanıt değildir** (sınırlı retry;
+    güvenlik sağlayıcının aşırı-iade reddine yaslanır), **"iade görünüyor" kanıttır** (yazma
+    çağrısı yapılmadan finalize). Ayrıca karantina dolmadan dokunulmuyor, deneme sınırı
+    aşılınca durum değiştirilmiyor (kayıt insana bırakılır), başarısız iade "iade edildi" diye
+    kapatılmıyor, referans doğru önekle soruluyor.
+63. ✅ **Kapsama CI'da ölçülüyor** — raporlar, kırmaz. Eşik bilinçli konmadı: sayı anlamlı hale
+    gelmeden eşik koymak, testi olması gereken yere değil **kolay yere** yazmayı teşvik eder.
+
+**Kapsama hedefi üzerine düzeltme** *(ölçüm sonrası)*
+Rapordaki "%22 → %60" hedefi metriğin kendisini yanlış okuyordu: bu projenin en güçlü testleri
+(doğrulama paketi, 101 test) ayrı bir DB'de koştuğu için kapsama ölçümüne **hiç girmiyor**.
+`services` için ölçülen oran %27; ama sipariş para yolu Hafta 2'de, iade/cayma Hafta 4'te,
+mutabakat bu hafta *gerçek DB ile* doğrulandı — hiçbiri o orana yansımıyor. Raporun kendi dersi
+de bu yöndeydi: *"para yollarında mock'lu test yeterli değil"* (Hafta 4, `MissingGreenlet`).
+Sayıyı kovalamak mock'lu birim testi yazmayı teşvik ederek kaliteyi **düşürürdü**. Hedef
+"en riskli para yollarını gerçek davranışla kapat" olarak değiştirildi; oran eşik değil
+gösterge olarak izlenecek.
 
 **Sürekli**
-- Yeni yazılan her para/auth kodu testsiz merge edilmesin. Kapsama hedefi %22 → %60;
-  `--cov-fail-under=60` CI'da. *(29 Tem sonu: 480 birim + 92 doğrulama + 360 frontend testi.)*
+- Yeni yazılan her para/auth kodu testsiz merge edilmesin. *(29 Tem sonu: 483 birim +
+  101 doğrulama + 360 frontend testi; `services` kapsaması %27 ve CI'da raporlanıyor.)*
 - ✅ Gerçekçi hacimde seed **yapıldı ve araca dönüştürüldü** — şema değişince ölçüm
   tekrarlanabilir: `python scripts/scale/run.py --create && ... seed && ... probe`.
 

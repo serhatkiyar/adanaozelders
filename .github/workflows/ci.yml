@@ -54,7 +54,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -r requirements.txt
-          pip install pytest pytest-asyncio hypothesis ruff pip-audit
+          pip install pytest pytest-asyncio pytest-cov hypothesis ruff pip-audit
 
       - name: Lint (ruff)
         run: ruff check .
@@ -78,6 +78,40 @@ jobs:
 
       - name: Integration tests (gerçek Postgres)
         run: pytest tests/integration -q
+
+      # Doğrulama paketi: gerçek servis katmanı + gerçek DB + HTTP.
+      #
+      # Bu adım eklenene kadar paket YALNIZ yerelde koşuyordu — yani para
+      # yollarının en güçlü güvencesi (escrow claim, iade mutabakatı, oturum
+      # çerezi, sipariş akışı) CI'da hiç doğrulanmıyordu ve bir regresyon fark
+      # edilmeden merge edilebilirdi. Hafta 3'te entegrasyon testleri için
+      # bulunan boşluğun aynısı.
+      #
+      # İzole veritabanı: paket yazdığı satırları teardown'da FİZİKSEL siler,
+      # bu yüzden ayrı bir DB'de koşar (yerelde de aynı guard var).
+      - name: Doğrulama paketi (gerçek DB + servis katmanı)
+        env:
+          POSTGRES_DB: adana_verify
+        run: |
+          python -c "
+          import asyncio, asyncpg
+          async def main():
+              c = await asyncpg.connect(user='test', password='test', database='postgres', host='localhost')
+              try:
+                  await c.execute('CREATE DATABASE adana_verify')
+              except asyncpg.DuplicateDatabaseError:
+                  pass
+              finally:
+                  await c.close()
+          asyncio.run(main())
+          "
+          python -m alembic upgrade head
+          pytest tests/verify -q
+
+      # Kapsama: kırmaz, RAPORLAR. Eşik koymadan önce sayının kendisinin
+      # anlamlı olması gerekiyordu — doğrulama paketi ölçüme yeni dahil oldu.
+      - name: Test kapsaması (raporlar)
+        run: pytest -q --ignore=tests/integration --ignore=tests/verify --cov=services --cov=core --cov-report=term
 
       # Bilinen açıklar: şimdilik raporlar, CI'yı kırmaz. Bağımlılıklar
       # pip-compile ile kilitlendikten sonra continue-on-error kaldırılmalı.

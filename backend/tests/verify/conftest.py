@@ -325,10 +325,23 @@ def fake_provider(monkeypatch):
         def __init__(self) -> None:
             self.refunds: list[tuple[str | None, Decimal]] = []
             self.refund_ok = True
+            # Reconciler'ın "pozitif kanıt" sorgusu. Varsayılan UNKNOWN, gerçek
+            # sağlayıcıların varsayılanıyla aynı: emin olunamayan durumda asla
+            # yanlış pozitif üretilmez.
+            self.state = None
+            self.state_queries: list[tuple[str | None, str | None]] = []
 
         async def refund(self, *, provider_ref: str | None, amount) -> bool:
             self.refunds.append((provider_ref, Decimal(str(amount))))
             return self.refund_ok
+
+        async def refund_state(
+            self, *, provider_ref: str | None, reference: str | None = None
+        ):
+            from core.payments.base import RefundState
+
+            self.state_queries.append((provider_ref, reference))
+            return self.state or RefundState.UNKNOWN
 
         async def charge(self, **kw):  # pragma: no cover - kullanılmıyor
             raise AssertionError("bu testte charge çağrılmamalı")
