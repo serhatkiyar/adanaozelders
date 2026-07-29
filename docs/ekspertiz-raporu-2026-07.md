@@ -139,7 +139,8 @@ indir. Aynı alanın oturum çıktısında yayın kapısına bağlı olması (`l
 bunun kasıtlı olmadığını gösteriyor.
 *Ek not:* `CLAUDE.md` "self-servis onboarding yok" diyor — **doküman ile kod çelişiyor.**
 
-**P0-10 · Depolanmış XSS + localStorage'da refresh token.**
+**P0-10 · Depolanmış XSS + localStorage'da refresh token.** — ✅ *XSS Hafta 1, CSP Hafta 11;
+⚠️ token depolaması bilinçli olarak açık bırakıldı, bkz. Hafta 11*
 `schemas/library.py:105` → `website` alanında yalnız `max_length`, URL şeması doğrulaması yok
 (karşı örnek aynı repoda: `schemas/booking.py:18` `^https?://` zorunlu). `LibraryMapPanel.tsx:147`
 ham `href={detail.website}`. `authStore.ts:72-75` **refresh token'ı** localStorage'da tutuyor.
@@ -196,7 +197,8 @@ kategoriye genişletme yok; frontend yalnız **üst** kategorileri chip yapıyor
 Sonuç: mağazanın birincil gezinme yolu 0 ürün gösteriyor. *Bu bir boşluk değil, canlı hata.*
 **~2 saat.**
 
-**P0-27 · Hiçbir hata izleme ve analitik bağlı değil.** Backend Sentry opt-in ve DSN boş; frontend'de
+**P0-27 · Hiçbir hata izleme ve analitik bağlı değil.** — ✅ *hata izleme Hafta 3, analitik Hafta 11*
+Backend Sentry opt-in ve DSN boş; frontend'de
 `@sentry/react` yok, `ErrorBoundary` yalnız `console.error` yapıyor. Analitik (GA/Plausible/PostHog)
 grep'i **0**. Canlıda ödeme ekranında beyaz ekran görülse haberiniz olmaz; lansman gününün verisi
 geri dönülmez şekilde kaybolur. **~1,5 saat toplam.**
@@ -618,9 +620,53 @@ duruyordu.
     kök **listelenemez**. *Birim testi policy JSON'unun metnini doğrular, uygulanıp
     uygulanmadığını değil — bu ayrım P0-16'nın ilk etapta gözden kaçma sebebiydi.*
 
+**Hafta 11 — CSP + lansman görünürlüğü (29 Tem 2026)** *(commit `HAFTA11`)*
+
+54. ✅ **İçerik Güvenlik Politikası** (`frontend/nginx-security-headers.conf`). `script-src 'self'`:
+    satır içi script ve dış CDN yok. P0-10'un XSS ayağı Hafta 1'de kapatılmıştı (URL şeması
+    whitelist'i); CSP ikinci savunma hattı — bir enjeksiyon yolu bulunsa bile tarayıcı kodu
+    çalıştırmaz.
+    ⚠️ **Yolda bulunan nginx tuzağı — CSP tam da uygulanacağı yerde düşüyordu.** nginx'te
+    `add_header` kalıtımı "hepsi ya da hiçbiri"dir: bir alt `location` kendi başlığını
+    tanımladığı anda üst bağlamdaki başlıkların TAMAMI o location için kaybolur.
+    `location = /index.html` yalnızca `Cache-Control` eklemek için bir `add_header` içerdiğinden,
+    server seviyesine yazılmış bir CSP **HTML belgesinde** — yani tek anlamlı yerde — hiç
+    dönmeyecekti. Başlıklar tek dosyaya alınıp her bloğa `include` edildi.
+    *Ölçüldü (gerçek nginx konteyneri):* CSP dört yolda da dönüyor (`/`, `/index.html`,
+    `/assets/*`, rastgele SPA yolu). *Aynı sebeple `Referrer-Policy` ve `Permissions-Policy`
+    de `/index.html` ve `/assets/` yollarında eksikmiş — o da kapandı.*
+    *İkinci karar:* CSP **yalnız nginx'te** tanımlı, Caddy'ye eklenmedi (dosyaya uyarı yazıldı).
+    Tarayıcı birden çok CSP başlığı gördüğünde hepsinin **kesişimini** uygular; iki liste
+    zamanla ayrıştığında yüzeyler açıklaması zor biçimde kırılır.
+    *Kabul edilen genişlikler:* `style-src 'unsafe-inline'` (Tailwind ve Leaflet çalışma anında
+    style özniteliği yazar; stil enjeksiyonu script çalıştıramaz), `img-src`/`connect-src https:`
+    (bu adresler deploy'a göre değişir — MinIO alan adı, tile sunucusu, Sentry, Open-Meteo).
+    `frame-src` ise **sabit liste**: Jitsi, YouTube, Vimeo, OpenStreetMap, Street View.
+55. ✅ **Çerezsiz ziyaretçi analitiği** (`lib/analytics.ts` + `AnalyticsTracker`).
+    `VITE_ANALYTICS_SCRIPT_URL` yoksa **tam no-op** — `monitoring.ts` ve backend'deki
+    `core/mail`/`core/payments` ile aynı sağlayıcı-bağımsız desen.
+    *Üç karar:* (a) **çerezsiz** sağlayıcı (Umami) — çerezli analitik açık rıza gerektirir ve
+    siteye çerez onay bandı eklemek zorunda kalırdık (§6'daki tercihle tutarlı);
+    (b) **first-party proxy** (`Caddy /istatistik/*`) — üçüncü taraf host'a izin vermek
+    `script-src 'self'`'i delerdi, ayrıca reklam engelleyiciler bilinen analitik alan adlarını
+    engeller, kendi yolumuz engellenmez; (c) **otomatik takip kapalı**, sayfa görüntülemesini
+    SPA rota değişiminde biz bildiriyoruz.
+    ⚠️ **Adres sorgu dizesi olmadan gönderilir:** takip, e-posta doğrulama ve şifre sıfırlama
+    token'ları URL'de taşınıyor; bunların analitik sunucusunda birikmesi tek başına bir güvenlik
+    olayı olurdu. Bu davranış teste bağlandı (7 test).
+    `docker compose --profile analytics up -d umami` ile yerelde de çalışır.
+
+**Hafta 11'den kalan** *(bilinçli, gerekçeli)*
+- **Refresh token hâlâ `localStorage`'da.** Doğru çözüm `httpOnly` cookie'dir ve uygulanabilir
+  (prod'da aynı origin — Caddy `/api/*` proxy'liyor — dolayısıyla `SameSite=Lax` yeterli olurdu).
+  Bu turda **yapılmadı**: değişiklik oturum akışının tamamına dokunuyor (login, sessiz yenileme,
+  logout, "beni hatırla") ve regresyon riski, CSP devreye girdikten sonraki marjinal kazançtan
+  yüksek. XSS→token hırsızlığı zinciri artık script çalıştırma adımında kesiliyor.
+  **Karar bekliyor** — lansman öncesi ayrı bir iş olarak ele alınmalı.
+
 **Sürekli**
 - Yeni yazılan her para/auth kodu testsiz merge edilmesin. Kapsama hedefi %22 → %60;
-  `--cov-fail-under=60` CI'da. *(29 Tem sonu: 480 birim + 82 doğrulama + 340 frontend testi.)*
+  `--cov-fail-under=60` CI'da. *(29 Tem sonu: 480 birim + 82 doğrulama + 360 frontend testi.)*
 - ✅ Gerçekçi hacimde seed **yapıldı ve araca dönüştürüldü** — şema değişince ölçüm
   tekrarlanabilir: `python scripts/scale/run.py --create && ... seed && ... probe`.
 

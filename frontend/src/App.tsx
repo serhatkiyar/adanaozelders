@@ -1,8 +1,9 @@
 import { QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
-import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { Suspense, lazy, useEffect } from "react";
 import { queryClient } from "@/lib/queryClient";
+import { trackPageview } from "@/lib/analytics";
 import { Toaster } from "@/components/Toaster";
 import { ErrorBoundary, RouteErrorBoundary } from "@/components/ErrorBoundary";
 import { FullScreenSpinner } from "@/components/Spinner";
@@ -265,12 +266,26 @@ const LEGACY_STATIC: [string, string][] = [
   ["/magaza/adreslerim", ROUTES.addresses],
 ];
 
+/**
+ * Rota değişimlerini analitiğe bildirir (SPA'da gezinme sayfa yenilemesi
+ * değildir; bildirilmezse yalnız ilk açılış sayılır ve tüm derinlik kaybolur).
+ * Analitik yapılandırılmamışsa `trackPageview` no-op'tur.
+ */
+function AnalyticsTracker() {
+  const location = useLocation();
+  useEffect(() => {
+    trackPageview(location.pathname + location.search);
+  }, [location.pathname, location.search]);
+  return null;
+}
+
 function App() {
   return (
     <ErrorBoundary>
     <QueryClientProvider client={queryClient}>
       <WsManager />
       <BrowserRouter>
+        <AnalyticsTracker />
         {/* İkinci sınır ROUTER'IN İÇİNDE: dıştaki sınır tek başınayken bir
             sayfa çöktüğünde router da düşüyordu, yani "ana sayfaya dön"
             tam sayfa yenilemeye zorlanıyordu. İçteki sınır rota değişince

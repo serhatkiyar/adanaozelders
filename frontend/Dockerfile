@@ -17,6 +17,10 @@ RUN npm run build
 
 # ── Serve stage ───────────────────────────────────────────────
 FROM nginx:alpine
+# Güvenlik başlıkları snippet'i conf.d DIŞINDA durmalı: conf.d/*.conf nginx
+# tarafından http bağlamına otomatik include edilir ve `add_header`-only bir
+# dosya orada geçerli bir sunucu tanımı olmadığından açılışta hata verir.
+COPY nginx-security-headers.conf /etc/nginx/snippets/security-headers.conf
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /app/dist /usr/share/nginx/html
 EXPOSE 80

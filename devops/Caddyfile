@@ -30,6 +30,10 @@
 		Permissions-Policy "camera=(self), geolocation=(self), microphone=()"
 		# Sunucu parmak izini azalt.
 		-Server
+		# BURAYA Content-Security-Policy EKLEMEYİN. CSP tek kaynakta,
+		# frontend/nginx-security-headers.conf içinde tanımlıdır. Tarayıcı birden
+		# çok CSP başlığı gördüğünde hepsinin KESİŞİMİNİ uygular; iki liste
+		# zamanla ayrıştığında yüzeyler açıklaması zor biçimlerde kırılır.
 	}
 
 	# ── API ──
@@ -53,6 +57,18 @@
 
 	handle /health {
 		reverse_proxy backend:8000
+	}
+
+	# ── Ziyaretçi analitiği (first-party proxy) ──
+	# Script ve olay gönderimi KENDİ alan adımızdan geçer. İki sebep:
+	#   1. CSP'de `script-src 'self'` bozulmasın — üçüncü taraf bir host'a izin
+	#      vermek XSS savunmasında açacağımız ilk delik olurdu.
+	#   2. Reklam engelleyiciler bilinen analitik alan adlarını engeller; kendi
+	#      yolumuz engellenmediğinden ölçüm yanlılığı azalır.
+	# `ANALYTICS_UPSTREAM` verilmezse bu blok yalnızca 502 döner (analitik
+	# kapalıdır; frontend zaten script'i hiç yüklemez).
+	handle_path /istatistik/* {
+		reverse_proxy {$ANALYTICS_UPSTREAM:umami:3000}
 	}
 
 	# Sitemap dinamik üretilir (onaylı eğitmenler + ACTIVE kütüphane/ürün).

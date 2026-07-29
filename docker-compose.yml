@@ -154,6 +154,27 @@ services:
     ports:
       - "8000:8000"
 
+  # ── Ziyaretçi analitiği (opsiyonel profil) ──
+  # Çerezsiz ölçüm: çerez kullanan bir analitik, KVKK/ePrivacy gereği açık rıza
+  # ister ve siteye çerez onay bandı eklemek zorunda kalırdık.
+  #   docker compose --profile analytics up -d umami
+  # Sonra Umami arayüzünde (http://localhost:3001) site ekleyip website id'yi
+  # frontend .env'ine yazın (VITE_ANALYTICS_*). Ayar yoksa frontend script'i
+  # hiç yüklemez — analitik tamamen kapalıdır.
+  umami:
+    image: ghcr.io/umami-software/umami:postgresql-latest
+    profiles: ["analytics"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      # Umami kendi şemasını ilk açılışta kurar; veritabanının VAR OLMASI yeter.
+      # Oluşturma: docker compose exec postgres createdb -U postgres umami
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/umami
+      APP_SECRET: ${UMAMI_APP_SECRET:-gelistirme-icin-rastgele-degil}
+    ports:
+      - "3001:3000"
+
   frontend:
     build:
       context: ./frontend
