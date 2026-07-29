@@ -88,6 +88,31 @@ class LastSeenMixin:
     )
 
 
+class ModeratableMixin:
+    """Yönetim tarafından gizlenebilen kullanıcı içeriği (yorumlar).
+
+    Üç yorum türü de (ders, ürün, kütüphane) aynı ihtiyaca sahiptir: şikayet
+    gelir, admin inceler, uygunsuz içeriği yayından kaldırır. SİLMEK yerine
+    GİZLEMEK tercih edilir — kayıt kanıt olarak durur (aynı kullanıcı tekrar
+    şikayet edilirse geçmişi görünür) ve karar geri alınabilir.
+
+    ``deleted_at``'ten farkı: silme kullanıcının kendi iradesidir, gizleme
+    yönetim kararıdır; gerekçesi ve kararı veren admin kayda geçer.
+    """
+
+    hidden_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    # Kararı veren admin (admins ayrı tablo → FK yok, salt iz; audit_log deseni).
+    hidden_by: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # Kullanıcıya gösterilebilecek kısa gerekçe (şikayet çözümünden gelir).
+    hidden_reason: Mapped[str | None] = mapped_column(String(300), nullable=True)
+
+    @property
+    def is_hidden(self) -> bool:
+        return self.hidden_at is not None
+
+
 class PayoutMixin:
     """Para alan tarafın (eğitmen/kütüphane) ödeme/escrow alma bilgisi.
 

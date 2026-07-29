@@ -434,6 +434,8 @@ async def list_reviews(
         .where(
             LibraryReview.library_id == library_id,
             LibraryReview.deleted_at.is_(None),
+            # Moderasyonla gizlenenler public listede görünmez.
+            LibraryReview.hidden_at.is_(None),
         )
         .order_by(LibraryReview.created_at.desc())
         .limit(limit)
@@ -462,6 +464,7 @@ async def rating_distribution(
             .where(
                 LibraryReview.library_id == library_id,
                 LibraryReview.deleted_at.is_(None),
+                LibraryReview.hidden_at.is_(None),
                 LibraryReview.counts_to_rating.is_(True),
             )
             .group_by(LibraryReview.rating)

@@ -57,11 +57,14 @@ export function useResolveReport() {
       id,
       status,
       resolution,
+      hideTarget,
     }: {
       id: number;
       status: ReportStatus;
       resolution?: string;
-    }) => resolveReport(id, status, resolution),
+      /** Kararla birlikte hedef yorumu yayından kaldır. */
+      hideTarget?: boolean;
+    }) => resolveReport(id, status, resolution, hideTarget ?? false),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["admin", "reports"] });
     },

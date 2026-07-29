@@ -19,7 +19,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.schema import Computed
 
 from core.database import Base
-from models.mixins import PayoutMixin, SoftDeleteMixin, TimestampMixin
+from models.mixins import ModeratableMixin, PayoutMixin, SoftDeleteMixin, TimestampMixin
 
 
 class LibraryStatus(str, enum.Enum):
@@ -210,7 +210,7 @@ class LibraryImage(Base, TimestampMixin):
     library: Mapped["Library"] = relationship(back_populates="images")
 
 
-class LibraryReview(Base, TimestampMixin, SoftDeleteMixin):
+class LibraryReview(Base, TimestampMixin, SoftDeleteMixin, ModeratableMixin):
     """Bir kütüphaneye öğrenci değerlendirmesi. Tutor review'lerinin aksine booking
     ile gated DEĞİLDİR (kütüphaneler herkese açık fiziksel mekânlar) ama öğrenci
     başına kütüphane başına tek aktif değerlendirme tutulur. ``library.rating_sum/

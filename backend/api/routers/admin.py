@@ -59,12 +59,17 @@ from services import (
     admin_service,
     admin_access_service,
     audit_service,
+    content_moderation,
     education_service,
     demand_service,
     name_change_service,
     report_service,
     tutor_service,
 )
+
+
+class ContentHideIn(BaseModel):
+    reason: str | None = Field(default=None, max_length=300)
 
 
 class NameChangeReview(BaseModel):
@@ -599,6 +604,25 @@ async def resolve_report(
         status_value=payload.status,
         resolution=payload.resolution,
     )
+    if payload.hide_target:
+        # Şikayeti kapatmak içeriği yayından kaldırmaz; admin isterse aynı
+        # işlemde kaldırır. Gizleme puan ortalamasından da düşer.
+        await content_moderation.hide(
+            db,
+            target_type=report.target_type,
+            target_id=report.target_id,
+            admin=admin,
+            reason=payload.resolution,
+        )
+        await audit_service.record(
+            db,
+            actor=admin,
+            action="content.hide",
+            target_type=report.target_type,
+            target_id=report.target_id,
+            reason=payload.resolution,
+            meta={"report_id": report_id},
+        )
     await audit_service.record(
         db,
         actor=admin,
@@ -608,6 +632,52 @@ async def resolve_report(
         details=payload.resolution,
     )
     return report
+
+
+@router.post("/content/{target_type}/{target_id}/hide", status_code=204)
+async def hide_content(
+    target_type: str,
+    target_id: int,
+    payload: ContentHideIn,
+    admin: Admin = Depends(require_admin_permission("reports.manage")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Bir yorumu yayından kaldırır (şikayetten bağımsız olarak da kullanılabilir)."""
+    await content_moderation.hide(
+        db,
+        target_type=target_type.upper(),
+        target_id=target_id,
+        admin=admin,
+        reason=payload.reason,
+    )
+    await audit_service.record(
+        db,
+        actor=admin,
+        action="content.hide",
+        target_type=target_type.upper(),
+        target_id=target_id,
+        reason=payload.reason,
+    )
+
+
+@router.post("/content/{target_type}/{target_id}/unhide", status_code=204)
+async def unhide_content(
+    target_type: str,
+    target_id: int,
+    admin: Admin = Depends(require_admin_permission("reports.manage")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Gizleme kararını geri alır; yorum puana yeniden sayılır."""
+    await content_moderation.unhide(
+        db, target_type=target_type.upper(), target_id=target_id
+    )
+    await audit_service.record(
+        db,
+        actor=admin,
+        action="content.unhide",
+        target_type=target_type.upper(),
+        target_id=target_id,
+    )
 
 
 # ── Ad / Kullanıcı Adı Değişiklik Onay Kuyruğu ──

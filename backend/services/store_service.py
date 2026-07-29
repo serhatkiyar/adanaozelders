@@ -1043,6 +1043,8 @@ async def list_reviews(
             .where(
                 ProductReview.product_id == product_id,
                 ProductReview.deleted_at.is_(None),
+                # Moderasyonla gizlenenler public listede görünmez.
+                ProductReview.hidden_at.is_(None),
             )
             .order_by(ProductReview.created_at.desc())
             .limit(limit)
@@ -1067,6 +1069,7 @@ async def rating_distribution(
             .where(
                 ProductReview.product_id == product_id,
                 ProductReview.deleted_at.is_(None),
+                ProductReview.hidden_at.is_(None),
             )
             .group_by(ProductReview.rating)
         )

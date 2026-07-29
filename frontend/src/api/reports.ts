@@ -39,11 +39,26 @@ export async function fetchOpenReportCount(): Promise<number> {
 export async function resolveReport(
   id: number,
   status: ReportStatus,
-  resolution?: string
+  resolution?: string,
+  hideTarget = false
 ): Promise<ReportOut> {
   const { data } = await apiClient.post<ReportOut>(
     `/admin/reports/${id}/resolve`,
-    { status, resolution }
+    { status, resolution, hide_target: hideTarget }
   );
   return data;
+}
+
+/** Şikayetten bağımsız olarak bir yorumu yayından kaldırır/geri getirir. */
+export async function setContentHidden(
+  targetType: string,
+  targetId: number,
+  hidden: boolean,
+  reason?: string
+): Promise<void> {
+  const action = hidden ? "hide" : "unhide";
+  await apiClient.post(
+    `/admin/content/${targetType.toLowerCase()}/${targetId}/${action}`,
+    hidden ? { reason } : undefined
+  );
 }

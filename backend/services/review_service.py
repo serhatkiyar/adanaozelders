@@ -136,7 +136,9 @@ async def list_reviews(
     stmt = (
         select(Review, Client.full_name, Client.avatar_url)
         .join(Client, Review.client_id == Client.id)
-        .where(Review.deleted_at.is_(None))
+        # Moderasyonla gizlenen yorum public listede görünmez (bkz.
+        # services/content_moderation.py); puan toplamından da düşülmüştür.
+        .where(Review.deleted_at.is_(None), Review.hidden_at.is_(None))
     )
     if tutor_id is not None:
         stmt = stmt.where(Review.tutor_id == tutor_id)
@@ -155,11 +157,15 @@ async def list_reviews(
 async def rating_distribution(
     db: AsyncSession, tutor_id: int
 ) -> RatingDistributionOut:
-    """Bir eğitmenin yıldız dağılımı (tüm silinmemiş değerlendirmeler)."""
+    """Bir eğitmenin yıldız dağılımı (silinmemiş VE gizlenmemiş yorumlar)."""
     rows = (
         await db.execute(
             select(Review.rating, func.count())
-            .where(Review.tutor_id == tutor_id, Review.deleted_at.is_(None))
+            .where(
+                Review.tutor_id == tutor_id,
+                Review.deleted_at.is_(None),
+                Review.hidden_at.is_(None),
+            )
             .group_by(Review.rating)
         )
     ).all()

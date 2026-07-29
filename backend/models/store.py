@@ -30,7 +30,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.schema import Computed
 
 from core.database import Base
-from models.mixins import SoftDeleteMixin, TimestampMixin
+from models.mixins import ModeratableMixin, SoftDeleteMixin, TimestampMixin
 
 
 class ProductKind(str, enum.Enum):
@@ -332,7 +332,7 @@ class ProductImage(Base, TimestampMixin):
     product: Mapped["Product"] = relationship(back_populates="images")
 
 
-class ProductReview(Base, TimestampMixin, SoftDeleteMixin):
+class ProductReview(Base, TimestampMixin, SoftDeleteMixin, ModeratableMixin):
     """Ürün değerlendirmesi — satın-alma-gated (yalnız o ürünü PAID siparişte alan
     müşteri puanlayabilir; LibraryReview'dan farkı bu kapı). Ürün başına müşteri
     başına tek aktif kayıt. ``product.rating_sum/rating_count`` serviste güncellenir."""
