@@ -961,6 +961,49 @@ ya da gerekçesiyle bilinçli borç olarak kayda geçti. Kalanlar üç kategorid
 | P0-6 | **Otomatik hakediş ödemesi** | iyzico alt üye işyeri kapalı; şu an "ödenecekler defteri" + elle havale |
 | — | **Yasal metin avukat onayı** | 6 metin + Hafta 15'te güncellenen iade kuralı |
 
+**Hafta 19c — OSM tazeleme dokümantasyon maddesi olmaktan çıkarıldı (29 Tem 2026)**
+
+87. ✅ **"Ayda bir şu betiği çalıştırın" bir kontrol değildir.** Hafta 19'da kalan iş olarak
+    yazılmıştı; unutulduğunda sessizce bozulan bir şeydi (rota eskiyen yol ağıyla hesaplanır,
+    `/health` yine "connected" der). Üç parçaya bağlandı:
+    - `scripts/update-osrm-data.sh` — **atomik** tazeleme: geçici klasörde hazırla → 24 zorunlu
+      dosyanın bütünlüğünü doğrula → **takastan ÖNCE** tek kullanımlık bir OSRM konteyneriyle
+      smoke test et → servisleri durdur → iki ardışık rename ile takas et → başlat → gerçek
+      VROOM planıyla readiness testi → başarısızsa eski veriye dön. `flock` ile üst üste
+      çalışma, disk alanı kontrolü, `.part` ile yarım indirme koruması dahil.
+    - `scripts/install-osrm-cron.sh` — aylık tazeleme + **haftalık `--check`** (veri tazelenmese
+      de yığının ayakta olduğunu doğrular), `MAILTO`, logrotate.
+    - Görünürlük: `devops/osrm.last-update` durum dosyası, syslog, opsiyonel `ALERT_WEBHOOK`.
+      **Otomatik rollback başarılı olsa BİLE çıkış kodu sıfır-dışıdır** — sistem çalışıyor ama
+      veri eski; bu bir başarı değil, bakım borcudur.
+
+    **Gerçekten koşularak doğrulandı** (Türkiye PBF'i mevcut, indirme atlandı):
+    - Tam boru hattı uçtan uca **exit 0**; toplam rota kesintisi **23 saniye**; readiness
+      takastan önce ve sonra aynı referans mesafeyi (3950 m) döndürdü.
+    - İlk denemede takas **"Permission denied"** ile düştü: çalışan konteyner bind-mount'ladığı
+      dizini tutuyordu. Kanıt önemliydi — canlı veriye dokunulmadı, uyarı üretildi, exit 1
+      döndü. Sıra düzeltildi (takas artık servisler durdurulmuşken yapılıyor).
+    - Rollback dalı **arıza enjekte edilerek** sınandı: canlı `adana.osrm.mldgr` sıfırlandı →
+      OSRM açılmadı (`Problem reading from file`) → `--rollback` eski veriyi geri getirdi,
+      servisleri kaldırdı, readiness geçti; bozuk veri incelenmek üzere saklandı.
+    - `.gitignore` genişletildi: `devops/osrm.*/` — 600 MB'lik ham PBF önbelleği kazara
+      commit'lenirse depo kullanılamaz hale gelirdi.
+
+88. ✅ **Saha teslim zinciri uçtan uca teste bağlandı.** Parçalar (watchdog, ETA kayması,
+    invariant'lar, yarışlar) test ediliyordu ama kuryenin fiilen yaptığı sıra hiç baştan sona
+    koşulmamıştı: turu başlat → paket QR → OTP gönder → kapıda doğrula → DELIVERED; ve karşı
+    akış: teslim edilemedi → PAID + söz ertesi güne + **paket depoya döndüğü için hazırlık
+    damgası düşer** → sipariş hazırlama kuyruğuna girer (tura hazır kuyruğuna değil).
+    Test yazarken bu son ayrımı yanlış varsaydım; sistemin davranışı benim varsayımımdan
+    doğruydu — test sisteme göre düzeltildi.
+
+89. ⚠️ **Kapıda ödeme YOK — kayda geçirildi.** Senaryo listesinde istendi; kodda `payment_method`
+    alanı, COD enum'u veya nakit tahsilat yolu yok ve dağıtımın her yolu `payment_status="PAID"`
+    (online/escrow) şartına bağlı. Kapıdaki OTP bir tahsilat aracı değil, **alıcı kimliği**
+    kanıtıdır. Sınır testle sabitlendi (`test_kapida_odeme_yok_...`): ödenmemiş sipariş ne
+    uygunluk kuyruğuna girer ne tura eklenebilir. Kapıda ödeme istenirse bu **yeni bir
+    özelliktir** (tahsilat mutabakatı, kurye kasası, iade akışı) — bkz. §7b/A.
+
 ### B. Operasyon (kod hazır, kurulum bekliyor)
 Sunucu + DNS (`depo.` alt alanı dahil) · `.env.prod` doldurma · Sentry DSN · UptimeRobot ·
 `backup-postgres.sh` cron'u · **ilk `restore-drill.sh` provası** · lansman öncesi bir kez daha
