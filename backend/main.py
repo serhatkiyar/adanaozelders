@@ -282,18 +282,54 @@ async def _check_storage() -> bool:
         return False
 
 
+async def _check_routing() -> dict:
+    """Rota altyapısı (VROOM+OSRM). ASLA patlamaz — sağlık ucu bir bağımlılık
+    yüzünden 500 vermemeli."""
+    try:
+        from core import routing
+
+        return await routing.health_snapshot()
+    except Exception:
+        logger.warning("health: routing check failed", exc_info=True)
+        return {"status": "unknown", "degraded": True}
+
+
+@app.get("/health/live")
+async def liveness_check():
+    """**Liveness**: süreç ayakta ve olay döngüsü yanıt veriyor mu — HİÇBİR dış
+    bağımlılığa dokunmaz.
+
+    `/health` bilinçli olarak ağır bir teşhis ucudur (DB + Redis + MinIO + rota);
+    onu bir "yeniden başlat" kararına bağlamak, bağımlılıklardan biri yavaşladığında
+    sağlıklı uygulamayı öldürür. Süreç denetleyicisi / konteyner liveness probe'u
+    BU ucu kullanmalıdır."""
+    return {"status": "alive"}
+
+
 @app.get("/health")
 async def health_check():
-    # DB çekirdek bağımlılık; düşükse 503. Redis/MinIO yardımcı, durumları raporlanır.
+    """**Readiness / teşhis**: bağımlılıkların gerçek durumu.
+
+    DB çekirdek bağımlılık; düşükse 503. Redis/MinIO/rota yardımcı — durumları
+    raporlanır ama isteği düşürmez. Rota bilinçli olarak "degraded" bayrağı
+    taşır: VROOM kapalıyken sistem ÇALIŞMAYA DEVAM eder ama müşteriye verilen
+    varış penceresi kuş uçuşu tahminine döner; bu sessiz kalmamalı.
+
+    Bu uç **kimlik doğrulamasızdır** (Caddy alan adının kökünde yayınlar):
+    üretimde yalnız durum kodları döner, serbest metin hata ayrıntısı DÖNMEZ."""
     db_ok = await _check_database()
     redis_ok = await _check_redis()
     storage_ok = await _check_storage()
+    routing_state = await _check_routing()
     body = {
         "status": "ok" if db_ok else "degraded",
         "database": "connected" if db_ok else "down",
         "redis": "connected" if redis_ok else "down",
         "storage": "connected" if storage_ok else "down",
+        "routing": routing_state,
     }
+    if db_ok and routing_state.get("degraded"):
+        body["status"] = "degraded"
     if not db_ok:
         return JSONResponse(status_code=503, content=body)
     return body
