@@ -33,6 +33,9 @@ _SAFE: dict[str, object] = {
     "TRUSTED_PROXY_IPS": ["127.0.0.1"],
     "FRONTEND_BASE_URL": "https://adanaozelders.com.tr",
     "BACKEND_BASE_URL": "https://api.adanaozelders.com.tr",
+    # Rota: varsayılan `http://localhost:3000` konteynerde backend'in KENDİSİDİR;
+    # üretimde servis adı olmalı (bkz. test_rota_*).
+    "VROOM_URL": "http://vroom:3000",
 }
 
 
@@ -81,6 +84,14 @@ def test_gelistirme_ortaminda_guard_calismaz() -> None:
         ({"BACKEND_CORS_ORIGINS": ["http://localhost:5173"]}, "CORS"),
         ({"TRUSTED_PROXY_IPS": []}, "TRUSTED_PROXY_IPS"),
         ({"FRONTEND_BASE_URL": "http://adanaozelders.com.tr"}, "https"),
+        # Rota sağlayıcısı: kuş uçuşu tahmin müşteriye yanlış varış penceresi
+        # ("18:00–19:00") sözü verir — üretimde bilinçli seçilmiş olamaz.
+        ({"ROUTING_PROVIDER": "haversine"}, "ROUTING_PROVIDER"),
+        ({"ROUTING_PROVIDER": "osrm"}, "geçersiz"),
+        # Konteynerde `localhost` VROOM değil backend'in kendisidir: istek
+        # sessizce düşer ve rota KALICI olarak tahmine geriler.
+        ({"VROOM_URL": "http://localhost:3000"}, "VROOM_URL"),
+        ({"VROOM_URL": "http://127.0.0.1:3000"}, "VROOM_URL"),
     ],
 )
 def test_tehlikeli_ayar_uretimde_reddedilir(

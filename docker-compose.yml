@@ -80,11 +80,18 @@ services:
   osrm:
     image: osrm/osrm-backend:latest
     profiles: ["routing"]
-    command: osrm-routed --algorithm mld /data/adana.osrm
+    # --max-table-size ZORUNLU: VROOM rota kurarken OSRM'in `table` (mesafe
+    # matrisi) servisini ÇAĞIRIR ve osrm-routed varsayılanı 100 koordinattır.
+    # 100'ü aşan turda OSRM "TooBig" döner, VROOM code=3 verir ve backend
+    # `auto` modda SESSİZCE haversine'e düşer — yani kampanya günü (100+ durak)
+    # tam da en çok gereken anda gerçek yol ağı devre dışı kalır.
+    command: osrm-routed --algorithm mld --max-table-size 500 /data/adana.osrm
     volumes:
       - ./devops/osrm:/data
     ports:
-      - "5000:5000"
+      # Yalnız yerel makineye aç: OSRM/VROOM kimlik doğrulaması OLMAYAN hesap
+      # servisleridir; 0.0.0.0'a açık bırakılırsa ağdaki herkes CPU harcatır.
+      - "127.0.0.1:5000:5000"
     healthcheck:
       # İmajda wget/curl yok — bash /dev/tcp ile port kontrolü (imaj debian tabanlı).
       test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/localhost/5000' || exit 1"]
@@ -103,7 +110,7 @@ services:
     environment:
       VROOM_ROUTER: osrm
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3000:3000"
 
   backend:
     build: ./backend

@@ -175,6 +175,24 @@ class Settings(BaseSettings):
     # VROOM+OSRM: `docker compose --profile routing up` + scripts/setup-osrm-adana.ps1
     ROUTING_PROVIDER: str = "auto"
     VROOM_URL: str = "http://localhost:3000"
+    # VROOM isteği tavanı. Planlama CPU işidir: 300 duraklı bir gün ~3 sn sürer;
+    # 20 sn dolmuşsa servis sağlıksızdır ve beklemenin faydası yok (istek boyunca
+    # DB bağlantısı tutulur — DB_POOL_TIMEOUT_SECONDS'tan uzun beklemek havuzu yer).
+    VROOM_TIMEOUT_SECONDS: float = 20.0
+    # Tek planlamadaki azami koordinat (durak + depo). VROOM arkada OSRM'in
+    # `table` servisini çağırır; `osrm-routed --max-table-size` bundan BÜYÜK
+    # olmalıdır (compose: 500). Tavan aşılırsa OSRM "TooBig" döner ve hata,
+    # gerçek nedeni görünmeden "VROOM'a ulaşılamadı" gibi loglanırdı — bu yüzden
+    # istek ağa çıkmadan önce burada kesilir. 0 = kontrol kapalı.
+    VROOM_MAX_LOCATIONS: int = 300
+    # Devre kesici: VROOM düştükten sonra bu kadar saniye yeniden denenmez.
+    # "Günü Optimize Et" tek istekte 1 + N planlama çağırır; kesici olmasa VROOM
+    # kapalıyken admin isteği (1+N) × timeout kadar asılı kalırdı. 0 = kapalı.
+    ROUTING_FAILURE_COOLDOWN_SECONDS: int = 60
+    # /health rota yoklaması: gerçek (2 duraklık) plan isteği bu aralıkla
+    # önbelleklenir ve bu süreyle sınırlanır (sağlık ucu asla asılı kalmaz).
+    ROUTING_HEALTH_TTL_SECONDS: int = 60
+    ROUTING_HEALTH_TIMEOUT_SECONDS: float = 5.0
     # Durak başına paket teslim servis süresi (sn) — ETA hesabına girer.
     DELIVERY_STOP_SERVICE_SECONDS: int = 180
     # "Rotayı bozan durak" eşiği: durağın rotaya kattığı ek yol (km) bunu
@@ -199,6 +217,11 @@ class Settings(BaseSettings):
     # "Günü Optimize Et": konumlu sipariş sayısı bu eşiği aşarsa ikinci araç
     # (COROLLA) devreye girer; altındaysa tek LADA turu kurulur.
     DELIVERY_SINGLE_VEHICLE_MAX_STOPS: int = 12
+    # Bir aracın bir günde fiilen bitirebileceği durak sayısı. "Günü Optimize Et"
+    # bu tavanı aşan siparişleri PLANA ALMAZ (eligible kuyruğunda, aciliyet
+    # sırasında bekler) — aksi halde biriken söz borcu tek günde bitirilemeyecek
+    # bir tur kurar ve hepsine söz verilmiş görünür. 0 = tavan kapalı.
+    DELIVERY_MAX_STOPS_PER_RUN: int = 40
     # Bir durak sonuçlanınca sıradaki bu kadar müşteriye "kuryen yaklaşıyor"
     # SMS+bildirimi gider (durak başına tek sefer — approach_notified_at damgası).
     DELIVERY_NEXT_NOTIFY_COUNT: int = 2
@@ -391,6 +414,29 @@ class Settings(BaseSettings):
             "http://"
         ):
             problems.append("FRONTEND_BASE_URL / BACKEND_BASE_URL https:// olmalı")
+        # Rota sağlayıcısı: `haversine` kuş uçuşu tahmindir. Müşteriye gösterilen
+        # varış penceresi ("18:00–19:00") ve kuryenin gün planı bu tahminden
+        # üretilirse sistematik olarak yanlış söz verilir — üretimde bilinçli
+        # seçilmiş olamaz. `auto` serbesttir (VROOM düşerse çalışmaya devam
+        # etmek doğrudur; bozulma /health + ERROR log ile görünür).
+        routing_mode = (self.ROUTING_PROVIDER or "").strip().lower()
+        if routing_mode == "haversine":
+            problems.append(
+                "ROUTING_PROVIDER=haversine — üretimde 'vroom' ya da 'auto' olmalı "
+                "(kuş uçuşu tahmin müşteriye yanlış varış penceresi sözü verir)"
+            )
+        elif routing_mode not in ("auto", "vroom"):
+            problems.append(
+                f"ROUTING_PROVIDER={self.ROUTING_PROVIDER!r} geçersiz "
+                "(auto | vroom | haversine)"
+            )
+        elif "localhost" in self.VROOM_URL or "127.0.0.1" in self.VROOM_URL:
+            # Konteynerde `localhost` VROOM değil backend'in kendisidir; istek
+            # sessizce düşer ve rota kalıcı olarak haversine'e geriler.
+            problems.append(
+                f"VROOM_URL yerel adres gösteriyor ({self.VROOM_URL!r}) — "
+                "üretimde servis adı olmalı (ör. http://vroom:3000)"
+            )
 
         if problems:
             raise ValueError(
