@@ -26,8 +26,13 @@ scripts/out/instagram-pfp-downloader/
 # Claude Code kişisel ayarlar (yerel izinler/tercihler — paylaşılmaz)
 .claude/settings.local.json
 
-# OSRM yol agi verileri (buyuk binary'ler - scripts/setup-osrm-adana.ps1 uretir)
+# OSRM yol agi verileri (buyuk binary'ler - scripts/setup-osrm-adana.{sh,ps1} uretir).
+# Deseni GENIS tut: scripts/update-osrm-data.sh yaninda staging/previous/cache
+# dizinleri de acar ve cache 600 MB'lik ham PBF tasir — biri gozden kacip
+# commit'lenirse depo kullanilamaz hale gelir.
 devops/osrm/
+devops/osrm.*/
+devops/osrm.last-update
 
 # VROOM konteyner erisim log'u (calisma zamaninda uretilir)
 devops/vroom/access.log
