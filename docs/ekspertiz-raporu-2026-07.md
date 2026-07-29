@@ -270,10 +270,16 @@ paylaşılan eğitmen/ürün linki **jenerik önizleme** olarak çıkar.
 - ✅ ~~`HeroSearch` focus göstergesi yok~~ → `focus-within` halkası + `aria-label`.
 
 **Ürün**
-- Türkçe arama kör: TSVECTOR `'simple'` ile üretiliyor, `unaccent` yok, `products.title` üzerinde
-  trigram indeksi **yok** → "kitab", "matematık" sonuç getirmiyor.
-  *(29 Tem: `products.title` trigram indeksi eklendi — `unaccent` ve eğitmen/kütüphane tarafı açık.)*
-- `publisher`/`author`/`cover_type` kolonları var ama filtre olarak açılmamış.
+- ✅ ~~Türkçe arama kör~~ — *29 Tem, commit `ef9a9c5`*: `tr_normalize()` hem yazma (generated
+  tsvector + trigram indeksleri) hem sorgu tarafında. `unaccent` **bilinçli olarak kullanılmadı**
+  (IMMUTABLE olmadığı için generated kolonda çalışmaz; Türkçe harf kümesi kapalı olduğundan
+  `translate()` yeterli ve bağımsız).
+  ⚠️ *Asıl sorun diakritik değil EKTİ:* `simple` sözlüğü kök bulmaz, "ogretmen" ≠ "ogretmeni".
+  Sorgu artık **önek eşleşmeli** (`ogretmen:*`) — arama kutusunda yazarken de doğru davranış.
+  *Üçüncü bulgu:* eğitmen ad-soyad trigram indeksi **hiç yoktu**, her arama tam tablo taraması
+  yapıyordu.
+- ✅ ~~`publisher`/`author`/`cover_type` filtre olarak açılmamış~~ — çoklu seçim + normalize
+  karşılaştırma + `/store/book-facets` (seçenekler ve sayılar) + sayaçlı panel.
 - Admin panelde para metriği yok — tümü `COUNT` tabanlı; GMV/AOV/iptal oranı görünmüyor.
 - ✅ ~~Yorum moderasyonu yok~~ — *29 Tem, commit `6a8a49b`*: `ModeratableMixin`
   (`hidden_at`/`hidden_by`/`hidden_reason`) üç yorum tablosunda, `content_moderation` servisi,
@@ -547,6 +553,16 @@ disiplini tutmuş.*
   an kütüphane haritası, checkout adres pin'i ve canlı kurye takibi aynı anda çöker. Sağlayıcı
   kararı gerektirir (Protomaps self-host / MapTiler), kod işi değil.
 - **Giriş paketi hâlâ 504 KB**: vendor bölme (`manualChunks`) P2'de.
+
+**Hafta 8 — Türkçe arama + keşfedilebilirlik (29 Tem 2026)** *(commit `ef9a9c5`)*
+41. ✅ **Diakritik-duyarsız arama** (`tr_normalize`, migration `dd737c387ff5`) — eğitmen, kütüphane
+    ve mağaza aramasının üçünde de; iki taraf (indeks + sorgu) aynı fonksiyondan geçer.
+42. ✅ **Önek eşleşmeli tsquery** — çekim ekleri artık aramayı kırmıyor.
+43. ✅ **Eksik trigram indeksleri** (eğitmen ad-soyad, kütüphane adı) + mevcutlar normalize ifadeye.
+44. ✅ **Kitap künyesi filtreleri** — yayınevi / yazar / kapak, sayaçlı seçenek listesiyle.
+45. ⚠️ **Ölçüm bir regresyonu yakaladı:** yazar/yayınevi'ni `ILIKE` ile aramak 20.000 üründe
+    mağaza aramasını **45 ms → 516 ms** yaptı (o kolonlarda indeks yok). İki alan tsvector'e
+    dahil edildi, `ILIKE` kaldırıldı → 47 ms. *Ölçüm aracı olmasa bu canlıda fark edilirdi.*
 
 **Sürekli**
 - Yeni yazılan her para/auth kodu testsiz merge edilmesin. Kapsama hedefi %22 → %60;
