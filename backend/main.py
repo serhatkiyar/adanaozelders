@@ -32,44 +32,102 @@ logger = logging.getLogger(__name__)
 _REMINDER_INTERVAL_SECONDS = 60
 
 
+async def _run_job(name: str, job) -> None:
+    """Tek bir arka plan işini KENDİ hata sınırında çalıştırır.
+
+    Önceden tüm işler tek `try` bloğundaydı: görev hatırlatıcısı patladığında
+    escrow mutabakatı ve teslimat watchdog'u o turda hiç çalışmıyordu — yani
+    ilgisiz bir bildirim hatası, emanetteki paranın çözülmesini süresiz
+    erteleyebiliyordu. Artık bir iş düşerse yalnız kendisi düşer.
+    """
+    try:
+        await job()
+    except Exception:
+        logger.exception("arka plan işi başarısız: %s", name)
+
+
+async def _leader_job(name: str, lock_key: int, job) -> None:
+    """Yalnız TEK replikada çalışması gereken işler için danışmanlı kilit.
+
+    Arka plan döngüleri her uygulama sürecinde koşar. İki replika aynı anda
+    hatırlatma gönderirse kullanıcı bildirimi iki kez alır; iki reconciler aynı
+    sarkan kaydı aynı anda işlemeye çalışır. `pg_try_advisory_lock` kilidi
+    alamayan replikanın turu sessizce atlamasını sağlar (bekleme yok).
+    Kilit oturum kapanınca kendiliğinden düşer — süreç çökse bile kilitli kalmaz.
+    """
+    try:
+        async with AsyncSessionLocal() as session:
+            got = await session.scalar(
+                text("SELECT pg_try_advisory_lock(:k)"), {"k": lock_key}
+            )
+            if not got:
+                logger.debug("arka plan işi başka replikada: %s", name)
+                return
+            try:
+                await job(session)
+            finally:
+                await session.execute(
+                    text("SELECT pg_advisory_unlock(:k)"), {"k": lock_key}
+                )
+    except Exception:
+        logger.exception("arka plan işi başarısız: %s", name)
+
+
+# Danışmanlı kilit anahtarları — sabit ve benzersiz olmalı (çakışma iki farklı
+# işin birbirini bloklamasına yol açar).
+_LOCK_REMINDERS = 918_301_001
+_LOCK_ESCROW = 918_301_002
+_LOCK_DELIVERY = 918_301_003
+_LOCK_OUTBOX = 918_301_004
+
+
+async def _reminder_tick() -> None:
+    async def _reminders(session) -> None:
+        await booking_service.send_due_reminders(session)
+        await booking_service.auto_complete_past_bookings(session)
+        # Kütüphane: no-show ödenmiş kayıtlarda emaneti kütüphaneye serbest bırak
+        # (aksi halde escrow'da süresiz kilitli kalırdı).
+        await library_exam_service.auto_release_no_shows(session)
+        await study_reservation_service.auto_release_no_shows(session)
+        await task_service.send_task_due_reminders(session)
+        await task_service.dispatch_task_reminders(session)
+        await session.commit()
+
+    async def _escrow(session) -> None:
+        # Escrow mutabakatı KENDİ session'ında koşar: kayıt başına commit'ler
+        # (intent deseni) hatırlatma turunun toplu commit'ine karışmasın.
+        await escrow_reconciler.reconcile_refunding(session)
+        await escrow_reconciler.reconcile_stale_checkouts(session)
+
+    async def _delivery(session) -> None:
+        # Teslimat watchdog'u: saatlerce ACTIVE kalan turları kapat.
+        await delivery_service.expire_stale_runs(session)
+
+    # Sırayla ama BAĞIMSIZ: biri düşerse diğerleri yine de çalışır.
+    await _leader_job("hatırlatmalar", _LOCK_REMINDERS, _reminders)
+    await _leader_job("escrow mutabakatı", _LOCK_ESCROW, _escrow)
+    await _leader_job("teslimat watchdog", _LOCK_DELIVERY, _delivery)
+
+
 async def _reminder_loop() -> None:
     while True:
         await asyncio.sleep(_REMINDER_INTERVAL_SECONDS)
-        try:
-            async with AsyncSessionLocal() as session:
-                await booking_service.send_due_reminders(session)
-                await booking_service.auto_complete_past_bookings(session)
-                # Kütüphane: no-show ödenmiş kayıtlarda emaneti kütüphaneye serbest bırak
-                # (aksi halde escrow'da süresiz kilitli kalırdı).
-                await library_exam_service.auto_release_no_shows(session)
-                await study_reservation_service.auto_release_no_shows(session)
-                await task_service.send_task_due_reminders(session)
-                await task_service.dispatch_task_reminders(session)
-                await session.commit()
-            # Escrow mutabakatı KENDİ session'ında koşar: kayıt başına commit'ler
-            # (intent deseni) yukarıdaki toplu commit'e karışmasın.
-            async with AsyncSessionLocal() as session:
-                await escrow_reconciler.reconcile_refunding(session)
-                await escrow_reconciler.reconcile_stale_checkouts(session)
-            # Teslimat watchdog'u: saatlerce ACTIVE kalan turları kapat (kendi
-            # session'ı — tur başına commit'ler yukarıya karışmasın).
-            async with AsyncSessionLocal() as session:
-                await delivery_service.expire_stale_runs(session)
-        except Exception:
-            # best-effort; bir sonraki periyotta tekrar denenir ama sessizce yutma.
-            logger.exception("reminder loop iteration failed")
+        await _run_job("reminder loop", _reminder_tick)
 
 
 async def _outbox_loop() -> None:
     """Transactional outbox worker'ı: bekleyen SMS/e-posta olaylarını gönderir
-    (at-least-once + üstel backoff; bkz. core/outbox.py)."""
+    (at-least-once + üstel backoff; bkz. core/outbox.py).
+
+    Tek replikada koşar: `dispatch_pending` kendi içinde `FOR UPDATE SKIP
+    LOCKED` kullandığından çift gönderim zaten engellenir, ama gereksiz
+    rekabeti önlemek için kilit yine de alınır.
+    """
     while True:
         await asyncio.sleep(settings.OUTBOX_DISPATCH_INTERVAL_SECONDS)
-        try:
-            async with AsyncSessionLocal() as session:
-                await outbox.dispatch_pending(session)
-        except Exception:
-            logger.exception("outbox dispatch iteration failed")
+        await _leader_job(
+            "outbox", _LOCK_OUTBOX, lambda session: outbox.dispatch_pending(session)
+        )
 
 
 async def _presence_flusher() -> None:

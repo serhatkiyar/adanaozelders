@@ -1,3 +1,4 @@
+import asyncio
 import io
 import json
 import logging
@@ -5,11 +6,34 @@ import os
 import uuid
 
 import aioboto3
+from botocore.config import Config as BotoConfig
 from PIL import Image
 
 from core.config import settings
 
 logger = logging.getLogger(__name__)
+
+
+def _s3_client():
+    """Ortak S3/MinIO istemcisi — timeout ve deneme sayısı SINIRLI.
+
+    Botocore varsayılanları bağlantı başına ~60 sn bekler ve 5 kez dener.
+    Erişilemez bir MinIO'da tek avatar yüklemesi böylece dakikalarca sürer ve
+    bu süre boyunca isteğin DB session'ı da açık kalır → birkaç yükleme havuzu
+    tüketip tüm siteyi düşürür. Hızlı başarısızlık, yavaş başarısızlıktan iyidir.
+    """
+    return aioboto3.Session().client(
+        "s3",
+        endpoint_url=settings.AWS_ENDPOINT_URL,
+        aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+        aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+        region_name=settings.AWS_REGION_NAME,
+        config=BotoConfig(
+            connect_timeout=settings.S3_CONNECT_TIMEOUT_SECONDS,
+            read_timeout=settings.S3_READ_TIMEOUT_SECONDS,
+            retries={"max_attempts": settings.S3_MAX_ATTEMPTS, "mode": "standard"},
+        ),
+    )
 
 
 def public_read_policy(bucket: str) -> str:
@@ -47,15 +71,8 @@ async def ensure_bucket() -> None:
     """
     if not settings.AWS_ENDPOINT_URL:
         return
-    session = aioboto3.Session()
     try:
-        async with session.client(
-            "s3",
-            endpoint_url=settings.AWS_ENDPOINT_URL,
-            aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
-            aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
-            region_name=settings.AWS_REGION_NAME,
-        ) as s3:
+        async with _s3_client() as s3:
             try:
                 await s3.head_bucket(Bucket=settings.AWS_BUCKET_NAME)
             except Exception:
@@ -136,14 +153,7 @@ async def _put_webp(data: bytes, *, prefix: str) -> str:
         "Body": data,
         "ContentType": "image/webp",
     }
-    session = aioboto3.Session()
-    async with session.client(
-        "s3",
-        endpoint_url=settings.AWS_ENDPOINT_URL,
-        aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
-        aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
-        region_name=settings.AWS_REGION_NAME,
-    ) as s3:
+    async with _s3_client() as s3:
         try:
             await s3.put_object(**body_kwargs, ACL="public-read")
         except Exception:
@@ -156,41 +166,47 @@ async def _put_webp(data: bytes, *, prefix: str) -> str:
     )
 
 
+async def _optimize_in_thread(fn, *args, **kwargs) -> bytes:
+    """Pillow işini iş parçacığına taşır.
+
+    Görsel dönüştürme saf CPU'dur ve GIL'i bırakmayan uzun bir işlemdir: event
+    loop üzerinde çalıştırıldığında, 1600px'lik bir fotoğraf işlenirken TÜM
+    isteklerin yanıtı durur. Aynı anda birkaç yükleme, sunucuyu yanıt veremez
+    hale getirir.
+    """
+    return await asyncio.to_thread(fn, *args, **kwargs)
+
+
 async def upload_library_photo(file_bytes: bytes, *, square: bool = False) -> str:
     """Kütüphane görseli yükler. ``square=True`` → logo (512×512 kare crop);
     aksi halde banner/galeri (en-boy korunur, max 1600px). Public URL döner."""
     if square:
-        data = optimize_image(file_bytes, size=(512, 512))
+        data = await _optimize_in_thread(optimize_image, file_bytes, size=(512, 512))
     else:
-        data = optimize_photo(file_bytes)
+        data = await _optimize_in_thread(optimize_photo, file_bytes)
     return await _put_webp(data, prefix="library-photos")
 
 
 async def upload_delivery_photo(file_bytes: bytes) -> str:
     """Teslim kanıtı fotoğrafı (PoD) — en-boy korunur, max 1600px WebP,
     `delivery-proof/` öneki (uuid'li anahtar; müşteri takip sayfasında gösterilir)."""
-    return await _put_webp(optimize_photo(file_bytes), prefix="delivery-proof")
+    data = await _optimize_in_thread(optimize_photo, file_bytes)
+    return await _put_webp(data, prefix="delivery-proof")
 
 
 async def upload_courier_photo(file_bytes: bytes) -> str:
     """Kurye vesikalık fotoğrafı (müşteri takip sayfasında kimlik kartı) —
     512×512 kare crop + WebP, `couriers/` öneki."""
-    return await _put_webp(optimize_image(file_bytes, size=(512, 512)), prefix="couriers")
+    data = await _optimize_in_thread(optimize_image, file_bytes, size=(512, 512))
+    return await _put_webp(data, prefix="couriers")
 
 
 async def upload_avatar(file_bytes: bytes) -> str:
     """Optimize edilmiş resmi S3/MinIO bucket'ına yükler ve Public URL döner."""
-    optimized_bytes = optimize_image(file_bytes)
+    optimized_bytes = await _optimize_in_thread(optimize_image, file_bytes)
     filename = f"{uuid.uuid4().hex}.webp"
     
-    session = aioboto3.Session()
-    async with session.client(
-        "s3",
-        endpoint_url=settings.AWS_ENDPOINT_URL,
-        aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
-        aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
-        region_name=settings.AWS_REGION_NAME
-    ) as s3:
+    async with _s3_client() as s3:
         # Note: ACL="public-read" is often blocked by default in new S3 buckets unless configured.
         # MinIO supports it. If strict AWS S3 is used, Bucket Policies are preferred over ACLs.
         try:
@@ -231,14 +247,7 @@ async def delete_avatar(avatar_url: str) -> None:
         else:
             key = avatar_url.split(".com/")[1]
             
-        session = aioboto3.Session()
-        async with session.client(
-            "s3",
-            endpoint_url=settings.AWS_ENDPOINT_URL,
-            aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
-            aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
-            region_name=settings.AWS_REGION_NAME
-        ) as s3:
+        async with _s3_client() as s3:
             await s3.delete_object(Bucket=settings.AWS_BUCKET_NAME, Key=key)
     except Exception:
         # best-effort silme; başarısızlık akışı bozmaz ama iz bırakırız.
@@ -261,14 +270,7 @@ async def upload_file(
     if content_type:
         body_kwargs["ContentType"] = content_type
 
-    session = aioboto3.Session()
-    async with session.client(
-        "s3",
-        endpoint_url=settings.AWS_ENDPOINT_URL,
-        aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
-        aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
-        region_name=settings.AWS_REGION_NAME,
-    ) as s3:
+    async with _s3_client() as s3:
         try:
             await s3.put_object(**body_kwargs, ACL="public-read")
         except Exception:

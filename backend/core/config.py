@@ -38,6 +38,23 @@ class Settings(BaseSettings):
     DB_ECHO: bool = False
     DB_POOL_SIZE: int = 10
     DB_MAX_OVERFLOW: int = 20
+    # Bağlantıyı bu süreden sonra yenile. Havuzdaki bağlantılar sonsuza dek
+    # yaşarsa, araya giren bir NAT/load balancer sessizce düşürdüğü bağlantıyı
+    # uygulama "canlı" sanar ve ilk sorguda kopuk-boru hatası alır.
+    DB_POOL_RECYCLE_SECONDS: int = 1800
+    # Havuz doluysa bir istek bağlantı için ne kadar bekler. Varsayılan (30 sn)
+    # trafik dalgasında istekleri yığar; erken 500 vermek yığılmadan iyidir.
+    DB_POOL_TIMEOUT_SECONDS: int = 10
+    # Sunucu tarafı sorgu tavanı. Kaçak bir sorgu (indekssiz büyük tablo taraması)
+    # bağlantıyı süresiz tutup havuzu tüketmesin. 0 = kapalı.
+    DB_STATEMENT_TIMEOUT_MS: int = 15000
+
+    # Object storage (S3/MinIO) ağ davranışı: varsayılan botocore ayarları
+    # bağlantı başına ~60 sn bekler ve 5 kez dener → erişilemez MinIO'da tek
+    # istek dakikalarca DB session'ı tutar.
+    S3_CONNECT_TIMEOUT_SECONDS: int = 3
+    S3_READ_TIMEOUT_SECONDS: int = 10
+    S3_MAX_ATTEMPTS: int = 2
 
     JWT_SECRET_KEY: str
     # Alan-düzeyi şifreleme anahtarı (TCKN gibi hassas veri at-rest). Verilmezse
