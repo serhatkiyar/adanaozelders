@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
 import { trackDeliveryRun } from "@/api/delivery";
+import { compressImage } from "@/lib/compressImage";
 import { QrScanner } from "@/components/QrScanner";
 import {
   useDeliverDrop,
@@ -81,7 +82,7 @@ function useCourierBroadcast(runId: number | null, active: boolean) {
 
 /* ─── Aktif durak kartı ──────────────────────────────── */
 
-function CurrentStopCard({ stop }: { stop: DeliveryStop }) {
+function CurrentStopCard({ stop, isJumped }: { stop: DeliveryStop; isJumped?: boolean }) {
   const isAdmin = useIsAdmin();
   const sendOtp = useSendDeliveryOtp();
   const verify = useVerifyDelivery();
@@ -121,7 +122,7 @@ function CurrentStopCard({ stop }: { stop: DeliveryStop }) {
   return (
     <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-slate-700">
       <p className="text-xs font-semibold uppercase tracking-wide text-indigo-600 dark:text-indigo-400">
-        Sıradaki durak · #{stop.sequence}
+        {isJumped ? "Seçilen durak" : "Sıradaki durak"} · #{stop.sequence}
       </p>
       <h2 className="mt-1 text-xl font-bold text-slate-900 dark:text-white">
         {stop.recipient ?? "Alıcı bilinmiyor"}
@@ -201,11 +202,12 @@ function CurrentStopCard({ stop }: { stop: DeliveryStop }) {
         accept="image/*"
         capture="environment"
         className="hidden"
-        onChange={(e) => {
+        onChange={async (e) => {
           const f = e.target.files?.[0];
           if (f)
+            // Kamera çıktısı 3-8 MB olabilir; sahada yükleme beklemesin.
             uploadPhoto.mutate(
-              { stopId: stop.id, file: f },
+              { stopId: stop.id, file: await compressImage(f) },
               {
                 onSuccess: () => toast.success("Kanıt fotoğrafı kaydedildi."),
                 onError: (err: any) =>
@@ -431,13 +433,17 @@ export default function DeliveryDriver() {
   const logout = useAuthStore((s) => s.logout);
   const { id } = useParams();
   const runId = Number(id);
-  const { data: run, isLoading } = useDeliveryRun(
-    Number.isFinite(runId) ? runId : null,
-    { poll: true }
-  );
+  const runQuery = useDeliveryRun(Number.isFinite(runId) ? runId : null, {
+    poll: true,
+  });
+  const { data: run, isLoading } = runQuery;
   const runAction = useRunAction();
   const scanLabel = useScanDeliveryLabel();
   const [showScanner, setShowScanner] = useState(false);
+  // Kurye sıradakini atlayıp başka bir BEKLEYEN durağa geçebilir (kapıda kimse
+  // yoksa sonrakine devam etmek gibi). Sıra DEĞİŞMEZ — yalnız ekran odağı;
+  // teslim uçları zaten stop_id bazlıdır. Durak sonuçlanınca seçim düşer.
+  const [selectedStopId, setSelectedStopId] = useState<number | null>(null);
   useCourierBroadcast(
     Number.isFinite(runId) ? runId : null,
     run?.status === "ACTIVE"
@@ -445,14 +451,37 @@ export default function DeliveryDriver() {
 
   if (isLoading || !run) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50 text-sm text-slate-500 dark:bg-slate-900 dark:text-slate-400">
-        {isLoading ? "Tur yükleniyor…" : "Tur bulunamadı."}
+      <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-slate-50 px-6 text-center text-sm text-slate-500 dark:bg-slate-900 dark:text-slate-400">
+        {isLoading ? (
+          "Tur yükleniyor…"
+        ) : runQuery.isError ? (
+          <>
+            {/* Ağ hatası ile 404 ayrışır — sahada en sık senaryo bağlantı kopması. */}
+            <p>Bağlantı kurulamadı — tur bilgisi alınamıyor.</p>
+            <button
+              onClick={() => runQuery.refetch()}
+              className="rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-bold text-white dark:bg-white dark:text-slate-900"
+            >
+              Yeniden Dene
+            </button>
+          </>
+        ) : (
+          "Tur bulunamadı."
+        )}
       </div>
     );
   }
 
-  const current = nextPendingStop(run);
+  const nextStop = nextPendingStop(run);
+  const selectedStop =
+    selectedStopId != null
+      ? run.stops.find((s) => s.id === selectedStopId && s.status === "PENDING") ?? null
+      : null;
+  const current = selectedStop ?? nextStop;
   const [done, total] = runProgress(run);
+  const delivered = run.stops.filter((s) => s.status === "DELIVERED").length;
+  const failed = run.stops.filter((s) => s.status === "FAILED").length;
+  const remaining = run.stops.filter((s) => s.status === "PENDING").length;
 
   const onScan = (value: string) => {
     setShowScanner(false);
@@ -503,6 +532,20 @@ export default function DeliveryDriver() {
       </header>
 
       <main className="mx-auto max-w-md space-y-4 px-4 pt-4">
+        {/* Günün özeti — kurye kendi ilerleyişini görsün */}
+        {run.status === "ACTIVE" && total > 0 && (
+          <div className="flex items-center justify-center gap-4 text-xs tabular-nums text-slate-500 dark:text-slate-400">
+            <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+              ✓ {delivered} teslim
+            </span>
+            {failed > 0 && (
+              <span className="font-semibold text-rose-600 dark:text-rose-400">
+                ✕ {failed} başarısız
+              </span>
+            )}
+            <span>{remaining} kaldı</span>
+          </div>
+        )}
         {run.status !== "ACTIVE" ? (
           <p className="rounded-2xl bg-white p-6 text-center text-sm text-slate-500 ring-1 ring-slate-100 dark:bg-slate-800 dark:text-slate-400 dark:ring-slate-700">
             {run.status === "PLANNED"
@@ -526,7 +569,15 @@ export default function DeliveryDriver() {
                 </p>
               );
             })()}
-            <CurrentStopCard key={current.id} stop={current} />
+            <CurrentStopCard key={current.id} stop={current} isJumped={selectedStop != null} />
+            {selectedStop != null && nextStop && selectedStop.id !== nextStop.id && (
+              <button
+                onClick={() => setSelectedStopId(null)}
+                className="w-full rounded-xl py-2 text-xs font-semibold text-indigo-600 ring-1 ring-indigo-200 dark:text-indigo-400 dark:ring-indigo-500/40"
+              >
+                Sıradaki durağa dön (#{nextStop.sequence})
+              </button>
+            )}
             <button
               onClick={() => setShowScanner(true)}
               className="w-full rounded-xl py-2.5 text-sm font-semibold text-slate-700 ring-1 ring-slate-200 dark:text-slate-200 dark:ring-slate-600"
@@ -534,7 +585,12 @@ export default function DeliveryDriver() {
               Paket QR'ını Okut
             </button>
             {showScanner && (
-              <QrScanner onScan={onScan} onClose={() => setShowScanner(false)} />
+              <QrScanner
+                onScan={onScan}
+                onClose={() => setShowScanner(false)}
+                manualHint="Paket etiketindeki QR'ın altında yazan kodu elle girebilirsin."
+                manualPlaceholder="Etiketteki kod (ör. 12:abc…)"
+              />
             )}
           </>
         ) : (
@@ -566,7 +622,21 @@ export default function DeliveryDriver() {
           {[...run.stops]
             .sort((a, b) => a.sequence - b.sequence)
             .map((s) => (
-              <li key={s.id} className="flex items-center gap-3 py-2.5">
+              <li key={s.id}>
+                <button
+                  type="button"
+                  onClick={() =>
+                    s.status === "PENDING" && run.status === "ACTIVE"
+                      ? setSelectedStopId(s.id === nextStop?.id ? null : s.id)
+                      : undefined
+                  }
+                  disabled={s.status !== "PENDING" || run.status !== "ACTIVE"}
+                  className={`flex w-full items-center gap-3 py-2.5 text-left ${
+                    s.status === "PENDING" && run.status === "ACTIVE"
+                      ? "cursor-pointer"
+                      : "cursor-default"
+                  } ${current?.id === s.id ? "bg-indigo-50/50 -mx-4 px-4 dark:bg-indigo-500/5" : ""}`}
+                >
                 <span
                   className={`w-6 text-right text-sm font-semibold tabular-nums ${
                     current?.id === s.id
@@ -595,6 +665,7 @@ export default function DeliveryDriver() {
                 >
                   {STOP_STATUS_LABEL[s.status]}
                 </span>
+                </button>
               </li>
             ))}
         </ul>
