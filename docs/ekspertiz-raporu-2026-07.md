@@ -280,7 +280,9 @@ paylaşılan eğitmen/ürün linki **jenerik önizleme** olarak çıkar.
   yapıyordu.
 - ✅ ~~`publisher`/`author`/`cover_type` filtre olarak açılmamış~~ — çoklu seçim + normalize
   karşılaştırma + `/store/book-facets` (seçenekler ve sayılar) + sayaçlı panel.
-- Admin panelde para metriği yok — tümü `COUNT` tabanlı; GMV/AOV/iptal oranı görünmüyor.
+- ✅ ~~Admin panelde para metriği yok~~ — *29 Tem, commit `5db0208`*: `GET /admin/revenue` +
+  panelde "Para" bölümü. Üç ayrım açıkça yapıldı: **emanet gelir değildir**, **komisyon ile
+  doğrudan satış ayrıdır** (fiziksel üründe mal maliyeti var), **iade oranı tutar bazındadır**.
 - ✅ ~~Yorum moderasyonu yok~~ — *29 Tem, commit `6a8a49b`*: `ModeratableMixin`
   (`hidden_at`/`hidden_by`/`hidden_reason`) üç yorum tablosunda, `content_moderation` servisi,
   admin uçları + şikayet çözümüne `hide_target` bayrağı. **Gizlenen yorum puan ortalamasından da
@@ -563,6 +565,14 @@ disiplini tutmuş.*
 45. ⚠️ **Ölçüm bir regresyonu yakaladı:** yazar/yayınevi'ni `ILIKE` ile aramak 20.000 üründe
     mağaza aramasını **45 ms → 516 ms** yaptı (o kolonlarda indeks yok). İki alan tsvector'e
     dahil edildi, `ILIKE` kaldırıldı → 47 ms. *Ölçüm aracı olmasa bu canlıda fark edilirdi.*
+
+**Hafta 9 — Yönetim para metrikleri (29 Tem 2026)** *(commit `5db0208`)*
+46. ✅ **GMV / platform geliri / emanet / sepet ortalaması** — dört para yüzeyi tek raporda,
+    dönem + önceki dönem karşılaştırmalı, dikey kırılımıyla.
+47. ⚠️ **Ölçüm üç kademeli optimizasyon gerektirdi** (10× hacimde): 457 ms → dönem indeksleri
+    304 ms → iki dönem tek sorguda (`FILTER`) 228 ms → **WHERE'e alt sınır 97 ms**. Son adımın
+    dersi: `FILTER` yalnız *topladığını* seçer, **taramayı daraltmaz** — alt sınır olmadan
+    sorgular tüm geçmişi okuyup sonra filtreliyordu.
 
 **Sürekli**
 - Yeni yazılan her para/auth kodu testsiz merge edilmesin. Kapsama hedefi %22 → %60;
