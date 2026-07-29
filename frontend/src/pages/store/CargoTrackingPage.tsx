@@ -12,15 +12,12 @@ import { Seo } from "@/components/Seo";
 import { DeliveryFeedbackSection } from "@/components/store/DeliveryFeedbackSection";
 import {
   usePublicOrderTracking,
-  usePublicPostpone,
-  usePublicSetDeliveryPref,
 } from "@/hooks/useDelivery";
-import { PREF_OPTIONS } from "@/lib/deliveryPref";
+import { DeliveryPrefControls } from "@/components/store/DeliveryPrefControls";
 import { promisedDateLabel } from "@/lib/deliveryPromise";
 import { stopsAheadIncreased } from "@/lib/trackingSignals";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useAuthStore } from "@/store/authStore";
-import { toast } from "@/store/toastStore";
 import {
   TIMELINE_LABELS,
   formatEtaWindow,
@@ -214,11 +211,9 @@ const COPY: Record<
   },
 };
 
-/** Token'lı self-servis: tercih chip'leri + "Yarına ertele". Adres değişikliği
- *  burada YOK — oturum gerektirir (giriş linki gösterilir). */
+/** Token'lı self-servis: ortak DeliveryPrefControls (token modu) + adres
+ *  değişikliği yönlendirmesi. KAPIYA/KOMSUYA token'da kilitli (backend 403). */
 function PrefControls({ t, token }: { t: OrderTracking; token: string }) {
-  const setPref = usePublicSetDeliveryPref();
-  const postpone = usePublicPostpone();
   // Token varsa oturum geçerlidir; `user` bu sayfada hiç çekilmediği için
   // (persist edilmiyor) yalnız ona bakmak her zaman "girişsiz" görünürdü.
   useCurrentUser();
@@ -227,97 +222,35 @@ function PrefControls({ t, token }: { t: OrderTracking; token: string }) {
   if (t.status !== "NOT_DISPATCHED" && t.status !== "EN_ROUTE" && t.status !== "POSTPONED")
     return null;
 
-  const current = t.delivery_pref ?? "ADRESIMDEYIM";
-
-  const choose = (pref: (typeof PREF_OPTIONS)[number]["value"]) => {
-    let note: string | null = t.delivery_pref_note ?? null;
-    if (pref === "KOMSUYA_BIRAK") {
-      note = window.prompt("Komşu adı / daire (ör. Ayşe Hn. D:4):", note ?? "");
-      if (!note || note.trim().length < 3) return;
-      note = note.trim();
-    }
-    setPref.mutate(
-      { token, pref, note },
-      {
-        onSuccess: () => toast.success("Teslimat tercihin güncellendi."),
-        onError: () => toast.error("Güncellenemedi — bağlantını kontrol et."),
-      }
-    );
-  };
-
   return (
-    <div className="border-t border-slate-100 px-6 py-5 text-left dark:border-slate-800">
-      <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
-        Teslimat tercihin
-      </h2>
-      <div className="mt-3 flex flex-wrap gap-2">
-        {PREF_OPTIONS.map((opt) => {
-          const selected = current === opt.value;
-          return (
-            <button
-              key={opt.value}
-              onClick={() => choose(opt.value)}
-              disabled={setPref.isPending}
-              className={[
-                "rounded-full px-3 py-1.5 text-xs font-medium transition disabled:opacity-50",
-                selected
-                  ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900"
-                  : "text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50 dark:text-slate-300 dark:ring-slate-700 dark:hover:bg-slate-800/60",
-              ].join(" ")}
+    <>
+      <DeliveryPrefControls t={t} mode={{ kind: "token", token }} loggedIn={loggedIn} />
+      <p className="px-6 pb-4 text-left text-xs text-slate-400 dark:text-slate-500">
+        {loggedIn ? (
+          <>
+            Adres değişikliği{" "}
+            <Link
+              to={ROUTES.orders}
+              className="font-medium text-indigo-600 hover:underline dark:text-indigo-400"
             >
-              {opt.emoji} {opt.label}
-            </button>
-          );
-        })}
-      </div>
-      {current === "KOMSUYA_BIRAK" && t.delivery_pref_note && (
-        <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
-          Komşu: {t.delivery_pref_note}
-        </p>
-      )}
-      <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
-        {t.can_postpone && t.status !== "POSTPONED" && (
-          <button
-            onClick={() => {
-              if (window.confirm("Teslimat bir sonraki çalışma gününe ertelensin mi?"))
-                postpone.mutate(token, {
-                  onSuccess: () => toast.success("Teslimat ertelendi."),
-                  onError: () => toast.error("Ertelenemedi — hakkın dolmuş olabilir."),
-                });
-            }}
-            disabled={postpone.isPending}
-            className="font-semibold text-indigo-600 hover:underline disabled:opacity-50 dark:text-indigo-400"
-          >
-            Yarına ertele
-          </button>
+              Siparişlerim
+            </Link>
+            &rsquo;deki sipariş detayından yapılır.
+          </>
+        ) : (
+          <>
+            Adres değiştirmek için{" "}
+            <Link
+              to={ROUTES.login}
+              className="font-medium text-indigo-600 hover:underline dark:text-indigo-400"
+            >
+              giriş yap
+            </Link>
+            .
+          </>
         )}
-        <span className="text-slate-400 dark:text-slate-500">
-          {loggedIn ? (
-            <>
-              Adres değişikliği{" "}
-              <Link
-                to={ROUTES.orders}
-                className="font-medium text-indigo-600 hover:underline dark:text-indigo-400"
-              >
-                Siparişlerim
-              </Link>
-              &rsquo;deki sipariş detayından yapılır.
-            </>
-          ) : (
-            <>
-              Adres değiştirmek için{" "}
-              <Link
-                to={ROUTES.login}
-                className="font-medium text-indigo-600 hover:underline dark:text-indigo-400"
-              >
-                giriş yap
-              </Link>
-              .
-            </>
-          )}
-        </span>
-      </div>
-    </div>
+      </p>
+    </>
   );
 }
 

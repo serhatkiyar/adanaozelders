@@ -11,6 +11,7 @@ import { promisedDateLabel } from "@/lib/deliveryPromise";
 import { formatEventTime, proofLabel } from "@/lib/deliveryTimeline";
 import { useOrderTracking } from "@/hooks/useDelivery";
 import { ShipAddressUpdate } from "@/components/store/ShipAddressUpdate";
+import { DeliveryPrefControls } from "@/components/store/DeliveryPrefControls";
 import { OrderInvoiceModal } from "@/components/store/OrderInvoiceModal";
 import { useOrder, useCancelOrder, useRequestReturn } from "@/hooks/useStore";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
@@ -39,9 +40,13 @@ export default function OrderDetailPage() {
   const [invoiceOpen, setInvoiceOpen] = useState(false);
   // Teslim kanıtı (foto/OTP/yönetici) yalnız oturumlu sahibe döner — public
   // token projeksiyonunda foto yoktur (PII), bu yüzden kanıt burada gösterilir.
+  // Açık siparişte de çekilir: teslimat tercihi + erteleme buradan beslenir
+  // (backend uçları oturumlu sahibe tüm tercihleri açar).
   const { data: tracking } = useOrderTracking(
     orderId ?? null,
-    order?.status === "DELIVERED" && !!order?.has_physical
+    !!order?.has_physical &&
+      order?.payment_status === "PAID" &&
+      (order?.status === "PAID" || order?.status === "SHIPPED" || order?.status === "DELIVERED")
   );
 
   if (isLoading) return <FullScreenSpinner />;
@@ -252,6 +257,14 @@ export default function OrderDetailPage() {
               Takip et →
             </span>
           </Link>
+        )}
+
+        {/* Teslimat tercihi + erteleme — oturumlu sahibin tam yetkili yüzeyi
+            (SMS'teki token sayfasında kapıya/komşuya kilitlidir, burada serbest). */}
+        {canTrack && order.status !== "DELIVERED" && tracking && orderId != null && (
+          <div className="mt-5 rounded-2xl border border-slate-200 dark:border-slate-800">
+            <DeliveryPrefControls t={tracking} mode={{ kind: "order", orderId }} loggedIn />
+          </div>
         )}
 
         {/* Teslim kanıtı — foto + yöntem + saat (yalnız sahibin oturumlu görünümünde) */}
