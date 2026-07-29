@@ -722,7 +722,7 @@ Sayıyı kovalamak mock'lu birim testi yazmayı teşvik ederek kaliteyi **düş�
 "en riskli para yollarını gerçek davranışla kapat" olarak değiştirildi; oran eşik değil
 gösterge olarak izlenecek.
 
-**Hafta 14 — Kütüphane para yolları (29 Tem 2026)** *(commit `HAFTA14`)*
+**Hafta 14 — Kütüphane para yolları (29 Tem 2026)** *(commit `aba6750`)*
 
 Dört para yüzeyinden ikisi — deneme bileti ve çalışma rezervasyonu — bugüne dek hiç
 doğrulanmamıştı (`library_exam_service` %15, `study_reservation_service` %19 kapsama).
