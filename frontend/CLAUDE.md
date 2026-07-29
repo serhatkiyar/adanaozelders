@@ -46,6 +46,8 @@ frontend/src/
 │   ├── TutorCard.tsx          # Zengin eğitmen kartı (bayesian rating, bookmark, mesafe rozeti)
 │   ├── GlobalMeeting.tsx      # Minimize edilebilir gömülü Jitsi ders penceresi (meetingStore)
 │   ├── MapPicker.tsx          # Leaflet harita konum seçici; arama/adres backend /geocode proxy'si (api/geocode.ts)
+│   │                          #   Döşeme (tile) adresleri TEK KAYNAKTA: lib/mapTiles.ts
+│   │                          #   (VITE_MAP_TILE_URL ile sağlayıcı değişir; Vitest'li)
 │   ├── ErrorBoundary.tsx      # Render hatalarında beyaz ekranı önler
 │   └── Toaster, Modal'lar, StarRating, MegaMenu vb.
 └── pages/                     # Sayfalar

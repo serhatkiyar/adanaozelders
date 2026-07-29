@@ -7,6 +7,7 @@ import L from "leaflet";
 
 import { decodePolyline } from "@/lib/polyline";
 import type { CourierPosition, DeliveryRun, DeliveryStop } from "@/types";
+import { tileSource } from "@/lib/mapTiles";
 
 function stopIcon(stop: DeliveryStop): L.DivIcon {
   const tone =
@@ -82,7 +83,7 @@ export function DeliveryRouteMap({
         attributionControl={false}
         scrollWheelZoom={false}
       >
-        <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+        <TileLayer url={tileSource().url} attribution={tileSource().attribution} />
         <Polyline
           positions={line}
           pathOptions={{

@@ -28,6 +28,7 @@ import {
   proofLabel,
 } from "@/lib/deliveryTimeline";
 import type { OrderTracking, OrderTrackingStatus } from "@/types";
+import { tileSource } from "@/lib/mapTiles";
 
 const homeIcon = L.divIcon({
   className: "",
@@ -504,7 +505,7 @@ export default function CargoTrackingPage() {
                   attributionControl={false}
                   scrollWheelZoom={false}
                 >
-                  <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                  <TileLayer url={tileSource().url} attribution={tileSource().attribution} />
                   {t.ship_lat != null && t.ship_lng != null && (
                     <Marker position={[t.ship_lat, t.ship_lng]} icon={homeIcon} />
                   )}

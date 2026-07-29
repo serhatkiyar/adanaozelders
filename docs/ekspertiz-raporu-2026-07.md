@@ -553,9 +553,9 @@ disiplini tutmuş.*
 **Hafta 7'den kalanlar** *(ölçülmüş, bilinçli)*
 - **31 a11y uyarısı**: 24'ü `autoFocus` (modal açılışında alana odaklanma — kullanışlı ama ekran
   okuyucu kullanıcısını bağlamdan koparabilir), 7'si tıklanabilir `<div>`. Hata değil, uyarı.
-- **`tile.openstreetmap.org` 6 dosyada** — OSMF politikası ticari kullanımı yasaklar. Engellendiği
-  an kütüphane haritası, checkout adres pin'i ve canlı kurye takibi aynı anda çöker. Sağlayıcı
-  kararı gerektirir (Protomaps self-host / MapTiler), kod işi değil.
+- ✅ ~~**`tile.openstreetmap.org` 6 dosyada**~~ — *Hafta 17*: adresler tek kaynağa
+  (`lib/mapTiles.ts`) alındı ve env'e bağlandı. Sağlayıcı kararı hâlâ verilmedi ama artık
+  geçiş altı dosyalık değişiklik değil, tek satırlık `.env` işi.
 - ✅ ~~**Giriş paketi hâlâ 504 KB**~~ — *Hafta 16*: 259 KB (ilk açılış gzip 158 → 140 KB).
 
 **Hafta 8 — Türkçe arama + keşfedilebilirlik (29 Tem 2026)** *(commit `ef9a9c5`)*
@@ -813,9 +813,31 @@ Adana'da mobil bağlantıda ilk boyamayı doğrudan belirleyen sayı bu.
 - `public/` 4,1 MB'a inmiş durumda (Hafta 4'teki ikon işiyle 16 MB'dan). Kalan büyük
   dosyalar nadir yüzeylerde; öncelik değil.
 
+**Hafta 17 — Harita döşeme sağlayıcısı soyutlandı (29 Tem 2026)** *(commit `HAFTA17`)*
+
+Raporun "kod işi değil, sağlayıcı kararı gerektirir" dediği madde. Karar hâlâ verilmedi ama
+**riskin kendisi kod işiyle küçültülebiliyordu**: adres altı bileşende gömülüydü, geçiş günü
+altı dosya birden değişecekti. Tek kaynağa alındı (`lib/mapTiles.ts`, `core/payments` ·
+`core/mail` · `core/routing` ile aynı sağlayıcı-bağımsız desen); geçiş artık tek satırlık
+`.env` işi (`VITE_MAP_TILE_URL`).
+
+73. ⚠️ **Yolda iki gerçek kusur çıktı — ikisi de üretimde SESSİZ olurdu:**
+    *(a)* `MapPicker`'ın uydu katmanı Google'ın **resmî olmayan** uç noktasını kullanıyordu
+    (`http://mt0.google.com/vt/...`). Kullanım koşullarına aykırı olması bir yana, adres
+    **`http://`** idi: HTTPS sayfada karışık içerik (mixed content) sayılıp tarayıcıda
+    engellenir, üstelik Hafta 11'de eklenen CSP'nin `img-src https:` kuralına da takılırdı.
+    Yani üretimde uydu görünümü **hiç çalışmayacaktı** ve hata boş gri harita olarak
+    görünecekti. Esri World Imagery'ye taşındı (HTTPS, atıflı).
+    *(b)* Uydu katmanı iki bileşende **iki farklı sağlayıcıdan** geliyordu (biri Google,
+    biri Esri) — aynı düğme farklı haritalar gösteriyordu.
+74. ✅ **Değişmezler teste bağlandı** (6 test): hiçbir döşeme adresi `http://` değil, hepsi
+    mutlak `https://`, her katmanın atıf bilgisi var (lisans zorunluluğu), şablonlar
+    `{z}/{x}/{y}` yer tutucularını içeriyor. `http://` kontrolü doğrudan (a) maddesinin
+    regresyon testidir.
+
 **Sürekli**
 - Yeni yazılan her para/auth kodu testsiz merge edilmesin. *(29 Tem sonu: 483 birim +
-  124 doğrulama + 360 frontend testi; `services` kapsaması %27 ve CI'da raporlanıyor.)*
+  124 doğrulama + 366 frontend testi; `services` kapsaması %27 ve CI'da raporlanıyor.)*
 - ✅ Gerçekçi hacimde seed **yapıldı ve araca dönüştürüldü** — şema değişince ölçüm
   tekrarlanabilir: `python scripts/scale/run.py --create && ... seed && ... probe`.
 
