@@ -12,6 +12,12 @@ from sqlalchemy.orm import selectinload
 from core.config import settings
 from models.booking import Booking, BookingStatus
 from models.messaging import Conversation, Message
+from core.search_text import (
+    normalize_tr,
+    normalized,
+    phrase_tsquery,
+    tsquery as search_tsquery,
+)
 from models.tutor import Gender, Tutor, TutorAvailability, TutorStatus, TutorSubject
 from schemas.education import EducationOut
 from schemas.tutor import AvailabilityOut, TutorSearchOut, TutorSort
@@ -159,40 +165,43 @@ async def search_tutors(
         words = [re.sub(r"[^\w]", "", w, flags=re.UNICODE)
                  for w in q.strip().split()]
         words = [w for w in words if w]
-        like = f"%{q.strip()}%"
+        # Diakritik-duyarsız arama: hem indeks (generated tsvector / trigram)
+        # hem sorgu `tr_normalize`'dan geçer. "matematık" → "matematik".
+        like = f"%{normalize_tr(q.strip())}%"
+        norm_name = normalized(Tutor.full_name)
 
-        tsquery = func.websearch_to_tsquery("simple", q)
+        tsquery = search_tsquery(q)
 
         if len(words) > 1:
-            phrase_query = func.phraseto_tsquery("simple", q)
+            phrase_query = phrase_tsquery(q)
             # pg_trgm % filtreden ÇIKARILDI — fuzzy yalnız skorda.
             stmt = stmt.where(
                 or_(
                     Tutor.search_vector.op("@@")(tsquery),
-                    Tutor.full_name.ilike(like),
+                    norm_name.ilike(like),
                 )
             )
             relevance = (
                 func.ts_rank(Tutor.search_vector, phrase_query) * 4.0
                 + func.ts_rank(Tutor.search_vector, tsquery) * 2.0
-                + func.similarity(Tutor.full_name, q) * 3.0
+                + func.similarity(norm_name, normalized(q)) * 3.0
             )
         else:
             # Tek kelime — fuzzy filtreden dahil.
             stmt = stmt.where(
                 or_(
                     Tutor.search_vector.op("@@")(tsquery),
-                    Tutor.full_name.op("%")(q),
+                    norm_name.op("%")(normalized(q)),
                 )
             )
             relevance = func.ts_rank(Tutor.search_vector, tsquery) + func.similarity(
-                Tutor.full_name, q
+                norm_name, normalized(q)
             )
 
     # Sınav bağlamı: SERT FİLTRE DEĞİL. İlanında ilgili sınavdan (ör. "KPSS")
     # bahseden eğitmenleri sıralamada öne çıkarır; bahsetmeyenler elenmez.
     if exam:
-        exam_tsquery = func.websearch_to_tsquery("simple", exam)
+        exam_tsquery = search_tsquery(exam)
         exam_rank = func.ts_rank(Tutor.search_vector, exam_tsquery)
         relevance = exam_rank if relevance is None else relevance + exam_rank
 
@@ -304,21 +313,24 @@ async def price_histogram(
                  for w in q.strip().split()]
         words = [w for w in words if w]
 
-        tsquery = func.websearch_to_tsquery("simple", q)
+        # Filtre, ana aramayla BİREBİR aynı olmalı: ayrılırsa histogram
+        # gösterdiği sonuç sayısı listedekiyle tutmaz.
+        tsquery = search_tsquery(q)
+        norm_name = normalized(Tutor.full_name)
 
         if len(words) > 1:
-            like = f"%{q.strip()}%"
+            like = f"%{normalize_tr(q.strip())}%"
             stmt = stmt.where(
                 or_(
                     Tutor.search_vector.op("@@")(tsquery),
-                    Tutor.full_name.ilike(like),
+                    norm_name.ilike(like),
                 )
             )
         else:
             stmt = stmt.where(
                 or_(
                     Tutor.search_vector.op("@@")(tsquery),
-                    Tutor.full_name.op("%")(q),
+                    norm_name.op("%")(normalized(q)),
                 )
             )
 

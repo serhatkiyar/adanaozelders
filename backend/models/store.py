@@ -263,7 +263,9 @@ class Product(Base, TimestampMixin, SoftDeleteMixin):
     search_vector: Mapped[str | None] = mapped_column(
         TSVECTOR,
         Computed(
-            "to_tsvector('simple', coalesce(title, '') || ' ' || coalesce(description, ''))",
+            "to_tsvector('simple', tr_normalize("
+            "coalesce(title, '') || ' ' || coalesce(description, '') || ' ' || "
+            "coalesce(author, '') || ' ' || coalesce(publisher, '')))",
             persisted=True,
         ),
         nullable=True,

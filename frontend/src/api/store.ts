@@ -37,6 +37,10 @@ export interface ProductSearchParams {
   max_price?: number;
   in_stock?: boolean;
   min_rating?: number;
+  /** Kitap künyesi daraltmaları (çoklu seçim; /store/book-facets listeler). */
+  publisher?: string[];
+  author?: string[];
+  cover_type?: string[];
   sort?: "price_asc" | "price_desc" | "newest" | "rating";
   limit?: number;
   offset?: number;
@@ -47,6 +51,25 @@ export async function searchProducts(
 ): Promise<ProductSearchOut[]> {
   const { data } = await apiClient.get<ProductSearchOut[]>("/store/products", {
     params,
+  });
+  return data;
+}
+
+export interface BookFacet {
+  value: string;
+  count: number;
+}
+
+export interface BookFacets {
+  publisher: BookFacet[];
+  author: BookFacet[];
+  cover_type: BookFacet[];
+}
+
+/** Kitap filtrelerinin seçilebilir değerleri (+ ürün sayısı). */
+export async function fetchBookFacets(categoryId?: number): Promise<BookFacets> {
+  const { data } = await apiClient.get<BookFacets>("/store/book-facets", {
+    params: categoryId ? { category_id: categoryId } : undefined,
   });
   return data;
 }

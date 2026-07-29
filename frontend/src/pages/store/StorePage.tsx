@@ -5,7 +5,7 @@ import { Seo } from "@/components/Seo";
 import { StoreLayout } from "@/pages/store/StoreLayout";
 import { ProductCard } from "@/components/store/ProductCard";
 import { HScroll } from "@/components/HScroll";
-import { useCategories, useProducts, useInfiniteProducts } from "@/hooks/useStore";
+import { useBookFacets, useCategories, useProducts, useInfiniteProducts } from "@/hooks/useStore";
 import { useDebounce } from "@/hooks/useDebounce";
 import { getRecentlyViewedProducts } from "@/lib/recentlyViewedProducts";
 import type { ProductKind } from "@/types";
@@ -43,6 +43,10 @@ export default function StorePage() {
   const [maxPrice, setMaxPrice] = useState("");
   const [inStock, setInStock] = useState(false);
   const [minRating, setMinRating] = useState<number | undefined>(undefined);
+  // Kitap künyesi daraltmaları (çoklu seçim).
+  const [publishers, setPublishers] = useState<string[]>([]);
+  const [authors, setAuthors] = useState<string[]>([]);
+  const [coverTypes, setCoverTypes] = useState<string[]>([]);
 
   const debouncedQ = useDebounce(q, 350);
   const debMin = useDebounce(minPrice, 400);
@@ -57,13 +61,25 @@ export default function StorePage() {
   }, [urlCat]);
 
   const { data: categories } = useCategories();
+  // Seçenekler kategoriye göre daralır: "Kırtasiye"de yayınevi listesi
+  // göstermek kullanıcıyı boş sonuca sürükler.
+  const { data: bookFacets } = useBookFacets(categoryId);
   const topCategories = useMemo(
     () => (categories ?? []).filter((c) => !c.parent_id),
     [categories]
   );
 
   const isFiltering = !!(
-    debouncedQ || categoryId || kind || debMin || debMax || inStock || minRating
+    debouncedQ ||
+    categoryId ||
+    kind ||
+    debMin ||
+    debMax ||
+    inStock ||
+    minRating ||
+    publishers.length ||
+    authors.length ||
+    coverTypes.length
   );
 
   const searchInput: ProductSearchParams = {
@@ -74,6 +90,9 @@ export default function StorePage() {
     max_price: debMax ? Number(debMax) : undefined,
     in_stock: inStock || undefined,
     min_rating: minRating,
+    publisher: publishers.length ? publishers : undefined,
+    author: authors.length ? authors : undefined,
+    cover_type: coverTypes.length ? coverTypes : undefined,
     sort: sort || undefined,
     limit: 24,
   };
@@ -96,6 +115,9 @@ export default function StorePage() {
     setMaxPrice("");
     setInStock(false);
     setMinRating(undefined);
+    setPublishers([]);
+    setAuthors([]);
+    setCoverTypes([]);
     setSearchParams({});
   };
 
@@ -203,6 +225,28 @@ export default function StorePage() {
                   />
                   Sadece stoktakiler
                 </label>
+
+                {/* Kitap künyesi: seçenekler veriden gelir, sayaçlı. Boşsa
+                    bölüm hiç çizilmez — kırtasiye kategorisinde yayınevi
+                    listesi göstermek kullanıcıyı boş sonuca sürüklerdi. */}
+                <FacetGroup
+                  title="Yayınevi"
+                  options={bookFacets?.publisher}
+                  selected={publishers}
+                  onToggle={setPublishers}
+                />
+                <FacetGroup
+                  title="Yazar"
+                  options={bookFacets?.author}
+                  selected={authors}
+                  onToggle={setAuthors}
+                />
+                <FacetGroup
+                  title="Kapak"
+                  options={bookFacets?.cover_type}
+                  selected={coverTypes}
+                  onToggle={setCoverTypes}
+                />
               </div>
             </aside>
 
@@ -412,5 +456,76 @@ function ProductScroller({
         ))}
       </HScroll>
     </div>
+  );
+}
+
+
+/** Sayaçlı çoklu seçim filtre grubu (yayınevi / yazar / kapak).
+ *
+ *  Uzun listelerde ilk 8 seçenek gösterilir: yüzlerce yayınevini alt alta
+ *  dizmek paneli kullanılamaz hale getirir. Seçili olanlar her zaman görünür
+ *  kalır — aksi halde kullanıcı neyi filtrelediğini kaybeder.
+ */
+function FacetGroup({
+  title,
+  options,
+  selected,
+  onToggle,
+}: {
+  title: string;
+  options?: { value: string; count: number }[];
+  selected: string[];
+  onToggle: (next: string[]) => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  if (!options?.length) return null;
+
+  const visible = expanded
+    ? options
+    : [
+        ...options.slice(0, 8),
+        ...options.slice(8).filter((o) => selected.includes(o.value)),
+      ];
+
+  const toggle = (value: string) =>
+    onToggle(
+      selected.includes(value)
+        ? selected.filter((v) => v !== value)
+        : [...selected, value]
+    );
+
+  return (
+    <>
+      <hr className="my-5 border-slate-100 dark:border-slate-800" />
+      <h3 className="mb-3 text-base font-semibold text-slate-900 dark:text-white">
+        {title}
+      </h3>
+      <div className="flex flex-col gap-1">
+        {visible.map((option) => (
+          <label
+            key={option.value}
+            className="flex cursor-pointer items-center gap-2.5 rounded-lg px-1 py-1 text-sm text-slate-600 transition hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-800/60"
+          >
+            <input
+              type="checkbox"
+              checked={selected.includes(option.value)}
+              onChange={() => toggle(option.value)}
+              className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 dark:border-slate-600 dark:bg-slate-800"
+            />
+            <span className="min-w-0 flex-1 truncate">{option.value}</span>
+            <span className="shrink-0 text-xs text-slate-400">{option.count}</span>
+          </label>
+        ))}
+      </div>
+      {options.length > 8 && (
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          className="mt-2 text-xs font-semibold text-indigo-600 transition hover:text-indigo-700 dark:text-indigo-400"
+        >
+          {expanded ? "Daha az göster" : `Tümünü göster (${options.length})`}
+        </button>
+      )}
+    </>
   );
 }

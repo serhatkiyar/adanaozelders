@@ -38,6 +38,23 @@ if config.config_file_name is not None:
 # target_metadata = mymodel.Base.metadata
 target_metadata = Base.metadata
 
+
+# İFADE-TABANLI İNDEKSLER (ör. `tr_normalize(title) gin_trgm_ops`) elle
+# yazılmış migration'larda yaşar. Alembic bunları model tarafındaki kolon
+# indeksleriyle eşleştiremez — SQL ifadesini geri okuyup karşılaştıramadığı
+# için her koşuda "sil ve yeniden yarat" önerir. Karşılaştırmadan çıkarılmasa
+# `alembic check` kalıcı olarak kırmızı kalır ve gerçek şema kaymalarını
+# gizleyen bir gürültüye dönüşür.
+#
+# Adlandırma sözleşmesi: ifadeye dayanan her indeks `_trgm` ile biter.
+_EXPRESSION_INDEX_SUFFIXES = ("_trgm",)
+
+
+def include_object(obj, name, type_, reflected, compare_to):  # noqa: ANN001
+    if type_ == "index" and name and name.endswith(_EXPRESSION_INDEX_SUFFIXES):
+        return False
+    return True
+
 # other values from the config, defined by the needs of env.py,
 # can be acquired:
 # my_important_option = config.get_main_option("my_important_option")
@@ -62,6 +79,7 @@ def run_migrations_offline() -> None:
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
+        include_object=include_object,
     )
 
     with context.begin_transaction():
@@ -69,7 +87,11 @@ def run_migrations_offline() -> None:
 
 
 def do_run_migrations(connection: Connection) -> None:
-    context.configure(connection=connection, target_metadata=target_metadata)
+    context.configure(
+        connection=connection,
+        target_metadata=target_metadata,
+        include_object=include_object,
+    )
 
     with context.begin_transaction():
         context.run_migrations()

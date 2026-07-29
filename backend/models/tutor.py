@@ -112,7 +112,11 @@ class Tutor(
     search_vector: Mapped[str | None] = mapped_column(
         TSVECTOR,
         Computed(
-            "to_tsvector('simple', coalesce(headline, '') || ' ' || coalesce(bio, ''))",
+            # tr_normalize: diakritik-duyarsız arama (bkz. migration dd737c387ff5).
+            # Sorgu tarafı da aynı fonksiyondan geçer; iki taraf ayrılırsa
+            # arama sessizce boş sonuç vermeye başlar.
+            "to_tsvector('simple', tr_normalize("
+            "coalesce(headline, '') || ' ' || coalesce(bio, '')))",
             persisted=True,
         ),
         nullable=True,

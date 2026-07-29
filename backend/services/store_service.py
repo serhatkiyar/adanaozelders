@@ -18,6 +18,11 @@ from sqlalchemy.orm import selectinload
 
 from core import mail, storage
 from core.config import settings
+from core.search_text import (
+    normalize_tr,
+    normalized,
+    tsquery as search_tsquery,
+)
 from core.moderation import mask_contact_info
 from models.admin import Admin
 from models.client import Client
@@ -299,6 +304,46 @@ async def delete_category(db: AsyncSession, category_id: int) -> None:
 # ── Public arama / detay ─────────────────────────────────────────────────────────
 
 
+async def list_book_facets(
+    db: AsyncSession, *, category_id: int | None = None, limit: int = 30
+) -> dict[str, list[dict]]:
+    """Kitap künyesi filtrelerinin seçilebilir değerleri (+ ürün sayısı).
+
+    Kullanıcı "hangi yayınevleri var" sorusunu ancak listeyi görerek
+    cevaplayabilir; serbest metin kutusu yazım hatasına açıktır ve boş sonuç
+    üretir. Sayaçlar aynı zamanda hangi daraltmanın anlamlı olduğunu gösterir.
+
+    Yalnız ACTIVE ürünler sayılır — gizli/taslak ürünün yayınevi filtrede
+    görünüp sonuç getirmemesi kırık bir filtre izlenimi verirdi.
+    """
+    base_filters = [
+        Product.status == ProductStatus.ACTIVE.value,
+        Product.deleted_at.is_(None),
+    ]
+    if category_id is not None:
+        base_filters.append(
+            Product.category_id.in_(await _category_and_descendants(db, category_id))
+        )
+
+    out: dict[str, list[dict]] = {}
+    for key, column in (
+        ("publisher", Product.publisher),
+        ("author", Product.author),
+        ("cover_type", Product.cover_type),
+    ):
+        rows = (
+            await db.execute(
+                select(column, func.count())
+                .where(*base_filters, column.isnot(None), column != "")
+                .group_by(column)
+                .order_by(func.count().desc(), column)
+                .limit(limit)
+            )
+        ).all()
+        out[key] = [{"value": value, "count": count} for value, count in rows]
+    return out
+
+
 async def search_products(
     db: AsyncSession,
     *,
@@ -310,6 +355,12 @@ async def search_products(
     max_price: Decimal | None = None,
     in_stock: bool = False,
     min_rating: float | None = None,
+    # Kitap künyesi filtreleri: kolonlar baştan beri doluydu ama hiçbir yerden
+    # filtrelenemiyordu — "sadece Palme yayınları" ya da "ciltli olanlar"
+    # kitapçı aramasının en sık iki daraltmasıdır.
+    publisher: list[str] | None = None,
+    author: list[str] | None = None,
+    cover_type: list[str] | None = None,
     sort: str | None = None,
     limit: int = 30,
     offset: int = 0,
@@ -353,18 +404,34 @@ async def search_products(
             Product.rating_count > 0,
             Product.rating_sum >= min_rating * Product.rating_count,
         )
+    # Künye filtreleri normalize edilmiş karşılaştırma yapar: kullanıcı
+    # "palme yayinlari" seçse de kayıt "Palme Yayınları" olarak durur.
+    for column, values in (
+        (Product.publisher, publisher),
+        (Product.author, author),
+        (Product.cover_type, cover_type),
+    ):
+        if values:
+            stmt = stmt.where(
+                normalized(column).in_([normalize_tr(v) for v in values])
+            )
 
     relevance = None
     if q:
-        tsquery = func.websearch_to_tsquery("simple", q)
+        # Diakritik-duyarsız: "matematık", "kitab", "cozumlu" sonuç getirmeli.
+        # Yazar/yayınevi de aranır — kullanıcı çoğu zaman kitabın adını değil
+        # yazarını hatırlar ("palme fizik", "tonguç").
+        tsquery = search_tsquery(q)
+        norm_title = normalized(Product.title)
+        norm_q = normalized(q)
         stmt = stmt.where(
             or_(
                 Product.search_vector.op("@@")(tsquery),
-                Product.title.op("%")(q),
+                norm_title.op("%")(norm_q),
             )
         )
         relevance = func.ts_rank(Product.search_vector, tsquery) + func.similarity(
-            Product.title, q
+            norm_title, norm_q
         )
 
     if sort == "price_asc":

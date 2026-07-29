@@ -100,7 +100,8 @@ class Library(Base, TimestampMixin, SoftDeleteMixin, PayoutMixin):
     search_vector: Mapped[str | None] = mapped_column(
         TSVECTOR,
         Computed(
-            "to_tsvector('simple', coalesce(name, '') || ' ' || coalesce(description, ''))",
+            "to_tsvector('simple', tr_normalize("
+            "coalesce(name, '') || ' ' || coalesce(description, '')))",
             persisted=True,
         ),
         nullable=True,

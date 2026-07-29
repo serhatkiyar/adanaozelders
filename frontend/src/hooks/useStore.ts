@@ -18,6 +18,15 @@ export function useCategories() {
   });
 }
 
+/** Kitap künyesi filtre seçenekleri; kategori değişince yeniden çekilir. */
+export function useBookFacets(categoryId?: number) {
+  return useQuery({
+    queryKey: ["store", "book-facets", categoryId ?? null],
+    queryFn: () => storeApi.fetchBookFacets(categoryId),
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
 export function useProducts(params: ProductSearchParams) {
   return useQuery({
     queryKey: ["store", "products", params],

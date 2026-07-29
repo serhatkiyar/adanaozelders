@@ -119,6 +119,15 @@ async def list_categories(db: AsyncSession = Depends(get_db)):
     return await store_service.list_categories(db)
 
 
+@router.get("/book-facets")
+async def list_book_facets(
+    category_id: int | None = Query(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    """Kitap filtrelerinin seçenekleri (yayınevi / yazar / kapak) + sayıları."""
+    return await store_service.list_book_facets(db, category_id=category_id)
+
+
 @router.get("/products", response_model=list[ProductSearchOut])
 async def search_products(
     q: str | None = Query(default=None, max_length=200),
@@ -129,6 +138,10 @@ async def search_products(
     max_price: Decimal | None = Query(default=None, ge=0),
     in_stock: bool = Query(default=False),
     min_rating: float | None = Query(default=None, ge=0, le=5),
+    # Kitap künyesi daraltmaları (çoklu seçim): /store/book-facets listeler.
+    publisher: list[str] | None = Query(default=None),
+    author: list[str] | None = Query(default=None),
+    cover_type: list[str] | None = Query(default=None),
     sort: str | None = Query(
         default=None, pattern="^(price_asc|price_desc|newest|rating)$"
     ),
@@ -139,6 +152,9 @@ async def search_products(
     return await store_service.search_products(
         db,
         q=q,
+        publisher=publisher,
+        author=author,
+        cover_type=cover_type,
         category_id=category_id,
         tutor_id=tutor_id,
         kind=kind,
