@@ -84,6 +84,51 @@ services:
       timeout: 5s
       retries: 10
 
+  # ── Rota optimizasyonu (teslimat Faz B) ──
+  # Geliştirmede opsiyonel profildir; ÜRETİMDE zorunludur: yoksa ROUTING_PROVIDER
+  # `auto` sessizce kuş uçuşu tahmine düşer ve müşteriye gösterilen varış
+  # penceresi ("18:00–19:00") gerçek yol ağından değil 28 km/sa varsayımından
+  # üretilir. Guard `haversine`'i reddeder, /health bozulmayı raporlar.
+  #
+  # ÖN KOŞUL (tek seferlik, deploy'dan önce sunucuda):
+  #   ./scripts/setup-osrm-adana.sh      # devops/osrm/adana.osrm* üretir
+  # OSM verisi ayda bir tazelenmelidir (aynı betik; sonra `restart osrm`).
+  osrm:
+    image: osrm/osrm-backend:latest
+    restart: unless-stopped
+    # --max-table-size: VROOM arkada `table` (mesafe matrisi) servisini çağırır;
+    # osrm-routed varsayılanı 100 koordinattır ve 100+ duraklı kampanya gününde
+    # "TooBig" döner. VROOM maxlocations (400) bunun altında kalmalıdır.
+    command: osrm-routed --algorithm mld --max-table-size 500 /data/adana.osrm
+    volumes:
+      # Salt-okunur bağlama yeterlidir (denendi: osrm-routed MLD verisini yazmadan
+      # açar). Veri host'ta durur → konteyner yeniden başlayınca kaybolmaz.
+      - ./devops/osrm:/data:ro
+    # Ölçüldü (Adana veri seti): boşta ~270 MB, 300 duraklık planda ~278 MB ve
+    # tek çekirdeğin ~%75'i. Sınırlar 3-4× pay bırakır; amaç tek VPS'te kaçak bir
+    # planlamanın Postgres'i aç bırakmasını önlemek.
+    mem_limit: 1g
+    cpus: "1.5"
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/localhost/5000' || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+
+  vroom:
+    image: ghcr.io/vroom-project/vroom-docker:v1.14.0
+    restart: unless-stopped
+    depends_on:
+      osrm:
+        condition: service_healthy
+    volumes:
+      - ./devops/vroom:/conf:ro
+    environment:
+      VROOM_ROUTER: osrm
+    # Ölçüldü: boşta ~44 MB, 300 duraklık planda ~46 MB (ağır iş OSRM tarafında).
+    mem_limit: 512m
+    cpus: "1.0"
+
   backend:
     build:
       context: ./backend
@@ -103,6 +148,11 @@ services:
       # Dosya adresleri ve imzaları bununla üretilir; eksikse üretilen adresler
       # konteyner-içi `minio:9000`'ı gösterir ve hiçbir dosya açılmaz.
       S3_PUBLIC_ENDPOINT_URL: ${S3_PUBLIC_ENDPOINT_URL:?S3_PUBLIC_ENDPOINT_URL gerekli (ör. https://depo.example.com)}
+      # Rota: servis adıyla (konteynerde `localhost` backend'in kendisidir —
+      # guard yerel adresi zaten reddeder). `auto` VROOM düşerse çalışmayı
+      # sürdürür; bozulma /health + ERROR log ile görünür kalır.
+      ROUTING_PROVIDER: ${ROUTING_PROVIDER:-auto}
+      VROOM_URL: http://vroom:3000
     depends_on:
       postgres:
         condition: service_healthy
@@ -110,6 +160,12 @@ services:
         condition: service_healthy
       minio:
         condition: service_healthy
+      # osrm/vroom BİLEREK burada YOK. `depends_on` zinciri geçişlidir: vroom
+      # osrm'in sağlıklı olmasını bekler, backend de vroom'un başlamasını
+      # bekleseydi **eksik ya da bozuk OSRM verisi TÜM API'yi ayağa kaldırmazdı**
+      # (deneyle doğrulandı: "dependency failed to start ... is unhealthy").
+      # Rota ikincil bir yetenektir: çökerse teslimat planlaması bozulur,
+      # `auto` modu tahmine düşer, site çalışmaya devam eder.
 
   frontend:
     build:
