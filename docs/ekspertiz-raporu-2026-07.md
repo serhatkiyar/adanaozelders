@@ -688,7 +688,7 @@ sızdırabilir; `httpOnly` çerez JavaScript'e görünmez, aynı XSS o oturumda 
     token reddediliyor, logout kopyayı da geçersiz kılıyor, pasif hesap yenileyemiyor,
     "beni hatırla" tercihi rotasyonda korunuyor.
 
-**Hafta 13 — Mutabakat testleri + doğrulama paketi CI'da (29 Tem 2026)** *(commit `HAFTA13`)*
+**Hafta 13 — Mutabakat testleri + doğrulama paketi CI'da (29 Tem 2026)** *(commit `dbef9f1`)*
 
 Hedef "kapsamayı %60'a çıkarmak"tı; ölçüm başka bir şey gösterdi ve iş yeniden çerçevelendi.
 
