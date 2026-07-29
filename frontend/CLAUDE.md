@@ -58,8 +58,11 @@ frontend/src/
     ├── StudentBookings.tsx, Exams.tsx, Questions.tsx, StudentDemands.tsx # Öğrenci Özel
     ├── TutorDashboard.tsx, TutorSettings.tsx, TutorDemands.tsx     # Eğitmen Özel (TutorSettings: konum MapPicker)
     ├── Messages.tsx, LessonDetail.tsx, Calendar.tsx, Profile.tsx   # Ortak Sayfalar (Calendar: haftalık takvim)
-    └── dashboards/AdminHome.tsx                                    # Admin Dashboard
+    ├── dashboards/AdminHome.tsx                                    # Legacy admin bölümleri (AdminSectionPage üzerinden)
+    └── admin/delivery/                                             # Dağıtım operasyon paneli (aşağıda)
 ```
+
+> **Dağıtım operasyon paneli (`/yonetim/dagitim/*`)**: Tek 1495 satırlık sayfa yerine URL-tabanlı 5 alt-sekme + deep-link'li tur detayı (`pages/admin/delivery/DeliveryLayout.tsx` + `<Outlet/>`): **Bugün** (kokpit: rota sağlık şeridi `/health`→routing, istisna kuyruğu, kapasite şeridi→tarih navigasyonu, günün turları; `?tarih=`) · **Siparişler** (`?kuyruk=hazirlik|hazir|dis-kargo` — Hazırla/toplu, Geri Al [unprepare], Tura ekle, Kargola-yerinde [`orders.manage` ayrıca aranır]) · **Turlar** (offset'li arşiv) · **Turlar/:id** (tur detayı: sürükle-bırak durak sıralama [HTML5 dnd, kütüphanesiz] + kalıcı ▲▼, MapGate'li tooltip'li harita, teslimat tercihi rozeti, çoklu paket rozeti, RESCHEDULED/CANCELLED renkleri, `optimize_provider` "yol ağı/yaklaşık" rozeti) · **Performans** (`?gun=7|30|90|180`, Pareto div-çubukları, 👎 yorum→sipariş linki) · **Kuryeler** (CourierManager + Kapalı Günler + salt-okunur yapılandırma). Ortak parçalar `components/admin/delivery/{bits,CapacityStrip,LabelSheet,ClosedDays}.tsx`. Tasarım: `admin/ui/*` (Button/Badge/ConfirmDialog/PageState) + `border-slate-200`/`dark:bg-slate-900` ölçeği + her sorguda `ErrorState` (hata ≠ boş ekran) + hover-only aksiyon YOK (dokunmatik birinci sınıf). Saha ekranı `DeliveryDriver.tsx`: QR fallback'inde **manuel kod girişi** (iOS Safari BarcodeDetector'sız — `QrScanner` `manualHint` prop'lu), foto `lib/compressImage.ts` ile küçültülür, durak listesinden bekleyen durağa geçilebilir (ekran odağı; sıra değişmez), gün özeti sayacı. Müşteri: `DeliveryPrefControls` ortak bileşeni (token modunda KAPIYA/KOMSUYA kilitli — backend 403; oturumlu sipariş detayında serbest + erteleme), `OrdersPage`'te kargo takip kısayolu; `window.prompt/confirm` kalktı (Modal).
 
 ## Routing ve Erişim Kontrolü
 

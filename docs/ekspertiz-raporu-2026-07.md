@@ -961,6 +961,58 @@ ya da gerekçesiyle bilinçli borç olarak kayda geçti. Kalanlar üç kategorid
 | P0-6 | **Otomatik hakediş ödemesi** | iyzico alt üye işyeri kapalı; şu an "ödenecekler defteri" + elle havale |
 | — | **Yasal metin avukat onayı** | 6 metin + Hafta 15'te güncellenen iade kuralı |
 
+**Hafta 20 — dağıtım paneli profesyonel lojistik yüzeyine dönüştürüldü (29 Tem 2026)**
+
+90. ✅ **Bilgi mimarisi.** `AdminDelivery.tsx` (1495 satır, sekmesiz 7 dikey bölüm, ~8000px
+    scroll) URL-tabanlı 5 alt-sekmeye + deep-link'li tur detayına bölündü
+    (`/yonetim/dagitim` Bugün · `siparisler` · `turlar[/:id]` · `performans` · `kuryeler`).
+    Sayfa durumu artık URL'de (`?tarih/?kuyruk/?gun`) — tur linki paylaşılabilir, geri tuşu
+    çalışır. Yeni admin tasarım sistemine geçildi (Button/Badge/ConfirmDialog/PageState,
+    `border-slate-200` + `dark:bg-slate-900` ölçeği); iki paralel tasarım dili kalktı.
+
+91. ✅ **Sessiz başarısızlık kapatıldı.** Eski panelde HİÇBİR sorguda `isError` yoktu — sunucu
+    hatası "boş ekran" gibi görünüyordu (istisna kuyruğu boşken zaten gizlendiğinden operatör
+    hata ile "iş yok"u ayırt edemiyordu). Artık her sorgu `ErrorState` + "Yeniden dene" gösterir.
+    Hover-only aksiyonlar (durak taşı/çıkar, kurye seç) kaldırıldı — dokunmatik/tablet birinci
+    sınıf; durak sıralaması sürükle-bırak (kütüphanesiz HTML5 dnd) + kalıcı ▲▼.
+
+92. ✅ **Operasyonel görünürlük.** Bugün kokpiti: rota sağlık şeridi (`/health`→routing —
+    VROOM düşükken "ETA'lar yaklaşık" uyarısı ilk kez panelde), istisna kuyruğu, tıklanabilir
+    kapasite şeridi, canlı kurye konum tazeliği. Backend'de var ama UI'sız kalan yetenekler
+    bağlandı: **unprepare** (hazırlığı geri al), **Kargola-yerinde** (dış kargo kuyruğu artık
+    aksiyonlu), KPI gün seçici (7/30/90/180 — sabit 30 kalktı), tur arşivi (offset), etikete
+    ve durak satırına müşteri teslimat talimatı, çoklu paket rozeti, RESCHEDULED/CANCELLED
+    renkleri. Kuryeler sayfasına salt-okunur yapılandırma kartı (cutoff/bölge/kapasite —
+    env-only olduğu DÜRÜSTÇE yazılır, sahte düzenleme butonu yok).
+
+93. ✅ **Saha bug'ı: iOS Safari'de kurye QR okutamıyordu.** `BarcodeDetector` desteklenmeyen
+    tarayıcıda fallback metni "kodu elle gir" diyor ama giriş kutusu SUNMUYORDU (üstelik metin
+    kütüphane-sınavı bağlamından kopyalanmıştı: "Öğrencinin kodunu…"). `QrScanner`'a manuel
+    giriş formu + bağlama göre `manualHint` prop'u eklendi (teslimat/bilet ayrı metin). Ayrıca:
+    teslim fotoğrafı yükleme öncesi küçültülür (`lib/compressImage.ts`, 3-8 MB → ~300 KB; başarısızsa
+    orijinal gider — akış bloklanmaz), kurye durak listesinden bekleyen durağa geçebilir
+    (ekran odağı — sıra değişmez, uçlar zaten stop_id bazlı), gün özeti sayacı, ağ hatasında
+    "Yeniden Dene". CourierHome kurye kimlik kartını (foto/plaka) gösterir.
+
+94. ✅ **Müşteri yüzeyi.** Oturumlu sipariş detayına teslimat tercihi + erteleme geldi (backend
+    uçları hazırdı, UI yoktu — müşteri yalnız SMS linkinden yönetebiliyordu). Ortak
+    `DeliveryPrefControls`: token modunda KAPIYA/KOMSUYA kilitli gösterilir (backend 403 —
+    eskiden çip tıklanıp sunucudan ret yeniyordu), tercih açıklamaları görünür ("fotoğrafla
+    kanıtlanır"). `window.prompt/confirm` kalktı (Modal — iOS güvenilirliği + tasarım dili).
+    Sipariş listesine kargo takip kısayolu.
+
+95. ✅ **Faz 0 backend eklemeleri** (frontend dürüst kalsın diye): (a) BUG — kurye
+    silinince/pasifleşince rol-5 giriş hesabı açık kalıyordu (`close_for_courier_profile`
+    hiç çağrılmıyordu; işten ayrılan kuryenin oturumu yaşıyordu) — artık aynı transaction'da
+    hesap kapanır + `auth_version`++ + refresh revoke; (b) saha aksiyonlarına audit
+    (verify/fail/drop/complete → `audit_logs`, actor_role=5); (c) `GET /delivery/runs`
+    offset sayfalaması. Gerçek Postgres'te 4 yeni entegrasyon testi.
+
+    **Kapsam dışı (bilinçli, sahte buton yok):** kapıda ödeme/tahsilat mutabakatı (backend'de
+    payment_method yok; kullanıcı kararıyla ertelendi — istenirse ayrı full-stack iş), kurye
+    vardiyası, kurye-bazlı KPI karnesi, araç CRUD, runtime bölge/kapasite düzenleme (env-only;
+    yalnız salt-okunur gösterim).
+
 **Hafta 19c — OSM tazeleme dokümantasyon maddesi olmaktan çıkarıldı (29 Tem 2026)**
 
 87. ✅ **"Ayda bir şu betiği çalıştırın" bir kontrol değildir.** Hafta 19'da kalan iş olarak
