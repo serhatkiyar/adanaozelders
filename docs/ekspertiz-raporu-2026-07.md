@@ -847,9 +847,102 @@ altı dosya birden değişecekti. Tek kaynağa alındı (`lib/mapTiles.ts`, `cor
     **Teste bağlandı:** hash sürerken bir sayaç coroutine'i ilerleyebiliyor mu — ilerlemiyorsa
     sarmalayıcı iş parçacığına taşımayı bırakmış demektir (6 test).
 
+**Hafta 19 — teslimat rota altyapısı denetimi: sessiz bozulmanın üç katmanı (29 Tem 2026)**
+
+76. ✅ **OSRM koordinat tavanı — canlıda doğrulanmış, kimsenin göremeyeceği hata.**
+    `osrm-routed`'un `--max-table-size` varsayılanı **100 koordinattır** ve compose bu bayrağı
+    hiç vermiyordu; oysa VROOM yapılandırması `maxlocations: 200` diyordu. Canlı OSRM'e karşı
+    ölçüldü: 99 durak çözülüyor, **120 durak "TooBig" ile düşüyor** → VROOM `code=3` → backend
+    `auto` modda sessizce kuş uçuşu tahmine geriliyordu. Yani gerçek yol ağı, **tam da en çok
+    gerektiği gün** (kampanya/bayram, 100+ durak) devre dışı kalıyordu ve panelde tek belirti
+    "yaklaşık" rozetiydi. Zincir baştan sona hizalandı: OSRM `--max-table-size 500`, VROOM
+    `maxlocations: 400`, backend `VROOM_MAX_LOCATIONS=300` (istek **ağa çıkmadan** kesilir,
+    hata nedeni açık yazılır). 120/200/300 durakta gerçek çözüm doğrulandı.
+    **Teste bağlandı:** canlı VROOM'a karşı 99/120/200 durak regresyonu — testin eski ayarda
+    *düştüğü*, yeni ayarda *geçtiği* konteyner değiştirilerek kanıtlandı.
+
+77. ✅ **"Günü Optimize Et" hiçbir turu optimize etmiyordu.** Session `expire_on_commit=False`
+    ile kurulduğundan, commit sonrası kimlik haritasındaki nesne eski kalıyor ve `selectinload`
+    **zaten yüklenmiş** bir koleksiyonu yeniden doldurmuyor. Sonuç: `add_stops` durakları DB'ye
+    yazıyor, aynı session'da geri okuyan `optimize_run` turu **boş** görüyor, "en az 2 durak
+    gerekli" diye eleniyor ve dispatch **başarıyla** dönüyordu — ETA yok, polyline yok, sapma
+    yok, hata da yok. Birim testleri bunu yapı gereği göremezdi (gerçek DB + gerçek çözücü
+    gerektiriyor). `_load_run`/`_load_stop` `populate_existing=True` ile düzeltildi.
+    **Teste bağlandı:** gerçek Postgres'te `add_stops` sonrası aynı session'dan okunan
+    duraklar DB satırlarıyla karşılaştırılıyor; düzeltme geri alınınca 5 test birden düşüyor.
+
+78. ✅ **Bozulma artık sessiz değil.** Devre kesici (`ROUTING_FAILURE_COOLDOWN_SECONDS`): VROOM
+    kapalıyken "Günü Optimize Et" 1+N planlama çağırdığından her çağrı ayrı ayrı timeout
+    bekliyor ve o süre boyunca DB bağlantısı tutuyordu — artık ilk hatadan sonra pencere
+    boyunca doğrudan fallback (`vroom` modunda ise hızlı ve nedeniyle hata). `/health` gerçek
+    (2 duraklık) mini plan atarak **OSRM verisinin yüklü olduğunu da** doğruluyor ve bozulmayı
+    `degraded` olarak raporluyor; üretimde fallback WARNING değil **ERROR**. Üretim guard'ı
+    `ROUTING_PROVIDER=haversine`'i ve konteynerde anlamsız olan yerel `VROOM_URL`'i reddediyor.
+    VROOM hata gövdesi (`code=3 …`) artık korunuyor — eskiden her sorun "ulaşılamadı" görünüyordu.
+
+79. ✅ **Üretimde rota altyapısı yoktu.** `docker-compose.prod.yml` osrm/vroom içermiyordu:
+    üretim `auto` ile açılsa **kalıcı olarak** tahmine düşecekti. İki servis kalıcı olarak
+    eklendi (dışarı port açmadan, `depends_on` yumuşak — rota çökerse API ayakta kalır) ve
+    veri hazırlığı Linux'a taşındı (`scripts/setup-osrm-adana.sh`; öncesinde yalnız PowerShell
+    sürümü vardı, üretim sunucusunda çalıştırılamazdı). Geliştirmede osrm/vroom portları
+    `127.0.0.1`'e bağlandı — ikisi de kimlik doğrulaması olmayan hesap servisleridir.
+
+80. ✅ **Operasyonel gerçekçilik.** Çok araçlı planda araç başına görev tavanı: kısıtsız VROOM
+    toplam maliyeti azaltıyor ama yükü dengelemiyordu. Gerçek Adana koordinatlarıyla ölçüldü —
+    çarpık dağılımda 20 sipariş / 2 araç bölüşümü **[20, 0]** (ikinci kurye bütün gün boşta),
+    dengeli dağılımda 40 siparişte 11-29 ve mesai farkı ~59 dk. Tavanın maliyeti de ölçüldü:
+    toplam mesafede dengeli günlerde %1-3, en kötü günde ~%9 artış; karşılığında mesai farkı
+    **43-93 dk → 3-13 dk**. %20 tolerans denendi, mesafeyi kurtarmadan dengeyi bozduğu için
+    sıkı tavan seçildi. Ayrıca günlük durak tavanı (`DELIVERY_MAX_STOPS_PER_RUN`) eklendi:
+    biriken söz borcu tek günde bitirilemeyecek 150 duraklı tur kurup hepsine söz verilmiş
+    göstermesin. Son olarak teslim sonrası "kuryen yaklaşıyor" bildirimi gerçekten best-effort
+    yapıldı: commit edilmiş bir teslimden sonra buradan kaçan hata kuryeye 500 dönüyor, kurye
+    teslimi başarısız sanıp paketi yeniden deneyebiliyordu.
+
+**Hafta 19b — bağımsız son inceleme: ölçüm + kendi çözümlerimi bozma (29 Tem 2026)**
+
+81. ✅ **Kendi düzeltmem üretimi düşürebilirdi.** Hafta 19'da üretim compose'una eklenen
+    `backend → vroom` bağımlılığı `depends_on` zincirini geçişli yapıyordu: vroom osrm'in
+    *healthy* olmasını bekliyor, backend de vroom'un başlamasını beklediği için **eksik ya da
+    bozuk OSRM verisi TÜM API'yi ayağa kaldırmıyordu**. Asgari bir compose dosyasıyla deneyle
+    doğrulandı ("dependency failed to start … is unhealthy") ve bağımlılık kaldırıldı — rota
+    ikincil bir yetenektir. Ayrıca üretimde salt-okunur veri bağlaması (`:ro`) ve yeniden
+    başlatma sonrası veri kalıcılığı gerçek konteynerle sınandı; ölçülen tüketime göre
+    (`osrm` ~278 MB / ~%75 çekirdek, `vroom` ~46 MB) `mem_limit`/`cpus` konuldu.
+
+82. ✅ **Yanıltıcı "sağlıklı" raporu kapatıldı.** Yoklama önbelleği TTL'liydi: başarılı bir
+    yoklamadan sonra gerçek planlamalar düşmeye başlarsa `/health` TTL boyunca `connected`
+    demeye devam ediyordu — tam da kaçınmak istediğimiz sessiz bozulma. Artık gerçek trafiğin
+    sonucu önbelleği ezer (canlı hata > sentetik yoklama).
+
+83. ✅ **Public sağlık ucundaki bilgi sızıntısı.** Eklediğim `last_error`/`detail` alanları iç
+    servis adını (`http://vroom:3000`) ve istisna metnini **kimlik doğrulamasız** bir uçta
+    yayınlıyordu (Caddy `/health`'i alan adının kökünde açar). Üretimde bu alanlar artık
+    dönmüyor; ayrıntı loga ve Sentry'ye gidiyor. Aynı gerekçeyle zorunlu `vroom` modunda kaçan
+    `RoutingUnavailable` global handler'la **503 + Retry-After**'a çevrildi (opak 500 yerine).
+
+84. ✅ **Liveness ile readiness ayrıldı.** `/health` bilinçli olarak ağır bir teşhis ucudur
+    (DB + Redis + MinIO + rota). Onu bir "yeniden başlat" kararına bağlamak, bağımlılıklardan
+    biri yavaşladığında sağlıklı uygulamayı öldürür — ve yeniden başlayan uygulama aynı yavaş
+    bağımlılığı bulup yine ölür. `/health/live` eklendi: hiçbir I/O yok, istek başına <1 ms.
+
+85. ✅ **Kısıt doğru alana taşındı.** Denge `capacity`/`amount` ile veriliyordu; VROOM'da bu
+    aracın FİZİKSEL yükünü (hacim/ağırlık) modeller ve onu durak sayacı olarak kullanmak
+    ileride gerçek yük kısıtı gerektiğinde boyutu işgal ederdi. `max_tasks`'a geçildi (VROOM
+    ≥1.11'in tam bu iş için olan alanı) ve canlı çözücüyle eşdeğer sonuç doğrulandı.
+
+86. ✅ **Yarış koşulları gerçek DB'de sınandı.** İki eşzamanlı "Günü Optimize Et" (ayrı
+    session/transaction) → tek tur, çift durak yok, sipariş kaybı yok; ikinci çalıştırma zaten
+    planlanmış siparişleri tekrar planlamıyor (yalnız yeni gelenleri ekliyor). Kısmi unique
+    index'ler (`uq_delivery_run_planned`, `uq_delivery_stop_open`) invariant'ı tutuyor.
+    **Doğrulama yöntemi:** yeni korumaların her biri tek tek geri alınıp (max_tasks, devre
+    kesici, önbellek tutarlılığı, ayrıntı gizleme, 503 handler'ı, liveness izolasyonu, tavan
+    guard'ı, `populate_existing`) ilgili testin düştüğü görüldü — 10 senaryonun 10'u yakalandı.
+
 **Sürekli**
-- Yeni yazılan her para/auth kodu testsiz merge edilmesin. *(29 Tem sonu: 489 birim +
-  124 doğrulama + 366 frontend testi; `services` kapsaması %27 ve CI'da raporlanıyor.)*
+- Yeni yazılan her para/auth kodu testsiz merge edilmesin. *(29 Tem sonu: 515 birim +
+  124 doğrulama + 76 gerçek-DB entegrasyon + 366 frontend testi; `services` kapsaması %27 ve
+  CI'da raporlanıyor.)*
 - ✅ Gerçekçi hacimde seed **yapıldı ve araca dönüştürüldü** — şema değişince ölçüm
   tekrarlanabilir: `python scripts/scale/run.py --create && ... seed && ... probe`.
 
@@ -872,7 +965,10 @@ ya da gerekçesiyle bilinçli borç olarak kayda geçti. Kalanlar üç kategorid
 Sunucu + DNS (`depo.` alt alanı dahil) · `.env.prod` doldurma · Sentry DSN · UptimeRobot ·
 `backup-postgres.sh` cron'u · **ilk `restore-drill.sh` provası** · lansman öncesi bir kez daha
 `scripts/scale/probe` · analitik sunucusu (Umami) kurulumu · harita döşeme sağlayıcısı seçimi
-(Protomaps self-host / MapTiler — kod tarafı Hafta 17'de hazır, tek satır `.env`).
+(Protomaps self-host / MapTiler — kod tarafı Hafta 17'de hazır, tek satır `.env`) ·
+**OSRM veri hazırlığı sunucuda** (`scripts/setup-osrm-adana.sh`, ~10-20 dk + ~600 MB indirme;
+`devops/osrm/adana.osrm*` üretmeden osrm konteyneri açılmaz) ve **aylık OSM tazeleme cron'u** ·
+UptimeRobot uyarısına `/health` → `routing.degraded` alanı da bağlanmalı *(Hafta 19)*.
 
 ### C. Bilinçli borç (ölçüldü, gerekçesi yazıldı)
 - **Ölçek**: liderlik tablosu 132 ms (önbellek gerekecek) · hakediş defteri sayfalanmıyor ·
