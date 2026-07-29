@@ -55,6 +55,15 @@ class Settings(BaseSettings):
     S3_CONNECT_TIMEOUT_SECONDS: int = 3
     S3_READ_TIMEOUT_SECONDS: int = 10
     S3_MAX_ATTEMPTS: int = 2
+    # Hassas dosyalar (`private/` öneki) anonim okunamaz; imzalı URL ile sunulur.
+    # TTL istemci önbelleğinden UZUN olmalı: React Query'de duran bir yanıtın
+    # içindeki imza, kullanıcı sayfaya dönmeden önce ölürse görsel kırılır.
+    S3_PRESIGN_TTL_SECONDS: int = 3600
+    # Tarayıcının depolamaya eriştiği adres. Compose'da backend MinIO'ya
+    # `http://minio:9000` ile bağlanır ama tarayıcı o adı çözemez; imza host'u
+    # kapsadığından presigned URL de bu adresle üretilmelidir. Boşsa
+    # AWS_ENDPOINT_URL kullanılır (tek adresli kurulumlarda fark yoktur).
+    S3_PUBLIC_ENDPOINT_URL: str = ""
 
     JWT_SECRET_KEY: str
     # Alan-düzeyi şifreleme anahtarı (TCKN gibi hassas veri at-rest). Verilmezse
@@ -358,6 +367,15 @@ class Settings(BaseSettings):
             problems.append("ADMIN_PASSWORD varsayılan değerde")
         if "minioadmin" in (self.AWS_ACCESS_KEY_ID, self.AWS_SECRET_ACCESS_KEY):
             problems.append("AWS_ACCESS_KEY_ID/SECRET varsayılan 'minioadmin' değerinde")
+        # Dosya adresleri (ve imzaları) bu adresle üretilir. Dahili konteyner adı
+        # kalırsa hiçbir görsel/belge açılmaz ve hata sessizdir: API 200 döner,
+        # yalnız tarayıcı dosyayı çekemez.
+        storage_endpoint = self.S3_PUBLIC_ENDPOINT_URL or self.AWS_ENDPOINT_URL
+        if storage_endpoint and not storage_endpoint.startswith("https://"):
+            problems.append(
+                "S3_PUBLIC_ENDPOINT_URL https:// olmalı (tarayıcının depoya "
+                f"eriştiği adres; şu an: {storage_endpoint!r})"
+            )
         local_origins = [
             o for o in self.BACKEND_CORS_ORIGINS if "localhost" in o or "127.0.0.1" in o
         ]

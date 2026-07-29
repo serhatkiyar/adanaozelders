@@ -80,7 +80,10 @@ async def upload_education_document(
             f"Dosya çok büyük (en fazla {mb} MB)",
         )
     url = await storage.upload_file(
-        data, original_name=file.filename, content_type=file.content_type
+        data,
+        original_name=file.filename,
+        content_type=file.content_type,
+        prefix="education-docs",
     )
     return await education_service.set_document(
         db, tutor, education_id, url=url, document_name=file.filename or "diploma"

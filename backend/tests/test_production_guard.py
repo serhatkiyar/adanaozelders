@@ -28,6 +28,7 @@ _SAFE: dict[str, object] = {
     "SEED_DEMO_DATA": False,
     "AWS_ACCESS_KEY_ID": "gercek-anahtar",
     "AWS_SECRET_ACCESS_KEY": "gercek-gizli",
+    "S3_PUBLIC_ENDPOINT_URL": "https://depo.adanaozelders.com.tr",
     "BACKEND_CORS_ORIGINS": ["https://adanaozelders.com.tr"],
     "TRUSTED_PROXY_IPS": ["127.0.0.1"],
     "FRONTEND_BASE_URL": "https://adanaozelders.com.tr",
@@ -73,6 +74,10 @@ def test_gelistirme_ortaminda_guard_calismaz() -> None:
         ({"JWT_SECRET_KEY": "change-this-to-a-long-random-secret-x"}, "JWT_SECRET_KEY"),
         ({"ADMIN_PASSWORD": "change-this-admin-password"}, "ADMIN_PASSWORD"),
         ({"AWS_ACCESS_KEY_ID": "minioadmin"}, "minioadmin"),
+        # Dahili konteyner adı kalırsa hiçbir dosya tarayıcıda açılmaz ve hata
+        # sessizdir (API 200 döner) — guard bunu açılışta yakalamalı.
+        ({"S3_PUBLIC_ENDPOINT_URL": "http://minio:9000"}, "S3_PUBLIC_ENDPOINT_URL"),
+        ({"S3_PUBLIC_ENDPOINT_URL": ""}, "S3_PUBLIC_ENDPOINT_URL"),
         ({"BACKEND_CORS_ORIGINS": ["http://localhost:5173"]}, "CORS"),
         ({"TRUSTED_PROXY_IPS": []}, "TRUSTED_PROXY_IPS"),
         ({"FRONTEND_BASE_URL": "http://adanaozelders.com.tr"}, "https"),

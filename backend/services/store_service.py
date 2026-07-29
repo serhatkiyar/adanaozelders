@@ -1071,7 +1071,10 @@ async def set_digital_asset(
         )
     old = p.digital_asset_key
     p.digital_asset_key = await storage.upload_file(
-        file_bytes, original_name=original_name, content_type=content_type
+        file_bytes,
+        original_name=original_name,
+        content_type=content_type,
+        prefix="digital-assets",
     )
     p.digital_asset_name = original_name
     await db.commit()

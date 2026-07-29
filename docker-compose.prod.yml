@@ -99,6 +99,10 @@ services:
       POSTGRES_PORT: "5432"
       REDIS_URL: redis://redis:6379/0
       AWS_ENDPOINT_URL: http://minio:9000
+      # Tarayıcının depoya eriştiği adres (Caddy'deki `depo.<alan-adı>` bloğu).
+      # Dosya adresleri ve imzaları bununla üretilir; eksikse üretilen adresler
+      # konteyner-içi `minio:9000`'ı gösterir ve hiçbir dosya açılmaz.
+      S3_PUBLIC_ENDPOINT_URL: ${S3_PUBLIC_ENDPOINT_URL:?S3_PUBLIC_ENDPOINT_URL gerekli (ör. https://depo.example.com)}
     depends_on:
       postgres:
         condition: service_healthy

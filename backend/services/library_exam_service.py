@@ -870,7 +870,10 @@ async def set_result_document(
     reg = await _require_reg_in_session(db, session_id, registration_id)
     old = reg.result_document_url
     reg.result_document_url = await storage.upload_file(
-        file_bytes, original_name=original_name, content_type=content_type
+        file_bytes,
+        original_name=original_name,
+        content_type=content_type,
+        prefix="exam-results",
     )
     _stamp_entry(reg, user_id=user_id, role_id=role_id)
     await db.commit()
@@ -917,7 +920,10 @@ async def bulk_upload_documents(
         reg = await db.get(ExamRegistration, reg_id)
         old = reg.result_document_url
         reg.result_document_url = await storage.upload_file(
-            blob, original_name=name, content_type=content_type
+            blob,
+            original_name=name,
+            content_type=content_type,
+            prefix="exam-results",
         )
         _stamp_entry(reg, user_id=user_id, role_id=role_id)
         if old:
@@ -979,7 +985,10 @@ async def set_session_answer_key(
     s = await _get_session_or_404(db, session_id)
     old = s.answer_key_url
     s.answer_key_url = await storage.upload_file(
-        file_bytes, original_name=original_name, content_type=content_type
+        file_bytes,
+        original_name=original_name,
+        content_type=content_type,
+        prefix="answer-keys",
     )
     await db.commit()
     await db.refresh(s)

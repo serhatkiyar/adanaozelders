@@ -46,6 +46,9 @@ ignore = [
 # Ölçek provası araçları (seed + sorgu ölçümü) CLI'dır: ölçüm tablosunu ve
 # EXPLAIN planlarını konsola basar — çıktı zaten ürünün kendisidir.
 "scripts/scale/*.py" = ["T20"]
+# Depolama taşıma aracı da CLI: taşınacak/taşınan her nesneyi rapor eder
+# (dry-run çıktısı, uygulamadan önce gözden geçirilen şeyin ta kendisidir).
+"scripts/migrate_storage_visibility.py" = ["T20"]
 # Seed/bakım script'leri konsola yazar.
 "seed_*.py" = ["T20"]
 "add_*.py" = ["T20"]

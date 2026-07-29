@@ -144,7 +144,10 @@ async def set_answer_key(
     cat = await _get_or_404(db, catalog_id)
     old = cat.answer_key_url
     cat.answer_key_url = await storage.upload_file(
-        file_bytes, original_name=original_name, content_type=content_type
+        file_bytes,
+        original_name=original_name,
+        content_type=content_type,
+        prefix="answer-keys",
     )
     await db.commit()
     await db.refresh(cat)
