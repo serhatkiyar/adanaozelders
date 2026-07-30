@@ -5,7 +5,15 @@ sınanıyor: aynı sayı ne kaybolur (kayıp güncelleme) ne iki kez uygulanır
 (çift uygulama), ve iki aktör aynı ürüne dokunduğunda kilit onları serileştirir.
 
 İzolasyon deseni ve teardown için `test_stock_ledger_pg.py` başlığına bakın.
-Paketin ilk commit'i olduğu için implementasyon yok: koşum kırmızıdır.
+
+DİKKAT — idempotency anahtarları KOŞUMA ÖZGÜ olmak zorunda: defter append-only
+olduğu için sabit bir anahtar ("return_line:501:RETURN") ikinci koşumda önceki
+koşumun satırına çarpar ve servis — doğru biçimde — çatışma üretir. Ürün
+kimliği taşımayan anahtarlarda `_line_id()`/`_uniq()` kullanılır.
+
+`verify_ledger` çağıran testler ürünü `with_opening=True` ile üretir: defterin
+zincir kuralı "her takip edilen ürünün defteri 0'dan başlar" varsayımına
+dayanır, ham bir başlangıç bakiyesi o zinciri kırar.
 """
 from __future__ import annotations
 
@@ -31,11 +39,25 @@ def _uniq() -> str:
     return uuid.uuid4().hex[:10]
 
 
+def _line_id() -> int:
+    """Kosuma ozgu `ref_line_id` (gercek iade satiri kimligi gibi global tekil)."""
+    return uuid.uuid4().int % 10**9
+
+
 class ProductFactory:
     def __init__(self) -> None:
         self.product_ids: list[int] = []
 
-    async def product(self, *, stock: int = 0) -> int:
+    async def product(self, *, stock: int = 0, with_opening: bool = False) -> int:
+        """Test urunu.
+
+        `with_opening=True`: urun 0 stokla acilir ve baslangic bakiyesi DEFTER
+        uzerinden (`INITIAL`) yazilir -- yani uretimdeki `create_product` ile
+        ayni sekle sahip olur. `verify_ledger` cagiran testler bunu kullanmak
+        ZORUNDA: defterin zincir kurali "her takip edilen urunun defteri 0'dan
+        baslar" varsayimina dayanir; ham bir baslangic bakiyesi (migration
+        oncesi dunya) o zinciri kirar ve tutarsizlik RAPORLANMASI DOGRUDUR.
+        """
         async with AsyncSessionLocal() as s:
             p = Product(
                 slug=f"stok-yaris-{_uniq()}",
@@ -43,7 +65,7 @@ class ProductFactory:
                 kind="PHYSICAL",
                 seller_type="PLATFORM",
                 price=Decimal("100.00"),
-                stock=stock,
+                stock=0 if with_opening else stock,
                 status="ACTIVE",
             )
             s.add(p)
@@ -51,7 +73,19 @@ class ProductFactory:
             await s.refresh(p, ["sku"])
             await s.commit()
             self.product_ids.append(p.id)
-            return p.id
+            pid = p.id
+        if with_opening and stock:
+            async with AsyncSessionLocal() as s:
+                await stock_ledger.apply_movement(
+                    s, pid, qty_delta=stock,
+                    movement_type=StockMovementType.INITIAL,
+                    reason_code="PRODUCT_CREATE",
+                    ref_type="product", ref_id=pid,
+                    idempotency_key=f"product:{pid}:INITIAL",
+                    actor_type="ADMIN", actor_id=1,
+                )
+                await s.commit()
+        return pid
 
     async def cleanup(self) -> None:
         if not self.product_ids:
@@ -224,7 +258,8 @@ async def test_retry_ayni_cagriyi_tekrarlarsa_tek_satir(urun):
 
 async def test_iptal_ve_iade_yarisi_iki_gecerli_hareket_uretir(urun):
     """İki farklı anahtar → ikisi de meşru; zincir sırayı gösterir."""
-    pid = await urun.product(stock=0)
+    pid = await urun.product(stock=0, with_opening=True)
+    _satir = _line_id()   # kosuma ozgu iade satiri kimligi
     sonuclar = await asyncio.gather(
         _apply_in_own_tx(
             pid,
@@ -242,8 +277,8 @@ async def test_iptal_ve_iade_yarisi_iki_gecerli_hareket_uretir(urun):
             reason_code="RETURN_ACCEPTED",
             ref_type="order_return",
             ref_id=8402,
-            ref_line_id=911,
-            idempotency_key="return_line:911:RETURN",
+            ref_line_id=_satir,
+            idempotency_key=f"return_line:{_satir}:RETURN",
         ),
         return_exceptions=True,
     )
@@ -299,7 +334,7 @@ async def test_capraz_urunlu_iki_islem_deadlock_uretmez(urun, tur):
 
 async def test_iki_farkli_siparis_ayni_urunu_dogru_dusurur(urun):
     """Kilit serileştirir; iki farklı anahtar iki geçerli düşümdür."""
-    pid = await urun.product(stock=5)
+    pid = await urun.product(stock=5, with_opening=True)
     sonuclar = await asyncio.gather(
         _apply_in_own_tx(
             pid, qty_delta=-2, movement_type=StockMovementType.SALE,
@@ -475,21 +510,24 @@ async def _seed_order(product_id: int, quantity: int) -> tuple[int, int]:
         client_id = (
             await s.execute(
                 text(
-                    "INSERT INTO clients (first_name, last_name, email, "
-                    "hashed_password, role_id) VALUES ('Stok', 'Yaris', :e, 'x', 3) "
-                    "RETURNING id"
+                    "INSERT INTO clients (first_name, last_name, username, email, "
+                    "hashed_password, role_id) VALUES ('Stok', 'Yaris', :u, :e, "
+                    "'x', 3) RETURNING id"
                 ),
-                {"e": f"stok-yaris-{_uniq()}@test.local"},
+                {
+                    "u": f"stokyaris{_uniq()}",
+                    "e": f"stok-yaris-{_uniq()}@test.local",
+                },
             )
         ).scalar_one()
         order_id = (
             await s.execute(
                 text(
                     "INSERT INTO orders (client_id, subtotal, total, payment_status, "
-                    "status, has_physical) VALUES (:c, 100.00, 100.00, 'PENDING', "
-                    "'PENDING', true) RETURNING id"
+                    "status, has_physical, track_token) VALUES (:c, 100.00, 100.00, "
+                    "'PENDING', 'PENDING', true, :t) RETURNING id"
                 ),
-                {"c": client_id},
+                {"c": client_id, "t": _uniq() + _uniq()},
             )
         ).scalar_one()
         await s.execute(
@@ -585,3 +623,113 @@ async def test_finalize_paid_kurtarma_yolu_idempotent(urun, monkeypatch, provide
         assert await _count(pid) == 0
     finally:
         await _cleanup_order(order_id, client_id)
+
+
+# ───── 10. Batch ortasinda hata -> TAM rollback (Karar 2, rev. 3) ─────
+
+async def test_batch_ortasinda_hata_hicbir_hareket_birakmaz(urun):
+    """Batch'in yarisi uygulanip devam edilmez.
+
+    `apply_many` kendi transaction'ini yonetmedigi icin (Karar 3) yetersiz stok
+    hatasi tum batch'i cagiranin rollback'ine birakir. Olculen sey: ikinci spec
+    patladiginda BIRINCI spec'in hareketi de kalmiyor ve iki urunun de stogu
+    degismiyor.
+    """
+    a = await urun.product(stock=10)
+    b = await urun.product(stock=1)
+    assert a < b
+
+    specs = [
+        _sale_spec(8901, a, 2),   # gecerli
+        _sale_spec(8901, b, 5),   # b'de stok YETMEZ
+    ]
+    async with AsyncSessionLocal() as s:
+        with pytest.raises(InsufficientStock) as exc:
+            await stock_ledger.apply_many(s, specs)
+        assert exc.value.product_id == b
+        # Cagiran transaction sinirinin sahibi: tum batch geri alinir.
+        await s.rollback()
+
+    assert await _count(a) == 0, "birinci spec'in hareketi kalmis (kismi uygulama)"
+    assert await _count(b) == 0
+    assert await _stock(a) == 10
+    assert await _stock(b) == 1
+
+
+async def test_batch_ortasinda_hata_sonrasi_ayni_session_bayat_deger_tasimaz(urun):
+    """Hata sonrasi ORM nesneleri tazelenmis olmali.
+
+    Savepoint geri alinsa bile bellekteki `Product.stock` yeni degeri tasimaya
+    devam ederse, ayni session'da devam eden bir cagiran hayali bir bakiye
+    gorurdu. Defter bu yuzden hata yolunda nesneleri expire eder.
+    """
+    a = await urun.product(stock=10)
+    b = await urun.product(stock=1)
+    async with AsyncSessionLocal() as s:
+        with pytest.raises(InsufficientStock):
+            await stock_ledger.apply_many(
+                s, [_sale_spec(8911, a, 2), _sale_spec(8911, b, 5)]
+            )
+        # Hata sonrasi ayni session'dan okunan deger DB gercegini yansitmali.
+        taze = (await s.execute(select(Product.stock).where(Product.id == a))).scalar_one()
+        assert taze == 10, "bayat (dusulmus) deger tasiniyor"
+        await s.rollback()
+
+
+# ───── 11. Ayni urune batch icinde birden fazla hareket (Karar 5) ─────
+
+async def test_ayni_urune_batch_icinde_iki_hareket_zincirleniyor(urun):
+    """Urun BIR KEZ kilitlenir, sira deterministik, `qty_after` zincir halinde.
+
+    Kismi iadede ayni urunden iki iade satiri iki GECERLI harekettir; ikisi de
+    ayni batch'te gelir.
+    """
+    pid = await urun.product(stock=0, with_opening=True)
+    s1, s2 = _line_id(), _line_id()
+    specs = [
+        dict(
+            product_id=pid, qty_delta=1, movement_type=StockMovementType.RETURN,
+            reason_code="RETURN_ACCEPTED", ref_type="order_return", ref_id=77,
+            ref_line_id=s1, idempotency_key=f"return_line:{s1}:RETURN",
+        ),
+        dict(
+            product_id=pid, qty_delta=2, movement_type=StockMovementType.RETURN,
+            reason_code="RETURN_ACCEPTED", ref_type="order_return", ref_id=77,
+            ref_line_id=s2, idempotency_key=f"return_line:{s2}:RETURN",
+        ),
+    ]
+    sonuc = await _apply_many_tx(specs)
+
+    assert [m.qty_delta for m in sonuc] == [1, 2], "sonuclar GIRDI sirasinda donmeli"
+    assert [m.qty_after for m in sonuc] == [1, 3], "qty_after zincirlenmemis"
+    assert await _stock(pid) == 3
+    async with AsyncSessionLocal() as s:
+        assert (await stock_ledger.verify_ledger(s, pid)).consistent is True
+
+
+async def test_ayni_urune_batch_icinde_dusum_ve_geri_yukleme_zincirleniyor(urun):
+    """Karisik isaretli hareketler de zincirlenir; ara bakiye negatife dusmez."""
+    pid = await urun.product(stock=2)
+    specs = [
+        _sale_spec(8921, pid, 2),                      # 2 -> 0
+        dict(
+            product_id=pid, qty_delta=5,
+            movement_type=StockMovementType.ADMIN_ADJUSTMENT,
+            reason_code="TEDARIK", actor_type="ADMIN", actor_id=1,
+            idempotency_key=f"test:{_uniq()}:tedarik",
+        ),                                             # 0 -> 5
+    ]
+    sonuc = await _apply_many_tx(specs)
+    assert [m.qty_after for m in sonuc] == [0, 5]
+    assert await _stock(pid) == 5
+
+
+async def test_batch_icinde_ayni_anahtar_iki_kez_reddedilir(urun):
+    """Ayni anahtarla iki satir yazma niyeti KOD hatasidir; kilit alinmadan once
+    reddedilir (UNIQUE ihlaline donusmesi beklenmez)."""
+    pid = await urun.product(stock=10)
+    spec = _sale_spec(8931, pid, 1)
+    with pytest.raises(ValueError):
+        await _apply_many_tx([spec, dict(spec)])
+    assert await _count(pid) == 0
+    assert await _stock(pid) == 10

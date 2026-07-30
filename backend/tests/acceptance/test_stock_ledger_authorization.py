@@ -14,7 +14,8 @@ Ucun bu dependency'yi FİİLEN kullandığı ayrıca doğrulanıyor
 (`test_stock_ledger_contract.py::test_defter_uclari_mevcut_urun_izinlerini_kullaniyor`)
 — iki test birlikte zinciri kapatır.
 
-Paketin ilk commit'i olduğu için uçlar yok: koşum kırmızıdır.
+Uçlar paketin 6. commit'inde geliyor; rol reddi testleri şimdiden yeşil
+(mevcut dependency'yi koruyan regresyon kalkanı).
 """
 from __future__ import annotations
 

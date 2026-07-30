@@ -14,7 +14,7 @@ sekansı her koşumda gerçekten çalışıyor.
 Bakım (`postgres`) veritabanına bağlanılamıyorsa skip olur — bu bir altyapı
 yokluğudur, tasarım kaynaklı skip değildir.
 
-Paketin ilk commit'i olduğu için implementasyon yok: koşum kırmızıdır.
+Commit 2'de yeşile döndü (2 test, SKIP yok).
 """
 from __future__ import annotations
 

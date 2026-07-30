@@ -1,8 +1,9 @@
 """Stok hareket defteri — saf mantık testleri (DB gerektirmez).
 
-Bu dosya `services/stock_ledger.py`'nin **sözleşmesini** yazar. Paketin ilk
-commit'i olduğu için implementasyon henüz yoktur: koşum `ImportError` ile
-kırmızıdır ve olması gereken de budur (test matrisi koddan önce gelir).
+Bu dosya `services/stock_ledger.py`'nin **sözleşmesini** yazar. Test matrisi
+koddan önce (commit 1'de) yazıldı ve `ImportError` ile kırmızıydı; commit 3'te
+servis geldiğinde yeşile döndü. Beklenen değerler bu yüzden implementasyona
+bakılarak değil, sözleşmeden türetilmiştir.
 
 Buradaki fonksiyonların saf tutulmasının sebebi, hepsinin **karar** üretmesi:
 SKU'nun ne olacağı, stoğun yetip yetmediği, hangi gerekçenin geçerli olduğu,

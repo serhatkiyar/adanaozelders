@@ -11,7 +11,8 @@ testler satır silmez. Onun yerine her test **kendi ürününü** üretir ve tea
 bazlıdır, hiçbiri global satır sayısına bakmaz — bu, `TRUNCATE`'in dev DB'nin
 gerçek defterini silmesini de önler.
 
-Paketin ilk commit'i olduğu için implementasyon yok: koşum kırmızıdır.
+Bu dosya commit 1'de kırmızı yazıldı; commit 3'te defter servisi gelince
+yeşile döndü.
 """
 from __future__ import annotations
 
@@ -35,6 +36,16 @@ from services.stock_ledger import (
 
 def _uniq() -> str:
     return uuid.uuid4().hex[:10]
+
+
+def _line_ids(n: int) -> list[int]:
+    """Kosuma ozgu, artan `ref_line_id` degerleri.
+
+    Gercek `order_return_items.id` gibi global tekil davranmalari gerekir;
+    sabit sayilar ikinci kosumda onceki kosumun defter satirina carpar.
+    """
+    taban = uuid.uuid4().int % 10**8 * 10
+    return [taban + i for i in range(n)]
 
 
 class ProductFactory:
@@ -292,20 +303,26 @@ async def test_ayni_anahtar_farkli_tip_catisma_uretir(urun):
 @pytest.mark.parametrize(
     "farkli",
     [
-        {"reason_code": "ORDER_REFUNDED"},
+        {"reason_code": "ORDER_REFUNDED"},  # SALE_CANCEL icin gecerli ikinci kod
         {"actor_type": "ADMIN", "actor_id": 1},
         {"ref_id": 9999},
         {"ref_line_id": 42},
     ],
 )
 async def test_payload_karsilastirmasi_tum_alanlari_kapsar(urun, farkli):
-    """rev. 3 / Karar 2: reason_code ve actor da karşılaştırmaya girer."""
+    """rev. 3 / Karar 2: reason_code ve actor da karşılaştırmaya girer.
+
+    Taban tip `SALE_CANCEL`: gerekçe farkını ölçebilmek için iki geçerli koda
+    (`ORDER_CANCELLED`/`ORDER_REFUNDED`) sahip bir tür gerekiyor. `SALE`'de
+    gerekçe değiştirmek `validate_reason` tarafından — doğru biçimde — daha
+    idempotency'ye gelmeden reddedilirdi.
+    """
     pid = await urun.product(stock=10)
-    key = f"order:9100:product:{pid}:SALE"
+    key = f"order:9100:product:{pid}:SALE_CANCEL"
     temel = dict(
-        qty_delta=-1,
-        movement_type=StockMovementType.SALE,
-        reason_code="ORDER_PAID",
+        qty_delta=1,
+        movement_type=StockMovementType.SALE_CANCEL,
+        reason_code="ORDER_CANCELLED",
         ref_type="order",
         ref_id=9100,
         idempotency_key=key,
@@ -314,7 +331,7 @@ async def test_payload_karsilastirmasi_tum_alanlari_kapsar(urun, farkli):
     with pytest.raises(IdempotencyConflict):
         await _apply(pid, **{**temel, **farkli})
     assert len(await _movements(pid)) == 1
-    assert await _stock(pid) == 9
+    assert await _stock(pid) == 11
 
 
 async def test_ayni_referans_farkli_urun_iki_gecerli_hareket(urun):
@@ -338,7 +355,11 @@ async def test_ayni_referans_farkli_urun_iki_gecerli_hareket(urun):
 async def test_ayni_urunden_iki_iade_satiri_iki_hareket(urun):
     """Kısmi iadede idempotency kaynağı iade SATIRIdır."""
     pid = await urun.product(stock=0)
-    for satir_id, adet in ((501, 1), (502, 2)):
+    # `return_line:*` anahtari urun kimligi TASIMAZ (iade satiri kimligi
+    # zaten global tekildir). Testte sabit 501/502 kullanmak, ikinci kosumda
+    # onceki kosumun satirina carpar -> kosuma ozgu satir kimligi uretiliyor.
+    a_id, b_id = _line_ids(2)
+    for satir_id, adet in ((a_id, 1), (b_id, 2)):
         await _apply(
             pid, qty_delta=adet, movement_type=StockMovementType.RETURN,
             reason_code="RETURN_ACCEPTED", ref_type="order_return", ref_id=77,
@@ -346,7 +367,7 @@ async def test_ayni_urunden_iki_iade_satiri_iki_hareket(urun):
         )
     rows = await _movements(pid)
     assert len(rows) == 2
-    assert {r.ref_line_id for r in rows} == {501, 502}
+    assert {r.ref_line_id for r in rows} == {a_id, b_id}
     assert await _stock(pid) == 3
 
 
@@ -481,9 +502,10 @@ async def test_check_kisitlari_reddediyor(urun, kolonlar, ihlal):
 
 async def test_idempotency_anahtari_unique(urun):
     pid = await urun.product(stock=1)
-    await _raw_insert(pid, idempotency_key="tekil-anahtar")
+    anahtar = f"tekil-{_uniq()}"   # kosuma ozgu: defter append-only
+    await _raw_insert(pid, idempotency_key=anahtar)
     with pytest.raises((IntegrityError, DBAPIError)):
-        await _raw_insert(pid, idempotency_key="tekil-anahtar")
+        await _raw_insert(pid, idempotency_key=anahtar)
 
 
 # ───────────────── Değiştirilemezlik trigger'ı (Karar 3) ─────────────────

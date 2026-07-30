@@ -19,7 +19,9 @@ bir yazımı hiçbir davranış testi "doğrudan mutasyon" olarak teşhis edemez
 Bu yüzden dinamik yol ayrı bir kuralla kapatılır: `stock`, düzenlenebilir alan
 listesinde bulunmaz (bkz. `test_stok_editable_listesinde_degil`).
 
-Paketin ilk commit'i olduğu için implementasyon yok: koşum kırmızıdır.
+Kalan kırmızılar paketin sonraki commit'lerini bekler (çağrı yerlerinin
+taşınması ve admin uçları); defter modülünün kendi sözleşmesi commit 3'te
+yeşile döndü.
 """
 from __future__ import annotations
 
@@ -92,6 +94,77 @@ def _source_files() -> list[str]:
         for p in (BACKEND / sub).glob("*.py"):
             rels.append(str(p.relative_to(BACKEND)).replace("\\", "/"))
     return sorted(set(rels))
+
+
+def _ledger_funcs() -> dict[str, ast.AST]:
+    return {
+        n.name: n
+        for n in ast.walk(_tree(LEDGER))
+        if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))
+    }
+
+
+def _reachable(name: str) -> list[ast.AST]:
+    """`name` ve ondan (defter modulu icinde) TRANSITIF cagrilan fonksiyonlar.
+
+    Neden: `apply_movement` ile `apply_many` ortak ozel yardimcilara delege
+    ediyor (tek kod yolu = iki yolun ayrisamamasi garantisi). Yapisal iddialari
+    yalnizca genel fonksiyonun kendi govdesinde aramak, dogru mimariyi
+    cezalandirip kopyala-yapistir'i tesvik ederdi; bu yuzden zincir izlenir.
+    """
+    funcs = _ledger_funcs()
+    assert name in funcs, f"{LEDGER} icinde {name} yok"
+    seen: set[str] = set()
+    stack = [name]
+    out: list[ast.AST] = []
+    while stack:
+        cur = stack.pop()
+        if cur in seen:
+            continue
+        seen.add(cur)
+        node = funcs[cur]
+        out.append(node)
+        for c in _calls(node):
+            if c in funcs and c not in seen:
+                stack.append(c)
+    return out
+
+
+def _reachable_dump(name: str) -> str:
+    return "\n".join(ast.dump(n) for n in _reachable(name))
+
+
+def _reachable_calls(name: str) -> set[str]:
+    out: set[str] = set()
+    for n in _reachable(name):
+        out |= _calls(n)
+    return out
+
+
+def _raises(nodes: list[ast.AST]) -> set[str]:
+    out: set[str] = set()
+    for node in nodes:
+        for n in ast.walk(node):
+            if (
+                isinstance(n, ast.Raise)
+                and isinstance(n.exc, ast.Call)
+                and isinstance(n.exc.func, ast.Name)
+            ):
+                out.add(n.exc.func.id)
+    return out
+
+
+def _caught(nodes: list[ast.AST]) -> set[str]:
+    out: set[str] = set()
+    for node in nodes:
+        for n in ast.walk(node):
+            if isinstance(n, ast.ExceptHandler) and n.type is not None:
+                for t in ast.walk(n.type):
+                    if isinstance(t, ast.Name):
+                        out.add(t.id)
+                    elif isinstance(t, ast.Attribute):
+                        out.add(t.attr)
+    return out
 
 
 # ───────────────── 1. Tek yazma noktası ─────────────────
@@ -172,7 +245,7 @@ def test_cok_urunlu_islemler_toplu_sarmalayiciyi_kullaniyor(rel, fn):
 
 def test_toplu_sarmalayici_kilit_sirasini_sabitliyor():
     """Artan `product_id` sırası tek yerde garanti edilir."""
-    assert "sorted" in _calls(_func(LEDGER, APPLY_MANY)), (
+    assert "sorted" in _reachable_calls(APPLY_MANY), (
         f"{APPLY_MANY} ürünleri artan product_id sırasıyla işlemek zorunda; "
         "aksi hâlde çapraz ürünlü iki eşzamanlı sipariş deadlock üretir"
     )
@@ -259,21 +332,15 @@ def test_on_conflict_do_nothing_kullanilmiyor():
 
 def test_idempotency_catismasi_yukseltiliyor():
     """`apply_movement` gövdesinde payload karşılaştırması ve conflict yolu var."""
-    fn = _func(LEDGER, APPLY)
-    yukseltilenler = {
-        n.exc.func.id
-        for n in ast.walk(fn)
-        if isinstance(n, ast.Raise)
-        and isinstance(n.exc, ast.Call)
-        and isinstance(n.exc.func, ast.Name)
-    }
+    yukseltilenler = _raises(_reachable(APPLY))
     assert "IdempotencyConflict" in yukseltilenler
     assert "InsufficientStock" in yukseltilenler
+    assert "StockNotTracked" in yukseltilenler
 
 
 @pytest.mark.parametrize("fn", [APPLY, APPLY_MANY])
 def test_defter_satir_kilidi_aliyor(fn):
-    src = ast.dump(_func(LEDGER, fn))
+    src = _reachable_dump(fn)
     assert "with_for_update" in src, (
         f"{fn} ürün satırını FOR UPDATE ile kilitlemek zorunda"
     )
@@ -288,36 +355,109 @@ def test_defter_bayat_kimlik_haritasina_karsi_tazeliyor(fn):
     `_load_run`/`_load_stop` tuzağı). Bayat `stock` üzerinden hesaplanan
     `qty_after` sessizce yanlış olurdu.
     """
-    src = ast.dump(_func(LEDGER, fn))
+    src = _reachable_dump(fn)
     assert "populate_existing" in src, (
         f"{fn} kilit sorgusunda populate_existing=True kullanmak zorunda"
     )
 
 
-@pytest.mark.parametrize("fn", [APPLY, APPLY_MANY])
-def test_defter_kendi_commitini_atmiyor(fn):
-    """Defter ve stok AYNI transaction'da yazılır; commit çağırana aittir."""
-    assert "commit" not in _calls(_func(LEDGER, fn))
+def test_defter_commit_veya_genel_rollback_yapmiyor():
+    """Transaction sinirini CAGIRAN yonetir (Karar 3, rev. 3).
+
+    Modul GENELINDE denetlenir - tek bir ozel yardimcinin commit atmasi da
+    yeterdi. `begin_nested` (savepoint) serbesttir ve context manager'la geri
+    alindigi icin ayrica `rollback()` cagrilmasi gerekmez.
+    """
+    ihlaller: list[str] = []
+    for ad, node in _ledger_funcs().items():
+        cagrilar = _calls(node)
+        for yasak in ("commit", "rollback"):
+            if yasak in cagrilar:
+                ihlaller.append(f"{ad}() -> {yasak}()")
+    assert ihlaller == [], (
+        "Defter transaction sinirini yonetmemeli; caginin transaction'inda "
+        f"calisir: {', '.join(ihlaller)}"
+    )
+
+
+def test_unique_yarisi_savepoint_ile_yakalaniyor():
+    """rev. 3 / Karar 2: INSERT'te UNIQUE yarisi 500'e birakilmaz.
+
+    Savepoint geri alinir ve batch BUTUN olarak yeniden okunur (replay / kismi
+    durum / catisma karari). Genel `rollback()` kullanmak caginin is
+    transaction'ini da oldururdu.
+    """
+    cagrilar = _reachable_calls(APPLY_MANY)
+    assert "begin_nested" in cagrilar, "savepoint kullanilmiyor"
+    assert "IntegrityError" in _caught(_reachable(APPLY_MANY)), (
+        "UNIQUE ihlali yakalanmiyor -> istek 500'e doner"
+    )
+
+
+def test_batch_ici_yinelenen_anahtar_bastan_reddediliyor():
+    """Ayni anahtarla iki satir yazma niyeti bir KOD hatasidir; UNIQUE ihlaline
+    donusmeden, kilit alinmadan once reddedilmeli."""
+    src = _reachable_dump(APPLY_MANY)
+    assert "set" in src and "len" in src
+    assert "ValueError" in _raises(_reachable(APPLY_MANY))
+
+
+def test_defter_http_bagimliligi_tasimiyor():
+    """Karar 4: domain istisnalari HTTP bilmez.
+
+    Defter odeme callback'i, arka plan isi ve migration gibi HTTP DISI
+    baglamlardan da cagriliyor; orada `HTTPException` anlamsiz olurdu. Donusum
+    `core/exceptions.py` handler katmanindadir.
+    """
+    # String taramasi degil AST: docstring bu katmanlardan BAHSEDEBILIR
+    # ("FastAPI import edilmez" gibi), ama import ETMEMELIDIR.
+    modules: set[str] = set()
+    for n in ast.walk(_tree(LEDGER)):
+        if isinstance(n, ast.Import):
+            modules |= {a.name.split(".")[0] for a in n.names}
+        elif isinstance(n, ast.ImportFrom) and n.module:
+            modules.add(n.module.split(".")[0])
+    assert not (modules & {"fastapi", "starlette"}), (
+        f"{LEDGER} HTTP katmanini import ediyor: {sorted(modules)}"
+    )
+
+
+def test_dort_istisna_da_handler_katmaninda_donusturuluyor():
+    src = _read("core/exceptions.py")
+    for ad in (
+        "InsufficientStock",
+        "IdempotencyConflict",
+        "PartialIdempotencyState",
+        "StockNotTracked",
+    ):
+        assert f"@app.exception_handler({ad})" in src, (
+            f"{ad} icin handler yok -> opak 500 doner"
+        )
+
+
+def test_dogrulama_sicak_yoldan_cagrilmiyor():
+    """Karar 6: `verify_ledger` bir operasyon/admin dogrulamasidir.
+
+    Her mutasyonda defteri bastan okumak, sicak yolu urun gecmisi uzunluguyla
+    dogru orantili yavaslatirdi; dogrulugu zaten transaction icindeki
+    `qty_after` zincirlemesi garanti ediyor.
+    """
+    for fn in (APPLY, APPLY_MANY):
+        assert "verify_ledger" not in _reachable_calls(fn), (
+            f"{fn} verify_ledger cagiriyor -> her mutasyonda defter taranir"
+        )
 
 
 def test_toplu_yazim_kismi_durumu_reddediyor():
     """rev. 3 / Karar 2: batch'in bazıları varsa eksikler UYGULANMAZ."""
-    fn = _func(LEDGER, APPLY_MANY)
-    yukseltilenler = {
-        n.exc.func.id
-        for n in ast.walk(fn)
-        if isinstance(n, ast.Raise)
-        and isinstance(n.exc, ast.Call)
-        and isinstance(n.exc.func, ast.Name)
-    }
-    assert "PartialIdempotencyState" in yukseltilenler
+    assert "PartialIdempotencyState" in _raises(_reachable(APPLY_MANY))
 
 
 @pytest.mark.parametrize("fn", [APPLY, APPLY_MANY])
 def test_payload_karsilastirmasi_tek_kaynaktan(fn):
     """İki yol aynı karşılaştırmayı kullanmalı; ayrışırlarsa biri çelişkiyi
     görürken diğeri görmez."""
-    assert "payload_differences" in _calls(_func(LEDGER, fn))
+    assert "payload_differences" in _reachable_calls(fn)
 
 
 # ───────────── 4. Dinamik yazım yolunun kapatılması ─────────────

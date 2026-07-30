@@ -173,7 +173,7 @@ barcode: Mapped[str | None] = mapped_column(String(32), nullable=True)
 Neden birbirinin yerine geçmez: (i) kitap olmayan fiziksel ürünün (kalem, defter) EAN'ı var, ISBN'i yok; (ii) set/paket ürünün kendi barkodu içindeki kitapların ISBN'lerinden farklıdır; (iii) ISBN-10 basımlarda kapaktaki barkod ISBN'in EAN-13 dönüşümüdür, ISBN alanındaki dizginin kendisi değildir; (iv) bazı baskılar promosyon barkodu taşır. **ISBN'i barkoda otomatik kopyalamak, "okuttum, eşleşti" güvenini yanlış eşleşmeye dayandırır** → `barcode` yalnız insan girdisiyle dolar.
 
 **Tekillik:** `uq_products_barcode_active` kısmi UNIQUE (`WHERE barcode IS NOT NULL AND deleted_at IS NULL`).
-**Çözümleme sırası** (`resolve_product_ref`, saf + testli; **arayüzü bu pakette yazılmaz**): `barcode` → `sku` → `isbn`. Elimizdeki kalemin üzerindeki dizgi, katalog kimliğinden önce gelir.
+**Çözümleme sırası** (`barcode` → `sku` → `isbn`; elimizdeki kalemin üzerindeki dizgi katalog kimliğinden önce gelir) bir **karar** olarak burada kayıtlı, ama **kod olarak bu pakete alınmadı** (rev. 3 kapsam daraltması): tarama arayüzü olmadan çağıranı olmayan bir lookup yardımcısı, davranışla hiç sınanmayan ölü yüzey demek olurdu. Barkod tarama paketiyle birlikte, kendi testleriyle gelecek.
 
 ### 3d. `stock_movements` — append-only defter
 
@@ -300,7 +300,20 @@ CREATE TRIGGER trg_stock_movements_no_delete BEFORE DELETE ON stock_movements
 - `InsufficientStock` yükseltilir → transaction geri alınır → çağıran zincir açık bir hatayla sonlanır.
 - `logger.error` + operasyon alarmı üretilebilir; **deftere uygulanmış hareket gibi hiçbir şey yazılmaz.**
 - `max(0, …)`, kırpılmış delta ve `OVERSELL_CLAMP` **yok**.
-- HTTP eşlemesi: uygulama seviyesinde bir exception handler `InsufficientStock` → **409** (mevcut `core/exceptions.py` `IntegrityError` → 409 deseninin yanına). Opak 500 dönmez.
+- HTTP eşlemesi handler katmanında (§3g1). Opak 500 dönmez.
+
+### 3g1. Domain istisnaları ↔ HTTP (Karar 4, rev. 3 — uygulandı)
+
+`services/stock_ledger.py` **FastAPI/starlette import etmez** (AST kabul testiyle korunur). Gerekçe: defter ödeme callback'i, escrow reconciler, CSV içe aktarma ve migration gibi **HTTP dışı** bağlamlardan da çağrılıyor; orada `HTTPException` anlamsız olurdu. Dönüşüm `core/exceptions.py::register_exception_handlers` içindedir — `RoutingUnavailable` deseninin aynısı.
+
+| İstisna | HTTP | Kod | Gövdede ayrıntı |
+|---|---|---|---|
+| `InsufficientStock` | **409** | `INSUFFICIENT_STOCK` | Mevcut ve istenen adet (müşteriye/operatöre anlamlı) |
+| `IdempotencyConflict` | **409** | `STOCK_IDEMPOTENCY_CONFLICT` | **Yok** — çelişen alan adları/değerleri iç referans içerir, yalnız loga |
+| `PartialIdempotencyState` | **409** | `STOCK_PARTIAL_STATE` | **Yok** — anahtarlar yalnız loga; kullanıcıya "yönetici kontrolü gerekiyor" |
+| `StockNotTracked` | **400** | `STOCK_NOT_TRACKED` | Dijital ürün açıklaması (istek geçersiz, çatışma değil) |
+
+`StockNotTracked`'ın 400 olmasının sebebi: `stock IS NULL` bir çatışma hâli değil, **isteğin kendisinin geçersiz** olmasıdır.
 
 **Sipariş akışına yönlendirme:** stok yetersizliğinin **normal** yolu bugün de var ve korunuyor — `_finalize_paid`'deki ön kontrol (`:614-621`) kilit altında eksiği görür ve PAID **claim edilmeden** `_out_of_stock_refund`'a (tam iade + CANCELLED) gider. Bu kontrolün aritmetiği defterle **aynı saf yardımcıya** (`shortage_for`) bağlanacak; ikisinin ayrışması mümkün olmayacak.
 
