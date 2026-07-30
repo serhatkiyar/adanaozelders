@@ -312,6 +312,36 @@ def test_sepet_satirlari_kollara_dogru_eslenir():
     assert branches_for_seller_types([]) == set()
 
 
+def test_bilinmeyen_satici_tipi_PAZARYERI_sayilir():
+    """Fail-safe: yeni bir satıcı tipi eklenip eşleme güncellenmezse kalem
+    sessizce kapısız kalmamalı — en kısıtlı kola (pazaryeri) atanır.
+
+    Bu testin varlık sebebi bir guard mutasyon provasıdır: kural kodda vardı ama
+    hiçbir test onu korumuyordu; eşlemeyi "bilinmeyeni atla" biçimine çeviren bir
+    mutasyon tüm testleri yeşil geçmişti.
+    """
+    from services.payment_gates import PaymentBranch, branches_for_seller_types
+
+    assert branches_for_seller_types(["YENI_SATICI_TIPI"]) == {
+        PaymentBranch.TUTOR_MARKETPLACE
+    }
+    # Küçük/büyük harf ve boşluk normalize edilir (bilinen tip yanlış eşlenmesin).
+    assert branches_for_seller_types([" platform "]) == {PaymentBranch.STORE}
+
+
+async def test_bilinmeyen_satici_tipi_iceren_sepet_pazaryeri_kapaliyken_REDDEDILIR(
+    acik_kollar, pazaryeri_yetenegi_var
+):
+    from core import flags
+    from services import payment_gates
+
+    acik_kollar[flags.FLAG_STORE_PAYMENTS_LIVE] = True
+    acik_kollar[flags.FLAG_TUTOR_MARKETPLACE_PAYMENTS_LIVE] = False
+
+    with pytest.raises(HTTPException):
+        await payment_gates.assert_cart_branches_open(None, ["BILINMEYEN"])
+
+
 async def test_karisik_sepet_HER_IKI_bayragi_ister(acik_kollar, pazaryeri_yetenegi_var):
     """Senaryo 2: platform kitabı + eğitmen dijital ürünü aynı sepette;
     pazaryeri kapalıysa sepet ödenemez."""
@@ -375,3 +405,18 @@ async def test_durum_raporu_kol_basina_ayri_verilir(
     assert by_branch["tutor_marketplace"]["flag_enabled"] is True
     assert by_branch["tutor_marketplace"]["blockers"] == ["provider_marketplace_support"]
     assert by_branch["library_marketplace"]["open"] is False
+
+
+async def test_public_rapor_teshis_alanlarini_GIZLER(acik_kollar, pazaryeri_yetenegi_yok):
+    """`/health` ve müşteri uygunluk ucu anonimdir: hangi altyapının eksik
+    olduğu (engelleyici adları, bayrak durumu) iç bilgidir, sızmamalıdır.
+    Müşteriye yazılmış `message` kalır.
+    """
+    from services import payment_gates
+
+    public = await payment_gates.branches_status(None, include_diagnostics=False)
+    for row in public:
+        assert set(row) == {"branch", "label", "open", "message"}
+
+    admin = await payment_gates.branches_status(None, include_diagnostics=True)
+    assert "blockers" in admin[0] and "flag_enabled" in admin[0]

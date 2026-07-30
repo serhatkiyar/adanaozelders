@@ -74,7 +74,14 @@ async def _assert_party(db: AsyncSession, booking: Booking, user: CurrentUser) -
     raise HTTPException(status.HTTP_403_FORBIDDEN, "Not your booking")
 
 
-@router.get("/availability", response_model=PaymentAvailabilityOut)
+@router.get(
+    "/availability",
+    response_model=PaymentAvailabilityOut,
+    # Teşhis alanları public gövdede `null` olarak bile görünmesin: şema
+    # admin yüzeyiyle paylaşıldığı için opsiyoneller None kalır ve
+    # serileştirilirse sözleşme "bu alanlar var ama boş" der.
+    response_model_exclude_none=True,
+)
 async def payment_availability(db: AsyncSession = Depends(get_db)):
     """Hangi ödeme kolları açık — **public**.
 

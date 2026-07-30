@@ -78,9 +78,12 @@ BRANCH_CLOSED_MESSAGE: dict[PaymentBranch, str] = {
         "Mağaza ödemeleri şu anda geçici olarak kapalı. Kısa süre içinde tekrar "
         "açılacak."
     ),
+    # Bu kol iki şeyi kapsar: ders ödemesi ve eğitmenin dijital ürünü. Metin
+    # ikisini de karşılamalı — mağazadaki bir eğitmen ürünü için "rezervasyonunu
+    # tamamla" demek yanlış bağlam üretiyordu (uçtan uca denemede görüldü).
     PaymentBranch.TUTOR_MARKETPLACE: (
-        "Ders ödemeleri henüz açılmadı. Ödeme altyapımız hazır olduğunda "
-        "rezervasyonunu tamamlayabileceksin."
+        "Eğitmenlere yapılan ödemeler henüz açılmadı. Ödeme altyapımız hazır "
+        "olduğunda ders rezervasyonu ve eğitmen ürünleri satın alınabilecek."
     ),
     PaymentBranch.LIBRARY_MARKETPLACE: (
         "Kütüphane bileti ve çalışma alanı ödemeleri henüz açılmadı. Ödeme "

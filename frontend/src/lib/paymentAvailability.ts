@@ -34,8 +34,10 @@ const BRANCH_ORDER: PaymentBranch[] = ["store", "tutor_marketplace", "library_ma
 
 const CLOSED_MESSAGE: Record<PaymentBranch, string> = {
   store: "Mağaza ödemeleri şu anda geçici olarak kapalı. Kısa süre içinde tekrar açılacak.",
+  // Bu kol ders ödemesini VE eğitmenin dijital ürününü kapsar; metin ikisini de
+  // karşılamalı (backend `BRANCH_CLOSED_MESSAGE` ile aynı).
   tutor_marketplace:
-    "Ders ödemeleri henüz açılmadı. Ödeme altyapımız hazır olduğunda rezervasyonunu tamamlayabileceksin.",
+    "Eğitmenlere yapılan ödemeler henüz açılmadı. Ödeme altyapımız hazır olduğunda ders rezervasyonu ve eğitmen ürünleri satın alınabilecek.",
   library_marketplace:
     "Kütüphane bileti ve çalışma alanı ödemeleri henüz açılmadı. Ödeme altyapımız hazır olduğunda satışa açılacak.",
 };
