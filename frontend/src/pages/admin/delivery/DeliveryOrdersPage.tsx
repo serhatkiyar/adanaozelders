@@ -3,6 +3,7 @@
 //   hazirlik  → prep-queue: paket toplanacak ("Hazırla" + toplu)
 //   hazir     → eligible:   tura eklenebilir ("Tura ekle" + "Geri Al")
 //   dis-kargo → outsourced: bölge dışı ("Kargola" — orders.manage ile yerinde)
+import { ItemLines } from "@/components/admin/delivery/ItemLines";
 import { useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 
@@ -58,6 +59,9 @@ function OrderRow({
           <span className="truncate">{order.address ?? "Adres yok"}</span>
           <PromiseChip date={order.promised_delivery_date} />
         </p>
+        {/* Toplama listesi: operatör NE toplayacağını görmeden paket hazırlamaz.
+            "N parça" özeti sağda kalır ama bunun yerine geçmez. */}
+        <ItemLines items={order.items} className="mt-1.5" />
       </div>
       <span className="shrink-0 text-xs tabular-nums text-slate-500 dark:text-slate-400">
         {order.item_count} parça · ₺{order.total}

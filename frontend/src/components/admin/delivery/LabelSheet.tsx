@@ -1,6 +1,12 @@
 // Paket etiketi yazdırma sayfası — portal body'ye açılır (#root dışına),
 // @media print'te yalnız bu kalır. Etikete müşteri teslimat talimatı da
 // basılır: kurye kâğıt etiketten "kapıya bırak"ı görebilmeli.
+import {
+  MISSING_ITEMS_TEXT,
+  formatItemLine,
+  hasItemDetail,
+  totalQuantity,
+} from "@/lib/orderItems";
 import { createPortal } from "react-dom";
 import { QRCodeSVG } from "qrcode.react";
 
@@ -50,9 +56,21 @@ export function LabelSheet({ run, onClose }: { run: DeliveryRun; onClose: () => 
               <p className="truncate font-semibold">{s.recipient ?? "—"}</p>
               <p className="line-clamp-3 whitespace-pre-line">{s.address ?? "—"}</p>
               <p>{s.phone ?? ""}</p>
-              <p className="text-slate-500">
-                {s.items.reduce((n, it) => n + it.quantity, 0)} parça
-              </p>
+              {/* Kutunun üstünde NE olduğu yazmak zorunda: "N parça" tek başına
+                  paketi doğrulamaya yetmez. Baskıda kırpma YOK — satırlar
+                  sarmalı ki uzun başlık kesilmesin. */}
+              <p className="text-slate-500">{totalQuantity(s.items)} parça</p>
+              {hasItemDetail(s.items) ? (
+                <ul className="mt-0.5 font-medium">
+                  {s.items.map((it, i) => (
+                    <li key={`${it.title}-${i}`} className="break-words">
+                      • {formatItemLine(it)}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="mt-0.5 font-semibold">{MISSING_ITEMS_TEXT}</p>
+              )}
               {s.delivery_pref && PREF_PRINT[s.delivery_pref] && (
                 <p className="mt-0.5 font-bold">⚑ {PREF_PRINT[s.delivery_pref]}</p>
               )}

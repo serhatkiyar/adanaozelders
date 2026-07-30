@@ -4,6 +4,7 @@
 //
 // Sıralama: sürükle-bırak (masaüstü, HTML5 dnd — kütüphanesiz) + KALICI ▲▼
 // butonları (dokunmatik/klavye). Hover-only aksiyon kalmadı.
+import { ItemLines } from "@/components/admin/delivery/ItemLines";
 import { useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 
@@ -174,6 +175,8 @@ function StopRow({
           <span className="truncate">{stop.address ?? "Adres yok"}</span>
           <DeliveryPrefBadge pref={stop.delivery_pref} note={stop.delivery_pref_note} />
         </p>
+        {/* Durakta ne var — kurye/operatör paketi eşleştirebilsin. */}
+        <ItemLines items={stop.items} className="mt-1.5" />
       </div>
       {stop.is_outlier && stop.status === "PENDING" && (
         <span

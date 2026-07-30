@@ -1875,6 +1875,9 @@ export interface DeliveryEligibleOrder {
   lng?: number | null;
   total: string;
   item_count: number;
+  /** Toplanacak fiziksel kalemler (başlık + adet). Dijital kalemler dönmez.
+   *  Eski istemci/şema ile gelmeyebilir → `hasItemDetail` ile kontrol edin. */
+  items?: DeliveryStopItem[];
   created_at: string;
   /** Söz verilen teslim günü (16:00 cutoff) — eski siparişlerde null. */
   promised_delivery_date?: string | null;
