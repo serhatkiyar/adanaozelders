@@ -26,6 +26,7 @@ from models.client import Client
 from models.store import Order
 from schemas.delivery import DeliveryRunCreate
 from services import delivery_service
+from tests.integration.db_guard import assert_test_database
 
 DEPOT = (settings.DELIVERY_DEPOT_LAT, settings.DELIVERY_DEPOT_LNG)
 
@@ -152,6 +153,9 @@ class _EligibleParking:
         self.stop_ids: list[int] = []
 
     async def park(self) -> int:
+        # `pg` fixture'ı zaten kilitliyor; burada da doğrulanır çünkü park etmek
+        # canlı dağıtım kuyruğunu geçici olarak değiştiren TEK test adımıdır.
+        assert_test_database()
         async with AsyncSessionLocal() as s:
             rows = (
                 await s.execute(
@@ -209,12 +213,22 @@ class _EligibleParking:
         if self.run_id is None:
             return
         async with AsyncSessionLocal() as s:
+            # Silme HEM id ile HEM işaretle sınırlı: yanlış bir id gerçek bir
+            # durağı/turu silemesin. `park-` öneki yalnız bu fixture'ın ürettiği
+            # satırlarda bulunur.
             await s.execute(
-                text("DELETE FROM delivery_stops WHERE id = ANY(:ids)"),
+                text(
+                    "DELETE FROM delivery_stops "
+                    "WHERE id = ANY(:ids) AND qr_token LIKE 'park-%'"
+                ),
                 {"ids": self.stop_ids or [0]},
             )
             await s.execute(
-                text("DELETE FROM delivery_runs WHERE id = :r"), {"r": self.run_id}
+                text(
+                    "DELETE FROM delivery_runs WHERE id = :r AND status = 'PLANNED' "
+                    "AND NOT EXISTS (SELECT 1 FROM delivery_stops ds WHERE ds.run_id = :r)"
+                ),
+                {"r": self.run_id},
             )
             await s.commit()
 

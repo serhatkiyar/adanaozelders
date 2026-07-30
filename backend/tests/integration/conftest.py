@@ -30,6 +30,7 @@ import pytest
 from sqlalchemy import text
 
 from core.database import AsyncSessionLocal, engine
+from tests.integration.db_guard import assert_test_database
 from core.payments.fake import FakePaymentProvider
 from models.booking import Booking, BookingStatus
 from models.client import Client
@@ -52,7 +53,14 @@ def _uniq() -> str:
 async def pg():
     """Gerçek Postgres erişilebilir mi? Değilse skip. Test sonunda engine havuzunu
     boşaltır (pytest-asyncio her testte yeni event loop kurar; asyncpg bağlantıları
-    loop'a bağlıdır — dispose edilmezse sonraki test kırık bağlantı alır)."""
+    loop'a bağlıdır — dispose edilmezse sonraki test kırık bağlantı alır).
+
+    ÖNCE güvenlik kilidi: bu testler fiziksel INSERT/DELETE yapar ve biri
+    dağıtım kuyruğundaki siparişleri geçici olarak park eder. Yanlış
+    veritabanına bağlanmış bir koşu canlı operasyonu bozar, o yüzden şüphe
+    hâlinde SKIP değil HATA verilir (bkz. tests/integration/db_guard.py).
+    """
+    assert_test_database()
     try:
         async with engine.connect() as conn:
             await conn.execute(text("SELECT 1"))
