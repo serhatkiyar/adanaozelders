@@ -1,9 +1,22 @@
 import { useEffect, useRef, useState } from "react";
 
-// Kameradan QR okuyan hafif tarayıcı. Tarayıcı `BarcodeDetector` API'sini destekliyorsa
-// (Chrome/Edge/Android) kullanır; desteklemiyorsa (iOS Safari!) MANUEL GİRİŞ kutusu
-// gösterir — "kodu elle gir" diyen ama kutu sunmayan eski fallback, iOS'taki kuryeyi
-// tamamen tıkıyordu. Dış servis/kütüphane yok — tamamen tarayıcı yerel API'si.
+import {
+  qrScanDiagnosis,
+  qrScanMode,
+  readQrEnvironment,
+} from "@/lib/qrCapability";
+
+// Kameradan QR okuyan hafif tarayıcı. `BarcodeDetector` + `getUserMedia`
+// varsa kamerayı açar; yoksa MANUEL GİRİŞ kutusu gösterir — "kodu elle gir"
+// diyen ama kutu sunmayan eski fallback, iOS'taki kuryeyi tamamen tıkıyordu.
+// Dış servis/kütüphane yok — tamamen tarayıcı yerel API'si.
+//
+// Kamera yoksa SEBEBİ ayırt eder (`lib/qrCapability`): düz `http://` üzerinden
+// bağlanıldığında bu iki API `[SecureContext]` olduğu için tarayıcı tarafından
+// GİZLENİR ve eski kod bunu "tarayıcı desteklemiyor" diye raporluyordu — sahada
+// yanlış yönlendirdi (Android Chrome de aynı mesajı veriyordu). Teslim kanıtı
+// fotoğrafının aynı sayfada çalışması bu yüzden: `<input type="file" capture>`
+// güvenli bağlam gerektirmez.
 export function QrScanner({
   onScan,
   onClose,
@@ -19,7 +32,9 @@ export function QrScanner({
   const videoRef = useRef<HTMLVideoElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [manual, setManual] = useState("");
-  const supported = typeof window !== "undefined" && "BarcodeDetector" in window;
+  const env = typeof window === "undefined" ? null : readQrEnvironment(window);
+  const mode = env ? qrScanMode(env) : "unsupported-browser";
+  const supported = mode === "camera";
 
   useEffect(() => {
     if (!supported) return;
@@ -100,9 +115,15 @@ export function QrScanner({
   );
 
   if (!supported) {
+    const diagnosis = env
+      ? qrScanDiagnosis(env)
+      : { title: "Kamera kullanılamıyor.", hint: manualHint };
     return (
       <div className="space-y-3 rounded-xl bg-amber-50 p-4 text-sm text-amber-700 dark:bg-amber-500/10 dark:text-amber-300">
-        <p>Bu tarayıcı kamera ile QR taramayı desteklemiyor. {manualHint}</p>
+        <p>
+          <span className="font-semibold">{diagnosis.title}</span>{" "}
+          {mode === "insecure-context" ? diagnosis.hint : `${diagnosis.hint} ${manualHint}`}
+        </p>
         {ManualEntry}
         <button
           onClick={onClose}
