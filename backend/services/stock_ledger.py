@@ -73,8 +73,15 @@ __all__ = [
     "ChainCheck",
     "IdempotencyConflict",
     "InsufficientStock",
+    "AUDIT_MAX_LIMIT",
+    "LedgerAudit",
+    "LedgerProblem",
     "LedgerVerification",
+    "audit_ledger",
+    "audit_products",
+    "LIST_MAX_LIMIT",
     "MovementPage",
+    "MovementRow",
     "PartialIdempotencyState",
     "StockLedgerError",
     "StockMovementType",
@@ -422,6 +429,10 @@ class ChainCheck:
     consistent: bool
     first_divergent_id: int | None = None
     problems: tuple[str, ...] = ()
+    #: Kopukluk/sapma anında "ne olmalıydı / ne var" — operatörün bir cümleyi
+    #: ayrıştırmadan cevaplaması gereken soru.
+    expected: int | None = None
+    actual: int | None = None
 
 
 def verify_chain(
@@ -443,6 +454,8 @@ def verify_chain(
                 False,
                 None,
                 ("defter boş ama ürün stoğu sıfır değil (açıklanamayan bakiye)",),
+                expected=0,
+                actual=current_stock,
             )
         return ChainCheck(True)
 
@@ -452,7 +465,10 @@ def verify_chain(
             problems.append(
                 f"hareket {satir_id}: qty_after {after}, beklenen {onceki + delta}"
             )
-            return ChainCheck(False, satir_id, tuple(problems))
+            return ChainCheck(
+                False, satir_id, tuple(problems),
+                expected=onceki + delta, actual=after,
+            )
         onceki = after
 
     son = rows[-1][2]
@@ -461,7 +477,9 @@ def verify_chain(
             f"defter son bakiyesi {son}, products.stock {current_stock} "
             "(stok defter dışında değiştirilmiş)"
         )
-        return ChainCheck(False, None, tuple(problems))
+        return ChainCheck(
+            False, None, tuple(problems), expected=son, actual=current_stock
+        )
     return ChainCheck(True)
 
 
@@ -807,6 +825,34 @@ async def apply_many(
 # içindeki `qty_after` zincirlemesi doğruluğu garanti ediyor.
 
 
+#: Doğrulama bulgusu kodları. Arayüz metinleri bu kodlara bağlanır; serbest
+#: metne bağlanmak, mesaj değişince ekranı sessizce bozardı.
+PROBLEM_CHAIN_BREAK = "CHAIN_BREAK"
+PROBLEM_STOCK_MISMATCH = "STOCK_MISMATCH"
+PROBLEM_OPENING_MISSING = "OPENING_MISSING"
+PROBLEM_OPENING_DUPLICATE = "OPENING_DUPLICATE"
+PROBLEM_OPENING_NOT_FIRST = "OPENING_NOT_FIRST"
+PROBLEM_ZERO_DELTA = "ZERO_DELTA"
+PROBLEM_UNTRACKED_HAS_MOVEMENTS = "UNTRACKED_HAS_MOVEMENTS"
+
+
+@dataclasses.dataclass(frozen=True, slots=True)
+class LedgerProblem:
+    """Tek bir doğrulama bulgusu.
+
+    `expected`/`actual` bilinçli olarak ayrı alanlar: operatörün "ne olmalıydı,
+    ne var" sorusunu bir cümleyi ayrıştırmadan cevaplaması gerekir.
+    """
+
+    code: str
+    message: str
+    product_id: int
+    sku: str | None = None
+    movement_id: int | None = None
+    expected: int | None = None
+    actual: int | None = None
+
+
 @dataclasses.dataclass(frozen=True, slots=True)
 class LedgerVerification:
     consistent: bool
@@ -814,19 +860,37 @@ class LedgerVerification:
     current_stock: int | None
     ledger_stock: int | None
     first_divergent_id: int | None
-    problems: tuple[str, ...]
+    problems: tuple[LedgerProblem, ...]
     movement_count: int
+    sku: str | None = None
+    product_title: str | None = None
+
+
+@dataclasses.dataclass(frozen=True, slots=True)
+class LedgerAudit:
+    """Sayfalı genel denetim sonucu.
+
+    **Tam tablo taraması YOK:** her istek yalnız bir ürün SAYFASINI denetler
+    (`limit`/`offset`) ve o sayfayı sabit sayıda toplu sorguyla çözer.
+    """
+
+    checked: int
+    inconsistent: int
+    problems: tuple[LedgerProblem, ...]
+    next_offset: int | None
+    scanned_product_ids: tuple[int, ...]
 
 
 async def verify_ledger(db: AsyncSession, product_id: int) -> LedgerVerification:
-    """Bir ürünün defterini denetler (ürün bazlı; tam tablo taraması YOK).
+    """TEK ürünün defterini satır satır denetler.
 
-    Denetlenenler:
-      1. zincir sürekliliği (`verify_chain`);
-      2. son `qty_after` == `products.stock`;
-      3. açılış bakiyesi kuralları — en çok BİR `OPENING_BALANCE` ve varsa
-         zincirin İLK satırı olmalı; sıfır delta yalnız o türde meşrudur;
-      4. stok takip edilmeyen (dijital) üründe hiç hareket bulunmamalı.
+    Ürün bazlı yol satırları zaten okumak zorunda (detay ekranı onları
+    gösteriyor), bu yüzden burada saf `verify_chain` kullanılır. Genel denetim
+    satırları yükleyemez → `audit_products` toplu SQL kullanır. İki yolun
+    ayrışmaması bir çapraz-kontrol testiyle korunur
+    (`test_stock_audit_pg.py::test_iki_dogrulama_yolu_ayni_sonucu_verir`).
+
+    **Hiçbir veriyi düzeltmez.** Yalnız teşhis üretir.
     """
     product = (
         await db.execute(select(Product).where(Product.id == product_id))
@@ -847,14 +911,25 @@ async def verify_ledger(db: AsyncSession, product_id: int) -> LedgerVerification
         )
     ).all()
 
-    problems: list[str] = []
+    def _p(code, message, **kw):
+        return LedgerProblem(
+            code=code, message=message, product_id=product_id, sku=product.sku, **kw
+        )
 
-    # 4. Dijital / takip edilmeyen ürün: hiç hareket olmamalı.
+    problems: list[LedgerProblem] = []
+
+    # Stok takip edilmeyen (dijital) ürün: hiç hareket olmamalı.
     if product.stock is None:
         if rows:
             problems.append(
-                f"stok takip edilmeyen üründe {len(rows)} hareket var "
-                "(dijital ürün stok yönetimine tabi değildir)"
+                _p(
+                    PROBLEM_UNTRACKED_HAS_MOVEMENTS,
+                    f"stok takip edilmeyen üründe {len(rows)} hareket var "
+                    "(dijital ürün stok yönetimine tabi değildir)",
+                    movement_id=rows[0][0],
+                    expected=0,
+                    actual=len(rows),
+                )
             )
         return LedgerVerification(
             consistent=not problems,
@@ -864,72 +939,412 @@ async def verify_ledger(db: AsyncSession, product_id: int) -> LedgerVerification
             first_divergent_id=rows[0][0] if rows else None,
             problems=tuple(problems),
             movement_count=len(rows),
+            sku=product.sku,
+            product_title=product.title,
         )
 
-    # 3. Açılış bakiyesi kuralları.
+    # Açılış bakiyesi kuralları.
     acilislar = [r for r in rows if r[3] == StockMovementType.OPENING_BALANCE.value]
     if len(acilislar) > 1:
-        problems.append(f"{len(acilislar)} adet OPENING_BALANCE var (en çok bir olmalı)")
+        problems.append(
+            _p(
+                PROBLEM_OPENING_DUPLICATE,
+                f"{len(acilislar)} adet açılış bakiyesi var (en çok bir olmalı)",
+                movement_id=acilislar[1][0],
+                expected=1,
+                actual=len(acilislar),
+            )
+        )
     if acilislar and rows and acilislar[0][0] != rows[0][0]:
-        problems.append("OPENING_BALANCE zincirin ilk satırı değil")
+        problems.append(
+            _p(
+                PROBLEM_OPENING_NOT_FIRST,
+                "açılış bakiyesi zincirin ilk satırı değil",
+                movement_id=acilislar[0][0],
+                expected=rows[0][0],
+                actual=acilislar[0][0],
+            )
+        )
     for satir_id, delta, _after, tip in rows:
         if delta == 0 and tip != StockMovementType.OPENING_BALANCE.value:
-            problems.append(f"hareket {satir_id}: {tip} türünde sıfır delta")
+            problems.append(
+                _p(
+                    PROBLEM_ZERO_DELTA,
+                    f"{tip} türünde sıfır delta",
+                    movement_id=satir_id,
+                    expected=None,
+                    actual=0,
+                )
+            )
 
-    # 1-2. Zincir + son bakiye.
+    # Zincir + son bakiye.
     zincir = verify_chain([(r[0], r[1], r[2]) for r in rows], product.stock)
-    problems.extend(zincir.problems)
+    defter_stok = rows[-1][2] if rows else 0
+    if not zincir.consistent:
+        if zincir.first_divergent_id is not None:
+            problems.append(
+                _p(
+                    PROBLEM_CHAIN_BREAK,
+                    "zincir kopuk: hareketin sonuç bakiyesi bir öncekiyle "
+                    "tutmuyor",
+                    movement_id=zincir.first_divergent_id,
+                    expected=zincir.expected,
+                    actual=zincir.actual,
+                )
+            )
+        else:
+            problems.append(
+                _p(
+                    PROBLEM_STOCK_MISMATCH,
+                    "defter son bakiyesi ürün stoğundan farklı "
+                    "(stok defter dışında değiştirilmiş)",
+                    expected=defter_stok,
+                    actual=product.stock,
+                )
+            )
 
     return LedgerVerification(
         consistent=zincir.consistent and not problems,
         product_id=product_id,
         current_stock=product.stock,
-        ledger_stock=rows[-1][2] if rows else 0,
+        ledger_stock=defter_stok,
         first_divergent_id=zincir.first_divergent_id,
         problems=tuple(problems),
         movement_count=len(rows),
+        sku=product.sku,
+        product_title=product.title,
+    )
+
+
+async def audit_products(
+    db: AsyncSession, product_ids: Sequence[int]
+) -> list[LedgerVerification]:
+    """Bir ürün KÜMESİNİ **sabit sayıda toplu sorguyla** denetler.
+
+    Ürün başına `verify_ledger` çağırmak N+1 üretirdi (100 ürünlük bir sayfa =
+    200 sorgu). Burada ürün sayısından BAĞIMSIZ **dört** sorgu kullanılır:
+
+      1. ürün künyeleri (`sku`, başlık, stok),
+      2. hareket özeti (sayı, ilk/son id, açılış sayısı ve konumu, sıfır-delta),
+      3. ürün başına son `qty_after` (`DISTINCT ON`),
+      4. zincirin ilk koptuğu hareket (`lag` penceresi).
+
+    `verify_ledger` ile aynı kuralları uygular; ayrışmadıkları çapraz-kontrol
+    testiyle korunur.
+    """
+    ids = [int(i) for i in dict.fromkeys(product_ids)]
+    if not ids:
+        return []
+
+    urunler = {
+        p.id: p
+        for p in (
+            await db.execute(select(Product).where(Product.id.in_(ids)))
+        ).scalars()
+    }
+
+    ozet = {
+        r.product_id: r
+        for r in (
+            await db.execute(
+                text(
+                    """
+                    SELECT product_id,
+                           count(*)                                   AS adet,
+                           max(id)                                    AS son_id,
+                           count(*) FILTER (
+                               WHERE movement_type = 'OPENING_BALANCE') AS acilis,
+                           min(id) FILTER (
+                               WHERE movement_type = 'OPENING_BALANCE') AS acilis_id,
+                           min(id)                                    AS ilk_id,
+                           count(*) FILTER (
+                               WHERE qty_delta = 0
+                                 AND movement_type <> 'OPENING_BALANCE') AS sifir
+                    FROM stock_movements
+                    WHERE product_id = ANY(:ids)
+                    GROUP BY product_id
+                    """
+                ),
+                {"ids": ids},
+            )
+        ).all()
+    }
+    son_bakiye = {
+        r.product_id: r.qty_after
+        for r in (
+            await db.execute(
+                text(
+                    """
+                    SELECT DISTINCT ON (product_id) product_id, qty_after
+                    FROM stock_movements
+                    WHERE product_id = ANY(:ids)
+                    ORDER BY product_id, id DESC
+                    """
+                ),
+                {"ids": ids},
+            )
+        ).all()
+    }
+    kopukluk = {
+        r.product_id: r
+        for r in (
+            await db.execute(
+                text(
+                    """
+                    SELECT product_id, id, beklenen, qty_after AS gorulen
+                    FROM (
+                        SELECT product_id, id, qty_after,
+                               coalesce(lag(qty_after) OVER (
+                                   PARTITION BY product_id ORDER BY id), 0)
+                                 + qty_delta AS beklenen,
+                               row_number() OVER (
+                                   PARTITION BY product_id ORDER BY id) AS sira
+                        FROM stock_movements
+                        WHERE product_id = ANY(:ids)
+                    ) x
+                    WHERE qty_after <> beklenen
+                    ORDER BY product_id, id
+                    """
+                ),
+                {"ids": ids},
+            )
+        ).all()
+    }
+
+    sonuc: list[LedgerVerification] = []
+    for pid in ids:
+        product = urunler.get(pid)
+        if product is None:
+            continue
+        o = ozet.get(pid)
+        adet = int(o.adet) if o else 0
+        problems: list[LedgerProblem] = []
+
+        def _p(code, message, **kw):
+            return LedgerProblem(
+                code=code, message=message, product_id=pid, sku=product.sku, **kw
+            )
+
+        if product.stock is None:
+            if adet:
+                problems.append(
+                    _p(
+                        PROBLEM_UNTRACKED_HAS_MOVEMENTS,
+                        f"stok takip edilmeyen üründe {adet} hareket var",
+                        movement_id=int(o.ilk_id),
+                        expected=0,
+                        actual=adet,
+                    )
+                )
+            sonuc.append(
+                LedgerVerification(
+                    consistent=not problems,
+                    product_id=pid,
+                    current_stock=None,
+                    ledger_stock=None,
+                    first_divergent_id=int(o.ilk_id) if o else None,
+                    problems=tuple(problems),
+                    movement_count=adet,
+                    sku=product.sku,
+                    product_title=product.title,
+                )
+            )
+            continue
+
+        if o and int(o.acilis) > 1:
+            problems.append(
+                _p(
+                    PROBLEM_OPENING_DUPLICATE,
+                    f"{int(o.acilis)} adet açılış bakiyesi var (en çok bir olmalı)",
+                    expected=1,
+                    actual=int(o.acilis),
+                )
+            )
+        if o and o.acilis_id is not None and int(o.acilis_id) != int(o.ilk_id):
+            problems.append(
+                _p(
+                    PROBLEM_OPENING_NOT_FIRST,
+                    "açılış bakiyesi zincirin ilk satırı değil",
+                    movement_id=int(o.acilis_id),
+                    expected=int(o.ilk_id),
+                    actual=int(o.acilis_id),
+                )
+            )
+        if o and int(o.sifir):
+            problems.append(
+                _p(
+                    PROBLEM_ZERO_DELTA,
+                    f"{int(o.sifir)} harekette sıfır delta",
+                    expected=0,
+                    actual=int(o.sifir),
+                )
+            )
+
+        kirik = kopukluk.get(pid)
+        defter_stok = int(son_bakiye.get(pid, 0))
+        if kirik is not None:
+            problems.append(
+                _p(
+                    PROBLEM_CHAIN_BREAK,
+                    "zincir kopuk: hareketin sonuç bakiyesi bir öncekiyle tutmuyor",
+                    movement_id=int(kirik.id),
+                    expected=int(kirik.beklenen),
+                    actual=int(kirik.gorulen),
+                )
+            )
+        elif defter_stok != int(product.stock):
+            problems.append(
+                _p(
+                    PROBLEM_STOCK_MISMATCH,
+                    "defter son bakiyesi ürün stoğundan farklı",
+                    expected=defter_stok,
+                    actual=int(product.stock),
+                )
+            )
+
+        sonuc.append(
+            LedgerVerification(
+                consistent=not problems,
+                product_id=pid,
+                current_stock=int(product.stock),
+                ledger_stock=defter_stok,
+                first_divergent_id=int(kirik.id) if kirik is not None else None,
+                problems=tuple(problems),
+                movement_count=adet,
+                sku=product.sku,
+                product_title=product.title,
+            )
+        )
+    return sonuc
+
+
+#: Genel denetimin tek istekte bakabileceği EN FAZLA ürün sayısı.
+AUDIT_MAX_LIMIT = 200
+
+
+async def audit_ledger(
+    db: AsyncSession, *, limit: int = 50, offset: int = 0
+) -> LedgerAudit:
+    """Defterin SAYFALI genel denetimi (sınırsız tam tarama YOK).
+
+    Her istek en fazla `AUDIT_MAX_LIMIT` ürün denetler ve `next_offset` ile
+    sonraki sayfayı söyler. Sayfa içindeki denetim `audit_products` ile sabit
+    sayıda toplu sorguya indirgenir.
+
+    **Hiçbir veriyi düzeltmez.**
+    """
+    limit = max(1, min(int(limit), AUDIT_MAX_LIMIT))
+    offset = max(0, int(offset))
+    ids = (
+        await db.execute(
+            select(Product.id).order_by(Product.id).limit(limit + 1).offset(offset)
+        )
+    ).scalars().all()
+    devam = len(ids) > limit
+    ids = list(ids[:limit])
+
+    sonuclar = await audit_products(db, ids)
+    bulgular = [pr for r in sonuclar for pr in r.problems]
+    return LedgerAudit(
+        checked=len(sonuclar),
+        inconsistent=sum(1 for r in sonuclar if not r.consistent),
+        problems=tuple(bulgular),
+        next_offset=(offset + limit) if devam else None,
+        scanned_product_ids=tuple(ids),
     )
 
 
 @dataclasses.dataclass(frozen=True, slots=True)
+class MovementRow:
+    """Hareket + ürün künyesi (tek sorguda; N+1 YOK)."""
+
+    movement: StockMovement
+    sku: str
+    product_title: str
+
+
+@dataclasses.dataclass(frozen=True, slots=True)
 class MovementPage:
-    rows: list[StockMovement]
+    rows: list[MovementRow]
     total: int
+
+
+#: Liste uçlarının tek istekte dönebileceği EN FAZLA satır. Zorunlu sayfalama:
+#: defter büyüdükçe sınırsız bir sorgu hem DB'yi hem yanıtı şişirir.
+LIST_MAX_LIMIT = 200
 
 
 async def list_movements(
     db: AsyncSession,
-    product_id: int,
     *,
-    limit: int = 50,
-    offset: int = 0,
+    product_id: int | None = None,
+    sku: str | None = None,
     movement_type: str | None = None,
+    reason_code: str | None = None,
+    actor_type: str | None = None,
+    actor_id: int | None = None,
+    ref_type: str | None = None,
+    ref_id: int | None = None,
     date_from: Any = None,
     date_to: Any = None,
+    limit: int = 50,
+    offset: int = 0,
 ) -> MovementPage:
-    """Ürün bazlı hareket geçmişi (en yeni önce), sayfalı.
+    """Hareket geçmişi — **zorunlu sayfalı**, en yeni önce.
 
-    `ix_stock_movements_product` index'i `(product_id, created_at DESC, id DESC)`
-    olduğu için sıralama ve tarih filtresi index'ten karşılanır.
+    Sıralama `created_at DESC, id DESC`: aynı `created_at`'e sahip satırlar
+    (toplu yazımda sık) `id` ile deterministik sıralanır; yoksa sayfalar arası
+    satır tekrarlanabilir/atlanabilirdi.
+
+    Ürün künyesi (`sku`, başlık) **join ile aynı sorguda** gelir; satır başına
+    ürün çekmek N+1 üretirdi. Toplam istek maliyeti satır sayısından bağımsız
+    **2 sorgudur** (sayım + sayfa).
     """
-    kosullar = [StockMovement.product_id == product_id]
+    limit = max(1, min(int(limit), LIST_MAX_LIMIT))
+    offset = max(0, int(offset))
+
+    kosullar = []
+    if product_id is not None:
+        kosullar.append(StockMovement.product_id == product_id)
+    if sku:
+        kosullar.append(Product.sku == sku)
     if movement_type:
         kosullar.append(StockMovement.movement_type == movement_type)
+    if reason_code:
+        kosullar.append(StockMovement.reason_code == reason_code)
+    if actor_type:
+        kosullar.append(StockMovement.actor_type == actor_type)
+    if actor_id is not None:
+        kosullar.append(StockMovement.actor_id == actor_id)
+    if ref_type:
+        kosullar.append(StockMovement.ref_type == ref_type)
+    if ref_id is not None:
+        kosullar.append(StockMovement.ref_id == ref_id)
     if date_from is not None:
         kosullar.append(StockMovement.created_at >= date_from)
     if date_to is not None:
         kosullar.append(StockMovement.created_at <= date_to)
 
+    taban = select(StockMovement, Product.sku, Product.title).join(
+        Product, Product.id == StockMovement.product_id
+    )
     total = (
-        await db.execute(select(func.count()).select_from(StockMovement).where(*kosullar))
+        await db.execute(
+            select(func.count())
+            .select_from(StockMovement)
+            .join(Product, Product.id == StockMovement.product_id)
+            .where(*kosullar)
+        )
     ).scalar_one()
     rows = (
         await db.execute(
-            select(StockMovement)
-            .where(*kosullar)
+            taban.where(*kosullar)
             .order_by(StockMovement.created_at.desc(), StockMovement.id.desc())
             .limit(limit)
             .offset(offset)
         )
-    ).scalars().all()
-    return MovementPage(rows=list(rows), total=total)
+    ).all()
+    return MovementPage(
+        rows=[MovementRow(movement=r[0], sku=r[1], product_title=r[2]) for r in rows],
+        total=total,
+    )

@@ -121,6 +121,7 @@ export const PATHS = {
   adminStoreOrders: "/yonetim/magaza/siparisler",
   adminStoreReturns: "/yonetim/magaza/iadeler",
   adminStoreCoupons: "/yonetim/magaza/kuponlar",
+  adminStoreStock: "/yonetim/magaza/stok-hareketleri",
   adminDelivery: "/yonetim/dagitim",
   // Dağıtım alt sekmeleri (URL-tabanlı; index = "Bugün" operasyon kokpiti).
   adminDeliveryOrders: "/yonetim/dagitim/siparisler",
@@ -231,6 +232,7 @@ export const ROUTES = {
   adminStoreOrders: PATHS.adminStoreOrders,
   adminStoreReturns: PATHS.adminStoreReturns,
   adminStoreCoupons: PATHS.adminStoreCoupons,
+  adminStoreStock: PATHS.adminStoreStock,
   adminDelivery: PATHS.adminDelivery,
   adminDeliveryOrders: PATHS.adminDeliveryOrders,
   adminDeliveryRuns: PATHS.adminDeliveryRuns,

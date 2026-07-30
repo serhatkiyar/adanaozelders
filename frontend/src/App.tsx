@@ -423,6 +423,7 @@ function App() {
               <Route path="magaza/siparisler" element={<AdminStore />} />
               <Route path="magaza/iadeler" element={<AdminStore />} />
               <Route path="magaza/kuponlar" element={<AdminStore />} />
+              <Route path="magaza/stok-hareketleri" element={<AdminStore />} />
               <Route path="dagitim" element={<DeliveryLayout />}>
                 <Route index element={<DeliveryTodayPage />} />
                 <Route path="siparisler" element={<DeliveryOrdersPage />} />

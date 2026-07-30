@@ -9,6 +9,14 @@ import { useAuthStore } from "@/store/authStore";
 import { formatTL } from "@/lib/money";
 import { formatDateTime } from "@/lib/datetime";
 import { ROUTES } from "@/lib/routes";
+import { StockLedgerPanel } from "@/components/admin/StockLedgerPanel";
+import {
+  ADMIN_REASON_OPTIONS,
+  requiresNote,
+  validateStockEdit,
+  type AdminReasonCode,
+} from "@/lib/stockMovements";
+import { StockMovementsPanel } from "@/components/admin/StockMovementsPanel";
 import {
   createCategory,
   createProduct,
@@ -44,7 +52,13 @@ import type {
   ProductSearchOut,
 } from "@/types";
 
-type SubTab = "products" | "categories" | "orders" | "returns" | "coupons";
+type SubTab =
+  | "products"
+  | "categories"
+  | "orders"
+  | "returns"
+  | "coupons"
+  | "stock";
 
 const STORE_ROUTES: Record<SubTab, string> = {
   products: ROUTES.adminStoreProducts,
@@ -52,6 +66,7 @@ const STORE_ROUTES: Record<SubTab, string> = {
   orders: ROUTES.adminStoreOrders,
   returns: ROUTES.adminStoreReturns,
   coupons: ROUTES.adminStoreCoupons,
+  stock: ROUTES.adminStoreStock,
 };
 
 // Sekme → backend izin alanı (kategoriler backend'de products.manage kapsamında).
@@ -61,6 +76,8 @@ const TAB_AREA: Record<SubTab, string> = {
   orders: "orders",
   returns: "returns",
   coupons: "coupons",
+  // Defter salt-okunur bir teşhis yüzeyi; ürün görüntüleme izniyle açılır.
+  stock: "products",
 };
 
 export default function AdminStore() {
@@ -83,6 +100,7 @@ export default function AdminStore() {
             ["orders", "Siparişler"],
             ["returns", "İadeler"],
             ["coupons", "Kuponlar"],
+            ["stock", "Stok hareketleri"],
           ] as [SubTab, string][]
         ).filter(([v]) => adminAreaAccess(permissions, TAB_AREA[v]).canView).map(([v, label]) => (
           <NavLink
@@ -107,6 +125,8 @@ export default function AdminStore() {
         <OrdersPanel />
       ) : sub === "returns" ? (
         <ReturnsPanel />
+      ) : sub === "stock" ? (
+        <StockMovementsPanel />
       ) : (
         <CouponsPanel />
       )}
@@ -213,6 +233,12 @@ function ProductForm({
       initial.language || initial.cover_type)
   );
   const [showSpecs, setShowSpecs] = useState(hasKunye);
+  // Stok gerekcesi: yalniz DUZENLEMEDE ve deger degistiginde zorunlu.
+  // (Yeni urunde ilk stok `INITIAL` hareketidir; gerekcesi sabittir.)
+  const [stockReason, setStockReason] = useState<AdminReasonCode | "">("");
+  const [stockNote, setStockNote] = useState("");
+  const stokDegisti =
+    isEdit && kind === "PHYSICAL" && Number(stock || 0) !== Number(initial?.stock ?? 0);
 
   const mutation = useMutation({
     mutationFn: () => {
@@ -233,15 +259,36 @@ function ProductForm({
         language: language || null,
         cover_type: coverType || null,
       };
-      return isEdit
-        ? updateProduct(initial!.id, { ...base, status })
-        : createProduct({ ...base, kind, status });
+      if (isEdit) {
+        // Delta SUNUCUDA, urun satiri kilitli iken hesaplanir; istemci yalniz
+        // HEDEFI gonderir. Ayni hedefin tekrari sunucuda sifir delta uretir ve
+        // hareket yazilmaz — bu yuzden gerekce de istenmez.
+        const dogrulama = validateStockEdit({
+          current: Number(initial?.stock ?? 0),
+          next: Number(stock || 0),
+          reason: (stockReason || null) as AdminReasonCode | null,
+          note: stockNote || null,
+        });
+        if (kind === "PHYSICAL" && !dogrulama.ok) {
+          throw new Error(dogrulama.error ?? "Stok düzenlemesi geçersiz");
+        }
+        return updateProduct(initial!.id, {
+          ...base,
+          status,
+          ...(dogrulama.submitStock ? dogrulama.payload : { stock: undefined }),
+        });
+      }
+      return createProduct({ ...base, kind, status });
     },
     onSuccess: () => {
       toast.success(isEdit ? "Ürün güncellendi" : "Ürün eklendi");
       onDone();
     },
-    onError: () => toast.error(isEdit ? "Ürün güncellenemedi" : "Ürün eklenemedi"),
+    onError: (err: unknown) => {
+      const metin =
+        err instanceof Error && err.message ? err.message : null;
+      toast.error(metin ?? (isEdit ? "Ürün güncellenemedi" : "Ürün eklenemedi"));
+    },
   });
 
   return (
@@ -271,6 +318,36 @@ function ProductForm({
       <input value={compareAt} onChange={(e) => setCompareAt(e.target.value)} placeholder="Eski fiyat (opsiyonel)" inputMode="decimal" className="input" />
       {kind === "PHYSICAL" && (
         <input value={stock} onChange={(e) => setStock(e.target.value)} placeholder="Stok" inputMode="numeric" className="input" />
+      )}
+      {stokDegisti && (
+        <div className="sm:col-span-2 space-y-2 rounded-lg border border-amber-200 bg-amber-50/50 p-3 dark:border-amber-500/30 dark:bg-amber-500/10">
+          <p className="text-xs text-amber-900 dark:text-amber-200">
+            Stok {initial?.stock ?? 0} → {Number(stock || 0)} olarak
+            değişecek. Bu hareket deftere gerekçesiyle yazılır.
+          </p>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <select
+              value={stockReason}
+              onChange={(e) => setStockReason(e.target.value as AdminReasonCode | "")}
+              className="input"
+            >
+              <option value="">Gerekçe seçin…</option>
+              {ADMIN_REASON_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+            {requiresNote((stockReason || null) as AdminReasonCode | null) && (
+              <input
+                value={stockNote}
+                onChange={(e) => setStockNote(e.target.value)}
+                placeholder="Açıklama (zorunlu)"
+                className="input"
+              />
+            )}
+          </div>
+        </div>
       )}
       <textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Açıklama" rows={2} className="input sm:col-span-2" />
 
@@ -424,7 +501,12 @@ function EditProductModal({
         {isLoading || !data ? (
           <p className="py-8 text-center text-sm text-slate-400">Yükleniyor…</p>
         ) : (
-          <ProductForm mode="edit" initial={data} onDone={onSaved} />
+          <>
+            <ProductForm mode="edit" initial={data} onDone={onSaved} />
+            <div className="mt-6 border-t border-slate-200 pt-5 dark:border-slate-700">
+              <StockLedgerPanel productId={data.id} kind={data.kind} />
+            </div>
+          </>
         )}
       </div>
     </div>,

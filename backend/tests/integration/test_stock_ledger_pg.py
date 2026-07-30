@@ -659,9 +659,11 @@ async def test_hareket_listesi_yalniz_istenen_urunu_dondurur(urun):
         reason_code="TEDARIK", actor_type="ADMIN", actor_id=1,
     )
     async with AsyncSessionLocal() as s:
-        sonuc = await stock_ledger.list_movements(s, a, limit=50, offset=0)
-    assert {r.product_id for r in sonuc.rows} == {a}
+        sonuc = await stock_ledger.list_movements(s, product_id=a, limit=50, offset=0)
+    assert {r.movement.product_id for r in sonuc.rows} == {a}
     assert sonuc.total == 1
+    # Ürün künyesi join'den geliyor (satır başına ek sorgu YOK).
+    assert sonuc.rows[0].sku == f"FZK-{a:06d}"
 
 
 async def test_barcode_unique_ama_bos_birakilabilir(urun):
