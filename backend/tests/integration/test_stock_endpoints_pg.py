@@ -20,6 +20,7 @@ import pytest
 from sqlalchemy import text
 
 from core.database import AsyncSessionLocal
+from tests.integration.db_guard import purge_products
 from core.security import create_access_token
 from models.admin import Admin
 from schemas.admin_access import AdminRoleCreate
@@ -146,13 +147,7 @@ class Kurulum:
                 )
             if self.product_ids:
                 # Defter satırları silinemez (append-only); ürün soft-delete.
-                await s.execute(
-                    text(
-                        "UPDATE products SET deleted_at = now() "
-                        "WHERE id = ANY(:i) AND deleted_at IS NULL"
-                    ),
-                    {"i": self.product_ids},
-                )
+                await purge_products(s, self.product_ids)
             await s.commit()
 
 

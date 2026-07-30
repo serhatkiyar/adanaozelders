@@ -93,3 +93,141 @@ audit_logs (admin aksiyon denetim kaydı)   notifications ((user_id, role_id))
 - **Backend Model Ekleme**: Yeni tablo oluştururken `models/__init__.py` dosyasına import edin ve `__all__` listesine ekleyin.
 - **Backend Route Ekleme**: Yeni router'ı `api/router.py` dosyasına include edin.
 - **Frontend Veri Çekme**: Tüm API çağrıları `@tanstack/react-query` hooks üzerinden ve axios instance (`api/axios.ts`) kullanılarak yapılmalıdır.
+
+## Test Kalitesi ve Doğrulama Standardı
+
+> **Bu bölüm kalıcıdır ve bütün paketler için geçerlidir.** Sebebi somut: bu
+> projede testler yeşilken gerçek kullanıcı akışında ciddi eksikler yaşandı —
+> hazırlama ekranı **ne satın alındığını göstermiyordu** (F26), paket etiketi
+> **bomboş basılıyordu**, uzun başlık **QR kodunu ezip okunamaz hâle
+> getiriyordu**, stok doğrulama ucu **bulgu bulduğunda 500 dönüyordu**, ve bazı
+> testler kendi yorum satırını / kendi fixture'ını yakalayarak **yalancı yeşil**
+> üretiyordu. Hepsi ancak sonradan bulundu. Aşağıdaki kurallar bu hataların
+> tekrarını engellemek içindir.
+
+### A. Yeşil test sayısı kalite kanıtı değildir
+
+"X test geçti" tek başına tamamlanma kanıtı **sayılamaz**. Her paket için ayrıca
+şu sorular cevaplanmalıdır:
+
+- Test yanlış uygulamayı gerçekten kırıyor mu?
+- Gerçek kullanıcı davranışını mı, yoksa yalnız uygulama ayrıntısını mı test ediyor?
+- Gerçek veritabanı, HTTP, DOM, tarayıcı ve baskı gibi riskli sınırlar gerektiği yerde kullanılmış mı?
+- Test kendi fixture'ını, yorum satırını veya test metnini yakalayarak yalancı yeşil olabilir mi?
+- Mutasyon (ters prova) ile testin nöbetçilik yaptığı kanıtlandı mı?
+
+### B. Davranış testi önceliklidir
+
+Mümkün olan her durumda **gözlemlenebilir davranış** test edilir: HTTP yanıtı ve
+gerçek yetki çözümü · veritabanındaki son durum · transaction rollback ve
+atomiklik · **gerçekten gönderilen** API query parametreleri · DOM'da görülen
+kullanıcı sonucu · gerçek tarayıcı akışı · gerçek baskı/PDF çıktısı · sorgu
+sayısı ve sayfalama davranışı.
+
+Kaynak metni, regex, `grep`, satır penceresi veya AST taraması **yalnız
+mimari/yapısal sözleşmeler** için kullanılabilir. Şu iddiaların tek kanıtı
+olamaz: "bu uç gerçekten 403 dönüyor" · "bu buton gerçekten çalışıyor" · "bu
+filtre gerçekten API'ye gidiyor" · "bu işlem gerçekten veriyi değiştirmiyor".
+
+### C. Kaynak sözleşmesi testleri DÜŞÜK GÜÇLÜ sayılır
+
+AST/kaynak taraması kullanılacaksa: yorum ve docstring yanlış pozitif
+üretmemeli · sınıf/fonksiyon sınırı **AST ile** bulunmalı (`find()` + sabit
+karakter penceresi KULLANILMAZ) · test kendi kaynak kodunu veya açıklamasını
+yakalamamalı · mümkünse yanında bir davranış testi bulunmalı. Kaynak sözleşmesi
+testinin geçmesi, özelliğin tamamlandığı anlamına gelmez.
+
+### D. Her kritik test için mutasyon provası
+
+Yeni veya değişen kritik davranışta en az bir **ters prova** yapılır: doğru
+davranış geçici olarak bozulur ve mevcut testin **gerçekten kırıldığı**
+gösterilir. Tipik mutasyonlar: yetki kontrolünü kaldır · transaction'ın bir
+kısmını commit ettir · idempotency kontrolünü kaldır · kilit sırasını tersine
+çevir · JOIN'i kaldırıp N+1 üret · sayfalama tavanını kaldır · deterministik
+sıralama bağlayıcısını kaldır · frontend filtresini istekten çıkar · boş/hata/
+dijital-ürün durumunu kaldır · veri değiştirmemesi gereken işe UPDATE ekle ·
+çıktıdaki kritik alanı kaldır · print CSS veya QR boyut korumasını kaldır.
+
+Mutasyon yakalanmıyorsa: (1) testin yetersiz olduğunu kabul et, (2) **önce**
+anlamlı bir regresyon testi ekle, (3) mutasyonu tekrar uygula, (4) kırıldığını
+göster, (5) mutasyonu geri al, (6) temiz hâlde testin geçtiğini doğrula.
+
+**Mutasyon sürücüsü kullanıcının değişikliklerini SİLMEMELİDİR:** kirli çalışma
+ağacında başlamayı reddetmeli, `git checkout --` ile dosya kaybettirmemeli,
+geçici worktree veya güvenli patch (uygula / geri-uygula) yöntemi kullanmalı ve
+her mutasyondan sonra HEAD + çalışma ağacının başlangıç durumuna döndüğünü
+doğrulamalıdır. (Bu kural bir kez ihlal edildi: sürücünün `git checkout --`'ı
+aynı dosyadaki commit edilmemiş bir üretim düzeltmesini sildi ve hata bir tur
+daha yaşandı.) Hazır sürücü: `backend/scripts/mutation_drill.py`.
+
+### E. Testin kendisini de sorgula
+
+Bir test geçiyor diye doğru test sayılmaz: Test girdisi mutasyonu görünür
+kılıyor mu? · Beklenen değer davranışı gerçekten ayırt ediyor mu? · **Eski bozuk
+kod da aynı testi geçer miydi?** · Fixture sıfır/boş/sabit olduğu için bozuk
+davranış gözlenmeden mi kalıyor? · Test sırası veya önceki testin bıraktığı veri
+sonucu etkiliyor mu? · ORM identity map / cache / rollback sonrası **bayat**
+nesne mi kullanılıyor? · Test yalnızca mock'un kendisini mi doğruluyor?
+
+Eski bozuk kod da testi geçiyorsa **o test düzeltmenin kanıtı değildir**.
+
+### F. Gerçek altyapı gereken yerde mock yetmez
+
+**Gerçek PostgreSQL** gerektirir: `FOR UPDATE` · deadlock ve kilit sırası ·
+eşzamanlı transaction · unique constraint yarışı · savepoint · idempotency ·
+rollback · migration · trigger · sayfalama ve deterministik SQL sırası ·
+N+1/sorgu sayısı · kısmi iade ↔ tam iade yarışı.
+
+**Gerçek tarayıcı** gerektirir: route ve yetki davranışı · filtrelerin gerçek ağ
+isteğine dönüşmesi · form doğrulaması · DOM'da görünen kullanıcı sonucu ·
+kamera/secure-context · baskı ve print CSS · taşma, QR boyutu, yerleşim ·
+sayfalar arası kayıt tekrarı/kayması.
+
+Vitest + typecheck + build'in geçmesi, gerçek tarayıcı kabul testinin yerine
+**geçmez**. (Playwright kurulu değil; Chrome + DevTools Protocol ile sürülür.)
+
+### G. Test izolasyonu zorunludur
+
+Testler geliştirme katalog veritabanını **kirletmez**. PG entegrasyon testleri
+tek kullanımlık test DB'si, transaction rollback veya eşdeğer tam izolasyon
+kullanır — `backend/tests/integration/db_guard.py` adı `test` içermeyen bir
+veritabanında koşmayı **reddeder**; `ceyhandb` bilinçli olarak allowlist'ten
+ÇIKARILDI. Bir testin ürettiği veri başka teste kalmaz; **test başarısız olsa
+bile** teardown çalışır. Defter satırları append-only trigger'ıyla korunduğu
+için ürün temizliği `db_guard.purge_products()` üzerinden yapılır (yalnız test
+DB'sinde, trigger'ı geçici devre dışı bırakarak).
+
+Tam suite öncesi/sonrası kritik tablo sayıları karşılaştırılır
+(`tests/integration/conftest.py::_hijyen_nobetcisi`); beklenmeyen kalıcı veri
+oluşursa suite başarılı sayılmaz. Test verisinin birikip admin ekranlarını,
+genel denetimi veya performans ölçümlerini şişirmesine izin verilmez.
+
+### H. Test türleri dürüstçe sınıflandırılır
+
+Kapanış raporlarında testler yalnız toplam sayı olarak verilmez; en az şu
+sınıflara ayrılır: gerçek PostgreSQL/entegrasyon · gerçek HTTP · gerçek DOM ·
+gerçek tarayıcı/E2E · gerçek baskı veya dosya çıktısı · saf yardımcı/birim ·
+kaynak/AST sözleşmesi. **Snapshot, "import oldu", "render oldu" ve yalnız tür
+kontrolü güçlü davranış kanıtı olarak sunulmaz.**
+
+### I. Hatalar ve test kusurları gizlenmez
+
+Çalışma sırasında bulunan şunlar açıkça raporlanır: gerçek üretim hatası · eksik
+davranış · yalancı yeşil test · yanlış kırmızı test · flaky test · test
+izolasyonu sorunu · model–şema sapması · kapsam dışı teknik borç
+(`docs/teknik-borc.md`). Kendi testinin hatasını düzeltmek başarısızlık değil,
+kaliteli mühendisliktir — ama **neden yanlış olduğu ve nasıl güçlendirildiği**
+açıklanmalıdır.
+
+### J. Paket tamamlanma ölçütü
+
+Bir paket ancak şu koşullarla tamamlanmış sayılır:
+
+1. Kabul kriterleri **gerçek davranışla** doğrulandı.
+2. Kritik testlerin **mutasyon provası** yapıldı.
+3. Gerçek altyapı gereken yollar **mock'suz** sınandı.
+4. Mevcut testlerin hiçbiri istemeden kırılmadı.
+5. Test DB'si ve çalışma ağacı temiz kaldı.
+6. Migration **gerçek tek kullanımlık DB'de** doğrulandı.
+7. Bilinen risk ve doğrulanmamış noktalar raporlandı.
+8. "Test geçti" yerine **neyin gerçekten kanıtlandığı** açıklandı.

@@ -24,6 +24,7 @@ from sqlalchemy import select, text
 from sqlalchemy.exc import DBAPIError, IntegrityError
 
 from core.database import AsyncSessionLocal
+from tests.integration.db_guard import purge_products
 from models.store import Product, StockMovement
 from services import stock_ledger
 from services.stock_ledger import (
@@ -77,14 +78,9 @@ class ProductFactory:
         if not self.product_ids:
             return
         async with AsyncSessionLocal() as s:
-            await s.execute(
-                text(
-                    "UPDATE products SET deleted_at = now() "
-                    "WHERE id = ANY(:ids) AND deleted_at IS NULL"
-                ),
-                {"ids": self.product_ids},
-            )
-            await s.commit()
+            # Ürün + defter satırları FİZİKSEL silinir; soft-delete satırları
+            # biriktiriyordu (bkz. db_guard.purge_products).
+            await purge_products(s, self.product_ids)
 
 
 @pytest.fixture

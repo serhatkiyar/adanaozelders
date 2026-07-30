@@ -34,6 +34,7 @@ import pytest
 from sqlalchemy import func, select, text
 
 from core.database import AsyncSessionLocal
+from tests.integration.db_guard import purge_products
 from models.store import Product, StockMovement
 from services import order_service, stock_ledger, store_service
 from services.stock_ledger import StockMovementType
@@ -221,13 +222,7 @@ class Fabrika:
                     {"i": self.client_ids},
                 )
             if self.product_ids:
-                await s.execute(
-                    text(
-                        "UPDATE products SET deleted_at = now() "
-                        "WHERE id = ANY(:i) AND deleted_at IS NULL"
-                    ),
-                    {"i": self.product_ids},
-                )
+                await purge_products(s, self.product_ids)
             await s.commit()
 
 

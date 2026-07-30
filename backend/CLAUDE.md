@@ -71,7 +71,7 @@ backend/
     └── routers/               # Tüm endpoint tanımlamaları (auth, tutors, bookings, messages, qa, admin, ws vb.)
 ```
 
-**Testler:** `cd backend && pytest -q` — DB gerektirmeyen çekirdek mantık testleri (`tests/`: booking FSM, moderation maskeleme, rol haritası, private-note filtresi, booking şema doğrulama). `conftest.py` CI için güvenli env default'ları koyar.
+**Testler:** kök `CLAUDE.md` → **Test Kalitesi ve Doğrulama Standardı** bu dizin için de bağlayıcıdır (davranış testi önceliği, mutasyon provası, gerçek PG zorunluluğu, test izolasyonu). PG entegrasyon testleri adı `test` içeren tek kullanımlık bir veritabanı ister — `db_guard` başka veritabanında koşmayı reddeder. `cd backend && pytest -q` — DB gerektirmeyen çekirdek mantık testleri (`tests/`: booking FSM, moderation maskeleme, rol haritası, private-note filtresi, booking şema doğrulama). `conftest.py` CI için güvenli env default'ları koyar.
 
 ## Mimari Kararlar ve Veritabanı Notları
 

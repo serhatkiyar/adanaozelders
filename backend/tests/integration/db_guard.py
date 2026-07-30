@@ -37,9 +37,19 @@ import os
 from core.config import settings
 
 #: Yıkıcı testlerin koşabileceği bilinen veritabanı adları.
-#: `ceyhandb` bu projenin geliştirme veritabanıdır ve entegrasyon testleri
-#: bilinçli olarak ona karşı koşar (bkz. tests/integration/conftest.py).
-SAFE_DB_NAMES = {"ceyhandb", "postgres_test", "adana_test", "adana_verify"}
+#: Yıkıcı testlerin koşabileceği bilinen veritabanı adları.
+#:
+#: ⚠️ `ceyhandb` (geliştirme veritabanı) 30 Tem 2026'da bu listeden **ÇIKARILDI**.
+#: Sebep somut: entegrasyon testleri geliştirme kataloğuna 1841 ürün biriktirdi
+#: ve bir mutasyon provası (denetim işine enjekte edilen `UPDATE products SET
+#: stock = 0` + commit) **gerçek katalog ürünlerinin stoğunu sıfırladı**. Test
+#: kodunun canlı geliştirme verisine yazabilmesi, er ya da geç o veriyi bozar.
+#:
+#: Artık kural: veritabanı adı `test` İÇERMEK ZORUNDA (ya da
+#: `INTEGRATION_TEST_DB_ALLOW` ile açıkça izin verilmiş olmalı). Tek kullanımlık
+#: veritabanı `tests/integration/conftest.py` tarafından yoksa oluşturulur ve
+#: `alembic upgrade head` ile hazırlanır.
+SAFE_DB_NAMES = {"postgres_test", "adana_test", "adana_verify"}
 
 
 class UnsafeTestDatabase(RuntimeError):
@@ -49,6 +59,45 @@ class UnsafeTestDatabase(RuntimeError):
 def _allowed_extra() -> set[str]:
     raw = os.getenv("INTEGRATION_TEST_DB_ALLOW", "")
     return {x.strip().lower() for x in raw.split(",") if x.strip()}
+
+
+def _is_test_name(db: str) -> bool:
+    """Ad tek kullanımlık bir test veritabanına mı benziyor?"""
+    return "test" in db or db in SAFE_DB_NAMES or db in _allowed_extra()
+
+
+async def purge_products(session, product_ids) -> int:
+    """Test ürünlerini defter satırlarıyla birlikte **fiziksel** siler.
+
+    Neden ayrı bir yardımcı: `stock_movements` append-only'dir ve DELETE bir
+    trigger'la reddedilir; ürün FK'si de `RESTRICT`. Bu yüzden testler ürünü
+    soft-delete etmek zorunda kalıyordu ve satırlar birikiyordu (1841 ürün).
+    Burada trigger YALNIZ test veritabanında ve yalnız bu işlem için geçici
+    olarak devre dışı bırakılır — üretimde bu fonksiyon `assert_test_database`
+    tarafından zaten reddedilir.
+    """
+    from sqlalchemy import text
+
+    assert_test_database()
+    ids = [int(i) for i in product_ids or []]
+    if not ids:
+        return 0
+    await session.execute(text("ALTER TABLE stock_movements DISABLE TRIGGER USER"))
+    try:
+        await session.execute(
+            text("DELETE FROM stock_movements WHERE product_id = ANY(:i)"), {"i": ids}
+        )
+    finally:
+        await session.execute(text("ALTER TABLE stock_movements ENABLE TRIGGER USER"))
+    await session.execute(
+        text("ALTER TABLE products DISABLE TRIGGER USER")
+    )
+    try:
+        await session.execute(text("DELETE FROM products WHERE id = ANY(:i)"), {"i": ids})
+    finally:
+        await session.execute(text("ALTER TABLE products ENABLE TRIGGER USER"))
+    await session.commit()
+    return len(ids)
 
 
 def assert_test_database(

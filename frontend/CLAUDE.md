@@ -11,7 +11,7 @@ npm run dev              # http://localhost:5173
 npm run test             # Vitest (jsdom) — birim testleri (CI'da koşar)
 ```
 
-**Test:** Vitest + React Testing Library (`vitest.config.ts`, jsdom). Testler `src/**/*.test.{ts,tsx}` (build'in `tsc -b`'sinden `tsconfig` exclude ile ayrılır; vitest/esbuild koşar). Kapsam: saf lib'ler (money/lesson/datetime/roles) + bileşen (PaymentBadge). Yeni saf yardımcı/edge-case eklerken testini de yaz.
+**Test:** Vitest + React Testing Library (`vitest.config.ts`, jsdom). Testler `src/**/*.test.{ts,tsx}` (build'in `tsc -b`'sinden `tsconfig` exclude ile ayrılır; vitest/esbuild koşar). Kapsam: saf lib'ler (money/lesson/datetime/roles) + bileşen (PaymentBadge). Yeni saf yardımcı/edge-case eklerken testini de yaz — **ama saf test tek başına yetmez**: kök `CLAUDE.md` → *Test Kalitesi ve Doğrulama Standardı* kullanıcıya değen davranış için gerçek DOM (RTL), gerçekten gönderilen isteğin doğrulanması (axios adapter) ve riskli yüzeylerde gerçek tarayıcı turu ister. Snapshot ve "render oldu" testi kanıt sayılmaz.
 
 ## Dizin Yapısı ve Mimari Dağılım
 

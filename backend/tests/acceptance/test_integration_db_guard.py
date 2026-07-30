@@ -33,14 +33,34 @@ def test_bos_veritabani_adi_reddedilir():
         assert_test_database(environment="development", database="")
 
 
-def test_gelistirme_veritabani_ve_test_adlari_kabul_edilir():
-    # Projenin geliştirme veritabanı: entegrasyon testleri bilinçli olarak ona
-    # karşı koşar (bkz. tests/integration/conftest.py başlığı).
-    assert_test_database(environment="development", database="ceyhandb")
-    assert_test_database(environment="staging", database="ceyhandb")
+def test_gelistirme_veritabani_ARTIK_REDDEDILIYOR():
+    """⚠️ DAVRANIŞ DEĞİŞTİ (30 Tem 2026).
+
+    Önceki kural: entegrasyon testleri geliştirme veritabanına (`ceyhandb`)
+    karşı koşabilirdi. İki somut zarar oluştu:
+
+      1. Katalogda **2013 test ürünü** birikti (defter satırları append-only
+         olduğu için ürünler yalnız soft-delete edilebiliyordu);
+      2. Bir mutasyon provası denetim işine `UPDATE products SET stock = 0`
+         enjekte edip commit etti ve **gerçek katalog ürünlerinin stoğunu
+         sıfırladı** (13 üründe, defterden geri yüklendi).
+
+    Yeni kural: yıkıcı testler yalnız adında `test` geçen (ya da açıkça izin
+    verilmiş) bir veritabanında koşar. Tek kullanımlık DB
+    `tests/integration/conftest.py` tarafından yoksa oluşturulur, migrate ve
+    seed edilir.
+    """
+    with pytest.raises(UnsafeTestDatabase):
+        assert_test_database(environment="development", database="ceyhandb")
+    with pytest.raises(UnsafeTestDatabase):
+        assert_test_database(environment="staging", database="ceyhandb")
+
+
+def test_test_adlari_kabul_edilir():
     # Adında "test" geçen her ad güvenli sayılır.
     assert_test_database(environment="development", database="my_test_db")
     assert_test_database(environment="development", database="TEST")
+    assert_test_database(environment="development", database="adana_test")
 
 
 def test_env_ile_ek_izin_verilebilir(monkeypatch):

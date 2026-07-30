@@ -21,6 +21,7 @@ import pytest
 from sqlalchemy import event, select, text
 
 from core.database import AsyncSessionLocal, engine
+from tests.integration.db_guard import purge_products
 from models.store import Product
 from services import stock_ledger
 from services.stock_ledger import StockMovementType
@@ -116,13 +117,10 @@ class Fabrika:
         if not self.product_ids:
             return
         async with AsyncSessionLocal() as s:
-            await s.execute(
-                text(
-                    "UPDATE products SET deleted_at = now() "
-                    "WHERE id = ANY(:i) AND deleted_at IS NULL"
-                ),
-                {"i": self.product_ids},
-            )
+            # Ürün + defter satırları FİZİKSEL silinir (soft-delete satırları
+            # biriktiriyordu). `purge_products` yalnız test veritabanında çalışır
+            # ve append-only trigger'ını geçici devre dışı bırakır.
+            await purge_products(s, self.product_ids)
             await s.commit()
 
 
@@ -259,13 +257,45 @@ async def test_siralama_DERLENEN_SQL_de_id_baglayicisini_tasiyor(fab):
 
 
 async def test_genel_denetim_sayfali_ve_tavanli(fab):
+    # Kendi verisini üretir: iddia GLOBAL ürün sayısına bağlı olmamalı. (İlk
+    # sürüm "defterde 2'den çok ürün var" varsayıyordu; temiz bir test
+    # veritabanında bu varsayım çöktü ve test kırıldı.)
+    for _ in range(3):
+        await fab.urun(stock=0)
+
+    # Tavanın GERÇEKTEN zorlanması için tavandan fazla ürün gerekir. İlk sürüm
+    # bunu geliştirme veritabanındaki ~2000 üründen "ödünç alıyordu"; temiz bir
+    # test veritabanında tavan hiç devreye girmiyordu ve tavanı kaldıran
+    # mutasyon YAKALANMIYORDU. Test artık kendi verisini üretir.
+    fazla = stock_ledger.AUDIT_MAX_LIMIT + 5
+    async with AsyncSessionLocal() as s:
+        ids = (
+            await s.execute(
+                text(
+                    "INSERT INTO products (slug, title, kind, seller_type, price, "
+                    "stock, status) SELECT 'denetim-toplu-' || :ek || '-' || g, "
+                    "'Toplu ' || g, 'PHYSICAL', 'PLATFORM', 10.00, 0, 'DRAFT' "
+                    "FROM generate_series(1, :n) g RETURNING id"
+                ),
+                {"ek": _uniq(), "n": fazla},
+            )
+        ).scalars().all()
+        await s.commit()
+    fab.product_ids.extend(ids)
+
     async with AsyncSessionLocal() as s:
         sonuc = await stock_ledger.audit_ledger(s, limit=10_000, offset=0)
-    assert sonuc.checked <= stock_ledger.AUDIT_MAX_LIMIT
+    assert sonuc.checked <= stock_ledger.AUDIT_MAX_LIMIT, (
+        f"tavan uygulanmadı: {sonuc.checked} ürün denetlendi"
+    )
+    assert sonuc.checked == stock_ledger.AUDIT_MAX_LIMIT, (
+        "tavan tam olarak zorlanmalı (yeterli ürün üretilmiş olmalı)"
+    )
+
     async with AsyncSessionLocal() as s:
         kucuk = await stock_ledger.audit_ledger(s, limit=2, offset=0)
-    assert kucuk.checked <= 2
-    # Defterde 2'den çok ürün var → sonraki sayfa bildirilmeli.
+    assert kucuk.checked == 2
+    # En az 3 ürün var → sonraki sayfa bildirilmeli.
     assert kucuk.next_offset == 2
 
 

@@ -23,12 +23,17 @@ from __future__ import annotations
 import asyncio
 import dataclasses
 import datetime
+import os
+import pathlib
+import subprocess
+import sys
 import uuid
 from decimal import Decimal
 
 import pytest
 from sqlalchemy import text
 
+from core.config import settings
 from core.database import AsyncSessionLocal, engine
 from tests.integration.db_guard import assert_test_database
 from core.payments.fake import FakePaymentProvider
@@ -269,3 +274,132 @@ async def factory(pg) -> MoneyFactory:
     f = MoneyFactory()
     yield f
     await f.cleanup()
+
+# ═════════════ Tek kullanımlık test veritabanı + hijyen nöbetçisi ═════════════
+#
+# 30 Tem 2026'ya kadar bu testler geliştirme veritabanına (`ceyhandb`) karşı
+# koşuyordu. İki somut zarar oluştu:
+#   1. Katalogda **1841 test ürünü** birikti (defter satırları append-only
+#      olduğu için ürünler yalnız soft-delete edilebiliyordu),
+#   2. Bir mutasyon provası denetim işine `UPDATE products SET stock = 0`
+#      enjekte edince **gerçek katalog ürünlerinin stoğu sıfırlandı**.
+#
+# Artık suite adı `test` içeren bir veritabanı ister; yoksa oluşturulur ve
+# `alembic upgrade head` ile hazırlanır.
+
+_KRITIK_TABLOLAR = (
+    "products",
+    "stock_movements",
+    "orders",
+    "order_items",
+    "order_returns",
+    "order_return_items",
+    "clients",
+    "admins",
+)
+
+
+def _bakim_url() -> str:
+    return (
+        f"postgresql+asyncpg://{settings.POSTGRES_USER}:{settings.POSTGRES_PASSWORD}"
+        f"@{settings.POSTGRES_HOST}:{settings.POSTGRES_PORT}/postgres"
+    )
+
+
+async def _veritabani_var_mi(bakim, ad: str) -> bool:
+    async with bakim.connect() as conn:
+        return bool(
+            (
+                await conn.execute(
+                    text("SELECT 1 FROM pg_database WHERE datname = :a"), {"a": ad}
+                )
+            ).first()
+        )
+
+
+@pytest.fixture(scope="session", autouse=True)
+async def _test_veritabani():
+    """Tek kullanımlık test veritabanını hazırlar (yoksa oluşturur + migrate)."""
+    from sqlalchemy.ext.asyncio import create_async_engine
+
+    assert_test_database()   # ad `test` içermiyorsa suite BAŞLAMAZ
+    ad = settings.POSTGRES_DB
+
+    bakim = create_async_engine(_bakim_url(), isolation_level="AUTOCOMMIT")
+    try:
+        async with bakim.connect() as conn:
+            await conn.execute(text("SELECT 1"))
+    except Exception as exc:  # noqa: BLE001
+        await bakim.dispose()
+        pytest.skip(f"Postgres bakım bağlantısı yok ({exc.__class__.__name__})")
+
+    try:
+        if not await _veritabani_var_mi(bakim, ad):
+            async with bakim.connect() as conn:
+                await conn.execute(text(f'CREATE DATABASE "{ad}"'))
+
+        # Migration ve seed KOŞULSUZ koşar (ikisi de idempotent). Yalnız
+        # "yeni oluşturuldu" dalında koşmak, bir önceki koşumda yarıda kalmış
+        # bir veritabanını sonsuza dek eksik bırakır — bu tuzağa bir kez düşüldü
+        # (şema vardı, `roles` boştu, 120 test FK ihlaliyle kırıldı).
+        res = subprocess.run(
+            [sys.executable, "-m", "alembic", "upgrade", "head"],
+            cwd=str(pathlib.Path(__file__).resolve().parents[2]),
+            capture_output=True, text=True, encoding="utf-8", errors="replace",
+            env={**os.environ, "POSTGRES_DB": ad, "AUTO_CREATE_DB": "false"},
+        )
+        if res.returncode != 0:
+            raise RuntimeError(
+                f"test veritabani migrate edilemedi: {res.stdout} {res.stderr}"
+            )
+        from core.seed import seed_admin, seed_roles
+
+        async with AsyncSessionLocal() as sess:
+            await seed_roles(sess)
+            await seed_admin(sess)
+            await sess.commit()
+        await engine.dispose()
+    finally:
+        await bakim.dispose()
+    yield ad
+
+
+async def _tablo_sayilari() -> dict[str, int]:
+    """Kritik tablo sayıları.
+
+    Sonunda `engine.dispose()` ZORUNLU: pytest-asyncio her teste yeni event loop
+    kurar ve asyncpg bağlantıları loop'a bağlıdır. Session kapsamlı bir fixture
+    havuzda bağlantı bırakırsa sonraki test kırık bağlantı alır ve `pg` fixture'ı
+    "Postgres erişilemiyor" diye SKIP eder (bu tuzağa bir kez düşüldü — 120 test
+    sessizce atlandı).
+    """
+    async with AsyncSessionLocal() as s:
+        sayilar = {
+            t: (await s.execute(text(f"SELECT count(*) FROM {t}"))).scalar_one()
+            for t in _KRITIK_TABLOLAR
+        }
+    await engine.dispose()
+    return sayilar
+
+
+@pytest.fixture(scope="session", autouse=True)
+async def _hijyen_nobetcisi(_test_veritabani):
+    """Suite öncesi/sonrası kritik tablo sayıları AYNI kalmalı.
+
+    Bir test teardown'ı unutur/başarısız olursa satır birikir ve bu zamanla
+    admin ekranlarını, genel denetimi ve performans ölçümlerini şişirir. Sayaç,
+    "temizlik çalıştı" iddiasını her koşumda yeniden kanıtlar.
+    """
+    once = await _tablo_sayilari()
+    yield
+    try:
+        sonra = await _tablo_sayilari()
+    except Exception:  # noqa: BLE001 — engine kapanmışsa sessizce geç
+        return
+    artan = {t: (once[t], sonra[t]) for t in once if sonra[t] != once[t]}
+    if artan:
+        ayrinti = ", ".join(f"{t}: {a}→{b}" for t, (a, b) in sorted(artan.items()))
+        pytest.fail(
+            "TEST İZOLASYONU BOZUK — suite kalıcı satır bıraktı: " + ayrinti,
+            pytrace=False,
+        )
