@@ -303,6 +303,9 @@ class CartValidateOut(BaseModel):
     currency: str
     has_physical: bool
     issues: list[str] = []
+    #: Sepetteki kalemler için kapalı olan ödeme kolları (`services/payment_gates`).
+    #: Boş değilse checkout başlatılmamalı — sebep `issues` içinde metin olarak da var.
+    blocked_payment_branches: list[str] = []
 
 
 class OrderShipIn(BaseModel):

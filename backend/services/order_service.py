@@ -59,6 +59,7 @@ from services import (
     escrow,
     notification_service,
     order_fsm,
+    payment_gates,
     returns,
     tax,
 )
@@ -322,6 +323,17 @@ async def validate_cart(
             coupon_error = str(exc.detail)
 
     total = (subtotal - discount + shipping).quantize(Decimal("0.01"))
+
+    # Kapalı ödeme kolları: checkout'ta 503 görmek yerine sepette öğrenilsin.
+    blocked = await payment_gates.blocked_branches_for_seller_types(
+        db, [ln["seller_type"] for ln in lines]
+    )
+    if blocked:
+        issues = list(issues) + [
+            payment_gates.BRANCH_CLOSED_MESSAGE[payment_gates.PaymentBranch(b)]
+            for b in blocked
+        ]
+
     return CartValidateOut(
         items=[
             OrderItemOut(
@@ -345,6 +357,7 @@ async def validate_cart(
         currency=settings.PAYMENT_CURRENCY,
         has_physical=has_physical,
         issues=issues,
+        blocked_payment_branches=blocked,
     )
 
 
@@ -358,6 +371,13 @@ async def create_order(
         raise HTTPException(status.HTTP_409_CONFLICT, "; ".join(issues))
     if not lines:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Sepet boş")
+
+    # Ödeme kolu kapısı: karışık sepet (platform malı + eğitmen dijital ürünü)
+    # HER İKİ kolun da açık olmasını ister. `validate_cart` bunu ödeme
+    # denemesinden önce zaten raporlar; burası son savunma.
+    await payment_gates.assert_cart_branches_open(
+        db, [ln["seller_type"] for ln in lines]
+    )
 
     subtotal, shipping, _total, has_physical = compute_totals(lines)
 
@@ -483,6 +503,11 @@ async def pay(
         raise HTTPException(status.HTTP_409_CONFLICT, "Bu sipariş iade edilmiş")
     if order.status == "CANCELLED":
         raise HTTPException(status.HTTP_409_CONFLICT, "Bu sipariş iptal edilmiş")
+    # Sipariş kurulduktan sonra kol kapanmış olabilir — yeniden ödeme denemesi de
+    # kapıdan geçer (kalemler siparişte snapshot'lı).
+    await payment_gates.assert_cart_branches_open(
+        db, [it.seller_type for it in (order.items or [])]
+    )
     client = await db.get(Client, order.client_id)
     redirect_url = await _charge(db, order, client, client_ip=client_ip)
     await db.commit()

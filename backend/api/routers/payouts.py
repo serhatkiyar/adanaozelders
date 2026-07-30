@@ -15,7 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api.deps import require_admin_permission
 from core.database import get_db
 from models.admin import Admin
-from services import audit_service, payout_ledger
+from services import audit_service, payment_gates, payout_ledger
 
 router = APIRouter(prefix="/payouts", tags=["payouts"])
 
@@ -114,6 +114,7 @@ async def record_payout(
     Kısmi ödeme meşrudur; borçtan FAZLASI reddedilir — aksi halde bakiye
     negatife düşer ve mutabakat bozulur.
     """
+    await payment_gates.assert_manual_payout_open(db)
     balance = await payout_ledger.balance_for(
         db, payee_type=payload.payee_type, payee_id=payload.payee_id
     )

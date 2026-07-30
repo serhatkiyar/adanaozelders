@@ -19,6 +19,8 @@ PERMISSION_CATALOG: tuple[tuple[str, str, str], ...] = (
     ("dashboard.view", "Dashboard görüntüleme", "Platform"),
     ("users.view", "Kullanıcı görüntüleme", "Platform"),
     ("users.manage", "Kullanıcı yönetimi", "Platform"),
+    ("settings.view", "Platform ayarlarını görüntüleme", "Platform"),
+    ("settings.manage", "Platform ayarlarını değiştirme", "Platform"),
     ("tutors.view", "Eğitmen görüntüleme", "Eğitim"),
     ("tutors.manage", "Eğitmen yönetimi", "Eğitim"),
     ("bookings.view", "Rezervasyon görüntüleme", "Eğitim"),

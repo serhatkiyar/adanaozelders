@@ -103,6 +103,10 @@ def checkout_callback_url() -> str:
 
 class IyzicoProvider(PaymentProvider):
     name = "iyzico"
+    # PK-2'ye kadar False: `create_submerchant`/`update_submerchant` aşağıda
+    # bilinçli olarak hata döner (entegrasyon yazılmadı). True demek pazaryeri
+    # kollarının kapısını SESSİZCE açardı — kapı bu yüzden yeteneğe bakar.
+    supports_marketplace = False
 
     def _require_config(self) -> None:
         if not (settings.IYZICO_API_KEY and settings.IYZICO_SECRET_KEY):

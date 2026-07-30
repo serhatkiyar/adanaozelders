@@ -52,6 +52,11 @@ class PasswordResetOut(BaseModel):
     email_masked: str
 
 from models.report import ReportStatus
+from schemas.feature_flag import (
+    FeatureFlagOut,
+    FeatureFlagUpdate,
+    PaymentBranchOut,
+)
 from schemas.report import ReportCountOut, ReportOut, ReportResolve
 from schemas.education import AdminEducationOut, EducationOut, EducationVerifyIn
 from schemas.user import NameChangeRequestOut
@@ -63,7 +68,9 @@ from services import (
     content_moderation,
     education_service,
     demand_service,
+    feature_flag_service,
     name_change_service,
+    payment_gates,
     report_service,
     revenue_service,
     tutor_service,
@@ -200,6 +207,57 @@ async def assign_admin_role(
         db, actor=admin, action="admin_role.assign", target_type="admin", target_id=admin_id, details=f"role_id={payload.role_id}"
     )
     return next(item for item in await admin_access_service.list_assignments(db) if item.admin_id == admin_id)
+
+
+# ── Platform ayarları: ödeme kolu kapıları (özellik bayrakları) ─────────────
+
+
+@router.get("/feature-flags", response_model=list[FeatureFlagOut])
+async def list_feature_flags(
+    admin: Admin = Depends(require_admin_permission("settings.view")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Katalog + güncel durum. Katalogdaki her bayrak döner (satırı olmasa bile)."""
+    return await feature_flag_service.list_flags(db)
+
+
+@router.put("/feature-flags/{key}", response_model=FeatureFlagOut)
+async def update_feature_flag(
+    key: str,
+    payload: FeatureFlagUpdate,
+    admin: Admin = Depends(require_admin_permission("settings.manage")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Bayrağı açar/kapatır. Ödeme kolu açmak işletmenin en kritik kararıdır —
+    bu yüzden yalnız `settings.manage` izniyle yapılır ve denetim kaydına
+    önceki/sonraki değerle birlikte yazılır."""
+    try:
+        out, previous = await feature_flag_service.set_flag(
+            db, key=key, enabled=payload.enabled, admin_id=admin.id, note=payload.note
+        )
+    except KeyError:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Tanımsız özellik bayrağı")
+    await audit_service.record(
+        db,
+        actor=admin,
+        action="feature_flag.update",
+        target_type="feature_flag",
+        details=key,
+        reason=payload.note,
+        before={"enabled": previous},
+        after={"enabled": payload.enabled},
+    )
+    await db.commit()
+    return out
+
+
+@router.get("/payment-branches", response_model=list[PaymentBranchOut])
+async def list_payment_branches(
+    admin: Admin = Depends(require_admin_permission("settings.view")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Kol bazlı durum + engelleyiciler (admin yüzeyi teşhis alanlarını görür)."""
+    return await payment_gates.branches_status(db, include_diagnostics=True)
 
 
 @router.get(

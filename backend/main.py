@@ -12,7 +12,7 @@ from api.router import api_router
 from core.config import settings
 from core.database import AsyncSessionLocal, engine
 from core.exceptions import register_exception_handlers
-from core import migrations, seed
+from core import flags, migrations, seed
 from core import outbox
 from core import presence
 from core import observability, private_urls
@@ -22,6 +22,7 @@ from services import (
     delivery_service,
     escrow_reconciler,
     library_exam_service,
+    payment_gates,
     study_reservation_service,
     task_service,
 )
@@ -152,6 +153,29 @@ async def lifespan(app: FastAPI):
                 # gelir — yalnız geliştirme/demo ortamında.
                 await seed.seed_tutors(session)
             await session.commit()
+    # Ödeme kapısı açılış doğrulaması. Üretimde elle havale bayrağı açık
+    # bırakılmışsa AÇILMAZ: çalışma zamanı kapısı zaten reddediyor olsa da, açık
+    # bir bayrak "bu yol kullanılabilir" izlenimi verir ve bir sonraki
+    # refaktörde kapı atlanabilir (`core/config.py::_guard_production` felsefesi).
+    #
+    # Kol bazlı eksikler ise açılışı ENGELLEMEZ, yalnız loglanır: bir kolun
+    # sağlayıcı yeteneği yoksa o kol kapalı kalır, uygulamanın tamamı ayakta
+    # kalmaya devam eder (tek global gate bilinçli olarak yok).
+    async with AsyncSessionLocal() as session:
+        manual_open = await flags.is_enabled(session, flags.FLAG_MANUAL_PAYOUT_ENABLED)
+        problem = payment_gates.manual_payout_startup_problem(
+            is_production=settings.is_production, flag_enabled=manual_open
+        )
+        if problem:
+            raise RuntimeError(f"Güvenli olmayan ödeme yapılandırması: {problem}")
+        for row in await payment_gates.branches_status(session):
+            if not row["open"]:
+                logger.warning(
+                    "Ödeme kolu KAPALI: %s (engelleyiciler: %s)",
+                    row["branch"],
+                    ", ".join(row["blockers"]),
+                )
+
     # MinIO bucket + anonim-okuma policy'si (best-effort; minio-init'e bağımlılık yok).
     await storage.ensure_bucket()
     task1 = asyncio.create_task(_reminder_loop())
@@ -282,6 +306,23 @@ async def _check_storage() -> bool:
         return False
 
 
+async def _check_payment_branches() -> list[dict]:
+    """Ödeme kollarının durumu. ASLA patlamaz; okunamıyorsa kol bazlı bilgi
+    yerine tek bir hata satırı döner (kapının kendisi fail-closed davranır).
+
+    `/health` kimlik doğrulamasız public olduğundan üretimde yalnız `open`
+    raporlanır — engelleyici adları (hangi altyapının eksik olduğu) iç bilgidir.
+    """
+    try:
+        async with AsyncSessionLocal() as session:
+            return await payment_gates.branches_status(
+                session, include_diagnostics=not settings.is_production
+            )
+    except Exception:
+        logger.warning("health: payment branch check failed", exc_info=True)
+        return [{"branch": "unknown", "open": False, "blockers": ["check_failed"]}]
+
+
 async def _check_routing() -> dict:
     """Rota altyapısı (VROOM+OSRM). ASLA patlamaz — sağlık ucu bir bağımlılık
     yüzünden 500 vermemeli."""
@@ -327,6 +368,9 @@ async def health_check():
         "redis": "connected" if redis_ok else "down",
         "storage": "connected" if storage_ok else "down",
         "routing": routing_state,
+        # Ödeme kolları KOL BAZINDA raporlanır; tek bir "hazır mı" boolean'ı
+        # bilinçli olarak yoktur (bir kolun eksiği diğerini kapatmasın).
+        "payment_branches": await _check_payment_branches(),
     }
     if db_ok and routing_state.get("degraded"):
         body["status"] = "degraded"
