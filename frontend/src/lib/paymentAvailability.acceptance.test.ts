@@ -81,6 +81,18 @@ describe("blockedBranchesForCart", () => {
       "tutor_marketplace",
     ]);
   });
+
+  it("bilinmeyen satıcı tipi PAZARYERİ sayılır (fail-safe)", () => {
+    // Sunucu yeni bir satıcı tipi eklerse ve eşleme güncellenmezse kalem
+    // sessizce kapısız kalmamalı; en kısıtlı kola atanır. Backend'de aynı kural
+    // (`branches_for_seller_types`) test edilmişti, istemcide edilmemişti —
+    // guard mutasyon provası bu boşluğu buldu.
+    expect(blockedBranchesForCart(acik("store"), ["YENI_SATICI_TIPI"])).toEqual([
+      "tutor_marketplace",
+    ]);
+    // Bilinen tip yanlış eşlenmesin (küçük/büyük harf + boşluk normalize).
+    expect(blockedBranchesForCart(acik("store"), [" platform "])).toEqual([]);
+  });
 });
 
 describe("canPromiseEscrow", () => {

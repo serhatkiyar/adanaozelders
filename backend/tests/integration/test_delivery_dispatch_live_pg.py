@@ -122,6 +122,112 @@ class DispatchFactory:
             await s.commit()
 
 
+# ── Dış veriden izolasyon ────────────────────────────────────────────────────
+#
+# KÖK NEDEN: `dispatch_day(gun)` tasarımı gereği **sistem genelinde** çalışır —
+# `eligible_orders(db)` çağırıp söz günü `gun`'ü geçmeyen TÜM konumlu siparişleri
+# planlar. Testler ise "yalnız benim siparişlerim planlanır" varsayıyordu ve
+# `planlanan == set(order_ids)` / `sum(boyutlar) == n` gibi GLOBAL eşitlikler
+# kuruyordu. Geliştirme veritabanında başka bir uygun sipariş bulunduğu anda
+# (ör. elle oluşturulmuş demo siparişleri) bu eşitlikler kırılıyordu.
+#
+# `_future_date()` yorumu "mevcut PLANNED turlarla çakışmasın" diyor ama tarih
+# İZOLASYON SAĞLAMAZ: filtre `promised_delivery_date <= gun` olduğu için ileri
+# bir tarih, geçmiş sözlü tüm siparişleri de aday yapar. Yani tarihle izole
+# etmek imkânsız.
+#
+# ÇÖZÜM: veriyi SİLMEK yerine "park etmek". `eligible_orders` açık durağı olan
+# siparişleri hariç tutar (sipariş başına tek açık durak kısıtı). Bu yüzden test
+# başlarken önceden var olan uygun siparişler geçici bir PLANNED tura durak
+# olarak bağlanır; teardown'da o tur ve durakları FİZİKSEL silinir. Hiçbir
+# üretim verisi değişmez, sipariş durumlarına dokunulmaz ve test dev DB'nin
+# içeriğinden bağımsız hale gelir.
+
+
+class _EligibleParking:
+    """Test süresince yabancı uygun siparişleri kuyruk dışına alır."""
+
+    def __init__(self) -> None:
+        self.run_id: int | None = None
+        self.stop_ids: list[int] = []
+
+    async def park(self) -> int:
+        async with AsyncSessionLocal() as s:
+            rows = (
+                await s.execute(
+                    text(
+                        """
+                        SELECT o.id FROM orders o
+                        WHERE o.deleted_at IS NULL
+                          AND o.payment_status = 'PAID'
+                          AND o.has_physical IS TRUE
+                          AND o.status IN ('PAID', 'SHIPPED')
+                          AND NOT EXISTS (
+                              SELECT 1 FROM delivery_stops ds
+                              WHERE ds.order_id = o.id
+                                AND ds.status IN ('PENDING', 'DELIVERED')
+                          )
+                        """
+                    )
+                )
+            ).scalars().all()
+            if not rows:
+                return 0
+            # Park turu testin kullandığı günden AYRI bir günde açılır: gün+araç
+            # başına tek PLANNED tur kısıtı testin kendi turlarıyla çakışmasın.
+            park_date = _future_date() - datetime.timedelta(days=1)
+            run_id = (
+                await s.execute(
+                    text(
+                        """
+                        INSERT INTO delivery_runs (run_date, vehicle, status)
+                        VALUES (:d, 'LADA', 'PLANNED') RETURNING id
+                        """
+                    ),
+                    {"d": park_date},
+                )
+            ).scalar_one()
+            self.run_id = run_id
+            for i, oid in enumerate(rows, start=1):
+                sid = (
+                    await s.execute(
+                        text(
+                            """
+                            INSERT INTO delivery_stops
+                                (run_id, order_id, sequence, status, qr_token)
+                            VALUES (:r, :o, :seq, 'PENDING', :tok) RETURNING id
+                            """
+                        ),
+                        {"r": run_id, "o": oid, "seq": i, "tok": f"park-{_uniq()}"},
+                    )
+                ).scalar_one()
+                self.stop_ids.append(sid)
+            await s.commit()
+        return len(rows)
+
+    async def release(self) -> None:
+        if self.run_id is None:
+            return
+        async with AsyncSessionLocal() as s:
+            await s.execute(
+                text("DELETE FROM delivery_stops WHERE id = ANY(:ids)"),
+                {"ids": self.stop_ids or [0]},
+            )
+            await s.execute(
+                text("DELETE FROM delivery_runs WHERE id = :r"), {"r": self.run_id}
+            )
+            await s.commit()
+
+
+@pytest.fixture(autouse=True)
+async def izole_kuyruk(pg):
+    """Her dispatch testi, dev DB'de başka uygun sipariş olmasa gibi koşar."""
+    parking = _EligibleParking()
+    await parking.park()
+    yield parking
+    await parking.release()
+
+
 @pytest.fixture
 async def df(pg):
     f = DispatchFactory()

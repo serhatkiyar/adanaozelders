@@ -518,6 +518,12 @@ const REFUND: LegalDoc = {
   updatedAt: "2026-06-11",
   sections: [
     {
+      // ⚠️ BİLİNEN YASAL METİN BORCU — `lib/legalDebt.ts::escrow-tum-odemeler`
+      // Aşağıdaki "tüm ödemeler emanete alınır" cümlesi ödeme kolları
+      // bağımsızlaştıktan sonra (PK-1) hiçbir kol için doğru değil. Metin
+      // BİLİNÇLİ OLARAK DEĞİŞTİRİLMEDİ: yasal metinler avukat onayına tabidir
+      // (plan §14b-9). Kütük + `legalDebt.acceptance.test.ts` bu borcun
+      // sessizce eskimesini engelliyor. Sahibi: PK-7.
       id: "genel",
       heading: "1. Genel Esaslar — Emanet (Escrow) Modeli",
       blocks: [
