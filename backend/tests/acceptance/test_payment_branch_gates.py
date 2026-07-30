@@ -252,6 +252,35 @@ async def test_saglayici_yetenegi_magaza_kolunu_ETKILEMEZ(
     await payment_gates.assert_branch_open(None, PaymentBranch.STORE)
 
 
+def test_sahte_saglayici_GELISTIRME_DISINDA_kapiyi_ACMAZ(monkeypatch):
+    """Kapı, `ENVIRONMENT`'in doğru set edildiği varsayımına yaslanmamalı.
+
+    Güvenlik denetimi bulgusu: pazaryeri kollarının üretimde kendiliğinden
+    kapanması `PAYMENT_PROVIDER=iyzico` zorunluluğuna dayanıyordu ve o
+    zorunluluk yalnız `ENVIRONMENT=production` iken uygulanıyor (varsayılan
+    `development`). Canlı bir kurulum `staging` olarak açılırsa `fake` sağlayıcı
+    serbest kalır, `supports_marketplace=True` döner ve kapı tek bir DB
+    bayrağına inerdi. Sahte sağlayıcı **gerçek para tahsil etmediği** için
+    gerçek bir kapı bileşeni sayılamaz.
+    """
+    from core.config import settings
+    from core.payments.fake import FakePaymentProvider
+    from services import payment_gates
+
+    monkeypatch.setattr(
+        payment_gates, "get_payment_provider", lambda: FakePaymentProvider()
+    )
+
+    monkeypatch.setattr(settings, "ENVIRONMENT", "development")
+    assert payment_gates.marketplace_capability_ok() is True
+
+    for ortam in ("staging", "production"):
+        monkeypatch.setattr(settings, "ENVIRONMENT", ortam)
+        assert payment_gates.marketplace_capability_ok() is False, (
+            f"{ortam} ortamında sahte sağlayıcı pazaryeri kapısını açmamalı"
+        )
+
+
 def test_fake_saglayici_pazaryeri_destekler_iyzico_HENUZ_desteklemez():
     """`supports_marketplace` gerçeği söylemek zorundadır: iyzico alt üye
     metotları şu an stub (`core/payments/iyzico.py`) — True dönmesi kapıyı
