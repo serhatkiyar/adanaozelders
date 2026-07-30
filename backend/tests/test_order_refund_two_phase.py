@@ -7,6 +7,12 @@ hiçbir iz kalmamış olurdu — yönetici tekrar denediğinde İKİNCİ iade gi
 Yeni akış (ders/bilet/rezervasyon yollarıyla aynı):
   Faz 1  begin_refund : PAID→REFUNDING + niyet damgası, HEMEN commit
   Faz 2  perform_refund: sağlayıcı iadesi → REFUNDING→REFUNDED
+  Faz 2b telafiler     : stok (defter) + kupon — YALNIZ Faz 2 başarılıysa
+
+Stok defteri paketi (commit 5) telafilerin yerini değiştirdi: eskiden sağlayıcı
+çağrısından ÖNCE yapılıyorlardı, yani sağlayıcı reddettiğinde para dönmemişken
+stok artmış oluyordu. Ürün kilitleri yine sağlayıcıdan ÖNCE alınır (kanonik
+kilit sırası Product → Order; ayrıntı: docs/stok-hareket-defteri-plani.md §4e).
 
 Süreç nerede ölürse ölsün kayıt sarkan REFUNDING olarak kalır ve reconciler
 devralır; HELD/PAID'e geri dönüş yoktur.
@@ -50,15 +56,24 @@ class _FakeDb:
 @pytest.fixture
 def akis(monkeypatch):
     """begin_refund / perform_refund / _restock / kupon sınırlarını kaydeder."""
-    log: dict = {"begin": [], "perform": [], "restock": [], "coupon_release": []}
+    log: dict = {
+        "begin": [], "perform": [], "restock": [], "coupon_release": [], "lock": []
+    }
 
-    async def fake_restock(db, order):
+    async def fake_restock(db, order, *, reason_code):
         log["restock"].append(order.id)
 
     async def fake_release(db, *, coupon_id, order_id):
         log["coupon_release"].append(coupon_id)
 
     monkeypatch.setattr(order_service, "_restock", fake_restock)
+
+    # Ürün kilidi artık sağlayıcı çağrısından ÖNCE alınıyor (kanonik kilit
+    # sırası; bkz. plan §4e). Sahte DB gerçek sorgu çalıştıramaz.
+    async def fake_lock(db, order):
+        log["lock"].append(order.id)
+
+    monkeypatch.setattr(order_service, "_lock_order_products", fake_lock)
     monkeypatch.setattr(order_service.coupon_service, "release", fake_release)
     return log
 
@@ -85,7 +100,9 @@ async def test_basarili_iade_iki_fazi_da_kosar(monkeypatch, akis) -> None:
     _patch_phases(monkeypatch, akis, begin_ok=True, perform_ok=True)
     order = _FakeOrder(coupon_id=9)
 
-    await order_service._refund_payment(_FakeDb(), order)
+    await order_service._refund_payment(
+        _FakeDb(), order, reason_code="ORDER_REFUNDED"
+    )
 
     assert len(akis["begin"]) == 1
     assert akis["begin"][0]["spec"] is escrow.ORDER_SPEC
@@ -102,7 +119,9 @@ async def test_claim_edilemezse_para_hareketi_yok(monkeypatch, akis) -> None:
     order = _FakeOrder()
 
     with pytest.raises(HTTPException) as exc:
-        await order_service._refund_payment(_FakeDb(), order)
+        await order_service._refund_payment(
+        _FakeDb(), order, reason_code="ORDER_REFUNDED"
+    )
 
     assert exc.value.status_code == 409
     assert akis["perform"] == []   # sağlayıcı çağrılmadı
@@ -118,20 +137,36 @@ async def test_saglayici_reddederse_refunding_de_kalir(monkeypatch, akis) -> Non
     db = _FakeDb()
 
     with pytest.raises(HTTPException) as exc:
-        await order_service._refund_payment(db, order)
+        await order_service._refund_payment(db, order, reason_code="ORDER_REFUNDED")
 
     assert exc.value.status_code == 502
     assert order.payment_status == OrderPaymentStatus.REFUNDING.value
-    # Yerel telafiler commit edilmiş olmalı: iade eninde sonunda tamamlanacak,
-    # bu arada stoğun kayıp görünmesi müşteriye satış kaybettirir.
-    assert akis["restock"] == [5]
+
+    # ⚠️ DAVRANIŞ DEĞİŞTİ (stok defteri paketi, commit 5).
+    #
+    # ÖNCEKİ kural: sağlayıcı reddetse bile stok geri yüklenirdi. Gerekçesi
+    # "iade eninde sonunda tamamlanacak; bu arada stoğun kayıp görünmesi
+    # müşteriye satış kaybettirir" idi.
+    #
+    # YENİ kural: **para dönmeden mal geri gelmiş sayılmaz.** Sağlayıcı
+    # reddettiğinde stok ARTMAZ. Gerekçe: iyimser geri yükleme, tamamlanmamış
+    # bir iadeyi satılabilir stok gibi gösteriyordu; iade hiç tamamlanmazsa
+    # (ör. kalıcı sağlayıcı hatası, elle iptal) stok kalıcı olarak şişiyordu ve
+    # bunun defterde hiçbir izi yoktu. Artık telafi yalnız Faz 2 başarılıysa
+    # uygulanır; başarısızlıkta kayıt REFUNDING'de kalır ve reconciler tekrar
+    # dener — retry aynı `order_item:{id}:SALE_CANCEL` anahtarını ürettiği için
+    # hareket TEK KEZ uygulanır (gerçek PG testi:
+    # `test_stock_writers_pg.py::test_saglayici_basarili_ama_ikinci_faz_coktu_retry_tek_uygular`).
+    assert akis["restock"] == []
     assert db.commits >= 1
 
 
 @pytest.mark.asyncio
 async def test_kuponsuz_siparis_release_cagirmaz(monkeypatch, akis) -> None:
     _patch_phases(monkeypatch, akis, begin_ok=True, perform_ok=True)
-    await order_service._refund_payment(_FakeDb(), _FakeOrder(coupon_id=None))
+    await order_service._refund_payment(
+        _FakeDb(), _FakeOrder(coupon_id=None), reason_code="ORDER_REFUNDED"
+    )
     assert akis["coupon_release"] == []
 
 

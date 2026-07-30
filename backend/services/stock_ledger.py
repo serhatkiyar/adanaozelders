@@ -52,7 +52,7 @@ import logging
 from collections.abc import Iterable, Mapping, Sequence
 from typing import Any
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -83,8 +83,10 @@ __all__ = [
     "apply_movement",
     "has_shortage",
     "idempotency_key_for",
+    "RESTORE_TYPES",
     "list_movements",
     "lock_products",
+    "restored_quantity_by_order_item",
     "make_sku",
     "payload_differences",
     "sku_prefix",
@@ -269,31 +271,37 @@ def idempotency_key_for(
     movement_type: StockMovementType | str,
     *,
     product_id: int | None = None,
-    order_id: int | None = None,
+    order_item_id: int | None = None,
     return_item_id: int | None = None,
     revision: str | None = None,
 ) -> str | None:
     """Ticari kaynaktan deterministik anahtar. `ADMIN_ADJUSTMENT`'ta `None`.
 
-    Granülerlikler bilinçli:
-      * `SALE`/`SALE_CANCEL` **sipariş + ürün** → aynı ürün iki sipariş
-        satırında geçiyorsa adetler TOPLANMAK zorunda;
-      * `RETURN` **iade satırı** → aynı üründen iki iade satırı İKİ geçerli
-        harekettir;
-      * `ADMIN_ADJUSTMENT` anahtarsız → her elle düzeltme ayrı bir olaydır.
-        Çift tıklama zaten doğal olarak idempotenttir: hedef mutlak verilir,
-        delta kilit altında hesaplanır, ikinci istekte 0 çıkar ve çağıran
-        ledger'ı hiç çağırmaz.
+    Granülerlik **satır bazlıdır** ve bu bilinçli:
 
-    Eksik parametre sessizce kabul edilmez: `order:None:product:5` gibi bir
+      * `SALE` / `SALE_CANCEL` → **`order_items.id`**. Sipariş+ürün bazlı bir
+        anahtar, aynı ürünün iki sipariş satırında geçmesi hâlinde adetleri
+        TOPLAMAYI zorunlu kılıyordu; satır bazlı anahtar hem bu toplamayı
+        gereksiz kılar hem de "hangi satır ne kadar düştü/geri geldi" sorusunu
+        deftere cevaplattırır (fazla geri yükleme guard'ının de temeli budur —
+        bkz. `restored_quantity_by_order_item`).
+      * `RETURN` → **`order_return_items.id`**. Aynı üründen iki iade satırı
+        İKİ geçerli harekettir.
+      * `INITIAL` → ürün başına (ürün bir kez oluşur).
+      * `ADMIN_ADJUSTMENT` → anahtarsız; her elle düzeltme ayrı bir olaydır.
+        Çift tıklama doğal olarak idempotenttir: hedef mutlak verilir, delta
+        kilit altında hesaplanır, ikinci istekte 0 çıkar ve çağıran ledger'ı
+        hiç çağırmaz.
+
+    Eksik parametre sessizce kabul edilmez: `order_item:None:SALE` gibi bir
     anahtar iki farklı işlemi çakıştırabilirdi.
     """
     tip = StockMovementType(movement_type)
     if tip is StockMovementType.ADMIN_ADJUSTMENT:
         return None
     if tip in (StockMovementType.SALE, StockMovementType.SALE_CANCEL):
-        _require(order_id=order_id, product_id=product_id)
-        return f"order:{order_id}:product:{product_id}:{tip.value}"
+        _require(order_item_id=order_item_id)
+        return f"order_item:{order_item_id}:{tip.value}"
     if tip is StockMovementType.RETURN:
         _require(return_item_id=return_item_id)
         return f"return_line:{return_item_id}:RETURN"
@@ -302,6 +310,61 @@ def idempotency_key_for(
         return f"product:{product_id}:INITIAL"
     _require(revision=revision, product_id=product_id)
     return f"migration:{revision}:product:{product_id}"
+
+
+#: Stoğu GERİ YÜKLEYEN hareket türleri (fazla geri yükleme guard'ının kapsamı).
+RESTORE_TYPES = (
+    StockMovementType.SALE_CANCEL.value,
+    StockMovementType.RETURN.value,
+)
+
+
+async def restored_quantity_by_order_item(
+    db: AsyncSession, order_item_ids: Sequence[int]
+) -> dict[int, int]:
+    """Sipariş kalemi başına **şimdiye kadar geri yüklenmiş** toplam adet.
+
+    ## Neden gerekli
+
+    Tam iptal ve kısmi iade **farklı** idempotency anahtarları kullanır
+    (`order_item:*:SALE_CANCEL` ve `return_line:*:RETURN`). İkisi de kendi
+    başına geçerlidir; anahtar tekilliği bu yüzden "aynı satır iki kez geri
+    yüklenmesin"i korur ama **"toplam geri yükleme satışı aşmasın"**ı KORUMAZ:
+    4 adetlik bir kalemden 2 adet iade edildikten sonra sipariş tam iptal
+    edilirse 4 daha eklenir ve stok 6 artar — satılan 4'tü.
+
+    Bu yüzden geri yükleme yollarında tavan iş kuralı olarak uygulanır:
+    `geri_yüklenebilir = satılan − şimdiye kadar geri yüklenen`.
+
+    `RETURN` hareketleri `ref_line_id`'de **iade satırı** kimliğini taşıdığı
+    için sipariş kalemine `order_return_items` üzerinden bağlanır; `SALE_CANCEL`
+    doğrudan `order_items.id` taşır.
+    """
+    ids = [int(i) for i in set(order_item_ids)]
+    if not ids:
+        return {}
+    sql = text(
+        """
+        SELECT oi_id, coalesce(sum(qty_delta), 0) AS geri
+        FROM (
+            SELECT m.ref_line_id AS oi_id, m.qty_delta
+            FROM stock_movements m
+            WHERE m.movement_type = 'SALE_CANCEL'
+              AND m.ref_type = 'order_item'
+              AND m.ref_line_id = ANY(:ids)
+            UNION ALL
+            SELECT ori.order_item_id AS oi_id, m.qty_delta
+            FROM stock_movements m
+            JOIN order_return_items ori ON ori.id = m.ref_line_id
+            WHERE m.movement_type = 'RETURN'
+              AND m.ref_type = 'order_return'
+              AND ori.order_item_id = ANY(:ids)
+        ) x
+        GROUP BY oi_id
+        """
+    )
+    rows = (await db.execute(sql, {"ids": ids})).all()
+    return {int(r.oi_id): int(r.geri) for r in rows}
 
 
 def _require(**alanlar: Any) -> None:

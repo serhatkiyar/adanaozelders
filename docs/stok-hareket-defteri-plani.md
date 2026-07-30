@@ -410,6 +410,25 @@ Kural: `stock` payload'da **ve** mevcut değerden farklıysa `stock_reason_code`
 
 İkisi de defterin doğruluğunun ön koşulu; ayrı pakete bırakılırsa defter ilk günden yanlış sayı kaydeder.
 
+### 4f. Hareket türü ↔ referans ↔ idempotency (commit 5 — uygulandı)
+
+| Yol | Tür | Delta | `ref_type` / `ref_id` | `ref_line_id` | Idempotency anahtarı | Aktör |
+|---|---|---|---|---|---|---|
+| `_finalize_paid` (PAID) | `SALE` | **−**adet | `order` / `orders.id` | `order_items.id` | `order_item:{id}:SALE` | `SYSTEM` |
+| `_restock` (iptal) | `SALE_CANCEL` | **+**kalan | `order_item` / `orders.id` | `order_items.id` | `order_item:{id}:SALE_CANCEL` | `SYSTEM` |
+| `_restock` (tam iade) | `SALE_CANCEL` | **+**kalan | aynı | aynı | aynı (gerekçe `ORDER_REFUNDED`) | `SYSTEM` |
+| `_restock_items` (kısmi iade) | `RETURN` | **+**adet | `order_return` / `order_returns.id` | `order_return_items.id` | `return_line:{id}:RETURN` | `SYSTEM` |
+| `create_product` | `INITIAL` | **+**ilk stok | `product` / `products.id` | — | `product:{id}:INITIAL` | `ADMIN` |
+| `bulk_import_products` | `INITIAL` | **+**ilk stok | aynı (gerekçe `CSV_IMPORT`) | — | aynı | `ADMIN` |
+| `update_product` | `ADMIN_ADJUSTMENT` | **±**delta | — | — | **yok** (her düzeltme ayrı olay) | `ADMIN` |
+| migration backfill | `OPENING_BALANCE` | +mevcut | `migration` / — | — | `migration:{rev}:product:{id}` | `SYSTEM` |
+
+**Granülerlik neden satır bazlı:** sipariş+ürün bazlı bir anahtar, aynı ürünün iki sipariş satırında geçmesi hâlinde adetleri toplamayı zorunlu kılıyordu. `order_items.id` bazlı anahtar hem bunu gereksiz kılar hem de "hangi satır ne kadar düştü / ne kadar geri geldi" sorusunu deftere cevaplattırır — **fazla geri yükleme tavanının** temeli budur.
+
+**Fazla geri yükleme tavanı (iş kuralı):** tam iptal (`order_item:*:SALE_CANCEL`) ile kısmi iade (`return_line:*:RETURN`) **farklı** anahtarlar kullanır; ikisi de kendi başına geçerlidir. Tavan olmasa 4 adetlik bir kalemden 2 iade + 4 iptal = 6 adet geri yüklenirdi. `stock_ledger.restored_quantity_by_order_item` şimdiye kadar geri yüklenen adedi defterden okur ve geri yükleme `satılan − geri yüklenen` ile sınırlanır. **Bu okuma ürün kilidi altında yapılır** — yoksa eşzamanlı iki yol ikisi de "henüz geri yüklenen yok" görür (gerçek PG testiyle ölçüldü).
+
+**İki fazlı iadede telafi sırası (davranış değişikliği):** stok artık **yalnız sağlayıcı iadesi başarılı olduktan sonra** geri yüklenir. Önceki davranış sağlayıcı reddetse bile stoğu geri yüklüyordu ("iade eninde sonunda tamamlanacak" gerekçesiyle); bu, tamamlanmamış bir iadeyi satılabilir stok gibi gösteriyordu. Ürün kilitleri yine **sağlayıcı çağrısından önce** alınır (kanonik sıra, §4e).
+
 ### 4e. Kilit grafiği (commit 4 — dosya:satır kanıtlı)
 
 Satır numaraları **commit 4 sonrası** hâli gösterir. `escrow.claim`/`begin_refund` bir **koşullu UPDATE**'tir (`services/escrow.py:182`) ve hedef satıra yazma kilidi alır — grafikte "Order/Return kilidi" olarak sayılır.

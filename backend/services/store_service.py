@@ -556,7 +556,11 @@ async def create_product(
         seller_type=SellerType.PLATFORM.value,
         price=payload.price,
         compare_at_price=payload.compare_at_price,
-        stock=payload.stock if payload.kind == ProductKind.PHYSICAL.value else None,
+        # Fiziksel ürün **0 stokla** kurulur; ilk bakiye aşağıda bir `INITIAL`
+        # hareketiyle deftere yazılır. Constructor'da yazmak, defterin
+        # "mevcut + delta" aritmetiğiyle bakiyeyi ÇİFT sayardı. Dijital ürün
+        # stok yönetimine tabi değildir → NULL (SKU'sunu yine alır).
+        stock=0 if payload.kind == ProductKind.PHYSICAL.value else None,
         weight_grams=payload.weight_grams,
         category_id=payload.category_id,
         status=payload.status,
@@ -566,6 +570,29 @@ async def create_product(
     for field in _BOOK_SPEC_FIELDS:
         setattr(p, field, getattr(payload, field))
     db.add(p)
+
+    # ── İlk bakiye: ürünle AYNI transaction'da deftere ──
+    #
+    # `flush` id'yi atar (SKU'yu `products_sku_autofill` BEFORE INSERT trigger'ı
+    # yazar); `INITIAL` hareketi aynı transaction'da eklenir. Hareket
+    # yazılamazsa (ör. geçersiz gerekçe) commit hiç olmaz → **ürün de
+    # oluşturulmuş kalmaz**. Dijital ürün SKU alır ama stok hareketi ALMAZ.
+    await db.flush()
+    if p.kind == ProductKind.PHYSICAL.value and (payload.stock or 0) > 0:
+        await stock_ledger.apply_movement(
+            db,
+            p.id,
+            qty_delta=int(payload.stock),
+            movement_type=stock_ledger.StockMovementType.INITIAL,
+            reason_code="PRODUCT_CREATE",
+            ref_type="product",
+            ref_id=p.id,
+            idempotency_key=stock_ledger.idempotency_key_for(
+                stock_ledger.StockMovementType.INITIAL, product_id=p.id
+            ),
+            actor_type="ADMIN",
+            actor_id=admin.id,
+        )
     await db.commit()
     full = await _load_full(db, p.id)
     return await _to_detail(db, full)
@@ -639,33 +666,54 @@ async def bulk_import_products(db: AsyncSession, admin: Admin, rows: list[dict])
             if cat_slug and category_id is None:
                 raise ValueError(f"kategori bulunamadı: {cat_slug}")
 
+            # Ürün + `INITIAL` hareketi AYNI savepoint'te: hareket yazılamazsa
+            # o satırın ürünü de oluşmaz, diğer satırlar etkilenmez.
             async with db.begin_nested():
                 slug = await _unique_product_slug(db, _slugify(title))
-                db.add(
-                    Product(
-                        slug=slug,
-                        title=title,
-                        description=_g("description"),
-                        kind=kind,
-                        seller_type=SellerType.PLATFORM.value,
-                        price=price,
-                        compare_at_price=compare,
-                        stock=_int("stock") if kind == "PHYSICAL" else None,
-                        category_id=category_id,
-                        status=status_v,
-                        cover_url=_g("cover_url"),
-                        created_by_admin_id=admin.id,
-                        author=_g("author"),
-                        publisher=_g("publisher"),
-                        isbn=isbn,
-                        page_count=_int("page_count"),
-                        dimensions=_g("dimensions"),
-                        publication_year=_int("publication_year"),
-                        edition=_g("edition"),
-                        language=_g("language"),
-                        cover_type=_g("cover_type"),
-                    )
+                yeni = Product(
+                    slug=slug,
+                    title=title,
+                    description=_g("description"),
+                    kind=kind,
+                    seller_type=SellerType.PLATFORM.value,
+                    price=price,
+                    compare_at_price=compare,
+                    # 0 ile kurulur; ilk bakiye deftere yazılır (bkz.
+                    # `create_product`). Dijital → NULL (stok takibi yok).
+                    stock=0 if kind == "PHYSICAL" else None,
+                    category_id=category_id,
+                    status=status_v,
+                    cover_url=_g("cover_url"),
+                    created_by_admin_id=admin.id,
+                    author=_g("author"),
+                    publisher=_g("publisher"),
+                    isbn=isbn,
+                    page_count=_int("page_count"),
+                    dimensions=_g("dimensions"),
+                    publication_year=_int("publication_year"),
+                    edition=_g("edition"),
+                    language=_g("language"),
+                    cover_type=_g("cover_type"),
                 )
+                db.add(yeni)
+                await db.flush()
+                ilk_stok = _int("stock") if kind == "PHYSICAL" else None
+                if ilk_stok:
+                    await stock_ledger.apply_movement(
+                        db,
+                        yeni.id,
+                        qty_delta=int(ilk_stok),
+                        movement_type=stock_ledger.StockMovementType.INITIAL,
+                        reason_code="CSV_IMPORT",
+                        ref_type="product",
+                        ref_id=yeni.id,
+                        idempotency_key=stock_ledger.idempotency_key_for(
+                            stock_ledger.StockMovementType.INITIAL,
+                            product_id=yeni.id,
+                        ),
+                        actor_type="ADMIN",
+                        actor_id=admin.id,
+                    )
             created += 1
         except Exception as exc:  # noqa: BLE001 — satır hatası raporlanır, akış sürer
             errors.append({"row": i, "message": str(exc)})
@@ -756,6 +804,8 @@ async def update_product(
     # Artık: DIGITAL'de açık ret; PHYSICAL'de satır `stock_ledger.lock_products`
     # ile (artan id + `populate_existing`) tazelenip kilitlenir ve delta KİLİT
     # ALTINDA hesaplanır.
+    stok_gerekce = data.pop("stock_reason_code", None)
+    stok_notu = data.pop("stock_note", None)
     stok_hedefi: int | None = None
     stok_delta = 0
     if "stock" in data and owner_tutor_id is None:
@@ -769,6 +819,25 @@ async def update_product(
             locked = await stock_ledger.lock_products(db, [p.id])
             p = locked[p.id]   # kilit altındaki TAZE satır
             stok_delta = int(stok_hedefi) - int(p.stock or 0)
+            if stok_delta:
+                # Gerekçe ZORUNLU — ama yalnız gerçekten bir değişiklik varsa.
+                # Aynı hedefin tekrarı (delta 0) bir "işlem" değildir; gerekçe
+                # istemek kullanıcıyı boşa zorlamak olurdu.
+                if admin_id is None:
+                    raise HTTPException(
+                        status.HTTP_400_BAD_REQUEST,
+                        "Stok düzeltmesi için yönetici kimliği gerekli",
+                    )
+                try:
+                    stock_ledger.validate_reason(
+                        stock_ledger.StockMovementType.ADMIN_ADJUSTMENT,
+                        stok_gerekce,
+                        note=stok_notu,
+                    )
+                except ValueError as exc:
+                    raise HTTPException(
+                        status.HTTP_400_BAD_REQUEST, str(exc)
+                    ) from exc
     elif "stock" in data:
         # Eğitmen yolunda stok hiç düzenlenemez (bugün de öyleydi); alanı
         # sessizce taşımak yerine at.
@@ -793,22 +862,20 @@ async def update_product(
         if field in data:
             setattr(p, field, data[field])
 
-    # Stok yazımı: delta 0 ise hiç dokunulmaz (gürültü yok).
-    #
-    # TODO(commit 5 — stok defteri): buradaki doğrudan atama
-    # `stock_ledger.apply_movement(..., ADMIN_ADJUSTMENT, reason_code=...)`
-    # çağrısına dönüşecek; gerekçe alanları (`stock_reason_code`/`stock_note`)
-    # o commit'te şemaya eklenecek ve zorunlu kılınacak. Bu commit YALNIZ kilit
-    # ve delta altyapısını kuruyor — stok değişikliği hâlâ deftere yazılmıyor,
-    # gerekçe hâlâ istenmiyor ve `verify_ledger` bu yolda sapma raporlar.
+    # Stok yazımı DEFTER üzerinden. Delta 0 ise ledger HİÇ çağrılmaz: aynı
+    # hedefin tekrarı gürültü satırı üretmez (defter tarafı sıfır deltayı
+    # zaten reddediyor).
     if stok_delta:
-        p.stock = int(p.stock or 0) + stok_delta
-        if p.stock < 0:
-            raise HTTPException(
-                status.HTTP_409_CONFLICT,
-                f"Stok {stok_hedefi} yapılamaz: eşzamanlı bir satış sonrası "
-                "mevcut bakiye bu değerin altına düştü",
-            )
+        await stock_ledger.apply_movement(
+            db,
+            p.id,
+            qty_delta=stok_delta,
+            movement_type=stock_ledger.StockMovementType.ADMIN_ADJUSTMENT,
+            reason_code=stok_gerekce,
+            actor_type="ADMIN",
+            actor_id=admin_id,
+            note=stok_notu,
+        )
     # compare_at_price > price tutarlılığı (DB CHECK de korur ama erken 400 verelim).
     if p.compare_at_price is not None and Decimal(str(p.compare_at_price)) <= Decimal(
         str(p.price)

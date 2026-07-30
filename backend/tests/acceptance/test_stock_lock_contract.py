@@ -161,17 +161,54 @@ def test_lock_products_eager_loading_kullanmiyor():
         )
 
 
-def test_urun_kilidi_alan_cagiranlar_ortak_yardimciyi_kullaniyor():
-    """Ön kontrolü için kilide ihtiyaç duyan çağıran da AYNI yardımcıyı çağırır."""
-    for rel, fn in (
-        ("services/order_service.py", "_finalize_paid"),
-        ("services/order_service.py", "_restock"),
-        ("services/order_service.py", "_restock_items"),
-        ("services/store_service.py", "update_product"),
-    ):
-        assert _first_line(_func(rel, fn), LOCKER) is not None, (
-            f"{rel}::{fn} ürün kilidini ortak yardımcıyla almıyor"
+#: Kilide KENDİ ihtiyacı olan (yalnız `apply_many`'nin kilidine güvenemeyen)
+#: yollar. Diğerleri kilidi `apply_many`'ye bırakır — commit 5'te `_restock` ve
+#: `_restock_items` tam olarak bunu yaptı: kendi kilit çağrıları kalktı,
+#: `apply_many` tek sahibi oldu.
+KENDI_KILIDINI_ALANLAR: list[tuple[str, str, str]] = [
+    # Oversell ön kontrolü, PAID claim'inden ÖNCE ve kilit altında okumak zorunda.
+    ("services/order_service.py", "_finalize_paid", "oversell ön kontrolü"),
+    # Admin hedefi → delta çevirimi kilit altında olmak zorunda.
+    ("services/store_service.py", "update_product", "hedef→delta çevirimi"),
+    # Geri yükleme yolları sağlayıcı çağrısından ÖNCE kilitlemek zorunda
+    # (yoksa Order→Product sırası oluşur; bkz. plan §4e).
+    ("services/order_service.py", "_lock_order_products", "kanonik sıra"),
+]
+
+
+@pytest.mark.parametrize("rel,fn,neden", KENDI_KILIDINI_ALANLAR)
+def test_kendi_kilidine_ihtiyaci_olanlar_ortak_yardimciyi_kullaniyor(rel, fn, neden):
+    assert _first_line(_func(rel, fn), LOCKER) is not None, (
+        f"{rel}::{fn} ({neden}) ürün kilidini ortak yardımcıyla almıyor"
+    )
+
+
+def test_geri_yukleme_yollari_kendi_kilit_dongusunu_acmiyor():
+    """`_restock`/`_restock_items` **ortak yardımcıyı** kullanır, kendi döngüsünü açmaz.
+
+    Requirement: "apply_many ürün kilitlerinin tek sahibi olarak kalabiliyorsa
+    çağıranlarda ikinci ve FARKLI bir ürün kilitleme döngüsü oluşturma. Ön
+    kontrol için alınan kilit gerçekten gerekiyorsa ortak bir yardımcı kullan."
+
+    Burada kilit gerçekten gerekli: **fazla geri yükleme tavanı** defterden
+    okunur ve bu okuma kilit altında olmalıdır — yoksa eşzamanlı iki geri
+    yükleme (tam iptal ⟂ kısmi iade) ikisi de "henüz geri yüklenen yok" görüp
+    stoğu satılandan fazla artırır (gerçek PG testiyle ölçüldü). Bu yüzden
+    `lock_products` çağrısı MEŞRUDUR; yasak olan kendi `with_for_update`
+    döngüsünü açmaktır (o kural `test_urun_kilidini_alan_tek_yer_lock_products`
+    tarafından zaten korunuyor).
+    """
+    for fn in ("_restock", "_restock_items"):
+        node = _func("services/order_service.py", fn)
+        cagrilar = _call_names(node)
+        assert LOCKER in cagrilar, (
+            f"{fn} tavan okumasını kilit altında yapmıyor (ortak yardımcı yok)"
         )
+        assert "apply_many" in cagrilar, f"{fn} apply_many kullanmıyor"
+        # Tavan okuması kilitten SONRA gelmeli.
+        assert _first_line(node, LOCKER) < _first_line(
+            node, "restored_quantity_by_order_item"
+        ), f"{fn}: tavan kilit ALINMADAN okunuyor"
 
 
 # ═════════════ 2. Kaynak sırası: Product → Order → Return ═════════════
@@ -181,10 +218,18 @@ def test_urun_kilidi_alan_cagiranlar_ortak_yardimciyi_kullaniyor():
 SIRA_MATRISI: list[tuple[str, str, list[str]]] = [
     # PAID: ürünler kilitlenir → sipariş satırı koşullu UPDATE ile claim edilir.
     ("services/order_service.py", "_finalize_paid", [LOCKER, "claim"]),
-    # Tam iade telafisi: ürünler → (kupon) → sağlayıcı/sipariş durumu.
-    ("services/order_service.py", "_refund_payment", ["_restock", "perform_refund"]),
-    # Kısmi iade telafisi: ürünler → kupon.
-    ("services/order_service.py", "_settle_return", ["claim", "_restock_items"]),
+    # Tam iade: ürün kilitleri SAĞLAYICIDAN ÖNCE (kanonik sıra), telafi SONRA.
+    (
+        "services/order_service.py",
+        "_refund_payment",
+        ["_lock_order_products", "perform_refund", "_restock"],
+    ),
+    # Kısmi iade: aynı desen (kilit → sağlayıcı → telafi).
+    (
+        "services/order_service.py",
+        "_settle_return",
+        ["_lock_order_products", "refund", "_restock_items"],
+    ),
 ]
 
 
@@ -289,20 +334,18 @@ def test_update_product_delta_kilit_altinda_hesapliyor():
 # ═════════════ 4. Commit 5 borcu açıkça kayıtlı ═════════════
 
 
-def test_defter_borcu_uc_yerde_de_TODO_olarak_isaretli():
-    """Commit 4 yalnız kilit altyapısını kurdu.
+def test_commit4_defter_borcu_ODENDI():
+    """Commit 4'te bırakılan `TODO(commit 5 …)` borç notları kalmamalı.
 
-    `_restock`, `_restock_items` ve `update_product` hâlâ `products.stock`'a
-    DOĞRUDAN yazıyor; hareket deftere yazılmıyor. Bu borç kodda açık olmalı ki
-    problem "çözülmüş" gibi görünmesin (`test_products_stock_a_atama_yapan_tek_
-    dosya_defter` de bu yüzden hâlâ kırmızı).
+    Commit 4'te bu testin tersi vardı (notların VARLIĞINI zorunlu kılıyordu):
+    kilit altyapısı kurulmuş ama hareketler deftere yazılmamıştı ve problemin
+    "çözülmüş" görünmemesi gerekiyordu. Commit 5 borcu ödedi; şimdi notların
+    KALMAMASI doğrulanıyor — aksi hâlde kod, yapılmış bir işi yapılmamış gibi
+    anlatır.
     """
-    for rel, fn in (
-        ("services/order_service.py", "_restock"),
-        ("services/order_service.py", "_restock_items"),
-        ("services/store_service.py", "update_product"),
-    ):
-        src = ast.get_source_segment(_read(rel), _func(rel, fn)) or ""
-        assert "TODO(commit 5" in src, (
-            f"{rel}::{fn} defter borcunu TODO olarak işaretlemiyor"
-        )
+    kalanlar: list[str] = []
+    for rel in _source_files():
+        for i, satir in enumerate(_read(rel).splitlines(), start=1):
+            if "TODO(commit 5" in satir:
+                kalanlar.append(f"{rel}:{i}")
+    assert kalanlar == [], f"ödenmiş borcun notu duruyor: {', '.join(kalanlar)}"

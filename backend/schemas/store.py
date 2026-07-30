@@ -139,7 +139,15 @@ class ProductUpdate(_BookSpecFields):
     compare_at_price: Decimal | None = Field(
         default=None, gt=0, max_digits=10, decimal_places=2
     )
+    #: HEDEF (mutlak) stok. Delta sunucuda, ürün satırı kilitli iken hesaplanır;
+    #: istemci delta göndermez (iki istemci aynı deltayı gönderirse hangisinin
+    #: hangi tabana uygulandığı belirsiz kalırdı).
     stock: int | None = Field(default=None, ge=0)
+    #: `stock` gönderildiğinde ZORUNLU (servis doğrular): stok neden değişti?
+    #: Beyaz liste `models.store.ADMIN_ADJUSTMENT_REASONS`.
+    stock_reason_code: str | None = Field(default=None, max_length=30)
+    #: `stock_reason_code == "DIGER"` ise zorunlu.
+    stock_note: str | None = Field(default=None, max_length=500)
     weight_grams: int | None = Field(default=None, ge=0)
     category_id: int | None = None
     status: str | None = Field(default=None, pattern="^(ACTIVE|HIDDEN|DRAFT|PENDING)$")

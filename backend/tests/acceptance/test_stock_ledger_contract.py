@@ -213,14 +213,21 @@ def test_urun_kurucusunda_ilk_stok_sabit():
             for kw in node.keywords:
                 if kw.arg != "stock":
                     continue
-                # Alt ağaçta payload/satır referansı (Attribute) veya çağrı
-                # varsa değer sabit değildir.
-                dinamik = [
-                    n for n in ast.walk(kw.value)
-                    if isinstance(n, (ast.Attribute, ast.Call, ast.Subscript))
-                ]
-                if dinamik:
-                    ihlaller.append(f"{rel}:{node.lineno}")
+                # Yalnız DEĞER dalları denetlenir; `0 if kind == X else None`
+                # gibi bir ifadenin KOŞULU doğal olarak `payload.kind` içerir ve
+                # bu bir sorun değildir. Ölçülen şey: atanan değerin sabit
+                # olması (0/None), yani ilk bakiyenin constructor'da YAZILMAMASI.
+                dallar = (
+                    [kw.value.body, kw.value.orelse]
+                    if isinstance(kw.value, ast.IfExp)
+                    else [kw.value]
+                )
+                for dal in dallar:
+                    if not (
+                        isinstance(dal, ast.Constant)
+                        and (dal.value is None or dal.value == 0)
+                    ):
+                        ihlaller.append(f"{rel}:{node.lineno}")
     assert ihlaller == [], (
         "Product(stock=...) sabit olmalı (0/None); ilk bakiye INITIAL "
         f"hareketiyle yazılmalı: {', '.join(ihlaller)}"
@@ -258,6 +265,10 @@ def test_stok_kirpma_kalibi_yok():
     ihlaller: list[str] = []
     for rel in _source_files():
         for i, line in enumerate(_read(rel).splitlines(), start=1):
+            # Yorum satırları atlanır: kaldırılan deseni ANLATAN bir açıklama
+            # ("eskiden `max(0, p.stock - qty)` vardı") testi yanlış kırar.
+            if line.lstrip().startswith("#"):
+                continue
             if "max(0" in line and "stock" in line:
                 ihlaller.append(f"{rel}:{i}")
     assert ihlaller == [], (

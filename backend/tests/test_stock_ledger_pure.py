@@ -155,21 +155,28 @@ class TestValidateReason:
 # ───────────────── Idempotency anahtarları (Karar 7) ─────────────────
 
 class TestIdempotencyKey:
-    def test_satis_urun_basina(self):
-        # Sipariş+ürün granülerliği, aynı ürünün iki sipariş satırında
-        # geçmesi hâlinde adetlerin TOPLANMASINI zorunlu kılar.
+    def test_satis_siparis_kalemi_bazli(self):
+        # commit 5: granülerlik SİPARİŞ KALEMİdir (`order_items.id`).
+        # Sipariş+ürün bazlı bir anahtar, aynı ürünün iki sipariş satırında
+        # geçmesi hâlinde adetleri TOPLAMAYI zorunlu kılıyordu; satır bazlı
+        # anahtar hem bunu gereksiz kılar hem de "hangi satır ne kadar düştü /
+        # geri geldi" sorusunu deftere cevaplattırır (fazla geri yükleme
+        # tavanının temeli budur).
         assert (
-            idempotency_key_for(StockMovementType.SALE, order_id=17, product_id=5)
-            == "order:17:product:5:SALE"
+            idempotency_key_for(StockMovementType.SALE, order_item_id=42)
+            == "order_item:42:SALE"
         )
 
     def test_iptal_satistan_ayri_anahtar(self):
-        satis = idempotency_key_for(StockMovementType.SALE, order_id=17, product_id=5)
-        iptal = idempotency_key_for(
-            StockMovementType.SALE_CANCEL, order_id=17, product_id=5
-        )
-        assert iptal == "order:17:product:5:SALE_CANCEL"
+        satis = idempotency_key_for(StockMovementType.SALE, order_item_id=42)
+        iptal = idempotency_key_for(StockMovementType.SALE_CANCEL, order_item_id=42)
+        assert iptal == "order_item:42:SALE_CANCEL"
         assert iptal != satis
+
+    def test_ayni_urunun_iki_siparis_satiri_ayri_anahtar(self):
+        a = idempotency_key_for(StockMovementType.SALE, order_item_id=42)
+        b = idempotency_key_for(StockMovementType.SALE, order_item_id=43)
+        assert a != b
 
     def test_iade_satir_bazli(self):
         # Kısmi iadede idempotency kaynağı iade SATIRIdır (OrderReturnItem.id):
@@ -203,7 +210,7 @@ class TestIdempotencyKey:
         # "order:None:product:5" gibi bir anahtar iki farklı işlemi
         # çakıştırabilirdi.
         with pytest.raises(ValueError):
-            idempotency_key_for(StockMovementType.SALE, product_id=5)
+            idempotency_key_for(StockMovementType.SALE)   # order_item_id yok
         with pytest.raises(ValueError):
             idempotency_key_for(StockMovementType.RETURN)
         with pytest.raises(ValueError):

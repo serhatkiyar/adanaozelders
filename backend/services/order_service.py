@@ -611,11 +611,19 @@ async def _finalize_paid(
     #
     # Eksik hesabı da defterle AYNI saf yardımcıya (`has_shortage`) bağlandı;
     # ayrışırlarsa biri "yeter" derken diğeri `InsufficientStock` atardı.
+    physical = _physical_items(order)
     needed: dict[int, int] = {}
-    for item in order.items:
-        if item.kind == ProductKind.PHYSICAL.value and item.product_id is not None:
-            needed[item.product_id] = needed.get(item.product_id, 0) + item.quantity
+    for item in physical:
+        needed[item.product_id] = needed.get(item.product_id, 0) + item.quantity
     locked = await stock_ledger.lock_products(db, list(needed))
+    # Başlıklar DÜZ DİZGİ olarak alınır: aşağıdaki yetersiz-stok dalında
+    # `db.rollback()` çağrılıyor ve rollback ORM nesnelerini expire ediyor;
+    # expire edilmiş bir nesnenin alanına erişmek async oturumda lazy-load →
+    # `MissingGreenlet` (500) demektir.
+    basliklar = {pid: p.title for pid, p in locked.items()}
+    # Aynı sebeple sipariş kimliği de şimdiden yakalanır: `rollback` `order`
+    # nesnesini de expire eder ve `order.id` okumak lazy-load tetikler.
+    order_id = order.id
     shortages = [
         locked[pid].title
         for pid, qty in sorted(needed.items())
@@ -684,12 +692,56 @@ async def _finalize_paid(
                 order.id, order.coupon_code, order.discount,
             )
 
+    # ── Stok düşümü: DEFTER üzerinden, sipariş kalemi bazlı ──
+    #
+    # Eskiden burada `p.stock = max(0, p.stock - qty)` vardı: kırpma oversell'i
+    # sessizce yutuyor ve hiçbir iz bırakmıyordu. Artık her fiziksel kalem için
+    # bir `SALE` hareketi yazılır (anahtar `order_item:{id}:SALE`) ve
+    # `products.stock` yalnız defter tarafından güncellenir.
+    if physical:
+        try:
+            await stock_ledger.apply_many(
+                db,
+                [
+                    {
+                        "product_id": item.product_id,
+                        "qty_delta": -item.quantity,
+                        "movement_type": stock_ledger.StockMovementType.SALE,
+                        "reason_code": "ORDER_PAID",
+                        "ref_type": "order",
+                        "ref_id": order.id,
+                        "ref_line_id": item.id,
+                        "idempotency_key": stock_ledger.idempotency_key_for(
+                            stock_ledger.StockMovementType.SALE, order_item_id=item.id
+                        ),
+                    }
+                    for item in physical
+                ],
+            )
+        except stock_ledger.InsufficientStock as exc:
+            # Ön kontrol (yukarıda, AYNI kilitler altında) eksiği görmediği hâlde
+            # defter reddetti → beklenmeyen bir yarış. 500 DÖNMEZ:
+            #   • tüm transaction geri alınır (PAID claim'i dâhil) → kısmi durum
+            #     kalmaz, hiçbir SALE hareketi yazılmış olmaz;
+            #   • sipariş taze okunup MEVCUT out-of-stock/iade akışına verilir.
+            #     `escrow.begin_refund` atomik claim yaptığı için o akış
+            #     idempotenttir (ikinci eşzamanlı çağrı claim edemez).
+            logger.error(
+                "order %s: ön kontrol yeterli dedi ama defter reddetti "
+                "(ürün %s, mevcut %s, istenen %s) — transaction geri alınıyor ve "
+                "stok yetersizliği iade akışına yönlendiriliyor",
+                order.id, exc.product_id, exc.current, exc.qty_delta,
+            )
+            await db.rollback()
+            taze = await _load_full(db, order_id)
+            if taze is None:
+                return
+            await _out_of_stock_refund(
+                db, taze, [basliklar.get(exc.product_id, str(exc.product_id))]
+            )
+            return
+
     for item in order.items:
-        # Fiziksel stok düş (yukarıda kilitlenen satırlar üzerinden; atomik).
-        if item.kind == ProductKind.PHYSICAL.value and item.product_id is not None:
-            p = locked.get(item.product_id)
-            if p is not None and p.stock is not None:
-                p.stock = max(0, p.stock - item.quantity)
         # Eğitmen dijital kalemi → komisyon bölüşümü kazanca yaz.
         if item.seller_type == SellerType.TUTOR.value and item.tutor_id is not None:
             tutor = await db.get(Tutor, item.tutor_id)
@@ -1170,30 +1222,94 @@ async def mark_delivered(db: AsyncSession, order_id: int) -> OrderOut:
     return _to_out(order)
 
 
-async def _restock(db: AsyncSession, order: Order) -> None:
-    """Fiziksel kalemlerin stoğunu satır kilidiyle geri yükle (iptal/iade).
+def _physical_items(order: Order) -> list:
+    return [
+        item
+        for item in order.items
+        if item.kind == ProductKind.PHYSICAL.value and item.product_id is not None
+    ]
 
-    Kilit `stock_ledger.lock_products` ile TEK sorguda, artan `id` sırasıyla
-    alınır. Önceki kalem-kalem döngüsü sırayı `order.items` sırasına bırakıyordu
-    → çapraz ürünlü iki eşzamanlı iptal deadlock üretebiliyordu.
 
-    TODO(commit 5 — stok defteri): buradaki `p.stock += …` doğrudan ataması
-    kaldırılıp `stock_ledger.apply_many(..., SALE_CANCEL)` çağrısına
-    dönüşecek. Bu commit YALNIZ kilit altyapısını düzeltiyor; hareket hâlâ
-    deftere yazılmıyor ve `verify_ledger` bu yolda sapma raporlar.
+async def _lock_order_products(db: AsyncSession, order: Order) -> None:
+    """Siparişin fiziksel ürünlerini kanonik sırada kilitler.
+
+    Geri yükleme yollarında **sağlayıcı çağrısından önce** çağrılır: `Order`
+    kilidi sağlayıcıdan sonra alındığı için, ürün kilidini de sonraya bırakmak
+    bu yolu `Order → Product` yapar ve `_finalize_paid`'in `Product → Order`
+    sırasıyla deadlock döngüsü kurar. Ayrıntı: plan §4e.
     """
-    needed: dict[int, int] = {}
-    for item in order.items:
-        if item.kind == ProductKind.PHYSICAL.value and item.product_id is not None:
-            needed[item.product_id] = needed.get(item.product_id, 0) + item.quantity
-    locked = await stock_ledger.lock_products(db, list(needed))
-    for pid, qty in sorted(needed.items()):
-        p = locked[pid]
-        if p.stock is not None:
-            p.stock += qty
+    urunler = {item.product_id for item in _physical_items(order)}
+    if urunler:
+        await stock_ledger.lock_products(db, list(urunler))
 
 
-async def _refund_payment(db: AsyncSession, order: Order) -> None:
+async def _restock(db: AsyncSession, order: Order, *, reason_code: str) -> None:
+    """İptal / tam iadede stoğu **deftere yazarak** geri yükler.
+
+    Kalem başına bir `SALE_CANCEL` hareketi (`order_item:{id}:SALE_CANCEL`).
+
+    **Fazla geri yükleme tavanı:** tam iptal ile kısmi iade FARKLI idempotency
+    anahtarları kullanır; ikisi de kendi başına geçerlidir. 4 adetlik kalemden 2
+    adet iade edildikten sonra sipariş tam iptal edilirse 4 daha eklenir ve stok
+    satılandan fazla artardı. Bu yüzden geri yüklenecek adet
+    `satılan − şimdiye kadar geri yüklenen` ile sınırlanır (defterden okunur).
+
+    ⚠️ Yalnız **sağlayıcı iadesi başarılı olduktan sonra** çağrılmalıdır (iki
+    fazlı iadenin ikinci fazı) — aksi hâlde para dönmemişken stok artar.
+    """
+    physical = _physical_items(order)
+    if not physical:
+        return
+    # Tavan hesabı ÜRÜN KİLİDİ ALTINDA okunmalı: iki geri yükleme yolu
+    # eşzamanlı koşarsa (tam iptal ⟂ kısmi iade) ikisi de "henüz geri yüklenen
+    # yok" görüp tam adedi uygular ve stok satılandan fazla artar. Kilit ikisini
+    # serileştirir; ikinci okuma birincinin commit'ini görür.
+    # (`apply_many` zaten kilitliyor ama SONRA — okuma önce olduğu için burada
+    # açıkça alınır; aynı transaction'da yeniden girişlidir, maliyeti yok.)
+    await stock_ledger.lock_products(db, [item.product_id for item in physical])
+    geri_yuklenen = await stock_ledger.restored_quantity_by_order_item(
+        db, [item.id for item in physical]
+    )
+    specs: list[dict] = []
+    for item in physical:
+        kalan = int(item.quantity) - int(geri_yuklenen.get(item.id, 0))
+        if kalan <= 0:
+            # Bu kalem zaten (kısmen/tamamen iade yoluyla) geri yüklenmiş.
+            logger.info(
+                "order %s kalem %s: geri yüklenecek adet kalmadı "
+                "(satılan %s, geri yüklenen %s)",
+                order.id, item.id, item.quantity, geri_yuklenen.get(item.id, 0),
+            )
+            continue
+        specs.append(
+            {
+                "product_id": item.product_id,
+                "qty_delta": kalan,
+                "movement_type": stock_ledger.StockMovementType.SALE_CANCEL,
+                "reason_code": reason_code,
+                "ref_type": "order_item",
+                "ref_id": order.id,
+                "ref_line_id": item.id,
+                "idempotency_key": stock_ledger.idempotency_key_for(
+                    stock_ledger.StockMovementType.SALE_CANCEL, order_item_id=item.id
+                ),
+                "note": (
+                    None
+                    if kalan == item.quantity
+                    else (
+                        f"kısmi iade sonrası kalan: satılan {item.quantity}, "
+                        f"önceden geri yüklenen {geri_yuklenen.get(item.id, 0)}"
+                    )
+                ),
+            }
+        )
+    if specs:
+        await stock_ledger.apply_many(db, specs)
+
+
+async def _refund_payment(
+    db: AsyncSession, order: Order, *, reason_code: str
+) -> None:
     """İki fazlı iade + stok geri yükleme + kupon serbest bırakma.
 
     Faz 1 (``escrow.begin_refund``): PAID→REFUNDING + niyet damgası atomik claim
@@ -1216,22 +1332,50 @@ async def _refund_payment(db: AsyncSession, order: Order) -> None:
             "Bu siparişin iadesi zaten işleniyor veya tamamlanmış",
         )
 
-    # Yerel telafiler iadeyle AYNI transaction'da: sağlayıcı onayladıysa stok ve
-    # kupon da geri döner; onaylamadıysa REFUNDING'de kalır ve reconciler retry'lar.
-    await _restock(db, order)
-    if order.coupon_id is not None:
-        # Kupon kullanımı yalnız PAID'de sayılmıştı → geri sal.
-        await coupon_service.release(db, coupon_id=order.coupon_id, order_id=order.id)
+    # ── Ürün kilitleri: sağlayıcı çağrısından ÖNCE (kilit sırası) ──
+    #
+    # Telafiler artık sağlayıcı BAŞARILI olduktan sonra uygulanıyor (aşağıda).
+    # Ama `perform_refund` içindeki `finalize_refund` sipariş satırını UPDATE
+    # eder, yani **Order kilidi** alır. Kilitleri o noktadan sonra almak bu yolu
+    # `Order → Product` yapardı; `_finalize_paid` ise `Product → Order` alıyor
+    # → gerçek bir deadlock döngüsü. Bu yüzden ürün satırları sağlayıcıya
+    # gitmeden ÖNCE, kanonik sırada kilitlenir; `apply_many` sonra aynı satırları
+    # yeniden girişli biçimde kilitler.
+    #
+    # Bedeli bilinçli: ürün satırları sağlayıcı HTTP çağrısı boyunca kilitli
+    # kalır. Kabul edilme sebebi — iade nadir ve yönetici tetiklidir; alternatifler
+    # ya kilit sırasını ters çevirir (deadlock) ya da telafiyi Faz 2 commit'inden
+    # SONRAYA atıp süreç ölürse **kalıcı olarak kaybeder** (sipariş REFUNDED
+    # olduğu için reconciler de devralmaz).
+    await _lock_order_products(db, order)
 
+    # ── Faz 2: sağlayıcı ──
+    #
+    # Sıra bilinçli olarak DEĞİŞTİ (commit 5): eskiden stok ve kupon telafisi
+    # sağlayıcı çağrısından ÖNCE yapılıyordu, yani sağlayıcı reddettiğinde
+    # (`REFUNDING`'de bırakılan kayıt) stok ARTMIŞ oluyordu — para dönmemişken
+    # mal geri gelmiş sayılıyordu ve satılabilir görünüyordu.
     if not await escrow.perform_refund(db, order, escrow.ORDER_SPEC):
         # Sağlayıcı reddetti/ulaşılamadı: REFUNDING'de bırakılır (HELD'e geri
-        # dönüş YOK). Reconciler karantina penceresi sonrası devralır.
+        # dönüş YOK) ve **STOK ARTMAZ**. Reconciler karantina penceresi sonrası
+        # devralır; o da bu fonksiyonu tekrar çağırdığında telafiler
+        # idempotency anahtarları sayesinde TEK KEZ uygulanır.
         await db.commit()
         raise HTTPException(
             status.HTTP_502_BAD_GATEWAY,
             "Sağlayıcı iadesi şu an tamamlanamadı; iade kaydedildi ve "
             "otomatik olarak yeniden denenecek.",
         )
+
+    # ── Yerel telafiler (yalnız iade tamamlandıysa) ──
+    #
+    # Bu blok ile `perform_refund` arasında süreç ölürse: sağlayıcıda para
+    # dönmüş, DB'de REFUNDED claim'i ve telafiler geri alınmış olur. Retry aynı
+    # `order_item:{id}:SALE_CANCEL` anahtarını üretir → hareket TEK KEZ uygulanır.
+    await _restock(db, order, reason_code=reason_code)
+    if order.coupon_id is not None:
+        # Kupon kullanımı yalnız PAID'de sayılmıştı → geri sal.
+        await coupon_service.release(db, coupon_id=order.coupon_id, order_id=order.id)
 
 
 async def refund_order(db: AsyncSession, order_id: int) -> OrderOut:
@@ -1242,7 +1386,7 @@ async def refund_order(db: AsyncSession, order_id: int) -> OrderOut:
     await _lock_order(db, order)
     if order.payment_status != "PAID":
         raise HTTPException(status.HTTP_409_CONFLICT, "Yalnızca ödenmiş sipariş iade edilebilir")
-    await _refund_payment(db, order)
+    await _refund_payment(db, order, reason_code="ORDER_REFUNDED")
     await order_fsm.transition_order(db, order, "REFUNDED", changed_by="admin")
     await db.commit()
     await notification_service.notify(
@@ -1270,7 +1414,7 @@ async def cancel_by_client(db: AsyncSession, order: Order) -> OrderOut:
         raise HTTPException(status.HTTP_409_CONFLICT, "Bu sipariş zaten iptal/iade edilmiş")
 
     if order.payment_status == "PAID":
-        await _refund_payment(db, order)
+        await _refund_payment(db, order, reason_code="ORDER_CANCELLED")
     await order_fsm.transition_order(db, order, "CANCELLED", changed_by="client")
     await db.commit()
     await notification_service.notify(
@@ -1571,33 +1715,68 @@ async def _build_return(
 
 
 async def _restock_items(db: AsyncSession, order: Order, ret: OrderReturn) -> None:
-    """İade edilen FİZİKSEL kalemlerin stoğunu geri yükler (yalnız seçilenler).
+    """İade edilen FİZİKSEL kalemlerin stoğunu **deftere yazarak** geri yükler.
 
-    Kilit `stock_ledger.lock_products` ile TEK sorguda, artan `id` sırasıyla.
+    İade SATIRI başına bir `RETURN` hareketi (`return_line:{id}:RETURN`) —
+    aynı üründen iki iade satırı iki geçerli harekettir.
 
-    TODO(commit 5 — stok defteri): `p.stock += …` yerine iade SATIRI başına
-    `stock_ledger.apply_many(..., RETURN, ref_line_id=ri.id)` gelecek. Bu commit
-    YALNIZ kilit altyapısını düzeltiyor; hareket deftere henüz yazılmıyor.
+    ⚠️ Yalnız **sağlayıcı iadesi başarılı olduktan sonra** çağrılmalıdır.
     """
     by_id = {it.id: it for it in order.items}
-    # Aynı üründen iki iade satırı olabilir; kilit için ürün başına TEKİL küme,
-    # geri yükleme için satır satır adet. (Defter tarafında satırlar ayrı ayrı
-    # hareket üretecek — bkz. yukarıdaki TODO.)
-    lines: list[tuple[int, int]] = []
+    lines = []
     for ri in ret.items:
         item = by_id.get(ri.order_item_id)
         if item is None or item.kind != ProductKind.PHYSICAL.value:
             continue
         if item.product_id is None:
             continue
-        lines.append((item.product_id, ri.quantity))
+        lines.append((ri, item))
     if not lines:
         return
-    locked = await stock_ledger.lock_products(db, [pid for pid, _ in lines])
-    for pid, qty in sorted(lines):
-        p = locked[pid]
-        if p.stock is not None:
-            p.stock += qty
+
+    # Fazla geri yükleme tavanı: `satılan − şimdiye kadar geri yüklenen`
+    # (bkz. `_restock` docstring'i). Bir iade satırı bu tavanı aşıyorsa —
+    # sipariş önce tam iptal edilmiş ve sonra iade onaylanmış olabilir —
+    # kırpılan miktar HAREKETİN kendisine ve loga yazılır; sessiz kalmaz.
+    await stock_ledger.lock_products(db, [item.product_id for _, item in lines])
+    geri_yuklenen = await stock_ledger.restored_quantity_by_order_item(
+        db, [item.id for _, item in lines]
+    )
+    specs: list[dict] = []
+    for ri, item in lines:
+        tavan = int(item.quantity) - int(geri_yuklenen.get(item.id, 0))
+        adet = min(int(ri.quantity), max(tavan, 0))
+        if adet <= 0:
+            logger.error(
+                "iade satırı %s: geri yüklenecek adet kalmadı (kalem %s satılan %s, "
+                "önceden geri yüklenen %s) — stok artırılmadı",
+                ri.id, item.id, item.quantity, geri_yuklenen.get(item.id, 0),
+            )
+            continue
+        specs.append(
+            {
+                "product_id": item.product_id,
+                "qty_delta": adet,
+                "movement_type": stock_ledger.StockMovementType.RETURN,
+                "reason_code": "RETURN_ACCEPTED",
+                "ref_type": "order_return",
+                "ref_id": ret.id,
+                "ref_line_id": ri.id,
+                "idempotency_key": stock_ledger.idempotency_key_for(
+                    stock_ledger.StockMovementType.RETURN, return_item_id=ri.id
+                ),
+                "note": (
+                    None
+                    if adet == int(ri.quantity)
+                    else (
+                        f"tavan uygulandı: talep {ri.quantity}, uygulanan {adet} "
+                        f"(kalem {item.id} satılan {item.quantity})"
+                    )
+                ),
+            }
+        )
+    if specs:
+        await stock_ledger.apply_many(db, specs)
 
 
 async def _settle_return(
@@ -1653,17 +1832,22 @@ async def _settle_return(
         ret, attribute_names=["refund_status", "refund_attempts", "refund_requested_at"]
     )
 
-    # ── Yerel telafiler ──
-    await _restock_items(db, order, ret)
-    if not ret.is_partial and order.coupon_id is not None:
-        # Kupon yalnız TAM iadede serbest bırakılır; kısmi iadede sipariş
-        # ayaktadır ve kupon tüketilmiş sayılır.
-        await coupon_service.release(db, coupon_id=order.coupon_id, order_id=order.id)
+    # ── Ürün kilitleri: sağlayıcıdan ÖNCE (kanonik sıra; bkz. `_refund_payment`) ──
+    # Aşağıdaki `ret`/`order` yazımları Return ve Order kilidi alır; ürün kilidini
+    # onlardan sonra almak bu yolu `Return/Order → Product` yapar ve
+    # `_finalize_paid` ile deadlock döngüsü kurar.
+    await _lock_order_products(db, order)
 
     # ── Faz 2: sağlayıcı ──
+    #
+    # Sıra bilinçli olarak DEĞİŞTİ (commit 5): stok ve kupon telafisi eskiden
+    # sağlayıcı çağrısından ÖNCE yapılıyordu; sağlayıcı reddettiğinde para
+    # dönmemişken mal geri gelmiş sayılıyor ve satılabilir görünüyordu.
     provider = payments.get_payment_provider()
     ok = await provider.refund(provider_ref=order.provider_ref, amount=amount)
     if not ok:
+        # **STOK ARTMAZ.** Reconciler devralır; tekrar denemede telafiler
+        # `return_line:{id}:RETURN` anahtarı sayesinde TEK KEZ uygulanır.
         await db.commit()
         logger.error(
             "iade talebi %s: sağlayıcı reddetti — REFUNDING'de bırakıldı (order=%s)",
@@ -1674,6 +1858,13 @@ async def _settle_return(
             status.HTTP_502_BAD_GATEWAY,
             "İade şu an tamamlanamadı; kaydedildi ve yeniden denenecek.",
         )
+
+    # ── Yerel telafiler (yalnız iade tamamlandıysa) ──
+    await _restock_items(db, order, ret)
+    if not ret.is_partial and order.coupon_id is not None:
+        # Kupon yalnız TAM iadede serbest bırakılır; kısmi iadede sipariş
+        # ayaktadır ve kupon tüketilmiş sayılır.
+        await coupon_service.release(db, coupon_id=order.coupon_id, order_id=order.id)
 
     ret.refund_status = ReturnRefundStatus.REFUNDED.value
     ret.refunded_at = _now()

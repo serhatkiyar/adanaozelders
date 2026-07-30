@@ -44,6 +44,10 @@ LOCK_TIMEOUT = "4s"
 #: Yarışlar olasılıksal; her çift bu kadar tekrar koşar.
 TURLAR = 3
 
+#: Admin düzeltmesi artık `actor_id` ZORUNLU kılıyor (defter aktörü).
+#: Seed admin'in id'si; hareketin FK'si yok, doğrulama yalnız "None değil".
+ADMIN_ID = 1
+
 #: PostgreSQL hata kodları.
 DEADLOCK = "40P01"
 LOCK_TIMEOUT_CODE = "55P03"
@@ -241,13 +245,12 @@ async def _stock(pid: int) -> int | None:
         ).scalar_one()
 
 
-async def _mv_count(pid: int) -> int:
+async def _mv_count(pid: int, *, movement_type: str | None = None) -> int:
     async with AsyncSessionLocal() as s:
-        return (
-            await s.execute(
-                select(func.count()).where(StockMovement.product_id == pid)
-            )
-        ).scalar_one()
+        q = select(func.count()).where(StockMovement.product_id == pid)
+        if movement_type:
+            q = q.where(StockMovement.movement_type == movement_type)
+        return (await s.execute(q)).scalar_one()
 
 
 async def _load_order(s, order_id: int):
@@ -342,7 +345,9 @@ async def test_cift2_satis_ile_admin_duzeltmesi_serilesir(fab, tur, ters_baslat)
             from schemas.store import ProductUpdate
 
             await store_service.update_product(
-                s, pid, ProductUpdate(stock=60), admin_id=None
+                s, pid,
+                ProductUpdate(stock=60, stock_reason_code="TEDARIK"),
+                admin_id=ADMIN_ID,
             )
 
     isciler = [satis(), admin_duzeltmesi()]
@@ -353,13 +358,19 @@ async def test_cift2_satis_ile_admin_duzeltmesi_serilesir(fab, tur, ters_baslat)
     assert not any(isinstance(r, BaseException) for r in sonuclar), sonuclar
 
     # Satışın hareketi HER HÂLDE yazılmış olmalı; `qty_after` sırayı söyler.
+    # (Admin düzeltmesi commit 5'ten beri kendi ADMIN_ADJUSTMENT hareketini
+    # yazıyor; burada yalnız SALE'e bakılır.)
     async with AsyncSessionLocal() as s:
         mv = (
             await s.execute(
-                select(StockMovement).where(StockMovement.product_id == pid)
+                select(StockMovement).where(
+                    StockMovement.product_id == pid,
+                    StockMovement.movement_type == "SALE",
+                )
             )
         ).scalars().all()
     assert len(mv) == 1, "satış hareketi kayıp/çift"
+    assert await _mv_count(pid, movement_type="ADMIN_ADJUSTMENT") == 1
     satis_sonrasi = mv[0].qty_after
     son = await _stock(pid)
     if satis_sonrasi == 48:          # satış önce koştu → admin 48'i gördü
@@ -416,7 +427,9 @@ async def test_cift2b_bayat_kimlik_haritasi_uzerinden_delta_hesaplanmiyor(fab, t
         await admin_s.execute(text(f"SET LOCAL lock_timeout = '{LOCK_TIMEOUT}'"))
         try:
             await store_service.update_product(
-                admin_s, pid, ProductUpdate(stock=3), admin_id=None
+                admin_s, pid,
+                ProductUpdate(stock=3, stock_reason_code="SAYIM_FARKI"),
+                admin_id=ADMIN_ID,
             )
         except HTTPException as exc:
             raise AssertionError(
@@ -455,7 +468,7 @@ async def test_cift3_satis_ile_tam_iade_geri_yuklemesi(fab, tur, ters_baslat):
         s = await _session()
         try:
             order = await _load_order(s, oid)
-            await order_service._restock(s, order)
+            await order_service._restock(s, order, reason_code="ORDER_CANCELLED")
             await s.commit()
         finally:
             await s.close()
@@ -491,7 +504,7 @@ async def test_cift4_tam_iptal_ile_kismi_iade(fab, tur, ters_baslat):
         s = await _session()
         try:
             order = await _load_order(s, oid)
-            await order_service._restock(s, order)
+            await order_service._restock(s, order, reason_code="ORDER_CANCELLED")
             await asyncio.sleep(0.05)
             await s.commit()
         finally:
@@ -520,8 +533,30 @@ async def test_cift4_tam_iptal_ile_kismi_iade(fab, tur, ters_baslat):
     sonuclar = await asyncio.gather(*isciler, return_exceptions=True)
     _assert_no_lock_failure(sonuclar)
     assert not any(isinstance(r, BaseException) for r in sonuclar), sonuclar
-    assert await _stock(a) == 36          # 30 + 4 (iptal) + 2 (kısmi iade)
-    assert await _stock(b) == 31          # 30 + 1
+    # ── Fazla geri yükleme tavanı (commit 5 / requirement 6) ──
+    #
+    # Kalem `a` 4 adet satılmıştı. Tam iptal ve kısmi iade FARKLI idempotency
+    # anahtarları kullanır, yani ikisi de "kendi başına geçerli" görünür; tavan
+    # olmasa toplam 4+2=6 adet geri yüklenir ve stok SATILANDAN fazla artardı.
+    # Tavan `satılan − şimdiye kadar geri yüklenen` olduğu için sıra ne olursa
+    # olsun sonuç aynıdır:
+    #   iptal önce : +4 → sonra iade tavanı 0 → +0   ⇒ 34
+    #   iade önce  : +2 → sonra iptal tavanı 2 → +2  ⇒ 34
+    assert await _stock(a) == 34, "fazla geri yükleme (tavan uygulanmadı)"
+    assert await _stock(b) == 31          # 30 + 1 (yalnız iptal)
+
+    # Defter de aynı gerçeği söylemeli: `a` için geri yüklenen toplam = satılan.
+    async with AsyncSessionLocal() as s:
+        oi_id = (
+            await s.execute(
+                text(
+                    "SELECT id FROM order_items WHERE order_id = :o AND product_id = :p"
+                ),
+                {"o": oid, "p": a},
+            )
+        ).scalar_one()
+        geri = await stock_ledger.restored_quantity_by_order_item(s, [oi_id])
+    assert geri.get(oi_id, 0) == 4, geri
 
 
 # ══════════ Çift 5: aynı siparişin retry'ı ↔ admin düzeltmesi ══════════
@@ -563,7 +598,9 @@ async def test_cift5_ayni_siparisin_retryi_ile_admin_duzeltmesi(fab, tur, ters_b
             from schemas.store import ProductUpdate
 
             await store_service.update_product(
-                s, pid, ProductUpdate(stock=25), admin_id=None
+                s, pid,
+                ProductUpdate(stock=25, stock_reason_code="TEDARIK"),
+                admin_id=ADMIN_ID,
             )
 
     isciler = [satis_retry(), admin_duzeltmesi()]
@@ -581,4 +618,7 @@ async def test_cift5_ayni_siparisin_retryi_ile_admin_duzeltmesi(fab, tur, ters_b
     # olmaması: satışın -5'i her hâlde uygulanmış olmalı.
     son = await _stock(pid)
     assert son in (20, 25), son
-    assert await _mv_count(pid) == 1, "retry ikinci hareketi yazdı"
+    # Retry TEK satış hareketi yazmalı. (Admin düzeltmesi commit 5'ten beri
+    # kendi `ADMIN_ADJUSTMENT` hareketini yazıyor; toplam sayı 2'dir.)
+    assert await _mv_count(pid, movement_type="SALE") == 1, "retry ikinci SALE yazdı"
+    assert await _mv_count(pid, movement_type="ADMIN_ADJUSTMENT") == 1

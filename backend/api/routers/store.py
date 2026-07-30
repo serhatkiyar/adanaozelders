@@ -241,7 +241,9 @@ async def update_product(
     admin: Admin = Depends(require_admin_permission("products.manage")),
     db: AsyncSession = Depends(get_db),
 ):
-    product = await store_service.update_product(db, product_id, payload)
+    product = await store_service.update_product(
+        db, product_id, payload, admin_id=admin.id
+    )
     await audit_service.record(
         db, actor=admin, action="product.update", target_type="product",
         target_id=product_id, after=payload.model_dump(exclude_unset=True),
