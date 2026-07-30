@@ -57,6 +57,7 @@ from schemas.store import (
     SellerProductCreate,
     SellerProductStat,
 )
+from services import stock_ledger
 from services.ranking import bayesian_average
 
 
@@ -739,23 +740,75 @@ async def update_product(
     if owner_tutor_id is not None and p.tutor_id != owner_tutor_id:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Bu ürün sizin değil")
 
+    data = payload.model_dump(exclude_unset=True)
+
+    # ── Stok değişikliği: kilit altında, delta tabanlı ──
+    #
+    # Önceki hâl iki kusur taşıyordu:
+    #  1. Satır KİLİTLENMİYORDU ve gelen MUTLAK değer doğrudan atanıyordu.
+    #     Admin "stok 50 olsun" derken eşzamanlı bir PAID 2 adet düşürürse
+    #     `setattr` düşümü EZİYOR ve kayıp SESSİZ kalıyordu (defter olmadan
+    #     tespiti de imkânsızdı).
+    #  2. Dijital üründe `stock` alanı sessizce yutuluyordu (aşağıdaki
+    #     `editable` listesine yalnız PHYSICAL'de ekleniyor) — admin
+    #     "kaydettim" sanıyordu.
+    #
+    # Artık: DIGITAL'de açık ret; PHYSICAL'de satır `stock_ledger.lock_products`
+    # ile (artan id + `populate_existing`) tazelenip kilitlenir ve delta KİLİT
+    # ALTINDA hesaplanır.
+    stok_hedefi: int | None = None
+    stok_delta = 0
+    if "stock" in data and owner_tutor_id is None:
+        if p.kind != ProductKind.PHYSICAL.value:
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST,
+                "Dijital ürün stok yönetimine tabi değildir; stok değiştirilemez",
+            )
+        stok_hedefi = data.pop("stock")
+        if stok_hedefi is not None:
+            locked = await stock_ledger.lock_products(db, [p.id])
+            p = locked[p.id]   # kilit altındaki TAZE satır
+            stok_delta = int(stok_hedefi) - int(p.stock or 0)
+    elif "stock" in data:
+        # Eğitmen yolunda stok hiç düzenlenemez (bugün de öyleydi); alanı
+        # sessizce taşımak yerine at.
+        data.pop("stock")
+
     old_stock = p.stock
     old_price = Decimal(str(p.price))
-    data = payload.model_dump(exclude_unset=True)
     if "title" in data and data["title"]:
         p.title = data["title"]
         p.slug = await _unique_product_slug(
             db, _slugify(data["title"]), exclude_id=p.id
         )
+    # DİKKAT: `stock` bu listede YOKTUR ve olmamalıdır. `setattr` döngüsü
+    # DİNAMİK bir yazım yoludur; stok oraya girerse mutlak atama kilit ve delta
+    # hesabını atlar ve hiçbir AST testi bunu "doğrudan mutasyon" olarak
+    # göremez. Stok yukarıda, kilit altında, delta olarak ele alınır.
     editable = ["description", "price", "compare_at_price", "category_id", "cover_url"]
     if owner_tutor_id is None:
-        # Admin: stok/ağırlık/durum + kitap künyesi dahil tüm alanlar.
+        # Admin: ağırlık/durum + kitap künyesi (stok HARİÇ).
         editable += ["weight_grams", "status", *_BOOK_SPEC_FIELDS]
-        if p.kind == ProductKind.PHYSICAL.value:
-            editable.append("stock")
     for field in editable:
         if field in data:
             setattr(p, field, data[field])
+
+    # Stok yazımı: delta 0 ise hiç dokunulmaz (gürültü yok).
+    #
+    # TODO(commit 5 — stok defteri): buradaki doğrudan atama
+    # `stock_ledger.apply_movement(..., ADMIN_ADJUSTMENT, reason_code=...)`
+    # çağrısına dönüşecek; gerekçe alanları (`stock_reason_code`/`stock_note`)
+    # o commit'te şemaya eklenecek ve zorunlu kılınacak. Bu commit YALNIZ kilit
+    # ve delta altyapısını kuruyor — stok değişikliği hâlâ deftere yazılmıyor,
+    # gerekçe hâlâ istenmiyor ve `verify_ledger` bu yolda sapma raporlar.
+    if stok_delta:
+        p.stock = int(p.stock or 0) + stok_delta
+        if p.stock < 0:
+            raise HTTPException(
+                status.HTTP_409_CONFLICT,
+                f"Stok {stok_hedefi} yapılamaz: eşzamanlı bir satış sonrası "
+                "mevcut bakiye bu değerin altına düştü",
+            )
     # compare_at_price > price tutarlılığı (DB CHECK de korur ama erken 400 verelim).
     if p.compare_at_price is not None and Decimal(str(p.compare_at_price)) <= Decimal(
         str(p.price)

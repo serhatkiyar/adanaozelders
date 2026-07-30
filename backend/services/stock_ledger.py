@@ -84,6 +84,7 @@ __all__ = [
     "has_shortage",
     "idempotency_key_for",
     "list_movements",
+    "lock_products",
     "make_sku",
     "payload_differences",
     "sku_prefix",
@@ -479,28 +480,48 @@ def _current_request_id() -> str | None:
 # ════════════════════════ Kilit ve yazım ════════════════════════
 
 
-async def _lock_products(
+async def lock_products(
     db: AsyncSession, product_ids: Sequence[int]
 ) -> dict[int, Product]:
-    """Ürünleri **artan `product_id`** sırasıyla, her birini **bir kez** kilitler.
+    """Ürün satırlarını **artan `id`** sırasıyla, her birini **bir kez** kilitler.
 
-    Sıra sabit olmasa çapraz ürünlü iki eşzamanlı batch deadlock üretirdi.
-    `populate_existing=True` olmadan kilit alınır ama ORM bayat nesneyi
-    döndürür (modül docstring'i).
+    **Ürün kilidi alan TEK yer burasıdır.** `apply_movement`/`apply_many` bunu
+    kullanır; ön kontrolü için kilide ihtiyaç duyan çağıranlar (ör.
+    `order_service._finalize_paid`'in oversell guard'ı) da **aynı** fonksiyonu
+    çağırır. Böylece kilit sırası disiplini üç ayrı döngüde tekrarlanmaz ve
+    biri unutulduğunda sessizce deadlock'a dönüşmez. Aynı transaction'da tekrar
+    çağrılmak zararsızdır (yeniden girişli).
+
+    Tasarım kararları:
+
+    * **Tek sorgu + `ORDER BY id` + `FOR UPDATE`.** PostgreSQL satırları
+      `ORDER BY`'a göre sıralayıp o sırada kilitler; bu, deadlock'tan kaçınmanın
+      belgelenmiş deyimidir ve N ayrı sorgudan daha az gidiş-dönüş yapar. `id`
+      değişmez bir kolon olduğu için sıralama yarışta kayamaz.
+    * **Dar `SELECT Product`.** Hiçbir `join`/eager-load YOK: `joinedload` ile
+      alınan bir `FOR UPDATE`, ilişkili tabloların satırlarını da kilitler ve
+      kilit grafiğine görünmez kaynaklar sokardı. (`Product`'ın üç ilişkisi de
+      `lazy="select"`; burada bilinçli olarak hiçbir loader option verilmiyor.)
+    * **`populate_existing=True`.** Olmadan kilit alınır ama ORM kimlik
+      haritasındaki **bayat** nesneyi döndürür ve delta bayat bakiye üzerinden
+      hesaplanır (bkz. modül docstring'i).
     """
-    kilitli: dict[int, Product] = {}
-    for pid in sorted(set(product_ids)):
-        p = (
-            await db.execute(
-                select(Product)
-                .where(Product.id == pid)
-                .with_for_update()
-                .execution_options(populate_existing=True)
-            )
-        ).scalars().first()
-        if p is None:
-            raise ValueError(f"ürün bulunamadı: {pid}")
-        kilitli[pid] = p
+    istenen = sorted(set(product_ids))
+    if not istenen:
+        return {}
+    rows = (
+        await db.execute(
+            select(Product)
+            .where(Product.id.in_(istenen))
+            .order_by(Product.id)
+            .with_for_update()
+            .execution_options(populate_existing=True)
+        )
+    ).scalars().all()
+    kilitli = {p.id: p for p in rows}
+    eksik = [pid for pid in istenen if pid not in kilitli]
+    if eksik:
+        raise ValueError(f"ürün bulunamadı: {eksik}")
     return kilitli
 
 
@@ -592,7 +613,7 @@ async def _apply_specs(
         )
 
     # FAZ 1 — kilitle (artan product_id, her ürün bir kez).
-    urunler = await _lock_products(db, [s["product_id"] for s in specs])
+    urunler = await lock_products(db, [s["product_id"] for s in specs])
 
     # FAZ 2 — kararı kilitten SONRA ver. Sıra tersine olsa iki transaction aynı
     # anda "yok" görüp ikisi de yazmaya girişirdi.

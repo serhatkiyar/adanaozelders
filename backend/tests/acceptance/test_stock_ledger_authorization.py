@@ -132,7 +132,14 @@ def test_egitmen_stok_alanini_duzenleyemez():
     # deftere gitmelidir; eğitmen dalında `apply_movement` çağrısı bulunmamalı.
     kaynak = ast.get_source_segment(src, fn) or ""
     assert "owner_tutor_id" in kaynak
-    # Gerekçe alanları admin yolunda isteniyor olmalı.
-    assert "stock_reason_code" in kaynak, (
+
+    # Gerekçe alanı admin yolunda GERÇEKTEN okunuyor olmalı.
+    #
+    # DİKKAT: bu iddia AST üzerinden kurulur, kaynak dizgisi üzerinden DEĞİL.
+    # Ham dizgi taraması bir YORUM satırındaki "stock_reason_code" ile de
+    # tatmin olur ve testi yalancı yeşile düşürür (commit 4'te tam olarak bu
+    # oldu: TODO yorumu testi geçirdi).
+    dump = ast.dump(fn)
+    assert '"stock_reason_code"' in dump or "'stock_reason_code'" in dump, (
         "Admin stok düzeltmesi gerekçe alanını okumuyor"
     )

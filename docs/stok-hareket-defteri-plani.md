@@ -410,6 +410,29 @@ Kural: `stock` payload'da **ve** mevcut değerden farklıysa `stock_reason_code`
 
 İkisi de defterin doğruluğunun ön koşulu; ayrı pakete bırakılırsa defter ilk günden yanlış sayı kaydeder.
 
+### 4e. Kilit grafiği (commit 4 — dosya:satır kanıtlı)
+
+Satır numaraları **commit 4 sonrası** hâli gösterir. `escrow.claim`/`begin_refund` bir **koşullu UPDATE**'tir (`services/escrow.py:182`) ve hedef satıra yazma kilidi alır — grafikte "Order/Return kilidi" olarak sayılır.
+
+| # | Yol | Kilit sırası (kaynak) | Kanıt |
+|---|---|---|---|
+| **P1** | `_finalize_paid` (PAID'e geçiş) | **Product** → **Order** → advisory (söz kontenjanı) → Coupon | `order_service.py:618` `lock_products` · `:632` `escrow.claim(Order)` · `:656` `_lock_promise_counter` · `:672` `coupon.redeem` |
+| **P2a** | `refund_order` / `cancel_by_client` **txn 1** | **Order** (yalnız) | `:1228`/`:1249` `_lock_order` → `:1191` `escrow.begin_refund` → **`db.commit()`** (`escrow.py` Faz 1 kalıcılaştırma) |
+| **P2b** | aynı yol **txn 2** | **Product** → Coupon → **Order** | `_refund_payment`: `_restock` (`:1189` `lock_products`) → `coupon.release` → `escrow.perform_refund` |
+| **P3a** | `_settle_return` **txn 1** | **Order** → **OrderReturn** | `:1591` `_lock_order` · `:1606` `escrow.claim(OrderReturn)` · `:1625` `db.commit()` |
+| **P3b** | aynı yol **txn 2** | **Product** → Coupon → OrderReturn/Order | `:1631` `_restock_items` (`:1596` `lock_products`) → `coupon.release` → sağlayıcı + durum yazımı |
+| **P4** | `store_service.update_product` (admin stok) | **Product** (yalnız) | `store_service.py:768` `lock_products` |
+| **P5** | `_out_of_stock_refund` (oversell telafisi) | **Product** (P1'den devralınır) → **Order** | `:621` çağrı P1'in kilitleri elde iken · `:733` `escrow.begin_refund` |
+| — | `postpone_delivery` (referans; stoğa dokunmaz) | **Order** → **DeliveryStop** | `:984` `_lock_order` · `:997` `DeliveryStop FOR UPDATE` |
+
+**Kanonik sıra: `Product → Order → OrderReturn → (Coupon/DeliveryStop)`.**
+
+Bir yol **Product→Order** alırken başkasının **Order→Product** alması yasaktır. Tabloda P2a ve P3a "Order önce" görünür ama ürün kilidi **almazlar**: iki fazlı iadenin Faz 1'i `db.commit()` ile kapanır ve ürün kilitleri **ayrı bir transaction'da** (P2b/P3b) alınır. Yani hiçbir transaction aynı anda "Order tutup Product bekleme" durumunda olmaz → döngü kurulamaz.
+
+⚠️ **Kırılganlık kaydı:** bu güvenlik, iki fazlı iadedeki **ara commit'e** dayanıyor. O commit kaldırılırsa (ör. "tek transaction'a alalım" iyileştirmesi) P2/P3 gerçek bir `Order→Product` yolu hâline gelir ve P1 ile deadlock döngüsü kurar. `tests/acceptance/test_stock_lock_contract.py::test_finalize_paid_urun_kilidini_claimden_ONCE_aliyor` bu döngünün P1 tarafını sabitler; ara commit kaldırılırsa `test_stock_lock_order_pg.py` çiftleri `DeadlockDetected` ile kırılır.
+
+**Coupon asimetrisi (bilinçli, çözülmedi):** P1'de Coupon **Order'dan sonra**, P2b'de **Order'dan önce** kilitlenir. Döngü için iki transaction'ın *aynı* Order ve *aynı* Coupon satırları üzerinde ters yönde beklemesi gerekir; aynı siparişin hem P1 (PAID finalize) hem P2 (iade) yolunda eşzamanlı olması `payment_status` claim'i yüzünden imkânsızdır, farklı siparişlerde ise bekleme grafiği döngü kurmaz. Kupon kilidi stok kapsamı dışında olduğu için bu pakette dokunulmadı; kayda geçirildi.
+
 ### 4d. Regresyon kalkanı — AST envanter testi
 
 PK-1'de işe yarayan desen (`test_payment_gate_wiring.py`): `tests/acceptance/test_stock_ledger_contract.py`, `services/*.py` + `api/routers/*.py` dosyalarını **AST ile** tarar, `stock` niteliğine yapılan `Assign`/`AugAssign` hedeflerini toplar ve izin verilen tek yerin `services/stock_ledger.py` olduğunu doğrular. Ayrıca `max(0` kalıbının stok bağlamında bulunmadığını ve `ON CONFLICT` dizgisinin defter kodunda geçmediğini doğrular.

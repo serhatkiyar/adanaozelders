@@ -626,13 +626,13 @@ def test_sifir_delta_karari_cagirana_ait():
     `update_product` deltayı kilit altında hesaplar ve 0 çıkarsa ledger'ı hiç
     çağırmaz. Bu kararın koddaki izi, delta hesabının koşullu olmasıdır.
     """
-    kaynak = ast.get_source_segment(
-        _read("services/store_service.py"),
-        _func("services/store_service.py", "update_product"),
-    ) or ""
-    assert "stock_reason_code" in kaynak
-    # Delta hesabı yapılıyor olmalı (mutlak atama DEĞİL).
-    assert "delta" in kaynak.lower()
+    # AST üzerinden: yorum satırları AST'de YOKTUR. Ham dizgi taraması bir
+    # TODO yorumundaki alan adıyla tatmin olup yalancı yeşil verir.
+    dump = ast.dump(_func("services/store_service.py", "update_product"))
+    assert '"stock_reason_code"' in dump or "'stock_reason_code'" in dump, (
+        "gerekçe alanı payload'dan okunmuyor"
+    )
+    assert "delta" in dump.lower(), "delta hesabı yok (mutlak atama)"
 
 
 def test_aktor_modeli_admine_ozel_alan_kullanmiyor():

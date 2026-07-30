@@ -61,6 +61,7 @@ from services import (
     order_fsm,
     payment_gates,
     returns,
+    stock_ledger,
     tax,
 )
 
@@ -599,23 +600,26 @@ async def _finalize_paid(
         order.provider_ref = provider_ref
 
     # ── Oversell guard: fiziksel ürünleri kilitle, stoğu kilit altında doğrula ──
+    #
+    # Kilit `stock_ledger.lock_products` ile alınır (ürün kilidi alan TEK yer):
+    # artan `id` sırası + `populate_existing`. Önceden burada kendi döngüsü
+    # vardı ve iki kusur taşıyordu: (1) sıra `order.items` sırasıydı, yani
+    # çapraz ürünlü iki eşzamanlı sipariş deadlock üretebiliyordu; (2)
+    # `populate_existing` yoktu — ürün kimlik haritasındaysa `FOR UPDATE` satırı
+    # kilitliyor ama ORM BAYAT nesneyi döndürüyordu ve eksik hesabı bayat
+    # bakiyeyle yapılıyordu.
+    #
+    # Eksik hesabı da defterle AYNI saf yardımcıya (`has_shortage`) bağlandı;
+    # ayrışırlarsa biri "yeter" derken diğeri `InsufficientStock` atardı.
     needed: dict[int, int] = {}
     for item in order.items:
         if item.kind == ProductKind.PHYSICAL.value and item.product_id is not None:
             needed[item.product_id] = needed.get(item.product_id, 0) + item.quantity
-    locked: dict[int, Product] = {}
-    for pid in needed:
-        p = (
-            await db.execute(
-                select(Product).where(Product.id == pid).with_for_update()
-            )
-        ).scalars().first()
-        if p is not None:
-            locked[pid] = p
+    locked = await stock_ledger.lock_products(db, list(needed))
     shortages = [
         locked[pid].title
-        for pid, qty in needed.items()
-        if pid in locked and locked[pid].stock is not None and locked[pid].stock < qty
+        for pid, qty in sorted(needed.items())
+        if stock_ledger.has_shortage(locked[pid].stock, qty)
     ]
     if shortages:
         await _out_of_stock_refund(db, order, shortages)
@@ -1167,16 +1171,26 @@ async def mark_delivered(db: AsyncSession, order_id: int) -> OrderOut:
 
 
 async def _restock(db: AsyncSession, order: Order) -> None:
-    """Fiziksel kalemlerin stoğunu satır kilidiyle geri yükle (iptal/iade)."""
+    """Fiziksel kalemlerin stoğunu satır kilidiyle geri yükle (iptal/iade).
+
+    Kilit `stock_ledger.lock_products` ile TEK sorguda, artan `id` sırasıyla
+    alınır. Önceki kalem-kalem döngüsü sırayı `order.items` sırasına bırakıyordu
+    → çapraz ürünlü iki eşzamanlı iptal deadlock üretebiliyordu.
+
+    TODO(commit 5 — stok defteri): buradaki `p.stock += …` doğrudan ataması
+    kaldırılıp `stock_ledger.apply_many(..., SALE_CANCEL)` çağrısına
+    dönüşecek. Bu commit YALNIZ kilit altyapısını düzeltiyor; hareket hâlâ
+    deftere yazılmıyor ve `verify_ledger` bu yolda sapma raporlar.
+    """
+    needed: dict[int, int] = {}
     for item in order.items:
         if item.kind == ProductKind.PHYSICAL.value and item.product_id is not None:
-            p = (
-                await db.execute(
-                    select(Product).where(Product.id == item.product_id).with_for_update()
-                )
-            ).scalars().first()
-            if p is not None and p.stock is not None:
-                p.stock += item.quantity
+            needed[item.product_id] = needed.get(item.product_id, 0) + item.quantity
+    locked = await stock_ledger.lock_products(db, list(needed))
+    for pid, qty in sorted(needed.items()):
+        p = locked[pid]
+        if p.stock is not None:
+            p.stock += qty
 
 
 async def _refund_payment(db: AsyncSession, order: Order) -> None:
@@ -1557,21 +1571,33 @@ async def _build_return(
 
 
 async def _restock_items(db: AsyncSession, order: Order, ret: OrderReturn) -> None:
-    """İade edilen FİZİKSEL kalemlerin stoğunu geri yükler (yalnız seçilenler)."""
+    """İade edilen FİZİKSEL kalemlerin stoğunu geri yükler (yalnız seçilenler).
+
+    Kilit `stock_ledger.lock_products` ile TEK sorguda, artan `id` sırasıyla.
+
+    TODO(commit 5 — stok defteri): `p.stock += …` yerine iade SATIRI başına
+    `stock_ledger.apply_many(..., RETURN, ref_line_id=ri.id)` gelecek. Bu commit
+    YALNIZ kilit altyapısını düzeltiyor; hareket deftere henüz yazılmıyor.
+    """
     by_id = {it.id: it for it in order.items}
+    # Aynı üründen iki iade satırı olabilir; kilit için ürün başına TEKİL küme,
+    # geri yükleme için satır satır adet. (Defter tarafında satırlar ayrı ayrı
+    # hareket üretecek — bkz. yukarıdaki TODO.)
+    lines: list[tuple[int, int]] = []
     for ri in ret.items:
         item = by_id.get(ri.order_item_id)
         if item is None or item.kind != ProductKind.PHYSICAL.value:
             continue
         if item.product_id is None:
             continue
-        p = (
-            await db.execute(
-                select(Product).where(Product.id == item.product_id).with_for_update()
-            )
-        ).scalars().first()
-        if p is not None and p.stock is not None:
-            p.stock += ri.quantity
+        lines.append((item.product_id, ri.quantity))
+    if not lines:
+        return
+    locked = await stock_ledger.lock_products(db, [pid for pid, _ in lines])
+    for pid, qty in sorted(lines):
+        p = locked[pid]
+        if p.stock is not None:
+            p.stock += qty
 
 
 async def _settle_return(
