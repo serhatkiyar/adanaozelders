@@ -220,6 +220,44 @@ async def test_siralama_en_yeni_once_ve_ID_ile_DETERMINISTIK(fab):
     assert len(set(ids)) == 4, "sayfalar arası satır tekrarlandı/atlandı"
 
 
+async def test_siralama_DERLENEN_SQL_de_id_baglayicisini_tasiyor(fab):
+    """`ORDER BY created_at DESC, id DESC` — DB'ye giden ifadede.
+
+    ## Neden davranış testi değil
+
+    `id DESC` bağlayıcısı bir **belirsizlik garantisidir**: aynı `created_at`'e
+    sahip satırların sırası SQL standardında tanımsızdır. Bu paketin verisiyle
+    (40 satır, tek ürün) PostgreSQL sırayı hem index taramasında hem — zorlanan
+    — seq scan'de tutarlı döndürdü; yani bağlayıcıyı kaldıran mutasyon
+    gözlemlenebilir bir kayma ÜRETMİYOR. Ölçüldü, uydurulmadı.
+
+    Bu yüzden burada kaynak metni değil **derlenen ifade** doğrulanır: testin
+    gördüğü dizgi, veritabanına gerçekten gönderilen SQL'dir. Kaynak taramasından
+    güçlü, davranış testinden zayıf; ikisinin arasındaki boşluk raporda açık
+    bırakıldı.
+    """
+    from sqlalchemy.dialects import postgresql
+
+    yakalanan: list[str] = []
+
+    async with AsyncSessionLocal() as s:
+        with SorguSayaci() as sayac:
+            await stock_ledger.list_movements(s, limit=1)
+        yakalanan = [q for q in sayac.sorgular if "stock_movements" in q]
+
+    sayfa_sorgusu = next(q for q in yakalanan if "ORDER BY" in q.upper())
+    normal = " ".join(sayfa_sorgusu.split()).upper()
+    assert "ORDER BY" in normal
+    sira = normal.split("ORDER BY", 1)[1]
+    assert "CREATED_AT DESC" in sira, sira[:200]
+    assert "ID DESC" in sira, (
+        "aynı created_at'te deterministik sıra için id bağlayıcısı şart: " + sira[:200]
+    )
+    # Sıra doğru olmalı: önce created_at, sonra id.
+    assert sira.index("CREATED_AT DESC") < sira.index("ID DESC"), sira[:200]
+    del postgresql
+
+
 async def test_genel_denetim_sayfali_ve_tavanli(fab):
     async with AsyncSessionLocal() as s:
         sonuc = await stock_ledger.audit_ledger(s, limit=10_000, offset=0)
@@ -327,26 +365,46 @@ async def test_bulgu_dijital_urunde_hareket(fab):
 
 
 async def test_dogrulama_HICBIR_SEYI_DUZELTMEZ(fab):
-    """Teşhis paketi: bulgu bulunca veri düzeltilmez."""
+    """Teşhis paketi: bulgu bulunca veri düzeltilmez.
+
+    DİKKAT — başlangıç stoğu bilinçli olarak SIFIR DEĞİL. İlk sürümde ürün
+    `stock=0` ile kuruluyordu ve mutasyon provasında `audit_products` içine
+    eklenen `UPDATE products SET stock = 0` bu testi HİÇ kırmamıştı: iddia
+    zaten 0 bekliyordu, yani boşa düşmüştü (mutasyonu yakalayan şey tesadüfen
+    sorgu sayacı oldu). Sıfır olmayan bir bakiye, her türlü üzerine yazmayı
+    görünür kılar.
+    """
     pid = await fab.urun(stock=0)
     await fab.ham_hareket(pid, qty_delta=5, qty_after=5)
     await fab.ham_hareket(pid, qty_delta=1, qty_after=9)
+    async with AsyncSessionLocal() as s:
+        await s.execute(
+            text("UPDATE products SET stock = 42 WHERE id = :i"), {"i": pid}
+        )
+        await s.commit()
 
     async with AsyncSessionLocal() as s:
         await stock_ledger.verify_ledger(s, pid)
-        await stock_ledger.audit_ledger(s, limit=50)
+        await stock_ledger.audit_products(s, [pid])
+        await stock_ledger.audit_ledger(s, limit=200)
 
     async with AsyncSessionLocal() as s:
         stok = (
             await s.execute(select(Product.stock).where(Product.id == pid))
         ).scalar_one()
-        adet = (
+        satirlar = (
             await s.execute(
-                text("SELECT count(*) FROM stock_movements WHERE product_id = :i"),
+                text(
+                    "SELECT id, qty_delta, qty_after FROM stock_movements "
+                    "WHERE product_id = :i ORDER BY id"
+                ),
                 {"i": pid},
             )
-        ).scalar_one()
-    assert stok == 0 and adet == 2, "doğrulama veriyi değiştirdi"
+        ).all()
+    assert stok == 42, "doğrulama ürün stoğunu değiştirdi"
+    assert [(r.qty_delta, r.qty_after) for r in satirlar] == [(5, 5), (1, 9)], (
+        "doğrulama defter satırlarını değiştirdi"
+    )
 
 
 # ════════════════════ 5. İki yolun çapraz kontrolü ════════════════════

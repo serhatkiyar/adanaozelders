@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import csv
+import dataclasses
 import datetime
 import io
 from decimal import Decimal
@@ -1118,7 +1119,7 @@ def _verification_out(v) -> LedgerVerificationOut:
         ledger_stock=v.ledger_stock,
         movement_count=v.movement_count,
         first_divergent_id=v.first_divergent_id,
-        problems=[LedgerProblemOut(**vars(pr)) for pr in v.problems],
+        problems=[LedgerProblemOut(**dataclasses.asdict(pr)) for pr in v.problems],
         tracked=v.current_stock is not None,
     )
 
@@ -1237,7 +1238,7 @@ async def ledger_verify(
     return LedgerAuditOut(
         checked=sonuc.checked,
         inconsistent=sonuc.inconsistent,
-        problems=[LedgerProblemOut(**vars(pr)) for pr in sonuc.problems],
+        problems=[LedgerProblemOut(**dataclasses.asdict(pr)) for pr in sonuc.problems],
         next_offset=sonuc.next_offset,
         limit=limit,
         offset=offset,
