@@ -13,6 +13,8 @@ export interface FeatureFlagOut {
   updated_at?: string | null;
   updated_by_admin_id?: number | null;
   note?: string | null;
+  /** Doluysa bayrak bu ortamda değiştirilemez; metin sebebi söyler. */
+  locked_reason?: string | null;
 }
 
 /**

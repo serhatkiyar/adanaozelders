@@ -16,6 +16,11 @@ const ICONS: Record<AdminNavItem["icon"], ReactNode> = {
   moderation: <path d="M12 22s8-4 8-11V5l-8-3-8 3v6c0 7 8 11 8 11Zm-3-11 2 2 4-4" />,
   audit: <path d="M9 3h6l1 2h3v16H5V5h3l1-2Zm0 8 2 2 4-4m-6 8h6" />,
   access: <path d="M12 15a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm7 7a7 7 0 0 0-14 0m14-12h3m-1.5-1.5v3" />,
+  // Ayarlar kendi glifini alır: "access" ile paylaşınca kenar çubuğunda iki
+  // farklı bölüm aynı ikonla görünüyordu.
+  settings: (
+    <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm8.4-3a8.4 8.4 0 0 0-.1-1.2l2-1.5-2-3.4-2.3 1a8.5 8.5 0 0 0-2-1.2L15.6 2h-3.9l-.4 2.5a8.5 8.5 0 0 0-2 1.2l-2.3-1-2 3.4 2 1.5a8.4 8.4 0 0 0 0 2.4l-2 1.5 2 3.4 2.3-1a8.5 8.5 0 0 0 2 1.2l.4 2.5h3.9l.4-2.5a8.5 8.5 0 0 0 2-1.2l2.3 1 2-3.4-2-1.5c.06-.4.1-.8.1-1.2Z" />
+  ),
 };
 
 interface AdminSidebarProps {

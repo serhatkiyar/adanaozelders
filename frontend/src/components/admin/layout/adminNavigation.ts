@@ -8,7 +8,7 @@ export interface AdminNavItem {
   to: string;
   group: AdminNavGroup;
   description: string;
-  icon: "overview" | "users" | "education" | "library" | "exam" | "store" | "delivery" | "booking" | "moderation" | "audit" | "access";
+  icon: "overview" | "users" | "education" | "library" | "exam" | "store" | "delivery" | "booking" | "moderation" | "audit" | "access" | "settings";
   requiredPermission?: string;
   end?: boolean;
   badge?: "open-reports";
@@ -45,7 +45,7 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
     to: ROUTES.adminSettings,
     group: "Platform",
     description: "Ödeme kolu kapıları ve özellik bayrakları.",
-    icon: "access",
+    icon: "settings",
     requiredPermission: "settings.view",
   },
   {

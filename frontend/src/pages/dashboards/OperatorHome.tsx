@@ -1,3 +1,5 @@
+import { usePaymentAvailability } from "@/hooks/useFeatureFlags";
+import { canPromiseEscrow } from "@/lib/paymentAvailability";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { DashboardShell } from "@/components/DashboardShell";
@@ -308,6 +310,8 @@ function PasswordPanel() {
 }
 
 function EarningsCard({ libraryId }: { libraryId: number }) {
+  const { data: paymentAvailability } = usePaymentAvailability();
+  const escrowWording = canPromiseEscrow(paymentAvailability, "library_marketplace");
   const { data, isLoading } = useLibraryEarnings(libraryId);
   if (isLoading) {
     return <div className="h-24 animate-pulse rounded-2xl bg-slate-100 dark:bg-slate-800" />;
@@ -329,7 +333,9 @@ function EarningsCard({ libraryId }: { libraryId: number }) {
         </p>
       </div>
       <div className="py-4 sm:px-5 sm:py-0">
-        <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Emanette bekleyen</p>
+        <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
+          {escrowWording ? "Emanette bekleyen" : "Bekleyen"}
+        </p>
         <p className="mt-1 text-2xl font-bold text-amber-600 dark:text-amber-400">
           {formatTRY(data.held_earning)}
         </p>

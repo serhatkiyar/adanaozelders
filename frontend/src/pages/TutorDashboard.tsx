@@ -1,3 +1,5 @@
+import { usePaymentAvailability } from "@/hooks/useFeatureFlags";
+import { canPromiseEscrow } from "@/lib/paymentAvailability";
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { DashboardShell } from "@/components/DashboardShell";
@@ -240,6 +242,8 @@ function BookingSection({
 /* ─── page ───────────────────────────────────────────── */
 
 export default function TutorDashboard() {
+  const { data: paymentAvailability } = usePaymentAvailability();
+  const escrowWording = canPromiseEscrow(paymentAvailability, "tutor_marketplace");
   const { data, isLoading, isError, error } = useBookings({ limit: 100 });
   const { data: earnings } = useEarnings();
   const { data: payout } = useMyPayout();
@@ -321,7 +325,9 @@ export default function TutorDashboard() {
                 </div>
                 <div className="text-right">
                   <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Emanette bekleyen
+                    {/* "Emanet" ifadesi ancak kol açıkken (yani alt üye işyeri
+                        modeli çalışırken) doğrudur; kapalıyken nötr etiket. */}
+                    {escrowWording ? "Emanette bekleyen" : "Bekleyen"}
                   </p>
                   <p className="text-lg font-semibold text-slate-700 dark:text-slate-200">
                     {formatTRY(earnings.pending)}

@@ -13,7 +13,8 @@ import { useDeliveryInfo } from "@/hooks/useDelivery";
 import { getLegalDoc, OPERATOR } from "@/lib/legalContent";
 import { validateCart } from "@/api/store";
 import { PaymentBranchNotice } from "@/components/PaymentBranchNotice";
-import type { PaymentBranch } from "@/lib/paymentAvailability";
+import { usePaymentAvailability } from "@/hooks/useFeatureFlags";
+import { blockedBranchesForCart, type PaymentBranch } from "@/lib/paymentAvailability";
 import { useCreateOrder } from "@/hooks/useStore";
 import { useMyAddresses, useAddAddress } from "@/hooks/useAddresses";
 import { AddressForm } from "@/components/address/AddressForm";
@@ -36,7 +37,11 @@ export default function CheckoutPage() {
     [selectedItems]
   );
 
-  const { data: validation, isLoading } = useQuery({
+  const {
+    data: validation,
+    isLoading,
+    isError: validationError,
+  } = useQuery({
     queryKey: ["store", "cart", "validate", cartLines, couponCode],
     queryFn: () => validateCart(cartLines, couponCode),
     enabled: cartLines.length > 0,
@@ -68,10 +73,25 @@ export default function CheckoutPage() {
 
   // Kapalı ödeme kolu sepette varsa checkout hiç başlatılmaz (backend son
   // savunma olarak 503 döner; kullanıcı oraya kadar gitmemeli).
-  const blockedBranches = (validation?.blocked_payment_branches ?? []).filter(
-    (b): b is PaymentBranch =>
-      b === "store" || b === "tutor_marketplace" || b === "library_marketplace",
-  );
+  //
+  // FAIL-CLOSED: `cart/validate` **patlarsa** `blocked_payment_branches` boş
+  // gelir ve buton açık kalırdı — bu, `lib/paymentAvailability`'nin başındaki
+  // doktrinin tersi olurdu. O yüzden sorgu hatasında kolları doğrudan uygunluk
+  // ucundan hesaplıyoruz (sepet satırlarının satıcı tipleriyle).
+  const { data: availability } = usePaymentAvailability();
+  const blockedBranches = (
+    validationError
+      ? blockedBranchesForCart(
+          availability,
+          (validation?.items ?? cartLines).map((i) =>
+            "seller_type" in i ? (i as { seller_type: string }).seller_type : "TUTOR",
+          ),
+        )
+      : (validation?.blocked_payment_branches ?? []).filter(
+          (b): b is PaymentBranch =>
+            b === "store" || b === "tutor_marketplace" || b === "library_marketplace",
+        )
+  ) as PaymentBranch[];
 
   function placeOrder() {
     if (!consent) {
