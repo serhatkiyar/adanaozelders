@@ -22,7 +22,12 @@ export function LabelSheet({ run, onClose }: { run: DeliveryRun; onClose: () => 
   const stops = [...run.stops].sort((a, b) => a.sequence - b.sequence);
   return createPortal(
     <div className="delivery-label-sheet fixed inset-0 z-[100] overflow-auto bg-slate-100 text-slate-900">
-      <style>{`@media print { body > #root { display: none !important; } .delivery-label-sheet { position: static !important; inset: auto !important; background: white !important; } .delivery-label-noprint { display: none !important; } .delivery-label-paper { box-shadow: none !important; margin: 0 !important; } }`}</style>
+      {/* index.css'teki fatura print kuralı `body * { visibility: hidden }` ile
+          HER ŞEYİ gizliyor ve yalnız #order-invoice'i geri açıyor. Etiket
+          sayfası portal ile body'ye basıldığı için o kuralın kapsamına giriyor;
+          görünürlüğü AÇIKÇA geri vermezsek baskı bomboş çıkar (gerçek Chrome
+          yazdırma önizlemesinde doğrulandı: 1 KB'lık boş PDF). */}
+      <style>{`@media print { body > #root { display: none !important; } .delivery-label-sheet, .delivery-label-sheet * { visibility: visible !important; } .delivery-label-sheet { position: static !important; inset: auto !important; background: white !important; } .delivery-label-noprint { display: none !important; } .delivery-label-paper { box-shadow: none !important; margin: 0 !important; } }`}</style>
       <div className="delivery-label-noprint sticky top-0 z-10 flex items-center justify-between border-b border-slate-200 bg-white px-6 py-3">
         <p className="text-sm font-semibold">
           Tur #{run.id} — {stops.length} etiket
@@ -48,7 +53,11 @@ export function LabelSheet({ run, onClose }: { run: DeliveryRun; onClose: () => 
             key={s.id}
             className="flex gap-3 break-inside-avoid rounded-lg border border-slate-300 p-3"
           >
-            <QRCodeSVG value={s.qr_payload} size={96} />
+            {/* shrink-0 ZORUNLU: SVG bir flex öğesidir ve varsayılan
+                `flex-shrink:1` ile uzun metin kardeşi onu YATAY olarak ezer
+                (gerçek Chrome ölçümü: 96px → 36px, yükseklik 96 kalıyor) —
+                yani karekod okunamaz hâle gelir. */}
+            <QRCodeSVG value={s.qr_payload} size={96} className="shrink-0" />
             <div className="min-w-0 text-xs leading-5">
               <p className="text-sm font-bold">
                 #{s.sequence} · Sipariş {s.order_id}
