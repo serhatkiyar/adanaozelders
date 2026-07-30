@@ -165,9 +165,17 @@ export function getAdminNavItem(pathname: string): AdminNavItem {
     return ADMIN_NAV_ITEMS.find((item) => item.to === ROUTES.adminStoreProducts)!;
   }
 
+  // Fallback DİZİ SIRASINA bağlanamaz: `ADMIN_NAV_ITEMS[0]` bugün "Hakedişler"
+  // (dizi sırası grup sırasıyla aynı değil), yani eşleşmeyen bir /yonetim/...
+  // yolunda başlık ve breadcrumb "Hakedişler" görünüyordu. Genel Bakış'a
+  // düşmek doğru: o, panelin kökü ve `end:true` olduğu için başka bir yolla
+  // yanlışlıkla eşleşmez.
+  const overview = ADMIN_NAV_ITEMS.find((item) => item.to === ROUTES.admin);
   return (
     ADMIN_NAV_ITEMS.find((item) =>
       item.end ? pathname === item.to : pathname.startsWith(item.to)
-    ) ?? ADMIN_NAV_ITEMS[0]
+    ) ??
+    overview ??
+    ADMIN_NAV_ITEMS[0]
   );
 }
