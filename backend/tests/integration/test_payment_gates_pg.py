@@ -185,7 +185,11 @@ async def test_uretimde_elle_havale_bayrak_acik_olsa_bile_reddedilir(pg, monkeyp
         async with AsyncSessionLocal() as s:
             with pytest.raises(HTTPException) as exc:
                 await payment_gates.assert_manual_payout_open(s)
-            assert exc.value.detail["blockers"] == ["production_environment"]
+            # Gövde iç bilgi taşımaz (güvenlik denetimi bulgusu): engelleyici
+            # adları yalnız loga gider. Sebep, kodla ayırt edilir.
+            assert exc.value.status_code == 403
+            assert exc.value.detail["code"] == "MANUAL_PAYOUT_DISABLED"
+            assert "blockers" not in exc.value.detail
     finally:
         await _cleanup([key], [])
 

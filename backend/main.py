@@ -162,6 +162,21 @@ async def lifespan(app: FastAPI):
     # sağlayıcı yeteneği yoksa o kol kapalı kalır, uygulamanın tamamı ayakta
     # kalmaya devam eder (tek global gate bilinçli olarak yok).
     async with AsyncSessionLocal() as session:
+        # "Kapalı" ile "okuyamıyorum" ayrı şeylerdir: ikincisi (ör. migration
+        # koşulmamış deploy) mağaza kolunu da kapatır ve tek sinyali bir WARNING
+        # olurdu. Üretimde açılmamak doğru davranıştır.
+        try:
+            await flags.probe(session)
+        except Exception as exc:  # noqa: BLE001
+            if settings.is_production:
+                raise RuntimeError(
+                    "Özellik bayrağı deposu okunamıyor (feature_flags) — "
+                    "migration çalıştırıldı mı? Ödeme kapıları bu tabloya dayanıyor."
+                ) from exc
+            logger.warning(
+                "feature_flags okunamadı (%s) — kapılar fail-closed davranacak",
+                exc.__class__.__name__,
+            )
         manual_open = await flags.is_enabled(session, flags.FLAG_MANUAL_PAYOUT_ENABLED)
         problem = payment_gates.manual_payout_startup_problem(
             is_production=settings.is_production, flag_enabled=manual_open
@@ -320,7 +335,10 @@ async def _check_payment_branches() -> list[dict]:
             )
     except Exception:
         logger.warning("health: payment branch check failed", exc_info=True)
-        return [{"branch": "unknown", "open": False, "blockers": ["check_failed"]}]
+        row: dict = {"branch": "unknown", "open": False}
+        if not settings.is_production:
+            row["blockers"] = ["check_failed"]
+        return [row]
 
 
 async def _check_routing() -> dict:

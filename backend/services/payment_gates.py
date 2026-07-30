@@ -98,9 +98,26 @@ BLOCKER_PROVIDER_MARKETPLACE = "provider_marketplace_support"
 def marketplace_capability_ok() -> bool:
     """Yapılandırılmış sağlayıcı alt üye işyeri modelini uyguluyor mu?
 
-    Ayrı fonksiyon: testler ve panel bunu tek noktadan gözlemleyebilsin.
+    İki koşul: sağlayıcı yeteneği beyan etmeli **ve** sahte sağlayıcı olmamalı
+    (geliştirme dışında). Gerekçe: `FakePaymentProvider` akışı deterministik
+    uyguladığı için `supports_marketplace=True` der — bu geliştirmede doğru,
+    ama canlı bir kurulum `ENVIRONMENT` unutulmuş ya da `staging` olarak
+    açılırsa `PAYMENT_PROVIDER=fake` serbest kalır ve pazaryeri kapısı tek bir
+    DB bayrağına iner. Kapı, ortam yapılandırmasının doğru olduğu varsayımına
+    yaslanmamalı: sahte sağlayıcı **gerçek para tahsil etmediği için** gerçek
+    bir kapı bileşeni sayılamaz.
     """
-    return bool(get_payment_provider().supports_marketplace)
+    provider = get_payment_provider()
+    if not provider.supports_marketplace:
+        return False
+    if provider.name == "fake" and settings.ENVIRONMENT != "development":
+        logger.error(
+            "Sahte ödeme sağlayıcısı ENVIRONMENT=%s ortamında yapılandırılmış — "
+            "pazaryeri kolları kapalı tutuluyor",
+            settings.ENVIRONMENT,
+        )
+        return False
+    return True
 
 
 async def branch_blockers(db: AsyncSession | None, branch: PaymentBranch) -> list[str]:
@@ -127,13 +144,22 @@ async def assert_branch_open(db: AsyncSession | None, branch: PaymentBranch) -> 
     blockers = await branch_blockers(db, branch)
     if not blockers:
         return
+    # Engelleyici adları İÇ bilgidir ("ödeme sağlayıcımız pazaryeri
+    # desteklemiyor") — gövdeye konursa `/payments/availability` ve üretim
+    # `/health` için özenle uygulanan gizleme burada delinirdi. Ayrıca reddin
+    # kendisi loglanır: amacı bir hukuki pozisyonu savunmak olan bir kontrolde
+    # reddin kaydı delilin parçasıdır.
+    logger.warning(
+        "Ödeme kolu kapalı, istek reddedildi: branch=%s blockers=%s",
+        branch.value,
+        ",".join(blockers),
+    )
     raise HTTPException(
         status.HTTP_503_SERVICE_UNAVAILABLE,
         {
             "code": "PAYMENT_BRANCH_CLOSED",
             "branch": branch.value,
             "message": BRANCH_CLOSED_MESSAGE[branch],
-            "blockers": blockers,
         },
     )
 
@@ -224,6 +250,38 @@ async def branches_status(
     return out
 
 
+async def warn_if_closed_completion(
+    db: AsyncSession | None, branch: PaymentBranch, *, reference: str
+) -> None:
+    """Kol KAPANDIKTAN SONRA tamamlanan bir tahsilatı görünür kılar.
+
+    ## Kapatma kararının artçı penceresi (bilinçli, ama sessiz olmamalı)
+
+    iyzico callback'i (`POST /payments/iyzico/callback`) **bilinçli olarak
+    kapısızdır**: kapılansa, sağlayıcıda GERÇEKTEN tahsil edilmiş bir ödemenin
+    yerel kaydı hiç oluşmaz — bu hem operasyonel hem hukuki olarak daha kötüdür
+    (para alınmış, sistemde izi yok). Aynı şekilde `escrow_reconciler`
+    `CHECKOUT_RECONCILE_MAX_AGE_HOURS` (48 saat) boyunca sarkan checkout'ları
+    sağlayıcıdan doğrulayıp sonuca bağlar.
+
+    Sonuç: bir kolu kapatmak **yoldaki** tahsilatları anında durdurmaz. Bu
+    kaçınılmaz, ama görünmez olmamalı — kapatma kararının fiilen ne zaman
+    etkili olduğu bilinmek zorundadır. Bu yüzden kapalı kolda tamamlanan her
+    tahsilat ERROR seviyesinde loglanır.
+
+    (Otomatik iade BİLİNÇLİ olarak yapılmıyor: para hareketi kararıdır ve
+    uyuşmazlık/iade politikasıyla birlikte ele alınmalı — PK-3/PK-4.)
+    """
+    if await branch_open(db, branch):
+        return
+    logger.error(
+        "KAPALI kolda tahsilat tamamlandı (kapatma kararının artçı penceresi): "
+        "branch=%s ref=%s — drenajın bittiğini doğrulayın",
+        branch.value,
+        reference,
+    )
+
+
 # ── Elle havale (manuel payout) ──────────────────────────────────────────────
 
 
@@ -239,6 +297,9 @@ async def assert_manual_payout_open(db: AsyncSession | None) -> None:
     kalır; yalnız yeni kayıt girilemez.
     """
     if settings.is_production:
+        logger.warning(
+            "Elle havale denemesi reddedildi (üretim ortamı) — bu yol kapalıdır"
+        )
         raise HTTPException(
             status.HTTP_403_FORBIDDEN,
             {
@@ -247,10 +308,10 @@ async def assert_manual_payout_open(db: AsyncSession | None) -> None:
                     "Elle havale kaydı üretimde kapalıdır. Hakediş ödemesi "
                     "sağlayıcı üzerinden (alt üye işyeri) yapılmalıdır."
                 ),
-                "blockers": ["production_environment"],
             },
         )
     if not await flags.is_enabled(db, flags.FLAG_MANUAL_PAYOUT_ENABLED):
+        logger.warning("Elle havale denemesi reddedildi (bayrak kapalı)")
         raise HTTPException(
             status.HTTP_403_FORBIDDEN,
             {
@@ -259,7 +320,6 @@ async def assert_manual_payout_open(db: AsyncSession | None) -> None:
                     "Elle havale kaydı kapalı. Geliştirme/staging ortamında "
                     "'manual_payout_enabled' bayrağıyla açılabilir."
                 ),
-                "blockers": [BLOCKER_FLAG_DISABLED],
             },
         )
 

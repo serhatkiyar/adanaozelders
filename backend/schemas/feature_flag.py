@@ -21,6 +21,9 @@ class FeatureFlagOut(BaseModel):
     updated_at: datetime.datetime | None = None
     updated_by_admin_id: int | None = None
     note: str | None = None
+    #: Doluysa bayrak bu ortamda DEĞİŞTİRİLEMEZ; metin sebebi söyler ve panel
+    #: butonu kilitler (ör. elle havale üretimde).
+    locked_reason: str | None = None
 
 
 class FeatureFlagUpdate(BaseModel):

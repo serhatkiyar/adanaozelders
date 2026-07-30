@@ -118,3 +118,45 @@ def test_elle_havale_bayraginin_varsayilani_KAPALI():
 
     spec = next(s for s in flags.FLAG_SPECS if s.key == flags.FLAG_MANUAL_PAYOUT_ENABLED)
     assert spec.default is False
+
+
+# ── Panelden açılamaz (üretimde) ─────────────────────────────────────────────
+
+
+async def test_uretimde_panelden_ACILAMAZ(monkeypatch):
+    """Bu testin varlık sebebi bir tasarım denetimi bulgusudur: panel bu satır
+    için normal bir "Aç" butonu gösteriyordu. Çalışma zamanı kapısı yolu zaten
+    reddediyor, AMA bayrağı açık bırakmak sonraki yeniden başlatmada uygulamayı
+    hiç açtırmıyor (`manual_payout_startup_problem`). Yani panelden açılabilir
+    bırakmak, operatöre "servisi kaldıramaz hâle getir" düğmesi vermekti.
+    """
+    from fastapi import HTTPException as HE
+
+    from core import flags
+    from services import feature_flag_service
+
+    _uretim(monkeypatch, True)
+
+    with pytest.raises(HE) as exc:
+        await feature_flag_service.set_flag(
+            None,  # DB'ye hiç gidilmeden reddedilmeli
+            key=flags.FLAG_MANUAL_PAYOUT_ENABLED,
+            enabled=True,
+            admin_id=1,
+        )
+    assert exc.value.status_code == 409
+    assert exc.value.detail["code"] == "FLAG_LOCKED_IN_PRODUCTION"
+
+
+def test_uretimde_kilit_sebebi_panele_bildirilir(monkeypatch):
+    """Panel butonu kilitleyebilmek için sebebi sunucudan öğrenir."""
+    from core import flags
+    from services.feature_flag_service import _lock_reason
+
+    _uretim(monkeypatch, True)
+    assert _lock_reason(flags.FLAG_MANUAL_PAYOUT_ENABLED)
+    # Diğer bayraklar üretimde de değiştirilebilir (kol açmak işletme kararıdır).
+    assert _lock_reason(flags.FLAG_TUTOR_MARKETPLACE_PAYMENTS_LIVE) is None
+
+    _uretim(monkeypatch, False)
+    assert _lock_reason(flags.FLAG_MANUAL_PAYOUT_ENABLED) is None

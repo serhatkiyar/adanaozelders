@@ -269,6 +269,15 @@ def test_fake_saglayici_pazaryeri_destekler_iyzico_HENUZ_desteklemez():
 async def test_kapali_kol_yapilandirilmis_hata_dondurur(
     acik_kollar, pazaryeri_yetenegi_yok
 ):
+    """503 gövdesi makinece okunabilir ama İÇ BİLGİ İÇERMEZ.
+
+    DAVRANIŞ DEĞİŞİKLİĞİ (güvenlik denetimi bulgusu): bu test önce gövdede
+    `blockers` bekliyordu. Aynı paket `/payments/availability` ve üretim
+    `/health` çıktısından `blockers`/`flag_enabled`'ı özenle çıkarıyor; 503
+    gövdesinde bırakmak o gizlemeyi deliyordu ("ödeme sağlayıcımız pazaryeri
+    desteklemiyor" her oturumlu istemciye söyleniyordu). Engelleyiciler artık
+    yalnız loga ve admin ucuna gider.
+    """
     from core import flags
     from services import payment_gates
     from services.payment_gates import PaymentBranch
@@ -279,22 +288,31 @@ async def test_kapali_kol_yapilandirilmis_hata_dondurur(
 
     detail = exc.value.detail
     assert isinstance(detail, dict)
+    assert set(detail) == {"code", "branch", "message"}
     assert detail["code"] == "PAYMENT_BRANCH_CLOSED"
     assert detail["branch"] == PaymentBranch.TUTOR_MARKETPLACE.value
     assert detail["message"]
-    # Neyin eksik olduğu makinece okunabilir olmalı (panel bunu listeler).
-    assert "provider_marketplace_support" in detail["blockers"]
 
 
-async def test_bayrak_kapaliysa_blocker_bayragi_gosterir(
+async def test_engelleyiciler_yalniz_ADMIN_ucunda_gorunur(
     acik_kollar, pazaryeri_yetenegi_var
 ):
+    """Panelin engelleyiciyi listeleyebilmesi gerekir; müşterinin görmesi
+    gerekmez. Ayrım `include_diagnostics` ile yapılır, hata gövdesiyle değil."""
     from services import payment_gates
-    from services.payment_gates import PaymentBranch
+
+    report = await payment_gates.branches_status(None, include_diagnostics=True)
+    tutor = next(r for r in report if r["branch"] == "tutor_marketplace")
+    assert "flag_disabled" in tutor["blockers"]
+
+
+async def test_elle_havale_reddi_de_ic_bilgi_sizdirmaz(acik_kollar):
+    """403 gövdesi de yalnız kod + mesaj taşır (üretim dışı, bayrak kapalı)."""
+    from services import payment_gates
 
     with pytest.raises(HTTPException) as exc:
-        await payment_gates.assert_branch_open(None, PaymentBranch.TUTOR_MARKETPLACE)
-    assert "flag_disabled" in exc.value.detail["blockers"]
+        await payment_gates.assert_manual_payout_open(None)
+    assert set(exc.value.detail) == {"code", "message"}
 
 
 # ── 5. Karışık sepet kuralı ─────────────────────────────────────────────────

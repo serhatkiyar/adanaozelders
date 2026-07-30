@@ -5,6 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import require_admin_permission, require_roles
+from core import flags
 from core.database import get_db
 from models.admin import Admin
 from models.role import RoleType
@@ -172,6 +173,9 @@ async def create_admin_role(
     admin: Admin = Depends(require_admin_permission("admin_roles.manage")),
     db: AsyncSession = Depends(get_db),
 ):
+    await admin_access_service.assert_can_grant(
+        db, actor_admin_id=admin.id, permission_codes=payload.permission_codes
+    )
     role = await admin_access_service.create_role(db, payload)
     await audit_service.record(
         db, actor=admin, action="admin_role.create", target_type="admin_role", target_id=role.id, details=role.code
@@ -186,6 +190,9 @@ async def update_admin_role(
     admin: Admin = Depends(require_admin_permission("admin_roles.manage")),
     db: AsyncSession = Depends(get_db),
 ):
+    await admin_access_service.assert_can_grant(
+        db, actor_admin_id=admin.id, permission_codes=payload.permission_codes
+    )
     role = await admin_access_service.update_role(db, role_id, payload)
     await audit_service.record(
         db, actor=admin, action="admin_role.update", target_type="admin_role", target_id=role.id, details=role.code
@@ -200,6 +207,9 @@ async def assign_admin_role(
     admin: Admin = Depends(require_admin_permission("admin_roles.manage")),
     db: AsyncSession = Depends(get_db),
 ):
+    await admin_access_service.assert_can_assign(
+        db, actor_admin_id=admin.id, role_id=payload.role_id
+    )
     await admin_access_service.assign_role(
         db, admin_id=admin_id, role_id=payload.role_id, assigned_by_admin_id=admin.id
     )
@@ -248,6 +258,8 @@ async def update_feature_flag(
         after={"enabled": payload.enabled},
     )
     await db.commit()
+    # Önbellek yalnız commit sonrasında geçersiz kılınır (bkz. set_flag notu).
+    flags.invalidate(key)
     return out
 
 

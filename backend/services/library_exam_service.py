@@ -45,7 +45,7 @@ from schemas.library_exam import (
 )
 import logging
 
-from services import commission, escrow, notification_service
+from services import commission, escrow, notification_service, payment_gates
 
 logger = logging.getLogger("adana.escrow")
 
@@ -567,6 +567,12 @@ async def complete_checkout(
     Kayıt bu arada iptal edilmişse ya da oturum artık SCHEDULED değilse tahsil
     edilen para kara delikte bırakılmaz — anında iade akışı başlatılır (C2b).
     """
+    # Kol kapatıldıktan SONRA tamamlanan tahsilat sessiz kalmasın
+    # (kapatma kararının artçı penceresi — bkz. payment_gates).
+    if success:
+        await payment_gates.warn_if_closed_completion(
+            db, payment_gates.PaymentBranch.LIBRARY_MARKETPLACE, reference=f"examreg:{registration_id}"
+        )
     reg = await db.get(ExamRegistration, registration_id)
     if reg is None or reg.deleted_at is not None or not success:
         return

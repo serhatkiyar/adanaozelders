@@ -65,10 +65,11 @@ export function ExamSessionsSection({ libraryId }: { libraryId: number }) {
                 registration={bySession.get(s.id)}
                 isClient={isClient}
                 isLoggedIn={!!token}
+                payOpen={payOpen}
               />
             ))}
           </div>
-          <PaymentConsentNote className="mt-3" />
+          {payOpen && <PaymentConsentNote className="mt-3" />}
         </>
       )}
     </div>
@@ -80,11 +81,16 @@ function ExamSessionRow({
   registration,
   isClient,
   isLoggedIn,
+  payOpen,
 }: {
   session: ExamSessionOut;
   registration?: RegistrationOut;
   isClient: boolean;
   isLoggedIn: boolean;
+  /** Kütüphane pazaryeri kolu açık mı — kapalıysa satır bazında da engellenir.
+   *  Bölüm başındaki şerit uzun listede satırdan uzağa kayar; sebep satırda da
+   *  görünmek zorunda. */
+  payOpen: boolean;
 }) {
   const navigate = useNavigate();
   const register = useRegisterForSession();
@@ -180,29 +186,36 @@ function ExamSessionRow({
         ) : status === "PENDING_PAYMENT" ? (
           <button
             onClick={doPay}
-            disabled={busy}
-            className="rounded-xl bg-amber-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-amber-600 disabled:opacity-60"
+            disabled={busy || !payOpen}
+            className="rounded-xl bg-amber-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-amber-600 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {busy ? "…" : "Ödemeyi tamamla"}
+            {!payOpen ? "Ödeme kapalı" : busy ? "…" : "Ödemeyi tamamla"}
           </button>
         ) : status === "REFUNDING" || status === "REFUNDED" ? (
           <span className="rounded-xl bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-500 dark:bg-slate-800 dark:text-slate-400">
             {status === "REFUNDING" ? "İade ediliyor" : "İade edildi"}
           </span>
         ) : !isLoggedIn ? (
-          <Link
-            to={ROUTES.login}
-            className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700"
-          >
-            Giriş yap & kaydol
-          </Link>
+          payOpen ? (
+            <Link
+              to={ROUTES.login}
+              className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700"
+            >
+              Giriş yap & kaydol
+            </Link>
+          ) : (
+            // Giriş yapıp dönünce devre dışı buton bulmasın.
+            <span className="rounded-xl bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+              Ödeme kapalı
+            </span>
+          )
         ) : isClient ? (
           <button
             onClick={doRegisterAndPay}
-            disabled={busy || full}
+            disabled={busy || full || !payOpen}
             className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {busy ? "İşleniyor…" : full ? "Doldu" : "Kaydol & Öde"}
+            {!payOpen ? "Ödeme kapalı" : busy ? "İşleniyor…" : full ? "Doldu" : "Kaydol & Öde"}
           </button>
         ) : (
           <button

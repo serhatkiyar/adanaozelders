@@ -159,10 +159,16 @@ def spec(key: str) -> FlagSpec:
 _CACHE_TTL_SECONDS = 10.0
 _cache: dict[str, tuple[float, bool]] = {}
 
+#: Hangi anahtar için okuma hatasının stack trace'i zaten yazıldı.
+#: DB düşükken `is_enabled` her istekte çağrıldığı için (public uygunluk ucu tek
+#: istekte 3 kez okur) `exc_info=True` bir log-flood amplifikatörüne dönüşüyordu.
+_traced: set[str] = set()
+
 
 def reset_cache() -> None:
     """Testler ve açılış için önbelleği tamamen boşaltır."""
     _cache.clear()
+    _traced.clear()
 
 
 def invalidate(key: str | None = None) -> None:
@@ -214,10 +220,14 @@ async def is_enabled(db: AsyncSession | None, key: str) -> bool:
         ).scalar_one_or_none()
     except Exception:  # noqa: BLE001
         # Hata ÖNBELLEĞE YAZILMAZ: geçici arıza kalıcı kapanmaya dönüşmesin.
+        # Stack trace anahtar başına BİR kez yazılır: DB düşükken bu fonksiyon
+        # her istekte çağrılır ve `exc_info` bir log-flood üreticisine dönüşür.
+        first = key not in _traced
+        _traced.add(key)
         logger.error(
             "Özellik bayrağı okunamadı (key=%s) — fail-closed: kapalı sayılıyor",
             key,
-            exc_info=True,
+            exc_info=first,
         )
         return False
 
@@ -229,3 +239,18 @@ async def is_enabled(db: AsyncSession | None, key: str) -> bool:
 async def all_flags(db: AsyncSession | None) -> dict[str, bool]:
     """Katalogdaki tüm bayrakların güncel durumu (panel ve sağlık raporu için)."""
     return {s.key: await is_enabled(db, s.key) for s in FLAG_SPECS}
+
+
+async def probe(db: AsyncSession) -> None:
+    """Bayrak deposu gerçekten okunabiliyor mu? Okunamıyorsa **yükseltir**.
+
+    `is_enabled` bilinçli olarak fail-closed'dır ve hatayı yutar; bu, çalışma
+    zamanında doğru davranış ama açılışta iki farklı durumu ayırt edilemez hâle
+    getirir: "operatör bu kolu kapattı" ile "bayrak tablosunu hiç okuyamıyorum"
+    (ör. migration koşulmamış bir deploy). İkincisinde mağaza kolu da kapanır ve
+    tek sinyal bir WARNING satırı olur.
+
+    Açılış bu fonksiyonla ayrımı yapar; üretimde okunamıyorsa açılmamak doğru
+    davranıştır (`core/config.py::_guard_production` felsefesi).
+    """
+    await db.execute(select(FeatureFlag.enabled).limit(1))

@@ -16,6 +16,8 @@ import { DateStrip, buildUpcomingDays } from "@/components/booking/DateStrip";
 import { TimeStepper } from "@/components/booking/TimeStepper";
 import { ROLE_IDS, type LibraryDetailOut } from "@/types";
 
+const NOTICE_ID = "study-payment-closed-notice";
+
 const NEXT_14_DAYS = buildUpcomingDays();
 
 // Çalışma alanı için süre seçenekleri (dakika).
@@ -175,18 +177,26 @@ export function StudySpaceSection({ library }: { library: LibraryDetailOut }) {
           >
             Giriş yap & rezerve et
           </Link>
+        ) : !payOpen ? (
+          // Giriş yapıp dönünce devre dışı buton bulmasın.
+          <span
+            aria-describedby={NOTICE_ID}
+            className="rounded-xl bg-slate-100 px-4 py-2 text-center text-sm font-semibold text-slate-500 dark:bg-slate-800 dark:text-slate-400"
+          >
+            Ödeme kapalı
+          </span>
         ) : (
           <button
             onClick={doReserveAndPay}
-            disabled={!canReserve || !payOpen}
+            disabled={!canReserve}
             className="rounded-xl bg-indigo-600 px-5 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {busy ? "İşleniyor…" : "Rezerve et & Öde"}
           </button>
         )}
       </div>
-      {!payOpen && <PaymentBranchNotice branch="library_marketplace" />}
-      <PaymentConsentNote />
+      {!payOpen && <PaymentBranchNotice branch="library_marketplace" id={NOTICE_ID} />}
+      {payOpen && <PaymentConsentNote />}
       {token && !isClient && (
         <p className="text-xs text-slate-400">Yalnız öğrenci hesapları rezervasyon yapabilir.</p>
       )}

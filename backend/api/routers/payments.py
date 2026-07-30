@@ -15,6 +15,7 @@ from api.deps import (
 )
 from core import payments
 from core.config import settings
+from core.ratelimit import rate_limit
 from core.database import get_db
 from core.payments.iyzico import IyzicoProvider, parse_reference
 from models.booking import Booking
@@ -77,6 +78,17 @@ async def _assert_party(db: AsyncSession, booking: Booking, user: CurrentUser) -
 @router.get(
     "/availability",
     response_model=PaymentAvailabilityOut,
+    # Public + kimlik doğrulamasız: DB düşükken her istek başarısız okuma üretir,
+    # bu da ucuz bir log-flood / bağlantı havuzu baskısı amplifikatörüdür.
+    dependencies=[
+        Depends(
+            rate_limit(
+                key="payment_availability",
+                limit=settings.RATE_LIMIT_TRACKING,
+                window_seconds=settings.RATE_LIMIT_WINDOW_SECONDS,
+            )
+        )
+    ],
     # Teşhis alanları public gövdede `null` olarak bile görünmesin: şema
     # admin yüzeyiyle paylaşıldığı için opsiyoneller None kalır ve
     # serileştirilirse sözleşme "bu alanlar var ama boş" der.
