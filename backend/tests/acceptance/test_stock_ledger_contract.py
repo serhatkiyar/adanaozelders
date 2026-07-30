@@ -430,15 +430,23 @@ def test_stock_movement_modeli_kayitli():
     assert "StockMovement" in init, "models/__init__.py'a eklenmedi → autogenerate görmez"
 
 
+def _stock_movement_body() -> str:
+    """`StockMovement` sinifinin TAM govdesi (AST ile).
+
+    `src.find("class StockMovement")` enum'a (`StockMovementType`) carpar ve
+    sabit uzunluklu bir pencere docstring'in icinde biter; ikisi de testi
+    sessizce YANLIS cevap vermeye goturur -- bu tuzaga bir kez dusuldu.
+    """
+    src = _read("models/store.py")
+    for node in ast.walk(ast.parse(src)):
+        if isinstance(node, ast.ClassDef) and node.name == "StockMovement":
+            return ast.get_source_segment(src, node) or ""
+    raise AssertionError("StockMovement modeli yok")
+
+
 def test_defter_satirinda_deleted_at_yok():
     """Soft-delete edilebilen defter satırı, gizlenebilir defter satırıdır."""
-    src = _read("models/store.py")
-    baslangic = src.find("class StockMovement")
-    assert baslangic != -1, "StockMovement modeli yok"
-    govde = src[baslangic : baslangic + 4000]
-    sonraki = govde.find("\nclass ", 10)
-    if sonraki != -1:
-        govde = govde[:sonraki]
+    govde = _stock_movement_body()
     assert "deleted_at" not in govde
     assert "SoftDeleteMixin" not in govde
 
@@ -488,13 +496,11 @@ def test_sifir_delta_karari_cagirana_ait():
 
 
 def test_aktor_modeli_admine_ozel_alan_kullanmiyor():
-    src = _read("models/store.py")
-    baslangic = src.find("class StockMovement")
-    assert baslangic != -1
-    govde = src[baslangic : baslangic + 4000]
+    govde = _stock_movement_body()
     assert "actor_type" in govde
     assert "actor_id" in govde
     assert "actor_admin_id" not in govde, (
-        "Aktör modeli genel olmalı (SYSTEM/ADMIN ve ileride diğerleri)"
+        "Aktor modeli genel olmali (SYSTEM/ADMIN ve ileride digerleri)"
     )
-    assert "ref_line_id" in govde, "Satır bazlı ticari kaynak alanı eksik"
+    assert "ref_line_id" in govde, "Satir bazli ticari kaynak alani eksik"
+    assert "idempotency_key" in govde

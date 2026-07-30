@@ -120,6 +120,17 @@ class Db:
             await s.commit()
             return r
 
+    async def insert_scalar(self, sql: str, **params):
+        """Yazan sorgu + `RETURNING` — **commit eder**.
+
+        `scalar()` commit etmez (okuma yardımcısıdır); yazma için onu kullanmak
+        satırın session kapanınca geri alınmasına yol açar.
+        """
+        async with self._Session() as s:
+            v = (await s.execute(text(sql), params)).scalar()
+            await s.commit()
+            return v
+
     async def tablo_var(self, ad: str) -> bool:
         return bool(await self.scalar("SELECT to_regclass(:a) IS NOT NULL", a=ad))
 
@@ -145,7 +156,7 @@ class Db:
 
 async def _seed_urun(db: Db, *, stock: int | None, isbn: str | None = None) -> int:
     """Bu paketten ÖNCEKİ şemada ürün üretir (sku/barcode kolonları yok)."""
-    return await db.scalar(
+    return await db.insert_scalar(
         "INSERT INTO products (slug, title, kind, seller_type, price, stock, "
         "status, isbn) VALUES (:slug, 'Migration Testi', 'PHYSICAL', 'PLATFORM', "
         "100.00, :stock, 'ACTIVE', :isbn) RETURNING id",
@@ -282,7 +293,7 @@ async def test_upgrade_dogrulama_downgrade_tekrar_upgrade(migration_db):
     assert "kind" in str(exc.value).lower()
 
     # SKU otomatik doluyor ve verilen sahte değer eziliyor
-    yeni = await db.scalar(
+    yeni = await db.insert_scalar(
         "INSERT INTO products (slug, title, kind, seller_type, price, stock, "
         "status, sku) VALUES (:s, 'Sahte', 'DIGITAL', 'PLATFORM', 10.00, NULL, "
         "'ACTIVE', 'FZK-000001') RETURNING id",
@@ -300,8 +311,10 @@ async def test_upgrade_dogrulama_downgrade_tekrar_upgrade(migration_db):
         "trg_products_sku_autofill", "trg_products_identity_immutable",
     ):
         assert not await db.trigger_var(trg), trg
-    # Ürün verisi bozulmadı.
-    assert await db.scalar("SELECT stock FROM products WHERE id = :i", i=stoklu) == 8
+    # Ürün verisi bozulmadı. (Yukarıdaki ham `stock_movements` INSERT'i
+    # `products.stock`'a DOKUNMAZ — defteri ham SQL'le beslemek stoğu
+    # değiştirmez; ikisini birlikte yazan tek yer `stock_ledger`.)
+    assert await db.scalar("SELECT stock FROM products WHERE id = :i", i=stoklu) == 7
     assert await db.scalar(
         "SELECT count(*) FROM products WHERE id = ANY(:ids)",
         ids=[stoklu, sifirli, takipsiz, isbn_a, isbn_b],
@@ -313,10 +326,10 @@ async def test_upgrade_dogrulama_downgrade_tekrar_upgrade(migration_db):
     assert await db.scalar(
         "SELECT count(*) FROM stock_movements WHERE product_id = :i", i=stoklu
     ) == 1
-    # Açılış bakiyesi GÜNCEL stoğu yansıtır (downgrade sonrası 8'e çıkmıştı).
+    # Açılış bakiyesi, upgrade ANINDAKİ gerçek stoğu yansıtır.
     assert await db.scalar(
         "SELECT qty_after FROM stock_movements WHERE product_id = :i", i=stoklu
-    ) == 8
+    ) == 7
 
 
 async def test_bos_veritabaninda_upgrade_head_calisir(migration_db):

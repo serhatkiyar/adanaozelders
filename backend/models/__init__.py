@@ -92,6 +92,8 @@ from models.store import (
     ReturnStatus,
     ReturnType,
     SellerType,
+    StockMovement,
+    StockMovementType,
     StockNotification,
 )
 from models.task import Subtask, Task, TaskFilter, TaskLabel, TaskList
@@ -200,6 +202,8 @@ __all__ = [
     "ProductKind",
     "ProductReview",
     "ProductStatus",
+    "StockMovement",
+    "StockMovementType",
     "ReturnStatus",
     "ReturnType",
     "ReturnRefundStatus",

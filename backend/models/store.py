@@ -27,7 +27,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.dialects.postgresql import TSVECTOR
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy.schema import Computed
+from sqlalchemy.schema import Computed, FetchedValue
 
 from core.database import Base
 from models.mixins import ModeratableMixin, SoftDeleteMixin, TimestampMixin
@@ -219,8 +219,35 @@ class Product(Base, TimestampMixin, SoftDeleteMixin):
     currency: Mapped[str] = mapped_column(
         String(3), nullable=False, server_default=text("'TRY'")
     )
-    # Yalnız PHYSICAL: kalan stok. DIGITAL'de NULL (sınırsız).
+    # Yalnız PHYSICAL: kalan stok. DIGITAL'de NULL — bu "stoğu 0" DEĞİL,
+    # "stok takip edilmiyor" demektir (bkz. services/stock_ledger.py).
+    #
+    # DİKKAT: bu alana doğrudan atama yapılmaz. Tek yazıcı
+    # `services/stock_ledger.py::apply_movement`'tır; her değişim aynı
+    # transaction'da bir `stock_movements` satırı üretir. Kural bir kabul
+    # testiyle (AST) korunur: tests/acceptance/test_stock_ledger_contract.py
     stock: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+    # ── Stok kalemi kimliği ──
+    # `sku` = BİZİM stok kalemi kimliğimiz. Değeri `(kind, id)`'nin fonksiyonudur
+    # (`FZK-000042` / `DIJ-000007`) ve **BEFORE INSERT trigger'ı** tarafından
+    # yazılır (`products_sku_autofill`) — verilen değer EZİLİR, taklit edilemez.
+    # Bu yüzden ORM tarafında `FetchedValue`: SQLAlchemy değeri sunucudan okur.
+    # `sku` ve `kind` bir BEFORE UPDATE trigger'ıyla değiştirilemez kılınmıştır
+    # (`products_identity_immutable`) — SKU immutable olmalı ve öneği `kind`'e
+    # bağlı olduğu için `kind` de sabit kalmak zorunda.
+    sku: Mapped[str] = mapped_column(
+        String(20), nullable=False, server_default=FetchedValue()
+    )
+    # `barcode` = ELİMİZDEKİ FİZİKSEL KALEMİN ÜZERİNDE OKUNAN dizgi (EAN-13/UPC).
+    # `isbn`'den ayrıdır ve ondan ASLA otomatik kopyalanmaz:
+    #   • kitap olmayan üründe (kalem, defter) EAN var, ISBN yok;
+    #   • set/paket ürünün kendi barkodu içindeki kitapların ISBN'inden farklı;
+    #   • ISBN-10 basımlarda kapaktaki barkod ISBN'in EAN-13 dönüşümüdür;
+    #   • bazı baskılar promosyon barkodu taşır.
+    # ISBN'i barkoda kopyalamak, "okuttum, eşleşti" güvenini yanlış bir
+    # eşleşmeye dayandırırdı. Yalnız insan girdisiyle dolar.
+    barcode: Mapped[str | None] = mapped_column(String(32), nullable=True)
     # Kargo ağırlık ipucu (ileride il/ağırlık bazlı tarife için). MVP'de bilgi amaçlı.
     weight_grams: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
@@ -309,6 +336,18 @@ class Product(Base, TimestampMixin, SoftDeleteMixin):
         ),
         Index("ix_products_category", "category_id"),
         Index("ix_products_tutor", "tutor_id"),
+        # SKU'da TAM unique (slug'ın aksine kısmi DEĞİL): SKU `id`'nin
+        # fonksiyonu olduğu için silinmiş bir satırla çakışması imkânsız ve tam
+        # unique daha güçlü bir garanti verir. Trigger'ı düşen bir ortamda son
+        # savunma olarak da kalır.
+        Index("uq_products_sku", "sku", unique=True),
+        # Barkod: yalnız dolu ve silinmemiş satırlarda tekil.
+        Index(
+            "uq_products_barcode_active",
+            "barcode",
+            unique=True,
+            postgresql_where=text("barcode IS NOT NULL AND deleted_at IS NULL"),
+        ),
         CheckConstraint(
             "compare_at_price IS NULL OR compare_at_price > price",
             name="ck_products_compare_price",
@@ -899,4 +938,164 @@ class ProductPriceHistory(Base):
     __table_args__ = (
         # "Son 30 günün en düşüğü" sorgusu: ürün + tarih aralığı.
         Index("ix_product_price_history_lookup", "product_id", "changed_at"),
+    )
+
+
+class StockMovementType(str, enum.Enum):
+    """Stok hareketinin türü.
+
+    Yeni tür eklemek gerekçe sözlüğünü ve admin yüzeyindeki etiketleri de
+    güncellemeyi gerektirir; sessizce büyümemesi için sayısı kabul testiyle
+    sabitlenmiştir.
+    """
+
+    #: Defter devreye alınırken var olan bakiye (migration). Stoğu 0 olan ürün
+    #: de satır alır — zincirin tabanı her takip edilen ürün için var olmalı.
+    OPENING_BALANCE = "OPENING_BALANCE"
+    #: Ürün oluşturma / CSV içe aktarmada girilen ilk stok.
+    INITIAL = "INITIAL"
+    #: Sipariş PAID olunca düşüm (ürün başına toplanmış).
+    SALE = "SALE"
+    #: İptal / tam iade → geri yükleme.
+    SALE_CANCEL = "SALE_CANCEL"
+    #: Kısmi iade kabulü → geri yükleme (iade SATIRI bazlı).
+    RETURN = "RETURN"
+    #: Admin düzeltmesi. Gerekçe ZORUNLU; mutlak atama değil, delta yazılır.
+    ADMIN_ADJUSTMENT = "ADMIN_ADJUSTMENT"
+
+
+#: `ADMIN_ADJUSTMENT` için geçerli gerekçe kodları (DB CHECK'iyle de zorlanır).
+ADMIN_ADJUSTMENT_REASONS = frozenset(
+    {"SAYIM_FARKI", "HASAR", "KAYIP", "HATALI_GIRIS", "TEDARIK", "DIGER"}
+)
+
+
+class StockMovement(Base):
+    """`products.stock`'un DEĞİŞTİRİLEMEZ defteri (append-only).
+
+    ## Neden var
+
+    Stok altı ayrı yerde değişiyordu ve hiçbiri iz bırakmıyordu: "bu kitabın
+    stoğu neden 3?" sorusunun cevabı yoktu. Aynı serviste **fiyat** değişimi
+    `product_price_history`'ye yazılıyordu; stok için karşılığı yoktu.
+
+    ## Sözleşme
+
+    * **Append-only.** UPDATE ve DELETE `stock_movements_immutable()` trigger'ı
+      tarafından reddedilir. Soft-delete YOKTUR ve olmamalıdır — gizlenebilen
+      bir defter satırı, defter değildir (`audit_logs` ile aynı duruş).
+    * **Tek yazıcı:** `services/stock_ledger.py`. `products.stock`'a doğrudan
+      atama yapılmaz; kural AST kabul testiyle korunur.
+    * **`qty_after`**, hareketin uygulandığı transaction'da `products.stock`'a
+      GERÇEKTEN yazılan değerdir (ERPNext *Stock Ledger Entry* deseni). Zincir
+      değişmezi: ``qty_after[i] == qty_after[i-1] + qty_delta[i]``.
+    * **`idempotency_key`** ticari kaynaktan deterministik türetilir. Aynı
+      anahtar + aynı payload → mevcut hareket döner (retry'ın doğru cevabı);
+      aynı anahtar + farklı payload → çatışma hatası. Sessiz yutma yok.
+    * **Negatif bakiye yazılmaz.** Yetersizlikte hareket hiç oluşmaz ve stok
+      değişmez (`InsufficientStock`); kırpma (``max(0, …)``) YASAKTIR.
+
+    ## `actor_id` neden FK değil
+
+    İki sebep: (1) `audit_logs.actor_id` deseninin aynısı — defter satırı,
+    aktörün yaşam döngüsünden bağımsız olarak okunabilir kalmalı; (2) FK
+    `ON DELETE SET NULL` bir **UPDATE**'tir ve değiştirilemezlik trigger'ına
+    çarpardı.
+    """
+
+    __tablename__ = "stock_movements"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    product_id: Mapped[int] = mapped_column(
+        # RESTRICT: ürün soft-delete edilir (`store_service.delete_product`), bu
+        # yüzden pratikte hiç tetiklenmez; niyeti belgeler — defter yetim kalamaz.
+        ForeignKey("products.id", ondelete="RESTRICT"), nullable=False, index=True
+    )
+
+    #: İşaretli, UYGULANAN gerçek değişim. Sıfır yalnız OPENING_BALANCE'ta.
+    qty_delta: Mapped[int] = mapped_column(Integer, nullable=False)
+    #: Bu hareketten sonraki bakiye (= aynı transaction'da yazılan stok).
+    qty_after: Mapped[int] = mapped_column(Integer, nullable=False)
+
+    movement_type: Mapped[str] = mapped_column(String(20), nullable=False)
+    #: Her hareket kendini açıklar → NOT NULL. Sistem tipleri sabit kod taşır.
+    reason_code: Mapped[str] = mapped_column(String(30), nullable=False)
+
+    # ── Ticari kaynak (polimorfik → FK yok) ──
+    #: "order" · "order_return" · "product" · "migration"
+    ref_type: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    ref_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    #: Satır bazlı kaynak — kısmi iadede `order_return_items.id`. Aynı üründen
+    #: iki iade satırı İKİ geçerli harekettir; ayrımı bu alan taşır.
+    ref_line_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+    #: Deterministik idempotency anahtarı. `ADMIN_ADJUSTMENT`'ta NULL — her elle
+    #: düzeltme ayrı bir olaydır ve doğal anahtarı yoktur (PG'de NULL'lar unique
+    #: index'te birbirinden farklı sayılır).
+    idempotency_key: Mapped[str | None] = mapped_column(String(160), nullable=True)
+
+    #: "SYSTEM" | "ADMIN" (ileride genişletilebilir).
+    actor_type: Mapped[str] = mapped_column(String(10), nullable=False)
+    actor_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+    note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    #: `audit_logs.request_id` ile korelasyon: defter NE olduğunu, audit KİMİN
+    #: hangi istekle yaptığını anlatır.
+    request_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=text("now()")
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            "movement_type IN ('OPENING_BALANCE','INITIAL','SALE','SALE_CANCEL',"
+            "'RETURN','ADMIN_ADJUSTMENT')",
+            name="ck_stock_movements_type",
+        ),
+        CheckConstraint(
+            "actor_type IN ('SYSTEM','ADMIN')", name="ck_stock_movements_actor_t"
+        ),
+        CheckConstraint(
+            "actor_type <> 'ADMIN' OR actor_id IS NOT NULL",
+            name="ck_stock_movements_actor_id",
+        ),
+        # Sıfır delta yalnız açılış bakiyesinde: 0 stoklu ürünün de zincir
+        # tabanı olmalı. Diğer türlerde gürültü satırı yazılmaz.
+        CheckConstraint(
+            "qty_delta <> 0 OR movement_type = 'OPENING_BALANCE'",
+            name="ck_stock_movements_delta",
+        ),
+        # Kırpma yasak olduğu için bu artık gerçek bir değişmez.
+        CheckConstraint("qty_after >= 0", name="ck_stock_movements_after"),
+        CheckConstraint(
+            "movement_type NOT IN ('SALE','SALE_CANCEL','RETURN') "
+            "OR (ref_type IS NOT NULL AND ref_id IS NOT NULL)",
+            name="ck_stock_movements_ref",
+        ),
+        CheckConstraint(
+            "movement_type <> 'RETURN' OR ref_line_id IS NOT NULL",
+            name="ck_stock_movements_refline",
+        ),
+        CheckConstraint(
+            "movement_type <> 'ADMIN_ADJUSTMENT' OR reason_code IN "
+            "('SAYIM_FARKI','HASAR','KAYIP','HATALI_GIRIS','TEDARIK','DIGER')",
+            name="ck_stock_movements_adjust",
+        ),
+        # "DIGER" tek başına hiçbir şey açıklamaz; açıklamayı not taşır.
+        CheckConstraint(
+            "reason_code <> 'DIGER' OR (note IS NOT NULL AND length(btrim(note)) > 0)",
+            name="ck_stock_movements_note",
+        ),
+        # Geçmiş ekranı (ürün + tarih filtresi + kronolojik sıra).
+        Index(
+            "ix_stock_movements_product",
+            "product_id",
+            text("created_at DESC"),
+            text("id DESC"),
+        ),
+        # "Bu siparişin/iadenin stok etkisi". UNIQUE DEĞİL: bir sipariş çok
+        # ürün, bir iade çok satır taşır → referans başına çok geçerli hareket.
+        Index("ix_stock_movements_ref", "ref_type", "ref_id"),
+        Index("uq_stock_movements_idem", "idempotency_key", unique=True),
     )
