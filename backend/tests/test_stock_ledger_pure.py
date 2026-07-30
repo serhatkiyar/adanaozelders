@@ -15,12 +15,16 @@ import pytest
 
 from services.stock_ledger import (
     ADMIN_ADJUSTMENT_REASONS,
+    IDEMPOTENCY_PAYLOAD_FIELDS,
     IdempotencyConflict,
     InsufficientStock,
+    PartialIdempotencyState,
     StockMovementType,
+    StockNotTracked,
     has_shortage,
     idempotency_key_for,
     make_sku,
+    payload_differences,
     sku_prefix,
     validate_reason,
     verify_chain,
@@ -92,6 +96,10 @@ class TestHasShortage:
     def test_stok_takibi_kapali_urun_eksik_saymaz(self):
         # stock IS NULL = "bu ürünün stoğu takip edilmiyor" (dijital ürün).
         # Eksik saymak, satılabilir dijital ürünü kilitlerdi.
+        #
+        # DİKKAT: bu, SEPET okumasının semantiğidir. Defter tarafında aynı durum
+        # `StockNotTracked` ile REDDEDİLİR (§3g0) — takip edilmeyen bir bakiyeye
+        # hareket yazmak anlamsızdır. İki farklı soru, iki farklı cevap.
         assert has_shortage(None, 5) is False
 
 
@@ -248,7 +256,80 @@ class TestVerifyChain:
 
 # ────────────────────────── İstisnalar ──────────────────────────
 
+class TestPayloadDifferences:
+    """Idempotency payload karşılaştırması — `apply_movement` ve `apply_many`
+    AYNI fonksiyonu kullanır; ayrışırlarsa biri çelişkiyi görürken diğeri
+    görmez."""
+
+    def test_karsilastirilan_alanlar_tam(self):
+        # Karar 2 (rev. 3): actor ve reason_code da karşılaştırmaya girer.
+        assert IDEMPOTENCY_PAYLOAD_FIELDS == (
+            "product_id",
+            "qty_delta",
+            "movement_type",
+            "reason_code",
+            "ref_type",
+            "ref_id",
+            "ref_line_id",
+            "actor_type",
+            "actor_id",
+        )
+
+    def _spec(self, **over):
+        temel = dict(
+            product_id=5,
+            qty_delta=-2,
+            movement_type=StockMovementType.SALE,
+            reason_code="ORDER_PAID",
+            ref_type="order",
+            ref_id=17,
+            ref_line_id=None,
+            actor_type="SYSTEM",
+            actor_id=None,
+        )
+        temel.update(over)
+        return temel
+
+    def test_ayni_payload_fark_uretmez(self):
+        assert payload_differences(self._spec(), self._spec()) == {}
+
+    @pytest.mark.parametrize(
+        "alan,yeni",
+        [
+            ("product_id", 6),
+            ("qty_delta", -3),
+            ("movement_type", StockMovementType.SALE_CANCEL),
+            ("reason_code", "ORDER_CANCELLED"),
+            ("ref_type", "order_return"),
+            ("ref_id", 18),
+            ("ref_line_id", 99),
+            ("actor_type", "ADMIN"),
+            ("actor_id", 1),
+        ],
+    )
+    def test_her_alan_farki_yakalanir(self, alan, yeni):
+        fark = payload_differences(self._spec(), self._spec(**{alan: yeni}))
+        assert alan in fark
+        assert fark[alan] == (self._spec()[alan], yeni)
+
+
 class TestExceptions:
+    def test_stok_takip_edilmiyor_istisnasi(self):
+        # Dijital ürün / bakiyesi bilinmeyen ürün: sessiz atlama DEĞİL, ret.
+        exc = StockNotTracked(product_id=5)
+        assert exc.product_id == 5
+        assert "5" in str(exc)
+
+    def test_kismi_idempotency_durumu_eksikleri_bildirir(self):
+        exc = PartialIdempotencyState(
+            found_keys=["order:1:product:5:SALE"],
+            missing_keys=["order:1:product:6:SALE"],
+        )
+        assert exc.found_keys == ["order:1:product:5:SALE"]
+        assert exc.missing_keys == ["order:1:product:6:SALE"]
+        # Operatör hangi hareketin eksik olduğunu mesajdan görmeli.
+        assert "order:1:product:6:SALE" in str(exc)
+
     def test_yetersiz_stok_istisnasi_taniyici_bilgi_tasir(self):
         exc = InsufficientStock(product_id=5, current=1, qty_delta=-3)
         assert exc.product_id == 5

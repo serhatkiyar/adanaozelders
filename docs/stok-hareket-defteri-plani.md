@@ -102,8 +102,54 @@ sku: Mapped[str] = mapped_column(String(20), nullable=False)   # backfill sonras
 - **Sequence yok.** Değer tamamen `(kind, id)`'nin fonksiyonu → boşluk/rollback kaygısı ortadan kalkar, migration ve yeni satır aynı formülü kullanır, backfill idempotenttir.
 - **Immutable.** Bir kez yazılır, asla yeniden hesaplanmaz. Ön koşulu: `kind` düzenlenebilir alanlar arasında **değil** (`store_service.py:753-756`). Bu ön koşul bir kabul testiyle kilitlenir — ileride `kind` düzenlenebilir yapılırsa test kırılır (aksi hâlde SKU sessizce yalan söylerdi).
 - **Unique + NOT NULL.** `uq_products_sku` **tam** UNIQUE (kısmi değil). Slug'dan farkı: slug insan tarafından düzenlenebilir ve yeniden kullanılabilir olduğu için `WHERE deleted_at IS NULL` ile kısmi; SKU `id`'nin fonksiyonu olduğundan silinmiş satırla çakışması **imkânsızdır** ve tam UNIQUE daha güçlü bir garanti verir.
-- **Yeni satırlar:** `id` INSERT'te atandığı için SKU `flush()` sonrası yazılır (`db.add(p)` → `await db.flush()` → `p.sku = make_sku(p.kind, p.id)`). Aynı desen `bulk_import_products`'ta savepoint içinde.
-- **CSV:** şablona (`AdminStore.tsx:438`) `sku` **eklenmez** — SKU türetilmiş bir değerdir, içe aktarmadan gelmez. (rev. 1'de eklenecekti; deterministik formül bunu gereksiz ve çelişkili kılıyor.)
+- **CSV:** şablona (`AdminStore.tsx:438`) `sku` **eklenmez** — SKU türetilmiş bir değerdir, içe aktarmadan gelmez.
+
+#### SKU'nun INSERT anında üretilmesi (rev. 3)
+
+SKU `NOT NULL` ve `id`'nin fonksiyonu; ama `id` ancak INSERT sırasında var oluyor. İki seçenek değerlendirildi:
+
+| Seçenek | Karar |
+|---|---|
+| Uygulama `nextval('products_id_seq')` ile id'yi **önceden** alsın, `id` + `sku` aynı INSERT'te yazılsın | ❌ Yalnız uygulama kodundan geçen yazımları kapsar. Migration, seed ve ham SQL INSERT'leri (testler dâhil) NOT NULL'a çarpar; disiplin her yeni yazıcıda tekrar hatırlanmak zorunda kalır |
+| **PostgreSQL `BEFORE INSERT` trigger'ı `NEW.id` üzerinden SKU üretsin** | ✅ **Seçilen** |
+
+`BEFORE INSERT ROW` trigger'ı çalıştığında kolon **default'ları zaten uygulanmıştır**, yani `NEW.id` doludur (identity/serial default'u tuple oluşurken değerlendirilir). Trigger, verilen değere **bakmadan** SKU'yu formülden yazar:
+
+```sql
+CREATE FUNCTION products_sku_autofill() RETURNS trigger AS $$
+BEGIN
+  NEW.sku := (CASE NEW.kind WHEN 'PHYSICAL' THEN 'FZK-' ELSE 'DIJ-' END)
+             || lpad(NEW.id::text, 6, '0');
+  RETURN NEW;
+END; $$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_products_sku_autofill BEFORE INSERT ON products
+  FOR EACH ROW EXECUTE FUNCTION products_sku_autofill();
+```
+
+Sonuçları:
+- **Geçici SKU yok, nullable bırakıp sonradan UPDATE yok, ayrı SKU sequence yok.** Her yazıcı (ORM, migration, seed, ham SQL) doğru SKU'yu otomatik alır.
+- **SKU taklit edilemez:** istemci/servis `sku="FZK-000001"` göndererek başka bir ürünün kimliğini alamaz — trigger değeri ezer. `uq_products_sku` yine kalır (yapısal olarak ihlal edilemez, ama sözleşmeyi belgeler ve trigger düşerse son savunmadır).
+- ORM tarafında kolon `server_default=FetchedValue()` ile tanımlanır; değere ihtiyaç duyan servis `flush()` sonrası `await db.refresh(p, ["sku"])` çağırır.
+
+#### `sku` ve `kind` değiştirilemezliği DB'de (rev. 3)
+
+SKU'nun immutable olması ve öneğinin gerçeği yansıtması, `kind`'in de değişmemesine bağlı. İkisi tek bir `BEFORE UPDATE` trigger'ıyla kilitlenir:
+
+```sql
+CREATE FUNCTION products_identity_immutable() RETURNS trigger AS $$
+BEGIN
+  IF NEW.sku IS DISTINCT FROM OLD.sku THEN
+    RAISE EXCEPTION 'products.sku değiştirilemez (ürün kimliği)';
+  END IF;
+  IF NEW.kind IS DISTINCT FROM OLD.kind THEN
+    RAISE EXCEPTION 'products.kind değiştirilemez (SKU öneki buna bağlı)';
+  END IF;
+  RETURN NEW;
+END; $$ LANGUAGE plpgsql;
+```
+
+Bugün hiçbir kod `kind` yazmıyor (`store_service.py:753-756` düzenlenebilir listesinde yok) ve `sku` yeni; trigger yalnız **gerçekten değişen** değerde tetiklendiği için mevcut UPDATE'lerin (fiyat, durum, soft-delete, stok) hiçbirini etkilemez. Migration sırası kritik: kolon → backfill UPDATE → `NOT NULL` → **sonra** trigger'lar (aksi hâlde backfill'in kendi UPDATE'i reddedilirdi).
 
 ### 3b. ISBN — SKU'dan ayrı yayın kimliği
 
@@ -236,6 +282,17 @@ CREATE TRIGGER trg_stock_movements_no_delete BEFORE DELETE ON stock_movements
 3. **Bulundu + payload farklı** → `IdempotencyConflict` (HTTP 409). **Sessizce yutulmaz**; hangi alanın çeliştiği hata gövdesinde.
 4. Bulunmadı → INSERT. Eşzamanlı bir INSERT unique index'i ihlal ederse (`IntegrityError`) satır yeniden okunur ve 2/3 kuralı uygulanır. Ürün satırı kilitli olduğundan aynı ürün için bu yarış zaten serileşir; bu dal ikinci kuşaktır ve testlenir.
 
+### 3g0. Dijital ürün ve stok takibi politikası (rev. 3)
+
+| Durum | Politika |
+|---|---|
+| Dijital ürün **SKU alır** | ✅ `DIJ-000007`. SKU bir katalog kimliğidir, stok kaydı değil |
+| Dijital ürün **stok yönetimine tabi değil** | `stock IS NULL`. Bu "stoğu 0" değil, **"stok takip edilmiyor"** demektir |
+| Dijital ürüne **admin stok değişikliği** | ❌ **Reddedilir** — `PATCH /admin/products/{id}` payload'ında `stock` varsa ve ürün DIGITAL ise **400**. Bugün alan sessizce yutuluyor (`store_service.py:753-756` yalnız PHYSICAL'de `editable`'a ekliyor); sessiz yutma admin'e "kaydettim" izlenimi veriyor |
+| Dijital kalem için **sipariş stok hareketi** | ❌ **Reddedilir** — `apply_movement`, `product.stock IS NULL` gördüğünde `StockNotTracked` yükseltir (rev. 2'de `None` dönüp `warning` logluyordu). Çağıran (`_finalize_paid`) fiziksel kalemleri zaten filtreliyor; buraya bir dijital kalem gelmesi **programlama hatasıdır** ve sessiz kalmamalı |
+| **Sıfır stoklu fiziksel** ürün — açılış satırı | ✅ **Yazılır.** `qty_delta = 0`, `qty_after = 0`. Zincirin tabanı her takip edilen ürün için var olmak zorunda; yoksa `verify_chain` "ilk satır `qty_delta == qty_after` olmalı" kuralını uygulayamaz ve 0 bakiyeli ürün "defteri hiç yok" ile "defteri boş" arasında ayırt edilemez |
+| **Genel hareketlerde sıfır delta** | ❌ **Serbest değil.** `qty_delta == 0` yalnız `OPENING_BALANCE`'ta geçerli; diğer türlerde `ValueError` (DB'de `ck_stock_movements_delta` ile de zorlanır). Admin'in aynı değeri tekrar kaydetmesi hâli deftere **hiç gelmez**: `update_product` deltayı kilit altında hesaplar, 0 çıkarsa ledger'ı **çağırmaz** ve gerekçe de istemez. Böylece "gürültü satırı yazmama" kararı çağıranda kalır, defter katı olur |
+
 ### 3g. Negatif stok — `InsufficientStock` (Karar 5)
 
 `current_stock + qty_delta < 0` ise:
@@ -247,7 +304,20 @@ CREATE TRIGGER trg_stock_movements_no_delete BEFORE DELETE ON stock_movements
 
 **Sipariş akışına yönlendirme:** stok yetersizliğinin **normal** yolu bugün de var ve korunuyor — `_finalize_paid`'deki ön kontrol (`:614-621`) kilit altında eksiği görür ve PAID **claim edilmeden** `_out_of_stock_refund`'a (tam iade + CANCELLED) gider. Bu kontrolün aritmetiği defterle **aynı saf yardımcıya** (`shortage_for`) bağlanacak; ikisinin ayrışması mümkün olmayacak.
 
-Claim'den **sonra** `InsufficientStock` atılması, ürün satırları `:606`'dan commit'e kadar kilitli tutulduğu ve arada commit olmadığı için (§1e) **yapısal olarak ulaşılamazdır**. Yine de dal yazılır ve testlenir; oluşursa davranış: tüm transaction geri alınır (PAID claim'i dâhil) → kısmi durum yok → mevcut callback idempotensisi/reconciler tekrar dener → tekrar denemede ön kontrol eksiği görür ve `_out_of_stock_refund`'a yönlendirir. **Tutarlılık, erişilebilirliğin önündedir** (bilinçli; PK-1'in fail-closed duruşuyla aynı yön).
+#### Claim sonrası yarış: 500 DÖNMEZ, iade akışına yönlendirilir (rev. 3)
+
+Claim'den sonra `InsufficientStock` atılması, ürün satırları `:606`'dan commit'e kadar kilitli tutulduğu ve arada commit olmadığı için (§1e) beklenmeyen bir hâldir — ama **ulaşılabilir**: ön kontrol ürünü ORM kimlik haritasından bayat okursa (`populate_existing` olmadan `FOR UPDATE` bayat instance döndürür — bkz. §4/1) "yeterli" der, defter ise taze satırı görüp reddeder. İki savunma birlikte konur:
+
+1. **Ön kontrol de tazelenir.** `_finalize_paid`'in `:606-613` kilit döngüsü `populate_existing=True` alır ve eksik hesabı defterle **aynı saf yardımcıya** (`has_shortage`) bağlanır. Böylece iki taraf aynı sayıyı görür.
+2. **Yine olursa 500 dönmez.** `_finalize_paid`, `apply_many`'yi `try/except InsufficientStock` içinde çağırır:
+   - `await db.rollback()` → **PAID claim'i dâhil** her şey geri alınır (sipariş `PENDING`/`FAILED`'a döner, kupon tüketimi geri sarılır, söz tarihi yazılmaz). Kısmi durum kalmaz.
+   - `logger.error` + operasyon alarmı (bu dal beklenmeyen bir yarışın kanıtıdır, sessiz geçmemeli).
+   - Sipariş taze okunur ve **mevcut** `_out_of_stock_refund` çağrılır. O fonksiyon `escrow.begin_refund(from_statuses=["PENDING","FAILED"])` ile **atomik claim** yaptığı için tekrar çağrılması güvenlidir: ikinci bir eşzamanlı akış aynı iadeyi başlatmışsa claim edemez ve para hareketi tek kalır (§1b'deki mevcut docstring bu davranışı zaten anlatıyor). Eksik ürünün adı istisnadan gelen `product_id` ile okunur.
+   - Sonuç: müşteri **tam iade + iptal** yolunu görür, opak 500 görmez.
+
+**Gerçek PostgreSQL eşzamanlılık testiyle kanıtlanır** (§8, `test_stock_concurrency_pg.py`): (i) bayat kimlik haritası senaryosu — ön kontrol "yeterli" derken defterin `InsufficientStock` yükselttiği, hiçbir hareket yazılmadığı ve stoğun değişmediği; (ii) `_finalize_paid` seviyesinde — siparişin **PAID kalmadığı**, hareket yazılmadığı ve iade akışının **idempotent** biçimde çalıştığı.
+
+**Tutarlılık, erişilebilirliğin önündedir** (bilinçli; PK-1'in fail-closed duruşuyla aynı yön).
 
 ---
 
@@ -267,9 +337,10 @@ async def apply_movement(
 
 Davranış — **çağıranın transaction'ı içinde, kendi `commit`'ini atmaz** (Karar 9):
 
-1. `SELECT … FROM products WHERE id = :id FOR UPDATE`. Çağıran satırı zaten kilitlemişse aynı transaction'da yeniden kilitlemek no-op'tur (yeniden girişli) → fonksiyon yanlış çağrılamaz.
-2. `product.stock IS NULL` (dijital / stok takibi olmayan) → hareket yazılmaz, `None`, `logger.warning`.
-3. `qty_delta == 0` ve tip `OPENING_BALANCE` değil → `None` (gürültü satırı yok).
+1. `SELECT … FROM products WHERE id = :id FOR UPDATE` **`.execution_options(populate_existing=True)`** ile. Çağıran satırı zaten kilitlemişse aynı transaction'da yeniden kilitlemek no-op'tur (yeniden girişli) → fonksiyon yanlış çağrılamaz.
+   **`populate_existing` neden zorunlu:** session `expire_on_commit=False` ile kuruluyor; ürün kimlik haritasında (identity map) zaten varsa `FOR UPDATE` sorgusu satırı kilitler ama ORM **bayat instance'ı** döndürür (backend/CLAUDE.md'de `_load_run`/`_load_stop` tuzağı olarak kayıtlı). Bayat `stock` üzerinden hesaplanan `qty_after` sessizce yanlış olurdu — defterin en temel iddiası çökerdi. Kabul testi bunu çiviler.
+2. `product.stock IS NULL` → **`StockNotTracked`** (§3g0).
+3. `qty_delta == 0` ve tip `OPENING_BALANCE` değil → **`ValueError`** (§3g0).
 4. **Idempotency** (§3f, 2/3/4 kuralları).
 5. `new_stock = product.stock + qty_delta`; `new_stock < 0` → **`InsufficientStock`** (§3g).
 6. `INSERT INTO stock_movements (…, qty_after=new_stock)` ve `product.stock = new_stock` — **aynı değişkenden, aynı transaction'da**. `qty_after` ile yazılan stok tanım gereği eşittir; bir test bunu commit sonrası okuyarak da doğrular.
@@ -280,7 +351,24 @@ Davranış — **çağıranın transaction'ı içinde, kendi `commit`'ini atmaz*
 async def apply_many(db, specs: list[dict]) -> list[StockMovement | None]
 ```
 
-`specs`'i **artan `product_id`** sırasına dizer ve her biri için `apply_movement` çağırır. Kilit sırası disiplini böylece **tek yerde** yaşar; üç çağıranın (`order_service.py:607`, `:1172`, `:1567` — bugün sırasız döngüler) üçünde tekrarlanmaz ve biri unutulduğunda sessizce deadlock'a dönüşmez. Tek ürünlü çağrılar (W4/W5/W6) doğrudan `apply_movement` kullanır. Kabul testi bu ayrımı çivileyerek korur.
+Kilit sırası disiplini böylece **tek yerde** yaşar; üç çağıranın (`order_service.py:607`, `:1172`, `:1567` — bugün sırasız döngüler) üçünde tekrarlanmaz ve biri unutulduğunda sessizce deadlock'a dönüşmez. Tek ürünlü çağrılar (W4/W5/W6) doğrudan `apply_movement` kullanır. Kabul testi bu ayrımı çivileyerek korur.
+
+#### Toplu idempotency ATOMİK yönetilir (rev. 3)
+
+Bir batch'in "yarısı uygulanmış" olması, defterin en tehlikeli hâlidir: sipariş kısmen düşülmüş, `verify_ledger` tutarlı görünür (her ürünün kendi zinciri sağlam), ama sipariş ile defter arasındaki ilişki bozulmuştur. `apply_many` bu yüzden **loop değil, üç fazlı** çalışır:
+
+1. **Kilitle:** `specs` artan `product_id` sırasına dizilir; tüm ürünler `FOR UPDATE` + `populate_existing` ile kilitlenir. Anahtarsız bir spec varsa `ValueError` (batch idempotency'si anahtar olmadan kurulamaz — `ADMIN_ADJUSTMENT` `apply_many`'ye verilmez).
+2. **Kararı ver:** tüm `idempotency_key`'ler **tek sorguda** aranır.
+
+   | Durum | Davranış |
+   |---|---|
+   | **Hiçbiri yok** | Hepsi uygulanır (normal yol) |
+   | **Hepsi var** | Her birinin payload'ı doğrulanır; eşleşiyorsa **mevcut sonuçlar** döner, stok hiç değişmez (retry'ın doğru cevabı). Bir tanesi bile farklıysa `IdempotencyConflict` |
+   | **Bazıları var, bazıları yok** | **`PartialIdempotencyState`** yükseltilir. Eksikler **sessizce uygulanmaz** — bu durum ya kod hatasıdır ya da yarıda kesilmiş bir yazımın izidir; ikisi de insan kararı ister |
+
+3. **Uygula:** kilit hâlâ elde iken sırayla yazılır.
+
+**Payload karşılaştırmasına giren alanlar** (hepsi): `product_id`, `qty_delta`, `movement_type`, `reason_code`, `ref_type`, `ref_id`, `ref_line_id`, `actor_type`, `actor_id`. Tek fonksiyon (`payload_differences(existing, spec) -> dict[str, tuple]`) hem `apply_movement` hem `apply_many` tarafından kullanılır; çelişen alanlar `IdempotencyConflict.conflicting_fields`'a yazılır.
 
 **Saf (DB'siz) yardımcılar aynı modülde:** `sku_prefix(kind)` · `make_sku(kind, product_id)` · `shortage_for(current, needed)` · `validate_reason(movement_type, reason_code, note)` · `idempotency_key_for(...)` · `verify_chain(rows, current_stock)` · `resolve_product_ref(...)` sorgu üreteci.
 
@@ -290,12 +378,12 @@ async def apply_many(db, specs: list[dict]) -> list[StockMovement | None]
 
 | # | Yeni çağrı |
 |---|---|
-| W1 | `apply_many` ile ürün başına tek `SALE`; `qty_delta = -toplam`, `reason_code="ORDER_PAID"`, `ref=("order", order.id)`, key `order:{id}:product:{pid}:SALE`, `actor_type="SYSTEM"`. `max(0, …)` **kalkar** |
+| W1 | `apply_many` ile ürün başına tek `SALE`; `qty_delta = -toplam`, `reason_code="ORDER_PAID"`, `ref=("order", order.id)`, key `order:{id}:product:{pid}:SALE`, `actor_type="SYSTEM"`. `max(0, …)` **kalkar**. Kilit döngüsü (`:606`) `populate_existing=True` alır; eksik hesabı `has_shortage`'a bağlanır; `apply_many` çağrısı `except InsufficientStock` ile iade akışına yönlendirilir (§3g) |
 | W2 | `apply_many` ile ürün başına toplanmış `SALE_CANCEL`; `reason_code` = iptal mi tam iade mi (`ORDER_CANCELLED`/`ORDER_REFUNDED`), key `order:{id}:product:{pid}:SALE_CANCEL` |
 | W3 | `apply_many` ile **satır başına** `RETURN`; `ref=("order_return", ret.id)`, `ref_line_id=ri.id`, key `return_line:{ri.id}:RETURN`, `reason_code="RETURN_ACCEPTED"` |
-| W4 | `Product(...)` **`stock=0`** ile kurulur (PHYSICAL; DIGITAL'de `None`) → `flush()` → `sku` yazılır → `INITIAL`, `qty_delta=payload.stock or 0`, `reason_code="PRODUCT_CREATE"`, `ref=("product", p.id)`, key `product:{id}:INITIAL`, `actor_type="ADMIN"`, `actor_id=admin.id`. **Neden `stock=0`:** ilk stoğu constructor'da yazmak, `apply_movement`'ın `mevcut + delta` aritmetiğiyle çift sayardı; defterin tek yazıcı olması ancak başlangıç bakiyesinin de deftere yazılmasıyla mümkündür. `payload.stock` 0/None ise delta 0 → satır yazılmaz, stok 0 kalır |
-| W5 | Aynı savepoint'te aynı desen (`stock=0` → flush → sku → `INITIAL`, `reason_code="CSV_IMPORT"`) |
-| W6 | `stock` payload'da ise: ürün satırı **`FOR UPDATE`** ile kilitlenir; `stock` `editable` listesinden **çıkarılır**; `delta = hedef − mevcut` kilit altında hesaplanır; `ADMIN_ADJUSTMENT` + zorunlu `reason_code` + `actor_type="ADMIN"`. `_notify_back_in_stock` (0→>0) tetikleyicisi **korunur**, artık `movement.qty_after` üzerinden |
+| W4 | `Product(...)` **`stock=0`** ile kurulur (PHYSICAL; DIGITAL'de `None`) → `flush()` (SKU'yu trigger yazar; gerekiyorsa `refresh(p, ["sku"])`) → `INITIAL`, `qty_delta=payload.stock or 0`, `reason_code="PRODUCT_CREATE"`, `ref=("product", p.id)`, key `product:{id}:INITIAL`, `actor_type="ADMIN"`, `actor_id=admin.id`. **Neden `stock=0`:** ilk stoğu constructor'da yazmak, `apply_movement`'ın `mevcut + delta` aritmetiğiyle çift sayardı; defterin tek yazıcı olması ancak başlangıç bakiyesinin de deftere yazılmasıyla mümkündür. `payload.stock` 0/None ise delta 0 → satır yazılmaz, stok 0 kalır |
+| W5 | Aynı savepoint'te aynı desen (`stock=0` → flush → `INITIAL`, `reason_code="CSV_IMPORT"`) |
+| W6 | `stock` payload'da ise: ürün DIGITAL'se **400** (§3g0); değilse ürün satırı **`FOR UPDATE` + `populate_existing`** ile kilitlenir, `stock` `editable` listesinden **çıkarılır**, `delta = hedef − mevcut` kilit altında hesaplanır. **delta 0 ise ledger çağrılmaz ve gerekçe istenmez**; değilse `ADMIN_ADJUSTMENT` + zorunlu `reason_code` + `actor_type="ADMIN"`. Hedef negatifse `InsufficientStock` → 409. `_notify_back_in_stock` (0→>0) tetikleyicisi **korunur**, artık `movement.qty_after` üzerinden |
 
 ### 4b. Şema / API değişikliği (W6'nın gerektirdiği)
 
@@ -367,7 +455,26 @@ PK-1'de işe yarayan desen (`test_payment_gate_wiring.py`): `tests/acceptance/te
 
 **Downgrade (Karar 3):** sıra **önce trigger'lar** → sonra `stock_movements` → index'ler → kolonlar. Tabloyu düşürmek defteri yok eder; bu, tablo düşüren her downgrade'in doğasıdır ve rollback stratejisi bu yüzden downgrade'i **son seçenek** sayar (§9).
 
-**Migration testleri:** (a) boş DB'de `upgrade head` → tablo/kısıt/trigger var; (b) tohumlanmış DB'de upgrade → açılış satırları + zincir doğru; (c) `downgrade -1` → trigger/tablo/kolonlar yok, ürün verisi bozulmamış; (d) tekrar `upgrade` → **aynı SKU'lar**; (e) tekrarlanan ISBN enjekte edilmiş DB'de upgrade → **durmaz**, uyarı üretir.
+**Migration testleri — TEK KULLANIMLIK DB, SKIP YOK (rev. 3):**
+
+rev. 2'de bu testler "adında `test` geçmeyen veritabanında SKIP" idi; pratikte bu, resmî test raporunda **hiç koşmamak** anlamına geliyordu (dev DB `ceyhandb`). Downgrade dev DB'nin gerçek defterini sileceği için orada koşmak da doğru değil. Çözüm: test **kendi veritabanını yaratır**.
+
+`tests/integration/test_stock_migration_pg.py` fixture'ı:
+1. Bakım veritabanına (`postgres`) AUTOCOMMIT bağlanır; `DROP DATABASE IF EXISTS adana_stok_migration_test` + `CREATE DATABASE`.
+2. Adın `test` içerdiği ve `ENVIRONMENT != production` olduğu **ayrıca** doğrulanır (isim sabit kodlu; kaza payı yok).
+3. Alembic o DB'ye karşı subprocess ile koşar (`POSTGRES_DB` env override'ı ile); doğrulamalar o DB'ye açılan **ayrı** bir async engine üzerinden yapılır (`core.database.engine` dev DB'yi gösterir, ona dokunulmaz).
+4. Teardown: `DROP DATABASE`.
+
+Bakım bağlantısı kurulamazsa (Postgres yok) test skip olur — bu bir altyapı yokluğudur, tasarım kaynaklı skip değildir.
+
+Bu ortamda koşan tam sekans:
+- (a) `upgrade 2df064134f6c` (bu paketten **önceki** head) → şema hazır, `sku`/`stock_movements` yok.
+- (b) Ürünler tohumlanır: stoklu (7), sıfır stoklu (0), stok takibi kapalı (`NULL`), tekrarlanan ISBN'li iki ürün.
+- (c) `upgrade head` → **SKU backfill** (`FZK-{id:06d}`), **`OPENING_BALANCE`** satırları (0 stoklu dâhil, `NULL` stoklu **hariç**), `qty_after == products.stock` eşitliği, 9 CHECK + 2 defter trigger'ı + 2 ürün trigger'ı, `sku` NOT NULL + tam UNIQUE, **migration head** doğru.
+- (d) Değiştirilemezlik trigger'ı canlı doğrulanır: `UPDATE`/`DELETE stock_movements` reddedilir; `UPDATE products SET sku/kind` reddedilir; ham `INSERT INTO products` SKU'yu **otomatik** alır ve verilen sahte SKU **ezilir**.
+- (e) `downgrade -1` → trigger/tablo/kolonlar yok, **ürün verisi bozulmamış**.
+- (f) tekrar `upgrade head` → **aynı SKU'lar** (determinizm) ve açılış satırı **tam olarak bir** (anahtar idempotent).
+- (g) Tekrarlanan ISBN migration'ı **durdurmadı**, uyarı üretti.
 
 ---
 
@@ -401,9 +508,9 @@ Stok değişikliği ayrıca `audit_service.record` ile `audit_logs`'a yazılır 
 |---|---|---|
 | Saf birim | `tests/test_stock_ledger_pure.py` | `make_sku`/`sku_prefix` (id 1 · 42 · 999999 · 1000000, iki kind) · `shortage_for` (tam sınır `stock == needed`) · `validate_reason` matrisi (6 tip × beyaz liste × `DIGER`+not) · `idempotency_key_for` (5 tip, satır bazlı iade) · `verify_chain` (tutarlı / kopuk halka / son bakiye sapması) |
 | Kabul (sözleşme) | `tests/acceptance/test_stock_ledger_contract.py` | **AST envanteri**: `products.stock`'a atama yapan tek dosya `stock_ledger.py` · 6 çağrı yerinin `apply_movement` çağırdığı · `max(0` kalıbının stok bağlamında yokluğu · `ON CONFLICT` dizgisinin defter kodunda yokluğu · `OVERSELL_CLAMP` dizgisinin **hiç** bulunmaması · enum tam olarak 6 değer · `stock_movements` için UPDATE/DELETE servis fonksiyonu ve ucu yok · **`kind`'in düzenlenebilir alanlar arasında olmadığı** (SKU immutability ön koşulu) · `inventory.` izin kodunun eklenmemiş olması |
-| Değişmez (PG) | `tests/integration/test_stock_ledger_pg.py` | Zincir `qty_after[i] == qty_after[i-1] + qty_delta[i]` · `MAX(qty_after) == products.stock` · 9 CHECK'in her biri ihlalde reddediyor · trigger UPDATE **ve** DELETE'i reddediyor · `InsufficientStock`: hareket **yazılmadı** + stok **değişmedi** · idempotency: aynı payload → mevcut hareket, satır sayısı artmıyor · farklı payload → `IdempotencyConflict` · `stock IS NULL` üründe hareket yok · `qty_after` == commit sonrası okunan `products.stock` |
-| Eşzamanlılık (PG) | `tests/integration/test_stock_concurrency_pg.py` | İki eşzamanlı PAID → tek düşüm · **admin düzenlemesi ⟂ PAID → ikisi de uygulanıyor** (F2) · aynı `idempotency_key`in **eşzamanlı** iki çağrısı → tek satır · iptal + iade yarışı → iki geçerli hareket, zincir tutarlı · ters ürün sıralı iki sipariş → deadlock yok (tekrarlı koşum) · retry (aynı çağrı iki kez) → tek satır |
-| Migration (PG) | `tests/integration/test_stock_migration_pg.py` | §6'daki (a)–(e) |
+| Değişmez (PG) | `tests/integration/test_stock_ledger_pg.py` | Zincir `qty_after[i] == qty_after[i-1] + qty_delta[i]` · `MAX(qty_after) == products.stock` · 9 CHECK'in her biri ihlalde reddediyor · defter trigger'ı UPDATE **ve** DELETE'i reddediyor · `InsufficientStock`: hareket **yazılmadı** + stok **değişmedi** · idempotency: aynı payload → mevcut hareket, satır sayısı artmıyor · farklı payload → `IdempotencyConflict` (`reason_code`/`actor` farkı dâhil) · **`StockNotTracked`**: `stock IS NULL` üründe hareket reddediliyor · genel harekette **sıfır delta reddediliyor**, `OPENING_BALANCE`'ta kabul · `qty_after` == commit sonrası okunan `products.stock` · **SKU trigger'ı**: ham INSERT SKU'yu otomatik alıyor, verilen sahte SKU eziliyor, `sku`/`kind` UPDATE'i reddediliyor |
+| Eşzamanlılık (PG) | `tests/integration/test_stock_concurrency_pg.py` | İki eşzamanlı PAID → tek düşüm · **admin düzenlemesi ⟂ PAID → ikisi de uygulanıyor** (F2) · aynı `idempotency_key`in **eşzamanlı** iki çağrısı → tek satır · iptal + iade yarışı → iki geçerli hareket, zincir tutarlı · ters ürün sıralı iki sipariş → deadlock yok (tekrarlı koşum) · retry → tek satır · **batch retry**: aynı batch tekrarında hiç yeni satır yok · **`PartialIdempotencyState`**: batch'in yarısı mevcutken eksikler sessizce uygulanmıyor · **bayat kimlik haritası**: `populate_existing` olmadan ön kontrol yeterli derken defter `InsufficientStock` yükseltiyor · **`_finalize_paid` kurtarma yolu**: sipariş PAID **kalmıyor**, hareket yok, iade akışı idempotent |
+| Migration (tek kullanımlık PG) | `tests/integration/test_stock_migration_pg.py` | §6'daki (a)–(g). **SKIP yok** — test kendi veritabanını yaratıp siliyor |
 | Yetki (PG) | `tests/integration/test_stock_authorization_pg.py` | Eğitmen kendi ürününde stok düzenleyemiyor (regresyon kalkanı) · eğitmen/öğrenci/kurye/operatör `stock-movements`'ta 403 · `products.view` olmayan alt admin rolü 403 · IDOR: başka ürünün hareketleri sızmıyor |
 | Vitest | `lib/stockMovements.test.ts` | Tip etiketleri · delta biçimi · tutarsız defterde rozet uyarıyor · gerekçesiz kaydetme engelli |
 
@@ -432,6 +539,11 @@ Stok değişikliği ayrıca `audit_service.record` ile `audit_logs`'a yazılır 
 | 8 | `apply_many`'deki `sorted` kaldırılır | ters sıralı deadlock testi (tekrarlı koşum) |
 | 9 | `ADMIN_ADJUSTMENT` gerekçe zorunluluğu kaldırılır | gerekçe matrisi + CHECK testi |
 | 10 | Bir servise kasten doğrudan `p.stock = …` eklenir | AST envanter testi |
+| 11 | `populate_existing` kaldırılır | bayat kimlik haritası testi |
+| 12 | `apply_many` kısmi durumda eksikleri uygular | `PartialIdempotencyState` testi |
+| 13 | `products_sku_autofill` trigger'ı düşürülür | ham INSERT SKU testi (NOT NULL ihlali) |
+| 14 | `products_identity_immutable` trigger'ı düşürülür | `sku`/`kind` UPDATE reddi testi |
+| 15 | `_finalize_paid`'deki `except InsufficientStock` kaldırılır | kurtarma yolu testi (sipariş PAID kalır / 500) |
 
 ### 8c. Bağımsız gözden geçirme
 

@@ -209,10 +209,42 @@ def test_oversell_clamp_kavrami_kodda_hic_yok():
     assert ihlaller == [], f"OVERSELL_CLAMP kaldırıldı: {', '.join(ihlaller)}"
 
 
-def test_yetersiz_stok_istisnasi_tanimli():
+def test_istisna_ailesi_tanimli():
     src = _read(LEDGER)
-    assert "class InsufficientStock" in src
-    assert "class IdempotencyConflict" in src
+    for ad in (
+        "class InsufficientStock",
+        "class IdempotencyConflict",
+        "class PartialIdempotencyState",   # rev. 3: batch'in yarısı uygulanmaz
+        "class StockNotTracked",           # rev. 3: dijital / bakiyesi yok
+    ):
+        assert ad in src, ad
+
+
+def test_finalize_paid_yetersiz_stokta_iade_akisina_yonlendiriyor():
+    """rev. 3 / Karar 3: claim sonrası yarış 500'e dönüşmez.
+
+    `_finalize_paid` `InsufficientStock`'u yakalayıp transaction'ı (PAID claim'i
+    dâhil) geri almalı ve MEVCUT out-of-stock/iade akışına yönlendirmeli.
+    """
+    fn = _func("services/order_service.py", "_finalize_paid")
+    yakalananlar: set[str] = set()
+    for n in ast.walk(fn):
+        if isinstance(n, ast.ExceptHandler) and n.type is not None:
+            for t in ast.walk(n.type):
+                if isinstance(t, ast.Name):
+                    yakalananlar.add(t.id)
+                elif isinstance(t, ast.Attribute):
+                    yakalananlar.add(t.attr)
+    assert "InsufficientStock" in yakalananlar, (
+        "_finalize_paid InsufficientStock'u yakalamıyor → istek 500'e döner"
+    )
+    cagrilar = _calls(fn)
+    assert "rollback" in cagrilar, (
+        "PAID claim'i geri alınmadan iade akışına girilemez (kısmi durum kalır)"
+    )
+    assert "_out_of_stock_refund" in cagrilar, (
+        "Yönlendirme MEVCUT iade akışına yapılmalı; yeni bir yol yazılmamalı"
+    )
 
 
 # ───────────────── 3. Idempotency (Karar 7) ─────────────────
@@ -239,16 +271,53 @@ def test_idempotency_catismasi_yukseltiliyor():
     assert "InsufficientStock" in yukseltilenler
 
 
-def test_apply_movement_satir_kilidi_aliyor():
-    src = ast.dump(_func(LEDGER, APPLY))
+@pytest.mark.parametrize("fn", [APPLY, APPLY_MANY])
+def test_defter_satir_kilidi_aliyor(fn):
+    src = ast.dump(_func(LEDGER, fn))
     assert "with_for_update" in src, (
-        "apply_movement ürün satırını FOR UPDATE ile kilitlemek zorunda"
+        f"{fn} ürün satırını FOR UPDATE ile kilitlemek zorunda"
     )
 
 
-def test_apply_movement_kendi_commitini_atmiyor():
+@pytest.mark.parametrize("fn", [APPLY, APPLY_MANY])
+def test_defter_bayat_kimlik_haritasina_karsi_tazeliyor(fn):
+    """rev. 3: `populate_existing` olmadan `FOR UPDATE` BAYAT instance döndürür.
+
+    Session `expire_on_commit=False` ile kurulu; ürün kimlik haritasındaysa
+    kilit sorgusu satırı kilitler ama ORM eski nesneyi verir (backend/CLAUDE.md
+    `_load_run`/`_load_stop` tuzağı). Bayat `stock` üzerinden hesaplanan
+    `qty_after` sessizce yanlış olurdu.
+    """
+    src = ast.dump(_func(LEDGER, fn))
+    assert "populate_existing" in src, (
+        f"{fn} kilit sorgusunda populate_existing=True kullanmak zorunda"
+    )
+
+
+@pytest.mark.parametrize("fn", [APPLY, APPLY_MANY])
+def test_defter_kendi_commitini_atmiyor(fn):
     """Defter ve stok AYNI transaction'da yazılır; commit çağırana aittir."""
-    assert "commit" not in _calls(_func(LEDGER, APPLY))
+    assert "commit" not in _calls(_func(LEDGER, fn))
+
+
+def test_toplu_yazim_kismi_durumu_reddediyor():
+    """rev. 3 / Karar 2: batch'in bazıları varsa eksikler UYGULANMAZ."""
+    fn = _func(LEDGER, APPLY_MANY)
+    yukseltilenler = {
+        n.exc.func.id
+        for n in ast.walk(fn)
+        if isinstance(n, ast.Raise)
+        and isinstance(n.exc, ast.Call)
+        and isinstance(n.exc.func, ast.Name)
+    }
+    assert "PartialIdempotencyState" in yukseltilenler
+
+
+@pytest.mark.parametrize("fn", [APPLY, APPLY_MANY])
+def test_payload_karsilastirmasi_tek_kaynaktan(fn):
+    """İki yol aynı karşılaştırmayı kullanmalı; ayrışırlarsa biri çelişkiyi
+    görürken diğeri görmez."""
+    assert "payload_differences" in _calls(_func(LEDGER, fn))
 
 
 # ───────────── 4. Dinamik yazım yolunun kapatılması ─────────────
@@ -372,6 +441,50 @@ def test_defter_satirinda_deleted_at_yok():
         govde = govde[:sonraki]
     assert "deleted_at" not in govde
     assert "SoftDeleteMixin" not in govde
+
+
+def test_sku_kolonu_sunucu_tarafi_uretiliyor():
+    """rev. 3: SKU'yu BEFORE INSERT trigger'ı yazar → ORM `FetchedValue`.
+
+    `server_default` olmadan SQLAlchemy kolonu INSERT'e `NULL` olarak yazmayı
+    dener ve değeri geri okumaz; servis `p.sku`'yu `None` görür.
+    """
+    src = _read("models/store.py")
+    baslangic = src.find("    sku:")
+    assert baslangic != -1, "products.sku kolonu yok"
+    satir = src[baslangic : src.find("\n", baslangic + 200)]
+    assert "FetchedValue" in satir, satir
+    assert "nullable=False" in satir, satir
+
+
+def test_dijital_urunde_stok_degisikligi_reddediliyor():
+    """§3g0: sessiz yutma yerine açık ret.
+
+    Bugün `stock` yalnız PHYSICAL'de `editable`'a giriyor; DIGITAL'de alan
+    sessizce düşüyor ve admin "kaydettim" sanıyor.
+    """
+    kaynak = ast.get_source_segment(
+        _read("services/store_service.py"),
+        _func("services/store_service.py", "update_product"),
+    ) or ""
+    assert "DIGITAL" in kaynak, (
+        "update_product dijital üründe stok değişikliğini açıkça reddetmiyor"
+    )
+
+
+def test_sifir_delta_karari_cagirana_ait():
+    """§3g0: defter katı (0 delta → ValueError); "gürültü yazmama" çağıranda.
+
+    `update_product` deltayı kilit altında hesaplar ve 0 çıkarsa ledger'ı hiç
+    çağırmaz. Bu kararın koddaki izi, delta hesabının koşullu olmasıdır.
+    """
+    kaynak = ast.get_source_segment(
+        _read("services/store_service.py"),
+        _func("services/store_service.py", "update_product"),
+    ) or ""
+    assert "stock_reason_code" in kaynak
+    # Delta hesabı yapılıyor olmalı (mutlak atama DEĞİL).
+    assert "delta" in kaynak.lower()
 
 
 def test_aktor_modeli_admine_ozel_alan_kullanmiyor():

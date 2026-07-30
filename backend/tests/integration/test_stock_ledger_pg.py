@@ -29,6 +29,7 @@ from services.stock_ledger import (
     IdempotencyConflict,
     InsufficientStock,
     StockMovementType,
+    StockNotTracked,
 )
 
 
@@ -55,7 +56,8 @@ class ProductFactory:
             )
             s.add(p)
             await s.flush()
-            p.sku = stock_ledger.make_sku(kind, p.id)
+            # SKU'yu BEFORE INSERT trigger'i yazar (rev. 3) - elle atanmaz.
+            await s.refresh(p, ["sku"])
             await s.commit()
             self.product_ids.append(p.id)
             return p.id
@@ -287,6 +289,34 @@ async def test_ayni_anahtar_farkli_tip_catisma_uretir(urun):
         )
 
 
+@pytest.mark.parametrize(
+    "farkli",
+    [
+        {"reason_code": "ORDER_REFUNDED"},
+        {"actor_type": "ADMIN", "actor_id": 1},
+        {"ref_id": 9999},
+        {"ref_line_id": 42},
+    ],
+)
+async def test_payload_karsilastirmasi_tum_alanlari_kapsar(urun, farkli):
+    """rev. 3 / Karar 2: reason_code ve actor da karşılaştırmaya girer."""
+    pid = await urun.product(stock=10)
+    key = f"order:9100:product:{pid}:SALE"
+    temel = dict(
+        qty_delta=-1,
+        movement_type=StockMovementType.SALE,
+        reason_code="ORDER_PAID",
+        ref_type="order",
+        ref_id=9100,
+        idempotency_key=key,
+    )
+    await _apply(pid, **temel)
+    with pytest.raises(IdempotencyConflict):
+        await _apply(pid, **{**temel, **farkli})
+    assert len(await _movements(pid)) == 1
+    assert await _stock(pid) == 9
+
+
 async def test_ayni_referans_farkli_urun_iki_gecerli_hareket(urun):
     """(ref_type, ref_id) tek başına UNIQUE DEĞİL: sipariş çok ürün taşır."""
     a = await urun.product(stock=5)
@@ -334,27 +364,48 @@ async def test_admin_duzeltmesi_anahtarsiz_ve_tekrarlanabilir(urun):
 
 # ───────────────── Yazılmayan durumlar ─────────────────
 
-async def test_stok_takibi_kapali_urunde_hareket_yazilmaz(urun):
+async def test_stok_takibi_kapali_urunde_hareket_REDDEDILIR(urun):
+    """§3g0 (rev. 3): sessiz atlama değil, açık ret.
+
+    `stock IS NULL` "stoğu 0" değil, **"takip edilmiyor"** demektir. Buraya bir
+    dijital kalem gelmesi çağıranın filtresinin bozulduğunu gösterir; sessiz
+    `None` dönmek o hatayı gizlerdi.
+    """
     pid = await urun.product(kind="DIGITAL", stock=None)
-    mv = await _apply(
-        pid, qty_delta=-1, movement_type=StockMovementType.SALE,
-        reason_code="ORDER_PAID", ref_type="order", ref_id=9009,
-        idempotency_key=f"order:9009:product:{pid}:SALE",
-    )
-    assert mv is None
+    with pytest.raises(StockNotTracked):
+        await _apply(
+            pid, qty_delta=-1, movement_type=StockMovementType.SALE,
+            reason_code="ORDER_PAID", ref_type="order", ref_id=9009,
+            idempotency_key=f"order:9009:product:{pid}:SALE",
+        )
     assert await _movements(pid) == []
     assert await _stock(pid) is None
 
 
-async def test_sifir_delta_gurultu_satiri_yazmaz(urun):
-    """Admin aynı değeri tekrar kaydederse defter kirlenmez."""
+async def test_dijital_urun_sku_alir(urun):
+    """§3g0: SKU bir katalog kimliğidir; stok takibiyle ilgisi yok."""
+    pid = await urun.product(kind="DIGITAL", stock=None)
+    async with AsyncSessionLocal() as s:
+        sku = (
+            await s.execute(select(Product.sku).where(Product.id == pid))
+        ).scalar_one()
+    assert sku == f"DIJ-{pid:06d}"
+
+
+async def test_sifir_delta_genel_harekette_REDDEDILIR(urun):
+    """§3g0 (rev. 3): sıfır delta yalnız OPENING_BALANCE'ta serbest.
+
+    "Gürültü satırı yazmama" kararı ÇAĞIRANDA: `update_product` deltayı kilit
+    altında hesaplar ve 0 çıkarsa ledger'ı hiç çağırmaz. Defter katıdır.
+    """
     pid = await urun.product(stock=5)
-    mv = await _apply(
-        pid, qty_delta=0, movement_type=StockMovementType.ADMIN_ADJUSTMENT,
-        reason_code="SAYIM_FARKI", actor_type="ADMIN", actor_id=1,
-    )
-    assert mv is None
+    with pytest.raises(ValueError):
+        await _apply(
+            pid, qty_delta=0, movement_type=StockMovementType.ADMIN_ADJUSTMENT,
+            reason_code="SAYIM_FARKI", actor_type="ADMIN", actor_id=1,
+        )
     assert await _movements(pid) == []
+    assert await _stock(pid) == 5
 
 
 async def test_acilis_bakiyesi_sifir_stokta_da_satir_yazar(urun):
@@ -475,6 +526,13 @@ async def test_hareketi_olan_urun_fiziksel_silinemez(urun):
 
 # ───────────────── SKU (Karar 1) ─────────────────
 
+async def _scalar_sku(product_id: int) -> str:
+    async with AsyncSessionLocal() as s:
+        return (
+            await s.execute(select(Product.sku).where(Product.id == product_id))
+        ).scalar_one()
+
+
 async def test_sku_urun_id_sinin_fonksiyonu(urun):
     pid = await urun.product(kind="PHYSICAL")
     async with AsyncSessionLocal() as s:
@@ -484,26 +542,86 @@ async def test_sku_urun_id_sinin_fonksiyonu(urun):
     assert sku == f"FZK-{pid:06d}"
 
 
-async def test_sku_unique(urun):
-    pid = await urun.product()
+async def test_ham_insert_sku_yu_otomatik_alir(urun):
+    """rev. 3: SKU'yu BEFORE INSERT trigger'ı yazar → NOT NULL her yazıcıda tutar.
+
+    Migration, seed ve ham SQL yazımları (bu test dâhil) `sku` vermeden INSERT
+    edebilmek zorunda; aksi hâlde disiplin her yeni yazıcıda tekrar
+    hatırlanmaya muhtaç kalırdı.
+    """
+    slug = f"stok-ham-{_uniq()}"
     async with AsyncSessionLocal() as s:
-        mevcut = (
-            await s.execute(select(Product.sku).where(Product.id == pid))
+        pid = (
+            await s.execute(
+                text(
+                    "INSERT INTO products (slug, title, kind, seller_type, price, "
+                    "stock, status) VALUES (:s, 'Ham INSERT', 'PHYSICAL', "
+                    "'PLATFORM', 10.00, 0, 'ACTIVE') RETURNING id"
+                ),
+                {"s": slug},
+            )
         ).scalar_one()
-        with pytest.raises((IntegrityError, DBAPIError)):
-            s.add(
-                Product(
-                    slug=f"stok-test-{_uniq()}",
-                    title="Çakışan SKU",
-                    kind="PHYSICAL",
-                    seller_type="PLATFORM",
-                    price=Decimal("10.00"),
-                    stock=0,
-                    status="ACTIVE",
-                    sku=mevcut,
-                )
+        await s.commit()
+    urun.product_ids.append(pid)
+    assert await _scalar_sku(pid) == f"FZK-{pid:06d}"
+
+
+async def test_verilen_sahte_sku_trigger_tarafindan_EZILIR(urun):
+    """SKU taklit edilemez: başka bir ürünün kimliği alınamaz."""
+    slug = f"stok-sahte-{_uniq()}"
+    async with AsyncSessionLocal() as s:
+        pid = (
+            await s.execute(
+                text(
+                    "INSERT INTO products (slug, title, kind, seller_type, price, "
+                    "stock, status, sku) VALUES (:s, 'Sahte SKU', 'PHYSICAL', "
+                    "'PLATFORM', 10.00, 0, 'ACTIVE', 'FZK-000001') RETURNING id"
+                ),
+                {"s": slug},
+            )
+        ).scalar_one()
+        await s.commit()
+    urun.product_ids.append(pid)
+    assert await _scalar_sku(pid) == f"FZK-{pid:06d}"
+
+
+async def test_sku_degistirilemez(urun):
+    pid = await urun.product()
+    with pytest.raises((IntegrityError, DBAPIError)) as exc:
+        async with AsyncSessionLocal() as s:
+            await s.execute(
+                text("UPDATE products SET sku = 'FZK-999999' WHERE id = :i"), {"i": pid}
             )
             await s.commit()
+    assert "sku" in str(exc.value).lower()
+
+
+async def test_kind_degistirilemez(urun):
+    """SKU öneği `kind`'e bağlı; `kind` değişirse SKU yalan söylerdi."""
+    pid = await urun.product()
+    with pytest.raises((IntegrityError, DBAPIError)) as exc:
+        async with AsyncSessionLocal() as s:
+            await s.execute(
+                text("UPDATE products SET kind = 'DIGITAL' WHERE id = :i"), {"i": pid}
+            )
+            await s.commit()
+    assert "kind" in str(exc.value).lower()
+
+
+async def test_diger_alanlarin_guncellenmesi_engellenmiyor(urun):
+    """Kimlik trigger'ı yalnız `sku`/`kind`'i kilitler; fiyat/stok/soft-delete serbest."""
+    pid = await urun.product(stock=1)
+    async with AsyncSessionLocal() as s:
+        await s.execute(
+            text("UPDATE products SET price = 123.45, status = 'HIDDEN' WHERE id = :i"),
+            {"i": pid},
+        )
+        await s.commit()
+    async with AsyncSessionLocal() as s:
+        fiyat = (
+            await s.execute(select(Product.price).where(Product.id == pid))
+        ).scalar_one()
+    assert Decimal(str(fiyat)) == Decimal("123.45")
 
 
 async def test_hareket_listesi_yalniz_istenen_urunu_dondurur(urun):

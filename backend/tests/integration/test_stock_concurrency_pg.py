@@ -19,7 +19,12 @@ from sqlalchemy import func, select, text
 from core.database import AsyncSessionLocal
 from models.store import Product, StockMovement
 from services import stock_ledger
-from services.stock_ledger import IdempotencyConflict, StockMovementType
+from services.stock_ledger import (
+    IdempotencyConflict,
+    InsufficientStock,
+    PartialIdempotencyState,
+    StockMovementType,
+)
 
 
 def _uniq() -> str:
@@ -43,7 +48,7 @@ class ProductFactory:
             )
             s.add(p)
             await s.flush()
-            p.sku = stock_ledger.make_sku("PHYSICAL", p.id)
+            await s.refresh(p, ["sku"])
             await s.commit()
             self.product_ids.append(p.id)
             return p.id
@@ -316,8 +321,6 @@ async def test_iki_farkli_siparis_ayni_urunu_dogru_dusurur(urun):
 
 async def test_stok_yetmezse_ikinci_satis_yetersiz_stokla_biter(urun):
     """Kilit altında ikinci satış eksiği GÖRÜR; kırpma yok, hata var."""
-    from services.stock_ledger import InsufficientStock
-
     pid = await urun.product(stock=3)
     sonuclar = await asyncio.gather(
         _apply_in_own_tx(
@@ -336,3 +339,249 @@ async def test_stok_yetmezse_ikinci_satis_yetersiz_stokla_biter(urun):
     assert len(hatalar) == 1, f"tam olarak biri yetersiz stok almalı: {sonuclar}"
     assert await _stock(pid) == 1
     assert await _count(pid) == 1
+
+
+# ───────────── 7. Toplu (batch) idempotency — Karar 2 (rev. 3) ─────────────
+
+def _sale_spec(order_id: int, pid: int, qty: int = 1) -> dict:
+    return dict(
+        product_id=pid,
+        qty_delta=-qty,
+        movement_type=StockMovementType.SALE,
+        reason_code="ORDER_PAID",
+        ref_type="order",
+        ref_id=order_id,
+        idempotency_key=f"order:{order_id}:product:{pid}:SALE",
+    )
+
+
+async def _apply_many_tx(specs: list[dict]):
+    async with AsyncSessionLocal() as s:
+        out = await stock_ledger.apply_many(s, specs)
+        await s.commit()
+        return out
+
+
+async def test_batch_tekrarinda_hicbir_yeni_satir_yazilmaz(urun):
+    """Aynı sipariş iki kez finalize edilirse defter büyümez."""
+    a = await urun.product(stock=10)
+    b = await urun.product(stock=10)
+    specs = [_sale_spec(8801, a, 2), _sale_spec(8801, b, 3)]
+
+    ilk = await _apply_many_tx(specs)
+    ikinci = await _apply_many_tx(specs)
+
+    assert [m.id for m in ilk] == [m.id for m in ikinci], (
+        "tekrar mevcut hareketleri döndürmeli"
+    )
+    assert await _count(a) == 1 and await _count(b) == 1
+    assert await _stock(a) == 8 and await _stock(b) == 7
+
+
+async def test_batch_tekrarinda_payload_farki_catisma_uretir(urun):
+    a = await urun.product(stock=10)
+    b = await urun.product(stock=10)
+    await _apply_many_tx([_sale_spec(8802, a, 2), _sale_spec(8802, b, 3)])
+    with pytest.raises(IdempotencyConflict):
+        await _apply_many_tx([_sale_spec(8802, a, 2), _sale_spec(8802, b, 4)])
+    assert await _stock(a) == 8 and await _stock(b) == 7
+
+
+async def test_batch_kismi_durumda_eksikleri_SESSIZCE_uygulamaz(urun):
+    """Karar 2: bazıları var bazıları yoksa `PartialIdempotencyState`.
+
+    "Yarısı uygulanmış batch" defterin en tehlikeli hâlidir: her ürünün kendi
+    zinciri sağlam görünür ama sipariş ile defter arasındaki ilişki bozuktur.
+    Eksiği tamamlamak da kabul edilmez — bu durum insan kararı ister.
+    """
+    a = await urun.product(stock=10)
+    b = await urun.product(stock=10)
+
+    # Yalnız a'nın hareketi var (yarıda kesilmiş yazımın izi).
+    await _apply_many_tx([_sale_spec(8803, a, 2)])
+
+    with pytest.raises(PartialIdempotencyState) as exc:
+        await _apply_many_tx([_sale_spec(8803, a, 2), _sale_spec(8803, b, 3)])
+
+    assert f"order:8803:product:{b}:SALE" in exc.value.missing_keys
+    # b'ye HİÇBİR ŞEY yazılmadı.
+    assert await _count(b) == 0
+    assert await _stock(b) == 10
+    assert await _stock(a) == 8
+
+
+async def test_batch_anahtarsiz_spec_reddedilir(urun):
+    """`apply_many` batch idempotency'sini anahtar olmadan kuramaz."""
+    a = await urun.product(stock=5)
+    spec = _sale_spec(8804, a)
+    spec.pop("idempotency_key")
+    with pytest.raises(ValueError):
+        await _apply_many_tx([spec])
+    assert await _count(a) == 0
+
+
+# ───────── 8. Bayat kimlik haritası → InsufficientStock (Karar 3, rev. 3) ─────────
+
+async def test_bayat_kimlik_haritasinda_defter_tazeyi_gorur(urun):
+    """Ön kontrol "yeterli" derken defterin eksiği gördüğü GERÇEK yarış.
+
+    Session `expire_on_commit=False` ile kurulu. A oturumu ürünü yükleyip
+    kimlik haritasına koyar; B oturumu stoğu düşürüp commit eder. A'nın elindeki
+    nesne hâlâ ESKİ stoğu gösterir — `populate_existing` olmadan `FOR UPDATE`
+    sorgusu da o bayat nesneyi döndürür (backend/CLAUDE.md'de kayıtlı tuzak).
+
+    Defter `populate_existing=True` kullandığı için taze satırı görür ve
+    `InsufficientStock` yükseltir; hiçbir hareket yazılmaz.
+    """
+    pid = await urun.product(stock=3)
+
+    async with AsyncSessionLocal() as a_session:
+        # A: ürünü kimlik haritasına al ve ÖN KONTROLÜ burada yap.
+        bayat = (
+            await a_session.execute(select(Product).where(Product.id == pid))
+        ).scalars().one()
+        assert bayat.stock == 3
+        assert stock_ledger.has_shortage(bayat.stock, 3) is False   # "yeterli"
+
+        # B: araya girip stoğu düşürür ve commit eder.
+        await _apply_in_own_tx(
+            pid, qty_delta=-2, movement_type=StockMovementType.SALE,
+            reason_code="ORDER_PAID", ref_type="order", ref_id=8901,
+            idempotency_key=f"order:8901:product:{pid}:SALE",
+        )
+
+        # A'nın elindeki nesne HÂLÂ bayat — ön kontrol yanılmış durumda.
+        assert bayat.stock == 3
+
+        # Defter tazeyi görür ve reddeder.
+        with pytest.raises(InsufficientStock):
+            await stock_ledger.apply_movement(
+                a_session, pid, qty_delta=-3,
+                movement_type=StockMovementType.SALE,
+                reason_code="ORDER_PAID", ref_type="order", ref_id=8902,
+                idempotency_key=f"order:8902:product:{pid}:SALE",
+            )
+        await a_session.rollback()
+
+    assert await _stock(pid) == 1
+    assert await _count(pid) == 1   # yalnız B'nin hareketi
+
+
+# ───────── 9. `_finalize_paid` kurtarma yolu — Karar 3 (rev. 3) ─────────
+
+async def _seed_order(product_id: int, quantity: int) -> tuple[int, int]:
+    """Ödeme bekleyen (PENDING) fiziksel sipariş üretir. (order_id, client_id)."""
+    async with AsyncSessionLocal() as s:
+        client_id = (
+            await s.execute(
+                text(
+                    "INSERT INTO clients (first_name, last_name, email, "
+                    "hashed_password, role_id) VALUES ('Stok', 'Yaris', :e, 'x', 3) "
+                    "RETURNING id"
+                ),
+                {"e": f"stok-yaris-{_uniq()}@test.local"},
+            )
+        ).scalar_one()
+        order_id = (
+            await s.execute(
+                text(
+                    "INSERT INTO orders (client_id, subtotal, total, payment_status, "
+                    "status, has_physical) VALUES (:c, 100.00, 100.00, 'PENDING', "
+                    "'PENDING', true) RETURNING id"
+                ),
+                {"c": client_id},
+            )
+        ).scalar_one()
+        await s.execute(
+            text(
+                "INSERT INTO order_items (order_id, product_id, title, unit_price, "
+                "quantity, kind, seller_type) VALUES (:o, :p, 'Stok Yarış Kitabı', "
+                "100.00, :q, 'PHYSICAL', 'PLATFORM')"
+            ),
+            {"o": order_id, "p": product_id, "q": quantity},
+        )
+        await s.commit()
+    return order_id, client_id
+
+
+async def _cleanup_order(order_id: int, client_id: int) -> None:
+    async with AsyncSessionLocal() as s:
+        await s.execute(text("DELETE FROM order_items WHERE order_id = :o"), {"o": order_id})
+        await s.execute(text("DELETE FROM orders WHERE id = :o"), {"o": order_id})
+        await s.execute(text("DELETE FROM clients WHERE id = :c"), {"c": client_id})
+        await s.commit()
+
+
+async def test_finalize_paid_yetersiz_stokta_PAID_KALMAZ_ve_iadeye_gider(
+    urun, monkeypatch, provider
+):
+    """Karar 3: claim sonrası yarış 500'e dönüşmez, iade akışına yönlendirilir.
+
+    Bu durum ürün satırları kilitli tutulduğu için normalde ULAŞILAMAZ (§1e).
+    Testte ön kontrol BİLİNÇLİ olarak devre dışı bırakılıyor — ölçülen şey
+    yarışın oluşabilirliği değil, **oluştuğunda kurtarma davranışı**:
+      • sipariş PAID KALMAMALI (claim geri alınmalı),
+      • hiçbir stok hareketi yazılmamalı,
+      • mevcut out-of-stock/iade akışına idempotent biçimde girilmeli.
+    """
+    from services import order_service
+
+    pid = await urun.product(stock=1)
+    order_id, client_id = await _seed_order(pid, quantity=5)   # stoktan FAZLA
+    try:
+        # Ön kontrolü kör et: "eksik yok" desin (yapısal olarak ulaşılamaz hâli
+        # deterministik biçimde kur).
+        monkeypatch.setattr(
+            order_service.stock_ledger, "has_shortage", lambda mevcut, gereken: False
+        )
+
+        async with AsyncSessionLocal() as s:
+            order = await order_service._load_full(s, order_id)
+            await order_service._finalize_paid(s, order, provider_ref="test-ref")
+            await s.commit()
+
+        async with AsyncSessionLocal() as s:
+            durum = (
+                await s.execute(
+                    text("SELECT payment_status, status FROM orders WHERE id = :o"),
+                    {"o": order_id},
+                )
+            ).one()
+
+        # 1) PAID kalmadı.
+        assert durum.payment_status != "PAID", (
+            "PAID claim'i geri alınmamış — kısmi durum kaldı"
+        )
+        # 2) Defterde iz yok, stok değişmedi.
+        assert await _count(pid) == 0
+        assert await _stock(pid) == 1
+        # 3) İade akışına girildi (mevcut _out_of_stock_refund yolu).
+        assert durum.status == "CANCELLED"
+        assert durum.payment_status in ("REFUNDED", "REFUNDING")
+        assert provider.refund_calls, "sağlayıcı iadesi çağrılmadı"
+    finally:
+        await _cleanup_order(order_id, client_id)
+
+
+async def test_finalize_paid_kurtarma_yolu_idempotent(urun, monkeypatch, provider):
+    """Aynı sipariş için ikinci çağrı ikinci bir para hareketi üretmez."""
+    from services import order_service
+
+    pid = await urun.product(stock=1)
+    order_id, client_id = await _seed_order(pid, quantity=5)
+    try:
+        monkeypatch.setattr(
+            order_service.stock_ledger, "has_shortage", lambda mevcut, gereken: False
+        )
+        for _ in range(2):
+            async with AsyncSessionLocal() as s:
+                order = await order_service._load_full(s, order_id)
+                await order_service._finalize_paid(s, order, provider_ref="test-ref")
+                await s.commit()
+
+        # `escrow.begin_refund` PENDING/FAILED'dan atomik claim yaptığı için
+        # ikinci çağrı iadeyi TEKRAR başlatamaz.
+        assert len(provider.refund_calls) == 1, provider.refund_calls
+        assert await _count(pid) == 0
+    finally:
+        await _cleanup_order(order_id, client_id)
