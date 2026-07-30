@@ -1,245 +1,317 @@
-# Stok Hareket Defteri + SKU — Uygulama Planı
+# Stok Hareket Defteri + SKU — Uygulama Planı (rev. 2)
 
-**Dal:** `stok-hareket-defteri` · **Durum:** onay bekliyor, kod yazılmadı
-**Hedef:** `products.stock` alanını **açıklanabilir** (her değişimin sebebi ve sahibi kayıtlı), **denetlenebilir** (geçmiş değiştirilemez ve tutar) ve **eşzamanlı işlemlerde güvenilir** (yarış hâlinde sayı kaybolmaz) hâle getirmek.
+**Dal:** `stok-hareket-defteri` · **Durum:** rev. 2 onay bekliyor · **Üretim kodu yazılmadı**
+**Hedef:** `products.stock` alanını **açıklanabilir** (her değişimin sebebi, sahibi ve ticari kaynağı kayıtlı), **denetlenebilir** (geçmiş DB seviyesinde değiştirilemez ve zinciri tutar) ve **eşzamanlı işlemlerde güvenilir** (yarış hâlinde sayı ne kaybolur ne iki kez uygulanır) hâle getirmek.
 
-> Bu paket PK yol haritasının parçası **değildir**. PK-2 (iyzico Pazaryeri) hâricî cevapları beklerken bağımsız olarak ilerler; ödeme/hukuk katmanına hiç dokunmaz.
+> **rev. 2 değişiklikleri (kullanıcının 9 maddelik kararı işlendi):**
+> 1. SKU `product.id` üzerinden deterministik; **ayrı sequence yok**; immutable + unique + NOT NULL. Tekrarlanan ISBN migration'ı **durdurmaz**, veri kalitesi bulgusu olarak raporlanır.
+> 2. Aktör modeli `actor_type` + **`actor_id`** (admine özel alan yok); ticari kaynak `ref_type`/`ref_id`/**`ref_line_id`**.
+> 3. Append-only DB trigger'ı **kesinleşti** (UPDATE + DELETE reddi); downgrade önce trigger'ı düşürür; trigger + migration testleri yazılır.
+> 4. İzinler mevcut `products.view` / `products.manage`; `inventory.*` tam envanter modülüne bırakıldı.
+> 5. **Clamp kaldırıldı.** `current_stock + qty_delta < 0` → hareket yazılmaz, stok değişmez, transaction `InsufficientStock` ile sonlanır. `max(0, …)`, sessiz eksik delta ve `OVERSELL_CLAMP` **yok**.
+> 6. Açılış hareketi `OPENING_BALANCE`, tarih migration anındaki `now()`, `reason_code` + migration kaynağı açıkça kayıtlı.
+> 7. **`ON CONFLICT DO NOTHING` kaldırıldı.** Ayrı `idempotency_key`: aynı anahtar + aynı payload → mevcut hareket döner; aynı anahtar + farklı payload → conflict hatası. `(ref_type, ref_id)` tek başına unique **değil**; kısmi iadede `ref_line_id` idempotency kaynağı.
+> 8. `apply_movement` her ürün için `FOR UPDATE`; çok ürünlü işlemde artan `product_id` sırası. Admin **mutlak atama yapmaz**; kilit altında delta hesaplanır → `ADMIN_ADJUSTMENT` + zorunlu `reason_code`.
+> 9. `products.stock` ve hareket satırı aynı transaction; `qty_after` = gerçekten yazılan stok. Retry / eşzamanlı sipariş / iptal+iade yarışı / aynı anahtarın eşzamanlı iki çağrısı / payload çatışması PG entegrasyon testlerinde doğrulanır.
+
+> Bu paket PK yol haritasının parçası **değildir** ve ödeme/hukuk katmanına dokunmaz.
 
 ---
 
 ## 1. Bugünkü durum — stok mutasyonlarının tam envanteri
 
-Aşağıdaki tablo `backend/` altındaki **tüm** `.stock` erişimlerinin taranmasıyla çıkarıldı (6 yazma + 8 okuma noktası). Yazma noktalarının hepsi tek tek okundu; kilit ve atomiklik davranışı satır satır doğrulandı.
+`backend/` altındaki **tüm** `.stock` erişimleri tarandı (6 yazma + 8 okuma). Yazma noktalarının hepsi okundu; kilit ve atomiklik davranışı satır satır doğrulandı.
 
-### 1a. Yazma noktaları (stoğu değiştiren 6 yer)
+### 1a. Yazma noktaları (6)
 
-| # | Konum | Ne yapıyor | Kilit / atomiklik | İz bırakıyor mu |
+| # | Konum | Ne yapıyor | Kilit / atomiklik | İz |
 |---|---|---|---|---|
-| **W1** | `services/order_service.py:687-688` (`_finalize_paid`) | Ödeme PAID olunca fiziksel kalem başına `p.stock = max(0, p.stock - item.quantity)` | ✅ Öncesinde `:606-613` her ürün için `SELECT ... FOR UPDATE` → `locked` dict; ardından `:632` `escrow.claim(from_statuses=["PENDING","FAILED"])` ile **tek transaction kazanır** | ❌ Hayır |
-| **W2** | `services/order_service.py:1178-1179` (`_restock`) | İptal / tam iadede `p.stock += item.quantity` | ✅ Satır başına `FOR UPDATE` (`:1174`) | ❌ Hayır |
-| **W3** | `services/order_service.py:1573-1574` (`_restock_items`) | Kısmi iade kabulünde yalnız `ret.items` için `p.stock += ri.quantity` | ✅ Satır başına `FOR UPDATE` | ❌ Hayır |
-| **W4** | `services/store_service.py:558` (`create_product`) | Yeni üründe ilk stok (`payload.stock`, yalnız PHYSICAL) | — (yeni satır) | ❌ Hayır |
-| **W5** | `services/store_service.py:652` (`bulk_import_products`) | CSV satırından ilk stok (`_int("stock")`, yalnız PHYSICAL) | Satır başına savepoint | ❌ Hayır |
-| **W6** | `services/store_service.py:755` + `:742` + `:781` (`update_product`) | Admin **doğrudan** stok yazar: `editable.append("stock")` → `setattr`; `old_stock` yalnız 0→>0 stok bildirimi için okunur | ❌ **Kilit YOK** — `_load_full` `FOR UPDATE` kullanmıyor | ❌ Hayır (aynı fonksiyon **fiyat** değişimini `ProductPriceHistory`'ye yazıyor; stok için karşılığı yok) |
+| **W1** | `services/order_service.py:687-688` (`_finalize_paid`) | PAID'de kalem başına `p.stock = max(0, p.stock - item.quantity)` | ✅ `:606-613` her ürün için `SELECT … FOR UPDATE` → `locked`; `:632` `escrow.claim(from_statuses=["PENDING","FAILED"])` tek kazanan | ❌ |
+| **W2** | `order_service.py:1178-1179` (`_restock`) | İptal / tam iadede `p.stock += item.quantity` | ✅ satır başına `FOR UPDATE` (`:1174`) | ❌ |
+| **W3** | `order_service.py:1573-1574` (`_restock_items`) | Kısmi iadede yalnız `ret.items` için `p.stock += ri.quantity` | ✅ satır başına `FOR UPDATE` (`:1569`) | ❌ |
+| **W4** | `services/store_service.py:558` (`create_product`) | Yeni üründe ilk stok (yalnız PHYSICAL) | — | ❌ |
+| **W5** | `store_service.py:652` (`bulk_import_products`) | CSV satırından ilk stok | satır başına savepoint | ❌ |
+| **W6** | `store_service.py:755` + `:742` + `:781` (`update_product`) | Admin **mutlak** yazar: `editable.append("stock")` → `setattr`; `old_stock` yalnız 0→>0 bildirimi için | ❌ **kilit YOK** (`_load_full` `FOR UPDATE` kullanmıyor) | ❌ (aynı fonksiyon **fiyatı** `ProductPriceHistory`'ye yazıyor) |
 
-**W1 çağrı zinciri:** `_finalize_paid` ← ödeme callback'i (idempotent) ve escrow reconciler.
-**W2 çağrı zinciri:** `_restock` ← `_refund_payment` (`:1207`) ← sipariş iptali (`:1231`) ve tam iade (`:1259`).
-**W3 çağrı zinciri:** `_restock_items` ← `_settle_return` (`:1631`).
+**Çağrı zincirleri:** W1 ← ödeme callback'i + escrow reconciler. W2 ← `_restock` ← `_refund_payment` (`:1207`) ← sipariş iptali (`:1231`) **ve** tam iade (`:1259`). W3 ← `_restock_items` ← `_settle_return` (`:1631`).
 
-### 1b. Bilinçli olarak stok yazmayan yerler (doğru davranış, korunacak)
+### 1b. Bilinçli olarak stok yazmayan yerler (doğru, korunacak)
 
-| Konum | Neden yazmıyor |
+| Konum | Neden |
 |---|---|
-| `order_service.py:719-741` (`_out_of_stock_refund`) | Oversell tazmini. PAID **claim edilmediği** için düşüm de hiç olmadı → geri yükleme yapılmaması doğru. |
-| `services/delivery_service.py` (0 eşleşme) | Teslim edilemeyen sipariş PAID'e döner, mal hâlâ tahsis edilmiştir; stok geri yüklenmez. Doğru. |
+| `order_service.py:719-745` (`_out_of_stock_refund`) | Oversell tazmini. PAID **claim edilmedi** → düşüm de olmadı; docstring bunu açıkça yazıyor (`:724-726`). Geri yükleme yapılmaması doğru. |
+| `services/delivery_service.py` (0 eşleşme) | Teslim edilemeyen sipariş PAID'e döner, mal hâlâ tahsisli; stok geri yüklenmez. |
 
 ### 1c. Okuma noktaları (davranış değişmeyecek)
 
-`order_service.py:278` (sepet doğrulama) · `order_service.py:618` (kilit altında oversell guard'ı) · `store_service.py:137` (`in_stock`) · `:399` (arama filtresi `stock > 0`) · `:486` (şema projeksiyonu) · `:687` (`delete_product` guard'ı: stok varken silinmez) · `services/admin_service.py:170` (`Product.stock <= 5` düşük stok sayacı).
+`order_service.py:278` (sepet doğrulama) · `:618` (kilit altında oversell guard'ı) · `store_service.py:137` (`in_stock`) · `:399` (arama filtresi) · `:486` (şema projeksiyonu) · `:687` (`delete_product` guard'ı) · `services/admin_service.py:170` (`stock <= 5` düşük stok sayacı).
 
 ### 1d. Envanterin gösterdiği somut boşluklar
 
-1. **Hiçbir yazma noktası iz bırakmıyor.** "Bu kitabın stoğu neden 3?" sorusunun cevabı yok. Aynı fonksiyon (`update_product`) fiyat için `ProductPriceHistory` yazıyor — stok için yazmıyor.
-2. **W6 kilitsiz ve delta değil, mutlak atama.** Admin `stock=50` yazarken eşzamanlı bir PAID 2 adet düşürürse, admin'in `setattr`'ı düşümü **ezer**. Kayıp sessizdir; bugün tespit edilemez.
-3. **W1'deki `max(0, ...)` oversell'i sessizce yutuyor.** Guard'ı aşan bir durumda stok 0'a çekilir, kimse haberdar olmaz.
-4. **Kilit sırası sabit değil.** `:607` `for pid in needed` — sıra `order.items` sırasıdır. Ürünleri ters sırada içeren iki eşzamanlı sipariş **deadlock** üretebilir.
-5. **Barkod/SKU yok.** `products` tablosunda `sku` ve `barcode` sıfır eşleşme; tek kimlik `isbn` (`models/store.py:231`, `String(20)`, **unique değil**) ve `slug`.
-6. **Çift işlemi engelleyen DB kısıtı yok.** W1 için `escrow.claim` atomikliği var; W2/W3 için hiçbir şey yok — `_refund_payment` iki yoldan çağrılabiliyor (`:1231`, `:1259`).
+1. **Altı yazma noktasının hiçbiri iz bırakmıyor.** "Bu kitabın stoğu neden 3?" cevaplanamıyor. Aynı fonksiyon fiyat için geçmiş yazıyor, stok için yazmıyor.
+2. **W6 kilitsiz ve mutlak atama.** Admin `stock=50` yazarken eşzamanlı bir PAID 2 düşürürse `setattr` düşümü **ezer**. Kayıp sessizdir; defter olmadan **tespiti de imkânsız**.
+3. **W1'deki `max(0, …)` oversell'i sessizce yutuyor.**
+4. **Kilit sırası sabit değil** (`:607` `for pid in needed` = `order.items` sırası) → çapraz ürünlü iki eşzamanlı siparişte deadlock.
+5. **SKU/barkod yok.** `sku`/`barcode` sıfır eşleşme; tek kimlikler `isbn` (`models/store.py:231`, `String(20)`, **unique değil**) ve `slug`.
+6. **Çift uygulamayı engelleyen DB kısıtı yok.** W1'de `escrow.claim` var; W2/W3'te hiçbir şey yok — `_refund_payment` iki yoldan çağrılabiliyor.
 
-### 1e. Mevcut veri (canlı dev DB, 30 Tem 2026)
+### 1e. Doğrulanmış kod gerçekleri (planın dayandığı ölçümler)
+
+| Soru | Cevap | Kanıt |
+|---|---|---|
+| `_finalize_paid` içinde PAID claim'i ile stok düşümü arasında **commit var mı?** | **Yok** | `:595-780` aralığında `db.commit()`/`flush()` sıfır eşleşme |
+| `coupon_service.redeem` commit ediyor mu? | Hayır | `services/coupon_service.py:99+` içinde commit yok |
+| Kısmi iade satırının kendi kimliği var mı? | **Var** | `OrderReturnItem.id` (`models/store.py:767`) → `ref_line_id` kaynağı |
+| `delete_product` fiziksel mi? | Soft | `store_service.py:693` `p.deleted_at = _now()` |
+| Alembic head | tek: **`2df064134f6c`** | `alembic heads` |
+
+**Bunun sonucu (Karar 5 için kritik):** ürün satırları `:606`'da kilitlenip commit'e kadar tutulduğu ve arada commit olmadığı için, PAID claim'inden sonra atılan bir `InsufficientStock` **tüm transaction'ı** (claim dâhil) geri alır — kısmi durum oluşamaz.
+
+### 1f. Mevcut veri (canlı dev DB, 30 Tem 2026)
 
 | kind | ürün | isbn dolu | tekil isbn | stock NULL | stock=0 |
 |---|---|---|---|---|---|
 | PHYSICAL | 6 | 4 | 4 | 0 | 0 |
 | DIGITAL | 1 | 0 | — | 1 | — |
 
-Tekrarlanan ISBN grubu: **0**. Backfill riski düşük; yine de kod tarafında tekrar ISBN kontrolü yapılacak (bkz. §6).
-Alembic tek head: **`2df064134f6c`**.
+Tekrarlanan ISBN grubu: **0**.
 
 ---
 
 ## 2. Kapsam
 
-**İçinde:** `products.sku` (benzersiz, insan tarafından okunabilir) · opsiyonel `products.barcode` · append-only `stock_movements` tablosu · tek yazma noktası `services/stock_ledger.py` · 6 mutasyon noktasının deftere taşınması · W6 kilit düzeltmesi + kilit sırası · açılış bakiyesi migration'ı · admin ürün bazlı hareket geçmişi ekranı + gerekçeli stok düzenleme · defter tutarlılık doğrulaması · test matrisi + guard mutasyon provası.
+**İçinde:** `products.sku` (deterministik, immutable, unique, NOT NULL) · opsiyonel `products.barcode` · append-only `stock_movements` + DB trigger'ı · `idempotency_key` sözleşmesi · tek yazma noktası `services/stock_ledger.py` · 6 mutasyon noktasının taşınması · W6 kilit + delta düzeltmesi · kilit sırası düzeltmesi · `OPENING_BALANCE` migration'ı · admin hareket geçmişi + gerekçeli düzenleme · defter doğrulama · test matrisi + guard mutasyon provası.
 
-**Dışında (kullanıcı direktifi):** `CountSession`/`CountLine` (sayım), hasarlı stok konumu, paketleme QR FSM'i, çoklu depo, lot/seri, FIFO maliyetlendirme, dış kargo entegrasyonu. Sayım, hasarlı stok ve paketleme **ekranları** da dâhil değil.
+**Dışında (kullanıcı direktifi):** `CountSession`/`CountLine` (sayım), hasarlı stok konumu, paketleme QR FSM'i, çoklu depo, lot/seri, FIFO, dış kargo entegrasyonu; sayım/hasar/paketleme **ekranları**.
 
-**Ayrıca bu pakette yapılmayacaklar (gerekçeli):** rezervasyon/tahsis alanları (`reserved`/`available` — Medusa/Vendure formülü; sayım gelmeden anlamsız) · periyodik defter mutabakat job'u (doğrulama **fonksiyonu** yazılır, zamanlanmış koşum yazılmaz) · satın alma / mal kabul · maliyet (COGS) · barkod **tarama** arayüzü (paketleme FSM'iyle birlikte gelir; bu pakette yalnız çözümleme fonksiyonu testlenir) · SKU'nun paket etiketi çıktısına eklenmesi · `inventory.*` izin kodları (bkz. Karar 4) · ürün varyantı.
+**Ayrıca bu pakette yapılmayacaklar (gerekçeli):** `inventory.*` izinleri (Karar 4 → tam envanter modülü) · rezervasyon/tahsis (`reserved`/`available`) · periyodik mutabakat job'u (doğrulama **fonksiyonu** yazılır, zamanlanmış koşum yazılmaz) · satın alma/mal kabul · COGS · barkod **tarama arayüzü** (yalnız çözümleme fonksiyonu testlenir) · SKU'nun paket etiketine eklenmesi · ürün varyantı · ISBN tekilliğinin zorlanması (§3b) · `AdminStore.tsx`'in route bazlı bölünmesi (F37).
 
 ---
 
 ## 3. Veri modeli
 
-### 3a. `products.sku` — format ve üretim
+### 3a. `products.sku` — deterministik, sequence'sız
 
 ```python
 sku: Mapped[str] = mapped_column(String(20), nullable=False)   # backfill sonrası NOT NULL
 ```
 
-**Format:** `FZK-000042` (PHYSICAL) · `DIJ-000007` (DIGITAL). Gövde, `products_sku_seq` adlı Postgres sequence'ından 6 haneye sıfır dolgulu.
+**Kural:** `sku = f"{prefix}-{product.id:06d}"`, `prefix = "FZK"` (PHYSICAL) | `"DIJ"` (DIGITAL).
+Örnek: id=42 & PHYSICAL → `FZK-000042`; id=7 & DIGITAL → `DIJ-000007`. id 999999'u aşarsa dolgu doğal olarak büyür (`FZK-1000000`), `String(20)` fazlasıyla yeterli.
 
-**Neden sıra tabanlı, ISBN tabanlı değil** (Karar 1'de alternatifi sunuluyor):
-- SKU **bizim** stok kalemimizi tanımlar; ISBN bir **baskıyı** tanımlar. Aynı baskıyı iki tedarikçiden almak veya shrink'li set yapmak SKU'yu ayırmayı gerektirir, ISBN'i ayırmaz.
-- SKU `NOT NULL UNIQUE` olmak zorunda; ISBN 6 üründen 2'sinde yok ve dijital üründe hiç olmayacak.
-- Rafta/telefonda `FZK-000042` yazmak 13 haneli ISBN'den okunaklı ve daha az hata üretir.
-- ISBN'in rolü kaybolmuyor: (i) CSV içe aktarmada tekrar tespiti (mevcut davranış, `:623-634`), (ii) ürün çözümlemede ikinci anahtar, (iii) barkod için **aday değer** (otomatik yazılmaz — §3b).
+- **Sequence yok.** Değer tamamen `(kind, id)`'nin fonksiyonu → boşluk/rollback kaygısı ortadan kalkar, migration ve yeni satır aynı formülü kullanır, backfill idempotenttir.
+- **Immutable.** Bir kez yazılır, asla yeniden hesaplanmaz. Ön koşulu: `kind` düzenlenebilir alanlar arasında **değil** (`store_service.py:753-756`). Bu ön koşul bir kabul testiyle kilitlenir — ileride `kind` düzenlenebilir yapılırsa test kırılır (aksi hâlde SKU sessizce yalan söylerdi).
+- **Unique + NOT NULL.** `uq_products_sku` **tam** UNIQUE (kısmi değil). Slug'dan farkı: slug insan tarafından düzenlenebilir ve yeniden kullanılabilir olduğu için `WHERE deleted_at IS NULL` ile kısmi; SKU `id`'nin fonksiyonu olduğundan silinmiş satırla çakışması **imkânsızdır** ve tam UNIQUE daha güçlü bir garanti verir.
+- **Yeni satırlar:** `id` INSERT'te atandığı için SKU `flush()` sonrası yazılır (`db.add(p)` → `await db.flush()` → `p.sku = make_sku(p.kind, p.id)`). Aynı desen `bulk_import_products`'ta savepoint içinde.
+- **CSV:** şablona (`AdminStore.tsx:438`) `sku` **eklenmez** — SKU türetilmiş bir değerdir, içe aktarmadan gelmez. (rev. 1'de eklenecekti; deterministik formül bunu gereksiz ve çelişkili kılıyor.)
 
-**Üretim:** uygulama tarafında `nextval('products_sku_seq')` okunarak (`stock_ledger.next_sku(kind)`). Sequence rollback'te geri sarmadığı için **boşluk oluşabilir** — SKU bir belge numarası değildir, boşluk sorun değil (fatura numaratörünün aksine `FOR UPDATE`'li boşluksuz seri gerekmez).
+### 3b. ISBN — SKU'dan ayrı yayın kimliği
 
-**Tekillik:** `uq_products_sku_active` kısmi unique index (`WHERE deleted_at IS NULL`) — projedeki `uq_products_slug_active` deseninin aynısı.
+`isbn` **olduğu gibi kalır**: eserin/baskının bibliyografik kimliği, müşteri künyesinde gösterilir, CSV içe aktarmada tekrar tespitinde kullanılır (`store_service.py:623-634`). SKU ISBN'den üretilmediği için:
 
-**Yüzeyler:** admin ürün listesi + editör (salt-okunur, otomatik) · CSV şablonuna `sku` kolonu (verilmişse doğrulanır ve kullanılır, verilmemişse üretilir) · ürün detay şeması. `kind` bugün düzenlenebilir alanlar arasında **değil** (`store_service.py:753-756`), dolayısıyla önek sonradan yalan söylemez.
+- **Tekrarlanan ISBN stok migration'ını DURDURMAZ.** Migration ilerler; tekrarlanan aktif ISBN grupları bulunursa `WARNING` olarak loglanır ve sayısı migration çıktısına yazılır.
+- ISBN tekilliği **ayrı bir veri kalitesi + iş kuralı konusudur** ve bu paketin kapsamı dışındadır. Rapor edilecek şekli: `GET /admin/products/stock-verify` yanıtına değil, ayrı bir teşhis satırı olarak migration çıktısına ve §7'deki admin geçmiş penceresinde ürün künyesi altında "aynı ISBN'e sahip N ürün var" uyarısı olarak. **Zorlayıcı kısıt (unique index) eklenmez** — hangi durumda aynı ISBN'in meşru olduğu (farklı ciltleme, set içi kitap, yeniden basım) bir iş kararıdır ve karar verilmeden DB'de kilitlenmemelidir.
 
-### 3b. `products.barcode` — ISBN'den ayrımı
+### 3c. `products.barcode` — ISBN'den model düzeyinde ayrımı
 
 ```python
 barcode: Mapped[str | None] = mapped_column(String(32), nullable=True)
 ```
 
-Model docstring'ine **kural olarak** yazılacak ayrım:
-
 | Alan | Neyi tanımlar | Kaynağı | Otomatik doldurulur mu |
 |---|---|---|---|
-| `isbn` | **Eserin/baskının** bibliyografik kimliği. Müşteriye künyede gösterilir, içe aktarmada tekrar tespitinde kullanılır. | Yayıncı / tedarikçi kataloğu | — |
-| `barcode` | **Elimizdeki fiziksel kalemin üzerinde okunan** dizgi (EAN-13/UPC vb.). Depoda okutulan şey budur. | Kalemin fiziksel üzerinden okuma | ❌ **ISBN'den asla otomatik kopyalanmaz** |
+| `isbn` | **Eserin/baskının** bibliyografik kimliği (katalog) | Yayıncı / tedarikçi kataloğu | — |
+| `sku` | **Bizim** stok kalemi kimliğimiz | `(kind, id)` formülü | ✅ türetilir |
+| `barcode` | **Elimizdeki fiziksel kalemin üzerinde okunan** dizgi (EAN-13/UPC…) | Kalemin fiziği üzerinden okuma | ❌ **ISBN'den asla kopyalanmaz** |
 
-Neden birbirinin yerine geçmez: (i) kitap olmayan fiziksel ürünün (kalem, defter) EAN'ı var, ISBN'i yok; (ii) set/paket ürününün kendi barkodu vardır, içindeki kitapların ISBN'lerinden farklıdır; (iii) ISBN-10 basımlarda kapaktaki barkod ISBN'in EAN-13 dönüşümüdür, ISBN alanındaki dizginin kendisi değildir; (iv) bazı yayıncı baskıları promosyon barkodu taşır. **ISBN'i barkoda otomatik kopyalamak, "okuttum, eşleşti" güvenini yanlış bir eşleşmeye dayandırır** — bu yüzden `barcode` yalnız insan girdisiyle dolar.
+Neden birbirinin yerine geçmez: (i) kitap olmayan fiziksel ürünün (kalem, defter) EAN'ı var, ISBN'i yok; (ii) set/paket ürünün kendi barkodu içindeki kitapların ISBN'lerinden farklıdır; (iii) ISBN-10 basımlarda kapaktaki barkod ISBN'in EAN-13 dönüşümüdür, ISBN alanındaki dizginin kendisi değildir; (iv) bazı baskılar promosyon barkodu taşır. **ISBN'i barkoda otomatik kopyalamak, "okuttum, eşleşti" güvenini yanlış eşleşmeye dayandırır** → `barcode` yalnız insan girdisiyle dolar.
 
-**Tekillik:** `uq_products_barcode_active` kısmi unique index (`WHERE barcode IS NOT NULL AND deleted_at IS NULL`).
+**Tekillik:** `uq_products_barcode_active` kısmi UNIQUE (`WHERE barcode IS NOT NULL AND deleted_at IS NULL`).
+**Çözümleme sırası** (`resolve_product_ref`, saf + testli; **arayüzü bu pakette yazılmaz**): `barcode` → `sku` → `isbn`. Elimizdeki kalemin üzerindeki dizgi, katalog kimliğinden önce gelir.
 
-**Çözümleme sırası** (`stock_ledger.resolve_product_ref`, saf ve testli, bu pakette **arayüzü yazılmaz**): `barcode` tam eşleşme → `sku` tam eşleşme → `isbn` tam eşleşme. Sıra kasıtlı: elimizdeki kalemin üzerindeki dizgi, katalog kimliğinden önce gelir.
-
-### 3c. `stock_movements` — append-only defter
+### 3d. `stock_movements` — append-only defter
 
 ```python
 class StockMovementType(str, Enum):
-    OPENING     = "OPENING"      # defter devreye alınırken mevcut bakiye (migration)
-    INITIAL     = "INITIAL"      # ürün oluşturma / CSV içe aktarma ilk stoğu
-    SALE        = "SALE"         # sipariş PAID → düşüm
-    SALE_CANCEL = "SALE_CANCEL"  # iptal / tam iade → geri yükleme
-    RETURN      = "RETURN"       # kısmi iade kabulü → geri yükleme
-    ADJUSTMENT  = "ADJUSTMENT"   # admin elle düzeltme (gerekçe ZORUNLU)
+    OPENING_BALANCE  = "OPENING_BALANCE"   # defter devreye alınırken mevcut bakiye (migration)
+    INITIAL          = "INITIAL"           # ürün oluşturma / CSV içe aktarma ilk stoğu
+    SALE             = "SALE"              # sipariş PAID → düşüm
+    SALE_CANCEL      = "SALE_CANCEL"       # iptal / tam iade → geri yükleme
+    RETURN           = "RETURN"            # kısmi iade kabulü → geri yükleme (satır bazlı)
+    ADMIN_ADJUSTMENT = "ADMIN_ADJUSTMENT"  # admin düzeltmesi (gerekçe ZORUNLU)
 ```
 
 | Kolon | Tip | Not |
 |---|---|---|
 | `id` | PK | Kronolojik sıra (monoton) |
-| `product_id` | FK `products.id`, `ondelete="RESTRICT"`, NOT NULL, index | Ürün **soft-delete** edilir (`store_service.py:693`), bu yüzden RESTRICT hiç tetiklenmez; niyeti belgeler: defter yetim kalamaz |
-| `qty_delta` | Integer NOT NULL | İşaretli. **Uygulanan gerçek değişim** (istenen değil — §5c) |
-| `qty_after` | Integer NOT NULL | Bu hareketten **sonraki** `products.stock`. Aynı transaction'da hesaplanır (ERPNext *Stock Ledger Entry* deseni) |
-| `movement_type` | String(20) NOT NULL | Yukarıdaki enum |
-| `reason_code` | String(30) NULL | `ADJUSTMENT`'ta **zorunlu**: `SAYIM_FARKI` · `HASAR` · `KAYIP` · `HATALI_GIRIS` · `TEDARIK` · `DIGER`. Sistem tiplerinde sabit (`OVERSELL_CLAMP` dâhil) |
+| `product_id` | FK `products.id`, `ondelete="RESTRICT"`, NOT NULL, index | Ürün soft-delete edilir → RESTRICT hiç tetiklenmez; niyeti belgeler: defter yetim kalamaz |
+| `qty_delta` | Integer NOT NULL | İşaretli, **uygulanan gerçek değişim**. Eksik/kırpılmış delta yazılmaz (Karar 5) |
+| `qty_after` | Integer NOT NULL | Bu hareketten sonraki `products.stock`; **aynı transaction'da gerçekten yazılan değer** |
+| `movement_type` | String(20) NOT NULL | Yukarıdaki 6 değer |
+| `reason_code` | String(30) **NOT NULL** | Her hareket kendini açıklar. Sistem tipleri sabit kod taşır; `ADMIN_ADJUSTMENT` beyaz listeden seçer |
 | `ref_type` | String(20) NULL | `order` · `order_return` · `product` · `migration` |
-| `ref_id` | Integer NULL | Polimorfik → FK yok, `(ref_type, ref_id)` index'i var |
-| `actor_type` | String(10) NOT NULL | `ADMIN` \| `SYSTEM` |
-| `actor_admin_id` | Integer NULL | **FK yok** — `audit_logs.actor_id` deseninin aynısı; §3d'deki trigger'ın FK `SET NULL` UPDATE'iyle çakışmaması için de gerekli |
-| `note` | Text NULL | `DIGER` gerekçesinde zorunlu; oversell clamp'inde otomatik doldurulur |
-| `request_id` | String(64) NULL | `core/observability` bağlamından; `audit_logs.request_id` ile korelasyon |
+| `ref_id` | Integer NULL | Polimorfik → FK yok |
+| `ref_line_id` | Integer NULL | Satır bazlı kaynak (kısmi iadede `order_return_items.id`) |
+| `idempotency_key` | String(160) NULL, **UNIQUE** | §3f. `ADMIN_ADJUSTMENT`'ta NULL (PG'de NULL'lar birbirinden farklı sayılır) |
+| `actor_type` | String(10) NOT NULL | `SYSTEM` \| `ADMIN` (genişletilebilir) |
+| `actor_id` | Integer NULL | `SYSTEM`'de NULL olabilir; `ADMIN`'de zorunlu. **FK yok** (`audit_logs.actor_id` deseni; trigger'ın FK `SET NULL` UPDATE'iyle çakışmaması için de gerekli) |
+| `note` | Text NULL | `DIGER` gerekçesinde zorunlu |
+| `request_id` | String(64) NULL | `core/observability` bağlamı; `audit_logs.request_id` ile korelasyon |
 | `created_at` | DateTime(tz) NOT NULL | `server_default=func.now()` |
 
-**`deleted_at` YOK** — bilinçli. Projenin soft-delete konvansiyonundan sapma; gerekçe model docstring'ine yazılır: soft-delete edilebilen bir defter satırı, gizlenebilir bir defter satırıdır (`audit_logs` ile aynı duruş).
+**`deleted_at` YOK** — bilinçli sapma; gerekçe docstring'de: soft-delete edilebilen defter satırı, gizlenebilir defter satırıdır (`audit_logs` ile aynı duruş).
+
+**Reason code sözlüğü:**
+
+| Tip | `reason_code` |
+|---|---|
+| `OPENING_BALANCE` | `MIGRATION_OPENING` |
+| `INITIAL` | `PRODUCT_CREATE` · `CSV_IMPORT` |
+| `SALE` | `ORDER_PAID` |
+| `SALE_CANCEL` | `ORDER_CANCELLED` · `ORDER_REFUNDED` |
+| `RETURN` | `RETURN_ACCEPTED` |
+| `ADMIN_ADJUSTMENT` | `SAYIM_FARKI` · `HASAR` · `KAYIP` · `HATALI_GIRIS` · `TEDARIK` · `DIGER` (beyaz liste, DB CHECK'iyle zorlanır) |
 
 **CHECK kısıtları:**
 ```sql
-ck_stock_movements_delta      CHECK (qty_delta <> 0 OR movement_type = 'OPENING')
-ck_stock_movements_after      CHECK (qty_after >= 0)
-ck_stock_movements_reason     CHECK (movement_type <> 'ADJUSTMENT' OR reason_code IS NOT NULL)
-ck_stock_movements_actor      CHECK (actor_type <> 'ADMIN' OR actor_admin_id IS NOT NULL)
-ck_stock_movements_ref        CHECK (movement_type NOT IN ('SALE','SALE_CANCEL','RETURN')
-                                    OR (ref_type IS NOT NULL AND ref_id IS NOT NULL))
+ck_stock_movements_type      movement_type IN (6 değer)
+ck_stock_movements_actor_t   actor_type IN ('SYSTEM','ADMIN')
+ck_stock_movements_actor_id  actor_type <> 'ADMIN' OR actor_id IS NOT NULL
+ck_stock_movements_delta     qty_delta <> 0 OR movement_type = 'OPENING_BALANCE'
+ck_stock_movements_after     qty_after >= 0
+ck_stock_movements_ref       movement_type NOT IN ('SALE','SALE_CANCEL','RETURN')
+                             OR (ref_type IS NOT NULL AND ref_id IS NOT NULL)
+ck_stock_movements_refline   movement_type <> 'RETURN' OR ref_line_id IS NOT NULL
+ck_stock_movements_adjust    movement_type <> 'ADMIN_ADJUSTMENT'
+                             OR reason_code IN ('SAYIM_FARKI','HASAR','KAYIP',
+                                                'HATALI_GIRIS','TEDARIK','DIGER')
+ck_stock_movements_note      reason_code <> 'DIGER'
+                             OR (note IS NOT NULL AND length(btrim(note)) > 0)
 ```
-`OPENING` için `qty_delta = 0`'a izin verilmesinin sebebi: **stoğu 0 olan ürün de açılış satırı almalı**, yoksa zincirin tabanı olmaz. (Bugün 0 stoklu fiziksel ürün yok; kural gelecek için.)
+`OPENING_BALANCE`'ta `qty_delta = 0`'a izin verilmesinin sebebi: **stoğu 0 olan ürün de açılış satırı almalı**, yoksa zincirin tabanı olmaz.
 
 **Index'ler:**
 ```
-ix_stock_movements_product   (product_id, created_at DESC, id DESC)   -- geçmiş ekranı + tarih filtresi
-ix_stock_movements_ref       (ref_type, ref_id)                       -- "bu siparişin stok etkisi"
-uq_stock_movements_ref_once  UNIQUE (movement_type, ref_type, ref_id, product_id)
-                             WHERE ref_id IS NOT NULL                 -- çift uygulama kalkanı
+ix_stock_movements_product   (product_id, created_at DESC, id DESC)
+ix_stock_movements_ref       (ref_type, ref_id)
+uq_stock_movements_idem      UNIQUE (idempotency_key)
 ```
-`uq_stock_movements_ref_once`, `ADJUSTMENT` ve `OPENING`'i kapsamaz (ikisinde de `ref_id` NULL) — admin aynı ürünü istediği kadar düzeltebilir. `SALE`/`SALE_CANCEL`/`RETURN`/`INITIAL` ise mantıksal olarak **referans başına bir kez** olur; index bunu DB'de zorlar.
+`(ref_type, ref_id)` **unique DEĞİL** (Karar 7): aynı siparişte çok ürün, aynı iadede çok satır → referans başına birden çok geçerli hareket olur.
 
-**Ürün başına toplama:** bir siparişte aynı ürün iki satırda geçebileceği için (`_finalize_paid` bugün satır satır düşüyor) defter **ürün başına toplanmış tek satır** yazar (`qty_delta = -(o üründen toplam adet)`). Bu hem `uq_stock_movements_ref_once`'ı mümkün kılar hem de defteri okunur tutar. Mevcut `needed` sözlüğü (`:604-605`) zaten bu toplamayı yapıyor.
+### 3e. Değiştirilemezlik — DB trigger'ı (kesin)
 
-### 3d. Değiştirilemezlik nasıl zorlanır
-
-İki katman:
-
-1. **Sözleşme:** UPDATE/DELETE ucu yazılmaz; servis yalnız `insert` yapar. `audit_logs` (`models/audit_log.py:17`) ve `dispute_evidence` planıyla aynı duruş.
-2. **DB trigger'ı** (Karar 3'te onaya sunuluyor, önerim: **evet**):
 ```sql
 CREATE FUNCTION stock_movements_immutable() RETURNS trigger AS $$
-BEGIN RAISE EXCEPTION 'stock_movements append-only tablodur: % engellendi', TG_OP; END;
-$$ LANGUAGE plpgsql;
+BEGIN
+  RAISE EXCEPTION 'stock_movements append-only tablodur: % reddedildi', TG_OP;
+END; $$ LANGUAGE plpgsql;
+
 CREATE TRIGGER trg_stock_movements_no_update BEFORE UPDATE ON stock_movements
   FOR EACH ROW EXECUTE FUNCTION stock_movements_immutable();
 CREATE TRIGGER trg_stock_movements_no_delete BEFORE DELETE ON stock_movements
   FOR EACH ROW EXECUTE FUNCTION stock_movements_immutable();
-CREATE TRIGGER trg_stock_movements_no_truncate BEFORE TRUNCATE ON stock_movements
-  FOR EACH STATEMENT EXECUTE FUNCTION stock_movements_immutable();
 ```
-Projede trigger deseni yok; sapmanın gerekçesi: **bu trigger iş mantığı taşımıyor**, yalnız bir değişmezliği zorluyor (ekspertiz planı §8d'de trigger'ın reddedildiği yer *iki tablo arasında iş mantığı senkronizasyonu*ydu — burası o değil). `actor_admin_id`'nin FK'sız tutulmasının ikinci sebebi de bu: admin satırı fiziksel silinse `ON DELETE SET NULL` bir UPDATE olurdu ve trigger'a çarpardı.
 
-**Kaçış kapısı yoktur** (`current_setting` tabanlı bypass **bilinçli olarak eklenmiyor** — uygulamanın yanlışlıkla açabileceği bir arka kapı, korumanın kendisini değersizleştirir). Test temizliği için `assert_test_database()` (mevcut `tests/integration/db_guard.py`) ile kapılı, **yalnız test** fixture'ı `ALTER TABLE ... DISABLE TRIGGER USER` kullanır. Bunun yan etkisi kabul ediliyor ve bir disipline dönüştürülüyor: entegrasyon testleri **mutlak satır sayısı değil delta** doğrular (outbox/dispatch testlerinde öğrenilen ders).
+- **UPDATE ve DELETE reddedilir.** `TRUNCATE` bilinçli olarak engellenmez (ORM'den erişilemez, tablo sahibi gerektirir) ama **testler de onu kullanmaz**: entegrasyon testleri kendi ürününü üretip **ürün bazlı** doğrulama yapar ve teardown'da ürünü **soft-delete** eder; defter satırları kalır (append-only'nin doğal sonucu). Böylece ne "trigger'ı devre dışı bırak" kaçışı ne de dev DB'nin gerçek defterini silecek bir `TRUNCATE` gerekir. **Üretimde arka kapı yok** (`current_setting` tabanlı bypass eklenmiyor).
+- Projede trigger deseni yoktu; sapmanın gerekçesi: bu trigger **iş mantığı taşımıyor**, yalnız bir değişmezliği zorluyor (ekspertiz planı §8d'de reddedilen şey iki tablo arası iş mantığı senkronizasyonuydu — burası o değil).
+- `actor_id`'nin FK'sız olmasının ikinci sebebi budur: admin satırı fiziksel silinse `ON DELETE SET NULL` bir UPDATE olur ve trigger'a çarpardı.
+- **Downgrade önce trigger'ları düşürür** (§6). İleride `stock_movements` üzerinde UPDATE gerektiren bir migration yazılırsa trigger'ı **açıkça** düşürmek zorunda kalır — istenen davranış.
 
-Sonuç: ileride `stock_movements` üzerinde UPDATE gerektiren bir migration yazılırsa **açıkça** trigger'ı devre dışı bırakmak zorunda kalır. İstenen davranış bu.
+### 3f. Idempotency sözleşmesi (Karar 7)
+
+`idempotency_key` **anlamlı ve deterministik**tir; ticari kaynaktan türetilir:
+
+| Tip | Anahtar | Neden bu granülerlik |
+|---|---|---|
+| `SALE` | `order:{order_id}:product:{product_id}:SALE` | Sipariş **ürün başına** tek düşüm; aynı ürün iki satırda geçiyorsa adetler toplanır (mevcut `needed` sözlüğü `:604-605` zaten topluyor) |
+| `SALE_CANCEL` | `order:{order_id}:product:{product_id}:SALE_CANCEL` | `_refund_payment`'ın iki çağrı yolu (`:1231`/`:1259`) aynı anahtarı üretir → çift geri yükleme imkânsız |
+| `RETURN` | `return_line:{order_return_item_id}:RETURN` | **Satır bazlı** (`OrderReturnItem.id`, `models/store.py:767`). Aynı üründen iki iade satırı → iki geçerli hareket, iki farklı anahtar |
+| `INITIAL` | `product:{product_id}:INITIAL` | Ürün bir kez oluşur |
+| `OPENING_BALANCE` | `migration:{revision}:product:{product_id}` | Backfill idempotent; migration iki kez koşsa ikinci kez yazmaz |
+| `ADMIN_ADJUSTMENT` | **NULL** | Her elle düzeltme ayrı bir olaydır; doğal anahtarı yoktur. Çift tıklama zaten doğal olarak idempotenttir: hedef mutlak verilir, kilit altında delta `hedef − mevcut` hesaplanır; ikinci istekte delta 0 → hareket yazılmaz |
+
+**`apply_movement` davranışı (ürün satırı kilitli iken):**
+1. `idempotency_key` verilmişse anahtarla mevcut hareket aranır.
+2. **Bulundu + payload aynı** (`product_id`, `qty_delta`, `movement_type`, `ref_type`, `ref_id`, `ref_line_id`) → **mevcut hareket döner**, stok değişmez. (Retry'ın doğru cevabı.)
+3. **Bulundu + payload farklı** → `IdempotencyConflict` (HTTP 409). **Sessizce yutulmaz**; hangi alanın çeliştiği hata gövdesinde.
+4. Bulunmadı → INSERT. Eşzamanlı bir INSERT unique index'i ihlal ederse (`IntegrityError`) satır yeniden okunur ve 2/3 kuralı uygulanır. Ürün satırı kilitli olduğundan aynı ürün için bu yarış zaten serileşir; bu dal ikinci kuşaktır ve testlenir.
+
+### 3g. Negatif stok — `InsufficientStock` (Karar 5)
+
+`current_stock + qty_delta < 0` ise:
+- Hareket **yazılmaz**, `products.stock` **değişmez**.
+- `InsufficientStock` yükseltilir → transaction geri alınır → çağıran zincir açık bir hatayla sonlanır.
+- `logger.error` + operasyon alarmı üretilebilir; **deftere uygulanmış hareket gibi hiçbir şey yazılmaz.**
+- `max(0, …)`, kırpılmış delta ve `OVERSELL_CLAMP` **yok**.
+- HTTP eşlemesi: uygulama seviyesinde bir exception handler `InsufficientStock` → **409** (mevcut `core/exceptions.py` `IntegrityError` → 409 deseninin yanına). Opak 500 dönmez.
+
+**Sipariş akışına yönlendirme:** stok yetersizliğinin **normal** yolu bugün de var ve korunuyor — `_finalize_paid`'deki ön kontrol (`:614-621`) kilit altında eksiği görür ve PAID **claim edilmeden** `_out_of_stock_refund`'a (tam iade + CANCELLED) gider. Bu kontrolün aritmetiği defterle **aynı saf yardımcıya** (`shortage_for`) bağlanacak; ikisinin ayrışması mümkün olmayacak.
+
+Claim'den **sonra** `InsufficientStock` atılması, ürün satırları `:606`'dan commit'e kadar kilitli tutulduğu ve arada commit olmadığı için (§1e) **yapısal olarak ulaşılamazdır**. Yine de dal yazılır ve testlenir; oluşursa davranış: tüm transaction geri alınır (PAID claim'i dâhil) → kısmi durum yok → mevcut callback idempotensisi/reconciler tekrar dener → tekrar denemede ön kontrol eksiği görür ve `_out_of_stock_refund`'a yönlendirir. **Tutarlılık, erişilebilirliğin önündedir** (bilinçli; PK-1'in fail-closed duruşuyla aynı yön).
 
 ---
 
 ## 4. Servis katmanı — tek yazma noktası
 
-Yeni dosya `backend/services/stock_ledger.py`. **`products.stock`'a doğrudan atama yapan tek dosya burası olacak.**
+Yeni dosya `backend/services/stock_ledger.py`. **`products.stock`'a atama yapan tek dosya burasıdır** (§4d ile zorlanır).
 
 ```python
 async def apply_movement(
     db, product_id: int, *, qty_delta: int, movement_type: StockMovementType,
-    reason_code: str | None = None, ref_type: str | None = None, ref_id: int | None = None,
-    actor_type: str = "SYSTEM", actor_admin_id: int | None = None,
-    note: str | None = None, allow_negative: bool = False,
+    reason_code: str, ref_type: str | None = None, ref_id: int | None = None,
+    ref_line_id: int | None = None, idempotency_key: str | None = None,
+    actor_type: str = "SYSTEM", actor_id: int | None = None,
+    note: str | None = None,
 ) -> StockMovement | None
 ```
 
-Davranış (tek transaction, çağıranın transaction'ı içinde — **kendi `commit`'ini atmaz**):
+Davranış — **çağıranın transaction'ı içinde, kendi `commit`'ini atmaz** (Karar 9):
 
-1. `SELECT ... FROM products WHERE id = :id FOR UPDATE`. Çağıran satırı zaten kilitlemişse aynı transaction içinde yeniden kilitlemek **no-op**'tur (yeniden girişli) → fonksiyon yanlış çağrılamaz, kilit kurulumu çağırana bırakılmaz.
-2. `product.stock IS NULL` ise (dijital ürün, veya stok takibi olmayan fiziksel ürün) hareket **yazılmaz**, `None` döner, `logger.warning`. Defter yalnız bakiyesi bilinen ürünler için tutulur.
-3. `qty_delta == 0` ve tip `OPENING` değilse `None` döner (gürültü satırı yazılmaz — örn. admin stoğu aynı değerle kaydetti).
-4. Hedef bakiye `product.stock + qty_delta`; negatif çıkarsa ve `allow_negative=False` ise **clamp** uygulanır: `qty_delta` gerçekten uygulanan değere (`-product.stock`) düşürülür, `reason_code="OVERSELL_CLAMP"`, `note` otomatik doldurulur (`istenen X, uygulanan Y`), `logger.error` + admin bildirimi. Defter değişmezi (`qty_after == önceki + qty_delta`) böylece **hiçbir koşulda** bozulmaz; sapma da sessiz kalmaz.
-5. `INSERT INTO stock_movements ... ON CONFLICT DO NOTHING RETURNING id`.
-   - Satır dönmediyse (aynı referansla hareket zaten var) → **`products.stock`'a dokunulmaz**, `None` döner, `logger.info`. Ürün satırı kilitli olduğu için bu kontrol yarışa kapalıdır. Çift uygulama böylece hem engellenir hem de akışı 409 ile patlatmaz.
-   - Satır döndüyse → `product.stock = qty_after`.
-6. Dönen `StockMovement`.
+1. `SELECT … FROM products WHERE id = :id FOR UPDATE`. Çağıran satırı zaten kilitlemişse aynı transaction'da yeniden kilitlemek no-op'tur (yeniden girişli) → fonksiyon yanlış çağrılamaz.
+2. `product.stock IS NULL` (dijital / stok takibi olmayan) → hareket yazılmaz, `None`, `logger.warning`.
+3. `qty_delta == 0` ve tip `OPENING_BALANCE` değil → `None` (gürültü satırı yok).
+4. **Idempotency** (§3f, 2/3/4 kuralları).
+5. `new_stock = product.stock + qty_delta`; `new_stock < 0` → **`InsufficientStock`** (§3g).
+6. `INSERT INTO stock_movements (…, qty_after=new_stock)` ve `product.stock = new_stock` — **aynı değişkenden, aynı transaction'da**. `qty_after` ile yazılan stok tanım gereği eşittir; bir test bunu commit sonrası okuyarak da doğrular.
 
-**Saf (DB'siz, testlenebilir) yardımcılar aynı modülde:** `next_sku_body(seq_value)` / `sku_prefix(kind)` · `clamp_delta(current, requested)` · `reason_required(movement_type, reason_code, note)` · `resolve_product_ref(...)` sorgu üreteci · `verify_chain(rows, current_stock)` → `(tutarlı: bool, ilk_sapma_id: int | None)`.
+**Çok ürünlü işlemler (Karar 8):** ikinci bir fonksiyon,
 
-**Doğrulama fonksiyonu:** `verify_ledger(db, product_id)` → son `qty_after` ile `products.stock` karşılaştırması + zincir sürekliliği (`qty_after[i] == qty_after[i-1] + qty_delta[i]`). Admin ucundan ve testlerden çağrılır. **Zamanlanmış mutabakat job'u bu pakette yazılmaz** (kapsam dışı).
+```python
+async def apply_many(db, specs: list[dict]) -> list[StockMovement | None]
+```
+
+`specs`'i **artan `product_id`** sırasına dizer ve her biri için `apply_movement` çağırır. Kilit sırası disiplini böylece **tek yerde** yaşar; üç çağıranın (`order_service.py:607`, `:1172`, `:1567` — bugün sırasız döngüler) üçünde tekrarlanmaz ve biri unutulduğunda sessizce deadlock'a dönüşmez. Tek ürünlü çağrılar (W4/W5/W6) doğrudan `apply_movement` kullanır. Kabul testi bu ayrımı çivileyerek korur.
+
+**Saf (DB'siz) yardımcılar aynı modülde:** `sku_prefix(kind)` · `make_sku(kind, product_id)` · `shortage_for(current, needed)` · `validate_reason(movement_type, reason_code, note)` · `idempotency_key_for(...)` · `verify_chain(rows, current_stock)` · `resolve_product_ref(...)` sorgu üreteci.
+
+**Doğrulama:** `verify_ledger(db, product_id)` → son `qty_after` ile `products.stock` karşılaştırması + zincir sürekliliği (`qty_after[i] == qty_after[i-1] + qty_delta[i]`). Admin ucundan ve testlerden çağrılır; **zamanlanmış mutabakat job'u yazılmaz** (kapsam dışı).
 
 ### 4a. Çağrı yerlerinin taşınması
 
-| # | Bugün | Yeni çağrı |
-|---|---|---|
-| W1 | `order_service.py:687-688` | `sorted(needed)` sırasıyla ürün başına tek `apply_movement(qty_delta=-toplam, movement_type=SALE, ref_type="order", ref_id=order.id, actor_type="SYSTEM")`. `max(0, ...)` kalkar — clamp artık deftere kaydedilerek yapılır. |
-| W2 | `order_service.py:1178-1179` | Ürün başına toplanmış `SALE_CANCEL`, `ref=("order", order.id)`, `sorted` |
-| W3 | `order_service.py:1573-1574` | Ürün başına toplanmış `RETURN`, `ref=("order_return", ret.id)`, `sorted` |
-| W4 | `store_service.py:558` | Ürün `flush` edildikten sonra `INITIAL`, `ref=("product", p.id)`, `actor_type="ADMIN"`, `actor_admin_id=admin.id` |
-| W5 | `store_service.py:652` | Aynı savepoint içinde `INITIAL`, `note="CSV içe aktarma"` |
-| W6 | `store_service.py:742/755/781` | `stock` payload'da ise: ürün satırı **`FOR UPDATE` ile kilitlenir**, `stock` `editable` listesinden çıkarılır, yeni değer `apply_movement(qty_delta = yeni - eski, ADJUSTMENT, reason_code, note, actor=ADMIN)` üzerinden uygulanır. `_notify_back_in_stock` tetikleyicisi (0→>0) **korunur** — artık `movement.qty_after` üzerinden. |
+| # | Yeni çağrı |
+|---|---|
+| W1 | `apply_many` ile ürün başına tek `SALE`; `qty_delta = -toplam`, `reason_code="ORDER_PAID"`, `ref=("order", order.id)`, key `order:{id}:product:{pid}:SALE`, `actor_type="SYSTEM"`. `max(0, …)` **kalkar** |
+| W2 | `apply_many` ile ürün başına toplanmış `SALE_CANCEL`; `reason_code` = iptal mi tam iade mi (`ORDER_CANCELLED`/`ORDER_REFUNDED`), key `order:{id}:product:{pid}:SALE_CANCEL` |
+| W3 | `apply_many` ile **satır başına** `RETURN`; `ref=("order_return", ret.id)`, `ref_line_id=ri.id`, key `return_line:{ri.id}:RETURN`, `reason_code="RETURN_ACCEPTED"` |
+| W4 | `Product(...)` **`stock=0`** ile kurulur (PHYSICAL; DIGITAL'de `None`) → `flush()` → `sku` yazılır → `INITIAL`, `qty_delta=payload.stock or 0`, `reason_code="PRODUCT_CREATE"`, `ref=("product", p.id)`, key `product:{id}:INITIAL`, `actor_type="ADMIN"`, `actor_id=admin.id`. **Neden `stock=0`:** ilk stoğu constructor'da yazmak, `apply_movement`'ın `mevcut + delta` aritmetiğiyle çift sayardı; defterin tek yazıcı olması ancak başlangıç bakiyesinin de deftere yazılmasıyla mümkündür. `payload.stock` 0/None ise delta 0 → satır yazılmaz, stok 0 kalır |
+| W5 | Aynı savepoint'te aynı desen (`stock=0` → flush → sku → `INITIAL`, `reason_code="CSV_IMPORT"`) |
+| W6 | `stock` payload'da ise: ürün satırı **`FOR UPDATE`** ile kilitlenir; `stock` `editable` listesinden **çıkarılır**; `delta = hedef − mevcut` kilit altında hesaplanır; `ADMIN_ADJUSTMENT` + zorunlu `reason_code` + `actor_type="ADMIN"`. `_notify_back_in_stock` (0→>0) tetikleyicisi **korunur**, artık `movement.qty_after` üzerinden |
 
 ### 4b. Şema / API değişikliği (W6'nın gerektirdiği)
 
-`ProductUpdate`'e iki alan: `stock_reason_code: str | None`, `stock_note: str | None`.
-Kural: `stock` payload'da **ve** mevcut değerden farklıysa `stock_reason_code` zorunlu (yoksa 422/400); `DIGER` seçildiyse `stock_note` da zorunlu. `stock` gönderilmemişse veya değer aynıysa gerekçe istenmez. Bu, "açıklanabilirlik" hedefinin kullanıcıya değen kısmıdır: **stok artık gerekçesiz değişmez.**
+`ProductUpdate` + iki alan: `stock_reason_code: str | None`, `stock_note: str | None`.
+Kural: `stock` payload'da **ve** mevcut değerden farklıysa `stock_reason_code` zorunlu (beyaz listeden); `DIGER` ise `stock_note` da zorunlu. `stock` gönderilmemişse veya değer aynıysa gerekçe istenmez. Hedef 0'ın altındaysa `InsufficientStock` → 409.
 
 ### 4c. Düzeltilen iki mevcut hata (kapsam içi, kanıtlı)
 
-1. **W6 kayıp düşüm** (`store_service.py:742-757`): kilit yok + mutlak atama → eşzamanlı satış düşümü eziliyor. Düzeltme: `FOR UPDATE` + delta tabanlı yazım. Defter olmadan bu hatanın **tespiti** de mümkün değildi.
-2. **Kilit sırası** (`order_service.py:607`, `:1172`, `:1567`): `product_id`'ye göre `sorted` → çapraz ürünlü eşzamanlı siparişlerde deadlock kalkar.
+1. **W6 kayıp düşüm** (`store_service.py:742-757`): kilit yok + mutlak atama. Düzeltme: `FOR UPDATE` + delta yazımı. Defter olmadan bu hatanın **tespiti** de imkânsızdı.
+2. **Kilit sırası** (`order_service.py:607`, `:1172`, `:1567`): üç sırasız döngü `apply_many`'ye devredilir → çapraz deadlock kalkar.
 
-Bu iki düzeltme pakete dâhil çünkü ikisi de **defterin doğruluğunun ön koşulu**; ayrı pakete bırakılırsa defter ilk günden yanlış sayı kaydeder.
+İkisi de defterin doğruluğunun ön koşulu; ayrı pakete bırakılırsa defter ilk günden yanlış sayı kaydeder.
 
 ### 4d. Regresyon kalkanı — AST envanter testi
 
-PK-1'de işe yarayan desen (`test_payment_gate_wiring.py`) burada da kullanılacak: `backend/tests/acceptance/test_stock_ledger_contract.py`, `services/*.py` ve `api/routers/*.py` dosyalarını **AST ile** tarayıp `stock` niteliğine yapılan **atamaları** (`Attribute(attr="stock")` hedefli `Assign`/`AugAssign`) toplar ve izin verilen tek yerin `services/stock_ledger.py` olduğunu doğrular. Yeni bir doğrudan mutasyon eklenirse test kırılır — "unuttum" hâli sessiz kalmaz.
+PK-1'de işe yarayan desen (`test_payment_gate_wiring.py`): `tests/acceptance/test_stock_ledger_contract.py`, `services/*.py` + `api/routers/*.py` dosyalarını **AST ile** tarar, `stock` niteliğine yapılan `Assign`/`AugAssign` hedeflerini toplar ve izin verilen tek yerin `services/stock_ledger.py` olduğunu doğrular. Ayrıca `max(0` kalıbının stok bağlamında bulunmadığını ve `ON CONFLICT` dizgisinin defter kodunda geçmediğini doğrular.
 
 ---
 
@@ -247,22 +319,24 @@ PK-1'de işe yarayan desen (`test_payment_gate_wiring.py`) burada da kullanılac
 
 | # | Senaryo | Bugün | Plandan sonra |
 |---|---|---|---|
-| F1 | İki eşzamanlı ödeme callback'i (tarayıcı çift POST / reconciler yarışı) | `escrow.claim` tek kazananı seçer | Aynı + `uq_stock_movements_ref_once` ikinci `SALE`'i emer (`ON CONFLICT DO NOTHING`, stok ikinci kez düşmez) |
-| F2 | Admin stok düzenlemesi ⟂ eşzamanlı PAID düşümü | **Düşüm sessizce kaybolur** | Satır kilidi + delta yazımı → ikisi de uygulanır, ikisi de deftere düşer |
-| F3 | Aynı üründen iki sipariş satırı | İki ayrı düşüm | Ürün başına toplanmış tek `SALE` satırı |
-| F4 | Guard'ı aşan oversell | `max(0, ...)` sessiz | Clamp + `qty_delta` gerçek değer + `OVERSELL_CLAMP` + ERROR log + admin bildirimi |
-| F5 | `stock IS NULL` fiziksel ürün | Düşüm atlanır (sessiz) | Hareket yazılmaz + WARNING; zincir tutarlılığı bozulmaz |
-| F6 | Dijital ürün | Dokunulmaz | Aynı (hareket üretilmez) |
-| F7 | `_refund_payment` iki yoldan iki kez tetiklenirse (`:1231`/`:1259`) | **Çift geri yükleme** mümkün | Unique index + `ON CONFLICT` emer; log'a düşer |
-| F8 | Aynı `OrderReturn` iki kez settle edilirse | Çift geri yükleme | `ref=("order_return", ret.id)` tekil → emilir |
-| F9 | Defter INSERT'i patlarsa (CHECK ihlali, bağlantı) | — | Transaction tamamen geri alınır → **stok da değişmez**. Ödeme tamamlama hata döner, mevcut reconciler tekrar dener. Tutarlılık, erişilebilirliğin önünde (bilinçli; §8) |
-| F10 | Migration yarıda kalırsa | — | Alembic tek transaction → ya hep ya hiç |
-| F11 | Ürün soft-delete edilip yeniden stoklanırsa | — | Hareketler kalır, `sku` değişmez, zincir devam eder |
-| F12 | `products.stock` DB'den elle değiştirilirse | Tespit edilemez | `verify_ledger` sapmayı raporlar (engelleme değil, **tespit**) |
-| F13 | Defter satırını UPDATE/DELETE denemesi | — | Trigger exception (Karar 3 onaylanırsa) |
-| F14 | Çapraz ürünlü iki eşzamanlı sipariş | Deadlock mümkün | `sorted(product_id)` |
-| F15 | SKU sequence boşluğu (rollback) | — | Kabul; SKU belge numarası değil |
-| F16 | İçe aktarmada aynı SKU iki satırda | — | Kısmi unique index → o satır `errors[]`'a düşer (mevcut savepoint deseni), diğerleri devam eder |
+| F1 | İki eşzamanlı ödeme callback'i | `escrow.claim` tek kazanan | Aynı + aynı `idempotency_key` → ikinci çağrı **mevcut hareketi döndürür**, stok ikinci kez düşmez |
+| F2 | Admin düzenlemesi ⟂ eşzamanlı PAID | **Düşüm sessizce kaybolur** | Satır kilidi + delta → ikisi de uygulanır, ikisi de deftere düşer |
+| F3 | Aynı üründen iki sipariş satırı | İki ayrı düşüm | Ürün başına toplanmış tek `SALE` (anahtar bunu zorunlu kılar) |
+| F4 | Stok yetersizliği (guard'ı aşan) | `max(0, …)` sessiz | `InsufficientStock` → hareket yok, stok değişmez, transaction geri alınır; normal yol zaten claim öncesi `_out_of_stock_refund` |
+| F5 | `stock IS NULL` fiziksel ürün | Düşüm sessizce atlanır | Hareket yazılmaz + WARNING; zincir bozulmaz |
+| F6 | Dijital ürün | Dokunulmaz | Aynı |
+| F7 | `_refund_payment` iki yoldan iki kez (`:1231`/`:1259`) | **Çift geri yükleme** mümkün | Aynı anahtar → mevcut hareket döner |
+| F8 | Aynı `OrderReturn` iki kez settle | Çift geri yükleme | `return_line:{id}` tekil → mevcut hareket döner |
+| F9 | Aynı anahtar **farklı** payload (kod hatası / bozuk retry) | — | `IdempotencyConflict` 409; sessizce yutulmaz |
+| F10 | Aynı anahtarın **eşzamanlı iki** çağrısı | — | Ürün kilidi serileştirir; kaybeden 2/3 kuralına düşer; unique index son savunma |
+| F11 | Defter INSERT'i patlarsa | — | Transaction tamamen geri alınır → stok da değişmez; reconciler tekrar dener |
+| F12 | Migration yarıda kalırsa | — | Alembic tek transaction → ya hep ya hiç; ayrıca `OPENING_BALANCE` anahtarı idempotent |
+| F13 | Ürün soft-delete → yeniden stoklanma | — | Hareketler kalır, `sku` **değişmez** (id'nin fonksiyonu), zincir devam eder |
+| F14 | `products.stock` DB'den elle değiştirilirse | Tespit edilemez | `verify_ledger` sapmayı raporlar (**tespit**, engelleme değil) |
+| F15 | Defter satırı UPDATE/DELETE denemesi | — | Trigger exception |
+| F16 | Çapraz ürünlü iki eşzamanlı sipariş | Deadlock mümkün | `sorted(product_id)` |
+| F17 | Tekrarlanan aktif ISBN | Sessiz | Migration **durmaz**; WARNING + admin yüzeyinde veri kalitesi uyarısı (§3b) |
+| F18 | İptal + iade yarışı (aynı sipariş) | Belirsiz | İki farklı anahtar (`SALE_CANCEL` vs `return_line:*`) → ikisi de geçerli, ikisi de kayıtlı; `qty_after` zinciri sırayı gösterir |
 
 ---
 
@@ -270,22 +344,30 @@ PK-1'de işe yarayan desen (`test_payment_gate_wiring.py`) burada da kullanılac
 
 **Tek revizyon:** `stok_hareket_defteri_sku`, `down_revision = "2df064134f6c"`.
 
-**Upgrade adımları:**
-1. `CREATE SEQUENCE products_sku_seq`.
-2. `products.sku` (nullable) + `products.barcode` kolonları.
-3. **Backfill — SKU:** `deleted_at`'e bakılmaksızın **tüm** ürünler, `ORDER BY (isbn IS NULL), isbn, id` deterministik sırasıyla `nextval` alır. Sıranın ISBN'i öne almasının sebebi: içe aktarılmış katalog kayıtları (kalıcı kimliği olanlar) düşük numaraları alır, elle açılmış tek kayıtlar sona kalır → numaralar kataloğun yaşıyla anlamlı biçimde artar. Ayrıca sıra deterministik olduğu için **downgrade + upgrade aynı SKU'ları üretir** (test edilecek).
-4. **Tekrarlanan ISBN kontrolü:** aynı aktif ISBN'e sahip birden çok ürün varsa migration **durur** ve grupları listeler (bugün 0 grup var; ileride bir DB'de varsa iki farklı SKU üretip kalıcılaştırmak yerine insan kararı istenir).
-5. `sku` → `NOT NULL` + `uq_products_sku_active` + `uq_products_barcode_active`.
-6. `stock_movements` tablosu + 5 CHECK + 3 index.
-7. Değiştirilemezlik trigger'ı (fonksiyon + 3 trigger).
-8. **Backfill — açılış bakiyesi:** `stock IS NOT NULL` olan her ürün (soft-delete edilmişler dâhil — geçmişin okunabilirliği için) için bir satır:
-   `movement_type='OPENING'`, `qty_delta = stock`, `qty_after = stock`, `actor_type='SYSTEM'`, `ref_type='migration'`, `ref_id=NULL`, `note='Açılış bakiyesi — stok defteri devreye alınmadan önceki mevcut'`, `created_at = now()`.
-   `created_at`'in `now()` olması bilinçli (Karar 6): defterin **bilgisi** bugün başlıyor; ürünün oluşturma tarihine geri yazmak, o tarihten bugüne kadarki hareketleri biliyormuş gibi bir izlenim verirdi.
-9. `verify_ledger` mantığının SQL karşılığıyla sağlık kontrolü: açılış satırı sayısı == `stock IS NOT NULL` ürün sayısı; her ürün için `MAX(qty_after) == products.stock`.
+**Upgrade:**
+1. `products.sku` (nullable) + `products.barcode` kolonları.
+2. **SKU backfill (saf SQL, sequence'sız):**
+   ```sql
+   UPDATE products SET sku =
+     CASE kind WHEN 'PHYSICAL' THEN 'FZK-' ELSE 'DIJ-' END || lpad(id::text, 6, '0');
+   ```
+   Soft-delete edilmiş satırlar **dâhil** (NOT NULL için ve geçmişin okunabilirliği için). Deterministik → tekrar koşumda aynı değerler.
+3. Tekrarlanan aktif ISBN grupları **sayılır ve loglanır**; migration **durmaz** (Karar 1).
+4. `sku` → `NOT NULL`; `uq_products_sku` (tam UNIQUE); `uq_products_barcode_active` (kısmi).
+5. `stock_movements` tablosu + 9 CHECK + 3 index.
+6. Değiştirilemezlik trigger'ı (fonksiyon + 2 trigger).
+7. **`OPENING_BALANCE` backfill:** `stock IS NOT NULL` olan her ürün (soft-delete dâhil) için bir satır —
+   `movement_type='OPENING_BALANCE'`, `qty_delta = stock`, `qty_after = stock`,
+   `reason_code='MIGRATION_OPENING'`, `ref_type='migration'`, `ref_id=NULL`,
+   `idempotency_key='migration:<revision>:product:<id>'`,
+   `actor_type='SYSTEM'`, `actor_id=NULL`,
+   `note='Alembic <revision> — stok defteri devreye alınmadan önceki mevcut bakiye'`,
+   `created_at = now()` (**migration anı; geçmiş tarih uydurulmaz** — Karar 6).
+8. Sağlık kontrolü: açılış satırı sayısı == `stock IS NOT NULL` ürün sayısı; her ürün için `MAX(qty_after) == products.stock`.
 
-**Downgrade:** trigger'lar + `stock_movements` + iki index + iki kolon + sequence düşürülür. **Yıkıcıdır** — defter geçmişi kaybolur. Bu, tabloyu düşüren her downgrade'in doğasıdır ve belgede açıkça yazılıdır; rollback stratejisi bu yüzden downgrade'i **son seçenek** sayar (§9).
+**Downgrade (Karar 3):** sıra **önce trigger'lar** → sonra `stock_movements` → index'ler → kolonlar. Tabloyu düşürmek defteri yok eder; bu, tablo düşüren her downgrade'in doğasıdır ve rollback stratejisi bu yüzden downgrade'i **son seçenek** sayar (§9).
 
-**Migration testi** (`tests/integration/test_stock_migration_pg.py`): (a) boş DB'de `upgrade head` → tablo/kısıt/trigger var; (b) tohumlanmış DB'de upgrade → açılış satırları ve zincir doğru; (c) `downgrade -1` → kolonlar/tablo yok, ürün verisi bozulmamış; (d) tekrar `upgrade` → **aynı SKU'lar** (determinizm); (e) tekrarlanan ISBN enjekte edilmiş DB'de upgrade → migration durur ve grupları bildirir.
+**Migration testleri:** (a) boş DB'de `upgrade head` → tablo/kısıt/trigger var; (b) tohumlanmış DB'de upgrade → açılış satırları + zincir doğru; (c) `downgrade -1` → trigger/tablo/kolonlar yok, ürün verisi bozulmamış; (d) tekrar `upgrade` → **aynı SKU'lar**; (e) tekrarlanan ISBN enjekte edilmiş DB'de upgrade → **durmaz**, uyarı üretir.
 
 ---
 
@@ -296,66 +378,64 @@ PK-1'de işe yarayan desen (`test_payment_gate_wiring.py`) burada da kullanılac
 | Uç | İzin | Döner |
 |---|---|---|
 | `GET /admin/products/{id}/stock-movements?limit&offset&movement_type&from&to` | `products.view` | Sayfalı hareket listesi + `total` |
-| `GET /admin/products/{id}/stock-verify` | `products.view` | `{consistent, current_stock, ledger_stock, first_divergent_id}` |
+| `GET /admin/products/{id}/stock-verify` | `products.view` | `{consistent, current_stock, ledger_stock, first_divergent_id, duplicate_isbn_count}` |
 
-Stok düzenlemesi mevcut `PATCH /admin/products/{id}` üzerinden (`products.manage`) — yeni uç yok, yalnız gerekçe alanları eklenir. **İzin kodu olarak `inventory.*` eklenmiyor** (Karar 4): kimseye verilmemiş yeni bir izin kodu bu kod tabanında **sessiz 403** üretiyor (backend/CLAUDE.md'de kayıtlı tuzak); `inventory.*` sayım/hasar ekranları gelirken tek seferde ve rollerle birlikte eklenmeli.
+Stok düzenlemesi mevcut `PATCH /admin/products/{id}` (`products.manage`) üzerinden — yeni uç yok, yalnız gerekçe alanları. **`inventory.*` izin kodu eklenmiyor** (Karar 4): kimseye verilmemiş yeni izin kodu bu kod tabanında **sessiz 403** üretiyor (backend/CLAUDE.md'de kayıtlı tuzak); `inventory.*` tam envanter modülüyle, rollerle birlikte gelecek.
 
-Stok değişikliği ayrıca `audit_service.record` ile `audit_logs`'a yazılır (`action="product.stock_adjust"`, `before/after`, `reason`) — defter *ne olduğunu*, audit *kimin hangi istekle yaptığını* anlatır; `request_id` ikisini birbirine bağlar.
+Stok değişikliği ayrıca `audit_service.record` ile `audit_logs`'a yazılır (`action="product.stock_adjust"`, `before/after`, `reason`) — defter *ne olduğunu*, audit *kimin hangi istekle yaptığını* anlatır; `request_id` ikisini bağlar.
 
-**Frontend** (`pages/dashboards/AdminStore.tsx` — bu paket dosyayı **bölmez**, F37 ayrı iş):
-- Ürün satırında `sku` görünür; ürün editöründe `sku` salt-okunur, `barcode` düzenlenebilir + ISBN ayrımını anlatan yardım metni.
-- Stok alanı değiştirilince **gerekçe seçici** (zorunlu) + `DIGER`'de not alanı belirir; gerekçesiz kaydetme engellenir (istemci tarafı da, sunucu tarafı da).
-- "Stok geçmişi" — ürün satırından açılan pencere: tarih · tip rozeti · delta (±, renk = yalnız işaret) · sonuç bakiye · gerekçe · aktör · referans linki (sipariş/iade). Üstte mevcut stok + **"defter tutarlı / sapma var"** rozeti (`stock-verify`). Filtre: tip + tarih aralığı; sayfalama.
-- Tasarım: `components/admin/ui/*` (Button/Badge/PageState/ErrorState), kart yerine saç-teli çizgili satır ritmi, nötr palet, **her sorguda `ErrorState`** (hata ≠ boş ekran), dark-mode paritesi, hover-only aksiyon yok. Tam ekran pencere `createPortal(body)` ile (navbar `backdrop-blur` tuzağı).
-- CSV şablonu (`AdminStore.tsx:438`) başına `sku` eklenir.
-- Saf mantık `lib/stockMovements.ts` (+ Vitest): tip etiketleri, delta biçimlendirme, tutarlılık rozeti metni.
+**Frontend** (`pages/dashboards/AdminStore.tsx`; dosya **bölünmez**, F37 ayrı iş):
+- Ürün satırında `sku`; editörde `sku` salt-okunur, `barcode` düzenlenebilir + ISBN ayrımını anlatan yardım metni.
+- Stok alanı değişince **gerekçe seçici** (zorunlu) + `DIGER`'de not; gerekçesiz kaydetme hem istemcide hem sunucuda engelli.
+- "Stok geçmişi" penceresi: tarih · tip rozeti · delta (±, renk = yalnız işaret) · sonuç bakiye · gerekçe · aktör · referans linki (sipariş / iade satırı). Üstte mevcut stok + **"defter tutarlı / sapma var"** rozeti + tekrarlanan ISBN uyarısı. Filtre: tip + tarih; sayfalama.
+- Tasarım: `components/admin/ui/*`, kart yerine saç-teli çizgili satır ritmi, nötr palet, **her sorguda `ErrorState`**, dark-mode paritesi, hover-only aksiyon yok, tam ekran pencere `createPortal(body)`.
+- Saf mantık `lib/stockMovements.ts` (+ Vitest).
 
 ---
 
 ## 8. Test matrisi
 
-**Disiplin:** test matrisi **koddan önce ayrı commit** olarak gelir ve **kırmızı** koştuğu rapora eklenir. `tests/acceptance/` ve `*.acceptance.test.ts` altındaki dosyalar bilinçli karar olmadan değiştirilmez.
+**Disiplin:** test matrisi **koddan önce ayrı commit** olarak gelir ve **kırmızı** koştuğu rapora eklenir. `tests/acceptance/` ve `*.acceptance.test.ts` bilinçli karar olmadan değiştirilmez.
 
 | Katman | Dosya | Kapsam |
 |---|---|---|
-| Saf birim | `tests/test_stock_ledger_pure.py` | `sku_prefix`/`next_sku_body` formatı · `clamp_delta` (tam sınır: `stock == qty`) · `reason_required` matrisi · `verify_chain` (tutarlı / kopuk / son bakiye sapması) |
-| Kabul (sözleşme) | `tests/acceptance/test_stock_ledger_contract.py` | **AST envanteri**: `products.stock`'a atama yapan tek dosya `stock_ledger.py` · 6 çağrı yerinin `apply_movement` çağırdığının AST'te doğrulanması · `ADJUSTMENT`'ta gerekçe zorunluluğu · `stock_movements` için UPDATE/DELETE uç ve servis fonksiyonunun **yokluğu** |
-| Değişmez | `tests/integration/test_stock_ledger_pg.py` | Zincir: `qty_after[i] == qty_after[i-1] + qty_delta[i]` · `MAX(qty_after) == products.stock` · 5 CHECK'in her biri ihlal edildiğinde reddediliyor · `uq_stock_movements_ref_once` çift `SALE`'i emiyor (409 değil, no-op) · trigger UPDATE/DELETE/TRUNCATE'i reddediyor · oversell clamp gerçek delta yazıyor + alarm üretiyor · `stock IS NULL` üründe hareket yok |
-| Eşzamanlılık (PG) | `tests/integration/test_stock_concurrency_pg.py` | İki eşzamanlı PAID → tek düşüm · **admin düzenlemesi ⟂ PAID → ikisi de uygulanıyor** (F2, bugünkü hata) · ters ürün sıralı iki sipariş → deadlock yok (tekrarlı koşum) · aynı `OrderReturn` iki kez settle → tek `RETURN` |
-| Migration | `tests/integration/test_stock_migration_pg.py` | §6'daki (a)-(e) |
-| Yetki | `tests/integration/test_stock_authorization_pg.py` | Eğitmen kendi ürününde stok düzenleyemiyor (bugün de öyle — regresyon kalkanı) · eğitmen/öğrenci/kurye/operatör `stock-movements` ucunda 403 · `products.view` olmayan alt admin rolü 403 · IDOR: başka ürünün hareketleri sızmıyor |
-| Vitest | `lib/stockMovements.test.ts` · `AdminStore` gerekçe testi | Etiket/biçim · gerekçesiz kaydet engelli · tutarsız defterde rozet uyarıyor |
-| Gerçek dev ortam kabulü | elle, §8a | Aşağıdaki 8 senaryo |
+| Saf birim | `tests/test_stock_ledger_pure.py` | `make_sku`/`sku_prefix` (id 1 · 42 · 999999 · 1000000, iki kind) · `shortage_for` (tam sınır `stock == needed`) · `validate_reason` matrisi (6 tip × beyaz liste × `DIGER`+not) · `idempotency_key_for` (5 tip, satır bazlı iade) · `verify_chain` (tutarlı / kopuk halka / son bakiye sapması) |
+| Kabul (sözleşme) | `tests/acceptance/test_stock_ledger_contract.py` | **AST envanteri**: `products.stock`'a atama yapan tek dosya `stock_ledger.py` · 6 çağrı yerinin `apply_movement` çağırdığı · `max(0` kalıbının stok bağlamında yokluğu · `ON CONFLICT` dizgisinin defter kodunda yokluğu · `OVERSELL_CLAMP` dizgisinin **hiç** bulunmaması · enum tam olarak 6 değer · `stock_movements` için UPDATE/DELETE servis fonksiyonu ve ucu yok · **`kind`'in düzenlenebilir alanlar arasında olmadığı** (SKU immutability ön koşulu) · `inventory.` izin kodunun eklenmemiş olması |
+| Değişmez (PG) | `tests/integration/test_stock_ledger_pg.py` | Zincir `qty_after[i] == qty_after[i-1] + qty_delta[i]` · `MAX(qty_after) == products.stock` · 9 CHECK'in her biri ihlalde reddediyor · trigger UPDATE **ve** DELETE'i reddediyor · `InsufficientStock`: hareket **yazılmadı** + stok **değişmedi** · idempotency: aynı payload → mevcut hareket, satır sayısı artmıyor · farklı payload → `IdempotencyConflict` · `stock IS NULL` üründe hareket yok · `qty_after` == commit sonrası okunan `products.stock` |
+| Eşzamanlılık (PG) | `tests/integration/test_stock_concurrency_pg.py` | İki eşzamanlı PAID → tek düşüm · **admin düzenlemesi ⟂ PAID → ikisi de uygulanıyor** (F2) · aynı `idempotency_key`in **eşzamanlı** iki çağrısı → tek satır · iptal + iade yarışı → iki geçerli hareket, zincir tutarlı · ters ürün sıralı iki sipariş → deadlock yok (tekrarlı koşum) · retry (aynı çağrı iki kez) → tek satır |
+| Migration (PG) | `tests/integration/test_stock_migration_pg.py` | §6'daki (a)–(e) |
+| Yetki (PG) | `tests/integration/test_stock_authorization_pg.py` | Eğitmen kendi ürününde stok düzenleyemiyor (regresyon kalkanı) · eğitmen/öğrenci/kurye/operatör `stock-movements`'ta 403 · `products.view` olmayan alt admin rolü 403 · IDOR: başka ürünün hareketleri sızmıyor |
+| Vitest | `lib/stockMovements.test.ts` | Tip etiketleri · delta biçimi · tutarsız defterde rozet uyarıyor · gerekçesiz kaydetme engelli |
 
 ### 8a. Gerçek dev ortam kabul senaryoları (yerel uvicorn + 5432 dev DB)
 
-1. Ürün oluştur (stok 10) → geçmişte tek `INITIAL` satırı, bakiye 10.
-2. Sipariş ver + öde (2 adet) → `SALE −2`, bakiye 8; sipariş referansı linkten açılıyor.
-3. Aynı üründen iki satırlı sipariş → **tek** `SALE` satırı, toplu delta.
-4. Siparişi iptal et → `SALE_CANCEL +2`, bakiye 10.
-5. Kısmi iade (1 adet) → `RETURN +1`; ikinci kez settle denemesi bakiyeyi değiştirmiyor.
-6. Admin stok 10 → 25 düzenlemesi: **gerekçe seçmeden kaydedilemiyor**; `TEDARIK` ile `ADJUSTMENT +15`.
-7. `DIGER` gerekçesi seçilince not zorunlu.
-8. CSV ile 3 ürün içe aktar → 3 `INITIAL`; SKU'lar `FZK-0000xx` ve tekil; `stock-verify` üçünde de tutarlı.
+1. Ürün oluştur (stok 10) → tek `INITIAL`, bakiye 10, SKU `FZK-0000xx` = id'nin fonksiyonu.
+2. Sipariş + ödeme (2 adet) → `SALE −2`, bakiye 8; referans linki siparişi açıyor.
+3. Aynı üründen iki satırlı sipariş → **tek** `SALE`, toplu delta.
+4. Siparişi iptal et → `SALE_CANCEL +2`, bakiye 10; iptali tekrar tetikle → **yeni satır yok**.
+5. Kısmi iade (2 satır, aynı ürün) → **iki** `RETURN` satırı, iki farklı `ref_line_id`.
+6. Admin 10 → 25: gerekçe seçmeden kaydedilemiyor; `TEDARIK` ile `ADMIN_ADJUSTMENT +15`.
+7. `DIGER` seçilince not zorunlu; hedefe `-5` yazılınca **409** ve stok değişmiyor.
+8. CSV ile 3 ürün → 3 `INITIAL`; `stock-verify` üçünde de tutarlı.
 
-### 8b. Guard mutasyon provası (koruma gerçekten koruyor mu)
-
-Her biri geçici olarak bozulur, ilgili testin **gerçekten kırıldığı** gösterilir, geri alınır; sonuç rapora tablo olarak girer.
+### 8b. Guard mutasyon provası
 
 | # | Bozulan koruma | Kırılması beklenen test |
 |---|---|---|
-| 1 | `uq_stock_movements_ref_once` düşürülür | çift `SALE` emilme testi |
+| 1 | `uq_stock_movements_idem` düşürülür | eşzamanlı aynı anahtar → tek satır |
 | 2 | `ck_stock_movements_after` düşürülür | negatif bakiye reddi |
-| 3 | Değiştirilemezlik trigger'ı düşürülür | UPDATE/DELETE reddi |
-| 4 | `ON CONFLICT DO NOTHING` → düz INSERT | idempotency testi (409'a düşer) |
-| 5 | `update_product`'tan `FOR UPDATE` çıkarılır | F2 kayıp-düşüm eşzamanlılık testi |
-| 6 | `sorted(product_id)` kaldırılır | ters sıralı deadlock testi (tekrarlı koşum) |
-| 7 | `ADJUSTMENT` gerekçe zorunluluğu kaldırılır | gerekçe matrisi + kabul testi |
-| 8 | Bir servise **kasten** doğrudan `p.stock = ...` eklenir | AST envanter testi |
+| 3 | UPDATE trigger'ı düşürülür | UPDATE reddi |
+| 4 | DELETE trigger'ı düşürülür | DELETE reddi |
+| 5 | `InsufficientStock` yerine clamp konur | "hareket yazılmadı + stok değişmedi" testi |
+| 6 | Payload karşılaştırması kaldırılır (her zaman mevcut hareketi döndür) | `IdempotencyConflict` testi |
+| 7 | `update_product`'tan `FOR UPDATE` çıkarılır | F2 kayıp-düşüm testi |
+| 8 | `apply_many`'deki `sorted` kaldırılır | ters sıralı deadlock testi (tekrarlı koşum) |
+| 9 | `ADMIN_ADJUSTMENT` gerekçe zorunluluğu kaldırılır | gerekçe matrisi + CHECK testi |
+| 10 | Bir servise kasten doğrudan `p.stock = …` eklenir | AST envanter testi |
 
 ### 8c. Bağımsız gözden geçirme
 
-Paket bittikten sonra `security-reviewer` (yetki + IDOR + eşzamanlılık) ve `design-reviewer` (admin geçmiş penceresi + gerekçe akışı) çalıştırılır; **kırmaya çalışan** ek testleri pakete dâhil edilir. Katılmadığım bulgu uygulanmaz, sapma gerekçesiyle raporlanır.
+`security-reviewer` (yetki + IDOR + eşzamanlılık) ve `design-reviewer` (geçmiş penceresi + gerekçe akışı) çalıştırılır; kırmaya çalışan ek testleri pakete dâhil edilir. Katılmadığım bulgu uygulanmaz, sapma gerekçesiyle raporlanır.
 
 ---
 
@@ -363,42 +443,41 @@ Paket bittikten sonra `security-reviewer` (yetki + IDOR + eşzamanlılık) ve `d
 
 | # | Commit | İçerik |
 |---|---|---|
-| 1 | `test(stok): stok hareket defteri kabul matrisi (kırmızı)` | §8'deki test dosyaları, implementasyon yok |
-| 2 | `feat(stok): StockMovement modeli + sku/barcode + migration` | Model, `models/__init__` kaydı, şemalar, tek revizyon, backfill |
-| 3 | `feat(stok): stock_ledger servisi (tek yazma noktası)` | `apply_movement`, saf yardımcılar, `verify_ledger` |
-| 4 | `fix(stok): update_product satır kilidi + kilit sırası` | §4c'deki iki mevcut hata |
-| 5 | `refactor(stok): 6 doğrudan stok mutasyonu deftere taşındı` | W1-W6 |
+| **1** | `test(stok): stok hareket defteri kabul matrisi (kırmızı)` | **Yalnız testler.** Üretim kodu yok. Kırmızı koşu çıktısı raporlanır → **burada durulur, onay beklenir** |
+| 2 | `feat(stok): StockMovement modeli + sku/barcode + migration` | Model, `models/__init__`, şemalar, tek revizyon, trigger, backfill |
+| 3 | `feat(stok): stock_ledger servisi (tek yazma noktası)` | `apply_movement`, saf yardımcılar, `InsufficientStock`/`IdempotencyConflict`, 409 handler, `verify_ledger` |
+| 4 | `fix(stok): update_product satır kilidi + kilit sırası` | §4c |
+| 5 | `refactor(stok): 6 doğrudan stok mutasyonu deftere taşındı` | W1–W6 |
 | 6 | `feat(stok): admin hareket geçmişi + doğrulama uçları` | İki GET ucu, `ProductUpdate` gerekçe alanları, audit |
 | 7 | `feat(magaza): admin panel stok geçmişi + gerekçeli düzenleme` | Frontend + `lib/stockMovements.ts` |
-| 8 | `test(stok): mutasyon provası + reviewer bulguları` | §8b/8c çıktıları |
+| 8 | `test(stok): mutasyon provası + reviewer bulguları` | §8b/8c |
 
-Commit'lerde **Claude imzası yok** (ne `Co-Authored-By` ne dipnot).
+Commit'lerde **Claude imzası yok**.
 
-**Rollback stratejisi** — ileri düzeltme tercih edilir, downgrade son seçenek:
-- **7 → 6 → 5** tek tek `git revert` edilebilir; 5 geri alınırsa kod eski doğrudan mutasyona döner, `stock_movements` tablosu boşa çalışan bir tablo olarak kalır (zararsız). Tekrar ileri alınırken defterde boşluk oluşacağı için `verify_ledger` sapma gösterir → bilinçli bir `ADJUSTMENT` (`reason_code=HATALI_GIRIS`) ile kapatılır. Bu kayıt, "geri aldık" gerçeğinin defterdeki izidir.
+**Rollback:**
+- **7 → 6 → 5** tek tek `git revert` edilebilir. 5 geri alınırsa kod eski doğrudan mutasyona döner; `stock_movements` boşa çalışan tablo olarak kalır (zararsız). Tekrar ileri alınırken defterde boşluk olacağı için `verify_ledger` sapma gösterir → bilinçli bir `ADMIN_ADJUSTMENT` (`HATALI_GIRIS`) ile kapatılır; bu kayıt "geri aldık" gerçeğinin defterdeki izidir.
 - **4** bağımsız geri alınabilir (yalnız kilit).
-- **2**'nin downgrade'i **defteri yok eder**; yalnız paketin henüz uygulandığı bir DB'de kullanılır. Üretim benzeri bir ortamda sorun çıkarsa yol: geriye alma değil, hatalı davranışı düzelten ileri commit.
-- **Feature flag yok** — bilinçli. Defter yazımını atlatan bir bayrak, tam olarak ortadan kaldırmaya çalıştığımız "açıklanamayan boşluk"u üretir. PK-1'de bayrak vardı çünkü orada kapatılan şey **hâricî bir bağımlılıktı**; burada kapatılacak hâricî bir şey yok.
+- **2**'nin downgrade'i **defteri yok eder**; yalnız paketin yeni uygulandığı bir DB'de kullanılır. Üretim benzeri ortamda sorun çıkarsa yol geriye alma değil, ileri düzeltme.
+- **Feature flag yok** — bilinçli. Defter yazımını atlatan bayrak, tam olarak kaldırmaya çalıştığımız açıklanamayan boşluğu üretir. PK-1'de bayrak vardı çünkü orada kapatılan şey **hâricî bir bağımlılıktı**; burada kapatılacak hâricî bir şey yok.
 
 ---
 
-## 10. Onay bekleyen kararlar
+## 10. rev. 2'de kapanan kararlar
 
-Hepsinde bir önerim var; onaylarsanız plan olduğu gibi uygulanır.
-
-| # | Karar | Öneri | Alternatif |
-|---|---|---|---|
-| 1 | SKU formatı | **`FZK-000042` / `DIJ-000007`** (sequence tabanlı, ISBN yalnız backfill sırası + tekrar tespiti + çözümleme anahtarı) | ISBN tabanlı `KTP-9786051234567` — yalnız §3a ve §6/3 değişir; ISBN'i olmayan ürünlere ayrıca sıra numarası gerekir (karma format) |
-| 2 | `actor` alanı | **`actor_type` + `actor_admin_id` (FK'sız)** — filtrelenebilir, `audit_logs` deseniyle uyumlu, trigger'la çakışmaz | Tek `actor: String` alanı (istediğiniz alan listesindeki hâli) — filtreleme/birleştirme kaybolur |
-| 3 | Değiştirilemezlik | **Sözleşme + DB trigger'ı** | Yalnız sözleşme (`audit_logs` ile birebir tutarlılık; projeye trigger sokmama) |
-| 4 | İzin kodu | **`products.view` / `products.manage` yeniden kullanılsın** | Yeni `inventory.view/manage` — rollere kablolanmazsa sessiz 403 riski; sayım/hasar paketiyle birlikte eklenmesi daha güvenli |
-| 5 | Oversell | **Clamp + gerçek delta + `OVERSELL_CLAMP` + ERROR log + admin bildirimi** | Negatif bakiyeye izin (`qty_after >= 0` CHECK'i kalkar) — gerçek WMS davranışı ama bu ölçekte gereksiz karmaşa |
-| 6 | Açılış satırı tarihi | **`now()`** (defterin bilgisi bugün başlar) | `products.created_at` — geçmişi biliyormuş izlenimi verir |
-
----
+| # | Karar | Sonuç |
+|---|---|---|
+| 1 | SKU | `FZK-000042`/`DIJ-000007`, `(kind, id)` formülü, sequence yok, immutable + tam UNIQUE + NOT NULL. ISBN ayrı yayın kimliği; tekrarı migration'ı durdurmaz, veri kalitesi bulgusu olarak raporlanır |
+| 2 | Aktör | `actor_type` + `actor_id` (SYSTEM'de NULL olabilir); admine özel alan yok. Ticari kaynak `ref_type`/`ref_id`/`ref_line_id` |
+| 3 | Değişmezlik | DB trigger'ı: UPDATE + DELETE reddi. Downgrade önce trigger'ı düşürür. Trigger + migration testleri yazılır. TRUNCATE bilinçli açık (test temizliği; arka kapı yok) |
+| 4 | İzin | `products.view` / `products.manage`. `inventory.*` tam envanter modülünde |
+| 5 | Oversell | `InsufficientStock`; hareket yazılmaz, stok değişmez, transaction sonlanır. Clamp / sessiz eksik delta / `OVERSELL_CLAMP` yok. Yönlendirme claim öncesi mevcut `_out_of_stock_refund` yolu |
+| 6 | Açılış | `OPENING_BALANCE`, `now()`, `reason_code='MIGRATION_OPENING'`, migration kaynağı `note` + anahtarda kayıtlı |
+| 7 | Idempotency | Anlamlı `idempotency_key` (UNIQUE); aynı payload → mevcut hareket, farklı payload → `IdempotencyConflict`. `ON CONFLICT DO NOTHING` yok. `(ref_type, ref_id)` unique değil; kısmi iadede `ref_line_id` |
+| 8 | Kilit | Her üründe `FOR UPDATE`; artan `product_id` sırası `apply_many` içinde **tek yerde** garanti. Admin mutlak atama yapmaz; kilit altında delta + zorunlu gerekçe |
+| 9 | Transaction | Stok ve hareket aynı transaction; `qty_after` = yazılan stok. Retry / eşzamanlılık / yarış / anahtar çatışması PG testlerinde |
 
 ## 11. Bu pakette yapılmayacaklar (tekrar)
 
-`CountSession`/`CountLine` (sayım) · hasarlı stok konumu / disposition · paketleme QR FSM'i · çoklu depo · lot/seri · FIFO maliyetlendirme · dış kargo entegrasyonu · sayım/hasar/paketleme **ekranları** · rezervasyon-tahsis (`reserved`/`available`) · periyodik mutabakat job'u · satın alma / mal kabul · COGS · barkod tarama arayüzü · SKU'nun paket etiketine eklenmesi · `inventory.*` izin kodları · ürün varyantı · `AdminStore.tsx`'in route bazlı bölünmesi (F37).
+Sayım (`CountSession`/`CountLine`) · hasarlı stok konumu · paketleme QR FSM'i · çoklu depo · lot/seri · FIFO · dış kargo entegrasyonu · sayım/hasar/paketleme ekranları · rezervasyon-tahsis · periyodik mutabakat job'u · satın alma/mal kabul · COGS · barkod tarama arayüzü · SKU'nun paket etiketine eklenmesi · `inventory.*` izinleri · ürün varyantı · ISBN unique kısıtı · `AdminStore.tsx` bölünmesi (F37).
 
-**PK-2 ve diğer paketlere geçilmeyecek.** Bu paket onay + uygulama + test raporu + diff özetiyle kapandıktan sonra sıradaki iş ayrıca kararlaştırılır.
+**PK-2 ve diğer paketlere geçilmeyecek.**
