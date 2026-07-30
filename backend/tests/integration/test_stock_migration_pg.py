@@ -188,13 +188,14 @@ async def test_upgrade_dogrulama_downgrade_tekrar_upgrade(migration_db):
     isbn_b = await _seed_urun(db, stock=2, isbn=ayni_isbn)
 
     # ── (c) upgrade head: yapı + backfill ──
-    res = _alembic("upgrade", "head")
+    # Bilinçli olarak "head" DEĞİL, tam olarak BU revizyon: test kendi
+    # migration'ını sınar. "head" yazmak, üstüne eklenen her yeni migration'da
+    # bu testi ilgisiz biçimde kırar (TB-1 eklenince bir kez kırıldı) ve daha
+    # kötüsü, sonraki migration'ların yan etkilerini bu paketin sonucu sanar.
+    res = _alembic("upgrade", REVISION)
 
-    # head doğru mu?
-    assert await db.scalar("SELECT version_num FROM alembic_version") is not None
-    assert REVISION in (
-        _alembic("current").stdout + _alembic("current").stderr
-    ), "migration head bu paketin revizyonunda değil"
+    # gerçekten bu revizyona mı gelindi?
+    assert await db.scalar("SELECT version_num FROM alembic_version") == REVISION
 
     # Kolonlar
     for kolon in ("sku", "barcode"):
@@ -321,7 +322,7 @@ async def test_upgrade_dogrulama_downgrade_tekrar_upgrade(migration_db):
     ) == 5
 
     # ── (f) tekrar upgrade: determinizm + idempotent açılış ──
-    _alembic("upgrade", "head")
+    _alembic("upgrade", REVISION)
     assert await db.scalar("SELECT sku FROM products WHERE id = :i", i=stoklu) == sku1
     assert await db.scalar(
         "SELECT count(*) FROM stock_movements WHERE product_id = :i", i=stoklu
