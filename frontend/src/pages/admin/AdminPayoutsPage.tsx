@@ -24,17 +24,10 @@ export default function AdminPayoutsPage() {
   const [selected, setSelected] = useState<PayeeBalance | null>(null);
 
   return (
+    // Başlık ve açıklama `AdminPageHeader` tarafından basılır (nav öğesinin
+    // label + description alanlarından). Sayfa kendi <h1>'ini basmaz — aksi
+    // halde ekranda iki <h1> olur ve belge başlık hiyerarşisi bozulur.
     <div className="space-y-6">
-      <header>
-        <h1 className="text-xl font-bold text-slate-900 dark:text-white">
-          Hakedişler
-        </h1>
-        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-          Eğitmen ve kütüphanelere ödenecek tutarlar. Ödemeyi bankadan yapıp
-          buraya kaydedin.
-        </p>
-      </header>
-
       <div className="flex gap-1 border-b border-slate-200 dark:border-slate-700">
         {(
           [

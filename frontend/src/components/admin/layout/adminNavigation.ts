@@ -19,7 +19,8 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
     label: "Hakedişler",
     to: ROUTES.adminPayouts,
     group: "Ticaret",
-    description: "Eğitmen ve kütüphanelere ödenecek tutarlar; yapılan havaleleri kaydedin.",
+    description:
+      "Eğitmen ve kütüphanelere ödenecek tutarlar. Ödemeyi bankadan yapıp buraya kaydedin.",
     icon: "store",
     requiredPermission: "payments.view",
   },
