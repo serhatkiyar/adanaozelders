@@ -1728,6 +1728,8 @@ export interface CartValidateOut {
   currency: string;
   has_physical: boolean;
   issues: string[];
+  /** Sepetteki kalemler için kapalı ödeme kolları (backend `payment_gates`). */
+  blocked_payment_branches?: string[];
 }
 
 export interface OrderCreate {

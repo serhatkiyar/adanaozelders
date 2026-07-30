@@ -18,6 +18,9 @@ import { formatTRY, parseMoney } from "@/lib/money";
 import { BOOKING_STATUS_LABEL, BOOKING_STATUS_STYLE } from "@/lib/bookingStatus";
 import { qaEligibility } from "@/lib/qaWindow";
 import { isLessonJoinable } from "@/lib/lesson";
+import { PaymentBranchNotice } from "@/components/PaymentBranchNotice";
+import { usePaymentAvailability } from "@/hooks/useFeatureFlags";
+import { isBranchOpen } from "@/lib/paymentAvailability";
 import { getErrorMessage } from "@/lib/errors";
 import { toast } from "@/store/toastStore";
 
@@ -116,6 +119,11 @@ function BookingRow({
     booking.status === BookingStatus.ACCEPTED && !!booking.meeting_room;
   const joinable = canJoin && isLessonJoinable(booking.start_at, booking.end_at);
 
+  // React Query aynı anahtarı paylaşan satırları tek isteğe indirir; bu yüzden
+  // availability prop olarak zincirlenmiyor.
+  const { data: availability } = usePaymentAvailability();
+  const payOpen = isBranchOpen(availability, "tutor_marketplace");
+
   const handlePay = () => {
     payMutation.mutate(booking.id, {
       onSuccess: (p) => {
@@ -186,13 +194,18 @@ function BookingRow({
       {/* Aksiyonlar */}
       {hasActions && (
         <div className="mt-4 flex flex-wrap items-center gap-2">
-          {needsPayment && (
-            <button onClick={handlePay} disabled={payMutation.isPending} className={PRIMARY_BTN}>
-              {payMutation.isPending
-                ? "İşleniyor…"
-                : `Öde · ${formatTRY(booking.payment?.amount)}`}
-            </button>
-          )}
+          {needsPayment &&
+            (payOpen ? (
+              <button onClick={handlePay} disabled={payMutation.isPending} className={PRIMARY_BTN}>
+                {payMutation.isPending
+                  ? "İşleniyor…"
+                  : `Öde · ${formatTRY(booking.payment?.amount)}`}
+              </button>
+            ) : (
+              // Kol kapalıyken butonu bırakıp 503 göstermek kullanıcıyı boşa
+              // yönlendirir; yerine nedeni söyleyen şerit gösterilir.
+              <PaymentBranchNotice branch="tutor_marketplace" className="w-full" />
+            ))}
 
           {canJoin &&
             (joinable ? (

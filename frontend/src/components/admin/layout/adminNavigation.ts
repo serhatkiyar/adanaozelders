@@ -41,6 +41,14 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
     requiredPermission: "users.view",
   },
   {
+    label: "Ayarlar",
+    to: ROUTES.adminSettings,
+    group: "Platform",
+    description: "Ödeme kolu kapıları ve özellik bayrakları.",
+    icon: "access",
+    requiredPermission: "settings.view",
+  },
+  {
     label: "Eğitmen İlanları",
     shortLabel: "Eğitmenler",
     to: ROUTES.adminTutors,

@@ -125,7 +125,7 @@ export const FAQ: readonly FaqCategory[] = [
         id: "odeme-guvenlik",
         question: "Ödediğim para doğrudan eğitmene mi gidiyor?",
         answer: [
-          "Hayır. Ders ücreti, ders tamamlanana kadar platformda emanette tutulur. Ders gerçekleştikten sonra eğitmene aktarılır. Ders iptal edilirse ödemen iade edilir.",
+          "Hayır. Ders ücreti, ders tamamlanana kadar eğitmene aktarılmaz; ders gerçekleştikten sonra ödenir. Ders iptal edilirse ödemen iade edilir.",
         ],
       },
       {

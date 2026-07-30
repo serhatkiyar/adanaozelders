@@ -12,6 +12,8 @@ import { promiseDayLabel } from "@/lib/deliveryPromise";
 import { useDeliveryInfo } from "@/hooks/useDelivery";
 import { getLegalDoc, OPERATOR } from "@/lib/legalContent";
 import { validateCart } from "@/api/store";
+import { PaymentBranchNotice } from "@/components/PaymentBranchNotice";
+import type { PaymentBranch } from "@/lib/paymentAvailability";
 import { useCreateOrder } from "@/hooks/useStore";
 import { useMyAddresses, useAddAddress } from "@/hooks/useAddresses";
 import { AddressForm } from "@/components/address/AddressForm";
@@ -63,6 +65,13 @@ export default function CheckoutPage() {
       </StoreLayout>
     );
   }
+
+  // Kapalı ödeme kolu sepette varsa checkout hiç başlatılmaz (backend son
+  // savunma olarak 503 döner; kullanıcı oraya kadar gitmemeli).
+  const blockedBranches = (validation?.blocked_payment_branches ?? []).filter(
+    (b): b is PaymentBranch =>
+      b === "store" || b === "tutor_marketplace" || b === "library_marketplace",
+  );
 
   function placeOrder() {
     if (!consent) {
@@ -308,10 +317,20 @@ export default function CheckoutPage() {
                 </span>
               </label>
 
+              {blockedBranches.map((branch) => (
+                <PaymentBranchNotice key={branch} branch={branch} className="mt-4" />
+              ))}
+
               <button
                 type="button"
                 onClick={placeOrder}
-                disabled={!consent || createOrder.isPending || isLoading || !!couponError}
+                disabled={
+                  !consent ||
+                  createOrder.isPending ||
+                  isLoading ||
+                  !!couponError ||
+                  blockedBranches.length > 0
+                }
                 className="mt-4 w-full rounded-xl bg-indigo-600 py-3 text-sm font-semibold text-white transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400 dark:disabled:bg-slate-700 dark:disabled:text-slate-500"
               >
                 {createOrder.isPending ? "İşleniyor…" : "Ödeme Yap"}

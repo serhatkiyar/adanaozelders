@@ -1,3 +1,6 @@
+import { PaymentBranchNotice } from "@/components/PaymentBranchNotice";
+import { usePaymentAvailability } from "@/hooks/useFeatureFlags";
+import { isBranchOpen } from "@/lib/paymentAvailability";
 import { Link, useNavigate } from "react-router-dom";
 import { usePublicSessions, useMyRegistrations, useRegisterForSession, usePayRegistration } from "@/hooks/useLibraryExams";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
@@ -10,6 +13,8 @@ import { PaymentConsentNote } from "@/components/LegalConsent";
 import { ROLE_IDS, type ExamSessionOut, type RegistrationOut } from "@/types";
 
 export function ExamSessionsSection({ libraryId }: { libraryId: number }) {
+  const { data: availability } = usePaymentAvailability();
+  const payOpen = isBranchOpen(availability, "library_marketplace");
   const token = useAuthStore((s) => s.token);
   const { data: user } = useCurrentUser();
   const isClient = user?.role_id === ROLE_IDS.CLIENT;
@@ -43,9 +48,15 @@ export function ExamSessionsSection({ libraryId }: { libraryId: number }) {
         </div>
       ) : (
         <>
-          <p className="mb-4 text-xs text-slate-500 dark:text-slate-400">
-            Kaydol, online öde; oturum günü kütüphanede QR kodunu okutarak katıl.
-          </p>
+          {payOpen ? (
+            <p className="mb-4 text-xs text-slate-500 dark:text-slate-400">
+              Kaydol, online öde; oturum günü kütüphanede QR kodunu okutarak katıl.
+            </p>
+          ) : (
+            // Kol kapalıyken kayıt da alınmaz (backend register ucu da kapılı) —
+            // takvim görünür kalır ama satış vaadi verilmez.
+            <PaymentBranchNotice branch="library_marketplace" className="mb-4" />
+          )}
           <div className="space-y-3">
             {sessions!.map((s) => (
               <ExamSessionRow

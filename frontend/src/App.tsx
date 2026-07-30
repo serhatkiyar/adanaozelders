@@ -80,6 +80,7 @@ const AdminReportsPage = lazy(() => import("@/pages/admin/AdminReportsPage"));
 const AdminDemandsPage = lazy(() => import("@/pages/admin/AdminDemandsPage"));
 const AdminBookingsPage = lazy(() => import("@/pages/admin/AdminBookingsPage"));
 const AdminAccessPage = lazy(() => import("@/pages/admin/AdminAccessPage"));
+const AdminSettingsPage = lazy(() => import("@/pages/admin/AdminSettingsPage"));
 const AdminLibraries = lazy(() => import("@/pages/dashboards/AdminLibraries"));
 const AdminExamCatalogs = lazy(() => import("@/pages/dashboards/AdminExamCatalogs"));
 const AdminStore = lazy(() => import("@/pages/dashboards/AdminStore"));
@@ -437,6 +438,7 @@ function App() {
               <Route path="denetim-kayitlari" element={<AdminAuditLogsPage />} />
               <Route path="hakedisler" element={<AdminPayoutsPage />} />
               <Route path="yetkiler" element={<AdminAccessPage />} />
+              <Route path="ayarlar" element={<AdminSettingsPage />} />
             </Route>
           </Route>
 

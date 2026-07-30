@@ -135,6 +135,7 @@ export const PATHS = {
   adminAuditLogs: "/yonetim/denetim-kayitlari",
   adminPayouts: "/yonetim/hakedisler",
   adminAccess: "/yonetim/yetkiler",
+  adminSettings: "/yonetim/ayarlar",
 } as const;
 
 export const ROUTES = {
@@ -243,6 +244,7 @@ export const ROUTES = {
   adminAuditLogs: PATHS.adminAuditLogs,
   adminPayouts: PATHS.adminPayouts,
   adminAccess: PATHS.adminAccess,
+  adminSettings: PATHS.adminSettings,
 } as const;
 
 // Yasal belge id'si (lib/legalContent.ts) → URL. LegalPage kenar gezinmesi ve

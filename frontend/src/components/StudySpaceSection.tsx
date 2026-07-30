@@ -1,3 +1,6 @@
+import { PaymentBranchNotice } from "@/components/PaymentBranchNotice";
+import { usePaymentAvailability } from "@/hooks/useFeatureFlags";
+import { isBranchOpen } from "@/lib/paymentAvailability";
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useStudyQuote, useReserveStudy, usePayStudy } from "@/hooks/useStudy";
@@ -30,6 +33,8 @@ function hhmm(d: Date): string {
 }
 
 export function StudySpaceSection({ library }: { library: LibraryDetailOut }) {
+  const { data: availability } = usePaymentAvailability();
+  const payOpen = isBranchOpen(availability, "library_marketplace");
   const token = useAuthStore((s) => s.token);
   const { data: user } = useCurrentUser();
   const isClient = user?.role_id === ROLE_IDS.CLIENT;
@@ -173,13 +178,14 @@ export function StudySpaceSection({ library }: { library: LibraryDetailOut }) {
         ) : (
           <button
             onClick={doReserveAndPay}
-            disabled={!canReserve}
+            disabled={!canReserve || !payOpen}
             className="rounded-xl bg-indigo-600 px-5 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {busy ? "İşleniyor…" : "Rezerve et & Öde"}
           </button>
         )}
       </div>
+      {!payOpen && <PaymentBranchNotice branch="library_marketplace" />}
       <PaymentConsentNote />
       {token && !isClient && (
         <p className="text-xs text-slate-400">Yalnız öğrenci hesapları rezervasyon yapabilir.</p>
