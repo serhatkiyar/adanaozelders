@@ -631,6 +631,11 @@ def _eligible_out(o: Order) -> EligibleOrderOut:
         lng=float(o.ship_lng) if o.ship_lng is not None else None,
         total=str(o.total),
         item_count=sum(it.quantity for it in o.items if it.kind == "PHYSICAL"),
+        items=[
+            StopItemOut(title=it.title, quantity=it.quantity)
+            for it in o.items
+            if it.kind == "PHYSICAL"
+        ],
         created_at=o.created_at,
         promised_delivery_date=o.promised_delivery_date,
         in_zone=o.ship_in_zone,
