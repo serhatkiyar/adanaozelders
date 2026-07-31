@@ -1206,3 +1206,28 @@ async def _audit(
         reason=reason,
         meta=meta,
     )
+
+
+# ════════════════════════ Hasar işlemleri (yeniden dışa aktarım) ════════════
+#
+# Uygulama `services/inventory_damage.py`'de durur (bu modül zaten uzun ve iki
+# konu ayrı: sayım oturumu ↔ hasar olayı). Ancak paketin dış yüzeyi tek
+# modüldür — çağıranlar ve önceden yazılmış kabul testleri `inventory_service`
+# üzerinden erişir. Yeniden dışa aktarım o yüzeyi korur.
+from services.inventory_damage import (  # noqa: E402
+    damage_disposal,
+    damage_recovery,
+    damage_transfer,
+    list_damage_events,
+    replay_damage_event,
+    supplier_return,
+)
+
+__all__ = [
+    "damage_disposal",
+    "damage_recovery",
+    "damage_transfer",
+    "list_damage_events",
+    "replay_damage_event",
+    "supplier_return",
+]

@@ -1,0 +1,486 @@
+"""F29 hasarlı stok servisi — kova transferi, kurtarma, imha, tedarikçi iadesi.
+
+Kapsam (commit 6): dört hasar işlemi + append-only `stock_damage_events` +
+istek düzeyinde idempotency + deterministik ürün kilidi. **HTTP router, Pydantic
+şeması, izin kablolaması ve arayüz bu modülde YOKTUR** (commit 7/8).
+
+## Temel sözleşme
+
+`products.stock` **yalnız satılabilir** miktardır; `products.damaged_stock`
+işletmede duran, satılamaz miktardır. Dijital üründe ikisi de `NULL`'dur
+(`ck_products_damaged_pairing`) ve hiçbir hasar işlemi kabul edilmez.
+
+Her hareket **açık kova** ile yazılır (`stock_ledger` `bucket` parametresini
+zorunlu ister; sessiz varsayılan yoktur):
+
+| İşlem | SALEABLE | DAMAGED | Hareket türü |
+|---|---|---|---|
+| Hasara ayırma | −q | +q | `DAMAGE_TRANSFER` (iki satır) |
+| Hasardan kurtarma | +q | −q | `DAMAGE_RECOVERY` (iki satır) |
+| İmha | — | −q | `DAMAGE_DISPOSAL` (tek satır) |
+| Tedarikçiye iade | −q *veya* — | — *veya* −q | `SUPPLIER_RETURN` (tek satır) |
+
+### Çiftin iki bacağı neden AYNI hareket türünü taşıyor
+
+Yön bilgisi türün adında DEĞİL, `bucket` + `qty_delta` işaretinde durur:
+`(DAMAGE_TRANSFER, SALEABLE, −q)` çıkış, `(DAMAGE_TRANSFER, DAMAGED, +q)`
+giriştir. Tür adına `_OUT`/`_IN` eklemek aynı bilgiyi ikinci kez kodlar, defter
+sorgularını (`GROUP BY movement_type`) böler ve `ck_stock_movements_type`
+kısıtını değiştirecek yeni bir migration gerektirirdi. İki bacak zaten ortak
+`stock_damage_events.id` ile bağlıdır (`ref_type='damage_event'`).
+
+## Atomiklik
+
+Bir işlem ya tamamen olur ya hiç olmaz. Olay satırı, iki defter hareketi ve iki
+bakiye **aynı transaction'dadır**; modül `commit` YAPMAZ (transaction sınırı
+çağıranındır — `stock_ledger` ve `inventory_service` ile aynı disiplin).
+
+## Kilit sırası
+
+Global sıra `StockCountSession → Product → Order → OrderReturn → DeliveryStop`.
+Hasar servisi **yalnız Product** kilidi alır ve bunu `stock_ledger.lock_products`
+üzerinden yapar — ürün kilidi alan tek yer orasıdır ve artan `id` sırasını o
+garanti eder. Ayrı bir kilit yöntemi kurulmaz.
+"""
+from __future__ import annotations
+
+from typing import Any, Sequence
+
+from fastapi import HTTPException, status
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from models.inventory import DAMAGE_REASONS, DamageEventKind, StockDamageEvent
+from models.store import ProductKind, StockBucket, StockMovementType
+from services import audit_service, stock_ledger
+
+SALEABLE = StockBucket.SALEABLE.value
+DAMAGED = StockBucket.DAMAGED.value
+
+#: İşlem türü → (kaynak kova, hedef kova | None, hareket türü).
+#: Hedef `None` ise miktar işletmeden **fiziksel olarak çıkar** (imha / iade).
+_ISLEM: dict[str, tuple[str, str | None, StockMovementType]] = {
+    DamageEventKind.TRANSFER.value: (
+        SALEABLE, DAMAGED, StockMovementType.DAMAGE_TRANSFER,
+    ),
+    DamageEventKind.RECOVERY.value: (
+        DAMAGED, SALEABLE, StockMovementType.DAMAGE_RECOVERY,
+    ),
+    DamageEventKind.DISPOSAL.value: (
+        DAMAGED, None, StockMovementType.DAMAGE_DISPOSAL,
+    ),
+    # Kaynak kova ÇAĞIRAN tarafından açıkça seçilir; sessiz varsayılan yok.
+    DamageEventKind.SUPPLIER_RETURN.value: (
+        "", None, StockMovementType.SUPPLIER_RETURN,
+    ),
+}
+
+#: Aynı anahtarla gelen isteğin "aynı iş" sayılması için eşleşmesi gereken
+#: alanlar. `note` bilinçli olarak DIŞARIDA: açıklamanın yazımını düzeltmek
+#: işi değiştirmez, ama miktarı ya da kovayı değiştirmek değiştirir.
+IDEMPOTENCY_PAYLOAD_FIELDS: tuple[str, ...] = (
+    "product_id",
+    "kind",
+    "qty",
+    "source_bucket",
+    "reason_code",
+)
+
+
+def _hata(code: int, mesaj: str) -> HTTPException:
+    return HTTPException(status_code=code, detail=mesaj)
+
+
+class _Aktor:
+    """`audit_service.record` yalnız `id` ve `role_id` okur."""
+
+    __slots__ = ("id", "role_id")
+
+    def __init__(self, admin_id: int) -> None:
+        self.id = admin_id
+        self.role_id = 1
+
+
+def movement_key(event_id: int, bucket: str) -> str:
+    """Defter anahtarı — olaydan **deterministik** türetilir.
+
+    Aynı olayın yeniden uygulanması (`replay_damage_event`) aynı anahtarları
+    üretir, dolayısıyla defter onu replay sayar ve yeni satır yazmaz.
+    """
+    return f"damage:{event_id}:{bucket}"
+
+
+def _dogrula(qty: Any, reason_code: str, note: str | None) -> int:
+    if isinstance(qty, bool) or not isinstance(qty, int):
+        raise _hata(status.HTTP_400_BAD_REQUEST, "miktar tam sayı olmalı")
+    if qty <= 0:
+        raise _hata(
+            status.HTTP_400_BAD_REQUEST,
+            "hasar işlemi miktarı pozitif olmalı (sıfır olay iz üretmez)",
+        )
+    if reason_code not in DAMAGE_REASONS:
+        raise _hata(
+            status.HTTP_400_BAD_REQUEST,
+            f"geçersiz hasar gerekçesi: {reason_code!r} "
+            f"(geçerli: {sorted(DAMAGE_REASONS)})",
+        )
+    # "DIGER" tek başına hiçbir şey açıklamaz; DB'de de aynı kural var
+    # (`ck_stock_damage_events_note`, `ck_stock_movements_note`).
+    if reason_code == "DIGER" and not (note or "").strip():
+        raise _hata(
+            status.HTTP_400_BAD_REQUEST, "'DIGER' gerekçesinde açıklama notu zorunlu"
+        )
+    return int(qty)
+
+
+def _payload(
+    *, product_id: int, kind: str, qty: int, source_bucket: str, reason_code: str
+) -> dict[str, Any]:
+    return {
+        "product_id": product_id,
+        "kind": kind,
+        "qty": qty,
+        "source_bucket": source_bucket,
+        "reason_code": reason_code,
+    }
+
+
+def payload_differences(
+    existing: StockDamageEvent, spec: dict[str, Any]
+) -> dict[str, tuple[Any, Any]]:
+    """Kayıtlı olay ile gelen isteğin çelişen alanları."""
+    farklar: dict[str, tuple[Any, Any]] = {}
+    for alan in IDEMPOTENCY_PAYLOAD_FIELDS:
+        eski = getattr(existing, alan, None)
+        yeni = spec.get(alan)
+        if eski != yeni:
+            farklar[alan] = (eski, yeni)
+    return farklar
+
+
+async def _bakiye(db: AsyncSession, product_id: int, bucket: str) -> int:
+    """Kilit ALTINDAKİ ürün nesnesinden kova bakiyesi."""
+    urun = (await stock_ledger.lock_products(db, [product_id]))[product_id]
+    if urun.kind == ProductKind.DIGITAL.value or urun.stock is None:
+        raise _hata(
+            status.HTTP_400_BAD_REQUEST,
+            "stok takip edilmeyen üründe (dijital ya da izlenmeyen) hasar "
+            "işlemi yapılamaz",
+        )
+    return int((urun.stock if bucket == SALEABLE else urun.damaged_stock) or 0)
+
+
+async def _uygula(
+    db: AsyncSession,
+    *,
+    product_id: int,
+    kind: str,
+    qty: Any,
+    source_bucket: str | None,
+    reason_code: str,
+    admin_id: int,
+    note: str | None,
+    idempotency_key: str | None,
+) -> StockDamageEvent:
+    """Dört işlemin ORTAK çekirdeği. `commit` YAPMAZ.
+
+    Sıra kritiktir:
+
+    1. saf doğrulama (kilit almadan hızlı hata),
+    2. **ürün kilidi** (`stock_ledger.lock_products` — tek kilit noktası),
+    3. idempotency araması *kilidin altında*: aynı anahtarlı iki eşzamanlı istek
+       ürün kilidinde sıralanır, ikincisi birincinin commit'ini görür,
+    4. kaynak kova yeterliliği,
+    5. olay satırı (`flush` → kimlik),
+    6. defter hareketleri **tek** `apply_many` batch'i.
+
+    Idempotency araması kilitten ÖNCE yapılsaydı iki istek de "kayıt yok" görür,
+    ikisi de olay yazar ve unique index'e çarpardı; ürün kilidi bu yarışı
+    baştan kapatır (unique index yine de son savunmadır).
+    """
+    kaynak, hedef, hareket_turu = _ISLEM[kind]
+    if kind == DamageEventKind.SUPPLIER_RETURN.value:
+        if source_bucket not in (SALEABLE, DAMAGED):
+            raise _hata(
+                status.HTTP_400_BAD_REQUEST,
+                "tedarikçi iadesinde kaynak kova açıkça seçilmeli "
+                f"(geçerli: {SALEABLE}, {DAMAGED})",
+            )
+        kaynak = source_bucket
+    adet = _dogrula(qty, reason_code, note)
+
+    # ── Kilit: ürün. Global sıra `... → Product → ...` bozulmaz. ──
+    mevcut = await _bakiye(db, product_id, kaynak)
+
+    spec = _payload(
+        product_id=product_id, kind=kind, qty=adet,
+        source_bucket=kaynak, reason_code=reason_code,
+    )
+    if idempotency_key:
+        onceki = (
+            await db.execute(
+                select(StockDamageEvent).where(
+                    StockDamageEvent.idempotency_key == idempotency_key
+                )
+            )
+        ).scalars().first()
+        if onceki is not None:
+            farklar = payload_differences(onceki, spec)
+            if farklar:
+                raise _hata(
+                    status.HTTP_409_CONFLICT,
+                    f"aynı idempotency anahtarı farklı bir hasar işlemiyle "
+                    f"kullanılmış: {farklar}",
+                )
+            # Aynı anahtar + aynı iş → REPLAY. Hareketler zaten yazılmış olsa da
+            # olmasa da deterministik anahtarlar sayesinde tek kez uygulanır.
+            await _defter_yaz(db, onceki, adet, kaynak, hedef, hareket_turu,
+                               reason_code, note, admin_id)
+            return onceki
+
+    if mevcut < adet:
+        raise _hata(
+            status.HTTP_409_CONFLICT,
+            f"{kaynak} kovasında yeterli stok yok (mevcut {mevcut}, istenen "
+            f"{adet}); kırpma yapılmaz",
+        )
+
+    olay = StockDamageEvent(
+        product_id=product_id,
+        kind=kind,
+        qty=adet,
+        source_bucket=kaynak,
+        reason_code=reason_code,
+        note=note,
+        actor_admin_id=admin_id,
+        idempotency_key=idempotency_key,
+    )
+    db.add(olay)
+    # Defter anahtarları olayın KİMLİĞİNDEN türer → önce flush.
+    await db.flush()
+
+    await _defter_yaz(db, olay, adet, kaynak, hedef, hareket_turu,
+                       reason_code, note, admin_id)
+    await audit_service.record(
+        db,
+        actor=_Aktor(admin_id),
+        action=f"inventory.damage_{kind.lower()}",
+        target_type="stock_damage_event",
+        target_id=olay.id,
+        reason=reason_code,
+        meta={
+            "product_id": product_id,
+            "qty": adet,
+            "source_bucket": kaynak,
+            "target_bucket": hedef,
+        },
+    )
+    return olay
+
+
+async def _defter_yaz(
+    db: AsyncSession,
+    olay: StockDamageEvent,
+    adet: int,
+    kaynak: str,
+    hedef: str | None,
+    hareket_turu: StockMovementType,
+    reason_code: str,
+    note: str | None,
+    admin_id: int,
+) -> list[Any]:
+    """Olayın defter karşılığını **tek batch** hâlinde yazar.
+
+    İki kovalı işlemde iki spec tek `apply_many` çağrısına verilir: batch'in
+    yarısı kayıtlıysa `stock_ledger` `PartialIdempotencyState` yükseltir, yani
+    "yarım transfer" sessizce oluşamaz.
+    """
+    ortak = {
+        "product_id": olay.product_id,
+        "movement_type": hareket_turu,
+        "reason_code": reason_code,
+        "ref_type": "damage_event",
+        "ref_id": olay.id,
+        "actor_type": "ADMIN",
+        "actor_id": admin_id,
+        "note": note,
+    }
+    specs: list[dict[str, Any]] = [
+        {
+            **ortak,
+            "bucket": kaynak,
+            "qty_delta": -adet,
+            "idempotency_key": movement_key(olay.id, kaynak),
+        }
+    ]
+    if hedef is not None:
+        specs.append(
+            {
+                **ortak,
+                "bucket": hedef,
+                "qty_delta": +adet,
+                "idempotency_key": movement_key(olay.id, hedef),
+            }
+        )
+    try:
+        return await stock_ledger.apply_many(db, specs)
+    except stock_ledger.InsufficientStock as exc:
+        raise _hata(
+            status.HTTP_409_CONFLICT,
+            f"ürün {exc.product_id} bakiyesi hasar işlemi için yetersiz",
+        ) from exc
+
+
+# ════════════════════════ Genel arayüz ════════════════════════
+
+
+async def damage_transfer(
+    db: AsyncSession,
+    product_id: int,
+    *,
+    qty: int,
+    reason_code: str,
+    admin_id: int,
+    note: str | None = None,
+    idempotency_key: str | None = None,
+) -> StockDamageEvent:
+    """Satılabilir → hasarlı. `SALEABLE −q` **ve** `DAMAGED +q`, tek transaction."""
+    return await _uygula(
+        db, product_id=product_id, kind=DamageEventKind.TRANSFER.value,
+        qty=qty, source_bucket=None, reason_code=reason_code,
+        admin_id=admin_id, note=note, idempotency_key=idempotency_key,
+    )
+
+
+async def damage_recovery(
+    db: AsyncSession,
+    product_id: int,
+    *,
+    qty: int,
+    reason_code: str,
+    admin_id: int,
+    note: str | None = None,
+    idempotency_key: str | None = None,
+) -> StockDamageEvent:
+    """Hasarlı → satılabilir (kurtarıldı). `DAMAGED −q` **ve** `SALEABLE +q`."""
+    return await _uygula(
+        db, product_id=product_id, kind=DamageEventKind.RECOVERY.value,
+        qty=qty, source_bucket=None, reason_code=reason_code,
+        admin_id=admin_id, note=note, idempotency_key=idempotency_key,
+    )
+
+
+async def damage_disposal(
+    db: AsyncSession,
+    product_id: int,
+    *,
+    qty: int,
+    reason_code: str,
+    admin_id: int,
+    note: str | None = None,
+    idempotency_key: str | None = None,
+) -> StockDamageEvent:
+    """Hasarlı kovadan **fiziksel çıkış** (imha). Satılabilir DEĞİŞMEZ."""
+    return await _uygula(
+        db, product_id=product_id, kind=DamageEventKind.DISPOSAL.value,
+        qty=qty, source_bucket=None, reason_code=reason_code,
+        admin_id=admin_id, note=note, idempotency_key=idempotency_key,
+    )
+
+
+async def supplier_return(
+    db: AsyncSession,
+    product_id: int,
+    *,
+    qty: int,
+    bucket: str,
+    reason_code: str,
+    admin_id: int,
+    note: str | None = None,
+    idempotency_key: str | None = None,
+) -> StockDamageEvent:
+    """Seçilen kovadan tedarikçiye **fiziksel çıkış**.
+
+    Kaynak kova ZORUNLU ve açıktır; miktar yalnız o kovadan düşer, diğer kovaya
+    sessiz transfer YAPILMAZ.
+
+    Parasal taraf (alacak, maliyet, fatura) F29 kapsamı DIŞINDADIR.
+    """
+    return await _uygula(
+        db, product_id=product_id, kind=DamageEventKind.SUPPLIER_RETURN.value,
+        qty=qty, source_bucket=bucket, reason_code=reason_code,
+        admin_id=admin_id, note=note, idempotency_key=idempotency_key,
+    )
+
+
+async def replay_damage_event(db: AsyncSession, event_id: int) -> StockDamageEvent:
+    """Kayıtlı bir olayın defter karşılığını **yeniden uygular**.
+
+    Anahtarlar olay kimliğinden deterministik türediği için defter bunu replay
+    sayar: yeni hareket yazılmaz, bakiye değişmez. Yarım kalmış bir batch varsa
+    (ör. süreç ilk denemede çöktü) eksik bacak tamamlanır.
+    """
+    olay = (
+        await db.execute(
+            select(StockDamageEvent).where(StockDamageEvent.id == event_id)
+        )
+    ).scalars().first()
+    if olay is None:
+        raise _hata(status.HTTP_404_NOT_FOUND, "hasar olayı bulunamadı")
+    kaynak, hedef, hareket_turu = _ISLEM[olay.kind]
+    if olay.kind == DamageEventKind.SUPPLIER_RETURN.value:
+        kaynak = olay.source_bucket
+    # Kilit sırası korunur: yazımdan önce ürün.
+    await _bakiye(db, olay.product_id, kaynak)
+    await _defter_yaz(
+        db, olay, int(olay.qty), kaynak, hedef, hareket_turu,
+        olay.reason_code, olay.note, olay.actor_admin_id,
+    )
+    return olay
+
+
+async def list_damage_events(
+    db: AsyncSession,
+    *,
+    product_id: int | None = None,
+    limit: int = 50,
+    offset: int = 0,
+) -> tuple[list[StockDamageEvent], int]:
+    """Zorunlu sayfalı hasar olayı listesi (defter listesiyle aynı disiplin)."""
+    from sqlalchemy import func as _f
+
+    limit = max(1, min(int(limit), stock_ledger.LIST_MAX_LIMIT))
+    offset = max(0, int(offset))
+    kosul: list[Any] = []
+    if product_id is not None:
+        kosul.append(StockDamageEvent.product_id == product_id)
+    toplam = (
+        await db.execute(
+            select(_f.count()).select_from(StockDamageEvent).where(*kosul)
+        )
+    ).scalar_one()
+    satirlar = list(
+        (
+            await db.execute(
+                select(StockDamageEvent)
+                .where(*kosul)
+                .order_by(StockDamageEvent.id.desc())
+                .limit(limit)
+                .offset(offset)
+            )
+        ).scalars()
+    )
+    return satirlar, int(toplam)
+
+
+__all__ = [
+    "IDEMPOTENCY_PAYLOAD_FIELDS",
+    "damage_disposal",
+    "damage_recovery",
+    "damage_transfer",
+    "list_damage_events",
+    "movement_key",
+    "payload_differences",
+    "replay_damage_event",
+    "supplier_return",
+]

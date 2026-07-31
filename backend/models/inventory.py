@@ -437,6 +437,18 @@ class StockDamageEvent(Base):
     actor_admin_id: Mapped[int] = mapped_column(
         ForeignKey("admins.id", ondelete="RESTRICT"), nullable=False
     )
+    #: **İSTEK** düzeyinde idempotency anahtarı (defterinkinden ayrı).
+    #:
+    #: Defterdeki anahtarlar olay kimliğinden türetilir
+    #: (`damage:{event_id}:{bucket}`); her tekrar yeni bir olay üretseydi yeni
+    #: kimlik → yeni anahtar → **aynı hasar iki kez** yazılırdı. Tekrarlanan bir
+    #: isteği tanımanın tek yolu olayın kendi anahtarına bakmaktır.
+    #:
+    #: `NULL` serbest: anahtarsız çağrı (iç servis, betik) mümkündür ve
+    #: PostgreSQL unique index'te NULL'ları birbirinden farklı sayar.
+    idempotency_key: Mapped[str | None] = mapped_column(
+        String(80), nullable=True
+    )
     created_at: Mapped[datetime.datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=text("now()")
     )
@@ -470,6 +482,7 @@ class StockDamageEvent(Base):
             name="ck_stock_damage_events_note",
         ),
         Index("ix_stock_damage_events_product", "product_id", text("id DESC")),
+        Index("uq_stock_damage_events_idem", "idempotency_key", unique=True),
     )
 
 
