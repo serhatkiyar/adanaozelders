@@ -296,6 +296,41 @@ async def factory(pg) -> MoneyFactory:
     yield f
     await f.cleanup()
 
+
+# ═══════════════ İP-3: yetki / kişisel veri / hesap güvenliği ═══════════════
+
+
+@pytest.fixture
+async def ip3(pg):
+    """Gerçek roller + gerçek ilişkiler fabrikası (bkz. `ip3_factory.py`)."""
+    from tests.integration.ip3_factory import IP3Fabrika
+
+    f = IP3Fabrika()
+    try:
+        yield f
+    finally:
+        await f.cleanup()
+
+
+@pytest.fixture
+async def http():
+    """GERÇEK FastAPI uygulaması — gerçek yetki çözümü + hata eşlemesi.
+
+    Servis fonksiyonunu doğrudan çağıran bir test HTTP yetki kanıtı DEĞİLDİR:
+    dependency zinciri (rol → onay durumu → izin), gövde doğrulaması ve
+    exception→status eşlemesi yalnız gerçek istekle görünür. Taşıyıcı
+    `httpx.ASGITransport` — uygulama testin event loop'unda koşar (asyncpg
+    bağlantıları loop'a bağlıdır).
+    """
+    import httpx
+
+    from main import app
+
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app), base_url="http://ip3.test"
+    ) as c:
+        yield c
+
 # ═════════════ Tek kullanımlık test veritabanı + hijyen nöbetçisi ═════════════
 #
 # 30 Tem 2026'ya kadar bu testler geliştirme veritabanına (`ceyhandb`) karşı
