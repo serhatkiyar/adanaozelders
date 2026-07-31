@@ -482,7 +482,16 @@ class StockDamageEvent(Base):
             name="ck_stock_damage_events_note",
         ),
         Index("ix_stock_damage_events_product", "product_id", text("id DESC")),
-        Index("uq_stock_damage_events_idem", "idempotency_key", unique=True),
+        # Kapsam **AKTÖR BAZLI**: idempotency anahtarı isteği gönderenin kendi
+        # alanıdır, küresel bir isim alanı değil. İki yönetici aynı metni
+        # ("gunluk-hasar-1") bağımsız kullanabilir; aynı yöneticinin aynı
+        # anahtarı farklı ürün/miktar/tür için kullanması çatışmadır.
+        Index(
+            "uq_stock_damage_events_idem",
+            "actor_admin_id",
+            "idempotency_key",
+            unique=True,
+        ),
     )
 
 

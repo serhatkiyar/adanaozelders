@@ -48,6 +48,7 @@ from typing import Any, Sequence
 
 from fastapi import HTTPException, status
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from models.inventory import DAMAGE_REASONS, DamageEventKind, StockDamageEvent
@@ -75,15 +76,39 @@ _ISLEM: dict[str, tuple[str, str | None, StockMovementType]] = {
     ),
 }
 
-#: Aynı anahtarla gelen isteğin "aynı iş" sayılması için eşleşmesi gereken
-#: alanlar. `note` bilinçli olarak DIŞARIDA: açıklamanın yazımını düzeltmek
-#: işi değiştirmez, ama miktarı ya da kovayı değiştirmek değiştirir.
+#: Idempotency **KAPSAMI**: `(actor_admin_id, idempotency_key)`.
+#:
+#: Anahtar isteği gönderenin kendi alanıdır, küresel bir isim alanı değil. İki
+#: yönetici aynı metni bağımsız kullanabilir; DB garantisi
+#: `uq_stock_damage_events_idem` (aktör + anahtar) composite unique index'idir.
+IDEMPOTENCY_SCOPE: tuple[str, ...] = ("actor_admin_id", "idempotency_key")
+
+#: Kapsamı DB'de zorlayan composite unique index. Savepoint içinde yakalanan
+#: `IntegrityError` YALNIZ bu index'e aitse idempotency çatışması sayılır.
+IDEMPOTENCY_INDEX = "uq_stock_damage_events_idem"
+
+#: Aynı kapsamda gelen isteğin "aynı iş" sayılması için eşleşmesi gereken
+#: alanlar.
+#:
+#: `note` **koşullu** olarak dâhildir (`_payload`): `reason_code='DIGER'` iken
+#: not açıklamanın TAMAMIDIR — gerekçe kodu hiçbir şey anlatmaz, anlamı not
+#: taşır (DB'de de zorunlu: `ck_stock_damage_events_note`). Aynı anahtarla
+#: farklı bir `DIGER` açıklaması göndermek **başka bir iştir**, sessiz replay
+#: değil. Diğer gerekçelerde not payload'ın DIŞINDADIR: bu durumda replay
+#: mevcut olayı olduğu gibi döndürür ve **yeni not sessizce yazılmaz** (olay
+#: append-only'dir; açıklama düzeltmesi yeni bir iş talebi gerektirir).
+#: `actor_admin_id` bu listede DEĞİLDİR ve olmamalıdır: aktör karşılaştırması
+#: **kapsamın kendisidir** (`_kapsamda_olay` yalnız aynı aktörün kaydını arar,
+#: DB'de `uq_stock_damage_events_idem` bunu zorlar). Payload'a da koymak, hiçbir
+#: koşulda farklı olamayacak bir alanı karşılaştırmak olurdu — mutasyon
+#: provasında ölü olduğu görüldü ve kaldırıldı.
 IDEMPOTENCY_PAYLOAD_FIELDS: tuple[str, ...] = (
     "product_id",
     "kind",
     "qty",
     "source_bucket",
     "reason_code",
+    "note",
 )
 
 
@@ -134,15 +159,25 @@ def _dogrula(qty: Any, reason_code: str, note: str | None) -> int:
 
 
 def _payload(
-    *, product_id: int, kind: str, qty: int, source_bucket: str, reason_code: str
+    *,
+    product_id: int,
+    kind: str,
+    qty: int,
+    source_bucket: str,
+    reason_code: str,
+    note: str | None,
 ) -> dict[str, Any]:
-    return {
+    spec: dict[str, Any] = {
         "product_id": product_id,
         "kind": kind,
         "qty": qty,
         "source_bucket": source_bucket,
         "reason_code": reason_code,
     }
+    # `DIGER`'de anlam notta durur → semantik payload'ın parçası.
+    if reason_code == "DIGER":
+        spec["note"] = (note or "").strip()
+    return spec
 
 
 def payload_differences(
@@ -151,8 +186,12 @@ def payload_differences(
     """Kayıtlı olay ile gelen isteğin çelişen alanları."""
     farklar: dict[str, tuple[Any, Any]] = {}
     for alan in IDEMPOTENCY_PAYLOAD_FIELDS:
+        if alan not in spec:
+            continue          # `note` yalnız `DIGER`'de karşılaştırılır
         eski = getattr(existing, alan, None)
-        yeni = spec.get(alan)
+        if alan == "note":
+            eski = (eski or "").strip()
+        yeni = spec[alan]
         if eski != yeni:
             farklar[alan] = (eski, yeni)
     return farklar
@@ -168,6 +207,53 @@ async def _bakiye(db: AsyncSession, product_id: int, bucket: str) -> int:
             "işlemi yapılamaz",
         )
     return int((urun.stock if bucket == SALEABLE else urun.damaged_stock) or 0)
+
+
+async def _kapsamda_olay(
+    db: AsyncSession, admin_id: int, idempotency_key: str
+) -> StockDamageEvent | None:
+    """Idempotency KAPSAMI: `(actor_admin_id, idempotency_key)`.
+
+    Yalnız anahtara bakmak, iki yöneticinin aynı metni kullanmasını çatışma
+    sayardı; anahtar isteği gönderenin kendi alanıdır.
+    """
+    return (
+        await db.execute(
+            select(StockDamageEvent).where(
+                StockDamageEvent.actor_admin_id == admin_id,
+                StockDamageEvent.idempotency_key == idempotency_key,
+            )
+        )
+    ).scalars().first()
+
+
+async def _replay_veya_catisma(
+    db: AsyncSession,
+    onceki: StockDamageEvent,
+    spec: dict[str, Any],
+    adet: int,
+    kaynak: str,
+    hedef: str | None,
+    hareket_turu: StockMovementType,
+    reason_code: str,
+    note: str | None,
+    admin_id: int,
+) -> StockDamageEvent:
+    """Kapsamda kayıtlı olay varsa: aynı iş → replay, farklı iş → 409."""
+    farklar = payload_differences(onceki, spec)
+    if farklar:
+        raise _hata(
+            status.HTTP_409_CONFLICT,
+            "aynı idempotency anahtarı farklı bir hasar işlemiyle kullanılmış: "
+            f"{farklar}",
+        )
+    # Defter anahtarları olay kimliğinden türediği için yeniden uygulamak
+    # replay'dir: yeni satır yazılmaz, yarım kalmış bacak varsa tamamlanır.
+    await _defter_yaz(
+        db, onceki, int(onceki.qty), onceki.source_bucket, hedef,
+        hareket_turu, onceki.reason_code, onceki.note, onceki.actor_admin_id,
+    )
+    return onceki
 
 
 async def _uygula(
@@ -214,29 +300,15 @@ async def _uygula(
 
     spec = _payload(
         product_id=product_id, kind=kind, qty=adet,
-        source_bucket=kaynak, reason_code=reason_code,
+        source_bucket=kaynak, reason_code=reason_code, note=note,
     )
     if idempotency_key:
-        onceki = (
-            await db.execute(
-                select(StockDamageEvent).where(
-                    StockDamageEvent.idempotency_key == idempotency_key
-                )
-            )
-        ).scalars().first()
+        onceki = await _kapsamda_olay(db, admin_id, idempotency_key)
         if onceki is not None:
-            farklar = payload_differences(onceki, spec)
-            if farklar:
-                raise _hata(
-                    status.HTTP_409_CONFLICT,
-                    f"aynı idempotency anahtarı farklı bir hasar işlemiyle "
-                    f"kullanılmış: {farklar}",
-                )
-            # Aynı anahtar + aynı iş → REPLAY. Hareketler zaten yazılmış olsa da
-            # olmasa da deterministik anahtarlar sayesinde tek kez uygulanır.
-            await _defter_yaz(db, onceki, adet, kaynak, hedef, hareket_turu,
-                               reason_code, note, admin_id)
-            return onceki
+            return await _replay_veya_catisma(
+                db, onceki, spec, adet, kaynak, hedef, hareket_turu,
+                reason_code, note, admin_id,
+            )
 
     if mevcut < adet:
         raise _hata(
@@ -255,9 +327,43 @@ async def _uygula(
         actor_admin_id=admin_id,
         idempotency_key=idempotency_key,
     )
-    db.add(olay)
-    # Defter anahtarları olayın KİMLİĞİNDEN türer → önce flush.
-    await db.flush()
+    # ── Yarışa dayanıklı yazım: SAVEPOINT ──
+    #
+    # Yukarıdaki `SELECT` commit EDİLMEMİŞ satırı göremez; iki eşzamanlı istek
+    # (özellikle FARKLI ürünlerde — ürün kilidi onları serileştirmez) ikisi de
+    # "kayıt yok" görüp INSERT'e gider. Gerçek garanti
+    # `uq_stock_damage_events_idem` composite unique index'idir.
+    #
+    # INSERT savepoint içinde yapılır: ihlal hâlinde YALNIZ savepoint geri alınır,
+    # dış transaction kullanılabilir kalır ve çağırana ham `IntegrityError` (yani
+    # 500) yerine kontrollü replay/409 döner. Savepoint olmasaydı transaction
+    # "aborted" duruma düşer ve sonraki her ifade `InFailedSqlTransaction` alırdı.
+    try:
+        async with db.begin_nested():
+            db.add(olay)
+            await db.flush()      # anahtarlar olayın KİMLİĞİNDEN türer
+    except IntegrityError as exc:
+        # Savepoint geri alındığında SQLAlchemy nesneyi session'dan zaten
+        # düşürmüş olabilir; `expunge` o hâlde hata verir.
+        try:
+            db.expunge(olay)
+        except Exception:  # noqa: BLE001 - nesne zaten session'da değil
+            pass
+        # YALNIZ idempotency tekilliği çatışması bu yolda çözülür. FK ihlali
+        # (uydurma aktör) ya da CHECK ihlali "aynı iş tekrar geldi" DEĞİLDİR;
+        # onu 409'a çevirmek gerçek bir veri hatasını gizlerdi.
+        if not idempotency_key or IDEMPOTENCY_INDEX not in str(exc.orig or exc):
+            raise
+        onceki = await _kapsamda_olay(db, admin_id, idempotency_key)
+        if onceki is None:
+            raise _hata(
+                status.HTTP_409_CONFLICT,
+                "hasar olayı yazılamadı (eşzamanlı çatışma); isteği tekrarlayın",
+            )
+        return await _replay_veya_catisma(
+            db, onceki, spec, adet, kaynak, hedef, hareket_turu,
+            reason_code, note, admin_id,
+        )
 
     await _defter_yaz(db, olay, adet, kaynak, hedef, hareket_turu,
                        reason_code, note, admin_id)
