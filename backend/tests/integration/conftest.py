@@ -407,6 +407,18 @@ async def _test_veritabani():
             )
         from core.seed import seed_admin, seed_roles
 
+        # `seed_admin`, ADMIN_EMAIL/ADMIN_PASSWORD boşsa SESSİZCE hiçbir şey
+        # yapmaz. Bu iki ayarın varsayılanı `None` olduğundan (ve CI'da .env
+        # yoktur) paket, yönetici satırı bekleyen 157 testte "seed admin yok"
+        # ile toptan kırılıyordu — yerelde `.env`'i olan geliştiricide ise
+        # geçiyordu, yani sorun ancak CI'da görülecekti.
+        #
+        # Testin fikstürü bir dağıtım ayarına bağlı olmamalı: değer yoksa
+        # test değeri konur. Ayarlı bir ortam (yerel .env) ezilmez.
+        if not (settings.ADMIN_EMAIL and settings.ADMIN_PASSWORD):
+            settings.ADMIN_EMAIL = "ci-admin@test.local"
+            settings.ADMIN_PASSWORD = "ci-admin-parola"
+
         async with AsyncSessionLocal() as sess:
             await seed_roles(sess)
             await seed_admin(sess)
