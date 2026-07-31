@@ -65,6 +65,7 @@ from models.store import (
     StockMovement,
     StockMovementType,
 )
+from models.inventory import COUNT_ADJUSTMENT_REASONS, DAMAGE_REASONS
 
 logger = logging.getLogger("adana.stock")
 
@@ -242,7 +243,27 @@ _SYSTEM_REASONS: dict[StockMovementType, frozenset[str]] = {
     StockMovementType.SALE: frozenset({"ORDER_PAID"}),
     StockMovementType.SALE_CANCEL: frozenset({"ORDER_CANCELLED", "ORDER_REFUNDED"}),
     StockMovementType.RETURN: frozenset({"RETURN_ACCEPTED"}),
+    # F29 — sayım ve hasarlı stok. Sözlükler `models/inventory.py`'de ve
+    # `ADMIN_ADJUSTMENT_REASONS`'tan AYRI: elle düzeltmenin gerekçeleriyle
+    # sayım/hasar gerekçeleri farklı iş kavramlarıdır.
+    StockMovementType.COUNT_ADJUSTMENT: COUNT_ADJUSTMENT_REASONS,
+    StockMovementType.DAMAGE_TRANSFER: DAMAGE_REASONS,
+    StockMovementType.DAMAGE_RECOVERY: DAMAGE_REASONS,
+    StockMovementType.DAMAGE_DISPOSAL: DAMAGE_REASONS,
+    StockMovementType.SUPPLIER_RETURN: DAMAGE_REASONS,
 }
+
+#: `DIGER` gerekçesinde açıklama notu ZORUNLU olan türler. `DIGER` tek başına
+#: hiçbir şey açıklamaz; DB'de `ck_stock_movements_note` de aynı kuralı zorlar.
+_NOTE_REQUIRED_FOR_DIGER = frozenset(
+    {
+        StockMovementType.ADMIN_ADJUSTMENT,
+        StockMovementType.DAMAGE_TRANSFER,
+        StockMovementType.DAMAGE_RECOVERY,
+        StockMovementType.DAMAGE_DISPOSAL,
+        StockMovementType.SUPPLIER_RETURN,
+    }
+)
 
 
 def validate_reason(
@@ -270,6 +291,9 @@ def validate_reason(
             f"{tip.value} için geçersiz gerekçe kodu: {reason_code!r} "
             f"(geçerli: {sorted(izinli)})"
         )
+    if reason_code == "DIGER" and tip in _NOTE_REQUIRED_FOR_DIGER:
+        if not (note or "").strip():
+            raise ValueError("'DIGER' gerekçesinde açıklama notu zorunlu")
 
 
 # ═══════════════════ Idempotency anahtarları (saf) ═══════════════════
@@ -386,8 +410,12 @@ def _require(**alanlar: Any) -> None:
 #: Idempotency payload karşılaştırmasına giren TÜM alanlar. `reason_code` ve
 #: aktör de dâhil: aynı anahtarla farklı bir gerekçe veya farklı bir aktör
 #: gelmesi de bir çelişkidir.
+#: `bucket` de dâhildir (F29): aynı anahtarla gelen bir istek yalnız kovada
+#: farklıysa bu **çelişkidir**, sessiz bir replay değil — aksi hâlde bir hasar
+#: transferinin iki bacağından biri diğerinin kaydını "aynı işlem" sanardı.
 IDEMPOTENCY_PAYLOAD_FIELDS: tuple[str, ...] = (
     "product_id",
+    "bucket",
     "qty_delta",
     "movement_type",
     "reason_code",
@@ -510,23 +538,20 @@ def _normalize_spec(spec: Mapping[str, Any], *, allow_keyless: bool) -> dict[str
             "değişim yoksa defter çağrılmamalıdır"
         )
 
-    # Kova YAPISAL bir alandır → gerekçe/aktör doğrulamalarından ÖNCE gelir.
-    # Modelde ve DB'de varsayılanı YOKTUR (bkz. `StockMovement.bucket`); kanonik
-    # değeri burada, tek yerde kurulur ve `_write_one` onu satıra AÇIKÇA yazar.
-    # Çağıran belirtmezse satılabilir kova varsayılır — bu bir tahmin değil,
-    # defterin bugünkü bütün yazıcılarının anlamıdır.
-    bucket = str(spec.get("bucket") or StockBucket.SALEABLE.value)
+    # Kova YAPISAL bir alandır → gerekçe/aktör doğrulamalarından ÖNCE gelir ve
+    # **ZORUNLUDUR**. Sessiz `None → SALEABLE` varsayımı bilinçli olarak
+    # KALDIRILDI: kovayı yazmayı unutan yeni bir çağıran (ör. hasar servisi)
+    # sessizce satılabilir kovayı bozardı. Eksik kova bir domain doğrulama
+    # hatasıdır; DB tarafında da varsayılan yoktur (`f29a_bucket_default_kaldir`).
+    ham_kova = spec.get("bucket")
+    if ham_kova in (None, ""):
+        raise ValueError(
+            "stok hareketi `bucket` olmadan yazılamaz "
+            f"(geçerli: {sorted(b.value for b in StockBucket)})"
+        )
+    bucket = ham_kova.value if isinstance(ham_kova, StockBucket) else str(ham_kova)
     if bucket not in {b.value for b in StockBucket}:
         raise ValueError(f"geçersiz bucket: {bucket!r}")
-    if bucket == StockBucket.DAMAGED.value:
-        # GEÇİCİ (F29 commit 4'te kalkar): `qty_after` zinciri ve
-        # `products.stock` yazımı henüz kova boyutunu bilmiyor; DAMAGED bir
-        # hareket bugün satılabilir bakiyeyi bozardı. Sessizce yanlış
-        # yazmaktansa açıkça reddedilir.
-        raise ValueError(
-            "DAMAGED kovası, defter servisi kova boyutunu kazanana kadar "
-            "yazılamaz (F29 commit 4)"
-        )
 
     reason_code = spec.get("reason_code")
     note = spec.get("note")
@@ -655,17 +680,50 @@ def _replay(
     return [existing[spec["idempotency_key"]] for spec in specs]
 
 
+def _bucket_balance(product: Product, bucket: str) -> int:
+    """Kovanın **o andaki** bakiyesi (kilit altındaki ürün nesnesinden).
+
+    İki kova iki AYRI kolonda durur; bu yüzden zincirleri de birbirinden
+    bağımsızdır. Bir kovadaki hareket diğerinin `qty_after` değerini
+    etkileyemez — matematiksel olarak ayrı iki defterdir, aynı ürünü
+    paylaşırlar.
+    """
+    if bucket == StockBucket.DAMAGED.value:
+        if product.damaged_stock is None:
+            # `ck_products_damaged_pairing` bunu imkânsız kılar (stok
+            # izleniyorsa hasarlı da izlenir); yine de sessizce 0 varsaymayız —
+            # o, bozuk bir değişmezi gizlemek olurdu.
+            raise StockNotTracked(product.id)
+        return int(product.damaged_stock)
+    return int(product.stock)
+
+
+def _set_bucket_balance(product: Product, bucket: str, value: int) -> None:
+    if bucket == StockBucket.DAMAGED.value:
+        product.damaged_stock = value
+    else:
+        product.stock = value
+
+
 def _write_one(db: AsyncSession, product: Product, spec: Mapping[str, Any]) -> StockMovement:
-    """Tek hareketi kilit altında yazar. `qty_after` = gerçekten yazılan stok."""
+    """Tek hareketi kilit altında yazar. `qty_after` = kovaya yazılan bakiye.
+
+    `products.stock` ve `products.damaged_stock` kolonları AYRI güncellenir;
+    hangisinin güncelleneceğini `spec["bucket"]` söyler.
+    """
     if product.stock is None:
+        # Takip semantiği kova bazlı DEĞİL ürün bazlıdır: dijital üründe hiçbir
+        # kova izlenmez (`ck_products_damaged_pairing`).
         raise StockNotTracked(product.id)
-    yeni = product.stock + spec["qty_delta"]
+    bucket = spec["bucket"]
+    mevcut = _bucket_balance(product, bucket)
+    yeni = mevcut + spec["qty_delta"]
     if yeni < 0:
-        raise InsufficientStock(product.id, product.stock, spec["qty_delta"])
+        raise InsufficientStock(product.id, mevcut, spec["qty_delta"])
     mv = StockMovement(
         product_id=product.id,
         # AÇIKÇA verilir: kolonun ne ORM'de ne DB'de varsayılanı vardır.
-        bucket=spec["bucket"],
+        bucket=bucket,
         qty_delta=spec["qty_delta"],
         qty_after=yeni,
         movement_type=spec["movement_type"].value,
@@ -680,8 +738,8 @@ def _write_one(db: AsyncSession, product: Product, spec: Mapping[str, Any]) -> S
         request_id=spec["request_id"],
     )
     db.add(mv)
-    # Aynı değişkenden: qty_after ile yazılan stok tanım gereği eşittir.
-    product.stock = yeni
+    # Aynı değişkenden: qty_after ile yazılan kova bakiyesi tanım gereği eşittir.
+    _set_bucket_balance(product, bucket, yeni)
     return mv
 
 
@@ -691,6 +749,13 @@ def _write_order(specs: Sequence[Mapping[str, Any]]) -> list[int]:
     Aynı ürüne birden çok hareket varsa bunlar ardışık işlenir ve `qty_after`
     zincir hâlinde hesaplanır (ürün nesnesi kilit altında mutasyona uğradığı
     için zincirleme doğal olarak kurulur).
+
+    **Kova sıralamaya GİRMEZ ve girmemelidir.** İki kovanın bakiyesi iki ayrı
+    kolonda durduğundan zincirleri de kendiliğinden bağımsızdır; kovayı anahtara
+    eklemek yalnız satır kimliklerinin sırasını değiştirirdi. Bir hasar
+    transferinin iki bacağı böylece **girildikleri sırada** yazılır — önce
+    kaynak kovadan çıkış, sonra hedef kovaya giriş — ki defteri okuyan insan
+    için doğal sıra budur.
     """
     return sorted(range(len(specs)), key=lambda i: (specs[i]["product_id"], i))
 
@@ -785,9 +850,10 @@ async def apply_movement(
     qty_delta: int,
     movement_type: StockMovementType | str,
     reason_code: str,
-    #: Kova. Belirtilmezse satılabilir kova. Modelde ve DB'de varsayılan
-    #: YOKTUR; değeri `_normalize_spec` kurar ve `_write_one` açıkça yazar.
-    bucket: str | None = None,
+    #: ZORUNLU. Varsayılanı YOKTUR — ne burada, ne modelde, ne DB'de. Kovayı
+    #: vermeyi unutan bir çağıran `TypeError` alır (typecheck/çağrı anında),
+    #: ham SQL yazan bir çağıran ise NOT NULL ihlali alır.
+    bucket: StockBucket | str,
     ref_type: str | None = None,
     ref_id: int | None = None,
     ref_line_id: int | None = None,
@@ -861,6 +927,11 @@ PROBLEM_OPENING_NOT_FIRST = "OPENING_NOT_FIRST"
 PROBLEM_ZERO_DELTA = "ZERO_DELTA"
 PROBLEM_UNTRACKED_HAS_MOVEMENTS = "UNTRACKED_HAS_MOVEMENTS"
 
+#: Doğrulamanın gezdiği kovalar. Hareketi hiç olmayan kova da GEZİLİR: hasarlı
+#: bakiye sıfırdan farklıyken zincirin hiç olmaması tam olarak yakalanması
+#: gereken bulgudur (`STOCK_MISMATCH`, expected 0).
+_BUCKETS: tuple[str, ...] = (StockBucket.SALEABLE.value, StockBucket.DAMAGED.value)
+
 
 @dataclasses.dataclass(frozen=True, slots=True)
 class LedgerProblem:
@@ -877,10 +948,23 @@ class LedgerProblem:
     movement_id: int | None = None
     expected: int | None = None
     actual: int | None = None
+    #: Bulgunun ait olduğu kova. `None` = kovadan bağımsız (ör. stok takip
+    #: edilmeyen üründe hareket bulunması). Aynı ürünün iki kovası ayrı ayrı
+    #: bulgu üretebilir; kod aynı olsa bile hangi defterin bozuk olduğu
+    #: buradan okunur.
+    bucket: str | None = None
 
 
 @dataclasses.dataclass(frozen=True, slots=True)
 class LedgerVerification:
+    """Tek ürünün İKİ kovasının birlikte sonucu.
+
+    `current_stock`/`ledger_stock` **SATILABİLİR** kovayı anlatır (adları
+    bilinçli olarak korundu: mevcut şemalar, uçlar ve ekranlar bu adlara
+    bağlı). Hasarlı kova ayrı alanlarda; `movement_count` iki kovanın
+    TOPLAMIDIR.
+    """
+
     consistent: bool
     product_id: int
     current_stock: int | None
@@ -890,6 +974,9 @@ class LedgerVerification:
     movement_count: int
     sku: str | None = None
     product_title: str | None = None
+    #: Hasarlı kova (F29). Stok takip edilmeyen üründe ikisi de `None`.
+    current_damaged_stock: int | None = None
+    ledger_damaged_stock: int | None = None
 
 
 @dataclasses.dataclass(frozen=True, slots=True)
@@ -931,9 +1018,13 @@ async def verify_ledger(db: AsyncSession, product_id: int) -> LedgerVerification
                 StockMovement.qty_delta,
                 StockMovement.qty_after,
                 StockMovement.movement_type,
+                StockMovement.bucket,
             )
+            # Kova zincirleri BAĞIMSIZ doğrulandığı için sıralama
+            # `(bucket, id)`: index `(product_id, bucket, created_at DESC,
+            # id DESC)` ile aynı önekten yararlanır.
             .where(StockMovement.product_id == product_id)
-            .order_by(StockMovement.id)
+            .order_by(StockMovement.bucket, StockMovement.id)
         )
     ).all()
 
@@ -969,29 +1060,19 @@ async def verify_ledger(db: AsyncSession, product_id: int) -> LedgerVerification
             product_title=product.title,
         )
 
-    # Açılış bakiyesi kuralları.
-    acilislar = [r for r in rows if r[3] == StockMovementType.OPENING_BALANCE.value]
-    if len(acilislar) > 1:
-        problems.append(
-            _p(
-                PROBLEM_OPENING_DUPLICATE,
-                f"{len(acilislar)} adet açılış bakiyesi var (en çok bir olmalı)",
-                movement_id=acilislar[1][0],
-                expected=1,
-                actual=len(acilislar),
-            )
-        )
-    if acilislar and rows and acilislar[0][0] != rows[0][0]:
-        problems.append(
-            _p(
-                PROBLEM_OPENING_NOT_FIRST,
-                "açılış bakiyesi zincirin ilk satırı değil",
-                movement_id=acilislar[0][0],
-                expected=rows[0][0],
-                actual=acilislar[0][0],
-            )
-        )
-    for satir_id, delta, _after, tip in rows:
+    # ── Kova bazlı doğrulama ──
+    #
+    # İki kova İKİ AYRI DEFTERDİR. Her biri kendi zincirini, kendi açılış
+    # bakiyesi kuralını ve kendi son-bakiye karşılaştırmasını taşır. Bir
+    # kovadaki kopukluk diğerini bozuk göstermez.
+    bakiye_kolonu = {
+        StockBucket.SALEABLE.value: int(product.stock),
+        StockBucket.DAMAGED.value: int(product.damaged_stock or 0),
+    }
+    defter_bakiye: dict[str, int] = {}
+    ilk_sapan: list[int] = []
+
+    for satir_id, delta, _after, tip, kova in rows:
         if delta == 0 and tip != StockMovementType.OPENING_BALANCE.value:
             problems.append(
                 _p(
@@ -1000,45 +1081,86 @@ async def verify_ledger(db: AsyncSession, product_id: int) -> LedgerVerification
                     movement_id=satir_id,
                     expected=None,
                     actual=0,
+                    bucket=kova,
                 )
             )
 
-    # Zincir + son bakiye.
-    zincir = verify_chain([(r[0], r[1], r[2]) for r in rows], product.stock)
-    defter_stok = rows[-1][2] if rows else 0
-    if not zincir.consistent:
+    for kova, mevcut in bakiye_kolonu.items():
+        kova_satirlari = [r for r in rows if r[4] == kova]
+
+        # Açılış bakiyesi kuralları — kova BAŞINA.
+        acilislar = [
+            r for r in kova_satirlari
+            if r[3] == StockMovementType.OPENING_BALANCE.value
+        ]
+        if len(acilislar) > 1:
+            problems.append(
+                _p(
+                    PROBLEM_OPENING_DUPLICATE,
+                    f"{kova} kovasında {len(acilislar)} adet açılış bakiyesi var "
+                    "(en çok bir olmalı)",
+                    movement_id=acilislar[1][0],
+                    expected=1,
+                    actual=len(acilislar),
+                    bucket=kova,
+                )
+            )
+        if acilislar and kova_satirlari and acilislar[0][0] != kova_satirlari[0][0]:
+            problems.append(
+                _p(
+                    PROBLEM_OPENING_NOT_FIRST,
+                    f"{kova} kovasında açılış bakiyesi zincirin ilk satırı değil",
+                    movement_id=acilislar[0][0],
+                    expected=kova_satirlari[0][0],
+                    actual=acilislar[0][0],
+                    bucket=kova,
+                )
+            )
+
+        # Zincir + son bakiye. Hareketi olmayan kovada defter bakiyesi 0'dır;
+        # `verify_chain` "hareket yok + bakiye 0" hâlini GEÇERLİ, "hareket yok +
+        # bakiye <> 0" hâlini bulgu sayar — hasarlı kovanın boş doğması budur.
+        zincir = verify_chain([(r[0], r[1], r[2]) for r in kova_satirlari], mevcut)
+        defter_bakiye[kova] = kova_satirlari[-1][2] if kova_satirlari else 0
+        if zincir.consistent:
+            continue
         if zincir.first_divergent_id is not None:
+            ilk_sapan.append(zincir.first_divergent_id)
             problems.append(
                 _p(
                     PROBLEM_CHAIN_BREAK,
-                    "zincir kopuk: hareketin sonuç bakiyesi bir öncekiyle "
-                    "tutmuyor",
+                    f"{kova} kovasında zincir kopuk: hareketin sonuç bakiyesi "
+                    "bir öncekiyle tutmuyor",
                     movement_id=zincir.first_divergent_id,
                     expected=zincir.expected,
                     actual=zincir.actual,
+                    bucket=kova,
                 )
             )
         else:
             problems.append(
                 _p(
                     PROBLEM_STOCK_MISMATCH,
-                    "defter son bakiyesi ürün stoğundan farklı "
-                    "(stok defter dışında değiştirilmiş)",
-                    expected=defter_stok,
-                    actual=product.stock,
+                    f"{kova} kovasının defter son bakiyesi ürün kolonundan farklı "
+                    "(bakiye defter dışında değiştirilmiş)",
+                    expected=defter_bakiye[kova],
+                    actual=mevcut,
+                    bucket=kova,
                 )
             )
 
     return LedgerVerification(
-        consistent=zincir.consistent and not problems,
+        consistent=not problems,
         product_id=product_id,
-        current_stock=product.stock,
-        ledger_stock=defter_stok,
-        first_divergent_id=zincir.first_divergent_id,
+        current_stock=int(product.stock),
+        ledger_stock=defter_bakiye[StockBucket.SALEABLE.value],
+        first_divergent_id=min(ilk_sapan) if ilk_sapan else None,
         problems=tuple(problems),
         movement_count=len(rows),
         sku=product.sku,
         product_title=product.title,
+        current_damaged_stock=int(product.damaged_stock or 0),
+        ledger_damaged_stock=defter_bakiye[StockBucket.DAMAGED.value],
     )
 
 
@@ -1069,13 +1191,17 @@ async def audit_products(
         ).scalars()
     }
 
+    # Üç toplu sorgu da `(product_id, bucket)` bazında gruplanır: iki kova iki
+    # ayrı defterdir ve `verify_ledger` de onları böyle doğrular. `GROUP BY`
+    # yalnız `product_id` kalsaydı, hasarlı kovanın hareketleri satılabilir
+    # zinciri sahte kopuk gösterirdi.
     ozet = {
-        r.product_id: r
+        (r.product_id, r.bucket): r
         for r in (
             await db.execute(
                 text(
                     """
-                    SELECT product_id,
+                    SELECT product_id, bucket,
                            count(*)                                   AS adet,
                            max(id)                                    AS son_id,
                            count(*) FILTER (
@@ -1088,7 +1214,7 @@ async def audit_products(
                                  AND movement_type <> 'OPENING_BALANCE') AS sifir
                     FROM stock_movements
                     WHERE product_id = ANY(:ids)
-                    GROUP BY product_id
+                    GROUP BY product_id, bucket
                     """
                 ),
                 {"ids": ids},
@@ -1096,54 +1222,55 @@ async def audit_products(
         ).all()
     }
     son_bakiye = {
-        r.product_id: r.qty_after
+        (r.product_id, r.bucket): r.qty_after
         for r in (
             await db.execute(
                 text(
                     """
-                    SELECT DISTINCT ON (product_id) product_id, qty_after
+                    SELECT DISTINCT ON (product_id, bucket)
+                           product_id, bucket, qty_after
                     FROM stock_movements
                     WHERE product_id = ANY(:ids)
-                    ORDER BY product_id, id DESC
+                    ORDER BY product_id, bucket, id DESC
                     """
                 ),
                 {"ids": ids},
             )
         ).all()
     }
-    kopukluk = {
-        r.product_id: r
-        for r in (
-            await db.execute(
-                text(
-                    """
-                    SELECT product_id, id, beklenen, qty_after AS gorulen
-                    FROM (
-                        SELECT product_id, id, qty_after,
-                               coalesce(lag(qty_after) OVER (
-                                   PARTITION BY product_id ORDER BY id), 0)
-                                 + qty_delta AS beklenen,
-                               row_number() OVER (
-                                   PARTITION BY product_id ORDER BY id) AS sira
-                        FROM stock_movements
-                        WHERE product_id = ANY(:ids)
-                    ) x
-                    WHERE qty_after <> beklenen
-                    ORDER BY product_id, id
-                    """
-                ),
-                {"ids": ids},
-            )
-        ).all()
-    }
+    kopukluk: dict[tuple[int, str], Any] = {}
+    for r in (
+        await db.execute(
+            text(
+                """
+                SELECT product_id, bucket, id, beklenen, qty_after AS gorulen
+                FROM (
+                    SELECT product_id, bucket, id, qty_after,
+                           coalesce(lag(qty_after) OVER (
+                               PARTITION BY product_id, bucket ORDER BY id), 0)
+                             + qty_delta AS beklenen
+                    FROM stock_movements
+                    WHERE product_id = ANY(:ids)
+                ) x
+                WHERE qty_after <> beklenen
+                ORDER BY product_id, bucket, id
+                """
+            ),
+            {"ids": ids},
+        )
+    ).all():
+        # İlk kopukluk kova başına: sonrakiler aynı sapmanın devamıdır.
+        kopukluk.setdefault((r.product_id, r.bucket), r)
 
     sonuc: list[LedgerVerification] = []
     for pid in ids:
         product = urunler.get(pid)
         if product is None:
             continue
-        o = ozet.get(pid)
-        adet = int(o.adet) if o else 0
+        kova_ozet = {
+            k: ozet[(pid, k)] for k in _BUCKETS if (pid, k) in ozet
+        }
+        adet = sum(int(o.adet) for o in kova_ozet.values())
         problems: list[LedgerProblem] = []
 
         def _p(code, message, **kw):
@@ -1153,11 +1280,12 @@ async def audit_products(
 
         if product.stock is None:
             if adet:
+                ilk = min(int(o.ilk_id) for o in kova_ozet.values())
                 problems.append(
                     _p(
                         PROBLEM_UNTRACKED_HAS_MOVEMENTS,
                         f"stok takip edilmeyen üründe {adet} hareket var",
-                        movement_id=int(o.ilk_id),
+                        movement_id=ilk,
                         expected=0,
                         actual=adet,
                     )
@@ -1168,77 +1296,102 @@ async def audit_products(
                     product_id=pid,
                     current_stock=None,
                     ledger_stock=None,
-                    first_divergent_id=int(o.ilk_id) if o else None,
+                    first_divergent_id=(
+                        min(int(o.ilk_id) for o in kova_ozet.values())
+                        if kova_ozet else None
+                    ),
                     problems=tuple(problems),
                     movement_count=adet,
                     sku=product.sku,
                     product_title=product.title,
+                    current_damaged_stock=None,
+                    ledger_damaged_stock=None,
                 )
             )
             continue
 
-        if o and int(o.acilis) > 1:
-            problems.append(
-                _p(
-                    PROBLEM_OPENING_DUPLICATE,
-                    f"{int(o.acilis)} adet açılış bakiyesi var (en çok bir olmalı)",
-                    expected=1,
-                    actual=int(o.acilis),
-                )
-            )
-        if o and o.acilis_id is not None and int(o.acilis_id) != int(o.ilk_id):
-            problems.append(
-                _p(
-                    PROBLEM_OPENING_NOT_FIRST,
-                    "açılış bakiyesi zincirin ilk satırı değil",
-                    movement_id=int(o.acilis_id),
-                    expected=int(o.ilk_id),
-                    actual=int(o.acilis_id),
-                )
-            )
-        if o and int(o.sifir):
-            problems.append(
-                _p(
-                    PROBLEM_ZERO_DELTA,
-                    f"{int(o.sifir)} harekette sıfır delta",
-                    expected=0,
-                    actual=int(o.sifir),
-                )
-            )
+        bakiye_kolonu = {
+            StockBucket.SALEABLE.value: int(product.stock),
+            StockBucket.DAMAGED.value: int(product.damaged_stock or 0),
+        }
+        defter_bakiye: dict[str, int] = {}
+        ilk_sapan: list[int] = []
 
-        kirik = kopukluk.get(pid)
-        defter_stok = int(son_bakiye.get(pid, 0))
-        if kirik is not None:
-            problems.append(
-                _p(
-                    PROBLEM_CHAIN_BREAK,
-                    "zincir kopuk: hareketin sonuç bakiyesi bir öncekiyle tutmuyor",
-                    movement_id=int(kirik.id),
-                    expected=int(kirik.beklenen),
-                    actual=int(kirik.gorulen),
+        for kova, mevcut in bakiye_kolonu.items():
+            o = kova_ozet.get(kova)
+            if o and int(o.acilis) > 1:
+                problems.append(
+                    _p(
+                        PROBLEM_OPENING_DUPLICATE,
+                        f"{kova} kovasında {int(o.acilis)} adet açılış bakiyesi var "
+                        "(en çok bir olmalı)",
+                        expected=1,
+                        actual=int(o.acilis),
+                        bucket=kova,
+                    )
                 )
-            )
-        elif defter_stok != int(product.stock):
-            problems.append(
-                _p(
-                    PROBLEM_STOCK_MISMATCH,
-                    "defter son bakiyesi ürün stoğundan farklı",
-                    expected=defter_stok,
-                    actual=int(product.stock),
+            if o and o.acilis_id is not None and int(o.acilis_id) != int(o.ilk_id):
+                problems.append(
+                    _p(
+                        PROBLEM_OPENING_NOT_FIRST,
+                        f"{kova} kovasında açılış bakiyesi zincirin ilk satırı değil",
+                        movement_id=int(o.acilis_id),
+                        expected=int(o.ilk_id),
+                        actual=int(o.acilis_id),
+                        bucket=kova,
+                    )
                 )
-            )
+            if o and int(o.sifir):
+                problems.append(
+                    _p(
+                        PROBLEM_ZERO_DELTA,
+                        f"{kova} kovasında {int(o.sifir)} harekette sıfır delta",
+                        expected=0,
+                        actual=int(o.sifir),
+                        bucket=kova,
+                    )
+                )
+
+            kirik = kopukluk.get((pid, kova))
+            defter_bakiye[kova] = int(son_bakiye.get((pid, kova), 0))
+            if kirik is not None:
+                ilk_sapan.append(int(kirik.id))
+                problems.append(
+                    _p(
+                        PROBLEM_CHAIN_BREAK,
+                        f"{kova} kovasında zincir kopuk: hareketin sonuç bakiyesi "
+                        "bir öncekiyle tutmuyor",
+                        movement_id=int(kirik.id),
+                        expected=int(kirik.beklenen),
+                        actual=int(kirik.gorulen),
+                        bucket=kova,
+                    )
+                )
+            elif defter_bakiye[kova] != mevcut:
+                problems.append(
+                    _p(
+                        PROBLEM_STOCK_MISMATCH,
+                        f"{kova} kovasının defter son bakiyesi ürün kolonundan "
+                        "farklı (bakiye defter dışında değiştirilmiş)",
+                        expected=defter_bakiye[kova],
+                        actual=mevcut,
+                        bucket=kova,
+                    )
+                )
 
         sonuc.append(
             LedgerVerification(
                 consistent=not problems,
                 product_id=pid,
                 current_stock=int(product.stock),
-                ledger_stock=defter_stok,
-                first_divergent_id=int(kirik.id) if kirik is not None else None,
+                ledger_stock=defter_bakiye[StockBucket.SALEABLE.value],
+                first_divergent_id=min(ilk_sapan) if ilk_sapan else None,
                 problems=tuple(problems),
                 movement_count=adet,
                 sku=product.sku,
                 product_title=product.title,
+                current_damaged_stock=int(product.damaged_stock or 0),
+                ledger_damaged_stock=defter_bakiye[StockBucket.DAMAGED.value],
             )
         )
     return sonuc
@@ -1305,6 +1458,10 @@ async def list_movements(
     *,
     product_id: int | None = None,
     sku: str | None = None,
+    #: Kova filtresi. `None` = **iki kovayı da göster** — varsayılan listenin
+    #: hasarlı hareketleri gizlemesi, defteri okuyan kişiye eksik bir gerçek
+    #: sunmak olurdu. Filtre yalnız operatör açıkça daraltmak istediğinde uygulanır.
+    bucket: str | None = None,
     movement_type: str | None = None,
     reason_code: str | None = None,
     actor_type: str | None = None,
@@ -1325,6 +1482,10 @@ async def list_movements(
     Ürün künyesi (`sku`, başlık) **join ile aynı sorguda** gelir; satır başına
     ürün çekmek N+1 üretirdi. Toplam istek maliyeti satır sayısından bağımsız
     **2 sorgudur** (sayım + sayfa).
+
+    Kova (`bucket`) her satırda `row.movement.bucket` olarak zaten döner;
+    `bucket` parametresi yalnız DARALTMA içindir ve varsayılanı `None`'dır —
+    yani liste öntanımlı olarak iki kovayı da dürüstçe gösterir.
     """
     limit = max(1, min(int(limit), LIST_MAX_LIMIT))
     offset = max(0, int(offset))
@@ -1334,6 +1495,10 @@ async def list_movements(
         kosullar.append(StockMovement.product_id == product_id)
     if sku:
         kosullar.append(Product.sku == sku)
+    if bucket:
+        if bucket not in _BUCKETS:
+            raise ValueError(f"geçersiz bucket: {bucket!r}")
+        kosullar.append(StockMovement.bucket == bucket)
     if movement_type:
         kosullar.append(StockMovement.movement_type == movement_type)
     if reason_code:

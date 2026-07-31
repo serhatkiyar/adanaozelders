@@ -205,6 +205,7 @@ async def _rebase(kaynak: str, apply: bool) -> dict[str, int]:
                     await stock_ledger.apply_movement(
                         s, r.id,
                         qty_delta=delta,
+                        bucket=stock_ledger.StockBucket.SALEABLE,
                         movement_type=stock_ledger.StockMovementType.ADMIN_ADJUSTMENT,
                         reason_code="HATALI_GIRIS",
                         actor_type="ADMIN",

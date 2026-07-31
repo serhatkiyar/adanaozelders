@@ -324,6 +324,7 @@ async def test_cift2_satis_ile_admin_duzeltmesi_serilesir(fab, tur, ters_baslat)
         try:
             await stock_ledger.apply_movement(
                 s, pid, qty_delta=-2,
+                bucket=stock_ledger.StockBucket.SALEABLE,
                 movement_type=StockMovementType.SALE,
                 reason_code="ORDER_PAID", ref_type="order", ref_id=771000 + tur,
                 idempotency_key=f"kilit:{_uniq()}:sale",
@@ -409,6 +410,7 @@ async def test_cift2b_bayat_kimlik_haritasi_uzerinden_delta_hesaplanmiyor(fab, t
         try:
             await stock_ledger.apply_movement(
                 s2, pid, qty_delta=-5,
+                bucket=stock_ledger.StockBucket.SALEABLE,
                 movement_type=StockMovementType.SALE,
                 reason_code="ORDER_PAID", ref_type="order", ref_id=774000 + tur,
                 idempotency_key=f"kilit:{_uniq()}:bayat",
@@ -450,6 +452,7 @@ async def test_cift3_satis_ile_tam_iade_geri_yuklemesi(fab, tur, ters_baslat):
         try:
             await stock_ledger.apply_movement(
                 s, b, qty_delta=-1,
+                bucket=stock_ledger.StockBucket.SALEABLE,
                 movement_type=StockMovementType.SALE,
                 reason_code="ORDER_PAID", ref_type="order", ref_id=772000 + tur,
                 idempotency_key=f"kilit:{_uniq()}:sale",
@@ -578,6 +581,7 @@ async def test_cift5_ayni_siparisin_retryi_ile_admin_duzeltmesi(fab, tur, ters_b
             try:
                 await stock_ledger.apply_movement(
                     s, pid, qty_delta=-5,
+                    bucket=stock_ledger.StockBucket.SALEABLE,
                     movement_type=StockMovementType.SALE,
                     reason_code="ORDER_PAID", ref_type="order", ref_id=773000 + tur,
                     idempotency_key=anahtar,

@@ -79,6 +79,7 @@ class ProductFactory:
             async with AsyncSessionLocal() as s:
                 await stock_ledger.apply_movement(
                     s, pid, qty_delta=stock,
+                    bucket=stock_ledger.StockBucket.SALEABLE,
                     movement_type=StockMovementType.INITIAL,
                     reason_code="PRODUCT_CREATE",
                     ref_type="product", ref_id=pid,
@@ -122,6 +123,9 @@ async def _count(product_id: int, **filtreler) -> int:
 async def _apply_in_own_tx(product_id: int, *, before=None, **kw):
     """Kendi session/transaction'ında uygular. `before` kilit ALINDIKTAN sonra
     beklemek için kullanılır (yarış penceresini deterministik yapar)."""
+    # F29: defter `bucket` ZORUNLU ister. Bu yardimci varsayilan olarak
+    # satilabilir kovayi verir; hasarli kova testleri onu ACIKCA gecer.
+    kw.setdefault("bucket", stock_ledger.StockBucket.SALEABLE)
     async with AsyncSessionLocal() as s:
         if before is not None:
             await before()
@@ -195,6 +199,7 @@ async def test_admin_duzeltmesi_ile_satis_ikisi_de_uygulanir(urun):
             mv = await stock_ledger.apply_movement(
                 s,
                 pid,
+                bucket=stock_ledger.StockBucket.SALEABLE,
                 qty_delta=-2,
                 movement_type=StockMovementType.SALE,
                 reason_code="ORDER_PAID",
@@ -215,6 +220,7 @@ async def test_admin_duzeltmesi_ile_satis_ikisi_de_uygulanir(urun):
             mv = await stock_ledger.apply_movement(
                 s,
                 pid,
+                bucket=stock_ledger.StockBucket.SALEABLE,
                 qty_delta=15,
                 movement_type=StockMovementType.ADMIN_ADJUSTMENT,
                 reason_code="TEDARIK",
@@ -259,6 +265,7 @@ async def test_iptal_ve_iade_yarisi_iki_gecerli_hareket_uretir(urun):
     sonuclar = await asyncio.gather(
         _apply_in_own_tx(
             pid,
+            bucket=stock_ledger.StockBucket.SALEABLE,
             qty_delta=2,
             movement_type=StockMovementType.SALE_CANCEL,
             reason_code="ORDER_CANCELLED",
@@ -268,6 +275,7 @@ async def test_iptal_ve_iade_yarisi_iki_gecerli_hareket_uretir(urun):
         ),
         _apply_in_own_tx(
             pid,
+            bucket=stock_ledger.StockBucket.SALEABLE,
             qty_delta=1,
             movement_type=StockMovementType.RETURN,
             reason_code="RETURN_ACCEPTED",
@@ -302,6 +310,7 @@ async def test_capraz_urunlu_iki_islem_deadlock_uretmez(urun, tur):
     def spec(order_id: int, pid: int) -> dict:
         return dict(
             product_id=pid,
+            bucket=stock_ledger.StockBucket.SALEABLE,
             qty_delta=-1,
             movement_type=StockMovementType.SALE,
             reason_code="ORDER_PAID",
@@ -377,6 +386,7 @@ async def test_stok_yetmezse_ikinci_satis_yetersiz_stokla_biter(urun):
 def _sale_spec(order_id: int, pid: int, qty: int = 1) -> dict:
     return dict(
         product_id=pid,
+        bucket=stock_ledger.StockBucket.SALEABLE,
         qty_delta=-qty,
         movement_type=StockMovementType.SALE,
         reason_code="ORDER_PAID",
@@ -488,6 +498,7 @@ async def test_bayat_kimlik_haritasinda_defter_tazeyi_gorur(urun):
         with pytest.raises(InsufficientStock):
             await stock_ledger.apply_movement(
                 a_session, pid, qty_delta=-3,
+                bucket=stock_ledger.StockBucket.SALEABLE,
                 movement_type=StockMovementType.SALE,
                 reason_code="ORDER_PAID", ref_type="order", ref_id=8902,
                 idempotency_key=f"order:8902:product:{pid}:SALE",
@@ -685,11 +696,13 @@ async def test_ayni_urune_batch_icinde_iki_hareket_zincirleniyor(urun):
     specs = [
         dict(
             product_id=pid, qty_delta=1, movement_type=StockMovementType.RETURN,
+            bucket=stock_ledger.StockBucket.SALEABLE,
             reason_code="RETURN_ACCEPTED", ref_type="order_return", ref_id=77,
             ref_line_id=s1, idempotency_key=f"return_line:{s1}:RETURN",
         ),
         dict(
             product_id=pid, qty_delta=2, movement_type=StockMovementType.RETURN,
+            bucket=stock_ledger.StockBucket.SALEABLE,
             reason_code="RETURN_ACCEPTED", ref_type="order_return", ref_id=77,
             ref_line_id=s2, idempotency_key=f"return_line:{s2}:RETURN",
         ),
@@ -710,6 +723,7 @@ async def test_ayni_urune_batch_icinde_dusum_ve_geri_yukleme_zincirleniyor(urun)
         _sale_spec(8921, pid, 2),                      # 2 -> 0
         dict(
             product_id=pid, qty_delta=5,
+            bucket=stock_ledger.StockBucket.SALEABLE,
             movement_type=StockMovementType.ADMIN_ADJUSTMENT,
             reason_code="TEDARIK", actor_type="ADMIN", actor_id=1,
             idempotency_key=f"test:{_uniq()}:tedarik",

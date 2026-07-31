@@ -351,6 +351,7 @@ async def test_w5_ayni_urune_ikinci_INITIAL_yazilamaz(fab):
         idempotency_key=f"product:{pid}:INITIAL",
         actor_type="ADMIN",
         actor_id=ADMIN_ID,
+        bucket=stock_ledger.StockBucket.SALEABLE,
     )
     for _ in range(2):
         async with AsyncSessionLocal() as s:

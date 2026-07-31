@@ -706,6 +706,9 @@ async def _finalize_paid(
                     {
                         "product_id": item.product_id,
                         "qty_delta": -item.quantity,
+                        # Satış SATILABİLİR kovadan düşer; kitap fiziksel olarak
+                        # hâlâ işletmededir (F29 §3 olay etkisi tablosu).
+                        "bucket": stock_ledger.StockBucket.SALEABLE,
                         "movement_type": stock_ledger.StockMovementType.SALE,
                         "reason_code": "ORDER_PAID",
                         "ref_type": "order",
@@ -1285,6 +1288,7 @@ async def _restock(db: AsyncSession, order: Order, *, reason_code: str) -> None:
             {
                 "product_id": item.product_id,
                 "qty_delta": kalan,
+                "bucket": stock_ledger.StockBucket.SALEABLE,
                 "movement_type": stock_ledger.StockMovementType.SALE_CANCEL,
                 "reason_code": reason_code,
                 "ref_type": "order_item",
@@ -1757,6 +1761,9 @@ async def _restock_items(db: AsyncSession, order: Order, ret: OrderReturn) -> No
             {
                 "product_id": item.product_id,
                 "qty_delta": adet,
+                # İade satılabilir kovaya geri yüklenir. Hasarlı gelen iadenin
+                # hasarlı kovaya alınması F29 hasar servisinin işidir.
+                "bucket": stock_ledger.StockBucket.SALEABLE,
                 "movement_type": stock_ledger.StockMovementType.RETURN,
                 "reason_code": "RETURN_ACCEPTED",
                 "ref_type": "order_return",

@@ -271,8 +271,11 @@ class TestPayloadDifferences:
 
     def test_karsilastirilan_alanlar_tam(self):
         # Karar 2 (rev. 3): actor ve reason_code da karşılaştırmaya girer.
+        # F29: `bucket` de girer — aynı anahtarla gelen ama kovası farklı bir
+        # istek çelişkidir, sessiz replay değil.
         assert IDEMPOTENCY_PAYLOAD_FIELDS == (
             "product_id",
+            "bucket",
             "qty_delta",
             "movement_type",
             "reason_code",

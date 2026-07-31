@@ -112,6 +112,9 @@ async def _movements(product_id: int) -> list[StockMovement]:
 
 async def _apply(product_id: int, **kw) -> StockMovement | None:
     """Tek transaction'da uygula ve commit et (çağıranın rolünü taklit eder)."""
+    # F29: defter `bucket` ZORUNLU ister. Bu yardimci varsayilan olarak
+    # satilabilir kovayi verir; hasarli kova testleri onu ACIKCA gecer.
+    kw.setdefault("bucket", stock_ledger.StockBucket.SALEABLE)
     async with AsyncSessionLocal() as s:
         mv = await stock_ledger.apply_movement(s, product_id, **kw)
         await s.commit()
@@ -604,20 +607,50 @@ async def test_defter_servisi_yazdigi_satira_SALEABLE_koyuyor(urun):
     assert kova == "SALEABLE"
 
 
-async def test_defter_servisi_DAMAGED_yazimini_SIMDILIK_reddediyor(urun):
-    """Commit 4'e kadar `qty_after` zinciri kova körü; DAMAGED bir hareket
-    satılabilir bakiyeyi bozardı. Sessizce yanlış yazmaktansa reddedilir.
-    Bu test commit 4'te bilinçli olarak KALDIRILACAK."""
+async def test_bucket_VERILMEYEN_cagri_TypeError_ile_kirilir(urun):
+    """Sessiz `None → SALEABLE` varsayımı kaldırıldı: kovayı vermeyi unutan
+    YENİ bir çağıran (ör. hasar servisi) çağrı anında kırılmalı, sessizce
+    satılabilir kovayı bozmamalı.
+
+    `TypeError` bilinçli: zorunlu keyword parametresi hem çalışma zamanında hem
+    tür denetiminde yakalanır; çalışma zamanı `ValueError`'ı yalnız o kod yolu
+    koştuğunda görünürdü.
+    """
     pid = await urun.product(stock=5)
-    with pytest.raises(ValueError, match="DAMAGED"):
+    with pytest.raises(TypeError):
         async with AsyncSessionLocal() as s:
             await stock_ledger.apply_movement(
                 s, pid, qty_delta=-1,
-                movement_type=StockMovementType.DAMAGE_TRANSFER,
-                reason_code="KIRIK", ref_type="damage_event", ref_id=1,
-                bucket="DAMAGED", idempotency_key=f"kova-red-{_uniq()}",
+                movement_type=StockMovementType.SALE,
+                reason_code="ORDER_PAID", ref_type="order", ref_id=1,
+                idempotency_key=f"kova-yok-{_uniq()}",
             )
     assert await _stock(pid) == 5
+
+
+async def test_apply_many_specinde_EKSIK_bucket_domain_hatasi_uretir(urun):
+    """Toplu yolda kova sözlükte gelir; eksikse **domain doğrulama hatası**
+    verilir ve hiçbir satır yazılmaz — otomatik doldurma YOK."""
+    pid = await urun.product(stock=5)
+    with pytest.raises(ValueError, match="bucket"):
+        async with AsyncSessionLocal() as s:
+            await stock_ledger.apply_many(
+                s,
+                [
+                    {
+                        "product_id": pid,
+                        "qty_delta": -1,
+                        "movement_type": StockMovementType.SALE,
+                        "reason_code": "ORDER_PAID",
+                        "ref_type": "order",
+                        "ref_id": 1,
+                        "idempotency_key": f"kova-yok-batch-{_uniq()}",
+                    }
+                ],
+            )
+            await s.commit()
+    assert await _stock(pid) == 5
+    assert await _movements(pid) == []
 
 
 async def test_idempotency_anahtari_unique(urun):

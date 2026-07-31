@@ -82,6 +82,7 @@ class Fabrika:
             return p.id
 
     async def hareket(self, pid: int, **kw) -> None:
+        kw.setdefault("bucket", stock_ledger.StockBucket.SALEABLE)
         async with AsyncSessionLocal() as s:
             await stock_ledger.apply_movement(s, pid, **kw)
             await s.commit()

@@ -583,6 +583,7 @@ async def create_product(
             db,
             p.id,
             qty_delta=int(payload.stock),
+            bucket=stock_ledger.StockBucket.SALEABLE,
             movement_type=stock_ledger.StockMovementType.INITIAL,
             reason_code="PRODUCT_CREATE",
             ref_type="product",
@@ -703,6 +704,7 @@ async def bulk_import_products(db: AsyncSession, admin: Admin, rows: list[dict])
                         db,
                         yeni.id,
                         qty_delta=int(ilk_stok),
+                        bucket=stock_ledger.StockBucket.SALEABLE,
                         movement_type=stock_ledger.StockMovementType.INITIAL,
                         reason_code="CSV_IMPORT",
                         ref_type="product",
@@ -870,6 +872,9 @@ async def update_product(
             db,
             p.id,
             qty_delta=stok_delta,
+            # Admin ürün formu YALNIZ satılabilir kovaya dokunur; hasarlı kova
+            # ancak hasar servisi üzerinden değişir (F29).
+            bucket=stock_ledger.StockBucket.SALEABLE,
             movement_type=stock_ledger.StockMovementType.ADMIN_ADJUSTMENT,
             reason_code=stok_gerekce,
             actor_type="ADMIN",

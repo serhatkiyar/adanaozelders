@@ -74,6 +74,8 @@ class Fabrika:
                 await stock_ledger.apply_movement(
                     s, pid,
                     qty_delta=stock,
+                    # F29 commit 4: defter `bucket`'i ZORUNLU ister.
+                    bucket=stock_ledger.StockBucket.SALEABLE,
                     movement_type=stock_ledger.StockMovementType.INITIAL,
                     reason_code="PRODUCT_CREATE",
                     ref_type="product", ref_id=pid,
@@ -173,6 +175,7 @@ class Fabrika:
                 await stock_ledger.apply_movement(
                     s, product_id,
                     qty_delta=-quantity,
+                    bucket=stock_ledger.StockBucket.SALEABLE,
                     movement_type=stock_ledger.StockMovementType.SALE,
                     reason_code="ORDER_PAID",
                     ref_type="order", ref_id=oid, ref_line_id=item_id,
