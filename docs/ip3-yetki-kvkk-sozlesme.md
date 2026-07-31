@@ -44,6 +44,59 @@ self-servis kayıt bu varsayımı geçersiz kılmıştır).
 doğru değil. Muafiyet ancak kütüphane ACTIVE ise (yani admin onayından geçmişse)
 savunulabilir; onaysız operatör her hâlde 1.1'e takılır.
 
+## 1b. Operatör yönetim uçları — aynı ACTIVE kapısı
+
+Önce "kapsam dışı" diye raporlanmıştı; **kapsama alındı**. §1 ve §2 ile aynı
+eksiklikten doğuyor: `api/deps.py::get_current_active_operator` tam bu iş için
+yazılmış ve docstring'i "Onaya bağlı yüzeyler bunu kullanmalı" diyor, ama
+**hiçbir router'da çağrılmıyor** — tüm kod tabanında tek geçtiği yer kendi
+tanımı. Yönetim uçları yalnız rol kontrolü + gövdedeki
+`_assert_can_manage(user, library_id)` ile korunuyor; ikisi de kütüphane
+durumuna bakmaz.
+
+Ölçülen üretim durumu (PENDING operatör, gerçek HTTP): operatör rolünü kabul
+eden **29 rotadan 17'si** kapı gerektiriyor ve hiçbirinde kapı yok. Deneme
+oturumu yönetim listesi ve çalışma rezervasyonu yönetimi **200**, kaynak
+uçları 404 (yani kapı gövdeye kopyalanmış ya da hiç yok), ödeme hesabı
+(`/libraries/admin/{id}/payout`) ve kazanç ekranı da açık.
+
+**Sözleşme.**
+
+1. ACTIVE olmayan her durumda (PENDING/REJECTED/HIDDEN **ve tanımlı olmayan
+   durumlar** — kapı allowlist'tir, fail-closed) yönetim uçları 403.
+2. Kütüphane silinmişse 404; operatör hesabı silinmişse 401.
+3. ACTIVE operatör yalnız kendi kütüphanesinin kaynaklarını yönetir.
+4. Yabancı kaynakta varlık sızmaz: bugün `_get_session_or_404` önce,
+   `_assert_can_manage` sonra çalıştığı için var olan yabancı oturum **403**,
+   olmayan **404** dönüyor — operatör id tarayarak "bu oturum var mı"
+   sorusunu cevaplayabiliyor. İkisi de 404 olmalı.
+5. Kapı ortak dependency'de verilir ve **gerçekten kablolanır**. Kapı endpoint
+   gövdesinden önce çalıştığı için onaysız operatör var olmayan bir kaynağa
+   istek attığında bile 403 alır.
+6. ACTIVE olmak cevap anahtarı hakkı vermez (§2 ile aynı; `PATCH` yanıtı da
+   `_session_out` döndürdüğü için ayrıca ölçülür).
+7. Yetkili admin aynı kaynaklara erişir ve anahtarı görür.
+
+**Kapının UYGULANMAYACAĞI yüzeyler (onboarding hakkı).** Onay beklemek
+kilitlenmek değildir: reddedilen başvuru profilini düzeltip yeniden
+gönderebilmelidir. Muaf tutulanlar dar bir liste — `GET /library-operators/me`,
+`POST /libraries/{id}/resubmit`, `GET /libraries/admin/{id}`,
+`PATCH /libraries/{id}` ve görsel yükleme uçları. Kazanç (`/earnings`) ve ödeme
+hesabı (`/payout`) bilinçli olarak **muaf değil**: onaylanmamış işletmenin para
+yüzeyi olmaz ve bunlar onboarding'i kilitlemez.
+
+**Not — kopyalanmış kontrol zaten var.** `library_exam_catalogs.py::_usable_viewer`
+ACTIVE kontrolünü doğru yapıyor, ama ortak dependency'yi kullanmadan **elle
+kopyalayarak**. Yani `/exam-catalogs/usable` davranış testinden geçer, yapısal
+testten geçmez. Bu, "kontrolü ortak yere taşı" maddesinin neden davranış
+testiyle yetinilmediğinin somut örneğidir; düzeltmede bu kopya da ortak
+dependency'ye indirgenmeli.
+
+**Not — yanlış katmandaki kısmi koruma.** `library_exam_service.create_session`
+ACTIVE'i kontrol edip **409** döndürüyor. Kapı dependency'ye taşınınca bu dal
+403'e düşer; servis içi kontrol tek kaynağa indirgenmeli (iki yerde iki farklı
+durum kodu, sözleşmeyi belirsizleştirir).
+
 ## 2. Deneme sınavı cevap anahtarı
 
 **Doğrulanan durum.** `library_exam_service._session_out` anahtarı role göre
@@ -168,29 +221,17 @@ ders/soru/mesaj bağlamından açılan `StudentProfile`.
 | Tutor hesap silme **500** üretiyor | **409** üretiyor (`IntegrityError` global handler'ı `core/exceptions.py`'de 409'a çeviriyor) | Bulgu geçerli (hesap silinemiyor), şiddet/tanı düzeltildi |
 | `/exam-sessions` public listesi anahtar sızdırıyor | Doğru, ama yalnız `starts_at >= now` **ve** `results_published_at` dolu oturumlarda (erteleme senaryosu). Operatör ve öğrenci yüzeylerinde tarih filtresi yok → oradaki sızıntı koşulsuz | Test bunu ayrı ayrı ölçüyor |
 
-## 8. Kapsam dışı kalan, bu iş sırasında görülenler
+## 8. Kapsam dışı — İP-3 ÜRETİM kapsamına ALINMAYAN teknik borç
 
-- `GET /exam-sessions/manage` ve kardeşleri operatörü `require_roles_or_admin_permission`
-  ile geçiriyor; `get_current_active_operator` (ACTIVE kapısı) **kullanılmıyor**.
-  Yani PENDING kütüphanenin operatörü kendi oturum yönetim yüzeylerine
-  erişebiliyor. İP-3 kapsamındaki mesajlaşma kapısıyla aynı kök sebep; ayrı
-  paket olarak ele alınmalı.
+Bunlar İP-3'ün üretim düzeltmesine dahil **değildir**; ayrı kayıt olarak
+bırakıldı: **TB-8** (CI seed admin eksikliği) ve **TB-7** (migration testi
+flaky) — `docs/teknik-borc.md`.
+
 - `ruff check .` bu dalda **56 hata** ile geliyor (İP-3 dosyaları temiz);
   CI'nın lint adımı bu hâliyle kırmızı olmalı. İP-0 (CI zemini) dalının işi.
-- **CI entegrasyon adımı büyük olasılıkla kırmızı.** `core/seed.py::seed_admin`
-  `ADMIN_EMAIL`/`ADMIN_PASSWORD` yoksa **sessizce no-op** olur;
-  `.github/workflows/ci.yml`'nin `env:` bloğunda ikisi de yok. Stok/envanter
-  entegrasyon testleri `admins.id = 1` varsaydığı için temiz bir test
-  veritabanında **157 test** FK ihlaliyle kırılıyor (yerelde ölçüldü: seed
-  admin'siz 157 failed / 364 passed, seed admin'le kırılma bu sebepten
-  kaynaklanmıyor). Sessiz no-op'un kendisi de bir kusur: seed edilemeyen admin
-  hiçbir yerde raporlanmıyor. İP-0'ın işi.
-- **Flaky test:** `test_stock_migration_pg.py::test_bos_veritabaninda_upgrade_head_calisir`
-  tam suite'in bir koşumunda kırıldı, aynı suite'in ikinci koşumunda ve tek
-  başına koşarken geçti (3 koşumda 1 kırılma). Test kendi tek kullanımlık
-  veritabanını `DROP`/`CREATE` edip `alembic`'i subprocess olarak koşuyor; en
-  olası sebep bu subprocess/DB yaşam döngüsündeki yarış. İP-3 değişikliğiyle
-  ilgisi yok (İP-3 yalnız test ekliyor), ama kaydedilmeden geçilmemeli.
+- **TB-8** — CI entegrasyon adımı seed admin'siz koşuyor; temiz veritabanında
+  157 test FK ihlaliyle kırılıyor. Ayrıntı ve ölçüm teknik borç defterinde.
+- **TB-7** — `test_stock_migration_pg` flaky (3 koşumda 1 kırılma).
 - `pydantic.EmailStr` `.test` TLD'sini reddediyor: `@…test` adresli bir hesap
   `/auth/password-reset/request` çağıramaz (422). Gerçek kullanıcıda görülmez;
   test fabrikasında bir tur kaybettirdi (bkz. `ip3_factory.py` başındaki not).

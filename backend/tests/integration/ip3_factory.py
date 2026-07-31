@@ -264,6 +264,31 @@ class IP3Fabrika:
         self.courier_account_ids.append(acc.id)
         return acc
 
+    # ── Durum değiştiriciler ────────────────────────────────────────────────
+    #
+    # Soft-delete UPDATE ile yapılır: ORM nesnesi teste ait session'dan
+    # koparılmış (`expunge`) olduğu için `merge` etmek bayat alanları geri
+    # yazma riski taşır — burada niyet tek bir kolonu değiştirmektir.
+
+    async def soft_delete_library(self, library: Library) -> None:
+        async with AsyncSessionLocal() as s:
+            await s.execute(
+                text("UPDATE libraries SET deleted_at = now() WHERE id = :i"),
+                {"i": library.id},
+            )
+            await s.commit()
+
+    async def soft_delete_operator(self, operator: LibraryOperator) -> None:
+        async with AsyncSessionLocal() as s:
+            await s.execute(
+                text(
+                    "UPDATE library_operators SET deleted_at = now(), "
+                    "is_active = false WHERE id = :i"
+                ),
+                {"i": operator.id},
+            )
+            await s.commit()
+
     # ── İlişkiler ───────────────────────────────────────────────────────────
 
     async def booking(
