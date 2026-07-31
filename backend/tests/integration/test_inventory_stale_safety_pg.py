@@ -77,6 +77,52 @@ async def _say(sid: int, satilabilir: int, hasarli: int = 0) -> None:
         await db.commit()
 
 
+async def _sayim_hareketi(*pids: int) -> int:
+    async with AsyncSessionLocal() as db:
+        return (
+            await db.execute(
+                text(
+                    "SELECT count(*) FROM stock_movements WHERE product_id = ANY(:i) "
+                    "AND movement_type = 'COUNT_ADJUSTMENT'"
+                ),
+                {"i": list(pids)},
+            )
+        ).scalar_one()
+
+
+async def _stale_satir(sid: int) -> int:
+    async with AsyncSessionLocal() as db:
+        return (
+            await db.execute(
+                text(
+                    "SELECT id FROM stock_count_lines WHERE session_id = :s "
+                    "AND status IN ('STALE','RESOLVED')"
+                ),
+                {"s": sid},
+            )
+        ).scalar_one()
+
+
+async def _iki_urunlu_oturum(a: int, b: int, sayilan: int) -> int:
+    async with AsyncSessionLocal() as db:
+        oturum = await inventory_service.create_session(
+            db, scope="MANUAL", product_ids=[a, b], admin_id=ADMIN_ID
+        )
+        await db.commit()
+        sid = oturum.id
+    async with AsyncSessionLocal() as db:
+        await inventory_service.start_session(db, sid, admin_id=ADMIN_ID)
+        await db.commit()
+    async with AsyncSessionLocal() as db:
+        for r in await _satirlar(sid):
+            if r.bucket == "SALEABLE":
+                await inventory_service.set_counted(
+                    db, r.id, sayilan, admin_id=ADMIN_ID
+                )
+        await db.commit()
+    return sid
+
+
 async def _belirsiz_olay(pid: int) -> None:
     """Fiziksel etkisi BELİRSİZ bir olay: elle admin düzeltmesi."""
     async with AsyncSessionLocal() as db:
@@ -117,43 +163,121 @@ async def test_RESOLVE_yalniz_GEREKCE_ile_eski_sayimi_UYGULATAMAZ(fab):
 
     hareket_once = await fab.hareket_sayisi(pid)
 
-    # Oturum uygulanabilir (çözülmüş satır ENGELLEMEZ) ama çözülmüş satır için
-    # HİÇBİR hareket yazılmaz: eski −3 farkı deftere geçmez.
-    async with AsyncSessionLocal() as db:
-        await inventory_service.apply_session(
-            db, sid, admin_id=ADMIN_ID, idempotency_key=f"r-{_uniq()}"
-        )
-        await db.commit()
+    # Gerekçe yazmak satırı çözmez: uygulama REDDEDİLİR ve hiçbir şey yazılmaz.
+    with pytest.raises(Exception) as exc:
+        async with AsyncSessionLocal() as db:
+            await inventory_service.apply_session(
+                db, sid, admin_id=ADMIN_ID, idempotency_key=f"r-{_uniq()}"
+            )
+            await db.commit()
+    assert getattr(exc.value, "status_code", None) == 409
 
     assert await fab.hareket_sayisi(pid) == hareket_once, (
         "çözülmüş satır deftere yazdı — not yazarak eski sayım uygulandı"
     )
     assert await fab.stok(pid) == 11
-    async with AsyncSessionLocal() as db:
-        sayim_hareketi = (
-            await db.execute(
-                text(
-                    "SELECT count(*) FROM stock_movements WHERE product_id = :i "
-                    "AND movement_type = 'COUNT_ADJUSTMENT'"
-                ),
-                {"i": pid},
-            )
-        ).scalar_one()
-    assert sayim_hareketi == 0
+    assert await _sayim_hareketi(pid) == 0
 
 
-async def test_RESOLVE_edilen_satir_TEMIZ_satirlari_engellemez_ama_KENDISI_yazilmaz(fab):
-    """İki ürünlü oturum: biri belirsiz+çözülmüş, diğeri temiz.
+async def test_RESOLVE_edilen_satir_TUM_oturumu_ENGELLER(fab):
+    """Sözleşme değişti (adversarial denetim, 2. tur).
 
-    Çözülmüş satır **uygulamayı engellemez** (STALE'in aksine) ama **kendisi
-    de yazılmaz**. Bu ayrım olmadan ya bütün oturum kilitlenirdi ya da bilinmeyen
-    bir sayı deftere geçerdi.
+    Önceki hâl: çözülmüş satır atlanıyor, diğer satırlar uygulanıyor ve oturum
+    `APPLIED` oluyordu. Bu, "kısmi uygulama yok" sözleşmesini deliyordu: fiziksel
+    belirsizlik içeren bir satır sessizce kapsam dışına atılıp oturum terminal
+    duruma taşınıyordu.
+
+    Doğru hâl: `RESOLVED` de en az `STALE` kadar engelleyicidir. Tek çıkış
+    yeniden sayımdır.
     """
     temiz = await fab.urun(stock=10)
     belirsiz = await fab.urun(stock=10)
+    sid = await _iki_urunlu_oturum(temiz, belirsiz, 8)
+    await _belirsiz_olay(belirsiz)
+    async with AsyncSessionLocal() as db:
+        await inventory_service.submit_session(db, sid, admin_id=ADMIN_ID)
+        await db.commit()
+
+    async with AsyncSessionLocal() as db:
+        await inventory_service.resolve_line(
+            db, await _stale_satir(sid), admin_id=ADMIN_ID,
+            note="depoda kontrol edildi",
+        )
+        await db.commit()
+
+    with pytest.raises(Exception) as exc:
+        async with AsyncSessionLocal() as db:
+            await inventory_service.apply_session(
+                db, sid, admin_id=ADMIN_ID, idempotency_key=f"r2-{_uniq()}"
+            )
+            await db.commit()
+    assert getattr(exc.value, "status_code", None) == 409
+
+    assert await fab.stok(temiz) == 10, "temiz satır da yazılmamalıydı"
+    assert await fab.stok(belirsiz) == 11
+    assert await _sayim_hareketi(temiz, belirsiz) == 0
+    async with AsyncSessionLocal() as db:
+        durum = (
+            await db.execute(
+                text("SELECT status FROM stock_count_sessions WHERE id = :i"),
+                {"i": sid},
+            )
+        ).scalar_one()
+    assert durum == "REVIEW", "engellenen oturum APPLIED olmamalı"
+
+
+async def test_RESOLVE_sonrasi_YENIDEN_SAYIM_oturumu_acar_ve_HEPSI_yazilir(fab):
+    """Engellenen oturumun tek çıkışı yeniden sayımdır; sonra bütün satırlar
+    atomik olarak uygulanır (hareketler TAM OLARAK BİR KEZ)."""
+    temiz = await fab.urun(stock=10)
+    belirsiz = await fab.urun(stock=10)
+    sid = await _iki_urunlu_oturum(temiz, belirsiz, 8)
+    await _belirsiz_olay(belirsiz)                 # belirsiz: stok 11
+    async with AsyncSessionLocal() as db:
+        await inventory_service.submit_session(db, sid, admin_id=ADMIN_ID)
+        await db.commit()
+
+    async with AsyncSessionLocal() as db:
+        await inventory_service.reopen_session(db, sid, admin_id=ADMIN_ID)
+        await inventory_service.set_counted(
+            db, await _stale_satir(sid), 9, admin_id=ADMIN_ID
+        )
+        await inventory_service.submit_session(db, sid, admin_id=ADMIN_ID)
+        await db.commit()
+
+    async with AsyncSessionLocal() as db:
+        await inventory_service.apply_session(
+            db, sid, admin_id=ADMIN_ID, idempotency_key="tekrar-1"
+        )
+        await db.commit()
+    assert await fab.stok(temiz) == 8
+    assert await fab.stok(belirsiz) == 9
+    assert await _sayim_hareketi(temiz, belirsiz) == 2
+
+    # Aynı anahtarla retry: EK hareket yazılmaz.
+    async with AsyncSessionLocal() as db:
+        await inventory_service.apply_session(
+            db, sid, admin_id=ADMIN_ID, idempotency_key="tekrar-1"
+        )
+        await db.commit()
+    assert await _sayim_hareketi(temiz, belirsiz) == 2
+    assert await fab.stok(temiz) == 8 and await fab.stok(belirsiz) == 9
+
+
+async def test_BIR_SATIRDAKI_HATA_tum_oturumu_geri_alir(fab):
+    """Atomikliğin "hiç" tarafı: ikinci satır bakiyeyi negatife çekiyorsa
+    BİRİNCİ satırın hareketi de yazılmamalı.
+
+    Kurgu: `az` ürünü sayımda 0 bulunuyor (fark −2). Sayımdan SONRA 2 adet
+    satılıyor (bakiye 0'a düşüyor, `SALE` otomatik uzlaştırılabilir olduğu için
+    satır `STALE` OLMUYOR). Uygulama anında 0 + (−2) = −2 → kırpma yasak,
+    `InsufficientStock` → bütün oturum geri alınır.
+    """
+    saglam = await fab.urun(stock=10)
+    az = await fab.urun(stock=2)
     async with AsyncSessionLocal() as db:
         oturum = await inventory_service.create_session(
-            db, scope="MANUAL", product_ids=[temiz, belirsiz], admin_id=ADMIN_ID
+            db, scope="MANUAL", product_ids=[saglam, az], admin_id=ADMIN_ID
         )
         await db.commit()
         sid = oturum.id
@@ -162,69 +286,42 @@ async def test_RESOLVE_edilen_satir_TEMIZ_satirlari_engellemez_ama_KENDISI_yazil
         await db.commit()
     async with AsyncSessionLocal() as db:
         for r in await _satirlar(sid):
-            if r.bucket == "SALEABLE":
-                await inventory_service.set_counted(db, r.id, 8, admin_id=ADMIN_ID)
+            if r.bucket != "SALEABLE":
+                continue
+            urun_id = (
+                await db.execute(
+                    text("SELECT product_id FROM stock_count_lines WHERE id = :i"),
+                    {"i": r.id},
+                )
+            ).scalar_one()
+            await inventory_service.set_counted(
+                db, r.id, 8 if urun_id == saglam else 0, admin_id=ADMIN_ID
+            )
         await db.commit()
-    await _belirsiz_olay(belirsiz)
+
+    await fab.siparis(product_id=az, quantity=2)      # bakiye 2 → 0
     async with AsyncSessionLocal() as db:
         await inventory_service.submit_session(db, sid, admin_id=ADMIN_ID)
         await db.commit()
 
+    with pytest.raises(Exception) as exc:
+        async with AsyncSessionLocal() as db:
+            await inventory_service.apply_session(
+                db, sid, admin_id=ADMIN_ID, idempotency_key=f"neg-{_uniq()}"
+            )
+            await db.commit()
+    assert getattr(exc.value, "status_code", None) == 409
+    assert await _sayim_hareketi(saglam, az) == 0, "kısmi uygulama kaldı"
+    assert await fab.stok(saglam) == 10, "sağlam satır da yazılmamalıydı"
+    assert await fab.stok(az) == 0
     async with AsyncSessionLocal() as db:
-        stale_id = (
+        durum = (
             await db.execute(
-                text(
-                    "SELECT id FROM stock_count_lines WHERE session_id = :s "
-                    "AND status = 'STALE'"
-                ),
-                {"s": sid},
+                text("SELECT status FROM stock_count_sessions WHERE id = :i"),
+                {"i": sid},
             )
         ).scalar_one()
-        await inventory_service.resolve_line(
-            db, stale_id, admin_id=ADMIN_ID, note="kapsam dışına alındı"
-        )
-        await db.commit()
-
-    async with AsyncSessionLocal() as db:
-        await inventory_service.apply_session(
-            db, sid, admin_id=ADMIN_ID, idempotency_key=f"r2-{_uniq()}"
-        )
-        await db.commit()
-
-    assert await fab.stok(temiz) == 8, "temiz satır uygulanmalıydı"
-    assert await fab.stok(belirsiz) == 11, "çözülmüş satır YAZILMAMALIYDI"
-
-
-async def test_RESOLVE_edilen_satir_YENIDEN_SAYILINCA_uygulanabilir(fab):
-    """Doğru çıkış yolu: yeni fiziksel sayım. Snapshot da tazelenir."""
-    pid = await fab.urun(stock=10)
-    sid = await _oturum_kur(pid)
-    await _say(sid, 7)
-    await _belirsiz_olay(pid)               # stok 11
-    async with AsyncSessionLocal() as db:
-        await inventory_service.submit_session(db, sid, admin_id=ADMIN_ID)
-        await db.commit()
-    async with AsyncSessionLocal() as db:
-        await inventory_service.reopen_session(db, sid, admin_id=ADMIN_ID)
-        await db.commit()
-    await _say(sid, 9)                      # rafta gerçekten 9 var → −2
-    async with AsyncSessionLocal() as db:
-        await inventory_service.submit_session(db, sid, admin_id=ADMIN_ID)
-        await db.commit()
-    async with AsyncSessionLocal() as db:
-        await inventory_service.apply_session(
-            db, sid, admin_id=ADMIN_ID, idempotency_key=f"r3-{_uniq()}"
-        )
-        await db.commit()
-    assert await fab.stok(pid) == 9
-
-
-async def test_resolve_line_MIKTAR_PARAMETRESI_ALMAZ():
-    """Sözleşme: rastgele bir sayı girerek `STALE` bayrağı kaldırılamaz."""
-    import inspect
-
-    imza = inspect.signature(inventory_service.resolve_line).parameters
-    assert "counted_qty" not in imza and "qty" not in imza
+    assert durum == "REVIEW"
 
 
 # ══════════ 2. Yarım kalmış sahiplenme oturumu KİLİTLEMEZ ══════════
@@ -281,44 +378,29 @@ async def test_YARIM_KALAN_claim_reopen_ile_TEMIZLENIR(fab):
 
 # ══════════ 3. Snapshot ürün kilidi altında ══════════
 
-async def test_set_counted_URUN_KILIDINI_bekler(fab):
-    """Kusur: snapshot'ın üç bileşeni (bakiye · rezerve · hareket yüksek-su
-    işareti) ürün kilidi olmadan, üç ayrı ifadede okunuyordu.
+async def test_snapshot_TEK_IFADEDE_alinir(fab):
+    """Karışık kesitin **yapısal** kanıtı: kesit tek `SELECT` ile alınmalı.
 
-    READ COMMITTED'da her ifade yeni bir anlık görüntü görür; araya giren bir
-    `SALE` hem bakiyeyi bayatlatır hem de yüksek-su işaretinin içine düşerek
-    `STALE` tespitinden **kaçar**. Bu test, sayımın ürün kilidini gerçekten
-    beklediğini kilitle kanıtlar (kod okumasıyla değil).
+    İkiye bölünürse READ COMMITTED'da iki ayrı anlık görüntü doğar ve
+    `PAID→SHIPPED` gibi bir olay araya girip bakiye ile rezervenin farklı
+    gerçekleri anlatmasına yol açar. Sorgu sayısını saymak bu sözleşmeyi
+    davranışla sabitler; kod okumasıyla verilen söz sessizce bozulabilir.
+
+    ⚠️ Ürün kilidi BİLİNÇLİ olarak alınmıyor: sipariş durumunu değiştiren
+    üretim yollarının hiçbiri `Product` kilidi almadığı için kilit rezerve
+    yarışını kapatmıyordu, yalnız sayım süresince satışı bloke ediyordu.
     """
+    from tests.integration.test_stock_audit_pg import SorguSayaci
+
     pid = await fab.urun(stock=10)
-    sid = await _oturum_kur(pid)
-    satir_id = [r.id for r in await _satirlar(sid) if r.bucket == "SALEABLE"][0]
-
-    tutan = AsyncSessionLocal()
-    gorev = None
-    try:
-        await stock_ledger.lock_products(tutan, [pid])   # ürün kilidi tutuluyor
-
-        async def say():
-            async with AsyncSessionLocal() as db:
-                await db.execute(text("SET LOCAL lock_timeout = '10s'"))
-                await inventory_service.set_counted(
-                    db, satir_id, 9, admin_id=ADMIN_ID
-                )
-                await db.commit()
-
-        gorev = asyncio.create_task(say())
-        await asyncio.sleep(0.3)
-        assert not gorev.done(), (
-            "set_counted ürün kilidini beklemedi → snapshot tutarsız okunabilir"
-        )
-    finally:
-        await tutan.rollback()
-        await tutan.close()
-
-    await gorev
-    kova = {r.bucket: r for r in await _satirlar(sid)}
-    assert kova["SALEABLE"].counted_qty == 9
+    await fab.siparis(product_id=pid, quantity=2)
+    async with AsyncSessionLocal() as db:
+        with SorguSayaci() as sayac:
+            await inventory_service.snapshot_for_line(db, pid, "SALEABLE")
+    assert sayac.adet == 1, (
+        "kesit birden fazla ifadeyle alınıyor → karışık kesit yarışı açık: "
+        f"{[q.split()[0] for q in sayac.sorgular]}"
+    )
 
 
 async def test_snapshot_UC_BILESENI_ayni_gercegi_anlatir(fab):
@@ -610,3 +692,173 @@ async def test_COK_SATIRLI_oturum_BUTUN_hareketleri_yazar(fab):
         ).scalar_one()
     assert adet == 2, "iki satırın ikisi de deftere yazılmalıydı"
     assert satirlar == 2, "uygulanan hareket kimliği her satıra bağlanmalı"
+
+
+# ══════════ 7. Sipariş durumu yarışı — KARIŞIK KESİT OLMAZ ══════════
+#
+# Kanıt: sipariş durumunu değiştiren üretim yollarının HİÇBİRİ `Product` kilidi
+# almaz ve hiçbiri defter hareketi yazmaz — `delivery_service` `stock_ledger`'ı
+# hiç import etmez (`start_run` · `add_stops` · `remove_stop` · `fail_stop` ·
+# `cancel_run` · `expire_stale_runs` · `mark_shipped` · `mark_delivered` ·
+# `postpone_delivery`). Yani kilit bu ekseni koruyamaz; koruma **tek ifadelik
+# kesitten** gelir.
+#
+# Testler `sleep` KULLANMAZ: pencere, commit edilmemiş bir transaction ile
+# açıkça tutulur. PostgreSQL MVCC'de commit edilmemiş bir UPDATE okuyucuyu
+# bloklamaz, bu yüzden sonuç deterministiktir.
+
+
+async def _kesit(sid: int, bucket: str = "SALEABLE"):
+    return {r.bucket: r for r in await _satirlar(sid)}[bucket]
+
+
+async def test_ODEME_SEVKIYAT_gecisi_COMMIT_EDILMEDEN_kesit_TAMAMEN_ONCESI(fab):
+    """`PAID→SHIPPED` başlamış ama commit etmemişken sayım yapılıyor.
+
+    Beklenen: kesit **tamamen olay öncesi** — bakiye 8, rezerve 2, beklenen 10.
+    Karışık kesitte bakiye 8 + rezerve 0 okunur ve +2'lik sahte bir fazla
+    uydurulurdu.
+    """
+    pid = await fab.urun(stock=10)
+    oid = await fab.siparis(product_id=pid, quantity=2)   # stok 8, rezerve 2
+    sid = await _oturum_kur(pid)
+    satir_id = (await _kesit(sid)).id
+
+    gecis = AsyncSessionLocal()
+    try:
+        await gecis.execute(
+            text("UPDATE orders SET status = 'SHIPPED' WHERE id = :i"), {"i": oid}
+        )
+        # COMMIT YOK — sayım tam bu pencerede yapılıyor.
+        async with AsyncSessionLocal() as db:
+            await inventory_service.set_counted(db, satir_id, 10, admin_id=ADMIN_ID)
+            await db.commit()
+    finally:
+        await gecis.rollback()
+        await gecis.close()
+
+    k = await _kesit(sid)
+    assert k.system_qty_snapshot == 8
+    assert k.reserved_qty_snapshot == 2, "karışık kesit: rezerve olay sonrası"
+    async with AsyncSessionLocal() as db:
+        await inventory_service.submit_session(db, sid, admin_id=ADMIN_ID)
+        await db.commit()
+    async with AsyncSessionLocal() as db:
+        await inventory_service.apply_session(
+            db, sid, admin_id=ADMIN_ID, idempotency_key=f"y1-{_uniq()}"
+        )
+        await db.commit()
+    assert await fab.stok(pid) == 8, "fark uydurulmuş"
+    assert await _sayim_hareketi(pid) == 0
+
+
+async def test_ODEME_SEVKIYAT_gecisi_COMMIT_EDILINCE_kesit_TAMAMEN_SONRASI(fab):
+    """Aynı olay sayımdan ÖNCE commit edilirse kesit tamamen olay sonrasıdır."""
+    pid = await fab.urun(stock=10)
+    oid = await fab.siparis(product_id=pid, quantity=2)
+    sid = await _oturum_kur(pid)
+    async with AsyncSessionLocal() as db:
+        await db.execute(
+            text("UPDATE orders SET status = 'SHIPPED' WHERE id = :i"), {"i": oid}
+        )
+        await db.commit()
+    async with AsyncSessionLocal() as db:
+        await inventory_service.set_counted(
+            db, (await _kesit(sid)).id, 8, admin_id=ADMIN_ID
+        )
+        await db.commit()
+
+    k = await _kesit(sid)
+    assert k.system_qty_snapshot == 8
+    assert k.reserved_qty_snapshot == 0, "karışık kesit: rezerve olay öncesi"
+
+
+async def test_SEVKIYATTAN_GERI_DONUS_commit_edilmeden_kesit_TAMAMEN_ONCESI(fab):
+    """`SHIPPED→PAID` (teslim edilemedi): paket işletmeye geri dönüyor."""
+    pid = await fab.urun(stock=10)
+    oid = await fab.siparis(product_id=pid, quantity=2)
+    async with AsyncSessionLocal() as db:
+        await db.execute(
+            text("UPDATE orders SET status = 'SHIPPED' WHERE id = :i"), {"i": oid}
+        )
+        await db.commit()
+    sid = await _oturum_kur(pid)
+    satir_id = (await _kesit(sid)).id
+
+    geri = AsyncSessionLocal()
+    try:
+        await geri.execute(
+            text("UPDATE orders SET status = 'PAID' WHERE id = :i"), {"i": oid}
+        )
+        async with AsyncSessionLocal() as db:
+            await inventory_service.set_counted(db, satir_id, 8, admin_id=ADMIN_ID)
+            await db.commit()
+    finally:
+        await geri.rollback()
+        await geri.close()
+
+    k = await _kesit(sid)
+    assert k.system_qty_snapshot == 8
+    assert k.reserved_qty_snapshot == 0, "karışık kesit: rezerve geri dönüş sonrası"
+
+
+async def test_KESITTEN_SONRA_baslayan_sevkiyat_farki_TASIMAZ(fab):
+    """Olay kesitten SONRA gerçekleşiyor: `ORDER_SHIPPED` otomatik
+    uzlaştırılabilir olduğu için satır `STALE` olmaz ve fark taşınmaz."""
+    pid = await fab.urun(stock=10)
+    oid = await fab.siparis(product_id=pid, quantity=2)
+    sid = await _oturum_kur(pid)
+    await _say(sid, 10)                      # beklenen 8+2=10 → fark 0
+    async with AsyncSessionLocal() as db:
+        await db.execute(
+            text("UPDATE orders SET status = 'SHIPPED' WHERE id = :i"), {"i": oid}
+        )
+        await db.commit()
+    async with AsyncSessionLocal() as db:
+        await inventory_service.submit_session(db, sid, admin_id=ADMIN_ID)
+        await db.commit()
+    assert (await _kesit(sid)).status == "COUNTED"
+    async with AsyncSessionLocal() as db:
+        await inventory_service.apply_session(
+            db, sid, admin_id=ADMIN_ID, idempotency_key=f"y4-{_uniq()}"
+        )
+        await db.commit()
+    assert await fab.stok(pid) == 8
+    assert await _sayim_hareketi(pid) == 0
+
+
+async def test_sayim_ve_siparis_gecisi_DEADLOCK_uretmez(fab):
+    """Sayım hiçbir sipariş/ürün kilidi almadığı için sipariş durum geçişleriyle
+    kilit döngüsü kuramaz. `lock_timeout` ile kanıtlanır: askıda kalma yok,
+    beklenmeyen istisna yutulmaz."""
+    import asyncio
+
+    pid = await fab.urun(stock=20)
+    oid = await fab.siparis(product_id=pid, quantity=3)
+    sid = await _oturum_kur(pid)
+    satir_id = (await _kesit(sid)).id
+
+    async def say():
+        async with AsyncSessionLocal() as db:
+            await db.execute(text("SET LOCAL lock_timeout = '4s'"))
+            await inventory_service.set_counted(db, satir_id, 20, admin_id=ADMIN_ID)
+            await db.commit()
+
+    async def gecis():
+        async with AsyncSessionLocal() as db:
+            await db.execute(text("SET LOCAL lock_timeout = '4s'"))
+            await db.execute(
+                text("SELECT id FROM orders WHERE id = :i FOR UPDATE"), {"i": oid}
+            )
+            await db.execute(
+                text("UPDATE orders SET status = 'SHIPPED' WHERE id = :i"), {"i": oid}
+            )
+            await db.commit()
+
+    sonuclar = await asyncio.gather(say(), gecis(), return_exceptions=True)
+    for r in sonuclar:
+        if isinstance(r, BaseException):
+            raise r
+    k = await _kesit(sid)
+    assert k.counted_qty == 20
+    assert k.reserved_qty_snapshot in (0, 3), "kesit ara bir değer aldı"

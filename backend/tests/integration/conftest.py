@@ -308,6 +308,12 @@ async def factory(pg) -> MoneyFactory:
 # Artık suite adı `test` içeren bir veritabanı ister; yoksa oluşturulur ve
 # `alembic upgrade head` ile hazırlanır.
 
+#: Suite öncesi/sonrası sayısı DEĞİŞMEMESİ gereken tablolar.
+#:
+#: Buradaki liste **otomatik** nöbetçidir; elle yapılan tek seferlik ölçümler
+#: onun yerine geçmez. F29 denetiminde tam olarak bu ayrım kaçmıştı:
+#: `audit_logs` elle ölçülüyor ama nöbetçide olmadığı için 619 satır sessizce
+#: birikmişti. "Ayrı karar" diyerek korumasız bırakmak, korumasız bırakmaktır.
 _KRITIK_TABLOLAR = (
     "products",
     "stock_movements",
@@ -317,10 +323,13 @@ _KRITIK_TABLOLAR = (
     "stock_damage_events",
     "orders",
     "order_items",
+    "order_status_history",
     "order_returns",
     "order_return_items",
     "clients",
     "admins",
+    # Servisler audit yazabildiği için testler de yazar; korumasız bırakılmaz.
+    "audit_logs",
 )
 
 

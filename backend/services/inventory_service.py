@@ -147,6 +147,72 @@ _RESERVED_SQL = text(
 )
 
 
+#: Sayım anının **TEK İFADEDE** alınan kesiti.
+#:
+#: ## Neden tek ifade, neden kilit değil
+#:
+#: READ COMMITTED'da **her ifade yeni bir anlık görüntü** görür. Bileşenleri ayrı
+#: sorgularla okumak "karışık kesit" üretir ve bu sessizce yanlış fark yazar:
+#: bakiye okundu (8) → sipariş `PAID→SHIPPED` oldu → rezerve okundu (0) →
+#: beklenen 8 çıkar, oysa personel paket işletmedeyken 10 saymıştır.
+#:
+#: Ürün satır kilidi bu yarışı **KAPATMAZ**: sipariş durumunu değiştiren üretim
+#: yollarının hiçbiri `Product` kilidi almaz ve hiçbiri defter hareketi yazmaz
+#: (`delivery_service.start_run` · `add_stops` · `remove_stop` ·
+#: `order_service.mark_shipped` · `mark_delivered` · `fail_stop` · `cancel_run` ·
+#: `expire_stale_runs` · `postpone_delivery`). `delivery_service` `stock_ledger`'ı
+#: hiç import etmez. Dolayısıyla ürünü kilitlemek yalnız satışı bloke eder,
+#: rezerveyi korumaz.
+#:
+#: Siparişleri kilitlemek de çözüm değil: bir ürüne değen sipariş kümesi sınırsız
+#: ve açık uçludur (kilit alındıktan sonra yeni sipariş gelebilir), üstelik elle
+#: sayım süresince mağazayı durdururdu.
+#:
+#: **Seçilen mekanizma: tek ifadelik kesit.** Tek `SELECT` tek anlık görüntüde
+#: çalıştığı için karışık kesit *yapısal olarak imkânsızdır*. Sonuç ya tamamen
+#: olay öncesi (aradaki olay sonradan uzlaştırılır ya da `STALE` yapar) ya da
+#: tamamen olay sonrasıdır. Yeni kilit eklenmediği için kilit grafiği de
+#: büyümez — `Order → Product` ters yönü hiç doğmaz.
+_SNAPSHOT_SQL = text(
+    """
+    SELECT p.stock                                   AS saleable,
+           p.damaged_stock                           AS damaged,
+           coalesce((
+               SELECT sum(oi.quantity)
+               FROM order_items oi
+               JOIN orders o ON o.id = oi.order_id
+               WHERE o.deleted_at IS NULL
+                 AND o.payment_status = 'PAID'
+                 AND o.status = :durum
+                 AND oi.product_id = p.id
+           ), 0)                                     AS reserved,
+           (SELECT max(m.id) FROM stock_movements m
+             WHERE m.product_id = p.id AND m.bucket = :kova) AS high_water,
+           clock_timestamp()                         AS anda
+    FROM products p
+    WHERE p.id = :pid
+    """
+)
+
+
+async def snapshot_for_line(db: AsyncSession, product_id: int, bucket: str):
+    """Sayım satırının kesiti — **tek sorgu** (bkz. `_SNAPSHOT_SQL`).
+
+    Sorgu sayısı bir davranış testiyle sabitlenmiştir
+    (`test_snapshot_TEK_IFADEDE_alinir`): ikiye bölünmesi karışık kesit
+    yarışını geri getirir ve testte görünür.
+    """
+    satir = (
+        await db.execute(
+            _SNAPSHOT_SQL,
+            {"pid": product_id, "kova": bucket, "durum": _RESERVED_ORDER_STATUS},
+        )
+    ).first()
+    if satir is None:
+        raise _hata(status.HTTP_400_BAD_REQUEST, "ürün bulunamadı")
+    return satir
+
+
 async def reserved_on_premise(
     db: AsyncSession, product_ids: Sequence[int]
 ) -> dict[int, int]:
@@ -556,54 +622,42 @@ async def set_counted(
             "(önce oturumu sayıma geri açın)",
         )
 
-    # ── Snapshot'ın üç bileşeni ÜRÜN KİLİDİ ALTINDA okunur ──
+    # ── Kesitin BEŞ bileşeni TEK İFADEDE okunur ──
     #
-    # READ COMMITTED'da her ifade YENİ bir anlık görüntü görür. Kilitsizken şu
-    # yarış gerçekti: `products.stock` okundu (10), araya bir `SALE` commit etti
-    # (stok 8, hareket id 105), sonra yüksek-su işareti okundu (105). Sonuç:
-    # snapshot 10 (bayat) ama olay "sayımdan sonra" SAYILMIYOR (id > 105 değil)
-    # → ne fark doğru, ne de satır `STALE`. Sessiz ve tam olarak yanlış.
+    # Satılabilir bakiye · hasarlı bakiye · rezerve · hareket yüksek-su işareti ·
+    # DB saati. Beşi de aynı anlık görüntüden gelir; "karışık kesit" yapısal
+    # olarak imkânsızdır (gerekçe: `_SNAPSHOT_SQL`).
     #
-    # Ürün kilidi (`stock_ledger.lock_products` — ürün kilidi alan TEK yer)
-    # tuttuğu sürece o ürüne hiçbir defter hareketi yazılamaz; böylece bakiye
-    # ile yüksek-su işareti **aynı gerçeğin iki yüzü** olur. Kilit ayrıca id
-    # sırasının o ürün için commit sırasıyla aynı olmasını garanti eder — "önce
-    # başlayıp sonra commit eden hareket" boşluğunu kapatan şey budur.
-    #
-    # Kilit sırası: OTURUM (yukarıda) → ÜRÜN. `apply_session` ile aynı sıra.
-    urun = (await stock_ledger.lock_products(db, [satir.product_id]))[
-        satir.product_id
-    ]
-    if urun.stock is None:
+    # ÜRÜN KİLİDİ BİLİNÇLİ OLARAK ALINMAZ. Denemesi yapıldı ve **işe yaramadığı**
+    # görüldü: sipariş durumunu değiştiren üretim yollarının hiçbiri `Product`
+    # kilidi almıyor, dolayısıyla kilit rezerve yarışını kapatmıyor; yalnız
+    # sayım süresince satışı bloke ediyordu. Kilit yerine tutarlı kesit.
+    kesit = await snapshot_for_line(db, satir.product_id, satir.bucket)
+    if kesit.saleable is None:
         raise _hata(
             status.HTTP_400_BAD_REQUEST,
             "ürünün stoğu artık izlenmiyor; satır sayılamaz",
         )
 
-    rezerve = (await reserved_on_premise(db, [satir.product_id])).get(
-        satir.product_id, 0
-    )
-    son_hareket = (await _son_hareket_idleri(db, [satir.product_id])).get(
-        (satir.product_id, satir.bucket)
-    )
-
     onceki = satir.counted_qty
     satir.system_qty_snapshot = int(
-        (urun.stock if satir.bucket == SALEABLE else urun.damaged_stock) or 0
+        (kesit.saleable if satir.bucket == SALEABLE else kesit.damaged) or 0
     )
-    satir.reserved_qty_snapshot = rezerve if satir.bucket == SALEABLE else None
-    satir.snapshot_movement_id = son_hareket
+    # Rezerve YALNIZ satılabilir kovada anlamlı: hasarlı ürün siparişe ayrılamaz.
+    satir.reserved_qty_snapshot = (
+        int(kesit.reserved) if satir.bucket == SALEABLE else None
+    )
+    satir.snapshot_movement_id = kesit.high_water
     satir.counted_qty = int(counted_qty)
-    # VERİTABANI saati — uygulama sunucusunun saati değil. `clock_timestamp()`
-    # bilinçli olarak `now()` YERİNE: `now()` transaction BAŞLANGICINA sabittir,
-    # yani aynı transaction'da art arda sayılan satırlar aynı damgayı alır ve
-    # uzun bir transaction'da damga gerçek sayım anından dakikalarca eski olur.
+    # VERİTABANI saati — uygulama sunucusunun saati değil ve aynı kesitten.
+    # `clock_timestamp()` bilinçli olarak `now()` YERİNE: `now()` transaction
+    # BAŞLANGICINA sabittir, yani aynı transaction'da art arda sayılan satırlar
+    # aynı damgayı alır ve uzun transaction'da damga sayım anından eski olur.
     #
     # NOT: uzlaştırma bu damgaya **dayanmaz** — "sayımdan sonraki olay" tespiti
-    # `snapshot_movement_id` yüksek-su işaretiyle yapılır (§`_sayimdan_sonraki_
-    # olaylar`). `counted_at` denetim izidir; zaman karşılaştırmasının mikro
-    # saniye/eş-damga yarışları bu yüzden uzlaştırmayı etkileyemez.
-    satir.counted_at = func.clock_timestamp()
+    # `snapshot_movement_id` yüksek-su işaretiyle yapılır. Zaman
+    # karşılaştırmasının eş-damga/mikro saniye yarışları uzlaştırmayı etkilemez.
+    satir.counted_at = kesit.anda
     satir.counted_by_admin_id = admin_id
     # Yeniden sayım belirsizliği giderir: STALE satır COUNTED'a döner.
     satir.status = CountLineStatus.COUNTED.value
@@ -630,24 +684,24 @@ async def set_counted(
 async def resolve_line(
     db: AsyncSession, line_id: int, *, admin_id: int, note: str
 ) -> StockCountLine:
-    """`STALE` satırın uygulamayı engellemesini kaldırır — **satırı UYGULAMADAN**.
+    """Belirsizliği **açıklama/denetim kaydı** olarak yazar. Satırı ÇÖZMEZ.
 
-    ## Neden bu, "belirsizliği çözmek" değil "kapsam dışına almak"
+    ## Ne yapar, ne yapmaz
 
-    `RESOLVED` bir satır **deftere hareket YAZMAZ**. Sebebi kesin: satır
-    `STALE` olduysa, sayımdan sonra fiziksel etkisi bilinmeyen bir olay geçmiş
-    demektir; o andan itibaren eski `counted_qty` **hangi fiziksel gerçeği
-    anlattığı bilinmeyen** bir sayıdır. Serbest metin bir gerekçe o sayıyı
-    yeniden güvenilir yapmaz.
+    * Yapar: gerekçeyi, çözen aktörü ve zamanı kalıcı olarak kaydeder;
+      append-only satır olayına yazar; audit'e düşer.
+    * **Yapmaz:** satırı uygulanabilir hâle GETİRMEZ. `RESOLVED` bir satır
+      uygulamayı `STALE` gibi **engellemeye devam eder**.
 
-    İlk uygulamada bu metot yalnız `status`'ü `RESOLVED` yapıyordu ve
-    `apply_session` `RESOLVED` satırları da uyguluyordu — yani **not yazarak
-    eski sayımı uygulatmak mümkündü**. Adversarial denetimde bulundu ve
-    kapatıldı.
+    Sebebi kesin: satır `STALE` olduysa sayımdan sonra fiziksel etkisi bilinmeyen
+    bir olay geçmiştir; o andan itibaren eski `counted_qty` hangi fiziksel
+    gerçeği anlattığı bilinmeyen bir sayıdır. Serbest metin bir gerekçe onu
+    yeniden güvenilir yapmaz — ve o satırı atlayıp oturumu `APPLIED` yapmak,
+    fiziksel belirsizliği sessizce kapsam dışına atmak olurdu.
 
-    Miktar gerçekten yeniden sayılacaksa tek yol `set_counted`'tır: o yol
-    `counted_at`'i, sistem snapshot'ını, rezerve snapshot'ını ve hareket
-    yüksek-su işaretini **ürün kilidi altında, aynı transaction'da** tazeler.
+    Güvenli tek çıkış `set_counted` ile yeni fiziksel sayımdır: o yol kesiti
+    (bakiye · rezerve · yüksek-su işareti · DB saati) **tek ifadede** tazeler ve
+    satırı `COUNTED`'a döndürür.
 
     Bilinçli olarak miktar parametresi ALMAZ.
     """
@@ -992,20 +1046,29 @@ async def apply_session(
 
     satirlar = await _satirlar(db, session_id)
     await _stale_isaretle(db, satirlar)
-    belirsiz = [s for s in satirlar if s.status == CountLineStatus.STALE.value]
-    if belirsiz:
+    # `STALE` **ve** `RESOLVED` uygulamayı engeller.
+    #
+    # `RESOLVED`, "belirsizliği bir gerekçeyle kayda geçirdim" demektir; fiziksel
+    # gerçeği yeniden ölçmez. Böyle bir satırı atlayıp oturumu `APPLIED` terminal
+    # durumuna taşımak, "kısmi uygulama yok" sözleşmesini deler: fiziksel
+    # belirsizlik içeren bir satır sessizce kapsam dışı bırakılmış olur.
+    # Güvenli tek çıkış `set_counted` ile YENİ fiziksel sayımdır; o yol kesiti,
+    # `counted_at`'i, aktörü ve yüksek-su işaretini tazeler ve satırı
+    # `COUNTED`'a döndürür.
+    engelleyen = [
+        s
+        for s in satirlar
+        if s.status in (CountLineStatus.STALE.value, CountLineStatus.RESOLVED.value)
+    ]
+    if engelleyen:
         raise _hata(
             status.HTTP_409_CONFLICT,
-            "belirsiz satırlar çözülmeden oturum uygulanamaz "
-            f"(satır: {[s.id for s in belirsiz]})",
+            "belirsiz satırlar YENİDEN SAYILMADAN oturum uygulanamaz "
+            f"(satır: {[s.id for s in engelleyen]})",
         )
 
-    # YALNIZ `COUNTED`. `RESOLVED` bilinçli olarak DIŞARIDA: o satır bir kez
-    # `STALE` olmuş, yani sayımdan sonra fiziksel etkisi bilinmeyen bir olay
-    # geçmiştir; eski `counted_qty` artık hangi gerçeği anlattığı bilinmeyen bir
-    # sayıdır ve bir gerekçe notu onu güvenilir yapmaz. Uygulanabilir hâle
-    # gelmesinin TEK yolu `set_counted` ile yeniden sayımdır (snapshot da
-    # tazelenir). `SKIPPED` de dışarıdadır — sayılmamış satır fark üretmez.
+    # YALNIZ `COUNTED`. `STALE`/`RESOLVED` zaten yukarıda uygulamayı
+    # engelledi; `SKIPPED` ise hiç sayılmamıştır ve fark üretmez.
     uygulanacak = [
         s
         for s in satirlar
