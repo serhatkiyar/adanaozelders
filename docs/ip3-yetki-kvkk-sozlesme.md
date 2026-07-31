@@ -85,6 +85,50 @@ gönderebilmelidir. Muaf tutulanlar dar bir liste — `GET /library-operators/me
 hesabı (`/payout`) bilinçli olarak **muaf değil**: onaylanmamış işletmenin para
 yüzeyi olmaz ve bunlar onboarding'i kilitlemez.
 
+### Ortak kapının semantiği (kesinleştirildi)
+
+Bu bölüm bir bloklayıcı P1'den doğdu: kapıyı bugünkü `get_current_active_operator`
+gibi yazmak, onaysız operatörü kapatırken **yetkili ADMIN'i de 16 yönetim
+rotasında eler** — çünkü o dependency `require_roles(RoleType.LIBRARY_OPERATOR)`
+üzerine kuruludur ve admin o rolde değildir. Kapı bu yüzden şu sözleşmeyle
+yazılır:
+
+1. **ADMIN geçer.** Ortak dependency (`get_current_active_operator` ya da yerine
+   geçecek olan) admin kullanıcısını olduğu gibi döndürür; durum kontrolü
+   uygulamaz. Platform yönetimi, denetlediği işletmenin onay durumuna
+   bağlanamaz — onaylama işleminin kendisi de o yüzeylerden yapılır.
+2. **Durum kontrolleri yalnız gerçek `LibraryOperator` için.** `deleted_at`
+   (operatör ve kütüphane) ve `Library.status == ACTIVE` denetimi bu dala aittir.
+3. **Rol ve admin izin kararı rotada kalır.** Hangi iznin (`libraries.manage` /
+   `libraries.view` / `catalogs.view`) gerektiği rotadaki
+   `require_roles_or_admin_permission(...)` dependency'sinde tanımlıdır; ortak
+   kapı bu kararı ne tekrarlar ne de gevşetir. Kapı yalnız "bu operatörün
+   kütüphanesi onaylı mı" sorusunu cevaplar.
+4. **Mevcut `require_roles(RoleType.LIBRARY_OPERATOR)` tabanı bu yüzden
+   değişmeli.** Bugünkü imza admin'i baştan eler; kapı `get_current_active_user`
+   (ya da rotanın kendi yetki dependency'sinin çıktısı) üzerine kurulmalı,
+   içeride `isinstance(user, LibraryOperator)` dalına ayrılmalıdır.
+5. **Dönüş tipi ve docstring güncellenmeli.** Bugünkü imza `-> LibraryOperator`
+   ve docstring "Kütüphanesi admin onayından geçmiş (ACTIVE) operatör" diyor;
+   yeni semantikte `Admin | LibraryOperator` döner. *Bu düzeltme test-only
+   commit'te uygulanmaz; üretim turuna aittir.*
+
+Bu dört maddenin regresyon nöbetçisi
+`test_ip3_operator_active_gate_pg.py::test_admin_yonetim_rotasinda_403_almaz`:
+operatör rolünü kabul eden **29 rotanın her biri için ayrı pytest node'u**,
+`libraries.manage` + `libraries.view` + `catalogs.view` izinli gerçek admin ile
+gerçek HTTP isteği. Bugün 29/29 yeşil. Nöbetçiliği `dependency_overrides` ile
+mutasyon provasından geçirildi (kapı admin'i eleyecek şekilde simüle edildi →
+node 403 ile kırıldı → mutasyon geri alındı, 200'e döndü).
+
+**ADMIN için 403 kalması DOĞRU olan uçlar** (rotada admin izin kapısı yok,
+`require_roles(LIBRARY_OPERATOR)`) — koddan çıkarıldı, **dört** tanedir:
+`POST /exam-attendance/verify` ve `POST /exam-registrations/{id}/attend` (QR ve
+elle yoklama: escrow'u serbest bırakan fiziksel doğrulama, operatör kimliği
+servise parametre olarak geçer), `POST /study-reservations/{id}/attend` (aynı
+sözleşme) ve `GET /library-operators/me` (operatörün kendi hesap kaydı;
+admin'in "ben" karşılığı yoktur).
+
 **Not — kopyalanmış kontrol zaten var.** `library_exam_catalogs.py::_usable_viewer`
 ACTIVE kontrolünü doğru yapıyor, ama ortak dependency'yi kullanmadan **elle
 kopyalayarak**. Yani `/exam-catalogs/usable` davranış testinden geçer, yapısal

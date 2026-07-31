@@ -57,6 +57,15 @@ import pytest
 from tests.integration.ip3_factory import yetki_basligi
 
 PDF = ("cevap.pdf", b"%PDF-1.4 ip3", "application/pdf")
+#: 1x1 PNG — görsel yükleme uçları uzantı/tür doğrulaması yapıyor.
+PNG = (
+    "gorsel.png",
+    bytes.fromhex(
+        "89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c4"
+        "890000000a49444154789c63000100000500010d0a2db40000000049454e44ae426082"
+    ),
+    "image/png",
+)
 
 #: ACTIVE zorunlu olan yönetim yüzeyi. Liste **davranışsal** nöbetçidir: yeni
 #: bir yönetim ucu eklenip kapı unutulursa buraya satır eklenmesi gerekir ve
@@ -132,6 +141,7 @@ def _yonetim_ucları(library_id: int) -> list[tuple[str, str, dict]]:
             },
         ),
         ("GET", f"/api/v1/libraries/{library_id}/earnings", {}),
+        ("GET", f"/api/v1/libraries/{library_id}/earnings/transactions", {}),
     ]
 
 
@@ -375,16 +385,209 @@ def _bagimlilik_cagrilari(dependant) -> set:
     return bulunan
 
 
-def _ayni_uc(route_path: str, hedef_yol: str) -> bool:
-    """`/exam-sessions/{session_id}/roster` (kayıtlı, öneksiz) ile
-    `/api/v1/exam-sessions/2000000000/roster` (istek yolu) aynı ucu mu gösteriyor?"""
-    r = [p for p in route_path.split("/") if p]
-    h = [p for p in hedef_yol.split("/") if p]
-    if h[:2] == ["api", "v1"]:
-        h = h[2:]
-    if len(r) != len(h):
-        return False
-    return all(a.startswith("{") or a == b for a, b in zip(r, h, strict=True))
+# ── 2b. ADMIN nöbetçisi: kapı kurulurken admin erişimi kaybolmamalı ───────────
+#
+# Bu bölüm bir REGRESYON nöbetçisidir ve BUGÜN YEŞİL başlar. Riski somut:
+# ortak kapı `require_roles(RoleType.LIBRARY_OPERATOR)` üzerine kurulu bir
+# dependency olarak yazılırsa (bugünkü `get_current_active_operator` tam olarak
+# öyle), yönetim rotalarına eklendiği anda **admin de elenir** — çünkü admin
+# LIBRARY_OPERATOR rolünde değildir. O düzeltme onaysız operatörü kapatırken
+# platform yönetimini de kapatır ve mevcut testlerin hiçbiri bunu görmez:
+# hepsi "operatör 403 almalı" diyor, "admin 403 ALMAMALI" diyen yok.
+#
+# Beklentiler rota türüne göre AÇIK tutulur; "403 değilse geçti" gibi geniş bir
+# kabul, gerçek bir yetki hatasını (ör. 401'e düşen bir rota) gizlerdi.
+
+YOK = 2_000_000_000
+
+#: ADMIN'in bugün **403 aldığı** ve almaya devam etmesi gereken uçlar.
+#: Ortak yanları: rotada admin izin kapısı YOK (`require_roles(LIBRARY_OPERATOR)`),
+#: yani bu işlemler tanım gereği "kütüphanede fiziksel olarak bulunan görevli"
+#: eylemleridir. Liste koddan çıkarıldı (rota tablosundaki izin kapanışları
+#: tarandı), rapordan değil — ve **dört** üyesi var, üç değil.
+ADMIN_ICIN_403 = {
+    ("POST", "/exam-attendance/verify"): (
+        "QR yoklama: escrow'u kütüphaneye serbest bırakan fiziksel doğrulama. "
+        "Operatör kimliği `operator_library_id`/`operator_id` olarak servise "
+        "geçiyor; admin'in karşılığı yok."
+    ),
+    ("POST", "/exam-registrations/{registration_id}/attend"): (
+        "QR'sız elle yoklama — yukarıdakinin listeden seçmeli hâli; aynı "
+        "operatör kimliği gerekiyor."
+    ),
+    ("POST", "/study-reservations/{reservation_id}/attend"): (
+        "Çalışma alanı girişi: aynı fiziksel doğrulama sözleşmesi."
+    ),
+    ("GET", "/library-operators/me"): (
+        "Operatörün KENDİ hesap kaydı; admin'in 'ben' karşılığı yoktur. "
+        "(Kullanıcı raporunda üç uç sayılmıştı; rota tablosu dördüncüsünü de "
+        "gösterdi — bu satır o yüzden var.)"
+    ),
+}
+
+#: ADMIN için beklenen kesin sonuç: (durum kodu, gerekçe).
+#:
+#: Kaynak id'leri bilinçli olarak VAR OLMAYAN değerler (`YOK`). İki sebep:
+#: (1) beklenti deterministik olur — 404 "kapı geçildi, endpoint kaynağı
+#: aradı ve bulamadı" demektir; (2) test hiçbir satır yazmaz, dosya deposuna
+#: ve ödeme sağlayıcısına gitmez. Liste uçlarında ise gerçek bir kütüphane
+#: verilir ve **200** beklenir: admin'in gerçekten veri görebildiği ölçülmezse
+#: "kapı geçildi" iddiası boş kalır.
+ADMIN_BEKLENEN = {
+    ("GET", "/exam-sessions/manage"): (200, "liste ucu; admin kütüphaneyi denetleyebilmeli"),
+    ("GET", "/study-reservations/manage"): (200, "liste ucu; admin denetimi"),
+    ("GET", "/exam-catalogs/usable"): (200, "ortak katalog listesi; admin küratördür"),
+    ("POST", "/exam-sessions"): (404, "var olmayan library_id → servis kütüphaneyi bulamaz"),
+    ("PATCH", "/exam-sessions/{session_id}"): (404, "var olmayan oturum"),
+    ("POST", "/exam-sessions/{session_id}/cancel"): (404, "var olmayan oturum"),
+    ("GET", "/exam-sessions/{session_id}/roster"): (404, "var olmayan oturum"),
+    ("GET", "/exam-sessions/{session_id}/results/reference"): (404, "var olmayan oturum"),
+    ("PUT", "/exam-sessions/{session_id}/results/{registration_id}/summary"): (
+        404,
+        "var olmayan oturum/kayıt",
+    ),
+    ("POST", "/exam-sessions/{session_id}/results/{registration_id}/document"): (
+        404,
+        "var olmayan oturum/kayıt — dosya depoya hiç gitmez",
+    ),
+    ("POST", "/exam-sessions/{session_id}/results/bulk"): (404, "var olmayan oturum"),
+    ("POST", "/exam-sessions/{session_id}/results/publish"): (404, "var olmayan oturum"),
+    ("POST", "/exam-sessions/{session_id}/answer-key"): (
+        404,
+        "var olmayan oturum — cevap anahtarı depoya hiç gitmez",
+    ),
+    ("GET", "/libraries/admin/{library_id}"): (404, "var olmayan kütüphane"),
+    ("GET", "/libraries/admin/{library_id}/payout"): (404, "var olmayan kütüphane"),
+    ("POST", "/libraries/admin/{library_id}/payout"): (
+        404,
+        "var olmayan kütüphane — ödeme sağlayıcısına çağrı yapılmaz",
+    ),
+    ("GET", "/libraries/{library_id}/earnings"): (404, "var olmayan kütüphane"),
+    ("GET", "/libraries/{library_id}/earnings/transactions"): (404, "var olmayan kütüphane"),
+    ("PATCH", "/libraries/{library_id}"): (404, "var olmayan kütüphane"),
+    ("POST", "/libraries/{library_id}/resubmit"): (404, "var olmayan kütüphane"),
+    ("POST", "/libraries/{library_id}/logo"): (404, "var olmayan kütüphane"),
+    ("POST", "/libraries/{library_id}/cover"): (404, "var olmayan kütüphane"),
+    ("POST", "/libraries/{library_id}/images"): (404, "var olmayan kütüphane"),
+    ("PATCH", "/libraries/{library_id}/images/reorder"): (404, "var olmayan kütüphane"),
+    ("DELETE", "/libraries/{library_id}/images/{image_id}"): (404, "var olmayan kütüphane"),
+}
+
+#: Gövde/dosya gerektiren rotalar (aksi hâlde 422 alınır ve test neyi ölçtüğünü
+#: kaybeder). Anahtar: (method, kayıtlı yol).
+ADMIN_ISTEK_GOVDESI = {
+    ("POST", "/exam-sessions"): {
+        "params": {"library_id": YOK},
+        "json": {
+            "exam_type": "TYT",
+            "title": "IP3 admin nöbetçisi",
+            "starts_at": "2027-01-01T09:00:00Z",
+            "duration_minutes": 120,
+            "capacity": 10,
+            "price": 100,
+        },
+    },
+    ("PATCH", "/exam-sessions/{session_id}"): {"json": {"title": "IP3 admin"}},
+    ("PUT", "/exam-sessions/{session_id}/results/{registration_id}/summary"): {
+        "json": {"score_summary": "TYT 80 net"}
+    },
+    ("POST", "/exam-sessions/{session_id}/results/{registration_id}/document"): {
+        "files": {"file": PDF}
+    },
+    ("POST", "/exam-sessions/{session_id}/results/bulk"): {"files": {"files": PDF}},
+    ("POST", "/exam-sessions/{session_id}/answer-key"): {"files": {"file": PDF}},
+    ("POST", "/libraries/admin/{library_id}/payout"): {
+        "json": {
+            "iban": "TR330006100519786457841326",
+            "tckn": "10000000146",
+            "contact_name": "IP3 Sorumlu",
+            "contact_email": "ip3-sorumlu@ip3kutuphane.example.com",
+        }
+    },
+    ("PATCH", "/libraries/{library_id}"): {"json": {"description": "IP3 admin"}},
+    ("POST", "/libraries/{library_id}/logo"): {"files": {"file": PNG}},
+    ("POST", "/libraries/{library_id}/cover"): {"files": {"file": PNG}},
+    ("POST", "/libraries/{library_id}/images"): {"files": {"files": PNG}},
+    ("PATCH", "/libraries/{library_id}/images/reorder"): {"json": {"image_ids": [1]}},
+    ("POST", "/exam-attendance/verify"): {"json": {"payload": "1:sahte"}},
+}
+
+
+def _admin_rota_kimlikleri() -> list[tuple[str, str]]:
+    """Parametrizasyon anahtarları — çalışan uygulamanın rota tablosundan.
+
+    Sahte/elle yazılmış bir liste değil: `_operator_rotalari()` ne diyorsa o.
+    Yeni bir operatör rotası eklenirse burada kendiliğinden yeni bir pytest
+    node'u belirir ve beklentisi yazılmadığı için kırmızı olur.
+    """
+    return sorted(
+        {(sorted(r.methods - {"HEAD", "OPTIONS"})[0], r.path) for r in _operator_rotalari()}
+    )
+
+
+def _admin_istek(method: str, yol: str, *, gercek_library_id: int) -> tuple[str, dict]:
+    """Kayıtlı yolu gerçek isteğe çevirir.
+
+    Path parametreleri VAR OLMAYAN id ile doldurulur (deterministik 404 + yan
+    etkisiz); liste uçlarında query'deki `library_id` GERÇEK kütüphanedir,
+    çünkü orada 200 ve gerçek veri bekliyoruz.
+    """
+    parcalar = ["/api/v1"]
+    for p in yol.split("/"):
+        if not p:
+            continue
+        parcalar.append(str(YOK) if p.startswith("{") else p)
+    istek_yolu = "/".join(parcalar)
+
+    kwargs = dict(ADMIN_ISTEK_GOVDESI.get((method, yol), {}))
+    if yol.endswith("/manage"):
+        kwargs["params"] = {"library_id": gercek_library_id}
+    return istek_yolu, kwargs
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("method", "yol"), _admin_rota_kimlikleri(), ids=lambda v: v if isinstance(v, str) else v
+)
+async def test_admin_yonetim_rotasinda_403_almaz(ip3, http, method, yol):
+    """ADMIN nöbetçisi — her operatör rotası için ayrı node.
+
+    Bugün yeşildir. Ortak ACTIVE kapısı admin'i yanlışlıkla elerse ilgili
+    node kırmızıya döner ve hangi rotanın kaybolduğunu adıyla söyler.
+    """
+    lib = await ip3.library()
+    admin = await ip3.admin(
+        permissions=["libraries.manage", "libraries.view", "catalogs.view"]
+    )
+    istek_yolu, kwargs = _admin_istek(method, yol, gercek_library_id=lib.id)
+
+    r = await http.request(method, istek_yolu, headers=yetki_basligi(admin), **kwargs)
+
+    if (method, yol) in ADMIN_ICIN_403:
+        gerekce = ADMIN_ICIN_403[(method, yol)]
+        assert r.status_code == 403, (
+            f"{method} {yol}: bu uç tanım gereği yalnız operatöre açık ve "
+            f"ADMIN 403 almalı ({gerekce}) — gelen: {r.status_code}"
+        )
+        return
+
+    assert (method, yol) in ADMIN_BEKLENEN, (
+        f"{method} {yol}: bu rota için ADMIN beklentisi YAZILMAMIŞ. Yeni bir "
+        "operatör rotası eklenmiş olabilir; beklenen durumu ve gerekçesini "
+        "`ADMIN_BEKLENEN`'e ekleyin (körlemesine kabul edilmez)."
+    )
+    beklenen, gerekce = ADMIN_BEKLENEN[(method, yol)]
+
+    assert r.status_code != 403, (
+        f"{method} {yol}: yetkili ADMIN 403 aldı — ortak ACTIVE kapısı platform "
+        f"yönetimini de kapatmış olabilir. Gövde: {r.text[:200]}"
+    )
+    assert r.status_code == beklenen, (
+        f"{method} {yol}: beklenen {beklenen} ({gerekce}), gelen {r.status_code}. "
+        f"Gövde: {r.text[:200]}"
+    )
+    if beklenen == 200 and yol.endswith("/manage"):
+        assert isinstance(r.json(), list), "liste ucu liste döndürmedi"
 
 
 # ── 3. ACTIVE operatör: kendi kaynağı serbest, yabancı kaynak gizli ───────────
