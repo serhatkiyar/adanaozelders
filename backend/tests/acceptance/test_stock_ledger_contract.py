@@ -677,3 +677,53 @@ def test_aktor_modeli_admine_ozel_alan_kullanmiyor():
     )
     assert "ref_line_id" in govde, "Satir bazli ticari kaynak alani eksik"
     assert "idempotency_key" in govde
+
+
+# ───────────── 8. Kova (F29) — varsayilan YASAGI ─────────────
+
+def _bucket_kolonu() -> ast.AnnAssign:
+    """`StockMovement.bucket` kolon tanimi (AST). Sinif sinirini AST bulur."""
+    src = _read("models/store.py")
+    for node in ast.walk(ast.parse(src)):
+        if isinstance(node, ast.ClassDef) and node.name == "StockMovement":
+            for alt in node.body:
+                if (
+                    isinstance(alt, ast.AnnAssign)
+                    and isinstance(alt.target, ast.Name)
+                    and alt.target.id == "bucket"
+                ):
+                    return alt
+    raise AssertionError("StockMovement.bucket kolonu yok")
+
+
+def test_bucket_kolonunun_VARSAYILANI_YOK():
+    """Varsayilan kalirsa `bucket` gondermeyen bir yazici DAMAGED bir hareketi
+    SESSIZCE SALEABLE yazar ve defter iki kovayi da yalan soyler.
+
+    Varsayilan yalnizca migration backfill'i icin vardi (`f29`), isi bitince
+    `f29a_bucket_default_kaldir` ile kalkti. Davranis esi:
+    `test_stock_ledger_pg.py::test_bucket_VERILMEDEN_ham_insert_REDDEDILIR`.
+    """
+    kolon = _bucket_kolonu()
+    dokum = ast.dump(kolon)
+    assert "server_default" not in dokum, (
+        "bucket sunucu varsayilani tasiyor: eksik kova sessizce SALEABLE olur"
+    )
+    assert "default" not in dokum, (
+        "bucket ORM varsayilani tasiyor: eksik kova sessizce SALEABLE olur"
+    )
+
+
+def test_defter_yazicisi_bucketi_ACIKCA_veriyor():
+    """Kolonun varsayilani olmadigina gore tek yazici degeri her satirda
+    kendisi vermek zorunda; vermezse NOT NULL ihlaliyle patlar. Bu test o
+    sozlesmeyi kaynakta sabitler."""
+    src = _read("services/stock_ledger.py")
+    for node in ast.walk(ast.parse(src)):
+        if isinstance(node, ast.Call) and ast.unparse(node.func) == "StockMovement":
+            adlar = {kw.arg for kw in node.keywords}
+            assert "bucket" in adlar, (
+                "stock_ledger StockMovement satirini bucket vermeden kuruyor"
+            )
+            return
+    raise AssertionError("stock_ledger icinde StockMovement kurulumu bulunamadi")

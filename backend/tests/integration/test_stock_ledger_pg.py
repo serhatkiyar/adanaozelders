@@ -449,6 +449,9 @@ async def _raw_insert(product_id: int, **cols) -> None:
         ref_id=None,
         ref_line_id=None,
         idempotency_key=None,
+        # F29: kolonun ne ORM'de ne DB'de varsayılanı var → ham yazıcı da
+        # açıkça vermek zorunda. `bucket=None` geçilerek eksiklik sınanabilir.
+        bucket="SALEABLE",
         actor_type="ADMIN",
         actor_id=1,
         note=None,
@@ -494,6 +497,127 @@ async def test_check_kisitlari_reddediyor(urun, kolonlar, ihlal):
     with pytest.raises((IntegrityError, DBAPIError)) as exc:
         await _raw_insert(pid, **kolonlar)
     assert ihlal in str(exc.value)
+
+
+# ───────────────── Kova (F29) — sessiz varsayılan YOK ─────────────────
+
+async def test_bucket_kolonunun_SUNUCU_VARSAYILANI_YOK(pg):
+    """`f29a_bucket_default_kaldir` gerçekten uygulandı mı — pg catalog'dan.
+
+    Kaynak taraması yetmez: varsayılan **veritabanında** durur ve migration
+    uygulanmamışsa model dosyası temiz görünürken DB hâlâ sessizce doldurur.
+    """
+    async with AsyncSessionLocal() as s:
+        varsayilan = (
+            await s.execute(
+                text(
+                    "SELECT column_default FROM information_schema.columns "
+                    "WHERE table_name = 'stock_movements' AND column_name = 'bucket'"
+                )
+            )
+        ).scalar_one()
+    assert varsayilan is None, f"bucket hâlâ sunucu varsayılanı taşıyor: {varsayilan!r}"
+
+
+async def test_bucket_KOLONU_HIC_YAZILMADAN_ham_insert_REDDEDILIR(urun):
+    """Asıl koruma bu: kolonu **hiç yazmayan** bir INSERT reddedilmeli.
+
+    ⚠️ `bucket = NULL` göndermek AYNI ŞEY DEĞİLDİR: açık NULL, sunucu
+    varsayılanını devreye sokmaz. Bu yüzden "NULL gönder" biçimindeki bir test,
+    varsayılan geri konsa bile GEÇER — mutasyon provasında tam olarak öyle
+    oldu. Gerçek hata senaryosu (kolonu bilmeyen yazıcı) kolonu INSERT
+    listesine hiç koymaz; ölçülmesi gereken de budur.
+    """
+    pid = await urun.product(stock=1)
+    with pytest.raises((IntegrityError, DBAPIError)) as exc:
+        async with AsyncSessionLocal() as s:
+            await s.execute(
+                text(
+                    "INSERT INTO stock_movements (product_id, qty_delta, qty_after,"
+                    " movement_type, reason_code, actor_type, actor_id) "
+                    "VALUES (:p, 1, 1, 'ADMIN_ADJUSTMENT', 'TEDARIK', 'ADMIN', 1)"
+                ),
+                {"p": pid},
+            )
+            await s.commit()
+    metin = str(exc.value).lower()
+    assert "bucket" in metin and "null" in metin, metin
+
+
+async def test_bucket_ACIK_NULL_ile_de_REDDEDILIR(urun):
+    """NOT NULL kısıtının kendisi (yukarıdakinden farkı için docstring'e bakınız)."""
+    pid = await urun.product(stock=1)
+    with pytest.raises((IntegrityError, DBAPIError)) as exc:
+        await _raw_insert(pid, bucket=None)
+    metin = str(exc.value).lower()
+    assert "bucket" in metin and "null" in metin, metin
+
+
+async def test_bucket_DAMAGED_acikca_verilince_dogru_kaydediliyor(urun):
+    """Kolon iki değeri de gerçekten taşıyabiliyor (kısıt fazla dar değil).
+
+    Ham SQL kullanılıyor: defter servisi kova boyutunu commit 4'te kazanacak,
+    o zamana kadar DAMAGED yazımı servis seviyesinde bilinçli olarak reddedilir.
+    """
+    pid = await urun.product(stock=1)
+    await _raw_insert(
+        pid, bucket="DAMAGED", movement_type="DAMAGE_TRANSFER", reason_code="KIRIK",
+        ref_type="damage_event", ref_id=1, idempotency_key=f"kova-{_uniq()}",
+    )
+    async with AsyncSessionLocal() as s:
+        kovalar = (
+            await s.execute(
+                text(
+                    "SELECT bucket FROM stock_movements WHERE product_id = :i "
+                    "ORDER BY id"
+                ),
+                {"i": pid},
+            )
+        ).scalars().all()
+    assert kovalar[-1] == "DAMAGED"
+
+
+async def test_gecersiz_kova_REDDEDILIR(urun):
+    pid = await urun.product(stock=1)
+    with pytest.raises((IntegrityError, DBAPIError)) as exc:
+        await _raw_insert(pid, bucket="RAFTA")
+    assert "ck_stock_movements_bucket" in str(exc.value)
+
+
+async def test_defter_servisi_yazdigi_satira_SALEABLE_koyuyor(urun):
+    """Davranış eşi: kaynak sözleşmesi "bucket= veriliyor" der; burada gerçekten
+    DB'ye doğru değerin gittiği görülür. Varsayılan olmadığı için servis bunu
+    atlarsa test NOT NULL ihlaliyle kırılır."""
+    pid = await urun.product(stock=0)
+    mv = await _apply(
+        pid, qty_delta=4, movement_type=StockMovementType.INITIAL,
+        reason_code="PRODUCT_CREATE", ref_type="product", ref_id=pid,
+        idempotency_key=f"kova-servis-{_uniq()}",
+    )
+    assert mv is not None
+    async with AsyncSessionLocal() as s:
+        kova = (
+            await s.execute(
+                text("SELECT bucket FROM stock_movements WHERE id = :i"), {"i": mv.id}
+            )
+        ).scalar_one()
+    assert kova == "SALEABLE"
+
+
+async def test_defter_servisi_DAMAGED_yazimini_SIMDILIK_reddediyor(urun):
+    """Commit 4'e kadar `qty_after` zinciri kova körü; DAMAGED bir hareket
+    satılabilir bakiyeyi bozardı. Sessizce yanlış yazmaktansa reddedilir.
+    Bu test commit 4'te bilinçli olarak KALDIRILACAK."""
+    pid = await urun.product(stock=5)
+    with pytest.raises(ValueError, match="DAMAGED"):
+        async with AsyncSessionLocal() as s:
+            await stock_ledger.apply_movement(
+                s, pid, qty_delta=-1,
+                movement_type=StockMovementType.DAMAGE_TRANSFER,
+                reason_code="KIRIK", ref_type="damage_event", ref_id=1,
+                bucket="DAMAGED", idempotency_key=f"kova-red-{_uniq()}",
+            )
+    assert await _stock(pid) == 5
 
 
 async def test_idempotency_anahtari_unique(urun):

@@ -31,6 +31,7 @@ import uuid
 from decimal import Decimal
 
 import pytest
+from sqlalchemy import exc as sa_exc
 from sqlalchemy import text
 
 from core.config import settings
@@ -54,6 +55,24 @@ def _uniq() -> str:
     return uuid.uuid4().hex[:10]
 
 
+#: `pg` fixture'ının SKIP sebebi sayacağı hatalar — YALNIZ gerçekten "Postgres
+#: yok/erişilemiyor" anlamına gelenler.
+#:
+#: Önceden burada çıplak `except Exception` vardı ve bu SESSİZ bir yalancı
+#: yeşil kaynağıydı: `pg` fixture'ını istemeyi unutan bir test, havuzda kalan
+#: bayat asyncpg bağlantısı yüzünden bir sonraki testte `AttributeError`
+#: ürettiriyor ve o test "Postgres erişilemiyor" diye SKIP oluyordu. Tam olarak
+#: bu yaşandı: yeni yazılan `bucket` NOT NULL testi hiç koşmadan SKIP göründü.
+#: Beklenmeyen hata artık yükseltilir — koşmayan test kırmızıdır, yeşil değil.
+_BAGLANTI_HATALARI = (
+    ConnectionError,
+    OSError,
+    sa_exc.OperationalError,
+    sa_exc.InterfaceError,
+    sa_exc.DBAPIError,
+)
+
+
 @pytest.fixture
 async def pg():
     """Gerçek Postgres erişilebilir mi? Değilse skip. Test sonunda engine havuzunu
@@ -69,8 +88,10 @@ async def pg():
     try:
         async with engine.connect() as conn:
             await conn.execute(text("SELECT 1"))
-    except Exception as exc:  # noqa: BLE001
-        pytest.skip(f"Postgres erişilemiyor ({exc.__class__.__name__}); docker compose ayakta mı?")
+    except _BAGLANTI_HATALARI as exc:
+        pytest.skip(
+            f"Postgres erişilemiyor ({exc.__class__.__name__}); docker compose ayakta mı?"
+        )
     yield engine
     await engine.dispose()
 

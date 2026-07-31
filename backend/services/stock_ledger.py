@@ -61,6 +61,7 @@ from models.store import (
     ADMIN_ADJUSTMENT_REASONS,
     Product,
     ProductKind,
+    StockBucket,
     StockMovement,
     StockMovementType,
 )
@@ -509,6 +510,24 @@ def _normalize_spec(spec: Mapping[str, Any], *, allow_keyless: bool) -> dict[str
             "değişim yoksa defter çağrılmamalıdır"
         )
 
+    # Kova YAPISAL bir alandır → gerekçe/aktör doğrulamalarından ÖNCE gelir.
+    # Modelde ve DB'de varsayılanı YOKTUR (bkz. `StockMovement.bucket`); kanonik
+    # değeri burada, tek yerde kurulur ve `_write_one` onu satıra AÇIKÇA yazar.
+    # Çağıran belirtmezse satılabilir kova varsayılır — bu bir tahmin değil,
+    # defterin bugünkü bütün yazıcılarının anlamıdır.
+    bucket = str(spec.get("bucket") or StockBucket.SALEABLE.value)
+    if bucket not in {b.value for b in StockBucket}:
+        raise ValueError(f"geçersiz bucket: {bucket!r}")
+    if bucket == StockBucket.DAMAGED.value:
+        # GEÇİCİ (F29 commit 4'te kalkar): `qty_after` zinciri ve
+        # `products.stock` yazımı henüz kova boyutunu bilmiyor; DAMAGED bir
+        # hareket bugün satılabilir bakiyeyi bozardı. Sessizce yanlış
+        # yazmaktansa açıkça reddedilir.
+        raise ValueError(
+            "DAMAGED kovası, defter servisi kova boyutunu kazanana kadar "
+            "yazılamaz (F29 commit 4)"
+        )
+
     reason_code = spec.get("reason_code")
     note = spec.get("note")
     validate_reason(tip, reason_code, note)
@@ -537,6 +556,7 @@ def _normalize_spec(spec: Mapping[str, Any], *, allow_keyless: bool) -> dict[str
 
     return {
         "product_id": product_id,
+        "bucket": bucket,
         "qty_delta": qty_delta,
         "movement_type": tip,
         "reason_code": reason_code,
@@ -644,6 +664,8 @@ def _write_one(db: AsyncSession, product: Product, spec: Mapping[str, Any]) -> S
         raise InsufficientStock(product.id, product.stock, spec["qty_delta"])
     mv = StockMovement(
         product_id=product.id,
+        # AÇIKÇA verilir: kolonun ne ORM'de ne DB'de varsayılanı vardır.
+        bucket=spec["bucket"],
         qty_delta=spec["qty_delta"],
         qty_after=yeni,
         movement_type=spec["movement_type"].value,
@@ -763,6 +785,9 @@ async def apply_movement(
     qty_delta: int,
     movement_type: StockMovementType | str,
     reason_code: str,
+    #: Kova. Belirtilmezse satılabilir kova. Modelde ve DB'de varsayılan
+    #: YOKTUR; değeri `_normalize_spec` kurar ve `_write_one` açıkça yazar.
+    bucket: str | None = None,
     ref_type: str | None = None,
     ref_id: int | None = None,
     ref_line_id: int | None = None,
@@ -786,6 +811,7 @@ async def apply_movement(
             {
                 "product_id": product_id,
                 "qty_delta": qty_delta,
+                "bucket": bucket,
                 "movement_type": movement_type,
                 "reason_code": reason_code,
                 "ref_type": ref_type,

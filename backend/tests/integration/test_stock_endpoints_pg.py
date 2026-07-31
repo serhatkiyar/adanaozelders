@@ -112,10 +112,11 @@ class Kurulum:
             for delta, after in ((5, 5), (1, 9)):     # 6 olmalıydı → zincir kopuk
                 await s.execute(
                     text(
-                        "INSERT INTO stock_movements (product_id, qty_delta, "
-                        "qty_after, movement_type, reason_code, actor_type, "
-                        "actor_id) VALUES (:p, :d, :a, 'ADMIN_ADJUSTMENT', "
-                        "'TEDARIK', 'ADMIN', 1)"
+                        # F29: `bucket` açıkça verilir — kolonun varsayılanı yok.
+                        "INSERT INTO stock_movements (product_id, bucket, "
+                        "qty_delta, qty_after, movement_type, reason_code, "
+                        "actor_type, actor_id) VALUES (:p, 'SALEABLE', :d, :a, "
+                        "'ADMIN_ADJUSTMENT', 'TEDARIK', 'ADMIN', 1)"
                     ),
                     {"p": pid, "d": delta, "a": after},
                 )

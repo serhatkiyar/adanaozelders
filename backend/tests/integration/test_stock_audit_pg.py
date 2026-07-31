@@ -94,6 +94,9 @@ class Fabrika:
             qty_after=1,
             movement_type="ADMIN_ADJUSTMENT",
             reason_code="TEDARIK",
+            # F29: kolonun ne ORM'de ne DB'de varsayılanı var — ham yazıcı da
+            # açıkça vermek zorunda (bkz. `f29a_bucket_default_kaldir`).
+            bucket="SALEABLE",
             ref_type=None,
             ref_id=None,
             ref_line_id=None,

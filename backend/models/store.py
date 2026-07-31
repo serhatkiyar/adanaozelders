@@ -1069,17 +1069,16 @@ class StockMovement(Base):
     #: Hareketin geçtiği kova (`StockBucket`). Defter F29'dan itibaren iki
     #: zincir taşır ve `qty_after` **kendi kovası** içinde zincirlenir.
     #:
-    #: Hem Python hem sunucu varsayılanı `'SALEABLE'`: defterin bugüne kadarki
-    #: tamamı satılabilir kovanın hareketleridir, dolayısıyla bu varsayılan bir
-    #: tahmin değil, geçmişin doğru okunuşudur. Sunucu varsayılanı ayrıca
-    #: kolonu bilmeyen ham SQL yazıcılarını (testler, betikler) kırmaz.
-    #: Hasarlı hareketleri `stock_ledger` **her zaman açıkça** belirtir.
-    bucket: Mapped[str] = mapped_column(
-        String(10),
-        nullable=False,
-        default=StockBucket.SALEABLE.value,
-        server_default=text("'SALEABLE'"),
-    )
+    #: **VARSAYILANI YOKTUR — ne ORM'de ne sunucuda.** Bilerek: varsayılan
+    #: kalsaydı `bucket` göndermeyen bir yazıcı (ham SQL, seed, hatalı kod) bir
+    #: DAMAGED hareketi SESSİZCE SALEABLE olarak yazardı ve defter iki kovayı da
+    #: yalan söylerdi. Varsayılan yalnızca migration backfill'i için vardı ve
+    #: `f29a_bucket_default_kaldir` ile kaldırıldı; eksik `bucket` artık NOT NULL
+    #: ihlaliyle **gürültülü** biçimde patlar.
+    #:
+    #: Tek yazıcı `services/stock_ledger.py` değeri her satırda AÇIKÇA verir;
+    #: kural bir AST sözleşme testiyle korunur.
+    bucket: Mapped[str] = mapped_column(String(10), nullable=False)
 
     #: İşaretli, UYGULANAN gerçek değişim. Sıfır yalnız OPENING_BALANCE'ta.
     qty_delta: Mapped[int] = mapped_column(Integer, nullable=False)
