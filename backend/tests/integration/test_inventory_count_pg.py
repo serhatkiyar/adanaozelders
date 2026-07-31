@@ -12,13 +12,12 @@ Paketin ilk test commit'i olduğu için implementasyon yok: koşum KIRMIZIDIR.
 """
 from __future__ import annotations
 
-import datetime
-
 import pytest
+from fastapi import HTTPException
 from sqlalchemy import text
 
 from core.database import AsyncSessionLocal
-from tests.integration.inventory_factory import Fabrika, now
+from tests.integration.inventory_factory import Fabrika
 from tests.inventory_api import servis, uye
 
 SERVIS = "services.inventory_service"
@@ -97,7 +96,7 @@ async def test_mutlu_yol_DRAFT_IN_PROGRESS_REVIEW_APPLIED(fab):
 async def test_IN_PROGRESSten_dogrudan_APPLIED_REDDEDILIR(fab):
     pid = await fab.urun(stock=5)
     sid = await _oturum_ac(pid)
-    with pytest.raises(Exception) as exc:
+    with pytest.raises(HTTPException) as exc:
         async with AsyncSessionLocal() as db:
             await servis().apply_session(
                 db, sid, admin_id=ADMIN_ID, idempotency_key="k"
@@ -144,7 +143,7 @@ async def test_APPLIED_oturum_iptal_EDILEMEZ(fab):
     async with AsyncSessionLocal() as db:
         await s_mod.apply_session(db, sid, admin_id=ADMIN_ID, idempotency_key="k")
         await db.commit()
-    with pytest.raises(Exception) as exc:
+    with pytest.raises(HTTPException) as exc:
         async with AsyncSessionLocal() as db:
             await s_mod.cancel_session(db, sid, admin_id=ADMIN_ID, reason="olmaz")
     assert getattr(exc.value, "status_code", None) == 409
@@ -155,7 +154,7 @@ async def test_APPLIED_oturum_iptal_EDILEMEZ(fab):
 async def test_ayni_urun_ayni_kovada_IKI_KEZ_bulunamaz(fab):
     pid = await fab.urun(stock=4)
     sid = await _oturum_ac(pid)
-    with pytest.raises(Exception):
+    with pytest.raises(HTTPException):
         async with AsyncSessionLocal() as db:
             await servis().add_products(db, sid, [pid], admin_id=ADMIN_ID)
             await db.commit()
@@ -193,7 +192,7 @@ async def test_ayni_urun_IKI_FARKLI_kovada_bulunabilir(fab):
 
 async def test_dijital_urun_sayima_EKLENEMEZ(fab):
     pid = await fab.urun(stock=None, kind="DIGITAL")
-    with pytest.raises(Exception) as exc:
+    with pytest.raises(HTTPException) as exc:
         async with AsyncSessionLocal() as db:
             await servis().create_session(
                 db, scope="MANUAL", product_ids=[pid], admin_id=ADMIN_ID
@@ -206,7 +205,7 @@ async def test_stogu_takip_edilmeyen_FIZIKSEL_urun_de_EKLENEMEZ(fab):
     """`stock IS NULL` = 'takip edilmiyor'. Fiziksel görünse de sayılamaz;
     aksi hâlde sayım ona bir bakiye uydururdu."""
     pid = await fab.urun(stock=None, kind="PHYSICAL")
-    with pytest.raises(Exception) as exc:
+    with pytest.raises(HTTPException) as exc:
         async with AsyncSessionLocal() as db:
             await servis().create_session(
                 db, scope="MANUAL", product_ids=[pid], admin_id=ADMIN_ID
@@ -219,7 +218,7 @@ async def test_stogu_takip_edilmeyen_FIZIKSEL_urun_de_EKLENEMEZ(fab):
 async def test_hic_sayilmamis_oturum_REVIEWe_GECEMEZ(fab):
     pid = await fab.urun(stock=6)
     sid = await _oturum_ac(pid)
-    with pytest.raises(Exception) as exc:
+    with pytest.raises(HTTPException) as exc:
         async with AsyncSessionLocal() as db:
             await servis().submit_session(db, sid, admin_id=ADMIN_ID)
     assert getattr(exc.value, "status_code", None) == 400
@@ -289,7 +288,7 @@ async def test_STALE_satir_TUM_oturumun_uygulanmasini_engeller(fab):
         await db.commit()
 
     temiz_once = await fab.stok(temiz)
-    with pytest.raises(Exception) as exc:
+    with pytest.raises(HTTPException) as exc:
         async with AsyncSessionLocal() as db:
             await s_mod.apply_session(db, sid, admin_id=ADMIN_ID, idempotency_key="k")
             await db.commit()
@@ -381,7 +380,7 @@ async def test_FARKLI_anahtarla_ikinci_apply_REDDEDILIR(fab):
     sid = await _uygulanmis_oturum(fab, pid, 8)
     hareket = await fab.hareket_sayisi(pid)
 
-    with pytest.raises(Exception) as exc:
+    with pytest.raises(HTTPException) as exc:
         async with AsyncSessionLocal() as db:
             await servis().apply_session(
                 db, sid, admin_id=ADMIN_ID, idempotency_key="idem-2"
@@ -480,7 +479,7 @@ async def test_yeniden_sayim_ESKI_DEGERI_korur_ve_counted_at_YENILER(fab):
 async def test_negatif_sayim_miktari_REDDEDILIR(fab):
     pid = await fab.urun(stock=5)
     sid = await _oturum_ac(pid)
-    with pytest.raises(Exception):
+    with pytest.raises(HTTPException):
         async with AsyncSessionLocal() as db:
             await servis().set_counted(db, await _satir(sid, pid), -1, admin_id=ADMIN_ID)
             await db.commit()

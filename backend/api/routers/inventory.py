@@ -41,7 +41,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api.deps import require_admin_permission
 from core.database import get_db
 from models.admin import Admin
-from models.inventory import StockCountLine, StockCountSession, StockDamageEvent
+from models.inventory import StockCountSession, StockDamageEvent
 from schemas.inventory import (
     MAX_LIMIT,
     MAX_OFFSET,

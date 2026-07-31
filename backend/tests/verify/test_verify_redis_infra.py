@@ -137,8 +137,11 @@ async def test_limit_asilinca_429_donuyor(redis_hazir, temiz_anahtarlar):
     kova = f"rl:verify:{uuid.uuid4().hex}"
     temiz_anahtarlar.append(kova)
 
-    for sira in range(3):
-        await ratelimit.enforce(bucket=kova, limit=3, window_seconds=60)  # 1..3 serbest
+    for sira in range(1, 4):  # 1..3 serbest olmalı
+        await ratelimit.enforce(bucket=kova, limit=3, window_seconds=60)
+        assert await redis_hazir.get(kova) == str(sira), (
+            f"{sira}. istekten sonra sayaç Redis'te beklenen değerde değil"
+        )
 
     with pytest.raises(HTTPException) as hata:
         await ratelimit.enforce(bucket=kova, limit=3, window_seconds=60)
@@ -147,7 +150,6 @@ async def test_limit_asilinca_429_donuyor(redis_hazir, temiz_anahtarlar):
     assert hata.value.headers and hata.value.headers.get("Retry-After"), (
         "429 yanıtında Retry-After yok — istemci ne zaman tekrar deneyeceğini bilemez"
     )
-    assert sira == 2  # döngü gerçekten koştu (boş range yalancı yeşili)
 
 
 async def test_sayac_pencere_sonunda_dusuyor(redis_hazir, temiz_anahtarlar):

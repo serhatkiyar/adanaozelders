@@ -10,6 +10,7 @@ Paketin ilk test commit'i olduğu için implementasyon yok: koşum KIRMIZIDIR.
 from __future__ import annotations
 
 import pytest
+from fastapi import HTTPException
 from sqlalchemy import text
 
 from core.database import AsyncSessionLocal
@@ -83,7 +84,7 @@ async def test_yetersiz_satilabilir_stokta_transfer_HICBIR_SATIR_yazmaz(fab):
     ikincisi patlarsa saleable düşer, damaged artmaz — kitap buharlaşır."""
     pid = await fab.urun(stock=2)
     once = await _hareketler(pid)
-    with pytest.raises(Exception) as exc:
+    with pytest.raises(HTTPException) as exc:
         async with AsyncSessionLocal() as db:
             await servis().damage_transfer(
                 db, pid, qty=5, reason_code="KIRIK", admin_id=ADMIN_ID
@@ -167,7 +168,7 @@ async def test_hasarli_kova_NEGATIFE_dusemez(fab):
             db, pid, qty=1, reason_code="KIRIK", admin_id=ADMIN_ID
         )
         await db.commit()
-    with pytest.raises(Exception) as exc:
+    with pytest.raises(HTTPException) as exc:
         async with AsyncSessionLocal() as db:
             await servis().damage_disposal(
                 db, pid, qty=5, reason_code="KIRIK", admin_id=ADMIN_ID
@@ -179,7 +180,7 @@ async def test_hasarli_kova_NEGATIFE_dusemez(fab):
 
 async def test_satilabilir_kova_NEGATIFE_dusemez(fab):
     pid = await fab.urun(stock=1)
-    with pytest.raises(Exception):
+    with pytest.raises(HTTPException):
         async with AsyncSessionLocal() as db:
             await servis().supplier_return(
                 db, pid, qty=9, bucket="SALEABLE", reason_code="DIGER",
@@ -193,7 +194,7 @@ async def test_satilabilir_kova_NEGATIFE_dusemez(fab):
 
 async def test_dijital_urunde_hasar_islemi_REDDEDILIR(fab):
     pid = await fab.urun(stock=None, kind="DIGITAL")
-    with pytest.raises(Exception) as exc:
+    with pytest.raises(HTTPException) as exc:
         async with AsyncSessionLocal() as db:
             await servis().damage_transfer(
                 db, pid, qty=1, reason_code="KIRIK", admin_id=ADMIN_ID
@@ -204,7 +205,7 @@ async def test_dijital_urunde_hasar_islemi_REDDEDILIR(fab):
 async def test_SIFIR_miktarli_hasar_olayi_YAZILMAZ(fab):
     pid = await fab.urun(stock=5)
     once = len(await _hareketler(pid))
-    with pytest.raises(Exception):
+    with pytest.raises(HTTPException):
         async with AsyncSessionLocal() as db:
             await servis().damage_transfer(
                 db, pid, qty=0, reason_code="KIRIK", admin_id=ADMIN_ID
@@ -215,7 +216,7 @@ async def test_SIFIR_miktarli_hasar_olayi_YAZILMAZ(fab):
 
 async def test_DIGER_gerekcesinde_not_ZORUNLU(fab):
     pid = await fab.urun(stock=5)
-    with pytest.raises(Exception):
+    with pytest.raises(HTTPException):
         async with AsyncSessionLocal() as db:
             await servis().damage_transfer(
                 db, pid, qty=1, reason_code="DIGER", note=None, admin_id=ADMIN_ID
