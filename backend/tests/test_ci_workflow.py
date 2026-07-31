@@ -229,6 +229,19 @@ def test_kapsama_esigi_var_ve_dar_kapsamli_oldugu_yaziyor(backend_isi) -> None:
     )
 
 
+def test_test_arac_zinciri_pinli(backend_isi) -> None:
+    """Pinsiz kurulan bir test aracı, CI'yı repo hiç değişmeden kırabilir.
+
+    Somut vaka: `tests/verify` paketi "tek session event loop" varsayıyordu;
+    pytest-asyncio 1.x varsayılanı fonksiyon kapsamına çevirince paket 72
+    ERROR verdi. requirements.txt bu araçları içermediği için sürüm seçimi
+    tamamen CI'nın kurulum gününe kalmıştı.
+    """
+    adim = _adim(backend_isi, "Install dependencies")
+    for arac in ("pytest", "pytest-asyncio", "pytest-cov"):
+        assert f"{arac}==" in adim["run"], f"{arac} sürümü sabitlenmemiş"
+
+
 def test_altyapi_eksikse_test_atlanmiyor(backend_isi) -> None:
     """`CI_REQUIRE_SERVICES` olmadan Postgres/Redis/MinIO düşünce suite yeşil kalır."""
     assert backend_isi["env"].get("CI_REQUIRE_SERVICES") == "1", (

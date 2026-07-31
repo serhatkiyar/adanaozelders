@@ -106,12 +106,24 @@ jobs:
           python-version: "3.12"
           cache: pip
 
-      # requirements.txt tam kilitli (pip-compile çıktısı): CI, üretimle
-      # birebir aynı sürümleri kurar.
+      # requirements.txt tam kilitli (pip-compile çıktısı): ÇALIŞMA ZAMANI
+      # bağımlılıkları CI'da üretimle birebir aynı sürümlerdedir.
+      #
+      # Test araç zinciri o dosyada YOKTUR ve buraya kadar PİNSİZ kuruluyordu —
+      # yani CI'nın yeşilliği "o gün PyPI'de ne varsa"ya bağlıydı. Bunun soyut
+      # bir risk olmadığı ölçüldü: doğrulama paketi pytest-asyncio 1.x'in
+      # varsayılan event-loop kapsamı değişikliği yüzünden 72 ERROR veriyor
+      # (paket "tek session loop" varsayıyordu). Aşağıdaki sürümler bu paketin
+      # yerel uçtan uca provasında kullanılan sürümlerdir; yükseltme bilinçli
+      # ve doğrulanarak yapılmalıdır.
       - name: Install dependencies
         run: |
           pip install -r requirements.txt
-          pip install pytest pytest-asyncio pytest-cov hypothesis ruff pip-audit
+          pip install pytest==9.0.3 pytest-asyncio==1.4.0 pytest-cov==7.1.0 \
+            hypothesis==6.155.7 ruff==0.16.0
+          # pip-audit BİLİNÇLİ olarak pinsiz: işi en güncel açık veritabanına
+          # bakmaktır, sabitlemek amacını bozar.
+          pip install pip-audit
 
       - name: Lint (ruff)
         run: ruff check .
