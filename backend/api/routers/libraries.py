@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import (
     CurrentUser,
+    get_current_active_operator,
     require_admin_permission,
     require_roles,
     require_roles_or_admin_permission,
@@ -257,7 +258,16 @@ async def _get_library_or_404(db: AsyncSession, library_id: int) -> Library:
     return lib
 
 
-@router.get("/admin/{library_id}/payout", response_model=PayoutOut)
+#: Ortak ACTIVE kapısı (İP-3 §1b): para yüzeyleri (payout/earnings) onaysız
+#: operatöre kapalıdır — onaylanmamış işletmenin ödeme hesabı olmaz. ADMIN
+#: olduğu gibi geçer; izin kararı rotanın kendi dependency'sinde kalır.
+#: Onboarding uçları (resubmit/profil/görsel) bilinçli olarak kapı DIŞINDA.
+_active_gate = [Depends(get_current_active_operator)]
+
+
+@router.get(
+    "/admin/{library_id}/payout", response_model=PayoutOut, dependencies=_active_gate
+)
 async def get_library_payout(
     library_id: int,
     user: CurrentUser = Depends(
@@ -270,7 +280,9 @@ async def get_library_payout(
     return payout_service.to_out(lib)
 
 
-@router.post("/admin/{library_id}/payout", response_model=PayoutOut)
+@router.post(
+    "/admin/{library_id}/payout", response_model=PayoutOut, dependencies=_active_gate
+)
 async def submit_library_payout(
     library_id: int,
     payload: LibraryPayoutSubmitIn,
@@ -362,7 +374,11 @@ async def delete_library_review(
 # ── Kazanç özeti (admin / o kütüphanenin operatörü) ──────────────────────────────
 
 
-@router.get("/{library_id}/earnings", response_model=LibraryEarningsOut)
+@router.get(
+    "/{library_id}/earnings",
+    response_model=LibraryEarningsOut,
+    dependencies=_active_gate,
+)
 async def library_earnings(
     library_id: int,
     user: CurrentUser = Depends(
@@ -378,7 +394,9 @@ async def library_earnings(
 
 
 @router.get(
-    "/{library_id}/earnings/transactions", response_model=list[EarningTransaction]
+    "/{library_id}/earnings/transactions",
+    response_model=list[EarningTransaction],
+    dependencies=_active_gate,
 )
 async def library_earnings_transactions(
     library_id: int,

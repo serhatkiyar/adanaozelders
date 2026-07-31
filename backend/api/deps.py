@@ -170,19 +170,37 @@ async def get_current_approved_tutor(
 
 
 async def get_current_active_operator(
-    operator: LibraryOperator = Depends(require_roles(RoleType.LIBRARY_OPERATOR)),
+    user: CurrentUser = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
-) -> LibraryOperator:
-    """Kütüphanesi admin onayından geçmiş (ACTIVE) operatör.
+) -> Admin | LibraryOperator:
+    """Ortak ACTIVE kapısı: kütüphanesi admin onayından geçmiş operatör — ya da ADMIN.
 
     Self-servis kayıt (``POST /libraries/register``) anında oturum açtığı için
     rol kontrolü tek başına yetmez: onay beklemekte olan (PENDING) — ya da
     reddedilmiş/askıya alınmış — bir kütüphanenin operatörü de geçerli bir
-    LIBRARY_OPERATOR token'ına sahiptir. Onaya bağlı yüzeyler bunu kullanmalı.
+    LIBRARY_OPERATOR token'ına sahiptir. Onaya bağlı yönetim yüzeyleri bu
+    dependency ile kablolanır.
+
+    Sözleşme (docs/ip3-yetki-kvkk-sozlesme.md §1b):
+
+    - **ADMIN olduğu gibi geçer** — platform yönetimi, denetlediği işletmenin
+      onay durumuna bağlanamaz (onaylama işlemi de bu yüzeylerden yapılır).
+      Hangi admin İZNİNİN gerektiği kararı rotadaki
+      ``require_roles_or_admin_permission(...)`` katmanında kalır; bu kapı o
+      kararı ne tekrarlar ne de gevşetir.
+    - **Durum kontrolleri yalnız gerçek LibraryOperator için**: kütüphane
+      silinmişse 404, ``status != ACTIVE`` ise 403. Kapı allowlist'tir —
+      tanımlı olmayan/gelecekte eklenecek durumlar da reddedilir (fail-closed).
+      Operatör hesabı silinmişse ``get_current_user`` zaten 401 verir.
     """
+    if isinstance(user, Admin):
+        return user
+    if not isinstance(user, LibraryOperator):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Insufficient permissions")
+
     from models.library import Library, LibraryStatus
 
-    lib = await db.get(Library, operator.library_id)
+    lib = await db.get(Library, user.library_id)
     if lib is None or lib.deleted_at is not None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Kütüphane bulunamadı")
     if lib.status != LibraryStatus.ACTIVE.value:
@@ -190,7 +208,7 @@ async def get_current_active_operator(
             status.HTTP_403_FORBIDDEN,
             "Kütüphaneniz henüz onaylanmadı; bu işlem onaydan sonra kullanılabilir.",
         )
-    return operator
+    return user
 
 
 

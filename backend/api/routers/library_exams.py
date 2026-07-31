@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import (
     CurrentUser,
+    get_current_active_operator,
     require_roles,
     require_roles_or_admin_permission,
     user_rate_limit,
@@ -105,7 +106,17 @@ async def list_public_sessions(
 # ── Yönetim: admin veya kütüphane operatörü ──────────────────────────────────────
 
 
-@router.get("/exam-sessions/manage", response_model=list[ExamSessionOut])
+#: Onaya bağlı yönetim yüzeyleri: ortak ACTIVE kapısı (İP-3 §1b). Kapı endpoint
+#: gövdesinden ÖNCE çalışır — onaysız operatör var olmayan kaynağa istekte bile
+#: 403 alır; ADMIN olduğu gibi geçer (izin kararı rotanın kendi dependency'sinde).
+_active_gate = [Depends(get_current_active_operator)]
+
+
+@router.get(
+    "/exam-sessions/manage",
+    response_model=list[ExamSessionOut],
+    dependencies=_active_gate,
+)
 async def list_sessions_manage(
     library_id: int = Query(...),
     user: CurrentUser = Depends(require_roles_or_admin_permission("libraries.manage", RoleType.LIBRARY_OPERATOR)),
@@ -116,7 +127,10 @@ async def list_sessions_manage(
 
 
 @router.post(
-    "/exam-sessions", response_model=ExamSessionOut, status_code=status.HTTP_201_CREATED
+    "/exam-sessions",
+    response_model=ExamSessionOut,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=_active_gate,
 )
 async def create_session(
     library_id: int = Query(...),
@@ -128,7 +142,11 @@ async def create_session(
     return await library_exam_service.create_session(db, library_id, payload)
 
 
-@router.patch("/exam-sessions/{session_id}", response_model=ExamSessionOut)
+@router.patch(
+    "/exam-sessions/{session_id}",
+    response_model=ExamSessionOut,
+    dependencies=_active_gate,
+)
 async def update_session(
     session_id: int,
     payload: ExamSessionUpdate,
@@ -140,7 +158,11 @@ async def update_session(
     return await library_exam_service.update_session(db, session_id, payload)
 
 
-@router.post("/exam-sessions/{session_id}/cancel", response_model=ExamSessionOut)
+@router.post(
+    "/exam-sessions/{session_id}/cancel",
+    response_model=ExamSessionOut,
+    dependencies=_active_gate,
+)
 async def cancel_session(
     session_id: int,
     user: CurrentUser = Depends(require_roles_or_admin_permission("libraries.manage", RoleType.LIBRARY_OPERATOR)),
@@ -151,7 +173,11 @@ async def cancel_session(
     return await library_exam_service.cancel_session(db, session_id)
 
 
-@router.get("/exam-sessions/{session_id}/roster", response_model=list[RosterRow])
+@router.get(
+    "/exam-sessions/{session_id}/roster",
+    response_model=list[RosterRow],
+    dependencies=_active_gate,
+)
 async def session_roster(
     session_id: int,
     user: CurrentUser = Depends(require_roles_or_admin_permission("libraries.manage", RoleType.LIBRARY_OPERATOR)),
@@ -165,7 +191,9 @@ async def session_roster(
 # ── Sonuç girişi + yayınlama (admin / o kütüphanenin operatörü) ──────────────────
 
 
-@router.get("/exam-sessions/{session_id}/results/reference")
+@router.get(
+    "/exam-sessions/{session_id}/results/reference", dependencies=_active_gate
+)
 async def results_reference(
     session_id: int,
     user: CurrentUser = Depends(require_roles_or_admin_permission("libraries.manage", RoleType.LIBRARY_OPERATOR)),
@@ -189,6 +217,7 @@ async def results_reference(
 @router.put(
     "/exam-sessions/{session_id}/results/{registration_id}/summary",
     response_model=RosterRow,
+    dependencies=_active_gate,
 )
 async def set_result_summary(
     session_id: int,
@@ -209,6 +238,7 @@ async def set_result_summary(
 @router.post(
     "/exam-sessions/{session_id}/results/{registration_id}/document",
     response_model=RosterRow,
+    dependencies=_active_gate,
 )
 async def upload_result_document(
     session_id: int,
@@ -234,7 +264,11 @@ async def upload_result_document(
     )
 
 
-@router.post("/exam-sessions/{session_id}/results/bulk", response_model=BulkDocumentOut)
+@router.post(
+    "/exam-sessions/{session_id}/results/bulk",
+    response_model=BulkDocumentOut,
+    dependencies=_active_gate,
+)
 async def bulk_upload_documents(
     session_id: int,
     files: list[UploadFile] = File(...),
@@ -255,7 +289,11 @@ async def bulk_upload_documents(
     )
 
 
-@router.post("/exam-sessions/{session_id}/results/publish", response_model=PublishResultsOut)
+@router.post(
+    "/exam-sessions/{session_id}/results/publish",
+    response_model=PublishResultsOut,
+    dependencies=_active_gate,
+)
 async def publish_results(
     session_id: int,
     user: CurrentUser = Depends(require_roles_or_admin_permission("libraries.manage", RoleType.LIBRARY_OPERATOR)),
@@ -266,7 +304,11 @@ async def publish_results(
     return await library_exam_service.publish_results(db, session_id)
 
 
-@router.post("/exam-sessions/{session_id}/answer-key", response_model=ExamSessionOut)
+@router.post(
+    "/exam-sessions/{session_id}/answer-key",
+    response_model=ExamSessionOut,
+    dependencies=_active_gate,
+)
 async def upload_session_answer_key(
     session_id: int,
     file: UploadFile = File(...),
@@ -349,7 +391,11 @@ async def my_registrations(
 # ── Operatör: QR doğrulama ───────────────────────────────────────────────────────
 
 
-@router.post("/exam-attendance/verify", response_model=AttendanceResult)
+@router.post(
+    "/exam-attendance/verify",
+    response_model=AttendanceResult,
+    dependencies=_active_gate,
+)
 async def verify_attendance(
     payload: QRVerifyIn,
     operator: LibraryOperator = Depends(require_roles(RoleType.LIBRARY_OPERATOR)),
@@ -364,7 +410,9 @@ async def verify_attendance(
 
 
 @router.post(
-    "/exam-registrations/{registration_id}/attend", response_model=AttendanceResult
+    "/exam-registrations/{registration_id}/attend",
+    response_model=AttendanceResult,
+    dependencies=_active_gate,
 )
 async def attend_by_registration(
     registration_id: int,

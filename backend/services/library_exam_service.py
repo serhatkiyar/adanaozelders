@@ -192,13 +192,11 @@ async def create_session(
     lib = await db.get(Library, library_id)
     if lib is None or lib.deleted_at is not None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Kütüphane bulunamadı")
-    # Yalnız onaylı (ACTIVE) kütüphane public deneme oturumu açabilir — PENDING/REJECTED
-    # self-servis başvuru onay öncesi ücretli akış başlatamaz.
-    if lib.status != LibraryStatus.ACTIVE.value:
-        raise HTTPException(
-            status.HTTP_409_CONFLICT,
-            "Kütüphane henüz onaylı değil; deneme oturumu oluşturulamaz.",
-        )
+    # Operatörün ACTIVE kontrolü tek kaynakta: rotadaki ortak kapı
+    # (api.deps.get_current_active_operator). Buradaki eski 409 dalı kaldırıldı —
+    # iki katmanda iki farklı durum kodu sözleşmeyi belirsizleştiriyordu (İP-3 §1b).
+    # ADMIN küratör onay öncesi oturum kurabilir; public listeye zaten yalnız
+    # ACTIVE kütüphane çıkar (list_public_sessions filtresi).
     if payload.catalog_id is not None:
         await _validate_catalog(db, payload.catalog_id)
     s = LibraryExamSession(

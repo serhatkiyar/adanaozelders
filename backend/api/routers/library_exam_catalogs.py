@@ -3,11 +3,13 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.deps import require_admin_permission, require_roles_or_admin_permission
+from api.deps import (
+    get_current_active_operator,
+    require_admin_permission,
+    require_roles_or_admin_permission,
+)
 from core.database import get_db
 from models.admin import Admin
-from models.library import Library, LibraryStatus
-from models.library_operator import LibraryOperator
 from models.role import RoleType
 from schemas.library_exam_catalog import CatalogCreate, CatalogOut, CatalogUpdate
 from services import audit_service, library_exam_catalog_service
@@ -39,22 +41,14 @@ async def _read_answer_key(file: UploadFile) -> bytes:
 
 async def _usable_viewer(
     user=Depends(require_roles_or_admin_permission("catalogs.view", RoleType.LIBRARY_OPERATOR)),
-    db: AsyncSession = Depends(get_db),
+    _gate=Depends(get_current_active_operator),
 ):
     """Admin geçer; operatör YALNIZ kütüphanesi ACTIVE ise geçer.
 
-    Self-servis kayıt anında LIBRARY_OPERATOR token'ı verdiğinden, rol kontrolü
-    tek başına herkesin katalog listesine ulaşmasına izin verirdi.
+    ACTIVE kontrolü elle kopyalanmaz: ortak kapı `get_current_active_operator`
+    kullanılır (İP-3 §1b — kopya zamanla ortak karardan drift eder). İzin kararı
+    (`catalogs.view`) bu rotanın kendi dependency'sinde kalır.
     """
-    if isinstance(user, LibraryOperator):
-        lib = await db.get(Library, user.library_id)
-        if lib is None or lib.deleted_at is not None:
-            raise HTTPException(status.HTTP_404_NOT_FOUND, "Kütüphane bulunamadı")
-        if lib.status != LibraryStatus.ACTIVE.value:
-            raise HTTPException(
-                status.HTTP_403_FORBIDDEN,
-                "Kütüphaneniz henüz onaylanmadı; katalogları onaydan sonra görebilirsiniz.",
-            )
     return user
 
 
