@@ -41,7 +41,6 @@ from __future__ import annotations
 
 import argparse
 import asyncio
-import io
 import sys
 
 from sqlalchemy import select, text

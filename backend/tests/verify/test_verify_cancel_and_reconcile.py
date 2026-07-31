@@ -9,18 +9,29 @@ E1. Müşteri ödenmiş siparişini (kargolanmadan önce) iptal edebilir: para i
 E2. Kargolanmış sipariş iptal edilemez (iade talebi gerekir).
 E3. Kayıp callback: müşteri ödedi ama callback hiç gelmedi → sipariş PENDING
     kaldı. Reconciler sağlayıcıdan doğrulayıp siparişi kesinleştirmelidir.
+E3a. Yaş eşiğinin ALTINDAKİ checkout'a dokunulmaz (kullanıcı hâlâ 3DS'te olabilir).
+E3b. Eşiğin ÜSTÜNDEKİ checkout işlenir — E3a ile birlikte eşiğin gerçekten
+     ayırt edici olduğunu gösterir.
 E4. Sarkan REFUNDING iade talebi reconciler kapsamındadır.
 """
 from __future__ import annotations
 
 import datetime
 from decimal import Decimal
+from types import SimpleNamespace
 
 import pytest
 from fastapi import HTTPException
 from sqlalchemy import text
 
+from core.config import settings
+
 pytestmark = pytest.mark.asyncio
+
+#: Sınır testlerinde yaş eşiğinin iki yanına konan pay. Ölçülen şey eşiğin
+#: AYIRT EDİCİLİĞİ olduğundan dar tutulur; testin kendi süresi kadar zaman
+#: geçse bile taraf değiştirmeyecek kadar da geniştir.
+_SINIR_PAYI = datetime.timedelta(minutes=2)
 
 
 async def _stock(db, product_id: int) -> int:
@@ -29,6 +40,123 @@ async def _stock(db, product_id: int) -> int:
             text("SELECT stock FROM products WHERE id = :i"), {"i": product_id}
         )
     ).scalar()
+
+
+async def _sale_hareketleri(db, order_id: int) -> int:
+    """Bu siparişe yazılmış SALE stok hareketi sayısı (defter append-only)."""
+    return (
+        await db.execute(
+            text(
+                "SELECT count(*) FROM stock_movements "
+                "WHERE ref_type = 'order' AND ref_id = :o AND movement_type = 'SALE'"
+            ),
+            {"o": order_id},
+        )
+    ).scalar()
+
+
+def _simdi() -> datetime.datetime:
+    return datetime.datetime.now(datetime.timezone.utc)
+
+
+def _yas_esigi() -> datetime.timedelta:
+    """Bir checkout'un 'bayat' sayılması için gereken en küçük yaş (AYARDAN)."""
+    esik = datetime.timedelta(minutes=settings.CHECKOUT_RECONCILE_MIN_AGE_MINUTES)
+    assert esik > _SINIR_PAYI, (
+        "CHECKOUT_RECONCILE_MIN_AGE_MINUTES sınır payından küçük — eşiğin iki "
+        "yanına örnek konamıyor"
+    )
+    return esik
+
+
+def _bayat_an(pay: datetime.timedelta = _SINIR_PAYI) -> datetime.datetime:
+    """Reconciler'ın işlemesi gereken bir `updated_at` — eşik AYARINDAN türetilir.
+
+    Sabit bir "2 saat" yazmak, eşik ayarı değiştiğinde testi sessizce yalancı
+    kırmızıya çevirirdi; ayrıca üst yaş sınırı küçültülürse fark edilmezdi.
+    """
+    now = _simdi()
+    an = now - (_yas_esigi() + pay)
+    ust = datetime.timedelta(hours=settings.CHECKOUT_RECONCILE_MAX_AGE_HOURS)
+    assert an > now - ust, (
+        "örnek kayıt üst yaş sınırının dışında kalıyor — reconciler kapsamı dışı"
+    )
+    return an
+
+
+def _taze_an(pay: datetime.timedelta = _SINIR_PAYI) -> datetime.datetime:
+    """Reconciler'ın DOKUNMAMASI gereken bir `updated_at` (eşiğin hemen altı)."""
+    return _simdi() - (_yas_esigi() - pay)
+
+
+async def _updated_at_ayarla(db, order_id: int, an: datetime.datetime) -> None:
+    """`updated_at`'i doğrudan yaz — ORM `onupdate`'i bu alanı geri ezer."""
+    await db.execute(
+        text("UPDATE orders SET updated_at = :t WHERE id = :i"),
+        {"t": an, "i": order_id},
+    )
+    await db.commit()
+
+
+def _tarama_kapisini_ac(monkeypatch) -> None:
+    """Bayat-checkout taramasının hız sınırını ORTAMDAN BAĞIMSIZ biçimde aç.
+
+    Üretimde tarama ``CHECKOUT_RECONCILE_INTERVAL_SECONDS``ta bir koşar ve
+    sayaç ``time.monotonic()`` ile karşılaştırılır. Sayacı ``0.0``a çekmek
+    "en son AÇILIŞ anında tarandı" demektir: kapı yalnız makine eşik kadar
+    süredir açıksa açılır. Uzun süredir açık geliştirme makinesinde geçen,
+    TAZE başlatılmış bir CI runner'ında (monotonic ~ birkaç yüz saniye)
+    ``handled == 0`` ile kırılan test buradan doğar. Aralığın kendisini
+    sıfırlamak monotonic'in değerinden bağımsızdır ve aynı testte arka arkaya
+    tarama yapılmasına da izin verir.
+    """
+    from services import escrow_reconciler
+
+    monkeypatch.setattr(
+        escrow_reconciler.settings, "CHECKOUT_RECONCILE_INTERVAL_SECONDS", 0
+    )
+    # Modül global'i: elle atama testten sızardı, monkeypatch geri alır.
+    monkeypatch.setattr(escrow_reconciler, "_last_checkout_scan", 0.0)
+
+
+class _CheckoutSaglayici:
+    """`retrieve_checkout` çağrılarını KAYDEDEN sahte sağlayıcı.
+
+    Paketin genel `fake_provider`'ında bu metot yoktur (reconciler orada
+    bilerek no-op'tur), bu yüzden bayat-checkout senaryoları kendi
+    sağlayıcısını takar.
+    """
+
+    def __init__(self, *, provider_ref: str, paid_price: str) -> None:
+        self.provider_ref = provider_ref
+        self.paid_price = Decimal(paid_price)
+        self.calls: list[str] = []
+
+    async def retrieve_checkout(self, *, token: str):
+        self.calls.append(token)
+        return SimpleNamespace(
+            success=True, provider_ref=self.provider_ref, paid_price=self.paid_price
+        )
+
+    async def refund(self, **kw):  # pragma: no cover
+        raise AssertionError("bu senaryoda iade beklenmiyor")
+
+    async def refund_state(self, **kw):  # pragma: no cover
+        from core.payments.base import RefundState
+
+        return RefundState.UNKNOWN
+
+
+def _saglayiciyi_tak(monkeypatch, provider) -> None:
+    """Ödeme sağlayıcısını değiştir.
+
+    `escrow_reconciler`, `order_service` ve `escrow` üçü de ``from core import
+    payments`` ile AYNI modül nesnesini tutar; tek yerde değiştirmek üçünü de
+    kapsar.
+    """
+    from core import payments
+
+    monkeypatch.setattr(payments, "get_payment_provider", lambda: provider)
 
 
 # ── E1: müşteri iptali (ödenmiş sipariş) ─────────────────────────────────────
@@ -92,56 +220,33 @@ async def test_E2_kargolanmis_siparis_iptal_edilemez(db, factory, fake_provider)
 
 
 async def test_E3_kayip_callback_reconciler_tarafindan_kesinlestirilir(
-    db, factory, fake_provider, monkeypatch
+    db, factory, monkeypatch
 ):
     """Müşteri iyzico'da ödedi, tarayıcıyı kapattı: callback hiç gelmedi.
 
     Sipariş PENDING kalırsa para çekilmiştir ama kitap gönderilmez ve kimse
     fark etmez. Reconciler bu durumu sağlayıcıdan doğrulayıp kapatmalıdır.
+
+    Yalnız `handled` sayısına bakmak yeterli değildir (sipariş başka bir yoldan
+    da PAID görünebilirdi): sağlayıcının GERÇEKTEN ve DOĞRU token'la
+    sorgulandığı, siparişin sağlayıcı işlem kimliğiyle kesinleştiği ve stok
+    hareketinin TAM BİR KEZ yazıldığı da doğrulanır.
     """
-    from services import escrow_reconciler, order_service
+    from services import escrow_reconciler
 
     client = await factory.client(db)
     product = await factory.product(db, price="90.00", stock=5)
     order = await factory.order(
         db, client=client, items=[(product, 1)], provider_ref="cf-lost"
     )
-    # Kaydı "bayat" yap: reconciler yalnız belirli yaştaki kayıtlara bakar.
-    eski = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(hours=2)
-    await db.execute(
-        text("UPDATE orders SET updated_at = :t WHERE id = :i"),
-        {"t": eski, "i": order.id},
+    # Kaydı "bayat" yap: eşik + açık güvenlik payı (sabit süre DEĞİL).
+    await _updated_at_ayarla(
+        db, order.id, _bayat_an(pay=datetime.timedelta(minutes=30))
     )
-    await db.commit()
 
-    class Result:
-        success = True
-        provider_ref = "txn-lost"
-        paid_price = Decimal("90.00")
-        reference = f"order:{order.id}"
-
-    class Provider:
-        async def retrieve_checkout(self, *, token):
-            assert token == "cf-lost"
-            return Result()
-
-        async def refund(self, **kw):  # pragma: no cover
-            raise AssertionError("bu senaryoda iade beklenmiyor")
-
-        async def refund_state(self, **kw):  # pragma: no cover
-            from core.payments.base import RefundState
-
-            return RefundState.UNKNOWN
-
-    from core import payments
-
-    monkeypatch.setattr(payments, "get_payment_provider", lambda: Provider())
-    monkeypatch.setattr(
-        escrow_reconciler.payments, "get_payment_provider", lambda: Provider()
-    )
-    monkeypatch.setattr(order_service.payments, "get_payment_provider", lambda: Provider())
-    # Tarama aralığı sayacını sıfırla (aynı süreçte önceki test çalıştırmış olabilir).
-    escrow_reconciler._last_checkout_scan = 0.0
+    saglayici = _CheckoutSaglayici(provider_ref="txn-lost", paid_price="90.00")
+    _saglayiciyi_tak(monkeypatch, saglayici)
+    _tarama_kapisini_ac(monkeypatch)
 
     handled = await escrow_reconciler.reconcile_stale_checkouts(db)
 
@@ -150,8 +255,82 @@ async def test_E3_kayip_callback_reconciler_tarafindan_kesinlestirilir(
     o = await db.get(Order, order.id)
     await db.refresh(o)
     assert handled >= 1, "reconciler kaydı işlemeliydi"
+    assert saglayici.calls.count("cf-lost") == 1, (
+        f"sağlayıcı saklı CF token'ıyla tam bir kez sorgulanmalı: {saglayici.calls}"
+    )
     assert o.payment_status == "PAID", f"sipariş {o.payment_status} kaldı"
+    assert o.provider_ref == "txn-lost", (
+        "sağlayıcı işlem kimliği yazılmalı — iade bu referansla yapılır"
+    )
+    assert o.paid_at is not None, "ödeme anı damgalanmalı"
     assert await _stock(db, product.id) == 4, "stok düşmeli (sipariş kesinleşti)"
+    assert await _sale_hareketleri(db, order.id) == 1, (
+        "stok hareketi tam bir kez yazılmalı"
+    )
+
+
+# ── E3a/E3b: yaş eşiği sınırı ────────────────────────────────────────────────
+
+
+async def test_E3a_esikten_yeni_checkout_islenmez(db, factory, monkeypatch):
+    """Eşiğin ALTINDAKİ checkout'a dokunulmaz.
+
+    Kullanıcı hâlâ 3DS ekranında olabilir; erken "tamamlandı" demek gerçek
+    callback ile yarışa girer. Sağlayıcıya gidilmemesi bunun kanıtıdır.
+    """
+    from services import escrow_reconciler
+
+    client = await factory.client(db)
+    product = await factory.product(db, price="90.00", stock=5)
+    order = await factory.order(
+        db, client=client, items=[(product, 1)], provider_ref="cf-taze"
+    )
+    await _updated_at_ayarla(db, order.id, _taze_an())
+
+    saglayici = _CheckoutSaglayici(provider_ref="txn-taze", paid_price="90.00")
+    _saglayiciyi_tak(monkeypatch, saglayici)
+    _tarama_kapisini_ac(monkeypatch)
+
+    await escrow_reconciler.reconcile_stale_checkouts(db)
+
+    from models.store import Order
+
+    o = await db.get(Order, order.id)
+    await db.refresh(o)
+    assert "cf-taze" not in saglayici.calls, (
+        "eşikten yeni kayıt için sağlayıcıya gidilmemeli"
+    )
+    assert o.payment_status == "PENDING", f"sipariş {o.payment_status} oldu"
+    assert o.paid_at is None
+    assert await _stock(db, product.id) == 5, "stok değişmemeli"
+    assert await _sale_hareketleri(db, order.id) == 0, "stok hareketi yazılmamalı"
+
+
+async def test_E3b_esikten_eski_checkout_islenir(db, factory, monkeypatch):
+    """Eşiği YENİ geçmiş checkout işlenir — E3a ile aynı ortamda karşıt kutup."""
+    from services import escrow_reconciler
+
+    client = await factory.client(db)
+    product = await factory.product(db, price="90.00", stock=5)
+    order = await factory.order(
+        db, client=client, items=[(product, 1)], provider_ref="cf-esik"
+    )
+    await _updated_at_ayarla(db, order.id, _bayat_an())
+
+    saglayici = _CheckoutSaglayici(provider_ref="txn-esik", paid_price="90.00")
+    _saglayiciyi_tak(monkeypatch, saglayici)
+    _tarama_kapisini_ac(monkeypatch)
+
+    handled = await escrow_reconciler.reconcile_stale_checkouts(db)
+
+    from models.store import Order
+
+    o = await db.get(Order, order.id)
+    await db.refresh(o)
+    assert handled >= 1
+    assert saglayici.calls.count("cf-esik") == 1, saglayici.calls
+    assert o.payment_status == "PAID", f"sipariş {o.payment_status} kaldı"
+    assert await _sale_hareketleri(db, order.id) == 1
 
 
 # ── E4: sarkan REFUNDING talebi reconciler kapsamında ────────────────────────

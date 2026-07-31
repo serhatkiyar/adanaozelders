@@ -7,8 +7,10 @@ Bu paketteki diğer dosyalardan farkı: burada doğrulanan şey veritabanı değ
 doğrulanabilir: birim testi policy JSON'unun metnini kontrol eder, uygulanıp
 uygulanmadığını değil.
 
-Depo erişilemezse testler atlanır (CI'da MinIO servisi yoktur); lansman öncesi
-ve her depo yapılandırması değişikliğinde yerelde/prod provasında koşturulmalı.
+Depo erişilemezse testler yerelde atlanır; CI'da (`CI_REQUIRE_SERVICES=1`)
+KIRILIR — bkz. `tests/service_guard.py`. Eskiden burada koşulsuz bir SKIP
+vardı ve CI'da MinIO servisi olmadığı için altı testin tamamı atlanıyordu:
+yani bu dosyanın doğruladığı güvenlik iddiası CI'da HİÇ kanıtlanmıyordu.
 """
 from __future__ import annotations
 
@@ -19,6 +21,7 @@ import pytest
 
 from core import storage
 from core.config import settings
+from tests.service_guard import servis_yok
 
 pytestmark = pytest.mark.asyncio
 
@@ -35,13 +38,13 @@ async def _delete(key: str) -> None:
 
 @pytest.fixture
 async def bucket_ready():
-    """Bucket + güncel policy; depo yoksa testi atla."""
+    """Bucket + güncel policy; depo yoksa yerelde atla, CI'da kır."""
     try:
         await storage.ensure_bucket()
         async with storage._s3_client() as s3:
             await s3.head_bucket(Bucket=settings.AWS_BUCKET_NAME)
     except Exception as exc:  # noqa: BLE001
-        pytest.skip(f"depo erişilemiyor: {exc}")
+        servis_yok("MinIO/S3", exc)
     return True
 
 

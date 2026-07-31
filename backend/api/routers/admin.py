@@ -246,7 +246,9 @@ async def update_feature_flag(
             db, key=key, enabled=payload.enabled, admin_id=admin.id, note=payload.note
         )
     except KeyError:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Tanımsız özellik bayrağı")
+        raise HTTPException(
+            status.HTTP_404_NOT_FOUND, "Tanımsız özellik bayrağı"
+        ) from None
     await audit_service.record(
         db,
         actor=admin,
