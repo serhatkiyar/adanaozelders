@@ -52,7 +52,12 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from models.inventory import DAMAGE_REASONS, DamageEventKind, StockDamageEvent
-from models.store import ProductKind, StockBucket, StockMovementType
+from models.store import (
+    ProductKind,
+    StockBucket,
+    StockMovement,
+    StockMovementType,
+)
 from services import audit_service, stock_ledger
 
 SALEABLE = StockBucket.SALEABLE.value
@@ -227,19 +232,91 @@ async def _kapsamda_olay(
     ).scalars().first()
 
 
+#: Defter bütünlüğü ihlali mesajının değişmez öneki. Arayüz ve operatör
+#: yordamları serbest metne değil bu koda bağlanır.
+INVARIANT_MARKER = "LEDGER_INVARIANT"
+
+
+def expected_legs(olay: StockDamageEvent) -> list[tuple[str, int, str]]:
+    """Olayın deftere yazmış OLMASI GEREKEN satırları: `(kova, delta, tür)`.
+
+    Tek doğruluk kaynağı `_ISLEM` tablosudur; beklenen küme burada ikinci kez
+    elle yazılmaz.
+    """
+    kaynak, hedef, tur = _ISLEM[olay.kind]
+    if olay.kind == DamageEventKind.SUPPLIER_RETURN.value:
+        kaynak = olay.source_bucket
+    adet = int(olay.qty)
+    bacaklar = [(kaynak, -adet, tur.value)]
+    if hedef is not None:
+        bacaklar.append((hedef, +adet, tur.value))
+    return bacaklar
+
+
+async def _mevcut_bacaklar(
+    db: AsyncSession, event_id: int
+) -> list[tuple[str, int, str]]:
+    """Olaya **yapısal referansla** bağlı defter satırları.
+
+    Bağ `ref_type='damage_event'` + `ref_id`'dir; metinsel idempotency
+    anahtarına güvenilmez. Başka bir olaya bağlı hareket bu sorguya hiç
+    düşmez — dolayısıyla bu olayın bacağı olarak sayılmaz.
+    """
+    satirlar = (
+        await db.execute(
+            select(
+                StockMovement.bucket,
+                StockMovement.qty_delta,
+                StockMovement.movement_type,
+            ).where(
+                StockMovement.ref_type == "damage_event",
+                StockMovement.ref_id == event_id,
+            )
+        )
+    ).all()
+    return sorted((r.bucket, int(r.qty_delta), r.movement_type) for r in satirlar)
+
+
+async def assert_ledger_intact(db: AsyncSession, olay: StockDamageEvent) -> None:
+    """Olayın defter bacakları **tam ve doğru** mu? Değilse domain hatası.
+
+    ## Neden eksik bacak "tamamlanmaz"
+
+    Olay, iki defter satırı ve iki bakiye **aynı transaction'da** yazılır;
+    üretim akışında yarım bir olay OLUŞAMAZ. Olay varken bacak eksikse bu bir
+    idempotent retry değil, **veri bütünlüğü ihlalidir** — ve sebebi bilinmez:
+    bakiye çoktan değişmiş, yalnız defter satırı kaybolmuş olabilir (elle
+    silme, kurtarma hatası, bozuk geri yükleme). Bu durumda hareketi yeniden
+    uygulamak stoğu **ikinci kez** değiştirir ve bozukluğu sessizce büyütür.
+
+    Bu yüzden servis bozuk veriyi **onarmaz**: durur, adıyla söyler ve düzeltmeyi
+    ayrı bir onarım/denetim işine bırakır (`verify_ledger` / `audit_products`
+    bulguyu zaten görünür kılıyor).
+
+    Fazla bacak, yanlış kova, yanlış `qty_delta`, yanlış tür ve yanlış referans
+    da aynı ihlaldir: beklenen küme ile mevcut küme **birebir** eşleşmelidir.
+    """
+    beklenen = sorted(expected_legs(olay))
+    mevcut = await _mevcut_bacaklar(db, olay.id)
+    if mevcut != beklenen:
+        raise _hata(
+            status.HTTP_409_CONFLICT,
+            f"{INVARIANT_MARKER}: hasar olayı {olay.id} için defter satırları "
+            f"beklenenle uyuşmuyor (beklenen={beklenen}, mevcut={mevcut}). "
+            "Otomatik onarım YAPILMAZ; ayrı bir onarım/denetim işi gerekir.",
+        )
+
+
 async def _replay_veya_catisma(
     db: AsyncSession,
     onceki: StockDamageEvent,
     spec: dict[str, Any],
-    adet: int,
-    kaynak: str,
-    hedef: str | None,
-    hareket_turu: StockMovementType,
-    reason_code: str,
-    note: str | None,
-    admin_id: int,
 ) -> StockDamageEvent:
-    """Kapsamda kayıtlı olay varsa: aynı iş → replay, farklı iş → 409."""
+    """Kapsamda kayıtlı olay varsa: aynı iş → replay, farklı iş → 409.
+
+    Replay **hiçbir şey yazmaz**: yalnız defter bacaklarının tam ve doğru
+    olduğunu doğrular. Bkz. `assert_ledger_intact`.
+    """
     farklar = payload_differences(onceki, spec)
     if farklar:
         raise _hata(
@@ -247,12 +324,7 @@ async def _replay_veya_catisma(
             "aynı idempotency anahtarı farklı bir hasar işlemiyle kullanılmış: "
             f"{farklar}",
         )
-    # Defter anahtarları olay kimliğinden türediği için yeniden uygulamak
-    # replay'dir: yeni satır yazılmaz, yarım kalmış bacak varsa tamamlanır.
-    await _defter_yaz(
-        db, onceki, int(onceki.qty), onceki.source_bucket, hedef,
-        hareket_turu, onceki.reason_code, onceki.note, onceki.actor_admin_id,
-    )
+    await assert_ledger_intact(db, onceki)
     return onceki
 
 
@@ -305,10 +377,7 @@ async def _uygula(
     if idempotency_key:
         onceki = await _kapsamda_olay(db, admin_id, idempotency_key)
         if onceki is not None:
-            return await _replay_veya_catisma(
-                db, onceki, spec, adet, kaynak, hedef, hareket_turu,
-                reason_code, note, admin_id,
-            )
+            return await _replay_veya_catisma(db, onceki, spec)
 
     if mevcut < adet:
         raise _hata(
@@ -360,10 +429,7 @@ async def _uygula(
                 status.HTTP_409_CONFLICT,
                 "hasar olayı yazılamadı (eşzamanlı çatışma); isteği tekrarlayın",
             )
-        return await _replay_veya_catisma(
-            db, onceki, spec, adet, kaynak, hedef, hareket_turu,
-            reason_code, note, admin_id,
-        )
+        return await _replay_veya_catisma(db, onceki, spec)
 
     await _defter_yaz(db, olay, adet, kaynak, hedef, hareket_turu,
                        reason_code, note, admin_id)
@@ -520,11 +586,13 @@ async def supplier_return(
 
 
 async def replay_damage_event(db: AsyncSession, event_id: int) -> StockDamageEvent:
-    """Kayıtlı bir olayın defter karşılığını **yeniden uygular**.
+    """Kayıtlı bir olayın defter bütünlüğünü **doğrular** ve olayı döndürür.
 
-    Anahtarlar olay kimliğinden deterministik türediği için defter bunu replay
-    sayar: yeni hareket yazılmaz, bakiye değişmez. Yarım kalmış bir batch varsa
-    (ör. süreç ilk denemede çöktü) eksik bacak tamamlanır.
+    ⚠️ Onarım YAPMAZ. Önceki uygulama eksik bacakları yeniden yazıyordu; bu
+    güvenli değildi: bakiye çoktan değişmiş ve yalnız defter satırı kaybolmuş
+    olabilir, o hâlde yeniden yazmak stoğu ikinci kez değiştirirdi. Eksik,
+    fazla ya da yanlış bacak artık açık bir domain hatası üretir
+    (`assert_ledger_intact`).
     """
     olay = (
         await db.execute(
@@ -533,15 +601,7 @@ async def replay_damage_event(db: AsyncSession, event_id: int) -> StockDamageEve
     ).scalars().first()
     if olay is None:
         raise _hata(status.HTTP_404_NOT_FOUND, "hasar olayı bulunamadı")
-    kaynak, hedef, hareket_turu = _ISLEM[olay.kind]
-    if olay.kind == DamageEventKind.SUPPLIER_RETURN.value:
-        kaynak = olay.source_bucket
-    # Kilit sırası korunur: yazımdan önce ürün.
-    await _bakiye(db, olay.product_id, kaynak)
-    await _defter_yaz(
-        db, olay, int(olay.qty), kaynak, hedef, hareket_turu,
-        olay.reason_code, olay.note, olay.actor_admin_id,
-    )
+    await assert_ledger_intact(db, olay)
     return olay
 
 
@@ -581,6 +641,9 @@ async def list_damage_events(
 
 __all__ = [
     "IDEMPOTENCY_PAYLOAD_FIELDS",
+    "INVARIANT_MARKER",
+    "assert_ledger_intact",
+    "expected_legs",
     "damage_disposal",
     "damage_recovery",
     "damage_transfer",

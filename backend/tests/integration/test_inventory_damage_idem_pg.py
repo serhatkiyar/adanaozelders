@@ -533,13 +533,21 @@ async def test_COMMIT_EDILMEMIS_cakisan_kayit_SAVEPOINT_ile_409a_cevrilir(fab):
 
 
 async def test_COMMIT_EDILMEMIS_cakismada_AYNI_payload_REPLAY_olur(fab):
-    """Aynı yarış, ama payload aynı: sonuç 409 değil **replay**."""
+    """Aynı yarış, ama payload aynı: sonuç 409 değil **replay**.
+
+    Tutulan kayıt **servis yoluyla** (dolayısıyla defter bacaklarıyla birlikte)
+    üretilir — ham SQL ile yarım bir olay bırakmak bütünlük ihlali olurdu ve
+    replay artık onu reddeder (bkz. `assert_ledger_intact`).
+    """
     pid = await fab.urun(stock=10)
     key = f"cak-{_uniq()}"
 
     tutan = AsyncSessionLocal()
     try:
-        await _ham_olay(pid, ADMIN_ID, key, tutan)
+        await inventory_damage.damage_transfer(
+            tutan, pid, qty=1, reason_code="KIRIK", admin_id=ADMIN_ID,
+            idempotency_key=key,
+        )   # COMMIT YOK
 
         async def deneyen():
             async with AsyncSessionLocal() as db:
@@ -552,38 +560,221 @@ async def test_COMMIT_EDILMEMIS_cakismada_AYNI_payload_REPLAY_olur(fab):
 
         gorev = asyncio.create_task(deneyen())
         await asyncio.sleep(0.3)
-        assert not gorev.done()
+        assert not gorev.done(), "unique index üzerinde bloklanmadı"
         await tutan.commit()
     finally:
         await tutan.close()
 
     olay_id = await gorev
     assert await _olaylar(pid) == 1, "ikinci olay üretildi"
-    # Ham satırın defter bacağı yoktu; retry onları TAMAMLAR.
     assert len(await _hareketler_ref(olay_id)) == 2
-    assert await _kovalar(pid) == (9, 1)
+    assert await _kovalar(pid) == (9, 1), "replay bakiyeyi İKİNCİ kez değiştirdi"
 
 
-async def test_RETRY_yarim_kalmis_ledger_bacaklarini_TAMAMLAR(fab):
-    """Replay yolunun defteri yeniden uygulaması ölü kod DEĞİL: olayı olup
-    hareketleri eksik bir kayıt, aynı anahtarla gelen istekte tamamlanır."""
-    pid = await fab.urun(stock=10)
-    key = f"yarim-{_uniq()}"
+# ══════════ Replay BÜTÜNLÜK DOĞRULAMASI (onarım DEĞİL) ══════════
+#
+# Olay, iki defter satırı ve iki bakiye AYNI transaction'da yazılır; üretim
+# akışında yarım bir olay OLUŞAMAZ. Olay varken bacak eksikse bu idempotent
+# retry değil **veri bütünlüğü ihlalidir** ve sebebi bilinmez: bakiye çoktan
+# değişmiş, yalnız defter satırı kaybolmuş olabilir. Yeniden uygulamak stoğu
+# ikinci kez değiştirirdi. Servis onarmaz — durur ve adıyla söyler.
+
+
+async def _bacak_sil(event_id: int, bucket: str) -> None:
     async with AsyncSessionLocal() as db:
-        await _ham_olay(pid, ADMIN_ID, key, db)
+        await db.execute(text("ALTER TABLE stock_movements DISABLE TRIGGER USER"))
+        await db.execute(
+            text(
+                "DELETE FROM stock_movements WHERE ref_type = 'damage_event' "
+                "AND ref_id = :i AND bucket = :b"
+            ),
+            {"i": event_id, "b": bucket},
+        )
+        await db.execute(text("ALTER TABLE stock_movements ENABLE TRIGGER USER"))
         await db.commit()
-    assert await _kovalar(pid) == (10, 0)          # hiçbir bacak yok
 
+
+async def _ham_bacak(pid: int, event_id: int, **cols) -> None:
+    """Defter servisini ATLAYARAK olaya bağlı bir satır yazar."""
+    varsayilan = dict(
+        product_id=pid, bucket="DAMAGED", qty_delta=1, qty_after=99,
+        movement_type="DAMAGE_TRANSFER", reason_code="KIRIK",
+        ref_type="damage_event", ref_id=event_id, ref_line_id=None,
+        idempotency_key=f"ham-{_uniq()}", actor_type="ADMIN", actor_id=ADMIN_ID,
+        note=None, request_id=None,
+    )
+    varsayilan.update(cols)
+    kolonlar = ", ".join(varsayilan)
+    yerler = ", ".join(f":{k}" for k in varsayilan)
+    async with AsyncSessionLocal() as db:
+        await db.execute(
+            text(f"INSERT INTO stock_movements ({kolonlar}) VALUES ({yerler})"),
+            varsayilan,
+        )
+        await db.commit()
+
+
+async def _bozuk_olayla_retry(pid: int, key: str):
+    """Aynı anahtarla ikinci istek — bütünlük ihlali beklenir."""
+    with pytest.raises(Exception) as exc:
+        async with AsyncSessionLocal() as db:
+            await inventory_damage.damage_transfer(
+                db, pid, qty=2, reason_code="KIRIK", admin_id=ADMIN_ID,
+                idempotency_key=key,
+            )
+            await db.commit()
+    assert getattr(exc.value, "status_code", None) == 409, exc.value
+    assert inventory_damage.INVARIANT_MARKER in str(exc.value.detail)
+    return exc.value
+
+
+async def _hazir_olay(fab, pid_stok: int = 10, adet: int = 2):
+    pid = await fab.urun(stock=pid_stok)
+    key = f"inv-{_uniq()}"
     async with AsyncSessionLocal() as db:
         olay = await inventory_damage.damage_transfer(
-            db, pid, qty=1, reason_code="KIRIK", admin_id=ADMIN_ID,
+            db, pid, qty=adet, reason_code="KIRIK", admin_id=ADMIN_ID,
             idempotency_key=key,
         )
         await db.commit()
-        olay_id = olay.id
+        return pid, key, olay.id
+
+
+async def test_RETRY_yarim_kalmis_ledger_bacaklarini_TAMAMLAMAZ(fab):
+    """(1) Eksik transfer bacağı replay ile TAMAMLANMAZ.
+
+    Sözleşme tersine çevrildi: önceki uygulama eksik bacağı yeniden yazıyordu
+    ve bakiye zaten değişmişse stoğu ikinci kez değiştirebiliyordu.
+    """
+    pid, key, olay_id = await _hazir_olay(fab)
+    assert await _kovalar(pid) == (8, 2)
+    await _bacak_sil(olay_id, "DAMAGED")
+
+    once_kova = await _kovalar(pid)
+    once_bacak = await _hareketler_ref(olay_id)
+    await _bozuk_olayla_retry(pid, key)
+
+    assert await _kovalar(pid) == once_kova, "bakiye değişti"
+    assert await _hareketler_ref(olay_id) == once_bacak, "eksik bacak yazıldı"
+    assert await _olaylar(pid) == 1, "yeni olay üretildi"
+
+
+async def test_FAZLA_UCUNCU_bacak_INVARIANT_hatasidir(fab):
+    """(2)"""
+    pid, key, olay_id = await _hazir_olay(fab)
+    await _ham_bacak(pid, olay_id, bucket="DAMAGED", qty_delta=1)
+    once = await _kovalar(pid)
+    await _bozuk_olayla_retry(pid, key)
+    assert await _kovalar(pid) == once
+    assert len(await _hareketler_ref(olay_id)) == 3
+
+
+async def test_YANLIS_BUCKET_INVARIANT_hatasidir(fab):
+    """(3) Bacak sayısı doğru ama kova yanlış."""
+    pid, key, olay_id = await _hazir_olay(fab)
+    await _bacak_sil(olay_id, "DAMAGED")
+    await _ham_bacak(pid, olay_id, bucket="SALEABLE", qty_delta=2)
+    once = await _kovalar(pid)
+    await _bozuk_olayla_retry(pid, key)
+    assert await _kovalar(pid) == once
+
+
+async def test_YANLIS_QTY_DELTA_INVARIANT_hatasidir(fab):
+    """(4) Kova doğru, miktar yanlış."""
+    pid, key, olay_id = await _hazir_olay(fab)
+    await _bacak_sil(olay_id, "DAMAGED")
+    await _ham_bacak(pid, olay_id, bucket="DAMAGED", qty_delta=99)
+    once = await _kovalar(pid)
+    await _bozuk_olayla_retry(pid, key)
+    assert await _kovalar(pid) == once
+
+
+async def test_BASKA_EVENT_ID_sine_bagli_hareket_KABUL_EDILMEZ(fab):
+    """(5) Bağ yapısaldır: `ref_id` başka olaya işaret eden satır bu olayın
+    bacağı sayılmaz — eksik bacak olarak görünür."""
+    pid, key, olay_id = await _hazir_olay(fab)
+    await _bacak_sil(olay_id, "DAMAGED")
+    # Doğru kova/miktar, ama BAŞKA bir olay kimliğine bağlı.
+    await _ham_bacak(pid, olay_id, bucket="DAMAGED", qty_delta=2,
+                     ref_id=olay_id + 10_000)
+    once = await _kovalar(pid)
+    await _bozuk_olayla_retry(pid, key)
+    # Yanlış bağlanan satır BU olayın bacağı sayılmıyor: yalnız SALEABLE kaldı.
+    assert [r.bucket for r in await _hareketler_ref(olay_id)] == ["SALEABLE"]
+    # Satır kaybolmadı; başka bir kimliğe bağlı olarak duruyor.
+    assert len(await _hareketler_ref(olay_id + 10_000)) == 1
+    assert await _kovalar(pid) == once
+
+
+async def test_EKSIKSIZ_event_ayni_key_ile_GUVENLI_REPLAY(fab):
+    """(6) Karşı prova: bütünlük tamsa replay sorunsuz ve bakiye değişmez.
+
+    Bu test olmadan "her replay'i reddet" gibi aşırı-korumacı bir uygulama da
+    yeşil kalırdı.
+    """
+    pid, key, olay_id = await _hazir_olay(fab)
+    once = await _kovalar(pid)
+    async with AsyncSessionLocal() as db:
+        tekrar = await inventory_damage.damage_transfer(
+            db, pid, qty=2, reason_code="KIRIK", admin_id=ADMIN_ID,
+            idempotency_key=key,
+        )
+        await db.commit()
+    assert tekrar.id == olay_id
+    assert await _kovalar(pid) == once
+    assert len(await _hareketler_ref(olay_id)) == 2
+    # `replay_damage_event` de doğrular, onarmaz.
+    async with AsyncSessionLocal() as db:
+        assert (await inventory_damage.replay_damage_event(db, olay_id)).id == olay_id
+
+
+async def test_INVARIANT_hatasi_sonrasi_TRANSACTION_kullanilabilir(fab):
+    """(7) Hata ham DB istisnası değil domain hatası; transaction aborted
+    duruma DÜŞMEZ — çağıran aynı session'da okumaya devam edebilir ve güvenle
+    rollback edebilir."""
+    from fastapi import HTTPException
+
+    pid, key, olay_id = await _hazir_olay(fab)
+    await _bacak_sil(olay_id, "DAMAGED")
+
+    async with AsyncSessionLocal() as db:
+        with pytest.raises(HTTPException) as exc:
+            await inventory_damage.damage_transfer(
+                db, pid, qty=2, reason_code="KIRIK", admin_id=ADMIN_ID,
+                idempotency_key=key,
+            )
+        assert exc.value.status_code == 409
+        # Transaction hâlâ kullanılabilir:
+        deger = (await db.execute(text("SELECT 1"))).scalar_one()
+        assert deger == 1
+        await db.rollback()
+
+    assert await _kovalar(pid) == (8, 2)
     assert await _olaylar(pid) == 1
-    assert len(await _hareketler_ref(olay_id)) == 2, "eksik bacak tamamlanmadı"
-    assert await _kovalar(pid) == (9, 1)
+
+
+async def test_DISPOSAL_eksik_bacagi_da_INVARIANT_hatasidir(fab):
+    """Tek bacaklı işlemler de aynı sözleşmeye tabi."""
+    pid = await fab.urun(stock=10)
+    async with AsyncSessionLocal() as db:
+        await inventory_damage.damage_transfer(
+            db, pid, qty=4, reason_code="KIRIK", admin_id=ADMIN_ID
+        )
+        imha = await inventory_damage.damage_disposal(
+            db, pid, qty=2, reason_code="KIRIK", admin_id=ADMIN_ID,
+            idempotency_key="imha-1",
+        )
+        await db.commit()
+        imha_id = imha.id
+    await _bacak_sil(imha_id, "DAMAGED")
+    with pytest.raises(Exception) as exc:
+        async with AsyncSessionLocal() as db:
+            await inventory_damage.damage_disposal(
+                db, pid, qty=2, reason_code="KIRIK", admin_id=ADMIN_ID,
+                idempotency_key="imha-1",
+            )
+            await db.commit()
+    assert inventory_damage.INVARIANT_MARKER in str(exc.value.detail)
 
 
 async def test_UNIQUE_INDEX_DB_tarafindan_uygulaniyor(fab):

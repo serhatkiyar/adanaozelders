@@ -393,14 +393,24 @@ async def test_FARKLI_anahtarla_ikinci_apply_REDDEDILIR(fab):
 # ── counted_at otoritesi ───────────────────────────────────────────────────
 
 async def test_counted_at_SUNUCU_zamanidir(fab):
-    """İstemci saati/cihaz saati uzlaştırmanın güven kaynağı olamaz."""
+    """İstemci saati/cihaz saati uzlaştırmanın güven kaynağı olamaz.
+
+    ⚠️ Sınırlar **VERİTABANI saatinden** alınır. İlk hâli Python'ın
+    `datetime.now()`'ını sınır olarak kullanıyordu; commit 5 `counted_at`'i DB
+    `clock_timestamp()`'ine çevirince iki AYRI saat karşılaştırılır oldu ve
+    test milisaniyelik saat sapmasında rastgele kırıldı. Daha önce
+    "açıklanamayan tek koşumluk flake" olarak raporlanan durum tam olarak
+    budur — burada kaynağıyla kapatıldı.
+    """
     pid = await fab.urun(stock=5)
     sid = await _oturum_ac(pid)
-    once = now()
+    async with AsyncSessionLocal() as db:
+        once = (await db.execute(text("SELECT clock_timestamp()"))).scalar_one()
     async with AsyncSessionLocal() as db:
         await servis().set_counted(db, await _satir(sid, pid), 5, admin_id=ADMIN_ID)
         await db.commit()
-    sonra = now()
+    async with AsyncSessionLocal() as db:
+        sonra = (await db.execute(text("SELECT clock_timestamp()"))).scalar_one()
     async with AsyncSessionLocal() as db:
         ts = (
             await db.execute(
