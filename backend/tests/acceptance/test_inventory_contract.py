@@ -175,3 +175,46 @@ def test_inventory_routeri_api_routera_KAYITLI():
     gibi görünmez — ama menü de gizli olduğu için hata sessiz kalır."""
     metin = (BACKEND / "api" / "router.py").read_text(encoding="utf-8")
     assert "inventory" in metin, "api/router.py'de inventory router'ı yok"
+
+
+def test_migration_ROL_DAGITIMI_gercek_izin_setini_verir():
+    """Rol dağıtımı **substring** ile değil, gerçek veri yapısıyla ölçülür.
+
+    Kusur: önceki test yalnız rol ADININ migration dosyasında geçtiğini
+    arıyordu. `OPERATIONS_MANAGER`'a üç iznin üçü birden verilse — yani
+    operasyon müdürüne envanteri DEĞİŞTİRME yetkisi açılsa — test yeşil
+    kalırdı. Görev ayrılığı F29'un temel güvenlik iddiası ve tek bir `in`
+    operatörüyle korunuyordu.
+
+    Burada migration modülü import edilip dağıtım sözlüğü OKUNUR; hangi rolün
+    hangi izni aldığı tek tek doğrulanır.
+    """
+    import importlib.util
+
+    yol = (
+        pathlib.Path(__file__).resolve().parents[2]
+        / "migrations" / "versions" / "f29_sayim_hasarli_stok.py"
+    )
+    spec = importlib.util.spec_from_file_location("f29_mig", yol)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+
+    dagitim = next(
+        (v for k, v in vars(mod).items()
+         if isinstance(v, dict) and "SUPER_ADMIN" in v and k.isupper()),
+        None,
+    )
+    assert dagitim is not None, "migration'da rol→izin sözlüğü bulunamadı"
+
+    assert set(dagitim["SUPER_ADMIN"]) == set(YENI_IZINLER)
+    assert set(dagitim["COMMERCE_MANAGER"]) == set(YENI_IZINLER)
+    # Görev ayrılığı: operasyon müdürü GÖRÜR ama DEĞİŞTİREMEZ.
+    assert dagitim["OPERATIONS_MANAGER"] == ["inventory.view"], (
+        "OPERATIONS_MANAGER'a envanteri değiştirme yetkisi verilmiş: "
+        f"{dagitim['OPERATIONS_MANAGER']}"
+    )
+    for rol, izinler in dagitim.items():
+        if rol not in ("SUPER_ADMIN", "COMMERCE_MANAGER"):
+            assert "inventory.apply" not in izinler, (
+                f"{rol} rolüne inventory.apply verilmiş"
+            )

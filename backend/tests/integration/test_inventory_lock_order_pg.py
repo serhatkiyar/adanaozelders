@@ -163,8 +163,10 @@ async def _zincir_saglam(pid: int) -> None:
 @pytest.mark.parametrize("tur", range(TURLAR))
 @pytest.mark.parametrize("sayim_once", [True, False], ids=["sayim-once", "satis-once"])
 async def test_sayim_uygulamasi_ve_satis_YARISI(fab, tur, sayim_once):
+    # Sayılan ≠ stok: sıfır fark deftere HİÇ hareket yazmaz ve o hâlde
+    # "apply her çağrıda 409 veriyor" gibi bir bozukluk da yeşil kalırdı.
     pid = await fab.urun(stock=20)
-    sid = await _hazir_oturum(pid, 20)
+    sid = await _hazir_oturum(pid, 18)
     a, b = (0.0, 0.02) if sayim_once else (0.02, 0.0)
     sonuclar = await asyncio.gather(
         _uygula(sid, a, f"k{tur}"),
@@ -173,6 +175,8 @@ async def test_sayim_uygulamasi_ve_satis_YARISI(fab, tur, sayim_once):
     )
     _kilit_hatasi_yok(sonuclar)
     await _zincir_saglam(pid)
+    # Son durum: sayım −2 (20→18) ve satış −2 birlikte uygulanmış olmalı.
+    assert await fab.stok(pid) == 16, "iki işlemden biri kayboldu"
 
 
 # ── Çift 2: sayım uygulaması ↔ hasar transferi ─────────────────────────────
@@ -181,7 +185,7 @@ async def test_sayim_uygulamasi_ve_satis_YARISI(fab, tur, sayim_once):
 @pytest.mark.parametrize("sayim_once", [True, False], ids=["sayim-once", "hasar-once"])
 async def test_sayim_uygulamasi_ve_hasar_transferi_YARISI(fab, tur, sayim_once):
     pid = await fab.urun(stock=20)
-    sid = await _hazir_oturum(pid, 20)
+    sid = await _hazir_oturum(pid, 18)
     a, b = (0.0, 0.02) if sayim_once else (0.02, 0.0)
     sonuclar = await asyncio.gather(
         _uygula(sid, a, f"k{tur}"),
@@ -190,6 +194,8 @@ async def test_sayim_uygulamasi_ve_hasar_transferi_YARISI(fab, tur, sayim_once):
     )
     _kilit_hatasi_yok(sonuclar)
     await _zincir_saglam(pid)
+    # Sayım −2, transfer satılabilirden −3 → 15; hasarlı kovada +3.
+    assert await fab.stok(pid) == 15, "sayım farkı ya da transfer kayboldu"
 
 
 # ── Çift 3: hasar transferi ↔ satış ────────────────────────────────────────
@@ -240,7 +246,7 @@ async def test_satis_sayim_ve_hasar_UCU_BIRDEN(fab, tur):
     """Direktifteki 'aynı üründe eşzamanlı satış, sayım uygulaması ve hasar
     transferi' senaryosu — üç farklı kilit yolu tek üründe buluşuyor."""
     pid = await fab.urun(stock=30)
-    sid = await _hazir_oturum(pid, 30)
+    sid = await _hazir_oturum(pid, 28)
     sonuclar = await asyncio.gather(
         _uygula(sid, 0.0, f"u{tur}"),
         _satis(fab, pid, 2, 0.01),

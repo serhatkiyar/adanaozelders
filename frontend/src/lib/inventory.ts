@@ -71,9 +71,16 @@ export function allowedCountActions(status: CountSessionStatus): CountAction[] {
     case "IN_PROGRESS":
       return ["count", "submit", "cancel"];
     case "REVIEW":
-      // Sayım REVIEW'da da açıktır: yeniden sayım oturumu IN_PROGRESS'e
-      // döndürür ve onayı temizler (backend `set_counted` sözleşmesi).
-      return ["count", "apply", "reopen", "cancel"];
+      // Sayım REVIEW'da KAPALIDIR. Commit 9 uçtan uca turunda bulundu:
+      // arayüz burada sayım alanı gösteriyordu ama servis
+      // (`set_counted`) `IN_PROGRESS` dışındaki her durumu 409 ile
+      // reddediyor — "önce oturumu sayıma geri açın". Yani her tıklama
+      // kesin olarak hataya gidiyordu ve bu, "servisin reddedeceği butonu
+      // gösterme" kuralının ihlaliydi.
+      //
+      // Yeniden sayım yolu: **İncelemeyi geri al** (`reopen`, denetim
+      // yetkisi) → oturum IN_PROGRESS'e döner → sayım açılır.
+      return ["apply", "reopen", "cancel"];
     default:
       return [];
   }

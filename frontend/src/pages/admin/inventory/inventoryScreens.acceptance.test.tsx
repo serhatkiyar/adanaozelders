@@ -97,14 +97,22 @@ beforeEach(() => {
 
 afterEach(() => {
   apiClient.defaults.adapter = eskiAdapter as never;
-  useAuthStore.setState({ user: null });
+  // Store'un ÜÇ alanı da sıfırlanır. Yalnız `user`'ı temizlemek, ileride
+  // `isAuthenticated`/`token` okuyan bir guard eklendiğinde 40+ testin
+  // anlamını sessizce değiştirirdi: "yetkisiz kullanıcı butonu görmez"
+  // iddiaları "oturum açık değil" sebebiyle geçmeye başlardı.
+  useAuthStore.setState({ user: null, token: null, isAuthenticated: false });
 });
 
 /* ══════════════ Render yardımcıları ══════════════ */
 
 function izinVer(...kodlar: string[]) {
+  // GERÇEKÇİ oturum: token ve `isAuthenticated` de kurulur. Aksi hâlde bütün
+  // ekran testleri "oturum kapalı" durumunda koşar ve izin kapısının kendisi
+  // hiç sınanmamış olur.
   useAuthStore.setState({
-    // Yalnız izin listesi okunuyor; tam UserOut kurmak testi kalabalıklaştırır.
+    token: "test-token",
+    isAuthenticated: true,
     user: { id: 1, role_id: 1, admin_permissions: kodlar } as never,
   });
 }
@@ -499,7 +507,20 @@ describe("11-12 · STALE ve RESOLVED", () => {
 });
 
 describe("13-14 · yeniden sayım", () => {
-  it("yeni snapshot ve sayım değeri ekrana yansır", async () => {
+  it("REVIEW'da sayım alanı GÖSTERİLMEZ — önce incelemeyi geri al", async () => {
+    // Commit 9 uçtan uca turunda bulundu: arayüz REVIEW'da sayım alanı
+    // gösteriyordu ama servis `IN_PROGRESS` dışındaki her durumu 409 ile
+    // reddediyor. Her tıklaması kesin hataya giden bir alan, "servisin
+    // reddedeceği butonu gösterme" kuralının ihlaliydi.
+    izinVer(VIEW, COUNT, APPLY);
+    detaySunucusu(detay({}, [{ ...SATIR_SALEABLE, status: "STALE" }]));
+    sar(ROUTES.adminInventoryCount(7));
+    await screen.findByTestId("count-line-101");
+    expect(screen.queryByLabelText(/sayılan/i)).toBeNull();
+    expect(screen.getByRole("button", { name: /[İi]ncelemeyi geri al/ })).toBeTruthy();
+  });
+
+  it("yeniden sayımda yeni snapshot ve sayım değeri ekrana yansır", async () => {
     izinVer(VIEW, COUNT, APPLY);
     let sayac = 0;
     sunucu(
@@ -507,9 +528,11 @@ describe("13-14 · yeniden sayım", () => {
       () => {
         sayac += 1;
         return {
+          // Oturum reopen edilmiş: IN_PROGRESS'te sayım açık.
           data:
             sayac === 1
-              ? detay({}, [{ ...SATIR_SALEABLE, status: "STALE" }])
+              ? detay({ status: "IN_PROGRESS", reviewed_at: null, reviewed_by_admin_id: null },
+                      [{ ...SATIR_SALEABLE, status: "STALE" }])
               : detay({ status: "IN_PROGRESS", reviewed_at: null, reviewed_by_admin_id: null }, [
                   { ...SATIR_SALEABLE, status: "COUNTED", system_qty_snapshot: 9, counted_qty: 11, difference: 0 },
                 ]),
@@ -529,7 +552,7 @@ describe("13-14 · yeniden sayım", () => {
       const satir = screen.getByTestId("count-line-101");
       expect(within(satir).getByTestId("system").textContent).toBe("9");
     });
-    // REVIEW'daki oturum sayım değişince IN_PROGRESS'e döner — bu görünür olmalı.
+    // Oturum durumu ekranda METİNLE görünür.
     await waitFor(() => expect(screen.getByText(/sayım sürüyor/i)).toBeTruthy());
   });
 });

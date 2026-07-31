@@ -94,12 +94,18 @@ describe("allowedCountActions — FSM", () => {
     expect(a).not.toContain("apply");
   });
 
-  it("REVIEW: uygula, geri al, iptal — sayım da açık (yeniden sayım hakkı)", () => {
+  it("REVIEW: uygula, geri al, iptal — sayım KAPALI (önce reopen)", () => {
+    // Bu iddia commit 9 uçtan uca turunda DÜZELTİLDİ: önceki hâli sayımın
+    // REVIEW'da açık olduğunu söylüyordu, oysa servis o durumda 409 veriyor.
+    // Test yanlış sözleşmeyi sabitliyordu; arayüz de ona uyup her tıklaması
+    // hataya giden bir alan gösteriyordu.
     const a = allowedCountActions("REVIEW");
     expect(a).toContain("apply");
     expect(a).toContain("reopen");
     expect(a).toContain("cancel");
-    expect(a).toContain("count");
+    expect(a, "REVIEW'da sayım alanı gösterilmemeli — servis reddediyor").not.toContain(
+      "count"
+    );
   });
 
   it("APPLIED ve CANCELLED terminal: hiçbir eylem yok", () => {

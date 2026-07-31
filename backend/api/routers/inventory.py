@@ -35,7 +35,7 @@ kılıflanmaz**.
 """
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import require_admin_permission
@@ -44,6 +44,7 @@ from models.admin import Admin
 from models.inventory import StockCountLine, StockCountSession, StockDamageEvent
 from schemas.inventory import (
     MAX_LIMIT,
+    MAX_OFFSET,
     CountLineOut,
     CountLineQty,
     CountLineResolve,
@@ -177,7 +178,7 @@ async def _detay(db: AsyncSession, session_id: int) -> CountSessionDetailOut:
 async def list_count_sessions(
     status_filter: str | None = Query(default=None, alias="status"),
     limit: int = Query(default=50, ge=1, le=MAX_LIMIT),
-    offset: int = Query(default=0, ge=0),
+    offset: int = Query(default=0, ge=0, le=MAX_OFFSET),
     _admin: Admin = Depends(VIEW),
     db: AsyncSession = Depends(get_db),
 ):
@@ -260,13 +261,12 @@ async def set_line_count(
     db: AsyncSession = Depends(get_db),
 ):
     """Miktar girme / yeniden sayma. `counted_at` gövdeden ALINMAZ."""
+    # Aidiyet servise GİRMEDEN doğrulanır: yazıp sonra reddetmek, kalıcılığı
+    # `get_db`'nin rollback'ine bağlar ve hata kodlarıyla bir oracle üretir.
+    await sayim.assert_line_in_session(db, session_id, line_id)
     satir = await sayim.set_counted(
         db, line_id, payload.counted_qty, admin_id=admin.id
     )
-    if satir.session_id != session_id:
-        raise HTTPException(
-            status.HTTP_404_NOT_FOUND, "satır bu oturuma ait değil"
-        )
     await db.commit()
     return _satir(await sayim.line_view(db, satir))
 
@@ -282,13 +282,10 @@ async def resolve_line(
     db: AsyncSession = Depends(get_db),
 ):
     """Belirsizliği açıklamayla kayda geçirir. Satırı UYGULANABİLİR YAPMAZ."""
+    await sayim.assert_line_in_session(db, session_id, line_id)
     satir = await sayim.resolve_line(
         db, line_id, admin_id=admin.id, note=payload.note
     )
-    if satir.session_id != session_id:
-        raise HTTPException(
-            status.HTTP_404_NOT_FOUND, "satır bu oturuma ait değil"
-        )
     await db.commit()
     return _satir(await sayim.line_view(db, satir))
 
@@ -374,7 +371,7 @@ _HASAR = {
 async def list_damage_events(
     product_id: int | None = Query(default=None, ge=1),
     limit: int = Query(default=50, ge=1, le=MAX_LIMIT),
-    offset: int = Query(default=0, ge=0),
+    offset: int = Query(default=0, ge=0, le=MAX_OFFSET),
     _admin: Admin = Depends(VIEW),
     db: AsyncSession = Depends(get_db),
 ):
@@ -416,12 +413,18 @@ async def product_on_premise(
 )
 async def create_damage_event(
     payload: DamageEventCreate,
+    response: Response,
     admin: Admin = Depends(APPLY),
     db: AsyncSession = Depends(get_db),
 ):
     """Hasara ayırma / kurtarma / imha / tedarikçiye iade.
 
     Stok bakiyesini değiştirdiği için `inventory.apply` ister.
+
+    **Yeni iş 201, replay 200 döner.** Aynı anahtarla gelen ikinci isteği
+    "yeni kayıt" gibi göstermek, operatöre yapılmamış bir işi yapılmış
+    sandırır: raftaki sayı değişmediğini görüp yeni anahtarla ikinci kez
+    GERÇEK bir imha yazabilir ve imha geri alınamaz.
     """
     ortak = dict(
         qty=payload.qty,
@@ -441,5 +444,7 @@ async def create_damage_event(
         )
     else:
         olay = await _HASAR[payload.kind](db, payload.product_id, **ortak)
+    if inventory_damage.was_replayed(olay):
+        response.status_code = status.HTTP_200_OK
     await db.commit()
     return _olay(olay)

@@ -520,7 +520,12 @@ async def test_YANITTA_parasal_alan_YOK(client, kur, fab, alan):
         "/damage-events",
         f"/products/{pid}/on-premise",
     ):
-        govde = (await client.get(f"{KOK}{yol}", headers=h)).text.lower()
+        yanit = await client.get(f"{KOK}{yol}", headers=h)
+        # Durum kodu doğrulanmadan yapılan yasak-kelime taraması VAKUMDA
+        # koşar: 404 gövdesi de hiçbir parasal kelime içermez ve iddia
+        # boşa geçer — var olmayan bir uç "temiz" sayılırdı.
+        assert yanit.status_code == 200, f"{yol} → {yanit.status_code}"
+        govde = yanit.text.lower()
         assert alan not in govde, f"{yol} → parasal alan sızmış: {alan}"
 
 

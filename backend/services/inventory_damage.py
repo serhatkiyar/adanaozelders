@@ -203,8 +203,18 @@ def payload_differences(
 
 
 async def _bakiye(db: AsyncSession, product_id: int, bucket: str) -> int:
-    """Kilit ALTINDAKİ ürün nesnesinden kova bakiyesi."""
-    urun = (await stock_ledger.lock_products(db, [product_id]))[product_id]
+    """Kilit ALTINDAKİ ürün nesnesinden kova bakiyesi.
+
+    Var olmayan ürün 404'tür: `lock_products` kayıtsız bir `ValueError`
+    fırlatıyordu ve global handler'ı olmadığı için uç 500 dönüyordu.
+    Silinmiş ürün de kapsam dışıdır — sayım oturumu da onu almıyor.
+    """
+    try:
+        urun = (await stock_ledger.lock_products(db, [product_id]))[product_id]
+    except ValueError as exc:
+        raise _hata(status.HTTP_404_NOT_FOUND, "ürün bulunamadı") from exc
+    if urun.deleted_at is not None:
+        raise _hata(status.HTTP_404_NOT_FOUND, "ürün bulunamadı")
     if urun.kind == ProductKind.DIGITAL.value or urun.stock is None:
         raise _hata(
             status.HTTP_400_BAD_REQUEST,
@@ -307,6 +317,22 @@ async def assert_ledger_intact(db: AsyncSession, olay: StockDamageEvent) -> None
         )
 
 
+#: Replay bayragi icin gecici oznitelik adi. Kalici DEGIL (DB'ye yazilmaz);
+#: yalniz "bu yanit yeni is mi replay mi" bilgisini servis katmanindan uca
+#: tasir. Uc bunu HTTP durum koduna cevirir (201 vs 200).
+_REPLAY_BAYRAGI = "_f29_replayed"
+
+
+def was_replayed(olay: StockDamageEvent) -> bool:
+    """Bu olay YENİ mi yazıldı, yoksa aynı anahtarın replay'i mi?
+
+    Arayüz ikisini aynı "kaydedildi" mesajıyla gösterirse operatör yapılmamış
+    bir işi yapılmış sanar ve yeni anahtarla ikinci kez gerçek bir işlem
+    yazabilir. İmha ve tedarikçi iadesi geri alınamaz.
+    """
+    return bool(getattr(olay, _REPLAY_BAYRAGI, False))
+
+
 async def _replay_veya_catisma(
     db: AsyncSession,
     onceki: StockDamageEvent,
@@ -325,6 +351,7 @@ async def _replay_veya_catisma(
             f"{farklar}",
         )
     await assert_ledger_intact(db, onceki)
+    setattr(onceki, _REPLAY_BAYRAGI, True)
     return onceki
 
 
@@ -643,6 +670,7 @@ __all__ = [
     "IDEMPOTENCY_PAYLOAD_FIELDS",
     "INVARIANT_MARKER",
     "assert_ledger_intact",
+    "was_replayed",
     "expected_legs",
     "damage_disposal",
     "damage_recovery",

@@ -173,6 +173,14 @@ async def test_ayni_anahtar_eszamanli_farkli_payload_biri_catisir(urun):
         _apply_in_own_tx(pid, qty_delta=-3, **ortak),
         return_exceptions=True,
     )
+    # Beklenen istisna DIŞINDA hiçbir istisna kabul edilmez: yalnız beklenen
+    # türü filtrelemek, commit sonrası bir yan etkide patlayan görevi görünmez
+    # kılar (üretimde 500 dönen uç, testte yeşil kalır).
+    beklenmeyen = [
+        r for r in sonuclar
+        if isinstance(r, BaseException) and not isinstance(r, IdempotencyConflict)
+    ]
+    assert not beklenmeyen, f"beklenmeyen istisna: {beklenmeyen!r}"
     catismalar = [r for r in sonuclar if isinstance(r, IdempotencyConflict)]
     assert len(catismalar) == 1, f"tam olarak biri çatışmalı: {sonuclar}"
     assert await _count(pid) == 1

@@ -50,8 +50,14 @@ def _ham_hata_yok(sonuclar) -> None:
     from fastapi import HTTPException
 
     for r in sonuclar:
-        if isinstance(r, BaseException) and not isinstance(r, HTTPException):
+        if not isinstance(r, BaseException):
+            continue
+        if not isinstance(r, HTTPException):
             raise AssertionError(f"ham hata sızdı (HTTP'de 500 olurdu): {r!r}")
+        # `HTTPException(500)` de bir kusurdur: "ham hata değil" diye kabul
+        # etmek, servisin kendi 500'ünü görünmez kılardı.
+        if r.status_code >= 500:
+            raise AssertionError(f"servis 5xx üretti: {r.status_code} {r.detail}")
 
 
 async def _islem(

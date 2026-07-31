@@ -232,14 +232,18 @@ async def reserved_on_premise(
 async def expected_on_premise(
     db: AsyncSession, product_ids: Sequence[int]
 ) -> dict[int, OnPremise]:
-    """Ürün başına fiziksel mevcut dökümü. İki sorgu (ürünler + rezerve)."""
+    """Ürün başına fiziksel mevcut dökümü. İki sorgu (ürünler + rezerve).
+
+    Silinmiş ürün kapsam DIŞIDIR — sayım oturumu da onu almıyor. Aynı gerçek
+    üzerinde iki farklı kural, envanteri ikiye böler.
+    """
     ids = [int(i) for i in dict.fromkeys(product_ids)]
     if not ids:
         return {}
     urunler = (
         await db.execute(
             select(Product.id, Product.stock, Product.damaged_stock).where(
-                Product.id.in_(ids)
+                Product.id.in_(ids), Product.deleted_at.is_(None)
             )
         )
     ).all()
@@ -463,12 +467,44 @@ async def create_session(
     db.add(oturum)
     await db.flush()
     oturum.code = f"SAYIM-{_now().year}-{oturum.id:04d}"
+    await _baska_oturumda_acik_mi(db, oturum.id, [p.id for p in urunler])
     await _satir_uret(db, oturum, urunler)
     await _audit(
         db, admin_id, "inventory.count_session_create", oturum,
         meta={"scope": scope, "product_count": len(urunler)},
     )
     return oturum
+
+
+async def _baska_oturumda_acik_mi(
+    db: AsyncSession, session_id: int, product_ids: Sequence[int]
+) -> None:
+    """Ürün BAŞKA bir açık oturumda mı — anlaşılır 409 üretir.
+
+    `uq_stock_count_lines_open` kısmi unique index'i bunu zaten engelliyor ama
+    ham ihlal operatöre "Resource already exists" diye dönüyordu; hangi ürünün
+    nerede açık olduğu anlaşılmıyordu. DB kısıtı son savunma olarak kalır.
+    """
+    if not product_ids:
+        return
+    cakisan = (
+        await db.execute(
+            select(StockCountLine.product_id, StockCountLine.session_id)
+            .where(
+                StockCountLine.product_id.in_(list(product_ids)),
+                StockCountLine.session_id != session_id,
+                StockCountLine.is_open.is_(True),
+            )
+            .order_by(StockCountLine.product_id)
+        )
+    ).all()
+    if cakisan:
+        ayrinti = ", ".join(f"ürün {pid} → oturum {sid}" for pid, sid in cakisan)
+        raise _hata(
+            status.HTTP_409_CONFLICT,
+            "bir ürün aynı anda tek açık sayım oturumunda bulunabilir "
+            f"({ayrinti}); önce o oturumu tamamlayın ya da iptal edin",
+        )
 
 
 async def add_products(
@@ -498,6 +534,7 @@ async def add_products(
             status.HTTP_409_CONFLICT,
             f"ürün oturumda zaten var: {cakisan}",
         )
+    await _baska_oturumda_acik_mi(db, session_id, [p.id for p in urunler])
     yeni = await _satir_uret(db, oturum, urunler)
     await _audit(
         db, admin_id, "inventory.count_session_add_products", oturum,
@@ -1003,11 +1040,20 @@ async def apply_session(
     Sıra kritiktir:
 
     1. oturumu claim et (`StockCountSession` kilidi),
-    2. satırları doğrula, `STALE` varsa DUR,
-    3. ürünleri `stock_ledger.lock_products` ile kilitle (`Product` kilidi),
-    4. farkları **kilit altındaki güncel bakiyeden** hesapla,
+    2. ürünleri `stock_ledger.lock_products` ile kilitle (`Product` kilidi),
+    3. satırları doğrula, `STALE` varsa DUR — **kilit altında**,
+    4. farkları sayım anındaki **kesitten** hesapla (mutlak atama YOK),
     5. hareketleri TEK batch'te yaz ve flush et,
     6. ancak bundan sonra `APPLIED`.
+
+    Ürün kilidinin `STALE` kontrolünden ÖNCE alınması kritiktir: kilitsiz
+    okunan defter, iki ifade arasında commit eden bir hareketi göremez ve
+    "belirsiz olaydan sonra sayım uygulanamaz" güvencesi delinir. Kilit sırası
+    yine `StockCountSession → Product`, yani global sıra korunur.
+
+    Fark **kesitten** hesaplanır, kilit altındaki güncel bakiyeden değil:
+    fark sayım anına ait değişmez bir gerçektir. `counted − urun.stock`
+    yazmak, sayımdan sonraki her satışı ikinci kez saydırırdı.
 
     Hiçbir yerde mutlak stok ataması yoktur; snapshot yalnız farkı ve
     belirsizliği belirlemek için kullanılır.
@@ -1045,6 +1091,13 @@ async def apply_session(
         )
 
     satirlar = await _satirlar(db, session_id)
+
+    # Ürünler deterministik sırada (artan id) ve `STALE` kontrolünden ÖNCE
+    # kilitlenir; aksi hâlde kilitsiz defter okuması ile kilit arasındaki
+    # pencerede commit eden bir hareket belirsizlik kararına giremez.
+    await stock_ledger.lock_products(
+        db, sorted({s.product_id for s in satirlar})
+    )
     await _stale_isaretle(db, satirlar)
     # `STALE` **ve** `RESOLVED` uygulamayı engeller.
     #
@@ -1080,7 +1133,8 @@ async def apply_session(
             "uygulanacak sayılmış satır yok (belirsiz satırlar yeniden sayılmalı)",
         )
 
-    # Ürünler deterministik sırada (artan id) TEK yerden kilitlenir.
+    # Kilit yukarıda alındı; burada aynı huniden TAZE nesneler okunur
+    # (`lock_products` yeniden girişlidir ve `populate_existing` kullanır).
     urunler = await stock_ledger.lock_products(
         db, sorted({s.product_id for s in uygulanacak})
     )
@@ -1212,6 +1266,29 @@ async def line_view(db: AsyncSession, satir: StockCountLine) -> CountLineView:
     return CountLineView(satir, ad, sku)
 
 
+async def assert_line_in_session(
+    db: AsyncSession, session_id: int, line_id: int
+) -> None:
+    """Satır gerçekten bu oturuma ait mi — **mutasyondan ÖNCE**.
+
+    Önceden satır önce yazılıyor, sonra "bu oturuma ait değil" diye 404
+    veriliyordu; kalıcı yazımı yalnız `get_db`'nin rollback'i engelliyordu.
+    Servise bir `commit` eklendiği gün açık gerçek olurdu. Ayrıca hata
+    kodları bir ORACLE üretiyordu: okuma izni olmayan bir yönetici satır
+    numarası tarayarak envanteri sayabiliyordu.
+    """
+    var = (
+        await db.execute(
+            select(StockCountLine.id).where(
+                StockCountLine.id == line_id,
+                StockCountLine.session_id == session_id,
+            )
+        )
+    ).scalar_one_or_none()
+    if var is None:
+        raise _hata(status.HTTP_404_NOT_FOUND, "sayım satırı bulunamadı")
+
+
 async def get_session(
     db: AsyncSession, session_id: int
 ) -> tuple[StockCountSession, list[CountLineView]]:
@@ -1320,6 +1397,7 @@ from services.inventory_damage import (  # noqa: E402
     list_damage_events,
     replay_damage_event,
     supplier_return,
+    was_replayed,
 )
 
 __all__ = [
@@ -1329,4 +1407,5 @@ __all__ = [
     "list_damage_events",
     "replay_damage_event",
     "supplier_return",
+    "was_replayed",
 ]

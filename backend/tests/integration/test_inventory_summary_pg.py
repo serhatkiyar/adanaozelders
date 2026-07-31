@@ -295,7 +295,9 @@ async def test_URUN_KIMLIGI_ve_OZET_parasal_alan_TASIMAZ(client, kur, fab):
     h = await kur.admin(izinler=TAM)
     sid = await _oturum_ac(client, h, await fab.urun(stock=4, title="Görünmemeli"))
     for yol in (f"{KOK}/count-sessions?limit=5&offset=0", f"{KOK}/count-sessions/{sid}"):
-        govde = (await client.get(yol, headers=h)).text.lower()
+        yanit = await client.get(yol, headers=h)
+        assert yanit.status_code == 200, f"{yol} → {yanit.status_code}"
+        govde = yanit.text.lower()
         for yasak in ("price", "cost", "amount", "currency", "maliyet", "tutar"):
             assert yasak not in govde, f"{yol} → parasal alan sızmış: {yasak}"
 

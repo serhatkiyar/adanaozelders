@@ -330,6 +330,11 @@ _KRITIK_TABLOLAR = (
     "admins",
     # Servisler audit yazabildiği için testler de yazar; korumasız bırakılmaz.
     "audit_logs",
+    # Testler kendi admin rollerini yaratiyor; birikirlerse /yonetim rol
+    # yonetimi ekrani yuzlerce E7_XXXX / EO_XXXX rolüyle dolar.
+    "admin_roles",
+    "admin_role_permissions",
+    "admin_role_assignments",
 )
 
 
@@ -363,9 +368,18 @@ async def _test_veritabani():
     try:
         async with bakim.connect() as conn:
             await conn.execute(text("SELECT 1"))
-    except Exception as exc:  # noqa: BLE001
+    except _BAGLANTI_HATALARI as exc:
         await bakim.dispose()
         pytest.skip(f"Postgres bakım bağlantısı yok ({exc.__class__.__name__})")
+    except Exception as exc:  # noqa: BLE001
+        # Yapılandırma hatası "altyapı yok" DEĞİLDİR. Session kapsamlı ve
+        # autouse olduğu için buradaki bir SKIP bütün entegrasyon suite'ini
+        # sessizce atlatırdı.
+        await bakim.dispose()
+        pytest.fail(
+            "Postgres bakım bağlantısı kurulamadı (bağlantı hatası değil, "
+            f"yapılandırma sorunu): {exc.__class__.__name__}: {exc}"
+        )
 
     try:
         if not await _veritabani_var_mi(bakim, ad):
@@ -428,8 +442,14 @@ async def _hijyen_nobetcisi(_test_veritabani):
     yield
     try:
         sonra = await _tablo_sayilari()
-    except Exception:  # noqa: BLE001 — engine kapanmışsa sessizce geç
-        return
+    except Exception as exc:  # noqa: BLE001
+        # SESSİZCE GEÇMEZ. "suite temiz" ile "nöbetçi hiç ölçmedi" birbirinden
+        # ayırt edilemezse bütün izolasyon garantisi kanıtsız kalır — F29'da
+        # audit_logs birikmesi tam olarak bunun yüzünden geç fark edildi.
+        pytest.fail(
+            "hijyen nöbetçisi ÖLÇEMEDİ; suite temiz sayılamaz: "
+            f"{exc.__class__.__name__}: {exc}"
+        )
     artan = {t: (once[t], sonra[t]) for t in once if sonra[t] != once[t]}
     if artan:
         ayrinti = ", ".join(f"{t}: {a}→{b}" for t, (a, b) in sorted(artan.items()))

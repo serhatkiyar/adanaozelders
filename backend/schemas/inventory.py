@@ -24,6 +24,10 @@ from pydantic import BaseModel, ConfigDict, Field
 #: Liste uçlarının tek istekte dönebileceği EN FAZLA satır.
 MAX_LIMIT = 200
 
+#: `offset` tavanı. Sınırsız offset, her istekte tam tarama maliyeti üretir
+#: ve hiçbir gerçek operasyon senaryosuna karşılık gelmez.
+MAX_OFFSET = 100_000
+
 
 class Bucket(str, enum.Enum):
     """Miktarın durduğu kova. Serbest metin kabul edilmez."""
