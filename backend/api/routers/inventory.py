@@ -72,12 +72,13 @@ APPLY = require_admin_permission("inventory.apply")
 # ════════════════════════ Yanıt dönüşümü ════════════════════════
 
 
-def _satir(s: StockCountLine) -> CountLineOut:
+def _satir(gorunum: sayim.CountLineView) -> CountLineOut:
     """İç modeli DIŞARI verilecek biçime çevirir — alan alan.
 
     `difference` burada **türetilir**; saklanmaz. Sayılmamış satırda `None`
     kalır: sıfır yazmak "fark yok" demek olurdu, oysa "henüz bilinmiyor".
     """
+    s = gorunum.line
     fark = (
         inventory_rules.line_difference(
             counted=int(s.counted_qty),
@@ -90,6 +91,8 @@ def _satir(s: StockCountLine) -> CountLineOut:
     return CountLineOut(
         id=s.id,
         product_id=s.product_id,
+        product_name=gorunum.product_name,
+        product_sku=gorunum.product_sku,
         bucket=s.bucket,
         status=s.status,
         system_qty_snapshot=s.system_qty_snapshot,
@@ -107,7 +110,12 @@ def _satir(s: StockCountLine) -> CountLineOut:
     )
 
 
-def _oturum(o: StockCountSession) -> dict:
+def _oturum(o: StockCountSession, ozet: sayim.SessionSummary | None = None) -> dict:
+    """Oturumu yanıt sözlüğüne çevirir.
+
+    `ozet` yalnız LİSTE ucunda gelir (toplu aggregate). Detayda özet
+    satırların kendisinden türetilir — ikinci bir sorgu atmak gereksizdir.
+    """
     return {
         "id": o.id,
         "code": o.code,
@@ -126,6 +134,9 @@ def _oturum(o: StockCountSession) -> dict:
         "cancelled_by_admin_id": o.cancelled_by_admin_id,
         "cancelled_at": o.cancelled_at,
         "cancel_reason": o.cancel_reason,
+        "line_count": ozet.line_count if ozet else 0,
+        "uncounted_line_count": ozet.uncounted_line_count if ozet else 0,
+        "has_stale": ozet.has_stale if ozet else False,
     }
 
 
@@ -146,7 +157,17 @@ def _olay(e: StockDamageEvent) -> DamageEventOut:
 
 async def _detay(db: AsyncSession, session_id: int) -> CountSessionDetailOut:
     oturum, satirlar = await sayim.get_session(db, session_id)
-    return CountSessionDetailOut(**_oturum(oturum), lines=[_satir(s) for s in satirlar])
+    # Detayda satırlar zaten elimizde: özeti onlardan türetmek, liste ucundaki
+    # aggregate sorgusunu burada TEKRARLAMAKTAN ucuzdur.
+    ozet = sayim.SessionSummary(
+        session=oturum,
+        line_count=len(satirlar),
+        uncounted_line_count=sum(1 for g in satirlar if g.line.counted_qty is None),
+        has_stale=any(g.line.status in ("STALE", "RESOLVED") for g in satirlar),
+    )
+    return CountSessionDetailOut(
+        **_oturum(oturum, ozet), lines=[_satir(g) for g in satirlar]
+    )
 
 
 # ════════════════════════ Sayım oturumları ════════════════════════
@@ -165,7 +186,7 @@ async def list_count_sessions(
         db, status_filter=status_filter, limit=limit, offset=offset
     )
     return CountSessionPage(
-        items=[_oturum(o) for o in satirlar],
+        items=[_oturum(oz.session, oz) for oz in satirlar],
         total=toplam,
         limit=limit,
         offset=offset,
@@ -247,7 +268,7 @@ async def set_line_count(
             status.HTTP_404_NOT_FOUND, "satır bu oturuma ait değil"
         )
     await db.commit()
-    return _satir(satir)
+    return _satir(await sayim.line_view(db, satir))
 
 
 @router.post(
@@ -269,7 +290,7 @@ async def resolve_line(
             status.HTTP_404_NOT_FOUND, "satır bu oturuma ait değil"
         )
     await db.commit()
-    return _satir(satir)
+    return _satir(await sayim.line_view(db, satir))
 
 
 @router.post("/count-sessions/{session_id}/submit", response_model=CountSessionDetailOut)

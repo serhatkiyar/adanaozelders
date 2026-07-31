@@ -1150,17 +1150,79 @@ async def apply_session(
 # ════════════════════════ Okuma ════════════════════════
 
 
+@dataclasses.dataclass(slots=True, frozen=True)
+class CountLineView:
+    """Sayım satırı + ürünün OKUNABİLİR kimliği.
+
+    Rafın başındaki kişi ürünü numaradan tanıyamaz; adı ve SKU'su olmadan
+    yanlış ürünü sayabilir. Bu bilgi sunucuda TEK sorguda birleştirilir:
+    istemciye bıraksaydık satır başına bir ürün isteği (N+1) doğardı ve
+    üstelik ürün uçları farklı bir izne (`products.view`) bağlı olduğu için
+    sayım yapan kişiye gereksiz katalog yetkisi vermek gerekirdi.
+
+    Ürünün ticari alanları (fiyat, maliyet, satıcı…) BİLİNÇLİ olarak yoktur:
+    F29 miktar ve iz tutar, değerleme yapmaz.
+    """
+
+    line: StockCountLine
+    product_name: str
+    product_sku: str
+
+
+@dataclasses.dataclass(slots=True, frozen=True)
+class SessionSummary:
+    """Liste satırı + oturumun türetilmiş özeti.
+
+    `has_stale` yalnız **yeniden sayım gerektiren** satırları temsil eder:
+    `STALE` (sayımdan sonra fiziksel etki oluştu) ve `RESOLVED` (açıklama
+    yazıldı ama satır hâlâ uygulanamaz). İkisi de operatörden aynı eylemi
+    ister; birini dışarıda bırakmak listeyi yanıltıcı yapardı.
+    """
+
+    session: StockCountSession
+    line_count: int
+    uncounted_line_count: int
+    has_stale: bool
+
+
+async def _satir_gorunumleri(db: AsyncSession, session_id: int) -> list[CountLineView]:
+    """Satırlar + ürün kimliği — TEK sorgu (JOIN), satır başına istek yok."""
+    satirlar = (
+        await db.execute(
+            select(StockCountLine, Product.title, Product.sku)
+            .join(Product, Product.id == StockCountLine.product_id)
+            .where(StockCountLine.session_id == session_id)
+            .order_by(StockCountLine.product_id, StockCountLine.bucket)
+        )
+    ).all()
+    return [CountLineView(s, ad, sku) for s, ad, sku in satirlar]
+
+
+async def line_view(db: AsyncSession, satir: StockCountLine) -> CountLineView:
+    """Tek satırın görünümü (sayım/çözümleme yanıtları için).
+
+    Tek satır → tek ürün sorgusu. Bu N+1 değildir; N+1, satır SAYISIYLA
+    büyüyen sorgudur.
+    """
+    ad, sku = (
+        await db.execute(
+            select(Product.title, Product.sku).where(Product.id == satir.product_id)
+        )
+    ).one()
+    return CountLineView(satir, ad, sku)
+
+
 async def get_session(
     db: AsyncSession, session_id: int
-) -> tuple[StockCountSession, list[StockCountLine]]:
+) -> tuple[StockCountSession, list[CountLineView]]:
     oturum = await _oturum(db, session_id)
-    return oturum, await _satirlar(db, session_id)
+    return oturum, await _satir_gorunumleri(db, session_id)
 
 
 async def list_sessions(
     db: AsyncSession, *, status_filter: str | None = None,
     limit: int = 50, offset: int = 0,
-) -> tuple[list[StockCountSession], int]:
+) -> tuple[list[SessionSummary], int]:
     """Zorunlu sayfalı oturum listesi (tavan `MAX_SESSION_PRODUCTS` değil,
     liste tavanı `stock_ledger.LIST_MAX_LIMIT` ile aynı disiplinde)."""
     limit = max(1, min(int(limit), stock_ledger.LIST_MAX_LIMIT))
@@ -1184,7 +1246,44 @@ async def list_sessions(
             )
         ).scalars()
     )
-    return satirlar, int(toplam)
+
+    # Özet: SAYFADAKİ oturumlar için TEK toplu sorgu. Oturum başına sorgu
+    # atmak (N+1) sayfa büyüdükçe listeyi kullanılamaz hâle getirirdi;
+    # sayfalamadan ÖNCE join edip gruplamak ise `limit`i satır sayısına göre
+    # bozardı (bir oturum kaç satır taşıyorsa o kadar satır dönerdi).
+    ozet: dict[int, tuple[int, int, int]] = {}
+    if satirlar:
+        idler = [o.id for o in satirlar]
+        for sid, adet, sayilmamis, dikkat in (
+            await db.execute(
+                select(
+                    StockCountLine.session_id,
+                    func.count(StockCountLine.id),
+                    func.count().filter(StockCountLine.counted_qty.is_(None)),
+                    func.count().filter(
+                        StockCountLine.status.in_(
+                            (
+                                CountLineStatus.STALE.value,
+                                CountLineStatus.RESOLVED.value,
+                            )
+                        )
+                    ),
+                )
+                .where(StockCountLine.session_id.in_(idler))
+                .group_by(StockCountLine.session_id)
+            )
+        ).all():
+            ozet[int(sid)] = (int(adet), int(sayilmamis), int(dikkat))
+
+    return [
+        SessionSummary(
+            session=o,
+            line_count=ozet.get(o.id, (0, 0, 0))[0],
+            uncounted_line_count=ozet.get(o.id, (0, 0, 0))[1],
+            has_stale=ozet.get(o.id, (0, 0, 0))[2] > 0,
+        )
+        for o in satirlar
+    ], int(toplam)
 
 
 async def _audit(

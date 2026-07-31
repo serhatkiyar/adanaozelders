@@ -134,6 +134,8 @@ function sar(yol: string) {
 const SATIR_SALEABLE = {
   id: 101,
   product_id: 5,
+  product_name: "Palme TYT Matematik Soru Bankası",
+  product_sku: "FZK-000005",
   bucket: "SALEABLE",
   status: "COUNTED",
   system_qty_snapshot: 8,
@@ -178,6 +180,9 @@ const OTURUM = {
   cancelled_by_admin_id: null,
   cancelled_at: null,
   cancel_reason: null,
+  line_count: 2,
+  uncounted_line_count: 0,
+  has_stale: false,
 };
 
 const detay = (over: Record<string, unknown> = {}, satirlar = [SATIR_SALEABLE, SATIR_DAMAGED]) => ({
@@ -368,17 +373,10 @@ describe("7 · sayım listesi", () => {
     expect(within(satir).getByTestId("created-by").textContent).toMatch(/#1/);
     expect(within(satir).getByTestId("created-at").textContent).toMatch(/2027/);
     expect(within(satir).getByTestId("scope").textContent).toBeTruthy();
-
-    // ⚠ BLOKE: direktif "ürün/satır sayısı" istiyor ama liste ucu
-    // (`GET /inventory/count-sessions`) satır TAŞIMIYOR ve commit 7 API
-    // sözleşmesi bu pakette açılmıyor. Oturum başına detay çekmek N+1 istek,
-    // istemcide sayı uydurmak ise yalan olurdu. Bu yüzden burada UYDURMA
-    // SAYININ YOKLUĞUNU sabitliyoruz: biri sonradan istemci tarafında bir
-    // sayaç icat ederse bu test kırılır. Bulgu commit 8 raporu §15'te.
-    expect(
-      within(satir).queryByTestId("line-count"),
-      "liste satırında uydurulmuş satır sayısı var"
-    ).toBeNull();
+    // Boşluk KAPANDI: liste ucu artık satır sayısını sunucuda toplu sorguyla
+    // hesaplayıp gönderiyor (commit 8 kapanışı). Önceki sürümde burada
+    // "uydurma sayının yokluğu" sabitleniyordu.
+    expect(within(satir).getByTestId("line-count").textContent).toMatch(/2 satır/);
   });
 
   it("durum filtresi gerçekten query'ye gider", async () => {
@@ -393,15 +391,13 @@ describe("7 · sayım listesi", () => {
     });
   });
 
-  it("dikkat gerektiren oturuma detaydan gidilebilir (STALE göstergesi BLOKE)", async () => {
-    // ⚠ BLOKE: "STALE satır içeren oturum" işareti de liste ucunda yok (yukarıdaki
-    // gerekçe). Ölçülebilen sözleşme: incelemedeki oturum satırı detaya
-    // GÖTÜRÜR — belirsizlik orada görünür ve APPLY'i orada engeller.
+  it("dikkat gerektiren oturum listede işaretlenir ve detaya götürür", async () => {
     izinVer(VIEW);
-    listeSunucusu();
+    listeSunucusu([{ ...OTURUM, has_stale: true }]);
     sar(ROUTES.adminInventoryCounts);
     await waitFor(() => expect(screen.getByText("SAY-2027-0007")).toBeTruthy());
     const satir = screen.getByTestId("session-row-7");
+    expect(within(satir).getByTestId("stale-flag")).toBeTruthy();
     expect(within(satir).getByRole("link").getAttribute("href")).toBe(
       ROUTES.adminInventoryCount(7)
     );
@@ -961,5 +957,96 @@ describe("mevcut ekranlarla bağ", () => {
     expect(screen.getByRole("link", { name: /stok hareketleri/i }).getAttribute("href")).toBe(
       ROUTES.adminStoreStock
     );
+  });
+});
+
+/* ═══════════ Commit 8 kapanışı: ürün kimliği ve liste özeti ═══════════ */
+
+describe("K1 · sayım satırında ürün kimliği", () => {
+  it("ürün ADI ana metin, SKU ikincil; 'Ürün #id' ana kimlik DEĞİL", async () => {
+    izinVer(VIEW);
+    detaySunucusu(detay({}, [SATIR_SALEABLE]));
+    sar(ROUTES.adminInventoryCount(7));
+    const satir = await screen.findByTestId("count-line-101");
+    expect(within(satir).getByTestId("product-name").textContent).toBe(
+      "Palme TYT Matematik Soru Bankası"
+    );
+    expect(within(satir).getByTestId("product-sku").textContent).toContain("FZK-000005");
+    // Numara hâlâ bulunabilir olmalı ama ürünü TANITAN metin ad olmalı.
+    expect(within(satir).getByTestId("product-name").textContent).not.toMatch(/^Ürün #/);
+  });
+
+  it("API adı göndermezse UYDURMAZ, güvenli yedek gösterir", async () => {
+    // Sunucu eski sürümdeyse ya da alan boş gelirse ekran "" veya "undefined"
+    // yazmamalı; operatör en azından teknik kimliği görmeli.
+    izinVer(VIEW);
+    detaySunucusu(
+      detay({}, [{ ...SATIR_SALEABLE, product_name: undefined, product_sku: undefined }])
+    );
+    sar(ROUTES.adminInventoryCount(7));
+    const satir = await screen.findByTestId("count-line-101");
+    const ad = within(satir).getByTestId("product-name").textContent ?? "";
+    expect(ad).toMatch(/Ürün #5/);
+    expect(ad.toLowerCase()).not.toContain("undefined");
+    expect(within(satir).queryByText(/^null$/)).toBeNull();
+  });
+
+  it("uzun ad ve SKU satırı taşırmaz (kırpma/sarma sınıfı taşır)", async () => {
+    izinVer(VIEW);
+    detaySunucusu(
+      detay({}, [
+        {
+          ...SATIR_SALEABLE,
+          product_name:
+            "Çok Uzun Bir Yayınevi Adı ile TYT AYT Tüm Dersler Konu Anlatımlı Soru Bankası Seti 2027",
+        },
+      ])
+    );
+    sar(ROUTES.adminInventoryCount(7));
+    const hucre = (await screen.findByTestId("product-name")).closest("td");
+    expect(hucre?.className ?? "").toMatch(/max-w|truncate|break-words/);
+  });
+});
+
+describe("K2 · sayım listesinde özet", () => {
+  it("satır sayısı görünür", async () => {
+    izinVer(VIEW);
+    listeSunucusu([{ ...OTURUM, line_count: 6, uncounted_line_count: 2 }]);
+    sar(ROUTES.adminInventoryCounts);
+    const satir = await screen.findByTestId("session-row-7");
+    expect(within(satir).getByTestId("line-count").textContent).toMatch(/6/);
+  });
+
+  it("STALE oturum İKON ve METİNLE işaretlenir — renk tek başına değil", async () => {
+    izinVer(VIEW);
+    listeSunucusu([{ ...OTURUM, has_stale: true }]);
+    sar(ROUTES.adminInventoryCounts);
+    const satir = await screen.findByTestId("session-row-7");
+    const uyari = within(satir).getByTestId("stale-flag");
+    expect(uyari.textContent).toMatch(/yeniden say|dikkat/i);
+    // İkon erişilebilir bir işaret taşımalı (yalnız renk/şekil yetmez).
+    expect(uyari.querySelector("svg")?.getAttribute("aria-hidden")).toBe("true");
+    expect(uyari.textContent?.trim().length).toBeGreaterThan(3);
+  });
+
+  it("STALE yoksa uyarı işareti GÖSTERİLMEZ", async () => {
+    izinVer(VIEW);
+    listeSunucusu([{ ...OTURUM, has_stale: false }]);
+    sar(ROUTES.adminInventoryCounts);
+    const satir = await screen.findByTestId("session-row-7");
+    expect(within(satir).queryByTestId("stale-flag")).toBeNull();
+  });
+
+  it("özet alanları eksikse sahte sayı üretilmez", async () => {
+    izinVer(VIEW);
+    listeSunucusu([
+      { ...OTURUM, line_count: undefined, has_stale: undefined } as never,
+    ]);
+    sar(ROUTES.adminInventoryCounts);
+    const satir = await screen.findByTestId("session-row-7");
+    const metin = within(satir).getByTestId("line-count").textContent ?? "";
+    expect(metin).not.toMatch(/\b0\b/);
+    expect(metin.toLowerCase()).not.toContain("undefined");
+    expect(within(satir).queryByTestId("stale-flag")).toBeNull();
   });
 });

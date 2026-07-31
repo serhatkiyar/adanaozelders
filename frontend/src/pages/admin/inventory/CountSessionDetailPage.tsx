@@ -40,6 +40,8 @@ import {
   lineDifference,
   lineStatusBadge,
   newIdempotencyKey,
+  productDisplayName,
+  productDisplaySku,
   reservedDisplay,
   sessionStatusBadge,
   staleReasonLabel,
@@ -142,7 +144,21 @@ function SatirGorunumu({
       data-testid={`count-line-${satir.id}`}
       className={rozet.needsAction && satir.status !== "PENDING" ? "bg-rose-50/40 dark:bg-rose-500/5" : undefined}
     >
-      <td className="px-3 py-2.5 text-sm text-slate-900 dark:text-white">Ürün #{satir.product_id}</td>
+      <td className="max-w-64 px-3 py-2.5 text-sm">
+        <span
+          data-testid="product-name"
+          className="block break-words font-medium text-slate-900 dark:text-white"
+        >
+          {productDisplayName(satir)}
+        </span>
+        {/* SKU seçilebilir olmalı: operatör raftaki etiketle karşılaştırır. */}
+        <span
+          data-testid="product-sku"
+          className="mt-0.5 block select-all break-all font-mono text-xs text-slate-500 dark:text-slate-400"
+        >
+          {productDisplaySku(satir)}
+        </span>
+      </td>
       <td className="px-3 py-2.5 text-sm text-slate-700 dark:text-slate-300">{kova}</td>
       <td data-testid="system" className="px-3 py-2.5 text-right text-sm tabular-nums text-slate-700 dark:text-slate-300">
         {satir.system_qty_snapshot}
@@ -254,7 +270,7 @@ function UygulaDialog({
           <ul className="divide-y divide-slate-100 rounded-xl border border-slate-200 dark:divide-slate-800 dark:border-slate-700">
             {etkiler.map(({ satir, fark }) => (
               <li key={satir.id} className="px-4 py-2.5 text-sm text-slate-800 dark:text-slate-200">
-                Ürün #{satir.product_id} · {bucketLabel(satir.bucket)}{" "}
+                {productDisplayName(satir)} · {bucketLabel(satir.bucket)}{" "}
                 <span className="font-semibold tabular-nums">{formatDifference(satir)}</span>
                 <span className="ml-2 text-xs text-slate-500 dark:text-slate-400">
                   ({expectedPhysical(satir)} → {satir.counted_qty})

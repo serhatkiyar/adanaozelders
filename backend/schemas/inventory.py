@@ -131,7 +131,13 @@ class DamageEventCreate(_Istek):
 
 class CountLineOut(BaseModel):
     id: int
+    #: Teknik kimlik — arayüzde destekleyici bilgidir, ana metin DEĞİLDİR.
     product_id: int
+    #: Ürünün okunabilir adı. Rafın başındaki kişi numaradan ürün tanıyamaz;
+    #: bu alan olmadan yanlış ürün sayma riski doğar.
+    product_name: str
+    #: Stok kalemi kimliği. Fiziksel doğrulamanın kararlı anahtarı.
+    product_sku: str
     bucket: Bucket
     status: str
     #: Satırın kovasına karşılık gelen sistem kolonunun sayım anındaki değeri.
@@ -170,6 +176,15 @@ class CountSessionOut(BaseModel):
     cancelled_by_admin_id: int | None
     cancelled_at: datetime.datetime | None
     cancel_reason: str | None
+    #: Oturumdaki satır sayısı — **türetilmiş**, saklanmaz. Liste ekranı
+    #: operatöre "bu oturum ne kadar iş" sorusunu açmadan cevaplayabilsin diye
+    #: sunucuda toplu sorguyla hesaplanır.
+    line_count: int = 0
+    #: Henüz miktar girilmemiş satır sayısı.
+    uncounted_line_count: int = 0
+    #: Yeniden sayım gerektiren satır var mı (`STALE` veya `RESOLVED`).
+    #: Listede dikkat işareti bunun üzerinden verilir; istemci uydurmaz.
+    has_stale: bool = False
 
 
 class CountSessionDetailOut(CountSessionOut):

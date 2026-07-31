@@ -15,7 +15,12 @@ import type {
 
 export interface CountLineOut {
   id: number;
+  /** Teknik kimlik — destekleyici bilgi, ana metin degil. */
   product_id: number;
+  /** Urunun okunabilir adi. Eski sunucu surumunde gelmeyebilir. */
+  product_name?: string | null;
+  /** Stok kalemi kimligi. Eski sunucu surumunde gelmeyebilir. */
+  product_sku?: string | null;
   bucket: Bucket;
   status: CountLineStatus;
   system_qty_snapshot: number;
@@ -51,6 +56,11 @@ export interface CountSessionOut {
   cancelled_by_admin_id: number | null;
   cancelled_at: string | null;
   cancel_reason: string | null;
+  /** Turetilmis ozet — sunucuda toplu sorguyla hesaplanir. Eski sunucu
+   *  surumunde YOK; istemci bu durumda sayi UYDURMAZ. */
+  line_count?: number;
+  uncounted_line_count?: number;
+  has_stale?: boolean;
 }
 
 export interface CountSessionDetailOut extends CountSessionOut {

@@ -2,18 +2,24 @@
 //
 // Renk tek başına durum anlatmaz: her satırda rozetin METNİ de vardır.
 //
-// ⚠ Bilinen boşluk: liste ucu (`GET /inventory/count-sessions`) satır
-// taşımadığı için "ürün/satır sayısı" ve "STALE göstergesi" bu ekranda
-// GÖSTERİLEMİYOR. Oturum oturum detay çekmek N+1 istek olurdu; sahte sayı
-// üretmek daha kötü olurdu. Kapsam gereği backend sözleşmesi bu commit'te
-// açılmadı — commit 8 raporu §15'te bulgu olarak kayıtlı.
+// Satır sayısı ve "yeniden sayım gerekiyor" işareti SUNUCUDAN gelir
+// (`line_count` / `has_stale`, sayfa başına tek toplu sorgu). İstemci bu
+// sayıları hesaplamaz: oturum oturum detay çekmek N+1 istek, tahmin yürütmek
+// ise yalan olurdu. Alanlar gelmezse sayı uydurulmaz, "bilinmiyor" denir.
 import { useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 
 import { Badge, Button, Dialog, EmptyState, ErrorState, PageSkeleton } from "@/components/admin/ui";
 import { useCountSessions, useCreateCountSession } from "@/hooks/useInventory";
 import { useInventoryAccess } from "@/hooks/useInventoryAccess";
-import { inventoryErrorMessage, sessionStatusBadge, type CountScope, type CountSessionStatus } from "@/lib/inventory";
+import {
+  inventoryErrorMessage,
+  lineCountLabel,
+  needsRecount,
+  sessionStatusBadge,
+  type CountScope,
+  type CountSessionStatus,
+} from "@/lib/inventory";
 import { ROUTES } from "@/lib/routes";
 import { toast } from "@/store/toastStore";
 
@@ -60,6 +66,32 @@ function Satir({ oturum }: { oturum: CountSessionOut }) {
             <span data-testid="created-by">Açan: #{oturum.created_by_admin_id}</span>
           </p>
         </div>
+        <span
+          data-testid="line-count"
+          className="shrink-0 text-xs tabular-nums text-slate-500 dark:text-slate-400"
+        >
+          {lineCountLabel(oturum)}
+        </span>
+        {needsRecount(oturum) && (
+          <span
+            data-testid="stale-flag"
+            className="inline-flex shrink-0 items-center gap-1 rounded-full bg-rose-50 px-2.5 py-1 text-xs font-semibold text-rose-700 dark:bg-rose-500/15 dark:text-rose-300"
+          >
+            {/* İkon + METİN birlikte: renk tek başına durum anlatmaz. */}
+            <svg
+              aria-hidden="true"
+              viewBox="0 0 24 24"
+              className="h-3.5 w-3.5"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+            >
+              <path d="M12 9v4m0 4h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z" />
+            </svg>
+            Yeniden sayım gerekiyor
+          </span>
+        )}
         <span
           data-testid="created-at"
           className="shrink-0 text-xs tabular-nums text-slate-500 dark:text-slate-400"

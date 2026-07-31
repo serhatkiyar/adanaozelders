@@ -43,7 +43,8 @@ class Fabrika:
 
     # ── Ürün ──
     async def urun(
-        self, *, stock: int | None = 0, kind: str = "PHYSICAL", damaged: int | None = 0
+        self, *, stock: int | None = 0, kind: str = "PHYSICAL",
+        damaged: int | None = 0, title: str | None = None,
     ) -> int:
         """Ürün + (takip ediliyorsa) açılış hareketi.
 
@@ -58,7 +59,7 @@ class Fabrika:
             # çıkarır ve fabrikayı sessizce yalancı yapardı.
             p = Product(
                 slug=f"sayim-test-{uniq()}",
-                title=f"Sayim Testi {uniq()}",
+                title=title or f"Sayim Testi {uniq()}",
                 kind=kind,
                 seller_type="PLATFORM",
                 price=Decimal("100.00"),

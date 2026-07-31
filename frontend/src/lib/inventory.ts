@@ -134,6 +134,60 @@ export function reservedDisplay(line: CountLineLike): string {
   return String(line.reserved_qty_snapshot ?? 0);
 }
 
+/* ════════════════════════ Ürün kimliği ════════════════════════ */
+
+export interface ProductIdentityLike {
+  product_id: number;
+  product_name?: string | null;
+  product_sku?: string | null;
+}
+
+/**
+ * Satırda gösterilecek ürün adı.
+ *
+ * Sunucu adı göndermezse (eski sürüm, boş alan) ekran `undefined` ya da boş
+ * dize YAZMAZ: operatör en azından teknik kimliği görmeli. Sessizce yanlış
+ * bilgi üretmek, hiç bilgi vermemekten kötüdür.
+ */
+export function productDisplayName(satir: ProductIdentityLike): string {
+  const ad = (satir.product_name ?? "").trim();
+  return ad || `Ürün #${satir.product_id}`;
+}
+
+/** SKU yoksa uydurulmaz; yerine teknik kimlik açıkça etiketlenir. */
+export function productDisplaySku(satir: ProductIdentityLike): string {
+  const sku = (satir.product_sku ?? "").trim();
+  return sku || `kod yok · #${satir.product_id}`;
+}
+
+/* ════════════════════════ Liste özeti ════════════════════════ */
+
+export interface SessionSummaryLike {
+  line_count?: number;
+  uncounted_line_count?: number;
+  has_stale?: boolean;
+}
+
+/**
+ * Satır sayısı gösterimi.
+ *
+ * Alan yoksa `0` YAZILMAZ: "0 satır" gerçek bir iddiadır ve yanlıştır.
+ * Bilinmiyorsa bilinmediği söylenir.
+ */
+export function lineCountLabel(o: SessionSummaryLike): string {
+  if (typeof o.line_count !== "number") return "satır sayısı bilinmiyor";
+  const sayilmamis =
+    typeof o.uncounted_line_count === "number" && o.uncounted_line_count > 0
+      ? `, ${o.uncounted_line_count} sayılmadı`
+      : "";
+  return `${o.line_count} satır${sayilmamis}`;
+}
+
+/** Dikkat işareti YALNIZ sunucu açıkça söylerse gösterilir. */
+export function needsRecount(o: SessionSummaryLike): boolean {
+  return o.has_stale === true;
+}
+
 /* ════════════════════════ Etiketler ve rozetler ════════════════════════ */
 
 export type Tone = "neutral" | "info" | "success" | "warning" | "danger";
