@@ -37,6 +37,7 @@ from sqlalchemy import text
 from core.config import settings
 from core.database import AsyncSessionLocal, engine
 from tests.integration.db_guard import assert_test_database
+from tests.service_guard import servis_yok
 from core.payments.fake import FakePaymentProvider
 from models.booking import Booking, BookingStatus
 from models.client import Client
@@ -89,9 +90,10 @@ async def pg():
         async with engine.connect() as conn:
             await conn.execute(text("SELECT 1"))
     except _BAGLANTI_HATALARI as exc:
-        pytest.skip(
-            f"Postgres erişilemiyor ({exc.__class__.__name__}); docker compose ayakta mı?"
-        )
+        # Yerelde SKIP (docker compose kurmamış geliştirici bloklanmasın), ama
+        # CI_REQUIRE_SERVICES=1 iken HATA: Postgres servisi düşmüş bir CI koşusu
+        # "entegrasyon testleri geçti" diye okunamaz.
+        servis_yok("Postgres", exc)
     yield engine
     await engine.dispose()
 
@@ -370,7 +372,10 @@ async def _test_veritabani():
             await conn.execute(text("SELECT 1"))
     except _BAGLANTI_HATALARI as exc:
         await bakim.dispose()
-        pytest.skip(f"Postgres bakım bağlantısı yok ({exc.__class__.__name__})")
+        # Session kapsamlı ve autouse: buradaki bir SKIP BÜTÜN entegrasyon
+        # paketini sessizce atlatır. CI'da bu, "gerçek Postgres'te doğrulandı"
+        # iddiasını kanıtsız bırakır — o yüzden CI_REQUIRE_SERVICES=1 iken kırar.
+        servis_yok("Postgres (bakım bağlantısı)", exc)
     except Exception as exc:  # noqa: BLE001
         # Yapılandırma hatası "altyapı yok" DEĞİLDİR. Session kapsamlı ve
         # autouse olduğu için buradaki bir SKIP bütün entegrasyon suite'ini

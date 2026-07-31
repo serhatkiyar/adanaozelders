@@ -8,6 +8,9 @@ on:
 jobs:
   backend:
     runs-on: ubuntu-latest
+    # Asılı kalan bir adım (ör. erişilemeyen servise bağlanmaya çalışan test)
+    # varsayılanda 6 saat runner tutuyordu.
+    timeout-minutes: 30
     defaults:
       run:
         working-directory: backend
@@ -39,6 +42,10 @@ jobs:
       POSTGRES_PORT: 5432
       JWT_SECRET_KEY: ci-secret-key-not-for-production
       AUTO_CREATE_DB: "False"
+      # Altyapı erişilemezse test ATLANMAZ, KIRILIR (backend/tests/service_guard.py).
+      # Sessiz SKIP, "servis konteyneri eksik" hâlini gerçekten koşan bir
+      # suite'ten ayırt edilemez kılıyor ve yeşil gösteriyordu.
+      CI_REQUIRE_SERVICES: "1"
 
     steps:
       - uses: actions/checkout@v4
@@ -71,11 +78,21 @@ jobs:
       - name: Migration — drift kontrolü
         run: python -m alembic check
 
-      # pytest.ini'de testpaths=tests olduğundan integration'ı açıkça dışlıyoruz;
-      # yoksa iki adımda da koşar.
-      - name: Unit tests
-        run: pytest -q --ignore=tests/integration
+      # pytest.ini'de `testpaths = tests` olduğundan yol verilmeyen her pytest
+      # çağrısı ÜÇ paketi birden toplar. Bu adım yalnız birim/kabul testleridir;
+      # integration (gerçek Postgres) ve verify (izole DB + gerçek servis
+      # katmanı) kendi adımlarında koşar.
+      #
+      # `--ignore=tests/verify` bilinçlidir ve ZORUNLUDUR: verify paketinin
+      # session guard'ı POSTGRES_DB != adana_verify görünce `pytest.exit(1)`
+      # eder — yani buradan toplanırsa 754 birim testi geçtikten SONRA adım
+      # kırılır ve ardındaki hiçbir adım koşmaz. Sözleşme
+      # `backend/tests/test_ci_workflow.py` ile kilitlidir.
+      - name: Unit tests (birim + kabul)
+        run: pytest -q --ignore=tests/integration --ignore=tests/verify
 
+      # Gerçek Postgres. `CI_REQUIRE_SERVICES=1` sayesinde DB'ye ulaşılamazsa
+      # paket sessizce SKIP olmaz, adım kırılır.
       - name: Integration tests (gerçek Postgres)
         run: pytest tests/integration -q
 
@@ -121,6 +138,7 @@ jobs:
 
   frontend:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     defaults:
       run:
         working-directory: frontend
