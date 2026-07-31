@@ -48,7 +48,18 @@ def test_catalog_has_no_duplicates() -> None:
     assert len(codes) == len(set(codes)), "katalogda tekrar eden izin kodu var"
 
 
+#: İzin kodunun eylem kısmı için İZİNLİ sözlük. Serbest bırakılmaz: yazım
+#: hatası (`inventory.aply`) sessiz 403 üretir, o yüzden liste dar tutulur.
+#:
+#: `view`/`manage` çifti uzun süre yetti; F29 ile üçüncü ve dördüncü eylem
+#: eklendi çünkü iki eylem **görev ayrılığını ifade edemiyor**: envanteri
+#: SAYAN kişinin, farkı tek başına UYGULAYABİLMESİ gerekmez. Bunu tek bir
+#: `inventory.manage` altında toplamak, ayrımı yalnız arayüzde bırakırdı.
+_ALLOWED_ACTIONS = ("view", "manage", "count", "apply")
+
+
 def test_catalog_entries_are_well_formed() -> None:
+    kalip = re.compile(rf"[a-z_]+\.({'|'.join(_ALLOWED_ACTIONS)})")
     for code, name, group in PERMISSION_CATALOG:
-        assert re.fullmatch(r"[a-z_]+\.(view|manage)", code), f"beklenmeyen kod: {code}"
+        assert kalip.fullmatch(code), f"beklenmeyen kod: {code}"
         assert name and group, f"eksik ad/grup: {code}"

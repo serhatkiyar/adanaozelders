@@ -44,6 +44,13 @@ PERMISSION_CATALOG: tuple[tuple[str, str, str], ...] = (
     # Hakediş defteri: kime ne kadar borçluyuz + ödeme kaydı (para çıkışı).
     ("payments.view", "Hakediş görüntüleme", "Ticaret"),
     ("payments.manage", "Hakediş ödemesi kaydetme", "Ticaret"),
+    # Envanter (F29). `products.*` bilinçli olarak YENİDEN KULLANILMADI: ürün
+    # metnini düzenlemek ile envanteri değiştirmek aynı yetki kutusunda
+    # olmamalıdır. Üç kademe görev ayrılığına da izin verir — sayan kişi tek
+    # başına envanteri değiştiremez.
+    ("inventory.view", "Envanter ve sayım görüntüleme", "Ticaret"),
+    ("inventory.count", "Sayım oturumu açma ve miktar girme", "Ticaret"),
+    ("inventory.apply", "Sayım farkı uygulama ve hasar işlemi", "Ticaret"),
     ("reports.view", "Şikâyet görüntüleme", "Güvenlik"),
     ("reports.manage", "Şikâyet yönetimi", "Güvenlik"),
     ("audit.view", "Denetim kayıtlarını görüntüleme", "Güvenlik"),

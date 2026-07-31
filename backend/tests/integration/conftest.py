@@ -290,6 +290,10 @@ async def factory(pg) -> MoneyFactory:
 _KRITIK_TABLOLAR = (
     "products",
     "stock_movements",
+    "stock_count_sessions",
+    "stock_count_lines",
+    "stock_count_line_events",
+    "stock_damage_events",
     "orders",
     "order_items",
     "order_returns",

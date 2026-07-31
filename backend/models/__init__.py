@@ -36,6 +36,17 @@ from models.exam import PracticeExam, PracticeExamSubject
 from models.feature_flag import FeatureFlag
 from models.flashcard import Flashcard, FlashcardDeck
 from models.habit import Habit, HabitEntry
+from models.inventory import (
+    COUNT_ADJUSTMENT_REASONS,
+    DAMAGE_REASONS,
+    CountLineStatus,
+    CountSessionStatus,
+    DamageEventKind,
+    StockCountLine,
+    StockCountLineEvent,
+    StockCountSession,
+    StockDamageEvent,
+)
 from models.library import (
     Library,
     LibraryAmenity,
@@ -93,6 +104,7 @@ from models.store import (
     ReturnType,
     SellerType,
     StockMovement,
+    StockBucket,
     StockMovementType,
     StockNotification,
 )
@@ -204,6 +216,17 @@ __all__ = [
     "ProductStatus",
     "StockMovement",
     "StockMovementType",
+    "StockBucket",
+    # F29 — sayım ve hasarlı stok
+    "COUNT_ADJUSTMENT_REASONS",
+    "DAMAGE_REASONS",
+    "CountLineStatus",
+    "CountSessionStatus",
+    "DamageEventKind",
+    "StockCountLine",
+    "StockCountLineEvent",
+    "StockCountSession",
+    "StockDamageEvent",
     "ReturnStatus",
     "ReturnType",
     "ReturnRefundStatus",

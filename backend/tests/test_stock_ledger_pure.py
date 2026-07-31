@@ -357,17 +357,36 @@ class TestExceptions:
 
 # ────────────────────── Hareket türü kataloğu ──────────────────────
 
-def test_hareket_turleri_tam_olarak_alti():
+def test_hareket_turleri_tam_olarak_onbir():
     # Yeni bir tür eklemek, gerekçe sözlüğünü ve admin yüzeyindeki etiketleri
     # de güncellemeyi gerektirir; sessizce büyümesin.
+    #
+    # Altıdan on bire çıkışın sebebi F29'dur (sayım + hasarlı stok). Nöbetçi
+    # görevini yaptı: bu test, üretim kodu değişince KIRILDI ve listenin
+    # bilinçli olarak güncellenmesini zorladı.
     assert {t.value for t in StockMovementType} == {
+        # Defterin kuruluşundan beri var olan altı tür
         "OPENING_BALANCE",
         "INITIAL",
         "SALE",
         "SALE_CANCEL",
         "RETURN",
         "ADMIN_ADJUSTMENT",
+        # F29 — sayım ve hasarlı stok
+        "COUNT_ADJUSTMENT",
+        "DAMAGE_TRANSFER",
+        "DAMAGE_RECOVERY",
+        "DAMAGE_DISPOSAL",
+        "SUPPLIER_RETURN",
     }
+
+
+def test_kova_katalogu_iki_deger():
+    """Kova üçüncü bir değer kazanırsa zincir doğrulaması ve migration
+    backfill'i de gözden geçirilmelidir (ör. F30 lokasyon boyutu)."""
+    from models.store import StockBucket
+
+    assert {b.value for b in StockBucket} == {"SALEABLE", "DAMAGED"}
 
 
 def test_admin_gerekce_beyaz_listesi():

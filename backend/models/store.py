@@ -228,6 +228,18 @@ class Product(Base, TimestampMixin, SoftDeleteMixin):
     # testiyle (AST) korunur: tests/acceptance/test_stock_ledger_contract.py
     stock: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
+    # İşletmede duran ama SATILAMAZ miktar (kırık, ıslak, baskı hatalı…).
+    # `stock`'un NULL semantiğine bağlıdır: dijital üründe stok takip
+    # edilmediği için hasarlı kova da YOKTUR (NULL), "0 hasarlı" DEĞİL.
+    # İkisinin eşleşmesi `ck_products_damaged_pairing` CHECK'iyle ve
+    # `products_damaged_pairing` trigger'ıyla korunur — trigger, kolonu bilmeyen
+    # her yazıcıda (ürün oluşturma, CSV içe aktarma, seed, ham SQL) değeri
+    # otomatik doğru kurar. Bu yüzden ORM tarafında `FetchedValue`.
+    # Tek yazıcı `services/stock_ledger.py`'dir; `stock` ile aynı disiplin.
+    damaged_stock: Mapped[int | None] = mapped_column(
+        Integer, nullable=True, server_default=FetchedValue()
+    )
+
     # ── Stok kalemi kimliği ──
     # `sku` = BİZİM stok kalemi kimliğimiz. Değeri `(kind, id)`'nin fonksiyonudur
     # (`FZK-000042` / `DIJ-000007`) ve **BEFORE INSERT trigger'ı** tarafından
@@ -351,6 +363,18 @@ class Product(Base, TimestampMixin, SoftDeleteMixin):
         CheckConstraint(
             "compare_at_price IS NULL OR compare_at_price > price",
             name="ck_products_compare_price",
+        ),
+        # Hasarlı kova, satılabilir kovanın takip semantiğine bağlıdır: stok
+        # takip edilmiyorsa (dijital) hasarlı da izlenmez. "Takip edilmiyor" ile
+        # "sıfır hasarlı" farklı iki gerçektir ve karıştırılmaz.
+        CheckConstraint(
+            "(stock IS NULL) = (damaged_stock IS NULL)",
+            name="ck_products_damaged_pairing",
+        ),
+        # Kırpma yasağının hasarlı kovadaki karşılığı.
+        CheckConstraint(
+            "damaged_stock IS NULL OR damaged_stock >= 0",
+            name="ck_products_damaged_sign",
         ),
     )
 
@@ -963,6 +987,36 @@ class StockMovementType(str, enum.Enum):
     #: Admin düzeltmesi. Gerekçe ZORUNLU; mutlak atama değil, delta yazılır.
     ADMIN_ADJUSTMENT = "ADMIN_ADJUSTMENT"
 
+    # ── F29: sayım ve hasarlı stok ──
+    #: Sayım oturumunun uygulanması. Veriyi fiziğe hizalar; fiziksel mevcudu
+    #: DEĞİŞTİRMEZ. Kaynağı `stock_count_lines`.
+    COUNT_ADJUSTMENT = "COUNT_ADJUSTMENT"
+    #: Satılabilir → hasarlı. Aynı transaction'da İKİ satır yazılır.
+    DAMAGE_TRANSFER = "DAMAGE_TRANSFER"
+    #: Hasarlı → satılabilir (kurtarıldı). Yine iki satır.
+    DAMAGE_RECOVERY = "DAMAGE_RECOVERY"
+    #: Hasarlı kovadan imha — işletmeden fiziksel çıkış (tek satır).
+    DAMAGE_DISPOSAL = "DAMAGE_DISPOSAL"
+    #: Seçilen kovadan tedarikçiye fiziksel çıkış (tek satır).
+    SUPPLIER_RETURN = "SUPPLIER_RETURN"
+
+
+class StockBucket(str, enum.Enum):
+    """Defter zincirinin ikinci boyutu: miktarın hangi kovada durduğu.
+
+    Zincir değişmezi ``qty_after[i] == qty_after[i-1] + qty_delta[i]`` F29'dan
+    itibaren `(product_id, bucket)` başına geçerlidir. `SALEABLE` zincirinin son
+    değeri `products.stock`'a, `DAMAGED` zincirininki `products.damaged_stock`'a
+    eşittir.
+
+    **Boş hasarlı kova geçerlidir:** hiç `DAMAGED` hareketi olmayan bir üründe
+    `damaged_stock = 0` doğru kabul edilir; migration gereksiz sıfır açılış
+    satırı ÜRETMEZ. Bakiye sıfırdan farklıyken hareket yoksa bu bir bulgudur.
+    """
+
+    SALEABLE = "SALEABLE"
+    DAMAGED = "DAMAGED"
+
 
 #: `ADMIN_ADJUSTMENT` için geçerli gerekçe kodları (DB CHECK'iyle de zorlanır).
 ADMIN_ADJUSTMENT_REASONS = frozenset(
@@ -1012,6 +1066,21 @@ class StockMovement(Base):
         ForeignKey("products.id", ondelete="RESTRICT"), nullable=False, index=True
     )
 
+    #: Hareketin geçtiği kova (`StockBucket`). Defter F29'dan itibaren iki
+    #: zincir taşır ve `qty_after` **kendi kovası** içinde zincirlenir.
+    #:
+    #: Hem Python hem sunucu varsayılanı `'SALEABLE'`: defterin bugüne kadarki
+    #: tamamı satılabilir kovanın hareketleridir, dolayısıyla bu varsayılan bir
+    #: tahmin değil, geçmişin doğru okunuşudur. Sunucu varsayılanı ayrıca
+    #: kolonu bilmeyen ham SQL yazıcılarını (testler, betikler) kırmaz.
+    #: Hasarlı hareketleri `stock_ledger` **her zaman açıkça** belirtir.
+    bucket: Mapped[str] = mapped_column(
+        String(10),
+        nullable=False,
+        default=StockBucket.SALEABLE.value,
+        server_default=text("'SALEABLE'"),
+    )
+
     #: İşaretli, UYGULANAN gerçek değişim. Sıfır yalnız OPENING_BALANCE'ta.
     qty_delta: Mapped[int] = mapped_column(Integer, nullable=False)
     #: Bu hareketten sonraki bakiye (= aynı transaction'da yazılan stok).
@@ -1050,8 +1119,20 @@ class StockMovement(Base):
     __table_args__ = (
         CheckConstraint(
             "movement_type IN ('OPENING_BALANCE','INITIAL','SALE','SALE_CANCEL',"
-            "'RETURN','ADMIN_ADJUSTMENT')",
+            "'RETURN','ADMIN_ADJUSTMENT','COUNT_ADJUSTMENT','DAMAGE_TRANSFER',"
+            "'DAMAGE_RECOVERY','DAMAGE_DISPOSAL','SUPPLIER_RETURN')",
             name="ck_stock_movements_type",
+        ),
+        CheckConstraint(
+            "bucket IN ('SALEABLE','DAMAGED')", name="ck_stock_movements_bucket"
+        ),
+        # Hasarlı kovada YALNIZ hasar ve sayım hareketleri olabilir: bir satış
+        # ya da iade hasarlı kovaya düşerse defter iki kovayı da yalan söyler.
+        CheckConstraint(
+            "bucket = 'SALEABLE' OR movement_type IN ('COUNT_ADJUSTMENT',"
+            "'DAMAGE_TRANSFER','DAMAGE_RECOVERY','DAMAGE_DISPOSAL',"
+            "'SUPPLIER_RETURN','OPENING_BALANCE')",
+            name="ck_stock_movements_bucket_type",
         ),
         CheckConstraint(
             "actor_type IN ('SYSTEM','ADMIN')", name="ck_stock_movements_actor_t"
@@ -1068,8 +1149,13 @@ class StockMovement(Base):
         ),
         # Kırpma yasak olduğu için bu artık gerçek bir değişmez.
         CheckConstraint("qty_after >= 0", name="ck_stock_movements_after"),
+        # Ticari kaynağı olan her hareket kaynağını taşımak zorundadır. Sayım ve
+        # hasar hareketleri de bu sınıfa girer: kaynakları `stock_count_lines`
+        # ve `stock_damage_events` satırlarıdır.
         CheckConstraint(
-            "movement_type NOT IN ('SALE','SALE_CANCEL','RETURN') "
+            "movement_type NOT IN ('SALE','SALE_CANCEL','RETURN',"
+            "'COUNT_ADJUSTMENT','DAMAGE_TRANSFER','DAMAGE_RECOVERY',"
+            "'DAMAGE_DISPOSAL','SUPPLIER_RETURN') "
             "OR (ref_type IS NOT NULL AND ref_id IS NOT NULL)",
             name="ck_stock_movements_ref",
         ),
@@ -1082,15 +1168,30 @@ class StockMovement(Base):
             "('SAYIM_FARKI','HASAR','KAYIP','HATALI_GIRIS','TEDARIK','DIGER')",
             name="ck_stock_movements_adjust",
         ),
+        # Sayım farkı yön bilgisi taşır; elle düzeltmenin sözlüğüyle karışmaz.
+        CheckConstraint(
+            "movement_type <> 'COUNT_ADJUSTMENT' OR reason_code IN "
+            "('SAYIM_FAZLA','SAYIM_EKSIK')",
+            name="ck_stock_movements_count_reason",
+        ),
+        CheckConstraint(
+            "movement_type NOT IN ('DAMAGE_TRANSFER','DAMAGE_RECOVERY',"
+            "'DAMAGE_DISPOSAL','SUPPLIER_RETURN') OR reason_code IN "
+            "('KIRIK','ISLAK','BASKI_HATASI','MUSTERI_IADESI_HASARLI','DIGER')",
+            name="ck_stock_movements_damage_reason",
+        ),
         # "DIGER" tek başına hiçbir şey açıklamaz; açıklamayı not taşır.
         CheckConstraint(
             "reason_code <> 'DIGER' OR (note IS NOT NULL AND length(btrim(note)) > 0)",
             name="ck_stock_movements_note",
         ),
-        # Geçmiş ekranı (ürün + tarih filtresi + kronolojik sıra).
+        # Geçmiş ekranı ve zincir doğrulaması (ürün + kova + kronolojik sıra).
+        # Kova kolonu öne alındı: `verify_ledger` ve "son bakiye" sorguları
+        # F29'dan itibaren kova başına çalışır.
         Index(
             "ix_stock_movements_product",
             "product_id",
+            "bucket",
             text("created_at DESC"),
             text("id DESC"),
         ),

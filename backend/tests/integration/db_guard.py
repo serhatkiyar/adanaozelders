@@ -82,6 +82,53 @@ async def purge_products(session, product_ids) -> int:
     ids = [int(i) for i in product_ids or []]
     if not ids:
         return 0
+    # F29: sayım/hasar kayıtları ürüne `RESTRICT` ile bağlıdır ve iz tabloları
+    # da append-only'dir. Sıra önemli: olay → satır → oturum → defter → ürün.
+    await session.execute(
+        text("ALTER TABLE stock_count_line_events DISABLE TRIGGER USER")
+    )
+    await session.execute(text("ALTER TABLE stock_damage_events DISABLE TRIGGER USER"))
+    try:
+        await session.execute(
+            text(
+                "DELETE FROM stock_count_line_events WHERE line_id IN "
+                "(SELECT id FROM stock_count_lines WHERE product_id = ANY(:i))"
+            ),
+            {"i": ids},
+        )
+        await session.execute(
+            text("DELETE FROM stock_damage_events WHERE product_id = ANY(:i)"),
+            {"i": ids},
+        )
+    finally:
+        await session.execute(
+            text("ALTER TABLE stock_count_line_events ENABLE TRIGGER USER")
+        )
+        await session.execute(
+            text("ALTER TABLE stock_damage_events ENABLE TRIGGER USER")
+        )
+    oturumlar = (
+        await session.execute(
+            text(
+                "SELECT DISTINCT session_id FROM stock_count_lines "
+                "WHERE product_id = ANY(:i)"
+            ),
+            {"i": ids},
+        )
+    ).scalars().all()
+    await session.execute(
+        text("DELETE FROM stock_count_lines WHERE product_id = ANY(:i)"), {"i": ids}
+    )
+    if oturumlar:
+        # Yalnız BU ürünlerden ibaret kalan (artık satırı olmayan) oturumlar.
+        await session.execute(
+            text(
+                "DELETE FROM stock_count_sessions s WHERE s.id = ANY(:o) "
+                "AND NOT EXISTS (SELECT 1 FROM stock_count_lines l "
+                "WHERE l.session_id = s.id)"
+            ),
+            {"o": list(oturumlar)},
+        )
     await session.execute(text("ALTER TABLE stock_movements DISABLE TRIGGER USER"))
     try:
         await session.execute(

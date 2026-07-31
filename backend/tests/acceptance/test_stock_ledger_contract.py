@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import ast
 import pathlib
+import re
 
 import pytest
 
@@ -565,13 +566,34 @@ def test_defter_uclari_mevcut_urun_izinlerini_kullaniyor():
             )
 
 
-def test_inventory_izin_kodu_bu_pakette_eklenmedi():
-    """`inventory.*` tam envanter modülüne bırakıldı.
+def test_inventory_izinleri_ROLE_BAGLANMADAN_katalogda_kalmaz():
+    """`inventory.*` artık var — ama role bağlanmadan kalamaz.
 
-    Kimseye verilmemiş bir izin kodu bu kod tabanında SESSİZ 403 üretir
-    (backend/CLAUDE.md'de kayıtlı tuzak).
+    ## Bu testin geçmişi (kabul testi değişikliği, gerekçeli)
+
+    Stok defteri paketinde bu test `assert "inventory." not in ...` diyordu:
+    o pakette `inventory.*` **bilinçli olarak ertelenmişti** ve erken eklenmiş
+    bir izin kodu, kimseye bağlanmadığı için SESSİZ 403 üretirdi
+    (`backend/CLAUDE.md`'de kayıtlı tuzak). F29 tam da o ertelenen envanter
+    modülüdür; kodlar artık kataloğa **ait**.
+
+    Testin AMACI değişmedi, ölçtüğü şey güncellendi: koruduğumuz tuzak "kod
+    var ama kimsede yok"tur. Bu yüzden şimdi kataloğa eklenen her `inventory.*`
+    kodunun bir migration'da **role dağıtıldığı** doğrulanır. Silmek yerine
+    dönüştürülmesinin sebebi budur — koruma boşluğu bırakılmadı.
     """
-    assert "inventory." not in _read("core/admin_permissions.py")
+    katalog = _read("core/admin_permissions.py")
+    kodlar = set(re.findall(r'"(inventory\.[a-z_]+)"', katalog))
+    assert kodlar, "envanter izinleri katalogda yok"
+
+    versions = pathlib.Path(BACKEND) / "migrations" / "versions"
+    seed = "\n".join(
+        p.read_text(encoding="utf-8")
+        for p in versions.glob("*.py")
+        if "inventory." in p.read_text(encoding="utf-8")
+    )
+    for kod in sorted(kodlar):
+        assert kod in seed, f"{kod} katalogda var ama migration role dağıtmıyor"
 
 
 # ───────────── 7. Model sözleşmesi ─────────────
