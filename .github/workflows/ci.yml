@@ -175,10 +175,23 @@ jobs:
           python -m alembic upgrade head
           pytest tests/verify -q
 
-      # Kapsama: kırmaz, RAPORLAR. Eşik koymadan önce sayının kendisinin
-      # anlamlı olması gerekiyordu — doğrulama paketi ölçüme yeni dahil oldu.
-      - name: Test kapsaması (raporlar)
-        run: pytest -q --ignore=tests/integration --ignore=tests/verify --cov=services --cov=core --cov-report=term
+      # Kapsama eşiği — GERİLEME nöbetçisi, kalite hedefi DEĞİL.
+      #
+      # KAPSAMI DAR: yalnız `services` + `core`, yalnız BİRİM/KABUL testleriyle.
+      # integration ve verify paketleri (gerçek Postgres, gerçek servis katmanı,
+      # gerçek HTTP) ölçüme DAHİL DEĞİL — yani bu sayı "sistemin ne kadarı test
+      # edilmiş" sorusunun cevabı değildir, "birim testleriyle ulaşılan kod ne
+      # kadar" sorusununkidir. Bütün sistem kapsamı gibi sunulmamalı.
+      #
+      # Eşik ölçülerek seçildi, tahmin edilmedi (30 Tem 2026):
+      #   pytest -q --ignore=tests/integration --ignore=tests/verify \
+      #     --cov=services --cov=core --cov-report=term
+      #   → 10846 satır, 6884 kapsanmayan, TOPLAM %36.53 (raporda %37)
+      # 35: ölçülen değerin ~1.5 puan altı. Amaç, kapsamı kayda değer biçimde
+      # düşüren bir değişikliği yakalamak; ondalık dalgalanmada CI'yı
+      # kırmamak. Kapsam yükseldikçe eşik de yükseltilmeli.
+      - name: Test kapsaması — gerileme eşiği
+        run: pytest -q --ignore=tests/integration --ignore=tests/verify --cov=services --cov=core --cov-report=term --cov-fail-under=35
 
       # Bilinen açıklar: şimdilik raporlar, CI'yı kırmaz. Bağımlılıklar
       # pip-compile ile kilitlendikten sonra continue-on-error kaldırılmalı.

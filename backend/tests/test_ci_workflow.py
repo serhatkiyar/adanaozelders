@@ -203,6 +203,32 @@ def test_minio_adimi_hazir_olmayi_bekliyor(backend_isi) -> None:
     assert "exit 1" in komut, "MinIO açılmazsa adım kırılmıyor"
 
 
+def test_kapsama_esigi_var_ve_dar_kapsamli_oldugu_yaziyor(backend_isi) -> None:
+    """Eşiksiz kapsama adımı yalnız rapor üretir; gerileme hiçbir şeyi kırmaz.
+
+    Eşiğin kendisi kadar önemlisi: bu sayı `services` + `core`'un BİRİM
+    testleriyle kapsanan kısmıdır — integration/verify hariçtir. "Sistemin
+    %37'si test edilmiş" diye okunmaması için adım o iki paketi dışlar ve
+    gerekçe yorumda durur.
+    """
+    kapsama = [
+        k
+        for k in _pytest_komutlari(backend_isi)
+        if any(t.startswith("--cov=") for t in k)
+    ]
+    assert len(kapsama) == 1, f"kapsama ölçen pytest çağrısı sayısı 1 değil: {len(kapsama)}"
+    tokenlar = kapsama[0]
+
+    esikler = [t for t in tokenlar if t.startswith("--cov-fail-under=")]
+    assert esikler, "kapsama adımında --cov-fail-under yok — gerileme CI'yı kırmaz"
+    assert float(esikler[0].split("=", 1)[1]) > 0
+
+    assert AYRI_KOSAN_PAKETLER <= _yoksayilanlar(tokenlar), (
+        "kapsama ölçümü integration/verify paketlerini dışlamıyor; sayı "
+        "olduğundan yüksek çıkar ve eşik yanıltıcı olur"
+    )
+
+
 def test_altyapi_eksikse_test_atlanmiyor(backend_isi) -> None:
     """`CI_REQUIRE_SERVICES` olmadan Postgres/Redis/MinIO düşünce suite yeşil kalır."""
     assert backend_isi["env"].get("CI_REQUIRE_SERVICES") == "1", (
