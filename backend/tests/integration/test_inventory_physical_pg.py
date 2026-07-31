@@ -251,8 +251,9 @@ async def test_fiziksel_kabulu_olmayan_RETURN_satiri_STALE_yapar(fab):
 
         await stock_ledger.apply_movement(
             db, pid, qty_delta=+1,
+            bucket=stock_ledger.StockBucket.SALEABLE,
             movement_type=stock_ledger.StockMovementType.RETURN,
-            reason_code="IADE",
+            reason_code="RETURN_ACCEPTED",
             ref_type="order_return", ref_id=oid, ref_line_id=oid,
             idempotency_key=f"test-return:{oid}",
         )

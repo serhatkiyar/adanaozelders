@@ -129,6 +129,17 @@ async def purge_products(session, product_ids) -> int:
             ),
             {"o": list(oturumlar)},
         )
+    # Sayım oturumlarının audit izleri: oturum silindiyse kayıt YETİM kalır ve
+    # `audit_logs` sessizce şişer (bir F29 koşumunda 619 satır birikti; tablo
+    # hijyen nöbetçisinde olmadığı için suite bunu göremedi). Yalnız hedefi
+    # artık var olmayan satırlar silinir — başka testin izine dokunulmaz.
+    await session.execute(
+        text(
+            "DELETE FROM audit_logs WHERE target_type = 'stock_count_session' "
+            "AND NOT EXISTS (SELECT 1 FROM stock_count_sessions s "
+            "WHERE s.id = audit_logs.target_id)"
+        )
+    )
     await session.execute(text("ALTER TABLE stock_movements DISABLE TRIGGER USER"))
     try:
         await session.execute(

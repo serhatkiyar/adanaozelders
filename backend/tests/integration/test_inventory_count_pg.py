@@ -23,7 +23,6 @@ from tests.inventory_api import servis, uye
 
 SERVIS = "services.inventory_service"
 ADMIN_ID = 1
-ADMIN2_ID = 2
 
 
 @pytest.fixture
@@ -277,6 +276,7 @@ async def test_STALE_satir_TUM_oturumun_uygulanmasini_engeller(fab):
 
         await stock_ledger.apply_movement(
             db, belirsiz,
+            bucket=stock_ledger.StockBucket.SALEABLE,
             qty_delta=+1,
             movement_type=stock_ledger.StockMovementType.ADMIN_ADJUSTMENT,
             reason_code="HATALI_GIRIS",
@@ -311,6 +311,7 @@ async def test_STALE_satir_yeniden_sayilinca_uygulanabilir(fab):
 
         await stock_ledger.apply_movement(
             db, pid, qty_delta=+1,
+            bucket=stock_ledger.StockBucket.SALEABLE,
             movement_type=stock_ledger.StockMovementType.ADMIN_ADJUSTMENT,
             reason_code="HATALI_GIRIS", actor_type="ADMIN", actor_id=ADMIN_ID,
         )
@@ -420,6 +421,9 @@ async def test_set_counted_ISTEMCI_ZAMANI_KABUL_ETMEZ(fab):
 
 
 async def test_yeniden_sayim_ESKI_DEGERI_korur_ve_counted_at_YENILER(fab):
+    # İkinci admin GERÇEK olmalı: aktör kolonları `admins`'e RESTRICT FK ile
+    # bağlı, uydurma bir id FK ihlaliyle patlar (kayıt aktörünü kaybedemez).
+    ikinci_admin = await fab.admin()
     pid = await fab.urun(stock=5)
     sid = await _oturum_ac(pid)
     line_id = await _satir(sid, pid)
@@ -434,7 +438,7 @@ async def test_yeniden_sayim_ESKI_DEGERI_korur_ve_counted_at_YENILER(fab):
             )
         ).scalar_one()
     async with AsyncSessionLocal() as db:
-        await servis().set_counted(db, line_id, 6, admin_id=ADMIN2_ID)
+        await servis().set_counted(db, line_id, 6, admin_id=ikinci_admin)
         await db.commit()
     async with AsyncSessionLocal() as db:
         satir = (
@@ -457,7 +461,7 @@ async def test_yeniden_sayim_ESKI_DEGERI_korur_ve_counted_at_YENILER(fab):
         ).all()
     assert satir.counted_qty == 6
     assert satir.counted_at > ilk
-    assert satir.counted_by_admin_id == ADMIN2_ID
+    assert satir.counted_by_admin_id == ikinci_admin
     assert [(o.old_qty, o.new_qty) for o in olaylar] == [(None, 4), (4, 6)]
 
 

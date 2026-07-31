@@ -39,6 +39,7 @@ class Fabrika:
         self.product_ids: list[int] = []
         self.order_ids: list[int] = []
         self.client_ids: list[int] = []
+        self.admin_ids: list[int] = []
 
     # ── Ürün ──
     async def urun(
@@ -103,6 +104,34 @@ class Fabrika:
                 {"v": adet, "i": pid},
             )
             await s.commit()
+
+    # ── Admin ──
+    async def admin(self) -> int:
+        """İkinci bir admin — "başkası yeniden saydı" senaryosu için.
+
+        Sabit bir id (ör. 2) VARSAYILAMAZ: sayım tabloları aktör kolonlarını
+        `admins` tablosuna `RESTRICT` FK ile bağlıyor, olmayan bir admin
+        kimliği FK ihlaliyle patlar. Bu, kaydın aktörünü kaybedememesi
+        anlamına gelir ve istenen davranıştır.
+        """
+        from models.admin import Admin
+
+        ek = uniq()
+        async with AsyncSessionLocal() as s:
+            a = Admin(
+                email=f"sayim-admin-{ek}@test.local",
+                hashed_password="test-only",
+                first_name="Sayim",
+                last_name="Admin",
+                username=f"sa{ek}",
+                role_id=1,
+            )
+            s.add(a)
+            await s.flush()
+            aid = a.id
+            await s.commit()
+        self.admin_ids.append(aid)
+        return aid
 
     # ── Müşteri + sipariş ──
     async def musteri(self) -> int:
@@ -222,5 +251,17 @@ class Fabrika:
             if self.client_ids:
                 await s.execute(
                     text("DELETE FROM clients WHERE id = ANY(:i)"), {"i": self.client_ids}
+                )
+            if self.admin_ids:
+                # Sayım/iz satırları admin'e RESTRICT FK ile bağlı → önce onlar.
+                await s.execute(
+                    text(
+                        "DELETE FROM audit_logs WHERE actor_id = ANY(:i) "
+                        "AND actor_role = 1"
+                    ),
+                    {"i": self.admin_ids},
+                )
+                await s.execute(
+                    text("DELETE FROM admins WHERE id = ANY(:i)"), {"i": self.admin_ids}
                 )
             await s.commit()
