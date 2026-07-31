@@ -199,6 +199,21 @@ RETURNED ──[operatör onayı] repack──▶ PACKED             (prepared_a
 RETURNED ──[operatör onayı] void──▶ VOID                 (paket bozulacak)
 ```
 
+#### `RETURN_PENDING` yaşam döngüsü — kesin kurallar
+
+Paketi kuryede bırakan **dört yol** vardır ve hepsi aynı sonuca varır:
+`fail_stop` · `cancel_run` · `expire_stale_runs` (watchdog) · `postpone_delivery`
+(müşteri ertelemesi). Bu dört yol için kurallar:
+
+| Kural | Gerekçe |
+|---|---|
+| `RETURN_PENDING` paketi olan sipariş **`prep_queue`'da GÖRÜNMEZ** | Depoda olmayan paket için "topla ve paketle" görevi üretmek yanlış iştir; personel ikinci bir kopya toplamaya kalkar. Bugün `roll_promise_after_failed_attempt` `prepared_at`'i sıfırladığı için sipariş doğrudan prep kuyruğuna düşüyor — F30 bu davranışı **paket durumuna göre** daraltır. |
+| Ayrı operasyon kuyruğunda **GÖRÜNÜR**: `GET /packing/return-queue` | Görünmezlik tek başına tehlikelidir: hiçbir yerde görünmeyen paket kimse tarafından aranmaz ve süresiz kaybolur (TB-7). Kuyruk paket kodunu, siparişi ve **hangi kuryede olduğunu** taşır. |
+| `open_package` ikinci paket **AÇMAZ** → 409 + mevcut paketin durumu | İkinci paket, aynı ürünleri ikinci kez raftan almak demektir. 409 gövdesi mevcut durumu (`RETURN_PENDING`) bildirir; operatör "neden açamıyorum" sorusunun cevabını ekranda görür. |
+| `add_stops` `RETURN_PENDING` paketi **KABUL ETMEZ** (409) ve `eligible_orders` göstermez | Araçta olan paket yeni tura yüklenemez. |
+| `repack` yalnız `RETURNED`'dan sonra | Sıra atlanamaz: geri geldiği **okutularak** doğrulanmadan yeniden dağıtıma verilemez. Belirsiz fiziksel olayda tahmin yok. |
+| `return_in` ve `repack` **defter hareketi yazmaz** | Konum olayı; `SALE` ödemede yazıldı, sipariş hâlâ `PAID`. |
+
 `VOID` paketin fiziksel çözülmesi ayrı bir damgadır: `unpacked_at`. Ekranda
 "bozulmayı bekleyen paketler" = `status='VOID' AND unpacked_at IS NULL`.
 G8 bu kuyrukla kapanır. **Stok hareketi yazılmaz** — iptal/iade yolunda
@@ -238,6 +253,40 @@ kapanır: gerekçe zorunlu, `result='OK_MANUAL'`, `package_scan_events`'e ve
 `ISBN` barkod yerine **kullanılmaz** — `models/store.py:254-261` bunu zaten
 gerekçelendiriyor (set ürün, ISBN-10 dönüşümü, promosyon barkodu). O gerekçeyi
 delmiyoruz.
+
+### 3.7 Modül bağımlılık yönü (circular import sınırı)
+
+F30 iki yönlü bir ihtiyaç doğuruyor: `packing_service` sipariş durumunu okumak
+ve `prepared_at` damgalamak için `order_fsm`'e; `order_fsm` ise sipariş
+`CANCELLED`/`REFUNDED` olurken canlı paketi çözmek için paket tarafına ihtiyaç
+duyuyor (§3.5). Naif çözüm karşılıklı `import` — Python'da modül düzeyinde
+**circular import** hatası, fonksiyon içinde ise gizli bir bağımlılık döngüsü.
+
+**Karar — tek yönlü bağımlılık + ince olay modülü:**
+
+```
+packing_service ──import──▶ order_fsm          (izinli, tek yön)
+packing_service ──import──▶ packing_rules      (saf)
+order_fsm       ──import──▶ packing_events     (izinli; packing_service'i GÖRMEZ)
+packing_events  ──import──▶ models + packing_rules
+packing_events  ─X─▶ packing_service                     (YASAK)
+delivery_service──import──▶ packing_service    (zimmet, kapı taraması)
+```
+
+* `services/packing_events.py` yalnız modelleri ve saf kuralları kullanan ince
+  bir modüldür; tek işi `on_order_terminal(db, order, *, reason)` — canlı paketi
+  konumuna göre `VOID` ya da `RETURN_PENDING` yapmak. İş mantığı (`open_package`,
+  `complete`, `scan`) burada **yoktur**.
+* `order_fsm` bu modülü **modül düzeyinde** import eder; gecikmeli (fonksiyon
+  içi) import'a gerek kalmaz, çünkü döngü yoktur.
+* `packing_service` tersine `packing_events`'i çağırmaz; `order_fsm`'i doğrudan
+  kullanır.
+* `delivery_service → packing_service` yönü tektir; `packing_service`
+  `delivery_service`'i **import etmez** (durak bilgisine ihtiyaç duyduğu tek yer
+  zimmet ve o `delivery_service` tarafındadır).
+
+Bu sınır bir kabul testiyle korunur: `packing_events` ve `packing_rules`,
+`packing_service`/`delivery_service` import ediyorsa test kırılır.
 
 ---
 
@@ -352,6 +401,7 @@ her yazan yol `Order`'ı `FOR UPDATE` ile alıp **taze** durum okur.
 | `GET /packing/queue` | `packing.view` | paketlenecek siparişler (söz gününe göre) |
 | `GET /packing/packages` | `packing.view` | filtre + zorunlu sayfalama tavanı |
 | `GET /packing/packages/{id}` | `packing.view` | satırlar + tarama izi |
+| `GET /packing/return-queue` | `packing.view` | "geri dönüş bekleniyor" (§3.5): paket kodu, sipariş, **hangi kuryede**, kaç gündür |
 | `POST /packing/orders/{order_id}/open` | `packing.pack` | idempotent: canlı paket varsa onu döner |
 | `POST /packing/packages/{id}/scan` | `packing.pack` | `{code, manual?, manual_reason?, idempotency_key}` |
 | `POST /packing/packages/{id}/undo-scan` | `packing.pack` | gerekçeli düzeltme |
@@ -385,7 +435,7 @@ izi `package_scan_events`'tedir.
 
 | # | Konu | Karar |
 |---|---|---|
-| **S1** | `RETURN_PENDING` penceresinde sipariş `PAID`'e döner (`fail_stop`), dolayısıyla F29 `reserved_on_premise` paketi **işletmede** sayar — oysa paket kuryededir. Pencere: teslim denemesi → akşam `return_in`. | F29 formülüne **dokunulmadı** (kapalı paket). Bilinen sapma; `docs/teknik-borc.md` TB-7 olarak açılacak. Sayım bu pencerede yapılırsa fark çıkar; sayımlar gece/sabah yapılır. |
+| **S1 / TB-7** | `RETURN_PENDING` penceresinde sipariş `PAID`'e döner, dolayısıyla F29 `reserved_on_premise` paketi **işletmede** sayar — oysa paket kuryededir. **Bu yalnız `fail_stop`'ta değil, dört yolun hepsinde oluşur:** `fail_stop` · `cancel_run` · `expire_stale_runs` (watchdog) · `postpone_delivery`. **Ve pencere sınırlı değildir:** `return_in` yapılmazsa sapma **süresiz** sürer — kurye paketi getirmez, kimse okutmaz, sayım her seferinde +1 fazla bekler. | F29 formülüne **dokunulmadı** (kapalı paket). Azaltıcı önlemler F30 içinde: (a) `GET /packing/return-queue` paketi görünür tutar ve **kaç gündür** beklediğini gösterir — sessizce kaybolamaz; (b) `open_package` 409 ile ikinci kopya toplanmasını engeller. Kalan risk `docs/teknik-borc.md` TB-7'de kalıcı olarak açılacak: "bekleyen geri dönüş varken yapılan sayım, o ürünlerde eksik sayar". |
 | **S2** | `start_run` ve `add_stops`'un `SHIPPED` sorumluluğu zimmete taşınıyor → mevcut teslimat testlerinin fixture'ları paket+zimmet adımı eklemek zorunda. | Bilinçli kırıcı değişiklik. Commit 5'te mevcut testler güncellenir; hangi testin **neden** değiştiği kapanış raporunda tek tek yazılır. |
 | **S3** | `POST /delivery/orders/{id}/prepare` ve `/unprepare` kaldırılıyor. | §3.5. Frontend "Hazırla" butonu paketleme istasyonuna yönlenir. |
 | **S4** | Paket QR'ı kalıcı olduğu için **çalınan/kopyalanan etiket** riski. | Zimmet, paketin o kuryenin turundaki durağa ait olmasını arar (IDOR deseni: yabancı paket **404**). Teslim hâlâ OTP/foto ister — QR tek başına teslim kanıtı değildir. |
@@ -405,18 +455,29 @@ izi `package_scan_events`'tedir.
 | 5 | `feat(f30): kurye zimmeti ve SHIPPED gecisinin tasinmasi` | `handover_scan`, `start_run` ön koşulu, `add_stops`/`fail_stop`/`cancel_run`/`watchdog`/`postpone` paket kablolaması, `prepare`/`unprepare` kaldırma, **etkilenen mevcut testlerin güncellenmesi** | bekliyor |
 | 6 | `feat(f30): admin paketleme ekranlari` | `/yonetim/paketleme` (kuyruk · istasyon · paketler) + API/hook/types + saf `lib/packing.ts` | bekliyor |
 | 7 | `feat(f30): paket etiketi ve kurye zimmet ekrani` | `PackageLabel` (baskı sözleşmesi) + `LabelSheet` paket QR'ına geçiş + saha zimmet adımı | bekliyor |
-| 8 | `test(f30): mutasyon provasi, Chrome kabul turu ve kapanis` | `mutation_drill` girdileri, izole Chrome/DevTools turu (baskı + QR okunabilirliği), kapanış raporu | bekliyor |
+| 8 | `test(f30): mutasyon provasi, Chrome kabul turu ve kapanis` | `mutation_drill` girdileri, izole Chrome/DevTools turu (§9.1), kapanış raporu | bekliyor |
+
+> Commit 1'in denetimi bir düzeltme commit'i doğurdu
+> (`test(f30): kirmizi matris denetim duzeltmeleri`): kilit sırası testinin
+> uygulanabilir hâle getirilmesi, izin dağıtımının gerçek DB'den ölçülmesi,
+> kapı taraması ve `RETURN_PENDING` yaşam döngüsü kapsaması, fabrika temizliği,
+> etiket QR'ının gerçek prop'tan doğrulanması, kurye saha ekranı matrisi ve
+> §3.7 import sınırı kararı.
 
 ---
 
 ## 9. Test çalıştırma
 
 ```powershell
-# Gerçek PostgreSQL (docker compose, host 5433). Asıl dev DB'si (5432/ceyhandb) KULLANILMAZ.
+# Gerçek PostgreSQL. DB adı 'test' İÇERMEK ZORUNDA (db_guard); asıl dev
+# kataloğu `ceyhandb` allowlist DIŞIDIR ve hiçbir koşulda kullanılmaz.
+#   • docker compose:  PORT=5433, parola 'postgres'
+#   • yerel Postgres:  PORT=5432, parola .env'deki değer
+# İkisi de olur — yalnız ayrı bir `adana_f30_test` kataloğu oluşturulur.
 Set-Location C:\Users\kiyar\desktop\adana-f30\backend
-$env:POSTGRES_USER='postgres'; $env:POSTGRES_PASSWORD='postgres'
-$env:POSTGRES_HOST='localhost'; $env:POSTGRES_PORT='5433'
-$env:POSTGRES_DB='adana_f30_test'          # adında 'test' GEÇMEK ZORUNDA (db_guard)
+$env:POSTGRES_USER='postgres'; $env:POSTGRES_PASSWORD='<parola>'
+$env:POSTGRES_HOST='localhost'; $env:POSTGRES_PORT='5432'
+$env:POSTGRES_DB='adana_f30_test'
 $env:AUTO_CREATE_DB='False'; $env:ENVIRONMENT='development'
 
 python -m pytest tests/integration -q -k f30      # F30 entegrasyon
@@ -431,6 +492,31 @@ npx vitest run src/pages/admin/packing
 ```
 
 > `--ignore=tests/verify` **şarttır**: `tests/verify/conftest.py` `POSTGRES_DB`
-> `adana_verify` değilse tüm oturumu `pytest.exit(1)` ile düşürür. Aynı sebeple
-> `.github/workflows/ci.yml:77` bugün verify paketini yanlışlıkla topluyor
-> (o adım verify eklendiğinden beri hiç yeşil koşmadı) — commit 8'de düzeltilecek.
+> `adana_verify` değilse tüm oturumu `pytest.exit(1)` ile düşürür.
+>
+> **CI notu:** `.github/workflows/ci.yml` düzeltmesi **başka bir dalda
+> tamamlandı**. F30 dalı CI üretim dosyalarına dokunmaz; bu dal daha sonra
+> güncel `main` ile **rebase/merge edilerek hizalanmalıdır** — aksi hâlde F30
+> PR'ı düzeltilmemiş CI tanımıyla koşar.
+
+### 9.1 Chrome kabul turu — açık kriterler (commit 8)
+
+Vitest'te `qrcode.react` mock'lanır ve **iletilen prop'lar** doğrulanır
+(`PackageLabel.test.tsx`); bu, QR'ın gerçekten çizildiğini ve **okunabildiğini**
+kanıtlamaz. jsdom yerleşim de hesaplamaz. Aşağıdakiler gerçek Chrome + DevTools
+Protocol turunda ölçülür ve kabul kriteridir:
+
+1. Etiket sayfası **PDF'e basılır** ve çıktı boş değildir (dosya boyutu +
+   görünür içerik) — F26'da 1 KB'lık boş PDF üretilmişti.
+2. Basılı PDF'ten QR **decode edilir** ve çözülen dizgi paketin
+   `PKG1:{id}:{token}` payload'una **birebir** eşittir.
+3. Decode, etiket **%15 küçültülmüş** ve **gri tonlamalı** basıldığında da
+   başarılıdır (depo yazıcısı ve fotokopi toleransı).
+4. QR'ın basılı kenar uzunluğu **≥ 20 mm** ve **kare**dir (en/boy oranı 1.0 ±
+   %2) — uzun ürün başlığıyla birlikte basıldığında da (flex ezilmesi, F26).
+5. Üretilen QR'ın hata düzeltme düzeyi **M**'dir (decode kütüphanesinin
+   raporladığı EC seviyesi).
+6. Kurye ekranında kamera akışıyla **canlı okuma** başarılıdır (secure context)
+   ve `BarcodeDetector` yoksa manuel giriş kutusu görünür (`qrCapability.ts`).
+7. Zimmet ekranı ile kapı ekranı **görsel olarak ayırt edilebilir** (başlık +
+   aksiyon dili), dark-mode dahil.

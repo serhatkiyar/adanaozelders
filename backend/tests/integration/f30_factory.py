@@ -265,8 +265,28 @@ class PaketFabrikasi(Fabrika):
     # ── Temizlik ────────────────────────────────────────────────────────────
 
     async def temizle(self) -> None:
+        """Üretilen HER satırı geri alır.
+
+        Sıra önemlidir: paketleme audit'i paket kimliğine dayandığı için
+        paketler silinmeden ÖNCE temizlenir. Kurye aktörlü audit satırları
+        `Fabrika.temizle()` tarafından kapsanmaz (o yalnız `actor_role = 1`
+        siler) — zimmet kurye adına audit yazdığı için burada ayrıca silinir.
+        """
         async with AsyncSessionLocal() as s:
+            paketleme_var = await _tablo_var(s, "order_packages")
             if self.order_ids:
+                # Paketleme audit'i: paket/sipariş hedefli satırlar.
+                if paketleme_var:
+                    await s.execute(
+                        text(
+                            "DELETE FROM audit_logs WHERE "
+                            "(target_type = 'order_package' AND target_id IN "
+                            " (SELECT id FROM order_packages WHERE order_id = ANY(:i)))"
+                            " OR (target_type IN ('order','delivery_stop','delivery_run')"
+                            "     AND action LIKE 'package.%')"
+                        ),
+                        {"i": self.order_ids},
+                    )
                 # F30 tabloları commit 2'ye kadar YOK — varlık kontrolüyle koru.
                 for tablo, sorgu in (
                     (
@@ -290,6 +310,24 @@ class PaketFabrikasi(Fabrika):
                     text("DELETE FROM delivery_stops WHERE order_id = ANY(:i)"),
                     {"i": self.order_ids},
                 )
+                # Zimmet/teslim akışı bildirim ve SMS outbox satırı üretir.
+                for tablo, sorgu in (
+                    (
+                        "outbox_messages",
+                        "DELETE FROM outbox_messages WHERE "
+                        "(payload ->> 'order_id')::int = ANY(:i)",
+                    ),
+                    (
+                        "notifications",
+                        "DELETE FROM notifications WHERE user_id = ANY(:c) "
+                        "AND role_id = 3",
+                    ),
+                ):
+                    if await _tablo_var(s, tablo):
+                        await s.execute(
+                            text(sorgu),
+                            {"i": self.order_ids, "c": self.client_ids or [0]},
+                        )
             if self.run_ids:
                 await s.execute(
                     text("DELETE FROM delivery_stops WHERE run_id = ANY(:i)"),
@@ -300,6 +338,15 @@ class PaketFabrikasi(Fabrika):
                     {"i": self.run_ids},
                 )
             if self.courier_account_ids:
+                # Kurye aktörlü audit (zimmet) — `Fabrika.temizle()` yalnız
+                # actor_role = 1 siler, bu satırlar orada kapsanmaz.
+                await s.execute(
+                    text(
+                        "DELETE FROM audit_logs WHERE actor_id = ANY(:i) "
+                        "AND actor_role = 5"
+                    ),
+                    {"i": self.courier_account_ids},
+                )
                 await s.execute(
                     text("DELETE FROM courier_accounts WHERE id = ANY(:i)"),
                     {"i": self.courier_account_ids},

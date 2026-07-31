@@ -338,7 +338,7 @@ async def test_teslim_edilemeyen_paket_RETURN_PENDING_olur(fab):
         await delivery_service.start_run(s, run)
     async with AsyncSessionLocal() as s:
         await delivery_service.fail_stop(
-            s, stop_id, note="Kimse yoktu", reason_code="EVDE_YOK"
+            s, stop_id, reason="Kimse yoktu", reason_code="EVDE_YOK"
         )
 
     assert await _paket_durumu(servis, paket.id) == "RETURN_PENDING"
@@ -362,7 +362,7 @@ async def test_RETURN_PENDING_paket_TURA_EKLENEMEZ(fab):
     async with AsyncSessionLocal() as s:
         await delivery_service.start_run(s, run)
     async with AsyncSessionLocal() as s:
-        await delivery_service.fail_stop(s, stop_id, note="yok", reason_code="EVDE_YOK")
+        await delivery_service.fail_stop(s, stop_id, reason="Kimse yoktu", reason_code="EVDE_YOK")
 
     async with AsyncSessionLocal() as s:
         uygun = {o.order_id for o in await delivery_service.eligible_orders(s)}
@@ -395,7 +395,7 @@ async def test_BILINEN_SAPMA_return_pending_F29_tarafinda_isletmede_gorunur(fab)
     async with AsyncSessionLocal() as s:
         await delivery_service.start_run(s, run)
     async with AsyncSessionLocal() as s:
-        await delivery_service.fail_stop(s, stop_id, note="yok", reason_code="EVDE_YOK")
+        await delivery_service.fail_stop(s, stop_id, reason="Kimse yoktu", reason_code="EVDE_YOK")
 
     async with AsyncSessionLocal() as s:
         dokum = (await inventory_service.expected_on_premise(s, [pid]))[pid]
@@ -423,7 +423,7 @@ async def test_return_in_ile_paket_ISLETMEYE_DONER(fab):
     async with AsyncSessionLocal() as s:
         await delivery_service.start_run(s, run)
     async with AsyncSessionLocal() as s:
-        await delivery_service.fail_stop(s, stop_id, note="yok", reason_code="EVDE_YOK")
+        await delivery_service.fail_stop(s, stop_id, reason="Kimse yoktu", reason_code="EVDE_YOK")
 
     async with AsyncSessionLocal() as s:
         sonuc = await servis.return_in(
@@ -453,7 +453,7 @@ async def test_return_in_YAPILMADAN_yeniden_zimmetlenemez(fab):
     async with AsyncSessionLocal() as s:
         await delivery_service.start_run(s, run)
     async with AsyncSessionLocal() as s:
-        await delivery_service.fail_stop(s, stop_id, note="yok", reason_code="EVDE_YOK")
+        await delivery_service.fail_stop(s, stop_id, reason="Kimse yoktu", reason_code="EVDE_YOK")
 
     with pytest.raises(HTTPException) as hata:
         async with AsyncSessionLocal() as s:
@@ -477,7 +477,7 @@ async def test_RETURNED_paket_repack_ile_yeniden_dagitima_girer(fab):
     async with AsyncSessionLocal() as s:
         await delivery_service.start_run(s, run)
     async with AsyncSessionLocal() as s:
-        await delivery_service.fail_stop(s, stop_id, note="yok", reason_code="EVDE_YOK")
+        await delivery_service.fail_stop(s, stop_id, reason="Kimse yoktu", reason_code="EVDE_YOK")
     async with AsyncSessionLocal() as s:
         await servis.return_in(s, paket.id, admin_id=aid)
     async with AsyncSessionLocal() as s:
@@ -512,7 +512,7 @@ async def test_paket_QR_si_TUR_DEGISSE_BILE_GECERLI_KALIR(fab):
     async with AsyncSessionLocal() as s:
         await delivery_service.start_run(s, run1)
     async with AsyncSessionLocal() as s:
-        await delivery_service.fail_stop(s, stop_id, note="yok", reason_code="EVDE_YOK")
+        await delivery_service.fail_stop(s, stop_id, reason="Kimse yoktu", reason_code="EVDE_YOK")
     async with AsyncSessionLocal() as s:
         await servis.return_in(s, paket.id, admin_id=aid)
     async with AsyncSessionLocal() as s:

@@ -33,6 +33,21 @@ YENI_TABLOLAR = ("order_packages", "order_package_items", "package_scan_events")
 #: F30 servis modülleri. `packing_rules` SAF olmalı (DB'ye dokunmaz).
 SAF_MODUL = "services/packing_rules.py"
 SERVIS_MODUL = "services/packing_service.py"
+#: `order_fsm`'in çağırdığı ince olay modülü (sözleşme §3.7).
+OLAY_MODUL = "services/packing_events.py"
+
+
+def _import_edilenler(rel: str) -> set[str]:
+    """Modülün import ettiği adlar (AST; docstring/yorum sayılmaz)."""
+    out: set[str] = set()
+    for d in ast.walk(_agac(rel)):
+        if isinstance(d, ast.Import):
+            out.update(a.name for a in d.names)
+        elif isinstance(d, ast.ImportFrom):
+            modul = d.module or ""
+            out.add(modul)
+            out.update(f"{modul}.{a.name}" for a in d.names)
+    return out
 
 
 def _agac(rel: str) -> ast.Module:
@@ -40,13 +55,6 @@ def _agac(rel: str) -> ast.Module:
     if not yol.exists():
         pytest.fail(f"HENÜZ YAZILMADI: {rel}", pytrace=False)
     return ast.parse(yol.read_text(encoding="utf-8"))
-
-
-def _metin(rel: str) -> str:
-    yol = BACKEND / rel
-    if not yol.exists():
-        pytest.fail(f"HENÜZ YAZILMADI: {rel}", pytrace=False)
-    return yol.read_text(encoding="utf-8")
 
 
 def _dugum(agac: ast.Module, isim: str):
@@ -100,11 +108,15 @@ def test_packing_izinleri_KATALOGDA():
     assert not eksik, f"kataloğa eklenmemiş izinler: {eksik}"
 
 
-def test_izin_migrationi_ROL_DAGITIMI_yapar():
+def test_izin_migrationi_VAR():
     """Katalog + DB + ROL üçlüsünden biri eksikse izin işe yaramaz (sözleşme §7 S6).
 
-    Migration SUPER_ADMIN ve COMMERCE_MANAGER'a üç izni de, OPERATIONS_MANAGER'a
-    `packing.view` + `packing.pack`'i vermelidir (depo paketler, çözmez).
+    Burada yalnız migration dosyasının VARLIĞI aranır — bu düşük güçlü bir
+    ipucudur. **Gerçek rol→izin dağılımı** migration uygulandıktan sonra
+    veritabanından ölçülür:
+    `tests/integration/test_f30_permissions_pg.py`. Metinde rol adının geçmesini
+    aramak, OPERATIONS_MANAGER'a yanlışlıkla `packing.manage` verilmesini
+    yakalayamazdı (denetim bulgusu 2).
     """
     versions = BACKEND / "migrations" / "versions"
     adaylar = [
@@ -114,11 +126,6 @@ def test_izin_migrationi_ROL_DAGITIMI_yapar():
         pytest.fail(
             "HENÜZ YAZILMADI: packing.* izinlerini seed eden migration", pytrace=False
         )
-    metin = "\n".join(p.read_text(encoding="utf-8") for p in adaylar)
-    for kod in YENI_IZINLER:
-        assert kod in metin, f"migration'da yok: {kod}"
-    for rol in ("SUPER_ADMIN", "COMMERCE_MANAGER", "OPERATIONS_MANAGER"):
-        assert rol in metin, f"rol dağıtımı eksik: {rol}"
 
 
 # ══════════════════ KIRMIZI: test izolasyonu ════════════════════════════════
@@ -211,6 +218,56 @@ def test_f30_servisleri_STOK_KOLONLARINA_YAZMAZ():
                     )
 
 
+# ══════════════════ KIRMIZI: import sınırı (sözleşme §3.7) ═════════════════
+
+
+def test_packing_events_SERVISI_IMPORT_ETMEZ():
+    """`order_fsm → packing_events → packing_service` döngü kurar.
+
+    `order_fsm` sipariş terminal olurken canlı paketi çözmek zorunda (§3.5);
+    `packing_service` ise `order_fsm`'i kullanıyor. Karşılıklı import modül
+    düzeyinde ImportError, fonksiyon içinde gizli bir döngüdür. Sınır:
+    `packing_events` ince kalır — yalnız modeller + saf kurallar.
+    """
+    icerik = _import_edilenler(OLAY_MODUL)
+    yasak = [
+        a for a in icerik if "packing_service" in a or "delivery_service" in a
+    ]
+    assert not yasak, f"packing_events döngü kuruyor: {yasak}"
+
+
+def test_order_fsm_PACKING_SERVICE_import_etmez():
+    """`order_fsm` yalnız ince olay modülünü tanır (tek yön)."""
+    icerik = _import_edilenler("services/order_fsm.py")
+    yasak = [a for a in icerik if "packing_service" in a]
+    assert not yasak, f"order_fsm doğrudan servise bağlanmış: {yasak}"
+
+
+def test_order_fsm_TERMINAL_gecise_paket_kancasi_TAKAR():
+    """Kanca gerçekten bağlanmalı: CANCELLED/REFUNDED geçişinde canlı paket
+    çözülmezse iptal edilmiş siparişin paketi rafta kalır (G8).
+
+    Davranış eşi: `test_f30_packing_pg.py::test_IPTAL_acik_paketi_VOID_eder`.
+    """
+    dugum = _dugum(_agac("services/order_fsm.py"), "transition_order")
+    assert dugum is not None
+    cagrilar = {
+        n.func.attr if isinstance(n.func, ast.Attribute) else getattr(n.func, "id", "")
+        for n in ast.walk(dugum)
+        if isinstance(n, ast.Call)
+    }
+    assert "on_order_terminal" in cagrilar, (
+        "order_fsm terminal geçişte paket kancasını çağırmıyor"
+    )
+
+
+def test_packing_service_DELIVERY_SERVICE_import_etmez():
+    """Zimmet `delivery_service` tarafındadır; ters bağımlılık ikinci bir
+    döngü açardı."""
+    yasak = [a for a in _import_edilenler(SERVIS_MODUL) if "delivery_service" in a]
+    assert not yasak, f"packing_service dağıtım servisine bağlanmış: {yasak}"
+
+
 # ══════════════════ NÖBETÇİ: F29 genişletilmedi ═════════════════════════════
 
 
@@ -274,52 +331,131 @@ def test_NOBETCI_reserved_on_premise_PAID_tabanli_kalir():
 # ══════════════════ KIRMIZI: kilit sırası ═══════════════════════════════════
 
 
-def test_kanonik_kilit_sirasinda_PAKET_ORDER_ile_STOP_ARASINDA():
-    """Kanonik sıra: StockCountSession → Product → Order → OrderReturn →
-    **OrderPackage** → DeliveryStop.
+def test_kanonik_sirada_PAKET_ORDER_ile_STOP_ARASINDA():
+    """Sözleşme: … → Order → OrderReturn → **OrderPackage** → DeliveryStop.
 
-    `mark_prepared`'ın kilitsiz deseni (G7) kopyalanmaz. Asıl koruma gerçek
-    yarış testidir: `test_f30_packing_race_pg.py::test_kilit_sirasi_deadlock_uretmez`.
+    Sıra ortak modülden (`tests/acceptance/lock_contract.py`) okunur; kaynak
+    metninde literal aranmaz. Bu, denetim bulgusu 1'in düzeltmesidir: eski hâli
+    geçmek için üretim koduna anlamsız bir dizgi eklemeyi gerektiriyordu.
     """
-    yol = BACKEND / "tests" / "acceptance" / "test_stock_lock_contract.py"
-    metin = yol.read_text(encoding="utf-8")
-    assert "OrderPackage" in metin, (
-        "HENÜZ YAZILMADI: kanonik kilit sırası OrderPackage'ı içermiyor"
+    from tests.acceptance.lock_contract import CANONICAL_LOCK_ORDER, lock_rank
+
+    assert "OrderPackage" in CANONICAL_LOCK_ORDER
+    assert lock_rank("Order") < lock_rank("OrderPackage") < lock_rank("DeliveryStop")
+
+
+def test_kanonik_sira_F29_ALT_DIZISINI_KORUR():
+    """F30, F29'un kilit sırasını değiştirmez — yalnız araya bir kaynak ekler.
+
+    `Product → Order → OrderReturn` alt dizisi bozulursa
+    `test_stock_lock_contract.py::test_kaynak_kilit_sirasi_kanonik` ile iki ayrı
+    doğruluk kaynağı oluşur ve biri sessizce yanlış kalır.
+    """
+    from tests.acceptance.lock_contract import CANONICAL_LOCK_ORDER, lock_rank
+
+    f29 = ["Product", "Order", "OrderReturn"]
+    assert [k for k in CANONICAL_LOCK_ORDER if k in f29] == f29
+    assert lock_rank("StockCountSession") < lock_rank("Product")
+
+
+@pytest.mark.parametrize(
+    "fonksiyon",
+    ["open_package", "complete", "void", "return_in", "repack"],
+)
+def test_packing_service_KILIT_SIRASI_kanonik(fonksiyon):
+    """Fonksiyonun GERÇEK çağrı sırası ölçülür (AST), literal değil.
+
+    `mark_prepared`'ın kilitsiz deseni (G7) kopyalanırsa ya da kilitler ters
+    sırayla alınırsa burada görünür. Asıl koruma gerçek yarış testidir:
+    `test_f30_packing_race_pg.py::test_kilit_sirasi_DEADLOCK_URETMEZ`.
+    """
+    from tests.acceptance.lock_contract import canonical_violations, observed_lock_models
+
+    dugum = _dugum(_agac(SERVIS_MODUL), fonksiyon)
+    assert dugum is not None, f"HENÜZ YAZILMADI: {SERVIS_MODUL}::{fonksiyon}"
+    gorulen = observed_lock_models(dugum)
+    assert gorulen, f"{fonksiyon} hiçbir kaynağı kilitlemiyor (G7 deseni)"
+    assert "Order" in [m for m, _ln in gorulen], (
+        f"{fonksiyon} siparişi FOR UPDATE ile almıyor — iptalle yarışır"
     )
-    order_i = metin.find('"Order"')
-    paket_i = metin.find('"OrderPackage"')
-    stop_i = metin.find('"DeliveryStop"')
-    assert -1 not in (order_i, paket_i, stop_i)
-    assert order_i < paket_i < stop_i, "kilit sırasında OrderPackage yanlış yerde"
+    ihlaller = canonical_violations(dugum)
+    assert not ihlaller, f"{fonksiyon} kanonik kilit sırasını bozuyor: {ihlaller}"
+
+
+def test_handover_scan_KILIT_SIRASI_kanonik():
+    """Zimmet üç kaynağı birden alan tek akıştır: Order → OrderPackage → DeliveryStop."""
+    from tests.acceptance.lock_contract import canonical_violations, observed_lock_models
+
+    dugum = _dugum(_agac("services/delivery_service.py"), "handover_scan")
+    if dugum is None:
+        pytest.fail(
+            "HENÜZ YAZILMADI: delivery_service.handover_scan", pytrace=False
+        )
+    modeller = [m for m, _ln in observed_lock_models(dugum)]
+    assert {"Order", "OrderPackage"} <= set(modeller), (
+        f"zimmet sipariş+paket kilidi almıyor: {modeller}"
+    )
+    assert not canonical_violations(dugum)
 
 
 # ══════════════════ KIRMIZI: kablolama ══════════════════════════════════════
 
 
 def test_paket_modelleri_KAYITLI():
-    """Yeni tablo `models/__init__` üzerinden import edilmezse Alembic
-    autogenerate onu görmez ve `alembic check` drift'i kaçırır."""
-    metin = _metin("models/__init__.py")
-    for sinif in ("OrderPackage", "OrderPackageItem", "PackageScanEvent"):
-        assert sinif in metin, f"models/__init__ içinde yok: {sinif}"
+    """`models/__init__` üzerinden import EDİLEBİLİR olmalı.
+
+    Metinde ad aramak yerine gerçek import denenir: Alembic autogenerate
+    modelleri bu paketten toplar; import edilemeyen tablo `alembic check`
+    drift'inden de kaçar.
+    """
+    import models
+
+    eksik = [
+        s
+        for s in ("OrderPackage", "OrderPackageItem", "PackageScanEvent")
+        if not hasattr(models, s)
+    ]
+    assert not eksik, f"models paketinden import edilemiyor: {eksik}"
+    assert set(eksik).isdisjoint(models.__all__ or [])
+
+
+def _router_yollari() -> set[str]:
+    """Uygulamanın GERÇEK route tablosu — OpenAPI şemasından.
+
+    Ne `api_router.routes` ne de `app.routes` KULLANILAMAZ: FastAPI 0.137'de
+    `include_router` lazy bir `_IncludedRouter` bırakır ve route'lar ancak
+    istek çözümlenirken düzleşir. O listelerde yol aramak her zaman boş küme
+    döndürür, yani test **yalancı yeşil** olur.
+
+    Bu tuzağa denetim düzeltmesi sırasında iki kez düşüldü: `api_router.routes`
+    ile yazılan ilk sürümde `test_prepare_uclari_KALDIRILDI` uçlar dururken
+    geçiyordu, `app.routes`'a geçirilen ikinci sürümde de geçmeye devam etti.
+    `app.openapi()["paths"]` 322 yol döndürür ve gerçeği yansıtır.
+    """
+    from main import app
+
+    return set(app.openapi()["paths"])
 
 
 def test_packing_router_KAYITLI():
-    """Router `api/router.py`'ye include edilmezse uçlar 404 döner."""
-    metin = _metin("api/router.py")
-    assert "packing" in metin, "packing router include edilmemiş"
+    """Router include edilmezse uçlar 404 döner. GERÇEK route tablosu okunur."""
+    yollar = _router_yollari()
+    assert any(y.startswith("/packing/") for y in yollar), (
+        "packing router include edilmemiş (route tablosunda /packing/ yok)"
+    )
 
 
 def test_prepare_uclari_KALDIRILDI():
     """Elle "Hazır" butonu (`/orders/{id}/prepare`, `/unprepare`) kaldırılır.
 
     İki kapı bırakmak "eksik kalem kabul edilmez" ilkesini boşa çıkarır
-    (sözleşme §3.5). Davranış eşi:
-    `test_f30_packing_http_pg.py::test_eski_prepare_ucu_ARTIK_YOK`.
+    (sözleşme §3.5). Kaynak metni değil GERÇEK route tablosu denetlenir.
+    Davranış eşi: `test_f30_packing_http_pg.py::test_eski_prepare_ucu_ARTIK_YOK`.
     """
-    metin = _metin("api/routers/delivery.py")
-    assert "/orders/{order_id}/prepare" not in metin, "eski prepare ucu duruyor"
-    assert "/orders/{order_id}/unprepare" not in metin, "eski unprepare ucu duruyor"
+    kalanlar = [
+        y for y in _router_yollari() if y.endswith(("/prepare", "/unprepare"))
+    ]
+    assert not kalanlar, f"eski hazırlama uçları duruyor: {kalanlar}"
 
 
 def test_prepared_at_YAZICILARI_SINIRLI():

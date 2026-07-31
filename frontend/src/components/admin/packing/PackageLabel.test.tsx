@@ -3,19 +3,48 @@
 // `LabelSheet.test.tsx`'in devamı ve aynı gerekçeyle yazıldı: F26
 // doğrulamasında gerçek Chrome ile PDF'e basıldığında iki bağımsız kusur
 // çıkmıştı (boş baskı + ezilen QR). jsdom yerleşim hesaplamadığı için ölçüm
-// tarayıcıda yapılır, **kural burada sabitlenir**. Gerçek baskı turu commit
-// 8'de (Chrome + DevTools Protocol) ayrıca koşacak.
+// tarayıcıda yapılır, **kural burada sabitlenir**.
+//
+// DENETİM DÜZELTMESİ (bulgu 6): önceki sürüm `data-qr-value` / `data-qr-level`
+// gibi **test-only** attribute'lara bakıyordu. Bu, bileşenin QR kütüphanesine
+// ne ilettiğini değil, kendi test kancasına ne yazdığını ölçerdi — üretim
+// kodunda `value` yanlış olsa bile attribute doğru kalabilirdi. Artık
+// `qrcode.react` mock'lanır ve `QRCodeSVG`'ye **gerçekten iletilen prop'lar**
+// gözlenir.
+//
+// Mock, gerçek QR matrisinin çizildiğini kanıtlamaz; o kanıt commit 8'deki
+// Chrome kabul turundadır (basılı PDF'ten QR decode + hata düzeyi kontrolü,
+// sözleşme §9).
 //
 // F30'a özel iki yeni kural:
 //   1) Etiketteki QR **paket** QR'ıdır (`PKG1:` önekli), durak QR'ı DEĞİL.
 //      Durak token'ı tur iptalinde kayboluyordu (G3): basılı etiket 2. teslim
 //      denemesinde geçersizleşiyordu.
-//   2) Etikette insan okunur paket kodu (`PKT-000077`) bulunur — telefonda
-//      okunabilsin, QR okunamazsa operasyon durmasın.
+//   2) Etikette insan okunur paket kodu (`PKT-000077`) bulunur — QR okunamazsa
+//      operasyon durmasın.
 //
 // Bileşen henüz yazılmadığı için tüm düğümler KIRMIZIDIR.
 import { render } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+// `vi.mock` hoist edilir; paylaşılan diziyi `vi.hoisted` ile önden kur.
+const { qrCagrilari } = vi.hoisted(() => ({
+  qrCagrilari: [] as Record<string, unknown>[],
+}));
+
+vi.mock("qrcode.react", () => ({
+  QRCodeSVG: (props: Record<string, unknown>) => {
+    qrCagrilari.push(props);
+    return (
+      <svg
+        data-testid="qr"
+        className={String(props.className ?? "")}
+        width={Number(props.size ?? 0)}
+        height={Number(props.size ?? 0)}
+      />
+    );
+  },
+}));
 
 const UZUN_BASLIK =
   "TYT ve AYT İçin Kapsamlı Matematik Soru Bankası Video Çözümlü " +
@@ -55,6 +84,10 @@ const paket = (over: Record<string, unknown> = {}) => ({
   ...over,
 });
 
+beforeEach(() => {
+  qrCagrilari.length = 0;
+});
+
 describe("PackageLabel baskı sözleşmesi", () => {
   it("print CSS'i etiketin GÖRÜNÜRLÜĞÜNÜ geri verir", async () => {
     // `index.css:268-286` fatura kuralı `body * { visibility: hidden }` yapıyor;
@@ -69,13 +102,22 @@ describe("PackageLabel baskı sözleşmesi", () => {
     );
   });
 
-  it("QR PAKET uzayındadır (PKG1 önekli), durak QR'ı değil", async () => {
-    // G3'ün düzeltmesinin etiket tarafındaki kanıtı.
+  it("QR bileşenine iletilen `value` PAKET payload'udur (durak QR'ı değil)", async () => {
+    // G3'ün düzeltmesinin etiket tarafındaki kanıtı. Ölçülen şey bileşenin
+    // QRCodeSVG'ye GERÇEKTEN geçirdiği prop.
     const PackageLabel = await bilesen();
     render(<PackageLabel package={paket()} onClose={() => {}} />);
-    const svg = document.querySelector(".package-label svg");
-    expect(svg).toBeTruthy();
-    expect(svg?.getAttribute("data-qr-value") ?? "").toMatch(/^PKG1:/);
+    expect(qrCagrilari.length, "QRCodeSVG hiç render edilmedi").toBeGreaterThan(0);
+    expect(qrCagrilari[0].value).toBe("PKG1:77:UzunTokenDegeri");
+    expect(String(qrCagrilari[0].value)).toMatch(/^PKG1:/);
+  });
+
+  it("QR hata düzeltme düzeyi M'dir", async () => {
+    // Varsayılan "L" %7 tolerans verir; depo ortamında etiket buruşur/lekelenir.
+    // Prop olarak ölçülür — test-only attribute değil.
+    const PackageLabel = await bilesen();
+    render(<PackageLabel package={paket()} onClose={() => {}} />);
+    expect(qrCagrilari[0].level).toBe("M");
   });
 
   it("QR shrink-0 taşır ve okunabilir boyutun altına inmez", async () => {
@@ -86,23 +128,20 @@ describe("PackageLabel baskı sözleşmesi", () => {
       <PackageLabel
         package={paket({
           items: [
-            { order_item_id: 1, sku: "FZK-000011", title: UZUN_BASLIK, expected_qty: 2, scanned_qty: 2 },
+            {
+              order_item_id: 1,
+              sku: "FZK-000011",
+              title: UZUN_BASLIK,
+              expected_qty: 2,
+              scanned_qty: 2,
+            },
           ],
         })}
         onClose={() => {}}
       />,
     );
-    const svg = document.querySelector(".package-label svg");
-    expect(svg?.getAttribute("class") ?? "").toContain("shrink-0");
-    expect(Number(svg?.getAttribute("width") ?? 0)).toBeGreaterThanOrEqual(96);
-  });
-
-  it("hata düzeltme seviyesi M'dir (etiket buruşur/lekelenir)", async () => {
-    // Varsayılan "L" %7 tolerans verir; depo ortamında yetersiz.
-    const PackageLabel = await bilesen();
-    render(<PackageLabel package={paket()} onClose={() => {}} />);
-    const svg = document.querySelector(".package-label svg");
-    expect(svg?.getAttribute("data-qr-level")).toBe("M");
+    expect(String(qrCagrilari[0].className ?? "")).toContain("shrink-0");
+    expect(Number(qrCagrilari[0].size ?? 0)).toBeGreaterThanOrEqual(96);
   });
 
   it("insan okunur paket kodu ve sipariş numarası basılır", async () => {
@@ -119,8 +158,20 @@ describe("PackageLabel baskı sözleşmesi", () => {
       <PackageLabel
         package={paket({
           items: [
-            { order_item_id: 1, sku: "FZK-000011", title: "AYT Fizik Konu Anlatımı", expected_qty: 1, scanned_qty: 1 },
-            { order_item_id: 2, sku: "FZK-000012", title: "Paragraf Denemeleri", expected_qty: 2, scanned_qty: 2 },
+            {
+              order_item_id: 1,
+              sku: "FZK-000011",
+              title: "AYT Fizik Konu Anlatımı",
+              expected_qty: 1,
+              scanned_qty: 1,
+            },
+            {
+              order_item_id: 2,
+              sku: "FZK-000012",
+              title: "Paragraf Denemeleri",
+              expected_qty: 2,
+              scanned_qty: 2,
+            },
           ],
         })}
         onClose={() => {}}
