@@ -8,6 +8,9 @@ on:
 jobs:
   backend:
     runs-on: ubuntu-latest
+    # Asılı kalan bir adım (ör. erişilemeyen servise bağlanmaya çalışan test)
+    # varsayılanda 6 saat runner tutuyordu.
+    timeout-minutes: 30
     defaults:
       run:
         working-directory: backend
@@ -31,6 +34,21 @@ jobs:
           --health-timeout 5s
           --health-retries 10
 
+      # Redis: `core/ratelimit` ve `core/token_denylist` bilinçli olarak
+      # FAIL-OPEN'dır — Redis yoksa limiter saymaz, logout token'ı iptal etmez
+      # ve İSTEK YİNE GEÇER. Redis'siz bir CI'da bu iki korumanın bozulması
+      # hiçbir testi kırmazdı. `tests/verify/test_verify_redis_infra.py`
+      # gerçek Redis'e karşı sayar (bkz. o dosyanın docstring'i).
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
     env:
       POSTGRES_USER: test
       POSTGRES_PASSWORD: test
@@ -39,9 +57,48 @@ jobs:
       POSTGRES_PORT: 5432
       JWT_SECRET_KEY: ci-secret-key-not-for-production
       AUTO_CREATE_DB: "False"
+      # Altyapı erişilemezse test ATLANMAZ, KIRILIR (backend/tests/service_guard.py).
+      # Sessiz SKIP, "servis konteyneri eksik" hâlini gerçekten koşan bir
+      # suite'ten ayırt edilemez kılıyor ve yeşil gösteriyordu.
+      CI_REQUIRE_SERVICES: "1"
+      REDIS_URL: redis://localhost:6379/0
+      # Depolama: TEST amaçlı, tek kullanımlık kimlik bilgileri. Üretim sırrı
+      # DEĞİL — MinIO konteyneri aynı değerlerle açılır, iş bitince yok olur.
+      AWS_ENDPOINT_URL: http://localhost:9000
+      AWS_ACCESS_KEY_ID: ci-test-user
+      AWS_SECRET_ACCESS_KEY: ci-test-secret-key
+      AWS_BUCKET_NAME: ci-test-bucket
 
     steps:
       - uses: actions/checkout@v4
+
+      # MinIO `services:` bloğuna konamıyor: resmi imaj komut ("server /data")
+      # gerektiriyor, GitHub service container'ları ise komut geçersiz kılmaya
+      # izin vermiyor. Bu yüzden açıkça başlatılıp HAZIR OLMASI BEKLENİR;
+      # hazır olmazsa adım kırılır.
+      #
+      # Neden gerekli: hassas dosyaların (diploma, karne, cevap anahtarı,
+      # dijital ürün, teslim kanıtı) gizliliği tek bir şeye dayanıyor —
+      # bucket policy'de listelenmemiş olmaları. Birim testi policy JSON'unun
+      # METNİNİ doğrular; gerçekten uygulandığını yalnız gerçek depoya sorarak
+      # bilebiliriz. MinIO olmadığı için `tests/verify/test_verify_storage_
+      # access.py` altı testi de CI'da atlıyordu.
+      - name: MinIO (depolama erişim sınırı doğrulaması)
+        run: |
+          docker run -d --name minio -p 9000:9000 \
+            -e MINIO_ROOT_USER="$AWS_ACCESS_KEY_ID" \
+            -e MINIO_ROOT_PASSWORD="$AWS_SECRET_ACCESS_KEY" \
+            minio/minio:latest server /data
+          for deneme in $(seq 1 30); do
+            if curl -fsS http://localhost:9000/minio/health/live > /dev/null; then
+              echo "MinIO hazır ($deneme. deneme)"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "::error::MinIO 60 sn içinde hazır olmadı"
+          docker logs minio || true
+          exit 1
       - uses: actions/setup-python@v5
         with:
           # Docker imajı ve geliştirme ortamıyla AYNI sürüm — "bende
@@ -49,12 +106,24 @@ jobs:
           python-version: "3.12"
           cache: pip
 
-      # requirements.txt tam kilitli (pip-compile çıktısı): CI, üretimle
-      # birebir aynı sürümleri kurar.
+      # requirements.txt tam kilitli (pip-compile çıktısı): ÇALIŞMA ZAMANI
+      # bağımlılıkları CI'da üretimle birebir aynı sürümlerdedir.
+      #
+      # Test araç zinciri o dosyada YOKTUR ve buraya kadar PİNSİZ kuruluyordu —
+      # yani CI'nın yeşilliği "o gün PyPI'de ne varsa"ya bağlıydı. Bunun soyut
+      # bir risk olmadığı ölçüldü: doğrulama paketi pytest-asyncio 1.x'in
+      # varsayılan event-loop kapsamı değişikliği yüzünden 72 ERROR veriyor
+      # (paket "tek session loop" varsayıyordu). Aşağıdaki sürümler bu paketin
+      # yerel uçtan uca provasında kullanılan sürümlerdir; yükseltme bilinçli
+      # ve doğrulanarak yapılmalıdır.
       - name: Install dependencies
         run: |
           pip install -r requirements.txt
-          pip install pytest pytest-asyncio pytest-cov hypothesis ruff pip-audit
+          pip install pytest==9.0.3 pytest-asyncio==1.4.0 pytest-cov==7.1.0 \
+            hypothesis==6.155.7 ruff==0.16.0
+          # pip-audit BİLİNÇLİ olarak pinsiz: işi en güncel açık veritabanına
+          # bakmaktır, sabitlemek amacını bozar.
+          pip install pip-audit
 
       - name: Lint (ruff)
         run: ruff check .
@@ -71,11 +140,21 @@ jobs:
       - name: Migration — drift kontrolü
         run: python -m alembic check
 
-      # pytest.ini'de testpaths=tests olduğundan integration'ı açıkça dışlıyoruz;
-      # yoksa iki adımda da koşar.
-      - name: Unit tests
-        run: pytest -q --ignore=tests/integration
+      # pytest.ini'de `testpaths = tests` olduğundan yol verilmeyen her pytest
+      # çağrısı ÜÇ paketi birden toplar. Bu adım yalnız birim/kabul testleridir;
+      # integration (gerçek Postgres) ve verify (izole DB + gerçek servis
+      # katmanı) kendi adımlarında koşar.
+      #
+      # `--ignore=tests/verify` bilinçlidir ve ZORUNLUDUR: verify paketinin
+      # session guard'ı POSTGRES_DB != adana_verify görünce `pytest.exit(1)`
+      # eder — yani buradan toplanırsa 754 birim testi geçtikten SONRA adım
+      # kırılır ve ardındaki hiçbir adım koşmaz. Sözleşme
+      # `backend/tests/test_ci_workflow.py` ile kilitlidir.
+      - name: Unit tests (birim + kabul)
+        run: pytest -q --ignore=tests/integration --ignore=tests/verify
 
+      # Gerçek Postgres. `CI_REQUIRE_SERVICES=1` sayesinde DB'ye ulaşılamazsa
+      # paket sessizce SKIP olmaz, adım kırılır.
       - name: Integration tests (gerçek Postgres)
         run: pytest tests/integration -q
 
@@ -108,10 +187,23 @@ jobs:
           python -m alembic upgrade head
           pytest tests/verify -q
 
-      # Kapsama: kırmaz, RAPORLAR. Eşik koymadan önce sayının kendisinin
-      # anlamlı olması gerekiyordu — doğrulama paketi ölçüme yeni dahil oldu.
-      - name: Test kapsaması (raporlar)
-        run: pytest -q --ignore=tests/integration --ignore=tests/verify --cov=services --cov=core --cov-report=term
+      # Kapsama eşiği — GERİLEME nöbetçisi, kalite hedefi DEĞİL.
+      #
+      # KAPSAMI DAR: yalnız `services` + `core`, yalnız BİRİM/KABUL testleriyle.
+      # integration ve verify paketleri (gerçek Postgres, gerçek servis katmanı,
+      # gerçek HTTP) ölçüme DAHİL DEĞİL — yani bu sayı "sistemin ne kadarı test
+      # edilmiş" sorusunun cevabı değildir, "birim testleriyle ulaşılan kod ne
+      # kadar" sorusununkidir. Bütün sistem kapsamı gibi sunulmamalı.
+      #
+      # Eşik ölçülerek seçildi, tahmin edilmedi (30 Tem 2026):
+      #   pytest -q --ignore=tests/integration --ignore=tests/verify \
+      #     --cov=services --cov=core --cov-report=term
+      #   → 10846 satır, 6884 kapsanmayan, TOPLAM %36.53 (raporda %37)
+      # 35: ölçülen değerin ~1.5 puan altı. Amaç, kapsamı kayda değer biçimde
+      # düşüren bir değişikliği yakalamak; ondalık dalgalanmada CI'yı
+      # kırmamak. Kapsam yükseldikçe eşik de yükseltilmeli.
+      - name: Test kapsaması — gerileme eşiği
+        run: pytest -q --ignore=tests/integration --ignore=tests/verify --cov=services --cov=core --cov-report=term --cov-fail-under=35
 
       # Bilinen açıklar: şimdilik raporlar, CI'yı kırmaz. Bağımlılıklar
       # pip-compile ile kilitlendikten sonra continue-on-error kaldırılmalı.
@@ -121,6 +213,7 @@ jobs:
 
   frontend:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     defaults:
       run:
         working-directory: frontend

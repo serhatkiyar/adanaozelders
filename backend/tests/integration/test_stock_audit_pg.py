@@ -136,7 +136,7 @@ async def fab(pg) -> Fabrika:
 
 
 async def _n_hareket(fab: Fabrika, pid: int, n: int) -> None:
-    for i in range(n):
+    for _ in range(n):
         await fab.hareket(
             pid,
             qty_delta=1,

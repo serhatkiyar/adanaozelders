@@ -831,8 +831,6 @@ async def test_sayim_ve_siparis_gecisi_DEADLOCK_uretmez(fab):
     """Sayım hiçbir sipariş/ürün kilidi almadığı için sipariş durum geçişleriyle
     kilit döngüsü kuramaz. `lock_timeout` ile kanıtlanır: askıda kalma yok,
     beklenmeyen istisna yutulmaz."""
-    import asyncio
-
     pid = await fab.urun(stock=20)
     oid = await fab.siparis(product_id=pid, quantity=3)
     sid = await _oturum_kur(pid)

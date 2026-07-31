@@ -44,7 +44,7 @@ garanti eder. Ayrı bir kilit yöntemi kurulmaz.
 """
 from __future__ import annotations
 
-from typing import Any, Sequence
+from typing import Any
 
 from fastapi import HTTPException, status
 from sqlalchemy import select
@@ -455,7 +455,7 @@ async def _uygula(
             raise _hata(
                 status.HTTP_409_CONFLICT,
                 "hasar olayı yazılamadı (eşzamanlı çatışma); isteği tekrarlayın",
-            )
+            ) from exc
         return await _replay_veya_catisma(db, onceki, spec)
 
     await _defter_yaz(db, olay, adet, kaynak, hedef, hareket_turu,

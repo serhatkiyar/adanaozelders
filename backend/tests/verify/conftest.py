@@ -28,6 +28,7 @@ from sqlalchemy import text
 
 from core.config import settings
 from core.database import AsyncSessionLocal, engine
+from tests.integration.db_guard import purge_products
 
 VERIFY_DB_NAME = "adana_verify"
 
@@ -70,9 +71,14 @@ async def db():
     ayağa kaldırmadığından FK'ler (clients.role_id → roles.id) aksi halde
     üretimdekinden farklı davranırdı. Seed idempotenttir.
 
-    NOT: `engine.dispose()` ÇAĞRILMAZ. Paket tek (session kapsamlı) event
-    loop'ta koşar; her testte dispose etmek Windows/asyncpg'de bağlantıyı
-    asılı bırakıyordu.
+    NOT (30 Tem 2026'da GÜNCELLENDİ): burada eskiden `engine.dispose()`
+    ÇAĞRILMIYORDU; gerekçe "paket tek (session kapsamlı) event loop'ta koşar"
+    idi. pytest-asyncio 1.x'te bu varsayım DOĞRU DEĞİL — varsayılan loop
+    kapsamı fonksiyondur, yani her test yeni bir event loop alır. asyncpg
+    bağlantıları loop'a bağlı olduğundan havuzda kalan bağlantı sonraki testte
+    "Event loop is closed" veriyordu: paket 63 geçen / 72 ERROR ile koşuyordu
+    ve bu CI'da hiç görülmemişti (adım hiç çalışmadı). Entegrasyon paketindeki
+    `pg` fixture'ı ile aynı çözüm uygulanır.
     """
     try:
         async with engine.connect() as conn:
@@ -88,6 +94,9 @@ async def db():
 
     async with AsyncSessionLocal() as session:
         yield session
+
+    # Havuzu boşalt: sonraki test yeni bir event loop'ta koşacak.
+    await engine.dispose()
 
 
 class Factory:
@@ -275,7 +284,15 @@ class Factory:
                 ("DELETE FROM outbox_events WHERE id IS NOT NULL", None),
                 ("DELETE FROM orders WHERE id = ANY(:o)", "o"),
                 ("DELETE FROM product_price_history WHERE product_id = ANY(:p)", "p"),
-                ("DELETE FROM products WHERE id = ANY(:p)", "p"),
+            ]
+            # F29'dan beri sipariş/iade yolları `stock_movements` yazıyor;
+            # defter append-only trigger'ıyla korunuyor ve FK `RESTRICT`.
+            # Düz `DELETE FROM products` bu yüzden ForeignKeyViolation veriyordu
+            # (paketin 5 testi teardown'da patlıyor, ardından havuz bozulup
+            # onlarca test ERROR oluyordu). Silme, trigger'ı YALNIZ test
+            # veritabanında geçici kapatan ortak yardımcıyla yapılır.
+            urunlerden_sonra = [
+                # Kategoriler ürünlerden SONRA (products.category_id FK).
                 ("DELETE FROM product_categories WHERE id = ANY(:cat)", "cat"),
                 ("DELETE FROM coupons WHERE id = ANY(:cp)", "cp"),
                 ("DELETE FROM user_consents WHERE user_id = ANY(:c) OR user_id = ANY(:t)", None),
@@ -294,6 +311,12 @@ class Factory:
                 "t": self.tutor_ids or [0],
             }
             for sql, _k in stmts:
+                await s.execute(text(sql), params)
+            await s.commit()
+
+            await purge_products(s, self.product_ids)
+
+            for sql, _k in urunlerden_sonra:
                 await s.execute(text(sql), params)
             await s.commit()
 
