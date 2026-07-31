@@ -176,3 +176,41 @@ describe("consistencyBadge", () => {
     expect(b.label).toBeTruthy();
   });
 });
+
+// ── F29 sonrası: defter beş yeni hareket türü taşıyor ──
+//
+// Commit 8 sırasında bulundu: sayım ve hasar işlemleri COUNT_ADJUSTMENT,
+// DAMAGE_TRANSFER, DAMAGE_RECOVERY, DAMAGE_DISPOSAL ve SUPPLIER_RETURN
+// yazıyor; mevcut "Stok hareketleri" ekranı bunların HEPSİNİ "Bilinmeyen
+// hareket" diye gösteriyordu. Operatör kendi yaptığı sayımı defterde
+// tanıyamaz hâldeydi.
+describe("F29 hareket türleri ve gerekçeleri", () => {
+  it("beş yeni tür de insan diline çevrilir", () => {
+    const beklenen: [StockMovementType, RegExp][] = [
+      ["COUNT_ADJUSTMENT", /sayım/i],
+      ["DAMAGE_TRANSFER", /hasar/i],
+      ["DAMAGE_RECOVERY", /kurtar|satılabilir/i],
+      ["DAMAGE_DISPOSAL", /[İi]mha/],
+      ["SUPPLIER_RETURN", /tedarikçi/i],
+    ];
+    for (const [tur, desen] of beklenen) {
+      const etiket = movementTypeLabel(tur);
+      expect(etiket, `"${tur}" çevrilmemiş`).not.toBe("Bilinmeyen hareket");
+      expect(etiket).toMatch(desen);
+    }
+  });
+
+  it("sayım ve hasar gerekçe kodları ham enum olarak basılmaz", () => {
+    const kodlar = [
+      "SAYIM_FAZLA",
+      "SAYIM_EKSIK",
+      "KIRIK",
+      "ISLAK",
+      "BASKI_HATASI",
+      "MUSTERI_IADESI_HASARLI",
+    ];
+    for (const kod of kodlar) {
+      expect(reasonLabel(kod), `"${kod}" ham kod olarak kaldı`).not.toBe(kod);
+    }
+  });
+});

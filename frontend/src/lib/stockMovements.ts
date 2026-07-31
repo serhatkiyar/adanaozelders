@@ -11,7 +11,13 @@ export type StockMovementType =
   | "SALE"
   | "SALE_CANCEL"
   | "RETURN"
-  | "ADMIN_ADJUSTMENT";
+  | "ADMIN_ADJUSTMENT"
+  // F29: sayim ve hasarli stok hareketleri (backend `StockMovementType`).
+  | "COUNT_ADJUSTMENT"
+  | "DAMAGE_TRANSFER"
+  | "DAMAGE_RECOVERY"
+  | "DAMAGE_DISPOSAL"
+  | "SUPPLIER_RETURN";
 
 export type AdminReasonCode =
   | "SAYIM_FARKI"
@@ -39,6 +45,11 @@ const TYPE_LABELS: Record<StockMovementType, string> = {
   SALE_CANCEL: "İptal / iade geri yükleme",
   RETURN: "Kısmi iade",
   ADMIN_ADJUSTMENT: "Yönetici düzeltmesi",
+  COUNT_ADJUSTMENT: "Sayım düzeltmesi",
+  DAMAGE_TRANSFER: "Hasara ayrıldı",
+  DAMAGE_RECOVERY: "Hasardan kurtarıldı",
+  DAMAGE_DISPOSAL: "İmha edildi",
+  SUPPLIER_RETURN: "Tedarikçiye iade edildi",
 };
 
 const REASON_LABELS: Record<string, string> = {
@@ -49,6 +60,13 @@ const REASON_LABELS: Record<string, string> = {
   ORDER_CANCELLED: "Sipariş iptal edildi",
   ORDER_REFUNDED: "Sipariş iade edildi",
   RETURN_ACCEPTED: "İade kabul edildi",
+  // F29 gerekçe kodları (sayım yönü + hasar nedeni).
+  SAYIM_FAZLA: "Sayımda fazla çıktı",
+  SAYIM_EKSIK: "Sayımda eksik çıktı",
+  KIRIK: "Kırık",
+  ISLAK: "Islak / nem",
+  BASKI_HATASI: "Baskı hatası",
+  MUSTERI_IADESI_HASARLI: "Müşteri iadesi — hasarlı geldi",
   ...Object.fromEntries(ADMIN_REASON_OPTIONS.map((o) => [o.value, o.label])),
 };
 

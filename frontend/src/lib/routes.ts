@@ -122,6 +122,12 @@ export const PATHS = {
   adminStoreReturns: "/yonetim/magaza/iadeler",
   adminStoreCoupons: "/yonetim/magaza/kuponlar",
   adminStoreStock: "/yonetim/magaza/stok-hareketleri",
+  // Envanter, Magaza'nin 7. sekmesi DEGIL ayri bir bolum: backend izinleri
+  // (`inventory.*`) bilincli olarak `products.*`'tan ayrildi.
+  adminInventory: "/yonetim/envanter",
+  adminInventoryCounts: "/yonetim/envanter/sayimlar",
+  adminInventoryCountDetail: "/yonetim/envanter/sayimlar/:id",
+  adminInventoryDamage: "/yonetim/envanter/hasar",
   adminDelivery: "/yonetim/dagitim",
   // Dağıtım alt sekmeleri (URL-tabanlı; index = "Bugün" operasyon kokpiti).
   adminDeliveryOrders: "/yonetim/dagitim/siparisler",
@@ -233,6 +239,10 @@ export const ROUTES = {
   adminStoreReturns: PATHS.adminStoreReturns,
   adminStoreCoupons: PATHS.adminStoreCoupons,
   adminStoreStock: PATHS.adminStoreStock,
+  adminInventory: PATHS.adminInventory,
+  adminInventoryCounts: PATHS.adminInventoryCounts,
+  adminInventoryDamage: PATHS.adminInventoryDamage,
+  adminInventoryCount: (id: string | number) => `/yonetim/envanter/sayimlar/${id}`,
   adminDelivery: PATHS.adminDelivery,
   adminDeliveryOrders: PATHS.adminDeliveryOrders,
   adminDeliveryRuns: PATHS.adminDeliveryRuns,

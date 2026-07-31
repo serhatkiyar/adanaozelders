@@ -84,6 +84,11 @@ const AdminSettingsPage = lazy(() => import("@/pages/admin/AdminSettingsPage"));
 const AdminLibraries = lazy(() => import("@/pages/dashboards/AdminLibraries"));
 const AdminExamCatalogs = lazy(() => import("@/pages/dashboards/AdminExamCatalogs"));
 const AdminStore = lazy(() => import("@/pages/dashboards/AdminStore"));
+const InventoryLayout = lazy(() => import("@/pages/admin/inventory/InventoryLayout"));
+const InventoryOverviewPage = lazy(() => import("@/pages/admin/inventory/InventoryOverviewPage"));
+const CountSessionsPage = lazy(() => import("@/pages/admin/inventory/CountSessionsPage"));
+const CountSessionDetailPage = lazy(() => import("@/pages/admin/inventory/CountSessionDetailPage"));
+const DamageEventsPage = lazy(() => import("@/pages/admin/inventory/DamageEventsPage"));
 const DeliveryLayout = lazy(() => import("@/pages/admin/delivery/DeliveryLayout"));
 const DeliveryTodayPage = lazy(() => import("@/pages/admin/delivery/DeliveryTodayPage"));
 const DeliveryOrdersPage = lazy(() => import("@/pages/admin/delivery/DeliveryOrdersPage"));
@@ -424,6 +429,12 @@ function App() {
               <Route path="magaza/iadeler" element={<AdminStore />} />
               <Route path="magaza/kuponlar" element={<AdminStore />} />
               <Route path="magaza/stok-hareketleri" element={<AdminStore />} />
+              <Route path="envanter" element={<InventoryLayout />}>
+                <Route index element={<InventoryOverviewPage />} />
+                <Route path="sayimlar" element={<CountSessionsPage />} />
+                <Route path="sayimlar/:id" element={<CountSessionDetailPage />} />
+                <Route path="hasar" element={<DamageEventsPage />} />
+              </Route>
               <Route path="dagitim" element={<DeliveryLayout />}>
                 <Route index element={<DeliveryTodayPage />} />
                 <Route path="siparisler" element={<DeliveryOrdersPage />} />

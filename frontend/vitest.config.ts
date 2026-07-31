@@ -12,6 +12,9 @@ export default defineConfig({
   },
   test: {
     environment: "jsdom",
+    // Node 22+ kirik yerlesik localStorage'ini jsdom'unkiyle degistirir;
+    // zustand/persist kullanan store'lar olmadan test edilemiyordu.
+    setupFiles: ["./src/test-setup.ts"],
     globals: true,
     include: ["src/**/*.test.{ts,tsx}"],
   },

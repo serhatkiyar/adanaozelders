@@ -11,6 +11,8 @@ const ICONS: Record<AdminNavItem["icon"], ReactNode> = {
   library: <path d="M4 21V5l8-3 8 3v16M8 9h.01M8 13h.01M8 17h.01M16 9h.01M16 13h.01M16 17h.01M10 21v-3h4v3" />,
   exam: <path d="M6 2h9l4 4v16H6V2Zm9 0v5h5M9 12h7M9 16h7M9 8h2" />,
   store: <path d="M3 9h18l-1-5H4L3 9Zm1 0v11h16V9M8 20v-6h8v6" />,
+  // Envanter: raf + sayım işareti (mağaza tezgahından ayrı okunsun).
+  inventory: <path d="M3 7h18v4H3V7Zm2 4v10h14V11M9 15h6M4 7l2-4h12l2 4" />,
   delivery: <path d="M3 6h11v11H3V6Zm11 4h4l3 3v4h-7v-7ZM7 20a2 2 0 1 0 0-4 2 2 0 0 0 0 4Zm11 0a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z" />,
   booking: <path d="M6 3v3m12-3v3M4 8h16M5 5h14a1 1 0 0 1 1 1v14H4V6a1 1 0 0 1 1-1Zm3 7h3v3H8v-3Z" />,
   moderation: <path d="M12 22s8-4 8-11V5l-8-3-8 3v6c0 7 8 11 8 11Zm-3-11 2 2 4-4" />,

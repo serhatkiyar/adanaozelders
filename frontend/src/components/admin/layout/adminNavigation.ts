@@ -8,7 +8,7 @@ export interface AdminNavItem {
   to: string;
   group: AdminNavGroup;
   description: string;
-  icon: "overview" | "users" | "education" | "library" | "exam" | "store" | "delivery" | "booking" | "moderation" | "audit" | "access" | "settings";
+  icon: "overview" | "users" | "education" | "library" | "exam" | "store" | "inventory" | "delivery" | "booking" | "moderation" | "audit" | "access" | "settings";
   requiredPermission?: string;
   end?: boolean;
   badge?: "open-reports";
@@ -108,6 +108,15 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
     description: "Ürün, kategori, sipariş, iade ve kupon operasyonları.",
     icon: "store",
     requiredPermission: "products.view",
+  },
+  {
+    label: "Envanter",
+    to: ROUTES.adminInventory,
+    group: "Ticaret",
+    description:
+      "Stok sayımı, sayım farkının uygulanması ve hasarlı stok hareketleri. Defter salt okunur kalır; değişiklik yalnız buradan yapılır.",
+    icon: "inventory",
+    requiredPermission: "inventory.view",
   },
   {
     label: "Dağıtım",
