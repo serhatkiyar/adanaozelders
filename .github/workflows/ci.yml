@@ -34,6 +34,21 @@ jobs:
           --health-timeout 5s
           --health-retries 10
 
+      # Redis: `core/ratelimit` ve `core/token_denylist` bilinçli olarak
+      # FAIL-OPEN'dır — Redis yoksa limiter saymaz, logout token'ı iptal etmez
+      # ve İSTEK YİNE GEÇER. Redis'siz bir CI'da bu iki korumanın bozulması
+      # hiçbir testi kırmazdı. `tests/verify/test_verify_redis_infra.py`
+      # gerçek Redis'e karşı sayar (bkz. o dosyanın docstring'i).
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
     env:
       POSTGRES_USER: test
       POSTGRES_PASSWORD: test
@@ -46,9 +61,44 @@ jobs:
       # Sessiz SKIP, "servis konteyneri eksik" hâlini gerçekten koşan bir
       # suite'ten ayırt edilemez kılıyor ve yeşil gösteriyordu.
       CI_REQUIRE_SERVICES: "1"
+      REDIS_URL: redis://localhost:6379/0
+      # Depolama: TEST amaçlı, tek kullanımlık kimlik bilgileri. Üretim sırrı
+      # DEĞİL — MinIO konteyneri aynı değerlerle açılır, iş bitince yok olur.
+      AWS_ENDPOINT_URL: http://localhost:9000
+      AWS_ACCESS_KEY_ID: ci-test-user
+      AWS_SECRET_ACCESS_KEY: ci-test-secret-key
+      AWS_BUCKET_NAME: ci-test-bucket
 
     steps:
       - uses: actions/checkout@v4
+
+      # MinIO `services:` bloğuna konamıyor: resmi imaj komut ("server /data")
+      # gerektiriyor, GitHub service container'ları ise komut geçersiz kılmaya
+      # izin vermiyor. Bu yüzden açıkça başlatılıp HAZIR OLMASI BEKLENİR;
+      # hazır olmazsa adım kırılır.
+      #
+      # Neden gerekli: hassas dosyaların (diploma, karne, cevap anahtarı,
+      # dijital ürün, teslim kanıtı) gizliliği tek bir şeye dayanıyor —
+      # bucket policy'de listelenmemiş olmaları. Birim testi policy JSON'unun
+      # METNİNİ doğrular; gerçekten uygulandığını yalnız gerçek depoya sorarak
+      # bilebiliriz. MinIO olmadığı için `tests/verify/test_verify_storage_
+      # access.py` altı testi de CI'da atlıyordu.
+      - name: MinIO (depolama erişim sınırı doğrulaması)
+        run: |
+          docker run -d --name minio -p 9000:9000 \
+            -e MINIO_ROOT_USER="$AWS_ACCESS_KEY_ID" \
+            -e MINIO_ROOT_PASSWORD="$AWS_SECRET_ACCESS_KEY" \
+            minio/minio:latest server /data
+          for deneme in $(seq 1 30); do
+            if curl -fsS http://localhost:9000/minio/health/live > /dev/null; then
+              echo "MinIO hazır ($deneme. deneme)"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "::error::MinIO 60 sn içinde hazır olmadı"
+          docker logs minio || true
+          exit 1
       - uses: actions/setup-python@v5
         with:
           # Docker imajı ve geliştirme ortamıyla AYNI sürüm — "bende

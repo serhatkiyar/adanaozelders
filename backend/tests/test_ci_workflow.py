@@ -168,6 +168,41 @@ def test_veritabani_adlari_yikici_test_allowlistinde(backend_isi, is_akisi) -> N
         assert_test_database(environment="ci", database=ad)
 
 
+def test_redis_ve_minio_gercekten_kablolu(backend_isi) -> None:
+    """Servis eklenmiş ama testin baktığı adres başkaysa test yine SKIP olur.
+
+    `CI_REQUIRE_SERVICES=1` bunu artık kırmızıya çevirir; burada kablolamanın
+    kendisi (servis + adres + kimlik) sözleşme olarak tutulur.
+    """
+    assert "redis" in backend_isi["services"], (
+        "Redis servisi yok — ratelimit/denylist fail-open olduğu için "
+        "tests/verify/test_verify_redis_infra.py hiç koşamaz"
+    )
+    ortam = backend_isi["env"]
+    for anahtar in ("REDIS_URL", "AWS_ENDPOINT_URL", "AWS_BUCKET_NAME"):
+        assert ortam.get(anahtar), f"{anahtar} CI ortamında ayarlı değil"
+
+    # Servisler runner'ın kendisinde koşar; dışarıya bağlanan bir CI, üretim
+    # verisine dokunma riski taşır.
+    for anahtar in ("REDIS_URL", "AWS_ENDPOINT_URL"):
+        assert "localhost" in ortam[anahtar] or "127.0.0.1" in ortam[anahtar], (
+            f"{anahtar} yerel servise bakmıyor: {ortam[anahtar]}"
+        )
+
+
+def test_minio_adimi_hazir_olmayi_bekliyor(backend_isi) -> None:
+    """MinIO `services:` bloğuna konamıyor (komut geçersiz kılınamıyor).
+
+    Elle başlatılan bir konteynerin hazır olmasını BEKLEMEK zorundayız; yoksa
+    depolama testleri MinIO açılmadan koşup "depo erişilemiyor" ile kırılır.
+    """
+    adim = _adim(backend_isi, "MinIO")
+    komut = adim["run"]
+    assert "minio/minio" in komut, "MinIO konteyneri başlatılmıyor"
+    assert "/minio/health/live" in komut, "MinIO hazırlık yoklaması yok"
+    assert "exit 1" in komut, "MinIO açılmazsa adım kırılmıyor"
+
+
 def test_altyapi_eksikse_test_atlanmiyor(backend_isi) -> None:
     """`CI_REQUIRE_SERVICES` olmadan Postgres/Redis/MinIO düşünce suite yeşil kalır."""
     assert backend_isi["env"].get("CI_REQUIRE_SERVICES") == "1", (
