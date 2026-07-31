@@ -49,7 +49,7 @@ import uuid
 from typing import Any, Sequence
 
 from fastapi import HTTPException, status
-from sqlalchemy import select, text, update
+from sqlalchemy import func, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from models.inventory import (
@@ -455,10 +455,17 @@ async def start_session(
 async def reopen_session(
     db: AsyncSession, session_id: int, *, admin_id: int
 ) -> StockCountSession:
-    """`REVIEW → IN_PROGRESS`. Önceki onayı **temizler**.
+    """`REVIEW → IN_PROGRESS`. Önceki onayı **ve yarım kalmış sahiplenmeyi** temizler.
 
     Eski gözden geçirme yeni sayıyı kapsamaz; onayı taşımak, gözden geçirilmemiş
     bir farkın onaylanmış gibi uygulanmasına yol açardı.
+
+    `apply_idempotency_key` de temizlenir. Aksi hâlde bir kez sahiplenilmiş ama
+    uygulanamamış oturum **kalıcı olarak kilitli** kalırdı: claim koşulu
+    `apply_idempotency_key IS NULL` olduğundan, oturum yeniden sayılıp
+    gönderilse bile hiçbir uygulama isteği onu bir daha sahiplenemezdi.
+    Adversarial denetimde bulundu ve kapatıldı — sahiplenmeyi geri alabilecek
+    tek yer, oturumu zaten sayıma geri açan bu geçiştir.
     """
     oturum = await _oturum(db, session_id, for_update=True)
     _gecis_dogrula(oturum, CountSessionStatus.IN_PROGRESS.value)
@@ -466,6 +473,9 @@ async def reopen_session(
     oturum.reviewed_by_admin_id = None
     oturum.reviewed_at = None
     oturum.submitted_at = None
+    oturum.apply_idempotency_key = None
+    oturum.applied_by_admin_id = None
+    oturum.applied_at = None
     await _audit(db, admin_id, "inventory.count_session_reopen", oturum)
     return oturum
 
@@ -546,10 +556,25 @@ async def set_counted(
             "(önce oturumu sayıma geri açın)",
         )
 
-    urun = (
-        await db.execute(select(Product).where(Product.id == satir.product_id))
-    ).scalars().first()
-    if urun is None or urun.stock is None:
+    # ── Snapshot'ın üç bileşeni ÜRÜN KİLİDİ ALTINDA okunur ──
+    #
+    # READ COMMITTED'da her ifade YENİ bir anlık görüntü görür. Kilitsizken şu
+    # yarış gerçekti: `products.stock` okundu (10), araya bir `SALE` commit etti
+    # (stok 8, hareket id 105), sonra yüksek-su işareti okundu (105). Sonuç:
+    # snapshot 10 (bayat) ama olay "sayımdan sonra" SAYILMIYOR (id > 105 değil)
+    # → ne fark doğru, ne de satır `STALE`. Sessiz ve tam olarak yanlış.
+    #
+    # Ürün kilidi (`stock_ledger.lock_products` — ürün kilidi alan TEK yer)
+    # tuttuğu sürece o ürüne hiçbir defter hareketi yazılamaz; böylece bakiye
+    # ile yüksek-su işareti **aynı gerçeğin iki yüzü** olur. Kilit ayrıca id
+    # sırasının o ürün için commit sırasıyla aynı olmasını garanti eder — "önce
+    # başlayıp sonra commit eden hareket" boşluğunu kapatan şey budur.
+    #
+    # Kilit sırası: OTURUM (yukarıda) → ÜRÜN. `apply_session` ile aynı sıra.
+    urun = (await stock_ledger.lock_products(db, [satir.product_id]))[
+        satir.product_id
+    ]
+    if urun.stock is None:
         raise _hata(
             status.HTTP_400_BAD_REQUEST,
             "ürünün stoğu artık izlenmiyor; satır sayılamaz",
@@ -569,7 +594,16 @@ async def set_counted(
     satir.reserved_qty_snapshot = rezerve if satir.bucket == SALEABLE else None
     satir.snapshot_movement_id = son_hareket
     satir.counted_qty = int(counted_qty)
-    satir.counted_at = _now()
+    # VERİTABANI saati — uygulama sunucusunun saati değil. `clock_timestamp()`
+    # bilinçli olarak `now()` YERİNE: `now()` transaction BAŞLANGICINA sabittir,
+    # yani aynı transaction'da art arda sayılan satırlar aynı damgayı alır ve
+    # uzun bir transaction'da damga gerçek sayım anından dakikalarca eski olur.
+    #
+    # NOT: uzlaştırma bu damgaya **dayanmaz** — "sayımdan sonraki olay" tespiti
+    # `snapshot_movement_id` yüksek-su işaretiyle yapılır (§`_sayimdan_sonraki_
+    # olaylar`). `counted_at` denetim izidir; zaman karşılaştırmasının mikro
+    # saniye/eş-damga yarışları bu yüzden uzlaştırmayı etkileyemez.
+    satir.counted_at = func.clock_timestamp()
     satir.counted_by_admin_id = admin_id
     # Yeniden sayım belirsizliği giderir: STALE satır COUNTED'a döner.
     satir.status = CountLineStatus.COUNTED.value
@@ -579,6 +613,8 @@ async def set_counted(
     satir.resolution_note = None
     _iz(db, satir, admin_id=admin_id, old_qty=onceki, new_qty=int(counted_qty))
     await db.flush()
+    # SQL ifadesiyle yazılan damgayı Python tarafında da okunur kıl.
+    await db.refresh(satir, ["counted_at"])
     await _audit(
         db, admin_id, "inventory.count_line_set", oturum,
         meta={
@@ -594,11 +630,26 @@ async def set_counted(
 async def resolve_line(
     db: AsyncSession, line_id: int, *, admin_id: int, note: str
 ) -> StockCountLine:
-    """`STALE` satırı **açıklamayla** çözer — miktara DOKUNMADAN.
+    """`STALE` satırın uygulamayı engellemesini kaldırır — **satırı UYGULAMADAN**.
 
-    Bilinçli olarak miktar almaz: rastgele bir sayı girerek `STALE` bayrağını
-    kaldırmak, belirsizliği çözmek değil gizlemek olurdu. Miktar gerçekten
-    yeniden sayılacaksa yol `set_counted`'tır.
+    ## Neden bu, "belirsizliği çözmek" değil "kapsam dışına almak"
+
+    `RESOLVED` bir satır **deftere hareket YAZMAZ**. Sebebi kesin: satır
+    `STALE` olduysa, sayımdan sonra fiziksel etkisi bilinmeyen bir olay geçmiş
+    demektir; o andan itibaren eski `counted_qty` **hangi fiziksel gerçeği
+    anlattığı bilinmeyen** bir sayıdır. Serbest metin bir gerekçe o sayıyı
+    yeniden güvenilir yapmaz.
+
+    İlk uygulamada bu metot yalnız `status`'ü `RESOLVED` yapıyordu ve
+    `apply_session` `RESOLVED` satırları da uyguluyordu — yani **not yazarak
+    eski sayımı uygulatmak mümkündü**. Adversarial denetimde bulundu ve
+    kapatıldı.
+
+    Miktar gerçekten yeniden sayılacaksa tek yol `set_counted`'tır: o yol
+    `counted_at`'i, sistem snapshot'ını, rezerve snapshot'ını ve hareket
+    yüksek-su işaretini **ürün kilidi altında, aynı transaction'da** tazeler.
+
+    Bilinçli olarak miktar parametresi ALMAZ.
     """
     if not (note or "").strip():
         raise _hata(
@@ -651,9 +702,22 @@ async def _sayimdan_sonraki_olaylar(
     aranmaz: hepsi otomatik uzlaştırılabilir olduğundan `STALE` üretemezler ve
     farkı taşımazlar. `STALE` üretebilen tek kayıtlı kaynak defterdir.
 
-    Tek istisna `SALE_CANCEL`: sipariş işletmeden ÇIKTIKTAN sonra iptal
-    edildiyse kitabın geri gelip gelmediği bilinmez. Bu ayrım `orders` durum
-    geçmişinden okunur ve olay `SALE_CANCEL_SHIPPED` olarak sınıflanır.
+    Tek istisna `SALE_CANCEL`: üretimde iki AYRI akış aynı hareketi yazıyor ve
+    fiziksel anlamları farklı (`order_service._restock` ← `_refund_payment`):
+
+    * `cancel_by_client` → `reason_code='ORDER_CANCELLED'`. Bu yol `SHIPPED` ve
+      `DELIVERED` siparişi **409 ile reddeder** (`order_service.py:1412`), yani
+      mal yapısı gereği hiç çıkmamıştır → otomatik uzlaştırılabilir.
+    * `refund_order` → `reason_code='ORDER_REFUNDED'`. Bu yolda `order.status`
+      üzerinde **hiçbir guard yoktur** (`order_service.py:1385-1394`) ve FSM
+      `SHIPPED → REFUNDED` ile `DELIVERED → REFUNDED`'a izin verir
+      (`order_fsm.py:27-28`). Yani kitap kuryede ya da müşterideyken de stok
+      artabilir.
+
+    Bu yüzden `ORDER_REFUNDED` için **pozitif kanıt** aranır: siparişin durum
+    geçmişinde `SHIPPED` satırı YOKSA *ve* geçmiş boş değilse mal çıkmamış
+    sayılır. Geçmiş hiç yoksa kanıt da yoktur → belirsiz (`SALE_CANCEL_SHIPPED`)
+    → satır `STALE`. Kanıtın yokluğunu "çıkmamış" saymak fail-open olurdu.
     """
     sayilan = [s for s in satirlar if s.counted_qty is not None]
     if not sayilan:
@@ -667,6 +731,7 @@ async def _sayimdan_sonraki_olaylar(
                 StockMovement.product_id,
                 StockMovement.bucket,
                 StockMovement.movement_type,
+                StockMovement.reason_code,
                 StockMovement.ref_id,
             )
             .where(
@@ -679,33 +744,41 @@ async def _sayimdan_sonraki_olaylar(
     if not hareketler:
         return {}
 
-    # Çıkış yapmış siparişler: `SALE_CANCEL`'ın belirsiz olup olmadığını söyler.
+    # `ORDER_REFUNDED` iptalleri için POZİTİF kanıt topla: siparişin durum
+    # geçmişinde `SHIPPED` var mı, geçmiş hiç var mı?
     iptal_ref = [
         int(h.ref_id)
         for h in hareketler
         if h.movement_type == stock_ledger.StockMovementType.SALE_CANCEL.value
+        and h.reason_code == REASON_REFUND_UNGUARDED
         and h.ref_id is not None
     ]
-    cikmis: set[int] = set()
+    cikmamis_kaniti: set[int] = set()
     if iptal_ref:
-        cikmis = {
-            int(r.order_id)
-            for r in (
-                await db.execute(
-                    text(
-                        "SELECT DISTINCT order_id FROM order_status_history "
-                        "WHERE order_id = ANY(:ids) AND new_status = 'SHIPPED'"
-                    ),
-                    {"ids": sorted(set(iptal_ref))},
-                )
-            ).all()
-        }
+        for r in (
+            await db.execute(
+                text(
+                    "SELECT order_id, "
+                    "count(*) FILTER (WHERE new_status = 'SHIPPED') AS cikis "
+                    "FROM order_status_history WHERE order_id = ANY(:ids) "
+                    "GROUP BY order_id"
+                ),
+                {"ids": sorted(set(iptal_ref))},
+            )
+        ).all():
+            # FAIL-SAFE'in mekanizması `GROUP BY`'ın kendisidir: geçmişi hiç
+            # olmayan sipariş bu sonuç kümesinde **hiç görünmez**, dolayısıyla
+            # kanıt kümesine de giremez ve belirsiz kalır. Buraya ayrıca bir
+            # "kayıt > 0" koşulu yazmak ölü koddur — mutasyon provasında
+            # kaldırıldığında hiçbir test kırılmadı, çünkü hiçbir şey yapmıyordu.
+            if int(r.cikis) == 0:
+                cikmamis_kaniti.add(int(r.order_id))
 
     sonuc: dict[int, list[str]] = {}
     for satir in sayilan:
         esik = satir.snapshot_movement_id or 0
         olaylar = [
-            _olay_adi(h, cikmis)
+            _olay_adi(h, cikmamis_kaniti)
             for h in hareketler
             if h.product_id == satir.product_id
             and h.bucket == satir.bucket
@@ -716,16 +789,27 @@ async def _sayimdan_sonraki_olaylar(
     return sonuc
 
 
-def _olay_adi(hareket: Any, cikmis_siparisler: set[int]) -> str:
-    """Defter satırını olay tablosundaki ada eşler."""
+#: `refund_order` yolunun gerekçe kodu — sipariş durumu üzerinde guard'ı YOKTUR
+#: (`order_service.py:1385-1394`), dolayısıyla çıkmış siparişte de yazılabilir.
+REASON_REFUND_UNGUARDED = "ORDER_REFUNDED"
+
+
+def _olay_adi(hareket: Any, cikmamis_kaniti: set[int]) -> str:
+    """Defter satırını olay tablosundaki ada eşler — **fail-safe**.
+
+    `ORDER_CANCELLED` gerekçeli iptal yapısı gereği çıkış öncesidir. Diğer
+    (`ORDER_REFUNDED`) iptalde, malın çıkmadığına dair POZİTİF kanıt yoksa olay
+    belirsiz sayılır. Kanıtın yokluğunu "çıkmamış" saymak, kuryedeki kitabı
+    rafta varmış gibi göstermek olurdu.
+    """
     tip = hareket.movement_type
-    if (
-        tip == stock_ledger.StockMovementType.SALE_CANCEL.value
-        and hareket.ref_id is not None
-        and int(hareket.ref_id) in cikmis_siparisler
-    ):
-        return "SALE_CANCEL_SHIPPED"
-    return tip
+    if tip != stock_ledger.StockMovementType.SALE_CANCEL.value:
+        return tip
+    if hareket.reason_code != REASON_REFUND_UNGUARDED:
+        return tip
+    if hareket.ref_id is not None and int(hareket.ref_id) in cikmamis_kaniti:
+        return tip
+    return "SALE_CANCEL_SHIPPED"
 
 
 async def _stale_isaretle(
@@ -916,16 +1000,21 @@ async def apply_session(
             f"(satır: {[s.id for s in belirsiz]})",
         )
 
+    # YALNIZ `COUNTED`. `RESOLVED` bilinçli olarak DIŞARIDA: o satır bir kez
+    # `STALE` olmuş, yani sayımdan sonra fiziksel etkisi bilinmeyen bir olay
+    # geçmiştir; eski `counted_qty` artık hangi gerçeği anlattığı bilinmeyen bir
+    # sayıdır ve bir gerekçe notu onu güvenilir yapmaz. Uygulanabilir hâle
+    # gelmesinin TEK yolu `set_counted` ile yeniden sayımdır (snapshot da
+    # tazelenir). `SKIPPED` de dışarıdadır — sayılmamış satır fark üretmez.
     uygulanacak = [
         s
         for s in satirlar
-        if s.status
-        in (CountLineStatus.COUNTED.value, CountLineStatus.RESOLVED.value)
-        and s.counted_qty is not None
+        if s.status == CountLineStatus.COUNTED.value and s.counted_qty is not None
     ]
     if not uygulanacak:
         raise _hata(
-            status.HTTP_400_BAD_REQUEST, "uygulanacak sayılmış satır yok"
+            status.HTTP_400_BAD_REQUEST,
+            "uygulanacak sayılmış satır yok (belirsiz satırlar yeniden sayılmalı)",
         )
 
     # Ürünler deterministik sırada (artan id) TEK yerden kilitlenir.
