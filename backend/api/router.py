@@ -14,6 +14,7 @@ from api.routers import (
     flashcards,
     geocode,
     habits,
+    inventory,
     leaderboard,
     libraries,
     library_bookmarks,
@@ -54,6 +55,7 @@ api_router.include_router(exams.router)
 api_router.include_router(flashcards.router)
 api_router.include_router(geocode.router)
 api_router.include_router(habits.router)
+api_router.include_router(inventory.router)
 api_router.include_router(libraries.router)
 api_router.include_router(library_bookmarks.router)
 api_router.include_router(library_exam_catalogs.router)
