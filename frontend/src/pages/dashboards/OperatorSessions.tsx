@@ -83,7 +83,12 @@ function QrVerifyCard() {
       <h2 className="mb-3 text-base font-bold text-slate-900 dark:text-white">Katılım Doğrula (QR)</h2>
 
       {scanning ? (
-        <QrScanner onScan={runVerify} onClose={() => setScanning(false)} />
+        <QrScanner
+          onScan={runVerify}
+          onClose={() => setScanning(false)}
+          manualHint="Öğrencinin biletindeki kodu elle girebilir veya USB barkod okuyucu kullanabilirsiniz."
+          manualPlaceholder="Bilet kodu (ör. 12:abc…)"
+        />
       ) : (
         <button
           onClick={() => {

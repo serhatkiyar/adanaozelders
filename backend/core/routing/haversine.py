@@ -127,7 +127,8 @@ class HaversineRoutingProvider(RoutingProvider):
             )
         slices = partition_by_angle((depot_lat, depot_lng), points, len(vehicle_ids))
         routes: dict[int, RoutePlan] = {}
-        for vid, chunk in zip(vehicle_ids, slices):
+        # partition_by_angle tam len(vehicle_ids) dilim döndürür.
+        for vid, chunk in zip(vehicle_ids, slices, strict=True):
             if chunk:
                 routes[vid] = await self.plan(
                     depot_lat=depot_lat, depot_lng=depot_lng, points=chunk

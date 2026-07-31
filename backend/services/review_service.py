@@ -6,6 +6,7 @@ from fastapi import HTTPException, status
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from core.moderation import mask_contact_info
 from models.booking import Booking, BookingStatus
 from models.client import Client
 from models.review import Review
@@ -71,7 +72,8 @@ async def create_review(
         client_id=booking.client_id,
         tutor_id=booking.tutor_id,
         rating=data.rating,
-        comment_text=data.comment_text,
+        # Yorumlar public profilde görünür — maskesiz kalan bir kanaldı.
+        comment_text=mask_contact_info(data.comment_text),
     )
     db.add(review)
     await db.flush()
@@ -134,7 +136,9 @@ async def list_reviews(
     stmt = (
         select(Review, Client.full_name, Client.avatar_url)
         .join(Client, Review.client_id == Client.id)
-        .where(Review.deleted_at.is_(None))
+        # Moderasyonla gizlenen yorum public listede görünmez (bkz.
+        # services/content_moderation.py); puan toplamından da düşülmüştür.
+        .where(Review.deleted_at.is_(None), Review.hidden_at.is_(None))
     )
     if tutor_id is not None:
         stmt = stmt.where(Review.tutor_id == tutor_id)
@@ -153,11 +157,15 @@ async def list_reviews(
 async def rating_distribution(
     db: AsyncSession, tutor_id: int
 ) -> RatingDistributionOut:
-    """Bir eğitmenin yıldız dağılımı (tüm silinmemiş değerlendirmeler)."""
+    """Bir eğitmenin yıldız dağılımı (silinmemiş VE gizlenmemiş yorumlar)."""
     rows = (
         await db.execute(
             select(Review.rating, func.count())
-            .where(Review.tutor_id == tutor_id, Review.deleted_at.is_(None))
+            .where(
+                Review.tutor_id == tutor_id,
+                Review.deleted_at.is_(None),
+                Review.hidden_at.is_(None),
+            )
             .group_by(Review.rating)
         )
     ).all()
@@ -175,7 +183,7 @@ async def update_review(
         )
         review.rating = new_rating
     if "comment_text" in payload:
-        review.comment_text = payload["comment_text"]
+        review.comment_text = mask_contact_info(payload["comment_text"])
     await db.flush()
     return review
 

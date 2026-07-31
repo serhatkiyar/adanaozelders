@@ -8,7 +8,11 @@ cliArgs:
   limit: '1mb'
   logdir: '/..'
   logsize: '100M'
-  maxlocations: 200 # kampanya günü tavanı 150 durak + pay
+  # DİKKAT: bu tavan OSRM'in --max-table-size'ından KÜÇÜK olmalı. VROOM her
+  # planlamada (durak sayısı + araç sayısı) koordinatlık bir `table` sorgusu
+  # atar; OSRM tavanı aşılırsa "TooBig" döner ve backend sessizce haversine'e
+  # düşer. compose'da OSRM 500 ile açılır → burada 400 güvenli tavandır.
+  maxlocations: 400
   maxvehicles: 5
   override: true
   path: ''

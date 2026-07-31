@@ -5,9 +5,7 @@
 """
 
 import datetime
-import types
 
-import pytest
 
 from core.config import settings
 from services import order_service

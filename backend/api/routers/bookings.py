@@ -19,7 +19,6 @@ from models.tutor import Tutor
 from schemas.booking import (
     BookingCancel,
     BookingCreate,
-    BookingLocation,
     BookingOut,
     BookingReschedule,
     BookingResourceCreate,
@@ -27,7 +26,7 @@ from schemas.booking import (
     BookingLocationUpdate,
     BookingPrivateNoteCreate,
 )
-from services import booking_service, phone_service
+from services import booking_service, payment_gates, phone_service
 
 router = APIRouter(prefix="/bookings", tags=["bookings"])
 
@@ -117,6 +116,11 @@ async def accept_booking(
     tutor: Tutor = Depends(require_roles(RoleType.TUTOR)),
     db: AsyncSession = Depends(get_db),
 ):
+    # Kabul, ogrenciye odenecek bir yukumluluk dogurur (PENDING escrow).
+    # Kol kapaliyken kabul etmek, odenemeyecek bir ders sozu vermek olur.
+    await payment_gates.assert_branch_open(
+        db, payment_gates.PaymentBranch.TUTOR_MARKETPLACE
+    )
     booking = await _get_booking_or_404(db, booking_id, tutor)
     _assert_owner_tutor(booking, tutor)
     return await booking_service.accept(db, booking)

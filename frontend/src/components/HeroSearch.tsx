@@ -54,7 +54,9 @@ export function BigSearch({
     <div className="relative w-full max-w-2xl">
       <form
         onSubmit={onSubmit}
-        className="flex w-full items-center rounded-full border border-slate-200 bg-white p-1.5 shadow-[0_3px_16px_rgba(15,23,42,0.10)] transition focus-within:shadow-[0_6px_22px_rgba(15,23,42,0.13)] hover:shadow-[0_6px_22px_rgba(15,23,42,0.13)] dark:border-slate-700 dark:bg-slate-800 dark:shadow-none"
+        // focus-within halkası: `outline-none` verilen girdide klavye
+        // kullanıcısına "buradasın" işareti kalmıyordu; halka forma taşındı.
+        className="flex w-full items-center rounded-full border border-slate-200 bg-white p-1.5 shadow-[0_3px_16px_rgba(15,23,42,0.10)] transition focus-within:border-indigo-400 focus-within:shadow-[0_6px_22px_rgba(15,23,42,0.13)] focus-within:ring-2 focus-within:ring-indigo-500/30 hover:shadow-[0_6px_22px_rgba(15,23,42,0.13)] dark:border-slate-700 dark:bg-slate-800 dark:shadow-none dark:focus-within:border-indigo-500"
       >
         <div className="flex shrink-0 items-center gap-2 rounded-full py-2.5 pl-4 pr-3 transition hover:bg-slate-50 dark:hover:bg-slate-700/40">
           <PinIconSvg />
@@ -74,6 +76,9 @@ export function BigSearch({
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
           placeholder={placeholder}
+          // Görsel etiket yok (placeholder tasarımın parçası); ekran okuyucu
+          // için erişilebilir ad aria-label ile verilir.
+          aria-label={placeholder}
           className="min-w-0 flex-1 bg-transparent px-5 text-sm text-slate-900 outline-none placeholder:text-slate-400 dark:text-white dark:placeholder:text-slate-500"
         />
 

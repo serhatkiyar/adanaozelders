@@ -109,6 +109,17 @@ class PaymentProvider(ABC):
 
     name: str = "base"
 
+    #: Sağlayıcı **alt üye işyeri (pazaryeri) modelini** fiilen uyguluyor mu?
+    #:
+    #: Bu bayrak bir niyet değil, bir YETENEK beyanıdır ve gerçeği söylemek
+    #: zorundadır: başkası adına toplanan paranın sağlayıcıda bloke edilip
+    #: hakedişin ayrı ayrı serbest bırakılabilmesi buna bağlıdır. Yalnız
+    #: `create_submerchant` metodunun *var olması* yetmez — çalışıyor olması
+    #: gerekir. Pazaryeri kolları (`services/payment_gates.py`) bu yeteneği
+    #: kapının bir bileşeni olarak kontrol eder; False iken işletme bayrağı
+    #: açılsa bile kol KAPALI kalır.
+    supports_marketplace: bool = False
+
     @abstractmethod
     async def charge(
         self,

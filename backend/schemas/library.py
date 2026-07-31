@@ -4,6 +4,8 @@ import datetime
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
+from core.urls import ensure_http_url
+
 
 # ── Çalışma saatleri ────────────────────────────────────────────────────────────
 
@@ -119,6 +121,12 @@ class LibraryCreate(BaseModel):
     amenities: list[str] = Field(default_factory=list)
     hours: list[LibraryHoursIn] = Field(default_factory=list)
 
+    @field_validator("website", "cover_url", "logo_url")
+    @classmethod
+    def _check_urls(cls, v: str | None) -> str | None:
+        # Bu alanlar public kütüphane sayfasında href olarak render ediliyor.
+        return ensure_http_url(v, field="Bağlantı")
+
     @field_validator("status")
     @classmethod
     def _check_status(cls, v: str) -> str:
@@ -157,6 +165,13 @@ class LibraryUpdate(BaseModel):
     status: str | None = None
     amenities: list[str] | None = None
     hours: list[LibraryHoursIn] | None = None
+
+    @field_validator("website", "cover_url", "logo_url")
+    @classmethod
+    def _check_urls(cls, v: str | None) -> str | None:
+        # Operatör kendi kütüphanesinde bu alanları yazabiliyor; public sayfada
+        # href olarak render edildikleri için şema whitelist'i zorunlu.
+        return ensure_http_url(v, field="Bağlantı")
 
     @field_validator("status")
     @classmethod

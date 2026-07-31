@@ -19,7 +19,7 @@ from schemas.study import (
     StudyReservationCreate,
     StudyReservationOut,
 )
-from services import phone_service, study_reservation_service
+from services import payment_gates, phone_service, study_reservation_service
 
 router = APIRouter(prefix="/study-reservations", tags=["study-reservations"])
 
@@ -96,6 +96,11 @@ async def reserve(
     client: Client = Depends(require_roles(RoleType.CLIENT)),
     db: AsyncSession = Depends(get_db),
 ):
+    # Rezervasyon, ödenmemiş bir hold (yükümlülük) yaratır — deneme bileti
+    # kaydıyla simetrik olmalı; kol kapalıyken ödenemeyecek kayıt açılmaz.
+    await payment_gates.assert_branch_open(
+        db, payment_gates.PaymentBranch.LIBRARY_MARKETPLACE
+    )
     return await study_reservation_service.reserve(
         db,
         client,
@@ -116,6 +121,9 @@ async def pay(
     client: Client = Depends(require_roles(RoleType.CLIENT)),
     db: AsyncSession = Depends(get_db),
 ):
+    await payment_gates.assert_branch_open(
+        db, payment_gates.PaymentBranch.LIBRARY_MARKETPLACE
+    )
     phone_service.require_phone_verified(client)
     reservation, redirect_url = await study_reservation_service.pay(
         db, client, reservation_id,

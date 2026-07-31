@@ -1,4 +1,5 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { Field } from "@/components/ui/Field";
 import { DashboardShell } from "@/components/DashboardShell";
 import { STUDENT_NAV, TUTOR_NAV } from "@/lib/nav";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
@@ -372,19 +373,23 @@ function TaskDetailModal({ task, lists, allLabels, onClose }: { task: Task; list
         </div>
 
         <div className="mt-4 space-y-4">
-          <div>
-            <label className="mb-1.5 block text-xs font-medium text-slate-500 dark:text-slate-400">Başlık *</label>
-            <input maxLength={200} value={title} onChange={(e) => setTitle(e.target.value)} className={inputCls} />
-          </div>
-          <div>
-            <label className="mb-1.5 block text-xs font-medium text-slate-500 dark:text-slate-400">Açıklama</label>
-            <textarea rows={3} maxLength={4000} value={description} onChange={(e) => setDescription(e.target.value)} className={inputCls} />
-          </div>
+          <Field label="Başlık" required labelClassName="mb-1.5 block text-xs font-medium text-slate-500 dark:text-slate-400">
+            {(id) => (
+                <input
+                    id={id} maxLength={200} value={title} onChange={(e) => setTitle(e.target.value)} className={inputCls} />
+            )}
+          </Field>
+          <Field label="Açıklama" labelClassName="mb-1.5 block text-xs font-medium text-slate-500 dark:text-slate-400">
+            {(id) => (
+                <textarea
+                    id={id} rows={3} maxLength={4000} value={description} onChange={(e) => setDescription(e.target.value)} className={inputCls} />
+            )}
+          </Field>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="mb-1.5 block text-xs font-medium text-slate-500 dark:text-slate-400">Öncelik</label>
-              <div className="flex gap-1.5">
+              <span className="mb-1.5 block text-xs font-medium text-slate-500 dark:text-slate-400">Öncelik</span>
+              <div role="group" aria-label="Öncelik" className="flex gap-1.5">
                 {([1, 2, 3, 4] as TaskPriority[]).map((p) => (
                   <button
                     key={p}
@@ -400,52 +405,64 @@ function TaskDetailModal({ task, lists, allLabels, onClose }: { task: Task; list
                 ))}
               </div>
             </div>
-            <div>
-              <label className="mb-1.5 block text-xs font-medium text-slate-500 dark:text-slate-400">Son tarih</label>
-              <input type="datetime-local" value={due} onChange={(e) => setDue(e.target.value)} className={inputCls} />
-            </div>
+            <Field label="Son tarih" labelClassName="mb-1.5 block text-xs font-medium text-slate-500 dark:text-slate-400">
+              {(id) => (
+                  <input
+                    id={id} type="datetime-local" value={due} onChange={(e) => setDue(e.target.value)} className={inputCls} />
+              )}
+            </Field>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="mb-1.5 block text-xs font-medium text-slate-500 dark:text-slate-400">Tekrar</label>
-              <select value={recurrence} onChange={(e) => setRecurrence(e.target.value)} className={inputCls}>
-                <option value="">Tekrar yok</option>
-                <option value="daily">Her gün</option>
-                <option value="weekdays">Hafta içi</option>
-                <option value="weekly">Her hafta</option>
-                <option value="monthly">Her ay</option>
-                <option value="yearly">Her yıl</option>
-              </select>
-            </div>
-            <div>
-              <label className="mb-1.5 block text-xs font-medium text-slate-500 dark:text-slate-400">Proje</label>
-              <select value={listId} onChange={(e) => setListId(Number(e.target.value))} className={inputCls}>
-                {lists.map((l) => (<option key={l.id} value={l.id}>{l.name}</option>))}
-              </select>
-            </div>
+            <Field label="Tekrar" labelClassName="mb-1.5 block text-xs font-medium text-slate-500 dark:text-slate-400">
+              {(id) => (
+                  <select
+                    id={id} value={recurrence} onChange={(e) => setRecurrence(e.target.value)} className={inputCls}>
+                    <option value="">Tekrar yok</option>
+                    <option value="daily">Her gün</option>
+                    <option value="weekdays">Hafta içi</option>
+                    <option value="weekly">Her hafta</option>
+                    <option value="monthly">Her ay</option>
+                    <option value="yearly">Her yıl</option>
+                  </select>
+              )}
+            </Field>
+            <Field label="Proje" labelClassName="mb-1.5 block text-xs font-medium text-slate-500 dark:text-slate-400">
+              {(id) => (
+                  <select
+                    id={id} value={listId} onChange={(e) => setListId(Number(e.target.value))} className={inputCls}>
+                    {lists.map((l) => (<option key={l.id} value={l.id}>{l.name}</option>))}
+                  </select>
+              )}
+            </Field>
           </div>
 
           {/* Hatırlatıcılar */}
           <div>
-            <label className="mb-1.5 block text-xs font-medium text-slate-500 dark:text-slate-400">Hatırlatıcılar</label>
-            <ReminderEditor reminders={reminders} due={due ? localInputToIso(due) : null} onChange={setReminders} />
+            {/* Alt bileşen kendi kontrollerini çizer; <label> hiçbir kontrole
+                bağlanamaz — grup adı olarak duyurulur. */}
+            <span className="mb-1.5 block text-xs font-medium text-slate-500 dark:text-slate-400">Hatırlatıcılar</span>
+            <div role="group" aria-label="Hatırlatıcılar">
+              <ReminderEditor reminders={reminders} due={due ? localInputToIso(due) : null} onChange={setReminders} />
+            </div>
           </div>
 
-          <div>
-            <label className="mb-1.5 block text-xs font-medium text-slate-500 dark:text-slate-400">Ders (opsiyonel)</label>
-            <select value={bookingId} onChange={(e) => setBookingId(e.target.value === "" ? "" : Number(e.target.value))} className={inputCls}>
-              <option value="">— Yok —</option>
-              {(bookings ?? []).map((b) => (
-                <option key={b.id} value={b.id}>{(isClient ? b.tutor_name : b.client_name) || `Ders #${b.id}`}</option>
-              ))}
-            </select>
-          </div>
+          <Field label="Ders (opsiyonel)" labelClassName="mb-1.5 block text-xs font-medium text-slate-500 dark:text-slate-400">
+            {(id) => (
+                <select
+                    id={id} value={bookingId} onChange={(e) => setBookingId(e.target.value === "" ? "" : Number(e.target.value))} className={inputCls}>
+                  <option value="">— Yok —</option>
+                  {(bookings ?? []).map((b) => (
+                    <option key={b.id} value={b.id}>{(isClient ? b.tutor_name : b.client_name) || `Ders #${b.id}`}</option>
+                  ))}
+                </select>
+            )}
+          </Field>
 
           {/* Etiketler */}
           <div>
-            <label className="mb-1.5 block text-xs font-medium text-slate-500 dark:text-slate-400">Etiketler</label>
-            <div className="flex flex-wrap gap-1.5">
+            <span className="mb-1.5 block text-xs font-medium text-slate-500 dark:text-slate-400">Etiketler</span>
+            <div role="group" aria-label="Etiketler" className="flex flex-wrap gap-1.5">
               {allLabels.map((l) => {
                 const on = labelIds.includes(l.id);
                 return (
@@ -795,16 +812,18 @@ function FilterBuilderModal({ mode, filter, initialCriteria, labels, tasks, proj
           </div>
 
           {/* Ad */}
-          <div>
-            <label className="mb-1.5 block text-xs font-medium text-slate-500 dark:text-slate-400">Ad</label>
-            <input autoFocus maxLength={120} value={name} onChange={(e) => setName(e.target.value)} placeholder="Örn. Acil & bugün" className={inputCls} />
-          </div>
+          <Field label="Ad" labelClassName="mb-1.5 block text-xs font-medium text-slate-500 dark:text-slate-400">
+            {(id) => (
+                <input
+                    id={id} autoFocus maxLength={120} value={name} onChange={(e) => setName(e.target.value)} placeholder="Örn. Acil & bugün" className={inputCls} />
+            )}
+          </Field>
 
           {/* Renk + favori */}
           <div className="flex items-end justify-between gap-4">
             <div>
-              <label className="mb-1.5 block text-xs font-medium text-slate-500 dark:text-slate-400">Renk</label>
-              <div className="flex flex-wrap gap-2">
+              <span className="mb-1.5 block text-xs font-medium text-slate-500 dark:text-slate-400">Renk</span>
+              <div role="group" aria-label="Renk" className="flex flex-wrap gap-2">
                 {COLORS.map((c) => (
                   <button key={c} type="button" onClick={() => setColor(c)} aria-label={`Renk ${c}`}
                     className={`h-7 w-7 rounded-full transition ${color === c ? "ring-2 ring-offset-2 ring-slate-400 dark:ring-offset-slate-900" : ""}`} style={{ backgroundColor: c }} />
@@ -821,10 +840,12 @@ function FilterBuilderModal({ mode, filter, initialCriteria, labels, tasks, proj
 
           {/* Kriterler */}
           <div className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50/60 p-3 dark:border-slate-700 dark:bg-slate-800/40">
-            <div>
-              <label className="mb-1.5 block text-xs font-medium text-slate-500 dark:text-slate-400">Metin içerir</label>
-              <input value={criteria.q} onChange={(e) => setCriteria((c) => ({ ...c, q: e.target.value }))} placeholder="Görev başlığı/açıklamasında ara…" className={inputCls} />
-            </div>
+            <Field label="Metin içerir" labelClassName="mb-1.5 block text-xs font-medium text-slate-500 dark:text-slate-400">
+              {(id) => (
+                  <input
+                    id={id} value={criteria.q} onChange={(e) => setCriteria((c) => ({ ...c, q: e.target.value }))} placeholder="Görev başlığı/açıklamasında ara…" className={inputCls} />
+              )}
+            </Field>
             <div className="flex flex-wrap items-center gap-2">
               <span className="w-16 flex-none text-xs font-semibold text-slate-400">Öncelik</span>
               {([1, 2, 3, 4] as TaskPriority[]).map((p) => {

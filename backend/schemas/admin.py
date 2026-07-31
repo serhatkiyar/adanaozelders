@@ -42,6 +42,43 @@ class AdminDashboardOut(BaseModel):
     period_audit_logs: int
 
 
+class AdminRevenueOut(BaseModel):
+    """Para metrikleri. Tutarlar Decimal (float yuvarlama hatası para raporunda
+    kabul edilemez); istemci string olarak alır ve formatlar."""
+
+    range: str
+    period_start: datetime.datetime
+    previous_period_start: datetime.datetime
+
+    #: Brüt işlem hacmi (ders + kütüphane + mağaza).
+    gmv: Decimal
+    #: Platform geliri = pazaryeri komisyonu + kendi ürün cirosu.
+    revenue: Decimal
+    commission_revenue: Decimal
+    direct_sales_revenue: Decimal
+    #: Emanetteki para — HENÜZ GELİR DEĞİL (iade edilebilir).
+    held: Decimal
+    refunded: Decimal
+    refund_rate: float
+    orders: int
+    aov: Decimal
+    lesson_gmv: Decimal
+    library_gmv: Decimal
+    store_gmv: Decimal
+
+    previous_gmv: Decimal
+    previous_revenue: Decimal
+    previous_commission_revenue: Decimal
+    previous_direct_sales_revenue: Decimal
+    previous_held: Decimal
+    previous_refunded: Decimal
+    previous_orders: int
+    previous_aov: Decimal
+    previous_lesson_gmv: Decimal
+    previous_library_gmv: Decimal
+    previous_store_gmv: Decimal
+
+
 class AdminUserOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

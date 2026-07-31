@@ -23,6 +23,9 @@ class FakePaymentProvider(PaymentProvider):
     """
 
     name = "fake"
+    # Alt üye akışını (create/update_submerchant) deterministik olarak uygular →
+    # pazaryeri kolları geliştirmede uçtan uca denenebilir.
+    supports_marketplace = True
 
     async def charge(
         self,

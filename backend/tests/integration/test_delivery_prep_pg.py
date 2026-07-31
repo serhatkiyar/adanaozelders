@@ -17,9 +17,8 @@ from sqlalchemy import text
 
 from core.database import AsyncSessionLocal
 from models.client import Client
-from models.delivery import DeliveryRun, DeliveryStop
+from models.delivery import DeliveryRun
 from models.store import Order
-from schemas.delivery import DeliveryRunCreate
 from services import delivery_service
 
 
@@ -74,7 +73,7 @@ class PrepFactory:
 
     async def cleanup(self) -> None:
         async with AsyncSessionLocal() as s:
-            for q, p in [
+            for q, _p in [
                 ("DELETE FROM delivery_stops WHERE order_id = ANY(:ids)", "order_ids"),
                 ("DELETE FROM delivery_runs WHERE id = ANY(:runs)", "run_ids"),
                 ("DELETE FROM order_status_history WHERE order_id = ANY(:ids)", "order_ids"),

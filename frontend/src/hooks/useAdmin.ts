@@ -5,6 +5,7 @@ import {
   deleteTutor,
   fetchAdminStats,
   fetchAdminDashboard,
+  fetchAdminRevenue,
   fetchAdminTutors,
   fetchAdminUsers,
   rejectTutor,
@@ -79,6 +80,14 @@ export function useAdminStats() {
   return useQuery({
     queryKey: ["admin", "stats"],
     queryFn: fetchAdminStats,
+  });
+}
+
+export function useAdminRevenue(range: "day" | "week" | "month") {
+  return useQuery({
+    queryKey: ["admin", "revenue", range],
+    queryFn: () => fetchAdminRevenue(range),
+    staleTime: 60_000,
   });
 }
 

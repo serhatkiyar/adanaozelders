@@ -46,7 +46,9 @@ async def get_current_user(
     try:
         payload = decode_access_token(token)
     except jwt.PyJWTError:
-        raise _credentials_exception
+        # `from None`: JWT ayrıştırma detayı (süresi doldu / imza geçersiz /
+        # bozuk payload) istemciye sızmasın — hepsi tek tip 401 döner.
+        raise _credentials_exception from None
 
     # Logout ile iptal edilmiş (denylist'teki) token reddedilir.
     if await is_revoked(payload.get("jti")):
@@ -166,6 +168,51 @@ async def get_current_approved_tutor(
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Tutor is not approved")
     return tutor
 
+
+async def get_current_active_operator(
+    operator: LibraryOperator = Depends(require_roles(RoleType.LIBRARY_OPERATOR)),
+    db: AsyncSession = Depends(get_db),
+) -> LibraryOperator:
+    """Kütüphanesi admin onayından geçmiş (ACTIVE) operatör.
+
+    Self-servis kayıt (``POST /libraries/register``) anında oturum açtığı için
+    rol kontrolü tek başına yetmez: onay beklemekte olan (PENDING) — ya da
+    reddedilmiş/askıya alınmış — bir kütüphanenin operatörü de geçerli bir
+    LIBRARY_OPERATOR token'ına sahiptir. Onaya bağlı yüzeyler bunu kullanmalı.
+    """
+    from models.library import Library, LibraryStatus
+
+    lib = await db.get(Library, operator.library_id)
+    if lib is None or lib.deleted_at is not None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Kütüphane bulunamadı")
+    if lib.status != LibraryStatus.ACTIVE.value:
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            "Kütüphaneniz henüz onaylanmadı; bu işlem onaydan sonra kullanılabilir.",
+        )
+    return operator
+
+
+
+async def get_optional_user(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+) -> CurrentUser | None:
+    """Oturum VARSA kullanıcıyı döndürür, yoksa None — hata fırlatmaz.
+
+    Public uçlarda (iletişim formu gibi) "giriş yapmışsa kim olduğunu bil, ama
+    giriş şart olmasın" davranışı için. `oauth2_scheme` eksik token'da 401
+    attığından burada başlığı kendimiz okuyoruz.
+    """
+    header = request.headers.get("authorization") or ""
+    scheme, _, token = header.partition(" ")
+    if scheme.lower() != "bearer" or not token:
+        return None
+    try:
+        return await get_current_user(token=token, db=db)
+    except HTTPException:
+        # Geçersiz/süresi dolmuş token public uçta akışı kesmemeli.
+        return None
 
 def user_rate_limit(*, key: str, limit: int, window_seconds: int):
     """Kullanıcı (role_id+user_id) bazlı fixed-window limiter — kimlik doğrulamalı

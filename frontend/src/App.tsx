@@ -1,10 +1,11 @@
 import { QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
-import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { Suspense, lazy, useEffect } from "react";
 import { queryClient } from "@/lib/queryClient";
+import { trackPageview } from "@/lib/analytics";
 import { Toaster } from "@/components/Toaster";
-import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { ErrorBoundary, RouteErrorBoundary } from "@/components/ErrorBoundary";
 import { FullScreenSpinner } from "@/components/Spinner";
 import { ROLE_IDS } from "@/types";
 import { ROUTES, PATHS } from "@/lib/routes";
@@ -16,12 +17,23 @@ import { useWsStore } from "@/store/wsStore";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 // Landing kök (`/`) yüzeyidir + prerender/SEO hedefi → eager (kod bölünmez).
 import Landing from "@/pages/Landing";
-import { GlobalMeeting } from "@/components/GlobalMeeting";
-import { DeepWorkTimer } from "@/components/DeepWorkTimer";
-import { AuthModal } from "@/components/AuthModal";
 import { PendingFavoriteApplier } from "@/components/PendingFavoriteApplier";
 import { StoreFavoritesSync } from "@/components/StoreFavoritesSync";
 import { rtcManager } from "@/lib/rtcTransfer";
+
+// Her ziyaretçiye inen ama NADİREN açılan üç yüzey. Giriş paketinden çıkarıldı:
+// canlı ders penceresi yalnız derse katılınca, odak zamanlayıcı yalnız
+// başlatılınca, giriş modalı yalnız tıklanınca gerekir. Üçü de kapalıyken
+// `null` render ettiğinden Suspense fallback'i de `null`.
+const GlobalMeeting = lazy(() =>
+  import("@/components/GlobalMeeting").then((m) => ({ default: m.GlobalMeeting }))
+);
+const DeepWorkTimer = lazy(() =>
+  import("@/components/DeepWorkTimer").then((m) => ({ default: m.DeepWorkTimer }))
+);
+const AuthModal = lazy(() =>
+  import("@/components/AuthModal").then((m) => ({ default: m.AuthModal }))
+);
 
 // ── Route-level code splitting: ağır modüller talep üzerine yüklenir ──
 const MarketplacePage = lazy(() => import("@/pages/MarketplacePage"));
@@ -45,6 +57,8 @@ const OrderDetailPage = lazy(() => import("@/pages/store/OrderDetailPage"));
 const SellerProducts = lazy(() => import("@/pages/store/SellerProducts"));
 // Yasal sayfalar — tek chunk, belge prop'la seçilir (içerik lib/legalContent.ts)
 const LegalPage = lazy(() => import("@/pages/LegalPage"));
+const FaqPage = lazy(() => import("@/pages/FaqPage"));
+const ContactPage = lazy(() => import("@/pages/ContactPage"));
 const OperatorHome = lazy(() => import("@/pages/dashboards/OperatorHome"));
 // Kurye açılış ekranı (rol 5) — menüsüz; aktif tura yönlendirir.
 const CourierHome = lazy(() => import("@/pages/dashboards/CourierHome"));
@@ -61,14 +75,27 @@ const AdminSectionPage = lazy(() => import("@/pages/admin/AdminSectionPage"));
 const AdminUsersPage = lazy(() => import("@/pages/admin/AdminUsersPage"));
 const AdminUserDetailPage = lazy(() => import("@/pages/admin/AdminUserDetailPage"));
 const AdminAuditLogsPage = lazy(() => import("@/pages/admin/AdminAuditLogsPage"));
+const AdminPayoutsPage = lazy(() => import("@/pages/admin/AdminPayoutsPage"));
 const AdminReportsPage = lazy(() => import("@/pages/admin/AdminReportsPage"));
 const AdminDemandsPage = lazy(() => import("@/pages/admin/AdminDemandsPage"));
 const AdminBookingsPage = lazy(() => import("@/pages/admin/AdminBookingsPage"));
 const AdminAccessPage = lazy(() => import("@/pages/admin/AdminAccessPage"));
+const AdminSettingsPage = lazy(() => import("@/pages/admin/AdminSettingsPage"));
 const AdminLibraries = lazy(() => import("@/pages/dashboards/AdminLibraries"));
 const AdminExamCatalogs = lazy(() => import("@/pages/dashboards/AdminExamCatalogs"));
 const AdminStore = lazy(() => import("@/pages/dashboards/AdminStore"));
-const AdminDelivery = lazy(() => import("@/pages/dashboards/AdminDelivery"));
+const InventoryLayout = lazy(() => import("@/pages/admin/inventory/InventoryLayout"));
+const InventoryOverviewPage = lazy(() => import("@/pages/admin/inventory/InventoryOverviewPage"));
+const CountSessionsPage = lazy(() => import("@/pages/admin/inventory/CountSessionsPage"));
+const CountSessionDetailPage = lazy(() => import("@/pages/admin/inventory/CountSessionDetailPage"));
+const DamageEventsPage = lazy(() => import("@/pages/admin/inventory/DamageEventsPage"));
+const DeliveryLayout = lazy(() => import("@/pages/admin/delivery/DeliveryLayout"));
+const DeliveryTodayPage = lazy(() => import("@/pages/admin/delivery/DeliveryTodayPage"));
+const DeliveryOrdersPage = lazy(() => import("@/pages/admin/delivery/DeliveryOrdersPage"));
+const DeliveryRunsPage = lazy(() => import("@/pages/admin/delivery/DeliveryRunsPage"));
+const DeliveryRunDetailPage = lazy(() => import("@/pages/admin/delivery/DeliveryRunDetailPage"));
+const DeliveryPerformancePage = lazy(() => import("@/pages/admin/delivery/DeliveryPerformancePage"));
+const DeliveryCouriersPage = lazy(() => import("@/pages/admin/delivery/DeliveryCouriersPage"));
 const DeliveryDriver = lazy(() => import("@/pages/DeliveryDriver"));
 const TutorDashboard = lazy(() => import("@/pages/TutorDashboard"));
 const TutorSettings = lazy(() => import("@/pages/TutorSettings"));
@@ -262,12 +289,31 @@ const LEGACY_STATIC: [string, string][] = [
   ["/magaza/adreslerim", ROUTES.addresses],
 ];
 
+/**
+ * Rota değişimlerini analitiğe bildirir (SPA'da gezinme sayfa yenilemesi
+ * değildir; bildirilmezse yalnız ilk açılış sayılır ve tüm derinlik kaybolur).
+ * Analitik yapılandırılmamışsa `trackPageview` no-op'tur.
+ */
+function AnalyticsTracker() {
+  const location = useLocation();
+  useEffect(() => {
+    trackPageview(location.pathname + location.search);
+  }, [location.pathname, location.search]);
+  return null;
+}
+
 function App() {
   return (
     <ErrorBoundary>
     <QueryClientProvider client={queryClient}>
       <WsManager />
       <BrowserRouter>
+        <AnalyticsTracker />
+        {/* İkinci sınır ROUTER'IN İÇİNDE: dıştaki sınır tek başınayken bir
+            sayfa çöktüğünde router da düşüyordu, yani "ana sayfaya dön"
+            tam sayfa yenilemeye zorlanıyordu. İçteki sınır rota değişince
+            sıfırlanır ve kullanıcı uygulamada kalır. */}
+        <RouteErrorBoundary>
         <Suspense fallback={<FullScreenSpinner />}>
         <Routes>
           {/* ── Kök dağıtıcı + public (SEO) — oturumdan bağımsız ── */}
@@ -296,10 +342,21 @@ function App() {
           <Route path={PATHS.refundPolicy} element={<LegalPage doc="refund" />} />
           <Route path={PATHS.cookiePolicy} element={<LegalPage doc="cookies" />} />
 
-          {/* ── Geliştirme prototipi (oturum gerektirmez) ── */}
-          <Route path="/test-bilet" element={<TicketTearTest />} />
-          <Route path="/test-canli-ders" element={<TestLiveLesson />} />
-          <Route path="/test-kutuphane-karti" element={<LibraryCardTest />} />
+          {/* ── Destek (public) ── */}
+          <Route path={PATHS.faq} element={<FaqPage />} />
+          <Route path={PATHS.contact} element={<ContactPage />} />
+
+          {/* ── Geliştirme prototipleri ──
+              YALNIZ dev sunucusunda. Üretimde bu rotalar kimlik doğrulamasız
+              açıktı ve robots.txt'te dışlanmadığından indekslenebiliyordu;
+              LibraryCardTest gerçek arama API'sini de çağırıyor. */}
+          {import.meta.env.DEV && (
+            <>
+              <Route path="/test-bilet" element={<TicketTearTest />} />
+              <Route path="/test-canli-ders" element={<TestLiveLesson />} />
+              <Route path="/test-kutuphane-karti" element={<LibraryCardTest />} />
+            </>
+          )}
 
           {/* ── Kimlik: giriş yapmış kullanıcı kök workspace'ine yönlendirilir ── */}
           <Route element={<PublicRoute />}>
@@ -371,13 +428,29 @@ function App() {
               <Route path="magaza/siparisler" element={<AdminStore />} />
               <Route path="magaza/iadeler" element={<AdminStore />} />
               <Route path="magaza/kuponlar" element={<AdminStore />} />
-              <Route path="dagitim" element={<AdminDelivery />} />
+              <Route path="magaza/stok-hareketleri" element={<AdminStore />} />
+              <Route path="envanter" element={<InventoryLayout />}>
+                <Route index element={<InventoryOverviewPage />} />
+                <Route path="sayimlar" element={<CountSessionsPage />} />
+                <Route path="sayimlar/:id" element={<CountSessionDetailPage />} />
+                <Route path="hasar" element={<DamageEventsPage />} />
+              </Route>
+              <Route path="dagitim" element={<DeliveryLayout />}>
+                <Route index element={<DeliveryTodayPage />} />
+                <Route path="siparisler" element={<DeliveryOrdersPage />} />
+                <Route path="turlar" element={<DeliveryRunsPage />} />
+                <Route path="turlar/:id" element={<DeliveryRunDetailPage />} />
+                <Route path="performans" element={<DeliveryPerformancePage />} />
+                <Route path="kuryeler" element={<DeliveryCouriersPage />} />
+              </Route>
               <Route path="rezervasyonlar" element={<AdminBookingsPage />} />
               <Route path="talepler" element={<AdminDemandsPage />} />
               <Route path="ad-degisiklikleri" element={<AdminSectionPage section="names" />} />
               <Route path="moderasyon/sikayetler" element={<AdminReportsPage />} />
               <Route path="denetim-kayitlari" element={<AdminAuditLogsPage />} />
+              <Route path="hakedisler" element={<AdminPayoutsPage />} />
               <Route path="yetkiler" element={<AdminAccessPage />} />
+              <Route path="ayarlar" element={<AdminSettingsPage />} />
             </Route>
           </Route>
 
@@ -434,12 +507,19 @@ function App() {
           <Route path="*" element={<NotFound />} />
         </Routes>
         </Suspense>
-        <AuthModal />
+        </RouteErrorBoundary>
+        <Suspense fallback={null}>
+          <AuthModal />
+        </Suspense>
         <PendingFavoriteApplier />
         <StoreFavoritesSync />
-        <DeepWorkTimer />
+        <Suspense fallback={null}>
+          <DeepWorkTimer />
+        </Suspense>
       </BrowserRouter>
-      <GlobalMeeting />
+      <Suspense fallback={null}>
+        <GlobalMeeting />
+      </Suspense>
       <Toaster />
       <ReactQueryDevtools initialIsOpen={false} />
     </QueryClientProvider>

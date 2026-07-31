@@ -4,6 +4,7 @@ import { MapContainer, TileLayer, GeoJSON, useMap } from "react-leaflet";
 import L from "leaflet";
 import type { Feature, FeatureCollection, Geometry } from "geojson";
 import geoRaw from "@/lib/adanaDistrictsGeo.json";
+import { tileSource } from "@/lib/mapTiles";
 
 /* ─────────────────────────────────────────────────────────────────────────
    İlçe seçim haritası (modal). Adana metropol ilçelerinin sınırları polygon
@@ -219,8 +220,8 @@ export function DistrictMapModal({ open, value, onApply, onClose }: Props) {
             style={{ height: "100%", width: "100%" }}
           >
             <TileLayer
-              attribution='&copy; OpenStreetMap'
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              attribution={tileSource().attribution}
+              url={tileSource().url}
             />
             <FitBounds />
             <MapWatcher onCenter={onCenter} onZoom={onZoom} />

@@ -31,6 +31,7 @@ from core import payments
 from core.config import settings
 from models.library_exam import ExamRegistration, RegistrationStatus
 from models.payment import Payment, PaymentStatus
+from models.store import Order, OrderPaymentStatus, OrderReturn
 from models.study_reservation import StudyReservation
 from services import escrow
 
@@ -55,6 +56,10 @@ _REFUNDING_TARGETS: tuple[tuple[type, escrow.EscrowSpec], ...] = (
     (Payment, escrow.PAYMENT_SPEC),
     (ExamRegistration, escrow.EXAM_SPEC),
     (StudyReservation, escrow.STUDY_SPEC),
+    (Order, escrow.ORDER_SPEC),
+    # Sarkan iade talepleri: kısmi iade sağlayıcı çağrısında süreç ölürse
+    # talep REFUNDING'de kalır ve buradan devralınır.
+    (OrderReturn, escrow.RETURN_SPEC),
 )
 
 
@@ -66,13 +71,14 @@ async def reconcile_refunding(db: AsyncSession) -> int:
     handled = 0
 
     for model, spec in _REFUNDING_TARGETS:
+        # Para durumunun kolonu modele göre değişir (Order'da `payment_status`,
+        # OrderReturn'de `refund_status`). Soft-delete de her modelde yok.
+        status_col = getattr(model, spec.status_attr)
+        conditions = [status_col == spec.refunding]
+        if hasattr(model, "deleted_at"):
+            conditions.append(model.deleted_at.is_(None))
         rows = (
-            await db.execute(
-                select(model).where(
-                    model.status == spec.refunding,
-                    model.deleted_at.is_(None),
-                )
-            )
+            await db.execute(select(model).where(*conditions))
         ).scalars().all()
         for obj in rows:
             reference = await _reference_for(db, obj, spec)
@@ -117,6 +123,7 @@ async def reconcile_refunding(db: AsyncSession) -> int:
                     "refund_requested_at": now,
                     "refund_attempts": model.refund_attempts + 1,
                 },
+                status_attr=spec.status_attr,
             )
             if not claimed:
                 continue
@@ -150,7 +157,13 @@ async def reconcile_stale_checkouts(db: AsyncSession) -> int:
     handled = 0
 
     # Booking ödemeleri: CF token'ı yazılmış ama hâlâ PENDING/FAILED olanlar.
-    from services import library_exam_service, payment_service, study_reservation_service
+    # (Yerel import: order_service → delivery_service → ... zincirinde döngü var.)
+    from services import (
+        library_exam_service,
+        order_service,
+        payment_service,
+        study_reservation_service,
+    )
 
     payments_rows = (
         await db.execute(
@@ -232,5 +245,36 @@ async def reconcile_stale_checkouts(db: AsyncSession) -> int:
         await db.commit()
         handled += 1
         logger.warning("reconciler: kayıp callback tamamlandı (studyres#%s)", res.id)
+
+    # Mağaza siparişleri: en yüksek hacimli ödeme yüzeyi ve en uzun süre
+    # kapsam dışında kalmış olan. Müşteri iyzico'da öder, tarayıcıyı kapatır →
+    # para çekilmiştir ama sipariş sonsuza dek PENDING kalır, kitap gönderilmez
+    # ve kimse fark etmezdi.
+    order_rows = (
+        await db.execute(
+            select(Order).where(
+                Order.payment_status.in_(
+                    [OrderPaymentStatus.PENDING.value, OrderPaymentStatus.FAILED.value]
+                ),
+                Order.provider_ref.isnot(None),
+                Order.paid_at.is_(None),
+                Order.deleted_at.is_(None),
+                Order.updated_at <= newest,
+                Order.updated_at >= oldest,
+            )
+        )
+    ).scalars().all()
+    for order in order_rows:
+        result = await retrieve(token=order.provider_ref)
+        if not result.success:
+            continue
+        await order_service.complete_checkout(
+            db, order_id=order.id, success=True,
+            provider_ref=result.provider_ref,
+            token=order.provider_ref, paid_price=result.paid_price,
+        )
+        await db.commit()
+        handled += 1
+        logger.warning("reconciler: kayıp callback tamamlandı (order#%s)", order.id)
 
     return handled

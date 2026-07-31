@@ -199,6 +199,33 @@ export function useDeliveryRuns(runDate?: string) {
   });
 }
 
+/** Tur arşivi — sayfalı (offset). Dönen liste `limit`'ten kısaysa son sayfadır. */
+export function useDeliveryRunArchive(page: number, pageSize = 20) {
+  return useQuery({
+    queryKey: [...KEY, "runs", "archive", page, pageSize],
+    queryFn: () =>
+      deliveryApi.fetchDeliveryRuns(undefined, {
+        limit: pageSize,
+        offset: page * pageSize,
+      }),
+  });
+}
+
+/** Rota altyapısı sağlığı (VROOM+OSRM). Bozulma nadirdir; 60 sn'de bir yoklanır
+ * ve yalnız `degraded=true` iken panelde şerit gösterilir. Hata = bilinmiyor
+ * (şerit gösterilmez) — sağlık kontrolü asla operasyonu bloklamaz. */
+export function useRoutingHealth(enabled = true) {
+  return useQuery({
+    queryKey: [...KEY, "routing-health"],
+    queryFn: deliveryApi.fetchRoutingHealth,
+    enabled,
+    refetchInterval: 60_000,
+    staleTime: 55_000,
+    retry: false,
+    meta: { silentError: true },
+  });
+}
+
 export function useDeliveryRun(runId: number | null, opts?: { poll?: boolean }) {
   return useQuery({
     queryKey: [...KEY, "run", runId],
@@ -515,6 +542,32 @@ export function usePublicPostpone() {
   const invalidate = useInvalidateOrders();
   return useMutation({
     mutationFn: (token: string) => deliveryApi.publicPostpone(token),
+    onSuccess: invalidate,
+  });
+}
+
+/** Oturumlu teslimat tercihi (sipariş sahibi) — sipariş detayından. */
+export function useSetOrderDeliveryPref() {
+  const invalidate = useInvalidateOrders();
+  return useMutation({
+    mutationFn: ({
+      orderId,
+      pref,
+      note,
+    }: {
+      orderId: number;
+      pref: import("@/types").DeliveryPref;
+      note?: string | null;
+    }) => deliveryApi.setOrderDeliveryPref(orderId, pref, note),
+    onSuccess: invalidate,
+  });
+}
+
+/** Oturumlu erteleme (sipariş sahibi) — söz günü yarına kayar (limit 2). */
+export function usePostponeOrder() {
+  const invalidate = useInvalidateOrders();
+  return useMutation({
+    mutationFn: (orderId: number) => deliveryApi.postponeOrder(orderId),
     onSuccess: invalidate,
   });
 }

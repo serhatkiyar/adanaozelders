@@ -17,7 +17,13 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from core.config import settings
 from core.database import Base
-import models
+
+# Autogenerate/check YALNIZCA import edilmiş modelleri görür: Base.metadata
+# tablolarla ancak modelleri tanımlayan modüller yüklendiğinde dolar.
+# `models` paketi __init__.py'de hepsini import eder (bkz. CLAUDE.md kuralı).
+# Bu satır olmadan `alembic check` şemanın yarısını "silinmiş tablo" sanar ve
+# autogenerate eksik/yanlış migration üretir.
+import models  # noqa: F401  (yan etki: tüm modelleri metadata'ya kaydeder)
 
 config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
 
@@ -31,6 +37,23 @@ if config.config_file_name is not None:
 # from myapp import mymodel
 # target_metadata = mymodel.Base.metadata
 target_metadata = Base.metadata
+
+
+# İFADE-TABANLI İNDEKSLER (ör. `tr_normalize(title) gin_trgm_ops`) elle
+# yazılmış migration'larda yaşar. Alembic bunları model tarafındaki kolon
+# indeksleriyle eşleştiremez — SQL ifadesini geri okuyup karşılaştıramadığı
+# için her koşuda "sil ve yeniden yarat" önerir. Karşılaştırmadan çıkarılmasa
+# `alembic check` kalıcı olarak kırmızı kalır ve gerçek şema kaymalarını
+# gizleyen bir gürültüye dönüşür.
+#
+# Adlandırma sözleşmesi: ifadeye dayanan her indeks `_trgm` ile biter.
+_EXPRESSION_INDEX_SUFFIXES = ("_trgm",)
+
+
+def include_object(obj, name, type_, reflected, compare_to):  # noqa: ANN001
+    if type_ == "index" and name and name.endswith(_EXPRESSION_INDEX_SUFFIXES):
+        return False
+    return True
 
 # other values from the config, defined by the needs of env.py,
 # can be acquired:
@@ -56,6 +79,7 @@ def run_migrations_offline() -> None:
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
+        include_object=include_object,
     )
 
     with context.begin_transaction():
@@ -63,7 +87,11 @@ def run_migrations_offline() -> None:
 
 
 def do_run_migrations(connection: Connection) -> None:
-    context.configure(connection=connection, target_metadata=target_metadata)
+    context.configure(
+        connection=connection,
+        target_metadata=target_metadata,
+        include_object=include_object,
+    )
 
     with context.begin_transaction():
         context.run_migrations()

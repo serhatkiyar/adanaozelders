@@ -131,6 +131,14 @@ class EligibleOrderOut(BaseModel):
     lng: float | None = None
     total: str
     item_count: int
+    #: Toplanacak fiziksel kalemler (başlık + adet). Operatör hazırlama
+    #: kuyruğunda NE toplayacağını görmek zorunda; "N parça" özeti bunun yerine
+    #: geçmez. Dijital kalemler dışarıda bırakılır (kutuya girmez).
+    #:
+    #: Ek sorgu MALİYETİ YOK: bu şemayı üreten dört sorgunun hepsi
+    #: `selectinload(Order.items)` yapıyor (`item_count` de aynı koleksiyondan
+    #: hesaplanıyordu).
+    items: list[StopItemOut] = []
     created_at: datetime.datetime
     # Söz verilen teslim günü (16:00 cutoff kuralı) — eski siparişlerde None.
     promised_delivery_date: datetime.date | None = None

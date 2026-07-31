@@ -15,6 +15,7 @@ from models.booking_private_note import BookingPrivateNote
 from models.booking_resource import BookingResource
 from models.bookmark import Bookmark
 from models.client import Client, ClientAddress, ClientEducation
+from models.consent import ConsentDoc, UserConsent
 from models.product_bookmark import ProductBookmark
 from models.courier import Courier
 from models.courier_account import CourierAccount
@@ -32,8 +33,20 @@ from models.delivery import (
 from models.demand import Demand, DemandStatus
 from models.demand_response import DemandResponse
 from models.exam import PracticeExam, PracticeExamSubject
+from models.feature_flag import FeatureFlag
 from models.flashcard import Flashcard, FlashcardDeck
 from models.habit import Habit, HabitEntry
+from models.inventory import (
+    COUNT_ADJUSTMENT_REASONS,
+    DAMAGE_REASONS,
+    CountLineStatus,
+    CountSessionStatus,
+    DamageEventKind,
+    StockCountLine,
+    StockCountLineEvent,
+    StockCountSession,
+    StockDamageEvent,
+)
 from models.library import (
     Library,
     LibraryAmenity,
@@ -58,6 +71,7 @@ from models.study_reservation import StudyReservation
 from models.notification import Notification
 from models.outbox import OutboxEvent, OutboxStatus
 from models.payment import Payment, PaymentStatus
+from models.payout import PayeeType, PayoutRecord
 from models.qa import QAMessage, QAStatus, QAThread
 from models.refresh_token import RefreshToken
 from models.reminder import TaskReminder
@@ -75,16 +89,23 @@ from models.store import (
     OrderItem,
     OrderPaymentStatus,
     OrderReturn,
+    OrderReturnItem,
     OrderStatus,
     OrderStatusHistory,
     Product,
     ProductCategory,
     ProductImage,
     ProductKind,
+    ProductPriceHistory,
     ProductReview,
     ProductStatus,
+    ReturnRefundStatus,
     ReturnStatus,
+    ReturnType,
     SellerType,
+    StockMovement,
+    StockBucket,
+    StockMovementType,
     StockNotification,
 )
 from models.task import Subtask, Task, TaskFilter, TaskLabel, TaskList
@@ -143,6 +164,7 @@ __all__ = [
     "ExamRegistration",
     "ExamSessionStatus",
     "ExamType",
+    "FeatureFlag",
     "FeedbackProblem",
     "Flashcard",
     "FlashcardDeck",
@@ -166,6 +188,7 @@ __all__ = [
     "Notification",
     "OutboxEvent",
     "OutboxStatus",
+    "ConsentDoc",
     "Collection",
     "CollectionItem",
     "Coupon",
@@ -174,19 +197,39 @@ __all__ = [
     "DeliveryPref",
     "Order",
     "OrderItem",
+    "OrderReturnItem",
     "OrderPaymentStatus",
     "OrderReturn",
     "OrderStatus",
     "OrderStatusHistory",
     "Payment",
     "PaymentStatus",
+    "UserConsent",
+    "PayeeType",
+    "PayoutRecord",
     "Product",
+    "ProductPriceHistory",
     "ProductCategory",
     "ProductImage",
     "ProductKind",
     "ProductReview",
     "ProductStatus",
+    "StockMovement",
+    "StockMovementType",
+    "StockBucket",
+    # F29 — sayım ve hasarlı stok
+    "COUNT_ADJUSTMENT_REASONS",
+    "DAMAGE_REASONS",
+    "CountLineStatus",
+    "CountSessionStatus",
+    "DamageEventKind",
+    "StockCountLine",
+    "StockCountLineEvent",
+    "StockCountSession",
+    "StockDamageEvent",
     "ReturnStatus",
+    "ReturnType",
+    "ReturnRefundStatus",
     "SellerType",
     "StockNotification",
     "PracticeExam",

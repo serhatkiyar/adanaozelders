@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from core.config import settings
+from core.moderation import mask_contact_info
 from models.booking import Booking, BookingStatus
 from models.client import Client
 from models.qa import QAMessage, QAStatus, QAThread
@@ -66,9 +67,13 @@ async def create_thread(
         client_id=client.id,
         tutor_id=booking.tutor_id,
         booking_id=booking.id,
-        subject=data.subject,
-        question=data.question,
-        messages=[QAMessage(sender_role="CLIENT", body=data.question)],
+        subject=mask_contact_info(data.subject),
+        # Soru-cevap da taraflar arası serbest metindir; mesajlaşmadaki maske
+        # burada yoktu, yani aynı atlatma QA üzerinden yapılabiliyordu.
+        question=mask_contact_info(data.question),
+        messages=[
+            QAMessage(sender_role="CLIENT", body=mask_contact_info(data.question))
+        ],
     )
     db.add(thread)
     await db.flush()
@@ -102,6 +107,7 @@ async def post_message(
                     "Question window closed (7 days after the lesson)",
                 )
 
+    body = mask_contact_info(body)
     thread.messages.append(QAMessage(sender_role=sender_role, body=body))
     # Durum son mesaja göre: eğitmen yazdıysa yanıtlandı, öğrenci yazdıysa yanıt bekliyor.
     thread.status = (

@@ -11,7 +11,7 @@ npm run dev              # http://localhost:5173
 npm run test             # Vitest (jsdom) — birim testleri (CI'da koşar)
 ```
 
-**Test:** Vitest + React Testing Library (`vitest.config.ts`, jsdom). Testler `src/**/*.test.{ts,tsx}` (build'in `tsc -b`'sinden `tsconfig` exclude ile ayrılır; vitest/esbuild koşar). Kapsam: saf lib'ler (money/lesson/datetime/roles) + bileşen (PaymentBadge). Yeni saf yardımcı/edge-case eklerken testini de yaz.
+**Test:** Vitest + React Testing Library (`vitest.config.ts`, jsdom). Testler `src/**/*.test.{ts,tsx}` (build'in `tsc -b`'sinden `tsconfig` exclude ile ayrılır; vitest/esbuild koşar). Kapsam: saf lib'ler (money/lesson/datetime/roles) + bileşen (PaymentBadge). Yeni saf yardımcı/edge-case eklerken testini de yaz — **ama saf test tek başına yetmez**: kök `CLAUDE.md` → *Test Kalitesi ve Doğrulama Standardı* kullanıcıya değen davranış için gerçek DOM (RTL), gerçekten gönderilen isteğin doğrulanması (axios adapter) ve riskli yüzeylerde gerçek tarayıcı turu ister. Snapshot ve "render oldu" testi kanıt sayılmaz.
 
 ## Dizin Yapısı ve Mimari Dağılım
 
@@ -46,6 +46,8 @@ frontend/src/
 │   ├── TutorCard.tsx          # Zengin eğitmen kartı (bayesian rating, bookmark, mesafe rozeti)
 │   ├── GlobalMeeting.tsx      # Minimize edilebilir gömülü Jitsi ders penceresi (meetingStore)
 │   ├── MapPicker.tsx          # Leaflet harita konum seçici; arama/adres backend /geocode proxy'si (api/geocode.ts)
+│   │                          #   Döşeme (tile) adresleri TEK KAYNAKTA: lib/mapTiles.ts
+│   │                          #   (VITE_MAP_TILE_URL ile sağlayıcı değişir; Vitest'li)
 │   ├── ErrorBoundary.tsx      # Render hatalarında beyaz ekranı önler
 │   └── Toaster, Modal'lar, StarRating, MegaMenu vb.
 └── pages/                     # Sayfalar
@@ -56,8 +58,11 @@ frontend/src/
     ├── StudentBookings.tsx, Exams.tsx, Questions.tsx, StudentDemands.tsx # Öğrenci Özel
     ├── TutorDashboard.tsx, TutorSettings.tsx, TutorDemands.tsx     # Eğitmen Özel (TutorSettings: konum MapPicker)
     ├── Messages.tsx, LessonDetail.tsx, Calendar.tsx, Profile.tsx   # Ortak Sayfalar (Calendar: haftalık takvim)
-    └── dashboards/AdminHome.tsx                                    # Admin Dashboard
+    ├── dashboards/AdminHome.tsx                                    # Legacy admin bölümleri (AdminSectionPage üzerinden)
+    └── admin/delivery/                                             # Dağıtım operasyon paneli (aşağıda)
 ```
+
+> **Dağıtım operasyon paneli (`/yonetim/dagitim/*`)**: Tek 1495 satırlık sayfa yerine URL-tabanlı 5 alt-sekme + deep-link'li tur detayı (`pages/admin/delivery/DeliveryLayout.tsx` + `<Outlet/>`): **Bugün** (kokpit: rota sağlık şeridi `/health`→routing, istisna kuyruğu, kapasite şeridi→tarih navigasyonu, günün turları; `?tarih=`) · **Siparişler** (`?kuyruk=hazirlik|hazir|dis-kargo` — Hazırla/toplu, Geri Al [unprepare], Tura ekle, Kargola-yerinde [`orders.manage` ayrıca aranır]) · **Turlar** (offset'li arşiv) · **Turlar/:id** (tur detayı: sürükle-bırak durak sıralama [HTML5 dnd, kütüphanesiz] + kalıcı ▲▼, MapGate'li tooltip'li harita, teslimat tercihi rozeti, çoklu paket rozeti, RESCHEDULED/CANCELLED renkleri, `optimize_provider` "yol ağı/yaklaşık" rozeti) · **Performans** (`?gun=7|30|90|180`, Pareto div-çubukları, 👎 yorum→sipariş linki) · **Kuryeler** (CourierManager + Kapalı Günler + salt-okunur yapılandırma). Ortak parçalar `components/admin/delivery/{bits,CapacityStrip,LabelSheet,ClosedDays}.tsx`. Tasarım: `admin/ui/*` (Button/Badge/ConfirmDialog/PageState) + `border-slate-200`/`dark:bg-slate-900` ölçeği + her sorguda `ErrorState` (hata ≠ boş ekran) + hover-only aksiyon YOK (dokunmatik birinci sınıf). Saha ekranı `DeliveryDriver.tsx`: QR fallback'inde **manuel kod girişi** (iOS Safari BarcodeDetector'sız — `QrScanner` `manualHint` prop'lu), foto `lib/compressImage.ts` ile küçültülür, durak listesinden bekleyen durağa geçilebilir (ekran odağı; sıra değişmez), gün özeti sayacı. Müşteri: `DeliveryPrefControls` ortak bileşeni (token modunda KAPIYA/KOMSUYA kilitli — backend 403; oturumlu sipariş detayında serbest + erteleme), `OrdersPage`'te kargo takip kısayolu; `window.prompt/confirm` kalktı (Modal).
 
 ## Routing ve Erişim Kontrolü
 
@@ -89,7 +94,7 @@ URL yapısı **tek kaynaktan** (`lib/routes.ts`) yönetilir — bileşenlerde ha
 
 - **Server State**: `@tanstack/react-query`. Caching, arka planda yenileme, error handling. Mesajlar ve bildirimlerde 15-30 saniyelik `refetchInterval` (polling) bulunur. Rezervasyon aksiyonlarında (accept, cancel) cache invalidation + optimistic update yapılır.
 - **Client State**: Zustand.
-  - `authStore`: Access + **refresh** token, aktif kullanıcı, "beni hatırla" tercihi (her ikisi de persist). `setTokens` login ve sessiz yenilemede ikisini yazar. Logout sunucuya `/auth/logout` atar (access denylist + refresh revoke), sonra yerel state'i temizler.
+  - `authStore`: **Yalnız access token** + aktif kullanıcı + "beni hatırla" tercihi. **Refresh token JS'te TUTULMAZ** — `httpOnly` çerezde yaşar ve okunamaz (backend `core/cookies.py`); bu yüzden `apiClient` `withCredentials: true` kullanır ve `/auth/refresh` gövdesizdir. `setToken` login ve sessiz yenilemede access'i yazar. "Beni hatırla" iki yere gider: sunucuya (çerez ömrü) ve yerele (access token local mi session storage'da mı duracak). Logout sunucuya `/auth/logout` atar (access denylist + refresh revoke + çerez silme), sonra yerel state'i temizler.
   - `themeStore`: Tema **tercihi** (`preference`: Light/Dark/**System**) — system, OS `prefers-color-scheme`'i izler ve değişimini canlı yansıtır; çözümlenen gerçek `theme` Tailwind `dark:` class'ını tetikler. **Kişiselleştir** penceresinden (`PersonalizeModal`, profil menüsündeki "Kişiselleştir" girişi) ayarlanır.
   - `navbarWidgetStore`: Üst bardaki logo alanında ne görüneceği (`logo`/`yks`/`lgs`/`weather`/`clock`) + sınav tarihleri + seçili şehir. `NavbarWidget` render eder; hava durumu `useWeather` (Open-Meteo, anahtarsız) ile gelir. Saf mantık `lib/navbarWidget.ts` (geri sayım + WMO kod eşlemesi, Vitest'li). Kişiselleştir penceresinden ayarlanır.
   - `uiPrefsStore`: Tema/navbar dışındaki keşif görünüm anahtarları — şu an `showRecentlyViewed` (Landing'deki "Son Görüntülenen İlanlar" bölümünü gizler). Kişiselleştir penceresindeki "Keşif" bölümünden ayarlanır; geçmiş `lib/recentlyViewed.ts::clearRecentlyViewed` ile temizlenebilir.
@@ -108,6 +113,7 @@ URL yapısı **tek kaynaktan** (`lib/routes.ts`) yönetilir — bileşenlerde ha
 - **Takvim**: `/calendar` — tutor/öğrenci için haftalık ders ızgarası (hafta gezinme).
 - **Ders işbirliği**: `LessonDetail`'de yorumlar, kaynaklar (**link ekle** veya **dosya yükle** — gizli `<input type=file>`, kaynak listesinde dosya/link ayrımı + boyut/indirme), buluşma konumu (MapPicker) ve özel notlar; booking-comment'ler WebSocket ile canlı yenilenir.
 - **E-posta doğrulama & şifre sıfırlama**: `/sifremi-unuttum` → `/sifre-yenile?token=` ve kayıt sonrası `/e-posta-dogrula?token=` akışları (PublicRoute dışında, oturumdan bağımsız erişilebilir; backend e-posta linkleri bu Türkçe path'leri üretir). `DashboardShell`, `user.email_verified === false` iken "yeniden gönder"li bir doğrulama banner'ı gösterir; doğrulama sonrası `me` cache'i tazelenir. Login'de "Şifremi unuttum?" linki.
+- **Ödeme kolu kapıları (istemci)**: `lib/paymentAvailability.ts` (saf, Vitest'li) + `hooks/useFeatureFlags.ts::usePaymentAvailability` (public `GET /payments/availability`). Üç kol bağımsızdır (`store` · `tutor_marketplace` · `library_marketplace`): pazaryeri ödemeleri kapalıyken **mağaza satın alma çalışmaya devam eder**. İstemci de **FAIL-CLOSED**: uygunluk bilgisi yüklenmediyse veya isteği patladıysa kol kapalı sayılır (`retry:false` + `meta.silentError`) — butonu bırakıp 503 göstermek kullanıcıyı boşa yönlendirir. Kapalı kolda ödeme butonunun YERİNE `components/PaymentBranchNotice.tsx` nötr şeridi gelir. `canPromiseEscrow` "emanet" ifadesinin kullanılabilirliğini söyler: mağaza kolu için **her zaman false** (kendi malının satışı doğrudan satıştır), pazaryeri kolları için yalnız kol açıkken true — iyzico Pazaryeri devreye girmeden "paranız emanette" demek yanlış vaattir. Kapılanan yüzeyler: `StudentBookings` (Öde), `store/CheckoutPage` (`cart/validate` → `blocked_payment_branches`, buton disabled + şerit), `ExamSessionsSection`, `StudySpaceSection`. Admin: **`/yonetim/ayarlar`** (`pages/admin/AdminSettingsPage.tsx`, Platform grubu, `settings.view`) — kol durumu + engelleyicilerin insan diline çevrilmiş hali + bayrak listesi, `ReasonDialog` ile gerekçeli aç/kapa (`settings.manage`); `enforced=false` bayraklar "Henüz uygulanmıyor" rozetli. Kabul testi `lib/paymentAvailability.acceptance.test.ts` — **bu dosya davranış bilinçli değiştirilmedikçe düzenlenmez**.
 - **Ödeme (escrow)**: `usePayments` (api/payments.ts) — `StudentBookings`'te onaylı+ödenmemiş derste "Öde" butonu (fake sağlayıcıda anında; prod'da `redirect_url`'e yönlendirir) ve `PaymentBadge` durum rozeti. `TutorDashboard`'da kazanç özeti (net + emanette) ve booking kartlarında ödeme rozeti. Ödeme durumu `BookingOut.payment` üzerinden gelir (ayrı istek gerekmez).
 
 ## Tasarım Dili ve UI Özellikleri

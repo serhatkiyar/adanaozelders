@@ -80,11 +80,18 @@ services:
   osrm:
     image: osrm/osrm-backend:latest
     profiles: ["routing"]
-    command: osrm-routed --algorithm mld /data/adana.osrm
+    # --max-table-size ZORUNLU: VROOM rota kurarken OSRM'in `table` (mesafe
+    # matrisi) servisini ÇAĞIRIR ve osrm-routed varsayılanı 100 koordinattır.
+    # 100'ü aşan turda OSRM "TooBig" döner, VROOM code=3 verir ve backend
+    # `auto` modda SESSİZCE haversine'e düşer — yani kampanya günü (100+ durak)
+    # tam da en çok gereken anda gerçek yol ağı devre dışı kalır.
+    command: osrm-routed --algorithm mld --max-table-size 500 /data/adana.osrm
     volumes:
       - ./devops/osrm:/data
     ports:
-      - "5000:5000"
+      # Yalnız yerel makineye aç: OSRM/VROOM kimlik doğrulaması OLMAYAN hesap
+      # servisleridir; 0.0.0.0'a açık bırakılırsa ağdaki herkes CPU harcatır.
+      - "127.0.0.1:5000:5000"
     healthcheck:
       # İmajda wget/curl yok — bash /dev/tcp ile port kontrolü (imaj debian tabanlı).
       test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/localhost/5000' || exit 1"]
@@ -103,7 +110,7 @@ services:
     environment:
       VROOM_ROUTER: osrm
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3000:3000"
 
   backend:
     build: ./backend
@@ -130,6 +137,10 @@ services:
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-minioadmin}
       AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-minioadmin}
       AWS_ENDPOINT_URL: http://minio:9000
+      # Tarayıcının gördüğü adres: dosya bağlantıları ve imzalı (presigned)
+      # adresler bununla üretilir — imza host'u kapsadığı için konteyner-içi
+      # `minio` adıyla imzalanan bir adres tarayıcıda geçersiz olur.
+      S3_PUBLIC_ENDPOINT_URL: ${S3_PUBLIC_ENDPOINT_URL:-http://localhost:9000}
       AWS_BUCKET_NAME: ${AWS_BUCKET_NAME:-avatars}
       BACKEND_CORS_ORIGINS: '["http://localhost:5173","http://localhost"]'
       # E-posta: MailHog'a yaz (gerçek sağlayıcı/anahtar gerekmez).
@@ -149,6 +160,27 @@ services:
       PUBLIC_TRACKING_BASE_URL: ${PUBLIC_TRACKING_BASE_URL:-http://localhost:5173/kargo-takip}
     ports:
       - "8000:8000"
+
+  # ── Ziyaretçi analitiği (opsiyonel profil) ──
+  # Çerezsiz ölçüm: çerez kullanan bir analitik, KVKK/ePrivacy gereği açık rıza
+  # ister ve siteye çerez onay bandı eklemek zorunda kalırdık.
+  #   docker compose --profile analytics up -d umami
+  # Sonra Umami arayüzünde (http://localhost:3001) site ekleyip website id'yi
+  # frontend .env'ine yazın (VITE_ANALYTICS_*). Ayar yoksa frontend script'i
+  # hiç yüklemez — analitik tamamen kapalıdır.
+  umami:
+    image: ghcr.io/umami-software/umami:postgresql-latest
+    profiles: ["analytics"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      # Umami kendi şemasını ilk açılışta kurar; veritabanının VAR OLMASI yeter.
+      # Oluşturma: docker compose exec postgres createdb -U postgres umami
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/umami
+      APP_SECRET: ${UMAMI_APP_SECRET:-gelistirme-icin-rastgele-degil}
+    ports:
+      - "3001:3000"
 
   frontend:
     build:

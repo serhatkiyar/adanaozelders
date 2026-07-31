@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useState, useId } from "react";
 import { Link } from "react-router-dom";
 import type { UseMutationResult } from "@tanstack/react-query";
 import { TutorAccountLayout } from "@/components/TutorAccountLayout";
@@ -107,6 +107,7 @@ const labelCls =
 /* ─── main page ─────────────────────────────────────── */
 
 export default function TutorSettings() {
+  const uid = useId();
   const { data, isLoading, isError, error } = useMyTutorProfile();
   const updateProfile = useUpdateTutorProfile();
   const submitAction = useTutorListingAction("submit");
@@ -349,8 +350,8 @@ export default function TutorSettings() {
               <form onSubmit={handleSave} className="mt-5 space-y-5">
                 {/* Başlık */}
                 <div>
-                  <label className={labelCls}>Başlık</label>
-                  <input
+                  <label htmlFor={`${uid}-baslik`} className={labelCls}>Başlık</label>
+                  <input id={`${uid}-baslik`}
                     type="text"
                     maxLength={255}
                     disabled={!editable}
@@ -374,12 +375,12 @@ export default function TutorSettings() {
 
                 {/* Saatlik Ücret */}
                 <div>
-                  <label className={labelCls}>Saatlik Ücret</label>
+                  <label htmlFor={`${uid}-saatlik-ucret`} className={labelCls}>Saatlik Ücret</label>
                   <div className="relative">
                     <span className="pointer-events-none absolute inset-y-0 left-4 flex items-center text-sm font-semibold text-slate-400">
                       TL
                     </span>
-                    <input
+                    <input id={`${uid}-saatlik-ucret`}
                       type="number"
                       min={0}
                       step={0.01}
@@ -394,8 +395,8 @@ export default function TutorSettings() {
 
                 {/* Eğitim Şekli — pills */}
                 <div>
-                  <label className={labelCls}>Eğitim Şekli</label>
-                  <div className="flex flex-wrap gap-2">
+                  <span className={labelCls}>Eğitim Şekli</span>
+                  <div role="group" aria-label="Eğitim Şekli" className="flex flex-wrap gap-2">
                     {MODES.map((mode) => {
                       const selected = teachingMode === mode.value;
                       return (
@@ -430,8 +431,8 @@ export default function TutorSettings() {
 
                 {/* Verdiğin Dersler — yapılandırılmış branş seçimi */}
                 <div>
-                  <label className={labelCls}>Verdiğin Dersler</label>
-                  <div className="flex flex-wrap gap-2">
+                  <span className={labelCls}>Verdiğin Dersler</span>
+                  <div role="group" aria-label="Verdiğin Dersler" className="flex flex-wrap gap-2">
                     {SUBJECT_OPTIONS.map((s) => {
                       const selected = subjects.includes(s.q);
                       return (
@@ -458,9 +459,9 @@ export default function TutorSettings() {
 
                 {/* İlçe — aramadaki "İlçe" filtresini besler (yapısal) */}
                 <div>
-                  <label className={labelCls}>İlçe</label>
+                  <label htmlFor={`${uid}-ilce`} className={labelCls}>İlçe</label>
                   <div className="relative">
-                    <select
+                    <select id={`${uid}-ilce`}
                       value={district}
                       disabled={!editable}
                       onChange={(e) => setDistrict(e.target.value)}
@@ -486,8 +487,8 @@ export default function TutorSettings() {
 
                 {/* Konum — yüzyüze ders ve "yakınımdaki eğitmenler" araması için */}
                 <div>
-                  <label className={labelCls}>Konum (yüzyüze ders için)</label>
-                  <input
+                  <label htmlFor={`${uid}-konum-yuzyuze-ders-icin`} className={labelCls}>Konum (yüzyüze ders için)</label>
+                  <input id={`${uid}-konum-yuzyuze-ders-icin`}
                     type="text"
                     value={locationText}
                     disabled={!editable}
@@ -513,7 +514,7 @@ export default function TutorSettings() {
 
                 {/* Müsaitlik — haftalık pencereler */}
                 <div>
-                  <label className={labelCls}>Müsaitlik (haftalık)</label>
+                  <label htmlFor={`${uid}-musaitlik-haftalik`} className={labelCls}>Müsaitlik (haftalık)</label>
                   <div className="space-y-2">
                     {availability.length === 0 && (
                       <p className="text-xs text-slate-400 dark:text-slate-500">
@@ -523,7 +524,7 @@ export default function TutorSettings() {
                     )}
                     {availability.map((w, i) => (
                       <div key={i} className="flex flex-wrap items-center gap-2">
-                        <select
+                        <select id={`${uid}-musaitlik-haftalik`}
                           disabled={!editable}
                           value={w.weekday}
                           onChange={(e) =>
@@ -597,8 +598,8 @@ export default function TutorSettings() {
 
                 {/* Biyografi */}
                 <div>
-                  <label className={labelCls}>Biyografi</label>
-                  <textarea
+                  <label htmlFor={`${uid}-biyografi`} className={labelCls}>Biyografi</label>
+                  <textarea id={`${uid}-biyografi`}
                     rows={5}
                     disabled={!editable}
                     value={bio}
@@ -610,8 +611,8 @@ export default function TutorSettings() {
 
                 {/* Ders Hakkında — metodoloji */}
                 <div>
-                  <label className={labelCls}>Ders Hakkında</label>
-                  <textarea
+                  <label htmlFor={`${uid}-ders-hakkinda`} className={labelCls}>Ders Hakkında</label>
+                  <textarea id={`${uid}-ders-hakkinda`}
                     rows={5}
                     maxLength={2000}
                     disabled={!editable}
@@ -627,8 +628,8 @@ export default function TutorSettings() {
 
                 {/* Tanıtım videosu */}
                 <div>
-                  <label className={labelCls}>Tanıtım Videosu</label>
-                  <input
+                  <label htmlFor={`${uid}-tanitim-videosu`} className={labelCls}>Tanıtım Videosu</label>
+                  <input id={`${uid}-tanitim-videosu`}
                     type="url"
                     disabled={!editable}
                     value={introVideoUrl}

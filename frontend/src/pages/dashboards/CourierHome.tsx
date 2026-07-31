@@ -13,7 +13,7 @@ import { FullScreenSpinner } from "@/components/Spinner";
 export default function CourierHome() {
   const navigate = useNavigate();
   const logout = useAuthStore((s) => s.logout);
-  const { data: ws, isLoading, isError } = useCourierWorkspace();
+  const { data: ws, isLoading, isError, refetch, isRefetching } = useCourierWorkspace();
 
   const activeRunId = ws?.run?.status === "ACTIVE" ? ws.run.id : null;
   useEffect(() => {
@@ -24,16 +24,33 @@ export default function CourierHome() {
 
   if (isLoading) return <FullScreenSpinner />;
 
+  const courier = ws?.courier ?? null;
+
   return (
     <div className="flex min-h-screen flex-col bg-slate-50 dark:bg-slate-950">
       <header className="flex items-center justify-between border-b border-slate-200 bg-white px-5 py-4 dark:border-slate-800 dark:bg-slate-900">
-        <div>
-          <p className="text-sm font-semibold text-slate-900 dark:text-white">
-            {ws ? `${ws.account.first_name} ${ws.account.last_name}` : "Kurye"}
-          </p>
-          <p className="text-xs text-slate-500 dark:text-slate-400">
-            Cıncık Teslimat · Kurye
-          </p>
+        <div className="flex items-center gap-3">
+          {/* Kurye kimlik kartı — müşterinin takip sayfasında gördüğü kimlik */}
+          {courier?.photo_url ? (
+            <img
+              src={courier.photo_url}
+              alt=""
+              className="h-10 w-10 shrink-0 rounded-full object-cover ring-1 ring-slate-200 dark:ring-slate-700"
+            />
+          ) : (
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-sm font-bold text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300">
+              {(ws?.account.first_name?.[0] ?? "K").toLocaleUpperCase("tr-TR")}
+            </div>
+          )}
+          <div>
+            <p className="text-sm font-semibold text-slate-900 dark:text-white">
+              {ws ? `${ws.account.first_name} ${ws.account.last_name}` : "Kurye"}
+            </p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Cıncık Teslimat
+              {courier?.vehicle_plate ? ` · ${courier.vehicle_plate}` : " · Kurye"}
+            </p>
+          </div>
         </div>
         <button
           onClick={() => logout()}
@@ -45,9 +62,18 @@ export default function CourierHome() {
 
       <main className="flex flex-1 items-center justify-center px-6">
         {isError ? (
-          <p className="text-center text-sm text-slate-500 dark:text-slate-400">
-            Bilgiler alınamadı — bağlantını kontrol edip yeniden dene.
-          </p>
+          <div className="text-center">
+            <p className="text-sm text-slate-500 dark:text-slate-400">
+              Bilgiler alınamadı — bağlantını kontrol edip yeniden dene.
+            </p>
+            <button
+              onClick={() => refetch()}
+              disabled={isRefetching}
+              className="mt-3 rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-bold text-white disabled:opacity-50 dark:bg-white dark:text-slate-900"
+            >
+              {isRefetching ? "Deneniyor…" : "Yeniden Dene"}
+            </button>
+          </div>
         ) : ws?.run?.status === "PLANNED" ? (
           <div className="text-center">
             <p className="text-base font-semibold text-slate-900 dark:text-white">

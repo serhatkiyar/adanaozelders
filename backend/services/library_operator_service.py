@@ -14,7 +14,7 @@ from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from core.security import hash_password
+from core.security import hash_password_async
 from models.admin import Admin
 from models.client import Client
 from models.library import Library
@@ -64,7 +64,7 @@ async def create_operator(
     username = await _unique_username(db, payload.email.split("@", 1)[0])
     operator = LibraryOperator(
         email=payload.email,
-        hashed_password=hash_password(payload.password),
+        hashed_password=await hash_password_async(payload.password),
         first_name=payload.first_name,
         last_name=payload.last_name,
         username=username,

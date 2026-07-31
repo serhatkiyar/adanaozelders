@@ -1,5 +1,11 @@
 import { type CSSProperties, useMemo, useState, useEffect } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
+import {
+  PAGE_PARAM,
+  limitForPage,
+  nextPageSearch,
+  pageFromParam,
+} from "@/lib/pagination";
 import { DashboardShell } from "@/components/DashboardShell";
 import { PublicShell } from "@/components/PublicShell";
 import { STUDENT_NAV, TUTOR_NAV } from "@/lib/nav";
@@ -13,7 +19,8 @@ import { getErrorMessage } from "@/lib/errors";
 import { toast } from "@/store/toastStore";
 import { useSurfaceStore } from "@/store/surfaceStore";
 import { Seo } from "@/components/Seo";
-import { AMENITY_OPTIONS, amenityTiClass, amenityLabel } from "@/lib/amenities";
+import { AMENITY_OPTIONS, amenityLabel } from "@/lib/amenities";
+import { amenityIcon } from "@/lib/amenityIcons";
 import { ROLE_IDS } from "@/types";
 import { CategoryBar } from "@/components/CategoryBar";
 import { BigSearch, CompactSearch } from "@/components/HeroSearch";
@@ -36,6 +43,9 @@ const FilterIconSvg = () => (
     <path fillRule="evenodd" d="M2.628 1.601C5.028 1.206 7.49 1 10 1s4.973.206 7.372.601a.75.75 0 01.628.74v2.288a2.25 2.25 0 01-.659 1.59l-4.682 4.683a2.25 2.25 0 00-.659 1.59v3.037c0 .684-.31 1.33-.844 1.757l-1.937 1.55A.75.75 0 018 18.25v-5.757a2.25 2.25 0 00-.659-1.591L2.659 6.22A2.25 2.25 0 012 4.629V2.34a.75.75 0 01.628-.74z" clipRule="evenodd" />
   </svg>
 );
+
+/** Sayfa başına kütüphane sayısı. */
+const PER_PAGE = 30;
 
 export default function Libraries() {
   const token = useAuthStore((s) => s.token);
@@ -69,7 +79,10 @@ export default function Libraries() {
   const [radiusKm] = useState<number>(25);
   const [geoLoading, setGeoLoading] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
-  const [limit, setLimit] = useState(30);
+  // Sayfa durumu URL'de (bkz. lib/pagination.ts) — paylaşılan bağlantı
+  // karşı tarafta ilk sayfaya dönmesin, geri tuşu listeyi sıfırlamasın.
+  const page = pageFromParam(searchParams.get(PAGE_PARAM));
+  const limit = limitForPage(page, PER_PAGE);
   // Daralmış arama pill'ine tıklayınca geniş navbar'ı (kategoriler + büyük
   // arama) yerinde açar — eğitmen aramasındaki davranışın aynısı.
   const [searchOpen, setSearchOpen] = useState(false);
@@ -259,7 +272,7 @@ export default function Libraries() {
           onClick={() => toggleAmenity(a)}
           className="shrink-0 inline-flex items-center gap-1.5 rounded-full border border-indigo-200 bg-indigo-50 px-3.5 py-1.5 text-sm font-medium text-indigo-700 transition hover:bg-indigo-100 dark:border-indigo-500/40 dark:bg-indigo-500/10 dark:text-indigo-300"
         >
-          <i className={amenityTiClass(a)} aria-hidden="true"></i>
+          {(() => { const I = amenityIcon(a); return <I size={14} stroke={1.75} aria-hidden />; })()}
           {amenityLabel(a)}
           <span aria-hidden className="ml-0.5 text-xs">✕</span>
         </button>
@@ -349,13 +362,14 @@ export default function Libraries() {
             </div>
             {data.length === limit && (
               <div className="mt-2 flex justify-center">
-                <button
-                  onClick={() => setLimit((l) => l + 30)}
-                  disabled={isFetching}
+                {/* Gerçek bağlantı: crawler takip edebilsin, kullanıcı yeni
+                    sekmede açabilsin. Tıklama SPA içinde kalır. */}
+                <Link
+                  to={nextPageSearch(searchParams, page)}
                   className="rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-indigo-600 shadow-sm ring-1 ring-slate-200 transition hover:bg-indigo-50 disabled:opacity-60 dark:bg-slate-800 dark:text-indigo-300 dark:ring-slate-700"
                 >
                   {isFetching ? "Yükleniyor…" : "Daha fazla göster"}
-                </button>
+                </Link>
               </div>
             )}
           </>
@@ -396,7 +410,7 @@ export default function Libraries() {
                             : "bg-slate-50 text-slate-600 ring-1 ring-slate-200 hover:bg-slate-100 dark:bg-slate-900 dark:text-slate-300 dark:ring-slate-700 dark:hover:bg-slate-800"
                         }`}
                       >
-                        <i className={amenityTiClass(a)} aria-hidden="true"></i>
+                        {(() => { const I = amenityIcon(a); return <I size={14} stroke={1.75} aria-hidden />; })()}
                         {amenityLabel(a)}
                       </button>
                     );

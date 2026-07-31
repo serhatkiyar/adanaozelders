@@ -1,3 +1,6 @@
+import { PaymentBranchNotice } from "@/components/PaymentBranchNotice";
+import { usePaymentAvailability } from "@/hooks/useFeatureFlags";
+import { isBranchOpen } from "@/lib/paymentAvailability";
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useStudyQuote, useReserveStudy, usePayStudy } from "@/hooks/useStudy";
@@ -12,6 +15,8 @@ import { PaymentConsentNote } from "@/components/LegalConsent";
 import { DateStrip, buildUpcomingDays } from "@/components/booking/DateStrip";
 import { TimeStepper } from "@/components/booking/TimeStepper";
 import { ROLE_IDS, type LibraryDetailOut } from "@/types";
+
+const NOTICE_ID = "study-payment-closed-notice";
 
 const NEXT_14_DAYS = buildUpcomingDays();
 
@@ -30,6 +35,8 @@ function hhmm(d: Date): string {
 }
 
 export function StudySpaceSection({ library }: { library: LibraryDetailOut }) {
+  const { data: availability } = usePaymentAvailability();
+  const payOpen = isBranchOpen(availability, "library_marketplace");
   const token = useAuthStore((s) => s.token);
   const { data: user } = useCurrentUser();
   const isClient = user?.role_id === ROLE_IDS.CLIENT;
@@ -170,6 +177,14 @@ export function StudySpaceSection({ library }: { library: LibraryDetailOut }) {
           >
             Giriş yap & rezerve et
           </Link>
+        ) : !payOpen ? (
+          // Giriş yapıp dönünce devre dışı buton bulmasın.
+          <span
+            aria-describedby={NOTICE_ID}
+            className="rounded-xl bg-slate-100 px-4 py-2 text-center text-sm font-semibold text-slate-500 dark:bg-slate-800 dark:text-slate-400"
+          >
+            Ödeme kapalı
+          </span>
         ) : (
           <button
             onClick={doReserveAndPay}
@@ -180,7 +195,8 @@ export function StudySpaceSection({ library }: { library: LibraryDetailOut }) {
           </button>
         )}
       </div>
-      <PaymentConsentNote />
+      {!payOpen && <PaymentBranchNotice branch="library_marketplace" id={NOTICE_ID} />}
+      {payOpen && <PaymentConsentNote />}
       {token && !isClient && (
         <p className="text-xs text-slate-400">Yalnız öğrenci hesapları rezervasyon yapabilir.</p>
       )}

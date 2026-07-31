@@ -8,6 +8,8 @@ from sqlalchemy import DateTime, Integer, Numeric, String, func, text
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import Mapped, mapped_column
 
+from core.crypto import EncryptedString
+
 
 class NameMixin:
     first_name: Mapped[str] = mapped_column(String(75), nullable=False)
@@ -86,6 +88,31 @@ class LastSeenMixin:
     )
 
 
+class ModeratableMixin:
+    """Yönetim tarafından gizlenebilen kullanıcı içeriği (yorumlar).
+
+    Üç yorum türü de (ders, ürün, kütüphane) aynı ihtiyaca sahiptir: şikayet
+    gelir, admin inceler, uygunsuz içeriği yayından kaldırır. SİLMEK yerine
+    GİZLEMEK tercih edilir — kayıt kanıt olarak durur (aynı kullanıcı tekrar
+    şikayet edilirse geçmişi görünür) ve karar geri alınabilir.
+
+    ``deleted_at``'ten farkı: silme kullanıcının kendi iradesidir, gizleme
+    yönetim kararıdır; gerekçesi ve kararı veren admin kayda geçer.
+    """
+
+    hidden_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    # Kararı veren admin (admins ayrı tablo → FK yok, salt iz; audit_log deseni).
+    hidden_by: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # Kullanıcıya gösterilebilecek kısa gerekçe (şikayet çözümünden gelir).
+    hidden_reason: Mapped[str | None] = mapped_column(String(300), nullable=True)
+
+    @property
+    def is_hidden(self) -> bool:
+        return self.hidden_at is not None
+
+
 class PayoutMixin:
     """Para alan tarafın (eğitmen/kütüphane) ödeme/escrow alma bilgisi.
 
@@ -95,7 +122,12 @@ class PayoutMixin:
     onboarding sırasında sağlayıcıya iletilir. Para iyzico'dan IBAN'a gider; bizde kasa yok.
     """
 
-    iban: Mapped[str | None] = mapped_column(String(34), nullable=True)
+    # DB'de ŞİFRELİ (EncryptedString/Fernet), Python tarafı düz metinle çalışır.
+    # TCKN şifreliyken IBAN düz metin duruyordu; oysa IBAN da ad-soyadla birlikte
+    # doğrudan finansal kimlik verisidir ve bir veritabanı sızıntısında para
+    # hedefini değiştirmek için tek başına yeterli bilgidir.
+    # Uzunluk: IBAN 34 karaktere kadar; Fernet token'ı ~150 karaktere şişer.
+    iban: Mapped[str | None] = mapped_column(EncryptedString(255), nullable=True)
     sub_merchant_key: Mapped[str | None] = mapped_column(String(120), nullable=True)
     # NONE (bilgi yok) | PENDING (sağlayıcıda onay bekliyor) | ACTIVE | REJECTED
     payout_status: Mapped[str] = mapped_column(

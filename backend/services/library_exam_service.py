@@ -45,7 +45,7 @@ from schemas.library_exam import (
 )
 import logging
 
-from services import commission, escrow, notification_service
+from services import commission, escrow, notification_service, payment_gates
 
 logger = logging.getLogger("adana.escrow")
 
@@ -567,6 +567,12 @@ async def complete_checkout(
     Kayıt bu arada iptal edilmişse ya da oturum artık SCHEDULED değilse tahsil
     edilen para kara delikte bırakılmaz — anında iade akışı başlatılır (C2b).
     """
+    # Kol kapatıldıktan SONRA tamamlanan tahsilat sessiz kalmasın
+    # (kapatma kararının artçı penceresi — bkz. payment_gates).
+    if success:
+        await payment_gates.warn_if_closed_completion(
+            db, payment_gates.PaymentBranch.LIBRARY_MARKETPLACE, reference=f"examreg:{registration_id}"
+        )
     reg = await db.get(ExamRegistration, registration_id)
     if reg is None or reg.deleted_at is not None or not success:
         return
@@ -870,7 +876,10 @@ async def set_result_document(
     reg = await _require_reg_in_session(db, session_id, registration_id)
     old = reg.result_document_url
     reg.result_document_url = await storage.upload_file(
-        file_bytes, original_name=original_name, content_type=content_type
+        file_bytes,
+        original_name=original_name,
+        content_type=content_type,
+        prefix="exam-results",
     )
     _stamp_entry(reg, user_id=user_id, role_id=role_id)
     await db.commit()
@@ -917,7 +926,10 @@ async def bulk_upload_documents(
         reg = await db.get(ExamRegistration, reg_id)
         old = reg.result_document_url
         reg.result_document_url = await storage.upload_file(
-            blob, original_name=name, content_type=content_type
+            blob,
+            original_name=name,
+            content_type=content_type,
+            prefix="exam-results",
         )
         _stamp_entry(reg, user_id=user_id, role_id=role_id)
         if old:
@@ -979,7 +991,10 @@ async def set_session_answer_key(
     s = await _get_session_or_404(db, session_id)
     old = s.answer_key_url
     s.answer_key_url = await storage.upload_file(
-        file_bytes, original_name=original_name, content_type=content_type
+        file_bytes,
+        original_name=original_name,
+        content_type=content_type,
+        prefix="answer-keys",
     )
     await db.commit()
     await db.refresh(s)

@@ -139,7 +139,15 @@ class ProductUpdate(_BookSpecFields):
     compare_at_price: Decimal | None = Field(
         default=None, gt=0, max_digits=10, decimal_places=2
     )
+    #: HEDEF (mutlak) stok. Delta sunucuda, ürün satırı kilitli iken hesaplanır;
+    #: istemci delta göndermez (iki istemci aynı deltayı gönderirse hangisinin
+    #: hangi tabana uygulandığı belirsiz kalırdı).
     stock: int | None = Field(default=None, ge=0)
+    #: `stock` gönderildiğinde ZORUNLU (servis doğrular): stok neden değişti?
+    #: Beyaz liste `models.store.ADMIN_ADJUSTMENT_REASONS`.
+    stock_reason_code: str | None = Field(default=None, max_length=30)
+    #: `stock_reason_code == "DIGER"` ise zorunlu.
+    stock_note: str | None = Field(default=None, max_length=500)
     weight_grams: int | None = Field(default=None, ge=0)
     category_id: int | None = None
     status: str | None = Field(default=None, pattern="^(ACTIVE|HIDDEN|DRAFT|PENDING)$")
@@ -303,6 +311,9 @@ class CartValidateOut(BaseModel):
     currency: str
     has_physical: bool
     issues: list[str] = []
+    #: Sepetteki kalemler için kapalı olan ödeme kolları (`services/payment_gates`).
+    #: Boş değilse checkout başlatılmamalı — sebep `issues` içinde metin olarak da var.
+    blocked_payment_branches: list[str] = []
 
 
 class OrderShipIn(BaseModel):
@@ -354,22 +365,56 @@ class CouponUpdate(BaseModel):
 # ── İade talebi (RMA) ──
 
 
+class OrderReturnItemIn(BaseModel):
+    """İade edilecek kalem ve adedi (kısmi iade)."""
+
+    order_item_id: int
+    quantity: int = Field(ge=1)
+
+
 class OrderReturnCreate(BaseModel):
-    reason: str = Field(min_length=3, max_length=1000)
+    """İade talebi.
+
+    ``type=CAYMA`` (Mesafeli Sözleşmeler Yönetmeliği m.9) koşulsuzdur: gerekçe
+    ZORUNLU DEĞİLDİR ve talep otomatik onaylanır. Ayıplı/diğer taleplerde
+    gerekçe istenir (servis katmanı doğrular).
+
+    ``items`` boş bırakılırsa siparişin TAMAMI iade edilir (geriye dönük
+    uyumluluk: eski istemci yalnız `reason` gönderiyordu).
+    """
+
+    type: str = Field(default="DIGER", pattern="^(CAYMA|AYIPLI|DIGER)$")
+    reason: str = Field(default="", max_length=1000)
+    items: list[OrderReturnItemIn] = Field(default_factory=list)
 
 
 class OrderReturnResolve(BaseModel):
     admin_note: str | None = Field(default=None, max_length=1000)
 
 
+class OrderReturnItemOut(BaseModel):
+    order_item_id: int
+    title: str | None = None
+    quantity: int
+    amount: str
+
+
 class OrderReturnOut(BaseModel):
     id: int
     order_id: int
+    type: str = "DIGER"
     status: str
     reason: str
     admin_note: str | None = None
     created_at: datetime.datetime
     resolved_at: datetime.datetime | None = None
+    # Para durumu talebin durumundan AYRIDIR (talep onaylı olabilir ama iade
+    # sağlayıcıda henüz kesinleşmemiş olabilir).
+    refund_status: str = "NONE"
+    refund_amount: str = "0.00"
+    refunded_at: datetime.datetime | None = None
+    is_partial: bool = False
+    items: list[OrderReturnItemOut] = Field(default_factory=list)
     # Admin listesinde sipariş özeti gömülü gelir; müşteri yanıtında None.
     order: OrderOut | None = None
 

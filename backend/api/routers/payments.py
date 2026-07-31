@@ -15,6 +15,7 @@ from api.deps import (
 )
 from core import payments
 from core.config import settings
+from core.ratelimit import rate_limit
 from core.database import get_db
 from core.payments.iyzico import IyzicoProvider, parse_reference
 from models.booking import Booking
@@ -27,9 +28,11 @@ from schemas.payment import (
     PaymentOut,
     PlatformSummary,
 )
+from schemas.feature_flag import PaymentAvailabilityOut
 from services import (
     library_exam_service,
     order_service,
+    payment_gates,
     payment_service,
     phone_service,
     study_reservation_service,
@@ -72,6 +75,40 @@ async def _assert_party(db: AsyncSession, booking: Booking, user: CurrentUser) -
     raise HTTPException(status.HTTP_403_FORBIDDEN, "Not your booking")
 
 
+@router.get(
+    "/availability",
+    response_model=PaymentAvailabilityOut,
+    # Public + kimlik doğrulamasız: DB düşükken her istek başarısız okuma üretir,
+    # bu da ucuz bir log-flood / bağlantı havuzu baskısı amplifikatörüdür.
+    dependencies=[
+        Depends(
+            rate_limit(
+                key="payment_availability",
+                limit=settings.RATE_LIMIT_TRACKING,
+                window_seconds=settings.RATE_LIMIT_WINDOW_SECONDS,
+            )
+        )
+    ],
+    # Teşhis alanları public gövdede `null` olarak bile görünmesin: şema
+    # admin yüzeyiyle paylaşıldığı için opsiyoneller None kalır ve
+    # serileştirilirse sözleşme "bu alanlar var ama boş" der.
+    response_model_exclude_none=True,
+)
+async def payment_availability(db: AsyncSession = Depends(get_db)):
+    """Hangi ödeme kolları açık — **public**.
+
+    İstemci bunu ödeme butonlarını göstermek/gizlemek ve "emanet" ifadesini
+    kullanıp kullanmamak için okur. Teşhis alanları (hangi altyapının eksik
+    olduğu) DÖNMEZ; yalnız `open` ve müşteriye gösterilecek `message`.
+
+    Kimlik doğrulaması yok: bilgi zaten kullanıcıya gösterilecek olan şeydir ve
+    anonim ziyaretçinin de ürün sayfasında doğru metni görmesi gerekir.
+    """
+    return PaymentAvailabilityOut(
+        branches=await payment_gates.branches_status(db, include_diagnostics=False)
+    )
+
+
 @router.get("/booking/{booking_id}", response_model=PaymentOut | None)
 async def get_booking_payment(
     booking_id: int,
@@ -94,6 +131,9 @@ async def pay_booking(
     client: Client = Depends(require_roles(RoleType.CLIENT)),
     db: AsyncSession = Depends(get_db),
 ):
+    await payment_gates.assert_branch_open(
+        db, payment_gates.PaymentBranch.TUTOR_MARKETPLACE
+    )
     phone_service.require_phone_verified(client)
     booking = await _booking_or_404(db, booking_id)
     if booking.client_id != client.id:
@@ -146,6 +186,7 @@ async def iyzico_callback(request: Request, db: AsyncSession = Depends(get_db)):
         await order_service.complete_checkout(
             db, order_id=entity_id, success=result.success,
             provider_ref=result.provider_ref,
+            token=token, paid_price=result.paid_price,
         )
         return _checkout_redirect(_ORDERS_PAGE, ok=result.success)
     if kind == "examreg":

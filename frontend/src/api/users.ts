@@ -2,6 +2,7 @@ import { apiClient } from "@/api/axios";
 import type {
   NameChangeRequest,
   PasswordChange,
+  Token,
   UserOut,
   UserUpdate,
 } from "@/types";
@@ -19,8 +20,12 @@ export async function listMyNameChangeRequests(): Promise<NameChangeRequest[]> {
   return data;
 }
 
-export async function changePassword(payload: PasswordChange): Promise<void> {
-  await apiClient.post("/auth/me/password", payload);
+// Şifre değişimi sunucuda TÜM refresh token'ları iptal eder (çalınmış oturum
+// şifre değişiminden sonra yaşamasın) ve bu cihaz için yeni bir çift döner —
+// çağıran tarafın döneni store'a yazması gerekir, yoksa oturum kopar.
+export async function changePassword(payload: PasswordChange): Promise<Token> {
+  const { data } = await apiClient.post<Token>("/auth/me/password", payload);
+  return data;
 }
 
 // Telefon doğrulama: numara kaydet + SMS OTP iste (maskeli numara döner).
@@ -40,4 +45,32 @@ export async function verifyPhoneOtp(code: string): Promise<UserOut> {
     code,
   });
   return data;
+}
+
+// ── KVKK: veri taşınabilirliği ve hesap silme ──
+
+/** Kullanıcının kendi verisini JSON olarak indirir (KVKK m.20). */
+export async function downloadMyData(): Promise<Blob> {
+  const { data } = await apiClient.get("/auth/me/data-export", {
+    responseType: "blob",
+  });
+  return data as Blob;
+}
+
+export interface DeletionEligibility {
+  can_delete: boolean;
+  reason?: string | null;
+}
+
+/** Hesap şu an silinebilir mi (açık sipariş/ders var mı)? */
+export async function checkDeletionEligibility(): Promise<DeletionEligibility> {
+  const { data } = await apiClient.get<DeletionEligibility>(
+    "/auth/me/deletion-eligibility"
+  );
+  return data;
+}
+
+/** Hesabı anonimleştirip kapatır — GERİ ALINAMAZ. Parola doğrulaması ister. */
+export async function deleteMyAccount(password: string): Promise<void> {
+  await apiClient.post("/auth/me/delete", { password });
 }

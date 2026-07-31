@@ -162,6 +162,38 @@ async def _permission_ids(db: AsyncSession, codes: list[str]) -> list[int]:
     return [permission_id for permission_id, _code in rows]
 
 
+async def assert_can_grant(
+    db: AsyncSession, *, actor_admin_id: int, permission_codes: list[str]
+) -> None:
+    """No-privilege-escalation: aktör, **kendisinde olmayan** bir izni bir role
+    veremez.
+
+    Bağımsız güvenlik denetiminin bulgusu: `admin_roles.manage` iznine sahip bir
+    yönetici, `permission_codes` alanı serbest olduğu için kendine
+    `settings.manage` içeren yeni bir rol yaratıp atayabiliyordu — yani ödeme
+    kolu açma yetkisini kendi kendine verebiliyordu. Bugün ikinci kapı bileşeni
+    (`supports_marketplace`) tuttuğu için para açılmıyor; PK-2'den sonra tek
+    kapı bu bayrak olacak.
+
+    SUPER_ADMIN tüm izinlere sahip olduğundan bu kural onu kısıtlamaz.
+    """
+    _role_code, actor_permissions = await get_admin_access(db, actor_admin_id)
+    if _role_code == "SUPER_ADMIN":
+        return
+    fazla = sorted(set(permission_codes) - set(actor_permissions))
+    if fazla:
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            {
+                "code": "PRIVILEGE_ESCALATION_BLOCKED",
+                "message": (
+                    "Kendinizde bulunmayan izinleri bir role veremezsiniz: "
+                    + ", ".join(fazla)
+                ),
+            },
+        )
+
+
 async def create_role(db: AsyncSession, payload: AdminRoleCreate) -> AdminRole:
     existing = await db.scalar(
         select(AdminRole.id).where(AdminRole.code == payload.code, AdminRole.deleted_at.is_(None))
@@ -212,6 +244,57 @@ async def update_role(db: AsyncSession, role_id: int, payload: AdminRoleUpdate) 
     )
     await db.flush()
     return role
+
+
+async def assert_can_assign(
+    db: AsyncSession, *, actor_admin_id: int, role_id: int
+) -> None:
+    """Aktör, **kendi izinlerini aşan** bir rolü kimseye (kendisi dahil) atayamaz.
+
+    `assert_can_grant` yeni rol yaratma yolunu kapatıyor, ama tek başına
+    yetmiyordu: saldırganın rol yaratmasına gerek yok — `SUPER_ADMIN` rolü zaten
+    var ve `admin_roles.manage` sahibi onu kendine atayabilirdi.
+
+    Neden "kendine atama yasak" değil: o kural mevcut meşru bootstrap akışını
+    kırıyor ve tek yöneticili bir kurulumda kilitlenme riski üretiyor. Asıl
+    tehlike "kime" değil "hangi rolü" atadığıdır.
+
+    Bilinçli olarak yalnız ROUTER'dan çağrılır: servis katmanı testleri ve
+    migration/backfill yolları sentetik aktör kimlikleriyle çalışır.
+    """
+    actor_role, actor_permissions = await get_admin_access(db, actor_admin_id)
+    if actor_role == "SUPER_ADMIN":
+        return
+    codes = set(
+        (
+            await db.execute(
+                select(AdminPermission.code)
+                .join(
+                    AdminRolePermission,
+                    AdminRolePermission.permission_id == AdminPermission.id,
+                )
+                .where(
+                    AdminRolePermission.admin_role_id == role_id,
+                    AdminRolePermission.deleted_at.is_(None),
+                    AdminPermission.deleted_at.is_(None),
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+    fazla = sorted(codes - set(actor_permissions))
+    if fazla:
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            {
+                "code": "PRIVILEGE_ESCALATION_BLOCKED",
+                "message": (
+                    "Kendi yetkinizi aşan bir rol atayamazsınız; fazla izinler: "
+                    + ", ".join(fazla)
+                ),
+            },
+        )
 
 
 async def assign_role(

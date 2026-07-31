@@ -41,6 +41,10 @@ class ReportOut(BaseModel):
 class ReportResolve(BaseModel):
     status: ReportStatus  # RESOLVED | DISMISSED
     resolution: str | None = Field(default=None, max_length=2000)
+    # Şikayeti "çözüldü" işaretlemek tek başına içeriğe dokunmaz; hakaret içeren
+    # bir yorum kuyruk kapansa da yayında kalırdı. Bu bayrak, çözümle birlikte
+    # hedef içeriği yayından kaldırır (yalnız yorum türlerinde geçerlidir).
+    hide_target: bool = False
 
     @field_validator("status")
     @classmethod

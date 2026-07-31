@@ -188,12 +188,27 @@ function OrderCard({ order }: { order: OrderOut }) {
         <div className="flex items-center gap-4">
           <div className="text-right text-xs">
             <p className="text-slate-400 dark:text-slate-500">SİPARİŞ NO #{order.id}</p>
-            <Link
-              to={ROUTES.orderDetail(order.id)}
-              className="font-medium text-indigo-600 hover:underline dark:text-indigo-400"
-            >
-              Sipariş ayrıntıları
-            </Link>
+            <div className="flex items-center justify-end gap-3">
+              {/* Takip kısayolu — dağıtımdaki sipariş için listeden tek tık
+                  (önceden takip yalnız detay sayfasının içindeydi). */}
+              {order.track_token &&
+                order.has_physical &&
+                order.payment_status === "PAID" &&
+                (order.status === "PAID" || order.status === "SHIPPED") && (
+                  <Link
+                    to={ROUTES.cargoTracking(order.track_token)}
+                    className="font-semibold text-indigo-600 hover:underline dark:text-indigo-400"
+                  >
+                    Kargo takibi
+                  </Link>
+                )}
+              <Link
+                to={ROUTES.orderDetail(order.id)}
+                className="font-medium text-indigo-600 hover:underline dark:text-indigo-400"
+              >
+                Sipariş ayrıntıları
+              </Link>
+            </div>
           </div>
           <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${badge.cls}`}>
             {badge.label}

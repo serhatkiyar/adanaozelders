@@ -1,9 +1,21 @@
 from __future__ import annotations
 
 import datetime
+import logging
 
 import jwt
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    Form,
+    HTTPException,
+    Request,
+    Response,
+    UploadFile,
+    status,
+)
+from fastapi.responses import JSONResponse
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -13,10 +25,20 @@ from api.deps import (
     oauth2_scheme,
     user_rate_limit,
 )
+from core.cookies import (
+    clear_refresh_cookie,
+    clear_refresh_cookie_headers,
+    get_refresh_cookie,
+    set_refresh_cookie,
+)
 from core.database import get_db
 from core.config import settings
-from core.ratelimit import rate_limit
-from core.security import create_access_token, decode_access_token
+from core.ratelimit import client_ip, rate_limit
+from core.security import (
+    create_access_token,
+    decode_access_token,
+    verify_password_async,
+)
 from core.token_denylist import revoke
 from core.storage import upload_avatar, delete_avatar
 
@@ -44,12 +66,11 @@ from models.role import ROLE_IDS, RoleType, role_name
 from models.tutor import Tutor
 from models.verification_token import TokenPurpose
 from schemas.auth import (
+    AccountDeleteRequest,
     EmailVerifyConfirm,
-    LogoutRequest,
     MessageResponse,
     PasswordResetConfirm,
     PasswordResetRequest,
-    RefreshRequest,
     RegisterRequest,
     Token,
 )
@@ -65,8 +86,10 @@ from schemas.user import (
     UserUpdate,
 )
 from services import (
+    account_deletion_service,
     auth_service,
     booking_service,
+    consent_service,
     name_change_service,
     phone_service,
     refresh_token_service,
@@ -91,7 +114,29 @@ _MODEL_BY_ROLE_ID: dict[int, type] = {
     ROLE_IDS[RoleType.COURIER]: CourierAccount,
 }
 
+logger = logging.getLogger("adana.auth")
+
 router = APIRouter(prefix="/auth", tags=["auth"])
+
+
+async def _record_signup_consents(
+    db: AsyncSession, request: Request, *, user, payload: RegisterRequest
+) -> None:
+    """Kayıt anındaki zorunlu onayları ispat kaydı olarak yazar.
+
+    KVKK'da ispat yükü veri sorumlusundadır: "onayladım/onaylamadım"
+    tartışmasında gösterilecek bir kayıt olmalıdır. IP ve user-agent yalnız bu
+    amaçla tutulur ve hesap anonimleştirmesinde temizlenir.
+    """
+    await consent_service.record_signup_consents(
+        db,
+        user_id=user.id,
+        role_id=user.role_id,
+        doc_version=payload.consent_version,
+        ip=client_ip(request),
+        user_agent=request.headers.get("user-agent"),
+    )
+    await db.commit()
 
 
 @router.post(
@@ -101,7 +146,9 @@ router = APIRouter(prefix="/auth", tags=["auth"])
     dependencies=[Depends(_register_limit)],
 )
 async def register_tutor(
-    payload: RegisterRequest, db: AsyncSession = Depends(get_db)
+    payload: RegisterRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
 ):
     tutor = await auth_service.register_tutor(
         db,
@@ -113,6 +160,7 @@ async def register_tutor(
         birth_date=payload.birth_date,
         gender=payload.gender,
     )
+    await _record_signup_consents(db, request, user=tutor, payload=payload)
     await verification_service.send_email_verification(db, tutor)
     return tutor
 
@@ -124,7 +172,9 @@ async def register_tutor(
     dependencies=[Depends(_register_limit)],
 )
 async def register_client(
-    payload: RegisterRequest, db: AsyncSession = Depends(get_db)
+    payload: RegisterRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
 ):
     client = await auth_service.register_client(
         db,
@@ -136,13 +186,16 @@ async def register_client(
         birth_date=payload.birth_date,
         gender=payload.gender,
     )
+    await _record_signup_consents(db, request, user=client, payload=payload)
     await verification_service.send_email_verification(db, client)
     return client
 
 
 @router.post("/login", response_model=Token, dependencies=[Depends(_login_limit)])
 async def login(
+    response: Response,
     form: OAuth2PasswordRequestForm = Depends(),
+    remember: bool = Form(False),
     db: AsyncSession = Depends(get_db),
 ):
     user, role = await auth_service.authenticate(
@@ -165,39 +218,66 @@ async def login(
         auth_version=getattr(user, "auth_version", None),
     )
     refresh = await refresh_token_service.issue(
-        db, role_id=user.role_id, user_id=user.id
+        db, role_id=user.role_id, user_id=user.id, persistent=remember
     )
     await db.commit()
-    return Token(access_token=token, refresh_token=refresh)
+    # Refresh token YANITTA DÖNMEZ, çereze yazılır: gövdede dönseydi JS onu
+    # okuyup saklamak zorunda kalırdı ve tek bir XSS 30 günlük hesap devrine
+    # yeterdi (bkz. core/cookies.py).
+    set_refresh_cookie(response, refresh, remember=remember)
+    return Token(access_token=token)
 
 
 @router.post("/refresh", response_model=Token)
-async def refresh_token(payload: RefreshRequest, db: AsyncSession = Depends(get_db)):
-    # Refresh token'ı rotasyonla yenile (eski revoke, yeni üret) ve yeni access üret.
-    result = await refresh_token_service.rotate(db, raw_token=payload.refresh_token)
+async def refresh_token(
+    request: Request,
+    response: Response,
+    db: AsyncSession = Depends(get_db),
+):
+    """Refresh token'ı rotasyonla yeniler (eski revoke, yeni üret).
+
+    Token yalnız ``httpOnly`` çerezden okunur; gövdeden kabul EDİLMEZ. Gövde
+    yolu açık bırakılsaydı, çereze geçmenin sağladığı korumayı bir saldırgan
+    çalınmış bir token'ı elle göndererek atlatabilirdi.
+    """
+    raw = get_refresh_cookie(request)
+    result = await refresh_token_service.rotate(db, raw_token=raw) if raw else None
     if result is None:
+        # Geçersiz/eksik çerezi temizle: tarayıcı ölü bir token'ı her istekte
+        # taşımaya devam etmesin. Silme başlığı EXCEPTION ÜZERİNDEN gider —
+        # `response`'a yazılan başlıklar hata yanıtında kaybolur.
         raise HTTPException(
             status.HTTP_401_UNAUTHORIZED,
             "Oturum süresi doldu, lütfen tekrar giriş yap.",
-            headers={"WWW-Authenticate": "Bearer"},
+            headers={"WWW-Authenticate": "Bearer", **clear_refresh_cookie_headers()},
         )
-    role_id, user_id, new_refresh = result
+    role_id, user_id, new_refresh, persistent = result
     model = _MODEL_BY_ROLE_ID.get(role_id)
     user = await db.get(model, user_id) if model else None
     if user is None or user.deleted_at is not None or not user.is_active:
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Hesap bulunamadı veya pasif")
+        raise HTTPException(
+            status.HTTP_401_UNAUTHORIZED,
+            "Hesap bulunamadı veya pasif",
+            headers=clear_refresh_cookie_headers(),
+        )
     access = create_access_token(
         subject=user.id,
         role=role_name(role_id),
         role_id=role_id,
         auth_version=getattr(user, "auth_version", None),
     )
-    return Token(access_token=access, refresh_token=new_refresh)
+    await db.commit()
+    # "Beni hatırla" tercihi token zincirinden gelir: gelen çerezin kalıcı mı
+    # oturumluk mu olduğu HTTP'de görünmez, dolayısıyla isteğe bakarak doğru
+    # ömrü seçmek mümkün değil (bkz. refresh_token_service.rotate).
+    set_refresh_cookie(response, new_refresh, remember=persistent)
+    return Token(access_token=access)
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
 async def logout(
-    payload: LogoutRequest | None = None,
+    request: Request,
+    response: Response,
     token: str = Depends(oauth2_scheme),
     db: AsyncSession = Depends(get_db),
 ):
@@ -212,9 +292,14 @@ async def logout(
         if jti and exp:
             now = int(datetime.datetime.now(datetime.timezone.utc).timestamp())
             await revoke(jti, max(int(exp) - now, 1))
-    # Refresh token verildiyse onu da kalıcı olarak geçersiz kıl.
-    if payload and payload.refresh_token:
-        await refresh_token_service.revoke(db, raw_token=payload.refresh_token)
+    # Refresh token'ı da kalıcı olarak geçersiz kıl ve çerezi sil. İkisi de
+    # gerekli: yalnız çerezi silmek, token'ı DB'de geçerli bırakırdı (kopyası
+    # alınmışsa hâlâ kullanılabilirdi); yalnız revoke etmek ise tarayıcıda ölü
+    # bir çerez bırakırdı.
+    raw = get_refresh_cookie(request)
+    if raw:
+        await refresh_token_service.revoke(db, raw_token=raw)
+    clear_refresh_cookie(response)
 
 
 @router.post("/verify-email/confirm", response_model=MessageResponse)
@@ -354,18 +439,45 @@ async def verify_phone_otp(
     return user
 
 
-@router.post("/me/password", status_code=status.HTTP_204_NO_CONTENT)
+@router.post("/me/password", response_model=Token)
 async def change_my_password(
     payload: PasswordChange,
+    request: Request,
+    response: Response,
     user: CurrentUser = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
+    """Şifreyi değiştirir ve DİĞER tüm oturumları kapatır.
+
+    ``change_password`` kullanıcının tüm refresh token'larını iptal eder (çalınmış
+    bir token şifre değişiminden sonra da geçerli kalmasın diye). İşlemi yapan
+    cihazın atılmaması için burada yeni bir oturum üretilir: access token gövdede,
+    refresh token çerezde döner.
+    """
+    # Tercih, token'lar iptal edilmeden ÖNCE okunur: change_password kullanıcının
+    # tüm refresh token'larını revoke eder ve sonrasında eski çerezin kaydı
+    # "geçerli" aramasında bulunamaz.
+    persistent = await refresh_token_service.is_persistent(
+        db, raw_token=get_refresh_cookie(request)
+    )
     await auth_service.change_password(
         db,
         user,
         current_password=payload.current_password,
         new_password=payload.new_password,
     )
+    access = create_access_token(
+        subject=user.id,
+        role=role_name(user.role_id),
+        role_id=user.role_id,
+        auth_version=getattr(user, "auth_version", None),
+    )
+    refresh = await refresh_token_service.issue(
+        db, role_id=user.role_id, user_id=user.id, persistent=persistent
+    )
+    await db.commit()
+    set_refresh_cookie(response, refresh, remember=persistent)
+    return Token(access_token=access)
 
 
 @router.post("/me/avatar", response_model=UserOut)
@@ -401,3 +513,63 @@ async def delete_my_avatar(
         await db.commit()
         await db.refresh(user)
     return user
+
+
+# ── KVKK: veri taşınabilirliği (m.20) ve silme hakkı (m.7/m.11) ─────────────
+# `legalContent.ts` kullanıcıya silme taahhüdü veriyordu ama karşılığı olan uç
+# yoktu; tek yol admin'in soft-delete'iydi ve soft-delete SİLME DEĞİLDİR.
+
+
+@router.get("/me/data-export")
+async def export_my_data(
+    user: CurrentUser = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Kullanıcının kendi verisinin makine-okunur dökümü (KVKK m.20)."""
+    data = await account_deletion_service.export_personal_data(db, user)
+    filename = f"verilerim-{user.role_id}-{user.id}.json"
+    return JSONResponse(
+        content=data,
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@router.get("/me/deletion-eligibility")
+async def my_deletion_eligibility(
+    user: CurrentUser = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Hesap şu an silinebilir mi? (Arayüz butonu bunu önceden sorar.)"""
+    ok, reason = await account_deletion_service.can_delete(db, user)
+    return {"can_delete": ok, "reason": reason}
+
+
+@router.post("/me/delete", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_my_account(
+    payload: AccountDeleteRequest,
+    user: CurrentUser = Depends(get_current_active_user),
+    token: str = Depends(oauth2_scheme),
+    db: AsyncSession = Depends(get_db),
+):
+    """Hesabı anonimleştirir ve kapatır (geri alınamaz).
+
+    Parola yeniden istenir: oturumu ele geçiren birinin hesabı yok etmesini
+    zorlaştırır. Mali kayıtlar (sipariş/ödeme) mevzuat gereği SİLİNMEZ; yalnız
+    kimlik/iletişim verisi geri döndürülemez biçimde temizlenir.
+    """
+    if not await verify_password_async(payload.password, user.hashed_password):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Parola hatalı")
+
+    ok, reason = await account_deletion_service.can_delete(db, user)
+    if not ok:
+        raise HTTPException(status.HTTP_409_CONFLICT, reason or "Hesap şu an silinemez")
+
+    await account_deletion_service.anonymize_account(db, user)
+    await db.commit()
+
+    # Mevcut access token'ı da anında iptal et (refresh'ler zaten revoke edildi).
+    try:
+        payload_jwt = decode_access_token(token)
+        await revoke(payload_jwt.get("jti"), payload_jwt.get("exp"))
+    except Exception:  # noqa: BLE001 — silme başarılı, iptal best-effort
+        logger.warning("hesap silme: access token iptal edilemedi", exc_info=True)

@@ -19,7 +19,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.schema import Computed
 
 from core.database import Base
-from models.mixins import PayoutMixin, SoftDeleteMixin, TimestampMixin
+from models.mixins import ModeratableMixin, PayoutMixin, SoftDeleteMixin, TimestampMixin
 
 
 class LibraryStatus(str, enum.Enum):
@@ -100,7 +100,8 @@ class Library(Base, TimestampMixin, SoftDeleteMixin, PayoutMixin):
     search_vector: Mapped[str | None] = mapped_column(
         TSVECTOR,
         Computed(
-            "to_tsvector('simple', coalesce(name, '') || ' ' || coalesce(description, ''))",
+            "to_tsvector('simple', tr_normalize("
+            "coalesce(name, '') || ' ' || coalesce(description, '')))",
             persisted=True,
         ),
         nullable=True,
@@ -210,7 +211,7 @@ class LibraryImage(Base, TimestampMixin):
     library: Mapped["Library"] = relationship(back_populates="images")
 
 
-class LibraryReview(Base, TimestampMixin, SoftDeleteMixin):
+class LibraryReview(Base, TimestampMixin, SoftDeleteMixin, ModeratableMixin):
     """Bir kütüphaneye öğrenci değerlendirmesi. Tutor review'lerinin aksine booking
     ile gated DEĞİLDİR (kütüphaneler herkese açık fiziksel mekânlar) ama öğrenci
     başına kütüphane başına tek aktif değerlendirme tutulur. ``library.rating_sum/
@@ -222,8 +223,9 @@ class LibraryReview(Base, TimestampMixin, SoftDeleteMixin):
     library_id: Mapped[int] = mapped_column(
         ForeignKey("libraries.id", ondelete="CASCADE"), nullable=False
     )
+    # index: öğrencinin kütüphane yorumları + "daha önce yorumlamış mı" kontrolü.
     client_id: Mapped[int] = mapped_column(
-        ForeignKey("clients.id", ondelete="CASCADE"), nullable=False
+        ForeignKey("clients.id", ondelete="CASCADE"), nullable=False, index=True
     )
     rating: Mapped[int] = mapped_column(Integer, nullable=False)
     comment_text: Mapped[str | None] = mapped_column(Text, nullable=True)

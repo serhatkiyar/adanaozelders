@@ -1,4 +1,6 @@
 import { FormEvent, useState } from "react";
+import { Field } from "@/components/ui/Field";
+import { Modal } from "@/components/ui/Modal";
 import { AxiosError } from "axios";
 import { useAskQuestion } from "@/hooks/useQa";
 import { getErrorMessage } from "@/lib/errors";
@@ -54,8 +56,13 @@ export function QuestionModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 px-4 backdrop-blur-sm">
-      <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700">
+    <Modal
+      open
+      onClose={onClose}
+      ariaLabel="Soru sor"
+      hideCloseButton
+      panelClassName="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700"
+    >
         <h3 className="text-lg font-bold text-slate-900 dark:text-white">
           Soru Sor
         </h3>
@@ -70,32 +77,32 @@ export function QuestionModal({
         </p>
 
         <form onSubmit={handleSubmit} className="mt-4 space-y-4">
-          <div>
-            <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
-              Konu (opsiyonel)
-            </label>
-            <input
-              type="text"
-              maxLength={150}
-              value={subject}
-              onChange={(e) => setSubject(e.target.value)}
-              className={inputCls}
-              placeholder="Örn. Türev konusu"
-            />
-          </div>
-          <div>
-            <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
-              Sorun
-            </label>
-            <textarea
-              required
-              rows={4}
-              value={question}
-              onChange={(e) => setQuestion(e.target.value)}
-              className={inputCls}
-              placeholder="Sorunu buraya yaz…"
-            />
-          </div>
+          <Field label="Konu (opsiyonel)" labelClassName="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+            {(id) => (
+                <input
+                    id={id}
+                  type="text"
+                  maxLength={150}
+                  value={subject}
+                  onChange={(e) => setSubject(e.target.value)}
+                  className={inputCls}
+                  placeholder="Örn. Türev konusu"
+                />
+            )}
+          </Field>
+          <Field label="Sorun" labelClassName="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+            {(id) => (
+                <textarea
+                    id={id}
+                  required
+                  rows={4}
+                  value={question}
+                  onChange={(e) => setQuestion(e.target.value)}
+                  className={inputCls}
+                  placeholder="Sorunu buraya yaz…"
+                />
+            )}
+          </Field>
           <div className="flex justify-end gap-2">
             <button
               type="button"
@@ -113,7 +120,6 @@ export function QuestionModal({
             </button>
           </div>
         </form>
-      </div>
-    </div>
+    </Modal>
   );
 }

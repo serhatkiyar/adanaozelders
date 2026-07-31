@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { Modal } from "@/components/ui/Modal";
 import { useNavigate } from "react-router-dom";
 import { Avatar } from "@/components/Avatar";
 import { useBookings } from "@/hooks/useBookings";
@@ -104,14 +105,13 @@ export function NewLessonRequestModal({
   const empty = pastTutors.length === 0 && recentTutors.length === 0;
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
-      onClick={onClose}
+    <Modal
+      open
+      onClose={onClose}
+      ariaLabel="Yeni ders talebi"
+      hideCloseButton
+      panelClassName="flex max-h-[90vh] w-full max-w-md flex-col overflow-hidden rounded-3xl bg-white shadow-2xl ring-1 ring-slate-100 dark:bg-slate-900 dark:ring-slate-800 animate-in zoom-in-95 duration-200"
     >
-      <div
-        className="flex max-h-[90vh] w-full max-w-md flex-col overflow-hidden rounded-3xl bg-white shadow-2xl ring-1 ring-slate-100 dark:bg-slate-900 dark:ring-slate-800 animate-in zoom-in-95 duration-200"
-        onClick={(e) => e.stopPropagation()}
-      >
         <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4 dark:border-slate-800">
           <div>
             <h2 className="text-lg font-bold text-slate-900 dark:text-white">
@@ -193,7 +193,6 @@ export function NewLessonRequestModal({
             {empty ? "Eğitmen Ara" : "Başka bir eğitmen ara"}
           </button>
         </div>
-      </div>
-    </div>
+    </Modal>
   );
 }

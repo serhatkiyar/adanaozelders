@@ -94,7 +94,7 @@ class Message(Base, TimestampMixin):
     body: Mapped[str] = mapped_column(Text, nullable=False)
     # Yanıt/alıntı: bu mesaj hangi mesaja cevap (aynı sohbet içinde). Silinirse NULL.
     reply_to_id: Mapped[int | None] = mapped_column(
-        ForeignKey("messages.id", ondelete="SET NULL"), nullable=True
+        ForeignKey("messages.id", ondelete="SET NULL"), nullable=True, index=True
     )
     # Mesaj türü: "text" (varsayılan sohbet), "booking_card" (gömülü ders kartı).
     msg_type: Mapped[str] = mapped_column(String(30), nullable=False, server_default="text")

@@ -1,12 +1,16 @@
 // Dağıtım turu rota haritası — depo + numaralı duraklar + rota çizgisi.
 // Geometri varsa (VROOM/OSRM) gerçek yol polyline'ı, yoksa duraklar arası
 // düz çizgi (haversine fallback) çizilir.
+// MapGate ile "tıkla-etkinleştir": sayfa kaydırırken harita kaymaz/zoom'lanmaz.
 import { useMemo } from "react";
-import { MapContainer, Marker, Polyline, TileLayer } from "react-leaflet";
+import { MapContainer, Marker, Polyline, TileLayer, Tooltip } from "react-leaflet";
 import L from "leaflet";
 
+import { MapGateHint, MapGestureController, useMapGate } from "@/components/map/MapGate";
 import { decodePolyline } from "@/lib/polyline";
+import { STOP_STATUS_LABEL } from "@/lib/deliveryRun";
 import type { CourierPosition, DeliveryRun, DeliveryStop } from "@/types";
+import { tileSource } from "@/lib/mapTiles";
 
 function stopIcon(stop: DeliveryStop): L.DivIcon {
   const tone =
@@ -14,9 +18,13 @@ function stopIcon(stop: DeliveryStop): L.DivIcon {
       ? "background:#10b981"
       : stop.status === "FAILED"
         ? "background:#f43f5e"
-        : stop.is_outlier
+        : stop.status === "RESCHEDULED"
           ? "background:#f59e0b"
-          : "background:#6366f1";
+          : stop.status === "CANCELLED"
+            ? "background:#94a3b8"
+            : stop.is_outlier
+              ? "background:#f59e0b"
+              : "background:#6366f1";
   return L.divIcon({
     className: "",
     html: `<div style="${tone};color:white;width:24px;height:24px;border-radius:9999px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;box-shadow:0 1px 4px rgba(0,0,0,.35);border:2px solid white">${stop.sequence}</div>`,
@@ -72,17 +80,20 @@ export function DeliveryRouteMap({
     return L.latLngBounds(pts).pad(0.15);
   }, [run.depot_lat, run.depot_lng, located]);
 
+  const gate = useMapGate();
+
   if (located.length === 0) return null;
 
   return (
-    <div className="overflow-hidden rounded-xl ring-1 ring-slate-200 dark:ring-slate-600">
+    <div className="group relative overflow-hidden rounded-xl ring-1 ring-slate-200 dark:ring-slate-600">
       <MapContainer
         bounds={bounds}
         style={{ height: 320, width: "100%", zIndex: 0 }}
         attributionControl={false}
         scrollWheelZoom={false}
       >
-        <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+        <MapGestureController {...gate} />
+        <TileLayer url={tileSource().url} attribution={tileSource().attribution} />
         <Polyline
           positions={line}
           pathOptions={{
@@ -93,14 +104,33 @@ export function DeliveryRouteMap({
             dashArray: run.route_geometry ? undefined : "6 8",
           }}
         />
-        <Marker position={[run.depot_lat, run.depot_lng]} icon={depotIcon} />
+        <Marker position={[run.depot_lat, run.depot_lng]} icon={depotIcon}>
+          <Tooltip direction="top" offset={[0, -12]}>Depo</Tooltip>
+        </Marker>
         {located.map((s) => (
-          <Marker key={s.id} position={[s.lat!, s.lng!]} icon={stopIcon(s)} />
+          <Marker key={s.id} position={[s.lat!, s.lng!]} icon={stopIcon(s)}>
+            {/* Harita salt dekor değil: pin'e gelen operatör durağı tanır. */}
+            <Tooltip direction="top" offset={[0, -12]}>
+              <span className="text-xs font-semibold">
+                #{s.sequence} {s.recipient ?? "—"}
+              </span>
+              <br />
+              <span className="text-[11px]">
+                {STOP_STATUS_LABEL[s.status] ?? s.status}
+                {s.eta && s.status === "PENDING"
+                  ? ` · ~${new Date(s.eta).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })}`
+                  : ""}
+              </span>
+            </Tooltip>
+          </Marker>
         ))}
         {courier?.lat != null && courier?.lng != null && (
-          <Marker position={[courier.lat, courier.lng]} icon={courierIcon} />
+          <Marker position={[courier.lat, courier.lng]} icon={courierIcon}>
+            <Tooltip direction="top" offset={[0, -15]}>Kurye — canlı konum</Tooltip>
+          </Marker>
         )}
       </MapContainer>
+      <MapGateHint active={gate.active} />
     </div>
   );
 }

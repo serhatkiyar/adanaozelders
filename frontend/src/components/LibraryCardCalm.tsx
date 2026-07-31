@@ -3,8 +3,10 @@ import { ROUTES } from "@/lib/routes";
 import { LibraryBookmarkButton } from "@/components/LibraryBookmarkButton";
 import { regionLabel } from "@/lib/region";
 import { formatTRY } from "@/lib/money";
-import { amenityLabel, amenityTiClass } from "@/lib/amenities";
+import { amenityLabel } from "@/lib/amenities";
+import { amenityIcon } from "@/lib/amenityIcons";
 import type { LibrarySearchOut } from "@/types";
+import { IconBooks, IconStarFilled } from "@tabler/icons-react";
 
 const VISIBLE_AMENITIES = 3;
 
@@ -27,7 +29,7 @@ export function LibraryCardCalm({ library }: { library: LibrarySearchOut }) {
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center">
-            <i className="ti ti-books text-3xl text-slate-300 dark:text-slate-600" />
+            <IconBooks size={32} stroke={1.5} className="text-slate-300 dark:text-slate-600" aria-hidden />
           </div>
         )}
 
@@ -52,7 +54,7 @@ export function LibraryCardCalm({ library }: { library: LibrarySearchOut }) {
         </h3>
         {library.rating_average != null ? (
           <span className="flex shrink-0 items-center gap-1 text-[13px] text-slate-700 dark:text-slate-200">
-            <i className="ti ti-star-filled text-[11px] text-slate-900 dark:text-white" />
+            <IconStarFilled size={11} className="text-slate-900 dark:text-white" aria-hidden />
             {library.rating_average.toFixed(1)}
             {library.rating_count > 0 && (
               <span className="text-slate-400 dark:text-slate-500">
@@ -81,7 +83,7 @@ export function LibraryCardCalm({ library }: { library: LibrarySearchOut }) {
         <p className="mt-1.5 flex items-center gap-3 text-[13px] text-slate-500 dark:text-slate-400">
           {amenities.map((slug) => (
             <span key={slug} className="flex items-center gap-1">
-              <i className={`${amenityTiClass(slug)} text-[13px]`} />
+              {(() => { const I = amenityIcon(slug); return <I size={13} stroke={1.75} aria-hidden />; })()}
               <span className="line-clamp-1">{amenityLabel(slug)}</span>
             </span>
           ))}

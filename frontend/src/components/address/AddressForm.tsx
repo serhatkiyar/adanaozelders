@@ -1,4 +1,4 @@
-import { FormEvent, useState } from "react";
+import { FormEvent, useState, useId } from "react";
 import { toast } from "@/store/toastStore";
 import { LocationPreview } from "@/components/LocationPreview";
 import { AddressMapModal } from "@/components/address/AddressMapModal";
@@ -62,6 +62,10 @@ export function AddressForm({
   onSubmit,
   onCancel,
 }: AddressFormProps) {
+  // Etiket↔girdi bağlantısı için benzersiz önek: aynı form (ör. "yeni adres"
+  // ile "adresi düzenle") aynı anda iki kez render edilebilir; sabit id
+  // kullanmak etiketi yanlış girdiye bağlardı.
+  const uid = useId();
   const [title, setTitle] = useState(initial?.title ?? "");
   const [recipientName, setRecipientName] = useState(initial?.recipient_name ?? "");
   const [phone, setPhone] = useState(initial?.phone ?? "");
@@ -109,8 +113,8 @@ export function AddressForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-3 rounded-xl bg-slate-50 p-4 dark:bg-slate-700/40">
       <div>
-        <label className={fieldLabelCls}>Adres Başlığı *</label>
-        <input
+        <label htmlFor={`${uid}-adres-basligi`} className={fieldLabelCls}>Adres Başlığı *</label>
+        <input id={`${uid}-adres-basligi`}
           type="text"
           required
           maxLength={80}
@@ -125,8 +129,8 @@ export function AddressForm({
       {/* Alıcı — boş bırakılırsa siparişte hesap sahibinin adı/telefonu kullanılır */}
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className={fieldLabelCls}>Alıcı Adı Soyadı</label>
-          <input
+          <label htmlFor={`${uid}-alici-adi-soyadi`} className={fieldLabelCls}>Alıcı Adı Soyadı</label>
+          <input id={`${uid}-alici-adi-soyadi`}
             type="text"
             maxLength={150}
             value={recipientName}
@@ -136,8 +140,8 @@ export function AddressForm({
           />
         </div>
         <div>
-          <label className={fieldLabelCls}>Telefon</label>
-          <input
+          <label htmlFor={`${uid}-telefon`} className={fieldLabelCls}>Telefon</label>
+          <input id={`${uid}-telefon`}
             type="tel"
             maxLength={30}
             value={phone}
@@ -182,8 +186,8 @@ export function AddressForm({
 
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className={fieldLabelCls}>İl</label>
-          <input
+          <label htmlFor={`${uid}-il`} className={fieldLabelCls}>İl</label>
+          <input id={`${uid}-il`}
             type="text"
             maxLength={100}
             value={city}
@@ -193,8 +197,8 @@ export function AddressForm({
           />
         </div>
         <div>
-          <label className={fieldLabelCls}>İlçe</label>
-          <input
+          <label htmlFor={`${uid}-ilce`} className={fieldLabelCls}>İlçe</label>
+          <input id={`${uid}-ilce`}
             type="text"
             maxLength={100}
             value={district}
@@ -214,8 +218,8 @@ export function AddressForm({
       </div>
 
       <div>
-        <label className={fieldLabelCls}>Adres (Mahalle, Sokak, Cadde) *</label>
-        <textarea
+        <label htmlFor={`${uid}-adres-mahalle-sokak-cadde`} className={fieldLabelCls}>Adres (Mahalle, Sokak, Cadde) *</label>
+        <textarea id={`${uid}-adres-mahalle-sokak-cadde`}
           rows={2}
           maxLength={2000}
           value={addressLine}
@@ -227,8 +231,8 @@ export function AddressForm({
 
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className={fieldLabelCls}>Dış Kapı No</label>
-          <input
+          <label htmlFor={`${uid}-dis-kapi-no`} className={fieldLabelCls}>Dış Kapı No</label>
+          <input id={`${uid}-dis-kapi-no`}
             type="text"
             maxLength={20}
             value={doorNo}
@@ -237,8 +241,8 @@ export function AddressForm({
           />
         </div>
         <div>
-          <label className={fieldLabelCls}>Daire No</label>
-          <input
+          <label htmlFor={`${uid}-daire-no`} className={fieldLabelCls}>Daire No</label>
+          <input id={`${uid}-daire-no`}
             type="text"
             maxLength={20}
             value={aptNo}
@@ -249,8 +253,8 @@ export function AddressForm({
       </div>
 
       <div>
-        <label className={fieldLabelCls}>Tarif / Not (opsiyonel)</label>
-        <textarea
+        <label htmlFor={`${uid}-tarif-not-opsiyonel`} className={fieldLabelCls}>Tarif / Not (opsiyonel)</label>
+        <textarea id={`${uid}-tarif-not-opsiyonel`}
           rows={2}
           maxLength={2000}
           value={directions}

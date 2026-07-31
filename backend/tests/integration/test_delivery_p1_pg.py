@@ -157,6 +157,38 @@ async def p1(pg) -> P1Factory:
 
 # ── 1) Outbox ─────────────────────────────────────────────────────────────────────
 
+async def _dispatch_until_touched(marker: int, *, max_rounds: int = 20) -> None:
+    """`dispatch_pending`'i marker olayı işlenene kadar (sınırlı) döndürür.
+
+    KÖK NEDEN (gizli flaky): `dispatch_pending(limit=50)` PENDING olayları
+    **id sırasına göre** işler ve sistem genelinde çalışır. Tek çağrı yapan bir
+    test, o anda 50'den fazla eski PENDING olay varsa kendi olayını partinin
+    DIŞINDA bırakır — olay PENDING kalır ve assert kırılır. Tek başına
+    koşulduğunda (PENDING=0) hep geçtiği için sorun uzun süre görünmez;
+    tam suite'te sıraya/zamanlamaya göre bazen kırılır.
+
+    Çözüm: kaç tur gerektiğini varsaymak yerine marker'ın durumunu izlemek.
+    `max_rounds` sonsuz döngüye karşı tavan (gerçek bir arıza testi asmasın).
+    """
+    for _ in range(max_rounds):
+        async with AsyncSessionLocal() as s:
+            await outbox.dispatch_pending(s)
+        async with AsyncSessionLocal() as s:
+            ev = (
+                await s.execute(
+                    select(OutboxEvent).where(
+                        OutboxEvent.payload["order_id"].as_integer() == marker
+                    )
+                )
+            ).scalars().first()
+        if ev is not None and ev.status != "PENDING":
+            return
+    raise AssertionError(
+        f"outbox olayı {max_rounds} turda işlenmedi (marker={marker})"
+    )
+
+
+
 
 @pytest.mark.asyncio
 async def test_outbox_dispatch_sends_and_marks_sent(p1, monkeypatch):
@@ -168,8 +200,7 @@ async def test_outbox_dispatch_sends_and_marks_sent(p1, monkeypatch):
     async with AsyncSessionLocal() as s:
         outbox.enqueue(s, "sms:failed", {"to": "+905551112233", "order_id": marker})
         await s.commit()
-    async with AsyncSessionLocal() as s:
-        await outbox.dispatch_pending(s)
+    await _dispatch_until_touched(marker)
     async with AsyncSessionLocal() as s:
         ev = (
             await s.execute(
@@ -202,8 +233,13 @@ async def test_outbox_retries_with_backoff_then_succeeds(p1, monkeypatch):
     async with AsyncSessionLocal() as s:
         outbox.enqueue(s, "sms:failed", {"to": "+905551112233", "order_id": marker})
         await s.commit()
-    async with AsyncSessionLocal() as s:
-        await outbox.dispatch_pending(s)
+    # İlk tur sağlayıcı hatası verir; olay PENDING kalır ama attempts artar —
+    # bu yüzden "işlendi" ölçütü çağrı sayacı.
+    for _ in range(20):
+        async with AsyncSessionLocal() as s:
+            await outbox.dispatch_pending(s)
+        if calls["n"] >= 1:
+            break
     async with AsyncSessionLocal() as s:
         ev = (
             await s.execute(

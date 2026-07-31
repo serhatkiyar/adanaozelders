@@ -16,6 +16,7 @@ import {
 } from "@/api/geocode";
 import { useMapGate, MapGestureController, MapGateHint } from "@/components/map/MapGate";
 import "./MapPicker.css";
+import { TILE_SOURCES } from "@/lib/mapTiles";
 
 delete (L.Icon.Default.prototype as any)._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -37,16 +38,10 @@ type MapLayer = "street" | "satellite";
 
 /* ─── tile URLs ──────────────────────────────────────── */
 
-const TILE_URLS: Record<MapLayer, { url: string; attribution: string }> = {
-  street: {
-    url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-  },
-  satellite: {
-    url: "http://mt0.google.com/vt/lyrs=y&hl=tr&x={x}&y={y}&z={z}",
-    attribution: "Google Maps",
-  },
-};
+// Adresler lib/mapTiles.ts'te tek kaynakta; uydu katmanı eskiden Google'ın
+// resmî OLMAYAN http:// uç noktasını kullanıyordu (HTTPS'te karışık içerik →
+// üretimde sessizce boş harita).
+const TILE_URLS = TILE_SOURCES;
 
 /* ─── sub-components ─────────────────────────────────── */
 

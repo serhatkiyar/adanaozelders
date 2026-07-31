@@ -5,6 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import require_admin_permission, require_roles
+from core import flags
 from core.database import get_db
 from models.admin import Admin
 from models.role import RoleType
@@ -14,6 +15,7 @@ from schemas.admin import (
     AdminBookingOut,
     AdminDashboardOut,
     AdminDemandOut,
+    AdminRevenueOut,
     AdminStats,
     AdminUserDetailOut,
     AdminUserOut,
@@ -51,6 +53,11 @@ class PasswordResetOut(BaseModel):
     email_masked: str
 
 from models.report import ReportStatus
+from schemas.feature_flag import (
+    FeatureFlagOut,
+    FeatureFlagUpdate,
+    PaymentBranchOut,
+)
 from schemas.report import ReportCountOut, ReportOut, ReportResolve
 from schemas.education import AdminEducationOut, EducationOut, EducationVerifyIn
 from schemas.user import NameChangeRequestOut
@@ -59,12 +66,20 @@ from services import (
     admin_service,
     admin_access_service,
     audit_service,
+    content_moderation,
     education_service,
     demand_service,
+    feature_flag_service,
     name_change_service,
+    payment_gates,
     report_service,
+    revenue_service,
     tutor_service,
 )
+
+
+class ContentHideIn(BaseModel):
+    reason: str | None = Field(default=None, max_length=300)
 
 
 class NameChangeReview(BaseModel):
@@ -113,6 +128,19 @@ async def get_dashboard(
 
 
 @router.get(
+    "/revenue",
+    response_model=AdminRevenueOut,
+    dependencies=[Depends(require_admin_permission("payments.view"))],
+)
+async def get_revenue(
+    range_name: Literal["day", "week", "month"] = Query(default="week", alias="range"),
+    db: AsyncSession = Depends(get_db),
+):
+    """Para metrikleri: GMV, gelir, emanet, iade oranı, sepet ortalaması."""
+    return await revenue_service.get_revenue(db, range_name=range_name)
+
+
+@router.get(
     "/access/permissions",
     response_model=list[AdminPermissionOut],
     dependencies=[Depends(require_admin_permission("admin_roles.view"))],
@@ -145,6 +173,9 @@ async def create_admin_role(
     admin: Admin = Depends(require_admin_permission("admin_roles.manage")),
     db: AsyncSession = Depends(get_db),
 ):
+    await admin_access_service.assert_can_grant(
+        db, actor_admin_id=admin.id, permission_codes=payload.permission_codes
+    )
     role = await admin_access_service.create_role(db, payload)
     await audit_service.record(
         db, actor=admin, action="admin_role.create", target_type="admin_role", target_id=role.id, details=role.code
@@ -159,6 +190,9 @@ async def update_admin_role(
     admin: Admin = Depends(require_admin_permission("admin_roles.manage")),
     db: AsyncSession = Depends(get_db),
 ):
+    await admin_access_service.assert_can_grant(
+        db, actor_admin_id=admin.id, permission_codes=payload.permission_codes
+    )
     role = await admin_access_service.update_role(db, role_id, payload)
     await audit_service.record(
         db, actor=admin, action="admin_role.update", target_type="admin_role", target_id=role.id, details=role.code
@@ -173,6 +207,9 @@ async def assign_admin_role(
     admin: Admin = Depends(require_admin_permission("admin_roles.manage")),
     db: AsyncSession = Depends(get_db),
 ):
+    await admin_access_service.assert_can_assign(
+        db, actor_admin_id=admin.id, role_id=payload.role_id
+    )
     await admin_access_service.assign_role(
         db, admin_id=admin_id, role_id=payload.role_id, assigned_by_admin_id=admin.id
     )
@@ -180,6 +217,61 @@ async def assign_admin_role(
         db, actor=admin, action="admin_role.assign", target_type="admin", target_id=admin_id, details=f"role_id={payload.role_id}"
     )
     return next(item for item in await admin_access_service.list_assignments(db) if item.admin_id == admin_id)
+
+
+# ── Platform ayarları: ödeme kolu kapıları (özellik bayrakları) ─────────────
+
+
+@router.get("/feature-flags", response_model=list[FeatureFlagOut])
+async def list_feature_flags(
+    admin: Admin = Depends(require_admin_permission("settings.view")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Katalog + güncel durum. Katalogdaki her bayrak döner (satırı olmasa bile)."""
+    return await feature_flag_service.list_flags(db)
+
+
+@router.put("/feature-flags/{key}", response_model=FeatureFlagOut)
+async def update_feature_flag(
+    key: str,
+    payload: FeatureFlagUpdate,
+    admin: Admin = Depends(require_admin_permission("settings.manage")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Bayrağı açar/kapatır. Ödeme kolu açmak işletmenin en kritik kararıdır —
+    bu yüzden yalnız `settings.manage` izniyle yapılır ve denetim kaydına
+    önceki/sonraki değerle birlikte yazılır."""
+    try:
+        out, previous = await feature_flag_service.set_flag(
+            db, key=key, enabled=payload.enabled, admin_id=admin.id, note=payload.note
+        )
+    except KeyError:
+        raise HTTPException(
+            status.HTTP_404_NOT_FOUND, "Tanımsız özellik bayrağı"
+        ) from None
+    await audit_service.record(
+        db,
+        actor=admin,
+        action="feature_flag.update",
+        target_type="feature_flag",
+        details=key,
+        reason=payload.note,
+        before={"enabled": previous},
+        after={"enabled": payload.enabled},
+    )
+    await db.commit()
+    # Önbellek yalnız commit sonrasında geçersiz kılınır (bkz. set_flag notu).
+    flags.invalidate(key)
+    return out
+
+
+@router.get("/payment-branches", response_model=list[PaymentBranchOut])
+async def list_payment_branches(
+    admin: Admin = Depends(require_admin_permission("settings.view")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Kol bazlı durum + engelleyiciler (admin yüzeyi teşhis alanlarını görür)."""
+    return await payment_gates.branches_status(db, include_diagnostics=True)
 
 
 @router.get(
@@ -599,6 +691,25 @@ async def resolve_report(
         status_value=payload.status,
         resolution=payload.resolution,
     )
+    if payload.hide_target:
+        # Şikayeti kapatmak içeriği yayından kaldırmaz; admin isterse aynı
+        # işlemde kaldırır. Gizleme puan ortalamasından da düşer.
+        await content_moderation.hide(
+            db,
+            target_type=report.target_type,
+            target_id=report.target_id,
+            admin=admin,
+            reason=payload.resolution,
+        )
+        await audit_service.record(
+            db,
+            actor=admin,
+            action="content.hide",
+            target_type=report.target_type,
+            target_id=report.target_id,
+            reason=payload.resolution,
+            meta={"report_id": report_id},
+        )
     await audit_service.record(
         db,
         actor=admin,
@@ -608,6 +719,52 @@ async def resolve_report(
         details=payload.resolution,
     )
     return report
+
+
+@router.post("/content/{target_type}/{target_id}/hide", status_code=204)
+async def hide_content(
+    target_type: str,
+    target_id: int,
+    payload: ContentHideIn,
+    admin: Admin = Depends(require_admin_permission("reports.manage")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Bir yorumu yayından kaldırır (şikayetten bağımsız olarak da kullanılabilir)."""
+    await content_moderation.hide(
+        db,
+        target_type=target_type.upper(),
+        target_id=target_id,
+        admin=admin,
+        reason=payload.reason,
+    )
+    await audit_service.record(
+        db,
+        actor=admin,
+        action="content.hide",
+        target_type=target_type.upper(),
+        target_id=target_id,
+        reason=payload.reason,
+    )
+
+
+@router.post("/content/{target_type}/{target_id}/unhide", status_code=204)
+async def unhide_content(
+    target_type: str,
+    target_id: int,
+    admin: Admin = Depends(require_admin_permission("reports.manage")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Gizleme kararını geri alır; yorum puana yeniden sayılır."""
+    await content_moderation.unhide(
+        db, target_type=target_type.upper(), target_id=target_id
+    )
+    await audit_service.record(
+        db,
+        actor=admin,
+        action="content.unhide",
+        target_type=target_type.upper(),
+        target_id=target_id,
+    )
 
 
 # ── Ad / Kullanıcı Adı Değişiklik Onay Kuyruğu ──

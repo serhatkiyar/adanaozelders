@@ -17,7 +17,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core import payments
-from core.codes import gen_short_code, normalize_code
+from core.codes import gen_short_code
 from core.config import settings
 from models.client import Client
 from models.library import Library, LibraryHours, LibraryStatus
@@ -28,7 +28,7 @@ from schemas.library_exam import AttendanceResult
 from schemas.study import StudyQuoteOut, StudyReservationOut
 import logging
 
-from services import commission, escrow, notification_service
+from services import commission, escrow, notification_service, payment_gates
 
 logger = logging.getLogger("adana.escrow")
 
@@ -368,6 +368,12 @@ async def complete_checkout(
     kimliğiyle güncellenir. Başarısızlıkta PENDING_PAYMENT kalır (yeniden denenir).
     Idempotent. C3: token/paidPrice uyuşmazlığında kesinleştirilmez, tahsilat iade.
     """
+    # Kol kapatıldıktan SONRA tamamlanan tahsilat sessiz kalmasın
+    # (kapatma kararının artçı penceresi — bkz. payment_gates).
+    if success:
+        await payment_gates.warn_if_closed_completion(
+            db, payment_gates.PaymentBranch.LIBRARY_MARKETPLACE, reference=f"studyres:{reservation_id}"
+        )
     res = await db.get(StudyReservation, reservation_id)
     if res is None or res.deleted_at is not None or not success:
         return

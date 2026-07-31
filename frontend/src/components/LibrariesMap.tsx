@@ -10,6 +10,7 @@ import { ROUTES } from "@/lib/routes";
 import { LibraryMapPanel } from "@/components/LibraryMapPanel";
 import { useMapGate, MapGestureController, MapGateHint } from "@/components/map/MapGate";
 import type { LibrarySearchOut } from "@/types";
+import { tileSource } from "@/lib/mapTiles";
 
 delete (L.Icon.Default.prototype as any)._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -134,15 +135,15 @@ export function LibrariesMap({
         {satellite ? (
           <TileLayer
             key="satellite"
-            url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
-            attribution='Tiles &copy; Esri — Source: Esri, Maxar, Earthstar Geographics'
-            maxZoom={19}
+            url={tileSource("satellite").url}
+            attribution={tileSource("satellite").attribution}
+            maxZoom={tileSource("satellite").maxZoom}
           />
         ) : (
           <TileLayer
             key="osm"
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+            url={tileSource().url}
+            attribution={tileSource().attribution}
           />
         )}
         <FitBounds points={points} />

@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import datetime
 import hashlib
+import logging
 import secrets
 
 from fastapi import HTTPException, status
@@ -59,6 +60,8 @@ from services import (
 from services.delivery_timeline import eta_window, mask_recipient, project_customer_timeline
 
 _ACTIVE_RUN_STATUSES = (DeliveryRunStatus.PLANNED.value, DeliveryRunStatus.ACTIVE.value)
+
+logger = logging.getLogger("adana.delivery")
 
 
 def _now() -> datetime.datetime:
@@ -212,11 +215,21 @@ _RUN_LOAD = (
 
 
 async def _load_run(db: AsyncSession, run_id: int) -> DeliveryRun:
+    """Turu duraklarıyla birlikte TAZE yükler.
+
+    ``populate_existing()`` şart: session ``expire_on_commit=False`` ile kurulur,
+    bu yüzden commit sonrası kimlik haritasındaki nesne eski kalır ve
+    ``selectinload`` ZATEN YÜKLENMİŞ bir koleksiyonu yeniden doldurmaz. Onsuz
+    `add_stops` durakları DB'ye yazar ama aynı session'da geri okuyan
+    `optimize_run` turu BOŞ görür — "Günü Optimize Et" turları kurar, hiçbirini
+    optimize etmez ve hata da vermez (sessiz bozulma).
+    """
     run = (
         await db.execute(
             select(DeliveryRun)
             .options(*_RUN_LOAD)
             .where(DeliveryRun.id == run_id, DeliveryRun.deleted_at.is_(None))
+            .execution_options(populate_existing=True)
         )
     ).scalars().first()
     if run is None:
@@ -233,6 +246,8 @@ async def _load_stop(db: AsyncSession, stop_id: int) -> DeliveryStop:
                 selectinload(DeliveryStop.order).selectinload(Order.items),
             )
             .where(DeliveryStop.id == stop_id)
+            # Bkz. _load_run: expire_on_commit=False → bayat kimlik haritası.
+            .execution_options(populate_existing=True)
         )
     ).scalars().first()
     if stop is None:
@@ -317,13 +332,27 @@ async def create_courier(db: AsyncSession, payload: CourierCreate) -> CourierOut
 
 
 async def update_courier(
-    db: AsyncSession, courier_id: int, payload: CourierUpdate
+    db: AsyncSession, courier_id: int, payload: CourierUpdate, *, actor=None
 ) -> CourierOut:
+    """Kurye profili güncellemesi.
+
+    ``is_active`` False'a DÜŞÜYORSA bağlı rol-5 giriş hesabı da AYNI transaction'da
+    kapatılır (``close_for_courier_profile``): işten ayrılan/pasifleştirilen
+    kuryenin telefonundaki oturum yaşamaya devam etmemeli. Bu zincir daha önce
+    hiç çağrılmıyordu — profil pasifken hesap açık kalıyordu (güvenlik boşluğu).
+    """
+    from services import courier_account_service  # döngüsel import önlemi
+
     c = await db.get(Courier, courier_id)
     if c is None or c.deleted_at is not None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Kurye bulunamadı")
+    was_active = c.is_active
     for field, value in payload.model_dump(exclude_unset=True).items():
         setattr(c, field, value)
+    if was_active and c.is_active is False:
+        await courier_account_service.close_for_courier_profile(
+            db, courier_id, actor=actor
+        )
     await db.commit()
     await db.refresh(c)
     return _courier_to_out(c)
@@ -339,22 +368,35 @@ async def set_courier_photo(db: AsyncSession, courier_id: int, photo_url: str) -
     return _courier_to_out(c)
 
 
-async def delete_courier(db: AsyncSession, courier_id: int) -> None:
+async def delete_courier(db: AsyncSession, courier_id: int, *, actor=None) -> None:
+    """Kurye profilini soft-delete eder ve bağlı rol-5 giriş hesabını AYNI
+    transaction'da kapatır (bkz. ``update_courier`` — aynı güvenlik zinciri)."""
+    from services import courier_account_service  # döngüsel import önlemi
+
     c = await db.get(Courier, courier_id)
     if c is None or c.deleted_at is not None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Kurye bulunamadı")
     c.deleted_at = _now()
+    c.is_active = False
+    await courier_account_service.close_for_courier_profile(db, courier_id, actor=actor)
     await db.commit()
 
 
 async def list_runs(
-    db: AsyncSession, *, run_date: datetime.date | None = None, limit: int = 30
+    db: AsyncSession,
+    *,
+    run_date: datetime.date | None = None,
+    limit: int = 30,
+    offset: int = 0,
 ) -> list[DeliveryRunOut]:
+    """Tur listesi (en yeni önce). ``offset`` arşiv sayfalaması içindir —
+    dönen liste ``limit``'ten kısaysa son sayfadır (toplam sayı tutulmaz)."""
     stmt = (
         select(DeliveryRun)
         .options(*_RUN_LOAD)
         .where(DeliveryRun.deleted_at.is_(None))
         .order_by(DeliveryRun.run_date.desc(), DeliveryRun.id.desc())
+        .offset(offset)
         .limit(limit)
     )
     if run_date is not None:
@@ -589,6 +631,11 @@ def _eligible_out(o: Order) -> EligibleOrderOut:
         lng=float(o.ship_lng) if o.ship_lng is not None else None,
         total=str(o.total),
         item_count=sum(it.quantity for it in o.items if it.kind == "PHYSICAL"),
+        items=[
+            StopItemOut(title=it.title, quantity=it.quantity)
+            for it in o.items
+            if it.kind == "PHYSICAL"
+        ],
         created_at=o.created_at,
         promised_delivery_date=o.promised_delivery_date,
         in_zone=o.ship_in_zone,
@@ -1067,7 +1114,9 @@ async def optimize_run(db: AsyncSession, run_id: int) -> DeliveryRunOut:
     for s in sorted(resolved, key=lambda x: x.sequence):
         seq += 1
         s.sequence = seq
-    for s, detour in zip(ordered_stops, detours):
+    # compute_detours girdisiyle birebir aynı uzunlukta döner; strict=True bu
+    # sözleşme bozulursa sessizce kısa kesmek yerine hata versin.
+    for s, detour in zip(ordered_stops, detours, strict=True):
         seq += 1
         s.sequence = seq
         s.detour_km = detour
@@ -1116,6 +1165,22 @@ async def dispatch_day(db: AsyncSession, run_date: datetime.date) -> list[Delive
         raise HTTPException(
             status.HTTP_400_BAD_REQUEST, "Dağıtılacak konumlu sipariş yok"
         )
+
+    # Günün fiziksel tavanı. Biriken söz borcu (ertelenen/başarısız denemeler)
+    # eligible listesini şişirir; sınırsız bırakılırsa "Günü Optimize Et" 150
+    # duraklı, tek günde bitirilemeyecek bir tur kurar ve HEPSİNE söz verilmiş
+    # görünür. Liste zaten aciliyet sırasında (söz günü → deneme borcu → tarih);
+    # tavanı aşanlar eligible kuyruğunda kalır, yarın en önde girer.
+    max_total = max(len(_VEHICLE_IDS), 1) * settings.DELIVERY_MAX_STOPS_PER_RUN
+    if settings.DELIVERY_MAX_STOPS_PER_RUN > 0 and len(candidates) > max_total:
+        logger.warning(
+            "dispatch_day: %s uygun siparişten %s'i günlük tavana (%s) sığmadı — "
+            "eligible kuyruğunda bekliyor",
+            len(candidates),
+            len(candidates) - max_total,
+            max_total,
+        )
+        candidates = candidates[:max_total]
 
     vehicle_ids = (
         [1]
@@ -1475,7 +1540,20 @@ async def set_stop_photo(db: AsyncSession, stop_id: int, photo_url: str) -> Deli
 async def _notify_upcoming(db: AsyncSession, run_id: int) -> None:
     """Bir durak sonuçlanınca sıradaki 1-2 müşteriye "kuryen yaklaşıyor"
     SMS+bildirimi (durak başına TEK sefer — ``approach_notified_at`` damgası).
-    Best-effort: hata teslim akışını bozmaz."""
+
+    GERÇEKTEN best-effort: teslim ZATEN commit edilmiş olarak çağrılır. Buradan
+    kaçan bir hata kuryeye 500 döndürür; kurye teslimi başarısız sanıp aynı
+    paketi yeniden dener ya da yöneticiyi arar — oysa sipariş kapanmıştır.
+    Bildirim gecikmesi, yanlış saha kararından iyidir.
+    """
+    try:
+        await _notify_upcoming_inner(db, run_id)
+    except Exception:  # noqa: BLE001 — teslim tamamlandı; bildirim ikincildir
+        logger.exception("yaklaşan durak bildirimi gönderilemedi (tur %s)", run_id)
+        await db.rollback()
+
+
+async def _notify_upcoming_inner(db: AsyncSession, run_id: int) -> None:
     stops = (
         (
             await db.execute(

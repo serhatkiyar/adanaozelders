@@ -47,6 +47,10 @@ export const PATHS = {
   refundPolicy: "/iptal-ve-iade-politikasi",
   cookiePolicy: "/cerez-politikasi",
 
+  // ── Destek (public, SEO) — mesafeli satışta erişilebilir iletişim zorunlu ──
+  faq: "/sss",
+  contact: "/iletisim",
+
   // ── Kimlik & token akışları ──
   login: "/giris",
   register: "/kayit",
@@ -117,13 +121,28 @@ export const PATHS = {
   adminStoreOrders: "/yonetim/magaza/siparisler",
   adminStoreReturns: "/yonetim/magaza/iadeler",
   adminStoreCoupons: "/yonetim/magaza/kuponlar",
+  adminStoreStock: "/yonetim/magaza/stok-hareketleri",
+  // Envanter, Magaza'nin 7. sekmesi DEGIL ayri bir bolum: backend izinleri
+  // (`inventory.*`) bilincli olarak `products.*`'tan ayrildi.
+  adminInventory: "/yonetim/envanter",
+  adminInventoryCounts: "/yonetim/envanter/sayimlar",
+  adminInventoryCountDetail: "/yonetim/envanter/sayimlar/:id",
+  adminInventoryDamage: "/yonetim/envanter/hasar",
   adminDelivery: "/yonetim/dagitim",
+  // Dağıtım alt sekmeleri (URL-tabanlı; index = "Bugün" operasyon kokpiti).
+  adminDeliveryOrders: "/yonetim/dagitim/siparisler",
+  adminDeliveryRuns: "/yonetim/dagitim/turlar",
+  adminDeliveryRunDetail: "/yonetim/dagitim/turlar/:id",
+  adminDeliveryPerformance: "/yonetim/dagitim/performans",
+  adminDeliveryCouriers: "/yonetim/dagitim/kuryeler",
   adminBookings: "/yonetim/rezervasyonlar",
   adminDemands: "/yonetim/talepler",
   adminNameChanges: "/yonetim/ad-degisiklikleri",
   adminReports: "/yonetim/moderasyon/sikayetler",
   adminAuditLogs: "/yonetim/denetim-kayitlari",
+  adminPayouts: "/yonetim/hakedisler",
   adminAccess: "/yonetim/yetkiler",
+  adminSettings: "/yonetim/ayarlar",
 } as const;
 
 export const ROUTES = {
@@ -153,6 +172,10 @@ export const ROUTES = {
   distanceSales: PATHS.distanceSales,
   refundPolicy: PATHS.refundPolicy,
   cookiePolicy: PATHS.cookiePolicy,
+
+  // ── Destek ──
+  faq: PATHS.faq,
+  contact: PATHS.contact,
 
   // ── Kimlik & token akışları ──
   login: PATHS.login,
@@ -215,13 +238,25 @@ export const ROUTES = {
   adminStoreOrders: PATHS.adminStoreOrders,
   adminStoreReturns: PATHS.adminStoreReturns,
   adminStoreCoupons: PATHS.adminStoreCoupons,
+  adminStoreStock: PATHS.adminStoreStock,
+  adminInventory: PATHS.adminInventory,
+  adminInventoryCounts: PATHS.adminInventoryCounts,
+  adminInventoryDamage: PATHS.adminInventoryDamage,
+  adminInventoryCount: (id: string | number) => `/yonetim/envanter/sayimlar/${id}`,
   adminDelivery: PATHS.adminDelivery,
+  adminDeliveryOrders: PATHS.adminDeliveryOrders,
+  adminDeliveryRuns: PATHS.adminDeliveryRuns,
+  adminDeliveryRun: (id: string | number) => `/yonetim/dagitim/turlar/${id}`,
+  adminDeliveryPerformance: PATHS.adminDeliveryPerformance,
+  adminDeliveryCouriers: PATHS.adminDeliveryCouriers,
   adminBookings: PATHS.adminBookings,
   adminDemands: PATHS.adminDemands,
   adminNameChanges: PATHS.adminNameChanges,
   adminReports: PATHS.adminReports,
   adminAuditLogs: PATHS.adminAuditLogs,
+  adminPayouts: PATHS.adminPayouts,
   adminAccess: PATHS.adminAccess,
+  adminSettings: PATHS.adminSettings,
 } as const;
 
 // Yasal belge id'si (lib/legalContent.ts) → URL. LegalPage kenar gezinmesi ve

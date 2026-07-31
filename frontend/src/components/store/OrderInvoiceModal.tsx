@@ -5,6 +5,7 @@
 import { OPERATOR } from "@/lib/legalContent";
 import { formatDate } from "@/lib/datetime";
 import { formatTL } from "@/lib/money";
+import { orderPaymentLabel } from "@/lib/orderPayment";
 import { STATUS_LABELS } from "@/pages/store/OrdersPage";
 import type { OrderOut } from "@/types";
 
@@ -78,13 +79,7 @@ export function OrderInvoiceModal({
               </p>
               <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">iyzico ile ödeme</p>
               <p className="text-sm text-slate-600 dark:text-slate-300">
-                {order.payment_status === "PAID"
-                  ? "Ödendi"
-                  : order.payment_status === "REFUNDED"
-                    ? "İade edildi"
-                    : order.payment_status === "PENDING"
-                      ? "Bekliyor"
-                      : order.payment_status}
+                {orderPaymentLabel(order.payment_status)}
               </p>
             </div>
           </div>

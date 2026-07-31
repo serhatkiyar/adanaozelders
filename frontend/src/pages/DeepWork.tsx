@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Field } from "@/components/ui/Field";
 import { DashboardShell } from "@/components/DashboardShell";
 import { STUDENT_NAV, TUTOR_NAV } from "@/lib/nav";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
@@ -191,19 +192,19 @@ export default function DeepWork() {
         </div>
 
         {/* Görev etiketi */}
-        <div className="mt-8">
-          <label className="text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
-            Ne üzerine çalışıyorsun?
-          </label>
-          <input
-            type="text"
-            value={taskLabel}
-            onChange={(e) => setTask(e.target.value)}
-            maxLength={120}
-            placeholder="Örn. Matematik — türev soruları"
-            className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-          />
-        </div>
+        <Field label="Ne üzerine çalışıyorsun?" labelClassName="text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500" className="mt-8">
+          {(id) => (
+              <input
+                    id={id}
+                type="text"
+                value={taskLabel}
+                onChange={(e) => setTask(e.target.value)}
+                maxLength={120}
+                placeholder="Örn. Matematik — türev soruları"
+                className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+              />
+          )}
+        </Field>
 
         {/* Bugün + Ayarlar */}
         <div className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2">

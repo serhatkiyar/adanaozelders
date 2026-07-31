@@ -1,4 +1,4 @@
-import { FormEvent, ReactNode, useEffect, useState } from "react";
+import { FormEvent, ReactNode, useEffect, useState, useId } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { AxiosError } from "axios";
 import { DashboardShell } from "@/components/DashboardShell";
@@ -10,6 +10,9 @@ import { STUDENT_NAV, TUTOR_NAV } from "@/lib/nav";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import {
   useChangePassword,
+  useDeleteMyAccount,
+  useDeletionEligibility,
+  useDownloadMyData,
   useMyNameChangeRequests,
   useRequestPhoneOtp,
   useUpdateProfile,
@@ -292,6 +295,7 @@ function PhoneEditor({
   initialPhone: string;
   onDone: () => void;
 }) {
+  const uid = useId();
   const requestOtp = useRequestPhoneOtp();
   const verify = useVerifyPhone();
   const [step, setStep] = useState<"phone" | "code">("phone");
@@ -323,8 +327,8 @@ function PhoneEditor({
           sendCode();
         }}
       >
-        <label className={fieldLabelCls}>Cep telefonu</label>
-        <input
+        <label htmlFor={`${uid}-cep-telefonu`} className={fieldLabelCls}>Cep telefonu</label>
+        <input id={`${uid}-cep-telefonu`}
           type="tel"
           inputMode="tel"
           className={inputCls}
@@ -374,8 +378,8 @@ function PhoneEditor({
         <span className="font-medium text-slate-700 dark:text-slate-200">{masked}</span>{" "}
         numarasına gönderilen 6 haneli kodu gir.
       </p>
-      <label className={fieldLabelCls}>SMS kodu</label>
-      <input
+      <label htmlFor={`${uid}-sms-kodu`} className={fieldLabelCls}>SMS kodu</label>
+      <input id={`${uid}-sms-kodu`}
         type="text"
         inputMode="numeric"
         maxLength={6}
@@ -432,6 +436,7 @@ function PendingChangeNote({ children }: { children: React.ReactNode }) {
 
 // ── Kişisel bilgiler ──
 function PersonalSection() {
+  const uid = useId();
   const { data: user } = useCurrentUser();
   const updateProfile = useUpdateProfile();
   const { data: nameRequests } = useMyNameChangeRequests();
@@ -555,8 +560,8 @@ function PersonalSection() {
             )}
             <div className="grid gap-3 sm:grid-cols-2">
               <div>
-                <label className={fieldLabelCls}>Ad</label>
-                <input
+                <label htmlFor={`${uid}-ad`} className={fieldLabelCls}>Ad</label>
+                <input id={`${uid}-ad`}
                   className={inputCls}
                   value={firstName}
                   maxLength={75}
@@ -566,8 +571,8 @@ function PersonalSection() {
                 />
               </div>
               <div>
-                <label className={fieldLabelCls}>Soyad</label>
-                <input
+                <label htmlFor={`${uid}-soyad`} className={fieldLabelCls}>Soyad</label>
+                <input id={`${uid}-soyad`}
                   className={inputCls}
                   value={lastName}
                   maxLength={75}
@@ -578,8 +583,8 @@ function PersonalSection() {
             </div>
             {nameLocked && !pendingName && (
               <div className="mt-3">
-                <label className={fieldLabelCls}>Değişiklik gerekçesi</label>
-                <textarea
+                <label htmlFor={`${uid}-degisiklik-gerekcesi`} className={fieldLabelCls}>Değişiklik gerekçesi</label>
+                <textarea id={`${uid}-degisiklik-gerekcesi`}
                   className={inputCls}
                   rows={2}
                   maxLength={500}
@@ -632,8 +637,8 @@ function PersonalSection() {
                 </LockedChangeNote>
               )
             )}
-            <label className={fieldLabelCls}>Kullanıcı adı</label>
-            <input
+            <label htmlFor={`${uid}-kullanici-adi`} className={fieldLabelCls}>Kullanıcı adı</label>
+            <input id={`${uid}-kullanici-adi`}
               className={inputCls}
               value={username}
               minLength={3}
@@ -646,8 +651,8 @@ function PersonalSection() {
             />
             {usernameLocked && !pendingUsername && (
               <div className="mt-3">
-                <label className={fieldLabelCls}>Değişiklik gerekçesi</label>
-                <textarea
+                <label htmlFor={`${uid}-degisiklik-gerekcesi-2`} className={fieldLabelCls}>Değişiklik gerekçesi</label>
+                <textarea id={`${uid}-degisiklik-gerekcesi-2`}
                   className={inputCls}
                   rows={2}
                   maxLength={500}
@@ -742,8 +747,8 @@ function PersonalSection() {
               save({ birth_date: birthDate || null });
             }}
           >
-            <label className={fieldLabelCls}>Doğum tarihi</label>
-            <input
+            <label htmlFor={`${uid}-dogum-tarihi`} className={fieldLabelCls}>Doğum tarihi</label>
+            <input id={`${uid}-dogum-tarihi`}
               type="date"
               max={todayStr}
               className={inputCls}
@@ -769,8 +774,8 @@ function PersonalSection() {
               save({ gender: gender || null });
             }}
           >
-            <label className={fieldLabelCls}>Cinsiyet</label>
-            <select
+            <label htmlFor={`${uid}-cinsiyet`} className={fieldLabelCls}>Cinsiyet</label>
+            <select id={`${uid}-cinsiyet`}
               className={inputCls}
               value={gender}
               autoFocus
@@ -833,6 +838,7 @@ function OperatorPayout() {
 
 // ── Oturum açma ve güvenlik ──
 function SecuritySection() {
+  const uid = useId();
   const { data: user } = useCurrentUser();
   const changePassword = useChangePassword();
   const [open, setOpen] = useState<string | null>(null);
@@ -909,8 +915,8 @@ function SecuritySection() {
           <form onSubmit={submitPassword} className="max-w-md">
             <div className="space-y-3">
               <div>
-                <label className={fieldLabelCls}>Mevcut şifre</label>
-                <input
+                <label htmlFor={`${uid}-mevcut-sifre`} className={fieldLabelCls}>Mevcut şifre</label>
+                <input id={`${uid}-mevcut-sifre`}
                   type="password"
                   required
                   autoComplete="current-password"
@@ -921,8 +927,8 @@ function SecuritySection() {
                 />
               </div>
               <div>
-                <label className={fieldLabelCls}>Yeni şifre</label>
-                <input
+                <label htmlFor={`${uid}-yeni-sifre`} className={fieldLabelCls}>Yeni şifre</label>
+                <input id={`${uid}-yeni-sifre`}
                   type="password"
                   required
                   minLength={8}
@@ -935,8 +941,8 @@ function SecuritySection() {
                 />
               </div>
               <div>
-                <label className={fieldLabelCls}>Yeni şifre (tekrar)</label>
-                <input
+                <label htmlFor={`${uid}-yeni-sifre-tekrar`} className={fieldLabelCls}>Yeni şifre (tekrar)</label>
+                <input id={`${uid}-yeni-sifre-tekrar`}
                   type="password"
                   required
                   autoComplete="new-password"
@@ -979,6 +985,148 @@ function SecuritySection() {
           }
         />
       </div>
+
+      <DataAndAccountSection />
     </section>
+  );
+}
+
+/**
+ * KVKK hakları: veri taşınabilirliği (m.20) ve silme (m.7/m.11).
+ *
+ * Yasal metinler kullanıcıya "hesabınızı sildiğinizde verileriniz silinir veya
+ * anonim hâle getirilir" taahhüdü veriyordu ama karşılığı olan hiçbir yüzey
+ * yoktu. Silme geri alınamaz olduğundan iki kapı var: parola doğrulaması ve
+ * hesabın adını harfi harfine yazma.
+ */
+function DataAndAccountSection() {
+  const uid = useId();
+  const { data: user } = useCurrentUser();
+  const download = useDownloadMyData();
+  const { data: eligibility } = useDeletionEligibility();
+  const deleteAccount = useDeleteMyAccount();
+
+  const [open, setOpen] = useState(false);
+  const [password, setPassword] = useState("");
+  const [confirmText, setConfirmText] = useState("");
+
+  if (!user) return null;
+
+  const CONFIRM_WORD = "HESABIMI SİL";
+  const canSubmit =
+    password.length > 0 &&
+    confirmText.trim() === CONFIRM_WORD &&
+    eligibility?.can_delete !== false;
+
+  const submit = (e: FormEvent) => {
+    e.preventDefault();
+    deleteAccount.mutate(password, {
+      onSuccess: () => toast.success("Hesabın kapatıldı. Seni özleyeceğiz."),
+      onError: (err) => {
+        if (err instanceof AxiosError && err.response?.status === 400) {
+          toast.error("Parola hatalı.");
+          return;
+        }
+        toast.error(getErrorMessage(err, "Hesap silinemedi."));
+      },
+    });
+  };
+
+  return (
+    <>
+      <h2 className="mb-1 mt-10 text-xl font-bold text-slate-900 dark:text-white">
+        Verilerim ve hesabım
+      </h2>
+      <p className="mb-3 text-sm text-slate-500 dark:text-slate-400">
+        Kişisel verilerini indirebilir veya hesabını kapatabilirsin.
+      </p>
+
+      <div className="rounded-2xl bg-white px-5 shadow-sm ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-slate-700 sm:px-6">
+        <SettingRow
+          title="Verilerimi indir"
+          value="Hesabında tuttuğumuz kişisel verilerin makine-okunur (JSON) kopyası."
+          actionLabel={download.isPending ? "Hazırlanıyor…" : "İndir"}
+          onToggle={() =>
+            download.mutate(undefined, {
+              onError: () => toast.error("Dosya hazırlanamadı."),
+            })
+          }
+        />
+
+        <SettingRow
+          title="Hesabımı sil"
+          value={
+            eligibility?.can_delete === false ? (
+              <span className="text-amber-600 dark:text-amber-400">
+                {eligibility.reason}
+              </span>
+            ) : (
+              "Kimlik ve iletişim bilgilerin geri alınamaz biçimde silinir."
+            )
+          }
+          editable={eligibility?.can_delete !== false}
+          actionLabel={open ? "Vazgeç" : "Hesabımı sil"}
+          isOpen={open}
+          onToggle={() => {
+            setPassword("");
+            setConfirmText("");
+            setOpen((o) => !o);
+          }}
+        >
+          <form onSubmit={submit} className="max-w-md">
+            <p className="mb-3 text-sm text-slate-600 dark:text-slate-300">
+              Bu işlem <strong>geri alınamaz</strong>. Adın, e-postan, telefonun
+              ve adreslerin silinir; hesabın kapanır.{" "}
+              <span className="text-slate-500 dark:text-slate-400">
+                Faturalı sipariş ve ödeme kayıtların, vergi mevzuatı gereği
+                saklanmak zorunda olduğundan kimliğinden arındırılmış olarak
+                kalır.
+              </span>
+            </p>
+            <div className="space-y-3">
+              <div>
+                <label htmlFor={`${uid}-parolan`} className={fieldLabelCls}>Parolan</label>
+                <input id={`${uid}-parolan`}
+                  type="password"
+                  required
+                  autoComplete="current-password"
+                  className={inputCls}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className={fieldLabelCls}>
+                  Onaylamak için <code>{CONFIRM_WORD}</code> yaz
+                </label>
+                <input
+                  type="text"
+                  required
+                  className={inputCls}
+                  value={confirmText}
+                  onChange={(e) => setConfirmText(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 py-4">
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                className="rounded-xl px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700"
+              >
+                Vazgeç
+              </button>
+              <button
+                type="submit"
+                disabled={!canSubmit || deleteAccount.isPending}
+                className="rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {deleteAccount.isPending ? "Siliniyor…" : "Hesabımı kalıcı olarak sil"}
+              </button>
+            </div>
+          </form>
+        </SettingRow>
+      </div>
+    </>
   );
 }

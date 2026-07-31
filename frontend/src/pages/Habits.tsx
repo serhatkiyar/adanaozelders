@@ -1,4 +1,5 @@
 import { FormEvent, useState } from "react";
+import { Field } from "@/components/ui/Field";
 import { Link } from "react-router-dom";
 import { DashboardShell } from "@/components/DashboardShell";
 import { STUDENT_NAV, TUTOR_NAV } from "@/lib/nav";
@@ -92,25 +93,25 @@ function HabitModal({
           {editing ? "Alışkanlığı Düzenle" : "Yeni Alışkanlık"}
         </h2>
         <form onSubmit={submit} className="mt-4 space-y-4">
-          <div>
-            <label className="mb-1.5 block text-xs font-medium text-slate-500 dark:text-slate-400">
-              Ad *
-            </label>
-            <input
-              autoFocus
-              maxLength={120}
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Örn. Her gün 30 soru çöz"
-              className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:border-slate-600 dark:bg-slate-700 dark:text-white"
-            />
-          </div>
+          <Field label="Ad *" required labelClassName="mb-1.5 block text-xs font-medium text-slate-500 dark:text-slate-400">
+            {(id) => (
+                <input
+                    id={id}
+                  autoFocus
+                  maxLength={120}
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Örn. Her gün 30 soru çöz"
+                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:border-slate-600 dark:bg-slate-700 dark:text-white"
+                />
+            )}
+          </Field>
 
           <div>
-            <label className="mb-1.5 block text-xs font-medium text-slate-500 dark:text-slate-400">
+            <span className="mb-1.5 block text-xs font-medium text-slate-500 dark:text-slate-400">
               Simge
-            </label>
-            <div className="flex flex-wrap gap-1.5">
+            </span>
+            <div role="group" aria-label="Simge" className="flex flex-wrap gap-1.5">
               {EMOJIS.map((e) => (
                 <button
                   key={e}
@@ -129,10 +130,10 @@ function HabitModal({
           </div>
 
           <div>
-            <label className="mb-1.5 block text-xs font-medium text-slate-500 dark:text-slate-400">
+            <span className="mb-1.5 block text-xs font-medium text-slate-500 dark:text-slate-400">
               Renk
-            </label>
-            <div className="flex flex-wrap gap-2">
+            </span>
+            <div role="group" aria-label="Renk" className="flex flex-wrap gap-2">
               {COLORS.map((c) => (
                 <button
                   key={c}
@@ -149,10 +150,10 @@ function HabitModal({
           </div>
 
           <div>
-            <label className="mb-1.5 block text-xs font-medium text-slate-500 dark:text-slate-400">
+            <span className="mb-1.5 block text-xs font-medium text-slate-500 dark:text-slate-400">
               Sıklık
-            </label>
-            <div className="grid grid-cols-2 gap-2">
+            </span>
+            <div role="group" aria-label="Sıklık" className="grid grid-cols-2 gap-2">
               {(["daily", "weekly"] as HabitPeriod[]).map((p) => (
                 <button
                   key={p}

@@ -2,6 +2,7 @@ import { apiClient } from "@/api/axios";
 import type {
   AdminStats,
   AdminDashboardOut,
+  AdminRevenueOut,
   AdminUserOut,
   TutorOut,
   AdminBookingOut,
@@ -53,6 +54,15 @@ export async function assignAdminRole(adminId: number, roleId: number): Promise<
 
 export async function fetchAdminStats(): Promise<AdminStats> {
   const { data } = await apiClient.get<AdminStats>("/admin/stats");
+  return data;
+}
+
+export async function fetchAdminRevenue(
+  range: "day" | "week" | "month"
+): Promise<AdminRevenueOut> {
+  const { data } = await apiClient.get<AdminRevenueOut>("/admin/revenue", {
+    params: { range },
+  });
   return data;
 }
 

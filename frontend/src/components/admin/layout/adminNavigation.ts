@@ -8,13 +8,22 @@ export interface AdminNavItem {
   to: string;
   group: AdminNavGroup;
   description: string;
-  icon: "overview" | "users" | "education" | "library" | "exam" | "store" | "delivery" | "booking" | "moderation" | "audit" | "access";
+  icon: "overview" | "users" | "education" | "library" | "exam" | "store" | "inventory" | "delivery" | "booking" | "moderation" | "audit" | "access" | "settings";
   requiredPermission?: string;
   end?: boolean;
   badge?: "open-reports";
 }
 
 export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
+  {
+    label: "Hakedişler",
+    to: ROUTES.adminPayouts,
+    group: "Ticaret",
+    description:
+      "Eğitmen ve kütüphanelere ödenecek tutarlar. Ödemeyi bankadan yapıp buraya kaydedin.",
+    icon: "store",
+    requiredPermission: "payments.view",
+  },
   {
     label: "Genel Bakış",
     to: ROUTES.admin,
@@ -31,6 +40,14 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
     description: "Yönetici, eğitmen ve öğrenci hesaplarını görüntüleyin.",
     icon: "users",
     requiredPermission: "users.view",
+  },
+  {
+    label: "Ayarlar",
+    to: ROUTES.adminSettings,
+    group: "Platform",
+    description: "Ödeme kolu kapıları ve özellik bayrakları.",
+    icon: "settings",
+    requiredPermission: "settings.view",
   },
   {
     label: "Eğitmen İlanları",
@@ -93,6 +110,15 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
     requiredPermission: "products.view",
   },
   {
+    label: "Envanter",
+    to: ROUTES.adminInventory,
+    group: "Ticaret",
+    description:
+      "Stok sayımı, sayım farkının uygulanması ve hasarlı stok hareketleri. Defter salt okunur kalır; değişiklik yalnız buradan yapılır.",
+    icon: "inventory",
+    requiredPermission: "inventory.view",
+  },
+  {
     label: "Dağıtım",
     to: ROUTES.adminDelivery,
     group: "Ticaret",
@@ -149,9 +175,17 @@ export function getAdminNavItem(pathname: string): AdminNavItem {
     return ADMIN_NAV_ITEMS.find((item) => item.to === ROUTES.adminStoreProducts)!;
   }
 
+  // Fallback DİZİ SIRASINA bağlanamaz: `ADMIN_NAV_ITEMS[0]` bugün "Hakedişler"
+  // (dizi sırası grup sırasıyla aynı değil), yani eşleşmeyen bir /yonetim/...
+  // yolunda başlık ve breadcrumb "Hakedişler" görünüyordu. Genel Bakış'a
+  // düşmek doğru: o, panelin kökü ve `end:true` olduğu için başka bir yolla
+  // yanlışlıkla eşleşmez.
+  const overview = ADMIN_NAV_ITEMS.find((item) => item.to === ROUTES.admin);
   return (
     ADMIN_NAV_ITEMS.find((item) =>
       item.end ? pathname === item.to : pathname.startsWith(item.to)
-    ) ?? ADMIN_NAV_ITEMS[0]
+    ) ??
+    overview ??
+    ADMIN_NAV_ITEMS[0]
   );
 }

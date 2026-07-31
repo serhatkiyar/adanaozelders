@@ -1,5 +1,6 @@
 import { MapContainer, Marker, TileLayer } from "react-leaflet";
 import L from "leaflet";
+import { tileSource } from "@/lib/mapTiles";
 
 /** Salt-gösterim konum haritası — LibrariesMap'ten ayrıdır ve kasıtlı olarak
  *  KONTROL EDİLEMEZ: sürükleme/zoom/klavye kapalı, kontrol yok. Tek işi konumu
@@ -56,8 +57,8 @@ export function StaticLocationMap({
           zoomControl={false}
         >
           <TileLayer
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+            url={tileSource().url}
+            attribution={tileSource().attribution}
             maxZoom={19}
           />
           <Marker position={[lat, lng]} icon={pinIcon} />

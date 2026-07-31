@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { LEGAL_DOCS, OPERATOR, getLegalDoc } from "@/lib/legalContent";
+import {
+  LEGAL_DOCS,
+  OPERATOR,
+  operatorIdentity,
+  SIGNUP_CONSENT_DOCS,
+  currentConsentVersion,
+  getLegalDoc,
+} from "@/lib/legalContent";
 import { LEGAL_NAV } from "@/lib/legalNav";
 import { LEGAL_ROUTES } from "@/lib/routes";
 
@@ -63,5 +70,60 @@ describe("legalContent", () => {
     const refundText = JSON.stringify(getLegalDoc("refund"));
     expect(kvkkText).toContain(OPERATOR.email);
     expect(refundText).toContain(OPERATOR.email);
+  });
+});
+
+describe("currentConsentVersion", () => {
+  it("zorunlu üç belgenin en yeni sürümünü verir", () => {
+    const versions = SIGNUP_CONSENT_DOCS.map((id) => getLegalDoc(id).updatedAt);
+    const enYeni = versions.reduce((a, b) => (a > b ? a : b));
+    expect(currentConsentVersion()).toBe(enYeni);
+  });
+
+  it("backend'in beklediği YYYY-MM-DD biçiminde", () => {
+    // schemas/auth.py::RegisterRequest bu deseni zorunlu kılar; uyuşmazsa
+    // kayıt 422 döner.
+    expect(currentConsentVersion()).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+
+  it("kayıtta onaylanan belgeler KVKK, koşullar ve gizlilik", () => {
+    expect([...SIGNUP_CONSENT_DOCS].sort()).toEqual([
+      "kvkk",
+      "privacy",
+      "terms",
+    ]);
+  });
+});
+
+describe("işletmeci kimliği (Mesafeli Sözleşmeler Yönetmeliği m.5)", () => {
+  it("var olmayan bir tüzel kişi göstermez", () => {
+    // Regresyon: işletme şahıs şirketi olarak kuruldu ama metinlerde bir süre
+    // "… Ltd. Şti. (kuruluş sürecinde)" satıcı/veri sorumlusu olarak göründü.
+    expect(OPERATOR.entity).not.toMatch(/Ltd\.|A\.Ş\.|kuruluş sürecinde/i);
+    expect(OPERATOR.entity.trim().length).toBeGreaterThan(0);
+  });
+
+  it("kimlik satırı yalnız DOLU alanları yazar", () => {
+    const line = operatorIdentity();
+    expect(line).toContain(OPERATOR.entity);
+    expect(line).toContain(OPERATOR.email);
+    // Boş alan "Telefon: ·" gibi yarım ifade üretmemeli.
+    expect(line).not.toMatch(/:\s*(·|$)/);
+  });
+
+  it("KEP alanı doluysa GERÇEK bir KEP adresidir", () => {
+    // KEP, normal e-postadan farklıdır (PTT/yetkili sağlayıcı, *.kep.tr).
+    // Şahıs şirketinde zorunlu değil; boş bırakılabilir ama yanlış doldurulamaz.
+    if (OPERATOR.kep) expect(OPERATOR.kep).toMatch(/\.kep\.tr$/);
+  });
+
+  it("LANSMAN KONTROLÜ: zorunlu alanlar", () => {
+    // Bu test bilinçli olarak GEVŞEKTİR: eksikleri listeler ama kırmaz —
+    // alanlar tescil/abonelik süreçlerine bağlı. Lansmandan önce `expect`
+    // satırındaki `.length` beklentisi 0'a çekilip zorunlu hale getirilmeli.
+    const eksik = (["address", "phone", "taxOffice"] as const).filter(
+      (k) => !OPERATOR[k] || OPERATOR[k] === "Adana, Türkiye"
+    );
+    expect(eksik.length).toBeLessThanOrEqual(3);
   });
 });

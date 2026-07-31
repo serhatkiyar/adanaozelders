@@ -1,7 +1,7 @@
-import { useEffect } from "react";
 import { Avatar } from "@/components/Avatar";
 import { StarRating } from "@/components/StarRating";
 import { useReviewsByTutor } from "@/hooks/useReviews";
+import { useModalPanel } from "@/hooks/useModalA11y";
 import { formatDateTime } from "@/lib/datetime";
 
 interface ReviewListModalProps {
@@ -12,22 +12,13 @@ interface ReviewListModalProps {
 
 export function ReviewListModal({ tutorId, tutorName, onClose }: ReviewListModalProps) {
   const { data: reviews, isLoading } = useReviewsByTutor(tutorId);
-
-  useEffect(() => {
-    const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    document.addEventListener("keydown", handleEsc);
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.removeEventListener("keydown", handleEsc);
-      document.body.style.overflow = "";
-    };
-  }, [onClose]);
+  // Esc + arka plan kaydırma kilidi + ODAK TUZAĞI (eskiden yalnız ilk ikisi vardı).
+  const panelRef = useModalPanel({ onClose });
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm sm:p-6">
       <div
+        ref={panelRef}
         className="flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl bg-white shadow-xl ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700"
         role="dialog"
         aria-modal="true"

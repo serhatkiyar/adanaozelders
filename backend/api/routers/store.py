@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import csv
+import dataclasses
 import datetime
 import io
 from decimal import Decimal
@@ -27,6 +28,13 @@ from models.client import Client
 from models.role import RoleType
 from models.tutor import Tutor
 from schemas.review import RatingDistributionOut
+from schemas.stock import (
+    LedgerAuditOut,
+    LedgerProblemOut,
+    LedgerVerificationOut,
+    StockMovementOut,
+    StockMovementPageOut,
+)
 from schemas.store import (
     BulkImportResultOut,
     CartValidateOut,
@@ -74,6 +82,7 @@ from services import (
     delivery_service,
     order_service,
     phone_service,
+    stock_ledger,
     store_service,
 )
 
@@ -119,6 +128,15 @@ async def list_categories(db: AsyncSession = Depends(get_db)):
     return await store_service.list_categories(db)
 
 
+@router.get("/book-facets")
+async def list_book_facets(
+    category_id: int | None = Query(default=None),
+    db: AsyncSession = Depends(get_db),
+):
+    """Kitap filtrelerinin seçenekleri (yayınevi / yazar / kapak) + sayıları."""
+    return await store_service.list_book_facets(db, category_id=category_id)
+
+
 @router.get("/products", response_model=list[ProductSearchOut])
 async def search_products(
     q: str | None = Query(default=None, max_length=200),
@@ -129,6 +147,10 @@ async def search_products(
     max_price: Decimal | None = Query(default=None, ge=0),
     in_stock: bool = Query(default=False),
     min_rating: float | None = Query(default=None, ge=0, le=5),
+    # Kitap künyesi daraltmaları (çoklu seçim): /store/book-facets listeler.
+    publisher: list[str] | None = Query(default=None),
+    author: list[str] | None = Query(default=None),
+    cover_type: list[str] | None = Query(default=None),
     sort: str | None = Query(
         default=None, pattern="^(price_asc|price_desc|newest|rating)$"
     ),
@@ -139,6 +161,9 @@ async def search_products(
     return await store_service.search_products(
         db,
         q=q,
+        publisher=publisher,
+        author=author,
+        cover_type=cover_type,
         category_id=category_id,
         tutor_id=tutor_id,
         kind=kind,
@@ -225,7 +250,9 @@ async def update_product(
     admin: Admin = Depends(require_admin_permission("products.manage")),
     db: AsyncSession = Depends(get_db),
 ):
-    product = await store_service.update_product(db, product_id, payload)
+    product = await store_service.update_product(
+        db, product_id, payload, admin_id=admin.id
+    )
     await audit_service.record(
         db, actor=admin, action="product.update", target_type="product",
         target_id=product_id, after=payload.model_dump(exclude_unset=True),
@@ -852,7 +879,13 @@ async def request_order_return(
     db: AsyncSession = Depends(get_db),
 ):
     order = await order_service.get_order_for_pay(db, order_id, client.id)
-    return await order_service.request_return(db, order, payload.reason)
+    return await order_service.request_return(
+        db,
+        order,
+        payload.reason,
+        return_type=payload.type,
+        items=payload.items,
+    )
 
 
 # ── Ürün detayı + değerlendirme (en sonda — /{id_or_slug} catch-all) ─────────────
@@ -1039,4 +1072,174 @@ async def remove_collection_item(
 ):
     return await collection_service.remove_item(
         db, client, collection_id, product_id
+    )
+
+
+# ══════════════════ Stok hareket defteri — SALT OKUNUR ══════════════════
+#
+# Defter append-only'dir: hareket oluşturma/düzenleme/silme ucu YOKTUR ve
+# yazılmamalıdır. Hareketler yalnız iş akışlarının (ödeme, iptal, iade, ürün
+# oluşturma, admin düzeltmesi) yan etkisi olarak doğar; DB trigger'ı UPDATE ve
+# DELETE'i zaten reddeder. Buradaki uçlar teşhis ve görünürlük içindir —
+# **hiçbiri veriyi düzeltmez**.
+#
+# İzin: mevcut `products.view`. Bu pakette `inventory.*` izinleri EKLENMEZ —
+# kimseye verilmemiş bir izin kodu bu kod tabanında sessiz 403 üretir; envanter
+# izinleri tam envanter modülüyle, rollerle birlikte gelecek.
+
+
+def _movement_out(row) -> StockMovementOut:
+    m = row.movement
+    return StockMovementOut(
+        id=m.id,
+        product_id=m.product_id,
+        sku=row.sku,
+        product_title=row.product_title,
+        qty_delta=m.qty_delta,
+        qty_after=m.qty_after,
+        movement_type=m.movement_type,
+        reason_code=m.reason_code,
+        ref_type=m.ref_type,
+        ref_id=m.ref_id,
+        ref_line_id=m.ref_line_id,
+        actor_type=m.actor_type,
+        actor_id=m.actor_id,
+        note=m.note,
+        created_at=m.created_at,
+    )
+
+
+def _verification_out(v) -> LedgerVerificationOut:
+    return LedgerVerificationOut(
+        consistent=v.consistent,
+        product_id=v.product_id,
+        sku=v.sku,
+        product_title=v.product_title,
+        current_stock=v.current_stock,
+        ledger_stock=v.ledger_stock,
+        movement_count=v.movement_count,
+        first_divergent_id=v.first_divergent_id,
+        problems=[LedgerProblemOut(**dataclasses.asdict(pr)) for pr in v.problems],
+        tracked=v.current_stock is not None,
+    )
+
+
+@router.get("/admin/products/{product_id}/stock-movements", response_model=StockMovementPageOut)
+async def product_stock_movements(
+    product_id: int,
+    _admin: Admin = Depends(require_admin_permission("products.view")),
+    db: AsyncSession = Depends(get_db),
+    limit: int = Query(50, ge=1, le=stock_ledger.LIST_MAX_LIMIT),
+    offset: int = Query(0, ge=0),
+    movement_type: str | None = Query(None, max_length=20),
+    reason_code: str | None = Query(None, max_length=30),
+    actor_type: str | None = Query(None, max_length=10),
+    actor_id: int | None = Query(None, ge=1),
+    ref_type: str | None = Query(None, max_length=20),
+    ref_id: int | None = Query(None, ge=1),
+    date_from: datetime.datetime | None = Query(None),
+    date_to: datetime.datetime | None = Query(None),
+):
+    """Bir ürünün defter geçmişi (en yeni önce, sayfalı)."""
+    sayfa = await stock_ledger.list_movements(
+        db,
+        product_id=product_id,
+        movement_type=movement_type,
+        reason_code=reason_code,
+        actor_type=actor_type,
+        actor_id=actor_id,
+        ref_type=ref_type,
+        ref_id=ref_id,
+        date_from=date_from,
+        date_to=date_to,
+        limit=limit,
+        offset=offset,
+    )
+    return StockMovementPageOut(
+        rows=[_movement_out(r) for r in sayfa.rows],
+        total=sayfa.total,
+        limit=limit,
+        offset=offset,
+    )
+
+
+@router.get("/admin/stock-movements", response_model=StockMovementPageOut)
+async def all_stock_movements(
+    _admin: Admin = Depends(require_admin_permission("products.view")),
+    db: AsyncSession = Depends(get_db),
+    limit: int = Query(50, ge=1, le=stock_ledger.LIST_MAX_LIMIT),
+    offset: int = Query(0, ge=0),
+    product_id: int | None = Query(None, ge=1),
+    sku: str | None = Query(None, max_length=20),
+    movement_type: str | None = Query(None, max_length=20),
+    reason_code: str | None = Query(None, max_length=30),
+    actor_type: str | None = Query(None, max_length=10),
+    actor_id: int | None = Query(None, ge=1),
+    ref_type: str | None = Query(None, max_length=20),
+    ref_id: int | None = Query(None, ge=1),
+    date_from: datetime.datetime | None = Query(None),
+    date_to: datetime.datetime | None = Query(None),
+):
+    """Tüm defter (envanter hareketleri tablosu) — sayfalı ve filtreli."""
+    sayfa = await stock_ledger.list_movements(
+        db,
+        product_id=product_id,
+        sku=sku,
+        movement_type=movement_type,
+        reason_code=reason_code,
+        actor_type=actor_type,
+        actor_id=actor_id,
+        ref_type=ref_type,
+        ref_id=ref_id,
+        date_from=date_from,
+        date_to=date_to,
+        limit=limit,
+        offset=offset,
+    )
+    return StockMovementPageOut(
+        rows=[_movement_out(r) for r in sayfa.rows],
+        total=sayfa.total,
+        limit=limit,
+        offset=offset,
+    )
+
+
+@router.get("/admin/products/{product_id}/stock-verify", response_model=LedgerVerificationOut)
+async def product_stock_verify(
+    product_id: int,
+    _admin: Admin = Depends(require_admin_permission("products.view")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Tek ürünün defter doğrulaması. **Hiçbir şeyi düzeltmez.**"""
+    try:
+        sonuc = await stock_ledger.verify_ledger(db, product_id)
+    except ValueError as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, str(exc)) from exc
+    return _verification_out(sonuc)
+
+
+@router.get("/admin/stock-verify", response_model=LedgerAuditOut)
+async def ledger_verify(
+    _admin: Admin = Depends(require_admin_permission("products.view")),
+    db: AsyncSession = Depends(get_db),
+    limit: int = Query(50, ge=1, le=stock_ledger.AUDIT_MAX_LIMIT),
+    offset: int = Query(0, ge=0),
+):
+    """Defterin SAYFALI genel doğrulaması.
+
+    Sınırsız tam tarama yoktur: her istek en fazla `AUDIT_MAX_LIMIT` ürüne
+    bakar ve `next_offset` ile sonraki sayfayı söyler. Sayfa içi denetim sabit
+    sayıda toplu sorguya indirgenmiştir (ürün başına sorgu YOK).
+
+    **Hiçbir şeyi düzeltmez** — bulgu, düzeltme butonuna dönüştürülmez; sayım
+    ve düzeltme ayrı bir pakettir.
+    """
+    sonuc = await stock_ledger.audit_ledger(db, limit=limit, offset=offset)
+    return LedgerAuditOut(
+        checked=sonuc.checked,
+        inconsistent=sonuc.inconsistent,
+        problems=[LedgerProblemOut(**dataclasses.asdict(pr)) for pr in sonuc.problems],
+        next_offset=sonuc.next_offset,
+        limit=limit,
+        offset=offset,
     )

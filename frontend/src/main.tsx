@@ -2,7 +2,14 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { HelmetProvider } from "react-helmet-async";
 import App from "@/App";
+import { initAnalytics } from "@/lib/analytics";
+import { initMonitoring } from "@/lib/monitoring";
 import "@/index.css";
+
+// Hata izleme mümkün olduğunca erken başlar (VITE_SENTRY_DSN yoksa no-op).
+initMonitoring();
+// Çerezsiz ziyaretçi analitiği (VITE_ANALYTICS_SCRIPT_URL yoksa no-op).
+initAnalytics();
 
 // Flash önle: kayıtlı tema tercihini render'dan önce uygula.
 try {

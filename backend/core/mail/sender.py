@@ -64,3 +64,30 @@ async def send_back_in_stock_email(*, to: str, product_title: str, product_url: 
     return await _safe_send(
         templates.back_in_stock_email(to=to, product_title=product_title, product_url=product_url)
     )
+
+
+async def send_contact_message_email(
+    *,
+    to: str,
+    from_name: str,
+    from_email: str,
+    subject: str,
+    message: str,
+    user_ref: str | None = None,
+) -> bool:
+    return await _safe_send(
+        templates.contact_message_email(
+            to=to, from_name=from_name, from_email=from_email,
+            subject=subject, message=message, user_ref=user_ref,
+        )
+    )
+
+
+async def send_contact_ack_email(*, to: str, name: str, subject: str) -> bool:
+    return await _safe_send(templates.contact_ack_email(to=to, name=name, subject=subject))
+
+
+async def send_payout_changed_email(*, to: str, name: str, iban_masked: str) -> bool:
+    return await _safe_send(
+        templates.payout_changed_email(to=to, name=name, iban_masked=iban_masked)
+    )

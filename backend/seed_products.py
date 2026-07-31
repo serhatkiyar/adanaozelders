@@ -1,7 +1,7 @@
 import asyncio
 from sqlalchemy import select
 from core.database import AsyncSessionLocal
-from models.store import Product, ProductCategory, ProductImage
+from models.store import Product, ProductCategory
 from models.tutor import Tutor
 
 async def seed_store():

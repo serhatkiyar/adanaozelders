@@ -32,6 +32,13 @@ const REASON_LABEL: Record<ReportReason, string> = {
 };
 const TARGETS = ["TUTOR", "CLIENT", "REVIEW", "MESSAGE", "BOOKING_COMMENT"];
 
+/** Yayından kaldırılabilen hedefler (backend: services/content_moderation.py).
+ *  Kullanıcı ve mesaj bu akıştan gizlenmez — onların yaptırımı askı/silme. */
+const MODERATABLE_TARGETS = ["REVIEW", "PRODUCT_REVIEW", "LIBRARY_REVIEW"];
+
+const isModeratable = (report: ReportOut) =>
+  MODERATABLE_TARGETS.includes(report.target_type);
+
 interface Decision {
   report: ReportOut;
   status: ReportStatus.RESOLVED | ReportStatus.DISMISSED;
@@ -42,6 +49,7 @@ export default function AdminReportsPage() {
   const state = parseAdminReportQuery(params);
   const [decision, setDecision] = useState<Decision | null>(null);
   const [resolution, setResolution] = useState("");
+  const [hideTarget, setHideTarget] = useState(false);
   const query = useAdminReportList({
     status: state.status,
     target_type: state.targetType || undefined,
@@ -55,6 +63,10 @@ export default function AdminReportsPage() {
 
   const openDecision = (report: ReportOut, status: Decision["status"]) => {
     setResolution("");
+    // Varsayılan: şikayeti çözerken içeriği de kaldır. Bir yorum hakkındaki
+    // şikayet haklı bulunduysa yorumun yayında kalması beklenmez; yine de
+    // admin bu kutuyu kaldırabilir (ör. yorum uygun, şikayet asılsız).
+    setHideTarget(status === ReportStatus.RESOLVED && isModeratable(report));
     setDecision({ report, status });
   };
   const submitDecision = () => {
@@ -64,6 +76,7 @@ export default function AdminReportsPage() {
         id: decision.report.id,
         status: decision.status,
         resolution: resolution.trim() || undefined,
+        hideTarget: hideTarget && isModeratable(decision.report),
       },
       {
         onSuccess: () => {
@@ -179,6 +192,22 @@ export default function AdminReportsPage() {
           <span className="mb-1.5 block text-sm font-semibold">Moderasyon notu</span>
           <textarea value={resolution} onChange={(event) => setResolution(event.target.value)} maxLength={2000} rows={5} className="input min-h-28 resize-y" placeholder="Kararın kısa gerekçesi" />
         </label>
+        {decision && isModeratable(decision.report) && (
+          <label className="mt-4 flex items-start gap-3 text-sm">
+            <input
+              type="checkbox"
+              checked={hideTarget}
+              onChange={(event) => setHideTarget(event.target.checked)}
+              className="mt-0.5 h-4 w-4 rounded border-slate-300 dark:border-slate-600"
+            />
+            <span>
+              <span className="font-semibold">Yorumu yayından kaldır</span>
+              <span className="mt-0.5 block text-xs text-slate-500 dark:text-slate-400">
+                Yorum silinmez; gizlenir ve puan ortalamasından düşülür. Karar geri alınabilir.
+              </span>
+            </span>
+          </label>
+        )}
         <div className="mt-5 flex justify-end gap-2">
           <Button variant="ghost" disabled={resolve.isPending} onClick={() => setDecision(null)}>Vazgeç</Button>
           <Button variant={decision?.status === ReportStatus.DISMISSED ? "danger" : "primary"} isPending={resolve.isPending} onClick={submitDecision}>Kararı kaydet</Button>

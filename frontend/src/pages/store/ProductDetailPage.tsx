@@ -637,8 +637,8 @@ function PolicyPanel({ kind }: { kind: ProductKind }) {
           </p>
           <p>
             <span className="font-medium text-slate-900 dark:text-white">İade süreci:</span>{" "}
-            Ödemeniz teslimata kadar emanette tutulur. İade onaylandığında tutar, ödemenin yapıldığı
-            karta iyzico üzerinden iade edilir (bankanıza bağlı olarak genellikle 7-14 iş günü).
+            İade onaylandığında tutar, ödemenin yapıldığı karta iyzico üzerinden iade edilir
+            (bankanıza bağlı olarak genellikle 7-14 iş günü).
           </p>
         </>
       ) : (

@@ -5,19 +5,22 @@ import { Seo } from "@/components/Seo";
 import { DeliveryFeedbackSection } from "@/components/store/DeliveryFeedbackSection";
 import { StoreLayout } from "@/pages/store/StoreLayout";
 import { FullScreenSpinner } from "@/components/Spinner";
-import { formatTL } from "@/lib/money";
+import { formatTL, parseMoney } from "@/lib/money";
 import { formatDate } from "@/lib/datetime";
 import { promisedDateLabel } from "@/lib/deliveryPromise";
 import { formatEventTime, proofLabel } from "@/lib/deliveryTimeline";
 import { useOrderTracking } from "@/hooks/useDelivery";
 import { ShipAddressUpdate } from "@/components/store/ShipAddressUpdate";
+import { DeliveryPrefControls } from "@/components/store/DeliveryPrefControls";
 import { OrderInvoiceModal } from "@/components/store/OrderInvoiceModal";
 import { useOrder, useCancelOrder, useRequestReturn } from "@/hooks/useStore";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useCartStore } from "@/store/cartStore";
 import { STATUS_LABELS, OrderItemRow, orderItemToProduct } from "@/pages/store/OrdersPage";
 import { toast } from "@/store/toastStore";
-import type { OrderOut } from "@/types";
+import type { OrderOut,
+  ReturnType,
+} from "@/types";
 
 const RETURN_BADGE: Record<string, { label: string; cls: string }> = {
   PENDING: { label: "İade talebi inceleniyor", cls: "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-400" },
@@ -37,9 +40,13 @@ export default function OrderDetailPage() {
   const [invoiceOpen, setInvoiceOpen] = useState(false);
   // Teslim kanıtı (foto/OTP/yönetici) yalnız oturumlu sahibe döner — public
   // token projeksiyonunda foto yoktur (PII), bu yüzden kanıt burada gösterilir.
+  // Açık siparişte de çekilir: teslimat tercihi + erteleme buradan beslenir
+  // (backend uçları oturumlu sahibe tüm tercihleri açar).
   const { data: tracking } = useOrderTracking(
     orderId ?? null,
-    order?.status === "DELIVERED" && !!order?.has_physical
+    !!order?.has_physical &&
+      order?.payment_status === "PAID" &&
+      (order?.status === "PAID" || order?.status === "SHIPPED" || order?.status === "DELIVERED")
   );
 
   if (isLoading) return <FullScreenSpinner />;
@@ -252,6 +259,14 @@ export default function OrderDetailPage() {
           </Link>
         )}
 
+        {/* Teslimat tercihi + erteleme — oturumlu sahibin tam yetkili yüzeyi
+            (SMS'teki token sayfasında kapıya/komşuya kilitlidir, burada serbest). */}
+        {canTrack && order.status !== "DELIVERED" && tracking && orderId != null && (
+          <div className="mt-5 rounded-2xl border border-slate-200 dark:border-slate-800">
+            <DeliveryPrefControls t={tracking} mode={{ kind: "order", orderId }} loggedIn />
+          </div>
+        )}
+
         {/* Teslim kanıtı — foto + yöntem + saat (yalnız sahibin oturumlu görünümünde) */}
         {order.status === "DELIVERED" && tracking?.delivered_at && (
           <div className="mt-5 flex items-center gap-4 rounded-2xl border border-slate-200 p-5 dark:border-slate-800">
@@ -422,27 +437,69 @@ function SummaryRow({ label, value, accent }: { label: string; value: string; ac
 }
 
 function ReturnModal({ order, onClose }: { order: OrderOut; onClose: () => void }) {
+  const [type, setType] = useState<ReturnType>("CAYMA");
   const [reason, setReason] = useState("");
+  // Kalem başına iade adedi: order_item_id -> adet (0 = iade edilmiyor).
+  const [quantities, setQuantities] = useState<Record<number, number>>(() =>
+    Object.fromEntries(order.items.map((it) => [it.id, it.quantity]))
+  );
   const request = useRequestReturn(order.id);
+
+  // Cayma hakkı KOŞULSUZDUR (Mesafeli Sözleşmeler Yönetmeliği m.9): gerekçe
+  // istenmez ve talep otomatik onaylanır. Diğer türlerde gerekçe zorunludur.
+  const reasonRequired = type !== "CAYMA";
+  const selected = order.items.filter((it) => (quantities[it.id] ?? 0) > 0);
+  const isFull = order.items.every(
+    (it) => (quantities[it.id] ?? 0) >= it.quantity
+  );
+
+  // Tahmini iade tutarı — kesin tutarı SUNUCU hesaplar (kupon payı, kargo
+  // kuralı). Burada yalnız kalem toplamı gösteriliyor.
+  const estimate = selected.reduce(
+    (sum, it) => sum + (parseMoney(it.unit_price) ?? 0) * (quantities[it.id] ?? 0),
+    0
+  );
+
+  function setQty(itemId: number, qty: number) {
+    setQuantities((q) => ({ ...q, [itemId]: qty }));
+  }
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (reason.trim().length < 3) {
-      toast.error("Lütfen iade gerekçeni yaz (en az 3 karakter).");
+    if (selected.length === 0) {
+      toast.error("En az bir ürün seç.");
       return;
     }
-    request.mutate(reason.trim(), {
-      onSuccess: () => {
-        toast.success("İade talebin alındı; en kısa sürede değerlendirilecek.");
-        onClose();
+    if (reasonRequired && reason.trim().length < 3) {
+      toast.error("Bu iade türü için gerekçe yazman gerekiyor.");
+      return;
+    }
+    request.mutate(
+      {
+        type,
+        reason: reason.trim(),
+        items: selected.map((it) => ({
+          order_item_id: it.id,
+          quantity: quantities[it.id] ?? 0,
+        })),
       },
-      onError: (err: unknown) => {
-        const detail =
-          (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ??
-          "İade talebi oluşturulamadı";
-        toast.error(detail);
-      },
-    });
+      {
+        onSuccess: (ret) => {
+          toast.success(
+            ret.status === "APPROVED"
+              ? "İade talebin onaylandı; ödemen iade ediliyor."
+              : "İade talebin alındı; en kısa sürede değerlendirilecek."
+          );
+          onClose();
+        },
+        onError: (err: unknown) => {
+          const detail =
+            (err as { response?: { data?: { detail?: string } } })?.response?.data
+              ?.detail ?? "İade talebi oluşturulamadı";
+          toast.error(detail);
+        },
+      }
+    );
   }
 
   return (
@@ -453,23 +510,125 @@ function ReturnModal({ order, onClose }: { order: OrderOut; onClose: () => void 
       <form
         onClick={(e) => e.stopPropagation()}
         onSubmit={submit}
-        className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-700 dark:bg-slate-900"
+        className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-700 dark:bg-slate-900"
       >
         <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
           İade talebi — Sipariş #{order.id}
         </h2>
-        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-          İade gerekçeni yaz. Talebin onaylanırsa ödemen iade edilir.
+
+        {/* Tür */}
+        <fieldset className="mt-4">
+          <legend className="text-sm font-medium text-slate-700 dark:text-slate-200">
+            İade nedeni
+          </legend>
+          <div className="mt-2 space-y-2">
+            {(
+              [
+                {
+                  value: "CAYMA" as const,
+                  label: "Cayma hakkı (14 gün)",
+                  hint: "Gerekçe belirtmene gerek yok; talebin anında onaylanır.",
+                },
+                {
+                  value: "AYIPLI" as const,
+                  label: "Ürün kusurlu / hasarlı",
+                  hint: "İncelenmek üzere ekibimize iletilir.",
+                },
+                {
+                  value: "DIGER" as const,
+                  label: "Diğer (yanlış ürün, eksik gönderim…)",
+                  hint: "İncelenmek üzere ekibimize iletilir.",
+                },
+              ]
+            ).map((opt) => (
+              <label
+                key={opt.value}
+                className="flex cursor-pointer items-start gap-2.5 rounded-lg border border-slate-200 p-3 text-sm transition-colors hover:border-slate-300 dark:border-slate-700 dark:hover:border-slate-600"
+              >
+                <input
+                  type="radio"
+                  name="return-type"
+                  value={opt.value}
+                  checked={type === opt.value}
+                  onChange={() => setType(opt.value)}
+                  className="mt-0.5"
+                />
+                <span>
+                  <span className="font-medium text-slate-800 dark:text-slate-100">
+                    {opt.label}
+                  </span>
+                  <span className="block text-xs text-slate-500 dark:text-slate-400">
+                    {opt.hint}
+                  </span>
+                </span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
+
+        {/* Kalemler */}
+        <fieldset className="mt-5">
+          <legend className="text-sm font-medium text-slate-700 dark:text-slate-200">
+            İade edilecek ürünler
+          </legend>
+          <div className="mt-2 space-y-2">
+            {order.items.map((it) => (
+              <div
+                key={it.id}
+                className="flex items-center justify-between gap-3 border-b border-slate-100 py-2 last:border-0 dark:border-slate-800"
+              >
+                <div className="min-w-0">
+                  <p className="truncate text-sm text-slate-800 dark:text-slate-100">
+                    {it.title}
+                  </p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    {formatTL(it.unit_price)} · {it.quantity} adet
+                  </p>
+                </div>
+                <select
+                  value={quantities[it.id] ?? 0}
+                  onChange={(e) => setQty(it.id, Number(e.target.value))}
+                  className="shrink-0 rounded-lg border border-slate-200 px-2 py-1 text-sm dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+                  aria-label={`${it.title} için iade adedi`}
+                >
+                  {Array.from({ length: it.quantity + 1 }, (_, n) => (
+                    <option key={n} value={n}>
+                      {n === 0 ? "İade etme" : `${n} adet`}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ))}
+          </div>
+        </fieldset>
+
+        {/* Gerekçe */}
+        <label className="mt-5 block">
+          <span className="text-sm font-medium text-slate-700 dark:text-slate-200">
+            Açıklama {reasonRequired ? <span className="text-red-500">*</span> : "(isteğe bağlı)"}
+          </span>
+          <textarea
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            rows={3}
+            maxLength={1000}
+            placeholder={
+              reasonRequired
+                ? "Ürün hasarlı geldi / yanlış ürün gönderildi…"
+                : "İstersen kısa bir not bırakabilirsin."
+            }
+            className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:focus:ring-indigo-500/20"
+          />
+        </label>
+
+        <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">
+          Tahmini iade: <strong>{formatTL(estimate)}</strong>
+          {isFull
+            ? " · Tüm sipariş iade edildiği için kargo ücreti de geri ödenir."
+            : " · Kısmi iadede kargo ücreti geri ödenmez."}{" "}
+          Kesin tutar kupon indirimin dikkate alınarak hesaplanır.
         </p>
-        <textarea
-          autoFocus
-          value={reason}
-          onChange={(e) => setReason(e.target.value)}
-          rows={4}
-          maxLength={1000}
-          placeholder="Ürün hasarlı geldi / yanlış ürün / beklentimi karşılamadı…"
-          className="mt-4 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:focus:ring-indigo-500/20"
-        />
+
         <div className="mt-4 flex justify-end gap-3">
           <button
             type="button"
@@ -480,10 +639,10 @@ function ReturnModal({ order, onClose }: { order: OrderOut; onClose: () => void 
           </button>
           <button
             type="submit"
-            disabled={request.isPending}
+            disabled={request.isPending || selected.length === 0}
             className="rounded-full bg-indigo-600 px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-indigo-700 disabled:opacity-50"
           >
-            Talebi gönder
+            {request.isPending ? "Gönderiliyor…" : "Talebi gönder"}
           </button>
         </div>
       </form>

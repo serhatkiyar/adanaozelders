@@ -23,7 +23,7 @@ from models.payment import Payment, PaymentStatus
 from models.role import ROLE_IDS, RoleType
 from models.store import Order, OrderItem, SellerType
 from models.tutor import Tutor
-from services import commission, escrow, notification_service
+from services import commission, escrow, notification_service, payment_gates
 
 logger = logging.getLogger("adana.payments")
 
@@ -215,6 +215,12 @@ async def complete_checkout(
     Booking bu arada iptal/red edildiyse (öğrenci iyzico sayfasındayken) tahsil
     edilen para HELD'e alınıp kilitlenmez — anında iade akışı başlatılır.
     """
+    # Kol kapatıldıktan SONRA tamamlanan tahsilat sessiz kalmasın
+    # (kapatma kararının artçı penceresi — bkz. payment_gates).
+    if success:
+        await payment_gates.warn_if_closed_completion(
+            db, payment_gates.PaymentBranch.TUTOR_MARKETPLACE, reference=f"booking:{booking_id}"
+        )
     payment = await get_for_booking(db, booking_id)
     if payment is None:
         return None

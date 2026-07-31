@@ -14,6 +14,7 @@ from api.routers import (
     flashcards,
     geocode,
     habits,
+    inventory,
     leaderboard,
     libraries,
     library_bookmarks,
@@ -23,11 +24,13 @@ from api.routers import (
     messages,
     notifications,
     payments,
+    payouts,
     payout,
     qa,
     reports,
     reviews,
     speedtests,
+    support,
     store,
     study_reservations,
     tasks,
@@ -52,6 +55,7 @@ api_router.include_router(exams.router)
 api_router.include_router(flashcards.router)
 api_router.include_router(geocode.router)
 api_router.include_router(habits.router)
+api_router.include_router(inventory.router)
 api_router.include_router(libraries.router)
 api_router.include_router(library_bookmarks.router)
 api_router.include_router(library_exam_catalogs.router)
@@ -59,11 +63,13 @@ api_router.include_router(library_exams.router)
 api_router.include_router(library_operators.router)
 api_router.include_router(reviews.router)
 api_router.include_router(speedtests.router)
+api_router.include_router(support.router)
 api_router.include_router(admin.router)
 api_router.include_router(notifications.router)
 api_router.include_router(messages.router)
 api_router.include_router(leaderboard.router)
 api_router.include_router(payments.router)
+api_router.include_router(payouts.router)
 api_router.include_router(payout.router)
 api_router.include_router(reports.router)
 api_router.include_router(store.router)

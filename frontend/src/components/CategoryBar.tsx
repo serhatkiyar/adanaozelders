@@ -21,11 +21,11 @@ type Category = {
 };
 
 const CATEGORIES: Category[] = [
-  { key: "hepsi", label: "Hepsi", icon: "/icons/categories/hepsi.png", to: ROUTES.home },
-  { key: "egitmenler", label: "Eğitmenler", icon: "/icons/categories/egitmenler.png", to: ROUTES.tutors },
-  { key: "kutuphaneler", label: "Kütüphaneler", icon: "/icons/categories/kutuphaneler.png", to: ROUTES.libraries },
+  { key: "hepsi", label: "Hepsi", icon: "/icons/categories/hepsi.webp", to: ROUTES.home },
+  { key: "egitmenler", label: "Eğitmenler", icon: "/icons/categories/egitmenler.webp", to: ROUTES.tutors },
+  { key: "kutuphaneler", label: "Kütüphaneler", icon: "/icons/categories/kutuphaneler.webp", to: ROUTES.libraries },
   // Deneme oturumları kütüphane profillerinde yer alır.
-  { key: "denemeler", label: "Denemeler", icon: "/icons/categories/denemeler.png", to: ROUTES.libraries },
+  { key: "denemeler", label: "Denemeler", icon: "/icons/categories/denemeler.webp", to: ROUTES.libraries },
 ];
 
 
@@ -60,10 +60,16 @@ export function CategoryBar({
           }`;
           const inner = (
             <>
+              {/* 96px WebP (48px'te 2x retina). Kaynaklar 1024px PNG'ydi:
+                  beş ikon 4,21 MB tutuyordu ve ana sayfada anında indiriliyordu.
+                  width/height layout kaymasını (CLS) önler. */}
               <img
                 src={c.icon}
                 alt=""
                 aria-hidden
+                width={48}
+                height={48}
+                decoding="async"
                 className={`h-12 w-12 object-contain transition-all duration-200 group-hover:scale-105 ${
                   isActive ? "opacity-100" : "opacity-70 group-hover:opacity-100"
                 }`}

@@ -4,6 +4,7 @@ from fastapi import HTTPException, status
 from sqlalchemy import asc, desc, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from core.moderation import mask_contact_info
 from models.client import Client
 from models.demand import Demand, DemandStatus
 from models.demand_response import DemandResponse
@@ -17,7 +18,13 @@ from services import messaging_service, notification_service
 async def create_demand(
     db: AsyncSession, client: Client, data: DemandCreate
 ) -> Demand:
-    demand = Demand(client_id=client.id, **data.model_dump())
+    payload = data.model_dump()
+    # Talep ilanı tüm eğitmenlere açıktır: öğrenci buraya numarasını yazarsa
+    # eşleşme platform dışında kurulur ve öğrenci ödeme korumasını da kaybeder.
+    for field in ("title", "description"):
+        if isinstance(payload.get(field), str):
+            payload[field] = mask_contact_info(payload[field])
+    demand = Demand(client_id=client.id, **payload)
     db.add(demand)
     await db.flush()
     await db.refresh(demand)

@@ -1,0 +1,143 @@
+# Adana Özel Ders — üretim reverse proxy'si (TLS sonlandırma).
+#
+# Caddy sertifikayı Let's Encrypt'ten otomatik alır ve yeniler; ayrı bir certbot
+# kurulumu/cron'u gerekmez. Kubernetes/nginx-ingress bu ölçekte gereksizdir.
+#
+# Kullanım (docker-compose.prod.yml içinden):
+#   DOMAIN=adanaozelders.com.tr ACME_EMAIL=... docker compose -f docker-compose.prod.yml up -d
+#
+# DNS: A kaydı sunucunun IP'sine bakmalı; 80 ve 443 dışarıya açık olmalı
+# (80 olmadan ACME HTTP-01 doğrulaması yapılamaz).
+
+{
+	email {$ACME_EMAIL}
+	# Sertifika denemelerini test ederken staging'i açın; oran sınırına takılmayın:
+	# acme_ca https://acme-staging-v02.api.letsencrypt.org/directory
+}
+
+{$DOMAIN} {
+	encode zstd gzip
+
+	# ── Güvenlik başlıkları ──
+	header {
+		# HSTS: bir kez HTTPS gören tarayıcı bir daha düz HTTP denemez.
+		# preload listesine başvurmadan önce alt alan adlarınızın tamamının
+		# HTTPS olduğundan emin olun.
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Frame-Options "DENY"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Permissions-Policy "camera=(self), geolocation=(self), microphone=()"
+		# Sunucu parmak izini azalt.
+		-Server
+		# BURAYA Content-Security-Policy EKLEMEYİN. CSP tek kaynakta,
+		# frontend/nginx-security-headers.conf içinde tanımlıdır. Tarayıcı birden
+		# çok CSP başlığı gördüğünde hepsinin KESİŞİMİNİ uygular; iki liste
+		# zamanla ayrıştığında yüzeyler açıklaması zor biçimlerde kırılır.
+	}
+
+	# ── API ──
+	# Backend istemci IP'sini X-Forwarded-For'dan okur; bunu YALNIZCA
+	# TRUSTED_PROXY_IPS içindeki bir bağlantıdan gelirse kabul eder.
+	# Compose ağında Caddy'nin IP'si sabit olmadığından üretim .env'inde
+	# TRUSTED_PROXY_IPS=["172.16.0.0/12"] (Docker varsayılan aralığı) verin.
+	handle /api/* {
+		reverse_proxy backend:8000
+	}
+
+	# iyzico ödeme callback'i: kullanıcının TARAYICISI buraya POST eder.
+	handle /payments/* {
+		reverse_proxy backend:8000
+	}
+
+	# WebSocket (mesaj/bildirim push'ları) — Caddy upgrade'i kendiliğinden taşır.
+	handle /ws* {
+		reverse_proxy backend:8000
+	}
+
+	handle /health {
+		reverse_proxy backend:8000
+	}
+
+	# ── Ziyaretçi analitiği (first-party proxy) ──
+	# Script ve olay gönderimi KENDİ alan adımızdan geçer. İki sebep:
+	#   1. CSP'de `script-src 'self'` bozulmasın — üçüncü taraf bir host'a izin
+	#      vermek XSS savunmasında açacağımız ilk delik olurdu.
+	#   2. Reklam engelleyiciler bilinen analitik alan adlarını engeller; kendi
+	#      yolumuz engellenmediğinden ölçüm yanlılığı azalır.
+	# `ANALYTICS_UPSTREAM` verilmezse bu blok yalnızca 502 döner (analitik
+	# kapalıdır; frontend zaten script'i hiç yüklemez).
+	handle_path /istatistik/* {
+		reverse_proxy {$ANALYTICS_UPSTREAM:umami:3000}
+	}
+
+	# Sitemap dinamik üretilir (onaylı eğitmenler + ACTIVE kütüphane/ürün).
+	# Arama motorları alan adının KÖKÜNDE arar; /api/v1 altında kalırsa
+	# alışılmış konumda bulunmaz.
+	handle /sitemap.xml {
+		reverse_proxy backend:8000
+	}
+
+	# ── Sosyal paylaşım önizlemesi ──
+	# WhatsApp/Twitter/Facebook/LinkedIn/Telegram önizleme botları JS
+	# ÇALIŞTIRMAZ: SPA'nın runtime meta etiketleri onlara görünmez ve her
+	# paylaşım jenerik site başlığıyla çıkar. Bu botlara sunucuda üretilmiş
+	# meta HTML'i veriyoruz.
+	#
+	# GOOGLEBOT BİLEREK LİSTEDE YOK: Google JS render eder ve gerçek sayfayı
+	# görmelidir. Ona farklı içerik sunmak "cloaking" sayılır ve cezalandırılır.
+	@social_bot header_regexp User-Agent (?i)(facebookexternalhit|twitterbot|whatsapp|linkedinbot|slackbot|telegrambot|discordbot|pinterest|redditbot|skypeuripreview|embedly|quora link preview|vkshare)
+	handle @social_bot {
+		rewrite * /__meta?path={uri}
+		reverse_proxy backend:8000
+	}
+
+	# ── SPA ──
+	handle {
+		reverse_proxy frontend:80
+	}
+
+	log {
+		output file /var/log/caddy/access.log {
+			roll_size 20mb
+			roll_keep 5
+		}
+	}
+}
+
+# ── Dosya deposu (MinIO) ────────────────────────────────────────────────────────
+#
+# Yüklenen dosyalar (profil ve kütüphane görselleri + imzalı adresle sunulan
+# hassas belgeler) buradan okunur. MinIO'nun kendisi hiçbir portu host'a
+# yayınlamaz; dışarıya YALNIZ bu proxy üzerinden görünür.
+#
+# Neden ALT ALAN, neden `/depo/*` gibi bir yol değil: imzalı (presigned) adresin
+# imzası hem host'u hem yolu kapsar. Bir yol önekini strip ederek proxy'lersek
+# MinIO'ya ulaşan yol imzalanandan farklı olur ve HER imzalı adres reddedilir.
+# Alt alan adında yol aynen korunur; Caddy Host başlığını da olduğu gibi
+# ilettiği için imza doğrulaması tutar.
+#
+# Gerekenler: `depo` için A kaydı (aynı IP) ve üretim .env'inde
+# S3_PUBLIC_ENDPOINT_URL=https://depo.<alan-adı> — adresler bununla üretilir.
+depo.{$DOMAIN} {
+	encode zstd gzip
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		# Depodan gelen bir dosya asla sayfa gibi gömülmesin (yüklenen HTML/SVG
+		# ile aynı-köken saldırısı denenmesin).
+		X-Frame-Options "DENY"
+		Content-Security-Policy "default-src 'none'; sandbox"
+		-Server
+	}
+
+	reverse_proxy minio:9000
+
+	log {
+		output file /var/log/caddy/storage.log {
+			roll_size 20mb
+			roll_keep 5
+		}
+	}
+}

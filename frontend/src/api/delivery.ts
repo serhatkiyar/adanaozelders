@@ -204,11 +204,36 @@ export async function fetchDeliveryInfo(): Promise<DeliveryInfo> {
   return data;
 }
 
-export async function fetchDeliveryRuns(runDate?: string): Promise<DeliveryRun[]> {
+export async function fetchDeliveryRuns(
+  runDate?: string,
+  opts?: { limit?: number; offset?: number }
+): Promise<DeliveryRun[]> {
   const { data } = await apiClient.get<DeliveryRun[]>("/delivery/runs", {
-    params: runDate ? { run_date: runDate } : undefined,
+    params: {
+      ...(runDate ? { run_date: runDate } : {}),
+      ...(opts?.limit != null ? { limit: opts.limit } : {}),
+      ...(opts?.offset != null ? { offset: opts.offset } : {}),
+    },
   });
   return data;
+}
+
+/** Rota altyapısı (VROOM+OSRM) sağlık durumu — /health kök uçtadır (/api/v1
+ * DIŞINDA): baseURL'den API öneki soyulur. `degraded=true` iken optimize
+ * "yaklaşık" modda çalışır; panel bunu amber şeritle gösterir. */
+export interface RoutingHealth {
+  provider: string;
+  status: string;
+  degraded: boolean;
+  detail?: string;
+}
+
+export async function fetchRoutingHealth(): Promise<RoutingHealth> {
+  const base = (apiClient.defaults.baseURL ?? "").replace(/\/api\/v1\/?$/, "");
+  const { data } = await apiClient.get<{ routing?: RoutingHealth }>("/health", {
+    baseURL: base,
+  });
+  return data.routing ?? { provider: "auto", status: "unknown", degraded: false };
 }
 
 export async function fetchDeliveryRun(runId: number): Promise<DeliveryRun> {
@@ -457,6 +482,24 @@ export async function publicSetDeliveryPref(
 
 export async function publicPostpone(token: string): Promise<void> {
   await apiClient.post(`/store/orders/track/${token}/postpone`);
+}
+
+/** Oturumlu (sipariş sahibi) teslimat tercihi — tüm pref değerleri serbest
+ * (public token'da KAPIYA/KOMSUYA 403'tür; oturumda güven daha yüksek). */
+export async function setOrderDeliveryPref(
+  orderId: number,
+  pref: DeliveryPref,
+  note?: string | null
+): Promise<void> {
+  await apiClient.post(`/store/orders/${orderId}/delivery-pref`, {
+    pref,
+    note: note ?? null,
+  });
+}
+
+/** Oturumlu erteleme — söz günü ertesi çalışma gününe kayar (limit 2). */
+export async function postponeOrder(orderId: number): Promise<void> {
+  await apiClient.post(`/store/orders/${orderId}/postpone`);
 }
 
 /** Teslim kanıtı fotoğrafı (PoD) — yeniden çekimde eskisinin yerine geçer. */

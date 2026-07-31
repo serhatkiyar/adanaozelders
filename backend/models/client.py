@@ -72,6 +72,12 @@ class Client(
             unique=True,
             postgresql_where=text("deleted_at IS NULL"),
         ),
+        # Admin kullanıcı listesi (created_at DESC LIMIT n).
+        Index(
+            "ix_clients_created_desc",
+            text("created_at DESC"),
+            postgresql_where=text("deleted_at IS NULL"),
+        ),
     )
 
 

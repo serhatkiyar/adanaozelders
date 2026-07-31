@@ -18,6 +18,12 @@ from sqlalchemy.orm import selectinload
 
 from core import mail, storage
 from core.config import settings
+from core.search_text import (
+    normalize_tr,
+    normalized,
+    tsquery as search_tsquery,
+)
+from core.moderation import mask_contact_info
 from models.admin import Admin
 from models.client import Client
 from models.product_bookmark import ProductBookmark
@@ -26,6 +32,7 @@ from models.store import (
     OrderItem,
     Product,
     ProductCategory,
+    ProductPriceHistory,
     ProductImage,
     ProductKind,
     ProductReview,
@@ -50,6 +57,7 @@ from schemas.store import (
     SellerProductCreate,
     SellerProductStat,
 )
+from services import stock_ledger
 from services.ranking import bayesian_average
 
 
@@ -162,8 +170,59 @@ def _to_search_out(
 # ── Kategori ─────────────────────────────────────────────────────────────────────
 
 
+def rollup_category_counts(
+    rows: list[tuple[int | None, int]], parents: dict[int, int | None]
+) -> dict[int, int]:
+    """Yaprak ürün sayılarını üst kategorilere toplar (saf; pytest'li).
+
+    Ürünler YAPRAK kategorilere atanır ("YKS Kitapları"), oysa gezinme üst
+    kategoriden başlar ("Sınav Kitapları"). Toplama yapılmazsa üst kategoriler
+    mega-menüde 0 görünür ve tıklanmaz.
+
+    ``parents``: kategori id → üst id (kök için None). Döngüye karşı korumalı.
+    """
+    counts: dict[int, int] = {}
+    for cat_id, n in rows:
+        if cat_id is None:
+            continue
+        seen: set[int] = set()
+        node: int | None = cat_id
+        # Kendisi + tüm ataları: her seviyeye ekle.
+        while node is not None and node not in seen:
+            seen.add(node)
+            counts[node] = counts.get(node, 0) + int(n)
+            node = parents.get(node)
+    return counts
+
+
+async def _category_and_descendants(db: AsyncSession, category_id: int) -> list[int]:
+    """Kategori + tüm alt kategorileri (recursive CTE).
+
+    Model bugün iki seviyeli ama sorgu derinlikten bağımsız yazıldı: üçüncü
+    seviye eklenirse filtre sessizce eksik sonuç vermeye başlamasın.
+    """
+    base = (
+        select(ProductCategory.id)
+        .where(
+            ProductCategory.id == category_id,
+            ProductCategory.deleted_at.is_(None),
+        )
+        .cte("cat_tree", recursive=True)
+    )
+    child = select(ProductCategory.id).where(
+        ProductCategory.parent_id == base.c.id,
+        ProductCategory.deleted_at.is_(None),
+    )
+    tree = base.union_all(child)
+    ids = (await db.execute(select(tree.c.id))).scalars().all()
+    return list(ids) or [category_id]
+
+
 async def list_categories(db: AsyncSession) -> list[ProductCategoryOut]:
-    """Kategori ağacı + her kategorideki aktif ürün sayısı (mega-menü)."""
+    """Kategori ağacı + her kategorideki aktif ürün sayısı (mega-menü).
+
+    Sayılar alt kategorilerden yukarı TOPLANIR (bkz. rollup_category_counts).
+    """
     cats = (
         await db.execute(
             select(ProductCategory)
@@ -171,19 +230,19 @@ async def list_categories(db: AsyncSession) -> list[ProductCategoryOut]:
             .order_by(ProductCategory.sort_order, ProductCategory.name)
         )
     ).scalars().all()
-    counts = dict(
-        (
-            await db.execute(
-                select(Product.category_id, func.count())
-                .where(
-                    Product.deleted_at.is_(None),
-                    Product.status == ProductStatus.ACTIVE.value,
-                    Product.category_id.isnot(None),
-                )
-                .group_by(Product.category_id)
+    rows = (
+        await db.execute(
+            select(Product.category_id, func.count())
+            .where(
+                Product.deleted_at.is_(None),
+                Product.status == ProductStatus.ACTIVE.value,
+                Product.category_id.isnot(None),
             )
-        ).all()
-    )
+            .group_by(Product.category_id)
+        )
+    ).all()
+    parents = {c.id: c.parent_id for c in cats}
+    counts = rollup_category_counts([(cid, n) for cid, n in rows], parents)
     return [
         ProductCategoryOut(
             id=c.id,
@@ -246,6 +305,46 @@ async def delete_category(db: AsyncSession, category_id: int) -> None:
 # ── Public arama / detay ─────────────────────────────────────────────────────────
 
 
+async def list_book_facets(
+    db: AsyncSession, *, category_id: int | None = None, limit: int = 30
+) -> dict[str, list[dict]]:
+    """Kitap künyesi filtrelerinin seçilebilir değerleri (+ ürün sayısı).
+
+    Kullanıcı "hangi yayınevleri var" sorusunu ancak listeyi görerek
+    cevaplayabilir; serbest metin kutusu yazım hatasına açıktır ve boş sonuç
+    üretir. Sayaçlar aynı zamanda hangi daraltmanın anlamlı olduğunu gösterir.
+
+    Yalnız ACTIVE ürünler sayılır — gizli/taslak ürünün yayınevi filtrede
+    görünüp sonuç getirmemesi kırık bir filtre izlenimi verirdi.
+    """
+    base_filters = [
+        Product.status == ProductStatus.ACTIVE.value,
+        Product.deleted_at.is_(None),
+    ]
+    if category_id is not None:
+        base_filters.append(
+            Product.category_id.in_(await _category_and_descendants(db, category_id))
+        )
+
+    out: dict[str, list[dict]] = {}
+    for key, column in (
+        ("publisher", Product.publisher),
+        ("author", Product.author),
+        ("cover_type", Product.cover_type),
+    ):
+        rows = (
+            await db.execute(
+                select(column, func.count())
+                .where(*base_filters, column.isnot(None), column != "")
+                .group_by(column)
+                .order_by(func.count().desc(), column)
+                .limit(limit)
+            )
+        ).all()
+        out[key] = [{"value": value, "count": count} for value, count in rows]
+    return out
+
+
 async def search_products(
     db: AsyncSession,
     *,
@@ -257,6 +356,12 @@ async def search_products(
     max_price: Decimal | None = None,
     in_stock: bool = False,
     min_rating: float | None = None,
+    # Kitap künyesi filtreleri: kolonlar baştan beri doluydu ama hiçbir yerden
+    # filtrelenemiyordu — "sadece Palme yayınları" ya da "ciltli olanlar"
+    # kitapçı aramasının en sık iki daraltmasıdır.
+    publisher: list[str] | None = None,
+    author: list[str] | None = None,
+    cover_type: list[str] | None = None,
     sort: str | None = None,
     limit: int = 30,
     offset: int = 0,
@@ -274,7 +379,13 @@ async def search_products(
         )
     )
     if category_id is not None:
-        stmt = stmt.where(Product.category_id == category_id)
+        # Üst kategori seçilince alt kategorilerdeki ürünler de gelmeli.
+        # Tam eşitlik kullanıldığında ("Sınav Kitapları" gibi) hiçbir üst
+        # kategori ürün göstermiyordu: ürünler yaprak kategorilere atanır
+        # (seed_kitapsec.py) ama gezinme üst kategoriden başlar.
+        stmt = stmt.where(
+            Product.category_id.in_(await _category_and_descendants(db, category_id))
+        )
     if tutor_id is not None:
         stmt = stmt.where(Product.tutor_id == tutor_id)
     if kind:
@@ -294,18 +405,34 @@ async def search_products(
             Product.rating_count > 0,
             Product.rating_sum >= min_rating * Product.rating_count,
         )
+    # Künye filtreleri normalize edilmiş karşılaştırma yapar: kullanıcı
+    # "palme yayinlari" seçse de kayıt "Palme Yayınları" olarak durur.
+    for column, values in (
+        (Product.publisher, publisher),
+        (Product.author, author),
+        (Product.cover_type, cover_type),
+    ):
+        if values:
+            stmt = stmt.where(
+                normalized(column).in_([normalize_tr(v) for v in values])
+            )
 
     relevance = None
     if q:
-        tsquery = func.websearch_to_tsquery("simple", q)
+        # Diakritik-duyarsız: "matematık", "kitab", "cozumlu" sonuç getirmeli.
+        # Yazar/yayınevi de aranır — kullanıcı çoğu zaman kitabın adını değil
+        # yazarını hatırlar ("palme fizik", "tonguç").
+        tsquery = search_tsquery(q)
+        norm_title = normalized(Product.title)
+        norm_q = normalized(q)
         stmt = stmt.where(
             or_(
                 Product.search_vector.op("@@")(tsquery),
-                Product.title.op("%")(q),
+                norm_title.op("%")(norm_q),
             )
         )
         relevance = func.ts_rank(Product.search_vector, tsquery) + func.similarity(
-            Product.title, q
+            norm_title, norm_q
         )
 
     if sort == "price_asc":
@@ -429,7 +556,11 @@ async def create_product(
         seller_type=SellerType.PLATFORM.value,
         price=payload.price,
         compare_at_price=payload.compare_at_price,
-        stock=payload.stock if payload.kind == ProductKind.PHYSICAL.value else None,
+        # Fiziksel ürün **0 stokla** kurulur; ilk bakiye aşağıda bir `INITIAL`
+        # hareketiyle deftere yazılır. Constructor'da yazmak, defterin
+        # "mevcut + delta" aritmetiğiyle bakiyeyi ÇİFT sayardı. Dijital ürün
+        # stok yönetimine tabi değildir → NULL (SKU'sunu yine alır).
+        stock=0 if payload.kind == ProductKind.PHYSICAL.value else None,
         weight_grams=payload.weight_grams,
         category_id=payload.category_id,
         status=payload.status,
@@ -439,6 +570,30 @@ async def create_product(
     for field in _BOOK_SPEC_FIELDS:
         setattr(p, field, getattr(payload, field))
     db.add(p)
+
+    # ── İlk bakiye: ürünle AYNI transaction'da deftere ──
+    #
+    # `flush` id'yi atar (SKU'yu `products_sku_autofill` BEFORE INSERT trigger'ı
+    # yazar); `INITIAL` hareketi aynı transaction'da eklenir. Hareket
+    # yazılamazsa (ör. geçersiz gerekçe) commit hiç olmaz → **ürün de
+    # oluşturulmuş kalmaz**. Dijital ürün SKU alır ama stok hareketi ALMAZ.
+    await db.flush()
+    if p.kind == ProductKind.PHYSICAL.value and (payload.stock or 0) > 0:
+        await stock_ledger.apply_movement(
+            db,
+            p.id,
+            qty_delta=int(payload.stock),
+            bucket=stock_ledger.StockBucket.SALEABLE,
+            movement_type=stock_ledger.StockMovementType.INITIAL,
+            reason_code="PRODUCT_CREATE",
+            ref_type="product",
+            ref_id=p.id,
+            idempotency_key=stock_ledger.idempotency_key_for(
+                stock_ledger.StockMovementType.INITIAL, product_id=p.id
+            ),
+            actor_type="ADMIN",
+            actor_id=admin.id,
+        )
     await db.commit()
     full = await _load_full(db, p.id)
     return await _to_detail(db, full)
@@ -512,33 +667,55 @@ async def bulk_import_products(db: AsyncSession, admin: Admin, rows: list[dict])
             if cat_slug and category_id is None:
                 raise ValueError(f"kategori bulunamadı: {cat_slug}")
 
+            # Ürün + `INITIAL` hareketi AYNI savepoint'te: hareket yazılamazsa
+            # o satırın ürünü de oluşmaz, diğer satırlar etkilenmez.
             async with db.begin_nested():
                 slug = await _unique_product_slug(db, _slugify(title))
-                db.add(
-                    Product(
-                        slug=slug,
-                        title=title,
-                        description=_g("description"),
-                        kind=kind,
-                        seller_type=SellerType.PLATFORM.value,
-                        price=price,
-                        compare_at_price=compare,
-                        stock=_int("stock") if kind == "PHYSICAL" else None,
-                        category_id=category_id,
-                        status=status_v,
-                        cover_url=_g("cover_url"),
-                        created_by_admin_id=admin.id,
-                        author=_g("author"),
-                        publisher=_g("publisher"),
-                        isbn=isbn,
-                        page_count=_int("page_count"),
-                        dimensions=_g("dimensions"),
-                        publication_year=_int("publication_year"),
-                        edition=_g("edition"),
-                        language=_g("language"),
-                        cover_type=_g("cover_type"),
-                    )
+                yeni = Product(
+                    slug=slug,
+                    title=title,
+                    description=_g("description"),
+                    kind=kind,
+                    seller_type=SellerType.PLATFORM.value,
+                    price=price,
+                    compare_at_price=compare,
+                    # 0 ile kurulur; ilk bakiye deftere yazılır (bkz.
+                    # `create_product`). Dijital → NULL (stok takibi yok).
+                    stock=0 if kind == "PHYSICAL" else None,
+                    category_id=category_id,
+                    status=status_v,
+                    cover_url=_g("cover_url"),
+                    created_by_admin_id=admin.id,
+                    author=_g("author"),
+                    publisher=_g("publisher"),
+                    isbn=isbn,
+                    page_count=_int("page_count"),
+                    dimensions=_g("dimensions"),
+                    publication_year=_int("publication_year"),
+                    edition=_g("edition"),
+                    language=_g("language"),
+                    cover_type=_g("cover_type"),
                 )
+                db.add(yeni)
+                await db.flush()
+                ilk_stok = _int("stock") if kind == "PHYSICAL" else None
+                if ilk_stok:
+                    await stock_ledger.apply_movement(
+                        db,
+                        yeni.id,
+                        qty_delta=int(ilk_stok),
+                        bucket=stock_ledger.StockBucket.SALEABLE,
+                        movement_type=stock_ledger.StockMovementType.INITIAL,
+                        reason_code="CSV_IMPORT",
+                        ref_type="product",
+                        ref_id=yeni.id,
+                        idempotency_key=stock_ledger.idempotency_key_for(
+                            stock_ledger.StockMovementType.INITIAL,
+                            product_id=yeni.id,
+                        ),
+                        actor_type="ADMIN",
+                        actor_id=admin.id,
+                    )
             created += 1
         except Exception as exc:  # noqa: BLE001 — satır hatası raporlanır, akış sürer
             errors.append({"row": i, "message": str(exc)})
@@ -598,7 +775,12 @@ async def _notify_back_in_stock(db: AsyncSession, product: Product) -> None:
 
 
 async def update_product(
-    db: AsyncSession, product_id: int, payload: ProductUpdate, *, owner_tutor_id: int | None = None
+    db: AsyncSession,
+    product_id: int,
+    payload: ProductUpdate,
+    *,
+    owner_tutor_id: int | None = None,
+    admin_id: int | None = None,
 ) -> ProductDetailOut:
     """``owner_tutor_id`` verilirse (eğitmen) yalnız kendi ürününü ve sınırlı alanları
     günceller; durumu PENDING/HIDDEN dışına çıkaramaz (yayın admin onayında)."""
@@ -608,22 +790,97 @@ async def update_product(
     if owner_tutor_id is not None and p.tutor_id != owner_tutor_id:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Bu ürün sizin değil")
 
-    old_stock = p.stock
     data = payload.model_dump(exclude_unset=True)
+
+    # ── Stok değişikliği: kilit altında, delta tabanlı ──
+    #
+    # Önceki hâl iki kusur taşıyordu:
+    #  1. Satır KİLİTLENMİYORDU ve gelen MUTLAK değer doğrudan atanıyordu.
+    #     Admin "stok 50 olsun" derken eşzamanlı bir PAID 2 adet düşürürse
+    #     `setattr` düşümü EZİYOR ve kayıp SESSİZ kalıyordu (defter olmadan
+    #     tespiti de imkânsızdı).
+    #  2. Dijital üründe `stock` alanı sessizce yutuluyordu (aşağıdaki
+    #     `editable` listesine yalnız PHYSICAL'de ekleniyor) — admin
+    #     "kaydettim" sanıyordu.
+    #
+    # Artık: DIGITAL'de açık ret; PHYSICAL'de satır `stock_ledger.lock_products`
+    # ile (artan id + `populate_existing`) tazelenip kilitlenir ve delta KİLİT
+    # ALTINDA hesaplanır.
+    stok_gerekce = data.pop("stock_reason_code", None)
+    stok_notu = data.pop("stock_note", None)
+    stok_hedefi: int | None = None
+    stok_delta = 0
+    if "stock" in data and owner_tutor_id is None:
+        if p.kind != ProductKind.PHYSICAL.value:
+            raise HTTPException(
+                status.HTTP_400_BAD_REQUEST,
+                "Dijital ürün stok yönetimine tabi değildir; stok değiştirilemez",
+            )
+        stok_hedefi = data.pop("stock")
+        if stok_hedefi is not None:
+            locked = await stock_ledger.lock_products(db, [p.id])
+            p = locked[p.id]   # kilit altındaki TAZE satır
+            stok_delta = int(stok_hedefi) - int(p.stock or 0)
+            if stok_delta:
+                # Gerekçe ZORUNLU — ama yalnız gerçekten bir değişiklik varsa.
+                # Aynı hedefin tekrarı (delta 0) bir "işlem" değildir; gerekçe
+                # istemek kullanıcıyı boşa zorlamak olurdu.
+                if admin_id is None:
+                    raise HTTPException(
+                        status.HTTP_400_BAD_REQUEST,
+                        "Stok düzeltmesi için yönetici kimliği gerekli",
+                    )
+                try:
+                    stock_ledger.validate_reason(
+                        stock_ledger.StockMovementType.ADMIN_ADJUSTMENT,
+                        stok_gerekce,
+                        note=stok_notu,
+                    )
+                except ValueError as exc:
+                    raise HTTPException(
+                        status.HTTP_400_BAD_REQUEST, str(exc)
+                    ) from exc
+    elif "stock" in data:
+        # Eğitmen yolunda stok hiç düzenlenemez (bugün de öyleydi); alanı
+        # sessizce taşımak yerine at.
+        data.pop("stock")
+
+    old_stock = p.stock
+    old_price = Decimal(str(p.price))
     if "title" in data and data["title"]:
         p.title = data["title"]
         p.slug = await _unique_product_slug(
             db, _slugify(data["title"]), exclude_id=p.id
         )
+    # DİKKAT: `stock` bu listede YOKTUR ve olmamalıdır. `setattr` döngüsü
+    # DİNAMİK bir yazım yoludur; stok oraya girerse mutlak atama kilit ve delta
+    # hesabını atlar ve hiçbir AST testi bunu "doğrudan mutasyon" olarak
+    # göremez. Stok yukarıda, kilit altında, delta olarak ele alınır.
     editable = ["description", "price", "compare_at_price", "category_id", "cover_url"]
     if owner_tutor_id is None:
-        # Admin: stok/ağırlık/durum + kitap künyesi dahil tüm alanlar.
+        # Admin: ağırlık/durum + kitap künyesi (stok HARİÇ).
         editable += ["weight_grams", "status", *_BOOK_SPEC_FIELDS]
-        if p.kind == ProductKind.PHYSICAL.value:
-            editable.append("stock")
     for field in editable:
         if field in data:
             setattr(p, field, data[field])
+
+    # Stok yazımı DEFTER üzerinden. Delta 0 ise ledger HİÇ çağrılmaz: aynı
+    # hedefin tekrarı gürültü satırı üretmez (defter tarafı sıfır deltayı
+    # zaten reddediyor).
+    if stok_delta:
+        await stock_ledger.apply_movement(
+            db,
+            p.id,
+            qty_delta=stok_delta,
+            # Admin ürün formu YALNIZ satılabilir kovaya dokunur; hasarlı kova
+            # ancak hasar servisi üzerinden değişir (F29).
+            bucket=stock_ledger.StockBucket.SALEABLE,
+            movement_type=stock_ledger.StockMovementType.ADMIN_ADJUSTMENT,
+            reason_code=stok_gerekce,
+            actor_type="ADMIN",
+            actor_id=admin_id,
+            note=stok_notu,
+        )
     # compare_at_price > price tutarlılığı (DB CHECK de korur ama erken 400 verelim).
     if p.compare_at_price is not None and Decimal(str(p.compare_at_price)) <= Decimal(
         str(p.price)
@@ -631,6 +888,19 @@ async def update_product(
         raise HTTPException(
             status.HTTP_400_BAD_REQUEST, "İndirimli fiyat eski fiyattan küçük olmalı"
         )
+
+    # Fiyat değiştiyse iz bırak: indirim duyurusunda "son 30 günün en düşük
+    # fiyatı" ancak geçmiş kayıtlıysa gösterilebilir (Fiyat Etiketi Yönetmeliği).
+    # Önceden fiyat yerinde eziliyordu ve hiçbir kanıt kalmıyordu.
+    if Decimal(str(p.price)) != old_price:
+        db.add(
+            ProductPriceHistory(
+                product_id=p.id,
+                price=p.price,
+                changed_by_admin_id=None if owner_tutor_id is not None else admin_id,
+            )
+        )
+
     await db.commit()
     # Stok 0→>0 olduysa bekleyen stok-bildirim abonelerine haber ver.
     if (old_stock is None or old_stock <= 0) and (p.stock or 0) > 0:
@@ -926,7 +1196,10 @@ async def set_digital_asset(
         )
     old = p.digital_asset_key
     p.digital_asset_key = await storage.upload_file(
-        file_bytes, original_name=original_name, content_type=content_type
+        file_bytes,
+        original_name=original_name,
+        content_type=content_type,
+        prefix="digital-assets",
     )
     p.digital_asset_name = original_name
     await db.commit()
@@ -965,6 +1238,8 @@ async def list_reviews(
             .where(
                 ProductReview.product_id == product_id,
                 ProductReview.deleted_at.is_(None),
+                # Moderasyonla gizlenenler public listede görünmez.
+                ProductReview.hidden_at.is_(None),
             )
             .order_by(ProductReview.created_at.desc())
             .limit(limit)
@@ -989,6 +1264,7 @@ async def rating_distribution(
             .where(
                 ProductReview.product_id == product_id,
                 ProductReview.deleted_at.is_(None),
+                ProductReview.hidden_at.is_(None),
             )
             .group_by(ProductReview.rating)
         )
@@ -1032,7 +1308,7 @@ async def create_review(
         product_id=product_id,
         client_id=client.id,
         rating=payload.rating,
-        comment_text=payload.comment_text,
+        comment_text=mask_contact_info(payload.comment_text),
     )
     db.add(review)
     p.rating_count += 1
@@ -1057,3 +1333,49 @@ async def delete_review(db: AsyncSession, client: Client, review_id: int) -> Non
         p.rating_count = max(0, p.rating_count - 1)
         p.rating_sum = max(0, p.rating_sum - review.rating)
     await db.commit()
+
+
+# ── Fiyat geçmişi (Fiyat Etiketi Yönetmeliği) ────────────────────────────────
+
+#: İndirim duyurusunda referans alınacak geçmiş pencere (gün).
+PRICE_REFERENCE_WINDOW_DAYS = 30
+
+
+async def lowest_price_in_window(
+    db: AsyncSession, product_id: int, *, days: int = PRICE_REFERENCE_WINDOW_DAYS
+) -> Decimal | None:
+    """Ürünün son ``days`` gündeki EN DÜŞÜK fiyatı.
+
+    İndirim duyurusu yapılırken üzeri çizili gösterilecek referans budur.
+    Serbestçe girilen ``compare_at_price`` denetimde kabul edilmez: yönetmelik
+    indirimden önceki 30 gün içindeki en düşük fiyatın esas alınmasını ister.
+
+    Kayıt yoksa None (ürün hiç fiyat değiştirmemiş ve migration öncesi
+    oluşmuş olabilir) — çağıran bu durumda indirim rozeti göstermemelidir.
+    """
+    since = _now() - datetime.timedelta(days=days)
+    value = (
+        await db.execute(
+            select(func.min(ProductPriceHistory.price)).where(
+                ProductPriceHistory.product_id == product_id,
+                ProductPriceHistory.changed_at >= since,
+            )
+        )
+    ).scalar()
+    return Decimal(str(value)) if value is not None else None
+
+
+def legal_compare_price(
+    current_price: Decimal, lowest_30d: Decimal | None
+) -> Decimal | None:
+    """Gösterilebilir "eski fiyat" (saf; pytest'li).
+
+    Kural: referans, son 30 günün en düşük fiyatıdır ve ancak GÜNCEL fiyattan
+    yüksekse indirim vardır. Aksi halde (fiyat düşmemiş ya da geçmiş yok)
+    üzeri çizili fiyat gösterilmez — dayanaksız indirim iddiası ceza konusudur.
+    """
+    if lowest_30d is None:
+        return None
+    current = Decimal(str(current_price))
+    lowest = Decimal(str(lowest_30d))
+    return lowest if lowest > current else None

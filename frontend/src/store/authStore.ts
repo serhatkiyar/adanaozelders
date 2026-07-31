@@ -8,9 +8,14 @@ import type { UserOut } from "@/types";
 
 const REMEMBER_KEY = "adana-remember";
 
-// "Beni hatırla" kapalıysa token sessionStorage'da tutulur (sekme/tarayıcı
-// kapanınca silinir); açıksa (varsayılan, geriye dönük uyumlu) localStorage'da
-// kalıcı olur. Bayrak token yazılmadan ÖNCE setRemember ile belirlenir.
+// "Beni hatırla" kapalıysa access token sessionStorage'da tutulur (sekme/tarayıcı
+// kapanınca silinir); açıksa (varsayılan) localStorage'da kalıcı olur. Bayrak
+// token yazılmadan ÖNCE setRemember ile belirlenir.
+//
+// Refresh token BURADA TUTULMAZ — `httpOnly` çerezde yaşar ve JavaScript onu
+// hiç görmez (backend `core/cookies.py`). Burada yalnız kısa ömürlü access
+// token durur: çalınsa bile dakikalar içinde ölür, oysa refresh token 30 gün
+// boyunca hesabın kendisi kadar değerlidir.
 function rememberEnabled(): boolean {
   return localStorage.getItem(REMEMBER_KEY) !== "0";
 }
@@ -34,13 +39,11 @@ const switchingStorage: StateStorage = {
 
 interface AuthState {
   token: string | null;
-  refreshToken: string | null;
   user: UserOut | null;
   isAuthenticated: boolean;
   setRemember: (remember: boolean) => void;
+  /** Login ve sessiz yenileme (rotasyon) sonrası access token'ı yazar. */
   setToken: (token: string) => void;
-  // Login ve sessiz yenileme (rotasyon) sonrası access + refresh birlikte yazılır.
-  setTokens: (access: string, refresh: string | null) => void;
   setUser: (user: UserOut | null) => void;
   logout: () => void;
 }
@@ -49,19 +52,15 @@ export const useAuthStore = create<AuthState>()(
   persist(
     (set) => ({
       token: null,
-      refreshToken: null,
       user: null,
       isAuthenticated: false,
       setRemember: (remember) =>
         localStorage.setItem(REMEMBER_KEY, remember ? "1" : "0"),
       setToken: (token) => set({ token, isAuthenticated: true }),
-      setTokens: (access, refresh) =>
-        set({ token: access, refreshToken: refresh, isAuthenticated: true }),
       setUser: (user) => set({ user }),
       logout: () =>
         set({
           token: null,
-          refreshToken: null,
           user: null,
           isAuthenticated: false,
         }),
@@ -69,10 +68,7 @@ export const useAuthStore = create<AuthState>()(
     {
       name: "adana-auth",
       storage: createJSONStorage(() => switchingStorage),
-      partialize: (state) => ({
-        token: state.token,
-        refreshToken: state.refreshToken,
-      }),
+      partialize: (state) => ({ token: state.token }),
       onRehydrateStorage: () => (state) => {
         if (state?.token) state.isAuthenticated = true;
       },

@@ -1,4 +1,5 @@
 import { FormEvent, useState } from "react";
+import { Field } from "@/components/ui/Field";
 import { useMyPayout, useSubmitPayout } from "@/hooks/usePayout";
 import { getErrorMessage } from "@/lib/errors";
 import { toast } from "@/store/toastStore";
@@ -125,40 +126,46 @@ export function PayoutSection() {
           {/* Form */}
           {showForm && (
             <form onSubmit={handleSubmit} className="space-y-3">
-              <div>
-                <label className={labelCls}>IBAN</label>
-                <input
-                  value={iban}
-                  onChange={(e) => setIban(e.target.value)}
-                  className={`${inputCls} font-mono`}
-                  placeholder="TR00 0000 0000 0000 0000 0000 00"
-                  autoComplete="off"
-                />
-              </div>
+              <Field label="IBAN" labelClassName={labelCls}>
+                {(id) => (
+                    <input
+                    id={id}
+                      value={iban}
+                      onChange={(e) => setIban(e.target.value)}
+                      className={`${inputCls} font-mono`}
+                      placeholder="TR00 0000 0000 0000 0000 0000 00"
+                      autoComplete="off"
+                    />
+                )}
+              </Field>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div>
-                  <label className={labelCls}>T.C. Kimlik No</label>
-                  <input
-                    value={tckn}
-                    onChange={(e) => setTckn(e.target.value.replace(/\D/g, ""))}
-                    maxLength={11}
-                    inputMode="numeric"
-                    className={inputCls}
-                    placeholder="11 haneli"
-                    autoComplete="off"
-                  />
-                </div>
-                <div>
-                  <label className={labelCls}>Telefon (opsiyonel)</label>
-                  <input
-                    value={gsm}
-                    onChange={(e) => setGsm(e.target.value)}
-                    maxLength={20}
-                    className={inputCls}
-                    placeholder="5xx xxx xx xx"
-                    autoComplete="off"
-                  />
-                </div>
+                <Field label="T.C. Kimlik No" labelClassName={labelCls}>
+                  {(id) => (
+                      <input
+                    id={id}
+                        value={tckn}
+                        onChange={(e) => setTckn(e.target.value.replace(/\D/g, ""))}
+                        maxLength={11}
+                        inputMode="numeric"
+                        className={inputCls}
+                        placeholder="11 haneli"
+                        autoComplete="off"
+                      />
+                  )}
+                </Field>
+                <Field label="Telefon (opsiyonel)" labelClassName={labelCls}>
+                  {(id) => (
+                      <input
+                    id={id}
+                        value={gsm}
+                        onChange={(e) => setGsm(e.target.value)}
+                        maxLength={20}
+                        className={inputCls}
+                        placeholder="5xx xxx xx xx"
+                        autoComplete="off"
+                      />
+                  )}
+                </Field>
               </div>
 
               <label className="flex items-start gap-2 text-xs leading-relaxed text-slate-500 dark:text-slate-400">

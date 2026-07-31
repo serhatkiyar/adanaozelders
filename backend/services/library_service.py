@@ -18,6 +18,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from core.config import settings
+from core.moderation import mask_contact_info
+from core.search_text import (
+    normalize_tr,
+    normalized,
+    phrase_tsquery,
+    tsquery as search_tsquery,
+)
 from models.admin import Admin
 from models.client import Client
 from core import storage
@@ -247,7 +254,6 @@ async def search_libraries(
 
     relevance = None
     if q:
-        like = f"%{q.strip()}%"
         # ── Katmanlı arama (AND + phrase + sıralama) ────────────────────
         # Asıl sorun: pg_trgm `%` (similarity) operatörü WHERE içinde OR
         # koşulu olarak kullanılınca, "yaşam kütüphanesi" sorgusunda
@@ -258,39 +264,46 @@ async def search_libraries(
                  for w in q.strip().split()]
         words = [w for w in words if w]
 
-        tsquery = func.websearch_to_tsquery("simple", q)
+        # Diakritik-duyarsız: "cukurova" ile "Çukurova" aynı sonucu vermeli
+        # (ilçe/mahalle adları da bu yüzden normalize edilerek karşılaştırılır).
+        tsquery = search_tsquery(q)
+        norm_name = normalized(Library.name)
+        norm_like = f"%{normalize_tr(q.strip())}%"
+
+        def _place_matches():
+            return (
+                normalized(Library.district).ilike(norm_like),
+                normalized(Library.city).ilike(norm_like),
+                normalized(Library.neighborhood).ilike(norm_like),
+            )
 
         if len(words) > 1:
-            phrase_query = func.phraseto_tsquery("simple", q)
+            phrase_query = phrase_tsquery(q)
             # Filtre: full-text (zaten AND) VEYA ad tam eşleşme VEYA konum
             # pg_trgm % operatörü filtreden ÇIKARILDI — fuzzy yalnız skorda.
             stmt = stmt.where(
                 or_(
                     Library.search_vector.op("@@")(tsquery),
-                    Library.name.ilike(like),
-                    Library.district.ilike(like),
-                    Library.city.ilike(like),
-                    Library.neighborhood.ilike(like),
+                    norm_name.ilike(norm_like),
+                    *_place_matches(),
                 )
             )
             relevance = (
                 func.ts_rank(Library.search_vector, phrase_query) * 4.0
                 + func.ts_rank(Library.search_vector, tsquery) * 2.0
-                + func.similarity(Library.name, q) * 3.0
+                + func.similarity(norm_name, normalized(q)) * 3.0
             )
         else:
             # Tek kelime — fuzzy eşleşme filtreden dahil (tek kelimede sorun yok).
             stmt = stmt.where(
                 or_(
                     Library.search_vector.op("@@")(tsquery),
-                    Library.name.op("%")(q),
-                    Library.district.ilike(like),
-                    Library.city.ilike(like),
-                    Library.neighborhood.ilike(like),
+                    norm_name.op("%")(normalized(q)),
+                    *_place_matches(),
                 )
             )
             relevance = func.ts_rank(Library.search_vector, tsquery) + func.similarity(
-                Library.name, q
+                norm_name, normalized(q)
             )
 
     if sort == "rating":
@@ -433,6 +446,8 @@ async def list_reviews(
         .where(
             LibraryReview.library_id == library_id,
             LibraryReview.deleted_at.is_(None),
+            # Moderasyonla gizlenenler public listede görünmez.
+            LibraryReview.hidden_at.is_(None),
         )
         .order_by(LibraryReview.created_at.desc())
         .limit(limit)
@@ -461,6 +476,7 @@ async def rating_distribution(
             .where(
                 LibraryReview.library_id == library_id,
                 LibraryReview.deleted_at.is_(None),
+                LibraryReview.hidden_at.is_(None),
                 LibraryReview.counts_to_rating.is_(True),
             )
             .group_by(LibraryReview.rating)
@@ -508,7 +524,9 @@ async def create_review(
         library_id=library_id,
         client_id=client.id,
         rating=payload.rating,
-        comment_text=payload.comment_text,
+        # Kütüphanenin KENDİ iletişim bilgisi açıkça gösterilir (küratörlü
+        # işletme); maskelenen, öğrencinin yorumuna yazdığı serbest metindir.
+        comment_text=mask_contact_info(payload.comment_text),
         counts_to_rating=counts,
     )
     db.add(review)

@@ -31,6 +31,7 @@ from core import payments
 from core.payments.base import RefundState
 from models.library_exam import RegistrationStatus
 from models.payment import PaymentStatus
+from models.store import OrderPaymentStatus
 
 logger = logging.getLogger("adana.escrow")
 
@@ -80,12 +81,27 @@ REGISTRATION_TRANSITIONS: dict[str, frozenset[str]] = {
 
 @dataclasses.dataclass(frozen=True)
 class EscrowSpec:
-    """Bir escrow modelinin durum sözlüğü (Payment enum, reg modelleri string)."""
+    """Bir escrow modelinin durum sözlüğü (Payment enum, reg modelleri string).
+
+    ``status_attr``: para durumunun tutulduğu kolon. ``Order``'da sipariş yaşam
+    döngüsü (``status``) ile ödeme durumu (``payment_status``) AYRI kolonlardır;
+    claim daima ödeme kolonuna uygulanır.
+
+    ``has_released_guard``: modelde ``released_at`` var mı. Ders/bilet/rezervasyon
+    gerçek escrow'dur (para eğitmene/kütüphaneye serbest bırakılır) ve serbest
+    bırakılmış satır asla iadeye claim edilemez. Mağaza siparişi ise doğrudan
+    satıştır — hak ediş dağıtımı yoktur, dolayısıyla ``released_at`` kolonu da
+    yoktur ve bu guard uygulanmaz.
+    """
 
     held: object
     refunding: object
     refunded: object
     reference_prefix: str
+    status_attr: str = "status"
+    has_released_guard: bool = True
+    #: İade edilecek tutarın kolonu (``Order``'da sipariş toplamı ``total``).
+    amount_attr: str = "amount"
 
 
 PAYMENT_SPEC = EscrowSpec(
@@ -106,6 +122,33 @@ STUDY_SPEC = EscrowSpec(
     refunded=RegistrationStatus.REFUNDED.value,
     reference_prefix="studyres",
 )
+# Mağaza siparişi: doğrudan satış (emanet/hak ediş yok) ama aynı atomik claim ve
+# iki fazlı iade disiplinine tabi. Para durumu `payment_status` kolonunda;
+# `status` sipariş yaşam döngüsüdür (PENDING/PAID/SHIPPED/DELIVERED/…).
+# REFUNDING durumu ve refund_attempts/refund_requested_at kolonları migration ile
+# gelir; o zamana dek yalnız `claim` (PAID geçişi) tarafı kullanılır.
+ORDER_SPEC = EscrowSpec(
+    held=OrderPaymentStatus.PAID.value,
+    refunding=OrderPaymentStatus.REFUNDING.value,
+    refunded=OrderPaymentStatus.REFUNDED.value,
+    reference_prefix="order",
+    status_attr="payment_status",
+    has_released_guard=False,
+    amount_attr="total",
+)
+# İade TALEBİ (kısmi iade dahil). Bir siparişte birden çok kısmi iade
+# olabildiğinden para durumu sipariş değil TALEP üzerinde izlenir; ayrıca kısmi
+# tutar, "sağlayıcı ikinci TAM iadeyi reddeder" idempotency'sini geçersiz kılar
+# — her talebin kendi durumu ve deneme sayacı olmak zorundadır.
+RETURN_SPEC = EscrowSpec(
+    held="NONE",
+    refunding="REFUNDING",
+    refunded="REFUNDED",
+    reference_prefix="return",
+    status_attr="refund_status",
+    has_released_guard=False,
+    amount_attr="refund_amount",
+)
 
 
 # ── Atomik claim ─────────────────────────────────────────────────────────────────
@@ -119,18 +162,28 @@ async def claim(
     from_statuses: list,
     values: dict,
     extra_where: tuple = (),
+    status_attr: str = "status",
 ) -> bool:
     """Koşullu UPDATE: satır ancak beklenen durumdaysa geçer; tek kazanan olur.
 
     True dönerse geçiş BU transaction'a aittir. Çağıranın elindeki ORM nesnesi
     bayatlar — gerekiyorsa ``db.refresh`` etmelidir.
+
+    ``status_attr`` para durumunun kolonudur; ``Order`` gibi sipariş durumu ile
+    ödeme durumunu ayrı tutan modellerde ``payment_status`` verilir.
     """
+    status_col = getattr(model, status_attr)
+    # Soft-delete her modelde yok (ör. OrderReturn yalnız TimestampMixin taşır);
+    # kolon varsa filtreye eklenir, yoksa atlanır.
+    soft_delete = (
+        (model.deleted_at.is_(None),) if hasattr(model, "deleted_at") else ()
+    )
     stmt = (
         update(model)
         .where(
             model.id == row_id,
-            model.status.in_(from_statuses),
-            model.deleted_at.is_(None),
+            status_col.in_(from_statuses),
+            *soft_delete,
             *extra_where,
         )
         .values(**values)
@@ -159,7 +212,7 @@ async def begin_refund(
     """
     model = type(obj)
     values: dict = {
-        "status": spec.refunding,
+        spec.status_attr: spec.refunding,
         "refund_requested_at": _now(),
         "refund_attempts": model.refund_attempts + 1,
     }
@@ -171,12 +224,26 @@ async def begin_refund(
         obj.id,
         from_statuses=from_statuses or [spec.held],
         values=values,
-        extra_where=(model.released_at.is_(None),),
+        extra_where=(
+            (model.released_at.is_(None),) if spec.has_released_guard else ()
+        ),
+        status_attr=spec.status_attr,
     )
     if claimed:
         # Intent'i kalıcılaştır: süreç sağlayıcı çağrısında ölürse reconciler bulur.
         await db.commit()
-        await db.refresh(obj)
+        # YALNIZ claim'in yazdığı skaler alanlar tazelenir. Parametresiz
+        # `refresh` İLİŞKİLERİ de expire eder; çağıran (ör. order_service
+        # `_restock`) hemen ardından `order.items` okuyor ve async oturumda
+        # lazy-load MissingGreenlet ile 500 üretiyordu.
+        await db.refresh(
+            obj,
+            attribute_names=[
+                spec.status_attr,
+                "refund_requested_at",
+                "refund_attempts",
+            ],
+        )
     return claimed
 
 
@@ -192,7 +259,7 @@ async def perform_refund(
     Sağlayıcı reddederse/ulaşılamazsa False: kayıt REFUNDING'de kalır ve reconciler
     devralır — HİÇBİR yerde HELD'e geri dönüş yoktur.
     """
-    amount = Decimal(str(obj.amount))
+    amount = Decimal(str(getattr(obj, spec.amount_attr)))
     ok = True
     if amount > 0:
         provider = payments.get_payment_provider()
@@ -222,10 +289,13 @@ async def finalize_refund(
         type(obj),
         obj.id,
         from_statuses=[spec.refunding],
-        values={"status": spec.refunded, "refunded_at": _now()},
+        values={spec.status_attr: spec.refunded, "refunded_at": _now()},
+        status_attr=spec.status_attr,
     )
     if finalized:
-        await db.refresh(obj)
+        # Skaler alanlarla sınırlı (parametresiz refresh ilişkileri expire eder
+        # ve çağıran taraf lazy-load ile MissingGreenlet alır).
+        await db.refresh(obj, attribute_names=[spec.status_attr, "refunded_at"])
         if notify is not None:
             await notify()
     return finalized

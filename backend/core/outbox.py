@@ -110,12 +110,28 @@ async def _h_email_order_status(p: dict[str, Any]) -> bool:
     )
 
 
+
+async def _h_email_contact(p: dict[str, Any]) -> bool:
+    ok = await mail.send_contact_message_email(
+        to=p["to"], from_name=p["from_name"], from_email=p["from_email"],
+        subject=p["subject"], message=p["message"], user_ref=p.get("user_ref"),
+    )
+    # Teyit maili başarısız olsa da mesaj işletmeye ulaştıysa olay tamamdır:
+    # kullanıcının mesajı kaybolmasın diye yeniden denemeye sokmuyoruz.
+    if ok and p.get("ack_to"):
+        await mail.send_contact_ack_email(
+            to=p["ack_to"], name=p["from_name"], subject=p["subject"]
+        )
+    return ok
+
+
 _HANDLERS: dict[str, Callable[[dict[str, Any]], Awaitable[bool]]] = {
     "sms:tracking_link": _h_sms_tracking_link,
     "sms:approach": _h_sms_approach,
     "sms:failed": _h_sms_failed,
     "sms:postponed": _h_sms_postponed,
     "email:order_status": _h_email_order_status,
+    "email:contact": _h_email_contact,
 }
 
 

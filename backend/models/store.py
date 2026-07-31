@@ -27,10 +27,10 @@ from sqlalchemy import (
 )
 from sqlalchemy.dialects.postgresql import TSVECTOR
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy.schema import Computed
+from sqlalchemy.schema import Computed, FetchedValue
 
 from core.database import Base
-from models.mixins import SoftDeleteMixin, TimestampMixin
+from models.mixins import ModeratableMixin, SoftDeleteMixin, TimestampMixin
 
 
 class ProductKind(str, enum.Enum):
@@ -70,9 +70,19 @@ class OrderStatus(str, enum.Enum):
 
 
 class OrderPaymentStatus(str, enum.Enum):
+    """Siparişin ödeme durumu (sipariş yaşam döngüsü ``OrderStatus``'ten ayrıdır).
+
+    ``REFUNDING`` iki fazlı iadenin niyet (intent) durumudur: sağlayıcıya iade
+    çağrısı yapılmadan ÖNCE commit edilir, böylece süreç HTTP çağrısı sırasında
+    ölse bile kayıt sarkan REFUNDING olarak kalır ve reconciler devralır.
+    Onsuz, sağlayıcıda para iade edilip commit düşerse sipariş PAID görünür,
+    stok geri yüklenmez ve yeniden denendiğinde ikinci iade gönderilirdi.
+    """
+
     PENDING = "PENDING"
     PAID = "PAID"
     FAILED = "FAILED"
+    REFUNDING = "REFUNDING"
     REFUNDED = "REFUNDED"
 
 
@@ -89,11 +99,52 @@ class DeliveryPref(str, enum.Enum):
 
 
 class ReturnStatus(str, enum.Enum):
-    """İade talebi (RMA) durumu. Müşteri PENDING açar; admin onaylar/reddeder."""
+    """İade TALEBİNİN durumu (paranın durumu ayrı: ``ReturnRefundStatus``).
+
+    ``CAYMA`` türündeki talepler doğrudan APPROVED açılır — satıcının ret
+    yetkisi yoktur (bkz. ReturnType).
+    """
 
     PENDING = "PENDING"
     APPROVED = "APPROVED"
     REJECTED = "REJECTED"
+
+
+class ReturnType(str, enum.Enum):
+    """İadenin hukuki dayanağı — onay akışını belirler.
+
+    ``CAYMA``: Mesafeli Sözleşmeler Yönetmeliği m.9 uyarınca tüketici, teslimden
+    itibaren 14 gün içinde **hiçbir gerekçe göstermeden ve cezai şart ödemeden**
+    cayabilir. Satıcı bunu REDDEDEMEZ; yalnızca yönetmelik m.15'teki istisnalar
+    (dijital içerik, kişiye özel üretim, hijyen ürünleri…) uygulanır. Bu yüzden
+    talep otomatik onaylanır ve iade süreci hemen başlar.
+
+    ``AYIPLI``: Tüketicinin Korunması Hakkında Kanun m.8-11 (ayıplı mal). Süre
+    daha uzundur ve satıcının ürünü inceleme hakkı vardır → admin onay akışı.
+
+    ``DIGER``: yanlış ürün, eksik gönderim vb. → admin onay akışı.
+
+    ÖNEMLİ: Eski akış tek tipti ve admin CAYMA taleplerini de reddedebiliyordu;
+    bu, koşulsuz cayma hakkının ihlaliydi.
+    """
+
+    CAYMA = "CAYMA"
+    AYIPLI = "AYIPLI"
+    DIGER = "DIGER"
+
+
+class ReturnRefundStatus(str, enum.Enum):
+    """İade talebine bağlı PARANIN durumu (iki fazlı; bkz. services/escrow.py).
+
+    Talebin durumundan ayrıdır: bir talep APPROVED olabilir ama para henüz
+    sağlayıcıda kesinleşmemiş olabilir. Kısmi iade mümkün olduğundan sipariş
+    tek başına "iade edildi mi?" sorusunu cevaplayamaz — bu yüzden para durumu
+    TALEP üzerinde izlenir ve bir siparişte birden çok kısmi iade olabilir.
+    """
+
+    NONE = "NONE"
+    REFUNDING = "REFUNDING"
+    REFUNDED = "REFUNDED"
 
 
 class CouponDiscountType(str, enum.Enum):
@@ -154,12 +205,61 @@ class Product(Base, TimestampMixin, SoftDeleteMixin):
 
     price: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False)
     # Üzeri çizili "eski fiyat" (D&R indirim rozeti). Doluysa price'tan büyük olmalı.
+    # NOT: Fiyat Etiketi Yönetmeliği indirim duyurusunda son 30 günün EN DÜŞÜK
+    # fiyatının esas alınmasını ister; serbest girilen bir "eski fiyat" denetimde
+    # sorun çıkarır. Gerçek referans `product_price_history`'den türetilmelidir.
     compare_at_price: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)
+    # KDV oranı (0.00–1.00). Türkiye'de basılı kitap %0, kırtasiye ve dijital
+    # ürün %20'dir; tek oran varsayımıyla yasal fatura kesilemez. Fiyatlar KDV
+    # DAHİL gösterilir (perakende zorunluluğu), bu oran faturadaki matrah/vergi
+    # ayrıştırması için tutulur.
+    tax_rate: Mapped[float] = mapped_column(
+        Numeric(5, 4), nullable=False, server_default=text("0")
+    )
     currency: Mapped[str] = mapped_column(
         String(3), nullable=False, server_default=text("'TRY'")
     )
-    # Yalnız PHYSICAL: kalan stok. DIGITAL'de NULL (sınırsız).
+    # Yalnız PHYSICAL: kalan stok. DIGITAL'de NULL — bu "stoğu 0" DEĞİL,
+    # "stok takip edilmiyor" demektir (bkz. services/stock_ledger.py).
+    #
+    # DİKKAT: bu alana doğrudan atama yapılmaz. Tek yazıcı
+    # `services/stock_ledger.py::apply_movement`'tır; her değişim aynı
+    # transaction'da bir `stock_movements` satırı üretir. Kural bir kabul
+    # testiyle (AST) korunur: tests/acceptance/test_stock_ledger_contract.py
     stock: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+    # İşletmede duran ama SATILAMAZ miktar (kırık, ıslak, baskı hatalı…).
+    # `stock`'un NULL semantiğine bağlıdır: dijital üründe stok takip
+    # edilmediği için hasarlı kova da YOKTUR (NULL), "0 hasarlı" DEĞİL.
+    # İkisinin eşleşmesi `ck_products_damaged_pairing` CHECK'iyle ve
+    # `products_damaged_pairing` trigger'ıyla korunur — trigger, kolonu bilmeyen
+    # her yazıcıda (ürün oluşturma, CSV içe aktarma, seed, ham SQL) değeri
+    # otomatik doğru kurar. Bu yüzden ORM tarafında `FetchedValue`.
+    # Tek yazıcı `services/stock_ledger.py`'dir; `stock` ile aynı disiplin.
+    damaged_stock: Mapped[int | None] = mapped_column(
+        Integer, nullable=True, server_default=FetchedValue()
+    )
+
+    # ── Stok kalemi kimliği ──
+    # `sku` = BİZİM stok kalemi kimliğimiz. Değeri `(kind, id)`'nin fonksiyonudur
+    # (`FZK-000042` / `DIJ-000007`) ve **BEFORE INSERT trigger'ı** tarafından
+    # yazılır (`products_sku_autofill`) — verilen değer EZİLİR, taklit edilemez.
+    # Bu yüzden ORM tarafında `FetchedValue`: SQLAlchemy değeri sunucudan okur.
+    # `sku` ve `kind` bir BEFORE UPDATE trigger'ıyla değiştirilemez kılınmıştır
+    # (`products_identity_immutable`) — SKU immutable olmalı ve öneği `kind`'e
+    # bağlı olduğu için `kind` de sabit kalmak zorunda.
+    sku: Mapped[str] = mapped_column(
+        String(20), nullable=False, server_default=FetchedValue()
+    )
+    # `barcode` = ELİMİZDEKİ FİZİKSEL KALEMİN ÜZERİNDE OKUNAN dizgi (EAN-13/UPC).
+    # `isbn`'den ayrıdır ve ondan ASLA otomatik kopyalanmaz:
+    #   • kitap olmayan üründe (kalem, defter) EAN var, ISBN yok;
+    #   • set/paket ürünün kendi barkodu içindeki kitapların ISBN'inden farklı;
+    #   • ISBN-10 basımlarda kapaktaki barkod ISBN'in EAN-13 dönüşümüdür;
+    #   • bazı baskılar promosyon barkodu taşır.
+    # ISBN'i barkoda kopyalamak, "okuttum, eşleşti" güvenini yanlış bir
+    # eşleşmeye dayandırırdı. Yalnız insan girdisiyle dolar.
+    barcode: Mapped[str | None] = mapped_column(String(32), nullable=True)
     # Kargo ağırlık ipucu (ileride il/ağırlık bazlı tarife için). MVP'de bilgi amaçlı.
     weight_grams: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
@@ -202,7 +302,9 @@ class Product(Base, TimestampMixin, SoftDeleteMixin):
     search_vector: Mapped[str | None] = mapped_column(
         TSVECTOR,
         Computed(
-            "to_tsvector('simple', coalesce(title, '') || ' ' || coalesce(description, ''))",
+            "to_tsvector('simple', tr_normalize("
+            "coalesce(title, '') || ' ' || coalesce(description, '') || ' ' || "
+            "coalesce(author, '') || ' ' || coalesce(publisher, '')))",
             persisted=True,
         ),
         nullable=True,
@@ -226,12 +328,53 @@ class Product(Base, TimestampMixin, SoftDeleteMixin):
             postgresql_where=text("deleted_at IS NULL"),
         ),
         Index("ix_products_search_vector", "search_vector", postgresql_using="gin"),
+        # Başlık üzerinde trigram: mağaza araması `search_vector @@ tsquery OR
+        # title % :q` şeklinde çalışır. TSVECTOR index'i tek başına OR'un ikinci
+        # kolunu karşılamadığı için planlayıcı tüm ürünleri tarıyordu; iki GIN
+        # index birlikte BitmapOr'a izin verir. Yazım hatasına toleransı da bu
+        # kol sağlar ("matematık" → "matematik").
+        Index(
+            "ix_products_title_trgm",
+            "title",
+            postgresql_using="gin",
+            postgresql_ops={"title": "gin_trgm_ops"},
+        ),
         Index("ix_products_status", "status"),
+        # Yönetim ürün listesi ve "yeni eklenenler" sıralaması.
+        Index(
+            "ix_products_created_desc",
+            text("created_at DESC"),
+            postgresql_where=text("deleted_at IS NULL"),
+        ),
         Index("ix_products_category", "category_id"),
         Index("ix_products_tutor", "tutor_id"),
+        # SKU'da TAM unique (slug'ın aksine kısmi DEĞİL): SKU `id`'nin
+        # fonksiyonu olduğu için silinmiş bir satırla çakışması imkânsız ve tam
+        # unique daha güçlü bir garanti verir. Trigger'ı düşen bir ortamda son
+        # savunma olarak da kalır.
+        Index("uq_products_sku", "sku", unique=True),
+        # Barkod: yalnız dolu ve silinmemiş satırlarda tekil.
+        Index(
+            "uq_products_barcode_active",
+            "barcode",
+            unique=True,
+            postgresql_where=text("barcode IS NOT NULL AND deleted_at IS NULL"),
+        ),
         CheckConstraint(
             "compare_at_price IS NULL OR compare_at_price > price",
             name="ck_products_compare_price",
+        ),
+        # Hasarlı kova, satılabilir kovanın takip semantiğine bağlıdır: stok
+        # takip edilmiyorsa (dijital) hasarlı da izlenmez. "Takip edilmiyor" ile
+        # "sıfır hasarlı" farklı iki gerçektir ve karıştırılmaz.
+        CheckConstraint(
+            "(stock IS NULL) = (damaged_stock IS NULL)",
+            name="ck_products_damaged_pairing",
+        ),
+        # Kırpma yasağının hasarlı kovadaki karşılığı.
+        CheckConstraint(
+            "damaged_stock IS NULL OR damaged_stock >= 0",
+            name="ck_products_damaged_sign",
         ),
     )
 
@@ -254,7 +397,7 @@ class ProductImage(Base, TimestampMixin):
     product: Mapped["Product"] = relationship(back_populates="images")
 
 
-class ProductReview(Base, TimestampMixin, SoftDeleteMixin):
+class ProductReview(Base, TimestampMixin, SoftDeleteMixin, ModeratableMixin):
     """Ürün değerlendirmesi — satın-alma-gated (yalnız o ürünü PAID siparişte alan
     müşteri puanlayabilir; LibraryReview'dan farkı bu kapı). Ürün başına müşteri
     başına tek aktif kayıt. ``product.rating_sum/rating_count`` serviste güncellenir."""
@@ -265,8 +408,9 @@ class ProductReview(Base, TimestampMixin, SoftDeleteMixin):
     product_id: Mapped[int] = mapped_column(
         ForeignKey("products.id", ondelete="CASCADE"), nullable=False
     )
+    # index: "bu müşteri bu ürüne yorum yapmış mı" ve müşterinin yorum listesi.
     client_id: Mapped[int] = mapped_column(
-        ForeignKey("clients.id", ondelete="CASCADE"), nullable=False
+        ForeignKey("clients.id", ondelete="CASCADE"), nullable=False, index=True
     )
     rating: Mapped[int] = mapped_column(Integer, nullable=False)
     comment_text: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -334,6 +478,21 @@ class Order(Base, TimestampMixin, SoftDeleteMixin):
     )
     refunded_at: Mapped[datetime.datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
+    )
+    #: Bu siparişten şimdiye dek iade edilen TOPLAM tutar (kısmi iadeler dahil).
+    #: Kısmi iade sonrası sipariş PAID kalır — mal kısmen müşterededir — bu
+    #: yüzden "iade edildi mi?" sorusu tek başına payment_status'ten okunamaz.
+    refunded_amount: Mapped[float] = mapped_column(
+        Numeric(10, 2), nullable=False, server_default=text("0")
+    )
+    # ── İki fazlı iade niyeti (bkz. services/escrow.py) ──
+    # REFUNDING'e geçiş bu damgayla birlikte COMMIT edilir; sağlayıcı çağrısı
+    # sonra yapılır. Sarkan kayıtları reconciler bu iki alandan bulur.
+    refund_requested_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    refund_attempts: Mapped[int] = mapped_column(
+        Integer, nullable=False, server_default=text("0")
     )
 
     # ── Kargo adresi snapshot (yalnız fiziksel kalem varsa dolu) ──
@@ -420,6 +579,27 @@ class Order(Base, TimestampMixin, SoftDeleteMixin):
                 "AND has_physical AND deleted_at IS NULL"
             ),
         ),
+        # Admin sipariş listesi (created_at DESC LIMIT n) — bu index olmadan
+        # 50.000 satırın tamamı okunup sıralanıyordu (ölçüm: 140 ms).
+        Index(
+            "ix_orders_created_desc",
+            text("created_at DESC"),
+            postgresql_where=text("deleted_at IS NULL"),
+        ),
+        # Müşterinin "siparişlerim" listesi: sahibine göre en yeniden eskiye.
+        Index(
+            "ix_orders_client_created",
+            "client_id",
+            text("created_at DESC"),
+            postgresql_where=text("deleted_at IS NULL"),
+        ),
+        # Para raporu dönem filtresi (services/revenue_service.py). Kısmi:
+        # ödenmemiş siparişler ciroya girmez, indekste yer kaplamasın.
+        Index(
+            "ix_orders_paid_at",
+            "paid_at",
+            postgresql_where=text("paid_at IS NOT NULL AND deleted_at IS NULL"),
+        ),
     )
 
 
@@ -469,6 +649,16 @@ class OrderItem(Base, TimestampMixin):
     # Dijital teslimat snapshot'ı (indirme ürün değişse de çalışsın).
     digital_asset_key: Mapped[str | None] = mapped_column(String(500), nullable=True)
     digital_asset_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
+    # KDV snapshot'ı: ürünün oranı sonradan değişse bile FATURA sipariş anındaki
+    # oranla kesilmelidir. `unit_price` KDV DAHİL tutardır; `tax_amount` o
+    # tutarın içindeki vergiyi gösterir (matrah = satır toplamı − tax_amount).
+    tax_rate: Mapped[float] = mapped_column(
+        Numeric(5, 4), nullable=False, server_default=text("0")
+    )
+    tax_amount: Mapped[float] = mapped_column(
+        Numeric(10, 2), nullable=False, server_default=text("0")
+    )
 
     # Eğitmen payı (yalnız seller_type=TUTOR); platform kaleminde NULL.
     commission_rate: Mapped[float | None] = mapped_column(Numeric(5, 4), nullable=True)
@@ -546,8 +736,9 @@ class CouponRedemption(Base, TimestampMixin):
     client_id: Mapped[int] = mapped_column(
         ForeignKey("clients.id", ondelete="CASCADE"), nullable=False, index=True
     )
+    # index: iade/iptal yolu kuponu siparişten geri almak için buradan arar.
     order_id: Mapped[int | None] = mapped_column(
-        ForeignKey("orders.id", ondelete="SET NULL"), nullable=True
+        ForeignKey("orders.id", ondelete="SET NULL"), nullable=True, index=True
     )
 
     coupon: Mapped["Coupon"] = relationship(back_populates="redemptions")
@@ -568,7 +759,13 @@ class OrderReturn(Base, TimestampMixin):
     client_id: Mapped[int] = mapped_column(
         ForeignKey("clients.id", ondelete="CASCADE"), nullable=False, index=True
     )
-    reason: Mapped[str] = mapped_column(Text, nullable=False)
+    #: Cayma hakkında gerekçe ZORUNLU DEĞİLDİR (koşulsuzdur); yine de müşteri
+    #: isterse yazabilir. Ayıplı/diğer taleplerde servis katmanı zorunlu kılar.
+    reason: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("''"))
+    #: Hukuki dayanak — onay akışını belirler (bkz. ReturnType).
+    type: Mapped[str] = mapped_column(
+        String(10), nullable=False, server_default=text("'DIGER'")
+    )
     status: Mapped[str] = mapped_column(
         String(10), nullable=False, server_default=text("'PENDING'")
     )
@@ -577,7 +774,36 @@ class OrderReturn(Base, TimestampMixin):
         DateTime(timezone=True), nullable=True
     )
 
+    # ── Para (iki fazlı iade; talep bazında izlenir) ──
+    #: Bu talep için iade edilecek/edilen tutar. Kısmi iadede seçilen kalemlerin
+    #: toplamı, tam iadede sipariş toplamıdır (kargo dahil).
+    refund_amount: Mapped[float] = mapped_column(
+        Numeric(10, 2), nullable=False, server_default=text("0")
+    )
+    refund_status: Mapped[str] = mapped_column(
+        String(10), nullable=False, server_default=text("'NONE'")
+    )
+    refund_requested_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    refund_attempts: Mapped[int] = mapped_column(
+        Integer, nullable=False, server_default=text("0")
+    )
+    #: Sağlayıcıdaki iade işlem kimliği (kısmi iadede tam-tutar idempotency'si
+    #: geçersizdir; her iade ayrı izlenmelidir).
+    provider_ref: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    refunded_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    #: Tüm sipariş mi iade edildi (kargo dahil) yoksa bazı kalemler mi?
+    is_partial: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("false")
+    )
+
     order: Mapped["Order"] = relationship(back_populates="returns")
+    items: Mapped[list["OrderReturnItem"]] = relationship(
+        back_populates="order_return", cascade="all, delete-orphan"
+    )
 
     __table_args__ = (
         Index("ix_order_returns_status", "status"),
@@ -587,6 +813,42 @@ class OrderReturn(Base, TimestampMixin):
             "order_id",
             unique=True,
             postgresql_where=text("status = 'PENDING'"),
+        ),
+    )
+
+
+class OrderReturnItem(Base):
+    """Kısmi iadede hangi kalemden kaç adet iade edildiği.
+
+    Önceden iade daima TÜM sipariş tutarıydı: 3 kitaplık siparişten 1 kitap
+    iade edilince ya tamamı geri ödeniyordu (doğrudan zarar) ya da talep
+    reddediliyordu — ki cayma hakkında reddetmek de yasal değil.
+    """
+
+    __tablename__ = "order_return_items"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    return_id: Mapped[int] = mapped_column(
+        ForeignKey("order_returns.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    order_item_id: Mapped[int] = mapped_column(
+        ForeignKey("order_items.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    quantity: Mapped[int] = mapped_column(Integer, nullable=False)
+    #: Bu satırın iade tutarı (birim fiyat × adet, KDV dahil) — sipariş anındaki
+    #: fiyattan hesaplanır ve snapshot'lanır.
+    amount: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False)
+
+    order_return: Mapped["OrderReturn"] = relationship(back_populates="items")
+
+    __table_args__ = (
+        CheckConstraint("quantity > 0", name="ck_order_return_items_quantity"),
+        # Aynı kalem bir talepte iki kez yer alamaz.
+        Index(
+            "uq_order_return_item",
+            "return_id",
+            "order_item_id",
+            unique=True,
         ),
     )
 
@@ -604,7 +866,7 @@ class StockNotification(Base, TimestampMixin):
     )
     email: Mapped[str] = mapped_column(String(255), nullable=False)
     client_id: Mapped[int | None] = mapped_column(
-        ForeignKey("clients.id", ondelete="SET NULL"), nullable=True
+        ForeignKey("clients.id", ondelete="SET NULL"), nullable=True, index=True
     )
     notified_at: Mapped[datetime.datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
@@ -666,4 +928,274 @@ class CollectionItem(Base, TimestampMixin):
         Index(
             "uq_collection_item", "collection_id", "product_id", unique=True
         ),
+    )
+
+
+class ProductPriceHistory(Base):
+    """Ürün fiyat değişikliği kaydı — indirim duyurusunun yasal dayanağı.
+
+    Fiyat Etiketi Yönetmeliği, indirimli satış duyurusunda indirimden ÖNCEKİ
+    30 gün içindeki EN DÜŞÜK fiyatın esas alınmasını ister. Önceden fiyat
+    ``update_product`` içinde yerinde eziliyordu ve hiçbir iz kalmıyordu; buna
+    karşılık ürün sayfasında serbestçe girilen bir ``compare_at_price`` üzeri
+    çizili gösteriliyordu. Bu, Ticaret Bakanlığı denetiminde doğrudan ceza
+    kalemidir.
+
+    Satırlar SİLİNMEZ (soft-delete yok): geçmiş fiyat kanıtıdır.
+    """
+
+    __tablename__ = "product_price_history"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    product_id: Mapped[int] = mapped_column(
+        ForeignKey("products.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    price: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False)
+    #: Değişikliği yapan admin (sistem/seed kaynaklıysa NULL).
+    changed_by_admin_id: Mapped[int | None] = mapped_column(
+        ForeignKey("admins.id", ondelete="SET NULL"), nullable=True
+    )
+    changed_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=text("now()")
+    )
+
+    __table_args__ = (
+        # "Son 30 günün en düşüğü" sorgusu: ürün + tarih aralığı.
+        Index("ix_product_price_history_lookup", "product_id", "changed_at"),
+    )
+
+
+class StockMovementType(str, enum.Enum):
+    """Stok hareketinin türü.
+
+    Yeni tür eklemek gerekçe sözlüğünü ve admin yüzeyindeki etiketleri de
+    güncellemeyi gerektirir; sessizce büyümemesi için sayısı kabul testiyle
+    sabitlenmiştir.
+    """
+
+    #: Defter devreye alınırken var olan bakiye (migration). Stoğu 0 olan ürün
+    #: de satır alır — zincirin tabanı her takip edilen ürün için var olmalı.
+    OPENING_BALANCE = "OPENING_BALANCE"
+    #: Ürün oluşturma / CSV içe aktarmada girilen ilk stok.
+    INITIAL = "INITIAL"
+    #: Sipariş PAID olunca düşüm (ürün başına toplanmış).
+    SALE = "SALE"
+    #: İptal / tam iade → geri yükleme.
+    SALE_CANCEL = "SALE_CANCEL"
+    #: Kısmi iade kabulü → geri yükleme (iade SATIRI bazlı).
+    RETURN = "RETURN"
+    #: Admin düzeltmesi. Gerekçe ZORUNLU; mutlak atama değil, delta yazılır.
+    ADMIN_ADJUSTMENT = "ADMIN_ADJUSTMENT"
+
+    # ── F29: sayım ve hasarlı stok ──
+    #: Sayım oturumunun uygulanması. Veriyi fiziğe hizalar; fiziksel mevcudu
+    #: DEĞİŞTİRMEZ. Kaynağı `stock_count_lines`.
+    COUNT_ADJUSTMENT = "COUNT_ADJUSTMENT"
+    #: Satılabilir → hasarlı. Aynı transaction'da İKİ satır yazılır.
+    DAMAGE_TRANSFER = "DAMAGE_TRANSFER"
+    #: Hasarlı → satılabilir (kurtarıldı). Yine iki satır.
+    DAMAGE_RECOVERY = "DAMAGE_RECOVERY"
+    #: Hasarlı kovadan imha — işletmeden fiziksel çıkış (tek satır).
+    DAMAGE_DISPOSAL = "DAMAGE_DISPOSAL"
+    #: Seçilen kovadan tedarikçiye fiziksel çıkış (tek satır).
+    SUPPLIER_RETURN = "SUPPLIER_RETURN"
+
+
+class StockBucket(str, enum.Enum):
+    """Defter zincirinin ikinci boyutu: miktarın hangi kovada durduğu.
+
+    Zincir değişmezi ``qty_after[i] == qty_after[i-1] + qty_delta[i]`` F29'dan
+    itibaren `(product_id, bucket)` başına geçerlidir. `SALEABLE` zincirinin son
+    değeri `products.stock`'a, `DAMAGED` zincirininki `products.damaged_stock`'a
+    eşittir.
+
+    **Boş hasarlı kova geçerlidir:** hiç `DAMAGED` hareketi olmayan bir üründe
+    `damaged_stock = 0` doğru kabul edilir; migration gereksiz sıfır açılış
+    satırı ÜRETMEZ. Bakiye sıfırdan farklıyken hareket yoksa bu bir bulgudur.
+    """
+
+    SALEABLE = "SALEABLE"
+    DAMAGED = "DAMAGED"
+
+
+#: `ADMIN_ADJUSTMENT` için geçerli gerekçe kodları (DB CHECK'iyle de zorlanır).
+ADMIN_ADJUSTMENT_REASONS = frozenset(
+    {"SAYIM_FARKI", "HASAR", "KAYIP", "HATALI_GIRIS", "TEDARIK", "DIGER"}
+)
+
+
+class StockMovement(Base):
+    """`products.stock`'un DEĞİŞTİRİLEMEZ defteri (append-only).
+
+    ## Neden var
+
+    Stok altı ayrı yerde değişiyordu ve hiçbiri iz bırakmıyordu: "bu kitabın
+    stoğu neden 3?" sorusunun cevabı yoktu. Aynı serviste **fiyat** değişimi
+    `product_price_history`'ye yazılıyordu; stok için karşılığı yoktu.
+
+    ## Sözleşme
+
+    * **Append-only.** UPDATE ve DELETE `stock_movements_immutable()` trigger'ı
+      tarafından reddedilir. Soft-delete YOKTUR ve olmamalıdır — gizlenebilen
+      bir defter satırı, defter değildir (`audit_logs` ile aynı duruş).
+    * **Tek yazıcı:** `services/stock_ledger.py`. `products.stock`'a doğrudan
+      atama yapılmaz; kural AST kabul testiyle korunur.
+    * **`qty_after`**, hareketin uygulandığı transaction'da `products.stock`'a
+      GERÇEKTEN yazılan değerdir (ERPNext *Stock Ledger Entry* deseni). Zincir
+      değişmezi: ``qty_after[i] == qty_after[i-1] + qty_delta[i]``.
+    * **`idempotency_key`** ticari kaynaktan deterministik türetilir. Aynı
+      anahtar + aynı payload → mevcut hareket döner (retry'ın doğru cevabı);
+      aynı anahtar + farklı payload → çatışma hatası. Sessiz yutma yok.
+    * **Negatif bakiye yazılmaz.** Yetersizlikte hareket hiç oluşmaz ve stok
+      değişmez (`InsufficientStock`); kırpma (``max(0, …)``) YASAKTIR.
+
+    ## `actor_id` neden FK değil
+
+    İki sebep: (1) `audit_logs.actor_id` deseninin aynısı — defter satırı,
+    aktörün yaşam döngüsünden bağımsız olarak okunabilir kalmalı; (2) FK
+    `ON DELETE SET NULL` bir **UPDATE**'tir ve değiştirilemezlik trigger'ına
+    çarpardı.
+    """
+
+    __tablename__ = "stock_movements"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    product_id: Mapped[int] = mapped_column(
+        # RESTRICT: ürün soft-delete edilir (`store_service.delete_product`), bu
+        # yüzden pratikte hiç tetiklenmez; niyeti belgeler — defter yetim kalamaz.
+        ForeignKey("products.id", ondelete="RESTRICT"), nullable=False, index=True
+    )
+
+    #: Hareketin geçtiği kova (`StockBucket`). Defter F29'dan itibaren iki
+    #: zincir taşır ve `qty_after` **kendi kovası** içinde zincirlenir.
+    #:
+    #: **VARSAYILANI YOKTUR — ne ORM'de ne sunucuda.** Bilerek: varsayılan
+    #: kalsaydı `bucket` göndermeyen bir yazıcı (ham SQL, seed, hatalı kod) bir
+    #: DAMAGED hareketi SESSİZCE SALEABLE olarak yazardı ve defter iki kovayı da
+    #: yalan söylerdi. Varsayılan yalnızca migration backfill'i için vardı ve
+    #: `f29a_bucket_default_kaldir` ile kaldırıldı; eksik `bucket` artık NOT NULL
+    #: ihlaliyle **gürültülü** biçimde patlar.
+    #:
+    #: Tek yazıcı `services/stock_ledger.py` değeri her satırda AÇIKÇA verir;
+    #: kural bir AST sözleşme testiyle korunur.
+    bucket: Mapped[str] = mapped_column(String(10), nullable=False)
+
+    #: İşaretli, UYGULANAN gerçek değişim. Sıfır yalnız OPENING_BALANCE'ta.
+    qty_delta: Mapped[int] = mapped_column(Integer, nullable=False)
+    #: Bu hareketten sonraki bakiye (= aynı transaction'da yazılan stok).
+    qty_after: Mapped[int] = mapped_column(Integer, nullable=False)
+
+    movement_type: Mapped[str] = mapped_column(String(20), nullable=False)
+    #: Her hareket kendini açıklar → NOT NULL. Sistem tipleri sabit kod taşır.
+    reason_code: Mapped[str] = mapped_column(String(30), nullable=False)
+
+    # ── Ticari kaynak (polimorfik → FK yok) ──
+    #: "order" · "order_return" · "product" · "migration"
+    ref_type: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    ref_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    #: Satır bazlı kaynak — kısmi iadede `order_return_items.id`. Aynı üründen
+    #: iki iade satırı İKİ geçerli harekettir; ayrımı bu alan taşır.
+    ref_line_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+    #: Deterministik idempotency anahtarı. `ADMIN_ADJUSTMENT`'ta NULL — her elle
+    #: düzeltme ayrı bir olaydır ve doğal anahtarı yoktur (PG'de NULL'lar unique
+    #: index'te birbirinden farklı sayılır).
+    idempotency_key: Mapped[str | None] = mapped_column(String(160), nullable=True)
+
+    #: "SYSTEM" | "ADMIN" (ileride genişletilebilir).
+    actor_type: Mapped[str] = mapped_column(String(10), nullable=False)
+    actor_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+    note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    #: `audit_logs.request_id` ile korelasyon: defter NE olduğunu, audit KİMİN
+    #: hangi istekle yaptığını anlatır.
+    request_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=text("now()")
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            "movement_type IN ('OPENING_BALANCE','INITIAL','SALE','SALE_CANCEL',"
+            "'RETURN','ADMIN_ADJUSTMENT','COUNT_ADJUSTMENT','DAMAGE_TRANSFER',"
+            "'DAMAGE_RECOVERY','DAMAGE_DISPOSAL','SUPPLIER_RETURN')",
+            name="ck_stock_movements_type",
+        ),
+        CheckConstraint(
+            "bucket IN ('SALEABLE','DAMAGED')", name="ck_stock_movements_bucket"
+        ),
+        # Hasarlı kovada YALNIZ hasar ve sayım hareketleri olabilir: bir satış
+        # ya da iade hasarlı kovaya düşerse defter iki kovayı da yalan söyler.
+        CheckConstraint(
+            "bucket = 'SALEABLE' OR movement_type IN ('COUNT_ADJUSTMENT',"
+            "'DAMAGE_TRANSFER','DAMAGE_RECOVERY','DAMAGE_DISPOSAL',"
+            "'SUPPLIER_RETURN','OPENING_BALANCE')",
+            name="ck_stock_movements_bucket_type",
+        ),
+        CheckConstraint(
+            "actor_type IN ('SYSTEM','ADMIN')", name="ck_stock_movements_actor_t"
+        ),
+        CheckConstraint(
+            "actor_type <> 'ADMIN' OR actor_id IS NOT NULL",
+            name="ck_stock_movements_actor_id",
+        ),
+        # Sıfır delta yalnız açılış bakiyesinde: 0 stoklu ürünün de zincir
+        # tabanı olmalı. Diğer türlerde gürültü satırı yazılmaz.
+        CheckConstraint(
+            "qty_delta <> 0 OR movement_type = 'OPENING_BALANCE'",
+            name="ck_stock_movements_delta",
+        ),
+        # Kırpma yasak olduğu için bu artık gerçek bir değişmez.
+        CheckConstraint("qty_after >= 0", name="ck_stock_movements_after"),
+        # Ticari kaynağı olan her hareket kaynağını taşımak zorundadır. Sayım ve
+        # hasar hareketleri de bu sınıfa girer: kaynakları `stock_count_lines`
+        # ve `stock_damage_events` satırlarıdır.
+        CheckConstraint(
+            "movement_type NOT IN ('SALE','SALE_CANCEL','RETURN',"
+            "'COUNT_ADJUSTMENT','DAMAGE_TRANSFER','DAMAGE_RECOVERY',"
+            "'DAMAGE_DISPOSAL','SUPPLIER_RETURN') "
+            "OR (ref_type IS NOT NULL AND ref_id IS NOT NULL)",
+            name="ck_stock_movements_ref",
+        ),
+        CheckConstraint(
+            "movement_type <> 'RETURN' OR ref_line_id IS NOT NULL",
+            name="ck_stock_movements_refline",
+        ),
+        CheckConstraint(
+            "movement_type <> 'ADMIN_ADJUSTMENT' OR reason_code IN "
+            "('SAYIM_FARKI','HASAR','KAYIP','HATALI_GIRIS','TEDARIK','DIGER')",
+            name="ck_stock_movements_adjust",
+        ),
+        # Sayım farkı yön bilgisi taşır; elle düzeltmenin sözlüğüyle karışmaz.
+        CheckConstraint(
+            "movement_type <> 'COUNT_ADJUSTMENT' OR reason_code IN "
+            "('SAYIM_FAZLA','SAYIM_EKSIK')",
+            name="ck_stock_movements_count_reason",
+        ),
+        CheckConstraint(
+            "movement_type NOT IN ('DAMAGE_TRANSFER','DAMAGE_RECOVERY',"
+            "'DAMAGE_DISPOSAL','SUPPLIER_RETURN') OR reason_code IN "
+            "('KIRIK','ISLAK','BASKI_HATASI','MUSTERI_IADESI_HASARLI','DIGER')",
+            name="ck_stock_movements_damage_reason",
+        ),
+        # "DIGER" tek başına hiçbir şey açıklamaz; açıklamayı not taşır.
+        CheckConstraint(
+            "reason_code <> 'DIGER' OR (note IS NOT NULL AND length(btrim(note)) > 0)",
+            name="ck_stock_movements_note",
+        ),
+        # Geçmiş ekranı ve zincir doğrulaması (ürün + kova + kronolojik sıra).
+        # Kova kolonu öne alındı: `verify_ledger` ve "son bakiye" sorguları
+        # F29'dan itibaren kova başına çalışır.
+        Index(
+            "ix_stock_movements_product",
+            "product_id",
+            "bucket",
+            text("created_at DESC"),
+            text("id DESC"),
+        ),
+        # "Bu siparişin/iadenin stok etkisi". UNIQUE DEĞİL: bir sipariş çok
+        # ürün, bir iade çok satır taşır → referans başına çok geçerli hareket.
+        Index("ix_stock_movements_ref", "ref_type", "ref_id"),
+        Index("uq_stock_movements_idem", "idempotency_key", unique=True),
     )

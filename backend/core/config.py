@@ -1,6 +1,7 @@
 from functools import lru_cache
+from typing import Literal
 
-from pydantic import computed_field
+from pydantic import computed_field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -14,6 +15,12 @@ class Settings(BaseSettings):
 
     PROJECT_NAME: str = "Adana Özel Ders"
     API_V1_PREFIX: str = "/api/v1"
+
+    # Çalışma ortamı. "production" iken açılışta sertleştirme guard'ı koşar
+    # (bkz. _guard_production): geliştirme kolaylığı için konmuş fail-open
+    # varsayılanların (sahte ödeme, console SMS/e-posta, demo seed, otomatik
+    # şema kurulumu, zayıf sır) üretime sızması UYGULAMAYI AÇTIRMAZ.
+    ENVIRONMENT: Literal["development", "staging", "production"] = "development"
 
     BACKEND_CORS_ORIGINS: list[str] = [
         "http://localhost:5173",
@@ -31,6 +38,32 @@ class Settings(BaseSettings):
     DB_ECHO: bool = False
     DB_POOL_SIZE: int = 10
     DB_MAX_OVERFLOW: int = 20
+    # Bağlantıyı bu süreden sonra yenile. Havuzdaki bağlantılar sonsuza dek
+    # yaşarsa, araya giren bir NAT/load balancer sessizce düşürdüğü bağlantıyı
+    # uygulama "canlı" sanar ve ilk sorguda kopuk-boru hatası alır.
+    DB_POOL_RECYCLE_SECONDS: int = 1800
+    # Havuz doluysa bir istek bağlantı için ne kadar bekler. Varsayılan (30 sn)
+    # trafik dalgasında istekleri yığar; erken 500 vermek yığılmadan iyidir.
+    DB_POOL_TIMEOUT_SECONDS: int = 10
+    # Sunucu tarafı sorgu tavanı. Kaçak bir sorgu (indekssiz büyük tablo taraması)
+    # bağlantıyı süresiz tutup havuzu tüketmesin. 0 = kapalı.
+    DB_STATEMENT_TIMEOUT_MS: int = 15000
+
+    # Object storage (S3/MinIO) ağ davranışı: varsayılan botocore ayarları
+    # bağlantı başına ~60 sn bekler ve 5 kez dener → erişilemez MinIO'da tek
+    # istek dakikalarca DB session'ı tutar.
+    S3_CONNECT_TIMEOUT_SECONDS: int = 3
+    S3_READ_TIMEOUT_SECONDS: int = 10
+    S3_MAX_ATTEMPTS: int = 2
+    # Hassas dosyalar (`private/` öneki) anonim okunamaz; imzalı URL ile sunulur.
+    # TTL istemci önbelleğinden UZUN olmalı: React Query'de duran bir yanıtın
+    # içindeki imza, kullanıcı sayfaya dönmeden önce ölürse görsel kırılır.
+    S3_PRESIGN_TTL_SECONDS: int = 3600
+    # Tarayıcının depolamaya eriştiği adres. Compose'da backend MinIO'ya
+    # `http://minio:9000` ile bağlanır ama tarayıcı o adı çözemez; imza host'u
+    # kapsadığından presigned URL de bu adresle üretilmelidir. Boşsa
+    # AWS_ENDPOINT_URL kullanılır (tek adresli kurulumlarda fark yoktur).
+    S3_PUBLIC_ENDPOINT_URL: str = ""
 
     JWT_SECRET_KEY: str
     # Alan-düzeyi şifreleme anahtarı (TCKN gibi hassas veri at-rest). Verilmezse
@@ -46,6 +79,15 @@ class Settings(BaseSettings):
     REDIS_URL: str = "redis://localhost:6379/0"
     PRESENCE_ONLINE_TTL_SECONDS: int = 300
     PRESENCE_FLUSH_INTERVAL_SECONDS: int = 300
+
+    # Ters proxy arkasında istemci IP'si: X-Forwarded-For YALNIZCA bağlantı bu
+    # listedeki bir adresten geliyorsa okunur. Boş liste = XFF'e hiç güvenme
+    # (doğrudan bağlantı IP'si kullanılır). Aksi halde saldırgan her istekte
+    # sahte XFF göndererek TÜM IP bazlı rate-limit'leri (login brute-force,
+    # kayıt spam'i, e-posta maliyeti, takip token'ı) etkisiz kılar.
+    # Örn. tek VPS'te Caddy/nginx önde ise: ["127.0.0.1"]; Docker ağında
+    # proxy'nin konteyner IP'si veya "172.16.0.0/12" gibi bir CIDR.
+    TRUSTED_PROXY_IPS: list[str] = []
 
     # Rate limiting (Redis fixed-window). Redis erişilemezse fail-open.
     # IP bazlı (auth uçları):
@@ -87,6 +129,9 @@ class Settings(BaseSettings):
     # sağlayıcı yalnızca üretimde gerekir.
     EMAIL_PROVIDER: str = "console"
     EMAIL_FROM: str = "no-reply@adanaozelders.com.tr"
+    # İletişim formu mesajlarının düşeceği kutu. Boşsa EMAIL_FROM kullanılır
+    # (yapılandırma eksikse bile mesaj kaybolmaz).
+    SUPPORT_EMAIL: str | None = None
     EMAIL_FROM_NAME: str = "Adana Özel Ders"
     SMTP_HOST: str = "localhost"
     SMTP_PORT: int = 1025
@@ -130,6 +175,24 @@ class Settings(BaseSettings):
     # VROOM+OSRM: `docker compose --profile routing up` + scripts/setup-osrm-adana.ps1
     ROUTING_PROVIDER: str = "auto"
     VROOM_URL: str = "http://localhost:3000"
+    # VROOM isteği tavanı. Planlama CPU işidir: 300 duraklı bir gün ~3 sn sürer;
+    # 20 sn dolmuşsa servis sağlıksızdır ve beklemenin faydası yok (istek boyunca
+    # DB bağlantısı tutulur — DB_POOL_TIMEOUT_SECONDS'tan uzun beklemek havuzu yer).
+    VROOM_TIMEOUT_SECONDS: float = 20.0
+    # Tek planlamadaki azami koordinat (durak + depo). VROOM arkada OSRM'in
+    # `table` servisini çağırır; `osrm-routed --max-table-size` bundan BÜYÜK
+    # olmalıdır (compose: 500). Tavan aşılırsa OSRM "TooBig" döner ve hata,
+    # gerçek nedeni görünmeden "VROOM'a ulaşılamadı" gibi loglanırdı — bu yüzden
+    # istek ağa çıkmadan önce burada kesilir. 0 = kontrol kapalı.
+    VROOM_MAX_LOCATIONS: int = 300
+    # Devre kesici: VROOM düştükten sonra bu kadar saniye yeniden denenmez.
+    # "Günü Optimize Et" tek istekte 1 + N planlama çağırır; kesici olmasa VROOM
+    # kapalıyken admin isteği (1+N) × timeout kadar asılı kalırdı. 0 = kapalı.
+    ROUTING_FAILURE_COOLDOWN_SECONDS: int = 60
+    # /health rota yoklaması: gerçek (2 duraklık) plan isteği bu aralıkla
+    # önbelleklenir ve bu süreyle sınırlanır (sağlık ucu asla asılı kalmaz).
+    ROUTING_HEALTH_TTL_SECONDS: int = 60
+    ROUTING_HEALTH_TIMEOUT_SECONDS: float = 5.0
     # Durak başına paket teslim servis süresi (sn) — ETA hesabına girer.
     DELIVERY_STOP_SERVICE_SECONDS: int = 180
     # "Rotayı bozan durak" eşiği: durağın rotaya kattığı ek yol (km) bunu
@@ -154,6 +217,11 @@ class Settings(BaseSettings):
     # "Günü Optimize Et": konumlu sipariş sayısı bu eşiği aşarsa ikinci araç
     # (COROLLA) devreye girer; altındaysa tek LADA turu kurulur.
     DELIVERY_SINGLE_VEHICLE_MAX_STOPS: int = 12
+    # Bir aracın bir günde fiilen bitirebileceği durak sayısı. "Günü Optimize Et"
+    # bu tavanı aşan siparişleri PLANA ALMAZ (eligible kuyruğunda, aciliyet
+    # sırasında bekler) — aksi halde biriken söz borcu tek günde bitirilemeyecek
+    # bir tur kurar ve hepsine söz verilmiş görünür. 0 = tavan kapalı.
+    DELIVERY_MAX_STOPS_PER_RUN: int = 40
     # Bir durak sonuçlanınca sıradaki bu kadar müşteriye "kuryen yaklaşıyor"
     # SMS+bildirimi gider (durak başına tek sefer — approach_notified_at damgası).
     DELIVERY_NEXT_NOTIFY_COUNT: int = 2
@@ -238,6 +306,10 @@ class Settings(BaseSettings):
     SENTRY_TRACES_SAMPLE_RATE: float = 0.0
 
     AUTO_CREATE_DB: bool = True
+    # Demo/başlangıç eğitmenleri (core/seed.py::seed_tutors). Şifreleri kodda AÇIK
+    # yazılıdır ve kayıtlar APPROVED gelir → üretimde ASLA açılmamalı; guard da
+    # production'da True olmasını engeller.
+    SEED_DEMO_DATA: bool = True
     ADMIN_EMAIL: str | None = None
     ADMIN_PASSWORD: str | None = None
     ADMIN_FULL_NAME: str = "System Admin"
@@ -267,6 +339,111 @@ class Settings(BaseSettings):
             f"postgresql+asyncpg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}"
             f"@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
         )
+
+    @property
+    def is_production(self) -> bool:
+        return self.ENVIRONMENT == "production"
+
+    @model_validator(mode="after")
+    def _guard_production(self) -> "Settings":
+        """ENVIRONMENT=production iken tehlikeli geliştirme varsayılanlarını reddet.
+
+        Bu ayarların her biri geliştirmeyi kolaylaştırmak için fail-OPEN seçildi
+        (dış hesap gerekmesin diye). Üretimde aynı varsayılanlar sessiz felakete
+        dönüşür: `PAYMENT_PROVIDER=fake` para tahsil etmeden sipariş kapatır,
+        `SMS_PROVIDER=console` teslimat OTP'sini müşteriye değil loga yazar.
+        Sessizce yanlış çalışmaktansa AÇILMAMAK doğru davranıştır.
+        """
+        if not self.is_production:
+            return self
+
+        problems: list[str] = []
+
+        if self.PAYMENT_PROVIDER.strip().lower() != "iyzico":
+            problems.append(
+                f"PAYMENT_PROVIDER={self.PAYMENT_PROVIDER!r} — üretimde 'iyzico' olmalı "
+                "(aksi halde sahte sağlayıcı para tahsil etmeden başarı döner)"
+            )
+        if self.PAYMENT_PROVIDER.strip().lower() == "iyzico" and not (
+            self.IYZICO_API_KEY and self.IYZICO_SECRET_KEY
+        ):
+            problems.append("IYZICO_API_KEY / IYZICO_SECRET_KEY boş")
+        if self.EMAIL_PROVIDER.strip().lower() == "console":
+            problems.append("EMAIL_PROVIDER=console — e-postalar yalnız loga yazılır")
+        if self.SMS_PROVIDER.strip().lower() == "console":
+            problems.append("SMS_PROVIDER=console — OTP'ler müşteriye gitmez, loga yazılır")
+        if self.AUTO_CREATE_DB:
+            problems.append(
+                "AUTO_CREATE_DB=True — migration açılışta çalışmamalı; "
+                "deploy adımı olarak `alembic upgrade head` çalıştırın"
+            )
+        if self.SEED_DEMO_DATA:
+            problems.append(
+                "SEED_DEMO_DATA=True — şifresi kodda açık olan APPROVED demo "
+                "eğitmenleri canlı aramaya girer"
+            )
+        if len(self.JWT_SECRET_KEY) < 32 or "change-this" in self.JWT_SECRET_KEY:
+            problems.append(
+                "JWT_SECRET_KEY zayıf veya varsayılan (en az 32 karakter, rastgele olmalı)"
+            )
+        if self.ADMIN_PASSWORD and "change-this" in self.ADMIN_PASSWORD:
+            problems.append("ADMIN_PASSWORD varsayılan değerde")
+        if "minioadmin" in (self.AWS_ACCESS_KEY_ID, self.AWS_SECRET_ACCESS_KEY):
+            problems.append("AWS_ACCESS_KEY_ID/SECRET varsayılan 'minioadmin' değerinde")
+        # Dosya adresleri (ve imzaları) bu adresle üretilir. Dahili konteyner adı
+        # kalırsa hiçbir görsel/belge açılmaz ve hata sessizdir: API 200 döner,
+        # yalnız tarayıcı dosyayı çekemez.
+        storage_endpoint = self.S3_PUBLIC_ENDPOINT_URL or self.AWS_ENDPOINT_URL
+        if storage_endpoint and not storage_endpoint.startswith("https://"):
+            problems.append(
+                "S3_PUBLIC_ENDPOINT_URL https:// olmalı (tarayıcının depoya "
+                f"eriştiği adres; şu an: {storage_endpoint!r})"
+            )
+        local_origins = [
+            o for o in self.BACKEND_CORS_ORIGINS if "localhost" in o or "127.0.0.1" in o
+        ]
+        if local_origins:
+            problems.append(f"BACKEND_CORS_ORIGINS yerel köken içeriyor: {local_origins}")
+        if not self.TRUSTED_PROXY_IPS:
+            problems.append(
+                "TRUSTED_PROXY_IPS boş — ters proxy arkasında istemci IP'si "
+                "çözülemez, IP bazlı rate-limit'ler tek bir IP'de toplanır "
+                "(proxy yoksa bilinçli olarak ['*'] verilebilir)"
+            )
+        if self.FRONTEND_BASE_URL.startswith("http://") or self.BACKEND_BASE_URL.startswith(
+            "http://"
+        ):
+            problems.append("FRONTEND_BASE_URL / BACKEND_BASE_URL https:// olmalı")
+        # Rota sağlayıcısı: `haversine` kuş uçuşu tahmindir. Müşteriye gösterilen
+        # varış penceresi ("18:00–19:00") ve kuryenin gün planı bu tahminden
+        # üretilirse sistematik olarak yanlış söz verilir — üretimde bilinçli
+        # seçilmiş olamaz. `auto` serbesttir (VROOM düşerse çalışmaya devam
+        # etmek doğrudur; bozulma /health + ERROR log ile görünür).
+        routing_mode = (self.ROUTING_PROVIDER or "").strip().lower()
+        if routing_mode == "haversine":
+            problems.append(
+                "ROUTING_PROVIDER=haversine — üretimde 'vroom' ya da 'auto' olmalı "
+                "(kuş uçuşu tahmin müşteriye yanlış varış penceresi sözü verir)"
+            )
+        elif routing_mode not in ("auto", "vroom"):
+            problems.append(
+                f"ROUTING_PROVIDER={self.ROUTING_PROVIDER!r} geçersiz "
+                "(auto | vroom | haversine)"
+            )
+        elif "localhost" in self.VROOM_URL or "127.0.0.1" in self.VROOM_URL:
+            # Konteynerde `localhost` VROOM değil backend'in kendisidir; istek
+            # sessizce düşer ve rota kalıcı olarak haversine'e geriler.
+            problems.append(
+                f"VROOM_URL yerel adres gösteriyor ({self.VROOM_URL!r}) — "
+                "üretimde servis adı olmalı (ör. http://vroom:3000)"
+            )
+
+        if problems:
+            raise ValueError(
+                "ENVIRONMENT=production için güvenli olmayan yapılandırma:\n  - "
+                + "\n  - ".join(problems)
+            )
+        return self
 
 
 @lru_cache

@@ -18,6 +18,9 @@ import { formatTRY, parseMoney } from "@/lib/money";
 import { BOOKING_STATUS_LABEL, BOOKING_STATUS_STYLE } from "@/lib/bookingStatus";
 import { qaEligibility } from "@/lib/qaWindow";
 import { isLessonJoinable } from "@/lib/lesson";
+import { PaymentBranchNotice } from "@/components/PaymentBranchNotice";
+import { usePaymentAvailability } from "@/hooks/useFeatureFlags";
+import { isBranchOpen } from "@/lib/paymentAvailability";
 import { getErrorMessage } from "@/lib/errors";
 import { toast } from "@/store/toastStore";
 
@@ -34,6 +37,8 @@ const GHOST_BTN =
   "rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 active:scale-95 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700";
 
 /* ─── ikonlar ────────────────────────────────────────── */
+
+const PAY_CLOSED_NOTICE_ID = "tutor-payment-closed-notice";
 
 function ChevronRight({ className = "h-3.5 w-3.5" }: { className?: string }) {
   return (
@@ -116,6 +121,11 @@ function BookingRow({
     booking.status === BookingStatus.ACCEPTED && !!booking.meeting_room;
   const joinable = canJoin && isLessonJoinable(booking.start_at, booking.end_at);
 
+  // React Query aynı anahtarı paylaşan satırları tek isteğe indirir; bu yüzden
+  // availability prop olarak zincirlenmiyor.
+  const { data: availability } = usePaymentAvailability();
+  const payOpen = isBranchOpen(availability, "tutor_marketplace");
+
   const handlePay = () => {
     payMutation.mutate(booking.id, {
       onSuccess: (p) => {
@@ -186,13 +196,24 @@ function BookingRow({
       {/* Aksiyonlar */}
       {hasActions && (
         <div className="mt-4 flex flex-wrap items-center gap-2">
-          {needsPayment && (
-            <button onClick={handlePay} disabled={payMutation.isPending} className={PRIMARY_BTN}>
-              {payMutation.isPending
-                ? "İşleniyor…"
-                : `Öde · ${formatTRY(booking.payment?.amount)}`}
-            </button>
-          )}
+          {needsPayment &&
+            (payOpen ? (
+              <button onClick={handlePay} disabled={payMutation.isPending} className={PRIMARY_BTN}>
+                {payMutation.isPending
+                  ? "İşleniyor…"
+                  : `Öde · ${formatTRY(booking.payment?.amount)}`}
+              </button>
+            ) : (
+              // Sebep LİSTE BAŞINDA bir kez söyleniyor; satırda nötr bir durum
+              // yeterli. Her satıra tam genişlikte amber blok koymak rengi
+              // "istisna" olmaktan çıkarıyor ve diğer aksiyonları alt satıra itiyordu.
+              <span
+                aria-describedby={PAY_CLOSED_NOTICE_ID}
+                className="text-sm font-medium text-slate-500 dark:text-slate-400"
+              >
+                Ödeme yolu şu an kapalı
+              </span>
+            ))}
 
           {canJoin &&
             (joinable ? (
@@ -296,6 +317,9 @@ export function StudentBookingsContent() {
   const [reviewed, setReviewed]         = useState<Set<number>>(new Set());
   const [filter, setFilter]             = useState<Filter>("ACTIVE");
 
+  const { data: availability } = usePaymentAvailability();
+  const payOpen = isBranchOpen(availability, "tutor_marketplace");
+
   const markReviewed = (id: number) =>
     setReviewed((prev) => new Set(prev).add(id));
 
@@ -322,6 +346,18 @@ export function StudentBookingsContent() {
       );
     return data.filter((b) => b.status === filter);
   }, [data, filter]);
+
+  // Şerit yalnız gerçekten ödenmeyi bekleyen ders varsa gösterilir; aksi halde
+  // ilgisiz bir uyarı olurdu.
+  const anyNeedsPayment = useMemo(
+    () =>
+      filtered.some(
+        (b) =>
+          b.status === BookingStatus.ACCEPTED &&
+          b.payment?.status === PaymentStatus.PENDING,
+      ),
+    [filtered],
+  );
 
   return (
     <div className="max-w-3xl space-y-5">
@@ -413,6 +449,14 @@ export function StudentBookingsContent() {
           <p className="text-xs text-slate-400 dark:text-slate-500">
             {filtered.length} rezervasyon listeleniyor
           </p>
+          {/* Sebep bir kez, liste başında: satırlarda yalnız nötr bir durum
+              metni var (renk = istisna disiplini). */}
+          {!payOpen && anyNeedsPayment && (
+            <PaymentBranchNotice
+              branch="tutor_marketplace"
+              id={PAY_CLOSED_NOTICE_ID}
+            />
+          )}
           <div className="divide-y divide-slate-100 overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-100 dark:divide-slate-700/60 dark:bg-slate-800 dark:ring-slate-700">
             {filtered.map((b) => (
               <BookingRow

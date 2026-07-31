@@ -1,4 +1,5 @@
 import { FormEvent, useState } from "react";
+import { Modal } from "@/components/ui/Modal";
 import { AxiosError } from "axios";
 import { useRescheduleBooking } from "@/hooks/useBookings";
 import { localInputToIso } from "@/lib/datetime";
@@ -66,8 +67,13 @@ export function RescheduleModal({ bookingId, onClose }: RescheduleModalProps) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 px-4 backdrop-blur-sm">
-      <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700">
+    <Modal
+      open
+      onClose={onClose}
+      ariaLabel="Ders talebini ertele"
+      hideCloseButton
+      panelClassName="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700"
+    >
         <h3 className="text-lg font-bold text-slate-900 dark:text-white">
           Ders Talebini Ertele
         </h3>
@@ -126,7 +132,6 @@ export function RescheduleModal({ bookingId, onClose }: RescheduleModalProps) {
             </button>
           </div>
         </form>
-      </div>
-    </div>
+    </Modal>
   );
 }

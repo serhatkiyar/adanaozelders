@@ -4,10 +4,10 @@ from sqlalchemy import CheckConstraint, ForeignKey, Index, Integer, Text, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from core.database import Base
-from models.mixins import SoftDeleteMixin, TimestampMixin
+from models.mixins import ModeratableMixin, SoftDeleteMixin, TimestampMixin
 
 
-class Review(Base, TimestampMixin, SoftDeleteMixin):
+class Review(Base, TimestampMixin, SoftDeleteMixin, ModeratableMixin):
     __tablename__ = "reviews"
 
     id: Mapped[int] = mapped_column(primary_key=True)

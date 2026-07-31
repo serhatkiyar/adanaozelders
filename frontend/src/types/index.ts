@@ -56,10 +56,16 @@ export enum Gender {
 
 /* ============================ AUTH ============================ */
 
+/**
+ * Oturum yanıtı — yalnız access token.
+ *
+ * Refresh token burada YOKTUR: `httpOnly` çerezde taşınır ve JavaScript onu
+ * hiç görmez. Gövdede dönseydi saklamak zorunda kalırdık ve tek bir XSS
+ * 30 günlük hesap devrine yeterdi.
+ */
 export interface Token {
   access_token: string;
   token_type: string;
-  refresh_token?: string | null;
 }
 
 export interface RegisterRequest {
@@ -70,6 +76,12 @@ export interface RegisterRequest {
   username: string;
   birth_date?: string | null; // "YYYY-MM-DD"
   gender?: Gender | null;
+  /**
+   * Onaylanan yasal metinlerin sürümü ("YYYY-MM-DD").
+   * Backend bunu `user_consents`'a ispat kaydı olarak yazar (KVKK); ZORUNLUDUR
+   * — gönderilmezse kayıt 422 döner. Değeri `currentConsentVersion()` verir.
+   */
+  consent_version: string;
 }
 
 /* ============================ USER ============================ */
@@ -1381,7 +1393,11 @@ export interface CatalogOut {
   duration_minutes?: number | null;
   is_public: boolean;
   is_nationwide: boolean;
+  // Yalnız admin küratör listesinde (GET /exam-catalogs) dolu gelir;
+  // operatörün gördüğü /exam-catalogs/usable listesinde daima null.
   answer_key_url?: string | null;
+  // Anahtar yüklenmiş mi — URL vermeden gösterilebilen güvenli bilgi.
+  has_answer_key: boolean;
   has_answer_key_data: boolean;
   created_at?: string | null;
   session_count: number;
@@ -1653,14 +1669,50 @@ export interface OrderOut {
 
 export type ReturnStatus = "PENDING" | "APPROVED" | "REJECTED";
 
+/**
+ * İadenin hukuki dayanağı.
+ * CAYMA: 14 gün koşulsuz cayma (Mesafeli Sözleşmeler Yönetmeliği m.9) —
+ * otomatik onaylanır, satıcı REDDEDEMEZ.
+ * AYIPLI / DIGER: admin incelemesi gerektirir.
+ */
+export type ReturnType = "CAYMA" | "AYIPLI" | "DIGER";
+
+/** İade talebine bağlı paranın durumu (talebin durumundan ayrıdır). */
+export type ReturnRefundStatus = "NONE" | "REFUNDING" | "REFUNDED";
+
+export interface OrderReturnItem {
+  order_item_id: number;
+  title?: string | null;
+  quantity: number;
+  amount: string;
+}
+
+export interface OrderReturnItemIn {
+  order_item_id: number;
+  quantity: number;
+}
+
+export interface OrderReturnCreate {
+  type: ReturnType;
+  reason?: string;
+  /** Boş bırakılırsa siparişin tamamı iade edilir. */
+  items?: OrderReturnItemIn[];
+}
+
 export interface OrderReturn {
   id: number;
   order_id: number;
+  type: ReturnType;
   status: ReturnStatus;
   reason: string;
   admin_note?: string | null;
   created_at: string;
   resolved_at?: string | null;
+  refund_status: ReturnRefundStatus;
+  refund_amount: string;
+  refunded_at?: string | null;
+  is_partial: boolean;
+  items: OrderReturnItem[];
   // Admin listesinde sipariş özeti gömülü; müşteri yanıtında null.
   order?: OrderOut | null;
 }
@@ -1676,6 +1728,8 @@ export interface CartValidateOut {
   currency: string;
   has_physical: boolean;
   issues: string[];
+  /** Sepetteki kalemler için kapalı ödeme kolları (backend `payment_gates`). */
+  blocked_payment_branches?: string[];
 }
 
 export interface OrderCreate {
@@ -1784,6 +1838,8 @@ export interface DeliveryStop {
   promised_delivery_date?: string | null;
   /** Bu sipariş kaç kez teslim edilemedi (>0 → öncelikli yeniden deneme). */
   failed_attempts?: number;
+  /** Teslim edilememe neden kodu (FailReason) — FAILED durakta dolu. */
+  fail_reason?: string | null;
 }
 
 export interface DeliveryRun {
@@ -1819,6 +1875,9 @@ export interface DeliveryEligibleOrder {
   lng?: number | null;
   total: string;
   item_count: number;
+  /** Toplanacak fiziksel kalemler (başlık + adet). Dijital kalemler dönmez.
+   *  Eski istemci/şema ile gelmeyebilir → `hasItemDetail` ile kontrol edin. */
+  items?: DeliveryStopItem[];
   created_at: string;
   /** Söz verilen teslim günü (16:00 cutoff) — eski siparişlerde null. */
   promised_delivery_date?: string | null;
@@ -2036,4 +2095,37 @@ export interface CourierPosition {
   lat: number | null;
   lng: number | null;
   age_seconds: number | null;
+}
+
+
+/** Yönetim para metrikleri (/admin/revenue). Tutarlar string: Decimal
+ *  yuvarlama hatası para raporunda kabul edilemez, formatlama istemcide. */
+export interface AdminRevenueOut {
+  range: string;
+  period_start: string;
+  previous_period_start: string;
+  gmv: string;
+  revenue: string;
+  commission_revenue: string;
+  direct_sales_revenue: string;
+  /** Emanetteki para — henüz gelir değil. */
+  held: string;
+  refunded: string;
+  refund_rate: number;
+  orders: number;
+  aov: string;
+  lesson_gmv: string;
+  library_gmv: string;
+  store_gmv: string;
+  previous_gmv: string;
+  previous_revenue: string;
+  previous_commission_revenue: string;
+  previous_direct_sales_revenue: string;
+  previous_held: string;
+  previous_refunded: string;
+  previous_orders: number;
+  previous_aov: string;
+  previous_lesson_gmv: string;
+  previous_library_gmv: string;
+  previous_store_gmv: string;
 }

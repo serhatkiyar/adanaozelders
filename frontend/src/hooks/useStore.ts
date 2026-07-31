@@ -6,6 +6,7 @@ import {
 } from "@tanstack/react-query";
 import * as storeApi from "@/api/store";
 import type { ProductSearchParams } from "@/api/store";
+import type { OrderReturnCreate } from "@/types";
 
 /* ── Public katalog ── */
 
@@ -13,6 +14,15 @@ export function useCategories() {
   return useQuery({
     queryKey: ["store", "categories"],
     queryFn: storeApi.fetchCategories,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+/** Kitap künyesi filtre seçenekleri; kategori değişince yeniden çekilir. */
+export function useBookFacets(categoryId?: number) {
+  return useQuery({
+    queryKey: ["store", "book-facets", categoryId ?? null],
+    queryFn: () => storeApi.fetchBookFacets(categoryId),
     staleTime: 5 * 60 * 1000,
   });
 }
@@ -127,7 +137,8 @@ export function useCancelOrder() {
 export function useRequestReturn(orderId: number) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (reason: string) => storeApi.requestReturn(orderId, reason),
+    mutationFn: (payload: OrderReturnCreate) =>
+      storeApi.requestReturn(orderId, payload),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["store", "orders", "mine"] });
       qc.invalidateQueries({ queryKey: ["store", "orders", orderId] });
