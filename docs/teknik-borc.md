@@ -9,6 +9,17 @@ notunu bırakmak, yapılmış bir işi yapılmamış gibi anlatır).
 
 ---
 
+## TB-8 · Hijyen nöbetçisi `notifications` ve `outbox_events`'i izlemiyor — satırlar sızıyor
+
+| | |
+|---|---|
+| **Bulundu** | F30 commit 2 (paket şeması) kapanış ölçümü — test veritabanında kalıntı aranırken |
+| **Yer** | `backend/tests/integration/conftest.py::_KRITIK_TABLOLAR` ↔ teslimat/stok entegrasyon testlerinin teardown'ları |
+| **Durum** | Nöbetçi 19 tabloyu sayıyor; `notifications` ve `outbox_events` listede **yok**. `adana_f30_test` veritabanında ölçüldü: **36 yetim bildirim** (sahibi olan `clients` satırı silinmiş, 31 Tem–1 Ağu koşumlarından) ve daha önce **90 `outbox_events`** satırı birikmişti. Hiçbiri paketlemeden değil — metinleri "kuryemiz yola çıktı" / "stok kalmadı", yani teslimat ve stok testlerinden |
+| **Etki** | Kök `CLAUDE.md` §G'nin sözü ("bir testin ürettiği veri başka teste kalmaz") bu iki tabloda **kanıtsız**. Biriken bildirim gerçek bir kullanıcının bildirim listesini şişirmez (test DB'si ayrı) ama sızıntıyı gizler: yarın bir teslimat testi bildirim SAYISINA bakan bir iddia yazarsa, önceki koşumun bıraktığı satırlar yüzünden sırayla-geçen/tek-başına-kalan bir flaky test doğar |
+| **Neden ertelendi** | İki tabloyu nöbetçiye eklemek suite'i **hemen kırar** — ama kıran testler F30'un değil, teslimat/stok paketlerinin testleridir. Sızdıran teardown'ları bulup düzeltmek o paketlerin kapsamındadır; F30 commit 2 şema commit'idir ve kapsamı genişletmek paketi bulanıklaştırırdı. **F30 kendi payını temizliyor**: `PaketFabrikasi.temizle()` ürettiği outbox + bildirim satırlarını kimlik listesine göre siler ve ölçüldü — F30 paketi öncesi/sonrası her iki sayaç da değişmiyor |
+| **Sonraki adım** | (1) Sızdıran teardown'ları bul (`outbox_events` yazan teslimat testleri + `notifications` yazan stok/teslimat testleri), (2) temizliği sipariş/müşteri kimliğine göre kapsamla, (3) iki tabloyu `_KRITIK_TABLOLAR`'a ekle, (4) mevcut kalıntıyı tek seferlik temizle |
+
 ## TB-6 · `audit_logs` DB seviyesinde değişmez değil
 
 | | |

@@ -13,9 +13,16 @@
   servis yollarını çağırır; fabrika yalnız başlangıç durumunu kurar. Ham SQL ile
   durum yazmak, F30'un tam da ölçmek istediği geçiş mantığını atlardı.
 
-Teardown: F30 tabloları HENÜZ YOKKEN de import edilebilir ve çalışabilir olması
-için silme adımları `information_schema` ile korunur (kırmızı test matrisi
-commit'inde tablolar yok; testler ImportError yerine kendi iddialarıyla kırılmalı).
+Teardown **yalnız bu fabrikanın ürettiği satırları** siler ve kapsamı her zaman
+üretilen kimlik listelerinden (sipariş / paket / durak / tur / kurye / müşteri)
+türetir. Tabloların tamamını boşaltmak (`DELETE FROM package_scan_events`) daha
+kolay olurdu ama aynı anda koşan başka bir testin izini de silerdi; o test kendi
+verisini bulamadığında hata "flaky" görünür ve sebebi aylarca bulunamaz.
+
+`package_scan_events` append-only'dir (UPDATE/DELETE trigger'la reddedilir) ve
+`package_id` FK'si `RESTRICT`'tir; bu yüzden paket temizliği doğrudan değil
+`db_guard.purge_packages` üzerinden yapılır — trigger YALNIZ test
+veritabanında, yalnız o işlem için geçici kapatılır.
 """
 from __future__ import annotations
 
@@ -27,18 +34,10 @@ from sqlalchemy import text
 from core.database import AsyncSessionLocal
 from models.store import Order, OrderItem
 from services import stock_ledger
+from tests.integration.db_guard import purge_packages
 from tests.integration.inventory_factory import Fabrika, now, uniq
 
 __all__ = ["PaketFabrikasi", "now", "uniq"]
-
-
-async def _tablo_var(s, ad: str) -> bool:
-    return (
-        await s.execute(
-            text("SELECT 1 FROM information_schema.tables WHERE table_name = :t"),
-            {"t": ad},
-        )
-    ).first() is not None
 
 
 class PaketFabrikasi(Fabrika):
@@ -265,7 +264,12 @@ class PaketFabrikasi(Fabrika):
     # ── Temizlik ────────────────────────────────────────────────────────────
 
     async def temizle(self) -> None:
-        """Üretilen HER satırı geri alır.
+        """Üretilen HER satırı geri alır — ve **yalnız** onları.
+
+        Kapsam kimlik listelerinden türetilir: paketler bu fabrikanın
+        siparişlerinden, audit satırları o paket/durak/tur/sipariş kimliklerinden,
+        outbox satırları o sipariş kimliklerinden, bildirimler bu fabrikanın
+        müşterilerinden. Hiçbir adım "tabloyu boşalt" demez.
 
         Sıra önemlidir: paketleme audit'i paket kimliğine dayandığı için
         paketler silinmeden ÖNCE temizlenir. Kurye aktörlü audit satırları
@@ -273,61 +277,77 @@ class PaketFabrikasi(Fabrika):
         siler) — zimmet kurye adına audit yazdığı için burada ayrıca silinir.
         """
         async with AsyncSessionLocal() as s:
-            paketleme_var = await _tablo_var(s, "order_packages")
+            paket_ids: list[int] = []
+            stop_ids: list[int] = []
             if self.order_ids:
-                # Paketleme audit'i: paket/sipariş hedefli satırlar.
-                if paketleme_var:
-                    await s.execute(
-                        text(
-                            "DELETE FROM audit_logs WHERE "
-                            "(target_type = 'order_package' AND target_id IN "
-                            " (SELECT id FROM order_packages WHERE order_id = ANY(:i)))"
-                            " OR (target_type IN ('order','delivery_stop','delivery_run')"
-                            "     AND action LIKE 'package.%')"
-                        ),
-                        {"i": self.order_ids},
-                    )
-                # F30 tabloları commit 2'ye kadar YOK — varlık kontrolüyle koru.
-                for tablo, sorgu in (
+                paket_ids = list(
                     (
-                        "package_scan_events",
-                        "DELETE FROM package_scan_events WHERE package_id IN "
-                        "(SELECT id FROM order_packages WHERE order_id = ANY(:i))",
-                    ),
+                        await s.execute(
+                            text(
+                                "SELECT id FROM order_packages WHERE order_id = ANY(:i)"
+                            ),
+                            {"i": self.order_ids},
+                        )
+                    ).scalars()
+                )
+                stop_ids = list(
                     (
-                        "order_package_items",
-                        "DELETE FROM order_package_items WHERE package_id IN "
-                        "(SELECT id FROM order_packages WHERE order_id = ANY(:i))",
+                        await s.execute(
+                            text(
+                                "SELECT id FROM delivery_stops WHERE order_id = ANY(:i)"
+                                " OR run_id = ANY(:r)"
+                            ),
+                            {"i": self.order_ids, "r": self.run_ids or [0]},
+                        )
+                    ).scalars()
+                )
+                # Paketleme audit'i — HEDEF kimliğine göre; `action LIKE
+                # 'package.%'` süzgeci tek başına kullanılırsa başka testin
+                # (ve gerçek verinin) satırları da silinirdi.
+                await s.execute(
+                    text(
+                        "DELETE FROM audit_logs WHERE action LIKE 'package.%' AND ("
+                        "  (target_type = 'order_package' AND target_id = ANY(:p))"
+                        "  OR (target_type = 'order' AND target_id = ANY(:i))"
+                        "  OR (target_type = 'delivery_stop' AND target_id = ANY(:s))"
+                        "  OR (target_type = 'delivery_run' AND target_id = ANY(:r))"
+                        ")"
                     ),
-                    (
-                        "order_packages",
-                        "DELETE FROM order_packages WHERE order_id = ANY(:i)",
-                    ),
-                ):
-                    if await _tablo_var(s, tablo):
-                        await s.execute(text(sorgu), {"i": self.order_ids})
+                    {
+                        "p": paket_ids or [0],
+                        "i": self.order_ids,
+                        "s": stop_ids or [0],
+                        "r": self.run_ids or [0],
+                    },
+                )
+                await s.commit()
+            # `package_scan_events` append-only + FK RESTRICT → ortak, test
+            # veritabanıyla sınırlı yardımcı üzerinden (kendi commit'ini atar).
+            await purge_packages(s, paket_ids)
+            if self.order_ids:
                 await s.execute(
                     text("DELETE FROM delivery_stops WHERE order_id = ANY(:i)"),
                     {"i": self.order_ids},
                 )
                 # Zimmet/teslim akışı bildirim ve SMS outbox satırı üretir.
-                for tablo, sorgu in (
-                    (
-                        "outbox_messages",
-                        "DELETE FROM outbox_messages WHERE "
-                        "(payload ->> 'order_id')::int = ANY(:i)",
+                # Tablo adı `outbox_events`'tir (`models/outbox.py:33`);
+                # `outbox_messages` diye bir tablo YOKTUR. Karşılaştırma metin
+                # üzerinden yapılır — `::int` cast'i sayısal olmayan bir
+                # payload'da bütün teardown'ı düşürürdü.
+                await s.execute(
+                    text(
+                        "DELETE FROM outbox_events "
+                        "WHERE payload ->> 'order_id' = ANY(:i)"
                     ),
-                    (
-                        "notifications",
+                    {"i": [str(o) for o in self.order_ids]},
+                )
+                await s.execute(
+                    text(
                         "DELETE FROM notifications WHERE user_id = ANY(:c) "
-                        "AND role_id = 3",
+                        "AND role_id = 3"
                     ),
-                ):
-                    if await _tablo_var(s, tablo):
-                        await s.execute(
-                            text(sorgu),
-                            {"i": self.order_ids, "c": self.client_ids or [0]},
-                        )
+                    {"c": self.client_ids or [0]},
+                )
             if self.run_ids:
                 await s.execute(
                     text("DELETE FROM delivery_stops WHERE run_id = ANY(:i)"),

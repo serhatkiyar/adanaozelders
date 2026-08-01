@@ -254,6 +254,40 @@ kapanır: gerekçe zorunlu, `result='OK_MANUAL'`, `package_scan_events`'e ve
 gerekçelendiriyor (set ürün, ISBN-10 dönüşümü, promosyon barkodu). O gerekçeyi
 delmiyoruz.
 
+### 3.6b `Order` kilidi paket yaşam döngüsünün TAMAMINDA zorunludur
+
+> Bağımsız denetimde açık bırakılan madde (P2-F). Karar burada kayıt altına
+> alınır; uygulaması commit 3'tedir.
+
+`open_package` ve `complete`'in siparişi `FOR UPDATE` ile alması apaçıktır
+(iptalle yarışırlar). Denetçi haklı olarak sordu: `void`, `repack` ve
+`return_in` yalnız **paket** satırını değiştiriyor; neden `Order` da kilitleniyor?
+
+Üç somut sebep — üçü de bu koddan çıkarıldı:
+
+1. **Bu üç işlem sipariş durumuna BAKAR.** `repack` `prepared_at`'i yeniden
+   damgalar (§3.5), yani siparişi `eligible_orders` kuyruğuna geri sokar;
+   `void` `prepared_at`'i sıfırlar. Siparişi kilitlemeden okunan durum bayattır:
+   iptal edilmiş bir sipariş `repack` ile yeniden dağıtıma verilebilirdi. `G7`
+   (`mark_prepared`'ın kilitsiz deseni) tam olarak bu hatadır ve
+   kopyalanmayacaktır.
+2. **Karşı taraf zaten `Order` kilidiyle geliyor.** `order_fsm` sipariş
+   `CANCELLED`/`REFUNDED` olurken canlı paketi çözer (§3.5) ve o yol `Order`'ı
+   kilitli tutar. Paket tarafı `Order`'ı atlarsa iki yol **farklı kilit
+   kümeleriyle** aynı satır çiftine yazar; kilit sırası garantisi bir tarafta
+   yokken deadlock'u önlemez.
+3. **Tek kural, sıfır istisna.** "Hangi paket işlemi `Order` kilidi alır"
+   sorusunun cevabı liste olursa, listeye girmeyi unutan bir sonraki fonksiyon
+   sessizce yarışır. Kanonik sıra
+   (`… → Order → OrderPackage → DeliveryStop`) ancak her yazan yol aynı yerden
+   başlarsa bir sıradır.
+
+Maliyeti ölçülü: kilit sipariş satırı üzerinde ve işlem kısa. Bu bilinçli bir
+sözleşme kararıdır; test karşılığı
+`tests/acceptance/test_f30_packing_contract.py::test_packing_service_KILIT_SIRASI_kanonik`
+(beş fonksiyonun her biri için `Order` aranır) ve
+`test_f30_packing_race_pg.py::test_kilit_sirasi_DEADLOCK_URETMEZ`.
+
 ### 3.7 Modül bağımlılık yönü (circular import sınırı)
 
 F30 iki yönlü bir ihtiyaç doğuruyor: `packing_service` sipariş durumunu okumak
@@ -321,61 +355,139 @@ Bu sınır bir kabul testiyle korunur: `packing_events` ve `packing_rules`,
 
 ---
 
-## 5. Model / migration ihtiyacı
+## 5. Model / migration (UYGULANDI — commit 2)
+
+> Uygulama: `backend/models/packing.py` +
+> `backend/migrations/versions/f30_paketleme_semasi.py`
+> (`down_revision = f29c_damage_idem_actor_scope`, tek head).
+> Aşağıdaki tablolar **gerçek şemadır**; plan değil.
 
 ### `order_packages`
 
 | Kolon | Tip | Not |
 |---|---|---|
 | `id` | PK | `PKT-{id:06d}` türetilir |
-| `order_id` | FK `orders.id` CASCADE, index | |
-| `status` | String(16) NOT NULL | §3.2 FSM |
-| `qr_token` | String(64) **UNIQUE** NOT NULL | kalıcı |
+| `order_id` | FK `orders.id` CASCADE | |
+| `package_no` | Integer NOT NULL | sipariş içindeki sıra; UNIQUE `(order_id, package_no)` |
+| `status` | String(16) NOT NULL, default `OPEN` | §3.2 FSM, CHECK'li |
+| `qr_token` | String(64) **UNIQUE** NOT NULL | kalıcı; `secrets.token_urlsafe(24)` |
 | `items_fingerprint` | String(64) NOT NULL | sha256; STALE tespiti |
 | `packed_at` / `packed_by_admin_id` | | `complete` aktörü |
 | `handed_over_at` / `handed_to_courier_id` (FK `couriers` SET NULL) / `handed_over_by_actor` | | zimmet aktörü |
+| `delivered_at` | | teslim damgası |
 | `returned_at` / `returned_by_admin_id` / `return_note` | | `return_in` |
 | `void_at` / `void_by_admin_id` / `void_reason` | | `void` |
-| `unpacked_at` | | fiziksel bozma damgası |
+| `unpacked_at` / `unpacked_by_admin_id` | | fiziksel bozma damgası |
 | `created_at` / `updated_at` | TimestampMixin | soft-delete **yok** (paket fiziksel izdir; `VOID` var) |
 
-Kısıtlar:
+Sözleşmenin ilk taslağına göre **eklenen** üç alan ve gerekçeleri:
+
+* `package_no` — bir siparişin ömrü boyunca birden çok paketi olabilir
+  (`void` → yeni paket). Sıra numarası olmadan operasyon "2. paket" diye
+  konuşamaz ve etiket hangi denemeye ait olduğunu söyleyemez.
+* `delivered_at` / `unpacked_by_admin_id` — her durum damgasının **aktörü ve
+  zamanı** olsun diye; CHECK'ler bunlara dayanır (aşağı bakınız).
+
+**Optimistic locking kolonu bilinçli olarak YOKTUR.** Yarış otoritesi
+pesimisttir (`FOR UPDATE` + kısmi unique index); üçüncü bir eşzamanlılık
+mekanizması hangisinin bağlayıcı olduğunu belirsizleştirirdi. Kalem listesinin
+değişmesi ayrı bir sorudur ve `items_fingerprint` ile çözülür.
+
+Kısıtlar (hepsi migration'da):
 
 ```sql
--- Bir siparişin aynı anda TEK canlı paketi olur (yarış otoritesi).
+-- Yarış otoritesi. "Canlı" yükleminin TEK doğruluk kaynağı
+-- models/packing.py::LIVE_PACKAGE_SQL'dir; migration metni onu tekrar eder.
 CREATE UNIQUE INDEX uq_order_packages_live ON order_packages (order_id)
   WHERE status NOT IN ('DELIVERED', 'VOID');
-CREATE INDEX ix_order_packages_status ON order_packages (status);
+CREATE UNIQUE INDEX uq_order_packages_qr_token ON order_packages (qr_token);
+UNIQUE (order_id, package_no)                      -- uq_order_packages_no
+CREATE INDEX ix_order_packages_status ON order_packages (status, created_at DESC);
+-- Geri dönüş kuyruğu (§3.5) ve "bozulmayı bekleyen paketler" (G8):
+CREATE INDEX ix_order_packages_return_queue ON order_packages (handed_over_at)
+  WHERE status = 'RETURN_PENDING';
+CREATE INDEX ix_order_packages_unpack_queue ON order_packages (void_at)
+  WHERE status = 'VOID' AND unpacked_at IS NULL;
+
+CHECK (status IN (...7 durum...))                              -- ck_..._status
+CHECK (package_no > 0)                                         -- ck_..._no_sign
+-- Durum ↔ zaman tutarlılığı: fiziksel bir olayı iddia eden durum, o olayın
+-- ZAMANI olmadan yazılamaz.
+CHECK (status NOT IN ('PACKED','HANDED_OVER','RETURN_PENDING','RETURNED',
+                      'DELIVERED') OR packed_at IS NOT NULL)
+CHECK (status NOT IN ('HANDED_OVER','RETURN_PENDING','DELIVERED')
+       OR handed_over_at IS NOT NULL)
+CHECK (status <> 'DELIVERED' OR delivered_at IS NOT NULL)
+CHECK (status <> 'RETURNED'  OR returned_at  IS NOT NULL)
+CHECK (status <> 'VOID' OR (void_at IS NOT NULL AND btrim(void_reason) <> ''))
+CHECK (unpacked_at IS NULL OR status = 'VOID')
 ```
+
+> `handed_to_courier_id` **SET NULL**'dır ve hiçbir CHECK ona dayanmaz: kurye
+> profili silinebilir, zimmetin izi `handed_over_by_actor` metninde yaşar.
 
 ### `order_package_items`
 
 | Kolon | Tip | Not |
 |---|---|---|
 | `id` / `package_id` (CASCADE) / `order_item_id` (CASCADE) | | UNIQUE `(package_id, order_item_id)` |
-| `product_id` | nullable | snapshot; NULL = taranamaz |
-| `sku` / `barcode` / `title` | String | snapshot (§3.6) |
+| `product_id` | nullable, FK SET NULL | snapshot; NULL = taranamaz |
+| `sku` (20) / `barcode` (32) / `title` (250) | String | snapshot (§3.6) |
 | `expected_qty` / `scanned_qty` | Integer | |
+| `created_at` / `updated_at` | TimestampMixin | |
 
 ```sql
 CHECK (expected_qty > 0)
 CHECK (scanned_qty >= 0 AND scanned_qty <= expected_qty)  -- fazla adet DB'de reddedilir
+CHECK (product_id IS NOT NULL OR (sku IS NULL AND barcode IS NULL))
+--   ↑ ürünü silinmiş satır KOD TAŞIYAMAZ: "okuttum, eşleşti" güveni bayat
+--     bir koda dayanamaz (§3.6).
 ```
 
 ### `package_scan_events` (append-only)
 
+Tablo yalnız taramaların değil, **paket yaşam döngüsünün tamamının** izidir
+(`event_type` ile ayrılır). Aktör her zaman admin değildir — zimmeti kurye
+yapar — bu yüzden aktör `audit_logs` deseniyle aynı **(actor_role, actor_id)**
+çiftidir; tek bir `admins.id` FK'si kuryeyi dışarıda bırakırdı.
+
 | Kolon | Not |
 |---|---|
-| `id` / `package_id` (CASCADE) / `package_item_id` (nullable — red edilen taramada NULL) |
-| `code_scanned` String(64) · `result` String(16) · `qty_delta` Integer |
+| `id` / `package_id` (**RESTRICT**) / `package_item_id` (nullable, RESTRICT — red edilen taramada NULL) |
+| `event_type` String(20) — `OPEN·SCAN·UNDO_SCAN·COMPLETE·HANDOVER·DELIVER·RETURN_PENDING·RETURN_IN·REPACK·VOID·UNPACK` |
+| `result` String(16) nullable — `OK·OK_MANUAL·WRONG_SKU·OVER_QTY·ALREADY_COMPLETE·UNSCANNABLE` |
+| `code_scanned` String(64) · `qty_delta` Integer NOT NULL |
+| `from_status` / `to_status` String(16) nullable — durum geçişinin iki ucu |
 | `manual_reason` String(200) nullable — `OK_MANUAL`'da zorunlu |
-| `actor_admin_id` · `idempotency_key` String(80) nullable · `request_id` · `created_at` |
+| `actor_role` / `actor_id` (ikisi birlikte dolu ya da ikisi de NULL = sistem olayı) |
+| `meta` JSONB · `idempotency_key` String(80) · `request_id` · `created_at` |
 
 ```sql
 CREATE UNIQUE INDEX uq_package_scan_idem ON package_scan_events (package_id, idempotency_key)
   WHERE idempotency_key IS NOT NULL;
--- F29 deseni: inventory_append_only() trigger'ı ile UPDATE/DELETE reddi
+CREATE INDEX ix_package_scan_events_package ON package_scan_events (package_id, id);
+-- F29 deseni: packing_append_only() trigger'ı ile UPDATE/DELETE reddi.
+-- Fonksiyon F29'un inventory_append_only()'sinden AYRIDIR: downgrade'in başka
+-- bir migration'ın nesnesine dokunması gerekmesin.
+CHECK (event_type NOT IN ('SCAN','UNDO_SCAN') OR result IS NOT NULL)
+CHECK (result <> 'OK_MANUAL' OR btrim(manual_reason) <> '')
+CHECK ((actor_id IS NULL) = (actor_role IS NULL))
 ```
+
+> **FK yönü bilinçlidir:** `package_id` `CASCADE` **değil `RESTRICT`**'tir.
+> Paket (ya da sipariş) silindiğinde izin sessizce yok olması, "paketi kim, ne
+> zaman, hangi kodla doğruladı" sorusunu bir daha cevaplanamaz hâle getirirdi.
+> Testler bu yüzden paketleri `tests/integration/db_guard.py::purge_packages`
+> ile temizler — trigger yalnız test veritabanında ve yalnız o işlem için
+> geçici kapatılır (F29 `purge_products` deseni).
+
+### Downgrade
+
+Paket kaydı varsa downgrade **açıkça reddedilir** (F29 disiplini): append-only
+bir izi tablo drop'uyla yok etmek sessiz bir veri kaybıdır. Boş şemada
+`upgrade → downgrade → upgrade` doğrulanmıştır. Üç tablo da yenidir, hiçbir
+mevcut tabloya kolon eklenmez ve hiçbir satır okunmaz/yazılmaz — backfill
+gerekmez.
 
 **Stok defteri değişmez:** yeni `StockMovementType` **yok**, yeni
 `PHYSICAL_EFFECT` girdisi **yok** (`ORDER_PREPARED` / `ORDER_SHIPPED` /
@@ -440,7 +552,7 @@ izi `package_scan_events`'tedir.
 | **S3** | `POST /delivery/orders/{id}/prepare` ve `/unprepare` kaldırılıyor. | §3.5. Frontend "Hazırla" butonu paketleme istasyonuna yönlenir. |
 | **S4** | Paket QR'ı kalıcı olduğu için **çalınan/kopyalanan etiket** riski. | Zimmet, paketin o kuryenin turundaki durağa ait olmasını arar (IDOR deseni: yabancı paket **404**). Teslim hâlâ OTP/foto ister — QR tek başına teslim kanıtı değildir. |
 | **S5** | Sipariş kalemleri bugün değişmiyor (kalem ekleme/çıkarma ucu yok, `order_service.py:444` tek yazıcı) — STALE kontrolü teorik görünüyor. | Yine de uygulanıyor: kısmi iade satırları ve gelecekteki kalem düzenlemesi sessizce yanlış paket üretmesin. Fingerprint ucuz. |
-| **S6** | `packing.*` izinleri yeni; migration'sız katalog işe yaramaz (SUPER_ADMIN dahil 403). | Katalog + migration **aynı commit'te** (commit 2). |
+| **S6** | `packing.*` izinleri yeni; migration'sız katalog işe yaramaz (SUPER_ADMIN dahil 403). | Katalog + migration **aynı commit'te** yazıldı (commit 2). Dağıtım: SUPER_ADMIN ve COMMERCE_MANAGER üçünü de; **OPERATIONS_MANAGER yalnız `view` + `pack`** (`manage` görev ayrılığı gereği verilmez). Gerçek DB'den ölçülür: `test_f30_permissions_pg.py`. Yan etki: izin kodu sözlüğü (`tests/test_admin_permission_catalog.py::_ALLOWED_ACTIONS`) `pack` eylemiyle genişletildi — `view`/`manage` çifti bu ayrımı ifade edemiyordu (F29'da `count`/`apply` için de aynı gerekçeyle genişletilmişti). |
 
 ---
 
@@ -448,8 +560,8 @@ izi `package_scan_events`'tedir.
 
 | # | Commit | İçerik | Durum |
 |---|---|---|---|
-| **1** | `test(f30): paketleme sozlesmesi + kirmizi test matrisi` | Bu belge + 6 kırmızı test dosyası. Üretim kodu YOK. | **bu commit** |
-| 2 | `feat(f30): paket modelleri, migration ve izin katalogu` | 3 tablo + trigger + kısmi index'ler + `models/__init__` + `_KRITIK_TABLOLAR` + `packing.*` katalog & rol dağıtımı | bekliyor |
+| **1** | `test(f30): paketleme sozlesmesi + kirmizi test matrisi` | Bu belge + 6 kırmızı test dosyası. Üretim kodu YOK. | bitti |
+| **2** | `feat(f30): paket modelleri migration ve izin katalogu` | 3 tablo + append-only trigger + kısmi index'ler + `models/__init__` + `_KRITIK_TABLOLAR` + `db_guard.purge_packages` + `packing.*` katalog & rol dağıtımı + şema invariant testleri | **bu commit** |
 | 3 | `feat(f30): paketleme kurallari ve servis katmani` | `services/packing_rules.py` (saf) + `services/packing_service.py` (kilit sırası, idempotency, STALE) | bekliyor |
 | 4 | `feat(f30): paketleme HTTP uclari ve audit` | `schemas/packing.py` + `api/routers/packing.py` + `api/router.py` + audit kablolaması | bekliyor |
 | 5 | `feat(f30): kurye zimmeti ve SHIPPED gecisinin tasinmasi` | `handover_scan`, `start_run` ön koşulu, `add_stops`/`fail_stop`/`cancel_run`/`watchdog`/`postpone` paket kablolaması, `prepare`/`unprepare` kaldırma, **etkilenen mevcut testlerin güncellenmesi** | bekliyor |
@@ -463,6 +575,20 @@ izi `package_scan_events`'tedir.
 > kapı taraması ve `RETURN_PENDING` yaşam döngüsü kapsaması, fabrika temizliği,
 > etiket QR'ının gerçek prop'tan doğrulanması, kurye saha ekranı matrisi ve
 > §3.7 import sınırı kararı.
+
+**Commit 2'de bulunan iki test kusuru** (kök `CLAUDE.md` §I — gizlenmez):
+
+1. `test_f30_packing_http_pg.py::test_YOK_paket_404` **yalancı yeşile düştü**.
+   İzinler kataloğa girince fixture çalışmaya başladı ve test geçti — ama 404
+   "paket bulunamadı"dan değil, **router hiç olmadığı için** geliyordu. Ayırt
+   edici bir gözlemle güçlendirildi: kimlik doğrulamasız istek, uç varsa 404
+   dışında bir şey döner. Düğüm yeniden kırmızıdır.
+2. `test_inventory_migration_pg.py::test_F29_zinciri_...` `head`'in adının
+   `f29c_damage_idem_actor_scope` olmasını arıyordu. F29'un üstüne konan **ilk**
+   migration (F30) bu testi F29'la ilgisiz bir sebeple kırdı. İddia
+   "F29 zinciri uygulanan yolun içinde" biçiminde yeniden yazıldı; zincirin
+   gerçekten kurulduğunu kanıtlayan şema iddiaları (tablolar, index, backfill)
+   olduğu gibi durmaktadır.
 
 ---
 

@@ -1,0 +1,496 @@
+"""F30 paket ŞEMASININ invariant'ları — GERÇEK PostgreSQL, SERVİSSİZ.
+
+## Bu dosya neden ayrı
+
+Kırmızı matristeki paket testlerinin hemen hepsi `packing_service` üzerinden
+geçer ve servis yazılana kadar (commit 3) kırmızı kalır. Oysa commit 2'nin
+teslim ettiği şey **veritabanının kendisidir**: kısıtlar, kısmi index'ler ve
+append-only trigger'ı. Bunlar servis olmadan da doğrulanabilir — ve
+doğrulanmalıdır, çünkü asıl soruları şu: *uygulama katmanı atlanırsa
+veritabanı hâlâ hayır diyor mu?*
+
+Her düğüm bu yüzden **ham SQL** ile yazar. Bir ORM/servis çağrısı kullanmak,
+tam da ölçülmek istenen "son savunma hattı"nı atlardı.
+
+Karşılık gelen davranış testleri (servis geldiğinde yeşile dönecek):
+`test_f30_packing_pg.py::test_paket_QR_TEKILDIR`,
+`::test_ayni_siparise_ikinci_paket_ACILMAZ`,
+`::test_fazla_adet_DB_CHECK_ile_de_engellenir`,
+`::test_tarama_izi_APPEND_ONLY`.
+"""
+from __future__ import annotations
+
+import datetime
+
+import pytest
+from sqlalchemy import text
+from sqlalchemy.exc import DBAPIError, IntegrityError
+
+from core.database import AsyncSessionLocal
+from tests.integration.f30_factory import PaketFabrikasi, now, uniq
+
+#: Paket satırı yazmanın en kısa hâli; testler yalnız ilgilendikleri alanı ezer.
+_PAKET_SQL = """
+INSERT INTO order_packages (order_id, package_no, status, qr_token,
+                            items_fingerprint, packed_at, handed_over_at,
+                            delivered_at, returned_at, void_at, void_reason,
+                            unpacked_at)
+VALUES (:order_id, :package_no, :status, :qr_token, :fp, :packed_at,
+        :handed_over_at, :delivered_at, :returned_at, :void_at, :void_reason,
+        :unpacked_at)
+RETURNING id
+"""
+
+
+async def _paket(
+    s,
+    order_id: int,
+    *,
+    package_no: int = 1,
+    status: str = "OPEN",
+    qr_token: str | None = None,
+    packed_at: datetime.datetime | None = None,
+    handed_over_at: datetime.datetime | None = None,
+    delivered_at: datetime.datetime | None = None,
+    returned_at: datetime.datetime | None = None,
+    void_at: datetime.datetime | None = None,
+    void_reason: str | None = None,
+    unpacked_at: datetime.datetime | None = None,
+) -> int:
+    return (
+        await s.execute(
+            text(_PAKET_SQL),
+            {
+                "order_id": order_id,
+                "package_no": package_no,
+                "status": status,
+                "qr_token": qr_token or uniq() + uniq(),
+                "fp": "0" * 64,
+                "packed_at": packed_at,
+                "handed_over_at": handed_over_at,
+                "delivered_at": delivered_at,
+                "returned_at": returned_at,
+                "void_at": void_at,
+                "void_reason": void_reason,
+                "unpacked_at": unpacked_at,
+            },
+        )
+    ).scalar_one()
+
+
+@pytest.fixture
+async def fab(pg) -> PaketFabrikasi:
+    f = PaketFabrikasi()
+    yield f
+    await f.temizle()
+
+
+@pytest.fixture
+async def siparis(fab) -> tuple[PaketFabrikasi, int, int]:
+    """(fabrika, order_id, order_item_id) — gerçek ödenmiş fiziksel sipariş."""
+    pid, _sku, _ean = await fab.barkodlu_urun(stock=10)
+    oid = await fab.fiziksel_siparis(kalemler=[(pid, 2)])
+    kalem = (await fab.kalem_idleri(oid))[0]
+    return fab, oid, kalem
+
+
+# ══════════════════ QR tekilliği ════════════════════════════════════════════
+
+
+@pytest.mark.asyncio
+async def test_AYNI_QR_TOKEN_ikinci_kez_yazilamaz(siparis):
+    """Basılı etiket paketin ömrü boyunca geçerlidir (sözleşme §3.3); iki paketin
+    aynı token'ı taşıması, kuryenin yanlış paketi teslim etmesi demektir."""
+    _fab, oid, _kalem = siparis
+    token = "cakisan-" + uniq()
+    async with AsyncSessionLocal() as s:
+        await _paket(s, oid, qr_token=token, status="VOID", void_at=now(),
+                     void_reason="test")
+        await s.commit()
+
+    with pytest.raises(IntegrityError) as hata:
+        async with AsyncSessionLocal() as s:
+            await _paket(s, oid, package_no=2, qr_token=token)
+            await s.commit()
+    assert "uq_order_packages_qr_token" in str(hata.value)
+
+
+# ══════════════════ Canlı paket tekilliği ═══════════════════════════════════
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "mevcut",
+    ["OPEN", "PACKED", "HANDED_OVER", "RETURN_PENDING", "RETURNED"],
+)
+async def test_IKINCI_CANLI_PAKET_reddedilir(siparis, mevcut):
+    """Canlı küme = `{OPEN, PACKED, HANDED_OVER, RETURN_PENDING, RETURNED}`.
+
+    İkinci paket, aynı ürünleri ikinci kez raftan almak demektir (§3.5). Beşi
+    de ayrı düğümdür: yüklem yanlışlıkla daraltılırsa (ör. yalnız `OPEN`)
+    tek bir örnekle test edilseydi bu SESSİZCE geçerdi.
+    """
+    _fab, oid, _kalem = siparis
+    async with AsyncSessionLocal() as s:
+        await _paket(
+            s,
+            oid,
+            status=mevcut,
+            packed_at=now() if mevcut != "OPEN" else None,
+            handed_over_at=(
+                now() if mevcut in ("HANDED_OVER", "RETURN_PENDING") else None
+            ),
+            returned_at=now() if mevcut == "RETURNED" else None,
+        )
+        await s.commit()
+
+    with pytest.raises(IntegrityError) as hata:
+        async with AsyncSessionLocal() as s:
+            await _paket(s, oid, package_no=2)
+            await s.commit()
+    assert "uq_order_packages_live" in str(hata.value)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("terminal", ["DELIVERED", "VOID"])
+async def test_TERMINAL_paket_sonrasi_YENI_PAKET_ACILABILIR(siparis, terminal):
+    """Ters prova: kısmi index fazla geniş yazılırsa (`WHERE true`) iptal edilen
+    paketin yerine yenisi AÇILAMAZDI ve `repack` akışı ölürdü."""
+    _fab, oid, _kalem = siparis
+    async with AsyncSessionLocal() as s:
+        await _paket(
+            s,
+            oid,
+            status=terminal,
+            packed_at=now(),
+            handed_over_at=now() if terminal == "DELIVERED" else None,
+            delivered_at=now() if terminal == "DELIVERED" else None,
+            void_at=now() if terminal == "VOID" else None,
+            void_reason="paket bozuldu" if terminal == "VOID" else None,
+        )
+        await s.commit()
+
+    async with AsyncSessionLocal() as s:
+        yeni = await _paket(s, oid, package_no=2)
+        await s.commit()
+    assert yeni
+
+
+@pytest.mark.asyncio
+async def test_ayni_sipariste_PAKET_NO_TEKRARLANAMAZ(siparis):
+    """`package_no` sipariş içinde tekildir — "2. paket" tek bir şeye işaret eder."""
+    _fab, oid, _kalem = siparis
+    async with AsyncSessionLocal() as s:
+        await _paket(s, oid, package_no=1, status="VOID", void_at=now(),
+                     void_reason="ilk deneme")
+        await s.commit()
+    with pytest.raises(IntegrityError) as hata:
+        async with AsyncSessionLocal() as s:
+            await _paket(s, oid, package_no=1, status="VOID", void_at=now(),
+                         void_reason="ikinci deneme")
+            await s.commit()
+    assert "uq_order_packages_no" in str(hata.value)
+
+
+# ══════════════════ Durum ↔ zaman tutarlılığı ═══════════════════════════════
+
+
+@pytest.mark.asyncio
+async def test_GECERSIZ_DURUM_reddedilir(siparis):
+    """FSM dışı bir durum (ör. `OrderStatus`'ten kopyalanmış `PAID`) yazılamaz."""
+    _fab, oid, _kalem = siparis
+    with pytest.raises(IntegrityError) as hata:
+        async with AsyncSessionLocal() as s:
+            await _paket(s, oid, status="PAID")
+            await s.commit()
+    assert "ck_order_packages_status" in str(hata.value)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "durum,alanlar,kisit",
+    [
+        ("PACKED", {}, "ck_order_packages_packed_at"),
+        (
+            "HANDED_OVER",
+            {"packed_at": now()},
+            "ck_order_packages_handover_at",
+        ),
+        (
+            "DELIVERED",
+            {"packed_at": now(), "handed_over_at": now()},
+            "ck_order_packages_delivered_at",
+        ),
+        ("RETURNED", {"packed_at": now()}, "ck_order_packages_returned_at"),
+        ("VOID", {}, "ck_order_packages_void"),
+    ],
+)
+async def test_ZAMANSIZ_DURUM_reddedilir(siparis, durum, alanlar, kisit):
+    """"Kuryede" diyen ama ne zaman verildiği bilinmeyen paket üretilemez."""
+    _fab, oid, _kalem = siparis
+    with pytest.raises(IntegrityError) as hata:
+        async with AsyncSessionLocal() as s:
+            await _paket(s, oid, status=durum, **alanlar)
+            await s.commit()
+    assert kisit in str(hata.value)
+
+
+@pytest.mark.asyncio
+async def test_VOID_GEREKCESIZ_yazilamaz(siparis):
+    """Gerekçe boş dizgi olarak da geçemez (`btrim` uzunluğu denetlenir)."""
+    _fab, oid, _kalem = siparis
+    with pytest.raises(IntegrityError) as hata:
+        async with AsyncSessionLocal() as s:
+            await _paket(s, oid, status="VOID", void_at=now(), void_reason="   ")
+            await s.commit()
+    assert "ck_order_packages_void" in str(hata.value)
+
+
+@pytest.mark.asyncio
+async def test_VOID_OLMAYAN_paket_BOZULMUS_damgalanamaz(siparis):
+    """`unpacked_at` yalnız `VOID` pakette anlamlıdır (bozulacak paket kuyruğu, G8)."""
+    _fab, oid, _kalem = siparis
+    with pytest.raises(IntegrityError) as hata:
+        async with AsyncSessionLocal() as s:
+            await _paket(s, oid, status="OPEN", unpacked_at=now())
+            await s.commit()
+    assert "ck_order_packages_unpacked_void" in str(hata.value)
+
+
+# ══════════════════ Paket satırı adetleri ══════════════════════════════════
+
+
+async def _satir(s, package_id: int, order_item_id: int, **kw) -> int:
+    veri = {
+        "p": package_id,
+        "oi": order_item_id,
+        "pid": kw.get("product_id"),
+        "sku": kw.get("sku"),
+        "barcode": kw.get("barcode"),
+        "title": kw.get("title", "Test Kitabı"),
+        "exp": kw.get("expected_qty", 2),
+        "sc": kw.get("scanned_qty", 0),
+    }
+    return (
+        await s.execute(
+            text(
+                "INSERT INTO order_package_items (package_id, order_item_id, "
+                "product_id, sku, barcode, title, expected_qty, scanned_qty) "
+                "VALUES (:p, :oi, :pid, :sku, :barcode, :title, :exp, :sc) "
+                "RETURNING id"
+            ),
+            veri,
+        )
+    ).scalar_one()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("adet", [0, -1])
+async def test_SIFIR_VE_NEGATIF_beklenen_adet_reddedilir(siparis, adet):
+    """`expected_qty > 0`: sıfır adetlik paket satırı bir iş üretmez, yalnız
+    "tamamlandı" sanılan boş bir paket üretirdi."""
+    fab, oid, kalem = siparis
+    async with AsyncSessionLocal() as s:
+        pkt = await _paket(s, oid)
+        await s.commit()
+    with pytest.raises(IntegrityError) as hata:
+        async with AsyncSessionLocal() as s:
+            await _satir(s, pkt, kalem, expected_qty=adet)
+            await s.commit()
+    assert "ck_order_package_items_expected" in str(hata.value)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("taranan", [3, -1])
+async def test_TARANAN_ADET_beklenen_disina_cikamaz(siparis, taranan):
+    """Fazla ürün de eksi adet de reddedilir (kullanıcı maddesi 4). Uygulama
+    katmanı atlansa bile."""
+    _fab, oid, kalem = siparis
+    async with AsyncSessionLocal() as s:
+        pkt = await _paket(s, oid)
+        await s.commit()
+    with pytest.raises(IntegrityError) as hata:
+        async with AsyncSessionLocal() as s:
+            await _satir(s, pkt, kalem, expected_qty=2, scanned_qty=taranan)
+            await s.commit()
+    assert "ck_order_package_items_scanned" in str(hata.value)
+
+
+@pytest.mark.asyncio
+async def test_AYNI_KALEM_pakette_IKI_SATIR_uretemez(siparis):
+    """Aynı sipariş kalemi bir pakette iki kez sayılamaz — beklenen adet
+    sessizce ikiye katlanırdı."""
+    _fab, oid, kalem = siparis
+    async with AsyncSessionLocal() as s:
+        pkt = await _paket(s, oid)
+        await _satir(s, pkt, kalem)
+        await s.commit()
+    with pytest.raises(IntegrityError) as hata:
+        async with AsyncSessionLocal() as s:
+            await _satir(s, pkt, kalem)
+            await s.commit()
+    assert "uq_order_package_items_line" in str(hata.value)
+
+
+@pytest.mark.asyncio
+async def test_URUNSUZ_SATIR_KOD_TASIYAMAZ(siparis):
+    """`product_id IS NULL` satır taranamaz (§3.6). SKU/barkod taşırsa
+    "okuttum, eşleşti" güveni silinmiş bir ürünün bayat koduna dayanırdı."""
+    _fab, oid, kalem = siparis
+    async with AsyncSessionLocal() as s:
+        pkt = await _paket(s, oid)
+        await s.commit()
+    with pytest.raises(IntegrityError) as hata:
+        async with AsyncSessionLocal() as s:
+            await _satir(s, pkt, kalem, product_id=None, sku="FZK-000042")
+            await s.commit()
+    assert "ck_order_package_items_scannable" in str(hata.value)
+
+
+# ══════════════════ Append-only olay izi ═══════════════════════════════════
+
+
+async def _olay(s, package_id: int, **kw) -> int:
+    return (
+        await s.execute(
+            text(
+                "INSERT INTO package_scan_events (package_id, event_type, result, "
+                "code_scanned, qty_delta, manual_reason, actor_role, actor_id, "
+                "idempotency_key) VALUES (:p, :et, :r, :c, :q, :mr, :ar, :ai, :ik) "
+                "RETURNING id"
+            ),
+            {
+                "p": package_id,
+                "et": kw.get("event_type", "SCAN"),
+                "r": kw.get("result", "OK"),
+                "c": kw.get("code_scanned", "FZK-000042"),
+                "q": kw.get("qty_delta", 1),
+                "mr": kw.get("manual_reason"),
+                "ar": kw.get("actor_role", 1),
+                "ai": kw.get("actor_id", 1),
+                "ik": kw.get("idempotency_key"),
+            },
+        )
+    ).scalar_one()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "sorgu",
+    [
+        "UPDATE package_scan_events SET result = 'OK' WHERE package_id = :p",
+        "DELETE FROM package_scan_events WHERE package_id = :p",
+    ],
+)
+async def test_OLAY_IZI_APPEND_ONLY(siparis, sorgu):
+    """Gizlenebilen bir iz, iz değildir. F29'un `stock_damage_events` duruşu."""
+    _fab, oid, _kalem = siparis
+    async with AsyncSessionLocal() as s:
+        pkt = await _paket(s, oid)
+        await _olay(s, pkt)
+        await s.commit()
+
+    with pytest.raises((DBAPIError, IntegrityError)) as hata:
+        async with AsyncSessionLocal() as s:
+            await s.execute(text(sorgu), {"p": pkt})
+            await s.commit()
+    assert "append-only" in str(hata.value)
+
+
+@pytest.mark.asyncio
+async def test_IZI_OLAN_PAKET_SILINEMEZ(siparis):
+    """FK `RESTRICT`: paketi (ya da siparişi) silmek izi sessizce yok edemez.
+
+    Ters prova için not: FK `CASCADE` olsaydı bu silme başarılı olur ve "kim,
+    ne zaman, hangi kodla doğruladı" sorusu bir daha cevaplanamazdı.
+    """
+    _fab, oid, _kalem = siparis
+    async with AsyncSessionLocal() as s:
+        pkt = await _paket(s, oid)
+        await _olay(s, pkt)
+        await s.commit()
+
+    with pytest.raises(IntegrityError) as hata:
+        async with AsyncSessionLocal() as s:
+            await s.execute(
+                text("DELETE FROM order_packages WHERE id = :i"), {"i": pkt}
+            )
+            await s.commit()
+    assert "package_scan_events" in str(hata.value)
+
+
+@pytest.mark.asyncio
+async def test_MANUEL_SONUC_GEREKCESIZ_yazilamaz(siparis):
+    """`OK_MANUAL` kaçış kapısıdır; izsiz/gerekçesiz olamaz (§3.6)."""
+    _fab, oid, _kalem = siparis
+    async with AsyncSessionLocal() as s:
+        pkt = await _paket(s, oid)
+        await s.commit()
+    with pytest.raises(IntegrityError) as hata:
+        async with AsyncSessionLocal() as s:
+            await _olay(s, pkt, result="OK_MANUAL", manual_reason=None)
+            await s.commit()
+    assert "ck_package_scan_events_manual_reason" in str(hata.value)
+
+
+@pytest.mark.asyncio
+async def test_TARAMA_OLAYI_SONUCSUZ_yazilamaz(siparis):
+    _fab, oid, _kalem = siparis
+    async with AsyncSessionLocal() as s:
+        pkt = await _paket(s, oid)
+        await s.commit()
+    with pytest.raises(IntegrityError) as hata:
+        async with AsyncSessionLocal() as s:
+            await _olay(s, pkt, event_type="SCAN", result=None)
+            await s.commit()
+    assert "ck_package_scan_events_scan_result" in str(hata.value)
+
+
+@pytest.mark.asyncio
+async def test_YARIM_AKTOR_kaydi_yazilamaz(siparis):
+    """Ya (rol, kimlik) çifti tam, ya da sistem olayı — arası yoktur."""
+    _fab, oid, _kalem = siparis
+    async with AsyncSessionLocal() as s:
+        pkt = await _paket(s, oid)
+        await s.commit()
+    with pytest.raises(IntegrityError) as hata:
+        async with AsyncSessionLocal() as s:
+            await _olay(s, pkt, actor_role=1, actor_id=None)
+            await s.commit()
+    assert "ck_package_scan_events_actor" in str(hata.value)
+
+
+@pytest.mark.asyncio
+async def test_AYNI_IDEMPOTENCY_ANAHTARI_ikinci_olay_yazamaz(siparis):
+    """F29 `uq_stock_movements_idem` deseni: ağ tekrarı ikinci iz üretmez."""
+    _fab, oid, _kalem = siparis
+    async with AsyncSessionLocal() as s:
+        pkt = await _paket(s, oid)
+        await _olay(s, pkt, idempotency_key="tarama-1")
+        await s.commit()
+    with pytest.raises(IntegrityError) as hata:
+        async with AsyncSessionLocal() as s:
+            await _olay(s, pkt, idempotency_key="tarama-1")
+            await s.commit()
+    assert "uq_package_scan_idem" in str(hata.value)
+
+
+@pytest.mark.asyncio
+async def test_ANAHTARSIZ_OLAYLAR_birbirini_ENGELLEMEZ(siparis):
+    """Kısmi index'in ters provası: `WHERE idempotency_key IS NOT NULL`
+    kalkarsa anahtarsız ikinci olay (sistem kancaları) yazılamazdı."""
+    _fab, oid, _kalem = siparis
+    async with AsyncSessionLocal() as s:
+        pkt = await _paket(s, oid)
+        await _olay(s, pkt, idempotency_key=None)
+        await _olay(s, pkt, idempotency_key=None)
+        await s.commit()
+
+    async with AsyncSessionLocal() as s:
+        adet = (
+            await s.execute(
+                text("SELECT count(*) FROM package_scan_events WHERE package_id = :p"),
+                {"p": pkt},
+            )
+        ).scalar_one()
+    assert adet == 2

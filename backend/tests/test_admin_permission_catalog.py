@@ -55,7 +55,12 @@ def test_catalog_has_no_duplicates() -> None:
 #: eklendi çünkü iki eylem **görev ayrılığını ifade edemiyor**: envanteri
 #: SAYAN kişinin, farkı tek başına UYGULAYABİLMESİ gerekmez. Bunu tek bir
 #: `inventory.manage` altında toplamak, ayrımı yalnız arayüzde bırakırdı.
-_ALLOWED_ACTIONS = ("view", "manage", "count", "apply")
+#:
+#: `pack` (F30) aynı gerekçenin devamıdır: paketi TOPLAYAN kişinin, o paketi
+#: tek başına çözebilmesi (`packing.manage` — void/unpack/return-in/repack)
+#: görev ayrılığını yok ederdi. Sözlük yine dar tutulur; yeni bir eylem ancak
+#: böyle bir ayrım gerçekten gerekince eklenir.
+_ALLOWED_ACTIONS = ("view", "manage", "count", "apply", "pack")
 
 
 def test_catalog_entries_are_well_formed() -> None:

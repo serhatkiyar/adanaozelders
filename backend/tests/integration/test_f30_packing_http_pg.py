@@ -298,8 +298,22 @@ async def test_liste_SAYFALAMA_TAVANI_uygular(client, kur):
 
 
 async def test_YOK_paket_404(client, kur):
+    """Var olmayan paket 404 döner — ama **uç var olduğu için**.
+
+    Bu düğüm bir kez yalancı yeşile düştü: router henüz yazılmamışken de 404
+    dönüyordu (olmayan YOL da 404'tür) ve "paket bulunamadı" iddiası hiçbir şey
+    kanıtlamıyordu. Ayırt edici gözlem: kimlik doğrulamasız istek. Uç varsa
+    yetki katmanı devreye girer ve 404 DIŞINDA bir şey döner (401/403); uç
+    yoksa o istek de 404 alır.
+    """
+    yol = "/api/v1/packing/packages/99999999"
+    anonim = await client.get(yol)
+    assert anonim.status_code != 404, (
+        "packing router'ı yok — 404 'paket bulunamadı' değil 'yol bulunamadı'"
+    )
+
     _aid, token = await kur.admin(izinler=[VIEW])
-    r = await client.get("/api/v1/packing/packages/99999999", headers=_bas(token))
+    r = await client.get(yol, headers=_bas(token))
     assert r.status_code == 404
 
 
