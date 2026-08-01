@@ -1,0 +1,470 @@
+# İP-1a — Ders Pazaryeri Para Güvenliği Sözleşmesi
+
+> **Durum:** kırmızı kabul checkpoint'i. Bu turda **üretim kodu yazılmadı**.
+> Belge, `backend/tests/integration/test_ip1a_*.py` altındaki kabul testlerinin
+> ölçtüğü sözleşmeyi tanımlar. Testler bugün **bilerek kırmızıdır**: kırmızılık
+> "kod bozuk" demenin değil, **iş kuralının henüz yazılmadığının** kanıtıdır.
+>
+> Doğrulama zemini: `ip1a-ders-para-kirmizi`, `main` = `26f30d8`.
+> Bütün satır numaraları bu commit'te **yeniden okunarak** doğrulandı; eski
+> ekspertiz raporundaki numaralar olduğu gibi devralınmadı.
+
+---
+
+## 1. Mevcut gerçek akış
+
+Ders parası tek bir tabloda yaşar: `payments` (`backend/models/payment.py`),
+`bookings` ile 1:1 (`uq_payments_booking_active`, kısmi unique index —
+`models/payment.py:80-85`). Booking üzerinde **hiçbir para damgası yoktur**;
+`Booking`'de `price` (`models/booking.py:54`) ve `is_free_lesson` dışında para
+alanı bulunmaz.
+
+```
+tutor accept ──► payment_service.create_for_booking  → Payment PENDING
+client pay   ──► payment_service.pay                 → Payment HELD   (emanet)
+complete     ──► payment_service.release             → Payment RELEASED (+released_at)
+cancel       ──► payment_service.refund              → REFUNDING → REFUNDED
+```
+
+Hook'ların **tamamı** `booking_service` içindedir ve yalnız dört satırdır
+(grep ile doğrulandı, `services/booking_service.py`):
+
+| Satır | Çağrı | Hangi geçişte |
+|---|---|---|
+| 427 | `payment_service.create_for_booking` | `accept` |
+| 460 | `payment_service.release` | `complete` (elle) |
+| 597 | `payment_service.release` | `auto_complete_past_bookings` |
+| 642 | `payment_service.refund` | `cancel` (taraf iptali) |
+
+**Bu listede `reject` ve admin iptali yoktur.** İP-1a'nın çekirdek bulgusu budur.
+
+Escrow çekirdeği (`services/escrow.py`) olgun ve doğrudur: her para geçişi
+koşullu UPDATE ile claim edilir (`escrow.py:157-193`), iade iki fazlıdır
+(`begin_refund` intent commit'i → `perform_refund` sağlayıcı → `finalize_refund`),
+`released_at` dolu satır asla iadeye claim edilemez (`escrow.py:226-230`).
+Sorun escrow katmanında **değil**, booking FSM'inin escrow'u çağırmadığı
+bacaklarındadır.
+
+---
+
+## 2. P0 kök nedenleri (güncel main'de yeniden doğrulandı)
+
+### P0-1 — Reschedule → reject: emanet kilidi
+
+Üç ayrı doğru davranışın birleşimi bir açık üretir:
+
+1. `reschedule` süre değişmediyse fiyatı da değiştirmez, bu yüzden
+   `payment_service.sync_amount_with_booking` erken döner
+   (`services/payment_service.py:95-96`) — **HELD ödeme olduğu gibi kalır**.
+   (Fiyat değişirse HELD'de 409 verilir, `payment_service.py:111-116` — bu doğru.)
+2. `reschedule` booking'i koşulsuz `PENDING`'e alır
+   (`services/booking_service.py:492`, FSM tablosu atlanarak doğrudan atama).
+3. `PENDING`'den `REJECTED`'a geçiş meşrudur (`booking_service.py:53-57`) ve
+   `reject` **hiçbir para çağrısı yapmaz** (`booking_service.py:432-443`, tam
+   gövde okundu — `payment_service` geçmiyor).
+
+Sonuç: `Booking.REJECTED` (terminal) + `Payment.HELD`. Para ne öğrenciye döner,
+ne eğitmene geçer. Üç arka plan tarayıcısının **hiçbiri** bu satırı görmez:
+
+- `auto_complete_past_bookings` yalnız `status == ACCEPTED` tarar (`booking_service.py:575`);
+- `reconcile_refunding` yalnız `status == REFUNDING` tarar (`escrow_reconciler.py:77`);
+- `reconcile_stale_checkouts` yalnız `PENDING/FAILED` tarar (`escrow_reconciler.py:171`).
+
+> Not: aynı kilit `PENDING` fiyatlı reschedule'da doğmaz — orada ödeme henüz
+> tahsil edilmemiştir. Açık **yalnız HELD + süre-değişmeyen reschedule**
+> yolunda doğar ve tam da bu yüzden gözden kaçmıştır.
+
+### P0-2 — Admin booking iptali
+
+`services/admin_service.py:397-404` (tam gövde):
+
+```python
+async def cancel_booking(db, booking, reason=None) -> Booking:
+    booking.status = BookingStatus.CANCELLED
+    ...
+    await db.flush()
+    return booking
+```
+
+- FSM guard'ı **yok** → `COMPLETED` (ödemesi `RELEASED`) bir ders bile
+  `CANCELLED` yapılabilir. Kullanıcı yolu aynı geçişte 409 verir
+  (`booking_service.py:609-613`).
+- Refund **yok** → `admin_service.py` `payment_service`/`escrow` import bile
+  etmez (import bloğu `admin_service.py:1-26`).
+- Atomik claim / `FOR UPDATE` **yok** → read-modify-write.
+- Bildirim ve WS push **yok**; audit **var** (`api/routers/admin.py:550-557`).
+- Idempotent **değil** → ikinci istek 200 döner, gerekçeyi ezer, ikinci audit
+  satırı yazar.
+
+### P0-3 — Ders başlamadan tamamlama
+
+`services/booking_service.py:446-462` (tam gövde okundu): `start_at`, `end_at`
+ve `now()` **hiç okunmaz**. Router'da da kontrol yok (`api/routers/bookings.py:140-148`).
+
+Sonuç: eğitmen kabul eder → öğrenci öder (HELD) → eğitmen dersten **haftalar
+önce** `complete` çağırır → `release` HELD→RELEASED claim'ini yapar ve
+`released_at` damgalanır. `escrow.begin_refund`'ın `released_at IS NULL` guard'ı
+(`escrow.py:226-230`) yüzünden bu para **artık iade edilemez**. Kıyas:
+`payment_service.pay` en azından `booking.status != ACCEPTED` kontrolü yapıyor
+(`payment_service.py:141-145`); `complete`'te zamanın karşılığı yok.
+
+### P0-4 — Dispute açıkken auto-complete/release
+
+`auto_complete_past_bookings` sorgusu (`booking_service.py:573-581`) üç koşul
+taşır: `status == ACCEPTED`, `deleted_at IS NULL`, `end_at <= cutoff`.
+`is_disputed` **yoktur**.
+
+Daha genel bulgu: `is_disputed` (`models/booking.py:78-80`) **hiçbir para veya
+FSM kararında okunmaz**. Tek yazma yolu `admin_service.toggle_dispute`
+(`admin_service.py:407-412`); okuma yolları yalnız admin listesi filtresi
+(`admin_service.py:357-358`) ve dashboard sayacı (`admin_service.py:152`).
+Yani dispute bugün **salt bir etikettir**: admin bir dersi ihtilaflı işaretlese
+bile `AUTO_COMPLETE_GRACE_HOURS` (=12, `core/config.py:326`) sonra ders otomatik
+COMPLETED olur ve para eğitmene geçer — geri dönüşü olmayacak biçimde.
+
+Elle `complete` yolu da aynı boşluğu taşır (`booking_service.py:446-462`):
+sözleşme her iki yolu birden bağlar, yalnız arka plan sorgusunu değil.
+
+### P0-5 — Terminal booking + sahipsiz HELD, reconciler görünürlüğü
+
+`escrow_reconciler.reconcile_refunding` (`escrow_reconciler.py:66-135`) yalnız
+`status == spec.refunding` satırlarını tarar. `reconcile_stale_checkouts`
+(`escrow_reconciler.py:138-280`) yalnız `PENDING/FAILED` + `provider_ref` dolu
+satırları tarar. **Terminal booking ile eşleşen HELD ödeme hiçbir taramaya
+girmez** ve hiçbir alarm üretmez.
+
+P0-1 ve P0-2 bu durumu **üretir**; P0-5 ise onun **sessiz kalmasıdır**. İkisi
+ayrı ayrı kapatılmalıdır: kaynak düzeltilse bile geçmişte oluşmuş satırlar ve
+gelecekteki bilinmeyen yollar için bir ağ gerekir.
+
+### P0-6 — accept/reject yarışları
+
+`cancel` ve `complete` atomik claim kullanır (`_claim_transition`,
+`booking_service.py:74-99`). **`accept` ve `reject` kullanmaz**
+(`booking_service.py:413-443`): bellekteki nesne üzerinden `_transition` çağrılır
+ve ORM'in ürettiği UPDATE yalnız `WHERE id = ...` ile gider. Yani bir taraf
+`CANCELLED` claim'ini kazansa bile, yarışan `accept`/`reject` flush'ı bunu
+**geri sürer** (lost update). `SELECT ... FOR UPDATE` booking yollarının
+hiçbirinde yoktur.
+
+`accept` için tesadüfi tek koruma `uq_payments_booking_active` kısmi unique
+index'idir (iki eşzamanlı accept'in ikinci `create_for_booking`'i IntegrityError
+→ 409). Bu bir tasarım değil, yan etkidir; `reject`'te karşılığı yoktur.
+
+---
+
+## 3. Booking × Escrow durum matrisi (hedef sözleşme)
+
+`✅` = meşru ve kalıcı · `⛔` = oluşmamalı (invariant ihlali) · `⏳` = geçici,
+reconciler sonuca sürer.
+
+| Booking \ Payment | (yok) | PENDING | HELD | REFUNDING | REFUNDED | RELEASED | FAILED |
+|---|---|---|---|---|---|---|---|
+| PENDING | ✅ | ✅ | ⛔ **P0-1** | ⏳ | ✅ | ⛔ | ✅ |
+| ACCEPTED | ✅ (ücretsiz/fiyatsız) | ✅ | ✅ | ⏳ | ✅ | ⛔ **P0-3** | ✅ |
+| REJECTED | ✅ | ✅ | ⛔ **P0-1** | ⏳ | ✅ | ⛔ | ✅ |
+| CANCELLED | ✅ | ✅ | ⛔ **P0-2** | ⏳ | ✅ | ⛔ | ✅ |
+| COMPLETED | ✅ | ⛔ | ⛔ | ⛔ | ⛔ | ✅ | ⛔ |
+
+Okunuşu:
+
+- **HELD yalnız ACCEPTED ile birlikte durabilir.** Booking terminal olduğu anda
+  HELD para ya iade akışına girmeli ya da görünür alarma dönüşmelidir.
+- **RELEASED yalnız COMPLETED ile birlikte durabilir**, ve COMPLETED ancak
+  ders başladıktan sonra oluşabilir (P0-3).
+- `PENDING`/`FAILED` ödeme her booking durumunda zararsızdır (tahsilat yok);
+  bunlar `reconcile_stale_checkouts` kapsamındadır ve İP-1a kapsamı dışıdır.
+- `payments` satırının yokluğu meşrudur: ücretsiz ilk ders ve eğitmenin saatlik
+  ücreti tanımsızsa `create_for_booking` kayıt açmaz (`payment_service.py:49-50`).
+
+---
+
+## 4. Yetki matrisi
+
+Prefix: `API_V1_PREFIX = "/api/v1"` (`core/config.py:17`).
+
+| Uç | Metot | CLIENT | TUTOR | ADMIN | Anonim |
+|---|---|---|---|---|---|
+| `/bookings` | POST | ✅ sahibi + telefon doğrulu | 403 | 403 | 401 |
+| `/bookings/{id}/accept` | POST | 403 | ✅ sahibi (+ ödeme kolu açık) | 403 | 401 |
+| `/bookings/{id}/reject` | POST | 403 | ✅ sahibi | 403 | 401 |
+| `/bookings/{id}/complete` | POST | 403 | ✅ sahibi | 403 | 401 |
+| `/bookings/{id}/cancel` | POST | ✅ taraf | ✅ taraf | 403 | 401 |
+| `/bookings/{id}/reschedule` | POST | ✅ sahibi | 403 | 403 | 401 |
+| `/payments/booking/{id}/pay` | POST | ✅ sahibi + telefon doğrulu | 403 | 403 | 401 |
+| `/admin/bookings/{id}/cancel` | POST | 403 | 403 | ✅ `bookings.manage` | 401 |
+| `/admin/bookings/{id}/dispute` | POST | 403 | 403 | ✅ `bookings.manage` | 401 |
+
+Notlar (davranış testiyle sabitlenecek):
+
+- Booking var ama taraf değilsen **403** döner, 404 değil
+  (`api/routers/bookings.py:55-65`). Teslimat tarafındaki "IDOR → 404" kararının
+  tersi; **bilinçli mi, tutarsızlık mı — açık karar** (bkz. §10).
+- Admin router'ı iki katmanlıdır: router seviyesinde `require_roles(ADMIN)`
+  (`api/routers/admin.py:92-96`), uç seviyesinde
+  `require_admin_permission("bookings.manage")` (`admin.py:545`). İzinsiz admin
+  403 alır ve **SUPER_ADMIN bypass'ı yoktur** — izin rol-izin satırlarından okunur.
+- `accept` onaylı eğitmen istemez (`get_current_approved_tutor` kullanılmıyor);
+  yalnız `require_roles(TUTOR)`. İP-1a kapsamı dışı, ayrı not.
+
+---
+
+## 5. Idempotency ilkeleri
+
+Bugün booking geçişlerinde **idempotency anahtarı yoktur**; korunan yerler
+**durum sözleşmesiyle** korunur. Sözleşme bunu koruyup netleştirir:
+
+1. **Para hareketi tetikleyen her geçiş koşullu UPDATE ile claim edilir.**
+   Claim'i kaybeden taraf **hiçbir sağlayıcı çağrısı yapmaz**. (`escrow.claim`
+   zaten böyle; `accept`/`reject`/admin-cancel bu disipline sokulmalıdır.)
+2. **Aynı isteğin tekrarı çift para hareketi üretemez.** Ölçüt sağlayıcı çağrı
+   sayısıdır (`StubProvider.refund_calls`), yanıt kodu değil.
+3. **Tekrarın yanıtı sessiz başarı olmamalıdır.** Kullanıcı yolu 409 verir
+   (`booking_service.py:609-613`); admin yolunun 200 dönüp gerekçeyi ezmesi
+   (`admin_service.py:397-404`) bilinçli bir karar değil, guard eksikliğidir.
+4. **İade niyeti (REFUNDING) kalıcıdır ve geri alınamaz.** `HELD`'e dönüş yoktur
+   (`escrow.py:259-260`).
+5. Test disiplini: sabit idempotency anahtarı testler arasında paylaşılmaz;
+   her senaryo kendi `provider_ref`'ini üretir.
+
+---
+
+## 6. Concurrency / claim sözleşmesi
+
+| Yarış | İzin verilen son durum kümesi | Escrow sonucu | Sağlayıcı çağrısı |
+|---|---|---|---|
+| accept ↔ client cancel | tam olarak biri: `{ACCEPTED}` **veya** `{CANCELLED}` | ACCEPTED ise PENDING ödeme; CANCELLED ise ödeme yoksa no-op | 0 |
+| reject ↔ client cancel | tam olarak biri: `{REJECTED}` **veya** `{CANCELLED}` | HELD varsa **her iki dalda da** iade akışı | tam 1 |
+| admin cancel ↔ tutor complete | tam olarak biri: `{CANCELLED}` **veya** `{COMPLETED}` | CANCELLED→REFUNDED / COMPLETED→RELEASED, **asla ikisi birden** | ≤ 1 |
+| auto-complete ↔ dispute açılması | dispute kazanırsa `{ACCEPTED}`, aksi `{COMPLETED}` | dispute açıkken `released_at` **NULL** kalmalı | 0 |
+| iki eşzamanlı reconciler worker'ı | tek claim | tek iade | tam 1 |
+
+Kurallar:
+
+- READ COMMITTED'da koşullu UPDATE yeterlidir: yarışan transaction satır
+  kilidinde bekler, `WHERE` güncel satıra göre yeniden değerlendirilir. Testler
+  bunu üretimle **aynı isolation seviyesinde** ölçer
+  (`tests/integration/test_money_pg.py:30-34` zaten bunu nöbetçiliyor).
+- "Sonuçlardan biri oldu" **yetersiz bir iddiadır**. Her yarış testi dört şeyi
+  birlikte ölçer: son booking durumu · son escrow durumu · sağlayıcı çağrı
+  **sayısı** · kayıp güncelleme olmadığı (yani terminal bir durumun üzerine
+  yazılmadığı).
+- Determinizm için `StubProvider.refund_gate` (`tests/integration/conftest.py:101-118`)
+  kullanılır: iki transaction "durum okundu, henüz yazılmadı" penceresinde
+  buluşturulur. Gerçek zaman beklemesi yoktur.
+
+---
+
+## 7. Provider başarısızlık politikası
+
+Mevcut ve korunacak davranış (`escrow.py:250-276`):
+
+- Sağlayıcı iadesi başarısızsa kayıt **REFUNDING'de bırakılır**, `HELD`'e geri
+  dönülmez, `REFUNDED`'a da geçilmez. **Para durumu yalan biçimde
+  kesinleştirilmez.**
+- `NOT_REFUNDED` / `UNKNOWN` "iade yok" kanıtı **değildir**
+  (`core/payments/base.py`, `RefundState`). Retry sınırlıdır ve emniyet kemeri
+  sağlayıcının aşırı-iade reddidir.
+- Pozitif kanıt (`REFUNDED`) yazma çağrısı yapmadan yalnız yerel finalize üretir
+  (`ACTION_FINALIZE`).
+- Deneme sınırı dolunca `ACTION_ALERT`: retry durur, kayıt ERROR logu ile
+  **görünür** kalır (`escrow_reconciler.py:108-114`).
+
+İP-1a bunu değiştirmez; yeni yazılacak yollar (reject/admin-cancel iadesi)
+**aynı `escrow.refund_escrow` yoluna** bağlanmalıdır — paralel bir iade
+uygulaması yazılmamalıdır.
+
+---
+
+## 8. Reconciler politikası (P0-5 için önerilen karar)
+
+Üç seçenek değerlendirildi. Karar **geri döndürülebilirlik** ölçütüyle verildi.
+
+| Seçenek | Risk |
+|---|---|
+| (a) Sessiz bırak (bugünkü hâl) | Para süresiz kilitli; kimse fark etmez. **Kabul edilemez.** |
+| (b) Yalnız MANUAL_REVIEW alarmı | Güvenli ama parayı iade etmez; operasyon yükü her olayda insana biner. |
+| (c) **Güvenli claim sonrası otomatik iade + ERROR logu** | Önerilen. |
+
+**Öneri: (c).** Gerekçeler:
+
+1. **Sistemin kendi precedent'i budur.** `payment_service.complete_checkout`
+   tam olarak aynı durumda — para tahsil edilmiş, varlık ölü — otomatik iade
+   başlatır ve ERROR loglar (`payment_service.py:273-310`). Terminal booking'de
+   sarkan HELD, o senaryonun geç fark edilmiş hâlidir; farklı davranmak
+   tutarsızlık olur.
+2. **İade tek geri döndürülebilir yöndür.** Öğrenciye iade yanlışsa öğrenci
+   yeniden ödeyebilir. Eğitmene release yanlışsa `released_at` guard'ı
+   (`escrow.py:226-230`) yüzünden **geri alınamaz**. Belirsizlikte geri
+   döndürülebilir yön seçilir.
+3. **Yeni bir para yolu icat edilmez.** Aynı `escrow.refund_escrow` (claim +
+   iki faz) kullanılır; idempotency, yarış ve sağlayıcı-başarısızlığı
+   davranışı otomatik olarak devralınır.
+
+Sözleşme maddeleri (kırmızı testlerin ölçtüğü):
+
+- **S1.** Terminal booking (`REJECTED`/`CANCELLED`/soft-deleted) ile eşleşen
+  `HELD` ödeme **sessiz kalamaz**: ya iade akışına girer ya da alarm üretir.
+  Bugün ikisi de olmuyor.
+- **S2.** Karantina penceresi uygulanır (`REFUND_RECONCILE_MIN_AGE_MINUTES`=15
+  deseni): uçuşta olan bir transaction reconciler tarafından yakalanmaz.
+- **S3.** Aynı reconciler turu aynı kaydı **iki kez işlemez**.
+- **S4.** İki eşzamanlı worker'dan **yalnız biri** claim kazanır; sağlayıcıya
+  tam **bir** iade emri gider.
+- **S5.** Sağlayıcı çağrısı başarısızsa kayıt `REFUNDING`'de kalır; `REFUNDED`
+  damgalanmaz, `HELD`'e de dönülmez.
+- **S6.** `released_at` dolu kayıt **hiçbir koşulda** iadeye claim edilmez.
+
+---
+
+## 9. Test sözleşmesi (bu checkpoint'in ölçtükleri)
+
+Ölçüm noktaları — her kabul testi bunların **birlikte** doğru olduğunu ölçer,
+tek başına HTTP durum kodu yeterli sayılmaz:
+
+1. `Booking.status` (DB'den taze okunur, ORM identity map'ten değil)
+2. `Payment.status` + `released_at` / `refunded_at` / `refund_requested_at`
+3. Sağlayıcı çağrı **sayısı** ve tutarı (`StubProvider.refund_calls`)
+4. Hakediş: `payout_ledger` yalnız `RELEASED` ödemeleri "earned" sayar
+   (`services/payout_ledger.py:96-107`) → payout yokluğu buradan ölçülür
+5. `notifications` satırları (kime, kaç tane)
+6. `audit_logs` satırları (admin yolları)
+
+Altyapı kuralları:
+
+- Gerçek PostgreSQL zorunlu; adı `test` içermeyen veritabanında suite
+  **başlamaz** (`tests/integration/db_guard.py`).
+- Ham ORM nesnesini elle değiştirip "akış oldu" saymak yasak.
+- Provider için gerçek ağ çağrısı yok; gözlenebilir `StubProvider`.
+- Temizlik yalnız oluşturulan ID'lerle. Global TRUNCATE / trigger disable yok.
+- `skip`/`xfail` yok. Koşmayan test kırmızıdır, yeşil değil.
+- Her P0 için en az bir **meşru yeşil nöbetçi** bulunur: doğru davranışın hâlâ
+  çalıştığını kanıtlar ve mutasyon provasının hedefidir.
+
+---
+
+## 9b. Test envanteri (bu checkpoint'te oluşturulanlar)
+
+| Dosya | Konu | Kırmızı | Yeşil nöbetçi |
+|---|---|---:|---:|
+| `test_ip1a_reschedule_reject_pg.py` | P0-1 | 4 | 4 |
+| `test_ip1a_admin_cancel_pg.py` | P0-2 | 4 | 7 |
+| `test_ip1a_complete_timing_pg.py` | P0-3 | 3 | 6 |
+| `test_ip1a_dispute_autocomplete_pg.py` | P0-4 | 4 | 4 |
+| `test_ip1a_orphan_escrow_pg.py` | P0-5 | 5 | 6 |
+| `test_ip1a_races_pg.py` | P0-6 | 4 | 3 |
+| `test_ip1a_factory_hygiene_pg.py` | zemin | 0 | 5 |
+| **Toplam** | | **24** | **35** |
+
+Tür dağılımı (kök CLAUDE.md §H uyarınca dürüst sınıflandırma):
+
+- **Gerçek PostgreSQL + gerçek servis**: 59 (hepsi)
+- **Gerçek HTTP** (ASGI transport, gerçek yetki zinciri): 38
+- **Gerçek eşzamanlılık** (birden çok bağlantı/transaction): 8
+- Saf yardımcı / birim: 0 · Kaynak-AST sözleşmesi: 0 · Snapshot: 0
+- `skip` / `xfail`: **0** · collection error: **0**
+
+Ortak fabrika: `tests/integration/ip1a_factory.py`. Emanet durumları
+`booking_service.accept` + `payment_service.pay` **gerçekten koşularak** üretilir;
+elle `status=HELD` yazılmaz (kanıt: `test_ip1a_factory_hygiene_pg.py`).
+
+## 9c. Bu turda bulunan test kusurları (dürüst kayıt)
+
+Mutasyon provası, İP-1a'nın kendi nöbetçilerinde iki gerçek zayıflık buldu.
+Kök CLAUDE.md §D gereği önce eksiklik kabul edildi, sonra regresyon testi eklendi,
+sonra mutasyon tekrarlanıp kırıldığı gösterildi.
+
+1. **Booking claim'i, ödeme claim'ini gölgeliyordu.** `payment_service.release`'in
+   `from_statuses=[HELD]` kısıtını gevşetmek hiçbir testi kırmadı: ilk turdan
+   sonra booking `COMPLETED` olduğu için auto-complete onu bir daha seçmiyor ve
+   `release` tekrar çağrılmıyordu. → `test_YESIL_release_IKI_KEZ_cagrilsa_bile_damga_DEGISMEZ`
+   eklendi (`release` doğrudan iki kez çağrılır).
+
+2. **`escrow.begin_refund`'ın `released_at IS NULL` guard'ı davranışsal olarak
+   hiç sınanmamış.** Guard silindiğinde ne İP-1a testleri ne de **mevcut paket**
+   kırıldı — `test_money_pg.py::test_h2_cancel_session_skips_released_no_show`
+   dahil. Sebep: her çağıran kendi sorgusunda zaten `released_at` filtresi
+   taşıyor (ör. `library_exam_service.py:273`) ve ödeme yüzeyinde `RELEASED` ayrı
+   bir durum olduğu için `from_statuses=[HELD]` kısıtı guard'ı gölgeliyor. Yani
+   **dört para yüzeyinin paylaştığı çekirdekteki bir güvenlik hattı silinse kimse
+   fark etmezdi.** → `test_YESIL_released_at_dolu_HELD_satiri_IADEYE_CLAIM_EDILEMEZ`
+   eklendi (bozuk satır bilinçli olarak kurulur, guard doğrudan sınanır).
+
+Ayrıca kapsam dışı ama raporlanan bir zemin kusuru:
+
+3. **Hijyen nöbetçisi ders-para tablolarını saymıyor.**
+   `tests/integration/conftest.py::_KRITIK_TABLOLAR` içinde `bookings`,
+   `payments` ve `tutors` **yok**; teardown'u eksik bir ders-para testi satır
+   biriktirse suite yine yeşil kalırdı. Bu turda listeye dokunulmadı (kapsam:
+   yalnız sözleşme + fabrika + kırmızı testler); boşluk fabrika içinde
+   `sizinti_var_mi()` ile ID bazında kapatıldı
+   (`test_ip1a_factory_hygiene_pg.py::test_fabrika_temizligi_kendi_satirlarini_TAMAMEN_siler`).
+   Kalıcı çözüm İP-1b'ye önerilir.
+
+## 9d. Mutasyon provası sonuçları
+
+Sürücü disiplini `backend/scripts/mutation_drill.py` ile aynıdır: dosya baytları
+belleğe alınır (`git checkout --` KULLANILMAZ), her mutasyondan sonra HEAD +
+`git status --porcelain` başlangıçla karşılaştırılır. **10/10 yakalandı**,
+çalışma ağacı byte düzeyinde başlangıç durumuna döndü.
+
+| # | Mutasyon | Kırdığı nöbetçi |
+|---|---|---|
+| A1 | `cancel()`'daki `payment_service.refund` çağrısı no-op | taraf iptali iadesi + eşzamanlı iptal |
+| A2 | `complete()`'in atomik claim'i sıradan atamaya çevrildi | iki eşzamanlı tamamlama tek release |
+| A3 | `release()`'in `from_statuses=[HELD]` kısıtı gevşetildi | release iki kez → damga değişmez |
+| A4 | `begin_refund()`'daki `released_at` guard'ı silindi | `released_at` dolu HELD satırı claim edilemez |
+| A5 | `auto_complete`'ten `end_at <= cutoff` filtresi silindi | gelecekteki ders otomatik tamamlanmaz |
+| A6 | Admin iptal ucundan `bookings.manage` izni düşürüldü | izinsiz admin iptal edemez |
+| A7 | `perform_refund()` sağlayıcıyı iki kez çağırıyor | tek iade emri nöbetçileri (2 test) |
+| A8 | `sync_amount_with_booking`'deki HELD 409'u kaldırıldı | ödenmiş dersin ücreti değiştirilemez |
+| A9 | `complete` ucundan `_assert_owner_tutor` düşürüldü | başkasının dersi tamamlanamaz |
+| A10 | `create_for_booking`'de komisyon kırılımı sıfırlandı | emanet üretim yolundan gelir |
+
+İP-1b önerisi: bu mutasyonlar `backend/scripts/mutation_drill.py` kataloğuna
+M9+ olarak eklenmelidir — katalog bugün tamamen envanter/stok odaklıdır ve para
+yolunda tanımlı tek bir mutasyon yoktur.
+
+## 10. Açık ürün kararları
+
+Bunlar İP-1b'de (üretim uygulaması) karara bağlanmalıdır. Kırmızı testler
+**karar gerektirmeyen** çekirdeği ölçer; karara bağlı olanlar aşağıda açıkça
+işaretlidir.
+
+1. **Reschedule sonrası reject'in para politikası.** Emanetteki para iade mi
+   edilmeli (öneri: evet, tam iade — ders hiç yapılmadı ve reddeden taraf
+   eğitmendir), yoksa ceza/kesinti mi uygulanmalı? Kırmızı test yalnız
+   "**HELD sahipsiz kalamaz**" invariant'ını ölçer; kesinti oranına bağlı
+   değildir.
+2. **Admin'in COMPLETED/RELEASED bir dersi iptali.** Öneri: **409 ile
+   reddedilmeli** — `released_at` terminal tasarlanmıştır ve kısmi geri alma
+   yolu yoktur. Alternatif (iptal + elle mutabakat kaydı) settlement ekranı
+   gerektirir ve kapsam dışıdır.
+3. **`complete` için meşru zaman eşiği.** Öneri: `start_at`'ten önce yasak.
+   `end_at` mi yoksa `start_at` mi eşik olmalı — eğitmenin ders ortasında
+   tamamlaması meşru sayılacaksa `start_at` doğrudur. Kırmızı test `start_at`
+   eşiğini varsayar; karar değişirse test tek satırda güncellenir.
+4. **Dispute açıkken auto-complete.** Öneri: auto-complete **atlanır**, para
+   HELD'de bekler, admin çözer. Süre sınırı (dispute sonsuza dek parayı
+   kilitlemesin) ayrı bir karardır ve kapsam dışıdır.
+5. **Öğrenci/eğitmenin dispute açabilmesi.** Bugün yalnız admin işaretleyebilir;
+   kullanıcı tarafında dispute ucu yoktur. Kapsam dışı, not edildi.
+6. **Booking'de 403 vs 404 (IDOR).** Teslimat tarafı 404 seçmiş, booking 403
+   veriyor. Tutarlılık kararı gerekiyor; İP-3 kapsamı.
+
+---
+
+## 11. Kapsam dışı (bilinçli)
+
+Bu checkpoint'e **dahil edilmedi**; her biri ayrı pakettir:
+
+- iyzico Pazaryeri / submerchant gerçek entegrasyonu (PK-2)
+- Settlement mutabakat ekranı
+- Vergi / stopaj / gider pusulası
+- Kütüphane exam / study kontenjanı ve escrow'u (ayrı `EXAM_SPEC` / `STUDY_SPEC`)
+- Mağaza `Order` / `OrderReturn` iadeleri (`ORDER_SPEC` / `RETURN_SPEC`)
+- TB-3 mağaza stok / kupon telafisi
+- İP-3 güvenlik / KVKK üretim düzeltmeleri
+- Frontend'in tamamı (yalnız admin iptalinin HTTP kablolaması test edilir)
+- `accept` ucunun onaylı eğitmen istememesi (ayrı not, §4)
+- `iyzico/callback` ucunun anonim ve rate-limit'siz olması (İP-3)

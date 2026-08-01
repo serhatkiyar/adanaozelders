@@ -298,6 +298,13 @@ async def factory(pg) -> MoneyFactory:
     yield f
     await f.cleanup()
 
+
+# İP-1a ders para yolu fabrikası ve HTTP istemcisi. Fixture'lar tanımları
+# `ip1a_factory.py`'de durur ama pytest'in onları bulabilmesi için conftest
+# ad alanında olmaları gerekir. Test modüllerine tek tek import edilselerdi,
+# aynı adı test parametresi olarak da kullanmak F811 (gölgeleme) üretirdi.
+from tests.integration.ip1a_factory import ip1a, ip1a_http  # noqa: E402,F401
+
 # ═════════════ Tek kullanımlık test veritabanı + hijyen nöbetçisi ═════════════
 #
 # 30 Tem 2026'ya kadar bu testler geliştirme veritabanına (`ceyhandb`) karşı
