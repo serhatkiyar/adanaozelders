@@ -385,6 +385,31 @@ class Ip1aFabrika:
                 ).scalar_one()
             )
 
+    async def bildirimler(self, *, user_id: int, role_id: int) -> list[tuple[int, str]]:
+        """Kullanıcıya yazılan bildirimler: (id, metin), eskiden yeniye.
+
+        Sayı tek başına zayıf bir ölçüttür: "iki bildirim gitti" iddiası,
+        birleşik tek bir mesajın da meşru olduğu yerlerde uygulamayı gereksiz
+        yere kilitler. İçeriğe bakan invariant ("para/iade anlamı taşıyan en az
+        bir bildirim doğru kullanıcıya gitti") hem daha güçlü hem daha adildir.
+
+        `id` bilinçli olarak döner: "yeni gelenler"i metin kümesi farkıyla bulmak
+        AYNI metnin ikinci kez yazıldığı hâlleri görünmez kılardı.
+        """
+        async with AsyncSessionLocal() as s:
+            return [
+                (int(r[0]), r[1])
+                for r in (
+                    await s.execute(
+                        text(
+                            "SELECT id, message FROM notifications "
+                            "WHERE user_id = :u AND role_id = :r ORDER BY id"
+                        ),
+                        {"u": user_id, "r": role_id},
+                    )
+                ).all()
+            ]
+
     async def audit_sayisi(self, *, target_id: int, action: str) -> int:
         async with AsyncSessionLocal() as s:
             return int(

@@ -178,17 +178,40 @@ async def test_reschedule_sonrasi_reject_OGRENCIYI_BILGILENDIRIR(ip1a, provider,
 
     Taraf iptalinde bu bildirim var (`payment_service.py:375-385`); red yolunda
     para hareketi hiç doğmadığı için bildirim de doğmuyor.
+
+    ## Neden SAYIYA değil ANLAMA bağlanır
+
+    Bu test bir kez `once + 2` dayatıyordu — yani "red bildirimi" ve "iade
+    bildirimi" mutlaka AYRI iki satır olsun. Bu, ölçmek istediğimiz şeyden
+    fazlasıdır: **tek** bir "dersin reddedildi ve ödemen iade edildi" bildirimi
+    de öğrenciyi tam olarak bilgilendirir ve üretimde meşru bir tasarımdır.
+    Sayıyı dayatan test, doğru bir uygulamayı kırmızıya düşürerek İP-1b'yi
+    gereksiz bir tasarım kararına zorlardı (bağımsız denetim düzeltmesi).
+
+    Ölçülen invariant üç parçadır: (1) bildirim DOĞRU kullanıcıya (öğrenciye)
+    gitti, (2) içeriği para/iade anlamı taşıyor, (3) en az bir tane var. Kaç
+    satıra bölündüğü uygulamanın kararıdır ve testin işi değildir.
     """
     ders = await ip1a.odenmis()
     await _yeni_saate_tasi(ip1a_http, ders)
-    once = await ip1a.bildirim_sayisi(user_id=ders.client_id, role_id=3)
+    onceki = await ip1a.bildirimler(user_id=ders.client_id, role_id=3)
+    son_id = onceki[-1][0] if onceki else 0
 
     await ip1a_http.post(f"{KOK}/{ders.booking_id}/reject", headers=ders.tutor_auth)
 
-    sonra = await ip1a.bildirim_sayisi(user_id=ders.client_id, role_id=3)
-    assert sonra >= once + 2, (
-        f"öğrenciye {sonra - once} bildirim gitti; red bildirimi VE iade "
-        "bildirimi ayrı ayrı beklenir (para hareketi sessiz kalamaz)"
+    yeni = [
+        m
+        for (i, m) in await ip1a.bildirimler(user_id=ders.client_id, role_id=3)
+        if i > son_id
+    ]
+    assert yeni, (
+        "öğrenciye hiçbir bildirim gitmedi: dersi reddedildi ve emanetteki "
+        "parası hakkında hiçbir şey söylenmedi"
+    )
+    para_sozcukleri = ("iade", "ödeme", "ödemen", "ücret", "para")
+    assert any(any(k in m.casefold() for k in para_sozcukleri) for m in yeni), (
+        f"öğrenciye giden bildirimlerin hiçbiri para hareketinden söz etmiyor: {yeni}. "
+        "Tek birleşik mesaj da olur, ayrı iade mesajı da — ama para sessiz kalamaz."
     )
 
 

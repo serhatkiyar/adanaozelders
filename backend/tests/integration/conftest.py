@@ -104,15 +104,24 @@ class StubProvider(FakePaymentProvider):
     ``refund_gate`` verilirse refund çağrısı, event set edilene dek bekler — iki
     eşzamanlı transaction'ın "status okundu ama henüz yazılmadı" penceresinde
     buluşmasını DETERMİNİSTİK yapar.
+
+    ``refund_entered`` bunun ters yönüdür: kapıya GİRİLDİĞİ anda set edilir, yani
+    "iade faz-1'i commit'lendi ve akış sağlayıcıda asılı" olayını test tarafına
+    bildirir. Test bunu beklediğinde `asyncio.sleep(...)` ile "herhâlde oraya
+    varmıştır" tahmininde bulunmak zorunda kalmaz — ardışıklık ölçülür, tahmin
+    edilmez. Bir testte birden çok iade olabileceği için event `refund_calls`
+    sayacının yerine geçmez; "en az bir iade kapıya ulaştı" anlamındadır.
     """
 
     def __init__(self) -> None:
         self.refund_calls: list[tuple[str | None, Decimal]] = []
         self.refund_gate: asyncio.Event | None = None
+        self.refund_entered: asyncio.Event = asyncio.Event()
         self.refund_result: bool = True
 
     async def refund(self, *, provider_ref: str | None, amount: Decimal) -> bool:
         self.refund_calls.append((provider_ref, Decimal(str(amount))))
+        self.refund_entered.set()
         if self.refund_gate is not None:
             await self.refund_gate.wait()
         return self.refund_result

@@ -24,8 +24,12 @@ Gerekçe (sözleşme §8'de tam): sistemin kendi precedent'i budur —
 Ayrıca **iade tek geri döndürülebilir yöndür**: yanlış iade telafi edilebilir
 (öğrenci yeniden öder), yanlış release `released_at` guard'ı yüzünden edilemez.
 
-Testler bu kararı sözleşme olarak ölçer; ürün kararı değişirse (ör. yalnız
-MANUAL_REVIEW alarmı) `_sahipsiz_cozuldu_mu` yardımcısı tek yerden güncellenir.
+Testler bu kararı sözleşme olarak ölçer. Ürün kararı değişirse (ör. yalnız
+MANUAL_REVIEW alarmı) tek dokunulacak yer modül düzeyindeki **`COZULMUS`**
+sabitidir: "sahipsiz emanet çözüldü" sayılan `PaymentStatus` kümesi orada
+tanımlıdır ve bu dosyadaki her sonuç iddiası ona bakar. (Daha önce bu satırda
+`_sahipsiz_cozuldu_mu` adlı bir yardımcıdan söz ediliyordu; öyle bir yardımcı
+hiç yazılmadı — bağımsız denetim düzeltmesi.)
 """
 from __future__ import annotations
 
@@ -152,6 +156,11 @@ async def test_saglayici_basarisizsa_para_durumu_YALAN_KESINLESMEZ(ip1a, provide
     `REFUNDED` damgalamak "para iade edildi" yalanı; `HELD`'e geri dönmek ise
     iade niyetini silmek olurdu (`escrow.py:259-261`: HİÇBİR yerde HELD'e dönüş
     yoktur). Doğru davranış: niyet kalıcı, sonraki tur devralır.
+
+    Bugünkü gerçek kırmızılık sebebi "HELD'e geri döndürüldü" DEĞİLDİR: sahipsiz
+    emanet taraması henüz yazılmadığı için tarayıcı kayda **hiç dokunmaz** ve
+    kayıt HELD'de kalır. Assert mesajları bu yüzden her iki güvensiz hâli birden
+    adlandırır (bağımsız denetim düzeltmesi).
     """
     ders = await _sahipsiz_emanet(ip1a)
     provider.refund_result = False
@@ -163,8 +172,12 @@ async def test_saglayici_basarisizsa_para_durumu_YALAN_KESINLESMEZ(ip1a, provide
         "sağlayıcı reddetmesine rağmen ödeme REFUNDED damgalandı — defter yalan söylüyor"
     )
     assert payment_status is not PaymentStatus.HELD, (
-        "başarısız iade denemesi kaydı HELD'e geri döndürdü — niyet kayboldu, "
-        "sonraki tur bu satırı bir daha hiç görmez"
+        f"başarısız iade denemesinden sonra ödeme HELD göründü ({payment_status}). "
+        "İki ayrı güvensiz hâlin ikisini birden dışlar: (a) tarayıcı kaydı "
+        "HELD'e GERİ DÖNDÜRDÜ — iade niyeti silindi, sonraki tur bu satırı bir "
+        "daha hiç görmez; (b) tarayıcı kayda HİÇ DOKUNMADI — sahipsiz emanet "
+        "bugün olduğu gibi sessiz kaldı. İkisi de aynı sonucu verir: para "
+        "kilitli, kimse haberdar değil."
     )
     assert payment_status is PaymentStatus.REFUNDING
     assert (await ip1a.payment(ders.booking_id))["refund_requested_at"] is not None

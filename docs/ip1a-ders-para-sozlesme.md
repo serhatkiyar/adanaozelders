@@ -249,9 +249,12 @@ Kurallar:
   birlikte ölçer: son booking durumu · son escrow durumu · sağlayıcı çağrı
   **sayısı** · kayıp güncelleme olmadığı (yani terminal bir durumun üzerine
   yazılmadığı).
-- Determinizm için `StubProvider.refund_gate` (`tests/integration/conftest.py:101-118`)
-  kullanılır: iki transaction "durum okundu, henüz yazılmadı" penceresinde
-  buluşturulur. Gerçek zaman beklemesi yoktur.
+- Determinizm için `StubProvider.refund_gate` + `StubProvider.refund_entered`
+  (`tests/integration/conftest.py`) ve test tarafındaki `okundu`/`kapi`
+  event'leri kullanılır: iki transaction "durum okundu, henüz yazılmadı"
+  penceresinde buluşturulur. **`test_ip1a_races_pg.py` içinde `asyncio.sleep`
+  yoktur** — ardışıklığın her adımı açık bir event ile beklenir (bkz. §9c/4;
+  bu iddia ilk yazıldığında henüz doğru değildi).
 
 ---
 
@@ -327,7 +330,10 @@ tek başına HTTP durum kodu yeterli sayılmaz:
 3. Sağlayıcı çağrı **sayısı** ve tutarı (`StubProvider.refund_calls`)
 4. Hakediş: `payout_ledger` yalnız `RELEASED` ödemeleri "earned" sayar
    (`services/payout_ledger.py:96-107`) → payout yokluğu buradan ölçülür
-5. `notifications` satırları (kime, kaç tane)
+5. `notifications` satırları — **kime** ve **ne anlama geldiği**. Para hareketi
+   bildiriminde satır SAYISI dayatılmaz: tek birleşik mesaj da ayrı iade mesajı
+   da meşrudur (bkz. §9c). Sayı yalnız "kaybeden taraf hiçbir yan etki
+   üretmemeli" gibi **yan etki yokluğu** iddialarında ölçülür.
 6. `audit_logs` satırları (admin yolları)
 
 Altyapı kuralları:
@@ -348,21 +354,34 @@ Altyapı kuralları:
 | Dosya | Konu | Kırmızı | Yeşil nöbetçi |
 |---|---|---:|---:|
 | `test_ip1a_reschedule_reject_pg.py` | P0-1 | 4 | 4 |
-| `test_ip1a_admin_cancel_pg.py` | P0-2 | 4 | 7 |
+| `test_ip1a_admin_cancel_pg.py` | P0-2 | 6 | 6 |
 | `test_ip1a_complete_timing_pg.py` | P0-3 | 3 | 6 |
 | `test_ip1a_dispute_autocomplete_pg.py` | P0-4 | 4 | 4 |
 | `test_ip1a_orphan_escrow_pg.py` | P0-5 | 5 | 6 |
 | `test_ip1a_races_pg.py` | P0-6 | 4 | 3 |
 | `test_ip1a_factory_hygiene_pg.py` | zemin | 0 | 5 |
-| **Toplam** | | **24** | **35** |
+| **Toplam** | | **26** | **34** |
+
+**Sayı değişikliğinin gerekçesi (bağımsız denetim turu, P1-2).** İlk envanter
+`test_ip1a_admin_cancel_pg.py` için 4 kırmızı + 7 yeşil (11 node) diyordu;
+şimdi 6 + 6 (12 node). Sebep, kırmızı azaltmak ya da yeşil eklemek DEĞİL:
+yeşil sayılan `test_YESIL_servis_katmani_admin_yolunu_da_baglar` **yanlış
+servisi** ölçüyordu (`booking_service.cancel`, yani öğrenci yolu). O node
+kaldırıldı ve yerine `admin_service.cancel_booking`'i doğrudan çağıran iki
+gerçek nöbetçi kondu; ikisi de üretimdeki mevcut boşluğu ölçtüğü için
+**kırmızı**. Yani: −1 sahte yeşil, +2 gerçek kırmızı → toplam 59 → **60**.
+Önceden var olan 24 üretim kırmızısının hiçbiri azaltılmadı.
 
 Tür dağılımı (kök CLAUDE.md §H uyarınca dürüst sınıflandırma):
 
-- **Gerçek PostgreSQL + gerçek servis**: 59 (hepsi)
+- **Gerçek PostgreSQL + gerçek servis**: 60 (hepsi)
 - **Gerçek HTTP** (ASGI transport, gerçek yetki zinciri): 38
 - **Gerçek eşzamanlılık** (birden çok bağlantı/transaction): 8
+- **Servis katmanı, HTTP'siz** (kuralın router'da değil serviste yaşadığını
+  sabitler): 2
 - Saf yardımcı / birim: 0 · Kaynak-AST sözleşmesi: 0 · Snapshot: 0
-- `skip` / `xfail`: **0** · collection error: **0**
+- `skip` / `xfail`: **0** · collection error: **0** · `asyncio.sleep` ile kurulan
+  yarış: **0**
 
 Ortak fabrika: `tests/integration/ip1a_factory.py`. Emanet durumları
 `booking_service.accept` + `payment_service.pay` **gerçekten koşularak** üretilir;
@@ -370,8 +389,9 @@ elle `status=HELD` yazılmaz (kanıt: `test_ip1a_factory_hygiene_pg.py`).
 
 ## 9c. Bu turda bulunan test kusurları (dürüst kayıt)
 
-Mutasyon provası, İP-1a'nın kendi nöbetçilerinde iki gerçek zayıflık buldu.
-Kök CLAUDE.md §D gereği önce eksiklik kabul edildi, sonra regresyon testi eklendi,
+Mutasyon provası ve ardından gelen bağımsız denetim, İP-1a'nın kendi
+nöbetçilerinde **dört** gerçek zayıflık buldu. Kök CLAUDE.md §D gereği her
+birinde önce eksiklik kabul edildi, sonra regresyon testi eklendi/güçlendirildi,
 sonra mutasyon tekrarlanıp kırıldığı gösterildi.
 
 1. **Booking claim'i, ödeme claim'ini gölgeliyordu.** `payment_service.release`'in
@@ -390,10 +410,8 @@ sonra mutasyon tekrarlanıp kırıldığı gösterildi.
    fark etmezdi.** → `test_YESIL_released_at_dolu_HELD_satiri_IADEYE_CLAIM_EDILEMEZ`
    eklendi (bozuk satır bilinçli olarak kurulur, guard doğrudan sınanır).
 
-Ayrıca kapsam dışı ama raporlanan bir zemin kusuru:
-
-3. **Hijyen nöbetçisi ders-para tablolarını saymıyor.**
-   `tests/integration/conftest.py::_KRITIK_TABLOLAR` içinde `bookings`,
+3. **Hijyen nöbetçisi ders-para tablolarını saymıyor** (kapsam dışı zemin
+   kusuru). `tests/integration/conftest.py::_KRITIK_TABLOLAR` içinde `bookings`,
    `payments` ve `tutors` **yok**; teardown'u eksik bir ders-para testi satır
    biriktirse suite yine yeşil kalırdı. Bu turda listeye dokunulmadı (kapsam:
    yalnız sözleşme + fabrika + kırmızı testler); boşluk fabrika içinde
@@ -401,17 +419,73 @@ Ayrıca kapsam dışı ama raporlanan bir zemin kusuru:
    (`test_ip1a_factory_hygiene_pg.py::test_fabrika_temizligi_kendi_satirlarini_TAMAMEN_siler`).
    Kalıcı çözüm İP-1b'ye önerilir.
 
+**Bağımsız denetim turu (üretim kodu DEĞİŞMEDİ) iki kusur daha buldu.** İkisi de
+"yeşil ama yanlış şeyi ölçüyor" sınıfındandır — kök CLAUDE.md §E'nin sorduğu
+"eski bozuk kod da bu testi geçer miydi?" sorusuna ikisi de **evet** cevabı
+veriyordu.
+
+4. **Eşzamanlı tamamlama testi atomik claim'i hiç sınamıyordu (P1-1).**
+   `test_YESIL_iki_esZamanli_tamamlama_TEK_release_uretir` iki `complete`
+   görevini `asyncio.gather` ile başlatıyordu. Bu yarış KURMUYOR: ikinci görev
+   booking satırını ilk görev **commit ettikten sonra** okuyor, dolayısıyla
+   409'u `_claim_transition`'ın koşullu UPDATE'i değil bellekteki `_transition`
+   üretiyordu. Kanıtlandı: `complete()` içindeki claim çağrısı bellek içi
+   `_transition` + `flush()` ile değiştirildiğinde **eski test yeşil kalıyor**
+   (koşuldu, gözlendi). → Test, gerçek üretim interleaving'ini modelleyen
+   **bayat okuma** kurulumuna çevrildi: kaybeden taraf satırı okur ve `okundu`
+   event'ini set eder, kazanan tam transaction'ını commit eder, ancak ondan
+   sonra kaybeden elindeki bayat `ACCEPTED` ile yazmayı dener. Bu kurulumda
+   bellek içi FSM kaybedeni GEÇİRİR; onu yalnız koşullu UPDATE durdurabilir.
+   Ölçüm de genişletildi: tek final durum · **`released_at` damgası değişmedi** ·
+   tek hakediş · kaybedende **hiçbir yan etki** (bildirim sayısı dahil) ·
+   kaybedene 409.
+
+5. **Admin servis-katmanı nöbetçisi yanlış servisi çağırıyordu (P1-2).**
+   `test_YESIL_servis_katmani_admin_yolunu_da_baglar`, adı "admin yolunu da
+   bağlar" demesine rağmen `booking_service.cancel` çağırıyordu — o ÖĞRENCİ
+   yoludur, zaten doğru çalışır ve `admin_service.cancel_booking` hakkında
+   hiçbir şey söylemez. Yeşilliği bedavaydı. → Node kaldırıldı; yerine admin
+   servisini **doğrudan** çağıran iki test kondu (HELD emanetin iadesi + terminal
+   geçişin 409'u). **Router-only provası koşuldu**: düzeltme geçici olarak yalnız
+   `api/routers/admin.py` ucuna konup `admin_service` bozuk bırakıldığında HTTP
+   nöbetçilerinin 3'ü yeşile döndü ama **yeni servis testlerinin ikisi de kırmızı
+   kaldı** — yani matris artık router'a konan bir yamayla kandırılamaz. Eski
+   nöbetçi bu provada yeşil olurdu.
+
+Aynı turda düzeltilen üç küçük doğruluk kusuru (davranış iddiası değişmedi):
+
+- **Aşırı kısıtlayan bildirim testi.**
+  `test_reschedule_sonrasi_reject_OGRENCIYI_BILGILENDIRIR` `once + 2` dayatıyor,
+  yani "red bildirimi" ile "iade bildirimi"nin AYRI satırlar olmasını şart
+  koşuyordu. Tek birleşik "dersin reddedildi ve ödemen iade edildi" mesajı da
+  meşrudur; sayıyı dayatan test doğru bir uygulamayı kırmızıya düşürürdü. Test
+  artık üç parçalı invariant'a bağlı: doğru kullanıcı (öğrenci) · içerikte
+  para/iade anlamı · en az bir bildirim. (Yardımcı: `Ip1aFabrika.bildirimler`,
+  id'li — aynı metnin ikinci kez yazılması küme farkıyla görünmez kalmasın.)
+- **Yanlış hata mesajı.**
+  `test_saglayici_basarisizsa_para_durumu_YALAN_KESINLESMEZ` kırmızıyken
+  "HELD'e geri döndürüldü" diyordu; bugünkü gerçek sebep tarayıcının kayda
+  **hiç dokunmamasıdır**. Mesaj artık iki güvensiz hâli birden adlandırıyor.
+- **Var olmayan yardımcıya atıf.** `test_ip1a_orphan_escrow_pg.py` docstring'i
+  hiç yazılmamış bir `_sahipsiz_cozuldu_mu` yardımcısına yönlendiriyordu; tek
+  ayar noktası modül düzeyindeki `COZULMUS` sabitidir, docstring düzeltildi.
+
 ## 9d. Mutasyon provası sonuçları
 
 Sürücü disiplini `backend/scripts/mutation_drill.py` ile aynıdır: dosya baytları
-belleğe alınır (`git checkout --` KULLANILMAZ), her mutasyondan sonra HEAD +
-`git status --porcelain` başlangıçla karşılaştırılır. **10/10 yakalandı**,
-çalışma ağacı byte düzeyinde başlangıç durumuna döndü.
+diske yedeklenir (`git checkout --` KULLANILMAZ), her mutasyondan sonra dosya
+SHA-256'sı ve `git status --porcelain` başlangıçla karşılaştırılır. Çalışma ağacı
+her provada byte düzeyinde başlangıç durumuna döndü.
+
+**Sonuç dürüstçe: ilk turda 9/10 yakalandı, 1 mutasyon (A2) KAÇTI.** İkinci
+turda (bağımsız denetim) ilgili nöbetçi güçlendirildi ve A2 yakalanır hâle
+geldi → **10/10**. Ayrıntı A2 satırının altındadır; "10/10" ilk turda da
+geçerliymiş gibi okunmamalıdır.
 
 | # | Mutasyon | Kırdığı nöbetçi |
 |---|---|---|
 | A1 | `cancel()`'daki `payment_service.refund` çağrısı no-op | taraf iptali iadesi + eşzamanlı iptal |
-| A2 | `complete()`'in atomik claim'i sıradan atamaya çevrildi | iki eşzamanlı tamamlama tek release |
+| A2 | `complete()`'in atomik claim'i sıradan atamaya çevrildi | ⚠️ İLK TURDA YAKALANMADI — aşağıya bakınız |
 | A3 | `release()`'in `from_statuses=[HELD]` kısıtı gevşetildi | release iki kez → damga değişmez |
 | A4 | `begin_refund()`'daki `released_at` guard'ı silindi | `released_at` dolu HELD satırı claim edilemez |
 | A5 | `auto_complete`'ten `end_at <= cutoff` filtresi silindi | gelecekteki ders otomatik tamamlanmaz |
@@ -420,6 +494,29 @@ belleğe alınır (`git checkout --` KULLANILMAZ), her mutasyondan sonra HEAD +
 | A8 | `sync_amount_with_booking`'deki HELD 409'u kaldırıldı | ödenmiş dersin ücreti değiştirilemez |
 | A9 | `complete` ucundan `_assert_owner_tutor` düşürüldü | başkasının dersi tamamlanamaz |
 | A10 | `create_for_booking`'de komisyon kırılımı sıfırlandı | emanet üretim yolundan gelir |
+| A11 | Admin iptal düzeltmesi YALNIZ `api/routers/admin.py` ucuna kondu, `admin_service.cancel_booking` bozuk bırakıldı | servis-katmanı admin nöbetçileri (2 test) |
+
+### A2 — ilk turda neden kaçtı, nasıl kapatıldı
+
+İlk turda A2'nin "yakalandı" sayılması bir **ölçüm hatasıydı**. Mutasyon
+uygulanınca hedef nöbetçi
+(`test_YESIL_iki_esZamanli_tamamlama_TEK_release_uretir`) kırılmıyordu, çünkü o
+test `asyncio.gather` ile iki `complete` başlatıyor ve **yarış hiç
+doğmuyordu**: ikinci görev satırı ilk görev commit ettikten sonra okuyor,
+bellekteki `_transition` zaten 409 veriyor ve mutasyon görünmez kalıyordu. Kısaca
+"eski bozuk kod da testi geçiyordu" (kök CLAUDE.md §E).
+
+Bağımsız denetim turunda prova yeniden koşuldu ve şu ikisi **aynı mutasyon
+altında** ölçüldü:
+
+| Test hâli | A2 mutasyonu altında |
+|---|---|
+| Eski (`gather`, kapısız) | **PASSED** — yalancı yeşil |
+| Yeni (bayat okuma + `okundu`/kapı event'leri) | **FAILED** — "KAYIP GÜNCELLEME: bayat ACCEPTED okumasıyla gelen ikinci tamamlama başarıyla yazdı" |
+
+Sonra mutasyon geri alındı (`services/booking_service.py` SHA-256 başlangıçla
+birebir aynı) ve temiz üretim kodunda yeni test **geçti**. Kurulumun ayrıntısı
+§9c/4 ve testin kendi docstring'indedir.
 
 İP-1b önerisi: bu mutasyonlar `backend/scripts/mutation_drill.py` kataloğuna
 M9+ olarak eklenmelidir — katalog bugün tamamen envanter/stok odaklıdır ve para
@@ -440,6 +537,10 @@ işaretlidir.
    reddedilmeli** — `released_at` terminal tasarlanmıştır ve kısmi geri alma
    yolu yoktur. Alternatif (iptal + elle mutabakat kaydı) settlement ekranı
    gerektirir ve kapsam dışıdır.
+   **Bu kararı ölçen testler:** `test_admin_TAMAMLANMIS_dersi_iptal_EDEMEZ`
+   (HTTP) ve `test_servis_katmani_admin_TAMAMLANMIS_dersi_iptal_EDEMEZ`
+   (servis). Karar değişirse bu iki beklenti ve bu madde **birlikte** güncellenir;
+   testi tek başına gevşetmek kararı belgesiz bırakır.
 3. **`complete` için meşru zaman eşiği.** Öneri: `start_at`'ten önce yasak.
    `end_at` mi yoksa `start_at` mi eşik olmalı — eğitmenin ders ortasında
    tamamlaması meşru sayılacaksa `start_at` doğrudur. Kırmızı test `start_at`

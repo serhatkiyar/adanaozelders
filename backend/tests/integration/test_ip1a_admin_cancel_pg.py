@@ -26,16 +26,28 @@ satırlarından okunur ve **SUPER_ADMIN bypass'ı yoktur**. Servisi doğrudan ç
 bir test bu katmanı hiç görmez; oysa "yetkisiz admin reddedilmeli" iddiasının
 tek kanıtı odur. Ayrıca audit yazımı **router'da**, servis içinde değildir —
 servis testi audit'i asla ölçemez.
+
+## Neden AYRICA servis katmanı zorunlu
+
+HTTP tek başına yeterli değildir çünkü kural yalnız uca konarak da yeşile
+çevrilebilir — o zaman arka plan işleri ve ileride eklenecek her yeni çağıran
+boşluğu miras alır. Bu yüzden dosyanın sonunda `admin_service.cancel_booking`
+**doğrudan** çağrılır (§"kural SERVİSTE yaşamalı"). Bu bölümdeki iki test,
+bağımsız denetimin (P1-2) bulduğu bir kusurun karşılığıdır: burada duran eski
+nöbetçi `booking_service.cancel` çağırıyordu, yani ölçtüğü şey öğrenci yoluydu
+ve yeşilliği admin servisi hakkında hiçbir şey söylemiyordu.
 """
 from __future__ import annotations
 
 import datetime
 from decimal import Decimal
 
+from fastapi import HTTPException
+
 from core.database import AsyncSessionLocal
 from models.booking import Booking, BookingStatus
 from models.payment import PaymentStatus
-from services import booking_service
+from services import admin_service
 
 ADMIN_KOK = "/api/v1/admin/bookings"
 BOOKING_KOK = "/api/v1/bookings"
@@ -96,6 +108,14 @@ async def test_admin_TAMAMLANMIS_dersi_iptal_EDEMEZ(ip1a, provider, ip1a_http):
     parayı zaten kilitlemiş durumda. Booking'i CANCELLED'a çevirmek, "iptal
     edilmiş ders + eğitmene ödenmiş para" çelişkisi üretir ve hiçbir ekranda
     tutarlı görünmez. Kullanıcı yolu bu geçişi 409 ile reddediyor.
+
+    ⚠️ **NOT — bu bir ÜRÜN KARARIDIR, teknik zorunluluk değil.** Sözleşme §10/2:
+    "409 ile reddedilmeli" önerilen karardır; alternatifi (iptal + elle mutabakat
+    kaydı) bir settlement ekranı gerektirir ve bilinçli olarak kapsam dışıdır.
+    Politika değişirse **yalnız bu beklenti ve sözleşme §10/2 BİRLİKTE**
+    güncellenir — testi tek başına gevşetmek kararı belgesiz bırakır ve bir
+    sonraki denetim onu "sebepsiz gevşetilmiş guard" olarak bulur. Servis
+    katmanındaki eşi: `test_servis_katmani_admin_TAMAMLANMIS_dersi_iptal_EDEMEZ`.
     """
     ders = await _tamamlanmis_ders(ip1a, ip1a_http)
     _aid, admin_auth = await ip1a.admin(izinler=TAM_IZIN)
@@ -293,25 +313,103 @@ async def test_YESIL_kullanici_yolu_terminal_gecisi_REDDEDER(ip1a, provider, ip1
     assert len(provider.refund_calls) == iade_once
 
 
-async def test_YESIL_servis_katmani_admin_yolunu_da_baglar(ip1a, provider):
-    """Servis doğrudan çağrıldığında da aynı sözleşme geçerlidir.
+# ═══════════ KIRMIZI: kural SERVİSTE yaşamalı, yalnız router'da değil ════════
+#
+# Bu iki test bilinçli olarak `admin_service.cancel_booking`'i **doğrudan**
+# çağırır ve HTTP'ye hiç dokunmaz. Sebebi somut: bağımsız denetim (P1-2) burada
+# duran testin `booking_service.cancel` çağırdığını buldu — o ÖĞRENCİ yoludur,
+# zaten doğru çalışır ve admin servisini hiç ölçmez. Test yeşildi ama yanlış
+# şeyi ölçüyordu; kaldırılan kural yalnız `api/routers/admin.py` içindeki uca
+# konsaydı matris bunu fark edemezdi.
+#
+# Kapsam sınırı bilinçlidir: audit yazımı bugün **router'da**dır (dosya
+# başlığındaki gerekçeye bakınız) ve `admin_service.cancel_booking` aktör
+# almaz — dolayısıyla bu iki test audit ÖLÇMEZ; audit'in nöbetçisi
+# `test_YESIL_admin_iptali_AUDIT_izi_birakir`'dır. Serviste yaşaması gereken şey
+# paranın kendisidir: FSM guard'ı, iade ve para hareketinin bildirimi.
 
-    HTTP testi kablolamayı ölçer; bu test kuralın **router'da değil serviste**
-    yaşadığını sabitler. Kural yalnız uca konursa, arka plan işleri veya ileride
-    eklenecek başka bir çağıran onu sessizce atlar.
+
+async def test_servis_katmani_admin_iptali_EMANETI_IADE_eder(ip1a, provider):
+    """A: `admin_service.cancel_booking` doğrudan çağrıldığında da para çözülmeli.
+
+    Ölçülenler birlikte: booking CANCELLED · emanet HELD'de KALMADI · sağlayıcıya
+    **tam bir** iade emri, doğru tutarla · eğitmene hakediş yazılmadı · para
+    hareketi öğrenciye bildirildi.
     """
     ders = await ip1a.odenmis()
+    assert (await ip1a.durumlar(ders.booking_id)) == (
+        BookingStatus.ACCEPTED,
+        PaymentStatus.HELD,
+    ), "kurulum: gerçek HELD emanet üretilmedi"
+    client_once = await ip1a.bildirim_sayisi(user_id=ders.client_id, role_id=3)
+
     async with AsyncSessionLocal() as s:
         booking = await s.get(Booking, ders.booking_id)
-        await booking_service.cancel(s, booking, cancelled_by=await _client(s, ders))
+        await admin_service.cancel_booking(s, booking, reason="İP-1a: servis katmanı")
         await s.commit()
 
-    _bs, payment_status = await ip1a.durumlar(ders.booking_id)
+    booking_status, payment_status = await ip1a.durumlar(ders.booking_id)
+    assert booking_status is BookingStatus.CANCELLED
+    assert payment_status is not PaymentStatus.HELD, (
+        "ADMIN SERVİSİ PARAYI EMANETTE BIRAKTI: ders CANCELLED ama ödeme HELD. "
+        "Kural yalnız HTTP ucuna konursa arka plan işleri ve ileride eklenecek "
+        "her çağıran bu boşluğu miras alır."
+    )
     assert payment_status in IADE_YOLUNDA
-    assert len(provider.refund_calls) == 1
+    assert len(provider.refund_calls) == 1, (
+        f"sağlayıcıya {len(provider.refund_calls)} iade emri gitti (beklenen 1)"
+    )
+    assert provider.refund_calls[0][1] == ders.amount
+    assert await ip1a.tutor_hakedisi(ders.tutor_id) == Decimal("0.00")
+    assert await ip1a.bildirim_sayisi(user_id=ders.client_id, role_id=3) > client_once, (
+        "öğrenciye iade bildirimi gitmedi — para hareketi sessiz kalamaz"
+    )
 
 
-async def _client(s, ders):
-    from models.client import Client
+async def test_servis_katmani_admin_TAMAMLANMIS_dersi_iptal_EDEMEZ(ip1a, provider, ip1a_http):
+    """B: RELEASED para terminaldir; servis katmanı da 409 vermeli.
 
-    return await s.get(Client, ders.client_id)
+    Aynı iddianın HTTP karşılığı `test_admin_TAMAMLANMIS_dersi_iptal_EDEMEZ`'dir.
+    İkisi birlikte, guard'ın uca değil servise konduğunu sabitler.
+
+    NOT (ürün kararı): "admin tamamlanmış dersi iptal EDEMEZ" sözleşme §10/2
+    kararıdır, teknik zorunluluk değil. Politika değişirse (ör. iptal + elle
+    mutabakat kaydı) bu beklenti ve sözleşme **birlikte** güncellenir; tek
+    başına testi gevşetmek kararı belgesiz bırakır.
+
+    İstisna 409 ile bitmezse commit bilinçli olarak yapılır: üretimdeki gerçek
+    sonucu (CANCELLED ders + RELEASED para) sonraki assert'ler görünür kılsın.
+    """
+    ders = await _tamamlanmis_ders(ip1a, ip1a_http)
+    iade_once = len(provider.refund_calls)
+    damga_once = (await ip1a.payment(ders.booking_id))["released_at"]
+    assert damga_once is not None, "kurulum: released_at damgası oluşmadı"
+
+    async with AsyncSessionLocal() as s:
+        booking = await s.get(Booking, ders.booking_id)
+        try:
+            await admin_service.cancel_booking(
+                s, booking, reason="İP-1a: terminal geçiş (servis)"
+            )
+            await s.commit()
+            reddedildi = False
+        except HTTPException as exc:
+            await s.rollback()
+            if exc.status_code != 409:
+                raise
+            reddedildi = True
+
+    assert reddedildi, (
+        "admin servisi, parası eğitmene SERBEST BIRAKILMIŞ dersi iptal etti. "
+        "`escrow.begin_refund` released_at dolu satırı iade edemez; sonuç "
+        "'iptal edilmiş ders + eğitmene ödenmiş para' çelişkisidir."
+    )
+    booking_status, payment_status = await ip1a.durumlar(ders.booking_id)
+    assert booking_status is BookingStatus.COMPLETED, "terminal booking durumu korunmadı"
+    assert payment_status is PaymentStatus.RELEASED
+    assert (await ip1a.payment(ders.booking_id))["released_at"] == damga_once, (
+        "released_at damgası değişti — hakediş anı kaydı bozuldu"
+    )
+    assert len(provider.refund_calls) == iade_once, (
+        "serbest bırakılmış emanete iade emri gönderildi"
+    )
