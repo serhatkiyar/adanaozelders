@@ -560,11 +560,39 @@ def _router_yollari() -> set[str]:
 
 
 def test_packing_router_KAYITLI():
-    """Router include edilmezse uçlar 404 döner. GERÇEK route tablosu okunur."""
+    """Router include edilmezse uçlar 404 döner. GERÇEK route tablosu okunur.
+
+    ⚠️ Bu düğüm commit 1'de **yanlış sebeple kırmızıydı**: yol öneki
+    `"/packing/"` sanılmıştı, oysa `api_router` uygulamaya
+    `settings.API_V1_PREFIX` ile bağlanır (`main.py:239`) ve OpenAPI tablosunda
+    yollar `/api/v1/packing/...` olarak görünür. Yani router yazılsa bile test
+    geçemezdi — kırmızılığı hiçbir şeyin kanıtı değildi. Önek artık
+    **ayardan** okunur; sabit yazılsaydı prefix değiştiğinde test sessizce
+    yanlış yeri arardı.
+    """
+    from core.config import settings
+
+    onek = f"{settings.API_V1_PREFIX}/packing/"
     yollar = _router_yollari()
-    assert any(y.startswith("/packing/") for y in yollar), (
-        "packing router include edilmemiş (route tablosunda /packing/ yok)"
+    assert any(y.startswith(onek) for y in yollar), (
+        f"packing router include edilmemiş (route tablosunda {onek} yok)"
     )
+
+
+def test_zimmet_uclari_SAHA_ROUTERINDA():
+    """Zimmet ve manifest **saha** router'ındadır (ADMIN + KURYE).
+
+    Paketleme uçları ADMIN-only'dir; zimmeti kurye yapar. İkisi aynı router'a
+    konsaydı ya kurye depo ekranlarını görürdü ya da zimmet yalnız admin'e
+    kalırdı — ikisi de sözleşme §6'yı bozar.
+    Davranış eşi: `test_f30_packing_http_pg.py::test_KURYE_zimmet_ucunu_KULLANABILIR`
+    ve `::test_KURYE_paketleme_uclarina_ERISEMEZ`.
+    """
+    from core.config import settings
+
+    yollar = _router_yollari()
+    for yol in ("/delivery/handover/scan", "/delivery/handover/manifest/{run_id}"):
+        assert f"{settings.API_V1_PREFIX}{yol}" in yollar, f"eksik uç: {yol}"
 
 
 def test_prepare_uclari_KALDIRILDI():

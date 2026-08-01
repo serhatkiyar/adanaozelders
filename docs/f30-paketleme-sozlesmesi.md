@@ -563,8 +563,10 @@ her yazan yol `Order`'ı `FOR UPDATE` ile alıp **taze** durum okur.
 | `POST /packing/packages/{id}/unpack` | `packing.manage` | `unpacked_at` damgası |
 | `POST /packing/packages/{id}/return-in` | `packing.manage` | `RETURN_PENDING → RETURNED` |
 | `POST /packing/packages/{id}/repack` | `packing.manage` | `RETURNED → PACKED` |
-| `POST /delivery/handover/scan` | field: `delivery.manage` **veya** COURIER | zimmet |
-| `GET /delivery/handover/manifest/{run_id}` | field: `delivery.view` **veya** COURIER | N/M + eksik liste |
+| `POST /packing/packages/{id}/void` | `packing.pack` (OPEN) / `packing.manage` (diğer) | gerekçe zorunlu (boş/whitespace → 422) |
+| `POST /delivery/handover/scan` | field: `delivery.manage` **veya** COURIER | zimmet; yabancı paket **404**, eksik/geri beklenen paket 409 |
+| `GET /delivery/handover/manifest/{run_id}` | field: `delivery.view` **veya** COURIER | N/M + eksik liste; yabancı tur **404** |
+| `POST /delivery/scan` (mevcut uç) | field: `delivery.manage` **veya** COURIER | **iki QR uzayı**: `PKG1:` yükü paket üzerinden, aksi hâlde durak token'ı (geriye uyum). Paket zimmetli değilse 409; yabancı paket 404 (durum SIZMAZ) |
 
 **Tarama ucunun yanıt sözleşmesi:** iş sonucu (`OK`, `OK_MANUAL`, `WRONG_SKU`,
 `OVER_QTY`, `ALREADY_COMPLETE`, `UNSCANNABLE`) **200 + `result`** ile döner —
@@ -574,7 +576,24 @@ idempotency çakışması, STALE) **4xx**'tir.
 
 Kurye paketleme uçlarının **hiçbirine** erişemez; admin `handover` yapabilir
 (operatör kurye adına zimmetleyebilmeli) ama `override-deliver` gibi
-`field_router` dışı bırakılmaz — zimmet zaten kanıt üretir.
+`field_router` dışı bırakılmaz — zimmet zaten kanıt üretir. Admin zimmet
+yaptığında `handed_to_courier_id` **turun kuryesinden** doldurulur; boş
+bırakmak geri dönüş kuyruğunun "hangi kuryede" sorusunu cevapsız bırakırdı.
+
+**`void`'in izni duruma bağlıdır ve karar router'dadır** (F29 `cancel`
+deseni): `OPEN` paket `packing.pack` ile çözülebilir — henüz kimsenin
+güvendiği bir şey değildir; `PACKED`/`RETURNED` paketi çözmek **başka birinin
+kararını iptal etmektir** ve `packing.manage` ister. Kararı servise koymak, iş
+mantığı katmanını izin kataloğuna bağımlı kılardı.
+
+**Geçiş dönemi guard'ı (commit 4).** Paketleme istasyonu HTTP'ye açıldığı anda
+elle `POST /delivery/orders/{id}/prepare` ucu ile **yarışır**: yarım kalmış
+(`OPEN`), araçta bekleyen (`RETURN_PENDING`/`HANDED_OVER`) ya da yeniden
+onaylanmamış (`RETURNED`) bir paket varken o buton `prepared_at` damgalayıp
+siparişi `eligible_orders`'a sokabilirdi — yani doğrulanmamış paket "hazır"
+ilan edilirdi. `mark_prepared` bu hâlde artık **409** verir. Uçların tamamen
+kaldırılması commit 5'tedir (§3.5); bu guard yalnız aradaki pencereyi kapatır
+ve paketi olmayan (F30 öncesi) siparişleri etkilemez.
 
 Audit (`audit_service.record`, `actor` + `reason` + `before/after`):
 `package.open` · `package.complete` · `package.scan_manual` · `package.undo_scan` ·
@@ -607,7 +626,7 @@ izi `package_scan_events`'tedir.
 | 2b | `test(f30): commit 2 denetim borclarini kapat` | ruff B905 · canlı-paket yüklemi drift nöbetçisi (saf + `pg_get_expr`) · anahtarsız olay testinin gerekçesi · ürün sert-silme politikası | bitti |
 | **3** | `feat(f30): paketleme servisi ve yasam dongusu` | `services/packing_rules.py` (saf FSM + işlem tablosu) · `services/packing_events.py` (ince kanca modülü) · `services/packing_service.py` (kilit sırası, idempotency, STALE) · `order_fsm` terminal kancası · `handover_scan` + dört geri dönüş yolunun kablolaması · `prep_queue`/`eligible_orders`/`add_stops` paket farkındalığı | **bu commit** |
 | 3b | `test(f30): commit 3 audit borclarini kapat` | P2-A `return_in` kaynak durum guard'ı · P2-B void gerekçe (422, ham DB hatası sızmaz) · P2-C `add_stops` paket guard'ının İZOLE kanıtı · P2-D `undo_scan` idempotency anahtarı · P2-E eksik yarış matrisi (scan↔finalize, return_in↔repack, return_in↔void, zimmet↔void) · P2-F `repack` STALE | bitti |
-| 4 | `feat(f30): paketleme HTTP uclari ve audit` | `schemas/packing.py` + `api/routers/packing.py` + `api/router.py` + zimmet/kapı QR uçları + audit kablolaması | bekliyor |
+| **4** | `feat(f30): paketleme HTTP ve QR entegrasyonu` | `schemas/packing.py` + `api/routers/packing.py` + `api/router.py` kaydı + `/delivery/handover/scan` + `/delivery/handover/manifest/{run}` + `/delivery/scan`'in paket QR uzayı + `mark_prepared` geçiş guard'ı + zimmet audit'i | **bu commit** |
 | 5 | `feat(f30): kurye zimmeti ve SHIPPED gecisinin tasinmasi` | `handover_scan`, `start_run` ön koşulu, `add_stops`/`fail_stop`/`cancel_run`/`watchdog`/`postpone` paket kablolaması, `prepare`/`unprepare` kaldırma, **etkilenen mevcut testlerin güncellenmesi** | bekliyor |
 | 6 | `feat(f30): admin paketleme ekranlari` | `/yonetim/paketleme` (kuyruk · istasyon · paketler) + API/hook/types + saf `lib/packing.ts` | bekliyor |
 | 7 | `feat(f30): paket etiketi ve kurye zimmet ekrani` | `PackageLabel` (baskı sözleşmesi) + `LabelSheet` paket QR'ına geçiş + saha zimmet adımı | bekliyor |
@@ -655,6 +674,32 @@ izi `package_scan_events`'tedir.
    CHECK'i onları kabul etmeye devam ediyor ve `packing_rules.ScanOutcome`
    docstring'inde bu boşluk açıkça yazılı. Commit 4'te HTTP katmanının daha
    bağışlayıcı yolları için kullanılacak ya da sözlükten çıkarılacaklar.
+   **Commit 4 durumu: hâlâ üretilmiyorlar.** HTTP katmanı servisin sonucunu
+   olduğu gibi geçiriyor ve uydurulmuş bir sonuç kodu yanlış bir operasyon
+   sinyali olurdu; karar commit 8'e (kapanış) taşındı.
+
+**Commit 4'te bulunan üç kusur** (aynı kural — gizlenmez):
+
+1. `test_packing_router_KAYITLI` **yanlış sebeple kırmızıydı**: yol öneki
+   `"/packing/"` sanılmıştı, oysa `api_router` uygulamaya
+   `settings.API_V1_PREFIX` ile bağlanır (`main.py:239`) ve OpenAPI tablosunda
+   yollar `/api/v1/packing/...` görünür. Router yazılsa bile test geçemezdi —
+   yani kırmızılığı hiçbir şeyin kanıtı değildi. Önek artık **ayardan** okunur
+   (sabit yazılsa prefix değişince test sessizce yanlış yeri arardı) ve
+   ayırt ediciliği mutasyonla (router kaydını kaldır) kanıtlandı.
+2. Mutasyon provasında **iki mutasyon yanlış hedefe düştü**: `_paket_sahipligi`
+   çağrısı ve QR token koşulu dosyada İKİ yerde geçiyor (zimmet + kapı
+   taraması) ve sürücü ilk eşleşmeyi değiştiriyordu — yani "yakalanmadı"
+   sonucu aslında yanlış mutasyonun sonucuydu. Ayrı çapalarla dört ayrı
+   mutasyona bölündü; dördü de yakalandı.
+3. Kapı taramasında sahiplik süzgecinin kaldırılması
+   `test_BASKA_KURYENIN_paketi_kapida_404`'ü **kırmıyordu** — o senaryoda durak
+   sorgusu da kuryeye göre süzüldüğü için ikisi de 404 veriyordu, yani o test
+   sahiplik süzgecinin nöbetçisi DEĞİLDİ. Ayırt edici senaryo paketin
+   **zimmetlenmemiş** olduğu hâldir: süzgeç olmadan yabancı bir etiketi okutan
+   kişi 409 gövdesinden paketin durumunu öğrenirdi (kalıcı QR + çalınan etiket
+   riski, §7 S4). Yeni düğüm eklendi:
+   `test_f30_packing_api_pg.py::test_KAPI_TARAMASI_YABANCI_PAKETIN_DURUMUNU_SIZDIRMAZ`.
 
 ---
 

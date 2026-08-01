@@ -299,6 +299,85 @@ async def test_P2C_geri_donen_paket_TURA_YENIDEN_EKLENEBILIR(fab):
     assert [d.order_id for d in tur.stops] == [oid]
 
 
+# ══════ Commit 4 asgari güvenlik guard'ı · elle "Hazır" ↔ paketleme ═════════
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("durum", ["OPEN", "RETURN_PENDING", "RETURNED"])
+async def test_C4_mark_prepared_ACIK_PAKETI_EZEMEZ(fab, durum):
+    """Elle "Hazır" butonu paketleme istasyonunu EZEMEZ.
+
+    Commit 4 paketleme istasyonunu HTTP'ye açtı; eski `mark_prepared` ucu ise
+    commit 5'e kadar duruyor (sözleşme §3.5/§8). O pencerede iki kapı birden
+    açıktır: yarım kalmış (`OPEN`), araçta bekleyen (`RETURN_PENDING`) ya da
+    henüz yeniden onaylanmamış (`RETURNED`) bir paket varken elle "hazır"
+    demek, **doğrulanmamış bir paketi `eligible_orders`'a sokmak** demektir.
+
+    Bu, denetim raporundaki "geçiş dönemi zimmetsiz gönderim boşluğu"nun
+    commit 4 tarafından canlı hâle getirilen ayağıdır ve asgari guard budur.
+    Boşluğun tamamı (uçların kaldırılması) commit 5'e aittir.
+    """
+    servis = _servis()
+    aid = await fab.admin()
+    kurye = await fab.kurye()
+
+    if durum == "OPEN":
+        oid, paket, _ean = await _acik_paket(fab, servis, aid)
+    else:
+        oid, paket, stop_id, _run = await _sahada_paket(fab, servis, aid, kurye)
+        async with AsyncSessionLocal() as s:
+            await delivery_service.fail_stop(
+                s, stop_id, reason="Kimse yoktu", reason_code="EVDE_YOK"
+            )
+        if durum == "RETURNED":
+            async with AsyncSessionLocal() as s:
+                await servis.return_in(s, paket.id, admin_id=aid)
+
+    # Ön koşullar: sipariş elle hazırlanmaya UYGUN (ödenmiş, fiziksel,
+    # bölge-içi) — 409'un başka bir kontrolden gelmediğinin kanıtı.
+    durum_o, odeme = await fab.siparis_durumu(oid)
+    assert (durum_o, odeme) == ("PAID", "PAID")
+    assert await fab.prepared_at(oid) is None
+
+    with pytest.raises(HTTPException) as hata:
+        async with AsyncSessionLocal() as s:
+            await delivery_service.mark_prepared(s, oid, prepared=True)
+    assert hata.value.status_code == 409
+    detay = str(hata.value.detail)
+    assert paket.code in detay and durum in detay, (
+        f"409 paket guard'ından gelmiyor: {detay}"
+    )
+    assert await fab.prepared_at(oid) is None, "hazır damgası yine de yazılmış"
+
+
+@pytest.mark.asyncio
+async def test_C4_mark_prepared_PAKETSIZ_SIPARISTE_calisir(fab):
+    """Ters prova: guard yalnız PAKETİ OLAN siparişi engellemeli.
+
+    F30 öncesinden gelen (paketi hiç olmayan) sipariş eski akışta hazırlanmaya
+    devam eder — koşulsuz dayatma commit 5'te, elle uçların kaldırılmasıyla
+    AYNI ANDA gelir. Aksi hâlde bu guard mevcut operasyonu kilitlerdi.
+    """
+    pid, _sku, _ean = await fab.barkodlu_urun(stock=10)
+    oid = await fab.fiziksel_siparis(kalemler=[(pid, 1)])
+    async with AsyncSessionLocal() as s:
+        await delivery_service.mark_prepared(s, oid, prepared=True)
+    assert await fab.prepared_at(oid) is not None
+
+
+@pytest.mark.asyncio
+async def test_C4_mark_prepared_TAMAMLANMIS_PAKETTE_calisir(fab):
+    """`PACKED` paket zaten doğrulanmıştır; elle damga onu bozmaz (no-op)."""
+    servis = _servis()
+    aid = await fab.admin()
+    oid, _paket, _ean = await _packed_paket(fab, servis, aid)
+    once = await fab.prepared_at(oid)
+    assert once is not None, "complete prepared_at damgalamadı"
+    async with AsyncSessionLocal() as s:
+        await delivery_service.mark_prepared(s, oid, prepared=True)
+    assert await fab.prepared_at(oid) == once, "elle damga paketleme damgasını ezdi"
+
+
 # ══════════════════ P2-D · undo_scan idempotency ════════════════════════════
 
 

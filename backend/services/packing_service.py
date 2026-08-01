@@ -448,6 +448,52 @@ async def get_package_by_qr(db: AsyncSession, payload: str) -> PackageView | Non
     return _view(paket)
 
 
+#: Liste ucunun tavanı. Router `Query(le=...)` ile de sınırlar; servis kendi
+#: tavanını AYRICA uygular — tek katmanlı koruma koruma değildir ve servisi
+#: doğrudan çağıran bir arka plan işi de tabloyu tek istekte çekememelidir.
+LIST_MAX_LIMIT = 200
+
+
+async def list_packages(
+    db: AsyncSession,
+    *,
+    status_filter: str | None = None,
+    order_id: int | None = None,
+    limit: int = 50,
+    offset: int = 0,
+) -> tuple[list[PackageView], int]:
+    """Sayfalı paket listesi (yeni → eski), toplamla birlikte.
+
+    Sıralama `(created_at DESC, id DESC)`'dir: yalnız `created_at` ile
+    sıralamak aynı saniyede açılan iki paketi **belirsiz** sırada döndürür ve
+    sayfalar arasında kayıt tekrarı/kayması üretir (F29'da bir kez yaşandı).
+    """
+    kosullar = []
+    if status_filter:
+        kosullar.append(OrderPackage.status == status_filter)
+    if order_id is not None:
+        kosullar.append(OrderPackage.order_id == order_id)
+
+    toplam = int(
+        (
+            await db.execute(
+                select(func.count()).select_from(OrderPackage).where(*kosullar)
+            )
+        ).scalar_one()
+    )
+    satirlar = (
+        await db.execute(
+            select(OrderPackage)
+            .options(selectinload(OrderPackage.items))
+            .where(*kosullar)
+            .order_by(OrderPackage.created_at.desc(), OrderPackage.id.desc())
+            .limit(min(max(int(limit), 1), LIST_MAX_LIMIT))
+            .offset(max(int(offset), 0))
+        )
+    ).scalars().all()
+    return [_view(p) for p in satirlar], toplam
+
+
 async def return_queue(db: AsyncSession) -> list[ReturnQueueRow]:
     """"Geri dönüş bekleniyor" kuyruğu — en eskisi başta.
 
