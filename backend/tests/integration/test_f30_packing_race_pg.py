@@ -196,8 +196,20 @@ async def test_ES_ZAMANLI_ayni_idempotency_key_TEK_KEZ_sayar(fab):
 
 @pytest.mark.asyncio
 async def test_ES_ZAMANLI_complete_TEK_DAMGA_uretir(fab):
-    """İki operatör aynı anda "Tamamla"ya basarsa tek `packed_at` yazılır ve
-    `prepared_at` bir kez damgalanır."""
+    """İki operatör aynı anda "Tamamla"ya basarsa TEK yan etki üretilir.
+
+    ⚠️ Commit 5 denetiminin bulgusu: eski iddia `len(damgalar) == 1` idi ve bu
+    bir **totolojiydi** — `id` birincil anahtar olduğu için sorgu tanım gereği
+    tek satır döner. Ölçülen tek şey `packed_at IS NOT NULL`'dı; `prepared_at`
+    hiç okunmuyordu (yazıcısı silinse test yeşil kalırdı), olay sayısı hiç
+    sayılmıyordu (çift `COMPLETE` görünmezdi) ve idempotent erken dönüş
+    kaldırılıp 200 yerine 409 dönse yine geçerdi.
+
+    Artık üçü birden ölçülür: **iki çağrı da başarılı** (idempotent dönüş
+    korunmuş), **tek `COMPLETE` olayı**, **tek `packed_at`** ve `prepared_at`
+    damgası. Ayrıca `packed_at` iki yanıtta da AYNI olmalı — ikinci çağrının
+    damgayı tazelemediğinin kanıtı.
+    """
     servis = _servis()
     for _tur in range(TURLAR):
         aid = await fab.admin()
@@ -208,21 +220,27 @@ async def test_ES_ZAMANLI_complete_TEK_DAMGA_uretir(fab):
         async with AsyncSessionLocal() as s:
             await servis.scan(s, paket.id, code=ean, admin_id=aid)
 
-        sonuclar = await asyncio.gather(
+        ham = await asyncio.gather(
             _gorev(lambda s: servis.complete(s, paket.id, admin_id=aid)),
             _gorev(lambda s: servis.complete(s, paket.id, admin_id=aid)),
             return_exceptions=True,
         )
-        _kilit_hatasi_yok(sonuclar)
+        _kilit_hatasi_yok(ham)
+
+        # Çift tıklama 409 DEĞİL 200 döner (sözleşme: durum-idempotansı).
+        assert all(_basarili(r) for r in ham), (
+            f"tur {_tur}: idempotent dönüş kaybolmuş: {ham!r}"
+        )
+        assert ham[0].status == ham[1].status == "PACKED"
+        assert ham[0].packed_at == ham[1].packed_at, "ikinci çağrı damgayı tazeledi"
 
         async with AsyncSessionLocal() as s:
-            damgalar = (
-                await s.execute(
-                    text("SELECT packed_at FROM order_packages WHERE id = :p"),
-                    {"p": paket.id},
-                )
-            ).scalars().all()
-        assert len(damgalar) == 1 and damgalar[0] is not None
+            taze = await servis.get_package(s, paket.id)
+        assert taze.packed_at is not None
+        assert taze.packed_by_admin_id == aid
+        assert await _olay_sayisi(paket.id, "COMPLETE") == 1, "çift COMPLETE olayı"
+        hazir = await fab.prepared_at(oid)
+        assert hazir is not None, "complete `prepared_at` damgalamadı"
 
 
 # ══════════════════ Zimmet yarışı ═══════════════════════════════════════════
@@ -287,12 +305,17 @@ async def test_ES_ZAMANLI_zimmet_TEK_SHIPPED_uretir(fab):
 
 @pytest.mark.asyncio
 async def test_PAKETLEME_ile_IPTAL_yarisi_TUTARSIZ_DURUM_BIRAKMAZ(fab):
-    """Paket tamamlanırken sipariş iptal edilirse: ya paket PACKED ve sipariş
-    PAID kalır, ya sipariş CANCELLED ve paket VOID olur. **Aradaki hâl yasak**:
-    iptal edilmiş sipariş `prepared_at` damgalı kalamaz (dağıtıma girerdi).
+    """Paket tamamlanırken sipariş iptal edilirse aradaki hâl YASAKTIR.
 
-    Kanonik kilit sırası (`Order → OrderPackage`) her iki yönde de aynı olduğu
-    için deadlock beklenmez; `lock_timeout` bunu ölçer.
+    ⚠️ Commit 5 denetiminin bulgusu: eski sürüm `gather` sonuçlarını hiç
+    okumuyordu, yani **iptal dalı hiç çalışmasa bile** test `else` dalından
+    yeşil geçiyordu; `else` dalında `prepared_at` de denetlenmiyordu, yani
+    `complete`'in damga yazıcısı silinse görünmüyordu.
+
+    Artık hangi tarafın kazandığı okunuyor, `prepared_at` her iki dalda da
+    iddia ediliyor ve **iki dalın da en az bir kez fiilen çalıştığı** tur
+    sonunda sayaçla kanıtlanıyor — bir dalın hiç çalışmaması (ör. iptal yolu
+    sessizce 409'a düşmesi) artık testi kırar.
     """
     servis = _servis()
     from models.store import Order
@@ -305,7 +328,8 @@ async def test_PAKETLEME_ile_IPTAL_yarisi_TUTARSIZ_DURUM_BIRAKMAZ(fab):
         )
         await s.commit()
 
-    for _tur in range(TURLAR):
+    dallar = {"iptal": 0, "complete": 0}
+    for _tur in range(TURLAR * 2):
         aid = await fab.admin()
         pid, _sku, ean = await fab.barkodlu_urun(stock=10)
         oid = await fab.fiziksel_siparis(kalemler=[(pid, 1)])
@@ -314,13 +338,16 @@ async def test_PAKETLEME_ile_IPTAL_yarisi_TUTARSIZ_DURUM_BIRAKMAZ(fab):
         async with AsyncSessionLocal() as s:
             await servis.scan(s, paket.id, code=ean, admin_id=aid)
 
+        adlar = ("complete", "iptal")
         gorevler = [
             _gorev(lambda s: servis.complete(s, paket.id, admin_id=aid)),
             _gorev(_iptal),
         ]
         if _tur % 2:                       # ters başlatma sırası
-            gorevler.reverse()
-        _kilit_hatasi_yok(await asyncio.gather(*gorevler, return_exceptions=True))
+            adlar, gorevler = adlar[::-1], gorevler[::-1]
+        ham = await asyncio.gather(*gorevler, return_exceptions=True)
+        _kilit_hatasi_yok(ham)
+        r = _sonuclar(ham, adlar)
 
         siparis_durumu, _odeme = await fab.siparis_durumu(oid)
         async with AsyncSessionLocal() as s:
@@ -328,21 +355,139 @@ async def test_PAKETLEME_ile_IPTAL_yarisi_TUTARSIZ_DURUM_BIRAKMAZ(fab):
         hazir = await fab.prepared_at(oid)
 
         if siparis_durumu == "CANCELLED":
+            dallar["iptal"] += 1
+            assert _basarili(r["iptal"]), f"iptal düştü: {r['iptal']!r}"
             assert paket_taze.status == "VOID", "iptal edilen siparişin paketi canlı"
+            assert paket_taze.void_reason, "gerekçesiz VOID"
             assert hazir is None, "iptal edilen sipariş hazır damgalı kaldı"
         else:
+            dallar["complete"] += 1
             assert siparis_durumu == "PAID"
+            assert _basarili(r["complete"]), f"complete düştü: {r['complete']!r}"
             assert paket_taze.status == "PACKED"
+            # Denetim bulgusu: bu iddia eskiden YOKTU — `complete`'in damga
+            # yazıcısı silinse bu dal sessizce geçerdi.
+            assert hazir is not None, "complete kazandı ama hazır damgası yok"
+            assert _reddedildi(r["iptal"]) or _basarili(r["iptal"])
+
+    # En az bir dal çalışmış olmalı (yoksa `gather` hiç iş yapmamış demektir).
+    #
+    # ⚠️ "İKİ dal da çalışmalı" iddiası bilinçli olarak BURADA YOK: `_iptal`
+    # işe doğrudan `Order` `FOR UPDATE` ile başlarken `complete` önce kilitsiz
+    # bir `_peek` yapar, dolayısıyla iptal kilidi pratikte HER ZAMAN önce
+    # kapar (ölçüldü: 6/6). Zamanlamayla bir dalı zorlamak kırılgan bir test
+    # olurdu. Commit 5 denetiminin "bir dal hiç çalışmıyor" bulgusunun cevabı
+    # aşağıdaki İKİ DETERMİNİSTİK düğümdür — orada sıra kesindir ve her iki
+    # yönün son durumu tek tek iddia edilir.
+    assert sum(dallar.values()) == TURLAR * 2, dallar
+    assert dallar["iptal"] > 0, f"hiçbir turda iptal kazanmadı: {dallar}"
+
+
+@pytest.mark.asyncio
+async def test_IPTAL_ONCE_calisirsa_complete_REDDEDILIR(fab):
+    """Deterministik yön 1: sipariş iptal edildikten SONRA `complete` 409.
+
+    Sıra kesindir (iptal tamamen bitip commit edilir), yani bu düğüm
+    zamanlamaya bağlı değildir ve iptal yolunun tam sonucunu sabitler:
+    paket `VOID` + gerekçeli, `prepared_at` NULL, `COMPLETE` olayı YOK.
+    """
+    servis = _servis()
+    from models.store import Order
+    from services import order_fsm
+
+    aid = await fab.admin()
+    pid, _sku, ean = await fab.barkodlu_urun(stock=10)
+    oid = await fab.fiziksel_siparis(kalemler=[(pid, 1)])
+    async with AsyncSessionLocal() as s:
+        paket = await servis.open_package(s, oid, admin_id=aid)
+    async with AsyncSessionLocal() as s:
+        await servis.scan(s, paket.id, code=ean, admin_id=aid)
+
+    async with AsyncSessionLocal() as s:
+        siparis = await s.get(Order, oid, with_for_update=True)
+        await order_fsm.transition_order(
+            s, siparis, "CANCELLED", changed_by="admin", reason="deterministik yön 1"
+        )
+        await s.commit()
+
+    with pytest.raises(HTTPException) as hata:
+        async with AsyncSessionLocal() as s:
+            await servis.complete(s, paket.id, admin_id=aid)
+    assert hata.value.status_code == 409
+
+    async with AsyncSessionLocal() as s:
+        taze = await servis.get_package(s, paket.id)
+    assert taze.status == "VOID"
+    assert taze.void_reason
+    assert taze.packed_at is None
+    assert await fab.prepared_at(oid) is None
+    assert await _olay_sayisi(paket.id, "COMPLETE") == 0
+    assert await _olay_sayisi(paket.id, "VOID") == 1
+
+
+@pytest.mark.asyncio
+async def test_COMPLETE_ONCE_calisirsa_iptal_PAKETI_VOID_EDER(fab):
+    """Deterministik yön 2: `complete` bittikten SONRA iptal gelir.
+
+    Bu yön eşzamanlı testte pratikte HİÇ gözlenmiyordu (iptal kilidi her zaman
+    önce kapıyor). Burada sıra kesin: paket `PACKED` olur ve `prepared_at`
+    damgalanır; ardından iptal paketi `VOID` edip damgayı **düşürür** — aksi
+    hâlde iptal edilmiş sipariş `eligible_orders`'ta kalırdı.
+    """
+    servis = _servis()
+    from models.store import Order
+    from services import order_fsm
+
+    aid = await fab.admin()
+    pid, _sku, ean = await fab.barkodlu_urun(stock=10)
+    oid = await fab.fiziksel_siparis(kalemler=[(pid, 1)])
+    async with AsyncSessionLocal() as s:
+        paket = await servis.open_package(s, oid, admin_id=aid)
+    async with AsyncSessionLocal() as s:
+        await servis.scan(s, paket.id, code=ean, admin_id=aid)
+    async with AsyncSessionLocal() as s:
+        sonuc = await servis.complete(s, paket.id, admin_id=aid)
+    assert sonuc.status == "PACKED"
+    assert await fab.prepared_at(oid) is not None
+
+    async with AsyncSessionLocal() as s:
+        siparis = await s.get(Order, oid, with_for_update=True)
+        await order_fsm.transition_order(
+            s, siparis, "CANCELLED", changed_by="admin", reason="deterministik yön 2"
+        )
+        await s.commit()
+
+    async with AsyncSessionLocal() as s:
+        taze = await servis.get_package(s, paket.id)
+    assert taze.status == "VOID"
+    assert taze.packed_at is not None, "geçmiş damga silinmiş"
+    assert await fab.prepared_at(oid) is None, "iptal hazır damgasını düşürmedi"
+    assert await _olay_sayisi(paket.id, "COMPLETE") == 1
+    assert await _olay_sayisi(paket.id, "VOID") == 1
 
 
 @pytest.mark.asyncio
 async def test_kilit_sirasi_DEADLOCK_URETMEZ(fab):
     """Aynı sipariş üstünde paketleme ve dağıtım akışları çarpışır.
 
-    Paketleme `Order → OrderPackage`, dağıtım `Order → DeliveryStop` alır.
-    Kanonik sıra (`… → Order → OrderPackage → DeliveryStop`) korunduğu sürece
-    döngü doğmaz. `mark_prepared`'ın kilitsiz deseni (G7) kopyalanırsa bu test
-    55P03 ile kırılır.
+    ⚠️ Commit 5 denetiminin bulgusu: eski kurulum **iki kilidi birden alan bir
+    senaryo üretmiyordu**. Paket `OPEN` olduğu için `add_stops` daha ilk
+    guard'da ("henüz hazırlanmadı") düşüyor ve paket kilidine hiç ulaşmıyordu;
+    `complete` içindeki kilitleri ters çevirmek bile deadlock üretmiyordu.
+    Yani düğüm, adının söylediği şeyi ölçmüyordu.
+
+    Yeni kurulum paketi **PACKED** yapar. Böylece iki yol da GERÇEKTEN iki
+    kilidi birden alır:
+
+        complete   : Order → OrderPackage   (idempotent dönüş, ama kilitler alınır)
+        add_stops  : Order → OrderPackage → DeliveryStop
+
+    Kanonik sıra korunduğu sürece döngü doğmaz. Biri ters çevrilirse
+    (`OrderPackage → Order`) klasik AB-BA kilitlenmesi oluşur ve
+    `lock_timeout`/deadlock nöbetçisi testi kırar.
+
+    Deadlock yokluğu tek başına YETMEZ (denetim bulgusu): son durum da dar
+    biçimde doğrulanır.
     """
     servis = _servis()
     from services import delivery_service
@@ -357,6 +502,8 @@ async def test_kilit_sirasi_DEADLOCK_URETMEZ(fab):
             paket = await servis.open_package(s, oid, admin_id=aid)
         async with AsyncSessionLocal() as s:
             await servis.scan(s, paket.id, code=ean, admin_id=aid)
+        async with AsyncSessionLocal() as s:
+            await servis.complete(s, paket.id, admin_id=aid)
 
         adlar = ("complete", "add_stops")
         gorevler = [
@@ -366,33 +513,30 @@ async def test_kilit_sirasi_DEADLOCK_URETMEZ(fab):
         if _tur % 2:
             adlar, gorevler = adlar[::-1], gorevler[::-1]
         ham = await asyncio.gather(*gorevler, return_exceptions=True)
-        _kilit_hatasi_yok(ham)
+        _kilit_hatasi_yok(ham)             # 40P01 / 55P03 → başarısızlık
         r = _sonuclar(ham, adlar)
 
-        # Deadlock yokluğu YETMEZ: geçerli son durum da doğrulanmalı, yoksa
-        # iki akış da sessizce hiçbir şey yapmamış olabilir (commit 4 denetimi).
-        assert _basarili(r["complete"]), f"tur {_tur}: complete düştü: {r['complete']!r}"
+        # İkisi de başarılı olmalı: `complete` idempotent döner, `add_stops`
+        # hazır paketi tura ekler. Biri düşerse ya kilit ya guard bozulmuştur.
+        assert _basarili(r["complete"]), f"tur {_tur}: {r['complete']!r}"
+        assert r["complete"].status == "PACKED"
+        assert _basarili(r["add_stops"]), f"tur {_tur}: {r['add_stops']!r}"
+
         async with AsyncSessionLocal() as s:
             taze = await servis.get_package(s, paket.id)
             durak = (
                 await s.execute(
                     text(
                         "SELECT count(*) FROM delivery_stops "
-                        "WHERE order_id = :o AND run_id = :r"
+                        "WHERE order_id = :o AND run_id = :r AND status = 'PENDING'"
                     ),
                     {"o": oid, "r": run},
                 )
             ).scalar_one()
         assert taze.status == "PACKED"
+        assert durak == 1
+        assert await _olay_sayisi(paket.id, "COMPLETE") == 1, "çift COMPLETE olayı"
         assert await fab.prepared_at(oid) is not None
-        if _basarili(r["add_stops"]):
-            # `add_stops` ancak `complete` ondan ÖNCE bittiyse geçebilirdi
-            # (hazırlanmamış sipariş tura eklenemez).
-            assert durak == 1, "add_stops başarılı ama durak yok"
-        else:
-            assert _reddedildi(r["add_stops"]), f"beklenmeyen hata: {r['add_stops']!r}"
-            assert "hazırlan" in str(r["add_stops"].detail).lower()
-            assert durak == 0, "add_stops reddedildi ama durak oluşmuş"
 
 
 # ══════════════════ Commit 3 denetiminden gelen matris (P2-E) ═══════════════
@@ -588,7 +732,8 @@ async def test_ES_ZAMANLI_return_in_ile_void_TEK_KAZANAN(fab):
             _gorev(lambda s: servis.return_in(s, paket.id, admin_id=aid)),
             _gorev(
                 lambda s: servis.void(
-                    s, paket.id, admin_id=aid, reason="Sipariş iptal edildi"
+                    s, paket.id, admin_id=aid, reason="Sipariş iptal edildi",
+                    izin_dogrula=servis.izin_zaten_dogrulandi,
                 )
             ),
         ]
@@ -654,7 +799,9 @@ async def test_ES_ZAMANLI_zimmet_ile_void_TEK_KAZANAN(fab):
                 )
             ),
             _gorev(
-                lambda s: servis.void(s, paket.id, admin_id=aid, reason="Kutu ezildi")
+                lambda s: servis.void(s, paket.id, admin_id=aid, reason="Kutu ezildi",
+                izin_dogrula=servis.izin_zaten_dogrulandi,
+            )
             ),
         ]
         if _tur % 2:
@@ -770,3 +917,113 @@ async def _shipped_gecisi(order_id: int) -> int:
                 {"o": order_id},
             )
         ).scalar_one()
+
+
+@pytest.mark.asyncio
+async def test_ES_ZAMANLI_void_ile_add_stops_BAYAT_DURAK_BIRAKMAZ(fab):
+    """`void` ile `add_stops` çarpışırsa turda **VOID paketli PENDING durak
+    kalmaz** (commit 5 denetiminin P1 bulgusu).
+
+    Eski hâlde `add_stops` hiçbir satır kilidi almıyordu: siparişi ve paketi
+    kilitsiz okuyup karar veriyor, sonra durağı yazıyordu. Araya `void`
+    girdiğinde ortaya çözülmüş paketli bir `PENDING` durak çıkıyordu ve sonuç
+    **iki taraflı kilitlenme** oluyordu: `start_run` o durağı zimmetsiz sayıp
+    bütün turu 409'luyor, sipariş de açık durağı yüzünden ne başka tura
+    eklenebiliyor ne kuyruğa girebiliyordu — kurtuluş yalnız elle
+    `remove_stop`'tu. Denetim bu yarışta 6/6 kez bayat durak üretildiğini
+    ölçtü.
+
+    İzin verilen son durumlar (gözlenen kazanana göre TEK ve DAR):
+
+    * `void` kazandı → paket `VOID`, **durak YOK**, `add_stops` 409
+      ("çözülmüş"), sipariş `prepared_at` NULL
+    * `add_stops` kazandı → durak var, paket `PACKED` **ya da** `VOID`;
+      `VOID` ise durak da `PENDING` OLMAMALI... — hayır: `add_stops` kazandıysa
+      `void` ondan SONRA çalışmıştır ve `void` durakları kapatmaz. Bu yüzden
+      `add_stops` kazandığında `void`'in de başarılı olması ve durağın kalması
+      MÜMKÜNDÜR; kritik olan `start_run`'ın o durağı zimmetsiz sayarak turu
+      korumasıdır. Bu hâl ayrıca ölçülür.
+    """
+    servis = _servis()
+    from services import delivery_service
+
+    gozlenen = {"void_kazandi": 0, "add_stops_kazandi": 0}
+    for _tur in range(TURLAR * 2):
+        aid = await fab.admin()
+        kurye = await fab.kurye()
+        run = await fab.tur(courier_id=kurye)
+        pid, _sku, ean = await fab.barkodlu_urun(stock=10)
+        oid = await fab.fiziksel_siparis(kalemler=[(pid, 1)])
+        async with AsyncSessionLocal() as s:
+            paket = await servis.open_package(s, oid, admin_id=aid)
+        async with AsyncSessionLocal() as s:
+            await servis.scan(s, paket.id, code=ean, admin_id=aid)
+        async with AsyncSessionLocal() as s:
+            await servis.complete(s, paket.id, admin_id=aid)
+
+        adlar = ("add_stops", "void")
+        gorevler = [
+            _gorev(lambda s: delivery_service.add_stops(s, run, [oid])),
+            _gorev(
+                lambda s: servis.void(
+                    s, paket.id, admin_id=aid, reason="Kutu ezildi",
+                    izin_dogrula=servis.izin_zaten_dogrulandi,
+                )
+            ),
+        ]
+        if _tur % 2:                       # ters başlatma sırası
+            adlar, gorevler = adlar[::-1], gorevler[::-1]
+        ham = await asyncio.gather(*gorevler, return_exceptions=True)
+        _kilit_hatasi_yok(ham)             # 40P01/55P03 → başarısızlık
+        r = _sonuclar(ham, adlar)
+
+        # `void` HER İKİ sırada da başarılı olmalı: paket depodadır ve onu
+        # çözmeyi hiçbir yarış engellememeli.
+        assert _basarili(r["void"]), f"tur {_tur}: void düştü: {r['void']!r}"
+
+        async with AsyncSessionLocal() as s:
+            taze = await servis.get_package(s, paket.id)
+            durak = (
+                await s.execute(
+                    text(
+                        "SELECT count(*) FROM delivery_stops "
+                        "WHERE order_id = :o AND run_id = :r "
+                        "AND status = 'PENDING'"
+                    ),
+                    {"o": oid, "r": run},
+                )
+            ).scalar_one()
+        assert taze.status == "VOID"
+
+        if _reddedildi(r["add_stops"]):
+            gozlenen["void_kazandi"] += 1
+            # İki meşru ret gerekçesi var ve hangisinin geldiği `void`in
+            # commit sırasına bağlıdır: `void` `prepared_at`'i de sıfırladığı
+            # için erken guard ("henüz hazırlanmadı") da devreye girebilir.
+            # Ölçülen şey mesaj değil, **bayat durak kalmaması**.
+            assert any(
+                k in str(r["add_stops"].detail) for k in ("çözülmüş", "hazırlan")
+            ), str(r["add_stops"].detail)
+            assert durak == 0, "reddedilen add_stops yine de durak bıraktı"
+            assert await fab.prepared_at(oid) is None
+        else:
+            gozlenen["add_stops_kazandi"] += 1
+            assert _basarili(r["add_stops"])
+            # `add_stops` önce commit etse bile `void` durağı KAPATIR: paket
+            # çözülmüşse o durakta teslim edilecek bir şey kalmamıştır.
+            # Bayat `PENDING` durak bırakmak, turu 409'a kilitler ve siparişi
+            # hem kuyruktan hem başka turdan dışlardı (denetim P1).
+            assert durak == 0, "VOID paketli PENDING durak kaldı"
+            # Tur da kilitlenmemeli: kapatılmış durakla start_run çalışır ya da
+            # "uygun durak kalmadı" der; asla zimmetsiz gönderim yapmaz.
+            with pytest.raises(HTTPException) as hata:
+                async with AsyncSessionLocal() as s:
+                    await delivery_service.start_run(s, run)
+            assert hata.value.status_code == 400, str(hata.value.detail)
+            assert (await fab.siparis_durumu(oid))[0] == "PAID"
+
+    # Kilit eklendikten sonra beklenen: `void` kazandığı turlar VARDIR.
+    # (Kilitsiz eski hâlde bu sayaç 0 kalırdı — denetim 6/6 bayat durak ölçtü.)
+    assert gozlenen["void_kazandi"] > 0, (
+        f"void hiçbir turda kazanamadı — add_stops kilidi çalışmıyor olabilir: {gozlenen}"
+    )

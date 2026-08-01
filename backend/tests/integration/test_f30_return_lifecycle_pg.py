@@ -313,7 +313,9 @@ async def test_RETURNED_paket_VOID_de_edilebilir(fab):
     async with AsyncSessionLocal() as s:
         await servis.return_in(s, paket.id, admin_id=aid)
     async with AsyncSessionLocal() as s:
-        sonuc = await servis.void(s, paket.id, admin_id=aid, reason="Kutu ezilmiş")
+        sonuc = await servis.void(s, paket.id, admin_id=aid, reason="Kutu ezilmiş",
+                izin_dogrula=servis.izin_zaten_dogrulandi,
+            )
     assert sonuc.status == "VOID"
 
     # Bozulduktan sonra sipariş yeniden paketlenebilmeli.

@@ -724,3 +724,72 @@ def test_mark_prepared_KALDIRILDI():
         }
         yasak = adlar & {"mark_prepared", "unmark_prepared", "unprepare_order"}
         assert not yasak, f"{rel}: elle hazırlama yolu geri gelmiş: {sorted(yasak)}"
+
+
+def test_VOID_YETKI_DOGRULAYICISI_ZORUNLU():
+    """`packing_service.void` `izin_dogrula`yı **zorunlu** parametre olarak ister.
+
+    Commit 5 denetiminin bulgusu: parametrenin varsayılanı `None`'dı ve `None`
+    geldiğinde hiçbir yetki kontrolü yapılmıyordu. Yani `void`, servis
+    düzeyinde **fail-open**'dı: ileride eklenecek ikinci bir router ya da arka
+    plan işi parametreyi geçirmeyi unuttuğunda `PACKED` bir paketi
+    `packing.manage` OLMADAN çözebilir ve bunu kıran hiçbir şey olmazdı.
+
+    Zorunlu hâle getirmek, atlamayı **görünür** kılar: atlamak isteyen çağıran
+    `izin_dogrula=izin_zaten_dogrulandi` yazmak zorundadır ve o ad okunduğu an
+    "burada yetki kontrolü yok" der.
+    """
+    import inspect
+
+    from services import packing_service
+
+    imza = inspect.signature(packing_service.void)
+    p = imza.parameters.get("izin_dogrula")
+    assert p is not None, "izin_dogrula parametresi kaldırılmış"
+    assert p.kind is inspect.Parameter.KEYWORD_ONLY
+    assert p.default is inspect.Parameter.empty, (
+        "izin_dogrula varsayılan değer taşıyor — atlanması sessizleşir "
+        "(fail-open); zorunlu kalmalı"
+    )
+
+
+def test_DENEME_TAVANI_KURALI_AYNI():
+    """`packing_service._deneme_hakki_var` ↔ `delivery_service._within_attempt_cap`.
+
+    İkisi aynı üç-deneme kuralını yazar ve **kopya olmaları zorunludur**:
+    sözleşme §3.7 `packing_service`in `delivery_service`i import etmesini
+    yasaklar (döngü sınırı). Kopya olduğu için ayrışabilirler — bu test
+    ayrışmayı yakalar: aynı ayar altında ürettikleri SQL metni birebir aynı
+    olmalı.
+    """
+    from services import delivery_service, packing_service
+
+    a = str(packing_service._deneme_hakki_var())
+    b = str(delivery_service._within_attempt_cap())
+    assert a == b, f"deneme tavanı kuralı ayrışmış:\n  packing : {a}\n  delivery: {b}"
+
+
+def test_add_stops_KILIT_SIRASI_kanonik():
+    """`add_stops` kanonik sırada kilitler: Order → OrderPackage (→ DeliveryStop).
+
+    Commit 5 denetiminin P1 bulgusu: bu fonksiyon **hiçbir satır kilidi
+    almıyordu** — siparişi ve paketi kilitsiz okuyup karar veriyor, sonra
+    durağı yazıyordu. `packing_service.void` ile yarışta çözülmüş paketli bir
+    `PENDING` durak doğuruyor ve hem turu hem siparişi kilitliyordu.
+
+    ⚠️ Bu **düşük güçlü** bir yapısal testtir (kök `CLAUDE.md` §C) ve bilinçli
+    olarak öyle bırakılmıştır: kilidin yokluğunu kanıtlayacak davranış testi,
+    iki transaction'ın araya girmesini zamanlamayla zorlamak zorunda kalırdı ve
+    kırılgan olurdu. Davranış tarafında ölçülen şey **sonuç invariant'ıdır**
+    (`test_f30_packing_race_pg.py::test_ES_ZAMANLI_void_ile_add_stops_BAYAT_DURAK_BIRAKMAZ`:
+    paket VOID ise bekleyen durak KALMAZ). İkisi birlikte hem yapıyı hem
+    sonucu korur.
+    """
+    from tests.acceptance.lock_contract import canonical_violations, observed_lock_models
+
+    dugum = _dugum(_agac("services/delivery_service.py"), "add_stops")
+    assert dugum is not None
+    modeller = [m for m, _ln in observed_lock_models(dugum)]
+    assert "Order" in modeller, "add_stops siparişi FOR UPDATE ile almıyor"
+    assert "OrderPackage" in modeller, "add_stops paketi kilitsiz okuyor"
+    assert not canonical_violations(dugum)

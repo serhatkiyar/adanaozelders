@@ -44,8 +44,28 @@ YONETIM_UCLARI = [
 ]
 TUM_UCLAR = OKUMA_UCLARI + PAKETLEME_UCLARI + YONETIM_UCLARI
 
+# Commit 5 denetiminin bulgusu: iki uç matrisin HİÇBİR listesinde yoktu ve
+# dolayısıyla token'sız/CLIENT/COURIER/izinsiz-ADMIN denemeleri onlara HİÇ
+# uygulanmıyordu. `void` "kapanmış pakette manage ister" testi ayrı dosyada
+# vardı ama rol matrisi yoktu; `return-queue` ise hiçbir yerde sınanmamıştı.
+#
+# `void` `PAKETLEME_UCLARI`'na KONMAZ: izni duruma bağlıdır (OPEN → pack,
+# kapanmış → manage) ve `test_VIEW_izni_YAZAMAZ` gibi kademe testleri onu
+# yanlış kademeye yerleştirirdi. `return-queue` de `OKUMA_UCLARI`'na konmaz:
+# o liste `test_VIEW_izni_OKUYABILIR`'de 200 bekleyen uçlar için değil, 401/403
+# kademeleri içindir — ama 401/403 matrisine dahil edilmelidir.
+VOID_UCU = ("POST", "/api/v1/packing/packages/1/void")
+RETURN_QUEUE_UCU = ("GET", "/api/v1/packing/return-queue")
+TUM_UCLAR_GENIS = TUM_UCLAR + [VOID_UCU, RETURN_QUEUE_UCU]
+#: Salt-okuma izniyle DENENMEMESİ gereken uçlar. `void` buradadır: en düşük
+#: kademesi bile `packing.pack`tir (OPEN pakette), yani `packing.view` ona
+#: hiçbir durumda yetmez. Bağımlılığı VIEW'a düşürmek bu matrisi kırar.
+YAZMA_UCLARI = PAKETLEME_UCLARI + YONETIM_UCLARI + [VOID_UCU]
+
 
 def _govde(yol: str) -> dict:
+    if yol.endswith("/void"):
+        return {"reason": "yetki matrisi testi"}
     if yol.endswith("/scan"):
         return {"code": "FZK-000001"}
     if yol.endswith("/undo-scan"):
@@ -152,7 +172,7 @@ def _bas(token: str) -> dict:
 # ══════════════════ 401 ═════════════════════════════════════════════════════
 
 
-@pytest.mark.parametrize("metod,yol", TUM_UCLAR, ids=[y for _m, y in TUM_UCLAR])
+@pytest.mark.parametrize("metod,yol", TUM_UCLAR_GENIS, ids=[y for _m, y in TUM_UCLAR_GENIS])
 async def test_token_YOKSA_401(client, kur, metod, yol):
     r = await client.request(metod, yol, json=_govde(yol))
     assert r.status_code == 401, f"{metod} {yol} → {r.status_code}"
@@ -161,7 +181,7 @@ async def test_token_YOKSA_401(client, kur, metod, yol):
 # ══════════════════ 403: izinsiz admin ══════════════════════════════════════
 
 
-@pytest.mark.parametrize("metod,yol", TUM_UCLAR, ids=[y for _m, y in TUM_UCLAR])
+@pytest.mark.parametrize("metod,yol", TUM_UCLAR_GENIS, ids=[y for _m, y in TUM_UCLAR_GENIS])
 async def test_IZINSIZ_admin_403(client, kur, metod, yol):
     """Kullanıcı maddesi: yetkisiz admin okuyamaz/yazamaz."""
     _aid, token = await kur.admin(izinler=["dashboard.view"])
@@ -169,8 +189,11 @@ async def test_IZINSIZ_admin_403(client, kur, metod, yol):
     assert r.status_code == 403, f"{metod} {yol} → {r.status_code}"
 
 
-@pytest.mark.parametrize("metod,yol", PAKETLEME_UCLARI + YONETIM_UCLARI,
-                         ids=[y for _m, y in PAKETLEME_UCLARI + YONETIM_UCLARI])
+@pytest.mark.parametrize(
+    "metod,yol",
+    YAZMA_UCLARI,
+    ids=[y for _m, y in YAZMA_UCLARI],
+)
 async def test_VIEW_izni_YAZAMAZ(client, kur, metod, yol):
     """Görev ayrılığı: okuyan kişi paketleyemez."""
     _aid, token = await kur.admin(izinler=[VIEW])
@@ -196,7 +219,7 @@ async def test_VIEW_izni_OKUYABILIR(client, kur):
 # ══════════════════ Diğer roller ════════════════════════════════════════════
 
 
-@pytest.mark.parametrize("metod,yol", TUM_UCLAR, ids=[y for _m, y in TUM_UCLAR])
+@pytest.mark.parametrize("metod,yol", TUM_UCLAR_GENIS, ids=[y for _m, y in TUM_UCLAR_GENIS])
 async def test_KURYE_paketleme_uclarina_ERISEMEZ(client, fab, metod, yol):
     """Kurye yalnız zimmet ucunu kullanır; depo ekranlarına erişemez."""
     kurye = await fab.kurye()
@@ -205,11 +228,53 @@ async def test_KURYE_paketleme_uclarina_ERISEMEZ(client, fab, metod, yol):
     assert r.status_code == 403, f"{metod} {yol} → {r.status_code}"
 
 
-async def test_MUSTERI_paketleme_ucuna_ERISEMEZ(client, fab):
+@pytest.mark.parametrize(
+    "metod,yol", TUM_UCLAR_GENIS, ids=[y for _m, y in TUM_UCLAR_GENIS]
+)
+async def test_MUSTERI_paketleme_ucuna_ERISEMEZ(client, fab, metod, yol):
+    """CLIENT hiçbir paketleme ucuna erişemez — matris hâlinde.
+
+    Eskiden yalnız `/packing/queue` deneniyordu; `void` ve `return-queue` dahil
+    diğer on bir uç hiç sınanmamıştı (commit 5 denetimi).
+    """
     cid = await fab.musteri()
     token = create_access_token(subject=cid, role="CLIENT", role_id=3)
-    r = await client.get("/api/v1/packing/queue", headers=_bas(token))
-    assert r.status_code == 403
+    r = await client.request(metod, yol, json=_govde(yol), headers=_bas(token))
+    assert r.status_code == 403, f"{metod} {yol} → {r.status_code}"
+
+
+async def test_VIEW_izni_RETURN_QUEUE_OKUYABILIR(client, kur):
+    """`return-queue` bir OKUMA ucudur: `packing.view` yeter, 200 döner.
+
+    Ters prova görevi görür — yukarıdaki 403 matrisi, ucun tamamen kapalı
+    olduğu hâlde de yeşil kalırdı.
+    """
+    _aid, token = await kur.admin(izinler=[VIEW])
+    r = await client.get("/api/v1/packing/return-queue", headers=_bas(token))
+    assert r.status_code == 200, r.text
+    assert isinstance(r.json(), list)
+
+
+async def test_PACK_izni_VOID_UCUNU_KULLANABILIR(client, kur, fab):
+    """`void` `packing.pack` kademesindedir (OPEN pakette) — 403 DEĞİL.
+
+    Yukarıdaki matris `void`u yalnız reddedilen roller için ölçüyor; bu düğüm
+    ucun gerçekten çalıştığını sabitler, yoksa "hep 403" bir uç da matrisi
+    geçerdi.
+    """
+    _aid, token = await kur.admin(izinler=[VIEW, PACK])
+    pid, _sku, _ean = await fab.barkodlu_urun(stock=10)
+    oid = await fab.fiziksel_siparis(kalemler=[(pid, 1)])
+    paket = (
+        await client.post(f"/api/v1/packing/orders/{oid}/open", headers=_bas(token))
+    ).json()
+    r = await client.post(
+        f"/api/v1/packing/packages/{paket['id']}/void",
+        json={"reason": "Yanlış sipariş"},
+        headers=_bas(token),
+    )
+    assert r.status_code == 200, r.text
+    assert r.json()["status"] == "VOID"
 
 
 # ══════════════════ Tam akış ════════════════════════════════════════════════

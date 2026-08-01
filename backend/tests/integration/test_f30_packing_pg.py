@@ -648,7 +648,9 @@ async def test_VOID_paket_UNPACK_ile_fiziksel_olarak_cozulur(fab):
     async with AsyncSessionLocal() as s:
         paket = await servis.open_package(s, oid, admin_id=aid)
     async with AsyncSessionLocal() as s:
-        await servis.void(s, paket.id, admin_id=aid, reason="Yanlış sipariş açıldı")
+        await servis.void(s, paket.id, admin_id=aid, reason="Yanlış sipariş açıldı",
+                izin_dogrula=servis.izin_zaten_dogrulandi,
+            )
 
     hareket_once = await fab.hareket_sayisi(pid)
     async with AsyncSessionLocal() as s:
@@ -668,7 +670,9 @@ async def test_VOID_sonrasi_YENI_paket_acilabilir(fab):
     async with AsyncSessionLocal() as s:
         birinci = await servis.open_package(s, oid, admin_id=aid)
     async with AsyncSessionLocal() as s:
-        await servis.void(s, birinci.id, admin_id=aid, reason="Kutu yırtıldı")
+        await servis.void(s, birinci.id, admin_id=aid, reason="Kutu yırtıldı",
+                izin_dogrula=servis.izin_zaten_dogrulandi,
+            )
     async with AsyncSessionLocal() as s:
         ikinci = await servis.open_package(s, oid, admin_id=aid)
     assert ikinci.id != birinci.id
@@ -694,7 +698,9 @@ async def test_VOID_paketin_miktari_YENI_PAKETI_TUKETMEZ(fab):
         birinci = await servis.open_package(s, oid, admin_id=aid)
     assert birinci.items[0].expected_qty == 3
     async with AsyncSessionLocal() as s:
-        await servis.void(s, birinci.id, admin_id=aid, reason="Kutu yırtıldı")
+        await servis.void(s, birinci.id, admin_id=aid, reason="Kutu yırtıldı",
+                izin_dogrula=servis.izin_zaten_dogrulandi,
+            )
 
     async with AsyncSessionLocal() as s:
         ikinci = await servis.open_package(s, oid, admin_id=aid)

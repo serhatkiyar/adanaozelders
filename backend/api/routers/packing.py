@@ -46,12 +46,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from api.deps import require_admin_permission
 from core.database import get_db
 from models.admin import Admin
-from schemas.delivery import EligibleOrderOut
 from schemas.packing import (
     MAX_LIMIT,
     MAX_OFFSET,
     HandoverManifestOut,
     PackageItemOut,
+    PackageSummaryOut,
     PackageOut,
     PackagePage,
     PackageReturnInIn,
@@ -59,9 +59,12 @@ from schemas.packing import (
     PackageScanOut,
     PackageUndoScanIn,
     PackageVoidIn,
+    PackingQueueItemOut,
+    PackingQueuePage,
+    PackingQueueRowOut,
     ReturnQueueRowOut,
 )
-from services import admin_access_service, delivery_service, packing_service
+from services import admin_access_service, packing_service
 
 router = APIRouter(prefix="/packing", tags=["packing"])
 
@@ -145,18 +148,58 @@ async def _yonetim_izni_ara(db: AsyncSession, admin: Admin) -> None:
 # ════════════════════════ Okuma ════════════════════════
 
 
-@router.get("/queue", response_model=list[EligibleOrderOut])
+@router.get("/queue", response_model=PackingQueuePage)
 async def packing_queue(
     _admin: Admin = Depends(VIEW),
     db: AsyncSession = Depends(get_db),
 ):
-    """Paketlenecek siparişler — söz gününe göre sıralı.
+    """Paketleme istasyonunun kuyruğu — söz gününe göre sıralı.
 
-    Paketi ARAÇTA olan sipariş burada GÖRÜNMEZ (sözleşme §3.5); o kuyruk
-    ayrıdır (`/packing/return-queue`), yoksa personel aynı ürünleri ikinci kez
-    raftan toplamaya kalkardı.
+    Üç işi birden gösterir ve her satır **hangi eylemin doğru olduğunu**
+    söyleyecek kadar bilgi taşır (`package` özeti):
+
+    * paketi yok            → yeni paket aç
+    * `OPEN` paketi var     → yarım kalmış işe devam et
+    * `RETURNED` paketi var → **yeniden paketle** (`repack`)
+
+    Son madde commit 5 denetiminin bulduğu çıkmazın düzeltmesidir: paket rafta
+    hazır dururken sipariş "topla ve paketle" diyordu; operatör "Paketle"ye
+    bastığında `open_package` mevcut paketi geri veriyor, `complete` ise 409
+    veriyordu — hiçbir yere varmayan bir döngü.
+
+    Paketi ARAÇTA olan sipariş burada GÖRÜNMEZ; o kuyruk ayrıdır
+    (`/packing/return-queue`), yoksa personel aynı ürünleri ikinci kez raftan
+    toplamaya kalkardı (sözleşme §3.5).
     """
-    return await delivery_service.prep_queue(db)
+    satirlar, toplam = await packing_service.packing_queue(db)
+    return PackingQueuePage(
+        items=[
+            PackingQueueRowOut(
+                order_id=r.order_id,
+                recipient=r.recipient,
+                phone=r.phone,
+                address=r.address,
+                city=r.city,
+                district=r.district,
+                item_count=r.item_count,
+                items=[
+                    PackingQueueItemOut(title=t, quantity=q) for t, q in r.items
+                ],
+                promised_delivery_date=r.promised_delivery_date,
+                created_at=r.created_at,
+                prepared_at=r.prepared_at,
+                package=(
+                    PackageSummaryOut(
+                        id=r.package.id, code=r.package.code, status=r.package.status
+                    )
+                    if r.package is not None
+                    else None
+                ),
+            )
+            for r in satirlar
+        ],
+        total=toplam,
+    )
 
 
 @router.get("/packages", response_model=PackagePage)

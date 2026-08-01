@@ -65,7 +65,15 @@ LOCK_HELPERS: dict[str, tuple[str, ...]] = {
     # kilitlemiyor" diye kırar (G7 deseninin nöbetçisi).
     "_lock_package": ("OrderPackage",),
     "_lock_live_package": ("OrderPackage",),
+    # `packing_events.live_package(..., lock=True)` — `delivery_service`in
+    # paket kilidini aldığı yol. Kayıtlı olmasaydı `add_stops`'un kilit sırası
+    # AST'den ölçülemezdi (kilit "görünmez" olurdu).
+    "live_package": ("OrderPackage",),
 }
+
+
+#: Kilidi yalnız `lock=True` verildiğinde alan yardımcılar.
+_KOSULLU_KILIT = frozenset({"live_package"})
 
 
 def lock_rank(model: str) -> int:
@@ -126,6 +134,15 @@ def observed_lock_models(node: ast.AST) -> list[tuple[str, int]]:
         fn = n.func
         adi = fn.attr if isinstance(fn, ast.Attribute) else getattr(fn, "id", "")
         if adi in LOCK_HELPERS:
+            # `live_package` kilidi YALNIZ `lock=True` ile alır; kwarg'sız
+            # çağrı düz bir okumadır ve kilit sayılmamalıdır. Aksi hâlde
+            # `lock=True`yi silmek AST denetiminden kaçardı (mutasyon provası
+            # bunu yakaladı).
+            if adi in _KOSULLU_KILIT and not any(
+                k.arg == "lock" and getattr(k.value, "value", None) is True
+                for k in n.keywords
+            ):
+                continue
             for kaynak in LOCK_HELPERS[adi]:
                 bulunan.append((kaynak, n.lineno))
     # Aynı satırda birden çok kayıt olabilir; giriş sırası korunur.

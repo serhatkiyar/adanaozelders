@@ -736,3 +736,59 @@ async def test_SAYFALAMA_SAYFALAR_ARASI_TEKRAR_URETMEZ(client, kur, fab):
         gorulen.extend(x["id"] for x in r.json()["items"])
     bizimkiler = [i for i in gorulen if i in beklenen]
     assert len(bizimkiler) == len(set(bizimkiler)), f"sayfalar kayıt tekrarladı: {gorulen}"
+
+
+# ══════════════════ Zimmet 404 gövde nöbetçisi ══════════════════════════════
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "bicim", ["yabanci_kurye", "olmayan_paket", "yanlis_token", "paket_qr_degil"]
+)
+async def test_ZIMMET_404_GOVDELERI_AYNIDIR(client, kur, fab, bicim):
+    """Zimmet yolundaki BÜTÜN 404'ler aynı gövdeyi döner.
+
+    Commit 5 denetiminin taşıdığı borç: dört ayrı 404 yolu (paket QR'ı değil ·
+    paket yok · token yanlış · senin turunda değil) aynı `_ETIKET_YOK` metnini
+    kullanıyor ama bunu koruyan **davranış testi yoktu**. Metinler ayrışırsa
+    404 kodu aynı kalsa bile gövde farkı "bu paket var/yok" bilgisini sızdırır —
+    kalıcı QR + çalınabilir etiket (sözleşme §7 S4) bunu gerçek bir risk yapar.
+
+    Ölçüm: dört bozuk girdinin gövdesi, **yabancı kuryenin geçerli etikete
+    aldığı** gövdeyle birebir aynı olmalı.
+    """
+    _aid, token = await kur.admin(izinler=[VIEW, PACK])
+    kurye_a = await fab.kurye()
+    kurye_b = await fab.kurye()
+    _hid, token_b = await fab.kurye_hesabi(kurye_b)
+    run_a = await fab.tur(courier_id=kurye_a)
+    await fab.tur(courier_id=kurye_b)
+    oid, paket = await _packed_paket(client, token, fab)
+    async with AsyncSessionLocal() as s:
+        await delivery_service.add_stops(s, run_a, [oid])
+
+    gercek = paket["qr_payload"].split(":")[2]
+    yukler = {
+        "yabanci_kurye": paket["qr_payload"],
+        "olmayan_paket": f"PKG1:99999999:{gercek}",
+        "yanlis_token": f"PKG1:{paket['id']}:{gercek[:-1]}x",
+        "paket_qr_degil": "7:duraktoken",
+    }
+    r = await client.post(
+        "/api/v1/delivery/handover/scan",
+        json={"payload": yukler[bicim]},
+        headers=_bas(token_b),
+    )
+    assert r.status_code == 404, f"{bicim}: {r.status_code} {r.text}"
+
+    ref = await client.post(
+        "/api/v1/delivery/handover/scan",
+        json={"payload": paket["qr_payload"]},
+        headers=_bas(token_b),
+    )
+    assert ref.status_code == 404
+    assert r.json()["detail"] == ref.json()["detail"], (
+        f"{bicim}: zimmet 404 gövdesi ayrışmış — bilgi sızıyor"
+    )
+    # Paketin durumu HİÇBİR gövdede geçmemeli.
+    assert "PACKED" not in r.text and "PKT-" not in r.text

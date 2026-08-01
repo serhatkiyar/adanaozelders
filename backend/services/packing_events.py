@@ -259,6 +259,36 @@ def dispatchable_package_condition():
     return ~herhangi | hazir
 
 
+def first_packing_blocked_condition():
+    """"Bu sipariş İLK paketleme kuyruğuna girmemeli" — SQL `EXISTS`.
+
+    Commit 5 denetiminin bulduğu çıkmaz: `return_in` paketi `RETURNED` yapıp
+    `prepared_at`'i sıfırlıyor, sipariş de normal "topla ve paketle" kuyruğuna
+    düşüyordu. Oysa paket **rafta hazır duruyor**; doğru işlem `repack`'tir.
+    Operatör kuyrukta "Paketle" görüp `open_package` çağırınca mevcut
+    `RETURNED` paketi geri alıyor, `complete` ise 409 veriyordu — ekranda
+    hiçbir yere varmayan bir döngü.
+
+    Buraya giren durumlar (hepsi "yeni paket AÇILMAMALI" demektir):
+
+    * `RETURNED`  — depoda, `repack` bekliyor (ayrı kuyruk / ayrı eylem)
+    * `HANDED_OVER` / `RETURN_PENDING` — araçta, `return_in` bekliyor
+
+    `OPEN` bilinçli olarak DIŞARIDADIR: yarım kalmış paket zaten o siparişin
+    işidir ve kuyrukta "devam et" olarak görünmelidir. `VOID` de dışarıdadır:
+    paket çözülmüştür, sipariş gerçekten yeniden toplanmalıdır.
+    """
+    engelli = [s for s in packing_rules.LIVE_STATUSES if s != "OPEN"]
+    return (
+        select(OrderPackage.id)
+        .where(
+            OrderPackage.order_id == Order.id,
+            OrderPackage.status.in_(engelli),
+        )
+        .exists()
+    )
+
+
 def off_premise_package_exists():
     """"Bu siparişin paketi ARAÇTA" koşulu — SQL `EXISTS` alt sorgusu (saf yapı).
 

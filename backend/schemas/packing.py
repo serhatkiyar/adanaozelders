@@ -149,6 +149,53 @@ class PackagePage(BaseModel):
     offset: int
 
 
+class PackageSummaryOut(BaseModel):
+    """Kuyruk satırındaki paketin özeti — `qr_payload` BİLİNÇLİ OLARAK YOK.
+
+    Etiket yükü yalnız paket detayında döner (sözleşme §7 S4: kalıcı QR
+    çalınabilir; token'ı liste ekranlarında yaymak riski büyütür).
+    """
+
+    id: int
+    code: str
+    status: str
+
+
+class PackingQueueItemOut(BaseModel):
+    """Toplanacak kalem — başlık + adet. Operatör NE toplayacağını görmeli."""
+
+    title: str
+    quantity: int
+
+
+class PackingQueueRowOut(BaseModel):
+    """Paketleme kuyruğunun bir satırı.
+
+    `package` alanı olmadan ekran yanlış eylemi önerir: `RETURNED` paketli
+    sipariş için "Paketle" demek operatörü çıkışsız bir döngüye sokar
+    (commit 5 denetimi). Doğru eylem `repack`'tir ve ancak paket durumu
+    satırda taşınırsa gösterilebilir.
+    """
+
+    order_id: int
+    recipient: str | None = None
+    phone: str | None = None
+    address: str | None = None
+    city: str | None = None
+    district: str | None = None
+    item_count: int
+    items: list[PackingQueueItemOut] = []
+    promised_delivery_date: datetime.date | None = None
+    created_at: datetime.datetime | None = None
+    prepared_at: datetime.datetime | None = None
+    package: PackageSummaryOut | None = None
+
+
+class PackingQueuePage(BaseModel):
+    items: list[PackingQueueRowOut]
+    total: int
+
+
 class ReturnQueueRowOut(BaseModel):
     """"Geri dönüş bekleniyor" satırı (sözleşme §3.5 / TB-7).
 

@@ -774,7 +774,14 @@ async def prep_queue(db: AsyncSession) -> list[EligibleOrderOut]:
                 Order.status == "PAID",
                 Order.ship_in_zone.is_(True),
                 Order.prepared_at.is_(None),
-                ~packing_events.off_premise_package_exists(),
+                # F30 commit 6: araçtaki paket (§3.5) **ve** depoya dönmüş ama
+                # `repack` bekleyen (`RETURNED`) paket bu kuyrukta GÖRÜNMEZ.
+                # İkincisi commit 5 denetiminin bulduğu çıkmazdı: paket rafta
+                # hazırken sipariş "topla ve paketle" diyordu, operatör
+                # "Paketle"ye basınca `open_package` mevcut RETURNED paketi
+                # döndürüyor, `complete` 409 veriyordu — çıkışsız döngü.
+                # Doğru eylem `repack` ve o ayrı kuyrukta sunulur.
+                ~packing_events.first_packing_blocked_condition(),
                 _within_attempt_cap(),
             )
             .order_by(
@@ -1069,7 +1076,31 @@ async def outsourced_orders(db: AsyncSession) -> list[EligibleOrderOut]:
 
 async def add_stops(db: AsyncSession, run_id: int, order_ids: list[int]) -> DeliveryRunOut:
     """Siparişleri turun sonuna durak olarak ekler (PLANNED ya da ACTIVE turda —
-    kampanya günü sahadayken araya sipariş eklenebilir)."""
+    kampanya günü sahadayken araya sipariş eklenebilir).
+
+    ## Kilitler (F30 commit 6 — commit 5 denetiminin P1 bulgusu)
+
+    Bu fonksiyon eskiden **hiçbir satır kilidi almıyordu**: siparişi ve paketi
+    kilitsiz okuyup karar veriyor, sonra durağı yazıyordu. Eşzamanlı bir
+    `packing_service.void` araya girdiğinde ortaya **`VOID` paketli `PENDING`
+    durak** çıkıyordu ve sonuç iki taraflı kilitlenmeydi: `start_run` o durağı
+    zimmetsiz sayıp bütün turu 409'lardı, sipariş de açık durağı yüzünden ne
+    başka tura eklenebilir ne kuyruğa girebilirdi. Kurtuluş yalnız elle
+    `remove_stop`'tu.
+
+    Artık okuma-karar-yazma **kilit altında** yapılır ve kanonik sıra korunur:
+    `Order → OrderPackage → DeliveryStop` (`lock_contract.CANONICAL_LOCK_ORDER`).
+
+    ## Neden sipariş kilitleri ARTAN `order_id` sırasında alınır
+
+    `cancel_run` / `expire_stale_runs` durakları **sequence** sırasında dolaşır
+    ve her biri için `Order` kilidi alır. `add_stops` istekten gelen sırayla
+    kilitleseydi, iki farklı turda aynı iki sipariş bulunduğunda A→B ve B→A
+    kilitlenmeleri çakışıp **deadlock (40P01)** üretebilirdi. Deterministik
+    `order_id` sırası bu döngüyü yapısal olarak imkânsız kılar; durakların
+    `sequence` numaraları yine isteğin sırasına göre verilir (operatörün
+    seçtiği sıra korunur).
+    """
     run = await _load_run(db, run_id)
     if run.status not in _ACTIVE_RUN_STATUSES:
         raise HTTPException(status.HTTP_409_CONFLICT, "Tamamlanmış/iptal tura durak eklenemez")
@@ -1083,10 +1114,22 @@ async def add_stops(db: AsyncSession, run_id: int, order_ids: list[int]) -> Deli
         + 1
     )
     existing = {s.order_id for s in run.stops}
-    for order_id in dict.fromkeys(order_ids):  # sıra korunarak tekilleştir
-        if order_id in existing:
-            continue
-        order = await db.get(Order, order_id)
+    # Sıra korunarak tekilleştir (durak sequence'i bu sırayı izler)...
+    istenen = [o for o in dict.fromkeys(order_ids) if o not in existing]
+    # ...ama KİLİTLER artan order_id sırasında alınır (deadlock önlemi).
+    for order_id in sorted(istenen):
+        await db.execute(
+            select(Order.id).where(Order.id == order_id).with_for_update()
+        )
+
+    for order_id in istenen:
+        order = (
+            await db.execute(
+                select(Order)
+                .where(Order.id == order_id)
+                .execution_options(populate_existing=True)
+            )
+        ).scalars().first()
         if order is None or order.deleted_at is not None:
             raise HTTPException(status.HTTP_404_NOT_FOUND, f"Sipariş #{order_id} bulunamadı")
         if not order.has_physical:
@@ -1107,7 +1150,9 @@ async def add_stops(db: AsyncSession, run_id: int, order_ids: list[int]) -> Deli
             raise HTTPException(
                 status.HTTP_409_CONFLICT, f"Sipariş #{order_id} zaten bir turda bekliyor"
             )
-        paket = await packing_events.live_package(db, order_id)
+        # Paket KİLİTLİ okunur: `void` ile yarışta bayat durum üzerinden karar
+        # verilirse VOID paketli durak doğar (yukarıdaki gerekçe).
+        paket = await packing_events.live_package(db, order_id, lock=True)
         # F30 commit 5: paket geçmişi olan sipariş tura ancak **hazır (PACKED)**
         # bir paketle girer. Eskiden yalnız "araçta değil" aranıyordu; o hâlde
         # `cancel_run` sonrası `return_in` ile depoya dönen ama `repack` ile
@@ -1140,11 +1185,8 @@ async def add_stops(db: AsyncSession, run_id: int, order_ids: list[int]) -> Deli
         # outbox'a aynı transaction'da yazılır (geri sarımda SMS de gitmez).
         #
         # F30 (sözleşme §3.4): paketi OLAN sipariş burada SHIPPED YAPILMAZ —
-        # çıkışı kuryenin paketi okutması (zimmet) yazar. Paketi olmayan
-        # (F30 öncesi akıştan gelen) sipariş eski davranışı sürdürür; koşulsuz
-        # dayatma, elle `prepare` ucunun kaldırılmasıyla birlikte commit 5'te
-        # gelir (§8 commit planı) — o kaldırılmadan her siparişin paketi
-        # olduğunu varsaymak mevcut operasyonu kilitlerdi.
+        # çıkışı kuryenin paketi okutması (zimmet) yazar. Paketi HİÇ olmamış
+        # (F30 öncesinden gelen) sipariş eski davranışı sürdürür.
         if run.status == DeliveryRunStatus.ACTIVE.value and paket is None:
             await db.flush()
             await order_fsm.transition_order(db, order, "SHIPPED", changed_by="courier")

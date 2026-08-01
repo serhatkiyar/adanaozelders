@@ -275,7 +275,9 @@ async def test_PACKED_OLMAYAN_paket_zimmetlenemez(fab):
     oid, ilk = await _paketle(fab, servis, aid, adet=2)
     await _tura_ekle(oid, run)
     async with AsyncSessionLocal() as s:
-        await servis.void(s, ilk.id, admin_id=aid, reason="Kutu ezildi")
+        await servis.void(s, ilk.id, admin_id=aid, reason="Kutu ezildi",
+                izin_dogrula=servis.izin_zaten_dogrulandi,
+            )
     async with AsyncSessionLocal() as s:
         paket = await servis.open_package(s, oid, admin_id=aid)
     assert paket.status == "OPEN" and paket.id != ilk.id

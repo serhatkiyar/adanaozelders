@@ -105,7 +105,9 @@ async def test_P2A_return_in_YANLIS_DURUMDAN_409(fab, durum):
     else:
         oid, paket, _ean = await _acik_paket(fab, servis, aid)
         async with AsyncSessionLocal() as s:
-            await servis.void(s, paket.id, admin_id=aid, reason="Kutu yırtıldı")
+            await servis.void(s, paket.id, admin_id=aid, reason="Kutu yırtıldı",
+                izin_dogrula=servis.izin_zaten_dogrulandi,
+            )
 
     # Ön koşullar sağlanıyor mu? (409'un başka yerden gelmediğinin kanıtı)
     async with AsyncSessionLocal() as s:
@@ -188,7 +190,9 @@ async def test_P2B_void_GEREKCESIZ_422_ve_HAM_DB_HATASI_SIZMAZ(fab, gerekce):
     with pytest.raises(HTTPException) as hata:
         async with AsyncSessionLocal() as s:
             try:
-                await servis.void(s, paket.id, admin_id=aid, reason=gerekce)
+                await servis.void(s, paket.id, admin_id=aid, reason=gerekce,
+                izin_dogrula=servis.izin_zaten_dogrulandi,
+            )
             except IntegrityError as exc:  # pragma: no cover — regresyonda kırar
                 pytest.fail(f"ham DB hatası dışarı sızdı: {exc}")
     assert hata.value.status_code == 422
@@ -209,7 +213,9 @@ async def test_P2B_void_GERCEK_GEREKCEYLE_calisir(fab):
     aid = await fab.admin()
     _oid, paket, _ean = await _acik_paket(fab, servis, aid)
     async with AsyncSessionLocal() as s:
-        sonuc = await servis.void(s, paket.id, admin_id=aid, reason="  Kutu yırtıldı  ")
+        sonuc = await servis.void(s, paket.id, admin_id=aid, reason="  Kutu yırtıldı  ",
+                izin_dogrula=servis.izin_zaten_dogrulandi,
+            )
     assert sonuc.status == "VOID"
     assert sonuc.void_reason == "Kutu yırtıldı", "gerekçe kırpılmadan yazılmış"
 
@@ -351,7 +357,9 @@ async def test_C5_PAKET_GECMISI_OLAN_SIPARIS_ESKI_YOLA_DONEMEZ(fab, durum):
     if durum == "VOID":
         oid, paket, _ean = await _packed_paket(fab, servis, aid)
         async with AsyncSessionLocal() as s:
-            await servis.void(s, paket.id, admin_id=aid, reason="Kutu ezildi")
+            await servis.void(s, paket.id, admin_id=aid, reason="Kutu ezildi",
+                izin_dogrula=servis.izin_zaten_dogrulandi,
+            )
     elif durum == "RETURNED":
         oid, paket, stop_id, _run = await _sahada_paket(fab, servis, aid, kurye)
         async with AsyncSessionLocal() as s:
@@ -493,7 +501,9 @@ async def test_C5_VOID_PAKETLI_SIPARIS_ZIMMETSIZ_GONDERILEMEZ(fab):
     kurye = await fab.kurye()
     oid, paket, _ean = await _packed_paket(fab, servis, aid)
     async with AsyncSessionLocal() as s:
-        await servis.void(s, paket.id, admin_id=aid, reason="Kutu ezildi")
+        await servis.void(s, paket.id, admin_id=aid, reason="Kutu ezildi",
+                izin_dogrula=servis.izin_zaten_dogrulandi,
+            )
 
     run = await fab.tur(courier_id=kurye)
     # `add_stops` guard'ını ATLA: durağı doğrudan yaz (kötü niyetli/eski veri).
@@ -872,3 +882,115 @@ async def test_P2F_repack_ICERIK_DEGISMEDIYSE_calisir(fab):
         sonuc = await servis.repack(s, paket.id, admin_id=aid)
     assert sonuc.status == "PACKED"
     assert await fab.prepared_at(oid) is not None
+
+
+# ══════ Commit 6 · RETURNED çıkmazı (commit 5 denetiminin regresyonu) ═══════
+
+
+@pytest.mark.asyncio
+async def test_C6_RETURNED_PAKET_ILK_PAKETLEME_KUYRUGUNDA_GORUNMEZ(fab):
+    """`RETURNED` paketli sipariş "topla ve paketle" kuyruğunda GÖRÜNMEZ.
+
+    Commit 5 denetiminin doğruladığı çıkmaz: `return_in` paketi `RETURNED`
+    yapıp `prepared_at`'i sıfırlıyor, sipariş de normal hazırlama kuyruğuna
+    düşüyordu. Oysa paket **rafta hazır duruyor**; doğru işlem `repack`'tir.
+    Operatör kuyrukta "Paketle" görüp `open_package` çağırınca mevcut
+    `RETURNED` paketi geri alıyor, `complete` ise 409 veriyordu — ekranda
+    hiçbir yere varmayan bir döngü.
+
+    Ölçülen üç şey:
+      1. `prep_queue`'da (hazırlama istasyonu) GÖRÜNMEZ,
+      2. `packing_queue`'da (paketleme ekranı) GÖRÜNÜR **ve** satır paketin
+         `RETURNED` olduğunu söyler — ekran doğru eylemi ancak böyle önerebilir,
+      3. `eligible_orders`'ta da yok (repack onayı verilmedi).
+    """
+    servis = _servis()
+    aid = await fab.admin()
+    kurye = await fab.kurye()
+    oid, paket, stop_id, _run = await _sahada_paket(fab, servis, aid, kurye)
+    async with AsyncSessionLocal() as s:
+        await delivery_service.fail_stop(
+            s, stop_id, reason="Kimse yoktu", reason_code="EVDE_YOK"
+        )
+    async with AsyncSessionLocal() as s:
+        await servis.return_in(s, paket.id, admin_id=aid)
+
+    async with AsyncSessionLocal() as s:
+        hazirlama = {o.order_id for o in await delivery_service.prep_queue(s)}
+        uygun = {o.order_id for o in await delivery_service.eligible_orders(s)}
+        kuyruk, _toplam = await servis.packing_queue(s)
+    assert oid not in hazirlama, "RETURNED paket 'topla ve paketle' kuyruğunda"
+    assert oid not in uygun, "repack onayı olmadan dağıtıma uygun görünüyor"
+
+    satir = next((r for r in kuyruk if r.order_id == oid), None)
+    assert satir is not None, "paketleme kuyruğunda da yok — sipariş kayboldu"
+    assert satir.package is not None and satir.package.status == "RETURNED", (
+        "satır paketin durumunu taşımıyor — ekran yanlış eylemi önerir"
+    )
+    assert satir.package.code == paket.code
+
+
+@pytest.mark.asyncio
+async def test_C6_RETURNED_PAKET_REPACK_ILE_COZULUR(fab):
+    """Ters prova: çıkmazın çıkışı `repack`'tir ve gerçekten çalışır.
+
+    Yukarıdaki düğüm tek başına "sipariş hiçbir yerde görünmüyor" hâlinde de
+    yeşil kalırdı. Burada aynı siparişin `repack` ile `PACKED` olup dağıtım
+    kuyruğuna döndüğü ve paketleme kuyruğundan düştüğü ölçülür.
+    """
+    servis = _servis()
+    aid = await fab.admin()
+    kurye = await fab.kurye()
+    oid, paket, stop_id, _run = await _sahada_paket(fab, servis, aid, kurye)
+    async with AsyncSessionLocal() as s:
+        await delivery_service.fail_stop(
+            s, stop_id, reason="Kimse yoktu", reason_code="EVDE_YOK"
+        )
+    async with AsyncSessionLocal() as s:
+        await servis.return_in(s, paket.id, admin_id=aid)
+    async with AsyncSessionLocal() as s:
+        sonuc = await servis.repack(s, paket.id, admin_id=aid)
+    assert sonuc.status == "PACKED"
+
+    async with AsyncSessionLocal() as s:
+        uygun = {o.order_id for o in await delivery_service.eligible_orders(s)}
+        kuyruk, _t = await servis.packing_queue(s)
+    assert oid in uygun
+    assert oid not in {r.order_id for r in kuyruk}, "iş bitti ama kuyrukta duruyor"
+
+
+@pytest.mark.asyncio
+async def test_C6_PAKETLEME_KUYRUGU_UC_ISI_AYIRT_EDER(fab):
+    """Kuyruk üç işi de gösterir ve her satır hangi eylemin doğru olduğunu söyler.
+
+    * paketi yok        → `package is None`  (yeni paket aç)
+    * `OPEN` paketi var → `package.status == "OPEN"` (devam et)
+    * `PACKED` paketi var → kuyrukta YOK (iş bitti, dağıtım kuyruğunda)
+    """
+    servis = _servis()
+    aid = await fab.admin()
+
+    p1, _s1, _e1 = await fab.barkodlu_urun(stock=10)
+    yeni_oid = await fab.fiziksel_siparis(kalemler=[(p1, 1)])
+
+    p2, _s2, _e2 = await fab.barkodlu_urun(stock=10)
+    acik_oid = await fab.fiziksel_siparis(kalemler=[(p2, 1)])
+    async with AsyncSessionLocal() as s:
+        await servis.open_package(s, acik_oid, admin_id=aid)
+
+    bitmis_oid, _paket, _ean = await _packed_paket(fab, servis, aid)
+
+    async with AsyncSessionLocal() as s:
+        kuyruk, toplam = await servis.packing_queue(s)
+    satirlar = {r.order_id: r for r in kuyruk}
+    assert toplam == len(kuyruk)
+
+    assert yeni_oid in satirlar and satirlar[yeni_oid].package is None
+    assert satirlar[yeni_oid].item_count == 1
+    assert satirlar[yeni_oid].items and satirlar[yeni_oid].items[0][1] == 1
+
+    assert acik_oid in satirlar
+    assert satirlar[acik_oid].package is not None
+    assert satirlar[acik_oid].package.status == "OPEN"
+
+    assert bitmis_oid not in satirlar, "tamamlanmış paket kuyrukta kalmış"

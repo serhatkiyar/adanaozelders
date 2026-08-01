@@ -65,11 +65,12 @@ import secrets
 from collections.abc import Awaitable, Callable
 
 from fastapi import HTTPException, status as http
-from sqlalchemy import func, select, update
+from sqlalchemy import func, select, true as sa_true, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from core.config import settings
 from models.courier import Courier
 from models.packing import (
     QR_TOKEN_BYTES,
@@ -328,6 +329,40 @@ async def _lock_package(db: AsyncSession, package_id: int) -> OrderPackage:
     return paket
 
 
+async def _acik_duraklari_kapat(db: AsyncSession, order_id: int, *, note: str) -> int:
+    """Siparişin BEKLEYEN duraklarını `CANCELLED`'a kapatır; sayısını döner.
+
+    Kanonik sıranın son halkası (`… → OrderPackage → DeliveryStop`) ve
+    `order_fsm._close_open_stops` ile aynı desen: durak satırı `FOR UPDATE` ile
+    alınır ki eşzamanlı `verify`/`fail` sonuçlanmış bir durağı EZMESİN.
+
+    `CANCELLED` seçilir, `FAILED` değil: kimse teslim denemedi, dolayısıyla
+    kurye performans metriğine yazılmamalıdır (mevcut ayrım korunur).
+
+    Model import'u fonksiyon içindedir: `packing_service` `delivery_service`i
+    import EDEMEZ (sözleşme §3.7) ama `models.delivery` saf bir model modülüdür
+    ve döngü kurmaz — yine de modül düzeyine çıkarmayıp burada tutmak, sınırın
+    bilinçli olduğunu okuyan kişiye söyler.
+    """
+    from models.delivery import DeliveryStop, DeliveryStopStatus
+
+    duraklar = (
+        await db.execute(
+            select(DeliveryStop)
+            .where(
+                DeliveryStop.order_id == order_id,
+                DeliveryStop.status == DeliveryStopStatus.PENDING.value,
+            )
+            .with_for_update(of=DeliveryStop)
+            .execution_options(populate_existing=True)
+        )
+    ).scalars().all()
+    for durak in duraklar:
+        durak.status = DeliveryStopStatus.CANCELLED.value
+        durak.courier_note = durak.courier_note or note
+    return len(duraklar)
+
+
 async def _lock_live_package(db: AsyncSession, order_id: int) -> OrderPackage | None:
     """Siparişin canlı paketini kilitleyerek getirir (en fazla bir tane).
 
@@ -493,6 +528,131 @@ async def list_packages(
         )
     ).scalars().all()
     return [_view(p) for p in satirlar], toplam
+
+
+def _deneme_hakki_var():
+    """Üç-deneme kuralı: hakkı DOLMAMIŞ siparişler için SQL koşulu.
+
+    `delivery_service._within_attempt_cap` ile aynı kural, ama **kopya değil
+    zorunluluk**: sözleşme §3.7 `packing_service`in `delivery_service`i import
+    etmesini YASAKLAR (döngü sınırı). İki tarafın ayrışmaması bir kabul
+    testiyle korunur (`test_DENEME_TAVANI_KURALI_AYNI`).
+    """
+    cap = settings.DELIVERY_MAX_DELIVERY_ATTEMPTS
+    if cap <= 0:
+        return sa_true()
+    return Order.failed_delivery_count < cap
+
+
+@dataclasses.dataclass(frozen=True, slots=True)
+class PackageSummary:
+    """Kuyruk satırındaki paketin ÖZETİ — bilinçli olarak `qr_token` YOK.
+
+    Etiket yükü (`qr_payload`) yalnız paket DETAYINDA döner. Kalıcı QR'ın
+    bedeli çalınabilir etikettir (sözleşme §7 S4); token'ı bir liste ekranında
+    onlarca satır hâlinde yaymak o riski gereksizce büyütürdü.
+    """
+
+    id: int
+    code: str
+    status: str
+
+
+def _ozet(paket: OrderPackage) -> PackageSummary:
+    return PackageSummary(
+        id=paket.id,
+        code=packing_rules.package_code(paket.id),
+        status=paket.status,
+    )
+
+
+@dataclasses.dataclass(frozen=True, slots=True)
+class QueueRow:
+    """Paketleme istasyonu kuyruğunun bir satırı.
+
+    `package` alanı olmadan ekran **yanlış eylemi** önerir: paketi `RETURNED`
+    olan sipariş için "Paketle" (yeni paket aç) demek, operatörü `open_package`
+    → mevcut paketi geri al → `complete` → 409 döngüsüne sokar (commit 5
+    denetiminin bulduğu çıkmaz). Doğru eylem `repack`'tir ve ancak paketin
+    durumu satırda taşınırsa gösterilebilir.
+    """
+
+    order_id: int
+    recipient: str | None
+    phone: str | None
+    address: str | None
+    city: str | None
+    district: str | None
+    item_count: int
+    items: tuple[tuple[str, int], ...]
+    promised_delivery_date: datetime.date | None
+    created_at: datetime.datetime | None
+    prepared_at: datetime.datetime | None
+    package: PackageSummary | None
+
+
+async def packing_queue(db: AsyncSession) -> tuple[list[QueueRow], int]:
+    """Paketleme istasyonu kuyruğu: **işlem bekleyen** siparişler.
+
+    `delivery_service.prep_queue`'dan farkı bilinçlidir. O kuyruk "henüz
+    hazırlanmamış" siparişleri gösterir ve `RETURNED` paketlileri artık
+    dışarıda bırakır (bkz. `packing_events.first_packing_blocked_condition`).
+    Bu kuyruk ise **paketleme ekranının** kuyruğudur ve üç işi birden gösterir:
+
+    * paketi hiç olmayan sipariş  → "Paketle" (yeni paket aç)
+    * `OPEN` paketi olan sipariş  → "Devam et" (yarım kalmış iş)
+    * `RETURNED` paketi olan sipariş → "Yeniden paketle" (`repack`)
+
+    Dışarıda kalanlar: `PACKED` (iş bitti, dağıtım kuyruğunda) ve araçtaki
+    paketler (`HANDED_OVER`/`RETURN_PENDING` — onlar geri dönüş kuyruğunda).
+    """
+    hazir_paket = (
+        select(OrderPackage.id)
+        .where(OrderPackage.order_id == Order.id, OrderPackage.status == "PACKED")
+        .exists()
+    )
+    orders = (
+        await db.execute(
+            select(Order)
+            .options(selectinload(Order.items))
+            .where(
+                Order.deleted_at.is_(None),
+                Order.has_physical.is_(True),
+                Order.payment_status == "PAID",
+                Order.status == "PAID",
+                Order.ship_in_zone.is_(True),
+                ~hazir_paket,
+                ~packing_events.off_premise_package_exists(),
+                _deneme_hakki_var(),
+            )
+            .order_by(
+                Order.promised_delivery_date.asc().nulls_last(),
+                Order.created_at.asc(),
+            )
+        )
+    ).scalars().all()
+
+    satirlar: list[QueueRow] = []
+    for order in orders:
+        paket = await packing_events.live_package(db, order.id)
+        fiziksel = [it for it in order.items if it.kind == PHYSICAL_KIND]
+        satirlar.append(
+            QueueRow(
+                order_id=order.id,
+                recipient=order.ship_recipient,
+                phone=order.ship_phone,
+                address=order.ship_address,
+                city=order.ship_city,
+                district=order.ship_district,
+                item_count=sum(it.quantity for it in fiziksel),
+                items=tuple((it.title, it.quantity) for it in fiziksel),
+                promised_delivery_date=order.promised_delivery_date,
+                created_at=order.created_at,
+                prepared_at=order.prepared_at,
+                package=_ozet(paket) if paket is not None else None,
+            )
+        )
+    return satirlar, len(satirlar)
 
 
 async def return_queue(db: AsyncSession) -> list[ReturnQueueRow]:
@@ -1143,13 +1303,26 @@ async def complete(db: AsyncSession, package_id: int, *, admin_id: int) -> Packa
 # ══════════════════ Çözme ═══════════════════════════════════════════════════
 
 
+#: `void`in yetki doğrulayıcısı olarak geçirilebilecek AÇIK "yetki zaten var"
+#: işareti. Doğrulayıcıyı `None` bırakmak yerine bunu vermek, atlamanın
+#: **bilinçli** olduğunu kodda görünür kılar (commit 5 denetimi — aşağı bakınız).
+async def izin_zaten_dogrulandi(_durum: str) -> None:
+    """Yetki kararı bu çağrının DIŞINDA verilmiştir (sistem yolu / test).
+
+    Adı bilinçli olarak uzundur: `void(..., izin_dogrula=None)` sessiz bir
+    fail-open'dı; `izin_zaten_dogrulandi` ise okunduğu anda "burada yetki
+    kontrolü YOK" der ve gerekçesini çağıranın üstlenmesini zorunlu kılar.
+    """
+    return None
+
+
 async def void(
     db: AsyncSession,
     package_id: int,
     *,
     admin_id: int,
     reason: str,
-    izin_dogrula: "Callable[[str], Awaitable[None]] | None" = None,
+    izin_dogrula: "Callable[[str], Awaitable[None]]",
 ) -> PackageView:
     """Paketten vazgeçilir (`VOID`) — gerekçe ZORUNLU.
 
@@ -1175,16 +1348,22 @@ async def void(
     doğrulayıcı geçirir ve o, `Order` + `OrderPackage` kilitleri alındıktan
     SONRA, taze durumla çağrılır. Yetki kararı ile durum geçişi böylece aynı
     transaction penceresinde, aynı satır kilidi altında kalır.
+
+    **Parametre ZORUNLUDUR (commit 5 denetimi).** Eskiden varsayılanı `None`'dı
+    ve `None` geldiğinde hiçbir yetki kontrolü yapılmıyordu — yani ileride
+    eklenecek ikinci bir çağıran, parametreyi geçirmeyi unuttuğunda `PACKED`
+    bir paketi `packing.manage` OLMADAN çözebilirdi ve bunu kıran hiçbir şey
+    yoktu (sessiz fail-open). Artık atlamak isteyen çağıran bunu **adıyla**
+    yazmak zorundadır: `izin_dogrula=izin_zaten_dogrulandi`.
     """
     temiz = _require_reason(reason, "Paket çözme")
     on = await _peek(db, package_id)
     order = await _lock_order(db, on.order_id)
     paket = await _lock_package(db, package_id)
 
-    if izin_dogrula is not None:
-        # Kilitten SONRA, TAZE durumla. Kilitten önce çağrılsaydı eşzamanlı
-        # `complete` yetki kararını bayat bırakırdı.
-        await izin_dogrula(paket.status)
+    # Kilitten SONRA, TAZE durumla. Kilitten önce çağrılsaydı eşzamanlı
+    # `complete` yetki kararını bayat bırakırdı.
+    await izin_dogrula(paket.status)
 
     if paket.status == "VOID":
         return _view(paket)
@@ -1199,6 +1378,23 @@ async def void(
     # biçimde `eligible_orders`ta durur ve tura eklenirdi.
     order.prepared_at = None
     order.prepared_by = None
+    # ...ve turda BEKLEYEN durağı da kalamaz (commit 5 denetimi, P1).
+    #
+    # Kilitler `add_stops` ile yarışı **kararsızlıktan** kurtarır ama tek
+    # başına yetmez: `add_stops` yarışı kazanıp durağı yazdıktan sonra `void`
+    # çalışırsa ortada çözülmüş paketli bir `PENDING` durak kalır. Sonuç iki
+    # taraflı kilitlenmedir — `start_run` o durağı zimmetsiz sayıp bütün turu
+    # 409'lar, sipariş de açık durağı yüzünden ne başka tura eklenebilir ne
+    # kuyruğa girebilir; kurtuluş yalnız elle `remove_stop` olurdu.
+    #
+    # `order_fsm._close_open_stops` iptal/iade yolunda aynı işi yapıyor; paketin
+    # çözülmesi de fiziksel olarak aynı anlama gelir: bu durakta teslim edilecek
+    # bir şey kalmadı. Durak `CANCELLED` olur (`FAILED` DEĞİL — kurye
+    # performansına yazılmaz, kimse teslim denemedi). Kanonik kilit sırası
+    # korunur: Order → OrderPackage → DeliveryStop.
+    kapatilan = await _acik_duraklari_kapat(
+        db, order.id, note=f"Paket çözüldü ({packing_rules.package_code(paket.id)})"
+    )
     packing_events.record(
         db,
         paket,
@@ -1216,7 +1412,7 @@ async def void(
         action="package.void",
         reason=temiz,
         before={"status": onceki_durum},
-        after={"status": "VOID"},
+        after={"status": "VOID", "kapatilan_durak": kapatilan},
     )
     await db.commit()
     return _view(paket)
