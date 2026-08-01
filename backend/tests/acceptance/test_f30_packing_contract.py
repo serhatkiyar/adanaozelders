@@ -631,9 +631,10 @@ PREPARED_AT_ALLOWLIST: frozenset[tuple[str, str]] = frozenset(
         # Yazanlar: doğrulanmış paket → sipariş hazır.
         ("services/packing_service.py", "complete"),
         ("services/packing_service.py", "repack"),
-        # Sıfırlayanlar: paket çözüldü / sipariş terminal oldu / teslim denemesi
-        # başarısız (paket depoya döndü ya da kuryede kaldı).
+        # Sıfırlayanlar: paket çözüldü / kuryeden döndü ama yeniden dağıtıma
+        # ONAYLANMADI / sipariş terminal oldu / teslim denemesi başarısız.
         ("services/packing_service.py", "void"),
+        ("services/packing_service.py", "return_in"),
         ("services/packing_events.py", "on_order_terminal"),
         ("services/order_service.py", "roll_promise_after_failed_attempt"),
     }
