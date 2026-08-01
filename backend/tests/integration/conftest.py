@@ -47,6 +47,10 @@ from models.payment import Payment, PaymentStatus
 from models.tutor import Tutor, TutorStatus
 from services import commission
 
+# İP-2b fixture'ları (fab/http/sms_kayit) burada kayda geçer — test dosyaları
+# import etmez (fixture parametresi import edilen adı gölgeleyip F811 üretiyordu).
+from tests.integration.ip2b_factory import fab, http, sms_kayit  # noqa: F401,E402
+
 
 def _now() -> datetime.datetime:
     return datetime.datetime.now(datetime.timezone.utc)
