@@ -40,7 +40,7 @@ from core.security import (
     verify_password_async,
 )
 from core.token_denylist import revoke
-from core.storage import upload_avatar, delete_avatar
+from core.storage import upload_avatar, delete_avatar, delete_file
 
 _login_limit = rate_limit(
     key="login",
@@ -564,8 +564,14 @@ async def delete_my_account(
     if not ok:
         raise HTTPException(status.HTTP_409_CONFLICT, reason or "Hesap şu an silinemez")
 
-    await account_deletion_service.anonymize_account(db, user)
+    orphan_files = await account_deletion_service.anonymize_account(db, user)
     await db.commit()
+
+    # Depo silme commit SONRASI ve best-effort (İP-3 §3 açık kararı): DB
+    # referansı zaten temizlendi; silme başarısız kalırsa işlem geri alınmaz,
+    # yetim nesne ayrı temizlik görevine kalır.
+    for key in orphan_files:
+        await delete_file(key)
 
     # Mevcut access token'ı da anında iptal et (refresh'ler zaten revoke edildi).
     try:

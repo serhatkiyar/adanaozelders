@@ -29,7 +29,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from models.client import Client, ClientAddress
 from models.role import ROLE_IDS, RoleType
-from models.tutor import Tutor
+from models.tutor import Tutor, TutorEducation
 from services import consent_service, refresh_token_service
 
 logger = logging.getLogger("adana.account")
@@ -59,13 +59,19 @@ def anonymized_username(user_id: int, role_id: int) -> str:
     return f"silinmis_{digest}"
 
 
-async def anonymize_account(db: AsyncSession, user) -> None:
+async def anonymize_account(db: AsyncSession, user) -> list[str]:
     """Kullanıcının kimlik/iletişim verisini temizler ve hesabı kapatır.
 
-    Commit ÇAĞIRANIN sorumluluğundadır.
+    Commit ÇAĞIRANIN sorumluluğundadır. Dönüş değeri: DB referansı temizlenen
+    ve depodan **commit SONRASI best-effort** silinmesi gereken `private/`
+    dosya anahtarları (İP-3 §3 açık kararı: önce DB temizlenir ve commit
+    edilir, sonra depo silme denenir; başarısız kalırsa işlem geri alınmaz —
+    referans zaten yok, yetim nesne ayrı temizlik işine kalır. Tersi — önce
+    dosyayı silip DB'de patlamak — kurtarılamaz durum üretir).
     """
     role_id = user.role_id
     uid = user.id
+    orphan_files: list[str] = []
 
     # ── Kimlik ve iletişim ──
     user.first_name = ANON_NAME
@@ -83,17 +89,38 @@ async def anonymize_account(db: AsyncSession, user) -> None:
     for field in ("phone_verified_at", "email_verified_at"):
         if hasattr(user, field):
             setattr(user, field, None)
-    # Konum (eğitmen haritada görünmesin).
-    for field in ("lat", "lng", "location_text", "district"):
+    # Konum (eğitmen haritada görünmesin). Gerçek kolon adları location_*;
+    # eski liste ("lat", "lng") ölü addı ve hasattr sessizce atlıyordu.
+    for field in ("location_lat", "location_lng", "location_text", "district"):
         if hasattr(user, field):
             setattr(user, field, None)
-    # Ödeme hedefi — para yönlendirmesini engelle.
-    for field in ("iban", "payout_status", "tckn_encrypted"):
+    # ── Ödeme hedefi ve kimlik verisi (İP-3 §3) — para yönlendirmesini engelle.
+    # `tckn_encrypted` diye bir kolon hiç olmadı (ölü ad); gerçek alanlar
+    # `identity_last4` ve `sub_merchant_key`. `payout_status` NOT NULL'dur:
+    # None'a çekilemez, geçerli pasif değere ('NONE') çekilir.
+    for field in ("iban", "identity_last4", "sub_merchant_key"):
         if hasattr(user, field):
             setattr(user, field, None)
+    if hasattr(user, "payout_status"):
+        user.payout_status = "NONE"
     # Kurye/operatör oturumlarını da öldüren sürüm sayacı.
     if hasattr(user, "auth_version") and user.auth_version is not None:
         user.auth_version = int(user.auth_version) + 1
+
+    # ── Eğitmen doğrulama verisi: TCKN, e-Devlet barkodu, diploma dosyası ──
+    if isinstance(user, Tutor):
+        educations = (
+            await db.execute(
+                select(TutorEducation).where(TutorEducation.tutor_id == uid)
+            )
+        ).scalars().all()
+        for edu in educations:
+            if edu.document_url:
+                orphan_files.append(edu.document_url)
+            edu.document_url = None
+            edu.document_name = None
+            edu.verification_code = None
+            edu.verification_tckn = None
 
     # ── Bağlı PII ──
     if role_id == ROLE_IDS[RoleType.CLIENT]:
@@ -123,7 +150,9 @@ async def anonymize_account(db: AsyncSession, user) -> None:
     # Tüm oturumları kapat.
     await refresh_token_service.revoke_all_for_user(db, role_id=role_id, user_id=uid)
 
+    # Log satırı bilinçli olarak yalnız rol+id taşır — PII yeniden sızmaz (İP-3 §3.6).
     logger.info("hesap anonimleştirildi (role=%s id=%s)", role_id, uid)
+    return orphan_files
 
 
 async def export_personal_data(db: AsyncSession, user) -> dict:
