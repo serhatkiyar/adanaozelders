@@ -291,13 +291,25 @@ async def void_package(
     Yetki duruma bağlıdır: `OPEN` paket `packing.pack` ile çözülebilir (henüz
     kimse ona güvenmiyor); `PACKED`/`RETURNED` paketi çözmek başka birinin
     kararını iptal etmektir ve `packing.manage` ister.
+
+    Karar **kilitli ve taze** durumla verilir: doğrulayıcı servise geçirilir ve
+    `Order` + `OrderPackage` kilitleri alındıktan sonra çağrılır. Kilitsiz
+    okunan durumla karar vermek check-then-act açığıydı (commit 4 denetimi) —
+    araya giren bir `complete`, yalnız `packing.pack` yetkisi olan kullanıcının
+    kapanmış paketi çözmesine izin veriyordu.
     """
-    mevcut = await packing_service.get_package(db, package_id)
-    if mevcut.status != "OPEN":
-        await _yonetim_izni_ara(db, admin)
+
+    async def _dogrula(durum: str) -> None:
+        if durum != "OPEN":
+            await _yonetim_izni_ara(db, admin)
+
     return _paket(
         await packing_service.void(
-            db, package_id, admin_id=admin.id, reason=payload.reason
+            db,
+            package_id,
+            admin_id=admin.id,
+            reason=payload.reason,
+            izin_dogrula=_dogrula,
         )
     )
 

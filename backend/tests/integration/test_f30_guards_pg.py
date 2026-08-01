@@ -511,6 +511,136 @@ async def test_P2D_TARAMA_ANAHTARI_GERI_ALMAYA_UYGULANAMAZ(fab):
     assert taze.items[0].scanned_qty == 1, "geri alma sessizce yutuldu"
 
 
+# ══════ Commit 4 denetimi · savepoint / tekrar dalı nöbetçisi ══════════════
+
+
+@pytest.mark.asyncio
+async def test_C5_TEKRAR_DALI_ADET_KALICI_KILMAZ(fab):
+    """Anahtarlı tekrar hiçbir adet değişikliğini KALICI kılmaz.
+
+    Commit 4 denetiminin "yanlış savepoint yorumu" bulgusunun nöbetçisi.
+    Denetim sırasında ortaya çıkan asıl gerçek şuydu: `_tarama_uygula`'daki
+    `IntegrityError` kurtarma dalı **hiç çalışmıyordu** (mutasyon provası:
+    oraya `commit` eklemek hiçbir testi kırmadı) — çünkü `Order` satır kilidi
+    eşzamanlı istekleri serileştiriyor ve ikincisi `_idem_tekrari` ön
+    kontrolünde yakalanıyor, INSERT'e hiç varmıyor. Test edilemeyen kurtarma
+    kodu koruma değil gürültü olduğundan kaldırıldı.
+
+    Geriye kalan ve GERÇEKTEN koruyan katman `_idem_tekrari` ön kontrolüdür;
+    burada ölçülen odur. Kaldırılırsa ikinci istek adedi artırmaya çalışır ve
+    `uq_package_scan_idem` ihlaliyle patlar — sessiz çift sayım imkânsızdır,
+    ama kullanıcı 409 yerine ham hata görür.
+    """
+    servis = _servis()
+    aid = await fab.admin()
+    _oid, paket, ean = await _acik_paket(fab, servis, aid, adet=2)
+
+    for _ in range(4):
+        async with AsyncSessionLocal() as s:
+            sonuc = await servis.scan(
+                s, paket.id, code=ean, admin_id=aid, idempotency_key="tek-anahtar"
+            )
+        assert sonuc.result == "OK"
+    assert sonuc.replayed is True
+    # Tekrar yanıtı hangi satırı işaret ettiğini KAYBETMEZ (P2 temizliği):
+    # ekran "hangi kalem okutuldu" bandını tekrar yanıtında da çizebilmeli.
+    assert sonuc.order_item_id == paket.items[0].order_item_id
+
+    async with AsyncSessionLocal() as s:
+        taze = await servis.get_package(s, paket.id)
+        olay = (
+            await s.execute(
+                text(
+                    "SELECT count(*) FROM package_scan_events "
+                    "WHERE package_id = :p AND event_type = 'SCAN'"
+                ),
+                {"p": paket.id},
+            )
+        ).scalar_one()
+    assert taze.items[0].scanned_qty == 1, "tekrar kazanılmamış adedi kalıcı kıldı"
+    assert olay == 1
+
+
+@pytest.mark.asyncio
+async def test_C5_mark_handed_over_TEKRARI_FALSE_DONER(fab):
+    """`mark_handed_over` **kendi** tekrar guard'ını taşır — doğrudan ölçülür.
+
+    `handover_scan` içindeki `if not ...` dalı o akıştan ulaşılamaz (erken
+    dönüş daha önce yakalar), ama fonksiyon public'tir ve commit 6/7'deki saha
+    ekranı ya da ileride bir toplu zimmet onu doğrudan çağırabilir. Guard
+    kaldırılırsa ikinci bir `HANDOVER` olayı yazılır.
+    """
+    servis = _servis()
+    aid = await fab.admin()
+    kurye = await fab.kurye()
+    _oid, paket, _stop, _run = await _sahada_paket(fab, servis, aid, kurye)
+
+    from models.packing import OrderPackage
+
+    async with AsyncSessionLocal() as s:
+        orm = await s.get(OrderPackage, paket.id)
+        ikinci = await servis.mark_handed_over(
+            s, orm, courier_id=kurye, actor=f"courier:{kurye}"
+        )
+        assert ikinci is False, "zaten zimmetli paket ikinci kez zimmetlendi"
+        await s.rollback()
+
+    async with AsyncSessionLocal() as s:
+        adet = (
+            await s.execute(
+                text(
+                    "SELECT count(*) FROM package_scan_events "
+                    "WHERE package_id = :p AND event_type = 'HANDOVER'"
+                ),
+                {"p": paket.id},
+            )
+        ).scalar_one()
+    assert adet == 1
+
+
+@pytest.mark.asyncio
+async def test_C5_ADMIN_ZIMMETI_KURYEYI_TURDAN_DOLDURUR(fab):
+    """ADMIN kurye adına zimmetlerse `handed_to_courier_id` BOŞ KALMAZ.
+
+    Operatör kurye adına okutabilir (sözleşme §6). Kurye kimliği boş kalsaydı
+    geri dönüş kuyruğu "hangi kuryede" sorusunu cevaplayamazdı — TB-7'nin
+    engellemek istediği tam olarak budur.
+    """
+    servis = _servis()
+    aid = await fab.admin()
+    kurye = await fab.kurye()
+    run = await fab.tur(courier_id=kurye)
+    oid, paket, _ean = await _packed_paket(fab, servis, aid)
+    async with AsyncSessionLocal() as s:
+        await delivery_service.add_stops(s, run, [oid])
+
+    async with AsyncSessionLocal() as s:
+        gorunum = await delivery_service.handover_scan(
+            s, paket.qr_payload, courier_id=None, actor=f"admin:{aid}",
+            actor_role=1, actor_id=aid,
+        )
+    assert gorunum.handed_to_courier_id == kurye, "admin zimmetinde kurye kaybolmuş"
+    assert f"admin:{aid}" == gorunum.handed_over_by_actor
+
+    async with AsyncSessionLocal() as s:
+        kuyruk = {k.package_id: k for k in await servis.return_queue(s)}
+    assert paket.id not in kuyruk   # henüz geri beklenmiyor
+    async with AsyncSessionLocal() as s:
+        await delivery_service.start_run(s, run)
+        stop_id = (
+            await s.execute(
+                text("SELECT id FROM delivery_stops WHERE order_id = :o"), {"o": oid}
+            )
+        ).scalar_one()
+    async with AsyncSessionLocal() as s:
+        await delivery_service.fail_stop(
+            s, stop_id, reason="Kimse yoktu", reason_code="EVDE_YOK"
+        )
+    async with AsyncSessionLocal() as s:
+        kuyruk = {k.package_id: k for k in await servis.return_queue(s)}
+    assert kuyruk[paket.id].courier_id == kurye, "geri dönüş kuyruğunda kurye yok"
+
+
 # ══════════════════ P2-F · repack STALE ═════════════════════════════════════
 
 

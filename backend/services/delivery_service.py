@@ -80,6 +80,17 @@ from services.delivery_timeline import eta_window, mask_recipient, project_custo
 
 _ACTIVE_RUN_STATUSES = (DeliveryRunStatus.PLANNED.value, DeliveryRunStatus.ACTIVE.value)
 
+#: Etiketle ilgili BÜTÜN 404'lerin TEK gövdesi.
+#:
+#: Commit 4 denetiminin bulgusu: "paket yok" · "senin turunda değil" · "bekleyen
+#: durak yok" ayrı metinlerdi ve hepsi 404 olsa bile **metin farkı bilgi
+#: sızdırıyordu** — yabancı bir etiketi eline geçiren kişi, gövdeye bakarak
+#: paketin var olup olmadığını ayırt edebiliyordu. Kalıcı QR + çalınabilir
+#: etiket (sözleşme §7 S4) bunu gerçek bir risk yapar. Ayrım artık YALNIZ
+#: sunucu loglarındadır.
+_ETIKET_YOK = "Bu etikete ait bekleyen durak bulunamadı"
+
+
 logger = logging.getLogger("adana.delivery")
 
 
@@ -1940,7 +1951,7 @@ async def handover_scan(
     cozum = packing_rules.parse_package_qr(payload)
     if cozum is None:
         raise HTTPException(
-            status.HTTP_404_NOT_FOUND, "Bu etiket bir paket QR'ı değil"
+            status.HTTP_404_NOT_FOUND, _ETIKET_YOK
         )
     package_id, token = cozum
     on_paket = (
@@ -1951,7 +1962,7 @@ async def handover_scan(
         )
     ).scalars().first()
     if on_paket is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Bu etikete ait paket bulunamadı")
+        raise HTTPException(status.HTTP_404_NOT_FOUND, _ETIKET_YOK)
 
     # 1) Order — kanonik sıranın ilk halkası (iptal/iade ile yarışır).
     order = (
@@ -1963,7 +1974,7 @@ async def handover_scan(
         )
     ).scalars().first()
     if order is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Paketin siparişi bulunamadı")
+        raise HTTPException(status.HTTP_404_NOT_FOUND, _ETIKET_YOK)
     # 2) OrderPackage
     paket = (
         await db.execute(
@@ -2047,7 +2058,13 @@ async def handover_scan(
         actor=actor,
         actor_role=actor_role,
         actor_id=actor_id,
-    ):  # pragma: no cover — yukarıdaki idempotent dönüş bunu zaten yakalar
+    ):  # pragma: no cover
+        # BU DAL BU AKIŞTAN ULAŞILAMAZ: yukarıdaki `HANDED_OVER` erken dönüşü
+        # aynı durumu daha önce yakalar. Kaldırılmıyor çünkü
+        # `mark_handed_over` **public bir servis fonksiyonudur** ve tekrar
+        # guard'ı onun KENDİ sözleşmesidir (doğrudan çağıran ikinci bir
+        # `HANDOVER` olayı üretemez). Guard doğrudan test edilir:
+        # `test_f30_guards_pg.py::test_C5_mark_handed_over_TEKRARI_FALSE_DONER`.
         return packing_service.view_of(paket)
 
     await order_fsm.transition_order(db, order, "SHIPPED", changed_by="courier")
@@ -2134,6 +2151,11 @@ async def _paket_sahipligi(
     "böyle bir paket var" bilgisini sızdırırdı.
 
     `courier_id is None` = ADMIN; sahiplik süzgeci uygulanmaz.
+
+    Sahiplik **GÜNCEL** turlarla sınırlıdır (`PLANNED`/`ACTIVE`). Dünkü turun
+    kuryesi bugün aynı etiketi okutursa 404 alır — aksi hâlde paketi bir kez
+    taşımış olmak, o paketin bugünkü durumunu 409 gövdesinden öğrenme hakkı
+    verirdi (commit 4 denetimi). "Bir zamanlar taşıdım" bir yetki değildir.
     """
     if courier_id is None:
         return
@@ -2143,13 +2165,14 @@ async def _paket_sahipligi(
             .join(DeliveryRun, DeliveryStop.run_id == DeliveryRun.id)
             .where(
                 DeliveryStop.order_id == order_id,
+                DeliveryRun.status.in_(_ACTIVE_RUN_STATUSES),
                 DeliveryRun.deleted_at.is_(None),
                 *_kurye_kosulu(courier_id),
             )
         )
     ).first()
     if sahiplik is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Bu paket senin turunda değil")
+        raise HTTPException(status.HTTP_404_NOT_FOUND, _ETIKET_YOK)
 
 
 async def scan(
@@ -2187,10 +2210,10 @@ async def scan(
         )
     ).scalars().first()
     if stop is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Bu etikete ait durak bulunamadı")
+        raise HTTPException(status.HTTP_404_NOT_FOUND, _ETIKET_YOK)
     if courier_id is not None and stop.run.courier_id != courier_id:
         # Durak uzayında da aynı IDOR kuralı: yabancı etiket 404.
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Bu etikete ait durak bulunamadı")
+        raise HTTPException(status.HTTP_404_NOT_FOUND, _ETIKET_YOK)
     return _stop_to_out(stop), stop.run.status
 
 
@@ -2208,7 +2231,7 @@ async def _paket_kapi_taramasi(
     if paket is None:
         # `id` doğru ama token yanlışsa da buraya düşülür: çıplak paket
         # kimliğiyle kapı açılamaz, token TAHMİN EDİLEMEZ olmalıdır.
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Bu etikete ait paket bulunamadı")
+        raise HTTPException(status.HTTP_404_NOT_FOUND, _ETIKET_YOK)
     await _paket_sahipligi(db, paket.order_id, courier_id)
     if paket.status != "HANDED_OVER":
         raise HTTPException(
@@ -2236,6 +2259,6 @@ async def _paket_kapi_taramasi(
     ).scalars().first()
     if stop is None:
         raise HTTPException(
-            status.HTTP_404_NOT_FOUND, "Bu etikete ait bekleyen durak bulunamadı"
+            status.HTTP_404_NOT_FOUND, _ETIKET_YOK
         )
     return _stop_to_out(stop), stop.run.status

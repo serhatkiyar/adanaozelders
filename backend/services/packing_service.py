@@ -62,6 +62,7 @@ from __future__ import annotations
 import dataclasses
 import datetime
 import secrets
+from collections.abc import Awaitable, Callable
 
 from fastapi import HTTPException, status as http
 from sqlalchemy import func, select, update
@@ -790,10 +791,27 @@ async def _idem_tekrari(
     return ScanResult(
         result=onceki.result or "OK",
         qty_delta=0,
-        order_item_id=(onceki.meta or {}).get("order_item_id"),
+        order_item_id=_olay_kalemi(paket, onceki),
         replayed=True,
         package=_view(paket),
     )
+
+
+def _olay_kalemi(paket: OrderPackage, olay: PackageScanEvent) -> int | None:
+    """Kayıtlı olayın işaret ettiği **sipariş kalemi**.
+
+    Tekrar yanıtı hangi satırın okutulduğunu KAYBETMEMELİDİR: ekran "şu kalem
+    tamam" bandını tekrar yanıtında da çizer. Kaynak `package_item_id`
+    kolonudur — istek yükündeki `order_item_id` yalnız MANUEL doğrulamada
+    doludur, kod taramasında `None`'dır ve oradan okumak tekrarda satırı
+    sessizce kaybettirirdi (commit 4 denetimi, P2 temizliği).
+    """
+    if olay.package_item_id is None:
+        return (olay.meta or {}).get("order_item_id")
+    for satir in paket.items:
+        if satir.id == olay.package_item_id:
+            return satir.order_item_id
+    return None
 
 
 async def scan(
@@ -892,6 +910,33 @@ async def _tarama_uygula(
     içinde mi). Satır zaten `FOR UPDATE` altında; koşul ikinci bir savunma
     hattıdır ve DB CHECK'iyle birlikte üç katman eder. Tek katmanlı koruma
     koruma değildir.
+
+    ## Savepoint YOK — ve neden olmadığı (commit 4 denetimi)
+
+    Burada eskiden bir `begin_nested()` + `IntegrityError` kurtarma dalı vardı
+    ve yorumu "adet güncellemesi de savepoint'in içindeydi" diyordu. **İki
+    bakımdan yanlıştı:** güncelleme savepoint'ten önce yapılıyordu ve dal
+    zaten **ULAŞILAMAZDI**. Ulaşılamazlığın kanıtı yapısaldır: anahtarlı olay
+    yazan tek iki yol (`scan`, `undo_scan`) işe `Order`'ı `FOR UPDATE` ile
+    alarak başlar, yani aynı paket üzerindeki iki istek **serileşir** ve
+    ikincisi `_idem_tekrari` ön kontrolünde yakalanır — INSERT'e hiç varmaz.
+    Mutasyon provası bunu doğruladı: kurtarma dalına `commit` eklemek hiçbir
+    testi kırmadı, çünkü o dal hiç çalışmıyor.
+
+    Test edilemeyen kurtarma kodu, koruma değil **gürültüdür** ve yanlış bir
+    güvenlik hissi verir; bu yüzden kaldırıldı. Çift sayıma karşı üç gerçek
+    katman kalır:
+
+    1. `Order` satır kilidi — eşzamanlı istekleri serileştirir,
+    2. `_idem_tekrari` ön kontrolü — asıl idempotency guard'ı (nöbetçisi
+       `test_f30_guards_pg.py::test_C5_TEKRAR_DALI_ADET_KALICI_KILMAZ`),
+    3. `uq_package_scan_idem` kısmi unique index — son savunma hattı; ihlali
+       global `IntegrityError` işleyicisiyle **409**'a çevrilir, sessiz bir
+       çift sayıma değil.
+
+    Adet güncellemesi ayrıca **koşullu UPDATE**'tir (`scanned_qty + delta`
+    tavan/taban içinde mi): satır zaten kilit altındadır, koşul ve DB CHECK'i
+    ikinci ve üçüncü katmandır. Tek katmanlı koruma koruma değildir.
     """
     satir_id = _satir_id(paket, karar)
     if karar.qty_delta:
@@ -911,47 +956,21 @@ async def _tarama_uygula(
                 http.HTTP_409_CONFLICT,
                 "Satır adedi bu arada değişti — ekranı yenile",
             )
-
-    try:
-        async with db.begin_nested():
-            packing_events.record(
-                db,
-                paket,
-                event_type=event_type,
-                result=karar.result,
-                code_scanned=(code or "")[:64] or None,
-                qty_delta=karar.qty_delta,
-                package_item_id=satir_id,
-                manual_reason=manual_reason,
-                actor_role=_ADMIN_ROLE,
-                actor_id=admin_id,
-                meta=idem_yuku,
-                idempotency_key=idempotency_key,
-            )
-            await db.flush()
-    except IntegrityError:
-        # `uq_package_scan_idem` yarışı: aynı anahtarla eşzamanlı ikinci istek.
-        # Savepoint adet güncellemesini de geri aldı (ikisi de içindeydi), yani
-        # kayıp/çift sayım yok — kazananın sonucunu döndürmek yeter.
-        kazanan = await _idem_olayi(db, paket.id, idempotency_key)
-        if kazanan is None:
-            raise
-        await db.rollback()
-        taze = (
-            await db.execute(
-                select(OrderPackage)
-                .options(selectinload(OrderPackage.items))
-                .where(OrderPackage.id == paket.id)
-                .execution_options(populate_existing=True)
-            )
-        ).scalars().one()
-        return ScanResult(
-            result=kazanan.result or "OK",
-            qty_delta=0,
-            order_item_id=None,
-            replayed=True,
-            package=_view(taze),
-        )
+    packing_events.record(
+        db,
+        paket,
+        event_type=event_type,
+        result=karar.result,
+        code_scanned=(code or "")[:64] or None,
+        qty_delta=karar.qty_delta,
+        package_item_id=satir_id,
+        manual_reason=manual_reason,
+        actor_role=_ADMIN_ROLE,
+        actor_id=admin_id,
+        meta=idem_yuku,
+        idempotency_key=idempotency_key,
+    )
+    await db.flush()
 
     if manual_reason:
         await _audit(
@@ -1125,7 +1144,12 @@ async def complete(db: AsyncSession, package_id: int, *, admin_id: int) -> Packa
 
 
 async def void(
-    db: AsyncSession, package_id: int, *, admin_id: int, reason: str
+    db: AsyncSession,
+    package_id: int,
+    *,
+    admin_id: int,
+    reason: str,
+    izin_dogrula: "Callable[[str], Awaitable[None]] | None" = None,
 ) -> PackageView:
     """Paketten vazgeçilir (`VOID`) — gerekçe ZORUNLU.
 
@@ -1137,11 +1161,30 @@ async def void(
     işlendi; paketi bozmak muhasebesel değil fiziksel bir iştir. Fiziksel
     bozma ayrı bir damgadır (`unpack`), böylece "bozulmayı bekleyen paketler"
     kuyruğu (`status='VOID' AND unpacked_at IS NULL`) anlamlı kalır.
+
+    ## `izin_dogrula` — yetki kararı KİLİTLİ durumla verilir (TOCTOU)
+
+    `void`'in gerektirdiği izin **paketin durumuna** bağlıdır (`OPEN` →
+    `packing.pack`, kapanmış → `packing.manage`; sözleşme §6). Commit 4
+    denetiminin bulgusu: router bu kararı **kilitsiz** okunan durumla
+    veriyordu, yani araya giren bir `complete` sonrası yalnız `packing.pack`
+    yetkisi olan kullanıcı **kapanmış** paketi çözebiliyordu (check-then-act).
+
+    Çözüm, kararı servise taşımak DEĞİL — izin kataloğu iş mantığı katmanına
+    sızmamalı — kararın **ne zaman** verildiğini taşımaktır: router bir
+    doğrulayıcı geçirir ve o, `Order` + `OrderPackage` kilitleri alındıktan
+    SONRA, taze durumla çağrılır. Yetki kararı ile durum geçişi böylece aynı
+    transaction penceresinde, aynı satır kilidi altında kalır.
     """
     temiz = _require_reason(reason, "Paket çözme")
     on = await _peek(db, package_id)
     order = await _lock_order(db, on.order_id)
     paket = await _lock_package(db, package_id)
+
+    if izin_dogrula is not None:
+        # Kilitten SONRA, TAZE durumla. Kilitten önce çağrılsaydı eşzamanlı
+        # `complete` yetki kararını bayat bırakırdı.
+        await izin_dogrula(paket.status)
 
     if paket.status == "VOID":
         return _view(paket)

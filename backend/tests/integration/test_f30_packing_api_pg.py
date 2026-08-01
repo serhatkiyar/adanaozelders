@@ -267,6 +267,121 @@ async def test_KAPI_TARAMASI_YABANCI_PAKETIN_DURUMUNU_SIZDIRMAZ(client, kur, fab
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "bicim",
+    ["yanlis_token", "bos_token", "eksik_parca", "ciplak_id", "durak_bicimi", "onek_yok"],
+)
+async def test_KAPI_TARAMASI_TOKEN_MATRISI(client, kur, fab, bicim):
+    """Kapı taramasında da token KİMLİKTİR — matris hâlinde.
+
+    Zimmet ucu için ayrıca ölçülüyordu; kapı ucu (`/delivery/scan`) aynı
+    korumayı taşımalı, çünkü teslim akışını açan uç odur. Altı bozuk biçimin
+    hepsi **aynı 404** ve **aynı gövde** ile reddedilmeli: gövde farkı, elinde
+    yalnız paket kimliği olan birine "bu paket var" bilgisini verirdi.
+    """
+    _aid, token = await kur.admin(izinler=[VIEW, PACK])
+    kurye = await fab.kurye()
+    _hid, kurye_token = await fab.kurye_hesabi(kurye)
+    run = await fab.tur(courier_id=kurye)
+    oid, paket = await _packed_paket(client, token, fab)
+    async with AsyncSessionLocal() as s:
+        await delivery_service.add_stops(s, run, [oid])
+        await delivery_service.handover_scan(
+            s, paket["qr_payload"], courier_id=kurye, actor=f"courier:{kurye}"
+        )
+    async with AsyncSessionLocal() as s:
+        await delivery_service.start_run(s, run)
+        durak_token = (
+            await s.execute(
+                text("SELECT qr_token FROM delivery_stops WHERE order_id = :o"),
+                {"o": oid},
+            )
+        ).scalar_one()
+
+    gercek = paket["qr_payload"].split(":")[2]
+    yukler = {
+        "yanlis_token": f"PKG1:{paket['id']}:{gercek[:-1]}x",
+        "bos_token": f"PKG1:{paket['id']}:",
+        "eksik_parca": f"PKG1:{paket['id']}",
+        "ciplak_id": str(paket["id"]),
+        # Paket token'ı DURAK biçiminde: iki uzay karışmamalı.
+        "durak_bicimi": f"1:{gercek}",
+        "onek_yok": f"{paket['id']}:{gercek}",
+    }
+    r = await client.post(
+        "/api/v1/delivery/scan",
+        json={"payload": yukler[bicim]},
+        headers=_bas(kurye_token),
+    )
+    assert r.status_code == 404, f"{bicim}: {r.status_code} {r.text}"
+    # Gövde de AYNI olmalı: metin farkı "bu paket var / yok" ayrımını sızdırır.
+    # Karşılaştırma yabancı bir kuryenin GERÇEK etikete verdiği yanıtla yapılır.
+    yabanci = await fab.kurye()
+    _hid2, yabanci_token = await fab.kurye_hesabi(yabanci)
+    await fab.tur(courier_id=yabanci)
+    ref = await client.post(
+        "/api/v1/delivery/scan",
+        json={"payload": paket["qr_payload"]},
+        headers=_bas(yabanci_token),
+    )
+    assert ref.status_code == 404
+    assert r.json()["detail"] == ref.json()["detail"], (
+        f"{bicim}: 404 gövdesi yabancı-paket gövdesinden farklı — bilgi sızıyor"
+    )
+
+    # Gerçek etiket AYNI kurye ile çalışıyor (ters prova: uç ölü değil).
+    r = await client.post(
+        "/api/v1/delivery/scan",
+        json={"payload": paket["qr_payload"]},
+        headers=_bas(kurye_token),
+    )
+    assert r.status_code == 200, r.text
+    assert r.json()["stop"]["order_id"] == oid
+    assert durak_token  # kurulum bağlayıcısı
+
+
+@pytest.mark.asyncio
+async def test_ESKI_TURUN_KURYESI_GUNCEL_DURUMU_OGRENEMEZ(client, kur, fab):
+    """"Bir zamanlar taşıdım" bir yetki değildir.
+
+    Sahiplik GÜNCEL turlarla (`PLANNED`/`ACTIVE`) sınırlıdır. Dünkü turun
+    kuryesi bugün aynı etiketi okutursa **404** almalı; sınır kalksaydı 409
+    gövdesinden paketin bugünkü durumunu öğrenirdi (commit 4 denetimi).
+    """
+    _aid, token = await kur.admin(izinler=[VIEW, PACK, MANAGE])
+    eski_kurye = await fab.kurye()
+    _hid, eski_token = await fab.kurye_hesabi(eski_kurye)
+    run1 = await fab.tur(courier_id=eski_kurye)
+    oid, paket = await _packed_paket(client, token, fab)
+    async with AsyncSessionLocal() as s:
+        await delivery_service.add_stops(s, run1, [oid])
+        await delivery_service.handover_scan(
+            s, paket["qr_payload"], courier_id=eski_kurye, actor=f"courier:{eski_kurye}"
+        )
+    async with AsyncSessionLocal() as s:
+        await delivery_service.start_run(s, run1)
+        stop_id = (
+            await s.execute(
+                text("SELECT id FROM delivery_stops WHERE order_id = :o"), {"o": oid}
+            )
+        ).scalar_one()
+    async with AsyncSessionLocal() as s:
+        await delivery_service.fail_stop(
+            s, stop_id, reason="Kimse yoktu", reason_code="EVDE_YOK"
+        )
+    # Tur kapandı: eski kuryenin GÜNCEL turu kalmadı.
+    async with AsyncSessionLocal() as s:
+        await delivery_service.complete_run(s, run1)
+
+    for yol in ("/api/v1/delivery/scan", "/api/v1/delivery/handover/scan"):
+        r = await client.post(
+            yol, json={"payload": paket["qr_payload"]}, headers=_bas(eski_token)
+        )
+        assert r.status_code == 404, f"{yol}: {r.status_code} {r.text}"
+        assert "RETURN_PENDING" not in r.text, "eski kuryeye güncel durum sızdı"
+
+
+@pytest.mark.asyncio
 async def test_ZIMMET_TEKRARI_HTTP_TEK_YAN_ETKI(client, kur, fab):
     """Aynı etiketin üç kez okutulması: tek `SHIPPED`, tek takip numarası,
     tek bildirim, tek `HANDOVER` olayı, değişmeyen damga.
