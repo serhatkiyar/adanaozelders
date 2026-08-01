@@ -34,6 +34,7 @@ Gerekçeler:
 from __future__ import annotations
 
 import ast
+import itertools
 
 #: Kilit alınabilen kaynaklar, ALINMA sırasına göre. Bir akış birden çok kaynağı
 #: kilitliyorsa bunları HER ZAMAN bu sırayla almalıdır.
@@ -134,7 +135,12 @@ def canonical_violations(node: ast.AST) -> list[str]:
     """
     gorulen = [(m, ln) for m, ln in observed_lock_models(node) if lock_rank(m) >= 0]
     ihlaller: list[str] = []
-    for (onceki, ln1), (sonraki, ln2) in zip(gorulen, gorulen[1:]):
+    # `zip(gorulen, gorulen[1:])` yerine `pairwise`: aranan şey **ardışık çift**.
+    # İki dizinin uzunluğu tanım gereği bir fark eder, yani `strict=True` her
+    # zaman ValueError verirdi ve `strict=False` de "eşitliği umursamıyoruz"
+    # diyerek niyeti gizlerdi (ruff B905'i susturmak, niyeti yazmak değildir).
+    # `pairwise` niyeti doğrudan söyler ve uzunluk sorusunu ortadan kaldırır.
+    for (onceki, ln1), (sonraki, ln2) in itertools.pairwise(gorulen):
         if lock_rank(sonraki) < lock_rank(onceki):
             ihlaller.append(f"satır {ln1} {onceki} → satır {ln2} {sonraki}")
     return ihlaller

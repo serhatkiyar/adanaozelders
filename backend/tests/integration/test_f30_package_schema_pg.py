@@ -477,8 +477,21 @@ async def test_AYNI_IDEMPOTENCY_ANAHTARI_ikinci_olay_yazamaz(siparis):
 
 @pytest.mark.asyncio
 async def test_ANAHTARSIZ_OLAYLAR_birbirini_ENGELLEMEZ(siparis):
-    """Kısmi index'in ters provası: `WHERE idempotency_key IS NOT NULL`
-    kalkarsa anahtarsız ikinci olay (sistem kancaları) yazılamazdı."""
+    """Sistem kancası (sipariş iptali) anahtarsız olay yazar ve ikincisi de yazılır.
+
+    ⚠️ Bu testin ESKİ gerekçesi YANLIŞTI ve commit 2 denetiminde düzeltildi
+    (P2-3). Eskiden "kısmi `WHERE idempotency_key IS NOT NULL` kalkarsa bu
+    ikinci satır yazılamazdı" deniyordu. Yanlış: PostgreSQL'de UNIQUE index
+    **birden çok NULL'ı zaten kabul eder** (NULL'lar birbirine eşit sayılmaz),
+    yani `WHERE` kalksa da bu iki satır yine yazılırdı. Yani iddia hem eski hem
+    yeni şemada geçen, **hiçbir şeyi ayırt etmeyen** bir mutasyon provasıydı.
+
+    Testin gerçek ve dar iddiası şudur: sistem kaynaklı olaylar anahtar
+    taşımak ZORUNDA değildir ve anahtarsız olmaları birbirlerini bloklamaz —
+    yani `packing_events.on_order_terminal` gibi kancalar aynı pakete birden
+    çok iz yazabilir. Kısmi index'in kendi varlığı ayrı bir üründür ve ayrıca
+    doğrulanır: `test_IDEM_INDEXI_GERCEKTEN_KISMIDIR`.
+    """
     _fab, oid, _kalem = siparis
     async with AsyncSessionLocal() as s:
         pkt = await _paket(s, oid)
@@ -494,3 +507,114 @@ async def test_ANAHTARSIZ_OLAYLAR_birbirini_ENGELLEMEZ(siparis):
             )
         ).scalar_one()
     assert adet == 2
+
+
+# ══════════════════ Kısmi index yüklemleri (gerçek katalog) ═════════════════
+
+
+async def _index_yuklemi(ad: str) -> str | None:
+    """Uygulanmış index'in GERÇEK predicate'i (`pg_get_expr`); kısmi değilse None.
+
+    Kaynak dosyada metin aramak yerine katalog okunur: ölçülen şey, migration'ın
+    veritabanında ne bıraktığıdır — dosyada ne yazdığı değil.
+    """
+    async with AsyncSessionLocal() as s:
+        return (
+            await s.execute(
+                text(
+                    "SELECT pg_get_expr(i.indpred, i.indrelid) "
+                    "FROM pg_index i JOIN pg_class c ON c.oid = i.indexrelid "
+                    "WHERE c.relname = :ad"
+                ),
+                {"ad": ad},
+            )
+        ).scalar_one()
+
+
+@pytest.mark.asyncio
+async def test_CANLI_INDEX_YUKLEMI_TERMINAL_KUMESIYLE_AYNI(pg):
+    """`uq_order_packages_live` yüklemi ↔ modelin terminal durum kümesi.
+
+    Denetim bulgusu P2-2: `alembic check` kısmi index'in `WHERE`'ini
+    karşılaştırmaz. Yüklem sessizce daralırsa (ör. yalnız `'VOID'`) teslim
+    edilmiş siparişe ikinci paket açılabilir; genişlerse (`'RETURNED'` de
+    eklenirse) `repack` akışı ölür. İkisi de üretimde ancak sahada görülür.
+
+    Karşılaştırma anlam düzeyindedir: PostgreSQL yüklemi
+    `(status)::text <> ALL (ARRAY[...])` biçimine normalize eder, metin
+    eşitliği aramak her koşumda yalancı kırmızı üretirdi.
+
+    Saf eşi: `test_f30_packing_contract.py::test_CANLI_PAKET_yuklemi_UCLU_AYRISAMAZ`.
+    """
+    from models.packing import PACKAGE_STATUSES, TERMINAL_PACKAGE_STATUSES
+    from tests.f30_predicate import canli_kume
+
+    yuklem = await _index_yuklemi("uq_order_packages_live")
+    assert yuklem, "uq_order_packages_live KISMİ değil — her siparişte tek paket olurdu"
+    assert canli_kume(yuklem, tum_durumlar=PACKAGE_STATUSES) == (
+        frozenset(PACKAGE_STATUSES) - frozenset(TERMINAL_PACKAGE_STATUSES)
+    ), f"uygulanmış index yüklemi terminal kümeden ayrışmış: {yuklem}"
+
+
+@pytest.mark.asyncio
+async def test_IDEM_INDEXI_GERCEKTEN_KISMIDIR(pg):
+    """`uq_package_scan_idem` yalnız anahtarlı satırları indeksler.
+
+    Bu, `test_ANAHTARSIZ_OLAYLAR_birbirini_ENGELLEMEZ`'in **yapamadığı**
+    ölçümdür: PostgreSQL çok NULL'a zaten izin verdiğinden davranış testi
+    kısmi yüklemin varlığını kanıtlayamaz. Yüklem ürün kararıdır (iz tablosu
+    büyürken sistem olayları index'i şişirmesin) ve ancak katalogdan okunarak
+    doğrulanabilir.
+    """
+    yuklem = await _index_yuklemi("uq_package_scan_idem")
+    assert yuklem is not None, "uq_package_scan_idem kısmi değil"
+    assert "idempotency_key" in yuklem and "NOT NULL" in yuklem.upper(), yuklem
+
+
+# ══════════════════ Ürün sert silme (gerçek politika) ═══════════════════════
+
+
+@pytest.mark.asyncio
+async def test_URUN_SERT_SILINMESI_TARANABILIR_PAKET_SATIRINDA_REDDEDILIR(fab):
+    """Ürünün sert silinmesi `SET NULL` ile SESSİZCE geçmez — DELETE reddedilir.
+
+    Commit 2 denetiminin P2-1 bulgusu: sözleşme ve model docstring'i "ürün
+    silinince `product_id` NULL olur, snapshot kalır, satır yalnız TARANAMAZ
+    olur" diyordu. Gerçek davranış bu DEĞİL:
+
+      * FK `SET NULL` `product_id`'yi boşaltmaya çalışır,
+      * ama `ck_order_package_items_scannable` (`product_id IS NOT NULL OR
+        (sku IS NULL AND barcode IS NULL)`) dolu SKU snapshot'ı yüzünden
+        ihlal edilir,
+      * sonuç: **sert silme tamamen reddedilir**.
+
+    Bu, istenen sonuçtur (paket satırı bayat bir koda dayanamaz) ama servis
+    tasarımı "product_id NULL olacaktır" varsayımı KURMAMALIDIR — üretimde
+    ürün zaten soft-delete edilir (`store_service`), sert silme yolu yoktur.
+    """
+    pid, _sku, _ean = await fab.barkodlu_urun(stock=0)   # defter hareketi yok
+    oid = await fab.fiziksel_siparis(kalemler=[(pid, 1)], sale_yaz=False)
+    kalem = (await fab.kalem_idleri(oid))[0]
+    async with AsyncSessionLocal() as s:
+        pkt = await _paket(s, oid)
+        await _satir(s, pkt, kalem, product_id=pid, sku="FZK-000042", expected_qty=1)
+        await s.commit()
+
+    with pytest.raises(IntegrityError) as hata:
+        async with AsyncSessionLocal() as s:
+            await s.execute(text("DELETE FROM products WHERE id = :i"), {"i": pid})
+            await s.commit()
+    assert "ck_order_package_items_scannable" in str(hata.value)
+
+    # Satır olduğu gibi durur: ne product_id boşaldı ne snapshot kayboldu.
+    async with AsyncSessionLocal() as s:
+        satir = (
+            await s.execute(
+                text(
+                    "SELECT product_id, sku FROM order_package_items "
+                    "WHERE package_id = :p"
+                ),
+                {"p": pkt},
+            )
+        ).one()
+    assert satir.product_id == pid and satir.sku == "FZK-000042"

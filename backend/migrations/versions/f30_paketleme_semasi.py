@@ -360,8 +360,10 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(
             ["order_item_id"], ["order_items.id"], ondelete="CASCADE"
         ),
-        # `order_items.product_id` ile ayni davranis: urun silinince snapshot
-        # yerinde kalir, satir yalniz TARANAMAZ olur.
+        # `order_items.product_id` ile ayni FK davranisi. DIKKAT: snapshot dolu
+        # bir satirda urunun SERT silinmesi `ck_order_package_items_scannable`e
+        # takilir ve DELETE tamamen reddedilir — "silinince NULL olur" DEGIL.
+        # Uretimde urun soft-delete edilir; sert silme yolu yoktur.
         sa.ForeignKeyConstraint(["product_id"], ["products.id"], ondelete="SET NULL"),
         sa.UniqueConstraint(
             "package_id", "order_item_id", name="uq_order_package_items_line"

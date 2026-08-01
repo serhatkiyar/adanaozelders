@@ -245,10 +245,23 @@ Eşleştirme sırası (`packing_rules.match_code`, saf):
 2. `sku` birebir (`FZK-000042`) — bizim ürettiğimiz, her zaman dolu
 3. eşleşme yok → `WRONG_SKU`
 
-**`product_id IS NULL` olan geçmiş kalem** (ürün silinmiş): SKU/barkod okunamaz.
-Satır `scannable=False` işaretlenir ve **yalnız kontrollü manuel doğrulama** ile
+**`product_id IS NULL` olan geçmiş kalem**: SKU/barkod okunamaz. Satır
+`scannable=False` işaretlenir ve **yalnız kontrollü manuel doğrulama** ile
 kapanır: gerekçe zorunlu, `result='OK_MANUAL'`, `package_scan_events`'e ve
 `audit_logs`'a yazılır. Sessiz geçiş yok.
+
+> **Ürünün sert silinmesi — gerçek politika** (commit 2 denetimi, P2-1).
+> Bu belgenin ilk hâli "ürün silinince `product_id` NULL olur, snapshot kalır,
+> satır taranamaz olur" diyordu. **Gerçek DB davranışı bu değildir:** FK
+> `SET NULL` `product_id`'yi boşaltmaya çalışır, ama snapshot doluysa
+> `ck_order_package_items_scannable` ihlal edilir ve **sert `DELETE` tamamen
+> reddedilir**. Üretimde bu yol zaten yoktur: ürün `store_service` üzerinden
+> **soft-delete** edilir. Bu yüzden `packing_service` "product_id NULL
+> olacaktır" varsayımı **kurmaz**; tarama dayanağı her zaman paket satırındaki
+> SKU/barkod snapshot'ıdır. `scannable=False` satır pratikte, paket açılırken
+> `order_items.product_id`'si zaten NULL olan (F30 öncesinden gelen) bir
+> siparişten doğar. Kanıt:
+> `test_f30_package_schema_pg.py::test_URUN_SERT_SILINMESI_TARANABILIR_PAKET_SATIRINDA_REDDEDILIR`.
 
 `ISBN` barkod yerine **kullanılmaz** — `models/store.py:254-261` bunu zaten
 gerekçelendiriyor (set ürün, ISBN-10 dönüşümü, promosyon barkodu). O gerekçeyi
@@ -398,6 +411,11 @@ Kısıtlar (hepsi migration'da):
 ```sql
 -- Yarış otoritesi. "Canlı" yükleminin TEK doğruluk kaynağı
 -- models/packing.py::LIVE_PACKAGE_SQL'dir; migration metni onu tekrar eder.
+-- ⚠️ `alembic check` bu WHERE yüklemini KARŞILAŞTIRMAZ (yalnız index'in
+-- varlığını görür) → drift nöbetçisi ayrıca yazıldı: saf eşleşme
+-- `test_f30_packing_contract.py::test_CANLI_PAKET_yuklemi_UCLU_AYRISAMAZ`,
+-- uygulanmış index `test_f30_package_schema_pg.py::
+-- test_CANLI_INDEX_YUKLEMI_TERMINAL_KUMESIYLE_AYNI` (pg_get_expr).
 CREATE UNIQUE INDEX uq_order_packages_live ON order_packages (order_id)
   WHERE status NOT IN ('DELIVERED', 'VOID');
 CREATE UNIQUE INDEX uq_order_packages_qr_token ON order_packages (qr_token);

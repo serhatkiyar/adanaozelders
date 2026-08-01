@@ -19,6 +19,7 @@ Kurallar (F29'dan devralındı, bir kez tuzağa düşüldüğü için yazılı):
 from __future__ import annotations
 
 import ast
+import importlib.util
 import pathlib
 
 import pytest
@@ -126,6 +127,67 @@ def test_izin_migrationi_VAR():
         pytest.fail(
             "HENÜZ YAZILMADI: packing.* izinlerini seed eden migration", pytrace=False
         )
+
+
+# ══════════════════ NÖBETÇİ: canlı paket yüklemi ════════════════════════════
+
+
+def _migration_modulu(revizyon: str):
+    """Migration dosyasını GERÇEKTEN import eder (metin araması değil).
+
+    `migrations/versions` bir Python paketi değildir; dosya yolundan yüklenir.
+    Amaç, migration'ın sabitini **çalışma zamanı değeri** olarak okumak: metin
+    aramak, yorum satırındaki bir örnekle eşleşip yalancı yeşil üretirdi.
+    """
+    yol = BACKEND / "migrations" / "versions" / f"{revizyon}.py"
+    assert yol.exists(), f"migration bulunamadı: {yol}"
+    spec = importlib.util.spec_from_file_location(f"_f30_mig_{revizyon}", yol)
+    modul = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(modul)
+    return modul
+
+
+def test_CANLI_PAKET_yuklemi_UCLU_AYRISAMAZ():
+    """Model sabiti ↔ migration sabiti ↔ terminal durum kümesi: üçü tek anlam.
+
+    Bu, commit 2 denetiminin P2-2 bulgusudur: `alembic check` kısmi index'in
+    `WHERE` yüklemini KARŞILAŞTIRMAZ, yalnız index'in varlığını görür. Yani
+    migration'daki yüklem `('VOID')`'e daralsa ya da `('DELIVERED','VOID',
+    'RETURNED')`'a genişlese autogenerate sessiz kalırdı — ve hata "ikinci
+    paket açılamıyor"/"iki canlı paket oluştu" olarak ancak sahada görünürdü.
+
+    Karşılaştırma metin düzeyinde DEĞİL anlam düzeyindedir (bkz.
+    `tests/f30_predicate.py`): boşluk/sıra farkına kırılmaz, kümenin
+    değişmesine kırılır.
+
+    Davranış eşi (gerçek DB'deki uygulanmış index):
+    `test_f30_package_schema_pg.py::test_CANLI_INDEX_YUKLEMI_TERMINAL_KUMESIYLE_AYNI`.
+    """
+    from models.packing import (
+        LIVE_PACKAGE_SQL,
+        PACKAGE_STATUSES,
+        TERMINAL_PACKAGE_STATUSES,
+    )
+    from tests.f30_predicate import canli_kume
+
+    beklenen = frozenset(PACKAGE_STATUSES) - frozenset(TERMINAL_PACKAGE_STATUSES)
+    assert beklenen, "terminal küme bütün durumları yutmuş"
+
+    model_kume = canli_kume(LIVE_PACKAGE_SQL, tum_durumlar=PACKAGE_STATUSES)
+    assert model_kume == beklenen, (
+        f"LIVE_PACKAGE_SQL terminal kümeden ayrışmış: {sorted(model_kume)} "
+        f"≠ {sorted(beklenen)}"
+    )
+
+    migration = _migration_modulu("f30_paketleme_semasi")
+    mig_kume = canli_kume(migration._LIVE, tum_durumlar=PACKAGE_STATUSES)
+    assert mig_kume == model_kume, (
+        f"migration yüklemi modelden ayrışmış: {sorted(mig_kume)} "
+        f"≠ {sorted(model_kume)}"
+    )
+    # Migration'ın durum sözlüğü de aynı olmalı; aksi hâlde CHECK ile FSM
+    # ayrışır ve servis yazamayacağı bir durumu "geçerli" sanır.
+    assert tuple(migration._STATUSES) == tuple(PACKAGE_STATUSES)
 
 
 # ══════════════════ KIRMIZI: test izolasyonu ════════════════════════════════

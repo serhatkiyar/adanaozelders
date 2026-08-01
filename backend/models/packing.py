@@ -296,9 +296,26 @@ class OrderPackageItem(Base, TimestampMixin):
     ürün sonradan yeniden adlandırılsa/silinse de paketin neyi beklediği
     kaybolmaz.
 
-    `product_id IS NULL` (ürün kataloğdan silinmiş) satırda `sku`/`barcode` da
-    NULL'dır; bu satır **taranamaz** ve yalnız gerekçeli manuel doğrulamayla
-    kapanır.
+    `product_id IS NULL` satırda `sku`/`barcode` da NULL'dır (CHECK); bu satır
+    **taranamaz** ve yalnız gerekçeli manuel doğrulamayla kapanır. Böyle bir
+    satır tipik olarak `order_items.product_id`'si zaten NULL olan **geçmiş**
+    bir siparişten doğar — paket açılırken ürün okunamaz.
+
+    ## Ürünün SERT silinmesi: `SET NULL` değil, RET
+
+    Aşağıdaki `SET NULL` bir "silinirse boşal" sözü DEĞİLDİR. Snapshot dolu bir
+    satırda ürünü sert silmeye çalışmak `ck_order_package_items_scannable`
+    ihlaline düşer ve **DELETE tamamen reddedilir**:
+
+        product_id ← NULL   ama   sku = 'FZK-000042'  →  CHECK ihlali
+
+    Bu istenen sonuçtur (bkz. §3.6: "okuttum, eşleşti" güveni bayat bir koda
+    dayanamaz), fakat servis tasarımı buna dayanmaz: üretimde ürün **soft-delete**
+    edilir (`store_service`), sert silme yolu yoktur ve `packing_service`
+    "product_id NULL olacaktır" varsayımı KURMAZ. Tarama dayanağı her zaman
+    satırdaki SKU/barkod snapshot'ıdır.
+    Davranış kanıtı: `test_f30_package_schema_pg.py::
+    test_URUN_SERT_SILINMESI_TARANABILIR_PAKET_SATIRINDA_REDDEDILIR`.
     """
 
     __tablename__ = "order_package_items"
@@ -310,8 +327,9 @@ class OrderPackageItem(Base, TimestampMixin):
     order_item_id: Mapped[int] = mapped_column(
         ForeignKey("order_items.id", ondelete="CASCADE"), nullable=False
     )
-    # SET NULL: `order_items.product_id` ile aynı davranış. Snapshot alanları
-    # (sku/barcode/title) yerinde kalır, satır yalnız TARANAMAZ hâle gelir.
+    # SET NULL: `order_items.product_id` ile aynı FK davranışı — AMA snapshot
+    # doluyken sert silme `ck_order_package_items_scannable`'a takılır ve
+    # reddedilir (sınıf docstring'i). Üretimde ürün soft-delete edilir.
     product_id: Mapped[int | None] = mapped_column(
         ForeignKey("products.id", ondelete="SET NULL"), nullable=True
     )
