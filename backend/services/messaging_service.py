@@ -129,12 +129,85 @@ async def _notify_party(
 async def _can_message(
     db: AsyncSession, a: tuple[str, int], b: tuple[str, int]
 ) -> bool:
-    """Kütüphane içeren çiftler AÇIK (herkes yazabilir). CLIENT↔TUTOR ise
-    rezervasyon/talep-yanıtı kuralı geçerlidir."""
-    if "LIBRARY" in {a[0], b[0]}:
-        return True
+    """Çift bazlı ilişki politikası (İP-3 §1) — `a` GÖNDEREN, `b` hedef.
+
+    - CLIENT↔TUTOR: rezervasyon/talep-yanıtı kuralı.
+    - CLIENT→LIBRARY: açık (public işletmeye destek talebi; hedefin ACTIVE
+      olduğu `_validate_target`'ta doğrulanır). Bu sohbet ilişkiyi doğurur.
+    - LIBRARY→CLIENT: yalnız GERÇEK, kütüphane bazlı iş ilişkisi.
+    - LIBRARY↔TUTOR: tanımlı bir iş ilişkisi modeli yok → İKİ YÖN de kapalı.
+    """
+    roles = {a[0], b[0]}
     parties = {a[0]: a[1], b[0]: b[1]}
-    return await _can_message_client_tutor(db, parties["CLIENT"], parties["TUTOR"])
+    if roles == {"CLIENT", "TUTOR"}:
+        return await _can_message_client_tutor(db, parties["CLIENT"], parties["TUTOR"])
+    if roles == {"CLIENT", "LIBRARY"}:
+        if a[0] == "CLIENT":
+            return True
+        return await _can_message_library_client(
+            db, library_id=parties["LIBRARY"], client_id=parties["CLIENT"]
+        )
+    return False
+
+
+async def _can_message_library_client(
+    db: AsyncSession, *, library_id: int, client_id: int
+) -> bool:
+    """Operatör → öğrenci yalnız gerçek iş ilişkisiyle yazabilir (İP-3 §1.2-1.4).
+
+    İlişki KÜTÜPHANE bazlıdır (A'daki kayıt B operatörünü yetkilendirmez):
+    o kütüphanenin oturumuna aktif deneme kaydı · o kütüphanede aktif çalışma
+    rezervasyonu · öğrencinin kendi başlattığı sohbet (sohbetin varlığı yetmez —
+    `_conversation_id` sohbeti operatör yazarken de yaratır; öğrencinin GERÇEK
+    bir mesajı aranır).
+    """
+    from models.library_exam import (
+        ACTIVE_REGISTRATION_STATUSES,
+        ExamRegistration,
+        LibraryExamSession,
+    )
+    from models.study_reservation import StudyReservation
+
+    has_exam_reg = exists().where(
+        ExamRegistration.session_id == LibraryExamSession.id,
+        LibraryExamSession.library_id == library_id,
+        LibraryExamSession.deleted_at.is_(None),
+        ExamRegistration.client_id == client_id,
+        ExamRegistration.status.in_(ACTIVE_REGISTRATION_STATUSES),
+        ExamRegistration.deleted_at.is_(None),
+    )
+    has_study_res = exists().where(
+        StudyReservation.library_id == library_id,
+        StudyReservation.client_id == client_id,
+        StudyReservation.status.in_(ACTIVE_REGISTRATION_STATUSES),
+        StudyReservation.deleted_at.is_(None),
+    )
+    client_started = exists().where(
+        Conversation.library_id == library_id,
+        Conversation.client_id == client_id,
+        Message.conversation_id == Conversation.id,
+        Message.sender_role == "CLIENT",
+    )
+    return bool(
+        await db.scalar(select(or_(has_exam_reg, has_study_res, client_started)))
+    )
+
+
+async def _assert_sender_library_active(
+    db: AsyncSession, sender: LibraryOperator
+) -> None:
+    """Operatör GÖNDEREN olduğunda kendi kütüphanesi ACTIVE olmalı (İP-3 §1.1).
+
+    Self-servis kayıt (`POST /libraries/register`) anında geçerli token
+    ürettiğinden rol tek başına yetki değildir; PENDING/REJECTED/HIDDEN/
+    silinmiş ve tanımsız durumların hepsi kapalıdır (allowlist, fail-closed).
+    """
+    lib = await db.get(Library, sender.library_id)
+    if lib is None or lib.deleted_at is not None or lib.status != "ACTIVE":
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            "Kütüphaneniz henüz onaylanmadı; mesajlaşma onaydan sonra kullanılabilir.",
+        )
 
 
 async def _can_message_client_tutor(
@@ -254,13 +327,39 @@ async def send_message(
             status.HTTP_400_BAD_REQUEST, "Aynı türdeki taraflar mesajlaşamaz"
         )
     target_party = (counterparty_role, counterparty_id)
-    await _validate_target(db, counterparty_role, counterparty_id)
-    # Uygunluk gönderim anında değerlendirilir; CLIENT↔TUTOR'da rezervasyon gerekir.
-    if not await _can_message(db, sender_party, target_party):
-        raise HTTPException(
-            status.HTTP_403_FORBIDDEN,
-            "Mesajlaşmak için aranızda beklemede veya onaylı bir rezervasyon olmalı.",
-        )
+    if sender_party[0] == "LIBRARY":
+        # 1) Gönderen operatörün kütüphanesi ACTIVE olmalı (İP-3 §1.1).
+        await _assert_sender_library_active(db, sender)
+        # 2) Varlık sızmaz (İP-3 §1.7): var olan ilişkisiz hedef ile hiç olmayan
+        #    id AYNI yanıtı alır — hedef doğrulaması `_validate_target`ın 404'üne
+        #    değil, ilişki kararıyla birlikte tek tip 403'e bağlanır.
+        target_exists = False
+        if counterparty_role == "CLIENT":
+            target_exists = bool(
+                await db.scalar(
+                    select(
+                        exists().where(
+                            Client.id == counterparty_id,
+                            Client.deleted_at.is_(None),
+                        )
+                    )
+                )
+            )
+        if not target_exists or not await _can_message(
+            db, sender_party, target_party
+        ):
+            raise HTTPException(
+                status.HTTP_403_FORBIDDEN,
+                "Bu kullanıcıya mesaj gönderme yetkiniz yok.",
+            )
+    else:
+        await _validate_target(db, counterparty_role, counterparty_id)
+        # Uygunluk gönderim anında değerlendirilir; CLIENT↔TUTOR'da rezervasyon gerekir.
+        if not await _can_message(db, sender_party, target_party):
+            raise HTTPException(
+                status.HTTP_403_FORBIDDEN,
+                "Mesajlaşmak için aranızda beklemede veya onaylı bir rezervasyon olmalı.",
+            )
     conv_id = await _conversation_id(db, sender_party, target_party)
 
     # Yanıt hedefi yalnızca aynı sohbetteyse geçerli — değilse sessizce yok say.

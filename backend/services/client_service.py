@@ -9,6 +9,19 @@ from models.client import Client
 from models.tutor import Gender
 
 
+def age_of(
+    birth_date: datetime.date | None, *, today: datetime.date | None = None
+) -> int | None:
+    """Doğum tarihinden yaş (İP-3 §4.4): eğitmene tam `birth_date` dönmez —
+    ders seviyesi için gereken bilgi yaştır; tam tarih kimlik doğrulama ve
+    hesap kurtarma saldırılarında kullanılan bir alandır."""
+    if birth_date is None:
+        return None
+    today = today or datetime.date.today()
+    had_birthday = (today.month, today.day) >= (birth_date.month, birth_date.day)
+    return today.year - birth_date.year - (0 if had_birthday else 1)
+
+
 def _years_ago(years: int) -> datetime.date:
     today = datetime.date.today()
     try:

@@ -5,7 +5,7 @@ import secrets
 from decimal import Decimal, ROUND_HALF_UP
 
 from fastapi import HTTPException, status
-from sqlalchemy import func, select, update
+from sqlalchemy import exists, func, select, update
 from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -289,6 +289,26 @@ async def count_completed(db: AsyncSession, *, role_id: int, user_id: int) -> in
         )
     )
     return int((await db.scalar(stmt)) or 0)
+
+
+async def has_relationship(
+    db: AsyncSession, *, tutor_id: int, client_id: int
+) -> bool:
+    """Eğitmen ↔ öğrenci arasında herhangi bir rezervasyon kaydı var mı?
+
+    İP-3 §4.2: eğitmen yalnız meşru rezervasyon ilişkisi olan öğrencinin
+    profilini görür. PENDING talep dahildir (eğitmen kabul etmeden önce
+    değerlendirebilmeli) ve geçmiş/sonuçlanmış dersler ilişkiyi DÜŞÜRMEZ —
+    ilişki bir kez kurulduysa kalır.
+    """
+    stmt = select(
+        exists().where(
+            Booking.tutor_id == tutor_id,
+            Booking.client_id == client_id,
+            Booking.deleted_at.is_(None),
+        )
+    )
+    return bool(await db.scalar(stmt))
 
 
 async def get_booking(
