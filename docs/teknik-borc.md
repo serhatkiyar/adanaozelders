@@ -9,6 +9,18 @@ notunu bırakmak, yapılmış bir işi yapılmamış gibi anlatır).
 
 ---
 
+## TB-7 · Hijyen nöbetçisi `outbox_events` ve `notifications` tablolarını KORUMUYOR
+
+| | |
+|---|---|
+| **Bulundu** | İP-2b bağımsız denetim düzeltmesi (1 Ağu 2026), test DB hijyen kontrolü sırasında |
+| **Yer** | `backend/tests/integration/conftest.py::_KRITIK_TABLOLAR` |
+| **Durum** | Nöbetçi listesinde `orders`/`products`/`audit_logs`/`admin_roles` var; **`outbox_events` ve `notifications` yok**. Ölçüldü: `pytest tests/integration` tam koşumu her turda **+10 `outbox_events`** ve **+4 `notifications`** satırı kalıcı bırakıyor (`email:order_status`, `sms:tracking_link`, `sms:failed`), suite yine de "temiz" raporluyor |
+| **Kaynak İP-2b DEĞİL** | İP-2b paketi (`-k ip2b`) ölçüldü: iki tablo için de **delta 0** — `ip2b_factory.temizle` outbox'ı `payload->>'order_id'` ile, bildirimleri role_id ile siliyor. Sızıntı başka entegrasyon paketlerinden (teslimat/verify yolları) geliyor; artık kalıntının bir kısmı bu oturumdan ESKİ (`created_at` 08:13) |
+| **Etki** | F29'da `audit_logs` ile birebir aynı sınıf: nöbetçide olmayan tablo sessizce birikir. Outbox worker'ı gerçek gönderim yapan bir ortamda çalışırsa bayat test satırları GERÇEK SMS/e-posta kuyruğuna girebilir; ayrıca `notifications` birikimi admin/panel ölçümlerini şişirir |
+| **Neden ertelendi** | Bu turun kapsamı İP-2b parti-izolasyonu nöbetçisiydi; sızdıran paketlerin teardown'larını değiştirmek ayrı bir iştir ve kırmızı checkpoint'in sayımını bulandırırdı |
+| **Sonraki adım** | İki tabloyu `_KRITIK_TABLOLAR`'a ekle, kırmızıya düşen paketlerin teardown'larını (ip2b fabrikasındaki daraltılmış DELETE deseniyle) tamamla, mevcut kalıntıyı test DB'sinden temizle |
+
 ## TB-6 · `audit_logs` DB seviyesinde değişmez değil
 
 | | |

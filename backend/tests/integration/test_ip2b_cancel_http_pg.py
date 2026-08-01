@@ -5,7 +5,7 @@ Sözleşme: docs/ip2b-siparis-iptal-telafi-sozlesme.md
 KIRMIZI testler bugünkü üretim davranışındaki doğrulanmış boşlukları ölçer ve
 üretim düzeltmesi gelene dek KIRMIZI kalmaları beklenir:
 - [IP2B-R1] sahiplik ihlalinde 403 varlık sızıntısı (sözleşme: 404),
-- [IP2B-R2] admin sipariş iptal ucunun yokluğu,
+- [IP2B-R2] admin sipariş iptal ucunun yokluğu (+ R2b: gerekçe zorunluluğu),
 - [IP2B-R3] admin iadesinde zorunlu gerekçe + audit reason,
 - [IP2B-R4] DELIVERED siparişin admin refund ucuyla RMA atlanarak kapatılması.
 
@@ -200,6 +200,59 @@ async def test_kirmizi_admin_iptal_ucu_gerekceli_calismali(fab, http, provider):
 
     Bugün `/store/admin/orders/{id}/cancel` ucu YOKTUR (404) — admin, müşteri
     adına ödenmemiş/sorunlu siparişi kapatamaz; tek aracı PAID şartlı refund'dır.
+
+    Uç eklendiğinde 200 dönmesi YETMEZ; sözleşme aksiyonun izlenebilir ve yan
+    etkisiz olmasını da ister (yoksa 'ucu ekledim' diye yazılan bir stub bu
+    testi yeşillendirirdi):
+      • gerekçe `audit_logs.reason`'a YAZILIR (admin.refund'daki R3 kusuru
+        burada tekrarlanmasın),
+      • `order_status_history.changed_by == 'admin'` (aktör 'client' değil),
+      • ödenmemiş siparişte sağlayıcıya GİDİLMEZ, stok telafisi yazılmaz,
+      • müşteri iptal bildirimi tam bir kez üretilir.
+    """
+    GEREKCE = "Müşteri telefonla iptal istedi"
+    pid = await fab.urun(stock=3)
+    cid = await fab.musteri()
+    oid, _ = await fab.siparis(
+        items=[(pid, 1, "PHYSICAL", "100.00")],
+        client_id=cid, status="PENDING", payment_status="PENDING",
+    )
+    aid, hdr = await fab.admin_izinli(["orders.manage"])
+
+    r = await http.post(
+        ADMIN_CANCEL.format(oid=oid), headers=hdr, json={"reason": GEREKCE},
+    )
+    assert r.status_code == 200, (
+        f"admin sipariş iptal ucu yok/çalışmıyor: {r.status_code}"
+    )
+    assert await fab.siparis_durumu(oid) == ("CANCELLED", "PENDING")
+    assert await fab.history(oid) == [("PENDING", "CANCELLED", "admin")], (
+        "iptalin aktörü geçmişe 'admin' olarak yazılmadı"
+    )
+    kayitlar = await fab.audit_kayitlari(action="order.cancel", target_id=oid)
+    assert [k[0] for k in kayitlar] == [aid], (
+        "admin iptali audit_logs'a (action='order.cancel') tam bir kez yazılmalı"
+    )
+    assert kayitlar[0][1] == GEREKCE, (
+        f"audit reason gerekçeyi taşımıyor: {kayitlar[0][1]!r}"
+    )
+    assert provider.refund_calls == [], "ödenmemiş siparişte para hareketi yasak"
+    assert await fab.hareketler(pid, "SALE_CANCEL") == []
+    assert await fab.bildirim_sayisi(cid, icerik="iptal edildi") == 1
+
+
+async def test_kirmizi_admin_iptal_gerekcesiz_reddedilmeli(fab, http, provider):
+    """[IP2B-R2b] Admin iptali gerekçesiz KABUL EDİLMEMELİ.
+
+    R2'nin kendisi gövdede `reason` GÖNDERİR; bu, alanın zorunlu olduğunu
+    kanıtlamaz — `reason` opsiyonel (hatta hiç okunmayan) bir alan olarak
+    eklenirse R2 yeşile döner ve 'gerekçesiz admin iptali' kusuru sessizce
+    üretime girer. Zorunluluğu ölçen tek şey, gerekçesiz isteğin REDDİDİR.
+
+    Boş dizgi/yalnız boşluk da gerekçe sayılmaz (aksi hâlde zorunluluk tek bir
+    boşluk karakteriyle atlatılır).
+
+    Bugün uç yok → 404 → kırmızı; uç gerekçesiz kabul ederse de kırmızı kalır.
     """
     pid = await fab.urun(stock=3)
     cid = await fab.musteri()
@@ -209,14 +262,17 @@ async def test_kirmizi_admin_iptal_ucu_gerekceli_calismali(fab, http, provider):
     )
     _aid, hdr = await fab.admin_izinli(["orders.manage"])
 
-    r = await http.post(
-        ADMIN_CANCEL.format(oid=oid), headers=hdr,
-        json={"reason": "Müşteri telefonla iptal istedi"},
-    )
-    assert r.status_code == 200, (
-        f"admin sipariş iptal ucu yok/çalışmıyor: {r.status_code}"
-    )
-    assert await fab.siparis_durumu(oid) == ("CANCELLED", "PENDING")
+    for govde, etiket in (({}, "gövdesiz"), ({"reason": "   "}, "boş gerekçe")):
+        r = await http.post(ADMIN_CANCEL.format(oid=oid), headers=hdr, json=govde)
+        assert r.status_code in (400, 422), (
+            f"{etiket} admin iptali {r.status_code} ile karşılandı; sözleşme "
+            "doğrulama reddi (400/422) ister — gerekçe zorunlu olmalı"
+        )
+    # Reddedilen istek hiçbir iz bırakmamalı.
+    assert await fab.siparis_durumu(oid) == ("PENDING", "PENDING")
+    assert await fab.history(oid) == []
+    assert await fab.audit_kayitlari(action="order.cancel", target_id=oid) == []
+    assert provider.refund_calls == []
 
 
 async def test_kirmizi_admin_refund_gerekce_ve_audit_reason(fab, http, provider):

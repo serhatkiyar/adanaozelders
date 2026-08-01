@@ -14,12 +14,14 @@ ele alınmıştır; mağaza yolunda eşdeğeri yoktur.
 from __future__ import annotations
 
 import asyncio
+import logging
 from decimal import Decimal
 
 import pytest
 from fastapi import HTTPException
 from sqlalchemy import text
 
+from core.config import settings
 from core.database import AsyncSessionLocal
 from core.payments.base import CheckoutResult
 from services import escrow_reconciler, order_service
@@ -36,15 +38,24 @@ async def _iptal(oid: int):
 
 class CheckoutSaglayici(StubProvider):
     """`retrieve_checkout` destekli stub — reconciler bayat-checkout taraması
-    yalnız bu yeteneği olan sağlayıcıda çalışır (iyzico'nun test ikizi)."""
+    yalnız bu yeteneği olan sağlayıcıda çalışır (iyzico'nun test ikizi).
+
+    `patlayan_tokenlar`: bu token'larda sağlayıcı **beklenmeyen** bir istisna
+    (RuntimeError) fırlatır — ağ/SDK/serileştirme sınıfı arıza taklidi. İptal
+    veya FSM ile hiçbir ilgisi yoktur; parti izolasyonunu R10'dan bağımsız
+    ölçmek için gerekir.
+    """
 
     def __init__(self) -> None:
         super().__init__()
         self.checkouts: dict[str, CheckoutResult] = {}
         self.retrieve_tokens: list[str] = []
+        self.patlayan_tokenlar: set[str] = set()
 
     async def retrieve_checkout(self, *, token: str) -> CheckoutResult:
         self.retrieve_tokens.append(token)
+        if token in self.patlayan_tokenlar:
+            raise RuntimeError(f"saglayici beklenmeyen hata (token={token})")
         return self.checkouts.get(token, CheckoutResult(success=False))
 
 
@@ -55,6 +66,37 @@ def checkout_provider(monkeypatch) -> CheckoutSaglayici:
 
     monkeypatch.setattr(payments, "get_payment_provider", lambda: stub)
     return stub
+
+
+async def _bayatlat(oids: list[int]) -> None:
+    """Kayıtları karantina penceresinin dışına taşır (ORM'siz UPDATE)."""
+    async with AsyncSessionLocal() as s:
+        await s.execute(
+            text(
+                "UPDATE orders SET updated_at = now() - interval '1 hour' "
+                "WHERE id = ANY(:ids)"
+            ),
+            {"ids": oids},
+        )
+        await s.commit()
+
+
+async def _bir_tur_mutabakat() -> Exception | None:
+    """Bayat-checkout taramasını BİR kez koşturur; dışarı kaçan istisnayı döndürür.
+
+    Tarama hız sınırı (modül global'i) ve aralık ayarı her turda sıfırlanır ki
+    ikinci tur gerçekten koşsun (idempotency ölçümü buna bağlı)."""
+    escrow_reconciler._last_checkout_scan = 0.0
+    eski = settings.CHECKOUT_RECONCILE_INTERVAL_SECONDS
+    settings.CHECKOUT_RECONCILE_INTERVAL_SECONDS = 0
+    try:
+        async with AsyncSessionLocal() as s:
+            await escrow_reconciler.reconcile_stale_checkouts(s)
+    except Exception as exc:  # noqa: BLE001 — kaçan HER istisna bulgudur
+        return exc
+    finally:
+        settings.CHECKOUT_RECONCILE_INTERVAL_SECONDS = eski
+    return None
 
 
 # ── Kırmızı: iptal edilen siparişin doğrulanmış tahsilatı ───────────────────────
@@ -104,70 +146,136 @@ async def test_kirmizi_iptal_edilen_siparise_gec_callback_iade(fab, provider):
     assert await fab.hareketler(pid, "SALE") == []
 
 
-async def test_kirmizi_reconciler_partisi_zehirlenmez(fab, checkout_provider):
-    """[IP2B-R11] Bayat-checkout taramasında iptal edilmiş sipariş 409 fırlatınca
-    döngü ORADA ölür: partideki SONRAKİ meşru siparişler o turda (ve iptal kaydı
-    durdukça hiçbir turda) işlenmez — kayıp callback'li gerçek müşteri sonsuza
-    dek PENDING kalır.
+async def test_kirmizi_reconciler_partisi_zehirlenmez(fab, checkout_provider, caplog):
+    """[IP2B-R11] Bir kaydın BEKLENMEYEN hatası, aynı reconciler partisindeki
+    diğer kayıtların mutabakatını engellememeli.
 
-    Sözleşme: bir kaydın hatası diğer kayıtların mutabakatını engellememeli
-    (reconciler docstring'i 'her kayıt kendi commit'iyle' der — sipariş dalında
-    per-kayıt hata izolasyonu yoktur)."""
-    pid = await fab.urun(stock=6)
-    cid1 = await fab.musteri()
-    cid2 = await fab.musteri()
-    # 1) İptal edilmiş ama sağlayıcıda ödenmiş görünecek sipariş (küçük id önce).
+    Sözleşme: `escrow_reconciler` docstring'i "her kayıt kendi commit'iyle —
+    bir kayıttaki hata diğerlerini geciktirmez" der; sipariş dalında per-kayıt
+    hata izolasyonu YOKTUR, döngü ilk istisnada ölür.
+
+    ── Bu testin R10'dan BAĞIMSIZ olması neden şart? ─────────────────────────
+    Önceki hâlinde partiyi bozan tek kayıt R10 senaryosuydu (CANCELLED→PAID
+    409'u). FSM'e o geçiş eklenirse — kayıt-başı izolasyon HİÇ yazılmadan —
+    test yeşile dönerdi; yani ölçtüğü invariant izolasyon değil FSM'di. Artık
+    partide **iptal/FSM ile hiçbir ilgisi olmayan** bir arıza var: sağlayıcı
+    yalnız tek bir token'da RuntimeError fırlatıyor.
+
+    ── Sıralama neden ID'ye çivilenmedi? ─────────────────────────────────────
+    Üretim sorgusunda (`escrow_reconciler.reconcile_stale_checkouts`) ORDER BY
+    YOKTUR; satır sırası PostgreSQL yığın (heap) düzenidir ve suite'in sürekli
+    INSERT/DELETE ettiği bir tabloda id sırasıyla aynı OLMAK ZORUNDA DEĞİLDİR.
+    "Bozuk kayıt önce gelsin" varsayımına yaslanmak testi tesadüfe bağlardı.
+    Onun yerine parti bütünlüğü SIRADAN BAĞIMSIZ ölçülür: ölen bir döngü,
+    kendisinden sonraki kayda `retrieve_checkout` çağrısını HİÇ yapamaz — bu
+    yüzden "partideki her kaydın sağlayıcıya sorulmuş olması" + "hiçbir istisna
+    dışarı kaçmaması" birlikte, hangi sırada gelirse gelsin izolasyonu ölçer.
+    """
+    caplog.set_level(logging.ERROR)
+    TOK_BOZUK = "ip2b-tok-bozuk"
+    TOK_SAGLIKLI = "ip2b-tok-saglikli"
+    TOK_IPTAL = "ip2b-tok-iptal"
+    # Tutarlar bilerek AYRIK (100/200/300): sağlayıcıya giden her iade çağrısı
+    # tutarından kime ait olduğu kesin okunur.
+    pid_bozuk = await fab.urun(stock=6)
+    pid_saglikli = await fab.urun(stock=6)
+    pid_iptal = await fab.urun(stock=6)
+
+    # A) Bağımsız bozuk kayıt: sıradan bir bayat PENDING checkout; hatası
+    #    sağlayıcı katmanında doğar (iptal/FSM ile ilgisi yok).
+    oid_bozuk, _ = await fab.siparis(
+        items=[(pid_bozuk, 1, "PHYSICAL", "100.00")],
+        client_id=await fab.musteri(), status="PENDING", payment_status="PENDING",
+        provider_ref=TOK_BOZUK,
+    )
+    # B) Sağlıklı kayıp-callback siparişi: mutabakattan PAID/PAID çıkmalı.
+    oid_saglikli, _ = await fab.siparis(
+        items=[(pid_saglikli, 2, "PHYSICAL", "100.00")],
+        client_id=await fab.musteri(), status="PENDING", payment_status="PENDING",
+        provider_ref=TOK_SAGLIKLI,
+    )
+    # C) R10 senaryosu: iptal edilmiş ama sağlayıcıda ödenmiş görünen sipariş.
     oid_iptal, _ = await fab.siparis(
-        items=[(pid, 1, "PHYSICAL", "100.00")],
-        client_id=cid1, status="PENDING", payment_status="PENDING",
-        provider_ref="ip2b-tok-iptal",
+        items=[(pid_iptal, 3, "PHYSICAL", "100.00")],
+        client_id=await fab.musteri(), status="PENDING", payment_status="PENDING",
+        provider_ref=TOK_IPTAL,
     )
     await _iptal(oid_iptal)
-    # 2) Sağlıklı kayıp-callback siparişi.
-    oid_saglikli, _ = await fab.siparis(
-        items=[(pid, 1, "PHYSICAL", "100.00")],
-        client_id=cid2, status="PENDING", payment_status="PENDING",
-        provider_ref="ip2b-tok-saglikli",
-    )
-    checkout_provider.checkouts["ip2b-tok-iptal"] = CheckoutResult(
-        success=True, provider_ref="pay-a", paid_price=Decimal("100.00")
-    )
-    checkout_provider.checkouts["ip2b-tok-saglikli"] = CheckoutResult(
-        success=True, provider_ref="pay-b", paid_price=Decimal("100.00")
-    )
-    # Karantina: kayıtlar 'yeterince eski' olmalı (updated_at ORM'siz yazılır).
-    async with AsyncSessionLocal() as s:
-        await s.execute(
-            text(
-                "UPDATE orders SET updated_at = now() - interval '1 hour' "
-                "WHERE id = ANY(:ids)"
-            ),
-            {"ids": [oid_iptal, oid_saglikli]},
-        )
-        await s.commit()
-    # Tarama hız sınırını aç (modül global'i monotonic ile karşılaştırılıyor).
-    escrow_reconciler._last_checkout_scan = 0.0
-    from core.config import settings
+    assert (await fab.siparis_durumu(oid_iptal))[0] == "CANCELLED"
 
-    eski = settings.CHECKOUT_RECONCILE_INTERVAL_SECONDS
-    settings.CHECKOUT_RECONCILE_INTERVAL_SECONDS = 0
-    try:
-        hata: Exception | None = None
-        try:
-            async with AsyncSessionLocal() as s:
-                await escrow_reconciler.reconcile_stale_checkouts(s)
-        except HTTPException as exc:
-            hata = exc
-    finally:
-        settings.CHECKOUT_RECONCILE_INTERVAL_SECONDS = eski
-
-    assert hata is None, (
-        f"reconciler, iptal edilmiş siparişin kaydında {hata.status_code} ile "
-        "öldü — partinin kalanı işlenmedi"
+    checkout_provider.patlayan_tokenlar.add(TOK_BOZUK)
+    checkout_provider.checkouts[TOK_SAGLIKLI] = CheckoutResult(
+        success=True, provider_ref="pay-saglikli", paid_price=Decimal("200.00")
     )
+    checkout_provider.checkouts[TOK_IPTAL] = CheckoutResult(
+        success=True, provider_ref="pay-iptal", paid_price=Decimal("300.00")
+    )
+    await _bayatlat([oid_bozuk, oid_saglikli, oid_iptal])
+
+    hata1 = await _bir_tur_mutabakat()
+    tutarlar1 = [a for _ref, a in checkout_provider.refund_calls]
+    okunan1 = list(checkout_provider.retrieve_tokens)
+
+    # ── 1) Döngü ölmemeli ────────────────────────────────────────────────────
+    assert hata1 is None, (
+        f"reconciler partisi tek kayıtta öldü: {hata1!r} — sipariş dalında "
+        f"kayıt-başı hata izolasyonu yok (sağlayıcıya sorulanlar: {okunan1})"
+    )
+    # ── 2) Partideki HER kayda ulaşılmalı (sıradan bağımsız izolasyon ölçüsü) ─
+    assert {TOK_BOZUK, TOK_SAGLIKLI, TOK_IPTAL} <= set(okunan1), (
+        "partideki bazı kayıtlar sağlayıcıya hiç sorulmadı — döngü bir kaydın "
+        f"hatasında kesildi (sorulanlar: {okunan1})"
+    )
+    # ── 3) Sağlam kayıt GERÇEKTEN işlenmeli (yalnız durum değil, yan etki de) ─
     assert (await fab.siparis_durumu(oid_saglikli)) == ("PAID", "PAID"), (
         "meşru kayıp-callback siparişi mutabakattan geçemedi (parti zehirlendi)"
     )
+    assert await fab.hareketler(pid_saglikli, "SALE") == [("SALE", -2)], (
+        "sağlam kayıt PAID göründü ama satışın defter hareketi yazılmadı"
+    )
+    # ── 4) Bozuk kayıt güvenli önceki durumda, yan etkisiz ───────────────────
+    assert (await fab.siparis_durumu(oid_bozuk)) == ("PENDING", "PENDING"), (
+        "sağlayıcısı patlayan kayıt yarım bir duruma yazıldı"
+    )
+    assert await fab.hareketler(pid_bozuk, "SALE") == []
+    assert await fab.stok(pid_bozuk) == 6
+    assert Decimal("100.00") not in tutarlar1, (
+        "sağlayıcısı patlayan kayıt için iade tetiklendi (yanlış yan etki)"
+    )
+    assert Decimal("200.00") not in tutarlar1, (
+        "sağlam kayıt tahsil edilirken bir de iade edildi"
+    )
+    # ── 5) R10 kaydı sessizce kaybolmamalı ───────────────────────────────────
+    durum_iptal, odeme_iptal = await fab.siparis_durumu(oid_iptal)
+    assert durum_iptal == "CANCELLED"
+    assert odeme_iptal != "PAID", "iptal edilmiş sipariş sonradan ödenmiş gösterildi"
+    assert tutarlar1.count(Decimal("300.00")) <= 1, (
+        f"ölü siparişin tahsilatı birden çok kez iade edildi: {tutarlar1}"
+    )
+    iade_edildi = (
+        tutarlar1.count(Decimal("300.00")) == 1 and odeme_iptal == "REFUNDED"
+    )
+    gorunur = any(
+        r.levelno >= logging.ERROR and str(oid_iptal) in r.getMessage()
+        for r in caplog.records
+    )
+    assert iade_edildi or gorunur, (
+        "iptal edilmiş siparişin doğrulanmış tahsilatı SESSİZCE kayboldu: ne "
+        "otomatik iade edildi ne de görünür bir hata kaydı bıraktı "
+        "(sözleşme §6: otomatik tam iade YA DA MANUAL_REVIEW görünürlüğü)"
+    )
+    # ── 6) İkinci tur: çift para/stok hareketi üretmemeli ────────────────────
+    hata2 = await _bir_tur_mutabakat()
+    tutarlar2 = [a for _ref, a in checkout_provider.refund_calls]
+    assert hata2 is None, f"ikinci mutabakat turu da öldü: {hata2!r}"
+    assert tutarlar2 == tutarlar1, (
+        f"ikinci tur yeni para hareketi üretti: {tutarlar1} → {tutarlar2}"
+    )
+    assert await fab.hareketler(pid_saglikli, "SALE") == [("SALE", -2)], (
+        "ikinci tur sağlam siparişin satışını yeniden işledi (çift stok düşümü)"
+    )
+    assert (await fab.siparis_durumu(oid_saglikli)) == ("PAID", "PAID")
+    assert (await fab.siparis_durumu(oid_bozuk)) == ("PENDING", "PENDING")
 
 
 # ── Yeşil nöbetçiler ────────────────────────────────────────────────────────────

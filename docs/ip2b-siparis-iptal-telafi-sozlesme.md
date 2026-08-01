@@ -97,9 +97,9 @@ PostgreSQL + gerçek servis/HTTP koşumuyla YENİDEN üretildi. Kırmızı testl
 |---|---|---|---|
 | R1 | Sahiplik ihlali 403 "Sizin siparişiniz değil" döner (`order_service.py:918-924`) — geçerli ID doğrulanır, ID uzayı taranabilir | I10 | `http::test_kirmizi_baskasinin_siparisi_varlik_sizdirmaz` |
 | R2 | Admin sipariş **iptal** ucu yok (store.py admin uçları: list/ship/deliver/refund) — admin ödenmemiş/sorunlu siparişi kapatamaz | I10 | `http::test_kirmizi_admin_iptal_ucu_gerekceli_calismali` |
+| R2b | Aynı boşluğun ikinci yarısı: uç eklenirken `reason` **opsiyonel** bırakılırsa gerekçesiz admin iptali sessizce mümkün olur (R2 gövdede gerekçe gönderdiği için zorunluluğu ölçemez) | I10 | `http::test_kirmizi_admin_iptal_gerekcesiz_reddedilmeli` |
 | R3 | `POST /store/admin/orders/{id}/refund` gövdesiz; audit `reason=NULL` (`store.py:418-429`) | I10 | `http::test_kirmizi_admin_refund_gerekce_ve_audit_reason` |
 | R4 | `refund_order` yalnız `payment_status`'a bakar (`order_service.py:1391`): DELIVERED sipariş tek çağrıyla REFUNDED + kitap müşterideyken kör SALE_CANCEL (kusur üretimde belgeli: `inventory_service.py:800-812`) | I5, I10 | `http::test_kirmizi_delivered_admin_refund_rma_atlanamaz` |
-| R5 | `orders.status` FSM dışı ham yazıma DB seviyesinde açık (CHECK/trigger yok; karşılaştır: `stock_movements` append-only trigger'lı) | I10 | `http::test_kirmizi_orm_dogrudan_terminal_yazim_reddedilmeli` |
 | R6 | Reconciler `Order` için yalnız `perform_refund/finalize_refund` çağırır (`escrow_reconciler.py:96-135`); `_restock` + kupon `release` HİÇ koşmaz. `order_service.py:1364-1366` yorumu kodla ÇELİŞİR | I9, I4, I6 | `money::test_kirmizi_reconciler_stok_ve_kupon_telafisi` |
 | R7 | Reconciler iadeyi kapatınca sipariş `status=PAID` + `payment=REFUNDED` asılı kalır; geçmiş satırı ve müşteri bildirimi yok | I9, I11 | `money::test_kirmizi_reconciler_sonrasi_durum_ve_bildirim` |
 | R8 | 502 sonrası ikinci müşteri iptali `payment_status!=PAID` diye telafi bloğunu atlayıp CANCELLED yazar — stok telafisi hiçbir yolda kalmaz | I4, I9 | `money::test_kirmizi_502_sonrasi_retry_telafisiz_iptal` |
@@ -112,6 +112,20 @@ PostgreSQL + gerçek servis/HTTP koşumuyla YENİDEN üretildi. Kırmızı testl
 | R15 | Outbox olayları iptalle geçersizleşmez (purge/cancel yolu yok, `core/outbox.py`): iade edilmiş siparişe kuyruktaki "kuryen yola çıktı" SMS'i gönderilir (sessiz saat ertelemesi pencereyi saatlere büyütür) | I7 | `delivery::test_kirmizi_iptal_bekleyen_takip_smsini_iptal_eder` |
 | R16 | `add_stops` siparişi kilitsiz okur (`db.get`, `delivery_service.py:994`); iptal ↔ tura-ekleme yarışında CANCELLED siparişe PENDING durak yazılır (`uq_delivery_stop_open` sipariş durumundan habersiz) | I7, I8 | `delivery::test_kirmizi_iptal_ile_tura_ekleme_yarisi` |
 | R17 | `begin_refund` commit'i Order kilidini bırakır; sağlayıcı penceresi sırasında tur başlar + kurye teslim eder; iptal BAYAT bellek durumuyla (`status='PAID'`) FSM'den geçip **DELIVERED'ı CANCELLED ile ezer** — para iade + kitap müşteride + kör SALE_CANCEL, üçü birden (gerçek PG'de üç ihlal de ölçüldü) | I5, I8, I1 | `races::test_kirmizi_iptal_ile_kurye_teslim_yarisi` |
+
+### 3b. Sertleştirme talebi (kusur DEĞİL) — R5
+
+R5 bilinçli olarak yukarıdaki matristen **AYRILMIŞTIR**. Diğer satırların hepsi
+API/servis yüzeyinden **erişilebilir** ve gerçek bir aktörle yeniden üretilen
+kusurlardır; R5 ise erişilebilir bir kusur değil, **savunma derinliği** talebidir:
+
+| # | Talep | Bugünkü durum | Kırmızı test |
+|---|---|---|---|
+| R5 | `orders.status` terminal geçişleri DB seviyesinde de FSM dışı yazıma kapalı olsun (CHECK/trigger; karşılaştır: `stock_movements` append-only trigger'lı) | Uygulama katmanında tek yazıcı `order_fsm.transition_order`'dır; bilinen hiçbir uç ham `UPDATE orders SET status=...` yapmaz. Koruma DB'de YOKTUR: elle SQL, ileride yazılacak bir betik ya da FSM'i atlayan yeni bir servis yolu para/stok/audit zincirini sessizce atlar | `http::test_kirmizi_orm_dogrudan_terminal_yazim_reddedilmeli` |
+
+Testin kırmızı kalması bugün müşteriye ulaşan bir zararı DEĞİL, eksik bir
+emniyet kemerini gösterir; önceliklendirilirken R1-R4/R6-R17 ile aynı kefeye
+konmamalıdır. (Kırmızı sayısına dâhildir; §11.)
 
 Test dosyası kısaltmaları: `http` = `test_ip2b_cancel_http_pg.py`,
 `money` = `test_ip2b_cancel_money_pg.py`, `callback` =
@@ -170,6 +184,17 @@ davranış; `escrow.begin_refund` claim'i para hareketini zaten tekilleştirir).
   deneme bileti emsalidir: `CANCELLED` + doğrulanmış tahsilat → otomatik tam
   iade (`refund_unexpected_charge` veya `CANCELLED→REFUNDING` geçişi);
   reconciler döngüsü kayıt başına hata izolasyonu yapar.
+  **R11 R10'a bağlı DEĞİLDİR** (bağımsız denetim P1'i): parti testinde partiyi
+  bozan kayıt, iptal/FSM ile ilgisi olmayan bir sağlayıcı arızasıdır
+  (`retrieve_checkout` yalnız o token'da `RuntimeError`). Böylece FSM'e
+  `CANCELLED→PAID` eklemek — kayıt-başı izolasyon yazılmadan — testi
+  yeşillendiremez. Parti bütünlüğü **satır sırasından bağımsız** ölçülür:
+  üretim sorgusunda `ORDER BY` olmadığı için id sırasına yaslanmak testi
+  PostgreSQL yığın düzenine bağlardı; onun yerine "hiçbir istisna dışarı
+  kaçmaz" + "partideki HER kayıt sağlayıcıya sorulmuş olur" birlikte ölçülür
+  (ölen döngü kendisinden sonraki kaydı hiç soramaz). R10 kaydı için kabul
+  edilen güvenli sonuç: otomatik tam iade **ya da** görünür (ERROR seviyeli)
+  hata kaydı — sessizce kaybolmak değil.
 - Deneme sınırı dolunca (`REFUND_MAX_ATTEMPTS`) kayıt ALERT loguyla kalır —
   MANUAL_REVIEW görünürlüğü bugün YALNIZ log satırıdır; admin paneli
   görünürlüğü ürün kararıdır (§8.6).
@@ -260,7 +285,10 @@ python -m pytest tests/integration/test_ip2b_cancel_http_pg.py `
   tests/integration/test_ip2b_cancel_races_pg.py -q
 ```
 
-Beklenen: **19 yeşil + 17 kırmızı** (üretim düzeltmesi gelene dek). Koşum
+Beklenen: **19 yeşil + 18 kırmızı** = 37 düğüm (üretim düzeltmesi gelene dek).
+Kırmızı sayısı 17'den 18'e, bağımsız denetimin P2 talebiyle eklenen R2b
+(gerekçesiz admin iptalinin reddi) yüzünden çıktı; mevcut 17 kırmızının hiçbiri
+gevşetilmedi/silinmedi. Koşum
 deterministiktir (iki ardışık koşumda aynı sonuç doğrulandı); yarışlar sleep
 yerine `asyncio.Event` kapılarıyla kurulur. Suite hijyen nöbetçisinden temiz
 çıkar (test DB'sinde kalıntı satır bırakmaz).
@@ -273,3 +301,15 @@ kaldırıldı → `test_delivery_invariants_pg` · `escrow.claim` koşulsuz True
 claim'i değil Order kilidini test ediyordu) · admin izni manage→view →
 eksik-izin yeşili · FSM'e `CANCELLED→PAID` eklendi → `tests/test_order_fsm.py` ·
 teslim FSM atlaması → CANCELLED-durak-teslim-edilemez yeşili.
+
+**Ek mutasyon provası — parti izolasyonu nöbetçisi (10/10, tamamı geri alındı):**
+
+| Mutasyon | Beklenen | Ölçülen |
+|---|---|---|
+| M9: `order_fsm.ALLOWED_ORDER_TRANSITIONS["CANCELLED"] = {"PAID"}` (yalnız FSM) | Parti testi KIRMIZI kalmalı | Kırmızı — `RuntimeError(token=ip2b-tok-bozuk)`, yani artık R10'un 409'u değil bağımsız arıza ölçülüyor. Aynı mutasyon altında testin **eski hâli** (HEAD:50607e9) YEŞİLE döndü — bağımsız denetimin P1 bulgusu böylece kanıtlandı ve kapatıldı. `tests/test_order_fsm.py::test_terminal_states_have_no_exit` de kırıldı |
+| M10: sipariş dalına kayıt-başı `try/except → rollback + logger.exception + continue` | Parti testi YEŞİL olmalı | Yeşil; sağlam kayıt PAID/PAID + tek `SALE`, bozuk kayıt PENDING/PENDING ve yan etkisiz, R10 kaydı görünür ERROR kaydı bıraktı. R10 testi (para bağlanmıyor/iade edilmiyor) beklendiği gibi kırmızı kaldı — izolasyon R10'u ÇÖZMEZ |
+
+M10 yazılırken not: `db.rollback()` ORM nesnelerini expire ettiği için döngü
+satırları önce anlık görüntüye alınmalıdır; aksi hâlde bayat nesnenin alanına
+erişmek async oturumda lazy-load (`MissingGreenlet`) üretir. Gerçek düzeltme
+yazılırken bu tuzak geçerlidir.
