@@ -445,11 +445,26 @@ async def cancel_run(db: AsyncSession, run_id: int) -> DeliveryRunOut:
     run = await _load_run(db, run_id)
     if run.status not in _ACTIVE_RUN_STATUSES:
         raise HTTPException(status.HTTP_409_CONFLICT, "Yalnız planlı/aktif tur iptal edilebilir")
+    # P1 (commit 6 denetimi): sipariş kilitleri ARTAN `order_id` sırasında ve
+    # TOPTAN alınır. Aşağıdaki döngü durakları `sequence` sırasında dolaşır —
+    # rota optimizasyonundan sonra bu sıra `order_id` sırasından FARKLIDIR ve
+    # `add_stops` ile ters kilitlenme (40P01) üretiyordu. `sequence` yalnız
+    # uygulama sırasıdır; kilit sırası buradan gelir.
+    await _lock_orders_ascending(
+        db,
+        (
+            s.order_id
+            for s in run.stops
+            if s.status == DeliveryStopStatus.PENDING.value
+        ),
+    )
     for stop in run.stops:
         if stop.status != DeliveryStopStatus.PENDING.value:
             continue
         # Kilit + taze durum: kurye tam bu anda teslim etmiş olabilir —
-        # sonuçlanmış durak/sipariş iptal geri sarımıyla EZİLMEZ.
+        # sonuçlanmış durak/sipariş iptal geri sarımıyla EZİLMEZ. Sipariş
+        # kilidi yukarıda alındı; buradaki çağrı yeniden giriştir (bedelsiz)
+        # ve asıl işi durak kilidi + tazeleme yapar.
         await _lock_stop_and_order(db, stop)
         if stop.status != DeliveryStopStatus.PENDING.value:
             continue
@@ -611,7 +626,27 @@ async def expire_stale_runs(db: AsyncSession) -> int:
         await db.execute(select(Admin.id).where(Admin.deleted_at.is_(None)))
     ).scalars().all()
     closed_dates = await _closed_dates_now(db)
-    for run in runs:
+    # Turlar da deterministik sırada işlenir: her tur kendi sonunda commit
+    # ettiği için kilitler tur bazında tutulur, ama sıra sabit olsun ki iki
+    # watchdog koşusu (ör. yeniden başlatma penceresi) birbiriyle çarpışmasın.
+    for run in sorted(runs, key=lambda r: r.id):
+        # P1 (commit 6 denetimi): `cancel_run` ile aynı sözleşme — sipariş
+        # kilitleri ARTAN `order_id` sırasında ve toptan alınır. Aşağıdaki
+        # döngü `sequence` sırasını korur (bildirim/SMS sırası operasyonel
+        # olarak anlamlıdır), kilit sırası ondan bağımsızdır.
+        #
+        # Aynı siparişin İKİ farklı stale run'da PENDING durağı olamaz:
+        # `uq_delivery_stop_open` kısmi unique index'i sipariş başına tek açık
+        # durağa izin verir. Bu yüzden turlar arası kilit kesişimi yoktur ve
+        # tur bazında kilitlemek yeterlidir.
+        await _lock_orders_ascending(
+            db,
+            (
+                s.order_id
+                for s in run.stops
+                if s.status == DeliveryStopStatus.PENDING.value
+            ),
+        )
         for stop in run.stops:
             if stop.status != DeliveryStopStatus.PENDING.value:
                 continue
@@ -675,6 +710,48 @@ async def expire_stale_runs(db: AsyncSession) -> int:
 
 
 # ── Durak yönetimi ────────────────────────────────────────────────────────────────
+
+
+async def _lock_orders_ascending(db: AsyncSession, order_ids) -> list[int]:
+    """Sipariş satırlarını **ARTAN `order_id`** sırasında `FOR UPDATE` ile alır.
+
+    ## Neden bu fonksiyon var (P1 — commit 6 denetimi)
+
+    Deadlock, iki transaction'ın aynı satır kümesini **farklı sıralarda**
+    kilitlemesinden doğar. Bu modülde iki farklı "doğal sıra" çarpışıyordu:
+
+    * `add_stops` siparişleri **istekten gelen** sırayla dolaşıyordu,
+    * `cancel_run` / `expire_stale_runs` durakları **`DeliveryStop.sequence`**
+      sırasıyla dolaşıyor ve her durak için siparişi kilitliyordu.
+
+    Rota optimizasyonundan sonra `sequence` ile `order_id` sırasının farklı
+    olması **normaldir** (`optimize_run` durakları yol ağına göre yeniden
+    sıralar). Dolayısıyla iki yol aynı iki siparişi A→B ve B→A biçiminde
+    kilitleyebiliyordu; bağımsız denetim bunu mutasyonsuz üretim kodunda 4/6
+    tekrarda gerçek `40P01` olarak üretti.
+
+    Kural bu yüzden **tek taraflı değildir**: aynı sipariş kümesine dokunan
+    HER yol bu yardımcıyı kullanmak ve kilitleri artan `order_id` sırasında
+    almak zorundadır. `DeliveryStop.sequence` yalnız **rota ve uygulama**
+    sırasıdır; veritabanı kilit sırasını ASLA belirlemez.
+
+    Kilitler döngünün başında **toptan** alınır: böylece bir transaction
+    kilitlerin tamamını aldıktan sonra karşı taraf daha ilk (en küçük)
+    siparişte bekler ve `OrderPackage`/`DeliveryStop` üzerindeki sıra farkları
+    (ör. `_lock_stop_and_order`ın durağı paketten önce alması) döngü
+    üretemez — sipariş kilitleri tam bir bariyerdir.
+
+    Yinelenen `order_id`'ler tekilleştirilir: aynı sipariş için iki durak
+    bulunması hâlinde satır iki kez kilitlenmeye çalışılmaz (yeniden giriş
+    zararsızdır ama sıra iddiasını okunmaz kılardı). Kilitlenen kimlikler
+    döndürülür — çağıran sırayı loglayabilir/test edebilir.
+    """
+    sirali = sorted({int(o) for o in order_ids})
+    for order_id in sirali:
+        await db.execute(
+            select(Order.id).where(Order.id == order_id).with_for_update()
+        )
+    return sirali
 
 
 async def _paket_gecmisi_var(db: AsyncSession, order_id: int) -> bool:
@@ -1093,13 +1170,23 @@ async def add_stops(db: AsyncSession, run_id: int, order_ids: list[int]) -> Deli
 
     ## Neden sipariş kilitleri ARTAN `order_id` sırasında alınır
 
-    `cancel_run` / `expire_stale_runs` durakları **sequence** sırasında dolaşır
-    ve her biri için `Order` kilidi alır. `add_stops` istekten gelen sırayla
-    kilitleseydi, iki farklı turda aynı iki sipariş bulunduğunda A→B ve B→A
-    kilitlenmeleri çakışıp **deadlock (40P01)** üretebilirdi. Deterministik
-    `order_id` sırası bu döngüyü yapısal olarak imkânsız kılar; durakların
-    `sequence` numaraları yine isteğin sırasına göre verilir (operatörün
-    seçtiği sıra korunur).
+    Deadlock, aynı satır kümesinin iki transaction tarafından **farklı
+    sıralarda** kilitlenmesinden doğar. Bu yüzden kural **tek taraflı
+    değildir**: `add_stops`'un sıralaması TEK BAŞINA hiçbir şeyi imkânsız
+    kılmaz — koruma, aynı sipariş kümesine dokunan **bütün** yolların
+    (`add_stops` · `cancel_run` · `expire_stale_runs`) `_lock_orders_ascending`
+    ile aynı artan `order_id` sırasını kullanmasından gelir.
+
+    ⚠️ Bu docstring'in eski hâli "deterministik `order_id` sırası bu döngüyü
+    yapısal olarak imkânsız kılar" diyordu ve **yanlıştı**: karşı taraflar hâlâ
+    `DeliveryStop.sequence` sırasında kilitliyordu. Rota optimizasyonundan
+    sonra `sequence` ile `order_id` sırasının farklı olması normaldir, yani
+    iddia tam da gerçek operasyonda çöküyordu; bağımsız denetim gerçek
+    `40P01`'i 4/6 tekrarda üretti.
+
+    `sequence` **rota sırasıdır, kilit sırası değildir**. Durakların `sequence`
+    numaraları yine isteğin sırasına göre verilir (operatörün seçtiği sıra
+    korunur); kilitler ondan bağımsızdır.
     """
     run = await _load_run(db, run_id)
     if run.status not in _ACTIVE_RUN_STATUSES:
@@ -1116,11 +1203,9 @@ async def add_stops(db: AsyncSession, run_id: int, order_ids: list[int]) -> Deli
     existing = {s.order_id for s in run.stops}
     # Sıra korunarak tekilleştir (durak sequence'i bu sırayı izler)...
     istenen = [o for o in dict.fromkeys(order_ids) if o not in existing]
-    # ...ama KİLİTLER artan order_id sırasında alınır (deadlock önlemi).
-    for order_id in sorted(istenen):
-        await db.execute(
-            select(Order.id).where(Order.id == order_id).with_for_update()
-        )
+    # ...ama KİLİTLER artan order_id sırasında alınır (deadlock önlemi) ve
+    # karşı yollarla AYNI yardımcıdan geçer — sıra sözleşmesi tek yerdedir.
+    await _lock_orders_ascending(db, istenen)
 
     for order_id in istenen:
         order = (

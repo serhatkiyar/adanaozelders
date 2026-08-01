@@ -994,3 +994,24 @@ async def test_C6_PAKETLEME_KUYRUGU_UC_ISI_AYIRT_EDER(fab):
     assert satirlar[acik_oid].package.status == "OPEN"
 
     assert bitmis_oid not in satirlar, "tamamlanmış paket kuyrukta kalmış"
+
+
+@pytest.mark.asyncio
+async def test_SIRA_YARDIMCISI_TEKILLESTIRIR_VE_SIRALAR(pg):
+    """`_lock_orders_ascending` yinelenen `order_id`'leri teker ve sıralar.
+
+    Dönüş değeri sözleşmenin bir parçasıdır: aynı sipariş için iki durak
+    bulunduğunda satır iki kez kilitlenmeye çalışılmaz. Yeniden giriş
+    zararsızdır ama sıra iddiasını okunmaz kılar ve "hangi sırayla kilitledik"
+    sorusunun cevabını belirsizleştirir.
+    """
+    from services import delivery_service
+
+    async with AsyncSessionLocal() as s:
+        sonuc = await delivery_service._lock_orders_ascending(s, [])
+        assert sonuc == []
+        # Gerçek satır gerekmez: kilit sorgusu eşleşmeyen id'de de çalışır.
+        sonuc = await delivery_service._lock_orders_ascending(
+            s, [999_000_003, 999_000_001, 999_000_003, 999_000_002]
+        )
+    assert sonuc == [999_000_001, 999_000_002, 999_000_003], sonuc

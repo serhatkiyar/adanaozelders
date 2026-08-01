@@ -14,6 +14,7 @@ Tümü F30 yazılana kadar KIRMIZIDIR.
 from __future__ import annotations
 
 import asyncio
+import datetime
 
 import pytest
 from fastapi import HTTPException
@@ -1027,3 +1028,260 @@ async def test_ES_ZAMANLI_void_ile_add_stops_BAYAT_DURAK_BIRAKMAZ(fab):
     assert gozlenen["void_kazandi"] > 0, (
         f"void hiçbir turda kazanamadı — add_stops kilidi çalışmıyor olabilir: {gozlenen}"
     )
+
+
+# ══════ P1 · teslimat kilit sırası (commit 6 denetimi) ══════════════════════
+#
+# Deadlock, aynı satır kümesinin farklı sıralarda kilitlenmesinden doğar.
+# `add_stops` siparişleri artan `order_id` ile, `cancel_run` /
+# `expire_stale_runs` ise durakları `DeliveryStop.sequence` ile dolaşıp her
+# durak için siparişi kilitliyordu. Rota optimizasyonundan sonra iki sıranın
+# farklı olması NORMALDİR — bağımsız denetim gerçek `40P01`'i mutasyonsuz
+# üretim kodunda 4/6 tekrarda üretti.
+#
+# Aşağıdaki kurulum o farkı BİLE İSTEYE üretir: duraklar `sequence` sırasında
+# `order_id`'nin TERSİ olacak şekilde eklenir ve bu kurulum ayrıca ASSERT
+# edilir — aynı sıraya çevrilirse test artık hiçbir çakışma üretmez ve bunu
+# sessizce yapamaz.
+
+
+async def _paket_yuku(s, order_id: int) -> str:
+    """Siparişin canlı paketinin etiket yükü (test yardımcısı)."""
+    from services import packing_events, packing_rules
+
+    paket = await packing_events.live_package(s, order_id)
+    assert paket is not None
+    return packing_rules.build_package_qr(paket.id, paket.qr_token)
+
+
+async def _ters_sirali_tur(fab, servis, aid: int, kurye: int):
+    """(run_id, (küçük_oid, büyük_oid)) — sequence sırası order_id'nin TERSİ.
+
+    `add_stops` durak `sequence`'ini isteğin sırasına göre verir. Büyük
+    `order_id` önce eklenirse sequence 1'i o alır, küçük olan sequence 2'yi.
+    Sonuç: `sequence` artarken `order_id` azalır — rota optimizasyonundan
+    sonraki gerçek hâlin ta kendisi.
+    """
+    from services import delivery_service
+
+    oidler = []
+    for _ in range(2):
+        pid, _sku, ean = await fab.barkodlu_urun(stock=10)
+        oid = await fab.fiziksel_siparis(kalemler=[(pid, 1)])
+        async with AsyncSessionLocal() as s:
+            paket = await servis.open_package(s, oid, admin_id=aid)
+        async with AsyncSessionLocal() as s:
+            await servis.scan(s, paket.id, code=ean, admin_id=aid)
+        async with AsyncSessionLocal() as s:
+            await servis.complete(s, paket.id, admin_id=aid)
+        oidler.append(oid)
+    kucuk, buyuk = min(oidler), max(oidler)
+
+    run = await fab.tur(courier_id=kurye)
+    async with AsyncSessionLocal() as s:
+        await delivery_service.add_stops(s, run, [buyuk, kucuk])   # TERS sıra
+
+    async with AsyncSessionLocal() as s:
+        satirlar = (
+            await s.execute(
+                text(
+                    "SELECT order_id FROM delivery_stops WHERE run_id = :r "
+                    "ORDER BY sequence"
+                ),
+                {"r": run},
+            )
+        ).scalars().all()
+    assert satirlar == [buyuk, kucuk], (
+        f"kurulum ters DEĞİL — sequence sırası {satirlar}, beklenen [{buyuk}, {kucuk}]"
+    )
+    return run, (kucuk, buyuk)
+
+
+async def _sahaya_cikar_tur(fab, servis, aid: int, kurye: int):
+    """Ters sıralı tur + iki paket zimmetli + tur ACTIVE."""
+    from services import delivery_service
+
+    run, (kucuk, buyuk) = await _ters_sirali_tur(fab, servis, aid, kurye)
+    for oid in (kucuk, buyuk):
+        async with AsyncSessionLocal() as s:
+            await delivery_service.handover_scan(
+                s, await _paket_yuku(s, oid), courier_id=kurye,
+                actor=f"courier:{kurye}",
+            )
+    async with AsyncSessionLocal() as s:
+        await delivery_service.start_run(s, run)
+    return run, (kucuk, buyuk)
+
+
+async def _tur_durumu(run_id: int) -> tuple[str, list[str], int]:
+    async with AsyncSessionLocal() as s:
+        durum = (
+            await s.execute(
+                text("SELECT status FROM delivery_runs WHERE id = :r"), {"r": run_id}
+            )
+        ).scalar_one()
+        duraklar = list(
+            (
+                await s.execute(
+                    text(
+                        "SELECT status FROM delivery_stops WHERE run_id = :r "
+                        "ORDER BY sequence"
+                    ),
+                    {"r": run_id},
+                )
+            ).scalars().all()
+        )
+    return durum, duraklar, len(duraklar)
+
+
+async def _yan_etki_yok(fab, oid: int) -> None:
+    """Sipariş zimmetsiz SHIPPED olmadı, takip/zimmet yan etkisi doğmadı."""
+    siparis, _odeme = await fab.siparis_durumu(oid)
+    assert siparis == "PAID", f"#{oid} dağıtımda kaldı: {siparis}"
+    async with AsyncSessionLocal() as s:
+        takip = (
+            await s.execute(
+                text("SELECT tracking_no FROM orders WHERE id = :i"), {"i": oid}
+            )
+        ).scalar_one()
+        paket_durum = (
+            await s.execute(
+                text("SELECT status FROM order_packages WHERE order_id = :o"),
+                {"o": oid},
+            )
+        ).scalar_one()
+        zimmet = (
+            await s.execute(
+                text(
+                    "SELECT count(*) FROM package_scan_events e "
+                    "JOIN order_packages p ON p.id = e.package_id "
+                    "WHERE p.order_id = :o AND e.event_type = 'HANDOVER'"
+                ),
+                {"o": oid},
+            )
+        ).scalar_one()
+    assert takip is None, "iptal edilen turda takip numarası kalmış"
+    assert paket_durum == "RETURN_PENDING"
+    assert zimmet == 1, f"ikinci zimmet olayı doğdu: {zimmet}"
+
+
+@pytest.mark.asyncio
+async def test_ES_ZAMANLI_cancel_run_ile_add_stops_DEADLOCK_URETMEZ(fab):
+    """`cancel_run` ile `add_stops` TERS SIRALI sipariş kümesinde çarpışır.
+
+    Eski kodda `cancel_run` durakları `sequence` sırasında (B→A), `add_stops`
+    ise artan `order_id` sırasında (A→B) kilitliyordu → klasik AB-BA döngüsü.
+    Bağımsız denetim bunu mutasyonsuz üretim kodunda 4/6 tekrarda gerçek
+    `40P01` olarak üretti.
+
+    İzin verilen tek sonuç kümesi:
+
+    * `40P01` (deadlock) ve `55P03` (lock timeout) **YASAK** —
+      `_kilit_hatasi_yok` ikisini de kesin başarısızlık sayar (yutulmaz),
+    * `cancel_run` HER İKİ başlatma sırasında da başarılı olur,
+    * `add_stops` 409 ile reddedilir (siparişlerin açık durağı vardır ya da
+      paketleri `RETURN_PENDING`'e düşmüştür) ve **hiç durak bırakmaz**,
+    * tur `CANCELLED`, duraklar `FAILED`, siparişler `PAID`, paketler
+      `RETURN_PENDING`, takip numarası yok, ikinci `HANDOVER` olayı yok.
+    """
+    servis = _servis()
+    from services import delivery_service
+
+    for _tur in range(3):
+        aid = await fab.admin()
+        kurye = await fab.kurye()
+        run, (kucuk, buyuk) = await _sahaya_cikar_tur(fab, servis, aid, kurye)
+        hedef_tur = await fab.tur(courier_id=kurye)
+
+        adlar = ("cancel_run", "add_stops")
+        gorevler = [
+            _gorev(lambda s: delivery_service.cancel_run(s, run)),
+            _gorev(lambda s: delivery_service.add_stops(s, hedef_tur, [kucuk, buyuk])),
+        ]
+        if _tur % 2:                       # ters BAŞLATMA sırası
+            adlar, gorevler = adlar[::-1], gorevler[::-1]
+        ham = await asyncio.gather(*gorevler, return_exceptions=True)
+        _kilit_hatasi_yok(ham)             # 40P01 / 55P03 → kesin başarısızlık
+        r = _sonuclar(ham, adlar)
+
+        assert _basarili(r["cancel_run"]), f"tur {_tur}: {r['cancel_run']!r}"
+        assert _reddedildi(r["add_stops"]), f"tur {_tur}: {r['add_stops']!r}"
+
+        durum, duraklar, _n = await _tur_durumu(run)
+        assert durum == "CANCELLED"
+        assert duraklar == ["FAILED", "FAILED"], duraklar
+        _durum2, _d2, yeni = await _tur_durumu(hedef_tur)
+        assert yeni == 0, "reddedilen add_stops yine de durak bıraktı"
+
+        for oid in (kucuk, buyuk):
+            await _yan_etki_yok(fab, oid)
+
+
+@pytest.mark.asyncio
+async def test_ES_ZAMANLI_expire_stale_runs_ile_add_stops_DEADLOCK_URETMEZ(fab):
+    """Watchdog (`expire_stale_runs`) ile `add_stops` aynı ters kurulumda çarpışır.
+
+    `cancel_run` ile aynı kök neden, farklı giriş noktası: watchdog da
+    durakları `sequence` sırasında dolaşıyordu. Burada ayrıca **outbox
+    sayıları** ölçülür — kilit düzeltmesi yan etkiyi çoğaltmamalıdır.
+    """
+    servis = _servis()
+    from core.config import settings
+    from services import delivery_service
+
+    saat = max(settings.DELIVERY_STALE_RUN_HOURS, 1)
+    # Watchdog turu, `cancel_run`a göre durak başına daha çok iş yapar
+    # (bildirim + outbox); deadlock penceresi bu yüzden daha dardır ve tur
+    # sayısı bilinçli olarak yüksek tutulur.
+    for _tur in range(6):
+        aid = await fab.admin()
+        kurye = await fab.kurye()
+        run, (kucuk, buyuk) = await _sahaya_cikar_tur(fab, servis, aid, kurye)
+        async with AsyncSessionLocal() as s:
+            await s.execute(
+                text("UPDATE delivery_runs SET started_at = :t WHERE id = :i"),
+                {
+                    "t": datetime.datetime.now(datetime.timezone.utc)
+                    - datetime.timedelta(hours=saat + 2),
+                    "i": run,
+                },
+            )
+            await s.commit()
+        hedef_tur = await fab.tur(courier_id=kurye)
+
+        adlar = ("watchdog", "add_stops")
+        gorevler = [
+            _gorev(lambda s: delivery_service.expire_stale_runs(s)),
+            _gorev(lambda s: delivery_service.add_stops(s, hedef_tur, [kucuk, buyuk])),
+        ]
+        if _tur % 2:
+            adlar, gorevler = adlar[::-1], gorevler[::-1]
+        ham = await asyncio.gather(*gorevler, return_exceptions=True)
+        _kilit_hatasi_yok(ham)
+        r = _sonuclar(ham, adlar)
+
+        assert _basarili(r["watchdog"]), f"tur {_tur}: {r['watchdog']!r}"
+        assert r["watchdog"] >= 1, "watchdog bayat turu kapatmadı"
+        assert _reddedildi(r["add_stops"]), f"tur {_tur}: {r['add_stops']!r}"
+
+        durum, duraklar, _n = await _tur_durumu(run)
+        assert durum == "CANCELLED"
+        assert duraklar == ["FAILED", "FAILED"], duraklar
+        _d, _dd, yeni = await _tur_durumu(hedef_tur)
+        assert yeni == 0
+
+        for oid in (kucuk, buyuk):
+            await _yan_etki_yok(fab, oid)
+            async with AsyncSessionLocal() as s:
+                sms = (
+                    await s.execute(
+                        text(
+                            "SELECT count(*) FROM outbox_events "
+                            "WHERE payload ->> 'order_id' = :o "
+                            "AND kind = 'sms:failed'"
+                        ),
+                        {"o": str(oid)},
+                    )
+                ).scalar_one()
+            # Tek kapanış = tek SMS. Kilit düzeltmesi yan etkiyi çoğaltmamalı.
+            assert sms == 1, f"#{oid} için {sms} adet başarısızlık SMS'i"

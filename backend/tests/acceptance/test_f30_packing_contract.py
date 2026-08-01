@@ -793,3 +793,123 @@ def test_add_stops_KILIT_SIRASI_kanonik():
     assert "Order" in modeller, "add_stops siparişi FOR UPDATE ile almıyor"
     assert "OrderPackage" in modeller, "add_stops paketi kilitsiz okuyor"
     assert not canonical_violations(dugum)
+
+
+# ══════════════════ P1: sipariş kilidi SIRA sözleşmesi ══════════════════════
+
+#: Aynı sipariş kümesine dokunan ve `Order` satırlarını kilitleyen YOLLAR.
+#: Üçü de kilitleri **artan `order_id`** sırasında almak zorundadır; biri
+#: `sequence` sırasına dönerse ters kilitlenme (40P01) geri gelir.
+SIPARIS_KILIDI_ALAN_YOLLAR = ("add_stops", "cancel_run", "expire_stale_runs")
+
+#: Sıra sözleşmesinin TEK uygulaması. Kilitleri bu yardımcıdan geçirmeyen bir
+#: yol, sırayı kendi başına (ve er ya da geç yanlış) tanımlıyor demektir.
+SIRA_YARDIMCISI = "_lock_orders_ascending"
+
+
+def _cagrilan_adlar(dugum) -> set[str]:
+    """Fonksiyon gövdesindeki çağrı adları (AST; yorum/docstring sayılmaz)."""
+    adlar: set[str] = set()
+    for n in ast.walk(dugum):
+        if isinstance(n, ast.Call):
+            fn = n.func
+            adlar.add(fn.attr if isinstance(fn, ast.Attribute) else getattr(fn, "id", ""))
+    return adlar
+
+
+def _for_dongusu_hedefleri(dugum) -> list[str]:
+    """`for ... in X:` ifadelerindeki X'in kaynak metni (AST'den yeniden üretilmiş)."""
+    return [
+        ast.unparse(n.iter)
+        for n in ast.walk(dugum)
+        if isinstance(n, (ast.For, ast.AsyncFor))
+    ]
+
+
+@pytest.mark.parametrize("fonksiyon", SIPARIS_KILIDI_ALAN_YOLLAR)
+def test_SIPARIS_KILITLERI_ARTAN_ORDER_ID_SIRASINDA(fonksiyon):
+    """Üç karşı yol da sipariş kilitlerini ORTAK yardımcıdan, artan sırayla alır.
+
+    ## Neden bu nöbetçi var (P1 — commit 6 denetimi)
+
+    Deadlock tek taraflı düzeltilemez. `add_stops` kilitleri artan `order_id`
+    sırasında alırken `cancel_run` ve `expire_stale_runs` durakları
+    `DeliveryStop.sequence` sırasında dolaşıp her durak için siparişi
+    kilitliyordu. Rota optimizasyonundan sonra iki sıranın farklı olması
+    **normaldir** (`optimize_run` durakları yol ağına göre yeniden sıralar);
+    bağımsız denetim gerçek `40P01`'i mutasyonsuz üretim kodunda 4/6 tekrarda
+    üretti.
+
+    Ölçülen iki şey:
+
+    1. Yol, sıra sözleşmesinin TEK uygulamasını (`_lock_orders_ascending`)
+       çağırıyor — kendi sıralamasını yazmıyor.
+    2. `run.stops` koleksiyonunu **kilit kaynağı** olarak kullanmıyor: eski
+       biçime (`for stop in run.stops:` içinde sipariş kilitleme) dönülürse
+       aşağıdaki `_lock_stop_and_order` sayımı buna izin verir ama sıra
+       yardımcısının yokluğu testi kırar.
+
+    Davranış eşleri (gerçek PostgreSQL, ters `sequence`/`order_id` kurulumu):
+    `test_f30_packing_race_pg.py::test_ES_ZAMANLI_cancel_run_ile_add_stops_DEADLOCK_URETMEZ`
+    ve `::test_ES_ZAMANLI_expire_stale_runs_ile_add_stops_DEADLOCK_URETMEZ`.
+    """
+    dugum = _dugum(_agac("services/delivery_service.py"), fonksiyon)
+    assert dugum is not None, f"{fonksiyon} bulunamadı"
+    adlar = _cagrilan_adlar(dugum)
+    assert SIRA_YARDIMCISI in adlar, (
+        f"{fonksiyon} sipariş kilitlerini `{SIRA_YARDIMCISI}` üzerinden almıyor — "
+        "sıra sözleşmesi tek yerde tanımlı olmalı"
+    )
+
+
+def test_SIRA_YARDIMCISI_GERCEKTEN_SIRALIYOR():
+    """`_lock_orders_ascending` `sorted(...)` kullanır ve `FOR UPDATE` alır.
+
+    Yardımcının adı doğru olup gövdesi sıralamıyorsa yukarıdaki üç düğüm
+    yalancı yeşile düşerdi: "ortak yardımcıdan geçiyorlar" doğru olur ama
+    yardımcının kendisi sırayı bozardı.
+    """
+    from tests.acceptance.lock_contract import observed_lock_models
+
+    dugum = _dugum(_agac("services/delivery_service.py"), SIRA_YARDIMCISI)
+    assert dugum is not None
+    dokum = _dump_docstringsiz(dugum)
+    assert "sorted" in dokum, f"{SIRA_YARDIMCISI} sıralama yapmıyor"
+    assert "Order" in [m for m, _ln in observed_lock_models(dugum)], (
+        f"{SIRA_YARDIMCISI} `Order`'ı FOR UPDATE ile almıyor"
+    )
+
+
+def test_KARSI_YOLLAR_run_stops_SIRASINI_KILIT_SIRASI_SAYMAZ():
+    """`cancel_run` / `expire_stale_runs` `run.stops`'u yalnız UYGULAMA için gezer.
+
+    `DeliveryStop.sequence` rota ve uygulama sırasıdır (bildirim/SMS sırası
+    operasyonel olarak anlamlıdır) — **kilit sırası değildir**. Bu düğüm, iki
+    fonksiyonun `run.stops` üzerinde hâlâ döngü kurabildiğini ama kilitleri
+    o döngüden ÖNCE, sıra yardımcısıyla aldığını sabitler.
+    """
+    agac = _agac("services/delivery_service.py")
+    for fonksiyon in ("cancel_run", "expire_stale_runs"):
+        dugum = _dugum(agac, fonksiyon)
+        assert dugum is not None
+        hedefler = _for_dongusu_hedefleri(dugum)
+        assert any("run.stops" in h for h in hedefler), (
+            f"{fonksiyon} artık `run.stops` gezmiyor — bu testin varsayımı bayat"
+        )
+        # Sıra yardımcısı çağrısı, `run.stops` döngüsünden ÖNCE gelmeli.
+        yardimci_satirlari = [
+            n.lineno
+            for n in ast.walk(dugum)
+            if isinstance(n, ast.Call)
+            and getattr(n.func, "id", getattr(n.func, "attr", "")) == SIRA_YARDIMCISI
+        ]
+        dongu_satirlari = [
+            n.lineno
+            for n in ast.walk(dugum)
+            if isinstance(n, (ast.For, ast.AsyncFor)) and "run.stops" in ast.unparse(n.iter)
+        ]
+        assert yardimci_satirlari, f"{fonksiyon}: sıra yardımcısı çağrısı yok"
+        assert min(yardimci_satirlari) < max(dongu_satirlari), (
+            f"{fonksiyon}: kilitler `run.stops` döngüsünden SONRA alınıyor — "
+            "sequence sırası yine kilit sırası olur"
+        )

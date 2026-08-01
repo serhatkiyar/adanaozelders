@@ -360,6 +360,32 @@ class PaketFabrikasi(Fabrika):
                     ),
                     {"c": self.client_ids or [0]},
                 )
+                # Watchdog (`expire_stale_runs`) ve istisna kuyruğu bildirimleri
+                # BÜTÜN adminlere gider — seed admin dahil — yani `admin_ids`
+                # ile kapsanmazlar. Kapsam yine kimlik listelerinden türetilir:
+                # yalnız BU fabrikanın turlarına/siparişlerine ait metinler
+                # silinir, "role_id = 1 olan her şeyi sil" DENMEZ.
+                for kalip in [f"%Dağıtım turu #{r} %" for r in self.run_ids] + [
+                    f"%Sipariş #{o} %" for o in self.order_ids
+                ]:
+                    await s.execute(
+                        text(
+                            "DELETE FROM notifications WHERE role_id = 1 "
+                            "AND message LIKE :k"
+                        ),
+                        {"k": kalip},
+                    )
+                # Outbox: `sms:failed` `order_id` taşır ama `sms:tracking_link`
+                # ve `email:order_status` başka anahtarlar kullanabilir; kapsam
+                # yine sipariş kimliğiyle sınırlı tutulur.
+                await s.execute(
+                    text(
+                        "DELETE FROM outbox_events WHERE "
+                        "(payload ->> 'order_id') = ANY(:t) "
+                        "OR (payload ->> 'id') = ANY(:t)"
+                    ),
+                    {"t": [str(o) for o in self.order_ids]},
+                )
             if self.run_ids:
                 await s.execute(
                     text("DELETE FROM delivery_stops WHERE run_id = ANY(:i)"),

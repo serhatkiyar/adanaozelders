@@ -56,6 +56,10 @@ PRODUCT_LOCKER = "lock_products"
 LOCK_HELPERS: dict[str, tuple[str, ...]] = {
     PRODUCT_LOCKER: ("Product",),
     "_lock_order": ("Order",),
+    # P1 (commit 6 denetimi): sipariş kilitlerini ARTAN `order_id` sırasında
+    # toptan alan ortak yardımcı. `add_stops` · `cancel_run` ·
+    # `expire_stale_runs` üçü de bunu kullanır; sıra sözleşmesi tek yerdedir.
+    "_lock_orders_ascending": ("Order",),
     "_lock_order_products": ("Product",),
     "_lock_stop_and_order": ("Order", "DeliveryStop"),
     "_lock_field_stop": ("DeliveryStop",),
