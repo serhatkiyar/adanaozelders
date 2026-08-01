@@ -372,6 +372,14 @@ _KRITIK_TABLOLAR = (
     "admin_roles",
     "admin_role_permissions",
     "admin_role_assignments",
+    # İP-3: `POST /libraries/register` tek istekte kütüphane + operatör +
+    # refresh token satırı üretir. Bu üçü nöbetçide YOKTU — kayıt akışını
+    # süren bir test teardown'ı unutsa sızıntı SESSİZ kalırdı (F29'da
+    # `audit_logs` ile yaşanan hatanın aynısı). Kayıt yüzeyi artık
+    # korumasız değil.
+    "libraries",
+    "library_operators",
+    "refresh_tokens",
 )
 
 

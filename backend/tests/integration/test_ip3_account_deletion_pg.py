@@ -187,3 +187,77 @@ async def test_silme_denetim_kaydi_tckn_sizdirmaz(ip3, http):
     for satir in satirlar:
         assert "12345678901" not in satir, "denetim kaydında TCKN var"
         assert "TR330006100519786457841326" not in satir, "denetim kaydında IBAN var"
+
+
+@pytest.mark.asyncio
+async def test_silmede_denylist_ttl_kalan_omur_kadar(ip3, http):
+    """TB — denylist TTL'i MUTLAK EPOCH değil, token'ın KALAN ÖMRÜ olmalı.
+
+    `api/routers/auth.py::delete_my_account` `revoke(jti, exp - now)` çağırır.
+    `exp` doğrudan TTL olarak verilseydi (yazılması çok kolay bir hata) Redis
+    anahtarı ~55 YIL yaşardı: sessiz bir kaynak sızıntısı, hiçbir davranış
+    testinin göremeyeceği türden — çünkü "silme sonrası eski token 401" iddiası
+    denylist tamamen kaldırılsa bile geçer (hesap zaten pasifleşiyor).
+    Dolayısıyla bu değer SAYISAL ölçülmek zorundadır.
+
+    Ölçüm gerçek Redis üzerinden yapılır: sahte nesneyle çağrı argümanını
+    yakalamak yalnız router'daki aritmetiği görür; anahtarın gerçekten doğru
+    adla yazıldığını ve okuma ucunun onu bulduğunu görmez.
+    """
+    from core import token_denylist
+    from core.config import settings
+    from core.security import decode_access_token
+    from core.token_denylist import _PREFIX, is_revoked
+    from tests.service_guard import servis_yok
+
+    ogrenci = await ip3.client()
+    token = yetki_basligi(ogrenci)["Authorization"].removeprefix("Bearer ")
+    jti = decode_access_token(token)["jti"]
+
+    # `token_denylist._client` süreç ömrü boyunca ÖNBELLEKLENİR ve asyncpg gibi
+    # redis.asyncio bağlantıları da açıldıkları event loop'a bağlıdır.
+    # pytest-asyncio her teste yeni loop kurduğu için önbellekteki istemci
+    # "Event loop is closed" verir; bu bir ALTYAPI YOKLUĞU DEĞİLDİR. Ayrım
+    # yapılmazsa test "Redis erişilemiyor" diye SKIP olur ve nöbetçi hiç
+    # koşmadan yeşil görünür — ilk koşumda tam olarak bu yaşandı.
+    token_denylist._client = None
+    r = token_denylist._redis()
+    if r is None:
+        servis_yok("Redis", RuntimeError("denylist istemcisi kurulamadı"))
+    try:
+        await r.ping()
+    except Exception as exc:  # noqa: BLE001 — yalnız "servis yok" ayrımı için
+        servis_yok("Redis", exc)
+
+    silme = await http.post(
+        SIL, headers={"Authorization": f"Bearer {token}"}, json={"password": PAROLA}
+    )
+    assert silme.status_code == 204, f"silme başarısız: {silme.text[:300]}"
+
+    ttl = await r.ttl(f"{_PREFIX}{jti}")
+
+    assert ttl > 0, (
+        f"denylist anahtarı yok ya da TTL'siz (ttl={ttl}) — iptal ya hiç "
+        "yazılmadı ya da sonsuza dek yaşayacak"
+    )
+    tavan = settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
+    # ASIL nöbetçi bu ÜST sınırdır: epoch (~1.7e9) yazılırsa `> 0` geçer, bu
+    # kırılır. Alt sınır saat farkı/gecikme için 120 sn tolerans bırakır.
+    assert ttl <= tavan, (
+        f"denylist TTL'i token ömrünü aşıyor (ttl={ttl}s, tavan={tavan}s) — "
+        "mutlak epoch TTL olarak verilmiş olabilir (~55 yıl)"
+    )
+    assert ttl >= tavan - 120, (
+        f"denylist TTL'i beklenenden kısa (ttl={ttl}s, beklenen ≈{tavan}s) — "
+        "token kalan ömrünü doldurmadan denylist'ten düşer"
+    )
+
+    assert await is_revoked(jti) is True, (
+        "anahtar yazıldı ama okuma ucu bulamıyor (önek/ad uyuşmazlığı)"
+    )
+
+    # Test izi Redis'te de kalmaz; istemci bu loop'a bağlı olduğu için önbellek
+    # de boşaltılır (sonraki test bayat bağlantı almasın).
+    await r.delete(f"{_PREFIX}{jti}")
+    await r.aclose()
+    token_denylist._client = None

@@ -211,9 +211,123 @@ KAYIT = "/api/v1/libraries/register"
 OPERATOR_ME = "/api/v1/library-operators/me"
 
 
+# ── WebSocket oturum sürümü (İP-3 §6) ────────────────────────────────────────
+#
+# `api/routers/ws.py:45-48` `auth_ver`'ı denetler ama BU DENETİMİN HİÇ TESTİ
+# YOKTU — satır silinse tüm suite yeşil kalıyordu. HTTP tarafı sıkı, WS tarafı
+# kanıtsızdı: şifre değiştiren kullanıcının canlı soketi açık kalabilirdi.
+#
+# `starlette.testclient.TestClient` BİLİNÇLİ olarak kullanılmaz: WS'i ayrı bir
+# thread + ayrı event loop (portal) üzerinden sürer, oysa `ws.py` paylaşılan
+# `engine` üzerinden asyncpg kullanır ve asyncpg bağlantıları açıldıkları
+# loop'a bağlıdır (bkz. conftest.py:77-98'deki aynı tuzak). Uygulama bunun
+# yerine testin KENDİ loop'unda, ham ASGI arayüzüyle sürülür — ek bağımlılık
+# da gerekmez.
+
+
+async def _ws_el_sikis(token: str) -> list[dict]:
+    """`/api/v1/ws`'i ham ASGI ile sürer; sunucunun gönderdiği mesajları döner.
+
+    Kabul → ilk mesaj ``websocket.accept``; ret → ``websocket.close`` + kod.
+    """
+    from main import app
+
+    gelen = [{"type": "websocket.connect"}]
+    giden: list[dict] = []
+
+    async def receive():
+        if gelen:
+            return gelen.pop(0)
+        return {"type": "websocket.disconnect", "code": 1000}
+
+    async def send(message):
+        giden.append(message)
+
+    scope = {
+        "type": "websocket",
+        "asgi": {"version": "3.0", "spec_version": "2.3"},
+        "http_version": "1.1",
+        "scheme": "ws",
+        "server": ("ip3.test", 80),
+        "client": ("127.0.0.1", 51234),
+        "root_path": "",
+        "path": "/api/v1/ws",
+        "raw_path": b"/api/v1/ws",
+        "query_string": f"token={token}".encode(),
+        "headers": [(b"host", b"ip3.test")],
+        "subprotocols": [],
+        "state": {},
+    }
+    await app(scope, receive, send)
+    return giden
+
+
+def _token(user, *, auth_version) -> str:
+    from core.security import create_access_token
+
+    return create_access_token(
+        subject=user.id,
+        role="CLIENT",
+        role_id=user.role_id,
+        auth_version=auth_version,
+    )
+
+
+@pytest.mark.asyncio
+async def test_ws_gecerli_surumlu_token_baglanabilir(ip3):
+    """Kurulum nöbetçisi: ret testleri 'her şeyi reddediyor' diye geçmesin."""
+    ogrenci = await ip3.client()
+
+    giden = await _ws_el_sikis(_token(ogrenci, auth_version=ogrenci.auth_version))
+
+    assert giden and giden[0]["type"] == "websocket.accept", (
+        f"geçerli token WS'e bağlanamadı: {giden[:2]}"
+    )
+
+
+@pytest.mark.asyncio
+async def test_ws_bayat_auth_ver_reddedilir(ip3, http):
+    """Şifre değişimi canlı soketi de düşürmeli — HTTP 401 tek başına yetmez."""
+    ogrenci = await ip3.client()
+    eski = _token(ogrenci, auth_version=ogrenci.auth_version)
+
+    degis = await http.post(
+        SIFRE,
+        headers=yetki_basligi(ogrenci),
+        json={"current_password": PAROLA, "new_password": YENI_PAROLA},
+    )
+    assert degis.status_code == 200, f"kurulum bozuk: {degis.text[:200]}"
+
+    giden = await _ws_el_sikis(eski)
+
+    assert giden and giden[0]["type"] == "websocket.close", (
+        f"şifre değişiminden SONRA eski token WS'e bağlandı: {giden[:2]}"
+    )
+    assert giden[0].get("code") == 1008, f"beklenen kapatma kodu 1008: {giden[0]}"
+
+
+@pytest.mark.asyncio
+async def test_ws_auth_ver_claimsiz_token_reddedilir(ip3):
+    """Claim'i hiç taşımayan token (P1-A'nın ürettiği tür) WS'e de giremez."""
+    ogrenci = await ip3.client()
+
+    giden = await _ws_el_sikis(_token(ogrenci, auth_version=None))
+
+    assert giden and giden[0]["type"] == "websocket.close", (
+        f"auth_ver claim'i olmayan token WS'e bağlandı: {giden[:2]}"
+    )
+    assert giden[0].get("code") == 1008, f"beklenen kapatma kodu 1008: {giden[0]}"
+
+
 async def _kutuphane_kaydi(ip3, http):
     """GERÇEK self-servis kayıt isteği; oluşan satırlar fabrikanın teardown'ına
-    bağlanır (hijyen nöbetçisi kalıcı satır bırakmayı suite hatası sayar)."""
+    bağlanır (`ip3_factory.cleanup` fiziksel siler).
+
+    NOT: `conftest._KRITIK_TABLOLAR` bu koşumda `libraries`/`library_operators`/
+    `refresh_tokens`'ı da sayar — yani "temizledim" iddiası her koşumda yeniden
+    kanıtlanır. Bu tablolar nöbetçiye BU işte eklendi; öncesinde register
+    akışının bıraktığı satırlar sessizce birikebilirdi.
+    """
     u = uuid.uuid4().hex[:10]
     eposta = f"ip3reg-{u}@ip3kutuphane.example.com"
     r = await http.post(
@@ -289,17 +403,22 @@ async def test_kutuphane_kayit_tokeni_refreshsiz_calisir(ip3, http):
 async def test_kutuphane_kayit_sonrasi_refresh_akisi_bozulmadi(ip3, http):
     """Düzeltme refresh yolunu kırmamalı: çerezle gelen refresh yeni ve
     ÇALIŞAN bir access token üretmeye devam eder (regresyon nöbetçisi)."""
-    kayit, op_id, _lib_id, _sur = await _kutuphane_kaydi(ip3, http)
+    kayit, op_id, lib_id, sur = await _kutuphane_kaydi(ip3, http)
     assert kayit.cookies.get("refresh_token"), "kayıt refresh çerezi bırakmadı"
 
     yenile = await http.post("/api/v1/auth/refresh")
     assert yenile.status_code == 200, f"refresh çalışmadı — {yenile.text[:200]}"
     yeni = yenile.json()["access_token"]
-    assert decode_access_token(yeni)["auth_ver"] is not None
+    # `is not None` YETMEZ: sabit bir sürüm de o assert'ten geçerdi. Elde DB'den
+    # okunmuş gerçek sürüm varken zayıf assert kullanmak kanıtı çöpe atmaktır.
+    assert decode_access_token(yeni)["auth_ver"] == sur, (
+        "refresh token'ındaki auth_ver DB'deki sürümle uyuşmuyor"
+    )
 
     me = await http.get(OPERATOR_ME, headers={"Authorization": f"Bearer {yeni}"})
     assert me.status_code == 200, f"refresh token'ı çalışmıyor ({me.status_code})"
     assert me.json()["id"] == op_id
+    assert me.json()["library_id"] == lib_id
 
 
 @pytest.mark.asyncio

@@ -173,6 +173,30 @@ async def test_operator_egitmene_yazamaz(ip3, http):
 
 
 @pytest.mark.asyncio
+async def test_egitmen_kutuphaneye_yazamaz(ip3, http):
+    """Senaryo 4'ün TERS yönü — bugüne dek yalnız LIBRARY→TUTOR test ediliyordu.
+
+    `_can_message` her iki yönü de kapatıyor (`roles` kümesi ne CLIENT/TUTOR ne
+    CLIENT/LIBRARY → `return False`), ama tek yön ölçüldüğü için politikaya
+    `if roles == {"TUTOR", "LIBRARY"}: return True` eklense HİÇBİR test
+    kırılmıyordu. Bu nöbetçi o boşluğu kapatır.
+
+    ACTIVE kütüphane seçilir: PENDING'de istek `_validate_target`'ın 404'üne
+    takılır ve mesaj politikası hiç ölçülmeden geçilirdi.
+    """
+    lib = await ip3.library()  # ACTIVE
+    await ip3.operator(lib)
+    egitmen = await ip3.tutor()
+
+    r = await _gonder(http, egitmen, "LIBRARY", lib.id)
+
+    assert r.status_code == 403, (
+        f"eğitmen kütüphaneye DM açtı ({r.status_code}) — LIBRARY↔TUTOR için "
+        "tanımlı bir iş ilişkisi modeli yok, iki yön de kapalı olmalı"
+    )
+
+
+@pytest.mark.asyncio
 async def test_ogrenci_pending_kutuphaneye_yazamaz(ip3, http):
     """Onaysız kütüphane public değildir; öğrenci ona da yazamaz (mevcut davranış
     korunuyor — regresyon nöbetçisi)."""
