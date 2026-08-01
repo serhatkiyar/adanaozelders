@@ -15,7 +15,6 @@ import {
   useAddStops,
   useDeliveryRuns,
   useEligibleOrders,
-  useMarkPrepared,
   useOutsourcedOrders,
   usePrepQueue,
 } from "@/hooks/useDelivery";
@@ -98,39 +97,20 @@ function QueueShell({
   return <>{children}</>;
 }
 
-/* ── Hazırlanacaklar: paket toplama + etiket basma kuyruğu ── */
+/* ── Hazırlanacaklar: paketleme istasyonuna giden kuyruk ──
+ *
+ * F30 commit 5: elle "Hazırla" / "Tümünü hazırla" butonları KALDIRILDI. Uçları
+ * (`/delivery/orders/{id}/prepare`, `/unprepare`) backend'den silindi çünkü iki
+ * kapı bırakmak "eksik kalem kabul edilmez" ilkesini boşa çıkarıyordu (boşluk
+ * G1): tek tıkla, hiçbir kalem okutulmadan sipariş dağıtıma hazır sayılıyordu.
+ *
+ * Kuyruk GÖRÜNÜR kalır — operatör ne toplanacağını buradan görür — ama hazır
+ * etme eylemi paketleme istasyonundadır (paket aç → barkod okut → tamamla).
+ * O ekran commit 6'da gelir; o zamana dek buradaki not yönlendirir.
+ */
 function PrepQueue() {
-  const { canManage } = useAdminAreaAccess("delivery");
   const query = usePrepQueue();
-  const mark = useMarkPrepared();
-  const [bulkPending, setBulkPending] = useState(false);
   const queue = query.data ?? [];
-
-  const prepare = (orderId: number) =>
-    mark.mutate(
-      { orderId, prepared: true },
-      {
-        onSuccess: () => toast.success(`#${orderId} hazır — artık tura eklenebilir.`),
-        onError: (e) => toast.error(getErrorMessage(e, "Hazır işaretlenemedi.")),
-      }
-    );
-
-  // Toplu hazırla: sıralı çağrı (küçük hacim; backend bulk ucu bilinçli yok).
-  const prepareAll = async () => {
-    setBulkPending(true);
-    let ok = 0;
-    for (const o of queue) {
-      try {
-        await mark.mutateAsync({ orderId: o.order_id, prepared: true });
-        ok += 1;
-      } catch (e) {
-        toast.error(getErrorMessage(e, `#${o.order_id} hazırlanamadı.`));
-        break; // ilk hatada dur — sessizce atlanmasın
-      }
-    }
-    setBulkPending(false);
-    if (ok > 0) toast.success(`${ok} sipariş hazır işaretlendi.`);
-  };
 
   return (
     <QueueShell query={query}>
@@ -138,32 +118,18 @@ function PrepQueue() {
         <div className="p-6">
           <EmptyState
             title="Hazırlanacak sipariş yok"
-            description="Yeni fiziksel siparişler ödendikçe burada belirir. Paketi topla, etiketi bas, hazır işaretle."
+            description="Yeni fiziksel siparişler ödendikçe burada belirir."
           />
         </div>
       ) : (
         <>
-          {canManage && queue.length > 1 && (
-            <div className="flex justify-end border-b border-slate-100 px-6 py-3 dark:border-slate-800">
-              <Button size="sm" variant="secondary" onClick={prepareAll} isPending={bulkPending}>
-                Tümünü hazırla ({queue.length})
-              </Button>
-            </div>
-          )}
+          <p className="border-b border-slate-100 px-6 py-3 text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400">
+            Hazır işaretleme paketleme istasyonundan yapılır: paketi aç, her kalemi
+            okut, tamamla. Sipariş ancak bütün kalemler doğrulanınca tura hazır olur.
+          </p>
           <ul className="divide-y divide-slate-100 px-6 dark:divide-slate-800">
             {queue.map((o) => (
-              <OrderRow key={o.order_id} order={o}>
-                {canManage && (
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    onClick={() => prepare(o.order_id)}
-                    disabled={mark.isPending || bulkPending}
-                  >
-                    Hazırla
-                  </Button>
-                )}
-              </OrderRow>
+              <OrderRow key={o.order_id} order={o} />
             ))}
           </ul>
         </>
@@ -176,7 +142,6 @@ function PrepQueue() {
 function ReadyQueue() {
   const { canManage } = useAdminAreaAccess("delivery");
   const query = useEligibleOrders();
-  const mark = useMarkPrepared();
   const addStops = useAddStops();
   const runsQuery = useDeliveryRuns(todayIso());
   const eligible = query.data ?? [];
@@ -205,22 +170,13 @@ function ReadyQueue() {
     );
   };
 
-  const unprepare = (orderId: number) =>
-    mark.mutate(
-      { orderId, prepared: false },
-      {
-        onSuccess: () => toast.success(`#${orderId} hazırlığı geri alındı — hazırlama kuyruğuna döndü.`),
-        onError: (e) => toast.error(getErrorMessage(e, "Geri alınamadı.")),
-      }
-    );
-
   return (
     <QueueShell query={query}>
       {eligible.length === 0 ? (
         <div className="p-6">
           <EmptyState
             title="Tura hazır sipariş yok"
-            description="Hazırlanacak kuyruğundaki paketler hazır işaretlendikçe burada belirir."
+            description="Paketleme istasyonunda tamamlanan paketler burada belirir."
           />
         </div>
       ) : (
@@ -271,15 +227,6 @@ function ReadyQueue() {
               <OrderRow key={o.order_id} order={o}>
                 {canManage && (
                   <div className="flex shrink-0 items-center gap-1.5">
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => unprepare(o.order_id)}
-                      disabled={mark.isPending}
-                      title="Hazırlığı geri al — paket hazırlama kuyruğuna döner"
-                    >
-                      Geri Al
-                    </Button>
                     <Button
                       size="sm"
                       variant="secondary"

@@ -244,9 +244,33 @@ G8 bu kuyrukla kapanır. **Stok hareketi yazılmaz** — iptal/iade yolunda
 bozmak muhasebesel değil fiziksel bir iştir.
 
 `prepared_at` yazıcıları F30'dan sonra **yalnız** `complete` ve `repack`;
-sıfırlayıcıları `roll_promise_after_failed_attempt` (mevcut, değişmez) ve
-`void`. Elle `POST /delivery/orders/{id}/prepare` ve `/unprepare` **kaldırılır**
-— iki kapı bırakmak "eksik kalem kabul edilmez" ilkesini boşa çıkarır.
+sıfırlayıcıları `roll_promise_after_failed_attempt` (mevcut, değişmez), `void`,
+`return_in` ve `packing_events.on_order_terminal`. Elle
+`POST /delivery/orders/{id}/prepare` ve `/unprepare` **KALDIRILDI (commit 5)**
+— iki kapı bırakmak "eksik kalem kabul edilmez" ilkesini boşa çıkarır. Liste
+artık yapısal bir nöbetçiyle kilitlidir: `test_f30_packing_contract.py::
+test_prepared_at_YAZICILARI_ALLOWLISTTE` üretim ağacındaki BÜTÜN
+`x.prepared_at = …` atamalarını AST ile toplar ve sözleşmedeki listeyle
+karşılaştırır — hem fazlasına hem eksiğine kırılır.
+
+> **`return_in` de damgayı düşürür (commit 5 düzeltmesi).** İki geri dönüş yolu
+> aynı fiziksel gerçeği anlatmasına rağmen farklı davranıyordu: `fail_stop`
+> `roll_promise` ile damgayı düşürüyor, `cancel_run` düşürmüyordu. Sonuç,
+> turu iptal edilmiş bir siparişte `return_in` sonrası paket operatör onayı
+> beklerken (`RETURNED`) siparişin damgalı kalması ve `repack` OLMADAN yeniden
+> dağıtıma girebilmesiydi. Yeniden dağıtım onayı **yalnız `repack`**'tir.
+
+> **VOID kör noktası (commit 4 denetimi → commit 5'te kapandı).** Canlı paket
+> sorgusu terminal paketleri görmez; `VOID` bir paket "canlı paket yok"
+> demektir. Elle hazırlama dururken şu yol açıktı: *paket VOID → elle "Hazır"
+> → eligible → add_stops → start_run → paket olmadan, hiç okutulmadan SHIPPED*.
+> Uçların kaldırılması canlı HTTP yolunu kapattı; ayrıca **üç yapısal katman**
+> kondu: `eligible_orders` "paket geçmişi varsa canlı ve `PACKED` paket şart"
+> koşulunu uygular, `add_stops` aynı kuralı 409 ile dayatır, `start_run` paket
+> geçmişi olup canlı zimmetli paketi olmayan durağı **zimmetsiz sayar**.
+> Paketi HİÇ olmamış (F30 öncesinden gelen) siparişler bilinçli olarak eski
+> davranışı sürdürür — onları da zorunlu kılmak dağıtımdaki mevcut siparişleri
+> anında kilitlerdi.
 
 ### 3.6 SKU / barkod snapshot stratejisi
 
@@ -628,7 +652,7 @@ izi `package_scan_events`'tedir.
 | 3b | `test(f30): commit 3 audit borclarini kapat` (ÜRETİM DAVRANIŞI DA DEĞİŞTİ: `undo_scan` idempotency anahtarı + `repack` STALE nöbetçisi) | P2-A `return_in` kaynak durum guard'ı · P2-B void gerekçe (422, ham DB hatası sızmaz) · P2-C `add_stops` paket guard'ının İZOLE kanıtı · P2-D `undo_scan` idempotency anahtarı · P2-E eksik yarış matrisi (scan↔finalize, return_in↔repack, return_in↔void, zimmet↔void) · P2-F `repack` STALE | bitti |
 | 4b | `test(f30): commit 4 denetim borclarini kapat` | `void` yetki kararının TOCTOU düzeltmesi (`izin_dogrula` kilitten SONRA) · yarış iddialarının daraltılması (gözlenen kazanana göre tek son durum) · ulaşılamaz `IntegrityError` kurtarma dalının kaldırılması + yanlış savepoint yorumunun düzeltilmesi · sahipliğin GÜNCEL turlarla sınırlanması · 404 gövdelerinin eşitlenmesi · tekrar yanıtında `order_item_id`'nin korunması | bitti |
 | **4** | `feat(f30): paketleme HTTP ve QR entegrasyonu` | `schemas/packing.py` + `api/routers/packing.py` + `api/router.py` kaydı + `/delivery/handover/scan` + `/delivery/handover/manifest/{run}` + `/delivery/scan`'in paket QR uzayı + `mark_prepared` geçiş guard'ı + zimmet audit'i | **bu commit** |
-| 5 | `feat(f30): kurye zimmeti ve SHIPPED gecisinin tasinmasi` | `handover_scan`, `start_run` ön koşulu, `add_stops`/`fail_stop`/`cancel_run`/`watchdog`/`postpone` paket kablolaması, `prepare`/`unprepare` kaldırma, **etkilenen mevcut testlerin güncellenmesi** | bekliyor |
+| **5** | `feat(f30): eski prepare uclarini kaldir ve paket zorunlulugunu tamamla` | `/prepare` + `/unprepare` uçları ve `mark_prepared` iş mantığı SİLİNDİ · `prepared_at` yazıcıları için AST allowlist nöbetçisi · `eligible_orders`/`add_stops`/`start_run` paket-geçmişi guard'ları (VOID kör noktası) · `return_in` damgayı düşürür · frontend "Hazırla/Geri Al" butonları kaldırıldı · etkilenen mevcut testler güncellendi | **bu commit** |
 | 6 | `feat(f30): admin paketleme ekranlari` | `/yonetim/paketleme` (kuyruk · istasyon · paketler) + API/hook/types + saf `lib/packing.ts` | bekliyor |
 | 7 | `feat(f30): paket etiketi ve kurye zimmet ekrani` | `PackageLabel` (baskı sözleşmesi) + `LabelSheet` paket QR'ına geçiş + saha zimmet adımı | bekliyor |
 | 8 | `test(f30): mutasyon provasi, Chrome kabul turu ve kapanis` | `mutation_drill` girdileri, izole Chrome/DevTools turu (§9.1), kapanış raporu | bekliyor |

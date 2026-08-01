@@ -234,6 +234,31 @@ async def on_package_delivered(db: AsyncSession, order_id: int) -> bool:
     )
 
 
+def dispatchable_package_condition():
+    """"Paket geçmişi varsa, CANLI ve HAZIR (`PACKED`) bir paketi olmalı" — SQL.
+
+    `eligible_orders` bunu kullanır. Tek başına `prepared_at` yetmez: damga
+    üretimde yalnız `complete`/`repack`'ten doğsa da (yapısal nöbetçi bunu
+    korur) F30 ÖNCESİNDEN kalan ya da elle sızmış bir damga, paketi çözülmüş
+    (`VOID`) veya yeniden onaylanmamış (`RETURNED`) bir siparişi dağıtım
+    kuyruğuna sokabilirdi. Paketi HİÇ olmamış siparişler bilinçli olarak
+    dışarıda tutulmaz — onlar F30 öncesi akıştan gelir ve commit 5'te
+    kilitlenmemelidir.
+    """
+    herhangi = (
+        select(OrderPackage.id).where(OrderPackage.order_id == Order.id).exists()
+    )
+    hazir = (
+        select(OrderPackage.id)
+        .where(
+            OrderPackage.order_id == Order.id,
+            OrderPackage.status == "PACKED",
+        )
+        .exists()
+    )
+    return ~herhangi | hazir
+
+
 def off_premise_package_exists():
     """"Bu siparişin paketi ARAÇTA" koşulu — SQL `EXISTS` alt sorgusu (saf yapı).
 

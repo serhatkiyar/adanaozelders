@@ -1266,12 +1266,21 @@ async def return_in(
     ödemede yazıldı ve sipariş hâlâ `PAID`.
     """
     on = await _peek(db, package_id)
-    await _lock_order(db, on.order_id)
+    order = await _lock_order(db, on.order_id)
     paket = await _lock_package(db, package_id)
 
     if paket.status == "RETURNED":
         return _view(paket)
     _require_action(paket, "return_in")
+
+    # Paket depoya döndü ama YENİDEN DAĞITIMA ONAYLANMADI: `prepared_at`
+    # düşer, `repack` onu yeniden damgalar (sözleşme §3.5: "repack yalnız
+    # RETURNED'dan sonra"). Damgayı bırakmak, operatör onayı olmadan siparişin
+    # `eligible_orders`'ta durmasına yol açardı — `fail_stop` yolunda damga
+    # zaten düşüyordu, `cancel_run` yolunda düşmüyordu ve iki yol aynı fiziksel
+    # gerçeği anlatmasına rağmen farklı davranıyordu.
+    order.prepared_at = None
+    order.prepared_by = None
 
     onceki_durum = paket.status
     paket.status = "RETURNED"

@@ -258,22 +258,33 @@ async def test_ayni_paket_IKI_KEZ_zimmetlenemez(fab):
 
 @pytest.mark.asyncio
 async def test_PACKED_OLMAYAN_paket_zimmetlenemez(fab):
-    """Eksik (OPEN) paket araca yüklenemez."""
+    """Eksik (OPEN) paket araca yüklenemez.
+
+    F30 commit 5 sonrası bu durum "durak varken paket bozulup yeniden açıldı"
+    senaryosuyla kurulur: `add_stops` artık yalnız **tamamlanmış** paketi
+    kabul ettiği için (eski hâlde `prepared=True` fikstürü yetiyordu) eksik
+    paketli bir durak ancak böyle doğar — ve gerçek operasyonda da böyle doğar:
+    kutu son anda ezilir, operatör `void` edip yeni paket açar, kurye bu arada
+    eski etiketi okutmaya çalışır.
+    """
     servis = _paketleme()
     zimmet = _zimmet()
     aid = await fab.admin()
     kurye = await fab.kurye()
     run = await fab.tur(courier_id=kurye)
-    pid, _sku, _ean = await fab.barkodlu_urun(stock=10)
-    oid = await fab.fiziksel_siparis(kalemler=[(pid, 2)], prepared=True)
+    oid, ilk = await _paketle(fab, servis, aid, adet=2)
+    await _tura_ekle(oid, run)
+    async with AsyncSessionLocal() as s:
+        await servis.void(s, ilk.id, admin_id=aid, reason="Kutu ezildi")
     async with AsyncSessionLocal() as s:
         paket = await servis.open_package(s, oid, admin_id=aid)
-    await _tura_ekle(oid, run)
+    assert paket.status == "OPEN" and paket.id != ilk.id
 
     with pytest.raises(HTTPException) as hata:
         async with AsyncSessionLocal() as s:
             await zimmet(s, paket.qr_payload, courier_id=kurye, actor=f"courier:{kurye}")
     assert hata.value.status_code == 409
+    assert "PACKED" in str(hata.value.detail)
 
 
 # ══════════════════ Tur başlatma ön koşulu ══════════════════════════════════

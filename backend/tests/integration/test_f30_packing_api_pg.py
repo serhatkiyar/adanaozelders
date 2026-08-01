@@ -449,17 +449,29 @@ async def test_ZIMMET_ATOMIK_kismi_yazma_birakmaz(client, kur, fab):
     `HANDED_OVER` olur, ne sipariş `SHIPPED`, ne takip numarası doğar, ne de
     `HANDOVER` olayı yazılır. Üçü aynı transaction'da olduğu için "biri oldu,
     öbürü olmadı" hâli imkânsız olmalıdır.
+
+    Kurulum "durak varken paket bozulup yeniden açıldı" senaryosudur: F30
+    commit 5'ten sonra `add_stops` yalnız tamamlanmış paketi kabul ettiği için
+    eksik paketli bir durak ancak böyle doğar (kutu son anda ezilir, operatör
+    `void` edip yeni paket açar).
     """
-    _aid, token = await kur.admin(izinler=[VIEW, PACK])
+    _aid, token = await kur.admin(izinler=[VIEW, PACK, MANAGE])
     kurye = await fab.kurye()
     _hid, kurye_token = await fab.kurye_hesabi(kurye)
     run = await fab.tur(courier_id=kurye)
-    pid, _sku, _ean = await fab.barkodlu_urun(stock=10)
-    oid = await fab.fiziksel_siparis(kalemler=[(pid, 2)], prepared=True)
-    r = await client.post(f"/api/v1/packing/orders/{oid}/open", headers=_bas(token))
-    paket = r.json()
+    oid, ilk = await _packed_paket(client, token, fab, adet=2)
     async with AsyncSessionLocal() as s:
         await delivery_service.add_stops(s, run, [oid])
+    r = await client.post(
+        f"/api/v1/packing/packages/{ilk['id']}/void",
+        json={"reason": "Kutu ezildi"},
+        headers=_bas(token),
+    )
+    assert r.status_code == 200, r.text
+    paket = (
+        await client.post(f"/api/v1/packing/orders/{oid}/open", headers=_bas(token))
+    ).json()
+    assert paket["status"] == "OPEN"
 
     r = await client.post(
         "/api/v1/delivery/handover/scan",
@@ -473,10 +485,10 @@ async def test_ZIMMET_ATOMIK_kismi_yazma_birakmaz(client, kur, fab):
             await s.execute(
                 text(
                     "SELECT o.status, o.tracking_no, p.status AS paket, p.handed_over_at "
-                    "FROM orders o JOIN order_packages p ON p.order_id = o.id "
+                    "FROM orders o JOIN order_packages p ON p.id = :p "
                     "WHERE o.id = :o"
                 ),
-                {"o": oid},
+                {"o": oid, "p": paket["id"]},
             )
         ).one()
         olay = (

@@ -621,3 +621,105 @@ def test_prepared_at_YAZICILARI_SINIRLI():
                 assert h.attr not in ("prepared_at", "prepared_by"), (
                     "delivery_service hâlâ prepared_at yazıyor"
                 )
+
+
+#: `prepared_at` / `prepared_by`'a yazabilen TEK fonksiyonlar (sözleşme §3.5).
+#: `(modül, fonksiyon)` — modül düzeyinde ya da başka bir fonksiyonda yazmak
+#: yasaktır.
+PREPARED_AT_ALLOWLIST: frozenset[tuple[str, str]] = frozenset(
+    {
+        # Yazanlar: doğrulanmış paket → sipariş hazır.
+        ("services/packing_service.py", "complete"),
+        ("services/packing_service.py", "repack"),
+        # Sıfırlayanlar: paket çözüldü / sipariş terminal oldu / teslim denemesi
+        # başarısız (paket depoya döndü ya da kuryede kaldı).
+        ("services/packing_service.py", "void"),
+        ("services/packing_events.py", "on_order_terminal"),
+        ("services/order_service.py", "roll_promise_after_failed_attempt"),
+    }
+)
+
+#: Taranan üretim ağacı. `tests/` ve `migrations/` dışarıdadır: fikstürler
+#: satırı INSERT sırasında kurucu argümanıyla yazar, bu bir yazıcı DEĞİLDİR.
+_URETIM_DIZINLERI = ("services", "api", "core", "scripts")
+
+
+def _prepared_at_yazicilari() -> set[tuple[str, str]]:
+    """Üretim ağacındaki BÜTÜN `x.prepared_at = ...` / `x.prepared_by = ...`
+    atamalarını `(dosya, kapsayan fonksiyon)` olarak toplar.
+
+    AST okunur: yorum, docstring ve metin eşleşmesi testi kandıramaz. Kapsayan
+    fonksiyon `ast.walk` ile değil **gövde ağacında yürüyerek** bulunur, yani
+    "en yakın fonksiyon" doğru saptanır.
+    """
+    bulunan: set[tuple[str, str]] = set()
+
+    def _gez(dugum, dosya: str, fonksiyon: str) -> None:
+        for cocuk in ast.iter_child_nodes(dugum):
+            ad = fonksiyon
+            if isinstance(cocuk, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                ad = cocuk.name
+            hedefler: list = []
+            if isinstance(cocuk, ast.Assign):
+                hedefler = list(cocuk.targets)
+            elif isinstance(cocuk, (ast.AugAssign, ast.AnnAssign)):
+                hedefler = [cocuk.target]
+            for h in hedefler:
+                if isinstance(h, ast.Attribute) and h.attr in (
+                    "prepared_at",
+                    "prepared_by",
+                ):
+                    bulunan.add((dosya, ad))
+            _gez(cocuk, dosya, ad)
+
+    for dizin in _URETIM_DIZINLERI:
+        kok = BACKEND / dizin
+        if not kok.exists():
+            continue
+        for yol in kok.rglob("*.py"):
+            rel = yol.relative_to(BACKEND).as_posix()
+            _gez(ast.parse(yol.read_text(encoding="utf-8")), rel, "<modül>")
+    return bulunan
+
+
+def test_prepared_at_YAZICILARI_ALLOWLISTTE():
+    """Üretimde `prepared_at`'e yazan HER yer sözleşmedeki listede olmalı.
+
+    Bu, F30'un kapanış nöbetçisidir. Boşluk G1'in tamamı "hazır" damgasının
+    kalem kalem doğrulanmamış bir paketten doğabilmesiydi; damganın kaynağı
+    tek bir yerde sayılı DEĞİLSE kural bir sonraki özellikte sessizce delinir.
+
+    Yeni bir yazıcı eklemek bu testi kırar ve yazarı sözleşmeyi güncellemeye
+    (ya da vazgeçmeye) zorlar — istenen tam olarak budur.
+    """
+    bulunan = _prepared_at_yazicilari()
+    fazla = bulunan - PREPARED_AT_ALLOWLIST
+    assert not fazla, (
+        "sözleşme dışı `prepared_at` yazıcısı: "
+        + ", ".join(f"{d}::{f}" for d, f in sorted(fazla))
+    )
+    # Ters yön: listede olup KOD'da olmayan bir giriş, listenin bayatladığını
+    # gösterir (ör. fonksiyon yeniden adlandırıldı ve nöbetçi körleşti).
+    eksik = PREPARED_AT_ALLOWLIST - bulunan
+    assert not eksik, (
+        "allowlist bayat — bu yazıcılar artık yok: "
+        + ", ".join(f"{d}::{f}" for d, f in sorted(eksik))
+    )
+
+
+def test_mark_prepared_KALDIRILDI():
+    """Elle hazırlama İŞ MANTIĞI da silindi — yalnız uçlar değil.
+
+    Uçları kaldırıp servis fonksiyonunu bırakmak, bir sonraki router'ın onu
+    yeniden yayımlamasını bir satırlık iş hâline getirirdi. Fonksiyon adı
+    üretim ağacının hiçbir yerinde tanımlı olmamalı.
+    """
+    for rel in ("services/delivery_service.py", "api/routers/delivery.py"):
+        agac = _agac(rel)
+        adlar = {
+            d.name
+            for d in ast.walk(agac)
+            if isinstance(d, (ast.FunctionDef, ast.AsyncFunctionDef))
+        }
+        yasak = adlar & {"mark_prepared", "unmark_prepared", "unprepare_order"}
+        assert not yasak, f"{rel}: elle hazırlama yolu geri gelmiş: {sorted(yasak)}"

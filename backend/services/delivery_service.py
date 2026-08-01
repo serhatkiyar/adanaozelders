@@ -501,6 +501,12 @@ async def start_run(db: AsyncSession, run_id: int) -> DeliveryRunOut:
         for order_id, paket in paketler.items()
         if paket is not None and paket.status != "HANDED_OVER"
     ]
+    # F30 commit 5 — VOID kör noktası: canlı paketi olmayan ama paket GEÇMİŞİ
+    # olan sipariş de zimmetsiz sayılır. `VOID` bir paket "canlı paket yok"
+    # demektir ve eski hâlde bu durak sessizce eski (okutmasız) yola düşerdi.
+    for order_id, paket in paketler.items():
+        if paket is None and await _paket_gecmisi_var(db, order_id):
+            zimmetsiz.append(order_id)
     if zimmetsiz:
         raise HTTPException(
             status.HTTP_409_CONFLICT,
@@ -671,6 +677,31 @@ async def expire_stale_runs(db: AsyncSession) -> int:
 # ── Durak yönetimi ────────────────────────────────────────────────────────────────
 
 
+async def _paket_gecmisi_var(db: AsyncSession, order_id: int) -> bool:
+    """Siparişin HERHANGİ bir paket satırı var mı (terminal olanlar dahil)?
+
+    F30 commit 5'in "VOID kör noktası" düzeltmesi. Canlı paket sorgusu
+    (`packing_events.live_package`) terminal paketleri görmez; `VOID` edilmiş
+    bir paket de "canlı paket yok" demektir. Elle hazırlama uçları dururken bu
+    şu yolu açıyordu:
+
+        paket VOID → elle "Hazır" → eligible → add_stops → start_run
+        → paket OLMADAN, hiç okutulmadan SHIPPED.
+
+    Uçlar kaldırıldığı için canlı HTTP yolu kapandı; bu yordam **kalan yapısal
+    boşluğu** kapatır: bir siparişin paket geçmişi varsa o sipariş artık F30
+    öncesi mantığa DÖNEMEZ — dağıtıma girebilmesi için canlı ve doğru durumda
+    bir paketi olmak zorundadır. Paketi HİÇ olmamış (F30 öncesinden gelen)
+    siparişler bilinçli olarak eski davranışı sürdürür; onları da zorunlu
+    kılmak, dağıtımda olan mevcut siparişleri anında kilitlerdi.
+    """
+    return (
+        await db.execute(
+            select(OrderPackage.id).where(OrderPackage.order_id == order_id).limit(1)
+        )
+    ).first() is not None
+
+
 async def _has_open_stop(db: AsyncSession, order_id: int) -> bool:
     """Siparişin planlı/aktif bir turda bekleyen durağı var mı?"""
     row = (
@@ -816,59 +847,19 @@ async def retry_exhausted_order(db: AsyncSession, order_id: int) -> EligibleOrde
     return _eligible_out(order)
 
 
-async def mark_prepared(
-    db: AsyncSession, order_id: int, *, prepared: bool, actor: str = "admin"
-) -> EligibleOrderOut:
-    """Siparişi hazır/hazır-değil işaretler. Hazır ederken sipariş gerçekten
-    dağıtıma uygun olmalı (ödenmiş, fiziksel, bölge-içi, açık); değilse 409.
-    Geri alma yalnız henüz TURA GİRMEMİŞ siparişte serbest (durak varsa paket
-    zaten araçta/sahada)."""
-    order = await db.get(Order, order_id)
-    if order is None or order.deleted_at is not None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, f"Sipariş #{order_id} bulunamadı")
-    if prepared:
-        if not order.has_physical or order.ship_in_zone is not True:
-            raise HTTPException(
-                status.HTTP_409_CONFLICT,
-                f"Sipariş #{order_id} kendi-filo teslimatına uygun değil",
-            )
-        if order.payment_status != "PAID" or order.status != "PAID":
-            raise HTTPException(
-                status.HTTP_409_CONFLICT,
-                f"Sipariş #{order_id} ödenmiş ve açıkta olmalı",
-            )
-        # F30 asgari güvenlik guard'ı (commit 4). Paketleme istasyonu HTTP'ye
-        # açıldığı andan itibaren elle "Hazır" butonu ile istasyon YARIŞIR:
-        # yarım kalmış (`OPEN`), araçta bekleyen (`RETURN_PENDING`/
-        # `HANDED_OVER`) ya da henüz yeniden onaylanmamış (`RETURNED`) bir
-        # paket varken bu buton `prepared_at` damgalayıp siparişi
-        # `eligible_orders`'a sokardı — yani doğrulanmamış bir paket "hazır"
-        # ilan edilirdi. Elle uçların TAMAMEN kaldırılması commit 5'tedir
-        # (sözleşme §3.5/§8); bu guard o ana kadarki pencereyi kapatır ve
-        # paketi olmayan (F30 öncesi) siparişleri etkilemez.
-        acik_paket = await packing_events.live_package(db, order_id)
-        if acik_paket is not None and acik_paket.status != "PACKED":
-            raise HTTPException(
-                status.HTTP_409_CONFLICT,
-                f"Sipariş #{order_id} paketleme istasyonunda: "
-                f"{packing_rules.package_code(acik_paket.id)} durumu "
-                f"{acik_paket.status} — elle hazır işaretlenemez, paket "
-                "tamamlanmalı (ya da geri dönüşü okutulmalı)",
-            )
-        if order.prepared_at is None:
-            order.prepared_at = _now()
-            order.prepared_by = actor
-    else:
-        if await _has_open_stop(db, order_id):
-            raise HTTPException(
-                status.HTTP_409_CONFLICT,
-                f"Sipariş #{order_id} zaten bir turda — hazırlık geri alınamaz",
-            )
-        order.prepared_at = None
-        order.prepared_by = None
-    await db.commit()
-    await db.refresh(order, ["items"])
-    return _eligible_out(order)
+# ── KALDIRILDI: `mark_prepared` (F30 commit 5) ───────────────────────────────
+#
+# Elle "Hazır"/"Hazırlığı geri al" iş mantığı **silindi** (sözleşme §3.5).
+# `prepared_at` artık yalnız kalem kalem doğrulanmış bir paketten doğar:
+# `packing_service.complete` ve `packing_service.repack`. Sıfırlayıcıları
+# `packing_service.void`, `packing_events.on_order_terminal` ve
+# `order_service.roll_promise_after_failed_attempt`'tir.
+#
+# Bu, boşluk G1'in kapanış noktasıdır: iki kapı bırakıldığı sürece "eksik kalem
+# kabul edilmez" kuralı tek tıkla atlatılabiliyordu. Yapısal nöbetçi
+# `test_f30_packing_contract.py::test_prepared_at_YAZICILARI_ALLOWLISTTE`
+# yeni bir yazıcı eklenmesini kırar; `::test_mark_prepared_KALDIRILDI` ise
+# fonksiyonun geri gelmesini.
 
 
 async def eligible_orders(db: AsyncSession) -> list[EligibleOrderOut]:
@@ -907,6 +898,11 @@ async def eligible_orders(db: AsyncSession) -> list[EligibleOrderOut]:
                 # SIFIRLAMADIĞI için tek başına `prepared_at` süzgeci yetmez —
                 # paket araçtayken sipariş buraya sızardı.
                 ~packing_events.off_premise_package_exists(),
+                # F30 commit 5: paket geçmişi varsa CANLI ve HAZIR bir paket
+                # şart. Çözülmüş (`VOID`) ya da yeniden onaylanmamış
+                # (`RETURNED`) paketli sipariş, bayat bir `prepared_at` damgası
+                # yüzünden buraya sızmamalı.
+                packing_events.dispatchable_package_condition(),
                 ~open_stop_exists,
             )
             .order_by(
@@ -1112,15 +1108,24 @@ async def add_stops(db: AsyncSession, run_id: int, order_ids: list[int]) -> Deli
                 status.HTTP_409_CONFLICT, f"Sipariş #{order_id} zaten bir turda bekliyor"
             )
         paket = await packing_events.live_package(db, order_id)
-        if paket is not None and not packing_rules.is_on_premise(paket.status):
-            # F30 §3.5: araçta olan paket yeni tura YÜKLENEMEZ. Depoda olmayan
-            # bir paketi ikinci kez dağıtıma sokmak, kurye eline hiç almadan
-            # "yola çıktı" demektir.
+        # F30 commit 5: paket geçmişi olan sipariş tura ancak **hazır (PACKED)**
+        # bir paketle girer. Eskiden yalnız "araçta değil" aranıyordu; o hâlde
+        # `cancel_run` sonrası `return_in` ile depoya dönen ama `repack` ile
+        # YENİDEN ONAYLANMAMIŞ (`RETURNED`) bir paket tura eklenebiliyordu —
+        # sözleşme §3.5 "sıra atlanamaz" kuralının delindiği yer buydu.
+        if paket is None:
+            if await _paket_gecmisi_var(db, order_id):
+                raise HTTPException(
+                    status.HTTP_409_CONFLICT,
+                    f"Sipariş #{order_id} paketi çözülmüş — dağıtıma girebilmesi "
+                    "için yeniden paketlenmeli (paketleme istasyonu)",
+                )
+        elif paket.status != "PACKED":
             raise HTTPException(
                 status.HTTP_409_CONFLICT,
-                f"Sipariş #{order_id} paketi depoda değil "
+                f"Sipariş #{order_id} paketi hazır değil "
                 f"({packing_rules.package_code(paket.id)} durumu {paket.status}) — "
-                "önce geri dönüşü okutulmalı",
+                "tura yalnız tamamlanmış paket eklenir",
             )
         stop = DeliveryStop(
             run_id=run.id,

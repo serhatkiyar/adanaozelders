@@ -96,32 +96,19 @@ async def prep_queue(db: AsyncSession = Depends(get_db)):
     return await delivery_service.prep_queue(db)
 
 
-@router.post("/orders/{order_id}/prepare", response_model=EligibleOrderOut)
-async def mark_prepared(
-    order_id: int,
-    actor=Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db),
-):
-    """Siparişi 'hazır' işaretle — paket toplandı, etiket basıldı; artık tura eklenebilir."""
-    result = await delivery_service.mark_prepared(db, order_id, prepared=True)
-    await audit_service.record(
-        db, actor=actor, action="delivery_order.prepare", target_type="order", target_id=order_id
-    )
-    return result
-
-
-@router.post("/orders/{order_id}/unprepare", response_model=EligibleOrderOut)
-async def unmark_prepared(
-    order_id: int,
-    actor=Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db),
-):
-    """Hazırlığı geri al (yalnız tura girmemiş sipariş)."""
-    result = await delivery_service.mark_prepared(db, order_id, prepared=False)
-    await audit_service.record(
-        db, actor=actor, action="delivery_order.unprepare", target_type="order", target_id=order_id
-    )
-    return result
+# ── KALDIRILDI: elle hazırlama uçları (F30 commit 5) ─────────────────────────
+#
+# `POST /orders/{id}/prepare` ve `/unprepare` **bilinçli olarak silindi**
+# (sözleşme §3.5, §7 S3). Gerekçe tek cümlede: iki kapı bırakmak "eksik kalem
+# kabul edilmez" ilkesini boşa çıkarır. Elle "Hazır" butonu, kalem kalem
+# doğrulanmamış bir paketi `eligible_orders` kuyruğuna sokabiliyordu — F30'un
+# tamamı bu boşluğu (G1) kapatmak için yazıldı.
+#
+# Yerine geçen akış: `POST /packing/orders/{id}/open` → `/scan` → `/complete`.
+# `prepared_at`'in TEK yazıcıları artık `packing_service.complete` ve
+# `packing_service.repack`'tir; yapısal nöbetçi
+# `test_f30_packing_contract.py::test_prepared_at_YAZICILARI_ALLOWLISTTE`
+# yeni bir yazıcı eklenmesini kırmızıya çevirir.
 
 
 @router.get("/attention-orders", response_model=list[EligibleOrderOut])
