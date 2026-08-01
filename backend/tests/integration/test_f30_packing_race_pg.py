@@ -345,3 +345,258 @@ async def test_kilit_sirasi_DEADLOCK_URETMEZ(fab):
         if _tur % 2:
             gorevler.reverse()
         _kilit_hatasi_yok(await asyncio.gather(*gorevler, return_exceptions=True))
+
+
+# ══════════════════ Commit 3 denetiminden gelen matris (P2-E) ═══════════════
+#
+# Denetim, yaşam döngüsünün üç kritik çiftinin hiç yarıştırılmadığını buldu.
+# Hepsinin ortak riski aynı: iki yol AYNI paket satırına yazıyor ve biri
+# diğerinin durum kararını bayat okursa paket iki yerde birden sayılır
+# (rafta + araçta). Aşağıdaki üç düğüm kayıp güncellemeyi, çift olayı ve
+# izinsiz son durumu birlikte ölçer.
+
+
+async def _paket_durumu(servis, paket_id: int) -> str:
+    async with AsyncSessionLocal() as s:
+        return (await servis.get_package(s, paket_id)).status
+
+
+async def _olay_sayisi(paket_id: int, event_type: str) -> int:
+    async with AsyncSessionLocal() as s:
+        return (
+            await s.execute(
+                text(
+                    "SELECT count(*) FROM package_scan_events "
+                    "WHERE package_id = :p AND event_type = :e"
+                ),
+                {"p": paket_id, "e": event_type},
+            )
+        ).scalar_one()
+
+
+async def _return_pending_paket(fab, servis, aid: int, kurye: int):
+    """(order_id, paket, run_id) — kuryede kalmış (`RETURN_PENDING`) paket."""
+    from services import delivery_service
+
+    run = await fab.tur(courier_id=kurye)
+    pid, _sku, ean = await fab.barkodlu_urun(stock=10)
+    oid = await fab.fiziksel_siparis(kalemler=[(pid, 1)])
+    async with AsyncSessionLocal() as s:
+        paket = await servis.open_package(s, oid, admin_id=aid)
+    async with AsyncSessionLocal() as s:
+        await servis.scan(s, paket.id, code=ean, admin_id=aid)
+    async with AsyncSessionLocal() as s:
+        paket = await servis.complete(s, paket.id, admin_id=aid)
+    async with AsyncSessionLocal() as s:
+        tur = await delivery_service.add_stops(s, run, [oid])
+    stop_id = [d for d in tur.stops if d.order_id == oid][0].id
+    async with AsyncSessionLocal() as s:
+        await delivery_service.handover_scan(
+            s, paket.qr_payload, courier_id=kurye, actor=f"courier:{kurye}"
+        )
+    async with AsyncSessionLocal() as s:
+        await delivery_service.start_run(s, run)
+    async with AsyncSessionLocal() as s:
+        await delivery_service.fail_stop(
+            s, stop_id, reason="Kimse yoktu", reason_code="EVDE_YOK"
+        )
+    return oid, paket, run
+
+
+@pytest.mark.asyncio
+async def test_ES_ZAMANLI_scan_ile_finalize_KAYIP_GUNCELLEME_URETMEZ(fab):
+    """2 beklenen / 1 taranmış pakette `scan` ile `complete` çarpışır.
+
+    İzin verilen son durumlar YALNIZ ikisi:
+      * `complete` önce kazandı → eksik kalem var → 409; sonra tarama geçti →
+        (`OPEN`, 2)
+      * `scan` önce kazandı → satır tamamlandı → (`PACKED`, 2)
+
+    Yasak olan: `scanned_qty == 1` (tarama kayboldu) ya da `PACKED` iken
+    `scanned_qty < expected` (eksik paket kapandı). İkisi de sessizce eksik
+    paket sevkiyatı demektir.
+    """
+    servis = _servis()
+    for _tur in range(TURLAR):
+        aid = await fab.admin()
+        pid, _sku, ean = await fab.barkodlu_urun(stock=10)
+        oid = await fab.fiziksel_siparis(kalemler=[(pid, 2)])
+        async with AsyncSessionLocal() as s:
+            paket = await servis.open_package(s, oid, admin_id=aid)
+        async with AsyncSessionLocal() as s:
+            await servis.scan(s, paket.id, code=ean, admin_id=aid)
+
+        gorevler = [
+            _gorev(lambda s: servis.scan(s, paket.id, code=ean, admin_id=aid)),
+            _gorev(lambda s: servis.complete(s, paket.id, admin_id=aid)),
+        ]
+        if _tur % 2:
+            gorevler.reverse()
+        _kilit_hatasi_yok(await asyncio.gather(*gorevler, return_exceptions=True))
+
+        async with AsyncSessionLocal() as s:
+            taze = await servis.get_package(s, paket.id)
+        assert taze.items[0].scanned_qty == 2, f"tur {_tur}: tarama kayboldu"
+        assert taze.status in ("OPEN", "PACKED"), f"tur {_tur}: {taze.status}"
+        if taze.status == "PACKED":
+            assert taze.packed_at is not None
+            assert await fab.prepared_at(oid) is not None
+        else:
+            assert await fab.prepared_at(oid) is None
+        assert await _olay_sayisi(paket.id, "SCAN") == 2
+        assert await _olay_sayisi(paket.id, "COMPLETE") <= 1
+
+
+@pytest.mark.asyncio
+async def test_ES_ZAMANLI_return_in_ile_repack_SIRA_ATLATMAZ(fab):
+    """`RETURN_PENDING` pakette `return_in` ile `repack` çarpışır.
+
+    Sıra atlanamaz (§3.5): paket geri geldiği OKUTULARAK doğrulanmadan yeniden
+    dağıtıma verilemez. Bu yüzden izin verilen son durumlar:
+      * `repack` önce → 409 (`RETURNED` bekleniyordu); sonra `return_in` →
+        `RETURNED`
+      * `return_in` önce → `RETURNED`; sonra `repack` → `PACKED`
+
+    Yasak: `PACKED` iken `returned_at IS NULL` — bu, hiç okutulmamış bir
+    paketin dağıtıma geri konması demektir.
+    """
+    servis = _servis()
+    for _tur in range(TURLAR):
+        aid = await fab.admin()
+        kurye = await fab.kurye()
+        oid, paket, _run = await _return_pending_paket(fab, servis, aid, kurye)
+        assert await _paket_durumu(servis, paket.id) == "RETURN_PENDING"
+
+        gorevler = [
+            _gorev(lambda s: servis.return_in(s, paket.id, admin_id=aid)),
+            _gorev(lambda s: servis.repack(s, paket.id, admin_id=aid)),
+        ]
+        if _tur % 2:
+            gorevler.reverse()
+        _kilit_hatasi_yok(await asyncio.gather(*gorevler, return_exceptions=True))
+
+        async with AsyncSessionLocal() as s:
+            taze = await servis.get_package(s, paket.id)
+        assert taze.status in ("RETURNED", "PACKED"), f"tur {_tur}: {taze.status}"
+        assert taze.returned_at is not None, "okutulmadan dağıtıma dönmüş"
+        assert await _olay_sayisi(paket.id, "RETURN_IN") == 1
+        if taze.status == "PACKED":
+            assert await _olay_sayisi(paket.id, "REPACK") == 1
+            assert await fab.prepared_at(oid) is not None
+        else:
+            assert await _olay_sayisi(paket.id, "REPACK") == 0
+            assert await fab.prepared_at(oid) is None
+
+
+@pytest.mark.asyncio
+async def test_ES_ZAMANLI_return_in_ile_void_TEK_KAZANAN(fab):
+    """`RETURN_PENDING` pakette `return_in` ile `void` çarpışır.
+
+    `void` araçtaki paketten YAPILAMAZ (`from_statuses` = OPEN/PACKED/RETURNED):
+    envanterin araçtaki paketi "yok" sayması, kaybolan paketi görünmez yapardı.
+    İzin verilen son durumlar:
+      * `void` önce → 409; sonra `return_in` → `RETURNED`
+      * `return_in` önce → `RETURNED`; sonra `void` → `VOID` (artık depoda)
+
+    Yasak: `VOID` iken `returned_at IS NULL` (araçtaki paket yok sayıldı).
+    """
+    servis = _servis()
+    for _tur in range(TURLAR):
+        aid = await fab.admin()
+        kurye = await fab.kurye()
+        _oid, paket, _run = await _return_pending_paket(fab, servis, aid, kurye)
+
+        gorevler = [
+            _gorev(lambda s: servis.return_in(s, paket.id, admin_id=aid)),
+            _gorev(
+                lambda s: servis.void(
+                    s, paket.id, admin_id=aid, reason="Sipariş iptal edildi"
+                )
+            ),
+        ]
+        if _tur % 2:
+            gorevler.reverse()
+        _kilit_hatasi_yok(await asyncio.gather(*gorevler, return_exceptions=True))
+
+        async with AsyncSessionLocal() as s:
+            taze = await servis.get_package(s, paket.id)
+        assert taze.status in ("RETURNED", "VOID"), f"tur {_tur}: {taze.status}"
+        assert taze.returned_at is not None, "araçtaki paket yok sayıldı"
+        assert await _olay_sayisi(paket.id, "RETURN_IN") == 1
+        if taze.status == "VOID":
+            assert taze.void_reason, "gerekçesiz VOID"
+            assert await _olay_sayisi(paket.id, "VOID") == 1
+        else:
+            assert await _olay_sayisi(paket.id, "VOID") == 0
+
+
+@pytest.mark.asyncio
+async def test_ES_ZAMANLI_zimmet_ile_void_TEK_KAZANAN(fab):
+    """Kurye paketi okuturken depo aynı anda paketi bozmaya kalkar.
+
+    Bu, F30'un en pahalı yarışıdır: kaybeden taraf sessiz kalırsa paket hem
+    araçta hem "çözülmüş" olur. İzin verilen son durumlar:
+      * zimmet önce → `HANDED_OVER` + sipariş `SHIPPED`; `void` 409
+      * `void` önce → `VOID` + sipariş `PAID` + `prepared_at` NULL; zimmet 409
+
+    Yasak: `VOID` iken siparişin `SHIPPED` olması (yok edilmiş paketin
+    dağıtımda sayılması) ya da iki `SHIPPED` geçişi.
+    """
+    servis = _servis()
+    from services import delivery_service
+
+    for _tur in range(TURLAR):
+        aid = await fab.admin()
+        kurye = await fab.kurye()
+        run = await fab.tur(courier_id=kurye)
+        pid, _sku, ean = await fab.barkodlu_urun(stock=10)
+        oid = await fab.fiziksel_siparis(kalemler=[(pid, 1)])
+        async with AsyncSessionLocal() as s:
+            paket = await servis.open_package(s, oid, admin_id=aid)
+        async with AsyncSessionLocal() as s:
+            await servis.scan(s, paket.id, code=ean, admin_id=aid)
+        async with AsyncSessionLocal() as s:
+            paket = await servis.complete(s, paket.id, admin_id=aid)
+        async with AsyncSessionLocal() as s:
+            await delivery_service.add_stops(s, run, [oid])
+
+        gorevler = [
+            _gorev(
+                lambda s: delivery_service.handover_scan(
+                    s, paket.qr_payload, courier_id=kurye, actor=f"courier:{kurye}"
+                )
+            ),
+            _gorev(
+                lambda s: servis.void(s, paket.id, admin_id=aid, reason="Kutu ezildi")
+            ),
+        ]
+        if _tur % 2:
+            gorevler.reverse()
+        _kilit_hatasi_yok(await asyncio.gather(*gorevler, return_exceptions=True))
+
+        async with AsyncSessionLocal() as s:
+            taze = await servis.get_package(s, paket.id)
+        siparis_durumu, _odeme = await fab.siparis_durumu(oid)
+        gecis = await _shipped_gecisi(oid)
+
+        assert taze.status in ("HANDED_OVER", "VOID"), f"tur {_tur}: {taze.status}"
+        if taze.status == "HANDED_OVER":
+            assert siparis_durumu == "SHIPPED"
+            assert gecis == 1
+        else:
+            assert siparis_durumu == "PAID", "yok edilmiş paket dağıtımda"
+            assert gecis == 0
+            assert await fab.prepared_at(oid) is None
+
+
+async def _shipped_gecisi(order_id: int) -> int:
+    async with AsyncSessionLocal() as s:
+        return (
+            await s.execute(
+                text(
+                    "SELECT count(*) FROM order_status_history "
+                    "WHERE order_id = :o AND new_status = 'SHIPPED'"
+                ),
+                {"o": order_id},
+            )
+        ).scalar_one()

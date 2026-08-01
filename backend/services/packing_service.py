@@ -34,15 +34,21 @@ alınmamış" sayılır ve test kırılır. Yani kilidi gizlemenin sessiz bir yo
 
 İki ayrı mekanizma vardır ve karıştırılmamalıdır:
 
-* **Anahtarlı** (`idempotency_key`, yalnız `scan`): ağ tekrarı/çift tıklama.
-  Aynı anahtar aynı yükle gelirse ilk sonuç **aynen** döner, adet ARTMAZ; farklı
-  yükle gelirse 409 (F29 `payload_differences` deseniyle aynı gerekçe: sessizce
-  ilk sonucu döndürmek veriyi bozar). Son söz `uq_package_scan_idem` kısmi
-  unique index'inindir.
-* **Durum-idempotansı** (diğer bütün işlemler): işlem hedef duruma zaten
-  ulaşmışsa **ikinci bir olay ve yan etki üretilmez**, mevcut hâl döner. Çift
-  tıklama ikinci bir `packed_at` damgası ya da ikinci bir `SHIPPED` geçişi
-  yaratamaz.
+* **Anahtarlı** (`idempotency_key`) — `scan` **ve** `undo_scan`: ağ tekrarı/
+  çift tıklama. Aynı anahtar aynı yükle gelirse ilk sonuç **aynen** döner ve
+  adet DEĞİŞMEZ; farklı yükle gelirse 409 (F29 `payload_differences` deseniyle
+  aynı gerekçe: sessizce ilk sonucu döndürmek veriyi bozar). Son söz
+  `uq_package_scan_idem` kısmi unique index'inindir. Yük içinde `op` alanı
+  vardır, yani bir taramanın anahtarı bir geri almaya verilemez.
+  `undo_scan`'in bu listeye girmesi commit 3 denetiminin P2-D bulgusudur:
+  geri alma **durum-idempotan değildir** (aynı istek iki kez ulaşırsa adet iki
+  kez düşer) ve tek koruması anahtardır.
+* **Durum-idempotansı** (durum değiştiren diğer bütün işlemler: `open_package`,
+  `complete`, `void`, `unpack`, `return_in`, `repack`, `mark_handed_over`):
+  işlem hedef duruma zaten ulaşmışsa **ikinci bir olay ve yan etki üretilmez**,
+  mevcut hâl döner. Çift tıklama ikinci bir `packed_at` damgası ya da ikinci
+  bir `SHIPPED` geçişi yaratamaz. Bu işlemler adet aritmetiği yapmadığı için
+  anahtara ihtiyaç duymazlar; `undo_scan` yapar, o yüzden ayrıdır.
 
 ## Stok defteri ÇAĞRILMAZ
 
@@ -677,10 +683,20 @@ async def _idem_olayi(
     ).scalars().first()
 
 
-def _idem_yuku(*, code: str | None, manual: bool, order_item_id: int | None) -> dict:
+def _idem_yuku(
+    *, op: str, code: str | None, manual: bool, order_item_id: int | None
+) -> dict:
     """Anahtarın **neyi** temsil ettiği. Aynı anahtar farklı yükle gelirse
-    sessizce ilk sonucu döndürmek veriyi bozar (F29 `payload_differences`)."""
+    sessizce ilk sonucu döndürmek veriyi bozar (F29 `payload_differences`).
+
+    `op` (SCAN / UNDO_SCAN) yükün parçasıdır ve olmazsa olmazdır: idempotency
+    anahtarı `(package_id, key)` üzerinde tekildir, yani bir taramanın
+    anahtarı yanlışlıkla bir geri almaya verilirse kısmi unique index onu
+    "aynı istek" sanıp **sessizce yutardı** — adet azalmaz ve istemci bunu
+    başarı sanardı. `op` farkı bu durumu 409'a çevirir.
+    """
     return {
+        "op": op,
         "code": packing_rules.normalize_code(code),
         "manual": bool(manual),
         "order_item_id": order_item_id,
@@ -694,6 +710,44 @@ def _yuk_catismasi(olay: PackageScanEvent, yuk: dict) -> list[str]:
         for alan, deger in yuk.items()
         if kayitli.get(alan) != deger
     ]
+
+
+async def _idem_tekrari(
+    db: AsyncSession,
+    paket: OrderPackage,
+    idempotency_key: str | None,
+    yuk: dict,
+) -> ScanResult | None:
+    """Anahtarlı tekrar kontrolü — `scan` ve `undo_scan` için ORTAK.
+
+    Ağ tekrarı/çift tıklama: aynı anahtar **aynı yükle** gelirse ilk sonuç
+    aynen döner ve hiçbir yan etki üretilmez (adet değişmez, ikinci olay
+    yazılmaz). Aynı anahtar **farklı yükle** gelirse 409 — sessizce ilk sonucu
+    döndürmek, istemcinin gönderdiği ikinci işlemin yapıldığını sanmasına yol
+    açar ve veriyi bozar (F29 `payload_differences` gerekçesi).
+
+    Kontrol durum guard'larından ÖNCE çalışır: tekrarın doğru cevabı, paket o
+    arada başka bir duruma geçmiş olsa bile ilk sonucun kendisidir.
+    """
+    if not idempotency_key:
+        return None
+    onceki = await _idem_olayi(db, paket.id, idempotency_key)
+    if onceki is None:
+        return None
+    farklar = _yuk_catismasi(onceki, yuk)
+    if farklar:
+        raise _hata(
+            http.HTTP_409_CONFLICT,
+            f"'{idempotency_key}' anahtarı farklı bir işlem için kullanılmış "
+            f"(çakışan alanlar: {', '.join(farklar)})",
+        )
+    return ScanResult(
+        result=onceki.result or "OK",
+        qty_delta=0,
+        order_item_id=(onceki.meta or {}).get("order_item_id"),
+        replayed=True,
+        package=_view(paket),
+    )
 
 
 async def scan(
@@ -719,23 +773,12 @@ async def scan(
     await _lock_order(db, on.order_id)
     paket = await _lock_package(db, package_id)
 
-    yuk = _idem_yuku(code=code, manual=manual, order_item_id=order_item_id)
-    onceki = await _idem_olayi(db, package_id, idempotency_key)
-    if onceki is not None:
-        farklar = _yuk_catismasi(onceki, yuk)
-        if farklar:
-            raise _hata(
-                http.HTTP_409_CONFLICT,
-                f"'{idempotency_key}' anahtarı farklı bir tarama için kullanılmış "
-                f"(çakışan alanlar: {', '.join(farklar)})",
-            )
-        return ScanResult(
-            result=onceki.result or "OK",
-            qty_delta=0,
-            order_item_id=None,
-            replayed=True,
-            package=_view(paket),
-        )
+    yuk = _idem_yuku(
+        op="SCAN", code=code, manual=manual, order_item_id=order_item_id
+    )
+    tekrar = await _idem_tekrari(db, paket, idempotency_key, yuk)
+    if tekrar is not None:
+        return tekrar
 
     _require_action(paket, "scan")
 
@@ -906,16 +949,34 @@ async def undo_scan(
     order_item_id: int,
     admin_id: int,
     reason: str,
+    idempotency_key: str | None = None,
 ) -> ScanResult:
     """Yanlış okutmanın gerekçeli düzeltmesi — izsiz değil.
 
     Adet bir azalır ve `qty_delta = -1` olan bir `UNDO_SCAN` satırı yazılır;
     iz append-only olduğu için "yanlış tarama hiç olmamış gibi" yapılamaz.
+
+    **`idempotency_key` alır** (commit 3 denetimi, P2-D). Sebep somut: geri
+    alma `scan`'in aksine **durum-idempotan DEĞİLDİR** — aynı isteğin iki kez
+    ulaşması adedi iki kez düşürür ve bu, eksik paketi "tam" sanmanın tersine,
+    tam paketi eksik gösterir. Ağ tekrarı gerçek bir senaryodur (kablosuz el
+    terminali), bu yüzden koruma anahtar tabanlıdır: aynı paket + aynı anahtar
+    + aynı yük ikinci kez azaltmaz; aynı anahtar farklı yükle 409 verir.
+    Anahtar verilmezse **iki ayrı geri alma iki ayrı düzeltmedir** (2 adetlik
+    satırda meşru davranış) — `scan`'deki anahtarsız davranışın aynısı.
     """
     temiz = _require_reason(reason, "Tarama geri alma")
     on = await _peek(db, package_id)
     await _lock_order(db, on.order_id)
     paket = await _lock_package(db, package_id)
+
+    yuk = _idem_yuku(
+        op="UNDO_SCAN", code=None, manual=True, order_item_id=order_item_id
+    )
+    tekrar = await _idem_tekrari(db, paket, idempotency_key, yuk)
+    if tekrar is not None:
+        return tekrar
+
     _require_action(paket, "undo_scan")
 
     hedef = next(
@@ -937,8 +998,8 @@ async def undo_scan(
         code=None,
         admin_id=admin_id,
         manual_reason=temiz,
-        idempotency_key=None,
-        idem_yuku=_idem_yuku(code=None, manual=True, order_item_id=order_item_id),
+        idempotency_key=idempotency_key,
+        idem_yuku=yuk,
         event_type="UNDO_SCAN",
     )
 
@@ -1175,6 +1236,20 @@ async def repack(db: AsyncSession, package_id: int, *, admin_id: int) -> Package
         return _view(paket)
     _require_action(paket, "repack")
     _require_open_order(order)
+    # STALE — `complete` ile AYNI kural (commit 3 denetimi, P2-F kararı).
+    # Gerekçe: `repack` `prepared_at`'i yeniden damgalar, yani paketi
+    # `eligible_orders` kuyruğuna GERİ SOKAR. Paket araçtayken siparişin kalem
+    # listesi değişmişse kutunun içindekiler artık siparişe karşılık gelmez ve
+    # bu kutu yeniden dağıtıma verilirse müşteriye YANLIŞ içerik gider. Bugün
+    # kalem düzenleme ucu yoktur (`order_service` tek yazıcı), yani bu kontrol
+    # bir NÖBETÇİDİR: yarın kalem düzenleme eklendiğinde `complete` korunur
+    # ama `repack` sessizce korumasız kalırdı.
+    if _fingerprint(order) != paket.items_fingerprint:
+        raise _hata(
+            http.HTTP_409_CONFLICT,
+            "STALE: paket hazırlandıktan sonra siparişin kalem listesi değişti — "
+            "yeniden dağıtıma verilemez, paketi bozup yeniden açmak gerekir",
+        )
 
     simdi = _now()
     onceki_durum = paket.status
