@@ -564,8 +564,13 @@ async def delete_my_account(
         await delete_file(key)
 
     # Mevcut access token'ı da anında iptal et (refresh'ler zaten revoke edildi).
+    # TTL = kalan ömür (logout ile aynı hesap) — `exp` mutlak epoch'tur, doğrudan
+    # TTL olarak verilirse Redis anahtarı ~55 yıl yaşar (kaynak sızıntısı).
     try:
         payload_jwt = decode_access_token(token)
-        await revoke(payload_jwt.get("jti"), payload_jwt.get("exp"))
+        jti, exp = payload_jwt.get("jti"), payload_jwt.get("exp")
+        if jti and exp:
+            now = int(datetime.datetime.now(datetime.timezone.utc).timestamp())
+            await revoke(jti, max(int(exp) - now, 1))
     except Exception:  # noqa: BLE001 — silme başarılı, iptal best-effort
         logger.warning("hesap silme: access token iptal edilemedi", exc_info=True)
