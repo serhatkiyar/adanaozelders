@@ -168,6 +168,10 @@ async def register_library(
         subject=operator.id,
         role=RoleType.LIBRARY_OPERATOR.value,
         role_id=operator.role_id,
+        # `auth_ver` claim'i ZORUNLU: `get_current_user` bütün rollerde denetler
+        # (İP-3 §6). Atlanırsa kayıt 201 döner ama verdiği token hiçbir uçta
+        # çalışmaz — kullanıcı ancak `/auth/refresh`'ten sonra oturum açabilir.
+        auth_version=getattr(operator, "auth_version", None),
     )
     refresh = await refresh_token_service.issue(
         db, role_id=operator.role_id, user_id=operator.id

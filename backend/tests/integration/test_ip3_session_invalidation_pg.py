@@ -36,10 +36,13 @@ Ayrıca iki ayrı rol kataloğu drift etmiş:
 """
 from __future__ import annotations
 
+import uuid
+
 import pytest
 from sqlalchemy import select
 
 from core.database import AsyncSessionLocal
+from core.security import decode_access_token
 from models.admin import Admin
 from models.client import Client
 from models.courier_account import CourierAccount
@@ -202,6 +205,101 @@ async def test_reset_sonrasi_eski_access_token_401(ip3, http, rol):
         f"{rol}: şifre SIFIRLANDIKTAN sonra eski access token hâlâ geçerli "
         f"({sonraki.status_code})"
     )
+
+
+KAYIT = "/api/v1/libraries/register"
+OPERATOR_ME = "/api/v1/library-operators/me"
+
+
+async def _kutuphane_kaydi(ip3, http):
+    """GERÇEK self-servis kayıt isteği; oluşan satırlar fabrikanın teardown'ına
+    bağlanır (hijyen nöbetçisi kalıcı satır bırakmayı suite hatası sayar)."""
+    u = uuid.uuid4().hex[:10]
+    eposta = f"ip3reg-{u}@ip3kutuphane.example.com"
+    r = await http.post(
+        KAYIT,
+        json={
+            "email": eposta,
+            "password": PAROLA,
+            "first_name": "Operator",
+            "last_name": f"Kayit{u[:4]}",
+            "name": f"IP3 Kayit Kutuphane {u}",
+            "city": "Adana",
+            "district": "Seyhan",
+        },
+    )
+    assert r.status_code == 201, f"kayıt başarısız — {r.status_code}: {r.text[:300]}"
+
+    async with AsyncSessionLocal() as s:
+        op = (
+            await s.execute(
+                select(LibraryOperator).where(LibraryOperator.email == eposta)
+            )
+        ).scalar_one()
+        ip3.operator_ids.append(op.id)
+        ip3.library_ids.append(op.library_id)
+        return r, op.id, op.library_id, op.auth_version
+
+
+@pytest.mark.asyncio
+async def test_kutuphane_kayit_tokeni_refreshsiz_calisir(ip3, http):
+    """Bulgu P1-A — `POST /libraries/register` token'ı `auth_ver` taşımıyordu.
+
+    Kayıt 201 dönüyor, gövdede access token da geliyordu; ama `get_current_user`
+    artık `auth_ver`'ı BÜTÜN rollerde denetlediği için o token hiçbir uçta
+    çalışmıyordu — kullanıcı ancak `/auth/refresh` çağırıp YENİ token aldıktan
+    sonra oturum açabiliyordu. Bu test claim'in varlığını değil, token'ın gerçek
+    dependency zincirinden (rol çözümü + auth_version denetimi) geçtiğini ölçer.
+    """
+    kayit, op_id, lib_id, db_auth_version = await _kutuphane_kaydi(ip3, http)
+
+    token = kayit.json().get("access_token")
+    assert token, "kayıt yanıtında access token yok"
+    basliklar = {"Authorization": f"Bearer {token}"}
+
+    # (1) Asıl kanıt: REFRESH ÇAĞRILMADAN operatör ucu çalışıyor mu?
+    me = await http.get(OPERATOR_ME, headers=basliklar)
+    assert me.status_code == 200, (
+        "kayıt token'ı operatör ucunda çalışmıyor "
+        f"({me.status_code}) — kullanıcı kaydolur olmaz kilitleniyor: {me.text[:200]}"
+    )
+    govde = me.json()
+    assert govde["id"] == op_id, f"başka operatör çözüldü: {govde['id']} != {op_id}"
+    assert govde["library_id"] == lib_id, (
+        f"operatör yanlış kütüphaneye bağlandı: {govde['library_id']} != {lib_id}"
+    )
+
+    # (2) Ortak kullanıcı ucu da aynı token'la çalışmalı.
+    auth_me = await http.get(ME, headers=basliklar)
+    assert auth_me.status_code == 200, (
+        f"kayıt token'ı /auth/me'de çalışmıyor ({auth_me.status_code})"
+    )
+
+    # (3) Claim gerçekten DB'deki sürümden geliyor mu? (Sabit `1` yazılmış olsa
+    #     da bu koşumda geçerdi; asıl nöbetçi (1) — burada sözleşme sabitlenir.)
+    claims = decode_access_token(token)
+    assert "auth_ver" in claims, "kayıt token'ında auth_ver claim'i yok"
+    assert claims["auth_ver"] == db_auth_version, (
+        f"claim DB'deki sürümle uyuşmuyor: {claims['auth_ver']} != {db_auth_version}"
+    )
+    assert claims["role_id"] == ROLE_IDS[RoleType.LIBRARY_OPERATOR]
+
+
+@pytest.mark.asyncio
+async def test_kutuphane_kayit_sonrasi_refresh_akisi_bozulmadi(ip3, http):
+    """Düzeltme refresh yolunu kırmamalı: çerezle gelen refresh yeni ve
+    ÇALIŞAN bir access token üretmeye devam eder (regresyon nöbetçisi)."""
+    kayit, op_id, _lib_id, _sur = await _kutuphane_kaydi(ip3, http)
+    assert kayit.cookies.get("refresh_token"), "kayıt refresh çerezi bırakmadı"
+
+    yenile = await http.post("/api/v1/auth/refresh")
+    assert yenile.status_code == 200, f"refresh çalışmadı — {yenile.text[:200]}"
+    yeni = yenile.json()["access_token"]
+    assert decode_access_token(yeni)["auth_ver"] is not None
+
+    me = await http.get(OPERATOR_ME, headers={"Authorization": f"Bearer {yeni}"})
+    assert me.status_code == 200, f"refresh token'ı çalışmıyor ({me.status_code})"
+    assert me.json()["id"] == op_id
 
 
 @pytest.mark.asyncio
