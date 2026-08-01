@@ -190,6 +190,66 @@ def test_CANLI_PAKET_yuklemi_UCLU_AYRISAMAZ():
     assert tuple(migration._STATUSES) == tuple(PACKAGE_STATUSES)
 
 
+def test_PAKET_DURUM_KUMESI_UCLU_AYNI():
+    """Saf kural modülü ↔ model ↔ migration: aynı durum sözlüğü, aynı sıra.
+
+    `packing_rules` `models`'i import EDEMEZ (saflık kuralı), bu yüzden durum
+    adları ikinci kez yazılıdır. Ayrışırlarsa hata sessizdir: FSM izin verdiği
+    bir geçişi DB CHECK'i reddeder ve kullanıcı 500 görür — ya da tersi, CHECK
+    kabul ettiği bir durumu FSM hiç üretemez ve o durum ölü kalır.
+
+    Geçiş matrisinin uçları da aynı sözlükten olmalıdır: matriste yazım hatalı
+    bir durum (`RETURN_PENDNG`) sessizce "hiçbir zaman izinli olmayan bir
+    geçiş" üretirdi.
+    """
+    from models.packing import PACKAGE_STATUSES as MODEL_STATUSES
+    from models.packing import TERMINAL_PACKAGE_STATUSES
+    from services import packing_rules
+
+    migration = _migration_modulu("f30_paketleme_semasi")
+
+    assert tuple(packing_rules.PACKAGE_STATUSES) == tuple(MODEL_STATUSES)
+    assert tuple(migration._STATUSES) == tuple(MODEL_STATUSES)
+    assert tuple(packing_rules.TERMINAL_STATUSES) == tuple(TERMINAL_PACKAGE_STATUSES)
+
+    uclar = {b for b, _h in packing_rules.PACKAGE_TRANSITIONS} | {
+        h for _b, h in packing_rules.PACKAGE_TRANSITIONS
+    }
+    bilinmeyen = uclar - set(MODEL_STATUSES)
+    assert not bilinmeyen, f"geçiş matrisinde tanımsız durum: {sorted(bilinmeyen)}"
+
+    # Canlı küme, terminal kümenin tümleyeni olmalı — üçüncü bir tanım yok.
+    assert set(packing_rules.LIVE_STATUSES) == set(MODEL_STATUSES) - set(
+        TERMINAL_PACKAGE_STATUSES
+    )
+
+
+def test_ISLEM_TABLOSU_OLAY_SOZLUGUNDEN_CIKMAZ():
+    """`PACKAGE_ACTIONS`'ın ürettiği her olay tipi DB CHECK'inde tanımlı olmalı.
+
+    `ck_package_scan_events_type` dar tutulmuştur (yazım hatası sessiz bir "iz
+    yok" üretirdi). Saf tabloya CHECK'te olmayan bir `event_type` yazılırsa
+    işlem çalışma zamanında `IntegrityError` verir — ve bu ancak o yol ilk kez
+    kullanıldığında, yani üretimde görülürdü.
+    """
+    from models.packing import PACKAGE_EVENT_TYPES
+    from services import packing_rules
+
+    uretilenler = {k.event_type for k in packing_rules.PACKAGE_ACTIONS.values()}
+    bilinmeyen = uretilenler - set(PACKAGE_EVENT_TYPES)
+    assert not bilinmeyen, f"olay sözlüğünde olmayan tip: {sorted(bilinmeyen)}"
+
+    # İşlemin hedef durumu geçiş matrisinde de izinli olmalı; aksi hâlde tablo
+    # "yapılabilir" derken FSM "yasak" der ve işlem hiçbir durumdan çalışmaz.
+    for ad, kural in packing_rules.PACKAGE_ACTIONS.items():
+        if kural.to_status is None or not kural.from_statuses:
+            continue
+        for kaynak in kural.from_statuses:
+            assert packing_rules.can_transition(kaynak, kural.to_status), (
+                f"{ad}: {kaynak} → {kural.to_status} geçiş matrisinde yok"
+            )
+
+
 # ══════════════════ KIRMIZI: test izolasyonu ════════════════════════════════
 
 

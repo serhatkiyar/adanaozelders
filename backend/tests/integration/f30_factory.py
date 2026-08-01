@@ -245,11 +245,23 @@ class PaketFabrikasi(Fabrika):
         )
 
     async def tur(self, *, courier_id: int | None = None, status: str = "PLANNED") -> int:
+        """Dağıtım turu.
+
+        `run_date` her turda BİR GÜN ileri kayar. Sebep bir fikstür hatasıdır ve
+        commit 3'te bulundu: `uq_delivery_run_planned` gün+araç başına tek
+        PLANLI tura izin verir (`models/delivery.py:113-119`), fabrika ise her
+        turu aynı gün + `LADA` ile açıyordu. İki turlu senaryolar (yabancı kurye,
+        ikinci tura yeniden yükleme) bu yüzden testin kendi iddiasına hiç
+        varamadan `IntegrityError` ile düşüyordu — commit 1'de fark edilmemişti,
+        çünkü o testler `handover_scan` yokluğundan daha önceki satırda
+        kırılıyordu.
+        """
         from models.delivery import DeliveryRun
 
+        gun = datetime.date.today() + datetime.timedelta(days=len(self.run_ids))
         async with AsyncSessionLocal() as s:
             r = DeliveryRun(
-                run_date=datetime.date.today(),
+                run_date=gun,
                 status=status,
                 courier_id=courier_id,
                 vehicle="LADA",

@@ -176,6 +176,19 @@ Canlı küme = `{OPEN, PACKED, HANDED_OVER, RETURN_PENDING, RETURNED}`.
 | `add_stops` aktif tura eklerken de SHIPPED yapar | `add_stops` **SHIPPED yapmaz** |
 | `start_run` ön koşulsuz | `start_run` PENDING durakların **hepsi zimmetli** değilse 409 + eksik paket listesi |
 
+> **Kademeli devreye alma (commit 3'te alınan karar).** Yukarıdaki üç değişiklik
+> commit 3'te **paketi olan sipariş için** uygulanır: canlı paketi olan durak
+> `add_stops`'ta SHIPPED YAPILMAZ ve `start_run` onun zimmetlenmiş olmasını
+> ARAR; paketi **olmayan** (F30 öncesi akıştan gelen, elle `prepare` edilmiş)
+> durak eski davranışı sürdürür. Sebep somut: `POST /delivery/orders/{id}/prepare`
+> henüz kaldırılmadığı için (commit 5) "her siparişin paketi vardır" bugün
+> **doğru değildir** ve koşulsuz dayatma mevcut operasyonu — ve S2'de sayılan
+> mevcut teslimat testlerini — anında kilitlerdi. Koşulsuz hâline geçiş, elle
+> hazırlama uçlarının kaldırılmasıyla **aynı commit'te** (5) yapılır; o zaman
+> "paketi olmayan durak" diye bir şey kalmaz. Ara dönemin bilinen boşluğu:
+> paketi `VOID` edilmiş bir sipariş `mark_prepared` ile hâlâ zimmetsiz
+> gönderilebilir — commit 5'e kadar açık, kayıt altında.
+
 Sonuç: `on_premise` çıkışı artık bir butona değil, kuryenin elindeki paketi
 okutmasına bağlı.
 
@@ -198,6 +211,16 @@ RETURN_PENDING ──[depo: QR okut] return_in──▶ RETURNED   (ON_PREMISE'a
 RETURNED ──[operatör onayı] repack──▶ PACKED             (prepared_at yeniden damgalanır → eligible)
 RETURNED ──[operatör onayı] void──▶ VOID                 (paket bozulacak)
 ```
+
+> **`repack` AYNI paketi sürdürür — yeni paket açmaz.** Bu ayrım G3'ün
+> kazancıdır: `repack` paketin `qr_token`'ını ve dolayısıyla **üstündeki basılı
+> etiketi** korur, böylece ikinci turda aynı etiket okunur. "Eski paketi bozup
+> yenisini aç" ayrı bir yoldur ve `void` + `open_package` ile yapılır (yeni
+> `package_no`, yeni QR, yeni etiket baskısı). İkisi arasında hiçbir anda iki
+> canlı paket oluşmaz: her iki adım da `Order` kilidi altında sırayla çalışır ve
+> `uq_order_packages_live` son sözü söyler. `packed_at` `repack`'te
+> **tazelenmez** — o damga "içeriğin kalem kalem doğrulandığı an"dır ve repack
+> kutuyu açmaz; yeni kararın aktörü/zamanı `REPACK` olayında durur.
 
 #### `RETURN_PENDING` yaşam döngüsü — kesin kurallar
 
@@ -579,8 +602,9 @@ izi `package_scan_events`'tedir.
 | # | Commit | İçerik | Durum |
 |---|---|---|---|
 | **1** | `test(f30): paketleme sozlesmesi + kirmizi test matrisi` | Bu belge + 6 kırmızı test dosyası. Üretim kodu YOK. | bitti |
-| **2** | `feat(f30): paket modelleri migration ve izin katalogu` | 3 tablo + append-only trigger + kısmi index'ler + `models/__init__` + `_KRITIK_TABLOLAR` + `db_guard.purge_packages` + `packing.*` katalog & rol dağıtımı + şema invariant testleri | **bu commit** |
-| 3 | `feat(f30): paketleme kurallari ve servis katmani` | `services/packing_rules.py` (saf) + `services/packing_service.py` (kilit sırası, idempotency, STALE) | bekliyor |
+| **2** | `feat(f30): paket modelleri migration ve izin katalogu` | 3 tablo + append-only trigger + kısmi index'ler + `models/__init__` + `_KRITIK_TABLOLAR` + `db_guard.purge_packages` + `packing.*` katalog & rol dağıtımı + şema invariant testleri | bitti |
+| 2b | `test(f30): commit 2 denetim borclarini kapat` | ruff B905 · canlı-paket yüklemi drift nöbetçisi (saf + `pg_get_expr`) · anahtarsız olay testinin gerekçesi · ürün sert-silme politikası | bitti |
+| **3** | `feat(f30): paketleme servisi ve yasam dongusu` | `services/packing_rules.py` (saf FSM + işlem tablosu) · `services/packing_events.py` (ince kanca modülü) · `services/packing_service.py` (kilit sırası, idempotency, STALE) · `order_fsm` terminal kancası · `handover_scan` + dört geri dönüş yolunun kablolaması · `prep_queue`/`eligible_orders`/`add_stops` paket farkındalığı | **bu commit** |
 | 4 | `feat(f30): paketleme HTTP uclari ve audit` | `schemas/packing.py` + `api/routers/packing.py` + `api/router.py` + audit kablolaması | bekliyor |
 | 5 | `feat(f30): kurye zimmeti ve SHIPPED gecisinin tasinmasi` | `handover_scan`, `start_run` ön koşulu, `add_stops`/`fail_stop`/`cancel_run`/`watchdog`/`postpone` paket kablolaması, `prepare`/`unprepare` kaldırma, **etkilenen mevcut testlerin güncellenmesi** | bekliyor |
 | 6 | `feat(f30): admin paketleme ekranlari` | `/yonetim/paketleme` (kuyruk · istasyon · paketler) + API/hook/types + saf `lib/packing.ts` | bekliyor |
@@ -607,6 +631,28 @@ izi `package_scan_events`'tedir.
    "F29 zinciri uygulanan yolun içinde" biçiminde yeniden yazıldı; zincirin
    gerçekten kurulduğunu kanıtlayan şema iddiaları (tablolar, index, backfill)
    olduğu gibi durmaktadır.
+
+**Commit 3'te bulunan üç kusur** (aynı kural — gizlenmez):
+
+1. `test_YANLIS_SKU_taramasi_REDDEDILIR` ve
+   `test_CIFT_TARAMA_ayni_key_ile_adedi_IKI_KEZ_ARTIRMAZ` paketin **bütün**
+   olaylarını sayıyordu (`izler == ["WRONG_SKU"]`, `count(*) == 1`). Oysa iz
+   tablosu yalnız taramaların değil, yaşam döngüsünün tamamının kaydıdır (§5) ve
+   paket açılışı da bir olaydır (`OPEN`). İki test `event_type` ile daraltıldı;
+   birincisine ayrıca "açılış olayı gerçekten yazıldı" iddiası **eklendi** —
+   yani test zayıflatılmadı, ayırt ediciliği artırıldı.
+2. `f30_factory.tur()` her turu **aynı gün + `LADA`** ile açıyordu; oysa
+   `uq_delivery_run_planned` gün+araç başına tek PLANLI tura izin verir. İki
+   turlu senaryolar (yabancı kurye, ikinci tura yükleme) kendi iddialarına
+   varamadan `IntegrityError` ile düşüyordu. Commit 1'de görünmemişti, çünkü o
+   testler `handover_scan` yokluğundan daha önceki satırda kırılıyordu. Fabrika
+   artık her tura bir gün ileri tarih verir.
+3. `SCAN_RESULTS` sözlüğündeki `ALREADY_COMPLETE` ve `UNSCANNABLE` **hiçbir yol
+   tarafından üretilmiyor**. Kabul testleri dolu satırda `OVER_QTY`, kodsuz
+   satırda `WRONG_SKU` bekliyor; ikisini uydurmak o davranışları bozardı. DB
+   CHECK'i onları kabul etmeye devam ediyor ve `packing_rules.ScanOutcome`
+   docstring'inde bu boşluk açıkça yazılı. Commit 4'te HTTP katmanının daha
+   bağışlayıcı yolları için kullanılacak ya da sözlükten çıkarılacaklar.
 
 ---
 

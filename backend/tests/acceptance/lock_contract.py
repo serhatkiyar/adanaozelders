@@ -59,6 +59,12 @@ LOCK_HELPERS: dict[str, tuple[str, ...]] = {
     "_lock_order_products": ("Product",),
     "_lock_stop_and_order": ("Order", "DeliveryStop"),
     "_lock_field_stop": ("DeliveryStop",),
+    # F30 (`packing_service`). Adları bilinçli olarak `_lock_` önekiyle
+    # başlar: bir kilidi yardımcıya taşımak, onu bu sözlüğe yazmayı da
+    # gerektirir — yoksa kabul testi o fonksiyonu "hiçbir kaynağı
+    # kilitlemiyor" diye kırar (G7 deseninin nöbetçisi).
+    "_lock_package": ("OrderPackage",),
+    "_lock_live_package": ("OrderPackage",),
 }
 
 

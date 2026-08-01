@@ -194,13 +194,21 @@ async def test_YANLIS_SKU_taramasi_REDDEDILIR(fab):
         izler = (
             await s.execute(
                 text(
-                    "SELECT result FROM package_scan_events WHERE package_id = :p "
-                    "ORDER BY id"
+                    "SELECT event_type, result FROM package_scan_events "
+                    "WHERE package_id = :p ORDER BY id"
                 ),
                 {"p": paket.id},
             )
-        ).scalars().all()
-    assert izler == ["WRONG_SKU"], "red taraması ize yazılmamış"
+        ).all()
+    # İz tablosu YALNIZ taramaların değil, paket yaşam döngüsünün TAMAMININ
+    # kaydıdır (sözleşme §5): paket açılışı da bir olaydır. Bu yüzden iddia
+    # "tek satır var" değil, "tarama satırı redle yazıldı"dır — ve açılış
+    # olayının varlığı da ayrıca doğrulanır (aksi hâlde OPEN olayı sessizce
+    # kaldırılsa bu test hiçbir şey söylemezdi).
+    assert [e for e, _r in izler] == ["OPEN", "SCAN"]
+    assert [r for e, r in izler if e == "SCAN"] == ["WRONG_SKU"], (
+        "red taraması ize yazılmamış"
+    )
 
 
 @pytest.mark.asyncio
@@ -370,11 +378,16 @@ async def test_CIFT_TARAMA_ayni_key_ile_adedi_IKI_KEZ_ARTIRMAZ(fab):
 
         iz = (
             await s.execute(
-                text("SELECT count(*) FROM package_scan_events WHERE package_id = :p"),
+                text(
+                    "SELECT count(*) FROM package_scan_events "
+                    "WHERE package_id = :p AND event_type = 'SCAN'"
+                ),
                 {"p": paket.id},
             )
         ).scalar_one()
-    assert iz == 1
+    # Yalnız TARAMA olayları sayılır: paket açılışı da ize yazılır (§5) ve
+    # onu saymak "üç tekrar tek olay üretti" iddiasını bulanıklaştırırdı.
+    assert iz == 1, "aynı anahtarla gelen tekrar ikinci bir tarama izi yazdı"
 
 
 @pytest.mark.asyncio
@@ -660,6 +673,49 @@ async def test_VOID_sonrasi_YENI_paket_acilabilir(fab):
         ikinci = await servis.open_package(s, oid, admin_id=aid)
     assert ikinci.id != birinci.id
     assert ikinci.status == "OPEN"
+
+
+@pytest.mark.asyncio
+async def test_VOID_paketin_miktari_YENI_PAKETI_TUKETMEZ(fab):
+    """Sipariş içi miktar invariant'ı yalnız CANLI paketleri sayar.
+
+    Servis, `Σ aktif paket expected_qty ≤ order_item.quantity` kuralını korur.
+    Bozulan (`VOID`) paketin satırları o toplama girseydi, yeni paket "hepsi
+    zaten paketlenmiş" diye **boş** doğardı — ve boş bir paket
+    `complete` edilemediği için sipariş sessizce dağıtıma çıkamaz hâle
+    gelirdi. `package_no` de artmalıdır: operasyon "2. paket" diyebilmeli.
+    """
+    servis = _servis()
+    aid = await _admin(fab)
+    pid, _sku, _e = await fab.barkodlu_urun(stock=10)
+    oid = await fab.fiziksel_siparis(kalemler=[(pid, 3)])
+
+    async with AsyncSessionLocal() as s:
+        birinci = await servis.open_package(s, oid, admin_id=aid)
+    assert birinci.items[0].expected_qty == 3
+    async with AsyncSessionLocal() as s:
+        await servis.void(s, birinci.id, admin_id=aid, reason="Kutu yırtıldı")
+
+    async with AsyncSessionLocal() as s:
+        ikinci = await servis.open_package(s, oid, admin_id=aid)
+    assert ikinci.items, "yeni paket BOŞ doğdu — VOID satırlar miktarı tüketmiş"
+    assert ikinci.items[0].expected_qty == 3
+    assert ikinci.package_no == birinci.package_no + 1
+
+    # Eski paketin satırları ve izi olduğu gibi durur (append-only geçmiş).
+    async with AsyncSessionLocal() as s:
+        from sqlalchemy import text
+
+        eski = (
+            await s.execute(
+                text(
+                    "SELECT expected_qty FROM order_package_items "
+                    "WHERE package_id = :p"
+                ),
+                {"p": birinci.id},
+            )
+        ).scalars().all()
+    assert eski == [3]
 
 
 @pytest.mark.asyncio

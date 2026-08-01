@@ -59,6 +59,7 @@ from services import (
     escrow,
     notification_service,
     order_fsm,
+    packing_events,
     payment_gates,
     returns,
     stock_ledger,
@@ -1066,6 +1067,14 @@ async def postpone_delivery(db: AsyncSession, order: Order) -> None:
                 db, order, "PAID", changed_by="client", reason="Müşteri ertesi güne erteledi"
             )
             order.tracking_no = None
+        # F30 §3.5: dört geri dönüş yolundan dördüncüsü. Müşteri erteledi ama
+        # paket ARAÇTA kaldı — `RESCHEDULED` durak `FAILED`'dan ayrıdır (kurye
+        # KPI'ına yazılmaz), paketin fiziksel yeri ise aynıdır. Erteleme
+        # `prepared_at`'i sıfırlamadığı için bu işaret olmadan sipariş
+        # `eligible_orders`'ta paketsiz görünmeye devam ederdi.
+        await packing_events.on_package_returning(
+            db, order.id, reason="Müşteri teslimatı erteledi"
+        )
 
     # Hedef gün: sonraki çalışma günü — kontenjanı doluysa ondan da ileri.
     # (Müşteri isteği: kapasite kontrolü ADİLDİR; kurye kaynaklı FAILED'ın
