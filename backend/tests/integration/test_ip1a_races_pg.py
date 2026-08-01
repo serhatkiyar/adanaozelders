@@ -21,7 +21,7 @@ Bu dosyada **hiçbir `asyncio.sleep` yoktur**; ardışıklık tahmin edilmez, a�
 `asyncio.Event` sinyalleriyle **ölçülür**. Desen her yarışta aynıdır:
 
 1. Kaybetmesi gereken taraf satırı okur ve `okundu` event'ini set eder.
-2. Test `await okundu.wait()` ile o okumanın GERÇEKTEN yapıldığını bilir.
+2. Test `_event_bekle(okundu, ...)` ile o okumanın GERÇEKTEN yapıldığını bilir.
 3. Kazanan taraf tam transaction'ını çalıştırıp commit eder.
 4. Test kapıyı açar; kaybeden **bayat okumasıyla** yazmaya devam eder.
 
@@ -33,6 +33,19 @@ yeşil**), boş makinede ise gereksiz yere bekletir.
 Sağlayıcıda asılı kalan tarafın "oraya vardığı" da tahmin edilmez:
 `StubProvider.refund_entered` (`conftest.py`) iade kapısına girildiği anda set
 edilir ve testler onu bekler.
+
+## Kapılar SÜRELİDİR — sonuçlanmayan test kırmızıdır (P1-3)
+
+Çıplak `await <event>.wait()` bu dosyada **yasaktır**; her bekleme
+`_event_bekle`/`_gorev_bekle` üzerinden `KAPI_TIMEOUT` ile sınırlıdır. Sebep
+ölçüldü: A1 mutasyonunda (`cancel` içindeki `payment_service.refund` no-op)
+kapıyı açacak kimse kalmıyor ve sleep'siz kurulum testi kırmızıya değil
+**sonsuz beklemeye** çeviriyordu — `pytest.ini`'de global timeout olmadığı için
+koşu ancak CI'nın üst sınırında ölürdü. "Koşmayan test kırmızıdır" kuralının
+kardeşi budur: **sonuçlanmayan test de kırmızıdır**, üstelik sessizdir. Aynı
+yapı üretici görevin `Event.set()` öncesinde düşmesini de gizlemez: asıl hata
+"kapı açılmadı" gürültüsünün yerine geçer. Görevler `yaris` fixture'ında
+kayıtlıdır; test nasıl biterse bitsin pending görev kalmaz.
 
 ## Bayat okuma neden şart
 
@@ -51,8 +64,10 @@ from __future__ import annotations
 
 import asyncio
 import datetime
+from collections.abc import Coroutine, Iterable, Sequence
 from decimal import Decimal
 
+import pytest
 from fastapi import HTTPException
 from sqlalchemy import text
 
@@ -65,9 +80,169 @@ from services import admin_service, booking_service
 COZULMUS = (PaymentStatus.REFUNDING, PaymentStatus.REFUNDED)
 LOCK_TIMEOUT = "5s"
 
+#: Bir kapının açılması / bir yarış görevinin bitmesi için beklenecek EN ÇOK
+#: süre. Dosyada **tek** bir sabit vardır; gerekçesi üç maddedir:
+#:
+#: 1. `LOCK_TIMEOUT` 5 sn'dir. Kilit sırası hatası kendi teşhis edilebilir
+#:    hatasını üretebilsin diye bu tavan onun iki katından büyük olmalıdır;
+#:    aksi halde her kilit beklemesi "kapı açılmadı" diye YANLIŞ adlandırılırdı.
+#: 2. Soğuk bir CI Postgres'inde ilk bağlantı + migration sonrası ilk sorgu
+#:    birkaç saniye sürebilir; 12 sn bunu yanlış pozitife çevirmeyecek kadar
+#:    geniştir.
+#: 3. Buna karşılık gerçek bir asılma (ör. hiç çağrılmayan `refund`) en geç
+#:    ~12 sn'de kırmızıya döner — pytest'i dışarıdan öldürmeye gerek kalmaz.
+#:
+#: Üretici görevlerin hepsi bittiği hâlde kapı açılmamışsa süre BEKLENMEZ:
+#: kapıyı açabilecek kimse kalmadığı için hata anında verilir (A1 mutasyonu
+#: böylece saniyenin altında kırmızıya düşer).
+KAPI_TIMEOUT = 12.0
+
 
 async def _client_of(s, ders) -> Client:
     return await s.get(Client, ders.client_id)
+
+
+# ═══════════════════════ SONLU KAPILAR (bounded barrier) ═════════════════════
+
+
+def _gorev_adi() -> str:
+    gorev = asyncio.current_task()
+    return gorev.get_name() if gorev is not None else "?"
+
+
+async def _gorevleri_kapat(gorevler: Iterable[asyncio.Task]) -> None:
+    """Başlatılmış yarış görevlerini iptal eder ve **toplar** — pending bırakmaz.
+
+    Bitmiş görevlerin sonucu da okunur: hata ile biten bir görevin
+    `exception()`'ı hiç çağrılmazsa asyncio çöp toplamada "Task exception was
+    never retrieved" uyarısı basar. O uyarı testin kendi hata mesajının altında
+    kaybolur ve gerçek sebebi gizler.
+    """
+    hepsi = [g for g in gorevler if g is not None]
+    canli = [g for g in hepsi if not g.done()]
+    for g in canli:
+        g.cancel()
+    if canli:
+        await asyncio.gather(*canli, return_exceptions=True)
+    for g in hepsi:
+        if g.done() and not g.cancelled():
+            g.exception()
+
+
+async def _event_bekle(
+    event: asyncio.Event,
+    *,
+    aciklama: str,
+    ureticiler: Sequence[asyncio.Task] = (),
+    timeout: float = KAPI_TIMEOUT,
+) -> None:
+    """Bir kapının açılmasını **süreli** bekler (P1-3).
+
+    Üç sonlanma yolu vardır ve üçü de sonludur:
+
+    1. Kapı açıldı → sessizce döner.
+    2. Kapıyı açması gereken üretici görev **hata ile düştü** ya da kapıyı hiç
+       açmadan bitti → o hata `aciklama` ile birlikte yükseltilir. Sonsuz
+       beklemeye dönüşmez ve asıl exception gizlenmez.
+    3. Süre doldu → hangi kapının açılmadığını söyleyen açıklayıcı FAILED.
+
+    2 ve 3'te `ureticiler` iptal edilip toplanır; `TimeoutError` yutulup akışa
+    devam EDİLMEZ — yutulan bir timeout, yarışı hiç kurmamış bir testi yeşil
+    gösterirdi.
+    """
+    izlenen = [g for g in ureticiler if g is not None]
+    bekleyen = list(izlenen)
+    kapi = asyncio.ensure_future(event.wait())
+    dongu = asyncio.get_running_loop()
+    bitis = dongu.time() + timeout
+    sessiz_bitenler: list[str] = []
+    try:
+        while not event.is_set():
+            if izlenen and not bekleyen:
+                # Kapıyı açabilecek kimse kalmadı; süreyi doldurmanın anlamı yok.
+                await _gorevleri_kapat(izlenen)
+                pytest.fail(
+                    f"KAPI AÇILMADI — {aciklama}. Üretici görevlerin hepsi "
+                    f"({', '.join(sessiz_bitenler)}) kapıyı hiç açmadan bitti.",
+                    pytrace=False,
+                )
+            kalan = bitis - dongu.time()
+            if kalan <= 0:
+                await _gorevleri_kapat(izlenen)
+                pytest.fail(
+                    f"{timeout:.0f} sn içinde KAPI AÇILMADI — {aciklama}.",
+                    pytrace=False,
+                )
+            await asyncio.wait(
+                {kapi, *bekleyen}, timeout=kalan, return_when=asyncio.FIRST_COMPLETED
+            )
+            for gorev in [g for g in bekleyen if g.done()]:
+                bekleyen.remove(gorev)
+                if event.is_set():
+                    continue
+                hata = None if gorev.cancelled() else gorev.exception()
+                if hata is not None or gorev.cancelled():
+                    await _gorevleri_kapat(izlenen)
+                    raise AssertionError(
+                        f"KAPI AÇILMADI çünkü üretici görev '{gorev.get_name()}' "
+                        f"daha önce düştü — {aciklama}"
+                    ) from hata
+                sessiz_bitenler.append(gorev.get_name())
+    finally:
+        kapi.cancel()
+
+
+async def _gorev_bekle(gorev: asyncio.Task, *, aciklama: str, timeout: float = KAPI_TIMEOUT):
+    """Bir yarış görevinin bitmesini süreli bekler.
+
+    `asyncio.wait_for` timeout'ta görevi iptal edip TOPLAR; pending görev kalmaz.
+    Görevin kendi exception'ı olduğu gibi yükselir (yutulmaz).
+    """
+    try:
+        return await asyncio.wait_for(gorev, timeout)
+    except TimeoutError:
+        pytest.fail(
+            f"{timeout:.0f} sn içinde yarış görevi bitmedi — {aciklama}",
+            pytrace=False,
+        )
+
+
+async def _gorevleri_bekle(
+    gorevler: Sequence[asyncio.Task], *, aciklama: str, timeout: float = KAPI_TIMEOUT
+):
+    """`_gorev_bekle`'nin çoklu hâli — hepsinin bitmesini süreli bekler."""
+    try:
+        return await asyncio.wait_for(asyncio.gather(*gorevler), timeout)
+    except TimeoutError:
+        await _gorevleri_kapat(gorevler)
+        pytest.fail(
+            f"{timeout:.0f} sn içinde yarış görevleri bitmedi — {aciklama}",
+            pytrace=False,
+        )
+
+
+@pytest.fixture
+async def yaris():
+    """Yarış görevlerini kaydeder; test NASIL biterse bitsin pending bırakmaz.
+
+    Görevleri elle `asyncio.create_task` ile başlatmak, testin ortasında düşen
+    bir assert'te görevi askıda bırakır: hem "Task was destroyed but it is
+    pending!" uyarısı çıkar hem de o görev bir DB bağlantısını tutmaya devam
+    eder. Fixture teardown'ı kırmızı testte de koştuğu için temizlik garantidir.
+
+    Test imzasında **en sonda** durur: pytest fixture'ları kurulumun tersi
+    sırayla söker, yani görevler `ip1a` temizliğinden ve `engine.dispose()`'dan
+    ÖNCE iptal edilir.
+    """
+    kayit: list[asyncio.Task] = []
+
+    def baslat(coro: Coroutine, *, ad: str) -> asyncio.Task:
+        gorev = asyncio.create_task(coro, name=ad)
+        kayit.append(gorev)
+        return gorev
+
+    yield baslat
+    await _gorevleri_kapat(kayit)
 
 
 async def _gecikmeli_okuyucu(
@@ -84,14 +259,18 @@ async def _gecikmeli_okuyucu(
     "sorun yok" saydırır (bu tuzağa envanter paketinde bir kez düşüldü).
 
     `SET LOCAL lock_timeout`: kilit sırası hatası olursa test sonsuza dek
-    asılmak yerine hızlı ve teşhis edilebilir biçimde düşer.
+    asılmak yerine hızlı ve teşhis edilebilir biçimde düşer. Aynı gerekçe kapı
+    beklemesi için de geçerlidir: testin kapıyı hiç açmadığı hâl (ör. ana test
+    daha önce düştü) burada da SÜRELİDİR.
     """
     async with AsyncSessionLocal() as s:
         await s.execute(text(f"SET LOCAL lock_timeout = '{LOCK_TIMEOUT}'"))
         booking = await s.get(Booking, booking_id)
         assert booking.status is BookingStatus.PENDING or booking.status is BookingStatus.ACCEPTED
         okundu.set()
-        await kapi.wait()
+        await _event_bekle(
+            kapi, aciklama=f"test '{_gorev_adi()}' görevinin kapısını hiç açmadı"
+        )
         try:
             await eylem(s, booking)
             await s.commit()
@@ -106,7 +285,7 @@ async def _gecikmeli_okuyucu(
 
 
 async def test_accept_ile_ogrenci_iptali_yarisinda_KAYIP_GUNCELLEME_olmaz(
-    ip1a, provider, ip1a_http
+    ip1a, provider, ip1a_http, yaris
 ):
     """accept ↔ client cancel: iptal edilmiş ders kabul edilmiş hâle geri dönemez.
 
@@ -121,10 +300,16 @@ async def test_accept_ile_ogrenci_iptali_yarisinda_KAYIP_GUNCELLEME_olmaz(
     async def gec_accept(s, booking):
         await booking_service.accept(s, booking)
 
-    accept_gorevi = asyncio.create_task(
-        _gecikmeli_okuyucu(ders.booking_id, okundu=okundu, kapi=kapi, eylem=gec_accept)
+    accept_gorevi = yaris(
+        _gecikmeli_okuyucu(ders.booking_id, okundu=okundu, kapi=kapi, eylem=gec_accept),
+        ad="accept",
     )
-    await okundu.wait()  # accept satırı GERÇEKTEN okudu ve kapıda bekliyor
+    # accept satırı GERÇEKTEN okudu ve kapıda bekliyor
+    await _event_bekle(
+        okundu,
+        aciklama="accept tarafı (kaybeden) booking satırını hiç okumadı",
+        ureticiler=(accept_gorevi,),
+    )
 
     async with AsyncSessionLocal() as s:
         booking = await s.get(Booking, ders.booking_id)
@@ -132,7 +317,9 @@ async def test_accept_ile_ogrenci_iptali_yarisinda_KAYIP_GUNCELLEME_olmaz(
         await s.commit()
 
     kapi.set()
-    accept_basarili = await accept_gorevi
+    accept_basarili = await _gorev_bekle(
+        accept_gorevi, aciklama="kapı açıldıktan sonra accept görevi bitmedi"
+    )
 
     booking_status, payment_status = await ip1a.durumlar(ders.booking_id)
     assert booking_status is BookingStatus.CANCELLED, (
@@ -147,7 +334,9 @@ async def test_accept_ile_ogrenci_iptali_yarisinda_KAYIP_GUNCELLEME_olmaz(
     )
 
 
-async def test_reject_ile_ogrenci_iptali_yarisinda_TEK_KAZANAN_olur(ip1a, provider, ip1a_http):
+async def test_reject_ile_ogrenci_iptali_yarisinda_TEK_KAZANAN_olur(
+    ip1a, provider, ip1a_http, yaris
+):
     """reject ↔ client cancel: tek kazanan, tek iade, terminal durum ezilmez.
 
     Kurulum bilinçli olarak **reschedule sonrası** yapılır. Doğrudan `ACCEPTED`
@@ -177,10 +366,15 @@ async def test_reject_ile_ogrenci_iptali_yarisinda_TEK_KAZANAN_olur(ip1a, provid
     async def gec_reject(s, booking):
         await booking_service.reject(s, booking)
 
-    reject_gorevi = asyncio.create_task(
-        _gecikmeli_okuyucu(ders.booking_id, okundu=okundu, kapi=kapi, eylem=gec_reject)
+    reject_gorevi = yaris(
+        _gecikmeli_okuyucu(ders.booking_id, okundu=okundu, kapi=kapi, eylem=gec_reject),
+        ad="reject",
     )
-    await okundu.wait()
+    await _event_bekle(
+        okundu,
+        aciklama="reject tarafı (kaybeden) booking satırını hiç okumadı",
+        ureticiler=(reject_gorevi,),
+    )
 
     async with AsyncSessionLocal() as s:
         booking = await s.get(Booking, ders.booking_id)
@@ -188,7 +382,9 @@ async def test_reject_ile_ogrenci_iptali_yarisinda_TEK_KAZANAN_olur(ip1a, provid
         await s.commit()
 
     kapi.set()
-    reject_basarili = await reject_gorevi
+    reject_basarili = await _gorev_bekle(
+        reject_gorevi, aciklama="kapı açıldıktan sonra reject görevi bitmedi"
+    )
 
     booking_status, payment_status = await ip1a.durumlar(ders.booking_id)
     assert booking_status is BookingStatus.CANCELLED, (
@@ -202,7 +398,9 @@ async def test_reject_ile_ogrenci_iptali_yarisinda_TEK_KAZANAN_olur(ip1a, provid
     )
 
 
-async def test_admin_iptali_ile_tutor_tamamlamasi_yarisinda_TEK_SONUC(ip1a, provider, ip1a_http):
+async def test_admin_iptali_ile_tutor_tamamlamasi_yarisinda_TEK_SONUC(
+    ip1a, provider, ip1a_http, yaris
+):
     """admin cancel ↔ tutor complete: hem iade hem hakediş birlikte olamaz.
 
     Admin yolu read-modify-write olduğu için (`admin_service.py:397-404`) status
@@ -216,12 +414,17 @@ async def test_admin_iptali_ile_tutor_tamamlamasi_yarisinda_TEK_SONUC(ip1a, prov
     async def gec_admin_iptal(s, booking):
         await admin_service.cancel_booking(s, booking, reason="İP-1a yarış")
 
-    admin_gorevi = asyncio.create_task(
+    admin_gorevi = yaris(
         _gecikmeli_okuyucu(
             ders.booking_id, okundu=okundu, kapi=kapi, eylem=gec_admin_iptal
-        )
+        ),
+        ad="admin-iptal",
     )
-    await okundu.wait()
+    await _event_bekle(
+        okundu,
+        aciklama="admin iptali (kaybeden) booking satırını hiç okumadı",
+        ureticiler=(admin_gorevi,),
+    )
 
     async with AsyncSessionLocal() as s:
         booking = await s.get(Booking, ders.booking_id)
@@ -229,7 +432,9 @@ async def test_admin_iptali_ile_tutor_tamamlamasi_yarisinda_TEK_SONUC(ip1a, prov
         await s.commit()
 
     kapi.set()
-    await admin_gorevi
+    await _gorev_bekle(
+        admin_gorevi, aciklama="kapı açıldıktan sonra admin iptali görevi bitmedi"
+    )
 
     booking_status, payment_status = await ip1a.durumlar(ders.booking_id)
     p = await ip1a.payment(ders.booking_id)
@@ -250,7 +455,7 @@ async def test_admin_iptali_ile_tutor_tamamlamasi_yarisinda_TEK_SONUC(ip1a, prov
 
 
 async def test_ihtilaf_acilmasi_ile_auto_complete_yarisinda_PARA_ACILMAZ(
-    ip1a, provider, ip1a_http
+    ip1a, provider, ip1a_http, yaris
 ):
     """auto-complete ↔ dispute: ihtilaflı bir ders serbest bırakılmış olamaz.
 
@@ -275,7 +480,10 @@ async def test_ihtilaf_acilmasi_ile_auto_complete_yarisinda_PARA_ACILMAZ(
             headers=admin_auth,
         )
 
-    await asyncio.gather(auto_complete(), ihtilaf_ac())
+    await _gorevleri_bekle(
+        [yaris(auto_complete(), ad="auto-complete"), yaris(ihtilaf_ac(), ad="dispute")],
+        aciklama="auto-complete ↔ dispute görevleri bitmedi",
+    )
 
     async with AsyncSessionLocal() as s:
         booking = await s.get(Booking, ders.booking_id)
@@ -298,7 +506,9 @@ async def test_ihtilaf_acilmasi_ile_auto_complete_yarisinda_PARA_ACILMAZ(
 # ═══════════════════════ YEŞİL NÖBETÇİLER ════════════════════════════════════
 
 
-async def test_YESIL_iki_esZamanli_tamamlama_TEK_release_uretir(ip1a, provider, ip1a_http):
+async def test_YESIL_iki_esZamanli_tamamlama_TEK_release_uretir(
+    ip1a, provider, ip1a_http, yaris
+):
     """`complete`'in **atomik claim'i** çalışıyor: bayat okumayla yazan kaybeder.
 
     ## Bu test bir kez zayıftı — neden ve nasıl güçlendirildi
@@ -340,7 +550,10 @@ async def test_YESIL_iki_esZamanli_tamamlama_TEK_release_uretir(ip1a, provider, 
                 "kurulum: kaybeden taraf ACCEPTED okumalıydı"
             )
             okundu.set()
-            await kazanan_bitti.wait()
+            await _event_bekle(
+                kazanan_bitti,
+                aciklama="kazanan taraf commit'ini bitiremedi (kapı hiç açılmadı)",
+            )
             try:
                 await booking_service.complete(s, booking)
                 await s.commit()
@@ -350,8 +563,13 @@ async def test_YESIL_iki_esZamanli_tamamlama_TEK_release_uretir(ip1a, provider, 
                     return False
                 raise
 
-    gorev = asyncio.create_task(kaybeden())
-    await okundu.wait()  # bayat okuma GERÇEKTEN yapıldı
+    gorev = yaris(kaybeden(), ad="kaybeden-tamamlama")
+    # bayat okuma GERÇEKTEN yapıldı
+    await _event_bekle(
+        okundu,
+        aciklama="kaybeden taraf ACCEPTED booking satırını hiç okumadı",
+        ureticiler=(gorev,),
+    )
 
     async with AsyncSessionLocal() as s:
         booking = await s.get(Booking, ders.booking_id)
@@ -362,7 +580,9 @@ async def test_YESIL_iki_esZamanli_tamamlama_TEK_release_uretir(ip1a, provider, 
     assert kazanan_damga is not None, "kurulum: kazanan taraf release üretmedi"
 
     kazanan_bitti.set()
-    kaybeden_yazabildi = await gorev
+    kaybeden_yazabildi = await _gorev_bekle(
+        gorev, aciklama="kapı açıldıktan sonra kaybeden tamamlama görevi bitmedi"
+    )
 
     assert not kaybeden_yazabildi, (
         "KAYIP GÜNCELLEME: bayat ACCEPTED okumasıyla gelen ikinci tamamlama "
@@ -388,7 +608,7 @@ async def test_YESIL_iki_esZamanli_tamamlama_TEK_release_uretir(ip1a, provider, 
     )
 
 
-async def test_YESIL_iki_esZamanli_iptal_TEK_IADE_uretir(ip1a, provider, ip1a_http):
+async def test_YESIL_iki_esZamanli_iptal_TEK_IADE_uretir(ip1a, provider, ip1a_http, yaris):
     """`cancel` claim'i + escrow claim'i birlikte: çift iade imkânsız.
 
     Yarış penceresi sağlayıcı kapısıyla (`StubProvider.refund_gate`) açılır: iki
@@ -408,7 +628,10 @@ async def test_YESIL_iki_esZamanli_iptal_TEK_IADE_uretir(ip1a, provider, ip1a_ht
             await s.execute(text(f"SET LOCAL lock_timeout = '{LOCK_TIMEOUT}'"))
             booking = await s.get(Booking, ders.booking_id)
             okundu[i].set()
-            await baslat.wait()
+            await _event_bekle(
+                baslat,
+                aciklama=f"test '{_gorev_adi()}' görevinin başlat kapısını hiç açmadı",
+            )
             try:
                 await booking_service.cancel(
                     s, booking, cancelled_by=await _client_of(s, ders)
@@ -418,13 +641,29 @@ async def test_YESIL_iki_esZamanli_iptal_TEK_IADE_uretir(ip1a, provider, ip1a_ht
                 if exc.status_code != 409:
                     raise
 
-    t1 = asyncio.create_task(iptal_et(0))
-    t2 = asyncio.create_task(iptal_et(1))
-    await asyncio.gather(*(e.wait() for e in okundu))  # ikisi de ACCEPTED+HELD okudu
+    t1 = yaris(iptal_et(0), ad="iptal-0")
+    t2 = yaris(iptal_et(1), ad="iptal-1")
+    for i, e in enumerate(okundu):  # ikisi de ACCEPTED+HELD okudu
+        await _event_bekle(
+            e,
+            aciklama=(
+                f"{i}. iptal işçisi booking satırını hiç okumadı — iki worker'ın "
+                "okuma kapıları tamamlanmadı, yarış hiç kurulmadı"
+            ),
+            ureticiler=(t1, t2),
+        )
     baslat.set()
-    await provider.refund_entered.wait()  # kazanan faz-1'i commit'ledi, kapıda
+    # kazanan faz-1'i commit'ledi ve sağlayıcı kapısında
+    await _event_bekle(
+        provider.refund_entered,
+        aciklama=(
+            "refund sağlayıcı kapısına hiç ulaşılmadı: iptal yolu iade emri "
+            "üretmiyor (emanetteki para sahipsiz kalır)"
+        ),
+        ureticiler=(t1, t2),
+    )
     provider.refund_gate.set()
-    await asyncio.gather(t1, t2)
+    await _gorevleri_bekle([t1, t2], aciklama="iptal görevleri bitmedi")
 
     assert len(provider.refund_calls) == 1, (
         f"ÇİFT İADE: sağlayıcıya {len(provider.refund_calls)} emir gitti"
@@ -434,7 +673,7 @@ async def test_YESIL_iki_esZamanli_iptal_TEK_IADE_uretir(ip1a, provider, ip1a_ht
 
 
 async def test_YESIL_tamamlama_ile_iptal_yarisinda_IKISI_BIRDEN_olmaz(
-    ip1a, provider, ip1a_http
+    ip1a, provider, ip1a_http, yaris
 ):
     """release ↔ refund: `released_at` ve `refunded_at` aynı satırda dolamaz.
 
@@ -456,7 +695,13 @@ async def test_YESIL_tamamlama_ile_iptal_yarisinda_IKISI_BIRDEN_olmaz(
             await s.execute(text(f"SET LOCAL lock_timeout = '{LOCK_TIMEOUT}'"))
             booking = await s.get(Booking, ders.booking_id)
             okundu.set()
-            await iptal_kapida.wait()
+            await _event_bekle(
+                iptal_kapida,
+                aciklama=(
+                    "iptal tarafı sağlayıcı kapısına varmadı, tamamlama kapısı "
+                    "hiç açılmadı"
+                ),
+            )
             try:
                 await booking_service.complete(s, booking)
                 await s.commit()
@@ -464,8 +709,12 @@ async def test_YESIL_tamamlama_ile_iptal_yarisinda_IKISI_BIRDEN_olmaz(
                 if exc.status_code != 409:
                     raise
 
-    tamamla_gorevi = asyncio.create_task(tamamla())
-    await okundu.wait()
+    tamamla_gorevi = yaris(tamamla(), ad="tamamla")
+    await _event_bekle(
+        okundu,
+        aciklama="tamamlama tarafı booking satırını hiç okumadı (bayat okuma kurulmadı)",
+        ureticiler=(tamamla_gorevi,),
+    )
 
     async def iptal_et():
         async with AsyncSessionLocal() as s:
@@ -479,14 +728,22 @@ async def test_YESIL_tamamlama_ile_iptal_yarisinda_IKISI_BIRDEN_olmaz(
                 if exc.status_code != 409:
                     raise
 
-    iptal_gorevi = asyncio.create_task(iptal_et())
-    await provider.refund_entered.wait()  # iptal faz-1 commit'lendi, sağlayıcıda asılı
+    iptal_gorevi = yaris(iptal_et(), ad="iptal")
+    # iptal faz-1 commit'lendi ve sağlayıcıda asılı
+    await _event_bekle(
+        provider.refund_entered,
+        aciklama=(
+            "refund sağlayıcı kapısına hiç ulaşılmadı: iptal yolu iade emri "
+            "üretmiyor, dolayısıyla release ↔ refund yarışı hiç kurulmadı"
+        ),
+        ureticiler=(iptal_gorevi,),
+    )
 
     iptal_kapida.set()
-    await tamamla_gorevi
+    await _gorev_bekle(tamamla_gorevi, aciklama="tamamlama görevi bitmedi")
 
     provider.refund_gate.set()
-    await iptal_gorevi
+    await _gorev_bekle(iptal_gorevi, aciklama="iptal görevi bitmedi")
 
     p = await ip1a.payment(ders.booking_id)
     assert not (p["released_at"] is not None and p["refunded_at"] is not None), (

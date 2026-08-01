@@ -344,6 +344,13 @@ Altyapı kuralları:
 - Provider için gerçek ağ çağrısı yok; gözlenebilir `StubProvider`.
 - Temizlik yalnız oluşturulan ID'lerle. Global TRUNCATE / trigger disable yok.
 - `skip`/`xfail` yok. Koşmayan test kırmızıdır, yeşil değil.
+- **Her test sonlu sürede sonuç üretmek zorundadır** — sonuçlanmayan test de
+  kırmızıdır. Eşzamanlılık testlerindeki `asyncio.Event` kapıları çıplak
+  `await event.wait()` ile beklenmez; hepsi süreli, açıklayıcı mesajlı ve
+  üretici görevin hatasını gizlemeyen bir bariyerden geçer
+  (`test_ip1a_races_pg.py::_event_bekle`, tek sabit `KAPI_TIMEOUT`). Gerekçe
+  ölçülmüştür: sınırsız bekleme, A1 mutasyonunu kırmızıya değil **asılmaya**
+  çeviriyordu (§9c/6, §9d A1 notu).
 - Her P0 için en az bir **meşru yeşil nöbetçi** bulunur: doğru davranışın hâlâ
   çalıştığını kanıtlar ve mutasyon provasının hedefidir.
 
@@ -470,6 +477,50 @@ Aynı turda düzeltilen üç küçük doğruluk kusuru (davranış iddiası değ
   hiç yazılmamış bir `_sahipsiz_cozuldu_mu` yardımcısına yönlendiriyordu; tek
   ayar noktası modül düzeyindeki `COZULMUS` sabitidir, docstring düzeltildi.
 
+**Üçüncü (dar) denetim turu bir kusur daha buldu: P1-3.** Bu kusur "yanlış şeyi
+ölçüyor" sınıfından değil, daha sinsi bir sınıftandır: **hiçbir şey ölçmüyor,
+çünkü sonuçlanmıyor.**
+
+6. **Sınırsız `Event` beklemeleri, mutasyonda test SONUCU değil ASILMA
+   üretiyordu (P1-3).** `test_ip1a_races_pg.py` sleep'siz determinizmi
+   `asyncio.Event` kapılarıyla kuruyor, ama kapıları çıplak
+   `await <event>.wait()` ile bekliyordu. A1 mutasyonu altında (`cancel`
+   içindeki `payment_service.refund` no-op) kapıyı açacak kimse kalmıyor ve
+   test **süresiz asılıyordu**. (Denetim kaydına göre bir önceki, `sleep`
+   tabanlı sürüm aynı mutasyonda hızlı ve açıklayıcı kırılıyordu; yani kapıya
+   geçişin yan etkisi, determinizmi kazanırken **sonlu sonucu** kaybetmekti.)
+   Aynı boşluk her kapıda vardı — üretici görev
+   `Event.set()` öncesinde bir assert/exception ile düşerse ana test yine
+   sonsuza dek bekliyor, üstelik **asıl hata hiç görünmüyordu**. `pytest.ini`'de
+   global timeout olmadığı için koşu kendiliğinden bitmez: CI'da iş ancak
+   `timeout-minutes: 30` sınırında, hangi testin astığını söylemeyen bir iptalle
+   ölürdü.
+
+   Ölçüldü, tahmin edilmedi: A1 altında eski dosya dış `timeout 60` ile
+   öldürüldü (exit 124, 61 sn, sonuç YOK); yeni dosya aynı mutasyonda **0,24 sn**
+   içinde açıklayıcı FAILED verdi.
+
+   → Bütün kapılar `_event_bekle` / `_gorev_bekle` / `_gorevleri_bekle`
+   yardımcılarına bağlandı (tek sabit `KAPI_TIMEOUT = 12.0` sn; gerekçesi
+   dosyanın kendi yorumundadır: `LOCK_TIMEOUT`'un iki katından büyük, soğuk CI
+   Postgres'i için geniş, gerçek asılmayı yakalayacak kadar dar). Yardımcı üç
+   şeyi birden yapar: (a) süre dolarsa **hangi kapının** açılmadığını söyleyen
+   `pytest.fail`; (b) üretici görev kapıyı açmadan düştüyse **asıl exception**
+   zincirlenerek yükseltilir (`from hata`) — "kapı açılmadı" gürültüsünün
+   arkasına saklanmaz; (c) izlenen üreticilerin hepsi kapıyı açmadan bittiyse
+   süre beklenmez, hata anında verilir. Her iki yolda da başlatılmış görevler
+   iptal edilip `gather(..., return_exceptions=True)` ile toplanır;
+   `TimeoutError` yutulup akışa devam **edilmez** (yutulan timeout, yarışı hiç
+   kurmamış bir testi yeşil gösterirdi). Görevler `yaris` fixture'ında
+   kayıtlıdır: test kırmızı bitse de pending görev ve "Task was destroyed"
+   uyarısı kalmaz (üç tekrarlı koşuda 0 uyarı).
+
+**Kural olarak yazılıyor:** sözleşmenin "koşmayan test kırmızıdır" maddesinin
+kardeşi, **"sonuçlanmayan test de kırmızıdır"**dır. Bir test yalnız doğru şeyi
+ölçmek zorunda değil, **sonlu sürede sonuç üretmek** zorundadır. Asılan test,
+kırmızı testten daha kötüdür: hiçbir şey söylemez, CI'yı tavana kadar meşgul
+eder ve mutasyon provasını sessizce anlamsızlaştırır.
+
 ## 9d. Mutasyon provası sonuçları
 
 Sürücü disiplini `backend/scripts/mutation_drill.py` ile aynıdır: dosya baytları
@@ -484,7 +535,7 @@ geçerliymiş gibi okunmamalıdır.
 
 | # | Mutasyon | Kırdığı nöbetçi |
 |---|---|---|
-| A1 | `cancel()`'daki `payment_service.refund` çağrısı no-op | taraf iptali iadesi + eşzamanlı iptal |
+| A1 | `cancel()`'daki `payment_service.refund` çağrısı no-op | taraf iptali iadesi + eşzamanlı iptal (**süreli ve açıklayıcı** kırmızı — bkz. A1 notu) |
 | A2 | `complete()`'in atomik claim'i sıradan atamaya çevrildi | ⚠️ İLK TURDA YAKALANMADI — aşağıya bakınız |
 | A3 | `release()`'in `from_statuses=[HELD]` kısıtı gevşetildi | release iki kez → damga değişmez |
 | A4 | `begin_refund()`'daki `released_at` guard'ı silindi | `released_at` dolu HELD satırı claim edilemez |
@@ -495,6 +546,29 @@ geçerliymiş gibi okunmamalıdır.
 | A9 | `complete` ucundan `_assert_owner_tutor` düşürüldü | başkasının dersi tamamlanamaz |
 | A10 | `create_for_booking`'de komisyon kırılımı sıfırlandı | emanet üretim yolundan gelir |
 | A11 | Admin iptal düzeltmesi YALNIZ `api/routers/admin.py` ucuna kondu, `admin_service.cancel_booking` bozuk bırakıldı | servis-katmanı admin nöbetçileri (2 test) |
+
+### A1 — kayıt düzeltmesi: "asar" değil, "süreli ve açıklayıcı kırılır"
+
+İlk kayıtta A1 yalnız "kırdığı nöbetçi" sütunuyla geçiyordu. Dar denetim turu
+bunun **eksik bir kayıt** olduğunu gösterdi: kapı tabanlı kuruluma geçildikten
+sonra A1 altında hedef nöbetçiler kırılmıyor, **asılıyordu** (bkz. §9c/6). Kayıt
+artık gerçeği söylüyor ve ölçümle birlikte durur:
+
+| Test hâli | A1 mutasyonu altında |
+|---|---|
+| Sınırsız `await event.wait()` | **ASILDI** — dış `timeout 60` ile öldürüldü (exit 124), sonuç yok |
+| Sonlu kapı (`_event_bekle`) | **FAILED, 0,24 sn** — "KAPI AÇILMADI — refund sağlayıcı kapısına hiç ulaşılmadı: iptal yolu iade emri üretmiyor (emanetteki para sahipsiz kalır). Üretici görevlerin hepsi (iptal-0, iptal-1) kapıyı hiç açmadan bitti." |
+
+Aynı mutasyon altında dosyanın tamamı (7 node) 11,5 sn'de sonuçlandı: 6 kırmızı
+(4 üretim kırmızısı + A1'in düşürdüğü 2 nöbetçi) + 1 yeşil, asılma yok, pending
+görev uyarısı yok. Mutasyon geri alındı; `services/booking_service.py` SHA-256'sı
+başlangıçla birebir aynı.
+
+Ayrıca **kurulum hatası provası** koşuldu (üretim kodu bozulmadan): kaybeden
+görevin `Event.set()` ÖNCESİNDEKİ kurulum assert'i bilinçli olarak ters
+çevrildi. Ana test asılmadı; hata `AssertionError: KAPI AÇILMADI çünkü üretici
+görev 'kaybeden-tamamlama' daha önce düştü — ...` olarak, **asıl assert'i
+"direct cause" zinciriyle göstererek** düştü.
 
 ### A2 — ilk turda neden kaçtı, nasıl kapatıldı
 
@@ -521,6 +595,33 @@ birebir aynı) ve temiz üretim kodunda yeni test **geçti**. Kurulumun ayrınt�
 İP-1b önerisi: bu mutasyonlar `backend/scripts/mutation_drill.py` kataloğuna
 M9+ olarak eklenmelidir — katalog bugün tamamen envanter/stok odaklıdır ve para
 yolunda tanımlı tek bir mutasyon yoktur.
+
+## 9e. Açık P2 notları (bu commit'te bilinçli olarak BÜYÜTÜLMEDİ)
+
+Dar denetim turunda görülen, ama bu küçük commit'in kapsamına alınmayan üç
+nokta. Hiçbiri para invariant'ını korumasız bırakmıyor; hepsi "daha iyi
+olabilir" sınıfında ve ayrı kararı hak ediyor:
+
+1. **Bildirim testi para invariant'ını kardeş testlere bırakıyor.**
+   `test_YESIL_iki_esZamanli_tamamlama_TEK_release_uretir` bildirim sayısını
+   yan etki yokluğu olarak ölçüyor; parayı ölçen asıl iddia aynı dosyadaki ve
+   `test_money_pg.py`'deki kardeş nöbetçilerde. Tek bir testin her şeyi
+   ölçmesi gerekmez, ama bu bağımlılık yazılı olmadan görünmüyordu — burada
+   yazılıdır.
+2. **Dispute ↔ auto-complete testi sıra-bağımsız `gather` kullanıyor.** Bu
+   bilinçlidir (invariant zaman sıralamasından bağımsızdır: "ihtilaflı ders
+   serbest bırakılmış olamaz"), ama diğer yarışların bayat-okuma kurulumu kadar
+   güçlü bir interleaving kurmuyor. İP-1b'de kapı tabanlı kuruluma çevrilebilir.
+3. **Proje genelinde global pytest timeout politikası yok** (zemin borcu).
+   `backend/pytest.ini` bir `timeout` tanımlamaz ve `pytest-timeout` bağımlılık
+   listesinde değildir; yani asılan HERHANGİ bir test CI'yı üst sınıra kadar
+   meşgul eder. Bu commit sorunu **kaynağında** çözdü (kapılar sonlu), fakat
+   ağ/DB/dış servis kaynaklı asılmalar için genel bir emniyet ağı hâlâ yok.
+   Aynı desendeki sınırsız beklemeler başka dosyalarda da duruyor:
+   `tests/integration/test_inventory_closing_pg.py` ve
+   `test_stock_concurrency_pg.py`. Bütün paketin pytest.ini davranışını
+   değiştirmek bu commit'in kapsamı değildir; ayrı bir zemin paketi olarak
+   önerilir.
 
 ## 10. Açık ürün kararları
 
