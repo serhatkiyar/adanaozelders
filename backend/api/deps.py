@@ -62,10 +62,11 @@ async def get_current_user(
     user = await db.get(model, int(subject))
     if user is None or user.deleted_at is not None:
         raise _credentials_exception
-    # Kurye oturum sürümü: hesap kapatma/şifre sıfırlama auth_version'ı artırır;
-    # eski sürümlü access token ANINDA ölür (kurye işten ayrıldı → telefon oturumu
-    # denylist beklemeden kapanır). Diğer rollerin JWT sözleşmesi değişmez.
-    if model is CourierAccount and payload.get("auth_ver") != user.auth_version:
+    # Oturum sürümü (İP-3 §6): şifre değişimi/sıfırlaması ve hesap kapatma
+    # auth_version'ı artırır; eski sürümlü access token denylist ya da doğal
+    # süre dolumunu beklemeden ANINDA ölür. Denetim BÜTÜN kullanıcı tiplerinde,
+    # tek yerde ve rol istisnası olmadan yapılır (eskiden yalnız kuryedeydi).
+    if payload.get("auth_ver") != user.auth_version:
         raise _credentials_exception
     return user
 

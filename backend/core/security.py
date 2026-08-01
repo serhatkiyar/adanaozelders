@@ -56,8 +56,9 @@ def create_access_token(
         "iat": now,
         "exp": now + datetime.timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES),
     }
-    # Oturum sürümlü hesaplar (KURYE): hesap kapatma auth_version'ı artırır,
-    # eski sürümlü token get_current_user'da anında reddedilir.
+    # Oturum sürümü (İP-3 §6 — BÜTÜN roller): şifre değişimi/sıfırlaması ve
+    # hesap kapatma auth_version'ı artırır; eski sürümlü token
+    # get_current_user'da anında reddedilir.
     if auth_version is not None:
         payload["auth_ver"] = auth_version
     return jwt.encode(payload, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)

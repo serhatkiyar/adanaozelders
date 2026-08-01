@@ -42,6 +42,10 @@ async def websocket_endpoint(
         if user is None or user.deleted_at is not None or not user.is_active:
             await websocket.close(code=1008)
             return
+        # Oturum sürümü (İP-3 §6): şifre değişimi WS erişimini de düşürmeli.
+        if payload.get("auth_ver") != user.auth_version:
+            await websocket.close(code=1008)
+            return
             
     except Exception:
         await websocket.close(code=1008)

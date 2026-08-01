@@ -5,6 +5,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from core.database import Base
 from models.mixins import (
+    AuthVersionMixin,
     EmailVerificationMixin,
     LastSeenMixin,
     NameMixin,
@@ -14,7 +15,13 @@ from models.mixins import (
 
 
 class Admin(
-    Base, NameMixin, TimestampMixin, SoftDeleteMixin, LastSeenMixin, EmailVerificationMixin
+    Base,
+    NameMixin,
+    TimestampMixin,
+    SoftDeleteMixin,
+    LastSeenMixin,
+    EmailVerificationMixin,
+    AuthVersionMixin,
 ):
     __tablename__ = "admins"
 

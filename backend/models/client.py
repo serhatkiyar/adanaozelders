@@ -9,6 +9,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from core.database import Base
 from models.mixins import (
+    AuthVersionMixin,
     EmailVerificationMixin,
     LastSeenMixin,
     NameMixin,
@@ -27,6 +28,7 @@ class Client(
     LastSeenMixin,
     EmailVerificationMixin,
     PhoneVerificationMixin,
+    AuthVersionMixin,
 ):
     __tablename__ = "clients"
 
