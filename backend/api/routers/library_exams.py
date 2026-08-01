@@ -76,13 +76,21 @@ _pay_limit = user_rate_limit(
 )
 
 
-def _assert_can_manage(user: CurrentUser, library_id: int) -> None:
-    """Yalnız admin ya da o kütüphanenin operatörü oturum yönetebilir."""
+def _assert_can_manage(
+    user: CurrentUser, library_id: int, *, not_found_detail: str = "Kütüphane bulunamadı"
+) -> None:
+    """Yalnız admin ya da o kütüphanenin operatörü oturum yönetebilir.
+
+    Yabancı tenant 403 değil **404** alır (İP-3 §1b.4): var olan yabancı kaynak
+    ile hiç olmayan kaynak aynı yanıtı verir — operatör id tarayarak "bu oturum
+    var mı" sorusunu cevaplayamaz. `not_found_detail` kaynağa göre seçilir ki
+    gövde de olmayan-kaynak yanıtıyla birebir aynı kalsın.
+    """
     if isinstance(user, Admin):
         return
     if isinstance(user, LibraryOperator) and user.library_id == library_id:
         return
-    raise HTTPException(status.HTTP_403_FORBIDDEN, "Bu kütüphanede yetkin yok")
+    raise HTTPException(status.HTTP_404_NOT_FOUND, not_found_detail)
 
 
 async def _get_session_or_404(db: AsyncSession, session_id: int) -> LibraryExamSession:
@@ -123,7 +131,10 @@ async def list_sessions_manage(
     db: AsyncSession = Depends(get_db),
 ):
     _assert_can_manage(user, library_id)
-    return await library_exam_service.list_library_sessions_admin(db, library_id)
+    # Cevap anahtarı yalnız ADMIN'e (İP-3 §2) — izin kapısı rota dependency'sinde.
+    return await library_exam_service.list_library_sessions_admin(
+        db, library_id, include_answer_key=isinstance(user, Admin)
+    )
 
 
 @router.post(
@@ -139,7 +150,9 @@ async def create_session(
     db: AsyncSession = Depends(get_db),
 ):
     _assert_can_manage(user, library_id)
-    return await library_exam_service.create_session(db, library_id, payload)
+    return await library_exam_service.create_session(
+        db, library_id, payload, include_answer_key=isinstance(user, Admin)
+    )
 
 
 @router.patch(
@@ -154,8 +167,10 @@ async def update_session(
     db: AsyncSession = Depends(get_db),
 ):
     s = await _get_session_or_404(db, session_id)
-    _assert_can_manage(user, s.library_id)
-    return await library_exam_service.update_session(db, session_id, payload)
+    _assert_can_manage(user, s.library_id, not_found_detail="Oturum bulunamadı")
+    return await library_exam_service.update_session(
+        db, session_id, payload, include_answer_key=isinstance(user, Admin)
+    )
 
 
 @router.post(
@@ -169,8 +184,10 @@ async def cancel_session(
     db: AsyncSession = Depends(get_db),
 ):
     s = await _get_session_or_404(db, session_id)
-    _assert_can_manage(user, s.library_id)
-    return await library_exam_service.cancel_session(db, session_id)
+    _assert_can_manage(user, s.library_id, not_found_detail="Oturum bulunamadı")
+    return await library_exam_service.cancel_session(
+        db, session_id, include_answer_key=isinstance(user, Admin)
+    )
 
 
 @router.get(
@@ -184,7 +201,7 @@ async def session_roster(
     db: AsyncSession = Depends(get_db),
 ):
     s = await _get_session_or_404(db, session_id)
-    _assert_can_manage(user, s.library_id)
+    _assert_can_manage(user, s.library_id, not_found_detail="Oturum bulunamadı")
     return await library_exam_service.roster(db, session_id)
 
 
@@ -202,7 +219,7 @@ async def results_reference(
     """Toplu karne yükleme için referans CSV'si (registration_id + öğrenci adı).
     Operatör her karne PDF'ini ilgili kayıt no ile adlandırır."""
     s = await _get_session_or_404(db, session_id)
-    _assert_can_manage(user, s.library_id)
+    _assert_can_manage(user, s.library_id, not_found_detail="Oturum bulunamadı")
     rows = await library_exam_service.roster(db, session_id)
     csv_text = library_exam_service.results_reference_csv(rows)
     return Response(
@@ -228,7 +245,7 @@ async def set_result_summary(
 ):
     """Opsiyonel hızlı özet: toplam net + sıralama (karne başlığından)."""
     s = await _get_session_or_404(db, session_id)
-    _assert_can_manage(user, s.library_id)
+    _assert_can_manage(user, s.library_id, not_found_detail="Oturum bulunamadı")
     user_id, role_id = _entered_by(user)
     return await library_exam_service.set_result_summary(
         db, session_id, registration_id, payload, user_id=user_id, role_id=role_id
@@ -249,7 +266,7 @@ async def upload_result_document(
 ):
     """Bir öğrencinin bireysel karnesini (PDF/görsel) yükler — birincil sonuç."""
     s = await _get_session_or_404(db, session_id)
-    _assert_can_manage(user, s.library_id)
+    _assert_can_manage(user, s.library_id, not_found_detail="Oturum bulunamadı")
     data = await _read_doc(file)
     user_id, role_id = _entered_by(user)
     return await library_exam_service.set_result_document(
@@ -277,7 +294,7 @@ async def bulk_upload_documents(
 ):
     """Toplu karne yükleme — her dosya adının başındaki kayıt no ile eşlenir."""
     s = await _get_session_or_404(db, session_id)
-    _assert_can_manage(user, s.library_id)
+    _assert_can_manage(user, s.library_id, not_found_detail="Oturum bulunamadı")
     if not files:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "En az bir dosya seçin.")
     payload: list[tuple[str | None, str | None, bytes]] = []
@@ -300,7 +317,7 @@ async def publish_results(
     db: AsyncSession = Depends(get_db),
 ):
     s = await _get_session_or_404(db, session_id)
-    _assert_can_manage(user, s.library_id)
+    _assert_can_manage(user, s.library_id, not_found_detail="Oturum bulunamadı")
     return await library_exam_service.publish_results(db, session_id)
 
 
@@ -316,7 +333,7 @@ async def upload_session_answer_key(
     db: AsyncSession = Depends(get_db),
 ):
     s = await _get_session_or_404(db, session_id)
-    _assert_can_manage(user, s.library_id)
+    _assert_can_manage(user, s.library_id, not_found_detail="Oturum bulunamadı")
     data = await _read_doc(file)
     return await library_exam_service.set_session_answer_key(
         db,
@@ -324,6 +341,7 @@ async def upload_session_answer_key(
         file_bytes=data,
         original_name=file.filename,
         content_type=file.content_type,
+        include_answer_key=isinstance(user, Admin),
     )
 
 

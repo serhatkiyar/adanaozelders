@@ -37,11 +37,12 @@ _pay_limit = user_rate_limit(
 
 
 def _assert_can_manage(user: CurrentUser, library_id: int) -> None:
+    """Yabancı tenant 403 değil 404 alır (İP-3 §1b.4 — varlık sızmaz)."""
     if isinstance(user, Admin):
         return
     if isinstance(user, LibraryOperator) and user.library_id == library_id:
         return
-    raise HTTPException(status.HTTP_403_FORBIDDEN, "Bu kütüphanede yetkin yok")
+    raise HTTPException(status.HTTP_404_NOT_FOUND, "Kütüphane bulunamadı")
 
 
 # ── Public: fiyat + uygunluk ön bilgisi ──────────────────────────────────────────

@@ -91,12 +91,17 @@ _register_limit = rate_limit(
 
 def _assert_can_manage_library(user: CurrentUser, library_id: int) -> None:
     """Profil/görsel yönetimi: admin her kütüphaneyi, operatör yalnız kendi
-    kütüphanesini yönetebilir (deneme oturumlarındaki ``_assert_can_manage`` deseni)."""
+    kütüphanesini yönetebilir (deneme oturumlarındaki ``_assert_can_manage`` deseni).
+
+    Yabancı tenant 403 değil **404** alır (İP-3 §1b.4): var olan yabancı kütüphane
+    ile hiç olmayan kütüphane aynı yanıtı verir (``_get_library_or_404`` ile aynı
+    gövde) — varlık sızmaz.
+    """
     if isinstance(user, Admin):
         return
     if isinstance(user, LibraryOperator) and user.library_id == library_id:
         return
-    raise HTTPException(status.HTTP_403_FORBIDDEN, "Bu kütüphanede yetkin yok")
+    raise HTTPException(status.HTTP_404_NOT_FOUND, "Kütüphane bulunamadı")
 
 
 # ── Public arama / liste ─────────────────────────────────────────────────────────
@@ -388,8 +393,7 @@ async def library_earnings(
 ):
     """Kütüphane escrow kazanç özeti (serbest + emanette). Operatör yalnız kendi
     kütüphanesini görebilir."""
-    if isinstance(user, LibraryOperator) and user.library_id != library_id:
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "Bu kütüphanede yetkin yok")
+    _assert_can_manage_library(user, library_id)
     return await library_service.earnings_summary(db, library_id)
 
 
@@ -407,8 +411,7 @@ async def library_earnings_transactions(
 ):
     """Kütüphane escrow hareketleri dökümü (deneme + çalışma). Operatör yalnız kendi
     kütüphanesini görebilir."""
-    if isinstance(user, LibraryOperator) and user.library_id != library_id:
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "Bu kütüphanede yetkin yok")
+    _assert_can_manage_library(user, library_id)
     rows = await library_service.earnings_transactions(db, library_id)
     return [EarningTransaction(**r) for r in rows]
 

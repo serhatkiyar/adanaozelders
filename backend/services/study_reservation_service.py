@@ -588,7 +588,10 @@ async def verify_by_reservation(
 ) -> AttendanceResult:
     """Operatör rezervasyon listesinden seçip girişi doğrular (QR/kod olmadan)."""
     res = await db.get(StudyReservation, reservation_id)
-    if res is None or res.deleted_at is not None:
+    # Yabancı kütüphanenin rezervasyonu var-olmayanla AYNI yanıtı verir (İP-3
+    # §1b.4): id ile çağrılan uçta 403 "bu id'de rezervasyon var" bilgisini
+    # sızdırırdı. (QR yolu token'la çalışır; oradaki 403 defense-in-depth kalır.)
+    if res is None or res.deleted_at is not None or res.library_id != operator_library_id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Rezervasyon bulunamadı")
     return await _attend_study(
         db, res, operator_library_id=operator_library_id, operator_id=operator_id
