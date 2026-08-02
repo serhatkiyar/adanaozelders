@@ -11,7 +11,7 @@
 // 2. **Yetkisiz kullanıcıda istek atılmaz.** Sorgular `enabled` alır ve kararı
 //    çağıran verir (`packing.view` izni olan mı?). Hook'un kendi başına 403
 //    üretip yutması, panelde sessiz hata gürültüsü demekti.
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { QueryClient } from "@tanstack/react-query";
 
 import * as packingApi from "@/api/packing";
@@ -31,6 +31,15 @@ const RETURN_QUEUE_KEY = [...KEY, "return-queue"] as const;
 
 /** Paket detayının önbellek anahtarı — tarama yanıtı buraya yazılır. */
 const packageKey = (packageId: number) => [...KEY, "package", packageId] as const;
+
+/**
+ * Etiket verisinin önbellek anahtarı.
+ *
+ * Paket detayından AYRI tutulur: etiket yanıtı sevkiyat kimliği (alıcı, açık
+ * adres) taşır ve `PackageOut` taşımaz — ikisini aynı anahtara yazmak, tarama
+ * yanıtının etiketi ezmesine ve adresin sessizce kaybolmasına yol açardı.
+ */
+const labelKey = (packageId: number) => [...KEY, "label", packageId] as const;
 
 /* ════════════════════════ Sorgular ════════════════════════ */
 
@@ -73,11 +82,53 @@ export function usePackage(packageId: number | null, enabled = true) {
   });
 }
 
-/** Geri dönüşü beklenen paketler kuyruğu. */
-export function useReturnQueue(enabled = true) {
+/**
+ * Tek paketin etiket verisi — **yalnız istendiğinde** çekilir.
+ *
+ * `enabled` çağıranın elindedir ve varsayılan olarak kapalı DEĞİLDİR; çağrı
+ * noktaları `packageId`'yi ancak kullanıcı "Etiketi yazdır" dediğinde verir.
+ * Sebep veri minimizasyonu: yanıt alıcı adı + açık adres taşır ve bu bilgi
+ * paket listesinin her satırında dolaşmamalıdır.
+ */
+export function usePackageLabel(packageId: number | null, enabled = true) {
   return useQuery({
-    queryKey: RETURN_QUEUE_KEY,
-    queryFn: packingApi.fetchReturnQueue,
+    queryKey: labelKey(packageId ?? 0),
+    queryFn: () => packingApi.fetchPackageLabel(packageId!),
+    enabled: enabled && packageId != null,
+  });
+}
+
+/**
+ * Çoklu etiket sayfası için N paketin etiketi.
+ *
+ * `useQueries` bilinçli: her paket kendi önbellek girdisini kullanır, yani tek
+ * tek basımla çoklu basım aynı veriyi paylaşır ve biri hata verirse ötekiler
+ * yine basılabilir. Toplu bir uç yok — olsaydı sevkiyat kimliğini tek istekte
+ * yüzlerce satır için döndürürdü.
+ *
+ * **Hata YUTULMAZ**: çağıran her sorgunun durumuna tek tek bakar ve
+ * getirilemeyen paketi kâğıttan sessizce düşürmek yerine ekranda söyler
+ * (F26 dersi: eksik etiket kimsenin fark etmediği hatadır).
+ */
+export function usePackageLabels(packageIds: readonly number[]) {
+  return useQueries({
+    queries: packageIds.map((id) => ({
+      queryKey: labelKey(id),
+      queryFn: () => packingApi.fetchPackageLabel(id),
+    })),
+  });
+}
+
+/** Geri dönüşü beklenen paketler kuyruğu — **sayfalı**. */
+export function useReturnQueue(
+  params: packingApi.PackingPageParams = {},
+  enabled = true,
+) {
+  return useQuery({
+    // Sayfalama parametreleri anahtarın PARÇASIDIR: aynı anahtarla farklı sayfa
+    // çekmek, ikinci sayfayı birincinin üstüne yazar.
+    queryKey: [...RETURN_QUEUE_KEY, params.limit ?? null, params.offset ?? null],
+    queryFn: () => packingApi.fetchReturnQueue(params),
     enabled,
   });
 }

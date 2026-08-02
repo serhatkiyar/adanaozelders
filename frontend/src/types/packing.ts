@@ -171,6 +171,58 @@ export interface PackingQueuePage {
   offset: number;
 }
 
+/**
+ * `schemas.packing.PackageLabelItemOut`
+ *
+ * **Beklenen** adet taşınır, taranan DEĞİL — `scanned_qty` alanı uçta YOKTUR.
+ * Kâğıt kutunun ne içermesi gerektiğini söyler; yarım kalmış bir paketin
+ * etiketi alınsa taranan adet eksik içeriği "doğru"muş gibi gösterirdi.
+ */
+export interface PackageLabelItem {
+  order_item_id: number;
+  /** Paket satırının SNAPSHOT'ı; ürünü okunamayan satırda `null` ("SKU yok"). */
+  sku: string | null;
+  title: string;
+  expected_qty: number;
+}
+
+/**
+ * `schemas.packing.PackageLabelOut` — `GET /packing/packages/{id}/label`.
+ *
+ * Ayrı bir uç olmasının sebebi `PackageOut`'a bakılarak anlaşılmaz: alıcı,
+ * adres ve teslimat tercihi **siparişte** yaşar, pakette değil. Kuyruk satırı
+ * onları taşıyor ama paket `PACKED` olduğu anda kuyruktan düşüyor — yani tam da
+ * basma anında elde değil. Bu uç kâğıdın tamamını TEK istekte verir; iki yanıtı
+ * tahminle birleştirmek F26'daki "etiket bomboş basıldı" yoluydu.
+ *
+ * **Telefon BİLİNÇLİ OLARAK YOKTUR** (backend sözleşmesi): kurye numarayı saha
+ * ekranından taze ve yetki denetimli alır; kâğıt teslimattan sonra da yaşadığı
+ * için (kutunun üstünde çöpe/kapıya gider) geri alınamayan tek kopyaya kişisel
+ * veri basılmaz.
+ *
+ * **NULL sözleşmesi**: sunucu yer tutucu ÜRETMEZ — `"—"` ya da `""` dönmez;
+ * boş/yalnız-boşluk değerler `null`'a indirgenir. Böylece istemci "veri yok"
+ * ile gerçek değeri ayırt eder ve eksik veriyi AÇIKÇA yazabilir.
+ */
+export interface PackageLabel {
+  /** `id` DEĞİL: gövdede `order_id` de var, çıplak `id` hangi kimlik sorusunu doğururdu. */
+  package_id: number;
+  code: string;
+  /** Uçta çıplak `str` (yalnız gösterilir); basılabilirlik kararı ayrı verilir. */
+  status: string;
+  /** `PKG1:{id}:{token}` — QR'a basılan GERÇEK yük. */
+  qr_payload: string;
+  order_id: number;
+  recipient: string | null;
+  address: string | null;
+  city: string | null;
+  district: string | null;
+  /** NOT NULL kolon (varsayılan `ADRESIMDEYIM`) — her zaman dolu. */
+  delivery_pref: string;
+  delivery_pref_note: string | null;
+  items: PackageLabelItem[];
+}
+
 /** `schemas.packing.ReturnQueueRowOut` — "geri dönüş bekleniyor" satırı. */
 export interface ReturnQueueRow {
   package_id: number;
@@ -181,6 +233,21 @@ export interface ReturnQueueRow {
   handed_over_at: string | null;
   /** Görünürlüğün kendisi: hiçbir yerde görünmeyen paket aranmaz. */
   waiting_days: number;
+}
+
+/**
+ * `schemas.packing.ReturnQueuePage`
+ *
+ * Uç eskiden tavansız düz bir liste (`ReturnQueueRow[]`) dönüyordu; kardeş
+ * uçlarla aynı sayfalama sözleşmesine çekildi. `total` **süzülmüş toplam**
+ * kayıt sayısıdır, `len(items)` değil — ekran "N kutu geri bekleniyor" derken
+ * N'in sayfa uzunluğu olması sayacı sessizce yalancı yapardı.
+ */
+export interface ReturnQueuePage {
+  items: ReturnQueueRow[];
+  total: number;
+  limit: number;
+  offset: number;
 }
 
 /* ════════════════════════ İstek gövdeleri ════════════════════════ */

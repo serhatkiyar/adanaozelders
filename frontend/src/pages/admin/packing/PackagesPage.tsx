@@ -13,6 +13,11 @@ import { useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 
 import {
+  PackageLabelButton,
+  canPrintLabel,
+} from "@/components/admin/packing/PackageLabel";
+import { PackingLabelSheet } from "@/components/admin/packing/PackingLabelSheet";
+import {
   Badge,
   Button,
   ConfirmDialog,
@@ -21,6 +26,7 @@ import {
   PageSkeleton,
 } from "@/components/admin/ui";
 import { usePackages, useRepackPackage, useUnpackPackage } from "@/hooks/usePacking";
+import { formatDateTime } from "@/lib/datetime";
 import { getErrorMessage } from "@/lib/errors";
 import { PACKAGE_STATUS_LABEL } from "@/lib/packing";
 import { ROUTES } from "@/lib/routes";
@@ -73,6 +79,52 @@ function satirEtiketi(paket: Package): string {
   return PACKAGE_STATUS_LABEL[paket.status] ?? paket.status;
 }
 
+/**
+ * Süzgecin kabul ettiği değerler — **kapalı küme**.
+ *
+ * Eskiden `hamDurum in PACKAGE_STATUS_LABEL` yazıyordu. `in` prototip zincirini
+ * de kapsar: `?durum=toString`, `?durum=constructor`, `?durum=__proto__` hepsi
+ * "geçerli" sayılıyor ve sunucuya `status=toString` olarak GİDİYORDU. Sonuç 422
+ * ve sebebi görünmeyen boş bir ekrandı. `Set` prototip taşımaz; `Object.hasOwn`
+ * ise ES2022'dir ve bu projenin hedefi ES2020.
+ */
+const GECERLI_DURUMLAR: ReadonlySet<string> = new Set<string>(
+  Object.keys(PACKAGE_STATUS_LABEL),
+);
+
+/**
+ * Satırın durumu için ANLAMLI olan tek zaman damgası.
+ *
+ * Hepsini birden basmak (açıldı + paketlendi + zimmetlendi + döndü) satırı
+ * okunamaz hâle getirirdi; damgaların çoğu zaten `null`'dır. Gösterilen damga
+ * "bu kutu en son ne zaman ne oldu" sorusunu cevaplar — kuyrukta unutulmuş
+ * kutuyu görünür kılan da budur.
+ */
+function zamanDamgasi(paket: Package): string | null {
+  const secim: { at: string | null; etiket: string } = (() => {
+    switch (paket.status) {
+      case "OPEN":
+        return { at: paket.created_at, etiket: "açıldı" };
+      case "PACKED":
+        return { at: paket.packed_at, etiket: "paketlendi" };
+      case "HANDED_OVER":
+      case "RETURN_PENDING":
+        return { at: paket.handed_over_at, etiket: "kuryeye verildi" };
+      case "RETURNED":
+        return { at: paket.returned_at, etiket: "depoya alındı" };
+      case "DELIVERED":
+        return { at: paket.delivered_at, etiket: "teslim edildi" };
+      case "VOID":
+        return { at: paket.unpacked_at ?? paket.void_at, etiket: paket.unpacked_at ? "bozuldu" : "vazgeçildi" };
+      default:
+        return { at: null, etiket: "" };
+    }
+  })();
+  // Boş alan kalabalığı üretilmez: damga yoksa satırda hiçbir şey yazmaz.
+  if (!secim.at) return null;
+  return `${secim.etiket} · ${formatDateTime(secim.at)}`;
+}
+
 function sayfaNo(raw: string | null): number {
   const n = Number(raw ?? "1");
   return Number.isInteger(n) && n > 0 ? n : 1;
@@ -88,9 +140,8 @@ export default function PackagesPage() {
   const [params, setParams] = useSearchParams();
 
   const hamDurum = params.get("durum");
-  // Kapalı küme kontrolü: etiket tablosunun anahtarları geçerli durumlardır.
   const durum =
-    hamDurum && hamDurum in PACKAGE_STATUS_LABEL ? (hamDurum as PackageStatus) : undefined;
+    hamDurum && GECERLI_DURUMLAR.has(hamDurum) ? (hamDurum as PackageStatus) : undefined;
   const siparis = siparisNo(params.get("siparis"));
   const sayfa = sayfaNo(params.get("sayfa"));
 
@@ -102,10 +153,25 @@ export default function PackagesPage() {
   const unpack = useUnpackPackage();
   const [yenidenPaketle, setYenidenPaketle] = useState<Package | null>(null);
   const [bozulduDamgasi, setBozulduDamgasi] = useState<Package | null>(null);
+  // Toplu etiket seçimi. Sayfa değişince ya da süzgeç yenilenince seçim
+  // korunmaz (aşağıda temizlenir): görünmeyen bir satırın etiketini basmak,
+  // operatörün elinde olmayan bir kutuya kâğıt üretmek demektir.
+  const [secili, setSecili] = useState<number[]>([]);
+  const [sayfaAcik, setSayfaAcik] = useState(false);
 
   const paketler = query.data?.items ?? [];
   const toplam = query.data?.total ?? 0;
   const sonSayfa = Math.max(1, Math.ceil(toplam / LIMIT));
+
+  // Etiket YALNIZ kutu elde ve içeriği doğrulanmışken basılır (`canPrintLabel`:
+  // PACKED · RETURNED); seçim kutusu da yalnız o satırlarda çıkar.
+  const basilabilirler = paketler.filter((p) => canPrintLabel(p.status));
+  const seciliGorunen = secili.filter((id) => basilabilirler.some((p) => p.id === id));
+
+  const secimDegistir = (id: number) =>
+    setSecili((onceki) =>
+      onceki.includes(id) ? onceki.filter((x) => x !== id) : [...onceki, id],
+    );
 
   /** Süzgeç değişince sayfa 1'e döner; yoksa 3. sayfada boş liste görünür. */
   const suzgecUygula = (yeni: PackageStatus | null) => {
@@ -113,6 +179,7 @@ export default function PackagesPage() {
     sonraki.delete("sayfa");
     if (yeni) sonraki.set("durum", yeni);
     else sonraki.delete("durum");
+    setSecili([]);
     setParams(sonraki, { replace: true });
   };
 
@@ -120,6 +187,7 @@ export default function PackagesPage() {
     const sonraki = new URLSearchParams(params);
     if (yeni <= 1) sonraki.delete("sayfa");
     else sonraki.set("sayfa", String(yeni));
+    setSecili([]);
     setParams(sonraki, { replace: true });
   };
 
@@ -193,37 +261,94 @@ export default function PackagesPage() {
           />
         </div>
       ) : (
-        <ul className="divide-y divide-slate-100 px-6 dark:divide-slate-800">
-          {paketler.map((paket) => (
-            <li key={paket.id} className="flex flex-wrap items-center gap-3 py-3">
-              <div className="min-w-0 flex-1 basis-56">
-                <Link
-                  to={ROUTES.adminPackingPackage(paket.id)}
-                  className="text-sm font-semibold text-indigo-600 hover:underline dark:text-indigo-400"
-                >
-                  {paket.code}
-                </Link>
-                <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
-                  Sipariş #{paket.order_id}
-                  {(paket.items?.length ?? 0) > 0 && ` · ${paket.items.length} kalem`}
-                </p>
-              </div>
-              <Badge tone={DURUM_TONU[paket.status] ?? "neutral"}>
-                {satirEtiketi(paket)}
-              </Badge>
-              {canManage && paket.status === "RETURNED" && (
-                <Button size="sm" variant="secondary" onClick={() => setYenidenPaketle(paket)}>
-                  Yeniden paketle
-                </Button>
-              )}
-              {canManage && paket.status === "VOID" && !paket.unpacked_at && (
-                <Button size="sm" variant="secondary" onClick={() => setBozulduDamgasi(paket)}>
-                  Bozuldu olarak işaretle
-                </Button>
-              )}
-            </li>
-          ))}
-        </ul>
+        <>
+          {basilabilirler.length > 0 && (
+            // Vardiyada tek tek yazdırmak gerçekçi değil: kapanan kutuların
+            // etiketleri tek sayfada basılır (A4, sayfa başına 8).
+            <div className="flex flex-wrap items-center gap-3 border-b border-slate-100 px-6 py-3 dark:border-slate-800">
+              <label className="flex items-center gap-2 text-xs font-semibold text-slate-600 dark:text-slate-300">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4"
+                  checked={seciliGorunen.length === basilabilirler.length}
+                  onChange={(e) =>
+                    setSecili(e.target.checked ? basilabilirler.map((p) => p.id) : [])
+                  }
+                />
+                Bu sayfadaki basılabilir {basilabilirler.length} paketi seç
+              </label>
+              <Button
+                size="sm"
+                variant="secondary"
+                className="ml-auto"
+                disabled={seciliGorunen.length === 0}
+                onClick={() => setSayfaAcik(true)}
+              >
+                Seçili {seciliGorunen.length} etiketi yazdır
+              </Button>
+            </div>
+          )}
+          <ul className="divide-y divide-slate-100 px-6 dark:divide-slate-800">
+            {paketler.map((paket) => {
+              const damga = zamanDamgasi(paket);
+              const basilabilir = canPrintLabel(paket.status);
+              return (
+                <li key={paket.id} className="flex flex-wrap items-center gap-3 py-3">
+                  {basilabilir && (
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 shrink-0"
+                      aria-label={`${paket.code} etiketini seç`}
+                      checked={secili.includes(paket.id)}
+                      onChange={() => secimDegistir(paket.id)}
+                    />
+                  )}
+                  <div className="min-w-0 flex-1 basis-56">
+                    <Link
+                      to={ROUTES.adminPackingPackage(paket.id)}
+                      className="text-sm font-semibold text-indigo-600 hover:underline dark:text-indigo-400"
+                    >
+                      {paket.code}
+                    </Link>
+                    <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                      Sipariş #{paket.order_id}
+                      {(paket.items?.length ?? 0) > 0 && ` · ${paket.items.length} kalem`}
+                      {damga && ` · ${damga}`}
+                    </p>
+                  </div>
+                  <Badge tone={DURUM_TONU[paket.status] ?? "neutral"}>
+                    {satirEtiketi(paket)}
+                  </Badge>
+                  {/* Yeniden basım yan etkisizdir: paket durumu da QR token'ı da
+                      değişmez (`repack` sonrası eski etiket geçerli kalır). */}
+                  <PackageLabelButton
+                    packageId={paket.id}
+                    code={paket.code}
+                    status={paket.status}
+                    label="Etiket"
+                  />
+                  {canManage && paket.status === "RETURNED" && (
+                    <Button size="sm" variant="secondary" onClick={() => setYenidenPaketle(paket)}>
+                      Yeniden paketle
+                    </Button>
+                  )}
+                  {canManage && paket.status === "VOID" && !paket.unpacked_at && (
+                    <Button size="sm" variant="secondary" onClick={() => setBozulduDamgasi(paket)}>
+                      Bozuldu olarak işaretle
+                    </Button>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </>
+      )}
+
+      {sayfaAcik && (
+        <PackingLabelSheet
+          packageIds={seciliGorunen}
+          onClose={() => setSayfaAcik(false)}
+        />
       )}
 
       {toplam > LIMIT && (
@@ -261,6 +386,7 @@ export default function PackagesPage() {
             : ""
         }
         confirmLabel="Yeniden paketle"
+        cancelLabel="İptal"
         isPending={repack.isPending}
         onClose={() => setYenidenPaketle(null)}
         onConfirm={() => {
@@ -287,6 +413,7 @@ export default function PackagesPage() {
             : ""
         }
         confirmLabel="Bozuldu"
+        cancelLabel="İptal"
         isPending={unpack.isPending}
         onClose={() => setBozulduDamgasi(null)}
         onConfirm={() => {

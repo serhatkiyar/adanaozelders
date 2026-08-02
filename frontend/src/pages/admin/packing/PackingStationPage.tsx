@@ -24,6 +24,7 @@
 import { useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
+import { PackageLabelButton } from "@/components/admin/packing/PackageLabel";
 import {
   Badge,
   Button,
@@ -101,16 +102,42 @@ const DURUM_TONU: Record<PackageStatus, "neutral" | "info" | "success" | "warnin
  * "Paketten vazgeç" hangi durumlarda anlamlı?
  *
  * `services/packing_rules.PACKAGE_ACTIONS["void"]` ile aynı küme. Kesin kararı
- * sunucu verir (ve yetkiyi duruma göre `pack`/`manage` olarak çözer); buradaki
- * liste yalnız sunucunun 409 döneceği butonu hiç göstermemek içindir.
+ * sunucu verir; buradaki liste yalnız sunucunun 409 döneceği butonu hiç
+ * göstermemek içindir.
  */
 const VAZGECILEBILIR: readonly string[] = ["OPEN", "PACKED", "RETURNED"];
+
+/**
+ * Vazgeçme yetkisi DURUMA BAĞLIDIR — ekran bunu birebir yansıtmalı.
+ *
+ * Backend'de iki kapı üst üstedir ve ikisi de geçilmelidir
+ * (`api/routers/packing.py`):
+ *
+ * 1. Uç `Depends(PACK)` taşır → `packing.pack` HER hâlde gerekir.
+ * 2. `OPEN` olmayan paketlerde ayrıca `_yonetim_izni_ara` çalışır →
+ *    `packing.manage` de gerekir ("başka birinin kararını iptal etmek";
+ *    görev ayrılığı, sözleşme §6).
+ *
+ * Yani `PACKED`/`RETURNED` bir paketi çözmek için **her iki izin** lazımdır.
+ * Yalnız `packing.pack` verilmiş kullanıcıya kapalı pakette bu düğmeyi
+ * göstermek, tıklandığında kesin 403 alacak bir iş vaat etmekti; yalnız
+ * `packing.manage` verilmiş kullanıcıya göstermek de aynı şey (bu kez uç
+ * bağımlılığından 403).
+ */
+function vazgecebilir(status: string, canPack: boolean, canManage: boolean): boolean {
+  if (!VAZGECILEBILIR.includes(status)) return false;
+  if (!canPack) return false;
+  return status === "OPEN" || canManage;
+}
 
 interface Bildirim {
   tone: ScanTone;
   title: string;
   message: string;
 }
+
+/** `schemas.packing.REASON_MAX` — gerekçe/açıklama alanlarının gerçek tavanı. */
+const GEREKCE_MAX = 200;
 
 /* ════════════════════════ Ekran ════════════════════════ */
 
@@ -119,7 +146,7 @@ export default function PackingStationPage() {
   const paketId = Number(id);
   const gecerliId = Number.isInteger(paketId) && paketId > 0;
 
-  const { canView, canPack } = usePackingAccess();
+  const { canView, canPack, canManage } = usePackingAccess();
   const query = usePackage(gecerliId ? paketId : null, canView);
 
   const scan = useScanPackageItem();
@@ -132,7 +159,57 @@ export default function PackingStationPage() {
   const [manuelSatir, setManuelSatir] = useState<PackageItem | null>(null);
   const [geriAlSatir, setGeriAlSatir] = useState<PackageItem | null>(null);
   const [vazgecAcik, setVazgecAcik] = useState(false);
+  const [tamamlaHatasi, setTamamlaHatasi] = useState<string | null>(null);
   const kutuRef = useRef<HTMLInputElement>(null);
+
+  /* ── İdempotency anahtarları: MANTIKSAL İŞLEM başına sabit ──
+   *
+   * Anahtar eskiden `mutate` çağrısının İÇİNDE üretiliyordu: ağ zaman aşımı ya
+   * da kullanıcının ikinci denemesi YENİ bir anahtar doğuruyor, sunucu aynı işi
+   * iki ayrı iş sanıyordu. Sonucu somut: aynı fiziksel kitap iki kez sayılır,
+   * geri alma (durum-idempotan DEĞİL) adedi iki kez düşürür (sözleşme §7 S7).
+   *
+   * Desen `components/admin/inventory/DamageDialog.tsx` ve
+   * `pages/admin/inventory/CountSessionDetailPage.tsx`'ten alındı: anahtar
+   * `useRef`'te yaşar, tek gönderim niyeti boyunca DEĞİŞMEZ, işlem kesinleşince
+   * yenilenir.
+   *
+   * Okutmada ek bir incelik var: anahtar **okutulan koda bağlanır**. Aynı kodu
+   * yeniden denemek (ağ hatası sonrası) aynı işlemdir; BAŞKA bir kod okutmak
+   * yeni bir işlemdir ve eski anahtarla gönderilseydi sunucu ilk taramanın
+   * sonucunu tekrar oynatırdı (`replayed`) — operatör yanlış kitabı kutuya
+   * koyar ve ekran "okutuldu" derdi.
+   */
+  const taramaAnahtariRef = useRef<{ kod: string; anahtar: string } | null>(null);
+  const manuelAnahtarRef = useRef<{ satirId: number; anahtar: string } | null>(null);
+  const geriAlAnahtarRef = useRef<{ satirId: number; anahtar: string } | null>(null);
+
+  /** Bu koda ait anahtar; kod değiştiyse yeni işlem başlar. */
+  const taramaAnahtari = (kod: string): string => {
+    if (taramaAnahtariRef.current?.kod !== kod) {
+      taramaAnahtariRef.current = { kod, anahtar: newIdempotencyKey() };
+    }
+    return taramaAnahtariRef.current.anahtar;
+  };
+
+  /**
+   * Satır işlemlerinin (elle doğrulama / geri alma) anahtarı.
+   *
+   * Okutmadaki mantığın aynısı, kimlik alanı satır: aynı satırı yeniden denemek
+   * aynı işlemdir, başka satıra geçmek yenisidir. Pencerenin kapanıp yeniden
+   * açılması anahtarı YENİLEMEZ — yenileseydi ağ hatasından sonraki yeniden
+   * deneme sunucuya ikinci bir iş gibi görünür ve geri alma (durum-idempotan
+   * DEĞİL) adedi iki kez düşürürdü.
+   */
+  const satirAnahtari = (
+    ref: typeof manuelAnahtarRef,
+    satirId: number,
+  ): string => {
+    if (ref.current?.satirId !== satirId) {
+      ref.current = { satirId, anahtar: newIdempotencyKey() };
+    }
+    return ref.current.anahtar;
+  };
 
   const paket = query.data;
 
@@ -158,17 +235,21 @@ export default function PackingStationPage() {
   const okut = () => {
     const deger = kod.trim();
     // Çift gönderim kilidi: tabanca aynı barkodu iki kez yollayabilir, kullanıcı
-    // Enter'a basılı tutabilir. Anahtar gönderim NİYETİ başında üretilir —
-    // her render'da yenilenen bir anahtar, ağ tekrarını sunucuya iki ayrı iş
-    // gibi gösterir ve aynı kitabı iki kez saydırırdı.
+    // Enter'a basılı tutabilir.
     if (!deger || scan.isPending || !paket) return;
     scan.mutate(
+      { packageId: paket.id, payload: { code: deger, idempotency_key: taramaAnahtari(deger) } },
       {
-        packageId: paket.id,
-        payload: { code: deger, idempotency_key: newIdempotencyKey() },
-      },
-      {
-        onSuccess: (sonuc) => sonucuIsle(sonuc.result),
+        onSuccess: (sonuc) => {
+          // Sunucu yanıt verdi = işlem kesinleşti (red de bir sonuçtur ve ize
+          // yazıldı). Sıradaki okutma YENİ bir iştir: aynı kitabın ikinci
+          // kopyası da aynı barkodu taşır ve eski anahtarla gönderilseydi
+          // sunucu ilk sonucu tekrar oynatır, ikinci kopya hiç sayılmazdı.
+          taramaAnahtariRef.current = null;
+          sonucuIsle(sonuc.result);
+        },
+        // Hata yolunda anahtar KORUNUR: kullanıcı aynı kodu yeniden gönderirse
+        // sunucu bunu tek iş olarak görür.
         onError: (e) => hataylaIsle(e, "Okutma gönderilemedi."),
       },
     );
@@ -192,6 +273,24 @@ export default function PackingStationPage() {
   const acik = paket.status === "OPEN";
   const ilerleme = packageProgress(paket.items);
   const engeller = completeBlockers(paket);
+
+  /* ── Tutarsızlık GİZLENMEZ ──
+   *
+   * `packageProgress.remaining` `Math.max(..., 0)` uygular, yani bir satırdaki
+   * fazlalık başka bir satırın eksiğini maskeleyebilir: A'dan 0/2, B'den 3/1
+   * okutulmuşsa toplam 3/3 çıkar ve "0 adet kaldı" yazılır — buton ise haklı
+   * olarak kapalıdır. Operatör neden kapatamadığını görmeli.
+   *
+   * Saf kural katmanı (`lib/packing.ts`) başka bir ajanın alanı ve `remaining`
+   * sözleşmesi sunucudaki sayılarla birebir kalsın diye orada DEĞİŞTİRİLMEDİ;
+   * düzeltme sunum katmanında yapılır: eksik adet satır satır, tavanlanmadan
+   * toplanır.
+   */
+  const eksikAdet = paket.items.reduce(
+    (n, s) => n + Math.max(s.expected_qty - s.scanned_qty, 0),
+    0,
+  );
+  const fazlaSatirlar = paket.items.filter((s) => s.scanned_qty > s.expected_qty);
 
   return (
     <div className="space-y-4">
@@ -218,12 +317,44 @@ export default function PackingStationPage() {
         <span className="text-sm font-semibold tabular-nums text-slate-600 dark:text-slate-300">
           {ilerleme.scanned} / {ilerleme.expected} okutuldu
         </span>
-        {canPack && VAZGECILEBILIR.includes(paket.status) && (
+        {/* Etiket yalnız kutu ELDE ve içeriği DOĞRULANMIŞken basılır
+            (`canPrintLabel`); karar bileşenin kendisindedir ki istasyon ile
+            paket listesi ayrışmasın. Basmak hiçbir yazma isteği atmaz. */}
+        <PackageLabelButton
+          packageId={paket.id}
+          code={paket.code}
+          status={paket.status}
+        />
+        {vazgecebilir(paket.status, canPack, canManage) && (
           <Button size="sm" variant="ghost" onClick={() => setVazgecAcik(true)}>
             Paketten vazgeç
           </Button>
         )}
       </section>
+
+      {fazlaSatirlar.length > 0 && (
+        // Fazla okutulmuş satır bir VERİ TUTARSIZLIĞIDIR: sunucu `OVER_QTY` ile
+        // reddettiği hâlde adet beklenenin üstündeyse ya bayat bir yanıt
+        // görüyoruz ya da kayıt bozulmuş. Ekran bunu gizlerse operatör kutuya
+        // fazladan ürün koyup kapatır.
+        <div
+          role="alert"
+          className="rounded-2xl border border-rose-200 bg-rose-50 px-6 py-4 text-sm text-rose-900 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-50"
+        >
+          <p className="font-bold">Veri tutarsızlığı: beklenenden fazla okutulmuş satır var</p>
+          <ul className="mt-1 list-disc pl-5">
+            {fazlaSatirlar.map((s) => (
+              <li key={s.order_item_id}>
+                “{s.title}” — beklenen {s.expected_qty}, okutulan {s.scanned_qty}
+              </li>
+            ))}
+          </ul>
+          <p className="mt-1">
+            Kutuya fazladan ürün koymayın. Sayfayı yenileyin; sayı değişmiyorsa
+            fazlalığı gerekçeyle geri alın ve yöneticinize bildirin.
+          </p>
+        </div>
+      )}
 
       {/* ── Okutma kutusu ── */}
       {acik && canPack && (
@@ -362,8 +493,8 @@ export default function PackingStationPage() {
               </p>
             ) : (
               <p className="text-xs leading-5 text-amber-700 dark:text-amber-400">
-                Paketi kapatmak için {ilerleme.remaining} adet daha okutulmalı.
-                Eksik satırlar listede “taranan / beklenen” sayısıyla görünür.
+                Paketi kapatmak için {eksikAdet} adet daha okutulmalı. Eksik
+                satırlar listede “taranan / beklenen” sayısıyla görünür.
               </p>
             )}
           </div>
@@ -371,15 +502,36 @@ export default function PackingStationPage() {
             variant="success"
             disabled={engeller.length > 0}
             isPending={complete.isPending}
-            onClick={() =>
+            onClick={() => {
+              setTamamlaHatasi(null);
               complete.mutate(paket.id, {
                 onSuccess: () => toast.success(`${paket.code} paketlendi.`),
-                onError: (e) => toast.error(getErrorMessage(e, "Paket kapatılamadı.")),
-              })
-            }
+                onError: (e) => {
+                  // Toast geçicidir ve tam da en pahalı hatalarda kaybolur:
+                  // 409 STALE (kalem listesi değişti) ile 409 eksik-kalem
+                  // birbirinden yalnız METİNLE ayrılır. Sebep ekranda KALIR.
+                  const mesaj = getErrorMessage(e, "Paket kapatılamadı.");
+                  setTamamlaHatasi(mesaj);
+                  toast.error(mesaj);
+                },
+              });
+            }}
           >
             Paketi tamamla
           </Button>
+          {tamamlaHatasi && (
+            <div
+              role="alert"
+              className="w-full rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-50"
+            >
+              <p className="font-bold">Paket kapatılamadı</p>
+              <p className="mt-0.5">{tamamlaHatasi}</p>
+              <p className="mt-0.5 opacity-90">
+                Kalem listesi değişmiş olabilir (sipariş güncellendi). Sayfayı
+                yenileyip ekrandaki adetleri kutuyla yeniden karşılaştırın.
+              </p>
+            </div>
+          )}
         </section>
       )}
 
@@ -402,6 +554,8 @@ export default function PackingStationPage() {
         label="Gerekçe"
         placeholder="Örn. ürün barkodu yırtılmış, rafta el yazısı etiket var"
         required
+        maxLength={GEREKCE_MAX}
+        cancelLabel="İptal"
         isPending={scan.isPending}
         onClose={() => setManuelSatir(null)}
         onConfirm={(reason) => {
@@ -413,15 +567,21 @@ export default function PackingStationPage() {
                 manual: true,
                 manual_reason: reason,
                 order_item_id: manuelSatir.order_item_id,
-                idempotency_key: newIdempotencyKey(),
+                idempotency_key: satirAnahtari(
+                  manuelAnahtarRef,
+                  manuelSatir.order_item_id,
+                ),
               },
             },
             {
               onSuccess: (sonuc) => {
+                manuelAnahtarRef.current = null;
                 setManuelSatir(null);
                 sonucuIsle(sonuc.result);
               },
               onError: (e) => {
+                // Pencere KAPANIR ama anahtar korunur: kullanıcı aynı satırı
+                // yeniden denerse (aynı gerekçeyle) sunucu tek iş görür.
                 setManuelSatir(null);
                 hataylaIsle(e, "Elle doğrulama gönderilemedi.");
               },
@@ -441,6 +601,8 @@ export default function PackingStationPage() {
         label="Gerekçe"
         placeholder="Örn. yanlış kutuya kondu, rafa geri götürüldü"
         required
+        maxLength={GEREKCE_MAX}
+        cancelLabel="İptal"
         isPending={undo.isPending}
         onClose={() => setGeriAlSatir(null)}
         onConfirm={(reason) => {
@@ -453,11 +615,15 @@ export default function PackingStationPage() {
                 reason,
                 // Geri alma durum-idempotan DEĞİL: ağ tekrarı anahtarsız
                 // gönderilirse adedi iki kez düşürür.
-                idempotency_key: newIdempotencyKey(),
+                idempotency_key: satirAnahtari(
+                  geriAlAnahtarRef,
+                  geriAlSatir.order_item_id,
+                ),
               },
             },
             {
               onSuccess: () => {
+                geriAlAnahtarRef.current = null;
                 setGeriAlSatir(null);
                 toast.success("Okutma geri alındı.");
               },
@@ -478,7 +644,12 @@ export default function PackingStationPage() {
         placeholder="Örn. sipariş iptal edildi, kutu hasar gördü"
         required
         danger
+        maxLength={GEREKCE_MAX}
         confirmLabel="Vazgeç"
+        // Onay düğmesinin adı da "Vazgeç" olduğu için iptal düğmesi "İptal"e
+        // çekilir: aynı erişilebilir adı taşıyan iki düğme, ekran okuyucuda
+        // hangisinin işlemi yaptığını ayırt edilemez hâle getiriyordu.
+        cancelLabel="İptal"
         isPending={voidPackage.isPending}
         onClose={() => setVazgecAcik(false)}
         onConfirm={(reason) =>

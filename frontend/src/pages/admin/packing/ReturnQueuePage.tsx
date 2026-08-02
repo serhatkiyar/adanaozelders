@@ -9,6 +9,7 @@
 // Depoya kabul `packing.manage` ister: okutma yapan istasyon operatörü kendi
 // başına "geldi" diyemez (görev ayrılığı; kesin karar backend'de).
 import { useState } from "react";
+import { useSearchParams } from "react-router-dom";
 
 import { Badge, Button, EmptyState, ErrorState, PageSkeleton, ReasonDialog } from "@/components/admin/ui";
 import { useReturnInPackage, useReturnQueue } from "@/hooks/usePacking";
@@ -21,13 +22,36 @@ import { usePackingAccess } from "./PackingLayout";
 /** Bekleme süresi kaç günden sonra "takip edilmeli" sayılır. */
 const GECIKME_ESIGI = 3;
 
+/** Sunucu tavanı 200; kardeş ekranlarla aynı sayfa boyu. */
+const LIMIT = 50;
+
+/** `schemas.packing.NOTE_MAX` — depoya kabul notunun gerçek tavanı. */
+const NOT_MAX = 500;
+
+function sayfaNo(raw: string | null): number {
+  const n = Number(raw ?? "1");
+  return Number.isInteger(n) && n > 0 ? n : 1;
+}
+
 export default function ReturnQueuePage() {
   const { canView, canManage } = usePackingAccess();
-  const query = useReturnQueue(canView);
+  const [params, setParams] = useSearchParams();
+  const sayfa = sayfaNo(params.get("sayfa"));
+  // Uç artık sayfalı ({items,total,limit,offset}); eskiden düz bir liste
+  // dönüyordu. Bu kuyruk tam olarak "kimsenin kapatmadığı" satırların
+  // biriktiği yerdir, yani sınırsız büyümeye en yatkın olanı.
+  const query = useReturnQueue({ limit: LIMIT, offset: (sayfa - 1) * LIMIT }, canView);
   const returnIn = useReturnInPackage();
   const [kabulSatiri, setKabulSatiri] = useState<ReturnQueueRow | null>(null);
 
-  const satirlar = query.data ?? [];
+  const satirlar = query.data?.items ?? [];
+  // `total` SÜZÜLMÜŞ toplamdır, sayfanın uzunluğu değil: rozet "N kutu" derken
+  // N'in sayfa uzunluğu olması sayacı sessizce yalancı yapardı.
+  const toplam = query.data?.total ?? 0;
+  const sonSayfa = Math.max(1, Math.ceil(toplam / LIMIT));
+
+  const sayfaGit = (yeni: number) =>
+    setParams(yeni <= 1 ? {} : { sayfa: String(yeni) }, { replace: true });
 
   return (
     <section className="rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
@@ -41,7 +65,7 @@ export default function ReturnQueuePage() {
             dağıtıma verilebilir. En uzun süredir bekleyen en üstte.
           </p>
         </div>
-        {satirlar.length > 0 && <Badge tone="warning">{satirlar.length} kutu</Badge>}
+        {toplam > 0 && <Badge tone="warning">{toplam} kutu</Badge>}
       </div>
 
       {query.isError ? (
@@ -91,6 +115,32 @@ export default function ReturnQueuePage() {
         </ul>
       )}
 
+      {toplam > LIMIT && (
+        <div className="flex items-center justify-between gap-3 border-t border-slate-100 px-6 py-3 dark:border-slate-800">
+          <span className="text-xs text-slate-500 dark:text-slate-400">
+            Sayfa {sayfa} / {sonSayfa}
+          </span>
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              variant="secondary"
+              disabled={sayfa <= 1}
+              onClick={() => sayfaGit(sayfa - 1)}
+            >
+              Önceki
+            </Button>
+            <Button
+              size="sm"
+              variant="secondary"
+              disabled={sayfa >= sonSayfa}
+              onClick={() => sayfaGit(sayfa + 1)}
+            >
+              Sonraki
+            </Button>
+          </div>
+        </div>
+      )}
+
       <ReasonDialog
         open={kabulSatiri != null}
         title="Kutuyu depoya al"
@@ -101,7 +151,9 @@ export default function ReturnQueuePage() {
         }
         label="Not (isteğe bağlı)"
         placeholder="Örn. kutu ıslanmış, içerik kontrol edildi"
+        maxLength={NOT_MAX}
         confirmLabel="Depoya alındı"
+        cancelLabel="İptal"
         isPending={returnIn.isPending}
         onClose={() => setKabulSatiri(null)}
         onConfirm={(note) => {

@@ -10,16 +10,25 @@
  */
 import { describe, expect, it } from "vitest";
 
+import type { PackageStatus } from "@/types/packing";
+
 // `import.meta.glob` kullanılıyor, düz `await import()` değil: Vite dinamik
 // import'u DERLEME anında çözer ve dosya yoksa transform hatası verir — bütün
 // dosya collection'da düşer, "no tests" görünür. Glob, olmayan dosya için boş
 // eşleşme döndürür; böylece her düğüm kendi mesajıyla ayrı ayrı kırmızı olur.
 const MODULLER = import.meta.glob("./packing.ts");
 
-async function paketleme(): Promise<Record<string, any>> {
+// Dönüş tipi `Record<string, any>` DEĞİL, modülün kendi tipi: `any` ile
+// yeniden adlandırılmış ya da silinmiş bir export testte sessizce `undefined`
+// olur ve "fonksiyon değil" diye çalışma anında patlardı; tiplenince derleme
+// anında yakalanır. Glob'un kendisi korunuyor (dosya yoksa düğüm bazında
+// kırmızı) — `typeof import(...)` yalnız tip düzeyinde bir referanstır.
+type PaketlemeModulu = typeof import("./packing");
+
+async function paketleme(): Promise<PaketlemeModulu> {
   const yukle = MODULLER["./packing.ts"];
   if (!yukle) throw new Error("HENÜZ YAZILMADI: src/lib/packing.ts");
-  return (await yukle()) as Record<string, any>;
+  return (await yukle()) as PaketlemeModulu;
 }
 
 const satir = (over: Record<string, unknown> = {}) => ({
@@ -34,19 +43,34 @@ const satir = (over: Record<string, unknown> = {}) => ({
 });
 
 describe("izin kademeleri", () => {
-  it("manage, pack ve view'ı ima eder", async () => {
+  // ⚠️ SÖZLEŞME DEĞİŞİKLİĞİ (bilinçli): bu blokta iki iddia TERSİNE çevrildi.
+  //
+  // Eskiden burada "manage, pack ve view'ı ima eder" ve "pack, view'ı ima eder"
+  // testleri vardı; ikisi de üst kademenin alt kademeyi otomatik açtığını
+  // KORUYORDU. O sözleşme backend'le ayrışıyordu: `require_admin_permission`
+  // kapalı bir küme içinde tam kodu arar (`api/deps.py`), kademe sıralaması
+  // tanımaz. Sonuç somut bir hataydı — yalnız `packing.manage` verilmiş bir
+  // role ekran "Paketle" butonunu gösteriyor, uç 403 döndürüyordu.
+  //
+  // Eski testler silinmedi, ters yönde yeniden yazıldı: aynı girdiler hâlâ
+  // ölçülüyor, beklenen sonuç değişti. Böylece ima zinciri geri gelirse (birisi
+  // "kullanışsız" diye tekrar eklerse) bu iki düğüm kırılır.
+  it("manage TEK BAŞINA görüntülemeyi de paketlemeyi de AÇMAZ (eski 'ima eder' sözleşmesi kaldırıldı)", async () => {
     const { packingAccess } = await paketleme();
     expect(packingAccess(["packing.manage"])).toEqual({
-      canView: true,
-      canPack: true,
+      canView: false,
+      canPack: false,
       canManage: true,
     });
   });
 
-  it("pack, view'ı ima eder ama manage'i etmez", async () => {
+  it("pack TEK BAŞINA görüntülemeyi AÇMAZ (okuma uçlarının hepsi packing.view ister)", async () => {
+    // `api/routers/packing.py`: queue · packages · packages/{id} · return-queue
+    // → hepsi `Depends(VIEW)`. Kabuğu açıp her sorguyu 403'e göndermek yerine
+    // dürüst "yetkiniz yok" ekranı gösterilir (PackingLayout).
     const { packingAccess } = await paketleme();
     expect(packingAccess(["packing.pack"])).toEqual({
-      canView: true,
+      canView: false,
       canPack: true,
       canManage: false,
     });
@@ -54,26 +78,82 @@ describe("izin kademeleri", () => {
 
   it("view tek başına yazma yetkisi vermez", async () => {
     const { packingAccess } = await paketleme();
-    expect(packingAccess(["packing.view"]).canPack).toBe(false);
+    expect(packingAccess(["packing.view"])).toEqual({
+      canView: true,
+      canPack: false,
+      canManage: false,
+    });
+  });
+
+  it("view+pack — gerçek OPERATIONS_MANAGER kombinasyonu — yönetimi açmaz", async () => {
+    // `migrations/versions/f30_paketleme_semasi.py::ROLE_GRANTS`: dağıtım
+    // sorumlusu `view`+`pack` alır, `manage` ALMAZ (görev ayrılığı: paketi
+    // toplayan kişi onu tek başına çözemez). İma zinciri geri gelirse bu satır
+    // değil, üstteki iki satır kırılır; bu düğüm katalogla eşleşmeyi korur.
+    const { packingAccess } = await paketleme();
+    expect(packingAccess(["packing.view", "packing.pack"])).toEqual({
+      canView: true,
+      canPack: true,
+      canManage: false,
+    });
+  });
+
+  it("pack+manage, view'sız hâlde görüntülemeyi açmaz", async () => {
+    const { packingAccess } = await paketleme();
+    expect(packingAccess(["packing.pack", "packing.manage"])).toEqual({
+      canView: false,
+      canPack: true,
+      canManage: true,
+    });
+  });
+
+  it("üç izin birlikte üç kademeyi açar (SUPER_ADMIN / COMMERCE_MANAGER)", async () => {
+    const { packingAccess } = await paketleme();
+    expect(
+      packingAccess(["packing.view", "packing.pack", "packing.manage"]),
+    ).toEqual({ canView: true, canPack: true, canManage: true });
   });
 
   it("ilgisiz izin hiçbir şey açmaz", async () => {
     const { packingAccess } = await paketleme();
-    expect(packingAccess(["orders.view"]).canView).toBe(false);
+    expect(packingAccess(["orders.view", "delivery.manage"])).toEqual({
+      canView: false,
+      canPack: false,
+      canManage: false,
+    });
+  });
+
+  it("boş liste = izin yok (fail-open ile karıştırılmaz)", async () => {
+    // `[]` "izinleri bilmiyorum" değil, "hiç izni yok" demektir. `!permissions`
+    // kontrolü boş diziyi fail-open'a düşürseydi (`.length` ile yazılsaydı)
+    // izinsiz admin bütün paketleme ekranlarını açardı.
+    const { packingAccess } = await paketleme();
+    expect(packingAccess([])).toEqual({
+      canView: false,
+      canPack: false,
+      canManage: false,
+    });
   });
 
   it("izin listesi bilinmiyorsa FAIL-OPEN davranır", async () => {
     // `lib/adminAccess.ts:1-6` ile aynı sözleşme: eski persist edilmiş oturumda
     // `admin_permissions` undefined olabilir; kesin karar backend'dedir.
     const { packingAccess } = await paketleme();
-    expect(packingAccess(undefined).canView).toBe(true);
+    expect(packingAccess(undefined)).toEqual({
+      canView: true,
+      canPack: true,
+      canManage: true,
+    });
   });
 });
 
 describe("fiziksel anlam", () => {
   it("durum etiketleri Türkçe ve eksiksizdir", async () => {
     const { PACKAGE_STATUS_LABEL } = await paketleme();
-    for (const durum of [
+    // Liste `PackageStatus` olarak tiplendi: backend'e yeni bir durum eklenip
+    // birlik genişlediğinde derleme burada patlar. (Modül `Record<string, any>`
+    // yerine kendi tipiyle yüklendiği için mümkün oldu.)
+    const DURUMLAR: PackageStatus[] = [
       "OPEN",
       "PACKED",
       "HANDED_OVER",
@@ -81,9 +161,13 @@ describe("fiziksel anlam", () => {
       "RETURNED",
       "DELIVERED",
       "VOID",
-    ]) {
+    ];
+    for (const durum of DURUMLAR) {
       expect(PACKAGE_STATUS_LABEL[durum], `etiket eksik: ${durum}`).toBeTruthy();
     }
+    // Tablo listeden BÜYÜK de olmamalı: yalnız listedekileri gezen bir döngü,
+    // tabloya sessizce eklenmiş fazladan bir anahtarı görmezdi.
+    expect(Object.keys(PACKAGE_STATUS_LABEL).sort()).toEqual([...DURUMLAR].sort());
   });
 
   it("işletmede sayılan durumlar backend tablosuyla aynıdır", async () => {
@@ -205,5 +289,102 @@ describe("QR payload", () => {
     // Denetçi notu 3: iki QR uzayı ayrık kalmalı.
     const { isPackagePayload } = await paketleme();
     expect(isPackagePayload("42:abc")).toBe(false);
+  });
+
+  // Aşağıdaki tabloların beklenen değerleri `services/packing_rules.py::
+  // parse_package_qr` GERÇEKTEN koşularak ölçüldü (CPython 3.12), tahminle
+  // yazılmadı. "backend" sütunu o ölçümdür; ayrışan satırlar ayrı bir düğümde
+  // ayrıca ve gerekçesiyle sabitlenir.
+
+  const KABUL: [string, string][] = [
+    ["PKG1:1:abc", "en küçük geçerli kimlik"],
+    ["PKG1:42:abc", "tipik etiket"],
+    ["PKG1:999999:uzunToken", "büyük kimlik + uzun token"],
+    ["PKG1:007:abc", "baştaki sıfır — backend int('007')=7 kabul ediyor"],
+    [" PKG1:5:abc ", "dış boşluk — backend .strip() ile aynı"],
+    ["PKG1:5:a b", "token içinde boşluk: token serbest metindir"],
+    ["PKG1:5:abc-DEF_123", "token'da tire/alt çizgi/büyük harf"],
+  ];
+
+  it.each(KABUL)("kabul: %s (%s)", async (payload) => {
+    const { isPackagePayload } = await paketleme();
+    expect(isPackagePayload(payload)).toBe(true);
+  });
+
+  const RED: [string, string][] = [
+    // ——— Bağımsız denetim bulgusu: `Number()` bunları SAYIYA çeviriyordu ———
+    ["PKG1:1e3:abc", "bilimsel gösterim — Number('1e3')=1000 idi, kabul ediliyordu"],
+    ["PKG1:1e2:abc", "bilimsel gösterim (küçük harf e), aynı sınıf"],
+    ["PKG1:0x10:abc", "onaltılık — Number('0x10')=16 idi"],
+    ["PKG1:0b11:abc", "ikilik — Number('0b11')=3 idi"],
+    ["PKG1:5.0:abc", "ondalık nokta — Number('5.0')=5, Number.isInteger TRUE idi"],
+    ["PKG1:+5:abc", "artı işareti — Number('+5')=5 idi (backend int() KABUL EDER)"],
+    ["PKG1: 5 :abc", "kimlikte boşluk — Number(' 5 ')=5 idi (backend KABUL EDER)"],
+    // ——— İki tarafın da reddettikleri ———
+    ["PKG1:-5:abc", "eksi işaretli kimlik"],
+    ["PKG1:5,0:abc", "virgüllü ondalık"],
+    ["PKG1:Infinity:abc", "Infinity tam sayı değildir"],
+    ["PKG1:NaN:abc", "NaN"],
+    ["PKG1:0:abc", "kimlik sıfır — paket kimliği 1'den başlar"],
+    ["PKG1:000:abc", "sıfır dolgulu sıfır"],
+    ["PKG1:5:", "boş token — token'sız hiçbir şey doğrulanamaz"],
+    ["PKG1::abc", "boş kimlik"],
+    ["PKG1:5:abc:def", "fazla parça — token içinde ':' YOKTUR"],
+    ["PKG1:5", "eksik parça"],
+    ["42:abc", "çıplak DURAK yükü"],
+    ["42", "çıplak kimlik"],
+    ["PKG2:5:abc", "gelecek sürüm öneki bu ayrıştırıcıya ait değil"],
+    ["pkg1:5:abc", "önek büyük/küçük harfe duyarlıdır"],
+    ["PKG1 :5:abc", "önekte boşluk"],
+    ["", "boş dizgi"],
+    ["   ", "yalnız boşluk"],
+    [":::", "yalnız ayraç"],
+    ["PKG1:abc:def", "harf kimlik"],
+    ["PKG1:12abc:def", "parseInt tuzağı — '12abc' 12 SAYILMAZ"],
+  ];
+
+  it.each(RED)("red: %s (%s)", async (payload) => {
+    const { isPackagePayload } = await paketleme();
+    expect(isPackagePayload(payload)).toBe(false);
+  });
+
+  it("null/undefined güvenli reddedilir", async () => {
+    const { isPackagePayload } = await paketleme();
+    expect(isPackagePayload(null)).toBe(false);
+    expect(isPackagePayload(undefined)).toBe(false);
+  });
+
+  it("backend'den DAHA KATI olduğumuz yükler açıkça sabitlenir", async () => {
+    // Python `int()` beklenenden cömerttir; ölçülen değerler:
+    //   int("+5")=5 · int(" 5 ")=5 · int("5_0")=50 (alt çizgili sayı literali)
+    //   int("５")=5 (tam genişlik) · int("۵")=5 (Arap-Hint) · int("৪")=4 (Bengal)
+    // Yani bu yükleri backend PAKET yükü sayar, biz saymayız.
+    //
+    // Yön bilinçli: `false` dediğimizde yük mevcut durak yoluna düşer ve
+    // `delivery_service.scan_qr` payload'u KENDİSİ yeniden ayrıştırır — paket
+    // yüküyse yine paket olarak çözülür, karar kaybolmaz. Tersi (gevşek taraf)
+    // ise pakete özel bir uca bozuk yük göndermek olurdu ve hata mesajı yanlış
+    // yeri işaret ederdi. Ayrıca "５" gibi bir görsel ikizin sessizce 5 numaralı
+    // pakete gitmesi, elle kod girişinde yanlış paketi açtırabilirdi.
+    const { isPackagePayload } = await paketleme();
+    for (const payload of [
+      "PKG1:+5:abc",
+      "PKG1: 5 :abc",
+      "PKG1:5_0:abc",
+      "PKG1:５:abc",
+      "PKG1:۵:abc",
+      "PKG1:৪:abc",
+    ]) {
+      expect(isPackagePayload(payload), `katılık kaçağı: ${payload}`).toBe(false);
+    }
+  });
+
+  it("kimlik alanı SAYIYA çevrilmez: 20 basamaklı kimlik biçim olarak geçerlidir", async () => {
+    // Kayan nokta hassasiyetine hiç girilmediğinin kanıtı: `Number` ile
+    // yazılsaydı bu değer 1e20'ye yuvarlanır, "aynı" iki farklı kimlik ayırt
+    // edilemezdi. Biçim doğru olduğu için burada TRUE beklenir — kimliğin
+    // gerçekten var olup olmadığına backend karar verir (404).
+    const { isPackagePayload } = await paketleme();
+    expect(isPackagePayload("PKG1:99999999999999999999:abc")).toBe(true);
   });
 });

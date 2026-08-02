@@ -25,6 +25,7 @@
 import { apiClient } from "@/api/axios";
 import type {
   Package,
+  PackageLabel,
   PackagePage,
   PackageReturnInPayload,
   PackageScan,
@@ -32,7 +33,7 @@ import type {
   PackageStatus,
   PackageUndoScanPayload,
   PackingQueuePage,
-  ReturnQueueRow,
+  ReturnQueuePage,
 } from "@/types/packing";
 
 /** Liste uçlarının ortak sayfalama girdisi (`MAX_LIMIT=200`, `MAX_OFFSET=100000`). */
@@ -90,9 +91,43 @@ export async function fetchPackage(packageId: number): Promise<Package> {
   return data;
 }
 
-/** Kuryeden geri dönüşü beklenen paketler — en eskisi başta, "kaç gündür" ile. */
-export async function fetchReturnQueue(): Promise<ReturnQueueRow[]> {
-  const { data } = await apiClient.get<ReturnQueueRow[]>("/packing/return-queue");
+/**
+ * Kutunun üstüne basılacak etiketin TAMAMI — tek istekte, **salt okuma**.
+ *
+ * Ayrı bir uç olması bir tercih değil zorunluluk: alıcı/adres/teslimat tercihi
+ * siparişte yaşar ve `PackageOut`'ta YOKTUR; kuyruk satırı taşır ama paket
+ * `PACKED` olduğu anda kuyruktan düşer — yani tam da basma anında elde değildir.
+ * Etiket verisini iki uçtan tahminle birleştirmek F26'daki "etiket bomboş
+ * basıldı, kimse fark etmedi" hatasının yoluydu.
+ *
+ * **Yazma DEĞİLDİR**: etiket basmak paket durumunu da QR token'ını da
+ * değiştirmez. Yeniden basım aynı kâğıdı üretir (`repack` sonrası eski etiket
+ * geçerli kalır — boşluk G3'ün kazancı budur).
+ */
+export async function fetchPackageLabel(packageId: number): Promise<PackageLabel> {
+  const { data } = await apiClient.get<PackageLabel>(
+    `/packing/packages/${packageId}/label`,
+  );
+  return data;
+}
+
+/**
+ * Kuryeden geri dönüşü beklenen paketler — en eskisi başta, "kaç gündür" ile.
+ *
+ * Uç eskiden tavansız düz bir liste dönüyordu; artık kardeş uçlarla aynı
+ * sayfalama sözleşmesini konuşur (`limit` 1..200, `offset` 0..100000, `total`
+ * **süzülmüş toplam**). Bu kuyruk tam olarak "kimsenin kapatmadığı" satırların
+ * biriktiği yerdir, yani sınırsız büyümeye en yatkın olanı.
+ */
+export async function fetchReturnQueue(
+  params: PackingPageParams = {},
+): Promise<ReturnQueuePage> {
+  const { data } = await apiClient.get<ReturnQueuePage>("/packing/return-queue", {
+    params: {
+      ...(params.limit != null ? { limit: params.limit } : {}),
+      ...(params.offset != null ? { offset: params.offset } : {}),
+    },
+  });
   return data;
 }
 

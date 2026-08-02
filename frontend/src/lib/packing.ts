@@ -25,11 +25,36 @@ export interface PackingAccess {
 }
 
 /**
- * Paketlemenin ÜÇ kademeli izni: görüntüle → paketle → yönet.
+ * Paketlemenin ÜÇ kademeli izni: görüntüle · paketle · yönet.
  *
  * `adminAreaAccess` burada kullanılamaz: o `.view`/`.manage` ikilisini varsayar,
  * paketlemede ise arada `packing.pack` vardır — istasyondaki operatör tarama
  * yapar ama iade kabulü/repack/unpack gibi geri sarma işlemlerini yapamaz.
+ *
+ * **Kademeler BAĞIMSIZDIR; üst kademe alt kademeyi İMA ETMEZ.** Bu bilinçli bir
+ * sözleşme değişikliğidir (eski hâl `canManage → canPack → canView` zincirini
+ * kuruyordu) ve sebebi backend'le ayrışmasıdır: `api/deps.py::
+ * require_admin_permission` kapalı bir küme içinde **tam kodu** arar, kademe
+ * sıralaması tanımaz. `api/routers/packing.py`'de okuma uçlarının tamamı
+ * (`queue`, `packages`, `packages/{id}`, `return-queue`) `packing.view`,
+ * yazma uçları `packing.pack`, geri sarma uçları `packing.manage` ister.
+ * Dolayısıyla yalnız `packing.manage` verilmiş bir kullanıcıya paketleme
+ * butonu göstermek, tıklandığında kesin 403 alacak bir iş vaat etmekti —
+ * "servisin reddedeceği butonu hiç gösterme" kuralının ihlali.
+ *
+ * Ters yöndeki operasyonel risk (yalnız `packing.pack` verilmiş kişinin
+ * kabuğa hiç girememesi) gerçek rol katalogundan **okunarak** elendi:
+ * `migrations/versions/f30_paketleme_semasi.py::ROLE_GRANTS`
+ * — SUPER_ADMIN ve COMMERCE_MANAGER üç izni de, OPERATIONS_MANAGER
+ * `view`+`pack` alır; hiçbir rol `view` olmadan `pack`/`manage` almaz.
+ * Elle kurulmuş böyle bir rol olsaydı bile kabuk zaten çalışmazdı: kuyruk,
+ * paket listesi ve paket detayı `packing.view` ister, yani ekran açılır ama
+ * her sorgu 403 döndürürdü. Gerçeği söyleyen "yetkiniz yok" ekranı, her
+ * satırı hata veren bir kabuktan iyidir.
+ *
+ * `lib/inventory.ts::inventoryAccess` hâlâ ima zincirini kullanıyor (aynı
+ * sınıftan bir sapma, kapsam dışı — raporlandı); bu yüzden desen "üç kademeli
+ * izin" olarak izlendi, "ima" kısmı bilinçli olarak izlenmedi.
  *
  * `permissions` **undefined** ise fail-open: eski persist edilmiş bir oturumda
  * `admin_permissions` alanı hiç bulunmayabilir ve `/me` henüz tazelenmemiştir.
@@ -39,16 +64,10 @@ export interface PackingAccess {
  */
 export function packingAccess(permissions: string[] | undefined): PackingAccess {
   if (!permissions) return { canView: true, canPack: true, canManage: true };
-  const canManage = permissions.includes("packing.manage");
-  // manage/pack'i olup view'u olmayan rol tanımına karşı: üst kademe alt
-  // kademeyi ima eder (backend `require_admin_permission` de böyle davranmaz —
-  // orada izinler ayrı ayrı aranır — ama rol katalogunda üst kademe verilen
-  // kişiye listeyi göstermemek yalnızca kullanışsızlık üretir).
-  const canPack = canManage || permissions.includes("packing.pack");
   return {
-    canView: canPack || permissions.includes("packing.view"),
-    canPack,
-    canManage,
+    canView: permissions.includes("packing.view"),
+    canPack: permissions.includes("packing.pack"),
+    canManage: permissions.includes("packing.manage"),
   };
 }
 
@@ -275,6 +294,20 @@ export function newIdempotencyKey(): string {
 //: ayrılmak.
 const QR_ONEK = "PKG1";
 
+//: Kimlik alanı: YALNIZ ASCII ondalık basamak. `Number()`/`parseInt`
+//: KULLANILMAZ — ikisi de bu alanda "sayıya benzeyen" şeyleri kabul eder ve
+//: kabul ettikleri şey `build_package_qr`'ın ürettiği yük DEĞİLDİR:
+//: `Number("1e3")=1000` · `Number("0x10")=16` · `Number("0b11")=3` ·
+//: `Number("5.0")=5` · `Number("+5")=5` · `Number(" 5 ")=5` (bağımsız denetim
+//: bulgusu) · `parseInt("42abc")=42`. Regex, kimliği okumadan yalnız BİÇİMİNİ
+//: doğrular; sayıya çevirme hiç yapılmaz, böylece 20 basamaklı bir kimlikte
+//: kayan nokta hassasiyeti de devreye girmez.
+const ONDALIK_KIMLIK = /^[0-9]+$/;
+
+//: "Sıfırdan büyük" testi sayı çevirmeden: en az bir sıfır olmayan basamak.
+//: (`PKG1:0:abc` ve `PKG1:000:abc` iki tarafta da reddedilir.)
+const SIFIRDAN_BUYUK = /[1-9]/;
+
 /**
  * Okutulan yük bir PAKET yükü mü? (`PKG1:{id}:{token}`)
  *
@@ -288,8 +321,36 @@ const QR_ONEK = "PKG1";
  * bulunamadı" der ve hata mesajı tamamen yanlış yeri işaret eder. Çıplak paket
  * ID'si de (`42`) yük değildir — token olmadan hiçbir şey doğrulanamaz.
  *
- * `parse_package_qr` ile aynı katılıkta: tam üç parça, doğru önek, boş olmayan
- * token, pozitif tam sayı kimlik.
+ * ## Backend'le katılık ilişkisi (ayrışma riski — bilinçli)
+ *
+ * Referans `services/packing_rules.py::parse_package_qr`: yükü `strip`'ler, tam
+ * üç parçaya böler, öneki **büyük/küçük harfe duyarlı** karşılaştırır, boş
+ * token'ı reddeder, kimliği `int()` ile çözer ve `<= 0` olanı reddeder.
+ *
+ * Fark yalnız `int()`'tedir: Python `int()` beklenenden cömerttir ve
+ * `"+5"` · `" 5 "` · `"5_0"` (=50) · `"５"`/`"۵"` (Unicode rakam) gibi
+ * dizgileri de çözer. Burada **hepsi reddedilir**, yani bu katman backend'den
+ * DAHA KATIDIR. Yön bilinçli seçildi çünkü iki yönün riski simetrik değil:
+ *
+ * - **Gevşek taraf tehlikeli**: burada "paket" denip pakete özel bir uca
+ *   gönderilen bozuk yükü backend çözemez; kullanıcı yanlış yeri işaret eden
+ *   bir hata görür. Ayrıca `"５"` gibi bir görsel ikizin sessizce 5 numaralı
+ *   pakete gitmesi, elle kod girişinde (iOS'ta BarcodeDetector yok) yanlış
+ *   paketi açtırabilirdi.
+ * - **Katı taraf zararsız**: `false` dediğimizde yük mevcut durak yoluna
+ *   (`/delivery/scan`) düşer ve backend payload'u **kendisi yeniden ayrıştırır**
+ *   (`delivery_service.scan_qr` → `parse_package_qr`), yani gerçekten paket
+ *   yüküyse yine paket olarak çözülür. Karar burada kaybolmaz.
+ *
+ * Baştaki sıfır (`PKG1:007:abc`) ise backend'le **aynı** davranır (kabul):
+ * `int("007") = 7` ve etikette insan okunur kod zaten sıfır dolgulu basılıyor
+ * (`package_code` → `PKT-000007`), yani elle yazan operatörün dolgu koyması
+ * beklenebilir bir hata değil, beklenen bir alışkanlıktır.
+ *
+ * ⚠️ Bu fonksiyon bir kopyadır ve iki taraf birlikte değişmelidir: `QR_PREFIX`
+ * ya da kimlik biçimi backend'de değişirse (ör. `PKG2`) burası sessizce eski
+ * kalır. `packing.test.ts`'teki tablo, iki tarafta da elle koşulmuş sonuçlarla
+ * doludur; sözleşme değişirse önce o tablo güncellenmelidir.
  */
 export function isPackagePayload(payload: string | null | undefined): boolean {
   if (!payload) return false;
@@ -297,8 +358,5 @@ export function isPackagePayload(payload: string | null | undefined): boolean {
   if (parcalar.length !== 3) return false;
   const [onek, hamId, token] = parcalar;
   if (onek !== QR_ONEK || !token) return false;
-  // `Number()` "12abc"i NaN yapar ama " 12"yi 12 yapar; boşluk zaten trim'li.
-  // `parseInt` KULLANILMAZ: "42abc"i 42 sayar ve bozuk yükü geçerli gösterirdi.
-  const id = Number(hamId);
-  return Number.isInteger(id) && id > 0;
+  return ONDALIK_KIMLIK.test(hamId) && SIFIRDAN_BUYUK.test(hamId);
 }
