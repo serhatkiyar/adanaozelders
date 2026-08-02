@@ -224,8 +224,15 @@ describe("teslim eylemi yalnız zimmetli pakette sunulur", () => {
       }),
     });
     await sar("DeliveryDriver", "/dagitim/5");
-    await screen.findByText(/Ayşe Yılmaz/);
-    expect(screen.queryByRole("button", { name: /kod gönder|teslim et|kapıya bırak/i })).toBeNull();
+    // Alıcı adı ekranda İKİ yerde geçer: aktif durak kartı ve durak listesi.
+    // Bu satır bir RENDER BEKLEMESİDİR, iddia değil — çoğulluk meşrudur.
+    // `findByText` "Found multiple elements" ile testi ÖLÇTÜĞÜ ŞEYE
+    // VARMADAN düşürüyordu; `findAllByText` niyeti doğru söyler.
+    await screen.findAllByText(/Ayşe Yılmaz/);
+    expect(
+      screen.queryAllByRole("button", { name: /kod gönder|teslim et|kapıya bırak/i }),
+      "depodaki pakete teslim butonu sunuluyor",
+    ).toHaveLength(0);
     expect(screen.getByText(/zimmetlen|teslim al|araca alın/i)).toBeTruthy();
   });
 
@@ -233,8 +240,15 @@ describe("teslim eylemi yalnız zimmetli pakette sunulur", () => {
     kuryeOturumu();
     sunucu("/delivery/runs/5", { data: TUR() });
     await sar("DeliveryDriver", "/dagitim/5");
-    await screen.findByText(/Ayşe Yılmaz/);
-    expect(screen.getByRole("button", { name: /kod gönder|teslim/i })).toBeTruthy();
+    // Alıcı adı ekranda İKİ yerde geçer: aktif durak kartı ve durak listesi.
+    // Bu satır bir RENDER BEKLEMESİDİR, iddia değil — çoğulluk meşrudur.
+    // `findByText` "Found multiple elements" ile testi ÖLÇTÜĞÜ ŞEYE
+    // VARMADAN düşürüyordu; `findAllByText` niyeti doğru söyler.
+    await screen.findAllByText(/Ayşe Yılmaz/);
+    expect(
+      screen.getAllByRole("button", { name: /kod gönder|teslim/i }).length,
+      "zimmetli pakette teslim eylemi sunulmuyor",
+    ).toBeGreaterThan(0);
   });
 
   it("paket RETURN_PENDING iken teslim aksiyonu GÖSTERİLMEZ", async () => {
@@ -252,8 +266,15 @@ describe("teslim eylemi yalnız zimmetli pakette sunulur", () => {
       }),
     });
     await sar("DeliveryDriver", "/dagitim/5");
-    await screen.findByText(/Ayşe Yılmaz/);
-    expect(screen.queryByRole("button", { name: /kod gönder|teslim et|kapıya bırak/i })).toBeNull();
+    // Alıcı adı ekranda İKİ yerde geçer: aktif durak kartı ve durak listesi.
+    // Bu satır bir RENDER BEKLEMESİDİR, iddia değil — çoğulluk meşrudur.
+    // `findByText` "Found multiple elements" ile testi ÖLÇTÜĞÜ ŞEYE
+    // VARMADAN düşürüyordu; `findAllByText` niyeti doğru söyler.
+    await screen.findAllByText(/Ayşe Yılmaz/);
+    expect(
+      screen.queryAllByRole("button", { name: /kod gönder|teslim et|kapıya bırak/i }),
+      "araçta iade bekleyen pakete teslim butonu sunuluyor",
+    ).toHaveLength(0);
     expect(screen.getByText(/geri dön|depoya|iade bekl/i)).toBeTruthy();
   });
 });
@@ -289,15 +310,23 @@ describe("yanlış QR türü", () => {
       "post",
     );
     const { container } = await sar("DeliveryDriver", "/dagitim/5");
-    await screen.findByText(/Ayşe Yılmaz/);
-    const kutu = container.querySelector("input[type=text]");
-    if (kutu) {
-      (kutu as HTMLInputElement).value = "PKG1:99:baska";
-      kutu.dispatchEvent(new Event("input", { bubbles: true }));
-      kutu.closest("form")?.dispatchEvent(
-        new Event("submit", { bubbles: true, cancelable: true }),
-      );
-      expect(await screen.findByRole("alert")).toBeTruthy();
-    }
+    // Alıcı adı ekranda İKİ yerde geçer: aktif durak kartı ve durak listesi.
+    // Bu satır bir RENDER BEKLEMESİDİR, iddia değil — çoğulluk meşrudur.
+    // `findByText` "Found multiple elements" ile testi ÖLÇTÜĞÜ ŞEYE
+    // VARMADAN düşürüyordu; `findAllByText` niyeti doğru söyler.
+    await screen.findAllByText(/Ayşe Yılmaz/);
+    // VAKUM GEÇİŞİ KAPATILDI: eski hâl `if (kutu) { ... }` idi ve kutu
+    // bulunamadığında blok atlanıp test HİÇBİR ŞEY DOĞRULAMADAN geçiyordu.
+    // Kurye ekranında sayfa-içi manuel kod kutusu henüz YOK (Commit 7); testin
+    // kırmızılığı bu gerçeği göstermeli, sessizce yeşile dönmemeli.
+    const kutu = container.querySelector("input[type=text]") as HTMLInputElement | null;
+    expect(kutu, "sayfa içi manuel kod kutusu yok — kurye 409'u göremez").toBeTruthy();
+    kutu!.value = "PKG1:99:baska";
+    kutu!.dispatchEvent(new Event("input", { bubbles: true }));
+    kutu!.closest("form")?.dispatchEvent(
+      new Event("submit", { bubbles: true, cancelable: true }),
+    );
+    expect(await screen.findByRole("alert")).toBeTruthy();
+    expect(screen.getByRole("alert").textContent).toMatch(/teslim alınmadı|zimmet/i);
   });
 });
