@@ -100,8 +100,10 @@ export const PATHS = {
   addresses: "/adreslerim",
   settings: "/ayarlar",
   tutorListing: "/ilan-ayarlari",
-  /** Dağıtıcı saha ekranı — kendi-filo teslimat turu (ADMIN). */
+  /** Dağıtıcı saha ekranı — kendi-filo teslimat turu (ADMIN + KURYE). */
   deliveryRun: "/dagitim/:id",
+  /** Zimmet ekranı — paketleri araca alma (ADMIN + KURYE, F30 §3.4). */
+  deliveryRunHandover: "/dagitim/:id/zimmet",
   studentProfile: "/ogrenciler/:id",
   /** Operatörün kendi kütüphane profili (gör + bölüm bölüm düzenle). */
   operatorLibrary: "/kutuphanem",
@@ -229,6 +231,7 @@ export const ROUTES = {
   settings: PATHS.settings,
   tutorListing: PATHS.tutorListing,
   deliveryRun: (id: string | number) => `/dagitim/${id}`,
+  deliveryRunHandover: (id: string | number) => `/dagitim/${id}/zimmet`,
   studentProfile: (id: string | number) => `/ogrenciler/${id}`,
   operatorLibrary: PATHS.operatorLibrary,
   operatorSessions: PATHS.operatorSessions,

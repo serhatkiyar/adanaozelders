@@ -7,13 +7,42 @@
 //   • zimmet taraması  → paketi araca alıyorum (depoda, tur başında)
 //   • kapı taraması    → müşteriye teslim ediyorum (adreste)
 //
-// Bugün tek bir "QR okut" butonu var (`DeliveryDriver.tsx:581-594`) ve zimmet
-// kavramı hiç yok. F30 ikisini ayırır; bu matris ayrımın kullanıcıya GÖRÜNDÜĞÜNÜ
-// ve yanlış durumda teslim eyleminin SUNULMADIĞINI sabitler.
+// Eskiden tek bir "QR okut" butonu vardı ve zimmet kavramı hiç yoktu. F30
+// ikisini ayırır; bu matris ayrımın kullanıcıya GÖRÜNDÜĞÜNÜ ve yanlış durumda
+// teslim eyleminin SUNULMADIĞINI sabitler.
 //
-// Ekran henüz yazılmadığı için tüm düğümler KIRMIZIDIR.
+// ════════════════════════════════════════════════════════════════════════
+// FIXTURE DÜZELTMESİ (kırmızıları yeşile çevirirken yapıldı — zayıflatma DEĞİL)
+// ════════════════════════════════════════════════════════════════════════
+//
+// Matris ilk yazıldığında iki fixture UYDURMA bir API'yi anlatıyordu; ekran o
+// şekle göre yazılsaydı testler yeşil, gerçek sunucuya karşı ekran BOŞ olurdu
+// (F26'da bire bir bu yaşandı: "hazırlama ekranı ne satın alındığını
+// göstermiyordu"). İkisi de `backend/schemas/packing.py` ve
+// `backend/schemas/delivery.py` okunarak gerçek sözleşmeye çevrildi:
+//
+//   1) Zimmet manifesti
+//      ESKİ (uydurma): { run_id, total, handed_over,
+//                        packages: [{ package_id, code, order_id, status,
+//                                     recipient }] }
+//      GERÇEK         : { run_id, run_status, total, handed_over,
+//                         rows: [{ stop_id, order_id, sequence, package_id,
+//                                  package_code, package_status, handed_over }] }
+//      Fark yalnız isim değil: **alıcı adı manifestte YOKTUR** ve satırın
+//      kimliği `stop_id`'dir.
+//
+//   2) Durak yükü (`GET /delivery/runs/{id}`)
+//      ESKİ (uydurma): durakta `package: { package_id, code, status }` alanı.
+//      GERÇEK         : `DeliveryStopOut`'ta böyle bir alan YOK. Saha ekranı
+//      paket durumunu ancak zimmet manifestinden öğrenebilir (kurye erişimli,
+//      durak başına canlı paket durumu verir). Bu yüzden saha testleri de
+//      manifest ucunu stub'lar — ekranın gerçekte yaptığı istek budur.
+//
+// Ayrıca üç seçici kusuru giderildi (bkz. ilgili testlerdeki notlar):
+// vakumda geçen RETURN_PENDING iddiası · "en az bir buton" gevşekliği ·
+// tüm belgeyi tarayan seçiciler (artık `within(bölge)`).
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
@@ -21,6 +50,7 @@ import { apiClient } from "@/api/axios";
 import { useAuthStore } from "@/store/authStore";
 
 import type { AxiosRequestConfig } from "axios";
+import type { ComponentType } from "react";
 
 /* ══════════════ Sahte sunucu — gerçek axios örneği, yalnız adapter değişir ══════════════ */
 
@@ -98,10 +128,10 @@ function kuryeOturumu() {
 
 const EKRAN = import.meta.glob(["./DeliveryRunHandover.tsx", "./DeliveryDriver.tsx"]);
 
-async function ekran(ad: string) {
+async function ekran(ad: string): Promise<ComponentType> {
   const yukle = EKRAN[`./${ad}.tsx`];
   if (!yukle) throw new Error(`HENÜZ YAZILMADI: src/pages/${ad}.tsx`);
-  return ((await yukle()) as Record<string, any>).default;
+  return ((await yukle()) as { default: ComponentType }).default;
 }
 
 async function sar(ad: string, yol: string) {
@@ -121,43 +151,76 @@ async function sar(ad: string, yol: string) {
   );
 }
 
-/* ══════════════ Fixture'lar ══════════════ */
+/** Kod kutusuna yaz + formu gönder (RTL'in native setter'ıyla — ham
+ *  `node.value = …` React'in değer izleyicisini atlatır ve `onChange` HİÇ
+ *  çalışmaz; eski hâli tam olarak bu yüzden kontrollü bir kutuda hiçbir şey
+ *  ölçemezdi). */
+function kodOkut(kutu: HTMLInputElement, deger: string) {
+  fireEvent.change(kutu, { target: { value: deger } });
+  fireEvent.submit(kutu.closest("form")!);
+}
 
+/* ══════════════ Fixture'lar — GERÇEK backend sözleşmesi ══════════════ */
+
+/** `schemas.packing.HandoverManifestRowOut` */
+const SATIR = (over: Record<string, unknown> = {}) => ({
+  stop_id: 31,
+  order_id: 501,
+  sequence: 1,
+  package_id: 11,
+  package_code: "PKT-000011",
+  package_status: "HANDED_OVER",
+  handed_over: true,
+  ...over,
+});
+
+/** `schemas.packing.HandoverManifestOut` — alıcı adı YOK (bilinçli). */
 const MANIFEST = (over: Record<string, unknown> = {}) => ({
   run_id: 5,
+  run_status: "ACTIVE",
   total: 2,
   handed_over: 1,
-  packages: [
-    {
-      package_id: 11,
-      code: "PKT-000011",
-      order_id: 501,
-      status: "HANDED_OVER",
-      recipient: "Ayşe Yılmaz",
-    },
-    {
-      package_id: 12,
-      code: "PKT-000012",
+  rows: [
+    SATIR(),
+    SATIR({
+      stop_id: 32,
       order_id: 502,
-      status: "PACKED",
-      recipient: "Mehmet Kaya",
-    },
+      sequence: 2,
+      package_id: 12,
+      package_code: "PKT-000012",
+      package_status: "PACKED",
+      handed_over: false,
+    }),
   ],
   ...over,
 });
 
+/** `schemas.packing.PackageOut` — zimmet ucunun yanıtı. */
+const PAKET = (over: Record<string, unknown> = {}) => ({
+  id: 12,
+  order_id: 502,
+  package_no: 1,
+  code: "PKT-000012",
+  status: "HANDED_OVER",
+  qr_payload: "PKG1:12:tok",
+  items_fingerprint: "abc",
+  items: [],
+  ...over,
+});
+
+/** `schemas.delivery.DeliveryStopOut` — `package` alanı YOKTUR. */
 const DURAK = (over: Record<string, unknown> = {}) => ({
   id: 31,
   run_id: 5,
   order_id: 501,
   sequence: 1,
   status: "PENDING",
+  qr_payload: "31:durakTokeni",
   recipient: "Ayşe Yılmaz",
   address: "Seyhan, Adana",
   phone: "+905550001000",
   delivery_pref: "ADRESIMDEYIM",
   items: [{ title: "TYT Matematik", quantity: 1 }],
-  package: { package_id: 11, code: "PKT-000011", status: "HANDED_OVER" },
   ...over,
 });
 
@@ -166,49 +229,109 @@ const TUR = (over: Record<string, unknown> = {}) => ({
   run_date: "2026-08-01",
   vehicle: "LADA",
   status: "ACTIVE",
+  depot_lat: 37.0,
+  depot_lng: 35.3,
   stops: [DURAK()],
   ...over,
 });
+
+/** Saha ekranının paket kapısı manifestten beslenir; tek duraklı tur kısayolu. */
+function sahaManifesti(package_status: string | null, handed_over = false) {
+  return MANIFEST({
+    total: 1,
+    handed_over: handed_over ? 1 : 0,
+    rows: [SATIR({ package_status, handed_over })],
+  });
+}
 
 /* ══════════════ 1. İki mod ayrı görünür ══════════════ */
 
 describe("zimmet ve kapı taraması ayrı modlardır", () => {
   it("zimmet ekranı 'paketi teslim al' dilini kullanır, 'teslim et' demez", async () => {
+    // SEÇİCİ DÜZELTMESİ: eski hâl `findByText(/teslim al|zimmet|araca/i)` idi;
+    // bu, "zimmet" kelimesinin sayfada BİR KEZ geçmesini şart koşuyordu (çünkü
+    // `findByText` çoklu eşleşmede düşer) — yani doğru davranış ekranın dilini
+    // fakirleştirmeye zorluyordu. İddia rol tabanlı hâle getirildi: kullanıcının
+    // BASACAĞI şeyin adı ölçülüyor, kelimenin nerede geçtiği değil.
     kuryeOturumu();
     sunucu("/delivery/handover/manifest/5", { data: MANIFEST() });
     await sar("DeliveryRunHandover", "/dagitim/5/zimmet");
-    expect(await screen.findByText(/teslim al|zimmet|araca/i)).toBeTruthy();
+    expect(await screen.findByRole("button", { name: /zimmetle/i })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: /zimmet/i })).toBeTruthy();
     expect(screen.queryByRole("button", { name: /müşteriye teslim et|teslim et/i })).toBeNull();
   });
 
   it("zimmet ekranı kaç paketin alındığını gösterir (N / M)", async () => {
     // Kurye eksik paketle yola çıkmamalı; sayaç tek görünür güvencedir.
+    // Seçici sayaç bölgesiyle sınırlandı ve DESEN ÇAPALANDI: eski `/1\s*\/\s*2/`
+    // "11 / 20" yazan bir ekranda da geçerdi.
     kuryeOturumu();
     sunucu("/delivery/handover/manifest/5", { data: MANIFEST() });
     await sar("DeliveryRunHandover", "/dagitim/5/zimmet");
-    expect(await screen.findByText(/1\s*\/\s*2/)).toBeTruthy();
+    const ozet = within(await screen.findByTestId("zimmet-ozet"));
+    expect(await ozet.findByText(/^1\s*\/\s*2$/)).toBeTruthy();
+    // Eksik paket sayısı da söylenmeli: "1/2" tek başına "hangisi eksik, kaç
+    // tane" sorusunu cevaplamaz.
+    expect(ozet.getByText(/1 paket eksik/i)).toBeTruthy();
   });
 
   it("zimmet taraması handover ucuna gider, kapı taramasına DEĞİL", async () => {
     kuryeOturumu();
     sunucu("/delivery/handover/manifest/5", { data: MANIFEST() });
-    sunucu(
-      "/delivery/handover/scan",
-      { data: { package_id: 12, status: "HANDED_OVER" } },
-      "post",
-    );
-    const { container } = await sar("DeliveryRunHandover", "/dagitim/5/zimmet");
-    await screen.findByText(/1\s*\/\s*2/);
-    const kutu = container.querySelector("input[type=text]") as HTMLInputElement;
-    expect(kutu, "manuel kod girişi yok (kamera yoksa operasyon durur)").toBeTruthy();
-    kutu.value = "PKG1:12:tok";
-    kutu.dispatchEvent(new Event("input", { bubbles: true }));
-    kutu.closest("form")?.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+    sunucu("/delivery/handover/scan", { data: PAKET() }, "post");
+    await sar("DeliveryRunHandover", "/dagitim/5/zimmet");
+    const tarama = within(await screen.findByTestId("zimmet-tarama"));
+    const kutu = tarama.getByRole("textbox") as HTMLInputElement;
+    expect(kutu.type, "manuel kod girişi açık tipli değil").toBe("text");
+    kodOkut(kutu, "PKG1:12:tok");
 
     await waitFor(() => {
-      expect(istekler.some((i) => i.url.includes("/delivery/handover/scan"))).toBe(true);
+      const zimmet = istekler.filter((i) => i.url.includes("/delivery/handover/scan"));
+      expect(zimmet).toHaveLength(1);
+      // Yük GÖVDEDE gider: QR token'ı query string'e (sunucu erişim kaydına,
+      // tarayıcı geçmişine) düşmemeli.
+      expect(zimmet[0].body).toEqual({ payload: "PKG1:12:tok" });
       expect(istekler.some((i) => i.url.endsWith("/delivery/scan"))).toBe(false);
     });
+    expect((await screen.findByRole("alert")).textContent).toMatch(/PKT-000012/);
+  });
+
+  it("aynı paketi ikinci kez okutmak 'zaten zimmetli' der (sessiz geçmez)", async () => {
+    // Sunucu idempotenttir ve ikinci okutmaya da 200 döner. Ekran bunu
+    // "zimmetlendi ✓" diye gösterirse kurye ikinci bir kutu aradığını sanır.
+    kuryeOturumu();
+    sunucu("/delivery/handover/manifest/5", { data: MANIFEST() });
+    sunucu(
+      "/delivery/handover/scan",
+      { data: PAKET({ id: 11, order_id: 501, code: "PKT-000011" }) },
+      "post",
+    );
+    await sar("DeliveryRunHandover", "/dagitim/5/zimmet");
+    const tarama = within(await screen.findByTestId("zimmet-tarama"));
+    kodOkut(tarama.getByRole("textbox") as HTMLInputElement, "PKG1:11:tok");
+
+    const uyari = await screen.findByRole("alert");
+    await waitFor(() => expect(uyari.textContent).toMatch(/zaten zimmetli/i));
+    expect(uyari.textContent, "tekrar okutma 'yeni alındı' gibi gösteriliyor").not.toMatch(
+      /araca alındı/i,
+    );
+  });
+
+  it("okutmadan sonra odak kod kutusuna döner ve kutu temizlenir", async () => {
+    // Barkod okuyucu klavye gibi yazar: odak kutuda değilse SONRAKİ okutma
+    // hiçbir yere gitmez ve kurye sebebini anlamaz.
+    kuryeOturumu();
+    sunucu("/delivery/handover/manifest/5", { data: MANIFEST() });
+    sunucu("/delivery/handover/scan", { data: PAKET() }, "post");
+    await sar("DeliveryRunHandover", "/dagitim/5/zimmet");
+    const kutu = within(await screen.findByTestId("zimmet-tarama")).getByRole(
+      "textbox",
+    ) as HTMLInputElement;
+    kutu.blur();
+    kodOkut(kutu, "PKG1:12:tok");
+
+    await waitFor(() => expect(document.activeElement).toBe(kutu));
+    expect(kutu.value, "önceki kod kutuda kaldı — sonraki okutmaya karışır").toBe("");
   });
 });
 
@@ -218,64 +341,75 @@ describe("teslim eylemi yalnız zimmetli pakette sunulur", () => {
   it("paket PACKED iken teslim aksiyonları GÖSTERİLMEZ", async () => {
     // Paket hâlâ depoda: kurye elinde olmayan bir paketi teslim edemez.
     kuryeOturumu();
-    sunucu("/delivery/runs/5", {
-      data: TUR({
-        stops: [DURAK({ package: { package_id: 11, code: "PKT-000011", status: "PACKED" } })],
-      }),
-    });
+    sunucu("/delivery/runs/5", { data: TUR() });
+    sunucu("/delivery/handover/manifest/5", { data: sahaManifesti("PACKED") });
     await sar("DeliveryDriver", "/dagitim/5");
-    // Alıcı adı ekranda İKİ yerde geçer: aktif durak kartı ve durak listesi.
-    // Bu satır bir RENDER BEKLEMESİDİR, iddia değil — çoğulluk meşrudur.
-    // `findByText` "Found multiple elements" ile testi ÖLÇTÜĞÜ ŞEYE
-    // VARMADAN düşürüyordu; `findAllByText` niyeti doğru söyler.
-    await screen.findAllByText(/Ayşe Yılmaz/);
+    // ÖN KOŞUL: aktif durak kartı gerçekten çizildi mi? (Aksi hâlde "buton
+    // yok" iddiası VAKUMDA geçerdi — denetim bulgusu 1.)
+    const kart = within(await screen.findByTestId("aktif-durak"));
+    expect(kart.getByText(/Ayşe Yılmaz/)).toBeTruthy();
+    // Kapı kararı manifest yanıtından sonra netleşir: önce onu bekle.
+    expect(await kart.findByText(/zimmetlen|teslim al|araca alın/i)).toBeTruthy();
     expect(
-      screen.queryAllByRole("button", { name: /kod gönder|teslim et|kapıya bırak/i }),
+      kart.queryAllByRole("button", { name: /kod gönder|teslim et|kapıya bırak/i }),
       "depodaki pakete teslim butonu sunuluyor",
     ).toHaveLength(0);
-    expect(screen.getByText(/zimmetlen|teslim al|araca alın/i)).toBeTruthy();
+    expect(
+      screen.queryAllByRole("button", { name: /kod gönder|teslim et|kapıya bırak/i }),
+      "kart dışında bir yerde teslim butonu sunuluyor",
+    ).toHaveLength(0);
+    // Kurye çıkmaza girmemeli: doğru ekrana çıkış olmalı.
+    expect(kart.getByRole("link", { name: /zimmet/i }).getAttribute("href")).toBe(
+      "/dagitim/5/zimmet",
+    );
   });
 
   it("paket HANDED_OVER iken teslim aksiyonları görünür", async () => {
+    // GEVŞEK İDDİA DÜZELTMESİ: eski hâl `getAllByRole(...).length > 0` idi
+    // ("en az bir buton"). Çoğulluk meşru (kod gönder + teslim et + teslim
+    // edilemedi) ama iddia TEKİL olmalı; bu yüzden bölge `within(kart)` ile
+    // sınırlandı ve iki buton adıyla tek tek arandı.
     kuryeOturumu();
     sunucu("/delivery/runs/5", { data: TUR() });
+    sunucu("/delivery/handover/manifest/5", { data: sahaManifesti("HANDED_OVER", true) });
     await sar("DeliveryDriver", "/dagitim/5");
-    // Alıcı adı ekranda İKİ yerde geçer: aktif durak kartı ve durak listesi.
-    // Bu satır bir RENDER BEKLEMESİDİR, iddia değil — çoğulluk meşrudur.
-    // `findByText` "Found multiple elements" ile testi ÖLÇTÜĞÜ ŞEYE
-    // VARMADAN düşürüyordu; `findAllByText` niyeti doğru söyler.
-    await screen.findAllByText(/Ayşe Yılmaz/);
+    const kart = within(await screen.findByTestId("aktif-durak"));
+    expect(kart.getByText(/Ayşe Yılmaz/)).toBeTruthy();
     expect(
-      screen.getAllByRole("button", { name: /kod gönder|teslim/i }).length,
+      await kart.findByRole("button", { name: /müşteriye kod gönder/i }),
+      "zimmetli pakette kod gönderme sunulmuyor",
+    ).toBeTruthy();
+    expect(
+      kart.getByRole("button", { name: /^teslim et$/i }),
       "zimmetli pakette teslim eylemi sunulmuyor",
-    ).toBeGreaterThan(0);
+    ).toBeTruthy();
+    // Kapı açıkken engel metni OLMAMALI (ters yön: kapı her hâlde kapalı
+    // kalsaydı yukarıdaki iddialar da düşerdi; bu satır niyeti sabitler).
+    expect(kart.queryByText(/zimmetlenmedi|geri dönmesi bekleniyor/i)).toBeNull();
   });
 
   it("paket RETURN_PENDING iken teslim aksiyonu GÖSTERİLMEZ", async () => {
-    // Durak sonuçlanmış, paket araçta geri dönüş bekliyor. Bu satır ekranda
-    // "teslim edilebilir" görünürse kurye ikinci kez teslim etmeye kalkar.
+    // FIXTURE DÜZELTMESİ (denetim bulgusu 1): eski hâl durağı `status:"FAILED"`
+    // yapıyordu; o durakta aktif kart HİÇ çizilmez, yani "buton yok" iddiası
+    // vakumda geçerdi. Gerçek ve ULAŞILABİLİR senaryo şudur: durak teslim
+    // edilemedi → paket `RETURN_PENDING` → sipariş PAID'e döndü → ERTESİ GÜN
+    // yeni tura eklendi (yeni durak PENDING) ama kutu hâlâ araçta, depoya
+    // dönüp kabul edilmedi. Ekran o satırı "teslim edilebilir" gösterirse
+    // kurye elinde olmayan paketi teslim etmeye kalkar.
     kuryeOturumu();
-    sunucu("/delivery/runs/5", {
-      data: TUR({
-        stops: [
-          DURAK({
-            status: "FAILED",
-            package: { package_id: 11, code: "PKT-000011", status: "RETURN_PENDING" },
-          }),
-        ],
-      }),
-    });
+    sunucu("/delivery/runs/5", { data: TUR() });
+    sunucu("/delivery/handover/manifest/5", { data: sahaManifesti("RETURN_PENDING") });
     await sar("DeliveryDriver", "/dagitim/5");
-    // Alıcı adı ekranda İKİ yerde geçer: aktif durak kartı ve durak listesi.
-    // Bu satır bir RENDER BEKLEMESİDİR, iddia değil — çoğulluk meşrudur.
-    // `findByText` "Found multiple elements" ile testi ÖLÇTÜĞÜ ŞEYE
-    // VARMADAN düşürüyordu; `findAllByText` niyeti doğru söyler.
-    await screen.findAllByText(/Ayşe Yılmaz/);
+    const kart = within(await screen.findByTestId("aktif-durak"));
+    expect(kart.getByText(/Ayşe Yılmaz/)).toBeTruthy();
+    expect(await kart.findByText(/geri dön|depoya|iade bekl/i)).toBeTruthy();
     expect(
-      screen.queryAllByRole("button", { name: /kod gönder|teslim et|kapıya bırak/i }),
+      kart.queryAllByRole("button", { name: /kod gönder|teslim et|kapıya bırak/i }),
       "araçta iade bekleyen pakete teslim butonu sunuluyor",
     ).toHaveLength(0);
-    expect(screen.getByText(/geri dön|depoya|iade bekl/i)).toBeTruthy();
+    expect(
+      screen.queryAllByRole("button", { name: /kod gönder|teslim et|kapıya bırak/i }),
+    ).toHaveLength(0);
   });
 });
 
@@ -286,47 +420,86 @@ describe("yanlış QR türü", () => {
     // İki uzay ayrıktır; kullanıcıya "bulunamadı" demek yanlış yeri işaret eder.
     kuryeOturumu();
     sunucu("/delivery/handover/manifest/5", { data: MANIFEST() });
-    const { container } = await sar("DeliveryRunHandover", "/dagitim/5/zimmet");
-    await screen.findByText(/1\s*\/\s*2/);
-    const kutu = container.querySelector("input[type=text]") as HTMLInputElement;
-    kutu.value = "31:durakTokeni";
-    kutu.dispatchEvent(new Event("input", { bubbles: true }));
-    kutu.closest("form")?.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+    await sar("DeliveryRunHandover", "/dagitim/5/zimmet");
+    const kutu = within(await screen.findByTestId("zimmet-tarama")).getByRole(
+      "textbox",
+    ) as HTMLInputElement;
+    kodOkut(kutu, "31:durakTokeni");
 
-    expect(await screen.findByRole("alert")).toBeTruthy();
-    expect(screen.getByRole("alert").textContent).toMatch(/paket etiketi|paket qr|yanlış/i);
+    const uyari = await screen.findByRole("alert");
+    expect(uyari.textContent).toMatch(/paket etiketi|paket qr|yanlış/i);
     // İstemci tarafında ayırt edilebildiği için sunucuya hiç gitmemeli.
     await waitFor(() =>
       expect(istekler.some((i) => i.url.includes("/handover/scan"))).toBe(false),
     );
   });
 
+  it("yabancı/olmayan paket 404'ünde bilgi sızdırmayan tek mesaj gösterilir", async () => {
+    // Sunucu dört farklı sebebi (yabancı kurye · eski tur · bozuk token ·
+    // olmayan paket) BİLİNÇLİ olarak aynı 404 ile döner; istemci bunları
+    // farklı cümlelere ayırırsa sunucunun kapattığı sızıntı ekranda açılır.
+    kuryeOturumu();
+    sunucu("/delivery/handover/manifest/5", { data: MANIFEST() });
+    sunucu(
+      "/delivery/handover/scan",
+      { status: 404, data: { detail: "Etiket tanınmadı" } },
+      "post",
+    );
+    await sar("DeliveryRunHandover", "/dagitim/5/zimmet");
+    const kutu = within(await screen.findByTestId("zimmet-tarama")).getByRole(
+      "textbox",
+    ) as HTMLInputElement;
+    kodOkut(kutu, "PKG1:77:baskaKurye");
+
+    const uyari = await screen.findByRole("alert");
+    await waitFor(() => expect(uyari.textContent).toMatch(/tanınmadı/i));
+    expect(uyari.textContent, "404 gövdesinden paket durumu/kodu sızıyor").not.toMatch(
+      /PKT-|PACKED|RETURN_PENDING|HANDED_OVER/,
+    );
+  });
+
+  it("yabancı turun zimmet listesi 404'ünde ETİKET değil TUR mesajı gösterilir", async () => {
+    // Aynı 404 iki uçta iki farklı şeyi anlatır ve mesaj bunu ayırmalıdır:
+    // tarama ucunda "etiket tanınmadı", manifest ucunda "bu tur sana ait
+    // değil" (`courier_account_service.ensure_run_access`). Tek çeviriciyle
+    // ekran, hiç kod okutmamış kuryeye "kutunun üstündeki kodu kontrol et"
+    // diyordu — olmayan bir sorunu arattırırdı. 404'ün İÇİ hâlâ tek cümle:
+    // "yok / başkasının / silinmiş" ayrımı istemcide AÇILMAZ.
+    kuryeOturumu();
+    sunucu("/delivery/handover/manifest/5", { status: 404, data: { detail: "Tur bulunamadı" } });
+    await sar("DeliveryRunHandover", "/dagitim/5/zimmet");
+    const ozet = within(await screen.findByTestId("zimmet-ozet"));
+    const mesaj = (await ozet.findByRole("status")).textContent ?? "";
+    // Olumlu iddia AYIRT EDİCİ seçildi: eski (yanlış) mesaj da "…bu turda
+    // değil…" dediği için yalnız /tur/i aramak İKİSİNİ de geçirirdi.
+    expect(mesaj).toMatch(/atanmış değil|kaldırılmış/i);
+    expect(mesaj, "manifest hatası etiket/kutu hatası gibi anlatılıyor").not.toMatch(
+      /etiket|kutunun üstündeki/i,
+    );
+    // Kurye çıkmazda bırakılmaz: yeniden deneme kaybolmamalı.
+    expect(ozet.getByRole("button", { name: /yeniden dene/i })).toBeTruthy();
+  });
+
   it("sunucu 409 verirse (zimmetlenmemiş paket) mesaj kullanıcıya ulaşır", async () => {
     kuryeOturumu();
     sunucu("/delivery/runs/5", { data: TUR() });
+    sunucu("/delivery/handover/manifest/5", { data: sahaManifesti("HANDED_OVER", true) });
     sunucu(
       "/delivery/scan",
       { status: 409, data: { detail: "Paket henüz teslim alınmadı" } },
       "post",
     );
     const { container } = await sar("DeliveryDriver", "/dagitim/5");
-    // Alıcı adı ekranda İKİ yerde geçer: aktif durak kartı ve durak listesi.
-    // Bu satır bir RENDER BEKLEMESİDİR, iddia değil — çoğulluk meşrudur.
-    // `findByText` "Found multiple elements" ile testi ÖLÇTÜĞÜ ŞEYE
-    // VARMADAN düşürüyordu; `findAllByText` niyeti doğru söyler.
-    await screen.findAllByText(/Ayşe Yılmaz/);
+    await screen.findByTestId("aktif-durak");
     // VAKUM GEÇİŞİ KAPATILDI: eski hâl `if (kutu) { ... }` idi ve kutu
     // bulunamadığında blok atlanıp test HİÇBİR ŞEY DOĞRULAMADAN geçiyordu.
-    // Kurye ekranında sayfa-içi manuel kod kutusu henüz YOK (Commit 7); testin
-    // kırmızılığı bu gerçeği göstermeli, sessizce yeşile dönmemeli.
-    const kutu = container.querySelector("input[type=text]") as HTMLInputElement | null;
-    expect(kutu, "sayfa içi manuel kod kutusu yok — kurye 409'u göremez").toBeTruthy();
-    kutu!.value = "PKG1:99:baska";
-    kutu!.dispatchEvent(new Event("input", { bubbles: true }));
-    kutu!.closest("form")?.dispatchEvent(
-      new Event("submit", { bubbles: true, cancelable: true }),
-    );
-    expect(await screen.findByRole("alert")).toBeTruthy();
-    expect(screen.getByRole("alert").textContent).toMatch(/teslim alınmadı|zimmet/i);
+    const kutu = within(await screen.findByTestId("saha-tarama")).getByRole(
+      "textbox",
+    ) as HTMLInputElement;
+    expect(container.querySelector("input[type=text]"), "sayfa içi kod kutusu yok").toBe(kutu);
+    kodOkut(kutu, "PKG1:99:baska");
+
+    const uyari = await screen.findByRole("alert");
+    await waitFor(() => expect(uyari.textContent).toMatch(/teslim alınmadı|zimmet/i));
   });
 });

@@ -2,10 +2,11 @@
 // Araçta şoför sürer, dağıtıcı bu ekranı kullanır: sıradaki durağı görür,
 // "Yol Tarifi Al" Google Maps'i açar (adım-adım navigasyon YAZILMAZ),
 // kapıda paket QR'ı doğrulanır + müşteriye SMS'lenen kod girilir → teslim.
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
 import { trackDeliveryRun } from "@/api/delivery";
+import { ETIKET_TANINMADI, scanErrorMessage } from "@/api/handover";
 import { compressImage } from "@/lib/compressImage";
 import { QrScanner } from "@/components/QrScanner";
 import {
@@ -19,6 +20,7 @@ import {
   useUploadStopPhoto,
   useVerifyDelivery,
 } from "@/hooks/useDelivery";
+import { useHandoverManifest } from "@/hooks/useHandover";
 import { isDropPref, prefBannerText } from "@/lib/deliveryPref";
 import {
   FAIL_REASON_LABEL,
@@ -31,10 +33,13 @@ import {
   runProgress,
 } from "@/lib/deliveryRun";
 import { formatEta } from "@/lib/polyline";
+import { qrScanMode, readQrEnvironment } from "@/lib/qrCapability";
 import { ROUTES } from "@/lib/routes";
 import { useAuthStore } from "@/store/authStore";
 import { toast } from "@/store/toastStore";
 import { ROLE_IDS, type DeliveryStop } from "@/types";
+
+import type { HandoverManifestRow } from "@/api/handover";
 
 /** Saha ekranı ADMIN + COURIER ortak; yönetici-özel aksiyonlar bununla kapılanır. */
 function useIsAdmin() {
@@ -53,8 +58,79 @@ function getCoords(): Promise<{ lat: number; lng: number } | undefined> {
   });
 }
 
-function apiDetail(e: any, fallback: string): string {
-  return e?.response?.data?.detail ?? fallback;
+function apiDetail(e: unknown, fallback: string): string {
+  const detail = (e as { response?: { data?: { detail?: unknown } } } | null)?.response?.data
+    ?.detail;
+  return typeof detail === "string" && detail.trim() ? detail : fallback;
+}
+
+/**
+ * Paket kapısı: bu durakta teslim eylemi sunulabilir mi? (F30 sözleşme §3.4)
+ *
+ * Kaynak, turun **zimmet manifestidir** (`GET /delivery/handover/manifest/{id}`)
+ * — `DeliveryStopOut` paket durumu TAŞIMAZ, dolayısıyla tur yanıtından
+ * türetilemez. Manifest bekleyen durakların her biri için paketin canlı
+ * durumunu verir ve kuryenin kendi turuyla sınırlıdır.
+ *
+ * Kapı gerçekten yük taşır: `verify_delivery` / `deliver_drop` /
+ * `override_deliver` uçları paket durumunu **denetlemez** (yalnız
+ * `POST /delivery/scan` denetler). Yani depoda unutulmuş bir paketi "teslim
+ * edildi" yapmayı bugün engelleyen tek şey bu ekrandır — kapı açık kalırsa
+ * sipariş DELIVERED olur ama kutu raftadır.
+ *
+ * `bilinmiyor` hâlinde **fail-open**'dır ve bu bilinçli bir sapmadır: manifest
+ * isteği düşerse ya da sipariş F30 öncesinden geldiği için hiç paket kaydı
+ * yoksa (`package_status === null`), kapıyı kapatmak sahadaki bütün teslimatı
+ * durdururdu. Belirsizlik sessizce yutulmaz; ekranda görünür bir uyarıya
+ * dönüşür ve karar sunucuya bırakılır.
+ */
+type PaketKapisi =
+  | { acik: true; uyari: string | null }
+  | { acik: false; not: string; zimmetLinki: boolean };
+
+function paketKapisi(
+  row: HandoverManifestRow | null | undefined,
+  durum: "yukleniyor" | "hazir" | "bilinmiyor"
+): PaketKapisi {
+  if (durum === "yukleniyor") {
+    return { acik: false, not: "Paket durumu kontrol ediliyor…", zimmetLinki: false };
+  }
+  if (durum === "bilinmiyor" || row == null) {
+    return {
+      acik: true,
+      uyari: "Paket durumu doğrulanamadı — teslimden önce kutunun elinde olduğundan emin ol.",
+    };
+  }
+  if (row.package_status == null) {
+    return {
+      acik: true,
+      uyari: "Bu siparişin paket kaydı yok (paketleme istasyonundan geçmemiş eski sipariş).",
+    };
+  }
+  if (row.package_status === "HANDED_OVER") return { acik: true, uyari: null };
+  if (row.package_status === "RETURN_PENDING") {
+    return {
+      acik: false,
+      not:
+        "Bu paketin depoya geri dönmesi bekleniyor — teslim edilemez. " +
+        "Depoda okutulup kabul edilmeden yeniden yola çıkamaz.",
+      zimmetLinki: false,
+    };
+  }
+  if (row.package_status === "PACKED" || row.package_status === "OPEN") {
+    return {
+      acik: false,
+      not:
+        "Paket henüz zimmetlenmedi — depodan teslim alıp araca yüklemen gerekiyor. " +
+        "Kutuyu okutmadan teslim akışı açılmaz.",
+      zimmetLinki: true,
+    };
+  }
+  return {
+    acik: false,
+    not: `Bu paket teslim akışına uygun değil (durum: ${row.package_status}) — yöneticini ara.`,
+    zimmetLinki: false,
+  };
 }
 
 /** Canlı takip yayını: tur AKTİF iken dağıtıcı telefonunun konumunu ~10 sn'de
@@ -82,7 +158,16 @@ function useCourierBroadcast(runId: number | null, active: boolean) {
 
 /* ─── Aktif durak kartı ──────────────────────────────── */
 
-function CurrentStopCard({ stop, isJumped }: { stop: DeliveryStop; isJumped?: boolean }) {
+function CurrentStopCard({
+  stop,
+  isJumped,
+  kapi,
+}: {
+  stop: DeliveryStop;
+  isJumped?: boolean;
+  /** Paket kapısı — kapalıysa hiçbir teslim eylemi ÇİZİLMEZ (fail-closed). */
+  kapi: PaketKapisi;
+}) {
   const isAdmin = useIsAdmin();
   const sendOtp = useSendDeliveryOtp();
   const verify = useVerifyDelivery();
@@ -114,13 +199,16 @@ function CurrentStopCard({ stop, isJumped }: { stop: DeliveryStop; isJumped?: bo
           setCode("");
           setMaskedPhone(null);
         },
-        onError: (e: any) => toast.error(apiDetail(e, "Kod doğrulanamadı.")),
+        onError: (e) => toast.error(apiDetail(e, "Kod doğrulanamadı.")),
       }
     );
   };
 
   return (
-    <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-slate-700">
+    <div
+      data-testid="aktif-durak"
+      className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-slate-700"
+    >
       <p className="text-xs font-semibold uppercase tracking-wide text-indigo-600 dark:text-indigo-400">
         {isJumped ? "Seçilen durak" : "Sıradaki durak"} · #{stop.sequence}
       </p>
@@ -167,7 +255,7 @@ function CurrentStopCard({ stop, isJumped }: { stop: DeliveryStop; isJumped?: bo
             Müşteriyi Ara
           </a>
         )}
-        {!dropMode && (
+        {kapi.acik && !dropMode && (
           <button
             onClick={() =>
               sendOtp.mutate(stop.id, {
@@ -184,7 +272,7 @@ function CurrentStopCard({ stop, isJumped }: { stop: DeliveryStop; isJumped?: bo
                     );
                   }
                 },
-                onError: (e: any) => toast.error(apiDetail(e, "Kod gönderilemedi.")),
+                onError: (e) => toast.error(apiDetail(e, "Kod gönderilemedi.")),
               })
             }
             disabled={sendOtp.isPending}
@@ -195,6 +283,33 @@ function CurrentStopCard({ stop, isJumped }: { stop: DeliveryStop; isJumped?: bo
         )}
       </div>
 
+      {/* ── Paket kapısı ──
+          Kapı kapalıyken TEK BİR açıklama satırı çizilir ve teslim/kanıt
+          eylemlerinin hiçbiri DOM'a girmez: "pasif buton" göstermek, kuryeye
+          "bir şekilde basılabilir" izlenimi verirdi. */}
+      {!kapi.acik && (
+        <div className="mt-4 space-y-2 rounded-xl bg-slate-50 px-4 py-3 ring-1 ring-slate-200 dark:bg-slate-700/40 dark:ring-slate-600">
+          <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+            {kapi.not}
+          </p>
+          {kapi.zimmetLinki && (
+            <Link
+              to={ROUTES.deliveryRunHandover(stop.run_id)}
+              className="inline-block text-sm font-semibold text-indigo-600 hover:underline dark:text-indigo-400"
+            >
+              Zimmet ekranını aç →
+            </Link>
+          )}
+        </div>
+      )}
+      {kapi.acik && kapi.uyari && (
+        <p className="mt-4 rounded-xl bg-amber-50 px-4 py-2.5 text-sm font-medium text-amber-800 ring-1 ring-amber-200 dark:bg-amber-500/10 dark:text-amber-300 dark:ring-amber-500/30">
+          {kapi.uyari}
+        </p>
+      )}
+
+      {kapi.acik && (
+        <>
       {/* Teslim kanıtı fotoğrafı — kapıya/komşuya bırakmada zorunlu, normalde opsiyonel */}
       <input
         ref={photoRef}
@@ -210,7 +325,7 @@ function CurrentStopCard({ stop, isJumped }: { stop: DeliveryStop; isJumped?: bo
               { stopId: stop.id, file: await compressImage(f) },
               {
                 onSuccess: () => toast.success("Kanıt fotoğrafı kaydedildi."),
-                onError: (err: any) =>
+                onError: (err) =>
                   toast.error(apiDetail(err, "Fotoğraf yüklenemedi.")),
               }
             );
@@ -248,7 +363,7 @@ function CurrentStopCard({ stop, isJumped }: { stop: DeliveryStop; isJumped?: bo
             onClick={() =>
               deliverDrop.mutate(stop.id, {
                 onSuccess: () => toast.success("Bırakma teslimi kaydedildi ✓"),
-                onError: (e: any) => toast.error(apiDetail(e, "Teslim edilemedi.")),
+                onError: (e) => toast.error(apiDetail(e, "Teslim edilemedi.")),
               })
             }
             disabled={busy || deliverDrop.isPending || !stop.photo_url}
@@ -362,7 +477,7 @@ function CurrentStopCard({ stop, isJumped }: { stop: DeliveryStop; isJumped?: bo
                       setFailCode(FAIL_REASONS[0].code);
                       setMode("deliver");
                     },
-                    onError: (e: any) => toast.error(apiDetail(e, "İşaretlenemedi.")),
+                    onError: (e) => toast.error(apiDetail(e, "İşaretlenemedi.")),
                   }
                 )
               }
@@ -404,7 +519,7 @@ function CurrentStopCard({ stop, isJumped }: { stop: DeliveryStop; isJumped?: bo
                       setNote("");
                       setMode("deliver");
                     },
-                    onError: (e: any) => toast.error(apiDetail(e, "Kaydedilemedi.")),
+                    onError: (e) => toast.error(apiDetail(e, "Kaydedilemedi.")),
                   }
                 )
               }
@@ -421,6 +536,8 @@ function CurrentStopCard({ stop, isJumped }: { stop: DeliveryStop; isJumped?: bo
             </button>
           </div>
         </div>
+      )}
+        </>
       )}
     </div>
   );
@@ -439,7 +556,20 @@ export default function DeliveryDriver() {
   const { data: run, isLoading } = runQuery;
   const runAction = useRunAction();
   const scanLabel = useScanDeliveryLabel();
+  // Paket kapısının kaynağı: `DeliveryStopOut` paket durumu taşımaz, zimmet
+  // manifesti taşır. Poll KAPALI — tur sorgusu zaten 15 sn'de bir dönüyor ve
+  // manifest durak başına bir sorgu maliyetinde.
+  const manifestQuery = useHandoverManifest(Number.isFinite(runId) ? runId : null);
   const [showScanner, setShowScanner] = useState(false);
+  const [kod, setKod] = useState("");
+  const [tarama, setTarama] = useState<{ hata: boolean; mesaj: string } | null>(null);
+  const kodKutusu = useRef<HTMLInputElement>(null);
+  // Kamera yoksa QrScanner kendi manuel kutusunu açardı; sayfada zaten kalıcı
+  // bir kod kutusu var ve iki kutu, aceleci kuryeye iki "doğru" yol gösterir.
+  const kameraVar = useMemo(
+    () => typeof window !== "undefined" && qrScanMode(readQrEnvironment(window)) === "camera",
+    []
+  );
   // Kurye sıradakini atlayıp başka bir BEKLEYEN durağa geçebilir (kapıda kimse
   // yoksa sonrakine devam etmek gibi). Sıra DEĞİŞMEZ — yalnız ekran odağı;
   // teslim uçları zaten stop_id bazlıdır. Durak sonuçlanınca seçim düşer.
@@ -478,26 +608,54 @@ export default function DeliveryDriver() {
       ? run.stops.find((s) => s.id === selectedStopId && s.status === "PENDING") ?? null
       : null;
   const current = selectedStop ?? nextStop;
+  const manifestDurumu: "yukleniyor" | "hazir" | "bilinmiyor" = manifestQuery.isLoading
+    ? "yukleniyor"
+    : manifestQuery.isError || !manifestQuery.data
+      ? "bilinmiyor"
+      : "hazir";
+  const paketSatiri =
+    current != null
+      ? (manifestQuery.data?.rows ?? []).find((r) => r.stop_id === current.id) ?? null
+      : null;
+  const kapi = paketKapisi(paketSatiri, manifestDurumu);
   const [done, total] = runProgress(run);
   const delivered = run.stops.filter((s) => s.status === "DELIVERED").length;
   const failed = run.stops.filter((s) => s.status === "FAILED").length;
   const remaining = run.stops.filter((s) => s.status === "PENDING").length;
 
   const onScan = (value: string) => {
+    const deger = value.trim();
+    // Çift gönderim engeli: barkod okuyucu Enter'ı yineleyebilir, kurye de
+    // "gitmedi" sanıp ikinci kez basar.
+    if (!deger || scanLabel.isPending) return;
     setShowScanner(false);
-    scanLabel.mutate(value, {
+    setKod("");
+    scanLabel.mutate(deger, {
       onSuccess: ({ stop }) => {
+        // Sonuç SAYFA İÇİNDE de yazılır: toast birkaç saniyede kaybolur ve
+        // telefon o sırada cepte olabilir (kurye kutuyu taşırken okutur).
         if (stop.run_id !== run.id) {
-          toast.error(`Bu paket başka bir turun (#${stop.run_id}).`);
+          const m = `Bu paket başka bir turun (#${stop.run_id}).`;
+          setTarama({ hata: true, mesaj: m });
+          toast.error(m);
         } else if (current && stop.id === current.id) {
-          toast.success(`Doğru paket ✓ — ${stop.recipient ?? `#${stop.order_id}`}`);
+          const m = `Doğru paket ✓ — ${stop.recipient ?? `#${stop.order_id}`}`;
+          setTarama({ hata: false, mesaj: m });
+          toast.success(m);
         } else {
-          toast.info(
-            `Bu paket ${stop.sequence}. durağın (${stop.recipient ?? "?"}) — sıradaki ${current ? `#${current.sequence}` : "yok"}.`
-          );
+          const m = `Bu paket ${stop.sequence}. durağın (${stop.recipient ?? "?"}) — sıradaki ${current ? `#${current.sequence}` : "yok"}.`;
+          setTarama({ hata: false, mesaj: m });
+          toast.info(m);
         }
       },
-      onError: (e: any) => toast.error(apiDetail(e, "Etiket tanınamadı.")),
+      onError: (e) => {
+        // `scanErrorMessage` 409'da sunucunun cümlesini korur — "paket henüz
+        // zimmetlenmedi" ile "başka turun paketi" ayrımını yalnız sunucu bilir.
+        const mesaj = scanErrorMessage(e, ETIKET_TANINMADI);
+        setTarama({ hata: true, mesaj });
+        toast.error(mesaj);
+      },
+      onSettled: () => kodKutusu.current?.focus(),
     });
   };
 
@@ -546,6 +704,19 @@ export default function DeliveryDriver() {
             <span>{remaining} kaldı</span>
           </div>
         )}
+        {/* Zimmet ekranına kalıcı giriş.
+            PLANNED turda ÖZELLİKLE gerekli: paketler tur başlamadan önce
+            araca alınır (sunucu PLANNED/ACTIVE turda zimmete izin verir) ve
+            başlatma, eksik paket varsa 409 ile reddedilir — kurye eksiği
+            depoda görmeli, kapıda değil. */}
+        {(run.status === "PLANNED" || run.status === "ACTIVE") && (
+          <Link
+            to={ROUTES.deliveryRunHandover(run.id)}
+            className="block rounded-2xl bg-white px-4 py-3 text-center text-sm font-semibold text-indigo-600 shadow-sm ring-1 ring-slate-100 dark:bg-slate-800 dark:text-indigo-400 dark:ring-slate-700"
+          >
+            Paketleri araca al (zimmet) →
+          </Link>
+        )}
         {run.status !== "ACTIVE" ? (
           <p className="rounded-2xl bg-white p-6 text-center text-sm text-slate-500 ring-1 ring-slate-100 dark:bg-slate-800 dark:text-slate-400 dark:ring-slate-700">
             {run.status === "PLANNED"
@@ -569,7 +740,12 @@ export default function DeliveryDriver() {
                 </p>
               );
             })()}
-            <CurrentStopCard key={current.id} stop={current} isJumped={selectedStop != null} />
+            <CurrentStopCard
+              key={current.id}
+              stop={current}
+              isJumped={selectedStop != null}
+              kapi={kapi}
+            />
             {selectedStop != null && nextStop && selectedStop.id !== nextStop.id && (
               <button
                 onClick={() => setSelectedStopId(null)}
@@ -578,19 +754,72 @@ export default function DeliveryDriver() {
                 Sıradaki durağa dön (#{nextStop.sequence})
               </button>
             )}
-            <button
-              onClick={() => setShowScanner(true)}
-              className="w-full rounded-xl py-2.5 text-sm font-semibold text-slate-700 ring-1 ring-slate-200 dark:text-slate-200 dark:ring-slate-600"
+            {/* ── Etiket okutma ──
+                Manuel kutu SAYFANIN KENDİSİNDE ve HER ZAMAN açık: eskiden yalnız
+                QrScanner'ın kamera-yok fallback'inde vardı, yani kamerası olan
+                ama etiketi okuyamayan (buruşuk/ıslak QR) kurye sıkışıyordu. */}
+            <section
+              data-testid="saha-tarama"
+              className="space-y-3 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-100 dark:bg-slate-800 dark:ring-slate-700"
             >
-              Paket QR'ını Okut
-            </button>
-            {showScanner && (
-              <QrScanner
-                onScan={onScan}
-                onClose={() => setShowScanner(false)}
-                manualHint="Paket etiketindeki QR'ın altında yazan kodu elle girebilirsin."
-                manualPlaceholder="Etiketteki kod (ör. 12:abc…)"
-              />
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  onScan(kod);
+                }}
+                className="flex gap-2"
+              >
+                <input
+                  ref={kodKutusu}
+                  type="text"
+                  value={kod}
+                  onChange={(e) => setKod(e.target.value)}
+                  aria-label="Etiket kodu"
+                  placeholder="Etiketteki kod (ör. PKG1:12:abc…)"
+                  autoComplete="off"
+                  autoCapitalize="off"
+                  spellCheck={false}
+                  className="input min-w-0 flex-1"
+                />
+                <button
+                  type="submit"
+                  disabled={!kod.trim() || scanLabel.isPending}
+                  className="shrink-0 rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-bold text-white disabled:opacity-50 dark:bg-white dark:text-slate-900"
+                >
+                  {scanLabel.isPending ? "Okunuyor…" : "Okut"}
+                </button>
+              </form>
+              {kameraVar && (
+                <button
+                  onClick={() => setShowScanner(true)}
+                  className="w-full rounded-xl py-2.5 text-sm font-semibold text-slate-700 ring-1 ring-slate-200 dark:text-slate-200 dark:ring-slate-600"
+                >
+                  Kamerayla okut
+                </button>
+              )}
+              {kameraVar && showScanner && (
+                <QrScanner
+                  onScan={onScan}
+                  onClose={() => setShowScanner(false)}
+                  manualHint="Paket etiketindeki QR'ın altında yazan kodu elle girebilirsin."
+                  manualPlaceholder="Etiketteki kod (ör. 12:abc…)"
+                />
+              )}
+            </section>
+            {tarama && (
+              <p
+                role="alert"
+                data-testid="saha-sonuc"
+                className={`rounded-2xl px-4 py-3 text-sm font-semibold ring-1 ${
+                  tarama.hata
+                    ? "bg-rose-50 text-rose-800 ring-rose-200 dark:bg-rose-500/10 dark:text-rose-300 dark:ring-rose-500/30"
+                    : "bg-emerald-50 text-emerald-800 ring-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-500/30"
+                }`}
+              >
+                {/* Renk tek ayırt edici değil: hata ✕, olumlu ✓ ile de söylenir. */}
+                {tarama.hata ? "✕ " : "✓ "}
+                {tarama.mesaj}
+              </p>
             )}
           </>
         ) : (
@@ -604,7 +833,7 @@ export default function DeliveryDriver() {
                   { runId: run.id, action: "complete" },
                   {
                     onSuccess: () => toast.success("Tur tamamlandı."),
-                    onError: (e: any) =>
+                    onError: (e) =>
                       toast.error(apiDetail(e, "Tamamlanamadı.")),
                   }
                 )
@@ -618,7 +847,10 @@ export default function DeliveryDriver() {
         )}
 
         {/* Durak listesi */}
-        <ul className="divide-y divide-slate-100 rounded-2xl bg-white px-4 ring-1 ring-slate-100 dark:divide-slate-700 dark:bg-slate-800 dark:ring-slate-700">
+        <ul
+          data-testid="durak-listesi"
+          className="divide-y divide-slate-100 rounded-2xl bg-white px-4 ring-1 ring-slate-100 dark:divide-slate-700 dark:bg-slate-800 dark:ring-slate-700"
+        >
           {[...run.stops]
             .sort((a, b) => a.sequence - b.sequence)
             .map((s) => (

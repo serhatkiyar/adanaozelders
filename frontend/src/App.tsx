@@ -102,6 +102,9 @@ const DeliveryRunDetailPage = lazy(() => import("@/pages/admin/delivery/Delivery
 const DeliveryPerformancePage = lazy(() => import("@/pages/admin/delivery/DeliveryPerformancePage"));
 const DeliveryCouriersPage = lazy(() => import("@/pages/admin/delivery/DeliveryCouriersPage"));
 const DeliveryDriver = lazy(() => import("@/pages/DeliveryDriver"));
+// Zimmet (paketi araca alma) saha ekranından AYRI bir rotadır: aynı sayfada
+// sekme olsaydı, kurye kapıda yanlış moda düşebilirdi (sözleşme §3.4).
+const DeliveryRunHandover = lazy(() => import("@/pages/DeliveryRunHandover"));
 const TutorDashboard = lazy(() => import("@/pages/TutorDashboard"));
 const TutorSettings = lazy(() => import("@/pages/TutorSettings"));
 const TutorQuestions = lazy(() => import("@/pages/TutorQuestions"));
@@ -476,6 +479,9 @@ function App() {
           >
             {/* Dağıtıcı saha ekranı (kendi-filo teslimat) — mobil, shell'siz */}
             <Route path={PATHS.deliveryRun} element={<DeliveryDriver />} />
+            {/* Zimmet ekranı — aynı yetki kapısı: kurye yalnız kendi turunun
+                manifestini görebilir (backend `ensure_run_access` 404 döner). */}
+            <Route path={PATHS.deliveryRunHandover} element={<DeliveryRunHandover />} />
           </Route>
 
           {/* ── Yalnızca LIBRARY_OPERATOR ── */}
