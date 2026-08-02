@@ -929,6 +929,62 @@ async def test_P2F_repack_ICERIK_DEGISMEDIYSE_calisir(fab):
 # ══════ Commit 6 · RETURNED çıkmazı (commit 5 denetiminin regresyonu) ═══════
 
 
+async def _kuyruk_gezisi(servis, *, sayfa: int = 25):
+    """Kuyruğun **TAMAMINI** sayfa sayfa gezer: `(görülen sıra, total, satırlar)`.
+
+    Sayfalama geldikten sonra `packing_queue(s)` tek başına kuyruğun İLK
+    sayfasıdır. "Sipariş kuyrukta YOK" iddiasını tek sayfaya bakarak kurmak
+    yalancı yeşil üretir: hedef sipariş 50. satırdan sonraya düştüğünde iddia,
+    ölçtüğü kural bozuk olsa bile geçer (bağımsız denetimin C7 bulgusu). Bu
+    yüzden olumsuz iddialar artık **bütün sayfaların birleşimi** üzerinde
+    kurulur ve "listede yok ama testten geçti" hâli imkânsızdır.
+
+    Gezinti aynı zamanda sayfalama sözleşmesinin nöbetçisidir:
+    `total` sayfadan sayfaya DEĞİŞMEZ · birleşim tam olarak `total` satırdır ·
+    hiçbir `order_id` iki sayfada birden GÖRÜNMEZ. Üçü de sıranın toplam
+    (deterministik) olmasına bağlıdır; `(promised_delivery_date, created_at)`
+    ikilisi eşit olan satırlarda son sözü `Order.id` bağlayıcısı söyler.
+    """
+    gorulen: list[int] = []
+    satirlar: dict[int, object] = {}
+    toplam: int | None = None
+    offset = 0
+    while True:
+        async with AsyncSessionLocal() as s:
+            sayfa_satirlari, t = await servis.packing_queue(
+                s, limit=sayfa, offset=offset
+            )
+        if toplam is None:
+            toplam = t
+        assert t == toplam, f"`total` sayfadan sayfaya değişiyor: {toplam} → {t}"
+        if not sayfa_satirlari:
+            break
+        for satir in sayfa_satirlari:
+            gorulen.append(satir.order_id)
+            satirlar[satir.order_id] = satir
+        offset += len(sayfa_satirlari)
+        if offset >= toplam:
+            break
+    assert len(gorulen) == toplam, (
+        f"gezinti {len(gorulen)} satır gördü, `total` {toplam} diyor"
+    )
+    assert len(set(gorulen)) == len(gorulen), (
+        f"aynı sipariş iki sayfada birden döndü: {gorulen}"
+    )
+    return gorulen, toplam, satirlar
+
+
+async def _kuyruk_satiri(servis, order_id: int):
+    """Kuyruktaki BİR satır (yoksa `None`) — sayfa tavanına takılmadan.
+
+    Hedef siparişi bütün sayfalarda arar, "ilk sayfada mı" diye SORMAZ: aksi
+    hâlde testler kuyruğun DOLULUĞUNA bağlı olarak kırılır (ya da daha kötüsü,
+    olumsuz iddialarda sessizce geçerdi).
+    """
+    _gorulen, _toplam, satirlar = await _kuyruk_gezisi(servis)
+    return satirlar.get(order_id)
+
+
 @pytest.mark.asyncio
 async def test_C6_RETURNED_PAKET_ILK_PAKETLEME_KUYRUGUNDA_GORUNMEZ(fab):
     """`RETURNED` paketli sipariş "topla ve paketle" kuyruğunda GÖRÜNMEZ.
@@ -960,11 +1016,10 @@ async def test_C6_RETURNED_PAKET_ILK_PAKETLEME_KUYRUGUNDA_GORUNMEZ(fab):
     async with AsyncSessionLocal() as s:
         hazirlama = {o.order_id for o in await delivery_service.prep_queue(s)}
         uygun = {o.order_id for o in await delivery_service.eligible_orders(s)}
-        kuyruk, _toplam = await servis.packing_queue(s)
     assert oid not in hazirlama, "RETURNED paket 'topla ve paketle' kuyruğunda"
     assert oid not in uygun, "repack onayı olmadan dağıtıma uygun görünüyor"
 
-    satir = next((r for r in kuyruk if r.order_id == oid), None)
+    satir = await _kuyruk_satiri(servis, oid)
     assert satir is not None, "paketleme kuyruğunda da yok — sipariş kayboldu"
     assert satir.package is not None and satir.package.status == "RETURNED", (
         "satır paketin durumunu taşımıyor — ekran yanlış eylemi önerir"
@@ -996,9 +1051,11 @@ async def test_C6_RETURNED_PAKET_REPACK_ILE_COZULUR(fab):
 
     async with AsyncSessionLocal() as s:
         uygun = {o.order_id for o in await delivery_service.eligible_orders(s)}
-        kuyruk, _t = await servis.packing_queue(s)
+    _gorulen, _toplam, satirlar = await _kuyruk_gezisi(servis)
     assert oid in uygun
-    assert oid not in {r.order_id for r in kuyruk}, "iş bitti ama kuyrukta duruyor"
+    # Olumsuz iddia BÜTÜN sayfaların birleşiminde kurulur: tek sayfaya bakmak,
+    # sipariş yalnızca sayfa tavanının dışına düştüğü için de geçerdi.
+    assert oid not in satirlar, "iş bitti ama kuyrukta duruyor"
 
 
 @pytest.mark.asyncio
@@ -1008,6 +1065,19 @@ async def test_C6_PAKETLEME_KUYRUGU_UC_ISI_AYIRT_EDER(fab):
     * paketi yok        → `package is None`  (yeni paket aç)
     * `OPEN` paketi var → `package.status == "OPEN"` (devam et)
     * `PACKED` paketi var → kuyrukta YOK (iş bitti, dağıtım kuyruğunda)
+
+    ## Denetim borcu: kaldırılan totolojik iddia
+
+    Bu düğüm eskiden `assert toplam == len(kuyruk)` diyordu. Sayfalama
+    geldikten sonra o iddia hiçbir şeyin nöbetçisi değildi: `total` süzülmüş
+    toplamı bildirirken `items` yalnız bir sayfadır, yani iddia ancak kuyruk
+    sayfa tavanından kısayken doğru olur — test veritabanında hep öyleydi ve
+    bu yüzden **her hâlde yeşil kalıyordu**. Yerine `total`'in sayfa
+    uzunluğundan BAĞIMSIZ olduğu açıkça ölçülür (`toplam > len(ilk_sayfa)`).
+
+    İkinci borç aynı yerdeydi: `bitmis_oid not in satirlar` iddiası tek sayfaya
+    bakıyordu. Hedef sipariş sayfa tavanının dışına düştüğünde "kuyrukta yok"
+    sonucu, kural bozuk olsa bile çıkardı. Artık bütün sayfalar gezilir.
     """
     servis = _servis()
     aid = await fab.admin()
@@ -1022,10 +1092,25 @@ async def test_C6_PAKETLEME_KUYRUGU_UC_ISI_AYIRT_EDER(fab):
 
     bitmis_oid, _paket, _ean = await _packed_paket(fab, servis, aid)
 
+    # Kuyruğu bilinçli olarak ÇOK SAYFALI yap: iki dolgu siparişiyle en az dört
+    # satır olur ve `limit=2` gerçek bir ikinci sayfa üretir.
+    for _ in range(2):
+        pd, _sd, _ed = await fab.barkodlu_urun(stock=10)
+        await fab.fiziksel_siparis(kalemler=[(pd, 1)])
+
     async with AsyncSessionLocal() as s:
-        kuyruk, toplam = await servis.packing_queue(s)
-    satirlar = {r.order_id: r for r in kuyruk}
-    assert toplam == len(kuyruk)
+        ilk_sayfa, toplam = await servis.packing_queue(s, limit=2, offset=0)
+    assert len(ilk_sayfa) == 2, f"limit=2 sayfası {len(ilk_sayfa)} satır döndü"
+    assert toplam > len(ilk_sayfa), (
+        f"`total` sayfa uzunluğunu tekrarlıyor (total={toplam}, "
+        f"sayfa={len(ilk_sayfa)}) — süzülmüş toplam bildirilmiyor"
+    )
+
+    gorulen, gezinti_toplami, satirlar = await _kuyruk_gezisi(servis, sayfa=2)
+    assert gezinti_toplami == toplam
+    assert len(gorulen) == toplam >= 4, (
+        f"gezinti {len(gorulen)} satır gördü, `total` {toplam}"
+    )
 
     assert yeni_oid in satirlar and satirlar[yeni_oid].package is None
     assert satirlar[yeni_oid].item_count == 1
@@ -1066,19 +1151,6 @@ async def test_SIRA_YARDIMCISI_TEKILLESTIRIR_VE_SIRALAR(pg):
 #   P2-2 satır başına `live_package` (N+1),
 #   P2-3 çıplak `str` durum + istemcinin iş akışını TAHMİN etmesi,
 #   P2-4 paketi hiç olmamış ama turda bekleyen F30 öncesi sipariş.
-
-
-async def _kuyruk_satiri(servis, order_id: int):
-    """Kuyruktaki BİR satır (yoksa None) — sayfa tavanına takılmadan.
-
-    Sayfalama geldiği için kuyruk artık ilk 50 satırla sınırlı döner; test
-    verisi kuyruğun sonuna eklendiğinde varsayılan sayfada görünmeyebilir.
-    Bu yardımcı hedef siparişi `order_id` ile arar, "ilk sayfada mı" diye
-    sormaz — aksi hâlde testler kuyruğun DOLULUĞUNA bağlı olarak kırılırdı.
-    """
-    async with AsyncSessionLocal() as s:
-        satirlar, _toplam = await servis.packing_queue(s, limit=200)
-    return next((r for r in satirlar if r.order_id == order_id), None)
 
 
 @contextlib.contextmanager
@@ -1212,6 +1284,100 @@ async def test_C7_KUYRUK_SAYFALARI_KAYIT_TEKRARLATMAZ(fab):
         tasan, tasan_toplam = await servis.packing_queue(s, limit=1, offset=toplam)
     assert tasan == []
     assert tasan_toplam == toplam
+
+
+async def _tam_esit_siparisler(fab, adet: int) -> list[int]:
+    """`adet` tane sipariş: söz günü VE oluşturma anı BİREBİR aynı.
+
+    İki ayrıntı bilinçlidir.
+
+    1. `created_at` mikrosaniyesine kadar tek bir değere eşitlenir ve o değer
+       geçmişe (12 saat öncesine) konur. Böylece bu grup, kuyruğun geri
+       kalanıyla ASLA berabere kalmaz — testin ölçtüğü belirsizlik yalnız
+       grubun KENDİ içinde olur.
+    2. Satırlar **azalan kimlik sırasıyla, tek tek** güncellenir. Postgres'te
+       her `UPDATE` yeni bir tuple sürümü yazar, yani grubun fiziksel (heap)
+       sırası kimlik sırasının TERSİ olur. Sıralama ifadesindeki `id`
+       bağlayıcısı kaldırılırsa sıralayıcının eşitleri hangi sırada döndüreceği
+       tanımsızdır ve en olası sonuç heap sırasıdır — yani AZALAN kimlik. Test
+       tam olarak bunu yakalar; kurulum bu yüzden "veri hazırlamak" değil,
+       mutasyonu GÖZLENEBİLİR kılmaktır.
+    """
+    oidler: list[int] = []
+    for _ in range(adet):
+        pid, _sku, _ean = await fab.barkodlu_urun(stock=10)
+        oidler.append(await fab.fiziksel_siparis(kalemler=[(pid, 1)]))
+
+    esit_an = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(
+        hours=12
+    )
+    esit_gun = datetime.date.today()
+    async with AsyncSessionLocal() as s:
+        for oid in sorted(oidler, reverse=True):
+            await s.execute(
+                text(
+                    "UPDATE orders SET created_at = :t, promised_delivery_date = :g "
+                    "WHERE id = :i"
+                ),
+                {"t": esit_an, "g": esit_gun, "i": oid},
+            )
+        await s.commit()
+    return sorted(oidler)
+
+
+@pytest.mark.asyncio
+async def test_C8_KUYRUK_ID_BAGLAYICISI_SAYFALAR_ARASINDA_KAYMA_URETMEZ(fab):
+    """Berabere kalan dokuz satır, üç sayfada da AYNI ve TOPLAM sırayla döner.
+
+    Denetim borcu: sıranın son bağlayıcısı (`Order.id`) hiçbir yerde
+    kanıtlanmamıştı. `test_C7_KUYRUK_SAYFALARI_KAYIT_TEKRARLATMAZ` üç satır ve
+    `limit=1` ile geziyordu; üç satırlık bir top-N sıralamasında belirsizlik
+    pratikte hiç görünmez, yani bağlayıcı silinse de o düğüm yeşil kalabilirdi.
+
+    Burada ölçülen üç bağımsız gözlem:
+
+    1. **Tam küme eşitliği** — dokuz siparişin hepsi gezintide TAM BİR KEZ
+       görünür (`_kuyruk_gezisi` tekrarı ve `total` sapmasını da denetler).
+       Bağlayıcı olmasaydı `LIMIT/OFFSET` ile gezen ekran aynı kaydı iki
+       sayfada gösterip bir başkasını hiç göstermeyebilirdi — F29'da bir kez
+       yaşanan hata tam olarak budur.
+    2. **Artan kimlik** — beraberlerin gezintideki göreli sırası kesin olarak
+       `id ASC`'tir. Kurulum satırların fiziksel sırasını bilinçli olarak
+       TERSİNE çevirdiği için (`_tam_esit_siparisler`), bağlayıcısız bir
+       sıralama bu iddiayı düşürür.
+    3. **Sayfa boyundan bağımsızlık** — `limit=3`, `limit=2` ve `limit=7` aynı
+       diziyi verir. Farklı `limit` değerleri Postgres'te farklı `N`'li top-N
+       heapsort'a çevrilir ve heapsort eşitlerde KARARLI DEĞİLDİR; toplam bir
+       sıra olmadan üç gezinti aynı diziyi vermek zorunda değildir.
+
+    Ölçek: dokuz berabere satır, `limit=3` ile en az üç sayfa.
+    """
+    servis = _servis()
+    oidler = await _tam_esit_siparisler(fab, 9)
+
+    async with AsyncSessionLocal() as s:
+        ilk_sayfa, toplam = await servis.packing_queue(s, limit=3, offset=0)
+    assert len(ilk_sayfa) == 3
+    assert toplam >= len(oidler) > len(ilk_sayfa), (
+        f"çok sayfalı kurulum oluşmadı: total={toplam}, sayfa={len(ilk_sayfa)}"
+    )
+
+    diziler: dict[int, list[int]] = {}
+    for sayfa_boyu in (3, 2, 7):
+        gorulen, gezinti_toplami, _satirlar = await _kuyruk_gezisi(
+            servis, sayfa=sayfa_boyu
+        )
+        assert gezinti_toplami == toplam, "sayfa boyu `total`'i değiştiriyor"
+        diziler[sayfa_boyu] = [o for o in gorulen if o in set(oidler)]
+
+    for sayfa_boyu, dizi in diziler.items():
+        assert dizi == oidler, (
+            f"limit={sayfa_boyu}: beraberler artan kimlik sırasında değil "
+            f"(gelen {dizi}, beklenen {oidler}) — `id` bağlayıcısı yok"
+        )
+    assert diziler[3] == diziler[2] == diziler[7], (
+        f"sıra sayfa boyuna göre değişiyor: {diziler}"
+    )
 
 
 @pytest.mark.asyncio
