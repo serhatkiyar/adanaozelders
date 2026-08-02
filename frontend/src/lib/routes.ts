@@ -128,6 +128,13 @@ export const PATHS = {
   adminInventoryCounts: "/yonetim/envanter/sayimlar",
   adminInventoryCountDetail: "/yonetim/envanter/sayimlar/:id",
   adminInventoryDamage: "/yonetim/envanter/hasar",
+  // Paketleme istasyonu — Dağıtım'dan AYRI bir bölüm: izinleri (`packing.*`)
+  // `delivery.*`'tan bağımsızdır (raf başındaki operatör turu yönetmez) ve
+  // sipariş "hazır" damgası artık yalnız burada, kalem kalem doğrulanarak doğar.
+  adminPacking: "/yonetim/paketleme",
+  adminPackingPackages: "/yonetim/paketleme/paketler",
+  adminPackingPackage: "/yonetim/paketleme/paket/:id",
+  adminPackingReturns: "/yonetim/paketleme/iade",
   adminDelivery: "/yonetim/dagitim",
   // Dağıtım alt sekmeleri (URL-tabanlı; index = "Bugün" operasyon kokpiti).
   adminDeliveryOrders: "/yonetim/dagitim/siparisler",
@@ -243,6 +250,10 @@ export const ROUTES = {
   adminInventoryCounts: PATHS.adminInventoryCounts,
   adminInventoryDamage: PATHS.adminInventoryDamage,
   adminInventoryCount: (id: string | number) => `/yonetim/envanter/sayimlar/${id}`,
+  adminPacking: PATHS.adminPacking,
+  adminPackingPackages: PATHS.adminPackingPackages,
+  adminPackingPackage: (id: string | number) => `/yonetim/paketleme/paket/${id}`,
+  adminPackingReturns: PATHS.adminPackingReturns,
   adminDelivery: PATHS.adminDelivery,
   adminDeliveryOrders: PATHS.adminDeliveryOrders,
   adminDeliveryRuns: PATHS.adminDeliveryRuns,

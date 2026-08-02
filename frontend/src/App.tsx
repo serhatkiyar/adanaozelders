@@ -89,6 +89,11 @@ const InventoryOverviewPage = lazy(() => import("@/pages/admin/inventory/Invento
 const CountSessionsPage = lazy(() => import("@/pages/admin/inventory/CountSessionsPage"));
 const CountSessionDetailPage = lazy(() => import("@/pages/admin/inventory/CountSessionDetailPage"));
 const DamageEventsPage = lazy(() => import("@/pages/admin/inventory/DamageEventsPage"));
+const PackingLayout = lazy(() => import("@/pages/admin/packing/PackingLayout"));
+const PackingQueuePage = lazy(() => import("@/pages/admin/packing/PackingQueuePage"));
+const PackingStationPage = lazy(() => import("@/pages/admin/packing/PackingStationPage"));
+const PackagesPage = lazy(() => import("@/pages/admin/packing/PackagesPage"));
+const ReturnQueuePage = lazy(() => import("@/pages/admin/packing/ReturnQueuePage"));
 const DeliveryLayout = lazy(() => import("@/pages/admin/delivery/DeliveryLayout"));
 const DeliveryTodayPage = lazy(() => import("@/pages/admin/delivery/DeliveryTodayPage"));
 const DeliveryOrdersPage = lazy(() => import("@/pages/admin/delivery/DeliveryOrdersPage"));
@@ -434,6 +439,14 @@ function App() {
                 <Route path="sayimlar" element={<CountSessionsPage />} />
                 <Route path="sayimlar/:id" element={<CountSessionDetailPage />} />
                 <Route path="hasar" element={<DamageEventsPage />} />
+              </Route>
+              {/* Paketleme istasyonu: kuyruk (index) · paketler · tek paket
+                  (deep-link) · geri dönüş kuyruğu. */}
+              <Route path="paketleme" element={<PackingLayout />}>
+                <Route index element={<PackingQueuePage />} />
+                <Route path="paketler" element={<PackagesPage />} />
+                <Route path="paket/:id" element={<PackingStationPage />} />
+                <Route path="iade" element={<ReturnQueuePage />} />
               </Route>
               <Route path="dagitim" element={<DeliveryLayout />}>
                 <Route index element={<DeliveryTodayPage />} />
