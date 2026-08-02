@@ -558,12 +558,71 @@ class PackageSummary:
     status: str
 
 
-def _ozet(paket: OrderPackage) -> PackageSummary:
-    return PackageSummary(
-        id=paket.id,
-        code=packing_rules.package_code(paket.id),
-        status=paket.status,
-    )
+#: Kuyruk satırının operatöre önerdiği eylemler. Ekran bu değere bakar; durum
+#: dizgisinden iş akışı ÇIKARMAZ.
+NEXT_ACTION_OPEN = "OPEN_NEW_PACKAGE"        # paket yok → yeni paket aç
+NEXT_ACTION_CONTINUE = "CONTINUE_PACKING"    # `OPEN` paket → yarım işe devam
+NEXT_ACTION_REPACK = "REPACK_RETURNED"       # `RETURNED` paket → yeniden paketle
+
+#: Canlı paket durumundan eyleme. **Kapalı sözlüktür**: burada olmayan her durum
+#: eylemsizdir. `PACKED`/`HANDED_OVER`/`RETURN_PENDING` kuyruğa zaten girmez;
+#: girebilseydi doğru cevap "bir eylem uydur" değil "hiçbir şey önerme"dir.
+_PAKET_DURUM_EYLEMI: dict[str, str] = {
+    "OPEN": NEXT_ACTION_CONTINUE,
+    "RETURNED": NEXT_ACTION_REPACK,
+}
+
+
+def next_action_for(package_status: str | None) -> str | None:
+    """Kuyruk satırının TEK doğru eylemi; bilinmeyen durumda **None**.
+
+    Fail-closed olması bilinçlidir. Varsayılanı `NEXT_ACTION_OPEN` yapmak
+    kolaydı ve tam olarak commit 5 denetiminin bulduğu çıkmazı geri getirirdi:
+    tanınmayan bir durumda ekran "Paketle" der, operatör aynı ürünleri ikinci
+    kez raftan toplar. Eylemsiz satır ise görünür kalır ve insanı çağırır.
+    """
+    if package_status is None:
+        return NEXT_ACTION_OPEN
+    return _PAKET_DURUM_EYLEMI.get(package_status)
+
+
+async def _canli_paket_ozetleri(
+    db: AsyncSession, order_ids: list[int]
+) -> dict[int, PackageSummary]:
+    """Sipariş → canlı paket özeti, **TEK sorguda** (N+1 yok).
+
+    Eskiden kuyruk satır başına `packing_events.live_package` çağırıyordu ve 25
+    satır 29 sorgu ediyordu; `eligible_orders`'ta aynı hata bir kez düzeltilmişti
+    (`delivery_service` anti-join'i), burada tekrarlanmıştı.
+
+    Sipariş başına en fazla bir canlı paket vardır — bunu uygulama değil
+    `uq_order_packages_live` kısmi unique index'i garanti eder; sözlüğe yazarken
+    "hangisini seçeyim" sorusu bu yüzden doğmaz. Yüklem yine
+    `packing_rules.LIVE_STATUSES`'ten gelir: elle yazılmış ikinci bir filtre er
+    ya da geç o index'ten ayrışırdı.
+
+    Yalnız ihtiyaç duyulan üç kolon çekilir; `selectinload(items)` ile paketin
+    satırlarını da getirmek özet için gereksiz ikinci bir sorgu olurdu (kuyruk
+    ekranı kalem adetlerini SİPARİŞTEN gösterir).
+    """
+    if not order_ids:
+        return {}
+    rows = (
+        await db.execute(
+            select(OrderPackage.order_id, OrderPackage.id, OrderPackage.status).where(
+                OrderPackage.order_id.in_(order_ids),
+                OrderPackage.status.in_(packing_rules.LIVE_STATUSES),
+            )
+        )
+    ).all()
+    return {
+        order_id: PackageSummary(
+            id=paket_id,
+            code=packing_rules.package_code(paket_id),
+            status=durum,
+        )
+        for order_id, paket_id, durum in rows
+    }
 
 
 @dataclasses.dataclass(frozen=True, slots=True)
@@ -589,9 +648,20 @@ class QueueRow:
     created_at: datetime.datetime | None
     prepared_at: datetime.datetime | None
     package: PackageSummary | None
+    #: Ekranın sunacağı TEK eylem; `None` = eylemsiz satır (fail-closed).
+    next_action: str | None
 
 
-async def packing_queue(db: AsyncSession) -> tuple[list[QueueRow], int]:
+#: Kuyruğun servis tarafı tavanı — `list_packages` ile AYNI değer ve aynı
+#: gerekçe: router `Query(le=...)` ile sınırlar ama tek katmanlı koruma koruma
+#: değildir; servisi doğrudan çağıran bir arka plan işi de tabloyu tek istekte
+#: çekememelidir.
+QUEUE_MAX_LIMIT = LIST_MAX_LIMIT
+
+
+async def packing_queue(
+    db: AsyncSession, *, limit: int = 50, offset: int = 0
+) -> tuple[list[QueueRow], int]:
     """Paketleme istasyonu kuyruğu: **işlem bekleyen** siparişler.
 
     `delivery_service.prep_queue`'dan farkı bilinçlidir. O kuyruk "henüz
@@ -603,38 +673,62 @@ async def packing_queue(db: AsyncSession) -> tuple[list[QueueRow], int]:
     * `OPEN` paketi olan sipariş  → "Devam et" (yarım kalmış iş)
     * `RETURNED` paketi olan sipariş → "Yeniden paketle" (`repack`)
 
-    Dışarıda kalanlar: `PACKED` (iş bitti, dağıtım kuyruğunda) ve araçtaki
-    paketler (`HANDED_OVER`/`RETURN_PENDING` — onlar geri dönüş kuyruğunda).
+    Dışarıda kalanlar: `PACKED` (iş bitti, dağıtım kuyruğunda), araçtaki
+    paketler (`HANDED_OVER`/`RETURN_PENDING` — onlar geri dönüş kuyruğunda) ve
+    paketi hiç olmadığı hâlde zaten bir turda bekleyen F30 ÖNCESİ siparişler
+    (`packing_events.open_stop_without_package_exists`).
+
+    ## Sayfalama ve sıra
+
+    Kardeş uç `/packing/packages` ile aynı sözleşme: `total` **süzülmüş toplam**
+    kayıt sayısıdır (sayfa uzunluğu değil), `items` yalnız istenen sayfadır.
+    Sıralama `(promised_delivery_date, created_at, id)` üçlüsüdür ve son
+    bağlayıcı ŞART: aynı güne söz verilmiş, aynı anda oluşmuş iki sipariş
+    belirsiz sırada dönseydi `limit`/`offset` ile gezen ekran aynı kaydı iki
+    sayfada gösterip bir başkasını hiç göstermezdi (F29'da bir kez yaşandı).
     """
     hazir_paket = (
         select(OrderPackage.id)
         .where(OrderPackage.order_id == Order.id, OrderPackage.status == "PACKED")
         .exists()
     )
+    kosullar = (
+        Order.deleted_at.is_(None),
+        Order.has_physical.is_(True),
+        Order.payment_status == "PAID",
+        Order.status == "PAID",
+        Order.ship_in_zone.is_(True),
+        ~hazir_paket,
+        ~packing_events.off_premise_package_exists(),
+        ~packing_events.open_stop_without_package_exists(),
+        _deneme_hakki_var(),
+    )
+    toplam = int(
+        (
+            await db.execute(
+                select(func.count()).select_from(Order).where(*kosullar)
+            )
+        ).scalar_one()
+    )
     orders = (
         await db.execute(
             select(Order)
             .options(selectinload(Order.items))
-            .where(
-                Order.deleted_at.is_(None),
-                Order.has_physical.is_(True),
-                Order.payment_status == "PAID",
-                Order.status == "PAID",
-                Order.ship_in_zone.is_(True),
-                ~hazir_paket,
-                ~packing_events.off_premise_package_exists(),
-                _deneme_hakki_var(),
-            )
+            .where(*kosullar)
             .order_by(
                 Order.promised_delivery_date.asc().nulls_last(),
                 Order.created_at.asc(),
+                Order.id.asc(),
             )
+            .limit(min(max(int(limit), 1), QUEUE_MAX_LIMIT))
+            .offset(max(int(offset), 0))
         )
     ).scalars().all()
 
+    paketler = await _canli_paket_ozetleri(db, [o.id for o in orders])
     satirlar: list[QueueRow] = []
     for order in orders:
-        paket = await packing_events.live_package(db, order.id)
+        paket = paketler.get(order.id)
         fiziksel = [it for it in order.items if it.kind == PHYSICAL_KIND]
         satirlar.append(
             QueueRow(
@@ -649,10 +743,11 @@ async def packing_queue(db: AsyncSession) -> tuple[list[QueueRow], int]:
                 promised_delivery_date=order.promised_delivery_date,
                 created_at=order.created_at,
                 prepared_at=order.prepared_at,
-                package=_ozet(paket) if paket is not None else None,
+                package=paket,
+                next_action=next_action_for(paket.status if paket else None),
             )
         )
-    return satirlar, len(satirlar)
+    return satirlar, toplam
 
 
 async def return_queue(db: AsyncSession) -> list[ReturnQueueRow]:

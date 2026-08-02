@@ -11,7 +11,14 @@
   `OK_MANUAL` · `WRONG_SKU` · `OVER_QTY`) 200 ile döner; red de bir olaydır ve
   `package_scan_events`'e yazılabilmesi için transaction commit edilmelidir
   (sözleşme §6). Yapısal hatalar 4xx'tir.
-* **Sayfalama zorunlu ve tavanlı** — F29 `schemas/inventory.py` disiplini.
+* **Sayfalama zorunlu ve tavanlı** — F29 `schemas/inventory.py` disiplini. Bu
+  kural `/packing/packages` kadar `/packing/queue` için de geçerlidir: kuyruk
+  "bugünün işi" olduğu için küçük kalacağı VARSAYILAMAZ (bir kampanya günü
+  yüzlerce satır demektir) ve tavansız uç, sayfalı kardeşiyle aynı sözleşmeyi
+  konuşmadığı sürece istemci iki farklı biçim taşımak zorunda kalır.
+* **İş akışı tahmin ETTİRİLMEZ.** Kuyruk satırı `next_action` ile hangi eylemin
+  doğru olduğunu AÇIKÇA söyler; istemci durum dizgilerinden kural türetmez
+  (`RETURNED` → "Paketle" çıkarımı commit 5 denetiminin bulduğu çıkmazdı).
 * **`qr_payload` yalnız paketleme yetkisi olanlara gider.** Etiket basımı için
   gereklidir; kalıcı olduğu için (sözleşme §3.3) çalınan etiket riski §7 S4'te
   kayıtlıdır ve zimmet ayrıca durak sahipliği arar.
@@ -19,11 +26,40 @@
 from __future__ import annotations
 
 import datetime
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
 #: Liste uçlarının tek istekte dönebileceği EN FAZLA satır (F29 ile aynı tavan).
 MAX_LIMIT = 200
+
+#: Paket durumu — çıplak `str` DEĞİL. Şema katmanı `services`'i import EDEMEZ
+#: (bağımlılık yönü `services → schemas`'tır; ters yön döngü kurar), bu yüzden
+#: sözlük burada ÜÇÜNCÜ kez yazılıdır — `models.packing.PACKAGE_STATUSES` ve
+#: `services.packing_rules.PACKAGE_STATUSES` ile birlikte. Kopyanın bedeli
+#: ayrışma riskidir ve bir drift testiyle ödenir
+#: (`test_f30_guards_pg.py::test_C7_KUYRUK_DURUM_LITERALI_KURALLARDAN_AYRISAMAZ`).
+#: Kazancı: uçtan çıkan durum kümesi OpenAPI şemasında görünür ve istemci
+#: (TypeScript) kendi birleşim tipini uydurmak zorunda kalmaz.
+PackageStatus = Literal[
+    "OPEN",
+    "PACKED",
+    "HANDED_OVER",
+    "RETURN_PENDING",
+    "RETURNED",
+    "DELIVERED",
+    "VOID",
+]
+
+#: Kuyruk satırının operatöre önerdiği TEK eylem. `null` = eyleme dönüşmeyen
+#: satır: ekran hiçbir YAZMA eylemi sunmamalıdır (fail-closed). Sessizce "yeni
+#: paket aç" demek, tanınmayan bir durumda aynı ürünleri ikinci kez raftan
+#: toplatabilirdi.
+PackingNextAction = Literal[
+    "OPEN_NEW_PACKAGE",
+    "CONTINUE_PACKING",
+    "REPACK_RETURNED",
+]
 
 #: `offset` tavanı — sınırsız offset her istekte tam tarama maliyeti üretir.
 MAX_OFFSET = 100_000
@@ -158,7 +194,10 @@ class PackageSummaryOut(BaseModel):
 
     id: int
     code: str
-    status: str
+    #: `PackageOut.status` bilinçli olarak çıplak `str` kalır: orada durum
+    #: yalnız GÖSTERİLİR. Kuyruk satırında ise ekran ona bakıp eylem seçer, yani
+    #: kümenin sözleşmesi istemciyi bağlar.
+    status: PackageStatus
 
 
 class PackingQueueItemOut(BaseModel):
@@ -189,11 +228,24 @@ class PackingQueueRowOut(BaseModel):
     created_at: datetime.datetime | None = None
     prepared_at: datetime.datetime | None = None
     package: PackageSummaryOut | None = None
+    #: Sunucunun kararı: bu satırda hangi işlem doğru? `None` ise ekran hiçbir
+    #: yazma eylemi göstermez (bilinmeyen durum → fail-closed).
+    next_action: PackingNextAction | None = None
 
 
 class PackingQueuePage(BaseModel):
+    """Kuyruğun BİR sayfası.
+
+    `total` **süzülmüş toplam** kayıt sayısıdır, sayfanın uzunluğu değil.
+    Ayrım önemlidir: eskiden uç `total = len(items)` döndürüyordu ve bunu
+    doğrulayan test totolojikti — ekran "23 iş var" derken 23'ün nereden
+    geldiğini kimse denetlemiyordu.
+    """
+
     items: list[PackingQueueRowOut]
     total: int
+    limit: int
+    offset: int
 
 
 class ReturnQueueRowOut(BaseModel):

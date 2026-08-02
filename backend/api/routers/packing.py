@@ -150,10 +150,17 @@ async def _yonetim_izni_ara(db: AsyncSession, admin: Admin) -> None:
 
 @router.get("/queue", response_model=PackingQueuePage)
 async def packing_queue(
+    limit: int = Query(default=50, ge=1, le=MAX_LIMIT),
+    offset: int = Query(default=0, ge=0, le=MAX_OFFSET),
     _admin: Admin = Depends(VIEW),
     db: AsyncSession = Depends(get_db),
 ):
-    """Paketleme istasyonunun kuyruğu — söz gününe göre sıralı.
+    """Paketleme istasyonunun kuyruğu — söz gününe göre sıralı, **sayfalı**.
+
+    Sayfalama sözleşmesi kardeş uçla (`/packing/packages`) birebir aynıdır:
+    `limit` 1..200, `offset` 0..100000, `total` süzülmüş toplam kayıt sayısı.
+    Kuyruğun "bugünün işi" olması onu küçük yapmaz — bir kampanya günü yüzlerce
+    satır demektir ve tavansız uç o gün tek istekte bütün tabloyu çeker.
 
     Üç işi birden gösterir ve her satır **hangi eylemin doğru olduğunu**
     söyleyecek kadar bilgi taşır (`package` özeti):
@@ -170,8 +177,15 @@ async def packing_queue(
     Paketi ARAÇTA olan sipariş burada GÖRÜNMEZ; o kuyruk ayrıdır
     (`/packing/return-queue`), yoksa personel aynı ürünleri ikinci kez raftan
     toplamaya kalkardı (sözleşme §3.5).
+
+    Her satır `next_action` taşır: doğru eylem SUNUCUDA kararlaştırılır, ekran
+    durum dizgisinden iş akışı çıkarmaz. Değer `null` ise (tanınmayan durum)
+    ekran hiçbir yazma eylemi göstermez — sessizce "yeni paket aç" demek,
+    operatöre aynı ürünleri ikinci kez toplatabilirdi.
     """
-    satirlar, toplam = await packing_service.packing_queue(db)
+    satirlar, toplam = await packing_service.packing_queue(
+        db, limit=limit, offset=offset
+    )
     return PackingQueuePage(
         items=[
             PackingQueueRowOut(
@@ -195,10 +209,13 @@ async def packing_queue(
                     if r.package is not None
                     else None
                 ),
+                next_action=r.next_action,
             )
             for r in satirlar
         ],
         total=toplam,
+        limit=limit,
+        offset=offset,
     )
 
 

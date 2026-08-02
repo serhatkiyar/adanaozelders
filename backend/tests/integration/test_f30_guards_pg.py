@@ -12,20 +12,35 @@ karşılığı `scripts`'siz bir sürücüyle koşulmuştur; ayrıntı kapanış
 """
 from __future__ import annotations
 
+import contextlib
+import datetime
+import re
+import typing
+
+import httpx
 import pytest
 from fastapi import HTTPException
-from sqlalchemy import text
+from sqlalchemy import event, text
 
-from core.database import AsyncSessionLocal
+from core.database import AsyncSessionLocal, engine
 from models.store import Order
 from services import delivery_service, order_service
 from tests.integration.f30_factory import PaketFabrikasi
+
+
+#: Kuyruğu OKUMA izni. HTTP düğümleri gerçek izin zinciriyle koşar; "servis
+#: çağırdım, çalıştı" kabul edilmez (kök `CLAUDE.md` §B).
+VIEW_IZNI = "packing.view"
 
 
 def _servis():
     from services import packing_service
 
     return packing_service
+
+
+def _bas(token: str) -> dict:
+    return {"Authorization": f"Bearer {token}"}
 
 
 @pytest.fixture
@@ -35,6 +50,33 @@ async def fab(pg) -> PaketFabrikasi:
         yield f
     finally:
         await f.temizle()
+
+
+@pytest.fixture
+async def client():
+    """Gerçek ASGI istemcisi — doğrulama/yetki zinciri atlanmaz."""
+    from main import app
+
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app), base_url="http://test"
+    ) as c:
+        yield c
+
+
+@pytest.fixture
+async def kur(pg):
+    """Gerçek admin + gerçek rol + gerçek izin (kardeş dosyanın kurulumu).
+
+    Kurulum sınıfı kopyalanmaz: iki kopya er ya da geç ayrışır ve biri sessizce
+    yanlış izin kümesiyle koşar.
+    """
+    from tests.integration.test_f30_packing_api_pg import Kurulum
+
+    k = Kurulum()
+    try:
+        yield k
+    finally:
+        await k.temizle()
 
 
 async def _acik_paket(fab: PaketFabrikasi, servis, aid: int, *, adet: int = 1):
@@ -1015,3 +1057,450 @@ async def test_SIRA_YARDIMCISI_TEKILLESTIRIR_VE_SIRALAR(pg):
             s, [999_000_003, 999_000_001, 999_000_003, 999_000_002]
         )
     assert sonuc == [999_000_001, 999_000_002, 999_000_003], sonuc
+
+
+# ══════ Commit 7 · /packing/queue sözleşmesi (bağımsız denetimin P2'leri) ════
+#
+# Dört bulgu, dört ayrı iddia:
+#   P2-1 sayfalama yok + `total == len(items)` totolojisi,
+#   P2-2 satır başına `live_package` (N+1),
+#   P2-3 çıplak `str` durum + istemcinin iş akışını TAHMİN etmesi,
+#   P2-4 paketi hiç olmamış ama turda bekleyen F30 öncesi sipariş.
+
+
+async def _kuyruk_satiri(servis, order_id: int):
+    """Kuyruktaki BİR satır (yoksa None) — sayfa tavanına takılmadan.
+
+    Sayfalama geldiği için kuyruk artık ilk 50 satırla sınırlı döner; test
+    verisi kuyruğun sonuna eklendiğinde varsayılan sayfada görünmeyebilir.
+    Bu yardımcı hedef siparişi `order_id` ile arar, "ilk sayfada mı" diye
+    sormaz — aksi hâlde testler kuyruğun DOLULUĞUNA bağlı olarak kırılırdı.
+    """
+    async with AsyncSessionLocal() as s:
+        satirlar, _toplam = await servis.packing_queue(s, limit=200)
+    return next((r for r in satirlar if r.order_id == order_id), None)
+
+
+@contextlib.contextmanager
+def _sorgu_sayaci():
+    """Engine üzerinden geçen GERÇEK ifadeleri (+parametrelerini) toplar.
+
+    Mock yok: kayıt `before_cursor_execute`'tan, yani Postgres'e gönderilen
+    metnin kendisinden gelir. `pool_pre_ping`'in "SELECT 1"i bu olaydan geçmez
+    (ham DBAPI üzerinde koşar), yine de her ölçüm ısıtılmış bir session'da
+    yapılır ki sayaç bağlantı kurulum gürültüsünü değil yalnız sorguyu görsün.
+    """
+    ifadeler: list[tuple[str, object]] = []
+
+    def _kaydet(conn, cursor, statement, parameters, context, executemany):
+        ifadeler.append((statement, parameters))
+
+    event.listen(engine.sync_engine, "before_cursor_execute", _kaydet)
+    try:
+        yield ifadeler
+    finally:
+        event.remove(engine.sync_engine, "before_cursor_execute", _kaydet)
+
+
+async def _kuyruk_sayfa_sqli(servis, **cagri) -> tuple[str, list]:
+    """Kuyruğun SİPARİŞ sorgusunun Postgres'e giden hâli: (metin, parametreler).
+
+    Sayfa tavanını "200 satır üretip sayarak" ölçmek gerçekçi değildi (test
+    veritabanında o kadar kuyruk satırı yok ve üretmek suite'i dakikalarca
+    şişirirdi) — o hâlde iddia sessizce totolojik oluyordu: tavan kaldırılsa da
+    yeşil kalıyordu (mutasyon provası bunu YAKALADI ve test bu yüzden
+    güçlendirildi). Burada ölçülen şey gönderilen SQL'in kendisidir.
+    """
+    async with AsyncSessionLocal() as s:
+        await s.execute(text("SELECT 1"))
+        with _sorgu_sayaci() as ifadeler:
+            await servis.packing_queue(s, **cagri)
+    sayfa = [
+        (metin, params)
+        for metin, params in ifadeler
+        if "FROM orders" in metin and "count(" not in metin
+    ]
+    assert len(sayfa) == 1, f"sipariş sayfası sorgusu bulunamadı: {sayfa}"
+    metin, params = sayfa[0]
+    return metin, list(params or [])
+
+
+def _limit_offset(metin: str, params: list) -> tuple[int, int]:
+    """Gönderilen cümledeki `LIMIT`/`OFFSET` değerleri.
+
+    Parametre listesinin SONUNU okumak yetmez: `IN (...)` yüklemleri asyncpg'de
+    çalışma anında genişler ve kendi değerlerini listenin sonuna ekler. Bu
+    yüzden yer tutucu numarası (`$n`) cümlenin metninden çözülür.
+    """
+    esles = re.search(
+        r"LIMIT \$(\d+)(?:::\w+)? OFFSET \$(\d+)(?:::\w+)?", metin
+    )
+    assert esles is not None, f"cümlede parametreli LIMIT/OFFSET yok: {metin[-200:]}"
+    return params[int(esles.group(1)) - 1], params[int(esles.group(2)) - 1]
+
+
+async def _kuyruk_sorgu_sayisi(servis) -> int:
+    async with AsyncSessionLocal() as s:
+        await s.execute(text("SELECT 1"))          # bağlantıyı ısıt (sayım dışı)
+        with _sorgu_sayaci() as ifadeler:
+            await servis.packing_queue(s, limit=200)
+    return len(ifadeler)
+
+
+@pytest.mark.asyncio
+async def test_C7_KUYRUK_SAYFALARI_KAYIT_TEKRARLATMAZ(fab):
+    """`total` süzülmüş toplamdır; sayfalar arasında kayıt tekrarı/kayması olmaz.
+
+    Eski uç `{items, total}` dönüyordu ama `total = len(items)`'ti — yani onu
+    doğrulayan iddia (`toplam == len(kuyruk)`) TOTOLOJİKTİ: uç bütün tabloyu
+    tek istekte döksün ya da yarısını kaybetsin, o assert yeşil kalırdı.
+    Burada ölçülen üç şey:
+
+    1. `total`, sayfa uzunluğundan BAĞIMSIZ olarak taban+3 artar (limit=1 iken
+       bile 3 yeni kaydı bildirir),
+    2. limit=1 ile bütün kuyruk gezildiğinde hiçbir `order_id` iki kez GÖRÜNMEZ
+       ve üç yeni sipariş kaybolmaz,
+    3. sıra deterministiktir: üç siparişin söz günü VE oluşturma anı bilinçli
+       olarak EŞİTLENİR, yani sırayı belirleyen tek şey `Order.id`
+       bağlayıcısıdır. O bağlayıcı olmasaydı sıra Postgres'in keyfine kalırdı
+       ve sayfalar arasında kayma bir gün üretimde görülürdü.
+    """
+    servis = _servis()
+    async with AsyncSessionLocal() as s:
+        _bos, taban = await servis.packing_queue(s, limit=1)
+
+    oidler: list[int] = []
+    for _ in range(3):
+        pid, _sku, _ean = await fab.barkodlu_urun(stock=10)
+        oidler.append(await fab.fiziksel_siparis(kalemler=[(pid, 1)]))
+
+    esit_an = datetime.datetime.now(datetime.timezone.utc)
+    async with AsyncSessionLocal() as s:
+        await s.execute(
+            text(
+                "UPDATE orders SET created_at = :t, promised_delivery_date = :g "
+                "WHERE id = ANY(:i)"
+            ),
+            {"t": esit_an, "g": datetime.date.today(), "i": oidler},
+        )
+        await s.commit()
+
+    async with AsyncSessionLocal() as s:
+        ilk_sayfa, toplam = await servis.packing_queue(s, limit=1)
+    assert len(ilk_sayfa) == 1, "limit=1 sayfası bir satırdan uzun"
+    assert toplam == taban + 3, (
+        f"`total` süzülmüş toplamı bildirmiyor (beklenen {taban + 3}, gelen {toplam})"
+    )
+    assert toplam <= 200, "test veritabanında beklenmedik kadar kuyruk satırı var"
+
+    gorulen: list[int] = []
+    for ofset in range(toplam):
+        async with AsyncSessionLocal() as s:
+            sayfa, sayfa_toplami = await servis.packing_queue(s, limit=1, offset=ofset)
+        assert sayfa_toplami == toplam, "toplam sayfaya göre değişiyor"
+        assert len(sayfa) == 1, f"offset={ofset} sayfası boş/uzun"
+        gorulen.append(sayfa[0].order_id)
+
+    assert len(set(gorulen)) == len(gorulen), (
+        f"sayfalar arasında kayıt tekrarı: {gorulen}"
+    )
+    assert set(oidler) <= set(gorulen), "sayfalanan gezinti bazı siparişleri atladı"
+
+    # Tavanın SON sayfası da doğru davranmalı: aşan offset boş sayfa döner ama
+    # toplamı yalanlamaz.
+    async with AsyncSessionLocal() as s:
+        tasan, tasan_toplam = await servis.packing_queue(s, limit=1, offset=toplam)
+    assert tasan == []
+    assert tasan_toplam == toplam
+
+
+@pytest.mark.asyncio
+async def test_C7_KUYRUK_SERVIS_TAVANI_ROUTERDAN_BAGIMSIZ(fab):
+    """Servis kendi tavanını AYRICA uygular — tek katmanlı koruma koruma değildir.
+
+    Router `Query(le=200)` ile sınırlar, ama servisi doğrudan çağıran bir arka
+    plan işi ya da yarın yazılacak ikinci bir uç o sınırın dışındadır.
+
+    İddia **gönderilen SQL üzerinden** kurulur: `limit=10_000` istendiğinde
+    Postgres'e giden cümlede `LIMIT` yer alır ve değeri `QUEUE_MAX_LIMIT`'tir.
+    Satır sayarak ölçmek burada işe yaramaz — test veritabanında 200'den fazla
+    kuyruk satırı yoktur, dolayısıyla tavan kaldırılsa bile satır sayısı aynı
+    kalır (bu tam olarak yaşandı; mutasyon provası testi yakalayıp
+    güçlendirtti).
+    """
+    servis = _servis()
+    pid, _sku, _ean = await fab.barkodlu_urun(stock=10)
+    await fab.fiziksel_siparis(kalemler=[(pid, 1)])
+
+    metin, params = await _kuyruk_sayfa_sqli(servis, limit=10_000)
+    assert _limit_offset(metin, params) == (servis.QUEUE_MAX_LIMIT, 0), (
+        "servis tavanı uygulanmadı: "
+        f"{_limit_offset(metin, params)} ≠ ({servis.QUEUE_MAX_LIMIT}, 0)"
+    )
+
+    # Taban da servis tarafında: geçersiz değer sayfayı BOŞALTMAZ.
+    m0, p0 = await _kuyruk_sayfa_sqli(servis, limit=0, offset=-5)
+    assert _limit_offset(m0, p0) == (1, 0), (
+        f"limit=0/offset=-5 tabana çekilmedi: {_limit_offset(m0, p0)}"
+    )
+
+    async with AsyncSessionLocal() as s:
+        sifir, _t = await servis.packing_queue(s, limit=0)
+        eksi, _t2 = await servis.packing_queue(s, limit=1, offset=-5)
+    assert len(sifir) == 1, "limit=0 sayfayı boşaltmamalı, tabana çekilmeli"
+    assert len(eksi) == 1, "negatif offset tabana çekilmeli"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "sorgu",
+    [
+        "limit=0",
+        "limit=-1",
+        "limit=201",
+        "limit=abc",
+        "offset=-1",
+        "offset=100001",
+        "offset=x",
+    ],
+)
+async def test_C7_KUYRUK_GECERSIZ_SAYFALAMA_422(client, kur, sorgu):
+    """Geçersiz `limit`/`offset` **422**'dir — sessizce tabana çekilmez.
+
+    Sessiz düzeltme, istemcinin istediğiyle aldığının farklı olmasına yol açar:
+    `limit=1000` isteyen ekran 200 satır alıp "hepsi bu" sanar. Doğrulama
+    gerçek dependency zinciriyle ölçülür; yanındaki 200'lük ters prova 422'nin
+    yetkiden ya da başka bir kontrolden gelmediğini kanıtlar.
+    """
+    _aid, token = await kur.admin(izinler=[VIEW_IZNI])
+    r = await client.get(f"/api/v1/packing/queue?{sorgu}", headers=_bas(token))
+    assert r.status_code == 422, f"{sorgu} kabul edildi: {r.status_code} {r.text}"
+
+    ok = await client.get(
+        "/api/v1/packing/queue?limit=1&offset=0", headers=_bas(token)
+    )
+    assert ok.status_code == 200, f"geçerli sayfa da reddediliyor: {ok.text}"
+    govde = ok.json()
+    assert govde["limit"] == 1 and govde["offset"] == 0
+    assert isinstance(govde["total"], int)
+    assert len(govde["items"]) <= 1
+
+
+@pytest.mark.asyncio
+async def test_C7_KUYRUK_SORGU_SAYISI_SATIR_SAYISIYLA_ARTMAZ(fab):
+    """Sorgu sayısı SABİT: 1 satır ile 5 satır aynı sayıda sorgu üretir.
+
+    Eski hâlde kuyruk satır başına `packing_events.live_package` çağırıyordu
+    (25 satır → 29 sorgu ölçüldü). Bu, `eligible_orders`'ta bir kez düzeltilen
+    N+1'in aynısıydı; kuyrukta tekrarlanmıştı.
+
+    Ölçüm gerçek engine olayından gelir (`before_cursor_execute`), yani sorgu
+    "sayılmış gibi yapılamaz". Üst sınır bilinçli olarak DAR tutulur (≤6):
+    gevşek bir tavan (ör. ≤50) N+1'in geri gelmesini 45 satıra kadar
+    görmezdi.
+    """
+    servis = _servis()
+    aid = await fab.admin()
+
+    pid, _sku, _ean = await fab.barkodlu_urun(stock=10)
+    await fab.fiziksel_siparis(kalemler=[(pid, 1)])
+    bir_satir = await _kuyruk_sorgu_sayisi(servis)
+
+    for _ in range(4):
+        p, _s, _e = await fab.barkodlu_urun(stock=10)
+        oid = await fab.fiziksel_siparis(kalemler=[(p, 1)])
+    # Satırlardan biri CANLI paketli olsun: özet yolu da ölçülsün, yoksa test
+    # "paket hiç okunmuyor" hâlinde de yeşil kalırdı.
+    async with AsyncSessionLocal() as s:
+        await servis.open_package(s, oid, admin_id=aid)
+
+    bes_satir = await _kuyruk_sorgu_sayisi(servis)
+
+    async with AsyncSessionLocal() as s:
+        satirlar, _t = await servis.packing_queue(s, limit=200)
+    assert len(satirlar) >= 5, "ölçüm için yeterli satır oluşmamış"
+    assert any(r.package is not None for r in satirlar), "canlı paketli satır yok"
+
+    assert bir_satir == bes_satir, (
+        f"sorgu sayısı satır sayısıyla artıyor (N+1): 1 satır → {bir_satir}, "
+        f"5 satır → {bes_satir}"
+    )
+    assert bes_satir <= 6, f"kuyruk çok fazla sorgu üretiyor: {bes_satir}"
+
+
+@pytest.mark.asyncio
+async def test_C7_NEXT_ACTION_UC_DURUMU_AYIRT_EDER(fab):
+    """Satır hangi eylemin doğru olduğunu AÇIKÇA söyler (istemci tahmin etmez).
+
+    * paketi yok            → `OPEN_NEW_PACKAGE`
+    * `OPEN` paketi var     → `CONTINUE_PACKING`
+    * `RETURNED` paketi var → `REPACK_RETURNED`
+
+    Üçü de gerçek servis yollarıyla kurulur (ham SQL ile durum yazılmaz), yani
+    ölçülen şey gerçek akışın ürettiği satırdır.
+    """
+    servis = _servis()
+    aid = await fab.admin()
+    kurye = await fab.kurye()
+
+    p1, _s1, _e1 = await fab.barkodlu_urun(stock=10)
+    yeni_oid = await fab.fiziksel_siparis(kalemler=[(p1, 1)])
+
+    p2, _s2, _e2 = await fab.barkodlu_urun(stock=10)
+    acik_oid = await fab.fiziksel_siparis(kalemler=[(p2, 1)])
+    async with AsyncSessionLocal() as s:
+        await servis.open_package(s, acik_oid, admin_id=aid)
+
+    donen_oid, paket, stop_id, _run = await _sahada_paket(fab, servis, aid, kurye)
+    async with AsyncSessionLocal() as s:
+        await delivery_service.fail_stop(
+            s, stop_id, reason="Kimse yoktu", reason_code="EVDE_YOK"
+        )
+    async with AsyncSessionLocal() as s:
+        await servis.return_in(s, paket.id, admin_id=aid)
+
+    yeni = await _kuyruk_satiri(servis, yeni_oid)
+    acik = await _kuyruk_satiri(servis, acik_oid)
+    donen = await _kuyruk_satiri(servis, donen_oid)
+    assert yeni is not None and acik is not None and donen is not None
+
+    assert yeni.package is None
+    assert yeni.next_action == "OPEN_NEW_PACKAGE"
+    assert acik.package is not None and acik.package.status == "OPEN"
+    assert acik.next_action == "CONTINUE_PACKING"
+    assert donen.package is not None and donen.package.status == "RETURNED"
+    assert donen.next_action == "REPACK_RETURNED", (
+        "geri gelen paket için 'yeni paket aç' öneriliyor — commit 5 çıkmazı"
+    )
+
+    # Fail-closed: tanınmayan durum eyleme DÖNÜŞMEZ. Varsayılanı "yeni paket aç"
+    # yapmak, operatöre aynı ürünleri ikinci kez toplatırdı.
+    assert servis.next_action_for("HANDED_OVER") is None
+    assert servis.next_action_for("VOID") is None
+    assert servis.next_action_for("BILINMEYEN_DURUM") is None
+
+
+@pytest.mark.asyncio
+async def test_C7_LEGACY_ACIK_DURAKLI_SIPARIS_KUYRUKTA_GORUNMEZ(fab):
+    """Paketi HİÇ olmamış ama zaten turda bekleyen sipariş kuyruktan ÇIKAR.
+
+    F30 öncesinden kalan sipariş: elle "Hazır" damgalanmış, bir tura eklenmiş,
+    paket geçmişi yok. Kuyrukta "Paketle" olarak görünüyordu; operatör paketleyip
+    tamamlasa bile durak ZATEN vardı ve zimmetsiz kaldığı için `start_run` bütün
+    turu 409'luyordu — sonu çıkmaz olan bir iş öneriliyordu.
+
+    Ayırt edicilik: durak EKLENMEDEN ÖNCE sipariş kuyrukta GÖRÜNÜR; tek fark
+    açık durağın varlığıdır. Ayrıca koşulun `delivery_service._has_open_stop`
+    ile aynı anlama geldiği doğrudan karşılaştırılır (ikisi sözleşme §3.7
+    yüzünden ayrı yazılıdır ve ayrışabilirler).
+    """
+    servis = _servis()
+    kurye = await fab.kurye()
+    pid, _sku, _ean = await fab.barkodlu_urun(stock=10)
+    oid = await fab.fiziksel_siparis(kalemler=[(pid, 1)], prepared=True)
+
+    assert await _kuyruk_satiri(servis, oid) is not None, (
+        "durak eklenmeden önce de görünmüyor — bu test izole değil"
+    )
+
+    run = await fab.tur(courier_id=kurye)
+    async with AsyncSessionLocal() as s:
+        await s.execute(
+            text(
+                "INSERT INTO delivery_stops (run_id, order_id, sequence, qr_token, "
+                "status, created_at, updated_at) "
+                "VALUES (:r, :o, 1, :t, 'PENDING', now(), now())"
+            ),
+            {"r": run, "o": oid, "t": "legacy-" + str(oid)},
+        )
+        await s.commit()
+
+    async with AsyncSessionLocal() as s:
+        assert await delivery_service._has_open_stop(s, oid) is True
+    assert await _kuyruk_satiri(servis, oid) is None, (
+        "turda bekleyen paketsiz sipariş paketleme kuyruğunda görünüyor"
+    )
+
+
+@pytest.mark.asyncio
+async def test_C7_LEGACY_DURAKSIZ_SIPARIS_KUYRUKTA_GORUNUR(fab):
+    """Ters prova: elenen şey AÇIK DURAK, "eski sipariş" değil.
+
+    Aksi hâlde yukarıdaki düğüm, kuyruk bütün legacy siparişleri (hatta hepsini)
+    yuttuğu hâlde de yeşil kalırdı. Burada aynı kurulum kullanılır, tek fark
+    durağın SONUÇLANMIŞ olmasıdır — sipariş yeniden paketlenebilir ve kuyrukta
+    görünmelidir.
+    """
+    servis = _servis()
+    kurye = await fab.kurye()
+    pid, _sku, _ean = await fab.barkodlu_urun(stock=10)
+    oid = await fab.fiziksel_siparis(kalemler=[(pid, 1)], prepared=True)
+
+    run = await fab.tur(courier_id=kurye)
+    async with AsyncSessionLocal() as s:
+        await s.execute(
+            text(
+                "INSERT INTO delivery_stops (run_id, order_id, sequence, qr_token, "
+                "status, fail_reason, created_at, updated_at) "
+                "VALUES (:r, :o, 1, :t, 'FAILED', 'EVDE_YOK', now(), now())"
+            ),
+            {"r": run, "o": oid, "t": "legacy-kapali-" + str(oid)},
+        )
+        await s.commit()
+
+    async with AsyncSessionLocal() as s:
+        assert await delivery_service._has_open_stop(s, oid) is False
+    satir = await _kuyruk_satiri(servis, oid)
+    assert satir is not None, "sonuçlanmış duraklı sipariş kuyruktan da elenmiş"
+    assert satir.next_action == "OPEN_NEW_PACKAGE"
+
+
+def _literal_degerleri(annotation) -> tuple[str, ...]:
+    """`Literal[...]` / `Literal[...] | None` içinden değerleri çıkarır.
+
+    Kaynak metni değil GERÇEK tip nesnesi okunur: şemadaki bir yorum satırı ya
+    da docstring'deki örnek küme testi kandıramaz.
+    """
+    for aday in (annotation, *typing.get_args(annotation)):
+        if typing.get_origin(aday) is typing.Literal:
+            return typing.get_args(aday)
+    raise AssertionError(f"Literal bulunamadı: {annotation!r}")
+
+
+def test_C7_KUYRUK_DURUM_LITERALI_KURALLARDAN_AYRISAMAZ():
+    """Şemadaki durum kümesi ↔ `packing_rules.PACKAGE_STATUSES`: aynı, aynı sırada.
+
+    Şema katmanı `services`'i import EDEMEZ (bağımlılık yönü `services →
+    schemas`), bu yüzden sözlük üçüncü kez yazılıdır. Ayrışırsa hata SESSİZ
+    değil ama YANLIŞ yerde görünür: uç, DB'nin kabul ettiği bir durumu
+    yanıtlarken pydantic doğrulaması patlar ve operatör 500 görür.
+
+    ⚠️ Bu **düşük güçlü** bir sözleşme testidir (kök `CLAUDE.md` §C); davranış
+    eşi `test_C7_NEXT_ACTION_UC_DURUMU_AYIRT_EDER`'dir (gerçek uçtan gerçek
+    durum döner).
+    """
+    from schemas.packing import PackageSummaryOut, PackingQueueRowOut
+    from services import packing_rules
+
+    durumlar = _literal_degerleri(
+        PackageSummaryOut.model_fields["status"].annotation
+    )
+    assert durumlar == tuple(packing_rules.PACKAGE_STATUSES), (
+        f"şema durum kümesi ayrışmış: {durumlar} ≠ "
+        f"{tuple(packing_rules.PACKAGE_STATUSES)}"
+    )
+
+    # `next_action` da ayrışabilir: servis yeni bir eylem üretip şemaya
+    # eklemezse yanıt 500 olur.
+    from services import packing_service
+
+    semadaki = set(
+        _literal_degerleri(PackingQueueRowOut.model_fields["next_action"].annotation)
+    )
+    uretilen = {packing_service.NEXT_ACTION_OPEN} | set(
+        packing_service._PAKET_DURUM_EYLEMI.values()
+    )
+    assert semadaki == uretilen, (
+        f"next_action sözlüğü ayrışmış: şema {sorted(semadaki)} ≠ "
+        f"servis {sorted(uretilen)}"
+    )

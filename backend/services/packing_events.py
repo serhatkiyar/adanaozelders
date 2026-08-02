@@ -289,6 +289,56 @@ def first_packing_blocked_condition():
     )
 
 
+def open_stop_without_package_exists():
+    """"Paketi HİÇ olmamış ama zaten bir turda bekleyen" sipariş — SQL `EXISTS`.
+
+    Paketleme kuyruğu bunu DIŞARIDA bırakır. Somut hata (bağımsız denetim,
+    P2-4): F30 öncesinden kalan bir sipariş elle "Hazır" damgalanıp tura
+    eklenmişti; paket geçmişi olmadığı için kuyrukta "Paketle" olarak görünüyor,
+    operatör paketleyip `complete` diyor, ama durak ZATEN vardı ve zimmetsiz
+    kaldığı için `start_run` bütün turu 409'luyordu. Yani ekran, sonu 409 olan
+    bir iş öneriyordu.
+
+    Kural yalnız **paket geçmişi olmayan** siparişe uygulanır; yeni siparişlerin
+    paket zorunluluğu GEVŞETİLMEZ (paketi olan sipariş zaten `add_stops`
+    guard'larından geçmiştir ve kuyruktaki yeri paketinin durumuna bağlıdır).
+
+    ## Neden burada, neden SQL
+
+    Anlam `delivery_service._has_open_stop` ile aynıdır ama sözleşme §3.7
+    `packing_service`in `delivery_service`i import etmesini YASAKLAR (döngü
+    sınırı). Bu yüzden koşul, yalnız modellere dokunan bu ince modülde SQL
+    olarak yazılır. Kopya olduğu için ayrışabilir; nöbetçisi
+    `test_f30_guards_pg.py::test_C7_LEGACY_ACIK_DURAKLI_SIPARIS_KUYRUKTA_GORUNMEZ`
+    içinde iki tarafın aynı sipariş için aynı cevabı verdiğini doğrulayan
+    iddiadır.
+    """
+    from models.delivery import (
+        DeliveryRun,
+        DeliveryRunStatus,
+        DeliveryStop,
+        DeliveryStopStatus,
+    )
+
+    acik_durak = (
+        select(DeliveryStop.id)
+        .join(DeliveryRun, DeliveryStop.run_id == DeliveryRun.id)
+        .where(
+            DeliveryStop.order_id == Order.id,
+            DeliveryStop.status == DeliveryStopStatus.PENDING.value,
+            DeliveryRun.status.in_(
+                (DeliveryRunStatus.PLANNED.value, DeliveryRunStatus.ACTIVE.value)
+            ),
+            DeliveryRun.deleted_at.is_(None),
+        )
+        .exists()
+    )
+    paket_gecmisi = (
+        select(OrderPackage.id).where(OrderPackage.order_id == Order.id).exists()
+    )
+    return acik_durak & ~paket_gecmisi
+
+
 def off_premise_package_exists():
     """"Bu siparişin paketi ARAÇTA" koşulu — SQL `EXISTS` alt sorgusu (saf yapı).
 
