@@ -70,9 +70,9 @@ export async function retryExhaustedOrder(
  * `POST /delivery/orders/{id}/prepare` ve `/unprepare` uçları backend'den
  * silindi (sözleşme §3.5, boşluk G1): elle "Hazır" butonu, kalem kalem
  * doğrulanmamış bir paketi dağıtım kuyruğuna sokabiliyordu. Hazırlama artık
- * yalnız paketleme istasyonundan geçer (paket aç → tara → tamamla) ve o ekran
- * commit 6'da gelir. İstemcide çağrı bırakmak, uç yokken 404 üreten ölü bir
- * buton demekti.
+ * yalnız paketleme istasyonundan geçer (paket aç → tara → tamamla):
+ * `/yonetim/paketleme` — istemci katmanı `src/api/packing.ts`. İstemcide çağrı
+ * bırakmak, uç yokken 404 üreten ölü bir buton demekti.
  */
 
 /* ── Kurye workspace (rol 5) ── */

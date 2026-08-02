@@ -1,8 +1,14 @@
 // "Siparişler" — sipariş havuzu. Ödenmiş siparişi hazır pakete, hazır paketi
 // tura, bölge dışını dış kargoya akıtır. Üç kuyruk URL'de (?kuyruk=):
-//   hazirlik  → prep-queue: paket toplanacak ("Hazırla" + toplu)
-//   hazir     → eligible:   tura eklenebilir ("Tura ekle" + "Geri Al")
+//   hazirlik  → prep-queue: paketlenecek (SALT OKUNUR — eylem paketleme
+//               istasyonundadır: /yonetim/paketleme)
+//   hazir     → eligible:   tura eklenebilir ("Tura ekle")
 //   dis-kargo → outsourced: bölge dışı ("Kargola" — orders.manage ile yerinde)
+//
+// F30: elle "Hazırla" / "Tümünü hazırla" / "Geri Al" butonları ve uçları
+// KALDIRILDI (boşluk G1). Hazır damgası artık yalnız kalem kalem doğrulanmış
+// bir paketten doğar; bu sayfa o işi BAŞLATMAZ, yalnız gösterir ve paketleme
+// istasyonuna yönlendirir.
 import { ItemLines } from "@/components/admin/delivery/ItemLines";
 import { useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
@@ -28,7 +34,7 @@ import type { DeliveryEligibleOrder } from "@/types";
 type Queue = "hazirlik" | "hazir" | "dis-kargo";
 
 const QUEUE_TABS: { value: Queue; label: string }[] = [
-  { value: "hazirlik", label: "Hazırlanacak" },
+  { value: "hazirlik", label: "Paketlenecek" },
   { value: "hazir", label: "Tura hazır" },
   { value: "dis-kargo", label: "Dış kargo" },
 ];
@@ -105,8 +111,8 @@ function QueueShell({
  * G1): tek tıkla, hiçbir kalem okutulmadan sipariş dağıtıma hazır sayılıyordu.
  *
  * Kuyruk GÖRÜNÜR kalır — operatör ne toplanacağını buradan görür — ama hazır
- * etme eylemi paketleme istasyonundadır (paket aç → barkod okut → tamamla).
- * O ekran commit 6'da gelir; o zamana dek buradaki not yönlendirir.
+ * etme eylemi paketleme istasyonundadır (paket aç → barkod okut → tamamla):
+ * `/yonetim/paketleme`. Bu kuyruk oraya YÖNLENDİRİR, iş yapmaz.
  */
 function PrepQueue() {
   const query = usePrepQueue();
@@ -117,16 +123,24 @@ function PrepQueue() {
       {queue.length === 0 ? (
         <div className="p-6">
           <EmptyState
-            title="Hazırlanacak sipariş yok"
+            title="Paketlenecek sipariş yok"
             description="Yeni fiziksel siparişler ödendikçe burada belirir."
           />
         </div>
       ) : (
         <>
-          <p className="border-b border-slate-100 px-6 py-3 text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400">
-            Hazır işaretleme paketleme istasyonundan yapılır: paketi aç, her kalemi
-            okut, tamamla. Sipariş ancak bütün kalemler doğrulanınca tura hazır olur.
-          </p>
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-6 py-3 dark:border-slate-800">
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Hazırlama paketleme istasyonunda yapılır: paketi aç, her kalemi okut,
+              tamamla. Sipariş ancak bütün kalemler doğrulanınca tura hazır olur.
+            </p>
+            <Link
+              to={ROUTES.adminPacking}
+              className="shrink-0 text-xs font-semibold text-indigo-600 hover:underline dark:text-indigo-400"
+            >
+              Paketleme istasyonunu aç →
+            </Link>
+          </div>
           <ul className="divide-y divide-slate-100 px-6 dark:divide-slate-800">
             {queue.map((o) => (
               <OrderRow key={o.order_id} order={o} />

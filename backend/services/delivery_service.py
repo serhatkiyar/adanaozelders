@@ -505,7 +505,9 @@ async def start_run(db: AsyncSession, run_id: int) -> DeliveryRunOut:
     # ── F30 ön koşulu (sözleşme §3.4): kurye EKSİK PAKETLE yola çıkamaz ──
     # Paketi olan her bekleyen durak zimmetlenmiş (`HANDED_OVER`) olmalıdır.
     # Paketi olmayan (F30 öncesi akıştan gelen) durak eski davranışı sürdürür;
-    # koşulsuz dayatma elle `prepare` ucunun kaldırılmasıyla commit 5'te gelir.
+    # koşulsuz dayatma, paketi HİÇ olmamış (F30 öncesinden gelen) siparişler
+    # için bilinçli olarak yapılmadı — onları da zorunlu kılmak dağıtımdaki
+    # mevcut siparişleri anında kilitlerdi.
     paketler = {
         stop.order_id: await packing_events.live_package(db, stop.order_id)
         for stop in run.stops
@@ -833,7 +835,9 @@ def _within_attempt_cap():
 async def prep_queue(db: AsyncSession) -> list[EligibleOrderOut]:
     """Hazırlama istasyonu kuyruğu (PDS O1): ödenmiş + fiziksel + Adana-içi ama
     HENÜZ hazırlanmamış + deneme hakkı DOLMAMIŞ siparişler. Depo görevlisi
-    paketi toplayıp etiketi basınca ``mark_prepared`` ile hazır işaretlenir.
+    Hazır işaretleme YALNIZ paketleme istasyonundan olur: paket açılır, her
+    kalem okutulur, `packing_service.complete` `prepared_at`'i damgalar
+    (`/yonetim/paketleme`). Elle "Hazırla" butonu ve uçları KALDIRILDI.
 
     **F30 (sözleşme §3.5):** paketi ARAÇTA olan sipariş bu kuyrukta GÖRÜNMEZ.
     `fail_stop`/`expire_stale_runs` `prepared_at`'i sıfırladığı için sipariş
