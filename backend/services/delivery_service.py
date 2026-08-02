@@ -1876,43 +1876,6 @@ async def _shift_pending_etas(
     )
 
 
-async def _zimmet_zorunlu(db: AsyncSession, order_id: int) -> None:
-    """Teslim edilebilmesi için paketin kuryede (`HANDED_OVER`) olmasını arar.
-
-    Commit 7 denetiminde bulundu: kapı taraması (`POST /delivery/scan`) paket
-    durumunu kontrol ediyordu ama **teslimi bitiren üç uç etmiyordu**
-    (`verify` · `override-deliver` · `deliver-drop`). Yani QR'ı hiç okutmadan
-    doğrudan teslim çağıran bir istemci, kutu HÂLÂ RAFTAYKEN siparişi
-    `DELIVERED` yapabiliyordu. Hata sessizdi: `on_package_delivered` geçişi
-    reddedip `False` dönüyor, sipariş yine de teslim sayılıyordu — yani paket
-    `PACKED` kalırken müşteriye "teslim edildi" e-postası gidiyordu.
-
-    Ekran tarafı (`DeliveryDriver`'ın paket kapısı) bu deliği kapatıyor ama
-    **tek savunma hattı arayüz olamaz**: saha ekranı bir telefonda çalışır ve
-    uç kimlik doğrulamalı herkese açıktır.
-
-    **Paketi HİÇ olmayan sipariş serbesttir.** F30 öncesinden gelen siparişlerin
-    `order_packages` kaydı yoktur; onları kilitlemek, geçmiş siparişleri teslim
-    edilemez hâle getirirdi (`dispatchable_package_condition` ile aynı gerekçe).
-
-    **Kilit alınmaz, okuma yapılır — bilinçli.** Çağıran `_lock_field_stop`
-    üzerinden `Order` ve `DeliveryStop` kilitlerini ZATEN tutuyor. Kanonik sıra
-    `Order → OrderPackage → DeliveryStop`'tur; burada paketi `FOR UPDATE` ile
-    almak `Stop`'tan SONRA `Package` kilitlemek demektir ve `handover_scan` ile
-    gerçek bir deadlock döngüsü kurardı. Kilitsiz okuma yeterlidir: zimmet de
-    ilk halkada `Order`'ı kilitler, yani eş zamanlı bir zimmet bu noktada
-    ya tamamen bitmiştir ya hiç başlamamıştır.
-    """
-    paket = await packing_events.live_package(db, order_id)
-    if paket is None or paket.status == "HANDED_OVER":
-        return
-    raise HTTPException(
-        status.HTTP_409_CONFLICT,
-        f"Paket {packing_rules.package_code(paket.id)} kuryeye zimmetlenmemiş "
-        f"(durum {paket.status}) — teslim edilemez",
-    )
-
-
 async def _finalize_delivered(
     db: AsyncSession,
     stop: DeliveryStop,
@@ -1926,11 +1889,23 @@ async def _finalize_delivered(
     outbox olayı + kalan ETA'ların drift'i — ya hepsi kalıcı olur ya hiçbiri
     (eski hali üç ayrı commit'ti; ara adım patlarsa yan etkiler kayıp kalıyordu).
 
-    Teslimi bitiren ÜÇ ucun da ortak hunisi burasıdır; zimmet kapısı bu yüzden
-    uçlara tek tek değil buraya konur — yarın eklenecek dördüncü bir teslim
-    yolu da guard'ı kendiliğinden miras alır.
+    ## Zimmet kapısı — ve bu docstring'in bir kez YANLIŞ olduğu yer
+
+    Burası **saha teslim yollarının** (OTP doğrulama · notlu yönetici teslimi ·
+    kapıya/komşuya bırakma) ortak hunisidir; zimmet kapısı bu yüzden uçlara tek
+    tek değil buraya konur.
+
+    Buranın eski hâli "yarın eklenecek dördüncü bir teslim yolu da guard'ı
+    kendiliğinden miras alır" diyordu. **O cümle yanlıştı ve bir denetim
+    bulgusuna dönüştü**: dördüncü yol zaten vardı — `order_service
+    .mark_delivered` (`POST /store/admin/orders/{id}/deliver`) — ve bu huniden
+    hiç geçmiyordu. Doğru sözleşme şudur: bu fonksiyon YALNIZ kendi çağıranlarını
+    kapsar; başka servislerdeki `DELIVERED` geçişleri ortak
+    `packing_events.zimmet_zorunlu` çağrısını AYRICA yapmak zorundadır ve
+    kapsamın kapalı kaldığını bir call-graph nöbetçisi denetler
+    (`tests/acceptance/test_f30_delivery_guard_contract.py`).
     """
-    await _zimmet_zorunlu(db, stop.order_id)
+    await packing_events.zimmet_zorunlu(db, stop.order_id)
     now = _now()
     eta_drift = (now - stop.eta) if stop.eta is not None else None
     stop.status = DeliveryStopStatus.DELIVERED.value

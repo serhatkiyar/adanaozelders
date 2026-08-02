@@ -1,0 +1,250 @@
+"""F30 — sipariş `DELIVERED`/`SHIPPED` yapan HER üretim yolu zimmet kapısından geçer.
+
+## Bu nöbetçi neden var
+
+Aynı sınıf hata **iki kez** üretime yaklaştı:
+
+1. Commit 7'nin ilk turunda üç saha ucu (`verify` · `override-deliver` ·
+   `deliver-drop`) paket durumuna hiç bakmıyordu. Guard
+   `delivery_service._finalize_delivered` hunisine kondu ve docstring'e
+   "yarın eklenecek dördüncü yol guard'ı kendiliğinden miras alır" yazıldı.
+2. Bağımsız denetim o cümlenin **yanlış** olduğunu gösterdi: dördüncü yol
+   zaten vardı — `order_service.mark_delivered`
+   (`POST /store/admin/orders/{id}/deliver`) — ve huniden hiç geçmiyordu.
+   Kutu raftayken sipariş `DELIVERED` olabiliyor, müşteriye teslim e-postası
+   gidiyor, durak `PENDING` kalıyor ve paket bir daha zimmetlenemiyordu.
+
+İki kez tekrarlayan bir hata "dikkat edelim" ile kapanmaz. Bu test, **yeni bir
+teslim/sevkiyat yolu eklenip guard unutulursa kırılır** — yani üçüncü kez
+olmasını engelleyen şey insanın hatırlaması değil, suite'in kırmızıya dönmesidir.
+
+## Neden davranış testi DEĞİL
+
+Kök `CLAUDE.md` §C: kaynak/AST sözleşmesi **düşük güçlü** sayılır ve tek
+kanıt olamaz. Burada ölçülen şey bir davranış değil, **kapsamın kapalılığıdır**
+("hiçbir yol guard'sız değil") ve o negatif iddia davranışla ifade edilemez:
+her yolu tek tek çağıran bir test, henüz YAZILMAMIŞ yolu göremez. Bu yüzden
+nöbetçi yapısaldır ama yanında her guard'ın gerçek davranış testi durur
+(`tests/integration/test_f30_handover_idem_pg.py`,
+`tests/integration/test_f30_admin_deliver_pg.py`).
+
+Yapısal denetim **AST ile** yapılır: yorum ve docstring içindeki `"DELIVERED"`
+dizgisi eşleşmez, fonksiyon sınırları `find()` + karakter penceresiyle değil
+gerçek düğüm sınırlarıyla bulunur (§C).
+"""
+from __future__ import annotations
+
+import ast
+import pathlib
+
+import pytest
+
+KOK = pathlib.Path(__file__).resolve().parents[2]
+
+#: Taranan üretim kodu. `services/` tek başına YETMEZ — denetim bulgusu tam da
+#: `services/` içinde ama başka bir modüldeydi; router'lar da servisleri
+#: atlayıp doğrudan geçiş yazabilir.
+TARANAN_DIZINLER = ("services", "api/routers")
+
+#: Ortak kapı. İsim ne modülle ne de yerel takma adla eşleşmeye bırakılır:
+#: çağrının **fonksiyon adı** aranır (`packing_events.zimmet_zorunlu(...)`,
+#: `zimmet_zorunlu(...)`, `pe.zimmet_zorunlu(...)` hepsi geçer).
+TESLIM_KAPISI = "zimmet_zorunlu"
+SEVKIYAT_KAPISI = "elle_sevkiyat_yasak"
+
+#: Guard'ı ÇAĞIRMAYAN ama kuralı başka (ve doğrulanmış) bir mekanizmayla
+#: uygulayan yollar. Liste **dar** ve her satırı gerekçelidir; bir giriş
+#: eklemek, o yolun neden istisna olduğunu yazmayı zorunlu kılar.
+ISTISNALAR: dict[tuple[str, str, str], str] = {
+    (
+        "services/delivery_service.py",
+        "start_run",
+        "SHIPPED",
+    ): (
+        "Paketi OLAN siparişi atlar (`paketler.get(order.id) is not None: "
+        "continue`) — çıkışı zimmet yazmıştır. Davranış nöbetçisi: "
+        "tests/integration/test_f30_guards_pg.py::"
+        "test_C5_START_RUN_ZIMMETSIZ_PAKETLE_TURU_BASLATMAZ"
+    ),
+    (
+        "services/delivery_service.py",
+        "add_stops",
+        "SHIPPED",
+    ): (
+        "Aktif tura eklenen durakta SHIPPED yalnız `paket is None` iken "
+        "yazılır (sözleşme §3.4); paketi olan sipariş zimmeti bekler."
+    ),
+    (
+        "services/delivery_service.py",
+        "handover_scan",
+        "SHIPPED",
+    ): (
+        "Zimmetin KENDİSİ — çıkışı yazan yol burasıdır. Kendi kendine kapı "
+        "koyması döngü olurdu; paketin durumu bu fonksiyonun içinde "
+        "`packing_rules.allows('handover', ...)` ile zaten doğrulanır."
+    ),
+}
+
+
+def _kaynaklar() -> list[tuple[str, ast.Module]]:
+    cikti = []
+    for d in TARANAN_DIZINLER:
+        for yol in sorted((KOK / d).rglob("*.py")):
+            rel = yol.relative_to(KOK).as_posix()
+            cikti.append((rel, ast.parse(yol.read_text(encoding="utf-8"), filename=rel)))
+    return cikti
+
+
+def _cagri_adi(node: ast.Call) -> str | None:
+    """`f(...)` → 'f' · `m.f(...)` → 'f' · `a.b.f(...)` → 'f'."""
+    if isinstance(node.func, ast.Name):
+        return node.func.id
+    if isinstance(node.func, ast.Attribute):
+        return node.func.attr
+    return None
+
+
+def _gecis_hedefi(node: ast.AST) -> str | None:
+    """Bu düğüm siparişi bir duruma geçiren bir YAZMA mı? Hedef durumu döndürür.
+
+    İki biçim tanınır:
+      * `order_fsm.transition_order(db, order, "DELIVERED", ...)`
+      * `order.status = "DELIVERED"`  (helper'ı atlayan doğrudan atama)
+
+    Docstring/yorumdaki dizgi eşleşmez: burada gezilen şey **AST düğümleri**dir,
+    metin değil.
+    """
+    if isinstance(node, ast.Call):
+        if _cagri_adi(node) != "transition_order":
+            return None
+        for arg in list(node.args) + [k.value for k in node.keywords]:
+            if isinstance(arg, ast.Constant) and arg.value in ("DELIVERED", "SHIPPED"):
+                return arg.value
+        return None
+    if isinstance(node, ast.Assign):
+        for hedef in node.targets:
+            if isinstance(hedef, ast.Attribute) and hedef.attr == "status":
+                deger = node.value
+                if isinstance(deger, ast.Constant) and deger.value in (
+                    "DELIVERED",
+                    "SHIPPED",
+                ):
+                    return deger.value
+    return None
+
+
+def _fonksiyonlar(agac: ast.Module):
+    for dugum in ast.walk(agac):
+        if isinstance(dugum, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            yield dugum
+
+
+def _icteki_fonksiyonlar(fn) -> set[int]:
+    """İç içe tanımlı fonksiyonların satırları — sahibine sayılmasınlar."""
+    satirlar: set[int] = set()
+    for dugum in ast.walk(fn):
+        if dugum is fn:
+            continue
+        if isinstance(dugum, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            for alt in ast.walk(dugum):
+                if hasattr(alt, "lineno"):
+                    satirlar.add(alt.lineno)
+    return satirlar
+
+
+def _teslim_yollari() -> list[tuple[str, str, str, int, list[tuple[str, int]]]]:
+    """(dosya, fonksiyon, hedef_durum, geçiş_satırı, [(guard_adı, satır), ...])"""
+    bulunanlar = []
+    for rel, agac in _kaynaklar():
+        for fn in _fonksiyonlar(agac):
+            ic_satirlar = _icteki_fonksiyonlar(fn)
+            guardlar: list[tuple[str, int]] = []
+            gecisler: list[tuple[str, int]] = []
+            for dugum in ast.walk(fn):
+                if getattr(dugum, "lineno", None) in ic_satirlar:
+                    continue
+                if isinstance(dugum, ast.Call):
+                    ad = _cagri_adi(dugum)
+                    if ad in (TESLIM_KAPISI, SEVKIYAT_KAPISI):
+                        guardlar.append((ad, dugum.lineno))
+                hedef = _gecis_hedefi(dugum)
+                if hedef is not None:
+                    gecisler.append((hedef, dugum.lineno))
+            for hedef, satir in gecisler:
+                bulunanlar.append((rel, fn.name, hedef, satir, guardlar))
+    return bulunanlar
+
+
+YOLLAR = _teslim_yollari()
+
+
+def test_TESLIM_YOLU_TARAYICISI_GERCEKTEN_BULUYOR():
+    """Ters prova: tarayıcı hiçbir şey bulmuyorsa yukarıdaki matris totolojiktir.
+
+    Bilinen iki `DELIVERED` yolu (saha hunisi + yönetici ucu) ADIYLA aranır.
+    Tarayıcı bozulup boş liste dönerse matrisin tamamı sessizce yeşile döner —
+    bu düğüm o hâli imkânsız kılar.
+    """
+    delivered = {(d, f) for d, f, h, _s, _g in YOLLAR if h == "DELIVERED"}
+    assert ("services/delivery_service.py", "_finalize_delivered") in delivered, delivered
+    assert ("services/order_service.py", "mark_delivered") in delivered, delivered
+    assert len(delivered) >= 2, delivered
+
+
+@pytest.mark.parametrize(
+    "dosya,fonksiyon,hedef,satir,guardlar",
+    YOLLAR,
+    ids=[f"{d.split('/')[-1]}::{f}::{h}@{s}" for d, f, h, s, _g in YOLLAR],
+)
+def test_DELIVERED_VE_SHIPPED_YOLLARI_ZIMMET_KAPISINDAN_GECER(
+    dosya, fonksiyon, hedef, satir, guardlar
+):
+    """Her geçiş, KENDİ fonksiyonunda ve geçişten ÖNCE bir kapı çağrısı ister.
+
+    "Önce" satır numarasıyla ölçülür. Guard'ı geçişten sonraya taşımak, ona
+    ulaşılmadan e-posta/outbox/durum geçişinin doğması demektir — mutasyon
+    provasının 2. ve 3. maddesi tam olarak bunu sınar.
+    """
+    gerekce = ISTISNALAR.get((dosya, fonksiyon, hedef))
+    if gerekce:
+        assert len(gerekce) > 40, "İstisna gerekçesi ciddi olmalı"
+        return
+
+    beklenen = TESLIM_KAPISI if hedef == "DELIVERED" else SEVKIYAT_KAPISI
+    onceki = [ad for ad, g_satir in guardlar if g_satir < satir]
+    assert beklenen in onceki, (
+        f"{dosya}::{fonksiyon} siparişi {hedef} yapıyor (satır {satir}) ama "
+        f"öncesinde `{beklenen}` çağrısı YOK. Bulunan kapılar: {guardlar}.\n"
+        "Yeni bir teslim/sevkiyat yolu eklediysen ortak kapıyı çağır "
+        "(`packing_events.zimmet_zorunlu` / `.elle_sevkiyat_yasak`); bilinçli "
+        "bir istisnaysa ISTISNALAR sözlüğüne GEREKÇESİYLE ekle."
+    )
+
+
+def test_ISTISNA_LISTESI_BAYATLAMAZ():
+    """Allowlist'te artık var olmayan bir yol kalmamalı.
+
+    Bayat istisna sessiz bir delik üretir: fonksiyon yeniden adlandırılıp guard
+    unutulursa, listede duran eski satır kimseyi uyarmaz.
+    """
+    gercek = {(d, f, h) for d, f, h, _s, _g in YOLLAR}
+    bayat = set(ISTISNALAR) - gercek
+    assert not bayat, f"ISTISNALAR bayat: {bayat}"
+
+
+def test_ORTAK_KAPI_TEK_MODULDE():
+    """Guard `packing_events`'te durur; kopyası olmamalı.
+
+    İki ayrı zimmet kuralı, ikisinin ayrışması demektir — commit 7'nin ilk
+    turunda `delivery_service` kendi kopyasını taşıyordu ve yönetici yolu o
+    kopyayı göremediği için P1 doğdu.
+    """
+    tanimlar = []
+    for rel, agac in _kaynaklar():
+        for fn in _fonksiyonlar(agac):
+            if fn.name in (TESLIM_KAPISI, SEVKIYAT_KAPISI, f"_{TESLIM_KAPISI}"):
+                tanimlar.append((rel, fn.name))
+    assert sorted(tanimlar) == [
+        ("services/packing_events.py", SEVKIYAT_KAPISI),
+        ("services/packing_events.py", TESLIM_KAPISI),
+    ], tanimlar

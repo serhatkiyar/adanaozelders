@@ -176,6 +176,31 @@ Canlı küme = `{OPEN, PACKED, HANDED_OVER, RETURN_PENDING, RETURNED}`.
 | `add_stops` aktif tura eklerken de SHIPPED yapar | `add_stops` **SHIPPED yapmaz** |
 | `start_run` ön koşulsuz | `start_run` PENDING durakların **hepsi zimmetli** değilse 409 + eksik paket listesi |
 
+> **Commit 7 (denetim sonrası) — kural artık YÖNETİCİ uçlarında da geçerli.**
+> Denetim, kuralın iki elle kaçış yolu bıraktığını gösterdi ve ikisi de
+> kapatıldı:
+>
+> * `POST /store/admin/orders/{id}/deliver` → `order_service.mark_delivered`
+>   **P1 idi**: `delivery_service._finalize_delivered` hunisinden geçmediği için
+>   zimmet guard'ını miras almıyordu. Kutu raftayken sipariş `DELIVERED`
+>   olabiliyor, teslim e-postası gidiyor, durak `PENDING` kalıyor ve paket bir
+>   daha zimmetlenemiyordu (`handover` yalnız `PACKED`ten olur; canlı paket
+>   benzersizliği yüzünden yeni paket de açılamıyordu).
+> * `POST /store/admin/orders/{id}/ship` → `order_service.mark_shipped` **P2
+>   idi**: paketi olan sipariş elle "kargolandı" işaretlenip elle takip numarası
+>   yazılabiliyordu — oysa kendi-filo teslimatında `tracking_no` (`ELDEN-*`)
+>   zimmet anında doğar. Bu tur **kapatıldı**: paketi olan siparişte elle
+>   sevkiyat 409 döner.
+>
+> Kural tek yerde yaşar: `packing_events.zimmet_zorunlu` (teslim) ve
+> `packing_events.elle_sevkiyat_yasak` (sevkiyat). `order_service` ve
+> `delivery_service` ikisi de aynı helper'ı çağırır; ikinci bir kopya YOKTUR.
+> Kapsamın kapalı kaldığını bir call-graph nöbetçisi denetler
+> (`tests/acceptance/test_f30_delivery_guard_contract.py`): `services/` ve
+> `api/routers/` altındaki HER `DELIVERED`/`SHIPPED` geçişi ya kapıdan geçer ya
+> da dar ve gerekçeli bir allowlist satırına sahiptir. Paketi **hiç olmayan**
+> (F30 öncesi / dış kargo) sipariş her iki kuralın da bilinçli istisnasıdır.
+
 > **Kademeli devreye alma (commit 3'te alınan karar).** Yukarıdaki üç değişiklik
 > commit 3'te **paketi olan sipariş için** uygulanır: canlı paketi olan durak
 > `add_stops`'ta SHIPPED YAPILMAZ ve `start_run` onun zimmetlenmiş olmasını

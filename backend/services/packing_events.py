@@ -28,6 +28,7 @@ from __future__ import annotations
 
 import datetime
 
+from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -114,6 +115,158 @@ async def live_package(
     if lock:
         stmt = stmt.with_for_update().execution_options(populate_existing=True)
     return (await db.execute(stmt)).scalars().first()
+
+
+#: Teslim edilebilmek için paketin bulunması gereken TEK durum.
+#: Küme olarak yazılıdır ki "hangi durumlar geçer" sorusu koda bakınca
+#: cevaplansın; `RETURN_PENDING` / `RETURNED` / `VOID` / `PACKED` / `OPEN`
+#: hepsi dışarıdadır ve her biri farklı bir fiziksel gerçeği anlatır
+#: (araçta geri dönüyor · depoda · bozuldu · rafta hazır · toplanıyor).
+TESLIME_HAZIR_PAKET_DURUMLARI: frozenset[str] = frozenset({"HANDED_OVER"})
+
+
+async def zimmet_zorunlu(
+    db: AsyncSession, order_id: int, *, expected_courier_id: int | None = None
+) -> None:
+    """Sipariş `DELIVERED` olmadan ÖNCE: paket gerçekten kuryede mi?
+
+    ## Neden burada, neden tek yerde
+
+    Commit 7 denetimi bu sınıf hatayı **iki kez** buldu. Önce üç saha ucu
+    (`verify` · `override-deliver` · `deliver-drop`) paket durumuna hiç
+    bakmıyordu; guard `delivery_service._finalize_delivered` hunisine kondu ve
+    docstring'e "yarın eklenecek dördüncü yol guard'ı kendiliğinden miras alır"
+    yazıldı. **O cümle yanlıştı**: dördüncü yol zaten vardı —
+    `POST /store/admin/orders/{id}/deliver → order_service.mark_delivered` —
+    ve o huniden hiç geçmiyordu. Yani kutu raftayken sipariş `DELIVERED`
+    olabiliyor, müşteriye teslim e-postası gidiyor, durak `PENDING` kalıyor ve
+    paket bir daha zimmetlenemiyordu (`handover` yalnız `PACKED`ten olur;
+    `uq_order_packages_live` yüzünden yeni paket de açılamıyordu).
+
+    Bu yüzden kural artık **modül seviyesinde tek** ve **ince** modülde durur:
+    `order_service` ve `delivery_service` ikisi de bunu çağırır, ikisi de kendi
+    kopyasını taşımaz. Kapsamın gerçekten kapalı kaldığını bir call-graph
+    nöbetçisi denetler (`tests/acceptance/test_f30_delivery_guard_contract.py`).
+
+    ## Sözleşme
+
+    * **Paketi HİÇ olmayan sipariş serbesttir.** F30 öncesinden gelen
+      siparişlerin `order_packages` kaydı yoktur; onları kilitlemek geçmiş
+      siparişleri teslim edilemez hâle getirirdi
+      (`dispatchable_package_condition` ile aynı gerekçe).
+    * Canlı paket varsa durumu `HANDED_OVER` OLMALIDIR.
+    * `handed_to_courier_id` **dolu** olmalıdır: kime verildiği bilinmeyen bir
+      kutu teslim edilmiş sayılamaz — geri dönüş kuyruğu da o soruyu
+      cevaplayamaz (TB-7).
+    * Kurye kimliği **turla tutarlı** olmalıdır: paketin verildiği kurye, bu
+      siparişin durağını taşıyan bir turun kuryesi olmalıdır. Aksi hâli
+      "defterde başka kurye yazıyor" demektir ve elle düzeltilmesi gerekir.
+    * `expected_courier_id` verilirse paket O kuryede olmalıdır (saha yolları
+      kuryeyi bilir; yönetici yolu bilmez ve `None` geçer).
+    * **Hiçbir yan etki üretmez** — okur ve ya sessizce döner ya 409 atar.
+
+    ## Kilit alınmaz, okuma yapılır — bilinçli
+
+    Çağıranlar `Order` (ve saha yolunda `DeliveryStop`) kilitlerini zaten
+    tutuyor. Kanonik sıra `Order → OrderPackage → DeliveryStop`; paketi burada
+    `FOR UPDATE` ile almak saha yolunda `Stop`'tan SONRA `Package` kilitlemek
+    demektir ve `handover_scan` ile gerçek bir deadlock döngüsü kurar. Kilitsiz
+    okuma yeterlidir: zimmet de ilk halkada `Order`'ı kilitler, yani eş zamanlı
+    bir zimmet bu noktada ya tamamen bitmiştir ya hiç başlamamıştır.
+    """
+    paket = await live_package(db, order_id)
+    if paket is None:
+        return   # F30 öncesi sipariş — bilinçli istisna, yukarıdaki sözleşme
+
+    kod = packing_rules.package_code(paket.id)
+    if paket.status not in TESLIME_HAZIR_PAKET_DURUMLARI:
+        # Durum SÖYLENİR: bu yüzeylerin hepsi (yönetici paneli ve o paketin
+        # kuryesi) zaten pakete yetkili; asıl sızıntı riski YABANCI paketin
+        # varlığını sızdırmaktır ve onu çağıranın kendi IDOR nöbetçisi
+        # kapatır (`delivery_service._paket_sahipligi`, 404).
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            f"Paket {kod} kuryeye zimmetlenmemiş (durum {paket.status}) — "
+            "teslim edilemez. Önce kutunun QR'ı zimmet ekranından okutulmalı.",
+        )
+    if paket.handed_to_courier_id is None:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            f"Paket {kod} zimmetli görünüyor ama hangi kuryede olduğu kayıtlı "
+            "değil — teslim edilemez.",
+        )
+    if (
+        expected_courier_id is not None
+        and paket.handed_to_courier_id != expected_courier_id
+    ):
+        # Kurye kimliği YAZILMAZ: hangi kuryede olduğunu söylemek, elinde
+        # kopya etiket olan birine operasyon bilgisi verirdi.
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            f"Paket {kod} başka bir kuryeye zimmetli — teslim edilemez.",
+        )
+    if not await _kurye_turla_tutarli(db, order_id, paket.handed_to_courier_id):
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            f"Paket {kod} kaydındaki kurye bu siparişin turuyla uyuşmuyor — "
+            "teslim edilemez, kayıt elle düzeltilmeli.",
+        )
+
+
+async def elle_sevkiyat_yasak(db: AsyncSession, order_id: int) -> None:
+    """Paketi olan sipariş **elle** `SHIPPED` yapılamaz (sözleşme §3.4).
+
+    Denetim P2'si: `POST /store/admin/orders/{id}/ship` paket durumuna hiç
+    bakmıyordu. Yani kutu raftayken sipariş "kargoya verildi" olabiliyor,
+    müşteriye o e-posta gidiyor ve `tracking_no` elle yazılabiliyordu — oysa
+    kendi-filo teslimatında takip numarası (`ELDEN-R{run}-S{stop}`) zimmet
+    anında doğar. Sonuç F30'un tam da kaldırdığı hâldi: fiziksel kanıtı sıfır
+    olan bir "çıktı" iddiası (boşluk G4).
+
+    Teslimat servisindeki iki `SHIPPED` yolu bu kuralı zaten uyguluyor
+    (`start_run` ve `add_stops`: paketi olan siparişi atlar, çıkışı zimmet
+    yazar). Kapanan delik yalnız **elle** yönetici ucudur.
+
+    **Paketi HİÇ olmayan sipariş serbesttir**: dış kargoyla giden ve F30
+    öncesinden kalan siparişler bu uçtan sevk edilmeye devam eder — asıl
+    kullanım nedeni budur.
+
+    Paketin DURUMU bilinçli olarak sorulmaz: `PACKED` ise çıkışı zimmet
+    yazacaktır, `HANDED_OVER` ise zaten yazmıştır, `RETURNED`/`VOID` ise
+    sipariş dağıtıma hiç uygun değildir. Üçünde de doğru cevap "elle yapma".
+    """
+    paket = await live_package(db, order_id)
+    if paket is None:
+        return
+    raise HTTPException(
+        status.HTTP_409_CONFLICT,
+        f"Sipariş #{order_id} kendi filomuzla gidiyor (paket "
+        f"{packing_rules.package_code(paket.id)}) — çıkışı kuryenin paketi "
+        "okutması yazar, elle 'kargolandı' işaretlenemez.",
+    )
+
+
+async def _kurye_turla_tutarli(db: AsyncSession, order_id: int, courier_id: int) -> bool:
+    """Paketin verildiği kurye, bu siparişin bir durağını taşıyor mu?
+
+    Tur durumu (`PLANNED`/`ACTIVE`/`DONE`) BİLİNÇLİ olarak süzülmez: yönetici
+    bir teslimi tur otomatik kapandıktan sonra da elle düzeltebilmeli. Ölçülen
+    şey "hangi tur açık" değil, "defterdeki kurye bu işin kuryesi mi".
+    """
+    from models.delivery import DeliveryRun, DeliveryStop
+
+    return (
+        await db.execute(
+            select(DeliveryStop.id)
+            .join(DeliveryRun, DeliveryStop.run_id == DeliveryRun.id)
+            .where(
+                DeliveryStop.order_id == order_id,
+                DeliveryRun.courier_id == courier_id,
+                DeliveryRun.deleted_at.is_(None),
+            )
+            .limit(1)
+        )
+    ).first() is not None
 
 
 async def _lock_order(db: AsyncSession, order_id: int) -> None:

@@ -1208,6 +1208,10 @@ async def mark_shipped(
         )
     if order.payment_status != "PAID":
         raise HTTPException(status.HTTP_409_CONFLICT, "Ödenmemiş sipariş kargolanamaz")
+    # F30: kendi filomuzla giden (paketi olan) sipariş elle "kargolandı"
+    # işaretlenemez — çıkışı kuryenin paketi okutması yazar. Gerekçe ve
+    # legacy istisnası `packing_events.elle_sevkiyat_yasak` docstring'inde.
+    await packing_events.elle_sevkiyat_yasak(db, order.id)
     await order_fsm.transition_order(db, order, "SHIPPED", changed_by="admin")
     order.tracking_no = tracking_no
     await db.commit()
@@ -1224,9 +1228,30 @@ async def mark_shipped(
 
 
 async def mark_delivered(db: AsyncSession, order_id: int) -> OrderOut:
+    """Yönetici teslim yolu (`POST /store/admin/orders/{id}/deliver`).
+
+    **Zimmet kapısı burada da geçerlidir.** Commit 7 denetiminin P1'i tam olarak
+    buydu: bu uç `delivery_service._finalize_delivered` hunisinden geçmiyor,
+    yani F30 zimmet guard'ını miras almıyordu. Sonuç, kutu HÂLÂ RAFTAYKEN
+    siparişin `DELIVERED` olmasıydı — üstelik zararı tek bir yanlış statüyle
+    kalmıyordu:
+
+    * müşteriye "teslim edildi" e-postası/outbox olayı gidiyor,
+    * durak `PENDING` kalıyor (kurye hâlâ o adrese gidecek),
+    * paket `PACKED` kaldığı için bir daha **zimmetlenemiyor** (`handover`
+      yalnız `PACKED`→`HANDED_OVER`, ama sipariş artık `DELIVERED`),
+    * `uq_order_packages_live` yüzünden yeni paket de açılamıyor.
+
+    Guard `transition_order`'dan ÖNCE çağrılır: reddederse hiçbir yan etki
+    (durum geçişi · geçmiş satırı · e-posta · bildirim · audit) doğmaz ve
+    transaction tamamen temiz kalır.
+    """
     order = await _load_full(db, order_id)
     if order is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Sipariş bulunamadı")
+    # Aktör YÖNETİCİDİR: hangi kuryede olduğunu bilmez, yalnız "bir kuryede
+    # olmalı" der. Kuryeyi bilen saha yolları `expected_courier_id` geçirir.
+    await packing_events.zimmet_zorunlu(db, order.id)
     # FSM: yalnız SHIPPED → DELIVERED (önceden ön-koşulsuzdu; PENDING'den bile olurdu).
     await order_fsm.transition_order(db, order, "DELIVERED", changed_by="admin")
     await db.commit()
