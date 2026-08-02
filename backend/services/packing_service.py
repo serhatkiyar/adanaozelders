@@ -465,6 +465,101 @@ async def get_package(db: AsyncSession, package_id: int) -> PackageView:
     return _view(paket)
 
 
+@dataclasses.dataclass(frozen=True, slots=True)
+class LabelItemView:
+    """Etiket satırı — **beklenen** adet taşır, taranan değil (kâğıt kutunun ne
+    içermesi GEREKTİĞİNİ söyler)."""
+
+    order_item_id: int
+    sku: str | None
+    title: str
+    expected_qty: int
+
+
+@dataclasses.dataclass(frozen=True, slots=True)
+class LabelView:
+    """Basılabilir etiketin TAMAMI: paket kimliği + sevkiyat kimliği + kalemler.
+
+    Neden ayrı bir görünüm (ve ayrı bir uç), neden telefon yok, `None` ne
+    demek: `schemas/packing.py::PackageLabelOut`. Karar orada tek yerde
+    yazılıdır; burada tekrarlanırsa iki metin er ya da geç ayrışır.
+    """
+
+    package_id: int
+    code: str
+    status: str
+    qr_payload: str
+    order_id: int
+    recipient: str | None
+    address: str | None
+    city: str | None
+    district: str | None
+    delivery_pref: str
+    delivery_pref_note: str | None
+    items: tuple[LabelItemView, ...]
+
+
+def _etiket_metni(deger: str | None) -> str | None:
+    """Boş/yalnız-boşluk metni `None`'a indirger.
+
+    İstemcinin "veri yok" ile "değer var ama boş" arasında kalmaması için: ekran
+    `None` görünce hem `"—"` basar hem eksik veri uyarısı verebilir, `""`
+    görseydi veriyi VAR sanardı ve eksiklik sessiz kalırdı (F26'da etiket bomboş
+    basıldı ve kimse fark etmedi).
+    """
+    temiz = (deger or "").strip()
+    return temiz or None
+
+
+async def label_data(db: AsyncSession, package_id: int) -> LabelView:
+    """Etiketin basılması için gereken HER ŞEY — **tek sorguda**.
+
+    Sevkiyat kimliği (alıcı/adres/tercih) siparişte yaşar, pakette değil; bu
+    yüzden `Order` ayrı bir istekle değil aynı cümlede JOIN'lenir. Kalemler
+    `selectinload` ile gelir (satır başına sorgu YOK) ve ilişki
+    `OrderPackageItem.id`'ye göre sıralı tanımlıdır — etiketin satır sırası
+    baskıdan baskıya değişmez.
+
+    `Order.deleted_at` süzülmez: paket FİZİKSEL bir nesnedir ve operatörün
+    elinde durur. Soft-delete edilmiş bir sipariş yüzünden 404 dönmek "paket
+    yok" demek olurdu ve bu, elindeki kutuya bakan insana yalan söylerdi.
+    """
+    satir = (
+        await db.execute(
+            select(OrderPackage, Order)
+            .join(Order, Order.id == OrderPackage.order_id)
+            .options(selectinload(OrderPackage.items))
+            .where(OrderPackage.id == package_id)
+            .execution_options(populate_existing=True)
+        )
+    ).first()
+    if satir is None:
+        raise _hata(http.HTTP_404_NOT_FOUND, f"Paket #{package_id} bulunamadı")
+    paket, order = satir
+    return LabelView(
+        package_id=paket.id,
+        code=packing_rules.package_code(paket.id),
+        status=paket.status,
+        qr_payload=packing_rules.build_package_qr(paket.id, paket.qr_token),
+        order_id=order.id,
+        recipient=_etiket_metni(order.ship_recipient),
+        address=_etiket_metni(order.ship_address),
+        city=_etiket_metni(order.ship_city),
+        district=_etiket_metni(order.ship_district),
+        delivery_pref=order.delivery_pref,
+        delivery_pref_note=_etiket_metni(order.delivery_pref_note),
+        items=tuple(
+            LabelItemView(
+                order_item_id=s.order_item_id,
+                sku=s.sku,
+                title=s.title,
+                expected_qty=s.expected_qty,
+            )
+            for s in paket.items
+        ),
+    )
+
+
 async def get_package_by_qr(db: AsyncSession, payload: str) -> PackageView | None:
     """Etiket payload'undan paket. Paket uzayına ait değilse **None** döner
     (çağıran mevcut durak yoluna düşer — geriye uyum, sözleşme §3.3)."""
@@ -750,17 +845,53 @@ async def packing_queue(
     return satirlar, toplam
 
 
-async def return_queue(db: AsyncSession) -> list[ReturnQueueRow]:
-    """"Geri dönüş bekleniyor" kuyruğu — en eskisi başta.
+#: Geri dönüş kuyruğunun servis tavanı — kardeş uçlarla AYNI değer ve aynı
+#: gerekçe (router `Query(le=...)` ile sınırlar ama tek katmanlı koruma koruma
+#: değildir; servisi doğrudan çağıran bir arka plan işi de tabloyu tek istekte
+#: çekememelidir).
+RETURN_QUEUE_MAX_LIMIT = LIST_MAX_LIMIT
+
+#: Kuyruğun `WHERE` yüklemi — sayfa sorgusu ile sayım sorgusu arasında TEK
+#: kaynak. İki yerde elle yazılsaydı biri değiştiğinde `total` sessizce başka
+#: bir kümeyi sayar ve ekrandaki sayaç yalan söylerdi.
+RETURN_QUEUE_STATUS = "RETURN_PENDING"
+
+
+async def return_queue(
+    db: AsyncSession,
+    *,
+    limit: int = RETURN_QUEUE_MAX_LIMIT,
+    offset: int = 0,
+) -> list[ReturnQueueRow]:
+    """"Geri dönüş bekleniyor" kuyruğunun bir sayfası — en eskisi başta.
 
     `ix_order_packages_return_queue` kısmi index'i tam bu sorgu için var.
+
+    Sıralama `(handed_over_at ASC NULLS LAST, id ASC)` **ikilisidir** ve son
+    bağlayıcı ŞART: aynı anda zimmetlenen (ya da `handed_over_at`'i NULL kalan)
+    iki paket belirsiz sırada dönseydi, `limit`/`offset` ile gezen ekran aynı
+    kaydı iki sayfada gösterip bir başkasını hiç göstermezdi — bu depoda bir kez
+    yaşandı ve kardeş uçlar (`packing_queue`, `list_packages`) aynı sebeple
+    üçlü/ikili bağlayıcı kullanıyor.
+
+    Kurye adı `outerjoin` ile AYNI cümlede gelir: satır başına ikinci bir sorgu
+    (N+1), kuyruk büyüdükçe maliyeti satır sayısıyla çarpardı.
+
+    Servis tavanı burada da uygulanır (`RETURN_QUEUE_MAX_LIMIT`); varsayılanı
+    tavanın kendisidir çünkü sayfa boyutu seçimi ÇAĞIRANIN kararıdır — uç 50
+    ister, iç çağıran (kuyruğu bir bütün olarak okuyan kod) tavana kadar alır.
     """
     rows = (
         await db.execute(
             select(OrderPackage, Courier)
             .outerjoin(Courier, Courier.id == OrderPackage.handed_to_courier_id)
-            .where(OrderPackage.status == "RETURN_PENDING")
-            .order_by(OrderPackage.handed_over_at.asc().nulls_last())
+            .where(OrderPackage.status == RETURN_QUEUE_STATUS)
+            .order_by(
+                OrderPackage.handed_over_at.asc().nulls_last(),
+                OrderPackage.id.asc(),
+            )
+            .limit(min(max(int(limit), 1), RETURN_QUEUE_MAX_LIMIT))
+            .offset(max(int(offset), 0))
         )
     ).all()
     simdi = _now()
@@ -780,6 +911,32 @@ async def return_queue(db: AsyncSession) -> list[ReturnQueueRow]:
         )
         for paket, kurye in rows
     ]
+
+
+async def return_queue_page(
+    db: AsyncSession, *, limit: int = 50, offset: int = 0
+) -> tuple[list[ReturnQueueRow], int]:
+    """Kuyruğun bir sayfası + **SÜZÜLMÜŞ TOPLAM** (sayfa uzunluğu DEĞİL).
+
+    Neden `return_queue`'dan ayrı bir sarmalayıcı: satır listesinin kendisi
+    sayfalamadan bağımsız iç çağıranları olan bir okumadır; sayfalı uç ise
+    ayrıca toplamı ister. Toplamı `len(items)`'ten türetmek sessizce yalancı bir
+    sayaç üretirdi — ekran "3 paket geri bekleniyor" derken 3, kuyruğun değil
+    SAYFANIN uzunluğu olurdu (aynı hata `PackingQueuePage` docstring'inde
+    kayıtlı: bir kez yapıldı ve onu doğrulayan test totolojikti).
+
+    Sayım ve sayfa aynı yüklemden (`RETURN_QUEUE_STATUS`) üretilir.
+    """
+    toplam = int(
+        (
+            await db.execute(
+                select(func.count())
+                .select_from(OrderPackage)
+                .where(OrderPackage.status == RETURN_QUEUE_STATUS)
+            )
+        ).scalar_one()
+    )
+    return await return_queue(db, limit=limit, offset=offset), toplam
 
 
 # ══════════════════ Paket açma ══════════════════════════════════════════════

@@ -11,7 +11,7 @@ aritmetiği ve olay defteri `services/packing_service.py`'dedir ve burada
 
 | İzin | Kapsam |
 |---|---|
-| `packing.view` | Kuyruk, paket listesi/detayı, geri dönüş kuyruğu — **okuma** |
+| `packing.view` | Kuyruk, paket listesi/detayı, **etiket verisi**, geri dönüş kuyruğu — **okuma** |
 | `packing.pack` | Paket açma · tarama · geri alma · tamamlama · **açık** paketi çözme |
 | `packing.manage` | Geri dönüş kabulü (`return-in`) · yeniden paketleme (`repack`) · fiziksel bozma (`unpack`) · **kapanmış** paketi çözme |
 
@@ -51,6 +51,8 @@ from schemas.packing import (
     MAX_OFFSET,
     HandoverManifestOut,
     PackageItemOut,
+    PackageLabelItemOut,
+    PackageLabelOut,
     PackageSummaryOut,
     PackageOut,
     PackagePage,
@@ -62,6 +64,7 @@ from schemas.packing import (
     PackingQueueItemOut,
     PackingQueuePage,
     PackingQueueRowOut,
+    ReturnQueuePage,
     ReturnQueueRowOut,
 )
 from services import admin_access_service, packing_service
@@ -237,8 +240,10 @@ async def list_packages(
     )
 
 
-@router.get("/return-queue", response_model=list[ReturnQueueRowOut])
+@router.get("/return-queue", response_model=ReturnQueuePage)
 async def return_queue(
+    limit: int = Query(default=50, ge=1, le=MAX_LIMIT),
+    offset: int = Query(default=0, ge=0, le=MAX_OFFSET),
     _admin: Admin = Depends(VIEW),
     db: AsyncSession = Depends(get_db),
 ):
@@ -246,19 +251,33 @@ async def return_queue(
 
     Görünmezlik tek başına tehlikelidir: hiçbir yerde görünmeyen paket kimse
     tarafından aranmaz ve süresiz kaybolur (TB-7).
+
+    Sayfalama sözleşmesi kardeş uçlarla (`/packing/queue`, `/packing/packages`)
+    birebir aynıdır: `limit` 1..200, `offset` 0..100000, `total` **süzülmüş
+    toplam**. Bu kuyruk tam olarak "kimsenin kapatmadığı" satırların biriktiği
+    yerdir — sınırsız büyümeye en yatkın olanı — ve tavansız uç o gün tek
+    istekte bütün tabloyu çekerdi.
     """
-    return [
-        ReturnQueueRowOut(
-            package_id=r.package_id,
-            package_code=r.package_code,
-            order_id=r.order_id,
-            courier_id=r.courier_id,
-            courier_name=r.courier_name,
-            handed_over_at=r.handed_over_at,
-            waiting_days=r.waiting_days,
-        )
-        for r in await packing_service.return_queue(db)
-    ]
+    satirlar, toplam = await packing_service.return_queue_page(
+        db, limit=limit, offset=offset
+    )
+    return ReturnQueuePage(
+        items=[
+            ReturnQueueRowOut(
+                package_id=r.package_id,
+                package_code=r.package_code,
+                order_id=r.order_id,
+                courier_id=r.courier_id,
+                courier_name=r.courier_name,
+                handed_over_at=r.handed_over_at,
+                waiting_days=r.waiting_days,
+            )
+            for r in satirlar
+        ],
+        total=toplam,
+        limit=limit,
+        offset=offset,
+    )
 
 
 @router.get("/packages/{package_id}", response_model=PackageOut)
@@ -268,6 +287,52 @@ async def get_package(
     db: AsyncSession = Depends(get_db),
 ):
     return _paket(await packing_service.get_package(db, package_id))
+
+
+@router.get("/packages/{package_id}/label", response_model=PackageLabelOut)
+async def package_label(
+    package_id: int,
+    _admin: Admin = Depends(VIEW),
+    db: AsyncSession = Depends(get_db),
+):
+    """Kutunun üstüne basılacak etiketin TAMAMI — tek istekte.
+
+    Sevkiyat kimliği (alıcı · adres · teslimat tercihi) siparişte yaşar,
+    pakette değil; kuyruk satırı onu taşıyor ama paket `PACKED` olduğu anda
+    kuyruktan düşüyor — yani tam da basma anında elde değil. Bu uç o boşluğu
+    kapatır ve istemcinin iki yanıtı tahminle birleştirmesine gerek bırakmaz
+    (birleştirme F26'daki "etiket bomboş basıldı" hatasının yoluydu).
+
+    Alanların gerekçesi — neden ayrı uç, neden telefon YOK, `null` ne demek —
+    `schemas/packing.py::PackageLabelOut` docstring'indedir.
+
+    Yetki `packing.view`'dır: `qr_payload` zaten aynı izinle korunuyor ve
+    sevkiyat kimliği paketleme yüzeyinin dışına ÇIKMAZ (kurye/müşteri uçları bu
+    router'a erişemez — `require_admin_permission` admin olmayan herkesi 403'ler).
+    """
+    etiket = await packing_service.label_data(db, package_id)
+    return PackageLabelOut(
+        package_id=etiket.package_id,
+        code=etiket.code,
+        status=etiket.status,
+        qr_payload=etiket.qr_payload,
+        order_id=etiket.order_id,
+        recipient=etiket.recipient,
+        address=etiket.address,
+        city=etiket.city,
+        district=etiket.district,
+        delivery_pref=etiket.delivery_pref,
+        delivery_pref_note=etiket.delivery_pref_note,
+        items=[
+            PackageLabelItemOut(
+                order_item_id=k.order_item_id,
+                sku=k.sku,
+                title=k.title,
+                expected_qty=k.expected_qty,
+            )
+            for k in etiket.items
+        ],
+    )
 
 
 # ════════════════════════ Paketleme ════════════════════════

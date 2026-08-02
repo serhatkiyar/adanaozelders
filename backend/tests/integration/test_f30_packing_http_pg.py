@@ -252,7 +252,15 @@ async def test_VIEW_izni_RETURN_QUEUE_OKUYABILIR(client, kur):
     _aid, token = await kur.admin(izinler=[VIEW])
     r = await client.get("/api/v1/packing/return-queue", headers=_bas(token))
     assert r.status_code == 200, r.text
-    assert isinstance(r.json(), list)
+    # Uç commit 7'de sayfalandı (kardeş uçlarla aynı sözleşme): düz liste
+    # yerine `{items,total,limit,offset}`. `isinstance(..., list)` iddiası
+    # ŞEKLİ ölçüyordu ve yeni şekilde yanlış kırmızı verirdi; asıl ölçtüğü
+    # şey — "VIEW izni bu ucu OKUYABİLİR" — korunuyor ve sözleşme alan
+    # alan sabitlendi (eskisi `[]` dönen bozuk bir uçta da geçerdi).
+    govde = r.json()
+    assert set(govde) == {"items", "total", "limit", "offset"}, govde
+    assert isinstance(govde["items"], list)
+    assert isinstance(govde["total"], int)
 
 
 async def test_PACK_izni_VOID_UCUNU_KULLANABILIR(client, kur, fab):

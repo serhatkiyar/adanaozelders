@@ -248,6 +248,85 @@ class PackingQueuePage(BaseModel):
     offset: int
 
 
+class PackageLabelItemOut(BaseModel):
+    """Etiketteki kalem satırı.
+
+    **Beklenen** adet taşınır, taranan DEĞİL: kâğıt kutunun ne içermesi
+    gerektiğini söyler. Yarım kalmış bir paketin etiketi alınırsa taranan adet
+    eksik içeriği "doğru"muş gibi gösterirdi.
+
+    `sku` paket satırının SNAPSHOT'ıdır (sözleşme §3.6) — ürünü okunamayan
+    satırda `null`'dır ve etiket bunu açıkça yazar ("SKU yok"); sessiz boşluk
+    hatayı gizlerdi.
+    """
+
+    order_item_id: int
+    sku: str | None = None
+    title: str
+    expected_qty: int
+
+
+class PackageLabelOut(BaseModel):
+    """Tek paketin basılabilir etiketi — **kâğıdın tamamı, tek istekte**.
+
+    ## Neden ayrı bir uç (alanları `PackageOut`'a eklemek yerine)
+
+    Etiket alıcı + adres + teslimat tercihi ister; bunlar pakette değil
+    **siparişte** yaşar. İki çözüm vardı ve ayrı uç şu üç ölçüte göre seçildi:
+
+    1. **Tek istek.** Kuyruk satırı (`PackingQueueRowOut`) bu kimliği zaten
+       taşıyor ama paket `PACKED` olduğu anda kuyruktan DÜŞÜYOR — yani tam da
+       basma anında elde değil. Etiketi iki uçtan tahminle birleştirmek, F26'da
+       yaşanan "etiket bomboş basıldı, kimse fark etmedi" hatasının yolu.
+    2. **Kişisel veri her yanıtta dolaşmasın.** `PackageOut` yalnız detay değil;
+       liste (`PackagePage`, tek istekte 200 satıra kadar), açma, tarama,
+       tamamlama, çözme, `repack`, `unpack` ve `return-in` yanıtlarının da
+       gövdesidir. Sevkiyat kimliğini oraya koymak, alıcı adını ve açık adresi
+       paketleme ekranının HER isteğine yayardı; oysa etiket günde paket başına
+       bir kez basılır.
+    3. **Yetki yüzeyi değişmiyor.** `qr_payload` zaten `PackageOut`'ta ve
+       `packing.view` ile korunuyor; bu uç da aynı izne bağlıdır.
+
+    ## Telefon BİLİNÇLİ OLARAK YOK
+
+    Kuryenin numaraya ihtiyacı vardır ama kâğıttan değil: saha ekranı numarayı
+    zaten taşıyor (`DeliveryStopOut.phone`, `delivery_service.py:175`) ve orası
+    yetki denetimli, **taze** kaynaktır. Etiket paketleme anında basılır; teslim
+    gününe kadar değişen bir numarayı kâğıt sessizce eskitir. Dahası kâğıt
+    teslimattan sonra da yaşar (kutunun üstünde çöpe, kapıya, komşuya gider) —
+    geri alınamayan tek kopyaya kişisel veri basmamak veri minimizasyonunun
+    kendisidir.
+
+    ## NULL sözleşmesi
+
+    Adres alanları (`recipient` · `address` · `city` · `district`) **opsiyonel**
+    ve `null` olabilir. Sunucu yer tutucu ÜRETMEZ: `"—"` ya da `""` dönmez;
+    boş/yalnız-boşluk değerler `null`'a indirgenir. Böylece istemci "veri yok"
+    (null → ekranda "—" **ve** eksik veri uyarısı) ile gerçek değeri ayırt eder;
+    boş dizgi dönseydi ekran veriyi var sanar, hata sessiz kalırdı.
+
+    `delivery_pref` NOT NULL kolondur (varsayılan `ADRESIMDEYIM`) ve her zaman
+    doludur; `delivery_pref_note` yalnız `KOMSUYA_BIRAK` gibi tercihlerde dolar.
+    """
+
+    #: `id` DEĞİL: gövdede `order_id` de var ve çıplak bir `id` basma anında
+    #: "hangi kimlik" sorusunu doğururdu (kuyruk satırı da `package_id` der).
+    package_id: int
+    #: `PKT-000042` — QR okunamazsa kâğıttan insanın okuyacağı kod.
+    code: str
+    status: str
+    #: `PKG1:{id}:{token}` — QR'a basılan GERÇEK yük.
+    qr_payload: str
+    order_id: int
+    recipient: str | None = None
+    address: str | None = None
+    city: str | None = None
+    district: str | None = None
+    delivery_pref: str
+    delivery_pref_note: str | None = None
+    items: list[PackageLabelItemOut] = []
+
+
 class ReturnQueueRowOut(BaseModel):
     """"Geri dönüş bekleniyor" satırı (sözleşme §3.5 / TB-7).
 
@@ -262,6 +341,26 @@ class ReturnQueueRowOut(BaseModel):
     courier_name: str | None = None
     handed_over_at: datetime.datetime | None = None
     waiting_days: int
+
+
+class ReturnQueuePage(BaseModel):
+    """Geri dönüş kuyruğunun BİR sayfası — kardeş uçlarla aynı sözleşme.
+
+    Uç eskiden tavansız düz bir liste dönüyordu. Tehlikesi kuyruğun bugünkü
+    boyutu değil, **büyüdüğü gün**: geri dönüş kuyruğu tam olarak "kimsenin
+    kapatmadığı" satırların biriktiği yerdir (TB-7 sapması süresiz sürebilir),
+    yani sınırsız büyümeye en yatkın kuyruktur ve tavansız uç o gün tek istekte
+    bütün tabloyu çeker.
+
+    `total` **süzülmüş toplam** kayıt sayısıdır, `len(items)` değil — ekran
+    "N paket geri bekleniyor" derken N'in sayfa uzunluğu olması, sayacı
+    sessizce yalancı yapardı.
+    """
+
+    items: list[ReturnQueueRowOut]
+    total: int
+    limit: int
+    offset: int
 
 
 class HandoverManifestRowOut(BaseModel):
