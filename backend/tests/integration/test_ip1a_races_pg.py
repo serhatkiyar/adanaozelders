@@ -750,3 +750,165 @@ async def test_YESIL_tamamlama_ile_iptal_yarisinda_IKISI_BIRDEN_olmaz(
         "hem eğitmene kazanç yazıldı hem öğrenciye iade edildi"
     )
     assert len(provider.refund_calls) <= 1
+
+
+# ═══════ RESCHEDULE ↔ COMPLETE (nihai audit P1-B) ════════════════════════════
+#
+# `reschedule` durumu eskiden `booking.status = BookingStatus.PENDING` biçiminde
+# **koşulsuz ORM ataması** ile yazıyordu; FSM'i de atomik claim'i de atlıyordu.
+# Bağımsız nihai audit gerçek PostgreSQL'de şu final durumu üretti:
+#
+#     booking.status = PENDING · payment.status = RELEASED · released_at dolu
+#
+# Yani ders "tamamlanmamış" görünürken para eğitmene dağıtılmıştı ve iade yolu
+# `released_at` guard'ı yüzünden KALICI olarak kapanmıştı. Aşağıdaki iki test
+# yarışın **her iki yönünü** de deterministik olarak ölçer: kazanan hangisi
+# olursa olsun, ikisi birden başarılı olamaz.
+
+
+async def _ders_zamani(booking_id: int):
+    """Dersin (start_at, end_at) değerlerini TAZE session'dan okur."""
+    async with AsyncSessionLocal() as s:
+        booking = await s.get(Booking, booking_id)
+        return booking.start_at, booking.end_at
+
+
+def _yeni_saat(*, gun: int = 40, saat: int = 1):
+    start = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=gun)
+    return start, start + datetime.timedelta(hours=saat)
+
+
+async def test_reschedule_KAZANIRSA_tamamlama_PARAYI_ACAMAZ(ip1a, provider, ip1a_http, yaris):
+    """Sıralama A: reschedule commit'lendikten sonra gelen `complete` kaybeder.
+
+    Kaybeden taraf bayat `ACCEPTED` okumasıyla gelir; onu yalnız `complete`'in
+    koşullu UPDATE'i durdurabilir. Durduramazsa ders PENDING'ken parası
+    RELEASED olur — "yeniden onay bekleyen ders + dağıtılmış para".
+    """
+    ders = await ip1a.odenmis()
+    await ip1a.zamani_kaydir(ders.booking_id, delta=-datetime.timedelta(days=40))
+    okundu, kapi = asyncio.Event(), asyncio.Event()
+
+    async def gec_tamamla(s, booking):
+        await booking_service.complete(s, booking)
+
+    tamamla_gorevi = yaris(
+        _gecikmeli_okuyucu(
+            ders.booking_id, okundu=okundu, kapi=kapi, eylem=gec_tamamla
+        ),
+        ad="tamamla",
+    )
+    await _event_bekle(
+        okundu,
+        aciklama="tamamlama tarafı ACCEPTED booking satırını hiç okumadı",
+        ureticiler=(tamamla_gorevi,),
+    )
+
+    yeni_start, yeni_end = _yeni_saat()
+    async with AsyncSessionLocal() as s:
+        booking = await s.get(Booking, ders.booking_id)
+        await booking_service.reschedule(s, booking, start_at=yeni_start, end_at=yeni_end)
+        await s.commit()
+
+    kapi.set()
+    tamamlanabildi = await _gorev_bekle(
+        tamamla_gorevi, aciklama="kapı açıldıktan sonra tamamlama görevi bitmedi"
+    )
+
+    assert not tamamlanabildi, (
+        "KAYIP GÜNCELLEME: yeni saate taşınmış (PENDING) dersi bayat ACCEPTED "
+        "okumasıyla gelen tamamlama yazabildi."
+    )
+    booking_status, payment_status = await ip1a.durumlar(ders.booking_id)
+    assert (booking_status, payment_status) == (
+        BookingStatus.PENDING,
+        PaymentStatus.HELD,
+    ), (
+        f"TUTARSIZ SONUÇ: booking={booking_status.value}, ödeme={payment_status}. "
+        "Taşınan ders yeniden onay bekler ve parası emanette kalır."
+    )
+    p = await ip1a.payment(ders.booking_id)
+    assert p["released_at"] is None, (
+        "yeniden onaya düşmüş dersin parası eğitmene serbest bırakıldı — iade "
+        "released_at yüzünden kalıcı olarak kapandı"
+    )
+    assert await ip1a.tutor_hakedisi(ders.tutor_id) == Decimal("0.00")
+    assert provider.refund_calls == []
+
+
+async def test_tamamlama_KAZANIRSA_reschedule_DERSI_GERI_ALAMAZ(
+    ip1a, provider, ip1a_http, yaris
+):
+    """Sıralama B: `complete` commit'lendikten sonra gelen reschedule kaybeder.
+
+    Bu, audit'in gerçek PG'de ürettiği açığın birebir modelidir: reschedule
+    bayat `ACCEPTED` ile gelir, bellek içi durum kontrolünü GEÇER ve eski kodda
+    `booking.status = PENDING` atamasıyla terminal durumun üzerine yazardı.
+    Ölçülen: durum · para · `released_at` damgası · **ders saatinin
+    değiştirilmediği** (kaybeden taraf hiçbir alan yazmamalı).
+    """
+    ders = await ip1a.odenmis()
+    await ip1a.zamani_kaydir(ders.booking_id, delta=-datetime.timedelta(days=40))
+    once_start, once_end = await _ders_zamani(ders.booking_id)
+    okundu, kapi = asyncio.Event(), asyncio.Event()
+    yeni_start, yeni_end = _yeni_saat()
+
+    async def gec_reschedule(s, booking):
+        await booking_service.reschedule(
+            s, booking, start_at=yeni_start, end_at=yeni_end
+        )
+
+    reschedule_gorevi = yaris(
+        _gecikmeli_okuyucu(
+            ders.booking_id, okundu=okundu, kapi=kapi, eylem=gec_reschedule
+        ),
+        ad="reschedule",
+    )
+    await _event_bekle(
+        okundu,
+        aciklama="reschedule tarafı ACCEPTED booking satırını hiç okumadı",
+        ureticiler=(reschedule_gorevi,),
+    )
+
+    async with AsyncSessionLocal() as s:
+        booking = await s.get(Booking, ders.booking_id)
+        await booking_service.complete(s, booking)
+        await s.commit()
+    kazanan_damga = (await ip1a.payment(ders.booking_id))["released_at"]
+    assert kazanan_damga is not None, "kurulum: kazanan taraf release üretmedi"
+
+    kapi.set()
+    tasinabildi = await _gorev_bekle(
+        reschedule_gorevi, aciklama="kapı açıldıktan sonra reschedule görevi bitmedi"
+    )
+
+    # Önce SONUÇ DURUMU ölçülür: kırıldığında hata mesajı doğrudan tutarsızlığı
+    # (PENDING + RELEASED) gösterir; mekanizma iddiası (`not tasinabildi`) onun
+    # ardından gelir.
+    booking_status, payment_status = await ip1a.durumlar(ders.booking_id)
+    p_son = await ip1a.payment(ders.booking_id)
+    assert (booking_status, payment_status) == (
+        BookingStatus.COMPLETED,
+        PaymentStatus.RELEASED,
+    ), (
+        f"TUTARSIZ SONUÇ: booking={booking_status.value}, ödeme={payment_status}, "
+        f"released_at={p_son['released_at']}. Ders tamamlanmamış görünürken para "
+        "eğitmene dağıtılmış olamaz — iade released_at yüzünden kalıcı kapanır."
+    )
+    assert not tasinabildi, (
+        "KAYIP GÜNCELLEME: tamamlanmış (parası RELEASED) dersin üzerine "
+        "reschedule PENDING yazdı."
+    )
+
+    p = await ip1a.payment(ders.booking_id)
+    assert p["released_at"] == kazanan_damga, (
+        "released_at damgası yeniden yazıldı — hakediş anı kaydı bozuldu"
+    )
+    assert await ip1a.tutor_hakedisi(ders.tutor_id) == Decimal(str(p["tutor_earning"])), (
+        "kazanç iki kez sayıldı"
+    )
+    assert (await _ders_zamani(ders.booking_id)) == (once_start, once_end), (
+        "claim'i KAYBEDEN reschedule ders saatini yine de değiştirdi — kaybeden "
+        "taraf hiçbir alan yazmamalıdır"
+    )
+    assert provider.refund_calls == [], "tamamlanmış derste iade denemesi oluştu"
