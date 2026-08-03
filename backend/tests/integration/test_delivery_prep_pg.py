@@ -1,9 +1,18 @@
 """Hazırlama istasyonu kapısı (Faz 2, PDS O1) — GERÇEK Postgres.
 
 - Hazırlanmamış sipariş prep_queue'da; eligible_orders'ta DEĞİL.
-- mark_prepared sonrası eligible'a geçer, prep_queue'dan düşer.
+- **Paket tamamlanınca** eligible'a geçer, prep_queue'dan düşer.
 - add_stops hazırlanmamış siparişi 409 ile reddeder.
 - fail_stop hazırlığı sıfırlar (paket depoya döner).
+
+> **F30 commit 5 güncellemesi.** Bu dosya eskiden `delivery_service.mark_prepared`
+> ile hazırlıyordu; o iş mantığı ve uçları **kaldırıldı** (sözleşme §3.5, boşluk
+> G1: iki kapı bırakmak "eksik kalem kabul edilmez" ilkesini boşa çıkarır).
+> Hazırlama artık YALNIZ paketleme akışıyla olur: `open_package` → `scan` →
+> `complete`. Dosyanın ölçtüğü KUYRUK davranışı aynen korundu; yalnız siparişi
+> hazır hâle getiren yol değişti. Paket gerektiren düğümler `PaketFabrikasi`
+> kullanır (gerçek ürün + SKU + kalem), gerektirmeyenler eski hafif fabrikada
+> kalır.
 """
 from __future__ import annotations
 
@@ -111,12 +120,44 @@ async def test_hazirlanmamis_prep_queuede_eligible_disinda(pf):
     assert oid not in await _ids(delivery_service.eligible_orders)
 
 
-@pytest.mark.asyncio
-async def test_mark_prepared_eligible_yapar(pf):
-    oid = await pf.paid_order(prepared=False)
+@pytest.fixture
+async def paket_fab(pg):
+    """Gerçek ürün + kalem üreten F30 fabrikası (paketleme akışı için)."""
+    from tests.integration.f30_factory import PaketFabrikasi
+
+    f = PaketFabrikasi()
+    try:
+        yield f
+    finally:
+        await f.temizle()
+
+
+async def _paketle(fab) -> int:
+    """Sipariş → paket aç → tara → tamamla. Hazırlamanın TEK yolu (F30 §3.5)."""
+    from services import packing_service
+
+    aid = await fab.admin()
+    pid, _sku, ean = await fab.barkodlu_urun(stock=10)
+    oid = await fab.fiziksel_siparis(kalemler=[(pid, 1)])
     async with AsyncSessionLocal() as s:
-        out = await delivery_service.mark_prepared(s, oid, prepared=True)
-    assert out.prepared_at is not None
+        paket = await packing_service.open_package(s, oid, admin_id=aid)
+    async with AsyncSessionLocal() as s:
+        await packing_service.scan(s, paket.id, code=ean, admin_id=aid)
+    async with AsyncSessionLocal() as s:
+        await packing_service.complete(s, paket.id, admin_id=aid)
+    return oid
+
+
+@pytest.mark.asyncio
+async def test_PAKET_TAMAMLANINCA_eligible_olur(paket_fab):
+    """Eskiden `mark_prepared` yapıyordu; artık paketin tamamlanması yapıyor.
+
+    Ölçülen davranış AYNI: sipariş `prep_queue`'dan düşer, `eligible_orders`'a
+    girer. Değişen tek şey damgayı kimin koyduğu — ve artık damga kalem kalem
+    doğrulanmış bir paketten geliyor (boşluk G1).
+    """
+    oid = await _paketle(paket_fab)
+    assert await paket_fab.prepared_at(oid) is not None
     assert oid in await _ids(delivery_service.eligible_orders)
     assert oid not in await _ids(delivery_service.prep_queue)
 
@@ -131,9 +172,12 @@ async def test_add_stops_hazirlanmamisi_reddeder(pf):
         assert exc.value.status_code == 409
         assert "hazırlan" in exc.value.detail.lower()
 
-    # Hazırlanınca eklenebilir.
-    async with AsyncSessionLocal() as s:
-        await delivery_service.mark_prepared(s, oid, prepared=True)
+
+@pytest.mark.asyncio
+async def test_PAKETLENMIS_SIPARIS_TURA_EKLENEBILIR(paket_fab):
+    """Ters prova: kapı yalnız hazırlanmamışı reddetmeli, her siparişi değil."""
+    oid = await _paketle(paket_fab)
+    run_id = await paket_fab.tur()
     async with AsyncSessionLocal() as s:
         await delivery_service.add_stops(s, run_id, [oid])
     # Taze session'dan doğrula (aynı session'da get_run identity-map'ten stale
@@ -148,7 +192,7 @@ async def test_add_stops_hazirlanmamisi_reddeder(pf):
                 {"o": oid, "r": run_id},
             )
         ).scalar_one()
-        assert count == 1
+    assert count == 1
 
 
 @pytest.mark.asyncio

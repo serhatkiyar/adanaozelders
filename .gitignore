@@ -43,3 +43,6 @@ devops/certs/
 # tsc -b artefakti — vite.config.js olusursa Vite onu .ts'e tercih eder!
 frontend/vite.config.js
 frontend/vite.config.d.ts
+
+# F30 gerçek tarayıcı kabulünün çıktıları (PDF, ekran görüntüleri, log).
+.f30-kabul/

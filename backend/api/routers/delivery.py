@@ -49,6 +49,8 @@ from schemas.delivery import (
     StopsReorderIn,
     TrackIn,
 )
+from schemas.packing import HandoverManifestOut, HandoverScanIn, PackageOut
+from api.routers.packing import _paket as _paket_out
 from services import (
     audit_service,
     courier_account_service,
@@ -94,32 +96,19 @@ async def prep_queue(db: AsyncSession = Depends(get_db)):
     return await delivery_service.prep_queue(db)
 
 
-@router.post("/orders/{order_id}/prepare", response_model=EligibleOrderOut)
-async def mark_prepared(
-    order_id: int,
-    actor=Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db),
-):
-    """Siparişi 'hazır' işaretle — paket toplandı, etiket basıldı; artık tura eklenebilir."""
-    result = await delivery_service.mark_prepared(db, order_id, prepared=True)
-    await audit_service.record(
-        db, actor=actor, action="delivery_order.prepare", target_type="order", target_id=order_id
-    )
-    return result
-
-
-@router.post("/orders/{order_id}/unprepare", response_model=EligibleOrderOut)
-async def unmark_prepared(
-    order_id: int,
-    actor=Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db),
-):
-    """Hazırlığı geri al (yalnız tura girmemiş sipariş)."""
-    result = await delivery_service.mark_prepared(db, order_id, prepared=False)
-    await audit_service.record(
-        db, actor=actor, action="delivery_order.unprepare", target_type="order", target_id=order_id
-    )
-    return result
+# ── KALDIRILDI: elle hazırlama uçları (F30 commit 5) ─────────────────────────
+#
+# `POST /orders/{id}/prepare` ve `/unprepare` **bilinçli olarak silindi**
+# (sözleşme §3.5, §7 S3). Gerekçe tek cümlede: iki kapı bırakmak "eksik kalem
+# kabul edilmez" ilkesini boşa çıkarır. Elle "Hazır" butonu, kalem kalem
+# doğrulanmamış bir paketi `eligible_orders` kuyruğuna sokabiliyordu — F30'un
+# tamamı bu boşluğu (G1) kapatmak için yazıldı.
+#
+# Yerine geçen akış: `POST /packing/orders/{id}/open` → `/scan` → `/complete`.
+# `prepared_at`'in TEK yazıcıları artık `packing_service.complete` ve
+# `packing_service.repack`'tir; yapısal nöbetçi
+# `test_f30_packing_contract.py::test_prepared_at_YAZICILARI_ALLOWLISTTE`
+# yeni bir yazıcı eklenmesini kırmızıya çevirir.
 
 
 @router.get("/attention-orders", response_model=list[EligibleOrderOut])
@@ -545,17 +534,72 @@ async def run_position(
     return pos or {"lat": None, "lng": None, "age_seconds": None}
 
 
+def _saha_kurye_id(user) -> int | None:
+    """Saha kullanıcısının kurye kimliği; ADMIN ise `None` (süzgeç uygulanmaz).
+
+    Sahiplik süzgeci **servise** verilir, yalnız sonradan doğrulanmaz: paket
+    QR'ı ile gelen istekte durak, siparişin turlarından bulunur ve yabancı
+    kuryenin turu hiç eşleşmemelidir. Sonradan kontrol, arada durağın
+    alıcı bilgisini okumuş olmak demekti.
+    """
+    return user.courier_id if courier_account_service.is_courier_user(user) else None
+
+
 @field_router.post("/scan", response_model=ScanOut)
 async def scan(
     payload: ScanIn,
     user=Depends(_field_user),
     db: AsyncSession = Depends(get_db),
 ):
-    stop, run_status = await delivery_service.scan(db, payload.payload)
-    # QR başka kuryenin paketiyse varlık sızdırma — 404 (etiket karışıklığında
-    # kurye "bu etikete ait durak bulunamadı" görür, alıcı bilgisi görmez).
+    """Kapıda etiket okutma. **İki QR uzayı** kabul edilir (sözleşme §3.3):
+    `PKG1:{paket}:{token}` (F30, kalıcı) ve `{durak}:{token}` (mevcut, basılmış
+    eski etiketler için geriye uyum). Paket QR'ında paket ZİMMETLİ olmalıdır —
+    depoda duran ya da geri beklenen paket teslim akışını açmaz (409)."""
+    stop, run_status = await delivery_service.scan(
+        db, payload.payload, courier_id=_saha_kurye_id(user)
+    )
+    # İkinci savunma hattı: QR başka kuryenin paketiyse varlık sızdırma — 404.
     await courier_account_service.ensure_stop_access(db, user, stop.id)
     return ScanOut(stop=stop, run_status=run_status)
+
+
+@field_router.post("/handover/scan", response_model=PackageOut)
+async def handover_scan(
+    payload: HandoverScanIn,
+    user=Depends(_field_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Kurye zimmeti: paket QR'ı → paket `HANDED_OVER`, sipariş `SHIPPED`.
+
+    Sözleşme §3.4: işletmeden çıkış artık bir butona değil, kuryenin elindeki
+    paketi okutmasına bağlıdır. Aynı etiketin tekrar okutulması ikinci bir
+    `SHIPPED` geçişi, ikinci takip numarası ya da ikinci bildirim ÜRETMEZ.
+    Yabancı paket 404 (IDOR deseni); eksik/geri beklenen paket 409.
+    """
+    gorunum = await delivery_service.handover_scan(
+        db,
+        payload.payload,
+        courier_id=_saha_kurye_id(user),
+        actor=f"{'courier' if courier_account_service.is_courier_user(user) else 'admin'}:{user.id}",
+        actor_role=user.role_id,
+        actor_id=user.id,
+    )
+    return _paket_out(gorunum)
+
+
+@field_router.get("/handover/manifest/{run_id}", response_model=HandoverManifestOut)
+async def handover_manifest(
+    run_id: int,
+    user=Depends(_field_viewer),
+    db: AsyncSession = Depends(get_db),
+):
+    """Zimmet listesi: kaç paket alındı / kaç paket var + EKSİK olanlar.
+
+    Eksik paketi ancak turu başlatırken (409) öğrenmek, onu depoda değil yolda
+    fark etmek demektir.
+    """
+    await courier_account_service.ensure_run_access(db, user, run_id)
+    return await delivery_service.handover_manifest(db, run_id)
 
 
 @field_router.post("/stops/{stop_id}/send-otp", response_model=OtpSendOut)

@@ -70,6 +70,16 @@ from models.name_change_request import NameChangeRequest
 from models.study_reservation import StudyReservation
 from models.notification import Notification
 from models.outbox import OutboxEvent, OutboxStatus
+from models.packing import (
+    LIVE_PACKAGE_SQL,
+    PACKAGE_EVENT_TYPES,
+    PACKAGE_STATUSES,
+    SCAN_RESULTS,
+    TERMINAL_PACKAGE_STATUSES,
+    OrderPackage,
+    OrderPackageItem,
+    PackageScanEvent,
+)
 from models.payment import Payment, PaymentStatus
 from models.payout import PayeeType, PayoutRecord
 from models.qa import QAMessage, QAStatus, QAThread
@@ -227,6 +237,15 @@ __all__ = [
     "StockCountLineEvent",
     "StockCountSession",
     "StockDamageEvent",
+    # F30 — paketleme ve QR
+    "LIVE_PACKAGE_SQL",
+    "PACKAGE_EVENT_TYPES",
+    "PACKAGE_STATUSES",
+    "SCAN_RESULTS",
+    "TERMINAL_PACKAGE_STATUSES",
+    "OrderPackage",
+    "OrderPackageItem",
+    "PackageScanEvent",
     "ReturnStatus",
     "ReturnType",
     "ReturnRefundStatus",

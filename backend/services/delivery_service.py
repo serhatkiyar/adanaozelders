@@ -10,6 +10,7 @@ Saf yardımcılar (``parse_qr_token``/``hash_otp``/``validate_reorder``) pytest'
 """
 from __future__ import annotations
 
+import dataclasses
 import datetime
 import hashlib
 import logging
@@ -34,6 +35,7 @@ from models.delivery import (
     DeliveryStopStatus,
     FailReason,
 )
+from models.packing import OrderPackage
 from models.role import ROLE_IDS, RoleType
 from models.store import DeliveryPref, Order, OrderStatusHistory
 from schemas.delivery import (
@@ -51,15 +53,43 @@ from schemas.delivery import (
     TimelineEventOut,
 )
 from services import (
+    audit_service,
     delivery_calendar,
     delivery_promise,
     notification_service,
     order_fsm,
     order_service,
+    packing_events,
+    packing_rules,
+    packing_service,
 )
+
+
+@dataclasses.dataclass(frozen=True, slots=True)
+class _ZimmetAktoru:
+    """`audit_service.record` yalnız `id` ve `role_id` okur.
+
+    Zimmet aktörü admin OLMAYABİLİR (kurye, `role_id=5`); bu yüzden rol
+    dışarıdan gelir. Tek bir `admins.id` varsayımı kuryeyi denetim izinin
+    dışında bırakırdı.
+    """
+
+    id: int
+    role_id: int
 from services.delivery_timeline import eta_window, mask_recipient, project_customer_timeline
 
 _ACTIVE_RUN_STATUSES = (DeliveryRunStatus.PLANNED.value, DeliveryRunStatus.ACTIVE.value)
+
+#: Etiketle ilgili BÜTÜN 404'lerin TEK gövdesi.
+#:
+#: Commit 4 denetiminin bulgusu: "paket yok" · "senin turunda değil" · "bekleyen
+#: durak yok" ayrı metinlerdi ve hepsi 404 olsa bile **metin farkı bilgi
+#: sızdırıyordu** — yabancı bir etiketi eline geçiren kişi, gövdeye bakarak
+#: paketin var olup olmadığını ayırt edebiliyordu. Kalıcı QR + çalınabilir
+#: etiket (sözleşme §7 S4) bunu gerçek bir risk yapar. Ayrım artık YALNIZ
+#: sunucu loglarındadır.
+_ETIKET_YOK = "Bu etikete ait bekleyen durak bulunamadı"
+
 
 logger = logging.getLogger("adana.delivery")
 
@@ -415,11 +445,26 @@ async def cancel_run(db: AsyncSession, run_id: int) -> DeliveryRunOut:
     run = await _load_run(db, run_id)
     if run.status not in _ACTIVE_RUN_STATUSES:
         raise HTTPException(status.HTTP_409_CONFLICT, "Yalnız planlı/aktif tur iptal edilebilir")
+    # P1 (commit 6 denetimi): sipariş kilitleri ARTAN `order_id` sırasında ve
+    # TOPTAN alınır. Aşağıdaki döngü durakları `sequence` sırasında dolaşır —
+    # rota optimizasyonundan sonra bu sıra `order_id` sırasından FARKLIDIR ve
+    # `add_stops` ile ters kilitlenme (40P01) üretiyordu. `sequence` yalnız
+    # uygulama sırasıdır; kilit sırası buradan gelir.
+    await _lock_orders_ascending(
+        db,
+        (
+            s.order_id
+            for s in run.stops
+            if s.status == DeliveryStopStatus.PENDING.value
+        ),
+    )
     for stop in run.stops:
         if stop.status != DeliveryStopStatus.PENDING.value:
             continue
         # Kilit + taze durum: kurye tam bu anda teslim etmiş olabilir —
-        # sonuçlanmış durak/sipariş iptal geri sarımıyla EZİLMEZ.
+        # sonuçlanmış durak/sipariş iptal geri sarımıyla EZİLMEZ. Sipariş
+        # kilidi yukarıda alındı; buradaki çağrı yeniden giriştir (bedelsiz)
+        # ve asıl işi durak kilidi + tazeleme yapar.
         await _lock_stop_and_order(db, stop)
         if stop.status != DeliveryStopStatus.PENDING.value:
             continue
@@ -428,6 +473,12 @@ async def cancel_run(db: AsyncSession, run_id: int) -> DeliveryRunOut:
                 db, stop.order, "PAID", changed_by="admin", reason="Tur iptal edildi"
             )
             stop.order.tracking_no = None
+        # F30 §3.5: tur iptal oldu ama paketler ARAÇTA kaldı. "Depoya döndü"
+        # bir varsayımdır (G5); paket geri bekleniyor işaretlenir ve ancak
+        # depoda okutulunca (`return_in`) işletmeye geri sayılır.
+        await packing_events.on_package_returning(
+            db, stop.order_id, reason="Tur iptal edildi"
+        )
         stop.status = DeliveryStopStatus.FAILED.value
         stop.courier_note = stop.courier_note or "Tur iptal edildi"
     run.status = DeliveryRunStatus.CANCELLED.value
@@ -451,11 +502,47 @@ async def start_run(db: AsyncSession, run_id: int) -> DeliveryRunOut:
     if not run.stops:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Turda hiç durak yok")
 
+    # ── F30 ön koşulu (sözleşme §3.4): kurye EKSİK PAKETLE yola çıkamaz ──
+    # Paketi olan her bekleyen durak zimmetlenmiş (`HANDED_OVER`) olmalıdır.
+    # Paketi olmayan (F30 öncesi akıştan gelen) durak eski davranışı sürdürür;
+    # koşulsuz dayatma, paketi HİÇ olmamış (F30 öncesinden gelen) siparişler
+    # için bilinçli olarak yapılmadı — onları da zorunlu kılmak dağıtımdaki
+    # mevcut siparişleri anında kilitlerdi.
+    paketler = {
+        stop.order_id: await packing_events.live_package(db, stop.order_id)
+        for stop in run.stops
+        if stop.status == DeliveryStopStatus.PENDING.value
+    }
+    zimmetsiz = [
+        order_id
+        for order_id, paket in paketler.items()
+        if paket is not None and paket.status != "HANDED_OVER"
+    ]
+    # F30 commit 5 — VOID kör noktası: canlı paketi olmayan ama paket GEÇMİŞİ
+    # olan sipariş de zimmetsiz sayılır. `VOID` bir paket "canlı paket yok"
+    # demektir ve eski hâlde bu durak sessizce eski (okutmasız) yola düşerdi.
+    for order_id, paket in paketler.items():
+        if paket is None and await _paket_gecmisi_var(db, order_id):
+            zimmetsiz.append(order_id)
+    if zimmetsiz:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Zimmetlenmemiş paket var — kurye eksik paketle yola çıkamaz. "
+            "Şu siparişlerin paketi okutulmadı: "
+            + ", ".join(f"#{oid}" for oid in sorted(zimmetsiz)),
+        )
+
     shipped = 0
     for stop in run.stops:
         if stop.status != DeliveryStopStatus.PENDING.value:
             continue
         order = stop.order
+        if paketler.get(order.id) is not None:
+            # Çıkışı zimmet yazdı: sipariş zaten SHIPPED, takip numarası ve
+            # takip SMS'i o anda üretildi. Burada tekrarlamak ikinci bir
+            # bildirim ve bayat bir tracking_no üretirdi.
+            shipped += 1
+            continue
         if not order_fsm.can_transition(order.status, "SHIPPED"):
             # order_fsm iptal/iadede durağı kapatır; yine de kaçak kaldıysa
             # (eski veri) tek durak tüm turu düşürmesin.
@@ -541,7 +628,27 @@ async def expire_stale_runs(db: AsyncSession) -> int:
         await db.execute(select(Admin.id).where(Admin.deleted_at.is_(None)))
     ).scalars().all()
     closed_dates = await _closed_dates_now(db)
-    for run in runs:
+    # Turlar da deterministik sırada işlenir: her tur kendi sonunda commit
+    # ettiği için kilitler tur bazında tutulur, ama sıra sabit olsun ki iki
+    # watchdog koşusu (ör. yeniden başlatma penceresi) birbiriyle çarpışmasın.
+    for run in sorted(runs, key=lambda r: r.id):
+        # P1 (commit 6 denetimi): `cancel_run` ile aynı sözleşme — sipariş
+        # kilitleri ARTAN `order_id` sırasında ve toptan alınır. Aşağıdaki
+        # döngü `sequence` sırasını korur (bildirim/SMS sırası operasyonel
+        # olarak anlamlıdır), kilit sırası ondan bağımsızdır.
+        #
+        # Aynı siparişin İKİ farklı stale run'da PENDING durağı olamaz:
+        # `uq_delivery_stop_open` kısmi unique index'i sipariş başına tek açık
+        # durağa izin verir. Bu yüzden turlar arası kilit kesişimi yoktur ve
+        # tur bazında kilitlemek yeterlidir.
+        await _lock_orders_ascending(
+            db,
+            (
+                s.order_id
+                for s in run.stops
+                if s.status == DeliveryStopStatus.PENDING.value
+            ),
+        )
         for stop in run.stops:
             if stop.status != DeliveryStopStatus.PENDING.value:
                 continue
@@ -563,6 +670,11 @@ async def expire_stale_runs(db: AsyncSession) -> int:
                 )
             else:
                 requeued = True
+            # F30 §3.5: watchdog turu kapattı (kurye telefonu öldü) — paket
+            # hâlâ araçta. Dört geri dönüş yolundan biri.
+            await packing_events.on_package_returning(
+                db, stop.order_id, reason="Tur zaman aşımıyla kapatıldı"
+            )
             stop.status = DeliveryStopStatus.FAILED.value
             stop.courier_note = stop.courier_note or "Tur zaman aşımıyla kapatıldı"
             if requeued:
@@ -600,6 +712,73 @@ async def expire_stale_runs(db: AsyncSession) -> int:
 
 
 # ── Durak yönetimi ────────────────────────────────────────────────────────────────
+
+
+async def _lock_orders_ascending(db: AsyncSession, order_ids) -> list[int]:
+    """Sipariş satırlarını **ARTAN `order_id`** sırasında `FOR UPDATE` ile alır.
+
+    ## Neden bu fonksiyon var (P1 — commit 6 denetimi)
+
+    Deadlock, iki transaction'ın aynı satır kümesini **farklı sıralarda**
+    kilitlemesinden doğar. Bu modülde iki farklı "doğal sıra" çarpışıyordu:
+
+    * `add_stops` siparişleri **istekten gelen** sırayla dolaşıyordu,
+    * `cancel_run` / `expire_stale_runs` durakları **`DeliveryStop.sequence`**
+      sırasıyla dolaşıyor ve her durak için siparişi kilitliyordu.
+
+    Rota optimizasyonundan sonra `sequence` ile `order_id` sırasının farklı
+    olması **normaldir** (`optimize_run` durakları yol ağına göre yeniden
+    sıralar). Dolayısıyla iki yol aynı iki siparişi A→B ve B→A biçiminde
+    kilitleyebiliyordu; bağımsız denetim bunu mutasyonsuz üretim kodunda 4/6
+    tekrarda gerçek `40P01` olarak üretti.
+
+    Kural bu yüzden **tek taraflı değildir**: aynı sipariş kümesine dokunan
+    HER yol bu yardımcıyı kullanmak ve kilitleri artan `order_id` sırasında
+    almak zorundadır. `DeliveryStop.sequence` yalnız **rota ve uygulama**
+    sırasıdır; veritabanı kilit sırasını ASLA belirlemez.
+
+    Kilitler döngünün başında **toptan** alınır: böylece bir transaction
+    kilitlerin tamamını aldıktan sonra karşı taraf daha ilk (en küçük)
+    siparişte bekler ve `OrderPackage`/`DeliveryStop` üzerindeki sıra farkları
+    (ör. `_lock_stop_and_order`ın durağı paketten önce alması) döngü
+    üretemez — sipariş kilitleri tam bir bariyerdir.
+
+    Yinelenen `order_id`'ler tekilleştirilir: aynı sipariş için iki durak
+    bulunması hâlinde satır iki kez kilitlenmeye çalışılmaz (yeniden giriş
+    zararsızdır ama sıra iddiasını okunmaz kılardı). Kilitlenen kimlikler
+    döndürülür — çağıran sırayı loglayabilir/test edebilir.
+    """
+    sirali = sorted({int(o) for o in order_ids})
+    for order_id in sirali:
+        await db.execute(
+            select(Order.id).where(Order.id == order_id).with_for_update()
+        )
+    return sirali
+
+
+async def _paket_gecmisi_var(db: AsyncSession, order_id: int) -> bool:
+    """Siparişin HERHANGİ bir paket satırı var mı (terminal olanlar dahil)?
+
+    F30 commit 5'in "VOID kör noktası" düzeltmesi. Canlı paket sorgusu
+    (`packing_events.live_package`) terminal paketleri görmez; `VOID` edilmiş
+    bir paket de "canlı paket yok" demektir. Elle hazırlama uçları dururken bu
+    şu yolu açıyordu:
+
+        paket VOID → elle "Hazır" → eligible → add_stops → start_run
+        → paket OLMADAN, hiç okutulmadan SHIPPED.
+
+    Uçlar kaldırıldığı için canlı HTTP yolu kapandı; bu yordam **kalan yapısal
+    boşluğu** kapatır: bir siparişin paket geçmişi varsa o sipariş artık F30
+    öncesi mantığa DÖNEMEZ — dağıtıma girebilmesi için canlı ve doğru durumda
+    bir paketi olmak zorundadır. Paketi HİÇ olmamış (F30 öncesinden gelen)
+    siparişler bilinçli olarak eski davranışı sürdürür; onları da zorunlu
+    kılmak, dağıtımda olan mevcut siparişleri anında kilitlerdi.
+    """
+    return (
+        await db.execute(
+            select(OrderPackage.id).where(OrderPackage.order_id == order_id).limit(1)
+        )
+    ).first() is not None
 
 
 async def _has_open_stop(db: AsyncSession, order_id: int) -> bool:
@@ -656,7 +835,15 @@ def _within_attempt_cap():
 async def prep_queue(db: AsyncSession) -> list[EligibleOrderOut]:
     """Hazırlama istasyonu kuyruğu (PDS O1): ödenmiş + fiziksel + Adana-içi ama
     HENÜZ hazırlanmamış + deneme hakkı DOLMAMIŞ siparişler. Depo görevlisi
-    paketi toplayıp etiketi basınca ``mark_prepared`` ile hazır işaretlenir."""
+    Hazır işaretleme YALNIZ paketleme istasyonundan olur: paket açılır, her
+    kalem okutulur, `packing_service.complete` `prepared_at`'i damgalar
+    (`/yonetim/paketleme`). Elle "Hazırla" butonu ve uçları KALDIRILDI.
+
+    **F30 (sözleşme §3.5):** paketi ARAÇTA olan sipariş bu kuyrukta GÖRÜNMEZ.
+    `fail_stop`/`expire_stale_runs` `prepared_at`'i sıfırladığı için sipariş
+    aksi hâlde doğrudan buraya düşer ve personel aynı ürünleri **ikinci kez**
+    raftan toplamaya kalkardı. Paket kaybolmasın diye ayrı bir operasyon
+    kuyruğunda görünür: ``packing_service.return_queue`` (TB-7)."""
     orders = (
         await db.execute(
             select(Order)
@@ -668,6 +855,14 @@ async def prep_queue(db: AsyncSession) -> list[EligibleOrderOut]:
                 Order.status == "PAID",
                 Order.ship_in_zone.is_(True),
                 Order.prepared_at.is_(None),
+                # F30 commit 6: araçtaki paket (§3.5) **ve** depoya dönmüş ama
+                # `repack` bekleyen (`RETURNED`) paket bu kuyrukta GÖRÜNMEZ.
+                # İkincisi commit 5 denetiminin bulduğu çıkmazdı: paket rafta
+                # hazırken sipariş "topla ve paketle" diyordu, operatör
+                # "Paketle"ye basınca `open_package` mevcut RETURNED paketi
+                # döndürüyor, `complete` 409 veriyordu — çıkışsız döngü.
+                # Doğru eylem `repack` ve o ayrı kuyrukta sunulur.
+                ~packing_events.first_packing_blocked_condition(),
                 _within_attempt_cap(),
             )
             .order_by(
@@ -740,41 +935,19 @@ async def retry_exhausted_order(db: AsyncSession, order_id: int) -> EligibleOrde
     return _eligible_out(order)
 
 
-async def mark_prepared(
-    db: AsyncSession, order_id: int, *, prepared: bool, actor: str = "admin"
-) -> EligibleOrderOut:
-    """Siparişi hazır/hazır-değil işaretler. Hazır ederken sipariş gerçekten
-    dağıtıma uygun olmalı (ödenmiş, fiziksel, bölge-içi, açık); değilse 409.
-    Geri alma yalnız henüz TURA GİRMEMİŞ siparişte serbest (durak varsa paket
-    zaten araçta/sahada)."""
-    order = await db.get(Order, order_id)
-    if order is None or order.deleted_at is not None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, f"Sipariş #{order_id} bulunamadı")
-    if prepared:
-        if not order.has_physical or order.ship_in_zone is not True:
-            raise HTTPException(
-                status.HTTP_409_CONFLICT,
-                f"Sipariş #{order_id} kendi-filo teslimatına uygun değil",
-            )
-        if order.payment_status != "PAID" or order.status != "PAID":
-            raise HTTPException(
-                status.HTTP_409_CONFLICT,
-                f"Sipariş #{order_id} ödenmiş ve açıkta olmalı",
-            )
-        if order.prepared_at is None:
-            order.prepared_at = _now()
-            order.prepared_by = actor
-    else:
-        if await _has_open_stop(db, order_id):
-            raise HTTPException(
-                status.HTTP_409_CONFLICT,
-                f"Sipariş #{order_id} zaten bir turda — hazırlık geri alınamaz",
-            )
-        order.prepared_at = None
-        order.prepared_by = None
-    await db.commit()
-    await db.refresh(order, ["items"])
-    return _eligible_out(order)
+# ── KALDIRILDI: `mark_prepared` (F30 commit 5) ───────────────────────────────
+#
+# Elle "Hazır"/"Hazırlığı geri al" iş mantığı **silindi** (sözleşme §3.5).
+# `prepared_at` artık yalnız kalem kalem doğrulanmış bir paketten doğar:
+# `packing_service.complete` ve `packing_service.repack`. Sıfırlayıcıları
+# `packing_service.void`, `packing_events.on_order_terminal` ve
+# `order_service.roll_promise_after_failed_attempt`'tir.
+#
+# Bu, boşluk G1'in kapanış noktasıdır: iki kapı bırakıldığı sürece "eksik kalem
+# kabul edilmez" kuralı tek tıkla atlatılabiliyordu. Yapısal nöbetçi
+# `test_f30_packing_contract.py::test_prepared_at_YAZICILARI_ALLOWLISTTE`
+# yeni bir yazıcı eklenmesini kırar; `::test_mark_prepared_KALDIRILDI` ise
+# fonksiyonun geri gelmesini.
 
 
 async def eligible_orders(db: AsyncSession) -> list[EligibleOrderOut]:
@@ -808,6 +981,16 @@ async def eligible_orders(db: AsyncSession) -> list[EligibleOrderOut]:
                 Order.prepared_at.is_not(None),
                 # Deneme hakkı dolanlar istisna kuyruğunda — otomatik dağıtılmaz.
                 _within_attempt_cap(),
+                # F30: paketi kuryede kalan sipariş yeniden tura verilemez
+                # (sözleşme §3.5). `postpone_delivery` `prepared_at`'i
+                # SIFIRLAMADIĞI için tek başına `prepared_at` süzgeci yetmez —
+                # paket araçtayken sipariş buraya sızardı.
+                ~packing_events.off_premise_package_exists(),
+                # F30 commit 5: paket geçmişi varsa CANLI ve HAZIR bir paket
+                # şart. Çözülmüş (`VOID`) ya da yeniden onaylanmamış
+                # (`RETURNED`) paketli sipariş, bayat bir `prepared_at` damgası
+                # yüzünden buraya sızmamalı.
+                packing_events.dispatchable_package_condition(),
                 ~open_stop_exists,
             )
             .order_by(
@@ -974,7 +1157,41 @@ async def outsourced_orders(db: AsyncSession) -> list[EligibleOrderOut]:
 
 async def add_stops(db: AsyncSession, run_id: int, order_ids: list[int]) -> DeliveryRunOut:
     """Siparişleri turun sonuna durak olarak ekler (PLANNED ya da ACTIVE turda —
-    kampanya günü sahadayken araya sipariş eklenebilir)."""
+    kampanya günü sahadayken araya sipariş eklenebilir).
+
+    ## Kilitler (F30 commit 6 — commit 5 denetiminin P1 bulgusu)
+
+    Bu fonksiyon eskiden **hiçbir satır kilidi almıyordu**: siparişi ve paketi
+    kilitsiz okuyup karar veriyor, sonra durağı yazıyordu. Eşzamanlı bir
+    `packing_service.void` araya girdiğinde ortaya **`VOID` paketli `PENDING`
+    durak** çıkıyordu ve sonuç iki taraflı kilitlenmeydi: `start_run` o durağı
+    zimmetsiz sayıp bütün turu 409'lardı, sipariş de açık durağı yüzünden ne
+    başka tura eklenebilir ne kuyruğa girebilirdi. Kurtuluş yalnız elle
+    `remove_stop`'tu.
+
+    Artık okuma-karar-yazma **kilit altında** yapılır ve kanonik sıra korunur:
+    `Order → OrderPackage → DeliveryStop` (`lock_contract.CANONICAL_LOCK_ORDER`).
+
+    ## Neden sipariş kilitleri ARTAN `order_id` sırasında alınır
+
+    Deadlock, aynı satır kümesinin iki transaction tarafından **farklı
+    sıralarda** kilitlenmesinden doğar. Bu yüzden kural **tek taraflı
+    değildir**: `add_stops`'un sıralaması TEK BAŞINA hiçbir şeyi imkânsız
+    kılmaz — koruma, aynı sipariş kümesine dokunan **bütün** yolların
+    (`add_stops` · `cancel_run` · `expire_stale_runs`) `_lock_orders_ascending`
+    ile aynı artan `order_id` sırasını kullanmasından gelir.
+
+    ⚠️ Bu docstring'in eski hâli "deterministik `order_id` sırası bu döngüyü
+    yapısal olarak imkânsız kılar" diyordu ve **yanlıştı**: karşı taraflar hâlâ
+    `DeliveryStop.sequence` sırasında kilitliyordu. Rota optimizasyonundan
+    sonra `sequence` ile `order_id` sırasının farklı olması normaldir, yani
+    iddia tam da gerçek operasyonda çöküyordu; bağımsız denetim gerçek
+    `40P01`'i 4/6 tekrarda üretti.
+
+    `sequence` **rota sırasıdır, kilit sırası değildir**. Durakların `sequence`
+    numaraları yine isteğin sırasına göre verilir (operatörün seçtiği sıra
+    korunur); kilitler ondan bağımsızdır.
+    """
     run = await _load_run(db, run_id)
     if run.status not in _ACTIVE_RUN_STATUSES:
         raise HTTPException(status.HTTP_409_CONFLICT, "Tamamlanmış/iptal tura durak eklenemez")
@@ -988,10 +1205,20 @@ async def add_stops(db: AsyncSession, run_id: int, order_ids: list[int]) -> Deli
         + 1
     )
     existing = {s.order_id for s in run.stops}
-    for order_id in dict.fromkeys(order_ids):  # sıra korunarak tekilleştir
-        if order_id in existing:
-            continue
-        order = await db.get(Order, order_id)
+    # Sıra korunarak tekilleştir (durak sequence'i bu sırayı izler)...
+    istenen = [o for o in dict.fromkeys(order_ids) if o not in existing]
+    # ...ama KİLİTLER artan order_id sırasında alınır (deadlock önlemi) ve
+    # karşı yollarla AYNI yardımcıdan geçer — sıra sözleşmesi tek yerdedir.
+    await _lock_orders_ascending(db, istenen)
+
+    for order_id in istenen:
+        order = (
+            await db.execute(
+                select(Order)
+                .where(Order.id == order_id)
+                .execution_options(populate_existing=True)
+            )
+        ).scalars().first()
         if order is None or order.deleted_at is not None:
             raise HTTPException(status.HTTP_404_NOT_FOUND, f"Sipariş #{order_id} bulunamadı")
         if not order.has_physical:
@@ -1012,6 +1239,28 @@ async def add_stops(db: AsyncSession, run_id: int, order_ids: list[int]) -> Deli
             raise HTTPException(
                 status.HTTP_409_CONFLICT, f"Sipariş #{order_id} zaten bir turda bekliyor"
             )
+        # Paket KİLİTLİ okunur: `void` ile yarışta bayat durum üzerinden karar
+        # verilirse VOID paketli durak doğar (yukarıdaki gerekçe).
+        paket = await packing_events.live_package(db, order_id, lock=True)
+        # F30 commit 5: paket geçmişi olan sipariş tura ancak **hazır (PACKED)**
+        # bir paketle girer. Eskiden yalnız "araçta değil" aranıyordu; o hâlde
+        # `cancel_run` sonrası `return_in` ile depoya dönen ama `repack` ile
+        # YENİDEN ONAYLANMAMIŞ (`RETURNED`) bir paket tura eklenebiliyordu —
+        # sözleşme §3.5 "sıra atlanamaz" kuralının delindiği yer buydu.
+        if paket is None:
+            if await _paket_gecmisi_var(db, order_id):
+                raise HTTPException(
+                    status.HTTP_409_CONFLICT,
+                    f"Sipariş #{order_id} paketi çözülmüş — dağıtıma girebilmesi "
+                    "için yeniden paketlenmeli (paketleme istasyonu)",
+                )
+        elif paket.status != "PACKED":
+            raise HTTPException(
+                status.HTTP_409_CONFLICT,
+                f"Sipariş #{order_id} paketi hazır değil "
+                f"({packing_rules.package_code(paket.id)} durumu {paket.status}) — "
+                "tura yalnız tamamlanmış paket eklenir",
+            )
         stop = DeliveryStop(
             run_id=run.id,
             order_id=order_id,
@@ -1023,7 +1272,11 @@ async def add_stops(db: AsyncSession, run_id: int, order_ids: list[int]) -> Deli
         db.add(stop)
         # Aktif turda eklenen durak da hemen 'dağıtımda' sayılır; takip SMS'i
         # outbox'a aynı transaction'da yazılır (geri sarımda SMS de gitmez).
-        if run.status == DeliveryRunStatus.ACTIVE.value:
+        #
+        # F30 (sözleşme §3.4): paketi OLAN sipariş burada SHIPPED YAPILMAZ —
+        # çıkışı kuryenin paketi okutması (zimmet) yazar. Paketi HİÇ olmamış
+        # (F30 öncesinden gelen) sipariş eski davranışı sürdürür.
+        if run.status == DeliveryRunStatus.ACTIVE.value and paket is None:
             await db.flush()
             await order_fsm.transition_order(db, order, "SHIPPED", changed_by="courier")
             order.tracking_no = f"ELDEN-R{run.id}-S{stop.id}"
@@ -1634,7 +1887,25 @@ async def _finalize_delivered(
 ) -> None:
     """Tek transaction: durak DELIVERED + sipariş DELIVERED + bildirim + e-posta
     outbox olayı + kalan ETA'ların drift'i — ya hepsi kalıcı olur ya hiçbiri
-    (eski hali üç ayrı commit'ti; ara adım patlarsa yan etkiler kayıp kalıyordu)."""
+    (eski hali üç ayrı commit'ti; ara adım patlarsa yan etkiler kayıp kalıyordu).
+
+    ## Zimmet kapısı — ve bu docstring'in bir kez YANLIŞ olduğu yer
+
+    Burası **saha teslim yollarının** (OTP doğrulama · notlu yönetici teslimi ·
+    kapıya/komşuya bırakma) ortak hunisidir; zimmet kapısı bu yüzden uçlara tek
+    tek değil buraya konur.
+
+    Buranın eski hâli "yarın eklenecek dördüncü bir teslim yolu da guard'ı
+    kendiliğinden miras alır" diyordu. **O cümle yanlıştı ve bir denetim
+    bulgusuna dönüştü**: dördüncü yol zaten vardı — `order_service
+    .mark_delivered` (`POST /store/admin/orders/{id}/deliver`) — ve bu huniden
+    hiç geçmiyordu. Doğru sözleşme şudur: bu fonksiyon YALNIZ kendi çağıranlarını
+    kapsar; başka servislerdeki `DELIVERED` geçişleri ortak
+    `packing_events.zimmet_zorunlu` çağrısını AYRICA yapmak zorundadır ve
+    kapsamın kapalı kaldığını bir call-graph nöbetçisi denetler
+    (`tests/acceptance/test_f30_delivery_guard_contract.py`).
+    """
+    await packing_events.zimmet_zorunlu(db, stop.order_id)
     now = _now()
     eta_drift = (now - stop.eta) if stop.eta is not None else None
     stop.status = DeliveryStopStatus.DELIVERED.value
@@ -1646,6 +1917,9 @@ async def _finalize_delivered(
         stop.courier_note = note
     order = stop.order
     await order_fsm.transition_order(db, order, "DELIVERED", changed_by="courier")
+    # F30: paket müşteride → terminal (`DELIVERED`). QR'ı da o anda geçersizleşir
+    # (sözleşme §3.3): aynı etiketle ikinci bir teslim akışı açılamaz.
+    await packing_events.on_package_delivered(db, order.id)
     await notification_service.notify(
         db,
         user_id=order.client_id,
@@ -1740,6 +2014,12 @@ async def fail_stop(
         db, order, "PAID", changed_by="courier", reason=f"Teslim edilemedi: {reason}"
     )
     order.tracking_no = None
+    # F30 §3.5 / G5: paket kuryede KALDI. Eski kod `prepared_at`'i sıfırlayıp
+    # "depoya döndü" varsayıyordu; artık paket geri bekleniyor işaretlenir ve
+    # `packing_service.return_queue`'da kaç gündür beklediğiyle görünür (TB-7).
+    await packing_events.on_package_returning(
+        db, order.id, reason=f"Teslim edilemedi: {reason}"
+    )
     # Söz borcu: yarına öncelikli yeniden deneme + başarısızlık sayacı (PDS B7).
     # Tavana ulaşırsa (üç-deneme) yeniden kuyruğa GİRMEZ → operatör istisna kuyruğu.
     requeued = order_service.roll_promise_after_failed_attempt(
@@ -1793,8 +2073,285 @@ async def _notify_admins_attention(db: AsyncSession, order: Order) -> None:
         )
 
 
-async def scan(db: AsyncSession, payload: str) -> tuple[DeliveryStopOut, str]:
-    """Paket etiketi QR'ından durağı bulur (doğru paket kontrolü)."""
+async def handover_scan(
+    db: AsyncSession,
+    payload: str,
+    *,
+    courier_id: int | None,
+    actor: str,
+    actor_role: int | None = None,
+    actor_id: int | None = None,
+) -> "packing_service.PackageView":
+    """Kurye zimmeti: paket QR'ı okutulur → paket `HANDED_OVER`, sipariş `SHIPPED`.
+
+    Sözleşme §3.4 — **`SHIPPED` zimmet anına taşınır.** F29'un `ORDER_SHIPPED`
+    tanımı (`reserved −1, on_premise −1`) ancak paket fiilen kuryenin eline
+    geçtiğinde fiziksel gerçeğe karşılık gelir; `start_run` butonunun tek
+    hamlede bütün siparişleri SHIPPED yapması (boşluk G4) fiziksel kanıtı
+    sıfır olan bir iddiaydı.
+
+    **Kilit sırası** kanoniktir ve üç kaynağı birden alan tek akış budur:
+    `Order → OrderPackage → DeliveryStop`. Kilitler burada AÇIKÇA alınır
+    (yardımcıya saklanmaz) — kabul testi gerçek çağrı sırasını AST'den ölçer.
+
+    **IDOR deseni:** yabancı paket 403 değil **404** döner. QR kalıcı olduğu
+    için (§3.3) çalınan/kopyalanan bir etiket riski vardır (§7 S4); bu yüzden
+    zimmet, paketin O KURYENİN planlı/aktif turundaki bir durağa ait olmasını
+    arar. Teslim hâlâ OTP/foto ister — QR tek başına teslim kanıtı değildir.
+
+    İdempotenttir: aynı etiket ikinci kez okutulursa ikinci bir `SHIPPED`
+    geçişi, ikinci bir takip numarası ve ikinci bir bildirim ÜRETİLMEZ.
+    """
+    cozum = packing_rules.parse_package_qr(payload)
+    if cozum is None:
+        raise HTTPException(
+            status.HTTP_404_NOT_FOUND, _ETIKET_YOK
+        )
+    package_id, token = cozum
+    on_paket = (
+        await db.execute(
+            select(OrderPackage).where(
+                OrderPackage.id == package_id, OrderPackage.qr_token == token
+            )
+        )
+    ).scalars().first()
+    if on_paket is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, _ETIKET_YOK)
+
+    # 1) Order — kanonik sıranın ilk halkası (iptal/iade ile yarışır).
+    order = (
+        await db.execute(
+            select(Order)
+            .where(Order.id == on_paket.order_id, Order.deleted_at.is_(None))
+            .with_for_update(of=Order)
+            .execution_options(populate_existing=True)
+        )
+    ).scalars().first()
+    if order is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, _ETIKET_YOK)
+    # 2) OrderPackage
+    paket = (
+        await db.execute(
+            select(OrderPackage)
+            # Satırlar ŞİMDİ yüklenir: yanıt görünümü commit'ten SONRA kurulur
+            # ve o noktada tembel yükleme async bağlamın dışında kalır
+            # (`MissingGreenlet`). Bu tuzağa bir kez düşüldü.
+            .options(selectinload(OrderPackage.items))
+            .where(OrderPackage.id == package_id)
+            .with_for_update(of=OrderPackage)
+            .execution_options(populate_existing=True)
+        )
+    ).scalars().one()
+    # 3a) SAHİPLİK (IDOR) — durum kontrolünden ÖNCE. Sıra bilinçlidir: paketin
+    # bu kuryeye ait OLMADIĞI hâlde 404 dönmeli, ait olduğu hâlde ise sorunun
+    # ne olduğu (paket eksik / geri bekleniyor) 409 ile SÖYLENMELİ. Ters sırada
+    # yabancı bir etiketi okutan kişi paketin durumunu öğrenirdi.
+    kurye_kosulu = _kurye_kosulu(courier_id)
+    await _paket_sahipligi(db, order.id, courier_id)
+
+    if paket.status == "HANDED_OVER":
+        return packing_service.view_of(paket)   # çift okutma ikinci geçiş üretmez
+    if not packing_rules.allows("handover", paket.status):
+        # Eksik (OPEN) paket araca yüklenemez; geri beklenen (RETURN_PENDING)
+        # paket de önce depoda okutulmalıdır — "belirsiz fiziksel olayda
+        # tahmin yok" (sözleşme §3.5).
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            f"Paket {packing_rules.package_code(paket.id)} zimmetlenemez: "
+            f"durum {paket.status}, beklenen PACKED",
+        )
+
+    # 3b) Bekleyen durak — kanonik sıranın üçüncü halkası.
+    stop = (
+        await db.execute(
+            select(DeliveryStop)
+            .join(DeliveryRun, DeliveryStop.run_id == DeliveryRun.id)
+            .where(
+                DeliveryStop.order_id == order.id,
+                DeliveryStop.status == DeliveryStopStatus.PENDING.value,
+                DeliveryRun.status.in_(_ACTIVE_RUN_STATUSES),
+                DeliveryRun.deleted_at.is_(None),
+                *kurye_kosulu,
+            )
+            .order_by(DeliveryStop.id)
+            .with_for_update(of=DeliveryStop)
+            .execution_options(populate_existing=True)
+        )
+    ).scalars().first()
+    if stop is None:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            f"Paket {packing_rules.package_code(paket.id)} için bekleyen durak yok "
+            "— önce planlı/aktif bir tura eklenmeli",
+        )
+    if order.payment_status != "PAID" or order.status != "PAID":
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            f"Sipariş #{order.id} dağıtıma uygun değil (durum {order.status})",
+        )
+
+    # Zimmeti ADMIN yapıyorsa (operatör kurye adına okutabilir) paketin kime
+    # verildiği yine de kaydedilmelidir: kayıt turun kuryesinden gelir.
+    # `handed_to_courier_id` boş kalsaydı geri dönüş kuyruğu "hangi kuryede"
+    # sorusunu cevaplayamazdı (TB-7'nin tam olarak engellemek istediği şey).
+    kayit_kurye = courier_id
+    if kayit_kurye is None:
+        kayit_kurye = (
+            await db.execute(
+                select(DeliveryRun.courier_id).where(DeliveryRun.id == stop.run_id)
+            )
+        ).scalar_one_or_none()
+
+    # Paket ayağı `packing_service`tedir (bağımlılık yönü §3.7: delivery →
+    # packing, tersi YASAK) ve commit ETMEZ: zimmet ile SHIPPED ya birlikte
+    # kalıcı olur ya hiçbiri.
+    if not await packing_service.mark_handed_over(
+        db,
+        paket,
+        courier_id=kayit_kurye,
+        actor=actor,
+        actor_role=actor_role,
+        actor_id=actor_id,
+    ):  # pragma: no cover
+        # BU DAL BU AKIŞTAN ULAŞILAMAZ: yukarıdaki `HANDED_OVER` erken dönüşü
+        # aynı durumu daha önce yakalar. Kaldırılmıyor çünkü
+        # `mark_handed_over` **public bir servis fonksiyonudur** ve tekrar
+        # guard'ı onun KENDİ sözleşmesidir (doğrudan çağıran ikinci bir
+        # `HANDOVER` olayı üretemez). Guard doğrudan test edilir:
+        # `test_f30_guards_pg.py::test_C5_mark_handed_over_TEKRARI_FALSE_DONER`.
+        return packing_service.view_of(paket)
+
+    await order_fsm.transition_order(db, order, "SHIPPED", changed_by="courier")
+    order.tracking_no = f"ELDEN-R{stop.run_id}-S{stop.id}"
+    await notification_service.notify(
+        db,
+        user_id=order.client_id,
+        role_id=ROLE_IDS[RoleType.CLIENT],
+        message=f"Siparişin #{order.id} bugün dağıtımda — kuryemiz yola çıktı.",
+        link="/siparislerim",
+    )
+    _enqueue_tracking_link(db, order)
+    if actor_id is not None and actor_role is not None:
+        # Zimmet bir SAHA aksiyonudur ve aktörü admin olmayabilir (kurye
+        # rol 5). `audit_logs` deseni (actor_role, actor_id) çifti taşıdığı
+        # için ikisi de kaydedilebilir. Aktörü BİLİNMEYEN çağrı (servis
+        # düzeyinde test/otomasyon) audit yazmaz — uydurulmuş bir aktör,
+        # hiç aktör olmamasından daha kötüdür.
+        await audit_service.record(
+            db,
+            actor=_ZimmetAktoru(id=actor_id, role_id=actor_role),
+            action="package.handover",
+            target_type="order_package",
+            target_id=paket.id,
+            details=packing_rules.package_code(paket.id),
+            after={"status": "HANDED_OVER", "courier_id": kayit_kurye},
+            meta={"order_id": order.id, "stop_id": stop.id, "run_id": stop.run_id},
+        )
+    await db.commit()
+    return packing_service.view_of(paket)
+
+
+async def handover_manifest(db: AsyncSession, run_id: int):
+    """Kurye zimmet ekranının N/M çubuğu + EKSİK paket listesi (sözleşme §6).
+
+    "Kaç paket aldım / kaç paket var" sorusunun tek cevabı budur; kurye
+    aracı yüklerken listeyi ekrandan takip eder. Eksik paketi ancak turu
+    başlatırken (409) öğrenmek, sabah deposunda değil yolda fark etmek
+    demektir.
+    """
+    from schemas.packing import HandoverManifestOut, HandoverManifestRowOut
+
+    run = await _load_run(db, run_id)
+    satirlar: list[HandoverManifestRowOut] = []
+    for stop in run.stops:
+        if stop.status != DeliveryStopStatus.PENDING.value:
+            continue
+        paket = await packing_events.live_package(db, stop.order_id)
+        satirlar.append(
+            HandoverManifestRowOut(
+                stop_id=stop.id,
+                order_id=stop.order_id,
+                sequence=stop.sequence,
+                package_id=paket.id if paket is not None else None,
+                package_code=(
+                    packing_rules.package_code(paket.id) if paket is not None else None
+                ),
+                package_status=paket.status if paket is not None else None,
+                handed_over=paket is not None and paket.status == "HANDED_OVER",
+            )
+        )
+    return HandoverManifestOut(
+        run_id=run.id,
+        run_status=run.status,
+        total=len(satirlar),
+        handed_over=sum(1 for r in satirlar if r.handed_over),
+        rows=satirlar,
+    )
+
+
+def _kurye_kosulu(courier_id: int | None) -> list:
+    return [DeliveryRun.courier_id == courier_id] if courier_id is not None else []
+
+
+async def _paket_sahipligi(
+    db: AsyncSession, order_id: int, courier_id: int | None
+) -> None:
+    """IDOR nöbetçisi: paket bu kuryenin bir turuna ait mi?
+
+    Kalıcı QR'ın bedeli budur (sözleşme §7 S4): basılı etiket paketin ömrü
+    boyunca geçerli olduğundan çalınan/kopyalanan bir etiket riski vardır.
+    Zimmet ve kapı taraması bu yüzden **paketin o kuryenin turundaki bir
+    durağa ait olmasını** arar. Yabancı paket 403 değil **404** döner — 403,
+    "böyle bir paket var" bilgisini sızdırırdı.
+
+    `courier_id is None` = ADMIN; sahiplik süzgeci uygulanmaz.
+
+    Sahiplik **GÜNCEL** turlarla sınırlıdır (`PLANNED`/`ACTIVE`). Dünkü turun
+    kuryesi bugün aynı etiketi okutursa 404 alır — aksi hâlde paketi bir kez
+    taşımış olmak, o paketin bugünkü durumunu 409 gövdesinden öğrenme hakkı
+    verirdi (commit 4 denetimi). "Bir zamanlar taşıdım" bir yetki değildir.
+    """
+    if courier_id is None:
+        return
+    sahiplik = (
+        await db.execute(
+            select(DeliveryStop.id)
+            .join(DeliveryRun, DeliveryStop.run_id == DeliveryRun.id)
+            .where(
+                DeliveryStop.order_id == order_id,
+                DeliveryRun.status.in_(_ACTIVE_RUN_STATUSES),
+                DeliveryRun.deleted_at.is_(None),
+                *_kurye_kosulu(courier_id),
+            )
+        )
+    ).first()
+    if sahiplik is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, _ETIKET_YOK)
+
+
+async def scan(
+    db: AsyncSession, payload: str, *, courier_id: int | None = None
+) -> tuple[DeliveryStopOut, str]:
+    """Kapıda etiket okutma: QR'dan durağı bulur (salt okuma, iz bırakmaz).
+
+    **İki QR uzayı** vardır ve ayrık kalmalıdır (sözleşme §3.3):
+
+        paket : PKG1:{package_id}:{token}     ← F30, kalıcı
+        durak : {stop_id}:{token}             ← mevcut, DEĞİŞMEZ
+
+    Paket yükü önce denenir; `packing_rules.parse_package_qr` `None` dönerse
+    mevcut durak yoluna düşülür — **basılmış eski etiketler çalışmaya devam
+    eder**. Önek olmasaydı `parse_qr_token` bir paket yükünü ilk `":"`'dan
+    bölüp "durak token'ı" sanar, bulamaz ve hata yanlış yeri işaret ederdi.
+
+    Paket yolunda paket **zimmetli olmalıdır**: depoda duran (`PACKED`) ya da
+    geri beklenen (`RETURN_PENDING`) bir paketin kapıda okutulması teslim
+    akışını AÇMAZ (409). Belirsiz fiziksel olayda tahmin yok — güvenli dur.
+    """
+    cozum = packing_rules.parse_package_qr(payload)
+    if cozum is not None:
+        return await _paket_kapi_taramasi(db, cozum, courier_id=courier_id)
+
     token = parse_qr_token(payload)
     stop = (
         await db.execute(
@@ -1807,5 +2364,55 @@ async def scan(db: AsyncSession, payload: str) -> tuple[DeliveryStopOut, str]:
         )
     ).scalars().first()
     if stop is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Bu etikete ait durak bulunamadı")
+        raise HTTPException(status.HTTP_404_NOT_FOUND, _ETIKET_YOK)
+    if courier_id is not None and stop.run.courier_id != courier_id:
+        # Durak uzayında da aynı IDOR kuralı: yabancı etiket 404.
+        raise HTTPException(status.HTTP_404_NOT_FOUND, _ETIKET_YOK)
+    return _stop_to_out(stop), stop.run.status
+
+
+async def _paket_kapi_taramasi(
+    db: AsyncSession, cozum: tuple[int, str], *, courier_id: int | None
+) -> tuple[DeliveryStopOut, str]:
+    package_id, token = cozum
+    paket = (
+        await db.execute(
+            select(OrderPackage).where(
+                OrderPackage.id == package_id, OrderPackage.qr_token == token
+            )
+        )
+    ).scalars().first()
+    if paket is None:
+        # `id` doğru ama token yanlışsa da buraya düşülür: çıplak paket
+        # kimliğiyle kapı açılamaz, token TAHMİN EDİLEMEZ olmalıdır.
+        raise HTTPException(status.HTTP_404_NOT_FOUND, _ETIKET_YOK)
+    await _paket_sahipligi(db, paket.order_id, courier_id)
+    if paket.status != "HANDED_OVER":
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            f"Paket {packing_rules.package_code(paket.id)} kuryede değil "
+            f"(durum {paket.status}) — kapı taraması teslim akışını açmaz",
+        )
+    stop = (
+        await db.execute(
+            select(DeliveryStop)
+            .options(
+                selectinload(DeliveryStop.run),
+                selectinload(DeliveryStop.order).selectinload(Order.items),
+            )
+            .join(DeliveryRun, DeliveryStop.run_id == DeliveryRun.id)
+            .where(
+                DeliveryStop.order_id == paket.order_id,
+                DeliveryStop.status == DeliveryStopStatus.PENDING.value,
+                DeliveryRun.status.in_(_ACTIVE_RUN_STATUSES),
+                DeliveryRun.deleted_at.is_(None),
+                *_kurye_kosulu(courier_id),
+            )
+            .order_by(DeliveryStop.id)
+        )
+    ).scalars().first()
+    if stop is None:
+        raise HTTPException(
+            status.HTTP_404_NOT_FOUND, _ETIKET_YOK
+        )
     return _stop_to_out(stop), stop.run.status

@@ -89,6 +89,11 @@ const InventoryOverviewPage = lazy(() => import("@/pages/admin/inventory/Invento
 const CountSessionsPage = lazy(() => import("@/pages/admin/inventory/CountSessionsPage"));
 const CountSessionDetailPage = lazy(() => import("@/pages/admin/inventory/CountSessionDetailPage"));
 const DamageEventsPage = lazy(() => import("@/pages/admin/inventory/DamageEventsPage"));
+const PackingLayout = lazy(() => import("@/pages/admin/packing/PackingLayout"));
+const PackingQueuePage = lazy(() => import("@/pages/admin/packing/PackingQueuePage"));
+const PackingStationPage = lazy(() => import("@/pages/admin/packing/PackingStationPage"));
+const PackagesPage = lazy(() => import("@/pages/admin/packing/PackagesPage"));
+const ReturnQueuePage = lazy(() => import("@/pages/admin/packing/ReturnQueuePage"));
 const DeliveryLayout = lazy(() => import("@/pages/admin/delivery/DeliveryLayout"));
 const DeliveryTodayPage = lazy(() => import("@/pages/admin/delivery/DeliveryTodayPage"));
 const DeliveryOrdersPage = lazy(() => import("@/pages/admin/delivery/DeliveryOrdersPage"));
@@ -97,6 +102,9 @@ const DeliveryRunDetailPage = lazy(() => import("@/pages/admin/delivery/Delivery
 const DeliveryPerformancePage = lazy(() => import("@/pages/admin/delivery/DeliveryPerformancePage"));
 const DeliveryCouriersPage = lazy(() => import("@/pages/admin/delivery/DeliveryCouriersPage"));
 const DeliveryDriver = lazy(() => import("@/pages/DeliveryDriver"));
+// Zimmet (paketi araca alma) saha ekranından AYRI bir rotadır: aynı sayfada
+// sekme olsaydı, kurye kapıda yanlış moda düşebilirdi (sözleşme §3.4).
+const DeliveryRunHandover = lazy(() => import("@/pages/DeliveryRunHandover"));
 const TutorDashboard = lazy(() => import("@/pages/TutorDashboard"));
 const TutorSettings = lazy(() => import("@/pages/TutorSettings"));
 const TutorQuestions = lazy(() => import("@/pages/TutorQuestions"));
@@ -435,6 +443,14 @@ function App() {
                 <Route path="sayimlar/:id" element={<CountSessionDetailPage />} />
                 <Route path="hasar" element={<DamageEventsPage />} />
               </Route>
+              {/* Paketleme istasyonu: kuyruk (index) · paketler · tek paket
+                  (deep-link) · geri dönüş kuyruğu. */}
+              <Route path="paketleme" element={<PackingLayout />}>
+                <Route index element={<PackingQueuePage />} />
+                <Route path="paketler" element={<PackagesPage />} />
+                <Route path="paket/:id" element={<PackingStationPage />} />
+                <Route path="iade" element={<ReturnQueuePage />} />
+              </Route>
               <Route path="dagitim" element={<DeliveryLayout />}>
                 <Route index element={<DeliveryTodayPage />} />
                 <Route path="siparisler" element={<DeliveryOrdersPage />} />
@@ -463,6 +479,9 @@ function App() {
           >
             {/* Dağıtıcı saha ekranı (kendi-filo teslimat) — mobil, shell'siz */}
             <Route path={PATHS.deliveryRun} element={<DeliveryDriver />} />
+            {/* Zimmet ekranı — aynı yetki kapısı: kurye yalnız kendi turunun
+                manifestini görebilir (backend `ensure_run_access` 404 döner). */}
+            <Route path={PATHS.deliveryRunHandover} element={<DeliveryRunHandover />} />
           </Route>
 
           {/* ── Yalnızca LIBRARY_OPERATOR ── */}

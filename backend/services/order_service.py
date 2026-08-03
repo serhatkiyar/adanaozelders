@@ -59,6 +59,7 @@ from services import (
     escrow,
     notification_service,
     order_fsm,
+    packing_events,
     payment_gates,
     returns,
     stock_ledger,
@@ -1066,6 +1067,14 @@ async def postpone_delivery(db: AsyncSession, order: Order) -> None:
                 db, order, "PAID", changed_by="client", reason="Müşteri ertesi güne erteledi"
             )
             order.tracking_no = None
+        # F30 §3.5: dört geri dönüş yolundan dördüncüsü. Müşteri erteledi ama
+        # paket ARAÇTA kaldı — `RESCHEDULED` durak `FAILED`'dan ayrıdır (kurye
+        # KPI'ına yazılmaz), paketin fiziksel yeri ise aynıdır. Erteleme
+        # `prepared_at`'i sıfırlamadığı için bu işaret olmadan sipariş
+        # `eligible_orders`'ta paketsiz görünmeye devam ederdi.
+        await packing_events.on_package_returning(
+            db, order.id, reason="Müşteri teslimatı erteledi"
+        )
 
     # Hedef gün: sonraki çalışma günü — kontenjanı doluysa ondan da ileri.
     # (Müşteri isteği: kapasite kontrolü ADİLDİR; kurye kaynaklı FAILED'ın
@@ -1193,12 +1202,28 @@ async def mark_shipped(
     order = await _load_full(db, order_id)
     if order is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Sipariş bulunamadı")
+    # ── Order satırı KİLİTLENİR — kontroller taze durumla çalışsın ──────────
+    # Nihai denetim P1'i: paket kapısı kilitsiz okunuyordu. Eşzamanlı bir
+    # `open_package` ile yarışta ikisi de kendi ön koşulunu geçiyor ve ortaya
+    # **kurtarılamayan** bir çıkmaz çıkıyordu: sipariş `SHIPPED`, paket `OPEN`.
+    # O hâlde paket tamamlanamaz (`complete` siparişin PAID olmasını arar),
+    # zimmetlenemez, `uq_order_packages_live` yüzünden yeni paket açılamaz ve
+    # sipariş dağıtım kuyruğuna hiç giremez.
+    # `open_package` da ilk iş olarak aynı satırı `FOR UPDATE` ile alır
+    # (`packing_service.open_package` → `_lock_order`), yani iki yol artık
+    # Order satırında serileşir: hangisi önce girerse diğeri TAZE durumu görür
+    # ve kendi 409'unu üretir.
+    await _lock_order(db, order)
     if not order.has_physical:
         raise HTTPException(
             status.HTTP_400_BAD_REQUEST, "Bu siparişte kargolanacak ürün yok"
         )
     if order.payment_status != "PAID":
         raise HTTPException(status.HTTP_409_CONFLICT, "Ödenmemiş sipariş kargolanamaz")
+    # F30: kendi filomuzla giden (paketi olan) sipariş elle "kargolandı"
+    # işaretlenemez — çıkışı kuryenin paketi okutması yazar. Gerekçe ve
+    # legacy istisnası `packing_events.elle_sevkiyat_yasak` docstring'inde.
+    await packing_events.elle_sevkiyat_yasak(db, order.id)
     await order_fsm.transition_order(db, order, "SHIPPED", changed_by="admin")
     order.tracking_no = tracking_no
     await db.commit()
@@ -1215,13 +1240,73 @@ async def mark_shipped(
 
 
 async def mark_delivered(db: AsyncSession, order_id: int) -> OrderOut:
+    """Yönetici teslim yolu (`POST /store/admin/orders/{id}/deliver`).
+
+    **Zimmet kapısı burada da geçerlidir.** Commit 7 denetiminin P1'i tam olarak
+    buydu: bu uç `delivery_service._finalize_delivered` hunisinden geçmiyor,
+    yani F30 zimmet guard'ını miras almıyordu. Sonuç, kutu HÂLÂ RAFTAYKEN
+    siparişin `DELIVERED` olmasıydı — üstelik zararı tek bir yanlış statüyle
+    kalmıyordu:
+
+    * müşteriye "teslim edildi" e-postası/outbox olayı gidiyor,
+    * durak `PENDING` kalıyor (kurye hâlâ o adrese gidecek),
+    * paket `PACKED` kaldığı için bir daha **zimmetlenemiyor** (`handover`
+      yalnız `PACKED`→`HANDED_OVER`, ama sipariş artık `DELIVERED`),
+    * `uq_order_packages_live` yüzünden yeni paket de açılamıyor.
+
+    Guard `transition_order`'dan ÖNCE çağrılır: reddederse hiçbir yan etki
+    (durum geçişi · geçmiş satırı · e-posta · bildirim · audit) doğmaz ve
+    transaction tamamen temiz kalır.
+
+    ## Kilit ve terminal bütünlük (nihai denetim P1'i)
+
+    İlk düzeltme guard'ı ekledi ama iki eksiği vardı:
+
+    1. **Kilitsiz okuma.** Guard canlı paketi `Order` satırını kilitlemeden
+       okuyordu; eşzamanlı bir `cancel_run`/`fail_stop` ile yarışta paket
+       `RETURN_PENDING`'e giderken sipariş `DELIVERED` olabiliyordu — yani
+       "teslim edildi" ile "kutu araçta geri dönüyor" aynı anda doğru
+       görünüyordu.
+    2. **Yarım terminal.** Mutlu yolda bile YALNIZ sipariş durumu değişiyordu:
+       paket `HANDED_OVER`, durak `PENDING`, QR geçerli kalıyordu. Kurye o
+       durağı ekranında görmeye, etiket okutulmaya devam ediyordu.
+
+    Artık ikisi de tek transaction'da: `Order` `FOR UPDATE` → guard → durum
+    geçişi → paket ve durak terminale (`packing_events.teslim_terminali`) →
+    bildirim → e-posta outbox'ı → commit. Router audit'i yanıttan sonra yazar,
+    yani 409'da o da doğmaz.
+    """
     order = await _load_full(db, order_id)
     if order is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Sipariş bulunamadı")
+    # Kanonik sıranın ilk halkası. `zimmet_zorunlu` paketi kilitsiz OKUR
+    # (kilit sırası gereği — bkz. docstring'i); o okumanın anlamlı olması için
+    # Order satırının burada kilitli olması ZORUNLUDUR: paketi değiştiren her
+    # yol (`handover_scan`, `cancel_run`, `fail_stop`, `open_package`, `void`,
+    # `return_in`) da ilk halkada bu satırı alır.
+    await _lock_order(db, order)
+    # Aktör YÖNETİCİDİR: hangi kuryede olduğunu bilmez, yalnız "bir kuryede
+    # olmalı" der. Kuryeyi bilen saha yolları `expected_courier_id` geçirir.
+    await packing_events.zimmet_zorunlu(db, order.id)
     # FSM: yalnız SHIPPED → DELIVERED (önceden ön-koşulsuzdu; PENDING'den bile olurdu).
     await order_fsm.transition_order(db, order, "DELIVERED", changed_by="admin")
-    await db.commit()
+    # Paket ve durak da terminale gider — sipariş "teslim edildi" derken
+    # operasyonun "yolda" demesi imkânsız olsun.
+    await packing_events.teslim_terminali(
+        db, order.id, note="Yönetici panelinden teslim edildi"
+    )
+    await notification_service.notify(
+        db,
+        user_id=order.client_id,
+        role_id=ROLE_IDS[RoleType.CLIENT],
+        message=f"Siparişin #{order.id} teslim edildi. İyi çalışmalar!",
+        link="/siparislerim",
+    )
+    # Outbox olayı commit'ten ÖNCE yazılır: durum değişikliğiyle atomik olsun
+    # (eski hâlde commit'ten sonraydı ve kalıcılığı `get_db`'nin otomatik
+    # commit'ine kalıyordu — TB-4'teki belirsiz sahiplik).
     await _email_order(db, order, "DELIVERED")
+    await db.commit()
     return _to_out(order)
 
 
