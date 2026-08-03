@@ -27,6 +27,12 @@ class OutboxStatus(str, enum.Enum):
     PENDING = "PENDING"
     SENT = "SENT"
     FAILED = "FAILED"  # deneme tavanı aşıldı — dead-letter
+    #: Olayın konusu ortadan kalktı (sipariş iptal/iade edildi) → GÖNDERİLMEZ.
+    #: `FAILED` ile bilinçli olarak AYRI: dead-letter "gönderemedik, bakılmalı"
+    #: demektir; bu ise "gönderilmemeliydi" demektir ve kurye/SMS başarısızlık
+    #: metriğini kirletmemelidir. Kolon `String(10)` olduğundan enum'a değer
+    #: eklemek migration gerektirmez.
+    CANCELLED = "CANCELLED"
 
 
 class OutboxEvent(Base, TimestampMixin):

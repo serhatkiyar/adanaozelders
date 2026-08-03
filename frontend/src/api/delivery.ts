@@ -64,21 +64,16 @@ export async function retryExhaustedOrder(
   return data;
 }
 
-/** Siparişi 'hazır' işaretle (etiket basıldı → tura eklenebilir). */
-export async function markOrderPrepared(orderId: number): Promise<DeliveryEligibleOrder> {
-  const { data } = await apiClient.post<DeliveryEligibleOrder>(
-    `/delivery/orders/${orderId}/prepare`
-  );
-  return data;
-}
-
-/** Hazırlığı geri al (yalnız tura girmemiş sipariş). */
-export async function unmarkOrderPrepared(orderId: number): Promise<DeliveryEligibleOrder> {
-  const { data } = await apiClient.post<DeliveryEligibleOrder>(
-    `/delivery/orders/${orderId}/unprepare`
-  );
-  return data;
-}
+/*
+ * KALDIRILDI (F30 commit 5): `markOrderPrepared` / `unmarkOrderPrepared`.
+ *
+ * `POST /delivery/orders/{id}/prepare` ve `/unprepare` uçları backend'den
+ * silindi (sözleşme §3.5, boşluk G1): elle "Hazır" butonu, kalem kalem
+ * doğrulanmamış bir paketi dağıtım kuyruğuna sokabiliyordu. Hazırlama artık
+ * yalnız paketleme istasyonundan geçer (paket aç → tara → tamamla):
+ * `/yonetim/paketleme` — istemci katmanı `src/api/packing.ts`. İstemcide çağrı
+ * bırakmak, uç yokken 404 üreten ölü bir buton demekti.
+ */
 
 /* ── Kurye workspace (rol 5) ── */
 

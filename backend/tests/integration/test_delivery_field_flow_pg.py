@@ -212,10 +212,14 @@ async def test_teslim_edilemedi_zinciri(ff):
         assert order_id in hazirlanacak
         assert order_id not in uygun
 
-        # Depo paketi yeniden hazırlayınca tekrar tura girebilir olur.
-        await delivery_service.mark_prepared(s, order_id, prepared=True)
-        uygun2 = {o.order_id for o in await delivery_service.eligible_orders(s)}
-        assert order_id in uygun2, "yeniden hazırlanan paket kuyruğa girmeli"
+    # F30 commit 5: "depo paketi yeniden hazırlar" adımı artık elle bir
+    # damgayla DEĞİL, paketleme akışıyla olur (`open_package` → `scan` →
+    # `complete`); `mark_prepared` kaldırıldı (sözleşme §3.5, boşluk G1).
+    # Bu dosyanın konusu saha akışıdır, paketleme değil — o yolun kuyruğa
+    # geri soktuğu `test_delivery_prep_pg.py::test_PAKET_TAMAMLANINCA_eligible_olur`
+    # ve `test_f30_return_lifecycle_pg.py` ile ölçülür. Burada yalnız
+    # başarısız denemenin siparişi HAZIRLAMA kuyruğuna düşürdüğü sabitlenir
+    # (yukarıdaki iddialar), çünkü bu testin ayırt ettiği şey odur.
 
 
 async def test_kapida_odeme_yok_odenmemis_siparis_dagitima_giremez(ff):
