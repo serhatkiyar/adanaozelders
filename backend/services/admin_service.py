@@ -3,7 +3,7 @@ from __future__ import annotations
 import datetime
 
 from fastapi import HTTPException, status
-from sqlalchemy import String, asc, cast, desc, func, literal, or_, select, union_all
+from sqlalchemy import String, asc, cast, desc, func, literal, or_, select, union_all, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from models.admin import Admin
@@ -395,17 +395,55 @@ async def list_bookings(
 
 
 async def cancel_booking(db: AsyncSession, booking: Booking, reason: str | None = None) -> Booking:
-    booking.status = BookingStatus.CANCELLED
-    if reason:
-        booking.cancel_reason = f"Admin İptali: {reason}"
-    else:
-        booking.cancel_reason = "Admin tarafından iptal edildi."
-    await db.flush()
-    return booking
+    """Admin booking iptali — FSM claim'i + emanet iadesi + bildirim.
+
+    Gövde bilinçli olarak `booking_service.cancel_by_admin`'e devreder: para
+    hareketi tetikleyen geçişin **tek** bir uygulaması olmalıdır. Buraya ikinci
+    bir iade/FSM kopyası yazmak, iki uygulamanın zamanla ayrışmasıyla sonuçlanır
+    (P0-2'nin kökeni tam olarak budur: admin yolu kullanıcı yolundan ayrı yazıldı
+    ve iade bacağı hiç eklenmedi).
+    """
+    from services import booking_service
+
+    return await booking_service.cancel_by_admin(db, booking, reason=reason)
+
+
+#: İhtilaf yalnız **canlı** bir derste açılabilir.
+_DISPUTE_ACILABILIR = (BookingStatus.PENDING, BookingStatus.ACCEPTED)
 
 
 async def toggle_dispute(db: AsyncSession, booking: Booking, is_disputed: bool, admin_notes: str | None = None) -> Booking:
-    booking.is_disputed = is_disputed
+    """İhtilaf bayrağını açar/kapatır.
+
+    Açma **atomik koşullu UPDATE**'tir (P0-4): auto-complete ile aynı satır
+    üzerinde yarışır ve yalnız biri kazanır. Kritik invariant, "ihtilaflı ders +
+    eğitmene serbest bırakılmış para" kombinasyonunun HİÇ oluşmamasıdır — o
+    kombinasyonda `escrow.begin_refund`'ın `released_at IS NULL` guard'ı iadeyi
+    kalıcı olarak kapatmıştır ve admin ihtilafı çözecek hiçbir araç bulamaz.
+    Bu yüzden tamamlanmış/iptal edilmiş derste ihtilaf açılmaz (409); kapatma
+    her durumda serbesttir (admin çözümü kilit bırakmamalı).
+    """
+    if is_disputed:
+        result = await db.execute(
+            update(Booking)
+            .where(
+                Booking.id == booking.id,
+                Booking.status.in_(_DISPUTE_ACILABILIR),
+                Booking.deleted_at.is_(None),
+            )
+            .values(is_disputed=True)
+            .execution_options(synchronize_session=False)
+        )
+        if result.rowcount != 1:
+            await db.refresh(booking)
+            raise HTTPException(
+                status.HTTP_409_CONFLICT,
+                "Yalnızca devam eden bir derste ihtilaf açılabilir; tamamlanmış "
+                "ya da iptal edilmiş dersin para hareketi sonuçlanmıştır.",
+            )
+        booking.is_disputed = True
+    else:
+        booking.is_disputed = False
     if admin_notes is not None:
         booking.admin_notes = admin_notes
     await db.flush()
