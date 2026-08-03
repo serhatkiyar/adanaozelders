@@ -50,13 +50,32 @@ def _filter_private_notes(booking: Booking, *, role_id: int, user_id: int) -> No
         if n.owner_role == role_id and n.owner_id == user_id
     ]
 
+#: Booking FSM'inin **tek** doğruluk kaynağı. `_transition` (saf, birim testli)
+#: ve `_claim_transition` (atomik, üretim) izinli kaynak durumları buradan okur;
+#: paralel bir geçiş tablosu YOKTUR.
+#:
+#: `→ PENDING` geçişleri **reschedule** içindir ve bilinçli olarak eklenmiştir
+#: (nihai audit P1-B): reschedule daha önce `booking.status = PENDING` biçiminde
+#: doğrudan ORM ataması yapıyordu, yani FSM'i ve atomik claim'i atlıyordu.
+#: Gerçek PostgreSQL'de ölçülen sonucu: `complete` claim'ini kazanıp parayı
+#: RELEASED yaptıktan sonra reschedule onun üzerine PENDING yazabiliyor ve
+#: geriye "tamamlanmamış görünen ders + dağıtılmış para" kalıyordu — iade de
+#: `released_at` yüzünden kalıcı kapalı. Geçiş tabloya girince aynı yol
+#: `_claim_transition` ile korunur.
 _TRANSITIONS: dict[BookingStatus, set[BookingStatus]] = {
     BookingStatus.PENDING: {
         BookingStatus.ACCEPTED,
         BookingStatus.REJECTED,
         BookingStatus.CANCELLED,
+        # reschedule: PENDING bir ders yeni saate taşınıp yine onay bekler.
+        BookingStatus.PENDING,
     },
-    BookingStatus.ACCEPTED: {BookingStatus.COMPLETED, BookingStatus.CANCELLED},
+    BookingStatus.ACCEPTED: {
+        BookingStatus.COMPLETED,
+        BookingStatus.CANCELLED,
+        # reschedule: onaylı ders yeni saate taşınınca yeniden onaya düşer.
+        BookingStatus.PENDING,
+    },
     BookingStatus.REJECTED: set(),
     BookingStatus.CANCELLED: set(),
     BookingStatus.COMPLETED: set(),
@@ -68,9 +87,20 @@ def _transition(booking: Booking, target: BookingStatus) -> None:
 
     ⚠️ Üretim yollarında KULLANILMAZ. Bellekteki nesneye bakan bir kontrol,
     başka bir transaction'ın commit'lediği terminal durumu göremez ve onun
-    üzerine yazar (kayıp güncelleme). Durum yazan her yol `_claim_transition`
-    kullanır — o da izinli kaynak durumları aynı `_TRANSITIONS` tablosundan
-    okur, yani kural tek yerde tanımlıdır.
+    üzerine yazar (kayıp güncelleme).
+
+    **Kapsam iddiası (nihai audit P1-B sonrası yeniden doğrulandı):** bu serviste
+    `Booking.status` yazan **yedi** üretim yolunun tamamı `_claim_transition`
+    kullanır — `accept`, `reject`, `complete`, `auto_complete_past_bookings`,
+    `cancel`, `cancel_by_admin`, `reschedule`. Servis dışında booking durumu
+    yazan başka yol yoktur (`admin_service` bu servise devreder;
+    `account_deletion_service` yalnız okur). `booking.status = ...` biçimindeki
+    tek atamalar bu fonksiyonun ve `_claim_transition`'ın kendi içindedir:
+    ilki saf tablo ifadesi, ikincisi koşullu UPDATE **kazanıldıktan sonra**
+    bellekteki nesneyi eşitler.
+
+    İzinli kaynak durumlar her iki yolda da aynı `_TRANSITIONS` tablosundan
+    okunur; paralel bir geçiş tablosu yoktur.
     """
     if target not in _TRANSITIONS[booking.status]:
         raise HTTPException(
@@ -568,6 +598,21 @@ async def reschedule(
             status.HTTP_400_BAD_REQUEST, "Cannot reschedule to the past"
         )
     await _assert_within_availability(db, booking.tutor_id, start_at, end_at)
+    # ── Atomik claim: yeni saati YAZMADAN ÖNCE geçişi kazan (P1-B) ──
+    #
+    # Buradaki yazım eskiden `booking.status = PENDING` biçiminde koşulsuz bir
+    # ORM atamasıydı ve bellekteki bayat duruma güveniyordu. Gerçek PG'de
+    # ölçülen sonucu: eğitmen `complete` claim'ini kazanıp para RELEASED
+    # olduktan SONRA gelen reschedule onun üzerine PENDING yazıyordu →
+    # "tamamlanmamış görünen ders + eğitmene dağıtılmış para" ve `released_at`
+    # yüzünden kalıcı kapanmış iade yolu.
+    #
+    # Claim'in kaybedilmesi hâlinde AŞAĞIDAKİ HİÇBİR ALAN yazılmaz: saat, fiyat,
+    # ödeme senkronu, oda/hatırlatma sıfırlaması ve bildirim bu satırdan
+    # sonradır. Kazanıldığında ise satır kilidi commit'e kadar bizde kalır, yani
+    # araya giren bir `complete` artık ACCEPTED bulamaz ve 409 alır.
+    if not await _claim_transition(db, booking, BookingStatus.PENDING):
+        raise _claim_hatasi(booking, BookingStatus.PENDING)
     booking.start_at = start_at
     booking.end_at = end_at
     # Süre değişmiş olabilir; ücreti güncel saatlik ücretle yeniden hesapla.
@@ -578,7 +623,6 @@ async def reschedule(
     # reddet (409) — Payment.amount ile booking.price sessizce ayrışamaz.
     await payment_service.sync_amount_with_booking(db, booking)
     # Yeni saat eğitmenin yeniden onayına sunulur; oda/hatırlatma sıfırlanır.
-    booking.status = BookingStatus.PENDING
     booking.meeting_room = None
     booking.reminder_sent = False
     await db.flush()  # GiST çakışması -> 409 (global handler)
