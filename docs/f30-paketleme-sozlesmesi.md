@@ -673,14 +673,15 @@ izi `package_scan_events`'tedir.
 | **1** | `test(f30): paketleme sozlesmesi + kirmizi test matrisi` | Bu belge + 6 kırmızı test dosyası. Üretim kodu YOK. | bitti |
 | **2** | `feat(f30): paket modelleri migration ve izin katalogu` | 3 tablo + append-only trigger + kısmi index'ler + `models/__init__` + `_KRITIK_TABLOLAR` + `db_guard.purge_packages` + `packing.*` katalog & rol dağıtımı + şema invariant testleri | bitti |
 | 2b | `test(f30): commit 2 denetim borclarini kapat` | ruff B905 · canlı-paket yüklemi drift nöbetçisi (saf + `pg_get_expr`) · anahtarsız olay testinin gerekçesi · ürün sert-silme politikası | bitti |
-| **3** | `feat(f30): paketleme servisi ve yasam dongusu` | `services/packing_rules.py` (saf FSM + işlem tablosu) · `services/packing_events.py` (ince kanca modülü) · `services/packing_service.py` (kilit sırası, idempotency, STALE) · `order_fsm` terminal kancası · `handover_scan` + dört geri dönüş yolunun kablolaması · `prep_queue`/`eligible_orders`/`add_stops` paket farkındalığı | **bu commit** |
+| **3** | `feat(f30): paketleme servisi ve yasam dongusu` | `services/packing_rules.py` (saf FSM + işlem tablosu) · `services/packing_events.py` (ince kanca modülü) · `services/packing_service.py` (kilit sırası, idempotency, STALE) · `order_fsm` terminal kancası · `handover_scan` + dört geri dönüş yolunun kablolaması · `prep_queue`/`eligible_orders`/`add_stops` paket farkındalığı | bitti |
 | 3b | `test(f30): commit 3 audit borclarini kapat` (ÜRETİM DAVRANIŞI DA DEĞİŞTİ: `undo_scan` idempotency anahtarı + `repack` STALE nöbetçisi) | P2-A `return_in` kaynak durum guard'ı · P2-B void gerekçe (422, ham DB hatası sızmaz) · P2-C `add_stops` paket guard'ının İZOLE kanıtı · P2-D `undo_scan` idempotency anahtarı · P2-E eksik yarış matrisi (scan↔finalize, return_in↔repack, return_in↔void, zimmet↔void) · P2-F `repack` STALE | bitti |
 | 4b | `test(f30): commit 4 denetim borclarini kapat` | `void` yetki kararının TOCTOU düzeltmesi (`izin_dogrula` kilitten SONRA) · yarış iddialarının daraltılması (gözlenen kazanana göre tek son durum) · ulaşılamaz `IntegrityError` kurtarma dalının kaldırılması + yanlış savepoint yorumunun düzeltilmesi · sahipliğin GÜNCEL turlarla sınırlanması · 404 gövdelerinin eşitlenmesi · tekrar yanıtında `order_item_id`'nin korunması | bitti |
-| **4** | `feat(f30): paketleme HTTP ve QR entegrasyonu` | `schemas/packing.py` + `api/routers/packing.py` + `api/router.py` kaydı + `/delivery/handover/scan` + `/delivery/handover/manifest/{run}` + `/delivery/scan`'in paket QR uzayı + `mark_prepared` geçiş guard'ı + zimmet audit'i | **bu commit** |
-| **5** | `feat(f30): eski prepare uclarini kaldir ve paket zorunlulugunu tamamla` | `/prepare` + `/unprepare` uçları ve `mark_prepared` iş mantığı SİLİNDİ · `prepared_at` yazıcıları için AST allowlist nöbetçisi · `eligible_orders`/`add_stops`/`start_run` paket-geçmişi guard'ları (VOID kör noktası) · `return_in` damgayı düşürür · frontend "Hazırla/Geri Al" butonları kaldırıldı · etkilenen mevcut testler güncellendi | **bu commit** |
-| 6 | `feat(f30): admin paketleme ekranlari` | `/yonetim/paketleme` (kuyruk · istasyon · paketler) + API/hook/types + saf `lib/packing.ts` | bekliyor |
-| 7 | `feat(f30): paket etiketi ve kurye zimmet ekrani` | `PackageLabel` (baskı sözleşmesi) + `LabelSheet` paket QR'ına geçiş + saha zimmet adımı | bekliyor |
-| 8 | `test(f30): mutasyon provasi, Chrome kabul turu ve kapanis` | `mutation_drill` girdileri, izole Chrome/DevTools turu (§9.1), kapanış raporu | bekliyor |
+| **4** | `feat(f30): paketleme HTTP ve QR entegrasyonu` | `schemas/packing.py` + `api/routers/packing.py` + `api/router.py` kaydı + `/delivery/handover/scan` + `/delivery/handover/manifest/{run}` + `/delivery/scan`'in paket QR uzayı + `mark_prepared` geçiş guard'ı + zimmet audit'i | bitti |
+| **5** | `feat(f30): eski prepare uclarini kaldir ve paket zorunlulugunu tamamla` | `/prepare` + `/unprepare` uçları ve `mark_prepared` iş mantığı SİLİNDİ · `prepared_at` yazıcıları için AST allowlist nöbetçisi · `eligible_orders`/`add_stops`/`start_run` paket-geçmişi guard'ları (VOID kör noktası) · `return_in` damgayı düşürür · frontend "Hazırla/Geri Al" butonları kaldırıldı · etkilenen mevcut testler güncellendi | bitti |
+| 6 | `feat(f30): admin paketleme ekranlari` | `/yonetim/paketleme` (kuyruk · istasyon · paketler) + API/hook/types + saf `lib/packing.ts` | bitti |
+| 7 | `feat(f30): paket etiketi ve kurye zimmet ekrani` | `PackageLabel` (baskı sözleşmesi) + `LabelSheet` paket QR'ına geçiş + saha zimmet adımı | bitti |
+| 8 | `test(f30): mutasyon provasi, Chrome kabul turu ve kapanis` | `mutation_drill` girdileri, izole Chrome/DevTools turu (§9.1), kapanış raporu | bitti |
+| 9 | `fix(f30): manuel sevkiyat ve teslimi atomik kilitlerle kapat` | Denetim sonrası: manuel sevkiyat/teslim yollarının zimmet kapısına bağlanması + atomik kilitler (dal ucu `e350fef`) | bitti |
 
 > Commit 1'in denetimi bir düzeltme commit'i doğurdu
 > (`test(f30): kirmizi matris denetim duzeltmeleri`): kilit sırası testinin
@@ -807,3 +808,47 @@ Protocol turunda ölçülür ve kabul kriteridir:
    ve `BarcodeDetector` yoksa manuel giriş kutusu görünür (`qrCapability.ts`).
 7. Zimmet ekranı ile kapı ekranı **görsel olarak ayırt edilebilir** (başlık +
    aksiyon dili), dark-mode dahil.
+
+---
+
+## 10. Kapanış — `main` merge kaydı (3 Ağu 2026)
+
+| Alan | Değer |
+|---|---|
+| Merge edilen kaynak dal | `f30-paketleme-qr` |
+| Merge edilen kaynak HEAD | `e350fef` (`fix(f30): manuel sevkiyat ve teslimi atomik kilitlerle kapat`) |
+| Merge öncesi `main` HEAD | `26f30d8` |
+| Merge commit | `aa7d387` — `merge(f30): paketleme qr ve kurye zimmet sistemini tamamla` |
+| Yöntem | `git merge --no-ff` (rebase/squash YOK, commit zinciri korundu, çatışma çıkmadı) |
+| Bağımsız nihai üretim denetimi | **Açık P0/P1 yok**; karar: "F30 üretim uygulaması kapanabilir, main'e merge aşamasına geçilebilir." |
+
+Merge sonrası tam matris (bu çalışma ağacında, gerçek servislerle):
+
+| Paket | Sonuç |
+|---|---|
+| `ruff check .` | temiz |
+| Birim/kök (`tests`, üç alt paket hariç) | 674 passed |
+| Kabul (`tests/acceptance`, **ayrı süreç — TB-9**) | 196 passed |
+| Entegrasyon (`tests/integration`, gerçek Postgres, **ayrı süreç — TB-9**) | 853 passed |
+| Vitest | 697 test / 70 dosya passed |
+| `tsc --noEmit` · `npm run build` · `npm run lint` | temiz · başarılı · 0 error (34 mevcut a11y uyarısı) |
+
+### 10.1 Fiziksel saha yayın kapısı — **HENÜZ AÇILMADI**
+
+Denetimin release notu: *"Main'e merge onayı verilmiştir; gerçek saha yayını
+fiziksel etiket baskısı ve telefonla QR okutma manuel kabulinden sonra
+yapılmalıdır."*
+
+Yani `main`'e merge **kod kabulüdür, saha kabulü değildir**. §9.1'deki Chrome +
+DevTools turu QR'ı *sanal* yazıcıdan (PDF) basıp decode eder; aşağıdaki iki
+adım gerçek donanımla yapılmadan F30 **saha yayınına hazır sayılmaz**:
+
+1. **Fiziksel yazıcıdan etiket baskısı** — depo yazıcısında gerçek kağıda
+   basılan etikette QR kenar uzunluğu ≥ 20 mm ve kare kalıyor mu, uzun ürün
+   başlığı yerleşimi ezmiyor mu (F26 regresyonu).
+2. **Telefon kamerasıyla QR okutma** — basılı etiket, kuryenin gerçek
+   telefonundan `/dagitim/:id/zimmet` ekranında okunuyor mu; `BarcodeDetector`
+   yoksa manuel giriş kutusu devrede mi.
+
+Bu iki manuel kabul tamamlanana kadar hiçbir raporda F30 için "tam kabul"
+yazılmaz.
