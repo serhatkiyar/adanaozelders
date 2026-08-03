@@ -1,8 +1,10 @@
 # İP-1a — Ders Pazaryeri Para Güvenliği Sözleşmesi
 
-> **Durum (güncel): ÜRETİM UYGULAMASI YAZILDI — 26 kabul testinin tamamı yeşil.**
-> Sözleşme artık yalnız "ne olmalı"yı değil, **ne yapıldığını** da anlatır:
-> uygulamanın kendisi ve ölçümleri §12'dedir. Kabul testleri değiştirilmedi,
+> **Durum (güncel): ÜRETİM UYGULAMASI YAZILDI + NİHAİ AUDIT'İN İKİ P1'İ KAPANDI.**
+> 26 kabul testinin tamamı yeşil; matris 60 → **63** node (nihai audit'in
+> bulduğu iki ölçüm/üretim açığı için 3 yeni nöbetçi). Sözleşme artık yalnız
+> "ne olmalı"yı değil, **ne yapıldığını** da anlatır: uygulama §12'de, nihai
+> audit'in P1 kapanışları §13'tedir. Kabul testleri değiştirilmedi,
 > gevşetilmedi, silinmedi — yeşilliğin sebebi üretim kodudur.
 >
 > **Tarihsel kayıt (değiştirilmedi):** §1-§9 bölümleri *kırmızı checkpoint*
@@ -796,11 +798,13 @@ bağlı yeni regresyon testi gerekmedi. Kabul testlerine tek satır eklenmedi.
 
 ### 12.5 Kalan P2 borçlar (bilinçli, kapsam dışı)
 
-1. **Dispute ↔ auto-complete testi sıra-bağımsız `gather` kullanıyor** (§9e/2).
-   M19 bu kurulumda öldü, ama hangi tarafın önce başladığı testin kendi
-   kurulumundan değil olay döngüsünden gelir; kapı tabanlı bir kurulum ölçümü
-   sıralamadan tamamen bağımsız kılardı. Ölçülen invariant ("ihtilaflı + serbest
-   bırakılmış birlikte olamaz") her iki sırada da doğrudur.
+1. **Dispute ↔ auto-complete `gather` testi sıra-bağımsızdır** (§9e/2).
+   ⚠️ **Düzeltme (§13):** bu maddenin ilk hâli, o testin claim katmanını
+   ölçtüğünü ima ediyordu — **ölçmüyordu**. Claim katmanının kendi nöbetçisi
+   §13.1'de eklendi (`test_SORGUDAN_SONRA_acilan_ihtilaf_CLAIM_ANINDA_yakalanir`,
+   deterministik kapı). `gather` tabanlı test yine de yerinde durur: ölçtüğü
+   invariant ("ihtilaflı + serbest bırakılmış birlikte olamaz") her iki sırada
+   da doğrudur, ama tek başına claim guard'ını kanıtlamaz.
 2. **Sahipsiz emanet döngüsünün batch izolasyonu davranışsal testle
    ölçülmüyor.** Kod İP-2b R11 desenini uygular ve M14/M20 taramanın kendisini
    nöbetçiler; ama "bir kaydın hatası partiyi öldürmez" iddiasının kendi testi
@@ -808,3 +812,113 @@ bağlı yeni regresyon testi gerekmedi. Kabul testlerine tek satır eklenmedi.
 3. **Global pytest timeout politikası yok** (§9e/3) — değişmedi.
 4. **`accept` ucu onaylı eğitmen istemiyor** (§11) — değişmedi.
 5. **Booking'de 403 ↔ teslimatta 404 tutarsızlığı** (§10/6) — İP-3 kapsamı.
+
+---
+
+## 13. Nihai bağımsız audit — P1 kapanışları
+
+> **Tarihsel kayıt:** nihai bağımsız üretim denetimi `b78c3c6` üzerinde koştu ve
+> **merge'ü REDDETTİ**. P0 bulunmadı, ama **iki P1** kaldı. Bu bölüm o iki
+> bulgunun kapanışıdır. İlk audit kararı silinmez: §12 olduğu gibi durur, çünkü
+> "60 test yeşilken hangi açığın kalabildiği" kaydın kendisidir.
+>
+> İkisinin ortak dersi tektir: **iki katmanlı bir korumada, dıştaki katman
+> içtekinin ölçümünü gölgeleyebilir.** Her iki P1'de de mevcut testler geçiyordu
+> çünkü ölçüm hiç iç katmana ulaşmıyordu.
+
+### 13.1 P1-A — auto-complete claim'inin ihtilaf koşulu ölçülmüyordu
+
+**Kök neden.** `auto_complete_past_bookings` iki koruma taşır: aday sorgusundaki
+`is_disputed = false` filtresi ve `COMPLETED` claim'inin `WHERE` koşulu
+(`extra_where=_IHTILAFSIZ`). Mevcut dört kırmızı, ihtilafı **taramadan önce**
+açıyordu; o hâlde aday sorgusu dersi zaten hiç seçmiyor ve claim'in koşulu hiç
+sınanmıyordu. Audit sorgu filtresini **koruyup** yalnız claim'deki koşulu söktü:
+60 testin tamamı yeşil kaldı, ama gerçek PostgreSQL probunda ders `COMPLETED` +
+`is_disputed=True`, ödeme `RELEASED` + `released_at` dolu oldu — ihtilaflı
+dersin parası açıldı ve iade kalıcı olarak kapandı.
+
+**Kapanış.** `test_ip1a_dispute_autocomplete_pg.py::`
+`test_SORGUDAN_SONRA_acilan_ihtilaf_CLAIM_ANINDA_yakalanir`. Kurulum
+deterministiktir ve `asyncio.gather`'ın tesadüfi sırasına bırakılmaz:
+`_claim_transition` YALNIZ hedef booking'in `COMPLETED` claim'i için bir kapıya
+bağlanır (sarmalayıcı gerçek fonksiyonu çağırır, üretim mantığı değişmez):
+
+```
+auto-complete: SELECT (ders aday, ihtilafsız) ──► [claim kapısı]
+admin        :            toggle_dispute + COMMIT ──┘
+auto-complete: ── claim çalışır: WHERE is_disputed = false → 0 satır
+```
+
+Ölçülenler: ders `ACCEPTED` kaldı · ihtilaf açık · para `HELD` · `released_at`
+NULL · hak ediş 0 · sağlayıcı çağrısı yok · tarama bu dersi tamamlanmış saymadı
+(`n == 0`).
+
+**Mutasyon (M21).** Aday sorgusundaki filtre **korunur**, yalnız claim'deki
+`extra_where=_IHTILAFSIZ` sökülür. Sonuç: **yalnız yeni test kırıldı** (diğer 8
+node yeşil kaldı) — gölgelemenin doğrudan kanıtı. Dosya SHA-256'sı başlangıçla
+birebir aynı döndü, `git status` artık bırakmadı.
+
+### 13.2 P1-B — reschedule doğrudan status yazıyordu (GERÇEK ÜRETİM AÇIĞI)
+
+**Kök neden.** `reschedule`, durumu `booking.status = BookingStatus.PENDING`
+biçiminde **koşulsuz ORM ataması** ile yazıyordu; FSM tablosunu da atomik
+claim'i de atlıyordu. Audit gerçek PostgreSQL'de şu final durumu üretti:
+
+| booking.status | payment.status | released_at |
+|---|---|---|
+| `PENDING` | `RELEASED` | dolu |
+
+Yani ders "yeniden onay bekliyor" görünürken parası eğitmene dağıtılmıştı ve
+iade `released_at` guard'ı yüzünden kalıcı olarak kapanmıştı. Bu, §12'de
+"P0-6 kapandı" denen sınıfın **atlanmış yedinci yoluydu**.
+
+**Üretim düzeltmesi.**
+
+- `_TRANSITIONS` tablosuna `→ PENDING` geçişleri **bilinçli** olarak eklendi
+  (`PENDING→PENDING` ve `ACCEPTED→PENDING` = reschedule). Paralel bir geçiş
+  tablosu yazılmadı; izinli kaynak durumlar tek kaynaktan okunur.
+- `reschedule` artık `_claim_transition` kullanır. Claim **kaybedilirse hiçbir
+  alan yazılmaz**: saat, fiyat, ödeme senkronu, oda/hatırlatma sıfırlaması ve
+  bildirim claim satırından sonradır. Kazanıldığında satır kilidi commit'e kadar
+  tutulur, yani araya giren bir `complete` artık `ACCEPTED` bulamaz ve 409 alır.
+- Claim kaybında bayat ORM nesnesi karar kaynağı yapılmaz (`_claim_transition`
+  refresh eder), 409 taze durumdan üretilir.
+
+**Kapanış testleri** (`test_ip1a_races_pg.py`, gerçek ayrı DB
+session/transaction, `sleep` yok, sınırsız bekleme yok):
+
+| Test | Kurulum | Beklenen final |
+|---|---|---|
+| `test_reschedule_KAZANIRSA_tamamlama_PARAYI_ACAMAZ` | tamamlama tarafı `ACCEPTED` okur, kapıda bekler; reschedule ayrı session'da commit eder | `PENDING` + `HELD`, `released_at` NULL, hak ediş 0, iade yok |
+| `test_tamamlama_KAZANIRSA_reschedule_DERSI_GERI_ALAMAZ` | reschedule tarafı `ACCEPTED` okur, kapıda bekler; `complete` ayrı session'da commit eder | `COMPLETED` + `RELEASED`, damga değişmedi, hak ediş tek, **ders saati değişmedi**, iade denemesi yok |
+
+**Mutasyon (M22).** `reschedule`'ın claim'i eski doğrudan atamaya çevrildi,
+`complete` üretim yoluna dokunulmadı. Sonuç: Sıralama B nöbetçisi kırıldı ve
+hata mesajı tutarsızlığı **birebir** gösterdi:
+
+```
+TUTARSIZ SONUÇ: booking=PENDING, ödeme=PaymentStatus.RELEASED,
+released_at=2026-08-03 16:56:40+00:00
+```
+
+Dosya SHA-256'sı başlangıçla aynı döndü, `git status` artık bırakmadı.
+
+### 13.3 Kapsam iddiasının yeniden doğrulanması
+
+`_transition` docstring'indeki "durum yazan her yol `_claim_transition` kullanır"
+iddiası P1-B'den önce **koddan daha güçlüydü** (reschedule istisnaydı). Şimdi
+doğrudur ve kapsamı açıkça yazılmıştır: `Booking.status` yazan **yedi** üretim
+yolu — `accept`, `reject`, `complete`, `auto_complete_past_bookings`, `cancel`,
+`cancel_by_admin`, `reschedule` — claim'den geçer. Servis dışında booking durumu
+yazan yol yoktur (`admin_service` devreder, `account_deletion_service` yalnız
+okur). Kalan iki `booking.status = ...` ataması `_transition` (saf tablo
+ifadesi, birim testli) ve `_claim_transition` (koşullu UPDATE **kazanıldıktan
+sonra** belleği eşitler) içindedir.
+
+### 13.4 Bu turda değişmeyenler
+
+Daha önce onaylanan ve yeşil olan davranışlar **yeniden tasarlanmadı**: escrow
+çekirdeği, iade akışı, admin iptali, sahipsiz emanet tarayıcısı, ihtilaf açma
+guard'ı, complete zaman eşiği. F30 ve İP-2b Order akışlarına dokunulmadı,
+frontend'e girilmedi. Mevcut 60 İP-1a node'unun hiçbiri silinmedi, yeniden
+adlandırılmadı veya gevşetilmedi; matris **60 → 63** oldu (3 yeni nöbetçi).
