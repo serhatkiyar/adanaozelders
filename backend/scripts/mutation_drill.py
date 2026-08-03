@@ -269,6 +269,169 @@ MUTASYONLAR: list[Mutasyon] = [
         "  if (false) {",
         ("src/components/admin/StockLedgerPanel.test.tsx",), "frontend",
     ),
+    # ── İP-1a: ders pazaryeri para güvenliği (P0-1…P0-6) ────────────────────
+    #
+    # Katalog daha önce tamamen envanter/stok odaklıydı ve **para yolunda tanımlı
+    # tek bir mutasyon yoktu** (bkz. docs/ip1a-ders-para-sozlesme.md §9d). Bu
+    # bölüm o boşluğu kapatır: her giriş İP-1a'da yazılan bir guard'ı söker ve
+    # nöbetçisinin gerçekten kırıldığını gösterir.
+    Mutasyon(
+        "M9", "İP-1a P0-1: red yolundan emanet iadesi kaldırıldı",
+        "backend/services/booking_service.py",
+        """    # Emanette ödeme varsa öğrenciye iade et (yoksa no-op). Taraf iptaliyle AYNI
+    # yol: `escrow.refund_escrow` (claim + iki faz) — paralel bir iade uygulaması
+    # yazılmaz, idempotency ve sağlayıcı-başarısızlığı davranışı devralınır.
+    await payment_service.refund(db, booking)""",
+        """    pass  # MUTASYON: red emaneti çözmüyor""",
+        ("tests/integration/test_ip1a_reschedule_reject_pg.py",),
+    ),
+    Mutasyon(
+        "M10", "İP-1a P0-2: admin iptali ortak booking_service yolunu atlıyor",
+        "backend/services/admin_service.py",
+        """    from services import booking_service
+
+    return await booking_service.cancel_by_admin(db, booking, reason=reason)""",
+        """    booking.status = BookingStatus.CANCELLED  # MUTASYON: FSM + iade yok
+    await db.flush()
+    return booking""",
+        (
+            "tests/integration/test_ip1a_admin_cancel_pg.py",
+        ),
+    ),
+    Mutasyon(
+        "M11", "İP-1a P0-3: complete'in start_at eşiği kaldırıldı",
+        "backend/services/booking_service.py",
+        """    if start > datetime.datetime.now(datetime.timezone.utc):
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Henüz başlamamış bir ders tamamlanamaz.",
+        )""",
+        """    return  # MUTASYON: başlamamış ders de tamamlanabilir""",
+        ("tests/integration/test_ip1a_complete_timing_pg.py",),
+    ),
+    Mutasyon(
+        "M12", "İP-1a P0-4: complete/auto-complete ihtilaf koşulu kaldırıldı",
+        "backend/services/booking_service.py",
+        "_IHTILAFSIZ = (Booking.is_disputed.is_(False),)",
+        "_IHTILAFSIZ = ()  # MUTASYON: ihtilaf para kararında okunmuyor",
+        ("tests/integration/test_ip1a_dispute_autocomplete_pg.py",),
+    ),
+    Mutasyon(
+        "M13", "İP-1a P0-6: atomik claim koşulsuz ORM atamasına çevrildi (accept)",
+        "backend/services/booking_service.py",
+        """    if not await _claim_transition(db, booking, BookingStatus.ACCEPTED):
+        raise _claim_hatasi(booking, BookingStatus.ACCEPTED)""",
+        """    _transition(booking, BookingStatus.ACCEPTED)  # MUTASYON: claim yok""",
+        ("tests/integration/test_ip1a_races_pg.py",),
+    ),
+    Mutasyon(
+        "M14", "İP-1a §8/S4: sahipsiz emanet iadesi claim'siz (iki worker açık)",
+        "backend/services/escrow_reconciler.py",
+        """            outcome = await escrow.refund_escrow(
+                db, payment, escrow.PAYMENT_SPEC, notify=_bildir
+            )""",
+        """            # MUTASYON: claim'siz doğrudan sağlayıcı çağrısı
+            _ok = await escrow.perform_refund(
+                db, payment, escrow.PAYMENT_SPEC, notify=_bildir
+            )
+            outcome = "refunded" if _ok else "refunding\"""",
+        ("tests/integration/test_ip1a_orphan_escrow_pg.py",),
+    ),
+    Mutasyon(
+        "M15", "İP-1a §7/S5: sağlayıcı reddettiği hâlde REFUNDED damgalanıyor",
+        "backend/services/escrow.py",
+        """            obj.provider_ref,
+        )
+        return False""",
+        """            obj.provider_ref,
+        )
+        return await finalize_refund(db, obj, spec, notify=notify)  # MUTASYON""",
+        ("tests/integration/test_ip1a_orphan_escrow_pg.py",),
+    ),
+    Mutasyon(
+        "M16", "İP-1a: release'in HELD kısıtı gevşetildi (RELEASED'dan da claim)",
+        "backend/services/payment_service.py",
+        """        from_statuses=[PaymentStatus.HELD],
+        values={"status": PaymentStatus.RELEASED, "released_at": _now()},""",
+        """        from_statuses=[PaymentStatus.HELD, PaymentStatus.RELEASED],  # MUTASYON
+        values={"status": PaymentStatus.RELEASED, "released_at": _now()},""",
+        ("tests/integration/test_ip1a_complete_timing_pg.py",),
+    ),
+    Mutasyon(
+        "M17", "İP-1a: begin_refund'ın released_at IS NULL guard'ı silindi",
+        "backend/services/escrow.py",
+        """        extra_where=(
+            (model.released_at.is_(None),) if spec.has_released_guard else ()
+        ),""",
+        """        extra_where=(),  # MUTASYON: released_at guard yok""",
+        ("tests/integration/test_ip1a_orphan_escrow_pg.py",),
+    ),
+    Mutasyon(
+        "M18", "İP-1a §8/S2: sahipsiz emanet taramasının karantinası kaldırıldı",
+        "backend/services/escrow_reconciler.py",
+        """                Booking.updated_at <= cutoff,
+                Payment.updated_at <= cutoff,""",
+        """                Booking.id.is_not(None),  # MUTASYON: karantina yok""",
+        ("tests/integration/test_ip1a_orphan_escrow_pg.py",),
+    ),
+    Mutasyon(
+        "M19", "İP-1a P0-4: ihtilaf açma koşulsuz (tamamlanmış derste de açılır)",
+        "backend/services/admin_service.py",
+        """        result = await db.execute(
+            update(Booking)
+            .where(
+                Booking.id == booking.id,
+                Booking.status.in_(_DISPUTE_ACILABILIR),
+                Booking.deleted_at.is_(None),
+            )
+            .values(is_disputed=True)
+            .execution_options(synchronize_session=False)
+        )
+        if result.rowcount != 1:
+            await db.refresh(booking)
+            raise HTTPException(
+                status.HTTP_409_CONFLICT,
+                "Yalnızca devam eden bir derste ihtilaf açılabilir; tamamlanmış "
+                "ya da iptal edilmiş dersin para hareketi sonuçlanmıştır.",
+            )
+        booking.is_disputed = True""",
+        """        booking.is_disputed = True  # MUTASYON: koşulsuz ihtilaf""",
+        ("tests/integration/test_ip1a_races_pg.py",),
+    ),
+    Mutasyon(
+        "M20", "İP-1a P0-5: sahipsiz emanet taraması hiçbir satır işlemiyor",
+        "backend/services/escrow_reconciler.py",
+        """    handled = 0
+    for payment, booking in rows:""",
+        """    handled = 0
+    for payment, booking in []:  # MUTASYON: tarama ölü""",
+        ("tests/integration/test_ip1a_orphan_escrow_pg.py",),
+    ),
+    # ── Nihai bağımsız audit'in bulduğu iki P1 (M21, M22) ───────────────────
+    #
+    # İkisi de "60 test yeşilken gerçek PG probunda para açığı" sınıfındandır:
+    # M12 ve M13 gibi geniş mutasyonlar bu boşlukları GÖREMİYORDU, çünkü her
+    # birinde ikinci bir koruma katmanı ölçümü gölgeliyordu.
+    Mutasyon(
+        "M21", "İP-1a P1-A: auto-complete claim'inin ihtilaf koşulu sökülü "
+               "(aday sorgusundaki filtre KORUNUYOR)",
+        "backend/services/booking_service.py",
+        """        if not await _claim_transition(
+            db, booking, BookingStatus.COMPLETED, extra_where=_IHTILAFSIZ
+        ):""",
+        """        if not await _claim_transition(
+            db, booking, BookingStatus.COMPLETED
+        ):  # MUTASYON: yalnız claim guard'ı sökülü""",
+        ("tests/integration/test_ip1a_dispute_autocomplete_pg.py",),
+    ),
+    Mutasyon(
+        "M22", "İP-1a P1-B: reschedule atomik claim yerine doğrudan status ataması",
+        "backend/services/booking_service.py",
+        """    if not await _claim_transition(db, booking, BookingStatus.PENDING):
+        raise _claim_hatasi(booking, BookingStatus.PENDING)""",
+        """    booking.status = BookingStatus.PENDING  # MUTASYON: eski doğrudan atama""",
+        ("tests/integration/test_ip1a_races_pg.py",),
+    ),
 ]
 
 

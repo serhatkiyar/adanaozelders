@@ -14,6 +14,7 @@ from core.moderation import mask_contact_info
 from core import storage
 from models.booking import Booking, BookingStatus
 from models.client import Client
+from models.payment import PaymentStatus
 from models.review import Review
 from models.role import ROLE_IDS, RoleType, role_name
 from models.tutor import Tutor, TutorAvailability, TutorStatus
@@ -49,13 +50,32 @@ def _filter_private_notes(booking: Booking, *, role_id: int, user_id: int) -> No
         if n.owner_role == role_id and n.owner_id == user_id
     ]
 
+#: Booking FSM'inin **tek** doğruluk kaynağı. `_transition` (saf, birim testli)
+#: ve `_claim_transition` (atomik, üretim) izinli kaynak durumları buradan okur;
+#: paralel bir geçiş tablosu YOKTUR.
+#:
+#: `→ PENDING` geçişleri **reschedule** içindir ve bilinçli olarak eklenmiştir
+#: (nihai audit P1-B): reschedule daha önce `booking.status = PENDING` biçiminde
+#: doğrudan ORM ataması yapıyordu, yani FSM'i ve atomik claim'i atlıyordu.
+#: Gerçek PostgreSQL'de ölçülen sonucu: `complete` claim'ini kazanıp parayı
+#: RELEASED yaptıktan sonra reschedule onun üzerine PENDING yazabiliyor ve
+#: geriye "tamamlanmamış görünen ders + dağıtılmış para" kalıyordu — iade de
+#: `released_at` yüzünden kalıcı kapalı. Geçiş tabloya girince aynı yol
+#: `_claim_transition` ile korunur.
 _TRANSITIONS: dict[BookingStatus, set[BookingStatus]] = {
     BookingStatus.PENDING: {
         BookingStatus.ACCEPTED,
         BookingStatus.REJECTED,
         BookingStatus.CANCELLED,
+        # reschedule: PENDING bir ders yeni saate taşınıp yine onay bekler.
+        BookingStatus.PENDING,
     },
-    BookingStatus.ACCEPTED: {BookingStatus.COMPLETED, BookingStatus.CANCELLED},
+    BookingStatus.ACCEPTED: {
+        BookingStatus.COMPLETED,
+        BookingStatus.CANCELLED,
+        # reschedule: onaylı ders yeni saate taşınınca yeniden onaya düşer.
+        BookingStatus.PENDING,
+    },
     BookingStatus.REJECTED: set(),
     BookingStatus.CANCELLED: set(),
     BookingStatus.COMPLETED: set(),
@@ -63,6 +83,25 @@ _TRANSITIONS: dict[BookingStatus, set[BookingStatus]] = {
 
 
 def _transition(booking: Booking, target: BookingStatus) -> None:
+    """Geçiş tablosunun **saf** ifadesi (birim testi: `tests/test_booking_fsm.py`).
+
+    ⚠️ Üretim yollarında KULLANILMAZ. Bellekteki nesneye bakan bir kontrol,
+    başka bir transaction'ın commit'lediği terminal durumu göremez ve onun
+    üzerine yazar (kayıp güncelleme).
+
+    **Kapsam iddiası (nihai audit P1-B sonrası yeniden doğrulandı):** bu serviste
+    `Booking.status` yazan **yedi** üretim yolunun tamamı `_claim_transition`
+    kullanır — `accept`, `reject`, `complete`, `auto_complete_past_bookings`,
+    `cancel`, `cancel_by_admin`, `reschedule`. Servis dışında booking durumu
+    yazan başka yol yoktur (`admin_service` bu servise devreder;
+    `account_deletion_service` yalnız okur). `booking.status = ...` biçimindeki
+    tek atamalar bu fonksiyonun ve `_claim_transition`'ın kendi içindedir:
+    ilki saf tablo ifadesi, ikincisi koşullu UPDATE **kazanıldıktan sonra**
+    bellekteki nesneyi eşitler.
+
+    İzinli kaynak durumlar her iki yolda da aynı `_TRANSITIONS` tablosundan
+    okunur; paralel bir geçiş tablosu yoktur.
+    """
     if target not in _TRANSITIONS[booking.status]:
         raise HTTPException(
             status.HTTP_409_CONFLICT,
@@ -72,14 +111,25 @@ def _transition(booking: Booking, target: BookingStatus) -> None:
 
 
 async def _claim_transition(
-    db: AsyncSession, booking: Booking, target: BookingStatus
+    db: AsyncSession,
+    booking: Booking,
+    target: BookingStatus,
+    *,
+    extra_where: tuple = (),
 ) -> bool:
     """FSM geçişini DB'de atomik claim eder (koşullu UPDATE, tek kazanan).
 
-    Para hareketi tetikleyen geçişlerde (COMPLETED→release, CANCELLED→refund)
-    bellekteki ``_transition`` yeterli değildir: iki eşzamanlı istek (ya da arka
-    plan döngüsü + manuel istek) aynı ACCEPTED'ı okuyup ikisi de geçiş yapabilir.
-    True dönerse geçiş bu çağrıya aittir; False'ta kayıt yarışta kaybetmiştir.
+    Para hareketi tetikleyen geçişlerde (COMPLETED→release, CANCELLED→refund,
+    REJECTED→refund) bellekteki ``_transition`` yeterli değildir: iki eşzamanlı
+    istek (ya da arka plan döngüsü + manuel istek) aynı ACCEPTED'ı okuyup ikisi
+    de geçiş yapabilir — hatta biri terminal duruma yazdıktan SONRA diğeri onun
+    üzerine yazabilir (kayıp güncelleme). True dönerse geçiş bu çağrıya aittir;
+    False'ta kayıt yarışta kaybetmiştir ve çağıran **hiçbir para hareketi
+    yapmamalıdır**.
+
+    ``extra_where``: geçişe özel ek koşullar (ör. COMPLETED için "ihtilaflı
+    değil"). Koşul WHERE'e girdiği için karar bellekte değil **satırın kendisinde**
+    verilir: eşzamanlı bir ihtilaf açma isteğiyle yarışırsa yalnız biri kazanır.
     """
     allowed_from = [s for s, targets in _TRANSITIONS.items() if target in targets]
     result = await db.execute(
@@ -88,6 +138,7 @@ async def _claim_transition(
             Booking.id == booking.id,
             Booking.status.in_(allowed_from),
             Booking.deleted_at.is_(None),
+            *extra_where,
         )
         .values(status=target)
         .execution_options(synchronize_session=False)
@@ -97,6 +148,18 @@ async def _claim_transition(
         return True
     await db.refresh(booking)
     return False
+
+
+def _claim_hatasi(booking: Booking, target: BookingStatus) -> HTTPException:
+    """Claim kaybedildiğinde kullanıcıya dönen 409 — sessiz başarı YOKTUR.
+
+    Tekrarlanan istek 200 alırsa kullanıcı işlemin ikinci kez yapıldığını sanır
+    ve (admin yolunda) ilk gerekçe sessizce ezilir; sözleşme §5/3 bunu yasaklar.
+    """
+    return HTTPException(
+        status.HTTP_409_CONFLICT,
+        f"Invalid transition: {booking.status.value} -> {target.value}",
+    )
 
 
 async def _assert_within_availability(
@@ -411,7 +474,12 @@ async def list_bookings(
 
 
 async def accept(db: AsyncSession, booking: Booking) -> Booking:
-    _transition(booking, BookingStatus.ACCEPTED)
+    # Atomik claim: eşzamanlı bir iptal/red ile yarışırsa yalnız biri kazanır.
+    # Bellek içi `_transition` burada YETMEZ — kabul, `create_for_booking` ile
+    # ödeme YÜKÜMLÜLÜĞÜ doğurur; iptal edilmiş bir dersin üzerine yazan bir
+    # accept, öğrenciye artık var olmayan bir ders için ödeme borcu çıkarır.
+    if not await _claim_transition(db, booking, BookingStatus.ACCEPTED):
+        raise _claim_hatasi(booking, BookingStatus.ACCEPTED)
     # Canlı ders odası yalnızca uzaktan (ONLINE) derslerde üretilir.
     if booking.mode != "IN_PERSON" and not booking.meeting_room:
         booking.meeting_room = f"adana-{booking.id}-{secrets.token_urlsafe(6)}"
@@ -430,7 +498,17 @@ async def accept(db: AsyncSession, booking: Booking) -> Booking:
 
 
 async def reject(db: AsyncSession, booking: Booking) -> Booking:
-    _transition(booking, BookingStatus.REJECTED)
+    """Eğitmen dersi reddeder — emanette para varsa öğrenciye iade edilir.
+
+    İade neden BURADA: `reschedule` ödemesi alınmış (HELD) bir dersi yeniden
+    `PENDING`'e alır ve `PENDING → REJECTED` meşru bir geçiştir. Red parayı
+    çözmezse ders terminal olur ama emanet HELD'de kalır — ne öğrenciye döner ne
+    eğitmene geçer, üstelik hiçbir arka plan tarayıcısı ACCEPTED olmayan bir
+    dersin HELD'ini görmez. Sözleşme §3: **HELD yalnız ACCEPTED ile birlikte
+    durabilir** (P0-1).
+    """
+    if not await _claim_transition(db, booking, BookingStatus.REJECTED):
+        raise _claim_hatasi(booking, BookingStatus.REJECTED)
     await db.flush()
     await notification_service.notify(
         db,
@@ -439,16 +517,57 @@ async def reject(db: AsyncSession, booking: Booking) -> Booking:
         message="Rezervasyon talebin reddedildi.",
         link="/student/bookings",
     )
+    # Emanette ödeme varsa öğrenciye iade et (yoksa no-op). Taraf iptaliyle AYNI
+    # yol: `escrow.refund_escrow` (claim + iki faz) — paralel bir iade uygulaması
+    # yazılmaz, idempotency ve sağlayıcı-başarısızlığı davranışı devralınır.
+    await payment_service.refund(db, booking)
     _notify_booking_update(db, booking)
     return booking
 
 
-async def complete(db: AsyncSession, booking: Booking) -> Booking:
-    if not await _claim_transition(db, booking, BookingStatus.COMPLETED):
+def _assert_completable(booking: Booking) -> None:
+    """`complete` ön koşulları: ders başlamış olmalı ve ihtilaflı olmamalı.
+
+    Bu bir konfor kontrolü değildir. `complete`, emanetteki parayı eğitmene
+    `RELEASED` yapan tek kapıdır; `released_at` damgalandığı anda
+    `escrow.begin_refund`'ın `released_at IS NULL` guard'ı iadeyi **kalıcı
+    olarak** kapatır (`services/escrow.py`). Yani tek yönlü bir para hareketinin
+    ön koşuludur (P0-3 / P0-4).
+
+    Eşik `start_at`'tir, `end_at` değil: eğitmenin ders bitiş saatini beklemeden
+    tamamlaması meşrudur (sözleşme §10/3). Karar değişirse burası ve sözleşme
+    birlikte güncellenir.
+    """
+    if booking.is_disputed:
         raise HTTPException(
             status.HTTP_409_CONFLICT,
-            f"Invalid transition: {booking.status.value} -> {BookingStatus.COMPLETED.value}",
+            "İhtilaflı bir ders tamamlanamaz; önce ihtilafın çözülmesi gerekir.",
         )
+    start = booking.start_at
+    if start is None:
+        return
+    if start.tzinfo is None:
+        start = start.replace(tzinfo=datetime.timezone.utc)
+    if start > datetime.datetime.now(datetime.timezone.utc):
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Henüz başlamamış bir ders tamamlanamaz.",
+        )
+
+
+#: COMPLETED claim'inin ek koşulu: ihtilaflı ders otomatik/elle tamamlanamaz.
+#: Bellekteki `_assert_completable` kullanıcıya AÇIKLAYICI hata verir; bu koşul
+#: ise kararı satırın kendisinde verir — eşzamanlı "ihtilaf aç" isteğiyle
+#: yarışıldığında yalnız biri kazanır (P0-4).
+_IHTILAFSIZ = (Booking.is_disputed.is_(False),)
+
+
+async def complete(db: AsyncSession, booking: Booking) -> Booking:
+    _assert_completable(booking)
+    if not await _claim_transition(
+        db, booking, BookingStatus.COMPLETED, extra_where=_IHTILAFSIZ
+    ):
+        raise _claim_hatasi(booking, BookingStatus.COMPLETED)
     await notification_service.notify(
         db,
         user_id=booking.client_id,
@@ -479,6 +598,21 @@ async def reschedule(
             status.HTTP_400_BAD_REQUEST, "Cannot reschedule to the past"
         )
     await _assert_within_availability(db, booking.tutor_id, start_at, end_at)
+    # ── Atomik claim: yeni saati YAZMADAN ÖNCE geçişi kazan (P1-B) ──
+    #
+    # Buradaki yazım eskiden `booking.status = PENDING` biçiminde koşulsuz bir
+    # ORM atamasıydı ve bellekteki bayat duruma güveniyordu. Gerçek PG'de
+    # ölçülen sonucu: eğitmen `complete` claim'ini kazanıp para RELEASED
+    # olduktan SONRA gelen reschedule onun üzerine PENDING yazıyordu →
+    # "tamamlanmamış görünen ders + eğitmene dağıtılmış para" ve `released_at`
+    # yüzünden kalıcı kapanmış iade yolu.
+    #
+    # Claim'in kaybedilmesi hâlinde AŞAĞIDAKİ HİÇBİR ALAN yazılmaz: saat, fiyat,
+    # ödeme senkronu, oda/hatırlatma sıfırlaması ve bildirim bu satırdan
+    # sonradır. Kazanıldığında ise satır kilidi commit'e kadar bizde kalır, yani
+    # araya giren bir `complete` artık ACCEPTED bulamaz ve 409 alır.
+    if not await _claim_transition(db, booking, BookingStatus.PENDING):
+        raise _claim_hatasi(booking, BookingStatus.PENDING)
     booking.start_at = start_at
     booking.end_at = end_at
     # Süre değişmiş olabilir; ücreti güncel saatlik ücretle yeniden hesapla.
@@ -489,7 +623,6 @@ async def reschedule(
     # reddet (409) — Payment.amount ile booking.price sessizce ayrışamaz.
     await payment_service.sync_amount_with_booking(db, booking)
     # Yeni saat eğitmenin yeniden onayına sunulur; oda/hatırlatma sıfırlanır.
-    booking.status = BookingStatus.PENDING
     booking.meeting_room = None
     booking.reminder_sent = False
     await db.flush()  # GiST çakışması -> 409 (global handler)
@@ -567,6 +700,15 @@ async def auto_complete_past_bookings(db: AsyncSession) -> int:
     """Bitişinden AUTO_COMPLETE_GRACE_HOURS saat geçmiş ama hâlâ ACCEPTED olan
     dersleri otomatik COMPLETED'a geçirir. Böylece eğitmen elle işaretlemese de
     öğrencinin değerlendirme ve soru (QA) hakkı açılır.
+
+    **İhtilaflı dersler kapsam dışıdır** (P0-4): `is_disputed`, "bu derste bir
+    sorun var, para hareketi beklesin" demenin tek yoludur. Otomatik tamamlama
+    parayı `RELEASED` yapar ve `released_at` damgası iadeyi kalıcı olarak
+    kapatır — admin ihtilafı çözmeye kalktığında elinde hiçbir araç kalmaz.
+    Filtre hem sorguda (gereksiz satır okunmasın) hem claim'in WHERE'inde
+    (eşzamanlı ihtilaf açmayla yarış) durur — ikisi de **aynı** `_IHTILAFSIZ`
+    koşulundan gelir, yani kural tek yerde tanımlıdır ve biri güncellenip diğeri
+    unutulamaz.
     """
     now = datetime.datetime.now(datetime.timezone.utc)
     cutoff = now - datetime.timedelta(hours=settings.AUTO_COMPLETE_GRACE_HOURS)
@@ -576,14 +718,17 @@ async def auto_complete_past_bookings(db: AsyncSession) -> int:
                 Booking.status == BookingStatus.ACCEPTED,
                 Booking.deleted_at.is_(None),
                 Booking.end_at <= cutoff,
+                *_IHTILAFSIZ,
             )
         )
     ).scalars().all()
     count = 0
     for booking in rows:
-        # Atomik claim: eşzamanlı bir manuel complete/cancel ile yarışırsa yalnız
-        # biri kazanır (kaybeden para hareketi tetiklemez).
-        if not await _claim_transition(db, booking, BookingStatus.COMPLETED):
+        # Atomik claim: eşzamanlı bir manuel complete/cancel ya da ihtilaf açma
+        # ile yarışırsa yalnız biri kazanır (kaybeden para hareketi tetiklemez).
+        if not await _claim_transition(
+            db, booking, BookingStatus.COMPLETED, extra_where=_IHTILAFSIZ
+        ):
             continue
         count += 1
         await notification_service.notify(
@@ -639,6 +784,69 @@ async def cancel(
         link=link,
     )
     # Emanette ödeme varsa öğrenciye iade et (yoksa no-op).
+    await payment_service.refund(db, booking)
+    _notify_booking_update(db, booking)
+    return booking
+
+
+async def cancel_by_admin(
+    db: AsyncSession, booking: Booking, *, reason: str | None = None
+) -> Booking:
+    """Admin iptali — kullanıcı yolundaki claim + iade disiplininin AYNISI.
+
+    Admin yetkisi "FSM'i ve iadeyi atlama yetkisi" değildir: admin daha fazla
+    derse erişebilir, daha az kural uygulayamaz (P0-2). Kullanıcı yolundan tek
+    farkı, iptali yapanın taraflardan biri OLMAMASIDIR — bu yüzden bildirim
+    **her iki tarafa** gider.
+
+    Kural burada, `admin_service`'te veya router'da değil: para hareketi
+    tetikleyen geçişin tek bir uygulaması olsun ki ileride eklenecek her çağıran
+    (arka plan işi, toplu işlem, yeni uç) boşluğu miras almasın.
+
+    **Hakedişi dağıtılmış ders iptal edilemez (409).** Üç ölçüt de reddeder:
+    booking `COMPLETED`, ödeme `RELEASED`, ya da `released_at` dolu. Üçüncüsü
+    fazlalık değildir: "HELD + `released_at` dolu" gibi kısmi/bozuk bir satır
+    (elle müdahale, eksik yazım) FSM'e takılmaz ama parası zaten dağıtılmıştır.
+    İptal edilirse `escrow.begin_refund`'ın `released_at IS NULL` guard'ı iadeyi
+    reddeder ve geriye "iptal edilmiş ders + eğitmene ödenmiş para" çelişkisi
+    kalır. Ters hakediş/reverse payout bu paketin kapsamı DIŞINDADIR
+    (sözleşme §10/2), bu yüzden tek güvenli cevap iptali hiç yapmamaktır.
+
+    Kontrolün claim'den ÖNCE olması yarışı açmaz: `release` yalnız başarılı bir
+    `COMPLETED` claim'inin ardından çağrılır; iptal claim'i booking satırını
+    kazandıysa artık yeni bir release başlayamaz, kaybettiyse zaten 409 alır.
+    """
+    payment = await payment_service.get_for_booking(db, booking.id)
+    if payment is not None and (
+        payment.status is PaymentStatus.RELEASED or payment.released_at is not None
+    ):
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Kazancı eğitmene serbest bırakılmış bir ders iptal edilemez; "
+            "iade yolu kalıcı olarak kapanmıştır.",
+        )
+    if not await _claim_transition(db, booking, BookingStatus.CANCELLED):
+        raise _claim_hatasi(booking, BookingStatus.CANCELLED)
+    booking.cancel_reason = (
+        f"Admin İptali: {reason}" if reason else "Admin tarafından iptal edildi."
+    )
+    await db.flush()
+    mesaj = "Bir dersin yönetici tarafından iptal edildi."
+    if reason:
+        mesaj += f" Neden: {reason}"
+    for user_id, role, link in (
+        (booking.tutor_id, RoleType.TUTOR, "/tutor"),
+        (booking.client_id, RoleType.CLIENT, "/student/bookings"),
+    ):
+        await notification_service.notify(
+            db,
+            user_id=user_id,
+            role_id=ROLE_IDS[role],
+            message=mesaj,
+            link=link,
+        )
+    # Emanetteki para öğrenciye iade edilir (yoksa no-op) — taraf iptaliyle aynı
+    # `escrow.refund_escrow` yolu; iade bildirimi de oradan gider.
     await payment_service.refund(db, booking)
     _notify_booking_update(db, booking)
     return booking

@@ -109,9 +109,19 @@ class StubProvider(FakePaymentProvider):
     eşzamanlı transaction'ın "status okundu ama henüz yazılmadı" penceresinde
     buluşmasını DETERMİNİSTİK yapar.
 
-    ``refund_entered`` kapıya GİRİLDİĞİ anda set edilir: testin pencereyi
-    `sleep` ile yoklamadan (yani zamanlamaya bahis oynamadan) beklemesini
-    sağlar — `await provider.refund_entered.wait()`.
+    ``refund_entered`` bunun ters yönüdür: kapıya GİRİLDİĞİ anda set edilir, yani
+    "iade faz-1'i commit'lendi ve akış sağlayıcıda asılı" olayını test tarafına
+    bildirir. Test bunu beklediğinde `asyncio.sleep(...)` ile "herhâlde oraya
+    varmıştır" tahmininde bulunmak zorunda kalmaz — ardışıklık ölçülür, tahmin
+    edilmez (zamanlamaya bahis oynanmaz). Bir testte birden çok iade
+    olabileceği için event `refund_calls` sayacının yerine geçmez; "en az bir
+    iade kapıya ulaştı" anlamındadır.
+
+    Beklerken **süre koyun**: kapıyı açacak yol bozulduğunda (ör. iade çağrısı
+    hiç yapılmadığında) çıplak `await provider.refund_entered.wait()` testi
+    kırmızıya değil sonsuz beklemeye çevirir. İP-1a yarış dosyası bu yüzden
+    sonlu bariyerden geçer (`test_ip1a_races_pg.py::_event_bekle`); yeni test
+    yazarken aynı deseni kullanın.
     """
 
     def __init__(self) -> None:
@@ -307,6 +317,13 @@ async def factory(pg) -> MoneyFactory:
     f = MoneyFactory()
     yield f
     await f.cleanup()
+
+
+# İP-1a ders para yolu fabrikası ve HTTP istemcisi. Fixture'lar tanımları
+# `ip1a_factory.py`'de durur ama pytest'in onları bulabilmesi için conftest
+# ad alanında olmaları gerekir. Test modüllerine tek tek import edilselerdi,
+# aynı adı test parametresi olarak da kullanmak F811 (gölgeleme) üretirdi.
+from tests.integration.ip1a_factory import ip1a, ip1a_http  # noqa: E402,F401
 
 # ═════════════ Tek kullanımlık test veritabanı + hijyen nöbetçisi ═════════════
 #
