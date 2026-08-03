@@ -11,6 +11,7 @@ Her testte para+stok+geçmiş bütünü birlikte ölçülür (yalnız HTTP statu
 from __future__ import annotations
 
 import asyncio
+import logging
 
 import pytest
 from fastapi import HTTPException
@@ -35,7 +36,9 @@ async def _iptal(oid: int) -> str | None:
 async def _admin_iade(oid: int) -> str | None:
     async with AsyncSessionLocal() as s:
         try:
-            await order_service.refund_order(s, oid)
+            # Gerekçe artık ZORUNLU (İP-2b R3): yönetici iadesi para hareketi
+            # başlatır ve gerekçesiz kaydedilemez.
+            await order_service.refund_order(s, oid, reason="Yarış testi: admin iadesi")
             return "refund"
         except HTTPException:
             return None
@@ -81,23 +84,35 @@ async def test_yesil_musteri_iptali_admin_iadesi_yarisi(fab, provider):
     assert durum == ("CANCELLED" if kazananlar[0] == "cancel" else "REFUNDED")
 
 
-async def test_kirmizi_iptal_ile_kurye_teslim_yarisi(fab, provider):
+async def test_yesil_iptal_ile_kurye_teslim_yarisi_teslimi_ezmez(fab, provider, caplog):
     """[IP2B-R17] İptal ↔ tur başlatma + kurye teslimi yarışı.
 
-    `cancel_by_client` SHIPPED/DELIVERED guard'ını Order kilidi altında geçer,
-    ama `begin_refund` niyeti COMMIT edince kilit bırakılır; sağlayıcı HTTP
-    çağrısı sürerken tur başlar (PAID→SHIPPED) ve kurye OTP ile teslim eder
-    (SHIPPED→DELIVERED, `delivered_at` damgalanır). İptal kaldığı yerden devam
-    eder: sağlayıcı iadesini TAMAMLAR, stoğu geri yükler ve `transition_order`
-    kilit sonrası TAZE durumu DEĞİL, iptal session'ının BAYAT bellek kopyasını
-    (`status='PAID'`) gördüğü için `CANCELLED` yazımı FSM'den geçer →
-    DELIVERED, CANCELLED ile EZİLİR (lost update). Net sonuç: kitap müşteride
-    (durak DELIVERED, delivered_at dolu) + para sağlayıcıda iade edilmiş +
-    stok defteri kitabı rafta sayıyor + sipariş 'iptal edilmiş' görünüyor.
+    Kusur: `cancel_by_client` SHIPPED/DELIVERED guard'ını Order kilidi altında
+    geçer, ama `begin_refund` niyeti COMMIT edince kilit BIRAKILIR; sağlayıcı
+    HTTP çağrısı sürerken tur başlar (PAID→SHIPPED) ve kurye OTP ile teslim eder
+    (SHIPPED→DELIVERED). İptal kaldığı yerden devam edince — kilit sonrası TAZE
+    durumu değil, session'ının BAYAT bellek kopyasını (`status='PAID'`) gördüğü
+    için — stoğu geri yüklüyor ve `CANCELLED` yazımı FSM'den geçiyordu:
+    **DELIVERED, CANCELLED ile EZİLİYORDU** (lost update). Net sonuç: kitap
+    müşteride + para iade + defter kitabı rafta sayıyor + sipariş "iptal".
 
-    Sözleşme: tek işlem sahibi — paket teslim edildiyse (durak DELIVERED)
-    sağlayıcıya iade çağrısı GİDEMEZ ve SALE_CANCEL YAZILAMAZ; sipariş
-    DELIVERED kalır, para iadesi ancak İP-2a iade (RMA) yolundan yürür."""
+    ── Kanonik yarış sözleşmesi (ULAŞILABİLİR invariant) ─────────────────────
+    Bu nöbetçinin ilk hâli "sağlayıcıya HİÇ iade çağrısı gitmemeli" diyordu ama
+    kurgusu, teslimatı ancak `provider.refund` çağrıldıktan SONRA tetikliyordu
+    (kapı orada açılıyor): iki şart birbirini dışlıyordu ve test hiçbir üretim
+    koduyla yeşile dönemezdi. Sözleşme, ulaşılabilir olana çekildi — bu bir
+    **assertion gevşetmesi değil, birbirini dışlayan iki şartın düzeltilmesidir**
+    (gerekçe: docs/ip2b-siparis-iptal-telafi-sozlesme.md §6.6):
+
+    * teslim kesinleşmişse `DELIVERED` **ezilmez**;
+    * kitap müşteride olduğu için `SALE_CANCEL` **yazılmaz**;
+    * sağlayıcı iade çağrısı **en fazla bir kez** yapılır;
+    * çağrı çoktan gönderilmişse **otomatik ikinci finansal işlem yapılmaz**
+      (ters tahsilat/otomatik RMA İP-2b kapsamı DIŞINDA);
+    * durum sessiz kalmaz: görünür `MANUAL_REVIEW`/ERROR kaydı + audit izi +
+      yönetici bildirimi.
+    """
+    caplog.set_level(logging.ERROR)
     pid = await fab.urun(stock=6)
     oid, _ = await fab.siparis(items=[(pid, 2, "PHYSICAL", "100.00")], prepared=True)
     run_id = await fab.run(status="PLANNED")
@@ -106,22 +121,23 @@ async def test_kirmizi_iptal_ile_kurye_teslim_yarisi(fab, provider):
     provider.refund_gate = asyncio.Event()  # sağlayıcı çağrısını askıda tut
 
     iptal_gorevi = asyncio.create_task(_iptal(oid))
-    # İptal, sağlayıcıya ulaşana dek bekle (refund() önce kaydeder sonra bekler).
-    for _ in range(500):
-        if provider.refund_calls:
-            break
-        await asyncio.sleep(0.01)
-    assert provider.refund_calls, "iptal sağlayıcıya hiç ulaşmadı (kurulum hatası)"
+    try:
+        # İptal, sağlayıcıya ulaşana dek bekle (refund() önce kaydeder sonra bekler).
+        for _ in range(500):
+            if provider.refund_calls:
+                break
+            await asyncio.sleep(0.01)
+        assert provider.refund_calls, "iptal sağlayıcıya hiç ulaşmadı (kurulum hatası)"
 
-    # Pencerede: tur başlar, kurye teslim eder.
-    async with AsyncSessionLocal() as s:
-        await delivery_service.start_run(s, run_id)
-    async with AsyncSessionLocal() as s:
-        await delivery_service.verify_delivery(s, stop_id, code="654321")
-    assert (await fab.siparis_durumu(oid))[0] == "DELIVERED"
-
-    provider.refund_gate.set()
-    iptal_sonucu = await asyncio.wait_for(iptal_gorevi, timeout=30)
+        # Pencerede: tur başlar, kurye teslim eder.
+        async with AsyncSessionLocal() as s:
+            await delivery_service.start_run(s, run_id)
+        async with AsyncSessionLocal() as s:
+            await delivery_service.verify_delivery(s, stop_id, code="654321")
+        assert (await fab.siparis_durumu(oid))[0] == "DELIVERED"
+    finally:
+        provider.refund_gate.set()
+        iptal_sonucu = await asyncio.wait_for(iptal_gorevi, timeout=30)
 
     durum, payment = await fab.siparis_durumu(oid)
     async with AsyncSessionLocal() as s:
@@ -139,11 +155,12 @@ async def test_kirmizi_iptal_ile_kurye_teslim_yarisi(fab, provider):
     # Paket fiziksel olarak müşteriye verildi (kurye DELIVERED'ı commit etti).
     assert durak_durumu == "DELIVERED" and delivered_at is not None
 
-    # Sözleşme: teslim edilmiş pakete iade çağrısı + stok telafisi + CANCELLED
-    # yazımı OLAMAZ. (Bugün üçü birden olur; DELIVERED, CANCELLED ile ezilir.)
     ihlaller = []
-    if len(provider.refund_calls) > 0:
-        ihlaller.append(f"sağlayıcı iadesi {len(provider.refund_calls)} kez gitti")
+    if len(provider.refund_calls) > 1:
+        ihlaller.append(
+            f"sağlayıcıya {len(provider.refund_calls)} iade çağrısı gitti "
+            "(en fazla bir kez olmalı)"
+        )
     if sale_cancel:
         ihlaller.append(f"kitap müşterideyken SALE_CANCEL yazıldı: {sale_cancel}")
     if durum != "DELIVERED":
@@ -152,3 +169,15 @@ async def test_kirmizi_iptal_ile_kurye_teslim_yarisi(fab, provider):
         f"iptal ↔ teslim yarışında çift kazanan (iptal sonucu {iptal_sonucu!r}, "
         f"sipariş {durum}/{payment}): " + "; ".join(ihlaller)
     )
+    # Stok fiziksel gerçekle uyumlu: 6 − 2 satış = 4 (geri yükleme YOK).
+    assert await fab.stok(pid) == 4
+
+    # Sessiz kalmadı: ERROR kaydı + audit satırı + yönetici bildirimi.
+    assert any(
+        r.levelno >= logging.ERROR and "MANUAL_REVIEW" in r.getMessage()
+        and str(oid) in r.getMessage()
+        for r in caplog.records
+    ), "gönderilmiş iade sessizce kayboldu — MANUAL_REVIEW kaydı yok"
+    assert await fab.audit_kayitlari(
+        action="order.refund_after_delivery", target_id=oid
+    ), "MANUAL_REVIEW durumu audit izine yazılmadı"

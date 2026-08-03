@@ -219,10 +219,20 @@ SIRA_MATRISI: list[tuple[str, str, list[str]]] = [
     # PAID: ürünler kilitlenir → sipariş satırı koşullu UPDATE ile claim edilir.
     ("services/order_service.py", "_finalize_paid", [LOCKER, "claim"]),
     # Tam iade: ürün kilitleri SAĞLAYICIDAN ÖNCE (kanonik sıra), telafi SONRA.
+    #
+    # İP-2b: telafi kuyruğu `settle_refunded_order`'a taşındı — üç çağıranın
+    # (iptal/iade mutlu yolu · reconciler · 502 sonrası ikinci deneme) AYNI
+    # telafiyi uygulaması için. `_restock` orada koşar; sıra sözleşmesi bu
+    # yüzden iki satırda ölçülür ve GEVŞEMEZ.
     (
         "services/order_service.py",
         "_refund_payment",
-        ["_lock_order_products", "perform_refund", "_restock"],
+        ["_lock_order_products", "perform_refund", "settle_refunded_order"],
+    ),
+    (
+        "services/order_service.py",
+        "settle_refunded_order",
+        ["_restock", "release"],
     ),
     # Kısmi iade: aynı desen (kilit → sağlayıcı → telafi).
     (
