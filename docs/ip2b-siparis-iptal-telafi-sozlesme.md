@@ -1,15 +1,20 @@
 # İP-2b — Mağaza Sipariş İptali ve Telafi Bütünlüğü Sözleşmesi
 
 **Durum:** Kırmızı checkpoint (üretim kodu bu pakette DEĞİŞTİRİLMEDİ).
+**Taban:** Güncel `main` (`dc9771a`, F30 paketleme+QR+kurye zimmet dâhil) bu dala
+`45c95b8` merge commit'iyle alındı. Merge, R16 kusurunu **devraldı ve kapattı**
+(§3c); checkpoint o gerçeğe göre yeniden ölçüldü (§11 tarihçe tablosu).
 **Kapsam:** Sipariş iptali (ödenmemiş / ödenmiş / hazırlanmış / dağıtımdaki),
 iptal telafileri (para, stok, kupon, teslimat, audit, bildirim) ve bunların
 yarış/başarısızlık davranışları.
 **İP-2a sınırı:** Teslim sonrası ürün iadesi (RMA, kısmi refund) bu paketin
 DIŞINDADIR. Bu sözleşme yalnız "teslim edilmiş sipariş iptal uçlarından
 GEÇEMEZ, iade yoluna yönlenir" sınırını çivileyecek kadar RMA'ya değinir.
-**F30 sınırı:** `OrderPackage` modeli üretimde YOKTUR (doğrulandı:
-`models/__init__.py` + repo grep). Hazırlama bugün `Order.prepared_at/by`
-damgasıyla modellenir; testler bu gerçek modele göre ölçer.
+**F30 sınırı (GÜNCELLENDİ):** Bu satır checkpoint kurulurken `OrderPackage`
+üretimde YOKKEN yazılmıştı. `45c95b8` merge'inden sonra model VARDIR; İP-2b
+testleri yine de `Order.prepared_at/by` damgasına göre ölçer (R13'ün asgari
+sözleşmesi değişmedi) ve paket üretmez — `add_stops` paketi olmayan siparişi
+kabul etmeyi sürdürür (`_paket_gecmisi_var` boşsa geçer).
 
 Testler: `backend/tests/integration/test_ip2b_cancel_*.py`
 Fixture: `backend/tests/integration/ip2b_factory.py`
@@ -110,7 +115,7 @@ PostgreSQL + gerçek servis/HTTP koşumuyla YENİDEN üretildi. Kırmızı testl
 | R13 | İptal `prepared_at`'i sıfırlamaz (yalnız başarısız-teslim yolu sıfırlar, `order_service.py:159-161`): paketlenmiş kitap masada, defter rafta sayar, söküm sinyali yok | I5 | `delivery::test_kirmizi_hazirlanmis_siparis_iptali_damgayi_sokmeli` |
 | R14 | `send_otp`/`scan` sipariş yaşam döngüsüne bakmaz (`delivery_service.py:1449-1454, 1498-1522, 1796-1811`): iptal edilmiş siparişin müşterisine teslim OTP SMS'i gider | I7 | `delivery::test_kirmizi_cancelled_siparise_teslim_otp_smsi_gitmez` |
 | R15 | Outbox olayları iptalle geçersizleşmez (purge/cancel yolu yok, `core/outbox.py`): iade edilmiş siparişe kuyruktaki "kuryen yola çıktı" SMS'i gönderilir (sessiz saat ertelemesi pencereyi saatlere büyütür) | I7 | `delivery::test_kirmizi_iptal_bekleyen_takip_smsini_iptal_eder` |
-| R16 | `add_stops` siparişi kilitsiz okur (`db.get`, `delivery_service.py:994`); iptal ↔ tura-ekleme yarışında CANCELLED siparişe PENDING durak yazılır (`uq_delivery_stop_open` sipariş durumundan habersiz) | I7, I8 | `delivery::test_kirmizi_iptal_ile_tura_ekleme_yarisi` |
+| ~~R16~~ | **KAPANDI — F30 tarafından devralındı** (bkz. §3c) | I7, I8 | ~~`delivery::test_kirmizi_iptal_ile_tura_ekleme_yarisi`~~ |
 | R17 | `begin_refund` commit'i Order kilidini bırakır; sağlayıcı penceresi sırasında tur başlar + kurye teslim eder; iptal BAYAT bellek durumuyla (`status='PAID'`) FSM'den geçip **DELIVERED'ı CANCELLED ile ezer** — para iade + kitap müşteride + kör SALE_CANCEL, üçü birden (gerçek PG'de üç ihlal de ölçüldü) | I5, I8, I1 | `races::test_kirmizi_iptal_ile_kurye_teslim_yarisi` |
 
 ### 3b. Sertleştirme talebi (kusur DEĞİL) — R5
@@ -126,6 +131,36 @@ kusurlardır; R5 ise erişilebilir bir kusur değil, **savunma derinliği** tale
 Testin kırmızı kalması bugün müşteriye ulaşan bir zararı DEĞİL, eksik bir
 emniyet kemerini gösterir; önceliklendirilirken R1-R4/R6-R17 ile aynı kefeye
 konmamalıdır. (Kırmızı sayısına dâhildir; §11.)
+
+### 3c. F30 tarafından devralınarak KAPANAN kusur — R16
+
+Güncel `main` (`dc9771a`, F30 paketleme+zimmet) bu dala `45c95b8` merge'iyle
+alındı. F30, R16'nın belgelediği kusuru **kendi kapsamı içinde çözdü**:
+`delivery_service.add_stops` artık sipariş satırlarını `_lock_orders_ascending`
+ile **artan `order_id` sırasında `FOR UPDATE`** kilitler ve uygunluk kontrolünü
+(`order.status != "PAID"`) kilit altında, `populate_existing` ile **taze**
+okumayla yapar. Böylece "oku → karar ver → yaz" penceresi kapanır.
+
+**R16 assertion gevşetilerek kapatılmadı.** Eski test, kusurun kendisine
+(kilitsiz `add_stops`) yaslanan bir kurgu kullanıyordu — `_has_open_stop`
+kapıda tutulurken iptal aynı satırı istiyordu. Yeni kilit sözleşmesinde bu
+kurgu **dairesel bekleme** üretiyor, `statement_timeout` doluyor, askıda task +
+açık transaction teardown'ı düşürüyor ve her koşumda
+`orders/order_items/products/stock_movements/clients/delivery_runs` satırı
+sızdırıyordu (sızan `delivery_runs` satırı `uq_delivery_run_planned`'ı
+doldurduğu için R15 de kendi iddiası yerine `IntegrityError` ölçmeye
+başlamıştı). Nöbetçi bu yüzden **iş invariant'ına** göre yeniden yazıldı:
+
+| | |
+|---|---|
+| **İnvariant** | İptal edilen sipariş, yarışın HER sıralamasında açık (`PENDING`) teslimat durağıyla bırakılamaz: `order=CANCELLED` **ve** `stop=PENDING` bileşimi yasaktır |
+| **Nöbetçi** | `delivery::test_yesil_iptal_ile_tura_ekleme_yarisi_acik_durak_birakmaz[ekleme_once, iptal_once]` (gerçek PG, iki ayrı session/transaction, sonlu `lock_timeout`, `sleep`süz, 3 tur) |
+| **ekleme_once** | Kapı `_has_open_stop`'ta (sipariş kilidi ALINDIKTAN sonra). İptal bu pencerede başlatılır ve *bitene ya da satır kilidinde bekler duruma gelene* dek `pg_stat_activity` ile gözlenir. Gözlem `kilitte` → durak yazılır, iptal onu kanonik kapanışa (`CANCELLED`) alır |
+| **iptal_once** | Kapı `_lock_orders_ascending`'in ÖNÜNDE (kilit alınmadan). İptal pencerede TAMAMEN biter; kapı açılınca `add_stops` durumu kilit altında yeniden okur ve **409** ile reddeder, hiç durak yazmaz |
+| **Ölçülen sonuç** | İki yönde de yasak bileşim **0 kez**; deadlock (40P01) / kilit (55P03) / ifade (57014) zaman aşımı **0**; teardown hatası **0**; kritik tablo deltası **0**; 10 ardışık tekrarda 10/10 yeşil |
+
+Bu yüzden R16 kırmızı matristen çıkarıldı ve **devralınan yeşil regresyon
+nöbetçisi** olarak kaydedildi (§9, §11).
 
 Test dosyası kısaltmaları: `http` = `test_ip2b_cancel_http_pg.py`,
 `money` = `test_ip2b_cancel_money_pg.py`, `callback` =
@@ -207,8 +242,9 @@ CANCELLED durağın teslimi FSM duvarına çarpar (bu pakette yeniden çivilendi
 `test_yesil_cancelled_siparisin_duragi_teslim_edilemez`).
 
 Kırmızı boşluklar: R13 (prepared damgası), R14 (OTP/scan kapıda durum
-doğrulamıyor), R15 (bayat outbox SMS'i), R16 (iptal ↔ add_stops yarışı),
-R17 (iptal ↔ teslim yarışı — DELIVERED ezilir).
+doğrulamıyor), R15 (bayat outbox SMS'i), R17 (iptal ↔ teslim yarışı —
+DELIVERED ezilir). **R16 artık kırmızı DEĞİLDİR** — F30'un `add_stops` Order
+kilidi kusuru kapattı; iki yönlü yarış nöbetçisi bunu kanıtlar (§3c).
 
 Sözleşmeye not: iptal edilen durak `remove_stop` ile turdan çıkarılamaz ve
 `optimize_run` sequence'ında yer işgal eder; public takip sayfası CANCELLED
@@ -235,7 +271,7 @@ edilmedi (kozmetik/raporlama); teknik borç olarak kayıt altındadır (§10).
    redemption satırının hard-delete yerine `revoked_at` ile korunması
    (kampanya analitiği/denetim izi bugün siliniyor).
 
-## 9. Yeşil nöbetçiler (19)
+## 9. Yeşil nöbetçiler (21 düğüm)
 
 `http`: ödenmemiş iptal · ödenmiş iptal tam telafi · duplicate 409 yan etkisiz ·
 401/403 · DELIVERED→iade yönlendirmesi · yetkili admin refund + audit ·
@@ -245,7 +281,9 @@ eksik izinli admin reddi.
 nöbetçisi) · iptal↔callback çift durum yok.
 `stock_coupon`: PENDING iptal hareketsiz · karışık sepette dijital hareketsiz ·
 iki worker tek telafi · kupon kotası geri açılır · süresi dolmuş kupon çivisi.
-`delivery`: CANCELLED durak teslim edilemez.
+`delivery`: CANCELLED durak teslim edilemez · **iptal ↔ tura ekleme yarışı açık
+durak bırakmaz** (2 düğüm: `ekleme_once`/`iptal_once` — F30'dan DEVRALINAN
+düzeltmenin nöbetçisi, §3c).
 `races`: çift iptal tek kazanan · müşteri↔admin tek para hareketi.
 
 Ayrıca mevcut kapsamla bilinçli ÇAKIŞMAMA: verify paketindeki E1-E3 (iptal +
@@ -285,13 +323,24 @@ python -m pytest tests/integration/test_ip2b_cancel_http_pg.py `
   tests/integration/test_ip2b_cancel_races_pg.py -q
 ```
 
-Beklenen: **19 yeşil + 18 kırmızı** = 37 düğüm (üretim düzeltmesi gelene dek).
-Kırmızı sayısı 17'den 18'e, bağımsız denetimin P2 talebiyle eklenen R2b
-(gerekçesiz admin iptalinin reddi) yüzünden çıktı; mevcut 17 kırmızının hiçbiri
-gevşetilmedi/silinmedi. Koşum
-deterministiktir (iki ardışık koşumda aynı sonuç doğrulandı); yarışlar sleep
-yerine `asyncio.Event` kapılarıyla kurulur. Suite hijyen nöbetçisinden temiz
-çıkar (test DB'sinde kalıntı satır bırakmaz).
+Beklenen (merge `45c95b8` sonrası): **21 yeşil + 17 kırmızı = 38 düğüm**
+(kalan kırmızılar üretim düzeltmesi gelene dek kırmızı kalır).
+
+Sayıların tarihçesi — hiçbir kırmızı assertion gevşetilerek kapatılmadı:
+
+| Aşama | Toplam | Kırmızı | Yeşil | Neden |
+|---|---|---|---|---|
+| Kırmızı checkpoint (`50607e9`) | 36 | 17 | 19 | ilk kabul matrisi |
+| Bağımsız denetim P2 (`cd592ea`) | 37 | 18 | 19 | R2b eklendi (gerekçesiz admin iptalinin reddi) |
+| main+F30 merge sonrası (`45c95b8`+) | **38** | **17** | **21** | R16 kırmızısı **F30 düzeltmesiyle** kapandı ve yerine 2 düğümlü (iki başlatma yönü) yeşil yarış nöbetçisi geldi: −1 kırmızı, −1 düğüm, +2 düğüm |
+
+Koşum deterministiktir (iki ardışık koşumda düğüm ve sonuç bazında aynı);
+yarışlar `sleep` yerine `asyncio.Event` kapıları ve `pg_stat_activity` kilit
+gözlemiyle kurulur. Suite hijyen nöbetçisinden temiz çıkar — kritik tablo
+deltası 0 (`-k ip2b`, `-k f30` ve yeni yarış nöbetçisi ayrı ayrı ölçüldü).
+Tam `tests/integration` koşumunda kalan tek delta `outbox_events (+10)` ve
+`notifications (+4)`; ikisi de nöbetçinin listesinde DEĞİL ve kaynağı İP-2b/F30
+değil — kaydı: `docs/teknik-borc.md` → TB-8.
 
 **Mutasyon provası (8/8 yakalandı, tamamı geri alındı):** refund no-op →
 `http` ödenmiş-iptal yeşili · restock tavansız+anahtar benzersiz → iki-worker
@@ -313,3 +362,18 @@ M10 yazılırken not: `db.rollback()` ORM nesnelerini expire ettiği için döng
 satırları önce anlık görüntüye alınmalıdır; aksi hâlde bayat nesnenin alanına
 erişmek async oturumda lazy-load (`MissingGreenlet`) üretir. Gerçek düzeltme
 yazılırken bu tuzak geçerlidir.
+
+**Ek mutasyon provası — iptal ↔ tura ekleme yarış nöbetçisi (3/3, tamamı geri
+alındı; üretim dosyalarının SHA-256'sı başlangıçla birebir aynı):**
+
+| Mutasyon | Yer | Ölçülen |
+|---|---|---|
+| M-R16-1: `add_stops`'un Order kilidi (`_lock_orders_ascending`) kaldırıldı | `delivery_service.py` | **KIRMIZI** — `ekleme_once` yönü: `gözlem=bitti` (iptal pencerede tamamlandı) → `duraklar=['PENDING']` + `order=CANCELLED`, yani yasak bileşim. Yapısal metin kontrolü DEĞİL, gerçek son durum |
+| M-R16-2: durum kontrolü kilitten ÖNCEYE alındı (bayat okuma) | `delivery_service.py` | **KIRMIZI** — `iptal_once` yönü: iptal tamamen bittikten sonra `add_stops` bayat `PAID`'e güvenip ölü siparişe `PENDING` durak yazdı |
+| M-R16-3: iptal yolunda `_close_open_stops` kaldırıldı | `order_fsm.py` | **KIRMIZI** — `ekleme_once` yönü: `gözlem=kilitte` (kilit doğru çalıştı) ama iptal durağı kapatmadı → `CANCELLED` + `PENDING` |
+
+⚠️ Nöbetçinin İLK hâli M-R16-1'i **yakalayamadı** (yalnız `asyncio.gather` ile
+başlatmak tehlikeli pencereyi açmıyordu). Kural gereği önce test güçlendirildi
+(yön başına deterministik kapı + `pg_stat_activity` kilit gözlemi), sonra
+mutasyon tekrarlandı ve kırıldığı gösterildi. "Geçen test" ile "nöbetçilik eden
+test" arasındaki fark tam olarak budur.

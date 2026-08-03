@@ -306,10 +306,21 @@ class Ip2bFabrika:
         return oid, item_ids
 
     # ── Teslimat ──────────────────────────────────────────────────────────────
-    async def run(self, *, status: str = "PLANNED", vehicle: str = "LADA") -> int:
+    async def run(
+        self, *, status: str = "PLANNED", vehicle: str = "LADA",
+        run_date: datetime.date | None = None,
+    ) -> int:
+        """Teslimat turu. `run_date` verilmezse bugün.
+
+        `uq_delivery_run_planned` (run_date, vehicle) çifti başına TEK planlı tur
+        ister; çok turlu yarış testleri bu yüzden tur başına farklı bir tarih
+        verir — aksi hâlde ikinci tur, ölçmek istediği davranışa hiç varamadan
+        IntegrityError'a çarpar.
+        """
         async with AsyncSessionLocal() as s:
             r = DeliveryRun(
-                run_date=datetime.date.today(), vehicle=vehicle, status=status,
+                run_date=run_date or datetime.date.today(), vehicle=vehicle,
+                status=status,
                 started_at=now() if status == "ACTIVE" else None,
             )
             s.add(r)
