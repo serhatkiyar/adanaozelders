@@ -689,10 +689,15 @@ function OrdersPanel() {
     mutationFn: (id: number) => deliverOrder(id),
     onSuccess: invalidate,
   });
+  // Gerekçe ZORUNLU (backend `AdminOrderActionIn`): iade denetim izine
+  // gerekçesiz yazılamaz, bu yüzden aksiyon önce gerekçe penceresi açar.
+  const [iadeSiparisi, setIadeSiparisi] = useState<number | null>(null);
   const refund = useMutation({
-    mutationFn: (id: number) => refundOrder(id),
+    mutationFn: ({ id, reason }: { id: number; reason: string }) =>
+      refundOrder(id, reason),
     onSuccess: () => {
       toast.success("İade edildi");
+      setIadeSiparisi(null);
       invalidate();
     },
     onError: () => toast.error("İade başarısız"),
@@ -733,7 +738,7 @@ function OrdersPanel() {
                   </button>
                 )}
                 {o.payment_status === "PAID" && (
-                  <button type="button" onClick={() => refund.mutate(o.id)} className="rounded-lg border border-rose-200 px-3 py-1 text-xs text-rose-600 dark:border-rose-500/30">
+                  <button type="button" onClick={() => setIadeSiparisi(o.id)} className="rounded-lg border border-rose-200 px-3 py-1 text-xs text-rose-600 dark:border-rose-500/30">
                     İade et
                   </button>
                 )}
@@ -744,6 +749,23 @@ function OrdersPanel() {
       ) : (
         <p className="py-8 text-center text-sm text-slate-500">Sipariş yok.</p>
       )}
+
+      <ReasonDialog
+        open={iadeSiparisi !== null}
+        title="Siparişi iade et"
+        description="Gerekçe sipariş geçmişine ve denetim izine yazılacak."
+        label="İade gerekçesi"
+        required
+        minLength={3}
+        maxLength={500}
+        danger
+        confirmLabel="İade et"
+        isPending={refund.isPending}
+        onClose={() => setIadeSiparisi(null)}
+        onConfirm={(reason) =>
+          iadeSiparisi !== null && refund.mutate({ id: iadeSiparisi, reason })
+        }
+      />
     </div>
   );
 }

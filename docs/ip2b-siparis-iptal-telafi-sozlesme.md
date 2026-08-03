@@ -1,6 +1,7 @@
 # İP-2b — Mağaza Sipariş İptali ve Telafi Bütünlüğü Sözleşmesi
 
-**Durum:** Kırmızı checkpoint (üretim kodu bu pakette DEĞİŞTİRİLMEDİ).
+**Durum:** ✅ **KAPANDI** — 17 kırmızının tamamı üretim koduyla yeşillendi
+(3 Ağu 2026). Checkpoint matrisi artık **38 düğüm / 38 yeşil / 0 kırmızı**.
 **Taban:** Güncel `main` (`dc9771a`, F30 paketleme+QR+kurye zimmet dâhil) bu dala
 `45c95b8` merge commit'iyle alındı. Merge, R16 kusurunu **devraldı ve kapattı**
 (§3c); checkpoint o gerçeğe göre yeniden ölçüldü (§11 tarihçe tablosu).
@@ -92,7 +93,12 @@ Sipariş iptali/iadesi hangi yoldan yürürse yürüsün:
 
 ---
 
-## 3. Doğrulanmış kusurlar → kırmızı kabul matrisi
+## 3. Doğrulanmış kusurlar → kabul matrisi (TAMAMI KAPANDI)
+
+> **Kapanış (3 Ağu 2026).** Aşağıdaki 17 satırın hepsi üretim koduyla
+> düzeltildi; testler assertion gevşetilerek DEĞİL, davranış değişerek yeşile
+> döndü. Düzeltmelerin nerede olduğu §12'de satır satır listelidir.
+
 
 Her satır güncel `main` kodundan satır kanıtıyla doğrulandı ve gerçek
 PostgreSQL + gerçek servis/HTTP koşumuyla YENİDEN üretildi. Kırmızı testler
@@ -377,3 +383,87 @@ başlatmak tehlikeli pencereyi açmıyordu). Kural gereği önce test güçlendi
 (yön başına deterministik kapı + `pg_stat_activity` kilit gözlemi), sonra
 mutasyon tekrarlandı ve kırıldığı gösterildi. "Geçen test" ile "nöbetçilik eden
 test" arasındaki fark tam olarak budur.
+
+---
+
+## 12. Kapanış — üretim uygulaması (3 Ağu 2026)
+
+17 kırmızının tamamı **üretim koduyla** yeşillendi. Hiçbir assertion
+gevşetilmedi, hiçbir test silinmedi/skip edilmedi. Matris: **38 düğüm, 38 yeşil,
+0 kırmızı, 0 error, 0 skip.**
+
+### 12.1 Kusur → düzeltme haritası
+
+| # | Düzeltme | Yer |
+|---|---|---|
+| R1 | Sahiplik ihlali artık **404** (yabancı sipariş, olmayan siparişle aynı yanıt) | `order_service.get_order` / `get_order_for_pay` |
+| R2 | `POST /store/admin/orders/{id}/cancel` eklendi (izinli + audit'li) | `api/routers/store.py`, `order_service.cancel_by_admin` |
+| R2b | Gerekçe **zorunlu**, trim edilerek kanonik saklanır, boş/whitespace reddedilir | `schemas/store.AdminOrderActionIn` |
+| R3 | Admin iadesi gövdeli; gerekçe `audit_logs.reason` + `order_status_history.reason` | `store.py::refund_order` |
+| R4 | `DELIVERED` sipariş doğrudan iade edilemez → **409**, RMA yoluna | `order_service.refund_order` |
+| R5 | `orders` üzerinde ertelenmiş **CONSTRAINT TRIGGER**: geçmiş satırı olmayan terminal yazım COMMIT'te reddedilir | `migrations/…/ip2b_terminal_history_guard.py` |
+| R6/R7/R8 | Telafi kuyruğu tek yere alındı (`settle_refunded_order`) ve reconciler de onu çağırıyor: stok + kupon + `refunded_amount` + terminal geçiş + bildirim | `order_service`, `escrow_reconciler._order_telafisi` |
+| R9 | Tam iade `orders.refunded_amount`'a yazılır (yalnız-yükselt, idempotent) | `order_service._bump_refunded_amount` |
+| R10 | İptal/iade edilmiş siparişin doğrulanmış geç tahsilatı **otomatik iade** edilir; kayıt atomik claim'le tekilleştirilir, audit'e yazılır | `order_service.complete_checkout` |
+| R11 | Reconciler sipariş dalı **kayıt-başı SAVEPOINT** + rollback + görünür `logger.exception` + `continue` | `escrow_reconciler.reconcile_stale_checkouts` |
+| R12 | `coupon_service.release` yalnız **redemption satırı varsa** sayaç düşürür (ve idempotenttir) | `coupon_service.release` |
+| R13 | Terminal siparişin `prepared_at/by` damgası sökülür (paketi olmayan sipariş dahil) | `packing_events.on_order_terminal` |
+| R14 | Saha kapısı sipariş **yaşam döngüsünü** de doğrular (send_otp/verify/fail/override/drop tek guard'dan geçer) | `delivery_service._require_field_stop` |
+| R15 | Kuyrukta bekleyen teslimat bildirimleri iptalle `CANCELLED` olur (aynı transaction) | `core/outbox.cancel_pending_for_order`, `order_fsm` |
+| R17 | Sağlayıcı çağrısından SONRA kilit + taze okuma; teslim kazandıysa telafi uygulanmaz, `DELIVERED` korunur, kayıt MANUAL_REVIEW olur | `order_service._refund_payment` / `_manual_review_iade_teslim_sonrasi` |
+
+### 12.2 R17 — kanonik yarış sözleşmesi (ürün kararı, 3 Ağu)
+
+Nöbetçinin ilk hâli **birbirini dışlayan iki şart** taşıyordu: kurgusu teslimatı
+ancak `provider.refund` çağrıldıktan SONRA tetikliyor (kapı orada açılıyor), ama
+iddiası "sağlayıcıya HİÇ iade çağrısı gitmemeli" diyordu. Bu test hiçbir üretim
+koduyla yeşile dönemezdi. Sözleşme ulaşılabilir invariant'a çekildi — bu bir
+**assertion gevşetmesi değil, çelişkinin düzeltilmesidir**:
+
+* teslim kesinleşmişse `DELIVERED` **ezilmez**;
+* kitap müşteride olduğu için `SALE_CANCEL` **yazılmaz**;
+* sağlayıcı iade çağrısı **en fazla bir kez** yapılır;
+* teslimat, iade çağrısından ÖNCE kesinleşmişse yeni iade **başlatılmaz**;
+* çağrı çoktan gönderilmişse **otomatik ikinci finansal işlem yapılmaz**;
+* durum sessiz kalmaz: ERROR logu + `audit_logs` (`order.refund_after_delivery`)
+  + yönetici bildirimi;
+* aynı yarış/retry ikinci refund, ledger, stok hareketi ya da outbox üretmez.
+
+**Kapsam dışı (ayrı ürün kararı):** otomatik ters tahsilat ve otomatik RMA açma.
+
+### 12.3 Mutasyon kampanyası (20/20 uygulandı, 16 yakalandı)
+
+Hepsi bayt yedeğiyle `try/finally` içinde koştu; üretim dosyalarının SHA-256'sı
+başlangıç değerine döndü.
+
+**Yakalanan (16):** M1 FSM `CANCELLED→PAID` · M2 geç callback iadesi kaldırıldı ·
+M6 gerekçe zorunluluğu · M7 audit gerekçesi · M8 reconciler kayıt-başı izolasyonu ·
+M10 görünür hata kaydı · M11 kupon sahiplik kontrolü · M12 açık durak kapatma ·
+M13a bekleyen bildirim iptali · M13b saha kapısı durum kontrolü · M14 R17 taze
+okuma · M15 hazırlama damgası sökümü · M16 `refunded_amount` · M17 reconciler
+telafisi · M18 DELIVERED iade kapısı · M19 sahiplik 404'ü · M20 R5 DB trigger'ı.
+
+**Kaçan (4) — hepsi ÇOK KATMANLI korumanın ikincil katmanı, dürüstçe raporlanır:**
+
+| Mutasyon | Neden yakalanmadı | Asıl koruma |
+|---|---|---|
+| M3 geç-callback claim UPDATE'i kaldırıldı | Kayıt `complete_checkout` ile `updated_at`'i tazelediği için ikinci mutabakat turunun **bayatlık penceresine** hiç girmiyor; test ikinci turu ölçüyor | Claim, tekrarlı callback'te tekilliği sağlar — mevcut testlerin erişemediği yol |
+| M4 `escrow.claim` koşulsuz True | Aynı yolda `_lock_order` satır kilidi ve `coupon_service.redeem`'in kendi `FOR UPDATE` limiti ikinci etkiyi zaten kesiyor | Order kilidi + kupon limiti + defter idempotency anahtarı |
+| M5 `SALE_CANCEL` anahtarı benzersizleştirildi | `_restock`'un **tavanı** (`satılan − geri yüklenen`) ikinci hareketi zaten 0'a indiriyor | Tavan hesabı (ürün kilidi altında) |
+| M9 reconciler savepoint+rollback kaldırıldı | Testteki bozuk kayıt `retrieve` aşamasında, yani **hiç DB yazımı yapmadan** patlıyor; oturum zaten temiz kalıyor | Savepoint, yazım YAPMIŞ bir kaydın hatasında gerekir — testin ulaşamadığı yol |
+
+Sonraki tur için not: M3, M5 ve M9'un ulaşılabilir olduğu senaryolar (tekrarlı
+callback · kısmi iade sonrası tam iptal · yazım yaptıktan sonra patlayan
+mutabakat kaydı) ayrı nöbetçilerle çivilenmelidir.
+
+### 12.4 Kapanış koşumları
+
+| Paket | Sonuç | Kritik tablo deltası |
+|---|---|---|
+| `-k ip2b` (×2, düğüm bazında aynı) | **38 passed** | 0 (`notifications`/`outbox` dahil) |
+| `-k f30` | **314 passed** | 0 |
+| `tests/integration` (tam) | **891 passed**, 0 fail/error | kritik tablolar 0; `outbox +10` / `notifications +4` = **TB-8** (İP-2b/F30 kaynaklı DEĞİL) |
+| `tests/acceptance` | **197 passed** | — |
+| `tests/` (unit) | **674 passed** | — |
+| `tests/verify` (`adana_verify`) | **132 passed** | — |
+| frontend `vitest` / `tsc` / `lint` / `build` | **697 passed** / temiz / 0 error / başarılı | — |

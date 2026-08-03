@@ -389,9 +389,15 @@ export async function deliverOrder(id: number): Promise<OrderOut> {
   return data;
 }
 
-export async function refundOrder(id: number): Promise<OrderOut> {
+/**
+ * Yönetici tam iadesi. Gerekçe **zorunludur** (backend `AdminOrderActionIn`):
+ * para hareketi başlatan aksiyon gerekçesiz kaydedilemez, değer hem
+ * `audit_logs.reason`'a hem sipariş durum geçmişine yazılır.
+ */
+export async function refundOrder(id: number, reason: string): Promise<OrderOut> {
   const { data } = await apiClient.post<OrderOut>(
-    `/store/admin/orders/${id}/refund`
+    `/store/admin/orders/${id}/refund`,
+    { reason }
   );
   return data;
 }
