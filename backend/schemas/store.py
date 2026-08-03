@@ -8,7 +8,7 @@ from __future__ import annotations
 import datetime
 from decimal import Decimal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 # ── Kategori ───────────────────────────────────────────────────────────────────────
@@ -318,6 +318,29 @@ class CartValidateOut(BaseModel):
 
 class OrderShipIn(BaseModel):
     tracking_no: str | None = Field(default=None, max_length=100)
+
+
+class AdminOrderActionIn(BaseModel):
+    """Yönetici iptal/iade gerekçesi — **ZORUNLU**.
+
+    Bu iki uç para hareketi başlatır; "bu iade/iptal neden yapıldı" sorusunun
+    yapısal cevabı olmadan denetim izi eksik kalır. Gerekçe hem
+    ``audit_logs.reason``'a hem ``order_status_history.reason``'a yazılır.
+
+    Boş/yalnız-boşluk gerekçe reddedilir: zorunluluk tek bir boşluk karakteriyle
+    atlatılabiliyorsa zorunluluk değildir. Değer **trim edilerek kanonik**
+    saklanır (baştaki/sondaki boşluk denetim aramasını bozmasın).
+    """
+
+    reason: str = Field(min_length=3, max_length=500)
+
+    @field_validator("reason")
+    @classmethod
+    def _kanonik_gerekce(cls, v: str) -> str:
+        s = " ".join(v.split())
+        if len(s) < 3:
+            raise ValueError("Gerekçe en az 3 anlamlı karakter içermeli")
+        return s
 
 
 # ── Kupon (admin küratörlüğü) ──

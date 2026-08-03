@@ -164,19 +164,31 @@ async def test_kirmizi_baskasinin_siparisi_varlik_sizdirmaz(fab, http, provider)
 
 async def test_yesil_admin_refund_yetkili_ve_auditli(fab, http, provider):
     """orders.manage izinli admin PAID siparişi iade edebilir; audit satırı
-    action='order.refund' ile yazılır; stok telafisi tam."""
+    action='order.refund' ile yazılır; stok telafisi tam.
+
+    NOT (İP-2b R3 sonrası): uç artık **zorunlu gerekçe** alır. İstek gövdesi bu
+    yüzden güncellendi — iddia GEVŞEMEDİ, tersine gerekçenin audit satırına
+    ulaştığı ve tam iadenin `refunded_amount`'a yazıldığı da eklendi.
+    """
+    GEREKCE = "Ürün tedarik edilemedi, tam iade"
     pid = await fab.urun(stock=6)
     cid = await fab.musteri()
     oid, _ = await fab.siparis(items=[(pid, 2, "PHYSICAL", "100.00")], client_id=cid)
     aid, hdr = await fab.admin_izinli(["orders.manage"])
 
-    r = await http.post(ADMIN_REFUND.format(oid=oid), headers=hdr)
+    r = await http.post(
+        ADMIN_REFUND.format(oid=oid), headers=hdr, json={"reason": GEREKCE}
+    )
     assert r.status_code == 200, r.text
     assert await fab.siparis_durumu(oid) == ("REFUNDED", "REFUNDED")
     assert len(provider.refund_calls) == 1
     assert await fab.hareketler(pid, "SALE_CANCEL") == [("SALE_CANCEL", 2)]
     kayitlar = await fab.audit_kayitlari(action="order.refund", target_id=oid)
     assert [k[0] for k in kayitlar] == [aid]
+    assert kayitlar[0][1] == GEREKCE, "gerekçe audit satırına yazılmadı"
+    assert await fab.iade_tutari(oid) == "200.00", (
+        "tam iade `refunded_amount`'a yazılmadı — ciro raporu iadeyi görmez"
+    )
 
 
 async def test_yesil_eksik_izinli_admin_reddedilir(fab, http, provider):
@@ -187,7 +199,9 @@ async def test_yesil_eksik_izinli_admin_reddedilir(fab, http, provider):
     oid, _ = await fab.siparis(items=[(pid, 2, "PHYSICAL", "100.00")], client_id=cid)
     _aid, hdr = await fab.admin_izinli(["orders.view"])
 
-    r = await http.post(ADMIN_REFUND.format(oid=oid), headers=hdr)
+    r = await http.post(
+        ADMIN_REFUND.format(oid=oid), headers=hdr, json={"reason": "yetkisiz deneme"}
+    )
     assert r.status_code == 403
     assert await fab.siparis_durumu(oid) == ("PAID", "PAID")
     assert provider.refund_calls == []
@@ -316,7 +330,12 @@ async def test_kirmizi_delivered_admin_refund_rma_atlanamaz(fab, http, provider)
     )
     _aid, hdr = await fab.admin_izinli(["orders.manage"])
 
-    r = await http.post(ADMIN_REFUND.format(oid=oid), headers=hdr)
+    # Gövde GEÇERLİ gönderilir: ölçülen şey doğrulama reddi (422) değil,
+    # DELIVERED siparişin RMA yoluna yönlendirilmesidir (409).
+    r = await http.post(
+        ADMIN_REFUND.format(oid=oid), headers=hdr,
+        json={"reason": "Müşteri memnun değil"},
+    )
     assert r.status_code == 409, (
         f"DELIVERED siparişte doğrudan tam iade kabul edildi ({r.status_code}); "
         "sözleşme RMA yoluna yönlendirme (409) ister"

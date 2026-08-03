@@ -36,6 +36,7 @@ from schemas.stock import (
     StockMovementPageOut,
 )
 from schemas.store import (
+    AdminOrderActionIn,
     BulkImportResultOut,
     CartValidateOut,
     CollectionCreate,
@@ -418,13 +419,43 @@ async def deliver_order(
 @router.post("/admin/orders/{order_id}/refund", response_model=OrderOut)
 async def refund_order(
     order_id: int,
+    payload: AdminOrderActionIn,
     admin: Admin = Depends(require_admin_permission("orders.manage")),
     db: AsyncSession = Depends(get_db),
 ):
-    order = await order_service.refund_order(db, order_id)
+    """Yönetici tam iadesi — **zorunlu gerekçeyle** (İP-2b R3).
+
+    Uç eskiden gövdesizdi: audit satırı yazılıyor ama `reason=NULL` kalıyordu,
+    yani "bu iade neden yapıldı" sorusunun yapısal cevabı yoktu. Para hareketi
+    başlatan yönetici aksiyonu gerekçesiz kaydedilemez.
+    """
+    order = await order_service.refund_order(db, order_id, reason=payload.reason)
     await audit_service.record(
         db, actor=admin, action="order.refund", target_type="order", target_id=order_id,
+        reason=payload.reason,
         after={"status": order.status, "total": order.total},
+    )
+    return order
+
+
+@router.post("/admin/orders/{order_id}/cancel", response_model=OrderOut)
+async def cancel_order_by_admin(
+    order_id: int,
+    payload: AdminOrderActionIn,
+    admin: Admin = Depends(require_admin_permission("orders.manage")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Yönetici sipariş iptali — **zorunlu gerekçeyle** (İP-2b R2/R2b).
+
+    Booking tarafındaki `/admin/bookings/{id}/cancel` eşdeğeri; yönetici
+    ödenmemiş/sorunlu siparişi kapatabilsin diye eklendi. Ödenmiş siparişte
+    müşteri iptaliyle AYNI telafi kuyruğu koşar (iade + stok + kupon + durak).
+    """
+    order = await order_service.cancel_by_admin(db, order_id, reason=payload.reason)
+    await audit_service.record(
+        db, actor=admin, action="order.cancel", target_type="order", target_id=order_id,
+        reason=payload.reason,
+        after={"status": order.status, "payment_status": order.payment_status},
     )
     return order
 

@@ -184,7 +184,10 @@ async def test_refund_in_active_run_closes_stop(dfactory, provider):
     order_id, stop_id = await dfactory.order_with_stop(run_id, order_status="SHIPPED")
 
     async with AsyncSessionLocal() as s:
-        await order_service.refund_order(s, order_id)
+        # İP-2b R3: yönetici iadesi artık ZORUNLU gerekçe alır.
+        await order_service.refund_order(
+            s, order_id, reason="Aktif turda iade — durak kapanmalı"
+        )
 
     async with AsyncSessionLocal() as s:
         order = await s.get(Order, order_id)
