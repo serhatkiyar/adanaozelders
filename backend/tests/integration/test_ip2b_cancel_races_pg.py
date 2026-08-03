@@ -65,6 +65,59 @@ async def test_yesil_cift_musteri_iptali_tek_kazanan(fab, provider):
     assert await fab.bildirim_sayisi(cid, icerik="iptal edildi") == 1
 
 
+async def test_yesil_iade_penceresinde_ikinci_iptal_409(fab, provider):
+    """[I8] Kilit sırasını DETERMİNİSTİK sabitleyen dar nöbetçi (sleep YOK).
+
+    `asyncio.gather` ile iki iptali yarıştırmak, kaybedenin kilidi TAM olarak
+    hangi anda aldığını şansa bırakır — kusurlu kod bu yüzden yerelde yeşil,
+    CI'da kırmızı görünüyordu. Burada pencere kapı (`refund_gate`) ile açık
+    tutulur ve ikinci iptal, birincinin sağlayıcıda ASILI olduğu (Order kilidi
+    `begin_refund` commit'iyle BIRAKILMIŞ, `status=PAID` ama
+    `payment_status=REFUNDING`) anda kilidi alır.
+
+    Kusurun anatomisi: kaybeden taze durumu okuyordu, ama `payment_status`
+    yalnız `== 'PAID'` ile sınanıp geri kalan HER değer "ödenmemiş sipariş"
+    sayıldığı için `REFUNDING` de para-hareketsiz iptal dalına düşüyordu →
+    ikinci çağrı da başarı dönüyor ve müşteriye İKİNCİ bildirim gidiyordu.
+    """
+    pid = await fab.urun(stock=10)
+    cid = await fab.musteri()
+    oid, _ = await fab.siparis(items=[(pid, 3, "PHYSICAL", "100.00")], client_id=cid)
+
+    provider.refund_gate = asyncio.Event()
+    kazanan_gorev = asyncio.create_task(_iptal(oid))
+    try:
+        # Pencere GERÇEKTEN açıldı mı: sağlayıcıya girildiği an set edilir.
+        await asyncio.wait_for(provider.refund_entered.wait(), timeout=30)
+        async with AsyncSessionLocal() as s:
+            ara_durum = (
+                await s.execute(
+                    text("SELECT status, payment_status FROM orders WHERE id = :o"),
+                    {"o": oid},
+                )
+            ).one()
+        assert tuple(ara_durum) == ("PAID", "REFUNDING"), (
+            f"kurgu bozuldu — pencerede beklenen ara durum yok: {tuple(ara_durum)}"
+        )
+
+        # Kaybeden: kilidi bu pencerede alır ve TAZE ara durumu görür.
+        kaybeden = await _iptal(oid)
+    finally:
+        provider.refund_gate.set()
+        kazanan = await asyncio.wait_for(kazanan_gorev, timeout=30)
+
+    assert kazanan == "cancel", "pencereyi açan iptal kazanmalıydı"
+    assert kaybeden is None, "iadesi süren siparişte ikinci iptal 409 almalı"
+
+    # Yan etkilerin tamamı TEK: para, defter, geçmiş, bildirim.
+    assert len(provider.refund_calls) == 1
+    assert await fab.hareketler(pid, "SALE_CANCEL") == [("SALE_CANCEL", 3)]
+    assert await fab.stok(pid) == 10
+    assert (await fab.siparis_durumu(oid)) == ("CANCELLED", "REFUNDED")
+    assert len([h for h in await fab.history(oid) if h[1] == "CANCELLED"]) == 1
+    assert await fab.bildirim_sayisi(cid, icerik="iptal edildi") == 1
+
+
 async def test_yesil_musteri_iptali_admin_iadesi_yarisi(fab, provider):
     """Müşteri iptali ↔ admin iadesi aynı anda: escrow claim'i tek kazanan
     seçer — sağlayıcıya TEK iade gider, stok TEK kez geri yüklenir, sipariş

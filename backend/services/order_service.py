@@ -1723,6 +1723,25 @@ async def _cancel_order(
         )
     if order.status in ("CANCELLED", "REFUNDED"):
         raise HTTPException(status.HTTP_409_CONFLICT, "Bu sipariş zaten iptal/iade edilmiş")
+    if order.payment_status == OrderPaymentStatus.REFUNDING.value:
+        # ── I8 (tek kazanan): iade BAŞLAMIŞ ama henüz bitmemiş ──
+        #
+        # `begin_refund` niyeti claim edip HEMEN commit ettiği için Order kilidi
+        # sağlayıcı çağrısı boyunca BIRAKILIR. O pencerede ikinci bir iptal
+        # kilidi alır ve taze durumu (`status=PAID`, `payment_status=REFUNDING`)
+        # okur — ama burası eskiden yalnız `== 'PAID'` diye bakıp geri kalan her
+        # şeyi "ödenmemiş sipariş" sayıyordu: kaybeden de `else` dalına düşüp
+        # CANCELLED yazıyor, başarı dönüyor ve müşteriye İKİNCİ "iptal edildi"
+        # bildirimi gidiyordu (I11 ihlali). Yani kusur bayat okuma değil, TAZE
+        # okunan ara durumun yanlış sınıflandırılmasıydı.
+        #
+        # Sarkan REFUNDING (sağlayıcı reddetti → 502) kaydı da buraya düşer ve
+        # bilinçlidir: iadesi havada olan sipariş elle CANCELLED'a çevrilemez,
+        # reconciler devralır (docs/…-sozlesme.md §3 I4/I9).
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Bu siparişin iadesi zaten işleniyor veya tamamlanmış",
+        )
 
     if order.payment_status == "PAID":
         await _refund_payment(
@@ -1730,7 +1749,7 @@ async def _cancel_order(
             terminal_status="CANCELLED", changed_by=changed_by, reason=reason,
         )
     else:
-        # Ödenmemiş (ya da iadesi zaten sarkan) sipariş: para hareketi yok.
+        # Ödenmemiş sipariş (PENDING/FAILED): para hareketi yok.
         await order_fsm.transition_order(
             db, order, "CANCELLED", changed_by=changed_by, reason=reason
         )

@@ -108,15 +108,21 @@ class StubProvider(FakePaymentProvider):
     ``refund_gate`` verilirse refund çağrısı, event set edilene dek bekler — iki
     eşzamanlı transaction'ın "status okundu ama henüz yazılmadı" penceresinde
     buluşmasını DETERMİNİSTİK yapar.
+
+    ``refund_entered`` kapıya GİRİLDİĞİ anda set edilir: testin pencereyi
+    `sleep` ile yoklamadan (yani zamanlamaya bahis oynamadan) beklemesini
+    sağlar — `await provider.refund_entered.wait()`.
     """
 
     def __init__(self) -> None:
         self.refund_calls: list[tuple[str | None, Decimal]] = []
         self.refund_gate: asyncio.Event | None = None
+        self.refund_entered: asyncio.Event = asyncio.Event()
         self.refund_result: bool = True
 
     async def refund(self, *, provider_ref: str | None, amount: Decimal) -> bool:
         self.refund_calls.append((provider_ref, Decimal(str(amount))))
+        self.refund_entered.set()
         if self.refund_gate is not None:
             await self.refund_gate.wait()
         return self.refund_result

@@ -161,31 +161,49 @@ async def test_kirmizi_reconciler_sonrasi_durum_ve_bildirim(fab, provider):
 
 
 async def test_kirmizi_502_sonrasi_retry_telafisiz_iptal(fab, provider):
-    """[IP2B-R8] 502 sonrası müşteri iptali TEKRAR dener: bugün ikinci deneme
-    `payment_status != PAID` olduğundan telafi bloğunu atlayıp siparişi
-    CANCELLED'a geçirir — müşteriye 'iptal edildi' denir, ama stok telafisi
-    hiçbir yolda kalmaz (reconciler da yazmaz → IP2B-R6).
+    """[IP2B-R8] 502 sonrası müşteri iptali TEKRAR dener.
 
-    Sözleşme: iptal hangi sırayla tamamlanırsa tamamlansın, iade kesinleştiğinde
-    stok telafisi TAM ve TEK olmalıdır.
+    Sözleşme (değişmedi): iptal hangi sırayla tamamlanırsa tamamlansın, iade
+    kesinleştiğinde sipariş CANCELLED + REFUNDED olmalı ve stok telafisi TAM ve
+    TEK yazılmalıdır.
+
+    ## Ara adımın anlamı değişti (I8, `races::…_iade_penceresinde_ikinci_iptal`)
+
+    Bu testin ilk hâli ikinci denemenin **200 döndüğünü** yazıyordu ve bunu bir
+    KUSUR olarak tarif ediyordu: `payment_status != 'PAID'` diye bakılıp geri
+    kalan her şeyin "ödenmemiş sipariş" sayılması, telafi bloğunu atlayıp
+    siparişi CANCELLED'a geçiriyordu. Aynı kör nokta eşzamanlı iptalde ikinci
+    çağrıyı da KAZANDIRIYORDU (çift bildirim + iki başarı) — CI'daki
+    `['cancel', 'cancel']` buydu.
+
+    Artık `REFUNDING` "ödenmemiş" değil, "iadesi havada" olarak sınıflanır ve
+    409 verir. Bu, ardışık tekrar iptal semantiğini gevşetmez, aksine sıkar:
+    parası HENÜZ DÖNMEMİŞ sipariş "iptal edildi" diye gösterilemez ve ikinci
+    bildirim atılamaz; kaydı reconciler devralır (I4/I9) ve nihai durum
+    değişmeden — CANCELLED + REFUNDED + tek SALE_CANCEL — oraya varır.
     """
     pid, _cid, _kupon, oid = await _kur(fab, kuponlu=False)
     provider.refund_result = False
-    with pytest.raises(HTTPException):
+    with pytest.raises(HTTPException) as ilk:
         await _iptal(oid)
+    assert ilk.value.status_code == 502
 
-    # Müşteri sayfayı yenileyip yeniden iptal etti — bugün 200 döner.
-    await _iptal(oid)
-    assert (await fab.siparis_durumu(oid))[0] == "CANCELLED"
+    # Müşteri sayfayı yenileyip yeniden iptal etti: iadesi süren sipariş elle
+    # CANCELLED'a çevrilemez — 409, ve İKİNCİ bir sağlayıcı çağrısı yapılmaz.
+    with pytest.raises(HTTPException) as ikinci:
+        await _iptal(oid)
+    assert ikinci.value.status_code == 409
+    assert len(provider.refund_calls) == 1
+    assert await fab.siparis_durumu(oid) == ("PAID", "REFUNDING")
 
-    # İade sonunda reconciler'la kesinleşir...
+    # İade sonunda reconciler'la kesinleşir — durum geçişi de onun işidir.
     provider.refund_result = True
     await _refunding_bayatlat(oid)
     async with AsyncSessionLocal() as s:
         await escrow_reconciler.reconcile_refunding(s)
-    assert (await fab.siparis_durumu(oid))[1] == "REFUNDED"
+    assert await fab.siparis_durumu(oid) == ("CANCELLED", "REFUNDED")
 
-    # ...ama stok telafisi hiçbir aşamada yazılmadı → kırmızı.
+    # ...ve stok telafisi TAM ve TEK yazılır.
     assert await fab.hareketler(pid, "SALE_CANCEL") == [("SALE_CANCEL", 3)], (
         "sipariş CANCELLED + payment REFUNDED, fakat SALE_CANCEL yok: "
         "stok kalıcı olarak eksik"
