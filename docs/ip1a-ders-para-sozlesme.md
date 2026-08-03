@@ -1,13 +1,19 @@
 # İP-1a — Ders Pazaryeri Para Güvenliği Sözleşmesi
 
-> **Durum:** kırmızı kabul checkpoint'i. Bu turda **üretim kodu yazılmadı**.
-> Belge, `backend/tests/integration/test_ip1a_*.py` altındaki kabul testlerinin
-> ölçtüğü sözleşmeyi tanımlar. Testler bugün **bilerek kırmızıdır**: kırmızılık
-> "kod bozuk" demenin değil, **iş kuralının henüz yazılmadığının** kanıtıdır.
+> **Durum (güncel): ÜRETİM UYGULAMASI YAZILDI — 26 kabul testinin tamamı yeşil.**
+> Sözleşme artık yalnız "ne olmalı"yı değil, **ne yapıldığını** da anlatır:
+> uygulamanın kendisi ve ölçümleri §12'dedir. Kabul testleri değiştirilmedi,
+> gevşetilmedi, silinmedi — yeşilliğin sebebi üretim kodudur.
 >
-> Doğrulama zemini: `ip1a-ders-para-kirmizi`, `main` = `26f30d8`.
-> Bütün satır numaraları bu commit'te **yeniden okunarak** doğrulandı; eski
-> ekspertiz raporundaki numaralar olduğu gibi devralınmadı.
+> **Tarihsel kayıt (değiştirilmedi):** §1-§9 bölümleri *kırmızı checkpoint*
+> turunda yazıldı ve o günkü gerçeği anlatır ("bugün şöyle çalışıyor" cümleleri
+> ve satır numaraları o tura aittir). Kapanan her P0'ın karşılığı §12'de
+> gösterilir; geçmiş bölümler geriye dönük düzeltilmez, çünkü hangi kusurun
+> nasıl bulunduğu kaydın kendisidir.
+>
+> Doğrulama zemini: `ip1a-ders-para-kirmizi`. Kırmızı checkpoint `main` =
+> `26f30d8` üzerinde yazıldı; uygulama turu `main` = `59afdac` merge'lenmiş
+> zeminde (merge commit `220e46e`) koşuldu.
 
 ---
 
@@ -670,3 +676,135 @@ Bu checkpoint'e **dahil edilmedi**; her biri ayrı pakettir:
 - Frontend'in tamamı (yalnız admin iptalinin HTTP kablolaması test edilir)
 - `accept` ucunun onaylı eğitmen istememesi (ayrı not, §4)
 - `iyzico/callback` ucunun anonim ve rate-limit'siz olması (İP-3)
+
+---
+
+## 12. Üretim uygulaması — kapanış kaydı
+
+> Bu bölüm, §1-§11'in tanımladığı sözleşmenin **gerçekten yazıldığı** turun
+> kaydıdır. §1-§9 tarihsel kayıttır ve geriye dönük düzeltilmemiştir; aşağıdaki
+> her madde hangi kırmızının nasıl kapandığını gösterir.
+
+### 12.1 Zemin
+
+| | |
+|---|---|
+| Kırmızı checkpoint (son) | `b92f6f2` — 60 node / 26 bilinçli kırmızı / 34 yeşil |
+| Güncel-main merge | `220e46e` (parents `b92f6f2` + `59afdac`) |
+| Üretim commit'leri | `aaa61a2` · `613f467` · `c45d3f6` |
+| Mutasyon kataloğu | `48dd1ad` |
+| Test dosyaları | **değiştirilmedi** — silme, yeniden adlandırma, `skip`/`xfail`, assertion gevşetme YOK |
+
+### 12.2 Altı kırmızı grubun kapanışı
+
+**P0-1 — Reschedule → reject emanet kilidi.** `reject` artık atomik claim
+kullanır ve emanetteki parayı **taraf iptaliyle aynı** `escrow.refund_escrow`
+yolundan tam iade eder (paralel bir iade uygulaması yazılmadı). Karar: reschedule
+sonrası reddedilen ödenmiş ders için güvenli varsayılan **tam iadedir** — ders
+hiç yapılmadı ve reddeden taraf eğitmendir. Tekrarlanan `reject` claim'i
+kaybeder → 409; ikinci sağlayıcı çağrısı ve ikinci para bildirimi oluşmaz.
+
+**P0-2 — Admin booking iptali.** `admin_service.cancel_booking` tek satırla
+`booking_service.cancel_by_admin`'e devreder. Ortak yol atomik claim + aynı iade
+yolu + **her iki tarafa** bildirim uygular. Hakedişi dağıtılmış ders üç ölçütün
+herhangi biriyle **409** alır: booking `COMPLETED`, ödeme `RELEASED`, ya da
+`released_at` dolu (kısmi/bozuk satır hâli). Ters hakediş / reverse payout bu
+paketin kapsamı dışındadır (§10/2). Audit yazımı router'da kaldığı için tek satır
+üretir; 409'da hiç yazılmaz.
+
+**P0-3 — Ders başlamadan tamamlama.** `_assert_completable` eşiği **`start_at`**
+alır (§10/3): `now < start_at` iken `complete` 409 verir, booking `ACCEPTED`
+kalır, `release` çağrılmaz, `released_at` yazılmaz, payout defterine hiçbir şey
+düşmez. Karşılaştırma timezone-aware'dir (kolon `timestamptz`; naive değer
+gelirse UTC varsayılır). Eşik geçilince (`now >= start_at`) meşru tamamlama
+çalışmaya devam eder.
+
+**P0-4 — Dispute açıkken auto-complete/release.** İhtilaf koşulu **tek
+kaynaktan** gelir (`_IHTILAFSIZ`) ve iki yerde birden uygulanır: auto-complete
+sorgusunda (gereksiz satır okunmasın) ve `COMPLETED` claim'inin `WHERE`'inde
+(karar satırın kendisinde verilsin). Sorgu filtresi tek başına güvenlik
+sayılmaz: sorgu ile claim arasında ihtilaf açılırsa claim 0 satır günceller ve
+tamamlama kazanamaz. Simetrik olarak `toggle_dispute` **açma** yönünde koşullu
+UPDATE'tir — tamamlanmış/iptal edilmiş derste ihtilaf açılamaz (409). İki
+koşullu UPDATE aynı `bookings` satırında yarıştığı için READ COMMITTED'da
+serileşir; **"ihtilaflı ders + serbest bırakılmış para" kombinasyonu hiçbir
+sıralamada oluşamaz.** İhtilaf kapatıldıktan sonra geçmiş ders yeniden
+tamamlanabilir (kilit kalıcı değildir).
+
+**P0-5 — Sahipsiz HELD emanet.** Yeni
+`escrow_reconciler.reconcile_orphaned_escrow`: terminal derse
+(REJECTED/CANCELLED/soft-deleted) bağlı `HELD` ödeme, karantina penceresi
+dolduktan sonra ERROR loguyla görünür kılınır ve aynı `escrow.refund_escrow`
+yolundan **otomatik tam iade** edilir (§8/c kararı). `main.py` arka plan escrow
+döngüsüne bağlandı; mevcut `reconcile_refunding` ve `reconcile_stale_checkouts`
+çağrıları yerinde durur ve **İP-2b Order kolu (`_order_telafisi`, kayıt-başı
+savepoint izolasyonu) değiştirilmedi** — yeni kol yalnız `Payment` × `Booking`
+join'i üzerinden çalışır, Order sorgularını filtrelemez.
+
+**P0-6 — accept/reject yarışları.** `accept` ve `reject` artık koşulsuz ORM
+ataması değil `_claim_transition` kullanır. Kaybeden taraf 409 alır ve **hiçbir**
+yan etki üretmez: ödeme yükümlülüğü doğmaz, iade emri gitmez, bildirim yazılmaz.
+Claim başarısızlığında bayat ORM nesnesi kullanılmaz (`db.refresh` ile taze durum
+okunur, hata mesajı ondan üretilir).
+
+### 12.3 Para davranışı — kesin kurallar
+
+- **Tek sahip, tek para hareketi.** Her para geçişi koşullu UPDATE ile claim
+  edilir; claim'i kaybeden sağlayıcıya hiçbir emir göndermez.
+- **Sağlayıcı `False` veya exception.** `REFUNDED` **yalnız** sağlayıcı pozitif
+  döndüğünde yazılır. Reddedilirse kayıt `REFUNDING`'de kalır (`HELD`'e dönüş
+  yoktur) — güvenli yeniden deneme durumudur ve `reconcile_refunding` sonraki
+  turda devralır. Exception hâlinde de aynı: `begin_refund` claim'i commit'li
+  olduğu için kayıt `REFUNDING`'dedir. Yalan "iade edildi" bildirimi ya da audit
+  oluşmaz — bildirim `finalize_refund` içinden, yani ancak iade kesinleşince
+  gönderilir.
+- **İki worker.** Sahipsiz emanet iadesinde tek kazanan `begin_refund`'ın
+  koşullu UPDATE'idir; ikinci worker `not_claimed` alır ve sağlayıcıya dokunmaz —
+  doğruluk advisory lock'a değil **claim'e** yaslanır.
+- **Batch izolasyonu.** Sahipsiz emanet döngüsünde her kayıt kendi
+  `try/except`'indedir (İP-2b R11 disiplini): tek kaydın hatası partinin kalanını
+  öldürmez, hata `logger.exception` ile görünür kalır, oturum kullanılabilir
+  kalır ve kayıt sonraki turda yeniden ele alınır.
+- **Tekrar güvenliği.** Başarıyla iade edilmiş kayıt sonraki turlarda seçilmez
+  (artık `HELD` değildir). `released_at` dolu / `RELEASED` kayıt taramaya hiç
+  girmez; ikinci savunma hattı `begin_refund`'ın kendi guard'ıdır.
+
+### 12.4 M9-M20 mutasyon provası — GERÇEK sonuçlar
+
+Sürücü: `backend/scripts/mutation_drill.py` (bayt yedeği + geri yazma;
+`git checkout --` KULLANILMAZ). Her mutasyondan sonra dosya SHA-256'sı ve
+`git status --porcelain` başlangıçla karşılaştırıldı; **hepsi birebir aynı
+döndü**, çalışma ağacında mutasyon artığı kalmadı.
+
+| # | Mutasyon | Sonuç | Kırılan nöbetçi(ler) |
+|---|---|---|---|
+| M9 | red yolundan emanet iadesi kaldırıldı | ÖLDÜ | reschedule→reject: sahipsiz emanet · tam bir iade · idempotency · öğrenci bildirimi (4) |
+| M10 | admin iptali ortak yolu atlıyor | ÖLDÜ | admin cancel: emanet iadesi · tamamlanmış ders 409 · bildirim · idempotency + **servis katmanı 2 nöbetçi** (6) |
+| M11 | complete'in `start_at` eşiği kaldırıldı | ÖLDÜ | gelecekteki ders · hakediş · sınır (1 dk) (3) |
+| M12 | ihtilaf koşulu kaldırıldı | ÖLDÜ | otomatik tamamlanmaz · emanet açılmaz · ihtilaf kalkınca devam (3) |
+| M13 | atomik claim → koşulsuz ORM ataması (accept) | ÖLDÜ | accept ↔ iptal yarışında kayıp güncelleme (1) |
+| M14 | sahipsiz emanet iadesi claim'siz | ÖLDÜ | iki worker tek claim · idempotency · yalan kesinleşme · mutabakat görünürlüğü (4) |
+| M15 | sağlayıcı reddettiği hâlde `REFUNDED` | ÖLDÜ | yalan kesinleşme · sarkan REFUNDING devralma (2) |
+| M16 | `release`'in HELD kısıtı gevşetildi | ÖLDÜ | release iki kez → damga değişmez (1) |
+| M17 | `begin_refund`'ın `released_at` guard'ı silindi | ÖLDÜ | `released_at` dolu HELD satırı claim edilemez (1) |
+| M18 | sahipsiz emanet karantinası kaldırıldı | ÖLDÜ | taze sahipsiz emanete dokunulmaz (1) |
+| M19 | ihtilaf açma koşulsuz | ÖLDÜ | dispute ↔ auto-complete yarışı (1) |
+| M20 | sahipsiz emanet taraması ölü | ÖLDÜ | P0-5'in beş nöbetçisi (5) |
+
+**12/12 yakalandı.** Kaçan mutasyon yoktur; bu turda "yakalanmadı" kaydı ve buna
+bağlı yeni regresyon testi gerekmedi. Kabul testlerine tek satır eklenmedi.
+
+### 12.5 Kalan P2 borçlar (bilinçli, kapsam dışı)
+
+1. **Dispute ↔ auto-complete testi sıra-bağımsız `gather` kullanıyor** (§9e/2).
+   M19 bu kurulumda öldü, ama hangi tarafın önce başladığı testin kendi
+   kurulumundan değil olay döngüsünden gelir; kapı tabanlı bir kurulum ölçümü
+   sıralamadan tamamen bağımsız kılardı. Ölçülen invariant ("ihtilaflı + serbest
+   bırakılmış birlikte olamaz") her iki sırada da doğrudur.
+2. **Sahipsiz emanet döngüsünün batch izolasyonu davranışsal testle
+   ölçülmüyor.** Kod İP-2b R11 desenini uygular ve M14/M20 taramanın kendisini
+   nöbetçiler; ama "bir kaydın hatası partiyi öldürmez" iddiasının kendi testi
+   yoktur (çok kayıtlı + seçici patlayan bir sağlayıcı kurulumu gerekir).
+3. **Global pytest timeout politikası yok** (§9e/3) — değişmedi.
+4. **`accept` ucu onaylı eğitmen istemiyor** (§11) — değişmedi.
+5. **Booking'de 403 ↔ teslimatta 404 tutarsızlığı** (§10/6) — İP-3 kapsamı.
