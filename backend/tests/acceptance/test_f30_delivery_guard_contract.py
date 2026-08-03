@@ -52,6 +52,41 @@ TARANAN_DIZINLER = ("services", "api/routers")
 TESLIM_KAPISI = "zimmet_zorunlu"
 SEVKIYAT_KAPISI = "elle_sevkiyat_yasak"
 
+#: Sipariş terminale giderken paket + durak da terminale gitmeli.
+TERMINAL_HELPERLARI = frozenset({"teslim_terminali", "on_package_delivered"})
+
+#: `Order` satırını `FOR UPDATE` ile alan yardımcılar. F30 kapısı bunlardan
+#: SONRA çağrılmalıdır: kilitsiz okunan paket durumu bayattır ve nihai
+#: denetimin iki P1'i tam olarak bu yüzden doğdu.
+ORDER_KILITLERI = frozenset(
+    {"_lock_order", "_lock_orders_ascending", "_lock_stop_and_order", "_lock_field_stop"}
+)
+
+#: Kapıyı çağırıp Order kilidini KENDİ almayan yollar. Dar ve gerekçeli.
+KILIT_ISTISNALARI: dict[tuple[str, str], str] = {
+    (
+        "services/delivery_service.py",
+        "_finalize_delivered",
+    ): (
+        "Kilidi ÇAĞIRANI alır: üç saha ucu da `_lock_field_stop` ile girer ve o "
+        "`_lock_stop_and_order` üzerinden Order + DeliveryStop satırlarını "
+        "`FOR UPDATE` ile tutar. Huninin kendi kilidini alması aynı satırı "
+        "ikinci kez kilitlemekten başka bir şey yapmazdı."
+    ),
+}
+
+#: `DELIVERED` geçişi yapıp paket/durak terminalini KENDİ çağırmayan yollar.
+TERMINAL_ISTISNALARI: dict[tuple[str, str], str] = {
+    (
+        "services/delivery_service.py",
+        "_finalize_delivered",
+    ): (
+        "Durağı kanıt alanlarıyla (proof/lat/lng) KENDİ kapatır ve hemen "
+        "ardından `packing_events.on_package_delivered` ile paketi terminale "
+        "taşır; `teslim_terminali` sarmalayıcısına ihtiyacı yoktur."
+    ),
+}
+
 #: Guard'ı ÇAĞIRMAYAN ama kuralı başka (ve doğrulanmış) bir mekanizmayla
 #: uygulayan yollar. Liste **dar** ve her satırı gerekçelidir; bir giriş
 #: eklemek, o yolun neden istisna olduğunu yazmayı zorunlu kılar.
@@ -152,6 +187,12 @@ def _icteki_fonksiyonlar(fn) -> set[int]:
     return satirlar
 
 
+#: `_teslim_yollari()` doldurur: kapıyı çağıran her fonksiyon + kilit izi.
+KAPI_CAGIRANLARI: list = []
+#: (dosya, fonksiyon) → o fonksiyondaki terminal helper çağrıları.
+TERMINAL_IZI: dict = {}
+
+
 def _teslim_yollari() -> list[tuple[str, str, str, int, list[tuple[str, int]]]]:
     """(dosya, fonksiyon, hedef_durum, geçiş_satırı, [(guard_adı, satır), ...])"""
     bulunanlar = []
@@ -160,6 +201,8 @@ def _teslim_yollari() -> list[tuple[str, str, str, int, list[tuple[str, int]]]]:
             ic_satirlar = _icteki_fonksiyonlar(fn)
             guardlar: list[tuple[str, int]] = []
             gecisler: list[tuple[str, int]] = []
+            kilitler: list[tuple[str, int]] = []
+            terminaller: list[tuple[str, int]] = []
             for dugum in ast.walk(fn):
                 if getattr(dugum, "lineno", None) in ic_satirlar:
                     continue
@@ -167,11 +210,18 @@ def _teslim_yollari() -> list[tuple[str, str, str, int, list[tuple[str, int]]]]:
                     ad = _cagri_adi(dugum)
                     if ad in (TESLIM_KAPISI, SEVKIYAT_KAPISI):
                         guardlar.append((ad, dugum.lineno))
+                    if ad in ORDER_KILITLERI:
+                        kilitler.append((ad, dugum.lineno))
+                    if ad in TERMINAL_HELPERLARI:
+                        terminaller.append((ad, dugum.lineno))
                 hedef = _gecis_hedefi(dugum)
                 if hedef is not None:
                     gecisler.append((hedef, dugum.lineno))
             for hedef, satir in gecisler:
                 bulunanlar.append((rel, fn.name, hedef, satir, guardlar))
+            for ad, satir in guardlar:
+                KAPI_CAGIRANLARI.append((rel, fn.name, ad, satir, kilitler))
+            TERMINAL_IZI[(rel, fn.name)] = terminaller
     return bulunanlar
 
 
@@ -248,3 +298,86 @@ def test_ORTAK_KAPI_TEK_MODULDE():
         ("services/packing_events.py", SEVKIYAT_KAPISI),
         ("services/packing_events.py", TESLIM_KAPISI),
     ], tanimlar
+
+
+@pytest.mark.parametrize(
+    "dosya,fonksiyon,kapi,satir,kilitler",
+    KAPI_CAGIRANLARI,
+    ids=[f"{d.split('/')[-1]}::{f}::{k}" for d, f, k, _s, _kl in KAPI_CAGIRANLARI],
+)
+def test_F30_KAPISI_ORDER_KILIDINDEN_SONRA_CAGRILIR(
+    dosya, fonksiyon, kapi, satir, kilitler
+):
+    """Kapı, `Order` satırı `FOR UPDATE` ile alınmadan ÇAĞRILMAZ.
+
+    Nihai denetimin iki P1'i de buydu: kapının kendisi doğruydu ama **bayat
+    veri** okuyordu. `mark_shipped` eşzamanlı `open_package` ile yarışınca
+    `order=SHIPPED + package=OPEN` (kurtarılamaz çıkmaz), `mark_delivered`
+    `cancel_run`/`fail_stop` ile yarışınca `order=DELIVERED +
+    package=RETURN_PENDING` üretebiliyordu.
+
+    Yarış testleri (`tests/integration/test_f30_admin_race_pg.py`) bu hataları
+    gerçekten yakalıyor; bu yapısal düğüm ise kapının kilitten ÖNCEYE
+    taşınmasını — yani yarışın yeniden açılmasını — zamanlamadan bağımsız
+    olarak kırar.
+    """
+    gerekce = KILIT_ISTISNALARI.get((dosya, fonksiyon))
+    if gerekce:
+        assert len(gerekce) > 40, "İstisna gerekçesi ciddi olmalı"
+        return
+    onceki = [ad for ad, k_satir in kilitler if k_satir < satir]
+    assert onceki, (
+        f"{dosya}::{fonksiyon} F30 kapısını (`{kapi}`, satır {satir}) çağırıyor "
+        f"ama öncesinde Order kilidi YOK. Bulunan kilitler: {kilitler}. "
+        "Kilitsiz okunan paket durumu bayattır; kapıdan ÖNCE "
+        "`_lock_order(db, order)` çağır ya da KILIT_ISTISNALARI'na ekle."
+    )
+
+
+DELIVERED_YOLLARI = [y for y in YOLLAR if y[2] == "DELIVERED"]
+
+
+@pytest.mark.parametrize(
+    "dosya,fonksiyon",
+    [(y[0], y[1]) for y in DELIVERED_YOLLARI],
+    ids=[f"{y[0].split('/')[-1]}::{y[1]}" for y in DELIVERED_YOLLARI],
+)
+def test_DELIVERED_YOLU_PAKET_VE_DURAGI_DA_TERMINALE_TASIR(dosya, fonksiyon):
+    """Sipariş terminale giderse paket ve durak da gider.
+
+    Mutlu yolda bile eksikti: `mark_delivered` YALNIZ sipariş durumunu
+    değiştiriyordu; paket `HANDED_OVER`, durak `PENDING`, QR geçerli kalıyordu.
+    Yani yöneticinin ekranı "teslim edildi" derken kurye o durağı hâlâ
+    görüyor, basılı etiket okutulmaya devam ediyor ve "kuryede paket var"
+    sorgusu `true` diyordu.
+    """
+    gerekce = TERMINAL_ISTISNALARI.get((dosya, fonksiyon))
+    if gerekce:
+        assert len(gerekce) > 40, "İstisna gerekçesi ciddi olmalı"
+        return
+    terminaller = TERMINAL_IZI.get((dosya, fonksiyon), [])
+    assert terminaller, (
+        f"{dosya}::{fonksiyon} siparişi DELIVERED yapıyor ama paket/durak "
+        f"terminalini çağırmıyor ({sorted(TERMINAL_HELPERLARI)}). Sipariş "
+        "'teslim edildi' derken operasyonun 'yolda' demesi imkânsız olmalı."
+    )
+
+
+def test_TERMINAL_HELPER_ADLARI_GERCEKTEN_PACKING_EVENTS_TE_TANIMLI():
+    """Terminal kümesi gevşetilerek nöbetçi sessizce etkisizleştirilemesin.
+
+    Mutasyon provasında bulundu: kümeye `transition_order` gibi HER teslim
+    yolunda zaten bulunan bir ad eklemek, üstteki düğümü totolojiye çevirip
+    hiçbir testi kırmıyordu. Küme artık gerçek tanımlarla bağlı — `packing_events`
+    içinde tanımlı olmayan bir ad "terminal helper" sayılamaz.
+    """
+    agac = ast.parse(
+        (KOK / "services/packing_events.py").read_text(encoding="utf-8"),
+        filename="packing_events.py",
+    )
+    tanimli = {fn.name for fn in _fonksiyonlar(agac)}
+    eksik = TERMINAL_HELPERLARI - tanimli
+    assert not eksik, (
+        f"TERMINAL_HELPERLARI'nda `services/packing_events.py`'de TANIMLI OLMAYAN "
+        f"ad(lar) var: {sorted(eksik)}. Kümeyi genişletmek nöbetçiyi etkisizleştirir."
+    )

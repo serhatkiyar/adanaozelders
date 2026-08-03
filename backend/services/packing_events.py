@@ -387,6 +387,70 @@ async def on_package_delivered(db: AsyncSession, order_id: int) -> bool:
     )
 
 
+async def teslim_terminali(db: AsyncSession, order_id: int, *, note: str) -> None:
+    """Sipariş teslim edildi → **paket ve durak da terminale gider**, tek işlemde.
+
+    ## Neden var
+
+    Nihai denetim P1'i: `order_service.mark_delivered` zimmet kapısını geçtikten
+    sonra YALNIZ sipariş durumunu değiştiriyordu. Mutlu yolda bile sonuç tutarsız
+    kalıyordu — sipariş `DELIVERED`, paket hâlâ `HANDED_OVER`, durak hâlâ
+    `PENDING`, QR hâlâ geçerli. Yani:
+
+    * "kuryede paket var" sorgusu `true` demeye devam ediyor (geri dönüş
+      kuyruğu teslim edilmiş bir kutuyu arıyor),
+    * kurye saha ekranında o durağı hâlâ görüyor ve ikinci kez teslim etmeye
+      kalkıyor,
+    * basılı etiket okutulmaya devam ediyor (§3.3'e göre teslim QR'ı
+      geçersizleştirmeliydi),
+    * yöneticinin ekranı "teslim edildi" derken operasyon "yolda" diyor.
+
+    Yönetici panelindeki **tek** "Teslim edildi" eylemi bu yüzden artık üçünü
+    birden kapatır; sahadaki `override-deliver` çağrısına ihtiyaç bırakmaz.
+
+    ## Kilit sırası
+
+    `on_package_delivered` kanonik sıranın ilk iki halkasını (`Order` →
+    `OrderPackage`) kendisi alır; durak kilidi ondan SONRA gelir. Yani bu
+    fonksiyon `Order → OrderPackage → DeliveryStop` sırasını bozmaz —
+    `handover_scan`, `cancel_run` ve `fail_stop` ile aynı yöndedir, AB-BA
+    döngüsü doğmaz.
+
+    ## Saha yoluyla ilişkisi
+
+    `delivery_service._finalize_delivered` aynı iki işi kendi yapar (durağı
+    `proof`/koordinatla birlikte kapatır, sonra paketi terminale taşır) ve o
+    yola DOKUNULMAMIŞTIR: saha teslimi kanıt alanlarını da yazar, buradaki
+    yönetici yolu yazamaz (kapıda kimse yoktu, kanıt yok). Ortak olan **kural**
+    tektir: sipariş terminale giderse paket ve durak da gider. Ayrışmayı
+    `tests/acceptance/test_f30_delivery_guard_contract.py` denetler.
+
+    `order_fsm._close_open_stops` ile karıştırılmamalı: o, iptal/iade yolunda
+    durağı `CANCELLED` yapar (kurye metriğine sayılmasın diye); burada durak
+    gerçekten **teslim edilmiştir**.
+    """
+    from models.delivery import DeliveryStop, DeliveryStopStatus
+
+    await on_package_delivered(db, order_id)
+
+    duraklar = (
+        await db.execute(
+            select(DeliveryStop)
+            .where(
+                DeliveryStop.order_id == order_id,
+                DeliveryStop.status == DeliveryStopStatus.PENDING.value,
+            )
+            .with_for_update()
+            .execution_options(populate_existing=True)
+        )
+    ).scalars().all()
+    simdi = _now()
+    for durak in duraklar:
+        durak.status = DeliveryStopStatus.DELIVERED.value
+        durak.delivered_at = simdi
+        durak.courier_note = durak.courier_note or note
+
+
 def dispatchable_package_condition():
     """"Paket geçmişi varsa, CANLI ve HAZIR (`PACKED`) bir paketi olmalı" — SQL.
 
