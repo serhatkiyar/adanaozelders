@@ -27,13 +27,23 @@ her iki yolu birden bağlar; yalnız arka plan sorgusuna guard eklemek, eğitmen
 """
 from __future__ import annotations
 
+import asyncio
 import datetime
 from decimal import Decimal
 
 from core.database import AsyncSessionLocal
-from models.booking import BookingStatus
+from models.booking import Booking, BookingStatus
 from models.payment import PaymentStatus
-from services import booking_service
+from services import admin_service, booking_service
+
+# Sonlu kapı yardımcıları YENİDEN YAZILMAZ, ödünç alınır: yarış dosyasındaki
+# `_event_bekle`/`_gorev_bekle` üretici görev hatasını gizlemez, süre koyar ve
+# görev sızdırmaz (bkz. `test_ip1a_races_pg.py` başlığı, P1-3).
+from tests.integration.test_ip1a_races_pg import (  # noqa: E402
+    _event_bekle,
+    _gorev_bekle,
+    _gorevleri_kapat,
+)
 
 ADMIN_KOK = "/api/v1/admin/bookings"
 BOOKING_KOK = "/api/v1/bookings"
@@ -245,3 +255,122 @@ async def test_YESIL_auto_complete_ayni_dersi_IKI_KEZ_islemez(ip1a, provider, ip
     assert await ip1a.tutor_hakedisi(ders.tutor_id) == Decimal(
         str(p_ilk["tutor_earning"])
     ), "kazanç iki kez sayıldı"
+
+
+# ═══════ CLAIM KATMANININ KENDİ NÖBETÇİSİ (nihai audit P1-A) ═════════════════
+#
+# Yukarıdaki dört kırmızı, ihtilaf korumasını **aday sorgusu** üzerinden ölçer:
+# ihtilaf zaten açıkken tarama dersi hiç seçmez. Bağımsız nihai audit bunun
+# yetmediğini gösterdi — sorgudaki `is_disputed=False` filtresi KORUNUP yalnız
+# `COMPLETED` claim'indeki `extra_where=_IHTILAFSIZ` sökülünce **60 testin
+# tamamı yeşil kaldı**, ama gerçek PostgreSQL probunda ders COMPLETED +
+# is_disputed=True, ödeme RELEASED + released_at dolu oldu: ihtilaflı dersin
+# parası açıldı ve iade kalıcı olarak kapandı.
+#
+# Boşluğun sebebi ölçüm penceresidir: sorgu ile yazım arasında geçen sürede
+# açılan ihtilafı yalnız claim'in WHERE'i görebilir. Aşağıdaki test tam o
+# pencereyi deterministik olarak kurar.
+
+
+async def test_SORGUDAN_SONRA_acilan_ihtilaf_CLAIM_ANINDA_yakalanir(
+    ip1a, provider, ip1a_http, monkeypatch
+):
+    """Aday sorgusundan SONRA açılan ihtilaf, yazım anında yeniden değerlendirilir.
+
+    ## Kurulum — ardışıklık tahmin edilmez, ÖLÇÜLÜR
+
+    `asyncio.gather` ile iki görevi "aynı anda" başlatmak bu pencereyi kurmaz:
+    hangi tarafın önce başladığı olay döngüsüne kalır ve test, ölçmek istediği
+    sıralamayı garanti edemez. Bunun yerine `_claim_transition` YALNIZ bu
+    booking'in `COMPLETED` claim'i için bir kapıya bağlanır; sarmalayıcı gerçek
+    fonksiyonu çağırır, yani üretim mantığı değişmez:
+
+        auto-complete: SELECT (ders aday, ihtilafsız) ──► [claim kapısı]
+        admin:                    toggle_dispute + COMMIT ──┘
+        auto-complete: ── claim çalışır: WHERE is_disputed = false → 0 satır
+
+    ## Neden mevcut testler yetmiyordu
+
+    Dördü de ihtilafı taramadan ÖNCE açıyor; o hâlde aday sorgusu dersi zaten
+    hiç seçmiyor ve claim'in koşulu hiç sınanmıyor. Yani sorgu filtresi claim
+    guard'ını **gölgeliyordu** (kök CLAUDE.md §E: "eski bozuk kod da testi
+    geçiyorsa o test düzeltmenin kanıtı değildir").
+
+    ## Ölçülenler
+
+    Ders tamamlanmadı · ihtilaf açık kaldı · para emanette · `released_at`
+    damgalanmadı · eğitmene hak ediş yazılmadı · sağlayıcıya hiçbir emir
+    gitmedi · tarama bu dersi tamamlanmış SAYMADI.
+    """
+    ders = await _gecmis_ihtilafli_ders(ip1a, ip1a_http, ihtilafli=False)
+
+    claim_kapisinda, devam = asyncio.Event(), asyncio.Event()
+    orijinal_claim = booking_service._claim_transition
+
+    async def kapili_claim(db, booking, target, **kw):
+        """YALNIZ hedef booking'in COMPLETED claim'ini kapıya bağlar."""
+        if booking.id == ders.booking_id and target is BookingStatus.COMPLETED:
+            claim_kapisinda.set()
+            await _event_bekle(
+                devam,
+                aciklama="test, claim'in 'devam' kapısını hiç açmadı",
+            )
+        return await orijinal_claim(db, booking, target, **kw)
+
+    monkeypatch.setattr(booking_service, "_claim_transition", kapili_claim)
+
+    gorev = asyncio.create_task(_auto_complete_turu(), name="auto-complete")
+    try:
+        await _event_bekle(
+            claim_kapisinda,
+            aciklama=(
+                "auto-complete claim noktasına hiç gelmedi — aday sorgusu dersi "
+                "seçmedi, dolayısıyla claim guard'ı sınanamıyor"
+            ),
+            ureticiler=(gorev,),
+        )
+
+        # İhtilaf AYRI bir session/transaction'da açılır ve COMMIT edilir.
+        # Gerçek servis yolu çağrılır (ORM ile elle bayrak set edilmez).
+        async with AsyncSessionLocal() as s:
+            booking = await s.get(Booking, ders.booking_id)
+            await admin_service.toggle_dispute(
+                s, booking, is_disputed=True, admin_notes="İP-1a: sorgudan sonra"
+            )
+            await s.commit()
+
+        devam.set()
+        tamamlanan = await _gorev_bekle(
+            gorev, aciklama="kapı açıldıktan sonra auto-complete görevi bitmedi"
+        )
+    finally:
+        # Test nasıl biterse bitsin pending görev kalmaz.
+        await _gorevleri_kapat([gorev])
+
+    booking_status, payment_status = await ip1a.durumlar(ders.booking_id)
+    assert booking_status is BookingStatus.ACCEPTED, (
+        f"SORGUDAN SONRA AÇILAN İHTİLAF YAKALANMADI: ders {booking_status.value} "
+        "oldu. Aday sorgusundaki filtre bu pencereyi göremez; kararı claim'in "
+        "WHERE koşulu (extra_where=_IHTILAFSIZ) vermek zorundadır."
+    )
+    assert payment_status is PaymentStatus.HELD, (
+        f"ihtilaflı dersin emaneti {payment_status} oldu — para hareket etti"
+    )
+
+    p = await ip1a.payment(ders.booking_id)
+    assert p["released_at"] is None, (
+        "ihtilaflı derste released_at damgalandı — iade kalıcı olarak kapandı "
+        "(escrow.py released_at guard'ı), admin çözüm üretemez"
+    )
+    assert await ip1a.tutor_hakedisi(ders.tutor_id) == Decimal("0.00"), (
+        "ihtilaflı ders eğitmenin ödenebilir bakiyesine yazıldı"
+    )
+    assert provider.refund_calls == [], "bu senaryoda hiçbir iade emri beklenmez"
+    assert tamamlanan == 0, (
+        f"tarama {tamamlanan} dersi tamamlanmış saydı — kaybedilen claim "
+        "sayaca yazılmamalı"
+    )
+
+    async with AsyncSessionLocal() as s:
+        booking = await s.get(Booking, ders.booking_id)
+        assert booking.is_disputed is True, "kurulum: ihtilaf commit edilmemiş"
