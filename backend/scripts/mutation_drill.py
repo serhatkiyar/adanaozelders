@@ -407,6 +407,31 @@ MUTASYONLAR: list[Mutasyon] = [
     for payment, booking in []:  # MUTASYON: tarama ölü""",
         ("tests/integration/test_ip1a_orphan_escrow_pg.py",),
     ),
+    # ── Nihai bağımsız audit'in bulduğu iki P1 (M21, M22) ───────────────────
+    #
+    # İkisi de "60 test yeşilken gerçek PG probunda para açığı" sınıfındandır:
+    # M12 ve M13 gibi geniş mutasyonlar bu boşlukları GÖREMİYORDU, çünkü her
+    # birinde ikinci bir koruma katmanı ölçümü gölgeliyordu.
+    Mutasyon(
+        "M21", "İP-1a P1-A: auto-complete claim'inin ihtilaf koşulu sökülü "
+               "(aday sorgusundaki filtre KORUNUYOR)",
+        "backend/services/booking_service.py",
+        """        if not await _claim_transition(
+            db, booking, BookingStatus.COMPLETED, extra_where=_IHTILAFSIZ
+        ):""",
+        """        if not await _claim_transition(
+            db, booking, BookingStatus.COMPLETED
+        ):  # MUTASYON: yalnız claim guard'ı sökülü""",
+        ("tests/integration/test_ip1a_dispute_autocomplete_pg.py",),
+    ),
+    Mutasyon(
+        "M22", "İP-1a P1-B: reschedule atomik claim yerine doğrudan status ataması",
+        "backend/services/booking_service.py",
+        """    if not await _claim_transition(db, booking, BookingStatus.PENDING):
+        raise _claim_hatasi(booking, BookingStatus.PENDING)""",
+        """    booking.status = BookingStatus.PENDING  # MUTASYON: eski doğrudan atama""",
+        ("tests/integration/test_ip1a_races_pg.py",),
+    ),
 ]
 
 
