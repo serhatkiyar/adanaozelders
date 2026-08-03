@@ -149,13 +149,27 @@ async def redeem(
     return True
 
 
-async def release(db: AsyncSession, *, coupon_id: int, order_id: int) -> None:
-    """İptal/iade: kullanımı geri sal (used_count-- + redemption sil)."""
+async def release(db: AsyncSession, *, coupon_id: int, order_id: int) -> bool:
+    """İptal/iade: kullanımı geri sal (used_count-- + redemption sil).
+
+    **Yalnız BU siparişin gerçekten saydığı kullanım geri açılır.** Sayaç,
+    redemption satırının varlığına bağlıdır ve koşulsuz düşürülmez:
+
+    `redeem` kupon limitte olduğunda **False** döner ve hiçbir iz yazmaz — ama
+    sipariş `coupon_id` alanını taşımaya devam eder (indirim uygulanmıştı).
+    Eski koşulsuz `used_count--`, böyle bir siparişin iptalinde BAŞKA müşterinin
+    saydığı kullanımı serbest bırakıyordu: `max_uses=1` kampanya kuponu fiilen
+    iki kez kullanılabiliyor, sayaç ile satırlar kalıcı olarak ayrışıyordu.
+
+    Yan fayda — **idempotent**: satır bir kez silindikten sonra ikinci çağrı
+    no-op'tur (retry/çift iptal sayacı ikinci kez düşüremez).
+
+    Dönen: kullanım gerçekten geri açıldı mı.
+    """
+    # Kilit sırası korunur: önce kupon satırı (sayaç otoritesi), sonra redemption.
     coupon = (
         await db.execute(select(Coupon).where(Coupon.id == coupon_id).with_for_update())
     ).scalars().first()
-    if coupon is not None and coupon.used_count > 0:
-        coupon.used_count -= 1
     redemption = (
         await db.execute(
             select(CouponRedemption).where(
@@ -164,8 +178,17 @@ async def release(db: AsyncSession, *, coupon_id: int, order_id: int) -> None:
             )
         )
     ).scalars().first()
-    if redemption is not None:
-        await db.delete(redemption)
+    if redemption is None:
+        logger.info(
+            "coupon %s: sipariş %s için redemption satırı yok — sayaç "
+            "DÜŞÜRÜLMEDİ (kullanım hiç sayılmamıştı)",
+            coupon_id, order_id,
+        )
+        return False
+    if coupon is not None and coupon.used_count > 0:
+        coupon.used_count -= 1
+    await db.delete(redemption)
+    return True
 
 
 # ── Admin CRUD ──────────────────────────────────────────────────────────────────

@@ -342,6 +342,15 @@ async def on_order_terminal(db: AsyncSession, order: Order, *, reason: str) -> N
     await _lock_order(db, order.id)
     package = await live_package(db, order.id, lock=True)
     if package is None:
+        # İP-2b R13: CANLI paketi olmayan sipariş de damgayı bırakmamalı.
+        # `prepared_at` "kutu toplandı ve etiketlendi, mal rafta DEĞİL" demektir;
+        # sipariş iptal/iade olunca kutu sökülür ve mal rafa döner. Damga asılı
+        # kalırsa defter ile fiziksel gerçek kalıcı olarak ayrışır ve hiçbir
+        # operasyonel söküm sinyali üretilmez (başarısız-teslim yolu damgayı
+        # zaten sıfırlıyordu; iptal yolu geride kalmıştı). Paketi olan siparişte
+        # damga zaten `void` dalında sıfırlanır.
+        order.prepared_at = None
+        order.prepared_by = None
         return
     zaman = _now()
     if packing_rules.is_on_premise(package.status):
