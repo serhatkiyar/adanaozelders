@@ -457,6 +457,24 @@ async def _tablo_sayilari() -> dict[str, int]:
     return sayilar
 
 
+def _nobetci_duyur(mesaj: str) -> None:
+    """Nöbetçinin kararını stderr'e de yazar — özet satırında KAYBOLMASIN.
+
+    Neden gerekli (1 Ağu 2026'da bizzat yaşandı): bir testin KENDİ teardown'ı da
+    hata verirse pytest, session nöbetçisinin `Failed`'ini o hatayla birlikte bir
+    ``BaseExceptionGroup`` içine sarar ve `-q` özet satırında yalnız
+
+        ERROR ... - BaseExceptionGroup: errors during test teardown (2 sub-exceptions)
+
+    görünür. Karar gövdede durur ama özete bakan (ve çıktıyı tarayan) gözden
+    kaçar: bu yüzden bir denetim turunda "nöbetçi sızıntıyı kaçırdı" diye YANLIŞ
+    rapor edildi — oysa nöbetçi doğru çalışıyordu. Karar artık ayrıca ham
+    stderr'e basılır; hiçbir sarmalayıcı onu gizleyemez.
+    """
+    sys.stderr.write(f"\n[HİJYEN NÖBETÇİSİ] {mesaj}\n")
+    sys.stderr.flush()
+
+
 @pytest.fixture(scope="session", autouse=True)
 async def _hijyen_nobetcisi(_test_veritabani):
     """Suite öncesi/sonrası kritik tablo sayıları AYNI kalmalı.
@@ -473,14 +491,15 @@ async def _hijyen_nobetcisi(_test_veritabani):
         # SESSİZCE GEÇMEZ. "suite temiz" ile "nöbetçi hiç ölçmedi" birbirinden
         # ayırt edilemezse bütün izolasyon garantisi kanıtsız kalır — F29'da
         # audit_logs birikmesi tam olarak bunun yüzünden geç fark edildi.
-        pytest.fail(
+        mesaj = (
             "hijyen nöbetçisi ÖLÇEMEDİ; suite temiz sayılamaz: "
             f"{exc.__class__.__name__}: {exc}"
         )
+        _nobetci_duyur(mesaj)
+        pytest.fail(mesaj)
     artan = {t: (once[t], sonra[t]) for t in once if sonra[t] != once[t]}
     if artan:
         ayrinti = ", ".join(f"{t}: {a}→{b}" for t, (a, b) in sorted(artan.items()))
-        pytest.fail(
-            "TEST İZOLASYONU BOZUK — suite kalıcı satır bıraktı: " + ayrinti,
-            pytrace=False,
-        )
+        mesaj = "TEST İZOLASYONU BOZUK — suite kalıcı satır bıraktı: " + ayrinti
+        _nobetci_duyur(mesaj)
+        pytest.fail(mesaj, pytrace=False)
