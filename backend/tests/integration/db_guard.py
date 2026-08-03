@@ -162,6 +162,49 @@ async def purge_products(session, product_ids) -> int:
     return len(ids)
 
 
+async def purge_packages(session, package_ids) -> int:
+    """VERİLEN paketleri olay iziyle birlikte **fiziksel** siler.
+
+    Neden ayrı bir yardımcı (F29 `purge_products` ile aynı gerekçe):
+    `package_scan_events` append-only'dir — UPDATE/DELETE bir trigger'la
+    reddedilir — ve `package_id` FK'si `RESTRICT`'tir. Yani paketleme testleri
+    kendi satırlarını normal yoldan temizleyemez; temizleyemedikleri satırlar
+    hijyen nöbetçisini kırar.
+
+    Trigger YALNIZ test veritabanında ve yalnız bu işlem için geçici olarak
+    kapatılır — üretimde bu fonksiyon `assert_test_database` tarafından zaten
+    reddedilir.
+
+    **Kapsam paket kimliğiyle sınırlıdır.** Tabloların tamamını boşaltmak,
+    aynı anda koşan başka bir testin izini de silerdi; o test kendi verisini
+    bulamadığında hata "flaky" görünür ve sebebi aylarca bulunamaz.
+    """
+    from sqlalchemy import text
+
+    assert_test_database()
+    ids = [int(i) for i in package_ids or []]
+    if not ids:
+        return 0
+    await session.execute(text("ALTER TABLE package_scan_events DISABLE TRIGGER USER"))
+    try:
+        await session.execute(
+            text("DELETE FROM package_scan_events WHERE package_id = ANY(:i)"),
+            {"i": ids},
+        )
+    finally:
+        await session.execute(
+            text("ALTER TABLE package_scan_events ENABLE TRIGGER USER")
+        )
+    await session.execute(
+        text("DELETE FROM order_package_items WHERE package_id = ANY(:i)"), {"i": ids}
+    )
+    await session.execute(
+        text("DELETE FROM order_packages WHERE id = ANY(:i)"), {"i": ids}
+    )
+    await session.commit()
+    return len(ids)
+
+
 def assert_test_database(
     *, environment: str | None = None, database: str | None = None
 ) -> None:

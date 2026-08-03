@@ -18,6 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from models.delivery import DeliveryStop, DeliveryStopStatus
 from models.store import Order, OrderStatusHistory
+from services import packing_events
 
 # İzinli geçişler (OrderStatus değerleri). Terminal durumlar (CANCELLED/REFUNDED)
 # boş küme → oradan çıkış yok. SHIPPED→PAID: teslim edilemedi/tur iptal geri sarımı.
@@ -89,6 +90,16 @@ async def transition_order(
     # o durakta geçersiz geçişe (CANCELLED→SHIPPED) takılıp TÜM turu bloklar.
     # Geçiş otoritesi burası olduğundan temizlik de burada (çağıran unutamaz).
     if new_status in ("CANCELLED", "REFUNDED"):
+        # F30 (sözleşme §3.5, boşluk G8): iptal edilen siparişin CANLI paketi
+        # de çözülmelidir — yoksa raflarda sahipsiz bir paket kalır ve
+        # `uq_order_packages_live` yüzünden sipariş bir daha paketlenemez.
+        # Kanca ÖNCE çağrılır: kanonik kilit sırası Order → OrderPackage →
+        # DeliveryStop'tur ve `_close_open_stops` durak kilidini alır.
+        # Bağımlılık yönü tek yönlüdür (sözleşme §3.7): `order_fsm` yalnız
+        # ince olay modülünü tanır, `packing_service`'i GÖRMEZ.
+        await packing_events.on_order_terminal(
+            db, order, reason=f"Sipariş {new_status.lower()} oldu"
+        )
         await _close_open_stops(db, order.id, reason=f"Sipariş {new_status.lower()} oldu")
     db.add(
         OrderStatusHistory(

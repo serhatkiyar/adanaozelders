@@ -332,6 +332,12 @@ _KRITIK_TABLOLAR = (
     "order_status_history",
     "order_returns",
     "order_return_items",
+    # F30 — paketleme. `package_scan_events` append-only'dir: sizan bir satır
+    # teardown'da SİLİNEMEZ, o yüzden nöbetçide olması şart (aksi hâlde iz
+    # tablosu sessizce ve geri dönülemez biçimde şişer).
+    "order_packages",
+    "order_package_items",
+    "package_scan_events",
     "clients",
     "admins",
     # Servisler audit yazabildiği için testler de yazar; korumasız bırakılmaz.

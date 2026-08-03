@@ -51,6 +51,14 @@ PERMISSION_CATALOG: tuple[tuple[str, str, str], ...] = (
     ("inventory.view", "Envanter ve sayım görüntüleme", "Ticaret"),
     ("inventory.count", "Sayım oturumu açma ve miktar girme", "Ticaret"),
     ("inventory.apply", "Sayım farkı uygulama ve hasar işlemi", "Ticaret"),
+    # Paketleme (F30). `delivery.*` bilinçli olarak YENİDEN KULLANILMADI: turu
+    # planlamak ile depoda paket toplamak farklı kişilerin işidir ve paketleme
+    # istasyonu depo personeline açılacaktır. Üç kademe, envanterle aynı
+    # gerekçeyle: paketleyen kişi kendi hatasını tek başına kapatamamalı —
+    # `packing.manage` (void / unpack / return-in / repack) ayrı durur.
+    ("packing.view", "Paketleme kuyruğu ve paket görüntüleme", "Ticaret"),
+    ("packing.pack", "Paket açma, kalem tarama ve tamamlama", "Ticaret"),
+    ("packing.manage", "Paket çözme ve geri dönüş yönetimi", "Ticaret"),
     ("reports.view", "Şikâyet görüntüleme", "Güvenlik"),
     ("reports.manage", "Şikâyet yönetimi", "Güvenlik"),
     ("audit.view", "Denetim kayıtlarını görüntüleme", "Güvenlik"),
