@@ -156,7 +156,10 @@ async def test_kirmizi_iptal_bekleyen_takip_smsini_iptal_eder(fab, provider, sms
     assert ("sms:tracking_link", "PENDING") in await fab.outbox_olaylari(oid)
 
     async with AsyncSessionLocal() as s:
-        await order_service.refund_order(s, oid)  # REFUNDED + durak CANCELLED
+        # Gerekçe ZORUNLU (İP-2b R3).
+        await order_service.refund_order(
+            s, oid, reason="Kuyruktaki SMS nöbetçisi: iade"
+        )  # REFUNDED + durak CANCELLED
     assert (await fab.siparis_durumu(oid)) == ("REFUNDED", "REFUNDED")
 
     async with AsyncSessionLocal() as s:

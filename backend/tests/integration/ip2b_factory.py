@@ -382,6 +382,21 @@ class Ip2bFabrika:
             ).one()
         return row[0], row[1]
 
+    async def iade_tutari(self, order_id: int) -> str:
+        """`orders.refunded_amount` (ciro raporu + kısmi iade tavanı buradan okur)."""
+        async with AsyncSessionLocal() as s:
+            return str(
+                (
+                    await s.execute(
+                        text(
+                            "SELECT COALESCE(refunded_amount, 0) FROM orders "
+                            "WHERE id = :i"
+                        ),
+                        {"i": order_id},
+                    )
+                ).scalar_one()
+            )
+
     async def bildirim_sayisi(self, client_id: int, *, icerik: str = "") -> int:
         async with AsyncSessionLocal() as s:
             return (
@@ -451,6 +466,14 @@ class Ip2bFabrika:
             stmts = [
                 "DELETE FROM notifications WHERE role_id = 3 AND user_id = ANY(:c)",
                 "DELETE FROM notifications WHERE role_id = 1 AND user_id = ANY(:a)",
+                # İP-2b R17 MANUAL_REVIEW bildirimi TÜM adminlere gider — seed
+                # admin dahil, yani fabrikanın YARATMADIĞI bir kullanıcıya.
+                # Kimliğe göre silme onu kaçırır; bu yüzden bu fabrikanın kendi
+                # sipariş numaralarını anan admin bildirimleri de temizlenir
+                # (kapsam yine dar: yalnız `self.order_ids`).
+                "DELETE FROM notifications WHERE role_id = 1 AND EXISTS ("
+                "  SELECT 1 FROM unnest(CAST(:o AS int[])) AS x(oid)"
+                "  WHERE message LIKE '%#' || x.oid || '%')",
                 "DELETE FROM outbox_events WHERE (payload->>'order_id')::int = ANY(:o)",
                 "DELETE FROM coupon_redemptions WHERE coupon_id = ANY(:cp) OR order_id = ANY(:o)",
                 "DELETE FROM order_return_items WHERE return_id IN "

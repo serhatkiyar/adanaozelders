@@ -16,6 +16,7 @@ from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from core import outbox
 from models.delivery import DeliveryStop, DeliveryStopStatus
 from models.store import Order, OrderStatusHistory
 from services import packing_events
@@ -101,6 +102,13 @@ async def transition_order(
             db, order, reason=f"Sipariş {new_status.lower()} oldu"
         )
         await _close_open_stops(db, order.id, reason=f"Sipariş {new_status.lower()} oldu")
+        # (İP-2b R13 — hazırlama damgasının sökümü `packing_events`'tedir:
+        #  `prepared_at` yazıcıları F30 sözleşmesi gereği TEK dosyada sayılıdır.)
+        # İP-2b R15: kuyrukta BEKLEYEN teslimat bildirimleri geçersizleşir.
+        # Outbox at-least-once'tır ve sessiz saat ertelemesi pencereyi saatlere
+        # büyütür; iptal edilmiş siparişin müşterisine "kuryen yola çıktı" SMS'i
+        # gitmemelidir. Durum değişikliğiyle AYNI transaction'da iptal edilir.
+        await outbox.cancel_pending_for_order(db, order.id)
     db.add(
         OrderStatusHistory(
             order_id=order.id,

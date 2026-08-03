@@ -1699,12 +1699,33 @@ async def order_tracking(
 # ── Teslim akışı (dağıtıcı) ───────────────────────────────────────────────────────
 
 
+#: Teslim aksiyonlarının yürütülebileceği sipariş durumları.
+#: `CANCELLED`/`REFUNDED` terminaldir; `DELIVERED` zaten sonuçlanmıştır.
+_TESLIM_EDILEBILIR_SIPARIS = ("PAID", "SHIPPED")
+
+
 def _require_field_stop(stop: DeliveryStop) -> None:
-    """Teslim aksiyonları yalnız AKTİF turdaki BEKLEYEN durakta anlamlıdır."""
+    """Teslim aksiyonları yalnız AKTİF turdaki BEKLEYEN durakta anlamlıdır.
+
+    İP-2b R14: kapının EN BAŞINDA sipariş YAŞAM DÖNGÜSÜ de doğrulanır. Eskiden
+    yalnız tur ve durak durumuna bakılıyordu; iptal edilmiş siparişin **kaçak**
+    bir PENDING durağı kalırsa (ör. iptal ↔ tura-ekleme yarışı, elle açılmış
+    durak) `send_otp` sipariş durumuna hiç bakmadan müşteriye "teslimat kodun"
+    SMS'i gönderiyor, kuryeyi kapıya yönlendiriyor ve 409 ancak kod
+    doğrulanırken görülüyordu — yani müşteri iptal ettiği siparişin teslim
+    SMS'ini alıyordu. Guard tek yerdedir: `send_otp` · `verify` · `fail` ·
+    `override-deliver` · `deliver-drop` hepsi buradan geçer.
+    """
     if stop.run.status != DeliveryRunStatus.ACTIVE.value:
         raise HTTPException(status.HTTP_409_CONFLICT, "Tur sahada (aktif) değil")
     if stop.status != DeliveryStopStatus.PENDING.value:
         raise HTTPException(status.HTTP_409_CONFLICT, "Bu durak zaten sonuçlanmış")
+    if stop.order.status not in _TESLIM_EDILEBILIR_SIPARIS:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            f"Sipariş #{stop.order_id} teslim edilebilir durumda değil "
+            f"({stop.order.status}) — durak kapatılmalı",
+        )
 
 
 async def _lock_stop_and_order(db: AsyncSession, stop: DeliveryStop) -> None:
