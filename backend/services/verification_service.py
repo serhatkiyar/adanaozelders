@@ -15,20 +15,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from core import mail
 from core.config import settings
-from models.admin import Admin
-from models.client import Client
-from models.role import ROLE_IDS, RoleType
-from models.tutor import Tutor
 from models.verification_token import TokenPurpose, VerificationToken
-
-# role_id -> kullanıcı modeli (token'ın hedef kullanıcısını yüklemek için).
-_MODEL_BY_ROLE: dict[int, type] = {
-    ROLE_IDS[RoleType.ADMIN]: Admin,
-    ROLE_IDS[RoleType.TUTOR]: Tutor,
-    ROLE_IDS[RoleType.CLIENT]: Client,
-}
-
-UserT = "Admin | Tutor | Client"
+# role_id -> kullanıcı modeli: TEK kaynaktan (İP-3 §6.3). Buradaki eski elle
+# yazılmış 3 rollük kopya, operatör ve kuryenin "şifremi unuttum" akışını
+# sessizce öldürüyordu (mail gidiyor, consume_token None dönüyordu).
+from services.auth_service import MODEL_BY_ROLE_ID as _MODEL_BY_ROLE
 
 
 def _hash(raw: str) -> str:

@@ -88,6 +88,21 @@ class LastSeenMixin:
     )
 
 
+class AuthVersionMixin:
+    """Oturum sürümü — İP-3 §6: BÜTÜN giriş hesabı modellerinde bulunur.
+
+    Şifre değişimi, şifre sıfırlaması ve hesap kapatma sürümü artırır; access
+    token'daki ``auth_ver`` claim'i `api/deps.get_current_user`'da bu kolonla
+    karşılaştırılır — eski sürümlü token, denylist ya da doğal süre dolumunu
+    beklemeden ANINDA 401 alır. Rol istisnası yoktur (eskiden yalnız kuryede
+    denetleniyordu; o istisna kaldırıldı).
+    """
+
+    auth_version: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=1, server_default=text("1")
+    )
+
+
 class ModeratableMixin:
     """Yönetim tarafından gizlenebilen kullanıcı içeriği (yorumlar).
 

@@ -101,10 +101,18 @@ def _session_out(
     is_nationwide: bool = False,
     catalog_answer_key_url: str | None = None,
     results_entered_count: int = 0,
+    include_answer_key: bool = False,
 ) -> ExamSessionOut:
     published = s.results_published_at is not None
-    # Cevap anahtarı yalnız sonuçlar yayınlandıktan sonra paylaşılır (önceden sızmasın).
-    answer_key = (s.answer_key_url or catalog_answer_key_url) if published else None
+    # Cevap anahtarı YETKİ işidir, yayın durumu işi değil (İP-3 §2): yalnız
+    # `libraries.manage` izinli ADMIN yanıtında bulunur — karar çağıran rotada
+    # `include_answer_key` ile verilir (katalogdaki `_to_out` deseniyle aynı).
+    # Operatör, öğrenci ve anonim kullanıcı hiçbir koşulda anahtarı görmez;
+    # sonuçların yayınlanmış olması yetki değildir. `results_published` bayrağı
+    # ise herkese açık kalır.
+    answer_key = (
+        (s.answer_key_url or catalog_answer_key_url) if include_answer_key else None
+    )
     return ExamSessionOut(
         id=s.id,
         library_id=s.library_id,
@@ -171,6 +179,7 @@ async def _enriched_session_out(
     registered_count: int,
     library_name: str | None = None,
     library_slug: str | None = None,
+    include_answer_key: bool = False,
 ) -> ExamSessionOut:
     """Tek oturumu katalog + girilmiş sonuç sayısıyla zenginleştirip döndürür."""
     cat = await db.get(LibraryExamCatalog, s.catalog_id) if s.catalog_id else None
@@ -179,6 +188,7 @@ async def _enriched_session_out(
         registered_count=registered_count,
         library_name=library_name,
         library_slug=library_slug,
+        include_answer_key=include_answer_key,
         catalog_name=cat.exam_name if cat else None,
         is_nationwide=bool(cat.is_nationwide) if cat else False,
         catalog_answer_key_url=cat.answer_key_url if cat else None,
@@ -187,18 +197,20 @@ async def _enriched_session_out(
 
 
 async def create_session(
-    db: AsyncSession, library_id: int, payload: ExamSessionCreate
+    db: AsyncSession,
+    library_id: int,
+    payload: ExamSessionCreate,
+    *,
+    include_answer_key: bool = False,
 ) -> ExamSessionOut:
     lib = await db.get(Library, library_id)
     if lib is None or lib.deleted_at is not None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Kütüphane bulunamadı")
-    # Yalnız onaylı (ACTIVE) kütüphane public deneme oturumu açabilir — PENDING/REJECTED
-    # self-servis başvuru onay öncesi ücretli akış başlatamaz.
-    if lib.status != LibraryStatus.ACTIVE.value:
-        raise HTTPException(
-            status.HTTP_409_CONFLICT,
-            "Kütüphane henüz onaylı değil; deneme oturumu oluşturulamaz.",
-        )
+    # Operatörün ACTIVE kontrolü tek kaynakta: rotadaki ortak kapı
+    # (api.deps.get_current_active_operator). Buradaki eski 409 dalı kaldırıldı —
+    # iki katmanda iki farklı durum kodu sözleşmeyi belirsizleştiriyordu (İP-3 §1b).
+    # ADMIN küratör onay öncesi oturum kurabilir; public listeye zaten yalnız
+    # ACTIVE kütüphane çıkar (list_public_sessions filtresi).
     if payload.catalog_id is not None:
         await _validate_catalog(db, payload.catalog_id)
     s = LibraryExamSession(
@@ -218,12 +230,21 @@ async def create_session(
     await db.commit()
     await db.refresh(s)
     return await _enriched_session_out(
-        db, s, registered_count=0, library_name=lib.name, library_slug=lib.slug
+        db,
+        s,
+        registered_count=0,
+        library_name=lib.name,
+        library_slug=lib.slug,
+        include_answer_key=include_answer_key,
     )
 
 
 async def update_session(
-    db: AsyncSession, session_id: int, payload: ExamSessionUpdate
+    db: AsyncSession,
+    session_id: int,
+    payload: ExamSessionUpdate,
+    *,
+    include_answer_key: bool = False,
 ) -> ExamSessionOut:
     s = await _get_session_or_404(db, session_id)
     data = payload.model_dump(exclude_unset=True)
@@ -247,10 +268,14 @@ async def update_session(
         )
     await db.commit()
     await db.refresh(s)
-    return await _enriched_session_out(db, s, registered_count=active)
+    return await _enriched_session_out(
+        db, s, registered_count=active, include_answer_key=include_answer_key
+    )
 
 
-async def cancel_session(db: AsyncSession, session_id: int) -> ExamSessionOut:
+async def cancel_session(
+    db: AsyncSession, session_id: int, *, include_answer_key: bool = False
+) -> ExamSessionOut:
     """Oturumu iptal eder ve ödenmiş (PAID) kayıtları iade eder (iki fazlı escrow).
 
     Emaneti ZATEN serbest bırakılmış (``released_at`` dolu — katılım ya da no-show
@@ -260,7 +285,11 @@ async def cancel_session(db: AsyncSession, session_id: int) -> ExamSessionOut:
     """
     s = await _get_session_or_404(db, session_id)
     if s.status == ExamSessionStatus.CANCELLED.value:
-        return _session_out(s, registered_count=await _count_active(db, s.id))
+        return _session_out(
+            s,
+            registered_count=await _count_active(db, s.id),
+            include_answer_key=include_answer_key,
+        )
 
     s.status = ExamSessionStatus.CANCELLED.value
     await db.commit()  # oturum kapandı; iadeler tek tek intent'lenecek
@@ -288,7 +317,7 @@ async def cancel_session(db: AsyncSession, session_id: int) -> ExamSessionOut:
         await escrow.refund_escrow(db, reg, escrow.EXAM_SPEC, notify=_notify)
     await db.commit()
     await db.refresh(s)
-    return _session_out(s, registered_count=0)
+    return _session_out(s, registered_count=0, include_answer_key=include_answer_key)
 
 
 async def list_public_sessions(
@@ -315,7 +344,7 @@ async def list_public_sessions(
 
 
 async def list_library_sessions_admin(
-    db: AsyncSession, library_id: int
+    db: AsyncSession, library_id: int, *, include_answer_key: bool = False
 ) -> list[ExamSessionOut]:
     """Bir kütüphanenin tüm oturumları (geçmiş/iptal dahil) — admin/operatör için."""
     stmt = (
@@ -327,7 +356,9 @@ async def list_library_sessions_admin(
         .order_by(LibraryExamSession.starts_at.desc())
     )
     sessions = (await db.execute(stmt)).scalars().all()
-    return await _attach_counts_and_mine(db, sessions, client_id=None)
+    return await _attach_counts_and_mine(
+        db, sessions, client_id=None, include_answer_key=include_answer_key
+    )
 
 
 async def _attach_counts_and_mine(
@@ -335,6 +366,7 @@ async def _attach_counts_and_mine(
     sessions: list[LibraryExamSession],
     *,
     client_id: int | None,
+    include_answer_key: bool = False,
 ) -> list[ExamSessionOut]:
     if not sessions:
         return []
@@ -417,6 +449,7 @@ async def _attach_counts_and_mine(
                 is_nationwide=bool(cat.is_nationwide) if cat else False,
                 catalog_answer_key_url=cat.answer_key_url if cat else None,
                 results_entered_count=int(entered.get(s.id, 0)),
+                include_answer_key=include_answer_key,
             )
         )
     return out
@@ -986,6 +1019,7 @@ async def set_session_answer_key(
     file_bytes: bytes,
     original_name: str | None,
     content_type: str | None,
+    include_answer_key: bool = False,
 ) -> ExamSessionOut:
     """Oturuma özel cevap anahtarı yükler (katalogsuz oturumlar için)."""
     s = await _get_session_or_404(db, session_id)
@@ -1001,7 +1035,10 @@ async def set_session_answer_key(
     if old:
         await storage.delete_file(old)
     return await _enriched_session_out(
-        db, s, registered_count=await _count_active(db, s.id)
+        db,
+        s,
+        registered_count=await _count_active(db, s.id),
+        include_answer_key=include_answer_key,
     )
 
 
@@ -1079,7 +1116,10 @@ async def verify_by_registration(
             )
         )
     ).scalars().first()
-    if reg is None or reg.session is None:
+    # Yabancı kütüphanenin kaydı var-olmayanla AYNI yanıtı verir (İP-3 §1b.4):
+    # bu uç id ile çağrılabildiğinden 403 dönmek "bu id'de kayıt var" bilgisini
+    # sızdırırdı. (QR yolu token'la çalışır; oradaki 403 defense-in-depth kalır.)
+    if reg is None or reg.session is None or reg.session.library_id != operator_library_id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Kayıt bulunamadı")
     return await _attend_exam(
         db, reg, operator_library_id=operator_library_id, operator_id=operator_id

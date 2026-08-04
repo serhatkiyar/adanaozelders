@@ -109,6 +109,36 @@ async def get_review(db: AsyncSession, review_id: int) -> Review | None:
     return review
 
 
+async def assert_booking_review_viewer(
+    db: AsyncSession, user, booking_id: int
+) -> None:
+    """`GET /reviews/booking/{id}` sahiplik kararı — TEK ortak yer (İP-3 §5.3).
+
+    Yalnız o dersin öğrencisi, eğitmeni ya da moderasyon izinli (`reports.view`)
+    admin okuyabilir. Yabancı kullanıcı için yorumlu / yorumsuz / hiç olmayan
+    booking **aynı 404**'ü alır — "bu id'de ders var mı ve değerlendirilmiş mi"
+    sorusu ardışık id taramasıyla cevaplanamaz (İP-3 §5.2).
+
+    Rol modeli ayrı tablolarda yaşadığı için karşılaştırma `isinstance` + id
+    birlikte yapılır (çıplak id karşılaştırması tablolar arasında çakışır).
+    """
+    from models.admin import Admin
+
+    booking = await db.get(Booking, booking_id)
+    booking_ok = booking is not None and booking.deleted_at is None
+    if booking_ok and isinstance(user, Client) and booking.client_id == user.id:
+        return
+    if booking_ok and isinstance(user, Tutor) and booking.tutor_id == user.id:
+        return
+    if booking_ok and isinstance(user, Admin):
+        from services import admin_access_service
+
+        _role, perms = await admin_access_service.get_admin_access(db, user.id)
+        if "reports.view" in perms:
+            return
+    raise HTTPException(status.HTTP_404_NOT_FOUND, "Ders bulunamadı")
+
+
 async def get_by_booking(db: AsyncSession, booking_id: int) -> Review | None:
     row = (
         await db.execute(

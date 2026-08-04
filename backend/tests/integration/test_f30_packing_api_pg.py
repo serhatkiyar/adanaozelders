@@ -77,7 +77,9 @@ class Kurulum:
             await s.commit()
             self.admin_ids.append(a.id)
             self.role_ids.append(rol.id)
-            return a.id, create_access_token(subject=a.id, role="ADMIN", role_id=1)
+            return a.id, create_access_token(
+                subject=a.id, role="ADMIN", role_id=1, auth_version=a.auth_version
+            )
 
     async def temizle(self) -> None:
         async with AsyncSessionLocal() as s:

@@ -325,6 +325,34 @@ async def factory(pg) -> MoneyFactory:
 # aynı adı test parametresi olarak da kullanmak F811 (gölgeleme) üretirdi.
 from tests.integration.ip1a_factory import ip1a, ip1a_http  # noqa: E402,F401
 
+# ═══════════════ İP-3: yetki / kişisel veri / hesap güvenliği ═══════════════
+
+
+@pytest.fixture
+async def ip3(pg):
+    """Gerçek roller + gerçek ilişkiler fabrikası (bkz. `ip3_factory.py`)."""
+    from tests.integration.ip3_factory import IP3Fabrika
+
+    f = IP3Fabrika()
+    try:
+        yield f
+    finally:
+        await f.cleanup()
+
+
+# NOT (main birleştirmesi): İP-3 burada kendi `http` fixture'ını tanımlıyordu;
+# güncel main ise aynı adı `ip2b_factory`'den import ediyor (yukarıdaki satır).
+# İkisi bir arada kaldığında SESSİZ bir sorun doğuyordu: sonra tanımlanan İP-3
+# sürümü import'u gölgeliyor ve İP-2b testleri `pg` bağımlılığını KAYBEDİYORDU
+# (o fixture her testten sonra engine havuzunu boşaltır; asyncpg bağlantıları
+# event loop'a bağlı olduğu için bu, "Event loop is closed" sınıfı flaky'nin
+# bilinen panzehiridir). Bu yüzden tek bir fixture bırakıldı: `pg` alan ve daha
+# güçlü olan ortak sürüm. İkisi de aynı şeyi yapıyordu — gerçek uygulamayı
+# `httpx.ASGITransport` ile, dependency override OLMADAN sürmek; tek fark
+# İP-3'ün `base_url`'ünün `http://ip3.test` olmasıydı ve hiçbir test buna
+# bakmıyor (İP-3'ün WS testi kendi ASGI scope'unu elle kuruyor).
+
+
 # ═════════════ Tek kullanımlık test veritabanı + hijyen nöbetçisi ═════════════
 #
 # 30 Tem 2026'ya kadar bu testler geliştirme veritabanına (`ceyhandb`) karşı
@@ -370,6 +398,14 @@ _KRITIK_TABLOLAR = (
     "admin_roles",
     "admin_role_permissions",
     "admin_role_assignments",
+    # İP-3: `POST /libraries/register` tek istekte kütüphane + operatör +
+    # refresh token satırı üretir. Bu üçü nöbetçide YOKTU — kayıt akışını
+    # süren bir test teardown'ı unutsa sızıntı SESSİZ kalırdı (F29'da
+    # `audit_logs` ile yaşanan hatanın aynısı). Kayıt yüzeyi artık
+    # korumasız değil.
+    "libraries",
+    "library_operators",
+    "refresh_tokens",
 )
 
 

@@ -40,7 +40,7 @@ from core.security import (
     verify_password_async,
 )
 from core.token_denylist import revoke
-from core.storage import upload_avatar, delete_avatar
+from core.storage import upload_avatar, delete_avatar, delete_file
 
 _login_limit = rate_limit(
     key="login",
@@ -59,11 +59,7 @@ _email_limit = rate_limit(
     window_seconds=settings.RATE_LIMIT_WINDOW_SECONDS,
 )
 from models.admin import Admin
-from models.client import Client
-from models.courier_account import CourierAccount
-from models.library_operator import LibraryOperator
-from models.role import ROLE_IDS, RoleType, role_name
-from models.tutor import Tutor
+from models.role import role_name
 from models.verification_token import TokenPurpose
 from schemas.auth import (
     AccountDeleteRequest,
@@ -104,15 +100,9 @@ _sms_limit = user_rate_limit(
 )
 
 # role_id -> kullanıcı modeli (refresh sırasında kullanıcıyı yüklemek için).
-_MODEL_BY_ROLE_ID: dict[int, type] = {
-    ROLE_IDS[RoleType.ADMIN]: Admin,
-    ROLE_IDS[RoleType.TUTOR]: Tutor,
-    ROLE_IDS[RoleType.CLIENT]: Client,
-    # Rol 4/5 buradan eksikti → operatör refresh'i sessizce kırıktı (drift bug).
-    # Kural: _ROLE_MODELS (deps) ve _LOGIN_PRECEDENCE ile daima aynı küme.
-    ROLE_IDS[RoleType.LIBRARY_OPERATOR]: LibraryOperator,
-    ROLE_IDS[RoleType.COURIER]: CourierAccount,
-}
+# Rol → model eşlemesi TEK kaynaktan (İP-3 §6.3): elle yazılmış kopya bir kez
+# rol 4/5'i atlayıp operatör refresh'ini sessizce kırmıştı (drift bug).
+_MODEL_BY_ROLE_ID: dict[int, type] = auth_service.MODEL_BY_ROLE_ID
 
 logger = logging.getLogger("adana.auth")
 
@@ -564,12 +554,23 @@ async def delete_my_account(
     if not ok:
         raise HTTPException(status.HTTP_409_CONFLICT, reason or "Hesap şu an silinemez")
 
-    await account_deletion_service.anonymize_account(db, user)
+    orphan_files = await account_deletion_service.anonymize_account(db, user)
     await db.commit()
 
+    # Depo silme commit SONRASI ve best-effort (İP-3 §3 açık kararı): DB
+    # referansı zaten temizlendi; silme başarısız kalırsa işlem geri alınmaz,
+    # yetim nesne ayrı temizlik görevine kalır.
+    for key in orphan_files:
+        await delete_file(key)
+
     # Mevcut access token'ı da anında iptal et (refresh'ler zaten revoke edildi).
+    # TTL = kalan ömür (logout ile aynı hesap) — `exp` mutlak epoch'tur, doğrudan
+    # TTL olarak verilirse Redis anahtarı ~55 yıl yaşar (kaynak sızıntısı).
     try:
         payload_jwt = decode_access_token(token)
-        await revoke(payload_jwt.get("jti"), payload_jwt.get("exp"))
+        jti, exp = payload_jwt.get("jti"), payload_jwt.get("exp")
+        if jti and exp:
+            now = int(datetime.datetime.now(datetime.timezone.utc).timestamp())
+            await revoke(jti, max(int(exp) - now, 1))
     except Exception:  # noqa: BLE001 — silme başarılı, iptal best-effort
         logger.warning("hesap silme: access token iptal edilemedi", exc_info=True)

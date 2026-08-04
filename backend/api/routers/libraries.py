@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.deps import (
     CurrentUser,
+    get_current_active_operator,
     require_admin_permission,
     require_roles,
     require_roles_or_admin_permission,
@@ -90,12 +91,17 @@ _register_limit = rate_limit(
 
 def _assert_can_manage_library(user: CurrentUser, library_id: int) -> None:
     """Profil/görsel yönetimi: admin her kütüphaneyi, operatör yalnız kendi
-    kütüphanesini yönetebilir (deneme oturumlarındaki ``_assert_can_manage`` deseni)."""
+    kütüphanesini yönetebilir (deneme oturumlarındaki ``_assert_can_manage`` deseni).
+
+    Yabancı tenant 403 değil **404** alır (İP-3 §1b.4): var olan yabancı kütüphane
+    ile hiç olmayan kütüphane aynı yanıtı verir (``_get_library_or_404`` ile aynı
+    gövde) — varlık sızmaz.
+    """
     if isinstance(user, Admin):
         return
     if isinstance(user, LibraryOperator) and user.library_id == library_id:
         return
-    raise HTTPException(status.HTTP_403_FORBIDDEN, "Bu kütüphanede yetkin yok")
+    raise HTTPException(status.HTTP_404_NOT_FOUND, "Kütüphane bulunamadı")
 
 
 # ── Public arama / liste ─────────────────────────────────────────────────────────
@@ -162,6 +168,10 @@ async def register_library(
         subject=operator.id,
         role=RoleType.LIBRARY_OPERATOR.value,
         role_id=operator.role_id,
+        # `auth_ver` claim'i ZORUNLU: `get_current_user` bütün rollerde denetler
+        # (İP-3 §6). Atlanırsa kayıt 201 döner ama verdiği token hiçbir uçta
+        # çalışmaz — kullanıcı ancak `/auth/refresh`'ten sonra oturum açabilir.
+        auth_version=getattr(operator, "auth_version", None),
     )
     refresh = await refresh_token_service.issue(
         db, role_id=operator.role_id, user_id=operator.id
@@ -257,7 +267,16 @@ async def _get_library_or_404(db: AsyncSession, library_id: int) -> Library:
     return lib
 
 
-@router.get("/admin/{library_id}/payout", response_model=PayoutOut)
+#: Ortak ACTIVE kapısı (İP-3 §1b): para yüzeyleri (payout/earnings) onaysız
+#: operatöre kapalıdır — onaylanmamış işletmenin ödeme hesabı olmaz. ADMIN
+#: olduğu gibi geçer; izin kararı rotanın kendi dependency'sinde kalır.
+#: Onboarding uçları (resubmit/profil/görsel) bilinçli olarak kapı DIŞINDA.
+_active_gate = [Depends(get_current_active_operator)]
+
+
+@router.get(
+    "/admin/{library_id}/payout", response_model=PayoutOut, dependencies=_active_gate
+)
 async def get_library_payout(
     library_id: int,
     user: CurrentUser = Depends(
@@ -270,7 +289,9 @@ async def get_library_payout(
     return payout_service.to_out(lib)
 
 
-@router.post("/admin/{library_id}/payout", response_model=PayoutOut)
+@router.post(
+    "/admin/{library_id}/payout", response_model=PayoutOut, dependencies=_active_gate
+)
 async def submit_library_payout(
     library_id: int,
     payload: LibraryPayoutSubmitIn,
@@ -362,7 +383,11 @@ async def delete_library_review(
 # ── Kazanç özeti (admin / o kütüphanenin operatörü) ──────────────────────────────
 
 
-@router.get("/{library_id}/earnings", response_model=LibraryEarningsOut)
+@router.get(
+    "/{library_id}/earnings",
+    response_model=LibraryEarningsOut,
+    dependencies=_active_gate,
+)
 async def library_earnings(
     library_id: int,
     user: CurrentUser = Depends(
@@ -372,13 +397,14 @@ async def library_earnings(
 ):
     """Kütüphane escrow kazanç özeti (serbest + emanette). Operatör yalnız kendi
     kütüphanesini görebilir."""
-    if isinstance(user, LibraryOperator) and user.library_id != library_id:
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "Bu kütüphanede yetkin yok")
+    _assert_can_manage_library(user, library_id)
     return await library_service.earnings_summary(db, library_id)
 
 
 @router.get(
-    "/{library_id}/earnings/transactions", response_model=list[EarningTransaction]
+    "/{library_id}/earnings/transactions",
+    response_model=list[EarningTransaction],
+    dependencies=_active_gate,
 )
 async def library_earnings_transactions(
     library_id: int,
@@ -389,8 +415,7 @@ async def library_earnings_transactions(
 ):
     """Kütüphane escrow hareketleri dökümü (deneme + çalışma). Operatör yalnız kendi
     kütüphanesini görebilir."""
-    if isinstance(user, LibraryOperator) and user.library_id != library_id:
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "Bu kütüphanede yetkin yok")
+    _assert_can_manage_library(user, library_id)
     rows = await library_service.earnings_transactions(db, library_id)
     return [EarningTransaction(**r) for r in rows]
 

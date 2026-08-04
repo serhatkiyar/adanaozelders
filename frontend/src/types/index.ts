@@ -417,7 +417,8 @@ export interface ClientPublicOut {
   username: string;
   avatar_url?: string | null;
   about?: string | null;
-  birth_date?: string | null; // "YYYY-MM-DD"
+  birth_date?: string | null; // "YYYY-MM-DD" — yalnız admin yanıtında dolu (KVKK)
+  age?: number | null; // eğitmen yüzeyi yaş bilgisini buradan alır
   gender?: Gender | null;
   created_at: string;
   last_seen_at?: string | null;

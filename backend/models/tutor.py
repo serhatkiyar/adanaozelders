@@ -22,6 +22,7 @@ from sqlalchemy.schema import Computed
 from core.crypto import EncryptedString
 from core.database import Base
 from models.mixins import (
+    AuthVersionMixin,
     EmailVerificationMixin,
     LastSeenMixin,
     NameMixin,
@@ -55,6 +56,7 @@ class Tutor(
     EmailVerificationMixin,
     PhoneVerificationMixin,
     PayoutMixin,
+    AuthVersionMixin,
 ):
     __tablename__ = "tutors"
 

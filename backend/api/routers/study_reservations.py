@@ -5,7 +5,13 @@ import datetime
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.deps import CurrentUser, require_roles, require_roles_or_admin_permission, user_rate_limit
+from api.deps import (
+    CurrentUser,
+    get_current_active_operator,
+    require_roles,
+    require_roles_or_admin_permission,
+    user_rate_limit,
+)
 from core.config import settings
 from core.database import get_db
 from models.admin import Admin
@@ -31,11 +37,12 @@ _pay_limit = user_rate_limit(
 
 
 def _assert_can_manage(user: CurrentUser, library_id: int) -> None:
+    """Yabancı tenant 403 değil 404 alır (İP-3 §1b.4 — varlık sızmaz)."""
     if isinstance(user, Admin):
         return
     if isinstance(user, LibraryOperator) and user.library_id == library_id:
         return
-    raise HTTPException(status.HTTP_403_FORBIDDEN, "Bu kütüphanede yetkin yok")
+    raise HTTPException(status.HTTP_404_NOT_FOUND, "Kütüphane bulunamadı")
 
 
 # ── Public: fiyat + uygunluk ön bilgisi ──────────────────────────────────────────
@@ -54,7 +61,14 @@ async def quote(
 # ── Yönetim (admin / operatör) — /{reservation_id}'den ÖNCE değil; ayrı path ──
 
 
-@router.get("/manage", response_model=list[StudyReservationOut])
+#: Ortak ACTIVE kapısı (İP-3 §1b): onaysız operatör yönetim yüzeyi göremez;
+#: ADMIN olduğu gibi geçer (izin kararı rotanın kendi dependency'sinde kalır).
+_active_gate = [Depends(get_current_active_operator)]
+
+
+@router.get(
+    "/manage", response_model=list[StudyReservationOut], dependencies=_active_gate
+)
 async def list_manage(
     library_id: int = Query(...),
     user: CurrentUser = Depends(require_roles_or_admin_permission("libraries.manage", RoleType.LIBRARY_OPERATOR)),
@@ -64,7 +78,11 @@ async def list_manage(
     return await study_reservation_service.list_manage(db, library_id)
 
 
-@router.post("/{reservation_id}/attend", response_model=AttendanceResult)
+@router.post(
+    "/{reservation_id}/attend",
+    response_model=AttendanceResult,
+    dependencies=_active_gate,
+)
 async def attend(
     reservation_id: int,
     operator: LibraryOperator = Depends(require_roles(RoleType.LIBRARY_OPERATOR)),

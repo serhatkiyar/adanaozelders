@@ -122,7 +122,7 @@ async def test_F29_zinciri_BOS_veritabaninda_kurulur_ve_BACKFILL_dogru(mig_db):
                 await s.execute(text(ifade))
         await s.commit()
 
-    _alembic("upgrade", "head")
+    yukseltme = _alembic("upgrade", "head")
 
     # 1. Tek head + F29 zincirinin tamamı uygulanan yolun içinde
     #
@@ -133,6 +133,18 @@ async def test_F29_zinciri_BOS_veritabaninda_kurulur_ve_BACKFILL_dogru(mig_db):
     # da bunu şemadan doğrular.
     heads = _alembic("heads").stdout
     assert heads.count("(head)") == 1, f"birden çok head: {heads}"
+    # F29 zincirinin ucu bu DB'de GERÇEKTEN koştu mu? Eski assert
+    # (`F29_ZINCIR[-1] in heads`) zincirin ucunun HEAD OLMASINI şart koşuyordu —
+    # üzerine eklenen her yeni migration'da (ilk örnek: ip3_auth_version_all_roles)
+    # yanlış kırmızı üretiyordu. F29_ONCESI'nden head'e çıkarken alembic her
+    # adımı loglar; uygulanma kanıtı head adından daha güçlüdür.
+    assert F29_ZINCIR[-1] in yukseltme.stdout + yukseltme.stderr, (
+        f"F29 zincirinin ucu bu yükseltmede koşmadı:\n{yukseltme.stdout}\n{yukseltme.stderr}"
+    )
+    # İkinci ve TAMAMLAYICI kanıt (main tarafından geldi): yalnız zincirin UCU
+    # değil, DÖRT revizyonun tamamı uygulanan yolun içinde mi? Üstteki assert
+    # "son adım koştu" der, bu assert "aradan biri düşmedi" der; ikisi birden
+    # tutulur çünkü biri diğerinin kör noktasını kapatır.
     gecmis = _alembic("history", "-r", "base:head").stdout
     eksik = [r for r in F29_ZINCIR if r not in gecmis]
     assert not eksik, f"F29 zinciri uygulanan yolda değil: {eksik}\n{gecmis}"
