@@ -415,11 +415,34 @@ class OrderReturnResolve(BaseModel):
     admin_note: str | None = Field(default=None, max_length=1000)
 
 
+class OrderReturnReceiveLine(BaseModel):
+    """Depo kabul satırı: iade kaleminden kaç adet sağlam/hasarlı geldi."""
+
+    return_item_id: int
+    accepted_quantity: int = Field(default=0, ge=0)
+    damaged_quantity: int = Field(default=0, ge=0)
+
+
+class OrderReturnReceiveIn(BaseModel):
+    """İade edilen malın fiziksel kabulü (PK-α).
+
+    Kabul edilmeyen adet hiçbir stok kovasına girmez — "gelmedi" da geçerli
+    bir sonuçtur ve sessizce stoğa yazılmamalıdır.
+    """
+
+    lines: list[OrderReturnReceiveLine] = Field(min_length=1)
+    note: str | None = Field(default=None, max_length=500)
+
+
 class OrderReturnItemOut(BaseModel):
     order_item_id: int
     title: str | None = None
     quantity: int
     amount: str
+    #: Fiziksel kabul sonucu (PK-α). Toplamı `quantity`'yi aşamaz; ikisi de 0
+    #: iken `received_at` doluysa "hiç gelmedi" demektir.
+    accepted_quantity: int = 0
+    damaged_quantity: int = 0
 
 
 class OrderReturnOut(BaseModel):
@@ -435,8 +458,14 @@ class OrderReturnOut(BaseModel):
     # sağlayıcıda henüz kesinleşmemiş olabilir).
     refund_status: str = "NONE"
     refund_amount: str = "0.00"
+    #: Talebe düşen kargo payı. Dekont özdeşliği:
+    #: ``refund_amount == Σ items[].amount + shipping_refund`` (İP2A-15).
+    shipping_refund: str = "0.00"
     refunded_at: datetime.datetime | None = None
     is_partial: bool = False
+    #: Malın fiziksel kabul anı (PK-α). Para durumundan bağımsızdır: dolu
+    #: değilse iade parası ödenmiş olsa bile stok HENÜZ dönmemiştir.
+    received_at: datetime.datetime | None = None
     items: list[OrderReturnItemOut] = Field(default_factory=list)
     # Admin listesinde sipariş özeti gömülü gelir; müşteri yanıtında None.
     order: OrderOut | None = None
