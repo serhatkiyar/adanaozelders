@@ -11,11 +11,26 @@ Yasal çerçeve:
 - **İndirim dağıtımı**: kupon indirimi sipariş geneline uygulanır; kısmi iadede
   yalnız iade edilen kalemlere düşen pay geri verilir, aksi halde müşteri
   indirimin tamamını cebe indirip malın bir kısmını elinde tutar.
+
+## Kuruş sözleşmesi (İP-2a/M5, İP2A-14)
+
+Tek yuvarlama standardı: **ROUND_HALF_UP**. Satır payları bağımsız
+yuvarlandığında toplam sipariş indirimiyle tutmaz (3×100 TL + 20 TL kupon →
+3 × 6,67 = 20,01) ve N parçalı iadenin toplamı tek seferlik iadeden sapar.
+Bu yüzden indirim **bir kez, sipariş genelinde** ``allocate_discount_shares``
+ile en-büyük-artık (largest remainder) yöntemiyle satırlara dağıtılır: paylar
+kuruşu kuruşuna sipariş indirimine eşitlenir, artık kuruşlar deterministik
+sırayla (en büyük ondalık artık, eşitlikte satır sırası) dağıtılır.
+
+Satır İÇİNDEKİ kısmi adet iadelerinde pay ``line_discount_portion`` ile
+kümülatif hesaplanır: bir satırın tüm adedi iade edildiğinde dağıtılan pay
+TAM OLARAK o satırın payı olur, ara adımlar bu toplama yuvarlanır. Böylece
+"parça parça iade" ile "tek seferde iade" aynı kuruşu üretir.
 """
 from __future__ import annotations
 
 import datetime
-from decimal import ROUND_HALF_UP, Decimal
+from decimal import ROUND_DOWN, ROUND_HALF_UP, Decimal
 
 CENT = Decimal("0.01")
 
@@ -76,6 +91,64 @@ def allocate_discount(
     return _q(Decimal(str(order_discount)) * share)
 
 
+def allocate_discount_shares(
+    line_grosses: list[Decimal], order_discount: Decimal
+) -> list[Decimal]:
+    """Sipariş indirimini satırlara **kuruşu kuruşuna** dağıtır (saf).
+
+    ``sum(sonuç) == min(order_discount, sum(line_grosses))`` — her zaman.
+    Orantısal payların tek tek yuvarlanması bu eşitliği bozar (İP2A-14):
+    3 × 100 TL satırda 20 TL indirim → 3 × 6,67 = 20,01 ≠ 20,00. En-büyük-artık
+    yöntemi önce tabana yuvarlar, kalan kuruşları en büyük ondalık artığı olan
+    satırlara verir; eşitlikte satır SIRASI belirler (deterministik).
+    """
+    grosses = [Decimal(str(g)) for g in line_grosses]
+    toplam = sum(grosses, Decimal("0"))
+    hedef = min(Decimal(str(order_discount)), toplam)
+    if hedef <= 0 or toplam <= 0:
+        return [Decimal("0.00") for _ in grosses]
+
+    taban: list[Decimal] = []
+    artik: list[tuple[Decimal, int]] = []
+    for i, g in enumerate(grosses):
+        tam = hedef * g / toplam
+        alt = tam.quantize(CENT, rounding=ROUND_DOWN)
+        taban.append(alt)
+        artik.append((tam - alt, i))
+
+    dagitilan = sum(taban, Decimal("0"))
+    kalan_kurus = int(((hedef - dagitilan) / CENT).to_integral_value(ROUND_HALF_UP))
+    # En büyük artık önce; eşit artıkta küçük index önce (deterministik).
+    for _, i in sorted(artik, key=lambda t: (-t[0], t[1]))[: max(kalan_kurus, 0)]:
+        taban[i] += CENT
+    return taban
+
+
+def line_discount_portion(
+    line_share: Decimal, quantity: int, *, already: int, take: int
+) -> Decimal:
+    """Bir satırın indirim payından ``take`` adede düşen kısım (saf).
+
+    ``already`` = bu satırdan DAHA ÖNCE iade edilmiş adet. Kümülatif tanım
+    (``pay(k) = round(share * k / n)``, ``pay(n) = share``) sayesinde satırın
+    tüm adedi hangi sırayla/parçayla iade edilirse edilsin dağıtılan toplam
+    pay tam olarak ``line_share`` olur — son kuruş kaybolmaz, iki kez de
+    verilmez.
+    """
+    if quantity <= 0 or take <= 0:
+        return Decimal("0.00")
+    share = Decimal(str(line_share))
+
+    def _kumulatif(k: int) -> Decimal:
+        if k >= quantity:
+            return share
+        if k <= 0:
+            return Decimal("0.00")
+        return _q(share * k / quantity)
+
+    return _kumulatif(already + take) - _kumulatif(already)
+
+
 def compute_refund(
     *,
     lines: list[dict],
@@ -106,10 +179,39 @@ def compute_refund(
 
 
 def is_full_return(lines: list[dict]) -> bool:
-    """Seçim siparişin TAMAMINI kapsıyor mu (her kalemin tüm adedi)?"""
+    """Seçim, verilen satır listesinin TAMAMINI kapsıyor mu (her satırın tüm adedi)?
+
+    ⚠️ Bu **saf** yardımcı yalnız kendisine verilen satırlara bakar. Siparişin
+    tamamının kapsanıp kapsanmadığı sorusu için `covers_whole_order` kullanın —
+    yalnız buna bakmak İP2A-05'in ta kendisiydi: 2 kalemli siparişte bir kalemi
+    tam adediyle iade eden müşteri "tam sipariş iadesi" sayılıp kargo bedelini
+    de alıyor ve kupon serbest bırakılıyordu.
+    """
     if not lines:
         return False
     return all(int(ln["refund_quantity"]) >= int(ln["quantity"]) for ln in lines)
+
+
+def covers_whole_order(
+    *, remaining_by_item: dict[int, int], selection_by_item: dict[int, int]
+) -> bool:
+    """Seçim, siparişte müşteride KALAN her adedi kapsıyor mu? (saf)
+
+    ``remaining_by_item``: kalem → henüz iade edilmemiş adet (önceki taleplerin
+    adetleri düşülmüş). Gerçek "tam iade" tanımı budur: seçimden sonra
+    müşteride iade edilebilir hiçbir adet kalmıyorsa (m.12) kargo bedeli de
+    iade edilir ve kupon serbest bırakılır.
+
+    Parça parça yapılan iadelerin toplamı da tek seferlik tam iadeye eşitlenir:
+    siparişi boşaltan SON talep "tam" sayılır ve kargoyu o alır.
+    """
+    kalan = {k: int(v) for k, v in remaining_by_item.items() if int(v) > 0}
+    if not kalan:
+        return False
+    for item_id, adet in kalan.items():
+        if int(selection_by_item.get(item_id, 0)) < adet:
+            return False
+    return True
 
 
 def remaining_refundable(

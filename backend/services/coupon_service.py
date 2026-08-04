@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import datetime
 import logging
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 
 from fastapi import HTTPException, status
 from sqlalchemy import func, select
@@ -30,7 +30,13 @@ def _now() -> datetime.datetime:
 def compute_discount(
     subtotal: Decimal, discount_type: str, discount_value: Decimal
 ) -> Decimal:
-    """İndirim tutarı (subtotal'ı aşamaz, negatif olamaz) — saf, test edilebilir."""
+    """İndirim tutarı (subtotal'ı aşamaz, negatif olamaz) — saf, test edilebilir.
+
+    Yuvarlama **ROUND_HALF_UP**'tır. Eskiden bağlam varsayılanı (ROUND_HALF_EVEN)
+    kullanılıyordu: para yolunda iki ayrı yuvarlama standardı yaşıyor
+    (`returns`/`tax`/`commission` HALF_UP, kupon HALF_EVEN) ve tam yarım kuruşta
+    iade hesabı sipariş hesabından sapabiliyordu (İP2A-14).
+    """
     if discount_type == CouponDiscountType.PERCENT.value:
         raw = subtotal * discount_value / Decimal("100")
     else:
@@ -38,7 +44,7 @@ def compute_discount(
     capped = min(raw, subtotal)
     if capped < 0:
         capped = Decimal("0")
-    return capped.quantize(_CENT)
+    return capped.quantize(_CENT, rounding=ROUND_HALF_UP)
 
 
 def _norm(code: str) -> str:
