@@ -96,6 +96,15 @@ class Fabrika:
         return oid
 
     async def iade(self, order_id: int, *, product_id: int, adet: int) -> int:
+        """İade talebi + **fiziksel olarak teslim alınmış** kalem satırı.
+
+        `accepted_quantity` açıkça doldurulur: İP-2a/PK-α ile stok artık para
+        iadesinde değil DEPO KABULÜNDE döner ve `_restock_items` kabul edilen
+        adedi yazar. Bu dosyanın konusu defter YAZICISININ sözleşmesidir
+        (satır bazlı `RETURN` + idempotency anahtarı), kabul kapısının kendisi
+        değil — o `test_ip2a_restock_pg.py`'de ölçülür. Kabul adedini burada
+        set etmemek, yazıcıyı hiç çalıştırmadan "hareket yok" ölçmek olurdu.
+        """
         async with AsyncSessionLocal() as s:
             item_id = (
                 await s.execute(
@@ -119,9 +128,17 @@ class Fabrika:
             await s.execute(
                 text(
                     "INSERT INTO order_return_items (return_id, order_item_id, "
-                    "quantity, amount) VALUES (:r, :i, :q, 10.00)"
+                    "quantity, amount, accepted_quantity) "
+                    "VALUES (:r, :i, :q, 10.00, :q)"
                 ),
                 {"r": rid, "i": item_id, "q": adet},
+            )
+            await s.execute(
+                text(
+                    "UPDATE order_returns SET status = 'APPROVED', "
+                    "received_at = now(), received_by = 'test' WHERE id = :r"
+                ),
+                {"r": rid},
             )
             await s.commit()
         self.return_ids.append(rid)

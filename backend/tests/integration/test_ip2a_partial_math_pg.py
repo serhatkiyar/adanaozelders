@@ -324,3 +324,133 @@ async def test_r11_ikinci_talep_kalan_iade_edilebilir_adedi_asamamali(fab, provi
             "kalemden yalnız 1 adet iade hakkı kalmıştı; önceki taleplerin "
             "kümülatif adedi talep kabulünde hiç denetlenmiyor"
         )
+
+
+# ── İP-2a üretim uygulaması: kuruş sözleşmesi nöbetçileri ────────────────────
+
+
+async def test_kupon_kargo_ve_kurus_matematigi_parcali_iadede_de_tutar(
+    fab, provider
+):
+    """Kupon + kargo + yuvarlama artığı: parçalı iadenin toplamı ödenene EŞİT.
+
+    R-14 yalnız kupon artığını ölçüyordu. Burada üç mekanizma AYNI siparişte
+    çalışır ve birbirini bozmamak zorundadır:
+
+    * kupon payı satırlara kuruşu kuruşuna dağıtılır (en-büyük-artık),
+    * kargo yalnız siparişi BOŞALTAN talebe eklenir (m.12) — parçalara
+      bölünmez, iki kez de verilmez,
+    * her talebin kalem dökümü kendi tutarıyla tutar
+      (`refund_amount = Σ items.amount + shipping_refund`).
+
+    3 × 100 TL + 10 TL kupon + 29,90 TL kargo → total 319,90.
+    """
+    pids = [await fab.urun(stock=5, price="100.00") for _ in range(3)]
+    kupon = await fab.kupon(discount_type="FIXED", value="10.00")
+    sip = await fab.siparis(
+        items=[(p, 1) for p in pids],
+        discount="10.00",
+        shipping="29.90",
+        coupon_id=kupon,
+        coupon_redeemed=True,
+    )
+    assert sip.total == Decimal("319.90")
+
+    for item_id in sip.item_ids:
+        await _talep(
+            sip.order_id,
+            tip="CAYMA",
+            items=[OrderReturnItemIn(order_item_id=item_id, quantity=1)],
+        )
+
+    talepler = await fab.iade_satirlari(sip.order_id)
+    toplam = sum(t["refund_amount"] for t in talepler)
+    assert toplam == sip.total, (
+        f"parçalı iade toplamı {toplam} TL — ödenen {sip.total} TL olmalıydı"
+    )
+    assert sum(t for _, t in provider.refund_calls) == sip.total
+
+    # Kargo TAM BİR KEZ ve yalnız siparişi boşaltan (son) talepte.
+    kargolar = [t["shipping_refund"] for t in talepler]
+    assert sum(kargolar) == Decimal("29.90"), f"kargo payları: {kargolar}"
+    assert kargolar[-1] == Decimal("29.90") and set(kargolar[:-1]) == {Decimal("0.00")}
+
+    # Dekont özdeşliği her talepte ayrı ayrı geçerli.
+    for t in talepler:
+        kalemler = await fab.iade_kalemleri(t["id"])
+        assert sum(k["amount"] for k in kalemler) + t["shipping_refund"] == t[
+            "refund_amount"
+        ], f"talep {t['id']} dökümü tutarıyla tutmuyor"
+
+    # is_partial yalnız SONUNCUDA False → kupon tam bir kez serbest kalır.
+    assert [t["is_partial"] for t in talepler] == [True, True, False]
+    assert (await fab.kupon_satiri(kupon))["used_count"] == 0
+    o = await fab.siparis_satiri(sip.order_id)
+    assert o["refunded_amount"] == sip.total and o["payment_status"] == "REFUNDED"
+
+
+async def test_satir_ici_kismi_adetlerde_kupon_payi_kaybolmaz(fab, provider):
+    """Aynı satırdan parça parça iade: kupon payı ne kaybolur ne iki kez verilir.
+
+    3 adetlik tek kalem + 10 TL kupon (total 290). Adetler 1+1+1 iade edilirse
+    satır payı (10,00) tam olarak dağıtılmalı; naif `round(pay*k/n)` yaklaşımı
+    3 × 3,33 = 9,99 üretip müşteriye 1 kuruş fazla öderdi.
+    """
+    pid = await fab.urun(stock=10, price="100.00")
+    kupon = await fab.kupon(discount_type="FIXED", value="10.00")
+    sip = await fab.siparis(
+        items=[(pid, 3)], discount="10.00", coupon_id=kupon, coupon_redeemed=True
+    )
+    assert sip.total == Decimal("290.00")
+
+    for _ in range(3):
+        await _talep(
+            sip.order_id,
+            tip="CAYMA",
+            items=[OrderReturnItemIn(order_item_id=sip.item_ids[0], quantity=1)],
+        )
+
+    talepler = await fab.iade_satirlari(sip.order_id)
+    assert sum(t["refund_amount"] for t in talepler) == sip.total
+    assert sum(t for _, t in provider.refund_calls) == sip.total
+    assert (await fab.siparis_satiri(sip.order_id))["refunded_amount"] == sip.total
+
+
+async def test_tek_seferlik_tam_iade_parcali_toplamla_ayni_kurusu_uretir(
+    fab, provider
+):
+    """M5: aynı sepet, iki farklı iade stratejisi → AYNI kuruş.
+
+    Bu, R-14'ün karşı yakasıdır: parçalı toplamın doğru olduğunu bilmek
+    yetmez, tek seferlik eşdeğerinin de aynı sayıyı ürettiği gösterilmelidir
+    (yoksa "ikisi de yanlış ama tutarlı" durumu fark edilmez).
+    """
+    async def _sepet():
+        pids = [await fab.urun(stock=5, price="100.00") for _ in range(3)]
+        kupon = await fab.kupon(discount_type="FIXED", value="20.00")
+        return await fab.siparis(
+            items=[(p, 1) for p in pids],
+            discount="20.00",
+            shipping="19.90",
+            coupon_id=kupon,
+            coupon_redeemed=True,
+        )
+
+    parcali = await _sepet()
+    for item_id in parcali.item_ids:
+        await _talep(
+            parcali.order_id,
+            tip="CAYMA",
+            items=[OrderReturnItemIn(order_item_id=item_id, quantity=1)],
+        )
+    parcali_toplam = sum(
+        t["refund_amount"] for t in await fab.iade_satirlari(parcali.order_id)
+    )
+
+    tek = await _sepet()
+    await _talep(tek.order_id, tip="CAYMA", items=None)
+    tek_toplam = (await fab.iade_satirlari(tek.order_id))[0]["refund_amount"]
+
+    assert parcali_toplam == tek_toplam == tek.total, (
+        f"parçalı {parcali_toplam} ≠ tek seferlik {tek_toplam} (ödenen {tek.total})"
+    )

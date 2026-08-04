@@ -10,6 +10,8 @@ işaretlidir ve bugün FAIL etmeleri beklenir.
 """
 from __future__ import annotations
 
+from decimal import Decimal
+
 import httpx
 import pytest
 from sqlalchemy import text
@@ -102,11 +104,34 @@ async def test_g10_gecerli_tam_iade_uctan_uca(fab, provider, client):
 
     assert len(provider.refund_calls) == 1
     assert provider.refund_calls[0][1] == sip.total
-    assert len(await fab.hareketler(pid, "RETURN")) == 1
+    # PK-α: para iadesi stok üretmez; mal ancak depo kabulüyle döner.
+    assert await fab.hareketler(pid, "RETURN") == []
     o = await fab.siparis_satiri(sip.order_id)
     assert o["payment_status"] == "REFUNDED"
     assert o["refunded_amount"] == sip.total
     assert await fab.bildirim_sayisi(cid, icinde="iade edildi") == 1
+
+    # Depo kabulü de GERÇEK HTTP ucundan geçer (yetki + gövde doğrulaması dahil).
+    _, mhead = await fab.admin(izinler=["returns.view", "returns.manage"])
+    kalemler = await fab.iade_kalemleri(rid)
+    kabul = await client.post(
+        f"{KOK}/admin/returns/{rid}/receive",
+        json={
+            "lines": [
+                {
+                    "return_item_id": k["id"],
+                    "accepted_quantity": k["quantity"],
+                    "damaged_quantity": 0,
+                }
+                for k in kalemler
+            ]
+        },
+        headers=mhead,
+    )
+    assert kabul.status_code == 200, kabul.text
+    assert kabul.json()["received_at"] is not None
+    assert len(await fab.hareketler(pid, "RETURN")) == 1
+    assert await fab.stok(pid) == 10
 
     _, ahead = await fab.admin(izinler=["returns.view"])
     liste = await client.get(f"{KOK}/admin/returns", headers=ahead)
@@ -119,13 +144,21 @@ async def test_g10_gecerli_tam_iade_uctan_uca(fab, provider, client):
 async def test_r18_ayipli_onayin_basarili_yolu_500_vermeden_tamamlanmali(
     fab, provider, client
 ):
-    """R-18 · KNOWN-RED(İP2A-18): yetkili adminin AYIPLI iade onayı 200 dönmeli
-    ve para çıktıysa stok + finalize + bildirim de tamamlanmalıdır.
+    """R-18 · İP2A-18: yetkili adminin AYIPLI iade onayı 500 vermeden tamamlanır
+    ve **para emri çıktıysa bütün zorunlu yan etkiler de tamamlanır**.
 
-    Bugün (bu checkpoint'in bulduğu yeni üretim hatası): sağlayıcıdan para
-    İSTENDİKTEN sonra `_restock_items` MissingGreenlet ile patlar → HTTP 500.
-    Para çıkmış, stok dönmemiş, talep REFUNDING'de sarkık, müşteri habersiz;
-    reconciler da (İP2A-01/02) bu kaydı kurtaramaz.
+    Kusur (bu checkpoint'in bulduğu üretim hatası): sağlayıcıdan para
+    İSTENDİKTEN sonra `_restock_items`, `_lock_order`'ın refresh'iyle expire
+    olmuş `ret.items` koleksiyonuna dokunuyor → async oturumda lazy-load →
+    `MissingGreenlet` → HTTP 500. Para çıkmış, stok dönmemiş, talep
+    REFUNDING'de sarkık, müşteri habersiz; İP2A-02 ile birleşince reconciler
+    da kurtaramıyordu.
+
+    ## Bu test neden genişletildi (bağımsız denetimin P2-2 borcu)
+
+    Tarihsel hâli YALNIZ `kod == 200` ölçüyordu. 200 dönen ama parayı yarım
+    bırakan bir uygulama da o testi geçerdi — yani nöbetçi, düzeltmenin
+    kanıtı değildi. Artık para emrinin bütün sonuçları tek tek ölçülüyor.
     """
     pid = await fab.urun(stock=10)
     cid, chead = await fab.musteri()
@@ -133,6 +166,7 @@ async def test_r18_ayipli_onayin_basarili_yolu_500_vermeden_tamamlanmali(
     r = await _musteri_talebi(client, fab, sip, chead, tip="AYIPLI")
     assert r.status_code == 201, r.text
     rid = r.json()["id"]
+    assert provider.refund_calls == [], "ön koşul: AYIPLI talep para çıkarmaz"
 
     _, ahead = await fab.admin(izinler=["returns.view", "returns.manage"])
     kod = await _post_500e_tolere(
@@ -148,6 +182,46 @@ async def test_r18_ayipli_onayin_basarili_yolu_500_vermeden_tamamlanmali(
         f"(provider çağrısı: {len(provider.refund_calls)}); stok geri konmadı, "
         "talep REFUNDING'de sarkık kaldı"
     )
+
+    # ── Para emri TAM BİR KEZ ve doğru referansla çıktı ──
+    assert len(provider.refund_calls) == 1
+    ref, tutar = provider.refund_calls[0]
+    assert tutar == sip.total
+    talep = (await fab.iade_satirlari(sip.order_id))[0]
+    assert ref == talep["provider_ref"] and ref is not None, (
+        "sağlayıcıya talebin KENDİ referansı gitmeli (İP2A-02)"
+    )
+
+    # ── Para emri çıktıysa finalize de tamamlandı ──
+    assert talep["status"] == "APPROVED"
+    assert talep["refund_status"] == "REFUNDED"
+    o = await fab.siparis_satiri(sip.order_id)
+    assert o["refunded_amount"] == sip.total
+    assert o["payment_status"] == "REFUNDED"
+    assert o["status"] == "REFUNDED"
+
+    # ── Bildirim + audit ──
+    assert await fab.bildirim_sayisi(cid, icinde="iade") == 1
+    assert await fab.audit_sayisi(
+        action="return.approve", target_type="order_return", target_id=rid
+    ) == 1
+
+    # ── PK-α: para yolu stok üretmez; kabul üretir ve TEKRARLAMAZ ──
+    assert await fab.hareketler(pid, "RETURN") == []
+    await fab.teslim_al(rid)
+    assert len(await fab.hareketler(pid, "RETURN")) == 1
+    await fab.teslim_al(rid)
+    assert len(await fab.hareketler(pid, "RETURN")) == 1
+
+    # ── Retry ikinci para emri üretmez ──
+    tekrar = await client.post(
+        f"{KOK}/admin/returns/{rid}/approve",
+        json={"admin_note": "yine"},
+        headers=ahead,
+    )
+    assert tekrar.status_code == 409
+    assert len(provider.refund_calls) == 1
+    assert await fab.bildirim_sayisi(cid, icinde="iade") == 1
 
 
 async def test_g11_eksik_izinli_admin_reddedilir(fab, provider, client):
@@ -306,8 +380,13 @@ async def test_r12_returns_yetkisi_olmayan_admin_teslim_edilmis_siparisi_iade_ed
     sip = await fab.siparis(items=[(pid, 2)])  # DELIVERED
     _, ahead = await fab.admin(izinler=["orders.view", "orders.manage"])
 
+    # Gövde ZORUNLUDUR (İP-2b R3: gerekçesiz para hareketi yok). Tarihsel test
+    # gövdesiz POST atıyordu ve 422 ölçüyordu — yani görev ayrılığı iddiası
+    # HİÇ SINANMIYORDU. Gerekçe verilerek uç gerçekten çalıştırılır.
     yanit = await client.post(
-        f"{KOK}/admin/orders/{sip.order_id}/refund", headers=ahead
+        f"{KOK}/admin/orders/{sip.order_id}/refund",
+        json={"reason": "musteri talebi"},
+        headers=ahead,
     )
 
     assert yanit.status_code in (403, 409), (
@@ -318,6 +397,12 @@ async def test_r12_returns_yetkisi_olmayan_admin_teslim_edilmis_siparisi_iade_ed
     assert provider.refund_calls == [], (
         "KNOWN-RED(İP2A-12): yetkisiz yoldan sağlayıcıya para emri gitti"
     )
+    # Hiçbir yan etki: para, stok ve durum dokunulmamış olmalı.
+    o = await fab.siparis_satiri(sip.order_id)
+    assert (o["status"], o["payment_status"]) == ("DELIVERED", "PAID")
+    assert o["refunded_amount"] == Decimal("0.00")
+    assert await fab.hareketler(pid, "RETURN") == []
+    assert await fab.hareketler(pid, "SALE_CANCEL") == []
 
 
 async def test_r13_onay_musteriye_tek_bildirim_uretmeli(fab, provider, client):

@@ -368,6 +368,52 @@ class IadeFabrikasi:
             await s.commit()
         return rid
 
+    # ── Fiziksel kabul (PK-α) ────────────────────────────────────────────────
+
+    async def teslim_al(
+        self,
+        return_id: int,
+        *,
+        admin_id: int | None = None,
+        hasarli: dict[int, int] | None = None,
+    ) -> None:
+        """Depo kabulü: iade satırlarının tamamını teslim alır (PK-α).
+
+        Stok artık para iadesinde DEĞİL burada döner; iade akışını uçtan uca
+        kuran her test bu adımı açıkça geçmek zorundadır — "para döndü, stok da
+        dönmüştür" varsayımı tam olarak İP2A-10'du.
+
+        ``hasarli``: ``{order_return_items.id: hasarlı_adet}``. Verilmeyen
+        satırların tamamı SAĞLAM kabul edilir.
+        """
+        from services import order_service
+
+        if admin_id is None:
+            admin_id, _ = await self.admin(izinler=["returns.view", "returns.manage"])
+        hasarli = hasarli or {}
+        async with AsyncSessionLocal() as s:
+            admin = await s.get(Admin, admin_id)
+            satirlar = (
+                await s.execute(
+                    text(
+                        "SELECT id, quantity FROM order_return_items "
+                        "WHERE return_id = :r ORDER BY id"
+                    ),
+                    {"r": return_id},
+                )
+            ).all()
+            lines = [
+                order_service.ReceiveLine(
+                    int(rid),
+                    int(qty) - int(hasarli.get(int(rid), 0)),
+                    int(hasarli.get(int(rid), 0)),
+                )
+                for rid, qty in satirlar
+            ]
+            await order_service.receive_return(
+                s, return_id, lines=lines, actor=admin
+            )
+
     # ── Okuma yardımcıları (ham SQL — ORM kimlik haritasını atlar) ───────────
 
     async def stok(self, product_id: int) -> int | None:
@@ -420,7 +466,8 @@ class IadeFabrikasi:
                 await s.execute(
                     text(
                         "SELECT id, status, type, refund_status, refund_amount, "
-                        "provider_ref, refund_attempts, is_partial "
+                        "provider_ref, refund_attempts, is_partial, "
+                        "shipping_refund, received_at "
                         "FROM order_returns WHERE order_id = :i ORDER BY id"
                     ),
                     {"i": order_id},
@@ -436,6 +483,33 @@ class IadeFabrikasi:
                     "provider_ref": r[5],
                     "refund_attempts": r[6],
                     "is_partial": r[7],
+                    "shipping_refund": Decimal(str(r[8])),
+                    "received_at": r[9],
+                }
+                for r in rows
+            ]
+
+    async def iade_kalemleri(self, return_id: int) -> list[dict]:
+        """İade satırları — tutar ve fiziksel kabul sonucu."""
+        async with AsyncSessionLocal() as s:
+            rows = (
+                await s.execute(
+                    text(
+                        "SELECT id, order_item_id, quantity, amount, "
+                        "accepted_quantity, damaged_quantity "
+                        "FROM order_return_items WHERE return_id = :r ORDER BY id"
+                    ),
+                    {"r": return_id},
+                )
+            ).all()
+            return [
+                {
+                    "id": r[0],
+                    "order_item_id": r[1],
+                    "quantity": r[2],
+                    "amount": Decimal(str(r[3])),
+                    "accepted_quantity": r[4],
+                    "damaged_quantity": r[5],
                 }
                 for r in rows
             ]
@@ -536,6 +610,17 @@ class IadeFabrikasi:
                 )
                 await s.execute(
                     text("DELETE FROM coupon_redemptions WHERE order_id = ANY(:o)"),
+                    {"o": self.order_ids},
+                )
+                # MANUAL_REVIEW (PK-δ) yönetici bildirimleri TÜM adminlere
+                # gider — seed admin dahil. Fabrikanın kendi admin id'leriyle
+                # silmek yetmez; sipariş numarasıyla temizlenir.
+                await s.execute(
+                    text(
+                        "DELETE FROM notifications WHERE role_id = 1 AND EXISTS ("
+                        "  SELECT 1 FROM unnest(CAST(:o AS int[])) AS oid "
+                        "   WHERE message LIKE 'Sipariş #' || oid || ':%')"
+                    ),
                     {"o": self.order_ids},
                 )
                 await s.execute(

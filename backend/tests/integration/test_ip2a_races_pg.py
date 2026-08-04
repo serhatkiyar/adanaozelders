@@ -49,16 +49,13 @@ def _pg_code(exc: BaseException) -> str | None:
     return None
 
 
-def _yalniz_beklenenler(
-    sonuclar, *, izinli_http=(409, 502), ip2a18_tolere=False
-) -> list:
+def _yalniz_beklenenler(sonuclar, *, izinli_http=(409, 502)) -> list:
     """Kilit hatalarını açık mesajla düşür, beklenmeyen istisnayı yükselt.
 
-    ``ip2a18_tolere=True``: AYIPLI onayın başarılı yolu bugün üretimde
-    MissingGreenlet/500 verir (sözleşme İP2A-18, kırmızısı R-18). Approve
-    içeren yarış testleri, ölçtükleri iddia (claim tekliği, durum bütünlüğü)
-    bu bilinen hatadan bağımsız olduğu için onu AÇIKÇA tolere eder — başka
-    hiçbir istisna yutulmaz.
+    ⚠️ Buradaki ``ip2a18_tolere`` anahtarı KALDIRILDI. İP2A-18 (AYIPLI onayında
+    `MissingGreenlet`/500) kapatıldığı için o istisnayı tolere eden bir kapı
+    artık gerçek bir regresyonu sessizce yutardı: yarış testleri, para emri
+    verildikten sonraki çökmeyi de KIRMIZI görmek zorundadır.
     """
     temiz = []
     for r in sonuclar:
@@ -70,10 +67,13 @@ def _yalniz_beklenenler(
             pytest.fail(f"DEADLOCK (40P01) — kilit sırası ihlali: {r}", pytrace=False)
         if kod == LOCK_TIMEOUT:
             pytest.fail(f"KİLİT ZAMAN AŞIMI (55P03): {r}", pytrace=False)
+        if isinstance(r, MissingGreenlet):
+            pytest.fail(
+                f"MissingGreenlet — para emri sonrası async lazy-load (İP2A-18 "
+                f"regresyonu): {r}",
+                pytrace=False,
+            )
         if isinstance(r, HTTPException) and r.status_code in izinli_http:
-            temiz.append(r)
-            continue
-        if ip2a18_tolere and isinstance(r, MissingGreenlet):
             temiz.append(r)
             continue
         raise r
@@ -89,6 +89,60 @@ async def _bekle(kosul, *, mesaj: str, saniye: float = 5.0) -> None:
         await asyncio.sleep(0.02)
         kalan -= 0.02
     pytest.fail(f"beklenen ara durum oluşmadı: {mesaj}", pytrace=False)
+
+
+class SiralamaKapisi:
+    """İki transaction'ın buluşma anını ÖLÇEREK sabitler (tahmin etmeden).
+
+    ``_lock_order``'a takılır: davranışı değiştirmez, yalnız çağıranı kapıda
+    tutar ve "kaç taraf kapıya geldi" bilgisini test tarafına bildirir.
+
+    ## Neden `asyncio.sleep(0.1)` yetmiyordu (bağımsız denetimin P2-1 borcu)
+
+    Eski kurulum "0,1 sn'de her iki task da guard'ı okumuştur" diye BAHİS
+    oynuyordu. Bağımsız denetim, mutasyon provasında 5 turda 1 kez kaçırıldığını
+    ölçtü: yavaş bir turda ikinci task kapıya HİÇ gelmeden birinci tamamlanıyor,
+    yarış hiç kurulmuyor ve nöbetçi yanlış yeşil veriyordu. Artık ardışıklık
+    ölçülür — kapı, beklenen sayıda taraf gelene kadar AÇILMAZ ve gelmezse
+    test SÜRE AŞIMIYLA kırmızıya döner (sessiz atlama yok).
+    """
+
+    def __init__(self, beklenen: int) -> None:
+        self.beklenen = beklenen
+        self.gelen = 0
+        self._hepsi_geldi = asyncio.Event()
+        self._ac = asyncio.Event()
+
+    async def gecis(self) -> None:
+        self.gelen += 1
+        if self.gelen >= self.beklenen:
+            self._hepsi_geldi.set()
+        await self._ac.wait()
+
+    async def hepsini_bekle(self, *, saniye: float = 5.0) -> None:
+        try:
+            await asyncio.wait_for(self._hepsi_geldi.wait(), timeout=saniye)
+        except TimeoutError:
+            pytest.fail(
+                f"yarış kurulamadı: kapıya {self.gelen}/{self.beklenen} taraf "
+                "geldi — ardışıklık sağlanmadan ölçüm anlamsızdır",
+                pytrace=False,
+            )
+
+    def ac(self) -> None:
+        self._ac.set()
+
+
+def _kapiyi_tak(monkeypatch, kapi: SiralamaKapisi):
+    """``order_service._lock_order``'ı kapının arkasına alır."""
+    orijinal = order_service._lock_order
+
+    async def kapili_kilit(db, order):
+        await kapi.gecis()
+        return await orijinal(db, order)
+
+    monkeypatch.setattr(order_service, "_lock_order", kapili_kilit)
+    return orijinal
 
 
 async def _cayma(order_id: int):
@@ -129,14 +183,8 @@ async def test_g09_iki_admin_ayni_talebi_onaylarsa_tek_kazanan(
             db, order, "kusurlu", return_type="AYIPLI", items=None
         )
 
-    kapi = asyncio.Event()
-    orijinal_kilit = order_service._lock_order
-
-    async def kapili_kilit(db, order):
-        await kapi.wait()
-        return await orijinal_kilit(db, order)
-
-    monkeypatch.setattr(order_service, "_lock_order", kapili_kilit)
+    kapi = SiralamaKapisi(2)
+    _kapiyi_tak(monkeypatch, kapi)
 
     async def onayla(not_metni: str):
         async with AsyncSessionLocal() as db:
@@ -146,40 +194,59 @@ async def test_g09_iki_admin_ayni_talebi_onaylarsa_tek_kazanan(
 
     g1 = asyncio.create_task(onayla("admin-1"))
     g2 = asyncio.create_task(onayla("admin-2"))
-    await asyncio.sleep(0.1)  # her iki task _load_return'ü PENDING okudu
-    kapi.set()
+    # Her iki task da `_load_return`'ü PENDING okuyup kilit kapısına GELDİ —
+    # ölçüldü, tahmin edilmedi (bkz. SiralamaKapisi docstring'i, P2-1).
+    await kapi.hepsini_bekle()
+    kapi.ac()
     sonuclar = await asyncio.gather(g1, g2, return_exceptions=True)
 
-    # Kazanan taraf bugün İP2A-18 (AYIPLI onayında MissingGreenlet/500) yüzünden
-    # restock'ta düşer — o kusurun kırmızısı R-18'dir. Bu testin iddiası ondan
-    # bağımsızdır: claim (NONE→REFUNDING) TEK kazanan seçer → kaybeden 409 alır
-    # ve para tam bir kez çıkar.
-    temiz = _yalniz_beklenenler(sonuclar, ip2a18_tolere=True)
+    # Claim (talep durumu PENDING→APPROVED + para NONE→REFUNDING) TEK kazanan
+    # seçer → kaybeden 409 alır ve para tam bir kez çıkar.
+    temiz = _yalniz_beklenenler(sonuclar)
     hatalar = [r for r in temiz if isinstance(r, HTTPException)]
     assert len(hatalar) == 1 and hatalar[0].status_code == 409, (
-        "iki eşzamanlı onaydan tam biri 409 ile kaybetmeli"
+        f"iki eşzamanlı onaydan tam biri 409 ile kaybetmeli: {sonuclar}"
     )
     assert len(provider.refund_calls) == 1, "para tam bir kez çıkmalı"
-    assert len(await fab.hareketler(pid, "RETURN")) <= 1, (
-        "claim tekliği stokta da ikinci seti engellemeli "
-        "(bugün İP2A-18 yüzünden 0 set yazılıyor — o eksik R-18'in konusu)"
+    o = await fab.siparis_satiri(sip.order_id)
+    assert o["refunded_amount"] == sip.total, "kayıp/çift güncelleme olmamalı"
+    # PK-α: para yolu stok üretmez. Kabul TEK set üretir; claim tekliği
+    # sayesinde kaybeden taraf ikinci seti yazamaz.
+    assert await fab.hareketler(pid, "RETURN") == []
+    await fab.teslim_al(talep.id)
+    assert len(await fab.hareketler(pid, "RETURN")) == 1, (
+        "claim tekliği stokta da ikinci seti engellemeli"
     )
+    assert await fab.audit_sayisi(
+        action="return.approve", target_type="order_return", target_id=talep.id
+    ) == 1, "kaybeden onay da audit satırı yazdı"
 
 
 # ── KIRMIZI KABUL TESTLERİ ───────────────────────────────────────────────────
 
 
 async def test_r04a_es_zamanli_iki_cayma_toplam_tavani_asamaz(fab, provider):
-    """R-04a · KNOWN-RED(İP2A-04): aynı siparişe eşzamanlı iki CAYMA talebi
-    birlikte, fiilen ödenenden fazlasını iade ettiremez.
+    """R-04a · İP2A-04: aynı siparişe eşzamanlı iki CAYMA talebi birlikte,
+    fiilen ödenenden fazlasını iade ettiremez.
 
-    Bugün: `uq_order_returns_open` yalnız PENDING satırları kapsar (CAYMA
-    APPROVED doğar), `request_return` tavanı kilitsiz okur → ilk talep
-    sağlayıcıda beklerken açılan ikinci talep de tavanı 0 sanıp tam tutarı
-    ister; 100 TL'lik sipariş sağlayıcıya 200 TL iade emri üretir.
+    Kusur şuydu: `uq_order_returns_open` yalnız PENDING satırları kapsar (CAYMA
+    APPROVED doğuyordu), `request_return` tavanı kilitsiz ve `refunded_amount`
+    üzerinden okuyordu → ilk talep sağlayıcıda beklerken açılan ikinci talep de
+    tavanı 0 sanıp tam tutarı istiyor, 100 TL'lik sipariş sağlayıcıya 200 TL
+    iade emri üretiyordu.
+
+    ## Ara adım neden değişti (assertion gevşetmesi DEĞİL)
+
+    Tarihsel kurulum, ikinci talebin kabul edilmesini bir ÖN KOŞUL olarak
+    bekliyordu (`"ikinci talep de kabul edilmeli (kusurun kendisi)"`). Kusur
+    kapandığında bu bekleme artık gerçekleşemez: tavan `refund_reserved`
+    üzerinden ve sipariş kilidi altında okunduğu için ikinci talep DAHA
+    AÇILMADAN 409 alır. Ölçülen iddia (M1: toplam ≤ ödenen) değişmedi; test
+    ayrıca "kaybeden hiçbir yan etki üretmez" iddiasıyla GÜÇLENDİ.
     """
     pid = await fab.urun(stock=10)
     sip = await fab.siparis(items=[(pid, 1)])  # total 100
+    cid = sip.client_id
     provider.refund_gate = asyncio.Event()
 
     t1 = asyncio.create_task(_cayma(sip.order_id))
@@ -187,23 +254,38 @@ async def test_r04a_es_zamanli_iki_cayma_toplam_tavani_asamaz(fab, provider):
         lambda: _hazir(provider, 1),
         mesaj="ilk talep sağlayıcı çağrısına ulaşmalı",
     )
-    # İlk talep REFUNDING'de asılıyken ikinci talep kapıdan girer.
+    # İlk talep REFUNDING'de asılıyken ikinci talep kapıdan girmeye çalışır.
     t2 = asyncio.create_task(_cayma(sip.order_id))
 
-    async def _iki_talep_var() -> bool:
-        return len(await fab.iade_satirlari(sip.order_id)) >= 2
+    async def _ikinci_sonuclandi() -> bool:
+        return t2.done()
 
-    await _bekle(_iki_talep_var, mesaj="ikinci talep de kabul edilmeli (kusurun kendisi)")
+    await _bekle(_ikinci_sonuclandi, mesaj="ikinci talep sonuçlanmalı")
     provider.refund_gate.set()
     sonuclar = await asyncio.gather(t1, t2, return_exceptions=True)
-    _yalniz_beklenenler(sonuclar)
+    temiz = _yalniz_beklenenler(sonuclar)
 
     toplam = sum(a for _, a in provider.refund_calls)
     assert toplam <= sip.total, (
-        f"KNOWN-RED(İP2A-04): sağlayıcıya giden iade toplamı {toplam} TL — "
-        f"ödenen {sip.total} TL; eşzamanlı CAYMA talepleri kümülatif tavanı "
-        "deldi (PENDING-only unique + kilitsiz tavan okuması)"
+        f"İP2A-04: sağlayıcıya giden iade toplamı {toplam} TL — ödenen "
+        f"{sip.total} TL; eşzamanlı CAYMA talepleri kümülatif tavanı deldi"
     )
+    # Tam bir kazanan: biri parayı alır, diğeri 409 ile hiçbir iz bırakmaz.
+    hatalar = [r for r in temiz if isinstance(r, HTTPException)]
+    assert len(hatalar) == 1 and hatalar[0].status_code == 409, (
+        f"iki eşzamanlı CAYMA'dan tam biri kaybetmeli, görülen: {sonuclar}"
+    )
+    assert len(provider.refund_calls) == 1, "sağlayıcıya tam bir çağrı gitmeli"
+    o = await fab.siparis_satiri(sip.order_id)
+    assert o["refunded_amount"] == sip.total
+    assert await fab.bildirim_sayisi(cid, icinde="iade edildi") == 1, (
+        "kaybeden taraf da müşteriye 'ödemen iade edildi' dedi (A2 ihlali)"
+    )
+    parali = [
+        t for t in await fab.iade_satirlari(sip.order_id)
+        if t["refund_status"] == "REFUNDED"
+    ]
+    assert len(parali) == 1, f"tek talep para almalı, görülen: {parali}"
 
 
 def _hazir(provider, n: int):
@@ -346,33 +428,26 @@ async def test_r07_reject_uzerine_approve_yazamaz(fab, provider, monkeypatch):
             db, order, "kusurlu", return_type="AYIPLI", items=None
         )
 
-    kapi = asyncio.Event()
-    orijinal_kilit = order_service._lock_order
-
-    async def kapili_kilit(db, order):
-        await kapi.wait()
-        return await orijinal_kilit(db, order)
-
-    monkeypatch.setattr(order_service, "_lock_order", kapili_kilit)
+    kapi = SiralamaKapisi(1)
+    _kapiyi_tak(monkeypatch, kapi)
 
     async def onayla():
         async with AsyncSessionLocal() as db:
             return await order_service.approve_return(db, talep.id, admin_note="onay")
 
     t1 = asyncio.create_task(onayla())
-    await asyncio.sleep(0.1)  # approve guard'ı PENDING okudu, kilit kapısında
+    # Approve guard'ı talebi PENDING okudu ve kilit kapısına GELDİ — ölçüldü,
+    # `sleep(0.1)` ile tahmin edilmedi (P2-1).
+    await kapi.hepsini_bekle()
 
-    # Reject _lock_order kullanmaz (kusurun parçası) → kapıdan etkilenmez.
+    # Reject `_lock_order` kullanmaz → kapıdan etkilenmez ve araya girer.
     async with AsyncSessionLocal() as db:
         await order_service.reject_return(db, talep.id, admin_note="kanıt yetersiz")
     assert (await fab.iade_satirlari(sip.order_id))[0]["status"] == "REJECTED"
 
-    kapi.set()
+    kapi.ac()
     sonuclar = await asyncio.gather(t1, return_exceptions=True)
-    # Approve tarafı bugün ayrıca İP2A-18 (restock'ta MissingGreenlet) ile
-    # düşer — bu testin iddiası ondan önce gerçekleşen durum ezmesi ve para
-    # çıkışıdır; İP2A-18'in kırmızısı R-18'dir.
-    _yalniz_beklenenler(sonuclar, ip2a18_tolere=True)
+    _yalniz_beklenenler(sonuclar)
 
     satir = (await fab.iade_satirlari(sip.order_id))[0]
     assert satir["status"] == "REJECTED", (
@@ -380,6 +455,153 @@ async def test_r07_reject_uzerine_approve_yazamaz(fab, provider, monkeypatch):
         f"'{satir['status']}' yazdı — talep durumu için atomik claim yok, "
         "_settle_return koşulsuz APPROVED atıyor"
     )
+    assert satir["refund_status"] == "NONE", "reddedilen talep para claim'i almamalı"
     assert provider.refund_calls == [], (
         "KNOWN-RED(İP2A-07): reddedilmiş talep için sağlayıcıya para emri gitti"
+    )
+    o = await fab.siparis_satiri(sip.order_id)
+    assert o["refunded_amount"] == Decimal("0.00")
+    assert await fab.hareketler(pid, "RETURN") == []
+    # Kaybeden approve, karar audit'i de yazmamalı (izde iki karar görünemez).
+    assert await fab.audit_sayisi(
+        action="return.approve", target_type="order_return", target_id=talep.id
+    ) == 0
+    assert await fab.audit_sayisi(
+        action="return.reject", target_type="order_return", target_id=talep.id
+    ) == 1
+
+
+# ── İP-2a üretim uygulaması: ek yarış/sıralama nöbetçileri ───────────────────
+
+
+async def test_kismi_ve_tam_iade_iki_siralamada_da_tavani_korur(fab, provider):
+    """Kısmi ↔ tam iade, HANGİ SIRAYLA gelirse gelsin ödenenden fazlasını
+    iade ettiremez (M1).
+
+    Tek sıralamayı ölçmek yeterli değildir: tavan `refund_reserved` üzerinden
+    tutuluyorsa iki sıralama da aynı sonucu vermek zorundadır. "Önce tam sonra
+    kısmi" yolunda ikinci talep hiç açılamaz; "önce kısmi sonra tam" yolunda
+    ikincisi yalnız KALANI ister.
+    """
+    # (a) önce kısmi, sonra tam
+    pid = await fab.urun(stock=10)
+    a = await fab.siparis(items=[(pid, 3)], status="SHIPPED")  # total 300
+    async with AsyncSessionLocal() as db:
+        order = await order_service._load_full(db, a.order_id)
+        await order_service.request_return(
+            db, order, "", return_type="CAYMA",
+            items=[OrderReturnItemIn(order_item_id=a.item_ids[0], quantity=1)],
+        )
+    async with AsyncSessionLocal() as db:
+        await order_service.refund_order(db, a.order_id, reason="kalan iade")
+    assert sum(t for _, t in provider.refund_calls) == a.total
+    assert (await fab.siparis_satiri(a.order_id))["refunded_amount"] == a.total
+
+    # (b) önce tam, sonra kısmi
+    provider.refund_calls.clear()
+    pid2 = await fab.urun(stock=10)
+    b = await fab.siparis(items=[(pid2, 3)], status="SHIPPED")
+    async with AsyncSessionLocal() as db:
+        await order_service.refund_order(db, b.order_id, reason="tam iade")
+    with pytest.raises(HTTPException) as exc:
+        async with AsyncSessionLocal() as db:
+            order = await order_service._load_full(db, b.order_id)
+            await order_service.request_return(
+                db, order, "", return_type="CAYMA",
+                items=[OrderReturnItemIn(order_item_id=b.item_ids[0], quantity=1)],
+            )
+    assert exc.value.status_code == 409
+    assert sum(t for _, t in provider.refund_calls) == b.total, (
+        "tam iadeden sonra açılan kısmi talep ikinci para emri üretti"
+    )
+
+
+async def test_ardisik_iki_kismi_iade_kalem_adedi_ve_tavani_asamaz(fab, provider):
+    """Ardışık kısmi iadeler kümülatif kalem-adedini ve para tavanını korur.
+
+    R-04b eşzamanlı yolu ölçer; bu nöbetçi ARDIŞIK yolu ölçer — kayıp
+    güncelleme olmasa bile kümülatif hesap bayat okunursa aynı kitap iki kez
+    iade edilebilirdi (İP2A-11).
+    """
+    pid = await fab.urun(stock=10, price="100.00")
+    sip = await fab.siparis(items=[(pid, 2)])  # total 200
+    async with AsyncSessionLocal() as db:
+        order = await order_service._load_full(db, sip.order_id)
+        await order_service.request_return(
+            db, order, "", return_type="CAYMA",
+            items=[OrderReturnItemIn(order_item_id=sip.item_ids[0], quantity=1)],
+        )
+    async with AsyncSessionLocal() as db:
+        order = await order_service._load_full(db, sip.order_id)
+        await order_service.request_return(
+            db, order, "", return_type="CAYMA",
+            items=[OrderReturnItemIn(order_item_id=sip.item_ids[0], quantity=1)],
+        )
+    assert sum(t for _, t in provider.refund_calls) == Decimal("200.00")
+    assert (await fab.siparis_satiri(sip.order_id))["refunded_amount"] == Decimal("200.00")
+
+    # Üçüncü talep: kalemde iade hakkı kalmadı.
+    with pytest.raises(HTTPException) as exc:
+        async with AsyncSessionLocal() as db:
+            order = await order_service._load_full(db, sip.order_id)
+            await order_service.request_return(
+                db, order, "", return_type="CAYMA",
+                items=[OrderReturnItemIn(order_item_id=sip.item_ids[0], quantity=1)],
+            )
+    assert exc.value.status_code == 409
+    assert len(provider.refund_calls) == 2
+
+
+async def test_reconciler_bir_kaydin_hatasinda_partiyi_dusurmez(
+    fab, provider, monkeypatch
+):
+    """Reconciler kayıt-başı izole çalışır: bir kaydın hatası diğerlerini
+    engellemez (R1).
+
+    Döngü korumasızken TEK bir kaydın beklenmeyen hatası partinin kalanını o
+    turda hiç işletmiyordu — sorunlu kayıt durdukça gerçek müşterilerin parası
+    hiçbir turda tamamlanmıyordu.
+    """
+    saglam, bozuk = [], None
+    for _ in range(3):
+        pid = await fab.urun(stock=5)
+        sip = await fab.siparis(items=[(pid, 1)])
+        provider.refund_result = False
+        with pytest.raises(HTTPException):
+            await _cayma(sip.order_id)
+        rid = (await fab.iade_satirlari(sip.order_id))[0]["id"]
+        saglam.append((sip, rid))
+    bozuk = saglam.pop(1)  # ortadaki kayıt patlatılacak
+
+    async with AsyncSessionLocal() as s:
+        await s.execute(
+            text(
+                "UPDATE order_returns SET refund_requested_at = "
+                "now() - interval '2 hours'"
+            )
+        )
+        await s.commit()
+
+    provider.refund_result = True
+    gercek_refund = provider.refund
+
+    async def patlayan_refund(*, provider_ref, amount):
+        satirlar = await fab.iade_satirlari(bozuk[0].order_id)
+        if satirlar and provider_ref == satirlar[0]["provider_ref"]:
+            raise RuntimeError("sağlayıcı patladı (test)")
+        return await gercek_refund(provider_ref=provider_ref, amount=amount)
+
+    monkeypatch.setattr(provider, "refund", patlayan_refund)
+    async with AsyncSessionLocal() as s:
+        await escrow_reconciler.reconcile_refunding(s)
+
+    for sip, rid in saglam:
+        satir = (await fab.iade_satirlari(sip.order_id))[0]
+        assert satir["refund_status"] == "REFUNDED", (
+            f"sağlam kayıt #{rid} bozuk kayıt yüzünden işlenmedi"
+        )
+        assert (await fab.siparis_satiri(sip.order_id))["refunded_amount"] > 0
+    bozuk_satir = (await fab.iade_satirlari(bozuk[0].order_id))[0]
+    assert bozuk_satir["refund_status"] == "REFUNDING", (
+        "hatalı kayıt yanlışlıkla REFUNDED yazıldı"
     )

@@ -17,7 +17,7 @@ from sqlalchemy import text
 
 from core.database import AsyncSessionLocal
 from core.payments.base import RefundState
-from services import escrow_reconciler, order_service
+from services import escrow, escrow_reconciler, order_service
 from tests.integration.ip2a_factory import IadeFabrikasi
 
 
@@ -105,6 +105,9 @@ async def test_g02_sonuclanmis_talebe_ikinci_onay_noop(fab, provider):
     await _cayma_talebi(sip.order_id)
     talep = (await fab.iade_satirlari(sip.order_id))[0]
     assert talep["refund_status"] == "REFUNDED"  # ön koşul: iade tamamlandı
+    # PK-α: stok fiziksel kabulde döner — nöbetçinin ölçtüğü "ikinci hareket
+    # üretilemez" iddiası için önce MEŞRU birinci hareket kurulur.
+    await fab.teslim_al(talep["id"])
 
     with pytest.raises(HTTPException) as exc:
         async with AsyncSessionLocal() as db:
@@ -121,21 +124,31 @@ async def test_g02_sonuclanmis_talebe_ikinci_onay_noop(fab, provider):
 
 
 async def test_r01a_reconciler_retry_stogu_geri_koymali(fab, provider):
-    """R-01a · KNOWN-RED(İP2A-01): reconciler RETRY ile parayı tamamladığında
-    stok telafisi de uygulanmalıdır.
+    """R-01a · İP2A-01: reconciler RETRY ile parayı tamamladığında **para
+    telafilerinin tamamı** da uygulanmalıdır.
 
-    Bugün: `reconcile_refunding` yalnız `escrow.perform_refund/finalize_refund`
-    çağırır (escrow_reconciler.py:132); `_restock_items` hiç koşmaz. Para
-    provider'dan döner, kayıt REFUNDED olur, stok SONSUZA DEK eksik kalır —
-    ve sipariş artık hiçbir yoldan telafi edilemez.
+    Tarihsel hâli "stok geri konmalı" diyordu; PK-α kararıyla stok artık
+    reconciler'ın işi DEĞİLDİR (mal hâlâ müşterinin elinde olabilir).
+    Sözleşme buna göre güncellendi ve test GÜÇLENDİ: eskiden yalnız tek bir
+    defter hareketi sayılıyordu, şimdi reconciler'ın tamamlaması gereken HER
+    telafi tek tek ölçülüyor — ve stoğu geri koymadığı ayrıca doğrulanıyor.
+
+    Bugünkü kusur olsaydı: para provider'dan döner, kayıt REFUNDED olur,
+    `refunded_amount`/kupon/FSM/bildirim SONSUZA DEK eksik kalırdı — sipariş
+    artık PAID olmadığı için hiçbir uç telafiyi tamamlayamazdı.
     """
     pid = await fab.urun(stock=5)
-    sip = await fab.siparis(items=[(pid, 2)])  # stok 3
+    kupon = await fab.kupon(discount_type="FIXED", value="20.00")
+    sip = await fab.siparis(
+        items=[(pid, 2)], coupon_id=kupon, coupon_redeemed=True, discount="20.00"
+    )  # stok 3, total 180
+    cid = sip.client_id
     provider.refund_result = False
     with pytest.raises(HTTPException):
         await _cayma_talebi(sip.order_id)
     talep = (await fab.iade_satirlari(sip.order_id))[0]
     assert talep["refund_status"] == "REFUNDING"  # ön koşul: sarkan iade
+    assert await fab.bildirim_sayisi(cid, icinde="iade edildi") == 0
 
     provider.refund_result = True
     await _requested_at_geri_cek(talep["id"])
@@ -145,11 +158,32 @@ async def test_r01a_reconciler_retry_stogu_geri_koymali(fab, provider):
     assert son["refund_status"] == "REFUNDED", (
         "ön koşul: reconciler parayı tamamladı (fake provider kabul etti)"
     )
+    o = await fab.siparis_satiri(sip.order_id)
+    assert o["refunded_amount"] == sip.total, (
+        f"İP2A-01: para iade edildi ama refunded_amount={o['refunded_amount']} — "
+        "ciro raporu ve kümülatif tavan bayat kalır"
+    )
+    assert o["payment_status"] == "REFUNDED", (
+        "İP2A-01: tam iade tamamlandı ama sipariş ödeme durumu güncellenmedi"
+    )
+    assert o["status"] == "REFUNDED", (
+        "İP2A-01: sipariş yaşam döngüsü PAID'de asılı kaldı"
+    )
+    assert (await fab.kupon_satiri(kupon))["used_count"] == 0, (
+        "İP2A-01: tam iade tamamlandı ama kupon kullanımı geri açılmadı"
+    )
+    assert await fab.bildirim_sayisi(cid, icinde="iade edildi") == 1, (
+        "İP2A-01: reconciler iadeyi tamamladı ama müşteri hiç bilgilendirilmedi"
+    )
+    # PK-α: para yolu stok ÜRETMEZ — mal hâlâ müşteride olabilir.
+    assert await fab.hareketler(pid, "RETURN") == [], (
+        "PK-α: reconciler fiziksel kabul olmadan stok geri koyamaz"
+    )
+    assert await fab.stok(pid) == 3
+    await fab.teslim_al(son["id"])
     donen = await fab.hareketler(pid, "RETURN")
     assert len(donen) == 1 and donen[0][2] == 2, (
-        "KNOWN-RED(İP2A-01): para iade edildi ama stok geri konmadı — "
-        "reconciler telafileri (RETURN hareketi) uygulamıyor; 2 kitap defterden "
-        "kalıcı olarak kayıp"
+        "fiziksel kabul sonrası stok TAM BİR KEZ dönmeli"
     )
 
 
@@ -215,6 +249,51 @@ async def test_r02_reconciler_talebin_kendi_provider_refiyle_denemeli(fab, provi
         "yaptı — order_returns.provider_ref hiç doldurulmuyor; gerçek "
         "sağlayıcıda bu çağrı asla başarılı olamaz ve iade kalıcı sarkar"
     )
+    # Referans GERÇEK olmalı: talebe kaydedilen ve tahsilatın yapıldığı
+    # `paymentTransactionId`. "None değil" yetmez — yanlış ama dolu bir
+    # referans da iyzico'da reddedilir ve kusur görünmez kalırdı.
+    son = (await fab.iade_satirlari(sip.order_id))[0]
+    async with AsyncSessionLocal() as s:
+        siparis_ref = (
+            await s.execute(
+                text("SELECT provider_ref FROM orders WHERE id = :i"),
+                {"i": sip.order_id},
+            )
+        ).scalar_one()
+    assert son["provider_ref"] == siparis_ref, (
+        "talebin provider_ref'i tahsilatın referansı olmalı"
+    )
+    assert kullanilan_ref == siparis_ref, (
+        f"reconciler '{kullanilan_ref}' ile denedi, tahsilat referansı "
+        f"'{siparis_ref}'"
+    )
+    # Reconciler'ın pozitif-kanıt sorgusu da TAHSİLATIN conversationId'siyle
+    # yapılmalı (`order:{order_id}`); `return:{id}` iyzico'da hiç eşleşmez.
+    assert (
+        f"{escrow.RETURN_SPEC.reference_prefix}:{sip.order_id}" == f"order:{sip.order_id}"
+    )
+
+
+async def test_r02b_canli_iade_de_talebin_provider_refini_kaydeder(fab, provider):
+    """İP2A-02: `provider_ref` reconciler'a kalmadan, İLK denemede yazılır.
+
+    Sarkan kaydı kurtarma yeteneği niyetin commit'lendiği ANDA doğmalıdır:
+    süreç sağlayıcı çağrısında ölürse artık hiçbir yerden referans
+    türetilemez ve iade kalıcı olarak askıda kalır.
+    """
+    pid = await fab.urun(stock=5)
+    sip = await fab.siparis(items=[(pid, 1)])
+    provider.refund_result = False
+    with pytest.raises(HTTPException):
+        await _cayma_talebi(sip.order_id)
+
+    talep = (await fab.iade_satirlari(sip.order_id))[0]
+    assert talep["refund_status"] == "REFUNDING"
+    assert talep["provider_ref"], (
+        "sarkan iade niyeti provider_ref'siz commit edildi — reconciler bu "
+        "kaydı gerçek sağlayıcıda asla tamamlayamaz"
+    )
+    assert provider.refund_calls[0][0] == talep["provider_ref"]
 
 
 async def test_r03_kismi_sonrasi_tam_iade_odeneni_asamaz(fab, provider):
@@ -226,8 +305,11 @@ async def test_r03_kismi_sonrasi_tam_iade_odeneni_asamaz(fab, provider):
     100 TL'lik kısmi iade sonrası tam iade → 300 TL sipariş için sağlayıcıya
     toplam 400 TL gider.
     """
+    # Sipariş SHIPPED: teslim edilmiş sipariş `refund_order`'dan zaten 409 alır
+    # (İP-2b R4) ve tavan iddiası hiç ölçülmezdi — senaryo, ucun GERÇEKTEN
+    # koştuğu duruma kurulur.
     pid = await fab.urun(stock=10)
-    sip = await fab.siparis(items=[(pid, 3)])  # total 300
+    sip = await fab.siparis(items=[(pid, 3)], status="SHIPPED")  # total 300
     assert sip.total == Decimal("300.00")
 
     # Kısmi iade CAYMA yolundan (anında tamamlanır; AYIPLI onayı İP2A-18/500).
@@ -245,8 +327,9 @@ async def test_r03_kismi_sonrasi_tam_iade_odeneni_asamaz(fab, provider):
     assert sum(a for _, a in provider.refund_calls) == Decimal("100.00")
 
     # Admin, kalan malın da iadesi için siparişi komple iade eder.
+    # (`reason` ZORUNLUDUR — İP-2b R3; gerekçesiz para hareketi kabul edilmez.)
     async with AsyncSessionLocal() as db:
-        await order_service.refund_order(db, sip.order_id)
+        await order_service.refund_order(db, sip.order_id, reason="kalan mal iadesi")
 
     toplam = sum(a for _, a in provider.refund_calls)
     assert toplam <= sip.total, (
@@ -254,6 +337,13 @@ async def test_r03_kismi_sonrasi_tam_iade_odeneni_asamaz(fab, provider):
         f"fiilen ödenen {sip.total} TL'yi aşıyor; tam iade refunded_amount'a "
         "bakmadan order.total'ı ikinci kez gönderdi (çifte ödeme)"
     )
+    # Tavan yalnız aşılmamakla kalmaz, tam olarak ödenene kapanır: ikinci
+    # çağrı KALAN tutarı ister (300 − 100), fazlasını değil.
+    assert toplam == sip.total, f"kalan tutar eksik iade edildi: {toplam}"
+    assert provider.refund_calls[-1][1] == Decimal("200.00")
+    o = await fab.siparis_satiri(sip.order_id)
+    assert o["refunded_amount"] == sip.total
+    assert o["payment_status"] == "REFUNDED"
 
 
 async def test_r09_tam_iade_refunded_amount_yazmali(fab, provider):
@@ -265,10 +355,12 @@ async def test_r09_tam_iade_refunded_amount_yazmali(fab, provider):
     tam iadeleri hiç görmez ve migration 75676a6e5a81'in kurduğu invariant
     çalışma zamanında kırılır.
     """
+    # SHIPPED: `refund_order` teslim edilmiş siparişi RMA'ya yollar (İP-2b R4),
+    # bu yüzden uç ancak burada gerçekten koşar.
     pid = await fab.urun(stock=5)
-    sip = await fab.siparis(items=[(pid, 2)])
+    sip = await fab.siparis(items=[(pid, 2)], status="SHIPPED")
     async with AsyncSessionLocal() as db:
-        await order_service.refund_order(db, sip.order_id)
+        await order_service.refund_order(db, sip.order_id, reason="yonetici iadesi")
 
     o = await fab.siparis_satiri(sip.order_id)
     assert o["payment_status"] == "REFUNDED"  # ön koşul: iade tamamlandı
@@ -282,18 +374,23 @@ async def test_r09_tam_iade_refunded_amount_yazmali(fab, provider):
 async def test_r08c_uc_deneme_sonrasi_sarkan_iade_sorgulanabilir_iz_birakmali(
     fab, provider
 ):
-    """R-08c · KNOWN-RED(İP2A-01/PK-δ): `REFUND_MAX_ATTEMPTS` aşan iade sessiz
-    log'da kalamaz — veritabanında sorgulanabilir bir işaret taşımalıdır.
+    """R-08c · İP2A-01 / PK-δ: deneme tavanı dolan iade **MANUAL_REVIEW**'a geçer.
 
-    Bugün ALERT yalnız `logger.error`dur; kayıt süresiz REFUNDING'de kalır ve
-    hiçbir admin görünümü/kolonu onu listelemez. Bu test 'terminal iade ama
-    para hâlâ bekliyor' durumunun kaybolmadığını ölçer: deneme tavanı aşıldıktan
-    sonra kayıt ya kalıcı bir duruma (ör. MANUAL_REVIEW) geçmeli ya da en
-    azından REFUNDING'de olduğu deneme sayacından belli olmalıdır — sayaç artık
-    ARTMAMALI (reconciler döngüsü her turda sonsuz retry üretmemeli).
+    Onaylanan ürün kararı (PK-δ) tarihsel assert'i kesinleştirdi: eskiden
+    yalnız "REFUNDING olmasın" deniyordu — bu, kaydı REFUNDED yazan yanlış bir
+    uygulamayı da geçirirdi. Artık ölçülen sözleşme tam olarak şudur:
+
+    * durum **MANUAL_REVIEW** (sorgulanabilir, admin kuyruğunda görünür),
+    * **REFUNDED YAZILMAZ** (para gerçekten döndü mü bilinmiyor),
+    * otomatik reconciler kaydı bir daha SAĞLAYICIYA GÖNDERMEZ,
+    * "başarı" yan etkileri (stok, kupon, refunded_amount) oluşmaz,
+    * geçiş denetim izi bırakır.
     """
     pid = await fab.urun(stock=5)
-    sip = await fab.siparis(items=[(pid, 2)])
+    kupon = await fab.kupon(discount_type="FIXED", value="20.00")
+    sip = await fab.siparis(
+        items=[(pid, 2)], coupon_id=kupon, coupon_redeemed=True, discount="20.00"
+    )
     provider.refund_result = False
     with pytest.raises(HTTPException):
         await _cayma_talebi(sip.order_id)
@@ -303,13 +400,70 @@ async def test_r08c_uc_deneme_sonrasi_sarkan_iade_sorgulanabilir_iz_birakmali(
     for _ in range(5):
         await _requested_at_geri_cek(talep["id"])
         await _reconcile()
+    tavanda_cagri = len(provider.refund_calls)
 
     son = (await fab.iade_satirlari(sip.order_id))[0]
     assert son["refund_attempts"] >= 3, "ön koşul: deneme tavanına ulaşıldı"
-    assert son["refund_status"] != "REFUNDING", (
-        "KNOWN-RED(İP2A-01/PK-δ): tavan (REFUND_MAX_ATTEMPTS=3) aşıldıktan "
-        "sonra kayıt hâlâ REFUNDING'de — sarkan iade yalnız logger.error'a "
-        "düşüyor; veritabanında sorgulanabilir hiçbir kalıcı işaret "
-        "(MANUAL_REVIEW benzeri) yok, müşterinin parası sessizce askıda "
-        "(bkz. sözleşme §5/PK-δ)"
+    assert son["refund_status"] == "MANUAL_REVIEW", (
+        f"İP2A-01/PK-δ: tavan (REFUND_MAX_ATTEMPTS=3) aşıldıktan sonra durum "
+        f"'{son['refund_status']}' — kayıt sorgulanabilir bir manuel inceleme "
+        "durumuna geçmeliydi; sessiz logger.error müşterinin parasını askıda "
+        "bırakır (sözleşme §5/PK-δ)"
+    )
+
+    # Otomatik retry DURDU: yeni turlar sağlayıcıya bir daha gitmez.
+    for _ in range(2):
+        await _requested_at_geri_cek(talep["id"])
+        await _reconcile()
+    assert len(provider.refund_calls) == tavanda_cagri, (
+        "MANUAL_REVIEW kaydı otomatik retry'a yeniden dahil edildi"
+    )
+    en_son = (await fab.iade_satirlari(sip.order_id))[0]
+    assert en_son["refund_status"] == "MANUAL_REVIEW"
+    assert en_son["refund_attempts"] == son["refund_attempts"], (
+        "manuel incelemedeki kayıt deneme sayacını artırmaya devam ediyor"
+    )
+
+    # Hiçbir "başarı" yan etkisi yok.
+    o = await fab.siparis_satiri(sip.order_id)
+    assert o["payment_status"] == "PAID" and o["refunded_amount"] == Decimal("0.00")
+    assert await fab.hareketler(pid, "RETURN") == []
+    assert (await fab.kupon_satiri(kupon))["used_count"] == 1
+    assert await fab.audit_sayisi(
+        action="refund.manual_review",
+        target_type="order_return",
+        target_id=talep["id"],
+    ) == 1, "manuel incelemeye geçiş denetim izi bırakmalı (tam bir kez)"
+
+
+async def test_r08d_manual_review_admin_kuyrugunda_listelenir(fab, provider):
+    """PK-δ: manuel inceleme kaydı admin kuyruğundan SORGULANABİLİR olmalı.
+
+    Kalıcı bir durum yazmak tek başına yetmez: kimsenin bakamadığı bir durum,
+    sessiz log'dan yalnız biraz iyidir. Kuyruk mevcut admin iade listesinin
+    `refund_status` filtresidir — ikinci bir admin sistemi kurulmadı.
+    """
+    pid = await fab.urun(stock=5)
+    sip = await fab.siparis(items=[(pid, 2)])
+    provider.refund_result = False
+    with pytest.raises(HTTPException):
+        await _cayma_talebi(sip.order_id)
+    talep = (await fab.iade_satirlari(sip.order_id))[0]
+    for _ in range(4):
+        await _requested_at_geri_cek(talep["id"])
+        await _reconcile()
+    assert (await fab.iade_satirlari(sip.order_id))[0]["refund_status"] == "MANUAL_REVIEW"
+
+    async with AsyncSessionLocal() as db:
+        kuyruk = await order_service.list_returns_admin(
+            db, refund_status_filter="MANUAL_REVIEW"
+        )
+        temiz = await order_service.list_returns_admin(
+            db, refund_status_filter="REFUNDED"
+        )
+    assert any(r.id == talep["id"] for r in kuyruk), (
+        "manuel inceleme kaydı MANUAL_REVIEW kuyruğunda görünmüyor"
+    )
+    assert all(r.id != talep["id"] for r in temiz), (
+        "filtre çalışmıyor: askıdaki kayıt 'iade edildi' kuyruğuna sızdı"
     )
