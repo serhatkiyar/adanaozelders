@@ -432,6 +432,225 @@ MUTASYONLAR: list[Mutasyon] = [
         """    booking.status = BookingStatus.PENDING  # MUTASYON: eski doğrudan atama""",
         ("tests/integration/test_ip1a_races_pg.py",),
     ),
+    # ── İP-2a: mağaza iade para güvenliği (İP2A-01…18 + PK-α/PK-δ) ──────────
+    #
+    # Katalogda mağaza İADE yolunda tanımlı tek bir mutasyon yoktu: İP-1a bölümü
+    # ders emanetini, envanter bölümü defteri sökerdi ama "iade parası + fiziksel
+    # kabul + manuel inceleme" üçlüsü hiç sınanmamıştı
+    # (docs/ip2a-magaza-iade-sozlesme.md → Üretim uygulaması kapanışı).
+    Mutasyon(
+        "M23", "İP2A-09: refunded_amount artışı kaldırıldı (tek yazıcı ölü)",
+        "backend/services/order_service.py",
+        """    await db.execute(
+        text(
+            "UPDATE orders SET refunded_amount = LEAST(refunded_amount + :a, total), "
+            "refunded_at = COALESCE(refunded_at, now()) WHERE id = :i"
+        ),
+        {"a": amount, "i": order.id},
+    )""",
+        """    pass  # MUTASYON: iade cirosu ve kümülatif tavan güncellenmiyor""",
+        (
+            "tests/integration/test_ip2a_refund_two_phase_pg.py",
+            "tests/integration/test_ip2a_races_pg.py",
+        ),
+    ),
+    Mutasyon(
+        "M24", "İP2A-03/04: iade rezervasyon tavanı kaldırıldı",
+        "backend/services/order_service.py",
+        '            "WHERE id = :i AND refund_reserved + :a <= total"',
+        '            "WHERE id = :i"  # MUTASYON: tavan koşulu yok',
+        ("tests/integration/test_ip2a_races_pg.py",),
+    ),
+    Mutasyon(
+        "M25", "İP2A-02: talebin provider_ref'i yazılmıyor",
+        "backend/services/order_service.py",
+        """        provider_ref=order.provider_ref,
+        extra_values={"refund_amount": odenebilir},""",
+        """        extra_values={"refund_amount": odenebilir},  # MUTASYON: ref yok""",
+        (
+            "tests/integration/test_ip2a_refund_two_phase_pg.py",
+            "tests/integration/test_ip2a_admin_http_pg.py",
+        ),
+    ),
+    Mutasyon(
+        "M26", "İP2A-01: reconciler final telafileri atlanıyor",
+        "backend/services/escrow_reconciler.py",
+        """    await _telafileri_tamamla(db, obj, kaynak="retry")
+    return True""",
+        """    return True  # MUTASYON: para döndü, telafi kuyruğu koşmadı""",
+        ("tests/integration/test_ip2a_refund_two_phase_pg.py",),
+    ),
+    Mutasyon(
+        "M27", "İP2A-06: reconciler retry claim'i ikinci worker'a açıldı",
+        "backend/services/escrow_reconciler.py",
+        """        extra_where=(model.refund_requested_at <= now - min_age,),""",
+        """        extra_where=(),  # MUTASYON: karantina claim'e girmiyor""",
+        ("tests/integration/test_ip2a_races_pg.py",),
+    ),
+    Mutasyon(
+        "M28", "İP2A-06: uçuş-içi advisory nöbeti kaldırıldı",
+        "backend/services/escrow_reconciler.py",
+        """    if not await escrow.try_inflight_lock(db, spec, row_id):""",
+        """    if False:  # MUTASYON: canlı istekle yarışmaya açık""",
+        ("tests/integration/test_ip2a_races_pg.py",),
+    ),
+    Mutasyon(
+        "M29", "İP2A-05: tam iade hesabı yalnız SEÇİLEN satırlara indirildi",
+        "backend/services/order_service.py",
+        """    is_full = returns.covers_whole_order(
+        remaining_by_item=kalan_by_item, selection_by_item=secim_by_item
+    )""",
+        """    is_full = returns.is_full_return(  # MUTASYON: sipariş kapsamı yok
+        [
+            {"quantity": secim_by_item[i], "refund_quantity": secim_by_item[i]}
+            for i in secim_by_item
+        ]
+    )""",
+        ("tests/integration/test_ip2a_partial_math_pg.py",),
+    ),
+    Mutasyon(
+        "M30", "İP2A-14: yuvarlama artığının dağıtımı kaldırıldı",
+        "backend/services/returns.py",
+        """    for _, i in sorted(artik, key=lambda t: (-t[0], t[1]))[: max(kalan_kurus, 0)]:
+        taban[i] += CENT""",
+        """    pass  # MUTASYON: artık kuruşlar hiçbir satıra atanmıyor""",
+        ("tests/integration/test_ip2a_partial_math_pg.py",),
+    ),
+    Mutasyon(
+        "M31", "PK-α: fiziksel kabul olmadan para yolunda stok geri ekleniyor",
+        "backend/services/order_service.py",
+        """    await settle_completed_return(db, ret, changed_by=str(changed_by_of(actor)))""",
+        """    for _ri in await _return_lines(db, ret.id):  # MUTASYON: kabulsüz stok
+        _ri.accepted_quantity = int(_ri.quantity)
+    await db.flush()
+    await _restock_items(db, order, ret)
+    await settle_completed_return(db, ret, changed_by=str(changed_by_of(actor)))""",
+        (
+            "tests/integration/test_ip2a_restock_pg.py",
+            "tests/integration/test_ip2a_admin_http_pg.py",
+        ),
+    ),
+    Mutasyon(
+        # NOT: bu mutasyonun TEK BAŞINA yakalanmaması BEKLENİR ve doğrudur —
+        # tarihsel M3/M3′ ile aynı desen. İkinci bağımsız koruma (kilit
+        # altındaki `restored_quantity_by_order_item` tavanı) davranışı korur,
+        # yani anahtar bozulsa bile stok satılandan fazla artmaz. Davranışın
+        # gerçekten bozulduğu hâl M32b'dir.
+        "M32", "PK-α: fiziksel kabul idempotency anahtarı çağrıya özgü yapıldı",
+        "backend/services/order_service.py",
+        """                "idempotency_key": stock_ledger.idempotency_key_for(
+                    stock_ledger.StockMovementType.RETURN, return_item_id=ri.id
+                ),""",
+        """                "idempotency_key": (  # MUTASYON: replay engeli yok
+                    f"return_line:{ri.id}:RETURN:{id(ri)}"
+                ),""",
+        ("tests/integration/test_ip2a_restock_pg.py",),
+    ),
+    Mutasyon(
+        "M32b", "PK-α: kabul anahtarı VE fazla geri yükleme tavanı birlikte bozuldu",
+        "backend/services/order_service.py",
+        """    for ri, item, gelen in lines:
+        tavan = int(item.quantity) - int(geri_yuklenen.get(item.id, 0))
+        adet = min(gelen, max(tavan, 0))""",
+        """    for ri, item, gelen in lines:  # MUTASYON: tavan yok + anahtar tekil değil
+        adet = gelen
+        specs.append(
+            {
+                "product_id": item.product_id,
+                "qty_delta": adet,
+                "bucket": stock_ledger.StockBucket.SALEABLE,
+                "movement_type": stock_ledger.StockMovementType.RETURN,
+                "reason_code": "RETURN_ACCEPTED",
+                "ref_type": "order_return",
+                "ref_id": ret.id,
+                "ref_line_id": ri.id,
+                "idempotency_key": f"return_line:{ri.id}:RETURN:{id(ri)}",
+                "note": None,
+            }
+        )
+        continue
+        tavan = 0""",
+        ("tests/integration/test_ip2a_restock_pg.py",),
+    ),
+    Mutasyon(
+        "M33", "PK-δ: retry tavanında MANUAL_REVIEW yerine REFUNDING bırakılıyor",
+        "backend/services/escrow_reconciler.py",
+        """        if await escrow.mark_manual_review(db, obj, spec):
+            await _manual_review_audit(db, obj, spec)
+            return True
+        return False""",
+        """        return False  # MUTASYON: kayıt sessizce REFUNDING'de bırakılıyor""",
+        ("tests/integration/test_ip2a_refund_two_phase_pg.py",),
+    ),
+    Mutasyon(
+        "M34", "PK-δ: MANUAL_REVIEW kaydı otomatik retry'a yeniden dahil edildi",
+        "backend/services/escrow_reconciler.py",
+        """        conditions = [status_col == spec.refunding]""",
+        """        conditions = [  # MUTASYON: askıya alınan kayıt yine taranıyor
+            status_col.in_(
+                [spec.refunding]
+                + ([spec.manual_review] if spec.manual_review else [])
+            )
+        ]""",
+        ("tests/integration/test_ip2a_refund_two_phase_pg.py",),
+    ),
+    Mutasyon(
+        "M35", "İP2A-18: para emri sonrası ORM ilişkisine (lazy-load) dönülüyor",
+        "backend/services/order_service.py",
+        """    for ri in await _return_lines(db, ret.id):
+        item = by_id.get(ri.order_item_id)
+        if item is None or item.kind != ProductKind.PHYSICAL.value:""",
+        """    for ri in ret.items:  # MUTASYON: expire koleksiyon → MissingGreenlet
+        item = by_id.get(ri.order_item_id)
+        if item is None or item.kind != ProductKind.PHYSICAL.value:""",
+        ("tests/integration/test_ip2a_restock_pg.py",),
+    ),
+    Mutasyon(
+        "M36", "M2: sağlayıcı reddettiği hâlde iade kesinleşmiş sayılıyor (RMA)",
+        "backend/services/order_service.py",
+        """    if not await escrow.perform_refund(
+        db, ret, escrow.RETURN_SPEC, amount=odenebilir
+    ):""",
+        """    await escrow.perform_refund(db, ret, escrow.RETURN_SPEC, amount=odenebilir)
+    if False:  # MUTASYON: başarısızlık yutuldu""",
+        ("tests/integration/test_ip2a_refund_two_phase_pg.py",),
+    ),
+    Mutasyon(
+        "M37", "İP2A-08: karar audit'i kararla aynı transaction'dan çıkarıldı",
+        "backend/services/order_service.py",
+        """    # ── 3. Audit (kararla aynı transaction) ──
+    await _audit_return(
+        db, actor=actor, action="return.approve", ret=ret, order=order,
+        amount=odenebilir, reason=admin_note, extra={"para_hareketi": True},
+    )""",
+        """    pass  # MUTASYON: para hareketi başlatan karar izsiz""",
+        ("tests/integration/test_ip2a_admin_http_pg.py",),
+    ),
+    Mutasyon(
+        "M38", "İP2A-07/D1: talep durumu koşulsuz APPROVED yazılıyor",
+        "backend/services/order_service.py",
+        """    if not await escrow.claim(
+        db,
+        OrderReturn,
+        ret.id,
+        from_statuses=[ReturnStatus.PENDING.value],
+        values={
+            "status": ReturnStatus.APPROVED.value,
+            "admin_note": admin_note,
+            "resolved_at": _now(),
+        },
+        status_attr="status",
+    ):
+        await db.rollback()
+        raise HTTPException(
+            status.HTTP_409_CONFLICT, "Bu talep zaten sonuçlandırılmış"
+        )""",
+        """    ret.status = ReturnStatus.APPROVED.value  # MUTASYON: claim yok
+    ret.admin_note = admin_note
+    ret.resolved_at = _now()
+    await db.flush()""",
+        ("tests/integration/test_ip2a_races_pg.py",),
+    ),
 ]
 
 
