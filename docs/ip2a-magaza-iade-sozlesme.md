@@ -1,6 +1,10 @@
 # İP-2a — Mağaza İade, Refund ve Stok Bütünlüğü Sözleşmesi
 
-> **Durum: KIRMIZI CHECKPOINT.** Bu doküman, mağaza sipariş iadelerinde para,
+> **Durum: ÜRETİM UYGULAMASI KAPANDI** (bkz. §9). Aşağıdaki §1-§8 tarihsel
+> kırmızı checkpoint kaydıdır ve OLDUĞU GİBİ korunur — geçmiş kırmızı
+> sonuçlar silinmez veya yeniden yazılmaz.
+>
+> **Durum (tarihsel): KIRMIZI CHECKPOINT.** Bu doküman, mağaza sipariş iadelerinde para,
 > stok, indirim ve durum bütünlüğünün **mevcut** davranışını ve **hedef**
 > invariantlarını kayıt altına alır. Kırmızı kabul testleri
 > (`backend/tests/integration/test_ip2a_*.py`) bu dokümandaki kusur
@@ -365,3 +369,234 @@ REFUNDING'de sarkık kaldı"*. İP2A-02 ile birleşince sarkan kayıt
   `sleep(0.1)` penceresine bağlı — 5 turda 1 kaçırma) ve **P2-2** (R-18 yalnız
   `kod == 200` assert ediyor; stok/finalize/bildirim ölçülmüyor) test borçları
   **üretim uygulaması sırasında** ele alınacak.
+
+## 9. Üretim uygulaması kapanışı
+
+> **Bu bölüm §1-§8'i GEÇERSİZ KILMAZ.** Yukarısı kırmızı checkpoint kaydıdır ve
+> tarihsel belge olarak korunur. Burada, aynı kusur kataloğunun **üretim kodu
+> ile kapatılmış** hâli ve bu turda alınan kesin ürün kararları kayda geçer.
+
+### Künye
+
+| | |
+|---|---|
+| Başlangıç HEAD | `5fc9a95` (docs: güncel main checkpoint matrisi) |
+| Adaptasyona alınan main | `3cf40f2` (main'e merge YAPILMADI) |
+| Tarihsel kırmızı checkpoint | `295ffb6` · güvenlik dalı `ip2a-checkpoint-295ffb6` |
+| Alembic | tek head `ip2a_iade_para_guvenligi` (revises `ip2b_terminal_history_guard`) |
+| Yön | yalnız İP-2a dalı; rebase/squash/force/push YOK |
+
+### Kesinleşen ürün kararları
+
+#### PK-α — fiziksel kabul ve stok zamanı (ONAYLANDI)
+
+Para ve mal **ayrı eksenlerde** yürür:
+
+- Para iadesi, talebin yetkili biçimde onaylanması ve **sağlayıcının iadeyi
+  tamamlaması** ile kesinleşir. Depo kabulüne veya muayeneye BAĞLANMAZ.
+- Stok, para iadesi sırasında geri EKLENMEZ. Ürün ancak fiziksel olarak teslim
+  alınıp kabul/muayene adımı tamamlanınca stoğa döner.
+- Dönüş **tam bir kez** gerçekleşir; tekrarlı kabul ikinci stok hareketi
+  üretmez. Hasarlı adet DAMAGED, sağlam adet SALEABLE kovasına gider; kabul
+  edilmemiş (gelmemiş) adet **hiçbir kovaya** girmez.
+
+Mevcut FSM en dar biçimde genişletildi — paralel bir iade sistemi kurulmadı:
+
+```
+order_returns.status         PENDING → APPROVED | REJECTED       (atomik claim)
+order_returns.refund_status  NONE → REFUNDING → REFUNDED | MANUAL_REVIEW
+order_returns.received_at    NULL → damga (tek seferlik, terminal)
+order_return_items.accepted_quantity / damaged_quantity
+        toplam ≤ quantity  (DB CHECK: ck_order_return_items_received)
+```
+
+Üç eksen birbirinden bağımsızdır: bir talep APPROVED + REFUNDED olup malı hâlâ
+gelmemiş olabilir (`received_at IS NULL`) — ve katalog o kitabı "stokta" GÖSTERMEZ.
+
+#### PK-δ — MANUAL_REVIEW (ONAYLANDI)
+
+Otomatik deneme tavanı (`REFUND_MAX_ATTEMPTS=3`) dolduğunda kayıt REFUNDING'de
+bırakılmaz; `MANUAL_REVIEW`'a geçer. Sözleşme:
+
+- otomatik reconciler kaydı bir daha sağlayıcıya **göndermez**;
+- `REFUNDED` **yazılmaz** — para gerçekten döndü mü bilinmiyor, bu durum ne
+  kesin başarısızlık ne kesin iadedir;
+- stok / kupon / bildirim / finalize gibi "başarı" yan etkileri **oluşmaz**;
+- kayıt admin kuyruğundan sorgulanabilir: `GET /store/admin/returns?refund_status=MANUAL_REVIEW`
+  (mevcut kuyruk filtreyle genişletildi — ikinci bir admin sistemi kurulmadı);
+- geçiş `audit_logs`'a (`refund.manual_review`) yazılır ve yöneticilere bildirim
+  gider. Sorgulanabilir bir durum tek başına yetmez: kimsenin bakmadığı kuyruk
+  sessiz log'dan yalnız biraz iyidir.
+
+Sipariş düzeyinde de aynı değer tanımlıdır (`orders.payment_status`);
+`_cancel_order` MANUAL_REVIEW'ü de 409'lar (parası havada olan sipariş elle
+CANCELLED'a çevrilemez).
+
+### Kusurların kapanış yöntemi
+
+| ID | Kapanış |
+|---|---|
+| **İP2A-01** | `reconcile_refunding` yeniden yazıldı: kayıt-başı transaction + advisory kilit; başarıda `Order` için stok/kupon/FSM/bildirim, `OrderReturn` için `settle_completed_return` (refunded_amount + kupon + FSM + audit + bildirim). Bir kaydın hatası partiyi düşürmez (`logger.exception`, sessiz yutma yok). |
+| **İP2A-02** | `order_returns.provider_ref` niyet anında siparişin `provider_ref`'inden (tahsilatın `paymentTransactionId`'si) yazılır. `RETURN_SPEC.reference_prefix` `return` → `order` + `reference_id_attr="order_id"`: iyzico `payment/detail` yalnız charge'ın conversationId'sini tanır. |
+| **İP2A-03** | `perform_refund(amount=...)`; sipariş yolunda tutar `total` değil `total − refund_reserved`. Reconciler retry'ında `order_inflight_refund` (fail-safe: fark 0 çıkarsa `total − refunded_amount`, çünkü 0 göndermek parayı iade etmeden REFUNDED yazmak olurdu). |
+| **İP2A-04** | `orders.refund_reserved` + koşullu UPDATE (`reserved + tutar <= total`) + `request_return`/`_settle_return`'de tavanın sipariş kilidi altında TAZE okunması. `refunded_amount` artışı atomik SQL (Python `+=` kalktı). |
+| **İP2A-05** | `returns.covers_whole_order`: "tam iade" = seçimden sonra müşteride iade edilebilir adet KALMAMASI. Kargo yalnız siparişi boşaltan talebe eklenir; kupon yalnız o talepte serbest kalır. |
+| **İP2A-06** | Advisory `pg_try_advisory_xact_lock` / `pg_advisory_xact_lock` (spec başına tekil `lock_class`) sağlayıcı çağrısı boyunca tutulur; `perform_refund` kilidi aldıktan sonra TAZE durumu yeniden okur. Retry claim'i karantina koşulunu da WHERE'e alır. Satır kilidi kullanılmadı: Order↔OrderReturn döngüsü kurup iki eşzamanlı iadede gerçek deadlock üretiyordu. |
+| **İP2A-07** | `_settle_return` ve `reject_return` talep durumunu `PENDING`'den **atomik claim** eder; koşulsuz `APPROVED` yazımı kalktı. CAYMA talebi de PENDING doğar ve aynı claim'den geçer. |
+| **İP2A-08** | Audit servise taşındı (`_audit_return`) ve **kararı taşıyan transaction'ın içinde** yazılır: CAYMA otomatik onayı iz bırakır, sağlayıcı 502'sinde karar audit'i kaybolmaz. Router'daki ikinci yazım kaldırıldı (aynı karar iki kez kaydedilmez). |
+| **İP2A-09** | `apply_refunded_amount` tek yazıcı (atomik SQL, `LEAST` ile tavan). RMA, admin tam iadesi, müşteri iptali ve reconciler aynı muhasebeyi kullanır. Artışlar yalnız `finalize_refund`'un atomik claim'ini KAZANAN yoldan çağrılır → tam bir kez. |
+| **İP2A-10** | PK-α: `receive_return` + `ReceiveLine` + `POST /store/admin/returns/{id}/receive` (`returns.manage`). `_restock_items` kabul edilen adedi yazar ve para yolundan hiç çağrılmaz. |
+| **İP2A-11** | `_returned_quantities`: kalem başına kümülatif adet (PENDING+APPROVED talepler) tavan olur. `POST /orders/{id}/return` kullanıcı bazlı rate-limit (`RATE_LIMIT_RETURN`). |
+| **İP2A-12** | `/admin/orders/{id}/refund` DELIVERED siparişi 409'lar (İP-2b R4, korunuyor) ve `returns.manage`'sız admin RMA'yı atlayamaz; yan etkisizlik testte ölçülür. `refund_status` filtresi eklendi. |
+| **İP2A-13** | Müşteri bildirimi TEK yerden — para hareketi gerçekleşen yoldan — çıkar. Para hareketi olmayan kapanışta "ödemen iade edildi" DENMEZ. Ret bildiriminde admin notu `mask_contact_info`'dan geçer. |
+| **İP2A-14** | Tek yuvarlama standardı ROUND_HALF_UP (`coupon_service.compute_discount` dahil). `allocate_discount_shares` en-büyük-artık; `line_discount_portion` satır içi kümülatif. |
+| **İP2A-15** | Kalem tutarları NET yazılır; kargo `shipping_refund` kolonunda ayrışır. Özdeşlik: `refund_amount = Σ items.amount + shipping_refund` (tavan kırpması `_tavana_kirp` ile özdeşliği bozmadan yapılır). |
+| **İP2A-16** | **Zaten kapalıydı** — güncel main'de İP-2b commit `f2eb729` (`coupon_service.release` yalnız gerçek `CouponRedemption` satırı varsa sayacı düşürür). Bu turda YENİDEN YAZILMADI; R-16 değiştirilmeden yeşil kaldı. |
+| **İP2A-17** | `RETURN_WINDOW_BY_TYPE` + `return_window_days`: CAYMA/DIGER 14 gün, AYIPLI `RETURN_DEFECT_WINDOW_DAYS=730` (TKHK m.12 zamanaşımı tabanı). Üst sınır hâlâ ürün/hukuk kararı (PK-β), ama cayma penceresi artık ayıplı yolunu KAPATMAZ. |
+| **İP2A-18** | Kök neden: `_lock_order`'ın refresh'i identity map'teki `OrderReturn`'ün yüklü `items` koleksiyonunu expire ediyor; `_restock_items` ona dokununca async oturumda lazy-load → `MissingGreenlet` → 500 (para emri VERİLDİKTEN sonra). Düzeltme async lazy-load'a hiç güvenmiyor: kalem satırları her ihtiyaçta `_return_lines` ile açıkça sorgulanır, `_return_to_out` gerektiğinde onları dışarıdan alır. |
+
+### Sözleşme özetleri
+
+- **`refunded_amount` tek yazıcı:** `apply_refunded_amount` (atomik `UPDATE … LEAST(refunded_amount + :a, total)`). Yalnız `finalize_refund` claim'ini kazanan yol çağırır. Değişmez: `refunded_amount ≤ refund_reserved ≤ total`.
+- **`provider_ref`:** talebin kolonu **tahsilatın** işlem kimliğidir; iade idempotency'si bu kolonda değil `refund_status` claim'inde + advisory kilitte yaşar. Aynı talep retry edilirse aynı referans kullanılır.
+- **Reconciler:** WAIT / FINALIZE / RETRY / **MANUAL_REVIEW**. Her kayıt kendi transaction'ında ve kendi advisory kilidiyle; RETRY'da sağlayıcı başarısız olsa bile commit edilir (deneme sayacı kalıcı olmazsa kayıt tavana hiç ulaşmaz → sonsuz sessiz retry).
+- **Kilit sırası:** Product → Order → OrderReturn. Sağlayıcı çağrısı boyunca hiçbir SATIR kilidi tutulmaz (kurye teslimi bloke olmasın — İP-2b R17); eşzamanlılık nöbetini advisory kilit tutar.
+- **Para matematiği:** ROUND_HALF_UP; indirim satırlara en-büyük-artıkla bir kez dağıtılır; kargo yalnız siparişi boşaltan talepte; kalem tutarları net.
+
+### Test matrisi
+
+Gerçek PostgreSQL (`adana_ip2a_impl_test`, tek kullanımlık) + `PAYMENT_PROVIDER=fake`.
+
+| Dosya | Node |
+|---|---|
+| `test_ip2a_refund_two_phase_pg.py` | 10 |
+| `test_ip2a_partial_math_pg.py` | 11 |
+| `test_ip2a_restock_pg.py` | 8 |
+| `test_ip2a_races_pg.py` | 10 |
+| `test_ip2a_admin_http_pg.py` | 10 |
+| **Toplam** | **49 — 49 passed / 0 failed / 0 skip / 0 xfail / 0 collection error** |
+
+**Eski 36 node'un tamamı korundu** (node adları `5fc9a95` ile karşılaştırıldı:
+silme, yeniden adlandırma, parametrizasyonla gizleme, skip/xfail YOK). 13 yeni
+node eklendi.
+
+#### Ürün kararı nedeniyle içeriği değişen node'lar (gizlenmedi, kaydedildi)
+
+| Node | Değişiklik ve gerekçe |
+|---|---|
+| R-10 | İkinci bacak eklendi: kabulden sonra dönüşün TAM BİR KEZ ve doğru kovada olması. Tarihsel hâli yalnız "para iadesinde stok artmasın" diyordu, doğru davranışı ölçmüyordu. |
+| R-08c | Artık kesin `MANUAL_REVIEW` bekler. Eski "REFUNDING olmasın" iddiası, kaydı yanlışlıkla REFUNDED yazan bir uygulamayı da GEÇİRİRDİ. |
+| R-01a | Stok yerine reconciler'ın tamamlaması gereken her telafi tek tek ölçülüyor; stoğu geri KOYMADIĞI ayrıca doğrulanıyor (PK-α). |
+| R-04a | Ara adım "ikinci talep kabul edilmeli (kusurun kendisi)" idi; kusur kapandığında bu bekleme gerçekleşemez. Ölçülen iddia (M1) aynı, test "kaybeden yan etki üretmez" ile güçlendi. |
+| R-03, R-09 | SHIPPED siparişe kuruldu + zorunlu `reason`. DELIVERED sipariş `refund_order`'dan zaten 409 alıyordu (İP-2b R4) ve gövdesiz çağrı TypeError üretiyordu — yani uç HİÇ koşmuyor, tavan hiç ölçülmüyordu. |
+| R-12 | Gerekçe gövdesiyle çağrılıyor: gövdesiz POST 422 üretiyor ve görev ayrılığı iddiası hiç sınanmıyordu. |
+| R-18 | Bağımsız denetimin **P2-2** borcu kapandı: yalnız `kod == 200` ölçen hâli, 200 dönüp parayı yarım bırakan uygulamayı da geçirirdi. Artık para emrinin bütün sonuçları ölçülüyor. |
+| G-02/05/06/07/10 | Stok ölçen nöbetçiler `fab.teslim_al(...)` adımını açıkça geçiyor; ölçtükleri iddialar aynı, hareketi doğuran adım değişti. G-10 kabulü gerçek HTTP ucundan geçiriyor. |
+| G-09, R-07 | Bağımsız denetimin **P2-1** borcu kapandı: `asyncio.sleep(0.1)` yerine ardışıklığı ÖLÇEN `SiralamaKapisi`. `_yalniz_beklenenler`'in `ip2a18_tolere` kapısı kaldırıldı — İP2A-18 kapandığı için MissingGreenlet'i tolere etmek gerçek regresyonu yutardı. |
+
+#### Yeni node'lar
+
+`test_r02b` (provider_ref ilk denemede yazılır) · `test_r08d` (MANUAL_REVIEW
+admin kuyruğunda) · `test_r10b/c/d` (hasarlı kabul kovası · kabul edilmeyen adet
++ tekrarlı kabul · onaysız talebin malı alınamaz) ·
+`test_kismi_ve_tam_iade_iki_siralamada_da_tavani_korur` ·
+`test_ardisik_iki_kismi_iade_kalem_adedi_ve_tavani_asamaz` ·
+`test_reconciler_bir_kaydin_hatasinda_partiyi_dusurmez` ·
+`test_onay_ile_tam_iade_yarisinda_tavan_korunur` ·
+`test_iki_reconciler_worker_ayni_iadeyi_iki_kez_gondermez` ·
+`test_kupon_kargo_ve_kurus_matematigi_parcali_iadede_de_tutar` ·
+`test_satir_ici_kismi_adetlerde_kupon_payi_kaybolmaz` ·
+`test_tek_seferlik_tam_iade_parcali_toplamla_ayni_kurusu_uretir`.
+
+#### İP-2a dışı, bilinçli olarak güncellenen testler
+
+| Dosya | Neden |
+|---|---|
+| `tests/test_return_escrow_spec.py` | `reference_prefix == "return"` iddiası İP2A-02'yi SABİTLİYORDU; doğru sözleşmeyle değiştirildi, gerekçe testin docstring'ine yazıldı. |
+| `tests/test_order_refund_two_phase.py` | Sahte oturum tavan sorgusunu cevaplayabiliyor (tavan kararı bayat ORM nesnesine bırakılamaz); gönderilen tutarın KALAN olduğu ve rezervasyonun niyetle aynı UPDATE'e bindiği ayrıca ölçülüyor. |
+| `tests/acceptance/test_stock_lock_contract.py` | Kilit sırası sözleşmesi `_settle_return` → `receive_return` TAŞINDI. Stok yazan yol hâlâ ürün kilidini karardan önce almak zorunda; sözleşme gevşemedi, yolun adı değişti. |
+| `tests/verify/test_verify_reconciler.py` | Tavan dolunca MANUAL_REVIEW (PK-δ). Korunan çekirdek aynı: REFUNDED yazılmaz, sağlayıcıya bir daha gidilmez. |
+| `tests/verify/test_verify_returns.py` (B3) | "Yalnız 1 adet geri gelmeli" iddiası korundu; kabulden ÖNCE stoğun artmadığı ayrıca doğrulanıyor. |
+| `tests/integration/test_stock_writers_pg.py` | Fabrika kabul adedini açıkça dolduruyor: o dosyanın konusu defter YAZICISININ sözleşmesi, kabul kapısı değil. Kabul adedini set etmemek, yazıcıyı hiç çalıştırmadan "hareket yok" ölçmek olurdu. |
+
+### Mutasyon prova raporu (İP-2a)
+
+Sürücü: `backend/scripts/mutation_drill.py` (byte-yedekli `GeciciYama`, kirli
+ağaçta ret, her mutasyondan sonra HEAD + `git status` eşitliği doğrulanır).
+Sürücüye `Mutasyon.ek` alanı eklendi: katmanlı korumanın olduğu yerde tek-yama
+zorunluluğu provayı kör bırakıyordu.
+
+| # | Mutasyon | Sonuç |
+|---|---|---|
+| M23 | `refunded_amount` artışı kaldırıldı | KIRILDI ✓ (10 node) |
+| M24 | rezervasyon tavanı koşullu UPDATE'ten kaldırıldı | **Yakalanmadı** — tavan dört bağımsız guard'la korunuyor (satır kilidi · kilit altında taze okuma · `payment_status == PAID` · koşullu UPDATE); hiçbirini tek başına sökmek ulaşılabilir aşırı iade üretmiyor |
+| M24b | tavan hesabı tarihsel/bayat hâline döndürüldü + koşullu UPDATE söküldü (= İP2A-03/04) | KIRILDI ✓ (`test_onay_ile_tam_iade_yarisinda_tavan_korunur`) |
+| M25 | talebin `provider_ref`'i yazılmıyor | KIRILDI ✓ (R-02, R-02b, R-18) |
+| M26 | reconciler final telafileri atlanıyor | KIRILDI ✓ (R-01a) |
+| M27 | retry claim'inin karantina koşulu söküldü | **Yakalanmadı** — advisory nöbeti zaten ikinci worker'ı dışarıda tutuyor |
+| M27b | retry claim'i **ve** advisory nöbeti birlikte söküldü | KIRILDI ✓ (R-06) |
+| M27d | `perform_refund`'un kilit + taze durum nöbeti söküldü | KIRILDI ✓ (R-06) |
+| M28 | reconciler'ın uçuş-içi nöbeti kaldırıldı | KIRILDI ✓ (R-06) |
+| M29 | tam iade hesabı yalnız seçilen satırlara indirildi | KIRILDI ✓ (R-05a, R-05b, G-03, kuruş nöbetçisi) |
+| M30 | yuvarlama artığının dağıtımı kaldırıldı | KIRILDI ✓ (kupon+kargo+kuruş nöbetçisi) |
+| M31 | fiziksel kabul olmadan para yolunda stok geri ekleniyor | KIRILDI ✓ (6 node) |
+| M32 | kabul idempotency anahtarı çağrıya özgü yapıldı | **Yakalanmadı ve YAKALANMAMALI** — ikinci bağımsız koruma (kilit altındaki fazla geri yükleme tavanı) davranışı korudu; tarihsel M3/M3′ ile aynı desen |
+| M32b | anahtar **ve** tavan birlikte bozuldu | KIRILDI ✓ (G-05) |
+| M33 | tavanda MANUAL_REVIEW yerine REFUNDING bırakılıyor | KIRILDI ✓ (R-08c, R-08d) |
+| M34 | MANUAL_REVIEW kaydı otomatik retry'a yeniden dahil edildi | **Yakalanmadı** — davranış BOZULMADI: tarama koşulunun üstünde iki bağımsız guard var (kilit sonrası taze durum okuması · `mark_manual_review` claim'inin `from REFUNDING` şartı), gözlemlenebilir sözleşme (yeni sağlayıcı çağrısı yok, sayaç sabit) korundu |
+| M35 | para emri sonrası ORM ilişkisine (lazy-load) dönüldü | KIRILDI ✓ (6 node — İP2A-18 regresyonu) |
+| M36 | sağlayıcı reddettiği hâlde iade kesinleşmiş sayılıyor | KIRILDI ✓ (7 node) |
+| M37 | karar audit'i kararla aynı transaction'dan çıkarıldı | KIRILDI ✓ (R-08a, R-18) |
+| M38 | talep durumu koşulsuz APPROVED yazılıyor | KIRILDI ✓ (G-09, R-07) |
+
+Kaçan üç mutasyonun tamamı **ikinci bağımsız koruma** yüzünden kaçtı ve
+davranış hiçbirinde bozulmadı; her biri için birleşik varyant (M24b, M27b/M27d,
+M32b) davranışın gerçekten bozulduğu hâli gösterdi. Ölçüm sonucu kanıt
+üretmeyen iki taslak mutasyon (dört/üç guard'ı birden söken varyantlar)
+katalogda **bırakılmadı**: amacı "nöbetçinin dişini ölçmek" olan bir giriş,
+ölçüm başarısız olduğunda katalogda kalırsa yanıltır.
+
+`test_iki_reconciler_worker_ayni_iadeyi_iki_kez_gondermez` bir **değişmez
+kaydıdır**, yüksek güçlü nöbetçi değil: senaryo beş bağımsız mekanizmayla
+korunuyor (docstring'inde sayılıyor) ve hiçbirini tek başına sökmek testi
+kırmıyor. Aynı kusur sınıfının yüksek güçlü nöbetçisi R-06'dır. Bu sınır
+gizlenmedi, testin kendi docstring'ine yazıldı.
+
+### Yarış tekrarları (5 tur)
+
+`tests/integration/test_ip2a_races_pg.py`, gerçek PG:
+
+| Tur | Node | Süre | 40P01 | 40001 | 55P03 | 57014 | pending/destroyed task | never retrieved |
+|---|---|---|---|---|---|---|---|---|
+| 1 | 10 passed | 14,20 sn | 0 | 0 | 0 | 0 | 0 | 0 |
+| 2 | 10 passed | 13,89 sn | 0 | 0 | 0 | 0 | 0 | 0 |
+| 3 | 10 passed | 14,40 sn | 0 | 0 | 0 | 0 | 0 | 0 |
+| 4 | 10 passed | 14,47 sn | 0 | 0 | 0 | 0 | 0 | 0 |
+| 5 | 10 passed | 14,15 sn | 0 | 0 | 0 | 0 | 0 | 0 |
+
+Deadlock/timeout yok. Para değişmezleri (çift refund · tavan aşımı · kayıp
+`refunded_amount` güncellemesi · çift stok dönüşü · çift kupon release · çift
+audit · çift bildirim) testlerin kendi assertion'larıdır; beş turun tamamı
+yeşil olduğu için hepsi her turda korundu.
+
+### Kalan borç
+
+- **P0 / P1: yok.**
+- **P2-1 ve P2-2 KAPANDI** (yukarıda: `SiralamaKapisi`, R-18 genişletmesi).
+- **P2 (yeni):** `inventory_rules.PHYSICAL_EFFECT["RETURN"]` muhafazakâr
+  bırakıldı (`on_premise=None`, `auto_reconcilable=False`). PK-α ile `RETURN`
+  artık fiziksel kabulde yazıldığından malın işletmede olduğu ARTIK BİLİNİYOR;
+  yani etki `(+1, 0, 0, +1, True)` olabilir. Değişiklik F29 sayım sözleşmesini
+  (`tests/test_inventory_rules_pure.py` + acceptance nöbetçisi) etkilediği için
+  bu turun kapsamına alınmadı. Yön güvenli: muhafazakâr kayıt sayımı STALE
+  yapar, yanlış otomatik uzlaştırma üretmez.
+- **P2:** Sipariş düzeyinde MANUAL_REVIEW için ayrı bir admin görünümü yok
+  (RMA kuyruğunda filtre var, sipariş listesinde yok); yönetici bildirimi +
+  audit satırı üzerinden bulunabilir.
+- **PK-β** (ayıplı pencere üst sınırı), **PK-γ** (`/admin/orders/{id}/refund`
+  ucunun tamamen kaldırılması), **PK-ε** (`legalContent.ts` ↔ kod farkı) ve
+  **PK-ζ** (iade kargo masrafı modeli) hâlâ ürün/hukuk kararı bekliyor.
+- `tests/verify` paketinin çalıştığı `adana_verify` veritabanı bu turda başka
+  bir dalın (İP-3) revizyonuna damgalı bulundu ve `alembic stamp --purge
+  ip2b_terminal_history_guard` + `upgrade head` ile bu dalın şemasına alındı.
+  İP-3'ün eklediği `auth_version` kolonları yerinde bırakıldı (zararsız).
