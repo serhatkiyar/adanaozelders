@@ -116,7 +116,7 @@ mevcut davranışın satırıdır; "Test" sütunu kırmızı kabul matrisindeki 
 | **İP2A-13** | Bildirim kusurları: admin approve yolunda müşteri AYNI karar için İKİ bildirim alır (`_settle_return:1892` + `approve_return:1582`); `_settle_return` erken-çıkış dalı (para hareketi yok) sonrasında `approve_return` yine "ödemen iade edildi" der. `reject` bildirimi `admin_note`'u maskesiz gömer. | `order_service.py:1582-1588,1806-1812,1892-1902,1621` | A2 | R-13 |
 | **İP2A-14** | Kuruş tutarlılığı: çoklu kısmi iadede indirim payları bağımsız yuvarlanır, artık hiçbir satıra atanmaz → N parçalı iade toplamı tek seferlik iadeden sapar (ör. 3×100 TL + 10 TL kupon: 3×3,33 = 9,99 ≠ 10,00). Ayrıca para yolunda iki yuvarlama standardı yaşar: `returns/tax/commission` ROUND_HALF_UP, `coupon_service.compute_discount` ve `order_service` toplamları context-default ROUND_HALF_EVEN. | `returns.py:64-76`, `coupon_service.py:41`, `order_service.py:242-244,326,396` | M5 | R-14 |
 | **İP2A-15** | `OrderReturnItem.amount` brüt yazılır (kupon payı düşülmemiş, tavan uygulanmamış) → kuponlu siparişte `Σ items.amount ≠ refund_amount`; bu tutarsız değerler `OrderReturnOut.items[]` ile müşteriye/admin'e döner. | `order_service.py:1706-1717`, `schemas/store.py:395-399` | M4 | R-15 |
-| **İP2A-16** | `coupon_service.release` silinecek `CouponRedemption`'ın varlığına bakmadan `used_count`'u düşürür. `redeem` başarısız olmuş (limit dolu) ama `coupon_id`'li PAID siparişin iadesi, BAŞKA müşterinin kullanımını sayaçtan siler. | `coupon_service.py:152-168`, `order_service.py:684-693,1380-1382` | M5 | R-16 |
+| **İP2A-16** ✅ **KAPANDI** *(güncel main'de İP-2b tarafından — bkz. §8)* | `coupon_service.release` silinecek `CouponRedemption`'ın varlığına bakmadan `used_count`'u düşürür. `redeem` başarısız olmuş (limit dolu) ama `coupon_id`'li PAID siparişin iadesi, BAŞKA müşterinin kullanımını sayaçtan siler. | `coupon_service.py:152-168`, `order_service.py:684-693,1380-1382` | M5 | R-16 |
 | **İP2A-17** | Cayma/ayıplı süre ayrımı uygulanmaz: 14 günlük pencere `type`'a bakmadan tüm türlere uygulanır; süresi geçen cayma ile birlikte AYIPLI yolu da kapanır (`ReturnType` docstring'i "ayıplı malda süre daha uzundur" der, kod uygulamaz). Ayrıca `returns.py`'deki pencere fonksiyonları ölü koddur; pencere yalnız DELIVERED'da işler, SHIPPED'de süresizdir. | `order_service.py:90,1530-1535`; `returns.py:23-50` (ölü); `models/store.py:122-123` | (ürün kuralı) | R-17 |
 | **İP2A-18** | **Bu checkpoint'in bulduğu yeni üretim hatası:** AYIPLI/DIGER iadenin admin onayında BAŞARILI yol, sağlayıcıdan para istendikten SONRA `MissingGreenlet` ile 500 verir. Mekanizma: `approve_return` → `_load_return` (selectinload `items`) → `_settle_return` → `_lock_order`'ın `populate_existing`'li refresh'i (`db.refresh(order, ["items","returns"])`) identity map'teki `ret` nesnesinin yüklü `items` koleksiyonunu expire eder → `_restock_items:1731` `ret.items` lazy-load → async oturumda MissingGreenlet. Sonuç: provider.refund ÇAĞRILDI (para çıktı), stok/finalize/bildirim koşmadı, talep REFUNDING'de sarkık, admin 500 gördü. CAYMA yolunda görünmez (talep aynı session'da taze yaratılır, `_load_return` devrede değildir); mevcut suite AYIPLI onayın başarılı yolunu hiç koşmadığından bugüne dek gizli kalmıştır. Gerçek PG reprosuyla doğrulandı. | `order_service.py:971-983,1575,1731,1870` | M2, S3, A2 | R-18 |
 
@@ -284,3 +284,84 @@ gösterildi, sonra eksiksiz geri alındı (`git diff` boş doğrulandı). Kalıc
 | M5 | Provider başarısızlığı yutulup akış REFUNDED'a sürüldü | G-01 | KIRILDI ✓ |
 | M6 | `escrow.claim` koşullu UPDATE sonucu yok sayıldı (`return True` — FOR-UPDATE-eşdeğeri atomik nöbet kalktı) | G-09 | KIRILDI ✓ |
 | M7 | Approve ucunun izni `returns.manage` → `returns.view` düşürüldü | G-11 | KIRILDI ✓ |
+
+## 8. Güncel main adaptasyonu
+
+> **Bu bölüm §1-§7'yi GEÇERSİZ KILMAZ.** Yukarısı `26f30d8` zemini üzerinde
+> alınmış tarihsel kırmızı checkpoint kaydıdır ve bağımsız denetimden geçmiştir;
+> olduğu gibi korunur. Bu bölüm, aynı kabul matrisinin **güncel main** üzerinde
+> yeniden ölçülmüş halini kaydeder.
+
+### Adaptasyon künyesi
+
+| | |
+|---|---|
+| Adaptasyon öncesi checkpoint | `295ffb6` (tarihsel zemin `26f30d8`) |
+| Adaptasyona alınan main | `3cf40f2` (F30 + İP-2b + İP-1a merge'leri dahil) |
+| Merge commit | `0be5edc` — `merge(ip2a): guncel main'i magaza iade checkpointine al` (parent1 `295ffb6`, parent2 `3cf40f2`; no-ff, çatışmasız) |
+| Güvenlik dalı | `ip2a-checkpoint-295ffb6` (tarihsel HEAD'i işaret eder) |
+| Yön | yalnız main → İP-2a dalı. Main'e merge YAPILMADI, rebase/squash YOK, push YOK |
+
+### Güncel matris: **22 kırmızı + 14 yeşil** (36 node)
+
+Gerçek PostgreSQL (`adana_ip2a_current_checkpoint_test`, tek kullanımlık) +
+`PAYMENT_PROVIDER=fake` ile ölçüldü:
+
+| Ölçüm | Tarihsel (`26f30d8`) | Güncel main (`3cf40f2`) |
+|---|---|---|
+| Toplam node | 36 | **36** (birebir aynı node adları) |
+| Kırmızı | 23 | **22** |
+| Yeşil | 13 | **14** |
+| Skip / xfail / collection error | 0 / 0 / 0 | **0 / 0 / 0** |
+| İP-2a dışı başarısızlık | 0 | **0** (tam paket: 22 failed / 953 passed / 16 skipped) |
+
+- **Eski 36 node'un tamamı korundu.** Node listesi `295ffb6` ile birebir
+  karşılaştırıldı: silme, yeniden adlandırma, parametrizasyonla gizleme,
+  skip/xfail ekleme YOK.
+- **Tarihsel 13 yeşil nöbetçinin hiçbiri kırmızıya dönmedi** — F30, İP-2b ve
+  İP-1a merge'leri (`order_service.py`'ye +394 satır dahil) bu paket açısından
+  regresyon üretmedi.
+- **Yeni/beklenmeyen başarısızlık yok.**
+
+### Kırmızıdan yeşile dönen tek node: R-16 (İP2A-16)
+
+`test_ip2a_partial_math_pg.py::test_r16_tuketilmemis_kupon_iadesi_baskasinin_kullanimini_silmemeli`
+**testi değiştirilmeden** yeşile döndü. Kapanış test tesadüfü değil, gerçek bir
+üretim değişikliğidir:
+
+- Commit: **`f2eb729`** — `fix(ip2b): stok kupon ve teslimat iptal yan etkilerini kapat`
+- Dosya: `services/coupon_service.py` → `release()`
+- Değişen davranış: `used_count` artık **koşulsuz azaltılmıyor**. Sayaç yalnız
+  bu siparişe ait `CouponRedemption` satırı gerçekten varsa düşürülüyor; satır
+  yoksa sayaca dokunulmadan `False` dönülüyor. Yan fayda: satır bir kez
+  silindikten sonra ikinci çağrı no-op — **idempotent** (retry/çift iptal
+  sayacı ikinci kez düşüremez). Dönüş tipi `None` → `bool` oldu.
+- Böylece "limit dolu olduğu için `redeem` False dönmüş ama `coupon_id` taşıyan
+  siparişin iadesi BAŞKA müşterinin kullanımını siler" kusuru ortadan kalktı.
+
+### Kalan 22 kusur — hâlâ açık
+
+İP2A-01, -02, -03, -04, -05, -06, -07, -08, -09, -10, -11, -12, -13, -14, -15,
+-17, -18 (§3'teki kanıt satırları geçerliliğini koruyor).
+
+**İP2A-18 güncel main'de hâlâ yeniden üretiliyor:** `returns.manage` izinli
+adminin AYIPLI onayı, sağlayıcıya para emri verildikten SONRA çöküyor —
+R-18 ölçümü: *"AYIPLI onayının başarılı yolu 500 döndü — sağlayıcıya para emri
+verildikten sonra süreç çöküyor (provider çağrısı: 1); stok geri konmadı, talep
+REFUNDING'de sarkık kaldı"*. İP2A-02 ile birleşince sarkan kayıt
+`provider_ref=None` taşıdığı için reconciler de kurtaramıyor.
+
+### Bu turun kapsamı ve sonraki tur
+
+- **Bu tur üretim düzeltmesi İÇERMEZ.** Üretim koduna, test dosyalarına ve test
+  assertion'larına dokunulmadı; yalnız main merge'i + bu doküman bölümü eklendi.
+- **PK-α** (fiziksel kabul adımı ve ödeme zamanlaması) ve **PK-δ**
+  (MANUAL_REVIEW mekanizması) kararları **üretim uygulamasından önce
+  kesinleştirilecek** — R-10 ve R-08c bu kararlar olmadan yeşillenemez. PK-δ'da
+  "admin sarkan-iadeler görünümü" seçeneği tercih edilirse R-08c'nin bugünkü
+  assert'i (`refund_status != 'REFUNDING'`) o çözümle yeşillenmez; testin
+  uyarlanması bilinçli bir karar olarak kaydedilmelidir.
+- Bağımsız denetimin bulduğu **P2-1** (G-09'un M1 mutasyonunu yakalaması
+  `sleep(0.1)` penceresine bağlı — 5 turda 1 kaçırma) ve **P2-2** (R-18 yalnız
+  `kod == 200` assert ediyor; stok/finalize/bildirim ölçülmüyor) test borçları
+  **üretim uygulaması sırasında** ele alınacak.
