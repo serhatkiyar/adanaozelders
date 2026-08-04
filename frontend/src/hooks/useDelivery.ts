@@ -49,17 +49,7 @@ export function usePrepQueue(enabled = true) {
   });
 }
 
-/** Sipariş hazır/hazır-değil işaretle. eligible + prep-queue + kapasite tazelenir. */
-export function useMarkPrepared() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: ({ orderId, prepared }: { orderId: number; prepared: boolean }) =>
-      prepared
-        ? deliveryApi.markOrderPrepared(orderId)
-        : deliveryApi.unmarkOrderPrepared(orderId),
-    onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
-  });
-}
+/* KALDIRILDI (F30 commit 5): `useMarkPrepared` — bkz. api/delivery.ts. */
 
 /* ── Kurye workspace + hesap yaşam döngüsü ── */
 

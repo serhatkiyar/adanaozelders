@@ -62,6 +62,12 @@ ignore = [
 "scripts/dev_rebase_stock.py" = ["T201"]
 # Stok defteri raporu: konsol tablosu aracın çıktısıdır (CSV opsiyoneldir).
 "scripts/stock_ledger_report.py" = ["T201"]
+# F30 gerçek tarayıcı kabulünün iki ucu. İkisi de **stdout'a tek satır JSON**
+# yazar ve o çıktı bir sonraki adımın GİRDİSİDİR (tohum → tarayıcı sürücüsü →
+# baskı denetimi). Logging'e çevirmek boru hattını kırardı; dosyaya yazmak ise
+# kabulün nerede koştuğunu betiğin dışına taşırdı.
+"scripts/f30_e2e_seed.py" = ["T201"]
+"scripts/f30_baski_kabul.py" = ["T201"]
 # Seed/bakım script'leri konsola yazar.
 "seed_*.py" = ["T20"]
 "add_*.py" = ["T20"]

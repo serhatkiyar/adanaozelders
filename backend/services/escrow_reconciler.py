@@ -24,16 +24,18 @@ import datetime
 import logging
 import time
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core import payments
 from core.config import settings
+from models.booking import Booking, BookingStatus
 from models.library_exam import ExamRegistration, RegistrationStatus
 from models.payment import Payment, PaymentStatus
+from models.role import ROLE_IDS, RoleType
 from models.store import Order, OrderPaymentStatus, OrderReturn
 from models.study_reservation import StudyReservation
-from services import escrow
+from services import escrow, notification_service
 
 logger = logging.getLogger("adana.escrow")
 
@@ -130,9 +132,149 @@ async def reconcile_refunding(db: AsyncSession) -> int:
             await db.commit()
             await db.refresh(obj)
             if await escrow.perform_refund(db, obj, spec):
+                await _order_telafisi(db, obj)
                 await db.commit()
                 handled += 1
     return handled
+
+
+async def reconcile_orphaned_escrow(db: AsyncSession) -> int:
+    """Terminal derse bağlı **sahipsiz HELD emaneti** güvenli biçimde çözer (P0-5).
+
+    Sözleşme §3: `HELD` yalnız `ACCEPTED` bir dersle birlikte durabilir. Ders
+    terminal (REJECTED/CANCELLED/soft-deleted) olduğu hâlde para emanette
+    kalmışsa o para ne öğrenciye döner ne eğitmene geçer — ve mevcut taramaların
+    hiçbiri onu GÖRMEZ (`reconcile_refunding` REFUNDING, `reconcile_stale_checkouts`
+    PENDING/FAILED tarar). Bu ağ, kaynak yollar (red/admin iptali) düzeltilmiş
+    olsa bile gereklidir: geçmişte oluşmuş satırlar ve henüz bilinmeyen yollar
+    için son savunma hattıdır.
+
+    **Karar: güvenli claim sonrası otomatik iade + ERROR logu** (sözleşme §8/c).
+    Gerekçe: (1) sistemin kendi precedent'i budur —
+    `payment_service.complete_checkout` ölü booking'e gelen tahsilatta aynı şeyi
+    yapar; (2) iade tek **geri döndürülebilir** yöndür (yanlış iadede öğrenci
+    yeniden öder; yanlış release `released_at` guard'ı yüzünden geri alınamaz);
+    (3) yeni bir para yolu icat edilmez — aynı `escrow.refund_escrow`.
+
+    Karantina (§8/S2): uçuşta olan bir iptal transaction'ı yakalanmamalıdır.
+    Hem dersin terminal olma anı hem ödemenin son dokunulma anı
+    `REFUND_RECONCILE_MIN_AGE_MINUTES` kadar eskimiş olmalıdır; aksi hâlde tarama,
+    `cancel`'ın claim'i ile `refund`'ı arasındaki pencereye girip aynı ödemeye
+    ikinci bir iade emri gönderebilirdi.
+    """
+    cutoff = _now() - datetime.timedelta(
+        minutes=settings.REFUND_RECONCILE_MIN_AGE_MINUTES
+    )
+    rows = (
+        await db.execute(
+            select(Payment, Booking)
+            .join(Booking, Booking.id == Payment.booking_id)
+            .where(
+                Payment.status == PaymentStatus.HELD,
+                Payment.deleted_at.is_(None),
+                # Kazancı dağıtılmış satıra ASLA dokunulmaz (ikinci savunma
+                # hattı `escrow.begin_refund` içindedir; burada zaten seçilmez).
+                Payment.released_at.is_(None),
+                or_(
+                    Booking.status.in_(
+                        (BookingStatus.REJECTED, BookingStatus.CANCELLED)
+                    ),
+                    Booking.deleted_at.is_not(None),
+                ),
+                Booking.updated_at <= cutoff,
+                Payment.updated_at <= cutoff,
+            )
+        )
+    ).all()
+    handled = 0
+    for payment, booking in rows:
+        # Sessiz düzeltme YOK: sahipsiz emanet her hâlde görünür olmalı, çünkü
+        # oluşması bir üretim kusurunun kanıtıdır (kaynak yol düzeltilmemiş ya da
+        # yeni bir yol açık kalmış).
+        logger.error(
+            "reconciler: SAHİPSİZ EMANET — ders terminal (%s) ama ödeme HELD; "
+            "otomatik iade başlatılıyor (booking=%s payment=%s tutar=%s)",
+            booking.status.value if booking.status else "deleted",
+            booking.id,
+            payment.id,
+            payment.amount,
+        )
+
+        async def _bildir(p=payment, b=booking) -> None:
+            await notification_service.notify(
+                db,
+                user_id=b.client_id,
+                role_id=ROLE_IDS[RoleType.CLIENT],
+                message=(
+                    f"İptal edilen ders için ödemen iade edildi: "
+                    f"{p.amount} {p.currency}"
+                ),
+                link="/student/bookings",
+            )
+
+        # ── Kayıt-başı hata izolasyonu (İP-2b R11 ile aynı disiplin) ──
+        #
+        # Tek bir kaydın beklenmeyen hatası (sağlayıcı istisnası, ağ arızası)
+        # döngüden dışarı kaçarsa partinin KALANI o turda hiç işlenmez ve
+        # sahipsiz emanetler sorunlu kayıt durdukça sonsuza dek beklerdi.
+        # Hata YUTULMAZ: `logger.exception` ile görünür kalır.
+        #
+        # Not: `escrow.begin_refund` claim'i COMMIT'ler. Sağlayıcı çağrısında
+        # patlarsak kayıt REFUNDING'de kalır — yani "güvenli yeniden deneme"
+        # durumudur ve `reconcile_refunding` bir sonraki turda devralır.
+        # `REFUNDED` yalnız sağlayıcı POZİTİF döndüğünde yazılır.
+        try:
+            outcome = await escrow.refund_escrow(
+                db, payment, escrow.PAYMENT_SPEC, notify=_bildir
+            )
+            await db.commit()
+        except Exception:  # noqa: BLE001 — kayıt izole edilir, parti ölmez
+            await db.rollback()
+            logger.exception(
+                "reconciler: sahipsiz emanet iadesi BAŞARISIZ — kayıt atlandı, "
+                "parti devam ediyor (booking=%s payment=%s)",
+                booking.id,
+                payment.id,
+            )
+            continue
+        if outcome != "not_claimed":
+            handled += 1
+    return handled
+
+
+async def _order_telafisi(db: AsyncSession, obj) -> None:
+    """Reconciler'ın tamamladığı SİPARİŞ iadesinde telafileri de tamamlar.
+
+    Eskiden bu yol yalnız ESCROW katmanını çağırıyordu: para dönüyor ama
+    ``_restock`` (SALE_CANCEL), kupon ``release``, ``refunded_amount``, sipariş
+    ``CANCELLED`` geçişi ve müşteri bildirimi HİÇ koşmuyordu — üstelik geri
+    dönüşü de yoktu, çünkü `payment_status` artık PAID olmadığından
+    cancel/refund uçları 409 veriyordu (İP-2b R6/R7/R8).
+
+    Telafi kuyruğu `order_service` ile ORTAKTIR; hepsi idempotenttir.
+    """
+    if not isinstance(obj, Order):
+        return
+    from services import order_service
+
+    order = await order_service._load_full(db, obj.id)
+    if order is None:
+        return
+    await order_service.settle_refunded_order(
+        db,
+        order,
+        reason_code="ORDER_CANCELLED",
+        terminal_status="CANCELLED",
+        changed_by="system:reconciler",
+        reason="Sağlayıcı iadesi mutabakat turunda tamamlandı",
+    )
+    await notification_service.notify(
+        db,
+        user_id=order.client_id,
+        role_id=ROLE_IDS[RoleType.CLIENT],
+        message=f"Siparişin #{order.id} için ödemen iade edildi.",
+        link="/siparislerim",
+    )
 
 
 async def reconcile_stale_checkouts(db: AsyncSession) -> int:
@@ -264,17 +406,40 @@ async def reconcile_stale_checkouts(db: AsyncSession) -> int:
             )
         )
     ).scalars().all()
-    for order in order_rows:
-        result = await retrieve(token=order.provider_ref)
-        if not result.success:
+    # ── Kayıt-başı hata izolasyonu (İP-2b R11) ──
+    #
+    # Döngü eskiden korumasızdı: TEK bir kaydın beklenmeyen hatası (sağlayıcı
+    # istisnası, FSM 409'u, ağ arızası) `reconcile_stale_checkouts`'tan dışarı
+    # kaçıyor ve partinin KALANI o turda hiç işlenmiyordu — kayıp callback'li
+    # gerçek müşteriler, sorunlu kayıt durdukça HİÇBİR turda işlenmezdi.
+    #
+    # Satırlar önce anlık görüntüye alınır: `rollback` ORM nesnelerini expire
+    # eder ve bayat nesnenin alanına dokunmak async oturumda lazy-load
+    # (`MissingGreenlet`) üretir. Her kayıt kendi SAVEPOINT'inde işlenir; hata
+    # yalnız o kaydın yazımlarını geri alır, oturum kullanılabilir kalır ve
+    # hata GÖRÜNÜR bir kayıt bırakır (sessizce yutulmaz).
+    order_specs = [(o.id, o.provider_ref) for o in order_rows]
+    for order_id, order_token in order_specs:
+        try:
+            async with db.begin_nested():
+                result = await retrieve(token=order_token)
+                if not result.success:
+                    continue
+                await order_service.complete_checkout(
+                    db, order_id=order_id, success=True,
+                    provider_ref=result.provider_ref,
+                    token=order_token, paid_price=result.paid_price,
+                )
+        except Exception:  # noqa: BLE001 — kayıt izole edilir, parti ölmez
+            await db.rollback()
+            logger.exception(
+                "reconciler: order#%s mutabakatı BAŞARISIZ — kayıt atlandı, "
+                "parti devam ediyor (elle inceleyin)",
+                order_id,
+            )
             continue
-        await order_service.complete_checkout(
-            db, order_id=order.id, success=True,
-            provider_ref=result.provider_ref,
-            token=order.provider_ref, paid_price=result.paid_price,
-        )
         await db.commit()
         handled += 1
-        logger.warning("reconciler: kayıp callback tamamlandı (order#%s)", order.id)
+        logger.warning("reconciler: kayıp callback tamamlandı (order#%s)", order_id)
 
     return handled

@@ -14,7 +14,7 @@ import datetime
 import logging
 from typing import Any, Awaitable, Callable
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core import mail, sms
@@ -140,6 +140,44 @@ def enqueue(db: AsyncSession, kind: str, payload: dict[str, Any]) -> None:
     if kind not in _HANDLERS:
         raise ValueError(f"Bilinmeyen outbox kind: {kind}")
     db.add(OutboxEvent(kind=kind, payload=payload))
+
+
+#: Sipariş iptal/iade edilince GEÇERSİZLEŞEN olay türleri — hepsi "kutu yolda"
+#: anlatan teslimat bildirimleridir. `email:order_status` bilinçli olarak DIŞARIDA:
+#: durum e-postası iptalden sonra da doğrudur (zaten iptali duyurur).
+_TESLIMAT_BILDIRIMLERI = (
+    "sms:tracking_link",
+    "sms:approach",
+    "sms:failed",
+    "sms:postponed",
+)
+
+
+async def cancel_pending_for_order(db: AsyncSession, order_id: int) -> int:
+    """Siparişin kuyrukta BEKLEYEN teslimat bildirimlerini iptal eder.
+
+    Neden gerekli: outbox at-least-once'tır ve sessiz saat ertelemesi gönderim
+    penceresini saatlere büyütür. Sipariş bu arada iptal/iade edilirse müşteriye
+    "kuryen yola çıktı" SMS'i GİDER — kutu yokken. Olay, durum değişikliğiyle
+    AYNI transaction'da iptal edilir (çağıran commit eder); rollback olursa
+    iptal de geri alınır.
+
+    Yalnız `PENDING` satırlar hedeflenir: `SENT` olan zaten gitmiştir, `FAILED`
+    dead-letter kaydıdır ve denetim izi olarak korunur. Dönen: iptal edilen sayı.
+    """
+    res = await db.execute(
+        update(OutboxEvent)
+        .where(
+            OutboxEvent.status == OutboxStatus.PENDING.value,
+            OutboxEvent.kind.in_(_TESLIMAT_BILDIRIMLERI),
+            OutboxEvent.payload["order_id"].astext == str(order_id),
+        )
+        .values(
+            status=OutboxStatus.CANCELLED.value,
+            last_error="sipariş iptal/iade edildi — bildirim geçersizleşti",
+        )
+    )
+    return int(res.rowcount or 0)
 
 
 async def dispatch_pending(db: AsyncSession, *, limit: int = 50) -> int:

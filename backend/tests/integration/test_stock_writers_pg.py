@@ -638,7 +638,8 @@ async def test_saglayici_reddederse_stok_ARTMAZ(fab, monkeypatch):
         order = await order_service._load_full(s, oid)
         with pytest.raises(HTTPException) as exc:
             await order_service._refund_payment(
-                s, order, reason_code="ORDER_REFUNDED"
+                s, order, reason_code="ORDER_REFUNDED",
+                terminal_status="REFUNDED", changed_by="admin",
             )
         assert exc.value.status_code == 502
 
@@ -660,7 +661,10 @@ async def test_saglayici_basarili_ama_ikinci_faz_coktu_retry_tek_uygular(
     # 1. deneme: telafiler uygulanır ama commit edilmeden çökme simüle edilir.
     async with AsyncSessionLocal() as s:
         order = await order_service._load_full(s, oid)
-        await order_service._refund_payment(s, order, reason_code="ORDER_REFUNDED")
+        await order_service._refund_payment(
+            s, order, reason_code="ORDER_REFUNDED",
+            terminal_status="REFUNDED", changed_by="admin",
+        )
         await s.rollback()          # ← ikinci transaction çöktü
 
     assert await _movements(pid) == []

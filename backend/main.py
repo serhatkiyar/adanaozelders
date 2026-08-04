@@ -99,6 +99,9 @@ async def _reminder_tick() -> None:
         # (intent deseni) hatırlatma turunun toplu commit'ine karışmasın.
         await escrow_reconciler.reconcile_refunding(session)
         await escrow_reconciler.reconcile_stale_checkouts(session)
+        # Terminal derse bağlı sahipsiz HELD emanet (İP-1a P0-5): kaynak yollar
+        # düzeltilmiş olsa bile geçmiş satırlar ve bilinmeyen yollar için ağ.
+        await escrow_reconciler.reconcile_orphaned_escrow(session)
 
     async def _delivery(session) -> None:
         # Teslimat watchdog'u: saatlerce ACTIVE kalan turları kapat.
