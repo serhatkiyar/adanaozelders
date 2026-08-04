@@ -24,7 +24,6 @@ from decimal import Decimal
 from sqlalchemy import text
 
 from core.database import AsyncSessionLocal
-from core.security import create_access_token
 from models.admin import Admin
 from models.client import Client
 from models.store import (
@@ -38,6 +37,7 @@ from models.store import (
 )
 from schemas.admin_access import AdminRoleCreate
 from services import admin_access_service, stock_ledger
+from tests.integration.auth_headers import bearer_headers
 from tests.integration.db_guard import purge_products
 
 
@@ -77,7 +77,14 @@ class IadeFabrikasi:
     # ── Kullanıcılar ──────────────────────────────────────────────────────────
 
     async def musteri(self) -> tuple[int, dict]:
-        """Gerçek CLIENT + gerçek imzalı token başlığı."""
+        """Gerçek CLIENT + gerçek imzalı token başlığı.
+
+        Başlık `auth_headers.bearer_headers` ile üretilir: İP-3 §6'dan beri
+        `auth_ver` claim'i BÜTÜN rollerde denetlenir ve claim'siz token her uçta
+        401 alır. Değer DB'deki gerçek `auth_version`'dan okunur — sabit `1`
+        yazmak, sürüm artıran bir senaryo eklendiği gün testi sessizce yanlış
+        yeşile çevirirdi.
+        """
         ek = uniq()
         async with AsyncSessionLocal() as s:
             c = Client(
@@ -93,11 +100,13 @@ class IadeFabrikasi:
             cid = c.id
             await s.commit()
         self.client_ids.append(cid)
-        token = create_access_token(subject=cid, role="CLIENT", role_id=3)
-        return cid, {"Authorization": f"Bearer {token}"}
+        return cid, await bearer_headers(cid, role="CLIENT", role_id=3)
 
     async def admin(self, *, izinler: list[str]) -> tuple[int, dict]:
-        """Gerçek admin + gerçek rol/izin satırları + gerçek imzalı JWT."""
+        """Gerçek admin + gerçek rol/izin satırları + gerçek imzalı JWT.
+
+        Token sözleşmesi için bkz. `musteri` (İP-3 `auth_ver` claim'i).
+        """
         ek = uniq()
         async with AsyncSessionLocal() as s:
             a = Admin(
@@ -125,8 +134,8 @@ class IadeFabrikasi:
                 self.role_ids.append(rol.id)
             await s.commit()
             self.admin_ids.append(a.id)
-            token = create_access_token(subject=a.id, role="ADMIN", role_id=1)
-            return a.id, {"Authorization": f"Bearer {token}"}
+            admin_id = a.id
+        return admin_id, await bearer_headers(admin_id, role="ADMIN", role_id=1)
 
     # ── Katalog ───────────────────────────────────────────────────────────────
 
