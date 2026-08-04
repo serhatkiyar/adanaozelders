@@ -17,6 +17,51 @@ notunu bırakmak, yapılmış bir işi yapılmamış gibi anlatır).
      TB-8→TB-11, TB-9→TB-12, TB-10→TB-13 (`docs/ip3-yetki-kvkk-sozlesme.md`
      atıfları da güncellendi). -->
 
+<!-- Kapanma notu (İP-2a merge'i, `06d3868`): **TB-3** ("İade reconciler
+     devraldığında stok geri yüklenmiyor") KAPANDI ve dosyanın kendi kuralı
+     gereği SİLİNDİ. Kapatan kod: ortak telafi kancası
+     `order_service.py::settle_refunded_order`; reconciler artık her iki sonuç
+     dalından (`escrow_reconciler.py` ACTION_FINALIZE ve ACTION_RETRY) bu
+     kancayı çağırıyor → stok geri yüklemesi + kupon serbest bırakma +
+     `apply_refunded_amount` reconciler yolunda da koşuyor. RMA (`OrderReturn`)
+     dalında stokun DÖNMEMESİ artık kusur değil sözleşmedir (PK-α: stok yalnız
+     fiziksel kabulde, `receive_return`). Eski atıflar: `f29-envanter-
+     sozlesmesi.md:229`, `ip1a-ders-para-sozlesme.md:676` (tarihsel, dokunulmadı).
+     **TB-2** silinmedi ama YARIYA DARALDI — güncel gövdesine bakınız. -->
+
+## TB-15 · Mağaza para sözleşmesinin iki kaçağı (main'in kendi borcu — İP-2a kapsamı dışında)
+
+| | |
+|---|---|
+| **Bulundu** | İP-2a nihai bağımsız audit'i (4 Ağu 2026); merge sonrası main kodunda yeniden doğrulandı |
+| **Yer** | `backend/services/order_service.py::_out_of_stock_refund` (~`:877-920`) · `backend/services/order_service.py::complete_checkout` "ölü varlık" dalı (~`:626-665`) |
+| **(a) `_out_of_stock_refund` merkezi para sözleşmesinin DIŞINDA** | İP-2a iade parasını üç bileşene bağladı: `reserve_refund` (tavan kapısı), `apply_refunded_amount` (**tek yazıcı, M6**) ve `settle_refunded_order` (ortak telafi kancası). Oversell iadesi bu üçünün **hiçbirini** kullanmıyor; doğrudan `escrow.begin_refund` + `escrow.perform_refund` + elle FSM geçişi yapıyor |
+| **(a) etkisi** | (1) Mutlu yolda bile `orders.refunded_amount` **0 kalır** → `revenue_service.py` iade sütununu bu kolondan okuduğu için oversell iadeleri ciro raporunda görünmez. (2) `refund_reserved` hiç artmaz. (3) Sağlayıcı düşerse sipariş `REFUNDING`'de kalır ve reconciler onu **Order** olarak devralıp `settle_refunded_order` → `_restock` çalıştırır; oysa bu yolda sipariş hiç PAID olmamış, `SALE` hareketi hiç yazılmamıştır → **hiç satılmamış mal için `SALE_CANCEL`** yazılır (hayali stok artışı). Tavan kontrolü bunu engellemez: `restored_quantity_by_order_item` yalnız SALE_CANCEL/RETURN sayar, satılan 0 iken tavan tam adedi verir |
+| **(b) `complete_checkout` geç-tahsilat dalı ikinci `refunded_amount` yazıcısı** | `apply_refunded_amount` "TEK yazıcı (M6)" diyor, ama "ölü varlık" dalı `refunded_amount`'a **mutlak atama** yapıyor (`refunded_amount: order_total`) — artırımlı değil, `LEAST(..., total)` tavanı yok, `refund_reserved` güncellenmiyor. Satır `refunded_amount=total, refund_reserved=0` gibi kendi içinde tutarsız kalıyor (`escrow.order_inflight_refund` bu ikiliyi birlikte okur) |
+| **(b) bugünkü gerçek risk** | Düşük, kayıp güncelleme DEĞİL: dal yalnız `from_statuses=["PENDING","FAILED"]` claim'iyle koşuyor, fonksiyon girişi PAID/REFUNDING/REFUNDED'ı zaten erken döndürüyor ve kısmi RMA siparişin PAID olmasını gerektiriyor → o noktada `refunded_amount` pratikte 0. Yani **sözleşme ihlali / regresyon riski** |
+| **Neden ertelendi** | İkisi de İP-2a'nın kırmızı matrisinden ÖNCE var olan main yollarıdır; paket kapsamı RMA/iade para güvenliğiydi. (a)'nın düzeltmesi oversell yolunu merkezi sözleşmeye taşımayı ve reconciler'ın "hiç PAID olmamış sipariş" ayrımını yapmasını gerektiriyor — yani `settle_refunded_order`'a yeni bir dal. Audit turunda üretim koduna kapsam dışı dokunmak paketin kabul sözleşmesini kaydırırdı |
+| **Sonraki adım** | (a) `_out_of_stock_refund`'u `reserve_refund` → `perform_refund` → `settle_refunded_order` hattına taşımak **ve** telafi kancasına "SALE yazılmamışsa restock yok" koşulu eklemek; gerçek PG testi: sağlayıcı ilk denemede düşsün, reconciler devralsın, `stock_movements`'te SALE_CANCEL **oluşmadığı** ve `refunded_amount`'ın dolduğu doğrulansın. (b) ölü-varlık dalını `apply_refunded_amount`'a çevirmek + "kod tabanında `refunded_amount`'a yazan tek yer" yapısal nöbetçisi |
+
+## TB-14 · İP-2a P2 listesi (audit'te açık bırakılan sekiz kayıt — öncelik sırasıyla)
+
+| | |
+|---|---|
+| **Bulundu** | İP-2a (mağaza iade / refund para güvenliği) nihai bağımsız audit'i, 4 Ağu 2026 — paket YEŞİL kapandı, aşağıdakiler bilinçli olarak P2'ye bırakıldı |
+| **Neden ertelendi** | Hiçbiri para kaybı veya yetki açığı değil; audit'in P0/P1 listesi üretim koduyla kapatıldı. Bu sekizi merge turunda çözmek, denetimden geçmiş kırmızı matrisi ve kabul sözleşmesini kaydırırdı (`feedback_delivery_gates`: kabul testleri sessizce değişmez) |
+
+Öncelik sırası — 1 en yüksek:
+
+| # | Kayıt | Yer | Etki / sonraki adım |
+|---|---|---|---|
+| 1 | **Admin `refund_status` filtre değeri doğrulanmıyor** | `backend/api/routers/store.py` (admin iade listesi) | Yanlış yazılmış bir değer 422 yerine **boş liste** döndürüyor → yönetici "iade kuyruğu boş" sanır, bekleyen iade gözden kaçar. Operasyonel yanılgı riski en yüksek kayıt. Düzeltme: filtreyi enum'a bağla, geçersizde 422; nöbetçi: gerçek HTTP testi |
+| 2 | **`_settle_return` kilit-sırası yapısal nöbetçisi kayboldu** | `backend/tests/acceptance/test_stock_lock_contract.py:237-250` | Sıra matrisinden **gerekçeli olarak** çıkarıldı (PK-α ile bu fonksiyonda ürün kilidi kalmadı, sözleşme `receive_return`'e taşındı). Kalan boşluk: birisi `_settle_return`'e yeniden `_lock_order_products` eklerse (TB-2'nin kapanan ayağı geri gelirse) bunu yakalayan **negatif** test yok; `test_urun_kilidini_alan_tek_yer_lock_products` yalnız ham `with_for_update`'i yasaklıyor, yardımcının çağrılmasını değil |
+| 3 | **`refunded_amount <= refund_reserved <= total` için DB CHECK yok** | `orders` tablosu (Alembic) | Değişmez bugün yalnız uygulama katmanında (`apply_refunded_amount` + `reserve_refund`). DB'ye doğrudan yazan bir betik ya da TB-15(b) gibi ikinci bir yazıcı sözleşmeyi sessizce bozabilir. Düzeltme: CHECK constraint migration'ı + ihlali kırmızıya çeviren PG testi |
+| 4 | **`OrderReturnReceiveIn.note` sessizce yutuluyor** | fiziksel kabul ucu (`store.py` → `order_service.py::receive_return`) | Şema alanı kabul ediyor, servis hiçbir yere yazmıyor. Operatörün "kutu hasarlı geldi" notu kaybolur — kullanıcı gözünde veri kaybı. Düzeltme: notu iade kaydına/olay geçmişine yaz ya da şemadan kaldır (sessiz yutma iki hâlde de yanlış) |
+| 5 | **`notifications` / `outbox_events` test hijyen boşluğu** | `tests/integration/conftest.py::_KRITIK_TABLOLAR` | İP-2a'nın kendi deltası ölçülmedi; genel boşluk zaten [[TB-8]] altında açık. Burada yalnız İP-2a paketinin de aynı iki tabloda delta bırakıp bırakmadığının ölçülmemiş olması kayda geçiyor |
+| 6 | **`f30_factory` sabit `auth_version=1`** | `backend/tests/integration/f30_factory.py` | İP-3 `auth_version` sözleşmesinden sonra fabrika değeri sabit; hesabın gerçek `auth_version`'ı 1 değilse token sözleşmesi testte yanlış tarafından doğrulanır (bugün geçiyor çünkü fabrika hesapları hep 1'de). Kırılganlık: sürüm artıran bir davranış eklenince sessizce yalancı yeşil |
+| 7 | **`mutation_drill.py` üç eksik** | `backend/scripts/mutation_drill.py` | (a) mutasyon geri alındıktan sonra dosyanın **SHA-256 ile** eski hâline döndüğü doğrulanmıyor; (b) mutasyondan önce **yeşil taban çizgisi** alınmıyor (zaten kırmızı bir testi "mutasyonu yakaladı" sayabilir); (c) hedef AST node'unun **beklenen düğümle eşleştiği** doğrulanmıyor (yanlış yeri mutasyona uğratıp "yakalandı" diyebilir). Kök `CLAUDE.md` §D bu sürücüyü resmî araç olarak anıyor — güvenilirliği doğrudan test kalitesi iddiasını taşıyor |
+| 8 | **frontend `inventoryScreens` flake** | `frontend/src/**` Vitest | Ara sıra kırılıyor; teşhis edilmedi. Yeşil/kırmızı sinyalini bulandırır ([[TB-10]] ile aynı sınıf) |
+
 ## TB-13 · KVKK silme: kurye PROFİLİ (vesikalık/plaka/telefon) ve silme audit kaydı — ürün kararı bekliyor
 
 | | |
@@ -125,28 +170,17 @@ notunu bırakmak, yapılmış bir işi yapılmamış gibi anlatır).
 | **Şimdilik hangi taraf** | Envanter uçları **açık commit** yazıyor (sınır görünür olsun diye). Kalıcılığın gerçek sözleşmesi davranış testiyle korunuyor: `test_HASAR_TRANSFERI_iki_kovayi_ATOMIK_degistirir` (commit→rollback mutasyonu M9b ile kırıldığı kanıtlandı) |
 | **Sonraki adım** | `get_db`'nin commit'ini kaldırıp yazan uçları açık commit'e geçirmek (fail-loud yön) ve bir kabul testiyle "yazan uç commit etmezse veri kalıcı olmaz" sözleşmesini sabitlemek |
 
-## TB-3 · İade reconciler devraldığında stok geri yüklenmiyor
-
-| | |
-|---|---|
-| **Bulundu** | F29 commit 5 adversarial kapanış denetimi (`SALE_CANCEL` üretim yollarının taranması sırasında) |
-| **Yer** | `backend/services/order_service.py::_refund_payment` (~`:1363-1379`) ↔ `backend/services/escrow_reconciler.py::reconcile_refunding` (`:66-135`) |
-| **Durum** | `_refund_payment` sağlayıcı çağrısı başarılı olursa `_restock` ile `SALE_CANCEL` yazar ve kuponu serbest bırakır. Sağlayıcı ilk denemede **reddederse** iade `REFUNDING` durumunda kalır ve sonradan `escrow_reconciler` tamamlar — ama reconciler `escrow.perform_refund` / `finalize_refund`'ı **doğrudan** çağırır, `_refund_payment`'a hiç uğramaz |
-| **Etki** | Para müşteriye döner, **stok hiç geri yüklenmez ve kupon serbest bırakılmaz**. Defter sessizce eksik kalır; `verify_ledger` bunu "sapma" olarak bile göremez çünkü `products.stock` ile defter birbirine uyumlu kalır — yalnız fiziksel raf fazla verir. F29 sayımı bunu "fazla" olarak yakalar ama sebebini söyleyemez |
-| **Neden ertelendi** | Düzeltme `escrow_reconciler` ile `order_service` arasındaki sorumluluk sınırını değiştirmeyi gerektiriyor (telafileri ortak bir "iade tamamlandı" kancasına taşımak). F29 commit 5'in kapsamı sayım servisidir; ödeme/iade akışına dokunmak paketi ve testlerini genişletirdi |
-| **`order_service.py:1363-1366` yorumu bu boşluğu GİZLİYOR** | Yorum "reconciler o da bu fonksiyonu tekrar çağırdığında telafiler idempotency anahtarları sayesinde tek kez uygulanır" diyor; reconciler bu fonksiyonu çağırmıyor |
-| **Sonraki adım** | Telafileri (`_restock` + kupon serbest bırakma) `escrow.finalize_refund` sonrasına ortak bir kancaya taşımak ve reconciler yolunu gerçek PG testiyle sınamak |
-
-## TB-2 · İade akışında sağlayıcı çağrısı boyunca ürün satırı kilitli kalıyor
+## TB-2 · İade akışında sağlayıcı çağrısı boyunca ürün satırı kilitli kalıyor (yalnız `_refund_payment`)
 
 | | |
 |---|---|
 | **Bulundu** | Stok hareket defteri paketi, commit 5 (iki fazlı iadenin telafi sırası değiştirilirken) |
-| **Yer** | `backend/services/order_service.py::_refund_payment` ve `::_settle_return` — `_lock_order_products` çağrıları |
-| **Durum** | Ürün satırları `FOR UPDATE` ile kilitleniyor, **sonra** ödeme sağlayıcısına HTTP isteği gidiyor, telafiler dönüşte uygulanıyor. Yani kilitler bir dış ağ çağrısı boyunca tutuluyor |
+| **Yer** | `backend/services/order_service.py::_refund_payment` — `_lock_order_products` (~`:1732`) → `escrow.perform_refund` (~`:1740`) |
+| **4 Ağu 2026 daraltması (İP-2a merge'i)** | Kaydın `_settle_return` ayağı **KAPANDI**: PK-α ile o yolda stok hiç değişmiyor, `_lock_order_products` çağrısı kalmadı ve `escrow.begin_refund`'ın commit'i Order kilidini sağlayıcı çağrısından ÖNCE bırakıyor. Ürün kilidi sözleşmesi `receive_return`'e (fiziksel kabul) taşındı. Geriye yalnız `_refund_payment` ayağı kalıyor — aşağıdakiler onun içindir |
+| **Durum** | Ürün satırları `FOR UPDATE` ile kilitleniyor, **sonra** ödeme sağlayıcısına HTTP isteği gidiyor, telafiler dönüşte uygulanıyor. Yani kilitler bir dış ağ çağrısı boyunca tutuluyor. Kod bunu artık açıkça kabul ediyor (`order_service.py:1727-1731` yorumu) |
 | **Neden böyle** | Telafiler artık yalnız sağlayıcı **başarılı** olduktan sonra uygulanıyor (para dönmeden mal geri gelmiş sayılmasın). Ama `perform_refund` içindeki `finalize_refund` sipariş satırını UPDATE ediyor, yani **Order kilidi** alıyor. Ürün kilidini o noktadan sonra almak bu yolu `Order → Product` yapar ve `_finalize_paid`'in `Product → Order` sırasıyla **gerçek bir deadlock döngüsü** kurar (plan §4e) |
 | **Etki** | Sağlayıcı yavaşsa (iyzico HTTP, saniyeler) o siparişteki ürünlerin satırları kilitli kalır; aynı ürünü almaya çalışan eşzamanlı ödemeler bekler. İade **nadir ve yönetici tetikli** olduğu için pratikte dar bir pencere |
 | **Değerlendirilen alternatifler** | (a) Telafiyi Faz 2 commit'inden sonraya almak → süreç orada ölürse sipariş REFUNDED olduğu için reconciler devralmaz ve **stok geri yüklemesi kalıcı olarak kaybolur**. (b) Kilit sırasını global olarak `Order → Product` yapmak → `_finalize_paid` ürünleri PAID claim'inden ÖNCE kilitlemek zorunda (oversell ön kontrolü), yani mümkün değil. (c) Savepoint'li iyimser geri yükleme → kilitler yine sağlayıcı çağrısı boyunca tutulur, üstüne karmaşıklık ekler |
 | **Neden ertelendi** | Doğru çözüm, sağlayıcı çağrısını transaction dışına alan bir **outbox / iş kuyruğu** desenidir (mevcut `core/outbox` altyapısı buna uygun). Bu, ödeme/iade mimarisinin yeniden tasarımıdır ve stok paketinin kapsamı dışındadır |
 | **İzleme** | Kilit bekleme süresi üretimde gözlenmeli: `pg_stat_activity` üzerinde `wait_event_type = 'Lock'` + `products` birleşimi bir uyarıya bağlanabilir |
-| **Koruma** | Kanonik sıra `tests/acceptance/test_stock_lock_contract.py`, deadlock yokluğu `tests/integration/test_stock_lock_order_pg.py` (5 çift × ters sıra × 3 tur, `lock_timeout`'lu) ile sabitlendi. Sıra bozulursa testler kırılır |
+| **Koruma** | Kanonik sıra `tests/acceptance/test_stock_lock_contract.py`, deadlock yokluğu `tests/integration/test_stock_lock_order_pg.py` (5 çift × ters sıra × 3 tur, `lock_timeout`'lu) ile sabitlendi. Sıra bozulursa testler kırılır. Matris İP-2a ile güncellendi (`_settle_return` çıktı, `settle_refunded_order` ve `receive_return` girdi); kalan nöbetçi boşluğu [[TB-14]] #2 |
