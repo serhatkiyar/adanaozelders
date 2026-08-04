@@ -63,9 +63,19 @@ def _uniq() -> str:
     return uuid.uuid4().hex[:10]
 
 
-def auth_header(user_id: int, role: str, role_id: int) -> dict[str, str]:
-    """Gerçek imzalı JWT ile Authorization başlığı (`core.security` üretir)."""
-    token = create_access_token(subject=user_id, role=role, role_id=role_id)
+def auth_header(
+    user_id: int, role: str, role_id: int, auth_version: int
+) -> dict[str, str]:
+    """Gerçek imzalı JWT ile Authorization başlığı (`core.security` üretir).
+
+    `auth_version` İP-3 §6'dan sonra ZORUNLUDUR ve **gerçek satırdan** gelir:
+    `get_current_user` claim'i bütün rollerde denetler, claim'siz token her uçta
+    401 alır. Varsayılan değer bilinçli olarak YOK — varsayılan koymak, çağıranın
+    gerçek sürümü geçirmeyi unutmasını sessiz bir yanlış-yeşile çevirirdi.
+    """
+    token = create_access_token(
+        subject=user_id, role=role, role_id=role_id, auth_version=auth_version
+    )
     return {"Authorization": f"Bearer {token}"}
 
 
@@ -112,23 +122,42 @@ async def ip1a_http():
 class Ders:
     """Bir test dersinin kimlikleri + kolay HTTP başlıkları."""
 
-    __slots__ = ("tutor_id", "client_id", "booking_id", "amount")
+    # Oturum sürümleri de taşınır: başlık üreten property'ler `async` olamaz,
+    # dolayısıyla değeri istek anında DB'den okuyamazlar. Satırlar zaten bu
+    # fabrikada yaratıldığı için sürüm ORADA yakalanır (bkz. `ders()`).
+    __slots__ = (
+        "tutor_id",
+        "client_id",
+        "booking_id",
+        "amount",
+        "tutor_auth_version",
+        "client_auth_version",
+    )
 
     def __init__(
-        self, *, tutor_id: int, client_id: int, booking_id: int, amount: Decimal
+        self,
+        *,
+        tutor_id: int,
+        client_id: int,
+        booking_id: int,
+        amount: Decimal,
+        tutor_auth_version: int,
+        client_auth_version: int,
     ) -> None:
         self.tutor_id = tutor_id
         self.client_id = client_id
         self.booking_id = booking_id
         self.amount = amount
+        self.tutor_auth_version = tutor_auth_version
+        self.client_auth_version = client_auth_version
 
     @property
     def tutor_auth(self) -> dict[str, str]:
-        return auth_header(self.tutor_id, "TUTOR", 2)
+        return auth_header(self.tutor_id, "TUTOR", 2, self.tutor_auth_version)
 
     @property
     def client_auth(self) -> dict[str, str]:
-        return auth_header(self.client_id, "CLIENT", 3)
+        return auth_header(self.client_id, "CLIENT", 3, self.client_auth_version)
 
 
 class Ip1aFabrika:
@@ -201,6 +230,11 @@ class Ip1aFabrika:
                 client_id=client.id,
                 booking_id=booking.id,
                 amount=amount,
+                # Sabit `1` YAZILMAZ: satır burada yaratıldığı için gerçek
+                # sürüm elimizde; sabit yazmak sürüm artıran bir senaryo
+                # eklendiği gün testi sessizce yanlış-yeşile çevirirdi.
+                tutor_auth_version=tutor.auth_version,
+                client_auth_version=client.auth_version,
             )
             await s.commit()
         self.tutor_ids.append(ders.tutor_id)
@@ -339,7 +373,7 @@ class Ip1aFabrika:
             await s.commit()
             self.admin_ids.append(a.id)
             self.admin_role_ids.append(rol.id)
-            return a.id, auth_header(a.id, "ADMIN", 1)
+            return a.id, auth_header(a.id, "ADMIN", 1, a.auth_version)
 
     # ── Gözlem yardımcıları (hep TAZE session — bayat identity map yok) ──────
 

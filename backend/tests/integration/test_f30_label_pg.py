@@ -375,14 +375,14 @@ async def test_PACKING_VIEW_OLMADAN_ETIKET_ALINAMAZ(client, fab, kur, izinler):
 async def test_ETIKET_TOKENSIZ_401_MUSTERIYE_403(client, fab, kur):
     """Kimliksiz istek 401; CLIENT token'ı 403 — sevkiyat kimliği paketleme
     yüzeyinin dışına çıkmaz."""
-    from core.security import create_access_token
+    from tests.integration.auth_headers import bearer_token
 
     aid = await fab.admin()
     _oid, paket, _k = await _packed_paket(fab, aid)
 
     assert (await client.get(ETIKET.format(paket.id))).status_code == 401
     cid = await fab.musteri()
-    musteri = create_access_token(subject=cid, role="CLIENT", role_id=3)
+    musteri = await bearer_token(cid, role="CLIENT", role_id=3)
     r = await client.get(ETIKET.format(paket.id), headers=_bas(musteri))
     assert r.status_code == 403, r.text
 

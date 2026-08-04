@@ -41,7 +41,7 @@ async def test_yesil_odenmemis_iptal(fab, http, provider):
         client_id=cid, status="PENDING", payment_status="PENDING",
     )
 
-    r = await http.post(CANCEL.format(oid=oid), headers=client_headers(cid))
+    r = await http.post(CANCEL.format(oid=oid), headers=await client_headers(cid))
     assert r.status_code == 200, r.text
     assert r.json()["status"] == "CANCELLED"
 
@@ -64,7 +64,7 @@ async def test_yesil_odenmis_iptal_tam_telafi(fab, http, provider):
     )
     await fab.kupon_kullanimi(coupon_id=kupon[0], client_id=cid, order_id=oid)
 
-    r = await http.post(CANCEL.format(oid=oid), headers=client_headers(cid))
+    r = await http.post(CANCEL.format(oid=oid), headers=await client_headers(cid))
     assert r.status_code == 200, r.text
 
     assert len(provider.refund_calls) == 1
@@ -87,9 +87,9 @@ async def test_yesil_tekrarlanan_iptal_yan_etkisiz(fab, http, provider):
     cid = await fab.musteri()
     oid, _ = await fab.siparis(items=[(pid, 2, "PHYSICAL", "100.00")], client_id=cid)
 
-    r1 = await http.post(CANCEL.format(oid=oid), headers=client_headers(cid))
+    r1 = await http.post(CANCEL.format(oid=oid), headers=await client_headers(cid))
     assert r1.status_code == 200, r1.text
-    r2 = await http.post(CANCEL.format(oid=oid), headers=client_headers(cid))
+    r2 = await http.post(CANCEL.format(oid=oid), headers=await client_headers(cid))
     assert r2.status_code == 409
 
     assert len(provider.refund_calls) == 1
@@ -126,7 +126,7 @@ async def test_yesil_teslim_edilmis_iptal_yerine_iade_yolu(fab, http, provider):
         items=[(pid, 1, "PHYSICAL", "100.00")], client_id=cid, status="DELIVERED"
     )
 
-    r = await http.post(CANCEL.format(oid=oid), headers=client_headers(cid))
+    r = await http.post(CANCEL.format(oid=oid), headers=await client_headers(cid))
     assert r.status_code == 409
     assert "iade" in r.json()["detail"].lower()
     assert provider.refund_calls == []
@@ -149,7 +149,7 @@ async def test_kirmizi_baskasinin_siparisi_varlik_sizdirmaz(fab, http, provider)
     yabanci = await fab.musteri()
     oid, _ = await fab.siparis(items=[(pid, 1, "PHYSICAL", "100.00")], client_id=sahip)
 
-    r = await http.post(CANCEL.format(oid=oid), headers=client_headers(yabanci))
+    r = await http.post(CANCEL.format(oid=oid), headers=await client_headers(yabanci))
     assert r.status_code == 404, (
         f"varlık sızıntısı: yabancıya {r.status_code} döndü ({r.json()['detail']!r}); "
         "sözleşme olmayan siparişle AYNI yanıtı (404) ister"

@@ -340,24 +340,17 @@ async def ip3(pg):
         await f.cleanup()
 
 
-@pytest.fixture
-async def http():
-    """GERÇEK FastAPI uygulaması — gerçek yetki çözümü + hata eşlemesi.
-
-    Servis fonksiyonunu doğrudan çağıran bir test HTTP yetki kanıtı DEĞİLDİR:
-    dependency zinciri (rol → onay durumu → izin), gövde doğrulaması ve
-    exception→status eşlemesi yalnız gerçek istekle görünür. Taşıyıcı
-    `httpx.ASGITransport` — uygulama testin event loop'unda koşar (asyncpg
-    bağlantıları loop'a bağlıdır).
-    """
-    import httpx
-
-    from main import app
-
-    async with httpx.AsyncClient(
-        transport=httpx.ASGITransport(app=app), base_url="http://ip3.test"
-    ) as c:
-        yield c
+# NOT (main birleştirmesi): İP-3 burada kendi `http` fixture'ını tanımlıyordu;
+# güncel main ise aynı adı `ip2b_factory`'den import ediyor (yukarıdaki satır).
+# İkisi bir arada kaldığında SESSİZ bir sorun doğuyordu: sonra tanımlanan İP-3
+# sürümü import'u gölgeliyor ve İP-2b testleri `pg` bağımlılığını KAYBEDİYORDU
+# (o fixture her testten sonra engine havuzunu boşaltır; asyncpg bağlantıları
+# event loop'a bağlı olduğu için bu, "Event loop is closed" sınıfı flaky'nin
+# bilinen panzehiridir). Bu yüzden tek bir fixture bırakıldı: `pg` alan ve daha
+# güçlü olan ortak sürüm. İkisi de aynı şeyi yapıyordu — gerçek uygulamayı
+# `httpx.ASGITransport` ile, dependency override OLMADAN sürmek; tek fark
+# İP-3'ün `base_url`'ünün `http://ip3.test` olmasıydı ve hiçbir test buna
+# bakmıyor (İP-3'ün WS testi kendi ASGI scope'unu elle kuruyor).
 
 
 # ═════════════ Tek kullanımlık test veritabanı + hijyen nöbetçisi ═════════════
