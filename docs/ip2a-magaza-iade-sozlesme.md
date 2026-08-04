@@ -600,3 +600,172 @@ yeşil olduğu için hepsi her turda korundu.
   bir dalın (İP-3) revizyonuna damgalı bulundu ve `alembic stamp --purge
   ip2b_terminal_history_guard` + `upgrade head` ile bu dalın şemasına alındı.
   İP-3'ün eklediği `auth_version` kolonları yerinde bırakıldı (zararsız).
+  *(Bu kestirme §10'da giderildi: veritabanı sıfırdan yeniden kuruldu.)*
+
+## 10. İP-3 sonrası güncel-main adaptasyonu
+
+> **Bu bölüm §1-§9'u GEÇERSİZ KILMAZ.** Yukarısı tarihsel kırmızı checkpoint
+> (`295ffb6`) ve üretim uygulaması (`ab60c0c`) kayıtlarıdır; olduğu gibi
+> korunur. Bu bölüm, aynı paketin **İP-3 merge'i sonrası güncel main** üzerinde
+> yeniden ölçülmüş halini kaydeder. **Bu turda yeni İP-2a işlevi
+> GELİŞTİRİLMEMİŞTİR.**
+
+### Künye
+
+| | |
+|---|---|
+| Adaptasyon öncesi İP-2a HEAD | `ab60c0c` |
+| Alınan main | `3e6a24d` — `merge(ip3): yetki tenant kvkk ve auth version guvenligini tamamla` |
+| Merge-base | `3cf40f2` (divergence: main 18 ← / İP-2a 10 →) |
+| Merge commit | `19f7094` — `merge(ip2a): ip3 sonrasi guncel main'i iade dalina al` (parent1 `ab60c0c`, parent2 `3e6a24d`; no-ff, **çatışmasız**) |
+| Migration commit | `cf052e8` — `fix(ip2a): iade migrationini ip3 zincirinin ucuna bagla` |
+| Entegrasyon düzeltmesi | `c99c67a` — `fix(ip2a): iade fabrikasinin tokenini ip3 auth_version sozlesmesine bagla` |
+| Güvenlik dalı | `ip2a-pre-ip3-main-merge-ab60c0c` |
+| Yön | yalnız main → İP-2a dalı. Main'e merge YAPILMADI, rebase/squash/force YOK, push YOK |
+
+### Migration zinciri tek head'e alındı
+
+Merge sonrası zincir `ip2b_terminal_history_guard`'da ÇATALLANDI — `alembic
+heads` iki head raporladı (`ip3_auth_version_all_roles`,
+`ip2a_iade_para_guvenligi`). Boş bir veritabanında `upgrade head` "Multiple head
+revisions" ile düşerdi; hem `ensure_schema` hem entegrasyon testlerinin DB
+kurulumu kırılırdı.
+
+**Seçilen çözüm — doğrusal yeniden bağlama** (merge revizyonu ÜRETİLMEDİ):
+
+```
+f29c → f30_paketleme_semasi → ip2b_terminal_history_guard
+     → ip3_auth_version_all_roles → ip2a_iade_para_guvenligi (head)
+```
+
+Gerekçe (hepsi koddan doğrulandı): İP-3 yalnız `admins`/`tutors`/`clients`/
+`library_operators` tablolarına `auth_version` kolonu ekler; İP-2a yalnız
+`orders`/`order_returns`/`order_return_items` şemasına dokunur — **ortak nesne
+yok**. İP-2a'nın backfill'leri İP-3'ün dokunduğu tabloları hiç okumaz ve İP-3'ün
+backfill'i yoktur; yani iki revizyonun sırası değiş-tokuşludur. DDL gövdesinde
+başka değişiklik gerekmedi. (Aynı gerekçeyle İP-3 de kendi zincirini main ucuna
+bağlamıştı.)
+
+**Bağımsız doğrulama** (tek kullanımlık `adana_ip2a_ip3_merge_migration_test`):
+
+| Adım | Sonuç |
+|---|---|
+| `alembic heads` | tek head `ip2a_iade_para_guvenligi` |
+| `upgrade head` (boş DB) | zincir sırayla koştu; 5 tabloda `auth_version`, 6 İP-2a kolonu, `ck_order_return_items_received`, 3 F30 tablosu, `orders_terminal_history_guard` trigger'ı mevcut; `payment_status`/`refund_status` = String(20) |
+| `downgrade -1` | **yalnız** İP-2a değişiklikleri geri alındı; `auth_version` (5), F30 (3), İP-2b trigger korundu; kolonlar String(10)'a döndü; yarım şema YOK |
+| `upgrade head` + `alembic check` | "No new upgrade operations detected." |
+| `AUTO_CREATE_DB=true` açılış probu (yeni boş DB) | `ensure_schema` tek head'e kadar migrate etti, 94 tablo, `/health/live` → **200**. "Multiple head revisions" YOK. (MinIO bağlantı hataları altyapı eksikliğidir, açılışı engellemedi.) |
+
+### Bulunan gerçek entegrasyon kusuru — merge'in ürettiği tek kusur
+
+İP-3 §6 ile `auth_ver` claim'i **bütün rollerde** denetleniyor. İP-3, F30/İP-2b/
+İP-1a fabrikalarını ortak `tests/integration/auth_headers.py` sözleşmesine
+bağlamıştı — ama **İP-2a fabrikası o sırada main'de yoktu** ve token'ını hâlâ
+claim'siz `create_access_token` ile üretiyordu. Sonuç: birleşik ağaçta
+`test_ip2a_admin_http_pg.py`'nin **10 node'u da** `401 Could not validate
+credentials` aldı.
+
+Düzeltme (`c99c67a`) en dar biçimde yapıldı: fabrika `auth_headers.bearer_headers`
+kullanır oldu — değer DB'deki gerçek `auth_version`'dan okunur (sabit `1`
+yazılmadı; sabit değer, sürüm artıran bir senaryo eklendiği gün testi sessizce
+yanlış yeşile çevirirdi). **Hiçbir assertion değiştirilmedi, test silinmedi,
+skip/xfail eklenmedi.** Düzeltme sonrası İP-2a 49/49 yeşil.
+
+### Test matrisi — birleşik ağaç
+
+Gerçek PostgreSQL + gerçek Redis + `PAYMENT_PROVIDER=fake`. Dar paketler ayrı
+`POSTGRES_DB` + ayrı `REDIS_DB` ile **paralel**; tam matrisler, yarışlar ve DB
+işlemleri **sırayla**.
+
+| Paket | Sonuç |
+|---|---|
+| İP-2a | **49 passed** |
+| İP-3 | **115 passed** |
+| İP-2b | **39 passed** |
+| İP-1a | **63 passed** |
+| F30 | **314 passed** |
+| Tam integration | **1103 passed, 16 skipped, 0 failed** |
+| Verify (`adana_verify`) | **126 passed, 6 skipped** |
+| Acceptance | **197 passed** |
+| Unit | **685 passed** |
+| Frontend (Vitest) | **694 passed / 3 failed (697)** — flaky, aşağıda |
+| TypeScript (`tsc -b`) | temiz (exit 0) |
+| `ruff check .` | All checks passed |
+| `git diff --check` | temiz |
+
+Skip'lerin tamamı **altyapı**: 16 integration skip'i VROOM/OSRM ayakta olmadığı
+için, 6 verify skip'i MinIO erişilemediği için. Üretim hatası değildir.
+
+**Frontend 3 hatası merge kaynaklı DEĞİLDİR:** İP-2a dalı `3cf40f2 → ab60c0c`
+aralığında `frontend/` altında **hiçbir dosyaya dokunmadı**; birleşik ağacın
+frontend'i main (`3e6a24d`) ile **birebir aynıdır** (`git diff 3e6a24d HEAD --
+frontend/` boş). Hatalar `inventoryScreens.acceptance.test.tsx`'te `waitFor`
+zaman aşımı; aynı dosya tek başına koşturulduğunda **57/57 geçiyor** — ağır
+paralel yük altında flaky.
+
+### Node koruma
+
+`ab60c0c` ile birleşik HEAD'in `--collect-only` listeleri karşılaştırıldı
+(ayrı detached worktree'de; ana ağaçta checkout yapılmadı, iş bitince worktree
+kaldırıldı):
+
+- Toplam node 2012 → 2133; **KAYIP node: 0**
+- `ip2a` node sayısı **49 → 49** (admin_http 10 · partial_math 11 · races 10 ·
+  refund_two_phase 10 · restock 8)
+- Tarihsel checkpoint'in (`295ffb6`) **36 node'unun tamamı** hâlâ mevcut
+- Yeni 121 node'un 115'i `ip3`, 6'sı `test_auth_version_token_contract.py`
+- `test_ip2a_*.py` ve `ip2a_factory.py` merge'de **bit düzeyinde değişmedi**
+  (`c99c67a` öncesi); skip/xfail/`collect_ignore` eklenmedi
+
+### Yarış tekrarları (5 tur)
+
+`test_ip2a_races_pg.py` — 10 node, sırayla 5 tur:
+
+| Tur | Sonuç | Süre |
+|---|---|---|
+| 1 | 10 passed | 22,2 sn |
+| 2 | 10 passed | 18,2 sn |
+| 3 | 10 passed | 21,3 sn |
+| 4 | 10 passed | 17,9 sn |
+| 5 | 10 passed | 27,5 sn |
+
+Beş turun tamamında `40P01` · `40001` · `55P03` · `57014` · deadlock · timeout ·
+pending/destroyed task · `Event loop is closed` · `MissingGreenlet` · "Multiple
+head revisions" **sayısı 0**. Çift provider refund, refund tavan aşımı, kayıp
+`refunded_amount`, çift stok dönüşü, çift audit ve çift bildirim iddiaları
+testlerin kendi assertion'ları olduğundan her turda korundu.
+
+### `adana_verify` sıfırdan kuruldu
+
+§9'daki `stamp --purge` kestirmesi bu turda giderildi. Veritabanı önce
+doğrulandı: gerçek bir test DB'si, **kullanıcı/üretim verisi YOK**
+(`orders`/`order_items`/`products`/`clients`/`tutors`/`admins`/`payments`/
+`bookings`/`notifications` = 0; yalnız 55 satır test artığı `audit_logs`).
+Boş ve güvenli olduğu için `DROP DATABASE` + `CREATE DATABASE` +
+`alembic upgrade head` ile **sıfırdan** kuruldu — `stamp --purge` gibi şema ile
+revizyon kaydını ayrıştıran kestirme KULLANILMADI. Sonuç: 94 tablo, tek head
+`ip2a_iade_para_guvenligi`, 126 passed / 6 altyapı skip. `ceyhandb`'ye
+dokunulmadı.
+
+### Kalan borç
+
+- **P0: yok. P1: yok.**
+- **P2 (ölçüldü, bu turda düzeltilmedi — kapsam dışı):** tam integration koşusu
+  `notifications` ve `outbox_events` tablolarında kalıcı satır bırakıyor.
+  Sıfırdan kurulmuş bir DB'de tam koşum sonrası ölçüm: `notifications=6`,
+  `outbox_events=16`; hijyen nöbetçisinin **saydığı** tablolar (orders,
+  order_returns, products, clients, audit_logs, payments) 0'da kaldı. Kaynak
+  teslimat/oversell paketleridir, İP-2a değil; iki tablo `_KRITIK_TABLOLAR`
+  nöbetçisinde olmadığı için görünmüyor.
+- **P2:** frontend `inventoryScreens.acceptance.test.tsx` ağır paralel yük
+  altında `waitFor` zaman aşımıyla flaky (tek başına 57/57 geçiyor). İP-2a
+  kapsamı dışı — frontend bu dalda hiç değişmedi.
+- §9'daki diğer P2'ler (`inventory_rules` RETURN etkisi, sipariş düzeyinde
+  MANUAL_REVIEW görünümü) ve **PK-β / PK-γ / PK-ε / PK-ζ** ürün-hukuk kararları
+  değişmeden duruyor.
+
+### Durum
+
+Birleşik ağaçta P0/P1 yoktur; migration tek head'dir, komşu paketlerin
+(İP-3/İP-2b/İP-1a/F30) tamamı yeşildir ve İP-2a'nın 49 node'u ile tarihsel 36
+node'u korunmuştur. **Final bağımsız audit'e hazırdır.**
