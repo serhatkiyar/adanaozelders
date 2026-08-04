@@ -139,11 +139,24 @@ async def test_iade_gorunmuyorsa_sinirli_retry(db, refunding_order, fake_provide
     assert o.refund_attempts == 1, "deneme sayacı ilerlemedi — sonsuz retry riski"
 
 
-async def test_deneme_siniri_asilinca_ALERT_durum_degismez(
+async def test_deneme_siniri_asilinca_MANUAL_REVIEW_isaretlenir(
     db, refunding_order, fake_provider
 ):
-    """Sınır aşıldığında sessizce denemeye devam etmek de, durumu uydurmak da
-    yanlış: kayıt insana bırakılır."""
+    """Sınır aşıldığında sessizce denemeye devam etmek de, iade edildi demek de
+    yanlış: kayıt SORGULANABİLİR biçimde insana bırakılır.
+
+    ## Davranış DEĞİŞTİ (İP-2a / PK-δ, bilinçli ürün kararı)
+
+    Bu testin adı ve iddiası eskiden "durum DEĞİŞMEZ" idi: kayıt süresiz
+    `REFUNDING`'de kalıyor, ALERT yalnız `logger.error`'a düşüyordu. Onaylanan
+    karara göre (docs/ip2a-magaza-iade-sozlesme.md §5/PK-δ) log tek başına
+    kabul edilemez — kimsenin sorgulayamadığı bir kayıt, müşterinin parasını
+    sessizce askıda tutar. Kayıt artık kalıcı ve filtrelenebilir bir
+    `MANUAL_REVIEW` durumuna geçer.
+
+    Değişmeyen çekirdek — ve burada asıl korunan şey: **`REFUNDED` YAZILMAZ**
+    ve sağlayıcıya bir daha gidilmez.
+    """
     fake_provider.state = RefundState.UNKNOWN
     refunding_order.refund_attempts = settings.REFUND_MAX_ATTEMPTS
     await db.commit()
@@ -152,8 +165,17 @@ async def test_deneme_siniri_asilinca_ALERT_durum_degismez(
 
     assert fake_provider.refunds == []
     o = await _reload(db, refunding_order)
-    assert o.payment_status == "REFUNDING", "manuel müdahale bekleyen kayıt kapatıldı"
+    assert o.payment_status == "MANUAL_REVIEW", (
+        "deneme tavanı dolan iade sorgulanabilir bir duruma geçmeliydi"
+    )
+    assert o.payment_status != "REFUNDED", "para dönmemişken iade edildi yazıldı"
     assert o.refund_attempts == settings.REFUND_MAX_ATTEMPTS
+    assert o.refunded_at is None, "kesinleşmemiş iadeye tamamlanma damgası atıldı"
+
+    # Otomatik döngü bu kaydı bir daha sağlayıcıya göndermez.
+    await escrow_reconciler.reconcile_refunding(db)
+    assert fake_provider.refunds == []
+    assert (await _reload(db, refunding_order)).payment_status == "MANUAL_REVIEW"
 
 
 async def test_saglayici_iadeyi_reddederse_kayit_REFUNDING_kalir(

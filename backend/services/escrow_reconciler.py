@@ -29,6 +29,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from core import payments
 from core.config import settings
+from models.admin import Admin
 from models.booking import Booking, BookingStatus
 from models.library_exam import ExamRegistration, RegistrationStatus
 from models.payment import Payment, PaymentStatus
@@ -49,9 +50,16 @@ def _now() -> datetime.datetime:
 
 
 async def _reference_for(db: AsyncSession, obj, spec: escrow.EscrowSpec) -> str:
+    """Sağlayıcıya verilen conversationId — charge'da ne yazıldıysa O.
+
+    `Payment` için ders kimliği; diğerlerinde `spec.reference_id_attr`. İade
+    TALEBİ kendi id'siyle DEĞİL, tahsilatın yapıldığı siparişin id'siyle
+    sorgulanır (`order:{order_id}`) — `return:{id}` referansı iyzico'da hiçbir
+    zaman eşleşmiyordu ve sarkan kısmi iade kalıcı ALERT'e düşüyordu (İP2A-02).
+    """
     if isinstance(obj, Payment):
         return f"{spec.reference_prefix}:{obj.booking_id}"
-    return f"{spec.reference_prefix}:{obj.id}"
+    return f"{spec.reference_prefix}:{getattr(obj, spec.reference_id_attr)}"
 
 
 _REFUNDING_TARGETS: tuple[tuple[type, escrow.EscrowSpec], ...] = (
@@ -66,10 +74,31 @@ _REFUNDING_TARGETS: tuple[tuple[type, escrow.EscrowSpec], ...] = (
 
 
 async def reconcile_refunding(db: AsyncSession) -> int:
-    """Sarkan REFUNDING kayıtlarını güvenli biçimde sonuca sürer. Dönen: işlenen."""
+    """Sarkan REFUNDING kayıtlarını güvenli biçimde sonuca sürer. Dönen: işlenen.
+
+    ## Kayıt-başı izolasyon (İP-2a/R1)
+
+    Her kayıt KENDİ transaction'ında işlenir ve kendi advisory kilidini tutar.
+    Bir kaydın hatası partinin kalanını düşürmez (hata YUTULMAZ, `logger.exception`
+    ile görünür kalır); kilit hem "canlı istek sağlayıcıda asılı" hâlini hem de
+    ikinci bir reconciler worker'ını dışarıda tutar (İP2A-06).
+
+    ## Telafi bütünlüğü (İP2A-01)
+
+    Sağlayıcı iadesi kesinleştiğinde para dışındaki HER şey de tamamlanır:
+    `refunded_amount`, kupon, sipariş FSM'i, audit ve müşteri bildirimi. Eskiden
+    reconciler yalnız escrow katmanını çağırıyordu ve kayıt sonrasında hiçbir
+    yoldan telafi edilemiyordu (`payment_status` artık PAID olmadığı için
+    cancel/refund uçları 409 veriyordu).
+
+    ## PK-α
+
+    Bu yol **stok geri koymaz**: stok yalnız fiziksel kabulde döner
+    (`order_service.receive_return`). Sipariş İPTALİ yolundaki `SALE_CANCEL`
+    bundan ayrıdır — orada mal hiç müşteriye çıkmamıştır.
+    """
     provider = payments.get_payment_provider()
     min_age = datetime.timedelta(minutes=settings.REFUND_RECONCILE_MIN_AGE_MINUTES)
-    now = _now()
     handled = 0
 
     for model, spec in _REFUNDING_TARGETS:
@@ -79,63 +108,127 @@ async def reconcile_refunding(db: AsyncSession) -> int:
         conditions = [status_col == spec.refunding]
         if hasattr(model, "deleted_at"):
             conditions.append(model.deleted_at.is_(None))
-        rows = (
-            await db.execute(select(model).where(*conditions))
+        # Önce yalnız KİMLİKLER alınır: aşağıdaki döngü commit/rollback yaptığı
+        # için ORM nesneleri bayatlar ve bayat nesnenin alanına dokunmak async
+        # oturumda lazy-load (MissingGreenlet) üretir.
+        ids = (
+            await db.execute(select(model.id).where(*conditions).order_by(model.id))
         ).scalars().all()
-        for obj in rows:
-            reference = await _reference_for(db, obj, spec)
-            state = await provider.refund_state(
-                provider_ref=obj.provider_ref, reference=reference
-            )
-            action = escrow.next_refund_action(
-                attempts=obj.refund_attempts,
-                requested_at=obj.refund_requested_at,
-                now=now,
-                provider_state=state,
-                min_age=min_age,
-                max_attempts=settings.REFUND_MAX_ATTEMPTS,
-            )
-            if action == escrow.ACTION_WAIT:
-                continue
-            if action == escrow.ACTION_FINALIZE:
-                # Sağlayıcıda iade POZİTİF görünüyor — yazma çağrısı yapmadan bitir.
-                if await escrow.finalize_refund(db, obj, spec):
-                    await db.commit()
+        # ⚠️ Burada `rollback()` YOK ve olmamalı: oturum `expire_on_commit=False`
+        # ile kurulur, yani `commit` çağıranın nesnelerini bayatlatmaz — ama
+        # `rollback` HER ŞEYİ expire eder ve çağıranın elindeki nesneye
+        # dokunmak async oturumda lazy-load (MissingGreenlet) üretir. Salt-okuma
+        # SELECT'i açık transaction'da bırakmak zararsızdır; ilk kaydın işi aynı
+        # transaction'da başlar ve kendi commit'iyle kapanır.
+        for row_id in ids:
+            try:
+                if await _tek_kaydi_isle(db, model, spec, row_id, provider, min_age):
                     handled += 1
-                    logger.warning(
-                        "reconciler: sağlayıcıda görünen iade yerelde finalize edildi "
-                        "(%s#%s)", model.__name__, obj.id,
-                    )
-                continue
-            if action == escrow.ACTION_ALERT:
-                logger.error(
-                    "reconciler: iade %s denemede sonuçlanamadı — MANUEL müdahale "
-                    "gerekli (%s#%s ref=%s)",
-                    obj.refund_attempts, model.__name__, obj.id, obj.provider_ref,
-                )
-                continue
-            # ACTION_RETRY: deneme sayacını + karantinayı atomik tazele (bu turda
-            # yalnız biz retry'layalım), sonra sağlayıcı iadesi.
-            claimed = await escrow.claim(
-                db,
-                model,
-                obj.id,
-                from_statuses=[spec.refunding],
-                values={
-                    "refund_requested_at": now,
-                    "refund_attempts": model.refund_attempts + 1,
-                },
-                status_attr=spec.status_attr,
-            )
-            if not claimed:
-                continue
-            await db.commit()
-            await db.refresh(obj)
-            if await escrow.perform_refund(db, obj, spec):
-                await _order_telafisi(db, obj)
                 await db.commit()
-                handled += 1
+            except Exception:  # noqa: BLE001 — kayıt izole edilir, parti ölmez
+                await db.rollback()
+                logger.exception(
+                    "reconciler: %s#%s mutabakatı BAŞARISIZ — kayıt atlandı, "
+                    "parti devam ediyor (elle inceleyin)",
+                    model.__name__,
+                    row_id,
+                )
     return handled
+
+
+async def _tek_kaydi_isle(
+    db: AsyncSession,
+    model: type,
+    spec: escrow.EscrowSpec,
+    row_id: int,
+    provider,
+    min_age: datetime.timedelta,
+) -> bool:
+    """Tek sarkan kaydı kendi transaction'ında sonuca sürer. Dönen: işlendi mi."""
+    # Kilit ALINAMIYORSA kayıt şu anda başkasının elinde: canlı bir istek
+    # sağlayıcıda asılı olabilir. O pencerede ikinci gerçek iade emri vermek
+    # kısmi iadede GERÇEK çifte ödemedir (sağlayıcının aşırı-iade reddi kısmi
+    # tutarları ayırt edemez) — bu yüzden beklemeden geçilir (İP2A-06).
+    if not await escrow.try_inflight_lock(db, spec, row_id):
+        logger.info(
+            "reconciler: %s#%s başkası tarafından işleniyor — bu tur atlandı",
+            model.__name__, row_id,
+        )
+        return False
+
+    obj = await db.get(model, row_id, populate_existing=True)
+    if obj is None:
+        return False
+    if escrow._durum_degeri(getattr(obj, spec.status_attr)) != escrow._durum_degeri(
+        spec.refunding
+    ):
+        return False  # kilidi beklerken sonuçlanmış
+
+    now = _now()
+    reference = await _reference_for(db, obj, spec)
+    state = await provider.refund_state(
+        provider_ref=obj.provider_ref, reference=reference
+    )
+    action = escrow.next_refund_action(
+        attempts=obj.refund_attempts,
+        requested_at=obj.refund_requested_at,
+        now=now,
+        provider_state=state,
+        min_age=min_age,
+        max_attempts=settings.REFUND_MAX_ATTEMPTS,
+    )
+    if action == escrow.ACTION_WAIT:
+        return False
+
+    if action == escrow.ACTION_FINALIZE:
+        # Sağlayıcıda iade POZİTİF görünüyor — yazma çağrısı yapmadan bitir.
+        if not await escrow.finalize_refund(db, obj, spec):
+            return False
+        logger.warning(
+            "reconciler: sağlayıcıda görünen iade yerelde finalize edildi (%s#%s)",
+            model.__name__, obj.id,
+        )
+        await _telafileri_tamamla(db, obj, kaynak="finalize")
+        return True
+
+    if action == escrow.ACTION_ALERT:
+        # PK-δ: sessiz log yerine SORGULANABİLİR kalıcı durum. Para hareketi
+        # yapılmaz, REFUNDED yazılmaz, başarı yan etkileri üretilmez.
+        logger.error(
+            "reconciler: iade %s denemede sonuçlanamadı — MANUEL İNCELEME "
+            "(%s#%s ref=%s)",
+            obj.refund_attempts, model.__name__, obj.id, obj.provider_ref,
+        )
+        if await escrow.mark_manual_review(db, obj, spec):
+            await _manual_review_audit(db, obj, spec)
+            return True
+        return False
+
+    # ACTION_RETRY: deneme sayacını + karantinayı atomik tazele. WHERE koşulu
+    # karantinayı da içerir → aynı turda ikinci bir worker (kilidi almış olsa
+    # bile, ör. kilit sınıfı ileride değişirse) claim'i KAZANAMAZ.
+    claimed = await escrow.claim(
+        db,
+        model,
+        obj.id,
+        from_statuses=[spec.refunding],
+        values={
+            "refund_requested_at": now,
+            "refund_attempts": model.refund_attempts + 1,
+        },
+        extra_where=(model.refund_requested_at <= now - min_age,),
+        status_attr=spec.status_attr,
+    )
+    if not claimed:
+        return False
+    await db.refresh(obj, attribute_names=["refund_requested_at", "refund_attempts"])
+    tutar = escrow.order_inflight_refund(obj) if isinstance(obj, Order) else None
+    if not await escrow.perform_refund(db, obj, spec, amount=tutar):
+        # Başarısızlık da COMMIT edilir: deneme sayacı kalıcı olmazsa kayıt
+        # tavana hiç ulaşmaz ve MANUAL_REVIEW'a asla düşmez (sonsuz sessiz retry).
+        return False
+    await _telafileri_tamamla(db, obj, kaynak="retry")
+    return True
 
 
 async def reconcile_orphaned_escrow(db: AsyncSession) -> int:
@@ -242,39 +335,93 @@ async def reconcile_orphaned_escrow(db: AsyncSession) -> int:
     return handled
 
 
-async def _order_telafisi(db: AsyncSession, obj) -> None:
-    """Reconciler'ın tamamladığı SİPARİŞ iadesinde telafileri de tamamlar.
+async def _telafileri_tamamla(db: AsyncSession, obj, *, kaynak: str) -> None:
+    """Sağlayıcı iadesi kesinleşince koşan TAM telafi kuyruğu (İP2A-01).
 
-    Eskiden bu yol yalnız ESCROW katmanını çağırıyordu: para dönüyor ama
-    ``_restock`` (SALE_CANCEL), kupon ``release``, ``refunded_amount``, sipariş
-    ``CANCELLED`` geçişi ve müşteri bildirimi HİÇ koşmuyordu — üstelik geri
-    dönüşü de yoktu, çünkü `payment_status` artık PAID olmadığından
-    cancel/refund uçları 409 veriyordu (İP-2b R6/R7/R8).
+    İki mağaza yolu vardır ve ikisi de canlı istekle AYNI sonucu üretmek
+    zorundadır — eskiden reconciler yalnız escrow katmanını çağırıyordu:
 
-    Telafi kuyruğu `order_service` ile ORTAKTIR; hepsi idempotenttir.
+    * ``Order``       — sipariş iptali/tam iadesi: `refunded_amount`, stok
+      (`SALE_CANCEL`; mal hiç müşteriye çıkmadı), kupon, `CANCELLED` geçişi ve
+      müşteri bildirimi (İP-2b R6/R7/R8).
+    * ``OrderReturn`` — RMA: `refunded_amount`, kupon (yalnız tam iadede),
+      sipariş `REFUNDED` geçişi, audit ve müşteri bildirimi. **Stok BURADA
+      dönmez** (PK-α: yalnız fiziksel kabulde).
+
+    Telafi kuyruğu `order_service` ile ORTAKTIR ve hepsi idempotenttir; aynı
+    tur iki kez koşarsa ikinci uygulama no-op olur.
     """
-    if not isinstance(obj, Order):
-        return
     from services import order_service
 
-    order = await order_service._load_full(db, obj.id)
-    if order is None:
+    if isinstance(obj, Order):
+        order = await order_service._load_full(db, obj.id)
+        if order is None:
+            return
+        await order_service.settle_refunded_order(
+            db,
+            order,
+            amount=escrow.order_inflight_refund(order),
+            reason_code="ORDER_CANCELLED",
+            terminal_status="CANCELLED",
+            changed_by="system:reconciler",
+            reason=f"Sağlayıcı iadesi mutabakat turunda tamamlandı ({kaynak})",
+        )
+        await notification_service.notify(
+            db,
+            user_id=order.client_id,
+            role_id=ROLE_IDS[RoleType.CLIENT],
+            message=f"Siparişin #{order.id} için ödemen iade edildi.",
+            link="/siparislerim",
+        )
         return
-    await order_service.settle_refunded_order(
+
+    if isinstance(obj, OrderReturn):
+        await order_service.settle_completed_return(
+            db, obj, changed_by=f"system:reconciler:{kaynak}"
+        )
+
+
+async def _manual_review_audit(db: AsyncSession, obj, spec: escrow.EscrowSpec) -> None:
+    """MANUAL_REVIEW geçişini denetim izine ve yönetici bildirimine bağlar.
+
+    Sorgulanabilir bir DURUM tek başına yetmez: kimsenin bakmadığı bir kuyruk
+    sessiz log'dan yalnız biraz iyidir. Geçiş `audit_logs`'a yazılır ve
+    yöneticilere bildirim gider.
+    """
+    from services import audit_service, order_service
+
+    hedef = "order_return" if isinstance(obj, OrderReturn) else "order"
+    order_id = obj.order_id if isinstance(obj, OrderReturn) else obj.id
+    await audit_service.record(
         db,
-        order,
-        reason_code="ORDER_CANCELLED",
-        terminal_status="CANCELLED",
-        changed_by="system:reconciler",
-        reason="Sağlayıcı iadesi mutabakat turunda tamamlandı",
+        actor=order_service._SistemAktoru(),
+        action="refund.manual_review",
+        target_type=hedef,
+        target_id=obj.id,
+        reason=(
+            f"Otomatik iade {obj.refund_attempts} denemede sonuçlanmadı — "
+            "manuel incelemeye alındı (PK-δ)"
+        ),
+        after={
+            "refund_status": escrow._durum_degeri(getattr(obj, spec.status_attr)),
+            "refund_attempts": obj.refund_attempts,
+            "order_id": order_id,
+        },
     )
-    await notification_service.notify(
-        db,
-        user_id=order.client_id,
-        role_id=ROLE_IDS[RoleType.CLIENT],
-        message=f"Siparişin #{order.id} için ödemen iade edildi.",
-        link="/siparislerim",
-    )
+    admin_ids = (
+        await db.execute(select(Admin.id).where(Admin.deleted_at.is_(None)))
+    ).scalars().all()
+    for admin_id in admin_ids:
+        await notification_service.notify(
+            db,
+            user_id=admin_id,
+            role_id=ROLE_IDS[RoleType.ADMIN],
+            message=(
+                f"Sipariş #{order_id}: otomatik iade tamamlanamadı, manuel "
+                "inceleme gerekiyor."
+            ),
+            link="/yonetim/magaza",
+        )
 
 
 async def reconcile_stale_checkouts(db: AsyncSession) -> int:

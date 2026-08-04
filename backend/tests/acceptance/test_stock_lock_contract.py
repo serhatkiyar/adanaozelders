@@ -234,11 +234,19 @@ SIRA_MATRISI: list[tuple[str, str, list[str]]] = [
         "settle_refunded_order",
         ["_restock", "release"],
     ),
-    # Kısmi iade: aynı desen (kilit → sağlayıcı → telafi).
+    # ── PK-α sonrası: RMA para yolu ile STOK yolu AYRILDI ──
+    #
+    # `_settle_return` artık ne ürün kilidi alır ne de stok yazar: iade parası
+    # sağlayıcı başarısıyla kesinleşir, mal ise ancak depo kabulünde stoğa
+    # döner (docs/ip2a-magaza-iade-sozlesme.md §5/PK-α). Bu yüzden kilit sırası
+    # sözleşmesi bu fonksiyondan KALKTI ve `receive_return`'e TAŞINDI — orada
+    # kanonik sıra tam olarak Product → Order → OrderReturn'dür ve ölçülüyor.
+    # Sözleşme gevşemedi: stok yazan yol hâlâ ürün kilidini sağlayıcıdan/karardan
+    # önce almak zorundadır, yalnız o yolun adı değişti.
     (
         "services/order_service.py",
-        "_settle_return",
-        ["_lock_order_products", "refund", "_restock_items"],
+        "receive_return",
+        ["_lock_order_products", "_lock_order", "_restock_items"],
     ),
 ]
 
@@ -247,9 +255,11 @@ SIRA_MATRISI: list[tuple[str, str, list[str]]] = [
 def test_kaynak_kilit_sirasi_kanonik(rel, fn, sira):
     """Kanonik sıra: Product → Order → OrderReturn.
 
-    `_settle_return` istisna gibi görünür (`claim` önce): oradaki `claim`
-    **OrderReturn** satırınadır ve arada `db.commit()` vardır, yani ürün
-    kilitleri AYRI bir transaction'da alınır. Ayrıntı: plan §4e.
+    `receive_return` bu sıranın tam örneğidir: ürünler → sipariş → iade satırı,
+    sonra defter yazımı. RMA'nın PARA yolu (`_settle_return`) hiç ürün kilidi
+    almaz — PK-α ile stok o yoldan tamamen çıktı; eşzamanlılık nöbetini
+    `escrow` advisory kilidi tutar (satır kilidi Order↔OrderReturn döngüsü
+    kurar ve iki eşzamanlı iadede gerçek deadlock üretirdi).
     """
     node = _func(rel, fn)
     satirlar = [(ad, _first_line(node, ad)) for ad in sira]
