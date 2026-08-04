@@ -605,3 +605,178 @@ async def test_reconciler_bir_kaydin_hatasinda_partiyi_dusurmez(
     assert bozuk_satir["refund_status"] == "REFUNDING", (
         "hatalı kayıt yanlışlıkla REFUNDED yazıldı"
     )
+
+
+async def test_onay_ile_tam_iade_yarisinda_tavan_korunur(fab, provider):
+    """RMA onayı ⟂ yönetici tam iadesi: iki AYRI para yazıcısı, tek tavan (M1).
+
+    ## Bu test neden sonradan eklendi (mutasyon provası M24)
+
+    Rezervasyon tavanının koşullu UPDATE'i (`refund_reserved + tutar <= total`)
+    sökülerek koşulan mutasyon HİÇBİR testi kırmadı: mevcut yarış senaryolarının
+    tamamı tek yazıcı (RMA) üzerindeydi ve tavan orada sipariş kilidi altındaki
+    taze okumayla korunuyordu. Yani suite, iki FARKLI yazıcının aynı siparişte
+    buluştuğu hâli hiç ölçmüyordu — kapsam boşluğu kabul edilip test eklendi.
+
+    `uq_order_returns_open` (sipariş başına tek PENDING talep) yüzünden iki
+    eşzamanlı RMA onayı yapısal olarak imkânsızdır; gerçek çapraz yarış budur:
+    bekleyen bir iade talebi onaylanırken yönetici siparişin tamamını iade eder.
+
+    Hangi taraf kazanırsa kazansın sağlayıcıya giden toplam ödeneni AŞAMAZ:
+    - onay önce → 100 rezerve, tam iade yalnız KALAN 50'yi ister,
+    - tam iade önce → tavan dolar, onay parasız kapanır (A2: "iade edildi" denmez).
+    """
+    pid = await fab.urun(stock=10, price="50.00")
+    sip = await fab.siparis(items=[(pid, 3)], status="SHIPPED")  # total 150
+    cid = sip.client_id
+    async with AsyncSessionLocal() as db:
+        order = await order_service._load_full(db, sip.order_id)
+        talep = await order_service.request_return(
+            db, order, "kusurlu", return_type="AYIPLI",
+            items=[OrderReturnItemIn(order_item_id=sip.item_ids[0], quantity=2)],
+        )
+    assert Decimal(talep.refund_amount) == Decimal("100.00")
+
+    # ── Deterministik pencere ──
+    #
+    # Kritik an, iki fazlı iadenin niyeti COMMIT edip sipariş kilidini BIRAKTIĞI
+    # ve sağlayıcıda beklediği andır: ikinci yazıcı tam o pencerede kilidi alır
+    # ve tavanı okur. `refund_gate` bu pencereyi istenildiği kadar tutar; kilit
+    # kapısıyla kurmak yetmezdi (kilit sağlayıcıdan önce bırakılıyor).
+    provider.refund_gate = asyncio.Event()
+
+    async def onayla():
+        async with AsyncSessionLocal() as db:
+            return await order_service.approve_return(
+                db, talep.id, admin_note="uygun"
+            )
+
+    async def tam_iade():
+        async with AsyncSessionLocal() as db:
+            return await order_service.refund_order(
+                db, sip.order_id, reason="yonetici tam iadesi"
+            )
+
+    t1 = asyncio.create_task(onayla())
+    await _bekle(
+        lambda: _hazir(provider, 1), mesaj="onay sağlayıcıda asılı olmalı"
+    )
+    t2 = asyncio.create_task(tam_iade())
+
+    async def _ikinci_yazici_sonuclandi() -> bool:
+        return t2.done() or len(provider.refund_calls) >= 2
+
+    await _bekle(_ikinci_yazici_sonuclandi, mesaj="ikinci yazıcı tavanı okumalı")
+    provider.refund_gate.set()
+    sonuclar = await asyncio.gather(t1, t2, return_exceptions=True)
+    _yalniz_beklenenler(sonuclar)
+
+    toplam = sum(t for _, t in provider.refund_calls)
+    assert toplam <= sip.total, (
+        f"iki yazıcı birlikte {toplam} TL iade etti — ödenen {sip.total} TL"
+    )
+    o = await fab.siparis_satiri(sip.order_id)
+    assert o["refunded_amount"] <= sip.total
+    assert o["refunded_amount"] == toplam, (
+        "muhasebe sağlayıcıya gidenle tutmuyor (kayıp/çift güncelleme)"
+    )
+    # Para hareketi olmayan taraf müşteriye "ödemen iade edildi" DEMEZ (A2).
+    bildirim = await fab.bildirim_sayisi(cid, icinde="iade edildi")
+    assert bildirim <= 2, f"karar başına en fazla bir bildirim beklenir: {bildirim}"
+
+
+async def test_iki_reconciler_worker_ayni_iadeyi_iki_kez_gondermez(fab, provider):
+    """İki eşzamanlı reconciler worker'ı → sağlayıcıya TEK çağrı (M3/Y1).
+
+    ## Bu test neden sonradan eklendi (mutasyon provası M27)
+
+    Retry claim'inin karantina koşulu (`refund_requested_at <= cutoff`)
+    sökülerek koşulan mutasyon hiçbir testi kırmadı: suite reconciler'ı hep TEK
+    worker olarak çağırıyordu, R-06 ise canlı istek ⟂ reconciler yarışını
+    ölçüyordu. "İki worker" hâli hiç sınanmamıştı — kapsam boşluğu kabul edilip
+    test eklendi.
+
+    Üretimde leader kilidi (PG advisory) normalde tek worker bırakır; bu test o
+    kilide GÜVENMEZ, çünkü liderlik devri anında iki tur üst üste binebilir.
+
+    ## Pencere ÖLÇÜLÜR, tahmin edilmez
+
+    Testin ilk hâli iki worker'ı yalnız `asyncio.gather` ile başlatıyordu ve
+    DÜŞÜK GÜÇLÜYDÜ: birinci worker, ikincisi ilgili spec'e gelmeden işini
+    bitirebiliyordu — yani yarış hiç kurulmuyordu. `refund_gate` ile birinci
+    worker sağlayıcıda ASILI tutulur; ikincinin penceresi sonuna kadar açıktır.
+
+    ## Gücünün ÖLÇÜLEN sınırı (dürüst kayıt)
+
+    Bu senaryo BEŞ bağımsız mekanizmayla korunuyor ve mutasyon provasında
+    hiçbirini tek başına sökmek testi kıramadı (M27, M27b, M27d, M28):
+
+    1. `escrow.perform_refund`'un advisory kilidi + taze durum okuması,
+    2. reconciler'ın ön nöbeti (`try_inflight_lock`),
+    3. retry claim'inin karantina koşulu (`refund_requested_at <= cutoff`),
+    4. kaydın TEK transaction'da işlenmesi — claim ile finalize arasında commit
+       olmadığı için satır kilidi worker'ları serileştirir ve kaybedenin claim
+       WHERE'i artık sağlanmaz,
+    5. `next_refund_action`'ın TAZE `refund_requested_at` üzerinden verdiği WAIT
+       kararı.
+
+    Yani bu test bir **değişmez (invariant) kaydıdır**, yüksek güçlü nöbetçi
+    değil: aynı kusur sınıfının (aynı kayda ikinci gerçek iade emri) yüksek
+    güçlü nöbetçisi R-06'dır ve o, (1)/(2)'yi tek başına sökmeyi yakalar.
+    """
+    pid = await fab.urun(stock=10)
+    sip = await fab.siparis(items=[(pid, 1)])
+    provider.refund_result = False
+    with pytest.raises(HTTPException):
+        await _cayma(sip.order_id)
+    talep = (await fab.iade_satirlari(sip.order_id))[0]
+    assert talep["refund_status"] == "REFUNDING"
+
+    provider.refund_result = True
+    provider.refund_calls.clear()
+    async with AsyncSessionLocal() as s:
+        await s.execute(
+            text(
+                "UPDATE order_returns SET refund_requested_at = "
+                "now() - interval '2 hours' WHERE id = :i"
+            ),
+            {"i": talep["id"]},
+        )
+        await s.commit()
+
+    provider.refund_gate = asyncio.Event()
+
+    async def worker():
+        async with AsyncSessionLocal() as s:
+            return await escrow_reconciler.reconcile_refunding(s)
+
+    t1 = asyncio.create_task(worker())
+    await _bekle(
+        lambda: _hazir(provider, 1), mesaj="ilk worker sağlayıcıda asılı olmalı"
+    )
+    t2 = asyncio.create_task(worker())
+    # Kusur penceresi: ikinci worker da sağlayıcıya ulaşırsa çağrı 2 olur.
+    try:
+        await _bekle(
+            lambda: _hazir(provider, 2),
+            mesaj="(kusur oluşmadıysa bu bekleme boşa düşer)",
+            saniye=2.0,
+        )
+    except BaseException:
+        pass
+    finally:
+        provider.refund_gate.set()
+    sonuclar = await asyncio.gather(t1, t2, return_exceptions=True)
+    _yalniz_beklenenler(sonuclar)
+
+    assert len(provider.refund_calls) == 1, (
+        f"iki worker sağlayıcıya {len(provider.refund_calls)} çağrı yaptı — "
+        "retry claim'i / uçuş-içi nöbeti exclusive değil"
+    )
+    son = (await fab.iade_satirlari(sip.order_id))[0]
+    assert son["refund_status"] == "REFUNDED"
+    o = await fab.siparis_satiri(sip.order_id)
+    assert o["refunded_amount"] == sip.total, (
+        "telafi iki kez ya da hiç uygulanmadı"
+    )
+    assert await fab.bildirim_sayisi(sip.client_id, icinde="iade edildi") == 1

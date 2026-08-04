@@ -54,6 +54,15 @@ class Mutasyon:
     yeni: str
     testler: tuple[str, ...]
     taraf: str = "backend"
+    #: Ek yamalar: ``((rel, eski, yeni), ...)``.
+    #:
+    #: Neden gerekli (İP-2a'da ortaya çıktı): bazı davranışlar BİRDEN ÇOK
+    #: bağımsız guard'la korunur ve hiçbirini tek başına sökmek davranışı
+    #: bozmaz — mutasyon "yakalanmadı" görünür ama test kusursuz da olabilir.
+    #: Gerçek soruyu ("bu guard'lar topluca vazgeçilebilir mi?") cevaplamak
+    #: için birkaç yamayı AYNI koşuda uygulamak gerekir. Tek yama zorunluluğu,
+    #: katmanlı korumanın olduğu yerde mutasyon provasını kör bırakıyordu.
+    ek: tuple[tuple[str, str, str], ...] = ()
 
 
 def _kos(cmd, cwd) -> subprocess.CompletedProcess:
@@ -144,7 +153,12 @@ def _kirilanlar(cikti: str) -> list[str]:
 
 def calistir(m: Mutasyon, head0: str, durum0: str) -> bool:
     print(f"\n{'=' * 72}\n{m.no} - {m.ad}\n{'=' * 72}")
-    with GeciciYama(KOK / m.rel, m.eski, m.yeni):
+    import contextlib
+
+    with contextlib.ExitStack() as yamalar:
+        yamalar.enter_context(GeciciYama(KOK / m.rel, m.eski, m.yeni))
+        for rel, eski, yeni in m.ek:
+            yamalar.enter_context(GeciciYama(KOK / rel, eski, yeni))
         if m.taraf == "backend":
             r = _kos([sys.executable, "-m", "pytest", "-q", *m.testler], BACKEND)
         else:
@@ -460,6 +474,96 @@ MUTASYONLAR: list[Mutasyon] = [
         '            "WHERE id = :i AND refund_reserved + :a <= total"',
         '            "WHERE id = :i"  # MUTASYON: tavan koşulu yok',
         ("tests/integration/test_ip2a_races_pg.py",),
+    ),
+    Mutasyon(
+        # M24 tek başına yakalanmadı ve bu SONUÇ DOĞRUDUR: tavan dört bağımsız
+        # guard'la korunur (sipariş satır kilidi · kilit altında TAZE
+        # `reservable_refund` okuması · `payment_status == PAID` şartı · koşullu
+        # UPDATE). Hiçbirini tek başına sökmek ulaşılabilir bir aşırı iade
+        # üretmiyor. M24b üçünü birden söker — yani tarihsel İP2A-03/04
+        # şeklini geri getirir — ve davranışın GERÇEKTEN bozulduğunu gösterir.
+        "M24b", "İP2A-03/04: tavan hesabı tarihsel (bayat) hâline döndürüldü",
+        "backend/services/order_service.py",
+        """    row = (
+        await db.execute(
+            text("SELECT total - refund_reserved FROM orders WHERE id = :i"),
+            {"i": order_id},
+        )
+    ).scalar_one_or_none()""",
+        """    row = (  # MUTASYON: tavan bayat `refunded_amount`'tan okunuyor
+        await db.execute(
+            text("SELECT total - refunded_amount FROM orders WHERE id = :i"),
+            {"i": order_id},
+        )
+    ).scalar_one_or_none()""",
+        ("tests/integration/test_ip2a_races_pg.py",),
+        "backend",
+        (
+            (
+                "backend/services/order_service.py",
+                '            "WHERE id = :i AND refund_reserved + :a <= total"',
+                '            "WHERE id = :i"  # MUTASYON: koşullu tavan yok',
+            ),
+        ),
+    ),
+    Mutasyon(
+        # M27 tek başına yakalanmadı: uçuş-içi advisory kilidi ikinci worker'ı
+        # zaten dışarıda tutuyor. M27b ikisini birden söker.
+        "M27b", "İP2A-06: retry claim'i VE advisory nöbeti birlikte sökülü",
+        "backend/services/escrow_reconciler.py",
+        """    if not await escrow.try_inflight_lock(db, spec, row_id):
+        logger.info(
+            "reconciler: %s#%s başkası tarafından işleniyor — bu tur atlandı",
+            model.__name__, row_id,
+        )
+        return False""",
+        """    if False:  # MUTASYON: nöbet yok
+        return False""",
+        ("tests/integration/test_ip2a_races_pg.py",),
+        "backend",
+        (
+            (
+                "backend/services/escrow_reconciler.py",
+                "        extra_where=(model.refund_requested_at <= now - min_age,),",
+                "        # MUTASYON: karantina claim'e girmiyor",
+            ),
+        ),
+    ),
+    Mutasyon(
+        # M27/M27b/M27c yakalanmadı ve sebebi ölçüldü: iki worker'a karşı asıl
+        # nöbeti `escrow.perform_refund`'un KENDİSİ tutuyor — advisory kilidi
+        # sağlayıcı çağrısı boyunca elinde tutar ve kilidi aldıktan sonra TAZE
+        # durumu yeniden okur, yani bekleyen worker kaydın artık REFUNDING
+        # olmadığını görüp sağlayıcıya HİÇ gitmez. Reconciler'ın kendi ön
+        # nöbeti ve karantina koşulu bunun ÜSTÜNE binen katmanlardır.
+        # M27d merkezî nöbeti söker: iki-worker nöbetçisinin dişi budur.
+        "M27d", "İP2A-06: perform_refund'un kilit + taze durum nöbeti sökülü",
+        "backend/services/escrow.py",
+        """    await acquire_inflight_lock(db, spec, obj.id)
+    taze = await current_status(db, obj, spec)
+    if taze is not None and _durum_degeri(taze) != _durum_degeri(spec.refunding):""",
+        """    taze = None  # MUTASYON: kilit yok, taze durum okunmuyor
+    if False:""",
+        ("tests/integration/test_ip2a_races_pg.py",),
+        "backend",
+        (
+            (
+                "backend/services/escrow_reconciler.py",
+                """    if not await escrow.try_inflight_lock(db, spec, row_id):
+        logger.info(
+            "reconciler: %s#%s başkası tarafından işleniyor — bu tur atlandı",
+            model.__name__, row_id,
+        )
+        return False""",
+                """    if False:  # MUTASYON: reconciler ön nöbeti de yok
+        return False""",
+            ),
+            (
+                "backend/services/escrow_reconciler.py",
+                "        extra_where=(model.refund_requested_at <= now - min_age,),",
+                "        # MUTASYON: karantina claim'e girmiyor",
+            ),
+        ),
     ),
     Mutasyon(
         "M25", "İP2A-02: talebin provider_ref'i yazılmıyor",
