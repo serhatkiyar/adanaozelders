@@ -119,6 +119,17 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
     requiredPermission: "inventory.view",
   },
   {
+    label: "Paketleme",
+    to: ROUTES.adminPacking,
+    group: "Ticaret",
+    description:
+      "Sipariş kutularının kalem kalem hazırlandığı istasyon: paket aç, her ürünü okut, kutuyu kapat. Sipariş ancak burada tamamlanınca dağıtıma hazır sayılır.",
+    // Kendi glifi yok: ikon kümesi `AdminSidebar`'daki Record'a bağlı ve yeni
+    // anahtar oraya da eklenmeyi gerektiriyor. Raf ikonu anlamca en yakını.
+    icon: "inventory",
+    requiredPermission: "packing.view",
+  },
+  {
     label: "Dağıtım",
     to: ROUTES.adminDelivery,
     group: "Ticaret",

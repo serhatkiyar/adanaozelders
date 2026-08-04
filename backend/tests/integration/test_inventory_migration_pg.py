@@ -124,7 +124,13 @@ async def test_F29_zinciri_BOS_veritabaninda_kurulur_ve_BACKFILL_dogru(mig_db):
 
     yukseltme = _alembic("upgrade", "head")
 
-    # 1. Tek head
+    # 1. Tek head + F29 zincirinin tamamı uygulanan yolun içinde
+    #
+    # "head, F29'un SON revizyonudur" demek KIRILGANDI: F29'un üstüne konan her
+    # yeni migration (ilki: F30 paketleme şeması) bu testi F29'la hiç ilgisi
+    # olmayan bir sebeple kırardı. Ölçülmesi gereken şey head'in adı değil,
+    # **F29 zincirinin gerçekten uygulanmış olmasıdır** — aşağıdaki 2-5. adımlar
+    # da bunu şemadan doğrular.
     heads = _alembic("heads").stdout
     assert heads.count("(head)") == 1, f"birden çok head: {heads}"
     # F29 zincirinin ucu bu DB'de GERÇEKTEN koştu mu? Eski assert
@@ -135,6 +141,13 @@ async def test_F29_zinciri_BOS_veritabaninda_kurulur_ve_BACKFILL_dogru(mig_db):
     assert F29_ZINCIR[-1] in yukseltme.stdout + yukseltme.stderr, (
         f"F29 zincirinin ucu bu yükseltmede koşmadı:\n{yukseltme.stdout}\n{yukseltme.stderr}"
     )
+    # İkinci ve TAMAMLAYICI kanıt (main tarafından geldi): yalnız zincirin UCU
+    # değil, DÖRT revizyonun tamamı uygulanan yolun içinde mi? Üstteki assert
+    # "son adım koştu" der, bu assert "aradan biri düşmedi" der; ikisi birden
+    # tutulur çünkü biri diğerinin kör noktasını kapatır.
+    gecmis = _alembic("history", "-r", "base:head").stdout
+    eksik = [r for r in F29_ZINCIR if r not in gecmis]
+    assert not eksik, f"F29 zinciri uygulanan yolda değil: {eksik}\n{gecmis}"
 
     # 2. Dijital NULL, fiziksel 0 — stok bozulmadan
     satir = await _sor(

@@ -143,7 +143,19 @@ async def test_ODENMEMIS_siparis_rezerve_SAYILMAZ(fab):
 async def test_IPTAL_EDILMIS_siparis_rezerve_SAYILMAZ(fab):
     pid = await fab.urun(stock=10)
     oid = await fab.siparis(product_id=pid, quantity=2)
+    # İP-2b R5: `orders.status` terminal geçişleri artık DB'de de korunuyor —
+    # çıplak UPDATE, geçmiş satırı olmadan COMMIT'te reddedilir. Fixture bu
+    # yüzden geçişi FSM'in yazdığı izle birlikte kurar (kısayol kaldırıldı;
+    # ölçülen davranış — "iptal edilmiş sipariş rezerve sayılmaz" — aynı).
     async with AsyncSessionLocal() as db:
+        await db.execute(
+            text(
+                "INSERT INTO order_status_history "
+                "(order_id, old_status, new_status, changed_by) "
+                "VALUES (:i, 'PAID', 'CANCELLED', 'test')"
+            ),
+            {"i": oid},
+        )
         await db.execute(
             text("UPDATE orders SET status = 'CANCELLED' WHERE id = :i"), {"i": oid}
         )

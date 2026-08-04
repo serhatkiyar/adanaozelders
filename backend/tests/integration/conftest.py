@@ -47,6 +47,10 @@ from models.payment import Payment, PaymentStatus
 from models.tutor import Tutor, TutorStatus
 from services import commission
 
+# İP-2b fixture'ları (fab/http/sms_kayit) burada kayda geçer — test dosyaları
+# import etmez (fixture parametresi import edilen adı gölgeleyip F811 üretiyordu).
+from tests.integration.ip2b_factory import fab, http, sms_kayit  # noqa: F401,E402
+
 
 def _now() -> datetime.datetime:
     return datetime.datetime.now(datetime.timezone.utc)
@@ -104,15 +108,31 @@ class StubProvider(FakePaymentProvider):
     ``refund_gate`` verilirse refund çağrısı, event set edilene dek bekler — iki
     eşzamanlı transaction'ın "status okundu ama henüz yazılmadı" penceresinde
     buluşmasını DETERMİNİSTİK yapar.
+
+    ``refund_entered`` bunun ters yönüdür: kapıya GİRİLDİĞİ anda set edilir, yani
+    "iade faz-1'i commit'lendi ve akış sağlayıcıda asılı" olayını test tarafına
+    bildirir. Test bunu beklediğinde `asyncio.sleep(...)` ile "herhâlde oraya
+    varmıştır" tahmininde bulunmak zorunda kalmaz — ardışıklık ölçülür, tahmin
+    edilmez (zamanlamaya bahis oynanmaz). Bir testte birden çok iade
+    olabileceği için event `refund_calls` sayacının yerine geçmez; "en az bir
+    iade kapıya ulaştı" anlamındadır.
+
+    Beklerken **süre koyun**: kapıyı açacak yol bozulduğunda (ör. iade çağrısı
+    hiç yapılmadığında) çıplak `await provider.refund_entered.wait()` testi
+    kırmızıya değil sonsuz beklemeye çevirir. İP-1a yarış dosyası bu yüzden
+    sonlu bariyerden geçer (`test_ip1a_races_pg.py::_event_bekle`); yeni test
+    yazarken aynı deseni kullanın.
     """
 
     def __init__(self) -> None:
         self.refund_calls: list[tuple[str | None, Decimal]] = []
         self.refund_gate: asyncio.Event | None = None
+        self.refund_entered: asyncio.Event = asyncio.Event()
         self.refund_result: bool = True
 
     async def refund(self, *, provider_ref: str | None, amount: Decimal) -> bool:
         self.refund_calls.append((provider_ref, Decimal(str(amount))))
+        self.refund_entered.set()
         if self.refund_gate is not None:
             await self.refund_gate.wait()
         return self.refund_result
@@ -299,6 +319,12 @@ async def factory(pg) -> MoneyFactory:
     await f.cleanup()
 
 
+# İP-1a ders para yolu fabrikası ve HTTP istemcisi. Fixture'lar tanımları
+# `ip1a_factory.py`'de durur ama pytest'in onları bulabilmesi için conftest
+# ad alanında olmaları gerekir. Test modüllerine tek tek import edilselerdi,
+# aynı adı test parametresi olarak da kullanmak F811 (gölgeleme) üretirdi.
+from tests.integration.ip1a_factory import ip1a, ip1a_http  # noqa: E402,F401
+
 # ═══════════════ İP-3: yetki / kişisel veri / hesap güvenliği ═══════════════
 
 
@@ -333,6 +359,7 @@ async def http():
     ) as c:
         yield c
 
+
 # ═════════════ Tek kullanımlık test veritabanı + hijyen nöbetçisi ═════════════
 #
 # 30 Tem 2026'ya kadar bu testler geliştirme veritabanına (`ceyhandb`) karşı
@@ -363,6 +390,12 @@ _KRITIK_TABLOLAR = (
     "order_status_history",
     "order_returns",
     "order_return_items",
+    # F30 — paketleme. `package_scan_events` append-only'dir: sizan bir satır
+    # teardown'da SİLİNEMEZ, o yüzden nöbetçide olması şart (aksi hâlde iz
+    # tablosu sessizce ve geri dönülemez biçimde şişer).
+    "order_packages",
+    "order_package_items",
+    "package_scan_events",
     "clients",
     "admins",
     # Servisler audit yazabildiği için testler de yazar; korumasız bırakılmaz.
@@ -490,6 +523,24 @@ async def _tablo_sayilari() -> dict[str, int]:
     return sayilar
 
 
+def _nobetci_duyur(mesaj: str) -> None:
+    """Nöbetçinin kararını stderr'e de yazar — özet satırında KAYBOLMASIN.
+
+    Neden gerekli (1 Ağu 2026'da bizzat yaşandı): bir testin KENDİ teardown'ı da
+    hata verirse pytest, session nöbetçisinin `Failed`'ini o hatayla birlikte bir
+    ``BaseExceptionGroup`` içine sarar ve `-q` özet satırında yalnız
+
+        ERROR ... - BaseExceptionGroup: errors during test teardown (2 sub-exceptions)
+
+    görünür. Karar gövdede durur ama özete bakan (ve çıktıyı tarayan) gözden
+    kaçar: bu yüzden bir denetim turunda "nöbetçi sızıntıyı kaçırdı" diye YANLIŞ
+    rapor edildi — oysa nöbetçi doğru çalışıyordu. Karar artık ayrıca ham
+    stderr'e basılır; hiçbir sarmalayıcı onu gizleyemez.
+    """
+    sys.stderr.write(f"\n[HİJYEN NÖBETÇİSİ] {mesaj}\n")
+    sys.stderr.flush()
+
+
 @pytest.fixture(scope="session", autouse=True)
 async def _hijyen_nobetcisi(_test_veritabani):
     """Suite öncesi/sonrası kritik tablo sayıları AYNI kalmalı.
@@ -506,14 +557,15 @@ async def _hijyen_nobetcisi(_test_veritabani):
         # SESSİZCE GEÇMEZ. "suite temiz" ile "nöbetçi hiç ölçmedi" birbirinden
         # ayırt edilemezse bütün izolasyon garantisi kanıtsız kalır — F29'da
         # audit_logs birikmesi tam olarak bunun yüzünden geç fark edildi.
-        pytest.fail(
+        mesaj = (
             "hijyen nöbetçisi ÖLÇEMEDİ; suite temiz sayılamaz: "
             f"{exc.__class__.__name__}: {exc}"
         )
+        _nobetci_duyur(mesaj)
+        pytest.fail(mesaj)
     artan = {t: (once[t], sonra[t]) for t in once if sonra[t] != once[t]}
     if artan:
         ayrinti = ", ".join(f"{t}: {a}→{b}" for t, (a, b) in sorted(artan.items()))
-        pytest.fail(
-            "TEST İZOLASYONU BOZUK — suite kalıcı satır bıraktı: " + ayrinti,
-            pytrace=False,
-        )
+        mesaj = "TEST İZOLASYONU BOZUK — suite kalıcı satır bıraktı: " + ayrinti
+        _nobetci_duyur(mesaj)
+        pytest.fail(mesaj, pytrace=False)

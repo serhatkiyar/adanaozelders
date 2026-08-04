@@ -9,6 +9,7 @@ düşülerek) hesaplanıp kazanca yazılır (Balance sayfası ``payment_service`
 """
 from __future__ import annotations
 
+import dataclasses
 import datetime
 import logging
 from decimal import Decimal
@@ -20,6 +21,7 @@ from sqlalchemy.orm import selectinload
 
 from core import outbox, payments
 from core.config import settings
+from models.admin import Admin
 from models.client import Client, ClientAddress
 from models.delivery import (
     DeliveryRun,
@@ -52,6 +54,7 @@ from schemas.store import (
     OrderReturnOut,
 )
 from services import (
+    audit_service,
     commission,
     coupon_service,
     delivery_calendar,
@@ -59,6 +62,7 @@ from services import (
     escrow,
     notification_service,
     order_fsm,
+    packing_events,
     payment_gates,
     returns,
     stock_ledger,
@@ -66,6 +70,20 @@ from services import (
 )
 
 logger = logging.getLogger("adana.order")
+
+
+@dataclasses.dataclass(frozen=True, slots=True)
+class _SistemAktoru:
+    """Aktörü insan olmayan denetim satırları için (`audit_service.record`
+    yalnız `id` ve `role_id` okur).
+
+    Otomatik telafi/mutabakat kararlarının da denetim izi olmalıdır; aksi hâlde
+    "bu iade neden böyle sonuçlandı" sorusunun cevabı yalnız log satırında kalır.
+    `actor_id=0` bilinçli: hiçbir gerçek admin satırıyla çakışmaz.
+    """
+
+    id: int = 0
+    role_id: int = ROLE_IDS[RoleType.ADMIN]
 
 
 def _now() -> datetime.datetime:
@@ -565,6 +583,61 @@ async def complete_checkout(
         )
         return order
 
+    # ── Ölü varlık: sipariş bu arada iptal/iade edildi (İP-2b R10) ──
+    #
+    # `complete_checkout` sipariş YAŞAM DÖNGÜSÜNE hiç bakmıyordu: müşteri iyzico
+    # sayfasındayken siparişi iptal ederse, doğrulanmış tahsilat yine
+    # `_finalize_paid`'e giriyor, atomik PAID claim'i başarılı oluyor ve FSM
+    # `CANCELLED→PAID` geçişini 409 ile reddediyordu. İstisna callback/reconciler
+    # katmanında yakalanmadığı için: para tahsil edilmiş, iade YOK, kayıt
+    # sonsuza dek PENDING. Deneme bileti yüzeyinde emsal çözüm zaten vardı
+    # (`library_exam_service`: ölü varlık → otomatik iade).
+    #
+    # Sözleşme: tahsilat varlığa BAĞLANAMIYORSA aynen iade edilir; sipariş
+    # CANCELLED kalır, ödeme kaydı askıda kalmaz. `refund_unexpected_charge`
+    # satır durumu tutmaz — replay idempotency'si sağlayıcının aşırı-iade
+    # reddine yaslanır (aynı işlemin ikinci tam iadesi reddedilir).
+    if success and order.status in ("CANCELLED", "REFUNDED"):
+        # Kaydı ÖNCE claim et: ikinci bir callback/reconciler turu aynı tahsilatı
+        # yeniden iade etmeye kalkmasın. Claim başarısızsa (başka bir akış
+        # kazandı) para hareketi YAPILMAZ — çift iade yasağı buradan gelir.
+        claimed = await escrow.claim(
+            db,
+            Order,
+            order.id,
+            from_statuses=["PENDING", "FAILED"],
+            values={
+                "payment_status": OrderPaymentStatus.REFUNDED.value,
+                "refunded_at": _now(),
+                "refunded_amount": order_total,
+            },
+            status_attr="payment_status",
+        )
+        if not claimed:
+            logger.info(
+                "order %s: ölü varlık tahsilatı zaten sonuçlandırılmış — "
+                "ikinci iade yapılmadı", order_id,
+            )
+            return order
+        await db.commit()
+        await db.refresh(order)
+        await escrow.refund_unexpected_charge(
+            provider_ref=provider_ref,
+            amount=paid_price if paid_price is not None else order_total,
+            context=f"iptal edilmiş siparişin geç tahsilatı order={order_id}",
+        )
+        await audit_service.record(
+            db,
+            actor=_SistemAktoru(),
+            action="order.late_charge_refunded",
+            target_type="order",
+            target_id=order_id,
+            reason="İptal edilmiş siparişin doğrulanmış tahsilatı iade edildi",
+            after={"status": order.status, "amount": str(order_total)},
+        )
+        await db.commit()
+        return order
+
     if not success:
         if token and order.provider_ref and token != order.provider_ref:
             # Bayat oturumun başarısızlığı aktif oturumu FAILED'lamasın.
@@ -892,10 +965,12 @@ async def get_order(
     db: AsyncSession, order_id: int, *, client_id: int | None = None
 ) -> OrderOut:
     order = await _load_full(db, order_id)
-    if order is None:
+    if order is None or (client_id is not None and order.client_id != client_id):
+        # Yabancı sipariş, OLMAYAN siparişle AYNI yanıtı alır (404).
+        # 403 "sizin siparişiniz değil" geçerli bir ID'yi doğrulardı: saldırgan
+        # 403/404 farkından sipariş kimlik uzayını tarayabilir (IDOR keşfi).
+        # Kurye tarafında aynı sınıf sızıntı zaten 404'e çekilmişti.
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Sipariş bulunamadı")
-    if client_id is not None and order.client_id != client_id:
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "Sizin siparişiniz değil")
     return _to_out(order)
 
 
@@ -917,10 +992,9 @@ async def list_mine(
 
 async def get_order_for_pay(db: AsyncSession, order_id: int, client_id: int) -> Order:
     order = await _load_full(db, order_id)
-    if order is None:
+    if order is None or order.client_id != client_id:
+        # Varlık sızdırmaz — bkz. `get_order` gerekçesi.
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Sipariş bulunamadı")
-    if order.client_id != client_id:
-        raise HTTPException(status.HTTP_403_FORBIDDEN, "Sizin siparişiniz değil")
     return order
 
 
@@ -1066,6 +1140,14 @@ async def postpone_delivery(db: AsyncSession, order: Order) -> None:
                 db, order, "PAID", changed_by="client", reason="Müşteri ertesi güne erteledi"
             )
             order.tracking_no = None
+        # F30 §3.5: dört geri dönüş yolundan dördüncüsü. Müşteri erteledi ama
+        # paket ARAÇTA kaldı — `RESCHEDULED` durak `FAILED`'dan ayrıdır (kurye
+        # KPI'ına yazılmaz), paketin fiziksel yeri ise aynıdır. Erteleme
+        # `prepared_at`'i sıfırlamadığı için bu işaret olmadan sipariş
+        # `eligible_orders`'ta paketsiz görünmeye devam ederdi.
+        await packing_events.on_package_returning(
+            db, order.id, reason="Müşteri teslimatı erteledi"
+        )
 
     # Hedef gün: sonraki çalışma günü — kontenjanı doluysa ondan da ileri.
     # (Müşteri isteği: kapasite kontrolü ADİLDİR; kurye kaynaklı FAILED'ın
@@ -1193,12 +1275,28 @@ async def mark_shipped(
     order = await _load_full(db, order_id)
     if order is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Sipariş bulunamadı")
+    # ── Order satırı KİLİTLENİR — kontroller taze durumla çalışsın ──────────
+    # Nihai denetim P1'i: paket kapısı kilitsiz okunuyordu. Eşzamanlı bir
+    # `open_package` ile yarışta ikisi de kendi ön koşulunu geçiyor ve ortaya
+    # **kurtarılamayan** bir çıkmaz çıkıyordu: sipariş `SHIPPED`, paket `OPEN`.
+    # O hâlde paket tamamlanamaz (`complete` siparişin PAID olmasını arar),
+    # zimmetlenemez, `uq_order_packages_live` yüzünden yeni paket açılamaz ve
+    # sipariş dağıtım kuyruğuna hiç giremez.
+    # `open_package` da ilk iş olarak aynı satırı `FOR UPDATE` ile alır
+    # (`packing_service.open_package` → `_lock_order`), yani iki yol artık
+    # Order satırında serileşir: hangisi önce girerse diğeri TAZE durumu görür
+    # ve kendi 409'unu üretir.
+    await _lock_order(db, order)
     if not order.has_physical:
         raise HTTPException(
             status.HTTP_400_BAD_REQUEST, "Bu siparişte kargolanacak ürün yok"
         )
     if order.payment_status != "PAID":
         raise HTTPException(status.HTTP_409_CONFLICT, "Ödenmemiş sipariş kargolanamaz")
+    # F30: kendi filomuzla giden (paketi olan) sipariş elle "kargolandı"
+    # işaretlenemez — çıkışı kuryenin paketi okutması yazar. Gerekçe ve
+    # legacy istisnası `packing_events.elle_sevkiyat_yasak` docstring'inde.
+    await packing_events.elle_sevkiyat_yasak(db, order.id)
     await order_fsm.transition_order(db, order, "SHIPPED", changed_by="admin")
     order.tracking_no = tracking_no
     await db.commit()
@@ -1215,13 +1313,73 @@ async def mark_shipped(
 
 
 async def mark_delivered(db: AsyncSession, order_id: int) -> OrderOut:
+    """Yönetici teslim yolu (`POST /store/admin/orders/{id}/deliver`).
+
+    **Zimmet kapısı burada da geçerlidir.** Commit 7 denetiminin P1'i tam olarak
+    buydu: bu uç `delivery_service._finalize_delivered` hunisinden geçmiyor,
+    yani F30 zimmet guard'ını miras almıyordu. Sonuç, kutu HÂLÂ RAFTAYKEN
+    siparişin `DELIVERED` olmasıydı — üstelik zararı tek bir yanlış statüyle
+    kalmıyordu:
+
+    * müşteriye "teslim edildi" e-postası/outbox olayı gidiyor,
+    * durak `PENDING` kalıyor (kurye hâlâ o adrese gidecek),
+    * paket `PACKED` kaldığı için bir daha **zimmetlenemiyor** (`handover`
+      yalnız `PACKED`→`HANDED_OVER`, ama sipariş artık `DELIVERED`),
+    * `uq_order_packages_live` yüzünden yeni paket de açılamıyor.
+
+    Guard `transition_order`'dan ÖNCE çağrılır: reddederse hiçbir yan etki
+    (durum geçişi · geçmiş satırı · e-posta · bildirim · audit) doğmaz ve
+    transaction tamamen temiz kalır.
+
+    ## Kilit ve terminal bütünlük (nihai denetim P1'i)
+
+    İlk düzeltme guard'ı ekledi ama iki eksiği vardı:
+
+    1. **Kilitsiz okuma.** Guard canlı paketi `Order` satırını kilitlemeden
+       okuyordu; eşzamanlı bir `cancel_run`/`fail_stop` ile yarışta paket
+       `RETURN_PENDING`'e giderken sipariş `DELIVERED` olabiliyordu — yani
+       "teslim edildi" ile "kutu araçta geri dönüyor" aynı anda doğru
+       görünüyordu.
+    2. **Yarım terminal.** Mutlu yolda bile YALNIZ sipariş durumu değişiyordu:
+       paket `HANDED_OVER`, durak `PENDING`, QR geçerli kalıyordu. Kurye o
+       durağı ekranında görmeye, etiket okutulmaya devam ediyordu.
+
+    Artık ikisi de tek transaction'da: `Order` `FOR UPDATE` → guard → durum
+    geçişi → paket ve durak terminale (`packing_events.teslim_terminali`) →
+    bildirim → e-posta outbox'ı → commit. Router audit'i yanıttan sonra yazar,
+    yani 409'da o da doğmaz.
+    """
     order = await _load_full(db, order_id)
     if order is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Sipariş bulunamadı")
+    # Kanonik sıranın ilk halkası. `zimmet_zorunlu` paketi kilitsiz OKUR
+    # (kilit sırası gereği — bkz. docstring'i); o okumanın anlamlı olması için
+    # Order satırının burada kilitli olması ZORUNLUDUR: paketi değiştiren her
+    # yol (`handover_scan`, `cancel_run`, `fail_stop`, `open_package`, `void`,
+    # `return_in`) da ilk halkada bu satırı alır.
+    await _lock_order(db, order)
+    # Aktör YÖNETİCİDİR: hangi kuryede olduğunu bilmez, yalnız "bir kuryede
+    # olmalı" der. Kuryeyi bilen saha yolları `expected_courier_id` geçirir.
+    await packing_events.zimmet_zorunlu(db, order.id)
     # FSM: yalnız SHIPPED → DELIVERED (önceden ön-koşulsuzdu; PENDING'den bile olurdu).
     await order_fsm.transition_order(db, order, "DELIVERED", changed_by="admin")
-    await db.commit()
+    # Paket ve durak da terminale gider — sipariş "teslim edildi" derken
+    # operasyonun "yolda" demesi imkânsız olsun.
+    await packing_events.teslim_terminali(
+        db, order.id, note="Yönetici panelinden teslim edildi"
+    )
+    await notification_service.notify(
+        db,
+        user_id=order.client_id,
+        role_id=ROLE_IDS[RoleType.CLIENT],
+        message=f"Siparişin #{order.id} teslim edildi. İyi çalışmalar!",
+        link="/siparislerim",
+    )
+    # Outbox olayı commit'ten ÖNCE yazılır: durum değişikliğiyle atomik olsun
+    # (eski hâlde commit'ten sonraydı ve kalıcılığı `get_db`'nin otomatik
+    # commit'ine kalıyordu — TB-4'teki belirsiz sahiplik).
     await _email_order(db, order, "DELIVERED")
+    await db.commit()
     return _to_out(order)
 
 
@@ -1311,8 +1469,122 @@ async def _restock(db: AsyncSession, order: Order, *, reason_code: str) -> None:
         await stock_ledger.apply_many(db, specs)
 
 
+def _bump_refunded_amount(order: Order) -> None:
+    """Tam iadede ``orders.refunded_amount``'ı sipariş toplamına yükseltir.
+
+    Ciro raporu (`revenue_service`) iade sütununu ve kısmi iade tavanı
+    (`remaining_refundable`) BU kolondan okur. Eskiden yalnız RMA yolu yazıyordu;
+    tam iptal/iade iadeleri raporda 0 TL görünüyordu.
+
+    İdempotent ve kısmi iadelerle uyumlu: değer yalnız YÜKSELTİLİR, asla
+    düşürülmez — daha önce kısmi iade yapılmışsa tam iade onu tamamlar, ikinci
+    çağrı ise no-op'tur.
+    """
+    toplam = Decimal(str(order.total))
+    mevcut = Decimal(str(order.refunded_amount or 0))
+    if mevcut < toplam:
+        order.refunded_amount = toplam
+
+
+async def _manual_review_iade_teslim_sonrasi(db: AsyncSession, order: Order) -> None:
+    """R17: sağlayıcı iadesi gitmişken kurye teslimi kazandı — GÖRÜNÜR bırak.
+
+    Kanonik yarış sözleşmesi (İP-2b §6.6): teslim kesinleşmişse `DELIVERED`
+    `CANCELLED` ile EZİLMEZ ve kitap müşteride olduğu için `SALE_CANCEL`
+    YAZILMAZ. Sağlayıcıya giden iade çağrısı geri alınamaz; **otomatik ikinci
+    finansal işlem yapılmaz** (ters tahsilat/otomatik RMA İP-2b kapsamı dışında,
+    ayrı ürün kararıdır). Kayıt sessizce kaybolmasın diye üç yerde görünür olur:
+    ERROR logu · `audit_logs` satırı · yöneticilere bildirim.
+    """
+    logger.error(
+        "MANUAL_REVIEW order %s: iade sağlayıcıya gönderildikten SONRA kurye "
+        "teslimi kesinleşti (status=DELIVERED). Stok geri yüklenmedi, sipariş "
+        "durumu korundu; tahsilat/iade dengesi ELLE incelenmeli (tutar=%s, "
+        "ref=%s)",
+        order.id, order.total, order.provider_ref,
+    )
+    await audit_service.record(
+        db,
+        actor=_SistemAktoru(),
+        action="order.refund_after_delivery",
+        target_type="order",
+        target_id=order.id,
+        reason=(
+            "Sağlayıcı iadesi gönderildikten sonra teslim kesinleşti — "
+            "MANUAL_REVIEW"
+        ),
+        after={
+            "status": order.status,
+            "payment_status": order.payment_status,
+            "total": str(order.total),
+        },
+    )
+    admin_ids = (
+        await db.execute(select(Admin.id).where(Admin.deleted_at.is_(None)))
+    ).scalars().all()
+    for admin_id in admin_ids:
+        await notification_service.notify(
+            db,
+            user_id=admin_id,
+            role_id=ROLE_IDS[RoleType.ADMIN],
+            message=(
+                f"Sipariş #{order.id}: iade gönderildikten sonra teslim edildi — "
+                "para/mal dengesi elle incelenmeli (MANUAL_REVIEW)."
+            ),
+            link="/yonetim/magaza",
+        )
+
+
+async def settle_refunded_order(
+    db: AsyncSession,
+    order: Order,
+    *,
+    reason_code: str,
+    terminal_status: str,
+    changed_by: str,
+    reason: str | None = None,
+) -> None:
+    """İade sağlayıcıda KESİNLEŞTİĞİNDE koşan **TEK** telafi kuyruğu.
+
+    Üç çağıranı vardır ve üçü de AYNI sonucu üretmek zorundadır — eskiden
+    yalnız birincisi telafi uyguluyordu:
+
+    1. ``_refund_payment`` (müşteri iptali / yönetici iadesi — mutlu yol),
+    2. ``escrow_reconciler.reconcile_refunding`` (sağlayıcı ilk denemede düştü,
+       karantina sonrası tamamlandı) — burada stok, kupon, sipariş durumu ve
+       bildirim HİÇ koşmuyordu (İP-2b R6/R7),
+    3. 502 sonrası ikinci iptal denemesi (İP-2b R8).
+
+    Tamamı idempotenttir: `SALE_CANCEL` defter anahtarı, `coupon release`'in
+    satır şartı, `refunded_amount`'ın yalnız-yükselt kuralı ve FSM'in "aynı
+    duruma geçiş no-op" kuralı ikinci uygulamayı engeller.
+
+    **R17 istisnası:** sipariş bu arada `DELIVERED` olduysa telafi UYGULANMAZ
+    (kitap müşteride) ve durum EZİLMEZ; kayıt MANUAL_REVIEW'a düşer.
+    """
+    if order.status == "DELIVERED":
+        await _manual_review_iade_teslim_sonrasi(db, order)
+        return
+
+    await _restock(db, order, reason_code=reason_code)
+    if order.coupon_id is not None:
+        # Kupon kullanımı yalnız PAID'de sayılmıştı → geri sal (satır varsa).
+        await coupon_service.release(db, coupon_id=order.coupon_id, order_id=order.id)
+    _bump_refunded_amount(order)
+    if order.status not in ("CANCELLED", "REFUNDED"):
+        await order_fsm.transition_order(
+            db, order, terminal_status, changed_by=changed_by, reason=reason
+        )
+
+
 async def _refund_payment(
-    db: AsyncSession, order: Order, *, reason_code: str
+    db: AsyncSession,
+    order: Order,
+    *,
+    reason_code: str,
+    terminal_status: str,
+    changed_by: str,
+    reason: str | None = None,
 ) -> None:
     """İki fazlı iade + stok geri yükleme + kupon serbest bırakma.
 
@@ -1371,27 +1643,58 @@ async def _refund_payment(
             "otomatik olarak yeniden denenecek.",
         )
 
+    # ── R17: sağlayıcı penceresinde kurye teslim etmiş olabilir ──
+    #
+    # `begin_refund` niyeti COMMIT ettiği için Order kilidi BIRAKILMIŞTI; o
+    # pencerede tur başlayıp (PAID→SHIPPED) kurye OTP ile teslim edebilir
+    # (SHIPPED→DELIVERED). Buradan sonrasını çağıranın BAYAT bellek kopyasıyla
+    # sürdürmek DELIVERED'ı CANCELLED ile ezerdi (lost update) ve kitap
+    # müşterideyken kör `SALE_CANCEL` yazardı. Bu yüzden kilit + TAZE okuma
+    # sağlayıcı çağrısından SONRA yenilenir; kararı `settle_refunded_order`
+    # taze duruma bakarak verir.
+    await _lock_order(db, order)
+
     # ── Yerel telafiler (yalnız iade tamamlandıysa) ──
     #
     # Bu blok ile `perform_refund` arasında süreç ölürse: sağlayıcıda para
     # dönmüş, DB'de REFUNDED claim'i ve telafiler geri alınmış olur. Retry aynı
     # `order_item:{id}:SALE_CANCEL` anahtarını üretir → hareket TEK KEZ uygulanır.
-    await _restock(db, order, reason_code=reason_code)
-    if order.coupon_id is not None:
-        # Kupon kullanımı yalnız PAID'de sayılmıştı → geri sal.
-        await coupon_service.release(db, coupon_id=order.coupon_id, order_id=order.id)
+    await settle_refunded_order(
+        db,
+        order,
+        reason_code=reason_code,
+        terminal_status=terminal_status,
+        changed_by=changed_by,
+        reason=reason,
+    )
 
 
-async def refund_order(db: AsyncSession, order_id: int) -> OrderOut:
-    """Siparişi iade et (sağlayıcı refund + REFUNDED). Stok geri yüklenir."""
+async def refund_order(db: AsyncSession, order_id: int, *, reason: str) -> OrderOut:
+    """Siparişi iade et (sağlayıcı refund + REFUNDED). Stok geri yüklenir.
+
+    **Teslim edilmiş sipariş bu uçtan GEÇEMEZ** (İP-2b R4): eskiden yalnız
+    `payment_status` bakılıyordu, dolayısıyla `DELIVERED` bir sipariş tek çağrıyla
+    `REFUNDED` oluyor ve kitap MÜŞTERİDEYKEN satılabilir kovaya kör `SALE_CANCEL`
+    yazılıyordu — defter fiziksel gerçekle ayrışıyor, telafisi yalnız sonraki
+    sayımın STALE işareti oluyordu. Teslim sonrası para iadesi **İP-2a iade (RMA)**
+    yolundan, fiziksel kabulle yürür.
+    """
     order = await _load_full(db, order_id)
     if order is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Sipariş bulunamadı")
     await _lock_order(db, order)
+    if order.status == "DELIVERED":
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Teslim edilmiş sipariş doğrudan iade edilemez; iade talebi (RMA) "
+            "üzerinden ilerleyin.",
+        )
     if order.payment_status != "PAID":
         raise HTTPException(status.HTTP_409_CONFLICT, "Yalnızca ödenmiş sipariş iade edilebilir")
-    await _refund_payment(db, order, reason_code="ORDER_REFUNDED")
-    await order_fsm.transition_order(db, order, "REFUNDED", changed_by="admin")
+    await _refund_payment(
+        db, order, reason_code="ORDER_REFUNDED",
+        terminal_status="REFUNDED", changed_by="admin", reason=reason,
+    )
     await db.commit()
     await notification_service.notify(
         db,
@@ -1405,9 +1708,13 @@ async def refund_order(db: AsyncSession, order_id: int) -> OrderOut:
     return _to_out(order)
 
 
-async def cancel_by_client(db: AsyncSession, order: Order) -> OrderOut:
-    """Müşteri sipariş iptali: yalnız kargolanmadan. Ödenmişse sağlayıcı iadesi + stok
-    geri yükleme. Kargolanmış/teslim sipariş iptal edilemez (iade talebi gerekir)."""
+async def _cancel_order(
+    db: AsyncSession, order: Order, *, changed_by: str, reason: str | None = None
+) -> OrderOut:
+    """İptalin ortak gövdesi (müşteri ve yönetici yolları AYNI kuralları izler).
+
+    Ödenmişse sağlayıcı iadesi + telafiler; kargolanmış/teslim sipariş iptal
+    edilemez (iade talebi gerekir)."""
     await _lock_order(db, order)
     if order.status in ("SHIPPED", "DELIVERED"):
         raise HTTPException(
@@ -1416,10 +1723,36 @@ async def cancel_by_client(db: AsyncSession, order: Order) -> OrderOut:
         )
     if order.status in ("CANCELLED", "REFUNDED"):
         raise HTTPException(status.HTTP_409_CONFLICT, "Bu sipariş zaten iptal/iade edilmiş")
+    if order.payment_status == OrderPaymentStatus.REFUNDING.value:
+        # ── I8 (tek kazanan): iade BAŞLAMIŞ ama henüz bitmemiş ──
+        #
+        # `begin_refund` niyeti claim edip HEMEN commit ettiği için Order kilidi
+        # sağlayıcı çağrısı boyunca BIRAKILIR. O pencerede ikinci bir iptal
+        # kilidi alır ve taze durumu (`status=PAID`, `payment_status=REFUNDING`)
+        # okur — ama burası eskiden yalnız `== 'PAID'` diye bakıp geri kalan her
+        # şeyi "ödenmemiş sipariş" sayıyordu: kaybeden de `else` dalına düşüp
+        # CANCELLED yazıyor, başarı dönüyor ve müşteriye İKİNCİ "iptal edildi"
+        # bildirimi gidiyordu (I11 ihlali). Yani kusur bayat okuma değil, TAZE
+        # okunan ara durumun yanlış sınıflandırılmasıydı.
+        #
+        # Sarkan REFUNDING (sağlayıcı reddetti → 502) kaydı da buraya düşer ve
+        # bilinçlidir: iadesi havada olan sipariş elle CANCELLED'a çevrilemez,
+        # reconciler devralır (docs/…-sozlesme.md §3 I4/I9).
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Bu siparişin iadesi zaten işleniyor veya tamamlanmış",
+        )
 
     if order.payment_status == "PAID":
-        await _refund_payment(db, order, reason_code="ORDER_CANCELLED")
-    await order_fsm.transition_order(db, order, "CANCELLED", changed_by="client")
+        await _refund_payment(
+            db, order, reason_code="ORDER_CANCELLED",
+            terminal_status="CANCELLED", changed_by=changed_by, reason=reason,
+        )
+    else:
+        # Ödenmemiş sipariş (PENDING/FAILED): para hareketi yok.
+        await order_fsm.transition_order(
+            db, order, "CANCELLED", changed_by=changed_by, reason=reason
+        )
     await db.commit()
     await notification_service.notify(
         db,
@@ -1433,6 +1766,25 @@ async def cancel_by_client(db: AsyncSession, order: Order) -> OrderOut:
     if order.payment_status == "REFUNDED":
         await _email_order(db, order, "REFUNDED")
     return _to_out(order)
+
+
+async def cancel_by_client(db: AsyncSession, order: Order) -> OrderOut:
+    """Müşteri sipariş iptali."""
+    return await _cancel_order(db, order, changed_by="client")
+
+
+async def cancel_by_admin(db: AsyncSession, order_id: int, *, reason: str) -> OrderOut:
+    """Yönetici sipariş iptali — ZORUNLU gerekçeyle (İP-2b R2).
+
+    Booking tarafındaki `/admin/bookings/{id}/cancel` eşdeğeri. Eskiden yoktu:
+    yöneticinin tek aracı `PAID` şartlı `refund` ucuydu, dolayısıyla **ödenmemiş
+    ya da sorunlu bir siparişi kapatamıyordu**. Gerekçe `order_status_history`
+    ve (router'da) `audit_logs` üzerinden izlenebilir kalır.
+    """
+    order = await _load_full(db, order_id)
+    if order is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Sipariş bulunamadı")
+    return await _cancel_order(db, order, changed_by="admin", reason=reason)
 
 
 # ── İade talebi (RMA) ──────────────────────────────────────────────────────────────

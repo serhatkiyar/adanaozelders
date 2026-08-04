@@ -39,6 +39,9 @@ class _FakeOrder:
         self.refund_requested_at = None
         self.refund_attempts = 0
         self.coupon_id = coupon_id
+        # İP-2b R17: telafi kararı sağlayıcı sonrası TAZE duruma bakar.
+        self.status = "PAID"
+        self.refunded_amount = Decimal("0")
         self.items: list = []
 
 
@@ -49,7 +52,12 @@ class _FakeDb:
     async def commit(self) -> None:
         self.commits += 1
 
-    async def refresh(self, obj) -> None:
+    async def refresh(self, obj, attribute_names=None) -> None:
+        return None
+
+    async def execute(self, *a, **kw):
+        # `_lock_order`'ın `SELECT ... FOR UPDATE`'i (İP-2b R17). Saf birim
+        # testinde satır kilidi anlamlı değil; çağrı yutulur.
         return None
 
 
@@ -57,7 +65,8 @@ class _FakeDb:
 def akis(monkeypatch):
     """begin_refund / perform_refund / _restock / kupon sınırlarını kaydeder."""
     log: dict = {
-        "begin": [], "perform": [], "restock": [], "coupon_release": [], "lock": []
+        "begin": [], "perform": [], "restock": [], "coupon_release": [], "lock": [],
+        "transition": [],
     }
 
     async def fake_restock(db, order, *, reason_code):
@@ -75,6 +84,15 @@ def akis(monkeypatch):
 
     monkeypatch.setattr(order_service, "_lock_order_products", fake_lock)
     monkeypatch.setattr(order_service.coupon_service, "release", fake_release)
+
+    # İP-2b: telafi kuyruğu artık siparişi TERMİNALE de taşıyor
+    # (`settle_refunded_order`). Gerçek `transition_order` durak/paket
+    # sorguları çalıştırır; saf birim testinde sınır burada kaydedilir.
+    async def fake_transition(db, order, new_status, *, changed_by, reason=None):
+        log["transition"].append((order.id, new_status, changed_by))
+        order.status = new_status
+
+    monkeypatch.setattr(order_service.order_fsm, "transition_order", fake_transition)
     return log
 
 
@@ -101,7 +119,8 @@ async def test_basarili_iade_iki_fazi_da_kosar(monkeypatch, akis) -> None:
     order = _FakeOrder(coupon_id=9)
 
     await order_service._refund_payment(
-        _FakeDb(), order, reason_code="ORDER_REFUNDED"
+        _FakeDb(), order, reason_code="ORDER_REFUNDED",
+        terminal_status="REFUNDED", changed_by="admin",
     )
 
     assert len(akis["begin"]) == 1
@@ -120,7 +139,8 @@ async def test_claim_edilemezse_para_hareketi_yok(monkeypatch, akis) -> None:
 
     with pytest.raises(HTTPException) as exc:
         await order_service._refund_payment(
-        _FakeDb(), order, reason_code="ORDER_REFUNDED"
+        _FakeDb(), order, reason_code="ORDER_REFUNDED",
+        terminal_status="REFUNDED", changed_by="admin",
     )
 
     assert exc.value.status_code == 409
@@ -137,7 +157,10 @@ async def test_saglayici_reddederse_refunding_de_kalir(monkeypatch, akis) -> Non
     db = _FakeDb()
 
     with pytest.raises(HTTPException) as exc:
-        await order_service._refund_payment(db, order, reason_code="ORDER_REFUNDED")
+        await order_service._refund_payment(
+            db, order, reason_code="ORDER_REFUNDED",
+            terminal_status="REFUNDED", changed_by="admin",
+        )
 
     assert exc.value.status_code == 502
     assert order.payment_status == OrderPaymentStatus.REFUNDING.value
@@ -165,7 +188,8 @@ async def test_saglayici_reddederse_refunding_de_kalir(monkeypatch, akis) -> Non
 async def test_kuponsuz_siparis_release_cagirmaz(monkeypatch, akis) -> None:
     _patch_phases(monkeypatch, akis, begin_ok=True, perform_ok=True)
     await order_service._refund_payment(
-        _FakeDb(), _FakeOrder(coupon_id=None), reason_code="ORDER_REFUNDED"
+        _FakeDb(), _FakeOrder(coupon_id=None), reason_code="ORDER_REFUNDED",
+        terminal_status="REFUNDED", changed_by="admin",
     )
     assert akis["coupon_release"] == []
 

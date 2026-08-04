@@ -268,14 +268,16 @@ ders/soru/mesaj bağlamından açılan `StudentProfile`.
 ## 8. Kapsam dışı — İP-3 ÜRETİM kapsamına ALINMAYAN teknik borç
 
 Bunlar İP-3'ün üretim düzeltmesine dahil **değildir**; ayrı kayıt olarak
-bırakıldı: **TB-8** (CI seed admin eksikliği) ve **TB-7** (migration testi
-flaky) — `docs/teknik-borc.md`.
+bırakıldı: **TB-11** (CI seed admin eksikliği) ve **TB-10** (migration testi
+flaky) — `docs/teknik-borc.md`. (Bu iki kayıt İP-3'te TB-8/TB-7 numarasıyla
+açılmıştı; güncel main ile birleştirmede o numaralar main'in kayıtlarıyla
+çakıştığı ve numaralandırmada main kanonik olduğu için taşındı.)
 
 - `ruff check .` bu dalda **56 hata** ile geliyor (İP-3 dosyaları temiz);
   CI'nın lint adımı bu hâliyle kırmızı olmalı. İP-0 (CI zemini) dalının işi.
-- **TB-8** — CI entegrasyon adımı seed admin'siz koşuyor; temiz veritabanında
+- **TB-11** — CI entegrasyon adımı seed admin'siz koşuyor; temiz veritabanında
   157 test FK ihlaliyle kırılıyor. Ayrıntı ve ölçüm teknik borç defterinde.
-- **TB-7** — `test_stock_migration_pg` flaky (3 koşumda 1 kırılma).
+- **TB-10** — `test_stock_migration_pg` flaky (3 koşumda 1 kırılma).
 - `pydantic.EmailStr` `.test` TLD'sini reddediyor: `@…test` adresli bir hesap
   `/auth/password-reset/request` çağıramaz (422). Gerçek kullanıcıda görülmez;
   test fabrikasında bir tur kaybettirdi (bkz. `ip3_factory.py` başındaki not).

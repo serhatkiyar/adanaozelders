@@ -35,6 +35,9 @@ class _FakeOrder:
         self.total = Decimal(total)
         self.provider_ref = provider_ref
         self.paid_at: datetime.datetime | None = None
+        # İP-2b R10: `complete_checkout` artık sipariş YAŞAM DÖNGÜSÜNE de
+        # bakar (iptal edilmiş siparişin geç tahsilatı iade edilir).
+        self.status = "PENDING"
         self.items: list = []
 
 
