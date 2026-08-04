@@ -48,7 +48,8 @@ export default function StudentProfile() {
   const isOnline =
     !!student.last_seen_at &&
     Date.now() - new Date(student.last_seen_at).getTime() < 120_000;
-  const age = ageFromBirthDate(student.birth_date);
+  // Backend eğitmene tam doğum tarihi döndürmez (KVKK); sunucu hesaplı yaş gelir.
+  const age = student.age ?? ageFromBirthDate(student.birth_date);
   const genderLabel =
     student.gender && student.gender !== Gender.UNSPECIFIED
       ? GENDER_LABEL[student.gender]

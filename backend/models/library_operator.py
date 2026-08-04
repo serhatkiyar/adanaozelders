@@ -5,6 +5,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from core.database import Base
 from models.mixins import (
+    AuthVersionMixin,
     EmailVerificationMixin,
     LastSeenMixin,
     NameMixin,
@@ -22,6 +23,7 @@ class LibraryOperator(
     LastSeenMixin,
     EmailVerificationMixin,
     PhoneVerificationMixin,
+    AuthVersionMixin,
 ):
     """Bir kütüphaneye bağlı operatör (kütüphaneci) giriş hesabı. Admin oluşturur.
 

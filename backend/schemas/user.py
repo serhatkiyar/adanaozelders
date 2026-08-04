@@ -105,7 +105,9 @@ class ClientPublicOut(BaseModel):
     username: str
     about: str | None = None
     avatar_url: str | None = None
+    #: Tam doğum tarihi yalnız admin yanıtında (İP-3 §4.4); eğitmen `age` alır.
     birth_date: datetime.date | None = None
+    age: int | None = None
     gender: Gender | None = None
     created_at: datetime.datetime
     last_seen_at: datetime.datetime | None = None

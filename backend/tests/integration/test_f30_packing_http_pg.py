@@ -22,6 +22,7 @@ from core.security import create_access_token
 from models.admin import Admin
 from schemas.admin_access import AdminRoleCreate
 from services import admin_access_service
+from tests.integration.auth_headers import bearer_token
 from tests.integration.f30_factory import PaketFabrikasi
 
 VIEW, PACK, MANAGE = "packing.view", "packing.pack", "packing.manage"
@@ -117,7 +118,9 @@ class Kurulum:
             await s.commit()
             self.admin_ids.append(a.id)
             self.role_ids.append(rol.id)
-            return a.id, create_access_token(subject=a.id, role="ADMIN", role_id=1)
+            return a.id, create_access_token(
+                subject=a.id, role="ADMIN", role_id=1, auth_version=a.auth_version
+            )
 
     async def temizle(self) -> None:
         async with AsyncSessionLocal() as s:
@@ -238,7 +241,7 @@ async def test_MUSTERI_paketleme_ucuna_ERISEMEZ(client, fab, metod, yol):
     diğer on bir uç hiç sınanmamıştı (commit 5 denetimi).
     """
     cid = await fab.musteri()
-    token = create_access_token(subject=cid, role="CLIENT", role_id=3)
+    token = await bearer_token(cid, role="CLIENT", role_id=3)
     r = await client.request(metod, yol, json=_govde(yol), headers=_bas(token))
     assert r.status_code == 403, f"{metod} {yol} → {r.status_code}"
 
@@ -429,7 +432,7 @@ async def test_KURYE_zimmet_ucunu_KULLANABILIR(client, kur, fab):
 
 async def test_MUSTERI_zimmet_ucuna_ERISEMEZ(client, fab):
     cid = await fab.musteri()
-    token = create_access_token(subject=cid, role="CLIENT", role_id=3)
+    token = await bearer_token(cid, role="CLIENT", role_id=3)
     r = await client.post(
         "/api/v1/delivery/handover/scan", json={"payload": "PKG1:1:x"},
         headers=_bas(token),

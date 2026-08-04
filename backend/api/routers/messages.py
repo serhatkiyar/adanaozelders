@@ -126,7 +126,10 @@ async def send_message(
     user: CurrentUser = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
-    # Telefon kapısı öğrenci/eğitmen için (anti-spam); operatör admin-oluşturmalı, muaf.
+    # Telefon kapısı öğrenci/eğitmen için (anti-spam). Operatör muafiyeti,
+    # kütüphanesi ACTIVE (admin onaylı) olduğu için savunulabilir: onaysız
+    # operatör servisteki `_assert_sender_library_active` kapısına takılır
+    # (İP-3 §1.1 — self-servis kayıt "admin oluşturur" varsayımını geçersiz kıldı).
     if user.role_id != ROLE_IDS[RoleType.LIBRARY_OPERATOR]:
         phone_service.require_phone_verified(user)
     # Alıcı türü verilmezse gönderene göre çıkar (CLIENT→TUTOR, TUTOR→CLIENT).

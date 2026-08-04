@@ -261,9 +261,9 @@ async def run(repeat: int, only: str | None, want_explain: bool) -> int:
     admin_id = await ensure_admin()
     tokens = {
         "public": None,
-        "client": create_access_token(subject=ctx["client_id"], role="CLIENT", role_id=3),
-        "tutor": create_access_token(subject=ctx["tutor_id"], role="TUTOR", role_id=2),
-        "admin": create_access_token(subject=admin_id, role="ADMIN", role_id=1),
+        "client": create_access_token(subject=ctx["client_id"], role="CLIENT", role_id=3, auth_version=1),
+        "tutor": create_access_token(subject=ctx["tutor_id"], role="TUTOR", role_id=2, auth_version=1),
+        "admin": create_access_token(subject=admin_id, role="ADMIN", role_id=1, auth_version=1),
     }
 
     from main import app

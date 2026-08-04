@@ -82,9 +82,11 @@ async def review_distribution(
 @router.get("/booking/{booking_id}", response_model=ReviewOut | None)
 async def get_review_by_booking(
     booking_id: int,
-    _user: CurrentUser = Depends(get_current_active_user),
+    user: CurrentUser = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
+    # Sahiplik kararı TEK ortak yardımcıda (İP-3 §5.3) — router kopyalamaz.
+    await review_service.assert_booking_review_viewer(db, user, booking_id)
     return await review_service.get_by_booking(db, booking_id)
 
 

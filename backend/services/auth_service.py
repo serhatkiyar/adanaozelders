@@ -25,14 +25,23 @@ _LOGIN_PRECEDENCE: tuple[tuple[RoleType, type], ...] = (
     (RoleType.COURIER, CourierAccount),
 )
 
+#: Rol → model eşlemesinin TEK kaynağı (İP-3 §6.3). İkinci bir katalog
+#: TUTULMAZ: `verification_service` ve `api/routers/auth.py` buradan türetir.
+#: Eski drift somut zarar verdi — `_MODEL_BY_ROLE` 3 rolde kalınca operatör ve
+#: kurye "şifremi unuttum" akışını tamamlayamıyordu (mail gidiyor, link ölü).
+MODEL_BY_ROLE_ID: dict[int, type] = {
+    ROLE_IDS[role]: model for role, model in _LOGIN_PRECEDENCE
+}
+
 
 async def _email_taken(db: AsyncSession, model: type, email: str) -> bool:
     stmt = select(model.id).where(model.email == email, model.deleted_at.is_(None))
     return (await db.execute(stmt)).first() is not None
 
 
-# Kullanıcı adı tüm hesap türlerinde globalde tekildir.
-_ALL_USER_MODELS: tuple[type, ...] = (Admin, Tutor, Client, LibraryOperator)
+# Kullanıcı adı tüm hesap türlerinde globalde tekildir. Tek kaynaktan türetilir
+# (elle yazılan kopya kuryeyi atlamıştı — 4 modellik drift).
+_ALL_USER_MODELS: tuple[type, ...] = tuple(m for _role, m in _LOGIN_PRECEDENCE)
 
 
 async def _username_taken(
@@ -155,7 +164,7 @@ async def update_me(
 
 async def change_password(
     db: AsyncSession,
-    user: Admin | Tutor | Client | LibraryOperator,
+    user: Admin | Tutor | Client | LibraryOperator | CourierAccount,
     *,
     current_password: str,
     new_password: str,
@@ -165,6 +174,10 @@ async def change_password(
             status.HTTP_400_BAD_REQUEST, "Current password is incorrect"
         )
     user.hashed_password = await hash_password_async(new_password)
+    # Oturum sürümü (İP-3 §6): mevcut ACCESS token'lar da anında ölsün — yalnız
+    # refresh iptali, çalınmış access token'ı ACCESS_TOKEN_EXPIRE_MINUTES boyunca
+    # yaşatıyordu. Sürüm artışı + hash aynı flush/transaction içinde (atomik).
+    user.auth_version = int(user.auth_version or 0) + 1
     await db.flush()
     # Şifre değişimi TÜM oturumları kapatır: aksi halde çalınmış 30 günlük bir
     # refresh token, kurban şifresini değiştirdikten sonra da /auth/refresh ile
@@ -184,7 +197,7 @@ async def authenticate(db: AsyncSession, *, email: str, password: str):
 
 
 async def find_by_email(db: AsyncSession, *, email: str):
-    """E-postayı 3 kullanıcı tablosunda sırayla arar. Şifre sıfırlama talebinde
+    """E-postayı 5 kullanıcı tablosunda sırayla arar. Şifre sıfırlama talebinde
     kullanılır (kimlik doğrulamasız). Bulunamazsa None — çağıran enumeration'a
     karşı yanıtı her durumda aynı tutmalıdır."""
     for _role, model in _LOGIN_PRECEDENCE:
@@ -196,14 +209,21 @@ async def find_by_email(db: AsyncSession, *, email: str):
 
 
 async def reset_password(
-    db: AsyncSession, user: Admin | Tutor | Client, *, new_password: str
+    db: AsyncSession,
+    user: Admin | Tutor | Client | LibraryOperator | CourierAccount,
+    *,
+    new_password: str,
 ) -> None:
     """Token ile doğrulanmış şifre sıfırlama (mevcut şifre sorulmaz).
 
-    Hesabı ele geçiren saldırganın oturumunu da düşürmek için tüm refresh
-    token'ları iptal edilir — "şifremi unuttum" akışının asıl amacı budur.
+    Hesabı ele geçiren saldırganın oturumunu da düşürmek için tüm oturumlar
+    düşürülür — "şifremi unuttum" akışının asıl amacı budur: refresh token'lar
+    iptal edilir VE `auth_version` artırılarak mevcut access token'lar da
+    anında öldürülür (İP-3 §6; saldırganın elindeki access token bir saat daha
+    yaşarsa akış amacını karşılamaz).
     """
     user.hashed_password = await hash_password_async(new_password)
+    user.auth_version = int(user.auth_version or 0) + 1
     await db.flush()
     await refresh_token_service.revoke_all_for_user(
         db, role_id=user.role_id, user_id=user.id

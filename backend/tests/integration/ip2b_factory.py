@@ -25,11 +25,11 @@ import pytest
 from sqlalchemy import text
 
 from core.database import AsyncSessionLocal
-from core.security import create_access_token
 from models.client import Client
 from models.delivery import DeliveryRun, DeliveryStop
 from models.store import Coupon, CouponRedemption, Order, OrderItem, Product
 from services import delivery_service, stock_ledger
+from tests.integration.auth_headers import bearer_headers
 from tests.integration.db_guard import purge_products
 
 
@@ -41,15 +41,17 @@ def now() -> datetime.datetime:
     return datetime.datetime.now(datetime.timezone.utc)
 
 
-def client_headers(client_id: int) -> dict[str, str]:
-    """Gerçek imzalı CLIENT JWT'si — login akışı olmadan (şifre gerçek değil)."""
-    token = create_access_token(subject=client_id, role="CLIENT", role_id=3)
-    return {"Authorization": f"Bearer {token}"}
+async def client_headers(client_id: int) -> dict[str, str]:
+    """Gerçek imzalı CLIENT JWT'si — login akışı olmadan (şifre gerçek değil).
+
+    İP-3 §6'dan sonra `async`: `auth_ver` claim'i zorunlu ve değeri gerçek
+    satırdan okunur (bkz. `auth_headers.py`). Claim'siz token her uçta 401 alır.
+    """
+    return await bearer_headers(client_id, role="CLIENT", role_id=3)
 
 
-def admin_headers(admin_id: int) -> dict[str, str]:
-    token = create_access_token(subject=admin_id, role="ADMIN", role_id=1)
-    return {"Authorization": f"Bearer {token}"}
+async def admin_headers(admin_id: int) -> dict[str, str]:
+    return await bearer_headers(admin_id, role="ADMIN", role_id=1)
 
 
 class Ip2bFabrika:
@@ -153,7 +155,7 @@ class Ip2bFabrika:
             await s.commit()
             self.admin_ids.append(aid)
             self.admin_role_ids.append(rol.id)
-        return aid, admin_headers(aid)
+        return aid, await admin_headers(aid)
 
     # ── Kupon ─────────────────────────────────────────────────────────────────
     async def kupon(
