@@ -24,7 +24,7 @@ import logging
 from collections.abc import Awaitable, Callable
 from decimal import Decimal
 
-from sqlalchemy import update
+from sqlalchemy import select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core import payments
@@ -102,6 +102,16 @@ class EscrowSpec:
     has_released_guard: bool = True
     #: İade edilecek tutarın kolonu (``Order``'da sipariş toplamı ``total``).
     amount_attr: str = "amount"
+    #: Sağlayıcı referansındaki kimliğin kolonu. İade TALEBİ kendi id'siyle
+    #: değil, **tahsilatın** yapıldığı siparişin id'siyle sorgulanır: iyzico
+    #: `payment/detail` çağrısı charge'a verilen conversationId'yi ister
+    #: (`order:{order_id}`), talep kimliğini tanımaz (İP2A-02).
+    reference_id_attr: str = "id"
+    #: Otomatik deneme tavanı dolduğunda yazılacak kalıcı durum (PK-δ).
+    #: ``None`` → bu model için MANUAL_REVIEW desteklenmez, yalnız ALERT logu.
+    manual_review: object | None = None
+    #: Eşzamanlılık kilidi için advisory-lock sınıfı (model başına tekil).
+    lock_class: int = 0
 
 
 PAYMENT_SPEC = EscrowSpec(
@@ -109,18 +119,21 @@ PAYMENT_SPEC = EscrowSpec(
     refunding=PaymentStatus.REFUNDING,
     refunded=PaymentStatus.REFUNDED,
     reference_prefix="booking",
+    lock_class=1,
 )
 EXAM_SPEC = EscrowSpec(
     held=RegistrationStatus.PAID.value,
     refunding=RegistrationStatus.REFUNDING.value,
     refunded=RegistrationStatus.REFUNDED.value,
     reference_prefix="examreg",
+    lock_class=2,
 )
 STUDY_SPEC = EscrowSpec(
     held=RegistrationStatus.PAID.value,
     refunding=RegistrationStatus.REFUNDING.value,
     refunded=RegistrationStatus.REFUNDED.value,
     reference_prefix="studyres",
+    lock_class=3,
 )
 # Mağaza siparişi: doğrudan satış (emanet/hak ediş yok) ama aynı atomik claim ve
 # iki fazlı iade disiplinine tabi. Para durumu `payment_status` kolonunda;
@@ -135,6 +148,8 @@ ORDER_SPEC = EscrowSpec(
     status_attr="payment_status",
     has_released_guard=False,
     amount_attr="total",
+    manual_review=OrderPaymentStatus.MANUAL_REVIEW.value,
+    lock_class=4,
 )
 # İade TALEBİ (kısmi iade dahil). Bir siparişte birden çok kısmi iade
 # olabildiğinden para durumu sipariş değil TALEP üzerinde izlenir; ayrıca kısmi
@@ -144,10 +159,17 @@ RETURN_SPEC = EscrowSpec(
     held="NONE",
     refunding="REFUNDING",
     refunded="REFUNDED",
-    reference_prefix="return",
+    # Sağlayıcı referansı TALEBİN değil TAHSİLATIN kimliğidir: charge
+    # `order:{order_id}` conversationId'siyle yapıldı, iyzico `payment/detail`
+    # yalnız onu tanır. Eski `return:{id}` referansı hiçbir zaman eşleşmiyordu
+    # ve sarkan kısmi iade 3 denemede kalıcı ALERT'e düşüyordu (İP2A-02).
+    reference_prefix="order",
+    reference_id_attr="order_id",
     status_attr="refund_status",
     has_released_guard=False,
     amount_attr="refund_amount",
+    manual_review="MANUAL_REVIEW",
+    lock_class=5,
 )
 
 
@@ -193,6 +215,65 @@ async def claim(
     return result.rowcount == 1
 
 
+# ── Uçuş-içi (in-flight) nöbeti ─────────────────────────────────────────────────
+#
+# İki fazlı iadenin bedeli: niyet COMMIT edildiği için sağlayıcı çağrısı
+# boyunca hiçbir satır kilidi TUTULMAZ (bilinçli — kurye teslimi bloke
+# olmasın, İP-2b R17). Ama o pencerede reconciler karantina süresini dolmuş
+# görüp AYNI kayda ikinci gerçek iade emri verebilir (İP2A-06): kısmi iadede
+# sağlayıcının "aşırı iade reddi" emniyet kemeri geçersizdir, yani bu GERÇEK
+# çifte ödemedir.
+#
+# Çözüm zamana değil **sahipliğe** dayanır: sağlayıcı çağrısını yapan
+# transaction, kayda ait bir PostgreSQL advisory kilidini çağrı boyunca tutar.
+# Neden advisory (satır kilidi değil): satır kilidi Order↔OrderReturn kilit
+# sırasına girer ve iki eşzamanlı iadede gerçek deadlock üretir; advisory kilit
+# ayrı bir isim alanındadır ve satır yazımlarının kanonik sırasını (Order →
+# OrderReturn) bozmaz. Süreç ölürse bağlantı düşer, kilit kendiliğinden serbest
+# kalır — sarkan kayıt yine reconciler'a kalır.
+
+
+def _durum_degeri(x) -> str:
+    """Enum ya da düz string durumu tek bir karşılaştırılabilir değere indirger.
+
+    ``Payment.status`` PG enum'u (ORM'de ``PaymentStatus``), diğer modellerin
+    para durumu düz ``String``. Karşılaştırmayı ``str()``'e bırakmak
+    ``'PaymentStatus.REFUNDING' != 'REFUNDING'`` gibi SESSİZ bir yanlışa yol
+    açardı — nöbet hiç tutmadan hep "durum değişmiş" derdi.
+    """
+    return str(x.value if hasattr(x, "value") else x)
+
+
+async def try_inflight_lock(db: AsyncSession, spec: EscrowSpec, row_id: int) -> bool:
+    """Kaydın iade kilidini BEKLEMEDEN almayı dener. False = başkası çalışıyor."""
+    return bool(
+        (
+            await db.execute(
+                text("SELECT pg_try_advisory_xact_lock(:c, :i)"),
+                {"c": spec.lock_class, "i": int(row_id)},
+            )
+        ).scalar_one()
+    )
+
+
+async def acquire_inflight_lock(db: AsyncSession, spec: EscrowSpec, row_id: int) -> None:
+    """Kaydın iade kilidini alır (gerekirse bekler). Transaction sonunda düşer."""
+    await db.execute(
+        text("SELECT pg_advisory_xact_lock(:c, :i)"),
+        {"c": spec.lock_class, "i": int(row_id)},
+    )
+
+
+async def current_status(db: AsyncSession, obj, spec: EscrowSpec):
+    """Satırın DB'deki TAZE para durumu (ORM kimlik haritasını atlar)."""
+    model = type(obj)
+    return (
+        await db.execute(
+            select(getattr(model, spec.status_attr)).where(model.id == obj.id)
+        )
+    ).scalar_one_or_none()
+
+
 # ── İki fazlı iade ───────────────────────────────────────────────────────────────
 
 
@@ -203,12 +284,21 @@ async def begin_refund(
     *,
     from_statuses: list | None = None,
     provider_ref: str | None = None,
+    extra_values: dict | None = None,
+    extra_where: tuple = (),
+    refresh_attrs: tuple[str, ...] = (),
 ) -> bool:
     """Faz 1: iade niyetini atomik claim edip COMMIT eder (intent kalıcı).
 
     ``released_at`` dolu satır ASLA claim edilemez (kazanç zaten dağıtılmış —
     ikinci para hareketi yasak; H2). ``provider_ref`` verilirse (callback'ten
     gelen paymentTransactionId) iadenin yapılacağı kimlik olarak yazılır.
+
+    ``extra_values``/``extra_where``: niyetle AYNI atomik UPDATE'e binen ek
+    yazımlar ve koşullar. Para rezervasyonu (`orders.refund_reserved`) ve iade
+    tutarının kesinleşmesi bu yolla claim'e bağlanır — ayrı bir UPDATE'e
+    bırakılsalardı iki eşzamanlı iade arasında kayıp güncelleme penceresi
+    doğardı (İP2A-04).
     """
     model = type(obj)
     values: dict = {
@@ -218,6 +308,8 @@ async def begin_refund(
     }
     if provider_ref:
         values["provider_ref"] = provider_ref
+    if extra_values:
+        values.update(extra_values)
     claimed = await claim(
         db,
         model,
@@ -225,7 +317,8 @@ async def begin_refund(
         from_statuses=from_statuses or [spec.held],
         values=values,
         extra_where=(
-            (model.released_at.is_(None),) if spec.has_released_guard else ()
+            ((model.released_at.is_(None),) if spec.has_released_guard else ())
+            + tuple(extra_where)
         ),
         status_attr=spec.status_attr,
     )
@@ -242,6 +335,7 @@ async def begin_refund(
                 spec.status_attr,
                 "refund_requested_at",
                 "refund_attempts",
+                *refresh_attrs,
             ],
         )
     return claimed
@@ -253,17 +347,46 @@ async def perform_refund(
     spec: EscrowSpec,
     *,
     notify: Callable[[], Awaitable[None]] | None = None,
+    amount: Decimal | None = None,
 ) -> bool:
     """Faz 2: sağlayıcı iadesi + REFUNDING→REFUNDED finalize.
 
     Sağlayıcı reddederse/ulaşılamazsa False: kayıt REFUNDING'de kalır ve reconciler
     devralır — HİÇBİR yerde HELD'e geri dönüş yoktur.
+
+    ``amount`` verilmezse ``spec.amount_attr`` kolonundan okunur. Sipariş
+    yolunda tutar **kalan** iade edilebilir tutardır (`total` DEĞİL): kısmi
+    iade sonrası tam iade, siparişin tamamını ikinci kez göndererek ödenenden
+    fazlasını iade ettiriyordu (İP2A-03).
+
+    **Uçuş-içi nöbeti:** sağlayıcıya gitmeden önce kaydın advisory kilidi
+    alınır ve TAZE durum yeniden okunur. Bu ikili, "reconciler ile canlı istek
+    aynı kaydı aynı anda sağlayıcıya gönderir" yarışını kapatır: bekleyen taraf
+    kilidi aldığında kaydın artık REFUNDING olmadığını görür ve İKİNCİ ÇAĞRIYI
+    YAPMAZ.
     """
-    amount = Decimal(str(getattr(obj, spec.amount_attr)))
+    await acquire_inflight_lock(db, spec, obj.id)
+    taze = await current_status(db, obj, spec)
+    if taze is not None and _durum_degeri(taze) != _durum_degeri(spec.refunding):
+        # Kilidi beklerken başka bir yol bu iadeyi sonuçlandırdı. Kayıt zaten
+        # REFUNDED ise iş bitmiştir; MANUAL_REVIEW ise otomatik para hareketi
+        # YASAKTIR. Her iki hâlde de sağlayıcıya gidilmez.
+        bitti = _durum_degeri(taze) == _durum_degeri(spec.refunded)
+        logger.warning(
+            "escrow: iade kilidi alındığında durum '%s' — sağlayıcı çağrısı "
+            "ATLANDI (%s#%s)", taze, type(obj).__name__, obj.id,
+        )
+        return bitti
+
+    tutar = (
+        Decimal(str(amount))
+        if amount is not None
+        else Decimal(str(getattr(obj, spec.amount_attr)))
+    )
     ok = True
-    if amount > 0:
+    if tutar > 0:
         provider = payments.get_payment_provider()
-        ok = await provider.refund(provider_ref=obj.provider_ref, amount=amount)
+        ok = await provider.refund(provider_ref=obj.provider_ref, amount=tutar)
     if not ok:
         logger.error(
             "escrow: sağlayıcı iadesi başarısız — REFUNDING'de bırakıldı, "
@@ -274,6 +397,51 @@ async def perform_refund(
         )
         return False
     return await finalize_refund(db, obj, spec, notify=notify)
+
+
+def order_inflight_refund(order) -> Decimal:
+    """Sipariş yolunda UÇUŞTA olan iade tutarı = rezerve edilmiş − kesinleşmiş.
+
+    Reconciler bir siparişi retry'larken `total`'ı değil bunu gönderir: kısmi
+    RMA'sı tamamlanmış bir siparişin tam iadesi, ödenenden fazlasını iade
+    ettiriyordu (İP2A-03). Belirsizlik yok, çünkü sipariş `REFUNDING` iken RMA
+    para yolu açılmaz (`order_service._settle_return` taze `payment_status`'ü
+    kilit altında `PAID` görmek zorundadır).
+
+    **Fail-safe:** rezervasyon farkı 0 çıkarsa tutar SIFIR SAYILMAZ. Böyle bir
+    satır, bu sürümden ÖNCE commit'lenmiş bir niyet ya da elle üretilmiş bir
+    kayıt olabilir; 0 döndürmek sağlayıcıya hiç gitmeden `REFUNDED` yazmak
+    (yani parayı iade etmeden "iade edildi" demek) anlamına gelirdi. Güvenli
+    taban, siparişin henüz iade edilmemiş kısmıdır — aşırı iadeyi sağlayıcının
+    reddi ve `refunded_amount` tavanı zaten sınırlar.
+    """
+    kesin = Decimal(str(order.refunded_amount or 0))
+    ucusta = Decimal(str(order.refund_reserved or 0)) - kesin
+    if ucusta > 0:
+        return ucusta
+    return max(Decimal(str(order.total)) - kesin, Decimal("0"))
+
+
+async def mark_manual_review(db: AsyncSession, obj, spec: EscrowSpec) -> bool:
+    """Deneme tavanı dolan sarkan iadeyi kalıcı MANUAL_REVIEW'a taşır (PK-δ).
+
+    Sözleşme (docs/ip2a-magaza-iade-sozlesme.md §5/PK-δ):
+    - `REFUNDED` **yazılmaz** — para gerçekten döndü mü bilinmiyor;
+    - otomatik reconciler bu kaydı bir daha sağlayıcıya göndermez;
+    - kayıt admin kuyruğundan (`refund_status=MANUAL_REVIEW` filtresi)
+      sorgulanabilir olur;
+    - başarı yan etkileri (stok, kupon, bildirim, finalize) ÜRETİLMEZ.
+    """
+    if spec.manual_review is None:
+        return False
+    return await claim(
+        db,
+        type(obj),
+        obj.id,
+        from_statuses=[spec.refunding],
+        values={spec.status_attr: spec.manual_review},
+        status_attr=spec.status_attr,
+    )
 
 
 async def finalize_refund(

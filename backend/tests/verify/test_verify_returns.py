@@ -137,6 +137,17 @@ async def test_B2_ayipli_talep_pending_acilir(db, factory, fake_provider):
 async def test_B3_kismi_iade_siparisi_paid_birakir_ve_stogu_kismen_geri_verir(
     db, factory, fake_provider
 ):
+    """Kısmi iade: sipariş PAID kalır, para kısmen döner, stok FİZİKSEL KABULLE
+    ve yalnız iade edilen adet kadar geri gelir.
+
+    ## Davranış DEĞİŞTİ (İP-2a / PK-α, bilinçli ürün kararı)
+
+    Stok eskiden para iadesiyle birlikte artıyordu; kitap hâlâ müşterinin
+    elindeyken katalog "stokta var" gösteriyordu (İP2A-10). Onaylanan karara
+    göre stok yalnız depo kabulünde döner. Testin ölçtüğü "yalnız 1 adet geri
+    gelmeli" iddiası KORUNDU; hangi adımın onu doğurduğu değişti ve kabulden
+    ÖNCE stoğun artmadığı ayrıca doğrulanıyor.
+    """
     from models.store import Order
     from services import order_service
 
@@ -154,6 +165,30 @@ async def test_B3_kismi_iade_siparisi_paid_birakir_ve_stogu_kismen_geri_verir(
     await db.refresh(o)
     assert o.payment_status == "PAID", "kısmi iadede sipariş PAID kalmalı"
     assert Decimal(str(o.refunded_amount)) == Decimal("100.00")
+    assert await _stock(db, product.id) == 7, (
+        "PK-α: para iadesi tek başına stok üretmemeli (mal henüz gelmedi)"
+    )
+
+    # Depo malı teslim aldı → yalnız iade edilen adet satılabilir stoğa döner.
+    # Aktör olarak sistem aktörü yeterli: `audit_logs.actor_id` FK taşımaz ve
+    # bu senaryoda hasarlı adet (gerçek admin isteyen `damage_transfer`) yok.
+    admin = order_service._SistemAktoru()
+    ret_items = (
+        await db.execute(
+            text(
+                "SELECT id, quantity FROM order_return_items WHERE return_id = :r"
+            ),
+            {"r": out.id},
+        )
+    ).all()
+    await order_service.receive_return(
+        db,
+        out.id,
+        lines=[
+            order_service.ReceiveLine(int(rid), int(qty), 0) for rid, qty in ret_items
+        ],
+        actor=admin,
+    )
     assert await _stock(db, product.id) == 8, "yalnız 1 adet geri gelmeli"
 
 

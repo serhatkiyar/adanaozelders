@@ -102,6 +102,9 @@ class Settings(BaseSettings):
     RATE_LIMIT_REVIEW: int = 10
     RATE_LIMIT_PAYMENT: int = 10
     RATE_LIMIT_REPORT: int = 5
+    # İade talebi: CAYMA türü admin onayı beklemeden para hareketi başlatır,
+    # bu yüzden ödeme uçlarıyla aynı sınıfta korunur (İP2A-11).
+    RATE_LIMIT_RETURN: int = 5
     # To-do görev/alt görev yazma uçları (kullanıcı bazlı; hızlı ekleme için yüksek).
     RATE_LIMIT_TASK: int = 60
 

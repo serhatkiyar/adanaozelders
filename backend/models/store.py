@@ -77,6 +77,13 @@ class OrderPaymentStatus(str, enum.Enum):
     ölse bile kayıt sarkan REFUNDING olarak kalır ve reconciler devralır.
     Onsuz, sağlayıcıda para iade edilip commit düşerse sipariş PAID görünür,
     stok geri yüklenmez ve yeniden denendiğinde ikinci iade gönderilirdi.
+
+    ``MANUAL_REVIEW`` (İP-2a/PK-δ): otomatik deneme tavanı (`REFUND_MAX_ATTEMPTS`)
+    dolduğunda kayıt REFUNDING'de BIRAKILMAZ — sessiz `logger.error` tek başına
+    "müşterinin parası askıda" durumunu görünmez kılıyordu. Bu durum ne kesin
+    başarısızlık ne kesin iadedir: otomatik reconciler bir daha sağlayıcıya
+    göndermez, kayıt admin kuyruğundan sorgulanabilir, `REFUNDED` yalnız gerçek
+    sağlayıcı başarısından sonra yazılır.
     """
 
     PENDING = "PENDING"
@@ -84,6 +91,7 @@ class OrderPaymentStatus(str, enum.Enum):
     FAILED = "FAILED"
     REFUNDING = "REFUNDING"
     REFUNDED = "REFUNDED"
+    MANUAL_REVIEW = "MANUAL_REVIEW"
 
 
 class DeliveryPref(str, enum.Enum):
@@ -140,11 +148,15 @@ class ReturnRefundStatus(str, enum.Enum):
     sağlayıcıda kesinleşmemiş olabilir. Kısmi iade mümkün olduğundan sipariş
     tek başına "iade edildi mi?" sorusunu cevaplayamaz — bu yüzden para durumu
     TALEP üzerinde izlenir ve bir siparişte birden çok kısmi iade olabilir.
+
+    ``MANUAL_REVIEW`` (İP-2a/PK-δ): otomatik deneme tavanı dolan sarkan iade.
+    Bkz. ``OrderPaymentStatus.MANUAL_REVIEW``.
     """
 
     NONE = "NONE"
     REFUNDING = "REFUNDING"
     REFUNDED = "REFUNDED"
+    MANUAL_REVIEW = "MANUAL_REVIEW"
 
 
 class CouponDiscountType(str, enum.Enum):
@@ -468,8 +480,9 @@ class Order(Base, TimestampMixin, SoftDeleteMixin):
     )
 
     # ── Gömülü ödeme ──
+    # Uzunluk 20: `MANUAL_REVIEW` (13 karakter) String(10)'a sığmıyordu.
     payment_status: Mapped[str] = mapped_column(
-        String(10), nullable=False, server_default=text("'PENDING'")
+        String(20), nullable=False, server_default=text("'PENDING'")
     )
     provider: Mapped[str | None] = mapped_column(String(30), nullable=True)
     provider_ref: Mapped[str | None] = mapped_column(String(255), nullable=True)
@@ -483,6 +496,21 @@ class Order(Base, TimestampMixin, SoftDeleteMixin):
     #: Kısmi iade sonrası sipariş PAID kalır — mal kısmen müşterededir — bu
     #: yüzden "iade edildi mi?" sorusu tek başına payment_status'ten okunamaz.
     refunded_amount: Mapped[float] = mapped_column(
+        Numeric(10, 2), nullable=False, server_default=text("0")
+    )
+    #: **Rezerve edilmiş** (claim edilmiş) toplam iade tutarı — para tavanının
+    #: TEK otoritesi (İP-2a/M1).
+    #:
+    #: `refunded_amount` yalnız sağlayıcı BAŞARISINDAN sonra artar; oysa tavan
+    #: kararı sağlayıcı çağrısından ÖNCE verilmek zorundadır. İkisi aynı kolondan
+    #: okunursa iki eşzamanlı iade de "hiç iade yok" görüp tam tutarı ister ve
+    #: sağlayıcıya ödenenden fazlası gider (İP2A-03/04). Bu kolon niyet anında,
+    #: `refund_reserved + tutar <= total` koşullu UPDATE'iyle artırılır: koşul
+    #: satır kilidi altında yeniden değerlendirildiği için tek kazanan olur.
+    #:
+    #: Değişmezler: `refunded_amount <= refund_reserved <= total`.
+    #: Kalan iade edilebilir tutar `total - refund_reserved`'dır (refunded değil).
+    refund_reserved: Mapped[float] = mapped_column(
         Numeric(10, 2), nullable=False, server_default=text("0")
     )
     # ── İki fazlı iade niyeti (bkz. services/escrow.py) ──
@@ -780,8 +808,15 @@ class OrderReturn(Base, TimestampMixin):
     refund_amount: Mapped[float] = mapped_column(
         Numeric(10, 2), nullable=False, server_default=text("0")
     )
+    #: Talebe düşen KARGO iadesi payı. ``refund_amount`` bunu İÇERİR; kalem
+    #: satırları içermez. Böylece dekont özdeşliği tek cümleyle ifade edilebilir
+    #: (İP2A-15): ``refund_amount = Σ items.amount + shipping_refund``.
+    shipping_refund: Mapped[float] = mapped_column(
+        Numeric(10, 2), nullable=False, server_default=text("0")
+    )
+    # Uzunluk 20: `MANUAL_REVIEW` (13 karakter) String(10)'a sığmıyordu.
     refund_status: Mapped[str] = mapped_column(
-        String(10), nullable=False, server_default=text("'NONE'")
+        String(20), nullable=False, server_default=text("'NONE'")
     )
     refund_requested_at: Mapped[datetime.datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
@@ -789,8 +824,13 @@ class OrderReturn(Base, TimestampMixin):
     refund_attempts: Mapped[int] = mapped_column(
         Integer, nullable=False, server_default=text("0")
     )
-    #: Sağlayıcıdaki iade işlem kimliği (kısmi iadede tam-tutar idempotency'si
-    #: geçersizdir; her iade ayrı izlenmelidir).
+    #: Sağlayıcıdaki **tahsilat** işlem kimliği (iyzico `paymentTransactionId`)
+    #: — iade bu kimlik üzerinden yapılır. Siparişin `provider_ref`'inden
+    #: niyet anında kopyalanır: kısmi iadede tam-tutar idempotency'si geçersiz
+    #: olduğundan her talep kendi referansını TAŞIMAK ZORUNDADIR, aksi hâlde
+    #: reconciler sarkan talebi `provider_ref=None` ile dener ve iyzico anında
+    #: reddeder (İP2A-02). İade idempotency'si bu kolonda DEĞİL, talebin kendi
+    #: `refund_status` claim'inde + eşzamanlılık kilidinde yaşar.
     provider_ref: Mapped[str | None] = mapped_column(String(255), nullable=True)
     refunded_at: Mapped[datetime.datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
@@ -799,6 +839,17 @@ class OrderReturn(Base, TimestampMixin):
     is_partial: Mapped[bool] = mapped_column(
         Boolean, nullable=False, server_default=text("false")
     )
+
+    # ── Fiziksel kabul (İP-2a/PK-α) ──
+    #: Malın işletmeye ULAŞTIĞI ve muayeneden geçtiği an. Para durumundan
+    #: BAĞIMSIZDIR: iade parası sağlayıcı başarısıyla kesinleşir, stok ise
+    #: yalnız burası dolunca döner. Damga tek seferliktir — ikinci kabul
+    #: çağrısı idempotent no-op'tur (ikinci stok hareketi ÜRETMEZ).
+    received_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    #: Kabulü yapan (admin e-postası/kullanıcı adı) — denetim izi.
+    received_by: Mapped[str | None] = mapped_column(String(120), nullable=True)
 
     order: Mapped["Order"] = relationship(back_populates="returns")
     items: Mapped[list["OrderReturnItem"]] = relationship(
@@ -835,14 +886,34 @@ class OrderReturnItem(Base):
         ForeignKey("order_items.id", ondelete="CASCADE"), nullable=False, index=True
     )
     quantity: Mapped[int] = mapped_column(Integer, nullable=False)
-    #: Bu satırın iade tutarı (birim fiyat × adet, KDV dahil) — sipariş anındaki
-    #: fiyattan hesaplanır ve snapshot'lanır.
+    #: Bu satırın **NET** iade tutarı (birim fiyat × adet − satıra düşen kupon
+    #: payı, KDV dahil) — sipariş anındaki fiyattan hesaplanır ve snapshot'lanır.
+    #: Brüt yazıldığı sürece kuponlu siparişte müşteriye gösterilen döküm
+    #: talebin gerçek iadesiyle tutmuyordu (İP2A-15).
     amount: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False)
+
+    # ── Fiziksel kabul sonucu (İP-2a/PK-α) ──
+    #: Depoda teslim alınıp SAĞLAM bulunan adet → satılabilir (SALEABLE) kovaya.
+    accepted_quantity: Mapped[int] = mapped_column(
+        Integer, nullable=False, server_default=text("0")
+    )
+    #: Teslim alınıp HASARLI bulunan adet → hasarlı (DAMAGED) kovaya.
+    #: Kabul edilmeyen (hiç gelmeyen) adet ikisine de girmez ve stoğa DÖNMEZ.
+    damaged_quantity: Mapped[int] = mapped_column(
+        Integer, nullable=False, server_default=text("0")
+    )
 
     order_return: Mapped["OrderReturn"] = relationship(back_populates="items")
 
     __table_args__ = (
         CheckConstraint("quantity > 0", name="ck_order_return_items_quantity"),
+        # Kabul edilen adet, iade edilmek üzere BEYAN EDİLEN adedi aşamaz;
+        # aksi hâlde depo, satılmamış kitabı iade kanalından stoğa sokabilirdi.
+        CheckConstraint(
+            "accepted_quantity >= 0 AND damaged_quantity >= 0 "
+            "AND accepted_quantity + damaged_quantity <= quantity",
+            name="ck_order_return_items_received",
+        ),
         # Aynı kalem bir talepte iki kez yer alamaz.
         Index(
             "uq_order_return_item",

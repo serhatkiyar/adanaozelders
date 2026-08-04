@@ -51,6 +51,7 @@ from schemas.store import (
     OrderOut,
     OrderReturnCreate,
     OrderReturnOut,
+    OrderReturnReceiveIn,
     OrderReturnResolve,
     OrderShipIn,
     ProductCategoryCreate,
@@ -100,6 +101,13 @@ _review_limit = user_rate_limit(
 _pay_limit = user_rate_limit(
     key="store_pay",
     limit=settings.RATE_LIMIT_PAYMENT,
+    window_seconds=settings.RATE_LIMIT_WINDOW_SECONDS,
+)
+# CAYMA iade talebi admin'siz PARA HAREKETİ başlatır (m.9 koşulsuz onay) —
+# diğer para yazma uçları gibi kullanıcı bazlı limite tabidir (İP2A-11).
+_return_limit = user_rate_limit(
+    key="return_create",
+    limit=settings.RATE_LIMIT_RETURN,
     window_seconds=settings.RATE_LIMIT_WINDOW_SECONDS,
 )
 # Oturumsuz kargo takibi IP bazlı (token brute-force koruması; auth yok).
@@ -466,14 +474,33 @@ async def cancel_order_by_admin(
 @router.get("/admin/returns", response_model=list[OrderReturnOut])
 async def list_returns_admin(
     status_filter: str | None = Query(default=None, alias="status"),
+    refund_status: str | None = Query(
+        default=None,
+        description=(
+            "Para durumu filtresi. 'MANUAL_REVIEW' otomatik denemeleri tükenmiş, "
+            "parası askıda kalmış iadelerin kuyruğudur (PK-δ)."
+        ),
+    ),
     limit: int = Query(default=100, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
     _admin: Admin = Depends(require_admin_permission("returns.view")),
     db: AsyncSession = Depends(get_db),
 ):
     return await order_service.list_returns_admin(
-        db, status_filter=status_filter, limit=limit, offset=offset
+        db,
+        status_filter=status_filter,
+        refund_status_filter=refund_status,
+        limit=limit,
+        offset=offset,
     )
+
+
+# NOT: approve/reject/receive uçları `audit_service.record` ÇAĞIRMAZ — denetim
+# satırını servis katmanı, kararı taşıyan transaction'ın İÇİNDE yazar
+# (`order_service._audit_return`). Router'da yazmak iki kusur üretiyordu
+# (İP2A-08): sağlayıcı 502'sinde karar COMMIT'lenmiş olmasına rağmen audit'e
+# hiç ulaşılmıyordu, ve müşteri tetikli CAYMA otomatik onayı hiç iz bırakmıyordu.
+# İkisini birden yazmak ise aynı kararı iki kez kaydederdi.
 
 
 @router.post("/admin/returns/{return_id}/approve", response_model=OrderReturnOut)
@@ -483,13 +510,9 @@ async def approve_return(
     admin: Admin = Depends(require_admin_permission("returns.manage")),
     db: AsyncSession = Depends(get_db),
 ):
-    ret = await order_service.approve_return(db, return_id, admin_note=payload.admin_note)
-    await audit_service.record(
-        db, actor=admin, action="return.approve", target_type="order_return",
-        target_id=return_id, reason=payload.admin_note,
-        meta={"order_id": ret.order_id},
+    return await order_service.approve_return(
+        db, return_id, admin_note=payload.admin_note, actor=admin
     )
-    return ret
 
 
 @router.post("/admin/returns/{return_id}/reject", response_model=OrderReturnOut)
@@ -499,13 +522,34 @@ async def reject_return(
     admin: Admin = Depends(require_admin_permission("returns.manage")),
     db: AsyncSession = Depends(get_db),
 ):
-    ret = await order_service.reject_return(db, return_id, admin_note=payload.admin_note)
-    await audit_service.record(
-        db, actor=admin, action="return.reject", target_type="order_return",
-        target_id=return_id, reason=payload.admin_note,
-        meta={"order_id": ret.order_id},
+    return await order_service.reject_return(
+        db, return_id, admin_note=payload.admin_note, actor=admin
     )
-    return ret
+
+
+@router.post("/admin/returns/{return_id}/receive", response_model=OrderReturnOut)
+async def receive_return(
+    return_id: int,
+    payload: OrderReturnReceiveIn,
+    admin: Admin = Depends(require_admin_permission("returns.manage")),
+    db: AsyncSession = Depends(get_db),
+):
+    """İade edilen malın depoda teslim alınması ve muayenesi (PK-α).
+
+    Stoğun geri döndüğü **tek** yer burasıdır: para iadesi tek başına stok
+    üretmez, çünkü kitap o an hâlâ müşterinin elinde olabilir.
+    """
+    return await order_service.receive_return(
+        db,
+        return_id,
+        lines=[
+            order_service.ReceiveLine(
+                ln.return_item_id, ln.accepted_quantity, ln.damaged_quantity
+            )
+            for ln in payload.lines
+        ],
+        actor=admin,
+    )
 
 
 # ── Kupon yönetimi (ADMIN) ───────────────────────────────────────────────────────
@@ -908,6 +952,7 @@ async def request_order_return(
     payload: OrderReturnCreate,
     client: Client = Depends(require_roles(RoleType.CLIENT)),
     db: AsyncSession = Depends(get_db),
+    _rl: None = Depends(_return_limit),
 ):
     order = await order_service.get_order_for_pay(db, order_id, client.id)
     return await order_service.request_return(
@@ -916,6 +961,7 @@ async def request_order_return(
         payload.reason,
         return_type=payload.type,
         items=payload.items,
+        actor=client,
     )
 
 

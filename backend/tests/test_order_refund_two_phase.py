@@ -29,7 +29,14 @@ from services import escrow, order_service
 
 
 class _FakeOrder:
-    def __init__(self, *, total: str = "300.00", coupon_id: int | None = None) -> None:
+    def __init__(
+        self,
+        *,
+        total: str = "300.00",
+        coupon_id: int | None = None,
+        refund_reserved: str = "0.00",
+        refunded_amount: str = "0.00",
+    ) -> None:
         self.id = 5
         self.client_id = 42
         self.payment_status = OrderPaymentStatus.PAID.value
@@ -41,24 +48,62 @@ class _FakeOrder:
         self.coupon_id = coupon_id
         # İP-2b R17: telafi kararı sağlayıcı sonrası TAZE duruma bakar.
         self.status = "PAID"
-        self.refunded_amount = Decimal("0")
+        self.refunded_amount = Decimal(refunded_amount)
+        # İP-2a: iade para tavanının otoritesi — sağlayıcı çağrısından ÖNCE
+        # rezerve edilen toplam (bkz. order_service.reserve_refund).
+        self.refund_reserved = Decimal(refund_reserved)
         self.items: list = []
 
 
+class _FakeResult:
+    """`db.execute` dönüşünün saf birim testte ihtiyaç duyulan kadarı."""
+
+    def __init__(self, scalar=None, rowcount: int = 1) -> None:
+        self._scalar = scalar
+        self.rowcount = rowcount
+
+    def scalar_one_or_none(self):
+        return self._scalar
+
+    def scalar_one(self):
+        return self._scalar
+
+
 class _FakeDb:
-    def __init__(self) -> None:
+    """Saf birim testi için asgari oturum.
+
+    İade yolu artık para tavanını (`total - refund_reserved`) ve kesinleşen
+    tutarı SQL üzerinden okur/yazar — tavan kararı Python'daki bayat nesneye
+    bırakılamaz (İP2A-03/04). Bu yüzden `execute` artık `None` değil,
+    okunabilir bir sonuç döndürür.
+    """
+
+    def __init__(self, *, kalan: str = "300.00") -> None:
         self.commits = 0
+        self.rollbacks = 0
+        self.kalan = Decimal(kalan)
+        self.statements: list[str] = []
 
     async def commit(self) -> None:
         self.commits += 1
 
+    async def rollback(self) -> None:
+        self.rollbacks += 1
+
     async def refresh(self, obj, attribute_names=None) -> None:
         return None
 
-    async def execute(self, *a, **kw):
-        # `_lock_order`'ın `SELECT ... FOR UPDATE`'i (İP-2b R17). Saf birim
-        # testinde satır kilidi anlamlı değil; çağrı yutulur.
-        return None
+    async def execute(self, stmt, params=None, *a, **kw):
+        sql = str(getattr(stmt, "text", stmt))
+        self.statements.append(sql)
+        if "total - refund_reserved" in sql:
+            return _FakeResult(scalar=self.kalan)
+        if "SET refund_reserved" in sql:
+            return _FakeResult(rowcount=1)
+        # `_lock_order`'ın `SELECT ... FOR UPDATE`'i (İP-2b R17) ve
+        # `refunded_amount` UPDATE'i. Saf birim testinde satır kilidi anlamlı
+        # değil; çağrı kaydedilip yutulur.
+        return _FakeResult()
 
 
 @pytest.fixture
@@ -97,14 +142,34 @@ def akis(monkeypatch):
 
 
 def _patch_phases(monkeypatch, log, *, begin_ok: bool, perform_ok: bool) -> None:
-    async def fake_begin(db, obj, spec, *, from_statuses=None, provider_ref=None):
-        log["begin"].append({"spec": spec, "from_statuses": from_statuses})
+    async def fake_begin(
+        db,
+        obj,
+        spec,
+        *,
+        from_statuses=None,
+        provider_ref=None,
+        extra_values=None,
+        extra_where=(),
+        refresh_attrs=(),
+    ):
+        # `extra_values` İP-2a'nın çekirdeği: para rezervasyonu niyetle AYNI
+        # atomik UPDATE'e biner. Sınır burada kaydedilir ki "rezervasyon ayrı
+        # bir yazıma kaydı" regresyonu görünür olsun.
+        log["begin"].append(
+            {
+                "spec": spec,
+                "from_statuses": from_statuses,
+                "extra_values": extra_values,
+                "extra_where": extra_where,
+            }
+        )
         if begin_ok:
             obj.payment_status = spec.refunding
         return begin_ok
 
-    async def fake_perform(db, obj, spec, *, notify=None):
-        log["perform"].append(obj.id)
+    async def fake_perform(db, obj, spec, *, notify=None, amount=None):
+        log["perform"].append((obj.id, amount))
         if perform_ok:
             obj.payment_status = spec.refunded
         return perform_ok
@@ -125,10 +190,55 @@ async def test_basarili_iade_iki_fazi_da_kosar(monkeypatch, akis) -> None:
 
     assert len(akis["begin"]) == 1
     assert akis["begin"][0]["spec"] is escrow.ORDER_SPEC
-    assert akis["perform"] == [5]
+    # İP2A-03: sağlayıcıya `total` DEĞİL, henüz rezerve edilmemiş KALAN gider.
+    assert akis["perform"] == [(5, Decimal("300.00"))]
+    # Rezervasyon niyetle aynı atomik UPDATE'e bindi (ayrı yazım = tavan
+    # penceresi = İP2A-04).
+    assert akis["begin"][0]["extra_values"] is not None
+    assert "refund_reserved" in akis["begin"][0]["extra_values"]
+    assert akis["begin"][0]["extra_where"], "rezerv değeri compare-and-swap'siz"
     assert akis["restock"] == [5]          # stok geri yüklendi
     assert akis["coupon_release"] == [9]   # kupon serbest bırakıldı
     assert order.payment_status == OrderPaymentStatus.REFUNDED.value
+
+
+@pytest.mark.asyncio
+async def test_kismi_iade_sonrasi_yalniz_kalan_tutar_gonderilir(
+    monkeypatch, akis
+) -> None:
+    """İP2A-03: kısmen iade edilmiş siparişte tam iade `total`'ı GÖNDERMEZ.
+
+    300 TL'lik siparişten 100 TL rezerve edilmişse sağlayıcıya 200 TL gider.
+    Eskiden `ORDER_SPEC.amount_attr='total'` yüzünden 300 TL daha gidiyor,
+    toplam 400 TL oluyordu — tek koruma sağlayıcının aşırı-iade reddiydi ve o
+    da kısmi tutarları ayırt edemez.
+    """
+    _patch_phases(monkeypatch, akis, begin_ok=True, perform_ok=True)
+    order = _FakeOrder(refund_reserved="100.00", refunded_amount="100.00")
+
+    await order_service._refund_payment(
+        _FakeDb(kalan="200.00"), order, reason_code="ORDER_REFUNDED",
+        terminal_status="REFUNDED", changed_by="admin",
+    )
+
+    assert akis["perform"] == [(5, Decimal("200.00"))]
+
+
+@pytest.mark.asyncio
+async def test_kalan_tutar_yoksa_saglayiciya_hic_gitmez(monkeypatch, akis) -> None:
+    """M1: tavanı dolmuş siparişte iade denemesi 409'dur, para hareketi YOK."""
+    _patch_phases(monkeypatch, akis, begin_ok=True, perform_ok=True)
+    order = _FakeOrder(refund_reserved="300.00", refunded_amount="300.00")
+
+    with pytest.raises(HTTPException) as exc:
+        await order_service._refund_payment(
+            _FakeDb(kalan="0.00"), order, reason_code="ORDER_REFUNDED",
+            terminal_status="REFUNDED", changed_by="admin",
+        )
+
+    assert exc.value.status_code == 409
+    assert akis["begin"] == [] and akis["perform"] == []
+    assert akis["restock"] == []
 
 
 @pytest.mark.asyncio
