@@ -20,8 +20,26 @@ Ayrıca `order_returns.shipping_refund`: kargo payı kalem satırlarından ayrı
 (İP2A-15 dekont özdeşliği).
 
 Revision ID: ip2a_iade_para_guvenligi
-Revises: ip2b_terminal_history_guard
+Revises: ip3_auth_version_all_roles
 Create Date: 2026-08-04
+
+## `down_revision` neden `ip2b` DEĞİL
+
+Bu revizyon İP-2a dalında `ip2b_terminal_history_guard` üzerine yazıldı. Güncel
+main ise aynı revizyonun üstüne İP-3'ü (`ip3_auth_version_all_roles`) koydu. İki
+dal birleşince zincir `ip2b`'de ÇATALLANDI ve `alembic upgrade head` boş bir
+veritabanında "Multiple head revisions are present" ile düşerdi — hem uygulama
+açılışı (`core/migrations.py::ensure_schema`) hem de entegrasyon testlerinin tek
+kullanımlık DB kurulumu kırılırdı.
+
+İki revizyon hiçbir nesneyi paylaşmaz: İP-3 yalnız `admins`/`tutors`/`clients`/
+`library_operators` tablolarına `auth_version` kolonu ekler; bu revizyon yalnız
+`orders`/`order_returns`/`order_return_items` şemasına dokunur. Aşağıdaki
+backfill'ler de İP-3'ün dokunduğu tabloları hiç okumaz, İP-3'ün backfill'i
+yoktur — yani iki revizyonun sırası değiş-tokuşludur. Bu yüzden güvenli çözüm,
+zinciri main tarafının ucuna bağlayıp tek head'e dönmektir; merge revizyonu
+üretmeye veya DDL gövdesini değiştirmeye gerek yoktur. (Aynı gerekçeyle İP-3 de
+kendi zincirini main ucuna bağlamıştı — bkz. `ip3_auth_version_all_roles`.)
 """
 from typing import Sequence, Union
 
@@ -29,7 +47,7 @@ import sqlalchemy as sa
 from alembic import op
 
 revision: str = "ip2a_iade_para_guvenligi"
-down_revision: Union[str, Sequence[str], None] = "ip2b_terminal_history_guard"
+down_revision: Union[str, Sequence[str], None] = "ip3_auth_version_all_roles"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
