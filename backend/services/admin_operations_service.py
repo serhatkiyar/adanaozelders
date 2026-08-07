@@ -39,6 +39,11 @@ from services.escrow_reconciler import _REFUNDING_TARGETS
 
 #: Model → yanıttaki `entity` etiketi. Sınıf adına DEĞİL açık haritaya bağlı:
 #: bir modelin Python adı değişirse istemci sözleşmesi sessizce kaymamalı.
+#:
+#: Eksik anahtar bilinçli olarak **KeyError (500)** verir, sessiz atlama DEĞİL:
+#: `_REFUNDING_TARGETS`'a yeni bir escrow yüzeyi eklenip burası unutulursa,
+#: sessiz atlama o yüzeyin sıkışmış kayıtlarını kuyruktan görünmez kılardı —
+#: yani bu modülün varlık sebebini (kör nokta bırakmamak) ortadan kaldırırdı.
 _ENTITY_ADI: dict[str, str] = {
     "Payment": "payment",
     "ExamRegistration": "exam_registration",

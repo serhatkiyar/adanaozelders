@@ -100,7 +100,10 @@ function StuckRow({ kayit }: { kayit: StuckEscrowRecord }) {
       <div className="min-w-0 space-y-1">
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-sm font-semibold text-slate-900 dark:text-white">
-            {ENTITY_LABEL[kayit.entity]} #{kayit.entity_id}
+            {/* Backend yeni bir escrow yüzeyi eklerse etiket eksik kalabilir;
+                satır BOŞ görünmesin — ham `entity` değeri en azından teşhis
+                edilebilir bir metindir. */}
+            {ENTITY_LABEL[kayit.entity] ?? kayit.entity} #{kayit.entity_id}
           </span>
           <Badge tone={manuel ? "danger" : "warning"}>
             {manuel ? "Manuel inceleme" : "Deneme tükendi"}
