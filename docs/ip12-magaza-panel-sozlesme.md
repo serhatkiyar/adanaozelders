@@ -151,8 +151,18 @@ kayıt hiç görünmeyebilir.
 
 ## 5. LOW_STOCK_THRESHOLD tek kaynak
 
-`backend/core/stock_policy.py` — değer **yalnız burada**. Frontend kendi
-kopyasını tutmuyor, `GET /store/config` ile **okuyor**.
+`backend/core/stock_policy.py` — değer **yalnız burada**. Frontend `GET
+/store/config` ile **okuyor**: yönetim listesi, dashboard kartı ve **vitrin
+ürün detayı**.
+
+> **Düzeltme (audit P1-2).** Bu bölüm ilk yazımında "frontend kendi kopyasını
+> tutmuyor" diyordu ve bu **yanlıştı**: `ProductDetailPage.tsx` eşiği
+> `const LOW_STOCK = 5` olarak kendi kopyasında tutmaya devam ediyordu ve
+> dosya paketin diff'ine hiç girmemişti. Eşik 3'e çekilse yönetim tarafı yeni
+> değere göre davranır, vitrin hâlâ "Son 4 ürün" derdi. Kopya kaldırıldı;
+> eşik bilinmiyorsa vitrin uyarıyı hiç basmaz (yanlış eşikle uydurulmuş
+> aciliyet göstermektense susmak dürüsttür). Tam kod taraması sonucu: başka
+> gömülü eşik yok.
 
 **Kova tanımı da tek yerde.** Uygulama sırasında ölçülen gerçek çatışma:
 dashboard sayacı `stock <= eşik` diyor (stoğu 0 olanı **da** sayıyor), ama
@@ -165,15 +175,28 @@ Kullanıcı kararıyla üçüncü bir filtre değeri eklendi:
 
 | Değer | Tanım |
 |---|---|
-| `tukendi` | `stock <= 0` (yalnız fiziksel) |
+Kovaların tamamı **satışta olan** ürün evrenini paylaşır
+(`stock_policy.satista_fiziksel()` → `kind == PHYSICAL AND status == ACTIVE`):
+
+| Değer | Tanım |
+|---|---|
+| `tukendi` | `stock <= 0` |
 | `azalan` | `0 < stock <= eşik` |
-| `var` | `stock > eşik` **veya** dijital |
+| `var` | `stock > eşik` **veya** dijital (yalnız `ACTIVE`) |
 | **`kritik`** | `stock <= eşik` — `tukendi` + `azalan` **birleşimi**; dashboard "Düşük stok" kartının saydığı kümenin tam karşılığı |
 
-Kart artık `?stok=kritik`e gidiyor: sayı ile liste **aynı küme**.
-`test_p9_dashboard_ayni_esigi_kullanir` bunu davranışla ölçüyor. Kapsam farkı
-bilinçli ve testte hesaba katılı: dashboard yalnız `ACTIVE` sayar (kart metni
-öyle diyor), yönetim listesi katalogun tamamını gösterir.
+Kart `?stok=kritik`e gidiyor ve sayı ile liste **aynı küme**.
+
+> **Düzeltme (audit P1-1).** Bu cümle ilk yazımında **yanlıştı**: sayaç
+> `status == ACTIVE` filtreliyordu, liste filtrelemiyordu; ölçümde kart 5
+> derken liste 7 kayıt gösteriyordu (fark bir taslak, bir gizli ürün).
+> Sözleşme bu vaadi dört ayrı yerde veriyordu ve dördü de yanlıştı. Karar:
+> **liste de `ACTIVE` filtreler** — kart bir "yeniden sipariş ver" alarmıdır,
+> taslak/gizli ürün zaten satışta değildir ve onun için sipariş verilmez.
+> Yüklem artık tek yerde (`stok_kovasi_yuklemi`) ve sayaç ile liste onu
+> paylaşıyor. `test_p9_dashboard_ayni_esigi_kullanir` artık **daraltma
+> yapmadan** eşitlik ölçüyor; önceki hâli listeyi test tarafında `ACTIVE` ile
+> süzüp karşılaştırdığı için sapmayı göremiyordu.
 
 Bu, görev tanımının F-5 maddesinden (`?stok=azalan`) **gerekçeli sapmadır**.
 

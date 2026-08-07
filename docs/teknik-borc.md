@@ -41,9 +41,11 @@ notunu bırakmak, yapılmış bir işi yapılmamış gibi anlatır).
 
 <!-- Kapanma notu (İP-12 FAZ 0): **TB-23** ("Vitest 5000 ms varsayılan
      timeout'unun marjı yok") KAPANDI ve dosyanın kendi kuralı gereği SİLİNDİ.
-     Onunla birlikte aynı kökün iki türev kaydı da silindi: **TB-19/9**
-     (`PackageLabel` flake'i) ve **TB-14/8** (`inventoryScreens` flake'i) —
-     TB-23'ün "sonraki adım" satırı bu birlikte kapanmayı zaten öngörüyordu.
+     Onunla birlikte **TB-19/9** (`PackageLabel` flake'i) de silindi.
+     **DÜZELTME (İP-12 audit'i):** `inventoryScreens` flake'i de aynı turda
+     "kapandı" diye silinmişti ama bu ERKEN bir karardı — audit 7 koşumun
+     1'inde düşüşü tekrar gördü. Kayıt [[TB-14]]/8 olarak GERİ KONDU ve
+     "kapandı" yerine "azaldı ama sürüyor" olarak yazıldı.
      Kapatan değişiklik: `frontend/vitest.config.ts` → `testTimeout: 9000`.
      Değer ölçümle seçildi: boşta makinede `--testTimeout=60000` ile koşulan
      tam suite her testin GERÇEK süresini verdi (en yavaş 2409 ms), ardından
@@ -55,7 +57,9 @@ notunu bırakmak, yapılmış bir işi yapılmamış gibi anlatır).
      performans regresyonunu — sessizce yutardı. Dört dosyanın da yeni bütçede
      kullandığı pay: PackageLabel %33, packingScreens %25, inventoryScreens
      %20, packingLabel %20 (eski 5000 ms'de bu %44-59'du; TB-23'ün "bütçenin
-     yarısını yiyor" tespiti). Ölçüm boşta makinede yapıldı — ölçümden önce
+     yarısını yiyor" tespiti). Bu paylar İP-12'nin 5 koşumunda ölçüldü;
+     `inventoryScreens` için yetersiz kaldığı audit turunda görüldü (bkz.
+     [[TB-14]]/8). Ölçüm boşta makinede yapıldı — ölçümden önce
      çalışan scraper/uvicorn/vite süreçleri durduruldu, çünkü yüklü makinede
      ölçülen "en yavaş test" testi değil makine durumunu ölçer. Not: TB-23'ün
      (2) numaralı sonraki adımı — "bu testlerin neden saniyeler sürdüğünü
@@ -200,7 +204,7 @@ her üçünü de güvenli tarafta bekletiyor (fatura uydurmuyor, uç kapalı).
 | **(b) bugünkü gerçek risk** | Düşük, kayıp güncelleme DEĞİL: dal yalnız `from_statuses=["PENDING","FAILED"]` claim'iyle koşuyor, fonksiyon girişi PAID/REFUNDING/REFUNDED'ı zaten erken döndürüyor ve kısmi RMA siparişin PAID olmasını gerektiriyor → o noktada `refunded_amount` pratikte 0. Yani **sözleşme ihlali / regresyon riski** |
 | **Sonraki adım** | (b) ölü-varlık dalını `apply_refunded_amount`'a çevirmek + "kod tabanında `refunded_amount`'a yazan tek yer" yapısal nöbetçisi |
 
-## TB-14 · İP-2a P2 listesi (audit'te açık bırakılan sekiz kaydın ALTISI — öncelik sırasıyla)
+## TB-14 · İP-2a P2 listesi (audit'te açık bırakılan sekiz kaydın YEDİSİ — öncelik sırasıyla)
 
 | | |
 |---|---|
@@ -222,6 +226,7 @@ belgelerde geçiyor ve kaydırmak onları sessizce yanlış kayda bağlardı.
 | 5 | **`notifications` / `outbox_events` test hijyen boşluğu** | `tests/integration/conftest.py::_KRITIK_TABLOLAR` | İP-2a'nın kendi deltası ölçülmedi; genel boşluk zaten [[TB-8]] altında açık. Burada yalnız İP-2a paketinin de aynı iki tabloda delta bırakıp bırakmadığının ölçülmemiş olması kayda geçiyor |
 | 6 | **`f30_factory` sabit `auth_version=1`** | `backend/tests/integration/f30_factory.py` | İP-3 `auth_version` sözleşmesinden sonra fabrika değeri sabit; hesabın gerçek `auth_version`'ı 1 değilse token sözleşmesi testte yanlış tarafından doğrulanır (bugün geçiyor çünkü fabrika hesapları hep 1'de). Kırılganlık: sürüm artıran bir davranış eklenince sessizce yalancı yeşil |
 | 7 | **`mutation_drill.py` üç eksik** | `backend/scripts/mutation_drill.py` | (a) mutasyon geri alındıktan sonra dosyanın **SHA-256 ile** eski hâline döndüğü doğrulanmıyor; (b) mutasyondan önce **yeşil taban çizgisi** alınmıyor (zaten kırmızı bir testi "mutasyonu yakaladı" sayabilir); (c) hedef AST node'unun **beklenen düğümle eşleştiği** doğrulanmıyor (yanlış yeri mutasyona uğratıp "yakalandı" diyebilir). Kök `CLAUDE.md` §D bu sürücüyü resmî araç olarak anıyor — güvenilirliği doğrudan test kalitesi iddiasını taşıyor |
+| 8 | **frontend `inventoryScreens` flake'i — AZALDI ama SÜRÜYOR** | `frontend/src/pages/admin/inventory/inventoryScreens.acceptance.test.tsx` | **Kayıt bir kez erken kapatıldı ve geri kondu.** İP-12 FAZ 0 `testTimeout`'u 5000 → 9000 ms'ye çekti ve 5 koşumun 5'inde yeşil gördüğü için kaydı "kapandı" sayıp sildi. İP-12 audit'i **7 koşumun 1'inde** düşüşü tekrar gördü: ağır yük altında `ProductPicker`'ın debounce + istek zinciri `findBy` penceresine yetişemiyor (A12 ile eklenen seçici, bu dosyadaki hasar akışlarında artık bir ağ turu daha ekliyor). Yani kök neden TB-23'ün ölçtüğü "bütçe dar" sınıfından; bütçe genişledi, olasılık düştü ama SIFIRLANMADI. Ölçüm: 9000 ms bütçede bu dosyanın en ağır testi ~1786 ms (payı %20) — boşta. Sonraki adım: seçicinin bekleme zincirini testte deterministik hâle getirmek (sahte zamanlayıcı ya da debounce'u test ortamında kısaltmak); bütçeyi daha da büyütmek ÇÖZÜM DEĞİL, gerçek yavaşlama regresyonunu gizler |
 
 ## TB-13 · KVKK silme: kurye PROFİLİ (vesikalık/plaka/telefon) ve silme audit kaydı — ürün kararı bekliyor
 
