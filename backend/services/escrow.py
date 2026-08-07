@@ -172,6 +172,17 @@ RETURN_SPEC = EscrowSpec(
     lock_class=5,
 )
 
+# ── Advisory kilit sınıfı kayıt defteri ────────────────────────────────────────
+#
+# Yukarıdaki `EscrowSpec.lock_class` değerleri (1-5) iade uçuş-içi nöbeti
+# içindir. Kütüphane kolunun KONTENJAN serileştirmesi de advisory kilit kullanır
+# (satır kilidi değil — bkz. `services/library_capacity.py`) ve **aynı isim
+# alanını** paylaşır; bu yüzden sınıf numaraları tek bir yerden dağıtılır. İki
+# numarayı iki ayrı modülde tutmak, ileride birinin diğerinin sınıfını yeniden
+# kullanmasına ve iki alakasız işlemin sessizce birbirini beklemesine yol açardı.
+EXAM_SESSION_CAPACITY_LOCK_CLASS = 6
+LIBRARY_CAPACITY_LOCK_CLASS = 7
+
 
 # ── Atomik claim ─────────────────────────────────────────────────────────────────
 

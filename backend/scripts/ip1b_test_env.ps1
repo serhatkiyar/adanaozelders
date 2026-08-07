@@ -13,3 +13,5 @@ $env:POSTGRES_PORT = '5432'
 $env:POSTGRES_DB = 'adana_ip1b_test'
 $env:AUTO_CREATE_DB = 'false'
 $env:ENVIRONMENT = 'development'
+# Elle `alembic` koşarken gerekir (pytest'te kök conftest.py koyuyor).
+$env:JWT_SECRET_KEY = 'ip1b-test-only-secret-key-not-for-production'
