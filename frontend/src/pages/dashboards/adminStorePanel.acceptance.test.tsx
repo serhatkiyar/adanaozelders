@@ -313,26 +313,68 @@ describe("P-2 · sayfalama SUNUCUDA (istemci dilimlemesi değil)", () => {
 });
 
 describe("P-4 · sıralama sunucuya gider", () => {
-  it("Fiyat başlığına tıklayınca sort parametresi gönderilir", async () => {
+  /** Bir kolon başlığındaki sıralama düğmesi. */
+  async function siralamaDugmesi(baslik: string) {
+    const tablo = await screen.findByRole("table");
+    const kolon = within(tablo)
+      .getAllByRole("columnheader")
+      .find((h) => (h.textContent ?? "").includes(baslik));
+    return within(kolon as HTMLElement).getByRole("button");
+  }
+
+  // İDDİA DEĞERE BAĞLI (P1-4): ilk yazımında bu node yalnız
+  // `expect(params.get("sort")).toBeTruthy()` diyordu ve audit M17 ile
+  // gösterdi ki `onSortingChange` tamamen etkisizleştirilse bile test
+  // GEÇİYORDU — çünkü `storeProductQuery` `sort`u HER istekte varsayılanla
+  // (`created_at`) gönderiyor. Yani parametrenin varlığı tıklamanın etkisini
+  // ölçmüyordu; ölçtüğü şey varsayılanın gönderildiğiydi.
+  //
+  // Artık tıklamadan ÖNCEKİ ve SONRAKİ değer karşılaştırılıyor.
+  it("Fiyat başlığına tıklayınca sort DEĞERİ created_at'ten price'a döner", async () => {
     izinVer("products.view");
     urunSunucusu([urun()], 10);
 
     magaza();
-    const tablo = await screen.findByRole("table");
-    const fiyat = within(tablo)
-      .getAllByRole("columnheader")
-      .find((h) => (h.textContent ?? "").includes("Fiyat"));
-    const dugme = within(fiyat as HTMLElement).getByRole("button");
-
-    fireEvent.click(dugme);
-
     await screen.findByRole("table");
-    const son = urunIstekleri().at(-1);
+
+    const oncekiIstek = urunIstekleri().at(-1);
     expect(
-      son?.params.get("sort"),
-      "sıralama sunucuya gitmiyor — istemci tarafında sıralanıyorsa yalnız " +
-        "görünen sayfa sıralanır ve sonuç YANLIŞ olur"
-    ).toBeTruthy();
+      oncekiIstek?.params.get("sort"),
+      "başlangıçta varsayılan sıralama gönderilmiyor"
+    ).toBe("created_at");
+
+    fireEvent.click(await siralamaDugmesi("Fiyat"));
+    await screen.findByRole("table");
+
+    const sonrakiIstek = urunIstekleri().at(-1);
+    expect(
+      sonrakiIstek?.params.get("sort"),
+      "Fiyat başlığına tıklandı ama sunucuya giden sıralama anahtarı " +
+        "değişmedi — tıklamanın hiçbir etkisi yok"
+    ).toBe("price");
+  });
+
+  it("aynı kolona ikinci tıklama YÖNÜ çevirir", async () => {
+    izinVer("products.view");
+    urunSunucusu([urun()], 10);
+
+    magaza();
+    await screen.findByRole("table");
+
+    fireEvent.click(await siralamaDugmesi("Fiyat"));
+    await screen.findByRole("table");
+    const ilkYon = urunIstekleri().at(-1)?.params.get("order");
+
+    fireEvent.click(await siralamaDugmesi("Fiyat"));
+    await screen.findByRole("table");
+    const ikinciYon = urunIstekleri().at(-1)?.params.get("order");
+
+    expect(ilkYon, "sıralama yönü gönderilmiyor").toBeTruthy();
+    expect(
+      ikinciYon,
+      "ikinci tıklama yönü çevirmedi — 'en pahalı' ile 'en ucuz' arasında " +
+        "geçiş yapılamıyor"
+    ).not.toBe(ilkYon);
   });
 });
 
