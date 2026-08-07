@@ -238,3 +238,46 @@ def assert_test_database(
         "POSTGRES_DB/DATABASE_URL ile koşmayı önlemek için bu kontrol "
         "bilinçli olarak allowlist'tir."
     )
+
+
+class RealPaymentProviderInTests(RuntimeError):
+    """Testler GERÇEK bir ödeme sağlayıcısına yönlendirilmiş."""
+
+
+#: Test koşumunda ASLA seçilemeyecek sağlayıcılar (gerçek ağ isteği atanlar).
+#: Allowlist yerine denylist bilinçli: yeni bir SAHTE sağlayıcı eklendiğinde
+#: (ör. gecikme taklidi yapan bir stub) suite kendiliğinden koşabilmelidir;
+#: yeni bir GERÇEK sağlayıcı ise buraya eklenmeden kullanılamaz — ve o ekleme
+#: bilinçli bir karardır, unutulan bir satır değil.
+REAL_PAYMENT_PROVIDERS = frozenset({"iyzico"})
+
+
+def assert_fake_payment_provider(provider: str | None = None) -> None:
+    """Testler gerçek bir ödeme sağlayıcısıyla koşamaz (TB-21).
+
+    ## Neden gerekli
+
+    Kök `conftest.py` `PAYMENT_PROVIDER=fake` varsayılanını koyar, ama
+    `setdefault` yalnız değişken YOKKEN korur. Açıkça `iyzico` verilmiş bir
+    koşum (ör. eski bir betik, yanlış kopyalanmış bir CI adımı) yine gerçek
+    sandbox'a çıkardı.
+
+    Üç zarar: (1) **yalancı kırmızı** — kod doğruyken test düşer ve gerçek
+    regresyonla karıştırılır; (2) **dış bağımlılık** — testler ağa ve üçüncü
+    taraf sandbox'ının çalışmasına bağlanır (kök `CLAUDE.md` §G); (3) en
+    sinsisi: istek BAŞARILI olursa test yeşil kalır ve fake sağlayıcı yolunun
+    hiç sınanmadığı fark edilmez.
+
+    Bu yüzden şüphede SKIP değil **HATA** verilir: ağa çıkan bir testin
+    sessizce geçmesi, düşmesinden daha tehlikelidir.
+    """
+    secilen = (
+        provider if provider is not None else settings.PAYMENT_PROVIDER or ""
+    ).strip().lower()
+    if secilen in REAL_PAYMENT_PROVIDERS:
+        raise RealPaymentProviderInTests(
+            f"TB-21: PAYMENT_PROVIDER={secilen!r} ile entegrasyon testleri "
+            "koşamaz — bu ayar testleri GERÇEK ödeme sağlayıcısının "
+            "sandbox'ına çıkarır. Koşumdan önce PAYMENT_PROVIDER'ı kaldırın "
+            "(kök conftest 'fake'e sabitler) ya da açıkça 'fake' verin."
+        )
