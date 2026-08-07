@@ -196,7 +196,13 @@ function siparis(over: Partial<Record<string, unknown>> = {}) {
     created_at: "2026-08-01T10:00:00+00:00",
     ship_recipient: "Ayşe Demir",
     ship_address: "Seyhan / Adana",
-    item_count: 3,
+    // Kalem sayısı `items` dizisinden okunur — şemada ayrı bir `item_count`
+    // alanı YOK (ilk yazımda öyle varsaymıştım; ölçüm düzeltti).
+    items: [
+      { id: 1, title: "Geometri", quantity: 1 },
+      { id: 2, title: "Fizik", quantity: 1 },
+      { id: 3, title: "Kimya", quantity: 1 },
+    ],
     ...over,
   };
 }
@@ -565,12 +571,22 @@ describe("O-3/O-4/O-5 · sipariş kolonları ve rozetler", () => {
 
   it("kalem sayısı görünür", async () => {
     izinVer("orders.view");
-    sunucu("/store/admin/orders", { data: [siparis({ item_count: 3 })] }, "get");
+    sunucu("/store/admin/orders", { data: [siparis()] }, "get");
 
     siparisler();
 
+    // Kalem hücresi kolon başlığından bulunur: "3" metni tabloda başka
+    // hücrelerde de geçebilir (tutar, tarih) ve genel bir sorgu neyi
+    // doğruladığını bulanıklaştırırdı.
     const tablo = await screen.findByRole("table");
-    expect(within(tablo).getByText(/3/)).toBeTruthy();
+    const basliklar = within(tablo).getAllByRole("columnheader");
+    const kalemIndeksi = basliklar.findIndex((h) =>
+      (h.textContent ?? "").includes("Kalem")
+    );
+    expect(kalemIndeksi, "Kalem kolonu yok").toBeGreaterThanOrEqual(0);
+    const satir = within(tablo).getAllByRole("row")[1];
+    const hucreler = within(satir).getAllByRole("cell");
+    expect(hucreler[kalemIndeksi].textContent).toContain("3");
   });
 });
 

@@ -18,6 +18,13 @@ import { adminAreaAccess } from "@/lib/adminAccess";
 import { useAuthStore } from "@/store/authStore";
 import { formatTL } from "@/lib/money";
 import { formatDateTime } from "@/lib/datetime";
+import { orderPaymentLabel } from "@/lib/orderPayment";
+import {
+  ORDER_STATUS_FILTERS,
+  orderPaymentTone,
+  orderStatusLabel,
+  orderStatusTone,
+} from "@/lib/orderStatus";
 import { ROUTES } from "@/lib/routes";
 import { StockLedgerPanel } from "@/components/admin/StockLedgerPanel";
 import {
@@ -61,6 +68,7 @@ import type {
   BulkImportResult,
   CouponCreate,
   CouponDiscountType,
+  OrderOut,
   ProductDetailOut,
   ProductKind,
   ProductSearchOut,
@@ -998,7 +1006,14 @@ function CategoriesPanel() {
 
 function OrdersPanel() {
   const { canView, canManage } = useAdminAreaAccess("orders");
-  const { data: orders, isLoading, isError, error, refetch } = useAdminOrders();
+  const [params, setParams] = useSearchParams();
+  // Durum URL'de yaşar: filtreli liste linki paylaşılabilir ve sayfa
+  // yenilendiğinde seçim korunur. Beyaz liste, bilinmeyen bir değerin
+  // sunucuya gidip 422 üretmesini (ya da sessizce boş liste dönmesini) önler.
+  const hamDurum = params.get("durum");
+  const durum =
+    hamDurum && ORDER_STATUS_FILTERS.includes(hamDurum) ? hamDurum : undefined;
+  const { data: orders, isLoading, isError, error, refetch } = useAdminOrders(durum);
   const invalidate = useInvalidateAdminStore();
   // "Teslim edildi" siparişi terminal duruma taşır ve teslimat akışını kapatır;
   // yanlış satıra tıklama geri alınamaz (P1-5 gerekçesi).
@@ -1044,51 +1059,180 @@ function OrdersPanel() {
       />
     );
   }
-  if (isLoading) return <p className="text-sm text-slate-400">Yükleniyor…</p>;
+  const siparisler = orders ?? [];
+  // Uç tavanı 200 (`limit` üst sınırı). Dönen kayıt sayısı tavana eşitse
+  // liste kesilmiş OLABİLİR ve kullanıcı bunu bilmeli — sipariş listesinde
+  // henüz sayfalama yok (kapsam dışı), bu yüzden sessiz kesilme uyarısı
+  // veriliyor. Sayfalama geldiği gün bu uyarı KALKMALI: sayfalı listede
+  // yanıltıcı olur.
+  const TAVAN = 200;
+  const kesilmisOlabilir = siparisler.length >= TAVAN;
+
+  const kolonlar: ColumnDef<OrderOut, unknown>[] = [
+    {
+      id: "no",
+      accessorFn: (o) => o.id,
+      header: "No",
+      cell: ({ row }) => (
+        <span className="font-semibold text-slate-800 dark:text-slate-200">
+          #{row.original.id}
+        </span>
+      ),
+    },
+    {
+      id: "tarih",
+      accessorFn: (o) => o.created_at,
+      header: "Tarih",
+      cell: ({ row }) => (
+        <span className="whitespace-nowrap text-xs text-slate-500">
+          {formatDateTime(row.original.created_at)}
+        </span>
+      ),
+    },
+    {
+      id: "musteri",
+      accessorFn: (o) => o.ship_recipient ?? "",
+      header: "Müşteri",
+      cell: ({ row }) => (
+        <span className="text-sm">
+          {row.original.ship_recipient ?? (
+            <span className="text-slate-400">Dijital sipariş</span>
+          )}
+        </span>
+      ),
+    },
+    {
+      id: "kalem",
+      accessorFn: (o) => o.items?.length ?? 0,
+      header: "Kalem",
+      cell: ({ row }) => {
+        const adet = row.original.items?.length ?? 0;
+        // Kalem listesi BOŞ ise bu "sipariş boş" demek değildir; eski/bozuk
+        // veride `order_items` satırı hiç olmayabilir (bkz. lib/orderItems).
+        return adet > 0 ? (
+          <span className="text-sm">{adet}</span>
+        ) : (
+          <span className="text-xs text-slate-400">—</span>
+        );
+      },
+    },
+    {
+      id: "toplam",
+      accessorFn: (o) => o.total,
+      header: "Toplam",
+      cell: ({ row }) => (
+        <span className="whitespace-nowrap font-medium">
+          {formatTL(row.original.total)}
+        </span>
+      ),
+    },
+    {
+      id: "odeme",
+      accessorFn: (o) => o.payment_status,
+      header: "Ödeme",
+      cell: ({ row }) => (
+        <Badge tone={orderPaymentTone(row.original.payment_status)}>
+          {orderPaymentLabel(row.original.payment_status)}
+        </Badge>
+      ),
+    },
+    {
+      id: "durum",
+      accessorFn: (o) => o.status,
+      header: "Durum",
+      cell: ({ row }) => (
+        <Badge tone={orderStatusTone(row.original.status)}>
+          {orderStatusLabel(row.original.status)}
+        </Badge>
+      ),
+    },
+    {
+      id: "actions",
+      header: "",
+      cell: ({ row }) => {
+        const o = row.original;
+        if (!canManage) return null;
+        return (
+          <div className="flex flex-wrap justify-end gap-2">
+            {o.has_physical && o.payment_status === "PAID" && o.status === "PAID" && (
+              <ShipButton onShip={(tracking) => ship.mutate({ id: o.id, tracking })} />
+            )}
+            {o.status === "SHIPPED" && (
+              <button type="button" onClick={() => setTeslimSiparisi(o.id)} className="rounded-lg border border-slate-200 px-3 py-1 text-xs dark:border-slate-700">
+                Teslim edildi
+              </button>
+            )}
+            {o.payment_status === "PAID" && (
+              <button type="button" onClick={() => setIadeSiparisi(o.id)} className="rounded-lg border border-rose-200 px-3 py-1 text-xs text-rose-600 dark:border-rose-500/30">
+                İade et
+              </button>
+            )}
+          </div>
+        );
+      },
+    },
+  ];
 
   return (
     <div className="space-y-3">
       {!canManage && <ReadOnlyNotice />}
-      {orders && orders.length > 0 ? (
-        orders.map((o) => (
-          <div key={o.id} className="rounded-xl border border-slate-100 p-3 dark:border-slate-800">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-semibold text-slate-800 dark:text-slate-200">
-                #{o.id} · {formatTL(o.total)}
-              </span>
-              <span className="text-xs text-slate-400">{formatDateTime(o.created_at)}</span>
-            </div>
-            <p className="mt-1 text-xs text-slate-500">
-              {o.status} · {o.payment_status}
-              {o.has_physical ? " · Kargolu" : " · Dijital"}
+
+      <div className="flex flex-wrap items-end gap-3">
+        <label className="text-xs font-medium text-slate-500 dark:text-slate-400">
+          Durum
+          <select
+            value={durum ?? ""}
+            onChange={(e) =>
+              setParams((onceki) =>
+                setQueryValue(new URLSearchParams(onceki), {
+                  durum: e.target.value || undefined,
+                })
+              )
+            }
+            className="mt-1 block rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none focus:border-indigo-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
+          >
+            <option value="">Tümü</option>
+            {ORDER_STATUS_FILTERS.map((s) => (
+              <option key={s} value={s}>
+                {orderStatusLabel(s)}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+
+      <DataTable
+        columns={kolonlar}
+        data={siparisler}
+        getRowId={(o) => String(o.id)}
+        isLoading={isLoading}
+        page={1}
+        pageSize={Math.max(siparisler.length, 1)}
+        total={siparisler.length}
+        onPageChange={() => undefined}
+        onPageSizeChange={() => undefined}
+        emptyTitle={durum ? "Sonuç bulunamadı" : "Henüz sipariş yok"}
+        emptyDescription={
+          durum
+            ? "Bu durumda sipariş bulunmuyor; filtreyi değiştirmeyi deneyin."
+            : "İlk sipariş geldiğinde burada görünecek."
+        }
+        emptyAction={
+          durum ? (
+            <Button size="sm" variant="secondary" onClick={() => setParams({})}>
+              Filtreleri temizle
+            </Button>
+          ) : undefined
+        }
+        truncationNotice={
+          kesilmisOlabilir ? (
+            <p className="border-b border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200">
+              Yalnızca ilk {TAVAN} sipariş gösteriliyor; listenin tamamı bu
+              değil. Daraltmak için durum filtresini kullanın.
             </p>
-            {o.ship_address && (
-              <p className="mt-1 text-xs text-slate-500">
-                {o.ship_recipient} — {o.ship_address}
-              </p>
-            )}
-            {canManage && (
-              <div className="mt-2 flex flex-wrap gap-2">
-                {o.has_physical && o.payment_status === "PAID" && o.status === "PAID" && (
-                  <ShipButton onShip={(tracking) => ship.mutate({ id: o.id, tracking })} />
-                )}
-                {o.status === "SHIPPED" && (
-                  <button type="button" onClick={() => setTeslimSiparisi(o.id)} className="rounded-lg border border-slate-200 px-3 py-1 text-xs dark:border-slate-700">
-                    Teslim edildi
-                  </button>
-                )}
-                {o.payment_status === "PAID" && (
-                  <button type="button" onClick={() => setIadeSiparisi(o.id)} className="rounded-lg border border-rose-200 px-3 py-1 text-xs text-rose-600 dark:border-rose-500/30">
-                    İade et
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
-        ))
-      ) : (
-        <p className="py-8 text-center text-sm text-slate-500">Sipariş yok.</p>
-      )}
+          ) : undefined
+        }
+      />
 
       <ConfirmDialog
         open={teslimSiparisi !== null}
