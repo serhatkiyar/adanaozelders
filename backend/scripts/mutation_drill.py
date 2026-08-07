@@ -996,8 +996,11 @@ MUTASYONLAR: list[Mutasyon] = [
             amount=tutar,
             reason_code="ORDER_CANCELLED",
             terminal_status="CANCELLED",
-            changed_by="system:oversell",
+            changed_by=OVERSELL_AKTORU,
             reason="Stok yetersiz: " + ", ".join(shortages),
+            # Bu sipariş hiç PAID olmadı; `SALE` yazılmadığı için geri
+            # yüklenecek bir şey de yok (TB-15(a)/3).
+            restock=False,
         )""",
                 """        # MUTASYON: ortak telafi kuyrugu atlandi, elle FSM gecisi
         await order_fsm.transition_order(
