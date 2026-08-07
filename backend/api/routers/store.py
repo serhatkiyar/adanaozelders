@@ -26,6 +26,7 @@ from core.database import get_db
 from models.admin import Admin
 from models.client import Client
 from models.role import RoleType
+from models.store import ReturnRefundStatus, ReturnStatus
 from models.tutor import Tutor
 from schemas.review import RatingDistributionOut
 from schemas.stock import (
@@ -473,8 +474,13 @@ async def cancel_order_by_admin(
 
 @router.get("/admin/returns", response_model=list[OrderReturnOut])
 async def list_returns_admin(
-    status_filter: str | None = Query(default=None, alias="status"),
-    refund_status: str | None = Query(
+    # TB-14/1 — İki filtre de ENUM'a bağlıdır. Eskiden ham `str` idi ve yanlış
+    # yazılmış bir değer 422 yerine **boş liste** döndürüyordu: yönetici "iade
+    # kuyruğu boş" sanıyor, bekleyen iade gözden kaçıyordu. Doğrulama şema
+    # seviyesindedir (router gövdesinde elle `if` YOK) — böylece OpenAPI da
+    # geçerli değerleri yayımlar ve istemci tarafı sessizce sapamaz.
+    status_filter: ReturnStatus | None = Query(default=None, alias="status"),
+    refund_status: ReturnRefundStatus | None = Query(
         default=None,
         description=(
             "Para durumu filtresi. 'MANUAL_REVIEW' otomatik denemeleri tükenmiş, "
