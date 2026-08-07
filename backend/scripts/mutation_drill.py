@@ -755,6 +755,112 @@ MUTASYONLAR: list[Mutasyon] = [
     await db.flush()""",
         ("tests/integration/test_ip2a_races_pg.py",),
     ),
+    # ── İP-1b · kütüphane kolu kontenjan / canlılık / bilet kodu / claim ────
+    #
+    # NOT: iki koruma DB DDL'inde yaşar (`ex_study_res_client_no_overlap` ve
+    # bilet kodu unique index'leri) ve dosya yamasıyla sökülemez — model
+    # dosyasını değiştirmek zaten uygulanmış bir migration'ı geri almaz. Onların
+    # provası ayrı yapılır: `scripts/ip1b_ddl_drill.py`.
+    Mutasyon(
+        "M39", "İP1B K-1: oturum kontenjan kilidi kaldırıldı (check-then-act geri döndü)",
+        "backend/services/library_exam_service.py",
+        """    await library_capacity.lock_exam_session(db, s.id)
+
+    existing = (""",
+        """    pass  # MUTASYON: kontenjan serileştirmesi yok
+
+    existing = (""",
+        ("tests/integration/test_ip1b_kontenjan_pg.py",),
+    ),
+    Mutasyon(
+        "M40", "İP1B K-2: ödeme bekleyen tutma koltuk tutmuyor",
+        "backend/services/library_capacity.py",
+        """    return or_(
+        model.status.in_(ACTIVE_REGISTRATION_STATUSES),
+        and_(
+            model.status == RegistrationStatus.PENDING_PAYMENT.value,
+            model.hold_expires_at.isnot(None),
+            model.hold_expires_at > func.now(),
+        ),
+    )""",
+        """    return model.status.in_(ACTIVE_REGISTRATION_STATUSES)  # MUTASYON: tutma yok""",
+        ("tests/integration/test_ip1b_kontenjan_pg.py",),
+    ),
+    Mutasyon(
+        "M41", "İP1B K-3/K-5: pay() kontenjanı hiç görmüyor",
+        "backend/services/library_exam_service.py",
+        """    dolu = await library_capacity.count_exam_seats(db, s.id, exclude_id=reg.id)
+    if dolu >= s.capacity:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Oturum kontenjanı doldu; ödeme alınamadı.",
+        )""",
+        """    pass  # MUTASYON: ödeme yolunda kontenjan kontrolü yok""",
+        ("tests/integration/test_ip1b_kontenjan_pg.py",),
+    ),
+    Mutasyon(
+        "M42", "İP1B K-6: çalışma alanı kapasite kilidi kaldırıldı",
+        "backend/services/study_reservation_service.py",
+        """    await library_capacity.lock_library(db, library_id)
+
+    # Öğrencinin bu pencereyle çakışan ÖDENMEMİŞ (askıda) holdlerini iptal et""",
+        """    pass  # MUTASYON: kapasite serileştirmesi yok
+
+    # Öğrencinin bu pencereyle çakışan ÖDENMEMİŞ (askıda) holdlerini iptal et""",
+        ("tests/integration/test_ip1b_kontenjan_pg.py",),
+    ),
+    Mutasyon(
+        "M43", "İP1B S-1: register'da kütüphane canlılık kontrolü yok",
+        "backend/services/library_exam_service.py",
+        """    s = await _get_session_or_404(db, session_id)
+    lib = await _require_live_library(db, s.library_id)""",
+        """    s = await _get_session_or_404(db, session_id)
+    lib = await db.get(Library, s.library_id)  # MUTASYON: canlılık kapısı yok""",
+        ("tests/integration/test_ip1b_canlilik_pg.py",),
+    ),
+    Mutasyon(
+        "M44", "İP1B D-1: kütüphane silme emanet guard'ı kaldırıldı",
+        "backend/services/library_service.py",
+        """    engel = await _silmeyi_engelleyen(db, lib_id)
+    if engel is not None:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT, f"Kütüphane silinemez: {engel}."
+        )""",
+        """    pass  # MUTASYON: açık emanet kontrolü yok""",
+        ("tests/integration/test_ip1b_silme_guard_pg.py",),
+    ),
+    Mutasyon(
+        "M45", "İP1B C-2: QR token üreticisi çakışmayı aramıyor",
+        "backend/services/library_capacity.py",
+        """    for _ in range(_MAX_DENEME):
+        token = codes.gen_qr_token()
+        if not await _kod_kullanimda(db, "qr_token", token):
+            return token
+    raise RuntimeError("benzersiz QR token üretilemedi")""",
+        """    return codes.gen_qr_token()  # MUTASYON: tekillik aranmıyor""",
+        ("tests/integration/test_ip1b_bilet_kodu_pg.py",),
+    ),
+    Mutasyon(
+        "M46", "İP1B P-1/P-2: uçuş-içi nöbeti kaldırıldı (çift tahsilat serbest)",
+        "backend/services/library_exam_service.py",
+        """    if not await escrow.try_inflight_lock(db, escrow.EXAM_SPEC, reg.id):
+        raise HTTPException(
+            status.HTTP_409_CONFLICT, "Bu kayıt için bir ödeme işlemi zaten sürüyor."
+        )""",
+        """    pass  # MUTASYON: aynı kayda eşzamanlı ikinci tahsilat serbest""",
+        ("tests/integration/test_ip1b_pay_claim_pg.py",),
+        ek=(
+            (
+                "backend/services/study_reservation_service.py",
+                """    if not await escrow.try_inflight_lock(db, escrow.STUDY_SPEC, res.id):
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Bu rezervasyon için bir ödeme işlemi zaten sürüyor.",
+        )""",
+                """    pass  # MUTASYON: aynı rezervasyona eşzamanlı ikinci tahsilat serbest""",
+            ),
+        ),
+    ),
 ]
 
 
