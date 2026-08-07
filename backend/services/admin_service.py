@@ -13,6 +13,7 @@ from models.client import Client
 from models.demand import Demand, DemandStatus
 from models.delivery import DeliveryRun, DeliveryRunStatus
 from models.library import Library, LibraryStatus
+from models.payment import Payment, PaymentStatus
 from models.report import Report, ReportStatus
 from models.review import Review
 from models.store import Order, OrderReturn, OrderStatus, Product, ProductKind, ProductStatus
@@ -321,7 +322,62 @@ async def get_user_detail(
 
 
 async def delete_tutor(db: AsyncSession, tutor: Tutor) -> None:
-    # Soft delete: ilan listelerden ve aramadan düşer, veri korunur.
+    """Soft delete: ilan listelerden ve aramadan düşer, veri korunur.
+
+    Açık emanet varken SİLİNMEZ (denetim P1-22). Eski gövde iki satırdı
+    (`deleted_at` + `flush`) ve emanetteki parayı hiç sorgulamıyordu; sonuç
+    yetim emanetti — `payout_ledger` parayı "hak edilmiş" saymaya devam ediyor
+    ama karşılığında hesap yok.
+
+    Kapsam bilinçli olarak **paradır**: HELD/REFUNDING ödeme ya da henüz
+    sonuçlanmamış (PENDING/ACCEPTED) ders. Kapanmış para (RELEASED/REFUNDED) ve
+    terminal dersler engellemez — aksi halde hiçbir eğitmen hiçbir zaman
+    silinemezdi. Ders kolunun İŞ MANTIĞINA dokunulmaz; burada yalnız okuma var.
+    """
+    acik_odeme = int(
+        (
+            await db.execute(
+                select(func.count())
+                .select_from(Payment)
+                .join(Booking, Booking.id == Payment.booking_id)
+                .where(
+                    Booking.tutor_id == tutor.id,
+                    Booking.deleted_at.is_(None),
+                    Payment.deleted_at.is_(None),
+                    Payment.status.in_(
+                        [PaymentStatus.HELD, PaymentStatus.REFUNDING]
+                    ),
+                )
+            )
+        ).scalar_one()
+    )
+    if acik_odeme:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            f"Eğitmen silinemez: {acik_odeme} adet ders ödemesi emanette "
+            "(para henüz kapanmadı).",
+        )
+
+    acik_ders = int(
+        (
+            await db.execute(
+                select(func.count()).where(
+                    Booking.tutor_id == tutor.id,
+                    Booking.deleted_at.is_(None),
+                    Booking.status.in_(
+                        [BookingStatus.PENDING, BookingStatus.ACCEPTED]
+                    ),
+                )
+            )
+        ).scalar_one()
+    )
+    if acik_ders:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            f"Eğitmen silinemez: {acik_ders} adet sonuçlanmamış ders var; önce "
+            "dersleri iptal edin.",
+        )
+
     tutor.deleted_at = datetime.datetime.now(datetime.timezone.utc)
     await db.flush()
 
