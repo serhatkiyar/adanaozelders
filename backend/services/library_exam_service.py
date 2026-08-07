@@ -13,7 +13,7 @@ import datetime
 from decimal import Decimal
 
 from fastapi import HTTPException, status
-from sqlalchemy import func, or_, select
+from sqlalchemy import case, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -369,14 +369,36 @@ async def list_public_sessions(
 async def list_library_sessions_admin(
     db: AsyncSession, library_id: int, *, include_answer_key: bool = False
 ) -> list[ExamSessionOut]:
-    """Bir kütüphanenin tüm oturumları (geçmiş/iptal dahil) — admin/operatör için."""
+    """Bir kütüphanenin tüm oturumları (geçmiş/iptal dahil) — admin/operatör için.
+
+    Sıra **operasyonel**: önce yaklaşanlar (erken→geç), sonra geçmişler
+    (yeni→eski). Eskiden düz ``starts_at DESC`` idi; bu, en uzak gelecekteki
+    oturumu listenin başına, **bugünkü sınavı** en dibe koyuyordu — operatör
+    sınav günü yöneteceği satırı aşağı kaydırarak arıyordu (ölçüm §3.1).
+
+    Geçmişler listeden ÇIKARILMAZ: karne yükleme ve sonuç yayınlama geçmiş
+    oturumlar üzerinde yapılır. Yalnız aşağı inerler ve kendi içlerinde en
+    yeni önce gelir (dün yapılan sınav, geçen yılkinden önce lazım olur).
+    """
+    now = _now()
+    gecmis = LibraryExamSession.starts_at < now
     stmt = (
         select(LibraryExamSession)
         .where(
             LibraryExamSession.library_id == library_id,
             LibraryExamSession.deleted_at.is_(None),
         )
-        .order_by(LibraryExamSession.starts_at.desc())
+        .order_by(
+            # 1) Gelecek (False=0) önce, geçmiş (True=1) sonra.
+            gecmis.asc(),
+            # 2) Gelecek grubunda erken→geç. Geçmişlerde bu ifade NULL'dur ve
+            #    hepsi eşit kalır; sırayı bir sonraki anahtar belirler.
+            case((gecmis, None), else_=LibraryExamSession.starts_at).asc(),
+            # 3) Geçmiş grubunda yeni→eski.
+            LibraryExamSession.starts_at.desc(),
+            # 4) Aynı ana denk gelen oturumlarda sayfalar arası kayma olmasın.
+            LibraryExamSession.id.desc(),
+        )
     )
     sessions = (await db.execute(stmt)).scalars().all()
     return await _attach_counts_and_mine(
