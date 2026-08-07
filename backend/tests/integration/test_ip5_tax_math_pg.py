@@ -87,7 +87,7 @@ async def test_m1_tek_oranli_sepet(http, fab5):
     _toplamlar_tutuyor(v)
 
     kirilim = _breakdown_map(v["tax_breakdown"])
-    assert set(kirilim) == {"0.20"}, kirilim
+    assert set(kirilim) == {"0.2000"}, kirilim
 
 
 async def test_m1b_sifir_oranli_sepet_vergisiz(http, fab5):
@@ -105,7 +105,7 @@ async def test_m1b_sifir_oranli_sepet_vergisiz(http, fab5):
     assert v["tax_total"] == D("0.00")
     assert v["net_total"] == D("600.00")
     _toplamlar_tutuyor(v)
-    assert set(_breakdown_map(v["tax_breakdown"])) == {"0.00"}
+    assert set(_breakdown_map(v["tax_breakdown"])) == {"0.0000"}
 
 
 # ── M-2 · Karışık oranlı sepette her oran AYRI satır ─────────────────────────
@@ -126,13 +126,13 @@ async def test_m2_karisik_oranli_sepet_ayri_satirlar(http, fab5):
 
     assert v["total"] == D("660.00")  # 300 + 360, eşik üstü → kargo 0
     kirilim = _breakdown_map(v["tax_breakdown"])
-    assert set(kirilim) == {"0.00", "0.20"}, kirilim
+    assert set(kirilim) == {"0.0000", "0.2000"}, kirilim
 
-    assert kirilim["0.00"]["base"] == D("300.00")
-    assert kirilim["0.00"]["tax"] == D("0.00")
+    assert kirilim["0.0000"]["base"] == D("300.00")
+    assert kirilim["0.0000"]["tax"] == D("0.00")
     # 360 × 0.20 / 1.20 = 60.00
-    assert kirilim["0.20"]["tax"] == D("60.00")
-    assert kirilim["0.20"]["base"] == D("300.00")
+    assert kirilim["0.2000"]["tax"] == D("60.00")
+    assert kirilim["0.2000"]["base"] == D("300.00")
     _toplamlar_tutuyor(v)
 
 
@@ -177,11 +177,11 @@ async def test_m3_kuponlu_karisik_sepet(http, fab5):
 
     kirilim = _breakdown_map(v["tax_breakdown"])
     # %0 satır: 300 − 50 = 250, vergi 0.
-    assert kirilim["0.00"]["base"] == D("250.00")
-    assert kirilim["0.00"]["tax"] == D("0.00")
+    assert kirilim["0.0000"]["base"] == D("250.00")
+    assert kirilim["0.0000"]["tax"] == D("0.00")
     # %20 satır: 360 − 60 = 300 → vergi 300 × 0.20/1.20 = 50.00, matrah 250.00
-    assert kirilim["0.20"]["tax"] == D("50.00")
-    assert kirilim["0.20"]["base"] == D("250.00")
+    assert kirilim["0.2000"]["tax"] == D("50.00")
+    assert kirilim["0.2000"]["base"] == D("250.00")
     _toplamlar_tutuyor(v)
 
 
@@ -230,8 +230,8 @@ async def test_m4_kargo_ayardaki_oranla_vergileniyor(http, fab5):
 
     kirilim = _breakdown_map(v["tax_breakdown"])
     # Mal %0, kargo %20 → iki ayrı oran satırı.
-    assert set(kirilim) == {"0.00", "0.20"}, kirilim
-    assert kirilim["0.20"]["tax"] == beklenen_kargo_vergisi
+    assert set(kirilim) == {"0.0000", "0.2000"}, kirilim
+    assert kirilim["0.2000"]["tax"] == beklenen_kargo_vergisi
     _toplamlar_tutuyor(v)
 
 
@@ -358,10 +358,16 @@ async def _tam_iade_et(http, fab5, order_id: int) -> None:
     assert r.status_code == 200, r.text
 
 
+async def _iade_vergisi(order_id: int):
+    from core.database import AsyncSessionLocal
+    from services import invoice_service
+
+    async with AsyncSessionLocal() as s:
+        return await invoice_service.refunded_breakdown(s, order_id)
+
+
 async def test_m8_tam_iadede_vergi_tamamen_geri_donuyor(http, fab5):
     """Tam iade: iade edilen verginin toplamı siparişin vergisine EŞİT."""
-    from services import tax
-
     m = await fab5.musteri()
     kitap = await fab5.urun(price="100.00", tax_rate="0", stock=10)
     kirtasiye = await fab5.urun(price="120.00", tax_rate="0.20", stock=10)
@@ -372,11 +378,9 @@ async def test_m8_tam_iadede_vergi_tamamen_geri_donuyor(http, fab5):
 
     await _tam_iade_et(http, fab5, o["id"])
 
-    iade = await tax.refunded_breakdown_for_order(o["id"])
-    assert iade["tax_total"] == v["tax_total"], (
-        "tam iadede vergi tamamen geri dönmedi"
-    )
-    assert iade["net_total"] == v["net_total"]
+    iade = await _iade_vergisi(o["id"])
+    assert iade.tax_total == v["tax_total"], "tam iadede vergi tamamen geri dönmedi"
+    assert iade.net_total == v["net_total"]
 
 
 async def test_m7_kismi_iadede_vergi_orantili_geri_donuyor(http, fab5):
@@ -386,8 +390,6 @@ async def test_m7_kismi_iadede_vergi_orantili_geri_donuyor(http, fab5):
     Beklenen iade vergisi = 120 × 0.20 / 1.20 = 20,00 — kitabın vergisi
     (zaten 0) ve iade edilmeyen 2 kırtasiye HARİÇ.
     """
-    from services import tax
-
     m = await fab5.musteri()
     kitap = await fab5.urun(price="100.00", tax_rate="0", stock=10)
     kirtasiye = await fab5.urun(price="120.00", tax_rate="0.20", stock=10)
@@ -398,6 +400,9 @@ async def test_m7_kismi_iadede_vergi_orantili_geri_donuyor(http, fab5):
     # Teslim edilmiş sipariş → cayma hakkı penceresi açık.
     await _teslim_et(fab5, o["id"])
 
+    # CAYMA koşulsuzdur: talep OTOMATİK onaylanır ve iade anında yapılır
+    # (`returns.auto_approved`). Ayrıca `approve` çağırmak 409 verirdi —
+    # ilk yazımda tam bu tuzağa düşüldü.
     r = await http.post(
         f"/api/v1/store/orders/{o['id']}/return",
         headers=m.headers,
@@ -410,19 +415,11 @@ async def test_m7_kismi_iadede_vergi_orantili_geri_donuyor(http, fab5):
         },
     )
     assert r.status_code == 201, r.text
-    ret_id = r.json()["id"]
+    assert r.json()["refund_status"] == "REFUNDED", r.json()
 
-    _, ah = await fab5.admin(izinler=["returns.view", "returns.manage"])
-    rr = await http.post(
-        f"/api/v1/store/admin/returns/{ret_id}/approve",
-        headers=ah,
-        json={"admin_note": "IP5"},
-    )
-    assert rr.status_code == 200, rr.text
-
-    iade = await tax.refunded_breakdown_for_order(o["id"])
-    assert iade["tax_total"] == D("20.00"), iade
-    assert iade["net_total"] == D("100.00"), iade
+    iade = await _iade_vergisi(o["id"])
+    assert iade.tax_total == D("20.00"), iade
+    assert iade.net_total == D("100.00"), iade
 
 
 async def _teslim_et(fab5, order_id: int) -> None:

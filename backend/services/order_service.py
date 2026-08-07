@@ -439,6 +439,22 @@ async def create_order(
 
     total = (subtotal - discount + shipping).quantize(Decimal("0.01"))
 
+    # ── KDV kırılımı (İP-5) ──
+    # Sipariş anında hesaplanır ve SAKLANIR: ürünün oranı sonradan değişse bile
+    # fatura sipariş anındaki oranla kesilmelidir. Kargonun oranı ayardan gelir
+    # ve ayarlanmamışsa hesaplanmaz — sessizce %0 yazmak, mevzuat kararı
+    # verilmeden kalıcı bir iddia kaydetmek olurdu (sözleşme §2, S-3).
+    kdv = tax.order_breakdown(
+        lines=lines,
+        discount=discount,
+        shipping_fee=shipping,
+        shipping_tax_rate=(
+            None
+            if settings.SHIPPING_TAX_RATE is None
+            else Decimal(str(settings.SHIPPING_TAX_RATE))
+        ),
+    )
+
     order = Order(
         client_id=client.id,
         status="PENDING",
@@ -451,6 +467,15 @@ async def create_order(
         total=total,
         currency=settings.PAYMENT_CURRENCY,
         has_physical=has_physical,
+        net_total=kdv.net_total,
+        tax_total=kdv.tax_total,
+        tax_breakdown=tax.breakdown_to_json(kdv.breakdown),
+        shipping_tax_rate=(
+            None
+            if settings.SHIPPING_TAX_RATE is None
+            else Decimal(str(settings.SHIPPING_TAX_RATE))
+        ),
+        shipping_tax_amount=kdv.shipping_tax,
     )
 
     if has_physical:
@@ -484,7 +509,7 @@ async def create_order(
             districts=settings.DELIVERY_ZONE_DISTRICTS,
         )
 
-    for ln in lines:
+    for ln, satir_vergisi in zip(lines, kdv.line_taxes, strict=True):
         order.items.append(
             OrderItem(
                 product_id=ln["product_id"],
@@ -497,10 +522,13 @@ async def create_order(
                 tutor_id=ln["tutor_id"],
                 # Fatura için vergi snapshot'ı (fiyat KDV dahildir; tax_amount
                 # o tutarın İÇİNDEKİ vergidir — bkz. services/tax.py).
+                #
+                # Değer `order_breakdown`'dan gelir, burada YENİDEN
+                # HESAPLANMAZ: eskiden `line_tax(unit_price, qty, rate)`
+                # çağrılıyordu ve kupon indirimini GÖRMÜYORDU — indirimli
+                # satışta bile liste fiyatının vergisi yazılıyordu.
                 tax_rate=ln.get("tax_rate") or Decimal("0"),
-                tax_amount=tax.line_tax(
-                    ln["unit_price"], ln["quantity"], ln.get("tax_rate") or Decimal("0")
-                ),
+                tax_amount=satir_vergisi,
                 digital_asset_key=ln["digital_asset_key"],
                 digital_asset_name=ln["digital_asset_name"],
             )

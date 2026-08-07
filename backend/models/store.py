@@ -25,7 +25,7 @@ from sqlalchemy import (
     Text,
     text,
 )
-from sqlalchemy.dialects.postgresql import TSVECTOR
+from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.schema import Computed, FetchedValue
 
@@ -475,6 +475,32 @@ class Order(Base, TimestampMixin, SoftDeleteMixin):
     )
     coupon_code: Mapped[str | None] = mapped_column(String(40), nullable=True)
     total: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False)
+
+    # ── KDV kırılımı (İP-5) — sipariş anında hesaplanır ve SAKLANIR ──
+    #
+    # Anlık değerdir, görünüm DEĞİLDİR: ürünün oranı sonradan değişse bile
+    # fatura sipariş anındaki oranla kesilmelidir. Bu yüzden okuma anında
+    # yeniden hesaplanmaz (bkz. services/tax.py::order_breakdown).
+    #
+    # Hepsi NULL edilebilir ve varsayılanları YOKTUR. `0` ile `NULL` burada
+    # farklı şeylerdir: `tax_total = 0` "vergi yok" demektir (ör. tamamen %0
+    # oranlı sepet), `NULL` ise "kırılım hesaplanmadı" — İP-5 öncesi
+    # siparişlerin ve geriye dönük hesaplanmayanların (S-4) durumu budur.
+    # Sessizce 0 yazmak, hesaplanmamış bir vergiyi hesaplanmış göstermek olurdu.
+    net_total: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)
+    tax_total: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)
+    #: Oran bazında [{"rate": "0.2000", "base": "...", "tax": "..."}] — tutarlar
+    #: METİN olarak tutulur; JSON sayısı float'a çevirir ve kuruş kaybı kalıcılaşır.
+    tax_breakdown: Mapped[list | None] = mapped_column(JSONB, nullable=True)
+    #: Kargoya uygulanan oran (settings.SHIPPING_TAX_RATE snapshot'ı).
+    #: `NULL` + `shipping_fee > 0` → kırılım EKSİK: ayar henüz girilmemiş.
+    #: Kaç siparişin bu durumda olduğu `GET /store/admin/tax-health` ile sayılır.
+    shipping_tax_rate: Mapped[float | None] = mapped_column(
+        Numeric(5, 4), nullable=True
+    )
+    shipping_tax_amount: Mapped[float | None] = mapped_column(
+        Numeric(10, 2), nullable=True
+    )
     currency: Mapped[str] = mapped_column(
         String(3), nullable=False, server_default=text("'TRY'")
     )
