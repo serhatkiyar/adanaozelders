@@ -5,6 +5,7 @@ import dataclasses
 import datetime
 import io
 from decimal import Decimal
+from typing import Literal
 
 from fastapi import (
     APIRouter,
@@ -13,6 +14,7 @@ from fastapi import (
     HTTPException,
     Query,
     Request,
+    Response,
     UploadFile,
     status,
 )
@@ -23,6 +25,7 @@ from core import storage
 from core.config import settings
 from core.ratelimit import rate_limit
 from core.database import get_db
+from core.stock_policy import LOW_STOCK_THRESHOLD
 from models.admin import Admin
 from models.client import Client
 from models.role import RoleType
@@ -134,6 +137,18 @@ async def _read_image(file: UploadFile) -> bytes:
 # ── Public katalog ───────────────────────────────────────────────────────────────
 
 
+@router.get("/config")
+async def store_config():
+    """Mağaza yüzeylerinin paylaştığı sabitler.
+
+    Düşük stok eşiği burada döner çünkü istemcinin kendi kopyasını taşıması
+    tam da bu paketin düzelttiği sorundu: değer üç yerde ayrı ayrı gömülüydü
+    ve biri kaydığında alarm kartı ile ürün listesi farklı küme gösteriyordu.
+    Tek kaynak `core.stock_policy`; istemci onu OKUR, tekrarlamaz.
+    """
+    return {"low_stock_threshold": LOW_STOCK_THRESHOLD}
+
+
 @router.get("/categories", response_model=list[ProductCategoryOut])
 async def list_categories(db: AsyncSession = Depends(get_db)):
     return await store_service.list_categories(db)
@@ -193,12 +208,43 @@ async def search_products(
 
 @router.get("/admin/products", response_model=list[ProductSearchOut])
 async def list_products_admin(
+    response: Response,
+    q: str | None = Query(default=None, max_length=200),
+    # Tip `str` DEĞİL `Literal`: yazım hatalı bir filtre 422 döner, sessizce
+    # boş liste değil. ([[TB-19]]/1 bu sınıfı kayda geçirmişti: `str` tipli
+    # filtre parametresi yanlış yazıldığında admin "hiç ürün yok" sanıyor.)
+    # Doğrulama şemada olduğu için router içinde elle `if` yok.
+    stok: Literal["tukendi", "azalan", "var", "kritik"] | None = Query(default=None),
+    publisher: list[str] | None = Query(default=None),
+    author: list[str] | None = Query(default=None),
+    sort: Literal["title", "price", "stock", "created_at"] = Query(
+        default="created_at"
+    ),
+    order: Literal["asc", "desc"] = Query(default="desc"),
     limit: int = Query(default=100, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
     _admin: Admin = Depends(require_admin_permission("products.view")),
     db: AsyncSession = Depends(get_db),
 ):
-    return await store_service.list_products_admin(db, limit=limit, offset=offset)
+    """Yönetim ürün listesi — taslak/gizli dahil, filtreli ve sayfalı.
+
+    Toplam kayıt `X-Total-Count` başlığıyla döner. Gövde geriye uyumluluk için
+    dizi olarak kalır; panelin diğer listeleri de (kullanıcı/booking/demand/
+    audit) aynı sözleşmeyi kullanıyor.
+    """
+    kayitlar, toplam = await store_service.list_products_admin(
+        db,
+        q=q,
+        stok=stok,
+        publisher=publisher,
+        author=author,
+        sort=sort,
+        order=order,
+        limit=limit,
+        offset=offset,
+    )
+    response.headers["X-Total-Count"] = str(toplam)
+    return kayitlar
 
 
 @router.post("/admin/products/bulk", response_model=BulkImportResultOut)

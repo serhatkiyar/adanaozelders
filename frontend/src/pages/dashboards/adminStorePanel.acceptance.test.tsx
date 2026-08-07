@@ -201,8 +201,15 @@ function siparis(over: Partial<Record<string, unknown>> = {}) {
   };
 }
 
-/** Ürün listesini `total` başlığıyla döndüren sunucu. */
+/** Ürün listesini `total` başlığıyla döndüren sunucu.
+ *
+ *  `/store/config` de kurulur: düşük stok eşiği İSTEMCİDE SABİT DEĞİL,
+ *  sunucudan okunur (eşiğin üç yerde ayrı gömülü olması bu paketin
+ *  düzelttiği kusurdu). Ekran o ucu gerçekten çağırıyor.
+ */
 function urunSunucusu(kayitlar: unknown[], toplam = kayitlar.length) {
+  sunucu("/store/config", { data: { low_stock_threshold: 5 } }, "get");
+  sunucu("/store/book-facets", { data: { publisher: [], author: [], cover_type: [] } }, "get");
   sunucu(
     "/store/admin/products",
     { data: kayitlar, headers: { "x-total-count": String(toplam) } },
@@ -324,13 +331,18 @@ describe("P-4 · sıralama sunucuya gider", () => {
 });
 
 describe("P-6/P-7/P-8 · stok rozeti", () => {
+  // Rozet TABLONUN İÇİNDE aranır. Filtre çubuğundaki stok seçicisi de
+  // "Tükendi" yazan bir <option> taşıyor; genel bir metin sorgusu ikisini
+  // ayırt edemez ve "rozet basıldı" iddiası seçeneği yakalayarak yalancı
+  // yeşile dönerdi. (İlk yazımda tam olarak bu oldu.)
   it("stok 0 → 'Tükendi'", async () => {
     izinVer("products.view");
     urunSunucusu([urun({ stock: 0, in_stock: false })]);
 
     magaza();
 
-    expect(await screen.findByText(/tükendi/i)).toBeTruthy();
+    const tablo = await screen.findByRole("table");
+    expect(within(tablo).getByText(/tükendi/i)).toBeTruthy();
   });
 
   it("stok eşiğin altında → adet SAYISIYLA gösterilir", async () => {
@@ -340,7 +352,8 @@ describe("P-6/P-7/P-8 · stok rozeti", () => {
     magaza();
 
     // Sayı görünmeli: "az" demek yetmez, yönetici kaç adet kaldığını görmeli.
-    expect(await screen.findByText(/3 adet/)).toBeTruthy();
+    const tablo = await screen.findByRole("table");
+    expect(within(tablo).getByText(/3 adet/)).toBeTruthy();
   });
 
   it("bol stokta da SAYI gösterilir (in_stock boolean'ı değil)", async () => {
@@ -349,7 +362,8 @@ describe("P-6/P-7/P-8 · stok rozeti", () => {
 
     magaza();
 
-    expect(await screen.findByText(/42 adet/)).toBeTruthy();
+    const tablo = await screen.findByRole("table");
+    expect(within(tablo).getByText(/42 adet/)).toBeTruthy();
   });
 
   it("dijital üründe stok rozeti 'Tükendi' DEĞİLDİR", async () => {
@@ -358,9 +372,9 @@ describe("P-6/P-7/P-8 · stok rozeti", () => {
 
     magaza();
 
-    await screen.findByRole("table");
+    const tablo = await screen.findByRole("table");
     expect(
-      screen.queryByText(/tükendi/i),
+      within(tablo).queryByText(/tükendi/i),
       "dijital ürün 'Tükendi' gösteriyor — dijital ürün tükenmez"
     ).toBeNull();
   });
@@ -590,13 +604,16 @@ describe("E-1/E-2/E-3 · 'kayıt yok' ile 'sonuç yok' farklı", () => {
     izinVer("products.view");
     urunSunucusu([], 0);
 
+    // Başlık `heading` rolüyle aranır: serbest metin sorgusu filtre
+    // çubuğundaki "Ürün ara" etiketini de yakalıyordu ve karşılaştırma
+    // yanlış iki metni kıyaslıyordu (testin kendi kusuruydu).
     const bos = magaza();
-    const bosMetin = (await screen.findByText(/ürün/i)).textContent;
+    const bosMetin = (await screen.findByRole("heading", { level: 2 })).textContent;
     bos.unmount();
 
     urunSunucusu([], 0);
     magaza("?stok=tukendi");
-    const filtreliMetin = (await screen.findByText(/sonuç|eşleşen/i)).textContent;
+    const filtreliMetin = (await screen.findByRole("heading", { level: 2 })).textContent;
 
     expect(
       filtreliMetin,
@@ -654,12 +671,17 @@ describe("F-5/F-6 · dashboard kartları doğru filtreli hedefe gider", () => {
     };
   }
 
-  it("'Düşük stok' kartı ?stok=azalan ile açılır", async () => {
+  // Hedef `?stok=kritik`, `?stok=azalan` DEĞİL: dashboard sayacı
+  // `stock <= eşik` diyor ve stoğu 0 olanı da sayıyor; `azalan` ise bilerek
+  // `0 < stock` (F-2: "stoğu 0 olan 'azalan' değil 'tükendi'dir"). Kart
+  // `azalan`a gitseydi sayı ile liste FARKLI küme gösterirdi. `kritik`
+  // ikisinin birleşimi ve sayacın tam karşılığı.
+  it("'Düşük stok' kartı filtreli (kritik) listeye açılır", async () => {
     izinVer("dashboard.view", "products.view");
     sunucu("/admin/stats", { data: istatistik() }, "get");
     sunucu("/admin/revenue", { data: {} }, "get");
 
-    sar(ROUTES.adminDashboard, <AdminDashboardPage />);
+    sar(ROUTES.admin, <AdminDashboardPage />);
 
     const kart = (await screen.findByText(/düşük stok/i)).closest("a");
     expect(kart, "düşük stok kartı bir bağlantı değil").not.toBeNull();
@@ -667,7 +689,7 @@ describe("F-5/F-6 · dashboard kartları doğru filtreli hedefe gider", () => {
       kart?.getAttribute("href"),
       "alarm kartı filtresiz listeye gidiyor: sayıyı görüyorsun, hangi " +
         "ürünler olduğunu göremiyorsun"
-    ).toContain("stok=azalan");
+    ).toContain("stok=kritik");
   });
 
   it("'Hazırlanacak siparişler' kartı paketleme kuyruğuna gider", async () => {
@@ -675,7 +697,7 @@ describe("F-5/F-6 · dashboard kartları doğru filtreli hedefe gider", () => {
     sunucu("/admin/stats", { data: istatistik() }, "get");
     sunucu("/admin/revenue", { data: {} }, "get");
 
-    sar(ROUTES.adminDashboard, <AdminDashboardPage />);
+    sar(ROUTES.admin, <AdminDashboardPage />);
 
     const kart = (await screen.findByText(/hazırlanacak sipariş/i)).closest("a");
     expect(kart?.getAttribute("href")).toContain("paketleme");

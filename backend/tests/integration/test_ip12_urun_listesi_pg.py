@@ -501,8 +501,22 @@ class TestEsikTekKaynak:
         açıklama metni. Üçü bağımsız değiştirilebiliyor; biri kayarsa alarm
         kartı ile liste farklı ürün kümesi gösterir ve kimse fark etmez.
 
-        Bu test davranışla ölçer: dashboard'ın saydığı düşük stoklu ürün
-        sayısı ile `?stok=azalan` listesinin uzunluğu AYNI olmalı.
+        Bu test davranışla ölçer: dashboard'ın saydığı ürün sayısı ile kartın
+        AÇTIĞI listenin (`?stok=kritik`) aktif olanları aynı olmalı.
+
+        Neden `kritik`, `azalan` değil: dashboard sayacı `stock <= eşik`
+        diyor ve stoğu 0 olanı da sayıyor; `azalan` ise bilerek `0 < stock`
+        (F-2: "stoğu 0 olan 'azalan' değil 'tükendi'dir"). Kart `azalan`a
+        bağlansaydı sayı ile liste FARKLI küme gösterirdi — bu testin
+        engellemek için var olduğu sapmanın ta kendisi. `kritik` ikisinin
+        birleşimidir ve köprüyü kurar.
+
+        KAPSAM FARKI bilinçlidir ve testte hesaba katılır: dashboard sayacı
+        yalnız `ACTIVE` fiziksel ürünü sayar (kart metni de öyle diyor),
+        yönetim listesi ise katalogun tamamını (taslak/gizli dahil) gösterir.
+        Test bu yüzden listeyi `status == ACTIVE` ile daraltır — aksi hâlde
+        kataloğa eklenen gizli bir ürün testi sebepsiz kırardı. Ölçülen şey
+        kapsam değil, EŞİĞİN VE KOVA TANIMININ AYNI OLMASI.
         """
         from core.stock_policy import LOW_STOCK_THRESHOLD
 
@@ -512,13 +526,27 @@ class TestEsikTekKaynak:
         await fab12.kitap(stock=LOW_STOCK_THRESHOLD)
         await fab12.kitap(stock=LOW_STOCK_THRESHOLD + 1)
         await fab12.kitap(stock=0)
+        # Eşiğin ALTINDA ama gizli: dashboard saymamalı, liste göstermeli.
+        await fab12.kitap(stock=1, status="HIDDEN")
 
-        liste = await _liste(http, headers, limit=200, stok="azalan")
-        azalan_sayisi = len(liste)
+        liste = await _liste(http, headers, limit=200, stok="kritik")
+        aktif_azalan = [k for k in liste if k.get("status") == "ACTIVE"]
 
-        r = await http.get("/api/v1/admin/stats", headers=headers)
+        # Dashboard sayaçları `/admin/dashboard` ucunda (`/admin/stats` ayrı
+        # ve daha dar bir özet döner).
+        r = await http.get("/api/v1/admin/dashboard", headers=headers)
         assert r.status_code == 200, r.text
-        assert r.json()["low_stock_products"] == azalan_sayisi, (
+        assert r.json()["low_stock_products"] == len(aktif_azalan), (
             "dashboard sayacı ile 'azalan' filtresi farklı küme sayıyor — "
             "eşik tek kaynaktan gelmiyor"
+        )
+        # Kapsam farkının kendisi de sözleşme: gizli ürün listede DURUR.
+        assert len(liste) > len(aktif_azalan), (
+            "gizli düşük-stoklu ürün yönetim listesinden düşmüş"
+        )
+        # `kritik` gerçekten birleşim mi: hem 0 hem eşik-altı içermeli.
+        stoklar = {k["stock"] for k in liste}
+        assert 0 in stoklar, "'kritik' tükenenleri kapsamıyor"
+        assert any(0 < s <= LOW_STOCK_THRESHOLD for s in stoklar), (
+            "'kritik' azalanları kapsamıyor"
         )

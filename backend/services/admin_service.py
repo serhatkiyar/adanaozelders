@@ -16,6 +16,7 @@ from models.library import Library, LibraryStatus
 from models.payment import Payment, PaymentStatus
 from models.report import Report, ReportStatus
 from models.review import Review
+from core.stock_policy import LOW_STOCK_THRESHOLD
 from models.store import Order, OrderReturn, OrderStatus, Product, ProductKind, ProductStatus
 from models.tutor import Tutor, TutorEducation, TutorStatus
 from schemas.admin import (
@@ -168,7 +169,11 @@ async def get_dashboard(db: AsyncSession, *, range_name: str) -> AdminDashboardO
             Product,
             Product.kind == ProductKind.PHYSICAL,
             Product.status == ProductStatus.ACTIVE,
-            Product.stock <= 5,
+            # Eşik TEK KAYNAKTAN (`core.stock_policy`). Buraya gömülü `5`
+            # yazmak, ürün listesindeki `?stok=azalan` filtresiyle bu sayacın
+            # ayrı ayrı kaymasına izin verirdi: kart "7 ürün" der, liste
+            # başka bir küme gösterir ve fark hiçbir yerde görünmez.
+            Product.stock <= LOW_STOCK_THRESHOLD,
         ).label("low_stock_products"),
         _count_scalar(Library, Library.status == LibraryStatus.PENDING).label(
             "pending_libraries"
