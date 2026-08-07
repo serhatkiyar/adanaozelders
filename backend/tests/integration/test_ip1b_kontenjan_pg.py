@@ -24,8 +24,18 @@ metotları kendi oturumlarını açar). Tek oturumda "aynı anda" iki çağrı y
 yarış KURMAZ; ikinci çağrı birincinin yazdığını görür ve DB seviyesindeki
 koruma hiç sınanmaz (İP-1a sözleşmesi §9c/4'te yakalanan kusur).
 
-`asyncio.sleep` YOKTUR. Yarışın gerçekten kurulduğunun kanıtı, düğümlerin
-düzeltme öncesi KIRMIZI olmasıdır: koruma yoksa fazla satış gerçekleşir.
+**Ama `gather` tek başına da yetmiyor.** İlk mutasyon provasında ölçüldü:
+kontenjan kilidi sökülmesine rağmen (M39/M42) beş eşzamanlı kayıt yine sırayla
+koştu ve testler yeşil kaldı — yani "koruma var mı" sorusunu hiç sormamışlardı.
+Sebep basit: `count → INSERT → COMMIT` arası o kadar kısa ki olay döngüsü
+tarafların hepsini aynı pencereye sokmuyor; yarış **umut ediliyor**, kurulmuyor.
+
+Pencere artık `_KontenjanPenceresi` ile **açıkça açılıyor**: sayım yapıldıktan
+sonra taraflar bir bariyerde buluşur, yani hepsi "koltuk boş" okumasını
+yazımdan ÖNCE yapmış olur — check-then-act'in tanımı budur. Bariyer **süreli**:
+koruma yerindeyse ikinci taraf sayıma hiç ulaşamaz (advisory kilitte bekler),
+bariyer dolmaz ve süre dolunca pencere kendini kapatır. Yani ölçüm doğru
+uygulamada takılmaz, yanlış uygulamada ise yarışı garanti eder.
 """
 from __future__ import annotations
 
@@ -68,6 +78,54 @@ def _yarin_saat(saat: int = 10, sure_saat: int = 2) -> tuple[datetime.datetime, 
     )
 
 
+class _KontenjanPenceresi:
+    """check-then-act penceresini deterministik olarak açan süreli bariyer.
+
+    Sayım yapıldıktan hemen sonra çağrılır. `taraf` kadar çağıran bariyerde
+    buluşursa hepsi aynı anda serbest kalır — yani hepsi "koltuk boş" okumasını
+    yazımdan önce yapmış olur. Buluşma gerçekleşmezse (koruma yerinde: ikinci
+    taraf sayıma hiç ulaşamıyor) süre dolar ve pencere **kalıcı olarak kapanır**;
+    böylece doğru uygulama tek bir gecikme öder, her çağrıda değil.
+
+    `birlikte_gelen` ölçülebilir kalır: pencerenin gerçekten açılıp açılmadığı
+    tahmin edilmez. Doğru uygulamada 0 olması beklenir ve bu, kilidin
+    serileştirdiğinin doğrudan gözlemidir.
+    """
+
+    def __init__(self, taraf: int, *, timeout: float = 0.4) -> None:
+        self._bariyer = asyncio.Barrier(taraf)
+        self._timeout = timeout
+        self._kapali = False
+        self.cagri = 0
+        self.birlikte_gelen = 0
+
+    async def bekle(self) -> None:
+        self.cagri += 1
+        if self._kapali:
+            return
+        try:
+            await asyncio.wait_for(self._bariyer.wait(), self._timeout)
+            self.birlikte_gelen += 1
+        except (TimeoutError, asyncio.BrokenBarrierError):
+            self._kapali = True
+
+
+def _pencere_tak(monkeypatch, ad: str, taraf: int) -> _KontenjanPenceresi:
+    """`library_capacity.<ad>` sayımının ARDINA pencereyi yerleştirir."""
+    from services import library_capacity
+
+    gercek = getattr(library_capacity, ad)
+    pencere = _KontenjanPenceresi(taraf)
+
+    async def sarmalanmis(*args, **kw):
+        n = await gercek(*args, **kw)
+        await pencere.bekle()
+        return n
+
+    monkeypatch.setattr(library_capacity, ad, sarmalanmis)
+    return pencere
+
+
 def _ayikla(sonuclar: list) -> tuple[list, list]:
     """(başarılılar, 409'lar) — başka her istisna yükseltilir.
 
@@ -92,16 +150,26 @@ def _ayikla(sonuclar: list) -> tuple[list, list]:
 # ═══════════════════════ K-1 · eşzamanlı kayıt yarışı ═══════════════════════
 
 
-async def test_K1_iki_kisilik_oturuma_bes_escasman_kayit(ip1b, pg):
+async def test_K1_iki_kisilik_oturuma_bes_escasman_kayit(ip1b, pg, monkeypatch):
     """2 kişilik oturuma 5 eşzamanlı kayıt → tam olarak 2'si başarılı."""
     lib = await ip1b.kutuphane()
     oturum = await ip1b.oturum(lib.id, capacity=2)
     ogrenciler = [await ip1b.ogrenci() for _ in range(5)]
+    pencere = _pencere_tak(monkeypatch, "count_exam_seats", len(ogrenciler))
 
     sonuclar = await asyncio.gather(
         *[ip1b.kaydol(o, oturum.id) for o in ogrenciler], return_exceptions=True
     )
     basarili, catisma = _ayikla(list(sonuclar))
+
+    assert pencere.cagri >= 2, (
+        "kontenjan sayımı beklenenden az çağrıldı — yama tutmadı, bu test "
+        "check-then-act penceresini hiç açmamış olabilir (yanlış yeşil koruması)"
+    )
+    assert pencere.birlikte_gelen == 0, (
+        f"{pencere.birlikte_gelen} taraf kontenjanı AYNI ANDA okudu — kararlar "
+        "serileştirilmiyor, ikisi de aynı boş koltuğu görebilir"
+    )
 
     assert len(basarili) == 2, (
         f"2 kişilik oturuma {len(basarili)} kayıt kabul edildi — kontenjan hiçbir "
@@ -246,7 +314,7 @@ async def test_K5_escasman_iki_odeme_kontenjani_asamaz(ip1b, sayan_saglayici, pg
 
 
 async def test_K6_escasman_calisma_rezervasyonu_kapasiteyi_asamaz(
-    ip1b, sayan_saglayici, pg
+    ip1b, sayan_saglayici, pg, monkeypatch
 ):
     """Kapasite 1 iken aynı slota iki eşzamanlı rezervasyon → tek ödenmiş kalır."""
     lib = await ip1b.kutuphane(
@@ -254,6 +322,7 @@ async def test_K6_escasman_calisma_rezervasyonu_kapasiteyi_asamaz(
     )
     starts, ends = _yarin_saat()
     a, b = await ip1b.ogrenci(), await ip1b.ogrenci()
+    pencere = _pencere_tak(monkeypatch, "count_study_seats", 2)
 
     sonuclar = await asyncio.gather(
         ip1b.rezerve_et(a, lib.id, starts, ends),
@@ -261,6 +330,12 @@ async def test_K6_escasman_calisma_rezervasyonu_kapasiteyi_asamaz(
         return_exceptions=True,
     )
     basarili, _ = _ayikla(list(sonuclar))
+
+    assert pencere.cagri >= 1, "kapasite sayımı çağrılmadı — yama tutmadı"
+    assert pencere.birlikte_gelen == 0, (
+        f"{pencere.birlikte_gelen} taraf kapasiteyi AYNI ANDA okudu — kararlar "
+        "serileştirilmiyor"
+    )
 
     eslesme = {a.id: a, b.id: b}
     for res in basarili:
