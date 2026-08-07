@@ -240,14 +240,20 @@ async def test_I6_kutuphane_geliri_yalniz_release_sonrasi_borctur(
     from models.study_reservation import StudyReservation
     from services import payout_ledger
 
+    # İKİ AYRI öğrenci. Eskiden aynı öğrenci iki kez kullanılıyordu; bu, üretimde
+    # DOĞMAYAN bir durumdu (`study_reservation_service.reserve` aynı öğrencinin
+    # çakışan ikinci ödenmiş rezervasyonunu zaten 409 ile reddediyor) ve İP-1b'de
+    # DB kısıtına bağlandı (`ex_study_res_client_no_overlap`). Fixture'ın kolaylık
+    # için imkânsız bir durum kurması, testin ölçtüğü şeyi (hak edişin yalnız
+    # release sonrası doğması) hiç etkilemiyor — iki öğrenci gerçeğe daha yakın.
     client = await factory.client(db)
+    client2 = await factory.client(db)
     lib = Library(name="Test Kütüphane", slug=f"tk-{client.id}", status=LibraryStatus.ACTIVE.value)
     db.add(lib)
     await db.flush()
 
     ortak = dict(
         library_id=lib.id,
-        client_id=client.id,
         hourly_price=Decimal("50.00"),
         amount=Decimal("100.00"),
         commission_amount=Decimal("10.00"),
@@ -261,8 +267,8 @@ async def test_I6_kutuphane_geliri_yalniz_release_sonrasi_borctur(
         status="PAID",
     )
     # Biri katılım doğrulanmış (released), biri değil.
-    db.add(StudyReservation(**ortak, released_at=_now()))
-    db.add(StudyReservation(**ortak, released_at=None))
+    db.add(StudyReservation(**ortak, client_id=client.id, released_at=_now()))
+    db.add(StudyReservation(**ortak, client_id=client2.id, released_at=None))
     await db.commit()
 
     try:

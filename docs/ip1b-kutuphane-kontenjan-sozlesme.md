@@ -328,6 +328,23 @@ kanıtlamaz.
 
 ---
 
+## 7b. Yeni kısıtın ortaya çıkardığı test kusuru
+
+`tests/verify/test_verify_payout_ledger.py::test_I6_kutuphane_geliri_yalniz_release_sonrasi_borctur`
+exclusion kısıtı eklendikten sonra kırıldı. **Üretim regresyonu değildi**:
+fixture, *aynı öğrenci · aynı kütüphane · aynı saat aralığında* iki ödenmiş
+rezervasyon kuruyordu — üretimde doğmayan bir durum, çünkü
+`study_reservation_service.reserve` çakışan ikinci ödenmiş rezervasyonu zaten
+409 ile reddediyor. Kısıt tam olarak o kuralı DB'ye taşıdı.
+
+Testin ölçtüğü şey (hak edişin yalnız `released_at` sonrası doğması) iki satırın
+aynı öğrenciye ait olmasından bağımsızdır; fixture **iki ayrı öğrenciye**
+çevrildi — gerçeğe daha yakın hâli budur. Bağımsız doğrulama paketinde bir
+fixture'ı değiştirmek hafife alınacak bir iş değildir, bu yüzden gerekçe hem
+testin içine hem buraya yazıldı.
+
+---
+
 ## 8. Kalan riskler ve P2'ler
 
 | # | Konu | Not |
