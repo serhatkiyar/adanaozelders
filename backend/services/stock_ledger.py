@@ -399,45 +399,6 @@ async def restored_quantity_by_order_item(
     return {int(r.oi_id): int(r.geri) for r in rows}
 
 
-async def sold_quantity_by_order_item(
-    db: AsyncSession, order_item_ids: Sequence[int]
-) -> dict[int, int]:
-    """Sipariş kalemi başına deftere yazılmış **SATIŞ** adedi (pozitif).
-
-    ## Neden gerekli (TB-15(a))
-
-    Geri yükleme tavanı `satılan − geri yüklenen` idi, ama "satılan" olarak
-    **sipariş kalemindeki adet** kullanılıyordu. Bu, siparişin gerçekten PAID
-    olduğu varsayımını taşır. Oversell iadesinde varsayım BOZULUR: orada
-    sipariş hiç PAID olmamıştır, hiç `SALE` yazılmamıştır — ama `order_items`
-    satırları vardır. Telafi kancası o adetleri "satılmış" sayıp `SALE_CANCEL`
-    yazarsa **hiç satılmamış mal için stok artar**.
-
-    Tavan kontrolü bunu engellemez: `restored_quantity_by_order_item` yalnız
-    SALE_CANCEL/RETURN sayar; satılan 0 iken "geri yüklenen 0" görülür ve tam
-    adet verilir.
-
-    Bu yüzden gerçek satış adedi DEFTERDEN okunur. `qty_delta` satışta
-    negatiftir; işaret burada çevrilir ki çağıran "adet" ile düşünsün.
-    """
-    ids = [int(i) for i in set(order_item_ids)]
-    if not ids:
-        return {}
-    rows = (
-        await db.execute(
-            text(
-                "SELECT ref_line_id AS oi_id, coalesce(sum(-qty_delta), 0) AS satilan "
-                "FROM stock_movements "
-                "WHERE movement_type = 'SALE' AND ref_type = 'order' "
-                "  AND ref_line_id = ANY(:ids) "
-                "GROUP BY ref_line_id"
-            ),
-            {"ids": ids},
-        )
-    ).all()
-    return {int(r.oi_id): int(r.satilan) for r in rows}
-
-
 def _require(**alanlar: Any) -> None:
     eksik = [ad for ad, deger in alanlar.items() if deger in (None, "")]
     if eksik:

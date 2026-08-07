@@ -1011,13 +1011,25 @@ MUTASYONLAR: list[Mutasyon] = [
         ),
     ),
     Mutasyon(
-        "P8", "IP5: 'defterde SALE yoksa restock yok' koşulu kaldırıldı",
+        "P8", "IP5: 'oversell iptalinde restock yok' koşulu kaldırıldı",
         "backend/services/order_service.py",
-        """        satilan = int(satilan_defterde.get(item.id, 0))
-        if satilan <= 0:""",
-        """        satilan = int(item.quantity)  # MUTASYON: defter yerine kalem adedi
-        if False:""",
+        """    if await _oversell_iptali_mi(db, order):""",
+        """    if False:  # MUTASYON: oversell ayrimi kaldirildi""",
         ("tests/integration/test_ip5_oversell_refund_pg.py",),
+        ek=(
+            # Koruma İKİ katmanlı (canlı çağrıda parametre, reconciler'da iz).
+            # Tek katmanı sökmek davranışı bozmaz — mutasyon "yakalanmadı"
+            # görünür ama testler kusursuz da olabilir. Gerçek soru
+            # "bu guard'lar TOPLUCA vazgeçilebilir mi?" olduğu için ikisi
+            # birlikte sökülür.
+            (
+                "backend/services/order_service.py",
+                """            # Bu sipariş hiç PAID olmadı; `SALE` yazılmadığı için geri
+            # yüklenecek bir şey de yok (TB-15(a)/3).
+            restock=False,""",
+                """            restock=True,  # MUTASYON: acik parametre de kaldirildi""",
+            ),
+        ),
     ),
     Mutasyon(
         "P9", "IP5: kök conftest PAYMENT_PROVIDER satırı kaldırıldı (TB-21)",

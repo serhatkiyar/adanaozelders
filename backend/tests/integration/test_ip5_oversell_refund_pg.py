@@ -34,7 +34,6 @@ from sqlalchemy import text
 from core.database import AsyncSessionLocal
 from core.payments.fake import FakePaymentProvider
 from services import escrow_reconciler
-from tests.integration.ip5_factory import fab5  # noqa: F401
 
 pytestmark = pytest.mark.asyncio
 

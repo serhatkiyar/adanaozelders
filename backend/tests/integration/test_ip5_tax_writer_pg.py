@@ -20,7 +20,7 @@ from decimal import Decimal
 
 import pytest
 
-from tests.integration.ip5_factory import fab5, uniq  # noqa: F401
+from tests.integration.ip5_factory import uniq
 
 pytestmark = pytest.mark.asyncio
 

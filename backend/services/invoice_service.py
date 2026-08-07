@@ -190,7 +190,10 @@ async def build_invoice(db: AsyncSession, order_id: int, *, client_id: int) -> d
     order = (
         await db.execute(
             select(Order)
-            .options(selectinload(Order.items))
+            # `client` de yüklenir: dijital-yalnız siparişte `ship_recipient`
+            # BOŞTUR ve alıcı adı hesap sahibinden düşer. İlişki yüklenmeden
+            # `_hesap_adi` sessizce None döner ve fatura alıcısız çıkardı.
+            .options(selectinload(Order.items), selectinload(Order.client))
             .where(
                 Order.id == order_id,
                 # Sahiplik SORGUDA: "yok" ile "senin değil" ayırt edilemez

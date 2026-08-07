@@ -965,7 +965,7 @@ async def _out_of_stock_refund(
             db,
             order,
             "CANCELLED",
-            changed_by="system:oversell",
+            changed_by=OVERSELL_AKTORU,
             reason="Stok yetersiz: " + ", ".join(shortages),
         )
     else:
@@ -978,8 +978,11 @@ async def _out_of_stock_refund(
             amount=tutar,
             reason_code="ORDER_CANCELLED",
             terminal_status="CANCELLED",
-            changed_by="system:oversell",
+            changed_by=OVERSELL_AKTORU,
             reason="Stok yetersiz: " + ", ".join(shortages),
+            # Bu sipariş hiç PAID olmadı; `SALE` yazılmadığı için geri
+            # yüklenecek bir şey de yok (TB-15(a)/3).
+            restock=False,
         )
     await notification_service.notify(
         db,
@@ -1504,6 +1507,45 @@ async def _lock_order_products(db: AsyncSession, order: Order) -> None:
         await stock_ledger.lock_products(db, list(urunler))
 
 
+#: `order_status_history.changed_by` — oversell iptalinin KALICI izi.
+#:
+#: Reconciler bir siparişi devraldığında "bu sipariş hiç PAID oldu mu"yu
+#: satırın kendisinden çıkaramaz (`payment_status` o an REFUNDING/REFUNDED'dır).
+#: Bu iz `order_fsm.transition_order` tarafından yazılır ve o akışa özgüdür.
+OVERSELL_AKTORU = "system:oversell"
+
+
+async def _oversell_iptali_mi(db: AsyncSession, order: Order) -> bool:
+    """Bu sipariş oversell yüzünden mi iptal edildi (yani hiç PAID olmadı)?
+
+    ## Neden `SALE` hareketinin yokluğuna bakılmıyor
+
+    İlk düzeltme "defterde SALE yoksa satılmamıştır" diyordu. Ölçüm bunu
+    çürüttü: geliştirme veritabanındaki 20 PAID fiziksel siparişin **19'unda**
+    `SALE` hareketi yok — defter (`stok_hareket_defteri_sku`) o siparişlerden
+    SONRA kuruldu. O kural, defter öncesi gerçek bir siparişin iptalinde
+    stoğu geri döndürmezdi; yani **gerçek stok kaybı**.
+
+    `paid_at` ve `order_status_history` de aynı sebeple güvenilmez (ölçüm:
+    7 dolu / 12 boş, 3 kayıtlı / 16 kayıtsız).
+
+    Bu yüzden ayrım, geçmiş veriden ÇIKARILMAZ; ilgili akışın bıraktığı
+    kalıcı izle yapılır. Canlı çağrıda ayrıca `settle_refunded_order(
+    restock=False)` verilir — iz henüz yazılmamış olabilir.
+    """
+    return bool(
+        (
+            await db.execute(
+                text(
+                    "SELECT 1 FROM order_status_history "
+                    "WHERE order_id = :i AND changed_by = :a LIMIT 1"
+                ),
+                {"i": order.id, "a": OVERSELL_AKTORU},
+            )
+        ).first()
+    )
+
+
 async def _restock(db: AsyncSession, order: Order, *, reason_code: str) -> None:
     """İptal / tam iadede stoğu **deftere yazarak** geri yükler.
 
@@ -1521,6 +1563,18 @@ async def _restock(db: AsyncSession, order: Order, *, reason_code: str) -> None:
     physical = _physical_items(order)
     if not physical:
         return
+    if await _oversell_iptali_mi(db, order):
+        # Bu sipariş hiç PAID olmadı: kupon tüketilmedi, stok düşülmedi, `SALE`
+        # yazılmadı. `SALE_CANCEL` yazmak HİÇ SATILMAMIŞ mal için stok artışı
+        # üretirdi (TB-15(a)/3). Tavan kontrolü bunu göremez:
+        # `restored_quantity_by_order_item` yalnız SALE_CANCEL/RETURN sayar,
+        # satılan 0 iken tam adedi verir.
+        logger.info(
+            "order %s: oversell iptali — stok geri yüklenmedi "
+            "(hiç satılmamış mal için SALE_CANCEL yazılmaz)",
+            order.id,
+        )
+        return
     # Tavan hesabı ÜRÜN KİLİDİ ALTINDA okunmalı: iki geri yükleme yolu
     # eşzamanlı koşarsa (tam iptal ⟂ kısmi iade) ikisi de "henüz geri yüklenen
     # yok" görüp tam adedi uygular ve stok satılandan fazla artar. Kilit ikisini
@@ -1531,29 +1585,9 @@ async def _restock(db: AsyncSession, order: Order, *, reason_code: str) -> None:
     geri_yuklenen = await stock_ledger.restored_quantity_by_order_item(
         db, [item.id for item in physical]
     )
-    # "Satılan" DEFTERDEN okunur, `order_items.quantity`'den DEĞİL (TB-15(a)).
-    #
-    # Kalem adedini satılmış saymak, siparişin PAID olduğu varsayımını taşır.
-    # Oversell iadesinde bu varsayım bozulur: sipariş hiç PAID olmadı, hiç
-    # `SALE` yazılmadı — ama `order_items` satırları var. Eski hâlde telafi
-    # kancası o adetler için `SALE_CANCEL` yazıyor ve HİÇ SATILMAMIŞ mal için
-    # stok artıyordu (hayali stok). Tavan kontrolü bunu göremez.
-    satilan_defterde = await stock_ledger.sold_quantity_by_order_item(
-        db, [item.id for item in physical]
-    )
     specs: list[dict] = []
     for item in physical:
-        satilan = int(satilan_defterde.get(item.id, 0))
-        if satilan <= 0:
-            # Bu kalem HİÇ satılmadı (SALE hareketi yok) → geri yüklenecek bir
-            # şey de yok. Sessiz geçmiyoruz: bu dal ancak anormal bir yolda
-            # (oversell iadesi, ödenmeden iptal) çalışır ve izi kalmalı.
-            logger.info(
-                "order %s kalem %s: defterde SALE yok — restock YAPILMADI "
-                "(hiç satılmamış mal için SALE_CANCEL yazılmaz)",
-                order.id, item.id,
-            )
-            continue
+        satilan = int(item.quantity)
         kalan = satilan - int(geri_yuklenen.get(item.id, 0))
         if kalan <= 0:
             # Bu kalem zaten (kısmen/tamamen iade yoluyla) geri yüklenmiş.
@@ -1718,6 +1752,7 @@ async def settle_refunded_order(
     terminal_status: str,
     changed_by: str,
     reason: str | None = None,
+    restock: bool = True,
 ) -> None:
     """İade sağlayıcıda KESİNLEŞTİĞİNDE koşan **TEK** telafi kuyruğu.
 
@@ -1741,7 +1776,13 @@ async def settle_refunded_order(
         await _manual_review_iade_teslim_sonrasi(db, order)
         return
 
-    await _restock(db, order, reason_code=reason_code)
+    # `restock=False` YALNIZ çağıranın "bu sipariş hiç PAID olmadı"yı KESİN
+    # bildiği yolda verilir (oversell). Reconciler bunu bilemez; o yüzden
+    # `_restock` ayrıca kalıcı ize de bakar (`_oversell_iptali_mi`). İki
+    # katman bilinçli: canlı çağrıda iz henüz yazılmamış olabilir, reconciler
+    # çağrısında ise parametre kaybolmuştur.
+    if restock:
+        await _restock(db, order, reason_code=reason_code)
     if order.coupon_id is not None:
         # Kupon kullanımı yalnız PAID'de sayılmıştı → geri sal (satır varsa).
         await coupon_service.release(db, coupon_id=order.coupon_id, order_id=order.id)

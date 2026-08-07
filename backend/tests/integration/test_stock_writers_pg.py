@@ -221,6 +221,7 @@ async def test_w4_urun_olusturma_INITIAL_hareketi_yazar(fab):
             s,
             SahteAdmin(),
             ProductCreate(
+                tax_rate=Decimal("0.20"),
                 title=f"Yeni Kitap {_uniq()}",
                 kind="PHYSICAL",
                 price=Decimal("50.00"),
@@ -251,6 +252,7 @@ async def test_w4_dijital_urun_SKU_alir_hareket_ALMAZ(fab):
             s,
             SahteAdmin(),
             ProductCreate(
+                tax_rate=Decimal("0.20"),
                 title=f"Dijital {_uniq()}", kind="DIGITAL", price=Decimal("20.00")
             ),
         )
@@ -273,6 +275,7 @@ async def test_w4_hareket_yazilamazsa_urun_de_olusmaz(fab, monkeypatch):
                 s,
                 SahteAdmin(),
                 ProductCreate(
+                tax_rate=Decimal("0.20"),
                     title=baslik, kind="PHYSICAL", price=Decimal("10.00"), stock=5
                 ),
             )
@@ -293,6 +296,10 @@ def _csv_row(**over) -> dict:
         "title": f"CSV {_uniq()}",
         "kind": "PHYSICAL",
         "price": "30.00",
+        # İP-5/S-5: CSV'de KDV oranı ZORUNLU — oransız satır oluşturulmaz ve
+        # `errors[]`'ta raporlanır. Sessizce %0 yazmak, yanlış oranla satılan
+        # ve yanlış fatura kesilen bir ürün demektir.
+        "tax_rate": "0.20",
         "stock": "7",
         "status": "ACTIVE",
     }

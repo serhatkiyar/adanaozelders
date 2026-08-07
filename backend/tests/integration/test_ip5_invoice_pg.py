@@ -23,7 +23,6 @@ from decimal import Decimal
 import pytest
 
 from core.config import settings
-from tests.integration.ip5_factory import fab5  # noqa: F401
 
 pytestmark = pytest.mark.asyncio
 
