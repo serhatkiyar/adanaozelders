@@ -162,6 +162,14 @@ class Settings(BaseSettings):
     PAYMENT_PROVIDER: str = "fake"
     PAYMENT_CURRENCY: str = "TRY"
     PLATFORM_COMMISSION_RATE: float = 0.10
+    # Kütüphane kolu koltuk tutma süresi (dakika). Deneme bileti ve çalışma alanı
+    # rezervasyonunda ödeme bekleyen kayıt (PENDING_PAYMENT) kontenjandan koltuk
+    # TUTAR; tutma bu süre sonunda kendiliğinden düşer (arka plan işi yoktur —
+    # koltuk yüklemi zamanı DB saatiyle okur, bkz. services/library_capacity.py).
+    # Süresiz tutma, ödemeyi yarıda bırakan tek kişinin kontenjanı sonsuza dek
+    # kilitlemesi demek olurdu; hiç tutmamak ise kapasitenin üzerinde tahsilat
+    # (denetim P1-20). 30 dk, 3DS'li bir ödeme yolculuğunun rahat üstündedir.
+    LIBRARY_SEAT_HOLD_MINUTES: int = 30
     # Mağaza kargo: eşikli ücretsiz kargo. Eşik (TL) ve üstü sipariş ücretsiz;
     # altındaki fiziksel siparişe sabit ücret. (Frontend lib/shipping.ts ile aynı.)
     SHIPPING_FREE_THRESHOLD: float = 500.0

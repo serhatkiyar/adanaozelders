@@ -10,7 +10,6 @@ charge/refund için kullanılır (booking Payment'tan bağımsız akış).
 from __future__ import annotations
 
 import datetime
-import secrets
 from decimal import Decimal
 
 from fastapi import HTTPException, status
@@ -18,8 +17,11 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from sqlalchemy import inspect as sa_inspect
+from sqlalchemy.orm.attributes import set_committed_value
+
 from core import exam_results, payments, storage
-from core.codes import gen_short_code, normalize_code
+from core.codes import normalize_code
 from core.config import settings
 from models.client import Client
 from models.library import Library, LibraryStatus
@@ -45,7 +47,13 @@ from schemas.library_exam import (
 )
 import logging
 
-from services import commission, escrow, notification_service, payment_gates
+from services import (
+    commission,
+    escrow,
+    library_capacity,
+    notification_service,
+    payment_gates,
+)
 
 logger = logging.getLogger("adana.escrow")
 
@@ -63,30 +71,38 @@ def parse_qr_token(payload: str) -> str:
     return token
 
 
-async def _unique_short_code(db: AsyncSession) -> str:
-    """Aktif (PAID/ATTENDED) deneme biletleri arasında benzersiz kısa kod üretir."""
-    while True:
-        code = gen_short_code()
-        exists = (
-            await db.execute(
-                select(ExamRegistration.id).where(
-                    ExamRegistration.short_code == code,
-                    ExamRegistration.status.in_(ACTIVE_REGISTRATION_STATUSES),
-                    ExamRegistration.deleted_at.is_(None),
-                )
-            )
-        ).first()
-        if exists is None:
-            return code
+async def _bilet_alanlari(db: AsyncSession) -> dict:
+    """Yeni bir bilete yazılacak benzersiz QR token'ı + kısa kod.
+
+    Tekillik `library_capacity` tarafından **iki kolda birden** aranır ve kısmi
+    unique index'lerle DB'de garanti altındadır (denetim P2-40).
+    """
+    return {
+        "qr_token": await library_capacity.unique_qr_token(db),
+        "short_code": await library_capacity.unique_short_code(db),
+    }
+
+
+async def _require_live_library(db: AsyncSession, library_id: int) -> Library:
+    """Satış yüzeylerinin ortak canlılık kapısı (denetim P1-21).
+
+    Desen `study_reservation_service.reserve`'den kopyalanmıştır (orada zaten
+    doğruydu): silinmiş kütüphane **404** (varlık yok), onaysız kütüphane
+    **409** (varlık var ama henüz satış yapamaz).
+    """
+    lib = await db.get(Library, library_id)
+    if lib is None or lib.deleted_at is not None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Kütüphane bulunamadı")
+    if lib.status != LibraryStatus.ACTIVE.value:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT, "Kütüphane henüz onaylı değil; kayıt alınamaz."
+        )
+    return lib
 
 
 async def _count_active(db: AsyncSession, session_id: int) -> int:
-    stmt = select(func.count()).where(
-        ExamRegistration.session_id == session_id,
-        ExamRegistration.status.in_(ACTIVE_REGISTRATION_STATUSES),
-        ExamRegistration.deleted_at.is_(None),
-    )
-    return int((await db.execute(stmt)).scalar_one())
+    """Oturumda koltuk tutan kayıt sayısı (ödenmiş + süresi geçmemiş tutmalar)."""
+    return await library_capacity.count_exam_seats(db, session_id)
 
 
 def _session_out(
@@ -327,7 +343,14 @@ async def list_public_sessions(
     # Savunma katmanı: yalnız onaylı (ACTIVE) kütüphanenin oturumları public görünür
     # (kütüphane sonradan gizlenir/reddedilirse oturumları da listelenmesin).
     lib = await db.get(Library, library_id)
-    if lib is None or lib.status != LibraryStatus.ACTIVE.value:
+    if (
+        lib is None
+        # Soft-delete edilmiş kütüphanenin `status`'ü ACTIVE kalır (silme yalnız
+        # `deleted_at` damgalar) — yalnız statüye bakan eski kontrol bu yüzden
+        # silinmiş kütüphanenin oturumlarını satmaya devam ediyordu (P1-21).
+        or lib.deleted_at is not None
+        or lib.status != LibraryStatus.ACTIVE.value
+    ):
         return []
     stmt = (
         select(LibraryExamSession)
@@ -373,14 +396,17 @@ async def _attach_counts_and_mine(
     ids = [s.id for s in sessions]
     lib_ids = {s.library_id for s in sessions}
 
-    # Aktif kayıt sayıları (tek sorgu).
+    # Koltuk tutan kayıt sayıları (tek sorgu). "Kalan kontenjan" gösterimi de
+    # buradan beslendiği için yüklem kontenjan kararıyla AYNI olmalıdır: ekranda
+    # boş görünen bir koltuğun kayıt anında dolu çıkması, kuralın kendisi kadar
+    # kötü bir kusurdur.
     count_rows = (
         await db.execute(
             select(ExamRegistration.session_id, func.count())
             .where(
                 ExamRegistration.session_id.in_(ids),
-                ExamRegistration.status.in_(ACTIVE_REGISTRATION_STATUSES),
                 ExamRegistration.deleted_at.is_(None),
+                library_capacity.holds_seat(ExamRegistration),
             )
             .group_by(ExamRegistration.session_id)
         )
@@ -459,6 +485,17 @@ async def _attach_counts_and_mine(
 
 
 def _reg_out(reg: ExamRegistration, *, session: ExamSessionOut | None = None) -> RegistrationOut:
+    # `RegistrationOut.session` DAİMA aşağıda açıkça verilir; ama `from_attributes`
+    # doğrulaması ORM'deki `reg.session` İLİŞKİSİNİ de okumaya çalışır. İlişki
+    # yüklenmemişse bu, async oturumda lazy-load denemesidir → MissingGreenlet →
+    # **HTTP 500**. Başarı yolunda görünmezdi çünkü `_get_session_or_404` oturumu
+    # kimlik haritasına koyuyor ve many-to-one okuması IO'suz karşılanıyordu;
+    # `pay()`'in idempotent erken dönüşü (zaten ödenmiş kayıt) o çağrıyı
+    # yapmadığı için ORADA 500 üretiyordu (İP-1b kırmızı matrisi buldu).
+    # İlişkiyi "yüklenmiş ve None" olarak işaretlemek okumayı IO'suz yapar ve
+    # nesneyi kirletmez; hemen ardından alan zaten üzerine yazılır.
+    if "session" in sa_inspect(reg).unloaded:
+        set_committed_value(reg, "session", None)
     out = RegistrationOut.model_validate(reg)
     out.amount = str(reg.amount)
     # QR + kısa kod yalnız ödenmiş (PAID) kayıtta paylaşılır.
@@ -480,10 +517,17 @@ async def register(
     db: AsyncSession, client: Client, session_id: int
 ) -> RegistrationOut:
     s = await _get_session_or_404(db, session_id)
+    lib = await _require_live_library(db, s.library_id)
     if s.status != ExamSessionStatus.SCHEDULED.value:
         raise HTTPException(status.HTTP_409_CONFLICT, "Bu oturum kayda kapalı")
     if s.starts_at < _now():
         raise HTTPException(status.HTTP_409_CONFLICT, "Bu oturumun tarihi geçmiş")
+
+    # Kontenjan kararları oturum başına SERİ koşar: kilitsiz "oku-sonra-yaz"
+    # eşzamanlı beş kaydın da aynı boşluğu görmesine izin veriyordu (P1-20).
+    # Kilit, kaydın kendisiyle aynı transaction'da tutulur ve commit'te düşer;
+    # bu blokta hiçbir dış servis çağrısı yoktur, yani pencere mikrosaniyeliktir.
+    await library_capacity.lock_exam_session(db, s.id)
 
     existing = (
         await db.execute(
@@ -494,27 +538,32 @@ async def register(
             )
         )
     ).scalars().first()
-    if existing is not None:
-        if existing.status == RegistrationStatus.CANCELLED.value:
-            # İptal edilmiş kaydı yeniden canlandır (ödeme bekleyen hale getir).
-            existing.status = RegistrationStatus.PENDING_PAYMENT.value
-            await db.commit()
-            await db.refresh(existing)
-            return _reg_out(existing)
+    if existing is not None and existing.status != RegistrationStatus.CANCELLED.value:
         raise HTTPException(status.HTTP_409_CONFLICT, "Bu oturuma zaten kayıtlısın")
 
-    active = await _count_active(db, session_id)
+    # İptal edilmiş kayıt canlandırılırken de koltuk gerekir: iptal koltuğu
+    # bırakmıştır, geri almak yeni bir kayıttan farklı değildir.
+    active = await library_capacity.count_exam_seats(
+        db, session_id, exclude_id=existing.id if existing is not None else None
+    )
     if active >= s.capacity:
         raise HTTPException(status.HTTP_409_CONFLICT, "Oturum kontenjanı dolu")
 
+    if existing is not None:
+        existing.status = RegistrationStatus.PENDING_PAYMENT.value
+        existing.hold_expires_at = library_capacity.seat_hold_deadline()
+        await db.commit()
+        await db.refresh(existing)
+        return _reg_out(existing)
+
     amount = Decimal(str(s.price))
-    lib = await db.get(Library, s.library_id)
-    rate = commission.rate_for(lib) if lib else commission.effective_commission_rate(None, None)
+    rate = commission.rate_for(lib)
     commission_amount, earning = commission.split(amount, rate)
     reg = ExamRegistration(
         session_id=session_id,
         client_id=client.id,
         status=RegistrationStatus.PENDING_PAYMENT.value,
+        hold_expires_at=library_capacity.seat_hold_deadline(),
         amount=amount,
         commission_amount=commission_amount,
         library_earning=earning,
@@ -541,8 +590,30 @@ async def pay(
         raise HTTPException(status.HTTP_409_CONFLICT, "Bu kayıt için ödeme yapılamaz")
 
     s = await _get_session_or_404(db, reg.session_id)
+    await _require_live_library(db, s.library_id)
     if s.status != ExamSessionStatus.SCHEDULED.value:
         raise HTTPException(status.HTTP_409_CONFLICT, "Oturum kayda kapalı")
+
+    # ── Uçuş-içi nöbeti: aynı kayda eşzamanlı ikinci ödeme TAHSİLAT YAPMAZ ──
+    # Eski kod düz ORM ataması yapıyordu (denetim P2-8): iki eşzamanlı istek de
+    # sağlayıcıya gidiyor, müşterinin kartından İKİ KEZ çekiliyor ve ikinci
+    # yazım birincinin `qr_token`'ını eziyordu (öğrencinin elindeki bilet
+    # sessizce geçersizleşiyordu). Kilit `escrow.py`'nin kayıt başına advisory
+    # nöbetidir; transaction boyunca (sağlayıcı çağrısı dahil) tutulur ve
+    # YALNIZ bu kaydı kilitler — başka öğrencilerin ödemesini engellemez.
+    if not await escrow.try_inflight_lock(db, escrow.EXAM_SPEC, reg.id):
+        raise HTTPException(
+            status.HTTP_409_CONFLICT, "Bu kayıt için bir ödeme işlemi zaten sürüyor."
+        )
+    # Kilidi beklerken durum değişmiş olabilir → TAZE oku (bayat karar verme).
+    taze = await escrow.current_status(db, reg, escrow.EXAM_SPEC)
+    if taze in (RegistrationStatus.PAID.value, RegistrationStatus.ATTENDED.value):
+        await db.refresh(reg)
+        return _reg_out(reg), None
+    if taze != RegistrationStatus.PENDING_PAYMENT.value:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Bu kayıt için ödeme yapılamaz")
+
+    await _koltugu_teyit_et(db, s, reg)
 
     # Ücretsiz oturum (price=0): doğrudan PAID, sağlayıcı çağrısı yok.
     provider = payments.get_payment_provider()
@@ -569,15 +640,60 @@ async def pay(
             )
         provider_ref = result.provider_ref
 
-    reg.status = RegistrationStatus.PAID.value
-    reg.provider = provider.name
-    reg.provider_ref = provider_ref
-    reg.paid_at = _now()
-    reg.qr_token = secrets.token_urlsafe(24)
-    reg.short_code = await _unique_short_code(db)
+    # Atomik claim (ders tarafındaki `payment_service.pay` deseni): geçiş bu
+    # transaction'a aitse True; değilse başka bir yol kaydı zaten sonuçlandırdı
+    # ve BURADA para hareketi yazılmaz.
+    claimed = await escrow.claim(
+        db,
+        ExamRegistration,
+        reg.id,
+        from_statuses=[RegistrationStatus.PENDING_PAYMENT.value],
+        values={
+            "status": RegistrationStatus.PAID.value,
+            "provider": provider.name,
+            "provider_ref": provider_ref,
+            "paid_at": _now(),
+            **await _bilet_alanlari(db),
+        },
+    )
     await db.commit()
     await db.refresh(reg)
+    if not claimed:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT, "Bu kayıt için ödeme yapılamaz"
+        )
     return _reg_out(reg), None
+
+
+async def _koltugu_teyit_et(
+    db: AsyncSession, s: LibraryExamSession, reg: ExamRegistration
+) -> None:
+    """Ödeme öncesi koltuk teyidi + tutmayı uzatma (denetim P1-20).
+
+    İki yol vardır ve ayrım maliyet içindir:
+
+    - **Tutma canlı**: koltuk zaten bu kaydın; kimseyle yarışılmaz, oturum
+      kilidi ALINMAZ. Ortak durum budur, dolayısıyla ödeme başlatma yolu
+      oturum başına serileşmez.
+    - **Tutma sona ermiş** (ya da bu sürümden önce açılmış kayıt): koltuk
+      yeniden alınmalıdır → oturum kilidi altında sayılır. Bu yol nadirdir
+      (öğrenci ödemeyi yarım bırakıp geri dönmüştür) ama sağlayıcı çağrısı
+      kilit altında kalır; bedeli bilinçlidir, alternatifi istek ortasında
+      ikinci bir commit'tir (projenin kendi TB-4 kaydında sakıncalı bulundu).
+    """
+    if library_capacity.hold_is_live(reg):
+        reg.hold_expires_at = library_capacity.seat_hold_deadline()
+        await db.flush()
+        return
+    await library_capacity.lock_exam_session(db, s.id)
+    dolu = await library_capacity.count_exam_seats(db, s.id, exclude_id=reg.id)
+    if dolu >= s.capacity:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Oturum kontenjanı doldu; ödeme alınamadı.",
+        )
+    reg.hold_expires_at = library_capacity.seat_hold_deadline()
+    await db.flush()
 
 
 async def complete_checkout(
@@ -635,10 +751,17 @@ async def complete_checkout(
         return
 
     session = await db.get(LibraryExamSession, reg.session_id)
+    lib = (
+        await db.get(Library, session.library_id) if session is not None else None
+    )
     session_dead = (
         session is None
         or session.deleted_at is not None
         or session.status != ExamSessionStatus.SCHEDULED.value
+        # Kütüphane silinmişse oturum da ölüdür: hak edişi yazacak taraf yok
+        # (denetim P1-21). Para emanete alınmaz, iade edilir.
+        or lib is None
+        or lib.deleted_at is not None
     )
     if reg.status == RegistrationStatus.CANCELLED.value or session_dead:
         outcome = await escrow.refund_escrow(
@@ -659,6 +782,27 @@ async def complete_checkout(
         )
         return
 
+    # Kontenjan callback yolunda da geçerlidir (denetim P1-20): öğrenci iyzico
+    # sayfasındayken koltuğu başkası almış olabilir. Para TAHSİL EDİLMİŞ olduğu
+    # için burada 409 atmak yetmez — bilet basılmaz ve tahsilat iade edilir.
+    await library_capacity.lock_exam_session(db, session.id)
+    dolu = await library_capacity.count_exam_seats(db, session.id, exclude_id=reg.id)
+    if dolu >= session.capacity:
+        outcome = await escrow.refund_escrow(
+            db,
+            reg,
+            escrow.EXAM_SPEC,
+            from_statuses=[RegistrationStatus.PENDING_PAYMENT.value],
+            provider_ref=provider_ref,
+        )
+        logger.error(
+            "iyzico callback: kontenjan dolduğu için kesinleştirilemedi; "
+            "iade akışı=%s (examreg=%s)",
+            outcome,
+            registration_id,
+        )
+        return
+
     claimed = await escrow.claim(
         db,
         ExamRegistration,
@@ -668,8 +812,7 @@ async def complete_checkout(
             "status": RegistrationStatus.PAID.value,
             **({"provider_ref": provider_ref} if provider_ref else {}),
             "paid_at": _now(),
-            "qr_token": secrets.token_urlsafe(24),
-            "short_code": await _unique_short_code(db),
+            **await _bilet_alanlari(db),
         },
     )
     if claimed:
@@ -790,14 +933,21 @@ async def auto_release_no_shows(db: AsyncSession) -> int:
         await db.execute(
             select(ExamRegistration, LibraryExamSession)
             .join(LibraryExamSession, LibraryExamSession.id == ExamRegistration.session_id)
+            # Silinmiş kütüphaneye hak ediş YAZILMAZ (denetim P1-21): `released_at`
+            # dolu satır bir daha iadeye claim edilemez (escrow H2), yani burada
+            # atılan damga geri alınamaz. Böyle bir satır varsa asıl arıza silme
+            # guard'ının atlanmış olmasıdır — sarkan bırakılıp ALARM edilir.
+            .join(Library, Library.id == LibraryExamSession.library_id)
             .where(
                 ExamRegistration.status == RegistrationStatus.PAID.value,
                 ExamRegistration.released_at.is_(None),
                 ExamRegistration.deleted_at.is_(None),
                 LibraryExamSession.starts_at <= now,
+                Library.deleted_at.is_(None),
             )
         )
     ).all()
+    await _yetim_emanet_alarmi(db, now)
     count = 0
     for reg, sess in rows:
         end = sess.starts_at + datetime.timedelta(minutes=sess.duration_minutes)
@@ -814,6 +964,43 @@ async def auto_release_no_shows(db: AsyncSession) -> int:
             ):
                 count += 1
     return count
+
+
+async def _yetim_emanet_alarmi(db: AsyncSession, now: datetime.datetime) -> None:
+    """Silinmiş kütüphanede sıkışmış ödenmiş bilet varsa ALARM üretir.
+
+    Sessizce atlamak, bu paketten önceki hatanın (para silinmiş tedarikçiye
+    akıyor) yerine yeni bir sessiz hata (para sonsuza dek emanette) koymak
+    olurdu. Silme guard'ı (`library_service.delete_library`) bu durumu artık
+    üretmiyor; geriye kalan satırlar geçmişten ya da doğrudan veri
+    müdahalesinden gelir ve İNSAN müdahalesi ister.
+    """
+    yetim = int(
+        (
+            await db.execute(
+                select(func.count())
+                .select_from(ExamRegistration)
+                .join(
+                    LibraryExamSession,
+                    LibraryExamSession.id == ExamRegistration.session_id,
+                )
+                .join(Library, Library.id == LibraryExamSession.library_id)
+                .where(
+                    ExamRegistration.status == RegistrationStatus.PAID.value,
+                    ExamRegistration.released_at.is_(None),
+                    ExamRegistration.deleted_at.is_(None),
+                    LibraryExamSession.starts_at <= now,
+                    Library.deleted_at.isnot(None),
+                )
+            )
+        ).scalar_one()
+    )
+    if yetim:
+        logger.error(
+            "ALARM: silinmiş kütüphanede %s ödenmiş deneme bileti sıkışmış — "
+            "otomatik serbest bırakma YAPILMADI, elle karar gerekiyor",
+            yetim,
+        )
 
 
 async def roster(db: AsyncSession, session_id: int) -> list[RosterRow]:

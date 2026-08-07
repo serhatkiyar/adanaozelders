@@ -38,6 +38,7 @@ from models.library import (
 )
 from models.library_exam import (
     ExamRegistration,
+    ExamSessionStatus,
     LibraryExamSession,
     RegistrationStatus,
 )
@@ -704,10 +705,99 @@ async def update_library(
     return await get_library_admin(db, lib.id)
 
 
+#: Silmeyi engelleyen para durumları: emanette duran ya da iade süreci devam
+#: eden kayıtlar. RELEASED (`released_at` dolu) ve REFUNDED kapanmış paradır,
+#: engellemez.
+_ACIK_PARA_DURUMLARI = (
+    RegistrationStatus.PAID.value,
+    RegistrationStatus.REFUNDING.value,
+)
+
+
+async def _silmeyi_engelleyen(db: AsyncSession, lib_id: int) -> str | None:
+    """Kütüphanenin silinmesini engelleyen ilk sebep (yoksa None).
+
+    Denetim P1-22: silme yalnız `deleted_at` damgalıyordu; emanetteki para,
+    açık rezervasyon ve verilmiş oturum taahhüdü sorgulanmıyordu. Sonuç yetim
+    emanetti — hak ediş defteri parayı "hak edilmiş" saymaya devam ediyor ama
+    karşılığında hesap yok, ve otomatik serbest bırakma silinmiş bir tedarikçiye
+    para yazıyordu (P1-21/S-4).
+
+    Mesaj hangi kaydın engellediğini SÖYLER: "silinemez" diyen ama sebebini
+    söylemeyen bir hata, admini kör bir aramaya iter.
+    """
+    bilet = int(
+        (
+            await db.execute(
+                select(func.count())
+                .select_from(ExamRegistration)
+                .join(
+                    LibraryExamSession,
+                    LibraryExamSession.id == ExamRegistration.session_id,
+                )
+                .where(
+                    LibraryExamSession.library_id == lib_id,
+                    ExamRegistration.deleted_at.is_(None),
+                    ExamRegistration.status.in_(_ACIK_PARA_DURUMLARI),
+                    ExamRegistration.released_at.is_(None),
+                )
+            )
+        ).scalar_one()
+    )
+    if bilet:
+        return f"{bilet} adet ödenmiş deneme bileti emanette (para henüz kapanmadı)"
+
+    rezervasyon = int(
+        (
+            await db.execute(
+                select(func.count()).where(
+                    StudyReservation.library_id == lib_id,
+                    StudyReservation.deleted_at.is_(None),
+                    StudyReservation.status.in_(_ACIK_PARA_DURUMLARI),
+                    StudyReservation.released_at.is_(None),
+                )
+            )
+        ).scalar_one()
+    )
+    if rezervasyon:
+        return (
+            f"{rezervasyon} adet ödenmiş çalışma alanı rezervasyonu emanette "
+            "(para henüz kapanmadı)"
+        )
+
+    # Bilet satılmamış olsa bile gelecekteki planlı oturum bir TAAHHÜTTÜR;
+    # silme onu sessizce yutmamalı. Admin önce oturumu iptal eder — o yol
+    # gerekli iadeleri ve bildirimleri üretir.
+    oturum = int(
+        (
+            await db.execute(
+                select(func.count()).where(
+                    LibraryExamSession.library_id == lib_id,
+                    LibraryExamSession.deleted_at.is_(None),
+                    LibraryExamSession.status == ExamSessionStatus.SCHEDULED.value,
+                    LibraryExamSession.starts_at
+                    > datetime.datetime.now(datetime.timezone.utc),
+                )
+            )
+        ).scalar_one()
+    )
+    if oturum:
+        return (
+            f"{oturum} adet gelecek tarihli planlı deneme oturumu var; önce "
+            "oturumları iptal edin"
+        )
+    return None
+
+
 async def delete_library(db: AsyncSession, lib_id: int) -> None:
     lib = await db.get(Library, lib_id)
     if lib is None or lib.deleted_at is not None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Kütüphane bulunamadı")
+    engel = await _silmeyi_engelleyen(db, lib_id)
+    if engel is not None:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT, f"Kütüphane silinemez: {engel}."
+        )
     lib.deleted_at = datetime.datetime.now(datetime.timezone.utc)
     await db.commit()
 

@@ -45,7 +45,15 @@ class RegistrationStatus(str, enum.Enum):
     REFUNDED = "REFUNDED"
 
 
-# Kontenjana sayılan / "aktif kayıt" durumları.
+# "Aktif kayıt" durumları: para alınmış ve kayıt canlı.
+#
+# ⚠️ Bu sabit KONTENJANIN tek ölçütü DEĞİLDİR ve öyle olmamalıdır. Ödeme bekleyen
+# (`PENDING_PAYMENT`) bir kayıt da süreli olarak koltuk tutar; koltuk yüklemi
+# `services/library_capacity.py::holds_seat`'tedir. Buraya `PENDING_PAYMENT`
+# EKLENMEDİ çünkü bu sabit aynı zamanda operatörün yoklama listesini (`roster`),
+# toplu karne eşlemesini ve **kütüphaneyle mesajlaşma kapısını**
+# (`messaging_service.py`) besliyor — ödemesiz bir kaydı oraya sokmak, parası
+# alınmamış birine operatör listesinde yer ve DM hakkı vermek olurdu.
 ACTIVE_REGISTRATION_STATUSES = (
     RegistrationStatus.PAID.value,
     RegistrationStatus.ATTENDED.value,
@@ -135,6 +143,14 @@ class ExamRegistration(Base, TimestampMixin, SoftDeleteMixin):
     status: Mapped[str] = mapped_column(
         String(16), nullable=False, server_default=text("'PENDING_PAYMENT'")
     )
+    # Ödeme bekleyen kaydın koltuk TUTMA süresi. `PENDING_PAYMENT` iken bu an
+    # geçmemişse kayıt kontenjandan bir koltuk yer (bkz. services/
+    # library_capacity.py). Süresiz tutma kontenjanı kilitler, hiç tutmamak ise
+    # kapasitenin üzerinde tahsilata yol açar (denetim P1-20). NULL = tutma yok
+    # (bu sürümden önce açılmış kayıtlar; koltuk tutmazlar).
+    hold_expires_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     # Escrow / ödeme
     amount: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False)
@@ -206,6 +222,31 @@ class ExamRegistration(Base, TimestampMixin, SoftDeleteMixin):
         ),
         Index("ix_exam_reg_client", "client_id"),
         Index("ix_exam_reg_status", "status"),
+        # Kontenjan sayımı: (oturum, durum) — koltuk yüklemi her yazma yolunda
+        # kilit altında koşar, sıralı tarama yapmamalı.
+        Index(
+            "ix_exam_reg_session_status",
+            "session_id",
+            "status",
+            postgresql_where=text("deleted_at IS NULL"),
+        ),
+        # Bilet kodu tekilliği (denetim P2-40). `verify_attendance` bileti YALNIZ
+        # koda bakarak bulur ve `.first()` ile alır; iki canlı satır aynı kodu
+        # taşırsa yanlış öğrencinin katılımı doğrulanır ve yanlış emanet serbest
+        # bırakılır. Kısmi (deleted_at IS NULL) çünkü doğrulama da yalnız canlı
+        # satırlara bakar; NULL kodlar Postgres'te çakışmaz (ödeme öncesi kayıt).
+        Index(
+            "uq_exam_reg_qr_token",
+            "qr_token",
+            unique=True,
+            postgresql_where=text("deleted_at IS NULL"),
+        ),
+        Index(
+            "uq_exam_reg_short_code",
+            "short_code",
+            unique=True,
+            postgresql_where=text("deleted_at IS NULL"),
+        ),
         # Conservation invariant'ı DB'de: tutar daima komisyon + kütüphane kazancı.
         CheckConstraint(
             "amount = commission_amount + library_earning",

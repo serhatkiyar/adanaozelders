@@ -9,7 +9,6 @@ için kullanılır. No-show iadesi yoktur (ödenmiş rezervasyon iptal edilemez)
 from __future__ import annotations
 
 import datetime
-import secrets
 from decimal import ROUND_HALF_UP, Decimal
 
 from fastapi import HTTPException, status
@@ -17,7 +16,6 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core import payments
-from core.codes import gen_short_code
 from core.config import settings
 from models.client import Client
 from models.library import Library, LibraryHours, LibraryStatus
@@ -28,7 +26,13 @@ from schemas.library_exam import AttendanceResult
 from schemas.study import StudyQuoteOut, StudyReservationOut
 import logging
 
-from services import commission, escrow, notification_service, payment_gates
+from services import (
+    commission,
+    escrow,
+    library_capacity,
+    notification_service,
+    payment_gates,
+)
 
 logger = logging.getLogger("adana.escrow")
 
@@ -58,21 +62,25 @@ def compute_amount(hourly_price: Decimal, starts: datetime.datetime, ends: datet
     return amount.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
 
-async def _unique_short_code(db: AsyncSession) -> str:
-    """Aktif (PAID/ATTENDED) rezervasyonlar arasında benzersiz kısa kod üretir."""
-    while True:
-        code = gen_short_code()
-        exists = (
-            await db.execute(
-                select(StudyReservation.id).where(
-                    StudyReservation.short_code == code,
-                    StudyReservation.status.in_(ACTIVE_REGISTRATION_STATUSES),
-                    StudyReservation.deleted_at.is_(None),
-                )
-            )
-        ).first()
-        if exists is None:
-            return code
+async def _bilet_alanlari(db: AsyncSession) -> dict:
+    """Yeni bir rezervasyon biletine yazılacak benzersiz QR token'ı + kısa kod."""
+    return {
+        "qr_token": await library_capacity.unique_qr_token(db),
+        "short_code": await library_capacity.unique_short_code(db),
+    }
+
+
+async def _require_live_library(db: AsyncSession, library_id: int) -> Library:
+    """Satış yüzeylerinin ortak canlılık kapısı (`reserve`'deki doğru desen)."""
+    library = await db.get(Library, library_id)
+    if library is None or library.deleted_at is not None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Kütüphane bulunamadı")
+    if library.status != LibraryStatus.ACTIVE.value:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Kütüphane henüz onaylı değil; rezervasyon yapılamaz.",
+        )
+    return library
 
 
 async def _overlap_count(
@@ -80,16 +88,18 @@ async def _overlap_count(
     library_id: int,
     starts: datetime.datetime,
     ends: datetime.datetime,
+    *,
+    exclude_id: int | None = None,
 ) -> int:
-    """Verilen pencereyle çakışan aktif (ödenmiş/katılmış) rezervasyon sayısı."""
-    stmt = select(func.count()).where(
-        StudyReservation.library_id == library_id,
-        StudyReservation.status.in_(ACTIVE_REGISTRATION_STATUSES),
-        StudyReservation.deleted_at.is_(None),
-        StudyReservation.starts_at < ends,
-        StudyReservation.ends_at > starts,
+    """Pencereyle çakışan, KOLTUK TUTAN rezervasyon sayısı.
+
+    Ödenmiş/katılmış rezervasyonlara ek olarak süresi geçmemiş ödeme tutmaları
+    da sayılır (denetim P1-20): tutma saymazsa kapasite kadar kişi rezerve edip
+    hepsi ödeyebilirdi.
+    """
+    return await library_capacity.count_study_seats(
+        db, library_id, starts, ends, exclude_id=exclude_id
     )
-    return int((await db.execute(stmt)).scalar_one())
 
 
 async def _validate_window(
@@ -230,24 +240,21 @@ async def reserve(
     starts: datetime.datetime,
     ends: datetime.datetime,
 ) -> StudyReservationOut:
-    library = await db.get(Library, library_id)
-    if library is None or library.deleted_at is not None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, "Kütüphane bulunamadı")
-    # Yalnız onaylı (ACTIVE) kütüphanede rezervasyon yapılabilir (onay öncesi ücretli akış yok).
-    if library.status != LibraryStatus.ACTIVE.value:
-        raise HTTPException(
-            status.HTTP_409_CONFLICT, "Kütüphane henüz onaylı değil; rezervasyon yapılamaz."
-        )
+    # Yalnız canlı ve onaylı (ACTIVE) kütüphanede rezervasyon yapılabilir.
+    library = await _require_live_library(db, library_id)
     hourly = _ensure_study_enabled(library)
     await _validate_window(db, library, starts, ends)
 
-    used = await _overlap_count(db, library_id, starts, ends)
-    if used >= (library.capacity or 0):
-        raise HTTPException(status.HTTP_409_CONFLICT, "Seçilen saatte kapasite dolu")
+    # Kapasite kararları kütüphane başına SERİ koşar (denetim P1-20): kilitsiz
+    # "oku-sonra-yaz" eşzamanlı iki rezervasyonun da aynı boşluğu görmesine izin
+    # veriyordu. Kilit bu transaction'a aittir, dış servis çağrısı yoktur.
+    await library_capacity.lock_library(db, library_id)
 
     # Öğrencinin bu pencereyle çakışan ÖDENMEMİŞ (askıda) holdlerini iptal et: terk
     # edilmiş bir ödeme denemesi (PENDING_PAYMENT) aynı öğrenciyi aynı slottan kalıcı
-    # olarak engellememeli. Askıdaki holdler kapasiteyi de tüketmez.
+    # olarak engellememeli. İptal edilen hold koltuğu da bırakır — bu yüzden
+    # temizlik SAYIMDAN ÖNCE yapılır (aksi halde öğrenci kendi terk ettiği
+    # tutması yüzünden "kapasite dolu" görürdü).
     stale = (
         await db.execute(
             select(StudyReservation).where(
@@ -262,6 +269,13 @@ async def reserve(
     ).scalars().all()
     for s in stale:
         s.status = RegistrationStatus.CANCELLED.value
+    if stale:
+        # İptaller sayımdan ÖNCE görünür olmalı (aynı transaction, flush yeter).
+        await db.flush()
+
+    used = await _overlap_count(db, library_id, starts, ends)
+    if used >= (library.capacity or 0):
+        raise HTTPException(status.HTTP_409_CONFLICT, "Seçilen saatte kapasite dolu")
 
     # Yalnız ÖDENMİŞ/aktif çakışan rezervasyon varsa engelle (çift ödeme olmasın).
     own = (
@@ -283,8 +297,7 @@ async def reserve(
         )
 
     amount = compute_amount(hourly, starts, ends)
-    lib = await db.get(Library, library_id)
-    rate = commission.rate_for(lib) if lib else commission.effective_commission_rate(None, None)
+    rate = commission.rate_for(library)
     commission_amount, earning = commission.split(amount, rate)
     res = StudyReservation(
         library_id=library_id,
@@ -292,6 +305,7 @@ async def reserve(
         starts_at=starts,
         ends_at=ends,
         status=RegistrationStatus.PENDING_PAYMENT.value,
+        hold_expires_at=library_capacity.seat_hold_deadline(),
         hourly_price=hourly,
         amount=amount,
         commission_amount=commission_amount,
@@ -318,6 +332,24 @@ async def pay(
     if res.status != RegistrationStatus.PENDING_PAYMENT.value:
         raise HTTPException(status.HTTP_409_CONFLICT, "Bu rezervasyon için ödeme yapılamaz")
 
+    library = await _require_live_library(db, res.library_id)
+
+    # Uçuş-içi nöbeti (denetim P2-8) — deneme bileti yolundakiyle aynı sözleşme:
+    # aynı rezervasyona eşzamanlı ikinci ödeme sağlayıcıya HİÇ gitmez.
+    if not await escrow.try_inflight_lock(db, escrow.STUDY_SPEC, res.id):
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Bu rezervasyon için bir ödeme işlemi zaten sürüyor.",
+        )
+    taze = await escrow.current_status(db, res, escrow.STUDY_SPEC)
+    if taze in (RegistrationStatus.PAID.value, RegistrationStatus.ATTENDED.value):
+        await db.refresh(res)
+        return _res_out(res), None
+    if taze != RegistrationStatus.PENDING_PAYMENT.value:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Bu rezervasyon için ödeme yapılamaz")
+
+    await _koltugu_teyit_et(db, library, res)
+
     provider = payments.get_payment_provider()
     provider_ref: str | None = None
     if Decimal(str(res.amount)) > 0:
@@ -342,15 +374,51 @@ async def pay(
             )
         provider_ref = result.provider_ref
 
-    res.status = RegistrationStatus.PAID.value
-    res.provider = provider.name
-    res.provider_ref = provider_ref
-    res.paid_at = _now()
-    res.qr_token = secrets.token_urlsafe(24)
-    res.short_code = await _unique_short_code(db)
+    claimed = await escrow.claim(
+        db,
+        StudyReservation,
+        res.id,
+        from_statuses=[RegistrationStatus.PENDING_PAYMENT.value],
+        values={
+            "status": RegistrationStatus.PAID.value,
+            "provider": provider.name,
+            "provider_ref": provider_ref,
+            "paid_at": _now(),
+            **await _bilet_alanlari(db),
+        },
+    )
     await db.commit()
     await db.refresh(res)
+    if not claimed:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT, "Bu rezervasyon için ödeme yapılamaz"
+        )
     return _res_out(res), None
+
+
+async def _koltugu_teyit_et(
+    db: AsyncSession, library: Library, res: StudyReservation
+) -> None:
+    """Ödeme öncesi koltuk teyidi + tutmayı uzatma (deneme kolu ile aynı sözleşme).
+
+    Tutma canlıysa koltuk zaten bu rezervasyonundur ve kütüphane kilidi
+    ALINMAZ; sona ermişse koltuk kilit altında yeniden alınır.
+    """
+    if library_capacity.hold_is_live(res):
+        res.hold_expires_at = library_capacity.seat_hold_deadline()
+        await db.flush()
+        return
+    await library_capacity.lock_library(db, res.library_id)
+    dolu = await _overlap_count(
+        db, res.library_id, res.starts_at, res.ends_at, exclude_id=res.id
+    )
+    if dolu >= (library.capacity or 0):
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Seçilen saatte kapasite doldu; ödeme alınamadı.",
+        )
+    res.hold_expires_at = library_capacity.seat_hold_deadline()
+    await db.flush()
 
 
 async def complete_checkout(
@@ -402,18 +470,46 @@ async def complete_checkout(
         )
         return
 
-    if res.status == RegistrationStatus.CANCELLED.value:
+    library = await db.get(Library, res.library_id)
+    olu = library is None or library.deleted_at is not None
+    if res.status == RegistrationStatus.CANCELLED.value or olu:
         # Rezervasyon bu arada iptal edilmiş (öğrenci ya da reserve()'ün stale-hold
-        # temizliği) — tahsil edilen para kara delikte kalmasın, anında iade (C2b).
+        # temizliği) ya da kütüphane silinmiş (P1-21) — tahsil edilen para kara
+        # delikte kalmasın, anında iade (C2b).
         outcome = await escrow.refund_escrow(
             db,
             res,
             escrow.STUDY_SPEC,
-            from_statuses=[RegistrationStatus.CANCELLED.value],
+            from_statuses=[
+                RegistrationStatus.PENDING_PAYMENT.value,
+                RegistrationStatus.CANCELLED.value,
+            ],
             provider_ref=provider_ref,
         )
         logger.error(
-            "iyzico callback: iptal edilmiş rezervasyona tahsilat geldi; "
+            "iyzico callback: iptal edilmiş/ölü rezervasyona tahsilat geldi; "
+            "iade akışı=%s (studyres=%s)",
+            outcome,
+            reservation_id,
+        )
+        return
+
+    # Kontenjan callback yolunda da geçerlidir (P1-20): koltuk bu arada dolduysa
+    # bilet basılmaz ve tahsil edilen para iade edilir.
+    await library_capacity.lock_library(db, res.library_id)
+    dolu = await _overlap_count(
+        db, res.library_id, res.starts_at, res.ends_at, exclude_id=res.id
+    )
+    if dolu >= (library.capacity or 0):
+        outcome = await escrow.refund_escrow(
+            db,
+            res,
+            escrow.STUDY_SPEC,
+            from_statuses=[RegistrationStatus.PENDING_PAYMENT.value],
+            provider_ref=provider_ref,
+        )
+        logger.error(
+            "iyzico callback: kapasite dolduğu için kesinleştirilemedi; "
             "iade akışı=%s (studyres=%s)",
             outcome,
             reservation_id,
@@ -429,8 +525,7 @@ async def complete_checkout(
             "status": RegistrationStatus.PAID.value,
             **({"provider_ref": provider_ref} if provider_ref else {}),
             "paid_at": _now(),
-            "qr_token": secrets.token_urlsafe(24),
-            "short_code": await _unique_short_code(db),
+            **await _bilet_alanlari(db),
         },
     )
     if claimed:
@@ -525,14 +620,20 @@ async def auto_release_no_shows(db: AsyncSession) -> int:
     grace = datetime.timedelta(hours=settings.AUTO_COMPLETE_GRACE_HOURS)
     rows = (
         await db.execute(
-            select(StudyReservation).where(
+            select(StudyReservation)
+            # Silinmiş kütüphaneye hak ediş YAZILMAZ (P1-21) — `released_at`
+            # geri alınamaz bir damgadır (escrow H2).
+            .join(Library, Library.id == StudyReservation.library_id)
+            .where(
                 StudyReservation.status == RegistrationStatus.PAID.value,
                 StudyReservation.released_at.is_(None),
                 StudyReservation.deleted_at.is_(None),
                 StudyReservation.ends_at <= now - grace,
+                Library.deleted_at.is_(None),
             )
         )
     ).scalars().all()
+    await _yetim_emanet_alarmi(db, now - grace)
     count = 0
     for r in rows:
         # Koşullu damga: eşzamanlı iade claim'i kazandıysa released_at yazılmaz.
@@ -546,6 +647,36 @@ async def auto_release_no_shows(db: AsyncSession) -> int:
         ):
             count += 1
     return count
+
+
+async def _yetim_emanet_alarmi(db: AsyncSession, esik: datetime.datetime) -> None:
+    """Silinmiş kütüphanede sıkışmış ödenmiş rezervasyon varsa ALARM üretir.
+
+    Sessizce atlamak, eski hatayı (para silinmiş tedarikçiye akıyor) yeni bir
+    sessiz hatayla (para sonsuza dek emanette) değiştirmek olurdu.
+    """
+    yetim = int(
+        (
+            await db.execute(
+                select(func.count())
+                .select_from(StudyReservation)
+                .join(Library, Library.id == StudyReservation.library_id)
+                .where(
+                    StudyReservation.status == RegistrationStatus.PAID.value,
+                    StudyReservation.released_at.is_(None),
+                    StudyReservation.deleted_at.is_(None),
+                    StudyReservation.ends_at <= esik,
+                    Library.deleted_at.isnot(None),
+                )
+            )
+        ).scalar_one()
+    )
+    if yetim:
+        logger.error(
+            "ALARM: silinmiş kütüphanede %s ödenmiş çalışma rezervasyonu sıkışmış — "
+            "otomatik serbest bırakma YAPILMADI, elle karar gerekiyor",
+            yetim,
+        )
 
 
 def _window_label(res: StudyReservation) -> str:

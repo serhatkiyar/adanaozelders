@@ -325,6 +325,15 @@ async def factory(pg) -> MoneyFactory:
 # aynı adı test parametresi olarak da kullanmak F811 (gölgeleme) üretirdi.
 from tests.integration.ip1a_factory import ip1a, ip1a_http  # noqa: E402,F401
 
+# İP-1b kütüphane kolu (kontenjan / canlılık / bilet kodu / claim) fixture'ları.
+# Aynı gerekçe: fixture adları conftest ad alanında olmalı, test modülüne
+# import edilirlerse aynı adı parametre olarak kullanmak F811 üretir.
+from tests.integration.ip1b_factory import (  # noqa: E402,F401
+    ip1b,
+    ip1b_http,
+    sayan_saglayici,
+)
+
 # ═══════════════ İP-3: yetki / kişisel veri / hesap güvenliği ═══════════════
 
 

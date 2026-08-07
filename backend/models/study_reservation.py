@@ -12,7 +12,9 @@ from sqlalchemy import (
     String,
     text,
 )
+from sqlalchemy.dialects.postgresql import ExcludeConstraint, Range, TSTZRANGE
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.schema import Computed
 
 from core.database import Base
 from models.mixins import SoftDeleteMixin, TimestampMixin
@@ -47,8 +49,23 @@ class StudyReservation(Base, TimestampMixin, SoftDeleteMixin):
         DateTime(timezone=True), nullable=False
     )
 
+    # Ders tarafındaki `bookings.time_slot` ile birebir aynı desen: aralık
+    # üretilmiş (generated) kolonda tutulur ki GiST exclusion kısıtı ve aralık
+    # index'i ifade edilebilsin. İfadeyi kısıtın içine gömmek yerine kolon
+    # yapmak, aynı aralığı okuyan sorguların da index'ten yararlanmasını sağlar.
+    time_slot: Mapped[Range[datetime.datetime]] = mapped_column(
+        TSTZRANGE,
+        Computed("tstzrange(starts_at, ends_at, '[)')", persisted=True),
+        nullable=False,
+    )
+
     status: Mapped[str] = mapped_column(
         String(16), nullable=False, server_default=text("'PENDING_PAYMENT'")
+    )
+    # Ödeme bekleyen rezervasyonun koltuk TUTMA süresi — ExamRegistration ile
+    # aynı sözleşme (bkz. services/library_capacity.py).
+    hold_expires_at: Mapped[datetime.datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
     )
 
     # Escrow / ödeme (ExamRegistration ile aynı gömülü alanlar)
@@ -97,6 +114,35 @@ class StudyReservation(Base, TimestampMixin, SoftDeleteMixin):
         CheckConstraint("ends_at > starts_at", name="ck_study_res_window"),
         Index("ix_study_res_window", "library_id", "starts_at", "ends_at"),
         Index("ix_study_res_status", "status"),
+        # Aynı öğrenci, aynı kütüphanede çakışan İKİ ödenmiş rezervasyon tutamaz
+        # — ders tarafındaki `ex_bookings_no_overlap` deseninin birebir kardeşi.
+        #
+        # ⚠️ Bu kısıt KÜTÜPHANE KAPASİTESİNİ zorlamaz ve zorlayamaz: exclusion
+        # "hiçbir iki satır çakışmasın" der, yani ancak kapasite=1'i ifade
+        # ederdi. N koltuklu bir salonda sayı tabanlı kontenjan serileştirme
+        # (advisory kilit + sayım) ister — bkz. services/library_capacity.py.
+        # İkisi birbirinin yerine geçmez; ikisi de gerekir.
+        ExcludeConstraint(
+            ("client_id", "="),
+            ("library_id", "="),
+            ("time_slot", "&&"),
+            using="gist",
+            where=text("status IN ('PAID', 'ATTENDED') AND deleted_at IS NULL"),
+            name="ex_study_res_client_no_overlap",
+        ),
+        # Bilet kodu tekilliği — ExamRegistration ile aynı gerekçe (P2-40).
+        Index(
+            "uq_study_res_qr_token",
+            "qr_token",
+            unique=True,
+            postgresql_where=text("deleted_at IS NULL"),
+        ),
+        Index(
+            "uq_study_res_short_code",
+            "short_code",
+            unique=True,
+            postgresql_where=text("deleted_at IS NULL"),
+        ),
         # Conservation invariant'ı DB'de: tutar daima komisyon + kütüphane kazancı.
         CheckConstraint(
             "amount = commission_amount + library_earning",
