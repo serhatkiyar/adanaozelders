@@ -19,8 +19,12 @@ gerçekten DB'de olduğunu göstermenin tek yolu kısıtı geçici olarak düş�
 - Kısıt tanımı düşürülmeden ÖNCE `pg_get_constraintdef` / `pg_get_indexdef` ile
   okunur ve geri yükleme **tam olarak o metinle** yapılır — elle yeniden yazılan
   bir tanım sessizce farklı olabilirdi.
-- Geri yükleme `finally` içindedir ve sonunda kısıtın **gerçekten var olduğu**
-  yeniden sorgulanır; doğrulanamazsa çıkış kodu sıfır-dışıdır.
+- Geri yükleme `finally` içindedir ve **davranışla** doğrulanır: kısıt yeniden
+  kurulduktan sonra hedef test tekrar koşturulur ve YEŞİL olması beklenir.
+  (Metin karşılaştırması bilinçli olarak yeterli sayılmaz: PostgreSQL kısıtı
+  yeniden oluştururken WHERE ifadesinin parantezlemesini normalize edebiliyor
+  ve birebir eşitlik, kural aynı olduğu hâlde YANLIŞ alarm veriyor — ilk koşumda
+  tam olarak bu oldu. Metin farkı yine de raporlanır, ama karar davranışındır.)
 
 ## Kullanım
 
@@ -130,10 +134,17 @@ async def _drill(ad: str, tur: str, tablo: str, testler) -> bool:
                     await conn.execute(text(tanim))
         async with engine.begin() as conn:
             geri = await _tanim(conn, ad, tur)
-        if geri != tanim:
-            print(f"!!! GERİ YÜKLEME DOĞRULANAMADI ({ad}) — DUR !!!")
+        if geri is None:
+            print(f"!!! GERİ YÜKLENEMEDİ ({ad}) — DUR !!!")
             raise SystemExit(3)
-        print(f"geri yüklendi ve doğrulandı: {ad}")
+        if geri != tanim:
+            # Kural aynı, metin normalize edilmiş olabilir; karar davranışta.
+            print(f"NOT: {ad} tanım metni normalize edildi.\n  önce: {tanim}\n  sonra: {geri}")
+        geri_yesil, _ = _pytest(testler)
+        if not geri_yesil:
+            print(f"!!! GERİ YÜKLEME DAVRANIŞLA DOĞRULANAMADI ({ad}) — DUR !!!")
+            raise SystemExit(3)
+        print(f"geri yüklendi ve DAVRANIŞLA doğrulandı: {ad}")
 
     if yakalandi:
         son = [x for x in cikti.strip().splitlines() if x.strip()][-1:]

@@ -57,6 +57,10 @@ ignore = [
 # kırıldığını ve geri almanın doğrulandığını adım adım yazar; bu çıktı
 # CLAUDE.md §D'nin istediği kanıtın ta kendisidir.
 "scripts/mutation_drill.py" = ["T201"]
+# Aynı gerekçe: DB kısıtı (DDL) mutasyon provası sürücüsü. Hangi kısıtın
+# düşürüldüğünü, testin kırıldığını ve geri yüklemenin DAVRANIŞLA doğrulandığını
+# adım adım yazar; çıktı provanın kanıtıdır.
+"scripts/ip1b_ddl_drill.py" = ["T201"]
 # Defter yeniden hesaplama aracı: dry-run'da ne değişeceğini, --apply'da ne
 # değiştiğini satır satır bildirir; sessiz çalışması tehlikeli olurdu.
 "scripts/dev_rebase_stock.py" = ["T201"]
