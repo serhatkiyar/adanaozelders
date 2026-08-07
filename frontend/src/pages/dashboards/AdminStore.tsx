@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { useMutation } from "@tanstack/react-query";
 import { NavLink, useLocation } from "react-router-dom";
 import { AccessDenied, ReadOnlyNotice, useAdminAreaAccess } from "@/components/admin/AccessState";
-import { ConfirmDialog, ReasonDialog } from "@/components/admin/ui";
+import { ConfirmDialog, ErrorState, ReasonDialog } from "@/components/admin/ui";
 import { adminAreaAccess } from "@/lib/adminAccess";
 import { useAuthStore } from "@/store/authStore";
 import { formatTL } from "@/lib/money";
@@ -42,6 +42,7 @@ import {
   useResolveReturn,
   useUpdateCoupon,
 } from "@/hooks/useStore";
+import { getErrorDetail } from "@/lib/errors";
 import { toast } from "@/store/toastStore";
 import type {
   BulkImportResult,
@@ -138,12 +139,20 @@ export default function AdminStore() {
 
 function ProductsPanel() {
   const { canView, canManage } = useAdminAreaAccess("products");
-  const { data: products, isLoading } = useAdminProducts();
+  const { data: products, isLoading, isError, error, refetch } = useAdminProducts();
   const invalidate = useInvalidateAdminStore();
   const [showForm, setShowForm] = useState(false);
   const [showImport, setShowImport] = useState(false);
 
   if (!canView) return <AccessDenied area="Ürünler" />;
+  if (isError) {
+    return (
+      <ErrorState
+        description={getErrorDetail(error, "Ürünler yüklenemedi.")}
+        onRetry={() => void refetch()}
+      />
+    );
+  }
 
   return (
     <div>
@@ -417,10 +426,16 @@ function AdminProductRow({
     mutationFn: () => deleteProduct(product.id),
     onSuccess: () => {
       toast.success("Ürün silindi");
+      setDeleting(false);
       onChange();
     },
+    // P1-5 sınıfı: sessiz başarısızlık yönetici için "silindi" ile aynı görünür.
+    onError: (err: unknown) => toast.error(getErrorDetail(err, "Ürün silinemedi")),
   });
   const [editing, setEditing] = useState(false);
+  // Yıkıcı aksiyon ONAY penceresi olmadan tetiklenmez: katalogdan ürün
+  // düşürmek yanlış satıra tıklamayla geri alınamaz bir sonuç üretir.
+  const [deleting, setDeleting] = useState(false);
 
   return (
     <>
@@ -448,12 +463,23 @@ function AdminProductRow({
             <button type="button" onClick={() => toggle.mutate()} className="font-medium text-slate-600 hover:underline dark:text-slate-300">
               {product.status === "ACTIVE" ? "Gizle" : "Yayınla"}
             </button>
-            <button type="button" onClick={() => remove.mutate()} className="font-medium text-rose-500 hover:underline">
+            <button type="button" onClick={() => setDeleting(true)} className="font-medium text-rose-500 hover:underline">
               Sil
             </button>
           </div>
         )}
       </div>
+
+      <ConfirmDialog
+        open={deleting}
+        title="Ürünü sil"
+        description={`"${product.title}" katalogdan kaldırılacak.`}
+        confirmLabel="Ürünü sil"
+        danger
+        isPending={remove.isPending}
+        onClose={() => setDeleting(false)}
+        onConfirm={() => remove.mutate()}
+      />
 
       {editing && (
         <EditProductModal
@@ -614,7 +640,7 @@ function BulkImportPanel({ onDone }: { onDone: () => void }) {
 
 function CategoriesPanel() {
   const { canView, canManage } = useAdminAreaAccess("products");
-  const { data: categories } = useCategories();
+  const { data: categories, isError, error } = useCategories();
   const invalidate = useInvalidateAdminStore();
   const [name, setName] = useState("");
 
@@ -626,15 +652,21 @@ function CategoriesPanel() {
       invalidate();
     },
   });
+  const [deleting, setDeleting] = useState<{ id: number; name: string } | null>(null);
   const remove = useMutation({
     mutationFn: (id: number) => deleteCategory(id),
     onSuccess: () => {
       toast.success("Kategori silindi");
+      setDeleting(null);
       invalidate();
     },
+    onError: (err: unknown) => toast.error(getErrorDetail(err, "Kategori silinemedi")),
   });
 
   if (!canView) return <AccessDenied area="Kategoriler" />;
+  if (isError) {
+    return <ErrorState description={getErrorDetail(error, "Kategoriler yüklenemedi.")} />;
+  }
 
   return (
     <div>
@@ -660,13 +692,23 @@ function CategoriesPanel() {
               {c.name} <span className="text-slate-400">({c.product_count ?? 0})</span>
             </span>
             {canManage && (
-              <button type="button" onClick={() => remove.mutate(c.id)} className="text-xs font-medium text-rose-500 hover:underline">
+              <button type="button" onClick={() => setDeleting({ id: c.id, name: c.name })} className="text-xs font-medium text-rose-500 hover:underline">
                 Sil
               </button>
             )}
           </div>
         ))}
       </div>
+      <ConfirmDialog
+        open={deleting !== null}
+        title="Kategoriyi sil"
+        description={deleting ? `"${deleting.name}" kategorisi silinecek.` : ""}
+        confirmLabel="Kategoriyi sil"
+        danger
+        isPending={remove.isPending}
+        onClose={() => setDeleting(null)}
+        onConfirm={() => deleting && remove.mutate(deleting.id)}
+      />
     </div>
   );
 }
@@ -675,8 +717,11 @@ function CategoriesPanel() {
 
 function OrdersPanel() {
   const { canView, canManage } = useAdminAreaAccess("orders");
-  const { data: orders, isLoading } = useAdminOrders();
+  const { data: orders, isLoading, isError, error, refetch } = useAdminOrders();
   const invalidate = useInvalidateAdminStore();
+  // "Teslim edildi" siparişi terminal duruma taşır ve teslimat akışını kapatır;
+  // yanlış satıra tıklama geri alınamaz (P1-5 gerekçesi).
+  const [teslimSiparisi, setTeslimSiparisi] = useState<number | null>(null);
 
   const ship = useMutation({
     mutationFn: ({ id, tracking }: { id: number; tracking: string }) => shipOrder(id, tracking),
@@ -687,7 +732,12 @@ function OrdersPanel() {
   });
   const deliver = useMutation({
     mutationFn: (id: number) => deliverOrder(id),
-    onSuccess: invalidate,
+    onSuccess: () => {
+      toast.success("Sipariş teslim edildi olarak işaretlendi");
+      setTeslimSiparisi(null);
+      invalidate();
+    },
+    onError: (err: unknown) => toast.error(getErrorDetail(err, "İşlem başarısız")),
   });
   // Gerekçe ZORUNLU (backend `AdminOrderActionIn`): iade denetim izine
   // gerekçesiz yazılamaz, bu yüzden aksiyon önce gerekçe penceresi açar.
@@ -704,6 +754,15 @@ function OrdersPanel() {
   });
 
   if (!canView) return <AccessDenied area="Siparişler" />;
+  // P1-6: hata "Sipariş yok." diye gösterilemez.
+  if (isError) {
+    return (
+      <ErrorState
+        description={getErrorDetail(error, "Siparişler yüklenemedi.")}
+        onRetry={() => void refetch()}
+      />
+    );
+  }
   if (isLoading) return <p className="text-sm text-slate-400">Yükleniyor…</p>;
 
   return (
@@ -733,7 +792,7 @@ function OrdersPanel() {
                   <ShipButton onShip={(tracking) => ship.mutate({ id: o.id, tracking })} />
                 )}
                 {o.status === "SHIPPED" && (
-                  <button type="button" onClick={() => deliver.mutate(o.id)} className="rounded-lg border border-slate-200 px-3 py-1 text-xs dark:border-slate-700">
+                  <button type="button" onClick={() => setTeslimSiparisi(o.id)} className="rounded-lg border border-slate-200 px-3 py-1 text-xs dark:border-slate-700">
                     Teslim edildi
                   </button>
                 )}
@@ -749,6 +808,16 @@ function OrdersPanel() {
       ) : (
         <p className="py-8 text-center text-sm text-slate-500">Sipariş yok.</p>
       )}
+
+      <ConfirmDialog
+        open={teslimSiparisi !== null}
+        title="Siparişi teslim edildi işaretle"
+        description={`#${teslimSiparisi} siparişi teslim edilmiş sayılacak ve teslimat akışı kapanacak.`}
+        confirmLabel="Teslim edildi olarak işaretle"
+        isPending={deliver.isPending}
+        onClose={() => setTeslimSiparisi(null)}
+        onConfirm={() => teslimSiparisi !== null && deliver.mutate(teslimSiparisi)}
+      />
 
       <ReasonDialog
         open={iadeSiparisi !== null}
@@ -799,7 +868,8 @@ function ReturnsPanel() {
   const { canView, canManage } = useAdminAreaAccess("returns");
   const [decision, setDecision] = useState<{ id: number; action: "approve" | "reject" } | null>(null);
   const [onlyPending, setOnlyPending] = useState(true);
-  const { data: returns, isLoading } = useAdminReturns(onlyPending ? "PENDING" : undefined);
+  const { data: returns, isLoading, isError, error, refetch } =
+    useAdminReturns(onlyPending ? "PENDING" : undefined);
   const resolve = useResolveReturn();
 
   function approve(id: number) {
@@ -828,6 +898,16 @@ function ReturnsPanel() {
   }
 
   if (!canView) return <AccessDenied area="İadeler" />;
+  // P1-6: "Bekleyen iade talebi yok." metni hata hâlinde BASILAMAZ — yönetici
+  // kuyruğu boş sanıp bekleyen iadeyi atlar (denetim raporunun örneği).
+  if (isError) {
+    return (
+      <ErrorState
+        description={getErrorDetail(error, "İade talepleri yüklenemedi.")}
+        onRetry={() => void refetch()}
+      />
+    );
+  }
   if (isLoading) return <p className="text-sm text-slate-400">Yükleniyor…</p>;
 
   return (
@@ -939,7 +1019,7 @@ const EMPTY_COUPON: CouponCreate = {
 
 function CouponsPanel() {
   const { canView, canManage } = useAdminAreaAccess("coupons");
-  const { data: coupons, isLoading } = useCoupons();
+  const { data: coupons, isLoading, isError, error, refetch } = useCoupons();
   const create = useCreateCoupon();
   const update = useUpdateCoupon();
   const del = useDeleteCoupon();
@@ -972,6 +1052,14 @@ function CouponsPanel() {
     "rounded-lg border border-slate-200 px-2 py-1.5 text-sm outline-none focus:border-indigo-400 dark:border-slate-700 dark:bg-slate-800 dark:text-white";
 
   if (!canView) return <AccessDenied area="Kuponlar" />;
+  if (isError) {
+    return (
+      <ErrorState
+        description={getErrorDetail(error, "Kuponlar yüklenemedi.")}
+        onRetry={() => void refetch()}
+      />
+    );
+  }
 
   return (
     <div className="space-y-6">

@@ -33,6 +33,25 @@ function translateDetail(detail: string): string {
   return detail;
 }
 
+/**
+ * Sunucunun `detail` metnini KORUYAN hata çevirisi — yönetim ekranları için.
+ *
+ * `getErrorMessage` 409'u genel bir "Bir çakışma oluştu" metnine çeviriyor;
+ * müşteri yüzeyinde bu doğru (ham backend metni kullanıcıya bir şey anlatmaz),
+ * ama yönetim ekranında BİLGİ KAYBIDIR: "Ürün açık siparişte kullanılıyor" ya
+ * da "Gönderilmiş bir bildirim ikinci kez gönderilmez" eyleme dönüşebilir,
+ * genel metin dönüşemez.
+ *
+ * `AxiosError` örneği olup olmamasına bakmaz — yalnız gövdedeki `detail`
+ * alanını okur; bu yüzden interceptor/sarmalayıcı zincirinden bağımsızdır.
+ */
+export function getErrorDetail(error: unknown, fallback: string): string {
+  const detail = (error as { response?: { data?: { detail?: unknown } } })?.response
+    ?.data?.detail;
+  if (typeof detail === "string" && detail.trim()) return detail;
+  return getErrorMessage(error, fallback);
+}
+
 // FastAPI hata gövdesinden okunabilir, kullanıcı dostu bir mesaj çıkarır.
 export function getErrorMessage(
   error: unknown,

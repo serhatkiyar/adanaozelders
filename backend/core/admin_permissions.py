@@ -59,6 +59,14 @@ PERMISSION_CATALOG: tuple[tuple[str, str, str], ...] = (
     ("packing.view", "Paketleme kuyruğu ve paket görüntüleme", "Ticaret"),
     ("packing.pack", "Paket açma, kalem tarama ve tamamlama", "Ticaret"),
     ("packing.manage", "Paket çözme ve geri dönüş yönetimi", "Ticaret"),
+    # Operasyon kurtarma (İP-4/P1-4): sıkışmış para (deneme tavanı dolmuş iade,
+    # MANUAL_REVIEW) + ölü iş (outbox dead-letter) kuyruğu. `payments.*`
+    # bilinçli olarak YENİDEN KULLANILMADI: hakediş ödemesi kaydetmek ile
+    # sarkan bir sağlayıcı iadesini incelemek farklı işlerdir ve ikincisi
+    # SMS/e-posta yeniden gönderimini de kapsar. Görev ayrılığı iki kademe:
+    # kuyruğu GÖREN kişi tek başına dış yan etki TETİKLEYEMEZ.
+    ("operations.view", "Sıkışmış para ve ölü iş kuyruğunu görüntüleme", "Platform"),
+    ("operations.manage", "Ölü işi yeniden kuyruğa alma", "Platform"),
     ("reports.view", "Şikâyet görüntüleme", "Güvenlik"),
     ("reports.manage", "Şikâyet yönetimi", "Güvenlik"),
     ("audit.view", "Denetim kayıtlarını görüntüleme", "Güvenlik"),

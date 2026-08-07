@@ -171,7 +171,8 @@ export function useApproveTutor() {
 export function useRejectTutor() {
   const invalidate = useInvalidateAdmin();
   return useMutation({
-    mutationFn: (id: number) => rejectTutor(id),
+    mutationFn: ({ id, reason }: { id: number; reason: string }) =>
+      rejectTutor(id, reason),
     onSuccess: invalidate,
   });
 }

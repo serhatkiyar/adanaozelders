@@ -169,8 +169,9 @@ export async function approveTutor(id: number): Promise<void> {
   await apiClient.post(`/admin/tutors/${id}/approve`);
 }
 
-export async function rejectTutor(id: number): Promise<void> {
-  await apiClient.post(`/admin/tutors/${id}/reject`);
+/** Red gerekçesi ZORUNLUDUR (backend `TutorRejectIn`; denetim izine yazılır). */
+export async function rejectTutor(id: number, reason: string): Promise<void> {
+  await apiClient.post(`/admin/tutors/${id}/reject`, { reason });
 }
 
 export async function suspendTutor(id: number): Promise<void> {

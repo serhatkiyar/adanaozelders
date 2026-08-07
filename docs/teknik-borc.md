@@ -29,6 +29,59 @@ notunu bırakmak, yapılmış bir işi yapılmamış gibi anlatır).
      sozlesmesi.md:229`, `ip1a-ders-para-sozlesme.md:676` (tarihsel, dokunulmadı).
      **TB-2** silinmedi ama YARIYA DARALDI — güncel gövdesine bakınız. -->
 
+## TB-19 · İP-4 nihai bağımsız audit'inin P2 listesi (on kayıt — öncelik sırasıyla)
+
+| | |
+|---|---|
+| **Bulundu** | İP-4 (admin operasyon yüzeyi) **nihai bağımsız audit'i**, 7 Ağu 2026 — audit YEŞİL, merge `9a91e37` |
+| **[[TB-17]] ile ilişkisi** | TB-17, paketin kendi kapanış turunda açık bırakılan altı kaydı taşır; audit o altısının **tamamını geçerli buldu**, hiçbiri silinmedi. Buradaki on kayıt audit'in AYRICA bulduklarıdır |
+| **Neden ertelendi** | Hiçbiri para kaybı, yetki açığı ya da ölü akış değil. Audit turunda üretim koduna kapsam dışı dokunmak, denetimden geçmiş kırmızı matrisi ve kabul sözleşmesini kaydırırdı (`feedback_delivery_gates`: kabul testleri sessizce değişmez) |
+
+Öncelik sırası — 1 en yüksek.
+
+| # | Kayıt | Yer | Etki / sonraki adım |
+|---|---|---|---|
+| 1 | **12 uçta filtre parametresi enum'a bağlanmamış** | en çarpıcısı `backend/api/routers/store.py::list_orders_admin` (`:386-395`) | [[TB-14]]/1'in aynı sınıf kardeşleri. `status_filter: str \| None = Query(alias="status")` — `OrderStatus` enum'u aynı modülde HAZIR ve düzeltilen ucun yalnız 94 satır aşağısında. Yazım hatalı bir filtre 422 yerine **sessizce boş liste** döndürür; admin "hiç sipariş yok" sanır. Hiçbir borç kaydında yoktu. Sonraki adım: 12 ucun hepsinde `Query` tipini ilgili enum'a çevirmek + geçersiz değerde 422 bekleyen gerçek HTTP testi |
+| 2 | **23 admin `isError` çağrı noktası ele alınmamış** | `frontend/src/pages/admin/*` · `frontend/src/pages/dashboards/*` | İkisi öne çıkıyor: (a) `dashboards/AdminExamCatalogs.tsx:44` yalnız `{ data, isLoading }` çözüyor → istek düşünce `catalogs` `undefined` kalır ve ekran **yalancı boş katalog kuyruğu** gösterir; (b) `admin/AdminDashboardPage.tsx:63` + `:90` — `revenue` sorgusunun hatası hiç okunmuyor, `{revenue.data && <MoneySection …/>}` yüzünden **gelir bölümü hatada sessizce kaybolur**. Bu bir **para yüzeyi**: "gelir yok" ile "gelir yüklenemedi" ayırt edilemiyor. Sonraki adım: `getErrorMessage` + `ErrorState` desenini (aynı dosyanın ana sorgusunda zaten var) bu çağrı noktalarına yaymak |
+| 3 | **9 admin sayfasında `canView` duvarı yok** | `AdminAccessPage` · `AdminAuditLogsPage` · `AdminBookingsPage` · `AdminDashboardPage` · `AdminDemandsPage` · **`AdminPayoutsPage`** · `AdminReportsPage` · `AdminSettingsPage` · `AdminUsersPage`/`AdminUserDetailPage` | Koruma bugün yalnız iki katmanda: menüde gizleme (`adminNavigation`) + backend 403. URL'yi elle yazan yetkisiz admin sayfayı **açar**, boş/hatalı kabuk görür. Aralarında `AdminPayoutsPage` de var — **hakediş, yani para ekranı**. Kıyas: `AdminExamCatalogs` doğru deseni uyguluyor (`if (!canView) return <AccessDenied …/>`). Sonraki adım: aynı deseni dokuzuna yaymak + her biri için "izinsiz kullanıcı `AccessDenied` görür" DOM testi |
+| 4 | **`packingAccess` ve `inventoryAccess` hâlâ fail-open — üstelik yorumları artık YANLIŞ BİLGİ veriyor** | `frontend/src/lib/packing.ts:65` (yorum `:58-64`) · `frontend/src/lib/inventory.ts:43` (yorum `:36-42`) | İP-4 `lib/adminAccess.ts`'i **fail-closed** yaptı (`fa7f825`). Bu iki yardımcı `permissions === undefined` iken hâlâ `{ canView: true, canPack/canCount: true, canManage/canApply: true }` dönüyor **ve** gerekçe yorumları "`lib/adminAccess.ts` ile AYNI sözleşme" diyor — artık aynı değil. Yanlış yorum, yanlış koddan kötüdür: sonraki okuyucuyu "burası zaten hizalı" diye yanıltır. Sonraki adım: ikisini de fail-closed'a çevirmek (ya da bilinçli farkı gerekçesiyle yeniden yazmak) + üç yardımcının aynı sözleşmede olduğunu ölçen ortak test |
+| 5 | **`AdminStore`'da üç korunmamış yıkıcı mutasyon** | `frontend/src/pages/dashboards/AdminStore.tsx` — kargoya ver (`:726`, `:792`), ürün Gizle/Yayınla toggle, kupon güncelle | Mutasyon 403 dönerse arayüz **sessiz**: kullanıcıya hata gösterilmiyor, iyimser durum geri alınmıyor. Admin işin olduğunu sanır. #2 ile aynı kök (hata dalı yok) ama burada **yazma** yolunda. Sonraki adım: `onError` → `getErrorDetail` + görünür uyarı; nöbetçi olarak "403'te uyarı görünür" DOM testi |
+| 6 | **`/admin/escrow/stuck` sayfalanmıyor — [[TB-17]]/2'nin ölçülmüş hâli** | `backend/services/admin_operations_service.py::list_stuck_escrow` | TB-17/2 boşluğu adlandırmıştı; audit ayrıntıyı ölçtü: beş escrow modeli **tavansız** taranıyor, deneme (attempt) süzgeci **Python tarafında** uygulanıyor (yani DB'den dönen satır sayısı süzgeçten bağımsız) ve sorguyu destekleyen **index yok**. Kuyruk büyüdüğünde maliyet doğrusal değil bileşik artar. Sonraki adım: `limit/offset` + süzgeci SQL'e taşımak + kısmi index; TB-17/2 bu kayıtla birlikte kapanır |
+| 7 | **`_ENTITY_ADI` ↔ `StuckEntity` elle senkron tutuluyor** | `backend/services/admin_operations_service.py` ↔ `backend/schemas/admin_operations.py` | Yeni bir escrow varlığı eklendiğinde iki yeri birlikte güncellemek gerekiyor; unutulursa etiket eksik kalır. İP-4 bunun için fail-loud davranış ekledi (`5bf327b`) — yani hata artık görünür — ama **eşleşmeyi ölçen koruyucu test yok**. Sonraki adım: enum üyelerinin tamamının haritada karşılığı olduğunu doğrulayan birim testi |
+| 8 | **`COMMERCE_MANAGER` grant'ını koruyan nöbetçi test yok** | `backend/migrations/versions/ip4_operasyon_izinleri.py` ↔ `backend/core/admin_permissions.py` | Migration görev ayrılığını kuruyor: `operations.view` → SUPER_ADMIN + COMMERCE_MANAGER, `operations.manage` → yalnız SUPER_ADMIN (retry geri alınamaz dış yan etki tetikler). Bu dağılımı **hiçbir test doğrulamıyor**; ileride biri `manage`'i de ticaret yöneticisine verirse sessizce geçer. Sonraki adım: gerçek PG'de rol→izin matrisini doğrulayan entegrasyon testi (merge duman testinde elle doğrulandı: 3 satır, doğru) |
+| 9 | **`PackageLabel` Vitest flake'i — tam suite yükünde düşüyor** | `frontend/src/**` `PackageLabel.test.tsx` | Tek başına koşarken geçiyor, tam suite yükü altında ara sıra düşüyor. **İP-4 kaynaklı değil** — audit tabanda (`e726b9b`) da doğruladı. [[TB-14]]/8'deki `inventoryScreens` flake'iyle aynı sınıf ama **AYRI** kayıt: farklı dosya, farklı teşhis. (Merge duman testinde bu tur GÖRÜLMEDİ: 73 dosya / 744 test yeşil.) Sonraki adım: teşhis — paylaşılan zamanlayıcı/`waitFor` yarışı mı, yoksa suite'ler arası sızan durum mu |
+| 10 | **Sözleşme belgesinde iki küçük doğruluk kusuru** | `docs/ip4-admin-operasyon-sozlesme.md` | (a) B-1c / B-2b etiketleri gövdedeki maddelerle birebir örtüşmüyor; (b) "`waitFor` yalnız bir yerde kullanıldı" ifadesi kod tabanında doğrulanmıyor. Kod doğru, **belge** yanlış — ve bu belge kabul sözleşmesi olduğu için sonraki turların dayanağı. Sonraki adım: iki ifadeyi kodla eşitlemek |
+
+## TB-18 · `test_production_guard` ortam değişkeninden yalancı kırmızı veriyor
+
+| | |
+|---|---|
+| **Bulundu** | İP-4 kapanış regresyonu, 7 Ağu 2026 (ölçümlü, tek testte izole edildi) |
+| **Bağımsız doğrulama** | İP-4 nihai bağımsız audit'i (7 Ağu 2026) kaydı **doğruladı**: test yalnız `ADMIN_PASSWORD` kabukta export'luyken düşüyor, kırmızı **ortam kaynaklı**, üretim guard'ının kendisinde kusur yok. Dosya İP-4 paketinde 0 satır değişti — yani kırmızı bu paketten gelmiyor. Kayıt aşağıdaki hâliyle geçerli kalır |
+| **Yer** | `backend/tests/test_production_guard.py::_settings` (~`:42-44`) ↔ `test_guvenli_uretim_yapilandirmasi_gecer` |
+| **Durum** | `_settings()` `Settings(_env_file=None, **_SAFE)` kuruyor. `_env_file=None` **yalnız `.env` dosyasını** devre dışı bırakır; pydantic-settings ortam değişkenlerini okumaya devam eder. Kabukta `ADMIN_PASSWORD=change-this-admin-password` (zayıf varsayılan) export'luysa ayar ortamdan gelir ve üretim guard'ı onu **doğru biçimde** reddeder → "güvenli üretim yapılandırması geçer" testi düşer |
+| **Kanıt** | Yalnız `ADMIN_PASSWORD=change-this-admin-password` ile: FAILED. Başka bir değerle: passed. Hiç ayarlı değilken: passed (birim suite 685 passed). Aynı değer dosyanın `:78` satırında zaten guard tetikleyicisi olarak parametrize |
+| **Etki** | Entegrasyon testlerini `tests/integration/conftest.py`'nin **belgelediği** biçimde (env değişkenlerini komut satırında vererek) koşan geliştirici, aynı kabukta birim suite'i koşunca bu yalancı kırmızıyı görür. Gerçek bir regresyonla karıştırılabilir; tersi daha kötü: "yine o test" diye geçiştirilirse gerçek bir guard kırılması kaybolur |
+| **`ADMIN_PASSWORD` dışında hangi değişkenler?** | Ölçülmedi. `_SAFE` sözlüğündeki her anahtar aynı yoldan sızabilir (`JWT_SECRET_KEY`, `PAYMENT_PROVIDER`, `EMAIL_PROVIDER`, `AWS_*`…) — yani sorun tek bir değişkene özgü değil, fixture'ın izolasyonuna |
+| **Neden ertelendi** | İP-4'ün kapsamı admin operasyon yüzeyi; dosya bu pakette **hiç değişmedi** (0 satır). Üretim guard'ının sözleşme testine kapsam dışı dokunmak, `feedback_delivery_gates`'in "kabul testleri sessizce değişmez" kuralını ihlal ederdi |
+| **Sonraki adım** | `_settings()` ortamdan yalıtılmalı: ya `monkeypatch.delenv` ile `_SAFE`'in tüm anahtarları temizlenmeli, ya da `Settings` çağrısına `_env_ignore_empty`/özel bir `SettingsConfigDict` verilmeli. Nöbetçi: aynı testin, ilgili değişkenler ortamda **varken de** geçtiğini gösteren bir koşum |
+
+## TB-17 · İP-4 P2 listesi (admin operasyon yüzeyi — açık bırakılan altı kayıt)
+
+| | |
+|---|---|
+| **Bulundu** | İP-4 (admin operasyon yüzeyi) üretim uygulaması kapanışı, 7 Ağu 2026 |
+| **Neden ertelendi** | Hiçbiri para kaybı, yetki açığı ya da ölü akış değil; paketin P1'leri (P1-1/P1-4/P1-5/P1-6 + TB-14/1) üretim koduyla kapatıldı. Bu altısını aynı turda çözmek, denetimden geçmiş kırmızı matrisi ve kabul sözleşmesini kaydırırdı |
+
+| # | Kayıt | Yer | Etki / sonraki adım |
+|---|---|---|---|
+| 1 | **Red gerekçesi eğitmene GÖSTERİLMİYOR** | `models/tutor.py` ↔ eğitmen paneli | İP-4 gerekçeyi ZORUNLU kıldı ve `audit_logs.reason`'a yazıyor; ama eğitmen hâlâ neden reddedildiğini göremiyor. Denetim raporu "eksik akış 6"nın ikinci yarısı. Kalıcı bir alan (`Tutor.rejection_reason` ya da durum-geçmişi tablosu) + eğitmen ekranı gerekir |
+| 2 | **Sıkışmış para kuyruğu sayfalanmıyor** | `services/admin_operations_service.py::list_stuck_escrow` | Beş escrow modeli tavansız taranıyor. Bugün gerçekçi (kuyruk tanım gereği küçük: otomatiğin çözemediği kayıtlar) ama `limit/offset` eklenmeli; kuyruk büyürse ekran da yavaşlar. **Ayrıntısı ölçüldü ve [[TB-19]]/6'ya taşındı** (süzgeç Python tarafında, destekleyici index yok); ikisi birlikte kapanır |
+| 3 | **`AdminHome` hâlâ üç ekranı taşıyor** | `frontend/src/pages/dashboards/AdminHome.tsx` | Ölü "overview" dalı silinince 805 → ~660 satır. İlan/diploma/ad-değişikliği modern `pages/admin/*` desenine bölünmeli |
+| 4 | **Hijyen nöbetçisi paralel oturumda yanıltıyor** | `backend/tests/integration/conftest.py::_hijyen_nobetcisi` | İP-4 ölçümü sırasında canlı örneği yaşandı: aynı test DB'sine ikinci bir pytest oturumu bağlıyken nöbetçi `clients: 1→2, libraries: 1→0` bildirdi — gerçek sızıntı değil, iki oturumun birbirinin sayaçlarını görmesi. Ya advisory-lock ile ikinci oturum reddedilmeli ya da karar mesajında bu olasılık anılmalı. [[TB-9]]'un akrabası ama ondan farklı |
+| 5 | **`ADMIN_NAV_ITEMS` dizi sırası grup sırasıyla aynı değil** | `frontend/src/components/admin/layout/adminNavigation.ts` | Yeni menü öğesinin doğru yere konması elle; yapısal nöbetçi yok. Mevcut hâli doğru, kırılganlık kayda geçiyor |
+| 6 | **`getErrorDetail` birim testi yok** | `frontend/src/lib/errors.ts` | İP-4'te eklenen saf yardımcı (sunucunun `detail` metnini korur). Davranışı üç DOM testinde dolaylı ölçülüyor; kendi testi yok |
+
 ## TB-16 · `react-router` GHSA-qwww-vcr4-c8h2 yamalanamıyor — yama React 19 istiyor
 
 | | |
@@ -58,18 +111,22 @@ notunu bırakmak, yapılmış bir işi yapılmamış gibi anlatır).
 | **Neden ertelendi** | İkisi de İP-2a'nın kırmızı matrisinden ÖNCE var olan main yollarıdır; paket kapsamı RMA/iade para güvenliğiydi. (a)'nın düzeltmesi oversell yolunu merkezi sözleşmeye taşımayı ve reconciler'ın "hiç PAID olmamış sipariş" ayrımını yapmasını gerektiriyor — yani `settle_refunded_order`'a yeni bir dal. Audit turunda üretim koduna kapsam dışı dokunmak paketin kabul sözleşmesini kaydırırdı |
 | **Sonraki adım** | (a) `_out_of_stock_refund`'u `reserve_refund` → `perform_refund` → `settle_refunded_order` hattına taşımak **ve** telafi kancasına "SALE yazılmamışsa restock yok" koşulu eklemek; gerçek PG testi: sağlayıcı ilk denemede düşsün, reconciler devralsın, `stock_movements`'te SALE_CANCEL **oluşmadığı** ve `refunded_amount`'ın dolduğu doğrulansın. (b) ölü-varlık dalını `apply_refunded_amount`'a çevirmek + "kod tabanında `refunded_amount`'a yazan tek yer" yapısal nöbetçisi |
 
-## TB-14 · İP-2a P2 listesi (audit'te açık bırakılan sekiz kayıt — öncelik sırasıyla)
+## TB-14 · İP-2a P2 listesi (audit'te açık bırakılan sekiz kaydın YEDİSİ — öncelik sırasıyla)
 
 | | |
 |---|---|
 | **Bulundu** | İP-2a (mağaza iade / refund para güvenliği) nihai bağımsız audit'i, 4 Ağu 2026 — paket YEŞİL kapandı, aşağıdakiler bilinçli olarak P2'ye bırakıldı |
 | **Neden ertelendi** | Hiçbiri para kaybı veya yetki açığı değil; audit'in P0/P1 listesi üretim koduyla kapatıldı. Bu sekizi merge turunda çözmek, denetimden geçmiş kırmızı matrisi ve kabul sözleşmesini kaydırırdı (`feedback_delivery_gates`: kabul testleri sessizce değişmez) |
 
-Öncelik sırası — 1 en yüksek:
+Öncelik sırası — 1 en yüksek. **#1 (admin `refund_status` filtresi) İP-4'te
+KAPANDI ve dosyanın kendi kuralı gereği SİLİNDİ** (filtre `ReturnRefundStatus`
+enum'una bağlandı, geçersiz değerde 422; aynı çağrının `status` filtresi de
+birlikte bağlandı — bkz. `docs/ip4-admin-operasyon-sozlesme.md` §1/E).
+Kalan kayıtların numaraları KORUNDU: `#2`, `#7`, `#8` gibi atıflar başka
+belgelerde geçiyor ve kaydırmak onları sessizce yanlış kayda bağlardı.
 
 | # | Kayıt | Yer | Etki / sonraki adım |
 |---|---|---|---|
-| 1 | **Admin `refund_status` filtre değeri doğrulanmıyor** | `backend/api/routers/store.py` (admin iade listesi) | Yanlış yazılmış bir değer 422 yerine **boş liste** döndürüyor → yönetici "iade kuyruğu boş" sanır, bekleyen iade gözden kaçar. Operasyonel yanılgı riski en yüksek kayıt. Düzeltme: filtreyi enum'a bağla, geçersizde 422; nöbetçi: gerçek HTTP testi |
 | 2 | **`_settle_return` kilit-sırası yapısal nöbetçisi kayboldu** | `backend/tests/acceptance/test_stock_lock_contract.py:237-250` | Sıra matrisinden **gerekçeli olarak** çıkarıldı (PK-α ile bu fonksiyonda ürün kilidi kalmadı, sözleşme `receive_return`'e taşındı). Kalan boşluk: birisi `_settle_return`'e yeniden `_lock_order_products` eklerse (TB-2'nin kapanan ayağı geri gelirse) bunu yakalayan **negatif** test yok; `test_urun_kilidini_alan_tek_yer_lock_products` yalnız ham `with_for_update`'i yasaklıyor, yardımcının çağrılmasını değil |
 | 3 | **`refunded_amount <= refund_reserved <= total` için DB CHECK yok** | `orders` tablosu (Alembic) | Değişmez bugün yalnız uygulama katmanında (`apply_refunded_amount` + `reserve_refund`). DB'ye doğrudan yazan bir betik ya da TB-15(b) gibi ikinci bir yazıcı sözleşmeyi sessizce bozabilir. Düzeltme: CHECK constraint migration'ı + ihlali kırmızıya çeviren PG testi |
 | 4 | **`OrderReturnReceiveIn.note` sessizce yutuluyor** | fiziksel kabul ucu (`store.py` → `order_service.py::receive_return`) | Şema alanı kabul ediyor, servis hiçbir yere yazmıyor. Operatörün "kutu hasarlı geldi" notu kaybolur — kullanıcı gözünde veri kaybı. Düzeltme: notu iade kaydına/olay geçmişine yaz ya da şemadan kaldır (sessiz yutma iki hâlde de yanlış) |

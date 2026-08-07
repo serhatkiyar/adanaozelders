@@ -155,6 +155,15 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
     requiredPermission: "reports.view",
   },
   {
+    label: "Hata Çözme",
+    to: ROUTES.adminOperations,
+    group: "Platform",
+    description:
+      "Otomatik mutabakatın çözemediği para kayıtları ve tavana çarpmış bildirim işleri. Buradan para hareketi başlatılmaz; iş yeniden kuyruğa alınır.",
+    icon: "audit",
+    requiredPermission: "operations.view",
+  },
+  {
     label: "Denetim Kayıtları",
     to: ROUTES.adminAuditLogs,
     group: "Güvenlik",
