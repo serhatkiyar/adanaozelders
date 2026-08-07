@@ -137,7 +137,12 @@ function temelUclar(islemler: Yanit) {
   sunucu("/library-operators/me", {
     data: { id: OPERATOR_ID, email: "op@k.example.com", full_name: "Operatör Test", library_id: LIBRARY_ID, is_active: true, created_at: "2026-01-01T00:00:00Z", library_name: "Test Kütüphanesi" },
   });
-  sunucu("/libraries/12/earnings/transactions", islemler);
+  // DİKKAT sıra: `sunucu` rotaları unshift'ler (son kaydedilen önce eşleşir) ve
+  // eşleşme substring'dir. "/libraries/12/earnings" deseni
+  // "/libraries/12/earnings/transactions" yolunu da yakalar; bu yüzden ÖZEL
+  // olan sonra kaydedilir. (İlk yazımda ters sıradaydı: işlem dökümü isteği
+  // ÖZET yanıtını alıyor, ekran `transactions.map` üzerinde patlıyordu — node
+  // kırmızıydı ama yanlış sebeple.)
   sunucu("/libraries/12/earnings", {
     data: {
       currency: "TRY",
@@ -150,6 +155,7 @@ function temelUclar(islemler: Yanit) {
       refunded_total: "0.00",
     },
   });
+  sunucu("/libraries/12/earnings/transactions", islemler);
   sunucu("/libraries/admin/12/payout", { data: { payout_status: "ACTIVE", iban_masked: "TR** **** 1234" } });
   sunucu("/messages/unread-count", { data: { inbox: 0, sent: 0 } });
   sunucu("/notifications/unread-count", { data: { count: 0 } });
@@ -164,9 +170,9 @@ describe("E-1 · Bakiyem hatası 'işlem yok' diye okunmuyor", () => {
 
     await sar();
 
-    const uyari = await screen.findByTestId("islem-hata");
-    expect(uyari).toHaveAttribute("role", "alert");
-    expect(screen.queryByText(/Henüz bir işlem yok/i)).not.toBeInTheDocument();
+    const sarmal = await screen.findByTestId("islem-hata");
+    expect(within(sarmal).getByRole("alert")).toBeTruthy();
+    expect(screen.queryByText(/Henüz bir işlem yok/i)).toBeNull();
   });
 
   it("E-5 · boş liste ile hata FARKLI metin gösterir", async () => {
@@ -195,7 +201,7 @@ describe("K · 200 satır tavanı görünür", () => {
     await sar();
 
     const uyari = await screen.findByTestId("islem-tavan-uyarisi");
-    expect(uyari).toHaveTextContent(/200/);
+    expect(uyari.textContent ?? "").toMatch(/200/);
   });
 
   it("K-2 · tavana dayanmayan listede uyarı YOK", async () => {
@@ -205,7 +211,7 @@ describe("K · 200 satır tavanı görünür", () => {
     await sar();
 
     await screen.findByText(/İşlem Dökümü/i);
-    expect(screen.queryByTestId("islem-tavan-uyarisi")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("islem-tavan-uyarisi")).toBeNull();
   });
 });
 
@@ -218,9 +224,9 @@ describe("Y-6 · ödeme metni gerçeği söylüyor", () => {
 
     const aciklama = await screen.findByTestId("bakiye-odeme-aciklamasi");
     // Kurulu mekanizma: admin'in tuttuğu defter + banka havalesi.
-    expect(aciklama).toHaveTextContent(/havale/i);
+    expect(aciklama.textContent ?? "").toMatch(/havale/i);
     // Yanlış vaat: pazaryeri alt üye işyeri kurulmadan iyzico IBAN'a para geçmez.
-    expect(within(aciklama).queryByText(/iyzico/i)).not.toBeInTheDocument();
+    expect(within(aciklama).queryByText(/iyzico/i)).toBeNull();
     expect(aciklama.textContent ?? "").not.toMatch(/iyzico/i);
   });
 });

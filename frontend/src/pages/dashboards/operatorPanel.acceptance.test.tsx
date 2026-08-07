@@ -271,8 +271,17 @@ function temelUclar(
   sunucu("/library-operators/me", { data: OPERATOR });
   sunucu("/libraries/admin/", { data: opts.kutuphane ?? KUTUPHANE() });
   sunucu("/libraries/12/earnings", { data: KAZANC });
+  // `schemas/feature_flag.py::PaymentAvailabilityOut` — `branches` bir LİSTEDİR.
+  // (İlk yazımda nesne verilmişti; ekran `branches.find` çağırdığı için render
+  // PATLIYOR ve node'lar yanlış sebeple kırmızı görünüyordu.)
   sunucu("/payments/availability", {
-    data: { branches: { store: { available: true, blockers: [] }, tutor_marketplace: { available: true, blockers: [] }, library_marketplace: { available: true, blockers: [] } }, flags: [] },
+    data: {
+      branches: [
+        { branch: "store", label: "Mağaza", open: true },
+        { branch: "tutor_marketplace", label: "Ders pazaryeri", open: true },
+        { branch: "library_marketplace", label: "Kütüphane pazaryeri", open: true },
+      ],
+    },
   });
   sunucu("/messages/unread-count", { data: { inbox: 0, sent: 0 } });
   sunucu("/notifications/unread-count", { data: { count: 0 } });
@@ -299,7 +308,7 @@ describe("B · Panel ekranında bugün bloğu", () => {
     await sar("./OperatorHome.tsx");
 
     const blok = await screen.findByTestId("operator-bugun");
-    expect(within(blok).getByText(/Bugün/i)).toBeInTheDocument();
+    expect(within(blok).getByText(/Bugün/i)).toBeTruthy();
   });
 
   it("B-2 · bugünkü sayı doğru: dünkü ve yarınki sayılmıyor", async () => {
@@ -321,9 +330,9 @@ describe("B · Panel ekranında bugün bloğu", () => {
 
     const blok = await screen.findByTestId("operator-bugun");
     // Sayaç "2" demeli — 4 değil, 1 değil.
-    expect(within(blok).getByTestId("bugun-rezervasyon-sayisi")).toHaveTextContent("2");
-    expect(within(blok).queryByText(/Dün Öğrenci/)).not.toBeInTheDocument();
-    expect(within(blok).queryByText(/Yarın Öğrenci/)).not.toBeInTheDocument();
+    expect(within(blok).getByTestId("bugun-rezervasyon-sayisi").textContent?.trim()).toBe("2");
+    expect(within(blok).queryByText(/Dün Öğrenci/)).toBeNull();
+    expect(within(blok).queryByText(/Yarın Öğrenci/)).toBeNull();
   });
 
   it("B-3 · sıradaki randevu doğru seçiliyor: saati geçmişler atlanıyor", async () => {
@@ -343,9 +352,9 @@ describe("B · Panel ekranında bugün bloğu", () => {
     await sar("./OperatorHome.tsx");
 
     const siradaki = await screen.findByTestId("bugun-siradaki");
-    expect(siradaki).toHaveTextContent("Sıradaki Öğrenci");
-    expect(siradaki).not.toHaveTextContent("Sabahki Öğrenci");
-    expect(siradaki).not.toHaveTextContent("Akşamki Öğrenci");
+    expect(siradaki.textContent ?? "").toMatch("Sıradaki Öğrenci");
+    expect(siradaki.textContent ?? "").not.toMatch("Sabahki Öğrenci");
+    expect(siradaki.textContent ?? "").not.toMatch("Akşamki Öğrenci");
   });
 
   it("B-4 · bugün hiç kayıt yoksa blok 'bugün kayıt yok' diyor (boş/bozuk görünmüyor)", async () => {
@@ -359,9 +368,9 @@ describe("B · Panel ekranında bugün bloğu", () => {
     await sar("./OperatorHome.tsx");
 
     const blok = await screen.findByTestId("operator-bugun");
-    expect(within(blok).getByText(/bugün için kayıt yok/i)).toBeInTheDocument();
+    expect(within(blok).getByText(/bugün için kayıt yok/i)).toBeTruthy();
     // "Sıradaki" satırı uydurulmuş bir kayıt göstermemeli.
-    expect(within(blok).queryByTestId("bugun-siradaki")).not.toBeInTheDocument();
+    expect(within(blok).queryByTestId("bugun-siradaki")).toBeNull();
   });
 
   it("B-5 · TZ sınırı: 23:30 ve 00:30 kayıtları doğru güne düşüyor (Türkiye saati)", async () => {
@@ -382,8 +391,9 @@ describe("B · Panel ekranında bugün bloğu", () => {
 
     const blok = await screen.findByTestId("operator-bugun");
     // 23:30 BUGÜN, 00:30 YARIN → bugün sayacı tam olarak 1.
-    expect(within(blok).getByTestId("bugun-rezervasyon-sayisi")).toHaveTextContent("1");
-    expect(await screen.findByTestId("bugun-siradaki")).toHaveTextContent("Gece Yarısı Öncesi");
+    expect(within(blok).getByTestId("bugun-rezervasyon-sayisi").textContent?.trim()).toBe("1");
+    const siradaki = await screen.findByTestId("bugun-siradaki");
+    expect(siradaki.textContent ?? "").toMatch("Gece Yarısı Öncesi");
   });
 });
 
@@ -413,14 +423,14 @@ describe("G · yaklaşan liste güne göre gruplanıyor", () => {
     const buHafta = screen.getByTestId("rez-grup-BU_HAFTA");
 
     // "Element var mı" değil — HANGİ kayıt HANGİ grupta.
-    expect(within(bugun).getByText("Bugünkü Öğrenci")).toBeInTheDocument();
-    expect(within(bugun).getByText("Bugünkü İkinci")).toBeInTheDocument();
-    expect(within(bugun).queryByText("Yarınki Öğrenci")).not.toBeInTheDocument();
+    expect(within(bugun).getByText("Bugünkü Öğrenci")).toBeTruthy();
+    expect(within(bugun).getByText("Bugünkü İkinci")).toBeTruthy();
+    expect(within(bugun).queryByText("Yarınki Öğrenci")).toBeNull();
 
-    expect(within(yarin).getByText("Yarınki Öğrenci")).toBeInTheDocument();
-    expect(within(yarin).queryByText("Haftaiçi Öğrenci")).not.toBeInTheDocument();
+    expect(within(yarin).getByText("Yarınki Öğrenci")).toBeTruthy();
+    expect(within(yarin).queryByText("Haftaiçi Öğrenci")).toBeNull();
 
-    expect(within(buHafta).getByText("Haftaiçi Öğrenci")).toBeInTheDocument();
+    expect(within(buHafta).getByText("Haftaiçi Öğrenci")).toBeTruthy();
   });
 
   it("G-2 · her grubun başında sayaç var", async () => {
@@ -431,9 +441,9 @@ describe("G · yaklaşan liste güne göre gruplanıyor", () => {
     await sar("./OperatorSessions.tsx");
 
     const bugun = await screen.findByTestId("rez-grup-BUGUN");
-    expect(within(bugun).getByTestId("grup-sayaci")).toHaveTextContent("2");
+    expect(within(bugun).getByTestId("grup-sayaci").textContent?.trim()).toBe("2");
     const yarin = screen.getByTestId("rez-grup-YARIN");
-    expect(within(yarin).getByTestId("grup-sayaci")).toHaveTextContent("1");
+    expect(within(yarin).getByTestId("grup-sayaci").textContent?.trim()).toBe("1");
   });
 
   it("G-3 · bu haftadan sonrası ayrı grupta — listeden DÜŞMÜYOR", async () => {
@@ -451,7 +461,7 @@ describe("G · yaklaşan liste güne göre gruplanıyor", () => {
     await sar("./OperatorSessions.tsx");
 
     const sonra = await screen.findByTestId("rez-grup-DAHA_SONRA");
-    expect(within(sonra).getByText("Gelecek Ay Öğrenci")).toBeInTheDocument();
+    expect(within(sonra).getByText("Gelecek Ay Öğrenci")).toBeTruthy();
   });
 
   it("G-4 · boş grup başlığı basılmıyor", async () => {
@@ -466,9 +476,9 @@ describe("G · yaklaşan liste güne göre gruplanıyor", () => {
     await sar("./OperatorSessions.tsx");
 
     await screen.findByTestId("rez-grup-BUGUN");
-    expect(screen.queryByTestId("rez-grup-YARIN")).not.toBeInTheDocument();
-    expect(screen.queryByTestId("rez-grup-BU_HAFTA")).not.toBeInTheDocument();
-    expect(screen.queryByTestId("rez-grup-DAHA_SONRA")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("rez-grup-YARIN")).toBeNull();
+    expect(screen.queryByTestId("rez-grup-BU_HAFTA")).toBeNull();
+    expect(screen.queryByTestId("rez-grup-DAHA_SONRA")).toBeNull();
   });
 });
 
@@ -484,9 +494,10 @@ describe("E · hata durumları ErrorState gösteriyor", () => {
 
     await sar("./OperatorSessions.tsx");
 
-    const uyari = await screen.findByTestId("rez-hata");
-    expect(uyari).toHaveAttribute("role", "alert");
-    expect(uyari).toHaveTextContent(/yüklenemedi|hata/i);
+    const sarmal = await screen.findByTestId("rez-hata");
+    const uyari = within(sarmal).getByRole("alert");
+    expect(uyari).toBeTruthy();
+    expect(uyari.textContent ?? "").toMatch(/yüklenemedi|hata/i);
   });
 
   it("E-3 · oturum listesi hatası ErrorState gösteriyor, 'Henüz oturum eklenmedi' DEĞİL", async () => {
@@ -496,9 +507,10 @@ describe("E · hata durumları ErrorState gösteriyor", () => {
 
     await sar("./OperatorSessions.tsx");
 
-    const uyari = await screen.findByTestId("oturum-hata");
-    expect(uyari).toHaveAttribute("role", "alert");
-    expect(screen.queryByText(/Henüz oturum eklenmedi/i)).not.toBeInTheDocument();
+    const sarmal = await screen.findByTestId("oturum-hata");
+    const uyari = within(sarmal).getByRole("alert");
+    expect(uyari).toBeTruthy();
+    expect(screen.queryByText(/Henüz oturum eklenmedi/i)).toBeNull();
   });
 
   it("E-4 · roster hatası ErrorState gösteriyor", async () => {
@@ -510,9 +522,10 @@ describe("E · hata durumları ErrorState gösteriyor", () => {
 
     fireEvent.click(await screen.findByRole("button", { name: /Katılımcılar/i }));
 
-    const uyari = await screen.findByTestId("roster-hata");
-    expect(uyari).toHaveAttribute("role", "alert");
-    expect(screen.queryByText(/Henüz kayıtlı katılımcı yok/i)).not.toBeInTheDocument();
+    const sarmal = await screen.findByTestId("roster-hata");
+    const uyari = within(sarmal).getByRole("alert");
+    expect(uyari).toBeTruthy();
+    expect(screen.queryByText(/Henüz kayıtlı katılımcı yok/i)).toBeNull();
   });
 
   it("E-5 · boş durum ile hata durumu FARKLI metin gösteriyor", async () => {
@@ -544,8 +557,9 @@ describe("E · hata durumları ErrorState gösteriyor", () => {
 
     await sar("./OperatorSessions.tsx");
 
-    const uyari = await screen.findByTestId("rez-hata");
-    expect(uyari).toHaveAttribute("role", "alert");
+    const sarmal = await screen.findByTestId("rez-hata");
+    const uyari = within(sarmal).getByRole("alert");
+    expect(uyari).toBeTruthy();
   });
 });
 
@@ -571,9 +585,8 @@ describe("Y · yoklama sayacı ve onay diyalogları", () => {
     fireEvent.click(await screen.findByRole("button", { name: /Katılımcılar/i }));
 
     const sayac = await screen.findByTestId("roster-sayaci");
-    expect(sayac).toHaveTextContent("1");
-    expect(sayac).toHaveTextContent("3");
-    expect(sayac).toHaveTextContent(/giriş yapıldı/i);
+    expect(sayac.textContent ?? "").toContain("1/3");
+    expect(sayac.textContent ?? "").toMatch(/giriş yapıldı/i);
   });
 
   it("Y-2 · sayaç yalnız ATTENDED'ı sayar (PAID'i katılmış saymaz)", async () => {
@@ -592,8 +605,7 @@ describe("Y · yoklama sayacı ve onay diyalogları", () => {
     fireEvent.click(await screen.findByRole("button", { name: /Katılımcılar/i }));
 
     const sayac = await screen.findByTestId("roster-sayaci");
-    expect(sayac).toHaveTextContent("0");
-    expect(sayac).toHaveTextContent("2");
+    expect(sayac.textContent ?? "").toContain("0/2");
   });
 
   it("Y-3 · oturum iptali ConfirmDialog açmadan mutation tetiklemiyor", async () => {
@@ -611,7 +623,8 @@ describe("Y · yoklama sayacı ve onay diyalogları", () => {
 
     // 1) Uygulama-içi onay penceresi açılmalı.
     const dialog = await screen.findByRole("dialog");
-    expect(within(dialog).getByText(/iptal/i)).toBeInTheDocument();
+    // Diyalog NE yaptığını söylemeli: iade sonucu metinde geçmeli.
+    expect(within(dialog).getByText(/iade/i)).toBeTruthy();
     // 2) Onay verilmeden HİÇBİR istek gitmemeli.
     expect(gidenler("/cancel", "post")).toHaveLength(0);
     expect(confirmCasusu).not.toHaveBeenCalled();
@@ -672,7 +685,7 @@ describe("Y · yoklama sayacı ve onay diyalogları", () => {
     const onay = within(dialog).getByRole("button", { name: /onayla|iptal et|evet/i });
     fireEvent.click(onay);
 
-    await waitFor(() => expect(onay).toBeDisabled());
+    await waitFor(() => expect((onay as HTMLButtonElement).disabled).toBe(true));
     cozumle?.();
   });
 });
@@ -697,7 +710,16 @@ describe("N · ortak sayfalarda operatör navigasyonu", () => {
       // altyapı yüzünden düşürüyordu (davranış yüzünden değil).
       operatorOturumu();
       temelUclar();
-      sunucu("/leaderboard", { data: [] });
+      // `types::LeaderboardOut` — dört ayrı liste taşıyan NESNE (dizi değil;
+      // dizi verilince sayfa `.map` üzerinde patlıyor ve nav hiç basılmıyordu).
+      sunucu("/leaderboard", {
+        data: {
+          tutors_by_lessons: [],
+          tutors_by_rating: [],
+          students_by_lessons: [],
+          students_by_net: [],
+        },
+      });
       sunucu("/bookings", { data: [] });
       sunucu("/flashcards", { data: [] });
       sunucu("/habits", { data: [] });
@@ -709,8 +731,8 @@ describe("N · ortak sayfalarda operatör navigasyonu", () => {
       expect(kutuphanem.length).toBeGreaterThan(0);
       expect(screen.getAllByRole("link", { name: /Oturumlar & QR/i }).length).toBeGreaterThan(0);
       // N-3: öğrenci nav'ı gösterilmiyor.
-      expect(screen.queryByRole("link", { name: /Favorilerim/i })).not.toBeInTheDocument();
-      expect(screen.queryByRole("link", { name: /Rezervasyonlar/i })).not.toBeInTheDocument();
+      expect(screen.queryByRole("link", { name: /Favorilerim/i })).toBeNull();
+      expect(screen.queryByRole("link", { name: /Rezervasyonlar/i })).toBeNull();
     });
   }
 });
