@@ -29,6 +29,22 @@ notunu bırakmak, yapılmış bir işi yapılmamış gibi anlatır).
      sozlesmesi.md:229`, `ip1a-ders-para-sozlesme.md:676` (tarihsel, dokunulmadı).
      **TB-2** silinmedi ama YARIYA DARALDI — güncel gövdesine bakınız. -->
 
+## TB-16 · `react-router` GHSA-qwww-vcr4-c8h2 yamalanamıyor — yama React 19 istiyor
+
+| | |
+|---|---|
+| **Bulundu** | 7 Ağu 2026, CI'daki `npm audit` uyarısını kapatma denemesi sırasında (ölçümlü) |
+| **Yer** | `frontend/package.json` (`react-router-dom: ^7.18.1`) ↔ `.github/workflows/ci.yml` frontend "Dependency audit (npm)" adımı |
+| **Açık** | GHSA-qwww-vcr4-c8h2 — "React Router: RSC Mode CSRF Bypass Allows Action Execution Before 400 Response", **high**, etkilenen aralık `react-router` **7.12.0 – 8.2.0** |
+| **Neden yükseltilemiyor** | Yama yalnız `react-router@8.3.0`'da. (1) `react-router-dom`'un 8.x'i **hiç yayınlanmadı** — `latest` = 7.18.2 ve bağımlılığı `react-router: 7.18.2` olarak **tam sabitlenmiş**, yani aralığın içinde. (2) `react-router@8.3.0` **`react >= 19.2.7` / `react-dom >= 19.2.7`** peer'i ve **`node >= 22.22.0`** engine'i istiyor; proje React **18.3.1**, CI Node **20** |
+| **Ölçüldü (override denemesi)** | `overrides: { "react-router": "8.3.0" }` ile gerçekten kuruldu. Sonuç: `npm audit --omit=dev --audit-level=high` → **0 açık**, `tsc -b` → **temiz**, ama `npm run test` → **5 suite çöktü**: `SyntaxError: The requested module 'react' does not provide an export named 'useOptimistic'` (v8, React 19 hook'unu çağırıyor). 697 testin yalnız 576'sı koşabildi; 5 dosya hiç yüklenemedi. Değişiklik geri alındı, temiz hâlde 70 dosya / 697 test yeşil |
+| **Kök `CLAUDE.md` §B/§F açısından** | Bu, "audit + tsc yeşil ≠ çalışıyor"un canlı örneği: paket yöneticisi ve tip denetleyici sorunu **göremedi**, kırmızıyı yalnız gerçek DOM (RTL/`MemoryRouter`) testleri verdi |
+| **Geri inmek neden yanlış yön** | `npm audit fix --force` `react-router-dom@7.11.0`'a düşürüyor. Bağımsız ölçüldü (izole `--package-lock-only` denemesi): 7.11.0'da **14 açık** var — `<Link>`/`useNavigate` open redirect, SSR/ScrollRestoration XSS, turbo-stream üzerinden **kimliksiz RCE**, `__manifest` DoS. Yani "audit temiz görünsün" diye inmek güvenliği ölçülebilir biçimde **azaltır** |
+| **Bugünkü gerçek risk** | Düşük. Açık RSC (React Server Components) moduna ve server action işlemeye özgü; bu uygulama declarative SPA — `BrowserRouter` + `Routes`, kullanılan API yüzeyi `Link/NavLink/Navigate/Outlet/Route/Routes/useLocation/useNavigate/useParams/useSearchParams` + `MemoryRouter`. `react-router/rsc` girişi hiç import edilmiyor, server action yok |
+| **Neden ertelendi** | Düzeltmenin tek yolu **React 18 → 19 major yükseltmesi** (+ CI Node 20 → 22). Bu, react-dom, `@testing-library/react`, `react-leaflet@4`, `react-cropper`, `@types/react` dahil tüm ekosistemi ilgilendiren ayrı bir pakettir; tek bir CVE uyarısını susturmak için yapılacak iş değil |
+| **CI'nin bugünkü duruşu** | Audit adımı `continue-on-error: true` ile koşuyor ve gerekçesi adımın üstünde yorum olarak duruyor (job kırmızıya düşmüyor, uyarı görünür kalıyor). Bu bilinçli bir istisnadır, genel bir susturma değil: adım kaldırılmadı, çıktısı `|| true` ile yutulmuyor, yeni açıklar raporda görünmeye devam ediyor |
+| **Sonraki adım** | (1) Ayrı bir paket olarak React 19 + `react-router` 8 yükseltmesi (CI `node-version` 22'ye çekilerek); (2) o pakete kadar `npm audit` çıktısının **her turda okunması** — bu istisnanın altında yeni bir açık birikirse fark edilmeli; (3) yükseltme yapıldığında CI'daki istisna yorumu ve bu kayıt birlikte silinir |
+
 ## TB-15 · Mağaza para sözleşmesinin iki kaçağı (main'in kendi borcu — İP-2a kapsamı dışında)
 
 | | |

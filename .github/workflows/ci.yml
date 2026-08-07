@@ -246,11 +246,23 @@ jobs:
       #
       # BİLİNEN İSTİSNA: react-router 7.12+ için "RSC Mode CSRF Bypass"
       # (GHSA-qwww-vcr4-c8h2) raporlanıyor. Bu proje RSC kullanmıyor —
-      # declarative SPA (BrowserRouter + Routes), server action yok. `npm audit
-      # fix --force` 7.11.0'a düşürür ki O SÜRÜMDE BİZİ GERÇEKTEN ETKİLEYEN 10
-      # açık var (<Link> open redirect, useNavigate, XSS). Yani "audit temiz
-      # görünsün" diye geri inmek güvenliği AZALTIR. Bu yüzden en güncel sürümde
-      # kalıp uyarıyı bilinçli taşıyoruz.
+      # declarative SPA (BrowserRouter + Routes), server action yok.
+      #
+      # İLERİ GİDİLEMİYOR: yama yalnız react-router 8.3.0'da; react-router-dom'un
+      # 8.x'i hiç yayınlanmadı (latest 7.18.2, react-router'ı 7.18.2'ye SABİTLER)
+      # ve 8.3.0 react>=19.2.7 + node>=22.22.0 istiyor. 7 Ağu 2026'da overrides
+      # ile denendi: audit 0 açık ve tsc temiz geldi, ama Vitest'te 5 suite
+      # "react does not provide an export named 'useOptimistic'" ile çöktü.
+      # Yani düzeltme = React 18→19 major yükseltmesi (ayrı paket).
+      #
+      # GERİ DE GİDİLMİYOR: `npm audit fix --force` 7.11.0'a düşürür; o sürümde
+      # BİZİ GERÇEKTEN ETKİLEYEN 14 açık var (<Link>/useNavigate open redirect,
+      # XSS, turbo-stream üzerinden kimliksiz RCE, DoS — 7 Ağu 2026'da ölçüldü).
+      # "Audit temiz görünsün" diye inmek güvenliği AZALTIR.
+      #
+      # Bu yüzden en güncel sürümde kalıp uyarıyı bilinçli taşıyoruz. Adım
+      # kaldırılmadı ve çıktısı yutulmuyor — yeni açıklar raporda görünür kalsın
+      # diye her turda okunmalı. Ayrıntı: docs/teknik-borc.md → TB-16.
       - name: Dependency audit (npm)
         continue-on-error: true
         run: npm audit --omit=dev --audit-level=high
