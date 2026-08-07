@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from "react";
+import { ErrorState } from "@/components/admin/ui";
 import { formatTL, parseMoney } from "@/lib/money";
 import { formatDate } from "@/lib/datetime";
 import {
@@ -166,9 +167,20 @@ function PendingList({ onPay }: { onPay: (b: PayeeBalance) => void }) {
 }
 
 function HistoryList() {
-  const { data, isLoading } = usePayoutHistory();
+  const { data, isLoading, isError, error, refetch } = usePayoutHistory();
 
   if (isLoading) return <p className="text-sm text-slate-500">Yükleniyor…</p>;
+  // P1-6: hata "Henüz ödeme kaydı yok." diye gösterilemez — bu bir PARA
+  // ekranıdır; yönetici geçmişi boş sanıp aynı havaleyi ikinci kez yapabilir.
+  // (`PendingList` bu kontrolü zaten yapıyordu; geçmiş listesi atlanmıştı.)
+  if (isError) {
+    return (
+      <ErrorState
+        description={getErrorMessage(error, "Ödeme geçmişi yüklenemedi.")}
+        onRetry={() => void refetch()}
+      />
+    );
+  }
   if (!data || data.length === 0) {
     return (
       <div className="rounded-xl border border-slate-200 p-8 text-center dark:border-slate-700">

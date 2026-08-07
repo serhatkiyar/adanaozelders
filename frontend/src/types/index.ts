@@ -2130,3 +2130,50 @@ export interface AdminRevenueOut {
   previous_library_gmv: string;
   previous_store_gmv: string;
 }
+
+/* ─── Admin operasyon kurtarma (İP-4 / P1-4) ─────────────────────────────── */
+
+/** Sıkışmış para kaydının sebebi (backend `StuckReason`). */
+export type StuckEscrowReason = "MANUAL_REVIEW" | "RETRY_EXHAUSTED";
+
+export type StuckEscrowEntity =
+  | "payment"
+  | "exam_registration"
+  | "study_reservation"
+  | "order"
+  | "order_return";
+
+export interface StuckEscrowRecord {
+  entity: StuckEscrowEntity;
+  entity_id: number;
+  order_id: number | null;
+  reason: StuckEscrowReason;
+  money_status: string;
+  amount: string | null;
+  currency: string | null;
+  refund_attempts: number;
+  refund_requested_at: string | null;
+  provider_ref: string | null;
+  updated_at: string | null;
+}
+
+/**
+ * Outbox dead-letter satırı. Ham `payload` BİLİNÇLİ OLARAK YOK: alıcının
+ * telefonu/e-postası orada yaşıyor ve backend whitelist projeksiyonu uyguluyor.
+ */
+export interface FailedOutboxEvent {
+  id: number;
+  kind: string;
+  status: string;
+  attempts: number;
+  last_error: string | null;
+  order_id: number | null;
+  next_attempt_at: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
+export interface OutboxRetryResult extends FailedOutboxEvent {
+  /** `false` = iş bu çağrıdan ÖNCE zaten kuyruğa alınmıştı (idempotent no-op). */
+  requeued: boolean;
+}

@@ -31,14 +31,19 @@ interface AdminSidebarProps {
 
 export function AdminSidebar({ onNavigate }: AdminSidebarProps) {
   const { pathname } = useLocation();
+  // FAIL-CLOSED (İP-4/F-1): izin bilgisi yüklenemediyse menü öğesi
+  // GÖSTERİLMEZ. Eskiden `!permissions ||` ile fail-open'dı ve `lib/adminAccess`
+  // ile aynı sözleşmeyi paylaşıyordu; o sözleşme değişti, bu da onunla gitti —
+  // aksi hâlde menüde görünüp tıklandığında 403 veren bir öğe kalırdı.
   const permissions = useAuthStore((state) => state.user?.admin_permissions);
-  const { data: openReports = 0 } = useOpenReportCount(!permissions || permissions.includes("reports.view"));
+  const izinVar = (kod?: string) => !kod || (permissions?.includes(kod) ?? false);
+  const { data: openReports = 0 } = useOpenReportCount(izinVar("reports.view"));
 
   return (
     <nav aria-label="Yönetim menüsü" className="space-y-5 px-3 py-5">
       {ADMIN_NAV_GROUPS.map((group) => {
         const items = ADMIN_NAV_ITEMS.filter(
-          (item) => item.group === group && (!permissions || !item.requiredPermission || permissions.includes(item.requiredPermission))
+          (item) => item.group === group && izinVar(item.requiredPermission)
         );
         if (items.length === 0) return null;
         return (
