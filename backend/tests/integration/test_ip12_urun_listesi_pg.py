@@ -552,12 +552,15 @@ class TestEsikTekKaynak:
         engellemek için var olduğu sapmanın ta kendisi. `kritik` ikisinin
         birleşimidir ve köprüyü kurar.
 
-        KAPSAM FARKI bilinçlidir ve testte hesaba katılır: dashboard sayacı
-        yalnız `ACTIVE` fiziksel ürünü sayar (kart metni de öyle diyor),
-        yönetim listesi ise katalogun tamamını (taslak/gizli dahil) gösterir.
-        Test bu yüzden listeyi `status == ACTIVE` ile daraltır — aksi hâlde
-        kataloğa eklenen gizli bir ürün testi sebepsiz kırardı. Ölçülen şey
-        kapsam değil, EŞİĞİN VE KOVA TANIMININ AYNI OLMASI.
+        KAPSAM DA AYNI (P1-1): sayaç `status == ACTIVE` filtreliyordu, liste
+        filtrelemiyordu; ölçümde sayaç 5, liste 7 çıktı (fark: bir taslak, bir
+        gizli ürün). Karar — LİSTE DE `ACTIVE` filtreler. Gerekçe: kart bir
+        "yeniden sipariş ver" alarmıdır ve taslak/gizli ürün zaten satışta
+        değildir; onun için sipariş verilmez.
+
+        Test artık DARALTMA YAPMADAN eşitlik ölçüyor. Önceki hâli listeyi
+        `status == ACTIVE` ile süzüp karşılaştırıyordu — yani tam da sapmanın
+        yaşandığı yeri test tarafında kapatıyordu ve kusuru göremezdi.
         """
         from core.stock_policy import LOW_STOCK_THRESHOLD
 
@@ -567,27 +570,52 @@ class TestEsikTekKaynak:
         await fab12.kitap(stock=LOW_STOCK_THRESHOLD)
         await fab12.kitap(stock=LOW_STOCK_THRESHOLD + 1)
         await fab12.kitap(stock=0)
-        # Eşiğin ALTINDA ama gizli: dashboard saymamalı, liste göstermeli.
+        # Eşiğin ALTINDA ama satışta DEĞİL: ikisi de sayaçtan da listeden de
+        # düşmeli. Nöbetçinin çekirdeği bu iki satır.
         await fab12.kitap(stock=1, status="HIDDEN")
+        await fab12.kitap(stock=2, status="DRAFT")
 
         liste = await _liste(http, headers, limit=200, stok="kritik")
-        aktif_azalan = [k for k in liste if k.get("status") == "ACTIVE"]
 
         # Dashboard sayaçları `/admin/dashboard` ucunda (`/admin/stats` ayrı
         # ve daha dar bir özet döner).
         r = await http.get("/api/v1/admin/dashboard", headers=headers)
         assert r.status_code == 200, r.text
-        assert r.json()["low_stock_products"] == len(aktif_azalan), (
-            "dashboard sayacı ile 'azalan' filtresi farklı küme sayıyor — "
-            "eşik tek kaynaktan gelmiyor"
+        assert r.json()["low_stock_products"] == len(liste), (
+            f"kart {r.json()['low_stock_products']} diyor, açtığı liste "
+            f"{len(liste)} kayıt gösteriyor — sayı ile liste AYNI küme değil"
         )
-        # Kapsam farkının kendisi de sözleşme: gizli ürün listede DURUR.
-        assert len(liste) > len(aktif_azalan), (
-            "gizli düşük-stoklu ürün yönetim listesinden düşmüş"
+
+        # Satışta olmayan ürün kümenin DIŞINDA.
+        durumlar = {k.get("status") for k in liste}
+        assert durumlar <= {"ACTIVE"}, (
+            f"listede satışta olmayan ürün var: {durumlar} — kart yeniden "
+            "sipariş alarmı, taslak/gizli ürün için sipariş verilmez"
         )
+
         # `kritik` gerçekten birleşim mi: hem 0 hem eşik-altı içermeli.
         stoklar = {k["stock"] for k in liste}
         assert 0 in stoklar, "'kritik' tükenenleri kapsamıyor"
         assert any(0 < s <= LOW_STOCK_THRESHOLD for s in stoklar), (
             "'kritik' azalanları kapsamıyor"
         )
+
+    async def test_p1_1_tukendi_ve_azalan_da_satista_olani_sayar(
+        self, http, fab12
+    ):
+        """P1-1 · `tukendi` ve `azalan` da satışta olmayanı DIŞARIDA bırakır.
+
+        `kritik` düzeltilip kardeşleri unutulursa üç kova birbirinden ayrışır:
+        `kritik` ≠ `tukendi` ∪ `azalan` olur ve `stock_policy`'nin "birleşim"
+        sözleşmesi sessizce yalana döner.
+        """
+        admin_id, headers = await fab12.admin(izinler=["products.view"])
+        await fab12.kitap(stock=0, status="HIDDEN")
+        await fab12.kitap(stock=1, status="DRAFT")
+
+        for kova in ("tukendi", "azalan", "kritik"):
+            kayitlar = await _liste(http, headers, limit=200, stok=kova)
+            durumlar = {k.get("status") for k in kayitlar}
+            assert durumlar <= {"ACTIVE"}, (
+                f"'{kova}' filtresi satışta olmayan ürün döndürüyor: {durumlar}"
+            )

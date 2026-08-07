@@ -18,7 +18,7 @@ from sqlalchemy.orm import selectinload
 
 from core import mail, storage
 from core.config import settings
-from core.stock_policy import LOW_STOCK_THRESHOLD
+from core.stock_policy import stok_kovasi_yuklemi
 from core.search_text import (
     normalize_tr,
     normalized,
@@ -1056,28 +1056,12 @@ def _admin_filtreleri(
     etmez.
     """
     if stok is not None:
-        # Dijitalin stoğu yoktur; stok filtresi yalnız fiziksel ürüne uygulanır
-        # ve dijital ürün "tükendi"/"azalan" kovalarına ASLA düşmez.
-        fiziksel = Product.kind == ProductKind.PHYSICAL.value
-        if stok == "tukendi":
-            stmt = stmt.where(fiziksel, Product.stock <= 0)
-        elif stok == "azalan":
-            stmt = stmt.where(
-                fiziksel, Product.stock > 0, Product.stock <= LOW_STOCK_THRESHOLD
-            )
-        elif stok == "var":
-            stmt = stmt.where(
-                or_(
-                    Product.kind == ProductKind.DIGITAL.value,
-                    Product.stock > LOW_STOCK_THRESHOLD,
-                )
-            )
-        elif stok == "kritik":
-            # `tukendi` + `azalan` birleşimi. Dashboard "Düşük stok" kartının
-            # saydığı kümenin ta kendisi: kart bir yeniden-sipariş alarmıdır ve
-            # o karar için stoğu bitmiş ürün de düşük stokludur. Kartın sayısı
-            # ile kartın açtığı liste aynı küme olmalı (bkz. core/stock_policy).
-            stmt = stmt.where(fiziksel, Product.stock <= LOW_STOCK_THRESHOLD)
+        # Yüklem `core.stock_policy`'den gelir; dashboard sayacı da AYNI
+        # yardımcıyı kullanır. Burada elle yazılması, sayaç ile listenin
+        # birbirinden ayrışmasının kökeniydi (P1-1): sayaç `status == ACTIVE`
+        # filtreliyordu, liste filtrelemiyordu ve kart 5 derken liste 7
+        # gösteriyordu.
+        stmt = stmt.where(stok_kovasi_yuklemi(stok))
 
     for column, values in ((Product.publisher, publisher), (Product.author, author)):
         if values:

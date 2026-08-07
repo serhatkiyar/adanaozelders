@@ -16,8 +16,8 @@ from models.library import Library, LibraryStatus
 from models.payment import Payment, PaymentStatus
 from models.report import Report, ReportStatus
 from models.review import Review
-from core.stock_policy import LOW_STOCK_THRESHOLD
-from models.store import Order, OrderReturn, OrderStatus, Product, ProductKind, ProductStatus
+from core.stock_policy import stok_kovasi_yuklemi
+from models.store import Order, OrderReturn, OrderStatus, Product
 from models.tutor import Tutor, TutorEducation, TutorStatus
 from schemas.admin import (
     AdminBookingOut,
@@ -165,15 +165,14 @@ async def get_dashboard(db: AsyncSession, *, range_name: str) -> AdminDashboardO
         _count_scalar(
             OrderReturn, OrderReturn.status == "PENDING", soft_delete=False
         ).label("pending_returns"),
+        # Sayaç ile kartın AÇTIĞI liste (`?stok=kritik`) tek bir yüklemi
+        # paylaşır: eşik de kapsam da `core.stock_policy`'de. Burada elle
+        # yazmak, ikisinin ayrı ayrı kaymasına izin verirdi — nitekim P1-1'de
+        # tam olarak bu oldu: sayaç `ACTIVE` filtreliyordu, liste
+        # filtrelemiyordu; kart 5 derken liste 7 kayıt gösteriyordu.
         _count_scalar(
             Product,
-            Product.kind == ProductKind.PHYSICAL,
-            Product.status == ProductStatus.ACTIVE,
-            # Eşik TEK KAYNAKTAN (`core.stock_policy`). Buraya gömülü `5`
-            # yazmak, ürün listesindeki `?stok=azalan` filtresiyle bu sayacın
-            # ayrı ayrı kaymasına izin verirdi: kart "7 ürün" der, liste
-            # başka bir küme gösterir ve fark hiçbir yerde görünmez.
-            Product.stock <= LOW_STOCK_THRESHOLD,
+            stok_kovasi_yuklemi("kritik"),
         ).label("low_stock_products"),
         _count_scalar(Library, Library.status == LibraryStatus.PENDING).label(
             "pending_libraries"
