@@ -654,6 +654,23 @@ class Order(Base, TimestampMixin, SoftDeleteMixin):
             "paid_at",
             postgresql_where=text("paid_at IS NOT NULL AND deleted_at IS NULL"),
         ),
+        # Vergi kırılımı EKSİK siparişleri sayan kuyruk (`GET /store/admin/
+        # tax-health`). Kısmi: sağlıklı siparişler indekste yer kaplamasın —
+        # `SHIPPING_TAX_RATE` girildikten sonra bu küme küçülüp boşalmalıdır.
+        #
+        # Tanım `migrations/versions/ip5_siparis_vergi_kirilimi.py` ile
+        # BİREBİR aynı olmak zorunda (ad, kolon, predikat): ayrışırsa
+        # `alembic check` "remove_index" görür ve CI kırılır — ayrıca bir
+        # sonraki `--autogenerate` bu index'i DROP eden migration üretir.
+        Index(
+            "ix_orders_tax_breakdown_missing",
+            "created_at",
+            postgresql_where=text(
+                "deleted_at IS NULL AND ("
+                "tax_breakdown IS NULL "
+                "OR (shipping_fee > 0 AND shipping_tax_rate IS NULL))"
+            ),
+        ),
     )
 
 
