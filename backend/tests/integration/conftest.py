@@ -36,7 +36,10 @@ from sqlalchemy import text
 
 from core.config import settings
 from core.database import AsyncSessionLocal, engine
-from tests.integration.db_guard import assert_test_database
+from tests.integration.db_guard import (
+    assert_fake_payment_provider,
+    assert_test_database,
+)
 from tests.service_guard import servis_yok
 from core.payments.fake import FakePaymentProvider
 from models.booking import Booking, BookingStatus
@@ -50,6 +53,9 @@ from services import commission
 # İP-2b fixture'ları (fab/http/sms_kayit) burada kayda geçer — test dosyaları
 # import etmez (fixture parametresi import edilen adı gölgeleyip F811 üretiyordu).
 from tests.integration.ip2b_factory import fab, http, sms_kayit  # noqa: F401,E402
+# İP-5 fabrikası (fab5) da burada kayda geçer: test dosyasında import
+# etmek, fixture parametresi aynı adı gölgelediği için F811 üretiyordu.
+from tests.integration.ip5_factory import fab5  # noqa: F401,E402
 
 
 def _now() -> datetime.datetime:
@@ -442,6 +448,11 @@ async def _test_veritabani():
     from sqlalchemy.ext.asyncio import create_async_engine
 
     assert_test_database()   # ad `test` içermiyorsa suite BAŞLAMAZ
+    # TB-21: gerçek ödeme sağlayıcısıyla koşulmaz. Session kapsamlı + autouse
+    # olduğu için bu kontrol BÜTÜN entegrasyon suite'ini kapsar; tek tek
+    # testlere güvenmek, sağlayıcıyı fixture'dan almayan yolları açıkta
+    # bırakırdı (boşluğun ölçüldüğü yer tam olarak orasıydı).
+    assert_fake_payment_provider()
     ad = settings.POSTGRES_DB
 
     bakim = create_async_engine(_bakim_url(), isolation_level="AUTOCOMMIT")

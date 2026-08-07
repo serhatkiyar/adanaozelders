@@ -21,6 +21,7 @@ import type {
   ProductUpdate,
   RatingDistribution,
   SellerEarnings,
+  OrderInvoiceOut,
   SellerProductCreate,
 } from "@/types";
 
@@ -272,6 +273,22 @@ export async function bulkImportProducts(file: File): Promise<BulkImportResult> 
     "/store/admin/products/bulk",
     form,
     MULTIPART
+  );
+  return data;
+}
+
+/**
+ * Sipariş faturası (sunucu tarafı).
+ *
+ * Uç `INVOICE_ENABLED` kapalıyken 404, kırılımı eksik/ödenmemiş siparişte
+ * 409 döner. Çağıran bunları HATA olarak değil, "belge henüz üretilemiyor"
+ * durumu olarak ele almalıdır (bkz. OrderInvoiceModal).
+ */
+export async function fetchOrderInvoice(
+  orderId: number
+): Promise<OrderInvoiceOut> {
+  const { data } = await apiClient.get<OrderInvoiceOut>(
+    `/store/orders/${orderId}/invoice`
   );
   return data;
 }

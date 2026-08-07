@@ -105,6 +105,19 @@ export function useOrder(orderId: number | undefined) {
   });
 }
 
+/**
+ * Sipariş faturası. 404 (uç kapalı) ve 409 (kırılım eksik) BEKLENEN
+ * durumlardır; yeniden denemek anlamsızdır, o yüzden retry kapalı.
+ */
+export function useOrderInvoice(orderId: number | undefined, enabled = true) {
+  return useQuery({
+    queryKey: ["store", "orders", orderId, "invoice"],
+    queryFn: () => storeApi.fetchOrderInvoice(orderId!),
+    enabled: enabled && orderId !== undefined && !Number.isNaN(orderId),
+    retry: false,
+  });
+}
+
 export function useCreateOrder() {
   const qc = useQueryClient();
   return useMutation({

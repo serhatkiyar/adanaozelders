@@ -29,18 +29,15 @@ notunu bırakmak, yapılmış bir işi yapılmamış gibi anlatır).
      sozlesmesi.md:229`, `ip1a-ders-para-sozlesme.md:676` (tarihsel, dokunulmadı).
      **TB-2** silinmedi ama YARIYA DARALDI — güncel gövdesine bakınız. -->
 
-## TB-21 · Entegrasyon testleri `.env`'den `PAYMENT_PROVIDER` alıyor — GERÇEK iyzico sandbox'ına çıkabiliyor
-
-| | |
-|---|---|
-| **Bulundu** | İP-1b merge duman testi, 7 Ağu 2026 (ölçümlü, tek testte izole edildi) |
-| **Yer** | `backend/conftest.py:9-14` (kök) ↔ `backend/.env:97` ↔ `backend/scripts/ip1b_test_env.ps1` |
-| **Durum** | Kök `conftest.py` CI için `POSTGRES_*` / `JWT_SECRET_KEY` / `AUTO_CREATE_DB` varsayılanlarını `setdefault` ile koyuyor ama **`PAYMENT_PROVIDER`'ı koymuyor**. Geliştirici `.env`'inde `PAYMENT_PROVIDER=iyzico` (sandbox anahtarlarıyla, canlı doğrulama için bilinçli) yazdığı için ayar teste sızıyor. Paketlerin kendi env betikleri (`ip1b_test_env.ps1`) de bu değişkeni ayarlamıyor |
-| **Kanıt** | `tests/integration/test_ip1b_silme_guard_pg.py::test_D4_acik_emanetli_egitmen_silinemez` **FAILED**: `402: email hatalı format ile gönderilmiştir`. Log, isteğin gerçekten `https://sandbox-api.iyzipay.com/payment/iyzipos/checkoutform/initialize/...` adresine gittiğini gösteriyor. Aynı test **yalnız** `PAYMENT_PROVIDER=fake` eklenerek: **passed** (3,28 sn). Tüm İP-1b suite'i `fake` ile 28/28 |
-| **Neden çoğu test etkilenmiyor** | Entegrasyon `conftest.py`'si `FakePaymentProvider`'ı fixture ile enjekte ediyor; D4 sağlayıcıyı fixture'dan almayan bir yoldan (`payment_service.py:166`) geçiyor. Yani boşluk **fixture kapsamında**, ölçek olarak dar ama sınıf olarak geneldir |
-| **Etki** | Üç ayrı zarar: (1) **yalancı kırmızı** — kod doğruyken test düşer, gerçek regresyonla karıştırılır; (2) **dış bağımlılık** — testler ağ ve üçüncü taraf sandbox'ının çalışmasına bağlanır (kök `CLAUDE.md` §G "test izolasyonu zorunludur"); (3) tersi daha sinsi: sandbox isteği **başarılı** olsaydı test yeşil kalır ve fake sağlayıcı yolunun hiç sınanmadığı fark edilmezdi |
-| **Neden ertelendi** | Merge turunda kök `conftest.py`'ye dokunmak, denetimden geçmiş dört paketin (İP-1b/İP-4/İP-2a/İP-3) koşum ortamını sessizce değiştirirdi. Duman testi doğru sağlayıcıyla tekrarlandı ve 28/21/49/115 yeşil alındı; kayıt bu yüzden borç, engel değil |
-| **Sonraki adım** | Kök `conftest.py`'ye `os.environ.setdefault("PAYMENT_PROVIDER", "fake")` eklemek **ve** nöbetçi olarak entegrasyon suite'inin başında gerçek sağlayıcının seçilmediğini doğrulayan bir kontrol koymak (`settings.PAYMENT_PROVIDER != "iyzico"` değilse `pytest.exit`). Ağa çıkan bir testin sessizce geçmesi, düşmesinden daha tehlikelidir |
+<!-- Kapanma notu (İP-5, `bda2edf`): **TB-21** ("Entegrasyon testleri
+     `.env`'den `PAYMENT_PROVIDER` alıyor") KAPANDI ve dosyanın kendi kuralı
+     gereği SİLİNDİ. Kapatan kod iki katmanlıdır: kök `conftest.py`
+     `os.environ.setdefault("PAYMENT_PROVIDER", "fake")` (değişken YOKKEN
+     korur) ve `tests/integration/db_guard.py::assert_fake_payment_provider`
+     (açıkça `iyzico` verilmiş koşumu REDDEDER; session kapsamlı autouse
+     fixture'da çağrıldığı için tüm entegrasyon suite'ini kapsar). Mutasyon
+     provası P9 conftest satırını sökünce T-1a kırılıyor. Detay:
+     `docs/ip5-kdv-fatura-sozlesme.md` §8. -->
 
 ## TB-20 · İP-1b P2 listesi (kütüphane kontenjan + para güvenliği — on iki kayıt, öncelik sırasıyla)
 
@@ -135,18 +132,17 @@ notunu bırakmak, yapılmış bir işi yapılmamış gibi anlatır).
 | **CI'nin bugünkü duruşu** | Audit adımı `continue-on-error: true` ile koşuyor ve gerekçesi adımın üstünde yorum olarak duruyor (job kırmızıya düşmüyor, uyarı görünür kalıyor). Bu bilinçli bir istisnadır, genel bir susturma değil: adım kaldırılmadı, çıktısı `|| true` ile yutulmuyor, yeni açıklar raporda görünmeye devam ediyor |
 | **Sonraki adım** | (1) Ayrı bir paket olarak React 19 + `react-router` 8 yükseltmesi (CI `node-version` 22'ye çekilerek); (2) o pakete kadar `npm audit` çıktısının **her turda okunması** — bu istisnanın altında yeni bir açık birikirse fark edilmeli; (3) yükseltme yapıldığında CI'daki istisna yorumu ve bu kayıt birlikte silinir |
 
-## TB-15 · Mağaza para sözleşmesinin iki kaçağı (main'in kendi borcu — İP-2a kapsamı dışında)
+## TB-15 · Mağaza para sözleşmesinin kaçağı — **(a) KAPANDI**, (b) açık
 
 | | |
 |---|---|
 | **Bulundu** | İP-2a nihai bağımsız audit'i (4 Ağu 2026); merge sonrası main kodunda yeniden doğrulandı |
-| **Yer** | `backend/services/order_service.py::_out_of_stock_refund` (~`:877-920`) · `backend/services/order_service.py::complete_checkout` "ölü varlık" dalı (~`:626-665`) |
-| **(a) `_out_of_stock_refund` merkezi para sözleşmesinin DIŞINDA** | İP-2a iade parasını üç bileşene bağladı: `reserve_refund` (tavan kapısı), `apply_refunded_amount` (**tek yazıcı, M6**) ve `settle_refunded_order` (ortak telafi kancası). Oversell iadesi bu üçünün **hiçbirini** kullanmıyor; doğrudan `escrow.begin_refund` + `escrow.perform_refund` + elle FSM geçişi yapıyor |
-| **(a) etkisi** | (1) Mutlu yolda bile `orders.refunded_amount` **0 kalır** → `revenue_service.py` iade sütununu bu kolondan okuduğu için oversell iadeleri ciro raporunda görünmez. (2) `refund_reserved` hiç artmaz. (3) Sağlayıcı düşerse sipariş `REFUNDING`'de kalır ve reconciler onu **Order** olarak devralıp `settle_refunded_order` → `_restock` çalıştırır; oysa bu yolda sipariş hiç PAID olmamış, `SALE` hareketi hiç yazılmamıştır → **hiç satılmamış mal için `SALE_CANCEL`** yazılır (hayali stok artışı). Tavan kontrolü bunu engellemez: `restored_quantity_by_order_item` yalnız SALE_CANCEL/RETURN sayar, satılan 0 iken tavan tam adedi verir |
+| **Yer** | `backend/services/order_service.py::complete_checkout` "ölü varlık" dalı (~`:626-665`) |
+| **(a) `_out_of_stock_refund` merkezi sözleşme dışında** | **KAPANDI — İP-5** (`3a23f03` + `cf3615b`). Akış artık `reserve_refund` → `begin_refund` → `perform_refund` → `settle_refunded_order`. "Hiç satılmamış mala `SALE_CANCEL`" zararı iki katmanla kapatıldı: **açık parametre** (`settle_refunded_order(restock=False)` — canlı çağrıda bilgi tam) ve **kalıcı iz** (`_restock` → `_oversell_iptali_mi`, `order_status_history.changed_by = 'system:oversell'` — reconciler devraldığında parametre kaybolmuştur). Gerçek PG ile ölçüldü (O-1…O-4 + O-4b nöbetçisi), mutasyon provaları P7/P8 yakaladı. Detay: `docs/ip5-kdv-fatura-sozlesme.md` §7 |
+| **(a) — geri alınan ara çözüm** | İlk uygulama "`_restock` satılan adedi `stock_ledger.sold_quantity_by_order_item` ile **defterden** okusun" diyordu. **GERİ ALINDI** (`cf3615b`) ve yardımcı silindi. Ölçüm çürüttü: geliştirme veritabanındaki 20 PAID fiziksel siparişin **19'unda** `SALE` hareketi yok (defter `stok_hareket_defteri_sku` onlardan SONRA kuruldu); `paid_at` 7 dolu / 12 NULL, `order_status_history`'de PAID kaydı 3 var / 16 yok. O kural, defter öncesi GERÇEK bir siparişin iptalinde stoğu geri döndürmezdi — **gerçek stok kaybı**. Kayıt burada duruyor çünkü kural makul görünüyor ve tekrar önerilebilir |
 | **(b) `complete_checkout` geç-tahsilat dalı ikinci `refunded_amount` yazıcısı** | `apply_refunded_amount` "TEK yazıcı (M6)" diyor, ama "ölü varlık" dalı `refunded_amount`'a **mutlak atama** yapıyor (`refunded_amount: order_total`) — artırımlı değil, `LEAST(..., total)` tavanı yok, `refund_reserved` güncellenmiyor. Satır `refunded_amount=total, refund_reserved=0` gibi kendi içinde tutarsız kalıyor (`escrow.order_inflight_refund` bu ikiliyi birlikte okur) |
 | **(b) bugünkü gerçek risk** | Düşük, kayıp güncelleme DEĞİL: dal yalnız `from_statuses=["PENDING","FAILED"]` claim'iyle koşuyor, fonksiyon girişi PAID/REFUNDING/REFUNDED'ı zaten erken döndürüyor ve kısmi RMA siparişin PAID olmasını gerektiriyor → o noktada `refunded_amount` pratikte 0. Yani **sözleşme ihlali / regresyon riski** |
-| **Neden ertelendi** | İkisi de İP-2a'nın kırmızı matrisinden ÖNCE var olan main yollarıdır; paket kapsamı RMA/iade para güvenliğiydi. (a)'nın düzeltmesi oversell yolunu merkezi sözleşmeye taşımayı ve reconciler'ın "hiç PAID olmamış sipariş" ayrımını yapmasını gerektiriyor — yani `settle_refunded_order`'a yeni bir dal. Audit turunda üretim koduna kapsam dışı dokunmak paketin kabul sözleşmesini kaydırırdı |
-| **Sonraki adım** | (a) `_out_of_stock_refund`'u `reserve_refund` → `perform_refund` → `settle_refunded_order` hattına taşımak **ve** telafi kancasına "SALE yazılmamışsa restock yok" koşulu eklemek; gerçek PG testi: sağlayıcı ilk denemede düşsün, reconciler devralsın, `stock_movements`'te SALE_CANCEL **oluşmadığı** ve `refunded_amount`'ın dolduğu doğrulansın. (b) ölü-varlık dalını `apply_refunded_amount`'a çevirmek + "kod tabanında `refunded_amount`'a yazan tek yer" yapısal nöbetçisi |
+| **Sonraki adım** | (b) ölü-varlık dalını `apply_refunded_amount`'a çevirmek + "kod tabanında `refunded_amount`'a yazan tek yer" yapısal nöbetçisi |
 
 ## TB-14 · İP-2a P2 listesi (audit'te açık bırakılan sekiz kaydın YEDİSİ — öncelik sırasıyla)
 

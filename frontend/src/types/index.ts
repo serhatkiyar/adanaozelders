@@ -1512,6 +1512,8 @@ export interface ProductSearchOut {
   tutor_name?: string | null;
   price: string;
   compare_at_price?: string | null;
+  /** KDV oranı — ORAN (0.20 = %20), yüzde değil. Admin formu bunu yüzdeye çevirip gösterir. */
+  tax_rate?: string | number | null;
   currency: string;
   cover_url?: string | null;
   in_stock: boolean;
@@ -1572,6 +1574,8 @@ export interface ProductCreate extends BookSpecFields {
   kind: ProductKind;
   price: string | number;
   compare_at_price?: string | number | null;
+  /** ZORUNLU — sunucuda varsayılanı yoktur (bkz. sözleşme S-5). ORAN, yüzde değil. */
+  tax_rate: string | number;
   stock?: number | null;
   weight_grams?: number | null;
   category_id?: number | null;
@@ -1584,6 +1588,8 @@ export interface ProductUpdate extends BookSpecFields {
   description?: string | null;
   price?: string | number;
   compare_at_price?: string | number | null;
+  /** Gönderilmezse mevcut oran korunur. ORAN, yüzde değil. */
+  tax_rate?: string | number;
   stock?: number | null;
   weight_grams?: number | null;
   category_id?: number | null;
@@ -1596,8 +1602,79 @@ export interface SellerProductCreate {
   description?: string | null;
   price: string | number;
   compare_at_price?: string | number | null;
+  /** ZORUNLU — eğitmen dijital ürünü de fatura satırıdır. ORAN, yüzde değil. */
+  tax_rate: string | number;
   category_id?: number | null;
   cover_url?: string | null;
+}
+
+/* ── Sunucu taraflı fatura (İP-5) ──
+ * Kırılım sipariş anında SAKLANMIŞ değerlerden gelir; istemci hiçbir vergi
+ * hesabı yapmaz. e-Arşiv formatına HAZIR ama hiçbir dış servise bağlı değil.
+ */
+export interface InvoiceTaxLine {
+  /** Oran, 4 basamaklı metin ("0.2000") — Numeric(5,4) ile birebir. */
+  rate: string;
+  base: string;
+  tax: string;
+}
+
+export interface OrderInvoiceOut {
+  order_id: number;
+  issued_for: string;
+  paid_at: string;
+  currency: string;
+  seller: {
+    name: string;
+    tax_number: string;
+    tax_office: string;
+    address: string;
+    phone: string;
+    email: string;
+  };
+  buyer: {
+    name?: string | null;
+    phone?: string | null;
+    address?: string | null;
+    city?: string | null;
+    district?: string | null;
+  };
+  payment: {
+    provider?: string | null;
+    provider_ref?: string | null;
+    status: string;
+    paid_at: string;
+  };
+  items: {
+    order_item_id: number;
+    title: string;
+    quantity: number;
+    unit_price: string;
+    line_gross: string;
+    tax_rate: string;
+    tax_amount: string;
+  }[];
+  tax_lines: InvoiceTaxLine[];
+  shipping: {
+    fee: string;
+    tax_rate?: string | null;
+    tax_amount?: string | null;
+  };
+  totals: {
+    subtotal: string;
+    discount: string;
+    coupon_code?: string | null;
+    net_total: string;
+    tax_total: string;
+    grand_total: string;
+  };
+  refund: {
+    refunded_amount: string;
+    net_total: string;
+    tax_total: string;
+    tax_lines: InvoiceTaxLine[];
+  };
+  notice: string;
 }
 
 export interface ProductReviewCreate {

@@ -174,6 +174,34 @@ class Settings(BaseSettings):
     # altındaki fiziksel siparişe sabit ücret. (Frontend lib/shipping.ts ile aynı.)
     SHIPPING_FREE_THRESHOLD: float = 500.0
     SHIPPING_FLAT_FEE: float = 49.90
+    #: Kargo bedelinin KDV oranı (ORAN, 0.20 = %20). **Varsayılanı YOKTUR.**
+    #:
+    #: Kargo bir hizmettir; oranı sepetteki maldan türetilemez. Sepetin
+    #: ağırlıklı ortalamasını almak kesirli ve savunulamaz bir oran üretir,
+    #: "kargo muaftır" demek ise bir mevzuat iddiasını koda gömmek olurdu.
+    #: Bu yüzden değer `.env`'den gelir ve kararı mali müşavir verir.
+    #:
+    #: `None` iken sipariş NORMAL geçer ama kargonun vergi kırılımı
+    #: `orders.shipping_tax_rate = NULL` olarak **belirsiz** kaydedilir —
+    #: sessizce %0 yazılmaz. Fatura ucu böyle bir siparişte 409 döner ve
+    #: `GET /store/admin/tax-health` kaç siparişin bu durumda olduğunu sayar.
+    SHIPPING_TAX_RATE: float | None = None
+
+    # ── Fatura (e-Arşiv'e HAZIR, hiçbir dış servise BAĞLI DEĞİL) ──
+    #: Sunucu taraflı fatura ucunun ana şalteri. Varsayılan KAPALI: metinler
+    #: mali müşavir onayından geçene ve satıcı bilgileri kesinleşene kadar
+    #: üretimde açılmaz. Kapalıyken uç 404 döner (403 varlığını sızdırırdı).
+    INVOICE_ENABLED: bool = False
+    #: Satıcı kimliği — faturanın zorunlu unsurları. Hepsi DOLU olmalıdır;
+    #: eksik bilgiyle fatura üretmek, kargo oranı boşken üretmekle aynı sınıf
+    #: hatadır ve uç 409 ile reddeder. Değerler `.env`'den gelir; şahıs
+    #: şirketinin adresi/telefonu kesinleşince oraya yazılır.
+    INVOICE_SELLER_NAME: str | None = None
+    INVOICE_SELLER_TAX_NUMBER: str | None = None
+    INVOICE_SELLER_TAX_OFFICE: str | None = None
+    INVOICE_SELLER_ADDRESS: str | None = None
+    INVOICE_SELLER_PHONE: str | None = None
+    INVOICE_SELLER_EMAIL: str | None = None
     # Kendi-filo teslimat (mağaza kitap dağıtımı). Depo = turun başlangıç noktası
     # (Seyhan Çakmak Cad. civarı; kesinleşince .env'den güncellenir). Teslim OTP'si
     # kapıda müşterinin söylediği koddur — telefon doğrulama OTP'sinden ayrıdır.

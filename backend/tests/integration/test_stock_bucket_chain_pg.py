@@ -559,6 +559,7 @@ async def test_URUN_OLUSTURMA_yolu_SALEABLE_yaziyor(fab):
             s,
             admin,
             ProductCreate(
+                tax_rate=Decimal("0.20"),
                 title=f"Kova Yazici {_uniq()}",
                 kind="PHYSICAL",
                 price=Decimal("25.00"),

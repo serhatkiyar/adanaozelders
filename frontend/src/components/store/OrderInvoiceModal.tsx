@@ -1,13 +1,35 @@
-// Sipariş faturası/belgesi — ekranda gösterilir, "Yazdır / PDF" ile yazdırılır
-// (index.css `@media print` yalnız #order-invoice'i basar). Gerçek e-Fatura/
-// e-Arşiv şahıs şirketi kurulunca entegre edilecek (bkz. legalContent OPERATOR
-// TODO); şimdilik sipariş verisinden üretilen bilgilendirme belgesidir.
+// Sipariş faturası / belgesi — ekranda gösterilir, "Yazdır / PDF" ile yazdırılır
+// (index.css `@media print` yalnız #order-invoice'i basar).
+//
+// ## İki kip, tek bileşen
+//
+// **Fatura kipi** (uç 200): satıcı kimliği, alıcı, oran bazında matrah/vergi
+// kırılımı ve ödeme bilgisi SUNUCUDAN gelir. Vergi burada hesaplanmaz —
+// sipariş anında saklanan kırılım okunur (bkz. services/invoice_service.py).
+//
+// **Özet kipi** (uç 404/409): fatura ucu üretimde kapalıysa ya da siparişin
+// kırılımı eksikse (İP-5 öncesi sipariş, kargo oranı henüz tanımsız) belge
+// **"Sipariş Özeti"** olarak başlıklanır ve vergi satırı GÖSTERİLMEZ.
+// Bilmediğimiz bir kırılımı uydurmaktansa, göstermemek doğrudur.
+//
+// Eskiden bu bileşen belgenin tamamını kendisi üretiyordu: satıcı kimliği
+// istemci sabitinden geliyordu (adres/telefon/vergi dairesi BOŞ) ve ödeme
+// satırı "iyzico ile ödeme" diye SABİT YAZILIYDI — fake sağlayıcıyla ödenmiş
+// siparişte bile. Yani belge gerçeği söylemiyordu.
 import { OPERATOR } from "@/lib/legalContent";
 import { formatDate } from "@/lib/datetime";
 import { formatTL } from "@/lib/money";
 import { orderPaymentLabel } from "@/lib/orderPayment";
+import { useOrderInvoice } from "@/hooks/useStore";
 import { STATUS_LABELS } from "@/pages/store/OrdersPage";
-import type { OrderOut } from "@/types";
+import type { OrderInvoiceOut, OrderOut } from "@/types";
+
+/** Oran metnini ("0.2000") okunur yüzdeye çevirir — yalnız GÖSTERİM içindir. */
+function oranEtiketi(rate: string): string {
+  const sayi = Number(rate);
+  if (!Number.isFinite(sayi)) return rate;
+  return `%${Number((sayi * 100).toFixed(2))}`;
+}
 
 export function OrderInvoiceModal({
   order,
@@ -18,9 +40,22 @@ export function OrderInvoiceModal({
   buyerFallbackName?: string | null;
   onClose: () => void;
 }) {
+  // Fatura yalnız ödenmiş siparişte anlamlıdır; ödenmemişte uç zaten 409
+  // döner, gereksiz istek atmıyoruz.
+  const fatura = useOrderInvoice(order.id, order.payment_status === "PAID");
+  const belge = fatura.data ?? null;
+
   const statusLabel = STATUS_LABELS[order.status]?.label ?? order.status;
-  const buyerName = order.ship_recipient || buyerFallbackName || "—";
-  const cityLine = [order.ship_district, order.ship_city].filter(Boolean).join(" / ");
+  const buyerName =
+    belge?.buyer.name || order.ship_recipient || buyerFallbackName || "—";
+  const cityLine = [
+    belge?.buyer.district ?? order.ship_district,
+    belge?.buyer.city ?? order.ship_city,
+  ]
+    .filter(Boolean)
+    .join(" / ");
+  const adres = belge?.buyer.address ?? order.ship_address;
+  const telefon = belge?.buyer.phone ?? order.ship_phone;
 
   return (
     <div
@@ -35,14 +70,32 @@ export function OrderInvoiceModal({
           {/* Başlık */}
           <div className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 pb-5 dark:border-slate-700">
             <div>
-              <p className="text-lg font-bold text-slate-900 dark:text-white">{OPERATOR.name}</p>
-              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{OPERATOR.entity}</p>
-              <p className="text-xs text-slate-500 dark:text-slate-400">{OPERATOR.address}</p>
-              <p className="text-xs text-slate-500 dark:text-slate-400">{OPERATOR.email}</p>
+              <p className="text-lg font-bold text-slate-900 dark:text-white">
+                {belge?.seller.name ?? OPERATOR.name}
+              </p>
+              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                {belge ? belge.seller.name : OPERATOR.entity}
+              </p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                {belge?.seller.address ?? OPERATOR.address}
+              </p>
+              {belge && (
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Vergi No: {belge.seller.tax_number} ({belge.seller.tax_office})
+                </p>
+              )}
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                {belge?.seller.email ?? OPERATOR.email}
+              </p>
+              {belge?.seller.phone && (
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  {belge.seller.phone}
+                </p>
+              )}
             </div>
             <div className="text-right">
               <p className="text-sm font-semibold uppercase tracking-wide text-slate-900 dark:text-white">
-                Fatura / Sipariş Belgesi
+                {belge ? "Fatura Bilgileri" : "Sipariş Özeti"}
               </p>
               <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                 Sipariş No: <span className="font-medium text-slate-700 dark:text-slate-200">#{order.id}</span>
@@ -56,19 +109,19 @@ export function OrderInvoiceModal({
             </div>
           </div>
 
-          {/* Alıcı */}
+          {/* Alıcı + ödeme */}
           <div className="grid grid-cols-1 gap-4 py-5 sm:grid-cols-2">
             <div>
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
                 Alıcı
               </p>
               <p className="mt-1 text-sm font-medium text-slate-900 dark:text-white">{buyerName}</p>
-              {order.ship_phone && (
-                <p className="text-sm text-slate-600 dark:text-slate-300">{order.ship_phone}</p>
+              {telefon && (
+                <p className="text-sm text-slate-600 dark:text-slate-300">{telefon}</p>
               )}
-              {order.ship_address && (
+              {adres && (
                 <p className="whitespace-pre-line text-sm text-slate-600 dark:text-slate-300">
-                  {order.ship_address}
+                  {adres}
                 </p>
               )}
               {cityLine && <p className="text-sm text-slate-600 dark:text-slate-300">{cityLine}</p>}
@@ -77,40 +130,63 @@ export function OrderInvoiceModal({
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
                 Ödeme
               </p>
-              <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">iyzico ile ödeme</p>
+              {/* Sağlayıcı adı SUNUCUDAN gelir; bilinmiyorsa yazılmaz. */}
+              {belge?.payment.provider && (
+                <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+                  {belge.payment.provider}
+                </p>
+              )}
               <p className="text-sm text-slate-600 dark:text-slate-300">
                 {orderPaymentLabel(order.payment_status)}
               </p>
+              {belge?.payment.paid_at && (
+                <p className="text-sm text-slate-600 dark:text-slate-300">
+                  {formatDate(belge.payment.paid_at)}
+                </p>
+              )}
             </div>
           </div>
 
           {/* Ürünler */}
-          <table className="w-full border-collapse text-sm">
-            <thead>
-              <tr className="border-y border-slate-200 text-left text-xs uppercase tracking-wide text-slate-400 dark:border-slate-700 dark:text-slate-500">
-                <th className="py-2 font-semibold">Ürün</th>
-                <th className="py-2 text-center font-semibold">Adet</th>
-                <th className="py-2 text-right font-semibold">Birim</th>
-                <th className="py-2 text-right font-semibold">Tutar</th>
-              </tr>
-            </thead>
-            <tbody>
-              {order.items.map((it) => (
-                <tr key={it.id} className="border-b border-slate-100 dark:border-slate-800">
-                  <td className="py-2 pr-2 align-top text-slate-800 dark:text-slate-200">{it.title}</td>
-                  <td className="py-2 text-center align-top text-slate-600 dark:text-slate-300">
-                    {it.quantity}
-                  </td>
-                  <td className="py-2 text-right align-top text-slate-600 dark:text-slate-300">
-                    {formatTL(it.unit_price)}
-                  </td>
-                  <td className="py-2 text-right align-top text-slate-800 dark:text-slate-200">
-                    {formatTL(Number(it.unit_price) * it.quantity)}
-                  </td>
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse text-sm">
+              <thead>
+                <tr className="border-y border-slate-200 text-left text-xs uppercase tracking-wide text-slate-400 dark:border-slate-700 dark:text-slate-500">
+                  <th className="py-2 font-semibold">Ürün</th>
+                  <th className="py-2 text-center font-semibold">Adet</th>
+                  {belge && <th className="py-2 text-center font-semibold">KDV</th>}
+                  <th className="py-2 text-right font-semibold">Birim</th>
+                  <th className="py-2 text-right font-semibold">Tutar</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {order.items.map((it) => {
+                  const faturaSatiri = belge?.items.find(
+                    (s) => s.order_item_id === it.id
+                  );
+                  return (
+                    <tr key={it.id} className="border-b border-slate-100 dark:border-slate-800">
+                      <td className="py-2 pr-2 align-top text-slate-800 dark:text-slate-200">{it.title}</td>
+                      <td className="py-2 text-center align-top text-slate-600 dark:text-slate-300">
+                        {it.quantity}
+                      </td>
+                      {belge && (
+                        <td className="py-2 text-center align-top text-slate-600 dark:text-slate-300">
+                          {faturaSatiri ? oranEtiketi(faturaSatiri.tax_rate) : "—"}
+                        </td>
+                      )}
+                      <td className="py-2 text-right align-top text-slate-600 dark:text-slate-300">
+                        {formatTL(it.unit_price)}
+                      </td>
+                      <td className="py-2 text-right align-top text-slate-800 dark:text-slate-200">
+                        {formatTL(Number(it.unit_price) * it.quantity)}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
 
           {/* Toplamlar */}
           <div className="mt-4 ml-auto max-w-xs space-y-1 text-sm">
@@ -127,15 +203,27 @@ export function OrderInvoiceModal({
                 value={`−${formatTL(order.discount)}`}
               />
             )}
+            {/* Vergi kırılımı YALNIZ fatura kipinde: bilinmeyen bir kırılımı
+                uydurmak yerine hiç göstermiyoruz. */}
+            {belge && <TaxLines belge={belge} />}
             <div className="flex justify-between border-t border-slate-200 pt-1.5 font-semibold dark:border-slate-700">
               <span className="text-slate-700 dark:text-slate-200">Genel Toplam</span>
               <span className="text-slate-900 dark:text-white">{formatTL(order.total)}</span>
             </div>
+            {belge && Number(belge.refund.refunded_amount) > 0 && (
+              <div className="flex justify-between border-t border-slate-100 pt-1.5 text-slate-500 dark:border-slate-800 dark:text-slate-400">
+                <span>
+                  İade edilen (KDV {formatTL(belge.refund.tax_total)} dahil)
+                </span>
+                <span>−{formatTL(belge.refund.refunded_amount)}</span>
+              </div>
+            )}
           </div>
 
           <p className="mt-6 border-t border-slate-100 pt-4 text-[11px] leading-relaxed text-slate-400 dark:border-slate-800 dark:text-slate-500">
-            Bu belge sipariş bilgilerinizi özetler. Resmi e-Fatura/e-Arşiv belgesi,
-            işletmenin kuruluşu tamamlandığında ayrıca düzenlenecektir.
+            {belge
+              ? belge.notice
+              : "Bu belge sipariş bilgilerinizi özetler; resmî fatura değildir. Vergi kırılımı bu sipariş için kayıtlı olmadığından gösterilmemiştir."}
           </p>
         </div>
 
@@ -150,14 +238,35 @@ export function OrderInvoiceModal({
           </button>
           <button
             type="button"
+            disabled={fatura.isLoading}
             onClick={() => window.print()}
-            className="rounded-full bg-indigo-600 px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-indigo-700"
+            className="rounded-full bg-indigo-600 px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-indigo-700 disabled:opacity-50"
           >
             Yazdır / PDF olarak kaydet
           </button>
         </div>
       </div>
     </div>
+  );
+}
+
+function TaxLines({ belge }: { belge: OrderInvoiceOut }) {
+  return (
+    <>
+      <div className="flex justify-between border-t border-slate-100 pt-1.5 dark:border-slate-800">
+        <span className="text-slate-500 dark:text-slate-400">Matrah</span>
+        <span className="text-slate-800 dark:text-slate-200">
+          {formatTL(belge.totals.net_total)}
+        </span>
+      </div>
+      {belge.tax_lines.map((satir) => (
+        <Row
+          key={satir.rate}
+          label={`KDV ${oranEtiketi(satir.rate)} (matrah ${formatTL(satir.base)})`}
+          value={formatTL(satir.tax)}
+        />
+      ))}
+    </>
   );
 }
 

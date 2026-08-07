@@ -17,6 +17,7 @@ import {
   type AdminReasonCode,
 } from "@/lib/stockMovements";
 import { StockMovementsPanel } from "@/components/admin/StockMovementsPanel";
+import { orandanYuzde, yuzdedenOran } from "@/lib/tax";
 import {
   createCategory,
   createProduct,
@@ -219,6 +220,9 @@ function ProductForm({
   const [kind, setKind] = useState<ProductKind>((initial?.kind as ProductKind) ?? "PHYSICAL");
   const [price, setPrice] = useState(initial ? String(initial.price) : "");
   const [compareAt, setCompareAt] = useState(initial?.compare_at_price ? String(initial.compare_at_price) : "");
+  // KDV: formda YUZDE tutulur, istekte ORAN gider (bkz. lib/tax.ts). Yeni
+  // urunde bos baslar — varsayilan oran YOKTUR, karar veri olarak girilir.
+  const [taxPercent, setTaxPercent] = useState(orandanYuzde(initial?.tax_rate));
   const [stock, setStock] = useState(initial?.stock != null ? String(initial.stock) : "");
   const [categoryId, setCategoryId] = useState(initial?.category_id != null ? String(initial.category_id) : "");
   const [description, setDescription] = useState(initial?.description ?? "");
@@ -251,9 +255,15 @@ function ProductForm({
 
   const mutation = useMutation({
     mutationFn: () => {
+      // Oran once dogrulanir: gecersizse istek HIC gitmez. Sunucu da 422
+      // doner (tek guvenlik siniri orasidir), ama kullanici hatayi formda
+      // ve Turkce gormeli.
+      const oran = yuzdedenOran(taxPercent);
+      if (!oran.ok) throw new Error(oran.hata ?? "KDV oranı geçersiz");
       const base = {
         title,
         price,
+        tax_rate: oran.oran,
         compare_at_price: compareAt || null,
         stock: kind === "PHYSICAL" && stock ? Number(stock) : null,
         category_id: categoryId ? Number(categoryId) : null,
@@ -325,6 +335,20 @@ function ProductForm({
       </select>
       <input value={price} onChange={(e) => setPrice(e.target.value)} placeholder="Fiyat (TL)" inputMode="decimal" className="input" />
       <input value={compareAt} onChange={(e) => setCompareAt(e.target.value)} placeholder="Eski fiyat (opsiyonel)" inputMode="decimal" className="input" />
+      <label className="flex flex-col gap-1">
+        <input
+          value={taxPercent}
+          onChange={(e) => setTaxPercent(e.target.value)}
+          placeholder="KDV oranı (%)"
+          inputMode="decimal"
+          aria-label="KDV oranı (%)"
+          className="input"
+        />
+        <span className="text-[11px] text-slate-400 dark:text-slate-500">
+          Yüzde olarak yazın (ör. 20). Fiyat KDV dahildir; oran faturadaki
+          matrah ayrıştırması için kullanılır.
+        </span>
+      </label>
       {kind === "PHYSICAL" && (
         <input value={stock} onChange={(e) => setStock(e.target.value)} placeholder="Stok" inputMode="numeric" className="input" />
       )}
@@ -389,7 +413,7 @@ function ProductForm({
 
       <button
         type="button"
-        disabled={mutation.isPending || !title || !price}
+        disabled={mutation.isPending || !title || !price || !taxPercent}
         onClick={() => mutation.mutate()}
         className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50 dark:bg-white dark:text-slate-900 sm:col-span-2"
       >
@@ -543,7 +567,7 @@ function EditProductModal({
 /* ── Toplu içe aktar (CSV) ── */
 
 const CSV_COLUMNS =
-  "title,kind,price,compare_at_price,stock,category_slug,status,cover_url,description,author,publisher,isbn,page_count,dimensions,publication_year,edition,language,cover_type";
+  "title,kind,price,tax_rate,compare_at_price,stock,category_slug,status,cover_url,description,author,publisher,isbn,page_count,dimensions,publication_year,edition,language,cover_type";
 
 function BulkImportPanel({ onDone }: { onDone: () => void }) {
   const [file, setFile] = useState<File | null>(null);
@@ -584,8 +608,10 @@ function BulkImportPanel({ onDone }: { onDone: () => void }) {
   return (
     <div className="mt-4 rounded-xl border border-slate-200 p-4 text-sm dark:border-slate-700">
       <p className="text-slate-600 dark:text-slate-300">
-        CSV ile toplu ürün ekle. İlk satır başlık olmalı; yalnız <b>title</b> ve <b>price</b>{" "}
-        zorunlu. Aynı ISBN varsa atlanır. Platform (fiziksel/dijital) ürünü oluşturur.
+        CSV ile toplu ürün ekle. İlk satır başlık olmalı; <b>title</b>, <b>price</b> ve{" "}
+        <b>tax_rate</b> zorunlu. KDV oranını <b>oran</b> olarak yazın (0.20 = %20);
+        oransız satırlar oluşturulmaz ve aşağıda tek tek raporlanır. Aynı ISBN varsa
+        atlanır. Platform (fiziksel/dijital) ürünü oluşturur.
       </p>
       <button
         type="button"

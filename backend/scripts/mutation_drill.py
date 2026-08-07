@@ -35,6 +35,7 @@ from __future__ import annotations
 
 import argparse
 import dataclasses
+import hashlib
 import os
 import pathlib
 import subprocess
@@ -117,6 +118,7 @@ class GeciciYama:
         self.eski = eski
         self.yeni = yeni
         self._yedek: bytes | None = None
+        self._ozet: str | None = None
 
     def __enter__(self):
         # Yedek BAYT bazında (satır sonları dâhil birebir geri yüklenir); ama
@@ -124,16 +126,35 @@ class GeciciYama:
         # duruyor, desenler kaynakta LF. Ham baytta arama sessizce "hedef metin
         # yok" der ve mutasyon hiç uygulanmaz (bu tuzağa bir kez düşüldü).
         self._yedek = self.yol.read_bytes()
+        self._ozet = hashlib.sha256(self._yedek).hexdigest()
         metin = self.yol.read_text(encoding="utf-8")
         if self.eski not in metin:
             self._yedek = None
             raise SystemExit(f"MUTASYON UYGULANAMADI ({self.yol}): hedef metin yok")
+        if metin.count(self.eski) > 1:
+            # Birden çok eşleşme, "hangisini bozduğumuzu bilmiyoruz" demektir;
+            # yanlış yeri mutasyona uğratıp "yakalandı" demek [[TB-14]]/7(c)'nin
+            # ta kendisidir.
+            self._yedek = None
+            raise SystemExit(
+                f"MUTASYON BELİRSİZ ({self.yol}): hedef metin "
+                f"{metin.count(self.eski)} kez geçiyor, deseni daraltın"
+            )
         self.yol.write_text(metin.replace(self.eski, self.yeni, 1), encoding="utf-8")
         return self
 
     def __exit__(self, *exc):
         if self._yedek is not None:
             self.yol.write_bytes(self._yedek)
+            # TB-14/7(a): geri almanın gerçekten baytı baytına olduğu
+            # DOĞRULANIR. `git status` karşılaştırması dosya içeriğini
+            # görmez — aynı boyutta bozuk bir geri yazım oradan kaçardı.
+            simdi = hashlib.sha256(self.yol.read_bytes()).hexdigest()
+            if simdi != self._ozet:
+                raise SystemExit(
+                    f"!!! GERİ ALMA DOĞRULANAMADI ({self.yol}): "
+                    f"SHA-256 {self._ozet[:12]} → {simdi[:12]} !!!"
+                )
         return False
 
 
@@ -860,6 +881,165 @@ MUTASYONLAR: list[Mutasyon] = [
                 """    pass  # MUTASYON: aynı rezervasyona eşzamanlı ikinci tahsilat serbest""",
             ),
         ),
+    ),
+
+    # ══════════════════ İP-5 · KDV ve fatura (dokuz mutasyon) ══════════════════
+    #
+    # Ortak not: hepsi ÜRÜN kodunu bozar, test kodunu değil. Bir mutasyon
+    # testin kendi beklentisini gevşetiyorsa hiçbir şey kanıtlamaz.
+    Mutasyon(
+        "P1", "IP5: tax_rate şema doğrulaması kaldırıldı (varsayılan 0 geri geldi)",
+        "backend/schemas/store.py",
+        """    tax_rate: Decimal = Field(**_TAX_RATE_FIELD_ARGS)
+    stock: int | None = Field(default=None, ge=0)""",
+        """    tax_rate: Decimal = Field(default=Decimal("0"))  # MUTASYON: sinir + zorunluluk yok
+    stock: int | None = Field(default=None, ge=0)""",
+        ("tests/integration/test_ip5_tax_writer_pg.py",),
+    ),
+    Mutasyon(
+        "P2", "IP5: siparişe vergi kırılımı yazılmıyor (totals_by_rate bağlantısı kesildi)",
+        "backend/services/order_service.py",
+        """        net_total=kdv.net_total,
+        tax_total=kdv.tax_total,
+        tax_breakdown=tax.breakdown_to_json(kdv.breakdown),""",
+        """        net_total=None,  # MUTASYON: kirilim saklanmiyor
+        tax_total=None,
+        tax_breakdown=None,""",
+        ("tests/integration/test_ip5_tax_math_pg.py",),
+    ),
+    Mutasyon(
+        "P3", "IP5: kuruş artığı dağıtımı kaldırıldı (bağımsız orantısal yuvarlama)",
+        "backend/services/tax.py",
+        "    shares = allocate_discount_shares(grosses, Decimal(str(discount or 0)))",
+        """    # MUTASYON: en-buyuk-artik yerine bagimsiz yuvarlama
+    _toplam = sum(grosses, Decimal("0")) or Decimal("1")
+    shares = [
+        _q(Decimal(str(discount or 0)) * g / _toplam) for g in grosses
+    ]""",
+        ("tests/integration/test_ip5_tax_math_pg.py",),
+    ),
+    Mutasyon(
+        "P4", "IP5: fatura kırılımı saklanandan değil ANLIK hesaplanıyor",
+        "backend/services/invoice_service.py",
+        """        "tax_lines": [
+            {"rate": s["rate"], "base": str(s["base"]), "tax": str(s["tax"])}
+            for s in order.tax_breakdown
+        ],""",
+        """        # MUTASYON: saklanan kirilim yerine urunun GUNCEL orani
+        "tax_lines": [
+            {
+                "rate": tax.rate_key(_p.tax_rate if _p is not None else 0),
+                "base": str(
+                    (Decimal(str(it.unit_price)) * it.quantity)
+                    - tax.tax_from_gross(
+                        Decimal(str(it.unit_price)) * it.quantity,
+                        Decimal(str((_p.tax_rate if _p is not None else 0) or 0)),
+                    )
+                ),
+                "tax": str(
+                    tax.tax_from_gross(
+                        Decimal(str(it.unit_price)) * it.quantity,
+                        Decimal(str((_p.tax_rate if _p is not None else 0) or 0)),
+                    )
+                ),
+            }
+            for it in order.items
+            for _p in [
+                (
+                    await db.execute(
+                        text("SELECT tax_rate FROM products WHERE id = :i"),
+                        {"i": it.product_id},
+                    )
+                ).first()
+            ]
+        ],""",
+        ("tests/integration/test_ip5_tax_math_pg.py::test_m6_saklanan_kirilim_urun_oranindan_bagimsiz",
+         "tests/integration/test_ip5_invoice_pg.py::test_f4_kirilim_dbdeki_degerlerle_ayni"),
+    ),
+    Mutasyon(
+        "P5", "IP5: fatura sahiplik kontrolü kaldırıldı (IDOR)",
+        "backend/services/invoice_service.py",
+        """                Order.id == order_id,
+                # Sahiplik SORGUDA: "yok" ile "senin değil" ayırt edilemez
+                # (İP-2a/İP-3 IDOR deseni).
+                Order.client_id == client_id,""",
+        """                Order.id == order_id,
+                # MUTASYON: sahiplik kosulu kaldirildi""",
+        ("tests/integration/test_ip5_invoice_pg.py",),
+    ),
+    Mutasyon(
+        "P6", "IP5: kısmi iadede orantı kaldırıldı (tüm kırılım geri döndürülüyor)",
+        "backend/services/invoice_service.py",
+        "    if iade_edilen > 0 and rma_toplami <= 0:",
+        "    if iade_edilen > 0:  # MUTASYON: RMA olsa da tam kirilim donduruluyor",
+        ("tests/integration/test_ip5_tax_math_pg.py",),
+    ),
+    Mutasyon(
+        "P7", "IP5: oversell iadesi merkezi hattan çıkarıldı (TB-15(a) geri geldi)",
+        "backend/services/order_service.py",
+        """    if not await reserve_refund(db, order, tutar):
+        logger.error(
+            "order %s: oversell iadesi için tavan rezerve edilemedi "
+            "(total=%s, rezerve=%s) — para hareketi yapılmadı, elle inceleyin",
+            order.id, order.total, order.refund_reserved,
+        )
+        return
+    if not await escrow.begin_refund(""",
+        """    if not await escrow.begin_refund(  # MUTASYON: tavan kapisi atlandi""",
+        ("tests/integration/test_ip5_oversell_refund_pg.py",),
+        ek=(
+            (
+                "backend/services/order_service.py",
+                """        await settle_refunded_order(
+            db,
+            order,
+            amount=tutar,
+            reason_code="ORDER_CANCELLED",
+            terminal_status="CANCELLED",
+            changed_by=OVERSELL_AKTORU,
+            reason="Stok yetersiz: " + ", ".join(shortages),
+            # Bu sipariş hiç PAID olmadı; `SALE` yazılmadığı için geri
+            # yüklenecek bir şey de yok (TB-15(a)/3).
+            restock=False,
+        )""",
+                """        # MUTASYON: ortak telafi kuyrugu atlandi, elle FSM gecisi
+        await order_fsm.transition_order(
+            db,
+            order,
+            "CANCELLED",
+            changed_by="system:oversell",
+            reason="Stok yetersiz: " + ", ".join(shortages),
+        )""",
+            ),
+        ),
+    ),
+    Mutasyon(
+        "P8", "IP5: 'oversell iptalinde restock yok' koşulu kaldırıldı",
+        "backend/services/order_service.py",
+        """    if await _oversell_iptali_mi(db, order):""",
+        """    if False:  # MUTASYON: oversell ayrimi kaldirildi""",
+        ("tests/integration/test_ip5_oversell_refund_pg.py",),
+        ek=(
+            # Koruma İKİ katmanlı (canlı çağrıda parametre, reconciler'da iz).
+            # Tek katmanı sökmek davranışı bozmaz — mutasyon "yakalanmadı"
+            # görünür ama testler kusursuz da olabilir. Gerçek soru
+            # "bu guard'lar TOPLUCA vazgeçilebilir mi?" olduğu için ikisi
+            # birlikte sökülür.
+            (
+                "backend/services/order_service.py",
+                """            # Bu sipariş hiç PAID olmadı; `SALE` yazılmadığı için geri
+            # yüklenecek bir şey de yok (TB-15(a)/3).
+            restock=False,""",
+                """            restock=True,  # MUTASYON: acik parametre de kaldirildi""",
+            ),
+        ),
+    ),
+    Mutasyon(
+        "P9", "IP5: kök conftest PAYMENT_PROVIDER satırı kaldırıldı (TB-21)",
+        "backend/conftest.py",
+        'os.environ.setdefault("PAYMENT_PROVIDER", "fake")',
+        '# MUTASYON: setdefault kaldirildi (.env sizabilir)',
+        ("tests/integration/test_ip5_provider_guard_pg.py",),
     ),
 ]
 

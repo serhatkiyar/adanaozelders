@@ -153,6 +153,10 @@ def _to_search_out(
         compare_at_price=(
             str(p.compare_at_price) if p.compare_at_price is not None else None
         ),
+        # Oran yanıtta döner: admin düzenleme formu mevcut değeri buradan okur.
+        # Dönmezse form her açılışta alanı boş gösterir ve kaydeden kullanıcı
+        # oranı farkında olmadan değiştirmiş olur.
+        tax_rate=(Decimal(str(p.tax_rate)) if p.tax_rate is not None else None),
         currency=p.currency,
         cover_url=p.cover_url,
         in_stock=_in_stock(p),
@@ -556,6 +560,9 @@ async def create_product(
         seller_type=SellerType.PLATFORM.value,
         price=payload.price,
         compare_at_price=payload.compare_at_price,
+        # KDV oranı VERİDİR: şemadan gelir, burada türetilmez. Kategoriye ya da
+        # `kind`'a bakarak oran seçmek bir mevzuat kararını koda gömmek olurdu.
+        tax_rate=payload.tax_rate,
         # Fiziksel ürün **0 stokla** kurulur; ilk bakiye aşağıda bir `INITIAL`
         # hareketiyle deftere yazılır. Constructor'da yazmak, defterin
         # "mevcut + delta" aritmetiğiyle bakiyeyi ÇİFT sayardı. Dijital ürün
@@ -649,6 +656,22 @@ async def bulk_import_products(db: AsyncSession, admin: Admin, rows: list[dict])
             if compare is not None and compare <= price:
                 raise ValueError("compare_at_price fiyattan büyük olmalı")
 
+            # KDV oranı ZORUNLU (S-5). Boş bırakılan satır SESSİZCE %0 ile
+            # oluşturulmaz: yanlış oranla satılan ürün fark edilmeden fatura
+            # üretir ve hata ancak muhasebede ortaya çıkar. Reddedilen satır
+            # `errors` listesinde raporlanır — toplu içe aktarmada hangi
+            # satırın neden atlandığı görünmezse kullanıcı eksiği fark etmez.
+            tax_rate = _dec("tax_rate")
+            if tax_rate is None:
+                raise ValueError(
+                    "tax_rate (KDV oranı) zorunlu — oran olarak yazın "
+                    "(0.20 = %20), yüzde değil"
+                )
+            if tax_rate < 0 or tax_rate >= 1:
+                raise ValueError(
+                    f"tax_rate 0 ≤ oran < 1 olmalı (0.20 = %20): {tax_rate}"
+                )
+
             isbn = _g("isbn")
             if isbn:
                 dupe = (
@@ -679,6 +702,7 @@ async def bulk_import_products(db: AsyncSession, admin: Admin, rows: list[dict])
                     seller_type=SellerType.PLATFORM.value,
                     price=price,
                     compare_at_price=compare,
+                    tax_rate=tax_rate,
                     # 0 ile kurulur; ilk bakiye deftere yazılır (bkz.
                     # `create_product`). Dijital → NULL (stok takibi yok).
                     stock=0 if kind == "PHYSICAL" else None,
@@ -856,7 +880,16 @@ async def update_product(
     # DİNAMİK bir yazım yoludur; stok oraya girerse mutlak atama kilit ve delta
     # hesabını atlar ve hiçbir AST testi bunu "doğrudan mutasyon" olarak
     # göremez. Stok yukarıda, kilit altında, delta olarak ele alınır.
-    editable = ["description", "price", "compare_at_price", "category_id", "cover_url"]
+    editable = [
+        "description",
+        "price",
+        "compare_at_price",
+        "category_id",
+        "cover_url",
+        # Oran, satıcı kim olursa olsun düzenlenebilir: eğitmen de kendi dijital
+        # ürününün faturasından sorumludur. Sınır şemada (0 ≤ oran < 1).
+        "tax_rate",
+    ]
     if owner_tutor_id is None:
         # Admin: ağırlık/durum + kitap künyesi (stok HARİÇ).
         editable += ["weight_grams", "status", *_BOOK_SPEC_FIELDS]
@@ -1023,6 +1056,7 @@ async def create_seller_product(
         tutor_id=tutor.id,
         price=payload.price,
         compare_at_price=payload.compare_at_price,
+        tax_rate=payload.tax_rate,
         category_id=payload.category_id,
         status=ProductStatus.PENDING.value,
         cover_url=payload.cover_url,
