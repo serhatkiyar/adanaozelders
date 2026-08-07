@@ -10,6 +10,7 @@ import { useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 
 import { Badge, Button, Dialog, EmptyState, ErrorState, PageSkeleton } from "@/components/admin/ui";
+import { ProductPicker } from "@/components/admin/ProductPicker";
 import { useCountSessions, useCreateCountSession } from "@/hooks/useInventory";
 import { useInventoryAccess } from "@/hooks/useInventoryAccess";
 import {
@@ -24,6 +25,7 @@ import { ROUTES } from "@/lib/routes";
 import { toast } from "@/store/toastStore";
 
 import type { CountSessionOut } from "@/api/inventory";
+import type { ProductSearchOut } from "@/types";
 
 const PAGE_SIZE = 25;
 
@@ -114,15 +116,15 @@ function YeniSayimDialog({
   onClose: () => void;
 }) {
   const [scope, setScope] = useState<CountScope>("MANUAL");
-  const [urunler, setUrunler] = useState("");
+  // Ham ID metni yerine SEÇİLMİŞ ÜRÜN NESNELERİ tutulur: ekranda adıyla
+  // görünmesi ve gövdeye doğru ID'nin gitmesi aynı kaynaktan okunur, ikisi
+  // ayrışamaz.
+  const [secilenUrunler, setSecilenUrunler] = useState<ProductSearchOut[]>([]);
   const [kategori, setKategori] = useState("");
   const [not, setNot] = useState("");
   const olustur = useCreateCountSession();
 
-  const idler = urunler
-    .split(/[\s,]+/)
-    .map((p) => Number(p))
-    .filter((n) => Number.isInteger(n) && n > 0);
+  const idler = secilenUrunler.map((p) => p.id);
 
   const gecerli =
     scope === "ALL" ||
@@ -171,21 +173,17 @@ function YeniSayimDialog({
         </label>
 
         {scope === "MANUAL" && (
-          <label className="block">
-            <span className="mb-1.5 block text-sm font-semibold text-slate-700 dark:text-slate-200">
-              Ürün numaraları
-            </span>
-            <input
-              className="input"
-              value={urunler}
-              onChange={(e) => setUrunler(e.target.value)}
-              placeholder="12, 34, 56"
-              inputMode="numeric"
+          <div>
+            <ProductPicker
+              selected={secilenUrunler}
+              onChange={setSecilenUrunler}
             />
-            <span className="mt-1 block text-xs text-slate-500 dark:text-slate-400">
-              Virgül veya boşlukla ayırın. {idler.length > 0 && `${idler.length} ürün seçildi.`}
-            </span>
-          </label>
+            {idler.length > 0 && (
+              <span className="mt-1 block text-xs text-slate-500 dark:text-slate-400">
+                {idler.length} ürün seçildi.
+              </span>
+            )}
+          </div>
         )}
 
         {scope === "CATEGORY" && (

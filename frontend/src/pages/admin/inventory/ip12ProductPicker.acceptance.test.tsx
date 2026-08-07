@@ -14,7 +14,7 @@
 //
 // A12, A5'in aramasının üzerine oturur: arama varsa seçici küçük bir iştir.
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
@@ -125,7 +125,10 @@ const GEOMETRI = {
 /** Seçiciyi arama sonucuyla besleyen sunucu. */
 function aramaSunucusu(sonuc: unknown[] = [GEOMETRI]) {
   sunucu("/store/admin/products", sonuc, "get");
-  sunucu("/inventory/counts", [], "get");
+  // Gerçek uç `/inventory/count-sessions` — ilk yazımda `/inventory/counts`
+  // varsaymıştım ve test kendi yanlış fixture'ına bakıp "istek gitmedi"
+  // diyordu. Uç adı ölçülerek düzeltildi.
+  sunucu("/inventory/count-sessions", [], "get");
   sunucu("/inventory/damages", [], "get");
   sunucu("/inventory/overview", {}, "get");
 }
@@ -172,7 +175,7 @@ describe("S-1 · sayım oturumunda ürün ARAMAYLA seçilir", () => {
   it("seçilen ürün oturuma product_ids olarak GÖNDERİLİR", async () => {
     izinVer("inventory.view", "inventory.count");
     aramaSunucusu();
-    sunucu("/inventory/counts", { id: 900, status: "DRAFT" }, "post");
+    sunucu("/inventory/count-sessions", { id: 900, status: "DRAFT" }, "post");
 
     sar(ROUTES.adminInventoryCounts, <CountSessionsPage />);
     fireEvent.click(await screen.findByRole("button", { name: /yeni sayım/i }));
@@ -186,12 +189,18 @@ describe("S-1 · sayım oturumunda ürün ARAMAYLA seçilir", () => {
 
     fireEvent.click(await screen.findByRole("button", { name: /oturumu aç|oluştur/i }));
 
-    const gonderim = istekler.find(
-      (i) => i.method === "post" && i.url.includes("/inventory/counts")
-    );
-    expect(gonderim, "oturum açma isteği gitmedi").toBeTruthy();
+    // Mutation ASENKRON: tıklamadan hemen sonra `istekler`e bakmak isteği
+    // henüz yolda yakalar ve test "istek gitmedi" der (ilk yazımda tam olarak
+    // bu oldu). İstek gerçekten gidene kadar beklenir.
+    const gonderim = await waitFor(() => {
+      const bulunan = istekler.find(
+        (i) => i.method === "post" && i.url.includes("/inventory/count-sessions")
+      );
+      expect(bulunan, "oturum açma isteği gitmedi").toBeTruthy();
+      return bulunan!;
+    });
     expect(
-      (gonderim?.body as { product_ids?: number[] })?.product_ids,
+      (gonderim.body as { product_ids?: number[] })?.product_ids,
       "seçilen ürün gövdeye girmedi"
     ).toEqual([42]);
   });
@@ -201,7 +210,7 @@ describe("S-2 · seçilenler görünür ve kaldırılabilir", () => {
   it("seçilen ürün listede görünür ve kaldırılınca gövdeden düşer", async () => {
     izinVer("inventory.view", "inventory.count");
     aramaSunucusu();
-    sunucu("/inventory/counts", { id: 901, status: "DRAFT" }, "post");
+    sunucu("/inventory/count-sessions", { id: 901, status: "DRAFT" }, "post");
 
     sar(ROUTES.adminInventoryCounts, <CountSessionsPage />);
     fireEvent.click(await screen.findByRole("button", { name: /yeni sayım/i }));
@@ -218,11 +227,21 @@ describe("S-2 · seçilenler görünür ve kaldırılabilir", () => {
     expect(within(secilenler).getByText(/Geometri Soru Bankası/)).toBeTruthy();
 
     fireEvent.click(within(secilenler).getByRole("button", { name: /kaldır/i }));
-    expect(within(secilenler).queryByText(/Geometri Soru Bankası/)).toBeNull();
+
+    // Liste boşalınca bileşen hiç render edilmiyor; eski DOM referansı
+    // (`secilenler`) koparılmış bir düğüm olarak içeriğini korur ve onun
+    // üzerinden sorgu yapmak "hâlâ duruyor" der. Doğru ölçüm, bölümün
+    // EKRANDAN kalkmış olmasıdır.
+    await waitFor(() =>
+      expect(screen.queryByRole("list", { name: /seçilen ürünler/i })).toBeNull()
+    );
 
     fireEvent.click(await screen.findByRole("button", { name: /oturumu aç|oluştur/i }));
+    // Seçim boşken oturum açılamaz (buton disabled) — yani hiç POST gitmemeli.
+    // Ölçüt bu: "kaldır" ekrandan silmekle kalmıyor, gövdeyi de boşaltıyor.
+    await new Promise((r) => setTimeout(r, 50));
     const gonderim = istekler.find(
-      (i) => i.method === "post" && i.url.includes("/inventory/counts")
+      (i) => i.method === "post" && i.url.includes("/inventory/count-sessions")
     );
     expect(
       (gonderim?.body as { product_ids?: number[] })?.product_ids ?? [],
@@ -233,11 +252,11 @@ describe("S-2 · seçilenler görünür ve kaldırılabilir", () => {
 
 describe("S-3 · hasar kaydında aynı seçici", () => {
   it("ham sayı kutusu yerine arama ile ürün seçilir", async () => {
-    izinVer("inventory.view", "inventory.damage");
+    izinVer("inventory.view", "inventory.apply");
     aramaSunucusu();
 
     sar(ROUTES.adminInventoryDamage, <DamageEventsPage />);
-    fireEvent.click(await screen.findByRole("button", { name: /hasar kaydet|yeni hasar/i }));
+    fireEvent.click(await screen.findByRole("button", { name: /hasara ayır/i }));
 
     const arama = await screen.findByLabelText(/ürün ara/i);
     fireEvent.change(arama, { target: { value: "geometri" } });

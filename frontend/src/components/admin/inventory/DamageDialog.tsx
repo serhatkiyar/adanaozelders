@@ -10,6 +10,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Button, Dialog } from "@/components/admin/ui";
+import { ProductPicker } from "@/components/admin/ProductPicker";
 import {
   DAMAGE_KINDS,
   DAMAGE_REASON_OPTIONS,
@@ -24,6 +25,7 @@ import {
 } from "@/lib/inventory";
 
 import type { DamagePayload } from "@/api/inventory";
+import type { ProductSearchOut } from "@/types";
 
 export interface DamageDialogProps {
   kind: DamageKind | null;
@@ -41,7 +43,9 @@ const GONDER_ETIKET: Record<DamageKind, string> = {
 };
 
 export function DamageDialog({ kind, isPending, error, onClose, onSubmit }: DamageDialogProps) {
-  const [urun, setUrun] = useState("");
+  // Ham ID metni değil SEÇİLMİŞ ÜRÜN: ekranda adıyla görünen şeyle gövdeye
+  // giden ID aynı kaynaktan okunur.
+  const [secilenUrun, setSecilenUrun] = useState<ProductSearchOut | null>(null);
   const [miktar, setMiktar] = useState("");
   const [neden, setNeden] = useState<DamageReason | "">("");
   const [aciklama, setAciklama] = useState("");
@@ -53,7 +57,7 @@ export function DamageDialog({ kind, isPending, error, onClose, onSubmit }: Dama
   // Pencere her açıldığında form ve anahtar sıfırlanır.
   useEffect(() => {
     if (kind) {
-      setUrun("");
+      setSecilenUrun(null);
       setMiktar("");
       setNeden("");
       setAciklama("");
@@ -73,7 +77,7 @@ export function DamageDialog({ kind, isPending, error, onClose, onSubmit }: Dama
   if (!kind) return null;
 
   const dogrulama = validateDamageForm({
-    productId: Number(urun) || null,
+    productId: secilenUrun?.id ?? null,
     kind,
     qty: Number.isInteger(adet) ? adet : NaN,
     reason: (neden || null) as DamageReason | null,
@@ -108,18 +112,16 @@ export function DamageDialog({ kind, isPending, error, onClose, onSubmit }: Dama
       onClose={() => !isPending && onClose()}
     >
       <div className="space-y-4">
+        {/* Ham ürün numarası yerine arama: hasar kaydı stoktan düşen ve geri
+            alınamaz bir defter satırı üretir; yanlış numaraya yazılan bir
+            hasar sessizce yanlış kitabı eksiltir. Seçilen ürün adıyla teyit
+            edilebilmeli. */}
+        <ProductPicker
+          selected={secilenUrun ? [secilenUrun] : []}
+          onChange={(secilenler) => setSecilenUrun(secilenler[0] ?? null)}
+          multiple={false}
+        />
         <div className="grid gap-4 sm:grid-cols-2">
-          <label className="block">
-            <span className="mb-1.5 block text-sm font-semibold text-slate-700 dark:text-slate-200">
-              Ürün numarası
-            </span>
-            <input
-              className="input"
-              inputMode="numeric"
-              value={urun}
-              onChange={(e) => setUrun(e.target.value)}
-            />
-          </label>
           <label className="block">
             <span className="mb-1.5 block text-sm font-semibold text-slate-700 dark:text-slate-200">
               Miktar
@@ -211,7 +213,7 @@ export function DamageDialog({ kind, isPending, error, onClose, onSubmit }: Dama
           </p>
         )}
 
-        {!dogrulama.ok && dogrulama.error && (urun || miktar || neden) && (
+        {!dogrulama.ok && dogrulama.error && (secilenUrun || miktar || neden) && (
           <p className="text-xs text-slate-500 dark:text-slate-400">{dogrulama.error}</p>
         )}
 
