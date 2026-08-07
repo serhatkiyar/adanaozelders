@@ -27,8 +27,29 @@ gerekir; baseline migration'da zaten kuruludur (ders tarafı aynı deseni
 kullanıyor). Yine de idempotent `CREATE EXTENSION IF NOT EXISTS` ile garanti
 altına alınır — autogenerate extension'ları GÖRMEZ (backend/CLAUDE.md).
 
+## `down_revision` neden `ip2a` DEĞİL
+
+Bu revizyon `ip2a_iade_para_guvenligi` üzerinde yazıldı; ama paket açıkken
+İP-4 (`ip4_operasyon_izinleri`) main'e girdi ve o da aynı revizyona bağlıydı →
+iki Alembic head. Zincir **doğrusal** hâle getirildi:
+
+    ip2a_iade_para_guvenligi → ip4_operasyon_izinleri
+                             → ip1b_kontenjan_kilidi → ip1b_bilet_kodu_tekilligi
+
+Sıralamanın veri anlamını değiştirmediği koddan doğrulandı:
+
+* İP-4 migration'ı **DDL içermez** — yalnız `admin_permissions` ve
+  `admin_role_permissions` tablolarına `NOT EXISTS` korumalı satır ekler.
+* İP-1b migration'ları yalnız `exam_registrations` / `study_reservations`
+  şemasına dokunur (+ idempotent `btree_gist`). **Ortak tablo, kolon, index,
+  kısıt ya da trigger yoktur.**
+* İP-1b'nin tek okuması (`ip1b_bilet_kodu_tekilligi::_cakisma_kontrolu`) bu iki
+  tabloyla sınırlıdır; İP-4'ün tablolarını okumaz.
+* Dolayısıyla iki sıralama da aynı son durumu üretir; Alembic merge revizyonu
+  gereksizdir ve gövdelerde başka değişiklik gerekmemiştir.
+
 Revision ID: ip1b_kontenjan_kilidi
-Revises: ip2a_iade_para_guvenligi
+Revises: ip4_operasyon_izinleri
 """
 from typing import Sequence, Union
 
@@ -36,7 +57,7 @@ from alembic import op
 import sqlalchemy as sa
 
 revision: str = "ip1b_kontenjan_kilidi"
-down_revision: Union[str, Sequence[str], None] = "ip2a_iade_para_guvenligi"
+down_revision: Union[str, Sequence[str], None] = "ip4_operasyon_izinleri"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
