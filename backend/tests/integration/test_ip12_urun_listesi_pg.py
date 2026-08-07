@@ -515,16 +515,46 @@ class TestVitrinAramasi:
         Vitrin araması ile admin araması aynı vektörü paylaşır; ISBN'i
         yalnız admin tarafına eklemek iki yüzeyi ayırırdı. Müşteri de elindeki
         kitabın arkasındaki numarayı yazabilmeli.
+
+        NEGATİF KONTROL + KÜME BOYUTU ŞART (P1-3): ilk yazımında bu node
+        yalnız "hedef sonuçta var mı" diye soruyordu ve audit M16 ile
+        gösterdi ki vitrin arama dalı (`if q:`) tamamen kaldırılsa bile test
+        GEÇİYORDU — o durumda tüm ACTIVE katalog dönüyor ve hedef doğal
+        olarak içinde kalıyor. Yani node aramanın çalıştığını değil,
+        katalogun boş olmadığını ölçüyordu.
+
+        Artık üç şey birden isteniyor: hedef döner, eşleşmemesi gereken ürün
+        DÖNMEZ, ve sonuç kümesi TAM OLARAK bir kayıttır. Sonuncusu kritik:
+        yalnız negatif kontrol, arama dalı kalkıp katalogda başka ürün
+        bulunmadığında yine sessizce geçerdi.
         """
         _, _ = await fab12.admin(izinler=["products.view"])
         hedef = await fab12.kitap(
             title="Vitrin Geometri", isbn="9786059876543", status="ACTIVE"
         )
+        # Eşleşmemesi gereken, vitrinde GÖRÜNÜR (ACTIVE) ürünler: arama dalı
+        # kapatılırsa bunlar da döner ve node kırılır.
+        baska_isbn = await fab12.kitap(
+            title="Vitrin Fizik", isbn="9789441112223", status="ACTIVE"
+        )
+        isbnsiz = await fab12.kitap(title="Vitrin Kimya", status="ACTIVE")
 
         r = await http.get(PUBLIC_URUN, params={"q": "9786059876543", "limit": 50})
         assert r.status_code == 200, r.text
-        assert hedef.id in {k["id"] for k in r.json()}, (
-            "vitrin araması ISBN'i bulamıyor"
+        donenler = r.json()
+        idler = {k["id"] for k in donenler}
+
+        assert hedef.id in idler, "vitrin araması ISBN'i bulamıyor"
+        assert baska_isbn.id not in idler, (
+            "başka ISBN'li ürün de döndü — komşu ISBN başka bir kitaptır"
+        )
+        assert isbnsiz.id not in idler, (
+            "ISBN'i olmayan ürün de döndü — arama dalı uygulanmıyor olabilir"
+        )
+        assert len(donenler) == 1, (
+            f"ISBN tam eşleşmesi {len(donenler)} kayıt döndürdü; tam olarak "
+            "bir kayıt beklenir. Katalogun tamamı dönüyorsa arama dalı hiç "
+            "uygulanmıyordur"
         )
 
 
