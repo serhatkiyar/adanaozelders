@@ -501,7 +501,7 @@ bilinçlidir (kolonlar İP-5 ile doğdu).
 | 4 | **Fatura numarası / seri-sıra yok** | Mevzuat kararı, bilinçli kapsam dışı |
 | 5 | **e-Arşiv entegratörü bağlı değil** | Bilinçli kapsam dışı |
 | 6 | **`totals_by_rate` artık ölü kod adayı** | Yerini `order_breakdown` aldı ama silinmedi; kendi birim testleri "0.2" biçimini bekliyor (üretim anahtarı 4 basamak). Kaldırılması ayrı bir temizlik; bugün zararsız |
-| 7 | **Frontend flaky** | `PackageLabel.test.tsx` + iki komşu paketleme dosyası tam suite'te yük altında timeout veriyor; **izole koşumda 65/65 geçiyor**. Bilinen kusur ([[TB-14]]/8 sınıfı), İP-5 ile ilgisi yok |
+| 7 | **Frontend flaky (düşük öncelik)** | Paketleme testleri makine yükü altında timeout verebiliyor; iki tam koşumdan biri 756/756 yeşil, diğerinde 4 timeout. Bilinen kusur ([[TB-14]]/8), İP-5 ile ilgisi yok |
 | 8 | **Dijital-yalnız fatura yolu ölçülmedi** | Kapanış turunda bulundu ve DÜZELTİLDİ (`selectinload(Order.client)` eksikti; alıcı adı sessizce boş dönerdi) — ama bu yolu doğrudan ölçen bir node yok: F node'larının hepsi fiziksel kalemli sipariş kuruyor. Sonraki adım: dijital-yalnız siparişte fatura üreten bir F node'u |
 | 9 | **Fatura baskı çıktısı gerçek tarayıcıda doğrulanmadı** | Modalın içeriği değişti (vergi satırları eklendi, tablo bir sütun genişledi) ama `@media print` altında taşma/sayfa kırılımı ölçülmedi. Kök `CLAUDE.md` §F bunu gerçek tarayıcı gerektiren sınıfa koyuyor. Uç üretimde KAPALI olduğu için bugün kullanıcıya ulaşmıyor; `INVOICE_ENABLED` açılmadan önce Chrome + DevTools Protocol ile baskı provası yapılmalı |
 
@@ -550,6 +550,7 @@ kullanımlık; `ceyhandb` allowlist dışında).
 
 | Suite | Beklenen | Sonuç |
 |---|---|---|
+| `tests/integration` (tam) | — | **1215 passed** |
 | `-k ip5` | — | **47 passed** |
 | `-k ip2a` | 49 | **49 passed** — DEĞİŞMEDİ |
 | `-k ip1b` | 28 | **28 passed** |
@@ -559,11 +560,11 @@ kullanımlık; `ceyhandb` allowlist dışında).
 | `-k ip3` | 115 | **115 passed** |
 | `-k f30` | 314 | **314 passed** |
 | `tests/acceptance` | — | **197 passed** |
-| unit (integration/verify/acceptance hariç) | — | **685 passed** (+ İP-5'in 20 yeni birim testi) |
+| unit (integration/verify/acceptance hariç) | 685 taban | **705 passed** (+20: `tests/test_ip5_tax_math.py`) |
 | `ruff check .` | temiz | **All checks passed** |
 | `git diff --check` | temiz | temiz |
 | Frontend `tsc -b` | temiz | temiz |
-| Frontend Vitest | 73 dosya / 744 taban | **74 dosya / 756 test**, 12'si yeni (`lib/tax.test.ts`) |
+| Frontend Vitest | 73 dosya / 744 taban | **74 dosya / 756 test**, hepsi yeşil (12'si yeni: `lib/tax.test.ts`) |
 
 **Koşum sırasında düzeltilen kendi test hatam:** `-p no:logging` bayrağıyla
 koşarken İP-2b'de iki test `fixture 'caplog' not found` verdi. Bu bir üretim
@@ -587,7 +588,7 @@ düşürdü**. İki bağımsız sebep vardı ve ikisi de gerçekti:
 Yani "paket suite'i yeşil" tek başına yeterli olmadı; iddiayı **tam suite**
 düzeltti. Kayıt burada duruyor çünkü kök `CLAUDE.md` §I bunu istiyor.
 
-**Frontend flaky:** tam suite koşumunda 3 dosya / 4 test timeout verdi
-(`PackageLabel.test.tsx` + iki komşu paketleme dosyası). Aynı üç dosya
-**izole koşumda 65/65 geçti** → yük kaynaklı, İP-5 ile ilgisiz
-([[TB-14]]/8 sınıfı).
+**Frontend flaky (çözüldü):** ilk tam suite koşumunda 3 dosya / 4 test
+timeout verdi (`PackageLabel.test.tsx` + iki komşu paketleme dosyası).
+İzole koşumda 65/65 geçtiler; **ikinci tam koşumda 756/756 yeşil**. Yani
+yük kaynaklıydı, kod kusuru değil ([[TB-14]]/8 sınıfı).
