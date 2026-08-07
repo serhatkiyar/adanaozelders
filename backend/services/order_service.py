@@ -907,12 +907,44 @@ async def _out_of_stock_refund(
 ) -> None:
     """Ödeme alındı ama stok (kilit altında) yetersiz → tam iade + iptal.
 
-    Bu noktada henüz PAID'e geçilmedi: kupon tüketilmedi, stok düşülmedi — bu yüzden
-    geri-yükleme/kupon-serbest gerekmez, yalnız sağlayıcı iadesi + CANCELLED.
+    Bu noktada henüz PAID'e geçilmedi: kupon tüketilmedi, stok düşülmedi.
+
+    ## Merkezi para sözleşmesi (TB-15(a))
+
+    Bu yol eskiden İP-2a'nın üç bileşenini de ATLIYORDU ve üç zarar
+    üretiyordu:
+
+    1. `orders.refunded_amount` **0 kalıyordu** → `revenue_service` iade
+       sütununu bu kolondan okuduğu için oversell iadeleri ciro raporunda
+       hiç görünmüyordu.
+    2. `refund_reserved` hiç artmıyordu → iade tavanı (M1) bu yolda
+       uygulanmıyordu.
+    3. Sağlayıcı düşünce sipariş REFUNDING'de kalıyor, reconciler onu
+       **Order** olarak devralıp `settle_refunded_order` → `_restock`
+       çalıştırıyordu; oysa burada hiç `SALE` yazılmamıştır → **hiç
+       satılmamış mal için `SALE_CANCEL`** (hayali stok artışı).
+
+    Artık akış diğer iade yollarıyla AYNI: `reserve_refund` (tavan kapısı) →
+    `begin_refund` (niyet, commit) → `perform_refund` (sağlayıcı) →
+    `settle_refunded_order` (ortak telafi kuyruğu). (3) numaralı zarar ayrıca
+    `_restock`'un "defterde SALE yoksa geri yükleme yok" koşuluyla kapatıldı —
+    reconciler devralsa bile aynı koruma geçerlidir.
 
     İade yine iki fazlıdır (niyet önce commit edilir): tahsil edilmiş paranın
     iadesi süreç ölürse kaybolmamalı. Kaynak durum PAID değil PENDING/FAILED'dır.
     """
+    tutar = Decimal(str(order.total))
+    # Tavan kapısı: diğer iade yollarıyla aynı kapı. Bu yol siparişin TAMAMINI
+    # iade ettiği için rezervasyon normalde her zaman başarılıdır; başarısızsa
+    # aynı sipariş için uçuşta başka bir iade var demektir ve ikinci bir
+    # sağlayıcı çağrısı yapmak aşırı iade riskidir.
+    if not await reserve_refund(db, order, tutar):
+        logger.error(
+            "order %s: oversell iadesi için tavan rezerve edilemedi "
+            "(total=%s, rezerve=%s) — para hareketi yapılmadı, elle inceleyin",
+            order.id, order.total, order.refund_reserved,
+        )
+        return
     if not await escrow.begin_refund(
         db, order, escrow.ORDER_SPEC, from_statuses=["PENDING", "FAILED"]
     ):
@@ -923,18 +955,32 @@ async def _out_of_stock_refund(
         )
         return
     if not await escrow.perform_refund(db, order, escrow.ORDER_SPEC):
-        # REFUNDING'de bırakıldı; reconciler devralır. Sipariş yine iptal edilir.
+        # REFUNDING'de bırakıldı; reconciler devralır ve telafiyi O tamamlar
+        # (aynı `settle_refunded_order` kuyruğu). Sipariş yine iptal edilir.
         logger.error(
             "order %s: oversell iadesi sağlayıcıda tamamlanamadı — REFUNDING",
             order.id,
         )
-    await order_fsm.transition_order(
-        db,
-        order,
-        "CANCELLED",
-        changed_by="system:oversell",
-        reason="Stok yetersiz: " + ", ".join(shortages),
-    )
+        await order_fsm.transition_order(
+            db,
+            order,
+            "CANCELLED",
+            changed_by="system:oversell",
+            reason="Stok yetersiz: " + ", ".join(shortages),
+        )
+    else:
+        # Ortak telafi kuyruğu: `refunded_amount` (tek yazıcı M6), kupon
+        # serbest bırakma, stok geri yükleme ve terminal geçiş. Bu yolda kupon
+        # hiç sayılmadı ve stok hiç düşülmedi; ikisi de idempotent no-op olur.
+        await settle_refunded_order(
+            db,
+            order,
+            amount=tutar,
+            reason_code="ORDER_CANCELLED",
+            terminal_status="CANCELLED",
+            changed_by="system:oversell",
+            reason="Stok yetersiz: " + ", ".join(shortages),
+        )
     await notification_service.notify(
         db,
         user_id=order.client_id,
@@ -1485,15 +1531,36 @@ async def _restock(db: AsyncSession, order: Order, *, reason_code: str) -> None:
     geri_yuklenen = await stock_ledger.restored_quantity_by_order_item(
         db, [item.id for item in physical]
     )
+    # "Satılan" DEFTERDEN okunur, `order_items.quantity`'den DEĞİL (TB-15(a)).
+    #
+    # Kalem adedini satılmış saymak, siparişin PAID olduğu varsayımını taşır.
+    # Oversell iadesinde bu varsayım bozulur: sipariş hiç PAID olmadı, hiç
+    # `SALE` yazılmadı — ama `order_items` satırları var. Eski hâlde telafi
+    # kancası o adetler için `SALE_CANCEL` yazıyor ve HİÇ SATILMAMIŞ mal için
+    # stok artıyordu (hayali stok). Tavan kontrolü bunu göremez.
+    satilan_defterde = await stock_ledger.sold_quantity_by_order_item(
+        db, [item.id for item in physical]
+    )
     specs: list[dict] = []
     for item in physical:
-        kalan = int(item.quantity) - int(geri_yuklenen.get(item.id, 0))
+        satilan = int(satilan_defterde.get(item.id, 0))
+        if satilan <= 0:
+            # Bu kalem HİÇ satılmadı (SALE hareketi yok) → geri yüklenecek bir
+            # şey de yok. Sessiz geçmiyoruz: bu dal ancak anormal bir yolda
+            # (oversell iadesi, ödenmeden iptal) çalışır ve izi kalmalı.
+            logger.info(
+                "order %s kalem %s: defterde SALE yok — restock YAPILMADI "
+                "(hiç satılmamış mal için SALE_CANCEL yazılmaz)",
+                order.id, item.id,
+            )
+            continue
+        kalan = satilan - int(geri_yuklenen.get(item.id, 0))
         if kalan <= 0:
             # Bu kalem zaten (kısmen/tamamen iade yoluyla) geri yüklenmiş.
             logger.info(
                 "order %s kalem %s: geri yüklenecek adet kalmadı "
                 "(satılan %s, geri yüklenen %s)",
-                order.id, item.id, item.quantity, geri_yuklenen.get(item.id, 0),
+                order.id, item.id, satilan, geri_yuklenen.get(item.id, 0),
             )
             continue
         specs.append(
@@ -1511,9 +1578,9 @@ async def _restock(db: AsyncSession, order: Order, *, reason_code: str) -> None:
                 ),
                 "note": (
                     None
-                    if kalan == item.quantity
+                    if kalan == satilan
                     else (
-                        f"kısmi iade sonrası kalan: satılan {item.quantity}, "
+                        f"kısmi iade sonrası kalan: satılan {satilan}, "
                         f"önceden geri yüklenen {geri_yuklenen.get(item.id, 0)}"
                     )
                 ),
