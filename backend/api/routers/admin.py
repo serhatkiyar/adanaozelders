@@ -21,6 +21,11 @@ from schemas.admin import (
     AdminUserOut,
     AuditLogOut,
 )
+from schemas.admin_operations import (
+    FailedOutboxOut,
+    OutboxRetryOut,
+    StuckEscrowOut,
+)
 from schemas.admin_access import (
     AdminPermissionOut,
     AdminRoleAssignmentOut,
@@ -65,6 +70,7 @@ from models.demand import DemandStatus
 from services import (
     admin_service,
     admin_access_service,
+    admin_operations_service,
     audit_service,
     content_moderation,
     education_service,
@@ -88,6 +94,7 @@ class NameChangeReview(BaseModel):
 
 class AdminDemandCancelIn(BaseModel):
     reason: str = Field(min_length=3, max_length=500)
+
 
 router = APIRouter(
     prefix="/admin",
@@ -639,6 +646,80 @@ async def reset_user_password(
         meta={"email_masked": email_masked, "sessions_revoked": True},
     )
     return PasswordResetOut(email_masked=email_masked)
+
+
+# ── Operasyon kurtarma: sıkışmış para + ölü iş (İP-4 / P1-4) ─────────
+#
+# Reconciler'ın "MANUEL müdahale gerekli" kararı ve outbox dead-letter'ı
+# eskiden YALNIZ sunucu logunda görünüyordu. Üç uç da yönetim yüzeyini
+# besler; sorgu mantığı `admin_operations_service`'tedir (router'da değil).
+
+
+@router.get(
+    "/escrow/stuck",
+    response_model=list[StuckEscrowOut],
+    dependencies=[Depends(require_admin_permission("operations.view"))],
+)
+async def list_stuck_escrow(db: AsyncSession = Depends(get_db)):
+    """Otomatiğin çözemediği para kayıtları — SALT OKUNUR.
+
+    Bu uç para durumu DEĞİŞTİRMEZ ve bilinçli olarak bir "elle iade et"
+    kardeşi yoktur: iade kararının tek sahibi `services/escrow.py`'nin iki
+    fazlı claim'idir (İP-2a).
+    """
+    return await admin_operations_service.list_stuck_escrow(db)
+
+
+@router.get(
+    "/outbox/failed",
+    response_model=list[FailedOutboxOut],
+    dependencies=[Depends(require_admin_permission("operations.view"))],
+)
+async def list_failed_outbox(
+    limit: int = Query(default=100, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    db: AsyncSession = Depends(get_db),
+):
+    """Dead-letter kuyruğu. Ham `payload` DÖNMEZ (KVKK — bkz. şema notu)."""
+    return await admin_operations_service.list_failed_outbox(
+        db, limit=limit, offset=offset
+    )
+
+
+@router.post("/outbox/{event_id}/retry", response_model=OutboxRetryOut)
+async def retry_outbox_event(
+    event_id: int,
+    admin: Admin = Depends(require_admin_permission("operations.manage")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Ölü işi yeniden kuyruğa alır (idempotent).
+
+    `operations.view` YETMEZ: retry müşteriye giden bir SMS/e-postayı yeniden
+    tetikler, yani geri alınamaz bir dış yan etkidir.
+    """
+    try:
+        sonuc = await admin_operations_service.retry_outbox_event(db, event_id)
+    except admin_operations_service.OutboxRetryReddedildi as exc:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            f"Bu iş yeniden kuyruğa alınamaz (durum: {exc.args[0]}). "
+            "Gönderilmiş bir bildirim ikinci kez gönderilmez.",
+        ) from None
+    if sonuc is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Outbox olayı bulunamadı")
+    # Denetim izi yalnız GERÇEKTEN kuyruğa alındığında yazılır; idempotent
+    # no-op'u kaydetmek izi anlamsız tekrarla doldururdu.
+    if sonuc.requeued:
+        await audit_service.record(
+            db,
+            actor=admin,
+            action="outbox.retry",
+            target_type="outbox_event",
+            target_id=event_id,
+            details=sonuc.kind,
+        )
+    await db.commit()
+    return sonuc
 
 
 # ── Şikayet moderasyonu ──────────────────────────────────────────────

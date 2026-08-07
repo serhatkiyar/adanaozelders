@@ -231,7 +231,8 @@ async def test_B3_retry_idempotent_ikinci_cagri_yeni_is_uretmez(ip4, http):
         "İkinci çağrı da 'yeniden kuyruğa alındı' dedi — sayaç ikinci kez "
         "sıfırlanmışsa iş iki kez gönderilebilir."
     )
-    assert await ip4.outbox_sayisi(kind="sms:failed") == once + 1, (
+    # `once` zaten tohumlanan satırı içerir; retry HİÇ yeni satır üretmemeli.
+    assert await ip4.outbox_sayisi(kind="sms:failed") == once, (
         "Retry yeni bir outbox satırı ÜRETTİ — aynı iş iki kez gönderilir."
     )
 
