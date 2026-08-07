@@ -39,18 +39,32 @@ notunu bırakmak, yapılmış bir işi yapılmamış gibi anlatır).
      provası P9 conftest satırını sökünce T-1a kırılıyor. Detay:
      `docs/ip5-kdv-fatura-sozlesme.md` §8. -->
 
-## TB-23 · Vitest 5000 ms varsayılan timeout'unun marjı yok — ÜÇ ayrı "flake" kaydının ortak kökü
-
-| | |
-|---|---|
-| **Bulundu** | İP-5 merge duman testi, 7 Ağu 2026 — kök neden bu turda **ölçüldü** |
-| **Yer** | `frontend/vitest.config.*` (açık `testTimeout` yok → varsayılan 5000 ms) · en dar marjlılar: `src/pages/admin/packing/packingScreens.acceptance.test.tsx` · `src/components/admin/packing/PackageLabel.test.tsx` · `src/pages/admin/packing/packingLabel.acceptance.test.tsx` |
-| **Ölçüm** | Aynı çalışma ağacında, aynı makinede, arka arkaya: **(1)** tam suite → 4 düştü; **(2)** tam suite → 2 düştü (**küme değişti**); **(3)** yalnız düşen iki dosya izole → **32/32 geçti**; **(4)** tam suite `--testTimeout=20000` → **74 dosya / 756 test, HEPSİ GEÇTİ**. Düşüşlerin tamamı `Test timed out in 5000ms`; **tek bir assertion hatası yok** |
-| **Kök neden** | Bu testler boştaki makinede bile bütçenin yarısını yiyor (ör. "bekleyen siparişi alıcı ve kalem sayısıyla gösterir" izole koşumda **2455 ms**/5000 ms). Yük altında `environment` (jsdom kurulumu) süresi ölçülen turlarda 477 s → 1477-1940 s'ye çıktı ve suite 43-53 s yerine 187-198 s sürdü; bu marjda 5000 ms yetmiyor. Yani sorun testlerin mantığında değil, **bütçenin makine yüküne duyarlı olmasında** |
-| **Neden "flake" etiketi yanıltıcıydı** | Üç ayrı kayıt aynı kökü üç ayrı gizem gibi taşıyordu: [[TB-19]]/9 (`PackageLabel`) ve [[TB-14]]/8 (`inventoryScreens`). Her biri "ara sıra kırılıyor, teşhis edilmedi" diyordu. Teşhis artık var; `packingScreens` ve `packingLabel` de aynı sınıfa katılıyor |
-| **Etki** | Yeşil/kırmızı sinyali makine yüküne bağlı. İki yönlü zarar: (a) yüklü makinede **yalancı kırmızı** → merge kapıları gereksiz duruyor (bu tur tam olarak bu yaşandı); (b) kritik olan bu — düşüşler "bilinen flake" diye geçiştirilmeye alışılırsa **gerçek bir regresyon** aynı kılıkta kaybolur |
-| **Neden ertelendi** | Düzeltme `vitest.config` veya test dosyalarını değiştirmeyi gerektirir; ikisi de İP-5'in kabul yüzeyinin dışında ve merge turunda kabul testlerine dokunmak `feedback_delivery_gates`'in "kabul testleri sessizce değişmez" kuralını ihlal ederdi |
-| **Sonraki adım** | Sırasıyla: (1) global `testTimeout`'u gerçekçi bir değere çekmek (ölçüme göre 15000-20000 ms tüm suite'i yeşile alıyor) — **en ucuz ve en dürüst çözüm**, çünkü hiçbir davranışı gizlemez, yalnız bütçeyi gerçeğe yaklaştırır; (2) bu üç testin neden saniyeler sürdüğünü ayrıca incelemek (gereksiz `waitFor` zinciri / ağır render); (3) düzeltme yapıldığında [[TB-19]]/9 ve [[TB-14]]/8 bu kayıtla **birlikte** silinir |
+<!-- Kapanma notu (İP-12 FAZ 0): **TB-23** ("Vitest 5000 ms varsayılan
+     timeout'unun marjı yok") KAPANDI ve dosyanın kendi kuralı gereği SİLİNDİ.
+     Onunla birlikte aynı kökün iki türev kaydı da silindi: **TB-19/9**
+     (`PackageLabel` flake'i) ve **TB-14/8** (`inventoryScreens` flake'i) —
+     TB-23'ün "sonraki adım" satırı bu birlikte kapanmayı zaten öngörüyordu.
+     Kapatan değişiklik: `frontend/vitest.config.ts` → `testTimeout: 9000`.
+     Değer ölçümle seçildi: boşta makinede `--testTimeout=60000` ile koşulan
+     tam suite her testin GERÇEK süresini verdi (en yavaş 2409 ms), ardından
+     yeni ayarla beş tam koşum yapıldı — **5/5 kez 74 dosya / 756 test** ve
+     en yavaş testin tepe değeri 2959 ms (her koşumda aynı test: TB-19/9'un
+     kaydettiği `PackageLabel` print CSS testi). 9000 ms o tepenin 3.04 katı.
+     TB-23'ün önerdiği 15000-20000 ms bilerek ALINMADI: 20000, en yavaş testin
+     8.3 katı olurdu ve 2.4 s'lik bir testin 15 s'ye çıkmasını — gerçek bir
+     performans regresyonunu — sessizce yutardı. Dört dosyanın da yeni bütçede
+     kullandığı pay: PackageLabel %33, packingScreens %25, inventoryScreens
+     %20, packingLabel %20 (eski 5000 ms'de bu %44-59'du; TB-23'ün "bütçenin
+     yarısını yiyor" tespiti). Ölçüm boşta makinede yapıldı — ölçümden önce
+     çalışan scraper/uvicorn/vite süreçleri durduruldu, çünkü yüklü makinede
+     ölçülen "en yavaş test" testi değil makine durumunu ölçer. Not: TB-23'ün
+     (2) numaralı sonraki adımı — "bu testlerin neden saniyeler sürdüğünü
+     ayrıca incelemek" — YAPILMADI ve kapsam dışıdır; bütçe gerçeğe
+     yaklaştırıldı, testler hızlandırılmadı. Eski atıflar:
+     `ip5-kdv-fatura-sozlesme.md:504` ve `:594` hâlâ [[TB-14]]/8'e işaret
+     ediyor (tarihsel kayıt, dokunulmadı — TB-3 kapanışındaki desenin aynısı;
+     o belge İP-5 turunun ölçümünü anlatıyor ve o tur bu düzeltmeden önceydi).
+     -->
 
 ## TB-22 · İP-5 P2 listesi (KDV boru hattı + fatura ucu — sekiz kayıt, öncelik sırasıyla)
 
@@ -105,7 +119,7 @@ her üçünü de güvenli tarafta bekletiyor (fatura uydurmuyor, uç kapalı).
 | 11 | **TB-B · Çapraz tablo kod tekilliği yalnız ÜRETİCİDE** | `backend/core/codes.py` ↔ `backend/services/library_capacity.py` | DB kısıtları tablo başına tekillik veriyor (`uq_exam_reg_*`, `uq_study_res_*`); **iki tablo arasında** aynı `short_code`'un doğmasını engelleyen tek şey üretici taraftaki kontrol. Birleşik QR ucu (`/exam-attendance/verify`) token'ı önce denemede, sonra çalışma rezervasyonunda aradığı için çakışma belirsizlik üretir. Sonraki adım: ya çapraz tablo kontrolünü DB'ye taşımak (ortak kod tablosu / kısmi index) ya da kodları tür önekiyle ayırmak |
 | 12 | **`ruff.toml` per-file-ignore merkezi defterde kayıtlı değildi** | `backend/ruff.toml:63` — `"scripts/ip1b_ddl_drill.py" = ["T201"]` | İstisna **doğru gerekçeli ve dar** (CLI aracı, konsol çıktısı provanın kanıtı; dosya + kural bazında, `scripts/` dizinine toplu muafiyet YOK) ve sözleşmede yazılıydı — ama merkezi borç defterinde değildi. Lint istisnalarının tek yerden görülebilmesi için kayda geçiyor. Sonraki adım yok; bu satır kaydın kendisidir |
 
-## TB-19 · İP-4 nihai bağımsız audit'inin P2 listesi (on kayıt — öncelik sırasıyla)
+## TB-19 · İP-4 nihai bağımsız audit'inin P2 listesi (on kaydın DOKUZU — öncelik sırasıyla)
 
 | | |
 |---|---|
@@ -126,7 +140,6 @@ her üçünü de güvenli tarafta bekletiyor (fatura uydurmuyor, uç kapalı).
 | 6 | **`/admin/escrow/stuck` sayfalanmıyor — [[TB-17]]/2'nin ölçülmüş hâli** | `backend/services/admin_operations_service.py::list_stuck_escrow` | TB-17/2 boşluğu adlandırmıştı; audit ayrıntıyı ölçtü: beş escrow modeli **tavansız** taranıyor, deneme (attempt) süzgeci **Python tarafında** uygulanıyor (yani DB'den dönen satır sayısı süzgeçten bağımsız) ve sorguyu destekleyen **index yok**. Kuyruk büyüdüğünde maliyet doğrusal değil bileşik artar. Sonraki adım: `limit/offset` + süzgeci SQL'e taşımak + kısmi index; TB-17/2 bu kayıtla birlikte kapanır |
 | 7 | **`_ENTITY_ADI` ↔ `StuckEntity` elle senkron tutuluyor** | `backend/services/admin_operations_service.py` ↔ `backend/schemas/admin_operations.py` | Yeni bir escrow varlığı eklendiğinde iki yeri birlikte güncellemek gerekiyor; unutulursa etiket eksik kalır. İP-4 bunun için fail-loud davranış ekledi (`5bf327b`) — yani hata artık görünür — ama **eşleşmeyi ölçen koruyucu test yok**. Sonraki adım: enum üyelerinin tamamının haritada karşılığı olduğunu doğrulayan birim testi |
 | 8 | **`COMMERCE_MANAGER` grant'ını koruyan nöbetçi test yok** | `backend/migrations/versions/ip4_operasyon_izinleri.py` ↔ `backend/core/admin_permissions.py` | Migration görev ayrılığını kuruyor: `operations.view` → SUPER_ADMIN + COMMERCE_MANAGER, `operations.manage` → yalnız SUPER_ADMIN (retry geri alınamaz dış yan etki tetikler). Bu dağılımı **hiçbir test doğrulamıyor**; ileride biri `manage`'i de ticaret yöneticisine verirse sessizce geçer. Sonraki adım: gerçek PG'de rol→izin matrisini doğrulayan entegrasyon testi (merge duman testinde elle doğrulandı: 3 satır, doğru) |
-| 9 | **`PackageLabel` Vitest flake'i — tam suite yükünde düşüyor** | `frontend/src/**` `PackageLabel.test.tsx` | Tek başına koşarken geçiyor, tam suite yükü altında ara sıra düşüyor. **İP-4 kaynaklı değil** — audit tabanda (`e726b9b`) da doğruladı. [[TB-14]]/8'deki `inventoryScreens` flake'iyle aynı sınıf ama **AYRI** kayıt: farklı dosya, farklı teşhis. (Merge duman testinde bu tur GÖRÜLMEDİ: 73 dosya / 744 test yeşil.) Sonraki adım: teşhis — paylaşılan zamanlayıcı/`waitFor` yarışı mı, yoksa suite'ler arası sızan durum mu |
 | 10 | **Sözleşme belgesinde iki küçük doğruluk kusuru** | `docs/ip4-admin-operasyon-sozlesme.md` | (a) B-1c / B-2b etiketleri gövdedeki maddelerle birebir örtüşmüyor; (b) "`waitFor` yalnız bir yerde kullanıldı" ifadesi kod tabanında doğrulanmıyor. Kod doğru, **belge** yanlış — ve bu belge kabul sözleşmesi olduğu için sonraki turların dayanağı. Sonraki adım: iki ifadeyi kodla eşitlemek |
 
 ## TB-18 · `test_production_guard` ortam değişkeninden yalancı kırmızı veriyor
@@ -187,7 +200,7 @@ her üçünü de güvenli tarafta bekletiyor (fatura uydurmuyor, uç kapalı).
 | **(b) bugünkü gerçek risk** | Düşük, kayıp güncelleme DEĞİL: dal yalnız `from_statuses=["PENDING","FAILED"]` claim'iyle koşuyor, fonksiyon girişi PAID/REFUNDING/REFUNDED'ı zaten erken döndürüyor ve kısmi RMA siparişin PAID olmasını gerektiriyor → o noktada `refunded_amount` pratikte 0. Yani **sözleşme ihlali / regresyon riski** |
 | **Sonraki adım** | (b) ölü-varlık dalını `apply_refunded_amount`'a çevirmek + "kod tabanında `refunded_amount`'a yazan tek yer" yapısal nöbetçisi |
 
-## TB-14 · İP-2a P2 listesi (audit'te açık bırakılan sekiz kaydın YEDİSİ — öncelik sırasıyla)
+## TB-14 · İP-2a P2 listesi (audit'te açık bırakılan sekiz kaydın ALTISI — öncelik sırasıyla)
 
 | | |
 |---|---|
@@ -209,7 +222,6 @@ belgelerde geçiyor ve kaydırmak onları sessizce yanlış kayda bağlardı.
 | 5 | **`notifications` / `outbox_events` test hijyen boşluğu** | `tests/integration/conftest.py::_KRITIK_TABLOLAR` | İP-2a'nın kendi deltası ölçülmedi; genel boşluk zaten [[TB-8]] altında açık. Burada yalnız İP-2a paketinin de aynı iki tabloda delta bırakıp bırakmadığının ölçülmemiş olması kayda geçiyor |
 | 6 | **`f30_factory` sabit `auth_version=1`** | `backend/tests/integration/f30_factory.py` | İP-3 `auth_version` sözleşmesinden sonra fabrika değeri sabit; hesabın gerçek `auth_version`'ı 1 değilse token sözleşmesi testte yanlış tarafından doğrulanır (bugün geçiyor çünkü fabrika hesapları hep 1'de). Kırılganlık: sürüm artıran bir davranış eklenince sessizce yalancı yeşil |
 | 7 | **`mutation_drill.py` üç eksik** | `backend/scripts/mutation_drill.py` | (a) mutasyon geri alındıktan sonra dosyanın **SHA-256 ile** eski hâline döndüğü doğrulanmıyor; (b) mutasyondan önce **yeşil taban çizgisi** alınmıyor (zaten kırmızı bir testi "mutasyonu yakaladı" sayabilir); (c) hedef AST node'unun **beklenen düğümle eşleştiği** doğrulanmıyor (yanlış yeri mutasyona uğratıp "yakalandı" diyebilir). Kök `CLAUDE.md` §D bu sürücüyü resmî araç olarak anıyor — güvenilirliği doğrudan test kalitesi iddiasını taşıyor |
-| 8 | **frontend `inventoryScreens` flake** | `frontend/src/**` Vitest | Ara sıra kırılıyor; teşhis edilmedi. Yeşil/kırmızı sinyalini bulandırır ([[TB-10]] ile aynı sınıf) |
 
 ## TB-13 · KVKK silme: kurye PROFİLİ (vesikalık/plaka/telefon) ve silme audit kaydı — ürün kararı bekliyor
 
