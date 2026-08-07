@@ -280,15 +280,20 @@ function ListingManagement() {
         </section>
       )}
 
-      <div className="space-y-3">
-        <p className="text-xs text-slate-400 dark:text-slate-500">
-          {tutors.length} ilan · yayındakileri kaldırabilir, pasifleri geri
-          açabilir veya silebilirsin.
-        </p>
-        {digerleri.map((t) => (
-          <ListingRow key={t.id} tutor={t} />
-        ))}
-      </div>
+      {digerleri.length > 0 && (
+        <div className="space-y-3">
+          {/* Sayı ALTTAKİ listeye ait olmalı: toplam ilan sayısını yazmak,
+              onay kuyruğu ayrıldıktan sonra "N ilan" deyip N'den az satır
+              göstermek demekti. */}
+          <p className="text-xs text-slate-400 dark:text-slate-500">
+            {digerleri.length} ilan · yayındakileri kaldırabilir, pasifleri geri
+            açabilir veya silebilirsin.
+          </p>
+          {digerleri.map((t) => (
+            <ListingRow key={t.id} tutor={t} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
