@@ -1608,6 +1608,75 @@ export interface SellerProductCreate {
   cover_url?: string | null;
 }
 
+/* ── Sunucu taraflı fatura (İP-5) ──
+ * Kırılım sipariş anında SAKLANMIŞ değerlerden gelir; istemci hiçbir vergi
+ * hesabı yapmaz. e-Arşiv formatına HAZIR ama hiçbir dış servise bağlı değil.
+ */
+export interface InvoiceTaxLine {
+  /** Oran, 4 basamaklı metin ("0.2000") — Numeric(5,4) ile birebir. */
+  rate: string;
+  base: string;
+  tax: string;
+}
+
+export interface OrderInvoiceOut {
+  order_id: number;
+  issued_for: string;
+  paid_at: string;
+  currency: string;
+  seller: {
+    name: string;
+    tax_number: string;
+    tax_office: string;
+    address: string;
+    phone: string;
+    email: string;
+  };
+  buyer: {
+    name?: string | null;
+    phone?: string | null;
+    address?: string | null;
+    city?: string | null;
+    district?: string | null;
+  };
+  payment: {
+    provider?: string | null;
+    provider_ref?: string | null;
+    status: string;
+    paid_at: string;
+  };
+  items: {
+    order_item_id: number;
+    title: string;
+    quantity: number;
+    unit_price: string;
+    line_gross: string;
+    tax_rate: string;
+    tax_amount: string;
+  }[];
+  tax_lines: InvoiceTaxLine[];
+  shipping: {
+    fee: string;
+    tax_rate?: string | null;
+    tax_amount?: string | null;
+  };
+  totals: {
+    subtotal: string;
+    discount: string;
+    coupon_code?: string | null;
+    net_total: string;
+    tax_total: string;
+    grand_total: string;
+  };
+  refund: {
+    refunded_amount: string;
+    net_total: string;
+    tax_total: string;
+    tax_lines: InvoiceTaxLine[];
+  };
+  notice: string;
+}
+
 export interface ProductReviewCreate {
   rating: number;
   comment_text?: string | null;

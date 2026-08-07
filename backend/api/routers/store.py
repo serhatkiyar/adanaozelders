@@ -83,6 +83,7 @@ from services import (
     delivery_feedback_service,
     delivery_promise,
     delivery_service,
+    invoice_service,
     order_service,
     phone_service,
     stock_ledger,
@@ -915,6 +916,44 @@ async def order_tracking(
     return await delivery_service.order_tracking(
         db, order_id=order_id, client_id=client.id
     )
+
+
+@router.get("/orders/{order_id}/invoice")
+async def get_order_invoice(
+    order_id: int,
+    client: Client = Depends(require_roles(RoleType.CLIENT)),
+    db: AsyncSession = Depends(get_db),
+):
+    """Sipariş faturası — sunucu tarafı, e-Arşiv formatına HAZIR.
+
+    Hiçbir dış servise (entegratöre) BAĞLI DEĞİLDİR ve resmî fatura numarası
+    üretmez; ikisi de ayrı işlerdir. Belge, sipariş anında SAKLANMIŞ vergi
+    kırılımından üretilir — ürünün bugünkü oranına bakmaz.
+
+    `INVOICE_ENABLED` kapalıyken (üretim varsayılanı) 404 döner: uç, metinler
+    mali müşavir onayından geçene kadar yok gibi davranır.
+
+    `response_model` bilinçli olarak YOK: gövde saklanan kırılımın birebir
+    aynasıdır ve araya bir şema koymak, kolonla şema arasında sessiz bir
+    sapma penceresi açardı (F-4 node'u eşitliği kolon kolon ölçüyor).
+    """
+    return await invoice_service.build_invoice(db, order_id, client_id=client.id)
+
+
+@router.get("/admin/tax-health")
+async def tax_health(
+    _admin: Admin = Depends(require_admin_permission("orders.view")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Vergi kırılımı EKSİK sipariş sayacı.
+
+    `SHIPPING_TAX_RATE` girildikten sonra "kaç siparişte kırılım eksik kaldı"
+    sorusunun cevabı gerekir; sayaç olmazsa bu küme sessizce birikir. İki
+    eksiklik türü ayrı sayılır çünkü çareleri farklıdır: `missing_breakdown`
+    tarihseldir (S-4 gereği düzeltilmez), `shipping_rate_undefined` ise ayar
+    girilince YENİ siparişlerde kendiliğinden kapanır.
+    """
+    return await invoice_service.eksik_kirilim_sayisi(db)
 
 
 @router.get("/orders/{order_id}", response_model=OrderOut)
