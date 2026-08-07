@@ -304,27 +304,82 @@ ile dosyanın başlangıç hâline döndüğünü doğrular, "hedef bulunamadı"
   değiştirildi (ISBN'i kimlik dalından tamamen çıkar, yalnız `barcode` kalsın)
   ve yakalandı.
 
+### 9.1 Audit P1 turu — beş nöbetçinin teyidi
+
+Audit iki node'un **ayırt etmediğini** kendi mutasyonlarıyla kanıtladı (M16,
+M17). Düzeltmelerden sonra beş nöbetçi de yeniden sınandı:
+
+| Mutasyon | Nöbetçi | Koşan test | Sonuç |
+|---|---|---|---|
+| **M16** · vitrin arama dalını (`if q:`) kapat | `test_a7` | 1 | **YAKALANDI** |
+| **M17** · `onSortingChange`'i etkisizleştir | P-4 (2 node) | 2 | **YAKALANDI** |
+| sayaç filtresini listeden ayır (ortak yüklemi boz) | `test_p9` + `test_p1_1` | 2 | **YAKALANDI** |
+| `ProductDetailPage`'i eski sabite (`<= 5`) döndür | vitrin eşiği (4 node) | 4 | **YAKALANDI** |
+| sipariş ucundan `X-Total-Count`'u kaldır | `test_p1_5` (3 node) | 3 | **YAKALANDI** |
+
+M16 ve M17 bu düzeltmelerden **önce kaçıyordu**; ikisi de artık yakalanıyor.
+
+**Sürücüye eklenen iki kural** (ikisi de bu turda gerçek kusur yakaladı):
+
+1. **Koşan test sayısı 0 = başarısızlık.** `exit 0`a güvenilmez. İlk P1
+   turunda M17 için `-t "siralama"` yazılmıştı; test adı "sıralama" (Türkçe ı)
+   olduğu için hiçbir teste uymadı, sıfır test koştu ve exit 0 döndü — sürücü
+   bunu "kaçtı" diye raporlayacaktı.
+2. **Çok satırlı hedefler dizi olarak yazılıp CRLF ile birleştirilir.** Script
+   dosyasının satır sonu ile hedef dosyanınki farklı olabiliyor; düz çok
+   satırlı string sessizce eşleşmiyor ve dört mutasyon "HEDEF YOK" veriyordu.
+   Hedef bulunamaması zaten başarısızlık sayıldığı için sessiz geçmedi.
+
 ---
 
 ## 10. Doğrulama sonuçları
 
 | Koşum | Sonuç | Beklenen |
 |---|---|---|
-| `pytest tests/integration -k ip12` | **23 passed** | yeni |
+Aşağıdaki tablo **audit P1 düzeltmelerinden sonraki** son durumdur.
+
+| Koşum | Sonuç | Beklenen |
+|---|---|---|
+| `pytest tests/integration -k ip12` | **27 passed** | 23 + 4 yeni P1 node'u |
 | `-k ip5` | **47 passed** | 47 ✅ |
 | `-k ip2a` | **49 passed** | 49 ✅ |
 | `-k ip4` | **21 passed** | 21 ✅ |
 | `-k ip1b` | **28 passed** | 28 ✅ |
 | `-k f30` | **314 passed** | 314 ✅ |
-| `pytest tests/integration` | **1222 passed, 16 skipped** (= 1238) | 1215 + 23 ✅ |
+| `pytest tests/integration` | **1226 passed, 16 skipped** (2. koşum) | 1222 + 4 ✅ |
 | `pytest tests/acceptance` | **197 passed** | 197 ✅ |
 | `ruff check .` | All checks passed | |
-| Frontend `vitest` | **76 dosya / 791 test** | taban 74/756 + 35 yeni ✅ |
+| Frontend `vitest` | **77 dosya / 797 test** | 76/791 + 1 dosya / 6 node ✅ |
 | `tsc -b` | temiz | |
-| `npm run lint` | **34 uyarı / 0 hata** | taban ile **birebir**; İP-12 tek uyarı eklemedi ✅ |
+| `npm run lint` | **34 uyarı / 0 hata** | taban ile **birebir**, ARTMADI ✅ |
 | `git diff --check` | temiz | |
 
 Hijyen nöbetçisi sessiz (suite kalıcı satır bırakmadı).
+
+### 10.2 Tam suite iki kez koşuldu — birinci turda bir düşüş (flake)
+
+Dürüstlük kaydı: tam integration suite'in **ilk** koşumunda
+`test_a3b_isbn_arama_vektorunde_de_var` düştü (1225 passed / 1 failed).
+İkinci koşumda **1226 passed, 0 failed**.
+
+Yapılan ölçümler:
+
+| Ölçüm | Sonuç |
+|---|---|
+| Aynı test tek başına (`--lf`) | geçti |
+| Test dosyası tamamı, 3 tur | 27/27 × 3 |
+| Migration testleriyle birlikte (`stock` + `inventory` + bu dosya) | 33/33 |
+| SKU `tsquery` davranışı, 4 farklı ID genişliğinde (`FZK-000042`…`FZK-012345`) | dördü de `True`, deterministik |
+| Tam suite, 2. koşum | 1226 passed |
+
+**Hipotez (kanıtlanmadı, ölçümle destekleniyor): makine yükü.** İlk koşum
+**1222 s**, ikinci koşum **955 s** sürdü — %28 fark. Farkın sebebi biliniyor:
+ilk koşum arka plandayken ön planda frontend `vitest` tam suite'i, `tsc` ve
+`lint` koşturuldu. Yani düşüş, TB-23'ün kayda geçirdiği sınıfla aynı görünüyor
+(yük altında zamanlama penceresine yetişememe) — ama bu backend testinde
+timeout yok, dolayısıyla mekanizma aynı olmayabilir ve **teşhis edilmedi**.
+
+Kayıt §11'e P2 olarak eklendi. Bu turda çözülmedi; "kapandı" denmedi.
 
 ### Uyarlanan komşu kabul testleri (sessiz değil, gerekçeli)
 
@@ -361,13 +416,35 @@ Yukarıdaki dört yalancı yeşile ek olarak:
 
 ---
 
+## 10.1 Bağımsız audit ve beş P1
+
+Audit paketi "merge edilemez" verdi. Beş P1'in tamamı gerçekti; hepsi bu turda
+kapatıldı. **İkisi üretim kusuru, ikisi test kusuru, biri hem hem.**
+
+| # | Kusur | Sınıf | Çözüm |
+|---|---|---|---|
+| **P1-1** | Sayaç `status == ACTIVE` filtreliyor, liste filtrelemiyordu; kart 5 derken liste 7 gösteriyordu | üretim | Yüklem tek yere alındı (`stok_kovasi_yuklemi`); **liste de `ACTIVE` filtreler** — kart yeniden sipariş alarmı, satışta olmayan ürün için sipariş verilmez. Testin kendisi de kusurluydu: listeyi `ACTIVE` ile süzüp karşılaştırdığı için sapmayı göremiyordu |
+| **P1-2** | `ProductDetailPage` eşiği kendi kopyasında tutuyordu (`LOW_STOCK = 5`); dosya paketin diff'ine hiç girmemişti | üretim | `useStoreConfig()` ile okunuyor. Eşik bilinmiyorsa uyarı **basılmaz** (uydurulmuş aciliyet göstermektense susmak dürüst); "Stokta yok" eşikten bağımsız |
+| **P1-3** | `test_a7` tek pozitif iddia taşıyordu; arama dalı tamamen kapatılınca bile geçiyordu (audit M16) | test | Negatif kontrol (iki eşleşmemesi gereken ürün) + **küme boyutu = 1**. Yalnız negatif kontrol yetmezdi: katalogda başka ürün yokken yine geçerdi |
+| **P1-4** | P-4 `sort` parametresinin **varlığını** ölçüyordu; `storeProductQuery` her istekte varsayılanı gönderdiği için tıklamanın etkisi ölçülmüyordu (audit M17) | test | İddia **değere** bağlandı: `created_at` → `price`. İkinci node yön çevrimini ölçüyor |
+| **P1-5** | Kesilme uyarısı **üretimde ölüydü**: istemci `limit` göndermiyor, sunucu varsayılan 100 uyguluyor, `X-Total-Count` yok, ekran sabit 200'e bakıyordu → 130 siparişten 100'ü sessizce gösteriliyordu | ikisi de | Uç `X-Total-Count` dönüyor (ürün ucundaki desen), istemci `limit` açıkça gönderiyor, ölçüt `toplam > dönen`. Test artık gerçek sunucu davranışını taklit ediyor; önceki hâli sahte sunucuya 200 kayıt uydurup geçiyordu ve yorumu ("Uç tavanı 200") yanlıştı |
+
+**Ders:** P1-3 ve P1-4 aynı sınıftan — *bir parametrenin/kaydın varlığını
+ölçmek, onun etkisini ölçmek değildir*. P1-5 ise bunun en pahalı biçimi:
+sözleşme yalnız sahte sunucuya karşı sınanmıştı ve gerçek uçla hiç
+karşılaşmamıştı.
+
+---
+
 ## 11. Kalan P2'ler
 
 | # | Kayıt | Yer | Not |
 |---|---|---|---|
 | 1 | **A8 · sipariş tarih ön ayarları** | uç + `OrdersPanel` | Kapsam dışıydı: uca `created_at` aralığı gerekiyor (İP-13). "Bugün ne sattık" hâlâ gözle tarama. |
 | 2 | **B1 · sipariş detay sayfası** | yeni ekran + `store.py` | Raporun "en büyük tekil boşluğu". Sipariş kuyruklardan düştüyse kalemlerini gösteren ekran yok. |
-| 3 | **Sipariş listesinde sayfalama yok** | `/store/admin/orders` | Tavan 200; şimdilik **kesilme uyarısı** var. Sayfalama geldiğinde uyarı KALKMALI (E-5 nöbetçisi bunu koruyor). |
+| 3 | **Sipariş listesinde sayfalama yok** | `/store/admin/orders` | Uç `limit`/`offset` ve `X-Total-Count` taşıyor, ekran yalnız ilk sayfayı gösterip **kesilme uyarısı** veriyor. Sayfalama geldiğinde uyarı KALKMALI ("liste kesilmemişse uyarı çıkmaz" nöbetçisi bunu koruyor). |
+| 3a | **`test_a3b_isbn_arama_vektorunde_de_var` bir kez düştü** | `test_ip12_urun_listesi_pg.py` | Tam suite'in 2 koşumundan 1'inde. İzole 3/3, dosya içi 3/3, migration testleriyle 33/33, `tsquery` davranışı deterministik. Düşen koşum %28 daha yavaştı (paralel frontend suite'i vardı) → yük hipotezi, ama **teşhis edilmedi**. Bkz. §10.2. Sonraki adım: düşüşü yeniden üretip gerçek hata mesajını yakalamak (bu turda yakalanamadı — `-rf` çıktısı ikinci koşumda temiz geldi). |
+| 3b | **`inventoryScreens` flake'i — azaldı ama sürüyor** | [[TB-14]]/8 | İP-12 FAZ 0'da 5/5 yeşil görülüp "kapandı" sayılmıştı; audit **7 koşumun 1'inde** düşüşü gördü. Kök neden TB-23 sınıfından: A12'nin eklediği `ProductPicker` debounce + istek zinciri, ağır yük altında `findBy` penceresine yetişemiyor. Kayıt defterde geri konuldu. Sonraki adım bekleme zincirini deterministik yapmak; **bütçeyi büyütmek çözüm değil**, gerçek yavaşlama regresyonunu gizler. |
 | 4 | B2 toplu işlem · B3 kayıtlı görünüm · B4 kolon seçici · B5 komut paleti | — | Kapsam dışı. |
 | 5 | **TB-23'ün (2). adımı** | `PackageLabel` / `packing*` testleri | Bu testlerin neden saniyeler sürdüğü incelenmedi; bütçe gerçeğe yaklaştırıldı, testler hızlandırılmadı. |
 | 6 | **Kısmi ISBN önek araması index kullanmıyor** | `_arama_kolu` | `LIKE 'x%'` normal btree'den yararlanamaz; bilinçli sadelik (katalog bu ölçekte). Büyürse `varchar_pattern_ops` index'i eklenecek yer migration dosyasında yazılı. |
