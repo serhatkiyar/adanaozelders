@@ -1,10 +1,9 @@
 import { useState } from "react";
 import { Avatar } from "@/components/Avatar";
 import { AccessDenied, ReadOnlyNotice, useAdminAreaAccess } from "@/components/admin/AccessState";
-import { ConfirmDialog } from "@/components/admin/ui";
+import { ConfirmDialog, ReasonDialog } from "@/components/admin/ui";
 import {
   useActivateTutor,
-  useAdminStats,
   useAdminTutors,
   useApproveTutor,
   useDeleteTutor,
@@ -54,246 +53,23 @@ const TUTOR_STATUS_META: Record<TutorStatus, { label: string; cls: string }> = {
   },
 };
 
-/* ─── stat items ─────────────────────────────────────── */
-
-type Tone = "indigo" | "emerald" | "amber" | "red" | "violet" | "slate";
-
-interface StatItem {
-  label: string;
-  value: number;
-  sub?: string;
-  tone: Tone;
-  icon: string;
-}
-
-const TONE_CLS: Record<Tone, { num: string; icon: string; ring: string }> = {
-  indigo: { num: "text-indigo-600", icon: "bg-indigo-50 text-indigo-500", ring: "ring-indigo-100" },
-  emerald: { num: "text-emerald-600", icon: "bg-emerald-50 text-emerald-500", ring: "ring-emerald-100" },
-  amber: { num: "text-amber-600", icon: "bg-amber-50 text-amber-500", ring: "ring-amber-100" },
-  red: { num: "text-red-600", icon: "bg-red-50 text-red-500", ring: "ring-red-100" },
-  violet: { num: "text-violet-600", icon: "bg-violet-50 text-violet-500", ring: "ring-violet-100" },
-  slate: { num: "text-slate-800", icon: "bg-slate-100 text-slate-500", ring: "ring-slate-100" },
-};
-
-function StatBox({ label, value, sub, tone, icon }: StatItem) {
-  const cls = TONE_CLS[tone];
-  return (
-    <div className={`rounded-2xl bg-white p-5 shadow-sm ring-1 dark:bg-slate-800 dark:ring-slate-700 ${cls.ring}`}>
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
-            {label}
-          </p>
-          <p className={`mt-2 text-3xl font-bold ${cls.num}`}>{value}</p>
-          {sub && (
-            <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">{sub}</p>
-          )}
-        </div>
-        <span className={`rounded-xl p-2.5 text-lg ${cls.icon}`}>{icon}</span>
-      </div>
-    </div>
-  );
-}
-
-/* ─── pending tutor card ─────────────────────────────── */
-
-function PendingTutorCard({ tutor }: { tutor: TutorOut }) {
-  const { canManage } = useAdminAreaAccess("tutors");
-  const approve = useApproveTutor();
-  const reject = useRejectTutor();
-  const busy = approve.isPending || reject.isPending;
-
-  const run = (
-    mutation: typeof approve,
-    okMsg: string,
-    errMsg: string
-  ) => {
-    mutation.mutate(tutor.id, {
-      onSuccess: () => toast.success(okMsg),
-      onError: (err) => toast.error(getErrorMessage(err, errMsg)),
-    });
-  };
-
-  return (
-    <div className="flex flex-col gap-4 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-amber-100 dark:bg-slate-800 dark:ring-amber-700/30 sm:flex-row sm:items-start sm:justify-between">
-      <div className="flex min-w-0 items-start gap-3">
-        <Avatar name={tutor.full_name} avatar_url={tutor.avatar_url} />
-        <div className="min-w-0">
-          <p className="font-semibold text-slate-900 dark:text-white">
-            {tutor.full_name}
-          </p>
-          <p className="text-xs text-slate-500 dark:text-slate-400">
-            {tutor.email}
-          </p>
-          {tutor.headline && (
-            <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
-              {tutor.headline}
-            </p>
-          )}
-          {tutor.bio && (
-            <p className="mt-1 line-clamp-2 text-xs text-slate-500 dark:text-slate-400">
-              {tutor.bio}
-            </p>
-          )}
-          <p className="mt-1.5 text-xs text-slate-400">
-            Başvuru: {formatDateTime(tutor.created_at)}
-          </p>
-        </div>
-      </div>
-      {canManage && (
-        <div className="flex shrink-0 gap-2">
-          <button
-            disabled={busy}
-            onClick={() =>
-              run(approve, `${tutor.full_name} onaylandı.`, "Onaylama başarısız.")
-            }
-            className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {approve.isPending ? "…" : "Onayla"}
-          </button>
-          <button
-            disabled={busy}
-            onClick={() =>
-              run(reject, `${tutor.full_name} reddedildi.`, "Reddetme başarısız.")
-            }
-            className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-red-600 shadow-sm transition hover:bg-red-50 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-600 dark:bg-slate-700 dark:hover:bg-red-900/20"
-          >
-            {reject.isPending ? "…" : "Reddet"}
-          </button>
-        </div>
-      )}
-    </div>
-  );
-}
-
-/* ─── stats section ──────────────────────────────────── */
-
-function StatsSection() {
-  const { data, isLoading, isError, error } = useAdminStats();
-
-  if (isLoading) {
-    return (
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
-        {Array.from({ length: 6 }).map((_, i) => (
-          <div key={i} className="h-28 animate-pulse rounded-2xl bg-slate-100 dark:bg-slate-800" />
-        ))}
-      </div>
-    );
-  }
-
-  if (isError || !data) {
-    return (
-      <div className="flex items-center gap-3 rounded-2xl bg-red-50 px-5 py-4 text-sm text-red-700 ring-1 ring-red-100">
-        <span>⚠</span>
-        {getErrorMessage(error, "İstatistikler yüklenemedi.")}
-      </div>
-    );
-  }
-
-  const stats: StatItem[] = [
-    {
-      label: "Eğitmenler",
-      value: data.total_tutors,
-      sub: `${data.approved_tutors} onaylı · ${data.pending_tutors} bekliyor`,
-      tone: "indigo",
-      icon: "🎓",
-    },
-    {
-      label: "Öğrenciler",
-      value: data.total_clients,
-      tone: "emerald",
-      icon: "📚",
-    },
-    {
-      label: "Ders Talepleri",
-      value: data.total_bookings,
-      sub: `${data.active_bookings} aktif · ${data.completed_bookings} tamamlandı`,
-      tone: "amber",
-      icon: "📅",
-    },
-    {
-      label: "Değerlendirmeler",
-      value: data.total_reviews,
-      tone: "violet",
-      icon: "⭐",
-    },
-    {
-      label: "Bekleyen Onay",
-      value: data.pending_tutors,
-      sub: "eğitmen başvurusu",
-      tone: data.pending_tutors > 0 ? "red" : "slate",
-      icon: "⏳",
-    },
-    {
-      label: "Yöneticiler",
-      value: data.total_admins,
-      tone: "slate",
-      icon: "🛡️",
-    },
-  ];
-
-  return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
-      {stats.map((s) => (
-        <StatBox key={s.label} {...s} />
-      ))}
-    </div>
-  );
-}
-
-/* ─── pending tutors section ─────────────────────────── */
-
-function PendingTutorsSection() {
-  const { data, isLoading } = useAdminTutors();
-
-  const pending = data?.filter((t) => t.status === "PENDING_APPROVAL") ?? [];
-
-  if (isLoading) {
-    return (
-      <section>
-        <div className="h-6 w-48 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
-        <div className="mt-3 space-y-3">
-          {Array.from({ length: 2 }).map((_, i) => (
-            <div key={i} className="h-28 animate-pulse rounded-2xl bg-slate-100 dark:bg-slate-800" />
-          ))}
-        </div>
-      </section>
-    );
-  }
-
-  if (pending.length === 0) return null;
-
-  return (
-    <section>
-      <div className="flex items-center gap-3">
-        <h2 className="text-base font-semibold text-slate-900 dark:text-white">
-          Onay Bekleyen Eğitmenler
-        </h2>
-        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white">
-          {pending.length}
-        </span>
-      </div>
-      <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-        Bu eğitmenlerin başvuruları incelemenizi bekliyor.
-      </p>
-      <div className="mt-3 space-y-3">
-        {pending.map((t) => (
-          <PendingTutorCard key={t.id} tutor={t} />
-        ))}
-      </div>
-    </section>
-  );
-}
-
 /* ─── listing management ─────────────────────────────── */
 
 function ListingRow({ tutor }: { tutor: TutorOut }) {
   const { canManage } = useAdminAreaAccess("tutors");
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [rejectOpen, setRejectOpen] = useState(false);
   const suspend = useSuspendTutor();
   const activate = useActivateTutor();
+  const approve = useApproveTutor();
+  const reject = useRejectTutor();
   const del = useDeleteTutor();
-  const busy = suspend.isPending || activate.isPending || del.isPending;
+  const busy =
+    suspend.isPending ||
+    activate.isPending ||
+    del.isPending ||
+    approve.isPending ||
+    reject.isPending;
   const meta = TUTOR_STATUS_META[tutor.status];
 
   const run = (
@@ -335,6 +111,29 @@ function ListingRow({ tutor }: { tutor: TutorOut }) {
 
       {canManage && (
       <div className="flex shrink-0 flex-wrap items-center gap-2">
+        {/* Onay kuyruğu aksiyonları. P1-1: bunlar eskiden `AdminHome`'un
+            ULAŞILAMAZ "overview" dalındaki ayrı bir kartta duruyordu; admin
+            onaylamak için ya SQL'e iniyor ya eğitmeni siliyordu. */}
+        {tutor.status === TutorStatus.PENDING_APPROVAL && (
+          <>
+            <button
+              disabled={busy}
+              onClick={() =>
+                run(approve, `${tutor.full_name} onaylandı.`, "Onaylama başarısız.")
+              }
+              className="rounded-xl bg-emerald-600 px-3.5 py-1.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 active:scale-95 disabled:opacity-60"
+            >
+              Onayla
+            </button>
+            <button
+              disabled={busy}
+              onClick={() => setRejectOpen(true)}
+              className="rounded-xl border border-slate-200 bg-white px-3.5 py-1.5 text-sm font-semibold text-red-600 shadow-sm transition hover:bg-red-50 active:scale-95 disabled:opacity-60 dark:border-slate-600 dark:bg-slate-700 dark:hover:bg-red-900/20"
+            >
+              Reddet
+            </button>
+          </>
+        )}
         {tutor.status === TutorStatus.APPROVED && (
           <button
             disabled={busy}
@@ -380,14 +179,45 @@ function ListingRow({ tutor }: { tutor: TutorOut }) {
         onError: (error) => toast.error(getErrorMessage(error, "Silme başarısız.")),
       })}
     />
+    {/* Red GEREKÇESİ zorunlu (backend `TutorRejectIn`): karar denetim izine
+        gerekçesiz yazılamaz ve eğitmen neden reddedildiğini öğrenemezdi. */}
+    <ReasonDialog
+      open={rejectOpen}
+      title="Başvuruyu reddet"
+      description={`${tutor.full_name} başvurusu reddedilecek. Gerekçe denetim izine yazılır.`}
+      label="Red gerekçesi"
+      placeholder="Örn. Diploma barkodu e-Devlet'te doğrulanamadı."
+      required
+      minLength={3}
+      maxLength={500}
+      confirmLabel="Başvuruyu reddet"
+      danger
+      isPending={reject.isPending}
+      onClose={() => setRejectOpen(false)}
+      onConfirm={(reason) =>
+        reject.mutate(
+          { id: tutor.id, reason },
+          {
+            onSuccess: () => {
+              toast.success(`${tutor.full_name} reddedildi.`);
+              setRejectOpen(false);
+            },
+            onError: (error) =>
+              toast.error(getErrorMessage(error, "Reddetme başarısız.")),
+          }
+        )
+      }
+    />
     </>
   );
 }
 
+// Onay bekleyenler kuyruktur; listenin BAŞINDA durur. (Eskiden 2. sıradaydı ve
+// zaten aksiyonu yoktu.)
 const STATUS_ORDER: Record<TutorStatus, number> = {
-  [TutorStatus.APPROVED]: 0,
-  [TutorStatus.SUSPENDED]: 1,
-  [TutorStatus.PENDING_APPROVAL]: 2,
+  [TutorStatus.PENDING_APPROVAL]: 0,
+  [TutorStatus.APPROVED]: 1,
+  [TutorStatus.SUSPENDED]: 2,
   [TutorStatus.REJECTED]: 3,
   [TutorStatus.DRAFT]: 4,
 };
@@ -420,6 +250,8 @@ function ListingManagement() {
   const tutors = [...(data ?? [])].sort(
     (a, b) => STATUS_ORDER[a.status] - STATUS_ORDER[b.status]
   );
+  const pending = tutors.filter((t) => t.status === TutorStatus.PENDING_APPROVAL);
+  const digerleri = tutors.filter((t) => t.status !== TutorStatus.PENDING_APPROVAL);
 
   if (tutors.length === 0) {
     return (
@@ -430,14 +262,38 @@ function ListingManagement() {
   }
 
   return (
-    <div className="space-y-3">
-      <p className="text-xs text-slate-400 dark:text-slate-500">
-        {tutors.length} ilan · yayındakileri kaldırabilir, pasifleri geri
-        açabilir veya silebilirsin.
-      </p>
-      {tutors.map((t) => (
-        <ListingRow key={t.id} tutor={t} />
-      ))}
+    <div className="space-y-8">
+      {/* Onay kuyruğu — yalnız iş VARKEN başlık basılır; boş bir "0 başvuru"
+          bölümü operatörün gözünü alıştırır ve gerçek kuyruk fark edilmez. */}
+      {pending.length > 0 && (
+        <section className="space-y-3">
+          <div className="flex items-center gap-3">
+            <h2 className="text-base font-semibold text-slate-900 dark:text-white">
+              Onay Bekleyen Eğitmenler
+            </h2>
+            <span className="flex h-6 min-w-6 items-center justify-center rounded-full bg-red-500 px-1.5 text-xs font-bold text-white">
+              {pending.length}
+            </span>
+          </div>
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            Bu başvurular incelemenizi bekliyor. Onay ilanı yayına alır; red
+            gerekçesi denetim izine yazılır.
+          </p>
+          {pending.map((t) => (
+            <ListingRow key={t.id} tutor={t} />
+          ))}
+        </section>
+      )}
+
+      <div className="space-y-3">
+        <p className="text-xs text-slate-400 dark:text-slate-500">
+          {tutors.length} ilan · yayındakileri kaldırabilir, pasifleri geri
+          açabilir veya silebilirsin.
+        </p>
+        {digerleri.map((t) => (
+          <ListingRow key={t.id} tutor={t} />
+        ))}
+      </div>
     </div>
   );
 }
@@ -446,11 +302,11 @@ function ListingManagement() {
 
 /* ─── tabs ────────────────────────────────────────────── */
 
-export type Tab =
-  | "overview"
-  | "listings"
-  | "diplomas"
-  | "names";
+// P1-1: "overview" ULAŞILAMAZ bir daldı — `AdminSectionPage` prop tipi onu
+// hiç geçirmiyordu ve `App.tsx` ADMIN kökünü `/yonetim`'e (AdminDashboardPage)
+// yönlendiriyor. Dal SİLİNDİ; içindeki tek canlı özellik (eğitmen onay kuyruğu)
+// `listings` bölümüne taşındı.
+export type Tab = "listings" | "diplomas" | "names";
 
 /* ─── diploma doğrulama kuyruğu ───────────────────────── */
 
@@ -769,30 +625,23 @@ function NameChangesSection() {
 }
 
 const SECTION_AREA: Record<Tab, string> = {
-  overview: "dashboard",
   listings: "tutors",
   diplomas: "tutors",
   names: "users",
 };
 const SECTION_LABEL: Record<Tab, string> = {
-  overview: "Genel bakış",
   listings: "Eğitmen ilanları",
   diplomas: "Diploma doğrulama",
   names: "Ad değişiklikleri",
 };
 
-export default function AdminHome({ section = "overview" }: { section?: Tab }) {
+export default function AdminHome({ section }: { section: Tab }) {
   const { canView, canManage } = useAdminAreaAccess(SECTION_AREA[section]);
   if (!canView) return <AccessDenied area={SECTION_LABEL[section]} />;
   return (
     <div className="mx-auto max-w-6xl space-y-6 pb-12">
-        {!canManage && section !== "overview" && <ReadOnlyNotice />}
-        {section === "overview" ? (
-          <>
-            <StatsSection />
-            <PendingTutorsSection />
-          </>
-        ) : section === "listings" ? (
+        {!canManage && <ReadOnlyNotice />}
+        {section === "listings" ? (
           <ListingManagement />
         ) : section === "diplomas" ? (
           <DiplomaVerificationSection />

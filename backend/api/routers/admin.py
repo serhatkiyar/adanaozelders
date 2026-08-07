@@ -37,7 +37,7 @@ from schemas.admin_access import (
 from schemas.tutor import TutorOut
 from schemas.booking import BookingCancel
 from typing import Literal
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 class DisputeToggle(BaseModel):
     is_disputed: bool
@@ -93,6 +93,20 @@ class NameChangeReview(BaseModel):
 
 
 class AdminDemandCancelIn(BaseModel):
+    reason: str = Field(min_length=3, max_length=500)
+
+
+class TutorRejectIn(BaseModel):
+    """Eğitmen reddi — **gerekçe zorunlu**.
+
+    Denetim raporu "eksik akış 6": eğitmen red gerekçesini göremiyor, admin de
+    girmiyordu. Kaynağı buydu — uç gövdesizdi ve `audit_logs`'a yalnız "reject"
+    yazılıyordu. Gerekçe artık denetim izine gider; yalnız boşluktan ibaret bir
+    metin kabul edilmez (`str_strip_whitespace` + `min_length`).
+    """
+
+    model_config = ConfigDict(str_strip_whitespace=True)
+
     reason: str = Field(min_length=3, max_length=500)
 
 
@@ -416,13 +430,19 @@ async def approve_tutor(
 @router.post("/tutors/{tutor_id}/reject", response_model=TutorOut)
 async def reject_tutor(
     tutor_id: int,
+    payload: TutorRejectIn,
     admin: Admin = Depends(require_admin_permission("tutors.manage")),
     db: AsyncSession = Depends(get_db),
 ):
     tutor = await _get_tutor_or_404(db, tutor_id)
     result = await tutor_service.reject(db, tutor)
     await audit_service.record(
-        db, actor=admin, action="tutor.reject", target_type="tutor", target_id=tutor_id
+        db,
+        actor=admin,
+        action="tutor.reject",
+        target_type="tutor",
+        target_id=tutor_id,
+        reason=payload.reason,
     )
     return result
 
