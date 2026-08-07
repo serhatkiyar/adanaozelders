@@ -682,19 +682,67 @@ describe("E-1/E-2/E-3 · 'kayıt yok' ile 'sonuç yok' farklı", () => {
 });
 
 describe("E-4/E-5 · sessiz kesilme uyarısı", () => {
-  it("tavana dayanan listede 'ilk N gösteriliyor' uyarısı çıkar", async () => {
+  // GERÇEK sunucu davranışı taklit edilir (P1-5). Önceki hâli sahte sunucuya
+  // 200 kayıt uydurup "tavan 200" varsayıyordu; oysa üretimde istemci `limit`
+  // göndermiyor, sunucu varsayılan 100 uyguluyor ve `X-Total-Count`
+  // dönmüyordu — yani uyarı HİÇBİR koşulda tetiklenemiyordu ve test bunu
+  // göremiyordu.
+  //
+  // Artık senaryo audit'in ölçtüğü senaryonun aynısı: katalogda 130 sipariş
+  // var, uç istenen `limit` kadarını döndürüyor ve toplamı başlıkta
+  // bildiriyor.
+  function siparisSunucusu(toplam: number) {
+    sunucu(
+      "/store/admin/orders",
+      (istek) => {
+        const limit = Number(istek.params.get("limit") ?? 100);
+        const donecek = Math.min(limit, toplam);
+        return {
+          data: Array.from({ length: donecek }, (_, i) => siparis({ id: 6000 + i })),
+          headers: { "x-total-count": String(toplam) },
+        };
+      },
+      "get"
+    );
+  }
+
+  it("liste kesilmişse kullanıcıya SÖYLENİR", async () => {
     izinVer("orders.view");
-    // Uç tavanı 200; dönen kayıt sayısı tavana eşitse liste kesilmiş olabilir.
-    const cok = Array.from({ length: 200 }, (_, i) => siparis({ id: 6000 + i }));
-    sunucu("/store/admin/orders", { data: cok }, "get");
+    siparisSunucusu(130);
 
     siparisler();
 
+    // İstemci `limit` GÖNDERMELİ: göndermezse tavanı bilemez ve kesilmeyi
+    // hesaplayamaz.
+    await screen.findByRole("table");
     expect(
-      await screen.findByText(/ilk 200|tamamı gösterilmiyor|listenin tamamı/i),
-      "liste tavana dayandı ama kullanıcıya söylenmiyor — 'göremediğim " +
-        "kayıt var mı' sorusunun cevabı sessizce 'evet'"
+      sonIstek("/store/admin/orders")?.params.get("limit"),
+      "istemci limit göndermiyor — sunucu varsayılanı sessizce uygulanır"
     ).toBeTruthy();
+
+    const uyari = await screen.findByText(/listenin tamamı bu değil/i);
+    expect(
+      uyari,
+      "liste kesildi ama kullanıcıya söylenmiyor — 'göremediğim kayıt var " +
+        "mı' sorusunun cevabı sessizce 'evet'"
+    ).toBeTruthy();
+    // Uyarı GERÇEK sayıları taşımalı: sabit bir metin, tavan değiştiğinde
+    // sessizce yanlışa döner.
+    expect(uyari.textContent).toContain("130");
+  });
+
+  it("liste kesilmemişse uyarı ÇIKMAZ", async () => {
+    izinVer("orders.view");
+    // Toplam, dönen kayıt sayısına eşit: kesilme yok.
+    siparisSunucusu(3);
+
+    siparisler();
+
+    await screen.findByRole("table");
+    expect(
+      screen.queryByText(/listenin tamamı bu değil/i),
+      "kesilmemiş listede uyarı var — yanıltıcı"
+    ).toBeNull();
   });
 
   it("sayfalaması olan listede kesilme uyarısı GÖRÜNMEZ", async () => {

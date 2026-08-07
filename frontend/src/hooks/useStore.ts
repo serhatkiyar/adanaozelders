@@ -287,10 +287,10 @@ export function useBulkImportProducts() {
   });
 }
 
-export function useAdminOrders(statusFilter?: string) {
+export function useAdminOrders(statusFilter?: string, limit?: number) {
   return useQuery({
-    queryKey: ["store", "admin", "orders", statusFilter ?? "all"],
-    queryFn: () => storeApi.listOrdersAdmin(statusFilter),
+    queryKey: ["store", "admin", "orders", statusFilter ?? "all", limit ?? 100],
+    queryFn: () => storeApi.listOrdersAdmin(statusFilter, limit),
   });
 }
 

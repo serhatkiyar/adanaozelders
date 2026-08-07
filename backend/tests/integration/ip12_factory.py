@@ -22,7 +22,8 @@ from sqlalchemy import text
 
 from core.database import AsyncSessionLocal
 from models.admin import Admin
-from models.store import Product
+from models.client import Client
+from models.store import Order, Product
 from schemas.admin_access import AdminRoleCreate
 from services import admin_access_service, stock_ledger
 from tests.integration.auth_headers import bearer_headers
@@ -67,6 +68,8 @@ class PanelFabrikasi:
         self.product_ids: list[int] = []
         self.admin_ids: list[int] = []
         self.role_ids: list[int] = []
+        self.order_ids: list[int] = []
+        self.client_ids: list[int] = []
 
     # ── Yönetici ─────────────────────────────────────────────────────────────
 
@@ -105,6 +108,55 @@ class PanelFabrikasi:
             self.admin_ids.append(a.id)
             admin_id = a.id
         return admin_id, await bearer_headers(admin_id, role="ADMIN", role_id=1)
+
+    # ── Siparişler ───────────────────────────────────────────────────────────
+
+    async def _musteri_id(self) -> int:
+        """Siparişlerin bağlanacağı tek müşteri (`orders.client_id` NOT NULL)."""
+        if self.client_ids:
+            return self.client_ids[0]
+        ek = uniq()
+        async with AsyncSessionLocal() as s:
+            c = Client(
+                email=f"ip12-client-{ek}@test.local",
+                hashed_password="test-only",
+                first_name="Panel",
+                last_name="Musteri",
+                username=f"pm{ek}",
+                role_id=3,
+            )
+            s.add(c)
+            await s.flush()
+            cid = c.id
+            await s.commit()
+        self.client_ids.append(cid)
+        return cid
+
+    async def siparisler(self, adet: int, *, status: str = "PAID") -> int:
+        """``adet`` kadar sipariş satırı üretir; oluşturulan sayıyı döner.
+
+        Doğrudan INSERT: bu node'un ölçtüğü şey sayfalama/toplam sözleşmesi,
+        checkout akışı değil. Gerçek checkout'tan geçirmek 130 sipariş için
+        gereksiz derecede yavaş olurdu ve ölçülen davranışı değiştirmezdi.
+        """
+        client_id = await self._musteri_id()
+        async with AsyncSessionLocal() as s:
+            for _ in range(adet):
+                o = Order(
+                    client_id=client_id,
+                    status=status,
+                    payment_status="PAID",
+                    subtotal=Decimal("100.00"),
+                    shipping_fee=Decimal("0.00"),
+                    total=Decimal("100.00"),
+                    currency="TRY",
+                    has_physical=True,
+                )
+                s.add(o)
+                await s.flush()
+                self.order_ids.append(o.id)
+            await s.commit()
+        return adet
 
     # ── Katalog ──────────────────────────────────────────────────────────────
 
@@ -187,8 +239,22 @@ class PanelFabrikasi:
 
     async def temizle(self) -> None:
         async with AsyncSessionLocal() as s:
+            if self.order_ids:
+                await s.execute(
+                    text("DELETE FROM order_items WHERE order_id = ANY(:o)"),
+                    {"o": self.order_ids},
+                )
+                await s.execute(
+                    text("DELETE FROM orders WHERE id = ANY(:o)"),
+                    {"o": self.order_ids},
+                )
             if self.product_ids:
                 await purge_products(s, self.product_ids)
+            if self.client_ids:
+                await s.execute(
+                    text("DELETE FROM clients WHERE id = ANY(:c)"),
+                    {"c": self.client_ids},
+                )
             if self.admin_ids:
                 await s.execute(
                     text("DELETE FROM admin_role_assignments WHERE admin_id = ANY(:a)"),

@@ -559,6 +559,93 @@ class TestVitrinAramasi:
 
 
 # ═══════════════════════════════════════════════════════════════════════════
+# P1-5 · Sipariş listesi kesilme sözleşmesi
+# ═══════════════════════════════════════════════════════════════════════════
+
+
+ADMIN_SIPARIS = "/api/v1/store/admin/orders"
+
+
+class TestSiparisKesilmesi:
+    """Sipariş listesi kesildiğinde bunu SÖYLEYEBİLİR olmalı.
+
+    Audit ölçümü: 130 siparişten 100'ü dönüyordu; istemci `limit`
+    göndermiyor, sunucu varsayılanı 100 uyguluyor, `X-Total-Count` dönmüyordu
+    ve ekrandaki uyarı sabit 200'e bakıyordu — yani uyarı ÜRETİMDE HİÇBİR
+    KOŞULDA tetiklenemiyordu. DOM testi sahte sunucuya 200 kayıt uydurarak
+    geçiyordu; sözleşme gerçek davranışla hiç sınanmamıştı.
+    """
+
+    async def test_p1_5_toplam_donuyor_ve_kesilmeyi_gorunur_kiliyor(
+        self, http, fab12
+    ):
+        admin_id, headers = await fab12.admin(izinler=["orders.view"])
+        await fab12.siparisler(130)
+
+        r = await http.get(ADMIN_SIPARIS, headers=headers, params={"limit": 100})
+        assert r.status_code == 200, r.text
+
+        assert "x-total-count" in {k.lower() for k in r.headers}, (
+            "X-Total-Count yok — istemci listenin kesilip kesilmediğini "
+            "bilemez ve 'göremediğim kayıt var mı' sorusu sessizce "
+            "cevapsız kalır"
+        )
+        donen = len(r.json())
+        toplam = int(r.headers["X-Total-Count"])
+
+        assert donen == 100, f"limit uygulanmadı: {donen}"
+        assert toplam >= 130, f"toplam eşleşen sayı yanlış: {toplam}"
+        # Kesilmenin GÖRÜNÜR olmasının ölçütü budur: toplam > dönen.
+        assert toplam > donen, (
+            "toplam ile dönen eşit — kesilme istemciye görünmüyor"
+        )
+
+    async def test_p1_5_toplam_esleseni_sayar_donen_satiri_degil(
+        self, http, fab12
+    ):
+        """Toplam, filtreye göre EŞLEŞEN sayıdır; sayfa boyutu değil.
+
+        Mutasyona duyarlılık: uç `len(rows)` döndürerek de başlığı
+        doldurabilirdi ve önceki node bunu yakalamazdı (limit=100, dönen=100,
+        toplam=100 → "kesilme yok" derdi).
+        """
+        admin_id, headers = await fab12.admin(izinler=["orders.view"])
+        await fab12.siparisler(12, status="PAID")
+
+        r = await http.get(ADMIN_SIPARIS, headers=headers, params={"limit": 5})
+        assert r.status_code == 200, r.text
+        assert len(r.json()) == 5
+        assert int(r.headers["X-Total-Count"]) >= 12, (
+            "X-Total-Count dönen satır sayısını yansıtıyor; eşleşen kayıt "
+            "sayısını değil"
+        )
+
+    async def test_p1_5_durum_filtresi_toplami_da_daraltir(self, http, fab12):
+        """Filtre uygulanınca toplam da daralmalı.
+
+        Sayım ile listenin ayrı yüklem kullanması, "12 kayıt" yazıp 3 satır
+        gösteren bir liste üretirdi — ürün ucunda bu ortak yardımcıyla
+        çözülmüştü, sipariş ucunda da aynı sözleşme geçerli.
+        """
+        admin_id, headers = await fab12.admin(izinler=["orders.view"])
+        await fab12.siparisler(7, status="PAID")
+        await fab12.siparisler(3, status="SHIPPED")
+
+        hepsi = await http.get(ADMIN_SIPARIS, headers=headers, params={"limit": 200})
+        kargoda = await http.get(
+            ADMIN_SIPARIS, headers=headers, params={"limit": 200, "status": "SHIPPED"}
+        )
+
+        toplam_hepsi = int(hepsi.headers["X-Total-Count"])
+        toplam_kargoda = int(kargoda.headers["X-Total-Count"])
+
+        assert toplam_kargoda < toplam_hepsi, "durum filtresi toplamı daraltmıyor"
+        assert toplam_kargoda == len(kargoda.json()), (
+            "filtreli listede toplam ile dönen satır sayısı tutmuyor"
+        )
+
+
+# ═══════════════════════════════════════════════════════════════════════════
 # Eşiğin tek kaynak olması
 # ═══════════════════════════════════════════════════════════════════════════
 

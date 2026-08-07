@@ -1013,7 +1013,7 @@ function OrdersPanel() {
   const hamDurum = params.get("durum");
   const durum =
     hamDurum && ORDER_STATUS_FILTERS.includes(hamDurum) ? hamDurum : undefined;
-  const { data: orders, isLoading, isError, error, refetch } = useAdminOrders(durum);
+  const { data, isLoading, isError, error, refetch } = useAdminOrders(durum);
   const invalidate = useInvalidateAdminStore();
   // "Teslim edildi" siparişi terminal duruma taşır ve teslimat akışını kapatır;
   // yanlış satıra tıklama geri alınamaz (P1-5 gerekçesi).
@@ -1059,14 +1059,21 @@ function OrdersPanel() {
       />
     );
   }
-  const siparisler = orders ?? [];
-  // Uç tavanı 200 (`limit` üst sınırı). Dönen kayıt sayısı tavana eşitse
-  // liste kesilmiş OLABİLİR ve kullanıcı bunu bilmeli — sipariş listesinde
-  // henüz sayfalama yok (kapsam dışı), bu yüzden sessiz kesilme uyarısı
-  // veriliyor. Sayfalama geldiği gün bu uyarı KALKMALI: sayfalı listede
-  // yanıltıcı olur.
-  const TAVAN = 200;
-  const kesilmisOlabilir = siparisler.length >= TAVAN;
+  const siparisler = data?.items ?? [];
+  const toplam = data?.total ?? -1;
+  // Kesilme, GERÇEK sunucu davranışından okunur: eşleşen toplam, dönen kayıt
+  // sayısından büyükse liste kesilmiştir.
+  //
+  // Önceki hâli sabit `200`e bakıyordu ve üretimde ASLA tetiklenemiyordu
+  // (P1-5): istemci `limit` göndermiyor, sunucu varsayılan 100 uyguluyor,
+  // `X-Total-Count` dönmüyordu — 130 siparişin 100'ü gösteriliyor ve
+  // kullanıcıya hiçbir şey söylenmiyordu. Test ise sahte sunucuya 200 kayıt
+  // uydurarak geçiyordu.
+  //
+  // Sipariş listesinde henüz sayfalama yok (kapsam dışı); geldiği gün bu
+  // uyarı KALKMALI, çünkü sayfalı listede toplam zaten görünür ve uyarı
+  // yanıltıcı olur (E-5 nöbetçisi bunu koruyor).
+  const kesilmisOlabilir = toplam > siparisler.length;
 
   const kolonlar: ColumnDef<OrderOut, unknown>[] = [
     {
@@ -1227,8 +1234,9 @@ function OrdersPanel() {
         truncationNotice={
           kesilmisOlabilir ? (
             <p className="border-b border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200">
-              Yalnızca ilk {TAVAN} sipariş gösteriliyor; listenin tamamı bu
-              değil. Daraltmak için durum filtresini kullanın.
+              Toplam {toplam} siparişin ilk {siparisler.length} tanesi
+              gösteriliyor; listenin tamamı bu değil. Daraltmak için durum
+              filtresini kullanın.
             </p>
           ) : undefined
         }

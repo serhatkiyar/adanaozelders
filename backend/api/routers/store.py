@@ -441,15 +441,25 @@ async def delete_category(
 
 @router.get("/admin/orders", response_model=list[OrderOut])
 async def list_orders_admin(
+    response: Response,
     status_filter: str | None = Query(default=None, alias="status"),
     limit: int = Query(default=100, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
     _admin: Admin = Depends(require_admin_permission("orders.view")),
     db: AsyncSession = Depends(get_db),
 ):
-    return await order_service.list_orders_admin(
+    """Yönetim sipariş listesi. Toplam kayıt `X-Total-Count` başlığında.
+
+    Başlık olmadan istemci listenin kesilip kesilmediğini bilemiyordu: uç
+    varsayılan `limit=100` uyguluyor, istemci `limit` göndermiyordu ve
+    "yalnızca ilk N gösteriliyor" uyarısı hiçbir koşulda tetiklenemiyordu
+    (P1-5 — 130 siparişten 100'ü dönüyor, kullanıcıya söylenmiyordu).
+    """
+    kayitlar, toplam = await order_service.list_orders_admin(
         db, status_filter=status_filter, limit=limit, offset=offset
     )
+    response.headers["X-Total-Count"] = str(toplam)
+    return kayitlar
 
 
 @router.post("/admin/orders/{order_id}/ship", response_model=OrderOut)
