@@ -291,6 +291,17 @@ gecikme öder. İddia değişmedi; yalnız yarışın gerçekleştiği artık **
 
 ## 7. Mutasyon kataloğu
 
+> ⚠️ **"12/12" ifadesi bir boşluğu görünmez kılıyor.** Sayı, *denenen* mutasyonların
+> tamamının yakalandığını söyler — kapsamın tam olduğunu değil.
+> `uq_study_res_short_code` kısıtı DDL'de **gerçekten var ve gerçekten koruyor**
+> (migration ve şema doğrulamasıyla ölçüldü), ama ne bir davranış testi ne de DDL
+> nöbetçisi onu hedefliyor: `ip1b_ddl_drill.HEDEFLER` dört kısıt sayar ve o dördün
+> içinde değil, `test_ip1b_bilet_kodu_pg.py` de çalışma rezervasyonunun yalnız
+> `qr_token`'ını sınıyor. Yani "bu kısıt düşerse hangi test kırılır?" sorusunun
+> bugün cevabı **hiçbiri**. Kapsam dışı bırakılmadı, gözden kaçtı; bağımsız audit
+> yakaladı. Kapatılması bir P2'dir (§8/TB-F) — bu turda bilinçli olarak
+> yapılmadı, çünkü İP-4 adaptasyon turunun kapsamı yalnız birleştirmedir.
+
 **12/12 yakalandı.** Sürücüler: `backend/scripts/mutation_drill.py` (bayt yedeği,
 kirli ağaçta ret, HEAD+worktree eşitlik doğrulaması) ve
 `backend/scripts/ip1b_ddl_drill.py`.
@@ -354,6 +365,134 @@ testin içine hem buraya yazıldı.
 | TB-C | Eşzamanlı iki `pay()` çağrısı **farklı** kayıtlarda hâlâ ayrı ayrı tahsilat yapabilir | Bu doğru davranıştır (iki farklı müşteri). Aynı kayıtta çift tahsilat kapatıldı |
 | TB-D | `quote()` onaysız (≠ACTIVE) kütüphanede fiyat döndürmeye devam ediyor | Salt okuma; `reserve` zaten 409 veriyor. Bilinçli olarak değiştirilmedi (frontend sözleşmesi) |
 | TB-E | Yasal metinler (`legalContent.ts`) ile iade kuralı uyumu | İP-1b kapsamı dışı; kök `CLAUDE.md`'de zaten kayıtlı |
+| TB-F | `uq_study_res_short_code` **nöbetçisiz** | Kısıt DDL'de var ve koruyor, ama onu hedefleyen ne test ne DDL provası var (§7 uyarısı). Kapatmak: `test_ip1b_bilet_kodu_pg.py`'ye çalışma `short_code` düğümü + `ip1b_ddl_drill.HEDEFLER`'e beşinci hedef |
+
+### Depo hijyeni notu
+
+`backend/ruff.toml`'a bir per-file-ignore eklendi:
+
+```toml
+"scripts/ip1b_ddl_drill.py" = ["T201"]
+```
+
+Gerekçe `scripts/mutation_drill.py`'ninkiyle aynıdır: bu bir argparse'sız CLI
+aracıdır ve **konsol çıktısı provanın kanıtıdır** (hangi kısıt düşürüldü, hangi
+test kırıldı, geri yükleme davranışla doğrulandı mı). İstisna `scripts/` dizinine
+toplu değil **dosya + kural bazında** verildi — toplu muafiyet, yarın eklenen bir
+script'i sessizce muaf yapardı (ruff.toml'un kendi yorumunun koyduğu kural).
+
+---
+
+## 9. İP-4 sonrası güncel-main adaptasyonu
+
+> Bu bölüm **yalnız birleştirme turunu** kaydeder. Yukarıdaki tarihsel bölümler
+> (§0-§8) İP-1b'nin kendi paketine aittir ve olduğu gibi korunur. Bu turda
+> **yeni İP-1b işlevi geliştirilmedi, P2 borcu düzeltilmedi.**
+
+| | |
+|---|---|
+| Adaptasyon öncesi HEAD (audit'ten geçen) | `aa16724` |
+| Alınan main | `38faf62` (İP-4 merge `9a91e37` + borç `38faf62`) |
+| Merge-base | `e726b9b` — main 12, İP-1b 9 commit ileride |
+| Merge commit | **`04df6e3`** (parents `aa16724` + `38faf62`, `--no-ff`) |
+| Çatışma | **yok** — İP-4 ile ortak değiştirilen dosya sayısı 0 |
+| Migration düzeltme commit'i | **`7d1c88a`** |
+
+### Migration çatallanması ve çözümü
+
+İP-4'ün `ip4_operasyon_izinleri` revizyonu da `ip2a_iade_para_guvenligi`'ne
+bağlıydı → birleşik ağaçta **iki head**. Alembic merge revizyonu ÜRETİLMEDİ;
+zincir doğrusal hâle getirildi:
+
+```
+ip2a_iade_para_guvenligi
+  → ip4_operasyon_izinleri
+  → ip1b_kontenjan_kilidi
+  → ip1b_bilet_kodu_tekilligi        (tek head)
+```
+
+Sıralamanın veri anlamını değiştirmediği koddan doğrulandı: İP-4 migration'ı
+**DDL içermez** (yalnız `admin_permissions` / `admin_role_permissions`'a
+`NOT EXISTS` korumalı satır ekler); İP-1b yalnız `exam_registrations` /
+`study_reservations` şemasına dokunur; ortak tablo/kolon/index/kısıt/trigger
+yoktur; İP-1b'nin tek okuması (`_cakisma_kontrolu`) o iki tabloyla sınırlıdır.
+Gövdelerde `down_revision` dışında değişiklik gerekmedi.
+
+### Merge sonrası kod incelemesi
+
+Ana ajan doğrudan yaptı (alt ajana devredilmedi):
+
+* İP-1b **yeni izin gerektirmiyor**; `core/admin_permissions.py` diff'i saf
+  eklemedir (`operations.view` / `operations.manage`), `libraries.*` duvarlarına
+  dokunulmamış.
+* İP-4'ün üç yeni ucu (`/admin/operations/*`) `delete_library` /`delete_tutor`
+  guard'larıyla **çakışmıyor**; farklı kaynaklar, farklı izinler.
+* `admin_operations_service.list_stuck_escrow` model listesini
+  `escrow_reconciler._REFUNDING_TARGETS`'tan devralıyor; İP-1b hiçbir
+  `EscrowSpec`'i değiştirmedi, dolayısıyla tarama **hâlâ doğru**. Dahası İP-1b'nin
+  yeni kontenjan-iade yolu `escrow.refund_escrow` üzerinden gittiği için sıkışırsa
+  kuyrukta **görünür**.
+* İP-4 merge'i `library_capacity.py`, `library_exam_service.py`,
+  `study_reservation_service.py`, `library_service.py`, `escrow.py`,
+  `models/library_*`, `tests/integration/conftest.py` dosyalarının **hiçbirine
+  dokunmadı** (git ile doğrulandı); `ip4_factory` conftest'e fixture kaydetmiyor,
+  ad gölgelemesi yok.
+* Advisory kilit sınıf defteri (1-5 escrow + 6/7 kontenjan) İP-4 ile
+  çakışmıyor — İP-4 advisory kilit kullanmıyor.
+* Koltuk yüklemi (`holds_seat`), canlılık kapıları ve silme guard'ları merge
+  sonrası yerinde; İP-1b dosyaları `aa16724` ile **byte-özdeş**.
+
+**Kaydedilen gözlem (düzeltilmedi, P2 adayı):** İP-1b'nin
+`auto_release_no_shows`'u silinmiş kütüphanedeki ödenmiş kaydı atlayıp ALARM
+loglar. O satırlar `PAID`/`released_at IS NULL`'dur — `REFUNDING` ya da
+`MANUAL_REVIEW` değil — dolayısıyla **İP-4'ün sıkışmış para kuyruğunda
+görünmezler**, yalnız logda kalırlar. Para kaybı değil (silme guard'ı bu durumu
+en baştan engelliyor), görünürlük boşluğudur; kuyruğa eklemek İP-4'ün sözleşmesini
+genişletmek olurdu ve bu tur bunu kapsamıyor.
+
+### Doğrulama (birleşik ağaç)
+
+Boş DB'de: `upgrade head` (72 revizyon) · `downgrade -1` (yalnız 4 bilet index'i
+düştü) · `-2` (İP-1b yapılarının tamamı düştü, **İP-4 izinleri korundu**) · `-3`
+(İP-4 izinleri düştü, **İP-2a korundu**) · `upgrade head` · `alembic check`
+temiz. `AUTO_CREATE_DB=true` probu: `ensure_schema` → **94 tablo**, tek
+`alembic_version` satırı, `GET /health/live` → **200**, "Multiple head revisions"
+yok.
+
+| Paket | Sonuç | | Matris | Sonuç |
+|---|---|---|---|---|
+| İP-1b | 28 ✔ | | integration | **1168** |
+| İP-4 | 21 ✔ | | verify | **132** |
+| İP-1a | 63 ✔ | | acceptance | **197** |
+| İP-2a | 49 ✔ | | unit | **685** |
+| İP-2b | 39 ✔ | | frontend vitest | **73 dosya / 744 test** |
+| İP-3 | 115 ✔ | | tsc `-b` | temiz |
+| F30 | 314 ✔ | | | |
+
+İP-1b frontend'e hiç dokunmadı; frontend kapısı **İP-4'ün** getirdiği değişiklikler
+için koşturuldu. Bilinen `PackageLabel.test.tsx` flake'i bu turda **gözlenmedi**.
+(Bu worktree'de `node_modules` hiç kurulmamıştı; kapı ancak `npm ci` sonrası
+anlamlı koşabildi — kurulumsuz bir "yeşil" görmek mümkün değildi, komut zaten
+"vitest is not recognized" ile düşüyordu.)
+
+Kontenjan yarışları (K-1..K-7 + P-1/P-1b/P-2 = 10 düğüm) birleşik ağaçta **5 tur**
+koşturuldu: hepsi yeşil, 40P01 / 40001 / 55P03 / 57014 / deadlock / timeout /
+pending-destroyed task / "Event loop is closed" / MissingGreenlet **sıfır**.
+
+**Skip sınıflandırması:** önceki turda 16 integration + 6 verify skip'i vardı;
+bu turda **sıfır**. Sebep regresyon değil kapsam artışıdır — VROOM/OSRM/MinIO
+konteynerleri bu oturumda ayağa kalktığı için altyapıya bağlı testler artık
+gerçekten koşuyor. (Test DB'si `5432` yerel Postgres'tir; compose Postgres'in
+yayınlanmış portu yoktur, "iki Postgres" belirsizliği doğmaz.)
+
+**Node koruma:** `aa16724` ile birleşik HEAD'in `--collect-only` listeleri
+diff'lendi — **kaybolan node yok**, eklenen 21'in tamamı
+`test_ip4_admin_operations_pg.py`'den. İP-1b'nin 28 düğümü korundu; İP-1b test
+dosyaları `aa16724` ile byte-özdeş olduğu için yeniden adlandırma, parametrizasyonla
+gizleme, `skip`/`xfail` ekleme ya da assertion gevşetme **imkânsız**.
+
+**P0 = 0 · P1 = 0.** Kalan P2'ler §8'dedir (TB-A…TB-F) + yukarıdaki kuyruk
+görünürlüğü gözlemi.
 
 **Açık P0/P1 yok.** P1-20, P1-21, P1-22, P2-8, P2-40 kapandı; P1-22'nin eğitmen
 bacağı da yapıldı (P2'ye bırakılmadı).
