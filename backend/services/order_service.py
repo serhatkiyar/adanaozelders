@@ -926,9 +926,23 @@ async def _out_of_stock_refund(
 
     Artık akış diğer iade yollarıyla AYNI: `reserve_refund` (tavan kapısı) →
     `begin_refund` (niyet, commit) → `perform_refund` (sağlayıcı) →
-    `settle_refunded_order` (ortak telafi kuyruğu). (3) numaralı zarar ayrıca
-    `_restock`'un "defterde SALE yoksa geri yükleme yok" koşuluyla kapatıldı —
-    reconciler devralsa bile aynı koruma geçerlidir.
+    `settle_refunded_order` (ortak telafi kuyruğu).
+
+    (3) numaralı zarar İKİ katmanla kapatıldı:
+
+    * **Açık parametre** — bu fonksiyon `settle_refunded_order(restock=False)`
+      verir; burada bilgi TAM, sipariş hiç PAID olmadı.
+    * **Kalıcı iz** — `_restock` ayrıca `_oversell_iptali_mi`'ye bakar
+      (`order_status_history.changed_by = 'system:oversell'`). Reconciler
+      devraldığında parametre kaybolmuştur; iz kalır.
+
+    ⚠️ Bir ara sürüm "defterde `SALE` yoksa geri yükleme yok" diyordu; o kural
+    **GERİ ALINDI** (`cf3615b`). Ölçüm çürüttü: geliştirme veritabanındaki
+    20 PAID fiziksel siparişin 19'unda `SALE` hareketi yok — defter onlardan
+    sonra kuruldu. O kural, defter öncesi GERÇEK bir siparişin iptalinde
+    stoğu geri döndürmezdi (gerçek stok kaybı). `paid_at` ve
+    `order_status_history`'nin PAID kaydı da aynı sebeple güvenilmez; ayrım
+    bu yüzden geçmiş veriden ÇIKARILMAZ.
 
     İade yine iki fazlıdır (niyet önce commit edilir): tahsil edilmiş paranın
     iadesi süreç ölürse kaybolmamalı. Kaynak durum PAID değil PENDING/FAILED'dır.
