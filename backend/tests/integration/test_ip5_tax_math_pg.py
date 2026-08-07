@@ -316,7 +316,7 @@ async def test_m5b_yuzde_kuponlu_tek_kurus_artigi(http, fab5):
 # ── M-6 · Ürünün oranı sonradan değişirse kırılım DEĞİŞMİYOR ────────────────
 
 
-async def test_m6_saklanan_kirilim_urun_oranindan_bagimsiz(http, fab5):
+async def test_m6_saklanan_kirilim_urun_oranindan_bagimsiz(http, fab5, monkeypatch):
     """Anlık değer saklanır; fatura sipariş anındaki oranla kesilir.
 
     Bu, kırılımın "her okumada yeniden hesaplanan" bir görünüm olmadığının
@@ -343,6 +343,33 @@ async def test_m6_saklanan_kirilim_urun_oranindan_bagimsiz(http, fab5):
     )
     assert kalem_sonra[0]["tax_rate"] == kalem_once[0]["tax_rate"] == D("0.2000")
     assert kalem_sonra[0]["tax_amount"] == kalem_once[0]["tax_amount"]
+
+    # ── Faturanın da ESKİ oranı göstermesi ──
+    # DB'yi okumak, kırılımın saklandığını kanıtlar; ama belgeyi ÜRETEN yolun
+    # da saklanandan okuduğunu ayrıca göstermek gerekir. Aksi hâlde biri
+    # `build_invoice`'ı "kalemlerden anlık hesapla" diye değiştirdiğinde
+    # tablo doğru kalır, MÜŞTERİYE GİDEN BELGE yanlışa döner.
+    monkeypatch.setattr(settings, "INVOICE_ENABLED", True, raising=False)
+    for ad, deger in (
+        ("INVOICE_SELLER_NAME", "IP5 Test Satıcı"),
+        ("INVOICE_SELLER_TAX_NUMBER", "5590521517"),
+        ("INVOICE_SELLER_TAX_OFFICE", "Test VD"),
+        ("INVOICE_SELLER_ADDRESS", "Adana, Türkiye"),
+        ("INVOICE_SELLER_PHONE", "+905550000000"),
+        ("INVOICE_SELLER_EMAIL", "bilgi@test.local"),
+    ):
+        monkeypatch.setattr(settings, ad, deger, raising=False)
+
+    r = await http.get(
+        f"/api/v1/store/orders/{o['id']}/invoice", headers=m.headers
+    )
+    assert r.status_code == 200, r.text
+    g = r.json()
+    assert D(str(g["totals"]["tax_total"])) == D("100.00"), (
+        "fatura, ürünün YENİ oranıyla yeniden hesaplamış"
+    )
+    assert {str(s["rate"]) for s in g["tax_lines"]} == {"0.2000"}, g["tax_lines"]
+    assert D(str(g["items"][0]["tax_rate"])) == D("0.2000")
 
 
 # ── M-7 / M-8 · İadede vergi kırılımı ───────────────────────────────────────
