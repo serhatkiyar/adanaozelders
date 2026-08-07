@@ -64,6 +64,9 @@ class ProductSearchOut(BaseModel):
     tutor_name: str | None = None
     price: str
     compare_at_price: str | None = None
+    #: KDV oranı (ORAN, 0.20 = %20). Admin düzenleme formu mevcut değeri bundan
+    #: okur; katalog kartında gösterilmez ama şemanın tek kaynağı burasıdır.
+    tax_rate: Decimal | None = None
     currency: str
     cover_url: str | None = None
     in_stock: bool = True
@@ -94,6 +97,20 @@ class ProductDetailOut(ProductSearchOut):
     created_at: datetime.datetime | None = None
 
 
+#: KDV oranı alanının ORTAK tanımı — üç yazıcı şema (admin oluşturma/güncelleme
+#: ve eğitmen ürünü) aynı sınırı paylaşır. Tek yerde tanımlı olması, birinin
+#: sınırı gevşetip diğerlerinin sıkı kalmasını engeller.
+#:
+#: Birim ORAN'dır (0.20 = %20), yüzde DEĞİL: `models.store.Product.tax_rate`
+#: `Numeric(5,4)` ve `services/tax.py` `0 ≤ oran < 1` bekler. Yüzde yazan bir
+#: istemci (20) bu yüzden 422 alır — %2000'lik sessiz bir fatura hatası
+#: üretmektense isteği reddetmek doğrudur.
+#:
+#: Oran VERİDİR: hangi ürüne hangi oranın uygulanacağı bir mevzuat kararıdır ve
+#: kodda hiçbir varsayılan/kategori kısayolu YOKTUR (bkz. sözleşme §2 S-5).
+_TAX_RATE_FIELD_ARGS = {"ge": 0, "lt": 1, "max_digits": 5, "decimal_places": 4}
+
+
 class _BookSpecFields(BaseModel):
     """Kitap künyesi (opsiyonel) — ProductCreate/ProductUpdate ortak alanları."""
 
@@ -119,6 +136,10 @@ class ProductCreate(_BookSpecFields):
     compare_at_price: Decimal | None = Field(
         default=None, gt=0, max_digits=10, decimal_places=2
     )
+    #: ZORUNLU — varsayılanı YOKTUR. Sessizce %0 yazmak, yanlış oranla satılan
+    #: ve yanlış fatura kesilen bir ürün demektir; hata ancak muhasebede ortaya
+    #: çıkar (P1-7'nin kök nedeni tam olarak `server_default 0`'dı).
+    tax_rate: Decimal = Field(**_TAX_RATE_FIELD_ARGS)
     stock: int | None = Field(default=None, ge=0)
     weight_grams: int | None = Field(default=None, ge=0)
     category_id: int | None = None
@@ -139,6 +160,10 @@ class ProductUpdate(_BookSpecFields):
     compare_at_price: Decimal | None = Field(
         default=None, gt=0, max_digits=10, decimal_places=2
     )
+    #: Gönderilmezse MEVCUT oran korunur (`exclude_unset`); gönderilirse aynı
+    #: sınırlara tabidir. Kısmi PATCH'in oranı sessizce sıfırlaması, sessiz
+    #: varsayılanla aynı sınıf hatadır.
+    tax_rate: Decimal | None = Field(default=None, **_TAX_RATE_FIELD_ARGS)
     #: HEDEF (mutlak) stok. Delta sunucuda, ürün satırı kilitli iken hesaplanır;
     #: istemci delta göndermez (iki istemci aynı deltayı gönderirse hangisinin
     #: hangi tabana uygulandığı belirsiz kalırdı).
@@ -163,6 +188,9 @@ class SellerProductCreate(BaseModel):
     compare_at_price: Decimal | None = Field(
         default=None, gt=0, max_digits=10, decimal_places=2
     )
+    #: Eğitmen dijital ürünü de fatura satırıdır → oran ZORUNLU (bkz.
+    #: `ProductCreate.tax_rate`). Kolun ayrı olması muafiyet anlamına gelmez.
+    tax_rate: Decimal = Field(**_TAX_RATE_FIELD_ARGS)
     category_id: int | None = None
     cover_url: str | None = Field(default=None, max_length=500)
 

@@ -17,6 +17,7 @@ import {
   useInvalidateSellerStore,
 } from "@/hooks/useStore";
 import { toast } from "@/store/toastStore";
+import { yuzdedenOran } from "@/lib/tax";
 import type { ProductSearchOut, SellerProductStat } from "@/types";
 
 const STATUS_LABEL: Record<string, string> = {
@@ -119,18 +120,28 @@ function NewProductForm({ onDone }: { onDone: () => void }) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [price, setPrice] = useState("");
+  // KDV oranı: formda yüzde, istekte oran (bkz. lib/tax.ts). Dijital ürün de
+  // fatura satırıdır; varsayılan oran YOKTUR, satıcı kendi ürününü beyan eder.
+  const [taxPercent, setTaxPercent] = useState("");
   const create = useMutation({
-    mutationFn: () =>
-      createSellerProduct({
+    mutationFn: () => {
+      const oran = yuzdedenOran(taxPercent);
+      if (!oran.ok) throw new Error(oran.hata ?? "KDV oranı geçersiz");
+      return createSellerProduct({
         title,
         description: description || null,
         price,
-      }),
+        tax_rate: oran.oran,
+      });
+    },
     onSuccess: () => {
       toast.success("Ürün oluşturuldu. Kapak + dosya yükleyip yayına gönder.");
       onDone();
     },
-    onError: () => toast.error("Ürün oluşturulamadı"),
+    onError: (err: unknown) =>
+      toast.error(
+        err instanceof Error && err.message ? err.message : "Ürün oluşturulamadı"
+      ),
   });
 
   return (
@@ -155,9 +166,20 @@ function NewProductForm({ onDone }: { onDone: () => void }) {
         inputMode="decimal"
         className="input mt-3"
       />
+      <input
+        value={taxPercent}
+        onChange={(e) => setTaxPercent(e.target.value)}
+        placeholder="KDV oranı (%)"
+        inputMode="decimal"
+        aria-label="KDV oranı (%)"
+        className="input mt-3"
+      />
+      <p className="mt-1 text-[11px] text-slate-400 dark:text-slate-500">
+        Yüzde olarak yazın (ör. 20). Fiyatın KDV dahil olduğu varsayılır.
+      </p>
       <button
         type="button"
-        disabled={create.isPending || !title || !price}
+        disabled={create.isPending || !title || !price || !taxPercent}
         onClick={() => create.mutate()}
         className="mt-3 rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50 dark:bg-white dark:text-slate-900"
       >

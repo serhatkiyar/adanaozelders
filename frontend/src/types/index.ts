@@ -1512,6 +1512,8 @@ export interface ProductSearchOut {
   tutor_name?: string | null;
   price: string;
   compare_at_price?: string | null;
+  /** KDV oranı — ORAN (0.20 = %20), yüzde değil. Admin formu bunu yüzdeye çevirip gösterir. */
+  tax_rate?: string | number | null;
   currency: string;
   cover_url?: string | null;
   in_stock: boolean;
@@ -1572,6 +1574,8 @@ export interface ProductCreate extends BookSpecFields {
   kind: ProductKind;
   price: string | number;
   compare_at_price?: string | number | null;
+  /** ZORUNLU — sunucuda varsayılanı yoktur (bkz. sözleşme S-5). ORAN, yüzde değil. */
+  tax_rate: string | number;
   stock?: number | null;
   weight_grams?: number | null;
   category_id?: number | null;
@@ -1584,6 +1588,8 @@ export interface ProductUpdate extends BookSpecFields {
   description?: string | null;
   price?: string | number;
   compare_at_price?: string | number | null;
+  /** Gönderilmezse mevcut oran korunur. ORAN, yüzde değil. */
+  tax_rate?: string | number;
   stock?: number | null;
   weight_grams?: number | null;
   category_id?: number | null;
@@ -1596,6 +1602,8 @@ export interface SellerProductCreate {
   description?: string | null;
   price: string | number;
   compare_at_price?: string | number | null;
+  /** ZORUNLU — eğitmen dijital ürünü de fatura satırıdır. ORAN, yüzde değil. */
+  tax_rate: string | number;
   category_id?: number | null;
   cover_url?: string | null;
 }

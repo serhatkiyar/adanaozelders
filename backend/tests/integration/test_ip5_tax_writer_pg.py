@@ -20,7 +20,7 @@ from decimal import Decimal
 
 import pytest
 
-from tests.integration.ip5_factory import fab5  # noqa: F401
+from tests.integration.ip5_factory import fab5, uniq  # noqa: F401
 
 pytestmark = pytest.mark.asyncio
 
@@ -41,7 +41,7 @@ async def test_v1_urun_olusturmada_oran_dbye_yaziliyor(http, fab5):
         "/api/v1/store/admin/products",
         headers=headers,
         json={
-            "title": f"IP5 Kirtasiye {fab5.__class__.__name__}",
+            "title": f"IP5 Kirtasiye {uniq()}",
             "kind": "PHYSICAL",
             "price": "120.00",
             "tax_rate": "0.20",
@@ -117,17 +117,14 @@ async def _csv_yukle(http, headers, govde: str):
     )
 
 
-async def test_v3_csv_orani_okuyor(http, fab5):
-    headers = await _admin_headers(fab5)
-    csv = (
-        "title,kind,price,tax_rate,stock\n"
-        "IP5 CSV Kirtasiye,PHYSICAL,120.00,0.20,5\n"
-        "IP5 CSV Kitap,PHYSICAL,100.00,0,5\n"
-    )
-    r = await _csv_yukle(http, headers, csv)
-    assert r.status_code == 200, r.text
-    assert r.json()["created"] == 2, r.json()
+async def _csv_urunlerini_topla(fab5, onek: str) -> dict[str, Decimal]:
+    """Önekle oluşmuş ürünleri teardown'a KAYDEDER ve oranlarını döner.
 
+    Kayıt, assert'lerden ÖNCE yapılır: bir assert düşerse bile ürünler
+    fabrikanın temizlik listesindedir. (Bu tuzağa bir kez düşüldü — uç 500
+    dönünce kayıt satırına hiç ulaşılmadı ve satırlar test DB'sinde kaldı,
+    sonraki koşumu kirletti.)
+    """
     from sqlalchemy import text as sa_text
 
     from core.database import AsyncSessionLocal
@@ -136,26 +133,33 @@ async def test_v3_csv_orani_okuyor(http, fab5):
         rows = (
             await s.execute(
                 sa_text(
-                    "SELECT title, tax_rate FROM products "
-                    "WHERE title LIKE 'IP5 CSV %' ORDER BY title"
-                )
+                    "SELECT id, title, tax_rate FROM products "
+                    "WHERE title LIKE :p ORDER BY title"
+                ),
+                {"p": f"{onek}%"},
             )
         ).all()
-        fab5.product_ids.extend(
-            [
-                r[0]
-                for r in (
-                    await s.execute(
-                        sa_text(
-                            "SELECT id FROM products WHERE title LIKE 'IP5 CSV %'"
-                        )
-                    )
-                ).all()
-            ]
-        )
-    oranlar = {r[0]: Decimal(str(r[1])) for r in rows}
-    assert oranlar["IP5 CSV Kirtasiye"] == Decimal("0.2000")
-    assert oranlar["IP5 CSV Kitap"] == Decimal("0.0000")
+    fab5.product_ids.extend([r[0] for r in rows])
+    return {r[1]: Decimal(str(r[2])) for r in rows}
+
+
+async def test_v3_csv_orani_okuyor(http, fab5):
+    headers = await _admin_headers(fab5)
+    # Önek koşuma özgüdür: paralel/ardışık koşumlar birbirinin satırını
+    # görmez ve sabit başlık çakışması yaşanmaz.
+    onek = f"IP5CSV{uniq()}"
+    csv = (
+        "title,kind,price,tax_rate,stock\n"
+        f"{onek} Kirtasiye,PHYSICAL,120.00,0.20,5\n"
+        f"{onek} Kitap,PHYSICAL,100.00,0,5\n"
+    )
+    r = await _csv_yukle(http, headers, csv)
+    oranlar = await _csv_urunlerini_topla(fab5, onek)
+
+    assert r.status_code == 200, r.text
+    assert r.json()["created"] == 2, r.json()
+    assert oranlar[f"{onek} Kirtasiye"] == Decimal("0.2000")
+    assert oranlar[f"{onek} Kitap"] == Decimal("0.0000")
 
 
 async def test_v3b_csv_oransiz_satir_reddediliyor_ve_raporlaniyor(http, fab5):
@@ -165,42 +169,20 @@ async def test_v3b_csv_oransiz_satir_reddediliyor_ve_raporlaniyor(http, fab5):
     ürün demektir; hata ancak muhasebede ortaya çıkar.
     """
     headers = await _admin_headers(fab5)
+    onek = f"IP5CSVX{uniq()}"
     csv = (
         "title,kind,price,tax_rate,stock\n"
-        "IP5 CSVX Oranli,PHYSICAL,120.00,0.20,5\n"
-        "IP5 CSVX Oransiz,PHYSICAL,100.00,,5\n"
+        f"{onek} Oranli,PHYSICAL,120.00,0.20,5\n"
+        f"{onek} Oransiz,PHYSICAL,100.00,,5\n"
     )
     r = await _csv_yukle(http, headers, csv)
+    oranlar = await _csv_urunlerini_topla(fab5, onek)
+
     assert r.status_code == 200, r.text
     sonuc = r.json()
-
-    from sqlalchemy import text as sa_text
-
-    from core.database import AsyncSessionLocal
-
-    async with AsyncSessionLocal() as s:
-        idler = [
-            row[0]
-            for row in (
-                await s.execute(
-                    sa_text("SELECT id FROM products WHERE title LIKE 'IP5 CSVX %'")
-                )
-            ).all()
-        ]
-        fab5.product_ids.extend(idler)
-        basliklar = [
-            row[0]
-            for row in (
-                await s.execute(
-                    sa_text(
-                        "SELECT title FROM products WHERE title LIKE 'IP5 CSVX %'"
-                    )
-                )
-            ).all()
-        ]
-
     assert sonuc["created"] == 1, sonuc
-    assert "IP5 CSVX Oransiz" not in basliklar, "oransız satır oluşturulmuş"
+    assert f"{onek} Oransiz" not in oranlar, "oransız satır oluşturulmuş"
+    assert f"{onek} Oranli" in oranlar, "geçerli satır da atlanmış"
     assert sonuc["errors"], "reddedilen satır raporlanmamış"
     assert any(
         "tax_rate" in e["message"] or "KDV" in e["message"] for e in sonuc["errors"]
@@ -285,7 +267,7 @@ async def test_v5_ayni_kategoride_farkli_oranlar_korunuyor(http, fab5):
     kr = await http.post(
         "/api/v1/store/admin/categories",
         headers=headers,
-        json={"name": f"IP5 Kategori {fab5.__class__.__name__}"},
+        json={"name": f"IP5 Kategori {uniq()}"},
     )
     assert kr.status_code in (200, 201), kr.text
     kategori_id = kr.json()["id"]

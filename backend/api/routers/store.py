@@ -219,10 +219,19 @@ async def bulk_import_products(
             status.HTTP_400_BAD_REQUEST, "CSV boş (başlık satırı + en az bir ürün gerekli)."
         )
     result = await store_service.bulk_import_products(db, admin, rows)
+    # `bulk_import_products` SÖZLÜK döner (`-> dict`), nesne değil. Burada
+    # eskiden `result.created` yazıyordu ve uç, dosya geçerli olsa bile
+    # **500** veriyordu: audit satırı yazılmadan önce `AttributeError`.
+    # `response_model` bunu gizliyordu — hata dönüşümden ÖNCE oluşuyor.
+    # (İP-5 V-3 node'u ortaya çıkardı; denetim raporunda yoktu.)
     await audit_service.record(
         db, actor=admin, action="product.bulk_import", target_type="product",
         details=file.filename,
-        meta={"created": result.created, "skipped": result.skipped, "errors": len(result.errors)},
+        meta={
+            "created": result["created"],
+            "skipped": result["skipped"],
+            "errors": len(result["errors"]),
+        },
     )
     return result
 
