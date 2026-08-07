@@ -15,6 +15,8 @@ import { formatTRY } from "@/lib/money";
 import { formatDateTime } from "@/lib/datetime";
 import { ROUTES } from "@/lib/routes";
 import { FullScreenSpinner } from "@/components/Spinner";
+import { ErrorState } from "@/components/admin/ui/PageState";
+import { ISLEM_TAVANI, kesildiMi } from "@/lib/operatorAgenda";
 import { ROLE_IDS, type EarningTransaction, type PayoutStatus } from "@/types";
 import type { NavItem } from "@/lib/nav";
 import type { ReactNode } from "react";
@@ -103,7 +105,12 @@ export default function Balance() {
 /* ── Eğitmen bakiyesi ─────────────────────────────────────────────────────── */
 function TutorBalance() {
   const { data: summary, isLoading: sumLoading } = useEarnings();
-  const { data: txns, isLoading: txnLoading } = useEarningsTransactions();
+  const {
+    data: txns,
+    isLoading: txnLoading,
+    isError: txnError,
+    refetch: txnRefetch,
+  } = useEarningsTransactions();
 
   return (
     <BalanceView
@@ -117,6 +124,8 @@ function TutorBalance() {
       escrowHint="Ders tamamlanınca kazancına geçer"
       transactions={txns}
       txnLoading={txnLoading}
+      txnError={txnError}
+      onRetryTransactions={() => void txnRefetch()}
       payout={<TutorPayoutSummary />}
     />
   );
@@ -127,8 +136,12 @@ function OperatorBalance() {
   const { data: op, isLoading: opLoading } = useOperatorMe();
   const libraryId = op?.library_id;
   const { data: summary, isLoading: sumLoading } = useLibraryEarnings(libraryId);
-  const { data: txns, isLoading: txnLoading } =
-    useLibraryEarningsTransactions(libraryId);
+  const {
+    data: txns,
+    isLoading: txnLoading,
+    isError: txnError,
+    refetch: txnRefetch,
+  } = useLibraryEarningsTransactions(libraryId);
 
   return (
     <BalanceView
@@ -142,6 +155,8 @@ function OperatorBalance() {
       escrowHint="Katılım doğrulandıkça serbest kalır"
       transactions={txns}
       txnLoading={txnLoading}
+      txnError={txnError}
+      onRetryTransactions={() => void txnRefetch()}
       payout={
         libraryId ? (
           <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700">
@@ -168,6 +183,9 @@ interface BalanceViewProps {
   escrowHint: string;
   transactions?: EarningTransaction[];
   txnLoading: boolean;
+  /** İşlem dökümü sorgusu patladı mı — boş listeden AYRI gösterilir. */
+  txnError: boolean;
+  onRetryTransactions: () => void;
   payout: ReactNode;
 }
 
@@ -182,6 +200,8 @@ function BalanceView({
   escrowHint,
   transactions,
   txnLoading,
+  txnError,
+  onRetryTransactions,
   payout,
 }: BalanceViewProps) {
   const refundedNum = Number(refunded ?? 0);
@@ -193,9 +213,20 @@ function BalanceView({
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
             Bakiyem
           </h1>
-          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-            Kazançların, emanetteki ödemeler ve tüm işlem dökümün. Para platformda
-            tutulmaz; tutarlar iyzico üzerinden doğrudan IBAN'ına geçer.
+          {/* Eski metin "tutarlar iyzico üzerinden doğrudan IBAN'ına geçer"
+              diyordu; kurulu mekanizma bu DEĞİL. Hakediş defteri admin
+              tarafındadır ve ödeme banka havalesiyle elle yapılır
+              (`api/routers/payouts.py`: "Ödeme banka üzerinden ELLE yapılır;
+              burada yalnız defter tutulur"). Pazaryeri alt üye işyeri
+              kurulmadan sağlayıcının IBAN'a doğrudan aktarması da mümkün
+              değildir — yanlış vaat, ödeme gecikince güveni bozar. */}
+          <p
+            data-testid="bakiye-odeme-aciklamasi"
+            className="mt-1 text-sm text-slate-500 dark:text-slate-400"
+          >
+            Kazançların, emanetteki ödemeler ve tüm işlem dökümün. Hakedişin,
+            kayıtlı IBAN'ına <b className="font-semibold">banka havalesiyle</b>{" "}
+            ödenir; ödeme kaydı platformda tutulur.
           </p>
         </div>
 
@@ -263,8 +294,20 @@ function BalanceView({
                 />
               ))}
             </div>
+          ) : txnError ? (
+            // Para ekranında hatayı "işlem yok" diye göstermek, kullanıcıya
+            // "hiç ödeme almamışsın" demektir. Ayrı metin, ayrı rol (alert).
+            <div data-testid="islem-hata" className="p-6">
+              <ErrorState
+                description="İşlem dökümü yüklenemedi. Bu bir bağlantı hatasıdır; kayıtlarında bir eksilme anlamına GELMEZ."
+                onRetry={onRetryTransactions}
+              />
+            </div>
           ) : !transactions || transactions.length === 0 ? (
-            <p className="px-6 py-10 text-center text-sm text-slate-400 dark:text-slate-500">
+            <p
+              data-testid="islem-bos"
+              className="px-6 py-10 text-center text-sm text-slate-400 dark:text-slate-500"
+            >
               Henüz bir işlem yok. İlk ödeme alındığında burada görünecek.
             </p>
           ) : (
@@ -315,6 +358,21 @@ function BalanceView({
                 </tbody>
               </table>
             </div>
+          )}
+
+          {/* Sessiz kesme dürüstlüğü: sunucu kaynak başına 200 satırda kesiyor
+              (`library_service`/`payment_service` earnings_transactions).
+              Sayfalama bu paketin kapsamında değil; ekranın yapabileceği en
+              az şey kesildiğini SÖYLEMEK — "eski bir işlem kayboldu"
+              şikâyetinde yanıltıcı olmasın. */}
+          {transactions && kesildiMi(transactions) && (
+            <p
+              data-testid="islem-tavan-uyarisi"
+              className="border-t border-slate-100 px-6 py-3 text-xs text-slate-500 dark:border-slate-700 dark:text-slate-400"
+            >
+              Son {ISLEM_TAVANI} işlem gösteriliyor. Daha eski kayıtlar için
+              destekle iletişime geç.
+            </p>
           )}
         </div>
       </div>
