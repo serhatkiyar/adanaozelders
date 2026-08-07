@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { DashboardShell } from "@/components/DashboardShell";
-import { STUDENT_NAV, TUTOR_NAV } from "@/lib/nav";
+import { navForRole } from "@/lib/nav";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import {
   useInfiniteNotifications,
@@ -10,7 +10,6 @@ import {
   useUnreadCount,
 } from "@/hooks/useNotifications";
 import { formatDateTime } from "@/lib/datetime";
-import { ROLE_IDS } from "@/types";
 import type { NotificationOut } from "@/types";
 
 // ── İkon eşlemesi: bildirim mesajından bağlama uygun ikon çıkar ──
@@ -44,12 +43,7 @@ function relativeDate(iso: string): string {
 
 export default function Notifications() {
   const { data: user } = useCurrentUser();
-  const navItems =
-    user?.role_id === ROLE_IDS.TUTOR
-      ? TUTOR_NAV
-      : user?.role_id === ROLE_IDS.CLIENT
-        ? STUDENT_NAV
-        : undefined;
+  const navItems = navForRole(user?.role_id);
 
   return (
     <DashboardShell title="Bildirimler" navItems={navItems}>

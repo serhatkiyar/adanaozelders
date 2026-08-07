@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { DashboardShell } from "@/components/DashboardShell";
 import { TutorAccountLayout } from "@/components/TutorAccountLayout";
 import { EducationSection } from "@/components/EducationSection";
-import { STUDENT_NAV, TUTOR_NAV } from "@/lib/nav";
+import { navForRole } from "@/lib/nav";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useMyStats, useUpdateProfile } from "@/hooks/useProfile";
 import { useMyEducations } from "@/hooks/useEducations";
@@ -46,12 +46,7 @@ export default function Profile() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
-  const roleNav =
-    user?.role_id === ROLE_IDS.CLIENT
-      ? STUDENT_NAV
-      : isTutor
-        ? TUTOR_NAV
-        : undefined;
+  const roleNav = navForRole(user?.role_id);
 
   const handleSaveAbout = (e: FormEvent) => {
     e.preventDefault();
