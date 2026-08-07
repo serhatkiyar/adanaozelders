@@ -382,10 +382,13 @@ describe.each(SENARYOLAR)("D-1 · $ad: hata 'kayıt yok' diye gösterilmez", (se
     sar(senaryo.yol, senaryo.eleman, senaryo.desen ?? senaryo.yol);
     await sekmeAc(senaryo);
 
+    // `findAllByText`: ortak `ErrorState` hem başlık ("Veriler yüklenemedi")
+    // hem açıklama basar; tekil sorgu "birden çok eşleşme" ile patlıyordu.
+    // İddianın ağırlığı ikinci satırdadır: boş-durum metni GÖRÜNMEMELİ.
     expect(
-      await screen.findByText(/yüklenemedi|alınamadı/i),
+      (await screen.findAllByText(/yüklenemedi|alınamadı/i)).length,
       "hata durumu hiç gösterilmedi"
-    ).toBeTruthy();
+    ).toBeGreaterThan(0);
     expect(screen.queryByText(senaryo.bosMetin)).toBeNull();
   });
 
@@ -397,7 +400,7 @@ describe.each(SENARYOLAR)("D-1 · $ad: hata 'kayıt yok' diye gösterilmez", (se
     sar(senaryo.yol, senaryo.eleman, senaryo.desen ?? senaryo.yol);
     await sekmeAc(senaryo);
 
-    expect(await screen.findByText(/yüklenemedi|alınamadı/i)).toBeTruthy();
+    expect((await screen.findAllByText(/yüklenemedi|alınamadı/i)).length).toBeGreaterThan(0);
     expect(screen.queryByText(senaryo.bosMetin)).toBeNull();
   });
 

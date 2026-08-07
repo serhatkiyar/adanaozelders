@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Avatar } from "@/components/Avatar";
 import { AccessDenied, ReadOnlyNotice, useAdminAreaAccess } from "@/components/admin/AccessState";
-import { ConfirmDialog, ReasonDialog } from "@/components/admin/ui";
+import { ConfirmDialog, ErrorState, ReasonDialog } from "@/components/admin/ui";
 import {
   useActivateTutor,
   useAdminTutors,
@@ -239,12 +239,7 @@ function ListingManagement() {
   }
 
   if (isError) {
-    return (
-      <div className="flex items-center gap-3 rounded-2xl bg-red-50 px-5 py-4 text-sm text-red-700 ring-1 ring-red-100 dark:bg-red-500/10 dark:text-red-300">
-        <span>⚠</span>
-        {getErrorMessage(error, "İlanlar yüklenemedi.")}
-      </div>
-    );
+    return <ErrorState description={getErrorMessage(error, "İlanlar yüklenemedi.")} />;
   }
 
   const tutors = [...(data ?? [])].sort(
@@ -454,11 +449,22 @@ function EducationVerifyCard({ edu }: { edu: AdminEducation }) {
 }
 
 function DiplomaVerificationSection() {
-  const { data, isLoading } = usePendingEducations();
+  const { data, isLoading, isError, error, refetch } = usePendingEducations();
   const list = data ?? [];
 
   if (isLoading) {
     return <div className="h-24 animate-pulse rounded-2xl bg-slate-100 dark:bg-slate-800" />;
+  }
+
+  // P1-6: hata "teyit bekleyen belge yok 🎉" diye gösterilemez — yönetici
+  // kuyruğu boş sanıp bekleyen diplomayı atlar.
+  if (isError) {
+    return (
+      <ErrorState
+        description={getErrorMessage(error, "Diploma kuyruğu yüklenemedi.")}
+        onRetry={() => void refetch()}
+      />
+    );
   }
 
   return (
@@ -580,7 +586,7 @@ function NameChangeCard({ req }: { req: NameChangeRequest }) {
 
 function NameChangesSection() {
   const [filter, setFilter] = useState<NameChangeStatus | undefined>("PENDING");
-  const { data, isLoading } = useAdminNameChangeRequests(filter);
+  const { data, isLoading, isError, error, refetch } = useAdminNameChangeRequests(filter);
 
   const FILTERS: { value: NameChangeStatus | undefined; label: string }[] = [
     { value: "PENDING", label: "Bekleyen" },
@@ -609,6 +615,11 @@ function NameChangesSection() {
 
       {isLoading ? (
         <div className="h-24 animate-pulse rounded-2xl bg-slate-100 dark:bg-slate-800" />
+      ) : isError ? (
+        <ErrorState
+          description={getErrorMessage(error, "Talepler yüklenemedi.")}
+          onRetry={() => void refetch()}
+        />
       ) : data && data.length > 0 ? (
         <div className="space-y-3">
           {data.map((r) => (
