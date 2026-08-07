@@ -16,15 +16,32 @@
 // Kanıt sınıfı: gerçek DOM + gerçek HTTP isteği. `EarningTransaction`
 // fixture'ı `backend/schemas/payment.py` alan adlarıyla birebirdir.
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, within } from "@testing-library/react";
+import { configure, render, screen, within } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { apiClient } from "@/api/axios";
 import { useAuthStore } from "@/store/authStore";
 
 import type { AxiosRequestConfig } from "axios";
 import type { ComponentType } from "react";
+
+// ── Süre bütçesi ────────────────────────────────────────────────────────────
+//
+// Bu dosya gerçek sayfa ağaçlarını (DashboardShell + üst bar + hook'lar)
+// jsdom'da render eder; esbuild transform'u tek başına birkaç saniye sürer ve
+// projenin 5 sn'lik varsayılan test bütçesi paralel koşuda aşılıyor — ölçülen
+// davranış yüzünden DEĞİL, derleme süresi yüzünden.
+//
+// `vi.setConfig` YALNIZ bu dosyayı etkiler; `vitest.config.ts`'teki global
+// ayar (İP-12'nin dokunduğu yer) olduğu gibi kalır.
+vi.setConfig({ testTimeout: 20_000, hookTimeout: 20_000 });
+
+// RTL'in kendi bekleme süresi (`findBy*`) test bütçesinden AYRIDIR ve
+// varsayılanı 1 sn'dir: yavaş bir koşuda sorgu daha patlamadan iddia
+// zamanaşımına uğrayıp "element yok" diyordu. Bekleme süresi uzatılıyor;
+// iddiaların kendisi değişmiyor.
+configure({ asyncUtilTimeout: 5_000 });
 
 /* ══════════════ Sahte sunucu ══════════════ */
 
@@ -97,10 +114,20 @@ function operatorOturumu() {
 
 const EKRAN = import.meta.glob(["./Balance.tsx"]);
 
-async function sar() {
+// Modül yüklemesi (Balance -> DashboardShell -> header/hook ağacı) tek seferlik
+// birkaç saniyelik bir maliyet. İlk testin içinde kalırsa o test, ölçtüğü
+// davranış yüzünden değil TRANSFORM süresi yüzünden 5 sn sınırına takılıyordu.
+// Yükleme buraya alındı: süre hiçbir testin bütçesine yazılmıyor ve vitest
+// timeout ayarına dokunmuyoruz (o ayar İP-12'nin işi).
+let Bilesen: ComponentType;
+
+beforeAll(async () => {
   const yukle = EKRAN["./Balance.tsx"];
   if (!yukle) throw new Error("HENÜZ YAZILMADI: src/pages/Balance.tsx");
-  const Bilesen = ((await yukle()) as { default: ComponentType }).default;
+  Bilesen = ((await yukle()) as { default: ComponentType }).default;
+});
+
+async function sar() {
   const qc = new QueryClient({
     defaultOptions: { queries: { retry: false, gcTime: 0 }, mutations: { retry: false } },
   });

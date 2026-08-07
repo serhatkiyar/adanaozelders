@@ -57,6 +57,10 @@ ignore = [
 # kırıldığını ve geri almanın doğrulandığını adım adım yazar; bu çıktı
 # CLAUDE.md §D'nin istediği kanıtın ta kendisidir.
 "scripts/mutation_drill.py" = ["T201"]
+# İP-14 mutasyon provası sürücüsü — aynı gerekçe. Katalog ayrı tutuldu
+# (İP-12 paralel çalışırken ortak dosyanın kataloğu büyütülmesin);
+# güvenlik mekanizması `mutation_drill`ten import edilir.
+"scripts/mutation_drill_ip14.py" = ["T201"]
 # Aynı gerekçe: DB kısıtı (DDL) mutasyon provası sürücüsü. Hangi kısıtın
 # düşürüldüğünü, testin kırıldığını ve geri yüklemenin DAVRANIŞLA doğrulandığını
 # adım adım yazar; çıktı provanın kanıtıdır.

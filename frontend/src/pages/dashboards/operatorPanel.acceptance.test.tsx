@@ -22,7 +22,7 @@
 // `backend/schemas/*.py` ve `src/types/index.ts` okunarak yazılmıştır; uydurma
 // alan yoktur.
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { configure, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -31,6 +31,23 @@ import { useAuthStore } from "@/store/authStore";
 
 import type { AxiosRequestConfig } from "axios";
 import type { ComponentType } from "react";
+
+// ── Süre bütçesi ────────────────────────────────────────────────────────────
+//
+// Bu dosya gerçek sayfa ağaçlarını (DashboardShell + üst bar + hook'lar)
+// jsdom'da render eder; esbuild transform'u tek başına birkaç saniye sürer ve
+// projenin 5 sn'lik varsayılan test bütçesi paralel koşuda aşılıyor — ölçülen
+// davranış yüzünden DEĞİL, derleme süresi yüzünden.
+//
+// `vi.setConfig` YALNIZ bu dosyayı etkiler; `vitest.config.ts`'teki global
+// ayar (İP-12'nin dokunduğu yer) olduğu gibi kalır.
+vi.setConfig({ testTimeout: 20_000, hookTimeout: 20_000 });
+
+// RTL'in kendi bekleme süresi (`findBy*`) test bütçesinden AYRIDIR ve
+// varsayılanı 1 sn'dir: yavaş bir koşuda sorgu daha patlamadan iddia
+// zamanaşımına uğrayıp "element yok" diyordu. Bekleme süresi uzatılıyor;
+// iddiaların kendisi değişmiyor.
+configure({ asyncUtilTimeout: 5_000 });
 
 /* ══════════════ Sahte sunucu — gerçek axios örneği, yalnız adapter değişir ══════════════ */
 
@@ -147,10 +164,20 @@ const EKRANLAR = import.meta.glob([
   "../Learn.tsx",
 ]);
 
+// Ekran modülleri TEMBEL yüklenir ve önbelleğe alınır: aynı sayfayı kullanan
+// sonraki testler transform maliyetini tekrar ödemez. (Hepsini `beforeAll`'da
+// toplu yüklemek denendi ve 10 sn'lik HOOK bütçesini aşıyor — yedi sayfanın
+// tamamı aynı anda derleniyor.)
+const ONBELLEK = new Map<string, ComponentType>();
+
 async function ekran(yol: string): Promise<ComponentType> {
+  const onbellekli = ONBELLEK.get(yol);
+  if (onbellekli) return onbellekli;
   const yukle = EKRANLAR[yol];
   if (!yukle) throw new Error(`HENÜZ YAZILMADI: ${yol}`);
-  return ((await yukle()) as { default: ComponentType }).default;
+  const bilesen = ((await yukle()) as { default: ComponentType }).default;
+  ONBELLEK.set(yol, bilesen);
+  return bilesen;
 }
 
 async function sar(modulYolu: string, rota = "/") {
@@ -712,6 +739,11 @@ describe("N · ortak sayfalarda operatör navigasyonu", () => {
       temelUclar();
       // `types::LeaderboardOut` — dört ayrı liste taşıyan NESNE (dizi değil;
       // dizi verilince sayfa `.map` üzerinde patlıyor ve nav hiç basılmıyordu).
+      // Ayarlar sayfası ad/kullanıcı adı değişiklik taleplerini LİSTE bekler;
+      // stub'sız bırakılınca `nameRequests.find` üzerinde render PATLIYOR ve
+      // nav zaten basıldığı için test yeşil kalıyordu — yakalanmamış istisna
+      // suite raporunda "1 error" olarak görünüyordu.
+      sunucu("/auth/me/name-change-requests", { data: [] });
       sunucu("/leaderboard", {
         data: {
           tutors_by_lessons: [],
