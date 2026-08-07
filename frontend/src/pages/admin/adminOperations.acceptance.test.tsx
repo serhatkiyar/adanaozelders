@@ -185,10 +185,17 @@ describe("B-5 · ekran sıkışmış escrow ve ölü outbox işlerini listeler",
 
     sar();
 
-    const bolum = (await screen.findByRole("heading", { name: /sıkışmış para/i })).closest("section");
+    // Deterministik bekleme: başlık VERİDEN BAĞIMSIZ basıldığı için ona
+    // bakmak yetmez — önce satırın kendisi beklenir, sonra bölüme daralınır.
+    const satir = await screen.findByText(/İade talebi #12/);
+    const bolum = satir.closest("section");
     expect(bolum).not.toBeNull();
     const icinde = within(bolum as HTMLElement);
-    expect(icinde.getByText(/#77/)).toBeTruthy();
+    expect(icinde.getByRole("heading", { name: /sıkışmış para/i })).toBeTruthy();
+    // Sipariş göndermesi İADE SATIRININ kendi içinde aranır: "Sipariş #77"
+    // metni ayrıca sipariş kaydının kendi etiketinde de geçiyor ve genel bir
+    // sorgu iki eşleşmeyi ayırt edemezdi (yani neyin doğrulandığı bulanıklaşır).
+    expect(within(satir.closest("li") as HTMLElement).getByText(/Sipariş #77/)).toBeTruthy();
     expect(icinde.getByText(/manuel inceleme/i)).toBeTruthy();
     expect(icinde.getByText(/deneme tükendi/i)).toBeTruthy();
   });
@@ -199,9 +206,10 @@ describe("B-5 · ekran sıkışmış escrow ve ölü outbox işlerini listeler",
 
     sar();
 
-    const bolum = (await screen.findByRole("heading", { name: /ölü iş/i })).closest("section");
+    const kind = await screen.findByText("sms:failed");
+    const bolum = kind.closest("section");
     const icinde = within(bolum as HTMLElement);
-    expect(icinde.getByText("sms:failed")).toBeTruthy();
+    expect(icinde.getByRole("heading", { name: /ölü iş/i })).toBeTruthy();
     expect(icinde.getByText(/SMSGatewayError/)).toBeTruthy();
   });
 
