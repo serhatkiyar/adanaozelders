@@ -467,6 +467,47 @@ class TestArama:
         )
 
 
+    async def test_a3b_isbn_ve_sku_arama_vektorunde(self, http, fab12):
+        """A-3/A-4 · ISBN ve SKU `search_vector`'ün İÇİNDE (migration nöbetçisi).
+
+        Neden ayrı bir node: `_arama_kolu`'nun kimlik dalları ISBN ve SKU'yu
+        DOĞRUDAN kolondan okur ve vektöre hiç uğramaz. Yani
+        `test_a3_isbn_tam_eslesme` ile `test_a4_sku_ile_eslesir`, migration
+        geri alınsa bile GEÇERDİ — vektör değişikliğinin nöbetçisi değiller.
+
+        Neden HTTP değil SQL: vektörü uçtan zorlamak için çok kelimeli bir
+        sorgu gerekiyor ("geometri 978..."), ama o sorguda trigram kolu
+        (`title % q`) başlık benzerliğiyle zaten eşleşme üretiyor ve iddiayı
+        maskeliyor — ilk yazımında test tam olarak bu yüzden ayırt edici
+        değildi (vektörsüz de geçiyordu). Vektörün İÇERİĞİ yapısal bir
+        iddiadır ve doğrudan ölçülür; davranış tarafını A-3/A-4/A-7 taşıyor.
+        """
+        from sqlalchemy import text
+
+        from core.database import AsyncSessionLocal
+
+        k = await fab12.kitap(title="Alfa Kitap", isbn="9786051234567")
+
+        async with AsyncSessionLocal() as s:
+            eslesme = (
+                await s.execute(
+                    text(
+                        "SELECT search_vector @@ to_tsquery('simple', :isbn) AS isbn_var,"
+                        "       search_vector @@ to_tsquery('simple', :sku)  AS sku_var "
+                        "FROM products WHERE id = :i"
+                    ),
+                    {"isbn": "9786051234567", "sku": k.sku.lower(), "i": k.id},
+                )
+            ).first()
+
+        assert eslesme is not None, "ürün bulunamadı"
+        assert eslesme[0] is True, (
+            "ISBN arama vektöründe YOK — migration uygulanmamış ya da geri "
+            "alınmış olabilir"
+        )
+        assert eslesme[1] is True, "SKU arama vektöründe YOK"
+
+
 class TestVitrinAramasi:
     async def test_a7_vitrin_de_isbn_ile_bulur(self, http, fab12):
         """A-7 · Aynı `search_vector` vitrinde de çalışır.
