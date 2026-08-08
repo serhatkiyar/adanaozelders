@@ -70,6 +70,26 @@ notunu bırakmak, yapılmış bir işi yapılmamış gibi anlatır).
      o belge İP-5 turunun ölçümünü anlatıyor ve o tur bu düzeltmeden önceydi).
      -->
 
+## TB-26 · Ürün kapak görselleri `library-photos/` önekini kütüphane fotoğraflarıyla paylaşıyor
+
+| | |
+|---|---|
+| **Bulundu** | kitapsec kapak backfill turu, 8 Ağu 2026 |
+| **Yer** | `backend/scripts/backfill_kitapsec_covers.py` (ve öncesinde `store_service.set_cover`/`add_images`) — ikisi de `storage.upload_library_photo`'yu çağırıp nesneleri `library-photos/` önekine yazıyor. Ürün kapağı için ayrı bir önek/bucket yok |
+| **Ölçüm** | 4.681 ürün kapağı yüklendi; MinIO'da `library-photos/` önekinde toplam **4.744 nesne** (129,1 MB) — aradaki ~63 nesne platformun gerçek kütüphane fotoğrafları. Bugün karışma **zararsız**: her nesne kendi UUID adını taşıyor, çakışma riski yok, silme/liste sorguları her iki tür veriyi de aynı anda döndürmüyor (referans DB'den geliyor) |
+| **Etki** | İleride ürün görsellerini kütüphane fotoğraflarından ayrı yönetmek gerekirse (toplu temizlik, farklı yaşam döngüsü/saklama politikası, CDN önbellek kuralı, ayrı bucket lifecycle) bu ayrıştırma bugünden yapılmadığı için sonradan **taşıma maliyeti** doğar (`scripts/migrate_storage_visibility.py`'deki gibi bir geçiş betiği gerekir) |
+| **Sonraki adım** | Ürün kapakları için `products/` öneki (ya da ayrı bucket) — hem yeni yüklemeler hem geriye dönük 4.681 nesne için taşıma betiği. Şimdilik ürün kararı bekliyor, aciliyeti yok |
+
+## TB-25 · `storage.upload_library_photo` her çağrıda yeni aioboto3 Session/istemci kuruyor
+
+| | |
+|---|---|
+| **Bulundu** | kitapsec kapak backfill turu, 8 Ağu 2026 (ölçümlü) |
+| **Yer** | `backend/core/storage.py::_s3_client` ↔ `upload_library_photo`/`_put_webp` — her çağrı `aioboto3.Session().client(...)` ile YENİ bir istemci kurup kapatıyor |
+| **Ölçüm** | `scripts/backfill_kitapsec_covers.py`: her görsel kendi `upload_library_photo` çağrısını yaptığı ilk sürümde 200 görsellik parti **225 saniye**; script içinde tur boyunca TEK paylaşılan istemciye geçilince (`_upload_via_shared_client`) aynı parti **28 saniye** — **8x**. Suçlu ne Pillow'daki yeniden boyutlandırma ne yerel ağ: `aioboto3.Session()` her kurulumda botocore'un servis modellerini (JSON) diskten yeniden okuyor |
+| **Etki** | Tek tek admin yüklemelerinde (bir kapak, bir avatar) gecikme tek istekte gizli kalıyor, fark edilmiyor. Admin toplu kapak/görsel yüklerse ya da çoklu görsel işleyen başka bir akış eklenirse aynı yavaşlık sessizce geri gelir. Üretim kodu (`core/storage.py`) bu turda DÜZELTİLMEDİ — çözüm yalnız `scripts/backfill_kitapsec_covers.py` içinde, script'e özel bir yardımcıyla geçici olarak uygulandı |
+| **Sonraki adım** | `core/storage.py`'da modül düzeyinde paylaşılan bir istemci/bağlantı havuzu (ya da `aioboto3.Session()`'ı bir kez kurup yeniden kullanan bir singleton) — tüm `upload_*`/`_put_webp` çağrıları oradan geçmeli. Ölçüm bu turun script'i referans alınarak tekrarlanabilir |
+
 ## TB-24 · İP-12 P2 listesi (mağaza panel yüzeyi — on iki kayıt, öncelik sırasıyla)
 
 | | |
