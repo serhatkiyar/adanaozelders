@@ -256,9 +256,54 @@ export async function requestReturn(
 
 /* ── Admin ── */
 
-export async function listProductsAdmin(): Promise<ProductSearchOut[]> {
-  const { data } = await apiClient.get<ProductSearchOut[]>("/store/admin/products");
+/** Mağaza yüzeylerinin paylaştığı sunucu sabitleri. */
+export interface StoreConfig {
+  low_stock_threshold: number;
+}
+
+export async function fetchStoreConfig(): Promise<StoreConfig> {
+  const { data } = await apiClient.get<StoreConfig>("/store/config");
   return data;
+}
+
+/** Yönetim ürün listesinin sunucuya gönderdiği tüm parametreler. */
+export interface AdminProductQuery {
+  q?: string;
+  stok?: string;
+  publisher?: string;
+  author?: string;
+  sort?: string;
+  order?: string;
+  limit?: number;
+  offset?: number;
+}
+
+/** Sayfalı liste + EŞLEŞEN toplam kayıt (dönen satır sayısı değil). */
+export interface AdminProductPage {
+  items: ProductSearchOut[];
+  total: number;
+}
+
+export async function listProductsAdmin(
+  query: AdminProductQuery = {}
+): Promise<AdminProductPage> {
+  const params: Record<string, string | number> = {};
+  for (const [k, v] of Object.entries(query)) {
+    if (v !== undefined && v !== null && v !== "") params[k] = v;
+  }
+  const response = await apiClient.get<ProductSearchOut[]>("/store/admin/products", {
+    params,
+  });
+  // Toplam `X-Total-Count` başlığında. Başlık yoksa dönen satır sayısına
+  // düşmek YANLIŞ olurdu: sayfa boyutu kadar bir sayı gösterip "hepsi bu"
+  // demek, sessiz kesilmenin ta kendisi. Bilinmiyorsa -1 ile işaretlenir ve
+  // ekran toplamı göstermez.
+  const ham = response.headers["x-total-count"];
+  const total = ham === undefined ? -1 : Number(ham);
+  return {
+    items: response.data,
+    total: Number.isFinite(total) ? total : -1,
+  };
 }
 
 export async function fetchProductAdmin(id: number): Promise<ProductDetailOut> {
@@ -381,11 +426,37 @@ export async function deleteCategory(id: number): Promise<void> {
   await apiClient.delete(`/store/admin/categories/${id}`);
 }
 
-export async function listOrdersAdmin(statusFilter?: string): Promise<OrderOut[]> {
-  const { data } = await apiClient.get<OrderOut[]>("/store/admin/orders", {
-    params: statusFilter ? { status: statusFilter } : undefined,
+/** Sipariş listesi + EŞLEŞEN toplam (dönen satır sayısı değil). */
+export interface AdminOrderPage {
+  items: OrderOut[];
+  total: number;
+  /** Sunucuya gönderilen sayfa boyutu — kesilme uyarısı buna göre karar verir. */
+  limit: number;
+}
+
+/**
+ * `limit` AÇIKÇA gönderilir.
+ *
+ * Önceden istemci hiç `limit` göndermiyordu ve sunucu varsayılanı (100)
+ * sessizce uygulanıyordu; frontend ise kesilmeyi sabit 200'e göre ölçüyordu.
+ * Sonuç: 130 siparişten 100'ü dönüyor, uyarı ASLA tetiklenmiyordu (P1-5).
+ * Tavanı istemcinin bilmesi şart — yoksa "hepsini gördüm mü" sorusu
+ * cevaplanamaz.
+ */
+export async function listOrdersAdmin(
+  statusFilter?: string,
+  limit = 100
+): Promise<AdminOrderPage> {
+  const response = await apiClient.get<OrderOut[]>("/store/admin/orders", {
+    params: { ...(statusFilter ? { status: statusFilter } : {}), limit },
   });
-  return data;
+  const ham = response.headers["x-total-count"];
+  const total = ham === undefined ? -1 : Number(ham);
+  return {
+    items: response.data,
+    total: Number.isFinite(total) ? total : -1,
+    limit,
+  };
 }
 
 export async function shipOrder(

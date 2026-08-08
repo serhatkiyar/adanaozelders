@@ -234,12 +234,37 @@ export function useRemoveFromCollection() {
   });
 }
 
+/** Düşük stok eşiği gibi paylaşılan sabitler — istemci kendi kopyasını tutmaz.
+ *
+ *  `staleTime` uzun: bu değerler bir ürün kararıdır, oturum içinde değişmez.
+ *  Uç düşerse `LOW_STOCK_THRESHOLD` bilinmez; çağıran taraf rozetleri nötr
+ *  gösterir (yanlış eşikle amber basmaktansa renksiz basmak dürüsttür).
+ */
+export function useStoreConfig() {
+  return useQuery({
+    queryKey: ["store", "config"],
+    queryFn: storeApi.fetchStoreConfig,
+    staleTime: 60 * 60 * 1000,
+  });
+}
+
 /* ── Admin ── */
 
-export function useAdminProducts() {
+/** Yönetim ürün listesi — filtre/arama/sıralama/sayfa SUNUCUDA uygulanır.
+ *
+ *  `query` queryKey'in parçasıdır: filtre değiştiğinde React Query yeni bir
+ *  anahtar görür ve GERÇEK bir istek atar. Anahtarı sabit bırakıp istemcide
+ *  filtrelemek, "sayfalama var" sanılan ama aslında ilk 100 kaydı dilimleyen
+ *  bir listeye yol açardı.
+ *
+ *  `placeholderData`: sayfa/filtre değişiminde önceki sayfa ekranda kalır,
+ *  tablo boşalıp zıplamaz.
+ */
+export function useAdminProducts(query: storeApi.AdminProductQuery = {}) {
   return useQuery({
-    queryKey: ["store", "admin", "products"],
-    queryFn: storeApi.listProductsAdmin,
+    queryKey: ["store", "admin", "products", query],
+    queryFn: () => storeApi.listProductsAdmin(query),
+    placeholderData: (previous) => previous,
   });
 }
 
@@ -262,10 +287,10 @@ export function useBulkImportProducts() {
   });
 }
 
-export function useAdminOrders(statusFilter?: string) {
+export function useAdminOrders(statusFilter?: string, limit?: number) {
   return useQuery({
-    queryKey: ["store", "admin", "orders", statusFilter ?? "all"],
-    queryFn: () => storeApi.listOrdersAdmin(statusFilter),
+    queryKey: ["store", "admin", "orders", statusFilter ?? "all", limit ?? 100],
+    queryFn: () => storeApi.listOrdersAdmin(statusFilter, limit),
   });
 }
 

@@ -16,6 +16,7 @@ import { buildSpecRows } from "@/lib/productSpecs";
 import { recordViewedProduct } from "@/lib/recentlyViewedProducts";
 import {
   useProduct,
+  useStoreConfig,
   useProductReviews,
   useProductRatingDistribution,
   useCreateProductReview,
@@ -30,13 +31,18 @@ import { ROLE_IDS } from "@/types";
 import type { ProductCategory, ProductKind } from "@/types";
 import { toast } from "@/store/toastStore";
 
-const LOW_STOCK = 5;
+// Düşük stok eşiği burada SABİT DEĞİL: sunucudan (`GET /store/config`)
+// okunur. Tek kaynak `backend/core/stock_policy.py`; vitrinin kendi kopyasını
+// taşıması, eşik değiştiğinde yönetim listesiyle vitrinin farklı aciliyet
+// göstermesine yol açardı (audit P1-2 — eşik 3'e çekilse bile vitrin "Son 4
+// ürün" demeye devam ediyordu).
 
 type DetailTab = "about" | "reviews" | "policy";
 
 export default function ProductDetailPage() {
   const { slug } = useParams<{ slug: string }>();
   const { data: product, isLoading, isError } = useProduct(slug);
+  const lowStockThreshold = useStoreConfig().data?.low_stock_threshold;
   const { data: reviews } = useProductReviews(product?.id);
   const { data: distribution } = useProductRatingDistribution(product?.id);
   const { data: categories } = useCategories();
@@ -134,8 +140,15 @@ export default function ProductDetailPage() {
   const hero = activeImg ?? gallery[0] ?? null;
   const heroIndex = Math.max(0, gallery.indexOf(hero ?? ""));
   const soldOut = !product.in_stock;
+  // Eşik bilinmiyorsa (config ucu düştü) uyarı BASILMAZ: yanlış eşikle
+  // "son N ürün" demek müşteriye uydurulmuş bir aciliyet gösterir.
+  // "Stokta yok" bundan ayrıdır ve eşik gerektirmez.
   const lowStock =
-    product.kind === "PHYSICAL" && !soldOut && product.stock != null && product.stock <= LOW_STOCK;
+    product.kind === "PHYSICAL" &&
+    !soldOut &&
+    product.stock != null &&
+    lowStockThreshold != null &&
+    product.stock <= lowStockThreshold;
   const isClient = user?.role_id === ROLE_IDS.CLIENT;
   // D&R gibi: platform ürününde satıcı adı gösterilmez; yalnız eğitmen (çok-satıcılı) üründe.
   const showSeller = product.seller_type === "TUTOR" && !!product.tutor_name;

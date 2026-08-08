@@ -311,12 +311,17 @@ class Product(Base, TimestampMixin, SoftDeleteMixin):
         ForeignKey("admins.id", ondelete="SET NULL"), nullable=True
     )
 
+    # ISBN ve SKU vektörde: barkod okuyucu ISBN'i klavye girdisi olarak yazar
+    # ve müşteri de yönetici de kitabı numarasıyla arayabilmeli. Tam eşleşme
+    # yolu ayrıdır (`store_service._arama_kolu`): 13 haneli saf rakam dizisi
+    # trigram'a DÜŞMEZ, çünkü komşu ISBN başka bir kitaptır.
     search_vector: Mapped[str | None] = mapped_column(
         TSVECTOR,
         Computed(
             "to_tsvector('simple', tr_normalize("
             "coalesce(title, '') || ' ' || coalesce(description, '') || ' ' || "
-            "coalesce(author, '') || ' ' || coalesce(publisher, '')))",
+            "coalesce(author, '') || ' ' || coalesce(publisher, '') || ' ' || "
+            "coalesce(isbn, '') || ' ' || coalesce(sku, '')))",
             persisted=True,
         ),
         nullable=True,
@@ -351,6 +356,10 @@ class Product(Base, TimestampMixin, SoftDeleteMixin):
             postgresql_using="gin",
             postgresql_ops={"title": "gin_trgm_ops"},
         ),
+        # ISBN tam eşleşmesi (`_arama_kolu`'nun 13 hane dalı) bu index'i
+        # kullanır. Önek (`LIKE 'x%'`) dalı kullanamaz — bilinçli sadelik,
+        # gerekçesi migration dosyasında.
+        Index("ix_products_isbn", "isbn"),
         Index("ix_products_status", "status"),
         # Yönetim ürün listesi ve "yeni eklenenler" sıralaması.
         Index(

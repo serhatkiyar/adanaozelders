@@ -70,6 +70,13 @@ class ProductSearchOut(BaseModel):
     currency: str
     cover_url: str | None = None
     in_stock: bool = True
+    #: Kalan adet. `in_stock` yalnız 0/0-değil ayrımı yapar ve "X kitabından
+    #: kaç adet var" sorusunu cevaplayamaz — yönetim listesi bunu modal
+    #: açmadan gösterebilmeli.
+    #:
+    #: DİJİTALDE `None`, 0 DEĞİL: dijital ürün tükenmez ve 0 yazmak listede
+    #: "Tükendi" rozeti bastırırdı.
+    stock: int | None = None
     category_id: int | None = None
     rating_count: int = 0
     rating_average: float | None = None
@@ -77,6 +84,14 @@ class ProductSearchOut(BaseModel):
     status: str | None = None
     # Kitapta yazar kartta da gösterilir (başlığın altı).
     author: str | None = None
+    # Künye satırı (yazar · yayınevi · ISBN) yönetim listesinde başlığın
+    # altında görünür: kitapçının bir başlığı ayırt etmek için baktığı üç alan
+    # bunlar. Vitrin kartı yalnız yazarı kullanır, fazlası kartı kalabalıklaştırır.
+    publisher: str | None = None
+    isbn: str | None = None
+    #: Stok kalemi kimliği (`FZK-000042`). Yönetim tarafında aranabilir ve
+    #: etiket/sayım ekranlarında ürünü teyit etmeye yarar.
+    sku: str | None = None
 
 
 class ProductDetailOut(ProductSearchOut):

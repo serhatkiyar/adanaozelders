@@ -195,6 +195,25 @@ const HAKEDIS_KAYDI = {
   iban_snapshot: "TR33 **** 1326",
 };
 
+/**
+ * Ürün satırını başlığından bulur.
+ *
+ * İP-12 UYARLAMASI (davranış iddiası DEĞİŞMEDİ): ürün listesi A1 ile kart
+ * yığınından `DataTable`'a taşındı, yani satır artık `div.rounded-xl` değil
+ * `<tr>`. Bu testlerin ölçtüğü şey — "Sil tek başına DELETE göndermez",
+ * "onay düğmesi istek uçarken disabled kalır", "409 gerekçesi ekranda görünür"
+ * — aynen korunuyor; değişen yalnız satırın DOM'da nasıl bulunduğu.
+ *
+ * Seçici ikisini de kabul ediyor ki düzen bir daha değişirse test yine
+ * yerleşime değil DAVRANIŞA bakmaya devam etsin.
+ */
+async function urunSatiri(baslik: string): Promise<HTMLElement> {
+  const hucre = await screen.findByText(baslik);
+  const satir = hucre.closest("tr, div.rounded-xl");
+  if (!satir) throw new Error(`"${baslik}" için satır bulunamadı`);
+  return satir as HTMLElement;
+}
+
 /* ═════════════════════ C-1/C-2/C-3 · Yıkıcı aksiyon sözleşmesi ═════════════════════ */
 
 describe("C-1 · yıkıcı aksiyon onay penceresi olmadan istek üretmez", () => {
@@ -205,7 +224,7 @@ describe("C-1 · yıkıcı aksiyon onay penceresi olmadan istek üretmez", () =>
 
     sar(ROUTES.adminStoreProducts, <AdminStore />);
 
-    const satir = (await screen.findByText(URUN.title)).closest("div.rounded-xl");
+    const satir = await urunSatiri(URUN.title);
     fireEvent.click(within(satir as HTMLElement).getByRole("button", { name: "Sil" }));
 
     // Onay penceresi açılmalı; istek HENÜZ gitmemeli.
@@ -220,7 +239,7 @@ describe("C-1 · yıkıcı aksiyon onay penceresi olmadan istek üretmez", () =>
 
     sar(ROUTES.adminStoreProducts, <AdminStore />);
 
-    const satir = (await screen.findByText(URUN.title)).closest("div.rounded-xl");
+    const satir = await urunSatiri(URUN.title);
     fireEvent.click(within(satir as HTMLElement).getByRole("button", { name: "Sil" }));
     fireEvent.click(await screen.findByRole("button", { name: "Ürünü sil" }));
 
@@ -266,7 +285,7 @@ describe("C-2 · istek uçarken onay düğmesi devre dışı (çift tıklama yok
 
     sar(ROUTES.adminStoreProducts, <AdminStore />);
 
-    const satir = (await screen.findByText(URUN.title)).closest("div.rounded-xl");
+    const satir = await urunSatiri(URUN.title);
     fireEvent.click(within(satir as HTMLElement).getByRole("button", { name: "Sil" }));
     const onay = await screen.findByRole("button", { name: "Ürünü sil" });
     fireEvent.click(onay);
@@ -291,7 +310,7 @@ describe("C-3 · yıkıcı aksiyon patlarsa kullanıcı hatayı GÖRÜR", () => 
 
     sar(ROUTES.adminStoreProducts, <AdminStore />);
 
-    const satir = (await screen.findByText(URUN.title)).closest("div.rounded-xl");
+    const satir = await urunSatiri(URUN.title);
     fireEvent.click(within(satir as HTMLElement).getByRole("button", { name: "Sil" }));
     fireEvent.click(await screen.findByRole("button", { name: "Ürünü sil" }));
 
