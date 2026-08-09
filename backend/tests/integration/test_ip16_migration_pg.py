@@ -27,6 +27,7 @@ import os
 import shutil
 import subprocess
 import sys
+import uuid
 from pathlib import Path
 
 import pytest
@@ -38,8 +39,17 @@ from core.config import settings
 BACKEND = Path(__file__).resolve().parents[2]
 REPO = BACKEND.parent
 
-#: Sabit kodlu ve içinde `test` geçiyor — kaza payı bırakmamak için parametre DEĞİL.
-DISPOSABLE_DB = "adana_ip16_migration_test"
+#: Tek kullanımlık veritabanı adının öneki. Sonek TEST BAŞINA benzersizdir ve
+#: ad her hâlde `_test` ile biter (db_guard + `assert` ile iki kez korunur).
+#:
+#: Neden sabit ad DEĞİL — ÖLÇÜLDÜ: dosyadaki dört düğüm aynı sabit adı sırayla
+#: kurup düşürünce koşular arasında bir yarış doğdu ve tam suite içinde bir
+#: turda iki düğüm `asyncpg.InvalidCatalogNameError: database
+#: "adana_ip16_migration_test" does not exist` ile kırıldı (izole koşumda ve
+#: sonraki turlarda geçiyordu — klasik flake tablosu). Benzersiz ad yarışı
+#: imkânsız kılar; "bilinen flake" diye geçiştirmek, aynı kılıkta gerçek bir
+#: migration regresyonunu gizlerdi (kök CLAUDE.md §I).
+DISPOSABLE_DB_ONEK = "adana_ip16_mig"
 
 #: Dalın kendi revizyonları (main'de yok, çalışma ağacından alınır).
 IP16_REVIZYONLARI = ("ip16_araliklitekrar.py", "ip16_srs_izin_kodu_hizalama.py")
@@ -137,10 +147,15 @@ def birlesik_agac(tmp_path_factory) -> Path:
     return ini
 
 
-def _alembic(ini: Path, *args: str, bekle_hata: bool = False):
+def _alembic(ini: Path, *args: str, db: str = "", bekle_hata: bool = False):
+    """Alembic'i geçici ağaç + verilen veritabanıyla koşar.
+
+    `db` boş bırakılabilir: `heads`/`history` gibi komutlar veritabanına hiç
+    bağlanmaz (env.py çalışmaz), o yüzden ad gerekmez.
+    """
     env = {
         **os.environ,
-        "POSTGRES_DB": DISPOSABLE_DB,
+        "POSTGRES_DB": db or f"{DISPOSABLE_DB_ONEK}_yok_test",
         "AUTO_CREATE_DB": "false",
     }
     res = subprocess.run(
@@ -157,11 +172,17 @@ def _alembic(ini: Path, *args: str, bekle_hata: bool = False):
 
 @pytest.fixture
 async def taze_db():
-    """Boş, tek kullanımlık veritabanı (her testte yeniden kurulur)."""
+    """Boş, TEST BAŞINA BENZERSİZ tek kullanımlık veritabanı.
+
+    `(engine, ad)` döndürür; `ad` alembic alt sürecine `POSTGRES_DB` olarak
+    verilir. Benzersizlik, aynı adı sırayla kurup düşüren düğümler arasındaki
+    yarışı imkânsız kılar (bkz. `DISPOSABLE_DB_ONEK` notu).
+    """
     if settings.ENVIRONMENT == "production":
         pytest.fail("Üretimde migration testi koşulamaz")
-    assert "test" in DISPOSABLE_DB
-    assert DISPOSABLE_DB != settings.POSTGRES_DB
+    ad = f"{DISPOSABLE_DB_ONEK}_{uuid.uuid4().hex[:8]}_test"
+    assert ad.endswith("_test") and "test" in ad
+    assert ad != settings.POSTGRES_DB
 
     bakim = create_async_engine(_url("postgres"), isolation_level="AUTOCOMMIT")
     try:
@@ -172,20 +193,18 @@ async def taze_db():
         pytest.skip(f"Bakım veritabanına ulaşılamıyor ({exc.__class__.__name__})")
 
     async with bakim.connect() as conn:
-        await conn.execute(
-            text(f'DROP DATABASE IF EXISTS "{DISPOSABLE_DB}" WITH (FORCE)')
-        )
-        await conn.execute(text(f'CREATE DATABASE "{DISPOSABLE_DB}"'))
+        await conn.execute(text(f'DROP DATABASE IF EXISTS "{ad}" WITH (FORCE)'))
+        await conn.execute(text(f'CREATE DATABASE "{ad}"'))
 
-    engine = create_async_engine(_url(DISPOSABLE_DB))
+    engine = create_async_engine(_url(ad))
     try:
-        yield engine
+        yield engine, ad
     finally:
+        # Teardown TEST BAŞARISIZ OLSA DA koşar: tek kullanımlık veritabanı
+        # makinede birikmemeli (kök CLAUDE.md §G).
         await engine.dispose()
         async with bakim.connect() as conn:
-            await conn.execute(
-                text(f'DROP DATABASE IF EXISTS "{DISPOSABLE_DB}" WITH (FORCE)')
-            )
+            await conn.execute(text(f'DROP DATABASE IF EXISTS "{ad}" WITH (FORCE)'))
         await bakim.dispose()
 
 
@@ -255,20 +274,21 @@ def test_B1_ZINCIR_IP12_UZERINE_KURULU(birlesik_agac):
 
 
 async def test_B1_TAZE_DB_UPGRADE_DOWNGRADE_UPGRADE(birlesik_agac, taze_db):
-    _alembic(birlesik_agac, "upgrade", "head")
-    assert await _srs_tablo_sayisi(taze_db) == 8
-    assert await _izin_kodlari(taze_db, "srs%") == sorted(DOGRU_KODLAR)
+    motor, db = taze_db
+    _alembic(birlesik_agac, "upgrade", "head", db=db)
+    assert await _srs_tablo_sayisi(motor) == 8
+    assert await _izin_kodlari(motor, "srs%") == sorted(DOGRU_KODLAR)
 
-    _alembic(birlesik_agac, "downgrade", "-1")
-    assert await _izin_kodlari(taze_db, "srs%") == []
-    _alembic(birlesik_agac, "downgrade", "-1")
-    assert await _srs_tablo_sayisi(taze_db) == 0
+    _alembic(birlesik_agac, "downgrade", "-1", db=db)
+    assert await _izin_kodlari(motor, "srs%") == []
+    _alembic(birlesik_agac, "downgrade", "-1", db=db)
+    assert await _srs_tablo_sayisi(motor) == 0
 
-    _alembic(birlesik_agac, "upgrade", "head")
-    assert await _srs_tablo_sayisi(taze_db) == 8
-    assert await _izin_kodlari(taze_db, "srs%") == sorted(DOGRU_KODLAR)
+    _alembic(birlesik_agac, "upgrade", "head", db=db)
+    assert await _srs_tablo_sayisi(motor) == 8
+    assert await _izin_kodlari(motor, "srs%") == sorted(DOGRU_KODLAR)
 
-    res = _alembic(birlesik_agac, "check")
+    res = _alembic(birlesik_agac, "check", db=db)
     assert "No new upgrade operations detected" in res.stdout + res.stderr, (
         f"model ile şema sapmış:\n{res.stdout}\n{res.stderr}"
     )
@@ -285,19 +305,20 @@ async def test_B7_BAYAT_IZIN_KODLARI_UPGRADE_ILE_DUZELIR(birlesik_agac, taze_db)
     değişmediği sürece alembic bu DB'de hiçbir şey koşmaz; kodlar bayat kalır
     ve admin uçları herkese 403 döner.
     """
-    _alembic(birlesik_agac, "upgrade", "ip16_araliklitekrar")
+    motor, db = taze_db
+    _alembic(birlesik_agac, "upgrade", "ip16_araliklitekrar", db=db)
 
-    await _bayat_dunyayi_kur(taze_db)
-    assert await _izin_kodlari(taze_db, "srs.platform%") == sorted(BAYAT_KODLAR)
+    await _bayat_dunyayi_kur(motor)
+    assert await _izin_kodlari(motor, "srs.platform%") == sorted(BAYAT_KODLAR)
 
-    _alembic(birlesik_agac, "upgrade", "head")
+    _alembic(birlesik_agac, "upgrade", "head", db=db)
 
-    assert await _izin_kodlari(taze_db, "srs.platform.%") == [], (
+    assert await _izin_kodlari(motor, "srs.platform.%") == [], (
         "bayat kodlar temizlenmedi — panel bu satırları görüp doğru kodu ıskalar"
     )
-    assert await _izin_kodlari(taze_db, "srs\\_platform.%") == sorted(DOGRU_KODLAR)
+    assert await _izin_kodlari(motor, "srs\\_platform.%") == sorted(DOGRU_KODLAR)
     for kod in DOGRU_KODLAR:
-        roller = await _rol_izinleri(taze_db, kod)
+        roller = await _rol_izinleri(motor, kod)
         assert "SUPER_ADMIN" in roller and "EDUCATION_MANAGER" in roller, (
             f"{kod} rollere bağlanmadı: {roller}"
         )
@@ -341,17 +362,18 @@ async def test_B7_ESKI_KIMLIGE_STAMPLI_DB_SESSIZCE_BAYAT_KALMAZ(
     Her iki eski kimlik için ayrı ayrı koşulur: yeni kimliğin ikisinden de
     farklı olduğu ancak böyle nöbet altına alınır.
     """
-    _alembic(birlesik_agac, "upgrade", "ip16_araliklitekrar")
-    await _bayat_dunyayi_kur(taze_db)
-    async with taze_db.begin() as conn:
+    motor, db = taze_db
+    _alembic(birlesik_agac, "upgrade", "ip16_araliklitekrar", db=db)
+    await _bayat_dunyayi_kur(motor)
+    async with motor.begin() as conn:
         await conn.execute(
             text("UPDATE alembic_version SET version_num = :k"), {"k": eski_kimlik}
         )
 
-    res = _alembic(birlesik_agac, "upgrade", "head", bekle_hata=True)
+    res = _alembic(birlesik_agac, "upgrade", "head", db=db, bekle_hata=True)
 
     if res.returncode == 0:
-        assert await _izin_kodlari(taze_db, "srs.platform.%") == [], (
+        assert await _izin_kodlari(motor, "srs.platform.%") == [], (
             f"'{eski_kimlik}' damgalı DB'de upgrade sessizce başarılı oldu ama "
             "bayat kodlar duruyor — admin platform uçları herkese 403 döner (B7)"
         )

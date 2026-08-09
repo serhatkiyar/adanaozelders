@@ -2,12 +2,19 @@
 
 İlk 20'si paketin kendi turundan; 21-33 arası bağımsız denetimin açtığı
 bulguların (B1/B2/B4/B5/B6/B7 + H3) düzeltmelerini korur. Katalogda **IP16-23
-yoktur**: "izin migration'ının revizyon kimliğini eski hâline döndür" provası
-tek kullanımlık test veritabanının TAZE olmasını ister (eski kimlikli bir
-DB'de alembic zaten `Can't locate revision` verir ve prova kendi ölçmek
-istediği şeyi ölçemez). O prova elle yapıldı: DB düşürülüp yeniden kurulduktan
-sonra `test_B7_ESKI_KIMLIGE_STAMPLI_DB_SESSIZCE_BAYAT_KALMAZ` kırıldı
-("upgrade sessizce başarılı oldu ama bayat kodlar duruyor").
+yoktur**: "izin migration'ının revizyon kimliğini TERK EDİLMİŞ bir kimliğe
+geri dirilt" provası tek kullanımlık test veritabanının TAZE olmasını ister
+(eski kimlikli bir DB'de alembic zaten `Can't locate revision` verir ve prova
+kendi ölçmek istediği şeyi ölçemez). O prova elle yapıldı: DB düşürülüp
+yeniden kurulduktan sonra 7 test seçildi, 2'si kırıldı —
+`test_B7_ESKI_KIMLIGE_STAMPLI_DB_SESSIZCE_BAYAT_KALMAZ[ip16_srs_izin_kodlari]`
+("upgrade sessizce başarılı oldu ama bayat kodlar duruyor") ve
+`test_B7_YENI_KIMLIK_TERK_EDILMISLERDEN_FARKLI`.
+
+⚠️ Sürücü çalışma ağacını geri alır ama **veritabanını geri almaz**. Migration
+kimliğine dokunan provalardan sonra test veritabanı düşürülmelidir; aksi halde
+sonraki koşu mutasyonun bıraktığı damga yüzünden `Can't locate revision` verir
+(bu turda bir kez yaşandı).
 
 `scripts/mutation_drill` sürücüsünün güvenlik makinesini (bayt yedeği +
 SHA-256 doğrulamalı geri alma, kirli ağaç reddi, HEAD/status karşılaştırması)
