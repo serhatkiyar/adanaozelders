@@ -229,6 +229,75 @@ async def test_d6_uc_taramasi_govde_kontrolu(ip16, ip16_http, ip16_saat):
     )
 
 
+# ── D-6b: `is_leech` eklendikten SONRA taramanın tekrarı (B6) ───────────────
+#
+# `is_leech` daha önce HİÇBİR yanıt şemasında yoktu; K-6 taramasının bu alan
+# için yeşil çıkması sınırın sağlamlığından değil, alanın hiç dönmemesinden
+# geliyordu. Alan artık kart tarayıcısında dönüyor — bu yüzden tarama eğitmen
+# VE admin token'ıyla yeniden yapılır.
+
+#: Router'daki GET uçlarının TAMAMI (9). Yeni GET ucu eklenirse buraya da eklenir.
+SRS_GET_UCLARI = (
+    "/api/v1/srs/decks",
+    "/api/v1/srs/decks/platform",
+    "/api/v1/srs/decks/{deck}",
+    "/api/v1/srs/decks/{deck}/assignments",
+    "/api/v1/srs/cards?deck_id={deck}",
+    "/api/v1/srs/study/queue?deck_id={deck}",
+    "/api/v1/srs/stats?deck_id={deck}",
+    "/api/v1/srs/tags",
+    "/api/v1/srs/admin/platform-decks",
+)
+
+
+async def test_d6b_leech_izi_hicbir_uctan_sizmiyor(ip16, ip16_http, ip16_saat):
+    """Öğrencinin leech/askı durumu ne eğitmene ne admine dönmeli.
+
+    Leech, kullanıcının "bu kartta 8 kez takıldım" bilgisidir; ilerleme
+    verisinin en mahremlerinden biridir (§7.2 K-6). Kart tarayıcısı bunu
+    YALNIZ isteyenin kendi satırından okur.
+    """
+    _tid, t_hdr, cid, _c_hdr, deck_id = await _atanmis_calisan_ogrenci(
+        ip16, ip16_http, ip16_saat
+    )
+    # Öğrencinin bir kartını leech + askıda yap (gerçek satır, sahte değil).
+    await ip16.sql_exec(
+        "UPDATE srs_progress SET is_leech = true, lapses = 8, suspended_at = now()"
+        " WHERE user_id = :u AND role_id = 3 AND state != 'NEW'",
+        u=cid,
+    )
+    izli = await ip16.sql(
+        "SELECT count(*) FROM srs_progress WHERE user_id = :u AND role_id = 3"
+        " AND is_leech",
+        u=cid,
+    )
+    assert izli[0][0] > 0, "kurulum hatası: leech satırı yok"
+
+    _aid, a_hdr = await ip16.admin(izinler=SRS_IZINLER)
+    for etiket, hdr in (("eğitmen", t_hdr), ("admin", a_hdr)):
+        for kalip in SRS_GET_UCLARI:
+            uc = kalip.format(deck=deck_id)
+            r = await ip16_http.get(uc, headers=hdr)
+            assert r.status_code in (200, 403, 404), (
+                f"{etiket} {uc}: beklenmeyen {r.status_code}"
+            )
+            if r.status_code != 200:
+                continue
+            govde = r.text
+            assert '"is_leech": true' not in govde.replace('"is_leech":true', '"is_leech": true'), (
+                f"{etiket} {uc}: öğrencinin leech işareti yanıta sızdı"
+            )
+            assert '"suspended": true' not in govde.replace(
+                '"suspended":true', '"suspended": true'
+            ), f"{etiket} {uc}: öğrencinin askı durumu yanıta sızdı"
+            for anahtar in ("leech_total", "suspended_total"):
+                if f'"{anahtar}"' in govde:
+                    veri = r.json()
+                    assert veri.get(anahtar) == 0, (
+                        f"{etiket} {uc}: {anahtar} başkasının kartlarını saydı"
+                    )
+
+
 # ── D-7: admin de rutin olarak ilerleme görmüyor ────────────────────────────
 
 async def test_d7_admin_ilerleme_goremez(ip16, ip16_http, ip16_saat):

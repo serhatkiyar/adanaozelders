@@ -79,6 +79,8 @@ export interface SrsCard {
   state: SrsCardState;
   due_at: string | null;
   suspended: boolean;
+  /** Q-8: 8. lapse'te işaretlenir ve kart otomatik askıya alınır. */
+  is_leech: boolean;
 }
 
 export interface SrsCardListParams {
@@ -94,6 +96,10 @@ export interface SrsCardListParams {
 export interface SrsCardList {
   items: SrsCard[];
   total: number;
+  /** Kapsamdaki askıda kart sayısı — uygulanan filtreden bağımsız. */
+  suspended_total: number;
+  /** Kapsamdaki leech kart sayısı (askıda olanların alt kümesi). */
+  leech_total: number;
 }
 
 export type SrsBulkAction =

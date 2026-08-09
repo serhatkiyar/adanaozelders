@@ -373,7 +373,7 @@ async def browse_cards(
     user: CurrentUser = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
-    items, total = await srs_service.browse_cards(
+    items, total, askida, leech = await srs_service.browse_cards(
         db,
         user,
         deck_id=deck_id,
@@ -384,7 +384,12 @@ async def browse_cards(
         page=page,
         page_size=page_size,
     )
-    return {"items": items, "total": total}
+    return {
+        "items": items,
+        "total": total,
+        "suspended_total": askida,
+        "leech_total": leech,
+    }
 
 
 @router.post(

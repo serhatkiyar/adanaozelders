@@ -5,6 +5,10 @@ import { DashboardShell } from "@/components/DashboardShell";
 import { DataTable } from "@/components/admin/data-table/DataTable";
 import { ConfirmDialog } from "@/components/admin/ui/ConfirmDialog";
 import { ErrorState } from "@/components/admin/ui/PageState";
+import {
+  SrsCardFlags,
+  SrsSuspendedSummary,
+} from "@/components/srs/SrsCardFlags";
 import { STUDENT_NAV, TUTOR_NAV } from "@/lib/nav";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useDebounce } from "@/hooks/useDebounce";
@@ -91,6 +95,8 @@ export default function SrsBrowser() {
   const cardsQuery = useSrsCards(params);
   const items = cardsQuery.data?.items ?? [];
   const total = cardsQuery.data?.total ?? 0;
+  const suspendedTotal = cardsQuery.data?.suspended_total ?? 0;
+  const leechTotal = cardsQuery.data?.leech_total ?? 0;
 
   const allDecks = useMemo(
     () => [...(decksQuery.data?.own ?? []), ...(decksQuery.data?.assigned ?? [])],
@@ -229,11 +235,10 @@ export default function SrsBrowser() {
         cell: ({ row }) => (
           <span className="inline-flex items-center gap-1.5">
             {STATE_LABELS[row.original.state]}
-            {row.original.suspended && (
-              <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-500 dark:bg-slate-800 dark:text-slate-400">
-                askıda
-              </span>
-            )}
+            <SrsCardFlags
+              suspended={row.original.suspended}
+              isLeech={row.original.is_leech}
+            />
           </span>
         ),
         enableSorting: false,
@@ -273,6 +278,14 @@ export default function SrsBrowser() {
           <h1 className="mt-1 text-2xl font-bold text-slate-900 dark:text-white">
             Kart Tarayıcı
           </h1>
+          <SrsSuspendedSummary
+            suspendedTotal={suspendedTotal}
+            leechTotal={leechTotal}
+            onShowSuspended={() => {
+              setSuspended("true");
+              resetPage();
+            }}
+          />
         </div>
 
         {/* Filtreler — sunucu tarafı */}
@@ -496,6 +509,7 @@ export default function SrsBrowser() {
                       {deckNames.get(row.deck_id) ?? `#${row.deck_id}`} ·{" "}
                       {STATE_LABELS[row.state]}
                       {row.suspended ? " · askıda" : ""}
+                      {row.is_leech ? " · takıldın" : ""}
                       {row.due_at ? ` · ${formatDateTime(row.due_at)}` : ""}
                     </p>
                   </div>

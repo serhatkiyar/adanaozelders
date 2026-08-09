@@ -810,8 +810,10 @@ async def browse_cards(
     suspended: bool | None = None,
     page: int = 1,
     page_size: int = 50,
-) -> tuple[list[dict], int]:
-    """Sunucu sayfalı kart listesi. `state`/`due_at`/`suspended` İSTEYENİN
+) -> tuple[list[dict], int, int, int]:
+    """Sunucu sayfalı kart listesi + kapsam sayaçları (kalem, toplam, askıda, leech).
+
+    Sunucu sayfalı kart listesi. `state`/`due_at`/`suspended` İSTEYENİN
     KENDİ progress'idir; satırı olmayan kart NEW görünür (K-6: başkasının
     ilerlemesi hiçbir satıra girmez)."""
     if state is not None and state not in PROGRESS_STATES:
@@ -831,7 +833,7 @@ async def browse_cards(
         )
         scope_ids = [r[0] for r in rows]
         if not scope_ids:
-            return [], 0
+            return [], 0, 0, 0
 
     prog = aliased(SrsProgress)
     conds = [
@@ -904,9 +906,28 @@ async def browse_cards(
                 "state": p.state if p is not None else "NEW",
                 "due_at": p.due_at if p is not None else None,
                 "suspended": bool(p is not None and p.suspended_at is not None),
+                "is_leech": bool(p is not None and p.is_leech),
             }
         )
-    return items, int(total)
+    # Kapsam sayaçları: filtrelerden bağımsız, YALNIZ isteyenin kendi satırları.
+    sayac = (
+        await db.execute(
+            select(
+                func.count().filter(SrsProgress.suspended_at.isnot(None)),
+                func.count().filter(SrsProgress.is_leech.is_(True)),
+            )
+            .select_from(SrsProgress)
+            .join(SrsCard, SrsCard.id == SrsProgress.card_id)
+            .where(
+                SrsProgress.user_id == user.id,
+                SrsProgress.role_id == user.role_id,
+                SrsProgress.deleted_at.is_(None),
+                SrsCard.deleted_at.is_(None),
+                SrsCard.deck_id.in_(scope_ids),
+            )
+        )
+    ).one()
+    return items, int(total), int(sayac[0]), int(sayac[1])
 
 
 # ── Toplu işlemler ───────────────────────────────────────────────────────────

@@ -162,6 +162,58 @@ async def test_b4_toplu_islemler(ip16, ip16_http, ip16_saat):
 
 # ── B-5: toplam sayı görünüyor, sessiz kesilme yok ──────────────────────────
 
+async def test_b7_leech_ve_askida_sayaci_yanitta(ip16, ip16_http, ip16_saat):
+    """B6: `is_leech` hiçbir yanıt şemasında yoktu — kullanıcı kartın neden
+    kaybolduğunu göremiyordu (otomatik askı sessizdi).
+
+    Uç iki şeyi vermeli: kart başına `is_leech` ve kapsam genelinde "askıda N
+    kart" sayacı. Sayaç uygulanan filtreden BAĞIMSIZ olmalı; yoksa
+    `suspended=false` ile bakan kullanıcıya askıdaki kart sayısı 0 görünür ve
+    gösterge hiçbir işe yaramaz.
+    """
+    ip16_saat(T0)
+    cid, hdr = await ip16.ogrenci()
+    d = await deste(ip16_http, hdr)
+    for i in range(3):
+        await not_ekle(ip16_http, hdr, d["id"], front=f"s{i}", back="c")
+    idler = [k["id"] for k in (await kartlar(ip16_http, hdr, d["id"]))["items"]]
+
+    # Bir kartı gerçek leech yap: ilerleme satırı açılır, lapses eşiğe getirilir.
+    r = await ip16_http.post(
+        "/api/v1/srs/cards/bulk",
+        headers=hdr,
+        json={"ids": [idler[0]], "action": "suspend"},
+    )
+    assert r.status_code == 200, r.text[:200]
+    await ip16.sql_exec(
+        "UPDATE srs_progress SET is_leech = true, lapses = 8 WHERE card_id = :c"
+        " AND user_id = :u AND role_id = 3",
+        c=idler[0], u=cid,
+    )
+    # İkinci kart yalnız askıda (leech değil) — sayaç ikisini de saymalı.
+    await ip16_http.post(
+        "/api/v1/srs/cards/bulk",
+        headers=hdr,
+        json={"ids": [idler[1]], "action": "suspend"},
+    )
+
+    hepsi = await kartlar(ip16_http, hdr, d["id"])
+    bayrak = {k["id"]: k["is_leech"] for k in hepsi["items"]}
+    assert bayrak[idler[0]] is True, "leech kartın bayrağı yanıtta yok"
+    assert bayrak[idler[1]] is False and bayrak[idler[2]] is False
+
+    assert hepsi["suspended_total"] == 2, (
+        f"askıda kart sayacı yanlış: {hepsi.get('suspended_total')}"
+    )
+    assert hepsi["leech_total"] == 1, (
+        f"leech sayacı yanlış: {hepsi.get('leech_total')}"
+    )
+    # Filtre daraltsa da sayaç kapsamın tamamını söyler.
+    filtreli = await kartlar(ip16_http, hdr, d["id"], suspended="false")
+    assert len(filtreli["items"]) == 1
+    assert filtreli["suspended_total"] == 2 and filtreli["leech_total"] == 1
+
+
 async def test_b5_toplam_sessiz_kesilmez(ip16, ip16_http, ip16_saat):
     ip16_saat(T0)
     _cid, hdr = await ip16.ogrenci()

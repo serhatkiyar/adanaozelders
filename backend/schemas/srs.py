@@ -160,7 +160,7 @@ class TagListOut(BaseModel):
 
 
 class CardOut(BaseModel):
-    """`state`/`due_at`/`suspended` İSTEYENİN KENDİ ilerlemesidir (K-6)."""
+    """`state`/`due_at`/`suspended`/`is_leech` İSTEYENİN KENDİ ilerlemesidir (K-6)."""
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -175,11 +175,21 @@ class CardOut(BaseModel):
     state: ProgressState = "NEW"
     due_at: datetime.datetime | None = None
     suspended: bool = False
+    #: Q-8 leech işareti. Alan B6'ya kadar HİÇBİR yanıtta yoktu: kart 8.
+    #: lapse'te sessizce askıya alınıyor, kullanıcı kartın neden kaybolduğunu
+    #: göremiyordu. K-6 sınırı burada da geçerlidir — değer yalnız kartın
+    #: sahibinin `srs_progress` satırından okunur.
+    is_leech: bool = False
 
 
 class CardListOut(BaseModel):
     items: list[CardOut]
     total: int
+    #: Kapsamdaki (deste alt ağacı) askıda/leech kart sayısı — uygulanan
+    #: filtreden BAĞIMSIZ. `suspended=false` ile bakan kullanıcıya "askıda 0
+    #: kart" demek göstergeyi işe yaramaz kılardı.
+    suspended_total: int = 0
+    leech_total: int = 0
 
 
 class BulkIn(BaseModel):
