@@ -471,10 +471,12 @@ Rotalar (`lib/routes.ts` PATHS+ROUTES; nav: Öğren hub kartı "Aralıklı Tekra
 Hata `ErrorState`, boşluk `EmptyState` (ikisi ayrışır). Mevcut tasarım dili;
 dark-mode paritesi; sakin düzen (kart enflasyonu yok).
 
-## 10. Mutasyon kataloğu (33 prova) — **33/33 YAKALANDI**
+## 10. Mutasyon kataloğu (36 prova) — **36/36 YAKALANDI**
 
 Aşağıdaki ilk tablo paketin kendi turudur (20 prova); §10.1 denetim düzeltme
-turunun 13 ek provasını listeler.
+turunun 16 ek provasını listeler (13'ü denetim bulgularının, 3'ü paralel
+`ip16-audit-kapanis` turundan elle alınan nöbetçilerin). Katalogda 35 tanım
+vardır; IP16-23 taze veritabanı istediği için elle koşulur (gerekçe aşağıda).
 
 Sürücü: `backend/scripts/mutation_drill_ip16.py` — `scripts/mutation_drill`'in
 güvenlik makinesini (bayt yedeği + SHA-256 doğrulamalı geri alma, kirli ağaç
@@ -526,6 +528,14 @@ Koşu sırasında sürücünün ağaç nöbetçisi bir kez devreye girdi (prova 
 | IP16-31 | Askı sayacından K-6 filtresini sök | B6/K-6 | 14 | ✅ 1 |
 | IP16-32 | Askı sayacını uygulanan filtreye bağla | B6 | 15 | ✅ 1 |
 | IP16-33 | Leech rozetini UI'dan sök | B6 (UI) | 7 | ✅ 1 |
+| IP16-34 | Taramaya konmamış yeni GET ucu ekle | D-6c | 15 | ✅ 1 |
+| IP16-35 | 04:00 devrilmesini kaldır (`ROLLOVER_HOUR=0`) | K-9 / F-17 | 36 | ✅ 3 |
+| IP16-36 | `retrievability` geçen günü yok saysın | F-17 | 36 | ✅ 2 |
+
+Son üçü, paralel `ip16-audit-kapanis` turunda yazılmış nöbetçilerin bu dala
+**elle** taşınmış hâlini korur. O dalın H3 çözümü **alınmadı**: orada
+`engine.py` `dayboundary`'yi import edip gün farkını kendisi hesaplıyor, bu da
+§2'nin saflık kararıyla (motor takvim görmez) çelişirdi.
 
 **IP16-21 ilk koşuda "YAKALANMADI" raporlandı** — sebebi testin zayıflığı
 değil, ortak mutasyon sürücüsünün pytest `ERROR` satırlarını (hiç koşamayan
@@ -708,6 +718,7 @@ Sınıflandırma (kök CLAUDE.md §H) — hangi dosyanın hangi sınıfa girdiğ
 | Gerçek PostgreSQL + gerçek HTTP | `tests/integration/test_ip16_*.py` (tümü) |
 | Saf birim (DB'siz, IO'suz) | `tests/unit/test_fsrs_scheduler.py` |
 | AST/kaynak sözleşmesi (DÜŞÜK GÜÇLÜ) | `F-14`, `F-14b`, `test_f17_motorda_takvim_aritmetigi_kalmadi`, `test_B7_YENI_KIMLIK_TERK_EDILMISLERDEN_FARKLI` — dördünün de yanında bir davranış testi vardır |
+| Yapısal/şema sözleşmesi (DB'siz ama gerçek OpenAPI) | `D-6c` — tarama listesinin router'la aynı kümeyi kapsadığını ölçer; yanında D-6/D-6b davranış taraması durur |
 | Gerçek DOM (jsdom + RTL) | `frontend/src/components/srs/SrsCardFlags.test.tsx` |
 | Gerçek tarayıcı / E2E | **yok** (§11) |
 | Gerçek baskı/dosya çıktısı | **yok** (bu pakette baskı yüzeyi yok) |
