@@ -1,4 +1,13 @@
-"""İP-16 (aralıklı tekrar) mutasyon provası kataloğu — 20 mutasyon.
+"""İP-16 (aralıklı tekrar) mutasyon provası kataloğu — 32 mutasyon.
+
+İlk 20'si paketin kendi turundan; 21-33 arası bağımsız denetimin açtığı
+bulguların (B1/B2/B4/B5/B6/B7 + H3) düzeltmelerini korur. Katalogda **IP16-23
+yoktur**: "izin migration'ının revizyon kimliğini eski hâline döndür" provası
+tek kullanımlık test veritabanının TAZE olmasını ister (eski kimlikli bir
+DB'de alembic zaten `Can't locate revision` verir ve prova kendi ölçmek
+istediği şeyi ölçemez). O prova elle yapıldı: DB düşürülüp yeniden kurulduktan
+sonra `test_B7_ESKI_KIMLIGE_STAMPLI_DB_SESSIZCE_BAYAT_KALMAZ` kırıldı
+("upgrade sessizce başarılı oldu ama bayat kodlar duruyor").
 
 `scripts/mutation_drill` sürücüsünün güvenlik makinesini (bayt yedeği +
 SHA-256 doğrulamalı geri alma, kirli ağaç reddi, HEAD/status karşılaştırması)
@@ -36,16 +45,19 @@ from scripts.mutation_drill import (
     GeciciYama,
     Mutasyon,
     _agac_durumu,
-    _kirilanlar,
     _kos,
     _on_kontrol,
 )
+from scripts.mutation_drill import _kirilanlar as _ust_kirilanlar
 
 ENGINE = "backend/services/spaced_repetition/engine.py"
 QUEUE = "backend/services/spaced_repetition/queuerules.py"
 DAY = "backend/services/spaced_repetition/dayboundary.py"
 SERVICE = "backend/services/srs_service.py"
 TYPEANS = "frontend/src/lib/srsTypeAnswer.ts"
+FLAGS = "frontend/src/components/srs/SrsCardFlags.tsx"
+MIGRASYON = "backend/migrations/versions/ip16_araliklitekrar.py"
+IZINLER = "backend/migrations/versions/ip16_srs_izin_kodu_hizalama.py"
 
 BIRIM = "tests/unit/test_fsrs_scheduler.py"
 KUYRUK = "tests/integration/test_ip16_queue_pg.py"
@@ -53,6 +65,7 @@ OTURUM = "tests/integration/test_ip16_session_pg.py"
 TIPLER = "tests/integration/test_ip16_types_pg.py"
 GIZLILIK = "tests/integration/test_ip16_privacy_pg.py"
 TARAYICI = "tests/integration/test_ip16_browser_pg.py"
+MIGRASYON_TEST = "tests/integration/test_ip16_migration_pg.py"
 
 
 MUTASYONLAR: list[Mutasyon] = [
@@ -259,7 +272,152 @@ MUTASYONLAR: list[Mutasyon] = [
         ("src/lib/srsTypeAnswer.test.ts",),
         taraf="frontend",
     ),
+    # ── 21-32: denetim düzeltme turu (B1/B2/B4/B5/B6/B7/H3) ────────────────
+    Mutasyon(
+        "IP16-21", "B1: ip16 zinciri ip12'den koparıldı (merge sonrası iki head)",
+        MIGRASYON,
+        'down_revision: Union[str, Sequence[str], None] = "ip12_urun_arama_vektoru"',
+        'down_revision: Union[str, Sequence[str], None] = "ip5_siparis_vergi_kirilimi"',
+        (MIGRASYON_TEST,),
+    ),
+    Mutasyon(
+        "IP16-22", "B7: bayat izin kodlarının taşınması/silinmesi sökülü",
+        IZINLER,
+        "    for eski, yeni in BAYAT_KODLAR.items():",
+        "    for eski, yeni in {}.items():  # MUTASYON",
+        (MIGRASYON_TEST,),
+    ),
+    Mutasyon(
+        "IP16-24", "B2: çift katlamanın invariant dalı sökülü (IELTS/ielts kırılır)",
+        TYPEANS,
+        """  if (
+    a === b ||
+    normalizeInvariantAnswer(expected) === normalizeInvariantAnswer(typed)
+  ) {""",
+        "  if (a === b) {  // MUTASYON: yalnız Türkçe katlama",
+        ("src/lib/srsTypeAnswer.test.ts",),
+        taraf="frontend",
+    ),
+    Mutasyon(
+        "IP16-25", "B2: çift katlamanın Türkçe dalı sökülü (İstanbul/istanbul kırılır)",
+        TYPEANS,
+        """  if (
+    a === b ||
+    normalizeInvariantAnswer(expected) === normalizeInvariantAnswer(typed)
+  ) {""",
+        """  if (normalizeInvariantAnswer(expected) === normalizeInvariantAnswer(typed)) {
+    // MUTASYON: yalnız invariant katlama""",
+        ("src/lib/srsTypeAnswer.test.ts",),
+        taraf="frontend",
+    ),
+    Mutasyon(
+        "IP16-26", "H3: motor geçen günü yok sayıyor (her cevap 'aynı gün')",
+        ENGINE,
+        "    elapsed = max(0, int(elapsed_days))",
+        "    elapsed = 0  # MUTASYON",
+        (BIRIM,),
+    ),
+    Mutasyon(
+        "IP16-27", "H3: servis motora TAKVİM farkı veriyor (kuyruk tabanı değil)",
+        SERVICE,
+        """    return max(
+        0,
+        (
+            dayboundary.study_day(now)
+            - dayboundary.study_day(progress.last_review_at)
+        ).days,
+    )""",
+        "    return max(0, (now - progress.last_review_at).days)  # MUTASYON",
+        (OTURUM,),
+    ),
+    Mutasyon(
+        "IP16-28", "B4: saf pakete rastgelelik sızdı (import random)",
+        ENGINE,
+        "import math\nfrom dataclasses import dataclass",
+        "import math\nimport random  # MUTASYON\nfrom dataclasses import dataclass",
+        (BIRIM,),
+    ),
+    Mutasyon(
+        "IP16-29", "B5: kardeş ayırma sökülü (aynı notun kartları peş peşe)",
+        SERVICE,
+        """    if son_note_id is None:
+        return []
+    return [(SrsNote.id == son_note_id).asc()]""",
+        "    return []  # MUTASYON",
+        (KUYRUK,),
+    ),
+    Mutasyon(
+        "IP16-30", "B6: is_leech yanıtta hep false (askının sebebi görünmez)",
+        SERVICE,
+        '                "is_leech": bool(p is not None and p.is_leech),',
+        '                "is_leech": False,  # MUTASYON',
+        (TARAYICI,),
+    ),
+    Mutasyon(
+        "IP16-31", "B6/K-6: askı sayacı başkalarının ilerlemesini sayıyor",
+        SERVICE,
+        """            .where(
+                SrsProgress.user_id == user.id,
+                SrsProgress.role_id == user.role_id,
+                SrsProgress.deleted_at.is_(None),
+                SrsCard.deleted_at.is_(None),
+                SrsCard.deck_id.in_(scope_ids),
+            )""",
+        """            .where(  # MUTASYON: K-6 kullanıcı filtresi sökülü
+                SrsProgress.deleted_at.is_(None),
+                SrsCard.deleted_at.is_(None),
+                SrsCard.deck_id.in_(scope_ids),
+            )""",
+        (GIZLILIK,),
+    ),
+    Mutasyon(
+        "IP16-32", "B6: askı sayacı uygulanan filtreye bağlandı (hep 0 görünür)",
+        SERVICE,
+        """                SrsProgress.deleted_at.is_(None),
+                SrsCard.deleted_at.is_(None),
+                SrsCard.deck_id.in_(scope_ids),
+            )""",
+        """                SrsProgress.deleted_at.is_(None),
+                SrsCard.deleted_at.is_(None),
+                SrsCard.deck_id.in_(scope_ids),
+                SrsProgress.suspended_at.is_(None)
+                if suspended is False
+                else SrsCard.id.isnot(None),  # MUTASYON
+            )""",
+        (TARAYICI,),
+    ),
+    Mutasyon(
+        "IP16-33", "B6: leech rozeti UI'dan sökülü (kullanıcı sebebi göremez)",
+        FLAGS,
+        "      {isLeech && (",
+        "      {false && isLeech && (  /* MUTASYON */",
+        ("src/components/srs/SrsCardFlags.test.tsx",),
+        taraf="frontend",
+    ),
 ]
+
+
+def _kirilanlar(cikti: str) -> list[str]:  # noqa: F811 — üst sürücüyü bilinçli gölgeler
+    """Üst sürücünün `FAILED` taraması + pytest `ERROR` satırları.
+
+    Neden gerekli (bu turda ölçüldü): IP16-21 (migration zincirini ip12'den
+    kopar) uygulandığında entegrasyon conftest'i veritabanını KURAMIYOR
+    ("Multiple head revisions") ve pytest beş düğümü de `ERROR` olarak
+    raporluyor — tek bir `FAILED` satırı yok. Üst sürücü yalnız `FAILED`
+    aradığı için mutasyonu "YAKALANMADI" sayıyordu; oysa suite hiç koşamamıştı,
+    ki bu daha sert bir kırılmadır. "Test zayıf" ile "test hiç koşmadı"yı
+    ayırmayı zaten bu paketin ek nöbetçisi savunuyor (seçilen test = 0
+    kuralı); aynı ayrım kırılma tarafında da yapılmalıydı.
+    """
+    kirilan = list(_ust_kirilanlar(cikti))
+    hatalar = sorted(
+        {
+            s.split(" ")[1] if " " in s else s
+            for s in cikti.splitlines()
+            if s.startswith("ERROR ") and "::" in s
+        }
+    )
+    return kirilan + [f"{h} (KURULUM HATASI — test hiç koşmadı)" for h in hatalar]
 
 
 def _secilen_test_sayisi(m: Mutasyon) -> int:
