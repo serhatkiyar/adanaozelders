@@ -229,11 +229,14 @@ class Ip16Fabrika:
                     ),
                     p,
                 )
+                # Admin de (platform destesi notlarıyla) etiket üretir; rol 1
+                # kapsanmazsa etiket satırları sızar ve hijyen nöbetçisi patlar.
                 await s.execute(
                     text(
                         "DELETE FROM srs_tags WHERE (owner_user_id = ANY(:c) AND"
                         " owner_role_id = 3) OR (owner_user_id = ANY(:t) AND"
-                        " owner_role_id = 2)"
+                        " owner_role_id = 2) OR (owner_user_id = ANY(:a) AND"
+                        " owner_role_id = 1)"
                     ),
                     p,
                 )
@@ -255,8 +258,16 @@ class Ip16Fabrika:
             # Admin zinciri: audit → atama → rol-izin → rol → admin
             # (audit_logs hijyen nöbetçisinde SAYILIR — satır bırakmak yasak).
             if self.admin_ids:
+                # `audit_logs`'ta `admin_id` YOKTUR: aktör (actor_id, actor_role)
+                # çiftiyle tutulur (models/audit_log.py). Yanlış kolon adı
+                # UndefinedColumn ile session'ı son commit'ten ÖNCE düşürüyor,
+                # BÜTÜN temizlik geri sarılıyor ve sızıntı hijyen nöbetçisinde
+                # başka bir testin üstüne patlıyordu.
                 await s.execute(
-                    text("DELETE FROM audit_logs WHERE admin_id = ANY(:i)"),
+                    text(
+                        "DELETE FROM audit_logs WHERE actor_id = ANY(:i)"
+                        " AND actor_role = 1"
+                    ),
                     {"i": self.admin_ids},
                 )
                 await s.execute(
@@ -268,7 +279,8 @@ class Ip16Fabrika:
                 )
                 await s.execute(
                     text(
-                        "DELETE FROM admin_role_permissions WHERE role_id = ANY(:i)"
+                        "DELETE FROM admin_role_permissions WHERE"
+                        " admin_role_id = ANY(:i)"
                     ),
                     {"i": self.admin_role_ids or [0]},
                 )

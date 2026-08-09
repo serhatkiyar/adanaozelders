@@ -15,7 +15,7 @@ from tests.integration.ip16_factory import cevapla, deste, kartlar, kuyruk, not_
 UTC = datetime.timezone.utc
 T0 = datetime.datetime(2026, 8, 10, 9, 0, 0, tzinfo=UTC)
 
-SRS_IZINLER = ["srs.platform.view", "srs.platform.manage"]
+SRS_IZINLER = ["srs_platform.view", "srs_platform.manage"]
 
 
 async def _atanmis_calisan_ogrenci(ip16, http, ip16_saat):
@@ -234,10 +234,18 @@ async def test_d7_admin_ilerleme_goremez(ip16, ip16_http, ip16_saat):
         r = await ip16_http.get(uc, headers=a_hdr)
         assert r.status_code == 404, f"admin {uc}: {r.status_code}"
     # Uygulamada '/srs' altında progress taşıyan bir admin rotası hiç yok.
+    #
+    # Route tablosu OpenAPI şemasından okunur. `app.routes` (ve
+    # `api_router.routes`) KULLANILAMAZ: FastAPI 0.137 `include_router`'da
+    # tembel bir `_IncludedRouter` bırakır, alt-router yolları ancak istek
+    # çözümlenirken düzleşir — o listede arama her zaman boş küme döndürür.
+    # Bu düğüm commit 1'de tam olarak bu yüzden YANLIŞ KIRMIZIYDI: hiçbir
+    # uygulama geçiremezdi. Aynı tuzak bu depoda zaten belgeli
+    # (tests/acceptance/test_f30_packing_contract.py::_router_yollari).
     from main import app
 
     srs_rotalar = [
-        r.path for r in app.routes if getattr(r, "path", "").startswith("/api/v1/srs")
+        p for p in app.openapi()["paths"] if p.startswith("/api/v1/srs")
     ]
     assert srs_rotalar, "srs rotaları kayıtlı değil"
     assert not any("progress" in p or "ilerleme" in p for p in srs_rotalar)
@@ -359,15 +367,15 @@ async def test_d12_izin_katalogdan(ip16, ip16_http, ip16_saat):
     ip16_saat(T0)
     from core.admin_permissions import PERMISSION_CODES
 
-    assert "srs.platform.view" in PERMISSION_CODES
-    assert "srs.platform.manage" in PERMISSION_CODES
+    assert "srs_platform.view" in PERMISSION_CODES
+    assert "srs_platform.manage" in PERMISSION_CODES
     # İzinsiz admin platform destesi YAZAMAZ; yalnız view'lı okur ama yazamaz.
     _a1, izinsiz = await ip16.admin(izinler=["users.view"])
     r = await ip16_http.post(
         "/api/v1/srs/admin/platform-decks", headers=izinsiz, json={"name": "X"}
     )
     assert r.status_code == 403, f"izinsiz admin yazdı: {r.status_code}"
-    _a2, sadece_view = await ip16.admin(izinler=["srs.platform.view"])
+    _a2, sadece_view = await ip16.admin(izinler=["srs_platform.view"])
     ok = await ip16_http.get("/api/v1/srs/admin/platform-decks", headers=sadece_view)
     assert ok.status_code == 200
     yaz = await ip16_http.post(

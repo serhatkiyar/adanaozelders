@@ -220,6 +220,40 @@ async def test_i1_tutma_orani(ip16, ip16_http, ip16_saat):
     )
 
 
+# ── I-1b: istatistik durum sayımları GERÇEK değerleri taşıyor ──────────────
+# Bu düğüm sonradan eklendi: uç sözleşmesinde `counts` vardı ama HİÇBİR test
+# değerlerini iddia etmiyordu. Şema anahtarları küçük harfe indirger; o
+# eşleme sessizce kalkarsa Pydantic bilinmeyen anahtarları atar ve sayımlar
+# HEP SIFIR döner — kullanıcı yanlış veri görür, testler yeşil kalırdı.
+
+async def test_i1b_stats_durum_sayimlari(ip16, ip16_http, ip16_saat):
+    ip16_saat(T0)
+    cid, hdr = await ip16.ogrenci()
+    d = await deste(ip16_http, hdr)
+    for i in range(4):
+        await not_ekle(ip16_http, hdr, d["id"], front=f"s{i}", back="c")
+    idler = [k["id"] for k in (await kartlar(ip16_http, hdr, d["id"]))["items"]]
+    await cevapla(ip16_http, hdr, idler[0], 3)   # LEARNING
+    await cevapla(ip16_http, hdr, idler[1], 4)   # REVIEW
+    await cevapla(ip16_http, hdr, idler[2], 4)   # REVIEW → lapse ile RELEARNING
+    await ip16.sql_exec(
+        "UPDATE srs_progress SET due_at = :t WHERE card_id = :c AND"
+        " user_id = :u AND role_id = 3",
+        t=T0 - datetime.timedelta(hours=1), c=idler[2], u=cid,
+    )
+    await cevapla(ip16_http, hdr, idler[2], 1)   # RELEARNING
+    r = await ip16_http.get(
+        "/api/v1/srs/stats", headers=hdr, params={"deck_id": d["id"]}
+    )
+    sayimlar = r.json()["counts"]
+    assert sayimlar["learning"] == 1, sayimlar
+    assert sayimlar["review"] == 1, sayimlar
+    assert sayimlar["relearning"] == 1, sayimlar
+    # 4. kart hiç çalışılmadı: progress satırı yok → sayımda NEW olarak da
+    # görünmez (satır tembel oluşur); toplam çalışılan kart 3'tür.
+    assert sum(sayimlar.values()) == 3, sayimlar
+
+
 # ── I-2: gelecek yük tahmini vadesi gelenleri doğru sayıyor ─────────────────
 
 async def test_i2_gelecek_yuk(ip16, ip16_http, ip16_saat):
