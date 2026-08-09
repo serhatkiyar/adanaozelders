@@ -8,6 +8,12 @@ from core.config import settings
 
 _client: aioredis.Redis | None = None
 
+# `last_seen_at` taşıyan giriş hesabı tabloları (LastSeenMixin). Tablo adı SQL'e
+# f-string ile gömüldüğü ve Redis'ten okunduğu için allowlist dışına çıkılmaz.
+_FLUSHABLE_TABLES = frozenset(
+    {"admins", "tutors", "clients", "library_operators", "courier_accounts"}
+)
+
 
 def _redis() -> aioredis.Redis | None:
     global _client
@@ -49,13 +55,18 @@ async def flush_to_db(session) -> int:
     buckets: dict[str, list[dict]] = {}
     for key, ts in pending.items():
         table, _id = key.split(":")
+        if table not in _FLUSHABLE_TABLES:
+            continue  # tablo adı SQL'e gömülüyor: Redis'ten gelen değere güvenme
         buckets.setdefault(table, []).append(
             {"id": int(_id), "ts": int(ts)}
         )
     for table, rows in buckets.items():
+        # CAST'ler ŞART: tip bilgisi olmayan bir VALUES listesinde Postgres bound
+        # parametreleri `text` sayar, `t.id = v.id` de "integer = text" ile patlar.
         stmt = text(
             f"UPDATE {table} AS t SET last_seen_at = to_timestamp(v.ts) "
-            "FROM (VALUES (:id, :ts)) AS v(id, ts) WHERE t.id = v.id"
+            "FROM (VALUES (CAST(:id AS INTEGER), CAST(:ts AS BIGINT))) AS v(id, ts) "
+            "WHERE t.id = v.id"
         ).bindparams(bindparam("id"), bindparam("ts"))
         await session.execute(stmt, rows)
     await session.commit()
