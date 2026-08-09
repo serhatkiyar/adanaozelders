@@ -31,6 +31,7 @@ from api.routers import (
     reports,
     reviews,
     speedtests,
+    srs,
     support,
     store,
     study_reservations,
@@ -65,6 +66,7 @@ api_router.include_router(library_exams.router)
 api_router.include_router(library_operators.router)
 api_router.include_router(reviews.router)
 api_router.include_router(speedtests.router)
+api_router.include_router(srs.router)
 api_router.include_router(support.router)
 api_router.include_router(admin.router)
 api_router.include_router(notifications.router)

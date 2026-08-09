@@ -52,7 +52,15 @@ Sırayla; her adım bir sonrakinin ön koşuludur.
 - [ ] Açılış `Settings._guard_production` denetiminden geçiyor (geçmezse uygulama
       açılmaz ve eksiklerin **tamamını** tek hatada listeler)
 - [ ] `TRUSTED_PROXY_IPS` dolu, `FRONTEND_BASE_URL`/`BACKEND_BASE_URL` `https://`
-- [ ] `AUTO_CREATE_DB=false` — migration deploy adımıdır, açılışta çalışmaz
+- [ ] `AUTO_CREATE_DB=false` — migration deploy adımıdır, açılışta çalışmaz.
+      **Gerekçe yalnız "deploy disiplini" değil (TB-30, ölçüldü):** açıkken
+      `core/migrations.ensure_schema` çözümlenemeyen bir damgayı
+      `stamp head --purge` ile SESSİZCE `head`'e taşır; sonraki
+      `upgrade head` yapacak iş bulamaz ve **başarıyla döner**. Araya giren
+      migration hiç koşmamış olur (İP-16'da izin kodları bayat kaldı ve admin
+      uçları SUPER_ADMIN'e dahi 403 döndü — hata görünmedi). Yani bayrak
+      açıkken uygulama şema/damga uyumsuzluğunu **düzeltmeden örter**. Guard
+      bunu zaten reddeder; madde onu örtük davranış olmaktan çıkarır
 
 ### 3.2 Gerçek sağlayıcılar
 - [ ] `PAYMENT_PROVIDER=iyzico` (guard zorunlu kılar; `fake` **para tahsil

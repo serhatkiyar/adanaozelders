@@ -343,6 +343,13 @@ from tests.integration.ip1b_factory import (  # noqa: E402,F401
     sayan_saglayici,
 )
 
+# İP-16 aralıklı tekrar (FSRS) fixture'ları — aynı F811 gerekçesi.
+from tests.integration.ip16_factory import (  # noqa: E402,F401
+    ip16,
+    ip16_http,
+    ip16_saat,
+)
+
 # ═══════════════ İP-3: yetki / kişisel veri / hesap güvenliği ═══════════════
 
 
