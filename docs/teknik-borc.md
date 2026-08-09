@@ -9,26 +9,40 @@ notunu bırakmak, yapılmış bir işi yapılmamış gibi anlatır).
 
 ## Numara tahsis kuralı (ZORUNLU — çakışma iki kez yaşandı)
 
-Paralel dallar aynı numarayı bağımsız olarak tahsis edip çakıştırdı: önce
-main ↔ İP-3 (TB-7…TB-10, aşağıdaki not), sonra main ↔ `ip16-flashcard` ↔
-`ip16-audit-kapanis` (üçü de **TB-24**'ü farklı konular için kullandı — main:
-"İP-12 P2 listesi", audit dalı: "alembic damga-şema nöbetçisi yok",
-İP-16 dalı: "mutasyon sürücüsü ERROR saymıyor").
+Paralel dallar aynı numarayı bağımsız olarak tahsis edip çakıştırdı — **üç
+kez**: (1) main ↔ İP-3 (TB-7…TB-10, aşağıdaki not); (2) main ↔
+`ip16-flashcard` ↔ `ip16-audit-kapanis`, üçü de **TB-24**'ü farklı konular
+için kullandı (main: "İP-12 P2 listesi", audit dalı: "alembic damga-şema
+nöbetçisi yok", İP-16 dalı: "mutasyon sürücüsü ERROR saymıyor"); (3) aynı gün
+`magaza-tasarim` ↔ `ip16-flashcard`, **TB-27 ve TB-28** (mağaza dalı:
+"entegrasyon testleri canlı Redis'e yazıyor" ve "`last_seen_at` iki yoldan
+yazılıyor").
 
 Yeni kayıt açan **numarayı almadan önce ölçer**, en yüksek numarayı bu
 dosyanın kendi kopyasından okumaz:
 
 ```bash
-# Tüm dallardaki en yüksek TB numarası — yeni kayıt bundan SONRA başlar.
+# Hangi dalda hangi numaralar var — yeni kayıt en yüksekten SONRA başlar.
 for r in $(git for-each-ref --format='%(refname:short)' refs/heads refs/remotes); do
-  git show "$r:docs/teknik-borc.md" 2>/dev/null | grep -o '^## TB-[0-9]*'
-done | grep -o '[0-9]*' | sort -n | tail -1
+  n=$(git show "$r:docs/teknik-borc.md" 2>/dev/null \
+      | grep -o '^## TB-[0-9]*' | grep -o '[0-9]*' | sort -n | tr '\n' ' ')
+  [ -n "$n" ] && echo "$r → $n"
+done
 ```
 
-İki kural: (1) numara **hiçbir dalda** kullanılmamış olmalı; (2) bir dal
-merge edilirken çakışma çıkarsa **main kanoniktir**, gelen dalın kaydı
-yeniden numaralanır ve eski→yeni eşlemesi buraya yorum olarak yazılır (hiçbir
-kayıt silinmez).
+⚠️ **Komutu koşmak yetmez, çıktısını doğru okumak gerekir.** Bu tam olarak bir
+kez yanlış gitti: İP-16 turu yalnız `… | tail -1` ile en büyük sayıyı (28)
+okudu ve onu "benim yeni kaydım" sandı; oysa 28 zaten `magaza-tasarim`
+dalındaydı ve yeni kayıtlar 29'dan başlamalıydı. Bu yüzden komut artık **dal
+başına döküm** verir: çıktıda kendi dalınızı görürsünüz, en yüksek numaranın
+kime ait olduğu belirsiz kalmaz.
+
+Üç kural: (1) numara **hiçbir dalda** kullanılmamış olmalı; (2) numara
+alındıktan sonra kaydı yazan commit'te ölçüm çıktısı commit mesajına yazılır
+(sonraki tur "gerçekten ölçüldü mü" diye sormak zorunda kalmasın); (3) bir dal
+merge edilirken çakışma çıkarsa **main kanoniktir**, gelen dalın kaydı yeniden
+numaralanır ve eski→yeni eşlemesi buraya yorum olarak yazılır (hiçbir kayıt
+silinmez).
 
 ---
 
@@ -40,15 +54,28 @@ kayıt silinmez).
      TB-8→TB-11, TB-9→TB-12, TB-10→TB-13 (`docs/ip3-yetki-kvkk-sozlesme.md`
      atıfları da güncellendi). -->
 
-<!-- Numaralandırma notu (İP-16 düzeltme turu, 9 Ağu 2026): TB-24 ÜÇ ayrı
-     konuya verilmişti — main "İP-12 P2 listesi", `ip16-audit-kapanis`
-     "alembic damga-şema nöbetçisi yok", `ip16-flashcard` "mutasyon sürücüsü
-     ERROR saymıyor". main kanonik kabul edildi; İP-16 dalının kaydı
-     TB-24→**TB-27** olarak yeniden numaralandı (`docs/ip16-flashcard-
-     sozlesme.md` atıfı da güncellendi). Audit dalının TB-24'ü, İP-16 dalında
-     ölçülen `ensure_schema` bulgusuyla birlikte **TB-28** olarak açıldı ve
-     kapsamı daraltıldı; o dal merge edilirken kayıt İKİYE bölünmemeli,
-     TB-28 ile birleştirilmelidir. Hiçbir kayıt silinmedi. -->
+<!-- Numaralandırma notu (İP-16 düzeltme turu, 9 Ağu 2026 — İKİ AŞAMALI):
+
+     (a) TB-24 ÜÇ ayrı konuya verilmişti — main "İP-12 P2 listesi",
+     `ip16-audit-kapanis` "alembic damga-şema nöbetçisi yok",
+     `ip16-flashcard` "mutasyon sürücüsü ERROR saymıyor". main kanonik kabul
+     edildi ve İP-16 dalının kaydı TB-24'ten taşındı.
+
+     (b) İlk taşıma TB-27/TB-28'e yapıldı ve ONLAR DA ÇAKIŞTI: `magaza-tasarim`
+     aynı gün (11:08) TB-27 "`last_seen_at` iki yoldan yazılıyor" ve TB-28
+     "entegrasyon testleri canlı Redis'e yazıyor" kayıtlarını açmıştı; İP-16
+     turu ölçüm komutunu koştu ama çıktısını yanlış okudu (en büyük sayıyı
+     kendi kaydı sandı). Nihai taşıma:
+       İP-16 "mutasyon sürücüsü ERROR saymıyor"  TB-24 → TB-27 → **TB-29**
+       İP-16 "ensure_schema uyumsuzluğu gizliyor"      TB-28 → **TB-30**
+     (`docs/ip16-flashcard-sozlesme.md` atıfları da güncellendi.)
+
+     Ölçüm (9 Ağu 2026, tüm yerel + uzak dallar): en yüksek numara 28
+     (`magaza-tasarim`), bu yüzden yeni kayıtlar 29'dan başladı.
+
+     `ip16-audit-kapanis`'in TB-24'ü, İP-16 dalında ölçülen `ensure_schema`
+     bulgusuyla birlikte TB-30'da toplandı; o dal merge edilirken kayıt İKİYE
+     bölünmemeli, TB-30 ile birleştirilmelidir. Hiçbir kayıt silinmedi. -->
 
 <!-- Kapanma notu (İP-2a merge'i, `06d3868`): **TB-3** ("İade reconciler
      devraldığında stok geri yüklenmiyor") KAPANDI ve dosyanın kendi kuralı
@@ -72,7 +99,7 @@ kayıt silinmez).
      provası P9 conftest satırını sökünce T-1a kırılıyor. Detay:
      `docs/ip5-kdv-fatura-sozlesme.md` §8. -->
 
-## TB-28 · `ensure_schema` şema/damga uyumsuzluğunu AKTİF OLARAK GİZLİYOR — üretimde kapalı olmalı
+## TB-30 · `ensure_schema` şema/damga uyumsuzluğunu AKTİF OLARAK GİZLİYOR — üretimde kapalı olmalı
 
 > **Öncelik: yüksek.** Bu bir "nöbetçi eksikliği" değil; uygulamanın açılışta
 > uyumsuzluğu **düzeltmeden susturması**. Diğer kayıtların çoğu bir şeyin
@@ -90,7 +117,7 @@ kayıt silinmez).
 | **Neden ertelendi** | Doğru çözümün iki parçası var: (1) damganın repoda karşılığı olduğunu doğrulamak (ucuz: `alembic_version.version_num` ∈ `versions/*.py` revision kimlikleri; bilinmeyen damgada fail-fast + beklenen revizyonu söyle — guard bunun YANINA, sonrasına değil); (2) şemanın damgayla uyuştuğunu CI'da **kapı** yapmak (`alembic check`). İkincisi bugün çapraz-dal sapması yüzünden kırmızı verir, yani dal durumu temizlenmeden kapıya çevrilemez. İP-16'nın kapsamı aralıklı tekrardır |
 | **Sonraki adım** | (1) `ensure_schema`'ya damga-repo doğrulaması + bilinmeyen damgada fail-fast; `--purge` guard'ını yalnız **bilinen** squash-öncesi revizyon listesine daralt; (2) taze DB'de `alembic upgrade head && alembic check` CI kapısı; (3) `down_revision` değiştiren her commit'in "eski zincirle kurulmuş DB'ler yeniden kurulmalı" notunu taşıması sözleşme kuralı olsun; (4) `AUTO_CREATE_DB=false` maddesini lansman kontrol listesine ekle |
 
-## TB-27 · Mutasyon sürücüsü `ERROR` ile düşen (hiç koşamayan) testleri "kırılmadı" sayıyor — TÜM paketleri etkiler
+## TB-29 · Mutasyon sürücüsü `ERROR` ile düşen (hiç koşamayan) testleri "kırılmadı" sayıyor — TÜM paketleri etkiler
 
 | | |
 |---|---|

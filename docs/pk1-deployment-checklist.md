@@ -53,7 +53,7 @@ Sırayla; her adım bir sonrakinin ön koşuludur.
       açılmaz ve eksiklerin **tamamını** tek hatada listeler)
 - [ ] `TRUSTED_PROXY_IPS` dolu, `FRONTEND_BASE_URL`/`BACKEND_BASE_URL` `https://`
 - [ ] `AUTO_CREATE_DB=false` — migration deploy adımıdır, açılışta çalışmaz.
-      **Gerekçe yalnız "deploy disiplini" değil (TB-28, ölçüldü):** açıkken
+      **Gerekçe yalnız "deploy disiplini" değil (TB-30, ölçüldü):** açıkken
       `core/migrations.ensure_schema` çözümlenemeyen bir damgayı
       `stamp head --purge` ile SESSİZCE `head`'e taşır; sonraki
       `upgrade head` yapacak iş bulamaz ve **başarıyla döner**. Araya giren

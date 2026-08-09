@@ -124,9 +124,15 @@ kuyruk ise gün sınırını `Europe/Istanbul − 4 saat` ile çözüyordu — *
 taban**. Pazartesi 20:00'de cevaplanan bir kart Salı 09:00'da tekrar
 cevaplandığında motor "aynı gün" (13 saat < 1 gün) sayıyor ve Pazartesi
 23:00'teki cevapla **birebir aynı** `S = 14.077712147375411` üretiyordu; oysa
-kuyruk onu ertesi günün kartı olarak gösteriyordu. Tek taban artık
-`dayboundary.study_day` farkıdır. F-15 referans tablosu bu değişiklikten sonra
-yeniden koşuldu: **sapma yok** (70 adım, 14 senaryo).
+kuyruk onu ertesi günün kartı olarak gösteriyordu. **"Geçen gün" ölçüsünün
+tabanı artık tektir**: `dayboundary.study_day` farkı. F-15 referans tablosu bu
+değişiklikten sonra yeniden koşuldu: **sapma yok** (70 adım, 14 senaryo).
+
+⚠️ Bu cümle **tüm sisteme genellenmemeli**: `elapsed_days` çalışma GÜNÜ ölçer
+ama `due_at` AN tutar ve G-5 karşılaştırması (`due_at <= now`) an üzerinden
+yapılır. İki granülarite hâlâ bir arada ve bu düzeltmeyle kapanmadı — kayıtlı
+borç, §11 "vade damgası an tabanında, elapsed çalışma günü tabanında". Motor
+asimetrinin dışındadır (an görmez); yanıltıcı olan genellemedir.
 
 Nöbetçiler: `F-17` (davranış — iki senaryonun ayrıştığı ölçülür),
 `test_f17_motorda_takvim_aritmetigi_kalmadi` (AST ile motor sınırı) ve
@@ -511,7 +517,7 @@ aynı şey değildir.
 Koşu sırasında sürücünün ağaç nöbetçisi bir kez devreye girdi (prova sürerken
 `ruff.toml` düzenlenmişti) ve provayı durdurdu — mutasyon sızıntısı olmadan.
 
-### 10.1 Denetim düzeltme turu (13 ek prova)
+### 10.1 Denetim düzeltme turu (16 ek prova)
 
 | # | Mutasyon | Hedef | Seçilen test | Sonuç (kırılan) |
 |---|---|---|---|---|
@@ -540,7 +546,7 @@ Son üçü, paralel `ip16-audit-kapanis` turunda yazılmış nöbetçilerin bu d
 **IP16-21 ilk koşuda "YAKALANMADI" raporlandı** — sebebi testin zayıflığı
 değil, ortak mutasyon sürücüsünün pytest `ERROR` satırlarını (hiç koşamayan
 test) saymamasıydı. Bu İP-16'ya özgü değildir, yedi paketin sürücüsünü de
-etkiler: ayrı borç kaydı [[TB-27]]. İP-16'da yerel olarak gölgelenerek
+etkiler: ayrı borç kaydı [[TB-29]]. İP-16'da yerel olarak gölgelenerek
 düzeltildi. Testin **gövdesinin** de kırıldığı ayrıca ölçülmüştür: kırmızı
 fazda (ip12 dalın ağacına alınmadan önce) aynı beş düğüm
 `Multiple head revisions` assert'iyle `FAILED` düşmüştü.
@@ -652,15 +658,15 @@ vitest/tsc/lint (uyarı artmaz). S-1/S-2 5'er tur.
 
 | Kapı | Sonuç |
 |---|---|
-| `pytest tests/integration` (tam) | **1263 passed · 0 failed · 16 skipped** (taban 1253/1/16; bilinen F30 flake'i bu turda geçti) |
+| `pytest tests/integration` (tam) | **1266 passed · 0 failed · 16 skipped** (taban 1253/1/16; +13 yeni düğüm, bilinen F30 flake'i bu turda geçti) |
 | `pytest tests/verify` (CI deseni: önce `alembic upgrade head`) | **132 passed** (tabanla birebir). DB **taze kuruldu** — zincir boş veritabanında `ip5 → ip12 → ip16_araliklitekrar → ip16_srs_izin_kodu_hizalama` sırasıyla koştu |
-| `pytest tests/unit/test_fsrs_scheduler.py` | 34 passed (F-15'in 70 adımı dahil, sapma yok) |
+| `pytest tests/unit/test_fsrs_scheduler.py` | **36 passed** (F-15'in 70 adımı dahil, sapma yok) |
 | `pytest tests/integration -k ip16` — **tekrarlanabilirlik** | 3 tam tur art arda yeşil (flake düzeltmesinden sonra; öncesinde 4 turda 1 kırık) |
 | `ruff check backend/` | temiz |
 | frontend `tsc -b` + `vitest run` | temiz · **791 passed** (77 dosya) |
 
 ⚠️ Frontend tam suite'i **yük altında** bir kez `PackageLabel` timeout'u verdi
-(arka planda 1263 testlik entegrasyon koşarken); izole ve boştaki makinede
+(arka planda 1266 testlik entegrasyon koşarken); izole ve boştaki makinede
 geçti. Bu İP-16 değil, kayıtlı [[TB-23]] (Vitest 5000 ms bütçesi) — yeni bir
 bulgu değil, doğrulaması.
 
