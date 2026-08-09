@@ -142,10 +142,19 @@ Index'ler (modele DE yazılır): `ix_srs_cards_deck`, `ix_srs_progress_user_due
 study_day)`, `ix_srs_decks_owner`, kısmi `uq_srs_review_logs_client_token
 (user_id, role_id, client_token) WHERE client_token IS NOT NULL`.
 
-Migration: yeni revizyon `ip16_araliklı_tekrar` → `down_revision =
-"ip5_siparis_vergi_kirilimi"`. İP-12/İP-14 paralel dallarda; head çatalı
-main'de beklenir, bu dalda tek head yeterli. Boş DB'de
-`upgrade head → downgrade -1 → upgrade head` + `alembic check` temiz.
+Migration: iki revizyon —
+`ip16_araliklitekrar` (şema, `down_revision = "ip5_siparis_vergi_kirilimi"`) →
+`ip16_srs_izinleri` (izin katalogu). Bu dalda **tek head**; boş DB'de
+`upgrade head → downgrade -1 ×2 → upgrade head` doğrulandı (downgrade sonrası
+`srs_*` tablo sayısı 0, yeniden upgrade'de 8 tablo + 2 izin) ve
+`alembic check` "No new upgrade operations detected" verir.
+
+⚠️ **Merge anında head çatalı (beklenen, bkz. görev tanımı):** İP-12 bu arada
+main'e girdi ve onun `ip12_urun_arama_vektoru` revizyonu da
+`ip5_siparis_vergi_kirilimi`'ye bağlı. İP-16 main'e alınırken iki head
+oluşacaktır; birleştirme sırasında bir **merge revision**
+(`alembic merge -m "ip12+ip16" ip12_urun_arama_vektoru ip16_srs_izinleri`)
+üretilmelidir. Bu dal içinde yapılacak bir şey yoktur.
 
 ## 4. Kuyruk, limit, leech, gün sınırı sözleşmesi
 
@@ -356,33 +365,40 @@ Rotalar (`lib/routes.ts` PATHS+ROUTES; nav: Öğren hub kartı "Aralıklı Tekra
 Hata `ErrorState`, boşluk `EmptyState` (ikisi ayrışır). Mevcut tasarım dili;
 dark-mode paritesi; sakin düzen (kart enflasyonu yok).
 
-## 10. Mutasyon kataloğu (20 prova)
+## 10. Mutasyon kataloğu (20 prova) — **20/20 YAKALANDI**
 
-Sürücü: byte yedeği + SHA-256 + CRLF eşleştirme (`scripts/mutation_drill.py`
-deseni); seçilen test sayısı 0 ise BAŞARISIZLIK.
+Sürücü: `backend/scripts/mutation_drill_ip16.py` — `scripts/mutation_drill`'in
+güvenlik makinesini (bayt yedeği + SHA-256 doğrulamalı geri alma, kirli ağaç
+reddi, HEAD/status karşılaştırması) yeniden kullanır. **Ek nöbetçi:** her prova
+mutasyondan ÖNCE `--collect-only` ile seçilen test sayısını ölçer; **0 ise
+BAŞARISIZLIKTIR** (exit 0'a güvenilmez) — "test zayıf" ile "test hiç koşmadı"
+aynı şey değildir.
 
-| # | Mutasyon | Kırılması gereken |
-|---|---|---|
-| 1 | Kararlılık artışını kaldır | F-9 |
-| 2 | Zorluk sınırını kaldır | F-10 |
-| 3 | Desired retention'ı yok say | F-12 |
-| 4 | Maksimum aralık tavanını kaldır | F-13 |
-| 5 | Öğrenme adımlarını atla | Q-1 |
-| 6 | Lapse'te relearning'e düşürmeyi kaldır | Q-4 |
-| 7 | Bury/suspend filtresini kaldır | Q-6/Q-7 |
-| 8 | Leech eşiğini yok say | Q-8 |
-| 9 | Günlük limiti yok say | L-1 |
-| 10 | Alt deste limit kalıtımını kaldır | L-3 |
-| 11 | TZ dönüşümünü UTC'ye çevir | G-1/G-3 |
-| 12 | Rollover ofsetini kaldır | G-2 |
-| 13 | Cevap claim'ini koşulsuzlaştır | S-1 |
-| 14 | Undo'yu zincirlenebilir yap | S-5 |
-| 15 | Deste sahiplik kontrolünü kaldır | D-4 |
-| 16 | Eğitmene ilerleme aç | D-5/D-6 |
-| 17 | Kopyayı kaynağa bağla | D-9 |
-| 18 | Sunucu sayfalamasını istemciye al | B-3 |
-| 19 | Ters kart ilerlemesini ana kartla paylaştır | T-2 |
-| 20 | Yazarak cevaplama karşılaştırmasını gevşet | T-6 |
+| # | Mutasyon | Hedef | Seçilen test | Sonuç (kırılan) |
+|---|---|---|---|---|
+| IP16-1 | Kararlılık artışını kaldır | F-9 | 31 | ✅ 10 |
+| IP16-2 | Zorluk 1..10 sınırını kaldır | F-10 | 31 | ✅ 2 |
+| IP16-3 | Desired retention'ı yok say | F-12 | 31 | ✅ 1 |
+| IP16-4 | Maksimum aralık tavanını kaldır | F-13 | 31 | ✅ 2 |
+| IP16-5 | Öğrenme adımlarını atla | Q-1 | 47 | ✅ 18 |
+| IP16-6 | Lapse'te relearning'e düşürmeyi kaldır | Q-4 | 47 | ✅ 5 |
+| IP16-7 | Bury/suspend filtresini kaldır | Q-6/Q-7 | 16 | ✅ 2 |
+| IP16-8 | Leech eşiğini yok say | Q-8 | 16 | ✅ 1 |
+| IP16-9 | Günlük limitleri yok say | L-1/L-2 | 16 | ✅ 5 |
+| IP16-10 | Alt deste limit kalıtımını kaldır | L-3 | 16 | ✅ 1 |
+| IP16-11 | TZ dönüşümünü UTC'ye çevir | G-1/G-3 | 16 | ✅ 1 |
+| IP16-12 | Rollover ofsetini kaldır | G-2 | 16 | ✅ 1 |
+| IP16-13 | Cevap claim'ini koşulsuzlaştır | S-1 | 6 | ✅ 2 |
+| IP16-14 | Undo'yu zincirlenebilir yap | S-5 | 6 | ✅ 1 |
+| IP16-15 | Deste sahiplik kontrolünü kaldır | D-4 | 13 | ✅ 2 |
+| IP16-16 | **Eğitmene ilerleme aç** | D-5/D-6 | 13 | ✅ 2 |
+| IP16-17 | Kopyayı kaynağa bağla | D-9 | 13 | ✅ 3 |
+| IP16-18 | Sunucu sayfalamasını istemciye al | B-3 | 14 | ✅ 1 |
+| IP16-19 | Ters kart ilerlemesini paylaştır | T-2 | 6 | ✅ 1 |
+| IP16-20 | Yazarak cevaplamayı gevşet | T-6 | 13 | ✅ 5 |
+
+Koşu sırasında sürücünün ağaç nöbetçisi bir kez devreye girdi (prova sürerken
+`ruff.toml` düzenlenmişti) ve provayı durdurdu — mutasyon sızıntısı olmadan.
 
 ## 11. Kalan P2'ler (bilinçli kapsam dışı)
 
@@ -392,6 +408,14 @@ deseni); seçilen test sayısı 0 ise BAŞARISIZLIK.
 - Medya, .apkg içe/dışa aktarma, senkron protokolü, filtreli deste — v2
   (görev tanımında kapsam dışı).
 - Kuyrukta yeni/review karışım seçenekleri (sabit AfterReviews) — §4.1.
+- **B-6 iki katmanlı**: geçersiz filtre değeri hem Pydantic şemasında hem
+  `browse_cards` içinde 422 üretir. Şema katmanını tek başına söken bir
+  mutasyon testi kırmaz (yalnız `deck_id="abc"` gerçekten tipli query
+  parametresine bağlıdır). Davranış sözleşmesi korunuyor, ama B-6'nın
+  nöbetçiliği bu noktada zayıf — katman ayrımı istenirse ayrı test gerekir.
+- **Gerçek tarayıcı kabulü yapılmadı**: frontend Vitest + `tsc` + lint ile
+  doğrulandı; klavye kısayolları, cloze/diff render'ı, mobil yerleşim ve
+  dark-mode paritesi gerçek tarayıcıda sınanmadı (kök CLAUDE.md §F).
 
 ## 12. Doğrulama kapıları
 
