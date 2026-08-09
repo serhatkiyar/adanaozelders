@@ -9,6 +9,7 @@ kanıtlanır — bu testler o mutasyonu yakalayamazsa yetersizdir.
 from __future__ import annotations
 
 import datetime
+import re
 
 from tests.integration.ip16_factory import cevapla, deste, kartlar, kuyruk, not_ekle
 
@@ -236,7 +237,8 @@ async def test_d6_uc_taramasi_govde_kontrolu(ip16, ip16_http, ip16_saat):
 # geliyordu. Alan artık kart tarayıcısında dönüyor — bu yüzden tarama eğitmen
 # VE admin token'ıyla yeniden yapılır.
 
-#: Router'daki GET uçlarının TAMAMI (9). Yeni GET ucu eklenirse buraya da eklenir.
+#: Router'daki GET uçlarının TAMAMI. Elle tutulur — ama bayatlaması D-6c
+#: nöbetçisiyle engellenir (yeni uç eklenip buraya konmazsa test kırılır).
 SRS_GET_UCLARI = (
     "/api/v1/srs/decks",
     "/api/v1/srs/decks/platform",
@@ -248,6 +250,16 @@ SRS_GET_UCLARI = (
     "/api/v1/srs/tags",
     "/api/v1/srs/admin/platform-decks",
 )
+
+
+def _tarama_yolu(kalip: str) -> str:
+    """Tarama listesi girdisini OpenAPI yol biçimine indirger.
+
+    Query dizesi atılır ve yol parametresinin ADI silinir (`{deck}` ↔
+    `{deck_id}` farkı yüzünden küme karşılaştırması boşuna kırılmasın).
+    """
+    yol = kalip.split("?")[0]
+    return re.sub(r"\{[^}]*\}", "{}", yol)
 
 
 async def test_d6b_leech_izi_hicbir_uctan_sizmiyor(ip16, ip16_http, ip16_saat):
@@ -296,6 +308,47 @@ async def test_d6b_leech_izi_hicbir_uctan_sizmiyor(ip16, ip16_http, ip16_saat):
                     assert veri.get(anahtar) == 0, (
                         f"{etiket} {uc}: {anahtar} başkasının kartlarını saydı"
                     )
+
+
+# ── D-6c: tarama yüzeyi router ile AYNI — liste bayatlayamaz ───────────────
+
+
+def test_d6c_tarama_yuzeyi_router_ile_ayni_boyutta():
+    """`SRS_GET_UCLARI` router'daki `/srs` GET uçlarının TAMAMINI kapsamalı.
+
+    D-6 ve D-6b elle tutulan bir listeyi gezer. Liste bayatlarsa (yeni bir GET
+    ucu eklenip taramaya konmazsa) iki test de **sessizce eksik tarar**: yeşil
+    kalırlar ama yeni uç hiç sınanmamıştır. Bu düğüm o sessizliği bozar.
+
+    Karşılaştırma sayı DEĞİL küme üzerinden yapılır: bir uç eklenip başkası
+    silinseydi sayı eşit kalır, küme kalmazdı. Yol parametresinin adı
+    (`{deck}` ↔ `{deck_id}`) ve query dizesi normalize edilir.
+
+    Route tablosu OpenAPI şemasından okunur; `app.routes` KULLANILAMAZ —
+    FastAPI `include_router`'da tembel bir `_IncludedRouter` bırakır ve
+    alt-router yolları ancak istek çözümlenirken düzleşir (aynı tuzak D-7'de
+    ve `tests/acceptance/test_f30_packing_contract.py`'de belgeli).
+    """
+    from main import app
+
+    router_ucleri = {
+        _tarama_yolu(yol)
+        for yol, islemler in app.openapi()["paths"].items()
+        if yol.startswith("/api/v1/srs") and "get" in islemler
+    }
+    assert router_ucleri, "srs GET rotaları kayıtlı değil"
+    taranan = {_tarama_yolu(k) for k in SRS_GET_UCLARI}
+
+    eksik = router_ucleri - taranan
+    fazla = taranan - router_ucleri
+    assert not eksik, (
+        f"router'da olup taramada OLMAYAN GET ucu: {sorted(eksik)} — "
+        "D-6/D-6b bu ucu hiç sınamıyor, K-6 orada ölçülmemiş demektir"
+    )
+    assert not fazla, (
+        f"taramada olup router'da olmayan yol: {sorted(fazla)} — "
+        "liste ölü girdi taşıyor"
+    )
 
 
 # ── D-7: admin de rutin olarak ilerleme görmüyor ────────────────────────────

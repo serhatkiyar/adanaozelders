@@ -1,8 +1,11 @@
-"""İP-16 (aralıklı tekrar) mutasyon provası kataloğu — 32 mutasyon.
+"""İP-16 (aralıklı tekrar) mutasyon provası kataloğu — 35 mutasyon.
 
 İlk 20'si paketin kendi turundan; 21-33 arası bağımsız denetimin açtığı
-bulguların (B1/B2/B4/B5/B6/B7 + H3) düzeltmelerini korur. Katalogda **IP16-23
-yoktur**: "izin migration'ının revizyon kimliğini TERK EDİLMİŞ bir kimliğe
+bulguların (B1/B2/B4/B5/B6/B7 + H3) düzeltmelerini korur; 34-36 paralel
+`ip16-audit-kapanis` turundan elle alınan üç nöbetçiyi (D-6c + iki F-17)
+korur.
+
+Katalogda **IP16-23 yoktur**: "izin migration'ının revizyon kimliğini TERK EDİLMİŞ bir kimliğe
 geri dirilt" provası tek kullanımlık test veritabanının TAZE olmasını ister
 (eski kimlikli bir DB'de alembic zaten `Can't locate revision` verir ve prova
 kendi ölçmek istediği şeyi ölçemez). O prova elle yapıldı: DB düşürülüp
@@ -64,6 +67,8 @@ SERVICE = "backend/services/srs_service.py"
 TYPEANS = "frontend/src/lib/srsTypeAnswer.ts"
 FLAGS = "frontend/src/components/srs/SrsCardFlags.tsx"
 MIGRASYON = "backend/migrations/versions/ip16_araliklitekrar.py"
+ROUTER = "backend/api/routers/srs.py"
+PARAMS = "backend/services/spaced_repetition/params.py"
 IZINLER = "backend/migrations/versions/ip16_srs_izin_kodu_hizalama.py"
 
 BIRIM = "tests/unit/test_fsrs_scheduler.py"
@@ -400,6 +405,33 @@ MUTASYONLAR: list[Mutasyon] = [
         "      {false && isLeech && (  /* MUTASYON */",
         ("src/components/srs/SrsCardFlags.test.tsx",),
         taraf="frontend",
+    ),
+    # ── 34-36: ip16-audit-kapanis dalından alınan üç nöbetçi ───────────────
+    Mutasyon(
+        "IP16-34", "D-6c: taramaya konmamış yeni GET ucu (liste bayatlıyor)",
+        ROUTER,
+        '    return {"items": await srs_service.list_tags(db, user)}',
+        '''    return {"items": await srs_service.list_tags(db, user)}
+
+
+@router.get("/mutasyon-yeni-uc")  # MUTASYON: taramaya eklenmemiş uç
+async def mutasyon_yeni_uc(user: CurrentUser = Depends(get_current_active_user)):
+    return {"ok": True}''',
+        (GIZLILIK,),
+    ),
+    Mutasyon(
+        "IP16-35", "K-9: 04:00 devrilmesi kaldırıldı (gece yarısı gün sınırı)",
+        PARAMS,
+        "ROLLOVER_HOUR: int = 4",
+        "ROLLOVER_HOUR: int = 0  # MUTASYON",
+        (BIRIM,),
+    ),
+    Mutasyon(
+        "IP16-36", "F-17: retrievability geçen günü yok sayıyor (hep R=1)",
+        ENGINE,
+        "    return _retrievability_at(state.stability, max(0, int(elapsed_days)))",
+        "    return _retrievability_at(state.stability, 0)  # MUTASYON",
+        (BIRIM,),
     ),
 ]
 

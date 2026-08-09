@@ -367,11 +367,32 @@ def test_f16_uc_durumlar():
 # ── F-17 (H3): elapsed_days tabanı kuyruğun gün sınırıyla AYNI ──────────────
 
 
-def _tr(yil, ay, gun, saat):
+def _tr(yil, ay, gun, saat, dakika=0):
     """Europe/Istanbul yerel anı (UTC+3; test aralığında DST yok)."""
     return datetime.datetime(
-        yil, ay, gun, saat, tzinfo=datetime.timezone(datetime.timedelta(hours=3))
+        yil, ay, gun, saat, dakika,
+        tzinfo=datetime.timezone(datetime.timedelta(hours=3)),
     ).astimezone(UTC)
+
+
+def _gun_farki(sonra, once) -> int:
+    """Çağıranın motora verdiği ölçü: geçen ÇALIŞMA günü sayısı."""
+    from services.spaced_repetition import dayboundary
+
+    return (dayboundary.study_day(sonra) - dayboundary.study_day(once)).days
+
+
+def _review_karti(stability: float = 10.0):
+    """REVIEW durumunda, S/D'si bilinen bir kart (ölçüm çapası)."""
+    eng = _engine()
+    return eng.SrsCardState(
+        phase=eng.CardPhase.REVIEW,
+        step=None,
+        stability=stability,
+        difficulty=5.0,
+        reps=3,
+        lapses=0,
+    )
 
 
 def test_f17_elapsed_gun_sinirini_izler_takvim_farkini_degil():
@@ -416,6 +437,61 @@ def test_f17_elapsed_gun_sinirini_izler_takvim_farkini_degil():
     assert ertesi_gun.state.stability != pytest.approx(
         ayni_gun.state.stability, rel=1e-9
     ), "ertesi gün aynı gün gibi puanlanıyor — iki taban hâlâ farklı"
+
+
+def test_f17_rollover_oncesi_hala_ayni_calisma_gunudur():
+    """Salı 03:30 TR henüz Pazartesi çalışma günüdür (04:00 devrilmesi).
+
+    F-17'nin ölçtüğü asimetrinin ÖTEKİ yarısı. Orada takvim farkı 0 iken
+    çalışma günü 1'di; burada tersi: takvim TARİHİ değişti (3 Ağu → 4 Ağu)
+    ama çalışma günü değişmedi, yani aynı-gün (short-term) formülü
+    uygulanmalı. K-9'un asimetrisi tam olarak budur ve iki yarısı ayrı ayrı
+    nöbet altında olmalı — biri düzeltilip öteki bozulabilir.
+    """
+    eng = _engine()
+    pzt20 = _tr(2026, 8, 3, 20)
+    gece = _tr(2026, 8, 4, 3, 30)      # Salı 03:30 TR → hâlâ Pazartesi günü
+    ayni_aksam = _tr(2026, 8, 3, 20, 30)
+
+    assert gece.astimezone(pzt20.tzinfo).date() != pzt20.astimezone(
+        pzt20.tzinfo
+    ).date(), "kurulum hatası: iki anın takvim tarihi aynı çıktı"
+    assert _gun_farki(gece, pzt20) == 0, "04:00 öncesi yeni çalışma günü sayıldı"
+
+    s_gece = eng.review(
+        _review_karti(), 3, elapsed_days=_gun_farki(gece, pzt20)
+    ).state.stability
+    s_aksam = eng.review(
+        _review_karti(), 3, elapsed_days=_gun_farki(ayni_aksam, pzt20)
+    ).state.stability
+    assert s_gece == pytest.approx(s_aksam, rel=1e-12)
+    # Aynı çalışma günü → short-term formülünün ölçülmüş altın değeri.
+    assert s_gece == pytest.approx(14.077712147375411, rel=1e-12)
+
+
+def test_f17_hatirlanabilirlik_de_calisma_gunune_gore():
+    """`retrievability` aynı ölçüyü kullanmalı — iki tanım bir arada yaşamaz.
+
+    Aralık hesabını çalışma gününe bağlayıp hatırlanabilirliği takvimde
+    bırakmak, aynı kartı iki yerde farklı "kaç gün geçti" ile anlatırdı;
+    istatistik ekranı kuyrukla çelişirdi.
+    """
+    eng = _engine()
+    kart = _review_karti()
+    pzt20 = _tr(2026, 8, 3, 20)
+    gece = _tr(2026, 8, 4, 3, 30)       # aynı çalışma günü
+    sali_sabah = _tr(2026, 8, 4, 9)     # ertesi çalışma günü
+
+    r_ayni = eng.retrievability(kart, elapsed_days=_gun_farki(gece, pzt20))
+    r_ertesi = eng.retrievability(
+        kart, elapsed_days=_gun_farki(sali_sabah, pzt20)
+    )
+    assert r_ayni == pytest.approx(1.0), (
+        "aynı çalışma gününde hatırlanabilirlik düşmemeli"
+    )
+    assert r_ertesi < r_ayni, (
+        "bir çalışma günü geçtiği hâlde hatırlanabilirlik düşmedi"
+    )
 
 
 def test_f17_motorda_takvim_aritmetigi_kalmadi():
