@@ -60,6 +60,10 @@ ignore = [
 # İP-16 mutasyon kataloğu: aynı sürücünün güvenlik makinesini kullanır, aynı
 # gerekçeyle konuşur (seçilen test sayısı + kırılan testler + geri alma kanıtı).
 "scripts/mutation_drill_ip16.py" = ["T201"]
+# İP-16 F-15 altın referans üreticisi: test DEĞİL, kaynak kanıtıdır. Gerçek
+# py-fsrs v5.1.3'e karşı çalıştırılıp `tests/data/ip16_fsrs_ref.json`'u basar;
+# değerlerin nereden geldiği ancak bu betik okunarak doğrulanabilir.
+"tests/data/ip16_fsrs_ref_generator.py" = ["T201"]
 # Aynı gerekçe: DB kısıtı (DDL) mutasyon provası sürücüsü. Hangi kısıtın
 # düşürüldüğünü, testin kırıldığını ve geri yüklemenin DAVRANIŞLA doğrulandığını
 # adım adım yazar; çıktı provanın kanıtıdır.
