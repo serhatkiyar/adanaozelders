@@ -351,6 +351,48 @@ async def test_g1_g3_rollover_gun_yazimi(ip16, ip16_http, ip16_saat):
     )
 
 
+# ── Q-10 (B5): aynı notun kardeş kartları ardışık gelmiyor ──────────────────
+
+
+async def test_q10_kardes_kartlar_ardisik_gelmiyor(ip16, ip16_http, ip16_saat):
+    """BASIC_REVERSED × 2 not = 4 kart; dört çekimde aynı not art arda gelmez.
+
+    Sözleşme §4.1 "sibling bury YOK" der (kardeşler aynı GÜN gelebilir) —
+    burada değişen o değil, kardeşlerin aynı oturumda **peş peşe** gelmesi.
+    Ölçülen eski davranış: sıra kart id'siyle veriliyordu, yani not başına
+    iki kart bitişik düşüyordu ve öğrenci cevabı hatırlayarak veriyordu
+    (kartın öğrettiği şey değil, üç saniye önceki ekran).
+    """
+    ip16_saat(T0)
+    _cid, hdr = await ip16.ogrenci()
+    d = await deste(ip16_http, hdr)
+    await not_ekle(
+        ip16_http, hdr, d["id"], note_type="BASIC_REVERSED", front="a1", back="b1"
+    )
+    await not_ekle(
+        ip16_http, hdr, d["id"], note_type="BASIC_REVERSED", front="a2", back="b2"
+    )
+
+    gorulen_notlar = []
+    for _ in range(4):
+        q = await kuyruk(ip16_http, hdr, d["id"])
+        assert q["card"] is not None, f"kuyruk erken boşaldı: {gorulen_notlar}"
+        gorulen_notlar.append(q["card"]["note_id"])
+        # Easy: kart REVIEW'a gider ve vadesi günler sonrasına düşer, yani
+        # learn-ahead penceresinden çıkar; dört çekim dört FARKLI kart olur.
+        await cevapla(ip16_http, hdr, q["card"]["id"], 4)
+
+    assert len(set(gorulen_notlar)) == 2, f"iki not bekleniyordu: {gorulen_notlar}"
+    ardisik = [
+        (a, b)
+        for a, b in zip(gorulen_notlar, gorulen_notlar[1:], strict=False)
+        if a == b
+    ]
+    assert not ardisik, (
+        f"aynı notun kardeşleri peş peşe geldi: {gorulen_notlar}"
+    )
+
+
 # ── G-4: kaçırılan günler birikiyor, kart kaybolmuyor ───────────────────────
 
 async def test_g4_kacirilan_gunler_birikir(ip16, ip16_http, ip16_saat):

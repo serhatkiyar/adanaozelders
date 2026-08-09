@@ -1077,6 +1077,46 @@ async def _count_cards(
     return int((await db.execute(stmt)).scalar_one())
 
 
+async def _son_cevaplanan_not(
+    db: AsyncSession, user: CurrentUser
+) -> int | None:
+    """Kullanıcının EN SON cevapladığı kartın not kimliği (geri alınmamış log).
+
+    Q-10 kardeş ayırmasının çapası. Tek satırlık bir sorgu: sıralamaya
+    girdiği için kuyruk çağrısı başına bir kez okunur.
+    """
+    stmt = (
+        select(SrsCard.note_id)
+        .select_from(SrsReviewLog)
+        .join(SrsProgress, SrsProgress.id == SrsReviewLog.progress_id)
+        .join(SrsCard, SrsCard.id == SrsProgress.card_id)
+        .where(
+            SrsReviewLog.user_id == user.id,
+            SrsReviewLog.role_id == user.role_id,
+            SrsReviewLog.undone_at.is_(None),
+        )
+        .order_by(SrsReviewLog.id.desc())
+        .limit(1)
+    )
+    return (await db.execute(stmt)).scalar_one_or_none()
+
+
+def _kardes_ayirma(son_note_id: int | None):
+    """Q-10: son cevaplanan notun kardeşleri sıranın SONUNA düşer.
+
+    Sözleşme §4.1 "sibling bury YOK" der — kardeşler aynı GÜN gelebilir; bu
+    kural onu değiştirmez, yalnız peş peşe gelmelerini engeller. Peş peşe
+    gelen ters kart (`BASIC_REVERSED`) ya da aynı metnin cloze'u, öğrenciye
+    kartın öğrettiğini değil üç saniye önceki ekranı hatırlatır; ölçülen
+    hatırlama değeri bozulur.
+
+    Başka aday yoksa kardeş yine gelir (kuyruğu boşaltmak daha kötü olurdu).
+    """
+    if son_note_id is None:
+        return []
+    return [(SrsNote.id == son_note_id).asc()]
+
+
 async def _pick_card(
     db: AsyncSession,
     user: CurrentUser,
@@ -1084,6 +1124,7 @@ async def _pick_card(
     now: datetime.datetime,
     cond_fn,
     order_fn,
+    son_note_id: int | None = None,
 ):
     prog = aliased(SrsProgress)
     stmt = (
@@ -1097,7 +1138,7 @@ async def _pick_card(
             _available(prog, now),
             cond_fn(prog),
         )
-        .order_by(*order_fn(prog))
+        .order_by(*_kardes_ayirma(son_note_id), *order_fn(prog))
         .limit(1)
     )
     return (await db.execute(stmt)).first()
@@ -1205,6 +1246,9 @@ async def study_queue(db: AsyncSession, user: CurrentUser, deck_id: int) -> dict
     def _order_id(_p):
         return (SrsCard.id.asc(),)
 
+    # Q-10: son cevaplanan notun kardeşi, başka aday varken sıraya girmez.
+    son_note = await _son_cevaplanan_not(db, user)
+
     row = await _pick_card(
         db,
         user,
@@ -1212,6 +1256,7 @@ async def study_queue(db: AsyncSession, user: CurrentUser, deck_id: int) -> dict
         now,
         lambda p: and_(p.state.in_(("LEARNING", "RELEARNING")), p.due_at <= now),
         _order_due,
+        son_note,
     )
     if row is None and rem_review > 0:
         row = await _pick_card(
@@ -1221,6 +1266,7 @@ async def study_queue(db: AsyncSession, user: CurrentUser, deck_id: int) -> dict
             now,
             lambda p: and_(p.state == "REVIEW", p.due_at <= now),
             _order_due,
+            son_note,
         )
     if row is None and rem_new > 0:
         row = await _pick_card(
@@ -1230,6 +1276,7 @@ async def study_queue(db: AsyncSession, user: CurrentUser, deck_id: int) -> dict
             now,
             lambda p: or_(p.id.is_(None), p.state == "NEW"),
             _order_id,
+            son_note,
         )
     if row is None:
         # Learn-ahead (Anki 20 dk): başka iş yoksa yaklaşan öğrenme kartı.
@@ -1240,6 +1287,7 @@ async def study_queue(db: AsyncSession, user: CurrentUser, deck_id: int) -> dict
             now,
             lambda p: and_(p.state.in_(("LEARNING", "RELEARNING")), p.due_at <= ahead),
             _order_due,
+            son_note,
         )
     card_dict = None
     if row is not None:
