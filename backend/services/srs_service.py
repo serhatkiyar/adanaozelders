@@ -120,6 +120,28 @@ def _engine_state(progress: SrsProgress | None) -> object:
     return engine.SrsCardState(**{n: values[n] for n in field_names if n in values})
 
 
+def _gecen_calisma_gunu(
+    progress: SrsProgress | None, now: datetime.datetime
+) -> int:
+    """Son cevaptan bu yana geçen ÇALIŞMA günü sayısı (H3 tek tabanı).
+
+    Motor takvim aritmetiği yapmaz; geçen gün sayısını burası verir ve tabanı
+    kuyruğunkiyle aynı tutar (`dayboundary.study_day` = TR yereli − 4 saat).
+    Takvim farkı (`(now - last_review).days`) kullanılsaydı Pazartesi 20:00'de
+    cevaplanıp Salı 09:00'da tekrar cevaplanan kart "aynı gün" sayılırdı —
+    kuyruk ise onu ertesi günün kartı olarak gösterir.
+    """
+    if progress is None or progress.last_review_at is None:
+        return 0
+    return max(
+        0,
+        (
+            dayboundary.study_day(now)
+            - dayboundary.study_day(progress.last_review_at)
+        ).days,
+    )
+
+
 def _effective_limits(chain: list[SrsDeck]) -> tuple[int, int]:
     """Zincirin efektif (yeni, tekrar) limitleri — L-3 kalıtımı çekirdekte."""
     new_limit, review_limit = queuerules.effective_limits(
@@ -1151,7 +1173,9 @@ def _card_payload(
     now: datetime.datetime,
 ) -> dict:
     front, back = _card_faces(note, card.template_ord)
-    previews = engine.preview_intervals(_engine_state(progress), now)
+    previews = engine.preview_intervals(
+        _engine_state(progress), elapsed_days=_gecen_calisma_gunu(progress, now)
+    )
     return {
         "id": card.id,
         "note_id": note.id,
@@ -1348,14 +1372,19 @@ async def answer(
         }
 
     prev_lapses = progress.lapses
-    outcome = engine.review(_engine_state(progress), rating, now)
+    outcome = engine.review(
+        _engine_state(progress),
+        rating,
+        elapsed_days=_gecen_calisma_gunu(progress, now),
+    )
     new_state = outcome.state
     progress.state = _phase_value(new_state.phase)
     progress.step = new_state.step
     progress.stability = new_state.stability
     progress.difficulty = new_state.difficulty
-    progress.due_at = getattr(new_state, "due", None)
-    progress.last_review_at = getattr(new_state, "last_review", now) or now
+    # Vade damgası burada konur: motor takvim bilmez (H3).
+    progress.due_at = now + datetime.timedelta(minutes=outcome.interval_minutes)
+    progress.last_review_at = now
     progress.reps = int(getattr(new_state, "reps", progress.reps + 1))
     progress.lapses = int(getattr(new_state, "lapses", progress.lapses))
     # Leech (Q-8): yeni lapse eşiğe değdiyse işaretle + otomatik askıya al.

@@ -10,6 +10,8 @@ import asyncio
 import datetime
 import uuid
 
+import pytest
+
 from tests.integration.ip16_factory import cevapla, deste, kuyruk, not_ekle
 
 UTC = datetime.timezone.utc
@@ -146,6 +148,75 @@ async def test_s5_undo_zincirlenemez(ip16, ip16_http, ip16_saat):
     r2 = await ip16_http.post("/api/v1/srs/study/undo", headers=hdr, json={})
     assert r2.status_code == 409, (
         f"ikinci undo zincirlendi: {r2.status_code} {r2.text[:200]}"
+    )
+
+
+# ── S-7 (H3): servisin verdiği "geçen gün" kuyruk gün sınırıyla aynı tabanda ─
+#
+# Bu test bir MUTASYON PROVASI SONUCU eklendi: `_gecen_calisma_gunu`'yu takvim
+# farkına (`(now - last_review).days`) çeviren mutasyon, İP-16'nın 60 entegrasyon
+# testinin HİÇBİRİNİ kırmadı. Motorun tabanını birim testi (F-17) koruyordu ama
+# servisin motora ne verdiğini kimse ölçmüyordu — motoru düzeltip çağıranı
+# bozmak sessizce mümkündü.
+
+_TR = datetime.timezone(datetime.timedelta(hours=3))
+PZT_20 = datetime.datetime(2026, 8, 3, 20, 0, tzinfo=_TR).astimezone(UTC)
+PZT_23 = datetime.datetime(2026, 8, 3, 23, 0, tzinfo=_TR).astimezone(UTC)
+SALI_09 = datetime.datetime(2026, 8, 4, 9, 0, tzinfo=_TR).astimezone(UTC)
+
+
+async def _review_karti_kur(ip16, http, hdr, cid: int, an) -> tuple[int, int]:
+    """REVIEW durumunda, `an` anında cevaplanmış, S=10.0 olan bir kart."""
+    d = await deste(http, hdr)
+    await not_ekle(http, hdr, d["id"], front="h3", back="c")
+    q = await kuyruk(http, hdr, d["id"])
+    kart = q["card"]["id"]
+    await cevapla(http, hdr, kart, 4)  # Easy → doğrudan REVIEW
+    await ip16.sql_exec(
+        "UPDATE srs_progress SET stability = 10.0, difficulty = 5.0,"
+        " last_review_at = :an, due_at = :an WHERE card_id = :c AND user_id = :u"
+        " AND role_id = 3",
+        an=an, c=kart, u=cid,
+    )
+    return d["id"], kart
+
+
+async def _stability(ip16, kart: int, cid: int) -> float:
+    r = await ip16.sql(
+        "SELECT stability FROM srs_progress WHERE card_id = :c AND user_id = :u"
+        " AND role_id = 3",
+        c=kart, u=cid,
+    )
+    return float(r[0][0])
+
+
+async def test_s7_gecen_gun_calisma_gunu_tabaninda(ip16, ip16_http, ip16_saat):
+    """Pzt 20:00 → Salı 09:00 ile Pzt 20:00 → Pzt 23:00 AYNI sonucu vermemeli.
+
+    Takvim farkı ikisinde de 0 gündür (13 saat / 3 saat); çalışma günü farkı
+    ise 1 ve 0'dır. Eski taban ikisini eşitliyor ve her ikisinde de
+    S = 14.077712147375411 (short-term formülü) üretiyordu — ölçüldü.
+    """
+    ip16_saat(PZT_20)
+    cid, hdr = await ip16.ogrenci()
+
+    _d1, kart_ayni = await _review_karti_kur(ip16, ip16_http, hdr, cid, PZT_20)
+    ip16_saat(PZT_23)
+    await cevapla(ip16_http, hdr, kart_ayni, 3)
+    ayni_gun = await _stability(ip16, kart_ayni, cid)
+
+    ip16_saat(PZT_20)
+    _d2, kart_ertesi = await _review_karti_kur(ip16, ip16_http, hdr, cid, PZT_20)
+    ip16_saat(SALI_09)
+    await cevapla(ip16_http, hdr, kart_ertesi, 3)
+    ertesi_gun = await _stability(ip16, kart_ertesi, cid)
+
+    assert ayni_gun == pytest.approx(14.077712147375411, rel=1e-12), (
+        f"aynı çalışma günü short-term formülünde kalmalı: {ayni_gun}"
+    )
+    assert ertesi_gun != pytest.approx(ayni_gun, rel=1e-9), (
+        "ertesi çalışma günü aynı gün gibi puanlandı — servis motora takvim "
+        f"farkı veriyor (ikisi de {ayni_gun})"
     )
 
 

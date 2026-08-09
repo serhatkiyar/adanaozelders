@@ -1,14 +1,27 @@
 """İP-16 FSRS-5 saf planlayıcı motoru (py-fsrs v5.1.3 birebir).
 
-DB bilmez, IO yapmaz, kendi saatini okumaz — "şimdi" her fonksiyona
-parametreyle enjekte edilir. Deterministiktir (fuzz yok).
+DB bilmez, IO yapmaz, kendi saatini okumaz. Deterministiktir (fuzz yok).
 Formüller: sözleşme §1.2, adım makinesi §1.3.
+
+## Zaman burada YOK (denetim H3)
+
+Motor takvim aritmetiği yapmaz: ne `datetime` görür, ne `timedelta` hesaplar,
+ne de `due` üretir. Girdisi **geçen çalışma günü sayısıdır** (`elapsed_days`),
+çıktısı **bir sonraki aralık** (`interval_minutes`); vade damgasını çağıran
+koyar.
+
+Sebebi ölçülmüş bir hatadır: motor eskiden `(now - last_review).days`
+kullanıyordu, kuyruk ise gün sınırını `Europe/Istanbul − 4 saat` ile çözüyordu.
+İki farklı taban, aynı kartı iki yerde farklı günde sayıyordu — Pazartesi
+20:00'de cevaplanıp Salı 09:00'da tekrar cevaplanan kart motora göre "aynı
+gün"dü (13 saat) ve Pazartesi 23:00'teki cevapla birebir aynı S değerini
+(14.077712147375411) üretiyordu. Tek taban artık `dayboundary.study_day`
+farkıdır ve onu çağıran verir.
 """
 from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from datetime import datetime, timedelta
 from enum import Enum
 
 from services.spaced_repetition import params
@@ -25,12 +38,13 @@ class CardPhase(str, Enum):
 
 @dataclass(frozen=True)
 class SrsCardState:
+    """Kartın hafıza durumu. `due`/`last_review` bilinçli olarak YOKTUR —
+    onlar takvim damgasıdır ve çağıranda (srs_service/DB) yaşar."""
+
     phase: CardPhase
     step: int | None
     stability: float | None
     difficulty: float | None
-    due: datetime | None
-    last_review: datetime | None
     reps: int
     lapses: int
 
@@ -41,8 +55,6 @@ class SrsCardState:
             step=None,
             stability=None,
             difficulty=None,
-            due=None,
-            last_review=None,
             reps=0,
             lapses=0,
         )
@@ -125,12 +137,12 @@ def _next_interval_days(
 # ── Motor ────────────────────────────────────────────────────────────────────
 
 def _update_memory(
-    state: SrsCardState, rating: int, now: datetime
+    state: SrsCardState, rating: int, elapsed_days: int
 ) -> tuple[float, float]:
     """S/D her cevapta güncellenir (§1.2 formül seçimi)."""
-    if state.last_review is None or state.stability is None or state.difficulty is None:
+    if state.stability is None or state.difficulty is None:
         return _initial_stability(rating), _initial_difficulty(rating)
-    elapsed = max(0, (now - state.last_review).days)  # tam gün truncation
+    elapsed = max(0, int(elapsed_days))
     if elapsed < 1:
         stability = _short_term_stability(state.stability, rating)
     else:
@@ -163,12 +175,17 @@ def _step_interval_minutes(
 def review(
     state: SrsCardState,
     rating: int,
-    now: datetime,
     *,
+    elapsed_days: int,
     desired_retention: float | None = None,
     maximum_interval_days: int | None = None,
 ) -> ReviewResult:
-    """Bir cevabı işler; yeni durum + bir sonraki aralık (dakika) döner."""
+    """Bir cevabı işler; yeni durum + bir sonraki aralık (dakika) döner.
+
+    `elapsed_days`: son cevaptan bu yana geçen **çalışma günü** sayısı
+    (`dayboundary.study_day` farkı). Aynı çalışma gününde verilen ikinci cevap
+    için 0'dır ve short-term formülü seçtirir.
+    """
     if rating not in (1, 2, 3, 4):
         raise ValueError(f"rating 1..4 olmalı: {rating!r}")
     retention = (
@@ -181,7 +198,7 @@ def review(
     )
 
     phase = CardPhase(state.phase)
-    stability, difficulty = _update_memory(state, rating, now)
+    stability, difficulty = _update_memory(state, rating, elapsed_days)
     lapses = state.lapses
 
     if phase == CardPhase.REVIEW:
@@ -190,13 +207,11 @@ def review(
             new_phase = CardPhase.RELEARNING
             new_step: int | None = 0
             interval_minutes: float = params.RELEARNING_STEPS_MINUTES[0]
-            due = now + timedelta(minutes=interval_minutes)
         else:
             new_phase = CardPhase.REVIEW
             new_step = None
             days = _next_interval_days(stability, retention, max_ivl)
             interval_minutes = days * 1440
-            due = now + timedelta(days=days)
     else:
         # NEW/LEARNING → learning adımları; RELEARNING → relearning adımları.
         if phase == CardPhase.RELEARNING:
@@ -212,7 +227,6 @@ def review(
             new_step = None
             days = _next_interval_days(stability, retention, max_ivl)
             interval_minutes = days * 1440
-            due = now + timedelta(days=days)
         else:
             new_phase = learn_phase
             if rating == 3:  # Good, son adım değil → ilerle
@@ -222,29 +236,28 @@ def review(
                 new_step, interval_minutes = _step_interval_minutes(
                     steps, cur_step, rating
                 )
-            due = now + timedelta(minutes=interval_minutes)
 
     new_state = SrsCardState(
         phase=new_phase,
         step=new_step,
         stability=stability,
         difficulty=difficulty,
-        due=due,
-        last_review=now,
         reps=state.reps + 1,
         lapses=lapses,
     )
     return ReviewResult(state=new_state, interval_minutes=interval_minutes)
 
 
-def preview_intervals(state: SrsCardState, now: datetime) -> dict[int, float]:
+def preview_intervals(state: SrsCardState, *, elapsed_days: int) -> dict[int, float]:
     """Dört rating için sonraki aralık (dakika) — yan etkisiz önizleme."""
-    return {r: review(state, r, now).interval_minutes for r in (1, 2, 3, 4)}
+    return {
+        r: review(state, r, elapsed_days=elapsed_days).interval_minutes
+        for r in (1, 2, 3, 4)
+    }
 
 
-def retrievability(state: SrsCardState, now: datetime) -> float:
+def retrievability(state: SrsCardState, *, elapsed_days: int) -> float:
     """R(t,S); hiç tekrar edilmemiş kartta 0.0."""
-    if state.last_review is None or state.stability is None:
+    if state.stability is None:
         return 0.0
-    elapsed = max(0, (now - state.last_review).days)
-    return _retrievability_at(state.stability, elapsed)
+    return _retrievability_at(state.stability, max(0, int(elapsed_days)))
