@@ -7,6 +7,29 @@ kayıt bulunduğu yeri, gerçek etkisini ve neden ertelendiğini söyler.
 Bir borcu kapatan commit, ilgili satırı **buradan siler** (kapatılmış borcun
 notunu bırakmak, yapılmış bir işi yapılmamış gibi anlatır).
 
+## Numara tahsis kuralı (ZORUNLU — çakışma iki kez yaşandı)
+
+Paralel dallar aynı numarayı bağımsız olarak tahsis edip çakıştırdı: önce
+main ↔ İP-3 (TB-7…TB-10, aşağıdaki not), sonra main ↔ `ip16-flashcard` ↔
+`ip16-audit-kapanis` (üçü de **TB-24**'ü farklı konular için kullandı — main:
+"İP-12 P2 listesi", audit dalı: "alembic damga-şema nöbetçisi yok",
+İP-16 dalı: "mutasyon sürücüsü ERROR saymıyor").
+
+Yeni kayıt açan **numarayı almadan önce ölçer**, en yüksek numarayı bu
+dosyanın kendi kopyasından okumaz:
+
+```bash
+# Tüm dallardaki en yüksek TB numarası — yeni kayıt bundan SONRA başlar.
+for r in $(git for-each-ref --format='%(refname:short)' refs/heads refs/remotes); do
+  git show "$r:docs/teknik-borc.md" 2>/dev/null | grep -o '^## TB-[0-9]*'
+done | grep -o '[0-9]*' | sort -n | tail -1
+```
+
+İki kural: (1) numara **hiçbir dalda** kullanılmamış olmalı; (2) bir dal
+merge edilirken çakışma çıkarsa **main kanoniktir**, gelen dalın kaydı
+yeniden numaralanır ve eski→yeni eşlemesi buraya yorum olarak yazılır (hiçbir
+kayıt silinmez).
+
 ---
 
 <!-- Numaralandırma notu (main ↔ İP-3 birleştirmesi): iki dal TB-6'nın üstüne
@@ -16,6 +39,16 @@ notunu bırakmak, yapılmış bir işi yapılmamış gibi anlatır).
      TB-10…TB-13'e taşındı. Hiçbir kayıt silinmedi. Eski→yeni: İP-3 TB-7→TB-10,
      TB-8→TB-11, TB-9→TB-12, TB-10→TB-13 (`docs/ip3-yetki-kvkk-sozlesme.md`
      atıfları da güncellendi). -->
+
+<!-- Numaralandırma notu (İP-16 düzeltme turu, 9 Ağu 2026): TB-24 ÜÇ ayrı
+     konuya verilmişti — main "İP-12 P2 listesi", `ip16-audit-kapanis`
+     "alembic damga-şema nöbetçisi yok", `ip16-flashcard` "mutasyon sürücüsü
+     ERROR saymıyor". main kanonik kabul edildi; İP-16 dalının kaydı
+     TB-24→**TB-27** olarak yeniden numaralandı (`docs/ip16-flashcard-
+     sozlesme.md` atıfı da güncellendi). Audit dalının TB-24'ü, İP-16 dalında
+     ölçülen `ensure_schema` bulgusuyla birlikte **TB-28** olarak açıldı ve
+     kapsamı daraltıldı; o dal merge edilirken kayıt İKİYE bölünmemeli,
+     TB-28 ile birleştirilmelidir. Hiçbir kayıt silinmedi. -->
 
 <!-- Kapanma notu (İP-2a merge'i, `06d3868`): **TB-3** ("İade reconciler
      devraldığında stok geri yüklenmiyor") KAPANDI ve dosyanın kendi kuralı
@@ -39,7 +72,25 @@ notunu bırakmak, yapılmış bir işi yapılmamış gibi anlatır).
      provası P9 conftest satırını sökünce T-1a kırılıyor. Detay:
      `docs/ip5-kdv-fatura-sozlesme.md` §8. -->
 
-## TB-24 · Mutasyon sürücüsü `ERROR` ile düşen (hiç koşamayan) testleri "kırılmadı" sayıyor — TÜM paketleri etkiler
+## TB-28 · `ensure_schema` şema/damga uyumsuzluğunu AKTİF OLARAK GİZLİYOR — üretimde kapalı olmalı
+
+> **Öncelik: yüksek.** Bu bir "nöbetçi eksikliği" değil; uygulamanın açılışta
+> uyumsuzluğu **düzeltmeden susturması**. Diğer kayıtların çoğu bir şeyin
+> ölçülmediğini söyler, bu kayıt ölçülen bir şeyin örtüldüğünü söyler.
+
+| | |
+|---|---|
+| **Bulundu** | İP-16 bağımsız denetimi + düzeltme turu, 9 Ağu 2026. Elle tarama ile bulundu, hiçbir test yakalamadı |
+| **Yer** | `backend/core/migrations.py::ensure_schema` (açılış, `AUTO_CREATE_DB=true`) · dolaylı: CI (`.github/workflows/ci.yml`), `tests/integration/conftest.py` |
+| **Durum** | `ensure_schema`, çözümlenemeyen bir damga gördüğünde **`stamp head --purge`** uygular (squash öncesi DB'ler için konmuş bir geçiş guard'ı). Sonuç zinciri ölçüldü: (1) DB eski/terk edilmiş bir revizyon kimliğine damgalı → `upgrade head` "Can't locate revision" verir; (2) guard damgayı sessizce `head`'e taşır; (3) sonraki `upgrade head` yapacak iş bulamaz ve **başarıyla döner**; (4) izin hizalama migration'ı **hiç koşmaz**, `srs.platform.*` bayat kodları DB'de kalır; (5) admin platform uçları SUPER_ADMIN'e dahi 403 döner ve menü öğesi gizlendiği için hata **görünmez**. Yani guard, tam da kendisini uyarması gereken durumu örtüyor |
+| **Neden ayrı kayıt** | Aynı boşluktan geçen üç arıza sınıfı var — (a) bayat damga, (b) kimlik aynı kalıp içeriğin değişmesi, (c) `down_revision` doğrusallaştırması sonrası "head damgalı ama araya giren DDL hiç koşmamış" DB. (a) gürültülü patlar; **(b) ve (c) tamamen sessizdir** ve `ensure_schema` (a)'yı da sessizleştirerek üçünü aynı sınıfa indiriyor |
+| **Ölçüm** | Denetim turunda makinedeki `adana*`/`ceyhandb` veritabanları tarandı: bayat damga taşıyan DB'ler ve "ip16 damgalı ama `ix_products_isbn` yok" (İP-12 boşluklu) DB'ler bulundu. Düzeltme turunda aynı zincir canlı görüldü: `adana_verify` bayat damgayla `alembic upgrade head`'i kırdı — orada `AUTO_CREATE_DB=false` olduğu için guard devreye girmedi ve hata GÖRÜNDÜ; guard açık olsaydı sessizce head'e taşınacaktı |
+| **Etki** | Bugün test/geliştirme ortamlarını vurdu, ama arıza sınıfı ortama duyarsız. Üretimde (b) sessizce yanlış yetki verisi, (c) sessizce eksik index/kolon bırakır — ikisi de "migration'lar geçti" raporuyla birlikte yaşar |
+| **LANSMAN KONTROL LİSTESİ** | **`AUTO_CREATE_DB=false` üretimde ZORUNLU** — dolayısıyla `ensure_schema` ve `stamp head --purge` guard'ı üretimde hiç çalışmaz. Üretim guard'ı (`Settings._guard_production`) `AUTO_CREATE_DB` açıkken zaten uygulamayı açtırmıyor; bu kayıt onu **kontrol listesine yazılı bir madde** hâline getirir, örtük bir davranış olarak bırakmaz. Şema üretimde yalnız açık, denetlenen bir `alembic upgrade head` adımıyla ilerler. Bkz. `docs/pk1-deployment-checklist.md` |
+| **Neden ertelendi** | Doğru çözümün iki parçası var: (1) damganın repoda karşılığı olduğunu doğrulamak (ucuz: `alembic_version.version_num` ∈ `versions/*.py` revision kimlikleri; bilinmeyen damgada fail-fast + beklenen revizyonu söyle — guard bunun YANINA, sonrasına değil); (2) şemanın damgayla uyuştuğunu CI'da **kapı** yapmak (`alembic check`). İkincisi bugün çapraz-dal sapması yüzünden kırmızı verir, yani dal durumu temizlenmeden kapıya çevrilemez. İP-16'nın kapsamı aralıklı tekrardır |
+| **Sonraki adım** | (1) `ensure_schema`'ya damga-repo doğrulaması + bilinmeyen damgada fail-fast; `--purge` guard'ını yalnız **bilinen** squash-öncesi revizyon listesine daralt; (2) taze DB'de `alembic upgrade head && alembic check` CI kapısı; (3) `down_revision` değiştiren her commit'in "eski zincirle kurulmuş DB'ler yeniden kurulmalı" notunu taşıması sözleşme kuralı olsun; (4) `AUTO_CREATE_DB=false` maddesini lansman kontrol listesine ekle |
+
+## TB-27 · Mutasyon sürücüsü `ERROR` ile düşen (hiç koşamayan) testleri "kırılmadı" sayıyor — TÜM paketleri etkiler
 
 | | |
 |---|---|

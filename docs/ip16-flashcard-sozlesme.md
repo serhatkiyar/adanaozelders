@@ -530,7 +530,7 @@ Koşu sırasında sürücünün ağaç nöbetçisi bir kez devreye girdi (prova 
 **IP16-21 ilk koşuda "YAKALANMADI" raporlandı** — sebebi testin zayıflığı
 değil, ortak mutasyon sürücüsünün pytest `ERROR` satırlarını (hiç koşamayan
 test) saymamasıydı. Bu İP-16'ya özgü değildir, yedi paketin sürücüsünü de
-etkiler: ayrı borç kaydı [[TB-24]]. İP-16'da yerel olarak gölgelenerek
+etkiler: ayrı borç kaydı [[TB-27]]. İP-16'da yerel olarak gölgelenerek
 düzeltildi. Testin **gövdesinin** de kırıldığı ayrıca ölçülmüştür: kırmızı
 fazda (ip12 dalın ağacına alınmadan önce) aynı beş düğüm
 `Multiple head revisions` assert'iyle `FAILED` düşmüştü.
