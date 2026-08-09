@@ -427,7 +427,17 @@ Koşu sırasında sürücünün ağaç nöbetçisi bir kez devreye girdi (prova 
   nöbetçiliği bu noktada zayıf — katman ayrımı istenirse ayrı test gerekir.
 - **Gerçek tarayıcı kabulü yapılmadı**: frontend Vitest + `tsc` + lint ile
   doğrulandı; klavye kısayolları, cloze/diff render'ı, mobil yerleşim ve
-  dark-mode paritesi gerçek tarayıcıda sınanmadı (kök CLAUDE.md §F).
+  dark-mode paritesi gerçek tarayıcıda sınanmadı (kök CLAUDE.md §F). Tasarım
+  denetimi kod okuması + üretim CSS'inde sınıf sırası ölçümüyle yapıldı.
+- **Öğrenci atama typeahead'i 100 rezervasyonla sınırlı**: aday kümesi
+  eğitmenin kendi rezervasyonlarından üretilir (`GET /bookings?limit=100`);
+  `/clients/search` eğitmene kapalıdır (`users.view` ister). 100'den fazla
+  rezervasyonu olan eğitmende çok eski bir öğrenci listede çıkmayabilir —
+  kalıcı çözüm eğitmene açık bir "öğrencilerim" ucudur.
+- **Frontend ekranlarının kendi test kapsamı dar**: saf yardımcılar
+  (`srsTypeAnswer`, `srsCloze`) Vitest'li ama sayfa bileşenleri için RTL
+  davranış testi yazılmadı; ekranlar tip denetimi ve derleme ile sınırlı
+  güvence altındadır.
 
 ## 12. Doğrulama kapıları
 
