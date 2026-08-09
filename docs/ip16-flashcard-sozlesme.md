@@ -49,14 +49,14 @@ Fuzz KAPALIDIR (deterministik zamanlama; py-fsrs `enable_fuzzing=False` eşdeğe
 
 ### 1.2 Formüller (py-fsrs v5.1.3 birebir)
 
-- Retrievability: `R(t,S) = (1 + FACTOR·t/S)^DECAY`; `t = max(0, (now - last_review).days)` — **tam gün truncation** (timedelta.days), kesirli gün değil.
+- Retrievability: `R(t,S) = (1 + FACTOR·t/S)^DECAY`; `t = max(0, elapsed_days)` — **tam gün**, kesirli gün değil. `elapsed_days` motora dışarıdan verilir ve **çalışma günü** farkıdır (`dayboundary.study_day`), takvim farkı DEĞİL — sebebi §2.1 (H3).
 - İlk tekrar: `S0(G) = max(w[G-1], 0.1)`; `D0(G) = clamp(w4 − e^(w5·(G−1)) + 1, 1, 10)`.
 - Başarılı tekrar: `S′ = S·(1 + e^{w8}·(11−D)·S^{−w9}·(e^{(1−R)·w10}−1)·hard_penalty·easy_bonus)`; `hard_penalty = w15` (yalnız Hard), `easy_bonus = w16` (yalnız Easy).
 - Lapse: `S′ = min(w11·D^{−w12}·((S+1)^{w13}−1)·e^{(1−R)·w14},  S/e^{w17·w18})`.
 - Aynı gün (elapsed < 1 gün): `S′ = S·e^{w17·(G−3+w18)}` (her rating'de bu formül; Again dahil).
 - Zorluk: `ΔD = −w6·(G−3)`; `D′ = D + ΔD·(10−D)/9` (linear damping); `D″ = w7·D0(4) + (1−w7)·D′`; sonra `clamp(D″, 1, 10)`. Mean-reversion hedefi `D0(4)` clamp'li hesaplanır.
 - Aralık: `I(S) = (S/FACTOR)·(r_d^{1/DECAY} − 1)`, `I = clamp(round(I), 1, maximum_interval)`; `round` Python banker's rounding. `r_d = 0.9` iken `I(S) = S`.
-- Formül seçimi: `last_review` yoksa initial; `elapsed < 1 gün` ise same-day; değilse rating=Again → lapse, diğerleri → başarılı tekrar. S/D **her cevapta** güncellenir; adım mantığı yalnız due/interval'ı belirler.
+- Formül seçimi: kartın `S`'si yoksa (hiç tekrar edilmemiş) initial; `elapsed_days < 1` ise same-day; değilse rating=Again → lapse, diğerleri → başarılı tekrar. S/D **her cevapta** güncellenir; adım mantığı yalnız interval'ı belirler (vade damgasını çağıran koyar, §2.1).
 
 ### 1.3 Öğrenme/yeniden-öğrenme adım makinesi (py-fsrs birebir)
 
@@ -77,7 +77,7 @@ Altın değerler gerçek py-fsrs v5.1.3 ile üretilmiştir (fuzz kapalı):
 üretici `backend/tests/data/ip16_fsrs_ref_generator.py`, çıktı
 `backend/tests/data/ip16_fsrs_ref.json` — **14 senaryo grubu, 70 adım**
 (her adım: rating, state, step, stability, difficulty, interval_days).
-Birim testi `tests/test_srs_scheduler.py::test_f15_referans_tablosu` bizim
+Birim testi `tests/unit/test_fsrs_scheduler.py::test_f15_referans_tablosu` bizim
 motorumuzu bu dosyadaki TÜM adımlarla karşılaştırır (S/D tolerans 1e-6,
 interval birebir).
 
@@ -99,11 +99,40 @@ Diğer gruplar: `hard_zinciri`, `easy_zinciri`, `ardisik_lapse`, `karisik`,
 
 Sınır sözleşmesi:
 
-- **DB bilmez, IO yapmaz, `now()` çağırmaz** — şimdiki zaman her fonksiyona
-  parametre olarak enjekte edilir. Modülde `datetime.now`, `random`,
-  `sqlalchemy`, `fastapi`, `redis` import'u YASAKTIR (birim test nöbetçisi
-  vardır: F-14 determinizm + kaynak taraması).
+- **DB bilmez, IO yapmaz, `now()` çağırmaz** — zaman/geçen gün her fonksiyona
+  parametre olarak enjekte edilir. Modülde `random`, `secrets`, `time`,
+  `sqlalchemy`, `fastapi`, `redis`, `httpx`, `requests` import'u ve
+  `datetime.now()`/`date.today()` çağrısı YASAKTIR.
+  **Nöbetçi gerçekten bu listeyi taşır** (denetçi B4): önceki nöbetçinin yasak
+  listesinde `random` YOKTU — sözleşme "random yasaktır, nöbetçisi vardır"
+  diyor ama nöbetçi onu aramıyordu. Liste artık tek kaynakta
+  (`tests/unit/test_fsrs_scheduler.py::YASAK_MODULLER` / `YASAK_CAGRILAR`) ve
+  F-14b düğümü sözleşmenin saydığı her yasağın listede olduğunu ayrıca
+  doğrular. Tarama **AST üzerinden** yapılır: metin araması, bu maddeyi yazan
+  yorumun kendisini ihlal sanıyordu (kök CLAUDE.md §C).
 - Deterministik: aynı girdi → aynı çıktı. Fuzz yok.
+
+### 2.1 Zaman motorda değil, çağıranda (H3 kararı)
+
+Motor **takvim aritmetiği yapmaz**: `datetime`/`timedelta` görmez, `due`
+üretmez. Girdisi geçen **çalışma günü** sayısı (`elapsed_days`), çıktısı bir
+sonraki aralıktır (`interval_minutes`); vade damgasını çağıran koyar
+(`srs_service._gecen_calisma_gunu` + `due_at = now + interval`).
+
+Sebebi ölçülmüş bir hatadır. Motor `(now - last_review).days` kullanıyordu,
+kuyruk ise gün sınırını `Europe/Istanbul − 4 saat` ile çözüyordu — **iki ayrı
+taban**. Pazartesi 20:00'de cevaplanan bir kart Salı 09:00'da tekrar
+cevaplandığında motor "aynı gün" (13 saat < 1 gün) sayıyor ve Pazartesi
+23:00'teki cevapla **birebir aynı** `S = 14.077712147375411` üretiyordu; oysa
+kuyruk onu ertesi günün kartı olarak gösteriyordu. Tek taban artık
+`dayboundary.study_day` farkıdır. F-15 referans tablosu bu değişiklikten sonra
+yeniden koşuldu: **sapma yok** (70 adım, 14 senaryo).
+
+Nöbetçiler: `F-17` (davranış — iki senaryonun ayrıştığı ölçülür),
+`test_f17_motorda_takvim_aritmetigi_kalmadi` (AST ile motor sınırı) ve
+`S-7` (servisin motora ne verdiği; gerçek PG + HTTP). S-7 bir mutasyon provası
+sonucu eklendi: servis tabanını takvim farkına çeviren mutasyon, İP-16'nın 60
+entegrasyon testinin hiçbirini kırmıyordu.
 
 Dosyalar:
 
@@ -111,9 +140,10 @@ Dosyalar:
   `default_new_per_day = 20`, `default_reviews_per_day = 200`,
   `ROLLOVER_HOUR = 4`, TZ adı `Europe/Istanbul`.
 - `engine.py` — `SrsCardState` (frozen dataclass: state, step, stability,
-  difficulty, due, last_review, reps, lapses) + `review(state, rating, now)
-  → ReviewResult(state', interval_minutes)` + `preview_intervals(state, now)`
-  (4 rating için sonraki aralık — çalışma ekranı önizlemesi).
+  difficulty, reps, lapses — `due`/`last_review` **yok**, §2.1) +
+  `review(state, rating, *, elapsed_days, …) → ReviewResult(state',
+  interval_minutes)` + `preview_intervals(state, *, elapsed_days)` +
+  `retrievability(state, *, elapsed_days)`.
 - `dayboundary.py` — `study_day(now_utc) → date` (Europe/Istanbul'a çevir,
   4 saat çıkar, tarihi al), `day_start(study_day) → datetime` (o çalışma
   gününün başlangıç anı, UTC), `next_day_start(now_utc)`.
@@ -143,30 +173,67 @@ study_day)`, `ix_srs_decks_owner`, kısmi `uq_srs_review_logs_client_token
 (user_id, role_id, client_token) WHERE client_token IS NOT NULL`.
 
 Migration: iki revizyon —
-`ip16_araliklitekrar` (şema, `down_revision = "ip5_siparis_vergi_kirilimi"`) →
-`ip16_srs_izinleri` (izin katalogu). Bu dalda **tek head**; boş DB'de
-`upgrade head → downgrade -1 ×2 → upgrade head` doğrulandı (downgrade sonrası
-`srs_*` tablo sayısı 0, yeniden upgrade'de 8 tablo + 2 izin) ve
-`alembic check` "No new upgrade operations detected" verir.
+`ip16_araliklitekrar` (şema, `down_revision = "ip12_urun_arama_vektoru"`) →
+`ip16_srs_izin_kodu_hizalama` (izin katalogu).
 
-⚠️ **Bayat ortam tuzağı (merge önkoşulu):** izin kodları geliştirme sırasında
-`srs.platform.*` → `srs_platform.*` olarak yeniden adlandırıldı ama migration
-**revizyon kimliği değişmedi**. Alembic aynı revizyonu tekrar koşmadığı için,
-yeniden adlandırmadan ÖNCE `ip16_srs_izinleri` uygulanmış bir veritabanında
-eski kodlar kalır ve admin platform uçları herkese 403 döner. Bu durum
-geliştirme sırasında bir kez gözlendi (tek kullanımlık bir test DB'sinde; tam
-suite orada 6 kırmızı verdi, taze DB'de 0). Dal push/merge edilmediği ve
-geliştirme veritabanına (`ceyhandb`, revizyon `ip12_urun_arama_vektoru`,
-`srs_*` tablosu 0) hiç uygulanmadığı için başka ortam etkilenmemiştir.
-**Merge eden:** bu revizyonu daha önce uygulamış bir ortam varsa
-`admin_permissions`'taki `srs.platform.%` satırlarını elle düzeltmelidir.
+**Head çatalı kapatıldı (denetçi B1).** İP-12 bu dal açıldıktan sonra main'e
+girdi ve onun `ip12_urun_arama_vektoru` revizyonu da
+`ip5_siparis_vergi_kirilimi`'ye bağlıydı; iki kardeş revizyon merge sonrası
+ağaçta **iki head** üretiyor ve `alembic upgrade head` "Multiple head
+revisions" ile duruyordu. Merge revision üretilmedi — bu revizyonlar hiçbir
+ortama uygulanmadığı için geçmiş **doğrusal** tutuldu: İP-16 şeması ip12'nin
+üstüne alındı. İP-12'nin migration'ı ve ona bağlı model değişikliği
+(`models/store.py` → `products.search_vector` + `ix_products_isbn`) main'den
+birebir bu dala alındı; onsuz dalın kendi `alembic upgrade head`'i kırık
+kalırdı ve `alembic check` model–şema sapması raporlardı.
 
-⚠️ **Merge anında head çatalı (beklenen, bkz. görev tanımı):** İP-12 bu arada
-main'e girdi ve onun `ip12_urun_arama_vektoru` revizyonu da
-`ip5_siparis_vergi_kirilimi`'ye bağlı. İP-16 main'e alınırken iki head
-oluşacaktır; birleştirme sırasında bir **merge revision**
-(`alembic merge -m "ip12+ip16" ip12_urun_arama_vektoru ip16_srs_izinleri`)
-üretilmelidir. Bu dal içinde yapılacak bir şey yoktur.
+**Önceki ölçümün neden anlamsız olduğu:** "bu dalda tek head" doğrulaması dalın
+kendi `versions/` ağacında yapılmıştı — orada ip12 zaten yoktu, dolayısıyla
+çatal görünemezdi. Ölçüm artık `tests/integration/test_ip16_migration_pg.py`
+içinde **main'in versions ağacı + dalın İP-16 revizyonları aynı geçici
+dizine** konarak yapılır; fixture ip12'nin gerçekten geldiğini ayrıca assert
+eder. Aynı dosya taze bir tek kullanımlık veritabanında
+`upgrade head → downgrade -1 ×2 → upgrade head → alembic check` zincirini
+koşar (downgrade sonrası `srs_*` tablo sayısı 0, yeniden upgrade'de 8 tablo +
+2 izin; check "No new upgrade operations detected").
+
+⚠️ **Bayat ortam tuzağı (denetçi B7 — kapatıldı):** izin kodları geliştirme
+sırasında `srs.platform.*` → `srs_platform.*` olarak yeniden adlandırıldı ama
+migration **revizyon kimliği değişmemişti**. Alembic aynı revizyonu ikinci kez
+koşmaz: yeniden adlandırmadan ÖNCE `ip16_srs_izinleri` uygulanmış bir
+veritabanında eski kodlar kalıyor, `upgrade head` **sessizce başarılı** dönüyor
+ve admin platform uçları SUPER_ADMIN'e dahi 403 veriyordu (menü öğesi de
+gizlendiğinden hata görünmüyordu). İki düzeltme birlikte yapıldı:
+
+1. Revizyon kimliği `ip16_srs_izin_kodu_hizalama` oldu, böylece o
+   veritabanlarında migration yeniden koşar.
+2. `upgrade` bayat kodların **rol bağlarını güncel koda taşır**, sonra eski
+   satırları siler — yalnız kimliği değiştirmek, yeniden koşan migration'ın
+   doğru kodu eklerken eskisini bırakmasına yol açardı.
+
+⚠️ **Yeni kimlik neden ikisinden de farklı olmak zorundaydı.** Bu revizyonun
+vaktiyle taşıdığı ve terk edilen İKİ kimlik vardır: `ip16_srs_izin_kodlari`
+(daha eski) ve `ip16_srs_izinleri`. Düzeltmenin ilk denemesi birincisine geri
+döndü; bu yanlıştı. Makinede o damgayı taşıyan veritabanları vardı ve terk
+edilmiş bir kimliği **geri diriltmek** onları "zaten head" konumuna sokar,
+migration sessizce atlanır — düzeltilmek istenen tuzağın aynısı, ters yönde.
+Yeni kimliğin benzersizliği iki ölçümle doğrulandı (varsayılmadı):
+`git log --all -S "<kimlik>"` → 0 commit, ve makinedeki tüm
+`adana*`/`ceyhandb` veritabanlarının `alembic_version` damgaları → 0 eşleşme.
+Bu revizyon bir daha yeniden adlandırılırsa aynı iki ölçüm tekrarlanmalıdır.
+
+Nöbetçiler: `test_B7_BAYAT_IZIN_KODLARI_UPGRADE_ILE_DUZELIR` (bayat kodlu DB
+düzelir), `test_B7_ESKI_KIMLIGE_STAMPLI_DB_SESSIZCE_BAYAT_KALMAZ`
+(**iki terk edilmiş kimlik için ayrı ayrı** parametrize: damgalı DB ya düzelir
+ya GÜRÜLTÜLÜ hata verir; sessiz başarı + bayat kod yasak) ve
+`test_B7_YENI_KIMLIK_TERK_EDILMISLERDEN_FARKLI` (yapısal).
+
+**Merge/geliştirme ortamı notu:** kimlik değiştiği için eski kimliklerden
+birine damgalanmış tek kullanımlık test veritabanları `alembic upgrade head`'de
+"Can't locate revision" verir. Bu bilinçlidir (gürültülü hata > sessiz
+bayatlık); o veritabanları düşürülüp yeniden kurulur. Geliştirme
+veritabanı (`ceyhandb`, damga `ip12_urun_arama_vektoru`) bu dala hiç maruz
+kalmadı.
 
 ## 4. Kuyruk, limit, leech, gün sınırı sözleşmesi
 
@@ -192,6 +259,14 @@ oluşacaktır; birleştirme sırasında bir **merge revision**
   lapse'te bir yeniden tetiklenir (12, 16, …).
 - **Sibling bury YOK** (v1 kapsam kararı; ters/cloze kardeşler aynı gün
   gelebilir). P2 olarak kayıtlı.
+- **Q-10 kardeş ayırma (denetçi B5):** kardeşler aynı gün gelebilir ama aynı
+  oturumda **peş peşe gelmez**. Sıralamanın ilk anahtarı "bu kart, son
+  cevaplanan notun kardeşi mi" sorusudur (`_kardes_ayirma`; son cevap
+  `srs_review_logs`'un geri alınmamış en son satırından okunur). Ölçülen eski
+  davranış: sıra kart id'siyle verildiği için `BASIC_REVERSED` bir notun iki
+  kartı bitişik düşüyor, öğrenci cevabı kartın öğrettiğinden değil üç saniye
+  önceki ekrandan hatırlıyordu. Başka aday yoksa kardeş yine gelir — kuyruğu
+  boşaltmak daha kötü olurdu. Nöbetçi: `Q-10`.
 
 ### 4.2 Limitler
 
@@ -341,7 +416,7 @@ Hepsi `get_current_active_user`; yazma uçlarında kullanıcı bazlı rate-limit
 | `POST /srs/decks/{id}/notes` | sahip/admin(platform) | kart türetimi senkron |
 | `PATCH /srs/notes/{id}` | sahip | kart kümesi yeniden türetilir (§6 T-4) |
 | `DELETE /srs/notes/{id}` | sahip | soft (kartlar dahil) |
-| `GET /srs/cards` | C/T | tarayıcı: `deck_id, state, tag, q, suspended, page, page_size` — sunucu sayfalama + `total`; geçersiz enum → 422 |
+| `GET /srs/cards` | C/T | tarayıcı: `deck_id, state, tag, q, suspended, page, page_size` — sunucu sayfalama + `total` + `suspended_total`/`leech_total`; kart başına `is_leech`; geçersiz enum → 422 |
 | `POST /srs/cards/bulk` | sahip | `{ids, action: suspend/unsuspend/bury/unbury/move_deck/add_tag/remove_tag, ...}` |
 | `GET /srs/study/queue?deck_id=` | C/T (erişimli) | sayaçlar + sıradaki kart(lar) + 4 rating aralık önizlemesi |
 | `POST /srs/study/answer` | C/T | `{card_id, rating, client_token}`; idempotent (§5) |
@@ -361,6 +436,22 @@ Cevap yanıtı: `{card_id, state, step, due_at, introduced_new, counts}` —
 çalışma ekranı ikinci istek atmadan akar; `introduced_new` günlük yeni-kart
 sayacının log'daki karşılığıdır.
 
+**Leech görünürlüğü (denetçi B6).** `is_leech` daha önce **hiçbir yanıt
+şemasında yoktu**: kart 8. lapse'te sessizce askıya alınıyor, kullanıcı neden
+kaybolduğunu göremiyordu. Kart tarayıcı yanıtı artık kart başına `is_leech`
+taşır ve kapsam genelinde `suspended_total` / `leech_total` sayaçlarını döner.
+Sayaçlar **uygulanan filtreden bağımsızdır** — `suspended=false` ile bakan
+kullanıcıya "askıda 0 kart" demek göstergeyi işe yaramaz kılardı. Ekranda
+satır rozeti ("askıda" · "takıldın") ve başlık altında "Askıda N kart · bunlardan
+M tanesinde takıldın" şeridi vardır; şeritteki bağlantı askı filtresini açar
+(`components/srs/SrsCardFlags.tsx`, RTL testli).
+
+⚠️ K-6 açısından kritik nokta: **alanın olmaması, sınırın sağlam olması demek
+değildi.** Önceki tarama `is_leech` için yeşil çıkıyordu çünkü alan hiçbir
+yanıtta dönmüyordu. Alan eklendikten SONRA tarama eğitmen **ve admin**
+token'ıyla dokuz GET ucunun tamamında yeniden yapıldı (`D-6b`); sayaçların
+başkasının satırlarını saymadığı ayrıca ölçülür (mutasyon IP16-31).
+
 ## 9. Ekran haritası (frontend)
 
 Rotalar (`lib/routes.ts` PATHS+ROUTES; nav: Öğren hub kartı "Aralıklı Tekrar"):
@@ -372,12 +463,18 @@ Rotalar (`lib/routes.ts` PATHS+ROUTES; nav: Öğren hub kartı "Aralıklı Tekra
   u=undo; dört butonda aralık önizleme; cloze render; yazarak cevap + diff
   (T-7); oturum ilerleme çubuğu (yeni/öğrenme/tekrar kalan); mobil uyumlu.
 - `/ogren/tekrar/tarayici` — DataTable, sunucu filtre/sayfalama, toplu işlem.
+  Başlık altında "Askıda N kart · bunlardan M tanesinde takıldın" şeridi
+  (bağlantı askı filtresini açar); satırda "askıda" ve "takıldın" rozetleri
+  (`components/srs/SrsCardFlags.tsx` — RTL testli, §8 leech görünürlüğü).
 - `/ogren/tekrar/istatistik` — tutma oranı, gelecek yük, boş durum.
 
 Hata `ErrorState`, boşluk `EmptyState` (ikisi ayrışır). Mevcut tasarım dili;
 dark-mode paritesi; sakin düzen (kart enflasyonu yok).
 
-## 10. Mutasyon kataloğu (20 prova) — **20/20 YAKALANDI**
+## 10. Mutasyon kataloğu (33 prova) — **33/33 YAKALANDI**
+
+Aşağıdaki ilk tablo paketin kendi turudur (20 prova); §10.1 denetim düzeltme
+turunun 13 ek provasını listeler.
 
 Sürücü: `backend/scripts/mutation_drill_ip16.py` — `scripts/mutation_drill`'in
 güvenlik makinesini (bayt yedeği + SHA-256 doğrulamalı geri alma, kirli ağaç
@@ -412,35 +509,180 @@ aynı şey değildir.
 Koşu sırasında sürücünün ağaç nöbetçisi bir kez devreye girdi (prova sürerken
 `ruff.toml` düzenlenmişti) ve provayı durdurdu — mutasyon sızıntısı olmadan.
 
+### 10.1 Denetim düzeltme turu (13 ek prova)
+
+| # | Mutasyon | Hedef | Seçilen test | Sonuç (kırılan) |
+|---|---|---|---|---|
+| IP16-21 | ip16 zincirini ip12'den kopar | B1 | 5 | ✅ 5 (suite kurulamadı) |
+| IP16-22 | Bayat izin kodu taşıma/silmeyi sök | B7 | 5 | ✅ 1 |
+| IP16-23 | Kimliği terk edilmiş bir kimliğe geri dirilt | B7 | 7 | ✅ 2 (elle, taze DB) |
+| IP16-24 | Çift katlamanın invariant dalını sök | B2 | 23 | ✅ 4 |
+| IP16-25 | Çift katlamanın Türkçe dalını sök | B2 | 23 | ✅ 5 |
+| IP16-26 | Motorda geçen günü yok say | H3 | 34 | ✅ 12 |
+| IP16-27 | Servis motora takvim farkı versin | H3 | 7 | ✅ 1 |
+| IP16-28 | Saf pakete `import random` sız | B4 | 34 | ✅ 2 |
+| IP16-29 | Kardeş ayırmayı sök | B5 | 17 | ✅ 1 |
+| IP16-30 | `is_leech`'i yanıtta hep false yap | B6 | 15 | ✅ 1 |
+| IP16-31 | Askı sayacından K-6 filtresini sök | B6/K-6 | 14 | ✅ 1 |
+| IP16-32 | Askı sayacını uygulanan filtreye bağla | B6 | 15 | ✅ 1 |
+| IP16-33 | Leech rozetini UI'dan sök | B6 (UI) | 7 | ✅ 1 |
+
+**IP16-21 ilk koşuda "YAKALANMADI" raporlandı** — sebebi testin zayıflığı
+değil, ortak mutasyon sürücüsünün pytest `ERROR` satırlarını (hiç koşamayan
+test) saymamasıydı. Bu İP-16'ya özgü değildir, yedi paketin sürücüsünü de
+etkiler: ayrı borç kaydı [[TB-24]]. İP-16'da yerel olarak gölgelenerek
+düzeltildi. Testin **gövdesinin** de kırıldığı ayrıca ölçülmüştür: kırmızı
+fazda (ip12 dalın ağacına alınmadan önce) aynı beş düğüm
+`Multiple head revisions` assert'iyle `FAILED` düşmüştü.
+
+**IP16-27 ilk turda YAKALANMADI** (60 seçilen testin hiçbiri kırılmadı) ve kök
+CLAUDE.md §D'nin gerektirdiği yol izlendi: mutasyon geri alındı, önce
+`S-7` regresyon testi yazıldı (gerçek PG + HTTP; servisin motora verdiği geçen
+gün sayısını ölçer), sonra mutasyon tekrar uygulandı ve kırıldığı gösterildi.
+Motorun tabanını birim testi koruyordu ama **çağıranın** motora ne verdiğini
+kimse ölçmüyordu — motoru düzeltip servisi bozmak sessizce mümkündü.
+
+IP16-23 katalogda değildir: prova, tek kullanımlık test veritabanının TAZE
+olmasını ister (eski kimlikli bir DB'de alembic zaten "Can't locate revision"
+verir ve prova kendi ölçmek istediği şeyi ölçemez). Elle yapıldı; kırılan iki
+düğüm `test_B7_ESKI_KIMLIGE_STAMPLI_DB_SESSIZCE_BAYAT_KALMAZ`
+(`[ip16_srs_izin_kodlari]` parametresi — mesajı "upgrade sessizce başarılı
+oldu ama bayat kodlar duruyor") ve `test_B7_YENI_KIMLIK_TERK_EDILMISLERDEN_FARKLI`.
+
+**Bulunup KAPATILAN flake (kök CLAUDE.md §I).** Düzeltme turunun son
+doğrulamasında `test_ip16_migration_pg.py` iki düğümü tam suite içinde bir kez
+kırıldı; izole koşumda ve sonraki turlarda geçti — dört tur ölçüldü, biri
+kırık. Hata gövdesi yakalanınca kök neden çıktı:
+`asyncpg.InvalidCatalogNameError: database "adana_ip16_migration_test" does
+not exist`. Dosyadaki dört düğüm **aynı sabit adlı** tek kullanımlık
+veritabanını sırayla kurup düşürüyordu ve bir turda bir düğümün teardown'ı
+diğerinin setup'ıyla yarıştı. Düzeltme: ad artık test başına benzersiz
+(`adana_ip16_mig_<8 hex>_test`), alembic alt sürecine `db=` ile taşınıyor.
+Düzeltme sonrası üç tam tur art arda yeşil. Bunu "bilinen flake" diye
+geçiştirmek, aynı kılıkta gerçek bir migration regresyonunu gizlerdi.
+
+**Mutasyon provalarının veritabanında iz bırakması.** Sürücü çalışma ağacını
+bayt bayt geri alır ama **veritabanını geri almaz**. IP16-23 provası
+`adana_ip16_test`'i mutasyonlu kimliğe damgalı bıraktı ve sonraki koşu
+"Can't locate revision" verdi. Bu, sistemin tasarlandığı gibi davranmasıdır
+(gürültülü hata), ama prova sonrası test veritabanının düşürülmesi gerektiği
+akılda tutulmalıdır — özellikle migration kimliğine dokunan provalarda.
+
 ## 11. Kalan P2'ler (bilinçli kapsam dışı)
 
-- Sibling bury (ters/cloze kardeş gömme) — §4.1.
+- Sibling bury (ters/cloze kardeş **gömme**) — §4.1. Denetim turunda kapsam
+  daraldı: kardeşlerin aynı oturumda peş peşe gelmesi Q-10 ile çözüldü; kalan
+  P2 yalnız "kardeşi ertesi güne ötele" davranışıdır.
 - "İlerlemeyle kopyala" seçeneği — §7.4.
 - FSRS parametre optimizasyonu (kişisel eğitim) ve FSRS-6 geçişi.
 - Medya, .apkg içe/dışa aktarma, senkron protokolü, filtreli deste — v2
   (görev tanımında kapsam dışı).
 - Kuyrukta yeni/review karışım seçenekleri (sabit AfterReviews) — §4.1.
-- **B-6 iki katmanlı**: geçersiz filtre değeri hem Pydantic şemasında hem
-  `browse_cards` içinde 422 üretir. Şema katmanını tek başına söken bir
-  mutasyon testi kırmaz (yalnız `deck_id="abc"` gerçekten tipli query
-  parametresine bağlıdır). Davranış sözleşmesi korunuyor, ama B-6'nın
-  nöbetçiliği bu noktada zayıf — katman ayrımı istenirse ayrı test gerekir.
+- **B-6 iki katmanlı ve İKİ KATMAN DA tek başına nöbette değil** (denetçi B3):
+  geçersiz filtre değeri hem Pydantic şemasında hem `browse_cards` içinde 422
+  üretir. Katmanlardan **hangisini sökerseniz sökün** test kırılmaz; yalnız
+  ikisi birden sökülünce kırılır (`deck_id="abc"` dışında, o gerçekten tipli
+  query parametresine bağlıdır). Yani davranış sözleşmesi korunuyor ama
+  "servis katmanı doğrulaması var" iddiasının bağımsız kanıtı YOK. Katman
+  ayrımı istenirse iki ayrı düğüm gerekir: (a) şema devre dışıyken servis 422
+  veriyor mu, (b) servis kontrolü yokken şema 422 veriyor mu. Sözleşmenin
+  önceki hâli yalnız şema katmanı için "nöbetçilik zayıf" diyordu; ölçüm
+  simetriktir.
 - **Gerçek tarayıcı kabulü yapılmadı**: frontend Vitest + `tsc` + lint ile
   doğrulandı; klavye kısayolları, cloze/diff render'ı, mobil yerleşim ve
   dark-mode paritesi gerçek tarayıcıda sınanmadı (kök CLAUDE.md §F). Tasarım
   denetimi kod okuması + üretim CSS'inde sınıf sırası ölçümüyle yapıldı.
+  Düzeltme turunda eklenen leech göstergeleri **jsdom + RTL** ile sınandı
+  (`SrsCardFlags.test.tsx`, 7 düğüm) — gerçek tarayıcı değil, ama "tip geçti"
+  seviyesinin üstünde: DOM'da rozetin varlığı, açıklaması ve filtre
+  bağlantısının tıklaması ölçülür.
 - **Öğrenci atama typeahead'i 100 rezervasyonla sınırlı**: aday kümesi
   eğitmenin kendi rezervasyonlarından üretilir (`GET /bookings?limit=100`);
   `/clients/search` eğitmene kapalıdır (`users.view` ister). 100'den fazla
   rezervasyonu olan eğitmende çok eski bir öğrenci listede çıkmayabilir —
   kalıcı çözüm eğitmene açık bir "öğrencilerim" ucudur.
 - **Frontend ekranlarının kendi test kapsamı dar**: saf yardımcılar
-  (`srsTypeAnswer`, `srsCloze`) Vitest'li ama sayfa bileşenleri için RTL
-  davranış testi yazılmadı; ekranlar tip denetimi ve derleme ile sınırlı
-  güvence altındadır.
+  (`srsTypeAnswer`, `srsCloze`) Vitest'li; RTL davranış testi yalnız
+  `SrsCardFlags`/`SrsSuspendedSummary` için var. `SrsStudy`, `SrsBrowser`,
+  `SrsDecks`, `SrsDeckDetail`, `SrsStats` sayfaları hâlâ tip denetimi ve
+  derleme ile sınırlı güvence altındadır.
 
 ## 12. Doğrulama kapıları
 
 `POSTGRES_DB=adana_ip16_test` (adında "test" — db_guard). Komşu paketler:
 ip1a=63, ip3=115, ip2a=49, integration=1222+yeni, acceptance=197, ruff,
 vitest/tsc/lint (uyarı artmaz). S-1/S-2 5'er tur.
+
+**Denetim düzeltme turunun kapıları** (9 Ağu 2026):
+
+| Kapı | Sonuç |
+|---|---|
+| `pytest tests/integration` (tam) | **1263 passed · 0 failed · 16 skipped** (taban 1253/1/16; bilinen F30 flake'i bu turda geçti) |
+| `pytest tests/verify` (CI deseni: önce `alembic upgrade head`) | **132 passed** (tabanla birebir). DB **taze kuruldu** — zincir boş veritabanında `ip5 → ip12 → ip16_araliklitekrar → ip16_srs_izin_kodu_hizalama` sırasıyla koştu |
+| `pytest tests/unit/test_fsrs_scheduler.py` | 34 passed (F-15'in 70 adımı dahil, sapma yok) |
+| `pytest tests/integration -k ip16` — **tekrarlanabilirlik** | 3 tam tur art arda yeşil (flake düzeltmesinden sonra; öncesinde 4 turda 1 kırık) |
+| `ruff check backend/` | temiz |
+| frontend `tsc -b` + `vitest run` | temiz · **791 passed** (77 dosya) |
+
+⚠️ Frontend tam suite'i **yük altında** bir kez `PackageLabel` timeout'u verdi
+(arka planda 1263 testlik entegrasyon koşarken); izole ve boştaki makinede
+geçti. Bu İP-16 değil, kayıtlı [[TB-23]] (Vitest 5000 ms bütçesi) — yeni bir
+bulgu değil, doğrulaması.
+
+### 12.1 İP-16 test yüzeyi — SAYI DEĞİL, SAYMA KOMUTU
+
+Bu bölüm bilinçli olarak sabit sayı vermez. Sebep: aynı yüzey üç turda üç
+farklı biçimde sayıldı (**104** · **68 düğüm / 87 fonksiyon** · **74 / 82 /
+98**) ve hiçbiri yanlış değildi — farklı şeyler sayılıyordu (matris düğümü mü,
+test fonksiyonu mu, parametrize genişlemesi dahil pytest düğümü mü). Sayı
+yazmak tartışmayı bitirmiyor; **sayma kuralı** bitirir.
+
+Sonraki denetçi aşağıdaki komutları `backend/` içinden koşar ve kendi sayısını
+üretir. Sayılar bu belgede güncel tutulmaz; kaynağı komuttur.
+
+```bash
+# (1) Test fonksiyonu — AST ile, parametrize genişlemesi HARİÇ.
+#     `grep "def test"` KULLANILMAZ: yorum ve iç fonksiyon yanlış sayar.
+python - <<'PY'
+import ast, pathlib
+d = ["tests/unit/test_fsrs_scheduler.py", *sorted(map(str, pathlib.Path("tests/integration").glob("test_ip16_*.py")))]
+for f in d:
+    n = [x for x in ast.parse(pathlib.Path(f).read_text(encoding="utf-8")).body
+         if isinstance(x, (ast.FunctionDef, ast.AsyncFunctionDef)) and x.name.startswith("test")]
+    print(f"{len(n):4d}  {f}")
+PY
+
+# (2) Ayrı matris düğümü kodu (F-*/Q-*/L-*/G-*/S-*/D-*/T-*/E-*/B-*/I-*).
+#     Aynı düğümün birden çok testi varsa TEK sayılır.
+python - <<'PY'
+import ast, pathlib, re
+kod = set()
+for f in ["tests/unit/test_fsrs_scheduler.py", *pathlib.Path("tests/integration").glob("test_ip16_*.py")]:
+    for x in ast.parse(pathlib.Path(f).read_text(encoding="utf-8")).body:
+        if isinstance(x, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            m = re.match(r"test_([a-zA-Z]\d+[a-zA-Z]?)_", x.name)
+            if m: kod.add(m.group(1).upper())
+print(len(kod), sorted(kod))
+PY
+
+# (3) Koşulan pytest düğümü (parametrize DAHİL) — gerçek koşu sayısı.
+python -m pytest tests/unit/test_fsrs_scheduler.py --collect-only -q | tail -1
+python -m pytest tests/integration -k ip16 --collect-only -q | tail -1
+
+# (4) Frontend (frontend/ içinden)
+npx vitest run src/lib/srsTypeAnswer.test.ts src/lib/srsCloze.test.ts src/components/srs --reporter=basic
+
+# (5) Mutasyon provası tanımı
+python -m scripts.mutation_drill_ip16 --list | wc -l   # + katalog dışı elle provalar
+```
+
+Sınıflandırma (kök CLAUDE.md §H) — hangi dosyanın hangi sınıfa girdiği:
+
+| Sınıf | Kaynak |
+|---|---|
+| Gerçek PostgreSQL + gerçek HTTP | `tests/integration/test_ip16_*.py` (tümü) |
+| Saf birim (DB'siz, IO'suz) | `tests/unit/test_fsrs_scheduler.py` |
+| AST/kaynak sözleşmesi (DÜŞÜK GÜÇLÜ) | `F-14`, `F-14b`, `test_f17_motorda_takvim_aritmetigi_kalmadi`, `test_B7_YENI_KIMLIK_TERK_EDILMISLERDEN_FARKLI` — dördünün de yanında bir davranış testi vardır |
+| Gerçek DOM (jsdom + RTL) | `frontend/src/components/srs/SrsCardFlags.test.tsx` |
+| Gerçek tarayıcı / E2E | **yok** (§11) |
+| Gerçek baskı/dosya çıktısı | **yok** (bu pakette baskı yüzeyi yok) |
