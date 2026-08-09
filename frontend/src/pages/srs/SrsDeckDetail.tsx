@@ -1,9 +1,11 @@
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useId, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { DashboardShell } from "@/components/DashboardShell";
 import { Field } from "@/components/ui/Field";
+import { ConfirmDialog } from "@/components/admin/ui/ConfirmDialog";
 import { EmptyState, ErrorState, PageSkeleton } from "@/components/admin/ui/PageState";
 import { STUDENT_NAV, TUTOR_NAV } from "@/lib/nav";
+import { useBookings } from "@/hooks/useBookings";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import {
   useAssignSrsDeck,
@@ -23,8 +25,10 @@ import { ROLE_IDS } from "@/types";
 import type { SrsCard, SrsNoteType } from "@/types/srs";
 import { ROUTES } from "@/lib/routes";
 
-const inputCls =
-  "w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:border-slate-600 dark:bg-slate-700 dark:text-white";
+// Yerel `inputCls` SİLİNDİ: `focus:ring-indigo-100`'de bitiyordu (dark
+// karşılığı yok → koyu temada odaklanan girdi beyaz hale alıyordu) ve
+// `dark:bg-slate-700` ile ekrandaki diğer girdilerin `dark:bg-slate-800`
+// zeminini bölüyordu. Artık ortak `.input` (index.css) kullanılır.
 const labelCls =
   "mb-1.5 block text-xs font-medium text-slate-500 dark:text-slate-400";
 
@@ -114,7 +118,7 @@ function NoteForm({
               id={id}
               value={noteType}
               onChange={(e) => setNoteType(e.target.value as SrsNoteType)}
-              className={inputCls}
+              className="input"
             >
               {(Object.keys(NOTE_TYPE_LABELS) as SrsNoteType[]).map((t) => (
                 <option key={t} value={t}>
@@ -142,7 +146,7 @@ function NoteForm({
                 ? "Örn. {{c1::Mitokondri}} hücrenin enerji santralidir."
                 : "Soru / kavram"
             }
-            className={inputCls}
+            className="input"
           />
         )}
       </Field>
@@ -163,7 +167,7 @@ function NoteForm({
             rows={2}
             value={back}
             onChange={(e) => setBack(e.target.value)}
-            className={inputCls}
+            className="input"
           />
         )}
       </Field>
@@ -177,7 +181,7 @@ function NoteForm({
             value={tags}
             onChange={(e) => setTags(e.target.value)}
             placeholder="biyoloji, hücre"
-            className={inputCls}
+            className="input"
           />
         )}
       </Field>
@@ -203,25 +207,74 @@ function NoteForm({
   );
 }
 
+/**
+ * Öğrenci seçici.
+ *
+ * NEDEN TYPEAHEAD: burada eskiden ham bir "Öğrenci no" alanı vardı — kullanıcı
+ * dahili sayısal ID'yi hiçbir ekranda görmediği için alan pratikte
+ * doldurulamıyordu.
+ *
+ * NEDEN ADAY KÜMESİ REZERVASYONLARDAN: `/clients/search` bilinçli olarak
+ * yalnız `users.view` izinli ADMIN'e açıktır (bkz. `api/routers/clients.py`:
+ * onaylı bir eğitmen bile bütün öğrenci tabanını sayfalayamaz), dolayısıyla
+ * eğitmen yüzeyinde kullanılamaz. Zaten atamanın sunucu kuralı da "aranızda
+ * rezervasyon bulunan öğrenci"dir; aday kümesi tam olarak eğitmenin kendi
+ * rezervasyonlarındaki öğrenciler olur. Sorgu TutorDashboard'ın kullandığı
+ * anahtarla (`{ limit: 100 }`) aynıdır, yani panelde çoğu zaman zaten
+ * önbellektedir.
+ *
+ * BİLİNEN SINIR: uç en fazla 100 rezervasyon döndürür; 100'den fazla
+ * rezervasyonu olan eğitmende çok eski bir öğrenci listede çıkmayabilir.
+ */
 function AssignmentSection({ deckId }: { deckId: number }) {
   const assignments = useSrsAssignments(deckId, true);
   const assign = useAssignSrsDeck();
   const unassign = useUnassignSrsDeck();
-  const [clientId, setClientId] = useState("");
+  const bookings = useBookings({ limit: 100 });
+
+  const [query, setQuery] = useState("");
+  const [picked, setPicked] = useState<{ id: number; name: string } | null>(null);
+  const [open, setOpen] = useState(false);
+  const listId = useId();
+
+  const assignedIds = useMemo(
+    () => new Set((assignments.data ?? []).map((a) => a.client_id)),
+    [assignments.data]
+  );
+
+  /** Rezervasyonlardaki benzersiz öğrenciler; zaten atanmışlar elenir. */
+  const students = useMemo(() => {
+    const map = new Map<number, string>();
+    for (const b of bookings.data ?? []) {
+      if (assignedIds.has(b.client_id) || map.has(b.client_id)) continue;
+      map.set(b.client_id, b.client_name?.trim() || `Öğrenci #${b.client_id}`);
+    }
+    return [...map]
+      .map(([id, name]) => ({ id, name }))
+      .sort((a, b) => a.name.localeCompare(b.name, "tr"));
+  }, [bookings.data, assignedIds]);
+
+  const matches = useMemo(() => {
+    const needle = query.trim().toLocaleLowerCase("tr");
+    const pool = needle
+      ? students.filter((s) => s.name.toLocaleLowerCase("tr").includes(needle))
+      : students;
+    return pool.slice(0, 8);
+  }, [students, query]);
 
   const add = (e: FormEvent) => {
     e.preventDefault();
-    const id = Number(clientId);
-    if (!Number.isInteger(id) || id <= 0) {
-      toast.error("Geçerli bir öğrenci numarası gir.");
+    if (!picked) {
+      toast.error("Listeden bir öğrenci seç.");
       return;
     }
     assign.mutate(
-      { deckId, clientId: id },
+      { deckId, clientId: picked.id },
       {
         onSuccess: () => {
           toast.success("Deste öğrenciye atandı.");
-          setClientId("");
+          setPicked(null);
+          setQuery("");
         },
         onError: (err) =>
           toast.error(
@@ -245,23 +298,76 @@ function AssignmentSection({ deckId }: { deckId: number }) {
         Desteyi, aranızda rezervasyon bulunan öğrencilere atayabilirsin.
         Öğrencilerin çalışma ilerlemesi sana gösterilmez.
       </p>
-      <form onSubmit={add} className="mt-3 flex items-center gap-2">
-        <input
-          value={clientId}
-          onChange={(e) => setClientId(e.target.value)}
-          inputMode="numeric"
-          placeholder="Öğrenci no"
-          aria-label="Öğrenci numarası"
-          className={`${inputCls} max-w-40`}
-        />
+      <form onSubmit={add} className="mt-3 flex flex-wrap items-start gap-2">
+        <div className="relative">
+          <input
+            value={query}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              // Ad değişince eski seçim geçersizdir; aksi halde ekranda başka
+              // isim yazarken önceki öğrenciye atama yapılabilirdi.
+              setPicked(null);
+              setOpen(true);
+            }}
+            onFocus={() => setOpen(true)}
+            // Seçim `onMouseDown` engellendiği için blur'dan önce çalışır;
+            // gecikme yalnız klavye/dokunmatik kapanışını yumuşatır.
+            onBlur={() => window.setTimeout(() => setOpen(false), 120)}
+            role="combobox"
+            aria-expanded={open && matches.length > 0}
+            aria-controls={listId}
+            aria-autocomplete="list"
+            placeholder="Öğrenci adı yaz…"
+            aria-label="Öğrenci ara"
+            className="input w-64"
+          />
+          {open && matches.length > 0 && (
+            <div
+              id={listId}
+              role="listbox"
+              aria-label="Öğrenci sonuçları"
+              className="absolute z-20 mt-1 max-h-56 w-full overflow-auto rounded-xl border border-slate-200 bg-white py-1 shadow-lg dark:border-slate-700 dark:bg-slate-800"
+            >
+              {matches.map((s) => (
+                <button
+                  key={s.id}
+                  type="button"
+                  role="option"
+                  aria-selected={picked?.id === s.id}
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => {
+                    setPicked(s);
+                    setQuery(s.name);
+                    setOpen(false);
+                  }}
+                  className="block w-full truncate px-3 py-2 text-left text-sm text-slate-700 transition hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-700"
+                >
+                  {s.name}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
         <button
           type="submit"
-          disabled={assign.isPending}
+          disabled={assign.isPending || !picked}
           className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:opacity-60"
         >
           Ata
         </button>
       </form>
+      {bookings.isError ? (
+        <p className="mt-2 text-xs text-rose-600 dark:text-rose-400">
+          Öğrenci listesi yüklenemedi:{" "}
+          {getErrorMessage(bookings.error, "Bilinmeyen hata.")}
+        </p>
+      ) : !bookings.isLoading && students.length === 0 ? (
+        <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+          {(bookings.data ?? []).length === 0
+            ? "Atama yapabilmen için önce bu öğrenciyle bir ders rezervasyonun olmalı."
+            : "Ders ilişkin olan tüm öğrencilere bu desteyi zaten atadın."}
+        </p>
+      ) : null}
       {assignments.isLoading ? (
         <div className="mt-4">
           <PageSkeleton rows={1} />
@@ -342,6 +448,11 @@ export default function SrsDeckDetail() {
   const [editingNoteId, setEditingNoteId] = useState<number | null>(null);
   const [adding, setAdding] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  // Not silme de geri alınamaz: notu, ondan türeyen kartları ve o kartların
+  // FSRS geçmişini birlikte götürür. Deste silmeyle aynı sınıf, aynı kapı.
+  const [confirmNote, setConfirmNote] = useState<{ id: number; front: string } | null>(
+    null
+  );
   const [newLimit, setNewLimit] = useState("");
   const [reviewLimit, setReviewLimit] = useState("");
 
@@ -373,6 +484,10 @@ export default function SrsDeckDetail() {
     }
     return [...map.values()];
   }, [cardsQuery.data]);
+
+  /** Sunucudaki kart sayısı çekilen sayfadan fazlaysa liste sessizce kesiliyor. */
+  const truncated =
+    !!cardsQuery.data && cardsQuery.data.total > cardsQuery.data.items.length;
 
   const saveLimits = () => {
     updateDeck.mutate(
@@ -479,7 +594,7 @@ export default function SrsDeckDetail() {
                     min={0}
                     value={newLimit}
                     onChange={(e) => setNewLimit(e.target.value)}
-                    className={`${inputCls} w-36`}
+                    className="input w-36"
                   />
                 )}
               </Field>
@@ -491,7 +606,7 @@ export default function SrsDeckDetail() {
                     min={0}
                     value={reviewLimit}
                     onChange={(e) => setReviewLimit(e.target.value)}
-                    className={`${inputCls} w-36`}
+                    className="input w-36"
                   />
                 )}
               </Field>
@@ -512,9 +627,13 @@ export default function SrsDeckDetail() {
         {/* Notlar */}
         <section className="mt-10">
           <div className="flex items-center justify-between border-b border-slate-200 pb-2 dark:border-slate-800">
+            {/* Sayı SUNUCUDAN gelen `total`dır. Kart listesi sabit
+                `page_size: 200` ile çekiliyor; başlıkta yüklenen kart sayısı
+                yazıldığı için 300 notluk destede "(200)" görünüyor ve
+                gerisinin var olduğu hiç belli olmuyordu. */}
             <h2 className="text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
               Notlar
-              {cardsQuery.data ? ` (${notes.length})` : ""}
+              {cardsQuery.data ? ` (${cardsQuery.data.total})` : ""}
             </h2>
             {isOwn && !adding && (
               <button
@@ -525,6 +644,19 @@ export default function SrsDeckDetail() {
               </button>
             )}
           </div>
+
+          {truncated && (
+            <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">
+              Bu destenin {cardsQuery.data?.total} kartından ilk{" "}
+              {cardsQuery.data?.items.length} tanesi listeleniyor.{" "}
+              <Link
+                to={`${ROUTES.srsBrowser}?deste=${deckId}`}
+                className="font-semibold text-indigo-600 hover:text-indigo-700 dark:text-indigo-400"
+              >
+                Tümünü tarayıcıda aç
+              </Link>
+            </p>
+          )}
 
           {isOwn && adding && (
             <div className="mt-4 rounded-2xl border border-slate-200 p-4 dark:border-slate-800">
@@ -635,10 +767,9 @@ export default function SrsDeckDetail() {
                         </button>
                         <button
                           onClick={() =>
-                            deleteNote.mutate(note.note_id, {
-                              onSuccess: () => toast.success("Not silindi."),
-                              onError: (err) =>
-                                toast.error(getErrorMessage(err, "Silinemedi.")),
+                            setConfirmNote({
+                              id: note.note_id,
+                              front: note.front,
                             })
                           }
                           disabled={deleteNote.isPending}
@@ -655,48 +786,65 @@ export default function SrsDeckDetail() {
           )}
         </section>
 
-        {/* Deste silme (yalnız sahibi) */}
+        {/* Deste silme (yalnız sahibi) — onay satır içi bir şeritti ve dar
+            ekranda soru metni + iki düğme aynı satıra sıkışıyordu. Ortak
+            ConfirmDialog portallı, odak tuzaklı ve mobilde tam genişlikte. */}
         {isOwn && (
           <section className="mt-12 border-t border-slate-200 pt-4 dark:border-slate-800">
-            {confirmDelete ? (
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-slate-600 dark:text-slate-300">
-                  Deste, alt desteleri ve notlarıyla silinecek. Emin misin?
-                </span>
-                <button
-                  onClick={() =>
-                    deleteDeck.mutate(deck.id, {
-                      onSuccess: () => {
-                        toast.success("Deste silindi.");
-                        navigate(ROUTES.srs);
-                      },
-                      onError: (err) =>
-                        toast.error(getErrorMessage(err, "Silinemedi.")),
-                    })
-                  }
-                  disabled={deleteDeck.isPending}
-                  className="rounded-xl bg-rose-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-rose-700 disabled:opacity-60"
-                >
-                  Sil
-                </button>
-                <button
-                  onClick={() => setConfirmDelete(false)}
-                  className="rounded-xl px-3 py-2 text-sm text-slate-500 transition hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
-                >
-                  Vazgeç
-                </button>
-              </div>
-            ) : (
-              <button
-                onClick={() => setConfirmDelete(true)}
-                className="text-sm font-medium text-rose-600 hover:text-rose-700 dark:text-rose-400"
-              >
-                Desteyi sil
-              </button>
-            )}
+            <button
+              onClick={() => setConfirmDelete(true)}
+              className="text-sm font-medium text-rose-600 hover:text-rose-700 dark:text-rose-400"
+            >
+              Desteyi sil
+            </button>
           </section>
         )}
       </div>
+
+      <ConfirmDialog
+        open={confirmDelete}
+        title="Deste silinsin mi?"
+        description={`"${deck.name}" alt desteleri ve tüm notlarıyla birlikte silinecek. Kartların çalışma geçmişi de gider ve bu işlem geri alınamaz.`}
+        confirmLabel="Desteyi sil"
+        danger
+        isPending={deleteDeck.isPending}
+        onClose={() => setConfirmDelete(false)}
+        onConfirm={() =>
+          deleteDeck.mutate(deck.id, {
+            onSuccess: () => {
+              toast.success("Deste silindi.");
+              setConfirmDelete(false);
+              navigate(ROUTES.srs);
+            },
+            onError: (err) => toast.error(getErrorMessage(err, "Silinemedi.")),
+          })
+        }
+      />
+
+      <ConfirmDialog
+        open={confirmNote !== null}
+        title="Not silinsin mi?"
+        description={
+          confirmNote
+            ? `"${confirmNote.front.slice(0, 80)}" notu, ondan türeyen kartlar ve` +
+              " o kartların çalışma geçmişi silinecek. Bu işlem geri alınamaz."
+            : ""
+        }
+        confirmLabel="Notu sil"
+        danger
+        isPending={deleteNote.isPending}
+        onClose={() => setConfirmNote(null)}
+        onConfirm={() => {
+          if (!confirmNote) return;
+          deleteNote.mutate(confirmNote.id, {
+            onSuccess: () => {
+              toast.success("Not silindi.");
+              setConfirmNote(null);
+            },
+            onError: (err) => toast.error(getErrorMessage(err, "Silinemedi.")),
+          });
+        }}
+      />
     </DashboardShell>
   );
 }

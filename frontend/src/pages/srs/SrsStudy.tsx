@@ -15,32 +15,29 @@ import { ROLE_IDS } from "@/types";
 import type { SrsQueueCard, SrsRating } from "@/types/srs";
 import { ROUTES } from "@/lib/routes";
 
+/**
+ * Cevap düğmelerinin yüzeyi nötrdür; derece ayrımı yalnız ince bir sol kenar
+ * aksanıyla verilir.
+ *
+ * NEDEN: dört doygun renk bloğu ("trafik ışığı") sakin/nötr palet kuralını
+ * çiğniyordu ve daha kötüsü, bu paketin ZORUNLU özelliği olan aralık
+ * önizlemesini okunamaz hale getiriyordu (beyaz metin `bg-amber-500` üzerinde
+ * ≈2.2:1; `opacity-80` eklenince ≈1.8:1 — WCAG AA eşiği 4.5:1). Renk artık
+ * anlamı TAŞIMAZ (etiket metni taşır), yalnız ayırt etmeye yardım eder.
+ */
 const RATING_META: {
   rating: SrsRating;
   label: string;
-  cls: string;
+  accent: string;
 }[] = [
-  {
-    rating: 1,
-    label: "Tekrar",
-    cls: "bg-rose-600 hover:bg-rose-700 text-white",
-  },
-  {
-    rating: 2,
-    label: "Zor",
-    cls: "bg-amber-500 hover:bg-amber-600 text-white",
-  },
-  {
-    rating: 3,
-    label: "İyi",
-    cls: "bg-emerald-600 hover:bg-emerald-700 text-white",
-  },
-  {
-    rating: 4,
-    label: "Kolay",
-    cls: "bg-sky-600 hover:bg-sky-700 text-white",
-  },
+  { rating: 1, label: "Tekrar", accent: "border-l-rose-600 dark:border-l-rose-500" },
+  { rating: 2, label: "Zor", accent: "border-l-amber-600 dark:border-l-amber-500" },
+  { rating: 3, label: "İyi", accent: "border-l-sky-600 dark:border-l-sky-500" },
+  { rating: 4, label: "Kolay", accent: "border-l-emerald-600 dark:border-l-emerald-500" },
 ];
+
+const RATING_BTN_CLS =
+  "rounded-xl border border-l-4 border-slate-200 bg-white px-1 py-3 text-[13px] font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700 sm:px-2 sm:text-sm";
 
 function ClozeText({
   front,
@@ -153,7 +150,9 @@ function CardFace({
           ref={inputRef}
           placeholder="Cevabını yaz…"
           aria-label="Cevabın"
-          className="mt-6 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-base text-slate-900 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
+          // Ortak `.input` (index.css) — dark odak paritesi oradan gelir.
+          // Yalnız dokunmatik hedefi büyüten ölçüler geçersiz kılınır.
+          className="input mt-6 px-4 py-3 text-base"
         />
       )}
 
@@ -283,17 +282,21 @@ export default function SrsStudy() {
           </Link>
           <div className="flex items-center gap-4">
             {counts && (
+              // `title` klavye/ekran okuyucu/dokunmatik kullanıcısına ulaşmaz;
+              // grup adlandırılmış tek öğe olarak sunulur (bkz. SrsDecks).
               <span
+                role="img"
+                aria-label={`${counts.new} yeni, ${counts.learning} öğrenme, ${counts.review} tekrar`}
+                title={`${counts.new} yeni · ${counts.learning} öğrenme · ${counts.review} tekrar`}
                 className="flex items-center gap-2 text-xs tabular-nums"
-                title="Yeni · Öğrenme · Tekrar"
               >
-                <span className="font-semibold text-sky-600 dark:text-sky-400">
+                <span aria-hidden className="font-semibold text-sky-600 dark:text-sky-400">
                   {counts.new}
                 </span>
-                <span className="font-semibold text-amber-600 dark:text-amber-400">
+                <span aria-hidden className="font-semibold text-amber-600 dark:text-amber-400">
                   {counts.learning}
                 </span>
-                <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                <span aria-hidden className="font-semibold text-emerald-600 dark:text-emerald-400">
                   {counts.review}
                 </span>
               </span>
@@ -341,7 +344,9 @@ export default function SrsStudy() {
               />
 
               {/* Cevap barı: mobilde alta sabit, dokunmatik boyutlu */}
-              <div className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 p-3 backdrop-blur dark:border-slate-800 dark:bg-slate-900/95 sm:static sm:mt-6 sm:border-0 sm:bg-transparent sm:p-0 sm:backdrop-blur-none dark:sm:bg-transparent">
+              {/* iOS'ta ana ekran çubuğu (home indicator) barın altını yiyordu:
+                  taban dolgusu güvenli alan kadar büyütülür. */}
+              <div className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur dark:border-slate-800 dark:bg-slate-900/95 sm:static sm:mt-6 sm:border-0 sm:bg-transparent sm:p-0 sm:pb-0 sm:backdrop-blur-none dark:sm:bg-transparent">
                 <div className="mx-auto max-w-2xl">
                   {!flipped ? (
                     <button
@@ -355,15 +360,15 @@ export default function SrsStudy() {
                     </button>
                   ) : (
                     <div className="grid grid-cols-4 gap-2">
-                      {RATING_META.map(({ rating, label, cls }) => (
+                      {RATING_META.map(({ rating, label, accent }) => (
                         <button
                           key={rating}
                           onClick={() => rate(rating)}
                           disabled={answer.isPending}
-                          className={`rounded-xl px-2 py-3 text-sm font-semibold transition disabled:opacity-60 ${cls}`}
+                          className={`${RATING_BTN_CLS} ${accent}`}
                         >
                           <span className="block">{label}</span>
-                          <span className="mt-0.5 block text-xs font-medium opacity-80">
+                          <span className="mt-0.5 block text-xs font-medium text-slate-500 dark:text-slate-400">
                             {formatIntervalMinutes(card.previews[String(rating) as "1" | "2" | "3" | "4"])}
                           </span>
                         </button>

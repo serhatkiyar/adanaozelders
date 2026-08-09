@@ -2,6 +2,7 @@ import { FormEvent, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { DashboardShell } from "@/components/DashboardShell";
 import { Field } from "@/components/ui/Field";
+import { Modal } from "@/components/ui/Modal";
 import { EmptyState, ErrorState, PageSkeleton } from "@/components/admin/ui/PageState";
 import { STUDENT_NAV, TUTOR_NAV } from "@/lib/nav";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
@@ -17,8 +18,7 @@ import { ROLE_IDS } from "@/types";
 import type { SrsDeck } from "@/types/srs";
 import { ROUTES } from "@/lib/routes";
 
-const inputCls =
-  "w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:border-slate-600 dark:bg-slate-700 dark:text-white";
+const LABEL_CLS = "mb-1.5 block text-xs font-medium text-slate-500 dark:text-slate-400";
 
 function CountChips({ deck }: { deck: SrsDeck }) {
   const c = deck.counts;
@@ -31,21 +31,25 @@ function CountChips({ deck }: { deck: SrsDeck }) {
       </span>
     );
   }
+  // Üç rakamın anlamı yalnız renkle ve `title` ile veriliyordu: `title` klavye
+  // ve ekran okuyucu kullanıcısına ulaşmaz, dokunmatikte hiç görünmez. Grup
+  // tek bir adlandırılmış öğe (`role="img"`) olarak sunulur; içindeki rakamlar
+  // dekoratif sayılır, böylece "12 8 30" diye okunmaz.
+  const label = `${c.new} yeni, ${c.learning} öğrenme, ${c.review} tekrar`;
   return (
-    <span className="flex items-center gap-2 text-xs tabular-nums">
-      <span title="Yeni" className="font-semibold text-sky-600 dark:text-sky-400">
+    <span
+      role="img"
+      aria-label={label}
+      title={label}
+      className="flex items-center gap-2 text-xs tabular-nums"
+    >
+      <span aria-hidden className="font-semibold text-sky-600 dark:text-sky-400">
         {c.new}
       </span>
-      <span
-        title="Öğrenme"
-        className="font-semibold text-amber-600 dark:text-amber-400"
-      >
+      <span aria-hidden className="font-semibold text-amber-600 dark:text-amber-400">
         {c.learning}
       </span>
-      <span
-        title="Tekrar"
-        className="font-semibold text-emerald-600 dark:text-emerald-400"
-      >
+      <span aria-hidden className="font-semibold text-emerald-600 dark:text-emerald-400">
         {c.review}
       </span>
     </span>
@@ -158,89 +162,72 @@ function CreateDeckModal({
     );
   };
 
+  // Portal ZORUNLU: panel başlığı `backdrop-blur` kullanır ve blur'lu bir ata
+  // içindeki `position: fixed` öğeyi kendi kutusuna hapseder — elle yazılmış
+  // `fixed inset-0` sarmalayıcı modalı ekranın ortasına değil header'ın içine
+  // çizerdi. Ortak `Modal` ayrıca odak tuzağı, Esc ve `aria-modal` getirir.
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
-      onClick={onClose}
-    >
-      <div
-        className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl ring-1 ring-slate-100 dark:bg-slate-900 dark:ring-slate-800"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h2 className="text-lg font-bold text-slate-900 dark:text-white">
-          Yeni Deste
-        </h2>
-        <form onSubmit={submit} className="mt-4 space-y-4">
-          <Field
-            label="Deste adı *"
-            required
-            labelClassName="mb-1.5 block text-xs font-medium text-slate-500 dark:text-slate-400"
-          >
-            {(id) => (
-              <input
-                id={id}
-                maxLength={120}
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Örn. TYT Biyoloji"
-                className={inputCls}
-              />
-            )}
-          </Field>
-          <Field
-            label="Açıklama (opsiyonel)"
-            labelClassName="mb-1.5 block text-xs font-medium text-slate-500 dark:text-slate-400"
-          >
-            {(id) => (
-              <textarea
-                id={id}
-                rows={2}
-                maxLength={2000}
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                className={inputCls}
-              />
-            )}
-          </Field>
-          <Field
-            label="Üst deste (opsiyonel)"
-            labelClassName="mb-1.5 block text-xs font-medium text-slate-500 dark:text-slate-400"
-          >
-            {(id) => (
-              <select
-                id={id}
-                value={parentId}
-                onChange={(e) => setParentId(e.target.value)}
-                className={inputCls}
-              >
-                <option value="">Yok (kök deste)</option>
-                {ownDecks.map((d) => (
-                  <option key={d.id} value={d.id}>
-                    {d.name}
-                  </option>
-                ))}
-              </select>
-            )}
-          </Field>
-          <div className="flex justify-end gap-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-xl px-4 py-2 text-sm font-medium text-slate-500 transition hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700"
+    <Modal open onClose={onClose} title="Yeni Deste">
+      <form onSubmit={submit} className="space-y-4">
+        <Field label="Deste adı *" required labelClassName={LABEL_CLS}>
+          {(id) => (
+            <input
+              id={id}
+              maxLength={120}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Örn. TYT Biyoloji"
+              className="input"
+            />
+          )}
+        </Field>
+        <Field label="Açıklama (opsiyonel)" labelClassName={LABEL_CLS}>
+          {(id) => (
+            <textarea
+              id={id}
+              rows={2}
+              maxLength={2000}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              className="input"
+            />
+          )}
+        </Field>
+        <Field label="Üst deste (opsiyonel)" labelClassName={LABEL_CLS}>
+          {(id) => (
+            <select
+              id={id}
+              value={parentId}
+              onChange={(e) => setParentId(e.target.value)}
+              className="input"
             >
-              İptal
-            </button>
-            <button
-              type="submit"
-              disabled={createDeck.isPending}
-              className="rounded-xl bg-indigo-600 px-5 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:opacity-60"
-            >
-              {createDeck.isPending ? "Oluşturuluyor…" : "Oluştur"}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+              <option value="">Yok (kök deste)</option>
+              {ownDecks.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.name}
+                </option>
+              ))}
+            </select>
+          )}
+        </Field>
+        <div className="flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-xl px-4 py-2 text-sm font-medium text-slate-500 transition hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
+          >
+            İptal
+          </button>
+          <button
+            type="submit"
+            disabled={createDeck.isPending}
+            className="rounded-xl bg-indigo-600 px-5 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:opacity-60"
+          >
+            {createDeck.isPending ? "Oluşturuluyor…" : "Oluştur"}
+          </button>
+        </div>
+      </form>
+    </Modal>
   );
 }
 

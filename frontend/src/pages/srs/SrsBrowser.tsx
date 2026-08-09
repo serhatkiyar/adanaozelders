@@ -1,8 +1,9 @@
-import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import type { ColumnDef } from "@tanstack/react-table";
 import { DashboardShell } from "@/components/DashboardShell";
 import { DataTable } from "@/components/admin/data-table/DataTable";
+import { ConfirmDialog } from "@/components/admin/ui/ConfirmDialog";
 import { ErrorState } from "@/components/admin/ui/PageState";
 import { STUDENT_NAV, TUTOR_NAV } from "@/lib/nav";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
@@ -20,8 +21,17 @@ import type {
 } from "@/types/srs";
 import { ROUTES } from "@/lib/routes";
 
-const selectCls =
-  "rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200";
+/**
+ * Satır içi filtre denetimi: ortak `.input` (index.css) + tam genişliğin
+ * kaldırılması. Yerel kopya bilinçli olarak SİLİNDİ — `focus:ring-indigo-100`
+ * ile bitiyor, dark karşılığı yoktu ve odaklanan girdi koyu temada beyaz hale
+ * alıyordu; ayrıca aynı ekranda iki farklı koyu zemin (slate-700 ↔ slate-800)
+ * karışıyordu.
+ */
+const CONTROL_CLS = "input w-auto";
+
+/** Toplu işlem barındaki daraltılmış denetimler. */
+const BULK_CONTROL_CLS = `${CONTROL_CLS} py-1.5 text-xs`;
 
 const STATE_OPTIONS: { value: SrsCardState; label: string }[] = [
   { value: "NEW", label: "Yeni" },
@@ -45,7 +55,10 @@ export default function SrsBrowser() {
   const tagsQuery = useSrsTags();
   const bulk = useBulkSrsCards();
 
-  const [deckId, setDeckId] = useState("");
+  // Deste detayındaki "Tümünü tarayıcıda aç" bağlantısı buraya ?deste= ile
+  // gelir; ilk deste filtresi oradan okunur.
+  const [searchParams] = useSearchParams();
+  const [deckId, setDeckId] = useState(() => searchParams.get("deste") ?? "");
   const [state, setState] = useState("");
   const [tag, setTag] = useState("");
   const [suspended, setSuspended] = useState("");
@@ -55,6 +68,10 @@ export default function SrsBrowser() {
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [targetDeckId, setTargetDeckId] = useState("");
   const [bulkTag, setBulkTag] = useState("");
+  const [confirming, setConfirming] = useState<
+    | { action: SrsBulkAction; extra?: { target_deck_id?: number }; title: string; description: string }
+    | null
+  >(null);
 
   const q = useDebounce(search.trim(), 400);
 
@@ -86,6 +103,20 @@ export default function SrsBrowser() {
 
   const resetPage = () => setPage(1);
 
+  /**
+   * VERİ RİSKİ düzeltmesi: filtre değişince seçim TEMİZLENİR.
+   *
+   * Önceden seçim yalnız işlem sonrası sıfırlanıyordu. 20 kart seçip desteyi
+   * (ya da durumu/etiketi/aramayı) değiştiren kullanıcıda bar hâlâ "20 kart
+   * seçili" diyordu ve toplu işlem EKRANDA GÖRÜNMEYEN kartlara uygulanıyordu —
+   * askıya alma/taşıma geri alınması zor bir yanlış hedefe gidiyordu.
+   * Sayfa değişimi bilinçli olarak DIŞARIDA: sayfalar arası seçim birikmesi
+   * kullanıcının gördüğü kümede kalır ve `toggleAll` yalnız sayfayı ekler.
+   */
+  useEffect(() => {
+    setSelected(new Set());
+  }, [deckId, state, tag, q, suspended]);
+
   const toggle = (id: number) =>
     setSelected((prev) => {
       const next = new Set(prev);
@@ -116,10 +147,37 @@ export default function SrsBrowser() {
         onSuccess: ({ affected }) => {
           toast.success(`${affected} kart güncellendi.`);
           setSelected(new Set());
+          setConfirming(null);
         },
         onError: (err) => toast.error(getErrorMessage(err, "İşlem başarısız.")),
       }
     );
+  };
+
+  /**
+   * Askıya alma ve deste taşıma ONAY İSTER: ikisi de tek tıkla çok sayıda kartı
+   * kullanıcının göremediği bir duruma sokar ve geri alma düğmesi yoktur.
+   * (Göm/etiket işlemleri tek tıkla geri alınabildiği için onaysız kalır.)
+   */
+  const askSuspend = () =>
+    setConfirming({
+      action: "suspend",
+      title: "Kartlar askıya alınsın mı?",
+      description: `${selected.size} kart askıya alınacak; askıdaki kartlar çalışma kuyruğuna hiç girmez. "Askıdan çıkar" ile geri alabilirsin.`,
+    });
+
+  const askMove = () => {
+    if (!targetDeckId) {
+      toast.error("Hedef deste seç.");
+      return;
+    }
+    const name = deckNames.get(Number(targetDeckId)) ?? `#${targetDeckId}`;
+    setConfirming({
+      action: "move_deck",
+      extra: { target_deck_id: Number(targetDeckId) },
+      title: "Kartlar taşınsın mı?",
+      description: `${selected.size} kart "${name}" destesine taşınacak. Kartların çalışma ilerlemesi korunur ama hedef destenin günlük limitlerine tabi olurlar.`,
+    });
   };
 
   // Not: bilinçli olarak useMemo YOK — kolon hücreleri seçim state'ine bağlı,
@@ -227,7 +285,7 @@ export default function SrsBrowser() {
             }}
             placeholder="Ara…"
             aria-label="Kartlarda ara"
-            className={`${selectCls} w-48`}
+            className={`${CONTROL_CLS} w-48`}
           />
           <select
             value={deckId}
@@ -236,7 +294,7 @@ export default function SrsBrowser() {
               resetPage();
             }}
             aria-label="Deste filtresi"
-            className={selectCls}
+            className={CONTROL_CLS}
           >
             <option value="">Tüm desteler</option>
             {allDecks.map((d) => (
@@ -252,7 +310,7 @@ export default function SrsBrowser() {
               resetPage();
             }}
             aria-label="Durum filtresi"
-            className={selectCls}
+            className={CONTROL_CLS}
           >
             <option value="">Tüm durumlar</option>
             {STATE_OPTIONS.map((o) => (
@@ -268,7 +326,7 @@ export default function SrsBrowser() {
               resetPage();
             }}
             aria-label="Etiket filtresi"
-            className={selectCls}
+            className={CONTROL_CLS}
           >
             <option value="">Tüm etiketler</option>
             {(tagsQuery.data ?? []).map((t) => (
@@ -284,7 +342,7 @@ export default function SrsBrowser() {
               resetPage();
             }}
             aria-label="Askı filtresi"
-            className={selectCls}
+            className={CONTROL_CLS}
           >
             <option value="">Askı: hepsi</option>
             <option value="true">Yalnız askıda</option>
@@ -292,9 +350,12 @@ export default function SrsBrowser() {
           </select>
         </div>
 
-        {/* Toplu işlem barı */}
+        {/* Toplu işlem barı — uzun listede kaybolmasın diye başlığın (sticky
+            top-0 z-40) hemen altına yapışır. Kaydırılan içerik altından
+            geçmesin diye sayfa zeminini taşıyan bir kılıfın içinde durur. */}
         {selected.size > 0 && (
-          <div className="mt-4 flex flex-wrap items-center gap-2 rounded-2xl border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm dark:border-indigo-500/30 dark:bg-indigo-500/10">
+          <div className="sticky top-16 z-30 -mx-1 mt-4 bg-slate-50 px-1 py-1 dark:bg-slate-900">
+          <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm dark:border-indigo-500/30 dark:bg-indigo-500/10">
             <span className="font-semibold text-indigo-700 dark:text-indigo-300">
               {selected.size} kart seçili
             </span>
@@ -309,7 +370,7 @@ export default function SrsBrowser() {
             ).map(([action, label]) => (
               <button
                 key={action}
-                onClick={() => runBulk(action)}
+                onClick={() => (action === "suspend" ? askSuspend() : runBulk(action))}
                 disabled={bulk.isPending}
                 className="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-indigo-700 transition hover:bg-indigo-100 disabled:opacity-50 dark:text-indigo-300 dark:hover:bg-indigo-500/20"
               >
@@ -321,7 +382,7 @@ export default function SrsBrowser() {
                 value={targetDeckId}
                 onChange={(e) => setTargetDeckId(e.target.value)}
                 aria-label="Hedef deste"
-                className={`${selectCls} py-1.5 text-xs`}
+                className={BULK_CONTROL_CLS}
               >
                 <option value="">Hedef deste…</option>
                 {(decksQuery.data?.own ?? []).map((d) => (
@@ -331,13 +392,7 @@ export default function SrsBrowser() {
                 ))}
               </select>
               <button
-                onClick={() =>
-                  targetDeckId
-                    ? runBulk("move_deck", {
-                        target_deck_id: Number(targetDeckId),
-                      })
-                    : toast.error("Hedef deste seç.")
-                }
+                onClick={askMove}
                 disabled={bulk.isPending}
                 className="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-indigo-700 transition hover:bg-indigo-100 disabled:opacity-50 dark:text-indigo-300 dark:hover:bg-indigo-500/20"
               >
@@ -350,7 +405,7 @@ export default function SrsBrowser() {
                 onChange={(e) => setBulkTag(e.target.value)}
                 placeholder="etiket"
                 aria-label="Toplu etiket"
-                className={`${selectCls} w-28 py-1.5 text-xs`}
+                className={`${BULK_CONTROL_CLS} w-28`}
               />
               <button
                 onClick={() =>
@@ -380,6 +435,23 @@ export default function SrsBrowser() {
               className="ml-auto rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-500 transition hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
             >
               Seçimi temizle
+            </button>
+          </div>
+          </div>
+        )}
+
+        {/* Mobilde tablo başlığı (dolayısıyla "hepsini seç" kutusu) hiç
+            çizilmiyor; sayfa seçimi burada sunulur. */}
+        {items.length > 0 && (
+          <div className="mt-4 md:hidden">
+            <button
+              type="button"
+              onClick={toggleAll}
+              className="rounded-xl px-3 py-2 text-sm font-semibold text-indigo-600 transition hover:bg-indigo-50 dark:text-indigo-400 dark:hover:bg-indigo-500/10"
+            >
+              {allOnPageSelected
+                ? `Sayfa seçimini kaldır (${items.length})`
+                : `Sayfadakileri seç (${items.length})`}
             </button>
           </div>
         )}
@@ -433,6 +505,19 @@ export default function SrsBrowser() {
           )}
         </div>
       </div>
+
+      <ConfirmDialog
+        open={confirming !== null}
+        title={confirming?.title ?? ""}
+        description={confirming?.description ?? ""}
+        confirmLabel={confirming?.action === "move_deck" ? "Taşı" : "Askıya al"}
+        danger
+        isPending={bulk.isPending}
+        onClose={() => setConfirming(null)}
+        onConfirm={() =>
+          confirming && runBulk(confirming.action, confirming.extra)
+        }
+      />
     </DashboardShell>
   );
 }

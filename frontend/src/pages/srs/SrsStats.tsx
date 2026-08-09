@@ -51,7 +51,8 @@ export default function SrsStats() {
             value={deckId}
             onChange={(e) => setDeckId(e.target.value)}
             aria-label="Deste filtresi"
-            className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
+            // Ortak `.input` (index.css); `w-auto` yalnız tam genişliği kaldırır.
+            className="input w-auto"
           >
             <option value="">Tüm desteler</option>
             {allDecks.map((d) => (
