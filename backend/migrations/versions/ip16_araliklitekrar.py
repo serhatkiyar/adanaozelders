@@ -1,7 +1,7 @@
 """İP-16: aralıklı tekrar (FSRS-5) şeması — srs_* tabloları
 
 Revision ID: ip16_araliklitekrar
-Revises: ip5_siparis_vergi_kirilimi
+Revises: ip12_urun_arama_vektoru
 Create Date: 2026-08-08
 
 Sekiz tablo (sözleşme §3): srs_decks, srs_notes, srs_cards, srs_progress,
@@ -33,7 +33,12 @@ import sqlalchemy as sa
 from alembic import op
 
 revision: str = "ip16_araliklitekrar"
-down_revision: Union[str, Sequence[str], None] = "ip5_siparis_vergi_kirilimi"
+# İP-12 bu dal açıldıktan sonra main'e girdi ve o da `ip5_siparis_vergi_kirilimi`
+# üzerine kuruluydu. İkisi kardeş bırakılırsa merge sonrası ağaçta İKİ head
+# oluşur ve `alembic upgrade head` "Multiple head revisions" ile durur. Merge
+# revision üretmek yerine zincir doğrusal tutuldu: bu revizyon hiçbir ortama
+# uygulanmadığı için down_revision'ı ip12'nin üstüne almak güvenlidir.
+down_revision: Union[str, Sequence[str], None] = "ip12_urun_arama_vektoru"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
