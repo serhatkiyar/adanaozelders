@@ -149,6 +149,18 @@ Migration: iki revizyon —
 `srs_*` tablo sayısı 0, yeniden upgrade'de 8 tablo + 2 izin) ve
 `alembic check` "No new upgrade operations detected" verir.
 
+⚠️ **Bayat ortam tuzağı (merge önkoşulu):** izin kodları geliştirme sırasında
+`srs.platform.*` → `srs_platform.*` olarak yeniden adlandırıldı ama migration
+**revizyon kimliği değişmedi**. Alembic aynı revizyonu tekrar koşmadığı için,
+yeniden adlandırmadan ÖNCE `ip16_srs_izinleri` uygulanmış bir veritabanında
+eski kodlar kalır ve admin platform uçları herkese 403 döner. Bu durum
+geliştirme sırasında bir kez gözlendi (tek kullanımlık bir test DB'sinde; tam
+suite orada 6 kırmızı verdi, taze DB'de 0). Dal push/merge edilmediği ve
+geliştirme veritabanına (`ceyhandb`, revizyon `ip12_urun_arama_vektoru`,
+`srs_*` tablosu 0) hiç uygulanmadığı için başka ortam etkilenmemiştir.
+**Merge eden:** bu revizyonu daha önce uygulamış bir ortam varsa
+`admin_permissions`'taki `srs.platform.%` satırlarını elle düzeltmelidir.
+
 ⚠️ **Merge anında head çatalı (beklenen, bkz. görev tanımı):** İP-12 bu arada
 main'e girdi ve onun `ip12_urun_arama_vektoru` revizyonu da
 `ip5_siparis_vergi_kirilimi`'ye bağlı. İP-16 main'e alınırken iki head
