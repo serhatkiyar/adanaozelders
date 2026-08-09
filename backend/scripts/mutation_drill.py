@@ -1078,9 +1078,22 @@ MUTASYONLAR: list[Mutasyon] = [
     Mutasyon(
         "PR2", "presence: tablo adı allowlist'i kaldırıldı",
         "backend/core/presence.py",
-        """        if table not in _FLUSHABLE_TABLES:
-            continue  # tablo adı SQL'e gömülüyor: Redis'ten gelen değere güvenme""",
-        """        pass  # MUTASYON: Redis'ten gelen tablo adi dogrudan SQL'e giriyor""",
+        """    if not sep or table not in _FLUSHABLE_TABLES:""",
+        """    if not sep:  # MUTASYON: Redis'ten gelen tablo adi dogrudan SQL'e giriyor""",
+        ("tests/integration/test_presence_flush_pg.py",),
+    ),
+    Mutasyon(
+        "PR3", "presence: kuyruk temizligi degeri karsilastirmadan DEL'e dondu",
+        "backend/core/presence.py",
+        "    await _kuyruktan_dus(r, list(pending.items()))",
+        "    await r.delete(_DIRTY_KEY)  # MUTASYON: hgetall + DEL yarisi",
+        ("tests/integration/test_presence_flush_pg.py",),
+    ),
+    Mutasyon(
+        "PR4", "presence: kuyruk tavani alarmi kaldirildi",
+        "backend/core/presence.py",
+        "    _uyar_kuyruk_sismis(len(pending))",
+        "    pass  # MUTASYON: kuyruk sismesi sessiz",
         ("tests/integration/test_presence_flush_pg.py",),
     ),
     Mutasyon(
