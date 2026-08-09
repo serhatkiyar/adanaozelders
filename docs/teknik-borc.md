@@ -130,6 +130,22 @@ silinmez).
      o belge İP-5 turunun ölçümünü anlatıyor ve o tur bu düzeltmeden önceydi).
      -->
 
+## TB-31 · `backend/.env` sürümsüz ve yedeksiz — tek koruma iki klasörde birden durması
+
+> **Lansman öncesi çözülmeli.** Bu bir kod kusuru değil, bir **operasyon
+> kusuru**: projenin bütün sırları tek bir sürümlenmemiş dosyada yaşıyor ve o
+> dosyanın kaybı ortamı yeniden kurulamaz hâle getirir.
+
+| | |
+|---|---|
+| **Bulundu** | İP-16 merge sonrası operasyon turu, 9 Ağu 2026. Worktree kaldırma isteği sırasında "silinirse ne kaybederiz" sorusu sorulunca ölçüldü — kod incelemesiyle değil, bir kaza ihtimali sorgulanırken |
+| **Yer** | `adana-main/backend/.env` (5.807 bayt) · ikizi `adana-ozel-ders/backend/.env` |
+| **Durum** | Dosya `.gitignore:4` ile izlenmiyor ve **git geçmişinde hiç yer almamış** (`git log --all -- backend/.env` boş — bu iyi, sızıntı yok). Ama bunun bedeli: hiçbir sürüm, hiçbir yedek, hiçbir kurtarma noktası yok. İçeriği: Postgres parolası, `JWT_SECRET_KEY`, iyzico API/secret anahtarları, MinIO erişim anahtarları, Google Maps anahtarı |
+| **Ölçüm** | İki kopya **birebir aynı** (`md5 9b4793af8173049cf1063554f921286a`, ikisi de 5.807 bayt), ama değişim zamanları 12 gün farklı (`adana-main` 9 Ağu 17:50 · `adana-ozel-ders` 28 Tem 14:40). Yani bu bir yedek değil, **tesadüfen hâlâ eşleşen kardeş kopya**: biri düzenlendiğinde ikisi sessizce ayrışır ve hangisinin doğru olduğunu söyleyen hiçbir şey kalmaz. Ek risk: ikisi de aynı fiziksel diskte (`C:`) ve **disk %97 dolu** (629 GB'nin 20 GB'si boş) |
+| **Etki** | Disk arızası, yanlış `git worktree remove`, yanlış `rm -rf` ya da klasör taşıma → tüm geliştirme ortamı yeniden kurulamaz. Postgres parolası ve MinIO anahtarları yeniden üretilebilir; **iyzico sandbox/üretim anahtarları panelden yeniden alınmak zorunda kalır** ve üretim anahtarları söz konusu olduğunda bu, kesinti demektir. `JWT_SECRET_KEY` kaybı tüm oturumları düşürür (geliştirmede zararsız, üretimde değil) |
+| **Neden şimdi düzeltilmedi** | Doğru çözüm bir sır yönetimi kararıdır (aşağıdaki seçenekler), operasyon turunun kapsamı değildi. Ayrıca `.env` bilinçli olarak `protect-env.mjs` hook'uyla korunuyor — yani dosyaya dokunmak tek başına serbest bir iş değil, ayrı bir karar ister |
+| **Sonraki adım** | Seçenekler, artan güçte: (1) **asgari** — şifreli yedek (`age`/`gpg`) ayrı bir fiziksel ortama, `.env.example` ile alan alan eşleştiği doğrulanmış olarak; (2) **orta** — parola yöneticisinde (1Password/Bitwarden) sır kaydı, `.env` ondan türetilir; (3) **hedef** — üretim sırları hiçbir zaman dosyada durmaz, dağıtım ortamının sır deposundan (systemd credentials / Docker secrets / bulut KMS) gelir. Üretim için (3) zaten `docs/pk1-deployment-checklist.md`'nin konusu; bu kayıt **geliştirme ortamının** kurtarılabilirliğini kapsar. Ayrıca: `.env.example` ile gerçek `.env` arasındaki alan farkını CI'da rapor eden bir kontrol, kaybolan/eskiyen anahtarı erken gösterir |
+
 ## TB-30 · `ensure_schema` şema/damga uyumsuzluğunu AKTİF OLARAK GİZLİYOR — üretimde kapalı olmalı
 
 > **Öncelik: yüksek.** Bu bir "nöbetçi eksikliği" değil; uygulamanın açılışta
