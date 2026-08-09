@@ -70,6 +70,30 @@ notunu bırakmak, yapılmış bir işi yapılmamış gibi anlatır).
      o belge İP-5 turunun ölçümünü anlatıyor ve o tur bu düzeltmeden önceydi).
      -->
 
+## TB-28 · Entegrasyon testleri **canlı Redis'e** (db 0) yazıyor — izolasyon yok
+
+| | |
+|---|---|
+| **Bulundu** | presence flush kapanış turu, 9 Ağu 2026 |
+| **Yer** | `backend/tests/integration/conftest.py` (ve tüm `*_factory.py`) — `POSTGRES_DB` tek kullanımlık test veritabanına yönlendirilir ama **`REDIS_URL` hiçbir yerde ezilmez**; `httpx.ASGITransport` gerçek `app`'i dependency override olmadan sürdüğü için her kimlik doğrulamalı istek `get_current_active_user` → `presence.touch` zincirinden geçer |
+| **Ölçüm** | Geliştirme Redis'inde (db 0) `presence:dirty` **7.488 kayda** ulaşmıştı. Kuyruktaki kimlikler kanıt: `clients:3939`, `clients:2632` — oysa geliştirme veritabanındaki en büyük `clients.id` **1398**'dir (14 canlı satır). Yani kayıtların bir kısmı **başka veritabanlarından** gelmiş: `clients_id_seq` tepe değerleri `adana_f29_test` 7089, `adana_ip2b_test` 5656, `ip1a_test` 4471, `ceyhandb` 4451 |
+| **Etki** | (1) Test verisi geliştirme Redis'ini kirletiyor — §G'nin "bir testin ürettiği veri başka teste kalmaz" sözü Redis tarafında **hiç** geçerli değil; (2) paylaşılan anahtar alanı yalnız presence değil: `core/ratelimit` kovaları, `core/token_denylist` jti'leri, `core/courier_position` konumları da aynı db 0'da — bir test koşumu geliştiricinin oturumunu denylist'leyebilir ya da rate-limit kovasını doldurabilir; (3) ters yönde flaky: geliştirme sırasında dolan bir kova, testte fail-open olmayan bir yolu beklenmedik biçimde etkileyebilir |
+| **Neden ertelendi** | Bu turun kapsamı presence flush'ının kendisiydi. Presence testleri kendi izolasyonunu **çözdü** (`test_presence_flush_pg.py::redis_izole` ayrı bir Redis veritabanına, db 15'e bağlanır), ama bunu suite geneline yaymak conftest'e `REDIS_URL` ezmesi + `flushdb` teardown'ı eklemek ve her fabrikanın Redis dokunuşunu gözden geçirmek demek — ayrı ve ölçülmesi gereken bir iş |
+| **Sonraki adım** | (1) `tests/integration/conftest.py`'de session kapsamlı bir fixture ile `settings.REDIS_URL`'i ayrı bir Redis veritabanına (ör. db 14) çevir; (2) suite başında/sonunda o db'yi `FLUSHDB` et; (3) hijyen nöbetçisinin Redis karşılığını ekle (suite sonunda beklenmeyen anahtar kalmışsa kırmızı); (4) geliştirme Redis'inde kalan çöpü tek seferlik temizle |
+| **Kabul ölçütü** | Tam `tests/integration` koşumu sonrası **db 0'da** `presence:dirty`, `rl:*`, `denylist:*`, `courier:*` anahtar sayılarının **değişmemesi** (koşum öncesi/sonrası ölçülerek) |
+
+## TB-27 · `last_seen_at` iki ayrı yoldan yazılıyor; presence yolunun izlenmesi yalnız log
+
+| | |
+|---|---|
+| **Bulundu** | presence flush düzeltmesinin kapanış turu, 9 Ağu 2026 |
+| **Yer** | `backend/api/deps.py::get_current_active_user:81-87` ↔ `backend/core/presence.py::flush_to_db` ↔ `backend/api/routers/auth.py:203` |
+| **Durum** | Üç yazma yolu var ve yalnız biri kasıtlı: (a) login `auth.py:203`'te doğrudan atar ve commit eder; (b) `deps.py` ORM nesnesine `user.last_seen_at = now` yazar — yorum "DO NOT commit to DB synchronously" der, **ama** aynı istek yazan bir uçsa `get_db`/servis commit'i bu alanı da **yan etkiyle kalıcı yapar**; (c) asıl yol, Redis kuyruğundan toplu flush |
+| **Etki** | `last_seen_at`'in anlamı uca göre değişiyor: yazan uçlara giden kullanıcıda anlık, salt-okunur gezinen kullanıcıda flush aralığı kadar gecikmeli. Daha önemlisi bu yan etki, **presence yolu 71 gün boyunca hiç çalışmazken bile** verinin "makul" görünmesini sağladı — bozukluğu maskeledi (bkz. bu turun bulgusu: 30 May–9 Ağu arası flush SQL'i her turda `integer = text` ile patlıyordu) |
+| **Bu turda kapananlar** | Flush SQL'i düzeldi (CAST), tablo adı allowlist'e alındı, `HGETALL`+`DEL` yarışı değer karşılaştırmalı silmeyle kapandı, bozuk anahtar artık turu düşürmüyor, kuyruk `PRESENCE_DIRTY_MAX_ENTRIES` (50k) üstünde kritik loglanıyor. Kanıt: `tests/integration/test_presence_flush_pg.py` (7 test, gerçek PG + gerçek Redis) + mutasyon provaları PR1–PR4 |
+| **Açık kalan** | (1) `deps.py`'deki örtük yan etki — sözleşme netleştirilmeli (ya bilinçli "yazan uçta anlık" diye belgelensin, ya da nesneye hiç yazılmasın); (2) kuyruk şişmesi yalnız **log** üretiyor — `/health` teşhis ucunda ya da bir alarmda görünmüyor, yani nöbetçi hâlâ birinin logu okumasına bağlı; (3) 30 May–9 Ağu arası `last_seen_at` verisi **geri doldurulamaz** (Redis kuyruğu düşürüldü, o dönemin gezinme izi yok) — bu tarih aralığındaki "son görülme" değerleri yalnız login/yazma anlarını yansıtır |
+| **Sonraki adım** | (a) `deps.py` sözleşmesini seç ve testle sabitle; (b) `presence:dirty` boyutunu `/health` çıktısına (üretimde ayrıntısız) ekle; (c) `last_seen_at` okuyan yüzeylerin listesi bu kayıtta: `clients.py::ClientPublicOut`, `admin_service.py:318` (kullanıcı dizini + `/yonetim` kullanıcı detayında "Son görülme"), `search_service.py:64` (`TutorOut`, frontend'de **tüketilmiyor**), `client_service.py:61` (öğrenci listesi **sıralama anahtarı** — flush ölüyken sıra login zamanına göre oluşuyordu), frontend `StudentProfile.tsx` (`/ogrenciler/:id` — eğitmen panelinden, mesajlardan ve soru listesinden link alır; "Çevrimiçi" rozeti + "son görülme", 120 sn eşiği). `ClientCard.tsx` aynı rozeti taşır ama **hiçbir yerden import edilmiyor** (ölü bileşen; `useClientSearch` hook'u da tüketilmiyor) |
+
 ## TB-26 · Ürün kapak görselleri `library-photos/` önekini kütüphane fotoğraflarıyla paylaşıyor
 
 | | |
