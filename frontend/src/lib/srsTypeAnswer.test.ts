@@ -4,7 +4,11 @@
 // noktalama korunur. Anki'nin case-duyarlı varsayılanından bilinçli sapma.
 import { describe, expect, it } from "vitest";
 
-import { compareTypedAnswer, normalizeAnswer } from "./srsTypeAnswer";
+import {
+  compareTypedAnswer,
+  normalizeAnswer,
+  normalizeInvariantAnswer,
+} from "./srsTypeAnswer";
 
 describe("normalizeAnswer (T-6)", () => {
   it("baş/son boşlukları kırpar, ardışık boşlukları teke indirir", () => {
@@ -29,6 +33,39 @@ describe("normalizeAnswer (T-6)", () => {
 
   it("noktalama korunur", () => {
     expect(normalizeAnswer("a, b!")).toBe("a, b!");
+  });
+});
+
+describe("çift katlama (B2): Türkçe VE invariant, herhangi biri tutarsa doğru", () => {
+  // Tek başına Türkçe katlama, Türkçe olmayan kelimelerde I → ı yapıp
+  // "IELTS"i "ielts"ten ayırıyordu; tek başına invariant katlama ise
+  // "İstanbul"u "istanbul"dan ayırıyordu (i + U+0307). Deste dil alanı
+  // taşımadığı için karar: iki katlama da üretilir, HERHANGİ biri tutarsa
+  // cevap doğru sayılır (yanlış-negatifi yanlış-pozitife tercih ederiz —
+  // puanı zaten kullanıcı verir).
+  it.each([
+    ["IELTS", "ielts"],
+    ["ielts", "IELTS"],
+    ["IMPORTANT", "important"],
+    ["AI", "ai"],
+    ["İstanbul", "istanbul"],
+    ["istanbul", "İSTANBUL"],
+    ["ISPARTA", "ısparta"],
+    ["Isparta", "ısparta"],
+  ])("%s ↔ %s eşleşir", (beklenen, yazilan) => {
+    expect(compareTypedAnswer(beklenen, yazilan).correct).toBe(true);
+  });
+
+  it("gerçekten farklı cevap hâlâ yanlış (katlama gevşemesi her şeyi kabul etmez)", () => {
+    expect(compareTypedAnswer("Isparta", "Ispanya").correct).toBe(false);
+    expect(compareTypedAnswer("ielts", "toefl").correct).toBe(false);
+  });
+
+  it("her iki normalizasyon da dışarıya açık ve farklı sonuç üretebilir", () => {
+    expect(normalizeAnswer("IELTS")).toBe("ıelts");
+    expect(normalizeInvariantAnswer("IELTS")).toBe("ielts");
+    expect(normalizeAnswer("İstanbul")).toBe("istanbul");
+    expect(normalizeInvariantAnswer("İstanbul")).not.toBe("istanbul");
   });
 });
 
