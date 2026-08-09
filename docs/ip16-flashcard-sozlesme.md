@@ -570,6 +570,31 @@ akılda tutulmalıdır — özellikle migration kimliğine dokunan provalarda.
 
 ## 11. Kalan P2'ler (bilinçli kapsam dışı)
 
+- **Vade damgası AN tabanında, elapsed ise ÇALIŞMA GÜNÜ tabanında — iki
+  granülarite bir arada (P2, ölçüldü).** H3 düzeltmesi `elapsed_days`'i gün
+  sınırına bağladı ama `due_at` hâlâ `now + interval` ile an tutuyor; kuyruk
+  da `due_at <= now` ile an karşılaştırıyor. Ölçülen sonuç:
+
+  | Ölçüm | Değer |
+  |---|---|
+  | Pzt 20:00'de cevaplanan 2 günlük kartın vadesi | Çar 20:00 (saat korunuyor) |
+  | Aynı kart Çar **09:00**'da kuyrukta mı | **Hayır** (`due_at <= now` sağlanmıyor) |
+  | Vadenin çalışma günü ile Çar 09:00'ın çalışma günü | Farklı |
+  | Her tekrar vadeden 2 saat sonra cevaplanırsa cevap anı | 20:00 → 22:00 → 00:00 → 02:00 → **04:00** |
+
+  İki ayrı zarar var. (1) **Sabah çalışan öğrenci kartı göremez**: kart o
+  çalışma gününe aittir ama akşam saatine damgalıdır; öğrenci "bugün
+  tekrarım yok" görür, akşam açtığında birden dolu bir kuyrukla karşılaşır.
+  (2) **Saat ileri kayar ve geri gelmez**: kullanıcı vadeden geç cevapladıkça
+  damga sürüklenir; dördüncü tekrarda 04:00'ü aşınca kart bir çalışma günü
+  daha ileri atlar — yani kayma sessizce bir **gün kaybına** dönüşür.
+
+  Anki bu yüzden vadeyi **gün granülaritesinde** tutar. Çözüm önerisi: vade
+  damgasını çalışma günü başına yuvarla (`dayboundary.day_start(study_day(now)
+  + interval_gün)`), intraday öğrenme adımları (dakika ölçekli) hariç. Bu,
+  `due_at <= now` karşılaştırmasını da tek tabana indirir. Kapsam dışı
+  bırakıldı çünkü kuyruk sıralaması, learn-ahead penceresi ve `future_load`
+  istatistiği aynı anda gözden geçirilmeli.
 - Sibling bury (ters/cloze kardeş **gömme**) — §4.1. Denetim turunda kapsam
   daraldı: kardeşlerin aynı oturumda peş peşe gelmesi Q-10 ile çözüldü; kalan
   P2 yalnız "kardeşi ertesi güne ötele" davranışıdır.
