@@ -185,8 +185,13 @@ async def test_d6_uc_taramasi_govde_kontrolu(ip16, ip16_http, ip16_saat):
         u=cid,
     )
     assert izler, "kurulum hatası: öğrenci ilerlemesi yok"
+    # Router'daki GET uçlarının TAMAMI (9 adet) burada karşılanır: 8'i
+    # eğitmene açık ve taranır; 9.'su (`/admin/platform-decks`) admin izni
+    # ister ve eğitmene kapalıdır — o da aşağıda ayrıca doğrulanır. Liste
+    # elle tutulduğu için yeni bir GET ucu eklendiğinde buraya da eklenmeli.
     ucler = [
         "/api/v1/srs/decks",
+        "/api/v1/srs/decks/platform",
         f"/api/v1/srs/decks/{deck_id}",
         f"/api/v1/srs/decks/{deck_id}/assignments",
         f"/api/v1/srs/cards?deck_id={deck_id}",
@@ -216,6 +221,12 @@ async def test_d6_uc_taramasi_govde_kontrolu(ip16, ip16_http, ip16_saat):
                  "difficulty", "due_at", "percent", "completed"}
         sizan = yasak & set(map(str.lower, satir.keys()))
         assert not sizan, f"atama satırında ilerleme alanı: {sizan}"
+    # 9. GET ucu (admin platform kataloğu) eğitmene kapalı — tarama yüzeyinin
+    # kalan parçası budur, veri sızdırması değil erişim yokluğuyla kapanır.
+    kapali = await ip16_http.get("/api/v1/srs/admin/platform-decks", headers=t_hdr)
+    assert kapali.status_code == 403, (
+        f"admin platform kataloğu eğitmene açık: {kapali.status_code}"
+    )
 
 
 # ── D-7: admin de rutin olarak ilerleme görmüyor ────────────────────────────
