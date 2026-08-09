@@ -26,7 +26,6 @@ from __future__ import annotations
 
 import argparse
 import contextlib
-import pathlib
 import re
 import sys
 
@@ -151,6 +150,102 @@ MUTASYONLAR: list[Mutasyon] = [
         "    return (local - timedelta(hours=params.ROLLOVER_HOUR)).date()",
         "    return local.date()  # MUTASYON: rollover yok",
         (KUYRUK,),
+    ),
+    # ── 7-9: kuyruk filtresi, leech, günlük limit (servis) ─────────────────
+    Mutasyon(
+        "IP16-7", "Q-6/Q-7: bury/suspend filtresi kaldırıldı",
+        SERVICE,
+        """    return or_(
+        prog.id.is_(None),
+        and_(
+            prog.suspended_at.is_(None),
+            or_(prog.buried_until.is_(None), prog.buried_until <= now),
+        ),
+    )""",
+        "    return or_(prog.id.is_(None), prog.id.isnot(None))  # MUTASYON: filtre yok",
+        (KUYRUK,),
+    ),
+    Mutasyon(
+        "IP16-8", "Q-8: leech eşiği yok sayıldı",
+        SERVICE,
+        "    return lapses == threshold or (lapses > threshold and (lapses - threshold) % half == 0)",
+        "    return False  # MUTASYON: leech hiç tetiklenmiyor",
+        (KUYRUK,),
+    ),
+    Mutasyon(
+        "IP16-9", "L-1/L-2: günlük limitler yok sayıldı",
+        SERVICE,
+        """    rem_new = max(0, new_limit - introduced_today)
+    rem_review = max(0, review_limit - reviews_today)""",
+        """    rem_new = 10**6  # MUTASYON: limit yok
+    rem_review = 10**6""",
+        (KUYRUK,),
+    ),
+    # ── 13-14: idempotency ve undo ─────────────────────────────────────────
+    Mutasyon(
+        "IP16-13", "S-1: cevap claim'i koşulsuzlaştırıldı (replay ilerletiyor)",
+        SERVICE,
+        "    if token is not None and result.rowcount == 0:",
+        "    if False:  # MUTASYON: claim koşulsuz",
+        (OTURUM,),
+    ),
+    Mutasyon(
+        "IP16-14", "S-5: undo zincirlenebilir yapıldı",
+        SERVICE,
+        "        .where(SrsReviewLog.id == last_id, SrsReviewLog.undone_at.is_(None))",
+        "        .where(SrsReviewLog.id == last_id)  # MUTASYON: zincir serbest",
+        (OTURUM,),
+    ),
+    # ── 15-17: sahiplik, K-6 gizlilik, kopya bağımsızlığı ──────────────────
+    Mutasyon(
+        "IP16-15", "D-4: deste sahiplik kontrolü kaldırıldı (IDOR)",
+        SERVICE,
+        """    if await _is_assigned(db, deck.id, user):
+        return deck
+    raise _404("Deste bulunamadı")""",
+        "    return deck  # MUTASYON: sahiplik/atama kontrolü yok",
+        (GIZLILIK,),
+    ),
+    Mutasyon(
+        "IP16-16", "K-6: EĞİTMENE ÖĞRENCİ İLERLEMESİ AÇILDI",
+        SERVICE,
+        """    own_join = and_(
+        prog.card_id == SrsCard.id,
+        prog.user_id == user.id,
+        prog.role_id == user.role_id,
+        prog.deleted_at.is_(None),
+    )""",
+        """    own_join = and_(
+        prog.card_id == SrsCard.id,
+        prog.deleted_at.is_(None),
+    )  # MUTASYON: kullanıcı filtresi kalktı — başkasının ilerlemesi sızar""",
+        (GIZLILIK,),
+    ),
+    Mutasyon(
+        "IP16-17", "D-9: kopya kaynağa bağlandı (derin kopya yerine paylaşım)",
+        SERVICE,
+        "            copied_from_id=src.id,",
+        "            copied_from_id=src.id, id=src.id,  # MUTASYON: aynı satır",
+        (GIZLILIK,),
+    ),
+    # ── 18-19: sayfalama ve kart bağımsızlığı ──────────────────────────────
+    Mutasyon(
+        "IP16-18", "B-3: sunucu sayfalaması kaldırıldı (istemciye bırakıldı)",
+        SERVICE,
+        """        .order_by(SrsCard.id)  # deterministik (B-3)
+        .limit(page_size)
+        .offset((page - 1) * page_size)""",
+        "        .order_by(SrsCard.id)  # MUTASYON: limit/offset yok",
+        (TARAYICI,),
+    ),
+    Mutasyon(
+        "IP16-19", "T-2: ters kart ana kartla aynı ilerlemeyi paylaşıyor",
+        SERVICE,
+        """    if note_type == "BASIC_REVERSED":
+        return [0, 1]""",
+        """    if note_type == "BASIC_REVERSED":
+        return [0]  # MUTASYON: ters kart ayrı kart değil""",
+        (TIPLER,),
     ),
     # ── 20: yazarak cevaplama (frontend) ───────────────────────────────────
     Mutasyon(
