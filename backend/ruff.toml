@@ -71,6 +71,11 @@ ignore = [
 # Defter yeniden hesaplama aracı: dry-run'da ne değişeceğini, --apply'da ne
 # değiştiğini satır satır bildirir; sessiz çalışması tehlikeli olurdu.
 "scripts/dev_rebase_stock.py" = ["T201"]
+# kitapsec kataloğu içe aktarma aracı: aynı gerekçe. Dry-run raporu (hangi
+# satır hangi ISBN/stok/görsel notuyla yüklenecek) aracın ta kendisidir —
+# --apply'dan önce gözden geçirilen şey o çıktıdır; parti parti ilerleyen
+# uygulama da created/skipped/errors sayımını ve run_id'yi konsola yazar.
+"scripts/import_kitapsec_books.py" = ["T201"]
 # Stok defteri raporu: konsol tablosu aracın çıktısıdır (CSV opsiyoneldir).
 "scripts/stock_ledger_report.py" = ["T201"]
 # F30 gerçek tarayıcı kabulünün iki ucu. İkisi de **stdout'a tek satır JSON**
