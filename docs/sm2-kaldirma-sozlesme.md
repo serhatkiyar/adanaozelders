@@ -445,7 +445,8 @@ assertion'ları taşıma çalışmasa da geçiyor. Taşımanın gerçek işlevi 
 **katalog dışı** rol bağları içindir (panelden elle verilmiş bir izin) — ve o
 yol test edilmiyor.
 
-**Bu boşluk bu paketten gelmiyor:** `git diff main...HEAD` ile ölçüldü — B7
+**Kayıt açıldı: [[TB-36]]** (numara tahsis komutu yeniden koşuldu; ölçüm
+aşağıda §8.7). **Bu boşluk bu paketten gelmiyor:** `git diff main...HEAD` ile ölçüldü — B7
 test gövdelerinde **tek satır** değişiklik yok; değiştirdiğim yerler yalnız
 fixture (satır 51, 124-128) ve iki B1 düğümü. Boşluk İP-16 merge edildiğinde de
 oradaydı; bu paketin mutasyon provası onu **görünür kıldı**. Denetçiye not:
@@ -509,7 +510,8 @@ tablo var ama şema başka türlü bozuk olabilir) için de geçerlidir.
 ### 8.6 Denetçiye kısa liste
 
 1. **D6'nın yakalanmayan mutasyonu** — İP-16'nın izin taşıma kodu nöbetsiz
-   (§8.2). Bu paketin kapsamı dışı ama kayıt altına alınmalı mı?
+   (§8.2). Kapsam dışı, **[[TB-36]] olarak kaydedildi**; kapatma önerisi
+   (katalog dışı bir role bağlanan izin ile B7 düğümü) kayıtta duruyor.
 2. **B1'in benzersiz değeri ölçülmedi** (§8.2 D1) — conftest gölgeliyor.
 3. **R4 zayıf sınıf** (§8.1) — yalnız adın gittiğini kanıtlar.
 4. **R3b'nin "0 satır" ayağı nöbetçilikten çok belgelendirme** (§8.4).
@@ -531,3 +533,29 @@ tablo var ama şema başka türlü bozuk olabilir) için de geçerlidir.
   **yazılmadı**; borç defterinde "sonraki adım" olarak duruyor.
 - Bu paket **bağımsız üretim audit'ine gidecektir**; merge kararı ayrıca
   verilecektir.
+
+---
+
+## 10. Ek: TB numara tahsis ölçümü (TB-36 için, 13 Ağu 2026)
+
+Kural gereği numara **alınmadan önce** ve **tüm dallarda** ölçülür; çıktı
+kayıt commit'ine yazılır. TB-34 alınırken yapılan ölçüm bu tur için
+tekrarlandı — ve **manzara değişmişti**:
+
+| Dal | Numaralar (kuyruk) |
+|---|---|
+| `main` / `origin/main` | … 29 30 31 **32 33 35** |
+| `ip14-operator-panel` | … 29 30 31 32 33 |
+| `ip17-vade-granulerligi` | … 30 31 32 33 |
+| `ip18-siparis-kilit` | … 32 33 **35** |
+| `sm2-kaldirma` (bu dal) | … 29 30 31 **34** |
+
+İki gözlem:
+
+1. **main ilerledi** — İP-14 merge edilmiş (32, 33 artık main'de) ve main'de
+   bir **TB-35** var. Ayrıca ölçüm yeni bir dal gösterdi: `ip18-siparis-kilit`.
+   Bu paketin merge kuyruğu bu yüzden yeniden değerlendirilmelidir.
+2. **TB-34 çakışmıyor** — main 33'ten 35'e atlamış, 34'e hiçbir dal
+   dokunmamış. Yani bu paketin TB-34'ü hâlâ benzersizdir.
+
+En yüksek numara **35** olduğundan yeni kayıt **TB-36** oldu.

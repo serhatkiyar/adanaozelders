@@ -130,6 +130,19 @@ silinmez).
      o belge İP-5 turunun ölçümünü anlatıyor ve o tur bu düzeltmeden önceydi).
      -->
 
+## TB-36 · `ip16_srs_izin_kodu_hizalama`'nın rol bağı taşıması NÖBETSİZ — sökülünce hiçbir test kırılmıyor
+
+| | |
+|---|---|
+| **Bulundu** | SM-2 kaldırma paketinin audit hazırlığı, mutasyon provası **D6** (13 Ağu 2026). Kaldırma paketinin kendi işi değil; komşu paketin kodu prova sırasında ölçüldü |
+| **Yer** | `backend/migrations/versions/ip16_srs_izin_kodu_hizalama.py` — bayat kodların rol bağlarını taşıyan `INSERT` (`:95-112`) ↔ aynı dosyadaki `ROLE_GRANTS` döngüsü (`:122-141`) |
+| **Durum** | Migration iki iş yapar: (1) bayat izin kodlarını (`srs.platform.*`) siler, (2) o kodların **rol bağlarını güncel koda (`srs_platform.*`) taşır**. İP-16 sözleşmesi ikisinin **birlikte** yapıldığını, yalnız kimliği değiştirmenin yetmeyeceğini açıkça söyler. Ama (2) için nöbetçi YOK |
+| **Ölçüm (D6)** | Taşıma `INSERT`'i etkisizleştirildi (`WHERE eski.code = '__mutasyon_yok__'` — SQL geçerli kalır, hiçbir satır üretmez). `pytest tests/integration/test_ip16_migration_pg.py` → **7 passed**. Mutasyon YAKALANMADI |
+| **Neden yakalanmıyor** | `ROLE_GRANTS` döngüsü doğru kodları `SUPER_ADMIN` ve `EDUCATION_MANAGER`'a **koşulsuz** veriyor. `test_B7_BAYAT_IZIN_KODLARI_UPGRADE_ILE_DUZELIR` rol iddiasını tam bu iki rol üzerinden kuruyor (`"SUPER_ADMIN" in roller and "EDUCATION_MANAGER" in roller`), dolayısıyla taşıma hiç çalışmasa da yeşil kalıyor. Test, taşımayı değil `ROLE_GRANTS`'ı ölçüyor |
+| **Etki** | Taşımanın gerçek işlevi **katalog dışı** rol bağlarıdır: panelden elle bir role `srs.platform.view` verilmişse, `ROLE_GRANTS` onu geri getirmez — yalnız taşıma getirir. Taşıma sessizce bozulursa (ya da bir refactor'da düşerse) o rol izni **kalıcı olarak kaybolur** ve migration yine "başarılı" döner. Bu, İP-16'nın B7 tuzağının aynı ailesinden: sessiz kayıp |
+| **Kapsam** | Bu kayıt SM-2 kaldırma paketinin kapsamı DIŞINDADIR. Kaldırma paketi `git diff main...HEAD` ile ölçtü: B7 test gövdelerinde **tek satır** değişiklik yapmadı (dokunulan yerler yalnız `birlesik_agac` fixture'ı ve iki B1 düğümü). Boşluk İP-16 merge edildiğinde de oradaydı; prova onu yalnızca görünür kıldı |
+| **Sonraki adım** | B7'ye bir düğüm eklenmeli: bayat dünya kurulurken izin **`ROLE_GRANTS`'ta olmayan bir role** de bağlanır (ör. `SUPPORT`/özel bir rol), `upgrade head` sonrası o bağın **güncel koda taşındığı** ölçülür. D6 mutasyonu o düğümü kırmalıdır — eklendikten sonra prova tekrarlanıp yakalandığı gösterilmelidir |
+
 ## TB-34 · `app.routes` üzerinden yol araması SESSİZCE boş döner — kaldırma testleri yalancı yeşil olur
 
 | | |
