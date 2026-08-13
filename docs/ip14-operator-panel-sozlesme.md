@@ -341,6 +341,11 @@ metin **yeniden gözden geçirilmelidir**.
 
 ## 11. Doğrulama sonuçları
 
+Aşağıdaki rakamlar **merge sonrası** (`7d0e7d6`, main → İP-14 `--no-ff`,
+13 Ağu 2026) yeniden ölçüldü. Dal ilk kapandığında (8 Ağu, taban `ff9eb1d`)
+yazılan rakamlar araya giren main turlarıyla (İP-16 dahil) bayatlamıştı;
+eski değerler parantez içinde bırakıldı ki artışın nereden geldiği okunabilsin.
+
 | Koşu | Sonuç |
 |---|---|
 | `pytest tests/integration -k ip14` | **7 passed** |
@@ -348,17 +353,19 @@ metin **yeniden gözden geçirilmelidir**.
 | `pytest tests/integration -k ip3` | 115 passed (beklenen 115) |
 | `pytest tests/integration -k ip1a` | 63 passed (beklenen 63) |
 | `pytest tests/integration -k ip2a` | 49 passed (beklenen 49) |
-| `pytest tests/integration` (tam) | **1206 passed, 16 skipped** (taban 1215 → +7 İP-14; skip'ler VROOM/dış servis) |
+| `pytest tests/integration` (tam) | **1300 passed, 16 skipped, 0 failed** — toplanan **1316** (main 1309 → **tam +7**, İP-14'ün tek dosyası); 598 s, izole `ip14_merge_test` DB'si; skip'ler VROOM/dış servis. *(8 Ağu ölçümü: 1206 passed / taban 1215.)* |
 | `pytest tests/acceptance` | **197 passed** (beklenen 197) |
 | `ruff check .` | All checks passed |
 | `git diff --check` | temiz |
-| `npm run test` | **77 dosya / 804 test** (taban 74/756 → +3/+48), 0 hata, 0 yakalanmamış istisna |
+| `npm run test` | **84 dosya / 885 test** (main 81/837 → **+3/+48**), 0 hata, 0 yakalanmamış istisna. *(8 Ağu ölçümü: 77/804, taban 74/756.)* |
 | `npx tsc -b` | temiz |
 | `npm run lint` | **0 hata / 34 uyarı** — taban ile aynı |
 | Yeni DOM testleri × 5 tekrar | 5/5 yeşil (48/48) |
 
-**Migration üretilmedi:** `alembic heads` → `ip5_siparis_vergi_kirilimi (head)`
-(taban ile aynı); `git diff ff9eb1d -- backend/migrations` boş.
+**Migration üretilmedi:** tek Alembic head **`ip16_srs_izin_kodu_hizalama`** —
+merge ile gelen main'in head'i; İP-14 migration eklemedi, `git diff ff9eb1d --
+backend/migrations` boş. *(Dal kapanırken head `ip5_siparis_vergi_kirilimi`
+idi; değişimin sebebi main'in kendi turları, bu paket değil.)*
 
 **İP-12 dosyalarıyla kesişim yok:** `AdminStore.tsx`, `store_service.py`,
 `search_vector`, `DataTable`, dashboard kartları — hiçbirine dokunulmadı.
