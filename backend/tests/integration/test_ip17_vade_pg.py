@@ -346,6 +346,52 @@ async def test_v7_rollover_oncesi_kenar_vade_bir_dakika_sonra(
     )
 
 
+# ── V-9: undo yuvarlanmış damgayı tutarlı geri alır ────────────────────────
+
+async def test_v9_undo_onceki_damgayi_birebir_geri_yukler(
+    ip16, ip16_http, ip16_saat
+):
+    """`undo` damgayı YENİDEN HESAPLAMAZ, öncekini birebir geri koyar.
+
+    Faz 1'de undo "üretim noktası değil" diye geçilmişti; yuvarlamadan sonra
+    yeniden bakıldı. Sözleşme: undo = anlık görüntüye dönüş (S-4). Geri
+    yüklenen damga yuvarlanmamış olabilir (eski satır ya da intraday adım) ve
+    bu DOĞRUDUR — undo geçmişi düzeltmez. Yuvarlama bir SONRAKİ cevapta
+    yeniden uygulanır.
+    """
+    ip16_saat(PZT_20)
+    cid, hdr = await ip16.ogrenci()
+    _deck, kart = await _review_karti(ip16, ip16_http, hdr, cid, son_cevap=PZR_20)
+
+    await cevapla(ip16_http, hdr, kart, HARD)
+    _st, due1, _s = await _durum(ip16, kart, cid)
+    assert due1 == _gun_basi(datetime.date(2026, 8, 11)), (
+        f"kurulum: cevap yuvarlanmadı ({_tr(due1)})"
+    )
+
+    r = await ip16_http.post("/api/v1/srs/study/undo", headers=hdr)
+    assert r.status_code == 200, f"undo: {r.status_code} {r.text[:200]}"
+    _st2, due2, _s2 = await _durum(ip16, kart, cid)
+    assert due2 == PZR_20, (
+        f"undo önceki damgayı birebir geri yüklemedi: {_tr(due2)} "
+        f"(beklenen {_tr(PZR_20)})"
+    )
+
+    # Yuvarlama bir sonraki cevapta YENİDEN uygulanır (undo onu devre dışı
+    # bırakmaz).
+    car_20 = datetime.datetime(2026, 8, 12, 20, 0, tzinfo=_TR).astimezone(UTC)
+    ip16_saat(car_20)
+    await cevapla(ip16_http, hdr, kart, HARD)
+    _st3, due3, _s3 = await _durum(ip16, kart, cid)
+    yerel = due3.astimezone(_TR)
+    assert (yerel.hour, yerel.minute) == (_ROLLOVER, 0), (
+        f"undo sonrası yuvarlama uygulanmadı: {_tr(due3)}"
+    )
+    assert _calisma_gunu(due3) > _calisma_gunu(car_20), (
+        f"vade ileri gitmedi: {_tr(due3)}"
+    )
+
+
 # ── V-8: aynı güne düşen review kartları arasında sıra card_id'ye iner ─────
 
 async def test_v8_esit_vadede_sira_card_id_ile_belirlenir(

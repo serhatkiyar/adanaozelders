@@ -1451,8 +1451,29 @@ async def answer(
     progress.step = new_state.step
     progress.stability = new_state.stability
     progress.difficulty = new_state.difficulty
-    # Vade damgası burada konur: motor takvim bilmez (H3).
-    progress.due_at = now + datetime.timedelta(minutes=outcome.interval_minutes)
+    # Vade damgası burada konur: motor takvim bilmez (H3). Gün ölçekli aralık
+    # hedef ÇALIŞMA GÜNÜNÜN BAŞINA yuvarlanır (İP-17, sözleşme §4.3/G-5);
+    # intraday öğrenme adımları dakika ölçeğinde kalır.
+    #
+    # NEDEN ayrım `state` ile, `interval_minutes >= 1440` ile DEĞİL: ikisi
+    # bugün aynı kümeyi seçiyor (ölçüldü — çıkış fazı REVIEW ⟺ aralık tam
+    # gün × 1440; `_next_interval_days` sonucu [1, MAXIMUM_INTERVAL_DAYS]'e
+    # clamp'li, öğrenme adımları ise (1, 10) ve (10,) dakika, asla ≥1440
+    # olamaz). Ama bu eşdeğerlik bir RASTLANTI, sözleşme değil: öğrenme
+    # adımları deste ayarından gelseydi (Anki'de gelir) "3 gün"lük bir
+    # learning adımı mümkün olurdu ve sayısal eşik onu sessizce yuvarlardı.
+    # Faz, kartın hangi ölçekte yaşadığını söyler; dakika sayısı yalnız o
+    # ölçeğin bugünkü değerini. `LEARNING_STEPS_MINUTES` değişince faza
+    # bağlı ayrım kırılmaz, eşiğe bağlı ayrım sessizce yanlışlanır.
+    if progress.state == "REVIEW":
+        gun = int(round(outcome.interval_minutes / 1440))
+        progress.due_at = dayboundary.day_start(
+            dayboundary.study_day(now) + datetime.timedelta(days=gun)
+        )
+    else:
+        progress.due_at = now + datetime.timedelta(
+            minutes=outcome.interval_minutes
+        )
     progress.last_review_at = now
     progress.reps = int(getattr(new_state, "reps", progress.reps + 1))
     progress.lapses = int(getattr(new_state, "lapses", progress.lapses))
