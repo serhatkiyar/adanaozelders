@@ -55,10 +55,10 @@ from scripts.mutation_drill import (
     GeciciYama,
     Mutasyon,
     _agac_durumu,
+    _kirilanlar,
     _kos,
     _on_kontrol,
 )
-from scripts.mutation_drill import _kirilanlar as _ust_kirilanlar
 
 ENGINE = "backend/services/spaced_repetition/engine.py"
 QUEUE = "backend/services/spaced_repetition/queuerules.py"
@@ -78,6 +78,11 @@ TIPLER = "tests/integration/test_ip16_types_pg.py"
 GIZLILIK = "tests/integration/test_ip16_privacy_pg.py"
 TARAYICI = "tests/integration/test_ip16_browser_pg.py"
 MIGRASYON_TEST = "tests/integration/test_ip16_migration_pg.py"
+
+# İP-17 (vade granülerliği)
+SRSDUE = "frontend/src/lib/srsDue.ts"
+VADE = "tests/integration/test_ip17_vade_pg.py"
+DUE_ETIKET = "src/components/srs/SrsDueLabel.test.tsx"
 
 
 MUTASYONLAR: list[Mutasyon] = [
@@ -433,30 +438,89 @@ async def mutasyon_yeni_uc(user: CurrentUser = Depends(get_current_active_user))
         "    return _retrievability_at(state.stability, 0)  # MUTASYON",
         (BIRIM,),
     ),
+    # ══ İP-17: vade damgası granülerliği (V matrisi) ═══════════════════════
+    #
+    # Katalog aynı dosyada duruyor çünkü sürücü makinesi (0-test nöbetçisi,
+    # bayt yedeği, SHA-256 geri alma) burada ve İP-17 aynı yüzeyi — SRS —
+    # bozuyor. Üçüncü bir SRS paketi gelirse modül `mutation_drill_srs.py`
+    # olarak yeniden adlandırılmalı.
+    Mutasyon(
+        "IP17-1", "V-1/2/3/5/7/8/9: yuvarlama tamamen söküldü (an tabanlı damgaya dönüş)",
+        SERVICE,
+        """    if progress.state == "REVIEW":
+        gun = int(round(outcome.interval_minutes / 1440))
+        progress.due_at = dayboundary.day_start(
+            dayboundary.study_day(now) + datetime.timedelta(days=gun)
+        )
+    else:
+        progress.due_at = now + datetime.timedelta(
+            minutes=outcome.interval_minutes
+        )""",
+        "    progress.due_at = now + datetime.timedelta("
+        "minutes=outcome.interval_minutes)  # MUTASYON: yuvarlama yok",
+        (VADE,),
+    ),
+    Mutasyon(
+        "IP17-2", "V-4: faz ayrımı söküldü — intraday adımlar da yuvarlanıyor",
+        SERVICE,
+        '    if progress.state == "REVIEW":',
+        "    if True:  # MUTASYON: faz ayrımı yok, her aralık gün başına çekiliyor",
+        (VADE,),
+    ),
+    Mutasyon(
+        "IP17-3", "V-5: yuvarlama tabanı çalışma günü yerine UTC takvim tarihi",
+        SERVICE,
+        "            dayboundary.study_day(now) + datetime.timedelta(days=gun)",
+        "            now.date() + datetime.timedelta(days=gun)  # MUTASYON: rollover yok",
+        (VADE,),
+    ),
+    Mutasyon(
+        # "Yuvarlanmış" olmak yetmez, DOĞRU güne yuvarlanmış olmak gerekir.
+        # Bu prova V-1'in "gün başına düştü, tamam" demekle yetinip
+        # yetinmediğini ölçer: next_day_start çıktısı da tastamam bir gün
+        # başıdır (04:00 TR), yalnız bir gün ileridedir.
+        "IP17-4", "V-1: day_start yerine next_day_start (gün başı ama BİR GÜN İLERİ)",
+        SERVICE,
+        """        progress.due_at = dayboundary.day_start(
+            dayboundary.study_day(now) + datetime.timedelta(days=gun)
+        )""",
+        """        progress.due_at = dayboundary.next_day_start(
+            dayboundary.day_start(
+                dayboundary.study_day(now) + datetime.timedelta(days=gun)
+            )
+        )  # MUTASYON: bir gün ileri""",
+        (VADE,),
+    ),
+    Mutasyon(
+        # Yuvarlama, aynı güne düşen kartların damgasını EŞİTLEDİĞİ için sıra
+        # tamamen tie-breaker'a kaldı (Q-9). Tie-breaker'ı silmek yerine TERS
+        # çevrilir: silmek sırayı DB'nin insafına bırakır ve prova flaky olur.
+        "IP17-5", "V-8: eşit vadede sıralama tie-breaker'ı ters çevrildi",
+        SERVICE,
+        "        return (p.due_at.asc(), SrsCard.id.asc())",
+        "        return (p.due_at.asc(), SrsCard.id.desc())  # MUTASYON: ters sıra",
+        (VADE, KUYRUK),
+    ),
+    Mutasyon(
+        "IP17-6", "V-10: state ayrımı söküldü — learning kartında da saat gizlendi",
+        SRSDUE,
+        '  return state === "REVIEW" ? formatDate(iso) : formatDateTime(iso);',
+        "  return formatDate(iso); // MUTASYON: her kartta yalnız tarih",
+        (DUE_ETIKET,),
+        taraf="frontend",
+    ),
+    Mutasyon(
+        # IP17-6'nın TERSİ. İkisi birden koşulmazsa V-10'un yalnız tek yönde
+        # nöbet tuttuğu (ör. "saat hep gizli" mutasyonunu yakalayıp "saat hep
+        # görünür"ü kaçırdığı) görülmezdi.
+        "IP17-7", "V-10: ters yön — REVIEW kartında da saat gösteriliyor",
+        SRSDUE,
+        '  return state === "REVIEW" ? formatDate(iso) : formatDateTime(iso);',
+        "  return formatDateTime(iso); // MUTASYON: REVIEW'da da saat",
+        (DUE_ETIKET,),
+        taraf="frontend",
+    ),
 ]
-
-
-def _kirilanlar(cikti: str) -> list[str]:  # noqa: F811 — üst sürücüyü bilinçli gölgeler
-    """Üst sürücünün `FAILED` taraması + pytest `ERROR` satırları.
-
-    Neden gerekli (bu turda ölçüldü): IP16-21 (migration zincirini ip12'den
-    kopar) uygulandığında entegrasyon conftest'i veritabanını KURAMIYOR
-    ("Multiple head revisions") ve pytest beş düğümü de `ERROR` olarak
-    raporluyor — tek bir `FAILED` satırı yok. Üst sürücü yalnız `FAILED`
-    aradığı için mutasyonu "YAKALANMADI" sayıyordu; oysa suite hiç koşamamıştı,
-    ki bu daha sert bir kırılmadır. "Test zayıf" ile "test hiç koşmadı"yı
-    ayırmayı zaten bu paketin ek nöbetçisi savunuyor (seçilen test = 0
-    kuralı); aynı ayrım kırılma tarafında da yapılmalıydı.
-    """
-    kirilan = list(_ust_kirilanlar(cikti))
-    hatalar = sorted(
-        {
-            s.split(" ")[1] if " " in s else s
-            for s in cikti.splitlines()
-            if s.startswith("ERROR ") and "::" in s
-        }
-    )
-    return kirilan + [f"{h} (KURULUM HATASI — test hiç koşmadı)" for h in hatalar]
 
 
 def _secilen_test_sayisi(m: Mutasyon) -> int:
