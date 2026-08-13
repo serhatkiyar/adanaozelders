@@ -154,3 +154,50 @@ async def test_R3_TAZE_DBDE_SM2_TABLOLARI_KURULMAZ(taze_db):
         f"model ile şema sapmış (model dosyaları da kaldırılmalı):\n"
         f"{res.stdout}\n{res.stderr}"
     )
+
+
+async def test_R3b_DOWNGRADE_SEMAYI_GERI_KURAR_VERIYI_GETIRMEZ(taze_db):
+    """`downgrade -1` şemayı geri kurmalı, `upgrade` yeniden düşürmeli.
+
+    Kaldırma revizyonlarında `downgrade` yazmak kolayca **ölü kod** olur:
+    kimse koşmaz, ilk gerçek geri alma denemesinde patlar (yanlış index adı,
+    ters FK sırası, eksik kolon). Bu düğüm o yolu gerçek PostgreSQL'de yürütür.
+
+    Ayrıca revizyonun docstring'indeki uyarıyı **ölçer**: geri kurulan tablo
+    BOŞTUR. `downgrade` bir yedekleme mekanizması değildir; bunu yazıyla
+    söylemek yetmez, çünkü ileride biri "nasılsa downgrade var" diye veri
+    kaybını göze alabilir.
+
+    Ölçüm zinciri: upgrade head (tablo yok) → downgrade -1 (tablo VAR, 0 satır)
+    → upgrade head (tablo yine yok) → `alembic check` temiz.
+    """
+    motor, db = taze_db
+    _alembic("upgrade", "head", db=db)
+    assert await _var_olan_tablolar(motor, SM2_TABLOLARI) == []
+
+    _alembic("downgrade", "-1", db=db)
+    geri_gelen = await _var_olan_tablolar(motor, SM2_TABLOLARI)
+    assert geri_gelen == sorted(SM2_TABLOLARI), (
+        f"downgrade şemayı geri kurmadı: {geri_gelen}"
+    )
+
+    # Şema geri geldi ama VERİ gelmedi — revizyon docstring'inin iddiası.
+    async with motor.connect() as conn:
+        for tablo in SM2_TABLOLARI:
+            sayi = (
+                await conn.execute(text(f'SELECT count(*) FROM "{tablo}"'))
+            ).scalar_one()
+            assert sayi == 0, (
+                f"{tablo} downgrade sonrası {sayi} satır taşıyor — beklenen 0. "
+                "downgrade bir yedekleme mekanizması DEĞİLDİR"
+            )
+
+    _alembic("upgrade", "head", db=db)
+    assert await _var_olan_tablolar(motor, SM2_TABLOLARI) == [], (
+        "yeniden upgrade tabloları düşürmedi (downgrade sonrası idempotent değil)"
+    )
+
+    res = _alembic("check", db=db)
+    assert "No new upgrade operations detected" in res.stdout + res.stderr, (
+        f"downgrade→upgrade turundan sonra şema sapmış:\n{res.stdout}\n{res.stderr}"
+    )

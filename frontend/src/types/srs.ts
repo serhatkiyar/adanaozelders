@@ -1,5 +1,5 @@
 // İP-16 — Aralıklı Tekrar (FSRS) tipleri. Backend `/srs` pydantic
-// şemalarıyla birebir eşleşir (docs/ip16-flashcard-sozlesme.md §8).
+// şemalarıyla birebir eşleşir (docs/ip16-aralikli-tekrar-sozlesme.md §8).
 // Bilinçli olarak types/index.ts'ten AYRI dosyadadır.
 
 export type SrsNoteType = "BASIC" | "BASIC_REVERSED" | "CLOZE" | "TYPE_IN";

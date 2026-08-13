@@ -68,7 +68,7 @@ silinmez).
      kendi kaydı sandı). Nihai taşıma:
        İP-16 "mutasyon sürücüsü ERROR saymıyor"  TB-24 → TB-27 → **TB-29**
        İP-16 "ensure_schema uyumsuzluğu gizliyor"      TB-28 → **TB-30**
-     (`docs/ip16-flashcard-sozlesme.md` atıfları da güncellendi.)
+     (`docs/ip16-aralikli-tekrar-sozlesme.md` atıfları da güncellendi.)
 
      Ölçüm (9 Ağu 2026, tüm yerel + uzak dallar): en yüksek numara 28
      (`magaza-tasarim`), bu yüzden yeni kayıtlar 29'dan başladı.

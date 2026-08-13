@@ -1,5 +1,5 @@
 // İP-16 T-5/T-6/T-7 — yazarak cevaplama (TYPE_IN) karşılaştırma kuralları.
-// Sözleşme (docs/ip16-flashcard-sozlesme.md §6 T-6): iki taraf da aynı
+// Sözleşme (docs/ip16-aralikli-tekrar-sozlesme.md §6 T-6): iki taraf da aynı
 // normalizasyondan geçer; eşitlik normalize formda aranır. Karşılaştırma
 // YALNIZ görsel geri bildirimdir — puanlamayı kullanıcı verir (Anki gibi).
 

@@ -5,7 +5,7 @@ Revises: ip16_srs_izin_kodu_hizalama
 Create Date: 2026-08-13
 
 Kaldırılan sistem `/ogren/kelime-kartlari` yüzeyini besleyen SM-2 paketiydi;
-yerine FSRS-5 tabanlı `srs_*` paketi geçti (`docs/ip16-flashcard-sozlesme.md`).
+yerine FSRS-5 tabanlı `srs_*` paketi geçti (`docs/ip16-aralikli-tekrar-sozlesme.md`).
 Bu revizyon YALNIZ iki tabloyu düşürür, `srs_*` tablolarına dokunmaz.
 
 ⚠️ **`downgrade` tabloları geri kurar ama VERİYİ GERİ GETİRMEZ.** Şema

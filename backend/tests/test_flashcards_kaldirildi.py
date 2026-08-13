@@ -4,7 +4,7 @@ Bu dosya, `/ogren/kelime-kartlari` yüzeyini besleyen SM-2 paketinin
 (`models/flashcard.py`, `schemas/flashcard.py`, `services/flashcard_service.py`,
 `api/routers/flashcards.py` + `/flashcards` uçları) kaldırıldığını ölçer.
 Yerine geçen sistem FSRS-5 tabanlı `srs_*` paketidir
-(`docs/ip16-flashcard-sozlesme.md`); o pakete BU DOSYA HİÇ DOKUNMAZ.
+(`docs/ip16-aralikli-tekrar-sozlesme.md`); o pakete BU DOSYA HİÇ DOKUNMAZ.
 
 ## Neden "yokluk sözleşmesi" ve neden bu dosya kırmızı doğdu
 
@@ -23,7 +23,8 @@ da tablolarını geri getirirse burası kırmızı döner.
 
 - R1: gerçek HTTP (httpx + ASGITransport, gerçek FastAPI uygulaması, gerçek
   bağımlılık çözümü). Kaynak taraması DEĞİLDİR.
-- R2: gerçek yönlendirme tablosu (`app.routes`) + gerçek OpenAPI şeması.
+- R2: gerçek route tablosu — **OpenAPI şeması** üzerinden (`app.routes`
+  KULLANILAMAZ, gerekçesi düğümün kendi docstring'inde ve [[TB-34]]'te).
 - R4: gerçek `import` denemesi (`importlib`). AST/metin taraması DEĞİLDİR —
   "dosyada şu satır yok" değil, "bu modül yüklenemiyor" ölçülür.
 
