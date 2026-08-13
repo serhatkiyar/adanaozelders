@@ -222,6 +222,56 @@ function detaySunucusu(d: Record<string, unknown> = detay()) {
 
 function hasarSunucusu(olaylar = [OLAY]) {
   sunucu("damage-events", { data: { items: olaylar, total: olaylar.length, limit: 25, offset: 0 } }, "get");
+  // İP-12/A12: hasar diyaloğu ham ürün ID kutusu yerine ARAMA TABANLI seçici
+  // kullanıyor, dolayısıyla ürün arama ucu da kurulmalı. Yanıt sorgudaki
+  // terimi ID olarak yorumlar; böylece testler eskisi gibi "5" yazıp o ürünü
+  // seçebiliyor ve DAVRANIŞ iddiaları (gövdeye hangi product_id gitti)
+  // değişmeden kalıyor.
+  sunucu(
+    "/store/admin/products",
+    (i) => {
+      const q = i.url.split("?")[1] ?? "";
+      const terim = new URLSearchParams(q).get("q") ?? "";
+      const id = Number(terim);
+      if (!Number.isInteger(id) || id <= 0) return { data: [] };
+      return {
+        data: [
+          {
+            id,
+            slug: `urun-${id}`,
+            title: `Test Ürünü ${id}`,
+            kind: "PHYSICAL",
+            seller_type: "PLATFORM",
+            price: "100.00",
+            currency: "TRY",
+            in_stock: true,
+            stock: 10,
+            rating_count: 0,
+            status: "ACTIVE",
+            sku: `FZK-${String(id).padStart(6, "0")}`,
+          },
+        ],
+      };
+    },
+    "get"
+  );
+}
+
+/**
+ * Hasar diyaloğunda ürün seçer.
+ *
+ * İP-12 UYARLAMASI (davranış iddiaları DEĞİŞMEDİ): A12 ham "Ürün numarası"
+ * kutusunu arama tabanlı seçiciyle değiştirdi — hasar kaydı stoktan düşen ve
+ * geri alınamaz bir defter satırı ürettiği için seçilen ürünün adıyla teyit
+ * edilebilmesi gerekiyor. Bu testlerin ölçtüğü şey (gövdeye giden
+ * `product_id`, idempotency anahtarının ömrü, 409 gerekçesinin görünmesi)
+ * aynen korunuyor; değişen yalnız ürünün nasıl seçildiği.
+ */
+async function hasarUrunuSec(dialog: HTMLElement, id: number) {
+  fireEvent.change(within(dialog).getByLabelText(/ürün ara/i), {
+    target: { value: String(id) },
+  });
+  fireEvent.click(await within(dialog).findByText(`Test Ürünü ${id}`));
 }
 
 /* ══════════════════════════ 1. Menü görünürlüğü ══════════════════════════ */
@@ -625,7 +675,7 @@ describe("17-18 · conflict ve invariant", () => {
 
     fireEvent.click(await screen.findByRole("button", { name: /hasara ayır/i }));
     const dialog = await screen.findByRole("dialog");
-    fireEvent.change(within(dialog).getByLabelText(/ürün/i), { target: { value: "5" } });
+    await hasarUrunuSec(dialog, 5);
     fireEvent.change(within(dialog).getByLabelText(/miktar/i), { target: { value: "2" } });
     fireEvent.change(within(dialog).getByLabelText(/neden/i), { target: { value: "KIRIK" } });
     fireEvent.click(
@@ -688,7 +738,7 @@ describe("22 · tedarikçi iadesi", () => {
 
     fireEvent.click(await screen.findByRole("button", { name: /tedarikçiye iade/i }));
     const dialog = await screen.findByRole("dialog");
-    fireEvent.change(within(dialog).getByLabelText(/ürün/i), { target: { value: "5" } });
+    await hasarUrunuSec(dialog, 5);
     fireEvent.change(within(dialog).getByLabelText(/miktar/i), { target: { value: "2" } });
     fireEvent.change(within(dialog).getByLabelText(/neden/i), { target: { value: "KIRIK" } });
 
@@ -717,7 +767,7 @@ describe("23 · dijital ürün", () => {
     sar(ROUTES.adminInventoryDamage);
     fireEvent.click(await screen.findByRole("button", { name: /hasara ayır/i }));
     const dialog = await screen.findByRole("dialog");
-    fireEvent.change(within(dialog).getByLabelText(/ürün/i), { target: { value: "9" } });
+    await hasarUrunuSec(dialog, 9);
     fireEvent.change(within(dialog).getByLabelText(/miktar/i), { target: { value: "1" } });
     fireEvent.change(within(dialog).getByLabelText(/neden/i), { target: { value: "KIRIK" } });
     fireEvent.click(within(dialog).getByRole("button", { name: /onayla|uygula|kaydet|ayır/i }));
@@ -734,7 +784,7 @@ describe("24 · DIGER gerekçesi", () => {
 
     fireEvent.click(await screen.findByRole("button", { name: /hasara ayır/i }));
     const dialog = await screen.findByRole("dialog");
-    fireEvent.change(within(dialog).getByLabelText(/ürün/i), { target: { value: "5" } });
+    await hasarUrunuSec(dialog, 5);
     fireEvent.change(within(dialog).getByLabelText(/miktar/i), { target: { value: "2" } });
     fireEvent.change(within(dialog).getByLabelText(/neden/i), { target: { value: "DIGER" } });
 
@@ -761,7 +811,7 @@ describe("25b · idempotency anahtarının ömrü", () => {
 
     fireEvent.click(await screen.findByRole("button", { name: /hasara ayır/i }));
     const dialog = await screen.findByRole("dialog");
-    fireEvent.change(within(dialog).getByLabelText(/ürün/i), { target: { value: "5" } });
+    await hasarUrunuSec(dialog, 5);
     fireEvent.change(within(dialog).getByLabelText(/miktar/i), { target: { value: "2" } });
     fireEvent.change(within(dialog).getByLabelText(/neden/i), { target: { value: "KIRIK" } });
     const gonder = within(dialog).getByRole("button", { name: /hasara ayır/i });
@@ -791,7 +841,7 @@ describe("25b · idempotency anahtarının ömrü", () => {
     const doldurVeGonder = async () => {
       fireEvent.click(screen.getByRole("button", { name: /hasara ayır/i }));
       const d = await screen.findByRole("dialog");
-      fireEvent.change(within(d).getByLabelText(/ürün/i), { target: { value: "5" } });
+      await hasarUrunuSec(d, 5);
       fireEvent.change(within(d).getByLabelText(/miktar/i), { target: { value: "2" } });
       fireEvent.change(within(d).getByLabelText(/neden/i), { target: { value: "KIRIK" } });
       fireEvent.click(within(d).getByRole("button", { name: /hasara ayır/i }));
@@ -823,7 +873,7 @@ describe("25 · replay", () => {
 
     fireEvent.click(await screen.findByRole("button", { name: /hasara ayır/i }));
     const dialog = await screen.findByRole("dialog");
-    fireEvent.change(within(dialog).getByLabelText(/ürün/i), { target: { value: "5" } });
+    await hasarUrunuSec(dialog, 5);
     fireEvent.change(within(dialog).getByLabelText(/miktar/i), { target: { value: "2" } });
     fireEvent.change(within(dialog).getByLabelText(/neden/i), { target: { value: "KIRIK" } });
     fireEvent.click(within(dialog).getByRole("button", { name: /onayla|uygula|kaydet|ayır/i }));

@@ -19,6 +19,23 @@ export interface DataTableProps<TData extends object> {
   isLoading?: boolean;
   emptyTitle: string;
   emptyDescription?: string;
+  /**
+   * Boş durumdaki eylem — tipik kullanımı "Filtreleri temizle".
+   *
+   * "Kayıt yok" ile "sonuç yok" FARKLI ekranlardır: ilki bir davet ("ilk
+   * ürünü ekleyin"), ikincisi bir düzeltme talimatı ("filtreyi değiştirin").
+   * İkisini aynı metinle göstermek kullanıcıyı "veri kayboldu" sanısına
+   * sürükler. Çağıran taraf hangisinde olduğunu bilir (filtre var mı?), bu
+   * yüzden karar burada değil orada verilir; bileşen yalnız eylemi taşır.
+   */
+  emptyAction?: ReactNode;
+  /**
+   * Tavana dayanmış liste uyarısı ("ilk N kayıt gösteriliyor").
+   *
+   * Sayfalaması olan listede VERİLMEZ — orada zaten toplam sayı görünüyor ve
+   * uyarı yanıltıcı olur.
+   */
+  truncationNotice?: ReactNode;
   onRowClick?: (row: TData) => void;
   renderMobileRow?: (row: TData) => ReactNode;
   page: number;
@@ -45,6 +62,8 @@ export function DataTable<TData extends object>({
   isLoading = false,
   emptyTitle,
   emptyDescription,
+  emptyAction,
+  truncationNotice,
   onRowClick,
   renderMobileRow,
   page,
@@ -68,13 +87,16 @@ export function DataTable<TData extends object>({
 
   if (isLoading && data.length === 0) return <PageSkeleton rows={6} />;
   if (data.length === 0) {
-    return <EmptyState title={emptyTitle} description={emptyDescription} />;
+    return (
+      <EmptyState title={emptyTitle} description={emptyDescription} action={emptyAction} />
+    );
   }
 
   const activateRow = (row: Row<TData>) => onRowClick?.(row.original);
 
   return (
     <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+      {truncationNotice}
       {renderMobileRow && (
         <div className="divide-y divide-slate-100 dark:divide-slate-800 md:hidden">
           {table.getRowModel().rows.map((row) => (

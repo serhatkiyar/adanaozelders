@@ -92,6 +92,12 @@ export const PATHS = {
   deepwork: "/ogren/zamanlayici",
   grapher: "/ogren/grafik",
   habits: "/ogren/aliskanliklar",
+  // Aralıklı tekrar (FSRS, İP-16) — eski SM-2 /ogren/kelime-kartlari'ndan ayrı.
+  srs: "/ogren/tekrar",
+  srsDeck: "/ogren/tekrar/deste/:id",
+  srsStudy: "/ogren/tekrar/calis/:deckId",
+  srsBrowser: "/ogren/tekrar/tarayici",
+  srsStats: "/ogren/tekrar/istatistik",
   /** Hesabım — CLIENT'ta birleşik hub, TUTOR/ADMIN'de profil editörü (dağıtıcı). */
   profile: "/hesabim",
   /** Profil bilgileri editörü (about/eğitim/avatar) — hub'dan erişilir. */
@@ -226,6 +232,11 @@ export const ROUTES = {
   deepwork: PATHS.deepwork,
   grapher: PATHS.grapher,
   habits: PATHS.habits,
+  srs: PATHS.srs,
+  srsDeck: (id: string | number) => `/ogren/tekrar/deste/${id}`,
+  srsStudy: (deckId: string | number) => `/ogren/tekrar/calis/${deckId}`,
+  srsBrowser: PATHS.srsBrowser,
+  srsStats: PATHS.srsStats,
   profile: PATHS.profile,
   profileEdit: PATHS.profileEdit,
   addresses: PATHS.addresses,

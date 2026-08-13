@@ -1,0 +1,620 @@
+{
+ "yeni_A": [
+  {
+   "rating": "A",
+   "state": "Learning",
+   "step": 0,
+   "stability": 0.40255,
+   "difficulty": 7.1949,
+   "interval_days": 0
+  }
+ ],
+ "yeni_H": [
+  {
+   "rating": "H",
+   "state": "Learning",
+   "step": 0,
+   "stability": 1.18385,
+   "difficulty": 6.488305268471453,
+   "interval_days": 0
+  }
+ ],
+ "yeni_G": [
+  {
+   "rating": "G",
+   "state": "Learning",
+   "step": 1,
+   "stability": 3.173,
+   "difficulty": 5.282434422319005,
+   "interval_days": 0
+  }
+ ],
+ "yeni_E": [
+  {
+   "rating": "E",
+   "state": "Review",
+   "step": null,
+   "stability": 15.69105,
+   "difficulty": 3.2245015893713678,
+   "interval_days": 16
+  }
+ ],
+ "altin_zincir": [
+  {
+   "rating": "G",
+   "state": "Learning",
+   "step": 1,
+   "stability": 3.173,
+   "difficulty": 5.282434422319005,
+   "interval_days": 0
+  },
+  {
+   "rating": "G",
+   "state": "Review",
+   "step": null,
+   "stability": 4.466858064362218,
+   "difficulty": 5.272967931287446,
+   "interval_days": 4
+  },
+  {
+   "rating": "G",
+   "state": "Review",
+   "step": null,
+   "stability": 14.217284109332127,
+   "difficulty": 5.263544986114632,
+   "interval_days": 14
+  },
+  {
+   "rating": "G",
+   "state": "Review",
+   "step": null,
+   "stability": 43.72509406220378,
+   "difficulty": 5.254165386489613,
+   "interval_days": 44
+  },
+  {
+   "rating": "G",
+   "state": "Review",
+   "step": null,
+   "stability": 124.79655604607703,
+   "difficulty": 5.244828933022869,
+   "interval_days": 125
+  },
+  {
+   "rating": "G",
+   "state": "Review",
+   "step": null,
+   "stability": 328.4734410094181,
+   "difficulty": 5.2355354272420715,
+   "interval_days": 328
+  },
+  {
+   "rating": "A",
+   "state": "Relearning",
+   "step": 0,
+   "stability": 9.255948917564972,
+   "difficulty": 6.765399594114583,
+   "interval_days": 0
+  },
+  {
+   "rating": "A",
+   "state": "Relearning",
+   "step": 0,
+   "stability": 4.637494426178078,
+   "difficulty": 7.794018331018184,
+   "interval_days": 0
+  },
+  {
+   "rating": "G",
+   "state": "Review",
+   "step": null,
+   "stability": 6.52853116167929,
+   "difficulty": 7.772998554006608,
+   "interval_days": 7
+  },
+  {
+   "rating": "G",
+   "state": "Review",
+   "step": null,
+   "stability": 15.555468016611968,
+   "difficulty": 7.752075467969286,
+   "interval_days": 16
+  },
+  {
+   "rating": "G",
+   "state": "Review",
+   "step": null,
+   "stability": 34.36241517542587,
+   "difficulty": 7.7312486281277355,
+   "interval_days": 34
+  },
+  {
+   "rating": "G",
+   "state": "Review",
+   "step": null,
+   "stability": 71.10191712914869,
+   "difficulty": 7.710517591749456,
+   "interval_days": 71
+  },
+  {
+   "rating": "G",
+   "state": "Review",
+   "step": null,
+   "stability": 141.83400397565077,
+   "difficulty": 7.689881918138517,
+   "interval_days": 142
+  }
+ ],
+ "memo_state": [
+  {
+   "rating": "A",
+   "elapsed_days": 0,
+   "state": "Learning",
+   "step": 0,
+   "stability": 0.40255,
+   "difficulty": 7.1949,
+   "interval_days": 0
+  },
+  {
+   "rating": "G",
+   "elapsed_days": 0,
+   "state": "Learning",
+   "step": 1,
+   "stability": 0.5666983024925972,
+   "difficulty": 7.176636167311107,
+   "interval_days": 0
+  },
+  {
+   "rating": "G",
+   "elapsed_days": 1,
+   "state": "Review",
+   "step": null,
+   "stability": 2.480518594746577,
+   "difficulty": 7.158456348252584,
+   "interval_days": 2
+  },
+  {
+   "rating": "G",
+   "elapsed_days": 3,
+   "state": "Review",
+   "step": null,
+   "stability": 7.579416189089481,
+   "difficulty": 7.140360156361731,
+   "interval_days": 8
+  },
+  {
+   "rating": "G",
+   "elapsed_days": 8,
+   "state": "Review",
+   "step": null,
+   "stability": 19.721093585084382,
+   "difficulty": 7.122347206953576,
+   "interval_days": 20
+  },
+  {
+   "rating": "G",
+   "elapsed_days": 21,
+   "state": "Review",
+   "step": null,
+   "stability": 48.26549258937432,
+   "difficulty": 7.104417117112697,
+   "interval_days": 48
+  }
+ ],
+ "memo_state_final": [
+  {
+   "rating": "A",
+   "elapsed_days": 0,
+   "state": "Learning",
+   "step": 0,
+   "stability": 0.40255,
+   "difficulty": 7.1949,
+   "interval_days": 0
+  },
+  {
+   "rating": "G",
+   "elapsed_days": 0,
+   "state": "Learning",
+   "step": 1,
+   "stability": 0.5666983024925972,
+   "difficulty": 7.176636167311107,
+   "interval_days": 0
+  },
+  {
+   "rating": "G",
+   "elapsed_days": 1,
+   "state": "Review",
+   "step": null,
+   "stability": 2.480518594746577,
+   "difficulty": 7.158456348252584,
+   "interval_days": 2
+  },
+  {
+   "rating": "G",
+   "elapsed_days": 3,
+   "state": "Review",
+   "step": null,
+   "stability": 7.579416189089481,
+   "difficulty": 7.140360156361731,
+   "interval_days": 8
+  },
+  {
+   "rating": "G",
+   "elapsed_days": 8,
+   "state": "Review",
+   "step": null,
+   "stability": 19.721093585084382,
+   "difficulty": 7.122347206953576,
+   "interval_days": 20
+  },
+  {
+   "rating": "G",
+   "elapsed_days": 21,
+   "state": "Review",
+   "step": null,
+   "stability": 48.26549258937432,
+   "difficulty": 7.104417117112697,
+   "interval_days": 48
+  },
+  {
+   "rating": "G",
+   "elapsed_days": 48,
+   "state": "Review",
+   "step": null,
+   "stability": 107.59584499287674,
+   "difficulty": 7.086569505685087,
+   "interval_days": 108
+  }
+ ],
+ "memo_state_upstream": [
+  {
+   "rating": "A",
+   "elapsed_days": 0,
+   "state": "Learning",
+   "step": 0,
+   "stability": 0.40255,
+   "difficulty": 7.1949,
+   "interval_days": 0
+  },
+  {
+   "rating": "G",
+   "elapsed_days": 0,
+   "state": "Learning",
+   "step": 1,
+   "stability": 0.5666983024925972,
+   "difficulty": 7.176636167311107,
+   "interval_days": 0
+  },
+  {
+   "rating": "G",
+   "elapsed_days": 0,
+   "state": "Review",
+   "step": null,
+   "stability": 0.7977815576897062,
+   "difficulty": 7.158456348252584,
+   "interval_days": 1
+  },
+  {
+   "rating": "G",
+   "elapsed_days": 1,
+   "state": "Review",
+   "step": null,
+   "stability": 2.735143264167272,
+   "difficulty": 7.140360156361731,
+   "interval_days": 3
+  },
+  {
+   "rating": "G",
+   "elapsed_days": 3,
+   "state": "Review",
+   "step": null,
+   "stability": 7.85531596513308,
+   "difficulty": 7.122347206953576,
+   "interval_days": 8
+  },
+  {
+   "rating": "G",
+   "elapsed_days": 8,
+   "state": "Review",
+   "step": null,
+   "stability": 20.046982990710603,
+   "difficulty": 7.104417117112697,
+   "interval_days": 20
+  },
+  {
+   "rating": "G",
+   "elapsed_days": 21,
+   "state": "Review",
+   "step": null,
+   "stability": 48.71695955250602,
+   "difficulty": 7.086569505685087,
+   "interval_days": 49
+  }
+ ],
+ "hard_zinciri": [
+  {
+   "rating": "H",
+   "state": "Learning",
+   "step": 0,
+   "stability": 1.18385,
+   "difficulty": 6.488305268471453,
+   "interval_days": 0
+  },
+  {
+   "rating": "H",
+   "state": "Learning",
+   "step": 0,
+   "stability": 0.9942462110608663,
+   "difficulty": 7.040501547390819,
+   "interval_days": 0
+  },
+  {
+   "rating": "G",
+   "state": "Learning",
+   "step": 1,
+   "stability": 1.3996711962933535,
+   "difficulty": 7.022947947583929,
+   "interval_days": 0
+  },
+  {
+   "rating": "G",
+   "state": "Review",
+   "step": null,
+   "stability": 1.9704168202390417,
+   "difficulty": 7.005475094336151,
+   "interval_days": 2
+  },
+  {
+   "rating": "H",
+   "state": "Review",
+   "step": null,
+   "stability": 2.8278317774976136,
+   "difficulty": 7.471758997662115,
+   "interval_days": 3
+  },
+  {
+   "rating": "H",
+   "state": "Review",
+   "step": null,
+   "stability": 3.910954572291095,
+   "difficulty": 7.860583707059433,
+   "interval_days": 4
+  }
+ ],
+ "easy_zinciri": [
+  {
+   "rating": "E",
+   "state": "Review",
+   "step": null,
+   "stability": 15.69105,
+   "difficulty": 3.2245015893713678,
+   "interval_days": 16
+  },
+  {
+   "rating": "E",
+   "state": "Review",
+   "step": null,
+   "stability": 150.28356111866552,
+   "difficulty": 2.1301214599670124,
+   "interval_days": 150
+  },
+  {
+   "rating": "E",
+   "state": "Review",
+   "step": null,
+   "stability": 1252.2233394307545,
+   "difficulty": 1.0,
+   "interval_days": 1252
+  }
+ ],
+ "ardisik_lapse": [
+  {
+   "rating": "G",
+   "state": "Learning",
+   "step": 1,
+   "stability": 3.173,
+   "difficulty": 5.282434422319005,
+   "interval_days": 0
+  },
+  {
+   "rating": "G",
+   "state": "Review",
+   "step": null,
+   "stability": 4.466858064362218,
+   "difficulty": 5.272967931287446,
+   "interval_days": 4
+  },
+  {
+   "rating": "A",
+   "state": "Relearning",
+   "step": 0,
+   "stability": 1.2976302777410647,
+   "difficulty": 6.790567694566929,
+   "interval_days": 0
+  },
+  {
+   "rating": "G",
+   "state": "Review",
+   "step": null,
+   "stability": 1.8267665523757515,
+   "difficulty": 6.774163790483029,
+   "interval_days": 2
+  },
+  {
+   "rating": "A",
+   "state": "Relearning",
+   "step": 0,
+   "stability": 0.7232822381152955,
+   "difficulty": 7.799911021881658,
+   "interval_days": 0
+  },
+  {
+   "rating": "G",
+   "state": "Review",
+   "step": null,
+   "stability": 1.018215914949657,
+   "difficulty": 7.778864138492111,
+   "interval_days": 1
+  },
+  {
+   "rating": "A",
+   "state": "Relearning",
+   "step": 0,
+   "stability": 0.44721112668785923,
+   "difficulty": 8.475430865612877,
+   "interval_days": 0
+  }
+ ],
+ "karisik": [
+  {
+   "rating": "G",
+   "state": "Learning",
+   "step": 1,
+   "stability": 3.173,
+   "difficulty": 5.282434422319005,
+   "interval_days": 0
+  },
+  {
+   "rating": "H",
+   "state": "Learning",
+   "step": 1,
+   "stability": 2.664816680910697,
+   "difficulty": 6.0349502556102195,
+   "interval_days": 0
+  },
+  {
+   "rating": "E",
+   "state": "Review",
+   "step": null,
+   "stability": 6.288314203327382,
+   "difficulty": 5.381586405419744,
+   "interval_days": 6
+  },
+  {
+   "rating": "G",
+   "state": "Review",
+   "step": null,
+   "stability": 19.981445787229134,
+   "difficulty": 5.371663815265922,
+   "interval_days": 20
+  },
+  {
+   "rating": "A",
+   "state": "Relearning",
+   "step": 0,
+   "stability": 2.9583475094858014,
+   "difficulty": 6.856926811744672,
+   "interval_days": 0
+  },
+  {
+   "rating": "H",
+   "state": "Relearning",
+   "step": 0,
+   "stability": 2.4845426382629623,
+   "difficulty": 7.34788759142632,
+   "interval_days": 0
+  },
+  {
+   "rating": "G",
+   "state": "Review",
+   "step": null,
+   "stability": 3.4976676079346656,
+   "difficulty": 7.328920015816868,
+   "interval_days": 3
+  }
+ ],
+ "gec_tekrar": [
+  {
+   "rating": "G",
+   "elapsed_days": 0,
+   "state": "Learning",
+   "step": 1,
+   "stability": 3.173,
+   "difficulty": 5.282434422319005,
+   "interval_days": 0
+  },
+  {
+   "rating": "G",
+   "elapsed_days": 0,
+   "state": "Review",
+   "step": null,
+   "stability": 4.466858064362218,
+   "difficulty": 5.272967931287446,
+   "interval_days": 4
+  },
+  {
+   "rating": "G",
+   "elapsed_days": 30,
+   "state": "Review",
+   "step": null,
+   "stability": 51.490143359341914,
+   "difficulty": 5.263544986114632,
+   "interval_days": 51
+  },
+  {
+   "rating": "G",
+   "elapsed_days": 400,
+   "state": "Review",
+   "step": null,
+   "stability": 493.83286551450493,
+   "difficulty": 5.254165386489613,
+   "interval_days": 494
+  },
+  {
+   "rating": "G",
+   "elapsed_days": 1000,
+   "state": "Review",
+   "step": null,
+   "stability": 1747.3894173756078,
+   "difficulty": 5.244828933022869,
+   "interval_days": 1747
+  }
+ ],
+ "ayni_gun": [
+  {
+   "rating": "G",
+   "elapsed_days": 0,
+   "state": "Learning",
+   "step": 1,
+   "stability": 3.173,
+   "difficulty": 5.282434422319005,
+   "interval_days": 0
+  },
+  {
+   "rating": "G",
+   "elapsed_days": 0,
+   "state": "Review",
+   "step": null,
+   "stability": 4.466858064362218,
+   "difficulty": 5.272967931287446,
+   "interval_days": 4
+  },
+  {
+   "rating": "A",
+   "elapsed_days": 0,
+   "state": "Relearning",
+   "step": 0,
+   "stability": 2.2380233037692734,
+   "difficulty": 6.790567694566929,
+   "interval_days": 0
+  },
+  {
+   "rating": "G",
+   "elapsed_days": 0,
+   "state": "Review",
+   "step": null,
+   "stability": 3.150624784958195,
+   "difficulty": 6.774163790483029,
+   "interval_days": 3
+  },
+  {
+   "rating": "E",
+   "elapsed_days": 0,
+   "state": "Review",
+   "step": null,
+   "stability": 7.434702254204269,
+   "difficulty": 6.236797505596044,
+   "interval_days": 7
+  }
+ ]
+}

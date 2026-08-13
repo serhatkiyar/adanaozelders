@@ -17,5 +17,28 @@ export default defineConfig({
     setupFiles: ["./src/test-setup.ts"],
     globals: true,
     include: ["src/**/*.test.{ts,tsx}"],
+    // Varsayilan 5000 ms bu suite icin marjsizdi: bostaki makinede bile en agir
+    // test butcenin yarisini yiyor, yuk altinda jsdom kurulumu uzayinca suite
+    // toplu halde "Test timed out in 5000ms" ile dusuyordu. Dususlerin hicbiri
+    // assertion hatasi degildi; yesil/kirmizi sinyali makine yukune baglanmisti
+    // (TB-23; ayni kokun uc ayri "flake" kaydi: TB-19/9, TB-14/8).
+    //
+    // Deger OLCUMLE secildi, tahminle degil. Once bosta makinede
+    // --testTimeout=60000 ile tam suite kosuldu (hicbir test kesilmesin ki
+    // GERCEK sureler okunabilsin): 74 dosya / 756 test gecti, en yavas test
+    // 2409 ms, 20. sira 591 ms. Ardindan bu ayarla bes tam kosum yapildi
+    // (5/5 kez 756/756) ve en yavas testin TEPE degeri olcuruldu:
+    // 2410-2959 ms, tepe 2959 ms. Ust ucu her kosumda ayni test tutuyor:
+    // PackageLabel "print CSS'i etiketin GORUNURLUGUNU geri verir" -- yani
+    // TB-19/9'un kaydettigi testin ta kendisi. 9000 ms, o tepenin 3.04 kati.
+    //
+    // Neden daha genis DEGIL: TB-23'un onerdigi 20000 ms en yavas testin 8.3
+    // kati olurdu. O marjda 2.4 s'lik bir testin 15 s'ye cikmasi -- gercek bir
+    // performans regresyonu -- sessizce yutulur. Butce, testi kesmeyecek kadar
+    // genis ama regresyonu gizlemeyecek kadar dar olmali.
+    //
+    // Tek yerde tanimli: dosya basina testTimeout ezmesi YAPILMAZ. Bir test bu
+    // butceye sigmiyorsa cozum butceyi buyutmek degil, testi incelemektir.
+    testTimeout: 9000,
   },
 });

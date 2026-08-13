@@ -7,6 +7,43 @@ kayıt bulunduğu yeri, gerçek etkisini ve neden ertelendiğini söyler.
 Bir borcu kapatan commit, ilgili satırı **buradan siler** (kapatılmış borcun
 notunu bırakmak, yapılmış bir işi yapılmamış gibi anlatır).
 
+## Numara tahsis kuralı (ZORUNLU — çakışma iki kez yaşandı)
+
+Paralel dallar aynı numarayı bağımsız olarak tahsis edip çakıştırdı — **üç
+kez**: (1) main ↔ İP-3 (TB-7…TB-10, aşağıdaki not); (2) main ↔
+`ip16-flashcard` ↔ `ip16-audit-kapanis`, üçü de **TB-24**'ü farklı konular
+için kullandı (main: "İP-12 P2 listesi", audit dalı: "alembic damga-şema
+nöbetçisi yok", İP-16 dalı: "mutasyon sürücüsü ERROR saymıyor"); (3) aynı gün
+`magaza-tasarim` ↔ `ip16-flashcard`, **TB-27 ve TB-28** (mağaza dalı:
+"entegrasyon testleri canlı Redis'e yazıyor" ve "`last_seen_at` iki yoldan
+yazılıyor").
+
+Yeni kayıt açan **numarayı almadan önce ölçer**, en yüksek numarayı bu
+dosyanın kendi kopyasından okumaz:
+
+```bash
+# Hangi dalda hangi numaralar var — yeni kayıt en yüksekten SONRA başlar.
+for r in $(git for-each-ref --format='%(refname:short)' refs/heads refs/remotes); do
+  n=$(git show "$r:docs/teknik-borc.md" 2>/dev/null \
+      | grep -o '^## TB-[0-9]*' | grep -o '[0-9]*' | sort -n | tr '\n' ' ')
+  [ -n "$n" ] && echo "$r → $n"
+done
+```
+
+⚠️ **Komutu koşmak yetmez, çıktısını doğru okumak gerekir.** Bu tam olarak bir
+kez yanlış gitti: İP-16 turu yalnız `… | tail -1` ile en büyük sayıyı (28)
+okudu ve onu "benim yeni kaydım" sandı; oysa 28 zaten `magaza-tasarim`
+dalındaydı ve yeni kayıtlar 29'dan başlamalıydı. Bu yüzden komut artık **dal
+başına döküm** verir: çıktıda kendi dalınızı görürsünüz, en yüksek numaranın
+kime ait olduğu belirsiz kalmaz.
+
+Üç kural: (1) numara **hiçbir dalda** kullanılmamış olmalı; (2) numara
+alındıktan sonra kaydı yazan commit'te ölçüm çıktısı commit mesajına yazılır
+(sonraki tur "gerçekten ölçüldü mü" diye sormak zorunda kalmasın); (3) bir dal
+merge edilirken çakışma çıkarsa **main kanoniktir**, gelen dalın kaydı yeniden
+numaralanır ve eski→yeni eşlemesi buraya yorum olarak yazılır (hiçbir kayıt
+silinmez).
+
 ---
 
 <!-- Numaralandırma notu (main ↔ İP-3 birleştirmesi): iki dal TB-6'nın üstüne
@@ -16,6 +53,29 @@ notunu bırakmak, yapılmış bir işi yapılmamış gibi anlatır).
      TB-10…TB-13'e taşındı. Hiçbir kayıt silinmedi. Eski→yeni: İP-3 TB-7→TB-10,
      TB-8→TB-11, TB-9→TB-12, TB-10→TB-13 (`docs/ip3-yetki-kvkk-sozlesme.md`
      atıfları da güncellendi). -->
+
+<!-- Numaralandırma notu (İP-16 düzeltme turu, 9 Ağu 2026 — İKİ AŞAMALI):
+
+     (a) TB-24 ÜÇ ayrı konuya verilmişti — main "İP-12 P2 listesi",
+     `ip16-audit-kapanis` "alembic damga-şema nöbetçisi yok",
+     `ip16-flashcard` "mutasyon sürücüsü ERROR saymıyor". main kanonik kabul
+     edildi ve İP-16 dalının kaydı TB-24'ten taşındı.
+
+     (b) İlk taşıma TB-27/TB-28'e yapıldı ve ONLAR DA ÇAKIŞTI: `magaza-tasarim`
+     aynı gün (11:08) TB-27 "`last_seen_at` iki yoldan yazılıyor" ve TB-28
+     "entegrasyon testleri canlı Redis'e yazıyor" kayıtlarını açmıştı; İP-16
+     turu ölçüm komutunu koştu ama çıktısını yanlış okudu (en büyük sayıyı
+     kendi kaydı sandı). Nihai taşıma:
+       İP-16 "mutasyon sürücüsü ERROR saymıyor"  TB-24 → TB-27 → **TB-29**
+       İP-16 "ensure_schema uyumsuzluğu gizliyor"      TB-28 → **TB-30**
+     (`docs/ip16-flashcard-sozlesme.md` atıfları da güncellendi.)
+
+     Ölçüm (9 Ağu 2026, tüm yerel + uzak dallar): en yüksek numara 28
+     (`magaza-tasarim`), bu yüzden yeni kayıtlar 29'dan başladı.
+
+     `ip16-audit-kapanis`'in TB-24'ü, İP-16 dalında ölçülen `ensure_schema`
+     bulgusuyla birlikte TB-30'da toplandı; o dal merge edilirken kayıt İKİYE
+     bölünmemeli, TB-30 ile birleştirilmelidir. Hiçbir kayıt silinmedi. -->
 
 <!-- Kapanma notu (İP-2a merge'i, `06d3868`): **TB-3** ("İade reconciler
      devraldığında stok geri yüklenmiyor") KAPANDI ve dosyanın kendi kuralı
@@ -39,18 +99,139 @@ notunu bırakmak, yapılmış bir işi yapılmamış gibi anlatır).
      provası P9 conftest satırını sökünce T-1a kırılıyor. Detay:
      `docs/ip5-kdv-fatura-sozlesme.md` §8. -->
 
-## TB-23 · Vitest 5000 ms varsayılan timeout'unun marjı yok — ÜÇ ayrı "flake" kaydının ortak kökü
+<!-- Kapanma notu (İP-12 FAZ 0): **TB-23** ("Vitest 5000 ms varsayılan
+     timeout'unun marjı yok") KAPANDI ve dosyanın kendi kuralı gereği SİLİNDİ.
+     Onunla birlikte **TB-19/9** (`PackageLabel` flake'i) de silindi.
+     **DÜZELTME (İP-12 audit'i):** `inventoryScreens` flake'i de aynı turda
+     "kapandı" diye silinmişti ama bu ERKEN bir karardı — audit 7 koşumun
+     1'inde düşüşü tekrar gördü. Kayıt [[TB-14]]/8 olarak GERİ KONDU ve
+     "kapandı" yerine "azaldı ama sürüyor" olarak yazıldı.
+     Kapatan değişiklik: `frontend/vitest.config.ts` → `testTimeout: 9000`.
+     Değer ölçümle seçildi: boşta makinede `--testTimeout=60000` ile koşulan
+     tam suite her testin GERÇEK süresini verdi (en yavaş 2409 ms), ardından
+     yeni ayarla beş tam koşum yapıldı — **5/5 kez 74 dosya / 756 test** ve
+     en yavaş testin tepe değeri 2959 ms (her koşumda aynı test: TB-19/9'un
+     kaydettiği `PackageLabel` print CSS testi). 9000 ms o tepenin 3.04 katı.
+     TB-23'ün önerdiği 15000-20000 ms bilerek ALINMADI: 20000, en yavaş testin
+     8.3 katı olurdu ve 2.4 s'lik bir testin 15 s'ye çıkmasını — gerçek bir
+     performans regresyonunu — sessizce yutardı. Dört dosyanın da yeni bütçede
+     kullandığı pay: PackageLabel %33, packingScreens %25, inventoryScreens
+     %20, packingLabel %20 (eski 5000 ms'de bu %44-59'du; TB-23'ün "bütçenin
+     yarısını yiyor" tespiti). Bu paylar İP-12'nin 5 koşumunda ölçüldü;
+     `inventoryScreens` için yetersiz kaldığı audit turunda görüldü (bkz.
+     [[TB-14]]/8). Ölçüm boşta makinede yapıldı — ölçümden önce
+     çalışan scraper/uvicorn/vite süreçleri durduruldu, çünkü yüklü makinede
+     ölçülen "en yavaş test" testi değil makine durumunu ölçer. Not: TB-23'ün
+     (2) numaralı sonraki adımı — "bu testlerin neden saniyeler sürdüğünü
+     ayrıca incelemek" — YAPILMADI ve kapsam dışıdır; bütçe gerçeğe
+     yaklaştırıldı, testler hızlandırılmadı. Eski atıflar:
+     `ip5-kdv-fatura-sozlesme.md:504` ve `:594` hâlâ [[TB-14]]/8'e işaret
+     ediyor (tarihsel kayıt, dokunulmadı — TB-3 kapanışındaki desenin aynısı;
+     o belge İP-5 turunun ölçümünü anlatıyor ve o tur bu düzeltmeden önceydi).
+     -->
+
+## TB-31 · `backend/.env` sürümsüz ve yedeksiz — tek koruma iki klasörde birden durması
+
+> **Lansman öncesi çözülmeli.** Bu bir kod kusuru değil, bir **operasyon
+> kusuru**: projenin bütün sırları tek bir sürümlenmemiş dosyada yaşıyor ve o
+> dosyanın kaybı ortamı yeniden kurulamaz hâle getirir.
 
 | | |
 |---|---|
-| **Bulundu** | İP-5 merge duman testi, 7 Ağu 2026 — kök neden bu turda **ölçüldü** |
-| **Yer** | `frontend/vitest.config.*` (açık `testTimeout` yok → varsayılan 5000 ms) · en dar marjlılar: `src/pages/admin/packing/packingScreens.acceptance.test.tsx` · `src/components/admin/packing/PackageLabel.test.tsx` · `src/pages/admin/packing/packingLabel.acceptance.test.tsx` |
-| **Ölçüm** | Aynı çalışma ağacında, aynı makinede, arka arkaya: **(1)** tam suite → 4 düştü; **(2)** tam suite → 2 düştü (**küme değişti**); **(3)** yalnız düşen iki dosya izole → **32/32 geçti**; **(4)** tam suite `--testTimeout=20000` → **74 dosya / 756 test, HEPSİ GEÇTİ**. Düşüşlerin tamamı `Test timed out in 5000ms`; **tek bir assertion hatası yok** |
-| **Kök neden** | Bu testler boştaki makinede bile bütçenin yarısını yiyor (ör. "bekleyen siparişi alıcı ve kalem sayısıyla gösterir" izole koşumda **2455 ms**/5000 ms). Yük altında `environment` (jsdom kurulumu) süresi ölçülen turlarda 477 s → 1477-1940 s'ye çıktı ve suite 43-53 s yerine 187-198 s sürdü; bu marjda 5000 ms yetmiyor. Yani sorun testlerin mantığında değil, **bütçenin makine yüküne duyarlı olmasında** |
-| **Neden "flake" etiketi yanıltıcıydı** | Üç ayrı kayıt aynı kökü üç ayrı gizem gibi taşıyordu: [[TB-19]]/9 (`PackageLabel`) ve [[TB-14]]/8 (`inventoryScreens`). Her biri "ara sıra kırılıyor, teşhis edilmedi" diyordu. Teşhis artık var; `packingScreens` ve `packingLabel` de aynı sınıfa katılıyor |
-| **Etki** | Yeşil/kırmızı sinyali makine yüküne bağlı. İki yönlü zarar: (a) yüklü makinede **yalancı kırmızı** → merge kapıları gereksiz duruyor (bu tur tam olarak bu yaşandı); (b) kritik olan bu — düşüşler "bilinen flake" diye geçiştirilmeye alışılırsa **gerçek bir regresyon** aynı kılıkta kaybolur |
-| **Neden ertelendi** | Düzeltme `vitest.config` veya test dosyalarını değiştirmeyi gerektirir; ikisi de İP-5'in kabul yüzeyinin dışında ve merge turunda kabul testlerine dokunmak `feedback_delivery_gates`'in "kabul testleri sessizce değişmez" kuralını ihlal ederdi |
-| **Sonraki adım** | Sırasıyla: (1) global `testTimeout`'u gerçekçi bir değere çekmek (ölçüme göre 15000-20000 ms tüm suite'i yeşile alıyor) — **en ucuz ve en dürüst çözüm**, çünkü hiçbir davranışı gizlemez, yalnız bütçeyi gerçeğe yaklaştırır; (2) bu üç testin neden saniyeler sürdüğünü ayrıca incelemek (gereksiz `waitFor` zinciri / ağır render); (3) düzeltme yapıldığında [[TB-19]]/9 ve [[TB-14]]/8 bu kayıtla **birlikte** silinir |
+| **Bulundu** | İP-16 merge sonrası operasyon turu, 9 Ağu 2026. Worktree kaldırma isteği sırasında "silinirse ne kaybederiz" sorusu sorulunca ölçüldü — kod incelemesiyle değil, bir kaza ihtimali sorgulanırken |
+| **Yer** | `adana-ozel-ders/backend/.env` (5.807 bayt) · kardeş kopya `adana-magaza/backend/.env` |
+| **Yedek (kısmen kapatıldı, 9 Ağu 2026)** | Worktree yerleşimi düzeltilirken `adana-main` kaldırıldı; kopya sayısının düşmemesi için repo ağacının **tamamen dışına** tarih damgalı bir kopya alındı: `C:\Users\kiyar\Documents\adana-env-yedek\backend.env.20260809-1905` (`md5 9b4793af8173049cf1063554f921286a`, kaynakla birebir). ⚠️ Bu **asgari** koruma bile değil: aynı fiziksel diskte (`C:`) ve **şifresiz** duruyor — yalnız "yanlış `rm`/`worktree remove`" senaryosunu kapatır, disk arızasını KAPATMAZ. Aşağıdaki (1)-(3) seçenekleri hâlâ geçerli; bu satır onların yerine geçmez |
+| **Durum** | Dosya `.gitignore:4` ile izlenmiyor ve **git geçmişinde hiç yer almamış** (`git log --all -- backend/.env` boş — bu iyi, sızıntı yok). Ama bunun bedeli: hiçbir sürüm, hiçbir yedek, hiçbir kurtarma noktası yok. İçeriği: Postgres parolası, `JWT_SECRET_KEY`, iyzico API/secret anahtarları, MinIO erişim anahtarları, Google Maps anahtarı |
+| **Ölçüm** | İki kopya **birebir aynı** (`md5 9b4793af8173049cf1063554f921286a`, ikisi de 5.807 bayt), ama değişim zamanları 12 gün farklı (`adana-main` 9 Ağu 17:50 · `adana-ozel-ders` 28 Tem 14:40). Yani bu bir yedek değil, **tesadüfen hâlâ eşleşen kardeş kopya**: biri düzenlendiğinde ikisi sessizce ayrışır ve hangisinin doğru olduğunu söyleyen hiçbir şey kalmaz. Ek risk: ikisi de aynı fiziksel diskte (`C:`) ve **disk %97 dolu** (629 GB'nin 20 GB'si boş) |
+| **Etki** | Disk arızası, yanlış `git worktree remove`, yanlış `rm -rf` ya da klasör taşıma → tüm geliştirme ortamı yeniden kurulamaz. Postgres parolası ve MinIO anahtarları yeniden üretilebilir; **iyzico sandbox/üretim anahtarları panelden yeniden alınmak zorunda kalır** ve üretim anahtarları söz konusu olduğunda bu, kesinti demektir. `JWT_SECRET_KEY` kaybı tüm oturumları düşürür (geliştirmede zararsız, üretimde değil) |
+| **Neden şimdi düzeltilmedi** | Doğru çözüm bir sır yönetimi kararıdır (aşağıdaki seçenekler), operasyon turunun kapsamı değildi. Ayrıca `.env` bilinçli olarak `protect-env.mjs` hook'uyla korunuyor — yani dosyaya dokunmak tek başına serbest bir iş değil, ayrı bir karar ister |
+| **Sonraki adım** | Seçenekler, artan güçte: (1) **asgari** — şifreli yedek (`age`/`gpg`) ayrı bir fiziksel ortama, `.env.example` ile alan alan eşleştiği doğrulanmış olarak; (2) **orta** — parola yöneticisinde (1Password/Bitwarden) sır kaydı, `.env` ondan türetilir; (3) **hedef** — üretim sırları hiçbir zaman dosyada durmaz, dağıtım ortamının sır deposundan (systemd credentials / Docker secrets / bulut KMS) gelir. Üretim için (3) zaten `docs/pk1-deployment-checklist.md`'nin konusu; bu kayıt **geliştirme ortamının** kurtarılabilirliğini kapsar. Ayrıca: `.env.example` ile gerçek `.env` arasındaki alan farkını CI'da rapor eden bir kontrol, kaybolan/eskiyen anahtarı erken gösterir |
+
+## TB-30 · `ensure_schema` şema/damga uyumsuzluğunu AKTİF OLARAK GİZLİYOR — üretimde kapalı olmalı
+
+> **Öncelik: yüksek.** Bu bir "nöbetçi eksikliği" değil; uygulamanın açılışta
+> uyumsuzluğu **düzeltmeden susturması**. Diğer kayıtların çoğu bir şeyin
+> ölçülmediğini söyler, bu kayıt ölçülen bir şeyin örtüldüğünü söyler.
+
+| | |
+|---|---|
+| **Bulundu** | İP-16 bağımsız denetimi + düzeltme turu, 9 Ağu 2026. Elle tarama ile bulundu, hiçbir test yakalamadı |
+| **Yer** | `backend/core/migrations.py::ensure_schema` (açılış, `AUTO_CREATE_DB=true`) · dolaylı: CI (`.github/workflows/ci.yml`), `tests/integration/conftest.py` |
+| **Durum** | `ensure_schema`, çözümlenemeyen bir damga gördüğünde **`stamp head --purge`** uygular (squash öncesi DB'ler için konmuş bir geçiş guard'ı). Sonuç zinciri ölçüldü: (1) DB eski/terk edilmiş bir revizyon kimliğine damgalı → `upgrade head` "Can't locate revision" verir; (2) guard damgayı sessizce `head`'e taşır; (3) sonraki `upgrade head` yapacak iş bulamaz ve **başarıyla döner**; (4) izin hizalama migration'ı **hiç koşmaz**, `srs.platform.*` bayat kodları DB'de kalır; (5) admin platform uçları SUPER_ADMIN'e dahi 403 döner ve menü öğesi gizlendiği için hata **görünmez**. Yani guard, tam da kendisini uyarması gereken durumu örtüyor |
+| **Neden ayrı kayıt** | Aynı boşluktan geçen üç arıza sınıfı var — (a) bayat damga, (b) kimlik aynı kalıp içeriğin değişmesi, (c) `down_revision` doğrusallaştırması sonrası "head damgalı ama araya giren DDL hiç koşmamış" DB. (a) gürültülü patlar; **(b) ve (c) tamamen sessizdir** ve `ensure_schema` (a)'yı da sessizleştirerek üçünü aynı sınıfa indiriyor |
+| **Ölçüm** | Denetim turunda makinedeki `adana*`/`ceyhandb` veritabanları tarandı: bayat damga taşıyan DB'ler ve "ip16 damgalı ama `ix_products_isbn` yok" (İP-12 boşluklu) DB'ler bulundu. Düzeltme turunda aynı zincir canlı görüldü: `adana_verify` bayat damgayla `alembic upgrade head`'i kırdı — orada `AUTO_CREATE_DB=false` olduğu için guard devreye girmedi ve hata GÖRÜNDÜ; guard açık olsaydı sessizce head'e taşınacaktı |
+| **YAŞANMIŞ VAKA — `ceyhandb`, 9 Ağu 2026 (merge sonrası)** | Artık teorik değil: arıza **asıl geliştirme veritabanında** (4.694 aktif ürün) ölçüldü. Durum — `alembic_version` = `ip12_urun_arama_vektoru`, ama 8 `srs_*` tablosunun **hepsi mevcut**; yani şema İP-16'da, damga İP-12'de. `alembic upgrade head` → `DuplicateTableError: relation "srs_decks" already exists` (migration düz `op.create_table` kullanır, `IF NOT EXISTS` yok). Bu, kaydın (c) sınıfının aynadaki hâli: guard damgayı GERİ sardı, DDL yerinde kaldı. Zincir: İP-16 dalı ceyhandb'ye şemayı yazdı → eski dalın `ensure_schema`'sı `ip16_*` damgasını çözemeyip `stamp head --purge` ile ip12'ye çekti → tablolar öksüz kaldı. **Kritik ayrıntı:** guard burada sessiz kalmadı, çünkü hata bir sonraki `upgrade`'de patladı — ama patlamayı sağlayan şey tabloların ZATEN var olmasıydı, guard'ın kendisi değil. Tablolar boş olmasa veri kaybı tartışması açılırdı |
+| **Vakanın çözümü ve ölçülen sapma** | Tablolar boştu (8 tabloda 0 satır), dışarıdan FK/view bağımlılığı yoktu → `stamp` yerine **drop + `upgrade head`** seçildi (stamp, mevcut DDL'in migration'la aynı olduğunu *varsayar*). Düşürmeden önce tam DDL kaydedildi: `docs/data/tb30-ceyhandb-srs-ddl-2026-08-09.sql`. **Karşılaştırma sonucu: FARK YOK** — 655 satır birebir aynı (kolon tipi, index, constraint, sequence, FK dahil); tek fark `pg_dump` 17'nin çağrı başına ürettiği `\restrict` nonce'ları. Yani `ensure_schema` bu vakada **şemayı bozmadı, yalnız damgayı bozdu**. Bu, kaydın önerdiği düzeltmeyi ucuzlatır (damga-repo doğrulaması tek başına bu vakayı yakalardı) ama sorunu küçültmez: "damga yanlışken tablolar da doğru mu" sorusunun cevabı **önden bilinemez**, ancak ölçülerek öğrenilir — burada iyi çıktı, garantisi yok. Upgrade sonrası: `alembic current` = `ip16_srs_izin_kodu_hizalama`, `alembic check` temiz, ürün 4694/4758 değişmedi |
+| **Ölçüm — vaka sonrası ilk açılış (9 Ağu, 19:08)** | Vaka çözüldükten SONRA sunucu `AUTO_CREATE_DB=true` ile yeniden başlatıldı ve `ensure_schema`'nın ne yaptığı ölçüldü: **hiçbir şey**. Logun tamamında yalnız iki satır var — `Schema: alembic upgrade head (migration tek kaynak)` ve 1,85 sn sonra `Schema: ready (head)`. `Running upgrade … -> …` satırı **yok** (tek migration koşmadı), `stamp head --purge` uyarısı **yok** (guard tetiklenmedi). Kodda çalışan dal `_provision_schema`'nın ilk dalı: `upgrade head` sıfır dönünce fonksiyon hemen `return` ediyor. Sonuç durumu: `alembic current` = `heads` = `ip16_srs_izin_kodu_hizalama`, `alembic check` temiz, 8 `srs_*` tablo. **`ensure_schema` açılışta hiç çalışmasaydı tek fark 1,85 sn olurdu.** Kaydın açısından önemi: `ready (head)` mesajı "kurdum" ile "zaten güncel"i **ayırt etmiyor** — yani bu satır, guard'ın sessizliğine ek olarak, normal işleyişte de hiçbir bilgi taşımıyor |
+| **DÜZELTME — yanlış nedensellik** | Aynı turda "`/health` 503 → 200 dönüşünü `ensure_schema` şemayı geri kurarak sağladı" diye raporlandı; bu **yanlıştı** ve yukarıdaki ölçümle çürütüldü (şema zaten elle koşulan `upgrade head` ile kuruluydu, `ensure_schema` no-op geçti). 503'ün gerçek sebebi **ölçülemedi**: 503'ü veren süreç, şema düşürülmüşken ayakta olan eski uvicorn'du (`adana-main`'den, port 8016), logu tutulmamıştı ve süreç sonlandırıldı. Olası açıklama, `DROP`/`upgrade` sırasında bağlantı havuzunun bozulması ve yeniden başlatmanın bunu temizlemesidir — **doğrulanmadı**. Kayda geçme sebebi: "yeniden başlatınca düzeldi" bir gözlemdir, açıklama değildir; TB-30'un konusu tam da böyle sessiz düzelmelerin nedeninin bilinmemesidir |
+| **Yan bulgu (DDL kilidi)** | `DROP TABLE` 2 dakika asılı kaldı: çalışan geliştirme backend'i 11 dakikadır `idle in transaction` bekliyordu ve DDL onun kilidini bekliyordu (`pg_blocking_pids` ile doğrulandı). Bu, üretimde `alembic upgrade`'in de aynı şekilde asılabileceğini gösterir — lansman kontrol listesine "migration öncesi uzun `idle in transaction` bağlantı taraması + `lock_timeout`" maddesi düşer |
+| **Etki** | Bugün test/geliştirme ortamlarını vurdu, ama arıza sınıfı ortama duyarsız. Üretimde (b) sessizce yanlış yetki verisi, (c) sessizce eksik index/kolon bırakır — ikisi de "migration'lar geçti" raporuyla birlikte yaşar |
+| **LANSMAN KONTROL LİSTESİ** | **`AUTO_CREATE_DB=false` üretimde ZORUNLU** — dolayısıyla `ensure_schema` ve `stamp head --purge` guard'ı üretimde hiç çalışmaz. Üretim guard'ı (`Settings._guard_production`) `AUTO_CREATE_DB` açıkken zaten uygulamayı açtırmıyor; bu kayıt onu **kontrol listesine yazılı bir madde** hâline getirir, örtük bir davranış olarak bırakmaz. Şema üretimde yalnız açık, denetlenen bir `alembic upgrade head` adımıyla ilerler. Bkz. `docs/pk1-deployment-checklist.md` |
+| **Neden ertelendi** | Doğru çözümün iki parçası var: (1) damganın repoda karşılığı olduğunu doğrulamak (ucuz: `alembic_version.version_num` ∈ `versions/*.py` revision kimlikleri; bilinmeyen damgada fail-fast + beklenen revizyonu söyle — guard bunun YANINA, sonrasına değil); (2) şemanın damgayla uyuştuğunu CI'da **kapı** yapmak (`alembic check`). İkincisi bugün çapraz-dal sapması yüzünden kırmızı verir, yani dal durumu temizlenmeden kapıya çevrilemez. İP-16'nın kapsamı aralıklı tekrardır |
+| **Sonraki adım** | (1) `ensure_schema`'ya damga-repo doğrulaması + bilinmeyen damgada fail-fast; `--purge` guard'ını yalnız **bilinen** squash-öncesi revizyon listesine daralt; (2) taze DB'de `alembic upgrade head && alembic check` CI kapısı; (3) `down_revision` değiştiren her commit'in "eski zincirle kurulmuş DB'ler yeniden kurulmalı" notunu taşıması sözleşme kuralı olsun; (4) `AUTO_CREATE_DB=false` maddesini lansman kontrol listesine ekle |
+| **AYRI İŞ PAKETİ — "doğrula modu" (9 Ağu 2026'da önerildi, BİLİNÇLİ OLARAK ERTELENDİ)** | Yukarıdaki (1)-(4) hâlâ geçerli; bu satır onları **sıraya** koyar ve bir madde ekler. **(A) `ensure_schema` "kur" modundan "doğrula" moduna geçsin:** açılışta `alembic current` ile `heads` karşılaştırılsın, eşit değilse uygulama **açılmasın** ve `alembic upgrade head` koşulması söylensin. Maliyeti tek sorgu. Kritik tasarım kararı: bu doğrulama **`AUTO_CREATE_DB`'den BAĞIMSIZ, her zaman** koşmalı — bugün bayrak kapalıyken hiçbir kontrol yok, yani şema kayması *sessizce* değil *hiç* fark edilmiyor. **(B) `--purge` guard'ını bilinen revizyon listesine daralt** (= mevcut (1)'in ikinci yarısı). **(C) `AUTO_CREATE_DB=false` dev varsayılanı olsun**, temiz kurulum `docker-compose`'da backend'den ÖNCE koşan ayrı bir `migrate` adımına bağlansın. **SIRA ÖNEMLİ: (A) → (C).** (C)'yi (A)'sız uygulamak durumu BUGÜNKÜNDEN KÖTÜLEŞTİRİR: bu depoda sekiz worktree ve farklı migration head'li dallar var; otomatik hizalama kalkar ama yerine hiçbir uyarı gelmez, dal değiştirip `upgrade head` koşmayı unutan geliştiricinin uygulaması sessizce eski şemayla açılır. (A) tek başına da anlamlı bir ilk adımdır; (C) onsuz yapılmamalıdır. Bu paket İP-16 veya operasyon turunun kapsamı değildi, ayrı bir tur ister |
+
+## TB-29 · Mutasyon sürücüsü `ERROR` ile düşen (hiç koşamayan) testleri "kırılmadı" sayıyor — TÜM paketleri etkiler
+
+| | |
+|---|---|
+| **Bulundu** | İP-16 denetim düzeltme turu, 9 Ağu 2026 — kendi mutasyon provamda ölçüldü |
+| **Yer** | `backend/scripts/mutation_drill.py::_kirilanlar` (ortak sürücü; `mutation_drill_f30`, `_ip1a`, `_ip2a`, `_ip3`, `_ip4`, `_ip5`, `_ip16` hepsi bunu kullanır) |
+| **Durum** | Fonksiyon yalnız `FAILED ` ile başlayan pytest satırlarını sayar. Bir mutasyon testleri **koşamayacak** kadar derinden bozarsa (conftest'te DB kurulamaz, koleksiyon patlar, import kırılır) pytest `ERROR tests/...::düğüm` yazar — tek bir `FAILED` satırı olmaz. Sürücü o mutasyonu **"YAKALANMADI"** raporlar |
+| **Ölçüm** | İP-16 mutasyonu `IP16-21` (migration zincirini ip12'den kopar): entegrasyon conftest'i "Multiple head revisions" ile veritabanını kuramadı, beş düğüm de `ERROR` düştü, sürücü "YAKALANMADI — bu davranış için önce anlamlı bir test yazılmalı" dedi. Oysa suite hiç koşamamıştı; bu `FAILED`'dan daha sert bir kırılmadır |
+| **Etki** | İki yönlü ve ikisi de sinsi: (a) **yalancı boşluk** — sağlam bir nöbetçi "yok" görünür, geliştirici var olan testin üstüne ikinci bir test yazar ya da düzeltmeyi kanıtsız sayar; (b) **kritik olan bu** — `_kirilanlar` boş dönünce sürücü sonucu "0 test kırıldı" diye özetler; bir kapanış raporunda bu satır "mutasyon yakalanmadı, test zayıf" diye okunur ve **yanlış** teknik borç doğurur. Aynı sürücü "seçilen test = 0 ise BAŞARISIZLIK" nöbetçisiyle tam bu ayrımı girdi tarafında zaten savunuyor; çıktı tarafında savunmuyordu |
+| **Şu anki durum** | İP-16 sürücüsünde **yerel olarak** düzeltildi: `mutation_drill_ip16._kirilanlar` üst fonksiyonu bilinçli gölgeler ve `ERROR …::düğüm` satırlarını "KURULUM HATASI — test hiç koşmadı" etiketiyle ekler. Diğer altı paketin sürücüsü hâlâ eski davranışta |
+| **Neden ertelendi** | Düzeltmenin doğru yeri ortak `mutation_drill.py`'dir, ama orası yedi paketin kapanış raporlarının dayandığı ölçüm aracıdır: değiştirmek, geçmiş turların "yakalanmadı" kayıtlarının bir kısmını geçersiz kılabilir. Bu, İP-16'nın kapsamı değil; ayrı ve bilinçli bir tur ister |
+| **Sonraki adım** | (1) `_kirilanlar`'ı ortak sürücüde `ERROR` satırlarını da sayacak şekilde düzelt, İP-16'daki yerel gölgelemeyi sil; (2) geçmiş kapanış raporlarındaki **"YAKALANMADI"** kayıtlarını tara — hangileri gerçekten zayıf test, hangileri bu kusurun kurbanı; (3) sürücünün özetine "kırılan" ile "hiç koşmayan"ı ayrı satır olarak yazdır |
+
+## TB-26 · Ürün kapak görselleri `library-photos/` önekini kütüphane fotoğraflarıyla paylaşıyor
+
+| | |
+|---|---|
+| **Bulundu** | kitapsec kapak backfill turu, 8 Ağu 2026 |
+| **Yer** | `backend/scripts/backfill_kitapsec_covers.py` (ve öncesinde `store_service.set_cover`/`add_images`) — ikisi de `storage.upload_library_photo`'yu çağırıp nesneleri `library-photos/` önekine yazıyor. Ürün kapağı için ayrı bir önek/bucket yok |
+| **Ölçüm** | 4.681 ürün kapağı yüklendi; MinIO'da `library-photos/` önekinde toplam **4.744 nesne** (129,1 MB) — aradaki ~63 nesne platformun gerçek kütüphane fotoğrafları. Bugün karışma **zararsız**: her nesne kendi UUID adını taşıyor, çakışma riski yok, silme/liste sorguları her iki tür veriyi de aynı anda döndürmüyor (referans DB'den geliyor) |
+| **Etki** | İleride ürün görsellerini kütüphane fotoğraflarından ayrı yönetmek gerekirse (toplu temizlik, farklı yaşam döngüsü/saklama politikası, CDN önbellek kuralı, ayrı bucket lifecycle) bu ayrıştırma bugünden yapılmadığı için sonradan **taşıma maliyeti** doğar (`scripts/migrate_storage_visibility.py`'deki gibi bir geçiş betiği gerekir) |
+| **Sonraki adım** | Ürün kapakları için `products/` öneki (ya da ayrı bucket) — hem yeni yüklemeler hem geriye dönük 4.681 nesne için taşıma betiği. Şimdilik ürün kararı bekliyor, aciliyeti yok |
+
+## TB-25 · `storage.upload_library_photo` her çağrıda yeni aioboto3 Session/istemci kuruyor
+
+| | |
+|---|---|
+| **Bulundu** | kitapsec kapak backfill turu, 8 Ağu 2026 (ölçümlü) |
+| **Yer** | `backend/core/storage.py::_s3_client` ↔ `upload_library_photo`/`_put_webp` — her çağrı `aioboto3.Session().client(...)` ile YENİ bir istemci kurup kapatıyor |
+| **Ölçüm** | `scripts/backfill_kitapsec_covers.py`: her görsel kendi `upload_library_photo` çağrısını yaptığı ilk sürümde 200 görsellik parti **225 saniye**; script içinde tur boyunca TEK paylaşılan istemciye geçilince (`_upload_via_shared_client`) aynı parti **28 saniye** — **8x**. Suçlu ne Pillow'daki yeniden boyutlandırma ne yerel ağ: `aioboto3.Session()` her kurulumda botocore'un servis modellerini (JSON) diskten yeniden okuyor |
+| **Etki** | Tek tek admin yüklemelerinde (bir kapak, bir avatar) gecikme tek istekte gizli kalıyor, fark edilmiyor. Admin toplu kapak/görsel yüklerse ya da çoklu görsel işleyen başka bir akış eklenirse aynı yavaşlık sessizce geri gelir. Üretim kodu (`core/storage.py`) bu turda DÜZELTİLMEDİ — çözüm yalnız `scripts/backfill_kitapsec_covers.py` içinde, script'e özel bir yardımcıyla geçici olarak uygulandı |
+| **Sonraki adım** | `core/storage.py`'da modül düzeyinde paylaşılan bir istemci/bağlantı havuzu (ya da `aioboto3.Session()`'ı bir kez kurup yeniden kullanan bir singleton) — tüm `upload_*`/`_put_webp` çağrıları oradan geçmeli. Ölçüm bu turun script'i referans alınarak tekrarlanabilir |
+
+## TB-24 · İP-12 P2 listesi (mağaza panel yüzeyi — on iki kayıt, öncelik sırasıyla)
+
+| | |
+|---|---|
+| **Bulundu** | İP-12 (mağaza panel yüzeyi: ürün listesi/arama/stok kovaları + sipariş listesi + `ProductPicker`) bağımsız audit'i, 8 Ağu 2026 — audit YEŞİL (`167dffd` üzerinde dar teyitle), merge `92bc1c1` |
+| **Merge sonrası doğrulandı** | Sıfırdan izole DB'de (`adana_post_ip12_merge_test`) `alembic upgrade head` + `alembic check` → `No new upgrade operations detected.`; tek head `ip12_urun_arama_vektoru` |
+| **Neden ertelendi** | Hiçbiri para kaybı, yetki açığı ya da ölü akış değil. Audit turunda kapsam dışı üretim koduna dokunmak, denetimden geçmiş kırmızı matrisi ve kabul sözleşmesini kaydırırdı (`feedback_delivery_gates`: kabul testleri sessizce değişmez) |
+
+| # | Kayıt | Yer | Etki / sonraki adım |
+|---|---|---|---|
+| 1 | **Sipariş listesinde sayfalama YOK** | `frontend/src/pages/dashboards/AdminStore.tsx:1065-1076` (`kesilmisOlabilir`) ↔ `backend/api/routers/store.py:443` (`list_orders_admin`, `limit` tavanı 200) | İP-12 listenin kesildiğini **söyleyen** bir uyarı ekledi (sessiz kesilme kalktı), ama uyarıyı gören yöneticinin yapabileceği bir şey yok: 100'den sonraki siparişlere panelden **erişim yolu yok**. Uç `offset` alıyor, yüzey kullanmıyor. Sonraki adım: sayfalama (ya da "daha fazla yükle") + son sayfanın gerçekten son olduğunu ölçen DOM testi |
+| 2 | **`?stok=var` sınır kör noktası — fixture'da `stock == 5` ürün yok** | `backend/tests/integration/ip12_factory.py` ↔ `core/stock_policy.py:82-89` | `var` kovası `stock > LOW_STOCK_THRESHOLD` diyor; eşiğin **tam üstündeki** değer (5) hiçbir senaryoda üretilmiyor. Yüklem yanlışlıkla `>=` yapılsa testler yine yeşil kalır — off-by-one görünmez. Eşiğin kendisi bilinçli bir ürün kararı (`stock_policy` docstring'i: "5 kaldı" uyarısı alınmalı) ve tam o karar test edilmiyor. Sonraki adım: fixture'a `stock=5` ürün + üç kovanın sınırdaki davranışını ayrı ayrı ölçen senaryo |
+| 3 | **`?stok=kritik` açıldığında 0 stoklular üstte değil** | `frontend/src/pages/admin/AdminDashboardPage.tsx:113` (link `?stok=kritik`, `sirala` taşımıyor) | Kart ile listenin **kümesi** artık aynı (P1-1 kapandı), ama **sırası** anlamlı değil: yeniden sipariş alarmından gelen yönetici önce tükenmişleri görmeli. Bugün varsayılan sıra geliyor, tükenmişler listenin ortasına dağılıyor. Sonraki adım: linke `sirala=stock` (artan) eklemek + gerçekten gönderilen query parametresini ölçen test (DOM'da sıra değil, **istekte** parametre) |
+| 4 | **Public uçta `sku`/`stock` liste düzeyinde anonim dönüyor** | `backend/schemas/store.py::ProductSearchOut:55-73` | `in_stock` bayrağı zaten var ve müşteri için yeterli; kalan adet ile stok kodu iç operasyon verisidir. Sızıntı bugün "yalnız" rekabet istihbaratı (rakip katalog derinliğini ve ikmal ritmini ölçebilir) — yetki açığı değil, o yüzden P2. Sonraki adım: public projeksiyondan `sku`/`stock` çıkarmak (admin şeması ayrı kalır) + anonim çağrının alanları DÖNMEDİĞİNİ ölçen HTTP testi |
+| 5 | **Kısmi ISBN öneki index kullanmıyor** | `backend/models/store.py:362` (`ix_products_isbn`, düz btree) ↔ arama dalı `services/store_service.py` | Tam eşleşme index'ten yararlanıyor, kısmi/önek araması (yöneticinin fiilen yaptığı şey — barkodun son hanelerini yazmak) sequential scan'e düşüyor. Katalog küçükken görünmez; büyüdüğünde arama kutusu yavaşlar. Sonraki adım: `text_pattern_ops` önek index'i ya da mevcut trigram yoluna ISBN'i katmak — hangisinin kazandığı **ölçülerek** seçilmeli (`EXPLAIN` + gerçek satır sayısı) |
+| 6 | **`test_a3b` flake — teşhis EDİLMEDİ** | `backend/tests/integration/test_ip12_urun_listesi_pg.py::test_a3b` | Hipotez "tsquery belirsizliği" idi ve audit bunu **çürüttü**: 8 SKU genişliği + 3 ISBN ile senaryonun deterministik olduğu ölçüldü. Geriye altyapı/yük hipotezi kaldı ve o **kanıtlanmadı** — yani bugün kök neden bilinmiyor. Kayıt bu yüzden "flaky test" değil "**teşhis edilmemiş** flaky test" olarak duruyor; [[TB-14]]/8 ile aynı sınıfa girip girmediği belli değil. Sonraki adım: düşüşü yakalayan koşumda tam çıktı + o anki makine yükü kaydı; hipotez kanıtlanana kadar test **susturulmamalı** |
+| 7 | **Model ↔ migration `Computed` ifadesi iki kopya; `alembic check` karşılaştırmıyor** | `backend/models/store.py` (`search_vector` `Computed`) ↔ `migrations/versions/ip12_urun_arama_vektoru.py` | Aynı uzun `to_tsvector(... isbn ... sku ...)` ifadesi iki dosyada elle yazılı. Autogenerate generated-kolon **ifadesini** diff'lemediği için biri değişip diğeri kalırsa `alembic check` YEŞİL kalır ve sapma yalnız arama sonuçlarında (sessizce) görünür. Bu turda ikisinin aynı olduğu canlı DB'den `pg_get_expr` ile doğrulandı — ama bu bir **elle** kontroldü. Sonraki adım: ifadeyi tek bir Python sabitinden üretip her iki tarafın oradan okuduğunu ölçen yapısal nöbetçi |
+| 8 | **`ix_products_title_trgm` sapması `env.py` `_trgm` muafiyetiyle gizleniyor** | `backend/migrations/env.py:42-50` (`_EXPRESSION_INDEX_SUFFIXES = ("_trgm",)`) | Muafiyet meşru bir sebeple var (ifade-tabanlı indeksleri autogenerate zaten üretemiyor), ama yan etkisi şu: adı `_trgm` ile biten bir indeks **tamamen** kaybolsa ya da ifadesi değişse `alembic check` bunu göremez. Yani bu indeks sınıfı için migration↔model sözleşmesi denetimsiz. Sonraki adım: muafiyeti "diff'ten çıkar" yerine "**varlığını** ayrıca doğrula" hâline getirmek (canlı DB'de beklenen `_trgm` indekslerini listeleyen PG testi) |
+| 9 | **`offset` üst sınırsız; `publisher`/`author` filtreleri uzunluk sınırsız** | `backend/api/routers/store.py:183-184, 224-225, 446-447, 556-557` | `limit` her yerde `le=` ile tavanlı, `offset` yalnız `ge=0`. Çok büyük offset Postgres'e "satırları say ve at" dedirtir (derin sayfalama maliyeti); serbest metin filtrelerinde uzunluk sınırı olmaması da aynı sınıftan ucuz bir kötüye kullanım yüzeyi. Kimlik doğrulamalı uçlar olduğu için P2. Sonraki adım: `offset` tavanı (ya da keyset sayfalama) + filtre alanlarına `max_length` |
+| 10 | **`CountSessionsPage` URL güncellemesi `replace: true`** | `frontend/src/pages/admin/inventory/CountSessionsPage.tsx:243` | Filtre değişimi geçmişe kayıt bırakmıyor; kullanıcı geri tuşuyla önceki filtreye dönemez, doğrudan sayfadan çıkar. Panelin başka yerlerindeki filtre davranışıyla tutarsız. Küçük ama gerçek bir gezinme kusuru. Sonraki adım: `replace`'i yalnız ilk normalize etmede kullanmak, kullanıcı kaynaklı değişimde `push` |
+| 11 | **`ProductPicker` hatayı "sonuç yok" gösteriyor; boş terimde de istek atıyor** | `frontend/src/components/admin/ProductPicker.tsx:52-58` ve `:85-92` | İki ayrı kusur, aynı bileşende: (a) `isLoading` değilse ve liste boşsa "Eşleşen ürün bulunamadı." yazılıyor — **istek patladığında da** aynı metin çıkıyor, yani ağ/yetki hatası "böyle bir ürün yok" gibi okunuyor (kök `CLAUDE.md`: hata ≠ boş ekran). (b) `useAdminProducts(gecikmeli ? {...} : { limit: 10 })` — terim boşken de sorgu koşuyor; sonuç hiç gösterilmiyor (`adaylar` boş dizi) ama ağ turu gerçek. Sonraki adım: `isError` dalı + boş terimde `enabled: false` |
+| 12 | **A8 ve B1–B5 kapsam dışı bırakıldı** | `docs/ip12-magaza-panel-sozlesme.md` | A8 (sipariş listesi **tarih ön ayarları**) ve B1–B5 bilinçli olarak paketin dışında tutuldu — eksik iş değil, **verilmemiş karar**. Kayıt burada duruyor ki "yapıldı sanılan ama hiç başlanmamış" iş olmasın. Sonraki adım: bir sonraki mağaza turunda kapsama alınıp alınmayacağına karar vermek |
+
+### İP-9'a devredilen not (bu paketin borcu değil, altyapı)
+
+| # | Kayıt | Yer | Etki / sonraki adım |
+|---|---|---|---|
+| 13 | **Redis düştüğünde entegrasyon suite'i pratikte kullanılamaz hâle geliyor** | `backend/core/ratelimit.py` (fail-open) ↔ `tests/integration/` | Rate-limit katmanı tasarım gereği **fail-open**'dır ve bu doğrudur — ama fail-open yalnız *sonucu* kurtarıyor, *maliyeti* kurtarmıyor: Redis kapalıyken her çağrı yeniden bağlantı deniyor ve suite sürünüyor. İP-12 audit'inde ölçüldü: `adana-ozel-ders-redis-1` 10 saat düşük kaldı ve suite **~60 dakika ilerlemedi** — testler kırmızı da vermedi, yalnız asıldı; teşhis o yüzden geç oldu. Bu bir üretim hatası değil, **geliştirici verimliliği ve yanlış teşhis** riski. Sonraki adım (İP-9): bağlantı hatasından sonra kısa devre kesici (`core/routing`'deki desenin aynısı) + suite başında Redis erişilebilirliğini söyleyen tek satırlık uyarı |
 
 ## TB-22 · İP-5 P2 listesi (KDV boru hattı + fatura ucu — sekiz kayıt, öncelik sırasıyla)
 
@@ -105,7 +286,7 @@ her üçünü de güvenli tarafta bekletiyor (fatura uydurmuyor, uç kapalı).
 | 11 | **TB-B · Çapraz tablo kod tekilliği yalnız ÜRETİCİDE** | `backend/core/codes.py` ↔ `backend/services/library_capacity.py` | DB kısıtları tablo başına tekillik veriyor (`uq_exam_reg_*`, `uq_study_res_*`); **iki tablo arasında** aynı `short_code`'un doğmasını engelleyen tek şey üretici taraftaki kontrol. Birleşik QR ucu (`/exam-attendance/verify`) token'ı önce denemede, sonra çalışma rezervasyonunda aradığı için çakışma belirsizlik üretir. Sonraki adım: ya çapraz tablo kontrolünü DB'ye taşımak (ortak kod tablosu / kısmi index) ya da kodları tür önekiyle ayırmak |
 | 12 | **`ruff.toml` per-file-ignore merkezi defterde kayıtlı değildi** | `backend/ruff.toml:63` — `"scripts/ip1b_ddl_drill.py" = ["T201"]` | İstisna **doğru gerekçeli ve dar** (CLI aracı, konsol çıktısı provanın kanıtı; dosya + kural bazında, `scripts/` dizinine toplu muafiyet YOK) ve sözleşmede yazılıydı — ama merkezi borç defterinde değildi. Lint istisnalarının tek yerden görülebilmesi için kayda geçiyor. Sonraki adım yok; bu satır kaydın kendisidir |
 
-## TB-19 · İP-4 nihai bağımsız audit'inin P2 listesi (on kayıt — öncelik sırasıyla)
+## TB-19 · İP-4 nihai bağımsız audit'inin P2 listesi (on kaydın DOKUZU — öncelik sırasıyla)
 
 | | |
 |---|---|
@@ -126,7 +307,6 @@ her üçünü de güvenli tarafta bekletiyor (fatura uydurmuyor, uç kapalı).
 | 6 | **`/admin/escrow/stuck` sayfalanmıyor — [[TB-17]]/2'nin ölçülmüş hâli** | `backend/services/admin_operations_service.py::list_stuck_escrow` | TB-17/2 boşluğu adlandırmıştı; audit ayrıntıyı ölçtü: beş escrow modeli **tavansız** taranıyor, deneme (attempt) süzgeci **Python tarafında** uygulanıyor (yani DB'den dönen satır sayısı süzgeçten bağımsız) ve sorguyu destekleyen **index yok**. Kuyruk büyüdüğünde maliyet doğrusal değil bileşik artar. Sonraki adım: `limit/offset` + süzgeci SQL'e taşımak + kısmi index; TB-17/2 bu kayıtla birlikte kapanır |
 | 7 | **`_ENTITY_ADI` ↔ `StuckEntity` elle senkron tutuluyor** | `backend/services/admin_operations_service.py` ↔ `backend/schemas/admin_operations.py` | Yeni bir escrow varlığı eklendiğinde iki yeri birlikte güncellemek gerekiyor; unutulursa etiket eksik kalır. İP-4 bunun için fail-loud davranış ekledi (`5bf327b`) — yani hata artık görünür — ama **eşleşmeyi ölçen koruyucu test yok**. Sonraki adım: enum üyelerinin tamamının haritada karşılığı olduğunu doğrulayan birim testi |
 | 8 | **`COMMERCE_MANAGER` grant'ını koruyan nöbetçi test yok** | `backend/migrations/versions/ip4_operasyon_izinleri.py` ↔ `backend/core/admin_permissions.py` | Migration görev ayrılığını kuruyor: `operations.view` → SUPER_ADMIN + COMMERCE_MANAGER, `operations.manage` → yalnız SUPER_ADMIN (retry geri alınamaz dış yan etki tetikler). Bu dağılımı **hiçbir test doğrulamıyor**; ileride biri `manage`'i de ticaret yöneticisine verirse sessizce geçer. Sonraki adım: gerçek PG'de rol→izin matrisini doğrulayan entegrasyon testi (merge duman testinde elle doğrulandı: 3 satır, doğru) |
-| 9 | **`PackageLabel` Vitest flake'i — tam suite yükünde düşüyor** | `frontend/src/**` `PackageLabel.test.tsx` | Tek başına koşarken geçiyor, tam suite yükü altında ara sıra düşüyor. **İP-4 kaynaklı değil** — audit tabanda (`e726b9b`) da doğruladı. [[TB-14]]/8'deki `inventoryScreens` flake'iyle aynı sınıf ama **AYRI** kayıt: farklı dosya, farklı teşhis. (Merge duman testinde bu tur GÖRÜLMEDİ: 73 dosya / 744 test yeşil.) Sonraki adım: teşhis — paylaşılan zamanlayıcı/`waitFor` yarışı mı, yoksa suite'ler arası sızan durum mu |
 | 10 | **Sözleşme belgesinde iki küçük doğruluk kusuru** | `docs/ip4-admin-operasyon-sozlesme.md` | (a) B-1c / B-2b etiketleri gövdedeki maddelerle birebir örtüşmüyor; (b) "`waitFor` yalnız bir yerde kullanıldı" ifadesi kod tabanında doğrulanmıyor. Kod doğru, **belge** yanlış — ve bu belge kabul sözleşmesi olduğu için sonraki turların dayanağı. Sonraki adım: iki ifadeyi kodla eşitlemek |
 
 ## TB-18 · `test_production_guard` ortam değişkeninden yalancı kırmızı veriyor
@@ -209,7 +389,7 @@ belgelerde geçiyor ve kaydırmak onları sessizce yanlış kayda bağlardı.
 | 5 | **`notifications` / `outbox_events` test hijyen boşluğu** | `tests/integration/conftest.py::_KRITIK_TABLOLAR` | İP-2a'nın kendi deltası ölçülmedi; genel boşluk zaten [[TB-8]] altında açık. Burada yalnız İP-2a paketinin de aynı iki tabloda delta bırakıp bırakmadığının ölçülmemiş olması kayda geçiyor |
 | 6 | **`f30_factory` sabit `auth_version=1`** | `backend/tests/integration/f30_factory.py` | İP-3 `auth_version` sözleşmesinden sonra fabrika değeri sabit; hesabın gerçek `auth_version`'ı 1 değilse token sözleşmesi testte yanlış tarafından doğrulanır (bugün geçiyor çünkü fabrika hesapları hep 1'de). Kırılganlık: sürüm artıran bir davranış eklenince sessizce yalancı yeşil |
 | 7 | **`mutation_drill.py` üç eksik** | `backend/scripts/mutation_drill.py` | (a) mutasyon geri alındıktan sonra dosyanın **SHA-256 ile** eski hâline döndüğü doğrulanmıyor; (b) mutasyondan önce **yeşil taban çizgisi** alınmıyor (zaten kırmızı bir testi "mutasyonu yakaladı" sayabilir); (c) hedef AST node'unun **beklenen düğümle eşleştiği** doğrulanmıyor (yanlış yeri mutasyona uğratıp "yakalandı" diyebilir). Kök `CLAUDE.md` §D bu sürücüyü resmî araç olarak anıyor — güvenilirliği doğrudan test kalitesi iddiasını taşıyor |
-| 8 | **frontend `inventoryScreens` flake** | `frontend/src/**` Vitest | Ara sıra kırılıyor; teşhis edilmedi. Yeşil/kırmızı sinyalini bulandırır ([[TB-10]] ile aynı sınıf) |
+| 8 | **frontend `inventoryScreens` flake'i — AZALDI ama SÜRÜYOR** | `frontend/src/pages/admin/inventory/inventoryScreens.acceptance.test.tsx` | **Kayıt bir kez erken kapatıldı ve geri kondu.** İP-12 FAZ 0 `testTimeout`'u 5000 → 9000 ms'ye çekti ve 5 koşumun 5'inde yeşil gördüğü için kaydı "kapandı" sayıp sildi. İP-12 audit'i **7 koşumun 1'inde** düşüşü tekrar gördü: ağır yük altında `ProductPicker`'ın debounce + istek zinciri `findBy` penceresine yetişemiyor (A12 ile eklenen seçici, bu dosyadaki hasar akışlarında artık bir ağ turu daha ekliyor). Yani kök neden TB-23'ün ölçtüğü "bütçe dar" sınıfından; bütçe genişledi, olasılık düştü ama SIFIRLANMADI. Ölçüm: 9000 ms bütçede bu dosyanın en ağır testi ~1786 ms (payı %20) — boşta. Sonraki adım: seçicinin bekleme zincirini testte deterministik hâle getirmek (sahte zamanlayıcı ya da debounce'u test ortamında kısaltmak); bütçeyi daha da büyütmek ÇÖZÜM DEĞİL, gerçek yavaşlama regresyonunu gizler |
 
 ## TB-13 · KVKK silme: kurye PROFİLİ (vesikalık/plaka/telefon) ve silme audit kaydı — ürün kararı bekliyor
 

@@ -18,6 +18,7 @@ from sqlalchemy.orm import selectinload
 
 from core import mail, storage
 from core.config import settings
+from core.stock_policy import stok_kovasi_yuklemi
 from core.search_text import (
     normalize_tr,
     normalized,
@@ -160,6 +161,8 @@ def _to_search_out(
         currency=p.currency,
         cover_url=p.cover_url,
         in_stock=_in_stock(p),
+        # Fiziksel üründe kalan adet; dijitalde None (bkz. şema yorumu).
+        stock=(p.stock if p.kind == ProductKind.PHYSICAL.value else None),
         category_id=p.category_id,
         rating_count=p.rating_count,
         rating_average=(p.rating_sum / p.rating_count if p.rating_count else None),
@@ -168,6 +171,79 @@ def _to_search_out(
         ),
         status=p.status,
         author=p.author,
+        publisher=p.publisher,
+        isbn=p.isbn,
+        sku=p.sku,
+    )
+
+
+# ── Arama: kimlik mi, metin mi? ─────────────────────────────────────────────────
+#
+# Katalogda ÜÇ AYRI kimlik var ve karıştırılmamaları gerekiyor:
+#
+#   `isbn`    kitabın yayıncılık kimliği (insan girdisi, 10 veya 13 hane)
+#   `barcode` ELİMİZDEKİ fiziksel kalemin üzerinde OKUNAN dizgi (EAN-13/UPC).
+#             `isbn`'den ayrıdır ve ondan ASLA kopyalanmaz (bkz. models/store.py):
+#             kitap olmayan üründe EAN var ISBN yok, set ürünün kendi barkodu
+#             içindekilerden farklı, bazı baskılar promosyon barkodu taşır.
+#   `sku`     BİZİM stok kalemi kimliğimiz (`FZK-000042`), BEFORE INSERT
+#             trigger'ı yazar, taklit edilemez.
+#
+# Arama kutusu üçünü de kabul eder çünkü kullanıcı hangisini elinde tuttuğunu
+# ayırt etmek zorunda değil: barkod okuyucu ISBN'i de EAN'ı de klavye girdisi
+# olarak yazar. Ayrı bir "barkod modu" gerekmez.
+
+#: Saf rakam dizisi (barkod okuyucunun ürettiği girdi).
+_RAKAM_DIZISI = re.compile(r"^\d+$")
+#: SKU deseni: iki-üç harfli önek + tire + rakamlar (`FZK-000042`).
+_SKU_DESENI = re.compile(r"^[A-Za-z]{2,4}-?\d{3,}$")
+#: Önek aramasının açıldığı en kısa uzunluk. 4'ün altında ("978") sonuç kümesi
+#: kataloğun tamamına yakın olur ve arama hiçbir şey daraltmaz.
+_ONEK_EN_AZ = 4
+
+
+def _arama_kolu(q: str):
+    """`q` için WHERE dalı — kimlik girdisi tam/önek, metin girdisi vektör+trigram.
+
+    ## 13 hane kuralı
+
+    Tam 13 haneli saf rakam dizisi **yalnız** `isbn`/`barcode` TAM eşleşmesine
+    gider; trigram benzerliğine ASLA bırakılmaz. Sebep: ISBN'de "yakın
+    eşleşme" diye bir şey yoktur — komşu ISBN BAŞKA bir kitaptır. Trigram ise
+    rakam dizilerinde tam tersini yapar: "9786051234567" ile "9786051234568"
+    üç-gram düzeyinde neredeyse aynıdır ve benzerlik kolu açık kalırsa okutulan
+    barkod yanlış kitabı da getirir.
+
+    ## Kısa rakam dizisi (kısmi ISBN)
+
+    13 haneden kısa saf rakam dizisi **önek** olarak eşleşir. Gerekçe: yayınevi
+    öneki (`978605...`) kitapçının gerçek bir daraltma ekseni ve barkod okuyucu
+    bazen eksik okur. Önek, benzerlik DEĞİL: ISBN'in ortasından bir parça
+    ("0512") anlam taşımaz ve eşleşmez.
+
+    ## Metin girdisi
+
+    Vektör (başlık + açıklama + yazar + yayınevi + ISBN + SKU) ile birlikte
+    başlık trigram'ı; ikincisi yazım hatası toleransını sağlar ("matematık").
+    """
+    ham = q.strip()
+
+    if _RAKAM_DIZISI.match(ham):
+        if len(ham) == 13:
+            return or_(Product.isbn == ham, Product.barcode == ham)
+        if len(ham) >= _ONEK_EN_AZ:
+            desen = ham + "%"
+            return or_(Product.isbn.like(desen), Product.barcode.like(desen))
+        # Çok kısa rakam: kimlik saymak için yetersiz, metin gibi ele alınır.
+
+    if _SKU_DESENI.match(ham):
+        # SKU tekildir; benzerliğe bırakmanın anlamı yok.
+        return func.upper(Product.sku) == ham.upper()
+
+    tsquery = search_tsquery(ham)
+    return or_(
+        Product.search_vector.op("@@")(tsquery),
+        normalized(Product.title).op("%")(normalized(ham)),
     )
 
 
@@ -426,15 +502,15 @@ async def search_products(
         # Diakritik-duyarsız: "matematık", "kitab", "cozumlu" sonuç getirmeli.
         # Yazar/yayınevi de aranır — kullanıcı çoğu zaman kitabın adını değil
         # yazarını hatırlar ("palme fizik", "tonguç").
+        #
+        # Kol ADMIN LİSTESİYLE PAYLAŞILIR (`_arama_kolu`): ISBN'i yalnız
+        # yönetim tarafına eklemek iki arama yüzeyini ayırırdı ve müşteri
+        # elindeki kitabın arkasındaki numarayı yazamazdı. Kimlik girdisinde
+        # (ISBN/barkod/SKU) trigram devre dışı kalır — gerekçesi `_arama_kolu`.
         tsquery = search_tsquery(q)
         norm_title = normalized(Product.title)
         norm_q = normalized(q)
-        stmt = stmt.where(
-            or_(
-                Product.search_vector.op("@@")(tsquery),
-                norm_title.op("%")(norm_q),
-            )
-        )
+        stmt = stmt.where(_arama_kolu(q))
         relevance = func.ts_rank(Product.search_vector, tsquery) + func.similarity(
             norm_title, norm_q
         )
@@ -488,11 +564,11 @@ async def _to_detail(db: AsyncSession, p: Product) -> ProductDetailOut:
     return ProductDetailOut(
         **base.model_dump(),
         description=p.description,
-        stock=p.stock,
+        # `stock`, `publisher`, `isbn` artık taban şemada (ProductSearchOut) ve
+        # `model_dump()` ile buraya geliyor; ikinci kez geçirmek TypeError
+        # üretirdi.
         weight_grams=p.weight_grams,
         digital_asset_name=p.digital_asset_name,
-        publisher=p.publisher,
-        isbn=p.isbn,
         page_count=p.page_count,
         dimensions=p.dimensions,
         publication_year=p.publication_year,
@@ -954,22 +1030,99 @@ async def delete_product(
     await db.commit()
 
 
+#: Admin listesinin sıralanabilir kolonları → gerçek model kolonu.
+#: Beyaz liste: sıralama anahtarı istemciden geliyor ve doğrudan kolon adı
+#: olarak kullanılsaydı istemci şemadaki herhangi bir kolona göre sıralayabilirdi.
+_ADMIN_SORT = {
+    "title": Product.title,
+    "price": Product.price,
+    "stock": Product.stock,
+    "created_at": Product.created_at,
+}
+
+
+def _admin_filtreleri(
+    stmt,
+    *,
+    q: str | None,
+    stok: str | None,
+    publisher: list[str] | None,
+    author: list[str] | None,
+):
+    """Admin ürün listesinin WHERE dalları — sayım ve sayfa sorgusu PAYLAŞIR.
+
+    Ortak olmaları şart: toplam sayı ile sayfa farklı filtre uygularsa
+    "120 kayıt" yazıp 3 satır gösteren bir liste ortaya çıkar ve kimse fark
+    etmez.
+    """
+    if stok is not None:
+        # Yüklem `core.stock_policy`'den gelir; dashboard sayacı da AYNI
+        # yardımcıyı kullanır. Burada elle yazılması, sayaç ile listenin
+        # birbirinden ayrışmasının kökeniydi (P1-1): sayaç `status == ACTIVE`
+        # filtreliyordu, liste filtrelemiyordu ve kart 5 derken liste 7
+        # gösteriyordu.
+        stmt = stmt.where(stok_kovasi_yuklemi(stok))
+
+    for column, values in ((Product.publisher, publisher), (Product.author, author)):
+        if values:
+            stmt = stmt.where(
+                normalized(column).in_([normalize_tr(v) for v in values])
+            )
+
+    if q:
+        stmt = stmt.where(_arama_kolu(q))
+    return stmt
+
+
 async def list_products_admin(
-    db: AsyncSession, *, limit: int = 100, offset: int = 0
-) -> list[ProductSearchOut]:
-    """Admin listesi — gizli/taslak/bekleyen dahil."""
+    db: AsyncSession,
+    *,
+    q: str | None = None,
+    stok: str | None = None,
+    publisher: list[str] | None = None,
+    author: list[str] | None = None,
+    sort: str = "created_at",
+    order: str = "desc",
+    limit: int = 100,
+    offset: int = 0,
+) -> tuple[list[ProductSearchOut], int]:
+    """Admin listesi — gizli/taslak/bekleyen dahil. ``(kayıtlar, toplam)`` döner.
+
+    Public ``search_products``'a YÖNLENDİRİLEMEZ: o `status == ACTIVE`
+    zorluyor, admin listesi ise katalogun tamamını (taslak/gizli dahil)
+    göstermek zorunda. Bu yüzden künye filtreleri burada ayrıca kurulur —
+    "uç zaten destekliyor, bağlamak yeter" ölçümde doğru çıkmadı.
+
+    Toplam sayı ayrı bir COUNT ile hesaplanır: sayfalanan bir listede dönen
+    satır sayısı toplamı vermez ve kullanıcı son sayfada olup olmadığını
+    bilemez.
+    """
     prior_mean = await _compute_global_mean(db)
     confidence = settings.BAYESIAN_CONFIDENCE
-    rows = (
-        await db.execute(
-            select(Product, Tutor.first_name, Tutor.last_name)
-            .outerjoin(Tutor, Tutor.id == Product.tutor_id)
-            .where(Product.deleted_at.is_(None))
-            .order_by(Product.created_at.desc())
-            .limit(limit)
-            .offset(offset)
-        )
-    ).all()
+
+    taban = (
+        select(Product, Tutor.first_name, Tutor.last_name)
+        .outerjoin(Tutor, Tutor.id == Product.tutor_id)
+        .where(Product.deleted_at.is_(None))
+    )
+    taban = _admin_filtreleri(
+        taban, q=q, stok=stok, publisher=publisher, author=author
+    )
+
+    sayim = select(func.count()).select_from(Product).where(Product.deleted_at.is_(None))
+    sayim = _admin_filtreleri(
+        sayim, q=q, stok=stok, publisher=publisher, author=author
+    )
+    toplam = int((await db.execute(sayim)).scalar_one())
+
+    kolon = _ADMIN_SORT.get(sort, Product.created_at)
+    yon = kolon.asc() if order == "asc" else kolon.desc()
+    # İkincil anahtar `id`: sıralama alanı eşit olan satırlarda (aynı fiyat,
+    # aynı stok) sıra deterministik olmalı, yoksa sayfa 1 ile sayfa 2 aynı
+    # kaydı gösterebilir ya da bir kayıt hiç görünmeyebilir.
+    stmt = taban.order_by(yon, Product.id.desc()).limit(limit).offset(offset)
+
+    rows = (await db.execute(stmt)).all()
     return [
         _to_search_out(
             p,
@@ -978,7 +1131,7 @@ async def list_products_admin(
             tutor_name=(f"{fn} {ln}".strip() if fn else None),
         )
         for p, fn, ln in rows
-    ]
+    ], toplam
 
 
 # ── Mağaza favorileri (client→product; hesapla senkron kalp) ────────────────────

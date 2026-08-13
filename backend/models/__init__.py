@@ -88,6 +88,16 @@ from models.reminder import TaskReminder
 from models.report import Report, ReportReason, ReportStatus
 from models.review import Review
 from models.role import Role, RoleType
+from models.srs import (
+    SrsCard,
+    SrsDeck,
+    SrsDeckAssignment,
+    SrsNote,
+    SrsNoteTag,
+    SrsProgress,
+    SrsReviewLog,
+    SrsTag,
+)
 from models.store import (
     Collection,
     CollectionItem,
@@ -263,6 +273,15 @@ __all__ = [
     "Review",
     "Role",
     "RoleType",
+    # İP-16 — aralıklı tekrar (FSRS)
+    "SrsCard",
+    "SrsDeck",
+    "SrsDeckAssignment",
+    "SrsNote",
+    "SrsNoteTag",
+    "SrsProgress",
+    "SrsReviewLog",
+    "SrsTag",
     "Subtask",
     "Task",
     "TaskFilter",

@@ -56,6 +56,9 @@ from tests.integration.ip2b_factory import fab, http, sms_kayit  # noqa: F401,E4
 # İP-5 fabrikası (fab5) da burada kayda geçer: test dosyasında import
 # etmek, fixture parametresi aynı adı gölgelediği için F811 üretiyordu.
 from tests.integration.ip5_factory import fab5  # noqa: F401,E402
+# İP-12 fabrikası (fab12) — aynı gerekçe: fixture parametresi import edilen adı
+# gölgeleyip F811 üretiyor.
+from tests.integration.ip12_factory import fab12  # noqa: F401,E402
 
 
 def _now() -> datetime.datetime:
@@ -338,6 +341,13 @@ from tests.integration.ip1b_factory import (  # noqa: E402,F401
     ip1b,
     ip1b_http,
     sayan_saglayici,
+)
+
+# İP-16 aralıklı tekrar (FSRS) fixture'ları — aynı F811 gerekçesi.
+from tests.integration.ip16_factory import (  # noqa: E402,F401
+    ip16,
+    ip16_http,
+    ip16_saat,
 )
 
 # ═══════════════ İP-3: yetki / kişisel veri / hesap güvenliği ═══════════════

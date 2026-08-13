@@ -1,6 +1,7 @@
 import { Link, useSearchParams } from "react-router-dom";
 import { Badge, ErrorState, PageSkeleton } from "@/components/admin/ui";
 import { useAdminDashboard, useAdminRevenue } from "@/hooks/useAdmin";
+import { useStoreConfig } from "@/hooks/useStore";
 import { formatTRY, parseMoney } from "@/lib/money";
 import { getErrorMessage } from "@/lib/errors";
 import { ROUTES } from "@/lib/routes";
@@ -61,6 +62,10 @@ export default function AdminDashboardPage() {
   const range: Range = rawRange === "day" || rawRange === "month" ? rawRange : "week";
   const query = useAdminDashboard(range);
   const revenue = useAdminRevenue(range);
+  // Eşik SUNUCUDAN okunur; kart metnine sabit "5" yazmak, değeri üç yerde
+  // gömülü tutan eski kusuru geri getirirdi (tek kaynak: core/stock_policy).
+  const storeConfig = useStoreConfig();
+  const lowStockThreshold = storeConfig.data?.low_stock_threshold;
   const selected = RANGES.find((item) => item.value === range)!;
 
   if (query.isLoading) return <PageSkeleton rows={6} />;
@@ -97,8 +102,15 @@ export default function AdminDashboardPage() {
           <QueueCard label="Açık şikâyetler" value={data.open_reports} to={ROUTES.adminReports} tone="danger" description="Moderasyon kararı bekleyen bildirimler." />
           <QueueCard label="İhtilaflı rezervasyonlar" value={data.disputed_bookings} to={ROUTES.adminBookings} tone="danger" description={`${data.active_bookings} aktif rezervasyon içinde.`} />
           <QueueCard label="Açık öğrenci talepleri" value={data.open_demands} to={ROUTES.adminDemands} tone="info" description="Eğitmenlerden yanıt bekleyen ders ilanları." />
-          <QueueCard label="Hazırlanacak siparişler" value={data.paid_orders} to={ROUTES.adminStoreOrders} tone="info" description={`${data.pending_returns} açık iade talebi bulunuyor.`} />
-          <QueueCard label="Düşük stok" value={data.low_stock_products} to={ROUTES.adminStoreProducts} tone="warning" description="Aktif fiziksel ürünlerde stok 5 veya altında." />
+          {/* Kart, işin YAPILDIĞI ekrana gider: ödenmiş sipariş hazırlanmak
+              üzere paketleme kuyruğuna düşer; sipariş listesi bir kayıt
+              görünümüdür, kuyruk değil. */}
+          <QueueCard label="Hazırlanacak siparişler" value={data.paid_orders} to={ROUTES.adminPacking} tone="info" description={`${data.pending_returns} açık iade talebi bulunuyor.`} />
+          {/* Filtreli hedef: alarm kartının sayısı ile açtığı listenin AYNI
+              kümeyi göstermesi gerekir. `kritik` = tükenenler + azalanlar,
+              yani sayacın (`stock <= eşik`) tam karşılığı; `azalan` stoğu 0
+              olanları dışarıda bırakır ve sayı ile liste ayrışırdı. */}
+          <QueueCard label="Düşük stok" value={data.low_stock_products} to={`${ROUTES.adminStoreProducts}?stok=kritik`} tone="warning" description={`Aktif fiziksel ürünlerde stok ${lowStockThreshold ?? "eşiğin"} veya altında.`} />
           <QueueCard label="Kütüphane başvuruları" value={data.pending_libraries} to={ROUTES.adminLibraries} tone="warning" description="Katalog onayı bekleyen işletmeler." />
           <QueueCard label="Aktif dağıtım turları" value={data.active_delivery_runs} to={ROUTES.adminDelivery} tone="info" description="Şu anda sahada olan kendi-filo turları." />
           <QueueCard label="Denetim kayıtları" value={data.period_audit_logs} to={ROUTES.adminAuditLogs} description={`Son ${selected.label} içindeki yönetim işlemleri.`} />

@@ -1517,6 +1517,14 @@ export interface ProductSearchOut {
   currency: string;
   cover_url?: string | null;
   in_stock: boolean;
+  /**
+   * Kalan adet. `in_stock` yalnız 0/0-değil ayrımı yapar ve "kaç adet var"
+   * sorusunu cevaplayamaz.
+   *
+   * DİJİTALDE `null`, 0 DEĞİL: dijital ürün tükenmez; 0 "Tükendi" rozeti
+   * bastırırdı.
+   */
+  stock?: number | null;
   category_id?: number | null;
   rating_count: number;
   rating_average?: number | null;
@@ -1524,6 +1532,11 @@ export interface ProductSearchOut {
   status?: string | null;
   /** Kitapta yazar — kartta başlığın altında gösterilir. */
   author?: string | null;
+  /** Künye satırı (yazar · yayınevi · ISBN) — yönetim listesinde başlık altı. */
+  publisher?: string | null;
+  isbn?: string | null;
+  /** Stok kalemi kimliği (`FZK-000042`); sunucu üretir, aranabilir. */
+  sku?: string | null;
 }
 
 /** Kitap künyesi (opsiyonel) — ürün detayında "Ürün Özellikleri" tablosu + admin formu. */

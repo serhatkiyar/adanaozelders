@@ -43,6 +43,12 @@ export const TUTOR_NAV: NavItem[] = [
   { to: ROUTES.balance, label: "Bakiyem", icon: "wallet" },
   { to: ROUTES.sellerProducts, label: "Dijital Ürünlerim", icon: "store" },
   { to: ROUTES.messages, label: "Mesajlar", icon: "messages" },
+  // Eğitmen de "Öğren" hub'ını görür (kelime kartları, aralıklı tekrar,
+  // pomodoro, alışkanlıklar…). Kendi kullanmadığı aracı öğrencisine
+  // öneremez. Öğrenci verisine erişim açılmaz — K-6 sınırı (hiçbir admin/
+  // eğitmen izni `srs_progress`/`srs_review_logs` okutmaz) yerinde durur;
+  // buradaki tek değişiklik hub'ın kendi araçlarına erişimdir.
+  { to: ROUTES.learn, label: "Öğren", icon: "learn" },
   { to: ROUTES.libraries, label: "Kütüphaneler", icon: "library" },
   { to: ROUTES.store, label: "Mağaza", icon: "shop" },
 ];

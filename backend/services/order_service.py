@@ -1373,17 +1373,37 @@ async def change_ship_address(
 
 async def list_orders_admin(
     db: AsyncSession, *, status_filter: str | None = None, limit: int = 100, offset: int = 0
-) -> list[OrderOut]:
-    stmt = (
-        select(Order)
-        .options(selectinload(Order.items), selectinload(Order.returns))
-        .where(Order.deleted_at.is_(None))
-    )
+) -> tuple[list[OrderOut], int]:
+    """Yönetim sipariş listesi — ``(kayıtlar, eşleşen toplam)``.
+
+    Toplam AYRI bir COUNT ile hesaplanır (ürün listesindeki desenin aynısı).
+    Dönen satır sayısına bakmak yetmez: liste tavana dayandığında istemcinin
+    "göremediğim kayıt var mı" sorusunu cevaplayabilmesi için EŞLEŞEN sayı
+    gerekir. Bu yokken uyarı üretimde hiç tetiklenemiyordu (P1-5).
+    """
+    taban = select(Order).where(Order.deleted_at.is_(None))
     if status_filter:
-        stmt = stmt.where(Order.status == status_filter)
-    stmt = stmt.order_by(Order.created_at.desc()).limit(limit).offset(offset)
+        taban = taban.where(Order.status == status_filter)
+
+    toplam = int(
+        (
+            await db.execute(
+                select(func.count()).select_from(taban.subquery())
+            )
+        ).scalar_one()
+    )
+
+    stmt = (
+        taban.options(selectinload(Order.items), selectinload(Order.returns))
+        # İkincil anahtar `id`: aynı saniyede oluşan siparişlerde sıra
+        # deterministik olmalı, yoksa sayfalar arasında kayıt tekrarlanır
+        # ya da kaybolur.
+        .order_by(Order.created_at.desc(), Order.id.desc())
+        .limit(limit)
+        .offset(offset)
+    )
     orders = (await db.execute(stmt)).scalars().all()
-    return [_to_out(o) for o in orders]
+    return [_to_out(o) for o in orders], toplam
 
 
 async def mark_shipped(
