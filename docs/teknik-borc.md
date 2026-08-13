@@ -130,6 +130,19 @@ silinmez).
      o belge İP-5 turunun ölçümünü anlatıyor ve o tur bu düzeltmeden önceydi).
      -->
 
+## TB-35 · Geliştirme veritabanı `ceyhandb`, merge EDİLMEMİŞ bir dalın migration'ıyla damgalı — main'de alembic hiç çalışmıyor
+
+| | |
+|---|---|
+| **Bulundu** | İP-14 merge turu, 13 Ağu 2026 — merge sonrası "dev DB head'de mi" damga kontrolünde. Kod incelemesiyle değil, rutin bir doğrulama adımı beklenmedik biçimde patlayınca |
+| **Yer** | `ceyhandb` (5432 yerel Postgres, **asıl dev verisi**) → `alembic_version.version_num = 'sm2_flashcard_kaldirma'` ↔ `backend/migrations/versions/sm2_flashcard_kaldirma.py` **yalnız `sm2-kaldirma` dalında** var |
+| **Ölçüm** | `alembic current` (main'de, `POSTGRES_DB=ceyhandb`) → `FAILED: Can't locate revision identified by 'sm2_flashcard_kaldirma'`. Revizyon dosyası tüm yerel+uzak dallarda arandı: **yalnız `sm2-kaldirma`**; main'de eşleşme 0. Main'in head'i `ip16_srs_izin_kodu_hizalama` |
+| **Etki** | Main'de çalışan **hiçbir oturum** ceyhandb'ye karşı alembic komutu koşamaz — `current`, `upgrade`, `check`, `stamp`, hepsi aynı hatayla düşer. Damga bilinmeyen bir revizyona işaret ettiği için Alembic zinciri çözemez. Uygulama açılışı da etkilenir: `AUTO_CREATE_DB=true` iken `ensure_schema` `upgrade head`'i subprocess olarak koşar ve aynı hatayı alır. **Veri kaybı riski yok**, ama dev ortamının şema aracı fiilen kilitli |
+| **Kök sebep** | Bir **feature dalının migration'ı doğrudan dev veritabanına uygulandı**. O an mantıklıydı — dal içi duman turu için şema gerekiyordu — ama uygulama ceyhandb'yi o dala **kilitledi**: damga artık yalnız o dalda anlamı olan bir revizyonu gösteriyor. Yani hata migration'da değil, **nerede koşulduğunda** |
+| **Neden şimdi düzeltilmedi** | Damgayı zorla değiştirmek (`stamp head`, downgrade denemesi) **yanlış olurdu**: `sm2_flashcard_kaldirma`'nın şema değişikliği ceyhandb'ye **fiilen uygulanmış** durumda. Damgayı ezmek, şemayı yanlış anlatan bir kayıt üretir ([[TB-30]] ile birebir aynı sınıf: "damga şemayı doğru anlatmıyor") ve `sm2-kaldirma`'nın devam eden işini bozar. Ayrıca o dal kullanıcının **açık işi**; başkasının yarım işine dokunmak ayrı bir karar |
+| **Ne zaman kendiliğinden düzelir** | `sm2-kaldirma` main'e merge edildiğinde revizyon main'de de var olur ve damga çözülebilir hâle gelir. Yani bu kayıt bir **kilit**, kalıcı bir bozukluk değil — ama o merge'e kadar dev ortamında alembic yok |
+| **Kural önerisi (asıl borç bu)** | **Dev veritabanına yalnız main'de var olan migration'lar uygulanır.** Dal içi duman turu **tek kullanımlık** bir DB'de koşulur (`POSTGRES_DB=<paket>_smoke_test`, suite zaten oluşturup `upgrade head` ile hazırlıyor — bkz. `tests/integration/conftest.py`), ceyhandb'de değil. İP-14 merge kapısı tam olarak böyle koşuldu (`ip14_merge_smoke_test`, sonra düşürüldü) ve hiçbir iz bırakmadı; bu kaydın konusu olan damga ise ondan **önce**, dal içi bir turda oluşmuş. Sonraki adım: (1) kuralı `backend/CLAUDE.md`'ye yazmak; (2) uzun vadede nöbetçi — dev DB'nin damgasının main'de çözülebildiğini söyleyen tek satırlık bir kontrol (aynı aile: [[TB-30]]'un "damga-şema nöbetçisi yok" maddesi, ikisi tek turda ele alınabilir) |
+
 ## TB-33 · Üç ayrı "gün sınırı" kavramı yan yana duruyor — hiçbir yerde topluca belgelenmemiş
 
 | | |
