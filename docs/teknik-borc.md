@@ -142,13 +142,13 @@ silinmez).
 | **Neden ertelendi** | Birleştirme kendi başına bir refaktör turu: yedi backend dosyası + iki frontend modülü + `params.ROLLOVER_HOUR`'un SRS'e özel kalması gerektiği kararı. İP-14 adaptasyon turunun kapsamı merge doğrulamasıydı; kapsam dışı üretim koduna dokunmak denetimden geçmiş kırmızı matrisi kaydırırdı |
 | **Sonraki adım** | (1) Tek bir belgede (ya da `docs/`'ta kısa bir "zaman kararları" notunda) **üç kavramın da hangi yüzeye ait olduğunu** yazmak — kod birleştirmeden önce yalnız haritayı çıkarmak bile dördüncü kopyayı engeller; (2) sabit ofseti IANA'ya çevirmenin maliyetini ölçmek (`zoneinfo` zaten `dayboundary.py`'de var, tzdata bağımlılığı kabul edilmiş); (3) yeni "bugün" hesabı yazan her paketin üçünden **hangisini** kullandığını sözleşmesinde belirtmesini kural hâline getirmek |
 
-## TB-32 · İP-14 P2 listesi (kütüphane operatörü paneli — on üç kayıt: on biri açık, ikisi aynı turda düzeltildi; öncelik sırasıyla)
+## TB-32 · İP-14 P2 listesi (kütüphane operatörü paneli — on bir açık kayıt, öncelik sırasıyla)
 
 | | |
 |---|---|
 | **Bulundu** | İP-14 (operatör paneli: bugün bloğu + gün grubu + ErrorState + operatör audit) dalında, 8 Ağu 2026 (`0449ee7`). Kayıtlar sözleşmede duruyordu (`docs/ip14-operator-panel-sozlesme.md` §10) ama **borç defterine hiç işlenmemişti**; bu satırlar 13 Ağu 2026 adaptasyon turunda eklendi |
 | **Merge sonrası doğrulandı** | `7d0e7d6` (main → İP-14, `--no-ff`). Entegrasyon **1300 passed / 16 skipped / 0 failed** (598 s, `ip14_merge_test` izole DB'sinde); toplanan test main'de 1309 → birleşmişte **1316**, fark **tam +7** (İP-14'ün tek dosyası, başka test eklenmedi/kaybolmadı). Vitest main 81 dosya/837 test → birleşmiş **84/885**, fark **+3/+48** (sözleşmenin iddia ettiği rakam). `tsc -b` temiz · `ruff check` temiz · `npm run lint` 0 hata/34 uyarı (taban ile aynı) · tek Alembic head `ip16_srs_izin_kodu_hizalama` · migration üretilmedi |
-| **Bağımsız denetim eki (13 Ağu 2026)** | Merge öncesi bağımsız denetim "merge edilebilir" verdi (**P0/P1 yok**) ve beş ek P2 bıraktı: **P2-A** → 9. kayıt (nav kapsamı + D-6c nöbetçisi), **P2-C** → 10, **P2-D** → 11, **P2-B** → 12 (düzeltildi), **P2-E/F** → 13 (düzeltildi). Denetçi beş madde yazdı, altı etiket kullandı: E ve F tek maddede birleşik (`P2-E/F`). Denetimin ayrıca bulduğu üç doküman hatası kod değiştirmeden düzeltildi (`13146c1`, `e50ae75`, `fab94ac`) |
+| **Bağımsız denetim eki (13 Ağu 2026)** | Merge öncesi bağımsız denetim "merge edilebilir" verdi (**P0/P1 yok**) ve beş ek P2 bıraktı: **P2-A** → 9. kayıt (nav kapsamı + D-6c nöbetçisi), **P2-C** → 10, **P2-D** → 11. Kalan ikisi (**P2-B**, **P2-E/F**) doküman hatasıydı, aynı turda `fab94ac` ile düzeltildi ve defterin kuralı gereği listeye değil **kapanma notuna** yazıldı (bu tablonun altında); P2-E/F'nin açık kalan tarafı [[TB-33]]'e taşındı. Denetçi beş madde yazdı, altı etiket kullandı: E ve F tek maddede birleşik (`P2-E/F`). Denetimin ayrıca bulduğu üç doküman hatası kod değiştirmeden düzeltildi (`13146c1`, `e50ae75`, `fab94ac`) |
 | **Neden ertelendi** | Hiçbiri para kaybı, yetki açığı ya da ölü akış değil. §6.2'nin çekirdeği (yoklama geri alma, tek rezervasyon iadesi) **ürün kararı** bekliyor ve `released_at` geri alınamaz bir damga olduğu için saf UI işi değil. Denetimden gelen ikisi (10, 11) **test/kurulum borcudur**: üretim davranışını değiştirmezler, ama ikisi de "yeşil ama nöbetsiz" sınıfındandır — CLAUDE.md §A'nın tam konusu |
 
 | # | Kayıt | Yer | Etki / sonraki adım |
@@ -166,15 +166,30 @@ silinmez).
 
 | 10 | **Sıralamanın `id DESC` deterministik bağlayıcısı NÖBETSİZ** (denetçi etiketi **P2-C**) | `backend/services/library_exam_service.py:418` (`list_library_sessions_admin` sıralamasının 4. kademesi) ↔ nöbetçi olması gereken düğümler: S-1/S-2 | **Denetçi kendi mutasyonuyla kanıtladı:** `LibraryExamSession.id.desc()` bağlayıcısı kaldırıldı → **7/7 test yine geçti**. Yani sözleşmenin §4'te "deterministik bağlayıcı" diye yazdığı kademe bugün korumasız: kaldıran/yönünü çeviren bir değişiklik hiçbir kırmızı üretmez. Sebep fixture: S-1/S-2 **ayrı zamanlı** oturumlar kuruyor, yani beraberlik hiç doğmuyor ve 4. kademeye hiç sıra gelmiyor (CLAUDE.md §E'nin "fixture sabit olduğu için bozuk davranış gözlenmeden kalıyor" maddesi). Gerçek etki bugün küçük ama sınıfı belli: aynı ana denk gelen iki oturumda sayfa sınırında **kayıt tekrarı/kayması**. Sonraki adım: `starts_at`'i **eşit** iki oturumla bir düğüm eklemek ve bağlayıcı kaldırıldığında kırıldığını mutasyonla göstermek. **Aynı sınıf İP-17'de de bulundu** (Q-9 tie-breaker'ın yönünü korumuyordu, gene fixture beraberlik üretmediği için) — desen tekrar ediyor, tek tek değil **kural olarak** ele alınmalı: "deterministik bağlayıcı iddiası, beraberlik üreten fixture olmadan kanıtlanmış sayılmaz" |
 | 11 | **`IntersectionObserver` / `ResizeObserver` jsdom shim'leri eksik — henüz uyanmamış gizli boşluk** (denetçi etiketi **P2-D**) | `frontend/src/test-setup.ts` (yalnız `matchMedia` shim'i var, satır 60-75) ↔ kullanım: `frontend/src/pages/Notifications.tsx:81` (`new IntersectionObserver`), `frontend/src/pages/Grapher.tsx:263` (`new ResizeObserver`) | Vitest jsdom ortamında iki API de `undefined`. **Bugün hiçbir test takılmıyor** ve bu bir şans: `/notifications` fixture'ı **boş liste** döndüğü için sonsuz-kaydırma sentinel dalı hiç render edilmiyor; denetçi bunu şema-doğru **dolu** bir fixture'la prob edip patlamayı gösterdi. Sınıfı §9/5'te belgelenen `matchMedia` boşluğunun aynısı: "repoda bu ekranı gerçek DOM'da render eden test olmamasının sebebi buydu". Dolu fixture yazan **ilk** test sessizce patlayacak ve — N grubunun `Settings` vakasında olduğu gibi — assert'ler zaten geçmişse test **yeşil** kalıp suite raporuna "1 error" olarak düşecek. Sonraki adım: iki shim'i `test-setup.ts`'e eklemek (kurulum işi, üretim kodu değişmez) ve `Notifications`'ı **dolu** bir fixture'la render eden bir düğümle nöbetlemek |
-| 12 | **§5'in "10/14" oranı tutarsızdı — DÜZELTİLDİ** (denetçi etiketi **P2-B**) | `docs/ip14-operator-panel-sozlesme.md` §5 | Ölçüm: ErrorState **6 render noktasında**, **8 sorgu örneğinde** bağlı (`OperatorHome` ×2, `OperatorSessions` ×1, `ExamSessionsManager` ×3, `Balance` ×2 kol). §5'in 9–10. maddeleri sorgu **değil**, boş≠hata metin ayrımı (node E-5); 1–2. maddeler ise 14'lük envanterde **olmayan** yeni sorgular — 14 katalog satırından ErrorState alan gerçek sayı **5**. **İşin kendisi gerçek ve davranışla kanıtlı** (E-1…E-6 kırmızı→yeşil, M-E1/M-E5 mutasyonları yakalandı); yanlış olan yalnız orandı. **Kapanma:** `fab94ac` (13 Ağu 2026) — §5'e düzeltilmiş sayım ve "9–10 sorgu değildir" notu yazıldı. Kayıt burada duruyor ki denetimin bulduğu **yanlış rakamın** izi kaybolmasın; açık iş yok |
-| 13 | **§2'nin `getDate()` ve "tek üretici" cümleleri fazla genişti — DÜZELTİLDİ** (denetçi etiketi **P2-E/F**) | `docs/ip14-operator-panel-sozlesme.md` §2 | İki cümle de paketin kendi kapsamında doğru, repo genelinde yanlıştı: (a) "`new Date().getDate()` hiçbir yerde çağrılmaz" — ölçüm `frontend/src` içinde **17 dosyada 38 çağrı** buldu (denetçi "35+" saymıştı; fark yorum satırlarının elenmesinden); (b) "gün anahtarı tek yerde üretilir" — frontend'de **ikinci** üretici `lib/datetime.ts::istanbulNow().dateStr` (`BookingModal.tsx:127`). **Kapanma:** `fab94ac` (13 Ağu 2026) — iki cümle de kapsamıyla sınırlandı. [[TB-33]] üç gün-sınırı kavramını kaydediyordu ama frontend'i **tek kalem** sayıyordu; o kayda da "frontend iki üreticili" notu eklendi (aynı commit turu). Açık iş burada yok; birleştirme kararı TB-33'ün konusu |
+<!-- Kapanma notu (İP-14 bağımsız denetimi, 13 Ağu 2026): denetimin bıraktığı
+     beş P2'den **ikisi doküman hatasıydı ve aynı turda düzeltildi**, bu yüzden
+     defterin kuralı gereği satırları SİLİNDİ (kısa süre "12 · DÜZELTİLDİ" ve
+     "13 · DÜZELTİLDİ" olarak açık listede durdular; istisna kaldırıldı,
+     numaralar yeniden kullanılmayacak).
 
-**Not (kapatılmış kayıtların burada durması):** bu dosyanın kuralı "borcu
-kapatan commit ilgili satırı **siler**"dir. 12 ve 13 bilinçli istisnadır ve
-bu yüzden başlıkları **DÜZELTİLDİ** ile başlar: ikisi de bağımsız denetimin
-bulduğu **yanlış iddialardı** ve aynı turda kapandı; satır silinseydi
-denetimin ne bulduğu ve nerede düzeltildiği kaybolurdu. Açık borç sayısı
-**11**'dir (1–11), toplam kayıt 13.
+     (a) **P2-B** — sözleşme §5'in "0/14 → 10/14" oranı tutarsızdı. Ölçüm:
+     ErrorState 6 render noktasında, 8 sorgu örneğinde bağlı (`OperatorHome`
+     ×2, `OperatorSessions` ×1, `ExamSessionsManager` ×3, `Balance` ×2 kol).
+     §5'in 9–10. maddeleri sorgu DEĞİL, boş≠hata metin ayrımıydı (node E-5);
+     1–2. maddeler ise 14'lük envanterde olmayan yeni sorgulardı — 14 katalog
+     satırından ErrorState alan gerçek sayı 5. İşin kendisi gerçekti ve
+     davranışla kanıtlıydı (E-1…E-6 kırmızı→yeşil, M-E1/M-E5 mutasyonları
+     yakalandı); yanlış olan yalnız orandı. Kapatan commit: `fab94ac`.
+
+     (b) **P2-E/F** — sözleşme §2'nin iki cümlesi paketin kapsamında doğru,
+     repo genelinde yanlıştı: "`new Date().getDate()` hiçbir yerde çağrılmaz"
+     (ölçüm: `frontend/src` içinde 17 dosyada 38 çağrı; denetçi "35+" saymıştı,
+     fark yorum satırlarının elenmesi) ve "gün anahtarı tek yerde üretilir"
+     (ikinci üretici `lib/datetime.ts::istanbulNow().dateStr`,
+     `BookingModal.tsx:127`). Kapatan commit: `fab94ac`. Bu bulgunun kalıcı
+     tarafı [[TB-33]]'e taşındı: o kayıt frontend'i tek kalem sayıyordu,
+     "iki üreticili" düzeltmesi oraya eklendi — yani silinen satırın açık
+     kalan mirası TB-33'tedir, burada değil. -->
 
 **Not (bayat yorum):** iki test dosyasının süre bütçesi açıklaması hâlâ "projenin 5 sn'lik varsayılan test bütçesi" diyor; merge'den sonra varsayılan **9 sn**. Yukarıdaki 8. kayıt kapatılırken bu iki yorum da düzeltilmeli (8. kaydın **(d)** maddesi).
 
