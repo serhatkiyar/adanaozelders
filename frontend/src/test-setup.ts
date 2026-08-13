@@ -57,6 +57,39 @@ for (const ad of ["localStorage", "sessionStorage"] as const) {
   }
 }
 
+// ## `window.matchMedia` — jsdom'da HİÇ YOK
+//
+// jsdom bu API'yi uygulamıyor; `window.matchMedia(...)` bir TypeError verir.
+// `themeStore` modül seviyesinde çağırdığı için ("system" tercihi OS temasını
+// canlı izler), ona dolaylı olarak bağlanan HER bileşen testte import
+// aşamasında patlıyordu — DashboardShell → DashboardHeader → PersonalizeModal
+// zinciri yüzünden bu, panel sayfalarının tamamı demektir. Suite yüklenemediği
+// için sonuç "0 test" olur; bu, "test zayıf" ile karıştırılmaması gereken
+// "test hiç koşmadı" hâlidir (kök CLAUDE.md §D'nin --collect-only nöbetçisiyle
+// aynı gerekçe) ve yeşil bir toplamın içinde sessizce kaybolabilir.
+//
+// Stub bilinçli olarak `matches: false` döner: "system" tercihi testlerde
+// AÇIK temaya çözülür. Karanlık mod paritesini ölçen bir test yazılırsa bu
+// değeri kendi içinde ezmelidir — global varsayılan sessizce tema seçmesin
+// diye burada tek yerde ve görünür durur.
+if (typeof window !== "undefined" && typeof window.matchMedia !== "function") {
+  Object.defineProperty(window, "matchMedia", {
+    configurable: true,
+    writable: true,
+    value: (query: string): MediaQueryList =>
+      ({
+        matches: false,
+        media: query,
+        onchange: null,
+        addEventListener: () => {},
+        removeEventListener: () => {},
+        addListener: () => {},
+        removeListener: () => {},
+        dispatchEvent: () => false,
+      }) as unknown as MediaQueryList,
+  });
+}
+
 // Testler birbirinin oturumunu miras almasın.
 afterEach(() => {
   localStorage.clear();

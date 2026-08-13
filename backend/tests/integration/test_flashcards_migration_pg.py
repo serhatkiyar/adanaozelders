@@ -1,0 +1,156 @@
+"""Eski SM-2 kelime kartı TABLOLARI düştü — migration nöbetçisi (R3, GERÇEK PG).
+
+`flashcard_decks` ve `flashcards` baseline migration'ın (`532b1fa8771d`) içinde
+doğar. Kaldırma **baseline düzenlenerek yapılamaz**: o revizyon uygulanmış
+ortamlarda (geliştirme `ceyhandb` dahil) çoktan koşmuştur ve alembic aynı
+revizyonu ikinci kez çalıştırmaz — geçmişi düzenlemek, o veritabanlarında
+tabloları sessizce yerinde bırakırdı (İP-16'nın B7 tuzağının aynısı, bkz.
+`test_flashcards_kaldirildi_migration` yerine `test_ip16_migration_pg.py` §B7).
+Bu yüzden kaldırma YENİ bir revizyonla yapılır ve burada **boş bir veritabanına
+zincirin tamamı koşularak** ölçülür.
+
+## Ölçüm neden taze DB'de, `ceyhandb`'de değil
+
+`ceyhandb` bugün tabloları taşıyor ve migration uygulandığında düşecek. Ama
+"benim makinemde düştü" ile "boş bir Postgres'te `upgrade head` sonucunda yok"
+farklı iddialardır: ikincisi CI'ı, üretim kurulumunu ve yeni geliştirici
+ortamını kapsar. Tek kullanımlık veritabanı adı test başına benzersizdir
+(sabit ad, ardışık kurup düşüren düğümler arasında yarış üretiyordu —
+İP-16'da ölçülmüş bir flake) ve teardown **test başarısız olsa da** koşar
+(kök CLAUDE.md §G).
+"""
+from __future__ import annotations
+
+import os
+import subprocess
+import sys
+import uuid
+from pathlib import Path
+
+import pytest
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import create_async_engine
+
+from core.config import settings
+
+BACKEND = Path(__file__).resolve().parents[2]
+
+DISPOSABLE_DB_ONEK = "adana_kk_mig"
+
+#: Düşmesi gereken tablolar.
+SM2_TABLOLARI = ("flashcards", "flashcard_decks")
+
+#: Ayakta kalması gereken YENİ sistem — kaldırmanın komşuyu vurmadığının kanıtı.
+#: Bu olmadan "flashcard tablosu yok" iddiası, migration hiç koşmadığı için de
+#: sağlanabilirdi (boş veritabanında her tablo yoktur).
+SRS_TABLOLARI = (
+    "srs_decks",
+    "srs_notes",
+    "srs_cards",
+    "srs_progress",
+    "srs_review_logs",
+    "srs_deck_assignments",
+    "srs_tags",
+    "srs_note_tags",
+)
+
+
+def _url(dbname: str) -> str:
+    return (
+        f"postgresql+asyncpg://{settings.POSTGRES_USER}:{settings.POSTGRES_PASSWORD}"
+        f"@{settings.POSTGRES_HOST}:{settings.POSTGRES_PORT}/{dbname}"
+    )
+
+
+def _alembic(*args: str, db: str, bekle_hata: bool = False):
+    env = {**os.environ, "POSTGRES_DB": db, "AUTO_CREATE_DB": "false"}
+    res = subprocess.run(
+        [sys.executable, "-m", "alembic", *args],
+        cwd=str(BACKEND), capture_output=True, text=True,
+        encoding="utf-8", errors="replace", env=env,
+    )
+    if not bekle_hata:
+        assert res.returncode == 0, (
+            f"alembic {' '.join(args)} başarısız:\n{res.stdout}\n{res.stderr}"
+        )
+    return res
+
+
+@pytest.fixture
+async def taze_db():
+    """Boş, TEST BAŞINA BENZERSİZ tek kullanımlık veritabanı."""
+    if settings.ENVIRONMENT == "production":
+        pytest.fail("Üretimde migration testi koşulamaz")
+    ad = f"{DISPOSABLE_DB_ONEK}_{uuid.uuid4().hex[:8]}_test"
+    assert ad.endswith("_test") and "test" in ad
+    assert ad != settings.POSTGRES_DB
+
+    bakim = create_async_engine(_url("postgres"), isolation_level="AUTOCOMMIT")
+    try:
+        async with bakim.connect() as conn:
+            await conn.execute(text("SELECT 1"))
+    except (OSError, ConnectionRefusedError) as exc:
+        await bakim.dispose()
+        pytest.skip(f"Bakım veritabanına ulaşılamıyor ({exc.__class__.__name__})")
+
+    async with bakim.connect() as conn:
+        await conn.execute(text(f'DROP DATABASE IF EXISTS "{ad}" WITH (FORCE)'))
+        await conn.execute(text(f'CREATE DATABASE "{ad}"'))
+
+    engine = create_async_engine(_url(ad))
+    try:
+        yield engine, ad
+    finally:
+        await engine.dispose()
+        async with bakim.connect() as conn:
+            await conn.execute(text(f'DROP DATABASE IF EXISTS "{ad}" WITH (FORCE)'))
+        await bakim.dispose()
+
+
+async def _var_olan_tablolar(engine, adlar) -> list[str]:
+    async with engine.connect() as conn:
+        rows = await conn.execute(
+            text(
+                "SELECT table_name FROM information_schema.tables "
+                "WHERE table_schema = 'public' AND table_name = ANY(:adlar) "
+                "ORDER BY table_name"
+            ),
+            {"adlar": list(adlar)},
+        )
+        return [r[0] for r in rows]
+
+
+async def test_R3_TAZE_DBDE_SM2_TABLOLARI_KURULMAZ(taze_db):
+    """Boş Postgres'te `alembic upgrade head` sonrası SM-2 tabloları OLMAMALI.
+
+    Üç şey birlikte ölçülür, çünkü tek başına hiçbiri yeterli değil:
+
+    1. `flashcards` / `flashcard_decks` **yok** — asıl iddia.
+    2. `srs_*` sekiz tablo **var** — migration'ın gerçekten koştuğunun kanıtı.
+       Bu olmadan (1) boş bir veritabanında da sağlanırdı: hiç upgrade
+       koşmasa, alembic sessizce patlasa ya da zincir yanlış yere bağlansa
+       test yine yeşil görünürdü. Yalancı yeşilin en olası kılığı budur.
+    3. `alembic check` temiz — model ile şema sapmamış, yani modeller de
+       kaldırılmış. Tabloyu düşürüp `models/flashcard.py`'yi bırakmak
+       autogenerate'i "tabloyu geri ekle" der hâle getirirdi.
+    """
+    motor, db = taze_db
+    _alembic("upgrade", "head", db=db)
+
+    kalan_sm2 = await _var_olan_tablolar(motor, SM2_TABLOLARI)
+    assert kalan_sm2 == [], (
+        f"SM-2 tabloları taze veritabanında kuruldu: {kalan_sm2}. "
+        "Kaldırma migration'ı ya yok ya zincire bağlanmamış."
+    )
+
+    kurulan_srs = await _var_olan_tablolar(motor, SRS_TABLOLARI)
+    assert kurulan_srs == sorted(SRS_TABLOLARI), (
+        "Yeni FSRS sistemi kurulmadı — migration hiç koşmamış olabilir; "
+        f"bu durumda yukarıdaki 'SM-2 yok' ölçümü anlamsızdır. Bulunan: {kurulan_srs}"
+    )
+
+    res = _alembic("check", db=db)
+    assert "No new upgrade operations detected" in res.stdout + res.stderr, (
+        f"model ile şema sapmış (model dosyaları da kaldırılmalı):\n"
+        f"{res.stdout}\n{res.stderr}"
+    )
