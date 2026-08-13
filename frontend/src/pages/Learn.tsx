@@ -1,13 +1,12 @@
 import { Link } from "react-router-dom";
 import { DashboardShell } from "@/components/DashboardShell";
-import { STUDENT_NAV, TUTOR_NAV } from "@/lib/nav";
+import { navForRole, STUDENT_NAV } from "@/lib/nav";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
-import { ROLE_IDS } from "@/types";
 import { ROUTES } from "@/lib/routes";
 
 export default function Learn() {
   const { data: user } = useCurrentUser();
-  const navItems = user?.role_id === ROLE_IDS.TUTOR ? TUTOR_NAV : STUDENT_NAV;
+  const navItems = navForRole(user?.role_id) ?? STUDENT_NAV;
 
   return (
     <DashboardShell title="Öğren" navItems={navItems}>

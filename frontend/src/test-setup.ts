@@ -57,6 +57,38 @@ for (const ad of ["localStorage", "sessionStorage"] as const) {
   }
 }
 
+// ── `window.matchMedia` ────────────────────────────────────────────────────
+//
+// jsdom bu API'yi HİÇ sağlamaz (tanımlı değil, boş da değil). `themeStore`
+// modül yüklenirken `matchMedia(...).addEventListener` çağırdığı için, onu
+// içeren her zincir — `DashboardShell → DashboardHeader → PersonalizeModal` —
+// testte **render edilmeden** patlıyordu: "window.matchMedia is not a
+// function". Bu yüzden repoda bugüne dek panel kabuğunu (üst bar + nav) gerçek
+// DOM'da render eden bir test yoktu; İP-14'ün navigasyon düğümleri (N-*) tam
+// olarak orayı ölçtüğü için eksiklik burada, ortak kurulumda kapatılır.
+//
+// Uygulama bilinçli olarak "eşleşme yok" (`matches: false`) döner: tema
+// tercihi "system" iken varsayılan AÇIK tema olur ve testler OS ayarına göre
+// değişmez. Dinleyici kaydı sessizce yutulur — store gerçek bir değişim
+// beklemez.
+if (typeof window !== "undefined" && typeof window.matchMedia !== "function") {
+  Object.defineProperty(window, "matchMedia", {
+    configurable: true,
+    writable: true,
+    value: (query: string): MediaQueryList =>
+      ({
+        matches: false,
+        media: query,
+        onchange: null,
+        addEventListener: () => {},
+        removeEventListener: () => {},
+        addListener: () => {},
+        removeListener: () => {},
+        dispatchEvent: () => false,
+      }) as unknown as MediaQueryList,
+  });
+}
+
 // Testler birbirinin oturumunu miras almasın.
 afterEach(() => {
   localStorage.clear();

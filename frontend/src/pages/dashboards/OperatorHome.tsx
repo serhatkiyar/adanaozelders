@@ -11,6 +11,11 @@ import {
   useResubmitLibrary,
 } from "@/hooks/useLibraries";
 import { useChangePassword } from "@/hooks/useProfile";
+import { useManageSessions } from "@/hooks/useLibraryExams";
+import { useManageStudyReservations } from "@/hooks/useStudy";
+import { ErrorState } from "@/components/admin/ui/PageState";
+import { bugunOzeti, istanbulGunAnahtari } from "@/lib/operatorAgenda";
+import { formatIstanbulTime } from "@/lib/datetime";
 import { formatTRY } from "@/lib/money";
 import { ROUTES } from "@/lib/routes";
 import { getErrorMessage } from "@/lib/errors";
@@ -30,6 +35,9 @@ export default function OperatorHome() {
 
         {/* Onay durumu (self-servis başvuru) */}
         {op && <LibraryStatusBanner libraryId={op.library_id} />}
+
+        {/* Bugünün işi — panelin ilk sorusu: "şu an kim geliyor?" */}
+        {op && isActive && <BugunBlogu libraryId={op.library_id} />}
 
         {/* Kazanç özeti + işlem dökümü linki (yalnız onaylı) */}
         {op && isActive && (
@@ -212,6 +220,136 @@ function LibraryStatusBanner({ libraryId }: { libraryId: number }) {
   }
 
   return null; // ACTIVE → banner gerekmez
+}
+
+/* ── Bugünün işi ──────────────────────────────────────────────────────────
+   Ölçüm raporunun (§6.1/1) en yüksek fayda/maliyet maddesi: panel ekranı
+   bugüne dair HİÇBİR ŞEY göstermiyordu; operatör "sırada kim var" sorusunu
+   ancak Oturumlar sekmesine geçip tüm geleceği gözle tarayarak cevaplıyordu.
+   Yeni uç gerekmez — iki mevcut yönetim ucu istemcide bugüne göre süzülür.
+
+   Gün sınırı Türkiye saatiyle hesaplanır (`lib/operatorAgenda`); tarayıcının
+   tz'i UTC olsa bile 23:30'daki rezervasyon bugüne düşer. */
+function BugunBlogu({ libraryId }: { libraryId: number }) {
+  const rez = useManageStudyReservations(libraryId);
+  const oturum = useManageSessions(libraryId);
+
+  // Tek "şimdi": iki liste bir saniyeyle bölünmüş farklı günlere düşmesin.
+  const simdi = new Date();
+
+  if (rez.isLoading || oturum.isLoading) {
+    return <div className="h-24 animate-pulse rounded-2xl bg-slate-100 dark:bg-slate-800" />;
+  }
+  if (rez.isError || oturum.isError) {
+    return (
+      <div data-testid="bugun-hata">
+        <ErrorState
+          description="Bugünün listesi yüklenemedi. Bağlantını kontrol edip yeniden dene."
+          onRetry={() => {
+            void rez.refetch();
+            void oturum.refetch();
+          }}
+        />
+      </div>
+    );
+  }
+
+  const rezOzet = bugunOzeti(
+    (rez.data ?? []).map((r) => ({
+      startsAt: r.starts_at,
+      endsAt: r.ends_at,
+      status: r.status,
+      ad: r.client_name ?? "Öğrenci",
+    })),
+    simdi
+  );
+  const oturumOzet = bugunOzeti(
+    (oturum.data ?? [])
+      .filter((s) => s.status !== "CANCELLED")
+      .map((s) => ({
+        startsAt: s.starts_at,
+        endsAt: new Date(
+          new Date(s.starts_at).getTime() + s.duration_minutes * 60_000
+        ).toISOString(),
+        ad: s.title,
+        kayitli: s.registered_count,
+      })),
+    simdi
+  );
+
+  const oturumKisi = (oturum.data ?? [])
+    .filter((s) => s.status !== "CANCELLED")
+    .filter((s) =>
+      istanbulGunAnahtari(s.starts_at) === istanbulGunAnahtari(simdi)
+    )
+    .reduce((t, s) => t + s.registered_count, 0);
+
+  const bosGun = rezOzet.toplam === 0 && oturumOzet.toplam === 0;
+  // Sıradaki: iki kaynaktan en erken olan.
+  const adaylar = [rezOzet.siradaki, oturumOzet.siradaki].filter(
+    (x): x is NonNullable<typeof x> => x !== null
+  );
+  const siradaki = adaylar.sort(
+    (a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime()
+  )[0];
+
+  return (
+    <div
+      data-testid="operator-bugun"
+      className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700"
+    >
+      <div className="flex items-baseline justify-between gap-3">
+        <h2 className="text-base font-bold text-slate-900 dark:text-white">Bugün</h2>
+        <Link
+          to={ROUTES.operatorSessions}
+          className="text-xs font-semibold text-indigo-600 hover:underline dark:text-indigo-400"
+        >
+          Oturumlar & QR →
+        </Link>
+      </div>
+
+      {bosGun ? (
+        <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+          Bugün için kayıt yok. Yeni rezervasyon veya oturum kaydı geldiğinde burada görünür.
+        </p>
+      ) : (
+        <>
+          <div className="mt-3 flex flex-wrap items-baseline gap-x-5 gap-y-1 text-sm text-slate-600 dark:text-slate-300">
+            <span>
+              <b data-testid="bugun-rezervasyon-sayisi" className="text-slate-900 dark:text-white">
+                {rezOzet.toplam}
+              </b>{" "}
+              çalışma rezervasyonu
+            </span>
+            <span>
+              <b data-testid="bugun-oturum-sayisi" className="text-slate-900 dark:text-white">
+                {oturumOzet.toplam}
+              </b>{" "}
+              deneme oturumu
+              {oturumKisi > 0 && ` · ${oturumKisi} kayıtlı`}
+            </span>
+            <span className="text-slate-500 dark:text-slate-400">
+              {rezOzet.giren}/{rezOzet.toplam} giriş yapıldı
+            </span>
+          </div>
+
+          {siradaki ? (
+            <p
+              data-testid="bugun-siradaki"
+              className="mt-3 border-t border-slate-100 pt-3 text-sm text-slate-700 dark:border-slate-700 dark:text-slate-200"
+            >
+              <span className="text-slate-400 dark:text-slate-500">Sıradaki:</span>{" "}
+              <b>{formatIstanbulTime(siradaki.startsAt)}</b> · {siradaki.ad}
+            </p>
+          ) : (
+            <p className="mt-3 border-t border-slate-100 pt-3 text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
+              Bugün için bekleyen randevu kalmadı.
+            </p>
+          )}
+        </>
+      )}
+    </div>
+  );
 }
 
 /* Operasyona kısa yol kartı — günlük iş ayrı sekmede (Oturumlar & QR). */
