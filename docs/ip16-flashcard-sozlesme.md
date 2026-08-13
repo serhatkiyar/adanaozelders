@@ -1,10 +1,14 @@
 # İP-16 · Aralıklı Tekrar Sistemi — Sözleşme
 
 Tarih: 2026-08-08 · Dal: `ip16-flashcard` · Taban: `1fa89ba`
+Ek tur: **İP-17 vade granülerliği**, 2026-08-13 · Dal
+`ip17-vade-granulerligi` · Taban `ed4ff95` — §4.4, §10.2, §11 ve §12.
 
-Bu doküman İP-16 paketinin bağlayıcı sözleşmesidir: FSRS-5 algoritma
-referansı, şema, uç sözleşmesi, kuyruk/limit/gün-sınırı kuralları, K-6
-gizlilik sınırı, kart tipi üretim kuralları ve mutasyon kataloğu.
+Bu doküman aralıklı tekrar sisteminin bağlayıcı sözleşmesidir: FSRS-5
+algoritma referansı, şema, uç sözleşmesi, kuyruk/limit/gün-sınırı kuralları,
+K-6 gizlilik sınırı, kart tipi üretim kuralları ve mutasyon kataloğu. Adı
+İP-16'dır çünkü sistem o pakette doğdu; sonraki turlar (İP-17…) aynı yüzeyi
+değiştirdikleri için ayrı belge açmak yerine buraya eklenir.
 
 > **Bilimsel iddia beyanı:** Buradaki algoritma, yayımlanmış **FSRS-5**
 > referansının (py-fsrs v5.1.3) birebir uygulamasıdır; tüm parametreler o
@@ -128,11 +132,14 @@ kuyruk onu ertesi günün kartı olarak gösteriyordu. **"Geçen gün" ölçüs�
 tabanı artık tektir**: `dayboundary.study_day` farkı. F-15 referans tablosu bu
 değişiklikten sonra yeniden koşuldu: **sapma yok** (70 adım, 14 senaryo).
 
-⚠️ Bu cümle **tüm sisteme genellenmemeli**: `elapsed_days` çalışma GÜNÜ ölçer
-ama `due_at` AN tutar ve G-5 karşılaştırması (`due_at <= now`) an üzerinden
-yapılır. İki granülarite hâlâ bir arada ve bu düzeltmeyle kapanmadı — kayıtlı
-borç, §11 "vade damgası an tabanında, elapsed çalışma günü tabanında". Motor
-asimetrinin dışındadır (an görmez); yanıltıcı olan genellemedir.
+✅ **Bu asimetri İP-17'de kapandı** (§4.4). İP-16 sürerken burada bir uyarı
+duruyordu: `elapsed_days` çalışma GÜNÜ ölçüyor ama `due_at` AN tutuyordu ve
+G-5 karşılaştırması an üzerindendi — iki granülarite bir aradaydı. Artık gün
+ölçekli aralıklarda (`state == "REVIEW"`) damga da hedef çalışma gününün
+başına konur; karşılaştırma `due_at <= now` olarak KALIR ama iki taraf da
+aynı ölçeğe oturur. Intraday öğrenme adımları bilinçli olarak an tabanındadır
+ve orada asimetri yoktur (aralık zaten dakika ölçeğinde). Motor her iki
+dönemde de asimetrinin dışındaydı (an görmez).
 
 Nöbetçiler: `F-17` (davranış — iki senaryonun ayrıştığı ölçülür),
 `test_f17_motorda_takvim_aritmetigi_kalmadi` (AST ile motor sınırı) ve
@@ -296,9 +303,136 @@ kalmadı.
 
 - `study_day(now) = (now → Europe/Istanbul) − 4 saat` sonucun tarihi.
   03:30 TR → önceki gün, 04:30 TR → yeni gün (G-3).
-- Vade karşılaştırması **ana göre** (`due_at <= now`): kaçırılan günler
-  birikir, kart kaybolmaz (G-4); `due_at` gelecekte ise bugünün kuyruğunda
-  yoktur (G-5). Limit sayaçları `study_day` üzerinden döner (L-5).
+- **Vade damgasının granülerliği fazın ölçeğini izler (İP-17, §4.4):** gün
+  ölçekli aralıklarda (`state == "REVIEW"`; aralık her zaman tam gün × 1440)
+  `due_at = day_start(study_day(now) + gün)`, yani hedef çalışma gününün
+  başı (04:00 TR). Intraday öğrenme/yeniden-öğrenme adımlarında damga
+  `now + interval` olarak kalır.
+- Karşılaştırma yine **ana göre** yapılır (`due_at <= now`) — SQL değişmedi:
+  kaçırılan günler birikir, kart kaybolmaz (G-4); `due_at` gelecekte ise
+  bugünün kuyruğunda yoktur (G-5). Değişen, karşılaştırmanın iki tarafının
+  artık aynı ölçekte olmasıdır: gün ölçekli bir kart, ait olduğu çalışma
+  gününün İLK anından itibaren kuyrukta görünür. Limit sayaçları `study_day`
+  üzerinden döner (L-5).
+
+### 4.4 Vade granülerliği — V matrisi (İP-17)
+
+İP-16 denetiminde P2 olarak kaydedilen "iki granülarite bir arada" borcunu
+kapatan tur. **Ürün kararı: Anki yolu** — gün ölçekli aralıklar hedef çalışma
+gününün başına yuvarlanır, intraday adımlar dokunulmadan kalır.
+
+#### Kapatılan zarar (İP-16'da ölçülmüş, İP-17'de yeniden ölçüldü)
+
+| Ölçüm | Önce | Sonra |
+|---|---|---|
+| Pzt 20:00'de verilen 1 günlük aralığın vadesi | Salı **20:00** TR | Salı **04:00** TR |
+| Aynı kart Salı 09:00'da kuyrukta mı | **Hayır** | **Evet** |
+| Vadeden 2 saat geç cevaplanan 5 tekrarın damga saatleri | `[20, 22, 0, 2, 4]` | `[4, 4, 4, 4, 4]` |
+| Aynı zincirde cevap çalışma günü farkları | `[1, 1, 1, 2]` — bir gün atlanmış | `[1, 1, 1, 1]` |
+
+İkinci satır asıl üründür: kart o çalışma gününe aitken akşam saatine
+damgalıydı, sabah çalışan öğrenci "bugün tekrarım yok" görüyordu. Dördüncü
+satır sinsi olanıdır: damga her turda ileri sürüklendiği için dördüncü
+tekrarda 04:00 devrilmesini aşıyor ve kartın bir çalışma günü boyunca
+görünür olduğu pencere gecenin 02:00–04:00'üne sıkışıyordu.
+
+#### Uygulama ve ayrım kuralı
+
+Tek yazma noktası `srs_service.answer()`; motor hâlâ takvim görmez (H3).
+
+```
+state == "REVIEW"  → due_at = day_start(study_day(now) + gün)
+aksi hâlde         → due_at = now + interval_minutes
+```
+
+**Ayrım neden `state`, neden `interval_minutes >= 1440` değil.** İkisi bugün
+aynı kümeyi seçiyor ve bu ölçüldü: çıkış fazı REVIEW ⟺ aralık tam gün × 1440
+(`_next_interval_days` sonucu `[1, MAXIMUM_INTERVAL_DAYS]`'e clamp'li; öğrenme
+adımları `(1, 10)` ve `(10,)` dakika, asla ≥1440 olamaz). Ama **eşdeğerlik
+rastlantıdır, sözleşme değildir**: öğrenme adımları deste ayarından gelseydi
+(Anki'de gelir) "3 günlük" bir learning adımı mümkün olur ve sayısal eşik onu
+sessizce yuvarlardı. Faz, kartın hangi ölçekte yaşadığını söyler; dakika
+sayısı yalnız o ölçeğin bugünkü değerini. Gerekçe kodun içinde de durur.
+
+#### V matrisi (10 düğüm)
+
+| Kod | İddia | Sınıf |
+|---|---|---|
+| V-1 | gün ölçekli vade hedef çalışma gününün başına konur | gerçek PG + HTTP |
+| V-2 | sabah çalışan öğrenci kartı kuyrukta görür | gerçek PG + HTTP |
+| V-3 | 5 ardışık geç tekrarda damga saati kaymaz, gün atlanmaz | gerçek PG + HTTP |
+| V-4 | intraday öğrenme/relearning adımları yuvarlanMAZ | gerçek PG + HTTP |
+| V-5 | yuvarlama tabanı çalışma günüdür (rollover), takvim/UTC tarihi değil | gerçek PG + HTTP |
+| V-6 | motora giden `elapsed_days` değişmedi (S = 12.52798994372677) | gerçek PG + HTTP |
+| V-7 | 03:59 kenarı: vade +1 dk sonra, geçmişe düşmez, 04:01'de geri gelir | gerçek PG + HTTP |
+| V-8 | eşit vadede sıra `card_id`'ye iner (Q-9 tie-breaker) | gerçek PG + HTTP |
+| V-9 | `undo` damgayı yeniden hesaplamaz, öncekini birebir geri yükler | gerçek PG + HTTP |
+| V-10 | REVIEW'da saat gösterilmez, intraday adımda gösterilir | gerçek DOM (RTL) |
+
+**V-4 ve V-6 bilinçli olarak YEŞİL başladı** ve bu bir kusur değil, kayıt
+altına alınmış bir sınırdır: korudukları davranış zaten doğruydu (biri aşırı
+uygulamaya, öteki regresyona karşı nöbetçi), dolayısıyla "bugün kırmızı düşer"
+kanıtı yapısal olarak üretilemezdi. Nöbetçilikleri kırmızıyla değil mutasyonla
+kanıtlandı (IP17-2 → V-4). Uydurma bir kırmızı üretmek yerine sınır yazıldı.
+**V-9 da 3a'dan sonra yazıldı** (undo yolu İP-17 sırasında yeniden incelendi);
+kırmızısı açık bir ters provayla gösterildi.
+
+Diğer sekiz düğümün kırmızısı üretim kodundan ÖNCE, ayrı bir commit'te
+koşularak kanıtlandı. Bunun gerekli olduğu ölçümle biliniyordu: önerilen
+yuvarlama geçici uygulandığında **mevcut 67 İP-16 entegrasyon düğümünün
+hiçbiri kırılmıyordu** — suite bu davranış üzerinde hiç nöbet tutmuyordu, yani
+bozuk kod da düzeltilmiş kod da aynı testleri geçiyordu (kök CLAUDE.md §E).
+Bu yüzden tek bir mevcut düğüm yeniden kullanılmadı.
+
+**Bağımsız kâhin:** `test_ip17_vade_pg.py` zaman yardımcılarını (`_TR`,
+`_calisma_gunu`, `_gun_basi`) kendisi yazar, `dayboundary`'yi import ETMEZ.
+Üretimin yardımcısına yapılan bir mutasyon (TZ'yi UTC'ye çevir, rollover
+ofsetini sil) testi de aynı yöne kaydırıp görünmez kılardı.
+
+#### Kabul edilen sonuçlar (kaza değil, karar)
+
+- **03:59 kenarı (V-7).** 03:59 TR'de cevaplanan 1 günlük kart 04:00'te, yani
+  bir dakika sonra vadeli olur ve aynı oturumda geri gelir. Anki'nin
+  davranışıdır. Vade asla geçmişe düşmez: `gün ≥ 1` ve `now` her zaman
+  `[day_start(D), day_start(D+1))` aralığında olduğu için hedef kesinlikle
+  ileridedir (1440 dakikalık tarama: **0 ihlal**, en kısa mesafe 1 dk).
+- **Sıralama beraberliği (V-8).** Aynı güne yuvarlanan review kartlarının
+  damgası birebir eşitlenir; sıra Q-9 tie-breaker'ına (`card_id` artan) düşer,
+  yani cevaplama sırası yerine ekleniş sırası olur. Yuvarlamanın kaçınılmaz
+  sonucudur ve kabul edilmiştir.
+- **Geri doldurma YOK.** Yuvarlamadan önce damgalanmış REVIEW satırları eski
+  akşam damgasını bir tekrar boyunca korur, sonra kendiliğinden düzelir.
+  Ölçüm: geliştirme kataloğunda etkilenen satır sayısı **1**. Tek satır için
+  veri migration'ı yazmanın riski faydasını aşıyor; migration bilinçli olarak
+  yazılmadı.
+- **Frontend:** yuvarlamadan sonra her review kartının saati aynı ("04:00") ve
+  bilgi taşımıyor, bu yüzden `SrsBrowser`'ın iki render noktasında REVIEW için
+  yalnız tarih gösterilir; learning/relearning'de saat korunur (V-10). Vade
+  DAMGASI gösteren başka yüzey yoktur: `SrsDecks`'teki `due` bir sayaç,
+  `SrsStats`'ın `future_load`'u zaten gün kovalıdır, `SrsStudy`/`SrsDeckDetail`
+  `due_at`'i hiç render etmez.
+
+#### İP-16 denetiminin kaçırdığı boşluk: Q-9 tie-breaker'ı nöbetsizdi
+
+İP-17'nin mutasyon provası (IP17-5, `_order_due`'daki `SrsCard.id.asc()`
+tersine çevrildi) **26 test seçti ve yalnız 1'ini kırdı: V-8.** Yani İP-16'nın
+Q-9 kuyruk sırası testi tie-breaker'ın YÖNÜNÜ hiç korumuyordu. Sebebi ölçüldü:
+Q-9 kartlara SQL ile **farklı** `due_at` verdiği için beraberlik hiç oluşmuyor,
+`card_id` dalı çalışmıyordu. Sözleşme "eşitlikte card_id" diyordu ama
+eşitliğin kendisi test kurulumunda hiç üretilmemişti. Yuvarlamadan sonra
+beraberlik normal durum hâline geldi ve dalın tek nöbetçisi V-8'dir.
+
+**Genel ders (bu paketin dışına da geçerli):** "26 test seçildi, 1 kırıldı"
+tek başına iyi bir sonuç DEĞİLDİR. Seçilen testlerin kaçının o davranışa
+gerçekten dokunduğu ayrı bir sorudur ve mutasyon provası tam olarak bunu
+ölçer. Geniş bir seçim, kapsamın geniş olduğunu değil, çoğunun ilgisiz
+olduğunu gösteriyor olabilir; sayıya değil **hangi düğümün** kırıldığına
+bakılır. Aynı disiplin girdi tarafında zaten var ("seçilen test = 0 →
+BAŞARISIZLIK"); bu, çıktı tarafındaki karşılığıdır.
+
+Ayrıca IP17-5 tie-breaker'ı **silmek yerine ters çevirerek** kuruldu: silmek
+sırayı Postgres'in insafına bırakır ve provayı flaky yapardı — testin suçu
+olmadan "yakalanmadı" diyebilirdi.
 
 ## 5. Oturum: idempotency, undo, eşzamanlılık
 
@@ -549,7 +683,9 @@ test) saymamasıydı. Bu İP-16'ya özgü değildir, yedi paketin sürücüsün�
 etkiler: ayrı borç kaydı [[TB-29]] (numara iki kez taşındı: TB-24 → TB-27 →
 TB-29; TB-27/TB-28'i `magaza-tasarim` daha önce almıştı, bkz.
 `docs/teknik-borc.md` numaralandırma notu). İP-16'da yerel olarak gölgelenerek
-düzeltildi. Testin **gövdesinin** de kırıldığı ayrıca ölçülmüştür: kırmızı
+düzeltilmişti; **İP-17'de ortak sürücüde kapatıldı ve yerel gölge silindi**
+(§10.2) — borç kaydı da kapandığı için `teknik-borc.md`'den kaldırıldı, orada
+yalnız kapanma notu duruyor. Testin **gövdesinin** de kırıldığı ayrıca ölçülmüştür: kırmızı
 fazda (ip12 dalın ağacına alınmadan önce) aynı beş düğüm
 `Multiple head revisions` assert'iyle `FAILED` düşmüştü.
 
@@ -586,33 +722,52 @@ bayt bayt geri alır ama **veritabanını geri almaz**. IP16-23 provası
 (gürültülü hata), ama prova sonrası test veritabanının düşürülmesi gerektiği
 akılda tutulmalıdır — özellikle migration kimliğine dokunan provalarda.
 
+### 10.2 İP-17 vade granülerliği (7 ek prova) — **7/7 YAKALANDI**
+
+Katalog aynı modülde (`scripts/mutation_drill_ip16.py`) yaşar: sürücü makinesi
+(0-test nöbetçisi, bayt yedeği, SHA-256 geri alma) oradadır ve İP-17 aynı
+yüzeyi bozar. Üçüncü bir SRS paketi gelirse modül `mutation_drill_srs.py`
+olarak yeniden adlandırılmalıdır.
+
+| No | Mutasyon | Seçilen test | Kırılan |
+|---|---|---|---|
+| IP17-1 | yuvarlama tamamen söküldü (an tabanlı damgaya dönüş) | 9 | 7 (V-1,2,3,5,7,8,9) |
+| IP17-2 | faz ayrımı söküldü — intraday adımlar da yuvarlanıyor | 9 | 1 (**V-4**) |
+| IP17-3 | yuvarlama tabanı çalışma günü yerine UTC takvim tarihi | 9 | 2 (V-5, V-7) |
+| IP17-4 | `day_start` → `next_day_start` (gün başı ama BİR GÜN İLERİ) | 9 | 7 |
+| IP17-5 | eşit vadede tie-breaker TERS çevrildi | 26 | 1 (**V-8**) |
+| IP17-6 | frontend: state ayrımı söküldü (learning'de de saat gizli) | 5 | 2 |
+| IP17-7 | frontend: TERS YÖN — REVIEW'da da saat gösteriliyor | 5 | 1 |
+
+İki prova bilinçli olarak "yeterlilik" değil **ayırt edicilik** ölçer:
+
+- **IP17-4** çıktısı tastamam bir gün başıdır (04:00 TR), yalnız bir gün
+  ileridedir. "Damga gün başına düştü mü?" diye bakan gevşek bir matris bunu
+  kaçırırdı; V-1 beklenen GÜNÜ karşılaştırdığı için kırıldı. Yuvarlanmış olmak
+  yetmez, doğru güne yuvarlanmış olmak gerekir.
+- **IP17-6 ↔ IP17-7** birbirinin tersidir. Tek yön koşulsaydı V-10'un yalnız
+  bir yönde nöbet tuttuğu görülmezdi: IP17-6'yı yalnız "LEARNING/RELEARNING'de
+  saat var" düğümleri, IP17-7'yi yalnız "REVIEW'da saat yok" düğümü kırıyor.
+
+**Ortak sürücü değişti ([[TB-29]] kapandı).** `mutation_drill.py::_kirilanlar`
+artık `FAILED` satırlarının yanında `ERROR …::düğüm` satırlarını da toplar ve
+onları "(KURULUM HATASI — test hiç koşmadı)" etiketiyle ayrı gösterir; İP-16'nın
+yerel gölgesi silindi. ⚠️ **Bu, yedi paketin ölçüm aracını değiştirir**: eski bir
+kapanış raporundaki "YAKALANMADI" satırı, kurulum hatası yüzünden öyle
+görünüyor olabilir — tarihine bakarak okunmalıdır. Uçtan uca doğrulama, kaydın
+kendi ölçüm vakası `IP16-21` ile yapıldı: eskiden "YAKALANMADI", şimdi
+"YAKALANDI (7 test kırıldı)", yedisi de KURULUM HATASI etiketli.
+
 ## 11. Kalan P2'ler (bilinçli kapsam dışı)
 
-- **Vade damgası AN tabanında, elapsed ise ÇALIŞMA GÜNÜ tabanında — iki
-  granülarite bir arada (P2, ölçüldü).** H3 düzeltmesi `elapsed_days`'i gün
-  sınırına bağladı ama `due_at` hâlâ `now + interval` ile an tutuyor; kuyruk
-  da `due_at <= now` ile an karşılaştırıyor. Ölçülen sonuç:
-
-  | Ölçüm | Değer |
-  |---|---|
-  | Pzt 20:00'de cevaplanan 2 günlük kartın vadesi | Çar 20:00 (saat korunuyor) |
-  | Aynı kart Çar **09:00**'da kuyrukta mı | **Hayır** (`due_at <= now` sağlanmıyor) |
-  | Vadenin çalışma günü ile Çar 09:00'ın çalışma günü | Farklı |
-  | Her tekrar vadeden 2 saat sonra cevaplanırsa cevap anı | 20:00 → 22:00 → 00:00 → 02:00 → **04:00** |
-
-  İki ayrı zarar var. (1) **Sabah çalışan öğrenci kartı göremez**: kart o
-  çalışma gününe aittir ama akşam saatine damgalıdır; öğrenci "bugün
-  tekrarım yok" görür, akşam açtığında birden dolu bir kuyrukla karşılaşır.
-  (2) **Saat ileri kayar ve geri gelmez**: kullanıcı vadeden geç cevapladıkça
-  damga sürüklenir; dördüncü tekrarda 04:00'ü aşınca kart bir çalışma günü
-  daha ileri atlar — yani kayma sessizce bir **gün kaybına** dönüşür.
-
-  Anki bu yüzden vadeyi **gün granülaritesinde** tutar. Çözüm önerisi: vade
-  damgasını çalışma günü başına yuvarla (`dayboundary.day_start(study_day(now)
-  + interval_gün)`), intraday öğrenme adımları (dakika ölçekli) hariç. Bu,
-  `due_at <= now` karşılaştırmasını da tek tabana indirir. Kapsam dışı
-  bırakıldı çünkü kuyruk sıralaması, learn-ahead penceresi ve `future_load`
-  istatistiği aynı anda gözden geçirilmeli.
+- ~~Vade damgası AN tabanında, elapsed ise ÇALIŞMA GÜNÜ tabanında~~ →
+  **KAPANDI (İP-17, §4.4).** Damga artık gün ölçekli aralıklarda hedef çalışma
+  gününün başına yuvarlanıyor; karşılaştırma `due_at <= now` olarak kaldı ama
+  iki taraf aynı ölçeğe oturdu. Kaydın "aynı anda gözden geçirilmeli" dediği üç
+  yüzey de ölçüldü: kuyruk sıralaması (beraberlik artık normal — V-8 ve §4.4'ün
+  Q-9 boşluğu notu), learn-ahead penceresi (yalnız LEARNING/RELEARNING'e
+  bakar, gün ölçekli vadeye dokunmaz) ve `future_load` (zaten
+  `study_day(due_at)` ile kovalıyordu, yuvarlamayla tam tutarlı hâle geldi).
 - Sibling bury (ters/cloze kardeş **gömme**) — §4.1. Denetim turunda kapsam
   daraldı: kardeşlerin aynı oturumda peş peşe gelmesi Q-10 ile çözüldü; kalan
   P2 yalnız "kardeşi ertesi güne ötele" davranışıdır.
@@ -667,6 +822,21 @@ vitest/tsc/lint (uyarı artmaz). S-1/S-2 5'er tur.
 | `ruff check backend/` | temiz |
 | frontend `tsc -b` + `vitest run` | temiz · **791 passed** (77 dosya) |
 
+**İP-17 vade granülerliği turunun kapıları** (13 Ağu 2026, dal
+`ip17-vade-granulerligi`):
+
+| Kapı | Sonuç |
+|---|---|
+| `pytest tests/integration` (tam) | **1302 passed · 0 failed · 16 skipped** (taban 1293/0/16 + 9 yeni V düğümü) |
+| `pytest tests/integration -k "ip16 or ip17"` | **76 passed** — 67 İP-16 düğümünün hiçbiri kırılmadı |
+| `pytest tests/unit` + `tests/acceptance` | **233 passed** |
+| `pytest tests/unit/test_fsrs_scheduler.py -k f15` | **15 passed** — F-15 referans tablosunda **sapma YOK** (14 senaryo, 70 adım). Beklenen sonuç: motor değişmedi, damga çağırandadır |
+| İP-17 mutasyon provası (`IP17-1..7`) | **7/7 yakalandı** (§10.2) |
+| `IP16-21` — TB-29 regresyon vakası | YAKALANDI (7), hepsi "KURULUM HATASI" etiketli |
+| `ruff check backend/` | temiz |
+| frontend `tsc -b` · `eslint src` · `vitest run` | temiz · 0 error / 34 warning (**taban değişmedi**, yeni dosyalarda 0) · **842 passed** (82 dosya) |
+| Test DB hijyeni | provalar ve suite sonrası `srs_*` tablolarında artık satır yok |
+
 ⚠️ Frontend tam suite'i **yük altında** bir kez `PackageLabel` timeout'u verdi
 (arka planda 1266 testlik entegrasyon koşarken); izole ve boştaki makinede
 geçti. Bu İP-16 değil, kayıtlı [[TB-23]] (Vitest 5000 ms bütçesi) — yeni bir
@@ -683,41 +853,77 @@ yazmak tartışmayı bitirmiyor; **sayma kuralı** bitirir.
 Sonraki denetçi aşağıdaki komutları `backend/` içinden koşar ve kendi sayısını
 üretir. Sayılar bu belgede güncel tutulmaz; kaynağı komuttur.
 
+#### Dosya seçme kuralı — İÇERİKTEN, dosya adından DEĞİL
+
+Komutların ilk hâli dosyaları `tests/integration/test_ip16_*.py` glob'uyla
+seçiyordu ve **İP-17 gelir gelmez bozuldu**: `test_ip17_vade_pg.py` sayıma
+girmiyordu, yani yüzey büyümüşken sayı sabit kalıyor ve bu hiçbir yerde hata
+vermiyordu. `test_ip1[6-9]_*` gibi bir düzeltme aynı kusurun ertelenmiş
+hâlidir — o da bir paket-numarası bağımlılığıdır ve İP-20'de tekrar kırılır.
+
+**Kural: SRS testi, kaynağında SRS yüzeyine değen bir iz taşıyan test
+dosyasıdır** — saf planlayıcı modülü (`spaced_repetition`), servis
+(`srs_service`), HTTP yüzeyi (`/api/v1/srs`) veya şema adları (`srs_*`,
+`SrsCard`/`SrsProgress`/`SrsDeck`). Kural paket numarası bilmez; yeni bir
+paket dosyasını nasıl adlandırırsa adlandırsın, o dosya SRS'e dokunuyorsa
+sayıma girer, dokunmuyorsa girmez.
+
+Ölçüldü (İP-17): kural `tests/` altındaki **216** test dosyasını tarayıp
+**8**'ini seçiyor — altı İP-16 entegrasyon dosyası, `test_ip17_vade_pg.py` ve
+`tests/unit/test_fsrs_scheduler.py`. `test_ip16_migration_pg.py` yalnız `srs_*`
+tablo/revizyon izleriyle yakalanır (HTTP çağırmaz), bu yüzden desende şema
+adları da vardır.
+
+Komutlar `backend/` içinden, **Git Bash**'te koşulur ve bu makinede koşularak
+doğrulanmıştır. Seçici bir kabuk değişkenidir; yardımcı dosya YAZILMAZ (ilk
+taslak `/tmp`'ye bir modül yazıyordu — Git Bash'in `/tmp`'si Windows Python'ın
+`sys.path`'inde görünmediği için komut belgede doğru, makinede kırıktı).
+
 ```bash
+# (0) Ortak seçici — aşağıdaki komutların hepsi bunu kullanır.
+SEC='import pathlib,re,ast
+D=re.compile(r"spaced_repetition|srs_service|/api/v1/srs|srs_[a-z_]+|SrsCard|SrsProgress|SrsDeck",re.I)
+F=sorted(f for f in pathlib.Path("tests").rglob("test_*.py") if D.search(f.read_text(encoding="utf-8")))'
+
 # (1) Test fonksiyonu — AST ile, parametrize genişlemesi HARİÇ.
 #     `grep "def test"` KULLANILMAZ: yorum ve iç fonksiyon yanlış sayar.
-python - <<'PY'
-import ast, pathlib
-d = ["tests/unit/test_fsrs_scheduler.py", *sorted(map(str, pathlib.Path("tests/integration").glob("test_ip16_*.py")))]
-for f in d:
-    n = [x for x in ast.parse(pathlib.Path(f).read_text(encoding="utf-8")).body
-         if isinstance(x, (ast.FunctionDef, ast.AsyncFunctionDef)) and x.name.startswith("test")]
-    print(f"{len(n):4d}  {f}")
-PY
+python -c "$SEC
+t=0
+for f in F:
+    n=[x for x in ast.parse(f.read_text(encoding='utf-8')).body if isinstance(x,(ast.FunctionDef,ast.AsyncFunctionDef)) and x.name.startswith('test')]
+    t+=len(n)
+    print(f'{len(n):4d}  {f}')
+print(f'toplam {t} fonksiyon / {len(F)} dosya')"
 
-# (2) Ayrı matris düğümü kodu (F-*/Q-*/L-*/G-*/S-*/D-*/T-*/E-*/B-*/I-*).
+# (2) Ayrı matris düğümü kodu (F-*/Q-*/L-*/G-*/S-*/D-*/T-*/E-*/B-*/I-*/V-*).
 #     Aynı düğümün birden çok testi varsa TEK sayılır.
-python - <<'PY'
-import ast, pathlib, re
-kod = set()
-for f in ["tests/unit/test_fsrs_scheduler.py", *pathlib.Path("tests/integration").glob("test_ip16_*.py")]:
-    for x in ast.parse(pathlib.Path(f).read_text(encoding="utf-8")).body:
-        if isinstance(x, (ast.FunctionDef, ast.AsyncFunctionDef)):
-            m = re.match(r"test_([a-zA-Z]\d+[a-zA-Z]?)_", x.name)
+#     DİKKAT: yalnız BACKEND'i sayar. Frontend düğümleri (ör. V-10) vitest
+#     dosyalarında yaşar ve adlarında kod taşımaz — sözleşmeden okunur.
+python -c "$SEC
+kod=set()
+for f in F:
+    for x in ast.parse(f.read_text(encoding='utf-8')).body:
+        if isinstance(x,(ast.FunctionDef,ast.AsyncFunctionDef)):
+            m=re.match(r'test_([a-zA-Z]\d+[a-zA-Z]?)_',x.name)
             if m: kod.add(m.group(1).upper())
-print(len(kod), sorted(kod))
-PY
+print(len(kod),sorted(kod))"
 
 # (3) Koşulan pytest düğümü (parametrize DAHİL) — gerçek koşu sayısı.
-python -m pytest tests/unit/test_fsrs_scheduler.py --collect-only -q | tail -1
-python -m pytest tests/integration -k ip16 --collect-only -q | tail -1
+YOLLAR=$(python -c "$SEC
+print(' '.join(str(f).replace(chr(92),'/') for f in F))")
+python -m pytest $YOLLAR --collect-only -q | tail -1
 
 # (4) Frontend (frontend/ içinden)
-npx vitest run src/lib/srsTypeAnswer.test.ts src/lib/srsCloze.test.ts src/components/srs --reporter=basic
+npx vitest list src/lib/srsTypeAnswer.test.ts src/lib/srsCloze.test.ts src/components/srs | grep -c " > "
 
 # (5) Mutasyon provası tanımı
 python -m scripts.mutation_drill_ip16 --list | wc -l   # + katalog dışı elle provalar
 ```
+
+İP-17 turunda bu komutların verdiği sayılar (denetçi kendi sayısını üretmeli;
+buradakiler yalnız kuralın çalıştığını gösterir): (1) **95 fonksiyon / 8
+dosya**, (2) **84 kod**, (3) **112 pytest düğümü**, (4) **40 vitest düğümü**,
+(5) **42 mutasyon**.
 
 Sınıflandırma (kök CLAUDE.md §H) — hangi dosyanın hangi sınıfa girdiği:
 
@@ -727,6 +933,6 @@ Sınıflandırma (kök CLAUDE.md §H) — hangi dosyanın hangi sınıfa girdiğ
 | Saf birim (DB'siz, IO'suz) | `tests/unit/test_fsrs_scheduler.py` |
 | AST/kaynak sözleşmesi (DÜŞÜK GÜÇLÜ) | `F-14`, `F-14b`, `test_f17_motorda_takvim_aritmetigi_kalmadi`, `test_B7_YENI_KIMLIK_TERK_EDILMISLERDEN_FARKLI` — dördünün de yanında bir davranış testi vardır |
 | Yapısal/şema sözleşmesi (DB'siz ama gerçek OpenAPI) | `D-6c` — tarama listesinin router'la aynı kümeyi kapsadığını ölçer; yanında D-6/D-6b davranış taraması durur |
-| Gerçek DOM (jsdom + RTL) | `frontend/src/components/srs/SrsCardFlags.test.tsx` |
+| Gerçek DOM (jsdom + RTL) | `frontend/src/components/srs/SrsCardFlags.test.tsx` · `SrsDueLabel.test.tsx` (V-10) |
 | Gerçek tarayıcı / E2E | **yok** (§11) |
 | Gerçek baskı/dosya çıktısı | **yok** (bu pakette baskı yüzeyi yok) |
