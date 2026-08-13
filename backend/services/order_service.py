@@ -587,6 +587,86 @@ async def pay(
     return order, redirect_url
 
 
+# ── Tahsilatın bağlanabileceği sipariş durumları — TEK KAYNAK (İP-18) ────────
+#
+# `orders` tablosunda para durumu (`payment_status`) ile sipariş yaşam döngüsü
+# (`status`) AYRI kolonlardır. `escrow.claim` daima para kolonuna uygulanır;
+# yaşam döngüsü hiçbir claim'in şartı DEĞİLDİ. Sonuç ölçüldü (İP-18 Faz 1):
+# iptal, ölü-varlık guard'ı ile atomik PAID claim'i arasında commit ederse
+# claim yine başarılı oluyor ve satır `CANCELLED` iken `PAID` yazılıyordu —
+# kayıp güncelleme, üstelik sonuç `PAID/PAID` olduğu için hiçbir sorgudan
+# görünmüyordu.
+#
+# Çözüm **kilit değil koşuldur**: koşul claim'in kendi UPDATE'ine biner, ek
+# satır kilidi alınmaz ve kanonik `Product → Order` sırası korunur (bir Order
+# kilidi eklemek bu yolu `Order → Product` yapardı; `_lock_order_products`'ın
+# gerekçe yorumuna bakınız).
+#
+# Kural ÜÇ giriş noktasını da bağlar (`complete_checkout` callback'i ·
+# `pay()` → `_charge` · `escrow_reconciler.reconcile_stale_checkouts`) ve üçü de
+# tek bir boğaz noktasından geçer: `_siparis_para_claimi`. Kuralı kopyalamak
+# yasak — dördüncü bir giriş noktası eklendiğinde unutulması bu yüzden zordur
+# ve unutulsa bile varsayılan GÜVENLİ taraftadır (`yasam_dongusu="canli"`).
+
+#: Tahsilatın bağlanabileceği yaşam döngüsü durumları. `order_fsm`'in tek ödeme
+#: kenarı `PENDING → PAID` olduğundan küme tek elemanlıdır.
+PARA_BAGLANABILIR_DURUMLAR: frozenset[str] = frozenset({"PENDING"})
+
+#: Ölü varlık: doğrulanmış tahsilat bu durumlarda siparişe BAĞLANMAZ, aynen
+#: iade edilir (İP-2b R10). İki küme kesişemez — kesişselerdi aynı tahsilat hem
+#: bağlanır hem iade edilirdi.
+OLU_SIPARIS_DURUMLARI: frozenset[str] = frozenset({"CANCELLED", "REFUNDED"})
+
+
+def canli_siparis_kosulu() -> tuple:
+    """`escrow.claim(extra_where=...)` için: sipariş hâlâ para bağlanabilir mi."""
+    return (Order.status.in_(sorted(PARA_BAGLANABILIR_DURUMLAR)),)
+
+
+def olu_siparis_kosulu() -> tuple:
+    """`escrow.claim(extra_where=...)` için: sipariş ölü mü (iade dalı)."""
+    return (Order.status.in_(sorted(OLU_SIPARIS_DURUMLARI)),)
+
+
+async def _siparis_para_claimi(
+    db: AsyncSession,
+    order_id: int,
+    *,
+    from_statuses: list[str],
+    values: dict,
+    yasam_dongusu: str = "canli",
+) -> bool:
+    """Sipariş para durumunu claim eden **TEK** yol (İP-18).
+
+    `escrow.claim` doğrudan çağrılmaz: yaşam döngüsü koşulu burada, çağıranın
+    iradesinden bağımsız olarak eklenir. `yasam_dongusu` varsayılanı `"canli"`,
+    yani en dar koşuldur — yeni bir çağıran parametreyi hiç düşünmezse claim
+    fazladan geçmez, eksik geçer (fail-closed).
+    """
+    kosul = canli_siparis_kosulu() if yasam_dongusu == "canli" else olu_siparis_kosulu()
+    return await escrow.claim(
+        db,
+        Order,
+        order_id,
+        from_statuses=from_statuses,
+        values=values,
+        extra_where=kosul,
+        status_attr="payment_status",
+    )
+
+
+async def _taze_siparis_durumu(db: AsyncSession, order_id: int) -> str | None:
+    """Sipariş yaşam döngüsünü DB'den okur (ORM kimlik haritasını atlar).
+
+    Claim kaybedildiğinde "neden kaybettik" sorusunun cevabı bayat nesneden
+    okunamaz; kararı (ölü varlık iadesi mi, eşzamanlı callback mi) taze değer
+    verir.
+    """
+    return (
+        await db.execute(select(Order.status).where(Order.id == order_id))
+    ).scalar_one_or_none()
+
+
 async def complete_checkout(
     db: AsyncSession,
     *,
