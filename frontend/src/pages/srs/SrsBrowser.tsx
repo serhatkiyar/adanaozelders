@@ -9,11 +9,11 @@ import {
   SrsCardFlags,
   SrsSuspendedSummary,
 } from "@/components/srs/SrsCardFlags";
+import { SrsDueLabel } from "@/components/srs/SrsDueLabel";
 import { STUDENT_NAV, TUTOR_NAV } from "@/lib/nav";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useDebounce } from "@/hooks/useDebounce";
 import { useBulkSrsCards, useSrsCards, useSrsDecks, useSrsTags } from "@/hooks/useSrs";
-import { formatDateTime } from "@/lib/datetime";
 import { getErrorMessage } from "@/lib/errors";
 import { toast } from "@/store/toastStore";
 import { ROLE_IDS } from "@/types";
@@ -246,8 +246,12 @@ export default function SrsBrowser() {
       {
         id: "due",
         header: "Vade",
-        cell: ({ row }) =>
-          row.original.due_at ? formatDateTime(row.original.due_at) : "—",
+        cell: ({ row }) => (
+          <SrsDueLabel
+            state={row.original.state}
+            dueAt={row.original.due_at}
+          />
+        ),
         enableSorting: false,
       },
       {
@@ -510,7 +514,12 @@ export default function SrsBrowser() {
                       {STATE_LABELS[row.state]}
                       {row.suspended ? " · askıda" : ""}
                       {row.is_leech ? " · takıldın" : ""}
-                      {row.due_at ? ` · ${formatDateTime(row.due_at)}` : ""}
+                      {row.due_at ? (
+                        <>
+                          {" · "}
+                          <SrsDueLabel state={row.state} dueAt={row.due_at} />
+                        </>
+                      ) : null}
                     </p>
                   </div>
                 </div>
