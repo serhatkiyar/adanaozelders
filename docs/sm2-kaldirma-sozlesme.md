@@ -373,7 +373,151 @@ düzeltildi; şimdi 19 yolun tamamı karşılanıyor.
 
 ---
 
-## 8. Bilinen sınırlar ve açık noktalar
+## 8. Denetçinin ilk bakacağı yerler
+
+Bu bölüm paketi yazanın kendi işaretlediği zayıf noktalardır. Amacı denetçinin
+işini kolaylaştırmak değil, **nereye bakarsa bir şey bulacağını** söylemektir.
+Aşağıdaki her iddia iddia değil **ölçümdür**: yedi mutasyon provası koşuldu
+(sürücü kirli ağaçta başlamayı reddeder, dosyayı bayt yedeğinden geri yükler
+ve geri yüklemeyi SHA-256 ile doğrular; `git checkout --` kullanmaz).
+
+### 8.1 Düğümlerin sınıflandırması — 25 düğümün 21'i yokluk sözleşmesi
+
+| Sınıf | Adet | Kırmızı kanıtı |
+|---|---|---|
+| **Yokluk sözleşmesi** (hiç var olmamış bir şey için de geçer) | **21** | Hepsinin Faz 1'de kırmızı düştüğü koşularak kaydedildi (`0e37367`) |
+| Doluluk nöbetçisi (kasıtlı yeşil) | 3 | Tasarım gereği hiç kırmızı olmadı — mutasyonla sınandı (§8.2) |
+| Davranış sözleşmesi (yokluk değil) | 1 (R3b) | **Kırmızı fazda YOKTU** — Faz 3'te eklendi, mutasyonla sınandı |
+
+Simetri tesadüf değil: **21 yokluk düğümü = Faz 1'de kırmızı düşen 21 düğüm.**
+Yani her yokluk iddiasının kayıtlı bir kırmızı kanıtı vardır; kanıtsız tek
+düğüm R3b'ydi ve o da artık mutasyonla kapatıldı.
+
+**Kırmızı kanıtın gücü düğüme göre değişir — en zayıfı R4:**
+
+- **R1 (10) güçlü**: kırmızı fazda 401 ölçüldü ve assertion 401'i ADIYLA
+  reddediyor. "Kilitleme kaldırma sanılamaz."
+- **R2 (1) güçlü**: 6 yol adıyla listelendi; doluluk nöbetçisi D3'te ötüyor.
+- **R3 (1) güçlü**: gerçek PG, tablolar adıyla listelendi.
+- **R4 (5) ZAYIF SAYILMALI**: yalnız **adın** gittiğini kanıtlar. Kod başka bir
+  modüle taşınmış olsaydı R4 yine yeşil olurdu. Kaldırmanın gerçekliğini
+  taşıyan asıl düğümler R1/R2/R3'tür; R4 onların yanında ikincil kanıttır.
+- **R5/R6 (4) güçlü**: R6 gerçek DOM; ölü-link düğümünün bağımsız değeri
+  D5'te ölçüldü.
+
+### 8.2 Mutasyon provaları — yedi prova, biri YAKALANMADI
+
+| # | Mutasyon | Hedef nöbetçi | Sonuç |
+|---|---|---|---|
+| D1 | Migration zincirini çatalla (`down_revision` → ip12) | `test_B1_BIRLESIK_AGACTA_TEK_HEAD` | ⚠️ **Yakalandı ama YANLIŞ YERDE** — aşağıya bak |
+| D2 | `downgrade`'i no-op yap (ölü kod) | R3b | ✅ Kendi assertion'ıyla: "downgrade şemayı geri kurmadı: []" |
+| D3 | `srs` router'ını `include_router`'dan çıkar | R2 doluluk nöbetçisi | ✅ "OpenAPI şeması boş ya da router'lar kayıtlı değil" |
+| D4 | Hub'daki "Aralıklı Tekrar" başlığını boz | R6 render nöbetçisi | ✅ `Unable to find … role "heading" … /aralıklı tekrar/i` |
+| D5 | Başlık aynı kalsın, **link** eski yola dönsün | R6 ölü-link düğümü | ✅ 2 düğüm kırıldı; metin düğümü doğru şekilde YEŞİL kaldı |
+| D7 | `PATHS.srs`'i kaldır | R5 doluluk nöbetçisi | ✅ 2 düğüm kırıldı |
+| D6 | Bayat izin kodu **taşımasını** etkisizleştir (SQL geçerli kalır) | İP-16 B7 | ❌ **YAKALANMADI — 7 passed** |
+
+#### D1: çatal yakalanıyor, ama B1 sayesinde değil
+
+Zincir çatallandığında `tests/integration/conftest.py`'nin **session kapsamlı
+autouse fixture'ı** patlıyor: `RuntimeError: test veritabani migrate edilemedi:
+Multiple head revisions are present`. Yani çatal **gürültülü biçimde**
+yakalanıyor — sızamaz. Ama `test_B1_BIRLESIK_AGACTA_TEK_HEAD`'in kendi
+assertion'ı bu koşuda **hiç çalışmadı** (pytest `ERROR`, `FAILED` değil —
+[[TB-29]]'un tam ayrımı).
+
+Sonuç: **B1'in tek-head assertion'ı pratikte conftest tarafından gölgelenmiştir.**
+B1'in benzersiz değeri yalnız şu senaryoda ortaya çıkar: çatal **yalnız
+birleşik ağaçta** var, çalışma ağacında yok (yani main ile birleşince doğan bir
+çatal). Bu senaryo yerelde kurulamadı, dolayısıyla **B1'in benzersiz değeri
+ölçülmemiştir** — makul ama kanıtsızdır. Denetçi buraya bakmalı.
+
+#### D6: yakalanmayan mutasyon — İP-16'nın açık boşluğu (BENİM DEĞİL)
+
+`ip16_srs_izin_kodu_hizalama` iki iş yapar: (1) bayat izin kodlarını siler,
+(2) bayat kodların **rol bağlarını güncel koda taşır**. Sözleşme bu ikisinin
+"birlikte yapıldığını" söyler. Ölçüm: (2) sökülünce **hiçbir test kırılmıyor.**
+
+Sebep ölçüldü: aynı migration'daki `ROLE_GRANTS` döngüsü doğru kodları
+`SUPER_ADMIN`/`EDUCATION_MANAGER`'a **koşulsuz** veriyor
+(`ip16_srs_izin_kodu_hizalama.py:122-141`), dolayısıyla B7'nin rol
+assertion'ları taşıma çalışmasa da geçiyor. Taşımanın gerçek işlevi yalnız
+**katalog dışı** rol bağları içindir (panelden elle verilmiş bir izin) — ve o
+yol test edilmiyor.
+
+**Bu boşluk bu paketten gelmiyor:** `git diff main...HEAD` ile ölçüldü — B7
+test gövdelerinde **tek satır** değişiklik yok; değiştirdiğim yerler yalnız
+fixture (satır 51, 124-128) ve iki B1 düğümü. Boşluk İP-16 merge edildiğinde de
+oradaydı; bu paketin mutasyon provası onu **görünür kıldı**. Denetçiye not:
+bu, kaldırma paketinin kusuru değil, komşu paketin kayıtlanmamış borcudur.
+
+### 8.3 `test_B1` fixture düzeltmesi sessizce başka bir şeyi değiştirdi mi?
+
+Değişiklik: fixture eskiden "main'in ağacı + **sabit iki İP-16 dosyası**"
+kopyalıyordu; artık "main'in ağacı + **çalışma ağacının tamamı** (üzerine
+yazarak)".
+
+Sessiz yan etki adayı: main'de de bulunan bir migration dosyası artık **çalışma
+ağacının sürümünden** okunuyor. Ölçüldü:
+
+```
+git diff --name-status main...HEAD -- backend/migrations/
+  A  backend/migrations/versions/sm2_flashcard_kaldirma.py     ← tek değişiklik: EKLEME
+main ile çalışma ağacı arasında farklı olan mevcut migration: YOK
+```
+
+Yani bu dalda üzerine-yazma **hiçbir dosyanın içeriğini değiştirmiyor**;
+davranış farkı sıfırdır. **Ama gelecekte değildir**: bir dal mevcut bir
+migration'ı düzenlerse fixture artık main'in değil dalın sürümünü ölçer. Bu
+bilinçli bir seçimdir (dalın düzeltmeleri ölçüme girsin) ve kodda yorumla
+yazılıdır — denetçi bu seçimi tartışmak isteyebilir.
+
+İkinci değişiklik: `test_B1_BIRLESIK_AGACTA_TEK_HEAD` artık head'in **adını**
+çapalamıyor. Eski assertion (`"ip16" in head`) her yeni paketle bayatlardı.
+Yerine "İP-16 zincirde var" + "tek head" kondu. **Kayıp:** eskiden head'in
+İP-16 olduğu (yani zincirin ucu) çapalıydı; artık değil. Bu bilinçli, çünkü o
+iddia zaten yanlıştı — ama bir zayıflamadır ve denetçi başka bir şeyle
+değiştirmek isteyebilir.
+
+### 8.4 Downgrade nöbetli mi, tek atışlık mı?
+
+**Nöbetli.** `test_R3b_*` kalıcı bir testtir, `tests/integration/` altındadır
+ve CI `pytest tests/integration -q` ile koşar. D2 provası nöbetin gerçek
+olduğunu gösterdi: `downgrade` no-op yapılınca düğüm **kendi assertion'ıyla**
+kırıldı.
+
+**Kalan zayıflık:** R3b'nin "0 satır" iddiası (downgrade veriyi getirmez) için
+ayrı bir mutasyon **yapılamadı** — o iddiayı bozmanın yolu downgrade'e veri
+yazmaktır, ki bu gerçekçi bir mutasyon değil. Yani o assertion doğru ama
+**nöbetçiliği kanıtlanmamıştır**; şu an bir belgelendirme-testi gücündedir.
+
+### 8.5 Doluluk nöbetçileri kendileri yalancı yeşil olabilir mi?
+
+Üçü de mutasyonla sınandı ve ötüyor (D3, D4+D5, D7). Ama **yapısal bir delik
+duruyor ve kapatılmadı**: nöbetçiler *komşunun varlığını* ölçer, *kaldırılanın
+yokluğunu ölçen kodun sağlığını* değil. Somut senaryo:
+
+> `Learn.tsx` bir stub'la değiştirilse ve stub `h1 "Öğren"` + `h2 "Aralıklı
+> Tekrar"` + `/ogren/tekrar` linki içerse, **her iki R6 nöbetçisi de yeşil
+> kalır** ve "Kelime Kartları yok" iddiası boş bir sayfada vakumda sağlanır.
+
+Bu senaryo pratikte düşük olasılıklıdır (kimse hub'ı stub'lamaz) ama nöbetçinin
+mantıksal sınırıdır: **doluluk nöbetçisi vakumu daraltır, kaldırmaz.** Aynı
+sınır R2 (OpenAPI dolu ama yanlış router'larla dolu olabilir) ve R3 (srs 8
+tablo var ama şema başka türlü bozuk olabilir) için de geçerlidir.
+
+### 8.6 Denetçiye kısa liste
+
+1. **D6'nın yakalanmayan mutasyonu** — İP-16'nın izin taşıma kodu nöbetsiz
+   (§8.2). Bu paketin kapsamı dışı ama kayıt altına alınmalı mı?
+2. **B1'in benzersiz değeri ölçülmedi** (§8.2 D1) — conftest gölgeliyor.
+3. **R4 zayıf sınıf** (§8.1) — yalnız adın gittiğini kanıtlar.
+4. **R3b'nin "0 satır" ayağı nöbetçilikten çok belgelendirme** (§8.4).
+5. **Doluluk nöbetçilerinin yapısal sınırı** (§8.5) — vakumu daraltır, kaldırmaz.
+6. **Fixture üzerine-yazma seçimi** (§8.3) — bugün etkisiz, gelecekte değil.
+7. **Duman turu yalnız ADMIN oturumuyla** yapıldı (§9).
+
+## 9. Bilinen sınırlar ve açık noktalar
 
 - **Duman turu ADMIN hesabıyla yapıldı** (seed `ADMIN_EMAIL`). `/ogren` grubu
   rol kısıtı taşımadığı için hub aynı bileşendir; ancak CLIENT ve TUTOR
