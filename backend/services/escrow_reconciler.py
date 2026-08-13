@@ -571,21 +571,53 @@ async def reconcile_stale_checkouts(db: AsyncSession) -> int:
     #
     # Satırlar önce anlık görüntüye alınır: `rollback` ORM nesnelerini expire
     # eder ve bayat nesnenin alanına dokunmak async oturumda lazy-load
-    # (`MissingGreenlet`) üretir. Her kayıt kendi SAVEPOINT'inde işlenir; hata
+    # (`MissingGreenlet`) üretir. Her kayıt kendi try/except'inde işlenir; hata
     # yalnız o kaydın yazımlarını geri alır, oturum kullanılabilir kalır ve
     # hata GÖRÜNÜR bir kayıt bırakır (sessizce yutulmaz).
+    #
+    # ── İP-18: SAVEPOINT KALDIRILDI — PARA KAYBETTİRİYORDU ──────────────────
+    #
+    # İzolasyon eskiden `async with db.begin_nested()` (SAVEPOINT) ile
+    # kuruluyordu. Ama `complete_checkout` **kendi transaction'ını yönetir ve
+    # içeride COMMIT eder**; SQLAlchemy, bir savepoint bağlamı içinde dış
+    # transaction commit edildikten sonra oturuma dokunmayı
+    # `InvalidRequestError: Can't operate on closed transaction inside context
+    # manager` ile reddeder. İki farklı sonuç doğuyordu:
+    #
+    # * **Canlı sipariş** (mutlu yol): `complete_checkout` işini bitirip commit
+    #   ediyor, istisna savepoint ÇIKIŞINDA doğuyor, aşağıdaki `except` onu
+    #   yutuyordu. Veri doğru ama her başarılı kayıt için görünür bir
+    #   `logger.exception` yazılıyor ve `handled` artmıyordu — "gürültüyle
+    #   çalışıyor".
+    # * **Ölü sipariş** (İP-2b R10 geç tahsilatı): sıra terstir — önce iade
+    #   claim'i COMMIT edilir, sonra `db.refresh(order)` gelir. İstisna tam
+    #   orada doğuyor ve akış `refund_unexpected_charge`'a HİÇ VARMIYORDU.
+    #   Sonuç: satır `payment_status='REFUNDED'`, sağlayıcıya giden iade
+    #   **SIFIR**. Yani "iade edildi" yazan ama parayı döndürmemiş kayıt.
+    #   Gerçek PG'de ölçüldü (İP-18 D11).
+    #
+    # Neden İP-2b'nin testi görmedi: `test_kirmizi_reconciler_partisi_
+    # zehirlenmez` iddiası AYRIK — "iade edildi **ya da** görünür hata kaydı
+    # var". İstisna `logger.exception` yazdığı için ikinci şık sağlanıyor ve
+    # test yeşil kalıyordu. Oysa oluşan durum sözleşmenin iki şıkkından da
+    # değildir. Daha dar nöbetçi kendi paketinde: `test_ip18_siparis_kilit_pg::
+    # test_yesil_reconciler_taramasi_olu_siparisi_de_kapsar`.
+    #
+    # R11'in gereği ("bir kaydın hatası partiyi öldürmez") KORUNDU: kayıt-başı
+    # `try/except` + `rollback` + `continue` aynen duruyor. Savepoint zaten ek
+    # izolasyon sağlamıyordu — çağrılan fonksiyon her kaydı kendi commit'iyle
+    # sınırlıyor.
     order_specs = [(o.id, o.provider_ref) for o in order_rows]
     for order_id, order_token in order_specs:
         try:
-            async with db.begin_nested():
-                result = await retrieve(token=order_token)
-                if not result.success:
-                    continue
-                await order_service.complete_checkout(
-                    db, order_id=order_id, success=True,
-                    provider_ref=result.provider_ref,
-                    token=order_token, paid_price=result.paid_price,
-                )
+            result = await retrieve(token=order_token)
+            if not result.success:
+                continue
+            await order_service.complete_checkout(
+                db, order_id=order_id, success=True,
+                provider_ref=result.provider_ref,
+                token=order_token, paid_price=result.paid_price,
+            )
         except Exception:  # noqa: BLE001 — kayıt izole edilir, parti ölmez
             await db.rollback()
             logger.exception(
