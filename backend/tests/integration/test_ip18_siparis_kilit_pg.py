@@ -400,6 +400,49 @@ async def test_kirmizi_reconciler_yolu_da_ayni_kosula_tabi(
     assert durum == "CANCELLED", f"iptal edilmiş sipariş '{durum}' oldu"
 
 
+async def test_yesil_reconciler_taramasi_olu_siparisi_de_kapsar(
+    fab, checkout_provider
+):
+    """[D11 · YEŞİL NÖBETÇİ] Bayat-checkout taraması ÖLÜ siparişi de görmeli.
+
+    İP-18 `escrow_reconciler`'a "buraya `orders.status` filtresi EKLEME" kuralı
+    koydu (yorumla). Kuralın nöbetçisi paketin KENDİ içinde olmalı: bu tarama
+    iki iş birden yapar — canlı siparişi kesinleştirmek **ve** ölü siparişe
+    gelmiş tahsilatı iade ettirmek (İP-2b R10). Seçimi
+    `PARA_BAGLANABILIR_DURUMLAR` ile daraltmak, iptal edilmiş siparişlerin
+    kayıp callback'lerini taramanın görüş alanından çıkarır ve parayı
+    sağlayıcıda öksüz bırakır.
+
+    ⚠️ Bu davranışı ölçen ikinci bir test daha var ve BAŞKA PAKETTEDİR:
+    `test_ip2b_cancel_callback_pg::test_kirmizi_reconciler_partisi_zehirlenmez`
+    (C) kaydı. Mutasyon provası IP18-7 ilk turda YALNIZ onu kırdı — yani
+    İP-18'in kuralı komşu paketin testine yaslanıyordu. Bu düğüm o bağımlılığı
+    kapatır; öteki test yarın daraltılırsa kural nöbetsiz kalmaz.
+
+    D6'dan farkı: orada sipariş tarama anında hâlâ `PENDING`'dir (iptal
+    `complete_checkout`'un içinde commit eder), bu yüzden bir status filtresi
+    D6'yı hiç etkilemez.
+    """
+    _pid, _cid, oid, tutar = await _odenmemis_siparis(fab)
+    await _iptal(oid)
+    assert (await _satir(oid))[0] == "CANCELLED", "kurgu bozuldu — iptal olmadı"
+
+    checkout_provider.checkouts["ip18-cf-token"] = CheckoutResult(
+        success=True, provider_ref="ip18-pay-ref", paid_price=tutar
+    )
+    await _bayatlat(oid)
+
+    await _bir_tur_mutabakat()
+
+    durum, odeme = await _satir(oid)
+    assert (durum, odeme) == ("CANCELLED", "REFUNDED"), (
+        f"ölü siparişin bayat checkout'u taranmadı/iade edilmedi: {durum}/{odeme}"
+    )
+    assert len(checkout_provider.refund_calls) == 1, (
+        f"iade tam bir kez olmalı: {checkout_provider.refund_calls}"
+    )
+
+
 # ── D7 · Deterministik ikiz: iki sıralamada da çift durum yok ────────────────
 
 
