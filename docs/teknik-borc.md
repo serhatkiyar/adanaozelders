@@ -89,6 +89,23 @@ silinmez).
      sozlesmesi.md:229`, `ip1a-ders-para-sozlesme.md:676` (tarihsel, dokunulmadı).
      **TB-2** silinmedi ama YARIYA DARALDI — güncel gövdesine bakınız. -->
 
+<!-- Kapanma notu (İP-17, vade granülerliği turu): **TB-29** ("Mutasyon sürücüsü
+     `ERROR` ile düşen testleri kırılmadı sayıyor") KAPANDI ve dosyanın kendi
+     kuralı gereği SİLİNDİ. Kapatan kod: `scripts/mutation_drill.py::_kirilanlar`
+     artık `FAILED` satırlarının yanında `ERROR …::düğüm` satırlarını da
+     topluyor ve onları "(KURULUM HATASI — test hiç koşmadı)" etiketiyle AYRI
+     gösteriyor (kaydın istediği 3. adım); `mutation_drill_ip16`'daki yerel
+     gölge silindi, modül üstteki fonksiyonu doğrudan import ediyor.
+     Uçtan uca doğrulama: kaydın kendi ölçüm vakası `IP16-21` yeniden koşuldu →
+     "YAKALANDI (7 test kırıldı)", yedisi de KURULUM HATASI etiketli.
+     Kaydın 2. adımı (geçmiş "YAKALANMADI" kayıtlarını tara) da yapıldı:
+     `docs/` altında üç kayıt var; `ip16-flashcard-sozlesme.md`'deki IP16-21
+     zaten bu kusurun kurbanı olarak işaretlenmişti, `IP16-27` ve
+     `ip1a-…::A2` gerçekten zayıf testti ve ikisi de o turda düzeltildi.
+     Geriye düzeltilmesi gereken yanlış kayıt KALMADI.
+     ⚠️ Bu değişiklik yedi paketin ölçüm aracını değiştirir; ileride eski bir
+     kapanış raporundaki "YAKALANMADI" satırı okunurken tarihine bakılmalıdır. -->
+
 <!-- Kapanma notu (İP-5, `bda2edf`): **TB-21** ("Entegrasyon testleri
      `.env`'den `PAYMENT_PROVIDER` alıyor") KAPANDI ve dosyanın kendi kuralı
      gereği SİLİNDİ. Kapatan kod iki katmanlıdır: kök `conftest.py`
@@ -170,19 +187,6 @@ silinmez).
 | **Neden ertelendi** | Doğru çözümün iki parçası var: (1) damganın repoda karşılığı olduğunu doğrulamak (ucuz: `alembic_version.version_num` ∈ `versions/*.py` revision kimlikleri; bilinmeyen damgada fail-fast + beklenen revizyonu söyle — guard bunun YANINA, sonrasına değil); (2) şemanın damgayla uyuştuğunu CI'da **kapı** yapmak (`alembic check`). İkincisi bugün çapraz-dal sapması yüzünden kırmızı verir, yani dal durumu temizlenmeden kapıya çevrilemez. İP-16'nın kapsamı aralıklı tekrardır |
 | **Sonraki adım** | (1) `ensure_schema`'ya damga-repo doğrulaması + bilinmeyen damgada fail-fast; `--purge` guard'ını yalnız **bilinen** squash-öncesi revizyon listesine daralt; (2) taze DB'de `alembic upgrade head && alembic check` CI kapısı; (3) `down_revision` değiştiren her commit'in "eski zincirle kurulmuş DB'ler yeniden kurulmalı" notunu taşıması sözleşme kuralı olsun; (4) `AUTO_CREATE_DB=false` maddesini lansman kontrol listesine ekle |
 | **AYRI İŞ PAKETİ — "doğrula modu" (9 Ağu 2026'da önerildi, BİLİNÇLİ OLARAK ERTELENDİ)** | Yukarıdaki (1)-(4) hâlâ geçerli; bu satır onları **sıraya** koyar ve bir madde ekler. **(A) `ensure_schema` "kur" modundan "doğrula" moduna geçsin:** açılışta `alembic current` ile `heads` karşılaştırılsın, eşit değilse uygulama **açılmasın** ve `alembic upgrade head` koşulması söylensin. Maliyeti tek sorgu. Kritik tasarım kararı: bu doğrulama **`AUTO_CREATE_DB`'den BAĞIMSIZ, her zaman** koşmalı — bugün bayrak kapalıyken hiçbir kontrol yok, yani şema kayması *sessizce* değil *hiç* fark edilmiyor. **(B) `--purge` guard'ını bilinen revizyon listesine daralt** (= mevcut (1)'in ikinci yarısı). **(C) `AUTO_CREATE_DB=false` dev varsayılanı olsun**, temiz kurulum `docker-compose`'da backend'den ÖNCE koşan ayrı bir `migrate` adımına bağlansın. **SIRA ÖNEMLİ: (A) → (C).** (C)'yi (A)'sız uygulamak durumu BUGÜNKÜNDEN KÖTÜLEŞTİRİR: bu depoda sekiz worktree ve farklı migration head'li dallar var; otomatik hizalama kalkar ama yerine hiçbir uyarı gelmez, dal değiştirip `upgrade head` koşmayı unutan geliştiricinin uygulaması sessizce eski şemayla açılır. (A) tek başına da anlamlı bir ilk adımdır; (C) onsuz yapılmamalıdır. Bu paket İP-16 veya operasyon turunun kapsamı değildi, ayrı bir tur ister |
-
-## TB-29 · Mutasyon sürücüsü `ERROR` ile düşen (hiç koşamayan) testleri "kırılmadı" sayıyor — TÜM paketleri etkiler
-
-| | |
-|---|---|
-| **Bulundu** | İP-16 denetim düzeltme turu, 9 Ağu 2026 — kendi mutasyon provamda ölçüldü |
-| **Yer** | `backend/scripts/mutation_drill.py::_kirilanlar` (ortak sürücü; `mutation_drill_f30`, `_ip1a`, `_ip2a`, `_ip3`, `_ip4`, `_ip5`, `_ip16` hepsi bunu kullanır) |
-| **Durum** | Fonksiyon yalnız `FAILED ` ile başlayan pytest satırlarını sayar. Bir mutasyon testleri **koşamayacak** kadar derinden bozarsa (conftest'te DB kurulamaz, koleksiyon patlar, import kırılır) pytest `ERROR tests/...::düğüm` yazar — tek bir `FAILED` satırı olmaz. Sürücü o mutasyonu **"YAKALANMADI"** raporlar |
-| **Ölçüm** | İP-16 mutasyonu `IP16-21` (migration zincirini ip12'den kopar): entegrasyon conftest'i "Multiple head revisions" ile veritabanını kuramadı, beş düğüm de `ERROR` düştü, sürücü "YAKALANMADI — bu davranış için önce anlamlı bir test yazılmalı" dedi. Oysa suite hiç koşamamıştı; bu `FAILED`'dan daha sert bir kırılmadır |
-| **Etki** | İki yönlü ve ikisi de sinsi: (a) **yalancı boşluk** — sağlam bir nöbetçi "yok" görünür, geliştirici var olan testin üstüne ikinci bir test yazar ya da düzeltmeyi kanıtsız sayar; (b) **kritik olan bu** — `_kirilanlar` boş dönünce sürücü sonucu "0 test kırıldı" diye özetler; bir kapanış raporunda bu satır "mutasyon yakalanmadı, test zayıf" diye okunur ve **yanlış** teknik borç doğurur. Aynı sürücü "seçilen test = 0 ise BAŞARISIZLIK" nöbetçisiyle tam bu ayrımı girdi tarafında zaten savunuyor; çıktı tarafında savunmuyordu |
-| **Şu anki durum** | İP-16 sürücüsünde **yerel olarak** düzeltildi: `mutation_drill_ip16._kirilanlar` üst fonksiyonu bilinçli gölgeler ve `ERROR …::düğüm` satırlarını "KURULUM HATASI — test hiç koşmadı" etiketiyle ekler. Diğer altı paketin sürücüsü hâlâ eski davranışta |
-| **Neden ertelendi** | Düzeltmenin doğru yeri ortak `mutation_drill.py`'dir, ama orası yedi paketin kapanış raporlarının dayandığı ölçüm aracıdır: değiştirmek, geçmiş turların "yakalanmadı" kayıtlarının bir kısmını geçersiz kılabilir. Bu, İP-16'nın kapsamı değil; ayrı ve bilinçli bir tur ister |
-| **Sonraki adım** | (1) `_kirilanlar`'ı ortak sürücüde `ERROR` satırlarını da sayacak şekilde düzelt, İP-16'daki yerel gölgelemeyi sil; (2) geçmiş kapanış raporlarındaki **"YAKALANMADI"** kayıtlarını tara — hangileri gerçekten zayıf test, hangileri bu kusurun kurbanı; (3) sürücünün özetine "kırılan" ile "hiç koşmayan"ı ayrı satır olarak yazdır |
 
 ## TB-26 · Ürün kapak görselleri `library-photos/` önekini kütüphane fotoğraflarıyla paylaşıyor
 
