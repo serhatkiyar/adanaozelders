@@ -574,8 +574,17 @@ async def pay(
         return order, None
     if order.payment_status == "REFUNDED":
         raise HTTPException(status.HTTP_409_CONFLICT, "Bu sipariş iade edilmiş")
-    if order.status == "CANCELLED":
-        raise HTTPException(status.HTTP_409_CONFLICT, "Bu sipariş iptal edilmiş")
+    # Ön kontrol ortak kaynaktan okur (İP-18). Bu bir GUARD DEĞİL, erken
+    # 409'dur: okuma kilitsizdir ve bayatlayabilir. Asıl nöbeti
+    # `_finalize_paid`'in koşullu claim'i tutar — iptal tam sağlayıcı
+    # penceresinde commit ederse burası göremez, claim yakalar.
+    if order.status not in PARA_BAGLANABILIR_DURUMLAR:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Bu sipariş iptal edilmiş"
+            if order.status in OLU_SIPARIS_DURUMLARI
+            else "Bu sipariş için ödeme yapılamaz",
+        )
     # Sipariş kurulduktan sonra kol kapanmış olabilir — yeniden ödeme denemesi de
     # kapıdan geçer (kalemler siparişte snapshot'lı).
     await payment_gates.assert_cart_branches_open(

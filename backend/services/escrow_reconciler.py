@@ -539,6 +539,15 @@ async def reconcile_stale_checkouts(db: AsyncSession) -> int:
     # kapsam dışında kalmış olan. Müşteri iyzico'da öder, tarayıcıyı kapatır →
     # para çekilmiştir ama sipariş sonsuza dek PENDING kalır, kitap gönderilmez
     # ve kimse fark etmezdi.
+    #
+    # ── İP-18: burada `orders.status` filtresi YOKTUR ve olmamalıdır ──
+    # Bu tarama `complete_checkout`'un İKİNCİ çağıranıdır ve iki işi birden
+    # yapar: canlı siparişi kesinleştirmek VE **ölü** siparişe gelmiş tahsilatı
+    # iade ettirmek (İP-2b R10). Seçimi `PARA_BAGLANABILIR_DURUMLAR` ile
+    # daraltmak, iptal edilmiş siparişlerin kayıp callback'lerini taramanın
+    # görüş alanından çıkarır ve parayı sağlayıcıda öksüz bırakırdı.
+    # Yaşam döngüsü kararı burada değil, `order_service._siparis_para_claimi`
+    # boğaz noktasında verilir (koşullu claim; kilit değil).
     order_rows = (
         await db.execute(
             select(Order).where(

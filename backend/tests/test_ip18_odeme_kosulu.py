@@ -22,9 +22,17 @@ başına "özellik tamamlandı" kanıtı DEĞİLDİR.
 """
 from __future__ import annotations
 
+import ast
+import pathlib
+
 import pytest
 
 from services import order_service
+
+BOGAZ = "_siparis_para_claimi"
+ORDER_SERVICE = (
+    pathlib.Path(__file__).resolve().parents[1] / "services" / "order_service.py"
+)
 
 
 def _eksik(ad: str) -> str:
@@ -93,3 +101,70 @@ def test_kirmizi_kosul_yardimcisi_claim_uyumlu(yardimci: str, kume_adi: str):
     assert "orders.status" in sql, f"koşul sipariş durumuna bakmıyor: {sql}"
     for durum in getattr(order_service, kume_adi):
         assert durum in sql, f"{durum} koşulda yok: {sql}"
+
+
+# ── Yapısal nöbetçi: dördüncü giriş noktası kuralı atlayamasın ───────────────
+
+
+def _paid_yazan_dogrudan_claimler() -> list[tuple[str, int]]:
+    """`escrow.claim(...)` çağrılarından `payment_status='PAID'` yazanlar.
+
+    Sınır AST ile bulunur (`find()` + sabit karakter penceresi DEĞİL) ve yalnız
+    gerçek çağrı düğümlerine bakılır — yorum satırı, docstring ve dizge
+    yanlış pozitif üretemez.
+    """
+    agac = ast.parse(ORDER_SERVICE.read_text(encoding="utf-8"))
+    bulunan: list[tuple[str, int]] = []
+    for fn in ast.walk(agac):
+        if not isinstance(fn, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            continue
+        if fn.name == BOGAZ:
+            continue  # boğaz noktasının kendisi muaf
+        for node in ast.walk(fn):
+            if not isinstance(node, ast.Call):
+                continue
+            f = node.func
+            if not (
+                isinstance(f, ast.Attribute)
+                and f.attr == "claim"
+                and isinstance(f.value, ast.Name)
+                and f.value.id == "escrow"
+            ):
+                continue
+            for kw in node.keywords:
+                if kw.arg != "values" or not isinstance(kw.value, ast.Dict):
+                    continue
+                for k, v in zip(kw.value.keys, kw.value.values, strict=False):
+                    yazilan = (
+                        v.value
+                        if isinstance(v, ast.Constant)
+                        else getattr(v, "attr", None)
+                    )
+                    if (
+                        isinstance(k, ast.Constant)
+                        and k.value == "payment_status"
+                        and yazilan in ("PAID", "PAID.value")
+                    ):
+                        bulunan.append((fn.name, node.lineno))
+    return bulunan
+
+
+def test_yesil_paid_claimi_yalniz_bogaz_noktasindan_gecer():
+    """[YEŞİL NÖBETÇİ] Siparişe para BAĞLAYAN claim tek kapıdan geçmeli.
+
+    Kusurun kökü tek bir çağrı yeri değil, kuralın hiç yazılmamış olmasıydı.
+    Kural üç yere kopyalansaydı dördüncü giriş noktası (yeni bir uç, betik,
+    arka plan işi) onu yeniden kaçırırdı. Bu nöbetçi tam olarak o günü
+    yakalar: `payment_status='PAID'` yazan doğrudan bir `escrow.claim`
+    eklenirse kırılır.
+
+    Güç sınıfı: **yapısal (düşük güçlü)** — davranış kanıtı
+    `tests/integration/test_ip18_siparis_kilit_pg.py`'dedir. Yalnız bu testin
+    geçmesi kuralın uygulandığı anlamına GELMEZ; ama bu test kırılırsa kural
+    kesinlikle delinmiştir.
+    """
+    kacaklar = _paid_yazan_dogrudan_claimler()
+    assert kacaklar == [], (
+        "siparişe para bağlayan claim boğaz noktasını atlıyor "
+        f"(`{BOGAZ}` kullanılmalı): {kacaklar}"
+    )
