@@ -130,6 +130,19 @@ silinmez).
      o belge İP-5 turunun ölçümünü anlatıyor ve o tur bu düzeltmeden önceydi).
      -->
 
+## TB-34 · `app.routes` üzerinden yol araması SESSİZCE boş döner — kaldırma testleri yalancı yeşil olur
+
+| | |
+|---|---|
+| **Bulundu** | SM-2 kelime kartı kaldırma paketi, kırmızı matris turu (13 Ağu 2026). Yeni yazılan bir "bu uçlar artık yok" testi, kaldırma HİÇ YAPILMAMIŞKEN yeşil döndü |
+| **Yer** | FastAPI `include_router` — `app.routes` / `APIRouter.routes` üzerinde `path` araması yapan her test |
+| **Durum** | `include_router` route'ları düzleştirmez; tembel bir `_IncludedRouter` nesnesi bırakır (`path == ""`) ve alt-router yolları ancak istek çözümlenirken açılır. `app.routes` bu depoda **9 girdi** döner (openapi/docs/health + bir `_IncludedRouter`); yüzlerce gerçek uç orada GÖRÜNMEZ |
+| **Etki** | Yön kritik: bir uç için `assert yol in app.routes` yazan test **yanlış kırmızı** verir (bu bir kez yaşandı, İP-16 commit 1), `assert yol not in app.routes` yazan test ise **yalancı yeşil** verir — ve bu ikincisi tehlikelidir, çünkü kaldırma yapılmadan da geçer. Yani "bu sistem kaldırıldı" iddiasının kanıtı olarak sunulabilir ve hiçbir şey ölçmemiş olur |
+| **Neden bu kayıt açıldı** | Tuzak zaten ÜÇ yerde yorum olarak belgeliydi (`tests/integration/test_ip16_privacy_pg.py` D-6c/D-7, `tests/acceptance/test_f30_packing_contract.py::_router_yollari`, `tests/integration/test_ip3_operator_active_gate_pg.py`). Buna rağmen dördüncü kez aynı yere düşüldü. **Belge yetmiyor**: yorum, o dosyayı okuyanı korur, yeni dosya yazanı korumaz |
+| **Kural** | Route tablosu iddiaları **OpenAPI şemasından** okunur (`app.openapi()["paths"]`), `app.routes`'tan değil. Yokluk iddialarına ayrıca bir doluluk nöbetçisi konur (ör. komşu bir önekin yollarının VAR olduğu), yoksa boş/kapalı şema iddiayı kendiliğinden geçirir — `ENVIRONMENT=production` OpenAPI'yi kapatır |
+| **Sonraki adım** | Yorumla yetinmeyen bir nöbetçi: `app.routes`/`.routes` üzerinde path araması yapan test kaynaklarını AST ile tarayıp reddeden bir meta-test (düşük güçlü ama bu tuzağın tekrarını gerçekten kesen tek şey), ya da testlere ortak bir `router_yollari()` yardımcısı verip doğrudan erişimi bırakmak |
+| **Şimdilik koruma** | Kaldırma paketinin kendi düğümü OpenAPI'ye çevrildi ve doluluk nöbetçisi eklendi (`backend/tests/test_flashcards_kaldirildi.py::test_R2_*`) |
+
 ## TB-31 · `backend/.env` sürümsüz ve yedeksiz — tek koruma iki klasörde birden durması
 
 > **Lansman öncesi çözülmeli.** Bu bir kod kusuru değil, bir **operasyon

@@ -34,7 +34,6 @@ from models.demand import Demand, DemandStatus
 from models.demand_response import DemandResponse
 from models.exam import PracticeExam, PracticeExamSubject
 from models.feature_flag import FeatureFlag
-from models.flashcard import Flashcard, FlashcardDeck
 from models.habit import Habit, HabitEntry
 from models.inventory import (
     COUNT_ADJUSTMENT_REASONS,
@@ -186,8 +185,6 @@ __all__ = [
     "ExamType",
     "FeatureFlag",
     "FeedbackProblem",
-    "Flashcard",
-    "FlashcardDeck",
     "Habit",
     "HabitEntry",
     "Library",

@@ -51,7 +51,11 @@ REPO = BACKEND.parent
 #: migration regresyonunu gizlerdi (kök CLAUDE.md §I).
 DISPOSABLE_DB_ONEK = "adana_ip16_mig"
 
-#: Dalın kendi revizyonları (main'de yok, çalışma ağacından alınır).
+#: İP-16'nın kendi revizyonları — birleşik ağaçta bulunduğu DOĞRULANIR.
+#:
+#: Bunlar artık main'dedir (İP-16 merge edildi). Liste, fixture'ın gerçekten
+#: İP-16'yı içeren bir ağaç kurduğunu çapalamak için duruyor; "nereden
+#: kopyalanacağı" bilgisi DEĞİLDİR (aşağıdaki nota bakın).
 IP16_REVIZYONLARI = ("ip16_araliklitekrar.py", "ip16_srs_izin_kodu_hizalama.py")
 
 #: İzin migration'ının vaktiyle taşıdığı ve ARTIK KULLANILMAYAN kimlikler.
@@ -124,15 +128,28 @@ def birlesik_agac(tmp_path_factory) -> Path:
             icerik.stdout, encoding="utf-8"
         )
 
-    # Dalın İP-16 revizyonları — çalışma ağacından (düzeltmeler burada yaşıyor).
-    for ad in IP16_REVIZYONLARI:
-        shutil.copy2(BACKEND / "migrations" / "versions" / ad, mig / "versions" / ad)
+    # Çalışma ağacının main'de OLMAYAN revizyonları — hangileri olduğu SABİT
+    # DEĞİL, ölçülür.
+    #
+    # Önceki hâl burada sabit bir İP-16 çifti kopyalıyordu ve İP-16 main'e
+    # girene kadar doğruydu. Sonrası ölçüldü: SM-2 kaldırma paketi ağaca yeni
+    # bir revizyon ekleyince (`sm2_flashcard_kaldirma`) o revizyon bu sentetik
+    # ağacın DIŞINDA kaldı; ağaç `flashcard_*` tablolarını hâlâ kuruyor ama
+    # modeller kaldırılmıştı, dolayısıyla `alembic check` haklı olarak sapma
+    # raporladı ve test kırıldı. Kırılan şey üretim değil, fixture'ın kendisiydi:
+    # hiçbir yerde var olmayan bir ağacı ölçüyordu.
+    #
+    # Genel kural: birleşik ağaç = main'in ağacı + çalışma ağacının fazlası.
+    # Böylece fixture, dalın hangi revizyonları eklediğini bilmek zorunda kalmaz.
+    ana_adlar = {p.name for p in (mig / "versions").glob("*.py")}
+    for kaynak in sorted((BACKEND / "migrations" / "versions").glob("*.py")):
+        # Çalışma ağacı kanoniktir: main'de de olan dosyalar ÜZERİNE yazılır
+        # (dalın o revizyona yaptığı düzeltmeler ölçüme girsin).
+        shutil.copy2(kaynak, mig / "versions" / kaynak.name)
 
-    # main'de ip12 var, dalda yok: birleşik ağacın gerçekten "merge sonrası"
-    # olduğunu burada doğrula, yoksa test yine dalın ağacını ölçerdi.
     adlar = {p.name for p in (mig / "versions").glob("*.py")}
-    assert "ip12_urun_arama_vektoru.py" in adlar, "main'in ip12 revizyonu gelmedi"
-    assert set(IP16_REVIZYONLARI) <= adlar
+    assert "ip12_urun_arama_vektoru.py" in ana_adlar, "main'in ip12 revizyonu gelmedi"
+    assert set(IP16_REVIZYONLARI) <= adlar, "birleşik ağaçta İP-16 revizyonları yok"
 
     ini = kok / "alembic.ini"
     ini.write_text(
@@ -255,7 +272,14 @@ def test_B1_BIRLESIK_AGACTA_TEK_HEAD(birlesik_agac):
     res = _alembic(birlesik_agac, "heads")
     satirlar = [s for s in res.stdout.splitlines() if s.strip()]
     assert len(satirlar) == 1, f"tek head bekleniyordu, çıktı:\n{res.stdout}"
-    assert "ip16" in satirlar[0], f"head İP-16 revizyonu olmalı: {satirlar[0]}"
+
+    # Head'in ADI çapalanmaz — "head İP-16 revizyonudur" iddiası yalnız İP-16
+    # zincirin en üstündeyken doğruydu ve sonraki her paket onu geçersiz kılar
+    # (SM-2 kaldırma paketi tam olarak bunu yaptı). Bu düğümün ölçtüğü şey
+    # ÇATAL YOKLUĞUDUR; İP-16'nın zincirde bulunduğunu `test_B1_ZINCIR_*`
+    # ayrıca doğrular.
+    gecmis = _alembic(birlesik_agac, "history").stdout
+    assert "ip16_araliklitekrar" in gecmis, "İP-16 zincirde yok"
 
 
 def test_B1_ZINCIR_IP12_UZERINE_KURULU(birlesik_agac):
@@ -279,9 +303,16 @@ async def test_B1_TAZE_DB_UPGRADE_DOWNGRADE_UPGRADE(birlesik_agac, taze_db):
     assert await _srs_tablo_sayisi(motor) == 8
     assert await _izin_kodlari(motor, "srs%") == sorted(DOGRU_KODLAR)
 
-    _alembic(birlesik_agac, "downgrade", "-1", db=db)
+    # Adım sayısı DEĞİL, hedef revizyon verilir. Göreli `-1` yalnız İP-16
+    # zincirin en üstündeyken doğruydu: ağaca yeni bir revizyon eklenince
+    # (SM-2 kaldırma) `-1` artık onu geri alıyor ve aşağıdaki iddialar
+    # ölçmek istedikleri şeyi ölçmüyordu. Hedefi adlandırmak bu testi
+    # sonraki paketlerden bağımsız kılar.
+    _alembic(birlesik_agac, "downgrade", "ip16_araliklitekrar", db=db)
     assert await _izin_kodlari(motor, "srs%") == []
-    _alembic(birlesik_agac, "downgrade", "-1", db=db)
+    assert await _srs_tablo_sayisi(motor) == 8, "izin downgrade'i tabloları da düşürdü"
+
+    _alembic(birlesik_agac, "downgrade", "ip12_urun_arama_vektoru", db=db)
     assert await _srs_tablo_sayisi(motor) == 0
 
     _alembic(birlesik_agac, "upgrade", "head", db=db)

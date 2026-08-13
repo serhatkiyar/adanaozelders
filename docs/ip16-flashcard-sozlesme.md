@@ -10,10 +10,35 @@ gizlilik sınırı, kart tipi üretim kuralları ve mutasyon kataloğu.
 > referansının (py-fsrs v5.1.3) birebir uygulamasıdır; tüm parametreler o
 > kaynaktan gelir. Kendi öğrenme bilimi iddiamız yoktur.
 
-Mevcut SM-2 tabanlı `flashcards` paketi (**`/ogren/kelime-kartlari`**,
-`flashcard_decks`/`flashcards` tabloları) bu paketin KAPSAMI DIŞINDADIR ve
-hiçbir dosyasına dokunulmaz. Yeni sistem tamamen bağımsızdır: tablo öneki
-`srs_`, API öneki `/srs`, sayfa kökü `/ogren/tekrar`.
+Yeni sistem tamamen bağımsızdır: tablo öneki `srs_`, API öneki `/srs`, sayfa
+kökü `/ogren/tekrar`.
+
+> **§0 GÜNCELLEME (13 Ağu 2026) — kapsam dışı bırakılan sistem KALDIRILDI.**
+> Bu paket geliştirilirken SM-2 tabanlı eski kelime kartı sistemi
+> (`/ogren/kelime-kartlari`, `flashcard_decks`/`flashcards` tabloları,
+> `/flashcards` uçları) kapsam dışı tutulmuş ve hiçbir dosyasına
+> dokunulmamıştı. O sistem ayrı bir pakette (`sm2-kaldirma` dalı) tamamen
+> kaldırıldı: 9 dosya silindi, iki tablo `sm2_flashcard_kaldirma`
+> revizyonuyla düşürüldü. **Eski URL'ler için yönlendirme YAZILMADI** —
+> `/ogren/kelime-kartlari` ve `/panel/ogren/kelime-kartlari` 404 döner
+> (ürün kararı: iki deste / tek kullanıcı / dış link yok; yönlendirme kod
+> borcu üretirdi). Bugün platformda **tek** aralıklı tekrar sistemi budur.
+> Nöbetçiler: `backend/tests/test_flashcards_kaldirildi.py`,
+> `backend/tests/integration/test_flashcards_migration_pg.py`,
+> `frontend/src/flashcardsKaldirildi.test.tsx`.
+>
+> ⚠️ **MERGE NOTU — `frontend/src/test-setup.ts` `matchMedia` stub'ı.**
+> Kaldırma paketi, panel sayfalarını jsdom'da render edebilmek için
+> `test-setup.ts`'e bir `window.matchMedia` stub'ı ekledi (`themeStore` modül
+> seviyesinde çağırdığı için `DashboardShell → DashboardHeader →
+> PersonalizeModal` zincirine bağlı her sayfa import aşamasında patlıyordu).
+> **Aynı tuzak `ip14-operator-panel` dalında bağımsız olarak bulundu ve orada
+> da bir stub eklendi.** O dal main'e girdiğinde bu dosyada çakışma çıkar:
+> **ikisini birden tutmayın** — tek stub yeterlidir, mükerrer tanım ikinci
+> `Object.defineProperty` çağrısıyla birincisini sessizce ezer ve hangi
+> davranışın geçerli olduğu okunamaz hâle gelir. Çakışmayı çözerken tek bir
+> stub bırakın ve `matches` varsayılanının hangi temaya çözüldüğünü
+> (bu daldaki sürümde `false` = açık tema) koruyun.
 
 ---
 

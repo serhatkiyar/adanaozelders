@@ -26,8 +26,8 @@ PERIODS = (PERIOD_DAILY, PERIOD_WEEKLY)
 
 class Habit(Base, TimestampMixin, SoftDeleteMixin):
     """Takip edilen bir alışkanlık. Birleşik kullanıcı tablosu olmadığından
-    sahiplik (user_id, role_id) çiftiyle belirlenir (bkz. flashcard/notification
-    deseni). Günlük (her gün) veya haftalık (haftada N gün) hedeflenebilir."""
+    sahiplik (user_id, role_id) çiftiyle belirlenir (bkz. notification deseni).
+    Günlük (her gün) veya haftalık (haftada N gün) hedeflenebilir."""
 
     __tablename__ = "habits"
 
