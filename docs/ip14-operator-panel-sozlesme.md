@@ -40,7 +40,7 @@ bağlamaktır.
 | Soru | Ölçüm |
 |---|---|
 | (b) Uç dönüş şekli | `StudyReservationOut`: `starts_at`/`ends_at`/`status`/`client_name` var → "bugün" istemcide türetilebilir. `ExamSessionOut`: `ends_at` **yok**, `duration_minutes` ile türetilir. |
-| (c) Zaman dilimi | Kolonlar `DateTime(timezone=True)`, API **UTC ISO** döner. Hazır desen: `lib/datetime.ts::istanbulNow` (Europe/Istanbul, sabit UTC+3 — backend `APP_UTC_OFFSET_HOURS=3` ile hizalı). |
+| (c) Zaman dilimi | Kolonlar `DateTime(timezone=True)`, API **UTC ISO** döner. Hazır desen: `lib/datetime.ts::istanbulNow` — günü **IANA `Europe/Istanbul`** bölgesinden (`Intl.DateTimeFormat`, `timeZone: "Europe/Istanbul"`) çözer, sabit ofset **kullanmaz**. Sabit `+03:00` aynı dosyadaki `istanbulInputToIso`'da ve backend'in `APP_UTC_OFFSET_HOURS=3`'ünde yaşar; Türkiye 2016'dan beri kalıcı UTC+3 olduğu için ikisi bugün aynı sonucu verir, ama **mekanizmaları farklıdır** ([[TB-33]]). |
 | (d) Sıralama çağıranları | `list_library_sessions_admin` tam taraması: **tek çağıran** `api/routers/library_exams.py:135` (`GET /exam-sessions/manage`). Public liste ayrı fonksiyondur ve zaten `asc`. |
 | (e) 200 tavanı | `library_service.earnings_transactions(limit=200)`; router **limit geçirmiyor**. Kesme iki kez: kaynak başına `.limit(200)` + birleşik `out[:200]`. Eğitmen kolu da aynı (payment_service, 200). |
 | (f) `window.confirm` | Operatör tarafında 2 yer: `ExamSessionsManager.tsx:127` (oturum iptali), `:299` (karne yayınlama). |
@@ -90,13 +90,27 @@ ekrana giden ikonu görüyordu. Operatörün işi fiziksel olarak mobil olduğun
 
 ## 2. "Bugün" tanımı
 
-* **Saat dilimi: `Europe/Istanbul`** (sabit UTC+3, DST yok). Tarayıcının saat
-  dilimi **kullanılmaz**; `new Date().getDate()` hiçbir yerde çağrılmaz.
-  Gerekçe: panel bir VPS'ten, seyahatteki telefondan ya da tz'i UTC'ye ayarlı
-  bir laptop'tan açılabilir. UTC ile hesaplanırsa 23:30'daki rezervasyon
-  "yarın" görünür ve kapıda bekleyen öğrenci listede olmaz.
-* Gün anahtarı tek yerde üretilir: `lib/operatorAgenda.ts::istanbulGunAnahtari`
+* **Saat dilimi: IANA `Europe/Istanbul`** (`Intl` üzerinden çözülür; ülke
+  2016'dan beri kalıcı UTC+3 olduğu için pratikte DST kayması yoktur — ama
+  değer koda sabit **yazılmaz**). Tarayıcının saat dilimi **kullanılmaz**;
+  **İP-14'ün gün hesabında** `new Date().getDate()` çağrılmaz. Gerekçe: panel
+  bir VPS'ten, seyahatteki telefondan ya da tz'i UTC'ye ayarlı bir laptop'tan
+  açılabilir. UTC ile hesaplanırsa 23:30'daki rezervasyon "yarın" görünür ve
+  kapıda bekleyen öğrenci listede olmaz.
+  **Sınır (denetim düzeltmesi):** "`new Date().getDate()` hiçbir yerde
+  çağrılmaz" cümlesi **repo geneli için yanlıştı** — ölçüm (13 Ağu 2026):
+  `frontend/src` içinde 17 dosyada 38 `getDate()` çağrısı var (`DateStrip`,
+  `TaskComposer`, `CapacityStrip`, takvim/teslimat yüzeyleri…). İddia yalnız
+  **bu paketin** dokunduğu operatör gün hesabı için geçerlidir; diğer
+  yüzeylerin tarayıcı saatine bağlı olup olmaması bu paketin kapsamı değildi.
+* Gün anahtarını üreten yer: `lib/operatorAgenda.ts::istanbulGunAnahtari`
   (`Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Istanbul" })` → `YYYY-MM-DD`).
+  **Denetim düzeltmesi:** "tek yerde üretilir" **frontend için yanlıştır** —
+  ikinci üretici `lib/datetime.ts::istanbulNow().dateStr`'dir (aynı bölge, aynı
+  `en-CA` biçimi, ayrı fonksiyon; `BookingModal.tsx:127` onu kullanır). İkisi
+  bugün aynı değeri döner, ama kaynak **iki tanedir** ve biri değişirse diğeri
+  sessizce ayrışır. Backend'in kendi gün sınırlarıyla birlikte toplam üç kavram
+  → [[TB-33]].
 * Randevu saati de tarayıcıdan bağımsız gösterilir: `lib/datetime.ts::formatIstanbulTime`.
 * Fonksiyonlar `simdi`yi **parametre alır**: aynı render içinde iki farklı
   "şimdi" oluşup liste bir saniyeyle iki güne bölünmesin.
@@ -159,7 +173,19 @@ onların üzerinde yapılır.
 
 ## 5. ErrorState bağlanan sorgular
 
-Önce **0/14**, sonra **10/14**.
+**Düzeltilmiş sayım (denetim, 13 Ağu 2026):** ErrorState bağlanan **8 sorgu**,
+kod tarafında **6 `ErrorState` render noktası** (`OperatorHome.tsx:246` ·
+`OperatorSessions.tsx:180` · `ExamSessionsManager.tsx:84, 256, 474` ·
+`Balance.tsx:301`). Sekiz sorgunun altıya inmesinin sebebi iki eşleşmenin tek
+blok paylaşmasıdır: Panel'in "Bugün" bloğu iki sorgunun hatasını **tek**
+ErrorState ile gösterir, `Balance` de kütüphane ve eğitmen kollarını **aynı**
+bileşenle basar.
+
+Önceki "**0/14 → 10/14**" oranı iki yerden yanlıştı: payda §1.1 tablosunun
+**satır sayısıydı** (satırların bir kısmı birden çok hook taşır, yani 14 ≠
+sorgu sayısı), pay ise 8 sorgunun üstüne sorgu **olmayan** iki maddeyi
+(aşağıdaki "9–10" satırı — boş≠hata metin ayrımı) ekliyordu. Kapsam
+değişmedi, yalnız sayım dürüstleşti; kapanmayanlar aşağıda.
 
 | # | Ekran · Sorgu | Durum | Not |
 |---|---|---|---|
@@ -171,7 +197,7 @@ onların üzerinde yapılır.
 | 6 | Oturumlar · `useRoster` (sonuç tablosu) | ✅ | `sonuc-roster-hata` |
 | 7 | Bakiyem · `useLibraryEarningsTransactions` | ✅ | `islem-hata` |
 | 8 | Bakiyem · `useEarningsTransactions` (eğitmen kolu) | ✅ | ortak görünüm |
-| 9–10 | Boş≠hata metin ayrımı (oturum listesi, işlem dökümü) | ✅ | node E-5 |
+| 9–10 | Boş≠hata metin ayrımı (oturum listesi, işlem dökümü) | ✅ | node E-5 — **sorgu değil**, yukarıdaki 8'e dahil edilmez |
 
 **Kapanmayanlar (bilinçli, P2):**
 
@@ -303,7 +329,15 @@ doğru** ölçüyor, zayıflatma yok:
 6. **Süre kırılganlığı.** Gerçek sayfa ağaçlarının jsdom transform'u paralel
    koşuda 5 sn'lik varsayılan bütçeyi aşıyordu. Dosya düzeyinde
    `vi.setConfig({ testTimeout: 20s })` + RTL `asyncUtilTimeout: 5s` verildi;
-   **`vitest.config.ts` global ayarına dokunulmadı** (İP-12'nin işi, TB-23).
+   **`vitest.config.ts` global ayarına dokunulmadı** — o sırada global bütçe
+   5000 ms'ti ve genişletmesi İP-12'nin açık borcuydu (TB-23).
+   **Güncelleme (13 Ağu 2026):** bu atıf artık sarkıyor — **TB-23 KAPANDI ve
+   defterden silindi** (İP-12 FAZ 0 bütçeyi ölçerek 9000 ms yaptı; kapanma
+   notu `docs/teknik-borc.md`'nin başında). Dolayısıyla buradaki dosya düzeyi
+   ezme bugün "açık bir borcu beklemek" değil, main'in **"dosya başına
+   `testTimeout` ezmesi YAPILMAZ"** kuralını delen iki yerden biridir
+   (`vitest.config.ts:40-42`). Ölçüldü: ezme aktif ama taşıyıcı değil
+   (kaldırılınca 885/885 geçiyor). Kayıt ve sonraki adım: [[TB-32]]/8.
 
 ---
 
