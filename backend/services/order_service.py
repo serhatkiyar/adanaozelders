@@ -635,6 +635,7 @@ async def _siparis_para_claimi(
     from_statuses: list[str],
     values: dict,
     yasam_dongusu: str = "canli",
+    extra_where: tuple = (),
 ) -> bool:
     """Sipariş para durumunu claim eden **TEK** yol (İP-18).
 
@@ -642,6 +643,9 @@ async def _siparis_para_claimi(
     iradesinden bağımsız olarak eklenir. `yasam_dongusu` varsayılanı `"canli"`,
     yani en dar koşuldur — yeni bir çağıran parametreyi hiç düşünmezse claim
     fazladan geçmez, eksik geçer (fail-closed).
+
+    ``extra_where`` yaşam döngüsü koşuluna **eklenir**, onun yerine geçmez —
+    çağıran kuralı gevşetemez.
     """
     kosul = canli_siparis_kosulu() if yasam_dongusu == "canli" else olu_siparis_kosulu()
     return await escrow.claim(
@@ -650,7 +654,7 @@ async def _siparis_para_claimi(
         order_id,
         from_statuses=from_statuses,
         values=values,
-        extra_where=kosul,
+        extra_where=kosul + tuple(extra_where),
         status_attr="payment_status",
     )
 
@@ -786,6 +790,20 @@ async def _olu_varlik_tahsilatini_iade_et(
     para hareketi YAPILMAZ — çift iade yasağı buradan gelir.
     ``refund_unexpected_charge`` satır durumu tutmaz; replay idempotency'si
     sağlayıcının aşırı-iade reddine yaslanır.
+
+    ## Para defteri — merkezî sözleşme (TB-15(b) kapanışı)
+
+    Bu dal eskiden ``refunded_amount``'a **mutlak atama** yapıyordu
+    (``refunded_amount = total``): artırımlı değildi, ``LEAST(..., total)``
+    tavanı yoktu ve ``refund_reserved``'a hiç dokunmuyordu. Satır
+    ``refunded_amount = total, refund_reserved = 0`` gibi kendi içinde tutarsız
+    kalıyordu — oysa ``escrow.order_inflight_refund`` bu ikiliyi BİRLİKTE okur.
+
+    Artık diğer iade yollarıyla aynı: rezervasyon **niyetle aynı atomik
+    UPDATE'e biner** (ayrı bir yazıma bırakılsaydı tavan penceresi kalırdı) ve
+    tutar tek yazıcıdan (``apply_refunded_amount``, M6) geçer. İkisi de
+    ``commit``'ten ÖNCE, yani aynı transaction'dadır: çökme semantiği
+    değişmez.
     """
     order_id = order.id
     order_total = Decimal(str(order.total))
@@ -796,8 +814,11 @@ async def _olu_varlik_tahsilatini_iade_et(
         values={
             "payment_status": OrderPaymentStatus.REFUNDED.value,
             "refunded_at": _now(),
-            "refunded_amount": order_total,
+            "refund_reserved": Order.refund_reserved + order_total,
         },
+        # Tavan (M1) claim'in kendi koşulunda: uçuşta başka bir iade varsa bu
+        # dal para hareketi yapmaz.
+        extra_where=(Order.refund_reserved + order_total <= Order.total,),
         yasam_dongusu="olu",
     )
     if not claimed:
@@ -806,6 +827,9 @@ async def _olu_varlik_tahsilatini_iade_et(
             "ikinci iade yapılmadı", order_id,
         )
         return False
+    # Tek yazıcı (M6): artırımlı + `LEAST(..., total)` tavanlı. Aynı
+    # transaction'da, claim ile birlikte commit edilir.
+    await apply_refunded_amount(db, order, order_total)
     await db.commit()
     await db.refresh(order)
     await escrow.refund_unexpected_charge(
