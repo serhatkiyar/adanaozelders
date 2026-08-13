@@ -410,7 +410,8 @@ ofsetini sil) testi de aynı yöne kaydırıp görünmez kılardı.
   yalnız tarih gösterilir; learning/relearning'de saat korunur (V-10). Vade
   DAMGASI gösteren başka yüzey yoktur: `SrsDecks`'teki `due` bir sayaç,
   `SrsStats`'ın `future_load`'u zaten gün kovalıdır, `SrsStudy`/`SrsDeckDetail`
-  `due_at`'i hiç render etmez.
+  `due_at`'i hiç render etmez. ⚠️ Bu etiketin **tarayıcı saat dilimine bağlı**
+  olduğu merge turunda ölçüldü — §11'deki açık kayda bakınız.
 
 #### İP-16 denetiminin kaçırdığı boşluk: Q-9 tie-breaker'ı nöbetsizdi
 
@@ -768,6 +769,37 @@ kendi ölçüm vakası `IP16-21` ile yapıldı: eskiden "YAKALANMADI", şimdi
   Q-9 boşluğu notu), learn-ahead penceresi (yalnız LEARNING/RELEARNING'e
   bakar, gün ölçekli vadeye dokunmaz) ve `future_load` (zaten
   `study_day(due_at)` ile kovalıyordu, yuvarlamayla tam tutarlı hâle geldi).
+- **Vade etiketi tarayıcı saat dilimine bağlı — yuvarlama bunu KÖTÜLEŞTİRDİ
+  (P2, İP-14 merge turunda ölçüldü).** `lib/srsDue.ts` `formatDate`/
+  `formatDateTime` kullanır; ikisi de `Intl` çağrısını `timeZone` VERMEDEN
+  yapar, yani tarayıcının yerel saat dilimine göre biçimlendirir. İP-17'den
+  sonra her REVIEW vadesi 04:00 TR = **01:00 UTC**'de, yani UTC gün sınırının
+  bir saat ötesinde duruyor. Ölçüm (aynı damga, `2026-08-11T01:00:00Z`):
+
+  | Tarayıcı saat dilimi | Gösterilen tarih |
+  |---|---|
+  | Europe/Istanbul · UTC · Europe/London | 11 Ağustos 2026 ✅ |
+  | America/Sao_Paulo · America/New_York · America/Los_Angeles · Pacific/Honolulu | **10 Ağustos 2026** ❌ |
+
+  Yuvarlamadan önce de biçimlendirici yerel saat dilimindeydi, ama vadeler gün
+  içine yayıldığı için hata **bazen** oluşuyordu; artık bütün review vadeleri
+  UTC gün sınırına yapıştığı için UTC−2'nin batısındaki her cihazda **her
+  zaman** bir gün geri gösteriliyor. Kart doğru çalışma gününde kuyruğa girer
+  (sunucu tarafı doğru), yalnız ETİKET yanlıştır.
+
+  **V-10 bunu yakalayamaz** ve bu bilinçliydi: düğüm literal "04:00" yerine
+  saat DESENİ arıyor, çünkü literal beklemek testi koşan makinenin saat
+  dilimine bağlar ve CI'da yalancı kırmızı üretir. Doğru düğüm, biçimlendirici
+  saat dilimini AÇIKÇA sabitleyip sonucu ölçen bir düğümdür.
+
+  Bugünkü ürün etkisi düşük (kullanıcılar Adana'da, tarayıcıları TR); lansman
+  engeli değildir. Düzeltmenin şekli belli: main aynı hata sınıfını İP-14'te
+  operatör yüzeyleri için `datetime.ts::formatIstanbulTime` ile kapattı
+  ("tz'i UTC olan bir cihazda 14:00'lık rezervasyon 11:00 görünürse operatör
+  kapıda yanlış saati söyler") — SRS etiketi de aynı desene geçmeli, yanına
+  saat dilimini sabitleyen bir V-10 düğümü eklenmelidir. Bu, [[TB-33]]'ün
+  ("üç ayrı gün sınırı kavramı, dört üreticide") öngördüğü riskin ölçülmüş
+  bir örneğidir; birleştirme turunda o kayıtla birlikte ele alınmalıdır.
 - Sibling bury (ters/cloze kardeş **gömme**) — §4.1. Denetim turunda kapsam
   daraldı: kardeşlerin aynı oturumda peş peşe gelmesi Q-10 ile çözüldü; kalan
   P2 yalnız "kardeşi ertesi güne ötele" davranışıdır.
@@ -822,20 +854,35 @@ vitest/tsc/lint (uyarı artmaz). S-1/S-2 5'er tur.
 | `ruff check backend/` | temiz |
 | frontend `tsc -b` + `vitest run` | temiz · **791 passed** (77 dosya) |
 
-**İP-17 vade granülerliği turunun kapıları** (13 Ağu 2026, dal
-`ip17-vade-granulerligi`):
+**İP-17 vade granülerliği turunun kapıları.** Aşağıdaki tablo **İP-14 merge'i
+sonrasına** aittir (merge `9374157`, main tabanı `e382d20`; çakışma çıkmadı —
+İP-14 operatör paneli ile İP-17 SRS ayrı dosya alanları, `docs/teknik-borc.md`
+metinsel olarak temiz birleşti). Tek kullanımlık DB: `adana_ip17_merge_test`.
 
-| Kapı | Sonuç |
-|---|---|
-| `pytest tests/integration` (tam) | **1302 passed · 0 failed · 16 skipped** (taban 1293/0/16 + 9 yeni V düğümü) |
-| `pytest tests/integration -k "ip16 or ip17"` | **76 passed** — 67 İP-16 düğümünün hiçbiri kırılmadı |
-| `pytest tests/unit` + `tests/acceptance` | **233 passed** |
-| `pytest tests/unit/test_fsrs_scheduler.py -k f15` | **15 passed** — F-15 referans tablosunda **sapma YOK** (14 senaryo, 70 adım). Beklenen sonuç: motor değişmedi, damga çağırandadır |
-| İP-17 mutasyon provası (`IP17-1..7`) | **7/7 yakalandı** (§10.2) |
-| `IP16-21` — TB-29 regresyon vakası | YAKALANDI (7), hepsi "KURULUM HATASI" etiketli |
-| `ruff check backend/` | temiz |
-| frontend `tsc -b` · `eslint src` · `vitest run` | temiz · 0 error / 34 warning (**taban değişmedi**, yeni dosyalarda 0) · **842 passed** (82 dosya) |
-| Test DB hijyeni | provalar ve suite sonrası `srs_*` tablolarında artık satır yok |
+| Kapı | Sonuç | main tabanı |
+|---|---|---|
+| `pytest tests/integration` (tam) | **1309 passed · 0 failed · 16 skipped** | 1300 / 16 → +9 V düğümü |
+| `pytest tests -q --ignore=integration --ignore=verify` (DB'siz) | **938 passed** | 938 (değişmedi — V matrisi tümüyle entegrasyonda) |
+| `pytest tests/verify` (CI deseni: taze DB + `alembic upgrade head`) | **132 passed** | 132 |
+| `pytest tests/acceptance` | **197 passed** | 197 |
+| `pytest tests/unit` | **36 passed** | 36 |
+| `pytest tests/integration -k "ip16 or ip17"` | **76 passed** — 67 İP-16 düğümünün hiçbiri kırılmadı | — |
+| `pytest tests/integration -k ip14` (komşu paket) | **7 passed** — merge komşuyu bozmadı | — |
+| `pytest tests/unit/test_fsrs_scheduler.py -k f15` | **15 passed** — F-15 referans tablosunda **sapma YOK** (14 senaryo, 70 adım). Beklenen: motor değişmedi, damga çağırandadır | — |
+| `alembic heads` | tek head: `ip16_srs_izin_kodu_hizalama` (İP-14 migration getirmedi) | — |
+| İP-17 mutasyon provası (`IP17-1..7`) | **7/7 yakalandı**, merge öncesiyle birebir aynı (§10.2) | — |
+| `IP16-21` — TB-29 regresyon vakası | YAKALANDI (7), hepsi "KURULUM HATASI" etiketli | — |
+| `ruff check backend/` | temiz | temiz |
+| frontend `tsc -b` · `eslint src` · `vitest run` | temiz · 0 error / 34 warning (**taban değişmedi**, yeni dosyalarda 0) · **890 passed / 85 dosya** | 885 / 84 → +5 düğüm, +1 dosya (V-10) |
+
+⚠️ **Ölçüm hijyeni uyarısı (bu turda yaşandı).** Entegrasyon suite'i bir kez
+yanlışlıkla **aynı veritabanına karşı iki kez birden** koşuldu (biri arka
+planda sürerken ikincisi başlatıldı). İki koşum da kırık verdi ama **farklı**
+testlerde — hepsi stok/kilit/eşzamanlılık düğümleri (`test_stock_writers_pg`,
+`test_inventory_lock_order_pg`, `test_ip2a_restock_pg`, `test_ip2b_cancel_*`).
+Tek başına koşulduğunda **1309/0** çıktı. Çarpışan koşumun çıktısı gerçek bir
+regresyon gibi okunabilirdi; `tests/integration` **tek seferde bir koşum**
+kuralı, tek kullanımlık DB kuralı kadar bağlayıcıdır.
 
 ⚠️ Frontend tam suite'i **yük altında** bir kez `PackageLabel` timeout'u verdi
 (arka planda 1266 testlik entegrasyon koşarken); izole ve boştaki makinede
@@ -920,10 +967,15 @@ npx vitest list src/lib/srsTypeAnswer.test.ts src/lib/srsCloze.test.ts src/compo
 python -m scripts.mutation_drill_ip16 --list | wc -l   # + katalog dışı elle provalar
 ```
 
-İP-17 turunda bu komutların verdiği sayılar (denetçi kendi sayısını üretmeli;
-buradakiler yalnız kuralın çalıştığını gösterir): (1) **95 fonksiyon / 8
-dosya**, (2) **84 kod**, (3) **112 pytest düğümü**, (4) **40 vitest düğümü**,
-(5) **42 mutasyon**.
+İP-17 turunda (İP-14 merge'i sonrası) bu komutların verdiği sayılar — denetçi
+kendi sayısını üretmeli, buradakiler yalnız kuralın çalıştığını gösterir:
+(1) **95 fonksiyon / 8 dosya**, (2) **84 kod**, (3) **112 pytest düğümü**,
+(4) **40 vitest düğümü**, (5) **42 mutasyon**.
+
+Kuralın işe yaradığı merge'de ölçüldü: İP-14 `tests/` altına bir test dosyası
+daha ekledi (taranan dosya sayısı 216 → **217**), o dosya SRS'e dokunmadığı
+için seçim **8'de kaldı** ve yukarıdaki beş sayının hiçbiri değişmedi. Dosya
+adı glob'u olsaydı bu kontrol hiç yapılamazdı.
 
 Sınıflandırma (kök CLAUDE.md §H) — hangi dosyanın hangi sınıfa girdiği:
 
