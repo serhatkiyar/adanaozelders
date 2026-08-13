@@ -46,7 +46,39 @@ bağlamaktır.
 | (f) `window.confirm` | Operatör tarafında 2 yer: `ExamSessionsManager.tsx:127` (oturum iptali), `:299` (karne yayınlama). |
 | (g) Para etkili aksiyonlar | `_attend_exam`, `_attend_study` (escrow RELEASED), `cancel_session` (toplu iade), `publish_results` (geri alınamaz). |
 | (h) İP-3 audit deseni | `delivery_service.py:2261` + `_ZimmetAktoru(id, role_id)`; `audit_service.record` yalnız `flush()` eder → çağıranın transaction'ında. `ip3_factory.cleanup` zaten `audit_logs WHERE actor_role=4` siliyor. |
-| (i) Ortak sayfa nav'ı | Aynı koşul **7 yerde kopyalanmış** (Notifications, Leaderboard, Settings, Profile, Tasks, Learn, Calendar); hiçbiri role 4'ü tanımıyor. Yalnız `Messages.tsx` doğru. |
+| (i) Ortak sayfa nav'ı | `role_id === TUTOR ? TUTOR_NAV : STUDENT_NAV` koşulu sayfalara tek tek kopyalanmış; hiçbir kopya role 4'ü tanımıyor. Yalnız `Messages.tsx` doğru. **Kaç yerde olduğu için aşağıdaki düzeltmeye bakın.** |
+
+**DÜZELTME — (i) satırının "7 yerde kopyalanmış, hepsi düzeltildi" iddiası
+YANLIŞTI** (bağımsız denetim, 13 Ağu 2026). Düzeltilen 7 sayfa gerçekten
+düzeltildi, ama **kopyanın tamamı 7 değildi**: aynı desen role-agnostik on
+sayfada daha duruyor ve hiçbirine dokunulmadı. Ölçüm (`grep -rn "TUTOR_NAV :"
+frontend/src`, 13 Ağu 2026):
+
+| | Sayfalar |
+|---|---|
+| **Düzeltildi** (7) — artık `navForRole(user?.role_id)` | `Notifications.tsx:46` · `Leaderboard.tsx:52` · `Settings.tsx:95` · `Profile.tsx:49` · `Tasks.tsx:1146` · `Learn.tsx:9` · `Calendar.tsx:73` |
+| **KALDI** (10) — hâlâ `role_id === TUTOR ? TUTOR_NAV : STUDENT_NAV` | `DeepWork.tsx:34` · `Flashcards.tsx:159` · `FlashcardDeck.tsx:289` · `Grapher.tsx:63` · `Habits.tsx:376` · `srs/SrsDecks.tsx:244` · `srs/SrsDeckDetail.tsx:433` · `srs/SrsStudy.tsx:190` · `srs/SrsBrowser.tsx:56` · `srs/SrsStats.tsx:19` |
+
+Kalan onunun hepsi **Öğren hub'ının altındaki araçlardır** ve rol kısıtları
+yoktur (`ProtectedRoute`); operatör bu sayfalardan birine girdiğinde **öğrenci
+menüsünü** görür — düzeltilen yedideki kusurun aynısı, yalnız başka bir
+yüzeyde. İP-14 hub'a **girişi** düzeltti (`Learn.tsx` doğru nav basıyor), hub'ın
+**içini** düzeltmedi; yani operatör panelden hub'a doğru nav'la gider, hub'ın
+içinde bir araca tıklayınca nav öğrenciye döner.
+
+Aynı deseni kullanan iki sayfa daha var ama **role-agnostik değiller**, bu
+yüzden yukarıdaki listede yoklar: `LessonDetail.tsx:58` (rezervasyonun iki
+tarafına ait) ve `LibraryDetail.tsx:100` (public sayfa; operatöre `undefined`
+nav verir, yani öğrenci menüsü basmaz).
+
+**N grubu bu boşluğu göremezdi:** `operatorPanel.acceptance.test.tsx:725`'teki
+`SAYFALAR` **elle yazılmış beş girdilik bir listedir** (`Notifications`,
+`Leaderboard`, `Settings`, `Calendar`, `Learn`). Düzeltilen yedinin ikisi
+(`Profile`, `Tasks`) bile listede yok. Liste bayatladığında test **sessizce
+eksik tarar**: yeni bir role-agnostik sayfa eklendiğinde ya da mevcut biri
+gözden kaçtığında N grubu yeşil kalır, sayfa hiç sınanmamıştır. Bu, İP-16'nın
+`D-6c` nöbetçisiyle kapattığı sınıfın birebir aynısıdır → yeni P2 kaydı
+[[TB-32]]/9.
 
 **Ölçüm sırasında bulunan, raporda olmayan kusur:** `DashboardHeader`'ın **mobil**
 üst barında role bakılmayan sabit bir "Favorilerim" kısayolu vardı. Favoriler
