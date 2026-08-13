@@ -1,8 +1,8 @@
 import { DashboardShell } from "@/components/DashboardShell";
-import { STUDENT_NAV, TUTOR_NAV } from "@/lib/nav";
+import { navForRole } from "@/lib/nav";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useLeaderboard } from "@/hooks/useLeaderboard";
-import { ROLE_IDS, type LeaderboardEntry } from "@/types";
+import { type LeaderboardEntry } from "@/types";
 
 const MEDALS = ["🥇", "🥈", "🥉"];
 
@@ -49,12 +49,7 @@ function Board({
 
 export default function Leaderboard() {
   const { data: user } = useCurrentUser();
-  const navItems =
-    user?.role_id === ROLE_IDS.TUTOR
-      ? TUTOR_NAV
-      : user?.role_id === ROLE_IDS.CLIENT
-        ? STUDENT_NAV
-        : undefined;
+  const navItems = navForRole(user?.role_id);
   const { data, isLoading } = useLeaderboard();
 
   return (

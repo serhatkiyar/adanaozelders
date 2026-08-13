@@ -6,7 +6,7 @@ import { AddressSection } from "@/components/AddressSection";
 import { PayoutSection } from "@/components/PayoutSection";
 import { LibraryPayoutForm } from "@/components/LibraryPayoutForm";
 import { PersonalizePanel } from "@/components/PersonalizeModal";
-import { STUDENT_NAV, TUTOR_NAV } from "@/lib/nav";
+import { navForRole } from "@/lib/nav";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import {
   useChangePassword,
@@ -92,12 +92,7 @@ export default function Settings() {
   const { data: user, isLoading } = useCurrentUser();
   const [active, setActive] = useState<CategoryKey>("personal");
 
-  const roleNav =
-    user?.role_id === ROLE_IDS.CLIENT
-      ? STUDENT_NAV
-      : user?.role_id === ROLE_IDS.TUTOR
-        ? TUTOR_NAV
-        : undefined;
+  const roleNav = navForRole(user?.role_id);
 
   const showPayments =
     user?.role_id === ROLE_IDS.TUTOR ||

@@ -31,8 +31,10 @@ from services import (
     escrow,
     library_capacity,
     notification_service,
+    operator_audit,
     payment_gates,
 )
+from services.operator_audit import AuditAktoru
 
 logger = logging.getLogger("adana.escrow")
 
@@ -692,6 +694,7 @@ async def verify_attendance(
     operator_id: int,
     token: str,
     code: str | None = None,
+    actor: AuditAktoru | None = None,
 ) -> AttendanceResult | None:
     """QR token'ı (veya elle girilen kısa kodu) çalışma rezervasyonlarında arar. Bulup
     doğrularsa AttendanceResult döner; eşleşme YOKSA None (çağıran deneme oturumlarına
@@ -710,12 +713,21 @@ async def verify_attendance(
     if res is None:
         return None
     return await _attend_study(
-        db, res, operator_library_id=operator_library_id, operator_id=operator_id
+        db,
+        res,
+        operator_library_id=operator_library_id,
+        operator_id=operator_id,
+        actor=actor,
     )
 
 
 async def verify_by_reservation(
-    db: AsyncSession, *, operator_library_id: int, operator_id: int, reservation_id: int
+    db: AsyncSession,
+    *,
+    operator_library_id: int,
+    operator_id: int,
+    reservation_id: int,
+    actor: AuditAktoru | None = None,
 ) -> AttendanceResult:
     """Operatör rezervasyon listesinden seçip girişi doğrular (QR/kod olmadan)."""
     res = await db.get(StudyReservation, reservation_id)
@@ -725,7 +737,11 @@ async def verify_by_reservation(
     if res is None or res.deleted_at is not None or res.library_id != operator_library_id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Rezervasyon bulunamadı")
     return await _attend_study(
-        db, res, operator_library_id=operator_library_id, operator_id=operator_id
+        db,
+        res,
+        operator_library_id=operator_library_id,
+        operator_id=operator_id,
+        actor=actor,
     )
 
 
@@ -735,6 +751,7 @@ async def _attend_study(
     *,
     operator_library_id: int,
     operator_id: int,
+    actor: AuditAktoru | None = None,
 ) -> AttendanceResult:
     """Yüklenmiş bir rezervasyon için girişi işaretler + emaneti serbest bırakır.
     QR/kod ve listeden-seç yollarının paylaştığı çekirdek."""
@@ -784,6 +801,18 @@ async def _attend_study(
             "Bu rezervasyon doğrulanabilir durumda değil (ödenmemiş ya da iade sürecinde)",
         )
     await db.refresh(res)
+    # Giriş doğrulama emaneti kütüphaneye serbest bırakır → denetim izi
+    # aksiyonla AYNI transaction'da (İP-14 §7; `services/operator_audit.py`).
+    await operator_audit.kaydet(
+        db,
+        actor=actor,
+        action="study_attendance.verify",
+        target_type="study_reservation",
+        target_id=res.id,
+        details=_window_label(res),
+        after={"status": res.status, "released_at": res.released_at},
+        meta={"library_id": res.library_id, "client_id": res.client_id},
+    )
     await notification_service.notify(
         db,
         user_id=res.client_id,

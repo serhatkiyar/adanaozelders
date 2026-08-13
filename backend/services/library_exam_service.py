@@ -13,7 +13,7 @@ import datetime
 from decimal import Decimal
 
 from fastapi import HTTPException, status
-from sqlalchemy import func, or_, select
+from sqlalchemy import case, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -52,8 +52,10 @@ from services import (
     escrow,
     library_capacity,
     notification_service,
+    operator_audit,
     payment_gates,
 )
+from services.operator_audit import AuditAktoru
 
 logger = logging.getLogger("adana.escrow")
 
@@ -290,7 +292,11 @@ async def update_session(
 
 
 async def cancel_session(
-    db: AsyncSession, session_id: int, *, include_answer_key: bool = False
+    db: AsyncSession,
+    session_id: int,
+    *,
+    include_answer_key: bool = False,
+    actor: AuditAktoru | None = None,
 ) -> ExamSessionOut:
     """Oturumu iptal eder ve ödenmiş (PAID) kayıtları iade eder (iki fazlı escrow).
 
@@ -308,6 +314,18 @@ async def cancel_session(
         )
 
     s.status = ExamSessionStatus.CANCELLED.value
+    # Denetim izi durum damgasıyla AYNI transaction'da: iptal geri alınırsa iz
+    # de geri alınır. (İadeler bilinçli olarak ayrı commit'lerde yürür.)
+    await operator_audit.kaydet(
+        db,
+        actor=actor,
+        action="exam_session.cancel",
+        target_type="exam_session",
+        target_id=s.id,
+        details=s.title,
+        after={"status": ExamSessionStatus.CANCELLED.value},
+        meta={"library_id": s.library_id},
+    )
     await db.commit()  # oturum kapandı; iadeler tek tek intent'lenecek
 
     regs = (
@@ -369,14 +387,36 @@ async def list_public_sessions(
 async def list_library_sessions_admin(
     db: AsyncSession, library_id: int, *, include_answer_key: bool = False
 ) -> list[ExamSessionOut]:
-    """Bir kütüphanenin tüm oturumları (geçmiş/iptal dahil) — admin/operatör için."""
+    """Bir kütüphanenin tüm oturumları (geçmiş/iptal dahil) — admin/operatör için.
+
+    Sıra **operasyonel**: önce yaklaşanlar (erken→geç), sonra geçmişler
+    (yeni→eski). Eskiden düz ``starts_at DESC`` idi; bu, en uzak gelecekteki
+    oturumu listenin başına, **bugünkü sınavı** en dibe koyuyordu — operatör
+    sınav günü yöneteceği satırı aşağı kaydırarak arıyordu (ölçüm §3.1).
+
+    Geçmişler listeden ÇIKARILMAZ: karne yükleme ve sonuç yayınlama geçmiş
+    oturumlar üzerinde yapılır. Yalnız aşağı inerler ve kendi içlerinde en
+    yeni önce gelir (dün yapılan sınav, geçen yılkinden önce lazım olur).
+    """
+    now = _now()
+    gecmis = LibraryExamSession.starts_at < now
     stmt = (
         select(LibraryExamSession)
         .where(
             LibraryExamSession.library_id == library_id,
             LibraryExamSession.deleted_at.is_(None),
         )
-        .order_by(LibraryExamSession.starts_at.desc())
+        .order_by(
+            # 1) Gelecek (False=0) önce, geçmiş (True=1) sonra.
+            gecmis.asc(),
+            # 2) Gelecek grubunda erken→geç. Geçmişlerde bu ifade NULL'dur ve
+            #    hepsi eşit kalır; sırayı bir sonraki anahtar belirler.
+            case((gecmis, None), else_=LibraryExamSession.starts_at).asc(),
+            # 3) Geçmiş grubunda yeni→eski.
+            LibraryExamSession.starts_at.desc(),
+            # 4) Aynı ana denk gelen oturumlarda sayfalar arası kayma olmasın.
+            LibraryExamSession.id.desc(),
+        )
     )
     sessions = (await db.execute(stmt)).scalars().all()
     return await _attach_counts_and_mine(
@@ -1159,7 +1199,9 @@ async def bulk_upload_documents(
     return BulkDocumentOut(matched=matched, skipped=skipped, errors=errors)
 
 
-async def publish_results(db: AsyncSession, session_id: int) -> PublishResultsOut:
+async def publish_results(
+    db: AsyncSession, session_id: int, *, actor: AuditAktoru | None = None
+) -> PublishResultsOut:
     """Oturum sonuçlarını öğrencilere açar: ``results_published_at`` damgalanır ve
     karnesi olan her öğrenciye bildirim gider. İlk yayında bildirim atılır; tekrar
     çağrılırsa sessizdir (spam yok). (Konu-bazında in-app analiz Faz B.)"""
@@ -1178,6 +1220,19 @@ async def publish_results(db: AsyncSession, session_id: int) -> PublishResultsOu
         )
     ).scalars().all()
     count = 0
+    if first_publish:
+        # Tekrar çağrı sessizdir (bildirim atılmaz) → iz de yazılmaz: olmamış
+        # bir yayının kaydı denetimi kirletir.
+        await operator_audit.kaydet(
+            db,
+            actor=actor,
+            action="exam_results.publish",
+            target_type="exam_session",
+            target_id=s.id,
+            details=s.title,
+            after={"results_published_at": s.results_published_at},
+            meta={"library_id": s.library_id},
+        )
     for reg in regs:
         if first_publish:
             await notification_service.notify(
@@ -1245,7 +1300,12 @@ def results_reference_csv(roster_rows: list[RosterRow]) -> str:
 
 
 async def verify_attendance(
-    db: AsyncSession, *, operator_library_id: int, operator_id: int, payload: str
+    db: AsyncSession,
+    *,
+    operator_library_id: int,
+    operator_id: int,
+    payload: str,
+    actor: AuditAktoru | None = None,
 ) -> AttendanceResult:
     """Operatör QR okutur → katılımı doğrula, escrow'u kütüphaneye serbest bırak.
 
@@ -1278,18 +1338,28 @@ async def verify_attendance(
             operator_id=operator_id,
             token=token,
             code=code,
+            actor=actor,
         )
         if study_result is not None:
             return study_result
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Geçersiz QR / bilet bulunamadı")
 
     return await _attend_exam(
-        db, reg, operator_library_id=operator_library_id, operator_id=operator_id
+        db,
+        reg,
+        operator_library_id=operator_library_id,
+        operator_id=operator_id,
+        actor=actor,
     )
 
 
 async def verify_by_registration(
-    db: AsyncSession, *, operator_library_id: int, operator_id: int, registration_id: int
+    db: AsyncSession,
+    *,
+    operator_library_id: int,
+    operator_id: int,
+    registration_id: int,
+    actor: AuditAktoru | None = None,
 ) -> AttendanceResult:
     """Operatör katılımcı listesinden seçip doğrular (QR/kod olmadan). Aynı scope +
     escrow-release mantığını QR yolu ile paylaşır."""
@@ -1309,7 +1379,11 @@ async def verify_by_registration(
     if reg is None or reg.session is None or reg.session.library_id != operator_library_id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Kayıt bulunamadı")
     return await _attend_exam(
-        db, reg, operator_library_id=operator_library_id, operator_id=operator_id
+        db,
+        reg,
+        operator_library_id=operator_library_id,
+        operator_id=operator_id,
+        actor=actor,
     )
 
 
@@ -1319,6 +1393,7 @@ async def _attend_exam(
     *,
     operator_library_id: int,
     operator_id: int,
+    actor: AuditAktoru | None = None,
 ) -> AttendanceResult:
     """Yüklenmiş bir kayıt için katılımı işaretler + emaneti serbest bırakır (RELEASED).
     QR/kod ve listeden-seç yollarının paylaştığı çekirdek."""
@@ -1370,6 +1445,22 @@ async def _attend_exam(
             "Bu kayıt doğrulanabilir durumda değil (ödenmemiş ya da iade sürecinde)",
         )
     await db.refresh(reg)
+    # İz YALNIZ claim kazanıldıktan sonra yazılır: "already" ve 409 dallarında
+    # durum değişmediği için denetim satırı da doğmaz (aynı transaction).
+    await operator_audit.kaydet(
+        db,
+        actor=actor,
+        action="exam_attendance.verify",
+        target_type="exam_registration",
+        target_id=reg.id,
+        details=reg.session.title,
+        after={"status": reg.status, "released_at": reg.released_at},
+        meta={
+            "session_id": reg.session_id,
+            "library_id": reg.session.library_id,
+            "client_id": reg.client_id,
+        },
+    )
     await notification_service.notify(
         db,
         user_id=reg.client_id,
