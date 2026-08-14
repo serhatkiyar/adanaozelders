@@ -1,5 +1,5 @@
 // İP-16 T-5/T-6/T-7 — yazarak cevaplama karşılaştırma kuralları.
-// Sözleşme (docs/ip16-flashcard-sozlesme.md §6 T-6): trim + ardışık boşluk
+// Sözleşme (docs/ip16-aralikli-tekrar-sozlesme.md §6 T-6): trim + ardışık boşluk
 // teke iner + Unicode NFC + TÜRKÇE locale-aware küçük harf (İ→i, I→ı);
 // noktalama korunur. Anki'nin case-duyarlı varsayılanından bilinçli sapma.
 import { describe, expect, it } from "vitest";

@@ -199,41 +199,6 @@ export interface AdminEducation extends Education {
   tutor_name?: string | null;
 }
 
-/* ============================ FLASHCARDS (Öğren) ============================ */
-
-export interface FlashcardDeck {
-  id: number;
-  name: string;
-  description?: string | null;
-  card_count: number;
-  due_count: number;
-  created_at: string;
-}
-
-export interface Flashcard {
-  id: number;
-  deck_id: number;
-  front: string;
-  back: string;
-  interval_minutes: number;
-  repetitions: number;
-  ease_factor: number;
-  due_at: string;
-  last_reviewed_at?: string | null;
-}
-
-export type ReviewRating = "again" | "hard" | "good" | "easy";
-
-export interface DeckCreate {
-  name: string;
-  description?: string | null;
-}
-
-export interface CardCreate {
-  front: string;
-  back: string;
-}
-
 /* ============================ HABITS (Alışkanlıklar) ============================ */
 
 export type HabitPeriod = "daily" | "weekly";

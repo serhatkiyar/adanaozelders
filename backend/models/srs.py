@@ -1,7 +1,9 @@
 """İP-16 — Aralıklı tekrar (FSRS-5) şeması.
 
-Mevcut SM-2 tabanlı `flashcards` paketi KAPSAM DIŞIDIR (sözleşme §0); bu
-modeller tamamen bağımsız `srs_` önekli tablolardır.
+Bu modeller `srs_` önekli tablolardır. Paket geliştirilirken yanında duran
+SM-2 tabanlı eski kelime kartı sistemi (sözleşme §0'ın "kapsam dışı" dediği
+`flashcard_*` tabloları) sonradan tamamen KALDIRILDI — bugün tek aralıklı
+tekrar sistemi budur (bkz. `migrations/versions/sm2_flashcard_kaldirma.py`).
 
 Tasarım notları (sözleşme §3):
 

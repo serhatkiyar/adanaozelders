@@ -1,6 +1,6 @@
 """İP-16 D matrisi — sahiplik, atama, kopya bağımsızlığı ve K-6 GİZLİLİK SINIRI.
 
-K-6 sözleşmesi (docs/ip16-flashcard-sozlesme.md §7.2): ilerleme verisi
+K-6 sözleşmesi (docs/ip16-aralikli-tekrar-sozlesme.md §7.2): ilerleme verisi
 (`srs_progress`, `srs_review_logs` ve türetilen her istatistik) YALNIZ
 sahibinindir. Eğitmen atadığı destenin öğrenci ilerlemesini HİÇBİR uçtan
 göremez. Mutasyon #16 bu duvarı bilerek deler ve D-5/D-6'nın kırıldığı

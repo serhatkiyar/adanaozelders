@@ -85,14 +85,14 @@ export const PATHS = {
   /** Kazanç & ödeme bakiyesi (TUTOR + LIBRARY_OPERATOR). */
   balance: "/bakiyem",
   leaderboard: "/liderlik",
-  // Öğren bölümü (kelime kartları / SRS / odak / grafik / alışkanlıklar)
+  // Öğren bölümü (aralıklı tekrar / odak / grafik / alışkanlıklar)
   learn: "/ogren",
-  flashcards: "/ogren/kelime-kartlari",
-  flashcardDeck: "/ogren/kelime-kartlari/:id",
   deepwork: "/ogren/zamanlayici",
   grapher: "/ogren/grafik",
   habits: "/ogren/aliskanliklar",
-  // Aralıklı tekrar (FSRS, İP-16) — eski SM-2 /ogren/kelime-kartlari'ndan ayrı.
+  // Aralıklı tekrar (FSRS, İP-16). Eski SM-2 yüzeyi `/ogren/kelime-kartlari`
+  // KALDIRILDI (yönlendirme bilinçli olarak yazılmadı — 404). Nöbetçi:
+  // `src/flashcardsKaldirildi.test.tsx`.
   srs: "/ogren/tekrar",
   srsDeck: "/ogren/tekrar/deste/:id",
   srsStudy: "/ogren/tekrar/calis/:deckId",
@@ -227,8 +227,6 @@ export const ROUTES = {
   balance: PATHS.balance,
   leaderboard: PATHS.leaderboard,
   learn: PATHS.learn,
-  flashcards: PATHS.flashcards,
-  flashcardDeck: (id: string | number) => `/ogren/kelime-kartlari/${id}`,
   deepwork: PATHS.deepwork,
   grapher: PATHS.grapher,
   habits: PATHS.habits,

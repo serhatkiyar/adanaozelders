@@ -1,6 +1,6 @@
 """İP-16 — Aralıklı tekrar (FSRS-5) HTTP şemaları.
 
-Sözleşme: `docs/ip16-flashcard-sozlesme.md` §8 (uç sözleşmesi) ve §7.2 (K-6).
+Sözleşme: `docs/ip16-aralikli-tekrar-sozlesme.md` §8 (uç sözleşmesi) ve §7.2 (K-6).
 
 İki tasarım kararı burada yaşar:
 

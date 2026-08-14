@@ -17,33 +17,7 @@ export default function Learn() {
         </p>
 
         <div className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {/* Kelime Kartları */}
-          <Link
-            to={ROUTES.flashcards}
-            className="group relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-600 to-violet-600 p-6 text-white shadow-lg shadow-indigo-500/20 transition hover:-translate-y-0.5 hover:shadow-xl"
-          >
-            <div className="absolute -right-6 -top-6 h-28 w-28 rounded-full bg-white/10" />
-            <div className="relative">
-              <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/15">
-                <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25" />
-                </svg>
-              </span>
-              <h2 className="mt-4 text-lg font-bold">Kelime Kartları</h2>
-              <p className="mt-1 text-sm text-indigo-100">
-                Aralıklı tekrar (SRS) ile kalıcı öğrenme. Kendi destelerini oluştur,
-                her gün tekrarla.
-              </p>
-              <span className="mt-4 inline-flex items-center gap-1 text-sm font-semibold">
-                Başla
-                <svg className="h-4 w-4 transition group-hover:translate-x-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                </svg>
-              </span>
-            </div>
-          </Link>
-
-          {/* Aralıklı Tekrar (FSRS) */}
+          {/* Aralıklı Tekrar (FSRS) — eski SM-2 "Kelime Kartları" kartının yerini aldı */}
           <Link
             to={ROUTES.srs}
             className="group relative overflow-hidden rounded-3xl bg-gradient-to-br from-teal-600 to-cyan-700 p-6 text-white shadow-lg shadow-teal-500/20 transition hover:-translate-y-0.5 hover:shadow-xl"

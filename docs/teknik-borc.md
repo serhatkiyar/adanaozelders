@@ -37,12 +37,72 @@ dalındaydı ve yeni kayıtlar 29'dan başlamalıydı. Bu yüzden komut artık *
 başına döküm** verir: çıktıda kendi dalınızı görürsünüz, en yüksek numaranın
 kime ait olduğu belirsiz kalmaz.
 
-Üç kural: (1) numara **hiçbir dalda** kullanılmamış olmalı; (2) numara
-alındıktan sonra kaydı yazan commit'te ölçüm çıktısı commit mesajına yazılır
-(sonraki tur "gerçekten ölçüldü mü" diye sormak zorunda kalmasın); (3) bir dal
-merge edilirken çakışma çıkarsa **main kanoniktir**, gelen dalın kaydı yeniden
-numaralanır ve eski→yeni eşlemesi buraya yorum olarak yazılır (hiçbir kayıt
-silinmez).
+**DÖRT KURAL (14 Ağu 2026'dan itibaren yürürlükte).** Numara artık dal içinde
+kesinleşmez; merge turunda tahsis edilir.
+
+**(1) Ölçümden önce `git fetch --all` koşulur.** Yukarıdaki komut yerel
+`refs/remotes` kopyasını okur; fetch edilmemişse uzak dallarda çoktan alınmış
+numaralar görünmez ve ölçüm bayat veriyle yapılır. ⚠️ **Bu tek başına
+YETMEZ** — fetch yalnız bayat veri kaynaklı yanlış ölçümü kapatır, eşzamanlı
+iki dalın aynı numarayı almasını ENGELLEMEZ. Kuralın yarışı çözen ayağı (3)'tür.
+
+**(2) Dal içinde geçici etiket kullanılır: `TB-?A`, `TB-?B`, `TB-?C`…** Kayıt
+normal biçimde ve tam olarak yazılır; yalnız kimliği geçicidir. Sözleşme
+metinleri, kod yorumları ve test docstring'leri **bu etiketi taşır**
+(`[[TB-?A]]`). Harf dal içinde benzersizdir, dallar arasında değil — iki dal
+aynı anda `TB-?A` kullanabilir, çakışmazlar çünkü hiçbiri gerçek numara
+değildir.
+
+**(3) Numara merge turunda tahsis edilir**, main'in **o anki** durumuna
+bakılarak. Merge commit'i iki şeyi taşır: **etiket→numara eşlemesi** ve
+**ölçüm çıktısı**. Tahsis anı ile main'e yazma anı aynı turda olduğu için
+araya başka bir dal giremez.
+
+Gerekçe: numara **paylaşılan bir kaynaktır** ve paylaşılan kaynak ancak
+paylaşılan noktada (main) çakışmasız dağıtılabilir. Bu, "ödeme kolu bayrağını
+üretimde fail-closed oku" kararıyla aynı mantıktır: kararı, veriye en yakın ve
+**tek** olan yerde ver.
+
+**(4) Dal içi atıflar merge turunda güncellenir.** Bu bir maliyettir ve
+saklanmaz — ama **bugünkü maliyetin aynısıdır**. Fark şu: iş artık çakışma
+çıktıktan *sonra* değil, *önce* yapılır. Dört çakışmanın dördünde de aynı
+yeniden numaralama işi yapıldı; tek değişen, ne zaman yapıldığı.
+
+Merge sırasında çakışma yine de çıkarsa (ör. iki dal aynı turda merge
+edilirse) **main kanoniktir**: gelen dalın kaydı yeniden numaralanır ve
+eski→yeni eşlemesi buraya yorum olarak yazılır. **Hiçbir kayıt silinmez.**
+
+### Kural neden değişti: dördüncü çakışma yapısaldı
+
+Dört çakışma yaşandı ve **üçü okuma hatasıydı, dördüncüsü değildi**:
+
+| # | Çakışma | Sınıf |
+|---|---|---|
+| 1 | main ↔ İP-3 (TB-7…TB-10) | Okuma hatası — ölçüm yapılmadı |
+| 2 | main ↔ `ip16-flashcard` ↔ `ip16-audit-kapanis` (TB-24) | Okuma hatası — üç dal bağımsız tahsis etti |
+| 3 | `magaza-tasarim` ↔ `ip16-flashcard` (TB-27/28) | Okuma hatası — komut koşuldu ama çıktı `tail -1` ile yanlış okundu |
+| 4 | `sm2-kaldirma` ↔ eşzamanlı dal (TB-36) | **YAPISAL** |
+
+İlk üçü, kurala daha sıkı uyularak önlenebilirdi — ve önlem olarak komut
+"dal başına döküm" verecek şekilde değiştirildi. Dördüncüsü öyle değildir:
+SM-2 kaldırma paketi kuralı **harfiyen** uyguladı (komutu koştu, çıktıyı dal
+başına okudu, en yüksek numarayı — 35 — doğru tespit etti, TB-36'yı aldı,
+ölçüm çıktısını commit mesajına yazdı) ve **yine çakıştı**, çünkü eşzamanlı
+bir dal aynı pencerede aynı ölçümü yapıp aynı numarayı aldı ve main'e önce
+girdi.
+
+Kusur ölçümde değil kuralın yapısındaydı: "ölçüm anında en yüksek + 1", iki
+dal aynı anda ölçtüğünde ikisine de aynı sonucu verir. Klasik bir yarış
+durumudur (TOCTOU): ölçüm ile tahsis arasında hiçbir kilit yoktur ve dallar
+birbirini göremez. **Kural değişikliğinin gerekçesi budur** — ilk üç çakışma
+değil, dördüncüsü.
+
+Değerlendirilip SEÇİLMEYEN alternatif: dallara peşin numara bloğu (her yeni dal
+10'luk aralık alır). Çakışmayı kaldırır ama defterde kalıcı boşluklar bırakır
+ve blok tükendiğinde aynı yarışa döner.
+
+Karar verilene kadar yürürlükteki kural yukarıdaki **üç maddedir**; bu bölüm
+yalnız ölçümü ve öneriyi kaydeder.
 
 ---
 
@@ -99,7 +159,7 @@ silinmez).
      Uçtan uca doğrulama: kaydın kendi ölçüm vakası `IP16-21` yeniden koşuldu →
      "YAKALANDI (7 test kırıldı)", yedisi de KURULUM HATASI etiketli.
      Kaydın 2. adımı (geçmiş "YAKALANMADI" kayıtlarını tara) da yapıldı:
-     `docs/` altında üç kayıt var; `ip16-flashcard-sozlesme.md`'deki IP16-21
+     `docs/` altında üç kayıt var; `ip16-aralikli-tekrar-sozlesme.md`'deki IP16-21
      zaten bu kusurun kurbanı olarak işaretlenmişti, `IP16-27` ve
      `ip1a-…::A2` gerçekten zayıf testti ve ikisi de o turda düzeltildi.
      Geriye düzeltilmesi gereken yanlış kayıt KALMADI.
@@ -161,6 +221,64 @@ silinmez).
      (`TB-36 → TB-44 → TB-?A`). O TB-44 hiçbir zaman başlık olarak
      tahsis edilmemişti; buradaki TB-44 ile ilgisi yoktur. -->
 
+<!-- Numaralandırma notu (SM-2 kaldırma paketi, merge turu — 14 Ağu 2026):
+
+     Bu iki kayıt dal içinde geçici etiketle (TB-?A / TB-?B) durdu; numara
+     kuralın dördüncü maddesi gereği MERGE TURUNDA ölçülerek verildi.
+
+     Ölçüm (`git fetch --all` sonrası, tüm yerel + uzak dallar): en yüksek
+     `^## TB-<n>` başlığı **45** (`main=45 origin/main=45`; sonraki
+     `research/focus-study-rooms=36`, `sm2-kaldirma=31` — kendi kayıtları
+     etiket olduğu için numaraya girmiyor, kuralın beklenen davranışı).
+
+       TB-?A  (`ip16_srs_izin_kodu_hizalama` rol bağı taşıması) → **TB-47**
+       TB-?B  (`app.routes` yol araması sessizce boş döner)      → **TB-46**
+
+     Numaraların etiket sırasına ters düşmesi bilinçlidir ve İP-17 merge
+     turundaki gerekçenin aynısıdır: bu dosya AZALAN numara sırasında tutulur,
+     iki kayıt da aynı turda açıldı, blokları yerinden oynatmamak için üstteki
+     daha yüksek numarayı aldı.
+
+     ⚠️ TB-44 KARIŞIKLIĞI (İP-17 merge notunun uyardığı nokta — teyit edildi):
+     bu dalın önceki notu TB-44'ü bir kimlik geçmişi olarak anıyordu
+     (`TB-36 → TB-44 → TB-?A`). O TB-44 hiçbir zaman başlık olarak tahsis
+     EDİLMEDİ; yalnız bu dal içinde geçici olarak kullanıldı ve kural
+     değişince etikete döndü. Bugün defterdeki **TB-44 İP-17'nindir**
+     ("Yeni kart sıralaması (`_order_id`) nöbetsiz") ve bu paketle ilgisi
+     yoktur. Kimlik geçmişi kaydı bu yüzden buradan kaldırılmadı, ama
+     numarayla değil ETİKETLE anılıyor: bu paketin kayıtları TB-46 ve TB-47'dir.
+
+     Kimlik geçmişleri (tam):
+       TB-47 : TB-36 (çakıştı) → TB-44 (dal içi, terk edildi) → TB-?A → TB-47
+       TB-46 : TB-34 (dal içi, terk edildi) → TB-?B → TB-46
+-->
+
+## TB-47 · `ip16_srs_izin_kodu_hizalama`'nın rol bağı taşıması NÖBETSİZ — sökülünce hiçbir test kırılmıyor
+
+| | |
+|---|---|
+| **Bulundu** | SM-2 kaldırma paketinin audit hazırlığı, mutasyon provası **D6** (13 Ağu 2026). Kaldırma paketinin kendi işi değil; komşu paketin kodu prova sırasında ölçüldü |
+| **Yer** | `backend/migrations/versions/ip16_srs_izin_kodu_hizalama.py` — bayat kodların rol bağlarını taşıyan `INSERT` (`:95-112`) ↔ aynı dosyadaki `ROLE_GRANTS` döngüsü (`:122-141`) |
+| **Durum** | Migration iki iş yapar: (1) bayat izin kodlarını (`srs.platform.*`) siler, (2) o kodların **rol bağlarını güncel koda (`srs_platform.*`) taşır**. İP-16 sözleşmesi ikisinin **birlikte** yapıldığını, yalnız kimliği değiştirmenin yetmeyeceğini açıkça söyler. Ama (2) için nöbetçi YOK |
+| **Ölçüm (D6)** | Taşıma `INSERT`'i etkisizleştirildi (`WHERE eski.code = '__mutasyon_yok__'` — SQL geçerli kalır, hiçbir satır üretmez). `pytest tests/integration/test_ip16_migration_pg.py` → **7 passed**. Mutasyon YAKALANMADI |
+| **Neden yakalanmıyor** | `ROLE_GRANTS` döngüsü doğru kodları `SUPER_ADMIN` ve `EDUCATION_MANAGER`'a **koşulsuz** veriyor. `test_B7_BAYAT_IZIN_KODLARI_UPGRADE_ILE_DUZELIR` rol iddiasını tam bu iki rol üzerinden kuruyor (`"SUPER_ADMIN" in roller and "EDUCATION_MANAGER" in roller`), dolayısıyla taşıma hiç çalışmasa da yeşil kalıyor. Test, taşımayı değil `ROLE_GRANTS`'ı ölçüyor |
+| **Etki** | Taşımanın gerçek işlevi **katalog dışı** rol bağlarıdır: panelden elle bir role `srs.platform.view` verilmişse, `ROLE_GRANTS` onu geri getirmez — yalnız taşıma getirir. Taşıma sessizce bozulursa (ya da bir refactor'da düşerse) o rol izni **kalıcı olarak kaybolur** ve migration yine "başarılı" döner. Bu, İP-16'nın B7 tuzağının aynı ailesinden: sessiz kayıp |
+| **Kapsam** | Bu kayıt SM-2 kaldırma paketinin kapsamı DIŞINDADIR. Kaldırma paketi `git diff main...HEAD` ile ölçtü: B7 test gövdelerinde **tek satır** değişiklik yapmadı (dokunulan yerler yalnız `birlesik_agac` fixture'ı ve iki B1 düğümü). Boşluk İP-16 merge edildiğinde de oradaydı; prova onu yalnızca görünür kıldı |
+| **Sonraki adım** | B7'ye bir düğüm eklenmeli: bayat dünya kurulurken izin **`ROLE_GRANTS`'ta olmayan bir role** de bağlanır (ör. `SUPPORT`/özel bir rol), `upgrade head` sonrası o bağın **güncel koda taşındığı** ölçülür. D6 mutasyonu o düğümü kırmalıdır — eklendikten sonra prova tekrarlanıp yakalandığı gösterilmelidir |
+
+## TB-46 · `app.routes` üzerinden yol araması SESSİZCE boş döner — kaldırma testleri yalancı yeşil olur
+
+| | |
+|---|---|
+| **Bulundu** | SM-2 kelime kartı kaldırma paketi, kırmızı matris turu (13 Ağu 2026). Yeni yazılan bir "bu uçlar artık yok" testi, kaldırma HİÇ YAPILMAMIŞKEN yeşil döndü |
+| **Yer** | FastAPI `include_router` — `app.routes` / `APIRouter.routes` üzerinde `path` araması yapan her test |
+| **Durum** | `include_router` route'ları düzleştirmez; tembel bir `_IncludedRouter` nesnesi bırakır (`path == ""`) ve alt-router yolları ancak istek çözümlenirken açılır. `app.routes` bu depoda **9 girdi** döner (openapi/docs/health + bir `_IncludedRouter`); yüzlerce gerçek uç orada GÖRÜNMEZ |
+| **Etki** | Yön kritik: bir uç için `assert yol in app.routes` yazan test **yanlış kırmızı** verir (bu bir kez yaşandı, İP-16 commit 1), `assert yol not in app.routes` yazan test ise **yalancı yeşil** verir — ve bu ikincisi tehlikelidir, çünkü kaldırma yapılmadan da geçer. Yani "bu sistem kaldırıldı" iddiasının kanıtı olarak sunulabilir ve hiçbir şey ölçmemiş olur |
+| **Neden bu kayıt açıldı** | Tuzak zaten ÜÇ yerde yorum olarak belgeliydi (`tests/integration/test_ip16_privacy_pg.py` D-6c/D-7, `tests/acceptance/test_f30_packing_contract.py::_router_yollari`, `tests/integration/test_ip3_operator_active_gate_pg.py`). Buna rağmen dördüncü kez aynı yere düşüldü. **Belge yetmiyor**: yorum, o dosyayı okuyanı korur, yeni dosya yazanı korumaz |
+| **Kural** | Route tablosu iddiaları **OpenAPI şemasından** okunur (`app.openapi()["paths"]`), `app.routes`'tan değil. Yokluk iddialarına ayrıca bir doluluk nöbetçisi konur (ör. komşu bir önekin yollarının VAR olduğu), yoksa boş/kapalı şema iddiayı kendiliğinden geçirir — `ENVIRONMENT=production` OpenAPI'yi kapatır |
+| **Sonraki adım** | Yorumla yetinmeyen bir nöbetçi: `app.routes`/`.routes` üzerinde path araması yapan test kaynaklarını AST ile tarayıp reddeden bir meta-test (düşük güçlü ama bu tuzağın tekrarını gerçekten kesen tek şey), ya da testlere ortak bir `router_yollari()` yardımcısı verip doğrudan erişimi bırakmak |
+| **Şimdilik koruma** | Kaldırma paketinin kendi düğümü OpenAPI'ye çevrildi ve doluluk nöbetçisi eklendi (`backend/tests/test_flashcards_kaldirildi.py::test_R2_*`) |
+
 ## TB-45 · Yeşil taban çizgisi nöbetçisi ORTAK sürücüde YOK — kırmızı tabanda "YAKALANDI" denebiliyor
 
 | | |
@@ -182,7 +300,7 @@ silinmez).
 | **Durum** | Sıra tersine çevrildiğinde **hiçbir test kırılmıyor**. Sözleşme "yeni kartlar `card_id` artan = ekleniş sırası" diyor ama bunu ölçen bir düğüm yok |
 | **Ölçüm (denetçinin)** | `_order_id` tersine çevrildi → **76 test seçildi, 0 kırıldı**. Ölçüm kazası olmadığı **karşılaştırma provasıyla** gösterildi: birincil sıra bozulduğunda (`due_at.asc()` → `.desc()`, denetçinin D-5 provası) **aynı 76 testten 1'i** kırıldı. Yani koşum düzeneği çalışıyor, boşluk gerçek |
 | **Etki** | Bugün davranış doğru, yalnız korumasız: yeni kart sırasını bozan bir değişiklik sessizce geçer. Kullanıcıya etkisi "yeni kartlar rastgele/ters sırada geliyor" olur — deste tasarımı sıraya bağlıysa (alfabe, konu sırası, kolaydan zora) öğrenme akışı bozulur ama hiçbir test bunu söylemez |
-| **Sınıf** | İP-17'nin `IP17-5` provasında bulunan **Q-9 tie-breaker boşluğuyla aynı sınıf** (bkz. `ip16-flashcard-sozlesme.md` §4.4): sözleşme sıralama kuralını yazmış, test kurulumu o kuralın devreye girdiği durumu hiç üretmemiş. İkisi de İP-16 kapsamından geliyor, İP-17 yalnız birini kapattı |
+| **Sınıf** | İP-17'nin `IP17-5` provasında bulunan **Q-9 tie-breaker boşluğuyla aynı sınıf** (bkz. `ip16-aralikli-tekrar-sozlesme.md` §4.4): sözleşme sıralama kuralını yazmış, test kurulumu o kuralın devreye girdiği durumu hiç üretmemiş. İkisi de İP-16 kapsamından geliyor, İP-17 yalnız birini kapattı |
 | **Neden ertelendi** | Denetim "merge edilebilir" verdi ve bu bir P2; kapatmak İP-17'nin kırmızı matrisine yeni düğüm eklemek demek, o da audit'ten geçmiş matrisi merge öncesi kaydırırdı |
 | **Sonraki adım** | Q-9 düğümüne **ikinci bir yeni kart** ekle (bugün tek yeni kart var, tek kartla sıra gözlenemez) ve sunulma sırasının `card_id` artan olduğunu doğrula; ardından `_order_id`'yi tersine çeviren bir mutasyon provasıyla nöbetçiliğini kanıtla |
 
@@ -363,7 +481,7 @@ products` ile `UPDATE orders` sırası).
 | 7 | **§6.2'nin kalan dört maddesi hiç başlanmadı** | `docs/ip14-operator-panel-sozlesme.md` §6.2/1,2,5,6 | Hakediş görünürlüğü, kayıt ara/bilet sorgula, anlık doluluk, operatör bildirimleri — dördü de **verilmemiş karar**, eksik iş değil. Kayıt burada duruyor ki "yapıldı sanılan ama hiç başlanmamış" iş olmasın ([[TB-24]]/12 ile aynı gerekçe). Sonraki adım: bir sonraki operatör turunda kapsama alınıp alınmayacağına karar vermek |
 | 8 | **Dosya düzeyi `testTimeout` ezmesi main'in yeni global kuralıyla çelişiyor** | `frontend/src/pages/dashboards/operatorPanel.acceptance.test.tsx:44` ve `operatorBalance.acceptance.test.tsx:38` (`vi.setConfig({ testTimeout: 20_000, hookTimeout: 20_000 })`) ↔ `frontend/vitest.config.ts:40-42` | **Merge sırasında doğdu, İP-14'ün kusuru değil**: İP-14 ezmeyi yazarken global bütçe 5000 ms'ti ve `vitest.config.ts`'e dokunmamayı bilinçli seçmişti (İP-12'nin işi, TB-23 — o sırada hâlâ açıktı, sonra kapandı ve silindi; bkz. bu dosyanın başındaki kapanma notu). Main o sırada bütçeyi ölçerek 9000 ms'e çıkardı ve config'e **"dosya başına `testTimeout` ezmesi YAPILMAZ"** kuralını yazdı. Şimdi repodaki **tek** iki `vi.setConfig` bu dosyalarda ve kuralı deliyor. Ölçüldü: ezme **ölü değil, aktif** — bu iki dosya 9000 değil 20000 bütçesinde koşuyor. Ama **taşıyıcı da değil**: ezme geçici kaldırılıp tam suite iki kez koşuldu → **885/885 geçti** (tepe 5776 ms ve 6738 ms). Asıl bulgu şu: İP-14'ün `B-1` testi artık **bütün suite'in en yavaş testi** (tam paralel yükte 6401 ms; izole koşuda 784 ms — fark modül transform'unun ilk teste yazılması). Main bütçeyi 9000 seçerken kendi tepesini 2410–2959 ms ölçmüş ve "tepenin 3,04 katı" gerekçesini yazmıştı; İP-14 ile tepe ~6,4–6,7 s'ye çıkıyor ve o oran **1,34–1,56 kat**'a düşüyor. Yani main'in "regresyonu gizlemeyecek kadar dar" marjı bu merge'le fiilen kalkıyor. Sonraki adım: (a) iki ezmeyi kaldırıp kuralı tek yerde tutmak (ölçüldü, geçiyor) **ve** (b) `B-1`'in neden 6,4 s sürdüğünü incelemek — main'in kendi config yorumunun dediği gibi "çözüm bütçeyi büyütmek değil, testi incelemektir"; (c) hangisi seçilirse seçilsin `vitest.config.ts` yorumundaki ölçüm satırları **ve** TB-23'ün kapanma notundaki dosya başına bütçe payları (`PackageLabel %33, packingScreens %25, inventoryScreens %20, packingLabel %20`) güncellenmeli — ikisi de bu merge'den önceki suite'i anlatıyor, bugün **bayat**; (d) aynı turda iki dosyanın **süre bütçesi yorumu** da düzeltilmeli: hâlâ "projenin 5 sn'lik varsayılan test bütçesi" diyorlar, merge sonrası varsayılan **9 sn** (bağımsız denetim, 13 Ağu 2026 — aşağıdaki "bayat yorum" notu; kaydın maddesi hâline getirildi ki 8 kapatılırken gözden kaçmasın) |
 
-| 9 | **Operatör nav'ı role-agnostik on sayfada hâlâ yok — ve N grubu bunu göremiyor (elle yazılı listeye çivili)** | `frontend/src/pages/DeepWork.tsx:34`, `Flashcards.tsx:159`, `FlashcardDeck.tsx:289`, `Grapher.tsx:63`, `Habits.tsx:376`, `srs/SrsDecks.tsx:244`, `srs/SrsDeckDetail.tsx:433`, `srs/SrsStudy.tsx:190`, `srs/SrsBrowser.tsx:56`, `srs/SrsStats.tsx:19` ↔ nöbetçi: `frontend/src/pages/dashboards/operatorPanel.acceptance.test.tsx:725` (`SAYFALAR`) | **Bağımsız denetimde bulundu (13 Ağu 2026); sözleşme "7 yerde kopyalanmış, hepsi düzeltildi" diyordu; ölçüm role-agnostik kopyanın 7 değil **17** olduğunu gösterdi (7 düzeltildi + 10 kaldı). Deseni kullanan iki sayfa daha var ama onlar rol-kapsamlı: `LessonDetail.tsx:58` (rezervasyonun iki tarafı) ve `LibraryDetail.tsx:100` (public sayfa; operatöre `undefined` nav verir, öğrenci menüsü basmaz) — bu kayda dahil değiller.** İP-14 yedisini `navForRole`'a çevirdi (`Notifications`, `Leaderboard`, `Settings`, `Profile`, `Tasks`, `Learn`, `Calendar`); kalan onu — hepsi **Öğren hub'ının altındaki araçlar** — hâlâ `role_id === TUTOR ? TUTOR_NAV : STUDENT_NAV` kullanıyor. Kullanıcıya etkisi: operatör panelden hub'a doğru nav'la gider, hub'ın içinde bir araca tıklayınca **öğrenci menüsünü** görür (Favorilerim/Rezervasyonlar) ve kendi paneline dönüş linki kalmaz — İP-14'ün kapattığı kusurun aynısı, başka yüzeyde. Rol kısıtı olmadığı için (`ProtectedRoute`) sayfalar operatöre gerçekten açılır. **Asıl borç ikinci yarıda:** N grubu (`operatorPanel.acceptance.test.tsx`) **elle yazılmış beş girdilik** bir `SAYFALAR` listesini gezer; düzeltilen yedinin ikisi (`Profile`, `Tasks`) bile listede yok. Liste bayatlayınca test **sessizce eksik tarar** — yeşil kalır, sayfa hiç sınanmamıştır. Sonraki adım: (a) on sayfayı `navForRole`'a çevirmek (mekanik, tek tur) **ve** (b) İP-16'nın `D-6c` desenini kurmak — nöbetçi elle liste tutmaz, **kaynak taramasıyla küme türetir**: `DashboardShell`/`navItems` basan role-agnostik sayfaların kümesi ile N grubunun taradığı kümenin **aynı** olduğunu ölçer (sayı değil küme; biri eklenip başkası silinseydi sayı eşit kalırdı). Karşılaştırma AST/kaynak taramasıyla türetildiği için CLAUDE.md §C uyarınca **düşük güçlüdür** ve yanında davranış testi (N grubu) durmaya devam etmelidir |
+| 9 | **Operatör nav'ı role-agnostik on sayfada hâlâ yok — ve N grubu bunu göremiyor (elle yazılı listeye çivili)** | `frontend/src/pages/DeepWork.tsx:34`, `Grapher.tsx:63`, `Habits.tsx:376`, `srs/SrsDecks.tsx:244`, `srs/SrsDeckDetail.tsx:433`, `srs/SrsStudy.tsx:190`, `srs/SrsBrowser.tsx:56`, `srs/SrsStats.tsx:19` ↔ nöbetçi: `frontend/src/pages/dashboards/operatorPanel.acceptance.test.tsx:725` (`SAYFALAR`) | **Bağımsız denetimde bulundu (13 Ağu 2026); sözleşme "7 yerde kopyalanmış, hepsi düzeltildi" diyordu; ölçüm role-agnostik kopyanın 7 değil **17** olduğunu gösterdi (7 düzeltildi + 10 kaldı). **GÜNCELLEME (14 Ağu 2026, SM-2 kaldırma denetimi bulgusu F3):** kalan onun **ikisi** (`Flashcards.tsx:159`, `FlashcardDeck.tsx:289`) SM-2 kaldırma paketinde **silindi**; borç kendiliğinden kapanmadı, sayfalar ortadan kalktı. Güncel sayı **8**; toplam 15. Deseni kullanan iki sayfa daha var ama onlar rol-kapsamlı: `LessonDetail.tsx:58` (rezervasyonun iki tarafı) ve `LibraryDetail.tsx:100` (public sayfa; operatöre `undefined` nav verir, öğrenci menüsü basmaz) — bu kayda dahil değiller.** İP-14 yedisini `navForRole`'a çevirdi (`Notifications`, `Leaderboard`, `Settings`, `Profile`, `Tasks`, `Learn`, `Calendar`); kalan sekizi — hepsi **Öğren hub'ının altındaki araçlar** — hâlâ `role_id === TUTOR ? TUTOR_NAV : STUDENT_NAV` kullanıyor. Kullanıcıya etkisi: operatör panelden hub'a doğru nav'la gider, hub'ın içinde bir araca tıklayınca **öğrenci menüsünü** görür (Favorilerim/Rezervasyonlar) ve kendi paneline dönüş linki kalmaz — İP-14'ün kapattığı kusurun aynısı, başka yüzeyde. Rol kısıtı olmadığı için (`ProtectedRoute`) sayfalar operatöre gerçekten açılır. **Asıl borç ikinci yarıda:** N grubu (`operatorPanel.acceptance.test.tsx`) **elle yazılmış beş girdilik** bir `SAYFALAR` listesini gezer; düzeltilen yedinin ikisi (`Profile`, `Tasks`) bile listede yok. Liste bayatlayınca test **sessizce eksik tarar** — yeşil kalır, sayfa hiç sınanmamıştır. Sonraki adım: (a) sekiz sayfayı `navForRole`'a çevirmek (mekanik, tek tur) **ve** (b) İP-16'nın `D-6c` desenini kurmak — nöbetçi elle liste tutmaz, **kaynak taramasıyla küme türetir**: `DashboardShell`/`navItems` basan role-agnostik sayfaların kümesi ile N grubunun taradığı kümenin **aynı** olduğunu ölçer (sayı değil küme; biri eklenip başkası silinseydi sayı eşit kalırdı). Karşılaştırma AST/kaynak taramasıyla türetildiği için CLAUDE.md §C uyarınca **düşük güçlüdür** ve yanında davranış testi (N grubu) durmaya devam etmelidir |
 
 | 10 | **Sıralamanın `id DESC` deterministik bağlayıcısı NÖBETSİZ** (denetçi etiketi **P2-C**) | `backend/services/library_exam_service.py:418` (`list_library_sessions_admin` sıralamasının 4. kademesi) ↔ nöbetçi olması gereken düğümler: S-1/S-2 | **Denetçi kendi mutasyonuyla kanıtladı:** `LibraryExamSession.id.desc()` bağlayıcısı kaldırıldı → **7/7 test yine geçti**. Yani sözleşmenin §4'te "deterministik bağlayıcı" diye yazdığı kademe bugün korumasız: kaldıran/yönünü çeviren bir değişiklik hiçbir kırmızı üretmez. Sebep fixture: S-1/S-2 **ayrı zamanlı** oturumlar kuruyor, yani beraberlik hiç doğmuyor ve 4. kademeye hiç sıra gelmiyor (CLAUDE.md §E'nin "fixture sabit olduğu için bozuk davranış gözlenmeden kalıyor" maddesi). Gerçek etki bugün küçük ama sınıfı belli: aynı ana denk gelen iki oturumda sayfa sınırında **kayıt tekrarı/kayması**. Sonraki adım: `starts_at`'i **eşit** iki oturumla bir düğüm eklemek ve bağlayıcı kaldırıldığında kırıldığını mutasyonla göstermek. **Aynı sınıf İP-17'de de bulundu** (Q-9 tie-breaker'ın yönünü korumuyordu, gene fixture beraberlik üretmediği için) — desen tekrar ediyor, tek tek değil **kural olarak** ele alınmalı: "deterministik bağlayıcı iddiası, beraberlik üreten fixture olmadan kanıtlanmış sayılmaz" |
 | 11 | **`IntersectionObserver` / `ResizeObserver` jsdom shim'leri eksik — henüz uyanmamış gizli boşluk** (denetçi etiketi **P2-D**) | `frontend/src/test-setup.ts` (yalnız `matchMedia` shim'i var, satır 60-75) ↔ kullanım: `frontend/src/pages/Notifications.tsx:81` (`new IntersectionObserver`), `frontend/src/pages/Grapher.tsx:263` (`new ResizeObserver`) | Vitest jsdom ortamında iki API de `undefined`. **Bugün hiçbir test takılmıyor** ve bu bir şans: `/notifications` fixture'ı **boş liste** döndüğü için sonsuz-kaydırma sentinel dalı hiç render edilmiyor; denetçi bunu şema-doğru **dolu** bir fixture'la prob edip patlamayı gösterdi. Sınıfı §9/5'te belgelenen `matchMedia` boşluğunun aynısı: "repoda bu ekranı gerçek DOM'da render eden test olmamasının sebebi buydu". Dolu fixture yazan **ilk** test sessizce patlayacak ve — N grubunun `Settings` vakasında olduğu gibi — assert'ler zaten geçmişse test **yeşil** kalıp suite raporuna "1 error" olarak düşecek. Sonraki adım: iki shim'i `test-setup.ts`'e eklemek (kurulum işi, üretim kodu değişmez) ve `Notifications`'ı **dolu** bir fixture'la render eden bir düğümle nöbetlemek |
