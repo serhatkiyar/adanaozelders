@@ -7,7 +7,7 @@ import { Button, EmptyState, ErrorState, PageSkeleton } from "@/components/admin
 import { RunStatusChip, TruckIcon } from "@/components/admin/delivery/bits";
 import { useDeliveryRunArchive, useDeliveryRuns } from "@/hooks/useDelivery";
 import { getErrorMessage } from "@/lib/errors";
-import { runProgress, VEHICLE_LABEL } from "@/lib/deliveryRun";
+import { runProgress } from "@/lib/deliveryRun";
 import { ROUTES } from "@/lib/routes";
 import type { DeliveryRun } from "@/types";
 
@@ -35,7 +35,7 @@ function RunArchiveRow({ run }: { run: DeliveryRun }) {
           <p className="text-sm font-medium text-slate-900 dark:text-white">
             Tur #{run.id}
             <span className="ml-2 text-xs font-normal text-slate-500 dark:text-slate-400">
-              {(VEHICLE_LABEL[run.vehicle] ?? run.vehicle).split(" ")[0]}
+              {run.vehicle}
             </span>
           </p>
           <p className="mt-0.5 truncate text-xs text-slate-500 dark:text-slate-400">

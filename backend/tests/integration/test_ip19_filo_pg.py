@@ -78,11 +78,16 @@ class FiloFabrikasi:
         from services import admin_access_service
 
         async with AsyncSessionLocal() as s:
+            # `full_name` hybrid'dir (NameMixin) — yazılamaz; parçaları ver.
+            u = _uniq()
             a = Admin(
-                email=f"ip19_{_uniq()}@test.local",
-                full_name="İP-19 Test Admin",
+                email=f"ip19_{u}@test.local",
+                first_name="İP19",
+                last_name="Denetçi",
+                username=f"ip19_{u}",
                 hashed_password="x",
                 is_active=True,
+                role_id=1,
             )
             s.add(a)
             await s.flush()
@@ -122,7 +127,17 @@ class FiloFabrikasi:
                     )
             if self.role_ids:
                 await s.execute(
-                    text("DELETE FROM admin_role_assignments WHERE role_id = ANY(:i)"),
+                    text(
+                        "DELETE FROM admin_role_assignments "
+                        "WHERE admin_role_id = ANY(:i)"
+                    ),
+                    {"i": self.role_ids},
+                )
+                await s.execute(
+                    text(
+                        "DELETE FROM admin_role_permissions "
+                        "WHERE admin_role_id = ANY(:i)"
+                    ),
                     {"i": self.role_ids},
                 )
                 await s.execute(
@@ -130,6 +145,12 @@ class FiloFabrikasi:
                     {"i": self.role_ids},
                 )
             if self.admin_ids:
+                # D-2 audit kaydı (vehicle.create/update) hijyen nöbetçisine
+                # takılmasın: bu fabrikanın admin'lerinin izleri de silinir.
+                await s.execute(
+                    text("DELETE FROM audit_logs WHERE actor_id = ANY(:i)"),
+                    {"i": self.admin_ids},
+                )
                 await s.execute(
                     text("DELETE FROM admins WHERE id = ANY(:i)"), {"i": self.admin_ids}
                 )
@@ -156,7 +177,7 @@ async def test_D2_arac_crud_ucu_calisir_ve_yetki_ister(filo, http):
 
     r = await http.post(
         "/api/v1/delivery/vehicles",
-        json={"code": f"YENI_{_uniq()}", "label": "Yeni Araç"},
+        json={"code": f"YENI_{_uniq().upper()}", "label": "Yeni Araç"},
         headers=yetkili,
     )
     assert r.status_code == 201, r.text
@@ -209,14 +230,22 @@ async def test_D3_gunluk_tavan_PLANA_GIREN_araclardan_turer(filo):
     """
     from services import delivery_service
 
+    # NOT (kırmızı fazdan sonra güçlendirildi, dürüst kayıt): ilk hâl mutlak
+    # `tavan == 12` bekliyordu. Migration LADA/COROLLA'yı seed'lediği için
+    # taban hiç boş değildir — mutlak sayı, testi seed'e çivilerdi (tam da
+    # bu paketin sildiği hata sınıfı). Ölçüm DELTA'ya çevrildi: iddia
+    # "tavan, eklenen aktif araçların max_stops'u kadar artar; pasif araç
+    # saymaz" — seed'den bağımsız ve daha güçlü.
+    once = await delivery_service.gunluk_tavan(None)
+
     await filo.arac(max_stops=5, sort_order=0)
     await filo.arac(max_stops=7, sort_order=1)
     pasif = await filo.arac(max_stops=100, sort_order=2, is_active=False)
 
-    tavan = await delivery_service.gunluk_tavan(None)
-    assert tavan == 12, (
-        f"tavan {tavan} — aktif araçların max_stops toplamı (5+7) olmalı; "
-        f"pasif araç ({pasif}) sayılmamalı"
+    sonra = await delivery_service.gunluk_tavan(None)
+    assert sonra - once == 12, (
+        f"tavan farkı {sonra - once} — eklenen aktif araçların max_stops "
+        f"toplamı (5+7) olmalı; pasif araç ({pasif}) sayılmamalı"
     )
 
 

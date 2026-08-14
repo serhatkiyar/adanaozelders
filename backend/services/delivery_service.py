@@ -23,10 +23,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from core import courier_position, outbox, routing, sms
+from core.database import AsyncSessionLocal
 from core.config import settings
 from core.routing.haversine import haversine_km
 from models.admin import Admin
 from models.courier import Courier
+from models.pickup_point import PickupPoint
+from models.vehicle import Vehicle
 from models.delivery import (
     DeliveryProof,
     DeliveryRun,
@@ -42,6 +45,12 @@ from schemas.delivery import (
     CourierCreate,
     CourierOut,
     CourierUpdate,
+    DeliveryMetricsOut,
+    PickupPointCreate,
+    PickupPointOut,
+    VehicleCreate,
+    VehicleOut,
+    VehicleUpdate,
     DeliveryRunCreate,
     DeliveryRunOut,
     DeliveryRunUpdate,
@@ -207,24 +216,30 @@ def _courier_to_out(c: Courier) -> CourierOut:
         name=c.name,
         phone=c.phone,
         photo_url=c.photo_url,
-        vehicle_plate=c.vehicle_plate,
         is_active=c.is_active,
     )
 
 
-def _run_to_out(run: DeliveryRun) -> DeliveryRunOut:
+def _run_to_out(
+    run: DeliveryRun, *, base: PickupPoint | None = None
+) -> DeliveryRunOut:
+    # İP-19: başlangıç = aracın kendi noktası, yoksa çağıranın çözdüğü
+    # varsayılan BASE (K-9 — depo ayarı yok). İkisi de yoksa None: saha
+    # ekranı ilk ayak navigasyonunu göstermez ama tur çalışır.
+    sp = run.vehicle_ref.start_point or base
     return DeliveryRunOut(
         courier=_courier_to_out(run.courier) if run.courier is not None else None,
         id=run.id,
         run_date=run.run_date,
-        vehicle=run.vehicle,
+        vehicle_id=run.vehicle_id,
+        vehicle=run.vehicle_ref.label,
         status=run.status,
         notes=run.notes,
         started_at=run.started_at,
         completed_at=run.completed_at,
         created_at=run.created_at,
-        depot_lat=settings.DELIVERY_DEPOT_LAT,
-        depot_lng=settings.DELIVERY_DEPOT_LNG,
+        depot_lat=sp.lat if sp is not None else None,
+        depot_lng=sp.lng if sp is not None else None,
         optimized_at=run.optimized_at,
         optimize_provider=run.optimize_provider,
         total_distance_km=(
@@ -300,13 +315,14 @@ async def _require_courier(db: AsyncSession, courier_id: int) -> Courier:
 async def create_run(db: AsyncSession, payload: DeliveryRunCreate) -> DeliveryRunOut:
     if payload.courier_id is not None:
         await _require_courier(db, payload.courier_id)
+    arac = await _require_vehicle(db, payload.vehicle_id)
     # Gün+araç başına tek PLANLI tur (uq_delivery_run_planned otorite; bu
     # kontrol dostça Türkçe mesaj için). Önceki tur ACTIVE/DONE ise yenisi serbest.
     existing = (
         await db.execute(
             select(DeliveryRun.id).where(
                 DeliveryRun.run_date == payload.run_date,
-                DeliveryRun.vehicle == payload.vehicle,
+                DeliveryRun.vehicle_id == payload.vehicle_id,
                 DeliveryRun.status == DeliveryRunStatus.PLANNED.value,
                 DeliveryRun.deleted_at.is_(None),
             )
@@ -315,11 +331,11 @@ async def create_run(db: AsyncSession, payload: DeliveryRunCreate) -> DeliveryRu
     if existing is not None:
         raise HTTPException(
             status.HTTP_409_CONFLICT,
-            f"Bu gün için {payload.vehicle} aracında zaten planlı bir tur var (#{existing})",
+            f"Bu gün için {arac.label} aracında zaten planlı bir tur var (#{existing})",
         )
     run = DeliveryRun(
         run_date=payload.run_date,
-        vehicle=payload.vehicle,
+        vehicle_id=payload.vehicle_id,
         notes=payload.notes,
         courier_id=payload.courier_id,
         status=DeliveryRunStatus.PLANNED.value,
@@ -332,11 +348,17 @@ async def create_run(db: AsyncSession, payload: DeliveryRunCreate) -> DeliveryRu
 async def update_run(
     db: AsyncSession, run_id: int, payload: DeliveryRunUpdate
 ) -> DeliveryRunOut:
-    """Tur meta güncellemesi — şimdilik yalnız kurye ataması (DONE/CANCELLED'da
-    da serbest: geçmiş tura kayıt düzeltmesi zararsız)."""
+    """Tur meta güncellemesi: kurye ve/veya araç ataması (İP-19, D-2).
+
+    Araç değişikliği yalnız PLANNED turda anlamlıdır; gün+araç tekliğinde son
+    söz `uq_delivery_run_planned` index'inindir (IntegrityError → global 409).
+    """
     run = await _load_run(db, run_id)
     if payload.courier_id is not None:
         await _require_courier(db, payload.courier_id)
+    if payload.vehicle_id is not None and payload.vehicle_id != run.vehicle_id:
+        await _require_vehicle(db, payload.vehicle_id)
+        run.vehicle_id = payload.vehicle_id
     run.courier_id = payload.courier_id
     await db.commit()
     return await get_run(db, run_id)
@@ -354,7 +376,7 @@ async def list_couriers(db: AsyncSession, *, include_inactive: bool = True) -> l
 
 
 async def create_courier(db: AsyncSession, payload: CourierCreate) -> CourierOut:
-    c = Courier(name=payload.name, phone=payload.phone, vehicle_plate=payload.vehicle_plate)
+    c = Courier(name=payload.name, phone=payload.phone)
     db.add(c)
     await db.commit()
     await db.refresh(c)
@@ -432,11 +454,12 @@ async def list_runs(
     if run_date is not None:
         stmt = stmt.where(DeliveryRun.run_date == run_date)
     runs = (await db.execute(stmt)).scalars().all()
-    return [_run_to_out(r) for r in runs]
+    base = await _varsayilan_base(db)
+    return [_run_to_out(r, base=base) for r in runs]
 
 
 async def get_run(db: AsyncSession, run_id: int) -> DeliveryRunOut:
-    return _run_to_out(await _load_run(db, run_id))
+    return _run_to_out(await _load_run(db, run_id), base=await _varsayilan_base(db))
 
 
 async def cancel_run(db: AsyncSession, run_id: int) -> DeliveryRunOut:
@@ -1345,7 +1368,13 @@ async def optimize_run(db: AsyncSession, run_id: int) -> DeliveryRunOut:
             "Optimize edilecek en az 2 konumlu bekleyen durak gerekli",
         )
 
-    depot = (settings.DELIVERY_DEPOT_LAT, settings.DELIVERY_DEPOT_LNG)
+    sp = run.vehicle_ref.start_point or await _varsayilan_base(db)
+    if sp is None:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Başlangıç noktası tanımlı değil — Dağıtım ayarlarından bir BASE noktası ekleyin",
+        )
+    depot = (sp.lat, sp.lng)
     points = [
         routing.RoutePoint(
             id=s.id, lat=float(s.order.ship_lat), lng=float(s.order.ship_lng)
@@ -1390,21 +1419,109 @@ async def optimize_run(db: AsyncSession, run_id: int) -> DeliveryRunOut:
     return await get_run(db, run_id)
 
 
-# ── Günü optimize et: çoklu araç dispatch ─────────────────────────────────────────
+# ── Filo (İP-19): araç ve başlangıç noktası VERİDİR ──────────────────────────────
 
-# routing.plan_fleet araç anahtarları (VROOM vehicle id int ister).
-_VEHICLE_IDS = {1: "LADA", 2: "COROLLA"}
+
+async def aktif_araclar(db: AsyncSession | None) -> list[Vehicle]:
+    """Aktif filo, `sort_order` sırasında (K-1: filo boyutu veridir, kod değil).
+
+    ``db=None`` kendi kısa oturumunu açar — saf yardımcılar ve testler için.
+    """
+    if db is None:
+        async with AsyncSessionLocal() as own:
+            return await aktif_araclar(own)
+    return list(
+        (
+            await db.execute(
+                select(Vehicle)
+                .where(Vehicle.is_active.is_(True), Vehicle.deleted_at.is_(None))
+                .order_by(Vehicle.sort_order, Vehicle.id)
+            )
+        )
+        .unique()
+        .scalars()
+    )
+
+
+async def gunluk_tavan(db: AsyncSession | None) -> int:
+    """Günlük dağıtım tavanı = PLANA GİREN araçların `max_stops` toplamı.
+
+    Sessiz tuzağın kapanışı (sözleşme §0.2): eski hâlde tavan
+    ``len(_VEHICLE_IDS) * DELIVERY_MAX_STOPS_PER_RUN`` idi ama plana yalnız
+    ``[1, 2]`` giriyordu — sözlüğe üçüncü araç ekleyen, tavanı %50 artırıp
+    yükü yine 2 araca bindiriyordu. Artık tavan ile plana giren küme AYNI
+    listeden türer; ayrışmaları yapısal olarak imkânsızdır (D-3 nöbetçisi).
+
+    `max_stops` NULL olan araç, eski global tavan kadar sayılır.
+    """
+    araclar = await aktif_araclar(db)
+    return sum(v.max_stops or settings.DELIVERY_MAX_STOPS_PER_RUN for v in araclar)
+
+
+async def _varsayilan_base(db: AsyncSession) -> PickupPoint | None:
+    """Varsayılan başlangıç noktası: aktif BASE kayıtlarından sırası en küçük."""
+    return (
+        (
+            await db.execute(
+                select(PickupPoint)
+                .where(
+                    PickupPoint.kind == "BASE",
+                    PickupPoint.is_active.is_(True),
+                    PickupPoint.deleted_at.is_(None),
+                )
+                .order_by(PickupPoint.sort_order, PickupPoint.id)
+            )
+        )
+        .scalars()
+        .first()
+    )
+
+
+async def _require_vehicle(db: AsyncSession, vehicle_id: int) -> Vehicle:
+    v = await db.get(Vehicle, vehicle_id)
+    if v is None or v.deleted_at is not None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Araç bulunamadı")
+    if not v.is_active:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Araç pasif — tura atanamaz")
+    return v
+
+
+def _sec(t: datetime.time | None) -> int | None:
+    """time → gün başından saniye (VROOM time_window göreli kip)."""
+    return None if t is None else t.hour * 3600 + t.minute * 60 + t.second
+
+
+def _route_vehicle(v: Vehicle, base: PickupPoint | None) -> routing.RouteVehicle | None:
+    """Vehicle → RouteVehicle. Başlangıç: aracın noktası, yoksa varsayılan
+    BASE; ikisi de yoksa None (araç plana giremez — çağıran raporlar)."""
+    sp = v.start_point or base
+    if sp is None:
+        return None
+    return routing.RouteVehicle(
+        id=v.id,
+        start_lat=sp.lat,
+        start_lng=sp.lng,
+        profile=v.profile,
+        max_stops=v.max_stops,
+        shift_start_sec=_sec(v.shift_start),
+        shift_end_sec=_sec(v.shift_end),
+        fixed_cost=v.fixed_cost,
+    )
+
+
+# ── Günü optimize et: çoklu araç dispatch ─────────────────────────────────────────
 
 
 async def dispatch_day(db: AsyncSession, run_date: datetime.date) -> list[DeliveryRunOut]:
     """Günün uygun siparişlerini araçlara bölüştürüp optimize turlar kurar.
 
-    Konumlu + bölge-içi + söz günü ``run_date``'i geçmeyen siparişler alınır;
-    sayı ``DELIVERY_SINGLE_VEHICLE_MAX_STOPS``'u aşarsa COROLLA da devreye girer.
-    Araç başına o günün PLANNED turu bulunur ya da açılır (ACTIVE turlara
-    dokunulmaz), bölüştürme sırasına göre duraklar eklenir ve her tur kendi
-    başına optimize edilir (ETA + geometri + sapma). Konumsuz siparişler elle
-    eklenmek üzere eligible listesinde kalır.
+    İP-19: plana AKTİF FİLONUN TAMAMI girer (K-3) — kaç aracın gerçekten
+    kullanılacağına sağlayıcı karar verir: VROOM yedek araçların
+    ``costs.fixed``'ini kazançla tartar, haversine gereken araç sayısını
+    ``max_stops``'tan türetir. Eski sabit 12 eşiği yoktur. Araç başına o
+    günün PLANNED turu bulunur ya da açılır (ACTIVE turlara dokunulmaz),
+    bölüştürme sırasına göre duraklar eklenir ve her tur kendi başına
+    optimize edilir. Konumsuz siparişler eligible listesinde kalır.
     """
     eligible = await eligible_orders(db)
     candidates = [
@@ -1419,13 +1536,30 @@ async def dispatch_day(db: AsyncSession, run_date: datetime.date) -> list[Delive
             status.HTTP_400_BAD_REQUEST, "Dağıtılacak konumlu sipariş yok"
         )
 
+    araclar = await aktif_araclar(db)
+    if not araclar:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Aktif araç yok — Dağıtım > Araçlar'dan en az bir araç ekleyin",
+        )
+    base = await _varsayilan_base(db)
+    route_vehicles = [rv for rv in (_route_vehicle(v, base) for v in araclar) if rv]
+    if not route_vehicles:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Başlangıç noktası tanımlı değil — Dağıtım ayarlarından bir BASE noktası ekleyin",
+        )
+
     # Günün fiziksel tavanı. Biriken söz borcu (ertelenen/başarısız denemeler)
     # eligible listesini şişirir; sınırsız bırakılırsa "Günü Optimize Et" 150
     # duraklı, tek günde bitirilemeyecek bir tur kurar ve HEPSİNE söz verilmiş
-    # görünür. Liste zaten aciliyet sırasında (söz günü → deneme borcu → tarih);
-    # tavanı aşanlar eligible kuyruğunda kalır, yarın en önde girer.
-    max_total = max(len(_VEHICLE_IDS), 1) * settings.DELIVERY_MAX_STOPS_PER_RUN
-    if settings.DELIVERY_MAX_STOPS_PER_RUN > 0 and len(candidates) > max_total:
+    # görünür. Liste zaten aciliyet sırasında; tavanı aşanlar kuyrukta kalır.
+    # İP-19: tavan, PLANA GİREN araçların toplamıdır (gunluk_tavan ile aynı
+    # formül) — eski len(_VEHICLE_IDS) çarpanının sessiz tuzağı kapandı (§0.2).
+    max_total = sum(
+        rv.max_stops or settings.DELIVERY_MAX_STOPS_PER_RUN for rv in route_vehicles
+    )
+    if max_total > 0 and len(candidates) > max_total:
         logger.warning(
             "dispatch_day: %s uygun siparişten %s'i günlük tavana (%s) sığmadı — "
             "eligible kuyruğunda bekliyor",
@@ -1435,33 +1569,22 @@ async def dispatch_day(db: AsyncSession, run_date: datetime.date) -> list[Delive
         )
         candidates = candidates[:max_total]
 
-    vehicle_ids = (
-        [1]
-        if len(candidates) <= settings.DELIVERY_SINGLE_VEHICLE_MAX_STOPS
-        else [1, 2]
-    )
     points = [
         routing.RoutePoint(id=o.order_id, lat=o.lat, lng=o.lng) for o in candidates
     ]
-    fleet = await routing.plan_fleet(
-        depot_lat=settings.DELIVERY_DEPOT_LAT,
-        depot_lng=settings.DELIVERY_DEPOT_LNG,
-        points=points,
-        vehicle_ids=vehicle_ids,
-    )
+    fleet = await routing.plan_fleet(points=points, vehicles=route_vehicles)
 
     out: list[DeliveryRunOut] = []
     for vid, plan in fleet.routes.items():
         if not plan.ordered_ids:
             continue
-        vehicle = _VEHICLE_IDS[vid]
 
-        async def _find_planned() -> DeliveryRun | None:
+        async def _find_planned(vid: int = vid) -> DeliveryRun | None:
             return (
                 await db.execute(
                     select(DeliveryRun).where(
                         DeliveryRun.run_date == run_date,
-                        DeliveryRun.vehicle == vehicle,
+                        DeliveryRun.vehicle_id == vid,
                         DeliveryRun.status == DeliveryRunStatus.PLANNED.value,
                         DeliveryRun.deleted_at.is_(None),
                     )
@@ -1472,7 +1595,7 @@ async def dispatch_day(db: AsyncSession, run_date: datetime.date) -> list[Delive
         if run is None:
             run = DeliveryRun(
                 run_date=run_date,
-                vehicle=vehicle,
+                vehicle_id=vid,
                 status=DeliveryRunStatus.PLANNED.value,
             )
             db.add(run)
@@ -1686,7 +1809,9 @@ async def order_tracking(
         if c is not None and c.deleted_at is None:
             out.courier_name = c.name
             out.courier_photo_url = c.photo_url
-            out.courier_plate = c.vehicle_plate
+    # Plaka İP-19'da araca taşındı (K-5): kurye araç değiştirse de takip
+    # sayfası turun GERÇEK aracının plakasını gösterir.
+    out.courier_plate = run.vehicle_ref.plate
 
     pos = await courier_position.get_position(run.id)
     if pos is not None:
@@ -2437,3 +2562,222 @@ async def _paket_kapi_taramasi(
             status.HTTP_404_NOT_FOUND, _ETIKET_YOK
         )
     return _stop_to_out(stop), stop.run.status
+
+# ── Filo CRUD + gün tahtası + metrikler (İP-19) ──────────────────────────────────
+
+
+def _vehicle_to_out(v: Vehicle) -> VehicleOut:
+    return VehicleOut(
+        id=v.id,
+        code=v.code,
+        label=v.label,
+        plate=v.plate,
+        profile=v.profile,
+        max_stops=v.max_stops,
+        shift_start=v.shift_start,
+        shift_end=v.shift_end,
+        fixed_cost=v.fixed_cost,
+        start_point_id=v.start_point_id,
+        sort_order=v.sort_order,
+        is_active=v.is_active,
+    )
+
+
+async def list_vehicles(db: AsyncSession) -> list[VehicleOut]:
+    """Tüm filo (pasifler dahil — panel yönetir; plana yalnız aktifler girer)."""
+    rows = (
+        (
+            await db.execute(
+                select(Vehicle)
+                .where(Vehicle.deleted_at.is_(None))
+                .order_by(Vehicle.sort_order, Vehicle.id)
+            )
+        )
+        .unique()
+        .scalars()
+    )
+    return [_vehicle_to_out(v) for v in rows]
+
+
+async def create_vehicle(db: AsyncSession, payload: VehicleCreate) -> VehicleOut:
+    v = Vehicle(**payload.model_dump())
+    db.add(v)
+    # `code` benzersiz — çakışmada global IntegrityError → 409 handler'ı konuşur.
+    await db.commit()
+    return _vehicle_to_out(v)
+
+
+async def update_vehicle(
+    db: AsyncSession, vehicle_id: int, payload: VehicleUpdate
+) -> VehicleOut:
+    v = await db.get(Vehicle, vehicle_id)
+    if v is None or v.deleted_at is not None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Araç bulunamadı")
+    for alan, deger in payload.model_dump(exclude_unset=True).items():
+        setattr(v, alan, deger)
+    await db.commit()
+    await db.refresh(v)
+    return _vehicle_to_out(v)
+
+
+async def delete_vehicle(db: AsyncSession, vehicle_id: int) -> None:
+    """Soft-delete. AÇIK (PLANNED/ACTIVE) turu olan araç silinemez → 409 (D-8).
+
+    Geçmiş (DONE/CANCELLED) turlar engel değildir — FK RESTRICT satırı korur,
+    soft-delete yalnız aracı listeden düşürür.
+    """
+    v = await db.get(Vehicle, vehicle_id)
+    if v is None or v.deleted_at is not None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Araç bulunamadı")
+    acik = (
+        await db.execute(
+            select(func.count())
+            .select_from(DeliveryRun)
+            .where(
+                DeliveryRun.vehicle_id == vehicle_id,
+                DeliveryRun.status.in_(
+                    [DeliveryRunStatus.PLANNED.value, DeliveryRunStatus.ACTIVE.value]
+                ),
+                DeliveryRun.deleted_at.is_(None),
+            )
+        )
+    ).scalar_one()
+    if acik:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            f"Aracın {acik} açık turu var — önce turları kapatın/iptal edin",
+        )
+    v.is_active = False
+    v.deleted_at = datetime.datetime.now(datetime.UTC)
+    await db.commit()
+
+
+def _pickup_to_out(p: PickupPoint) -> PickupPointOut:
+    return PickupPointOut(
+        id=p.id,
+        name=p.name,
+        kind=p.kind,
+        address=p.address,
+        lat=p.lat,
+        lng=p.lng,
+        sort_order=p.sort_order,
+        is_active=p.is_active,
+    )
+
+
+async def list_pickup_points(db: AsyncSession) -> list[PickupPointOut]:
+    rows = (
+        await db.execute(
+            select(PickupPoint)
+            .where(PickupPoint.deleted_at.is_(None))
+            .order_by(PickupPoint.sort_order, PickupPoint.id)
+        )
+    ).scalars()
+    return [_pickup_to_out(p) for p in rows]
+
+
+async def create_pickup_point(
+    db: AsyncSession, payload: PickupPointCreate
+) -> PickupPointOut:
+    p = PickupPoint(**payload.model_dump())
+    db.add(p)
+    await db.commit()
+    return _pickup_to_out(p)
+
+
+async def board(db: AsyncSession, run_date: datetime.date) -> dict:
+    """Gün tahtası verisi (§4.2): atanmamış havuz + günün PLANNED/ACTIVE turları."""
+    runs = (
+        (
+            await db.execute(
+                select(DeliveryRun)
+                .options(*_RUN_LOAD)
+                .where(
+                    DeliveryRun.run_date == run_date,
+                    DeliveryRun.status.in_(
+                        [DeliveryRunStatus.PLANNED.value, DeliveryRunStatus.ACTIVE.value]
+                    ),
+                    DeliveryRun.deleted_at.is_(None),
+                )
+                .order_by(DeliveryRun.id)
+            )
+        )
+        .unique()
+        .scalars()
+        .all()
+    )
+    base = await _varsayilan_base(db)
+    return {
+        "unassigned": await eligible_orders(db),
+        "runs": [_run_to_out(r, base=base) for r in runs],
+    }
+
+
+async def delivery_metrics(
+    db: AsyncSession, *, from_date: datetime.date, to_date: datetime.date
+) -> DeliveryMetricsOut:
+    """Beş operasyon metriği (§4.3) — tamamı MEVCUT alanlardan türer.
+
+    Paydası boş olan oran ``None`` döner (0.0 değil): "hiç teslimat olmadı"
+    ile "hepsi geç kaldı" ayrımı panelde kaybolmasın.
+    """
+    runs = (
+        (
+            await db.execute(
+                select(DeliveryRun)
+                .options(*_RUN_LOAD)
+                .where(
+                    DeliveryRun.run_date >= from_date,
+                    DeliveryRun.run_date <= to_date,
+                    DeliveryRun.deleted_at.is_(None),
+                )
+            )
+        )
+        .unique()
+        .scalars()
+        .all()
+    )
+    delivered = 0
+    planned = 0
+    on_time = 0
+    on_time_payda = 0
+    ilk_deneme = 0
+    fail_reasons: dict[str, int] = {}
+    toplam_km = 0.0
+    km_var = False
+    calisma_saniye = 0
+    for r in runs:
+        if r.total_distance_km is not None:
+            toplam_km += float(r.total_distance_km)
+            km_var = True
+        if r.started_at is not None and r.completed_at is not None:
+            calisma_saniye += max(
+                0, int((r.completed_at - r.started_at).total_seconds())
+            )
+        for stp in r.stops:
+            planned += 1
+            if stp.status == DeliveryStopStatus.DELIVERED.value:
+                delivered += 1
+                if stp.order is not None and stp.order.failed_delivery_count == 0:
+                    ilk_deneme += 1
+                soz = stp.order.promised_delivery_date if stp.order else None
+                if soz is not None:
+                    on_time_payda += 1
+                    if r.run_date <= soz:
+                        on_time += 1
+            elif stp.status == DeliveryStopStatus.FAILED.value and stp.fail_reason:
+                fail_reasons[stp.fail_reason] = fail_reasons.get(stp.fail_reason, 0) + 1
+    return DeliveryMetricsOut(
+        on_time_rate=round(on_time / on_time_payda, 3) if on_time_payda else None,
+        first_attempt_rate=round(ilk_deneme / delivered, 3) if delivered else None,
+        stops_per_hour=(
+            round(delivered / (calisma_saniye / 3600), 2) if calisma_saniye else None
+        ),
+        fail_reasons=fail_reasons,
+        km_per_delivery=(
+            round(toplam_km / delivered, 2) if delivered and km_var else None
+        ),
+        delivered=delivered,
+        planned=planned,
+    )
+

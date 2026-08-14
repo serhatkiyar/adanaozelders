@@ -498,14 +498,11 @@ async def create_order(
         # Harita pin'i teslimat rotasının otoritesidir (adres metni tarif).
         order.ship_lat = addr.location_lat
         order.ship_lng = addr.location_lng
+        # İP-19/K-10: bölge kararı yalnız il+ilçeden (pin rota içindir, bölge
+        # kararı değil — yarıçap ve depo bağı kalktı).
         order.ship_in_zone = delivery_promise.in_delivery_zone(
-            addr.location_lat,
-            addr.location_lng,
             addr.city,
             addr.district,
-            depot_lat=settings.DELIVERY_DEPOT_LAT,
-            depot_lng=settings.DELIVERY_DEPOT_LNG,
-            radius_km=settings.DELIVERY_ZONE_RADIUS_KM,
             districts=settings.DELIVERY_ZONE_DISTRICTS,
         )
 
@@ -1499,13 +1496,8 @@ async def change_ship_address(
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Adres bulunamadı")
 
     in_zone = delivery_promise.in_delivery_zone(
-        addr.location_lat,
-        addr.location_lng,
         addr.city,
         addr.district,
-        depot_lat=settings.DELIVERY_DEPOT_LAT,
-        depot_lng=settings.DELIVERY_DEPOT_LNG,
-        radius_km=settings.DELIVERY_ZONE_RADIUS_KM,
         districts=settings.DELIVERY_ZONE_DISTRICTS,
     )
     if in_zone is not True and not force:

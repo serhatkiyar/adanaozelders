@@ -314,14 +314,20 @@ class Ip2bFabrika:
     ) -> int:
         """Teslimat turu. `run_date` verilmezse bugün.
 
-        `uq_delivery_run_planned` (run_date, vehicle) çifti başına TEK planlı tur
-        ister; çok turlu yarış testleri bu yüzden tur başına farklı bir tarih
+        `uq_delivery_run_planned` (run_date, vehicle_id) çifti başına TEK planlı
+        tur ister; çok turlu yarış testleri bu yüzden tur başına farklı bir tarih
         verir — aksi hâlde ikinci tur, ölçmek istediği davranışa hiç varamadan
         IntegrityError'a çarpar.
+
+        İP-19: `vehicle` parametresi araç KODU olarak kaldı (çağıranlar
+        "LADA"/"COROLLA" veriyor); id'ye seed'li tablodan çevrilir.
         """
+        from tests.integration.filo_yardim import arac_id
+
+        vid = await arac_id(vehicle)
         async with AsyncSessionLocal() as s:
             r = DeliveryRun(
-                run_date=run_date or datetime.date.today(), vehicle=vehicle,
+                run_date=run_date or datetime.date.today(), vehicle_id=vid,
                 status=status,
                 started_at=now() if status == "ACTIVE" else None,
             )

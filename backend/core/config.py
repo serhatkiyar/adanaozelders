@@ -212,11 +212,10 @@ class Settings(BaseSettings):
     INVOICE_SELLER_ADDRESS: str | None = None
     INVOICE_SELLER_PHONE: str | None = None
     INVOICE_SELLER_EMAIL: str | None = None
-    # Kendi-filo teslimat (mağaza kitap dağıtımı). Depo = turun başlangıç noktası
-    # (Seyhan Çakmak Cad. civarı; kesinleşince .env'den güncellenir). Teslim OTP'si
-    # kapıda müşterinin söylediği koddur — telefon doğrulama OTP'sinden ayrıdır.
-    DELIVERY_DEPOT_LAT: float = 36.985500
-    DELIVERY_DEPOT_LNG: float = 35.325300
+    # Kendi-filo teslimat (mağaza kitap dağıtımı). İP-19/K-9: DEPO AYARI YOK —
+    # turun başlangıç noktası veridir (`pickup_points`, kind=BASE; araç bazlı
+    # `vehicles.start_point_id`). Teslim OTP'si kapıda müşterinin söylediği
+    # koddur — telefon doğrulama OTP'sinden ayrıdır.
     DELIVERY_OTP_TTL_MINUTES: int = 30
     DELIVERY_OTP_MAX_ATTEMPTS: int = 5
     # Rota optimizasyonu (Faz B). ROUTING_PROVIDER: "auto" (VROOM dene, düşerse
@@ -255,17 +254,14 @@ class Settings(BaseSettings):
     # (delivery_closed_days tablosu) — operasyon kendi günlerini kontrol eder.
     DELIVERY_NON_WORKING_WEEKDAYS: list[int] = []
     # Kendi-filo teslimat bölgesi: pin varsa depoya Haversine yarıçapı (otorite),
-    # pin yoksa il=Adana + ilçe listesi fallback'i. Bölge dışı sipariş eligible
-    # listesine girmez; admin "dış kargo bekliyor" kuyruğunda görür.
-    DELIVERY_ZONE_RADIUS_KM: float = 25.0
+    # İP-19/K-10: bölgenin TEK otoritesi bu ilçe listesidir ("Adana kent
+    # merkezi"). Yarıçap kaldırıldı — depo koordinatına bağlıydı ve depo yok;
+    # il/ilçe bilinmiyorsa sipariş bölge DIŞI sayılır (dış kargo kuyruğu).
     DELIVERY_ZONE_DISTRICTS: list[str] = ["Seyhan", "Yüreğir", "Çukurova", "Sarıçam"]
     # Müşteriye gösterilen varış penceresi: stop.eta − early … eta + late,
     # 15 dk'ya yuvarlı ("18:00–19:00"). Nokta ETA müşteriye gösterilmez.
     DELIVERY_ETA_WINDOW_EARLY_MINUTES: int = 15
     DELIVERY_ETA_WINDOW_LATE_MINUTES: int = 45
-    # "Günü Optimize Et": konumlu sipariş sayısı bu eşiği aşarsa ikinci araç
-    # (COROLLA) devreye girer; altındaysa tek LADA turu kurulur.
-    DELIVERY_SINGLE_VEHICLE_MAX_STOPS: int = 12
     # Bir aracın bir günde fiilen bitirebileceği durak sayısı. "Günü Optimize Et"
     # bu tavanı aşan siparişleri PLANA ALMAZ (eligible kuyruğunda, aciliyet
     # sırasında bekler) — aksi halde biriken söz borcu tek günde bitirilemeyecek

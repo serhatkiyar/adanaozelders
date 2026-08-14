@@ -27,9 +27,10 @@ from models.delivery import (
     DeliveryRunStatus,
     DeliveryStop,
     DeliveryStopStatus,
-    DeliveryVehicle,
     FeedbackProblem,
 )
+from models.pickup_point import PickupPoint
+from models.vehicle import Vehicle
 from models.demand import Demand, DemandStatus
 from models.demand_response import DemandResponse
 from models.exam import PracticeExam, PracticeExamSubject
@@ -168,6 +169,8 @@ __all__ = [
     "ClientEducation",
     "Conversation",
     "Courier",
+    "PickupPoint",
+    "Vehicle",
     "CourierAccount",
     "DeliveryClosedDay",
     "DeliveryFeedback",
@@ -176,7 +179,6 @@ __all__ = [
     "DeliveryRunStatus",
     "DeliveryStop",
     "DeliveryStopStatus",
-    "DeliveryVehicle",
     "Demand",
     "DemandResponse",
     "DemandStatus",

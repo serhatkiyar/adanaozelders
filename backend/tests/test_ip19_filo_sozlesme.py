@@ -14,7 +14,6 @@ yerine geçen yapının GERÇEKTEN var olduğu ayrıca ölçülür (sözleşme �
 """
 from __future__ import annotations
 
-import math
 
 import pytest
 
@@ -249,6 +248,42 @@ def test_D7_max_tasks_iki_tavanin_kucugudur(n, arac_sayisi, max_stops, beklenen)
         # Kısıt açlık üretemez: k * max_tasks >= n olmalı (vroom.py gerekçesi).
         if max_stops is None:
             assert arac_sayisi * v["max_tasks"] >= n
+
+
+def test_D6b_maliyetli_filoda_denge_tavani_YAZILMAZ():
+    """`fixed_cost`'lu filo: denge tavanı (`ceil(n/k)`) payload'a girmez.
+
+    Yeşil fazda ölçülen çelişkinin nöbetçisi (matris SONRASI eklendi ve
+    kapanış raporunda ek olarak bildirilecektir): denge tavanı SERT bir
+    kısıttır — yedek araca `fixed_cost` verilmişken de yazılsaydı, VROOM 3
+    siparişi bile bölmek ZORUNDA kalırdı (tek araç `ceil(3/2)=2` tavanını
+    aşamaz) ve K-3'ün "ikinci araç ancak kazanç sabit maliyeti aşarsa çıkar"
+    ekonomisi hiç çalışamazdı: kurucu tek başınayken her gün iki tura
+    bölünürdü. Öncelik K-3'ündür; maliyetsiz (homojen) filoda ölçülmüş denge
+    davranışı birebir korunur (D-7 vakaları).
+    """
+    from core.routing.vroom import build_vroom_payload
+
+    p = build_vroom_payload(
+        points=_noktalar(10),
+        vehicles=[
+            _arac(id=1, start_lat=36.98, start_lng=35.32),
+            _arac(id=2, start_lat=36.98, start_lng=35.32, fixed_cost=1800),
+        ],
+    )
+    for v in p["vehicles"]:
+        assert "max_tasks" not in v, (
+            f"maliyetli filoda denge tavanı yazılmış: {v} — K-3 ekonomisi ölür"
+        )
+    # DOLULUK NÖBETÇİSİ: max_stops (kapasite) tavanı maliyetli filoda da yazılır.
+    p2 = build_vroom_payload(
+        points=_noktalar(10),
+        vehicles=[
+            _arac(id=1, start_lat=36.98, start_lng=35.32, max_stops=6),
+            _arac(id=2, start_lat=36.98, start_lng=35.32, fixed_cost=1800),
+        ],
+    )
+    assert p2["vehicles"][0]["max_tasks"] == 6
 
 
 def test_D7_araclar_farkli_tavan_tasiyabilir():

@@ -21,6 +21,13 @@ from core import courier_position, storage
 from core.database import get_db
 from models.role import RoleType
 from schemas.delivery import (
+    DeliveryBoardOut,
+    DeliveryMetricsOut,
+    PickupPointCreate,
+    PickupPointOut,
+    VehicleCreate,
+    VehicleOut,
+    VehicleUpdate,
     CapacityDayOut,
     ClosedDayIn,
     ClosedDayOut,
@@ -279,6 +286,104 @@ async def update_run(
         target_id=run_id, after=payload.model_dump(exclude_unset=True),
     )
     return run
+
+
+# ── Filo (İP-19): araç + başlangıç noktası + gün tahtası + metrikler ─────────────
+# Yetki router seviyesinde: GET → delivery.view, mutasyon → delivery.manage
+# (`require_admin_method_permission`). Yetkisiz admin 403 alır (D-2).
+
+
+@router.get("/vehicles", response_model=list[VehicleOut])
+async def list_vehicles(db: AsyncSession = Depends(get_db)):
+    return await delivery_service.list_vehicles(db)
+
+
+@router.post("/vehicles", response_model=VehicleOut, status_code=status.HTTP_201_CREATED)
+async def create_vehicle(
+    payload: VehicleCreate,
+    actor=Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    out = await delivery_service.create_vehicle(db, payload)
+    await audit_service.record(
+        db, actor=actor, action="vehicle.create", target_type="vehicle",
+        target_id=out.id, details=out.label,
+    )
+    return out
+
+
+@router.patch("/vehicles/{vehicle_id}", response_model=VehicleOut)
+async def update_vehicle(
+    vehicle_id: int,
+    payload: VehicleUpdate,
+    actor=Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    out = await delivery_service.update_vehicle(db, vehicle_id, payload)
+    await audit_service.record(
+        db, actor=actor, action="vehicle.update", target_type="vehicle",
+        target_id=vehicle_id, after=payload.model_dump(exclude_unset=True, mode="json"),
+    )
+    return out
+
+
+@router.delete("/vehicles/{vehicle_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_vehicle(
+    vehicle_id: int,
+    actor=Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Soft-delete; AÇIK turu olan araç silinemez → 409 (D-8)."""
+    await delivery_service.delete_vehicle(db, vehicle_id)
+    await audit_service.record(
+        db, actor=actor, action="vehicle.delete", target_type="vehicle",
+        target_id=vehicle_id,
+    )
+
+
+@router.get("/pickup-points", response_model=list[PickupPointOut])
+async def list_pickup_points(db: AsyncSession = Depends(get_db)):
+    return await delivery_service.list_pickup_points(db)
+
+
+@router.post(
+    "/pickup-points", response_model=PickupPointOut, status_code=status.HTTP_201_CREATED
+)
+async def create_pickup_point(
+    payload: PickupPointCreate,
+    actor=Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """K-9 gereği başlangıç/toplama noktaları veridir — deploy'suz düzenlenir.
+    (Sözleşme uç tablosunda yoktu; K-9'un doğal sonucu olarak eklendi ve
+    kapanış raporunda ek olarak bildirilecek.)"""
+    out = await delivery_service.create_pickup_point(db, payload)
+    await audit_service.record(
+        db, actor=actor, action="pickup_point.create", target_type="pickup_point",
+        target_id=out.id, details=out.name,
+    )
+    return out
+
+
+@router.get("/board", response_model=DeliveryBoardOut)
+async def delivery_board(
+    date: datetime.date = Query(...),
+    db: AsyncSession = Depends(get_db),
+):
+    """Gün tahtası (§4.2): atanmamış havuz + araç bazlı turlar (D-11/D-13)."""
+    return await delivery_service.board(db, date)
+
+
+@router.get("/metrics", response_model=DeliveryMetricsOut)
+async def delivery_metrics(
+    from_date: datetime.date = Query(...),
+    to_date: datetime.date = Query(...),
+    db: AsyncSession = Depends(get_db),
+):
+    """Beş operasyon metriği (§4.3, D-14)."""
+    return await delivery_service.delivery_metrics(
+        db, from_date=from_date, to_date=to_date
+    )
 
 
 # ── Kurye profilleri ─────────────────────────────────────────────────────────────

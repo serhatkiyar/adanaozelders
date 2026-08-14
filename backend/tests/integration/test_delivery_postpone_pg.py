@@ -19,6 +19,7 @@ from models.client import Client
 from models.delivery import DeliveryRun, DeliveryStop
 from models.store import Order
 from services import delivery_service, order_service
+from tests.integration.filo_yardim import arac_id
 
 
 def _uniq() -> str:
@@ -52,7 +53,7 @@ class PostponeFactory:
                 tracking_no="ELDEN-TEST",
             )
             run = DeliveryRun(
-                run_date=datetime.date.today(), vehicle="LADA", status="ACTIVE"
+                run_date=datetime.date.today(), vehicle_id=await arac_id(), status="ACTIVE"
             )
             s.add_all([order, run])
             await s.flush()

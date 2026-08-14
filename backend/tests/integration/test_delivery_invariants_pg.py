@@ -26,6 +26,7 @@ from models.delivery import DeliveryRun, DeliveryStop
 from models.store import Order
 from schemas.delivery import DeliveryRunCreate
 from services import delivery_service, order_service
+from tests.integration.filo_yardim import arac_id
 
 
 def _uniq() -> str:
@@ -58,7 +59,9 @@ class DeliveryFactory:
     async def run(self, *, status: str = "PLANNED", vehicle: str = "LADA") -> int:
         async with AsyncSessionLocal() as s:
             run = DeliveryRun(
-                run_date=datetime.date.today(), vehicle=vehicle, status=status
+                run_date=datetime.date.today(),
+                vehicle_id=await arac_id(vehicle),
+                status=status,
             )
             s.add(run)
             await s.flush()
@@ -221,13 +224,14 @@ async def test_duplicate_planned_run_rejected(dfactory, pg):
     # Uzak bir tarih: dev verisiyle çakışmasın; her iki tur da temizlenir.
     day = datetime.date(2031, 3, 4)
     async with AsyncSessionLocal() as s:
+        vid = await arac_id()
         first = await delivery_service.create_run(
-            s, DeliveryRunCreate(run_date=day, vehicle="LADA")
+            s, DeliveryRunCreate(run_date=day, vehicle_id=vid)
         )
         dfactory.run_ids.append(first.id)
         with pytest.raises(HTTPException) as exc:
             await delivery_service.create_run(
-                s, DeliveryRunCreate(run_date=day, vehicle="LADA")
+                s, DeliveryRunCreate(run_date=day, vehicle_id=vid)
             )
         assert exc.value.status_code == 409
 

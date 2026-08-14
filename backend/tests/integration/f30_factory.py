@@ -203,7 +203,6 @@ class PaketFabrikasi(Fabrika):
             c = Courier(
                 name=f"Paket Kurye {uniq()}",
                 phone="05001112233",
-                vehicle_plate=f"01{uniq()[:5].upper()}",
                 is_active=True,
             )
             s.add(c)
@@ -257,14 +256,16 @@ class PaketFabrikasi(Fabrika):
         kırılıyordu.
         """
         from models.delivery import DeliveryRun
+        from tests.integration.filo_yardim import arac_id
 
         gun = datetime.date.today() + datetime.timedelta(days=len(self.run_ids))
+        vid = await arac_id()  # İP-19: araç veriden (seed'li LADA), koddan değil
         async with AsyncSessionLocal() as s:
             r = DeliveryRun(
                 run_date=gun,
                 status=status,
                 courier_id=courier_id,
-                vehicle="LADA",
+                vehicle_id=vid,
             )
             s.add(r)
             await s.flush()

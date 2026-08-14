@@ -1,10 +1,15 @@
 // "Performans" — teslimat KPI'ları + müşteri geri bildirimi. Gün aralığı
 // URL'de (?gun=7|30|90|180 — backend parametrik, sabit 30 kalktı). Kart
 // enflasyonu yok: etiketli sayı ritmi + Pareto div-çubukları (grafik kütüphanesiz).
+import { useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 
 import { EmptyState, ErrorState, PageSkeleton } from "@/components/admin/ui";
-import { useDeliveryKpi, useRecentDeliveryFeedback } from "@/hooks/useDelivery";
+import {
+  useDeliveryKpi,
+  useDeliveryMetrics,
+  useRecentDeliveryFeedback,
+} from "@/hooks/useDelivery";
 import { FEEDBACK_PROBLEM_LABEL } from "@/lib/deliveryFeedback";
 import { FAIL_REASON_LABEL } from "@/lib/deliveryRun";
 import { getErrorMessage } from "@/lib/errors";
@@ -55,6 +60,155 @@ function ParetoList({
   );
 }
 
+/* ── İP-19: operasyon metrikleri (GET /delivery/metrics, tarih aralıklı) ── */
+
+const OPS_WINDOWS = [7, 30, 90] as const;
+type OpsWindow = (typeof OPS_WINDOWS)[number];
+
+/** Yerel takvim günü YYYY-MM-DD (toISOString UTC'ye kayar — kullanılmaz). */
+function isoDate(d: Date): string {
+  const ay = String(d.getMonth() + 1).padStart(2, "0");
+  const gun = String(d.getDate()).padStart(2, "0");
+  return `${d.getFullYear()}-${ay}-${gun}`;
+}
+
+function num(v: number | null): string {
+  return v == null ? "—" : v.toLocaleString("tr-TR", { maximumFractionDigits: 1 });
+}
+
+function OpsMetricsSection() {
+  const [days, setDays] = useState<OpsWindow>(7);
+  const { fromDate, toDate } = useMemo(() => {
+    const to = new Date();
+    const from = new Date();
+    from.setDate(to.getDate() - (days - 1)); // bugün dahil "son N gün"
+    return { fromDate: isoDate(from), toDate: isoDate(to) };
+  }, [days]);
+
+  const query = useDeliveryMetrics(fromDate, toDate);
+  const m = query.data;
+
+  const fmtGun = (s: string) =>
+    new Date(`${s}T00:00:00`).toLocaleDateString("tr-TR", {
+      day: "numeric",
+      month: "short",
+    });
+
+  // null = "bu aralıkta ölçülecek veri yok" — backend bilinçli ayırıyor, %0 DEĞİL.
+  const rows = m
+    ? [
+        {
+          key: "zamaninda",
+          label: "Zamanında teslim",
+          value: pct(m.on_time_rate),
+          bos: m.on_time_rate == null,
+        },
+        {
+          key: "ilk-deneme",
+          label: "İlk denemede başarı",
+          value: pct(m.first_attempt_rate),
+          bos: m.first_attempt_rate == null,
+        },
+        {
+          key: "durak-saat",
+          label: "Durak / saat",
+          value: num(m.stops_per_hour),
+          bos: m.stops_per_hour == null,
+        },
+        {
+          key: "km-teslimat",
+          label: "km / teslimat",
+          value: num(m.km_per_delivery),
+          bos: m.km_per_delivery == null,
+        },
+        {
+          key: "teslim-plan",
+          label: "Teslim edilen / planlanan",
+          value: `${m.delivered}/${m.planned}`,
+          bos: false,
+        },
+      ]
+    : [];
+
+  return (
+    <section
+      data-testid="ops-metrikler"
+      className="rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900"
+    >
+      <div className="flex flex-wrap items-center gap-3 border-b border-slate-100 px-6 py-4 dark:border-slate-800">
+        <div className="mr-auto">
+          <h2 className="text-base font-bold text-slate-900 dark:text-white">
+            Operasyon Metrikleri
+          </h2>
+          <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+            {fmtGun(fromDate)} – {fmtGun(toDate)} · turlardan ölçülür
+          </p>
+        </div>
+        <div role="group" aria-label="Metrik aralığı" className="flex gap-1">
+          {OPS_WINDOWS.map((w) => (
+            <button
+              key={w}
+              aria-pressed={days === w}
+              onClick={() => setDays(w)}
+              className={`rounded-lg px-2.5 py-1 text-xs font-semibold tabular-nums transition ${
+                days === w
+                  ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900"
+                  : "text-slate-500 ring-1 ring-slate-200 hover:bg-slate-50 dark:text-slate-400 dark:ring-slate-700 dark:hover:bg-slate-800"
+              }`}
+            >
+              {w} gün
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {query.isError ? (
+        <div className="p-6">
+          <ErrorState
+            description={getErrorMessage(query.error, "Metrikler yüklenemedi.")}
+            onRetry={() => query.refetch()}
+          />
+        </div>
+      ) : !m ? (
+        <div className="p-6">
+          <PageSkeleton rows={3} />
+        </div>
+      ) : (
+        <>
+          <ul className="divide-y divide-slate-100 dark:divide-slate-800">
+            {rows.map((r) => (
+              <li
+                key={r.key}
+                data-testid={`ops-metrik-${r.key}`}
+                className="flex items-baseline justify-between gap-4 px-6 py-3"
+              >
+                <span className="text-sm text-slate-600 dark:text-slate-300">
+                  {r.label}
+                </span>
+                <span className="text-right">
+                  <span className="text-sm font-semibold tabular-nums text-slate-900 dark:text-white">
+                    {r.value}
+                  </span>
+                  {r.bos && (
+                    <span className="block text-xs text-slate-400 dark:text-slate-500">
+                      henüz veri yok
+                    </span>
+                  )}
+                </span>
+              </li>
+            ))}
+          </ul>
+          <ParetoList
+            title="Teslim edilememe nedenleri"
+            entries={Object.entries(m.fail_reasons).sort((a, b) => b[1] - a[1])}
+            labels={FAIL_REASON_LABEL}
+          />
+        </>
+      )}
+    </section>
+  );
+}
+
 export default function DeliveryPerformancePage() {
   const [params, setParams] = useSearchParams();
   const rawDays = Number(params.get("gun"));
@@ -76,7 +230,10 @@ export default function DeliveryPerformancePage() {
   );
 
   return (
-    <section className="rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+    <div className="space-y-6">
+      <OpsMetricsSection />
+
+      <section className="rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
       <div className="flex flex-wrap items-center gap-3 border-b border-slate-100 px-6 py-4 dark:border-slate-800">
         <div className="mr-auto">
           <h2 className="text-base font-bold text-slate-900 dark:text-white">
@@ -225,6 +382,7 @@ export default function DeliveryPerformancePage() {
           </ul>
         )}
       </div>
-    </section>
+      </section>
+    </div>
   );
 }

@@ -25,10 +25,14 @@ from core.database import AsyncSessionLocal
 from models.client import Client
 from models.store import Order
 from schemas.delivery import DeliveryRunCreate
+from tests.integration.filo_yardim import arac_id
 from services import delivery_service
 from tests.integration.db_guard import assert_test_database
 
-DEPOT = (settings.DELIVERY_DEPOT_LAT, settings.DELIVERY_DEPOT_LNG)
+# İP-19: depo ayarı kalktı (K-9). Bu, testin VROOM canlılık yoklaması ve
+# sipariş üretimi için kullandığı Adana-içi bir çapa noktasıdır; migration
+# seed'inin BASE noktasıyla aynı koordinat (OSRM verisi Adana bbox'ı).
+DEPOT = (36.9855, 35.3253)
 
 # Adana merkezde gerçek mahalle ölçeğinde dağılmış teslimat noktaları.
 _ADRESLER = [
@@ -184,8 +188,12 @@ class _EligibleParking:
                 await s.execute(
                     text(
                         """
-                        INSERT INTO delivery_runs (run_date, vehicle, status)
-                        VALUES (:d, 'LADA', 'PLANNED') RETURNING id
+                        INSERT INTO delivery_runs (run_date, vehicle_id, status)
+                        VALUES (
+                            :d,
+                            (SELECT id FROM vehicles WHERE code = 'LADA'),
+                            'PLANNED'
+                        ) RETURNING id
                         """
                     ),
                     {"d": park_date},
@@ -308,7 +316,11 @@ async def test_add_stops_ayni_session_da_taze_okunur(df):
     order_ids = await df.orders(3)
     async with AsyncSessionLocal() as s:
         run = await delivery_service.create_run(
-            s, DeliveryRunCreate(run_date=_future_date(), vehicle="LADA")
+            s,
+            DeliveryRunCreate(
+                run_date=_future_date(),
+                vehicle_id=await arac_id(),
+            ),
         )
         df.run_ids.append(run.id)
         out = await delivery_service.add_stops(s, run.id, order_ids)
@@ -331,38 +343,68 @@ async def test_add_stops_ayni_session_da_taze_okunur(df):
         assert len(yeniden.stops) == 3
 
 
-async def test_dispatch_yogun_gunde_iki_araca_dengeli_bolusturur(df):
-    """Eşiği aşan gün ikinci aracı devreye almalı ve yükü DENGELİ bölüşmeli —
-    kısıtsız VROOM toplam maliyeti azaltıp bir kuryeye yığabiliyordu."""
-    n = settings.DELIVERY_SINGLE_VEHICLE_MAX_STOPS + 3
-    order_ids = await df.orders(n)
-    async with AsyncSessionLocal() as s:
-        runs = await delivery_service.dispatch_day(s, _future_date())
-    df.run_ids.extend(r.id for r in runs)
+async def test_dispatch_kapasiteyi_asan_gun_ikinci_araca_tasar(df):
+    """Birincil aracın `max_stops`'unu aşan gün, yük ikinci araca taşmalı.
 
-    assert {r.vehicle for r in runs} == {"LADA", "COROLLA"}
-    boyutlar = sorted(len(r.stops) for r in runs)
-    assert sum(boyutlar) == n
-    # ceil(n/2) tavanı: en yüklü araç bunu aşamaz.
-    assert boyutlar[-1] <= -(-n // 2), f"yük dengesiz: {boyutlar}"
-    hepsi = {s.order_id for r in runs for s in r.stops}
-    assert hepsi == set(order_ids)
-    assert all(r.optimize_provider == "vroom" for r in runs if len(r.stops) >= 2)
+    İP-19 güncellemesi (sözleşme §6.1): eski test
+    `DELIVERY_SINGLE_VEHICLE_MAX_STOPS` eşiğini ve `ceil(n/2)` denge tavanını
+    ölçüyordu — ikisi de kalktı. Yeni modelde COROLLA `fixed_cost` taşır
+    (seed 1800) ve maliyetli filoda denge tavanı bilinçli olarak YAZILMAZ
+    (K-3 çelişkisi, `vroom.py` docstring'i). Bölünmeyi artık ölçülebilir
+    biçimde zorlayan şey KAPASİTEDİR: LADA'ya `max_stops` verilir, n onu
+    aşar, VROOM taşan kısmı fixed maliyeti ödeyip COROLLA'ya atar.
+    Ölçülen: iki araç da sahada, kimse kapasitesini aşmıyor, sipariş kaybı
+    yok — "dengeli bölüşüm" değil "kapasite gerçeği" iddiası.
+    """
+    from tests.integration.filo_yardim import arac_id as _aid
+
+    lada = await _aid()
+    n = 11
+    async with AsyncSessionLocal() as s:
+        await s.execute(
+            text("UPDATE vehicles SET max_stops = 8 WHERE id = :i"), {"i": lada}
+        )
+        await s.commit()
+    try:
+        order_ids = await df.orders(n)
+        async with AsyncSessionLocal() as s:
+            runs = await delivery_service.dispatch_day(s, _future_date())
+        df.run_ids.extend(r.id for r in runs)
+
+        # `vehicle` alanı artık ETİKETTİR (İP-19).
+        assert {r.vehicle for r in runs} == {"Lada", "Corolla"}
+        boyutlar = {r.vehicle: len(r.stops) for r in runs}
+        assert sum(boyutlar.values()) == n
+        assert boyutlar["Lada"] <= 8, f"kapasite aşıldı: {boyutlar}"
+        hepsi = {s.order_id for r in runs for s in r.stops}
+        assert hepsi == set(order_ids)
+        assert all(
+            r.optimize_provider == "vroom" for r in runs if len(r.stops) >= 2
+        )
+    finally:
+        async with AsyncSessionLocal() as s:
+            await s.execute(
+                text("UPDATE vehicles SET max_stops = NULL WHERE id = :i"),
+                {"i": lada},
+            )
+            await s.commit()
 
 
 async def test_gunluk_tavan_asilan_siparisler_kuyrukta_kalir(df, monkeypatch):
     """Biriken söz borcu tek günde bitirilemeyecek tur kurmamalı: tavanı aşan
     siparişler PLANA GİRMEZ ama uygunluk kuyruğunda görünmeye devam eder."""
     monkeypatch.setattr(settings, "DELIVERY_MAX_STOPS_PER_RUN", 2)
-    monkeypatch.setattr(settings, "DELIVERY_SINGLE_VEHICLE_MAX_STOPS", 99)
     order_ids = await df.orders(6)
+    # İP-19: tavan artık plana giren araçların toplamıdır (max_stops NULL →
+    # DELIVERY_MAX_STOPS_PER_RUN başına düşer). Seed'li iki araçla 2+2=4.
+    tavan = await delivery_service.gunluk_tavan(None)
     async with AsyncSessionLocal() as s:
         runs = await delivery_service.dispatch_day(s, _future_date())
     df.run_ids.extend(r.id for r in runs)
 
     planlanan = {st.order_id for r in runs for st in r.stops}
     bizimkiler = planlanan & set(order_ids)
-    assert len(bizimkiler) <= 2 * settings.DELIVERY_MAX_STOPS_PER_RUN
+    assert len(bizimkiler) <= tavan
 
     async with AsyncSessionLocal() as s:
         kalan = {o.order_id for o in await delivery_service.eligible_orders(s)}

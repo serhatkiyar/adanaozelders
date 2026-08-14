@@ -63,22 +63,31 @@ export function DeliveryRouteMap({
     [run.stops]
   );
 
+  // İP-19: başlangıç (BASE) noktası veridir ve tanımsız olabilir → null guard.
+  const depot = useMemo<[number, number] | null>(
+    () =>
+      run.depot_lat != null && run.depot_lng != null
+        ? [run.depot_lat, run.depot_lng]
+        : null,
+    [run.depot_lat, run.depot_lng]
+  );
+
   const line = useMemo<[number, number][]>(() => {
     if (run.route_geometry) return decodePolyline(run.route_geometry);
-    // Geometri yok (haversine) → depo + duraklar arası düz çizgi.
+    // Geometri yok (haversine) → başlangıç + duraklar arası düz çizgi.
     return [
-      [run.depot_lat, run.depot_lng],
+      ...(depot ? [depot] : []),
       ...located.map((s) => [s.lat!, s.lng!] as [number, number]),
     ];
-  }, [run.route_geometry, run.depot_lat, run.depot_lng, located]);
+  }, [run.route_geometry, depot, located]);
 
   const bounds = useMemo(() => {
     const pts: [number, number][] = [
-      [run.depot_lat, run.depot_lng],
+      ...(depot ? [depot] : []),
       ...located.map((s) => [s.lat!, s.lng!] as [number, number]),
     ];
     return L.latLngBounds(pts).pad(0.15);
-  }, [run.depot_lat, run.depot_lng, located]);
+  }, [depot, located]);
 
   const gate = useMapGate();
 
@@ -104,9 +113,11 @@ export function DeliveryRouteMap({
             dashArray: run.route_geometry ? undefined : "6 8",
           }}
         />
-        <Marker position={[run.depot_lat, run.depot_lng]} icon={depotIcon}>
-          <Tooltip direction="top" offset={[0, -12]}>Depo</Tooltip>
-        </Marker>
+        {depot && (
+          <Marker position={depot} icon={depotIcon}>
+            <Tooltip direction="top" offset={[0, -12]}>Başlangıç</Tooltip>
+          </Marker>
+        )}
         {located.map((s) => (
           <Marker key={s.id} position={[s.lat!, s.lng!]} icon={stopIcon(s)}>
             {/* Harita salt dekor değil: pin'e gelen operatör durağı tanır. */}

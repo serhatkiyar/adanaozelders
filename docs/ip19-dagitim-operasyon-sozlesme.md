@@ -144,6 +144,20 @@ Haversine fallback'in maliyet modeli yoktur; orada araç sayısı
 `ceil(len(points) / en_küçük_max_stops)` ile türetilir — yani eşik yine vardır
 ama **araç verisinden** gelir, sabitten değil.
 
+**Yeşil fazda ölçülen düzeltme (K-3a):** denge tavanı `ceil(n/k)` SERT bir
+kısıttır ve `costs.fixed` ekonomisiyle birlikte ifade edilemez — ikisi birden
+yazılırsa VROOM 3 siparişi bile bölmek zorunda kalır (tek araç tavanı aşamaz)
+ve "ikinci araç ancak kazanç sabit maliyeti aşarsa çıkar" kuralı hiç çalışmaz:
+kurucu tek başınayken her gün iki tura bölünürdü. Karar: **filoda `fixed_cost
+> 0` bir araç varsa denge tavanı payload'a yazılmaz**; dengeyi ekonomi +
+`max_stops` yönetir. Maliyetsiz (homojen) filoda ölçülmüş denge davranışı
+birebir korunur. Nöbetçi: `test_D6b_maliyetli_filoda_denge_tavani_YAZILMAZ`
+(matris SONRASI eklendi — §5'e ek). Migration seed'i COROLLA'ya
+`fixed_cost=1800` verir: eski "COROLLA yalnız yoğun günlerde" kuralının
+ekonomik karşılığı (≈ ikinci aracı çıkarmak yarım saatlik sürüşe bedel);
+eşik artık kodda bir sabit değil, admin panelinden araç başına ayarlanabilir
+bir sayıdır.
+
 ### K-4 · Kapasite tek boyutludur ve NULLABLE'dır
 
 Sektör pratiği çok boyutlu kapasiteyi (ağırlık + hacim + palet) destekler, ama
@@ -384,6 +398,7 @@ tavan ile plana giren araç kümesi **aynı listeden** türer.
 | `PATCH /delivery/vehicles/{id}` | `delivery.manage` | Düzenle / pasifleştir |
 | `DELETE /delivery/vehicles/{id}` | `delivery.manage` | Soft-delete; **aktif turu olan araç silinemez → 409** |
 | `PATCH /delivery/runs/{id}` | `delivery.manage` | `vehicle_id` alanı eklenir (bugün yalnız `courier_id` taşıyor) |
+| `GET/POST /delivery/pickup-points` | view/manage | **Sözleşme eki (K-9'un doğal sonucu):** başlangıç/toplama noktaları veridir; uç olmadan seed'li BASE satırı deploy'suz düzenlenemezdi — "uydurma koordinat config'ten tabloya taşınmış ama yine kilitli" olurdu |
 | `GET /delivery/board?date=` | `delivery.view` | Gün tahtası verisi: atanmamış havuz + araç bazlı turlar |
 | `GET /delivery/metrics?from=&to=` | `delivery.view` | Beş metrik (§4.2) |
 

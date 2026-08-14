@@ -36,7 +36,6 @@ import { getErrorMessage } from "@/lib/errors";
 import { formatDuration, formatEta } from "@/lib/polyline";
 import {
   FAIL_REASON_LABEL,
-  VEHICLE_LABEL,
   coLocatedPendingStops,
   hasRunExceptions,
   runExceptions,
@@ -110,7 +109,6 @@ function RunCourier({ run }: { run: DeliveryRun }) {
       {active.map((c) => (
         <option key={c.id} value={c.id}>
           {c.name}
-          {c.vehicle_plate ? ` · ${c.vehicle_plate}` : ""}
         </option>
       ))}
     </select>
@@ -344,7 +342,7 @@ export default function DeliveryRunDetailPage() {
             <p className="text-sm font-semibold text-slate-900 dark:text-white">
               Tur #{run.id}
               <span className="ml-2 font-normal text-slate-500 dark:text-slate-400">
-                {VEHICLE_LABEL[run.vehicle] ?? run.vehicle} ·{" "}
+                {run.vehicle} ·{" "}
                 {new Date(`${run.run_date}T00:00:00`).toLocaleDateString("tr-TR", {
                   day: "numeric",
                   month: "long",

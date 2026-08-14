@@ -26,6 +26,30 @@ class RoutePoint:
     lng: float
 
 
+@dataclass(frozen=True)
+class RouteVehicle:
+    """Plana giren tek araç — İP-19 (sözleşme §3.1).
+
+    ``id`` **doğrudan VROOM vehicle id'sidir** ve `vehicles.id`'den gelir (K-1);
+    eski ``{1: "LADA", 2: "COROLLA"}`` köprüsü yoktur. Opsiyonel alanların
+    TÜMÜ "yoksa kısıt yok" semantiği taşır (K-2): ``max_stops=None`` tavansız,
+    ``shift_*_sec=None`` penceresiz, ``fixed_cost=0`` maliyetsiz demektir ve
+    hiçbiri doluyken payload bugünkü tek-araç hâliyle birebir aynıdır (D-4).
+
+    ``start_lat/lng`` araç başınadır (K-9: depo yok, başlangıç noktası veridir);
+    ``shift_*_sec`` gün başından saniyedir (VROOM ``time_window`` göreli kip).
+    """
+
+    id: int
+    start_lat: float
+    start_lng: float
+    profile: str = "car"
+    max_stops: int | None = None
+    shift_start_sec: int | None = None
+    shift_end_sec: int | None = None
+    fixed_cost: int = 0
+
+
 @dataclass
 class RoutePlan:
     """Optimizasyon sonucu.
@@ -46,7 +70,7 @@ class RoutePlan:
 class FleetPlan:
     """Çok araçlı dağıtım sonucu: araç id → o aracın rotası.
 
-    Araç id'leri çağıranın anahtarıdır (delivery: 1=LADA, 2=COROLLA).
+    Araç id'leri ``RouteVehicle.id``'dir (= ``vehicles.id`` = VROOM id, K-1).
     Boş kalan araç routes'ta görünmez.
     """
 
@@ -66,16 +90,20 @@ class RoutingProvider(ABC):
     async def plan_fleet(
         self,
         *,
-        depot_lat: float,
-        depot_lng: float,
         points: list[RoutePoint],
-        vehicle_ids: list[int],
+        vehicles: list[RouteVehicle],
     ) -> FleetPlan:
         """Durakları araçlara bölüştürüp her araç için rota planlar.
-        Varsayılan: tek araçsa ``plan``'a düşer; çok araç sağlayıcıda override edilir."""
-        if len(vehicle_ids) == 1:
+
+        İP-19: imza araç NESNESİ alır (sözleşme §3.1) — start/max_stops/vardiya/
+        maliyet araç başınadır; ``vehicle_ids: list[int]`` + tek depo varsayımı
+        kalktı. Varsayılan: tek araçsa ``plan``'a düşer (başlangıç o aracın
+        ``start``'ıdır); çok araç sağlayıcıda override edilir.
+        """
+        if len(vehicles) == 1:
+            v = vehicles[0]
             single = await self.plan(
-                depot_lat=depot_lat, depot_lng=depot_lng, points=points
+                depot_lat=v.start_lat, depot_lng=v.start_lng, points=points
             )
-            return FleetPlan(routes={vehicle_ids[0]: single}, provider=self.name)
+            return FleetPlan(routes={v.id: single}, provider=self.name)
         raise NotImplementedError

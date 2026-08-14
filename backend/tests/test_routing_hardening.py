@@ -14,6 +14,16 @@ from core.routing.vroom import build_vroom_payload
 
 DEPOT = (36.9855, 35.3253)
 
+def arac(vid: int, *, max_stops=None, fixed_cost=0):
+    """İP-19 imzası: payload kurucular araç NESNESİ alır (RouteVehicle)."""
+    from core.routing.base import RouteVehicle
+
+    return RouteVehicle(
+        id=vid, start_lat=DEPOT[0], start_lng=DEPOT[1],
+        max_stops=max_stops, fixed_cost=fixed_cost,
+    )
+
+
 
 def p(id_: int, lat: float, lng: float) -> RoutePoint:
     return RoutePoint(id=id_, lat=lat, lng=lng)
@@ -42,9 +52,7 @@ def test_multi_vehicle_payload_uses_max_tasks_not_capacity():
     FİZİKSEL yükünü (hacim/ağırlık) modeller; onu durak sayacı olarak kullanmak
     ileride gerçek yük kısıtı gerektiğinde boyutu işgal ederdi."""
     pts = [p(i, 37.0 + i / 100, 35.3) for i in range(1, 6)]
-    payload = build_vroom_payload(
-        depot_lat=DEPOT[0], depot_lng=DEPOT[1], points=pts, vehicle_ids=[1, 2]
-    )
+    payload = build_vroom_payload(points=pts, vehicles=[arac(1), arac(2)])
     assert all(v["max_tasks"] == 3 for v in payload["vehicles"])  # ceil(5/2)
     assert all("capacity" not in v for v in payload["vehicles"])
     assert all("amount" not in j for j in payload["jobs"])
@@ -52,9 +60,7 @@ def test_multi_vehicle_payload_uses_max_tasks_not_capacity():
 
 def test_single_vehicle_payload_has_no_task_cap():
     """Tek araç payload'ı kirlenmemeli (geriye uyumluluk)."""
-    payload = build_vroom_payload(
-        depot_lat=DEPOT[0], depot_lng=DEPOT[1], points=[p(1, 37.0, 35.3)]
-    )
+    payload = build_vroom_payload(points=[p(1, 37.0, 35.3)], vehicles=[arac(1)])
     assert "max_tasks" not in payload["vehicles"][0]
     assert "capacity" not in payload["vehicles"][0]
 
@@ -212,10 +218,15 @@ async def test_fleet_path_also_falls_back(routing_module, monkeypatch):
     monkeypatch.setattr(settings, "ROUTING_PROVIDER", "auto")
     monkeypatch.setattr(VroomRoutingProvider, "plan_fleet", _boom)
     fleet = await routing_module.plan_fleet(
-        depot_lat=DEPOT[0],
-        depot_lng=DEPOT[1],
         points=[p(1, 36.99, 35.30), p(2, 37.02, 35.42)],
-        vehicle_ids=[1, 2],
+        vehicles=[
+            routing_module.RouteVehicle(
+                id=1, start_lat=DEPOT[0], start_lng=DEPOT[1], max_stops=1
+            ),
+            routing_module.RouteVehicle(
+                id=2, start_lat=DEPOT[0], start_lng=DEPOT[1], max_stops=1
+            ),
+        ],
     )
     assert fleet.provider == "haversine"
     assert sorted(i for r in fleet.routes.values() for i in r.ordered_ids) == [1, 2]

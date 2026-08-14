@@ -1846,7 +1846,66 @@ export interface BulkImportResult {
 
 /* ── Kendi-filo teslimat (mağaza dağıtım turları — ADMIN) ── */
 
-export type DeliveryVehicle = "LADA" | "COROLLA";
+/** Filo aracı (İP-19: sabit LADA/COROLLA enum'u tabloya taşındı — admin CRUD). */
+export interface Vehicle {
+  id: number;
+  /** Değişmez kısa kod (^[A-Z0-9_-]+$) — oluşturulduktan sonra düzenlenemez. */
+  code: string;
+  label: string;
+  plate: string | null;
+  profile: "car" | "bike" | "foot";
+  /** Rota planında araç başına durak tavanı; null = sınırsız. */
+  max_stops: number | null;
+  /** "HH:MM:SS" (backend time) — form "HH:MM" gönderebilir. */
+  shift_start: string | null;
+  shift_end: string | null;
+  fixed_cost: number;
+  /** Turun başladığı nokta; null = varsayılan BASE noktası. */
+  start_point_id: number | null;
+  sort_order: number;
+  is_active: boolean;
+}
+
+export interface VehicleCreate {
+  code: string;
+  label: string;
+  plate?: string | null;
+  profile?: "car" | "bike" | "foot";
+  max_stops?: number | null;
+  shift_start?: string | null;
+  shift_end?: string | null;
+  fixed_cost?: number;
+  start_point_id?: number | null;
+  sort_order?: number;
+}
+
+/** code oluşturmadan sonra değiştirilemez. */
+export type VehicleUpdate = Partial<Omit<VehicleCreate, "code">> & {
+  is_active?: boolean;
+};
+
+/** Başlangıç/toplama noktası (K-9: depo .env sabiti yerine veri).
+ *  Varsayılan başlangıç = aktif BASE kayıtlarından sırası en küçük olan. */
+export interface PickupPoint {
+  id: number;
+  name: string;
+  kind: "BASE" | "SUPPLIER";
+  address: string | null;
+  lat: number;
+  lng: number;
+  sort_order: number;
+  is_active: boolean;
+}
+
+export interface PickupPointCreate {
+  name: string;
+  kind: "BASE" | "SUPPLIER";
+  address?: string | null;
+  lat: number;
+  lng: number;
+  sort_order?: number;
+}
+
 export type DeliveryRunStatus = "PLANNED" | "ACTIVE" | "DONE" | "CANCELLED";
 export type DeliveryStopStatus =
   | "PENDING"
@@ -1901,14 +1960,17 @@ export interface DeliveryStop {
 export interface DeliveryRun {
   id: number;
   run_date: string;
-  vehicle: DeliveryVehicle;
+  vehicle_id: number;
+  /** Aracın görünen ETİKETİ ("Lada") — İP-19'dan beri kod değil, ad. */
+  vehicle: string;
   status: DeliveryRunStatus;
   notes?: string | null;
   started_at?: string | null;
   completed_at?: string | null;
   created_at: string;
-  depot_lat: number;
-  depot_lng: number;
+  /** Başlangıç (BASE) noktası koordinatı; hiç BASE tanımlı değilse null. */
+  depot_lat: number | null;
+  depot_lng: number | null;
   /** Rota optimizasyonu (Faz B) — son optimize snapshot'ı */
   optimized_at?: string | null;
   optimize_provider?: string | null;
@@ -1918,6 +1980,14 @@ export interface DeliveryRun {
   route_geometry?: string | null;
   courier?: Courier | null;
   stops: DeliveryStop[];
+}
+
+/** POST /delivery/runs gövdesi — İP-19: araç FK ile seçilir (eski {vehicle:"LADA"} yok). */
+export interface DeliveryRunCreate {
+  run_date: string;
+  vehicle_id: number;
+  notes?: string | null;
+  courier_id?: number | null;
 }
 
 export interface DeliveryEligibleOrder {
@@ -2129,20 +2199,19 @@ export interface OrderTracking {
   proof_photo_url?: string | null;
 }
 
-/** Kurye profili (ADMIN yönetir; müşteri takip sayfasında kimlik kartı). */
+/** Kurye profili (ADMIN yönetir; müşteri takip sayfasında kimlik kartı).
+ *  İP-19: plaka kuryeden kalktı — araç kimliği `Vehicle.plate`'te yaşar. */
 export interface Courier {
   id: number;
   name: string;
   phone?: string | null;
   photo_url?: string | null;
-  vehicle_plate?: string | null;
   is_active: boolean;
 }
 
 export interface CourierCreate {
   name: string;
   phone?: string | null;
-  vehicle_plate?: string | null;
 }
 
 export type CourierUpdate = Partial<CourierCreate> & { is_active?: boolean };

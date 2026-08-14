@@ -8,15 +8,20 @@ import type {
   DeliveryInfo,
   DeliveryPref,
   DeliveryRun,
+  DeliveryRunCreate,
   DeliveryScanResult,
   DeliveryStop,
-  DeliveryVehicle,
   CapacityDay,
   ClosedDay,
   DeliveryFeedback,
   DeliveryKpi,
   OrderOut,
   OrderTracking,
+  PickupPoint,
+  PickupPointCreate,
+  Vehicle,
+  VehicleCreate,
+  VehicleUpdate,
 } from "@/types";
 
 export interface DeliveryFeedbackPayload {
@@ -88,7 +93,7 @@ export interface CourierWorkspace {
     courier_id: number;
     created_at: string;
   };
-  courier: { id: number; name: string; photo_url?: string | null; vehicle_plate?: string | null } | null;
+  courier: { id: number; name: string; photo_url?: string | null } | null;
   run: DeliveryRun | null;
 }
 
@@ -236,13 +241,51 @@ export async function fetchDeliveryRun(runId: number): Promise<DeliveryRun> {
   return data;
 }
 
-export async function createDeliveryRun(payload: {
-  run_date: string;
-  vehicle: DeliveryVehicle;
-  notes?: string | null;
-  courier_id?: number | null;
-}): Promise<DeliveryRun> {
+export async function createDeliveryRun(payload: DeliveryRunCreate): Promise<DeliveryRun> {
   const { data } = await apiClient.post<DeliveryRun>("/delivery/runs", payload);
+  return data;
+}
+
+/* ── Filo (İP-19): araçlar + başlangıç noktaları (ADMIN) ── */
+
+export async function fetchVehicles(): Promise<Vehicle[]> {
+  const { data } = await apiClient.get<Vehicle[]>("/delivery/vehicles");
+  return data;
+}
+
+export async function createVehicle(payload: VehicleCreate): Promise<Vehicle> {
+  const { data } = await apiClient.post<Vehicle>("/delivery/vehicles", payload);
+  return data;
+}
+
+export async function updateVehicle(
+  vehicleId: number,
+  payload: VehicleUpdate
+): Promise<Vehicle> {
+  const { data } = await apiClient.patch<Vehicle>(
+    `/delivery/vehicles/${vehicleId}`,
+    payload
+  );
+  return data;
+}
+
+/** Soft-delete; AÇIK turu olan araç 409 döner — çağıran toast'la açıklar. */
+export async function deleteVehicle(vehicleId: number): Promise<void> {
+  await apiClient.delete(`/delivery/vehicles/${vehicleId}`);
+}
+
+export async function fetchPickupPoints(): Promise<PickupPoint[]> {
+  const { data } = await apiClient.get<PickupPoint[]>("/delivery/pickup-points");
+  return data;
+}
+
+export async function createPickupPoint(
+  payload: PickupPointCreate
+): Promise<PickupPoint> {
+  const { data } = await apiClient.post<PickupPoint>(
+    "/delivery/pickup-points",
+    payload
+  );
   return data;
 }
 
@@ -528,6 +571,111 @@ export async function failDeliveryStop(
   const { data } = await apiClient.post<DeliveryStop>(`/delivery/stops/${stopId}/fail`, {
     reason,
     reason_code: reasonCode,
+  });
+  return data;
+}
+
+/* ── İP-19 · Gün tahtası (board) ── */
+
+/** Filo aracı (GET /delivery/vehicles) — tahtada kapasite uyarısı için
+ *  `vehicle_id → max_stops` eşlemesi bu listeden yapılır. */
+export interface BoardVehicle {
+  id: number;
+  code: string;
+  label: string;
+  plate?: string | null;
+  /** null = kapasite sınırı tanımsız (uyarı üretilmez). */
+  max_stops?: number | null;
+  is_active: boolean;
+  sort_order: number;
+}
+
+/** Havuzdaki (atanmamış) sipariş — `EligibleOrderOut` şekli; tahta yalnız
+ *  kimlik + adres + konumu okur, kalan alanlar opsiyoneldir. */
+export interface BoardPoolOrder extends Partial<DeliveryEligibleOrder> {
+  order_id: number;
+}
+
+export interface BoardRunStop {
+  id: number;
+  order_id: number;
+  sequence: number;
+  status?: string;
+  address?: string | null;
+  recipient?: string | null;
+}
+
+/** Tahta turu — İP-19 `DeliveryRunOut`: `vehicle_id` FK + `vehicle` artık
+ *  aracın GÖRÜNEN ETİKETİ (eski "LADA" kod-string'i değil). */
+export interface BoardRun {
+  id: number;
+  vehicle_id: number;
+  vehicle?: string;
+  status: string;
+  courier?: { id: number; name: string } | null;
+  stops: BoardRunStop[];
+}
+
+/** Gün tahtası (GET /delivery/board?date=…): atanmamış havuz + araç bazlı turlar. */
+export interface DeliveryBoardData {
+  unassigned: BoardPoolOrder[];
+  runs: BoardRun[];
+}
+
+export async function fetchDeliveryBoard(date: string): Promise<DeliveryBoardData> {
+  const { data } = await apiClient.get<DeliveryBoardData>("/delivery/board", {
+    params: { date },
+  });
+  return data;
+}
+
+export async function fetchBoardVehicles(): Promise<BoardVehicle[]> {
+  const { data } = await apiClient.get<BoardVehicle[]>("/delivery/vehicles");
+  return data;
+}
+
+/** Tahtadan sürükle-bırak ile tura durak ekleme (POST /delivery/runs/{id}/stops).
+ *
+ *  Gövde bilinçli olarak ÖNCEDEN stringify edilir: axios request
+ *  interceptor'ları `transformRequest`'ten önce çalışır; kabul matrisi
+ *  (`ip19Filo.acceptance.test.tsx::kur`) gövdeyi interceptor'da
+ *  `JSON.parse(cfg.data)` ile okur — obje geçirilse orada henüz string
+ *  olmadığından parse patlar ve istek hiç dispatch edilmez. String geçince
+ *  axios'un varsayılan transform'u veriyi olduğu gibi yollar; tel üzerindeki
+ *  baytlar obje geçirilen hâlle birebir aynıdır (Content-Type json instance
+ *  varsayılanıdır). */
+export async function addBoardStops(
+  runId: number,
+  orderIds: number[]
+): Promise<DeliveryRun> {
+  const { data } = await apiClient.post<DeliveryRun>(
+    `/delivery/runs/${runId}/stops`,
+    JSON.stringify({ order_ids: orderIds })
+  );
+  return data;
+}
+
+/* ── İP-19: operasyon metrikleri (tarih aralıklı) ── */
+
+/** GET /delivery/metrics yanıtı. Oran alanları backend'de bilinçli nullable:
+ * `null` = "bu aralıkta ölçülecek veri yok" (0 ile karıştırılmaz). */
+export interface DeliveryMetrics {
+  on_time_rate: number | null;
+  first_attempt_rate: number | null;
+  stops_per_hour: number | null;
+  fail_reasons: Record<string, number>;
+  km_per_delivery: number | null;
+  delivered: number;
+  planned: number;
+}
+
+/** İP-19 operasyon metrikleri — tarih aralığı YYYY-MM-DD (ADMIN). */
+export async function fetchDeliveryMetrics(
+  fromDate: string,
+  toDate: string
+): Promise<DeliveryMetrics> {
+  const { data } = await apiClient.get<DeliveryMetrics>("/delivery/metrics", {
+    params: { from_date: fromDate, to_date: toDate },
   });
   return data;
 }
