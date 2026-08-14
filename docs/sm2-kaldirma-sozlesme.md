@@ -26,6 +26,19 @@ ataması getiriyor. Birincisinin **hiç testi yoktu**
 
 ### 1.1 Ölçülen veri — taşıma yapılmama gerekçesi
 
+**Platformun çalışan bir üretim kurulumu yoktur.** Sistem lansmana çıkmamıştır
+(proje sahibinin teyidi, 14 Ağu 2026; lansman kapıları
+`docs/pk1-deployment-checklist.md`), gerçek kullanıcı yoktur ve flashcard
+verisi taşıyan tek veritabanı geliştirme kataloğu `ceyhandb`'dir. Dolayısıyla
+"bu migration üretimde kaç satır siler" sorusunun cevabı **sıfırdır** —
+ölçülecek üretim yoktur. Aşağıdaki ölçüm geliştirme kataloğuna aittir ve
+üretim verisi yerine geçmez, çünkü yerine geçeceği bir şey yoktur.
+
+⚠️ Bu bir **koşul beyanıdır, kalıcı bir gerçek değildir.** Aynı kaldırma
+lansman sonrası yapılacak olsaydı bu bölüm yetmezdi: canlı satır sayımı ve
+taşıma ya da arşiv adımı sözleşmeye yazılmadan migration üretime
+çıkarılamazdı. §4.3 (`downgrade` yedek değildir) bu koşulla birlikte okunur.
+
 Kaldırma öncesi geliştirme veritabanı (`ceyhandb`) ölçüldü:
 
 | | |
@@ -573,6 +586,33 @@ tablo var ama şema başka türlü bozuk olabilir) için de geçerlidir.
 5. **Doluluk nöbetçilerinin yapısal sınırı** (§8.5) — vakumu daraltır, kaldırmaz.
 6. **Fixture üzerine-yazma seçimi** (§8.3) — bugün etkisiz, gelecekte değil.
 7. **Duman turu yalnız ADMIN oturumuyla** yapıldı (§9).
+8. **N-1 · N-2 · N-3 iddiaları** (§8.7) — nöbetçisiz silmenin tek doğrulama
+   yolu; ölçümü bilerek denetçiye bırakıldı. N-3 korunmasızdır.
+
+### 8.7 Nöbetçisiz silmenin iddia beyanı
+
+Bu paket **hiç testi olmayan** bir alt sistemi kaldırdı (§1). Bunun kolayca
+gözden kaçan bir sonucu var: **silmenin doğruluğu test deltasıyla
+kanıtlanamaz.** "Silinen test yok, çünkü test yoktu" doğru bir teşhistir ama
+kanıt değildir; `it(` sayısının değişmemesi yalnız dosyanın küçülmediğini
+gösterir, silinenin gerçekten gittiğini değil.
+
+Kanıt bu yüzden **negatif yönde** aranmalıdır. Paket aşağıdaki üç iddiayı
+denetçinin **bağımsız ölçmesi için** beyan eder. Ölçümler bu bölümde bilerek
+tekrarlanmamıştır: iddiayı ortaya koyan tarafın kendi ölçümü kanıt sayılmaz.
+
+| # | İddia | Ölçüm uyarısı |
+|---|---|---|
+| **N-1** | Kaldırılan 10 ucun **hiçbiri kayıtlı değildir**: uygulamanın gerçek OpenAPI şemasında `/api/v1/flashcards` öneki taşıyan tek yol yoktur ve `flashcards` etiketi yoktur | **`app.routes` üzerinden ölçülemez** — o yöndeki yokluk iddiası kaldırma yapılmasa da geçer (§5.1, [[TB-46]]). `app.openapi()["paths"]` kullanılmalıdır |
+| **N-2** | Kaldırılan uçlara kimliksiz istek **404** döner, 401/403 değil — yani yol artık hiç çözülmüyordur | Gerçek HTTP gerekir; 401 dönmesi ucun ayakta olduğu anlamına gelirdi (kırmızı fazın gözlemi buydu) |
+| **N-3** | **Hiçbir çağıran kalmamıştır**: backend ve frontend kaynak ağacında `flashcard` tam kelimesi yalnız §6.2'de sayılan yerlerde geçer ve bunların hiçbiri çağrı değildir (baseline migration · kaldırma revizyonu · nöbetçi testler · tarihsel doküman · `backend/CLAUDE.md` notu) | Bu iddianın **otomatik nöbetçisi yoktur** ve kaynak taramasına dayanır; kök CLAUDE.md §C uyarınca **düşük güçlü** sınıftadır |
+
+N-1'in nöbetçisi R2, N-2'nin nöbetçisi R1'dir (§3.2) — yani ikisi geri sızmaya
+karşı korunur. **N-3 korunmasızdır**: yarın biri `flashcards.ts` benzeri bir
+çağrı yazsa hiçbir test kırılmaz, çünkü çağıracağı uç zaten yok olduğundan
+yalnız çalışma zamanında 404 alır. Bu, kabul edilmiş bir sınırdır.
+
+---
 
 ## 9. Bilinen sınırlar ve açık noktalar
 
