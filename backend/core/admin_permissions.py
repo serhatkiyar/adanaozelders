@@ -27,6 +27,11 @@ PERMISSION_CATALOG: tuple[tuple[str, str, str], ...] = (
     ("bookings.manage", "Rezervasyon yönetimi", "Eğitim"),
     ("demands.view", "Öğrenci talebi görüntüleme", "Eğitim"),
     ("demands.manage", "Öğrenci talebi yönetimi", "Eğitim"),
+    # İP-16 aralıklı tekrar: platform destesi küratörlüğü (sözleşme §7.1 D-12).
+    # DİKKAT: bu izinler yalnız platform DESTE İÇERİĞİNİ kapsar — hiçbir admin
+    # izni kullanıcı ilerlemesi (srs_progress/srs_review_logs) OKUTMAZ (D-7/K-6).
+    ("srs_platform.view", "Platform tekrar destelerini görüntüleme", "Eğitim"),
+    ("srs_platform.manage", "Platform tekrar destesi yönetimi", "Eğitim"),
     ("libraries.view", "Kütüphane görüntüleme", "Operasyon"),
     ("libraries.manage", "Kütüphane yönetimi", "Operasyon"),
     ("catalogs.view", "Deneme kataloğu görüntüleme", "Operasyon"),

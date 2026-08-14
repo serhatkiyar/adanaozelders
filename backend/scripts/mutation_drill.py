@@ -186,12 +186,37 @@ def _secilen_test_sayisi(m: "Mutasyon") -> int:
 
 
 def _kirilanlar(cikti: str) -> list[str]:
+    """Mutasyonun yakalandığına dair kanıt satırları.
+
+    ## `FAILED` yetmez — `ERROR` de sayılır ([[TB-29]])
+
+    Bu tarama uzun süre yalnız `FAILED` satırlarına baktı ve **"test zayıf" ile
+    "test hiç koşmadı"yı aynı kefeye koydu**. Ölçülen vaka (İP-16, IP16-21):
+    migration zinciri koparıldığında entegrasyon conftest'i veritabanını
+    kuramıyor ("Multiple head revisions"), pytest beş düğümü de `ERROR` olarak
+    raporluyor ve TEK bir `FAILED` satırı çıkmıyor. Sürücü bunu "YAKALANMADI"
+    sayıyordu; oysa suite hiç koşamamıştı, ki bu daha sert bir kırılmadır ve
+    ters yönde yanlış karar verdirir: gerçekte nöbetçi olan bir testi
+    "yetersiz" ilan edip yerine yenisini yazdırır.
+
+    Ayrım İP-16'da yerel bir gölge fonksiyonla kapatılmıştı; kusur burada
+    olduğu için düzeltme de buraya taşındı (İP-17). **Bu, geçmiş turların
+    ölçüm aracını değiştirir**: daha önce "YAKALANMADI" raporlanmış bir prova,
+    kurulum hatası yüzünden öyle görünüyorduysa artık YAKALANDI sayılır.
+    Sözleşmeye not düşüldü.
+    """
     pytest_fail = sorted(
         {s.split(" ")[1] if " " in s else s
          for s in cikti.splitlines() if s.startswith("FAILED")}
     )
-    if pytest_fail:
-        return pytest_fail
+    kurulum_hatasi = sorted(
+        {s.split(" ")[1] if " " in s else s
+         for s in cikti.splitlines() if s.startswith("ERROR ") and "::" in s}
+    )
+    if pytest_fail or kurulum_hatasi:
+        return pytest_fail + [
+            f"{h} (KURULUM HATASI — test hiç koşmadı)" for h in kurulum_hatasi
+        ]
     # vitest: "×" işaretli satırlar
     return [
         s.strip()[:110].encode("ascii", "replace").decode()

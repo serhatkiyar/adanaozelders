@@ -395,7 +395,13 @@ async def main(args: argparse.Namespace) -> int:
                     "title": prod.title,
                     "imported_at": started_at,
                 }
-                for meta, prod in zip(ok_meta, created_rows)
+                # strict=True bilinçli: ok_meta yalnız `errors` satırlarını
+                # eler, servisin `skipped` (ISBN dedup) satırlarını ELEMEZ.
+                # Uzunluklar ayrışırsa eşleştirme kayar ve her source_id bir
+                # SONRAKİ ürünün id'siyle günlüğe yazılır — `--undo` o zaman
+                # yanlış ürünleri soft-delete eder. Sessiz kesme yerine
+                # gürültülü hata: eşleştiremediğimizi bilmek şart.
+                for meta, prod in zip(ok_meta, created_rows, strict=True)
             ]
             _append_log(log_records)
 

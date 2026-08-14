@@ -4,7 +4,7 @@ import { DashboardShell } from "@/components/DashboardShell";
 import { FullScreenSpinner } from "@/components/Spinner";
 import { NewLessonRequestModal } from "@/components/NewLessonRequestModal";
 import { BookingModal } from "@/components/BookingModal";
-import { STUDENT_NAV, TUTOR_NAV } from "@/lib/nav";
+import { navForRole, STUDENT_NAV } from "@/lib/nav";
 import { useBookings } from "@/hooks/useBookings";
 import { useTutorDetail } from "@/hooks/useTutorSearch";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
@@ -70,7 +70,7 @@ export default function Calendar() {
   const { data: user } = useCurrentUser();
   const isTutor = user?.role_id === ROLE_IDS.TUTOR;
   const isStudent = user?.role_id === ROLE_IDS.CLIENT;
-  const navItems = isTutor ? TUTOR_NAV : STUDENT_NAV;
+  const navItems = navForRole(user?.role_id) ?? STUDENT_NAV;
 
   const { data: bookings, isLoading } = useBookings({ limit: 100 });
   const [weekOffset, setWeekOffset] = useState(0);

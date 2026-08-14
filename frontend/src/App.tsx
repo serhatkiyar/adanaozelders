@@ -124,6 +124,12 @@ const FlashcardDeck = lazy(() => import("@/pages/FlashcardDeck"));
 const DeepWork = lazy(() => import("@/pages/DeepWork"));
 const Grapher = lazy(() => import("@/pages/Grapher"));
 const Habits = lazy(() => import("@/pages/Habits"));
+// Aralıklı tekrar (FSRS, İP-16)
+const SrsDecks = lazy(() => import("@/pages/srs/SrsDecks"));
+const SrsDeckDetail = lazy(() => import("@/pages/srs/SrsDeckDetail"));
+const SrsStudy = lazy(() => import("@/pages/srs/SrsStudy"));
+const SrsBrowser = lazy(() => import("@/pages/srs/SrsBrowser"));
+const SrsStats = lazy(() => import("@/pages/srs/SrsStats"));
 const Tasks = lazy(() => import("@/pages/Tasks"));
 const Profile = lazy(() => import("@/pages/Profile"));
 const MessageCenter = lazy(() => import("@/pages/MessageCenter"));
@@ -389,6 +395,11 @@ function App() {
             <Route path={PATHS.deepwork} element={<DeepWork />} />
             <Route path={PATHS.grapher} element={<Grapher />} />
             <Route path={PATHS.habits} element={<Habits />} />
+            <Route path={PATHS.srs} element={<SrsDecks />} />
+            <Route path={PATHS.srsDeck} element={<SrsDeckDetail />} />
+            <Route path={PATHS.srsStudy} element={<SrsStudy />} />
+            <Route path={PATHS.srsBrowser} element={<SrsBrowser />} />
+            <Route path={PATHS.srsStats} element={<SrsStats />} />
             <Route path={PATHS.tasks} element={<Tasks />} />
             {/* Bakiyem — rol delegasyonu sayfa içinde (TUTOR + LIBRARY_OPERATOR) */}
             <Route path={PATHS.balance} element={<Balance />} />

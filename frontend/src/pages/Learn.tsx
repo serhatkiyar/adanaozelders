@@ -1,13 +1,12 @@
 import { Link } from "react-router-dom";
 import { DashboardShell } from "@/components/DashboardShell";
-import { STUDENT_NAV, TUTOR_NAV } from "@/lib/nav";
+import { navForRole, STUDENT_NAV } from "@/lib/nav";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
-import { ROLE_IDS } from "@/types";
 import { ROUTES } from "@/lib/routes";
 
 export default function Learn() {
   const { data: user } = useCurrentUser();
-  const navItems = user?.role_id === ROLE_IDS.TUTOR ? TUTOR_NAV : STUDENT_NAV;
+  const navItems = navForRole(user?.role_id) ?? STUDENT_NAV;
 
   return (
     <DashboardShell title="Öğren" navItems={navItems}>
@@ -34,6 +33,32 @@ export default function Learn() {
               <p className="mt-1 text-sm text-indigo-100">
                 Aralıklı tekrar (SRS) ile kalıcı öğrenme. Kendi destelerini oluştur,
                 her gün tekrarla.
+              </p>
+              <span className="mt-4 inline-flex items-center gap-1 text-sm font-semibold">
+                Başla
+                <svg className="h-4 w-4 transition group-hover:translate-x-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                </svg>
+              </span>
+            </div>
+          </Link>
+
+          {/* Aralıklı Tekrar (FSRS) */}
+          <Link
+            to={ROUTES.srs}
+            className="group relative overflow-hidden rounded-3xl bg-gradient-to-br from-teal-600 to-cyan-700 p-6 text-white shadow-lg shadow-teal-500/20 transition hover:-translate-y-0.5 hover:shadow-xl"
+          >
+            <div className="absolute -right-6 -top-6 h-28 w-28 rounded-full bg-white/10" />
+            <div className="relative">
+              <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/15">
+                <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+                </svg>
+              </span>
+              <h2 className="mt-4 text-lg font-bold">Aralıklı Tekrar</h2>
+              <p className="mt-1 text-sm text-teal-50">
+                FSRS algoritmasıyla tam zamanında tekrar: desteler, cloze ve yazarak
+                cevaplama, günlük kuyruk ve istatistik.
               </p>
               <span className="mt-4 inline-flex items-center gap-1 text-sm font-semibold">
                 Başla

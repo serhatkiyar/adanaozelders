@@ -43,6 +43,12 @@ export const TUTOR_NAV: NavItem[] = [
   { to: ROUTES.balance, label: "Bakiyem", icon: "wallet" },
   { to: ROUTES.sellerProducts, label: "Dijital Ürünlerim", icon: "store" },
   { to: ROUTES.messages, label: "Mesajlar", icon: "messages" },
+  // Eğitmen de "Öğren" hub'ını görür (kelime kartları, aralıklı tekrar,
+  // pomodoro, alışkanlıklar…). Kendi kullanmadığı aracı öğrencisine
+  // öneremez. Öğrenci verisine erişim açılmaz — K-6 sınırı (hiçbir admin/
+  // eğitmen izni `srs_progress`/`srs_review_logs` okutmaz) yerinde durur;
+  // buradaki tek değişiklik hub'ın kendi araçlarına erişimdir.
+  { to: ROUTES.learn, label: "Öğren", icon: "learn" },
   { to: ROUTES.libraries, label: "Kütüphaneler", icon: "library" },
   { to: ROUTES.store, label: "Mağaza", icon: "shop" },
 ];
@@ -55,3 +61,31 @@ export const OPERATOR_NAV: NavItem[] = [
   { to: ROUTES.balance, label: "Bakiyem", icon: "wallet" },
   { to: ROUTES.messages, label: "Mesajlar", icon: "messages" },
 ];
+
+/**
+ * Role göre üst bar navigasyonu — **ortak sayfaların tek kaynağı**.
+ *
+ * Bildirimler, Liderlik, Ayarlar, Profil, Görevler, Öğren ve Takvim
+ * role-agnostiktir: her rol girebilir. Nav seçimi bu yedi sayfada tek tek
+ * kopyalanmıştı ve hiçbiri `LIBRARY_OPERATOR`'ı tanımıyordu — operatör
+ * bildirimlerine girdiğinde nav çubuğu ya BOŞ kalıyor ya da öğrenci menüsü
+ * çıkıyordu; panele dönmek için logoya ya da tarayıcı geri tuşuna basmak
+ * gerekiyordu (ölçüm §1.4, §6.1/7).
+ *
+ * Yeni rol eklendiğinde de tek yer değişsin diye dal burada durur; sayfalar
+ * yalnız `navForRole(user?.role_id)` çağırır. ADMIN bilinçli olarak
+ * `undefined` alır: admin yüzeyi kendi kabuğunu (`/yonetim`) kullanır ve
+ * buradaki rol menülerinden hiçbiri ona ait değildir.
+ */
+export function navForRole(roleId: number | undefined | null): NavItem[] | undefined {
+  switch (roleId) {
+    case 2:
+      return TUTOR_NAV;
+    case 3:
+      return STUDENT_NAV;
+    case 4:
+      return OPERATOR_NAV;
+    default:
+      return undefined;
+  }
+}

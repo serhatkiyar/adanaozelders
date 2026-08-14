@@ -574,8 +574,17 @@ async def pay(
         return order, None
     if order.payment_status == "REFUNDED":
         raise HTTPException(status.HTTP_409_CONFLICT, "Bu sipariş iade edilmiş")
-    if order.status == "CANCELLED":
-        raise HTTPException(status.HTTP_409_CONFLICT, "Bu sipariş iptal edilmiş")
+    # Ön kontrol ortak kaynaktan okur (İP-18). Bu bir GUARD DEĞİL, erken
+    # 409'dur: okuma kilitsizdir ve bayatlayabilir. Asıl nöbeti
+    # `_finalize_paid`'in koşullu claim'i tutar — iptal tam sağlayıcı
+    # penceresinde commit ederse burası göremez, claim yakalar.
+    if order.status not in PARA_BAGLANABILIR_DURUMLAR:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Bu sipariş iptal edilmiş"
+            if order.status in OLU_SIPARIS_DURUMLARI
+            else "Bu sipariş için ödeme yapılamaz",
+        )
     # Sipariş kurulduktan sonra kol kapanmış olabilir — yeniden ödeme denemesi de
     # kapıdan geçer (kalemler siparişte snapshot'lı).
     await payment_gates.assert_cart_branches_open(
@@ -585,6 +594,90 @@ async def pay(
     redirect_url = await _charge(db, order, client, client_ip=client_ip)
     await db.commit()
     return order, redirect_url
+
+
+# ── Tahsilatın bağlanabileceği sipariş durumları — TEK KAYNAK (İP-18) ────────
+#
+# `orders` tablosunda para durumu (`payment_status`) ile sipariş yaşam döngüsü
+# (`status`) AYRI kolonlardır. `escrow.claim` daima para kolonuna uygulanır;
+# yaşam döngüsü hiçbir claim'in şartı DEĞİLDİ. Sonuç ölçüldü (İP-18 Faz 1):
+# iptal, ölü-varlık guard'ı ile atomik PAID claim'i arasında commit ederse
+# claim yine başarılı oluyor ve satır `CANCELLED` iken `PAID` yazılıyordu —
+# kayıp güncelleme, üstelik sonuç `PAID/PAID` olduğu için hiçbir sorgudan
+# görünmüyordu.
+#
+# Çözüm **kilit değil koşuldur**: koşul claim'in kendi UPDATE'ine biner, ek
+# satır kilidi alınmaz ve kanonik `Product → Order` sırası korunur (bir Order
+# kilidi eklemek bu yolu `Order → Product` yapardı; `_lock_order_products`'ın
+# gerekçe yorumuna bakınız).
+#
+# Kural ÜÇ giriş noktasını da bağlar (`complete_checkout` callback'i ·
+# `pay()` → `_charge` · `escrow_reconciler.reconcile_stale_checkouts`) ve üçü de
+# tek bir boğaz noktasından geçer: `_siparis_para_claimi`. Kuralı kopyalamak
+# yasak — dördüncü bir giriş noktası eklendiğinde unutulması bu yüzden zordur
+# ve unutulsa bile varsayılan GÜVENLİ taraftadır (`yasam_dongusu="canli"`).
+
+#: Tahsilatın bağlanabileceği yaşam döngüsü durumları. `order_fsm`'in tek ödeme
+#: kenarı `PENDING → PAID` olduğundan küme tek elemanlıdır.
+PARA_BAGLANABILIR_DURUMLAR: frozenset[str] = frozenset({"PENDING"})
+
+#: Ölü varlık: doğrulanmış tahsilat bu durumlarda siparişe BAĞLANMAZ, aynen
+#: iade edilir (İP-2b R10). İki küme kesişemez — kesişselerdi aynı tahsilat hem
+#: bağlanır hem iade edilirdi.
+OLU_SIPARIS_DURUMLARI: frozenset[str] = frozenset({"CANCELLED", "REFUNDED"})
+
+
+def canli_siparis_kosulu() -> tuple:
+    """`escrow.claim(extra_where=...)` için: sipariş hâlâ para bağlanabilir mi."""
+    return (Order.status.in_(sorted(PARA_BAGLANABILIR_DURUMLAR)),)
+
+
+def olu_siparis_kosulu() -> tuple:
+    """`escrow.claim(extra_where=...)` için: sipariş ölü mü (iade dalı)."""
+    return (Order.status.in_(sorted(OLU_SIPARIS_DURUMLARI)),)
+
+
+async def _siparis_para_claimi(
+    db: AsyncSession,
+    order_id: int,
+    *,
+    from_statuses: list[str],
+    values: dict,
+    yasam_dongusu: str = "canli",
+    extra_where: tuple = (),
+) -> bool:
+    """Sipariş para durumunu claim eden **TEK** yol (İP-18).
+
+    `escrow.claim` doğrudan çağrılmaz: yaşam döngüsü koşulu burada, çağıranın
+    iradesinden bağımsız olarak eklenir. `yasam_dongusu` varsayılanı `"canli"`,
+    yani en dar koşuldur — yeni bir çağıran parametreyi hiç düşünmezse claim
+    fazladan geçmez, eksik geçer (fail-closed).
+
+    ``extra_where`` yaşam döngüsü koşuluna **eklenir**, onun yerine geçmez —
+    çağıran kuralı gevşetemez.
+    """
+    kosul = canli_siparis_kosulu() if yasam_dongusu == "canli" else olu_siparis_kosulu()
+    return await escrow.claim(
+        db,
+        Order,
+        order_id,
+        from_statuses=from_statuses,
+        values=values,
+        extra_where=kosul + tuple(extra_where),
+        status_attr="payment_status",
+    )
+
+
+async def _taze_siparis_durumu(db: AsyncSession, order_id: int) -> str | None:
+    """Sipariş yaşam döngüsünü DB'den okur (ORM kimlik haritasını atlar).
+
+    Claim kaybedildiğinde "neden kaybettik" sorusunun cevabı bayat nesneden
+    okunamaz; kararı (ölü varlık iadesi mi, eşzamanlı callback mi) taze değer
+    verir.
+    """
+    return (
+        await db.execute(select(Order.status).where(Order.id == order_id))
+    ).scalar_one_or_none()
 
 
 async def complete_checkout(
@@ -651,45 +744,13 @@ async def complete_checkout(
     # CANCELLED kalır, ödeme kaydı askıda kalmaz. `refund_unexpected_charge`
     # satır durumu tutmaz — replay idempotency'si sağlayıcının aşırı-iade
     # reddine yaslanır (aynı işlemin ikinci tam iadesi reddedilir).
-    if success and order.status in ("CANCELLED", "REFUNDED"):
-        # Kaydı ÖNCE claim et: ikinci bir callback/reconciler turu aynı tahsilatı
-        # yeniden iade etmeye kalkmasın. Claim başarısızsa (başka bir akış
-        # kazandı) para hareketi YAPILMAZ — çift iade yasağı buradan gelir.
-        claimed = await escrow.claim(
+    if success and order.status in OLU_SIPARIS_DURUMLARI:
+        await _olu_varlik_tahsilatini_iade_et(
             db,
-            Order,
-            order.id,
-            from_statuses=["PENDING", "FAILED"],
-            values={
-                "payment_status": OrderPaymentStatus.REFUNDED.value,
-                "refunded_at": _now(),
-                "refunded_amount": order_total,
-            },
-            status_attr="payment_status",
-        )
-        if not claimed:
-            logger.info(
-                "order %s: ölü varlık tahsilatı zaten sonuçlandırılmış — "
-                "ikinci iade yapılmadı", order_id,
-            )
-            return order
-        await db.commit()
-        await db.refresh(order)
-        await escrow.refund_unexpected_charge(
+            order,
             provider_ref=provider_ref,
-            amount=paid_price if paid_price is not None else order_total,
-            context=f"iptal edilmiş siparişin geç tahsilatı order={order_id}",
+            tahsil_edilen=paid_price if paid_price is not None else order_total,
         )
-        await audit_service.record(
-            db,
-            actor=_SistemAktoru(),
-            action="order.late_charge_refunded",
-            target_type="order",
-            target_id=order_id,
-            reason="İptal edilmiş siparişin doğrulanmış tahsilatı iade edildi",
-            after={"status": order.status, "amount": str(order_total)},
-        )
-        await db.commit()
         return order
 
     if not success:
@@ -711,6 +772,91 @@ async def complete_checkout(
     await _finalize_paid(db, order, provider_ref=provider_ref)
     await db.commit()
     return order
+
+
+async def _olu_varlik_tahsilatini_iade_et(
+    db: AsyncSession,
+    order: Order,
+    *,
+    provider_ref: str | None,
+    tahsil_edilen: Decimal,
+) -> bool:
+    """Ölü siparişe gelen doğrulanmış tahsilatı AYNEN iade eder (İP-2b R10).
+
+    İKİ çağıranı vardır ve ikisi de aynı sonucu üretmek zorundadır:
+
+    1. ``complete_checkout`` — sipariş callback'ten ÖNCE ölmüşse (bayat okuma
+       yeterli, çünkü ölüm zaten gerçekleşmiş),
+    2. ``_finalize_paid`` — sipariş tam olarak guard ile atomik PAID claim'i
+       ARASINDA ölmüşse (İP-18). Bu yol eskiden yoktu: claim yaşam döngüsüne
+       bakmadığı için para siparişe bağlanıyor ve iptal EZİLİYORDU.
+
+    Sözleşme: tahsilat varlığa BAĞLANAMIYORSA aynen iade edilir; sipariş
+    terminal durumunda kalır, ödeme kaydı askıda kalmaz.
+
+    Kaydı ÖNCE claim et: ikinci bir callback/reconciler turu aynı tahsilatı
+    yeniden iade etmeye kalkmasın. Claim başarısızsa (başka bir akış kazandı)
+    para hareketi YAPILMAZ — çift iade yasağı buradan gelir.
+    ``refund_unexpected_charge`` satır durumu tutmaz; replay idempotency'si
+    sağlayıcının aşırı-iade reddine yaslanır.
+
+    ## Para defteri — merkezî sözleşme (TB-15(b) kapanışı)
+
+    Bu dal eskiden ``refunded_amount``'a **mutlak atama** yapıyordu
+    (``refunded_amount = total``): artırımlı değildi, ``LEAST(..., total)``
+    tavanı yoktu ve ``refund_reserved``'a hiç dokunmuyordu. Satır
+    ``refunded_amount = total, refund_reserved = 0`` gibi kendi içinde tutarsız
+    kalıyordu — oysa ``escrow.order_inflight_refund`` bu ikiliyi BİRLİKTE okur.
+
+    Artık diğer iade yollarıyla aynı: rezervasyon **niyetle aynı atomik
+    UPDATE'e biner** (ayrı bir yazıma bırakılsaydı tavan penceresi kalırdı) ve
+    tutar tek yazıcıdan (``apply_refunded_amount``, M6) geçer. İkisi de
+    ``commit``'ten ÖNCE, yani aynı transaction'dadır: çökme semantiği
+    değişmez.
+    """
+    order_id = order.id
+    order_total = Decimal(str(order.total))
+    claimed = await _siparis_para_claimi(
+        db,
+        order_id,
+        from_statuses=["PENDING", "FAILED"],
+        values={
+            "payment_status": OrderPaymentStatus.REFUNDED.value,
+            "refunded_at": _now(),
+            "refund_reserved": Order.refund_reserved + order_total,
+        },
+        # Tavan (M1) claim'in kendi koşulunda: uçuşta başka bir iade varsa bu
+        # dal para hareketi yapmaz.
+        extra_where=(Order.refund_reserved + order_total <= Order.total,),
+        yasam_dongusu="olu",
+    )
+    if not claimed:
+        logger.info(
+            "order %s: ölü varlık tahsilatı zaten sonuçlandırılmış — "
+            "ikinci iade yapılmadı", order_id,
+        )
+        return False
+    # Tek yazıcı (M6): artırımlı + `LEAST(..., total)` tavanlı. Aynı
+    # transaction'da, claim ile birlikte commit edilir.
+    await apply_refunded_amount(db, order, order_total)
+    await db.commit()
+    await db.refresh(order)
+    await escrow.refund_unexpected_charge(
+        provider_ref=provider_ref,
+        amount=tahsil_edilen,
+        context=f"iptal edilmiş siparişin geç tahsilatı order={order_id}",
+    )
+    await audit_service.record(
+        db,
+        actor=_SistemAktoru(),
+        action="order.late_charge_refunded",
+        target_type="order",
+        target_id=order_id,
+        reason="İptal edilmiş siparişin doğrulanmış tahsilatı iade edildi",
+        after={"status": order.status, "amount": str(order_total)},
+    )
+    await db.commit()
+    return True
 
 
 async def _finalize_paid(
@@ -766,16 +912,40 @@ async def _finalize_paid(
     # reconciler + callback yarışı) ikisi de kontrolden geçip stoğu İKİ KEZ
     # düşürebiliyor ve kuponu iki kez harcayabiliyordu. Koşullu UPDATE ile
     # yalnız tek transaction kazanır; kaybeden hiçbir yan etki uygulamaz.
+    #
+    # ── İP-18: claim yaşam döngüsünü de koşullar ──
+    # Koşul olmadan, iptal tam bu satırdan ÖNCE commit ettiğinde claim yine
+    # başarılı oluyor ve aşağıdaki `transition_order` bayat `PENDING`'i okuyup
+    # satırdaki `CANCELLED`'ı `PAID` ile EZİYORDU (deterministik olarak
+    # üretildi: `tests/integration/test_ip18_siparis_kilit_pg.py`).
     paid_at = _now()
-    claimed = await escrow.claim(
+    claimed = await _siparis_para_claimi(
         db,
-        Order,
         order.id,
         from_statuses=["PENDING", "FAILED"],
         values={"payment_status": "PAID", "paid_at": paid_at},
-        status_attr="payment_status",
     )
     if not claimed:
+        # Neden kaybettik? Cevap bayat nesneden okunamaz — TAZE durum söyler.
+        taze = await _taze_siparis_durumu(db, order.id)
+        if taze in OLU_SIPARIS_DURUMLARI:
+            # Sipariş guard ile claim arasında öldü: para siparişe bağlanamaz,
+            # AYNEN iade edilir. `order_total` yerine sipariş toplamı gönderilir;
+            # `paid_price` eşitliği çağıran tarafından zaten doğrulanmıştır
+            # (`complete_checkout`) ya da tahsilat sipariş toplamı üzerinden
+            # yapılmıştır (`pay()` → `_charge`).
+            logger.error(
+                "order %s: tahsilat doğrulandı ama sipariş bu arada '%s' oldu — "
+                "para bağlanmadı, iade ediliyor",
+                order.id, taze,
+            )
+            await _olu_varlik_tahsilatini_iade_et(
+                db,
+                order,
+                provider_ref=provider_ref,
+                tahsil_edilen=Decimal(str(order.total)),
+            )
+            return
         logger.info(
             "order %s PAID claim edilemedi (eşzamanlı callback kazandı) — "
             "yan etki uygulanmadı",
@@ -1533,8 +1703,31 @@ async def _lock_order_products(db: AsyncSession, order: Order) -> None:
 
     Geri yükleme yollarında **sağlayıcı çağrısından önce** çağrılır: `Order`
     kilidi sağlayıcıdan sonra alındığı için, ürün kilidini de sonraya bırakmak
-    bu yolu `Order → Product` yapar ve `_finalize_paid`'in `Product → Order`
-    sırasıyla deadlock döngüsü kurar. Ayrıntı: plan §4e.
+    bu yolu `Order → Product` yapar. Ayrıntı: plan §4e.
+
+    ## Kuralın DOĞRU ifadesi (İP-18 düzeltmesi)
+
+    Eski yorum "kanonik sıra Product → Order'dır, aksi deadlock döngüsü kurar"
+    diyordu. İkisi de fazla genişti:
+
+    * **Sıra iddiası literal doğru değil.** `_cancel_order`, `refund_order` ve
+      `request_return` işlem düzeyinde ÖNCE `_lock_order`'ı alır. Doğru kural
+      şudur: **aynı transaction içinde hem Product hem Order kilidi tutan her
+      yol `Product → Order` sırasını izler.** Order'ı önce alan yollar aynı
+      transaction'da ürün kilidi ALMAZ — iade yolunda araya `begin_refund`'ün
+      COMMIT'i girer ve Order kilidi orada bırakılır.
+    * **Deadlock iddiası ölçüldü ve daraldı.** Bugünkü FSM'de erişilebilir bir
+      döngü ÜRETİLEMEDİ: döngü, aynı sipariş satırının hem `PENDING`
+      (checkout) hem `PAID` (iade faz-2) olmasını gerektirir; bu ikisi
+      karşılıklı dışlayıcıdır. Risk yapısaldır (yeni bir yol bu dengeyi
+      bozabilir), bugün tetiklenebilir değildir.
+
+    Güvenlik bu yüzden sıra disiplininden DEĞİL, PAID yazıcılarının ürün
+    kilidiyle serileşmesinden gelir. Nöbetçi:
+    `tests/integration/test_ip18_siparis_kilit_pg.py::
+    test_yesil_checkout_yolu_order_kilidini_urunden_once_almaz` (gerçek SQL
+    gözlemi) + `tests/acceptance/test_stock_lock_contract.py` (kaynak, düşük
+    güçlü — bkz. TB-38).
     """
     urunler = {item.product_id for item in _physical_items(order)}
     if urunler:

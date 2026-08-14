@@ -13,6 +13,9 @@ import {
   useUploadSessionAnswerKey,
 } from "@/hooks/useLibraryExams";
 import { useUsableCatalogs } from "@/hooks/useExamCatalogs";
+import { ConfirmDialog } from "@/components/admin/ui/ConfirmDialog";
+import { ErrorState } from "@/components/admin/ui/PageState";
+import { yoklamaSayaci } from "@/lib/operatorAgenda";
 import { downloadResultsReference } from "@/api/libraryExams";
 import { formatTRY } from "@/lib/money";
 import { formatDateTime } from "@/lib/datetime";
@@ -55,7 +58,7 @@ function emptyForm(): FormState {
 }
 
 export function ExamSessionsManager({ libraryId }: { libraryId: number }) {
-  const { data: sessions, isLoading } = useManageSessions(libraryId);
+  const { data: sessions, isLoading, isError, refetch } = useManageSessions(libraryId);
   const [editor, setEditor] = useState<FormState | null>(null);
 
   return (
@@ -74,8 +77,20 @@ export function ExamSessionsManager({ libraryId }: { libraryId: number }) {
 
       {isLoading ? (
         <div className="h-20 animate-pulse rounded-xl bg-slate-100 dark:bg-slate-800" />
+      ) : isError ? (
+        // Hata ≠ boş. Eskiden sunucu 500 dönerken ekran "Henüz oturum
+        // eklenmedi" diyordu; operatör bunu "oturumlarım silinmiş" diye okur.
+        <div data-testid="oturum-hata">
+          <ErrorState
+            description="Oturum listesi yüklenemedi. Listenin boş olduğu anlamına gelmez — bağlantını kontrol edip yeniden dene."
+            onRetry={() => void refetch()}
+          />
+        </div>
       ) : !sessions || sessions.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-slate-300 py-8 text-center text-sm text-slate-400 dark:border-slate-700">
+        <p
+          data-testid="oturum-bos"
+          className="rounded-xl border border-dashed border-slate-300 py-8 text-center text-sm text-slate-400 dark:border-slate-700"
+        >
           Henüz oturum eklenmedi.
         </p>
       ) : (
@@ -119,14 +134,21 @@ function SessionRow({
   onEdit: () => void;
 }) {
   const [panel, setPanel] = useState<"none" | "roster" | "results">("none");
+  const [iptalSoruluyor, setIptalSoruluyor] = useState(false);
   const cancel = useCancelSession();
   const cancelled = session.status === "CANCELLED";
   const isPast = new Date(session.starts_at).getTime() < Date.now();
 
+  // `window.confirm` yerine uygulama diyaloğu: bu aksiyon ödeyen HERKESE iade
+  // tetikler (para sonucu doğurur) ve tarayıcı diyaloğu ne kaç kişiyi
+  // etkilediğini söyleyebilir, ne de "gönderiliyor" durumunu gösterebilir —
+  // üstelik iOS'ta sistem penceresi sekme değişiminde sessizce kapanabiliyor.
   const doCancel = () => {
-    if (!window.confirm("Oturumu iptal et? Ödeyenlere iade yapılır.")) return;
     cancel.mutate(session.id, {
-      onSuccess: () => toast.success("Oturum iptal edildi, iadeler yapıldı."),
+      onSuccess: () => {
+        toast.success("Oturum iptal edildi, iadeler yapıldı.");
+        setIptalSoruluyor(false);
+      },
       onError: (e) => toast.error(getErrorMessage(e, "İptal başarısız.")),
     });
   };
@@ -194,7 +216,7 @@ function SessionRow({
                 Düzenle
               </button>
               <button
-                onClick={doCancel}
+                onClick={() => setIptalSoruluyor(true)}
                 className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-50 dark:border-slate-600"
               >
                 İptal
@@ -205,19 +227,45 @@ function SessionRow({
       </div>
       {panel === "roster" && <RosterPanel sessionId={session.id} />}
       {panel === "results" && <ResultsPanel session={session} isPast={isPast} />}
+
+      <ConfirmDialog
+        open={iptalSoruluyor}
+        danger
+        title="Oturumu iptal et"
+        description={`"${session.title}" iptal edilecek. Ödemesi alınmış ${session.registered_count} kayda iade yapılır; bu işlem geri alınamaz.`}
+        confirmLabel="Oturumu iptal et"
+        cancelLabel="Vazgeç"
+        isPending={cancel.isPending}
+        onClose={() => setIptalSoruluyor(false)}
+        onConfirm={doCancel}
+      />
     </div>
   );
 }
 
 function RosterPanel({ sessionId }: { sessionId: number }) {
-  const { data, isLoading } = useRoster(sessionId);
+  const { data, isLoading, isError, refetch } = useRoster(sessionId);
   const attend = useAttendRegistration();
 
   if (isLoading) {
     return <div className="mt-2 h-12 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />;
   }
+  if (isError) {
+    return (
+      <div data-testid="roster-hata" className="mt-2">
+        <ErrorState
+          description="Katılımcı listesi yüklenemedi. Kimsenin kayıtlı olmadığı anlamına gelmez."
+          onRetry={() => void refetch()}
+        />
+      </div>
+    );
+  }
   if (!data || data.length === 0) {
-    return <p className="mt-2 text-xs text-slate-400">Henüz kayıtlı katılımcı yok.</p>;
+    return (
+      <p data-testid="roster-bos" className="mt-2 text-xs text-slate-400">
+        Henüz kayıtlı katılımcı yok.
+      </p>
+    );
   }
 
   const doAttend = (registrationId: number, name: string) => {
@@ -228,8 +276,25 @@ function RosterPanel({ sessionId }: { sessionId: number }) {
     });
   };
 
+  // "Kim geldi kim gelmedi" sorusunun cevabı listeyi saymakla verilmemeli
+  // (ölçüm §6.1/5): sayaç veriden hesaplanır, ek istek atılmaz.
+  const sayac = yoklamaSayaci(data);
+
   return (
-    <ul className="mt-2 divide-y divide-slate-100 rounded-lg bg-slate-50 dark:divide-slate-700 dark:bg-slate-900/40">
+    <>
+      <p
+        data-testid="roster-sayaci"
+        className="mt-2 text-xs font-semibold text-slate-500 dark:text-slate-400"
+      >
+        {sayac.giren}/{sayac.toplam} giriş yapıldı
+        {sayac.toplam > sayac.giren && (
+          <span className="font-normal text-slate-400">
+            {" "}
+            · {sayac.toplam - sayac.giren} bekleniyor
+          </span>
+        )}
+      </p>
+      <ul className="mt-2 divide-y divide-slate-100 rounded-lg bg-slate-50 dark:divide-slate-700 dark:bg-slate-900/40">
       {data.map((r) => (
         <li key={r.registration_id} className="flex items-center justify-between gap-2 px-3 py-2 text-sm">
           <span className="min-w-0 truncate text-slate-700 dark:text-slate-200">{r.client_name}</span>
@@ -246,7 +311,8 @@ function RosterPanel({ sessionId }: { sessionId: number }) {
           )}
         </li>
       ))}
-    </ul>
+      </ul>
+    </>
   );
 }
 
@@ -259,10 +325,11 @@ function ResultsPanel({
   session: ExamSessionOut;
   isPast: boolean;
 }) {
-  const { data, isLoading } = useRoster(session.id);
+  const { data, isLoading, isError, refetch } = useRoster(session.id);
   const bulk = useBulkUploadDocuments(session.id);
   const publish = usePublishResults(session.id);
   const answerKey = useUploadSessionAnswerKey(session.id);
+  const [yayinSoruluyor, setYayinSoruluyor] = useState(false);
 
   const bulkInput = useRef<HTMLInputElement>(null);
   const keyInput = useRef<HTMLInputElement>(null);
@@ -291,14 +358,13 @@ function ResultsPanel({
     });
   };
 
+  // Yayınlama geri alınamaz: öğrencilere bildirim gider ve karneler açılır.
   const onPublish = () => {
-    if (session.results_published) {
-      toast.success("Sonuçlar zaten yayında.");
-      return;
-    }
-    if (!window.confirm("Karneleri yayınla? Öğrencilere bildirim gidecek ve karnelerini görebilecekler.")) return;
     publish.mutate(undefined, {
-      onSuccess: (res) => toast.success(res.message),
+      onSuccess: (res) => {
+        toast.success(res.message);
+        setYayinSoruluyor(false);
+      },
       onError: (e) => toast.error(getErrorMessage(e, "Yayınlama başarısız.")),
     });
   };
@@ -368,7 +434,7 @@ function ResultsPanel({
         )}
         <div className="ml-auto">
           <button
-            onClick={onPublish}
+            onClick={() => setYayinSoruluyor(true)}
             disabled={publish.isPending || session.results_published}
             className="rounded-lg bg-emerald-600 px-3.5 py-1.5 text-xs font-bold text-white hover:bg-emerald-700 disabled:opacity-60"
           >
@@ -376,6 +442,17 @@ function ResultsPanel({
           </button>
         </div>
       </div>
+
+      <ConfirmDialog
+        open={yayinSoruluyor}
+        title="Karneleri yayınla"
+        description="Karnesi yüklenmiş öğrencilere bildirim gidecek ve karnelerini görebilecekler. Yayınlama geri alınamaz."
+        confirmLabel="Yayınla"
+        cancelLabel="Vazgeç"
+        isPending={publish.isPending}
+        onClose={() => setYayinSoruluyor(false)}
+        onConfirm={onPublish}
+      />
 
       {session.catalog_id && (
         <p className="mb-2 text-[11px] text-slate-400 dark:text-slate-500">
@@ -390,6 +467,15 @@ function ResultsPanel({
 
       {isLoading ? (
         <div className="h-16 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
+      ) : isError ? (
+        // Sonuç tablosu da roster'dan beslenir: hata "katılımcı yok" diye
+        // görünürse operatör karneleri boşuna yüklemeye çalışır.
+        <div data-testid="sonuc-roster-hata">
+          <ErrorState
+            description="Katılımcı listesi yüklenemedi; karne yükleme tablosu şu an eksik olabilir."
+            onRetry={() => void refetch()}
+          />
+        </div>
       ) : !data || data.length === 0 ? (
         <p className="text-xs text-slate-400">Katılımcı yok.</p>
       ) : (
