@@ -377,8 +377,19 @@ kanıtlandı (IP17-2 → V-4). Uydurma bir kırmızı üretmek yerine sınır ya
 **V-9 da 3a'dan sonra yazıldı** (undo yolu İP-17 sırasında yeniden incelendi);
 kırmızısı açık bir ters provayla gösterildi.
 
-Diğer sekiz düğümün kırmızısı üretim kodundan ÖNCE, ayrı bir commit'te
-koşularak kanıtlandı. Bunun gerekli olduğu ölçümle biliniyordu: önerilen
+**V-10'un gösterilebilir bir kırmızı anı YOKTUR** (bağımsız denetim düzeltmesi,
+14 Ağu 2026). Sözleşmenin önceki hâli "diğer sekiz düğümün kırmızısı üretim
+kodundan önce koşularak kanıtlandı" diyordu ve bu **fazla cömertti**: V-10'un
+testi (`SrsDueLabel.test.tsx`) ile koruduğu üretim kodu (`lib/srsDue.ts`,
+`components/srs/SrsDueLabel.tsx`) **aynı commit'te** doğdu (`43ad59f`), yani
+kırmızı faz hiç yaşanmadı. Nöbetçiliği **iki yönlü mutasyonla** kanıtlıdır
+(IP17-6 "hep tarih" ve IP17-7 "hep saat" — §10.2) ve bu yeterli bir kanıttır;
+eksik olan **süreç kaydıdır**, güvence değil. Kayıt bu yüzden düzeltildi:
+kırmızı-önce disiplini frontend düğümünde uygulanmadı.
+
+Kalan **altı backend düğümünün** (V-1, V-2, V-3, V-5, V-7, V-8) kırmızısı
+üretim kodundan ÖNCE, ayrı bir commit'te (`c8cd6c7`) koşularak kanıtlandı.
+Bunun gerekli olduğu ölçümle biliniyordu: önerilen
 yuvarlama geçici uygulandığında **mevcut 67 İP-16 entegrasyon düğümünün
 hiçbiri kırılmıyordu** — suite bu davranış üzerinde hiç nöbet tutmuyordu, yani
 bozuk kod da düzeltilmiş kod da aynı testleri geçiyordu (kök CLAUDE.md §E).
@@ -800,10 +811,20 @@ gerektirir** — düzeltme onların varsayımını geçersiz kılar.
   zaman** bir gün geri gösteriliyor. Kart doğru çalışma gününde kuyruğa girer
   (sunucu tarafı doğru), yalnız ETİKET yanlıştır.
 
-  **V-10 bunu yakalayamaz** ve bu bilinçliydi: düğüm literal "04:00" yerine
-  saat DESENİ arıyor, çünkü literal beklemek testi koşan makinenin saat
-  dilimine bağlar ve CI'da yalancı kırmızı üretir. Doğru düğüm, biçimlendirici
-  saat dilimini AÇIKÇA sabitleyip sonucu ölçen bir düğümdür.
+  **V-10 bunu yakalamıyor.** Düğüm literal "04:00" yerine saat DESENİ arıyor;
+  gerekçe (literal beklemek testi koşan makinenin saat dilimine bağlar ve CI'da
+  yalancı kırmızı üretir) **V-10'un kendi iddiası için doğrudur** — o düğüm
+  "REVIEW'da saat gösterilmez"i ölçüyor ve bunu saat diliminden bağımsız
+  ölçmesi doğru tasarımdır.
+
+  ⚠️ Ama bu gerekçe **buradaki boşluğu örtmez** (bağımsız denetim ayrımı,
+  14 Ağu 2026): saat dilimini SABİTLEYEN ayrı bir düğüm pekâlâ yazılabilirdi.
+  `TZ`'i açıkça `America/New_York`'a çivileyip "11 Ağustos" beklemek testi
+  makineye BAĞLAMAZ, tersine makineden KURTARIR — hangi makinede koşarsa
+  koşsun aynı sonucu verir. Yani doğru kayıt "yazılamazdı" değil,
+  **"yazılmadı"**dır. Bir sonraki turda kapatılmalıdır ve iki düğüm birlikte
+  durmalıdır: biri saat diliminden bağımsız (V-10, mevcut), öteki saat dilimini
+  sabitleyip TARİHİN doğruluğunu ölçen yeni düğüm.
 
   Bugünkü ürün etkisi düşük (kullanıcılar Adana'da, tarayıcıları TR); lansman
   engeli değildir. Düzeltmenin şekli belli: main aynı hata sınıfını İP-14'te

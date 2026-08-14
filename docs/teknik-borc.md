@@ -147,6 +147,38 @@ silinmez).
      o belge İP-5 turunun ölçümünü anlatıyor ve o tur bu düzeltmeden önceydi).
      -->
 
+<!-- NUMARASIZ KAYITLAR (dal: `ip17-vade-granulerligi`). Aşağıdaki iki kayıt
+     İP-17'nin bağımsız denetiminde açıldı ve dal içinde **geçici etiketle**
+     (TB-?A / TB-?B) duruyor: numara ancak merge turunda, o an hiçbir dalda
+     kullanılmamış olduğu ölçülerek verilir (bu dosyanın numara tahsis kuralı,
+     üç kez yaşanan çakışmanın dersi). Merge eden, etiketleri gerçek numarayla
+     değiştirip bu yorumu siler. -->
+
+## TB-?A · Yeşil taban çizgisi nöbetçisi ORTAK sürücüde YOK — kırmızı tabanda "YAKALANDI" denebiliyor
+
+| | |
+|---|---|
+| **Bulundu** | İP-17 bağımsız denetimi (14 Ağu 2026) |
+| **Yer** | `backend/scripts/mutation_drill.py` (ortak sürücü) ve onu kullanan `mutation_drill_ip16.py`, `_ip14.py`. Nöbetçi YALNIZ `mutation_drill_ip18.py::_yesil_taban`'da var |
+| **Durum** | Sürücü, mutasyonu uygulamadan önce hedef testlerin **temiz ağaçta yeşil olduğunu** doğrulamıyor. Zaten kırmızı olan bir test mutasyon altında da kırmızı kalır ve sürücü bunu "YAKALANDI" sayar. Yani prova, ölçmek istediği şeyi ölçmeden geçer |
+| **Ölçüm (denetçinin, bu dalda yeniden koşulmadı)** | Taban kasıtlı bozuldu (`params.ROLLOVER_HOUR = 0`) ve `IP17-2` koşuldu: sürücü **"YAKALANDI (6)"** dedi, oysa altı testin **beşi mutasyondan bağımsız olarak zaten kırıktı**. Mutasyonun gerçek katkısı bir testti; rapor altı diyordu |
+| **Etki** | Kapanış raporlarındaki "N/N yakalandı" satırının anlamını zayıflatır. Yön **tehlikeli**: fazla sayar. "Seçilen test = 0 → BAŞARISIZLIK" nöbetçisi girdi tarafını, [[TB-29]]'un kapattığı `ERROR` sayımı çıktı tarafını koruyordu; bu üçüncü kapı (taban) yalnız bir pakette var. İP-17'nin kendi 7/7 sonucu bu kusurdan **etkilenmedi** — provaların hepsi temiz ağaçta koşuldu ve ağaç her provadan sonra doğrulandı, ama bu bir tesadüf değil disiplin; araç garanti etmiyor |
+| **Neden ertelendi** | Ortak sürücüyü değiştirmek yedi paketin ölçüm aracını değiştirir; İP-17 bunu TB-29 için bir kez yaptı ve bedelini de gördü (İP-18'in gölgesi çift saymaya başladı, merge turunda düzeltildi). İkinci bir ortak-araç değişikliğini audit'ten geçmiş bir dala **merge öncesi** sokmak, kapanış ölçümlerini yeniden koşturmayı gerektirir |
+| **Sonraki adım** | `_yesil_taban`'ı `mutation_drill_ip18.py`'den ortak `mutation_drill.py`'ye taşı (referans uygulama HAZIR, yeniden yazılmayacak), `calistir` içinde mutasyondan ÖNCE çağır, kırmızı tabanda provayı **hata** olarak kes. Ardından İP-14/İP-16/İP-17 kataloglarını bir kez yeniden koşup raporlanan sayıların değişip değişmediğini ölç |
+
+## TB-?B · Yeni kart sıralaması (`_order_id`) NÖBETSİZ — tersine çevrilince hiçbir test kırılmıyor
+
+| | |
+|---|---|
+| **Bulundu** | İP-17 bağımsız denetimi (14 Ağu 2026) |
+| **Yer** | `backend/services/srs_service.py::study_queue::_order_id` — yeni kart kovasının sırası (`SrsCard.id.asc()` = ekleniş sırası, sözleşme §4.1 Q-9) |
+| **Durum** | Sıra tersine çevrildiğinde **hiçbir test kırılmıyor**. Sözleşme "yeni kartlar `card_id` artan = ekleniş sırası" diyor ama bunu ölçen bir düğüm yok |
+| **Ölçüm (denetçinin)** | `_order_id` tersine çevrildi → **76 test seçildi, 0 kırıldı**. Ölçüm kazası olmadığı **karşılaştırma provasıyla** gösterildi: birincil sıra bozulduğunda (`due_at.asc()` → `.desc()`, denetçinin D-5 provası) **aynı 76 testten 1'i** kırıldı. Yani koşum düzeneği çalışıyor, boşluk gerçek |
+| **Etki** | Bugün davranış doğru, yalnız korumasız: yeni kart sırasını bozan bir değişiklik sessizce geçer. Kullanıcıya etkisi "yeni kartlar rastgele/ters sırada geliyor" olur — deste tasarımı sıraya bağlıysa (alfabe, konu sırası, kolaydan zora) öğrenme akışı bozulur ama hiçbir test bunu söylemez |
+| **Sınıf** | İP-17'nin `IP17-5` provasında bulunan **Q-9 tie-breaker boşluğuyla aynı sınıf** (bkz. `ip16-flashcard-sozlesme.md` §4.4): sözleşme sıralama kuralını yazmış, test kurulumu o kuralın devreye girdiği durumu hiç üretmemiş. İkisi de İP-16 kapsamından geliyor, İP-17 yalnız birini kapattı |
+| **Neden ertelendi** | Denetim "merge edilebilir" verdi ve bu bir P2; kapatmak İP-17'nin kırmızı matrisine yeni düğüm eklemek demek, o da audit'ten geçmiş matrisi merge öncesi kaydırırdı |
+| **Sonraki adım** | Q-9 düğümüne **ikinci bir yeni kart** ekle (bugün tek yeni kart var, tek kartla sıra gözlenemez) ve sunulma sırasının `card_id` artan olduğunu doğrula; ardından `_order_id`'yi tersine çeviren bir mutasyon provasıyla nöbetçiliğini kanıtla |
+
 ## TB-43 · `apply_refunded_amount`'ın `LEAST(…, total)` tavanı ve `refunded_at` COALESCE koruması NÖBETSİZ
 
 | | |
