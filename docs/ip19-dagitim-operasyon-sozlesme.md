@@ -185,6 +185,72 @@ semantiği değişmez. Aynı araçla gün içinde ikinci dalga (multi-trip) bu p
 kapsamı **değildir** — ticari ürünlerde orta/üst segment özelliğidir ve bizde
 henüz talep eden bir hacim yoktur.
 
+### K-9 · Depo yoktur — başlangıç noktası ve toplama noktaları VERİDİR
+
+Proje sahibinin teyidi (15 Ağu 2026): **platformun deposu yoktur**; kitaplar
+birden fazla toptancıdan alınır ve `core/config.py:218-219`'daki koordinat
+(`36.9855 / 35.3253`, yorumu *"Seyhan Çakmak Cad. civarı"*) **gerçek bir yer
+değildir** — yalnızca şehir merkezi yer tutucusudur.
+
+`pickup_points` tablosu açılır: konsolidasyon noktası (turun başladığı yer) ve
+toptancılar veri olarak girer. Araç `start`'ı bu noktalardan birine bağlanır
+(`RouteVehicle.start`), yani VROOM'a araç başına farklı başlangıç verilebilir —
+VROOM bunu zaten destekliyor, biz tüm araçlara aynı sabiti yazıyorduk
+(`vroom.py:74`).
+
+### K-10 · 🔴 `DELIVERY_DEPOT_LAT/LNG` İKİ ALAKASIZ İŞ yapıyor — ayrılır
+
+Ölçüldü: `services/delivery_promise.py::in_delivery_zone` (satır 137-156)
+müşterinin pin'i varsa **yarıçapı OTORİTE** sayar (ilçe listesi yalnız pin
+yoksa fallback), ve yarıçap **depo koordinatından** ölçülür. Yani aynı değişken
+hem (a) rotanın başlangıç noktası hem (b) teslimat bölgesinin merkezidir.
+
+Bugün tesadüfen zarar vermiyor — 25 km, Adana merkezinden dört ilçeyi kapsıyor,
+yani ilçe listesiyle kabaca örtüşüyor. **Ama başlangıç noktası gerçek bir yere
+taşındığı an teslimat bölgesi de kayar** ve bunu hiçbir test yakalamaz.
+
+**Karar:** `DELIVERY_ZONE_RADIUS_KM` ve yarıçap yolu **tamamen kaldırılır**;
+bölge kararının tek otoritesi **ilçe listesidir** (`DELIVERY_ZONE_DISTRICTS` =
+Seyhan · Yüreğir · Çukurova · Sarıçam — "Adana kent merkezi"). İlçe bilgisi
+yoksa sonuç **bölge dışıdır** (güvenli taraf: dış kargo kuyruğuna düşer, yanlış
+söz verilmez).
+
+Gerekçe proje sahibinin ifadesidir: *"Adana kent merkezinde dağıtım yapacağız,
+kent merkezi içinde değilse kargo firmasına veririz."* İlçe listesi bu cümlenin
+birebir karşılığıdır, yarıçap ise onun yaklaşık bir vekilidir — vekili atıp
+aslını tutmak hem dürüst hem açıklanabilir: müşteriye "şu ilçelere kendi
+aracımızla" denir.
+
+### K-11 · Tur TEK FAZLIDIR — toplama planlanmaz, doğaçlamaya bırakılır
+
+Akış hibrittir (çoğu sipariş konsolide edilir, bazısı yol üstünde bırakılabilir)
+ama **planlama tek fazlı kalır**: rota, başlangıç noktasından müşterilere kurulur.
+Toplama bacağı (toptancı gezme) rotaya **sokulmaz**.
+
+Gerekçe — dördü birden:
+
+1. **ETA güvenilirliği.** Toptancıda beklenen süre sınırsızdır (kuyruk, stok
+   arama). Toplama bacağına müşteri durağı serpiştirmek, müşteriye verilen varış
+   penceresini toptancının kuyruğuna bağlar. Kazanılan kilometre, bozulan sözden
+   ucuz değildir.
+2. **Ölçek.** Günde 5-20 siparişte kazanç küçüktür; kitap toptancıları da
+   coğrafi olarak kümelenir.
+3. **Karmaşıklık.** Planlamak = pickup-delivery problemi + öncelik kısıtı +
+   "paket henüz araçta değil" durumu + kurye ekranında toplama adımı + değişen
+   teslim kanıtı zinciri. Paketi ikiye katlar.
+4. **Ertelemek bedavadır.** Toptancılar `pickup_points`'te veri olduğu için
+   ileride VROOM `shipments`'a geçmek payload kurucusunda tek daldır.
+
+**Kritik ölçüm — doğaçlama zaten mümkündür ve engellenmeyecektir:**
+`delivery_service.py::scan` (satır 2353) durağı **QR token'ından** bulur, sıra
+kontrolü yapmaz; kodun kendi yorumu (`:1191`) *"`sequence` rota sırasıdır, kilit
+sırası değildir"* der. Yani kurye ekranı sıra **önerir, dayatmaz** — toptancıya
+giderken yol üstündeki paket okutulup teslim edilebilir. Bu davranış
+**korunacaktır** ve nöbetçisi konacaktır (§5, D-15).
+
+Esneklik algoritmaya değil **sürücüye** bırakılmıştır. Küçük operasyonda doğru
+cevap budur.
+
 ---
 
 ## 2. Şema
@@ -208,7 +274,28 @@ henüz talep eden bir hacim yoktur.
 
 `models/__init__.py`'ye import + `__all__` kaydı zorunludur.
 
-### 2.2 Değişen tablolar
+### 2.2 Yeni tablo — `pickup_points`
+
+Depo olmadığı için (K-9) başlangıç ve toplama noktaları veriye taşınır.
+
+| Kolon | Tip | Not |
+|---|---|---|
+| `id` | PK int | |
+| `name` | varchar(80) | "Konsolidasyon", "Toptancı X" |
+| `kind` | varchar(20) | `BASE` (turun başladığı yer) \| `SUPPLIER` (toptancı) |
+| `address` | text NULL | |
+| `lat` / `lng` | double | |
+| `is_active` | bool NOT NULL default true | |
+| `sort_order` | int NOT NULL default 0 | |
+| + `TimestampMixin`, `SoftDeleteMixin` | | |
+
+`vehicles.start_point_id` → `pickup_points.id` NULL (NULL = tek `BASE` noktası).
+`SUPPLIER` kayıtları bu pakette **rotaya girmez** (K-11); ileride `shipments`
+akışı açıldığında hazır bekler.
+
+`DELIVERY_DEPOT_LAT/LNG` ayarları **kaldırılır**.
+
+### 2.3 Değişen tablolar
 
 ```
 delivery_runs
@@ -220,7 +307,7 @@ couriers
   - vehicle_plate                              KALDIRILIR (veri vehicles.plate'e taşınır)
 ```
 
-### 2.3 Migration
+### 2.4 Migration
 
 Tek revizyon, üç adım — **veri kaybı yok**:
 
@@ -420,7 +507,7 @@ döngüsüyle sınanıyor.
 |---|---|
 | Çok boyutlu kapasite (ağırlık + hacim + palet) | Kitapta bağlayıcı kısıt zaman; üç sayı da bakımı zorunlu ölü veri olur |
 | `skills` / beceri eşleştirme | Her araba her kitabı taşır |
-| Çoklu depo | Tek depo, tek şehir. `RoutingProvider` imzası skaler `depot_lat/lng` alıyor; değiştirmek ayrı iş |
+| Toplama bacağının planlanması (VROOM `shipments`) | K-11 — tur tek fazlı kalır; toptancılar `pickup_points`'te veri olarak durur, doğaçlama zaten mümkün |
 | Çoklu tur (aynı araç, ikinci dalga) | Orta/üst segment özelliği; talep eden hacim yok (K-8) |
 | Sürücü müsaitlik takvimi (izin/rapor) | 1-2 kişide takvim yeter |
 | Telematik / yakıt / bakım / km takibi | Varlık yönetimi; 2 araçta ajanda işi |
