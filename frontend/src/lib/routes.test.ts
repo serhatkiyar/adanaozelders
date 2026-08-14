@@ -39,8 +39,6 @@ describe("PATHS — düz (flat) semantik yapı", () => {
     expect(PATHS.tasks).toBe("/gorevler");
     // Öğren alt ağacı
     expect(PATHS.learn).toBe("/ogren");
-    expect(PATHS.flashcards).toBe("/ogren/kelime-kartlari");
-    expect(PATHS.flashcardDeck).toBe("/ogren/kelime-kartlari/:id");
     expect(PATHS.deepwork).toBe("/ogren/zamanlayici");
     expect(PATHS.grapher).toBe("/ogren/grafik");
     expect(PATHS.habits).toBe("/ogren/aliskanliklar");
@@ -61,21 +59,21 @@ describe("ROUTES — tek kaynak tutarlılığı", () => {
     expect(ROUTES.settings).toBe(PATHS.settings);
     expect(ROUTES.tutorListing).toBe(PATHS.tutorListing);
     expect(ROUTES.favorites).toBe(PATHS.favorites);
-    expect(ROUTES.flashcards).toBe(PATHS.flashcards);
+    expect(ROUTES.learn).toBe(PATHS.learn);
   });
 
   it("param üreticileri doğru somut URL üretir", () => {
     expect(ROUTES.tutor("ahmet-yilmaz-42")).toBe("/egitmenler/ahmet-yilmaz-42");
     expect(ROUTES.tutor(42)).toBe("/egitmenler/42");
     expect(ROUTES.lesson(7)).toBe("/ders-talepleri/7");
-    expect(ROUTES.flashcardDeck(3)).toBe("/ogren/kelime-kartlari/3");
+    expect(ROUTES.srsDeck(3)).toBe("/ogren/tekrar/deste/3");
     expect(ROUTES.studentProfile(9)).toBe("/ogrenciler/9");
   });
 
   it("param üreticileri, PATHS desenindeki `:param`'ı doldurur", () => {
     // Üreticinin çıktısı, deseni `:param` → değer ile değiştirmekle aynı olmalı.
     expect(ROUTES.lesson(7)).toBe(PATHS.lesson.replace(":id", "7"));
-    expect(ROUTES.flashcardDeck(3)).toBe(PATHS.flashcardDeck.replace(":id", "3"));
+    expect(ROUTES.srsDeck(3)).toBe(PATHS.srsDeck.replace(":id", "3"));
     expect(ROUTES.studentProfile(9)).toBe(PATHS.studentProfile.replace(":id", "9"));
     expect(ROUTES.tutor("x-1")).toBe(PATHS.tutor.replace(":slug", "x-1"));
   });

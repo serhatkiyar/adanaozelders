@@ -34,7 +34,6 @@ from models.demand import Demand, DemandStatus
 from models.demand_response import DemandResponse
 from models.exam import PracticeExam, PracticeExamSubject
 from models.feature_flag import FeatureFlag
-from models.flashcard import Flashcard, FlashcardDeck
 from models.habit import Habit, HabitEntry
 from models.inventory import (
     COUNT_ADJUSTMENT_REASONS,
@@ -88,6 +87,16 @@ from models.reminder import TaskReminder
 from models.report import Report, ReportReason, ReportStatus
 from models.review import Review
 from models.role import Role, RoleType
+from models.srs import (
+    SrsCard,
+    SrsDeck,
+    SrsDeckAssignment,
+    SrsNote,
+    SrsNoteTag,
+    SrsProgress,
+    SrsReviewLog,
+    SrsTag,
+)
 from models.store import (
     Collection,
     CollectionItem,
@@ -176,8 +185,6 @@ __all__ = [
     "ExamType",
     "FeatureFlag",
     "FeedbackProblem",
-    "Flashcard",
-    "FlashcardDeck",
     "Habit",
     "HabitEntry",
     "Library",
@@ -263,6 +270,15 @@ __all__ = [
     "Review",
     "Role",
     "RoleType",
+    # İP-16 — aralıklı tekrar (FSRS)
+    "SrsCard",
+    "SrsDeck",
+    "SrsDeckAssignment",
+    "SrsNote",
+    "SrsNoteTag",
+    "SrsProgress",
+    "SrsReviewLog",
+    "SrsTag",
     "Subtask",
     "Task",
     "TaskFilter",

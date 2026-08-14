@@ -46,3 +46,9 @@ frontend/vite.config.d.ts
 
 # F30 gerçek tarayıcı kabulünün çıktıları (PDF, ekran görüntüleri, log).
 .f30-kabul/
+
+# Kitapsec import/backfill turlarının yerel veri artıkları (dump, idempotency
+# günlükleri, öncesi-sonrası anlık görüntüleri). Depoya girmemeli: biri 489 KB'lik
+# bir `pg_dump` çıktısı ve iki adet ~1 MB'lik JSONL — üretilebilir veri, üstelik
+# dump gerçek katalog içeriği taşıyor. Betikler bu klasörü kendileri oluşturur.
+backend/scripts/data/

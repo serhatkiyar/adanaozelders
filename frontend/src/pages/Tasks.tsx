@@ -1,7 +1,7 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { Field } from "@/components/ui/Field";
 import { DashboardShell } from "@/components/DashboardShell";
-import { STUDENT_NAV, TUTOR_NAV } from "@/lib/nav";
+import { navForRole, STUDENT_NAV } from "@/lib/nav";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useBookings } from "@/hooks/useBookings";
 import {
@@ -1143,7 +1143,7 @@ function HashIcon({ color }: { color?: string | null }) {
 
 export default function Tasks() {
   const { data: user } = useCurrentUser();
-  const navItems = user?.role_id === ROLE_IDS.TUTOR ? TUTOR_NAV : STUDENT_NAV;
+  const navItems = navForRole(user?.role_id) ?? STUDENT_NAV;
 
   const { data: lists, isLoading: listsLoading } = useTaskLists();
   const { data: labels } = useLabels();

@@ -539,6 +539,15 @@ async def reconcile_stale_checkouts(db: AsyncSession) -> int:
     # kapsam dışında kalmış olan. Müşteri iyzico'da öder, tarayıcıyı kapatır →
     # para çekilmiştir ama sipariş sonsuza dek PENDING kalır, kitap gönderilmez
     # ve kimse fark etmezdi.
+    #
+    # ── İP-18: burada `orders.status` filtresi YOKTUR ve olmamalıdır ──
+    # Bu tarama `complete_checkout`'un İKİNCİ çağıranıdır ve iki işi birden
+    # yapar: canlı siparişi kesinleştirmek VE **ölü** siparişe gelmiş tahsilatı
+    # iade ettirmek (İP-2b R10). Seçimi `PARA_BAGLANABILIR_DURUMLAR` ile
+    # daraltmak, iptal edilmiş siparişlerin kayıp callback'lerini taramanın
+    # görüş alanından çıkarır ve parayı sağlayıcıda öksüz bırakırdı.
+    # Yaşam döngüsü kararı burada değil, `order_service._siparis_para_claimi`
+    # boğaz noktasında verilir (koşullu claim; kilit değil).
     order_rows = (
         await db.execute(
             select(Order).where(
@@ -562,21 +571,55 @@ async def reconcile_stale_checkouts(db: AsyncSession) -> int:
     #
     # Satırlar önce anlık görüntüye alınır: `rollback` ORM nesnelerini expire
     # eder ve bayat nesnenin alanına dokunmak async oturumda lazy-load
-    # (`MissingGreenlet`) üretir. Her kayıt kendi SAVEPOINT'inde işlenir; hata
+    # (`MissingGreenlet`) üretir. Her kayıt kendi try/except'inde işlenir; hata
     # yalnız o kaydın yazımlarını geri alır, oturum kullanılabilir kalır ve
     # hata GÖRÜNÜR bir kayıt bırakır (sessizce yutulmaz).
+    #
+    # ── İP-18: SAVEPOINT KALDIRILDI — PARA KAYBETTİRİYORDU ──────────────────
+    #
+    # İzolasyon eskiden `async with db.begin_nested()` (SAVEPOINT) ile
+    # kuruluyordu. Ama `complete_checkout` **kendi transaction'ını yönetir ve
+    # içeride COMMIT eder**; SQLAlchemy, bir savepoint bağlamı içinde dış
+    # transaction commit edildikten SONRA **oturuma dokunmayı**
+    # `InvalidRequestError: Can't operate on closed transaction inside context
+    # manager` ile reddeder. Belirleyici olan commit'in kendisi değil,
+    # **commit'ten sonra oturumla iş yapılıp yapılmadığıdır** — iki yolun
+    # ayrıldığı yer tam olarak burasıdır:
+    #
+    # * **Canlı sipariş** (mutlu yol): `complete_checkout` işini bitirip commit
+    #   eder ve HEMEN döner; savepoint bağlamı içinde commit sonrası oturuma
+    #   dokunulmaz, dolayısıyla **istisna doğmaz**. Ölçüldü (savepoint geri
+    #   konup koşuldu): `handled = 1`, ERROR kaydı **0**, sipariş `PAID/PAID`.
+    #   Yani bu yol savepoint ile de sorunsuz çalışıyordu.
+    # * **Ölü sipariş** (İP-2b R10 geç tahsilatı): sıra terstir — önce iade
+    #   claim'i COMMIT edilir, SONRA `db.refresh(order)` gelir. İstisna tam
+    #   orada doğar ve akış `refund_unexpected_charge`'a HİÇ VARMAZ. Sonuç:
+    #   satır `payment_status='REFUNDED'`, sağlayıcıya giden iade **SIFIR**.
+    #   Yani "iade edildi" yazan ama parayı döndürmemiş kayıt. Gerçek PG'de
+    #   ölçüldü (İP-18 D11).
+    #
+    # Neden İP-2b'nin testi görmedi: `test_kirmizi_reconciler_partisi_
+    # zehirlenmez` iddiası AYRIK — "iade edildi **ya da** görünür hata kaydı
+    # var". İstisna `logger.exception` yazdığı için ikinci şık sağlanıyor ve
+    # test yeşil kalıyordu. Oysa oluşan durum sözleşmenin iki şıkkından da
+    # değildir. Daha dar nöbetçi kendi paketinde: `test_ip18_siparis_kilit_pg::
+    # test_yesil_reconciler_taramasi_olu_siparisi_de_kapsar`.
+    #
+    # R11'in gereği ("bir kaydın hatası partiyi öldürmez") KORUNDU: kayıt-başı
+    # `try/except` + `rollback` + `continue` aynen duruyor. Savepoint zaten ek
+    # izolasyon sağlamıyordu — çağrılan fonksiyon her kaydı kendi commit'iyle
+    # sınırlıyor.
     order_specs = [(o.id, o.provider_ref) for o in order_rows]
     for order_id, order_token in order_specs:
         try:
-            async with db.begin_nested():
-                result = await retrieve(token=order_token)
-                if not result.success:
-                    continue
-                await order_service.complete_checkout(
-                    db, order_id=order_id, success=True,
-                    provider_ref=result.provider_ref,
-                    token=order_token, paid_price=result.paid_price,
-                )
+            result = await retrieve(token=order_token)
+            if not result.success:
+                continue
+            await order_service.complete_checkout(
+                db, order_id=order_id, success=True,
+                provider_ref=result.provider_ref,
+                token=order_token, paid_price=result.paid_price,
+            )
         except Exception:  # noqa: BLE001 — kayıt izole edilir, parti ölmez
             await db.rollback()
             logger.exception(

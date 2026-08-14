@@ -119,11 +119,15 @@ const Messages = lazy(() => import("@/pages/Messages"));
 const Leaderboard = lazy(() => import("@/pages/Leaderboard"));
 const Calendar = lazy(() => import("@/pages/Calendar"));
 const Learn = lazy(() => import("@/pages/Learn"));
-const Flashcards = lazy(() => import("@/pages/Flashcards"));
-const FlashcardDeck = lazy(() => import("@/pages/FlashcardDeck"));
 const DeepWork = lazy(() => import("@/pages/DeepWork"));
 const Grapher = lazy(() => import("@/pages/Grapher"));
 const Habits = lazy(() => import("@/pages/Habits"));
+// Aralıklı tekrar (FSRS, İP-16)
+const SrsDecks = lazy(() => import("@/pages/srs/SrsDecks"));
+const SrsDeckDetail = lazy(() => import("@/pages/srs/SrsDeckDetail"));
+const SrsStudy = lazy(() => import("@/pages/srs/SrsStudy"));
+const SrsBrowser = lazy(() => import("@/pages/srs/SrsBrowser"));
+const SrsStats = lazy(() => import("@/pages/srs/SrsStats"));
 const Tasks = lazy(() => import("@/pages/Tasks"));
 const Profile = lazy(() => import("@/pages/Profile"));
 const MessageCenter = lazy(() => import("@/pages/MessageCenter"));
@@ -289,7 +293,8 @@ const LEGACY_STATIC: [string, string][] = [
   ["/panel/ilan", ROUTES.tutorListing],
   ["/panel/rezervasyonlar", ROUTES.bookings],
   ["/panel/ogren", ROUTES.learn],
-  ["/panel/ogren/kelime-kartlari", ROUTES.flashcards],
+  // `/panel/ogren/kelime-kartlari` girdisi KALDIRILDI: hedef yüzey artık yok,
+  // yönlendirme bilinçli olarak yazılmadı (eski URL 404 döner).
   ["/panel/ogren/zamanlayici", ROUTES.deepwork],
   ["/panel/ogren/grafik", ROUTES.grapher],
   ["/panel/ogren/aliskanliklar", ROUTES.habits],
@@ -384,11 +389,14 @@ function App() {
             <Route path={PATHS.messageCenter} element={<MessageCenter />} />
             <Route path={PATHS.calendar} element={<Calendar />} />
             <Route path={PATHS.learn} element={<Learn />} />
-            <Route path={PATHS.flashcards} element={<Flashcards />} />
-            <Route path={PATHS.flashcardDeck} element={<FlashcardDeck />} />
             <Route path={PATHS.deepwork} element={<DeepWork />} />
             <Route path={PATHS.grapher} element={<Grapher />} />
             <Route path={PATHS.habits} element={<Habits />} />
+            <Route path={PATHS.srs} element={<SrsDecks />} />
+            <Route path={PATHS.srsDeck} element={<SrsDeckDetail />} />
+            <Route path={PATHS.srsStudy} element={<SrsStudy />} />
+            <Route path={PATHS.srsBrowser} element={<SrsBrowser />} />
+            <Route path={PATHS.srsStats} element={<SrsStats />} />
             <Route path={PATHS.tasks} element={<Tasks />} />
             {/* Bakiyem — rol delegasyonu sayfa içinde (TUTOR + LIBRARY_OPERATOR) */}
             <Route path={PATHS.balance} element={<Balance />} />
@@ -515,10 +523,6 @@ function App() {
           <Route
             path="/panel/rezervasyonlar/:id"
             element={<LegacyRedirect to={(p) => ROUTES.lesson(p.id!)} />}
-          />
-          <Route
-            path="/panel/ogren/kelime-kartlari/:id"
-            element={<LegacyRedirect to={(p) => ROUTES.flashcardDeck(p.id!)} />}
           />
           <Route
             path="/panel/ogrenciler/:id"

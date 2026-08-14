@@ -12,6 +12,7 @@ import { useMessagesUnreadCount } from "@/hooks/useMessages";
 import { roleHome } from "@/lib/roles";
 import { resolveSurface } from "@/lib/navPrefs";
 import { ROUTES } from "@/lib/routes";
+import { ROLE_IDS } from "@/types";
 import type { NavItem } from "@/lib/nav";
 
 const navIconClass = ({ isActive }: { isActive: boolean }) =>
@@ -240,16 +241,23 @@ export function DashboardHeader({ navItems, transparent = false, center, bottom,
 
         {/* Mobil: bildirim + hamburger */}
         <div className="flex flex-1 items-center justify-end gap-1 sm:hidden">
-          <NavLink
-            to={ROUTES.favorites}
-            title="Favorilerim"
-            aria-label="Favorilerim"
-            className="inline-flex shrink-0 items-center justify-center rounded-lg p-2 text-slate-600 transition hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
-          >
-            <span className="relative">
-              <Icon name="favorites" className="h-6 w-6" />
-            </span>
-          </NavLink>
+          {/* Favoriler ÖĞRENCİYE aittir (`STUDENT_NAV`). Bu kısayol role
+              bakmadan basılıyordu: eğitmenin ve kütüphane operatörünün mobil
+              üst barında, kendilerine ait olmayan ve boş açılan bir ekrana
+              giden ikon duruyordu. Operatörün işi fiziksel olarak mobildir
+              (QR kapıda okutulur), yani yanlış ikonu en çok o görüyordu. */}
+          {user?.role_id === ROLE_IDS.CLIENT && (
+            <NavLink
+              to={ROUTES.favorites}
+              title="Favorilerim"
+              aria-label="Favorilerim"
+              className="inline-flex shrink-0 items-center justify-center rounded-lg p-2 text-slate-600 transition hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
+            >
+              <span className="relative">
+                <Icon name="favorites" className="h-6 w-6" />
+              </span>
+            </NavLink>
+          )}
           <NotificationsBell />
           <button
             type="button"

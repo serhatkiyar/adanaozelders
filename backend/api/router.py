@@ -11,7 +11,6 @@ from api.routers import (
     demands,
     educations,
     exams,
-    flashcards,
     geocode,
     habits,
     inventory,
@@ -31,6 +30,7 @@ from api.routers import (
     reports,
     reviews,
     speedtests,
+    srs,
     support,
     store,
     study_reservations,
@@ -53,7 +53,6 @@ api_router.include_router(bookings.router)
 api_router.include_router(bookmarks.router)
 api_router.include_router(qa.router)
 api_router.include_router(exams.router)
-api_router.include_router(flashcards.router)
 api_router.include_router(geocode.router)
 api_router.include_router(habits.router)
 api_router.include_router(inventory.router)
@@ -65,6 +64,7 @@ api_router.include_router(library_exams.router)
 api_router.include_router(library_operators.router)
 api_router.include_router(reviews.router)
 api_router.include_router(speedtests.router)
+api_router.include_router(srs.router)
 api_router.include_router(support.router)
 api_router.include_router(admin.router)
 api_router.include_router(notifications.router)

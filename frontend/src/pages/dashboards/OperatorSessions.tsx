@@ -10,6 +10,8 @@ import {
   useAttendStudyReservation,
   useManageStudyReservations,
 } from "@/hooks/useStudy";
+import { ErrorState } from "@/components/admin/ui/PageState";
+import { gunlereGrupla, yoklamaSayaci } from "@/lib/operatorAgenda";
 import { formatDateTime } from "@/lib/datetime";
 import { ROUTES } from "@/lib/routes";
 import { getErrorMessage } from "@/lib/errors";
@@ -156,15 +158,33 @@ function QrVerifyCard() {
   );
 }
 
-/* ── Çalışma alanı rezervasyonları (yaklaşan) ── */
+/* ── Çalışma alanı rezervasyonları (yaklaşan, güne göre gruplu) ──
+   Eskiden tüm gelecek tek düz listeydi: tarih başlığı, sayaç ve gün ayrımı
+   yoktu (ölçüm §6.1/2). Operatör "bugün kim geliyor" sorusunu listeyi gözle
+   tarayarak cevaplıyordu. Gruplama saf katmandadır (`lib/operatorAgenda`) ve
+   gün sınırı Türkiye saatiyle hesaplanır. */
 function StudyReservationsCard({ libraryId }: { libraryId: number }) {
-  const { data, isLoading } = useManageStudyReservations(libraryId);
+  const { data, isLoading, isError, refetch } = useManageStudyReservations(libraryId);
   const attend = useAttendStudyReservation();
 
   if (isLoading) {
     return <div className="h-20 animate-pulse rounded-2xl bg-slate-100 dark:bg-slate-800" />;
   }
-  if (!data || data.length === 0) return null;
+  if (isError) {
+    return (
+      <div className={cardCls}>
+        <h2 className="mb-3 text-base font-bold text-slate-900 dark:text-white">
+          Çalışma Alanı Rezervasyonları
+        </h2>
+        <div data-testid="rez-hata">
+          <ErrorState
+            description="Rezervasyon listesi yüklenemedi. Bu bir bağlantı/yetki hatasıdır — listenin boş olduğu anlamına GELMEZ."
+            onRetry={() => void refetch()}
+          />
+        </div>
+      </div>
+    );
+  }
 
   const doAttend = (id: number, name: string) => {
     attend.mutate(id, {
@@ -174,36 +194,70 @@ function StudyReservationsCard({ libraryId }: { libraryId: number }) {
     });
   };
 
+  const gruplar = gunlereGrupla(
+    (data ?? []).map((r) => ({ ...r, startsAt: r.starts_at, endsAt: r.ends_at })),
+    new Date()
+  );
+
   return (
     <div className={cardCls}>
       <h2 className="mb-3 text-base font-bold text-slate-900 dark:text-white">
         Çalışma Alanı Rezervasyonları (yaklaşan)
       </h2>
-      <ul className="divide-y divide-slate-100 dark:divide-slate-700">
-        {data.map((r) => (
-          <li key={r.id} className="flex items-center justify-between gap-2 py-2 text-sm">
-            <div className="min-w-0">
-              <p className="truncate font-medium text-slate-800 dark:text-slate-100">
-                {r.client_name ?? "Öğrenci"}
-              </p>
-              <p className="truncate text-xs text-slate-500 dark:text-slate-400">
-                {formatDateTime(r.starts_at)} – {formatDateTime(r.ends_at)}
-              </p>
-            </div>
-            {r.status === "ATTENDED" ? (
-              <span className="shrink-0 text-xs font-semibold text-emerald-600">Giriş yaptı ✓</span>
-            ) : (
-              <button
-                onClick={() => doAttend(r.id, r.client_name ?? "Öğrenci")}
-                disabled={attend.isPending}
-                className="shrink-0 rounded-lg bg-emerald-600 px-3 py-1 text-xs font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-60"
-              >
-                {attend.isPending ? "…" : "Giriş ver"}
-              </button>
-            )}
-          </li>
-        ))}
-      </ul>
+
+      {gruplar.length === 0 ? (
+        <p data-testid="rez-bos" className="py-6 text-center text-sm text-slate-400 dark:text-slate-500">
+          Yaklaşan çalışma rezervasyonu yok.
+        </p>
+      ) : (
+        <div className="space-y-4">
+          {gruplar.map((grup) => {
+            const sayac = yoklamaSayaci(grup.items);
+            return (
+              <section key={grup.kova} data-testid={`rez-grup-${grup.kova}`}>
+                <div className="flex items-baseline justify-between gap-2 border-b border-slate-100 pb-1.5 dark:border-slate-700">
+                  <h3 className="text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                    {grup.label}
+                  </h3>
+                  <span className="text-xs text-slate-400 dark:text-slate-500">
+                    <b data-testid="grup-sayaci" className="font-semibold text-slate-600 dark:text-slate-300">
+                      {grup.items.length}
+                    </b>{" "}
+                    kayıt · {sayac.giren} giriş
+                  </span>
+                </div>
+                <ul className="divide-y divide-slate-100 dark:divide-slate-700">
+                  {grup.items.map((r) => (
+                    <li key={r.id} className="flex items-center justify-between gap-2 py-2 text-sm">
+                      <div className="min-w-0">
+                        <p className="truncate font-medium text-slate-800 dark:text-slate-100">
+                          {r.client_name ?? "Öğrenci"}
+                        </p>
+                        <p className="truncate text-xs text-slate-500 dark:text-slate-400">
+                          {formatDateTime(r.starts_at)} – {formatDateTime(r.ends_at)}
+                        </p>
+                      </div>
+                      {r.status === "ATTENDED" ? (
+                        <span className="shrink-0 text-xs font-semibold text-emerald-600">
+                          Giriş yaptı ✓
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => doAttend(r.id, r.client_name ?? "Öğrenci")}
+                          disabled={attend.isPending}
+                          className="shrink-0 rounded-lg bg-emerald-600 px-3 py-1 text-xs font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-60"
+                        >
+                          {attend.isPending ? "…" : "Giriş ver"}
+                        </button>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

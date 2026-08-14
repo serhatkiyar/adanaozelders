@@ -57,6 +57,53 @@ for (const ad of ["localStorage", "sessionStorage"] as const) {
   }
 }
 
+// ## `window.matchMedia` — jsdom'da HİÇ YOK
+//
+// jsdom bu API'yi HİÇ sağlamaz (tanımlı değil, boş da değil); `matchMedia(...)`
+// bir TypeError verir. `themeStore` modül yüklenirken
+// `matchMedia(...).addEventListener` çağırdığı için ("system" tercihi OS
+// temasını canlı izler), onu içeren her zincir — `DashboardShell →
+// DashboardHeader → PersonalizeModal` — testte **render edilmeden** patlıyordu:
+// "window.matchMedia is not a function". Pratikte bu, panel sayfalarının
+// tamamı demektir; repoda bugüne dek panel kabuğunu (üst bar + nav) gerçek
+// DOM'da render eden bir test bu yüzden yoktu.
+//
+// Suite yüklenemediği için sonuç "0 test" olur — bu, "test zayıf" ile
+// KARIŞTIRILMAMASI gereken "test hiç koşmadı" hâlidir (kök CLAUDE.md §D'nin
+// `--collect-only` nöbetçisiyle aynı gerekçe) ve yeşil bir toplamın içinde
+// sessizce kaybolabilir.
+//
+// Stub bilinçli olarak "eşleşme yok" (`matches: false`) döner: "system"
+// tercihi testlerde AÇIK temaya çözülür ve testler OS ayarına göre değişmez.
+// Dinleyici kaydı sessizce yutulur — store gerçek bir değişim beklemez.
+// Karanlık mod paritesini ölçen bir test yazılırsa bu değeri kendi içinde
+// ezmelidir; global varsayılan sessizce tema seçmesin diye burada tek yerde ve
+// görünür durur.
+//
+// ⚠️ Bu stub İKİ dalda BAĞIMSIZ olarak bulundu ve eklendi: İP-14 (panel
+// navigasyon düğümleri N-* tam olarak bu yüzeyi ölçüyor) ve SM-2 kaldırma
+// paketi (Öğren hub'ının gerçek DOM nöbetçisi). Merge'de kod blokları bayt
+// bayt aynı çıktı, tek kopya kaldı; bu yorum ikisinin gerekçesini birleştirir.
+// Mükerrer bir `Object.defineProperty` eklenmemelidir — ikincisi birincisini
+// sessizce ezer ve hangi davranışın geçerli olduğu okunamaz hâle gelir.
+if (typeof window !== "undefined" && typeof window.matchMedia !== "function") {
+  Object.defineProperty(window, "matchMedia", {
+    configurable: true,
+    writable: true,
+    value: (query: string): MediaQueryList =>
+      ({
+        matches: false,
+        media: query,
+        onchange: null,
+        addEventListener: () => {},
+        removeEventListener: () => {},
+        addListener: () => {},
+        removeListener: () => {},
+        dispatchEvent: () => false,
+      }) as unknown as MediaQueryList,
+  });
+}
+
 // Testler birbirinin oturumunu miras almasın.
 afterEach(() => {
   localStorage.clear();
