@@ -192,7 +192,7 @@ denemesinde patlar (yanlış index adı, ters FK sırası, eksik kolon).
 
 ## 5. Yol boyunca bulunan iki gizli borç
 
-### 5.1 `app.routes` tuzağı → **TB-34**
+### 5.1 `app.routes` tuzağı → **TB-?B**
 
 Matrisin R2 düğümünün ilk hâli route tablosunu `app.routes` üzerinden okuyordu
 ve kırmızı fazın ilk koşusunda **16 kırmızının yanında tek yeşil** olarak
@@ -303,10 +303,11 @@ olarak dokunmuş durumda**. İkisi de sessiz bozulma riski taşır:
 | **`docs/ip16-flashcard-sozlesme.md` → `…-aralikli-tekrar-sozlesme.md`** yeniden adlandırması | `git diff --stat main...ip17-vade-granulerligi` → o dal **aynı dosyada 326 satır** değişiklik taşıyor (§4.4/§10.2 vade granülerliği bölümleri) | Hangi dal önce merge edilirse edilsin, **yeniden adlandırma + İP-17'nin içerik değişikliği birlikte korunmalı**. Git rename tespiti bunu genelde çözer; çözemezse doğru sonuç: dosya YENİ adıyla durur ve İP-17'nin bölümlerini İÇERİR. İçerikten biri düşerse İP-17 sözleşmesiz kalır |
 | **`frontend/src/test-setup.ts` `matchMedia` stub'ı** | `ip14-operator-panel` dalında aynı tuzak bağımsız bulunmuş ve orada da stub eklenmiş | **İkisini birden tutma** — tek stub yeterli. Mükerrer `Object.defineProperty` birincisini sessizce ezer ve hangi davranışın geçerli olduğu okunamaz hâle gelir (§5.3) |
 
-`docs/teknik-borc.md`'ye üç dal birden dokunuyor (bu paket TB-34, İP-17 kendi
-kayıtları). **Numara çakışması yok** — tahsis komutu tüm yerel ve uzak dallarda
-koşuldu, en yüksek numara 33 (`ip14-operator-panel`) ölçüldü ve TB-34 seçildi;
-İP-17'nin kullandığı numaralar (…29, 30, 31) bunun altındadır.
+`docs/teknik-borc.md`'ye üç dal birden dokunuyor. **Bu paketin kayıtları artık
+numaralı DEĞİLDİR** — defterin dört maddelik yeni kuralı gereği dal içinde
+geçici etiket taşırlar (`TB-?A`, `TB-?B`) ve numara **merge turunda** tahsis
+edilir. Bu yüzden bu dosyanın `teknik-borc.md` ile numara çakışması artık
+yapısal olarak mümkün değildir; merge turunda yapılacak iş §10.2'de listelidir.
 
 ### 6.2 "flashcard" tam kelime araması
 
@@ -445,7 +446,7 @@ assertion'ları taşıma çalışmasa da geçiyor. Taşımanın gerçek işlevi 
 **katalog dışı** rol bağları içindir (panelden elle verilmiş bir izin) — ve o
 yol test edilmiyor.
 
-**Kayıt açıldı: [[TB-44]]** (numara tahsis komutu yeniden koşuldu; ölçüm
+**Kayıt açıldı: [[TB-?A]]** (numara tahsis komutu yeniden koşuldu; ölçüm
 aşağıda §8.7). **Bu boşluk bu paketten gelmiyor:** `git diff main...HEAD` ile ölçüldü — B7
 test gövdelerinde **tek satır** değişiklik yok; değiştirdiğim yerler yalnız
 fixture (satır 51, 124-128) ve iki B1 düğümü. Boşluk İP-16 merge edildiğinde de
@@ -510,7 +511,7 @@ tablo var ama şema başka türlü bozuk olabilir) için de geçerlidir.
 ### 8.6 Denetçiye kısa liste
 
 1. **D6'nın yakalanmayan mutasyonu** — İP-16'nın izin taşıma kodu nöbetsiz
-   (§8.2). Kapsam dışı, **[[TB-44]] olarak kaydedildi**; kapatma önerisi
+   (§8.2). Kapsam dışı, **[[TB-?A]] olarak kaydedildi**; kapatma önerisi
    (katalog dışı bir role bağlanan izin ile B7 düğümü) kayıtta duruyor.
 2. **B1'in benzersiz değeri ölçülmedi** (§8.2 D1) — conftest gölgeliyor.
 3. **R4 zayıf sınıf** (§8.1) — yalnız adın gittiğini kanıtlar.
@@ -528,7 +529,7 @@ tablo var ama şema başka türlü bozuk olabilir) için de geçerlidir.
   ama ölçülmemiştir.
 - **Kaldırma sonrası performans/boyut ölçümü yapılmadı** (bundle küçülmesi vb.).
   Kapsam dışı.
-- TB-34'ün kalıcı çözümü (`app.routes` üzerinde path araması yapan test
+- TB-?B'nin kalıcı çözümü (`app.routes` üzerinde path araması yapan test
   kaynaklarını reddeden meta-test, ya da ortak `router_yollari()` yardımcısı)
   **yazılmadı**; borç defterinde "sonraki adım" olarak duruyor.
 - Bu paket **bağımsız üretim audit'ine gidecektir**; merge kararı ayrıca
@@ -536,11 +537,14 @@ tablo var ama şema başka türlü bozuk olabilir) için de geçerlidir.
 
 ---
 
-## 10. Ek: TB numara tahsis ölçümü (**TB-44** için — ilk hâli TB-36'ydı)
+## 10. Ek: numara tahsisinin hikâyesi (ve kuralın neden değiştiği)
 
-Kural gereği numara **alınmadan önce** ve **tüm dallarda** ölçülür; çıktı
-kayıt commit'ine yazılır. TB-34 alınırken yapılan ölçüm bu tur için
-tekrarlandı — ve **manzara değişmişti**:
+Bu bölüm tarihsel kayıttır: aşağıdaki numaralar **artık geçerli değildir**,
+paketin kayıtları bugün `TB-?A` ve `TB-?B` geçici etiketlerini taşır (§10.2).
+
+Eski kural gereği numara alınmadan önce tüm dallarda ölçülürdü; çıktı kayıt
+commit'ine yazılırdı. `app.routes` kaydı (bugünkü `TB-?B`) alınırken yapılan
+ölçüm bu tur için tekrarlandı — ve **manzara değişmişti**:
 
 | Dal | Numaralar (kuyruk) |
 |---|---|
@@ -589,3 +593,29 @@ En yüksek **43** → kayıt **TB-44**.
 Bu, kuralın **yapısal** yetersizliğinin dördüncü kanıtıdır ve
 `docs/teknik-borc.md` → "Kuralın YETMEDİĞİ hâl" bölümüne ölçüm + öneri olarak
 yazıldı (karar bekliyor).
+
+### 10.2 Merge turunda yapılacaklar (yeni kural, madde 3 ve 4)
+
+Bu paketin iki borç kaydı **numarasızdır**. Merge turunda sırayla:
+
+1. `git fetch --all` (madde 1 — bayat veriyi kapatır, yarışı çözmez).
+2. Numara tahsis komutunu koş, çıktıyı **dal başına** oku.
+3. İki etikete main'in **o anki** durumuna göre numara ver:
+
+   | Etiket | Kayıt | Kimlik geçmişi |
+   |---|---|---|
+   | `TB-?A` | `ip16_srs_izin_kodu_hizalama` rol bağı taşıması nöbetsiz | TB-36 → TB-44 → `TB-?A` |
+   | `TB-?B` | `app.routes` üzerinden yol araması sessizce boş döner | TB-34 → `TB-?B` |
+
+4. Atıfları güncelle — **tam liste** (madde 4):
+
+   | Dosya | Atıf |
+   |---|---|
+   | `docs/teknik-borc.md` | iki başlık + taşıma notu |
+   | `docs/sm2-kaldirma-sozlesme.md` | §5.1 başlığı, §8.2, §8.6, §9 |
+   | `backend/tests/test_flashcards_kaldirildi.py` | `test_R2_*` sınıflandırma satırındaki `[[TB-?B]]` |
+
+5. Merge commit'ine **etiket→numara eşlemesini** ve **ölçüm çıktısını** yaz.
+
+Kontrol: merge sonrası `grep -rn "TB-?A\|TB-?B"` **sıfır** sonuç vermeli.
+

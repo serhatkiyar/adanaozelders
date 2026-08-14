@@ -37,55 +37,69 @@ dalındaydı ve yeni kayıtlar 29'dan başlamalıydı. Bu yüzden komut artık *
 başına döküm** verir: çıktıda kendi dalınızı görürsünüz, en yüksek numaranın
 kime ait olduğu belirsiz kalmaz.
 
-Üç kural: (1) numara **hiçbir dalda** kullanılmamış olmalı; (2) numara
-alındıktan sonra kaydı yazan commit'te ölçüm çıktısı commit mesajına yazılır
-(sonraki tur "gerçekten ölçüldü mü" diye sormak zorunda kalmasın); (3) bir dal
-merge edilirken çakışma çıkarsa **main kanoniktir**, gelen dalın kaydı yeniden
-numaralanır ve eski→yeni eşlemesi buraya yorum olarak yazılır (hiçbir kayıt
-silinmez).
+**DÖRT KURAL (14 Ağu 2026'dan itibaren yürürlükte).** Numara artık dal içinde
+kesinleşmez; merge turunda tahsis edilir.
 
-### ⚠️ Kuralın YETMEDİĞİ hâl: eşzamanlı dallar (dördüncü çakışma, 14 Ağu 2026)
+**(1) Ölçümden önce `git fetch --all` koşulur.** Yukarıdaki komut yerel
+`refs/remotes` kopyasını okur; fetch edilmemişse uzak dallarda çoktan alınmış
+numaralar görünmez ve ölçüm bayat veriyle yapılır. ⚠️ **Bu tek başına
+YETMEZ** — fetch yalnız bayat veri kaynaklı yanlış ölçümü kapatır, eşzamanlı
+iki dalın aynı numarayı almasını ENGELLEMEZ. Kuralın yarışı çözen ayağı (3)'tür.
 
-**Ölçüm doğru olsa bile çakışma olabilir.** SM-2 kaldırma paketi kuralı harfiyen
-uyguladı: komutu koştu, çıktısını dal başına okudu, en yüksek numarayı (35)
-doğru tespit etti, TB-36'yı aldı ve ölçüm çıktısını commit mesajına yazdı.
-Yine de çakıştı — çünkü **eşzamanlı bir dal aynı pencerede aynı ölçümü yapıp
-aynı numarayı aldı** ve main'e önce girdi.
+**(2) Dal içinde geçici etiket kullanılır: `TB-?A`, `TB-?B`, `TB-?C`…** Kayıt
+normal biçimde ve tam olarak yazılır; yalnız kimliği geçicidir. Sözleşme
+metinleri, kod yorumları ve test docstring'leri **bu etiketi taşır**
+(`[[TB-?A]]`). Harf dal içinde benzersizdir, dallar arasında değil — iki dal
+aynı anda `TB-?A` kullanabilir, çakışmazlar çünkü hiçbiri gerçek numara
+değildir.
 
-Kusur ölçümde değil, kuralın **yapısındadır**: "ölçüm anında en yüksek + 1"
-kuralı, iki dal aynı anda ölçtüğünde ikisine de aynı sonucu verir. Bu bir
-klasik yarış durumudur (`TOCTOU`): ölçüm ile tahsis arasında hiçbir kilit
-yoktur ve dallar birbirini göremez. Önceki üç çakışma "komutu koşmadılar / ya
-da çıktıyı yanlış okudular" diye açıklanabiliyordu; **bu dördüncüsü öyle
-açıklanamaz** ve kuralın kendisini sorgulatır.
+**(3) Numara merge turunda tahsis edilir**, main'in **o anki** durumuna
+bakılarak. Merge commit'i iki şeyi taşır: **etiket→numara eşlemesi** ve
+**ölçüm çıktısı**. Tahsis anı ile main'e yazma anı aynı turda olduğu için
+araya başka bir dal giremez.
 
-Ayrıca ölçüm **bayat veriyle** yapılabiliyor: komut yerel `refs/remotes`
-kopyasını okur. `git fetch --all` koşulmamışsa uzak dallarda çoktan alınmış
-numaralar görünmez.
+Gerekçe: numara **paylaşılan bir kaynaktır** ve paylaşılan kaynak ancak
+paylaşılan noktada (main) çakışmasız dağıtılabilir. Bu, "ödeme kolu bayrağını
+üretimde fail-closed oku" kararıyla aynı mantıktır: kararı, veriye en yakın ve
+**tek** olan yerde ver.
 
-#### Öneri (KARAR BEKLİYOR — henüz kural değildir)
+**(4) Dal içi atıflar merge turunda güncellenir.** Bu bir maliyettir ve
+saklanmaz — ama **bugünkü maliyetin aynısıdır**. Fark şu: iş artık çakışma
+çıktıktan *sonra* değil, *önce* yapılır. Dört çakışmanın dördünde de aynı
+yeniden numaralama işi yapıldı; tek değişen, ne zaman yapıldığı.
 
-1. **Ölçümden önce `git fetch --all`** — bayat uzak referansları kapatır. Ucuz,
-   tartışmasız, tek başına da uygulanabilir. (Bu, yarışı çözmez; yalnız bayat
-   veri kaynaklı yanlış ölçümü kapatır.)
-2. **Numara dal içinde KESİNLEŞMESİN.** Dalda geçici bir etiket kullanılır
-   (`TB-?A`, `TB-?B` — dal başına harf), kayıt normal biçimde yazılır ve
-   atıflar bu etiketle verilir. Numara **merge turunda**, main'in o anki
-   durumuna bakılarak tahsis edilir; merge commit'i etiket→numara eşlemesini
-   ve ölçüm çıktısını taşır.
+Merge sırasında çakışma yine de çıkarsa (ör. iki dal aynı turda merge
+edilirse) **main kanoniktir**: gelen dalın kaydı yeniden numaralanır ve
+eski→yeni eşlemesi buraya yorum olarak yazılır. **Hiçbir kayıt silinmez.**
 
-   Gerekçe: numara **paylaşılan bir kaynaktır** ve paylaşılan kaynak ancak
-   paylaşılan noktada (main) çakışmasız dağıtılabilir. Bu, "ödeme kolu
-   bayrağını üretimde fail-closed oku" kararıyla aynı mantıktır: kararı
-   veriye en yakın ve tek olan yerde ver.
+### Kural neden değişti: dördüncü çakışma yapısaldı
 
-   Bedeli dürüstçe: dal içindeki atıflar (`[[TB-?A]]`) merge turunda
-   güncellenmek zorundadır — yani iş merge'e kayar, kaybolmaz. Bugünkü
-   maliyet ise zaten aynı işin **çakışma çıktıktan sonra** yapılmasıdır
-   (bu kayıt dahil, dört kez).
-3. **Alternatif (daha ucuz, daha zayıf):** numara aralıkları dallara peşin
-   ayrılır (ör. her yeni dal 10'luk blok alır). Çakışmayı kaldırır ama defterde
-   boşluklar bırakır ve blok tükendiğinde aynı soruna döner.
+Dört çakışma yaşandı ve **üçü okuma hatasıydı, dördüncüsü değildi**:
+
+| # | Çakışma | Sınıf |
+|---|---|---|
+| 1 | main ↔ İP-3 (TB-7…TB-10) | Okuma hatası — ölçüm yapılmadı |
+| 2 | main ↔ `ip16-flashcard` ↔ `ip16-audit-kapanis` (TB-24) | Okuma hatası — üç dal bağımsız tahsis etti |
+| 3 | `magaza-tasarim` ↔ `ip16-flashcard` (TB-27/28) | Okuma hatası — komut koşuldu ama çıktı `tail -1` ile yanlış okundu |
+| 4 | `sm2-kaldirma` ↔ eşzamanlı dal (TB-36) | **YAPISAL** |
+
+İlk üçü, kurala daha sıkı uyularak önlenebilirdi — ve önlem olarak komut
+"dal başına döküm" verecek şekilde değiştirildi. Dördüncüsü öyle değildir:
+SM-2 kaldırma paketi kuralı **harfiyen** uyguladı (komutu koştu, çıktıyı dal
+başına okudu, en yüksek numarayı — 35 — doğru tespit etti, TB-36'yı aldı,
+ölçüm çıktısını commit mesajına yazdı) ve **yine çakıştı**, çünkü eşzamanlı
+bir dal aynı pencerede aynı ölçümü yapıp aynı numarayı aldı ve main'e önce
+girdi.
+
+Kusur ölçümde değil kuralın yapısındaydı: "ölçüm anında en yüksek + 1", iki
+dal aynı anda ölçtüğünde ikisine de aynı sonucu verir. Klasik bir yarış
+durumudur (TOCTOU): ölçüm ile tahsis arasında hiçbir kilit yoktur ve dallar
+birbirini göremez. **Kural değişikliğinin gerekçesi budur** — ilk üç çakışma
+değil, dördüncüsü.
+
+Değerlendirilip SEÇİLMEYEN alternatif: dallara peşin numara bloğu (her yeni dal
+10'luk aralık alır). Çakışmayı kaldırır ama defterde kalıcı boşluklar bırakır
+ve blok tükendiğinde aynı yarışa döner.
 
 Karar verilene kadar yürürlükteki kural yukarıdaki **üç maddedir**; bu bölüm
 yalnız ölçümü ve öneriyi kaydeder.
@@ -176,25 +190,36 @@ yalnız ölçümü ve öneriyi kaydeder.
      o belge İP-5 turunun ölçümünü anlatıyor ve o tur bu düzeltmeden önceydi).
      -->
 
-<!-- Numaralandırma notu (SM-2 kaldırma paketi, 14 Ağu 2026 — DÖRDÜNCÜ ÇAKIŞMA):
+<!-- Numaralandırma notu (SM-2 kaldırma paketi, 14 Ağu 2026 — DÖRDÜNCÜ ÇAKIŞMA
+     ve KURAL DEĞİŞİKLİĞİ):
 
-     `sm2-kaldirma` dalı, kural gereği ölçüm yaparak **TB-36**'yı aldı; ölçüm o
-     an DOĞRUYDU (13 Ağu, tüm dallarda en yüksek numara 35'ti). Ama eşzamanlı
-     bir dal aynı numarayı aynı pencerede aldı ve main'e önce girdi: main'in
-     TB-36'sı "CI'da düştü, yerelde geçiyor — flaky sayıldı" kaydıdır.
-     main kanoniktir (kural 3), bu yüzden gelen dalın kaydı yeniden numaralandı.
+     `sm2-kaldirma` dalı, o zamanki kurala göre ölçüm yaparak **TB-36**'yı aldı;
+     ölçüm o an DOĞRUYDU (13 Ağu, tüm dallarda en yüksek 35'ti). Eşzamanlı bir
+     dal aynı numarayı aynı pencerede aldı ve main'e önce girdi (main'in TB-36'sı
+     "CI'da düştü, yerelde geçiyor — flaky sayıldı" kaydıdır). Kayıt önce
+     TB-44'e taşındı; ardından KURAL DEĞİŞTİ (yukarıdaki dört madde) ve bu dalın
+     kayıtları **geçici etikete** çevrildi — numara merge turunda tahsis
+     edilecektir.
 
-     Eski→yeni:  SM-2 kaldırma "izin taşıması nöbetsiz"  TB-36 → **TB-44**
-     (`docs/sm2-kaldirma-sozlesme.md` atıfları da güncellendi.)
+     Bu dalın kesinleşmemiş kayıtları (merge turunda numaralanacak):
+       TB-?A  `ip16_srs_izin_kodu_hizalama` rol bağı taşıması nöbetsiz
+              (kimlik geçmişi: TB-36 → TB-44 → TB-?A)
+       TB-?B  `app.routes` üzerinden yol araması sessizce boş döner
+              (kimlik geçmişi: TB-34 → TB-?B)
 
-     Ölçüm (14 Ağu 2026, `git fetch --all` SONRASI, tüm yerel + uzak dallar):
-     main / origin/main → … 35 36 37 38 39 40 41 42 43 (İP-18 merge'i 37-43'ü
-     getirdi). En yüksek 43 → yeni kayıt 44'ten başladı.
+     TB-?B daha önce TB-34'tü ve ölçümde hiçbir dalda kullanılmamış görünüyordu
+     (`git show main:docs/teknik-borc.md | grep -c "^## TB-34"` → 0). Yine de
+     etikete çevrildi: kuralın YENİ hâli "ölçümde boş görünmek" ile "gerçekten
+     benim" arasındaki farkı kapatmak içindir; yarı uygulanmış bir kural, bu
+     defterin dört kez ödediği bedelin ta kendisidir.
 
-     `sm2-kaldirma`'nın **TB-34**'ü (app.routes tuzağı) ETKİLENMEDİ: main 33'ten
-     35'e atlamış, 34'e hiçbir dal dokunmamış (ölçüldü). -->
+     Merge turunda yapılacak: `git fetch --all` → ölçüm → iki etikete numara
+     ver → `docs/sm2-kaldirma-sozlesme.md` ve
+     `backend/tests/test_flashcards_kaldirildi.py` içindeki `[[TB-?A]]`/
+     `[[TB-?B]]` atıflarını güncelle → eşlemeyi ve ölçümü merge commit'ine yaz.
+-->
 
-## TB-44 · `ip16_srs_izin_kodu_hizalama`'nın rol bağı taşıması NÖBETSİZ — sökülünce hiçbir test kırılmıyor
+## TB-?A · `ip16_srs_izin_kodu_hizalama`'nın rol bağı taşıması NÖBETSİZ — sökülünce hiçbir test kırılmıyor
 
 | | |
 |---|---|
@@ -207,7 +232,7 @@ yalnız ölçümü ve öneriyi kaydeder.
 | **Kapsam** | Bu kayıt SM-2 kaldırma paketinin kapsamı DIŞINDADIR. Kaldırma paketi `git diff main...HEAD` ile ölçtü: B7 test gövdelerinde **tek satır** değişiklik yapmadı (dokunulan yerler yalnız `birlesik_agac` fixture'ı ve iki B1 düğümü). Boşluk İP-16 merge edildiğinde de oradaydı; prova onu yalnızca görünür kıldı |
 | **Sonraki adım** | B7'ye bir düğüm eklenmeli: bayat dünya kurulurken izin **`ROLE_GRANTS`'ta olmayan bir role** de bağlanır (ör. `SUPPORT`/özel bir rol), `upgrade head` sonrası o bağın **güncel koda taşındığı** ölçülür. D6 mutasyonu o düğümü kırmalıdır — eklendikten sonra prova tekrarlanıp yakalandığı gösterilmelidir |
 
-## TB-34 · `app.routes` üzerinden yol araması SESSİZCE boş döner — kaldırma testleri yalancı yeşil olur
+## TB-?B · `app.routes` üzerinden yol araması SESSİZCE boş döner — kaldırma testleri yalancı yeşil olur
 
 | | |
 |---|---|

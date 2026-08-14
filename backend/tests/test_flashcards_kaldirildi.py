@@ -24,7 +24,7 @@ da tablolarını geri getirirse burası kırmızı döner.
 - R1: gerçek HTTP (httpx + ASGITransport, gerçek FastAPI uygulaması, gerçek
   bağımlılık çözümü). Kaynak taraması DEĞİLDİR.
 - R2: gerçek route tablosu — **OpenAPI şeması** üzerinden (`app.routes`
-  KULLANILAMAZ, gerekçesi düğümün kendi docstring'inde ve [[TB-34]]'te).
+  KULLANILAMAZ, gerekçesi düğümün kendi docstring'inde ve [[TB-?B]]'te).
 - R4: gerçek `import` denemesi (`importlib`). AST/metin taraması DEĞİLDİR —
   "dosyada şu satır yok" değil, "bu modül yüklenemiyor" ölçülür.
 
