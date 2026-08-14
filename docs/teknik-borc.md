@@ -130,6 +130,125 @@ silinmez).
      o belge İP-5 turunun ölçümünü anlatıyor ve o tur bu düzeltmeden önceydi).
      -->
 
+## TB-43 · `apply_refunded_amount`'ın `LEAST(…, total)` tavanı ve `refunded_at` COALESCE koruması NÖBETSİZ
+
+| | |
+|---|---|
+| **Bulundu** | İP-18 dar teyit turu (14 Ağu 2026); denetçi ölçtü, bağımsız olarak doğrulandı |
+| **Yer** | `backend/services/order_service.py::apply_refunded_amount` — `UPDATE orders SET refunded_amount = LEAST(refunded_amount + :a, total), refunded_at = COALESCE(refunded_at, now())` |
+| **Ölçüm** | İki korumanın İKİSİ de sökülünce (tavan `LEAST` kaldırıldı, `COALESCE` düz `now()` yapıldı) **56 para testinin hiçbiri kırılmıyor** |
+| **Neden İP-18 kapsamı dışı** | Fonksiyon tanımı tabanla (`c8b05d2`) **bayt-özdeş**. Bağımsız olarak doğrulandı: `ast.get_source_segment` ile çıkarılıp SHA-256'lanan gövde iki tarafta da `f35ffa2006e7…` (aynı yöntemle `reserve_refund` = `9cb77e97a801…`, `reservable_refund` = `03794adefc5a…`, üçü de özdeş). Yani önceden var olan bir borçtur; İP-18 bu fonksiyonu **çağıran** yolu değiştirdi, fonksiyonun kendisini değil |
+| **Neden İP-18 nöbetçileri yakalamıyor** | D12 tam iadeyi ölçer (`refunded_amount == refund_reserved == total`); sıfırdan tam tutara giden tek adımda `LEAST` tavanı zaten devreye girmez ve `refunded_at` de zaten NULL'dur, yani `COALESCE` ile düz `now()` aynı sonucu verir. Korumaların ayırt edici olduğu hâl **kısmi iade + ikinci hareket**tir ve o, İP-18'in değil İP-2a'nın (RMA) alanıdır |
+| **Gerçek risk** | Orta. `LEAST` düşerse kümülatif kısmi iadeler `refunded_amount`'ı `total`'ın ÜSTÜNE çıkarabilir (ciro raporu negatif net ciro gösterir; `escrow.order_inflight_refund` `total - kesin` hesabını negatife düşürür). `COALESCE` düşerse **ilk** iade zamanı her yeni kısmi iadede ezilir — iade penceresi/denetim izi için kullanılan damga kayar |
+| **Sonraki adım** | İP-2a alanında iki düğüm: (1) `refunded_amount + tutar > total` olacak şekilde ikinci bir kısmi iade → kolon `total`'ı AŞMAMALI; (2) iki ardışık kısmi iade → `refunded_at` **ilk** iadenin damgasını korumalı. İkisi de `tests/integration/test_ip2a_partial_math_pg.py`'ye aittir |
+
+## TB-42 · Mutasyon sürücüsünün `ERROR` gölgelemesi kısmen kör — düğüm ayracı olmayan koleksiyon hatasını saymıyor
+
+| | |
+|---|---|
+| **Bulundu** | İP-18 bağımsız audit'i (14 Ağu 2026) |
+| **Yer** | `backend/scripts/mutation_drill_ip18.py::_kirilanlar` (ve aynı deseni kuran `mutation_drill_ip16.py`) |
+| **Durum** | Gölgeleme yalnız içinde `::` geçen `ERROR` satırlarını sayar. Pytest, KOLEKSİYON düzeyinde patlayan bir dosyayı `ERROR tests/x.py - NameError: …` biçiminde, yani **düğüm ayracı olmadan** raporlar; o satır sayılmaz ve mutasyon "YAKALANMADI" görünebilir |
+| **Neden `::` şartı kaldırılamaz** | Yakalanan log çıktısı da `ERROR ` ile başlar (`ERROR    adana.escrow:escrow.py:518 …`). Onu da saymak, ERROR log yazan HER mutasyonu "yakalandı" gösterirdi — ölçüm aracını **yalancı yeşil üreticisine** çevirirdi |
+| **Yön** | Güvenli: eksik sayar, fazla saymaz. Yani bugünkü "11/11 yakalandı" sonucu bu kusurdan **şişmiş değildir** |
+| **Bugünkü durum** | Kusur duruyor; İP-18 turunda yalnız docstring'in fazla geniş iddiası daraltıldı (artık kapsamını ve nedenini söylüyor) |
+| **Sonraki adım** | İki deseni ayırt eden eşleştirici (`^ERROR (\S+\.py)(::\S+)? ` + logger satırlarının çoklu boşluk/`ad:dosya:satır` şeklini dışlama) ve bunun **kendi pozitif kontrolü**. [[TB-29]] ile birlikte, ortak `mutation_drill.py` üzerinde ele alınmalı |
+
+## TB-41 · İP-18 AST nöbetçisi kandırılabilir — `values` sözlüğü değişkene alınırsa görmüyor
+
+| | |
+|---|---|
+| **Bulundu** | İP-18 bağımsız audit'i (14 Ağu 2026); denetçi çalışan bir kaçış üretti |
+| **Yer** | `backend/tests/test_ip18_odeme_kosulu.py::_paid_yazan_dogrudan_claimler` |
+| **Kaçış** | Dedektör yalnız `escrow.claim(..., values={...})` biçimini, yani **satır içi sözlük değişmezini** tarar. `values` bir DEĞİŞKENE alınırsa (`deger = {"payment_status": "PAID", …}; await escrow.claim(..., values=deger)`) hem AST nöbetçisi hem de **21 davranış testi** geçti — yani boğaz noktası sessizce atlanabiliyor |
+| **Neden davranış testleri de geçti** | Kaçış claim'in *koşulunu* değil *bulunabilirliğini* bozuyor; kaçan çağrı hâlâ doğru koşulu taşıyorsa davranış aynı kalır. Yani bu, davranış nöbetçisiyle kapatılamayan **saf yapısal** bir boşluktur |
+| **İP-18 turunda yapılan** | Nöbetçiye **pozitif kontrol** eklendi (`test_yesil_ast_nobetcisi_pozitif_kontrol`: bilinen kötü örneği gerçekten buluyor mu) ve negatif kontrol (boğaz noktasının kendisi + iade yönü claim'i muaf). Bu, [[TB-38]]/(b)'nin "dedektör bozuksa sonsuza dek yeşil kalır" hâlini kapatır ama **kaçışı kapatmaz** |
+| **Sonraki adım** | (1) `values`'ı bir ada bağlanmış sözlüğe kadar izleyen basit yerel veri akışı (aynı fonksiyon gövdesinde `Name → Dict` çözümü); (2) daha sağlamı: kuralı tersine çevir — `escrow.claim`'in `Order` modeliyle çağrılması `_siparis_para_claimi` DIŞINDA topyekûn yasaklansın (iade yönü claim'leri de boğaz noktasından geçsin), o zaman `values` içeriğini okumaya hiç gerek kalmaz |
+
+## TB-40 · Kilit sırası nöbetçisi (D9) kandırılabilir — `FOR UPDATE OF o` deseni hem davranış hem kaynak sözleşmesini geçiyor
+
+| | |
+|---|---|
+| **Bulundu** | İP-18 bağımsız audit'i (14 Ağu 2026); denetçi çalışan bir kaçış üretti ("mutasyon G") |
+| **Yer** | `backend/tests/integration/test_ip18_siparis_kilit_pg.py::test_yesil_checkout_yolu_order_kilidini_urunden_once_almaz` + `backend/tests/acceptance/test_stock_lock_contract.py` |
+| **Kaçış** | Order kilidi `SELECT … FROM <başka tablo> JOIN orders … FOR UPDATE OF o` biçiminde alınırsa: D9'un eşleştiricisi `"for update" in s and "from orders" in s` arar — JOIN'de `orders` **ikinci** tablodur, `from orders` geçmez → **görülmez**. Kaynak sözleşmesi de `_lock_order`/`_siparis_para_claimi` adlarını arar, ham `select()` çağrısını tanımaz → **görülmez**. Yani kilit sırası ters çevrilebilir ve iki nöbetçi de sessiz kalır |
+| **Kurgusal değil** | `select(Order).join(OrderItem).with_for_update(of=Order)` tam bu SQL'i üretir; kod tabanında benzer desen zaten var (`delivery_service.handover_scan` → `.with_for_update(of=Order)`) |
+| **Etki** | Bugün gerçek bir ihlal YOK; bu bir **nöbetçi kapsamı** boşluğudur. Ama İP-18 sözleşmesi §8/1 "D9 tek nöbetçidir" diyor ve o tek nöbetçinin kör noktası şimdi ölçülmüş durumda |
+| **Neden ertelendi** | Doğru çözüm dizgi eşleştirmesini bırakıp kilitlenen **tabloyu** SQL'den ayrıştırmak ya da PostgreSQL tarafından gözlemektir (`pg_locks` anlık görüntüsü: hangi ilişki, hangi sırada `RowExclusiveLock`/`RowShareLock` aldı). İkisi de İP-18'in kapsamından büyük ve ayrı bir doğrulama aracı ister |
+| **Sonraki adım** | (1) Kısa vade: D9'un eşleştiricisini `for update` + (`from orders` **veya** `join orders` **veya** ` of o`/`of orders`) olarak genişlet ve **pozitif kontrol** ekle (bilinen kaçış SQL'i verildiğinde eşleştirici onu görmeli); (2) uzun vade: `pg_locks` tabanlı gerçek kilit-sırası gözlemcisi — dizgiden bağımsız tek yöntem budur |
+
+## TB-39 · İP-2b'nin "iade edildi **YA DA** görünür hata" ayrık iddiası bir P0'ı 11 gün boyunca maskeledi
+
+| | |
+|---|---|
+| **Bulundu** | İP-18 Faz 5 (14 Ağu 2026), D11 düğümü yazılırken — gerçek PG'de ölçüldü |
+| **Yer** | `backend/tests/integration/test_ip2b_cancel_callback_pg.py::test_kirmizi_reconciler_partisi_zehirlenmez` (~`:255-266`) |
+| **İddia** | `assert iade_edildi or gorunur` — "ölü siparişin tahsilatı ya otomatik iade edilir YA DA görünür bir ERROR kaydı bırakır" |
+| **Ne oldu** | Reconciler yolu `InvalidRequestError` fırlatıyor, `logger.exception` yazılıyor → `gorunur` **True** → test yeşil. Oysa oluşan durum iddianın **iki şıkkından da değildi**: satır `payment_status='REFUNDED'` yazıyor ama sağlayıcıya iade **hiç gitmemiş**. Yani "iade edildi" diyen ama parayı döndürmemiş kayıt. Kusur `2e4fefc` (3 Ağu) ile geldi, 14 Ağu'da bulundu |
+| **Ders** | Ayrık (`A or B`) kabul iddiası, ölçmediği bir **üçüncü** durumu sessizce kabul eder. "Görünür hata bıraktı" bir başarı ölçütü değildir; o hatanın **hangi hata** olduğu ölçülmelidir |
+| **Bugünkü durum** | Üretim kusuru **KAPANDI** (İP-18 `42aed0e`, savepoint kaldırıldı). Komşu paketin kabul iddiasına **DOKUNULMADI** — "kabul testleri sessizce değişmez" (`feedback_delivery_gates`); daha dar nöbetçi kendi paketinde açıldı (`test_ip18_siparis_kilit_pg::test_yesil_reconciler_taramasi_olu_siparisi_de_kapsar`: `REFUNDED` **ve** tam bir sağlayıcı çağrısı) |
+| **Açık kalan** | (1) İP-2b'nin ayrık iddiası hâlâ orada ve hâlâ aynı sınıf durumu kabul edebilir — daraltılması İP-2b sahibinin bilinçli kararıdır; (2) kod tabanında `assert X or Y` biçimli başka kabul iddiaları var mı, taranmadı |
+| **Sonraki adım** | (a) İP-2b iddiasını "iade edildi **VEYA** `MANUAL_REVIEW` durumu yazıldı" gibi **ölçülebilir** iki şıkka daralt (serbest metin log'u şık sayma); (b) `tests/` altında ayrık kabul iddialarını tara ve her birinin üçüncü durumu kabul edip etmediğini sor |
+
+## TB-38 · Kaynak sözleşmesi testleri **ada duyarlı, davranışa kör** — yeniden adlandırma onları sessizce körleştiriyor
+
+| | |
+|---|---|
+| **Bulundu** | İP-18 Faz 3 + Faz 4 (13-14 Ağu 2026); iddia **mutasyon provasıyla ÖLÇÜLDÜ**, örnekle değil |
+| **Yer** | `backend/tests/acceptance/test_stock_lock_contract.py` (temsilci vaka) + aynı aileden iki kayıt daha (aşağıda) |
+
+**Kanıt (İP-18, iki mutasyon, aynı test):**
+
+| Mutasyon | Ne yapıldı | Davranış bozuldu mu | `test_finalize_paid_urun_kilidini_claimden_ONCE_aliyor` |
+|---|---|---|---|
+| IP18-5 | `_finalize_paid`'e `_lock_order` eklendi → **Order kilidi Product'tan ÖNCE** (testin koruduğunu iddia ettiği ihlalin ta kendisi) | **EVET** | **KIRILMADI** |
+| IP18-2 | Claim çağrısı `_siparis_para_claimi` → `escrow.claim` olarak **yeniden adlandırıldı** (davranış aynı) | HAYIR | **KIRILDI** |
+
+Yani sözleşme, korumakla görevli olduğu ihlale kör; zararsız bir yeniden
+adlandırmaya duyarlı. **Tam tersi olmalıydı.** Sebep yapısal: iddia iki çağrı
+adının satır numaralarını karşılaştırıyor; araya sokulan **üçüncü** bir kilit
+çağrısı onun görüş alanında değil. İhlali yalnız davranış nöbetçisi yakaladı —
+`test_ip18_siparis_kilit_pg::test_yesil_checkout_yolu_order_kilidini_urunden_once_almaz`
+(gerçek `before_cursor_execute` gözlemi: gönderilen SQL'de `FOR UPDATE …
+products` ile `UPDATE orders` sırası).
+
+**Aynı aileden üç vaka:**
+
+| # | Vaka | Nasıl körleşir |
+|---|---|---|
+| 1 | **İP-18 / bu tur** — `test_stock_lock_contract` kilit sırası matrisi | Aradaki üçüncü kilit çağrısını görmez; ad değişince "bulunamadı" der |
+| 2 | **İP-16** — D-6c öncesi **elle yazılmış uç listesi** | Liste elle tutuluyor; yeni bir uç eklendiğinde listeye girmezse sözleşme onu hiç denetlemez ve sessizce geçer |
+| 3 | **İP-14** — `SAYFALAR` listesi ([[TB-32]]/9) | Nav kapsamı elle listeye çivili; listeye eklenmeyen sayfa denetim dışı kalır |
+
+**Kural (iki maddeli, yeni kaynak sözleşmesi yazan herkes için):**
+
+- **(a) Yanında davranış nöbetçisi durmalı.** Kaynak/AST sözleşmesi tek başına
+  "özellik tamamlandı" kanıtı değildir (kök `CLAUDE.md` §C zaten böyle diyor);
+  İP-18 ölçümü bunu somutlaştırdı — kaynak sözleşmesi **yanlış şeye duyarlı**
+  olabilir, yani yalnız zayıf değil **yanıltıcı** olabilir.
+- **(b) "Bulunamadı" BAŞARISIZLIK sayılmalı**, "yok, o yüzden geçti"
+  olmamalıdır. `test_stock_lock_contract` bunu doğru yapıyor (`eksik` listesi
+  boş değilse `assert` düşüyor) ve İP-18'de tam da bu sayede görüldü. Aynı
+  disiplin elle tutulan listelerde YOK: liste boşalırsa/ küçülürse hiçbir şey
+  kırılmıyor (bkz. [[TB-12]]/(b) — `_admin_rota_kimlikleri()` boş dönerse 29
+  düğüm sessizce kaybolur; aynı sınıf).
+
+| | |
+|---|---|
+| **Neden ertelendi** | Üç vakanın düzeltmesi üç ayrı pakete ait; İP-18 kendi vakasını davranış nöbetçisiyle kapattı (D9) ama kuralı tüm kaynak sözleşmelerine uygulamak ayrı bir tarama turu ister |
+| **Sonraki adım** | (1) `tests/acceptance` ve `tests/*_contract*` altındaki her kaynak sözleşmesi için "yanında davranış nöbetçisi var mı" envanteri; (2) elle tutulan her liste için "liste boş/küçüldü ise kır" nöbetçisi; (3) kural kök `CLAUDE.md` §C'ye eklensin (bugün §C "düşük güçlü" diyor, "yanıltıcı olabilir" demiyor) |
+
+## TB-37 · `_out_of_stock_refund` bayat yaşam döngüsü okuyor — çift `CANCELLED` geçmişi + çift müşteri bildirimi (I11)
+
+| | |
+|---|---|
+| **Bulundu** | İP-18 Faz 3 (14 Ağu 2026), düzeltme sonrası kalan bulgu olarak — kod okumasıyla, koşularak ÜRETİLMEDİ |
+| **Yer** | `backend/services/order_service.py::_out_of_stock_refund` (`_finalize_paid`'in stok yetersizliği dalından çağrılır) |
+| **Durum** | İP-18, PAID claim'ini yaşam döngüsü koşuluna bağladı. Ama stok yetersizliği dalı claim'den **ÖNCE** koşar ve `order` nesnesinin **bayat** `status` alanını taşır. Sipariş bu arada iptal edilmişse: `escrow.begin_refund(from_statuses=["PENDING","FAILED"])` yaşam döngüsüne bakmadan geçer, `settle_refunded_order` bayat `order.status == "PENDING"` görüp `transition_order(…, "CANCELLED")` çağırır |
+| **Etki** | **Para etkisi YOK** — tahsilat zaten iade edilmeli ve ediliyor. Zarar kayıt kalitesinde: `order_status_history`'ye **ikinci** bir `CANCELLED` satırı ve müşteriye **ikinci** bir iptal bildirimi (İP-2b I11 "bildirim tam bir kez" ihlali). Satır durumu doğru kalır (`CANCELLED` üstüne `CANCELLED`) |
+| **Neden ertelendi** | İP-18'in kabul edilmiş kırmızı matrisinde bu senaryonun düğümü YOK. Kırmızı test olmadan üretim kodu değiştirmek paketin kendi disiplinini bozar (`feedback_delivery_gates`: test matrisi koddan ÖNCE, ayrı commit). Matrisi tek taraflı büyütmek de kabul sözleşmesini sessizce kaydırırdı |
+| **Sonraki adım** | (1) Deterministik düğüm: stok yetersizliği + eşzamanlı iptal → geçmişte tek `CANCELLED`, bildirim tek; (2) düzeltme muhtemelen `_out_of_stock_refund` girişinde taze durum okuması (`_taze_siparis_durumu`) + `begin_refund`'a `extra_where` — yani İP-18'in kurduğu boğaz noktasının aynısı |
+
 ## TB-36 · "CI'da düştü, yerelde geçiyor" bir kez daha flaky sayıldı — bu tanı iki kez gerçek bir üretim yarışını geciktirdi
 
 | | |
@@ -444,17 +563,20 @@ her üçünü de güvenli tarafta bekletiyor (fatura uydurmuyor, uç kapalı).
 | **CI'nin bugünkü duruşu** | Audit adımı `continue-on-error: true` ile koşuyor ve gerekçesi adımın üstünde yorum olarak duruyor (job kırmızıya düşmüyor, uyarı görünür kalıyor). Bu bilinçli bir istisnadır, genel bir susturma değil: adım kaldırılmadı, çıktısı `|| true` ile yutulmuyor, yeni açıklar raporda görünmeye devam ediyor |
 | **Sonraki adım** | (1) Ayrı bir paket olarak React 19 + `react-router` 8 yükseltmesi (CI `node-version` 22'ye çekilerek); (2) o pakete kadar `npm audit` çıktısının **her turda okunması** — bu istisnanın altında yeni bir açık birikirse fark edilmeli; (3) yükseltme yapıldığında CI'daki istisna yorumu ve bu kayıt birlikte silinir |
 
-## TB-15 · Mağaza para sözleşmesinin kaçağı — **(a) KAPANDI**, (b) açık
-
-| | |
-|---|---|
-| **Bulundu** | İP-2a nihai bağımsız audit'i (4 Ağu 2026); merge sonrası main kodunda yeniden doğrulandı |
-| **Yer** | `backend/services/order_service.py::complete_checkout` "ölü varlık" dalı (~`:626-665`) |
-| **(a) `_out_of_stock_refund` merkezi sözleşme dışında** | **KAPANDI — İP-5** (`3a23f03` + `cf3615b`). Akış artık `reserve_refund` → `begin_refund` → `perform_refund` → `settle_refunded_order`. "Hiç satılmamış mala `SALE_CANCEL`" zararı iki katmanla kapatıldı: **açık parametre** (`settle_refunded_order(restock=False)` — canlı çağrıda bilgi tam) ve **kalıcı iz** (`_restock` → `_oversell_iptali_mi`, `order_status_history.changed_by = 'system:oversell'` — reconciler devraldığında parametre kaybolmuştur). Gerçek PG ile ölçüldü (O-1…O-4 + O-4b nöbetçisi), mutasyon provaları P7/P8 yakaladı. Detay: `docs/ip5-kdv-fatura-sozlesme.md` §7 |
-| **(a) — geri alınan ara çözüm** | İlk uygulama "`_restock` satılan adedi `stock_ledger.sold_quantity_by_order_item` ile **defterden** okusun" diyordu. **GERİ ALINDI** (`cf3615b`) ve yardımcı silindi. Ölçüm çürüttü: geliştirme veritabanındaki 20 PAID fiziksel siparişin **19'unda** `SALE` hareketi yok (defter `stok_hareket_defteri_sku` onlardan SONRA kuruldu); `paid_at` 7 dolu / 12 NULL, `order_status_history`'de PAID kaydı 3 var / 16 yok. O kural, defter öncesi GERÇEK bir siparişin iptalinde stoğu geri döndürmezdi — **gerçek stok kaybı**. Kayıt burada duruyor çünkü kural makul görünüyor ve tekrar önerilebilir |
-| **(b) `complete_checkout` geç-tahsilat dalı ikinci `refunded_amount` yazıcısı** | `apply_refunded_amount` "TEK yazıcı (M6)" diyor, ama "ölü varlık" dalı `refunded_amount`'a **mutlak atama** yapıyor (`refunded_amount: order_total`) — artırımlı değil, `LEAST(..., total)` tavanı yok, `refund_reserved` güncellenmiyor. Satır `refunded_amount=total, refund_reserved=0` gibi kendi içinde tutarsız kalıyor (`escrow.order_inflight_refund` bu ikiliyi birlikte okur) |
-| **(b) bugünkü gerçek risk** | Düşük, kayıp güncelleme DEĞİL: dal yalnız `from_statuses=["PENDING","FAILED"]` claim'iyle koşuyor, fonksiyon girişi PAID/REFUNDING/REFUNDED'ı zaten erken döndürüyor ve kısmi RMA siparişin PAID olmasını gerektiriyor → o noktada `refunded_amount` pratikte 0. Yani **sözleşme ihlali / regresyon riski** |
-| **Sonraki adım** | (b) ölü-varlık dalını `apply_refunded_amount`'a çevirmek + "kod tabanında `refunded_amount`'a yazan tek yer" yapısal nöbetçisi |
+<!-- Kapanma notu (İP-18, `517c251`): **TB-15** ("Mağaza para sözleşmesinin
+     kaçağı") KAPANDI ve dosyanın kendi kuralı gereği SİLİNDİ. (a) ayağı zaten
+     İP-5'te kapanmıştı; kalan (b) ayağını İP-18 kapattı. Ölü-varlık dalı artık
+     `refunded_amount`'a **mutlak atama yapmıyor**: rezervasyon niyetle AYNI
+     atomik UPDATE'e biniyor (`refund_reserved = refund_reserved + tutar`),
+     tavan claim'in kendi koşulunda (`refund_reserved + tutar <= total`) ve
+     tutar tek yazıcıdan geçiyor (`apply_refunded_amount`, M6 — artırımlı +
+     `LEAST(..., total)`). İkisi de `commit`'ten ÖNCE, aynı transaction'da;
+     çökme semantiği değişmedi. Detay: `docs/ip18-siparis-kilit-sozlesme.md`
+     §4. **Açık kalan tek parça** ("kod tabanında `refunded_amount`'a yazan tek
+     yer" yapısal nöbetçisi) yazılmadı — İP-18 kendi alanında eşdeğerini kurdu
+     (`payment_status='PAID'` yazan tek yer nöbetçisi,
+     `tests/test_ip18_odeme_kosulu.py`); `refunded_amount` için aynı nöbetçi
+     hâlâ yok ve [[TB-38]]'in (a) maddesi kapsamındadır. -->
 
 ## TB-14 · İP-2a P2 listesi (audit'te açık bırakılan sekiz kaydın YEDİSİ — öncelik sırasıyla)
 
