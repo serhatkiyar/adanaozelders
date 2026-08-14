@@ -79,6 +79,16 @@ class Settings(BaseSettings):
     REDIS_URL: str = "redis://localhost:6379/0"
     PRESENCE_ONLINE_TTL_SECONDS: int = 300
     PRESENCE_FLUSH_INTERVAL_SECONDS: int = 300
+    #: `presence:dirty` bu boyutu aşarsa kritik seviyede loglanır (0 = kapalı).
+    #:
+    #: Neden var: flush SQL'i 30 Mayıs–9 Ağustos 2026 arasında her turda
+    #: patladı, hata `_presence_flusher`'da yakalanıp loglandı ve kuyruk sessizce
+    #: 7488 kayda şişti. Kimse 71 gün boyunca fark etmedi. Yazma bir daha
+    #: başarısız olursa alarm kuyruğun kendisinden gelsin — tek bir istisna
+    #: satırından değil. Eşik gerçek tavana göre değil "burada bir şey yanlış"
+    #: eşiğine göre seçilir: aktif kullanıcı sayısı × flush aralığı bunun çok
+    #: altındadır.
+    PRESENCE_DIRTY_MAX_ENTRIES: int = 50_000
 
     # Ters proxy arkasında istemci IP'si: X-Forwarded-For YALNIZCA bağlantı bu
     # listedeki bir adresten geliyorsa okunur. Boş liste = XFF'e hiç güvenme

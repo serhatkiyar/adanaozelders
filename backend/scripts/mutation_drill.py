@@ -158,6 +158,33 @@ class GeciciYama:
         return False
 
 
+def _secilen_test_sayisi(m: "Mutasyon") -> int:
+    """Mutasyondan ÖNCE: bu prova gerçekten kaç test seçiyor?
+
+    Sıfır seçilen test, "mutasyon yakalanmadı" ile aynı çıktıyı üretir ama
+    bambaşka bir şeydir: prova hiç koşmamıştır. Yol yanlış yazıldığında,
+    dosya taşındığında ya da testler bir marker'la atlandığında sürücü sessizce
+    "YAKALANMADI" der ve bu, "test zayıf" diye okunur. Sayı bu yüzden her
+    provada AÇIKÇA basılır ve sıfır olması sert hata sayılır.
+    """
+    if m.taraf != "backend":
+        return -1  # vitest tarafı ayrı sayılır; -1 = "ölçülmedi"
+    r = _kos(
+        [sys.executable, "-m", "pytest", "-q", "--collect-only", *m.testler], BACKEND
+    )
+    cikti = r.stdout + r.stderr
+    for satir in reversed(cikti.strip().splitlines()):
+        s = satir.strip()
+        # "12 tests collected in 0.30s" / "12/34 tests collected (22 deselected)"
+        if "test" in s and "collected" in s:
+            bas = s.split(" ", 1)[0].split("/")[0]
+            if bas.isdigit():
+                return int(bas)
+        if s.startswith("no tests ran") or "collected 0 items" in s:
+            return 0
+    return 0
+
+
 def _kirilanlar(cikti: str) -> list[str]:
     """Mutasyonun yakalandığına dair kanıt satırları.
 
@@ -200,6 +227,12 @@ def _kirilanlar(cikti: str) -> list[str]:
 def calistir(m: Mutasyon, head0: str, durum0: str) -> bool:
     print(f"\n{'=' * 72}\n{m.no} - {m.ad}\n{'=' * 72}")
     import contextlib
+
+    secilen = _secilen_test_sayisi(m)
+    print(f"seçilen test sayısı: {secilen if secilen >= 0 else 'ölçülmedi (frontend)'}")
+    if secilen == 0:
+        print("!!! SIFIR TEST SEÇİLDİ — prova hiç koşmadı, bu bir BAŞARISIZLIKTIR !!!")
+        return False
 
     with contextlib.ExitStack() as yamalar:
         yamalar.enter_context(GeciciYama(KOK / m.rel, m.eski, m.yeni))
@@ -1058,6 +1091,35 @@ MUTASYONLAR: list[Mutasyon] = [
                 """            restock=True,  # MUTASYON: acik parametre de kaldirildi""",
             ),
         ),
+    ),
+    Mutasyon(
+        "PR1", "presence: flush SQL'indeki CAST'ler kaldırıldı",
+        "backend/core/presence.py",
+        """            "FROM (VALUES (CAST(:id AS INTEGER), CAST(:ts AS BIGINT))) AS v(id, ts) "
+            "WHERE t.id = v.id\"""",
+        """            "FROM (VALUES (:id, :ts)) AS v(id, ts) WHERE t.id = v.id"  # MUTASYON""",
+        ("tests/integration/test_presence_flush_pg.py",),
+    ),
+    Mutasyon(
+        "PR2", "presence: tablo adı allowlist'i kaldırıldı",
+        "backend/core/presence.py",
+        """    if not sep or table not in _FLUSHABLE_TABLES:""",
+        """    if not sep:  # MUTASYON: Redis'ten gelen tablo adi dogrudan SQL'e giriyor""",
+        ("tests/integration/test_presence_flush_pg.py",),
+    ),
+    Mutasyon(
+        "PR3", "presence: kuyruk temizligi degeri karsilastirmadan DEL'e dondu",
+        "backend/core/presence.py",
+        "    await _kuyruktan_dus(r, list(pending.items()))",
+        "    await r.delete(_DIRTY_KEY)  # MUTASYON: hgetall + DEL yarisi",
+        ("tests/integration/test_presence_flush_pg.py",),
+    ),
+    Mutasyon(
+        "PR4", "presence: kuyruk tavani alarmi kaldirildi",
+        "backend/core/presence.py",
+        "    _uyar_kuyruk_sismis(len(pending))",
+        "    pass  # MUTASYON: kuyruk sismesi sessiz",
+        ("tests/integration/test_presence_flush_pg.py",),
     ),
     Mutasyon(
         "P9", "IP5: kök conftest PAYMENT_PROVIDER satırı kaldırıldı (TB-21)",
