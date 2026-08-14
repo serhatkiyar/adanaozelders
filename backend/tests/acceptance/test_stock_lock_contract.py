@@ -27,6 +27,27 @@ LEDGER = "services/stock_ledger.py"
 #: Ürün kilidini alan TEK fonksiyon.
 LOCKER = "lock_products"
 
+#: Siparişe para BAĞLAYAN claim'in adı.
+#:
+#: ⚠️ **Bilinçli sözleşme güncellemesi (İP-18).** Bu sabit önceden `"claim"`
+#: idi ve `escrow.claim` çağrısını adıyla yakalıyordu. İP-18, üç giriş
+#: noktasının (callback · `pay()` → `_charge` · reconciler) yaşam döngüsü
+#: koşulunu bağımsız olarak kaçırmasını engellemek için claim'i tek bir boğaz
+#: noktasına aldı: `order_service._siparis_para_claimi`. **Kilit sırası
+#: davranışı DEĞİŞMEDİ** — değişen yalnız çağrının adı; sözleşme
+#: gevşetilmedi, aynı iddia yeni ada bağlandı.
+#:
+#: Bu olay sözleşmenin kendi zayıflığını da gösterdi: iddia **çağrı adına
+#: bağlı**, yani bir yeniden adlandırma onu sessizce kör edebilir (burada
+#: kırmızıya düştüğü için görüldü, ama "bulunamadı" kırmızısı ile "sıra ters"
+#: kırmızısı aynı şey değildir). Bu yüzden İP-18 aynı iddianın DAVRANIŞ
+#: kanıtını da ekledi: `tests/integration/test_ip18_siparis_kilit_pg.py::
+#: test_yesil_checkout_yolu_order_kilidini_urunden_once_almaz` gerçek bir
+#: checkout koşumunda `before_cursor_execute` ile gönderilen SQL'i dinler ve
+#: `FOR UPDATE ... products` ile `UPDATE orders` sırasını ÖLÇER. Kaynak
+#: sözleşmesi (düşük güçlü) yanında artık bir davranış nöbetçisi var.
+PARA_CLAIMI = "_siparis_para_claimi"
+
 
 def _read(rel: str) -> str:
     return (BACKEND / rel).read_text(encoding="utf-8")
@@ -217,7 +238,8 @@ def test_geri_yukleme_yollari_kendi_kilit_dongusunu_acmiyor():
 #: Yalnız İLK görülme satırları karşılaştırılır.
 SIRA_MATRISI: list[tuple[str, str, list[str]]] = [
     # PAID: ürünler kilitlenir → sipariş satırı koşullu UPDATE ile claim edilir.
-    ("services/order_service.py", "_finalize_paid", [LOCKER, "claim"]),
+    # (İP-18: claim boğaz noktasına alındı; sıra iddiası aynı — bkz. PARA_CLAIMI.)
+    ("services/order_service.py", "_finalize_paid", [LOCKER, PARA_CLAIMI]),
     # Tam iade: ürün kilitleri SAĞLAYICIDAN ÖNCE (kanonik sıra), telafi SONRA.
     #
     # İP-2b: telafi kuyruğu `settle_refunded_order`'a taşındı — üç çağıranın
@@ -275,11 +297,17 @@ def test_finalize_paid_urun_kilidini_claimden_ONCE_aliyor():
     """En kritik tek iddia: Product → Order.
 
     Ters olsaydı (`claim` önce, ürün sonra) bu yol, Order→Product sırasını
-    kullanan iade yoluyla birlikte gerçek bir deadlock döngüsü kurardı.
+    kullanan iade yoluyla birlikte bir deadlock döngüsü kurardı.
+
+    ⚠️ İP-18 ölçümü bu gerekçeyi daralttı: döngü **bugünkü FSM'de
+    erişilebilir değildir** — aynı sipariş satırının hem `PENDING` (checkout)
+    hem `PAID` (iade faz-2) olmasını gerektirir, bu ikisi karşılıklı
+    dışlayıcıdır. Risk yapısaldır (yeni bir yol bu dengeyi bozabilir), bugün
+    tetiklenebilir değildir. Sözleşme bu yüzden KALDI ama iddiası dürüstleşti.
     """
     node = _func("services/order_service.py", "_finalize_paid")
     kilit = _first_line(node, LOCKER)
-    claim = _first_line(node, "claim")
+    claim = _first_line(node, PARA_CLAIMI)
     assert kilit is not None and claim is not None
     assert kilit < claim, f"ürün kilidi {kilit}, claim {claim} — sıra ters"
 

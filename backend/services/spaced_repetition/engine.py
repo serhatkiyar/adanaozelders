@@ -17,18 +17,26 @@ kullanıyordu, kuyruk ise gün sınırını `Europe/Istanbul − 4 saat` ile ç�
 gün"dü (13 saat) ve Pazartesi 23:00'teki cevapla birebir aynı S değerini
 (14.077712147375411) üretiyordu.
 
-**"Geçen gün" ölçüsünün tabanı artık tektir** — `dayboundary.study_day`
-farkı — ve onu çağıran verir. Ama sistemde **hâlâ iki granülarite var** ve bu
-düzeltmeyle kapanmadı: `elapsed_days` çalışma GÜNÜ ölçer, `due_at` ise AN
-tutar (`now + interval_minutes`) ve G-5 karşılaştırması (`due_at <= now`) an
-üzerinden yapılır. Sonucu ölçülmüştür: Pazartesi 20:00'de cevaplanan iki
-günlük kartın vadesi Çarşamba 20:00'dir, yani kart kendi çalışma gününün
-sabahında kuyrukta GÖRÜNMEZ; ayrıca kullanıcı vadeden geç cevapladıkça damga
-ileri kayar (20:00 → 22:00 → 00:00 → 02:00 → 04:00) ve 04:00'ü aşınca bir
-çalışma günü daha atlar. Bu, bilinçli bir tasarım değil kayıtlı bir borçtur:
-sözleşme §11 → "vade damgası an tabanında, elapsed çalışma günü tabanında".
-Motor bu asimetrinin dışındadır (an görmez), ama okuyan "tek taban" cümlesini
-tüm sisteme genellememeli.
+**"Geçen gün" ölçüsünün tabanı tektir** — `dayboundary.study_day` farkı — ve
+onu çağıran verir.
+
+Uzun süre sistemde İKİ granülarite vardı: `elapsed_days` çalışma GÜNÜ ölçüyor
+ama `due_at` AN tutuyordu (`now + interval_minutes`). Ölçülen sonucu:
+Pazartesi 20:00'de cevaplanan bir günlük kartın vadesi Salı 20:00'ydi, yani
+kart kendi çalışma gününün sabahında kuyrukta GÖRÜNMÜYORDU; üstelik kullanıcı
+vadeden geç cevapladıkça damga ileri sürükleniyor (20:00 → 22:00 → 00:00 →
+02:00 → 04:00), dördüncü tekrarda 04:00 devrilmesini aşıyor ve kartın görünür
+olduğu pencere gecenin ortasına sıkışıyordu.
+
+**İP-17'de kapandı** (sözleşme §4.4): gün ölçekli aralıklarda çağıran damgayı
+`day_start(study_day(now) + gün)` ile hedef çalışma gününün başına koyar;
+intraday öğrenme adımları `now + interval` olarak kalır. Karşılaştırma
+(`due_at <= now`) değişmedi — değişen, iki tarafının artık aynı ölçekte
+olmasıdır.
+
+Motor her iki dönemde de bu asimetrinin dışındaydı: an görmez, `due` üretmez.
+Ayrımı çağıran FAZA göre yapar (`state == "REVIEW"`), aralığın dakika
+sayısına göre değil — gerekçe `srs_service.answer` içinde.
 """
 from __future__ import annotations
 

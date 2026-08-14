@@ -67,6 +67,20 @@ export function istanbulNow(): { dateStr: string; hour: number; minute: number }
   };
 }
 
+// Türkiye duvar-saati "HH:MM". Kütüphane/operatör yüzeylerinde randevu saati
+// TARAYICI saatinden bağımsız olmalıdır: tz'i UTC olan bir cihazda 14:00'lık
+// rezervasyon "11:00" görünürse operatör kapıda yanlış saati söyler.
+const istanbulTf = new Intl.DateTimeFormat("tr-TR", {
+  timeZone: "Europe/Istanbul",
+  hour: "2-digit",
+  minute: "2-digit",
+  hour12: false,
+});
+
+export function formatIstanbulTime(iso: string): string {
+  return istanbulTf.format(new Date(iso));
+}
+
 // Sohbet listesi için kısa zaman: bugünse "14:30", değilse "20 Mar".
 export function formatChatTime(iso?: string | null): string {
   if (!iso) return "";

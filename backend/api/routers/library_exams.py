@@ -185,8 +185,10 @@ async def cancel_session(
 ):
     s = await _get_session_or_404(db, session_id)
     _assert_can_manage(user, s.library_id, not_found_detail="Oturum bulunamadı")
+    # Denetim aktörü GERÇEK kullanıcıdır: operatör yaptıysa audit satırı
+    # `actor_role=4` ile düşer, admin yaptıysa 1 ile (İP-14 §7).
     return await library_exam_service.cancel_session(
-        db, session_id, include_answer_key=isinstance(user, Admin)
+        db, session_id, include_answer_key=isinstance(user, Admin), actor=user
     )
 
 
@@ -318,7 +320,7 @@ async def publish_results(
 ):
     s = await _get_session_or_404(db, session_id)
     _assert_can_manage(user, s.library_id, not_found_detail="Oturum bulunamadı")
-    return await library_exam_service.publish_results(db, session_id)
+    return await library_exam_service.publish_results(db, session_id, actor=user)
 
 
 @router.post(
@@ -424,6 +426,7 @@ async def verify_attendance(
         operator_library_id=operator.library_id,
         operator_id=operator.id,
         payload=payload.payload,
+        actor=operator,
     )
 
 
@@ -443,4 +446,5 @@ async def attend_by_registration(
         operator_library_id=operator.library_id,
         operator_id=operator.id,
         registration_id=registration_id,
+        actor=operator,
     )

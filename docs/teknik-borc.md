@@ -128,7 +128,7 @@ yalnız ölçümü ve öneriyi kaydeder.
      kendi kaydı sandı). Nihai taşıma:
        İP-16 "mutasyon sürücüsü ERROR saymıyor"  TB-24 → TB-27 → **TB-29**
        İP-16 "ensure_schema uyumsuzluğu gizliyor"      TB-28 → **TB-30**
-     (`docs/ip16-aralikli-tekrar-sozlesme.md` atıfları da güncellendi.)
+     (`docs/ip16-flashcard-sozlesme.md` atıfları da güncellendi.)
 
      Ölçüm (9 Ağu 2026, tüm yerel + uzak dallar): en yüksek numara 28
      (`magaza-tasarim`), bu yüzden yeni kayıtlar 29'dan başladı.
@@ -148,6 +148,23 @@ yalnız ölçümü ve öneriyi kaydeder.
      fiziksel kabulde, `receive_return`). Eski atıflar: `f29-envanter-
      sozlesmesi.md:229`, `ip1a-ders-para-sozlesme.md:676` (tarihsel, dokunulmadı).
      **TB-2** silinmedi ama YARIYA DARALDI — güncel gövdesine bakınız. -->
+
+<!-- Kapanma notu (İP-17, vade granülerliği turu): **TB-29** ("Mutasyon sürücüsü
+     `ERROR` ile düşen testleri kırılmadı sayıyor") KAPANDI ve dosyanın kendi
+     kuralı gereği SİLİNDİ. Kapatan kod: `scripts/mutation_drill.py::_kirilanlar`
+     artık `FAILED` satırlarının yanında `ERROR …::düğüm` satırlarını da
+     topluyor ve onları "(KURULUM HATASI — test hiç koşmadı)" etiketiyle AYRI
+     gösteriyor (kaydın istediği 3. adım); `mutation_drill_ip16`'daki yerel
+     gölge silindi, modül üstteki fonksiyonu doğrudan import ediyor.
+     Uçtan uca doğrulama: kaydın kendi ölçüm vakası `IP16-21` yeniden koşuldu →
+     "YAKALANDI (7 test kırıldı)", yedisi de KURULUM HATASI etiketli.
+     Kaydın 2. adımı (geçmiş "YAKALANMADI" kayıtlarını tara) da yapıldı:
+     `docs/` altında üç kayıt var; `ip16-aralikli-tekrar-sozlesme.md`'deki IP16-21
+     zaten bu kusurun kurbanı olarak işaretlenmişti, `IP16-27` ve
+     `ip1a-…::A2` gerçekten zayıf testti ve ikisi de o turda düzeltildi.
+     Geriye düzeltilmesi gereken yanlış kayıt KALMADI.
+     ⚠️ Bu değişiklik yedi paketin ölçüm aracını değiştirir; ileride eski bir
+     kapanış raporundaki "YAKALANMADI" satırı okunurken tarihine bakılmalıdır. -->
 
 <!-- Kapanma notu (İP-5, `bda2edf`): **TB-21** ("Entegrasyon testleri
      `.env`'den `PAYMENT_PROVIDER` alıyor") KAPANDI ve dosyanın kendi kuralı
@@ -190,36 +207,53 @@ yalnız ölçümü ve öneriyi kaydeder.
      o belge İP-5 turunun ölçümünü anlatıyor ve o tur bu düzeltmeden önceydi).
      -->
 
-<!-- Numaralandırma notu (SM-2 kaldırma paketi, 14 Ağu 2026 — DÖRDÜNCÜ ÇAKIŞMA
-     ve KURAL DEĞİŞİKLİĞİ):
+<!-- Numaralandırma notu (İP-17 merge turu, 14 Ağu 2026): aşağıdaki iki kayıt
+     İP-17'nin bağımsız denetiminde açıldı ve dal içinde geçici etiketle
+     (TB-?A / TB-?B) durdu; numara kuralın gereğince merge turunda ölçülerek
+     verildi — tüm yerel + uzak dallarda en yüksek `^## TB-<n>` başlığı 43'tü
+     (`ip17=43 ip18=43 main=43 origin/main=43`, geri kalanı daha düşük).
+       TB-?A → **TB-45**   TB-?B → **TB-44**
+     Numaraların etiket sırasına ters düşmesi bilinçlidir: bu dosya azalan
+     numara sırasında tutulur, iki kayıt da aynı turda açıldı ve blokları
+     yerinden oynatmamak için üstteki daha yüksek numarayı aldı.
+     UYARI (sm2-kaldirma dalını merge edecek olana): o dalın numaralandırma
+     notu TB-44'ü **terk edilmiş bir kimlik geçmişi** olarak anıyor
+     (`TB-36 → TB-44 → TB-?A`). O TB-44 hiçbir zaman başlık olarak
+     tahsis edilmemişti; buradaki TB-44 ile ilgisi yoktur. -->
 
-     `sm2-kaldirma` dalı, o zamanki kurala göre ölçüm yaparak **TB-36**'yı aldı;
-     ölçüm o an DOĞRUYDU (13 Ağu, tüm dallarda en yüksek 35'ti). Eşzamanlı bir
-     dal aynı numarayı aynı pencerede aldı ve main'e önce girdi (main'in TB-36'sı
-     "CI'da düştü, yerelde geçiyor — flaky sayıldı" kaydıdır). Kayıt önce
-     TB-44'e taşındı; ardından KURAL DEĞİŞTİ (yukarıdaki dört madde) ve bu dalın
-     kayıtları **geçici etikete** çevrildi — numara merge turunda tahsis
-     edilecektir.
+<!-- Numaralandırma notu (SM-2 kaldırma paketi, merge turu — 14 Ağu 2026):
 
-     Bu dalın kesinleşmemiş kayıtları (merge turunda numaralanacak):
-       TB-?A  `ip16_srs_izin_kodu_hizalama` rol bağı taşıması nöbetsiz
-              (kimlik geçmişi: TB-36 → TB-44 → TB-?A)
-       TB-?B  `app.routes` üzerinden yol araması sessizce boş döner
-              (kimlik geçmişi: TB-34 → TB-?B)
+     Bu iki kayıt dal içinde geçici etiketle (TB-?A / TB-?B) durdu; numara
+     kuralın dördüncü maddesi gereği MERGE TURUNDA ölçülerek verildi.
 
-     TB-?B daha önce TB-34'tü ve ölçümde hiçbir dalda kullanılmamış görünüyordu
-     (`git show main:docs/teknik-borc.md | grep -c "^## TB-34"` → 0). Yine de
-     etikete çevrildi: kuralın YENİ hâli "ölçümde boş görünmek" ile "gerçekten
-     benim" arasındaki farkı kapatmak içindir; yarı uygulanmış bir kural, bu
-     defterin dört kez ödediği bedelin ta kendisidir.
+     Ölçüm (`git fetch --all` sonrası, tüm yerel + uzak dallar): en yüksek
+     `^## TB-<n>` başlığı **45** (`main=45 origin/main=45`; sonraki
+     `research/focus-study-rooms=36`, `sm2-kaldirma=31` — kendi kayıtları
+     etiket olduğu için numaraya girmiyor, kuralın beklenen davranışı).
 
-     Merge turunda yapılacak: `git fetch --all` → ölçüm → iki etikete numara
-     ver → `docs/sm2-kaldirma-sozlesme.md` ve
-     `backend/tests/test_flashcards_kaldirildi.py` içindeki `[[TB-?A]]`/
-     `[[TB-?B]]` atıflarını güncelle → eşlemeyi ve ölçümü merge commit'ine yaz.
+       TB-?A  (`ip16_srs_izin_kodu_hizalama` rol bağı taşıması) → **TB-47**
+       TB-?B  (`app.routes` yol araması sessizce boş döner)      → **TB-46**
+
+     Numaraların etiket sırasına ters düşmesi bilinçlidir ve İP-17 merge
+     turundaki gerekçenin aynısıdır: bu dosya AZALAN numara sırasında tutulur,
+     iki kayıt da aynı turda açıldı, blokları yerinden oynatmamak için üstteki
+     daha yüksek numarayı aldı.
+
+     ⚠️ TB-44 KARIŞIKLIĞI (İP-17 merge notunun uyardığı nokta — teyit edildi):
+     bu dalın önceki notu TB-44'ü bir kimlik geçmişi olarak anıyordu
+     (`TB-36 → TB-44 → TB-?A`). O TB-44 hiçbir zaman başlık olarak tahsis
+     EDİLMEDİ; yalnız bu dal içinde geçici olarak kullanıldı ve kural
+     değişince etikete döndü. Bugün defterdeki **TB-44 İP-17'nindir**
+     ("Yeni kart sıralaması (`_order_id`) nöbetsiz") ve bu paketle ilgisi
+     yoktur. Kimlik geçmişi kaydı bu yüzden buradan kaldırılmadı, ama
+     numarayla değil ETİKETLE anılıyor: bu paketin kayıtları TB-46 ve TB-47'dir.
+
+     Kimlik geçmişleri (tam):
+       TB-47 : TB-36 (çakıştı) → TB-44 (dal içi, terk edildi) → TB-?A → TB-47
+       TB-46 : TB-34 (dal içi, terk edildi) → TB-?B → TB-46
 -->
 
-## TB-?A · `ip16_srs_izin_kodu_hizalama`'nın rol bağı taşıması NÖBETSİZ — sökülünce hiçbir test kırılmıyor
+## TB-47 · `ip16_srs_izin_kodu_hizalama`'nın rol bağı taşıması NÖBETSİZ — sökülünce hiçbir test kırılmıyor
 
 | | |
 |---|---|
@@ -232,7 +266,7 @@ yalnız ölçümü ve öneriyi kaydeder.
 | **Kapsam** | Bu kayıt SM-2 kaldırma paketinin kapsamı DIŞINDADIR. Kaldırma paketi `git diff main...HEAD` ile ölçtü: B7 test gövdelerinde **tek satır** değişiklik yapmadı (dokunulan yerler yalnız `birlesik_agac` fixture'ı ve iki B1 düğümü). Boşluk İP-16 merge edildiğinde de oradaydı; prova onu yalnızca görünür kıldı |
 | **Sonraki adım** | B7'ye bir düğüm eklenmeli: bayat dünya kurulurken izin **`ROLE_GRANTS`'ta olmayan bir role** de bağlanır (ör. `SUPPORT`/özel bir rol), `upgrade head` sonrası o bağın **güncel koda taşındığı** ölçülür. D6 mutasyonu o düğümü kırmalıdır — eklendikten sonra prova tekrarlanıp yakalandığı gösterilmelidir |
 
-## TB-?B · `app.routes` üzerinden yol araması SESSİZCE boş döner — kaldırma testleri yalancı yeşil olur
+## TB-46 · `app.routes` üzerinden yol araması SESSİZCE boş döner — kaldırma testleri yalancı yeşil olur
 
 | | |
 |---|---|
@@ -244,6 +278,239 @@ yalnız ölçümü ve öneriyi kaydeder.
 | **Kural** | Route tablosu iddiaları **OpenAPI şemasından** okunur (`app.openapi()["paths"]`), `app.routes`'tan değil. Yokluk iddialarına ayrıca bir doluluk nöbetçisi konur (ör. komşu bir önekin yollarının VAR olduğu), yoksa boş/kapalı şema iddiayı kendiliğinden geçirir — `ENVIRONMENT=production` OpenAPI'yi kapatır |
 | **Sonraki adım** | Yorumla yetinmeyen bir nöbetçi: `app.routes`/`.routes` üzerinde path araması yapan test kaynaklarını AST ile tarayıp reddeden bir meta-test (düşük güçlü ama bu tuzağın tekrarını gerçekten kesen tek şey), ya da testlere ortak bir `router_yollari()` yardımcısı verip doğrudan erişimi bırakmak |
 | **Şimdilik koruma** | Kaldırma paketinin kendi düğümü OpenAPI'ye çevrildi ve doluluk nöbetçisi eklendi (`backend/tests/test_flashcards_kaldirildi.py::test_R2_*`) |
+
+## TB-45 · Yeşil taban çizgisi nöbetçisi ORTAK sürücüde YOK — kırmızı tabanda "YAKALANDI" denebiliyor
+
+| | |
+|---|---|
+| **Bulundu** | İP-17 bağımsız denetimi (14 Ağu 2026) |
+| **Yer** | `backend/scripts/mutation_drill.py` (ortak sürücü) ve onu kullanan `mutation_drill_ip16.py`, `_ip14.py`. Nöbetçi YALNIZ `mutation_drill_ip18.py::_yesil_taban`'da var |
+| **Durum** | Sürücü, mutasyonu uygulamadan önce hedef testlerin **temiz ağaçta yeşil olduğunu** doğrulamıyor. Zaten kırmızı olan bir test mutasyon altında da kırmızı kalır ve sürücü bunu "YAKALANDI" sayar. Yani prova, ölçmek istediği şeyi ölçmeden geçer |
+| **Ölçüm (denetçinin, bu dalda yeniden koşulmadı)** | Taban kasıtlı bozuldu (`params.ROLLOVER_HOUR = 0`) ve `IP17-2` koşuldu: sürücü **"YAKALANDI (6)"** dedi, oysa altı testin **beşi mutasyondan bağımsız olarak zaten kırıktı**. Mutasyonun gerçek katkısı bir testti; rapor altı diyordu |
+| **Etki** | Kapanış raporlarındaki "N/N yakalandı" satırının anlamını zayıflatır. Yön **tehlikeli**: fazla sayar. "Seçilen test = 0 → BAŞARISIZLIK" nöbetçisi girdi tarafını, [[TB-29]]'un kapattığı `ERROR` sayımı çıktı tarafını koruyordu; bu üçüncü kapı (taban) yalnız bir pakette var. İP-17'nin kendi 7/7 sonucu bu kusurdan **etkilenmedi** — provaların hepsi temiz ağaçta koşuldu ve ağaç her provadan sonra doğrulandı, ama bu bir tesadüf değil disiplin; araç garanti etmiyor |
+| **Neden ertelendi** | Ortak sürücüyü değiştirmek yedi paketin ölçüm aracını değiştirir; İP-17 bunu TB-29 için bir kez yaptı ve bedelini de gördü (İP-18'in gölgesi çift saymaya başladı, merge turunda düzeltildi). İkinci bir ortak-araç değişikliğini audit'ten geçmiş bir dala **merge öncesi** sokmak, kapanış ölçümlerini yeniden koşturmayı gerektirir |
+| **Sonraki adım** | `_yesil_taban`'ı `mutation_drill_ip18.py`'den ortak `mutation_drill.py`'ye taşı (referans uygulama HAZIR, yeniden yazılmayacak), `calistir` içinde mutasyondan ÖNCE çağır, kırmızı tabanda provayı **hata** olarak kes. Ardından İP-14/İP-16/İP-17 kataloglarını bir kez yeniden koşup raporlanan sayıların değişip değişmediğini ölç |
+
+## TB-44 · Yeni kart sıralaması (`_order_id`) NÖBETSİZ — tersine çevrilince hiçbir test kırılmıyor
+
+| | |
+|---|---|
+| **Bulundu** | İP-17 bağımsız denetimi (14 Ağu 2026) |
+| **Yer** | `backend/services/srs_service.py::study_queue::_order_id` — yeni kart kovasının sırası (`SrsCard.id.asc()` = ekleniş sırası, sözleşme §4.1 Q-9) |
+| **Durum** | Sıra tersine çevrildiğinde **hiçbir test kırılmıyor**. Sözleşme "yeni kartlar `card_id` artan = ekleniş sırası" diyor ama bunu ölçen bir düğüm yok |
+| **Ölçüm (denetçinin)** | `_order_id` tersine çevrildi → **76 test seçildi, 0 kırıldı**. Ölçüm kazası olmadığı **karşılaştırma provasıyla** gösterildi: birincil sıra bozulduğunda (`due_at.asc()` → `.desc()`, denetçinin D-5 provası) **aynı 76 testten 1'i** kırıldı. Yani koşum düzeneği çalışıyor, boşluk gerçek |
+| **Etki** | Bugün davranış doğru, yalnız korumasız: yeni kart sırasını bozan bir değişiklik sessizce geçer. Kullanıcıya etkisi "yeni kartlar rastgele/ters sırada geliyor" olur — deste tasarımı sıraya bağlıysa (alfabe, konu sırası, kolaydan zora) öğrenme akışı bozulur ama hiçbir test bunu söylemez |
+| **Sınıf** | İP-17'nin `IP17-5` provasında bulunan **Q-9 tie-breaker boşluğuyla aynı sınıf** (bkz. `ip16-aralikli-tekrar-sozlesme.md` §4.4): sözleşme sıralama kuralını yazmış, test kurulumu o kuralın devreye girdiği durumu hiç üretmemiş. İkisi de İP-16 kapsamından geliyor, İP-17 yalnız birini kapattı |
+| **Neden ertelendi** | Denetim "merge edilebilir" verdi ve bu bir P2; kapatmak İP-17'nin kırmızı matrisine yeni düğüm eklemek demek, o da audit'ten geçmiş matrisi merge öncesi kaydırırdı |
+| **Sonraki adım** | Q-9 düğümüne **ikinci bir yeni kart** ekle (bugün tek yeni kart var, tek kartla sıra gözlenemez) ve sunulma sırasının `card_id` artan olduğunu doğrula; ardından `_order_id`'yi tersine çeviren bir mutasyon provasıyla nöbetçiliğini kanıtla |
+
+## TB-43 · `apply_refunded_amount`'ın `LEAST(…, total)` tavanı ve `refunded_at` COALESCE koruması NÖBETSİZ
+
+| | |
+|---|---|
+| **Bulundu** | İP-18 dar teyit turu (14 Ağu 2026); denetçi ölçtü, bağımsız olarak doğrulandı |
+| **Yer** | `backend/services/order_service.py::apply_refunded_amount` — `UPDATE orders SET refunded_amount = LEAST(refunded_amount + :a, total), refunded_at = COALESCE(refunded_at, now())` |
+| **Ölçüm** | İki korumanın İKİSİ de sökülünce (tavan `LEAST` kaldırıldı, `COALESCE` düz `now()` yapıldı) **56 para testinin hiçbiri kırılmıyor** |
+| **Neden İP-18 kapsamı dışı** | Fonksiyon tanımı tabanla (`c8b05d2`) **bayt-özdeş**. Bağımsız olarak doğrulandı: `ast.get_source_segment` ile çıkarılıp SHA-256'lanan gövde iki tarafta da `f35ffa2006e7…` (aynı yöntemle `reserve_refund` = `9cb77e97a801…`, `reservable_refund` = `03794adefc5a…`, üçü de özdeş). Yani önceden var olan bir borçtur; İP-18 bu fonksiyonu **çağıran** yolu değiştirdi, fonksiyonun kendisini değil |
+| **Neden İP-18 nöbetçileri yakalamıyor** | D12 tam iadeyi ölçer (`refunded_amount == refund_reserved == total`); sıfırdan tam tutara giden tek adımda `LEAST` tavanı zaten devreye girmez ve `refunded_at` de zaten NULL'dur, yani `COALESCE` ile düz `now()` aynı sonucu verir. Korumaların ayırt edici olduğu hâl **kısmi iade + ikinci hareket**tir ve o, İP-18'in değil İP-2a'nın (RMA) alanıdır |
+| **Gerçek risk** | Orta. `LEAST` düşerse kümülatif kısmi iadeler `refunded_amount`'ı `total`'ın ÜSTÜNE çıkarabilir (ciro raporu negatif net ciro gösterir; `escrow.order_inflight_refund` `total - kesin` hesabını negatife düşürür). `COALESCE` düşerse **ilk** iade zamanı her yeni kısmi iadede ezilir — iade penceresi/denetim izi için kullanılan damga kayar |
+| **Sonraki adım** | İP-2a alanında iki düğüm: (1) `refunded_amount + tutar > total` olacak şekilde ikinci bir kısmi iade → kolon `total`'ı AŞMAMALI; (2) iki ardışık kısmi iade → `refunded_at` **ilk** iadenin damgasını korumalı. İkisi de `tests/integration/test_ip2a_partial_math_pg.py`'ye aittir |
+
+## TB-42 · Mutasyon sürücüsünün `ERROR` gölgelemesi kısmen kör — düğüm ayracı olmayan koleksiyon hatasını saymıyor
+
+| | |
+|---|---|
+| **Bulundu** | İP-18 bağımsız audit'i (14 Ağu 2026) |
+| **Yer** | `backend/scripts/mutation_drill.py::_kirilanlar` — **ORTAK sürücü**. Kayıt açıldığında kusur `mutation_drill_ip18.py` ve `_ip16.py`'deki yerel gölgelerdeydi; İP-17 turunda TB-29 ortak sürücüde kapatılınca iki gölge de silindi (İP-17 merge adaptasyonu) ve kusur tek yerde toplandı. Yani artık düzeltilecek TEK nokta var |
+| **Durum** | Gölgeleme yalnız içinde `::` geçen `ERROR` satırlarını sayar. Pytest, KOLEKSİYON düzeyinde patlayan bir dosyayı `ERROR tests/x.py - NameError: …` biçiminde, yani **düğüm ayracı olmadan** raporlar; o satır sayılmaz ve mutasyon "YAKALANMADI" görünebilir |
+| **Neden `::` şartı kaldırılamaz** | Yakalanan log çıktısı da `ERROR ` ile başlar (`ERROR    adana.escrow:escrow.py:518 …`). Onu da saymak, ERROR log yazan HER mutasyonu "yakalandı" gösterirdi — ölçüm aracını **yalancı yeşil üreticisine** çevirirdi |
+| **Yön** | Güvenli: eksik sayar, fazla saymaz. Yani bugünkü "11/11 yakalandı" sonucu bu kusurdan **şişmiş değildir** |
+| **Bugünkü durum** | Kusur duruyor. İP-18 turunda docstring'in fazla geniş iddiası daraltıldı; İP-17 merge adaptasyonunda kusur tek noktaya indirildi (gölgeler silindi). Davranış değişmedi |
+| **Sonraki adım** | İki deseni ayırt eden eşleştirici (`^ERROR (\S+\.py)(::\S+)? ` + logger satırlarının çoklu boşluk/`ad:dosya:satır` şeklini dışlama) ve bunun **kendi pozitif kontrolü**. Ortak `mutation_drill.py` üzerinde yapılır — TB-29 kapandığı için ikinci bir yerde daha düzeltmek GEREKMEZ |
+
+## TB-41 · İP-18 AST nöbetçisi kandırılabilir — `values` sözlüğü değişkene alınırsa görmüyor
+
+| | |
+|---|---|
+| **Bulundu** | İP-18 bağımsız audit'i (14 Ağu 2026); denetçi çalışan bir kaçış üretti |
+| **Yer** | `backend/tests/test_ip18_odeme_kosulu.py::_paid_yazan_dogrudan_claimler` |
+| **Kaçış** | Dedektör yalnız `escrow.claim(..., values={...})` biçimini, yani **satır içi sözlük değişmezini** tarar. `values` bir DEĞİŞKENE alınırsa (`deger = {"payment_status": "PAID", …}; await escrow.claim(..., values=deger)`) hem AST nöbetçisi hem de **21 davranış testi** geçti — yani boğaz noktası sessizce atlanabiliyor |
+| **Neden davranış testleri de geçti** | Kaçış claim'in *koşulunu* değil *bulunabilirliğini* bozuyor; kaçan çağrı hâlâ doğru koşulu taşıyorsa davranış aynı kalır. Yani bu, davranış nöbetçisiyle kapatılamayan **saf yapısal** bir boşluktur |
+| **İP-18 turunda yapılan** | Nöbetçiye **pozitif kontrol** eklendi (`test_yesil_ast_nobetcisi_pozitif_kontrol`: bilinen kötü örneği gerçekten buluyor mu) ve negatif kontrol (boğaz noktasının kendisi + iade yönü claim'i muaf). Bu, [[TB-38]]/(b)'nin "dedektör bozuksa sonsuza dek yeşil kalır" hâlini kapatır ama **kaçışı kapatmaz** |
+| **Sonraki adım** | (1) `values`'ı bir ada bağlanmış sözlüğe kadar izleyen basit yerel veri akışı (aynı fonksiyon gövdesinde `Name → Dict` çözümü); (2) daha sağlamı: kuralı tersine çevir — `escrow.claim`'in `Order` modeliyle çağrılması `_siparis_para_claimi` DIŞINDA topyekûn yasaklansın (iade yönü claim'leri de boğaz noktasından geçsin), o zaman `values` içeriğini okumaya hiç gerek kalmaz |
+
+## TB-40 · Kilit sırası nöbetçisi (D9) kandırılabilir — `FOR UPDATE OF o` deseni hem davranış hem kaynak sözleşmesini geçiyor
+
+| | |
+|---|---|
+| **Bulundu** | İP-18 bağımsız audit'i (14 Ağu 2026); denetçi çalışan bir kaçış üretti ("mutasyon G") |
+| **Yer** | `backend/tests/integration/test_ip18_siparis_kilit_pg.py::test_yesil_checkout_yolu_order_kilidini_urunden_once_almaz` + `backend/tests/acceptance/test_stock_lock_contract.py` |
+| **Kaçış** | Order kilidi `SELECT … FROM <başka tablo> JOIN orders … FOR UPDATE OF o` biçiminde alınırsa: D9'un eşleştiricisi `"for update" in s and "from orders" in s` arar — JOIN'de `orders` **ikinci** tablodur, `from orders` geçmez → **görülmez**. Kaynak sözleşmesi de `_lock_order`/`_siparis_para_claimi` adlarını arar, ham `select()` çağrısını tanımaz → **görülmez**. Yani kilit sırası ters çevrilebilir ve iki nöbetçi de sessiz kalır |
+| **Kurgusal değil** | `select(Order).join(OrderItem).with_for_update(of=Order)` tam bu SQL'i üretir; kod tabanında benzer desen zaten var (`delivery_service.handover_scan` → `.with_for_update(of=Order)`) |
+| **Etki** | Bugün gerçek bir ihlal YOK; bu bir **nöbetçi kapsamı** boşluğudur. Ama İP-18 sözleşmesi §8/1 "D9 tek nöbetçidir" diyor ve o tek nöbetçinin kör noktası şimdi ölçülmüş durumda |
+| **Neden ertelendi** | Doğru çözüm dizgi eşleştirmesini bırakıp kilitlenen **tabloyu** SQL'den ayrıştırmak ya da PostgreSQL tarafından gözlemektir (`pg_locks` anlık görüntüsü: hangi ilişki, hangi sırada `RowExclusiveLock`/`RowShareLock` aldı). İkisi de İP-18'in kapsamından büyük ve ayrı bir doğrulama aracı ister |
+| **Sonraki adım** | (1) Kısa vade: D9'un eşleştiricisini `for update` + (`from orders` **veya** `join orders` **veya** ` of o`/`of orders`) olarak genişlet ve **pozitif kontrol** ekle (bilinen kaçış SQL'i verildiğinde eşleştirici onu görmeli); (2) uzun vade: `pg_locks` tabanlı gerçek kilit-sırası gözlemcisi — dizgiden bağımsız tek yöntem budur |
+
+## TB-39 · İP-2b'nin "iade edildi **YA DA** görünür hata" ayrık iddiası bir P0'ı 11 gün boyunca maskeledi
+
+| | |
+|---|---|
+| **Bulundu** | İP-18 Faz 5 (14 Ağu 2026), D11 düğümü yazılırken — gerçek PG'de ölçüldü |
+| **Yer** | `backend/tests/integration/test_ip2b_cancel_callback_pg.py::test_kirmizi_reconciler_partisi_zehirlenmez` (~`:255-266`) |
+| **İddia** | `assert iade_edildi or gorunur` — "ölü siparişin tahsilatı ya otomatik iade edilir YA DA görünür bir ERROR kaydı bırakır" |
+| **Ne oldu** | Reconciler yolu `InvalidRequestError` fırlatıyor, `logger.exception` yazılıyor → `gorunur` **True** → test yeşil. Oysa oluşan durum iddianın **iki şıkkından da değildi**: satır `payment_status='REFUNDED'` yazıyor ama sağlayıcıya iade **hiç gitmemiş**. Yani "iade edildi" diyen ama parayı döndürmemiş kayıt. Kusur `2e4fefc` (3 Ağu) ile geldi, 14 Ağu'da bulundu |
+| **Ders** | Ayrık (`A or B`) kabul iddiası, ölçmediği bir **üçüncü** durumu sessizce kabul eder. "Görünür hata bıraktı" bir başarı ölçütü değildir; o hatanın **hangi hata** olduğu ölçülmelidir |
+| **Bugünkü durum** | Üretim kusuru **KAPANDI** (İP-18 `42aed0e`, savepoint kaldırıldı). Komşu paketin kabul iddiasına **DOKUNULMADI** — "kabul testleri sessizce değişmez" (`feedback_delivery_gates`); daha dar nöbetçi kendi paketinde açıldı (`test_ip18_siparis_kilit_pg::test_yesil_reconciler_taramasi_olu_siparisi_de_kapsar`: `REFUNDED` **ve** tam bir sağlayıcı çağrısı) |
+| **Açık kalan** | (1) İP-2b'nin ayrık iddiası hâlâ orada ve hâlâ aynı sınıf durumu kabul edebilir — daraltılması İP-2b sahibinin bilinçli kararıdır; (2) kod tabanında `assert X or Y` biçimli başka kabul iddiaları var mı, taranmadı |
+| **Sonraki adım** | (a) İP-2b iddiasını "iade edildi **VEYA** `MANUAL_REVIEW` durumu yazıldı" gibi **ölçülebilir** iki şıkka daralt (serbest metin log'u şık sayma); (b) `tests/` altında ayrık kabul iddialarını tara ve her birinin üçüncü durumu kabul edip etmediğini sor |
+
+## TB-38 · Kaynak sözleşmesi testleri **ada duyarlı, davranışa kör** — yeniden adlandırma onları sessizce körleştiriyor
+
+| | |
+|---|---|
+| **Bulundu** | İP-18 Faz 3 + Faz 4 (13-14 Ağu 2026); iddia **mutasyon provasıyla ÖLÇÜLDÜ**, örnekle değil |
+| **Yer** | `backend/tests/acceptance/test_stock_lock_contract.py` (temsilci vaka) + aynı aileden iki kayıt daha (aşağıda) |
+
+**Kanıt (İP-18, iki mutasyon, aynı test):**
+
+| Mutasyon | Ne yapıldı | Davranış bozuldu mu | `test_finalize_paid_urun_kilidini_claimden_ONCE_aliyor` |
+|---|---|---|---|
+| IP18-5 | `_finalize_paid`'e `_lock_order` eklendi → **Order kilidi Product'tan ÖNCE** (testin koruduğunu iddia ettiği ihlalin ta kendisi) | **EVET** | **KIRILMADI** |
+| IP18-2 | Claim çağrısı `_siparis_para_claimi` → `escrow.claim` olarak **yeniden adlandırıldı** (davranış aynı) | HAYIR | **KIRILDI** |
+
+Yani sözleşme, korumakla görevli olduğu ihlale kör; zararsız bir yeniden
+adlandırmaya duyarlı. **Tam tersi olmalıydı.** Sebep yapısal: iddia iki çağrı
+adının satır numaralarını karşılaştırıyor; araya sokulan **üçüncü** bir kilit
+çağrısı onun görüş alanında değil. İhlali yalnız davranış nöbetçisi yakaladı —
+`test_ip18_siparis_kilit_pg::test_yesil_checkout_yolu_order_kilidini_urunden_once_almaz`
+(gerçek `before_cursor_execute` gözlemi: gönderilen SQL'de `FOR UPDATE …
+products` ile `UPDATE orders` sırası).
+
+**Aynı aileden üç vaka:**
+
+| # | Vaka | Nasıl körleşir |
+|---|---|---|
+| 1 | **İP-18 / bu tur** — `test_stock_lock_contract` kilit sırası matrisi | Aradaki üçüncü kilit çağrısını görmez; ad değişince "bulunamadı" der |
+| 2 | **İP-16** — D-6c öncesi **elle yazılmış uç listesi** | Liste elle tutuluyor; yeni bir uç eklendiğinde listeye girmezse sözleşme onu hiç denetlemez ve sessizce geçer |
+| 3 | **İP-14** — `SAYFALAR` listesi ([[TB-32]]/9) | Nav kapsamı elle listeye çivili; listeye eklenmeyen sayfa denetim dışı kalır |
+
+**Kural (iki maddeli, yeni kaynak sözleşmesi yazan herkes için):**
+
+- **(a) Yanında davranış nöbetçisi durmalı.** Kaynak/AST sözleşmesi tek başına
+  "özellik tamamlandı" kanıtı değildir (kök `CLAUDE.md` §C zaten böyle diyor);
+  İP-18 ölçümü bunu somutlaştırdı — kaynak sözleşmesi **yanlış şeye duyarlı**
+  olabilir, yani yalnız zayıf değil **yanıltıcı** olabilir.
+- **(b) "Bulunamadı" BAŞARISIZLIK sayılmalı**, "yok, o yüzden geçti"
+  olmamalıdır. `test_stock_lock_contract` bunu doğru yapıyor (`eksik` listesi
+  boş değilse `assert` düşüyor) ve İP-18'de tam da bu sayede görüldü. Aynı
+  disiplin elle tutulan listelerde YOK: liste boşalırsa/ küçülürse hiçbir şey
+  kırılmıyor (bkz. [[TB-12]]/(b) — `_admin_rota_kimlikleri()` boş dönerse 29
+  düğüm sessizce kaybolur; aynı sınıf).
+
+| | |
+|---|---|
+| **Neden ertelendi** | Üç vakanın düzeltmesi üç ayrı pakete ait; İP-18 kendi vakasını davranış nöbetçisiyle kapattı (D9) ama kuralı tüm kaynak sözleşmelerine uygulamak ayrı bir tarama turu ister |
+| **Sonraki adım** | (1) `tests/acceptance` ve `tests/*_contract*` altındaki her kaynak sözleşmesi için "yanında davranış nöbetçisi var mı" envanteri; (2) elle tutulan her liste için "liste boş/küçüldü ise kır" nöbetçisi; (3) kural kök `CLAUDE.md` §C'ye eklensin (bugün §C "düşük güçlü" diyor, "yanıltıcı olabilir" demiyor) |
+
+## TB-37 · `_out_of_stock_refund` bayat yaşam döngüsü okuyor — çift `CANCELLED` geçmişi + çift müşteri bildirimi (I11)
+
+| | |
+|---|---|
+| **Bulundu** | İP-18 Faz 3 (14 Ağu 2026), düzeltme sonrası kalan bulgu olarak — kod okumasıyla, koşularak ÜRETİLMEDİ |
+| **Yer** | `backend/services/order_service.py::_out_of_stock_refund` (`_finalize_paid`'in stok yetersizliği dalından çağrılır) |
+| **Durum** | İP-18, PAID claim'ini yaşam döngüsü koşuluna bağladı. Ama stok yetersizliği dalı claim'den **ÖNCE** koşar ve `order` nesnesinin **bayat** `status` alanını taşır. Sipariş bu arada iptal edilmişse: `escrow.begin_refund(from_statuses=["PENDING","FAILED"])` yaşam döngüsüne bakmadan geçer, `settle_refunded_order` bayat `order.status == "PENDING"` görüp `transition_order(…, "CANCELLED")` çağırır |
+| **Etki** | **Para etkisi YOK** — tahsilat zaten iade edilmeli ve ediliyor. Zarar kayıt kalitesinde: `order_status_history`'ye **ikinci** bir `CANCELLED` satırı ve müşteriye **ikinci** bir iptal bildirimi (İP-2b I11 "bildirim tam bir kez" ihlali). Satır durumu doğru kalır (`CANCELLED` üstüne `CANCELLED`) |
+| **Neden ertelendi** | İP-18'in kabul edilmiş kırmızı matrisinde bu senaryonun düğümü YOK. Kırmızı test olmadan üretim kodu değiştirmek paketin kendi disiplinini bozar (`feedback_delivery_gates`: test matrisi koddan ÖNCE, ayrı commit). Matrisi tek taraflı büyütmek de kabul sözleşmesini sessizce kaydırırdı |
+| **Sonraki adım** | (1) Deterministik düğüm: stok yetersizliği + eşzamanlı iptal → geçmişte tek `CANCELLED`, bildirim tek; (2) düzeltme muhtemelen `_out_of_stock_refund` girişinde taze durum okuması (`_taze_siparis_durumu`) + `begin_refund`'a `extra_where` — yani İP-18'in kurduğu boğaz noktasının aynısı |
+
+## TB-36 · "CI'da düştü, yerelde geçiyor" bir kez daha flaky sayıldı — bu tanı iki kez gerçek bir üretim yarışını geciktirdi
+
+| | |
+|---|---|
+| **Bulundu** | İP-18 açılış turu, 13 Ağu 2026 — `test_ip2b_cancel_callback_pg::test_yesil_iptal_callback_yarisinda_cift_durum_yok` CI'da düşüp yerelde geçince "flaky" denip geçildi. Test deterministik hâle getirilince (pencere kapıyla açıldı) altından **gerçek bir üretim yarışı** çıktı: iptal ↔ callback eşzamanlılığında para kaybı. İkinci kez aynı yanlış tanı — bu yüzden kayıt tek bir teste değil, **tanıya** açılıyor |
+| **Yer** | Yarışı `asyncio.gather` ile kuran testler — bugün en az iki tanesi: `backend/tests/integration/test_ip2b_cancel_races_pg.py:47` (`test_yesil_cift_musteri_iptali_tek_kazanan`, `gather(_iptal, _iptal)`) ve `test_ip2b_cancel_callback_pg.py:346` (`test_yesil_iptal_callback_yarisinda_cift_durum_yok`, `gather(_cb, _cancel)`). Desen aynı: iki görev aynı anda salınır, kaybedenin kilidi **hangi anda** aldığı planlayıcıya bırakılır |
+| **Ölçüm — neden "20 kez koştum geçti" kanıt değil** | Sayı zaten kendi commit mesajımızda yazılı: `59afdac` (3 Ağu) mutasyon provasında **kusurlu kodda gather testi 10 koşumda yalnız 2 kez kırıldı** (%20 yakalama); aynı turda eklenen deterministik nöbetçi `races::test_yesil_iade_penceresinde_ikinci_iptal_409` **1/1** yakaladı. Yani olasılıksal bir yarış testinin yerelde 20 kez geçmesi, hatanın yokluğunu değil pencerenin dar olduğunu ölçer. CI runner'ı daha yavaş ve daha yüklü olduğu için pencere **orada** açılır |
+| **Ölçüm — iki vakanın gerçek seyri** | (a) 3 Ağu, `races::test_yesil_cift_musteri_iptali_tek_kazanan`: düşüş İP-2b merge koşumundaydı (merge `9b2123b`) ve **kovalandı** — `59afdac` merge'den SONRA gelip `_cancel_order`'daki `payment_status == "PAID"` sınıflamasını düzeltti (`REFUNDING` "ödenmemiş sipariş" dalına düşüyor, iki kazanan + ikinci "iptal edildi" bildirimi üretiyordu). O commit'in mesajı tanıyı zaten yazmış: *"kusurlu kod bu yüzden yerelde yeşil, CI'da kırmızı görünüyordu"*. **Ama testin kendisi dokunulmadan bırakıldı** — hâlâ olasılıksal `gather`, yanına deterministik nöbetçi kondu. (b) 13 Ağu, `callback::test_yesil_iptal_callback_yarisinda_cift_durum_yok`: dosyaya son commit `cd592ea` (1 Ağu); düşüşten sonra ne teste ne kapsadığı üretim yoluna commit geldi, düşüş flaky sayıldı → İP-18'in konusu olan yarış açıkta kaldı |
+| **Etki** | Yanlış tanının maliyeti doğrudan para: eşzamanlı iptal/callback yolunda çift durum, çift bildirim ve iade ↔ tahsilat çakışması. Daha kalıcı zarar ise **suite'in güvenilirliği**: "bu dosya zaten arada düşer" etiketi bir kez yapıştıktan sonra aynı testin sonraki düşüşleri de okunmadan kapatılır. İki vaka bunu kanıtlıyor |
+| **Kural (asıl borç bu)** | **CI'da düşen bir test yerelde geçiyorsa, önce zamanlama penceresini KODDA ara.** "N kez koştum geçti" bir kanıt değildir — negatif sonucun gücü pencerenin genişliğine bağlıdır ve o genişliği makine belirler. Bir yarış testi ancak pencereyi **deterministik olarak açtıktan** sonra (kapı/`asyncio.Event`, sağlayıcıda askıya alma; `sleep` DEĞİL) "geçti" diyebilir. `59afdac`'ın nöbetçisi bu desenin kanonik örneğidir: `provider.refund_gate` + `provider.refund_entered` ile pencere açık tutulur, kaybeden tam o anda kilidi alır |
+| **Neden şimdi düzeltilmedi** | Kural yazıldı, **kodda karşılığı henüz yok**: iki `gather` testi olasılıksal hâlleriyle duruyor. Bunları deterministik nöbetçiye çevirmek İP-18'in konusudur (callback yarışının üretim düzeltmesiyle birlikte); races tarafındaki eşi ise ayrı bir tur — üretim kusuru zaten kapandığı için acil değil, ama test olasılıksal kaldığı sürece bir sonraki regresyonu yine %20 olasılıkla yakalar |
+| **Sonraki adım** | (1) İP-18 kapanışında callback yarışını kapı desenine çevirmek; (2) `asyncio.gather` ile kurulan **tüm** yarış testlerini taramak ve her birinin yanına deterministik bir nöbetçi koymak (ya da kendisini çevirmek); (3) kuralı `CLAUDE.md` §D/§F ailesine yazmak — **"CI kırmızı + yerel yeşil" flaky etiketi için gerekçe değil, zamanlama penceresi kanıtıdır** (aynı aile: [[TB-14]]/8'in "azaldı ama sürüyor" kaydı gerçek flaky'yi anlatır — ikisi karıştırılmamalı: orada kanıt ÖLÇÜLDÜ, burada varsayıldı) |
+
+## TB-35 · Geliştirme veritabanı `ceyhandb`, merge EDİLMEMİŞ bir dalın migration'ıyla damgalı — main'de alembic hiç çalışmıyor
+
+| | |
+|---|---|
+| **Bulundu** | İP-14 merge turu, 13 Ağu 2026 — merge sonrası "dev DB head'de mi" damga kontrolünde. Kod incelemesiyle değil, rutin bir doğrulama adımı beklenmedik biçimde patlayınca |
+| **Yer** | `ceyhandb` (5432 yerel Postgres, **asıl dev verisi**) → `alembic_version.version_num = 'sm2_flashcard_kaldirma'` ↔ `backend/migrations/versions/sm2_flashcard_kaldirma.py` **yalnız `sm2-kaldirma` dalında** var |
+| **Ölçüm** | `alembic current` (main'de, `POSTGRES_DB=ceyhandb`) → `FAILED: Can't locate revision identified by 'sm2_flashcard_kaldirma'`. Revizyon dosyası tüm yerel+uzak dallarda arandı: **yalnız `sm2-kaldirma`**; main'de eşleşme 0. Main'in head'i `ip16_srs_izin_kodu_hizalama` |
+| **Etki** | Main'de çalışan **hiçbir oturum** ceyhandb'ye karşı alembic komutu koşamaz — `current`, `upgrade`, `check`, `stamp`, hepsi aynı hatayla düşer. Damga bilinmeyen bir revizyona işaret ettiği için Alembic zinciri çözemez. Uygulama açılışı da etkilenir: `AUTO_CREATE_DB=true` iken `ensure_schema` `upgrade head`'i subprocess olarak koşar ve aynı hatayı alır. **Veri kaybı riski yok**, ama dev ortamının şema aracı fiilen kilitli |
+| **Kök sebep** | Bir **feature dalının migration'ı doğrudan dev veritabanına uygulandı**. O an mantıklıydı — dal içi duman turu için şema gerekiyordu — ama uygulama ceyhandb'yi o dala **kilitledi**: damga artık yalnız o dalda anlamı olan bir revizyonu gösteriyor. Yani hata migration'da değil, **nerede koşulduğunda** |
+| **Neden şimdi düzeltilmedi** | Damgayı zorla değiştirmek (`stamp head`, downgrade denemesi) **yanlış olurdu**: `sm2_flashcard_kaldirma`'nın şema değişikliği ceyhandb'ye **fiilen uygulanmış** durumda. Damgayı ezmek, şemayı yanlış anlatan bir kayıt üretir ([[TB-30]] ile birebir aynı sınıf: "damga şemayı doğru anlatmıyor") ve `sm2-kaldirma`'nın devam eden işini bozar. Ayrıca o dal kullanıcının **açık işi**; başkasının yarım işine dokunmak ayrı bir karar |
+| **Ne zaman kendiliğinden düzelir** | `sm2-kaldirma` main'e merge edildiğinde revizyon main'de de var olur ve damga çözülebilir hâle gelir. Yani bu kayıt bir **kilit**, kalıcı bir bozukluk değil — ama o merge'e kadar dev ortamında alembic yok |
+| **Kural önerisi (asıl borç bu)** | **Dev veritabanına yalnız main'de var olan migration'lar uygulanır.** Dal içi duman turu **tek kullanımlık** bir DB'de koşulur (`POSTGRES_DB=<paket>_smoke_test`, suite zaten oluşturup `upgrade head` ile hazırlıyor — bkz. `tests/integration/conftest.py`), ceyhandb'de değil. İP-14 merge kapısı tam olarak böyle koşuldu (`ip14_merge_smoke_test`, sonra düşürüldü) ve hiçbir iz bırakmadı; bu kaydın konusu olan damga ise ondan **önce**, dal içi bir turda oluşmuş. Sonraki adım: (1) kuralı `backend/CLAUDE.md`'ye yazmak; (2) uzun vadede nöbetçi — dev DB'nin damgasının main'de çözülebildiğini söyleyen tek satırlık bir kontrol (aynı aile: [[TB-30]]'un "damga-şema nöbetçisi yok" maddesi, ikisi tek turda ele alınabilir) |
+
+## TB-33 · Üç ayrı "gün sınırı" kavramı yan yana duruyor — hiçbir yerde topluca belgelenmemiş
+
+| | |
+|---|---|
+| **Bulundu** | İP-14 ↔ main adaptasyon turu, 13 Ağu 2026 — merge kesişimi ölçülürken. Çakışma **değil**, birikme: üç kavram üç ayrı turda bağımsız doğdu ve hiçbiri diğerini bilmiyor |
+| **Yer** | (1) `backend/core/config.py:372` `APP_UTC_OFFSET_HOURS: int = 3` — **sabit ofset**; `services/delivery_promise.py`, `delivery_service.py`, `order_service.py`, `booking_service.py`, `courier_account_service.py`, `core/outbox.py`, `api/routers/store.py` kullanıyor. (2) `backend/services/spaced_repetition/dayboundary.py::study_day` — **IANA `Europe/Istanbul` + 04:00 devrilmesi** (`params.ROLLOVER_HOUR = 4`), yalnız SRS kuyruğu. (3) `frontend/src/lib/operatorAgenda.ts::istanbulGunAnahtari` + `lib/datetime.ts::istanbulNow` — **IANA `Europe/Istanbul`, devrilme yok**, operatör ajandası ve kütüphane "şu an açık mı" |
+| **Düzeltme (bağımsız denetim, 13 Ağu 2026)** | Yukarıdaki (3) frontend'i **tek kalem** sayıyor; gerçekte **iki ayrı üretici** var: `operatorAgenda.ts::istanbulGunAnahtari` (operatör ajandası) ve `datetime.ts::istanbulNow().dateStr` (`BookingModal.tsx:127`). İkisi de aynı bölgeyi ve aynı `en-CA` biçimini kullanır, bugün **aynı değeri** döner — ama iki ayrı fonksiyondur, biri değişirse diğeri sessizce ayrışır. Yani "üç kavram" aslında **dört üreticide** yaşıyor (backend sabit ofset · SRS 04:00 devrilmesi · frontend'in bu ikisi). Aynı dosyada üçüncü bir frontend sabiti daha var ama o gün anahtarı üretmez: `datetime.ts::istanbulInputToIso` **sabit `+03:00`** ile çalışır (backend'in `APP_UTC_OFFSET_HOURS`'uyla hizalı olsun diye) — birleştirme turunda o da haritaya konmalı. Kaynak: `docs/ip14-operator-panel-sozlesme.md` §2 (denetim düzeltmesi, `fab94ac`) |
+| **Durum** | Üçü de **kendi bağlamında doğru** ve üçünün de gerekçesi kendi dosyasında yazılı: teslimat sözü sabit ofseti bilinçli seçiyor (`delivery_promise.py:7` "yerel gün `APP_UTC_OFFSET_HOURS` sabit ofsetiyle bulunur"); SRS'in 04:00 devrilmesi "gece 02:00'de çalışan öğrenci hâlâ dünkü kuyrukta" ürün kararı; operatör ajandasında devrilme **olmamalı** (kütüphanenin 23:30 rezervasyonu bugüne aittir). Yani bu kayıt bir hata bildirimi değil |
+| **Etki** | Risk **birleştirme anında** doğuyor, bugün değil: yeni bir yüzey "bugün" hesaplarken hangisini alacağını bilmiyor ve dördüncü bir kopya yazma eğilimi yüksek. İki somut kırılganlık: (a) sabit `+3` DST'siz doğru — Türkiye 2016'dan beri kalıcı UTC+3, ama karar **mevzuata bağlı**, değişirse yedi dosyada yedi yerde aranır; (b) operatör ajandası ile SRS aynı ekranda buluşursa (öğrenci hem kütüphanede hem SRS kuyruğunda) iki farklı "bugün" aynı sayfada görünür ve hangisinin doğru olduğu **kullanıcıya** açıklanamaz |
+| **Neden ertelendi** | Birleştirme kendi başına bir refaktör turu: yedi backend dosyası + iki frontend modülü + `params.ROLLOVER_HOUR`'un SRS'e özel kalması gerektiği kararı. İP-14 adaptasyon turunun kapsamı merge doğrulamasıydı; kapsam dışı üretim koduna dokunmak denetimden geçmiş kırmızı matrisi kaydırırdı |
+| **Sonraki adım** | (1) Tek bir belgede (ya da `docs/`'ta kısa bir "zaman kararları" notunda) **üç kavramın da hangi yüzeye ait olduğunu** yazmak — kod birleştirmeden önce yalnız haritayı çıkarmak bile dördüncü kopyayı engeller; (2) sabit ofseti IANA'ya çevirmenin maliyetini ölçmek (`zoneinfo` zaten `dayboundary.py`'de var, tzdata bağımlılığı kabul edilmiş); (3) yeni "bugün" hesabı yazan her paketin üçünden **hangisini** kullandığını sözleşmesinde belirtmesini kural hâline getirmek |
+
+## TB-32 · İP-14 P2 listesi (kütüphane operatörü paneli — on bir açık kayıt, öncelik sırasıyla)
+
+| | |
+|---|---|
+| **Bulundu** | İP-14 (operatör paneli: bugün bloğu + gün grubu + ErrorState + operatör audit) dalında, 8 Ağu 2026 (`0449ee7`). Kayıtlar sözleşmede duruyordu (`docs/ip14-operator-panel-sozlesme.md` §10) ama **borç defterine hiç işlenmemişti**; bu satırlar 13 Ağu 2026 adaptasyon turunda eklendi |
+| **Merge sonrası doğrulandı** | `7d0e7d6` (main → İP-14, `--no-ff`). Entegrasyon **1300 passed / 16 skipped / 0 failed** (598 s, `ip14_merge_test` izole DB'sinde); toplanan test main'de 1309 → birleşmişte **1316**, fark **tam +7** (İP-14'ün tek dosyası, başka test eklenmedi/kaybolmadı). Vitest main 81 dosya/837 test → birleşmiş **84/885**, fark **+3/+48** (sözleşmenin iddia ettiği rakam). `tsc -b` temiz · `ruff check` temiz · `npm run lint` 0 hata/34 uyarı (taban ile aynı) · tek Alembic head `ip16_srs_izin_kodu_hizalama` · migration üretilmedi |
+| **Bağımsız denetim eki (13 Ağu 2026)** | Merge öncesi bağımsız denetim "merge edilebilir" verdi (**P0/P1 yok**) ve beş ek P2 bıraktı: **P2-A** → 9. kayıt (nav kapsamı + D-6c nöbetçisi), **P2-C** → 10, **P2-D** → 11. Kalan ikisi (**P2-B**, **P2-E/F**) doküman hatasıydı, aynı turda `fab94ac` ile düzeltildi ve defterin kuralı gereği listeye değil **kapanma notuna** yazıldı (bu tablonun altında); P2-E/F'nin açık kalan tarafı [[TB-33]]'e taşındı. Denetçi beş madde yazdı, altı etiket kullandı: E ve F tek maddede birleşik (`P2-E/F`). Denetimin ayrıca bulduğu üç doküman hatası kod değiştirmeden düzeltildi (`13146c1`, `e50ae75`, `fab94ac`) |
+| **Neden ertelendi** | Hiçbiri para kaybı, yetki açığı ya da ölü akış değil. §6.2'nin çekirdeği (yoklama geri alma, tek rezervasyon iadesi) **ürün kararı** bekliyor ve `released_at` geri alınamaz bir damga olduğu için saf UI işi değil. Denetimden gelen ikisi (10, 11) **test/kurulum borcudur**: üretim davranışını değiştirmezler, ama ikisi de "yeşil ama nöbetsiz" sınıfındandır — CLAUDE.md §A'nın tam konusu |
+
+| # | Kayıt | Yer | Etki / sonraki adım |
+|---|---|---|---|
+| 1 | **Yoklama geri alma ve tek rezervasyon iptali/iadesi YOK** | `docs/ip14-operator-panel-sozlesme.md` §6.2 ↔ `backend/services/library_exam_service.py`, `study_reservation_service.py` | Operatör yanlış kişinin QR'ını okuttuğunda geri dönüşü yok: `released_at` dolunca emanet kütüphaneye geçmiş sayılır ve [[TB-20]] hattındaki "serbest bırakılmış emanet iade edilemez" kuralı devreye girer. Bugünkü telafi yolu **yalnız admin** üzerinden ve elle. Sonraki adım: ürün kararı (geri alma penceresi var mı, kaç dakika, kim yetkili) → sonra para güvenliği paketi; UI işi olarak planlanamaz |
+| 2 | **İşlem dökümünde sayfalama yok — 200 satır tavanı yalnız *dürüst* kılındı** | `frontend/src/pages/Balance.tsx` (K-1 uyarısı) ↔ `backend/api/routers/library_exams.py` (uç `limit` alıyor, router geçirmiyor) | İP-14 sessiz kesilmeyi kaldırdı ("son 200 işlem" uyarısı görünüyor) ama uyarıyı gören operatörün yapabileceği bir şey yok: 200'den eski işlemlere panelden erişim yolu **yok**. Bu, [[TB-24]]/1 ile birebir aynı sınıf. Sonraki adım: sayfalama (ya da tarih aralığı filtresi) + son sayfanın gerçekten son olduğunu ölçen DOM testi |
+| 3 | **Kabuk sorgularında (`useOperatorMe`, `useLibraryAdminDetail`) hata durumu yok** | `frontend/src/pages/dashboards/OperatorHome.tsx`, `OperatorSessions.tsx` | Bu paket dört ekranın **içerik** sorgularına ErrorState bağladı; sayfayı çevreleyen **kabuk** sorguları hâlâ hatayı boş/yarım ekran olarak gösteriyor. Sayfa düzeyinde tek hata kabuğu ister — ekran mimarisi kararı. Sonraki adım: `DashboardShell` düzeyinde hata dalı + kabuk patladığında içerik sorgularının hiç koşmadığını ölçen test |
+| 4 | **Operatör ekranlarında arama/filtre/URL state yok** | `OperatorSessions.tsx` ↔ §6.2/7 | Oturum sayısı arttıkça operatör listede gözle arıyor; filtre durumu URL'e yazılmadığı için paylaşılabilir/geri-dönülebilir değil. [[TB-24]]/10 ile aynı aile (panelin geri kalanıyla tutarsızlık). Sonraki adım: DataTable + URL state kararıyla **birlikte** alınmalı, tek başına değil |
+| 5 | **Kütüphanem ve Ayarlar sayfalarının kendi bölüm sorgularında hata durumu yok** | `frontend/src/pages/Settings.tsx`, operatör "Kütüphanem" ekranı | Paket dört ekrana dokundu; bu ikisinin **bölüm** sorguları kapsam dışıydı. Aynı kusurun kalan yüzeyi. Sonraki adım: 3. kayıtla birlikte tek turda kapatmak |
+| 6 | **`Balance` ödeme açıklaması eğitmen kolunda da değişti** | `frontend/src/pages/Balance.tsx` | Metin artık "banka havalesi" diyor ve mekanizma ikisinde de gerçekten aynı (elle havale), o yüzden bugün yanlış değil. Ama **iyzico Pazaryeri alt üye işyerine** geçildiğinde ([[TB-20]] hattı) mekanizma eğitmen ve kütüphane kollarında ayrışabilir ve tek metin ikisini birden yanlış anlatır. `legalContent.ts` bu konuda bir vaat içermiyor — bugün çelişki yok. Sonraki adım: alt üye geçişinde metni kol bazında ayırmak |
+| 7 | **§6.2'nin kalan dört maddesi hiç başlanmadı** | `docs/ip14-operator-panel-sozlesme.md` §6.2/1,2,5,6 | Hakediş görünürlüğü, kayıt ara/bilet sorgula, anlık doluluk, operatör bildirimleri — dördü de **verilmemiş karar**, eksik iş değil. Kayıt burada duruyor ki "yapıldı sanılan ama hiç başlanmamış" iş olmasın ([[TB-24]]/12 ile aynı gerekçe). Sonraki adım: bir sonraki operatör turunda kapsama alınıp alınmayacağına karar vermek |
+| 8 | **Dosya düzeyi `testTimeout` ezmesi main'in yeni global kuralıyla çelişiyor** | `frontend/src/pages/dashboards/operatorPanel.acceptance.test.tsx:44` ve `operatorBalance.acceptance.test.tsx:38` (`vi.setConfig({ testTimeout: 20_000, hookTimeout: 20_000 })`) ↔ `frontend/vitest.config.ts:40-42` | **Merge sırasında doğdu, İP-14'ün kusuru değil**: İP-14 ezmeyi yazarken global bütçe 5000 ms'ti ve `vitest.config.ts`'e dokunmamayı bilinçli seçmişti (İP-12'nin işi, TB-23 — o sırada hâlâ açıktı, sonra kapandı ve silindi; bkz. bu dosyanın başındaki kapanma notu). Main o sırada bütçeyi ölçerek 9000 ms'e çıkardı ve config'e **"dosya başına `testTimeout` ezmesi YAPILMAZ"** kuralını yazdı. Şimdi repodaki **tek** iki `vi.setConfig` bu dosyalarda ve kuralı deliyor. Ölçüldü: ezme **ölü değil, aktif** — bu iki dosya 9000 değil 20000 bütçesinde koşuyor. Ama **taşıyıcı da değil**: ezme geçici kaldırılıp tam suite iki kez koşuldu → **885/885 geçti** (tepe 5776 ms ve 6738 ms). Asıl bulgu şu: İP-14'ün `B-1` testi artık **bütün suite'in en yavaş testi** (tam paralel yükte 6401 ms; izole koşuda 784 ms — fark modül transform'unun ilk teste yazılması). Main bütçeyi 9000 seçerken kendi tepesini 2410–2959 ms ölçmüş ve "tepenin 3,04 katı" gerekçesini yazmıştı; İP-14 ile tepe ~6,4–6,7 s'ye çıkıyor ve o oran **1,34–1,56 kat**'a düşüyor. Yani main'in "regresyonu gizlemeyecek kadar dar" marjı bu merge'le fiilen kalkıyor. Sonraki adım: (a) iki ezmeyi kaldırıp kuralı tek yerde tutmak (ölçüldü, geçiyor) **ve** (b) `B-1`'in neden 6,4 s sürdüğünü incelemek — main'in kendi config yorumunun dediği gibi "çözüm bütçeyi büyütmek değil, testi incelemektir"; (c) hangisi seçilirse seçilsin `vitest.config.ts` yorumundaki ölçüm satırları **ve** TB-23'ün kapanma notundaki dosya başına bütçe payları (`PackageLabel %33, packingScreens %25, inventoryScreens %20, packingLabel %20`) güncellenmeli — ikisi de bu merge'den önceki suite'i anlatıyor, bugün **bayat**; (d) aynı turda iki dosyanın **süre bütçesi yorumu** da düzeltilmeli: hâlâ "projenin 5 sn'lik varsayılan test bütçesi" diyorlar, merge sonrası varsayılan **9 sn** (bağımsız denetim, 13 Ağu 2026 — aşağıdaki "bayat yorum" notu; kaydın maddesi hâline getirildi ki 8 kapatılırken gözden kaçmasın) |
+
+| 9 | **Operatör nav'ı role-agnostik on sayfada hâlâ yok — ve N grubu bunu göremiyor (elle yazılı listeye çivili)** | `frontend/src/pages/DeepWork.tsx:34`, `Flashcards.tsx:159`, `FlashcardDeck.tsx:289`, `Grapher.tsx:63`, `Habits.tsx:376`, `srs/SrsDecks.tsx:244`, `srs/SrsDeckDetail.tsx:433`, `srs/SrsStudy.tsx:190`, `srs/SrsBrowser.tsx:56`, `srs/SrsStats.tsx:19` ↔ nöbetçi: `frontend/src/pages/dashboards/operatorPanel.acceptance.test.tsx:725` (`SAYFALAR`) | **Bağımsız denetimde bulundu (13 Ağu 2026); sözleşme "7 yerde kopyalanmış, hepsi düzeltildi" diyordu; ölçüm role-agnostik kopyanın 7 değil **17** olduğunu gösterdi (7 düzeltildi + 10 kaldı). Deseni kullanan iki sayfa daha var ama onlar rol-kapsamlı: `LessonDetail.tsx:58` (rezervasyonun iki tarafı) ve `LibraryDetail.tsx:100` (public sayfa; operatöre `undefined` nav verir, öğrenci menüsü basmaz) — bu kayda dahil değiller.** İP-14 yedisini `navForRole`'a çevirdi (`Notifications`, `Leaderboard`, `Settings`, `Profile`, `Tasks`, `Learn`, `Calendar`); kalan onu — hepsi **Öğren hub'ının altındaki araçlar** — hâlâ `role_id === TUTOR ? TUTOR_NAV : STUDENT_NAV` kullanıyor. Kullanıcıya etkisi: operatör panelden hub'a doğru nav'la gider, hub'ın içinde bir araca tıklayınca **öğrenci menüsünü** görür (Favorilerim/Rezervasyonlar) ve kendi paneline dönüş linki kalmaz — İP-14'ün kapattığı kusurun aynısı, başka yüzeyde. Rol kısıtı olmadığı için (`ProtectedRoute`) sayfalar operatöre gerçekten açılır. **Asıl borç ikinci yarıda:** N grubu (`operatorPanel.acceptance.test.tsx`) **elle yazılmış beş girdilik** bir `SAYFALAR` listesini gezer; düzeltilen yedinin ikisi (`Profile`, `Tasks`) bile listede yok. Liste bayatlayınca test **sessizce eksik tarar** — yeşil kalır, sayfa hiç sınanmamıştır. Sonraki adım: (a) on sayfayı `navForRole`'a çevirmek (mekanik, tek tur) **ve** (b) İP-16'nın `D-6c` desenini kurmak — nöbetçi elle liste tutmaz, **kaynak taramasıyla küme türetir**: `DashboardShell`/`navItems` basan role-agnostik sayfaların kümesi ile N grubunun taradığı kümenin **aynı** olduğunu ölçer (sayı değil küme; biri eklenip başkası silinseydi sayı eşit kalırdı). Karşılaştırma AST/kaynak taramasıyla türetildiği için CLAUDE.md §C uyarınca **düşük güçlüdür** ve yanında davranış testi (N grubu) durmaya devam etmelidir |
+
+| 10 | **Sıralamanın `id DESC` deterministik bağlayıcısı NÖBETSİZ** (denetçi etiketi **P2-C**) | `backend/services/library_exam_service.py:418` (`list_library_sessions_admin` sıralamasının 4. kademesi) ↔ nöbetçi olması gereken düğümler: S-1/S-2 | **Denetçi kendi mutasyonuyla kanıtladı:** `LibraryExamSession.id.desc()` bağlayıcısı kaldırıldı → **7/7 test yine geçti**. Yani sözleşmenin §4'te "deterministik bağlayıcı" diye yazdığı kademe bugün korumasız: kaldıran/yönünü çeviren bir değişiklik hiçbir kırmızı üretmez. Sebep fixture: S-1/S-2 **ayrı zamanlı** oturumlar kuruyor, yani beraberlik hiç doğmuyor ve 4. kademeye hiç sıra gelmiyor (CLAUDE.md §E'nin "fixture sabit olduğu için bozuk davranış gözlenmeden kalıyor" maddesi). Gerçek etki bugün küçük ama sınıfı belli: aynı ana denk gelen iki oturumda sayfa sınırında **kayıt tekrarı/kayması**. Sonraki adım: `starts_at`'i **eşit** iki oturumla bir düğüm eklemek ve bağlayıcı kaldırıldığında kırıldığını mutasyonla göstermek. **Aynı sınıf İP-17'de de bulundu** (Q-9 tie-breaker'ın yönünü korumuyordu, gene fixture beraberlik üretmediği için) — desen tekrar ediyor, tek tek değil **kural olarak** ele alınmalı: "deterministik bağlayıcı iddiası, beraberlik üreten fixture olmadan kanıtlanmış sayılmaz" |
+| 11 | **`IntersectionObserver` / `ResizeObserver` jsdom shim'leri eksik — henüz uyanmamış gizli boşluk** (denetçi etiketi **P2-D**) | `frontend/src/test-setup.ts` (yalnız `matchMedia` shim'i var, satır 60-75) ↔ kullanım: `frontend/src/pages/Notifications.tsx:81` (`new IntersectionObserver`), `frontend/src/pages/Grapher.tsx:263` (`new ResizeObserver`) | Vitest jsdom ortamında iki API de `undefined`. **Bugün hiçbir test takılmıyor** ve bu bir şans: `/notifications` fixture'ı **boş liste** döndüğü için sonsuz-kaydırma sentinel dalı hiç render edilmiyor; denetçi bunu şema-doğru **dolu** bir fixture'la prob edip patlamayı gösterdi. Sınıfı §9/5'te belgelenen `matchMedia` boşluğunun aynısı: "repoda bu ekranı gerçek DOM'da render eden test olmamasının sebebi buydu". Dolu fixture yazan **ilk** test sessizce patlayacak ve — N grubunun `Settings` vakasında olduğu gibi — assert'ler zaten geçmişse test **yeşil** kalıp suite raporuna "1 error" olarak düşecek. Sonraki adım: iki shim'i `test-setup.ts`'e eklemek (kurulum işi, üretim kodu değişmez) ve `Notifications`'ı **dolu** bir fixture'la render eden bir düğümle nöbetlemek |
+<!-- Kapanma notu (İP-14 bağımsız denetimi, 13 Ağu 2026): denetimin bıraktığı
+     beş P2'den **ikisi doküman hatasıydı ve aynı turda düzeltildi**, bu yüzden
+     defterin kuralı gereği satırları SİLİNDİ (kısa süre "12 · DÜZELTİLDİ" ve
+     "13 · DÜZELTİLDİ" olarak açık listede durdular; istisna kaldırıldı,
+     numaralar yeniden kullanılmayacak).
+
+     (a) **P2-B** — sözleşme §5'in "0/14 → 10/14" oranı tutarsızdı. Ölçüm:
+     ErrorState 6 render noktasında, 8 sorgu örneğinde bağlı (`OperatorHome`
+     ×2, `OperatorSessions` ×1, `ExamSessionsManager` ×3, `Balance` ×2 kol).
+     §5'in 9–10. maddeleri sorgu DEĞİL, boş≠hata metin ayrımıydı (node E-5);
+     1–2. maddeler ise 14'lük envanterde olmayan yeni sorgulardı — 14 katalog
+     satırından ErrorState alan gerçek sayı 5. İşin kendisi gerçekti ve
+     davranışla kanıtlıydı (E-1…E-6 kırmızı→yeşil, M-E1/M-E5 mutasyonları
+     yakalandı); yanlış olan yalnız orandı. Kapatan commit: `fab94ac`.
+
+     (b) **P2-E/F** — sözleşme §2'nin iki cümlesi paketin kapsamında doğru,
+     repo genelinde yanlıştı: "`new Date().getDate()` hiçbir yerde çağrılmaz"
+     (ölçüm: `frontend/src` içinde 17 dosyada 38 çağrı; denetçi "35+" saymıştı,
+     fark yorum satırlarının elenmesi) ve "gün anahtarı tek yerde üretilir"
+     (ikinci üretici `lib/datetime.ts::istanbulNow().dateStr`,
+     `BookingModal.tsx:127`). Kapatan commit: `fab94ac`. Bu bulgunun kalıcı
+     tarafı [[TB-33]]'e taşındı: o kayıt frontend'i tek kalem sayıyordu,
+     "iki üreticili" düzeltmesi oraya eklendi — yani silinen satırın açık
+     kalan mirası TB-33'tedir, burada değil. -->
+
+**Not (bayat yorum):** iki test dosyasının süre bütçesi açıklaması hâlâ "projenin 5 sn'lik varsayılan test bütçesi" diyor; merge'den sonra varsayılan **9 sn**. Yukarıdaki 8. kayıt kapatılırken bu iki yorum da düzeltilmeli (8. kaydın **(d)** maddesi).
 
 ## TB-31 · `backend/.env` sürümsüz ve yedeksiz — tek koruma iki klasörde birden durması
 
@@ -285,19 +552,6 @@ yalnız ölçümü ve öneriyi kaydeder.
 | **Neden ertelendi** | Doğru çözümün iki parçası var: (1) damganın repoda karşılığı olduğunu doğrulamak (ucuz: `alembic_version.version_num` ∈ `versions/*.py` revision kimlikleri; bilinmeyen damgada fail-fast + beklenen revizyonu söyle — guard bunun YANINA, sonrasına değil); (2) şemanın damgayla uyuştuğunu CI'da **kapı** yapmak (`alembic check`). İkincisi bugün çapraz-dal sapması yüzünden kırmızı verir, yani dal durumu temizlenmeden kapıya çevrilemez. İP-16'nın kapsamı aralıklı tekrardır |
 | **Sonraki adım** | (1) `ensure_schema`'ya damga-repo doğrulaması + bilinmeyen damgada fail-fast; `--purge` guard'ını yalnız **bilinen** squash-öncesi revizyon listesine daralt; (2) taze DB'de `alembic upgrade head && alembic check` CI kapısı; (3) `down_revision` değiştiren her commit'in "eski zincirle kurulmuş DB'ler yeniden kurulmalı" notunu taşıması sözleşme kuralı olsun; (4) `AUTO_CREATE_DB=false` maddesini lansman kontrol listesine ekle |
 | **AYRI İŞ PAKETİ — "doğrula modu" (9 Ağu 2026'da önerildi, BİLİNÇLİ OLARAK ERTELENDİ)** | Yukarıdaki (1)-(4) hâlâ geçerli; bu satır onları **sıraya** koyar ve bir madde ekler. **(A) `ensure_schema` "kur" modundan "doğrula" moduna geçsin:** açılışta `alembic current` ile `heads` karşılaştırılsın, eşit değilse uygulama **açılmasın** ve `alembic upgrade head` koşulması söylensin. Maliyeti tek sorgu. Kritik tasarım kararı: bu doğrulama **`AUTO_CREATE_DB`'den BAĞIMSIZ, her zaman** koşmalı — bugün bayrak kapalıyken hiçbir kontrol yok, yani şema kayması *sessizce* değil *hiç* fark edilmiyor. **(B) `--purge` guard'ını bilinen revizyon listesine daralt** (= mevcut (1)'in ikinci yarısı). **(C) `AUTO_CREATE_DB=false` dev varsayılanı olsun**, temiz kurulum `docker-compose`'da backend'den ÖNCE koşan ayrı bir `migrate` adımına bağlansın. **SIRA ÖNEMLİ: (A) → (C).** (C)'yi (A)'sız uygulamak durumu BUGÜNKÜNDEN KÖTÜLEŞTİRİR: bu depoda sekiz worktree ve farklı migration head'li dallar var; otomatik hizalama kalkar ama yerine hiçbir uyarı gelmez, dal değiştirip `upgrade head` koşmayı unutan geliştiricinin uygulaması sessizce eski şemayla açılır. (A) tek başına da anlamlı bir ilk adımdır; (C) onsuz yapılmamalıdır. Bu paket İP-16 veya operasyon turunun kapsamı değildi, ayrı bir tur ister |
-
-## TB-29 · Mutasyon sürücüsü `ERROR` ile düşen (hiç koşamayan) testleri "kırılmadı" sayıyor — TÜM paketleri etkiler
-
-| | |
-|---|---|
-| **Bulundu** | İP-16 denetim düzeltme turu, 9 Ağu 2026 — kendi mutasyon provamda ölçüldü |
-| **Yer** | `backend/scripts/mutation_drill.py::_kirilanlar` (ortak sürücü; `mutation_drill_f30`, `_ip1a`, `_ip2a`, `_ip3`, `_ip4`, `_ip5`, `_ip16` hepsi bunu kullanır) |
-| **Durum** | Fonksiyon yalnız `FAILED ` ile başlayan pytest satırlarını sayar. Bir mutasyon testleri **koşamayacak** kadar derinden bozarsa (conftest'te DB kurulamaz, koleksiyon patlar, import kırılır) pytest `ERROR tests/...::düğüm` yazar — tek bir `FAILED` satırı olmaz. Sürücü o mutasyonu **"YAKALANMADI"** raporlar |
-| **Ölçüm** | İP-16 mutasyonu `IP16-21` (migration zincirini ip12'den kopar): entegrasyon conftest'i "Multiple head revisions" ile veritabanını kuramadı, beş düğüm de `ERROR` düştü, sürücü "YAKALANMADI — bu davranış için önce anlamlı bir test yazılmalı" dedi. Oysa suite hiç koşamamıştı; bu `FAILED`'dan daha sert bir kırılmadır |
-| **Etki** | İki yönlü ve ikisi de sinsi: (a) **yalancı boşluk** — sağlam bir nöbetçi "yok" görünür, geliştirici var olan testin üstüne ikinci bir test yazar ya da düzeltmeyi kanıtsız sayar; (b) **kritik olan bu** — `_kirilanlar` boş dönünce sürücü sonucu "0 test kırıldı" diye özetler; bir kapanış raporunda bu satır "mutasyon yakalanmadı, test zayıf" diye okunur ve **yanlış** teknik borç doğurur. Aynı sürücü "seçilen test = 0 ise BAŞARISIZLIK" nöbetçisiyle tam bu ayrımı girdi tarafında zaten savunuyor; çıktı tarafında savunmuyordu |
-| **Şu anki durum** | İP-16 sürücüsünde **yerel olarak** düzeltildi: `mutation_drill_ip16._kirilanlar` üst fonksiyonu bilinçli gölgeler ve `ERROR …::düğüm` satırlarını "KURULUM HATASI — test hiç koşmadı" etiketiyle ekler. Diğer altı paketin sürücüsü hâlâ eski davranışta |
-| **Neden ertelendi** | Düzeltmenin doğru yeri ortak `mutation_drill.py`'dir, ama orası yedi paketin kapanış raporlarının dayandığı ölçüm aracıdır: değiştirmek, geçmiş turların "yakalanmadı" kayıtlarının bir kısmını geçersiz kılabilir. Bu, İP-16'nın kapsamı değil; ayrı ve bilinçli bir tur ister |
-| **Sonraki adım** | (1) `_kirilanlar`'ı ortak sürücüde `ERROR` satırlarını da sayacak şekilde düzelt, İP-16'daki yerel gölgelemeyi sil; (2) geçmiş kapanış raporlarındaki **"YAKALANMADI"** kayıtlarını tara — hangileri gerçekten zayıf test, hangileri bu kusurun kurbanı; (3) sürücünün özetine "kırılan" ile "hiç koşmayan"ı ayrı satır olarak yazdır |
 
 ## TB-26 · Ürün kapak görselleri `library-photos/` önekini kütüphane fotoğraflarıyla paylaşıyor
 
@@ -470,17 +724,20 @@ her üçünü de güvenli tarafta bekletiyor (fatura uydurmuyor, uç kapalı).
 | **CI'nin bugünkü duruşu** | Audit adımı `continue-on-error: true` ile koşuyor ve gerekçesi adımın üstünde yorum olarak duruyor (job kırmızıya düşmüyor, uyarı görünür kalıyor). Bu bilinçli bir istisnadır, genel bir susturma değil: adım kaldırılmadı, çıktısı `|| true` ile yutulmuyor, yeni açıklar raporda görünmeye devam ediyor |
 | **Sonraki adım** | (1) Ayrı bir paket olarak React 19 + `react-router` 8 yükseltmesi (CI `node-version` 22'ye çekilerek); (2) o pakete kadar `npm audit` çıktısının **her turda okunması** — bu istisnanın altında yeni bir açık birikirse fark edilmeli; (3) yükseltme yapıldığında CI'daki istisna yorumu ve bu kayıt birlikte silinir |
 
-## TB-15 · Mağaza para sözleşmesinin kaçağı — **(a) KAPANDI**, (b) açık
-
-| | |
-|---|---|
-| **Bulundu** | İP-2a nihai bağımsız audit'i (4 Ağu 2026); merge sonrası main kodunda yeniden doğrulandı |
-| **Yer** | `backend/services/order_service.py::complete_checkout` "ölü varlık" dalı (~`:626-665`) |
-| **(a) `_out_of_stock_refund` merkezi sözleşme dışında** | **KAPANDI — İP-5** (`3a23f03` + `cf3615b`). Akış artık `reserve_refund` → `begin_refund` → `perform_refund` → `settle_refunded_order`. "Hiç satılmamış mala `SALE_CANCEL`" zararı iki katmanla kapatıldı: **açık parametre** (`settle_refunded_order(restock=False)` — canlı çağrıda bilgi tam) ve **kalıcı iz** (`_restock` → `_oversell_iptali_mi`, `order_status_history.changed_by = 'system:oversell'` — reconciler devraldığında parametre kaybolmuştur). Gerçek PG ile ölçüldü (O-1…O-4 + O-4b nöbetçisi), mutasyon provaları P7/P8 yakaladı. Detay: `docs/ip5-kdv-fatura-sozlesme.md` §7 |
-| **(a) — geri alınan ara çözüm** | İlk uygulama "`_restock` satılan adedi `stock_ledger.sold_quantity_by_order_item` ile **defterden** okusun" diyordu. **GERİ ALINDI** (`cf3615b`) ve yardımcı silindi. Ölçüm çürüttü: geliştirme veritabanındaki 20 PAID fiziksel siparişin **19'unda** `SALE` hareketi yok (defter `stok_hareket_defteri_sku` onlardan SONRA kuruldu); `paid_at` 7 dolu / 12 NULL, `order_status_history`'de PAID kaydı 3 var / 16 yok. O kural, defter öncesi GERÇEK bir siparişin iptalinde stoğu geri döndürmezdi — **gerçek stok kaybı**. Kayıt burada duruyor çünkü kural makul görünüyor ve tekrar önerilebilir |
-| **(b) `complete_checkout` geç-tahsilat dalı ikinci `refunded_amount` yazıcısı** | `apply_refunded_amount` "TEK yazıcı (M6)" diyor, ama "ölü varlık" dalı `refunded_amount`'a **mutlak atama** yapıyor (`refunded_amount: order_total`) — artırımlı değil, `LEAST(..., total)` tavanı yok, `refund_reserved` güncellenmiyor. Satır `refunded_amount=total, refund_reserved=0` gibi kendi içinde tutarsız kalıyor (`escrow.order_inflight_refund` bu ikiliyi birlikte okur) |
-| **(b) bugünkü gerçek risk** | Düşük, kayıp güncelleme DEĞİL: dal yalnız `from_statuses=["PENDING","FAILED"]` claim'iyle koşuyor, fonksiyon girişi PAID/REFUNDING/REFUNDED'ı zaten erken döndürüyor ve kısmi RMA siparişin PAID olmasını gerektiriyor → o noktada `refunded_amount` pratikte 0. Yani **sözleşme ihlali / regresyon riski** |
-| **Sonraki adım** | (b) ölü-varlık dalını `apply_refunded_amount`'a çevirmek + "kod tabanında `refunded_amount`'a yazan tek yer" yapısal nöbetçisi |
+<!-- Kapanma notu (İP-18, `517c251`): **TB-15** ("Mağaza para sözleşmesinin
+     kaçağı") KAPANDI ve dosyanın kendi kuralı gereği SİLİNDİ. (a) ayağı zaten
+     İP-5'te kapanmıştı; kalan (b) ayağını İP-18 kapattı. Ölü-varlık dalı artık
+     `refunded_amount`'a **mutlak atama yapmıyor**: rezervasyon niyetle AYNI
+     atomik UPDATE'e biniyor (`refund_reserved = refund_reserved + tutar`),
+     tavan claim'in kendi koşulunda (`refund_reserved + tutar <= total`) ve
+     tutar tek yazıcıdan geçiyor (`apply_refunded_amount`, M6 — artırımlı +
+     `LEAST(..., total)`). İkisi de `commit`'ten ÖNCE, aynı transaction'da;
+     çökme semantiği değişmedi. Detay: `docs/ip18-siparis-kilit-sozlesme.md`
+     §4. **Açık kalan tek parça** ("kod tabanında `refunded_amount`'a yazan tek
+     yer" yapısal nöbetçisi) yazılmadı — İP-18 kendi alanında eşdeğerini kurdu
+     (`payment_status='PAID'` yazan tek yer nöbetçisi,
+     `tests/test_ip18_odeme_kosulu.py`); `refunded_amount` için aynı nöbetçi
+     hâlâ yok ve [[TB-38]]'in (a) maddesi kapsamındadır. -->
 
 ## TB-14 · İP-2a P2 listesi (audit'te açık bırakılan sekiz kaydın YEDİSİ — öncelik sırasıyla)
 

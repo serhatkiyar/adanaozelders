@@ -94,6 +94,7 @@ async def attend(
         operator_library_id=operator.library_id,
         operator_id=operator.id,
         reservation_id=reservation_id,
+        actor=operator,
     )
 
 
