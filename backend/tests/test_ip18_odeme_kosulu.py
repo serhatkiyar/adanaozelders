@@ -106,14 +106,20 @@ def test_kirmizi_kosul_yardimcisi_claim_uyumlu(yardimci: str, kume_adi: str):
 # ── Yapısal nöbetçi: dördüncü giriş noktası kuralı atlayamasın ───────────────
 
 
-def _paid_yazan_dogrudan_claimler() -> list[tuple[str, int]]:
+def _paid_yazan_dogrudan_claimler(kaynak: str | None = None) -> list[tuple[str, int]]:
     """`escrow.claim(...)` çağrılarından `payment_status='PAID'` yazanlar.
 
     Sınır AST ile bulunur (`find()` + sabit karakter penceresi DEĞİL) ve yalnız
     gerçek çağrı düğümlerine bakılır — yorum satırı, docstring ve dizge
     yanlış pozitif üretemez.
+
+    ``kaynak`` verilirse o metin taranır; POZİTİF KONTROL için (aşağıya bakınız)
+    gereklidir — bir dedektörün "hiçbir şey bulamadım" demesi, ancak bilinen
+    kötü bir örneği bulabildiği gösterildiğinde anlamlıdır.
     """
-    agac = ast.parse(ORDER_SERVICE.read_text(encoding="utf-8"))
+    agac = ast.parse(
+        kaynak if kaynak is not None else ORDER_SERVICE.read_text(encoding="utf-8")
+    )
     bulunan: list[tuple[str, int]] = []
     for fn in ast.walk(agac):
         if not isinstance(fn, (ast.FunctionDef, ast.AsyncFunctionDef)):
@@ -168,3 +174,58 @@ def test_yesil_paid_claimi_yalniz_bogaz_noktasindan_gecer():
         "siparişe para bağlayan claim boğaz noktasını atlıyor "
         f"(`{BOGAZ}` kullanılmalı): {kacaklar}"
     )
+
+
+#: Pozitif kontrol girdisi — bilinen KÖTÜ desen (boğaz noktasını atlayan claim).
+_KOTU_ORNEK = '''
+async def _finalize_paid(db, order, *, provider_ref):
+    claimed = await escrow.claim(
+        db,
+        Order,
+        order.id,
+        from_statuses=["PENDING", "FAILED"],
+        values={"payment_status": "PAID", "paid_at": paid_at},
+        status_attr="payment_status",
+    )
+'''
+
+#: Dedektörün görmemesi gereken iki komşu desen: (1) boğaz noktasının kendisi,
+#: (2) para BAĞLAMAYAN (iade yönü) doğrudan claim.
+_IYI_ORNEK = '''
+async def _siparis_para_claimi(db, order_id, *, from_statuses, values):
+    return await escrow.claim(
+        db, Order, order_id, from_statuses=from_statuses,
+        values={"payment_status": "PAID"}, status_attr="payment_status",
+    )
+
+
+async def settle_completed_return(db, ret, *, changed_by):
+    await escrow.claim(
+        db, Order, ret.order_id, from_statuses=["PAID"],
+        values={"payment_status": "REFUNDED"}, status_attr="payment_status",
+    )
+'''
+
+
+def test_yesil_ast_nobetcisi_pozitif_kontrol():
+    """[POZİTİF KONTROL] Dedektör bilinen kötü örneği GERÇEKTEN buluyor mu?
+
+    Bir yapısal nöbetçinin "kaçak yok" demesi, ancak kaçağı görebildiği
+    kanıtlandığında bir şey ifade eder. Aksi hâlde bozuk bir dedektör (yanlış
+    düğüm tipi, değişen AST API'si, hatalı anahtar adı) sonsuza dek yeşil
+    kalır ve kimse fark etmez — [[TB-38]]/(b)'nin tam olarak yasakladığı
+    "yok, o yüzden geçti" hâli.
+
+    ⚠️ Bu kontrol dedektörün **kapsamını** kanıtlamaz, yalnız **çalıştığını**
+    kanıtlar. Bilinen kaçış yolu kayıtlıdır: `values` sözlüğü satır içi değil
+    bir DEĞİŞKEN olarak verilirse dedektör göremez ([[TB-41]]).
+    """
+    bulunan = _paid_yazan_dogrudan_claimler(_KOTU_ORNEK)
+    assert [ad for ad, _ln in bulunan] == ["_finalize_paid"], (
+        f"dedektör bilinen kötü deseni GÖREMEDİ — nöbetçi bozuk: {bulunan}"
+    )
+
+
+def test_yesil_ast_nobetcisi_yanlis_pozitif_uretmez():
+    """[NEGATİF KONTROL] Boğaz noktasının kendisi ve iade yönü claim'i muaf."""
+    assert _paid_yazan_dogrudan_claimler(_IYI_ORNEK) == []

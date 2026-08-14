@@ -130,6 +130,41 @@ silinmez).
      o belge İP-5 turunun ölçümünü anlatıyor ve o tur bu düzeltmeden önceydi).
      -->
 
+## TB-42 · Mutasyon sürücüsünün `ERROR` gölgelemesi kısmen kör — düğüm ayracı olmayan koleksiyon hatasını saymıyor
+
+| | |
+|---|---|
+| **Bulundu** | İP-18 bağımsız audit'i (14 Ağu 2026) |
+| **Yer** | `backend/scripts/mutation_drill_ip18.py::_kirilanlar` (ve aynı deseni kuran `mutation_drill_ip16.py`) |
+| **Durum** | Gölgeleme yalnız içinde `::` geçen `ERROR` satırlarını sayar. Pytest, KOLEKSİYON düzeyinde patlayan bir dosyayı `ERROR tests/x.py - NameError: …` biçiminde, yani **düğüm ayracı olmadan** raporlar; o satır sayılmaz ve mutasyon "YAKALANMADI" görünebilir |
+| **Neden `::` şartı kaldırılamaz** | Yakalanan log çıktısı da `ERROR ` ile başlar (`ERROR    adana.escrow:escrow.py:518 …`). Onu da saymak, ERROR log yazan HER mutasyonu "yakalandı" gösterirdi — ölçüm aracını **yalancı yeşil üreticisine** çevirirdi |
+| **Yön** | Güvenli: eksik sayar, fazla saymaz. Yani bugünkü "11/11 yakalandı" sonucu bu kusurdan **şişmiş değildir** |
+| **Bugünkü durum** | Kusur duruyor; İP-18 turunda yalnız docstring'in fazla geniş iddiası daraltıldı (artık kapsamını ve nedenini söylüyor) |
+| **Sonraki adım** | İki deseni ayırt eden eşleştirici (`^ERROR (\S+\.py)(::\S+)? ` + logger satırlarının çoklu boşluk/`ad:dosya:satır` şeklini dışlama) ve bunun **kendi pozitif kontrolü**. [[TB-29]] ile birlikte, ortak `mutation_drill.py` üzerinde ele alınmalı |
+
+## TB-41 · İP-18 AST nöbetçisi kandırılabilir — `values` sözlüğü değişkene alınırsa görmüyor
+
+| | |
+|---|---|
+| **Bulundu** | İP-18 bağımsız audit'i (14 Ağu 2026); denetçi çalışan bir kaçış üretti |
+| **Yer** | `backend/tests/test_ip18_odeme_kosulu.py::_paid_yazan_dogrudan_claimler` |
+| **Kaçış** | Dedektör yalnız `escrow.claim(..., values={...})` biçimini, yani **satır içi sözlük değişmezini** tarar. `values` bir DEĞİŞKENE alınırsa (`deger = {"payment_status": "PAID", …}; await escrow.claim(..., values=deger)`) hem AST nöbetçisi hem de **21 davranış testi** geçti — yani boğaz noktası sessizce atlanabiliyor |
+| **Neden davranış testleri de geçti** | Kaçış claim'in *koşulunu* değil *bulunabilirliğini* bozuyor; kaçan çağrı hâlâ doğru koşulu taşıyorsa davranış aynı kalır. Yani bu, davranış nöbetçisiyle kapatılamayan **saf yapısal** bir boşluktur |
+| **İP-18 turunda yapılan** | Nöbetçiye **pozitif kontrol** eklendi (`test_yesil_ast_nobetcisi_pozitif_kontrol`: bilinen kötü örneği gerçekten buluyor mu) ve negatif kontrol (boğaz noktasının kendisi + iade yönü claim'i muaf). Bu, [[TB-38]]/(b)'nin "dedektör bozuksa sonsuza dek yeşil kalır" hâlini kapatır ama **kaçışı kapatmaz** |
+| **Sonraki adım** | (1) `values`'ı bir ada bağlanmış sözlüğe kadar izleyen basit yerel veri akışı (aynı fonksiyon gövdesinde `Name → Dict` çözümü); (2) daha sağlamı: kuralı tersine çevir — `escrow.claim`'in `Order` modeliyle çağrılması `_siparis_para_claimi` DIŞINDA topyekûn yasaklansın (iade yönü claim'leri de boğaz noktasından geçsin), o zaman `values` içeriğini okumaya hiç gerek kalmaz |
+
+## TB-40 · Kilit sırası nöbetçisi (D9) kandırılabilir — `FOR UPDATE OF o` deseni hem davranış hem kaynak sözleşmesini geçiyor
+
+| | |
+|---|---|
+| **Bulundu** | İP-18 bağımsız audit'i (14 Ağu 2026); denetçi çalışan bir kaçış üretti ("mutasyon G") |
+| **Yer** | `backend/tests/integration/test_ip18_siparis_kilit_pg.py::test_yesil_checkout_yolu_order_kilidini_urunden_once_almaz` + `backend/tests/acceptance/test_stock_lock_contract.py` |
+| **Kaçış** | Order kilidi `SELECT … FROM <başka tablo> JOIN orders … FOR UPDATE OF o` biçiminde alınırsa: D9'un eşleştiricisi `"for update" in s and "from orders" in s` arar — JOIN'de `orders` **ikinci** tablodur, `from orders` geçmez → **görülmez**. Kaynak sözleşmesi de `_lock_order`/`_siparis_para_claimi` adlarını arar, ham `select()` çağrısını tanımaz → **görülmez**. Yani kilit sırası ters çevrilebilir ve iki nöbetçi de sessiz kalır |
+| **Kurgusal değil** | `select(Order).join(OrderItem).with_for_update(of=Order)` tam bu SQL'i üretir; kod tabanında benzer desen zaten var (`delivery_service.handover_scan` → `.with_for_update(of=Order)`) |
+| **Etki** | Bugün gerçek bir ihlal YOK; bu bir **nöbetçi kapsamı** boşluğudur. Ama İP-18 sözleşmesi §8/1 "D9 tek nöbetçidir" diyor ve o tek nöbetçinin kör noktası şimdi ölçülmüş durumda |
+| **Neden ertelendi** | Doğru çözüm dizgi eşleştirmesini bırakıp kilitlenen **tabloyu** SQL'den ayrıştırmak ya da PostgreSQL tarafından gözlemektir (`pg_locks` anlık görüntüsü: hangi ilişki, hangi sırada `RowExclusiveLock`/`RowShareLock` aldı). İkisi de İP-18'in kapsamından büyük ve ayrı bir doğrulama aracı ister |
+| **Sonraki adım** | (1) Kısa vade: D9'un eşleştiricisini `for update` + (`from orders` **veya** `join orders` **veya** ` of o`/`of orders`) olarak genişlet ve **pozitif kontrol** ekle (bilinen kaçış SQL'i verildiğinde eşleştirici onu görmeli); (2) uzun vade: `pg_locks` tabanlı gerçek kilit-sırası gözlemcisi — dizgiden bağımsız tek yöntem budur |
+
 ## TB-39 · İP-2b'nin "iade edildi **YA DA** görünür hata" ayrık iddiası bir P0'ı 11 gün boyunca maskeledi
 
 | | |

@@ -221,14 +221,19 @@ kapatıldığını ama **nöbetsiz** bırakıldığını ölçtü — bu üç mu
 > Kendi zayıf noktalarımı işaretliyorum; `sm2-kaldirma` turunda bu işe yaradı.
 > Aşağıdakiler "bilerek böyle" demek DEĞİL — "önce buraya bak" demektir.
 
-1. **D9 tek nöbetçidir ve tek yöntemi vardır.** Kilit sırası iddiasını gerçek
-   SQL'de yalnız o ölçüyor. Kaynak sözleşmesi (`test_stock_lock_contract`) aynı
-   ihlalde **kırılmadı** (IP18-5 ile ölçüldü) — yani ikinci katman yok, sanılan
-   ikinci katman kör. D9'un `before_cursor_execute` filtresi de dizgi eşleşmesine
-   dayanır (`from products` / `update orders`); SQL üretimi değişirse sessizce
-   hiçbir şey görmeyebilir. **Kurgu bozulursa test kırılır** (`"product" in
-   kayit` / `"order" in kayit` assert'leri) ama filtre yanlış eşleşirse
-   yakalamaz. Buraya ikinci bir yöntem gerekir.
+1. **D9 tek nöbetçidir, tek yöntemi vardır ve kör noktası ÖLÇÜLDÜ.** Kilit
+   sırası iddiasını gerçek SQL'de yalnız o ölçüyor. Kaynak sözleşmesi
+   (`test_stock_lock_contract`) aynı ihlalde **kırılmadı** (IP18-5 ile
+   ölçüldü) — yani ikinci katman yok, sanılan ikinci katman kör.
+   D9'un `before_cursor_execute` filtresi dizgi eşleşmesine dayanır
+   (`from products` / `update orders`). Bağımsız denetim çalışan bir kaçış
+   üretti: Order kilidi `SELECT … FROM <başka tablo> JOIN orders …
+   FOR UPDATE OF o` biçiminde alınırsa `from orders` geçmez ve **iki nöbetçi
+   de sessiz kalır**. Kurgusal değil — `select(Order).join(OrderItem)
+   .with_for_update(of=Order)` tam bu SQL'i üretir ve kod tabanında benzer
+   desen zaten var (`delivery_service.handover_scan`). Kayıt: [[TB-40]].
+   Kurgu bozulursa test kırılır (`"product" in kayit` / `"order" in kayit`
+   assert'leri) ama filtre yanlış eşleşirse yakalamaz.
 2. **Deadlock iddiası Faz 2'de daraltıldı.** Faz 1'de "Order kilidi eklemek
    gerçek deadlock döngüsü kurar" dedim; ölçünce **bugünkü FSM'de erişilebilir
    bir döngü üretilemedi** (aynı sipariş satırının hem `PENDING` hem `PAID`
@@ -284,6 +289,17 @@ kapatıldığını ama **nöbetsiz** bırakıldığını ölçtü — bu üç mu
    (`REFUNDING` → sağlayıcı → `REFUNDED`) bu dalın replay idempotency'sini
    değiştirir — bugün "sağlayıcının aşırı-iade reddi"ne yaslanıyor — yani ürün
    kararı ister. **Kırmızı testi yok, düzeltilmedi.**
+10. **AST nöbetçisi kandırılabilir.** `values` sözlüğü satır içi değil bir
+    DEĞİŞKENE alınırsa dedektör göremez; denetim bunu çalışan bir örnekle
+    gösterdi ve o kaçış hem AST nöbetçisini hem 21 davranış testini geçti
+    ([[TB-41]]). Bu turda **pozitif kontrol** eklendi (dedektör bilinen kötü
+    örneği gerçekten buluyor mu) — bu, "dedektör bozulursa sonsuza dek yeşil
+    kalır" hâlini kapatır ama **kaçışı kapatmaz**.
+11. **Mutasyon sürücüsünün `ERROR` gölgelemesi kısmen kör.** Düğüm ayracı
+    (`::`) olmayan koleksiyon hatası sayılmıyor ([[TB-42]]). Yön güvenlidir
+    (eksik sayar, fazla saymaz) — yani "11/11 yakalandı" sonucu bu kusurdan
+    şişmiş değildir; ama bir mutasyon suite'i hiç koşturamazsa "yakalanmadı"
+    görünebilir. Bu turda yalnız docstring'in fazla geniş iddiası daraltıldı.
 
 ## 9. Koşum reçetesi
 
@@ -308,6 +324,10 @@ python -m scripts.mutation_drill_ip18                    # 8 prova
 | [[TB-37]] | `_out_of_stock_refund` bayat yaşam döngüsü — çift `CANCELLED` geçmişi + çift bildirim (I11) |
 | [[TB-38]] | Kaynak sözleşmesi testleri ada duyarlı, davranışa kör — üç vaka, iki maddeli kural |
 | [[TB-39]] | İP-2b'nin ayrık kabul iddiası bir P0'ı 11 gün maskeledi |
+| [[TB-40]] | D9 kandırılabilir: `FOR UPDATE OF o` (JOIN'de orders ikinci tablo) hem D9'u hem kaynak sözleşmesini geçiyor |
+| [[TB-41]] | AST nöbetçisi kandırılabilir: `values` değişkene alınırsa görülmüyor |
+| [[TB-42]] | Mutasyon sürücüsünün `ERROR` gölgelemesi düğüm ayracı olmayan koleksiyon hatasını saymıyor |
 
-Kapanan: **TB-15** (tamamı) · Numara tahsisi ölçülerek yapıldı (tüm yerel +
-uzak dallar tarandı; en yüksek **TB-36** → yeni kayıtlar 37'den).
+Kapanan: **TB-15** (tamamı) · Numara tahsisi **iki kez** ölçülerek yapıldı (tüm
+yerel + uzak dallar tarandı): ilk turda en yüksek **TB-36** → 37/38/39;
+denetim sonrası turda en yüksek **TB-39** → 40/41/42.

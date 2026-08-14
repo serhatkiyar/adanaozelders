@@ -190,7 +190,21 @@ MUTASYONLAR: list[Mutasyon] = [
 
 
 def _kirilanlar(cikti: str) -> list[str]:  # noqa: F811 — üst sürücüyü bilinçli gölgeler
-    """Üst sürücünün `FAILED` taraması + pytest `ERROR` satırları (TB-29)."""
+    """Üst sürücünün `FAILED` taraması + pytest `ERROR …::düğüm` satırları.
+
+    ⚠️ **Kapsam dar ve bilinçli** (bağımsız denetim bulgusu, [[TB-42]]): yalnız
+    içinde `::` geçen `ERROR` satırları sayılır. Pytest, KOLEKSİYON düzeyinde
+    patlayan bir dosyayı `ERROR tests/x.py - NameError: …` biçiminde, yani
+    düğüm ayracı OLMADAN raporlar; o satır burada sayılmaz ve mutasyon
+    "yakalanmadı" görünebilir.
+
+    `::` şartı kaldırılamaz çünkü yakalanan log çıktısı da `ERROR ` ile başlar
+    (`ERROR    adana.escrow:escrow.py:518 …`). Onu da saymak, ERROR log yazan
+    HER mutasyonu "yakalandı" gösterirdi — yani ölçüm aracını yalancı yeşil
+    üreticisine çevirirdi. Yön bu yüzden güvenlidir: eksik sayar, fazla
+    saymaz. Doğru çözüm iki deseni ayırt eden bir eşleştiricidir; ortak
+    sürücüyle birlikte ele alınmalıdır (TB-29 + TB-42).
+    """
     kirilan = list(_ust_kirilanlar(cikti))
     hatalar = sorted(
         {
