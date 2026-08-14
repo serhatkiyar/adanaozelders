@@ -150,6 +150,34 @@ MUTASYONLAR: list[Mutasyon] = [
                 Order.status.in_(["PENDING"]),  # MUTASYON: olu siparis taranmaz""",
         (IP2B_CALLBACK, PG),
     ),
+    # ── TB-15(b) nöbetçileri (bağımsız denetim P1-2) ────────────────────────
+    # Denetçi bu üçünü koştu ve ÜÇÜ DE 1311 testin hiçbirini kırmadı: TB-15(b)
+    # davranış olarak kapatılmış ama NÖBETSİZ bırakılmıştı. D12/D13/D14 bu
+    # boşluğu kapatmak için yazıldı; aşağıdaki üç prova onların gücünü kanıtlar.
+    Mutasyon(
+        "IP18-9",
+        "TB-15(b): iade tavanı (M1) claim koşulundan söküldü",
+        ORDER,
+        "        extra_where=(Order.refund_reserved + order_total <= Order.total,),",
+        "        extra_where=(),  # MUTASYON: tavan sokuldu",
+        (PG,),
+    ),
+    Mutasyon(
+        "IP18-10",
+        "TB-15(b): `apply_refunded_amount` hiç çağrılmıyor (refunded_amount yazılmaz)",
+        ORDER,
+        "    await apply_refunded_amount(db, order, order_total)",
+        "    pass  # MUTASYON: refunded_amount hic yazilmiyor",
+        (PG,),
+    ),
+    Mutasyon(
+        "IP18-11",
+        "TB-15(b): `refund_reserved` rezervasyonu claim'den söküldü",
+        ORDER,
+        '            "refund_reserved": Order.refund_reserved + order_total,',
+        "            # MUTASYON: rezervasyon sokuldu",
+        (PG,),
+    ),
     Mutasyon(
         "IP18-8",
         "tek kaynak sabiti genişletildi: PARA_BAGLANABILIR_DURUMLAR += CANCELLED",

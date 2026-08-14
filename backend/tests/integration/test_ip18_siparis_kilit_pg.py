@@ -177,6 +177,21 @@ async def _callback(oid: int, tutar: Decimal) -> None:
         )
 
 
+async def _para_kolonlari(oid: int) -> tuple[Decimal, Decimal, bool]:
+    """(refunded_amount, refund_reserved, refunded_at dolu mu)"""
+    async with AsyncSessionLocal() as s:
+        satir = (
+            await s.execute(
+                text(
+                    "SELECT COALESCE(refunded_amount,0), COALESCE(refund_reserved,0), "
+                    "refunded_at IS NOT NULL FROM orders WHERE id = :o"
+                ),
+                {"o": oid},
+            )
+        ).one()
+    return Decimal(str(satir[0])), Decimal(str(satir[1])), bool(satir[2])
+
+
 async def _event_bekle(ev: asyncio.Event, ne: str) -> None:
     """Kapıyı SÜRELİ bekler — açılmazsa test kırmızı olur, sonsuza asılmaz."""
     try:
@@ -444,6 +459,128 @@ async def test_yesil_reconciler_taramasi_olu_siparisi_de_kapsar(
     )
     assert len(checkout_provider.refund_calls) == 1, (
         f"iade tam bir kez olmalı: {checkout_provider.refund_calls}"
+    )
+
+
+# ── D12-D14 · Ölü-varlık iadesinin PARA DEFTERİ (TB-15(b) nöbetçileri) ───────
+#
+# Bağımsız denetim bulgusu (P1-2): TB-15(b) davranış olarak kapatıldı ama
+# NÖBETSİZDİ. Denetçi üç mutasyon koştu ve **üçü de 1311 testin hiçbirini
+# kırmadı**: (1) tavan claim koşulundan söküldü, (2) `apply_refunded_amount`
+# hiç çağrılmadı, (3) `refund_reserved` rezervasyonu söküldü. Aşağıdaki üç
+# düğüm bu üç mutasyonu yakalamak için yazıldı.
+#
+# ⚠️ "Artırımlı mı, mutlak atama mı" bu dalda AYIRT EDİLEMEZ ve bunu saklamak
+# yerine yazıyoruz: dal yalnız `payment_status IN (PENDING, FAILED)` iken
+# koşar, orada `refunded_amount` pratikte 0'dır; sıfırdan başlayınca artırımlı
+# yazım ile mutlak atama AYNI değeri üretir. Sıfırdan büyük bir başlangıç ise
+# tavana (`refund_reserved + tutar <= total`) takılıp claim'i düşürür — yani
+# ayrımı gösterecek bir erişilebilir hâl yoktur. Ayırt EDİLEBİLİR ve artık
+# çivili olan şey şudur: (a) yazım gerçekten oluyor mu, (b) iki para kolonu
+# birbiriyle TUTARLI mı (TB-15(b)'nin şikâyeti tam olarak buydu:
+# `refunded_amount=total, refund_reserved=0`), (c) tavan ikinci para
+# hareketini durduruyor mu, (d) claim düşerse rezervasyon da yazılmamış oluyor
+# mu (yani rezervasyon niyetle AYNI atomik UPDATE'te mi).
+
+
+async def test_yesil_olu_varlik_iadesi_para_kolonlarini_tutarli_yazar(
+    fab, provider
+):
+    """[D12] `refunded_amount` yazılır ve `refund_reserved` ile TUTARLIDIR.
+
+    TB-15(b)'nin şikâyeti: dal `refunded_amount`'a mutlak atama yapıyor,
+    `refund_reserved`'a hiç dokunmuyordu; satır `refunded_amount=total,
+    refund_reserved=0` gibi kendi içinde tutarsız kalıyordu — oysa
+    `escrow.order_inflight_refund` bu ikiliyi BİRLİKTE okur ve farklarından
+    "uçuşta olan iade" çıkarır. Tutarsız satır o hesabı yanlışlar.
+
+    Bu tek düğüm iki mutasyonu birden yakalar: `apply_refunded_amount`
+    çağrılmazsa sol taraf 0 kalır, rezervasyon sökülürse sağ taraf 0 kalır.
+    """
+    _pid, _cid, oid, tutar = await _odenmemis_siparis(fab)
+    await _iptal(oid)
+
+    await _callback(oid, tutar)
+
+    iade, rezerve, damga = await _para_kolonlari(oid)
+    assert iade == tutar, (
+        f"refunded_amount yazılmadı ({iade}) — ciro raporu bu iadeyi görmez"
+    )
+    assert rezerve == tutar, (
+        f"refund_reserved rezerve edilmedi ({rezerve}) — iade tavanı (M1) bu "
+        "yolda uygulanmıyor demektir"
+    )
+    assert iade == rezerve, (
+        f"para kolonları tutarsız: refunded_amount={iade}, "
+        f"refund_reserved={rezerve} (TB-15(b))"
+    )
+    assert damga, "refunded_at damgalanmadı"
+    assert len(provider.refund_calls) == 1
+
+
+async def test_yesil_olu_varlik_iadesi_tavani_asamaz(fab, provider):
+    """[D13] Tavan kapısı (M1): uçuşta iade varken İKİNCİ para hareketi YOK.
+
+    ## Kurgu neden elle kuruluyor
+
+    Bu bir **savunma derinliği** kapısıdır: dal normalde `refund_reserved = 0`
+    iken koşar, yani tavan pratikte hiç devreye girmez — denetçinin mutasyonu
+    tam bu yüzden hiçbir testi kırmadı. Kapının işi, rezervasyonun oraya NASIL
+    geldiğinden bağımsız olarak doğru olmaktır: o, sağlayıcıya ikinci bir
+    çağrı gitmeden önceki son eşiktir.
+
+    Hâl erişilebilirdir: `_out_of_stock_refund` önce `reserve_refund` çağırır,
+    SONRA `begin_refund` ile claim eder; claim kaybedilirse rezervasyon satırda
+    KALIR ve `payment_status` değişmez (kodun kendi `logger.error`'ı bunu
+    "para hareketi yapılmadı, elle inceleyin" diye kabul eder). Yarışı
+    kurgulamak yerine ön koşulu doğrudan yazıyoruz — ölçülen şey yarış değil,
+    kapının kendisi.
+    """
+    _pid, _cid, oid, tutar = await _odenmemis_siparis(fab)
+    await _iptal(oid)
+    async with AsyncSessionLocal() as s:
+        await s.execute(
+            text("UPDATE orders SET refund_reserved = :t WHERE id = :o"),
+            {"t": tutar, "o": oid},
+        )
+        await s.commit()
+
+    await _callback(oid, tutar)
+
+    assert provider.refund_calls == [], (
+        "tavan dolu olduğu hâlde İKİNCİ sağlayıcı iadesi gönderildi: "
+        f"{provider.refund_calls}"
+    )
+    _durum, odeme = await _satir(oid)
+    assert odeme != "REFUNDED", (
+        "para hareketi yapılmadan kayıt REFUNDED'a çekildi"
+    )
+
+
+async def test_yesil_dusen_claim_rezervasyon_birakmaz(fab, provider):
+    """[D14] Rezervasyon niyetle **AYNI atomik UPDATE'e** binmeli.
+
+    Ayrı bir yazıma bırakılsaydı claim ile rezervasyon arasında bir pencere
+    kalırdı ve claim DÜŞSE bile rezervasyon artmış olurdu — yani sipariş,
+    hiç yapılmamış bir iade için tavanını tüketirdi (sonraki meşru iade
+    reddedilirdi). Ölçüm: claim'i tavanla düşürüyoruz ve `refund_reserved`'ın
+    DEĞİŞMEDİĞİNİ istiyoruz.
+    """
+    _pid, _cid, oid, tutar = await _odenmemis_siparis(fab)
+    await _iptal(oid)
+    async with AsyncSessionLocal() as s:
+        await s.execute(
+            text("UPDATE orders SET refund_reserved = :t WHERE id = :o"),
+            {"t": tutar, "o": oid},
+        )
+        await s.commit()
+
+    await _callback(oid, tutar)
+
+    _iade, rezerve, _damga = await _para_kolonlari(oid)
+    assert rezerve == tutar, (
+        f"claim düştüğü hâlde rezervasyon yazıldı: {tutar} → {rezerve} "
+        "(rezervasyon claim'den AYRI bir UPDATE'te demektir)"
     )
 
 
