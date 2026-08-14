@@ -12,7 +12,7 @@ import { TutorCard } from "@/components/TutorCard";
 import { useTutorSearch } from "@/hooks/useTutorSearch";
 import { useDebounce } from "@/hooks/useDebounce";
 import { getErrorMessage } from "@/lib/errors";
-import { TutorSort } from "@/types";
+import { TeachingMode, TutorSort } from "@/types";
 import type { TutorSearchParams } from "@/api/tutors";
 import { ROUTES } from "@/lib/routes";
 import { CategoryBar } from "@/components/CategoryBar";
@@ -44,6 +44,7 @@ export default function PublicMarketplace() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [q, setQ] = useState(() => searchParams.get("q") ?? "");
   const [district, setDistrict] = useState<string[]>(() => searchParams.getAll("district"));
+  const [remote, setRemote] = useState(() => searchParams.get("mode") === TeachingMode.ONLINE);
   const [subjects, setSubjects] = useState<string[]>(() => searchParams.getAll("subject"));
   const [exam, setExam] = useState(() => searchParams.get("exam") ?? "");
   const [sort, setSort] = useState<TutorSort>(TutorSort.RELEVANCE);
@@ -63,10 +64,12 @@ export default function PublicMarketplace() {
     const sp = searchParams.getAll("subject");
     const dp = searchParams.getAll("district");
     const ep = searchParams.get("exam") ?? "";
+    const rp = searchParams.get("mode") === TeachingMode.ONLINE;
     if (qp !== q) setQ(qp);
     if (JSON.stringify(sp) !== JSON.stringify(subjects)) setSubjects(sp);
     if (JSON.stringify(dp) !== JSON.stringify(district)) setDistrict(dp);
     if (ep !== exam) setExam(ep);
+    if (rp !== remote) setRemote(rp);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
@@ -78,9 +81,10 @@ export default function PublicMarketplace() {
     if (debouncedQ.trim()) next.set("q", debouncedQ.trim());
     subjects.forEach((s) => next.append("subject", s));
     district.forEach((d) => next.append("district", d));
+    if (remote) next.set("mode", TeachingMode.ONLINE);
     if (exam.trim()) next.set("exam", exam.trim());
     setSearchParams(next, { replace: true });
-  }, [debouncedQ, subjects, district, exam, setSearchParams]);
+  }, [debouncedQ, subjects, district, remote, exam, setSearchParams]);
 
   const removeSubject = (s: string) =>
     setSubjects((p) => p.filter((x) => x !== s));
@@ -90,9 +94,10 @@ export default function PublicMarketplace() {
     if (debouncedQ.trim()) p.q = debouncedQ.trim();
     if (subjects.length) p.subject = subjects;
     if (district.length) p.district = district;
+    if (remote) p.mode = [TeachingMode.ONLINE];
     if (exam.trim()) p.exam = exam.trim();
     return p;
-  }, [debouncedQ, subjects, district, exam, sort, limit]);
+  }, [debouncedQ, subjects, district, remote, exam, sort, limit]);
 
   const { data, isLoading, isFetching, isError, error } = useTutorSearch(params);
 
@@ -128,6 +133,7 @@ export default function PublicMarketplace() {
             placeholder="Ders ara… (ör. Lise Matematik)"
             q={q}
             district={district}
+            remote={remote}
             onOpen={() => setSearchOpen(true)}
           />
         </div>
@@ -144,6 +150,8 @@ export default function PublicMarketplace() {
         setQ={setQ}
         district={district}
         setDistrict={setDistrict}
+        remote={remote}
+        setRemote={setRemote}
         onSubmit={submitSearch}
         placeholder="Ders ara… (ör. Lise Matematik)"
         trending={TRENDING_SEARCHES}

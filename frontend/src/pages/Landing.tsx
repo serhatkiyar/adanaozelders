@@ -4,7 +4,7 @@ import { useAuthStore } from "@/store/authStore";
 import { useSurfaceStore } from "@/store/surfaceStore";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { ROUTES } from "@/lib/routes";
-import { ROLE_IDS } from "@/types";
+import { ROLE_IDS, TeachingMode } from "@/types";
 import { STUDENT_NAV, TUTOR_NAV } from "@/lib/nav";
 import { Seo } from "@/components/Seo";
 import { JsonLd } from "@/components/JsonLd";
@@ -40,6 +40,7 @@ export default function Landing() {
   const [active, setActive] = useState<CategoryKey>("hepsi");
   const [q, setQ] = useState("");
   const [district, setDistrict] = useState<string[]>([]);
+  const [remote, setRemote] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   // Daralmışken kompakt aramaya tıklayınca geniş navbar'ı YERİNDE aç (sayfa
   // kaymaz). Tekrar kaydırınca kapanır.
@@ -63,6 +64,9 @@ export default function Landing() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
+  // Kütüphane/deneme aramasında "Uzaktan Eğitim" anlamsız (fiziksel mekan).
+  const showRemoteOption = active !== "kutuphaneler" && active !== "denemeler";
+
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     const base =
@@ -71,6 +75,7 @@ export default function Landing() {
         : ROUTES.tutors;
     const sp = new URLSearchParams();
     district.forEach((d) => sp.append("district", d));
+    if (showRemoteOption && remote) sp.set("mode", TeachingMode.ONLINE);
     if (q.trim()) sp.set("q", q.trim());
     const qs = sp.toString();
     navigate(`${base}${qs ? `?${qs}` : ""}`);
@@ -90,6 +95,7 @@ export default function Landing() {
           placeholder={placeholder}
           q={q}
           district={district}
+          remote={showRemoteOption && remote}
           onOpen={() => setSearchOpen(true)}
         />
       )}
@@ -106,6 +112,9 @@ export default function Landing() {
         setQ={setQ}
         district={district}
         setDistrict={setDistrict}
+        remote={remote}
+        setRemote={setRemote}
+        showRemoteOption={showRemoteOption}
         onSubmit={submit}
         placeholder={placeholder}
       />
@@ -405,7 +414,7 @@ function Footer() {
     <footer className="border-t border-slate-100 bg-white py-10 dark:border-slate-800 dark:bg-slate-900">
       <div className="mx-auto flex max-w-[1216px] flex-col items-center justify-between gap-4 px-6 sm:flex-row">
         <Link to="/" className="flex items-center gap-2 transition hover:opacity-90">
-          <img src="/logo.png" alt="Adana Özel Ders Logo" className="h-8 sm:h-10 w-auto object-contain grayscale opacity-70 hover:grayscale-0 hover:opacity-100 transition" />
+          <img src="/logo.svg" alt="Adana Özel Ders Logo" className="h-8 md:h-9 w-auto object-contain grayscale opacity-70 hover:grayscale-0 hover:opacity-100 transition" />
         </Link>
         <div className="text-center text-sm text-slate-500 dark:text-slate-400 sm:text-right">
           <p>© {new Date().getFullYear()} Adana Özel Ders. Tüm hakları saklıdır.</p>

@@ -200,13 +200,15 @@ function ClockWidget() {
 }
 
 interface NavbarWidgetProps {
-  /** Logo varyantında <img>'e uygulanacak boyut sınıfı (header'dan gelir). */
+  /** Logo varyantında masaüstü (md+) wordmark <img>'ine uygulanacak boyut sınıfı (header'dan gelir). */
   logoClass: string;
+  /** Logo varyantında mobil (md altı) yazısız simge <img>'ine uygulanacak boyut sınıfı. */
+  logoCompactClass: string;
 }
 
 // Navbar'ın sol üst alanı: kullanıcı tercihine göre logo veya bir bilgi widget'ı.
 // Daima ana sayfaya götüren <Link> içinde render edilir (üst bileşende).
-export function NavbarWidget({ logoClass }: NavbarWidgetProps) {
+export function NavbarWidget({ logoClass, logoCompactClass }: NavbarWidgetProps) {
   const widget = useNavbarWidgetStore((s) => s.widget);
   const yksDate = useNavbarWidgetStore((s) => s.yksDate);
   const lgsDate = useNavbarWidgetStore((s) => s.lgsDate);
@@ -223,7 +225,10 @@ export function NavbarWidget({ logoClass }: NavbarWidgetProps) {
     case "logo":
     default:
       return (
-        <img src="/logo.png" alt="Adana Özel Ders" className={logoClass} />
+        <>
+          <img src="/logo-compact.svg" alt="Adana Özel Ders" className={logoCompactClass} />
+          <img src="/logo.svg" alt="Adana Özel Ders" className={logoClass} />
+        </>
       );
   }
 }

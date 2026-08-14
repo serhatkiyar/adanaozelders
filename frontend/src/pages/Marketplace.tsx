@@ -104,7 +104,11 @@ export default function Marketplace() {
   const [minRate, setMinRate] = useState("");
   const [maxRate, setMaxRate] = useState("");
   const [sort, setSort] = useState<TutorSort>(TutorSort.RELEVANCE);
-  const [modes, setModes] = useState<TeachingMode[]>([]);
+  const [modes, setModes] = useState<TeachingMode[]>(() =>
+    searchParams
+      .getAll("mode")
+      .filter((m): m is TeachingMode => (Object.values(TeachingMode) as string[]).includes(m)) as TeachingMode[]
+  );
   const [gender, setGender] = useState<Gender | "">("");
   const [minAge, setMinAge] = useState("");
   const [maxAge, setMaxAge] = useState("");
@@ -148,9 +152,10 @@ export default function Marketplace() {
     if (debouncedQ.trim()) next.set("q", debouncedQ.trim());
     subjects.forEach((s) => next.append("subject", s));
     district.forEach((d) => next.append("district", d));
+    modes.forEach((m) => next.append("mode", m));
     if (exam.trim()) next.set("exam", exam.trim());
     setSearchParams(next, { replace: true });
-  }, [debouncedQ, subjects, district, exam, setSearchParams]);
+  }, [debouncedQ, subjects, district, modes, exam, setSearchParams]);
 
   const debouncedMin = useDebounce(minRate);
   const debouncedMax = useDebounce(maxRate);
@@ -238,6 +243,7 @@ export default function Marketplace() {
             placeholder="Ders ara… (ör. Lise Matematik)"
             q={q}
             district={district}
+            remote={modeSegment === TeachingMode.ONLINE}
             onOpen={() => setSearchOpen(true)}
           />
         </div>
@@ -254,6 +260,8 @@ export default function Marketplace() {
         setQ={setQ}
         district={district}
         setDistrict={setDistrict}
+        remote={modeSegment === TeachingMode.ONLINE}
+        setRemote={(v) => selectMode(v ? TeachingMode.ONLINE : MODE_ALL)}
         onSubmit={submitSearch}
         placeholder="Ders ara… (ör. Lise Matematik)"
         trending={TRENDING_SEARCHES}

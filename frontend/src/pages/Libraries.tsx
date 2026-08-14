@@ -205,6 +205,7 @@ export default function Libraries() {
         setQ={setQ}
         district={district}
         setDistrict={setDistrict}
+        showRemoteOption={false}
         onSubmit={submitSearch}
         placeholder={SEARCH_PLACEHOLDER}
         trending={LIBRARY_TRENDING_SEARCHES}

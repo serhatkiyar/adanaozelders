@@ -11,6 +11,9 @@ import { StoreSearch } from "@/components/store/StoreSearch";
 
 // Boxed gövde; banner/şerit full-bleed. İçerik genişliği ~1400px (1464 − 64 kenar boşluğu).
 const CONTAINER = "mx-auto max-w-[1464px] px-4 md:px-8";
+// Header, ana site navbar'ıyla aynı max-width'i kullanır (max-w-screen-2xl) — geniş
+// ekranlarda logo sol kenarı ana site logosuyla hizalı kalsın diye; içerik CONTAINER'da kalır.
+const HEADER_CONTAINER = "mx-auto max-w-screen-2xl px-4 md:px-8";
 
 export function StoreLayout({
   title = "Mağaza",
@@ -42,9 +45,9 @@ export function StoreLayout({
     return (
       <div className="flex min-h-screen flex-col bg-slate-50 font-sans dark:bg-slate-950">
         <header className="w-full border-b border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
-          <div className={`${CONTAINER} flex h-[76px] items-center justify-between`}>
+          <div className={`${HEADER_CONTAINER} flex h-[76px] items-center justify-between`}>
             <Link to="/" aria-label="Adana Özel Ders ana sayfa" className="flex items-center transition hover:opacity-90">
-              <img src="/logo.png" alt="Adana Özel Ders" className="h-8 w-auto object-contain md:h-9" />
+              <img src="/logo.svg" alt="Adana Özel Ders" className="h-8 w-auto object-contain md:h-9" />
             </Link>
             <span className="flex items-center gap-1.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -65,22 +68,11 @@ export function StoreLayout({
     <div className="flex min-h-screen flex-col bg-slate-50 font-sans dark:bg-slate-950">
       {/* Header: logo + (ortalı) arama + aksiyonlar */}
       <header className="sticky top-0 z-40 w-full border-b border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
-        <div className={`${CONTAINER} flex flex-col gap-3 py-3 md:grid md:h-[76px] md:grid-cols-[auto_minmax(0,1fr)_auto] md:items-center md:gap-8 md:py-0`}>
-          {/* Logo lockup: master logo (→ ana site) + ayraç + dükkan ikonu (→ mağaza ana) */}
-          <div className="flex shrink-0 items-center gap-3">
-            <Link to="/" aria-label="Adana Özel Ders ana sayfa" className="flex items-center transition hover:opacity-90">
-              <img src="/logo.png" alt="Adana Özel Ders" className="h-8 w-auto object-contain md:h-9" />
-            </Link>
-            <span aria-hidden className="h-6 w-px bg-slate-200 md:h-7 dark:bg-slate-700" />
-            <Link
-              to={ROUTES.store}
-              aria-label="Mağaza"
-              title="Mağaza"
-              className="text-slate-500 transition-colors hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-400"
-            >
-              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 21v-7.5a.75.75 0 0 1 .75-.75h3a.75.75 0 0 1 .75.75V21m-4.5 0H2.36m11.14 0H18m0 0h3.64m-1.39 0V9.349M3.75 21V9.349m0 0a3.001 3.001 0 0 0 3.75-.614 2.993 2.993 0 0 0 2.25 1.016 2.993 2.993 0 0 0 2.25-1.016 2.993 2.993 0 0 0 2.25 1.016 2.993 2.993 0 0 0 2.25-1.016 3.001 3.001 0 0 0 3.75.614m-16.5 0a3.004 3.004 0 0 1-.621-4.72l1.189-1.19A1.5 1.5 0 0 1 5.378 3h13.243a1.5 1.5 0 0 1 1.06.44l1.19 1.189a3 3 0 0 1-.621 4.72m-13.5 0V5.25" />
-              </svg>
+        <div className={`${HEADER_CONTAINER} flex flex-col gap-3 pt-5 pb-3 md:grid md:grid-cols-[auto_minmax(0,1fr)_auto] md:items-start md:gap-8`}>
+          {/* Logo: mağaza logosu → mağaza ana sayfası */}
+          <div className="flex shrink-0 items-center">
+            <Link to={ROUTES.store} aria-label="Mağaza ana sayfa" className="flex items-center transition hover:opacity-90">
+              <img src="/magaza-logo.svg" alt="Mağaza" className="h-8 w-auto object-contain md:h-9" />
             </Link>
           </div>
 
@@ -115,9 +107,9 @@ export function StoreLayout({
         <div className={`${CONTAINER} flex flex-col items-center justify-between gap-6 sm:flex-row`}>
           <Link to="/" className="shrink-0">
             <img
-              src="/logo.png"
+              src="/logo.svg"
               alt="Adana Özel Ders"
-              className="h-8 w-auto object-contain opacity-70 grayscale transition hover:opacity-100 hover:grayscale-0 sm:h-9 dark:opacity-60"
+              className="h-8 w-auto object-contain opacity-70 grayscale transition hover:opacity-100 hover:grayscale-0 md:h-9 dark:opacity-60"
             />
           </Link>
           <div className="text-center text-sm text-slate-500 sm:text-right dark:text-slate-400">

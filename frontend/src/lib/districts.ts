@@ -10,3 +10,30 @@ export const ADANA_DISTRICTS = [
 ] as const;
 
 export type AdanaDistrict = (typeof ADANA_DISTRICTS)[number];
+
+// Arama ekranındaki "ders mekanı" (ilçe) seçici için genişletilmiş liste.
+// ADANA_DISTRICTS'ten (onboarding/adres formları) bağımsız: burada başta bir
+// "Merkez" kısayolu var + daha fazla ilçe "Diğer ilçeleri görüntüle" ile açılır.
+// Onboarding dropdown'ı henüz bu genişletilmiş listeyi sunmuyor — yalnız arama tarafı.
+export const SEARCH_PRIMARY_DISTRICTS = [
+  "Merkez",
+  "Seyhan",
+  "Çukurova",
+  "Yüreğir",
+  "Sarıçam",
+  "Ceyhan",
+  "Kozan",
+];
+
+// "Diğer ilçeleri görüntüle" ile açılan, daha az nüfuslu geri kalan ilçeler.
+export const SEARCH_MORE_DISTRICTS = [
+  "Karaisalı",
+  "Karataş",
+  "Yumurtalık",
+  "İmamoğlu",
+  "Pozantı",
+  "Aladağ",
+  "Feke",
+  "Saimbeyli",
+  "Tufanbeyli",
+];

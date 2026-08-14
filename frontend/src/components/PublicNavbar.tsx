@@ -24,12 +24,16 @@ export function PublicNavbar({
           <div className="flex-1 flex justify-start">
             <Link
               to="/"
+              aria-label="Adana Özel Ders ana sayfa"
               className="flex shrink-0 items-center gap-2 transition hover:opacity-90 group"
             >
+              {/* Küçük ekranda yazısız (yalnız simge) logo — kategori şeridine yer açar */}
+              <img src="/logo-compact.svg" alt="" aria-hidden className="h-8 w-auto object-contain md:hidden" />
               <img
-                src="/logo.png"
-                alt="Adana Özel Ders"
-                className="h-8 sm:h-10 w-auto object-contain"
+                src="/logo.svg"
+                alt=""
+                aria-hidden
+                className="hidden md:block md:h-9 w-auto object-contain"
               />
             </Link>
           </div>
@@ -66,6 +70,11 @@ export function PublicNavbar({
           </div>
         </div>
       </div>
+      {center && (
+        <div className="flex justify-center overflow-x-auto px-4 pb-3 md:hidden" style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}>
+          {center}
+        </div>
+      )}
       {bottom && (
         <div
           className={`overflow-hidden transition-all duration-300 ease-out ${

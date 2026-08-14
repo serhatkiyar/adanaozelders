@@ -22,12 +22,12 @@ export default function NotFound() {
       {/* Sol üstte marka logosu — hangi site olduğu belli olsun */}
       <Link
         to={ROUTES.home}
-        className="absolute left-5 top-5 z-20 flex items-center transition hover:opacity-90 sm:left-8 sm:top-7"
+        className="absolute left-4 top-5 z-20 flex items-center transition hover:opacity-90 md:left-8"
       >
         <img
-          src="/logo.png"
+          src="/logo.svg"
           alt="Adana Özel Ders"
-          className="h-9 w-auto object-contain drop-shadow-lg sm:h-11"
+          className="h-8 w-auto object-contain drop-shadow-lg md:h-9"
         />
       </Link>
 

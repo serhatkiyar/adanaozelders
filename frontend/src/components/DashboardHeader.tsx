@@ -144,9 +144,13 @@ export function DashboardHeader({ navItems, transparent = false, center, bottom,
     ? "sticky top-0 z-40 border-b border-slate-100 bg-white/80 backdrop-blur-md dark:border-slate-800 dark:bg-slate-900/80"
     : "border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900";
   const innerPad = "px-4 md:px-8 pt-5 pb-2";
+  // md+'de tam yatay wordmark; altında yalnız yazısız simge (mobilde yer açmak için).
   const logoClass = transparent
-    ? "h-8 sm:h-10 w-auto object-contain"
-    : "h-7 sm:h-8 w-auto object-contain";
+    ? "hidden md:block md:h-9 w-auto object-contain"
+    : "hidden md:block md:h-8 w-auto object-contain";
+  const logoCompactClass = transparent
+    ? "h-8 w-auto object-contain md:hidden"
+    : "h-7 w-auto object-contain md:hidden";
 
   return (
     <>
@@ -159,7 +163,7 @@ export function DashboardHeader({ navItems, transparent = false, center, bottom,
             className="group flex shrink-0 items-center gap-2 transition hover:opacity-90"
             aria-label="Ana sayfa"
           >
-            <NavbarWidget logoClass={logoClass} />
+            <NavbarWidget logoClass={logoClass} logoCompactClass={logoCompactClass} />
           </Link>
         </div>
 
@@ -279,6 +283,12 @@ export function DashboardHeader({ navItems, transparent = false, center, bottom,
         </div>
       </div>
       </div>{/* /innerPad */}
+
+      {center && (
+        <div className="flex justify-center overflow-x-auto px-4 pb-3 lg:hidden" style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}>
+          {center}
+        </div>
+      )}
 
       {bottom && (
         <div

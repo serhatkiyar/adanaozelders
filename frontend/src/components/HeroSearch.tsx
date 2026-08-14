@@ -36,6 +36,10 @@ export type BigSearchProps = {
   placeholder: string;
   /** Verilirse input boş+odaktayken trend aramalar popover'ı açılır. */
   trending?: readonly string[];
+  /** "Uzaktan Eğitim" checkbox'ı — yalnız eğitmen aramasında anlamlı. */
+  remote?: boolean;
+  setRemote?: (v: boolean) => void;
+  showRemoteOption?: boolean;
 };
 
 // Büyük (açık) arama — etiketsiz tek satır: ilçe (pin + değer) | yazı | ara.
@@ -47,6 +51,9 @@ export function BigSearch({
   onSubmit,
   placeholder,
   trending,
+  remote,
+  setRemote,
+  showRemoteOption,
 }: BigSearchProps) {
   const [focused, setFocused] = useState(false);
 
@@ -63,6 +70,9 @@ export function BigSearch({
           <DistrictSelect
             value={district}
             onChange={setDistrict}
+            remote={remote}
+            onRemoteChange={setRemote}
+            showRemoteOption={showRemoteOption}
             triggerClassName="flex cursor-pointer items-center gap-1 bg-transparent text-sm font-medium text-slate-700 outline-none dark:text-slate-200"
           />
         </div>
@@ -128,21 +138,25 @@ export function CompactSearch({
   placeholder,
   q,
   district,
+  remote = false,
   onOpen,
 }: {
   active: CategoryKey;
   placeholder: string;
   q: string;
   district: string[];
+  remote?: boolean;
   onOpen: () => void;
 }) {
   const meta = categoryMeta(active);
   const districtLabel =
-    district.length === 0
-      ? "Tüm ilçeler"
-      : district.length === 1
+    district.length > 0
+      ? district.length === 1
         ? district[0]
-        : `${district.length} ilçe`;
+        : `${district.length} ilçe`
+      : remote
+        ? "Uzaktan Eğitim"
+        : "Tüm ilçeler";
 
   return (
     <button
@@ -155,7 +169,7 @@ export function CompactSearch({
       <img src={meta.icon} alt={meta.label} className="h-7 w-7 shrink-0 object-contain" />
 
       {/* İlçe etiketi */}
-      <span className={`shrink-0 text-sm ${district.length > 0 ? "font-semibold text-slate-800 dark:text-slate-100" : "text-slate-500 dark:text-slate-400"}`}>
+      <span className={`shrink-0 text-sm ${district.length > 0 || remote ? "font-semibold text-slate-800 dark:text-slate-100" : "text-slate-500 dark:text-slate-400"}`}>
         {districtLabel}
       </span>
 
