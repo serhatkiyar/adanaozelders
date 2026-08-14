@@ -89,6 +89,23 @@ silinmez).
      sozlesmesi.md:229`, `ip1a-ders-para-sozlesme.md:676` (tarihsel, dokunulmadı).
      **TB-2** silinmedi ama YARIYA DARALDI — güncel gövdesine bakınız. -->
 
+<!-- Kapanma notu (İP-17, vade granülerliği turu): **TB-29** ("Mutasyon sürücüsü
+     `ERROR` ile düşen testleri kırılmadı sayıyor") KAPANDI ve dosyanın kendi
+     kuralı gereği SİLİNDİ. Kapatan kod: `scripts/mutation_drill.py::_kirilanlar`
+     artık `FAILED` satırlarının yanında `ERROR …::düğüm` satırlarını da
+     topluyor ve onları "(KURULUM HATASI — test hiç koşmadı)" etiketiyle AYRI
+     gösteriyor (kaydın istediği 3. adım); `mutation_drill_ip16`'daki yerel
+     gölge silindi, modül üstteki fonksiyonu doğrudan import ediyor.
+     Uçtan uca doğrulama: kaydın kendi ölçüm vakası `IP16-21` yeniden koşuldu →
+     "YAKALANDI (7 test kırıldı)", yedisi de KURULUM HATASI etiketli.
+     Kaydın 2. adımı (geçmiş "YAKALANMADI" kayıtlarını tara) da yapıldı:
+     `docs/` altında üç kayıt var; `ip16-flashcard-sozlesme.md`'deki IP16-21
+     zaten bu kusurun kurbanı olarak işaretlenmişti, `IP16-27` ve
+     `ip1a-…::A2` gerçekten zayıf testti ve ikisi de o turda düzeltildi.
+     Geriye düzeltilmesi gereken yanlış kayıt KALMADI.
+     ⚠️ Bu değişiklik yedi paketin ölçüm aracını değiştirir; ileride eski bir
+     kapanış raporundaki "YAKALANMADI" satırı okunurken tarihine bakılmalıdır. -->
+
 <!-- Kapanma notu (İP-5, `bda2edf`): **TB-21** ("Entegrasyon testleri
      `.env`'den `PAYMENT_PROVIDER` alıyor") KAPANDI ve dosyanın kendi kuralı
      gereği SİLİNDİ. Kapatan kod iki katmanlıdır: kök `conftest.py`
@@ -130,6 +147,38 @@ silinmez).
      o belge İP-5 turunun ölçümünü anlatıyor ve o tur bu düzeltmeden önceydi).
      -->
 
+<!-- NUMARASIZ KAYITLAR (dal: `ip17-vade-granulerligi`). Aşağıdaki iki kayıt
+     İP-17'nin bağımsız denetiminde açıldı ve dal içinde **geçici etiketle**
+     (TB-?A / TB-?B) duruyor: numara ancak merge turunda, o an hiçbir dalda
+     kullanılmamış olduğu ölçülerek verilir (bu dosyanın numara tahsis kuralı,
+     üç kez yaşanan çakışmanın dersi). Merge eden, etiketleri gerçek numarayla
+     değiştirip bu yorumu siler. -->
+
+## TB-?A · Yeşil taban çizgisi nöbetçisi ORTAK sürücüde YOK — kırmızı tabanda "YAKALANDI" denebiliyor
+
+| | |
+|---|---|
+| **Bulundu** | İP-17 bağımsız denetimi (14 Ağu 2026) |
+| **Yer** | `backend/scripts/mutation_drill.py` (ortak sürücü) ve onu kullanan `mutation_drill_ip16.py`, `_ip14.py`. Nöbetçi YALNIZ `mutation_drill_ip18.py::_yesil_taban`'da var |
+| **Durum** | Sürücü, mutasyonu uygulamadan önce hedef testlerin **temiz ağaçta yeşil olduğunu** doğrulamıyor. Zaten kırmızı olan bir test mutasyon altında da kırmızı kalır ve sürücü bunu "YAKALANDI" sayar. Yani prova, ölçmek istediği şeyi ölçmeden geçer |
+| **Ölçüm (denetçinin, bu dalda yeniden koşulmadı)** | Taban kasıtlı bozuldu (`params.ROLLOVER_HOUR = 0`) ve `IP17-2` koşuldu: sürücü **"YAKALANDI (6)"** dedi, oysa altı testin **beşi mutasyondan bağımsız olarak zaten kırıktı**. Mutasyonun gerçek katkısı bir testti; rapor altı diyordu |
+| **Etki** | Kapanış raporlarındaki "N/N yakalandı" satırının anlamını zayıflatır. Yön **tehlikeli**: fazla sayar. "Seçilen test = 0 → BAŞARISIZLIK" nöbetçisi girdi tarafını, [[TB-29]]'un kapattığı `ERROR` sayımı çıktı tarafını koruyordu; bu üçüncü kapı (taban) yalnız bir pakette var. İP-17'nin kendi 7/7 sonucu bu kusurdan **etkilenmedi** — provaların hepsi temiz ağaçta koşuldu ve ağaç her provadan sonra doğrulandı, ama bu bir tesadüf değil disiplin; araç garanti etmiyor |
+| **Neden ertelendi** | Ortak sürücüyü değiştirmek yedi paketin ölçüm aracını değiştirir; İP-17 bunu TB-29 için bir kez yaptı ve bedelini de gördü (İP-18'in gölgesi çift saymaya başladı, merge turunda düzeltildi). İkinci bir ortak-araç değişikliğini audit'ten geçmiş bir dala **merge öncesi** sokmak, kapanış ölçümlerini yeniden koşturmayı gerektirir |
+| **Sonraki adım** | `_yesil_taban`'ı `mutation_drill_ip18.py`'den ortak `mutation_drill.py`'ye taşı (referans uygulama HAZIR, yeniden yazılmayacak), `calistir` içinde mutasyondan ÖNCE çağır, kırmızı tabanda provayı **hata** olarak kes. Ardından İP-14/İP-16/İP-17 kataloglarını bir kez yeniden koşup raporlanan sayıların değişip değişmediğini ölç |
+
+## TB-?B · Yeni kart sıralaması (`_order_id`) NÖBETSİZ — tersine çevrilince hiçbir test kırılmıyor
+
+| | |
+|---|---|
+| **Bulundu** | İP-17 bağımsız denetimi (14 Ağu 2026) |
+| **Yer** | `backend/services/srs_service.py::study_queue::_order_id` — yeni kart kovasının sırası (`SrsCard.id.asc()` = ekleniş sırası, sözleşme §4.1 Q-9) |
+| **Durum** | Sıra tersine çevrildiğinde **hiçbir test kırılmıyor**. Sözleşme "yeni kartlar `card_id` artan = ekleniş sırası" diyor ama bunu ölçen bir düğüm yok |
+| **Ölçüm (denetçinin)** | `_order_id` tersine çevrildi → **76 test seçildi, 0 kırıldı**. Ölçüm kazası olmadığı **karşılaştırma provasıyla** gösterildi: birincil sıra bozulduğunda (`due_at.asc()` → `.desc()`, denetçinin D-5 provası) **aynı 76 testten 1'i** kırıldı. Yani koşum düzeneği çalışıyor, boşluk gerçek |
+| **Etki** | Bugün davranış doğru, yalnız korumasız: yeni kart sırasını bozan bir değişiklik sessizce geçer. Kullanıcıya etkisi "yeni kartlar rastgele/ters sırada geliyor" olur — deste tasarımı sıraya bağlıysa (alfabe, konu sırası, kolaydan zora) öğrenme akışı bozulur ama hiçbir test bunu söylemez |
+| **Sınıf** | İP-17'nin `IP17-5` provasında bulunan **Q-9 tie-breaker boşluğuyla aynı sınıf** (bkz. `ip16-flashcard-sozlesme.md` §4.4): sözleşme sıralama kuralını yazmış, test kurulumu o kuralın devreye girdiği durumu hiç üretmemiş. İkisi de İP-16 kapsamından geliyor, İP-17 yalnız birini kapattı |
+| **Neden ertelendi** | Denetim "merge edilebilir" verdi ve bu bir P2; kapatmak İP-17'nin kırmızı matrisine yeni düğüm eklemek demek, o da audit'ten geçmiş matrisi merge öncesi kaydırırdı |
+| **Sonraki adım** | Q-9 düğümüne **ikinci bir yeni kart** ekle (bugün tek yeni kart var, tek kartla sıra gözlenemez) ve sunulma sırasının `card_id` artan olduğunu doğrula; ardından `_order_id`'yi tersine çeviren bir mutasyon provasıyla nöbetçiliğini kanıtla |
+
 ## TB-43 · `apply_refunded_amount`'ın `LEAST(…, total)` tavanı ve `refunded_at` COALESCE koruması NÖBETSİZ
 
 | | |
@@ -147,12 +196,12 @@ silinmez).
 | | |
 |---|---|
 | **Bulundu** | İP-18 bağımsız audit'i (14 Ağu 2026) |
-| **Yer** | `backend/scripts/mutation_drill_ip18.py::_kirilanlar` (ve aynı deseni kuran `mutation_drill_ip16.py`) |
+| **Yer** | `backend/scripts/mutation_drill.py::_kirilanlar` — **ORTAK sürücü**. Kayıt açıldığında kusur `mutation_drill_ip18.py` ve `_ip16.py`'deki yerel gölgelerdeydi; İP-17 turunda TB-29 ortak sürücüde kapatılınca iki gölge de silindi (İP-17 merge adaptasyonu) ve kusur tek yerde toplandı. Yani artık düzeltilecek TEK nokta var |
 | **Durum** | Gölgeleme yalnız içinde `::` geçen `ERROR` satırlarını sayar. Pytest, KOLEKSİYON düzeyinde patlayan bir dosyayı `ERROR tests/x.py - NameError: …` biçiminde, yani **düğüm ayracı olmadan** raporlar; o satır sayılmaz ve mutasyon "YAKALANMADI" görünebilir |
 | **Neden `::` şartı kaldırılamaz** | Yakalanan log çıktısı da `ERROR ` ile başlar (`ERROR    adana.escrow:escrow.py:518 …`). Onu da saymak, ERROR log yazan HER mutasyonu "yakalandı" gösterirdi — ölçüm aracını **yalancı yeşil üreticisine** çevirirdi |
 | **Yön** | Güvenli: eksik sayar, fazla saymaz. Yani bugünkü "11/11 yakalandı" sonucu bu kusurdan **şişmiş değildir** |
-| **Bugünkü durum** | Kusur duruyor; İP-18 turunda yalnız docstring'in fazla geniş iddiası daraltıldı (artık kapsamını ve nedenini söylüyor) |
-| **Sonraki adım** | İki deseni ayırt eden eşleştirici (`^ERROR (\S+\.py)(::\S+)? ` + logger satırlarının çoklu boşluk/`ad:dosya:satır` şeklini dışlama) ve bunun **kendi pozitif kontrolü**. [[TB-29]] ile birlikte, ortak `mutation_drill.py` üzerinde ele alınmalı |
+| **Bugünkü durum** | Kusur duruyor. İP-18 turunda docstring'in fazla geniş iddiası daraltıldı; İP-17 merge adaptasyonunda kusur tek noktaya indirildi (gölgeler silindi). Davranış değişmedi |
+| **Sonraki adım** | İki deseni ayırt eden eşleştirici (`^ERROR (\S+\.py)(::\S+)? ` + logger satırlarının çoklu boşluk/`ad:dosya:satır` şeklini dışlama) ve bunun **kendi pozitif kontrolü**. Ortak `mutation_drill.py` üzerinde yapılır — TB-29 kapandığı için ikinci bir yerde daha düzeltmek GEREKMEZ |
 
 ## TB-41 · İP-18 AST nöbetçisi kandırılabilir — `values` sözlüğü değişkene alınırsa görmüyor
 
@@ -378,19 +427,6 @@ products` ile `UPDATE orders` sırası).
 | **Neden ertelendi** | Doğru çözümün iki parçası var: (1) damganın repoda karşılığı olduğunu doğrulamak (ucuz: `alembic_version.version_num` ∈ `versions/*.py` revision kimlikleri; bilinmeyen damgada fail-fast + beklenen revizyonu söyle — guard bunun YANINA, sonrasına değil); (2) şemanın damgayla uyuştuğunu CI'da **kapı** yapmak (`alembic check`). İkincisi bugün çapraz-dal sapması yüzünden kırmızı verir, yani dal durumu temizlenmeden kapıya çevrilemez. İP-16'nın kapsamı aralıklı tekrardır |
 | **Sonraki adım** | (1) `ensure_schema`'ya damga-repo doğrulaması + bilinmeyen damgada fail-fast; `--purge` guard'ını yalnız **bilinen** squash-öncesi revizyon listesine daralt; (2) taze DB'de `alembic upgrade head && alembic check` CI kapısı; (3) `down_revision` değiştiren her commit'in "eski zincirle kurulmuş DB'ler yeniden kurulmalı" notunu taşıması sözleşme kuralı olsun; (4) `AUTO_CREATE_DB=false` maddesini lansman kontrol listesine ekle |
 | **AYRI İŞ PAKETİ — "doğrula modu" (9 Ağu 2026'da önerildi, BİLİNÇLİ OLARAK ERTELENDİ)** | Yukarıdaki (1)-(4) hâlâ geçerli; bu satır onları **sıraya** koyar ve bir madde ekler. **(A) `ensure_schema` "kur" modundan "doğrula" moduna geçsin:** açılışta `alembic current` ile `heads` karşılaştırılsın, eşit değilse uygulama **açılmasın** ve `alembic upgrade head` koşulması söylensin. Maliyeti tek sorgu. Kritik tasarım kararı: bu doğrulama **`AUTO_CREATE_DB`'den BAĞIMSIZ, her zaman** koşmalı — bugün bayrak kapalıyken hiçbir kontrol yok, yani şema kayması *sessizce* değil *hiç* fark edilmiyor. **(B) `--purge` guard'ını bilinen revizyon listesine daralt** (= mevcut (1)'in ikinci yarısı). **(C) `AUTO_CREATE_DB=false` dev varsayılanı olsun**, temiz kurulum `docker-compose`'da backend'den ÖNCE koşan ayrı bir `migrate` adımına bağlansın. **SIRA ÖNEMLİ: (A) → (C).** (C)'yi (A)'sız uygulamak durumu BUGÜNKÜNDEN KÖTÜLEŞTİRİR: bu depoda sekiz worktree ve farklı migration head'li dallar var; otomatik hizalama kalkar ama yerine hiçbir uyarı gelmez, dal değiştirip `upgrade head` koşmayı unutan geliştiricinin uygulaması sessizce eski şemayla açılır. (A) tek başına da anlamlı bir ilk adımdır; (C) onsuz yapılmamalıdır. Bu paket İP-16 veya operasyon turunun kapsamı değildi, ayrı bir tur ister |
-
-## TB-29 · Mutasyon sürücüsü `ERROR` ile düşen (hiç koşamayan) testleri "kırılmadı" sayıyor — TÜM paketleri etkiler
-
-| | |
-|---|---|
-| **Bulundu** | İP-16 denetim düzeltme turu, 9 Ağu 2026 — kendi mutasyon provamda ölçüldü |
-| **Yer** | `backend/scripts/mutation_drill.py::_kirilanlar` (ortak sürücü; `mutation_drill_f30`, `_ip1a`, `_ip2a`, `_ip3`, `_ip4`, `_ip5`, `_ip16` hepsi bunu kullanır) |
-| **Durum** | Fonksiyon yalnız `FAILED ` ile başlayan pytest satırlarını sayar. Bir mutasyon testleri **koşamayacak** kadar derinden bozarsa (conftest'te DB kurulamaz, koleksiyon patlar, import kırılır) pytest `ERROR tests/...::düğüm` yazar — tek bir `FAILED` satırı olmaz. Sürücü o mutasyonu **"YAKALANMADI"** raporlar |
-| **Ölçüm** | İP-16 mutasyonu `IP16-21` (migration zincirini ip12'den kopar): entegrasyon conftest'i "Multiple head revisions" ile veritabanını kuramadı, beş düğüm de `ERROR` düştü, sürücü "YAKALANMADI — bu davranış için önce anlamlı bir test yazılmalı" dedi. Oysa suite hiç koşamamıştı; bu `FAILED`'dan daha sert bir kırılmadır |
-| **Etki** | İki yönlü ve ikisi de sinsi: (a) **yalancı boşluk** — sağlam bir nöbetçi "yok" görünür, geliştirici var olan testin üstüne ikinci bir test yazar ya da düzeltmeyi kanıtsız sayar; (b) **kritik olan bu** — `_kirilanlar` boş dönünce sürücü sonucu "0 test kırıldı" diye özetler; bir kapanış raporunda bu satır "mutasyon yakalanmadı, test zayıf" diye okunur ve **yanlış** teknik borç doğurur. Aynı sürücü "seçilen test = 0 ise BAŞARISIZLIK" nöbetçisiyle tam bu ayrımı girdi tarafında zaten savunuyor; çıktı tarafında savunmuyordu |
-| **Şu anki durum** | İP-16 sürücüsünde **yerel olarak** düzeltildi: `mutation_drill_ip16._kirilanlar` üst fonksiyonu bilinçli gölgeler ve `ERROR …::düğüm` satırlarını "KURULUM HATASI — test hiç koşmadı" etiketiyle ekler. Diğer altı paketin sürücüsü hâlâ eski davranışta |
-| **Neden ertelendi** | Düzeltmenin doğru yeri ortak `mutation_drill.py`'dir, ama orası yedi paketin kapanış raporlarının dayandığı ölçüm aracıdır: değiştirmek, geçmiş turların "yakalanmadı" kayıtlarının bir kısmını geçersiz kılabilir. Bu, İP-16'nın kapsamı değil; ayrı ve bilinçli bir tur ister |
-| **Sonraki adım** | (1) `_kirilanlar`'ı ortak sürücüde `ERROR` satırlarını da sayacak şekilde düzelt, İP-16'daki yerel gölgelemeyi sil; (2) geçmiş kapanış raporlarındaki **"YAKALANMADI"** kayıtlarını tara — hangileri gerçekten zayıf test, hangileri bu kusurun kurbanı; (3) sürücünün özetine "kırılan" ile "hiç koşmayan"ı ayrı satır olarak yazdır |
 
 ## TB-26 · Ürün kapak görselleri `library-photos/` önekini kütüphane fotoğraflarıyla paylaşıyor
 
