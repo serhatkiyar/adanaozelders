@@ -39,8 +39,14 @@ import httpx
 import pytest
 
 #: Kaldırılan router'ın TAMAMI (10 uç, `api/routers/flashcards.py`).
-#: Liste eksik kalırsa nöbet delinir; sayı router'daki uç sayısıyla birlikte
-#: `test_R2_*` içinde ayrıca çapalanır.
+#:
+#: DİKKAT — bu listenin doğruluğunu ölçen bir nöbetçi YOKTUR. Liste eksik
+#: kalırsa R1 sessizce daha az uç dener ve yine yeşil döner. `test_R2_*`
+#: sayıyı çapalamaz; o düğüm OpenAPI şemasında `flashcard` yolu ARAMAZ
+#: olduğunu ölçer — yani eksik girdiyi değil, geri gelen yolu yakalar.
+#: (Bağımsız denetim bulgusu F7, 14 Ağu 2026: yorumun ilk hâli var olmayan
+#: bir korumayı tarif ediyordu ve dosyayı okuyanın güvenini yanlış
+#: kalibre ediyordu.)
 KALDIRILAN_UCLAR = [
     ("GET", "/api/v1/flashcards/decks"),
     ("POST", "/api/v1/flashcards/decks"),

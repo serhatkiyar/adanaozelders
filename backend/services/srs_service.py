@@ -12,7 +12,7 @@ testler `monkeypatch.setattr(srs_service, "_now", ...)` ile sabitler
 Güvenlik sözleşmeleri:
 
 * Sahiplik ``(user_id, role_id)`` çifti; yabancı kaynak → **404** (İP-3
-  deseni, varlık sızdırmaz — bkz. flashcard_service._owned_deck_or_404).
+  deseni, varlık sızdırmaz: 403 "vardır ama senin değil" der, 404 demez).
 * K-6: ilerleme verisi YALNIZ sahibinindir. Buradaki her progress/log
   sorgusu ``user_id = :current ∧ role_id = :current_role`` filtresi taşır;
   başka kullanıcının ilerlemesini okuyan tek bir sorgu yoktur.

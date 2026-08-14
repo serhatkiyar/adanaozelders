@@ -753,7 +753,6 @@ describe("N · ortak sayfalarda operatör navigasyonu", () => {
         },
       });
       sunucu("/bookings", { data: [] });
-      sunucu("/flashcards", { data: [] });
       sunucu("/habits", { data: [] });
 
       await sar(modul, yol);

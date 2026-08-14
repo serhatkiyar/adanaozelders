@@ -20,9 +20,10 @@
 // R6 ölü linkin tek otomatik nöbetçisidir: route silinip hub kartı bırakılırsa
 // kullanıcı tıklayınca boş ekrana düşer ve başka hiçbir test bunu görmez.
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
+import { HelmetProvider } from "react-helmet-async";
 import { MemoryRouter } from "react-router-dom";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 
 import Learn from "@/pages/Learn";
 import { PATHS, ROUTES } from "@/lib/routes";
@@ -109,5 +110,72 @@ describe("R6 — Öğren hub'ında Kelime Kartları kartı yok (gerçek DOM)", (
       a.getAttribute("href")
     );
     expect(hedefler).toContain("/ogren/tekrar");
+  });
+});
+
+// ── R7: ROTA TABLOSU — App.tsx'in kendisi ─────────────────────────────────
+//
+// Bağımsız denetim bulgusu F8 (14 Ağu 2026): "eski URL'ler 404 döner"
+// iddiasının OTOMATIK nöbetçisi yoktu. R5 yalnız `routes.ts` sözlüğünü,
+// R6 yalnız Öğren hub'ının DOM'unu tarar; `App.tsx`'in `<Routes>` tablosu
+// hiçbir düğümde ölçülmüyordu. Geri sızmanın en olası kılığı tam da orada:
+// biri `PATHS`'a hiç dokunmadan `<Route path="/ogren/kelime-kartlari">`
+// yazarsa mevcut düğümlerin hiçbiri kırılmaz — sayfa geri gelir.
+//
+// Tek kanıt elle tarayıcı turuydu (sözleşme §7.2), yani tekrarlanabilir
+// değildi. Bu düğüm onu otomatikleştirir: gerçek `App` bileşeni, gerçek
+// react-router, gerçek DOM.
+//
+// SINIR (kök CLAUDE.md §F): jsdom gerçek tarayıcının yerine GEÇMEZ — lazy
+// chunk yüklenmesi, gerçek gezinme ve soğuk başlangıç burada ölçülmez.
+// §7.2'nin elle turu bu düğümle birlikte okunmalıdır, onun yerine değil.
+describe("R7 — App.tsx rota tablosunda eski yol yok (gerçek DOM)", () => {
+  const ESKI_YOLLAR = [
+    "/ogren/kelime-kartlari",
+    "/ogren/kelime-kartlari/1",
+    "/panel/ogren/kelime-kartlari",
+    "/panel/ogren/kelime-kartlari/1",
+  ];
+
+  // `App` kompozisyon kökünün TAMAMI değildir: `main.tsx` onu
+  // `<HelmetProvider>` ile sarar (react-helmet-async). Sarmadan render
+  // edilirse `Seo` bileşeni kullanan her sayfa — NotFound dahil — "Cannot
+  // read properties of undefined (reading 'add')" ile patlar ve
+  // `RouteErrorBoundary` bunu "Bu sayfa yüklenemedi" ekranına çevirir.
+  // Yani sarmayı unutmak, 404 iddiasını sessizce ölçülemez hâle getirirdi:
+  // test kırmızı düşerdi ama sebebi rota tablosu olmazdı.
+  const yoluBas = async (yol: string) => {
+    window.history.pushState({}, "", yol);
+    const { default: App } = await import("@/App");
+    return render(
+      <HelmetProvider>
+        <App />
+      </HelmetProvider>
+    );
+  };
+
+  afterEach(() => {
+    cleanup();
+    window.history.pushState({}, "", "/");
+  });
+
+  it.each(ESKI_YOLLAR)("%s → 404 sayfası", async (yol) => {
+    await yoluBas(yol);
+    expect(
+      await screen.findByRole("heading", { name: /Aradığınız sayfa bulunamadı/i })
+    ).toBeTruthy();
+  });
+
+  // DOLULUK NÖBETÇİSİ — yalancı yeşile karşı.
+  // Yukarıdaki dört iddia, router tamamen bozulsa (her yol 404'e düşse) da
+  // geçerdi. Yerine geçen yüzeyin AYRI davrandığını ölçmek şart.
+  it("NÖBETÇİ: yaşayan `/ogren/tekrar` 404'e düşmüyor", async () => {
+    await yoluBas("/ogren/tekrar");
+    // Anonim oturumda korumalı rota `/giris`'e yönlenir; ölçülen şey
+    // "404 DEĞİL" — yani yol hâlâ router tarafından tanınıyor.
+    const dortyuzdort = screen.queryByRole("heading", {
+      name: /Aradığınız sayfa bulunamadı/i,
+    });
+    expect(dortyuzdort).toBeNull();
   });
 });

@@ -43,12 +43,12 @@ Kaldırma öncesi geliştirme veritabanı (`ceyhandb`) ölçüldü:
 
 | | |
 |---|---|
-| `flashcard_decks` | 2 satır (ikisi de canlı) |
-| `flashcards` | 12 satır (hepsi canlı) |
+| `flashcard_decks` | 2 satır (ikisi de canlı) — ama **kartların tamamı ilk destededir**; ikinci deste (`tyt biyoloji`) boştur |
+| `flashcards` | 12 satır (hepsi canlı, hepsi deste 1'de) |
 | Sahip | **tek kişi**: `user_id=6, role_id=3` → `ogrenci@gmail.com`, geliştiricinin kendi test hesabı |
 | İçerik | `apple/elma`, `pepperpepper/biberbiber`, `cucumbercucumber/salatalıksalatalık` — elle üretilmiş duman verisi |
 | Seed mi | **hayır** — `core/seed.py` ve `backend/scripts/` altında tek referans yok |
-| Olgunluk | 12 kartın hepsinde `last_reviewed_at` dolu ama `repetitions=0`, `interval_minutes=0`; damgalar 4 Haziran 04:17'de **6 saniye** içinde peş peşe — tek oturumda butonlara basılmış |
+| Olgunluk | 12 kartın hepsinde `last_reviewed_at` dolu ama `repetitions=0`, `interval_minutes=0`. Damgaların **11'i** 4 Haziran 04:17:33–04:17:36 arasında (≈3,3 saniye) peş peşe — tek oturumda butonlara basılmış. **Kalan 1 kart** (`id=8`, `cucumbercucumber`) 30 Temmuz 13:49'da bir kez daha tekrar edilmiş, yani aktivite tek oturum değil iki ayrı gündür (bağımsız denetim bulgusu **F6**; ilk hâl "hepsi 6 saniye içinde, tek oturum" diyordu). Sonuç değişmez: iki gün de tek kullanıcının duman denemesidir |
 
 Gerçek kullanıcı verisi yoktu. **Veri taşıma yazılmadı**; taşıma kodu, iki
 destelik duman verisi için kalıcı bakım yükü olurdu.
@@ -127,8 +127,9 @@ Bu disiplin bir işe yaradı: matrisin kendi içinde bir **yalancı yeşil** bul
 
 ### 3.2 Düğümler
 
-Bugünkü matris **25 düğümdür** (18 backend + 7 frontend). Kırmızı fazda 21'i
-kırmızıydı; 3'ü tasarım gereği yeşil nöbetçidir, 1'i (R3b) Faz 3'te eklendi.
+Bugünkü matris **30 düğümdür** (18 backend + 12 frontend). Kırmızı fazda 21'i
+kırmızıydı; 4'ü tasarım gereği yeşil nöbetçidir, 1'i (R3b) Faz 3'te, 5'i (R7)
+bağımsız denetim sonrası eklendi.
 
 | Kod | Ne ölçer | Sınıf | Kırmızı fazda |
 |---|---|---|---|
@@ -139,9 +140,14 @@ kırmızıydı; 3'ü tasarım gereği yeşil nöbetçidir, 1'i (R3b) Faz 3'te ek
 | **R3b** (1) | `downgrade -1` şemayı geri kurar, tablolar **0 satır**, `upgrade` yeniden düşürür | gerçek PostgreSQL | — (Faz 3) |
 | **R5** (2+1) | `PATHS`/`ROUTES` anahtar YOK + hiçbir değer `kelime-kartlari` içermez | saf yapı | 🔴 |
 | **R6** (2+2) | Öğren hub'ında "Kelime Kartları" DOM'da yok + `kelime-kartlari` linki yok | gerçek DOM (jsdom+RTL) | 🔴 |
+| **R7** (4+1) | `App.tsx` rota tablosu: dört eski URL gerçek DOM'da **404 sayfası** üretir | gerçek DOM (gerçek `App` + gerçek router) | — (denetim sonrası) |
 
 **R6 ölü linkin tek otomatik nöbetçisidir**: route silinip hub kartı bırakılsa
 kullanıcı tıklayınca boş ekrana düşer ve başka hiçbir test bunu görmez.
+
+**R7 rota tablosunun tek otomatik nöbetçisidir** ve bağımsız denetim bulgusu
+F8 üzerine eklendi: ondan önce `App.tsx`'e elle yazılan bir `<Route>` matrisin
+25 düğümünün hiçbirini kırmıyordu (§8.7, N-4).
 
 ### 3.3 Yalancı yeşil nöbetçileri (kasıtlı olarak yeşil düğümler)
 
@@ -156,6 +162,7 @@ yanına **doluluk kanıtı** kondu:
 | R5: `PATHS.srs` ayakta | `routes.ts` boşalsa/import kırılsa düğümler kendiliğinden geçerdi |
 | R6: hub gerçekten render oluyor (h1 "Öğren" + "Aralıklı Tekrar" başlığı) | Sayfa hiç render olmasa ya da patlasa "Kelime Kartları yok" iddiası geçerdi |
 | R6: `/ogren/tekrar` linki VAR | Kartın yerine geçenin gerçekten çalıştığını gösterir |
+| R7: `/ogren/tekrar` 404'e DÜŞMÜYOR | Router tamamen bozulsa (her yol 404'e düşse) dört R7 iddiası da geçerdi — bu nöbetçi onu imkânsız kılar |
 
 ### 3.4 Matrisin ömrü
 
@@ -200,6 +207,29 @@ yetmezdi: ileride biri "nasılsa downgrade var" diye veri kaybını göze alabil
 R3b ayrıca `downgrade`'in **ölü kod olmadığını** kanıtlar. Kaldırma
 revizyonlarında `downgrade` tipik olarak hiç koşulmaz ve ilk gerçek geri alma
 denemesinde patlar (yanlış index adı, ters FK sırası, eksik kolon).
+
+#### R3b'nin ilk hâli BOŞ KÜMEDE ölçüyordu (denetim bulgusu F1)
+
+İlk hâlde zincir hiç veri yazılmamış bir veritabanında koşuyordu: `upgrade` →
+`downgrade` → "0 satır". O assertion **ayırt edici değildi** — "veri geri
+gelmedi" ile "veri hiç yoktu" hâllerini birbirinden ayırmıyordu ve kök
+CLAUDE.md §E'nin sorusuna ("eski bozuk kod da aynı testi geçer miydi?")
+**evet** cevabı veriyordu.
+
+Düğüm düzeltildi: artık geri kurulan şemaya gerçek satır yazılıyor
+(2 deste + 12 kart — kaldırma öncesi `ceyhandb`'nin şekli), `upgrade` onları
+düşürüyor, ikinci `downgrade` sonrası 0 assert ediliyor. Ölçüm artık dolu
+kümede yapılıyor.
+
+**Nöbetçiliği izole edilemedi — dürüst kayıt.** İki mutasyon denendi ve ikisi de
+düğümü izole etmedi: (a) `upgrade` veriyi arşiv tablosuna kopyalayıp
+`downgrade` geri yükleyecek şekilde bozuldu → **`alembic check` yakaladı**
+(R3 de kırmızıya döndü, çünkü arşiv tabloları şemada görünüyor); (b) arşiv
+şema dışına, dosyaya alınmak istendi → sunucu taraflı `COPY` izin alamadı ve
+migration patladı. Çıkan sonuç iki yönlüdür: düzeltme doğrudur ve gereklidir,
+**ama** F1'in endişelendiği "veri upgrade'i sağ geçer" sınıfının zaten
+**ikinci bir nöbetçisi** vardır (`alembic check`), çünkü veriyi taşıyacak her
+şema nesnesi autogenerate diff'inde görünür.
 
 ---
 
@@ -316,23 +346,48 @@ olarak dokunmuş durumda**. İkisi de sessiz bozulma riski taşır:
 | **`docs/ip16-flashcard-sozlesme.md` → `…-aralikli-tekrar-sozlesme.md`** yeniden adlandırması | `git diff --stat main...ip17-vade-granulerligi` → o dal **aynı dosyada 326 satır** değişiklik taşıyor (§4.4/§10.2 vade granülerliği bölümleri) | Hangi dal önce merge edilirse edilsin, **yeniden adlandırma + İP-17'nin içerik değişikliği birlikte korunmalı**. Git rename tespiti bunu genelde çözer; çözemezse doğru sonuç: dosya YENİ adıyla durur ve İP-17'nin bölümlerini İÇERİR. İçerikten biri düşerse İP-17 sözleşmesiz kalır |
 | **`frontend/src/test-setup.ts` `matchMedia` stub'ı** | `ip14-operator-panel` dalında aynı tuzak bağımsız bulunmuş ve orada da stub eklenmiş | **İkisini birden tutma** — tek stub yeterli. Mükerrer `Object.defineProperty` birincisini sessizce ezer ve hangi davranışın geçerli olduğu okunamaz hâle gelir (§5.3) |
 
-`docs/teknik-borc.md`'ye üç dal birden dokunuyor. **Bu paketin kayıtları artık
-numaralı DEĞİLDİR** — defterin dört maddelik yeni kuralı gereği dal içinde
-geçici etiket taşırlar (`TB-47`, `TB-46`) ve numara **merge turunda** tahsis
-edilir. Bu yüzden bu dosyanın `teknik-borc.md` ile numara çakışması artık
-yapısal olarak mümkün değildir; merge turunda yapılacak iş §10.2'de listelidir.
+`docs/teknik-borc.md`'ye üç dal birden dokunuyor. Defterin dört maddelik yeni
+kuralı gereği bu paketin kayıtları dal içinde **geçici etiket** taşıdı ve numara
+**merge turunda** tahsis edildi. **Tahsis YAPILDI** (`2940a61`, main `63440f6`
+birleştirilirken): `TB-47` ve `TB-46` artık geçici etiket değil, defterdeki
+nihai başlıklardır. Bu yüzden numara çakışması yapısal olarak mümkün değildir;
+merge turunda yapılan iş §10.2'de listelidir.
 
 ### 6.2 "flashcard" tam kelime araması
 
-Canlı üretim kodunda **sıfır**. Kalan hitler ve nedenleri:
+> ⚠️ **Bu bölümün ilk hâli eksikti** (bağımsız denetim bulgusu **F2**,
+> 14 Ağu 2026). Beş satırlık bir liste veriyor ve "canlı üretim kodunda
+> **sıfır**" diyordu; denetçinin tam taraması listede olmayan dokuz yer buldu
+> ve bunlardan biri (`services/srs_service.py` docstring'i, silinmiş
+> `flashcard_service._owned_deck_or_404`'e atıf) gerçekten canlı üretim
+> kodundaydı. Aşağıdaki tablo **yeniden ölçülmüş** hâldir; denetçinin listesi
+> kopyalanmadı, ölçüm tekrarlandı (14 Ağu 2026, `node_modules` hariç).
 
-| Yer | Neden |
-|---|---|
-| `migrations/versions/532b1fa8771d_baseline_schema.py` | Baseline'a dokunulmaz (§4.1) |
-| `migrations/versions/sm2_flashcard_kaldirma.py` | Kaldırma revizyonunun kendisi |
-| `tests/test_flashcards_kaldirildi.py`, `tests/integration/test_flashcards_migration_pg.py`, `frontend/src/flashcardsKaldirildi.test.tsx` | Nöbetçi testler — geri sızmayı yakalamak için adı taşımak zorundalar |
-| `docs/teknik-borc.md` (dal adı), `docs/DENETIM-RAPORU-2026-07-31.md` | Tarihsel kayıt |
-| `backend/CLAUDE.md` `/srs/*` satırı | "Yerini aldığı eski paket kaldırıldı" notu |
+Denetim sonrası iki hit **kapatıldı**: `services/srs_service.py`'deki ölü atıf
+düzeltildi ve `operatorPanel.acceptance.test.tsx`'teki `sunucu("/flashcards",
+{ data: [] })` stub'ı kaldırıldı. Stub'ın kaldırılması ayrıca N-3'ün
+**davranışsal** kanıtıdır: kaldırılmış uca stub olmadan o dosyanın 24 düğümü de
+geçiyor, yani istekte bulunan hiçbir kod kalmamış.
+
+Bugünkü tablo — **15 dosya**, hiçbiri çağrı değildir:
+
+| Yer | Hit | Neden |
+|---|---|---|
+| `migrations/versions/532b1fa8771d_baseline_schema.py` | 11 | Baseline'a dokunulmaz (§4.1) |
+| `migrations/versions/sm2_flashcard_kaldirma.py` | 18 | Kaldırma revizyonunun kendisi |
+| `migrations/versions/ip16_araliklitekrar.py` | 1 | İP-16'nın "bu tablolara dokunulmaz" kapsam notu |
+| `models/srs.py` | 2 | "Eski sistem kaldırıldı, tek sistem budur" yön notu |
+| `backend/CLAUDE.md` | 1 | `/srs/*` satırının "yerini aldığı paket" notu |
+| `tests/test_flashcards_kaldirildi.py` · `tests/integration/test_flashcards_migration_pg.py` · `frontend/src/flashcardsKaldirildi.test.tsx` | 34 · 9 · 8 | **Nöbetçi testler** — geri sızmayı yakalamak için adı taşımak zorundalar |
+| `tests/integration/test_ip16_migration_pg.py` | 2 | Bayat fixture'ın düzeltme yorumu (§5.2) |
+| `frontend/src/lib/routes.ts` | 1 | Nöbetçi teste yönlendiren yorum |
+| `docs/sm2-kaldirma-sozlesme.md` | 41 | Bu sözleşmenin kendisi |
+| `docs/teknik-borc.md` · `docs/DENETIM-RAPORU-2026-07-31.md` · `docs/ip16-aralikli-tekrar-sozlesme.md` · `docs/ip14-operator-panel-sozlesme.md` | 11 · 2 · 7 · 1 | Tarihsel kayıt |
+
+**Sayının kendisi bir nöbetçi değildir.** Bu tablo elle tutulur ve bayatlar;
+bayatladığında hiçbir test kırılmaz. Tek işlevi, "flashcard" arayan birine
+kalan hitlerin **neden** kaldığını söylemektir. Yokluk iddiasının gerçek
+kanıtları N-1 (OpenAPI) ve N-2'dir (gerçek HTTP) — §8.7.
 
 ---
 
@@ -350,12 +405,12 @@ testleri `.env`'den iyzico alıp gerçek sandbox'a çıkıyor).
 |---|---|---|---|
 | `pytest tests/integration` | 1323 · 16 skip | **1325 passed · 16 skip** | **+2** |
 | `pytest` (integration/verify hariç) | 946 | **962 passed** | **+16** |
-| `pytest tests/verify` (CI deseni) | — | **132 passed** | — |
-| `pytest tests/acceptance` | — | **197 passed** | — |
+| `pytest tests/verify` (CI deseni) | 132 passed · 18 dosya | **132 passed · 18 dosya** | **0** |
+| `pytest tests/acceptance` | 197 passed · 12 dosya | **197 passed · 12 dosya** | **0** |
 | `pytest -k "ip16 or ip17"` | — | **76 passed** | — |
 | `pytest -k ip18` | — | **22 passed** | — |
 | `pytest -k ip14` | — | **7 passed** | — |
-| frontend `vitest run` | 890 · 85 dosya | **897 passed · 86 dosya** | **+7 · +1** |
+| frontend `vitest run` | 890 passed · 0 skip · 85 dosya | **902 passed · 0 skip · 86 dosya** | **+12 · +1 dosya** |
 | `eslint src` | 0 hata · 34 uyarı | **0 hata · 32 uyarı** | **−2 uyarı** |
 | `ruff check backend/` | temiz | temiz | — |
 | frontend `tsc -b` | temiz | temiz | — |
@@ -605,12 +660,24 @@ tekrarlanmamıştır: iddiayı ortaya koyan tarafın kendi ölçümü kanıt say
 |---|---|---|
 | **N-1** | Kaldırılan 10 ucun **hiçbiri kayıtlı değildir**: uygulamanın gerçek OpenAPI şemasında `/api/v1/flashcards` öneki taşıyan tek yol yoktur ve `flashcards` etiketi yoktur | **`app.routes` üzerinden ölçülemez** — o yöndeki yokluk iddiası kaldırma yapılmasa da geçer (§5.1, [[TB-46]]). `app.openapi()["paths"]` kullanılmalıdır |
 | **N-2** | Kaldırılan uçlara kimliksiz istek **404** döner, 401/403 değil — yani yol artık hiç çözülmüyordur | Gerçek HTTP gerekir; 401 dönmesi ucun ayakta olduğu anlamına gelirdi (kırmızı fazın gözlemi buydu) |
-| **N-3** | **Hiçbir çağıran kalmamıştır**: backend ve frontend kaynak ağacında `flashcard` tam kelimesi yalnız §6.2'de sayılan yerlerde geçer ve bunların hiçbiri çağrı değildir (baseline migration · kaldırma revizyonu · nöbetçi testler · tarihsel doküman · `backend/CLAUDE.md` notu) | Bu iddianın **otomatik nöbetçisi yoktur** ve kaynak taramasına dayanır; kök CLAUDE.md §C uyarınca **düşük güçlü** sınıftadır |
+| **N-3** | **Hiçbir çağıran kalmamıştır**: backend ve frontend kaynak ağacında `flashcard` tam kelimesinin geçtiği hiçbir yer bir çağrı değildir (güncel enumerasyon §6.2) | Bu iddianın **otomatik nöbetçisi yoktur** ve kaynak taramasına dayanır; kök CLAUDE.md §C uyarınca **düşük güçlü** sınıftadır. **Enumerasyonun kendisi denetimde çürüdü** (F2): §6.2'nin ilk listesi eksikti ve bir hit gerçekten canlı üretim kodundaydı. İddianın ÖZÜ ayakta kaldı — çağıran yok — ama "yalnız şu listede geçer" biçimindeki her ifade bayatlamaya açıktır |
 
 N-1'in nöbetçisi R2, N-2'nin nöbetçisi R1'dir (§3.2) — yani ikisi geri sızmaya
 karşı korunur. **N-3 korunmasızdır**: yarın biri `flashcards.ts` benzeri bir
 çağrı yazsa hiçbir test kırılmaz, çünkü çağıracağı uç zaten yok olduğundan
 yalnız çalışma zamanında 404 alır. Bu, kabul edilmiş bir sınırdır.
+
+**Denetim sonrası eklenen dördüncü iddia — N-4 (nöbetli):** `App.tsx`'in rota
+tablosunda eski yol yoktur ve kaldırılan dört URL gerçek DOM'da 404 sayfası
+üretir. Bu, §1.2/§7.2'nin merkez iddiasıydı ama **hiçbir otomatik düğüm onu
+ölçmüyordu** (bağımsız denetim bulgusu **F8**): R5 yalnız `routes.ts`
+sözlüğüne, R6 yalnız hub DOM'una bakar; `PATHS`'a hiç dokunmadan `App.tsx`'e
+`<Route path="/ogren/kelime-kartlari">` yazan biri hiçbir testi kırmazdı.
+Artık **R7** düğümü bunu ölçer (`flashcardsKaldirildi.test.tsx`, gerçek `App` +
+gerçek react-router + jsdom) ve nöbetçiliği mutasyon provasıyla kanıtlandı:
+literal rota gerçek bir sayfaya bağlanınca **yalnız R7 kırıldı, diğer 11 düğüm
+yeşil kaldı** — F8'in teşhisi birebir doğrulanmış oldu. R7 gerçek tarayıcı
+turunun yerine geçmez (kök CLAUDE.md §F), §7.2 ile birlikte okunur.
 
 ---
 
@@ -634,7 +701,8 @@ yalnız çalışma zamanında 404 alır. Bu, kabul edilmiş bir sınırdır.
 ## 10. Ek: numara tahsisinin hikâyesi (ve kuralın neden değiştiği)
 
 Bu bölüm tarihsel kayıttır: aşağıdaki numaralar **artık geçerli değildir**,
-paketin kayıtları bugün `TB-47` ve `TB-46` geçici etiketlerini taşır (§10.2).
+paketin kayıtları bugün `TB-47` ve `TB-46` numaralarını taşır — bunlar
+`2940a61` merge turunda tahsis edildi ve defterde başlık olarak durur (§10.2).
 
 Eski kural gereği numara alınmadan önce tüm dallarda ölçülürdü; çıktı kayıt
 commit'ine yazılırdı. `app.routes` kaydı (bugünkü `TB-46`) alınırken yapılan
@@ -711,5 +779,80 @@ Bu paketin iki borç kaydı **numarasızdır**. Merge turunda sırayla:
 
 5. Merge commit'ine **etiket→numara eşlemesini** ve **ölçüm çıktısını** yaz.
 
-Kontrol: merge sonrası `grep -rn "TB-47\|TB-46"` **sıfır** sonuç vermeli.
+Kontrol (merge sonrası, iki adım):
 
+1. **Geçici etiket kalmamalı** — `grep -rn "TB-?"` sıfır sonuç vermeli.
+2. **Her atıf bir başlığa düşmeli** — sözleşmede ve testlerde geçen her
+   `TB-46`/`TB-47` için `docs/teknik-borc.md` içinde `## TB-46` / `## TB-47`
+   başlığı bulunmalı (`grep -c "^## TB-46" docs/teknik-borc.md` → 1).
+
+> ⚠️ Bu kontrolün ilk hâli `grep -rn "TB-47\|TB-46"`'nın **sıfır** dönmesini
+> istiyordu ve **tanım gereği hiç geçemezdi**: numaralar 2940a61'de tahsis
+> edildiğinden `TB-46`/`TB-47` artık geçici etiket değil, defterdeki **nihai
+> başlıklardır** ve bu sözleşme onlara bilerek atıf yapar; ölçüldüğünde 20 hit
+> döner. Kontrol, etiketlerin `TB-?A`/`TB-?B` olduğu dönemden kalmıştı ve
+> merge operatörünü yanlış alarma sürüklerdi (bağımsız denetim bulgusu **F4**,
+> 14 Ağu 2026).
+
+
+---
+
+## 11. Bağımsız denetim — sonuç ve kapatılan bulgular
+
+Paket `6d8abff` üzerinde, ayrı bir worktree'de (`adana-sm2-audit`) ve ayrı bir
+oturumda denetlendi; taban ölçümleri için `main = 63440f6` ikinci bir
+worktree'de (`adana-sm2-taban`) kuruldu. **Merge'i durduran bulgu çıkmadı.**
+
+Denetim, paketin en güçlü iddiasını **sıfırdan yeniden üretti**: matris
+commit'i (`0e37367`) tek kullanımlık bir kopyada tek başına koşuldu ve
+16 + 1 + 4 = **21 düğüm kırmızı** düştü. Kapı tablosunun sekiz satırı da
+bağımsız olarak tuttu. N-1 ve N-2 doğrulandı; `app.routes`'un 9 girdi döndüğü
+(TB-46'nın kendi ölçümü) birebir çıktı.
+
+Sekiz bulgunun **tamamı kapatıldı** (hiçbiri borç defterine ertelenmedi):
+
+| # | Bulgu | Ne yapıldı |
+|---|---|---|
+| **F1** | R3b'nin "downgrade veriyi getirmez" ölçümü **boş kümede**ydi | Düğüme veri yazma adımı kondu (§4.3). Nöbetçiliği **izole edilemedi** — sebebi ve iki başarısız mutasyon orada yazılı |
+| **F2** | N-3'ün enumerasyonu eksikti; bir hit canlı üretim kodundaydı | §6.2 **yeniden ölçülüp** yazıldı (15 dosya, hit sayılarıyla). İki hit kapatıldı: `srs_service.py` docstring'indeki ölü atıf düzeltildi, `operatorPanel.acceptance.test.tsx`'teki `/flashcards` stub'ı kaldırıldı (24/24 yeşil kaldı → N-3'ün **davranışsal** kanıtı) |
+| **F3** | `teknik-borc.md` TB-32 kaydı silinmiş iki dosyaya çiviliydi | Kayıt güncellendi: kalan 10 → **8**, iki satırın SM-2 kaldırmasında silindiği açıkça yazıldı |
+| **F4** | §10.2'nin kapanış kontrolü bugün **tanım gereği geçemezdi** | Kontrol iki adıma çevrildi (geçici etiket kalmamalı · her atıf bir başlığa düşmeli); §6.1 ve §10 girişindeki bayat "geçici etiket taşırlar" ifadeleri de düzeltildi |
+| **F5** | §7.1'de `verify`/`acceptance` taban sütunu `—` idi | Taban ölçüldü ve yazıldı: **132 · 18 dosya** ve **197 · 12 dosya**, delta **0** |
+| **F6** | §1.1'in veri betimlemesi ölçümle tam uyuşmuyordu | Düzeltildi: 11 kart 4 Haziran'da ≈3,3 sn içinde, **1 kart 30 Temmuz'da**; kartların tamamı deste 1'de, deste 2 boş |
+| **F7** | Test yorumu var olmayan bir korumayı tarif ediyordu | Yorum düzeltildi: listenin doğruluğunu ölçen nöbetçi **yoktur** ve `test_R2_*` sayıyı çapalamaz |
+| **F8** | "Eski URL'ler 404" iddiasının otomatik nöbetçisi yoktu | **R7 düğümü eklendi** (gerçek `App` + gerçek react-router + jsdom, 4 yol + 1 doluluk nöbetçisi). Mutasyon provası: `App.tsx`'e literal rota yazılınca **yalnız R7 kırıldı, diğer 11 düğüm yeşil kaldı** — F8'in teşhisi doğrulandı |
+
+Ayrıca **kapsam dışı bir ürün kusuru** düzeltildi: `legalContent.ts`'teki KVKK
+aydınlatma metni toplanan veri kategorisi olarak hâlâ "kelime kartları"
+sayıyordu. İbare kaldırılmadı — kategori gerçekten toplanıyor, yalnız adı
+değişti — "aralıklı tekrar desteleri ve tekrar geçmişi" olarak güncellendi.
+Metinlerin avukat onayı ayrıca beklemektedir.
+
+### 11.1 Denetim sonrası kapı ölçümü
+
+Bulgular kapatıldıktan sonra tüm kapılar yeniden koşuldu (tek kullanımlık
+`adana_sm2_f1_test`, Redis db12, `PAYMENT_PROVIDER=fake`):
+
+| Kapı | Denetlenen hâl (`6d8abff`) | Bugün | Delta |
+|---|---|---|---|
+| `pytest tests/integration` | 1325 · 16 skip | **1325 passed · 16 skip** | 0 |
+| `pytest` (integration/verify hariç) | 962 | **962 passed** | 0 |
+| frontend `vitest run` | 897 · 86 dosya | **902 passed · 0 skip · 86 dosya** | **+5** (R7) |
+| `eslint src` | 0 hata · 32 uyarı | **0 hata · 32 uyarı** | 0 |
+| `tsc -b` · `ruff check backend/` | temiz | **temiz** | — |
+
+Tek artış R7'nin beş düğümüdür; hiçbir mevcut düğüm kırılmadı.
+
+### 11.2 Denetçinin ölçemedikleri (açık kalan)
+
+Denetim raporunun §4'ü on bir maddede ölçülmeyenleri sayıyor. En ağırı ve bu
+paketin **kabul ettiği** boşluk: **gerçek tarayıcı turu tekrarlanmadı.** R7
+jsdom'dadır ve kök CLAUDE.md §F uyarınca gerçek tarayıcının yerine geçmez —
+lazy chunk yüklenmesi, print CSS, gerçek gezinme ve soğuk başlangıç ölçülmedi.
+§7.2'nin elle turu bu yüzden hâlâ geçerlidir ve R7 onun yerine değil **yanına**
+konmuştur.
+
+Diğer açık kalanlar: `ceyhandb` denetçi tarafından hiç açılmadı (kural gereği),
+CLIENT/TUTOR oturumlu hub turu yapılmadı (§9'un zaten kabul ettiği boşluk),
+yedi mutasyon provası (D1–D7) yeniden koşulmadı ve B1'in benzersiz değeri
+(§8.2/D1) hâlâ ölçülmemiştir.

@@ -169,7 +169,18 @@ async def test_R3b_DOWNGRADE_SEMAYI_GERI_KURAR_VERIYI_GETIRMEZ(taze_db):
     kaybını göze alabilir.
 
     Ölçüm zinciri: upgrade head (tablo yok) → downgrade -1 (tablo VAR, 0 satır)
-    → upgrade head (tablo yine yok) → `alembic check` temiz.
+    → **VERİ YAZ** → upgrade head (tablo yine yok) → downgrade -1 (tablo VAR,
+    yine 0 satır) → upgrade head → `alembic check` temiz.
+
+    **Veri yazma adımı neden var** (bağımsız denetim bulgusu F1, 14 Ağu 2026):
+    ilk hâlde zincir hiç veri yazılmamış bir veritabanında koşuyordu, yani
+    "downgrade sonrası `count(*) == 0`" iddiası **boş kümede** ölçülüyordu.
+    O assertion, "veri geri gelmedi" ile "veri hiç yoktu" hâllerini ayırt
+    etmez; downgrade'i veriyi geri yükleyecek şekilde yazan bir uygulama da,
+    hiçbir şey yapmayan bir uygulama da testi geçerdi. Kök CLAUDE.md §E'nin
+    sorusu ("eski bozuk kod da aynı testi geçer miydi?") burada **evet**
+    diyordu. Artık satır gerçekten yazılıyor ve `upgrade`'in onu kalıcı
+    olarak düşürdüğü ölçülüyor — iddianın tek gerçek kanıtı budur.
     """
     motor, db = taze_db
     _alembic("upgrade", "head", db=db)
@@ -192,10 +203,55 @@ async def test_R3b_DOWNGRADE_SEMAYI_GERI_KURAR_VERIYI_GETIRMEZ(taze_db):
                 "downgrade bir yedekleme mekanizması DEĞİLDİR"
             )
 
+    # ── ASIL KANIT: boş kümede değil, DOLU tabloda ölç ───────────────────
+    # Geri kurulan şemaya gerçek satır yaz (kaldırma öncesi ceyhandb'nin
+    # şeklini taklit eder: 2 deste, 12 kart, hepsi ilk destede).
+    async with motor.begin() as conn:
+        await conn.execute(
+            text(
+                "INSERT INTO flashcard_decks (id, user_id, role_id, name) "
+                "VALUES (1, 6, 3, 'deste bir'), (2, 6, 3, 'deste iki')"
+            )
+        )
+        await conn.execute(
+            text(
+                "INSERT INTO flashcards (id, deck_id, front, back) "
+                "SELECT g, 1, 'on' || g, 'arka' || g FROM generate_series(1, 12) AS g"
+            )
+        )
+
+    async with motor.connect() as conn:
+        yazilan = {
+            tablo: (
+                await conn.execute(text(f'SELECT count(*) FROM "{tablo}"'))
+            ).scalar_one()
+            for tablo in SM2_TABLOLARI
+        }
+    assert yazilan == {"flashcard_decks": 2, "flashcards": 12}, (
+        f"ön koşul kurulamadı, ölçüm yine boş kümede olurdu: {yazilan}"
+    )
+
     _alembic("upgrade", "head", db=db)
     assert await _var_olan_tablolar(motor, SM2_TABLOLARI) == [], (
         "yeniden upgrade tabloları düşürmedi (downgrade sonrası idempotent değil)"
     )
+
+    # Tablolar veriyle birlikte düştü. Şimdi tekrar geri kur: satırlar
+    # DÖNMEMELİ. Bu assertion artık ayırt edicidir — az önce 2/12 vardı.
+    _alembic("downgrade", "-1", db=db)
+    async with motor.connect() as conn:
+        for tablo in SM2_TABLOLARI:
+            sayi = (
+                await conn.execute(text(f'SELECT count(*) FROM "{tablo}"'))
+            ).scalar_one()
+            assert sayi == 0, (
+                f"{tablo} downgrade sonrası {sayi} satır taşıyor. Bu tur ÖNCE "
+                "2 deste + 12 kart yazıldı ve upgrade onları düşürdü; downgrade "
+                "veriyi geri getiriyorsa revizyonun docstring'i YANLIŞTIR"
+            )
+
+    _alembic("upgrade", "head", db=db)
+    assert await _var_olan_tablolar(motor, SM2_TABLOLARI) == []
 
     res = _alembic("check", db=db)
     assert "No new upgrade operations detected" in res.stdout + res.stderr, (
