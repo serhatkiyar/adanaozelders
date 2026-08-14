@@ -44,6 +44,52 @@ merge edilirken çakışma çıkarsa **main kanoniktir**, gelen dalın kaydı ye
 numaralanır ve eski→yeni eşlemesi buraya yorum olarak yazılır (hiçbir kayıt
 silinmez).
 
+### ⚠️ Kuralın YETMEDİĞİ hâl: eşzamanlı dallar (dördüncü çakışma, 14 Ağu 2026)
+
+**Ölçüm doğru olsa bile çakışma olabilir.** SM-2 kaldırma paketi kuralı harfiyen
+uyguladı: komutu koştu, çıktısını dal başına okudu, en yüksek numarayı (35)
+doğru tespit etti, TB-36'yı aldı ve ölçüm çıktısını commit mesajına yazdı.
+Yine de çakıştı — çünkü **eşzamanlı bir dal aynı pencerede aynı ölçümü yapıp
+aynı numarayı aldı** ve main'e önce girdi.
+
+Kusur ölçümde değil, kuralın **yapısındadır**: "ölçüm anında en yüksek + 1"
+kuralı, iki dal aynı anda ölçtüğünde ikisine de aynı sonucu verir. Bu bir
+klasik yarış durumudur (`TOCTOU`): ölçüm ile tahsis arasında hiçbir kilit
+yoktur ve dallar birbirini göremez. Önceki üç çakışma "komutu koşmadılar / ya
+da çıktıyı yanlış okudular" diye açıklanabiliyordu; **bu dördüncüsü öyle
+açıklanamaz** ve kuralın kendisini sorgulatır.
+
+Ayrıca ölçüm **bayat veriyle** yapılabiliyor: komut yerel `refs/remotes`
+kopyasını okur. `git fetch --all` koşulmamışsa uzak dallarda çoktan alınmış
+numaralar görünmez.
+
+#### Öneri (KARAR BEKLİYOR — henüz kural değildir)
+
+1. **Ölçümden önce `git fetch --all`** — bayat uzak referansları kapatır. Ucuz,
+   tartışmasız, tek başına da uygulanabilir. (Bu, yarışı çözmez; yalnız bayat
+   veri kaynaklı yanlış ölçümü kapatır.)
+2. **Numara dal içinde KESİNLEŞMESİN.** Dalda geçici bir etiket kullanılır
+   (`TB-?A`, `TB-?B` — dal başına harf), kayıt normal biçimde yazılır ve
+   atıflar bu etiketle verilir. Numara **merge turunda**, main'in o anki
+   durumuna bakılarak tahsis edilir; merge commit'i etiket→numara eşlemesini
+   ve ölçüm çıktısını taşır.
+
+   Gerekçe: numara **paylaşılan bir kaynaktır** ve paylaşılan kaynak ancak
+   paylaşılan noktada (main) çakışmasız dağıtılabilir. Bu, "ödeme kolu
+   bayrağını üretimde fail-closed oku" kararıyla aynı mantıktır: kararı
+   veriye en yakın ve tek olan yerde ver.
+
+   Bedeli dürüstçe: dal içindeki atıflar (`[[TB-?A]]`) merge turunda
+   güncellenmek zorundadır — yani iş merge'e kayar, kaybolmaz. Bugünkü
+   maliyet ise zaten aynı işin **çakışma çıktıktan sonra** yapılmasıdır
+   (bu kayıt dahil, dört kez).
+3. **Alternatif (daha ucuz, daha zayıf):** numara aralıkları dallara peşin
+   ayrılır (ör. her yeni dal 10'luk blok alır). Çakışmayı kaldırır ama defterde
+   boşluklar bırakır ve blok tükendiğinde aynı soruna döner.
+
+Karar verilene kadar yürürlükteki kural yukarıdaki **üç maddedir**; bu bölüm
+yalnız ölçümü ve öneriyi kaydeder.
+
 ---
 
 <!-- Numaralandırma notu (main ↔ İP-3 birleştirmesi): iki dal TB-6'nın üstüne
@@ -130,7 +176,25 @@ silinmez).
      o belge İP-5 turunun ölçümünü anlatıyor ve o tur bu düzeltmeden önceydi).
      -->
 
-## TB-36 · `ip16_srs_izin_kodu_hizalama`'nın rol bağı taşıması NÖBETSİZ — sökülünce hiçbir test kırılmıyor
+<!-- Numaralandırma notu (SM-2 kaldırma paketi, 14 Ağu 2026 — DÖRDÜNCÜ ÇAKIŞMA):
+
+     `sm2-kaldirma` dalı, kural gereği ölçüm yaparak **TB-36**'yı aldı; ölçüm o
+     an DOĞRUYDU (13 Ağu, tüm dallarda en yüksek numara 35'ti). Ama eşzamanlı
+     bir dal aynı numarayı aynı pencerede aldı ve main'e önce girdi: main'in
+     TB-36'sı "CI'da düştü, yerelde geçiyor — flaky sayıldı" kaydıdır.
+     main kanoniktir (kural 3), bu yüzden gelen dalın kaydı yeniden numaralandı.
+
+     Eski→yeni:  SM-2 kaldırma "izin taşıması nöbetsiz"  TB-36 → **TB-44**
+     (`docs/sm2-kaldirma-sozlesme.md` atıfları da güncellendi.)
+
+     Ölçüm (14 Ağu 2026, `git fetch --all` SONRASI, tüm yerel + uzak dallar):
+     main / origin/main → … 35 36 37 38 39 40 41 42 43 (İP-18 merge'i 37-43'ü
+     getirdi). En yüksek 43 → yeni kayıt 44'ten başladı.
+
+     `sm2-kaldirma`'nın **TB-34**'ü (app.routes tuzağı) ETKİLENMEDİ: main 33'ten
+     35'e atlamış, 34'e hiçbir dal dokunmamış (ölçüldü). -->
+
+## TB-44 · `ip16_srs_izin_kodu_hizalama`'nın rol bağı taşıması NÖBETSİZ — sökülünce hiçbir test kırılmıyor
 
 | | |
 |---|---|

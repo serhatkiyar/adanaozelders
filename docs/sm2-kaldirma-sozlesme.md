@@ -445,7 +445,7 @@ assertion'ları taşıma çalışmasa da geçiyor. Taşımanın gerçek işlevi 
 **katalog dışı** rol bağları içindir (panelden elle verilmiş bir izin) — ve o
 yol test edilmiyor.
 
-**Kayıt açıldı: [[TB-36]]** (numara tahsis komutu yeniden koşuldu; ölçüm
+**Kayıt açıldı: [[TB-44]]** (numara tahsis komutu yeniden koşuldu; ölçüm
 aşağıda §8.7). **Bu boşluk bu paketten gelmiyor:** `git diff main...HEAD` ile ölçüldü — B7
 test gövdelerinde **tek satır** değişiklik yok; değiştirdiğim yerler yalnız
 fixture (satır 51, 124-128) ve iki B1 düğümü. Boşluk İP-16 merge edildiğinde de
@@ -510,7 +510,7 @@ tablo var ama şema başka türlü bozuk olabilir) için de geçerlidir.
 ### 8.6 Denetçiye kısa liste
 
 1. **D6'nın yakalanmayan mutasyonu** — İP-16'nın izin taşıma kodu nöbetsiz
-   (§8.2). Kapsam dışı, **[[TB-36]] olarak kaydedildi**; kapatma önerisi
+   (§8.2). Kapsam dışı, **[[TB-44]] olarak kaydedildi**; kapatma önerisi
    (katalog dışı bir role bağlanan izin ile B7 düğümü) kayıtta duruyor.
 2. **B1'in benzersiz değeri ölçülmedi** (§8.2 D1) — conftest gölgeliyor.
 3. **R4 zayıf sınıf** (§8.1) — yalnız adın gittiğini kanıtlar.
@@ -558,4 +558,34 @@ tekrarlandı — ve **manzara değişmişti**:
 2. **TB-34 çakışmıyor** — main 33'ten 35'e atlamış, 34'e hiçbir dal
    dokunmamış. Yani bu paketin TB-34'ü hâlâ benzersizdir.
 
-En yüksek numara **35** olduğundan yeni kayıt **TB-36** oldu.
+En yüksek numara **35** olduğundan kayıt **TB-36** olarak açıldı.
+
+### 10.1 …ve TB-36 yine de çakıştı (14 Ağu 2026)
+
+Ölçüm doğruydu ama **eşzamanlı bir dal aynı pencerede aynı numarayı aldı** ve
+main'e önce girdi: main'in TB-36'sı "CI'da düştü, yerelde geçiyor — flaky
+sayıldı" kaydıdır. Kural 3 gereği main kanoniktir; bu paketin kaydı
+**TB-44**'e taşındı.
+
+Yeniden ölçüm, önerilen `git fetch --all` adımı **koşularak** yapıldı:
+
+| Dal | Numaralar (kuyruk) |
+|---|---|
+| `main` / `origin/main` (`30a1270`) | … 33 **35 36 37 38 39 40 41 42 43** |
+| `ip18-siparis-kilit` | … 35 37 38 39 40 41 42 43 |
+| `ip17-vade-granulerligi` | … 35 36 37 38 39 40 41 42 43 |
+| `sm2-kaldirma` (bu dal) | … 31 **34** 36 |
+
+En yüksek **43** → kayıt **TB-44**.
+
+İki not:
+
+- **TB-34 etkilenmedi.** main 33'ten 35'e atlamış, 34'e hiçbir dal dokunmamış
+  (ölçüldü: `git show main:docs/teknik-borc.md | grep -c "^## TB-34"` → 0).
+- main'de **TB-15 artık yok** — silinmedi, **kapatıldı** (İP-18, `517c251`;
+  defterin kuralı: borcu kapatan commit satırı siler). Yani numara
+  dizisindeki boşluk kayıp değil, kapanmış borçtur.
+
+Bu, kuralın **yapısal** yetersizliğinin dördüncü kanıtıdır ve
+`docs/teknik-borc.md` → "Kuralın YETMEDİĞİ hâl" bölümüne ölçüm + öneri olarak
+yazıldı (karar bekliyor).
