@@ -436,7 +436,24 @@ products` ile `UPDATE orders` sırası).
 | **Neden şimdi düzeltilmedi** | Kural yazıldı, **kodda karşılığı henüz yok**: iki `gather` testi olasılıksal hâlleriyle duruyor. Bunları deterministik nöbetçiye çevirmek İP-18'in konusudur (callback yarışının üretim düzeltmesiyle birlikte); races tarafındaki eşi ise ayrı bir tur — üretim kusuru zaten kapandığı için acil değil, ama test olasılıksal kaldığı sürece bir sonraki regresyonu yine %20 olasılıkla yakalar |
 | **Sonraki adım** | (1) İP-18 kapanışında callback yarışını kapı desenine çevirmek; (2) `asyncio.gather` ile kurulan **tüm** yarış testlerini taramak ve her birinin yanına deterministik bir nöbetçi koymak (ya da kendisini çevirmek); (3) kuralı `CLAUDE.md` §D/§F ailesine yazmak — **"CI kırmızı + yerel yeşil" flaky etiketi için gerekçe değil, zamanlama penceresi kanıtıdır** (aynı aile: [[TB-14]]/8'in "azaldı ama sürüyor" kaydı gerçek flaky'yi anlatır — ikisi karıştırılmamalı: orada kanıt ÖLÇÜLDÜ, burada varsayıldı) |
 
-## TB-35 · Geliştirme veritabanı `ceyhandb`, merge EDİLMEMİŞ bir dalın migration'ıyla damgalı — main'de alembic hiç çalışmıyor
+## TB-35 · ~~Geliştirme veritabanı `ceyhandb`, merge EDİLMEMİŞ bir dalın migration'ıyla damgalı — main'de alembic hiç çalışmıyor~~ **KAPANDI**
+
+> ✅ **KAPANDI (14 Ağu 2026, `sm2-kaldirma` merge'i).** Kayıt bir kod kusuru
+> değil, bir **durum** kaydıydı: damga geçerliydi ama gösterdiği revizyon
+> yalnız açık bir dalda yaşıyordu. O dal main'e indi ve damga
+> kendiliğinden geçerli hâle geldi — hiçbir müdahale yapılmadı, hiçbir
+> `stamp` zorlanmadı (kayıt bunun **yanlış** olacağını söylüyordu ve haklıydı).
+>
+> Merge sonrası ölçüm (`ceyhandb`, salt okunur):
+> `alembic current` = `sm2_flashcard_kaldirma (head)` = `alembic heads`.
+>
+> **Kaydın kalıcı dersi geçerliliğini korur** ve silinmedi: bir feature
+> dalının migration'ını doğrudan geliştirme veritabanına uygulamak, o
+> veritabanını dala **kilitler**. Hata migration'da değil, *nerede
+> koşulduğundadır*. Bu tur şanslı bitti (dal merge edildi); dal terk
+> edilseydi `ceyhandb` çözümlenemeyen bir damgayla kalacaktı ve [[TB-30]]
+> zincirine düşecekti.
+
 
 | | |
 |---|---|
