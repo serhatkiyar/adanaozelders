@@ -759,6 +759,19 @@ görünüyor olabilir — tarihine bakarak okunmalıdır. Uçtan uca doğrulama,
 kendi ölçüm vakası `IP16-21` ile yapıldı: eskiden "YAKALANMADI", şimdi
 "YAKALANDI (7 test kırıldı)", yedisi de KURULUM HATASI etiketli.
 
+**Değişikliğin bedeli İP-18 merge'inde çıktı ve ödendi.** İP-18 kendi
+sürücüsünü, ortak fonksiyon henüz `ERROR` saymazken yazmıştı ve (İP-16'nın o
+günkü deseniyle) üst fonksiyonu gölgeliyordu. Merge'den sonra üst fonksiyon
+`ERROR …::düğüm` satırlarını zaten döndürdüğü için gölge onları **ikinci kez**
+ekliyordu — ölçüldü: bir `FAILED` + bir `ERROR` içeren çıktıda ortak sürücü 2,
+gölge **3** satır veriyordu, yani aynı düğüm iki kez sayılıyordu. "Kırılan test
+sayısı" kapanış raporlarına giren bir ölçüdür; şişmesine izin verilmez. Gölge
+silindi, `mutation_drill_ip18` de ortak fonksiyonu doğrudan kullanıyor ve üç
+sürücü artık aynı girdiye aynı yanıtı veriyor. Ayrıca modülün "TB-29 bu dalda
+AÇIK" diyen docstring'i bayatlamıştı, düzeltildi. Ders: **ortak bir ölçüm
+aracını düzeltmek, o aracı gölgeleyen paketleri de gözden geçirmeyi
+gerektirir** — düzeltme onların varsayımını geçersiz kılar.
+
 ## 11. Kalan P2'ler (bilinçli kapsam dışı)
 
 - ~~Vade damgası AN tabanında, elapsed ise ÇALIŞMA GÜNÜ tabanında~~ →
@@ -854,24 +867,29 @@ vitest/tsc/lint (uyarı artmaz). S-1/S-2 5'er tur.
 | `ruff check backend/` | temiz |
 | frontend `tsc -b` + `vitest run` | temiz · **791 passed** (77 dosya) |
 
-**İP-17 vade granülerliği turunun kapıları.** Aşağıdaki tablo **İP-14 merge'i
-sonrasına** aittir (merge `9374157`, main tabanı `e382d20`; çakışma çıkmadı —
-İP-14 operatör paneli ile İP-17 SRS ayrı dosya alanları, `docs/teknik-borc.md`
-metinsel olarak temiz birleşti). Tek kullanımlık DB: `adana_ip17_merge_test`.
+**İP-17 vade granülerliği turunun kapıları.** Aşağıdaki tablo **İP-18 merge'i
+sonrasına** aittir (merge `3350433`, main tabanı `30a1270`; ondan önce İP-14
+merge'i `9374157`). Her iki merge'de de **kod çatışması çıkmadı** — İP-14
+operatör paneli ve İP-18 sipariş/ödeme, İP-17 SRS ile ayrı dosya alanlarında;
+`docs/teknik-borc.md` iki turda da metinsel olarak temiz birleşti (main'in
+TB-35…TB-43'ü ile İP-17'nin TB-29 silmesi + kapanma notu yan yana durdu).
+Tek kullanımlık DB: `adana_ip17_ip18_test` (+ `adana_verify`).
 
 | Kapı | Sonuç | main tabanı |
 |---|---|---|
-| `pytest tests/integration` (tam) | **1309 passed · 0 failed · 16 skipped** | 1300 / 16 → +9 V düğümü |
-| `pytest tests -q --ignore=integration --ignore=verify` (DB'siz) | **938 passed** | 938 (değişmedi — V matrisi tümüyle entegrasyonda) |
+| `pytest tests/integration` (tam) | **1323 passed · 0 failed · 16 skipped** | 1314 / 16 → +9 V düğümü |
+| `pytest tests -q --ignore=integration --ignore=verify` (DB'siz) | **946 passed** | 946 (değişmedi — V matrisi tümüyle entegrasyonda) |
 | `pytest tests/verify` (CI deseni: taze DB + `alembic upgrade head`) | **132 passed** | 132 |
 | `pytest tests/acceptance` | **197 passed** | 197 |
 | `pytest tests/unit` | **36 passed** | 36 |
 | `pytest tests/integration -k "ip16 or ip17"` | **76 passed** — 67 İP-16 düğümünün hiçbiri kırılmadı | — |
-| `pytest tests/integration -k ip14` (komşu paket) | **7 passed** — merge komşuyu bozmadı | — |
+| `-k ip18` (komşu paket) | **22 passed** | — |
+| `-k ip14` (komşu paket) | **7 passed** | — |
 | `pytest tests/unit/test_fsrs_scheduler.py -k f15` | **15 passed** — F-15 referans tablosunda **sapma YOK** (14 senaryo, 70 adım). Beklenen: motor değişmedi, damga çağırandadır | — |
-| `alembic heads` | tek head: `ip16_srs_izin_kodu_hizalama` (İP-14 migration getirmedi) | — |
-| İP-17 mutasyon provası (`IP17-1..7`) | **7/7 yakalandı**, merge öncesiyle birebir aynı (§10.2) | — |
+| `alembic heads` | tek head: `ip16_srs_izin_kodu_hizalama` (İP-14 de İP-18 de migration getirmedi) | — |
+| İP-17 mutasyon provası (`IP17-1..7`) | **7/7 yakalandı**, iki merge öncesiyle de birebir aynı (§10.2) | — |
 | `IP16-21` — TB-29 regresyon vakası | YAKALANDI (7), hepsi "KURULUM HATASI" etiketli | — |
+| `mutation_drill_ip18 IP18-1` (değiştirilen sürücünün dumanı) | yeşil taban EVET · **YAKALANDI (6)** | — |
 | `ruff check backend/` | temiz | temiz |
 | frontend `tsc -b` · `eslint src` · `vitest run` | temiz · 0 error / 34 warning (**taban değişmedi**, yeni dosyalarda 0) · **890 passed / 85 dosya** | 885 / 84 → +5 düğüm, +1 dosya (V-10) |
 
@@ -967,15 +985,18 @@ npx vitest list src/lib/srsTypeAnswer.test.ts src/lib/srsCloze.test.ts src/compo
 python -m scripts.mutation_drill_ip16 --list | wc -l   # + katalog dışı elle provalar
 ```
 
-İP-17 turunda (İP-14 merge'i sonrası) bu komutların verdiği sayılar — denetçi
+İP-17 turunda (İP-18 merge'i sonrası) bu komutların verdiği sayılar — denetçi
 kendi sayısını üretmeli, buradakiler yalnız kuralın çalıştığını gösterir:
 (1) **95 fonksiyon / 8 dosya**, (2) **84 kod**, (3) **112 pytest düğümü**,
-(4) **40 vitest düğümü**, (5) **42 mutasyon**.
+(4) **40 vitest düğümü**, (5) **42 mutasyon** (İP-16 + İP-17 katalogu;
+`mutation_drill_ip18 --list` ayrıca 11).
 
-Kuralın işe yaradığı merge'de ölçüldü: İP-14 `tests/` altına bir test dosyası
-daha ekledi (taranan dosya sayısı 216 → **217**), o dosya SRS'e dokunmadığı
-için seçim **8'de kaldı** ve yukarıdaki beş sayının hiçbiri değişmedi. Dosya
-adı glob'u olsaydı bu kontrol hiç yapılamazdı.
+Kuralın işe yaradığı **iki merge'de** ölçüldü: İP-14 bir test dosyası, İP-18
+iki test dosyası daha ekledi (taranan dosya sayısı 216 → 217 → **219**);
+hiçbiri SRS'e dokunmadığı için seçim her seferinde **8'de kaldı** ve yukarıdaki
+beş sayının hiçbiri değişmedi. Dosya adı glob'u olsaydı bu kontrol hiç
+yapılamazdı — yüzey büyürken sayı sessizce sabit kalır, sabit kalması gerektiği
+durumla ayırt edilemezdi.
 
 Sınıflandırma (kök CLAUDE.md §H) — hangi dosyanın hangi sınıfa girdiği:
 
