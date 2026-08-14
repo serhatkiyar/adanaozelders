@@ -4,21 +4,27 @@
 SHA-256 doğrulamalı geri alma, kirli ağaç reddi, HEAD/status karşılaştırması)
 YENİDEN KULLANIR; katalog ve üç ek nöbetçi buraya aittir.
 
-## Ek nöbetçi 1 — `ERROR` ile düşen testler de "kırıldı"dır (TB-29)
+## Ek nöbetçi 1 — `ERROR` ile düşen testler de "kırıldı"dır (TB-29 KAPANDI)
 
-Ortak `mutation_drill._kirilanlar` yalnız `FAILED ` ile başlayan satırları
-sayar. Bir mutasyon testleri **koşamayacak** kadar derinden bozarsa (import
-hatası, koleksiyon patlaması, conftest'te DB kurulamaması) pytest `ERROR
-tests/...::düğüm` yazar ve tek bir `FAILED` satırı olmaz — sürücü o mutasyonu
-"YAKALANMADI" raporlar. Oysa suite hiç koşamamıştır; bu `FAILED`'dan daha sert
-bir kırılmadır.
+Bir mutasyon testleri **koşamayacak** kadar derinden bozarsa (import hatası,
+koleksiyon patlaması, conftest'te DB kurulamaması) pytest `ERROR
+tests/...::düğüm` yazar ve tek bir `FAILED` satırı olmaz. Bunu "YAKALANMADI"
+saymak yanlıştır; suite hiç koşamamıştır, ki bu `FAILED`'dan daha sert bir
+kırılmadır.
 
-TB-29 bu dalda **AÇIK**: düzeltme İP-16 sürücüsünde yerel olarak yapıldı,
-ortak sürücüye taşınmadı. Ortak sürücüyü değiştirmek yedi paketin kapanış
-raporlarının dayandığı ölçüm aracını değiştirir ve geçmiş turların
-"yakalanmadı" kayıtlarının bir kısmını geçersiz kılabilir — bu, İP-18'in
-kapsamı değil. Bu yüzden burada da (İP-16'daki gibi) üst fonksiyon bilinçli
-olarak GÖLGELENİR.
+İP-18 yazılırken bu düzeltme yalnız İP-16 sürücüsünde yereldi, bu yüzden
+burada da üst fonksiyon gölgeleniyordu. **İP-17 turunda düzeltme ortak
+`mutation_drill._kirilanlar`'a taşındı ve TB-29 kapandı**; gölge artık
+gereksiz değil, ZARARLIYDI: üst fonksiyon `ERROR …::düğüm` satırlarını zaten
+döndürdüğü için gölge onları ikinci kez ekliyor ve aynı düğüm iki kez
+sayılıyordu (merge turunda ölçüldü — bir `FAILED` + bir `ERROR` içeren çıktıda
+ortak sürücü 2, gölge 3 satır veriyordu). "Kırılan test sayısı" kapanış
+raporlarına giren bir ölçüdür; şişmesine izin verilmez. Gölge kaldırıldı,
+modül ortak fonksiyonu doğrudan kullanıyor.
+
+[[TB-42]]'nin bulgusu (yalnız `::` içeren `ERROR` satırlarının sayılması,
+koleksiyon düzeyi hatasının kaçması) ortak sürücüde de aynen geçerlidir ve
+AÇIK kalmıştır — yönü güvenlidir: eksik sayar, fazla saymaz.
 
 ## Ek nöbetçi 2 — "seçilen test sayısı 0 ise BAŞARISIZLIK"
 
@@ -54,10 +60,10 @@ from scripts.mutation_drill import (
     GeciciYama,
     Mutasyon,
     _agac_durumu,
+    _kirilanlar,
     _kos,
     _on_kontrol,
 )
-from scripts.mutation_drill import _kirilanlar as _ust_kirilanlar
 
 ORDER = "backend/services/order_service.py"
 RECONCILER = "backend/services/escrow_reconciler.py"
@@ -187,33 +193,6 @@ MUTASYONLAR: list[Mutasyon] = [
         (PG,),
     ),
 ]
-
-
-def _kirilanlar(cikti: str) -> list[str]:  # noqa: F811 — üst sürücüyü bilinçli gölgeler
-    """Üst sürücünün `FAILED` taraması + pytest `ERROR …::düğüm` satırları.
-
-    ⚠️ **Kapsam dar ve bilinçli** (bağımsız denetim bulgusu, [[TB-42]]): yalnız
-    içinde `::` geçen `ERROR` satırları sayılır. Pytest, KOLEKSİYON düzeyinde
-    patlayan bir dosyayı `ERROR tests/x.py - NameError: …` biçiminde, yani
-    düğüm ayracı OLMADAN raporlar; o satır burada sayılmaz ve mutasyon
-    "yakalanmadı" görünebilir.
-
-    `::` şartı kaldırılamaz çünkü yakalanan log çıktısı da `ERROR ` ile başlar
-    (`ERROR    adana.escrow:escrow.py:518 …`). Onu da saymak, ERROR log yazan
-    HER mutasyonu "yakalandı" gösterirdi — yani ölçüm aracını yalancı yeşil
-    üreticisine çevirirdi. Yön bu yüzden güvenlidir: eksik sayar, fazla
-    saymaz. Doğru çözüm iki deseni ayırt eden bir eşleştiricidir; ortak
-    sürücüyle birlikte ele alınmalıdır (TB-29 + TB-42).
-    """
-    kirilan = list(_ust_kirilanlar(cikti))
-    hatalar = sorted(
-        {
-            s.split(" ")[1] if " " in s else s
-            for s in cikti.splitlines()
-            if s.startswith("ERROR ") and "::" in s
-        }
-    )
-    return kirilan + [f"{h} (KURULUM HATASI — test hiç koşmadı)" for h in hatalar]
 
 
 def _sayi_ve_sonuc(cikti: str) -> str:

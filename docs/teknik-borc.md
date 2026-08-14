@@ -164,12 +164,12 @@ silinmez).
 | | |
 |---|---|
 | **Bulundu** | İP-18 bağımsız audit'i (14 Ağu 2026) |
-| **Yer** | `backend/scripts/mutation_drill_ip18.py::_kirilanlar` (ve aynı deseni kuran `mutation_drill_ip16.py`) |
+| **Yer** | `backend/scripts/mutation_drill.py::_kirilanlar` — **ORTAK sürücü**. Kayıt açıldığında kusur `mutation_drill_ip18.py` ve `_ip16.py`'deki yerel gölgelerdeydi; İP-17 turunda TB-29 ortak sürücüde kapatılınca iki gölge de silindi (İP-17 merge adaptasyonu) ve kusur tek yerde toplandı. Yani artık düzeltilecek TEK nokta var |
 | **Durum** | Gölgeleme yalnız içinde `::` geçen `ERROR` satırlarını sayar. Pytest, KOLEKSİYON düzeyinde patlayan bir dosyayı `ERROR tests/x.py - NameError: …` biçiminde, yani **düğüm ayracı olmadan** raporlar; o satır sayılmaz ve mutasyon "YAKALANMADI" görünebilir |
 | **Neden `::` şartı kaldırılamaz** | Yakalanan log çıktısı da `ERROR ` ile başlar (`ERROR    adana.escrow:escrow.py:518 …`). Onu da saymak, ERROR log yazan HER mutasyonu "yakalandı" gösterirdi — ölçüm aracını **yalancı yeşil üreticisine** çevirirdi |
 | **Yön** | Güvenli: eksik sayar, fazla saymaz. Yani bugünkü "11/11 yakalandı" sonucu bu kusurdan **şişmiş değildir** |
-| **Bugünkü durum** | Kusur duruyor; İP-18 turunda yalnız docstring'in fazla geniş iddiası daraltıldı (artık kapsamını ve nedenini söylüyor) |
-| **Sonraki adım** | İki deseni ayırt eden eşleştirici (`^ERROR (\S+\.py)(::\S+)? ` + logger satırlarının çoklu boşluk/`ad:dosya:satır` şeklini dışlama) ve bunun **kendi pozitif kontrolü**. [[TB-29]] ile birlikte, ortak `mutation_drill.py` üzerinde ele alınmalı |
+| **Bugünkü durum** | Kusur duruyor. İP-18 turunda docstring'in fazla geniş iddiası daraltıldı; İP-17 merge adaptasyonunda kusur tek noktaya indirildi (gölgeler silindi). Davranış değişmedi |
+| **Sonraki adım** | İki deseni ayırt eden eşleştirici (`^ERROR (\S+\.py)(::\S+)? ` + logger satırlarının çoklu boşluk/`ad:dosya:satır` şeklini dışlama) ve bunun **kendi pozitif kontrolü**. Ortak `mutation_drill.py` üzerinde yapılır — TB-29 kapandığı için ikinci bir yerde daha düzeltmek GEREKMEZ |
 
 ## TB-41 · İP-18 AST nöbetçisi kandırılabilir — `values` sözlüğü değişkene alınırsa görmüyor
 
