@@ -1703,8 +1703,31 @@ async def _lock_order_products(db: AsyncSession, order: Order) -> None:
 
     Geri yükleme yollarında **sağlayıcı çağrısından önce** çağrılır: `Order`
     kilidi sağlayıcıdan sonra alındığı için, ürün kilidini de sonraya bırakmak
-    bu yolu `Order → Product` yapar ve `_finalize_paid`'in `Product → Order`
-    sırasıyla deadlock döngüsü kurar. Ayrıntı: plan §4e.
+    bu yolu `Order → Product` yapar. Ayrıntı: plan §4e.
+
+    ## Kuralın DOĞRU ifadesi (İP-18 düzeltmesi)
+
+    Eski yorum "kanonik sıra Product → Order'dır, aksi deadlock döngüsü kurar"
+    diyordu. İkisi de fazla genişti:
+
+    * **Sıra iddiası literal doğru değil.** `_cancel_order`, `refund_order` ve
+      `request_return` işlem düzeyinde ÖNCE `_lock_order`'ı alır. Doğru kural
+      şudur: **aynı transaction içinde hem Product hem Order kilidi tutan her
+      yol `Product → Order` sırasını izler.** Order'ı önce alan yollar aynı
+      transaction'da ürün kilidi ALMAZ — iade yolunda araya `begin_refund`'ün
+      COMMIT'i girer ve Order kilidi orada bırakılır.
+    * **Deadlock iddiası ölçüldü ve daraldı.** Bugünkü FSM'de erişilebilir bir
+      döngü ÜRETİLEMEDİ: döngü, aynı sipariş satırının hem `PENDING`
+      (checkout) hem `PAID` (iade faz-2) olmasını gerektirir; bu ikisi
+      karşılıklı dışlayıcıdır. Risk yapısaldır (yeni bir yol bu dengeyi
+      bozabilir), bugün tetiklenebilir değildir.
+
+    Güvenlik bu yüzden sıra disiplininden DEĞİL, PAID yazıcılarının ürün
+    kilidiyle serileşmesinden gelir. Nöbetçi:
+    `tests/integration/test_ip18_siparis_kilit_pg.py::
+    test_yesil_checkout_yolu_order_kilidini_urunden_once_almaz` (gerçek SQL
+    gözlemi) + `tests/acceptance/test_stock_lock_contract.py` (kaynak, düşük
+    güçlü — bkz. TB-38).
     """
     urunler = {item.product_id for item in _physical_items(order)}
     if urunler:

@@ -580,21 +580,23 @@ async def reconcile_stale_checkouts(db: AsyncSession) -> int:
     # İzolasyon eskiden `async with db.begin_nested()` (SAVEPOINT) ile
     # kuruluyordu. Ama `complete_checkout` **kendi transaction'ını yönetir ve
     # içeride COMMIT eder**; SQLAlchemy, bir savepoint bağlamı içinde dış
-    # transaction commit edildikten sonra oturuma dokunmayı
+    # transaction commit edildikten SONRA **oturuma dokunmayı**
     # `InvalidRequestError: Can't operate on closed transaction inside context
-    # manager` ile reddeder. İki farklı sonuç doğuyordu:
+    # manager` ile reddeder. Belirleyici olan commit'in kendisi değil,
+    # **commit'ten sonra oturumla iş yapılıp yapılmadığıdır** — iki yolun
+    # ayrıldığı yer tam olarak burasıdır:
     #
     # * **Canlı sipariş** (mutlu yol): `complete_checkout` işini bitirip commit
-    #   ediyor, istisna savepoint ÇIKIŞINDA doğuyor, aşağıdaki `except` onu
-    #   yutuyordu. Veri doğru ama her başarılı kayıt için görünür bir
-    #   `logger.exception` yazılıyor ve `handled` artmıyordu — "gürültüyle
-    #   çalışıyor".
+    #   eder ve HEMEN döner; savepoint bağlamı içinde commit sonrası oturuma
+    #   dokunulmaz, dolayısıyla **istisna doğmaz**. Ölçüldü (savepoint geri
+    #   konup koşuldu): `handled = 1`, ERROR kaydı **0**, sipariş `PAID/PAID`.
+    #   Yani bu yol savepoint ile de sorunsuz çalışıyordu.
     # * **Ölü sipariş** (İP-2b R10 geç tahsilatı): sıra terstir — önce iade
-    #   claim'i COMMIT edilir, sonra `db.refresh(order)` gelir. İstisna tam
-    #   orada doğuyor ve akış `refund_unexpected_charge`'a HİÇ VARMIYORDU.
-    #   Sonuç: satır `payment_status='REFUNDED'`, sağlayıcıya giden iade
-    #   **SIFIR**. Yani "iade edildi" yazan ama parayı döndürmemiş kayıt.
-    #   Gerçek PG'de ölçüldü (İP-18 D11).
+    #   claim'i COMMIT edilir, SONRA `db.refresh(order)` gelir. İstisna tam
+    #   orada doğar ve akış `refund_unexpected_charge`'a HİÇ VARMAZ. Sonuç:
+    #   satır `payment_status='REFUNDED'`, sağlayıcıya giden iade **SIFIR**.
+    #   Yani "iade edildi" yazan ama parayı döndürmemiş kayıt. Gerçek PG'de
+    #   ölçüldü (İP-18 D11).
     #
     # Neden İP-2b'nin testi görmedi: `test_kirmizi_reconciler_partisi_
     # zehirlenmez` iddiası AYRIK — "iade edildi **ya da** görünür hata kaydı

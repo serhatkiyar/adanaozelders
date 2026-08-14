@@ -48,9 +48,18 @@ kendiliğinden koşulluyor.
   fiziksel teslim/kabulle hareket eder. "Yanlış yaz + tersini yaz" telafi
   değildir: defter append-only'dir, iki kalıcı gürültü satırı kalır ve
   `SALE_CANCEL` "satılmış mal geri geldi" anlamına gelir.
-- **I-18/4 (kilit sırası)** — Düzeltme kilitle YAPILMAZ. Kanonik sıra
-  `Product → Order → OrderReturn`; `complete_checkout` yoluna Order satır
-  kilidi eklemek bu yolu `Order → Product` yapar.
+- **I-18/4 (kilit sırası)** — Düzeltme kilitle YAPILMAZ. Kural şudur: **aynı
+  transaction içinde hem Product hem Order kilidi tutan her yol
+  `Product → Order` sırasını izler.**
+
+  ⚠️ *Denetim düzeltmesi.* Önceki metin "kanonik sıra `Product → Order`" diyordu;
+  bu **literal doğru değil**: `_cancel_order`, `refund_order` ve
+  `request_return` işlem düzeyinde önce `_lock_order`'ı alır. Onlar aynı
+  transaction'da ürün kilidi ALMAZ — iade yolunda araya `begin_refund`'ün
+  COMMIT'i girer ve Order kilidi orada bırakılır. Güvenlik bir sıra
+  disiplininden değil, **PAID yazıcılarının ürün kilidiyle serileşmesinden**
+  gelir. `complete_checkout` yoluna Order satır kilidi eklemek, aynı
+  transaction'da her iki kilidi tutan bir yolu ters sıraya sokar.
 
 ## 3. Çözüm — kilit değil **koşul**
 
@@ -104,10 +113,22 @@ transaction commit edildikten sonra oturuma dokunmayı reddeder
 (`InvalidRequestError: Can't operate on closed transaction inside context
 manager`).
 
+Belirleyici olan commit'in kendisi değil, **commit'ten sonra oturumla iş
+yapılıp yapılmadığıdır**:
+
 | Yol | Sıra | Sonuç |
 |---|---|---|
-| Canlı sipariş | iş biter → commit → istisna savepoint **çıkışında** | Veri doğru; her başarılı kayıtta gürültülü `logger.exception`, `handled` artmıyor |
+| Canlı sipariş | iş biter → commit → **hemen döner** | İstisna **YOK**. Ölçüldü (savepoint geri konup koşuldu): `handled = 1`, ERROR kaydı **0**, sipariş `PAID/PAID`. Bu yol savepoint ile de sorunsuz çalışıyordu |
 | **Ölü sipariş** | iade claim'i **COMMIT** → `db.refresh(order)` → **istisna** | `refund_unexpected_charge`'a hiç varılmıyor: satır `REFUNDED`, sağlayıcıya iade **SIFIR** |
+
+> ⚠️ **Denetim düzeltmesi.** Bu tablonun ilk hâli "canlı siparişte de istisna
+> doğuyor, `handled` artmıyor, her başarılı kayıtta gürültülü
+> `logger.exception` yazılıyor" diyordu. **Yanlıştı**; denetçi tersini ölçtü ve
+> ben de savepoint'i geçici geri koyup bağımsız olarak doğruladım (yukarıdaki
+> sayılar o ölçümden). Aynı yanlış iddia `escrow_reconciler.py` üretim
+> yorumunda da vardı; ikisi birlikte düzeltildi. Kusurun kendisi ve düzeltmenin
+> gerekçesi değişmedi — yalnız kusurun **kapsamı daraldı**: savepoint canlı
+> yolu bozmuyordu, ölü yolu bozuyordu.
 
 Yani "iade edildi" yazan ama parayı döndürmemiş kayıt. **Neden bugüne kadar
 görülmedi:** İP-2b'nin `reconciler_partisi_zehirlenmez` iddiası ayrıktır —
@@ -167,19 +188,33 @@ değiştirilmedi** (yedi paketin ölçüm aracıdır, TB-29 gerekçesi kayıtta)
 nöbetçi: `ERROR` sayan `_kirilanlar`, seçilen test > 0 kapısı, **yeşil taban
 çizgisi**.
 
+Aşağıdaki sayılar **son koşumdan** alınmıştır (D11-D14 eklendikten sonra
+yeniden ölçüldü; önceki tablo bayat ve iç tutarsızdı — denetim bulgusu).
+
 | # | Mutasyon | Seçilen | Taban | Kırılan |
 |---|---|---|---|---|
-| IP18-1 | Yaşam döngüsü koşulu söküldü | 10 | yeşil | 6 (D1, D3, D4, D5, D6, D7b) |
+| IP18-1 | Yaşam döngüsü koşulu söküldü | 14 | yeşil | 6 (D1, D3, D4, D5, D6, D7b) |
 | IP18-2 | Boğaz noktası atlandı | 22 | yeşil | 3 (AST nöbetçisi + 2 kilit sözleşmesi) |
-| IP18-3 | Ölü-varlık iadesi söküldü | 10 | yeşil | 1 (D3) |
-| IP18-4 | Claim sonucu yok sayıldı | 10 | yeşil | 6 (D4 dahil) |
-| IP18-5 | Kilit sırası ters çevrildi | 26 | yeşil | 6 (**D9** dahil) |
-| IP18-6 | Taze okuma bayatlatıldı | 10 | yeşil | 1 (D3) |
-| IP18-7 | Reconciler'a status filtresi eklendi | 16 | yeşil | 2 (**D11** + İP-2b R11) |
-| IP18-8 | `PARA_BAGLANABILIR_DURUMLAR += CANCELLED` | 16 | yeşil | 8 (6 davranış + 2 saf) |
+| IP18-3 | Ölü-varlık iadesi söküldü | 14 | yeşil | 1 (D3) |
+| IP18-4 | Claim sonucu yok sayıldı | 14 | yeşil | 6 (D4 dahil) |
+| IP18-5 | Kilit sırası ters çevrildi | 30 | yeşil | 6 (**D9** dahil) |
+| IP18-6 | Taze okuma bayatlatıldı | 14 | yeşil | 1 (D3) |
+| IP18-7 | Reconciler'a status filtresi eklendi | 19 | yeşil | 2 (**D11** + İP-2b R11) |
+| IP18-8 | `PARA_BAGLANABILIR_DURUMLAR += CANCELLED` | 20 | yeşil | 8 (6 davranış + 2 saf) |
+| IP18-9 | **TB-15(b)**: tavan claim koşulundan söküldü | 14 | yeşil | 2 (**D13**, **D14**) |
+| IP18-10 | **TB-15(b)**: `apply_refunded_amount` çağrılmıyor | 14 | yeşil | 1 (**D12**) |
+| IP18-11 | **TB-15(b)**: `refund_reserved` rezervasyonu söküldü | 14 | yeşil | 1 (**D12**) |
 
-**8/8 yakalandı.** Geri alma bayt yedeği + SHA-256 ile doğrulandı; her provadan
+**11/11 yakalandı.** Geri alma bayt yedeği + SHA-256 ile doğrulandı; her provadan
 sonra HEAD ve `git status` başlangıçla karşılaştırıldı.
+
+Seçilen sayıların farklı olmasının sebebi hedef test kümesidir: `14` = yalnız
+PG dosyası, `20` = PG + saf/AST, `22` = saf/AST + kilit sözleşmesi, `19` = PG +
+İP-2b callback, `30` = PG + kilit sözleşmesi.
+
+**IP18-9/10/11 neden var:** bağımsız denetim TB-15(b)'nin davranış olarak
+kapatıldığını ama **nöbetsiz** bırakıldığını ölçtü — bu üç mutasyonu koştu ve
+üçü de 1311 testin hiçbirini kırmadı. D12/D13/D14 o boşluğu kapatır.
 
 ## 8. Denetçinin ilk bakacağı yerler
 
@@ -232,7 +267,23 @@ sonra HEAD ve `git status` başlangıçla karşılaştırıldı.
    kurmadan yeşile dönebilir — bu yüzden hepsi `tetik["oldu"]` assert eder.
    Denetçi o assert'i sökerek testlerin gerçekten pencere kurduğunu doğrulamalı.
 8. **`refunded_amount` için "tek yazıcı" yapısal nöbetçisi hâlâ yok.** TB-15(b)
-   davranış olarak kapandı ama nöbetçisi yazılmadı ([[TB-38]]/(a)).
+   davranış olarak kapandı, **davranış nöbetçileri de eklendi** (D12/D13/D14,
+   IP18-9/10/11 ile kanıtlandı) — ama "kod tabanında bu kolona yazan tek yer"
+   diyen yapısal nöbetçi yok ([[TB-38]]/(a)).
+9. **Ölü-varlık iadesi `refunded_amount`'ı sağlayıcıdan ÖNCE yazıyor ve
+   sağlayıcının sonucunu YOK SAYIYOR.** `_olu_varlik_tahsilatini_iade_et`
+   sırası şudur: claim → `apply_refunded_amount` → `commit` → **sonra**
+   `refund_unexpected_charge` → audit → `commit`. Yani sağlayıcı iadeyi
+   reddederse satır yine `REFUNDED` + `refunded_amount = total` kalır ve
+   `refund_unexpected_charge`'ın `bool` dönüşü hiçbir yerde okunmaz.
+   `apply_refunded_amount`'ın kendi docstring'i ise **"yalnız sağlayıcı
+   BAŞARISINDAN sonra çağrılmalıdır"** diyor — açık çelişki. Bu şekil tabanda
+   da vardı (dal `refunded_amount`'ı claim'in içinde, sağlayıcıdan önce
+   yazıyordu) ama hiçbir yerde **beyan edilmemişti**; İP-18 onu merkezî
+   yazıcıya taşırken çelişkiyi devraldı, düzeltmedi. İki fazlı yapmak
+   (`REFUNDING` → sağlayıcı → `REFUNDED`) bu dalın replay idempotency'sini
+   değiştirir — bugün "sağlayıcının aşırı-iade reddi"ne yaslanıyor — yani ürün
+   kararı ister. **Kırmızı testi yok, düzeltilmedi.**
 
 ## 9. Koşum reçetesi
 
