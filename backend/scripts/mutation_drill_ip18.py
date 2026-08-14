@@ -150,6 +150,14 @@ MUTASYONLAR: list[Mutasyon] = [
                 Order.status.in_(["PENDING"]),  # MUTASYON: olu siparis taranmaz""",
         (IP2B_CALLBACK, PG),
     ),
+    Mutasyon(
+        "IP18-8",
+        "tek kaynak sabiti genişletildi: PARA_BAGLANABILIR_DURUMLAR += CANCELLED",
+        ORDER,
+        'PARA_BAGLANABILIR_DURUMLAR: frozenset[str] = frozenset({"PENDING"})',
+        'PARA_BAGLANABILIR_DURUMLAR: frozenset[str] = frozenset({"PENDING", "CANCELLED"})  # MUTASYON',
+        (SAF, PG),
+    ),
     # ── TB-15(b) nöbetçileri (bağımsız denetim P1-2) ────────────────────────
     # Denetçi bu üçünü koştu ve ÜÇÜ DE 1311 testin hiçbirini kırmadı: TB-15(b)
     # davranış olarak kapatılmış ama NÖBETSİZ bırakılmıştı. D12/D13/D14 bu
@@ -177,14 +185,6 @@ MUTASYONLAR: list[Mutasyon] = [
         '            "refund_reserved": Order.refund_reserved + order_total,',
         "            # MUTASYON: rezervasyon sokuldu",
         (PG,),
-    ),
-    Mutasyon(
-        "IP18-8",
-        "tek kaynak sabiti genişletildi: PARA_BAGLANABILIR_DURUMLAR += CANCELLED",
-        ORDER,
-        'PARA_BAGLANABILIR_DURUMLAR: frozenset[str] = frozenset({"PENDING"})',
-        'PARA_BAGLANABILIR_DURUMLAR: frozenset[str] = frozenset({"PENDING", "CANCELLED"})  # MUTASYON',
-        (SAF, PG),
     ),
 ]
 

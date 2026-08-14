@@ -194,13 +194,13 @@ yeniden ölçüldü; önceki tablo bayat ve iç tutarsızdı — denetim bulgusu
 | # | Mutasyon | Seçilen | Taban | Kırılan |
 |---|---|---|---|---|
 | IP18-1 | Yaşam döngüsü koşulu söküldü | 14 | yeşil | 6 (D1, D3, D4, D5, D6, D7b) |
-| IP18-2 | Boğaz noktası atlandı | 22 | yeşil | 3 (AST nöbetçisi + 2 kilit sözleşmesi) |
+| IP18-2 | Boğaz noktası atlandı | 24 | yeşil | 3 (AST nöbetçisi + 2 kilit sözleşmesi) |
 | IP18-3 | Ölü-varlık iadesi söküldü | 14 | yeşil | 1 (D3) |
 | IP18-4 | Claim sonucu yok sayıldı | 14 | yeşil | 6 (D4 dahil) |
 | IP18-5 | Kilit sırası ters çevrildi | 30 | yeşil | 6 (**D9** dahil) |
 | IP18-6 | Taze okuma bayatlatıldı | 14 | yeşil | 1 (D3) |
 | IP18-7 | Reconciler'a status filtresi eklendi | 19 | yeşil | 2 (**D11** + İP-2b R11) |
-| IP18-8 | `PARA_BAGLANABILIR_DURUMLAR += CANCELLED` | 20 | yeşil | 8 (6 davranış + 2 saf) |
+| IP18-8 | `PARA_BAGLANABILIR_DURUMLAR += CANCELLED` | 22 | yeşil | 8 (6 davranış + 2 saf) |
 | IP18-9 | **TB-15(b)**: tavan claim koşulundan söküldü | 14 | yeşil | 2 (**D13**, **D14**) |
 | IP18-10 | **TB-15(b)**: `apply_refunded_amount` çağrılmıyor | 14 | yeşil | 1 (**D12**) |
 | IP18-11 | **TB-15(b)**: `refund_reserved` rezervasyonu söküldü | 14 | yeşil | 1 (**D12**) |
@@ -209,8 +209,14 @@ yeniden ölçüldü; önceki tablo bayat ve iç tutarsızdı — denetim bulgusu
 sonra HEAD ve `git status` başlangıçla karşılaştırıldı.
 
 Seçilen sayıların farklı olmasının sebebi hedef test kümesidir: `14` = yalnız
-PG dosyası, `20` = PG + saf/AST, `22` = saf/AST + kilit sözleşmesi, `19` = PG +
+PG dosyası, `22` = PG + saf/AST, `24` = saf/AST + kilit sözleşmesi, `19` = PG +
 İP-2b callback, `30` = PG + kilit sözleşmesi.
+
+> ⚠️ IP18-2 ve IP18-8'in sayıları **iki kez** güncellendi: AST nöbetçisine
+> pozitif + negatif kontrol eklenince saf/AST dosyası 6 → 8 teste çıktı
+> (22 → 24 ve 20 → 22). Bu tablo bir kez bayat kaldı ve dar teyit yakaladı;
+> **kural: mutasyon kataloğunun hedef dosyalarına test eklendiğinde bu tablo
+> yeniden ölçülür.**
 
 **IP18-9/10/11 neden var:** bağımsız denetim TB-15(b)'nin davranış olarak
 kapatıldığını ama **nöbetsiz** bırakıldığını ölçtü — bu üç mutasyonu koştu ve
@@ -327,7 +333,8 @@ python -m scripts.mutation_drill_ip18                    # 8 prova
 | [[TB-40]] | D9 kandırılabilir: `FOR UPDATE OF o` (JOIN'de orders ikinci tablo) hem D9'u hem kaynak sözleşmesini geçiyor |
 | [[TB-41]] | AST nöbetçisi kandırılabilir: `values` değişkene alınırsa görülmüyor |
 | [[TB-42]] | Mutasyon sürücüsünün `ERROR` gölgelemesi düğüm ayracı olmayan koleksiyon hatasını saymıyor |
+| [[TB-43]] | `apply_refunded_amount`'ın `LEAST(…, total)` tavanı ve `refunded_at` COALESCE koruması nöbetsiz (**tabanla bayt-özdeş → İP-18 kapsamı dışı**) |
 
-Kapanan: **TB-15** (tamamı) · Numara tahsisi **iki kez** ölçülerek yapıldı (tüm
+Kapanan: **TB-15** (tamamı) · Numara tahsisi **üç kez** ölçülerek yapıldı (tüm
 yerel + uzak dallar tarandı): ilk turda en yüksek **TB-36** → 37/38/39;
-denetim sonrası turda en yüksek **TB-39** → 40/41/42.
+denetim turunda **TB-39** → 40/41/42; dar teyit turunda **TB-42** → 43.

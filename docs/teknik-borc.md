@@ -130,6 +130,18 @@ silinmez).
      o belge İP-5 turunun ölçümünü anlatıyor ve o tur bu düzeltmeden önceydi).
      -->
 
+## TB-43 · `apply_refunded_amount`'ın `LEAST(…, total)` tavanı ve `refunded_at` COALESCE koruması NÖBETSİZ
+
+| | |
+|---|---|
+| **Bulundu** | İP-18 dar teyit turu (14 Ağu 2026); denetçi ölçtü, bağımsız olarak doğrulandı |
+| **Yer** | `backend/services/order_service.py::apply_refunded_amount` — `UPDATE orders SET refunded_amount = LEAST(refunded_amount + :a, total), refunded_at = COALESCE(refunded_at, now())` |
+| **Ölçüm** | İki korumanın İKİSİ de sökülünce (tavan `LEAST` kaldırıldı, `COALESCE` düz `now()` yapıldı) **56 para testinin hiçbiri kırılmıyor** |
+| **Neden İP-18 kapsamı dışı** | Fonksiyon tanımı tabanla (`c8b05d2`) **bayt-özdeş**. Bağımsız olarak doğrulandı: `ast.get_source_segment` ile çıkarılıp SHA-256'lanan gövde iki tarafta da `f35ffa2006e7…` (aynı yöntemle `reserve_refund` = `9cb77e97a801…`, `reservable_refund` = `03794adefc5a…`, üçü de özdeş). Yani önceden var olan bir borçtur; İP-18 bu fonksiyonu **çağıran** yolu değiştirdi, fonksiyonun kendisini değil |
+| **Neden İP-18 nöbetçileri yakalamıyor** | D12 tam iadeyi ölçer (`refunded_amount == refund_reserved == total`); sıfırdan tam tutara giden tek adımda `LEAST` tavanı zaten devreye girmez ve `refunded_at` de zaten NULL'dur, yani `COALESCE` ile düz `now()` aynı sonucu verir. Korumaların ayırt edici olduğu hâl **kısmi iade + ikinci hareket**tir ve o, İP-18'in değil İP-2a'nın (RMA) alanıdır |
+| **Gerçek risk** | Orta. `LEAST` düşerse kümülatif kısmi iadeler `refunded_amount`'ı `total`'ın ÜSTÜNE çıkarabilir (ciro raporu negatif net ciro gösterir; `escrow.order_inflight_refund` `total - kesin` hesabını negatife düşürür). `COALESCE` düşerse **ilk** iade zamanı her yeni kısmi iadede ezilir — iade penceresi/denetim izi için kullanılan damga kayar |
+| **Sonraki adım** | İP-2a alanında iki düğüm: (1) `refunded_amount + tutar > total` olacak şekilde ikinci bir kısmi iade → kolon `total`'ı AŞMAMALI; (2) iki ardışık kısmi iade → `refunded_at` **ilk** iadenin damgasını korumalı. İkisi de `tests/integration/test_ip2a_partial_math_pg.py`'ye aittir |
+
 ## TB-42 · Mutasyon sürücüsünün `ERROR` gölgelemesi kısmen kör — düğüm ayracı olmayan koleksiyon hatasını saymıyor
 
 | | |
