@@ -1,0 +1,479 @@
+# İP-19 — Dağıtım Operasyon Modeli (filo · gün tahtası · raporlama)
+
+Tarih: 2026-08-15 · Dal: `ip19-dagitim-operasyon` · Taban: `8fc8951` (main)
+
+Bu paket, "Cıncık Teslimat"ın **kaynak modelini** düzeltir: aracı bir enum
+olmaktan çıkarıp veriye çevirir, dağıtım planlamasını araç sayısından bağımsız
+hâle getirir, VROOM'un zaten sunduğu vardiya/maliyet kısıtlarını açar, sevk
+sihirbazını bir gün tahtasına dönüştürür ve operasyonu ölçen beş metrik ekler.
+
+**Kapsam dışıdır ve ayrı paketlerde ele alınacaktır:** bölge dışı kargo
+entegrasyonu (İP-20), teslimat sözünün hukuki dili, kurye ekranının hız-baskısı
+riski, P1\* yetki belgesi (§9 — borç defterine yazıldı).
+
+---
+
+## 0. Neden bu paket
+
+Sahibin şikâyeti tek cümleydi: *"biraz ucuz duruyor ve esneklik yok gibi, iki
+tane araç var, varsayılan olarak sabit."*
+
+Beş bağımsız araştırma (kendi kodumuz · filo modelleme sektör pratiği · açık
+kaynak ekosistem · ticari ürün özellik barı · Türkiye operasyon gerçeği) aynı
+teşhise vardı ve his doğrulandı. Üç kök sebep:
+
+### 0.1 Araç bir varlık değil, sekiz yere kopyalanmış bir etiket
+
+| Yer | İçerik |
+|---|---|
+| `backend/models/delivery.py:40-44` | `class DeliveryVehicle(str, enum.Enum)` — `LADA`, `COROLLA` |
+| `backend/models/delivery.py:134-136` | `delivery_runs.vehicle` `String(20)`, `server_default 'LADA'` — **FK yok, CHECK yok** |
+| `backend/schemas/delivery.py:12` | `pattern="^(LADA|COROLLA)$"` |
+| `backend/services/delivery_service.py:1396` | `_VEHICLE_IDS = {1: "LADA", 2: "COROLLA"}` |
+| `backend/models/courier.py:22` | `couriers.vehicle_plate` — **araç niteliği sürücü kaydında** |
+| `frontend/src/types/index.ts:1849` | `type DeliveryVehicle = "LADA" \| "COROLLA"` |
+| `frontend/src/lib/deliveryRun.ts:69-72` | `VEHICLE_LABEL` sözlüğü |
+| `frontend/src/pages/admin/delivery/DeliveryTodayPage.tsx:252-253` | iki `<option>` **elle yazılmış** |
+
+Enum'un kendisi **hiçbir yerde kullanılmıyor** — kolon serbest string, doğrulama
+regex, servis ayrı sözlük. Yani tek doğruluk kaynağı yok; enum ölü bir
+dokümantasyon ve yanlış güven veriyor. Üçüncü araç eklemek 6 üretim + ~10 test
+dosyasına dokunmak demek.
+
+### 0.2 🔴 Sessiz tuzak — üçüncü aracı eklemek BUGÜN güvenli değil
+
+İki satır birbirinden habersiz:
+
+```python
+# delivery_service.py:1427  — günlük tavan, araç SAYISINI okuyor
+max_total = max(len(_VEHICLE_IDS), 1) * settings.DELIVERY_MAX_STOPS_PER_RUN
+
+# delivery_service.py:1438-1442  — plana giren araçlar, SABİT iki değer
+vehicle_ids = [1] if len(candidates) <= SINGLE_VEHICLE_MAX_STOPS else [1, 2]
+```
+
+`_VEHICLE_IDS`'e üçüncü satır eklenirse tavan sessizce `3 × 40 = 120`'ye çıkar,
+ama plan hâlâ en fazla iki araç döndürür. Sonuç: **120 siparişe söz verilir,
+2 araca yüklenir**, `max_tasks = ceil(120/2) = 60` olur ve
+`DELIVERY_MAX_STOPS_PER_RUN=40` tavanı araç başına aşılır (o tavan yalnız
+toplamda uygulanıyor).
+
+**Bunu yakalayan hiçbir test yoktur.** `test_delivery_dispatch_live_pg.py:343`
+`{r.vehicle for r in runs} == {"LADA", "COROLLA"}` küme eşitliğine çivili —
+üçüncü araç plana girmezse test **yeşil kalır ve gerçeği gizler**.
+
+Bu, paketin düzelttiği tek **gerçek üretim kusurudur**; geri kalanı yapısal borç.
+
+### 0.3 Motorun %85'i kullanılmıyor
+
+`build_vroom_payload` (`core/routing/vroom.py:59-86`) bugün tam olarak şunu
+gönderiyor: araçta `id` · `profile` · `start` · `max_tasks`; işte `id` ·
+`location` · sabit `service`.
+
+VROOM v1.14'ün (bizim imajımız — `docker-compose.yml:103`) desteklediği ve
+**kullanılmayan** kısıtlar, bize değeri sırasıyla:
+
+| Yetenek | Değer |
+|---|---|
+| `vehicle.time_window` | Kurye 17:00'de bitiyorsa plan bunu **bilmiyor** |
+| `vehicle.costs.fixed` | "12 durak" sihirli sayısını *"ikinci aracı çıkarmanın maliyeti X TL"* ekonomisine çevirir |
+| `job.time_windows[]` | Müşteriye "14-16 arası" sözü vermenin ön koşulu |
+| `job.setup` | Aynı apartmandaki 3 sipariş bugün 3×180 sn sayılıyor |
+| `job.priority` | Gecikmiş/söz verilmiş sipariş önce |
+| `vehicle.breaks[]` | Öğle arası ETA'lara yansımıyor |
+
+Bu paket ilk ikisini açar; kalanı §8'de sıralanmıştır.
+
+### 0.4 Panel bir sihirbaz, gün tahtası değil
+
+İncelenen 13 ticari üründe (Onfleet · Routific · OptimoRoute · Track-POD ·
+Detrack · Shipday · Bringg …) **istisnasız** iki şey ortak: araç/sürücü birinci
+sınıf CRUD'lu bir varlıktır, ve plan **bir güne** aittir — atanmamış işler
+havuzu + kaynak satırları + sürükle-bırak. Bizde tek yönlü "tur kur → durak ekle
+→ başlat" sihirbazı var.
+
+Panelin kendisi bunu dürüstçe yazıyor (`DeliveryCouriersPage.tsx:19-20`):
+*"Salt-okunur yapılandırma — sahte düzenleme butonu YOK: bu değerler .env'de
+yaşar ve deploy ile değişir."*
+
+### 0.5 Bu his zaten repoda kayıtlı
+
+`docs/teslimat-profesyonellestirme-gorev.md:70` — **cevaplanmamış** açık soru:
+
+> *"KULLANICIYA SOR: LADA/COROLLA çalışma saatleri, kurye vardiyaları, zorunlu
+> mola, depo tamponu ve apartman servis süresi başlangıç değerleri nedir?"*
+
+`docs/teslimat-faz0-denetim-matrisi.md:27` (P0 boşluk): *"Kapasite tek global
+sayı; **araç/kurye/vardiya/retry-borcu kavramı** yok."*
+
+Ve `docs/delivery-screens-wireframes.md` koddan ileride: araç bazlı yük görünümü
+(satır 1011-1016), kurye kartında araç seçici (1213), tur "Devret" butonu (1093)
+— üçü de çizilmiş, hiçbiri yazılmamış.
+
+---
+
+## 1. Bağlayıcı tasarım kararları
+
+### K-1 · Araç bir tablodur, enum değildir
+
+`vehicles` tablosu açılır ve **`vehicles.id` doğrudan VROOM vehicle id'si olur.**
+Bu, `_VEHICLE_IDS` sözlüğünü ve int↔string köprüsünü tamamen ortadan kaldırır.
+
+### K-2 · Vardiya alanları NULLABLE — "kim taşıyor" kararı ertelenebilir olmalı
+
+Proje sahibinin sorusu doğrudan bu kararı doğurdu: *"kurucu ben taşıyacağım
+deyip sonra kuryeye ihtiyaç duyarsam ne yapacağım?"*
+
+Cevap: **hiçbir şey.** Model bu soruyu sormaz. `shift_start`/`shift_end` `NULL`
+ise VROOM'a zaman penceresi **gönderilmez** ve plan bugünkü davranışını birebir
+korur. Kurye tutulduğu gün alanlar doldurulur, kod değişmez, deploy olmaz.
+`delivery_runs.courier_id` zaten nullable'dır (`SET NULL`) — kuryesiz tur bugün
+de mümkündür.
+
+**Bu, paketin merkezî felsefesidir:** operasyonel varsayımlar koda değil veriye
+yazılır. "İki araç" hatasının kökeni de tam olarak bu ilkenin ihlaliydi.
+
+### K-3 · Araç sayısı kararı eşikten ekonomiye taşınır
+
+`DELIVERY_SINGLE_VEHICLE_MAX_STOPS = 12` sabiti **kaldırılır**. Yerine:
+aktif araçların **tamamı** VROOM'a gönderilir, yedek araçlara `costs.fixed`
+verilir, VROOM ikinci aracı **yalnız kazanç sabit maliyeti aşarsa** kullanır.
+Boş kalan araç `routes`'ta görünmez (mevcut davranış).
+
+Haversine fallback'in maliyet modeli yoktur; orada araç sayısı
+`ceil(len(points) / en_küçük_max_stops)` ile türetilir — yani eşik yine vardır
+ama **araç verisinden** gelir, sabitten değil.
+
+### K-4 · Kapasite tek boyutludur ve NULLABLE'dır
+
+Sektör pratiği çok boyutlu kapasiteyi (ağırlık + hacim + palet) destekler, ama
+1-5 araçlık bir kitap operasyonunda **bağlayıcı kısıt yüktür değil zamandır**.
+Bir Lada'nın bagajına sığmayacak kadar kitap, günlük sipariş adedinin çok
+üstündedir. `max_stops int NULL` (NULL = kısıtsız) yeterlidir; `max_tasks`
+tercihi (`vroom.py:31-56`'daki ölçülmüş gerekçe) korunur.
+
+### K-5 · Araç niteliği araçta yaşar
+
+`couriers.vehicle_plate` **kaldırılır**, veri `vehicles.plate`'e taşınır. Bugünkü
+hâl bir anti-pattern'dir: kurye araç değiştirdiğinde geçmiş yalan söyler. Müşteri
+takip sayfasındaki plaka (`delivery_service.py:1689`) turun **aracından** okunur.
+
+### K-6 · Ekosistemden kod alınmaz, desen alınır
+
+Tek ciddi açık kaynak aday **Fleetbase FleetOps** ve lisansı **AGPL-3.0** —
+kapalı kaynak ticari bir platformda kod olarak kullanılamaz. Şema/desen okumak
+serbesttir; `manifests`/`manifest_stops` yapısı ve motor-kayıt deseni bu
+sözleşmeyi biçimlendirmiştir, ama **tek satır kod taşınmayacaktır**.
+
+Ayrıca: Python'da üretim düzeyi bir son-kilometre platformu **yoktur** (yapılan
+taramada en yüksek 3 yıldız, hepsi portfolyo projesi). Kendimiz yazmak eksiklik
+değil, tek seçenektir. Buna karşılık **optimizasyon katmanı asla kendimiz
+yazılmaz** — VROOM/OSRM kalır (§K-7).
+
+### K-7 · VROOM kalır
+
+`vroom-express`'in bakım modunda olduğu (son 12 ayda 2 commit) ve PyVRP'nin
+(MIT, Python, canlı) konteyneri tamamen kaldırabileceği ölçüldü. **Bu pakette
+motor değiştirilmez** — çalışan bir kurulumu değiştirmek, kullanılmayan
+yeteneklerini açmaktan daha riskli ve daha pahalıdır. PyVRP değerlendirmesi
+ayrı bir ölçümlü spike'a bırakılır (§8).
+
+### K-8 · Gün+araç başına tek planlı tur kısıtı KORUNUR
+
+`uq_delivery_run_planned` index'i `vehicle` string'inden `vehicle_id`'ye taşınır,
+semantiği değişmez. Aynı araçla gün içinde ikinci dalga (multi-trip) bu paketin
+kapsamı **değildir** — ticari ürünlerde orta/üst segment özelliğidir ve bizde
+henüz talep eden bir hacim yoktur.
+
+---
+
+## 2. Şema
+
+### 2.1 Yeni tablo — `vehicles`
+
+| Kolon | Tip | Not |
+|---|---|---|
+| `id` | PK int | **VROOM vehicle id'si doğrudan budur** |
+| `code` | varchar(20) UNIQUE | `LADA`, `COROLLA` — migration'da geçmiş turların string'i buraya eşlenir |
+| `label` | varchar(50) | Panelde görünen ad |
+| `plate` | varchar(20) NULL | `couriers.vehicle_plate`'ten taşınır |
+| `profile` | varchar(20) NOT NULL, default `'car'` | OSRM profili; motosiklet eklenirse `bike` |
+| `max_stops` | int NULL | NULL = kısıtsız. `DELIVERY_MAX_STOPS_PER_RUN`'ın araç bazlı hâli |
+| `shift_start` | time NULL | VROOM `time_window[0]`. NULL → pencere gönderilmez |
+| `shift_end` | time NULL | VROOM `time_window[1]` |
+| `fixed_cost` | int NOT NULL default 0 | VROOM `costs.fixed` — yedek aracı çıkarma ekonomisi |
+| `sort_order` | int NOT NULL default 0 | "birincil/yedek" sırası. **`is_primary` boolean KULLANILMAZ** — üçüncü araçta anlamsızlaşır |
+| `is_active` | bool NOT NULL default true | |
+| + `TimestampMixin`, `SoftDeleteMixin` | | Proje geneli desen |
+
+`models/__init__.py`'ye import + `__all__` kaydı zorunludur.
+
+### 2.2 Değişen tablolar
+
+```
+delivery_runs
+  + vehicle_id  FK -> vehicles.id  NOT NULL   (RESTRICT — araç silinirse geçmiş tur bozulmasın)
+  - vehicle     String(20)                     KALDIRILIR
+  ~ uq_delivery_run_planned: (run_date, vehicle) -> (run_date, vehicle_id)
+
+couriers
+  - vehicle_plate                              KALDIRILIR (veri vehicles.plate'e taşınır)
+```
+
+### 2.3 Migration
+
+Tek revizyon, üç adım — **veri kaybı yok**:
+
+1. `vehicles` tablosunu kur; `INSERT (code,label,sort_order) VALUES ('LADA','Lada',0),('COROLLA','Corolla',1)`
+2. `delivery_runs.vehicle_id` ekle (önce nullable) →
+   `UPDATE delivery_runs r SET vehicle_id = v.id FROM vehicles v WHERE v.code = r.vehicle` →
+   `NOT NULL`'a çevir → index'i yeniden kur → `vehicle` kolonunu düşür
+3. `couriers.vehicle_plate` verisini `vehicles.plate`'e taşı (tek plaka varsa),
+   sonra kolonu düşür
+
+`downgrade` şemayı geri kurar ama **veriyi geri getirmez** — revizyon
+docstring'inde açıkça yazılır ve bu iddia gerçek PostgreSQL'de **dolu tabloda**
+ölçülür (§5, D-9). Baseline'a dokunulmaz; ileri yönlü revizyon yazılır.
+
+---
+
+## 3. Servis ve routing değişiklikleri
+
+### 3.1 `RoutingProvider` imzası araç nesnesi alır
+
+`core/routing/base.py`'ye yeni saf veri sınıfı:
+
+```python
+@dataclass(frozen=True)
+class RouteVehicle:
+    id: int
+    profile: str = "car"
+    max_stops: int | None = None          # araç bazlı tavan
+    shift_start_sec: int | None = None    # gün başından saniye; None -> pencere yok
+    shift_end_sec: int | None = None
+    fixed_cost: int = 0
+```
+
+`plan_fleet(*, depot_lat, depot_lng, points, vehicles: list[RouteVehicle])` —
+`vehicle_ids: list[int]` parametresi **kaldırılır**. Bu tek değişiklik dört
+kısıtı birden açar: homojen kapasite, sabit profil, vardiya yokluğu ve
+maliyet körlüğü.
+
+`FleetPlan.routes` anahtarı `vehicles.id` olmaya devam eder.
+
+### 3.2 `build_vroom_payload`
+
+Araç sözlüğüne koşullu alanlar eklenir:
+
+- `max_tasks` = `min(ceil(n/k), vehicle.max_stops)` — ikisi de varsa küçüğü;
+  yalnız biri varsa o; hiçbiri yoksa alan yazılmaz
+- `time_window` = `[shift_start_sec, shift_end_sec]` — **yalnız ikisi de doluysa**
+- `costs` = `{"fixed": n}` — **yalnız `fixed_cost > 0` ise**
+- `profile` araçtan okunur (bugün sabit `"car"`)
+
+Bugünkü payload, tüm araçlar varsayılan değerlerdeyken **birebir korunur** —
+geriye uyumluluk nöbetçisiyle sabitlenir (§5, D-4).
+
+### 3.3 `dispatch_day`
+
+```
+aktif_araclar = DB'den (is_active, deleted_at IS NULL, sort_order)
+max_total     = Σ (arac.max_stops ?? DELIVERY_MAX_STOPS_PER_RUN)
+plan_fleet(..., vehicles=aktif_araclar)
+```
+
+`_VEHICLE_IDS` sözlüğü ve `[1] / [1,2]` ternary'si **silinir**;
+`DELIVERY_SINGLE_VEHICLE_MAX_STOPS` ayarı **kaldırılır** (K-3).
+
+§0.2'deki sessiz tuzak bu değişiklikle yapısal olarak imkânsız hâle gelir:
+tavan ile plana giren araç kümesi **aynı listeden** türer.
+
+### 3.4 Yeni uçlar
+
+| Uç | Yetki | İşlev |
+|---|---|---|
+| `GET /delivery/vehicles` | `delivery.view` | Liste (panel + gün tahtası) |
+| `POST /delivery/vehicles` | `delivery.manage` | Ekle |
+| `PATCH /delivery/vehicles/{id}` | `delivery.manage` | Düzenle / pasifleştir |
+| `DELETE /delivery/vehicles/{id}` | `delivery.manage` | Soft-delete; **aktif turu olan araç silinemez → 409** |
+| `PATCH /delivery/runs/{id}` | `delivery.manage` | `vehicle_id` alanı eklenir (bugün yalnız `courier_id` taşıyor) |
+| `GET /delivery/board?date=` | `delivery.view` | Gün tahtası verisi: atanmamış havuz + araç bazlı turlar |
+| `GET /delivery/metrics?from=&to=` | `delivery.view` | Beş metrik (§4.2) |
+
+Yazma uçları `user_rate_limit` ile kapılanır (mevcut desen,
+`api/deps.py:236-252`). Admin aksiyonları `audit_logs`'a yazılır.
+
+---
+
+## 4. Frontend
+
+### 4.1 Araç yönetimi + türetilmiş etiketler
+
+`frontend/src/lib/deliveryRun.ts:69-72`'deki `VEHICLE_LABEL` sözlüğü,
+`types/index.ts:1849`'daki union ve `DeliveryTodayPage.tsx:252-253`'teki elle
+yazılmış `<option>`'lar **kaldırılır**; hepsi `GET /delivery/vehicles`'tan
+türetilir. `DeliveryTodayPage.tsx:317-319`'daki `dispatchable > 12` sabiti ve
+"Lada ve Corolla" metni de kaldırılır (backend eşiği artık yok).
+
+Araç CRUD ekranı `CourierManager.tsx` desenini izler (aynı sekme grubu).
+
+### 4.2 Gün tahtası
+
+`/yonetim/dagitim` "Bugün" sekmesi sihirbazdan tahtaya çevrilir:
+
+- **Sol**: atanmamış uygun siparişler havuzu (bugünkü `eligible-orders`)
+- **Sağ**: araç başına satır — turdaki duraklar, sırasıyla
+- **Sürükle-bırak**: havuzdan araca, araçtan araca, araç içinde sıra değiştirme
+- **Kapasite uyarısı**: araç `max_stops`'u aşınca satır işaretlenir; ihlal
+  **engellenmez, görünür kılınır** (elle karar sahibinindir)
+- "Günü Optimize Et" ve elle sıralama korunur
+
+Sürükle-bırak için **yeni bağımsızlık eklenmez**; HTML5 drag-and-drop yeterlidir.
+
+### 4.3 Raporlama — beş metrik
+
+`GET /delivery/metrics` ve "Performans" sekmesi:
+
+1. **Zamanında teslim oranı** — `promised_delivery_date`'e göre
+2. **İlk denemede başarı oranı** — sipariş başına durak sayısı 1 olanlar
+3. **Durak/saat** — tur süresi başına sonuçlanan durak
+4. **Başarısızlık nedenleri dağılımı** — mevcut `FailReason` enum'u üzerinden
+5. **km/teslimat** — `DeliveryRun.total_distance_km` / teslim edilen durak
+
+Hepsi mevcut alanlardan türer; **yeni ölçüm alanı eklenmez.**
+
+---
+
+## 5. Yokluk ve davranış matrisi (üretim kodundan ÖNCE yazılır)
+
+Kök `CLAUDE.md` §E gereği matris ayrı bir commit'te, üretim kodundan önce
+yazılacak ve **kırmızı çıktısı commit mesajına** yazılacaktır.
+
+| Kod | Ne ölçer | Sınıf |
+|---|---|---|
+| **D-1** | `DeliveryVehicle` enum'u, `_VEHICLE_IDS` ve `SINGLE_VEHICLE_MAX_STOPS` **yok** (import/attr hatası) | gerçek import |
+| **D-2** | `GET/POST/PATCH/DELETE /delivery/vehicles` gerçek HTTP'de çalışır; yetkisiz **403**, yabancı id **404** | gerçek HTTP |
+| **D-3** | Üçüncü araç **INSERT ile** eklenince `dispatch_day` onu plana **alır** ve `max_total` **aynı listeden** türer | gerçek PostgreSQL |
+| **D-4** | Tüm araçlar varsayılan değerlerdeyken `build_vroom_payload` çıktısı **bugünküyle birebir aynı** | saf birim |
+| **D-5** | `shift_start`/`shift_end` doluysa payload'da `time_window` **var**; biri NULL ise **yok** | saf birim |
+| **D-6** | `fixed_cost > 0` ise `costs.fixed` **var**; 0 ise alan **yok** | saf birim |
+| **D-7** | `max_tasks` = `min(ceil(n/k), max_stops)`; yalnız biri varsa o; hiçbiri yoksa alan yok | saf birim |
+| **D-8** | Aktif turu olan araç silinmeye çalışılınca **409**, tur bozulmaz | gerçek PostgreSQL |
+| **D-9** | Migration: taze DB'de `upgrade` → **veri yaz** → `downgrade` → şema geri gelir, **veri gelmez** → `upgrade` → `alembic check` temiz | gerçek PostgreSQL |
+| **D-10** | `uq_delivery_run_planned` `vehicle_id` üzerinde çalışır: aynı gün+araç ikinci PLANNED tur **reddedilir** | gerçek PostgreSQL |
+| **D-11** | Gün tahtası: havuzdan araca sürükleme gerçekten `POST /runs/{id}/stops` isteğine dönüşür | gerçek DOM |
+| **D-12** | `max_stops` aşılınca uyarı **DOM'da görünür**, ama işlem **engellenmez** | gerçek DOM |
+| **D-13** | Panelde araç `<option>`'ları **sunucudan** gelir — sabit iki seçenek yok | gerçek DOM |
+| **D-14** | Beş metrik uçtan doğru hesaplanır (bilinen fixture üzerinde elle doğrulanmış değerler) | gerçek PostgreSQL |
+
+### 5.1 Doluluk nöbetçileri (yalancı yeşile karşı)
+
+Yokluk iddiaları boş kümede kendiliğinden sağlanır. Her ölçümün yanına:
+
+| Nöbetçi | Neyi imkânsız kılar |
+|---|---|
+| D-1: `Vehicle` modeli **import edilebilir** | Modül tamamen silinse "enum yok" iddiası da geçerdi |
+| D-3: iki araçlı gün **hâlâ iki tur** üretir | "Üçüncü araç plana girdi" iddiası, plan tamamen bozuksa da geçebilirdi |
+| D-4: payload'da `jobs` **dolu** | Boş payload karşılaştırması iki tarafta da eşit çıkardı |
+| D-9: `srs_*` benzeri komşu tablolar **etkilenmedi** | Migration her şeyi düşürse "flashcard yok" gibi boş DB'de de sağlanırdı |
+| D-13: en az bir araç `<option>`'u **var** | İstek hiç atılmasa da "sabit iki seçenek yok" geçerdi |
+
+---
+
+## 6. Doğrulama kapıları
+
+Taban `main = 8fc8951` üzerinde ölçülecek; tek kullanımlık `adana_ip19_test`
+veritabanı, Redis `db11`, `PAYMENT_PROVIDER=fake` ([[TB-21]]).
+
+| Kapı | Taban | Hedef |
+|---|---|---|
+| `pytest tests/integration` | 1332 · 16 skip | ≥ 1332, sıfır gerileme |
+| `pytest` (integration/verify hariç) | 962 | ≥ 962 |
+| `pytest tests/verify` | 132 | 132 |
+| `pytest tests/acceptance` | 197 | 197 |
+| frontend `vitest run` | 902 · 86 dosya | ≥ 902 |
+| `eslint src` | 0 hata · 32 uyarı | 0 hata, uyarı artmaz |
+| `tsc -b` · `ruff check backend/` | temiz | temiz |
+| Gerçek tarayıcı turu | — | gün tahtası sürükle-bırak + araç CRUD |
+
+Ayrıca **mutasyon provası** (§CLAUDE.md D): D-3, D-7, D-8 ve D-10 için en az
+birer ters prova; sürücü `backend/scripts/mutation_drill.py`.
+
+### 6.1 Testlerin "2"den kurtarılması
+
+Aşağıdaki sabitler araç sayısından türetilmiş hâle getirilecektir — bugün
+üçüncü araç eklense **sessizce yeşil kalan** yerler bunlardır:
+
+- `test_delivery_dispatch_live_pg.py:343` — `{"LADA","COROLLA"}` küme eşitliği
+- `test_delivery_dispatch_live_pg.py:347` — `ceil(n/2)`
+- `test_delivery_dispatch_live_pg.py:365` — `2 * DELIVERY_MAX_STOPS_PER_RUN`
+- ~11 fabrika/test dosyasındaki literal `vehicle="LADA"`
+
+Referans desen: `test_routing_hardening.py:25-37` — orada `k` zaten `1..N`
+döngüsüyle sınanıyor.
+
+---
+
+## 7. Kapsam dışı — bilinçli
+
+| Kalem | Gerekçe |
+|---|---|
+| Çok boyutlu kapasite (ağırlık + hacim + palet) | Kitapta bağlayıcı kısıt zaman; üç sayı da bakımı zorunlu ölü veri olur |
+| `skills` / beceri eşleştirme | Her araba her kitabı taşır |
+| Çoklu depo | Tek depo, tek şehir. `RoutingProvider` imzası skaler `depot_lat/lng` alıyor; değiştirmek ayrı iş |
+| Çoklu tur (aynı araç, ikinci dalga) | Orta/üst segment özelliği; talep eden hacim yok (K-8) |
+| Sürücü müsaitlik takvimi (izin/rapor) | 1-2 kişide takvim yeter |
+| Telematik / yakıt / bakım / km takibi | Varlık yönetimi; 2 araçta ajanda işi |
+| Gerçek zamanlı auto-dispatch | Sipariş akışı batch (gün başında ödenmiş siparişler) |
+| 3. parti kurye marketplace | Kendi aracımız var, kıyaslanacak taşıyıcı yok |
+| Sürücü ücret/prim hesaplama | 2 sürücüde Excel daha hızlı |
+| Turu başka kuryeye devretme | Wireframe'de çizili (D1 ❌); ayrı karar ister |
+| Motor değişimi (PyVRP) | K-7 — ayrı ölçümlü spike |
+| Bölge dışı kargo entegrasyonu | **İP-20** |
+
+---
+
+## 8. Sonraki adımlar (bu paketten sonra)
+
+Öncelik sırasıyla, her biri bağımsız:
+
+1. **İP-20 — Basit Kargo entegrasyonu.** Bölge dışı kuyruğu bugün ölü; elle
+   takip-no akışı bile yok. REST/JSON + Bearer, `ECONOMIC`/`FAST` ile firma
+   seçimi kod dışında, `SELF_` önekiyle büyüme yolu. **Ön koşul:** Basit
+   Kargo'ya sandbox/test ortamı olup olmadığı sorulmalı (dokümante edilmemiş).
+2. **`job.setup` ayrımı** — aynı apartmandaki N sipariş bugün N×180 sn sayılıyor.
+3. **`job.time_windows[]`** — müşteriye saat aralığı sözü vermenin ön koşulu.
+4. **`vehicle.breaks[]`** — öğle arası ETA'lara yansısın.
+5. **PyVRP spike** — VROOM konteynerini ve bakım modundaki `vroom-express`'i
+   kaldırma değerlendirmesi; ölçümlü, atılabilir.
+
+---
+
+## 9. Kapsam dışı bulgular — borç defterine yazıldı
+
+Araştırma turunda çıkan ve **bu paketin konusu olmayan** üç bulgu. Üçü de
+`docs/teknik-borc.md`'ye geçici etiketle kaydedilmiştir; numara merge turunda
+tahsis edilecektir (defterin dört maddelik kuralı).
+
+- **Teslimat sözünün hukuki dili.** Mesafeli Sözleşmeler Yönetmeliği m.16/1:
+  30 gün **üst** sınır, taahhüt edilen süre **alt** sınırı belirler. m.16/2:
+  tutulmazsa tüketici derhal fesheder, m.16/3: 14 gün içinde **yasal faiziyle**
+  iade. Bizde `Order.promised_delivery_date` ve geri sayımlı söz rozeti var —
+  yani "aynı gün" pazarlama değil, sisteme yazılmış bağlayıcı taahhüt.
+- **Kurye ekranının hız-baskısı riski.** Yeni mevzuatta platformun sürücüye hız
+  baskısı kurması ve makul olmayan teslimat süresi dayatması yasaklanmış
+  (tam metin birincil kaynaktan **doğrulanamadı**). Ayrıca Yargıtay içtihadı,
+  esnaf-kurye modelinde platformu asıl işveren sayabiliyor ve **ekranın kontrol
+  sıkılığı davada delil oluyor**.
+- **Yetki belgesi K2 değil muhtemelen P1\*.** Kurye/dağıtım faaliyeti ayrı belge
+  sınıfında; pazaryeri modelinde ürün mülkiyeti satıcıda kalırsa "kendi malım"
+  savunması çöker. ⚠️ Bulgular belge aracısı sitelerinden; resmî KTY metninden
+  **teyit edilemedi** — e-Devlet U-NET veya Adana Bölge Müdürlüğü'nden yazılı
+  teyit gerekir.
+
+Ayrıca kayıt dışı bir ölçüm: **kendi filonun kırılma noktası ~40 teslimat/gün.**
+SGK'lı kurye + araç ≈ 59.000 TL/ay; anlaşmalı kargo ~55-90 TL/gönderi. Ücretli
+kurye tutulduğu anda, günde 40 teslimata varana kadar kendi filo kargodan
+pahalıdır. Kurucu kendisi taşırsa hesap değişir (günde ~12'de başabaş). Bu bir
+kod kararı değildir; paketin **kapsamını** etkilemez ama sahibinin kurye
+kararını etkiler.

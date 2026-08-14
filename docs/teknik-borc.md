@@ -253,6 +253,53 @@ yalnız ölçümü ve öneriyi kaydeder.
        TB-46 : TB-34 (dal içi, terk edildi) → TB-?B → TB-46
 -->
 
+<!-- Numaralandırma notu (İP-19 araştırma turu, 15 Ağu 2026): aşağıdaki üç
+     kayıt geçici etiket taşır (TB-?A / TB-?B / TB-?C). Ölçüm: tüm yerel
+     dallarda en yüksek `^## TB-<n>` başlığı **47**'dir, yani numaralar 48'den
+     başlamalıdır — ama tahsis, defterin kuralı gereği MERGE TURUNDA yapılır.
+     Üçü de İP-19'un (dağıtım operasyon modeli) araştırma turunda bulundu ve
+     o paketin KAPSAMI DIŞINDADIR: üçü de hukuk/mevzuat kararı ister, kod
+     kusuru değildir. Sözleşme: docs/ip19-dagitim-operasyon-sozlesme.md §9. -->
+
+## TB-?A · Teslimat sözü BAĞLAYICI bir taahhüttür ve 30 gün kalkanını kaldırır
+
+> **Öncelik: yüksek — LANSMAN ÖNCESİ ürün+hukuk kararı.** Bu bir kod kusuru
+> değil; çalışan ve amaçlandığı gibi davranan bir özelliğin **hukuki
+> pozisyonunun** ölçülmemiş olması.
+
+| | |
+|---|---|
+| **Bulundu** | İP-19 araştırma turu, 15 Ağu 2026 — Türkiye teslimat mevzuatı taraması |
+| **Yer** | `backend/services/delivery_promise.py` (16:00 cutoff → `Order.promised_delivery_date`) · `GET /store/delivery-info` · `frontend/src/components/DeliveryPromiseBadge.tsx` (geri sayımlı söz rozeti; ürün/sepet/checkout) · `frontend/src/lib/legalContent.ts` (ön bilgilendirme metni) |
+| **Durum** | Mesafeli Sözleşmeler Yönetmeliği (RG 27.11.2014/29188) **m.16/1**: satıcı "**taahhüt ettiği süre içinde**" ifa etmek zorundadır; otuz gün **her hâlükârda üst sınırdır**, taahhüt edilen süre **alt sınırı** belirler. **m.16/2**: yükümlülük yerine getirilmezse tüketici **sözleşmeyi feshedebilir**. **m.16/3**: fesihten itibaren **14 gün içinde** tüm ödemeler **yasal faiziyle** iade edilir. **m.5/1-f**: ön bilgilendirmedeki teslim süresi, **ticari reklamda taahhüt edilen süreyle uyumlu** olmalıdır |
+| **Etki** | Platform "aynı/ertesi gün" sözünü **sisteme yazmış** durumda (rozet geri sayım gösteriyor, `promised_delivery_date` sipariş satırında yaşıyor). Bu, pazarlama vaadi değil bağlayıcı taahhüttür: tutulmadığı her siparişte tüketici **30 günü beklemeden** fesih + faizli iade hakkı kazanır. Kendi filoyla teslimatta gecikme sebepleri (araç arızası, kurye hastalığı, hava) tamamen bizim riskimizdedir |
+| **Neden şimdi düzeltilmedi** | İP-19'un konusu **kaynak modelidir** (araç/vardiya/planlama). Metin değişikliği ayrı bir karar ve **avukat onayı** ister; yasal metinler zaten toplu onay bekliyor. Ayrıca teknik düzeltme değil ürün kararı: "aynı gün" vitrinde kalacak mı, kalacaksa hangi istisnalarla |
+| **Sonraki adım** | (1) Ön bilgilendirme formundaki **bağlayıcı süreyi** pazarlama vaadinden AYIR — vitrinde "aynı gün", sözleşmede "en geç X iş günü"; (2) `DeliveryPromiseBadge`'in dilini buna hizala; (3) mevcut ürün/hava/trafik istisnalarını metne yaz; (4) avukat onayına gönder |
+
+## TB-?B · Kurye ekranı hız baskısı üretiyor olabilir — hem mevzuat hem muvazaa riski
+
+| | |
+|---|---|
+| **Bulundu** | İP-19 araştırma turu, 15 Ağu 2026 |
+| **Yer** | `frontend/src/pages/courier/` saha ekranı · `DeliveryRun` ETA alanları · teslimat söz zinciri |
+| **Durum** | İki ayrı risk aynı ekranda buluşuyor. **(a) Mevzuat:** kurye düzenlemelerinde platformların sürücü üzerinde **hız baskısı** kurması ve **makul olmayan teslimat süresi taahhüdü** dayatması yasaklanmıştır. **(b) Muvazaa:** Yargıtay/BAM içtihadı, alt işveren veya "esnaf kurye" üzerinden çalıştırılan kuryelerde **platformu asıl işveren** sayabiliyor; *"platform yalnızca teknoloji şirketi olduğunu ileri sürerek sorumluluktan kurtulamaz"*. Bu davada **ekranın kontrol sıkılığı delil** olur: kim rotayı belirliyor, kim sırayı dayatıyor, kim süre ölçüyor |
+| **Ölçülmedi** | ⚠️ Hız baskısı yasağının **tam metni ve yaptırımı birincil kaynaktan doğrulanamadı** (yönetmelik PDF'i makine-okunur değil). İddia ikincil kaynaklardan; teyit edilmeli |
+| **Etki** | Şahıs şirketi ölçeğinde tek bir muvazaa davası (kıdem + ihbar + fazla mesai + geriye dönük SGK) ağırdır. Mevzuat tarafı ise idari yaptırım riski |
+| **Neden şimdi düzeltilmedi** | Kurye istihdam biçimi henüz kararlaşmadı (kurucu mu taşıyacak, ücretli kurye mi). Ekran tasarımı bu karara bağlı; karar verilmeden tasarım değiştirmek erken |
+| **Sonraki adım** | (1) Yasağın tam metnini Resmî Gazete'den teyit et; (2) kurye ekranında **geri sayım/süre sayacı yerine rota sırası** göster — süre sözü müşteriye verilir, kuryeye dayatılmaz; (3) ücretli kurye alınacaksa **SGK'lı** tercih et, esnaf-kurye modelinden uzak dur |
+
+## TB-?C · Yetki belgesi varsayımı doğrulanmadı — K2 değil muhtemelen P1*
+
+| | |
+|---|---|
+| **Bulundu** | İP-19 araştırma turu, 15 Ağu 2026 |
+| **Yer** | Kod değil — operasyonun yasal zemini. Dolaylı: `docs/pk1-deployment-checklist.md` (lansman kontrol listesi) |
+| **Durum** | Kendi aracıyla şehir içi teslimat için gereken belge, araştırmada varsayıldığı gibi K1/K2 ekseninde **değil**: Karayolu Taşıma Yönetmeliği kurye/dağıtım faaliyetini **P türü** belgeye bağlıyor. **P1\*** = il içi kurye taşımacılığı, sınırlı taşıt sayısı, otomobil+motosiklet+kamyonet kaydedilebiliyor. K2 ("kendi esas iştigal konusu") savunması **pazaryeri modelinde çökebilir**: eğitmenin fiziksel ürünü taşınıyorsa mal bize ait değildir; hangi belgenin gerektiği **faturayı kimin kestiğine** bağlıdır |
+| **Ölçülmedi** | ⚠️ P1\*'ın taşıt sayısı sınırı ve ücreti **belge aracısı sitelerinden** alındı; resmî KTY metninden **teyit edilemedi**. Ayrıca internette dolaşan "3,5 ton altı şehir içi muafiyeti" iddiası **muhtemelen 2008'de sona ermiş** — eşya taşımacılığı için geçerli değil |
+| **Etki** | Belgesiz ticari taşıma idari para cezası ve faaliyet durdurma riski taşır. Lansmanla birlikte teslimat başlayacağı için bu, **lansman öncesi kapanması gereken** bir kalemdir |
+| **Neden şimdi düzeltilmedi** | Kod işi değil; başvuru ve mali müşavir/mevzuat işi |
+| **Sonraki adım** | (1) **e-Devlet U-NET** veya Adana Ulaştırma Bölge Müdürlüğü'nden **yazılı teyit** al — belge aracısı sitelerine güvenme; (2) fatura akışını mali müşavire göstererek K2/P1\* ayrımını netleştir; (3) sonucu `pk1-deployment-checklist.md`'ye madde olarak yaz |
+
 ## TB-47 · `ip16_srs_izin_kodu_hizalama`'nın rol bağı taşıması NÖBETSİZ — sökülünce hiçbir test kırılmıyor
 
 | | |
