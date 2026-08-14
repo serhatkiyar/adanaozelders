@@ -147,14 +147,21 @@ silinmez).
      o belge İP-5 turunun ölçümünü anlatıyor ve o tur bu düzeltmeden önceydi).
      -->
 
-<!-- NUMARASIZ KAYITLAR (dal: `ip17-vade-granulerligi`). Aşağıdaki iki kayıt
-     İP-17'nin bağımsız denetiminde açıldı ve dal içinde **geçici etiketle**
-     (TB-?A / TB-?B) duruyor: numara ancak merge turunda, o an hiçbir dalda
-     kullanılmamış olduğu ölçülerek verilir (bu dosyanın numara tahsis kuralı,
-     üç kez yaşanan çakışmanın dersi). Merge eden, etiketleri gerçek numarayla
-     değiştirip bu yorumu siler. -->
+<!-- Numaralandırma notu (İP-17 merge turu, 14 Ağu 2026): aşağıdaki iki kayıt
+     İP-17'nin bağımsız denetiminde açıldı ve dal içinde geçici etiketle
+     (TB-?A / TB-?B) durdu; numara kuralın gereğince merge turunda ölçülerek
+     verildi — tüm yerel + uzak dallarda en yüksek `^## TB-<n>` başlığı 43'tü
+     (`ip17=43 ip18=43 main=43 origin/main=43`, geri kalanı daha düşük).
+       TB-?A → **TB-45**   TB-?B → **TB-44**
+     Numaraların etiket sırasına ters düşmesi bilinçlidir: bu dosya azalan
+     numara sırasında tutulur, iki kayıt da aynı turda açıldı ve blokları
+     yerinden oynatmamak için üstteki daha yüksek numarayı aldı.
+     UYARI (sm2-kaldirma dalını merge edecek olana): o dalın numaralandırma
+     notu TB-44'ü **terk edilmiş bir kimlik geçmişi** olarak anıyor
+     (`TB-36 → TB-44 → TB-?A`). O TB-44 hiçbir zaman başlık olarak
+     tahsis edilmemişti; buradaki TB-44 ile ilgisi yoktur. -->
 
-## TB-?A · Yeşil taban çizgisi nöbetçisi ORTAK sürücüde YOK — kırmızı tabanda "YAKALANDI" denebiliyor
+## TB-45 · Yeşil taban çizgisi nöbetçisi ORTAK sürücüde YOK — kırmızı tabanda "YAKALANDI" denebiliyor
 
 | | |
 |---|---|
@@ -166,7 +173,7 @@ silinmez).
 | **Neden ertelendi** | Ortak sürücüyü değiştirmek yedi paketin ölçüm aracını değiştirir; İP-17 bunu TB-29 için bir kez yaptı ve bedelini de gördü (İP-18'in gölgesi çift saymaya başladı, merge turunda düzeltildi). İkinci bir ortak-araç değişikliğini audit'ten geçmiş bir dala **merge öncesi** sokmak, kapanış ölçümlerini yeniden koşturmayı gerektirir |
 | **Sonraki adım** | `_yesil_taban`'ı `mutation_drill_ip18.py`'den ortak `mutation_drill.py`'ye taşı (referans uygulama HAZIR, yeniden yazılmayacak), `calistir` içinde mutasyondan ÖNCE çağır, kırmızı tabanda provayı **hata** olarak kes. Ardından İP-14/İP-16/İP-17 kataloglarını bir kez yeniden koşup raporlanan sayıların değişip değişmediğini ölç |
 
-## TB-?B · Yeni kart sıralaması (`_order_id`) NÖBETSİZ — tersine çevrilince hiçbir test kırılmıyor
+## TB-44 · Yeni kart sıralaması (`_order_id`) NÖBETSİZ — tersine çevrilince hiçbir test kırılmıyor
 
 | | |
 |---|---|
