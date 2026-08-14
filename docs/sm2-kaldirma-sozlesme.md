@@ -536,7 +536,7 @@ tablo var ama şema başka türlü bozuk olabilir) için de geçerlidir.
 
 ---
 
-## 10. Ek: TB numara tahsis ölçümü (TB-36 için, 13 Ağu 2026)
+## 10. Ek: TB numara tahsis ölçümü (**TB-44** için — ilk hâli TB-36'ydı)
 
 Kural gereği numara **alınmadan önce** ve **tüm dallarda** ölçülür; çıktı
 kayıt commit'ine yazılır. TB-34 alınırken yapılan ölçüm bu tur için
