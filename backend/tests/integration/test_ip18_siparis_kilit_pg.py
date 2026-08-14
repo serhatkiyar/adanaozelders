@@ -83,7 +83,11 @@ from services import (
     stock_ledger,
 )
 from tests.integration.conftest import StubProvider
-from tests.integration.ip1a_factory import ip1a  # noqa: F401 — fixture kaydı
+
+# NOT: `ip1a` fixture'ı BURADA import EDİLMEZ. `conftest.py:335` onu zaten
+# kayda geçiriyor; modül seviyesinde ikinci kez import etmek, fixture
+# parametresinin aynı adı gölgelemesiyle F811 üretir (conftest'in kendi yorumu
+# bu deseni yasaklıyor: fixture'lar conftest'te kayda geçirilir).
 
 pytestmark = pytest.mark.asyncio
 
