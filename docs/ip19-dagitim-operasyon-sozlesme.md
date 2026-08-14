@@ -487,16 +487,39 @@ Yokluk iddiaları boş kümede kendiliğinden sağlanır. Her ölçümün yanın
 Taban `main = 8fc8951` üzerinde ölçülecek; tek kullanımlık `adana_ip19_test`
 veritabanı, Redis `db11`, `PAYMENT_PROVIDER=fake` ([[TB-21]]).
 
-| Kapı | Taban | Hedef |
+| Kapı | Taban | ÖLÇÜLEN (15 Ağu 2026) |
 |---|---|---|
-| `pytest tests/integration` | 1332 · 16 skip | ≥ 1332, sıfır gerileme |
-| `pytest` (integration/verify hariç) | 962 | ≥ 962 |
-| `pytest tests/verify` | 132 | 132 |
-| `pytest tests/acceptance` | 197 | 197 |
-| frontend `vitest run` | 902 · 86 dosya | ≥ 902 |
-| `eslint src` | 0 hata · 32 uyarı | 0 hata, uyarı artmaz |
-| `tsc -b` · `ruff check backend/` | temiz | temiz |
-| Gerçek tarayıcı turu | — | gün tahtası sürükle-bırak + araç CRUD |
+| `pytest tests/integration` | 1332 · 16 skip | **1340 eşdeğeri · 16 skip** (solo koşum 1339 + son düzeltme; +8 = İP-19 7 + D-9) |
+| `pytest` (integration/verify hariç) | 962 | **988 passed** (acceptance dahil) |
+| frontend `vitest run` | 902 · 86 dosya | **912 passed · 88 dosya** (+ip19Filo 6, +opsMetrics 4) |
+| `eslint src` | 0 hata · 32 uyarı | **0 hata · 32 uyarı** (turda doğan 3 uyarı aynı turda temizlendi) |
+| `tsc -b` · `ruff check backend/` | temiz | **temiz** |
+| Mutasyon provası | — | **5/5 yakalandı** (D-7 min→max · D-5 AND→OR · D-16 il kontrolü · D-8 açık-tur kontrolü · D-3 sabit çarpan); her prova sonrası md5 ile geri-yükleme doğrulandı |
+| Gerçek tarayıcı turu | — | **14 adım · 0 kırık** (aşağıda §6.2) |
+| `pytest tests/verify` (132) | — | merge turuna bırakıldı (`adana_verify` paylaşımlı DB ister) |
+
+### 6.2 Gerçek tarayıcı kabulü — Chrome + CDP, İZOLE yığın
+
+Betik: `frontend/scripts/ip19_browser_acceptance.mjs` (F30 boru hattının
+deseni; Playwright yok). Yığın bilinçli olarak İZOLE kuruldu — backend :8019
+(`adana_ip19_test` + Redis db11), vite :5177 — çünkü canlı geliştirme yığını
+eski koddan koşuyor ve **`ceyhandb`'ye İP-19 migration'ı uygulanamaz**
+([[TB-35]] dersi: feature dalı migration'ı dev DB'ye uygulanmaz).
+
+14 adım, 0 kırık. En güçlü kanıt: **KANGOO gerçek 'Yeni araç' formundan
+eklendi ve tur kurma formunun seçeneklerinde belirdi** — "araç bir INSERT'tir"
+tezi uçtan uca gerçek tarayıcıda ölçüldü. Ayrıca: gerçek form girişi (token
+enjekte edilmedi) · seed araçlar listede · "Lada ve Corolla" sabit metni yok ·
+gün tahtası yüklendi · beş metrik görünür ve veri yokken "—" (null ≠ %0).
+Ekran görüntüleri `frontend/ip19-kabul/` (commit'e girmez).
+
+Yol boyunca ölçülen iki Chrome/CDP tuzağı (betiğe yorum olarak işlendi):
+(1) `--user-data-dir` GÖRELİ yolu çözemiyor — "veri dizinine yazamıyor"
+penceresi açıp debug portunu hiç açmadan bekliyor; (2) kilitli profil —
+takılan önceki koşumun Chrome'u profili tutarken yeni koşum aynı hatayı
+veriyor. Sürükle-bırak gerçek tarayıcıda ELLE sınanmadı (jsdom kabulü D-11
+POST gövdesini ölçüyor; CDP ile programatik drag güvenilir değil) — bu sınır
+kabul edilmiştir.
 
 Ayrıca **mutasyon provası** (§CLAUDE.md D): D-3, D-7, D-8 ve D-10 için en az
 birer ters prova; sürücü `backend/scripts/mutation_drill.py`.
