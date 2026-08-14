@@ -325,16 +325,52 @@ Canlı üretim kodunda **sıfır**. Kalan hitler ve nedenleri:
 
 ## 7. Doğrulama kapıları
 
-### 7.1 Otomatik
+### 7.1 Otomatik — **main merge'i sonrası** (İP-14 · İP-17 · İP-18 dahil)
 
-| Kapı | Sonuç |
-|---|---|
-| `pytest` (integration/verify hariç) | **954 passed** |
-| `pytest tests/integration` | **1294 passed · 0 failed · 16 skipped** |
-| frontend `vitest run` (tam) | **844 passed · 82/82 dosya** |
-| `ruff check backend/` | temiz |
-| frontend `tsc -b` | temiz |
-| Matris | 16 + 2 backend düğüm · 7 frontend düğüm |
+Ölçüm `main = 63440f6` birleştirildikten sonra, **tek kullanımlık** bir
+veritabanında yapıldı (`adana_sm2_test`). Geliştirme kataloğu `ceyhandb`'ye
+KOŞULMADI ([[TB-35]]); `POSTGRES_USER`/`POSTGRES_PASSWORD` ve
+`PAYMENT_PROVIDER=fake` elle verildi ([[TB-21]]: aksi hâlde entegrasyon
+testleri `.env`'den iyzico alıp gerçek sandbox'a çıkıyor).
+
+| Kapı | Taban (main, İP-17 sonrası) | Bu dal | Delta |
+|---|---|---|---|
+| `pytest tests/integration` | 1323 · 16 skip | **1325 passed · 16 skip** | **+2** |
+| `pytest` (integration/verify hariç) | 946 | **962 passed** | **+16** |
+| `pytest tests/verify` (CI deseni) | — | **132 passed** | — |
+| `pytest tests/acceptance` | — | **197 passed** | — |
+| `pytest -k "ip16 or ip17"` | — | **76 passed** | — |
+| `pytest -k ip18` | — | **22 passed** | — |
+| `pytest -k ip14` | — | **7 passed** | — |
+| frontend `vitest run` | 890 · 85 dosya | **897 passed · 86 dosya** | **+7 · +1** |
+| `eslint src` | 0 hata · 34 uyarı | **0 hata · 32 uyarı** | **−2 uyarı** |
+| `ruff check backend/` | temiz | temiz | — |
+| frontend `tsc -b` | temiz | temiz | — |
+
+#### Delta neden NEGATİF değil — beklenti düzeltmesi
+
+Merge turuna girerken beklenti "kaldırma paketi sayıları **düşürecek** (silinen
+testler)" idi. **Düşürmedi; ölçüm bunun tersini gösteriyor** ve sebebi
+kaldırılan sistemin kendisidir:
+
+- **Backend tarafında silinen test YOKTUR** — eski SM-2 paketinin hiç testi
+  yoktu. Bu, kaldırmadan önce de bilinen bir şeydi:
+  `docs/DENETIM-RAPORU-2026-07-31.md` onu "testsiz backend router: `flashcards`
+  (10 uç)" diye kaydetmişti. Yani 273 satırlık `_apply_sm2` algoritması ve 10
+  uç, tek bir nöbetçi olmadan silindi.
+- **Frontend tarafında da test dosyası silinmedi.** Eski sistemin kendi test
+  dosyası yoktu; yalnız `lib/routes.test.ts` içinde 5 assertion vardı ve onlar
+  **silinmedi, değiştirildi** (yerlerine yaşayan rotaların — `srsDeck` vb. —
+  eşdeğer iddiaları kondu). Ölçüldü: `it(` düğüm sayısı **9 → 9**.
+- Ölçüm: `git diff --name-status ed4ff95..HEAD -- backend/tests frontend/src`
+  → silinen (`D`) test dosyası **yok**.
+
+Dolayısıyla bütün delta **eklemedir**: +16 (R1/R2/R4) · +2 (R3/R3b) · +7
+(frontend yokluk matrisi) · +1 dosya. Tek azalan sayı **eslint uyarısıdır**
+(34 → 32): silinen `Flashcards.tsx`/`FlashcardDeck.tsx` iki uyarı taşıyordu.
+
+Bu, kaldırmanın en dürüst özetidir: **çıkan kodun hiç nöbetçisi yoktu, giren
+nöbetçilerin hepsi yeni.**
 
 ### 7.2 Gerçek tarayıcı duman turu (Chrome + DevTools Protocol)
 
@@ -367,10 +403,28 @@ satırın ilk hâli `GET /srs/decks/platform` (platform galerisi) ve
 `POST /srs/decks/{id}/copy` (kopyalama) yüzeylerini saymıyordu. Satır
 düzeltildi; şimdi 19 yolun tamamı karşılanıyor.
 
-### 7.4 Geliştirme veritabanı
+### 7.4 Migration zinciri — taze tek kullanımlık DB (merge sonrası, elle)
 
-`ceyhandb` yükseltildi: damga `sm2_flashcard_kaldirma`, kalan flashcard tablosu
-**0**, `srs_*` tablo sayısı **8**.
+R3/R3b düğümleri bunu zaten koşar; merge turunda zincir ayrıca **elle** ve
+görünür çıktıyla doğrulandı (tek kullanımlık `adana_zincir_<hex>_test`):
+
+| Adım | Ölçüm |
+|---|---|
+| `upgrade head` | SM-2 tabloları **(yok)** · `srs_*` **8** tablo |
+| `downgrade -1` | `flashcard_decks, flashcards` **geri geldi** · satır sayısı **flashcards=0, decks=0** |
+| `upgrade head` | SM-2 tabloları **(yok)** |
+| `alembic check` | **"No new upgrade operations detected."** |
+
+İkinci satır, revizyon docstring'indeki "downgrade şemayı geri kurar ama
+**veriyi geri getirmez**" cümlesinin canlı ölçümüdür.
+
+### 7.5 Geliştirme veritabanı
+
+`ceyhandb` kaldırma turunda yükseltilmişti: damga `sm2_flashcard_kaldirma`,
+kalan flashcard tablosu **0**, `srs_*` **8**. Merge turunda `ceyhandb`'ye
+**dokunulmadı** ([[TB-35]]); ayrıca `adana_verify` üzerinde CI deseni koşarken
+migration gerçekten uygulandı (`ip16_srs_izin_kodu_hizalama →
+sm2_flashcard_kaldirma`) ve `tests/verify` 132 passed verdi.
 
 ---
 
