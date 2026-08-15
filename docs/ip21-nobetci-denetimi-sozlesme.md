@@ -231,8 +231,9 @@ kırmızı taban varsa gündeme gelirdi, gelmedi.
 | Kapı | Taban (`b19c773`) | İP-21 |
 |---|---|---|
 | `pytest tests` (birim) | 993 | **1010** |
-| `pytest tests/integration` | 1368 | *(kapanış turunda ölçüldü — aşağıya bak)* |
+| `pytest tests/integration` | 1368 | **1373 · 0 failed** |
 | `npx vitest run` | 917 · 90 dosya | **917 · 90** (değişmedi) |
+| `pytest tests/verify` | 126 · 6 skip | **126 · 6 skip** (değişmedi) |
 | `eslint src` · `tsc -b` · `ruff check .` | 0/32 · temiz | **aynı** |
 | Mutasyon | — | **Faz 3: 5/5 · Faz 4: 2/2** |
 | Taban taraması | — | **28/28 yeşil** |
