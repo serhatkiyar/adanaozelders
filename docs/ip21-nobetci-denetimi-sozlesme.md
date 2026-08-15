@@ -186,3 +186,80 @@ mutasyon bu düğümü kırar" sütunu doldurulur. Matris commit'i, §0'daki te�
    büyük olabilir; karar ölçümle verilir.
 3. **Meta-testler düşük güçlüdür** ve bunu gizlemek bu paketin kendi hatası
    olur. Her meta-test kendi sınırını docstring'inde yazar.
+
+---
+
+## 6. Kapanış (15 Ağu 2026)
+
+### 6.1 §3'ün düzeltmesi — dürüst kayıt
+
+Sözleşme §3 şöyle diyordu: *"bugün nöbetsiz olan dört davranış (TB-43a/43b/44/47)
+o commit'te **kırmızı** düşer."* **Bu yanlıştı ve ölçümle görüldü:** korunan
+davranışlar bugün DOĞRU çalışıyor; eksik olan nöbetçiydi. Dolayısıyla Faz 3'ün
+düğümleri **yeşil doğar** ve tek geçerli kanıt, teşhis turunda "hiçbir şey
+kırılmıyor" diyen mutasyonların artık YAKALANMASIDIR (kök `CLAUDE.md` §D).
+
+Kırmızı matris disiplini yalnız **eksik kod** için anlamlıdır: Faz 1 ve Faz 2
+gerçekten 7 kırmızıyla başladı (guard modülü yoktu, `_yesil_taban` yoktu,
+istemci loop'a bağlıydı). Faz 3 ve Faz 4 nöbetçi ekler — kanıtları mutasyon
+provasıdır.
+
+### 6.2 Faz sonuçları
+
+| Faz | Düğüm | Kanıt |
+|---|---|---|
+| 1 · araç | N-1, N-1b, N-2, N-2b, N-2c | 3 kırmızı → yeşil |
+| 2 · izolasyon | N-3, N-3b, N-3c, N-3d, N-4, N-4b | 4 kırmızı → yeşil; guard'ın suite'i gerçekten durdurduğu ayrıca ölçüldü |
+| 3 · davranış | N-5, N-6, N-6b, N-7, N-8 | **mutasyon 5/5 yakalandı** |
+| 4 · nöbetçi | N-9, N-9b, N-9c, N-10, N-10b, N-10c | **kaçış mutasyonu 2/2 yakalandı** (gerçek depo dosyalarına enjekte edildi) |
+
+### 6.3 K-1'in kapısı — katalog yeniden koşumu
+
+Tam katalog (63 mutasyon × 2 suite) saatler sürerdi ve sorunun yalnız bir
+yarısını cevaplardı. Sorunun asıl hâli şudur: *araç değişikliği geçmiş bir
+provayı ancak (i) o provanın tabanı KIRMIZIYSA ya da (ii) mutasyon düğüm
+ayracı olmayan bir ERROR ürettiyse etkiler.* (i) mutasyon uygulamadan
+ölçülebilir.
+
+Ölçüldü: 63 mutasyon → **28 benzersiz hedef kümesi**, hepsi temiz ağaçta
+**YEŞİL**. Sonuç: **TB-45 düzeltmesi geçmişte raporlanan hiçbir sayıyı
+değiştirmez**; kapı bundan sonraki turlar için kurulmuş olur. (ii) ancak
+kırmızı taban varsa gündeme gelirdi, gelmedi.
+
+### 6.4 Kapılar
+
+| Kapı | Taban (`b19c773`) | İP-21 |
+|---|---|---|
+| `pytest tests` (birim) | 993 | **1010** |
+| `pytest tests/integration` | 1368 | *(kapanış turunda ölçüldü — aşağıya bak)* |
+| `npx vitest run` | 917 · 90 dosya | **917 · 90** (değişmedi) |
+| `eslint src` · `tsc -b` · `ruff check .` | 0/32 · temiz | **aynı** |
+| Mutasyon | — | **Faz 3: 5/5 · Faz 4: 2/2** |
+| Taban taraması | — | **28/28 yeşil** |
+
+### 6.5 Kapsam dışı bırakılanlar
+
+* **TB-40** (kilit sırası nöbetçisi `FOR UPDATE OF o` ile kandırılabiliyor) —
+  sözleşme §2.1'de kapsamda gösterilmişti, **kapsam dışına alındı**. Gerekçe:
+  düzeltmesi İP-18'in kilit sözleşmesini yeniden tasarlamayı gerektiriyor
+  (kural daraltma burada "hangi tablo hangi sırayla kilitlenir"i yeniden
+  yazmak demek) ve o davranışın **zaten bir davranış nöbetçisi var**
+  (`test_ip18_siparis_kilit_pg::test_yesil_checkout_yolu_*`, gerçek
+  `before_cursor_execute` gözlemi). Yani boşluk kaynak sözleşmesindedir,
+  korumasızlık değildir. Kayıt defterde duruyor.
+* **TB-38** (kaynak sözleşmeleri ada duyarlı, davranışa kör) — §2.2'de zaten
+  dışarıdaydı; bu paketin çıktısı onun ölçülmüş gerekçesidir. İP-21 üç yeni
+  kaynak sözleşmesi yazdı ve üçü de kendi sınırını docstring'inde yazıyor +
+  pozitif kontrol taşıyor; TB-38'in istediği envanter turu hâlâ ayrı bir iş.
+
+### 6.6 Turun kendi hataları — dürüst kayıt
+
+1. **§3'ün kırmızı beklentisi yanlıştı** (§6.1).
+2. **Faz 3 provasında P3 "YAKALANMADI" dedi ve nöbetçi suçsuzdu.**
+   `if amount <= 0: return` deseni `order_service`'te **iki** fonksiyonda
+   geçiyor; `replace(…, 1)` yanlışını (`reserve_refund`) yamalıyordu. Desen
+   bağlamla hedeflenince prova yakaladı. Bu, TB-38 ailesinin canlı örneğidir:
+   desen eşleşmesi bağlama kördür — ve bu kez ölçüm aracının kendisinde çıktı.
+3. **Vitest bir koşumda 1 kırılma verdi, adı yakalanamadı.** Dört koşumda
+   tekrarlanmadı. Küçümsenmedi: **[[TB-54]]** açıldı ve tekrarında adı
+   kaybetmeden yakalamanın yolu yazıldı.
