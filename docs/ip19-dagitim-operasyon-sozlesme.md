@@ -425,7 +425,10 @@ Araç CRUD ekranı `CourierManager.tsx` desenini izler (aynı sekme grubu).
 
 - **Sol**: atanmamış uygun siparişler havuzu (bugünkü `eligible-orders`)
 - **Sağ**: araç başına satır — turdaki duraklar, sırasıyla
-- **Sürükle-bırak**: havuzdan araca, araçtan araca, araç içinde sıra değiştirme
+- **Sürükle-bırak**: havuzdan araca. *(Bağımsız denetim B-11 düzeltmesi: bu
+  satır önce "havuzdan araca, araçtan araca, araç içinde sıra değiştirme"
+  diyordu; yazılan yalnız birincisidir. Kalan ikisi **[[TB-?E]]** — yarım bir
+  taşıma yüzeyi hiç olmayanından kötüdür, çünkü atomik değildir.)*
 - **Kapasite uyarısı**: araç `max_stops`'u aşınca satır işaretlenir; ihlal
   **engellenmez, görünür kılınır** (elle karar sahibinindir)
 - "Günü Optimize Et" ve elle sıralama korunur
@@ -437,10 +440,16 @@ Sürükle-bırak için **yeni bağımsızlık eklenmez**; HTML5 drag-and-drop ye
 `GET /delivery/metrics` ve "Performans" sekmesi:
 
 1. **Zamanında teslim oranı** — `promised_delivery_date`'e göre
-2. **İlk denemede başarı oranı** — sipariş başına durak sayısı 1 olanlar
+2. **İlk denemede başarı oranı** — `order.failed_delivery_count == 0` olan
+   teslim edilmiş siparişler. *(Denetim B-14 düzeltmesi: metin "sipariş başına
+   durak sayısı 1 olanlar" diyordu; kod başka bir şey ölçüyor ve DOĞRUSU odur —
+   müşteri ertelemesi (`RESCHEDULED`) sayacı artırmaz, yani kurye, müşterinin
+   ertelemesi yüzünden cezalandırılmaz.)*
 3. **Durak/saat** — tur süresi başına sonuçlanan durak
 4. **Başarısızlık nedenleri dağılımı** — mevcut `FailReason` enum'u üzerinden
-5. **km/teslimat** — `DeliveryRun.total_distance_km` / teslim edilen durak
+5. **km/teslimat** — teslim edilen durak başına, **yalnız sahaya çıkmış**
+   turların `total_distance_km` toplamı (denetim B-6: optimize edilip hiç
+   başlamamış ya da iptal edilmiş turun kilometresi paydaya girmez)
 
 Hepsi mevcut alanlardan türer; **yeni ölçüm alanı eklenmez.**
 
@@ -665,3 +674,59 @@ yalnız geçici pasifleştirilir).
 | B-5 | Araç değişimi kuryeyi silmez; açık `null` çözer | gerçek HTTP |
 | B-6 | Yedi metrik değeri elle hesaplanmış fixture ile birebir | gerçek PostgreSQL + HTTP |
 | B-3 | İlçesiz adres 422; formda kayıt ilerlemez | gerçek HTTP + gerçek DOM |
+
+### 10.5 Düzeltme turunun kapıları (15 Ağu 2026)
+
+Zincir: matris `914ff65` (14 kırmızı, üretim kodundan ÖNCE) → düzeltme
+`7862b51`. Bütün ölçümler **gerçek VROOM v1.14 + gerçek OSRM Adana yol ağı
+ayaktayken** alındı — denetimin B-1'i bulmasını sağlayan koşul buydu.
+
+| Kapı | Denetim tabanı (7422a25) | Düzeltme sonrası |
+|---|---|---|
+| `pytest tests/integration` | 1348 · **1 kırık** (routing_live) | **1368 passed · 0 failed · 0 skip** |
+| `pytest tests` (birim) | 988 | **993** |
+| `pytest tests/verify` | 126 passed · 6 skipped | **aynı** (damga geri alındı) |
+| `npx vitest run` | 912 · 88 dosya | **917 · 90 dosya** |
+| `npx eslint src` | 0 hata · 32 uyarı | **aynı** |
+| `tsc -b` · `ruff check .` | temiz | **temiz** |
+| Mutasyon provası | — | **8/8 yakalandı** (md5-doğrulamalı güvenli yama) |
+| Gerçek Chrome kabulü | 14 adım · 0 kırık | **22 adım · 0 kırık** |
+
+Mutasyonların hepsi düzeltmenin nöbetçisini hedefledi: rota katmanına ham
+`max_stops` (B-2), günlük tavanın ayrı ifadeden türemesi (B-2), başlamamış
+turun km'si (B-6), iptal durağın sayılması (B-6), pasifleştirmenin kapıyı
+atlaması (B-14), eşleşmeyen araç kodunun ezilmesi (B-4), ilçenin yeniden
+opsiyonel olması (B-3), nokta düzenlemenin sessizce yazmaması (B-9).
+
+Tarayıcı turuna eklenen dört yeni adım (6a–6e, 7a–7c) gerçek Chrome'da
+ölçüldü: başlangıç noktası gerçek formdan düzenlendi ve **sayfa yeniden
+yüklendikten sonra sunucudan okunarak** kalıcılığı doğrulandı; canlı eklenen
+araçla gerçek bir tur kuruldu ve gün tahtasında **o aracın benzersiz
+etiketiyle** çizildiği görüldü (B-12 tekilleştirmesinin uçtan uca kanıtı).
+
+**Turun kendi hataları — dürüst kayıt.** İki adım ilk koşumda yanlış sebeple
+kırmızı düştü ve ikisi de TESTİN hatasıydı: (a) "Düzenle" tıklaması sayfadaki
+ilk görünen butonu yakalıyordu (araç satırlarının kendi Düzenle'si) — tıklama
+bölüme sabitlendi; (b) "araç tahtada listelenir" beklentisi yanlıştı, tahta
+araç listesini yalnız `vehicle_id → araç` eşlemesi için kullanır, tur yoksa
+hiçbir araç çizmez — iddia "tur kurulunca aracın etiketiyle çizilir"e
+çevrildi ve böylece **güçlendi**. Ayrıca B-5'in ilk hâli `courier_id` diye
+olmayan bir alan okuduğu için `KeyError` ile kırmızıydı (yanlış sebep);
+düzeltildikten sonra ters prova ile gerçekten nöbetçilik ettiği gösterildi.
+
+### 10.6 Kapsam dışı bırakılanlar → borç defteri
+
+* **[[TB-?D]]** `core/ratelimit._client` event loop'a bağlı → suite içinde
+  limiter sessizce fail-open; depodaki her rate-limit testi yalancı yeşil
+  olabilir. İP-19'un düğümü kendi ön koşulunu kurar, genel çözüm ortak yüzeyi
+  değiştirir.
+* **[[TB-?E]]** Gün tahtasında yalnız havuz→araç sürükleme var (§4.2 düzeltildi).
+* **[[TB-?F]]** `delete_vehicle` 409'unun kontrol-sonra-yaz yarışı (denetim de
+  kaybeden sıralamayı üretemedi).
+
+Denetimin diğer P2'lerinden **B-8** (D-3 nöbetçisinin üretim ifadesini
+kopyalaması, `test_D3_ucuncu_arac_*`'ın `dispatch_day`'i hiç çağırmaması) ve
+**B-14**'ün `first_attempt_rate` tanım sapması bu turda **davranışla**
+kapatıldı: `test_B2c_*` artık tavanı gerçek `dispatch_day` çıktısıyla ölçüyor
+(kopya ifade değil, gözlemlenen bölüşüm) ve §4.3'ün metni koda göre
+düzeltildi. **D-15**'in kaynak taraması olduğu kaydı §5'te duruyor.

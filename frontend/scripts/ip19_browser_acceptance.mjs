@@ -274,7 +274,7 @@ async function ana() {
           el.dispatchEvent(new Event("change", { bubbles: true }));
           return true;
         };
-        const etiketOk = yaz(bul("etiket") ?? bul("label") ?? gorunur[0], "Kangoo");
+        const etiketOk = yaz(bul("etiket") ?? bul("label") ?? gorunur[0], `Kangoo ${kodArg}`);
         const kodOk = yaz(bul("kod") ?? bul("code"), kodArg);
         return { etiketOk, kodOk, alanlar: gorunur.length };
       },
@@ -334,6 +334,128 @@ async function ana() {
       await sayfa.eval(metinVarMi, "\u2014"),
     );
     await sayfa.ekranGoruntusu("performans.png");
+
+    // ── Bağımsız denetim düzeltmeleri (15 Ağu) ──────────────────────────
+    //
+    // 6 · B-9: başlangıç noktası GERÇEK formdan düzenlenebilir. K-9'un
+    //     gerekçesi "nokta veridir, deploy'suz düzenlenir" idi; uç yalnız
+    //     GET+POST taşıdığı için yanlış koordinat kalıcı olabiliyordu ve
+    //     koordinat, müşteriye gösterilen varış penceresinin başlangıcıdır.
+    // "Düzenle" sayfada birden çok yerde var (araç satırları da taşıyor);
+    // tıklama BÖLÜME sabitlenir, yoksa ilk görünen buton yakalanır ve yanlış
+    // form açılır (ilk koşumda tam bu oldu).
+    const bolumdeTikla = (bolumBasligi, desen) => {
+      const re = new RegExp(desen, "i");
+      const bolum = [...document.querySelectorAll("section")].find((sec) =>
+        new RegExp(bolumBasligi, "i").test(sec.innerText || ""),
+      );
+      if (!bolum) return false;
+      const aday = [...bolum.querySelectorAll("button, a, [role=button]")].find(
+        (e) =>
+          re.test((e.textContent || "").trim()) &&
+          e.offsetParent !== null &&
+          !e.disabled,
+      );
+      if (!aday) return false;
+      aday.click();
+      return true;
+    };
+    const bolumdeYaz = (bolumBasligi, etiket, deger) => {
+      const bolum = [...document.querySelectorAll("section")].find((sec) =>
+        new RegExp(bolumBasligi, "i").test(sec.innerText || ""),
+      );
+      if (!bolum) return false;
+      const el = [...bolum.querySelectorAll("input")]
+        .filter((i) => i.offsetParent !== null && i.type !== "checkbox")
+        .find((i) =>
+          ((i.closest("label")?.textContent ?? "") + (i.placeholder || ""))
+            .toLowerCase()
+            .includes(etiket),
+        );
+      if (!el) return false;
+      const setter = Object.getOwnPropertyDescriptor(
+        HTMLInputElement.prototype,
+        "value",
+      ).set;
+      setter.call(el, deger);
+      el.dispatchEvent(new Event("input", { bubbles: true }));
+      el.dispatchEvent(new Event("change", { bubbles: true }));
+      return true;
+    };
+    const NOKTA = "Başlangıç Noktası";
+
+    await sayfa.git(`${FRONTEND}/yonetim/dagitim/araclar`);
+    await sayfa.bekle(metinVarMi, { aciklama: "nokta bolumu" }, "Başlangıç Noktası");
+    if (!(await sayfa.eval(metinVarMi, "Düzenle"))) {
+      // Migration artık uydurma nokta seed'lemiyor (B-9) — önce gerçeğini ekle.
+      zorunlu("6a-0. 'Nokta ekle' açıldı", await sayfa.eval(bolumdeTikla, NOKTA, "nokta ekle"));
+      await sayfa.bekle(() => document.querySelectorAll("input").length >= 3, {
+        aciklama: "nokta formu",
+      });
+      await sayfa.eval(bolumdeYaz, NOKTA, "nokta ad", "Kabul Deposu");
+      await sayfa.eval(bolumdeYaz, NOKTA, "enlem", "36.98550");
+      await sayfa.eval(bolumdeYaz, NOKTA, "boylam", "35.32530");
+      zorunlu("6a-1. Nokta eklendi", await sayfa.eval(bolumdeTikla, NOKTA, "^ekle$"));
+      await sayfa.bekle(metinVarMi, { aciklama: "nokta listede", ms: 15000 }, "Kabul Deposu");
+    }
+    zorunlu("6a. Nokta satırında 'Düzenle' var", await sayfa.eval(metinVarMi, "Düzenle"));
+    zorunlu("6b. Düzenleme formu açıldı", await sayfa.eval(bolumdeTikla, NOKTA, "^düzenle$"));
+    await sayfa.bekle(() => document.querySelectorAll("input").length >= 3, {
+      aciklama: "düzenleme formu",
+    });
+    zorunlu("6c. Enlem alanı dolduruldu", await sayfa.eval(bolumdeYaz, NOKTA, "enlem", "37.00250"));
+    zorunlu("6d. Kaydet tıklandı", await sayfa.eval(bolumdeTikla, NOKTA, "^kaydet$"));
+    await sayfa.bekle(metinVarMi, { aciklama: "guncellendi", ms: 15000 }, "37\.00250|güncellendi");
+
+    // Kalıcı mı — sayfa yeniden yüklenip SUNUCUDAN okunur.
+    await sayfa.git(`${FRONTEND}/yonetim/dagitim/araclar`);
+    await sayfa.bekle(metinVarMi, { aciklama: "yeniden yüklendi" }, "Başlangıç Noktası");
+    zorunlu(
+      "6e. Düzenlenen koordinat SUNUCUDA kalıcı",
+      await sayfa.eval(metinVarMi, "37\.00250"),
+    );
+    await sayfa.ekranGoruntusu("nokta-duzenleme.png");
+
+    // 7 · B-12: tahta ile araçlar sekmesi AYNI uçtan/anahtardan okur.
+    //     Gözlemlenebilir iddia: canlı eklenen araçla GERÇEK bir tur kurulur
+    //     ve tahtada O ARACIN ETİKETİYLE görünür. (İlk kurgum "araç tahtada
+    //     listelenir" idi — yanlıştı: tahta araç listesini yalnız
+    //     `vehicle_id → araç` eşlemesi için kullanır, tur yoksa hiçbir araç
+    //     çizilmez. Yanlış beklenti düzeltildi, iddia güçlendi.)
+    const secimYap = (desen) => {
+      const re = new RegExp(desen, "i");
+      const sec = [...document.querySelectorAll("select")].find((el) =>
+        [...el.options].some((o) => re.test(o.textContent || "")),
+      );
+      if (!sec) return false;
+      const opt = [...sec.options].find((o) => re.test(o.textContent || ""));
+      const setter = Object.getOwnPropertyDescriptor(
+        HTMLSelectElement.prototype,
+        "value",
+      ).set;
+      setter.call(sec, opt.value);
+      sec.dispatchEvent(new Event("change", { bubbles: true }));
+      return true;
+    };
+
+    await sayfa.git(`${FRONTEND}/yonetim/dagitim`);
+    await sayfa.bekle(metinVarMi, { aciklama: "bugün sayfası" }, "tur|dağıtım");
+    zorunlu("7a. Yeni araç seçildi", await sayfa.eval(secimYap, kod));
+    zorunlu("7b. 'Yeni Tur' tıklandı", await sayfa.eval(metneTikla, "yeni tur"));
+    await sayfa.bekle(metinVarMi, { aciklama: "tur oluştu", ms: 20000 }, kod);
+
+    await sayfa.git(`${FRONTEND}/yonetim/dagitim/tahta`);
+    await sayfa.bekle(
+      metinVarMi,
+      { aciklama: "tahta yüklendi" },
+      "havuz|atanmamış|tur yok|optimize",
+    );
+    zorunlu(
+      "7c. Tahta, turu ARACIN ETIKETİYLE çiziyor (tek liste, tek anahtar)",
+      await sayfa.eval(metinVarMi, kod),
+      kod,
+    );
+    await sayfa.ekranGoruntusu("tahta-denetim.png");
   } finally {
     chrome.kill();
   }

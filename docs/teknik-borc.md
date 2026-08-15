@@ -261,6 +261,60 @@ yalnız ölçümü ve öneriyi kaydeder.
      o paketin KAPSAMI DIŞINDADIR: üçü de hukuk/mevzuat kararı ister, kod
      kusuru değildir. Sözleşme: docs/ip19-dagitim-operasyon-sozlesme.md §9. -->
 
+## TB-?D · Rate-limit testleri suite içinde SESSİZCE etkisiz — `_client` event loop'a bağlı
+
+> **Öncelik: orta — test altyapısı.** Üretim davranışı doğrudur; risk, bu
+> depodaki **her rate-limit testinin yalancı yeşil olabilmesidir**.
+
+`core/ratelimit.py::_redis()` istemciyi modül düzeyinde bir singleton'da tutar
+(`_client`) ve istemci **ilk yaratıldığı event loop'a bağlanır**.
+pytest-asyncio her teste yeni bir loop kurduğu için, suite içinde önceki
+loop'tan kalmış istemci kullanıldığında `enforce` istisna alır ve
+`except Exception → return` ile **fail-open**'a düşer: limit hiç uygulanmaz.
+
+Ölçüldü (İP-19 denetim turu, 15 Ağu 2026): `test_B10_filo_yazma_ucu_*` tek
+başına koşunca 429 alıyor, tam entegrasyon suite'i içinde 61 ardışık yazmanın
+61'i de 200 dönüyordu. Düğüm `monkeypatch.setattr(ratelimit, "_client", None)`
+ile kendi ön koşulunu kurarak düzeltildi — **ama aynı tuzak depodaki diğer
+rate-limit testleri için açık duruyor**; onların hangisinin gerçekten
+ölçtüğü sayılmadı.
+
+Doğru çözüm muhtemelen istemciyi loop başına çözmek ya da test conftest'inde
+her testte sıfırlamak. İP-19'un kapsamı dışında bırakıldı çünkü `core/ratelimit`
+bütün paketlerin ortak yüzeyidir ve değişiklik tek tek ölçülmeli.
+
+---
+
+## TB-?E · Gün tahtasında üç sürükleme kipinden yalnız biri var
+
+İP-19 sözleşmesi §4.2 üç kip vaat ediyordu: **havuzdan araca**, **araçtan
+araca**, **araç içinde sıra değiştirme**. Yazılan yalnız birincisidir
+(`DeliveryBoardPage.tsx::handleDrop`); ikincisi ve üçüncüsü yok. Bağımsız
+denetim (B-11) bunu ölçtü ve sözleşme metni düzeltildi.
+
+Etki sınırlı: sıra değiştirme uçtan (`PUT /delivery/runs/{id}/reorder`) zaten
+mümkün ve tur detay ekranından yapılabiliyor; araçtan araca taşıma için durak
+silinip diğerine eklenmesi gerekiyor (iki ayrı çağrı, atomik değil). Kapsam
+dışı bırakıldı çünkü yarım bir sürükleme yüzeyi, hiç olmayanından kötüdür:
+atomik olmayan taşıma yarıda kalırsa durak hiçbir turda kalmayabilir.
+
+---
+
+## TB-?F · `delete_vehicle`'ın 409 kontrolü kontrol-sonra-yaz yarışına açık
+
+`services/delivery_service.py::delete_vehicle` açık tur sayısını okur, sonra
+soft-delete yazar; arada kilit yoktur. Teorik olarak "araç silinirken aynı anda
+o araca tur açılması" hem 409'u atlatabilir hem `fk_delivery_runs_vehicle_id`
+RESTRICT'ini devre dışı bırakabilir (soft-delete FK'yi tetiklemez).
+
+Bağımsız denetim de (M-7) kaybeden sıralamayı üretmeyi denedi ve **üretemedi**;
+yapısal boşluk yine de duruyor. Çözüm `SELECT … FOR UPDATE` ile aracı kilitlemek
+ya da kısmi unique index benzeri bir DB kısıtı. Kapsam dışı: gerçek zarar için
+aynı saniyede iki admin gerekir ve sonucu geri alınabilirdir (araç yeniden
+aktifleştirilir).
+
+---
+
 ## TB-?A · Teslimat sözü BAĞLAYICI bir taahhüttür ve 30 gün kalkanını kaldırır
 
 > **Öncelik: yüksek — LANSMAN ÖNCESİ ürün+hukuk kararı.** Bu bir kod kusuru
