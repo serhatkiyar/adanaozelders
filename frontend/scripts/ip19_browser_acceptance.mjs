@@ -382,37 +382,64 @@ async function ana() {
       el.dispatchEvent(new Event("change", { bubbles: true }));
       return true;
     };
+    const bolumdeMetin = (bolumBasligi, desen) => {
+      const bolum = [...document.querySelectorAll("section")].find((sec) =>
+        new RegExp(bolumBasligi, "i").test(sec.innerText || ""),
+      );
+      return bolum ? new RegExp(desen, "i").test(bolum.innerText || "") : false;
+    };
     const NOKTA = "Başlangıç Noktası";
 
     await sayfa.git(`${FRONTEND}/yonetim/dagitim/araclar`);
     await sayfa.bekle(metinVarMi, { aciklama: "nokta bolumu" }, "Başlangıç Noktası");
-    if (!(await sayfa.eval(metinVarMi, "Düzenle"))) {
+    if (!(await sayfa.eval(bolumdeMetin, NOKTA, "Düzenle"))) {
       // Migration artık uydurma nokta seed'lemiyor (B-9) — önce gerçeğini ekle.
       zorunlu("6a-0. 'Nokta ekle' açıldı", await sayfa.eval(bolumdeTikla, NOKTA, "nokta ekle"));
-      await sayfa.bekle(() => document.querySelectorAll("input").length >= 3, {
-        aciklama: "nokta formu",
-      });
+      await sayfa.bekle(
+        () =>
+          [...document.querySelectorAll("section")]
+            .find((sec) => /Başlangıç Noktası/i.test(sec.innerText || ""))
+            ?.querySelectorAll("input").length >= 3,
+        { aciklama: "nokta formu" },
+      );
       await sayfa.eval(bolumdeYaz, NOKTA, "nokta ad", "Kabul Deposu");
       await sayfa.eval(bolumdeYaz, NOKTA, "enlem", "36.98550");
       await sayfa.eval(bolumdeYaz, NOKTA, "boylam", "35.32530");
       zorunlu("6a-1. Nokta eklendi", await sayfa.eval(bolumdeTikla, NOKTA, "^ekle$"));
-      await sayfa.bekle(metinVarMi, { aciklama: "nokta listede", ms: 15000 }, "Kabul Deposu");
+      await sayfa.bekle(
+        bolumdeMetin,
+        { aciklama: "nokta listede", ms: 15000 },
+        NOKTA,
+        "Kabul Deposu",
+      );
     }
-    zorunlu("6a. Nokta satırında 'Düzenle' var", await sayfa.eval(metinVarMi, "Düzenle"));
+    zorunlu(
+      "6a. Nokta satırında 'Düzenle' var",
+      await sayfa.eval(bolumdeMetin, NOKTA, "Düzenle"),
+    );
     zorunlu("6b. Düzenleme formu açıldı", await sayfa.eval(bolumdeTikla, NOKTA, "^düzenle$"));
-    await sayfa.bekle(() => document.querySelectorAll("input").length >= 3, {
-      aciklama: "düzenleme formu",
-    });
+    await sayfa.bekle(
+      () =>
+        [...document.querySelectorAll("section")]
+          .find((sec) => /Başlangıç Noktası/i.test(sec.innerText || ""))
+          ?.querySelectorAll("input").length >= 3,
+      { aciklama: "düzenleme formu" },
+    );
     zorunlu("6c. Enlem alanı dolduruldu", await sayfa.eval(bolumdeYaz, NOKTA, "enlem", "37.00250"));
     zorunlu("6d. Kaydet tıklandı", await sayfa.eval(bolumdeTikla, NOKTA, "^kaydet$"));
-    await sayfa.bekle(metinVarMi, { aciklama: "guncellendi", ms: 15000 }, "37\.00250|güncellendi");
+    await sayfa.bekle(
+      bolumdeMetin,
+      { aciklama: "guncellendi", ms: 15000 },
+      NOKTA,
+      "37\.00250",
+    );
 
     // Kalıcı mı — sayfa yeniden yüklenip SUNUCUDAN okunur.
     await sayfa.git(`${FRONTEND}/yonetim/dagitim/araclar`);
     await sayfa.bekle(metinVarMi, { aciklama: "yeniden yüklendi" }, "Başlangıç Noktası");
     zorunlu(
       "6e. Düzenlenen koordinat SUNUCUDA kalıcı",
-      await sayfa.eval(metinVarMi, "37\.00250"),
+      await sayfa.eval(bolumdeMetin, NOKTA, "37\.00250"),
     );
     await sayfa.ekranGoruntusu("nokta-duzenleme.png");
 
@@ -440,6 +467,16 @@ async function ana() {
 
     await sayfa.git(`${FRONTEND}/yonetim/dagitim`);
     await sayfa.bekle(metinVarMi, { aciklama: "bugün sayfası" }, "tur|dağıtım");
+    // Seçeneklerin SUNUCUDAN dolmasını bekle (3a'da beklenmişti, burada
+    // beklenmiyordu ve tur yeniden kurulunca yarışı kaybediyordu).
+    await sayfa.bekle(
+      (k) =>
+        [...document.querySelectorAll("select")].some((el) =>
+          [...el.options].some((o) => new RegExp(k, "i").test(o.textContent || "")),
+        ),
+      { aciklama: "araç seçenekleri", ms: 15000 },
+      kod,
+    );
     zorunlu("7a. Yeni araç seçildi", await sayfa.eval(secimYap, kod));
     zorunlu("7b. 'Yeni Tur' tıklandı", await sayfa.eval(metneTikla, "yeni tur"));
     await sayfa.bekle(metinVarMi, { aciklama: "tur oluştu", ms: 20000 }, kod);
