@@ -427,7 +427,7 @@ Araç CRUD ekranı `CourierManager.tsx` desenini izler (aynı sekme grubu).
 - **Sağ**: araç başına satır — turdaki duraklar, sırasıyla
 - **Sürükle-bırak**: havuzdan araca. *(Bağımsız denetim B-11 düzeltmesi: bu
   satır önce "havuzdan araca, araçtan araca, araç içinde sıra değiştirme"
-  diyordu; yazılan yalnız birincisidir. Kalan ikisi **[[TB-?E]]** — yarım bir
+  diyordu; yazılan yalnız birincisidir. Kalan ikisi **[[TB-52]]** — yarım bir
   taşıma yüzeyi hiç olmayanından kötüdür, çünkü atomik değildir.)*
 - **Kapasite uyarısı**: araç `max_stops`'u aşınca satır işaretlenir; ihlal
   **engellenmez, görünür kılınır** (elle karar sahibinindir)
@@ -585,9 +585,10 @@ döngüsüyle sınanıyor.
 
 ## 9. Kapsam dışı bulgular — borç defterine yazıldı
 
-Araştırma turunda çıkan ve **bu paketin konusu olmayan** üç bulgu. Üçü de
-`docs/teknik-borc.md`'ye geçici etiketle kaydedilmiştir; numara merge turunda
-tahsis edilecektir (defterin dört maddelik kuralı).
+Araştırma turunda çıkan ve **bu paketin konusu olmayan** üç bulgu. Numaralar
+merge turunda tahsis edildi (defterin dört maddelik kuralı): sırasıyla
+**[[TB-48]]** (teslimat sözünün hukuki dili), **[[TB-49]]** (kurye ekranı hız
+baskısı / muvazaa) ve **[[TB-50]]** (yetki belgesi P1* varsayımı).
 
 - **Teslimat sözünün hukuki dili.** Mesafeli Sözleşmeler Yönetmeliği m.16/1:
   30 gün **üst** sınır, taahhüt edilen süre **alt** sınırı belirler. m.16/2:
@@ -716,12 +717,12 @@ düzeltildikten sonra ters prova ile gerçekten nöbetçilik ettiği gösterildi
 
 ### 10.6 Kapsam dışı bırakılanlar → borç defteri
 
-* **[[TB-?D]]** `core/ratelimit._client` event loop'a bağlı → suite içinde
+* **[[TB-51]]** `core/ratelimit._client` event loop'a bağlı → suite içinde
   limiter sessizce fail-open; depodaki her rate-limit testi yalancı yeşil
   olabilir. İP-19'un düğümü kendi ön koşulunu kurar, genel çözüm ortak yüzeyi
   değiştirir.
-* **[[TB-?E]]** Gün tahtasında yalnız havuz→araç sürükleme var (§4.2 düzeltildi).
-* **[[TB-?F]]** `delete_vehicle` 409'unun kontrol-sonra-yaz yarışı (denetim de
+* **[[TB-52]]** Gün tahtasında yalnız havuz→araç sürükleme var (§4.2 düzeltildi).
+* **[[TB-53]]** `delete_vehicle` 409'unun kontrol-sonra-yaz yarışı (denetim de
   kaybeden sıralamayı üretemedi).
 
 Denetimin diğer P2'lerinden **B-8** (D-3 nöbetçisinin üretim ifadesini
