@@ -36,6 +36,7 @@ from sqlalchemy import text
 
 from core.config import settings
 from core.database import AsyncSessionLocal, engine
+from tests.integration.redis_guard import assert_test_redis
 from tests.integration.db_guard import (
     assert_fake_payment_provider,
     assert_test_database,
@@ -463,6 +464,12 @@ async def _test_veritabani():
     # testlere güvenmek, sağlayıcıyı fixture'dan almayan yolları açıkta
     # bırakırdı (boşluğun ölçüldüğü yer tam olarak orasıydı).
     assert_fake_payment_provider()
+    # TB-28: Redis'in de `db_guard` karşılığı olur. Aynı yerde ve aynı
+    # kapsamda: geliştirme Redis'i yalnız önbellek değildir — presence,
+    # rate-limit sayaçları ve token denylist'i oradadır; testin yazdığı bir
+    # satır gerçek bir oturumu geri açabilir ya da gerçek kullanıcıya 429
+    # yedirebilir.
+    assert_test_redis()
     ad = settings.POSTGRES_DB
 
     bakim = create_async_engine(_bakim_url(), isolation_level="AUTOCOMMIT")

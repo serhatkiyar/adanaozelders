@@ -10,6 +10,7 @@ sorunu yüzünden girişleri tamamen kesmez.
 from __future__ import annotations
 
 import ipaddress
+import asyncio
 import logging
 
 import redis.asyncio as aioredis
@@ -20,13 +21,40 @@ from core.config import settings
 logger = logging.getLogger(__name__)
 
 _client: aioredis.Redis | None = None
+#: İstemcinin kurulduğu event loop. Bkz. `_redis` docstring'i ([[TB-51]]).
+_client_loop: object | None = None
 
 
 def _redis() -> aioredis.Redis | None:
-    global _client
+    """Paylaşılan limiter istemcisi — **kurulduğu event loop'a bağlıdır**.
+
+    redis-asyncio bağlantı havuzu, oluşturulduğu loop'a bağlanır. Üretimde
+    tek uzun ömürlü loop olduğu için bu görünmez; ama pytest-asyncio her teste
+    YENİ bir loop kurar ve eski loop'a bağlı istemci ilk kullanımda istisna
+    atar. `enforce` o istisnayı `except Exception → return` ile yutup
+    **fail-open**'a düştüğü için, limiter testi sessizce hiçbir şey ölçmez.
+
+    Ölçüldü (İP-19 denetim turu, 15 Ağu 2026): filo yazma ucunun rate-limit
+    testi tek başına 429 alıyor, tam entegrasyon suite'i içinde 61 ardışık
+    yazmanın 61'i de 200 dönüyordu. Yani depodaki her rate-limit testi
+    yalancı yeşil olabilirdi.
+
+    Çözüm minimal: istemci hangi loop'ta kurulduğunu hatırlar, loop
+    değiştiyse yenilenir. Üretim davranışı DEĞİŞMEZ (tek loop → tek istemci,
+    her çağrıda yeni bağlantı kurulmaz — bu limiterin kendisini darboğaza
+    çevirirdi).
+    """
+    global _client, _client_loop
+    try:
+        loop: object | None = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = None
+    if _client is not None and loop is not None and _client_loop is not loop:
+        _client = None
     if _client is None:
         try:
             _client = aioredis.from_url(settings.REDIS_URL, decode_responses=True)
+            _client_loop = loop
         except Exception:
             return None
     return _client

@@ -38,6 +38,7 @@ import dataclasses
 import hashlib
 import os
 import pathlib
+import re
 import subprocess
 import sys
 
@@ -185,6 +186,36 @@ def _secilen_test_sayisi(m: "Mutasyon") -> int:
     return 0
 
 
+_KURULUM_HATASI = re.compile(r"^ERROR (\S+\.py)(::\S+)?(?: |$)")
+
+
+def _kurulum_hatasi_satiri(s: str) -> bool:
+    """Pytest'in KURULUM/KOLEKSİYON hatası satırı mı — yoksa logger çıktısı mı?
+
+    İki biçim de `ERROR ` ile başlar ve ayırt edilmeleri şart ([[TB-42]]):
+
+        ERROR tests/x.py::test_y - fixture patladi     ← düğüm ayraçlı, sayılır
+        ERROR tests/x.py - NameError: name 'foo' ...   ← KOLEKSİYON, sayılır
+        ERROR    adana.escrow:escrow.py:518 mesaj      ← LOGGER, sayılmaz
+
+    Eski hâl yalnız içinde `::` geçenleri sayıyordu; koleksiyon düzeyinde
+    patlayan dosya (ikinci biçim) düğüm ayracı taşımadığı için kaçıyordu ve
+    mutasyon "YAKALANMADI" görünebiliyordu. `::` şartını topyekûn kaldırmak da
+    olmaz: logger satırını da sayardı ve ERROR log yazan HER mutasyon
+    "yakalandı" olurdu — ölçüm aracı yalancı yeşil üreticisine dönerdi.
+
+    Ayrım dosya yoluna dayanır: kurulum hatasında ilk sözcük `.py` ile biten
+    bir YOLDUR; logger satırında ise `ERROR` ile ad arasında çoklu boşluk ve
+    `ad:dosya:satır` biçimi vardır.
+    """
+    return bool(_KURULUM_HATASI.match(s))
+
+
+def _sayi_ve_sonuc(cikti: str) -> str:
+    son = [x for x in cikti.strip().splitlines() if x.strip()]
+    return son[-1].encode("ascii", "replace").decode() if son else "(çıktı yok)"
+
+
 def _kirilanlar(cikti: str) -> list[str]:
     """Mutasyonun yakalandığına dair kanıt satırları.
 
@@ -210,8 +241,7 @@ def _kirilanlar(cikti: str) -> list[str]:
          for s in cikti.splitlines() if s.startswith("FAILED")}
     )
     kurulum_hatasi = sorted(
-        {s.split(" ")[1] if " " in s else s
-         for s in cikti.splitlines() if s.startswith("ERROR ") and "::" in s}
+        {s.split(" ")[1] for s in cikti.splitlines() if _kurulum_hatasi_satiri(s)}
     )
     if pytest_fail or kurulum_hatasi:
         return pytest_fail + [
@@ -224,6 +254,24 @@ def _kirilanlar(cikti: str) -> list[str]:
     ][:8]
 
 
+def _yesil_taban(m: Mutasyon) -> tuple[bool, str]:
+    """Temiz ağaçta hedef testler YEŞİL mi? Değilse prova GEÇERSİZDİR ([[TB-45]]).
+
+    Zaten kırık bir test mutasyon altında da kırık kalır; bunu "YAKALANDI"
+    saymak, ölçmek istediğini ölçmeden geçmek demektir. Bağımsız denetim
+    (İP-17) ölçtü: sürücü "YAKALANDI (6)" dedi, altı testin BEŞİ mutasyondan
+    bağımsız olarak zaten kırıktı. Yön tehlikelidir — fazla sayar.
+
+    Referans uygulama `mutation_drill_ip18.py`'de doğmuştu; İP-21'de buraya
+    taşındı ki yedi paketin ortak aracı aynı kapıyı taşısın.
+    """
+    if m.taraf != "backend":
+        return True, "(frontend — taban ölçülmedi)"
+    r = _kos([sys.executable, "-m", "pytest", "-q", *m.testler], BACKEND)
+    cikti = r.stdout + r.stderr
+    return (not _kirilanlar(cikti)) and r.returncode == 0, _sayi_ve_sonuc(cikti)
+
+
 def calistir(m: Mutasyon, head0: str, durum0: str) -> bool:
     print(f"\n{'=' * 72}\n{m.no} - {m.ad}\n{'=' * 72}")
     import contextlib
@@ -232,6 +280,15 @@ def calistir(m: Mutasyon, head0: str, durum0: str) -> bool:
     print(f"seçilen test sayısı: {secilen if secilen >= 0 else 'ölçülmedi (frontend)'}")
     if secilen == 0:
         print("!!! SIFIR TEST SEÇİLDİ — prova hiç koşmadı, bu bir BAŞARISIZLIKTIR !!!")
+        return False
+
+    # Üçüncü kapı ([[TB-45]]): girdi (seçilen test) ve çıktı (ERROR gölgelemesi)
+    # kapılarının yanına TABAN kapısı. Kırmızı tabanda mutasyon uygulanmaz —
+    # dosyaya dokunmanın bir anlamı yoktur, ölçülecek bir şey yoktur.
+    yesil, taban_ozet = _yesil_taban(m)
+    print(f"yeşil taban çizgisi: {'EVET' if yesil else 'HAYIR'}  [{taban_ozet}]")
+    if not yesil:
+        print("!!! TABAN KIRMIZI — mutasyon provası ANLAMSIZ, BAŞARISIZLIK !!!")
         return False
 
     with contextlib.ExitStack() as yamalar:

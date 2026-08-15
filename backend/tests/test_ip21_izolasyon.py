@@ -104,3 +104,36 @@ def test_N4b_ayni_loop_icinde_istemci_YENIDEN_KURULMAZ():
 
     a, b = asyncio.run(_iki_kez())
     assert a is b, "aynı loop içinde istemci yeniden kuruldu"
+
+
+# ── N-3d · matristen SONRA eklendi (dürüst kayıt) ─────────────────────────────
+
+
+def test_N3d_entegrasyon_suiti_iki_guardi_da_AYNI_yerde_cagirir():
+    """Guard'ın yazılmış olması yetmez; ÇAĞRILMASI gerekir.
+
+    Bu düğüm bilinçli olarak YAPISALDIR (§C: düşük güçlü) — davranış yüzü
+    `test_N3_*`'tedir. Buradaki iddia dar ama kesin: session kapsamlı autouse
+    fixture, Postgres ve Redis kilitlerini AYNI yerde çağırır, yani biri
+    eklenip diğeri unutulamaz.
+
+    Neden davranış testi değil: fixture session kapsamlı ve autouse; onu
+    "güvensiz Redis" ile koşturmak, testin kendisini çalıştıran suite'i
+    reddettirir — ölçüm kabı kendini yok eder.
+    """
+    import ast
+    import inspect
+    import textwrap
+
+    from tests.integration import conftest
+
+    agac = ast.parse(
+        textwrap.dedent(inspect.getsource(conftest._test_veritabani.__wrapped__))
+    )
+    cagrilar = {
+        d.func.id
+        for d in ast.walk(agac)
+        if isinstance(d, ast.Call) and isinstance(d.func, ast.Name)
+    }
+    assert "assert_test_database" in cagrilar, "Postgres kilidi kayboldu"
+    assert "assert_test_redis" in cagrilar, "Redis kilidi çağrılmıyor (TB-28)"
