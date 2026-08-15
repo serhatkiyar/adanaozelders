@@ -23,9 +23,17 @@ from core.routing.base import (
     FleetPlan,
     RoutePlan,
     RoutePoint,
+    RouteVehicle,
     RoutingProvider,
     RoutingUnavailable,
 )
+
+#: Sağlık yoklamasının çapa noktası. Bu bir OPERASYON varsayımı DEĞİLDİR
+#: (İP-19 depoyu kaldırdı, başlangıç noktaları veridir) — OSRM verisinin
+#: kapsadığı bölgenin içinden herhangi bir nokta gerekir ve veri hazırlığı
+#: Adana bbox'ı ile yapılır (`scripts/setup-osrm-adana.*`). Veri kapsamı
+#: değişirse burası da değişmelidir.
+_PING_LAT, _PING_LNG = 36.9855, 35.3253
 
 
 def max_tasks_per_vehicle(job_count: int, vehicle_count: int) -> int | None:
@@ -58,23 +66,57 @@ def max_tasks_per_vehicle(job_count: int, vehicle_count: int) -> int | None:
 
 def build_vroom_payload(
     *,
-    depot_lat: float,
-    depot_lng: float,
     points: list[RoutePoint],
-    vehicle_ids: list[int] | None = None,
+    vehicles: list[RouteVehicle],
 ) -> dict[str, Any]:
-    """VROOM isteği (açık tur — depoya dönüş zorunlu değil). VROOM koordinatları
-    [lng, lat] ister. ``vehicle_ids`` verilmezse bugüne kadarki tek-araç payload'ı
-    birebir korunur (geriye uyumluluk); verilirse VROOM işleri araçlara kendisi
-    optimal bölüştürür — ama ``capacity``/``amount`` ile DENGELİ bölüşür."""
-    ids = vehicle_ids or [1]
-    cap = max_tasks_per_vehicle(len(points), len(ids))
-    vehicles: list[dict[str, Any]] = []
-    for vid in ids:
-        v: dict[str, Any] = {"id": vid, "profile": "car", "start": [depot_lng, depot_lat]}
-        if cap is not None:
-            v["max_tasks"] = cap
-        vehicles.append(v)
+    """VROOM isteği (açık tur — başlangıca dönüş zorunlu değil). Koordinatlar
+    [lng, lat].
+
+    İP-19 sözleşmesi (D-4…D-7): yeni yeteneklerin TÜMÜ **koşulludur** —
+    varsayılan değerli araçlarda payload, paket öncesi tek-araç hâliyle
+    **birebir aynıdır** (geriye uyumluluk paketin en önemli güvencesidir;
+    değişse VROOM planları sessizce kayar ve başka hiçbir test görmez).
+
+    * ``max_tasks``    = ``min(ceil(n/k), v.max_stops)`` — iki ayrı kısıt aynı
+      alana yazılır: kuryeler arası mesai DENGESİ (yukarıdaki ölçülmüş
+      gerekçe) ve aracın kendi kapasitesi (K-4). Küçüğü bağlayıcıdır;
+      hiçbiri yoksa alan yazılmaz.
+
+      **Denge tavanı YALNIZ maliyetsiz (homojen) filoda uygulanır.** Yeşil
+      fazda ölçülen çelişki: ``ceil(n/k)`` SERT bir kısıttır — filoda
+      ``fixed_cost``'lu bir yedek araç varken de yazılırsa, VROOM 3 siparişi
+      bile bölmek ZORUNDA kalır (tek araç tavanı aşamaz) ve K-3'ün "ikinci
+      araç ancak kazanç sabit maliyeti aşarsa çıkar" ekonomisi hiç
+      çalışamaz. İki kısıt aynı anda ifade edilemez; öncelik K-3'ündür:
+      herhangi bir araçta ``fixed_cost > 0`` ise denge tavanı yazılmaz,
+      dengeyi ekonomi + ``max_stops`` yönetir. Maliyetsiz filoda (hepsi
+      "zaten sahada" varsayımı) eski ölçülmüş denge davranışı birebir korunur.
+    * ``time_window``  yalnız vardiyanın İKİ ucu da doluysa (yarım pencere
+      VROOM'da tanımsız; NULL = "kısıt yok", K-2).
+    * ``costs.fixed``  yalnız pozitifse — yedek aracı çıkarma EKONOMİSİ (K-3);
+      eski 12'lik eşik coğrafyayı görmüyordu, VROOM ikinci aracı ancak
+      kazanç sabit maliyeti aşarsa kullanır.
+    * ``start``        araç başınadır (K-9: depo yok, başlangıç noktası veri).
+    """
+    maliyetli_filo = any(rv.fixed_cost > 0 for rv in vehicles)
+    denge = (
+        None if maliyetli_filo else max_tasks_per_vehicle(len(points), len(vehicles))
+    )
+    out_vehicles: list[dict[str, Any]] = []
+    for rv in vehicles:
+        v: dict[str, Any] = {
+            "id": rv.id,
+            "profile": rv.profile,
+            "start": [rv.start_lng, rv.start_lat],
+        }
+        tavanlar = [t for t in (denge, rv.max_stops) if t is not None]
+        if tavanlar:
+            v["max_tasks"] = min(tavanlar)
+        if rv.shift_start_sec is not None and rv.shift_end_sec is not None:
+            v["time_window"] = [rv.shift_start_sec, rv.shift_end_sec]
+        if rv.fixed_cost > 0:
+            v["costs"] = {"fixed": rv.fixed_cost}
+        out_vehicles.append(v)
     jobs = [
         {
             "id": p.id,
@@ -83,7 +125,7 @@ def build_vroom_payload(
         }
         for p in points
     ]
-    return {"vehicles": vehicles, "jobs": jobs, "options": {"g": True}}
+    return {"vehicles": out_vehicles, "jobs": jobs, "options": {"g": True}}
 
 
 def check_location_budget(point_count: int, vehicle_count: int) -> None:
@@ -176,14 +218,13 @@ async def ping(*, timeout: float) -> None:
     VROOM'un ayakta olması yetmez — arkasındaki OSRM verisi yüklü değilse
     VROOM da çözemez. En ucuz uçtan uca kanıt gerçek (ama minik) bir plandır.
     """
-    lat, lng = settings.DELIVERY_DEPOT_LAT, settings.DELIVERY_DEPOT_LNG
+    lat, lng = _PING_LAT, _PING_LNG
     payload = build_vroom_payload(
-        depot_lat=lat,
-        depot_lng=lng,
         points=[
             RoutePoint(id=1, lat=lat + 0.004, lng=lng + 0.004),
             RoutePoint(id=2, lat=lat - 0.004, lng=lng - 0.004),
         ],
+        vehicles=[RouteVehicle(id=1, start_lat=lat, start_lng=lng)],
     )
     parse_vroom_plan(await _post_vroom(payload, timeout=timeout))
 
@@ -229,8 +270,11 @@ class VroomRoutingProvider(RoutingProvider):
         if not points:
             return RoutePlan(ordered_ids=[], provider=self.name)
         check_location_budget(len(points), 1)
+        # Tek-tur optimize yolu: başlangıç noktası varsayılan araca sarılır —
+        # payload, İP-19 öncesi tek-araç hâliyle birebir aynı kalır (D-4).
         payload = build_vroom_payload(
-            depot_lat=depot_lat, depot_lng=depot_lng, points=points
+            points=points,
+            vehicles=[RouteVehicle(id=1, start_lat=depot_lat, start_lng=depot_lng)],
         )
         plan = parse_vroom_plan(await _post_vroom(payload))
         assert_covers(plan.ordered_ids, [p.id for p in points])
@@ -239,29 +283,29 @@ class VroomRoutingProvider(RoutingProvider):
     async def plan_fleet(
         self,
         *,
-        depot_lat: float,
-        depot_lng: float,
         points: list[RoutePoint],
-        vehicle_ids: list[int],
+        vehicles: list[RouteVehicle],
     ) -> FleetPlan:
         if not points:
             return FleetPlan(routes={}, provider=self.name)
-        if len(vehicle_ids) == 1:
-            return await super().plan_fleet(
-                depot_lat=depot_lat,
-                depot_lng=depot_lng,
-                points=points,
-                vehicle_ids=vehicle_ids,
+        if len(vehicles) == 1:
+            # Tek araç: base'in plan() yolu — ama aracın KENDİ kısıtları
+            # (max_stops/vardiya/başlangıç) kaybolmasın diye burada payload'ı
+            # yine tam araçla kurarız.
+            check_location_budget(len(points), 1)
+            payload = build_vroom_payload(points=points, vehicles=vehicles)
+            routes = parse_vroom_fleet(
+                await _post_vroom(payload), expected_vehicles=[vehicles[0].id]
             )
-        check_location_budget(len(points), len(vehicle_ids))
-        payload = build_vroom_payload(
-            depot_lat=depot_lat,
-            depot_lng=depot_lng,
-            points=points,
-            vehicle_ids=vehicle_ids,
-        )
+            assert_covers(
+                [i for r in routes.values() for i in r.ordered_ids],
+                [p.id for p in points],
+            )
+            return FleetPlan(routes=routes, provider=self.name)
+        check_location_budget(len(points), len(vehicles))
+        payload = build_vroom_payload(points=points, vehicles=vehicles)
         routes = parse_vroom_fleet(
-            await _post_vroom(payload), expected_vehicles=vehicle_ids
+            await _post_vroom(payload), expected_vehicles=[v.id for v in vehicles]
         )
         assert_covers(
             [i for r in routes.values() for i in r.ordered_ids], [p.id for p in points]

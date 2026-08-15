@@ -186,7 +186,11 @@ async def test_R3b_DOWNGRADE_SEMAYI_GERI_KURAR_VERIYI_GETIRMEZ(taze_db):
     _alembic("upgrade", "head", db=db)
     assert await _var_olan_tablolar(motor, SM2_TABLOLARI) == []
 
-    _alembic("downgrade", "-1", db=db)
+    # İP-19 düzeltmesi: `-1` GÖRELİDİR ve head'e bağlıdır — zincire yeni
+    # revizyon (ip19_filo_veriye) eklenince "-1" ARTIK BU PAKETİ geri almıyor,
+    # İP-19'u alıyordu ve test sessizce başka bir migration'ı ölçüyordu.
+    # Mutlak hedef: sm2_flashcard_kaldirma'nın down_revision'ı.
+    _alembic("downgrade", "ip16_srs_izin_kodu_hizalama", db=db)
     geri_gelen = await _var_olan_tablolar(motor, SM2_TABLOLARI)
     assert geri_gelen == sorted(SM2_TABLOLARI), (
         f"downgrade şemayı geri kurmadı: {geri_gelen}"
@@ -238,7 +242,11 @@ async def test_R3b_DOWNGRADE_SEMAYI_GERI_KURAR_VERIYI_GETIRMEZ(taze_db):
 
     # Tablolar veriyle birlikte düştü. Şimdi tekrar geri kur: satırlar
     # DÖNMEMELİ. Bu assertion artık ayırt edicidir — az önce 2/12 vardı.
-    _alembic("downgrade", "-1", db=db)
+    # İP-19 düzeltmesi: `-1` GÖRELİDİR ve head'e bağlıdır — zincire yeni
+    # revizyon (ip19_filo_veriye) eklenince "-1" ARTIK BU PAKETİ geri almıyor,
+    # İP-19'u alıyordu ve test sessizce başka bir migration'ı ölçüyordu.
+    # Mutlak hedef: sm2_flashcard_kaldirma'nın down_revision'ı.
+    _alembic("downgrade", "ip16_srs_izin_kodu_hizalama", db=db)
     async with motor.connect() as conn:
         for tablo in SM2_TABLOLARI:
             sayi = (

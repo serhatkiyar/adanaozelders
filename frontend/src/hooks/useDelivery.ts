@@ -253,6 +253,76 @@ export function useUpdateDeliveryRun() {
   });
 }
 
+/* ── Filo (İP-19): araçlar + başlangıç noktaları (ADMIN) ── */
+
+export function useVehicles(enabled = true) {
+  return useQuery({
+    queryKey: [...KEY, "vehicles"],
+    queryFn: deliveryApi.fetchVehicles,
+    enabled,
+  });
+}
+
+export function useCreateVehicle() {
+  const invalidate = useInvalidateDelivery();
+  return useMutation({
+    mutationFn: deliveryApi.createVehicle,
+    onSuccess: invalidate,
+  });
+}
+
+export function useUpdateVehicle() {
+  const invalidate = useInvalidateDelivery();
+  return useMutation({
+    mutationFn: ({
+      vehicleId,
+      payload,
+    }: {
+      vehicleId: number;
+      payload: import("@/types").VehicleUpdate;
+    }) => deliveryApi.updateVehicle(vehicleId, payload),
+    onSuccess: invalidate,
+  });
+}
+
+export function useDeleteVehicle() {
+  const invalidate = useInvalidateDelivery();
+  return useMutation({
+    mutationFn: (vehicleId: number) => deliveryApi.deleteVehicle(vehicleId),
+    onSuccess: invalidate,
+  });
+}
+
+export function usePickupPoints(enabled = true) {
+  return useQuery({
+    queryKey: [...KEY, "pickup-points"],
+    queryFn: deliveryApi.fetchPickupPoints,
+    enabled,
+  });
+}
+
+export function useCreatePickupPoint() {
+  const invalidate = useInvalidateDelivery();
+  return useMutation({
+    mutationFn: deliveryApi.createPickupPoint,
+    onSuccess: invalidate,
+  });
+}
+
+export function useUpdatePickupPoint() {
+  const invalidate = useInvalidateDelivery();
+  return useMutation({
+    mutationFn: ({
+      pointId,
+      payload,
+    }: {
+      pointId: number;
+      payload: import("@/types").PickupPointUpdate;
+    }) => deliveryApi.updatePickupPoint(pointId, payload),
+    onSuccess: invalidate,
+  });
+}
+
 /* ── Kurye profilleri (ADMIN) ── */
 
 export function useCouriers(enabled = true) {
@@ -571,5 +641,42 @@ export function usePublicOrderTracking(token: string | null) {
     retry: false,
     refetchInterval: (query) =>
       query.state.data?.status === "EN_ROUTE" ? 15_000 : false,
+  });
+}
+
+/* ── İP-19 · Gün tahtası ── */
+
+/** Gün tahtası: atanmamış havuz + araç bazlı turlar. Optimistic YOK — durak
+ *  ekleyen mutasyon (`useAddStops`) KEY'i invalidate eder, tahta tazelenir. */
+export function useDeliveryBoard(date: string) {
+  return useQuery({
+    queryKey: [...KEY, "board", date],
+    queryFn: () => deliveryApi.fetchDeliveryBoard(date),
+  });
+}
+
+// Tahta araç listesi için AYRI bir hook/anahtar YOKTUR: `useVehicles`
+// kullanılır (denetim B-12). Ayrı anahtar, araç ekleyen ekranın tahtayı
+// tazelememesi demekti.
+
+/** Tahtadan drop ile durak ekleme — optimistic YOK; başarıda tüm delivery
+ *  anahtarları (tahta dahil) invalidate edilir. */
+export function useAddBoardStops() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ runId, orderIds }: { runId: number; orderIds: number[] }) =>
+      deliveryApi.addDeliveryStops(runId, orderIds),
+    onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
+  });
+}
+
+/* ── İP-19: operasyon metrikleri ── */
+
+/** Tarih aralıklı operasyon metrikleri (YYYY-MM-DD) — performans sayfası (ADMIN). */
+export function useDeliveryMetrics(fromDate: string, toDate: string) {
+  return useQuery({
+    queryKey: [...KEY, "metrics", fromDate, toDate],
+    queryFn: () => deliveryApi.fetchDeliveryMetrics(fromDate, toDate),
+    staleTime: 60_000,
   });
 }

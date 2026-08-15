@@ -12,7 +12,13 @@ from __future__ import annotations
 import math
 
 from core.config import settings
-from core.routing.base import FleetPlan, RoutePlan, RoutePoint, RoutingProvider
+from core.routing.base import (
+    FleetPlan,
+    RoutePlan,
+    RoutePoint,
+    RouteVehicle,
+    RoutingProvider,
+)
 
 # Şehir içi ortalama sürüş hızı (dur-kalk dahil, iyimser değil).
 _AVG_SPEED_KMH = 28.0
@@ -111,27 +117,37 @@ class HaversineRoutingProvider(RoutingProvider):
     async def plan_fleet(
         self,
         *,
-        depot_lat: float,
-        depot_lng: float,
         points: list[RoutePoint],
-        vehicle_ids: list[int],
+        vehicles: list[RouteVehicle],
     ) -> FleetPlan:
         if not points:
             return FleetPlan(routes={}, provider=self.name)
-        if len(vehicle_ids) == 1:
-            return await super().plan_fleet(
-                depot_lat=depot_lat,
-                depot_lng=depot_lng,
-                points=points,
-                vehicle_ids=vehicle_ids,
-            )
-        slices = partition_by_angle((depot_lat, depot_lng), points, len(vehicle_ids))
+        # K-3'ün fallback yarısı: haversine'in maliyet modeli yok
+        # (`fixed_cost`'u değerlendiremez), o yüzden kaç aracın sahaya
+        # çıkacağı ARAÇ VERİSİNDEN türetilir — eski sabit 12 eşiğinden değil:
+        # en dar `max_stops`'a göre gereken en az araç sayısı. Hiçbir araçta
+        # tavan yoksa kısıt yoktur → tek araç yeter (gereksiz bölüşüp iki tur
+        # üretmeyiz; VROOM tarafında da maliyetsiz filo tek araca meyleder).
+        tavanlar = [v.max_stops for v in vehicles if v.max_stops]
+        if tavanlar:
+            gereken = math.ceil(len(points) / min(tavanlar))
+            aktif = vehicles[: max(1, min(len(vehicles), gereken))]
+        else:
+            aktif = vehicles[:1]
+        if len(aktif) == 1:
+            return await super().plan_fleet(points=points, vehicles=aktif)
+        # Dilimleme merkezi: araç başlangıçlarının ortalaması (depo yok, K-9).
+        merkez = (
+            sum(v.start_lat for v in aktif) / len(aktif),
+            sum(v.start_lng for v in aktif) / len(aktif),
+        )
+        slices = partition_by_angle(merkez, points, len(aktif))
         routes: dict[int, RoutePlan] = {}
-        # partition_by_angle tam len(vehicle_ids) dilim döndürür.
-        for vid, chunk in zip(vehicle_ids, slices, strict=True):
+        # partition_by_angle tam len(aktif) dilim döndürür.
+        for rv, chunk in zip(aktif, slices, strict=True):
             if chunk:
-                routes[vid] = await self.plan(
-                    depot_lat=depot_lat, depot_lng=depot_lng, points=chunk
+                routes[rv.id] = await self.plan(
+                    depot_lat=rv.start_lat, depot_lng=rv.start_lng, points=chunk
                 )
         return FleetPlan(routes=routes, provider=self.name)
 

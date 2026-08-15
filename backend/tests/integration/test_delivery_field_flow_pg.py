@@ -28,6 +28,7 @@ from models.client import Client
 from models.store import Order
 from schemas.delivery import DeliveryRunCreate
 from services import delivery_service
+from tests.integration.filo_yardim import arac_id
 
 pytestmark = pytest.mark.asyncio
 
@@ -125,7 +126,7 @@ async def _tur_kur(ff: FieldFactory, order_ids: list[int]) -> int:
             s,
             DeliveryRunCreate(
                 run_date=datetime.date.today() + datetime.timedelta(days=600),
-                vehicle="LADA",
+                vehicle_id=await arac_id(),
             ),
         )
         ff.run_ids.append(run.id)
@@ -238,7 +239,7 @@ async def test_kapida_odeme_yok_odenmemis_siparis_dagitima_giremez(ff):
             s,
             DeliveryRunCreate(
                 run_date=datetime.date.today() + datetime.timedelta(days=601),
-                vehicle="LADA",
+                vehicle_id=await arac_id(),
             ),
         )
         ff.run_ids.append(run.id)

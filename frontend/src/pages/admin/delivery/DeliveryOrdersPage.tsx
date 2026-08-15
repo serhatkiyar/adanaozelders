@@ -26,7 +26,6 @@ import {
 } from "@/hooks/useDelivery";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { getErrorMessage } from "@/lib/errors";
-import { VEHICLE_LABEL } from "@/lib/deliveryRun";
 import { ROUTES } from "@/lib/routes";
 import { toast } from "@/store/toastStore";
 import type { DeliveryEligibleOrder } from "@/types";
@@ -210,7 +209,7 @@ function ReadyQueue() {
                   >
                     {openRuns.map((r) => (
                       <option key={r.id} value={r.id}>
-                        Tur #{r.id} · {(VEHICLE_LABEL[r.vehicle] ?? r.vehicle).split(" ")[0]}
+                        Tur #{r.id} · {r.vehicle}
                       </option>
                     ))}
                   </select>

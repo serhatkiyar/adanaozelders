@@ -22,6 +22,7 @@ from models.store import Order
 from schemas.delivery import DeliveryFeedbackIn
 from services import delivery_feedback_service as dfs
 from services import delivery_service
+from tests.integration.filo_yardim import arac_id
 
 
 def _uniq() -> str:
@@ -64,7 +65,8 @@ class FeedbackFactory:
             self.order_ids.append(order_id)
             if with_delivered_stop:
                 run = DeliveryRun(
-                    run_date=datetime.date.today(), vehicle="LADA", status="DONE"
+                    run_date=datetime.date.today(), vehicle_id=await arac_id(),
+                    status="DONE",
                 )
                 s.add(run)
                 await s.flush()

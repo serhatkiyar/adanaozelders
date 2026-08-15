@@ -23,6 +23,7 @@ from models.role import ROLE_IDS, RoleType
 from schemas.delivery import CourierAccountCreate
 from services import courier_account_service as cas
 from services import refresh_token_service
+from tests.integration.filo_yardim import arac_id
 
 
 def _uniq() -> str:
@@ -71,7 +72,8 @@ class CourierFactory:
     async def run_for(self, courier_id: int | None, status: str = "ACTIVE") -> int:
         async with AsyncSessionLocal() as s:
             r = DeliveryRun(
-                run_date=datetime.date.today(), status=status, courier_id=courier_id
+                run_date=datetime.date.today(), status=status, courier_id=courier_id,
+                vehicle_id=await arac_id(),
             )
             s.add(r)
             await s.flush()

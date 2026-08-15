@@ -21,6 +21,7 @@ from models.client import Client
 from models.delivery import DeliveryRun, DeliveryStop
 from models.store import Order
 from services import delivery_promise, delivery_service, order_service
+from tests.integration.filo_yardim import arac_id
 
 
 def _uniq() -> str:
@@ -80,7 +81,10 @@ class CapacityFactory:
             )
             s.add(order)
             await s.flush()
-            run = DeliveryRun(run_date=datetime.date.today(), status="ACTIVE")
+            run = DeliveryRun(
+                run_date=datetime.date.today(), status="ACTIVE",
+                vehicle_id=await arac_id(),
+            )
             s.add(run)
             await s.flush()
             stop = DeliveryStop(

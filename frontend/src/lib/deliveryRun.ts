@@ -66,10 +66,8 @@ export const STOP_STATUS_LABEL: Record<string, string> = {
   CANCELLED: "Sipariş iptal",
 };
 
-export const VEHICLE_LABEL: Record<string, string> = {
-  LADA: "Lada (birincil)",
-  COROLLA: "Corolla (yedek)",
-};
+/* İP-19: VEHICLE_LABEL sözlüğü KALDIRILDI — `run.vehicle` artık sunucudan
+   gelen aracın görünen etiketidir ("Lada"), kod değil; doğrudan basılır. */
 
 /** Dispatch board istisna özeti (PDS O2 sağlık şeridi) — turun BEKLEYEN
  *  durakları üzerinden operatörün turu başlatmadan görmesi gereken sorunlar.

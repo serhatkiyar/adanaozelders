@@ -13,7 +13,8 @@ export function CapacityStrip({
   onSelectDate?: (day: string) => void;
 }) {
   const { data: days } = useCapacityOverview();
-  if (!days || days.length === 0) return null;
+  // Dizi değilse (beklenmedik gövde) şerit sessizce gizlenir — kokpit çökmez.
+  if (!Array.isArray(days) || days.length === 0) return null;
 
   return (
     <div

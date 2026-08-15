@@ -253,6 +253,130 @@ yalnız ölçümü ve öneriyi kaydeder.
        TB-46 : TB-34 (dal içi, terk edildi) → TB-?B → TB-46
 -->
 
+<!-- Numaralandırma notu (İP-19, merge turu — 15 Ağu 2026): altı kayıt dal
+     içinde geçici etiketle durdu ve numaralar defterin kuralı gereği MERGE
+     TURUNDA tahsis edildi. Ölçüm (`git fetch --all` sonrası, tüm yerel VE
+     uzak dallar): en yüksek `^## TB-<n>` başlığı **47** (main, origin/main,
+     magaza-tasarim, sm2-kaldirma) → numaralar 48'den başladı.
+
+     Etiket→numara eşlemesi:
+       TB-?A → **TB-48**   teslimat sözü m.16 bağlayıcılığı      (araştırma turu)
+       TB-?B → **TB-49**   kurye ekranı hız baskısı / muvazaa     (araştırma turu)
+       TB-?C → **TB-50**   yetki belgesi P1* varsayımı            (araştırma turu)
+       TB-?D → **TB-51**   ratelimit `_client` event loop tuzağı  (denetim turu)
+       TB-?E → **TB-52**   tahtada tek sürükleme kipi             (denetim turu)
+       TB-?F → **TB-53**   delete_vehicle 409 yarışı              (denetim turu)
+
+     48-50 İP-19'un araştırma turunda bulundu ve o paketin KAPSAMI DIŞINDADIR
+     (hukuk/mevzuat kararı ister, kod kusuru değil). 51-53 bağımsız denetim
+     düzeltme turunda bulundu. Sözleşme: docs/ip19-dagitim-operasyon-sozlesme.md
+     §9 ve §10.6. -->
+
+## TB-53 · `delete_vehicle`'ın 409 kontrolü kontrol-sonra-yaz yarışına açık
+
+`services/delivery_service.py::delete_vehicle` açık tur sayısını okur, sonra
+soft-delete yazar; arada kilit yoktur. Teorik olarak "araç silinirken aynı anda
+o araca tur açılması" hem 409'u atlatabilir hem `fk_delivery_runs_vehicle_id`
+RESTRICT'ini devre dışı bırakabilir (soft-delete FK'yi tetiklemez).
+
+Bağımsız denetim de (M-7) kaybeden sıralamayı üretmeyi denedi ve **üretemedi**;
+yapısal boşluk yine de duruyor. Çözüm `SELECT … FOR UPDATE` ile aracı kilitlemek
+ya da kısmi unique index benzeri bir DB kısıtı. Kapsam dışı: gerçek zarar için
+aynı saniyede iki admin gerekir ve sonucu geri alınabilirdir (araç yeniden
+aktifleştirilir).
+
+---
+
+---
+
+## TB-52 · Gün tahtasında üç sürükleme kipinden yalnız biri var
+
+İP-19 sözleşmesi §4.2 üç kip vaat ediyordu: **havuzdan araca**, **araçtan
+araca**, **araç içinde sıra değiştirme**. Yazılan yalnız birincisidir
+(`DeliveryBoardPage.tsx::handleDrop`); ikincisi ve üçüncüsü yok. Bağımsız
+denetim (B-11) bunu ölçtü ve sözleşme metni düzeltildi.
+
+Etki sınırlı: sıra değiştirme uçtan (`PUT /delivery/runs/{id}/reorder`) zaten
+mümkün ve tur detay ekranından yapılabiliyor; araçtan araca taşıma için durak
+silinip diğerine eklenmesi gerekiyor (iki ayrı çağrı, atomik değil). Kapsam
+dışı bırakıldı çünkü yarım bir sürükleme yüzeyi, hiç olmayanından kötüdür:
+atomik olmayan taşıma yarıda kalırsa durak hiçbir turda kalmayabilir.
+
+---
+
+---
+
+## TB-51 · Rate-limit testleri suite içinde SESSİZCE etkisiz — `_client` event loop'a bağlı
+
+> **Öncelik: orta — test altyapısı.** Üretim davranışı doğrudur; risk, bu
+> depodaki **her rate-limit testinin yalancı yeşil olabilmesidir**.
+
+`core/ratelimit.py::_redis()` istemciyi modül düzeyinde bir singleton'da tutar
+(`_client`) ve istemci **ilk yaratıldığı event loop'a bağlanır**.
+pytest-asyncio her teste yeni bir loop kurduğu için, suite içinde önceki
+loop'tan kalmış istemci kullanıldığında `enforce` istisna alır ve
+`except Exception → return` ile **fail-open**'a düşer: limit hiç uygulanmaz.
+
+Ölçüldü (İP-19 denetim turu, 15 Ağu 2026): `test_B10_filo_yazma_ucu_*` tek
+başına koşunca 429 alıyor, tam entegrasyon suite'i içinde 61 ardışık yazmanın
+61'i de 200 dönüyordu. Düğüm `monkeypatch.setattr(ratelimit, "_client", None)`
+ile kendi ön koşulunu kurarak düzeltildi — **ama aynı tuzak depodaki diğer
+rate-limit testleri için açık duruyor**; onların hangisinin gerçekten
+ölçtüğü sayılmadı.
+
+Doğru çözüm muhtemelen istemciyi loop başına çözmek ya da test conftest'inde
+her testte sıfırlamak. İP-19'un kapsamı dışında bırakıldı çünkü `core/ratelimit`
+bütün paketlerin ortak yüzeyidir ve değişiklik tek tek ölçülmeli.
+
+---
+
+---
+
+## TB-50 · Yetki belgesi varsayımı doğrulanmadı — K2 değil muhtemelen P1*
+
+| | |
+|---|---|
+| **Bulundu** | İP-19 araştırma turu, 15 Ağu 2026 |
+| **Yer** | Kod değil — operasyonun yasal zemini. Dolaylı: `docs/pk1-deployment-checklist.md` (lansman kontrol listesi) |
+| **Durum** | Kendi aracıyla şehir içi teslimat için gereken belge, araştırmada varsayıldığı gibi K1/K2 ekseninde **değil**: Karayolu Taşıma Yönetmeliği kurye/dağıtım faaliyetini **P türü** belgeye bağlıyor. **P1\*** = il içi kurye taşımacılığı, sınırlı taşıt sayısı, otomobil+motosiklet+kamyonet kaydedilebiliyor. K2 ("kendi esas iştigal konusu") savunması **pazaryeri modelinde çökebilir**: eğitmenin fiziksel ürünü taşınıyorsa mal bize ait değildir; hangi belgenin gerektiği **faturayı kimin kestiğine** bağlıdır |
+| **Ölçülmedi** | ⚠️ P1\*'ın taşıt sayısı sınırı ve ücreti **belge aracısı sitelerinden** alındı; resmî KTY metninden **teyit edilemedi**. Ayrıca internette dolaşan "3,5 ton altı şehir içi muafiyeti" iddiası **muhtemelen 2008'de sona ermiş** — eşya taşımacılığı için geçerli değil |
+| **Etki** | Belgesiz ticari taşıma idari para cezası ve faaliyet durdurma riski taşır. Lansmanla birlikte teslimat başlayacağı için bu, **lansman öncesi kapanması gereken** bir kalemdir |
+| **Neden şimdi düzeltilmedi** | Kod işi değil; başvuru ve mali müşavir/mevzuat işi |
+| **Sonraki adım** | (1) **e-Devlet U-NET** veya Adana Ulaştırma Bölge Müdürlüğü'nden **yazılı teyit** al — belge aracısı sitelerine güvenme; (2) fatura akışını mali müşavire göstererek K2/P1\* ayrımını netleştir; (3) sonucu `pk1-deployment-checklist.md`'ye madde olarak yaz |
+
+---
+
+## TB-49 · Kurye ekranı hız baskısı üretiyor olabilir — hem mevzuat hem muvazaa riski
+
+| | |
+|---|---|
+| **Bulundu** | İP-19 araştırma turu, 15 Ağu 2026 |
+| **Yer** | `frontend/src/pages/courier/` saha ekranı · `DeliveryRun` ETA alanları · teslimat söz zinciri |
+| **Durum** | İki ayrı risk aynı ekranda buluşuyor. **(a) Mevzuat:** kurye düzenlemelerinde platformların sürücü üzerinde **hız baskısı** kurması ve **makul olmayan teslimat süresi taahhüdü** dayatması yasaklanmıştır. **(b) Muvazaa:** Yargıtay/BAM içtihadı, alt işveren veya "esnaf kurye" üzerinden çalıştırılan kuryelerde **platformu asıl işveren** sayabiliyor; *"platform yalnızca teknoloji şirketi olduğunu ileri sürerek sorumluluktan kurtulamaz"*. Bu davada **ekranın kontrol sıkılığı delil** olur: kim rotayı belirliyor, kim sırayı dayatıyor, kim süre ölçüyor |
+| **Ölçülmedi** | ⚠️ Hız baskısı yasağının **tam metni ve yaptırımı birincil kaynaktan doğrulanamadı** (yönetmelik PDF'i makine-okunur değil). İddia ikincil kaynaklardan; teyit edilmeli |
+| **Etki** | Şahıs şirketi ölçeğinde tek bir muvazaa davası (kıdem + ihbar + fazla mesai + geriye dönük SGK) ağırdır. Mevzuat tarafı ise idari yaptırım riski |
+| **Neden şimdi düzeltilmedi** | Kurye istihdam biçimi henüz kararlaşmadı (kurucu mu taşıyacak, ücretli kurye mi). Ekran tasarımı bu karara bağlı; karar verilmeden tasarım değiştirmek erken |
+| **Sonraki adım** | (1) Yasağın tam metnini Resmî Gazete'den teyit et; (2) kurye ekranında **geri sayım/süre sayacı yerine rota sırası** göster — süre sözü müşteriye verilir, kuryeye dayatılmaz; (3) ücretli kurye alınacaksa **SGK'lı** tercih et, esnaf-kurye modelinden uzak dur |
+
+---
+
+## TB-48 · Teslimat sözü BAĞLAYICI bir taahhüttür ve 30 gün kalkanını kaldırır
+
+> **Öncelik: yüksek — LANSMAN ÖNCESİ ürün+hukuk kararı.** Bu bir kod kusuru
+> değil; çalışan ve amaçlandığı gibi davranan bir özelliğin **hukuki
+> pozisyonunun** ölçülmemiş olması.
+
+| | |
+|---|---|
+| **Bulundu** | İP-19 araştırma turu, 15 Ağu 2026 — Türkiye teslimat mevzuatı taraması |
+| **Yer** | `backend/services/delivery_promise.py` (16:00 cutoff → `Order.promised_delivery_date`) · `GET /store/delivery-info` · `frontend/src/components/DeliveryPromiseBadge.tsx` (geri sayımlı söz rozeti; ürün/sepet/checkout) · `frontend/src/lib/legalContent.ts` (ön bilgilendirme metni) |
+| **Durum** | Mesafeli Sözleşmeler Yönetmeliği (RG 27.11.2014/29188) **m.16/1**: satıcı "**taahhüt ettiği süre içinde**" ifa etmek zorundadır; otuz gün **her hâlükârda üst sınırdır**, taahhüt edilen süre **alt sınırı** belirler. **m.16/2**: yükümlülük yerine getirilmezse tüketici **sözleşmeyi feshedebilir**. **m.16/3**: fesihten itibaren **14 gün içinde** tüm ödemeler **yasal faiziyle** iade edilir. **m.5/1-f**: ön bilgilendirmedeki teslim süresi, **ticari reklamda taahhüt edilen süreyle uyumlu** olmalıdır |
+| **Etki** | Platform "aynı/ertesi gün" sözünü **sisteme yazmış** durumda (rozet geri sayım gösteriyor, `promised_delivery_date` sipariş satırında yaşıyor). Bu, pazarlama vaadi değil bağlayıcı taahhüttür: tutulmadığı her siparişte tüketici **30 günü beklemeden** fesih + faizli iade hakkı kazanır. Kendi filoyla teslimatta gecikme sebepleri (araç arızası, kurye hastalığı, hava) tamamen bizim riskimizdedir |
+| **Neden şimdi düzeltilmedi** | İP-19'un konusu **kaynak modelidir** (araç/vardiya/planlama). Metin değişikliği ayrı bir karar ve **avukat onayı** ister; yasal metinler zaten toplu onay bekliyor. Ayrıca teknik düzeltme değil ürün kararı: "aynı gün" vitrinde kalacak mı, kalacaksa hangi istisnalarla |
+| **Sonraki adım** | (1) Ön bilgilendirme formundaki **bağlayıcı süreyi** pazarlama vaadinden AYIR — vitrinde "aynı gün", sözleşmede "en geç X iş günü"; (2) `DeliveryPromiseBadge`'in dilini buna hizala; (3) mevcut ürün/hava/trafik istisnalarını metne yaz; (4) avukat onayına gönder |
+
+---
+
 ## TB-47 · `ip16_srs_izin_kodu_hizalama`'nın rol bağı taşıması NÖBETSİZ — sökülünce hiçbir test kırılmıyor
 
 | | |

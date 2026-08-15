@@ -17,12 +17,13 @@ import {
   useRetryExhausted,
   useRoutingHealth,
   useRunPosition,
+  useVehicles,
 } from "@/hooks/useDelivery";
 import { getErrorMessage } from "@/lib/errors";
-import { runProgress, VEHICLE_LABEL } from "@/lib/deliveryRun";
+import { runProgress } from "@/lib/deliveryRun";
 import { ROUTES } from "@/lib/routes";
 import { toast } from "@/store/toastStore";
-import type { DeliveryRun, DeliveryVehicle } from "@/types";
+import type { DeliveryRun } from "@/types";
 
 /* Rota altyapısı bozulma şeridi — yalnız degraded iken görünür. VROOM/OSRM
    düşükken sistem çalışmaya devam eder ama optimize kuş uçuşu tahmine düşer;
@@ -54,7 +55,8 @@ function ExceptionQueue() {
   const [retrying, setRetrying] = useState<number | null>(null);
   const query = useAttentionOrders();
   const retry = useRetryExhausted();
-  const orders = query.data ?? [];
+  // Beklenmedik gövde (proxy hata sayfası vb.) kokpiti çökertmesin — dizi değilse boş say.
+  const orders = Array.isArray(query.data) ? query.data : [];
 
   if (query.isError) {
     return (
@@ -157,7 +159,7 @@ function RunRow({ run }: { run: DeliveryRun }) {
           <p className="text-sm font-semibold text-slate-900 dark:text-white">
             Tur #{run.id}
             <span className="ml-2 font-normal text-slate-500 dark:text-slate-400">
-              {VEHICLE_LABEL[run.vehicle] ?? run.vehicle}
+              {run.vehicle}
             </span>
           </p>
           <p className="mt-0.5 truncate text-xs text-slate-500 dark:text-slate-400">
@@ -191,14 +193,21 @@ export default function DeliveryTodayPage() {
   const setDate = (d: string) =>
     setParams(d === todayIso() ? {} : { tarih: d }, { replace: true });
 
-  const [vehicle, setVehicle] = useState<DeliveryVehicle>("LADA");
+  // Araç listesi sunucudan (İP-19) — seçim yapılmadıysa ilk aktif araç önerilir.
+  const [vehicleId, setVehicleId] = useState<number | null>(null);
   const [dispatchOpen, setDispatchOpen] = useState(false);
   const runsQuery = useDeliveryRuns(date);
-  const { data: eligibleAll = [] } = useEligibleOrders();
+  const vehiclesQuery = useVehicles();
+  const { data: eligibleData } = useEligibleOrders();
   const createRun = useCreateDeliveryRun();
   const dispatchDay = useDispatchDay();
 
-  const runs = runsQuery.data ?? [];
+  const vehicles = Array.isArray(vehiclesQuery.data) ? vehiclesQuery.data : [];
+  const eligibleAll = Array.isArray(eligibleData) ? eligibleData : [];
+  const activeVehicles = vehicles.filter((v) => v.is_active);
+  const selectedVehicleId = vehicleId ?? activeVehicles[0]?.id ?? null;
+
+  const runs = Array.isArray(runsQuery.data) ? runsQuery.data : [];
   const dispatchable = eligibleAll.filter((o) => o.lat != null && o.lng != null).length;
   const sortedRuns = useMemo(
     () =>
@@ -209,9 +218,13 @@ export default function DeliveryTodayPage() {
     [runs]
   );
 
-  const create = () =>
+  const create = () => {
+    if (selectedVehicleId == null) {
+      toast.error("Önce bir araç tanımlayın — Araçlar sekmesinden eklenir.");
+      return;
+    }
     createRun.mutate(
-      { run_date: date, vehicle },
+      { run_date: date, vehicle_id: selectedVehicleId },
       {
         onSuccess: (r) => {
           toast.success("Tur oluşturuldu.");
@@ -220,6 +233,7 @@ export default function DeliveryTodayPage() {
         onError: (e) => toast.error(getErrorMessage(e, "Tur oluşturulamadı.")),
       }
     );
+  };
 
   return (
     <div>
@@ -243,14 +257,28 @@ export default function DeliveryTodayPage() {
           />
           {canManage && (
             <>
+              {/* Araç seçimi YALNIZ "Yeni Tur"un girdisidir; başka hiçbir şeyi
+                  etkilemez. Salt-okunur admin'e gösterilmesi, paketin kendi
+                  ilkesine ("sahte düzenleme kontrolü YOK") aykırıydı — testin
+                  kolayına gelsin diye kapının dışına alınmıştı (denetim B-13).
+                  Günün turları zaten aşağıda araç ayrımı olmadan listelenir. */}
+              <label
+                htmlFor="run-vehicle"
+                className="text-xs font-medium text-slate-500 dark:text-slate-400"
+              >
+                Araç
+              </label>
               <select
-                value={vehicle}
-                onChange={(e) => setVehicle(e.target.value as DeliveryVehicle)}
-                aria-label="Araç"
+                id="run-vehicle"
+                value={selectedVehicleId ?? ""}
+                onChange={(e) => setVehicleId(Number(e.target.value))}
                 className="input w-auto"
               >
-                <option value="LADA">{VEHICLE_LABEL.LADA}</option>
-                <option value="COROLLA">{VEHICLE_LABEL.COROLLA}</option>
+                {activeVehicles.map((v) => (
+                  <option key={v.id} value={v.id}>
+                    {v.label}
+                  </option>
+                ))}
               </select>
               <Button size="sm" variant="secondary" onClick={create} isPending={createRun.isPending}>
                 Yeni Tur
@@ -314,9 +342,7 @@ export default function DeliveryTodayPage() {
       <ConfirmDialog
         open={dispatchOpen}
         title="Günü optimize et"
-        description={`${dispatchable} konumlu sipariş ${dispatchable > 12 ? "Lada ve Corolla" : "Lada"} ${
-          dispatchable > 12 ? "araçlarına" : "aracına"
-        } bölüştürülüp optimize turlar kurulacak. Mevcut planlı turlara durak eklenebilir.`}
+        description={`${dispatchable} konumlu sipariş aktif araçlara bölüştürülüp optimize turlar kurulacak. Mevcut planlı turlara durak eklenebilir.`}
         confirmLabel="Turları kur"
         isPending={dispatchDay.isPending}
         onClose={() => setDispatchOpen(false)}

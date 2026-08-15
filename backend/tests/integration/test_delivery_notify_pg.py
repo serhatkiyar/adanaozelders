@@ -19,6 +19,7 @@ from models.delivery import DeliveryRun, DeliveryStop
 from models.notification import Notification
 from models.store import Order
 from services import delivery_service
+from tests.integration.filo_yardim import arac_id
 
 
 def _uniq() -> str:
@@ -35,7 +36,8 @@ class NotifyFactory:
         """ACTIVE tur + n adet PENDING durak (sequence 1..n). (run_id, stop_ids)."""
         async with AsyncSessionLocal() as s:
             run = DeliveryRun(
-                run_date=datetime.date.today(), vehicle="LADA", status="ACTIVE"
+                run_date=datetime.date.today(), vehicle_id=await arac_id(),
+                status="ACTIVE",
             )
             s.add(run)
             await s.flush()

@@ -32,6 +32,7 @@ from schemas.delivery import CourierAccountCreate, CourierUpdate
 from services import audit_service
 from services import courier_account_service as cas
 from services import delivery_service, refresh_token_service
+from tests.integration.filo_yardim import arac_id
 
 pytestmark = pytest.mark.asyncio
 
@@ -82,7 +83,7 @@ class Phase0Factory:
                     # Geçmiş tarih: gün+araç başına tek PLANNED index'iyle ve
                     # gerçek verilerle çakışmasın diye her tur ayrı güne.
                     run_date=datetime.date(2031, 1, 1) + datetime.timedelta(days=i),
-                    vehicle="LADA",
+                    vehicle_id=await arac_id(),
                     status="DONE",
                 )
                 s.add(r)

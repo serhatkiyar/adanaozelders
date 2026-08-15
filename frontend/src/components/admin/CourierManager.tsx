@@ -1,5 +1,6 @@
 // Kurye profilleri yönetimi (ADMIN) — hafif liste + satır içi ekleme/düzenleme.
-// Müşteri takip sayfasındaki kimlik kartını (isim + vesikalık + plaka) besler.
+// Müşteri takip sayfasındaki kimlik kartını (isim + vesikalık) besler.
+// İP-19: plaka kuryeden kalktı — araç kimliği Araçlar sekmesinde yaşar.
 import { useRef, useState } from "react";
 import { useAdminAreaAccess } from "@/components/admin/AccessState";
 import { ConfirmDialog } from "@/components/admin/ui";
@@ -223,7 +224,6 @@ function CourierRow({ c }: { c: Courier }) {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [name, setName] = useState(c.name);
   const [phone, setPhone] = useState(c.phone ?? "");
-  const [plate, setPlate] = useState(c.vehicle_plate ?? "");
 
   const save = () => {
     if (name.trim().length < 2) {
@@ -236,7 +236,6 @@ function CourierRow({ c }: { c: Courier }) {
         payload: {
           name: name.trim(),
           phone: phone.trim() || null,
-          vehicle_plate: plate.trim() || null,
         },
       },
       {
@@ -261,12 +260,6 @@ function CourierRow({ c }: { c: Courier }) {
           onChange={(e) => setPhone(e.target.value)}
           className="input w-36"
           placeholder="Telefon"
-        />
-        <input
-          value={plate}
-          onChange={(e) => setPlate(e.target.value.toLocaleUpperCase("tr"))}
-          className="input w-28 font-mono"
-          placeholder="Plaka"
         />
         <button
           onClick={save}
@@ -330,7 +323,7 @@ function CourierRow({ c }: { c: Courier }) {
           )}
         </p>
         <p className="text-xs text-slate-500 dark:text-slate-400">
-          {[c.vehicle_plate, c.phone].filter(Boolean).join(" · ") || "—"}
+          {c.phone || "—"}
         </p>
       </div>
       <div className="flex shrink-0 items-center gap-2 opacity-0 transition focus-within:opacity-100 group-hover:opacity-100">
@@ -391,7 +384,6 @@ export function CourierManager() {
   const create = useCreateCourier();
   const [adding, setAdding] = useState(false);
   const [name, setName] = useState("");
-  const [plate, setPlate] = useState("");
 
   const add = () => {
     if (name.trim().length < 2) {
@@ -399,11 +391,10 @@ export function CourierManager() {
       return;
     }
     create.mutate(
-      { name: name.trim(), vehicle_plate: plate.trim() || null },
+      { name: name.trim() },
       {
         onSuccess: () => {
           setName("");
-          setPlate("");
           setAdding(false);
           toast.success("Kurye eklendi.");
         },
@@ -418,7 +409,7 @@ export function CourierManager() {
         <div>
           <h2 className="text-base font-bold text-slate-900 dark:text-white">Kuryeler</h2>
           <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
-            Müşteri takip kimliği (isim, fotoğraf, plaka) + saha ekranı giriş hesabı.
+            Müşteri takip kimliği (isim, fotoğraf) + saha ekranı giriş hesabı.
           </p>
         </div>
         {canManage && !adding && (
@@ -439,12 +430,6 @@ export function CourierManager() {
               className="input w-44"
               placeholder="İsim Soyisim"
               autoFocus
-            />
-            <input
-              value={plate}
-              onChange={(e) => setPlate(e.target.value.toLocaleUpperCase("tr"))}
-              className="input w-32 font-mono"
-              placeholder="01 ABC 123"
             />
             <button
               onClick={add}
@@ -479,8 +464,8 @@ export function CourierManager() {
                 <CourierAvatar c={c} />
                 <div className="min-w-0">
                   <p className="truncate text-sm font-medium text-slate-900 dark:text-white">{c.name}</p>
-                  {c.vehicle_plate && (
-                    <p className="font-mono text-xs text-slate-500 dark:text-slate-400">{c.vehicle_plate}</p>
+                  {c.phone && (
+                    <p className="text-xs text-slate-500 dark:text-slate-400">{c.phone}</p>
                   )}
                 </div>
               </li>
