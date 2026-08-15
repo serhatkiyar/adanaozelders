@@ -253,7 +253,43 @@ kırmızı taban varsa gündeme gelirdi, gelmedi.
   kaynak sözleşmesi yazdı ve üçü de kendi sınırını docstring'inde yazıyor +
   pozitif kontrol taşıyor; TB-38'in istediği envanter turu hâlâ ayrı bir iş.
 
-### 6.6 Turun kendi hataları — dürüst kayıt
+### 6.6 KENDİ dedektörlerime kaçış avı (denetim yerine geçen tur)
+
+Paket bağımsız denetime gönderilmedi (gerekçe: tamamen test tarafı, üretimde
+değişen tek şey `_redis()`'in loop farkındalığı). Denetimin en değerli sorusu
+kendim soruldu: **kendi nöbetçilerime çalışan bir kaçış üretebiliyor muyum?**
+
+İlk ölçüm: **altı kaçışın altısı da çalıştı.**
+
+| # | Kaçış | İlk hâl | Son hâl |
+|---|---|---|---|
+| K1 | `getattr(app, "routes")` | KAÇTI | görülüyor |
+| K2 | `.routes` ve `.path` iki AYRI fonksiyonda | KAÇTI | görülüyor (dosya düzeyi) |
+| K3 | `r.__dict__["path"]` | KAÇTI | görülüyor |
+| K4 | `M = Order` takma adı | KAÇTI | görülüyor |
+| K5 | `esc.claim(...)` modül takma adı | KAÇTI | görülüyor |
+| K6 | `model=Order` anahtar sözcüğü | KAÇTI | görülüyor |
+
+Düzeltme K-6'yı **gerçekten** uyguladı: N-10 artık modele de modüle de
+argümanlara da bakmıyor — `claim` adlı bir çağrı varsa fonksiyon izinli
+listede olmalı. Kaçmak için `escrow.claim`'in ADINI değiştirmek gerekir, ki o
+zaman kaçış değil escrow API'sini değiştiren bir refactor olur. N-9 fonksiyon
+düzeyinden **dosya** düzeyine çıktı ve üç erişim biçimini tanıyor.
+
+Dosya düzeyine çıkınca iki dosya yakalandı ve ikisi de **ihlal değildi**:
+`test_ip3_operator_active_gate_pg.py` tuzağı bilerek çözüyor (`_IncludedRouter`
+sarmalını `original_router` üzerinden geziyor ve DOLULUK iddiası kuruyor),
+`test_health_endpoints.py` ise eklediği geçici rotayı teardown'da siliyor.
+İkisi gerekçeleriyle `ROTA_MUAFLARI`'na alındı — ve o liste [[TB-38]]'in
+şikâyet ettiği "elle tutulan liste" olduğu için yanına doluluk nöbetçisi
+kondu (`test_N9d`: muaf dosya var mı, hâlâ yakalanıyor mu — biri düşerse
+kırılır).
+
+**Kalan sınır (dürüst kayıt):** N-9'un iddiasını İKİ AYRI DOSYAYA bölen bir
+kaçış hâlâ görülmez. Dedektörü kaçışa karşı yamamak bitmeyen bir yarıştır;
+meta-test tek başına yeterli sayılmaz.
+
+### 6.7 Turun kendi hataları — dürüst kayıt
 
 1. **§3'ün kırmızı beklentisi yanlıştı** (§6.1).
 2. **Faz 3 provasında P3 "YAKALANMADI" dedi ve nöbetçi suçsuzdu.**
