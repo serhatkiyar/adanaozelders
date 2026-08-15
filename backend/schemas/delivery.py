@@ -60,6 +60,22 @@ class PickupPointCreate(BaseModel):
     sort_order: int = 0
 
 
+class PickupPointUpdate(BaseModel):
+    """Başlangıç/toplama noktası düzenlemesi (denetim B-9).
+
+    `kind` DEĞİŞTİRİLEMEZ: bir BASE'i SUPPLIER'a çevirmek, ona bağlı araçların
+    turunu sessizce başka bir yerden başlatırdı. Yanlış tür girildiyse doğru
+    olanı eklenir, yanlış olan pasifleştirilir.
+    """
+
+    name: str | None = Field(default=None, min_length=1, max_length=80)
+    address: str | None = Field(default=None, max_length=2000)
+    lat: float | None = Field(default=None, ge=-90, le=90)
+    lng: float | None = Field(default=None, ge=-180, le=180)
+    sort_order: int | None = None
+    is_active: bool | None = None
+
+
 class PickupPointOut(BaseModel):
     id: int
     name: str

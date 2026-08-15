@@ -255,28 +255,31 @@ export default function DeliveryTodayPage() {
             aria-label="Tur tarihi"
             className="input w-auto"
           />
-          {/* Araç seçimi salt-okunur rolde de görünür (günün planı hangi
-              araçla okunuyor); yalnız aksiyon butonları manage ister. */}
-          <label
-            htmlFor="run-vehicle"
-            className="text-xs font-medium text-slate-500 dark:text-slate-400"
-          >
-            Araç
-          </label>
-          <select
-            id="run-vehicle"
-            value={selectedVehicleId ?? ""}
-            onChange={(e) => setVehicleId(Number(e.target.value))}
-            className="input w-auto"
-          >
-            {activeVehicles.map((v) => (
-              <option key={v.id} value={v.id}>
-                {v.label}
-              </option>
-            ))}
-          </select>
           {canManage && (
             <>
+              {/* Araç seçimi YALNIZ "Yeni Tur"un girdisidir; başka hiçbir şeyi
+                  etkilemez. Salt-okunur admin'e gösterilmesi, paketin kendi
+                  ilkesine ("sahte düzenleme kontrolü YOK") aykırıydı — testin
+                  kolayına gelsin diye kapının dışına alınmıştı (denetim B-13).
+                  Günün turları zaten aşağıda araç ayrımı olmadan listelenir. */}
+              <label
+                htmlFor="run-vehicle"
+                className="text-xs font-medium text-slate-500 dark:text-slate-400"
+              >
+                Araç
+              </label>
+              <select
+                id="run-vehicle"
+                value={selectedVehicleId ?? ""}
+                onChange={(e) => setVehicleId(Number(e.target.value))}
+                className="input w-auto"
+              >
+                {activeVehicles.map((v) => (
+                  <option key={v.id} value={v.id}>
+                    {v.label}
+                  </option>
+                ))}
+              </select>
               <Button size="sm" variant="secondary" onClick={create} isPending={createRun.isPending}>
                 Yeni Tur
               </Button>

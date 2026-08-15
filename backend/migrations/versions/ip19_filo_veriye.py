@@ -2,11 +2,10 @@
 
 Üç adım (sözleşme §2.4), VERİ KAYBI YOK:
 
-1. `vehicles` ve `pickup_points` kurulur; LADA/COROLLA satırları ve — depo
-   olmadığı için (K-9) — "Merkez (geçici)" adlı bir BASE noktası seed edilir.
-   BASE'in koordinatı eski `DELIVERY_DEPOT_LAT/LNG` yer tutucusudur: gerçek
-   bir yer DEĞİLDİR, dispatch'in migration sonrası kesintisiz çalışması için
-   konur ve admin panelden gerçek noktayla değiştirilmesi beklenir.
+1. `vehicles` ve `pickup_points` kurulur; yalnız LADA/COROLLA satırları seed
+   edilir (eşleme adımının kendisi onlara dayanır). Başlangıç noktası
+   SEED'LENMEZ — uydurma koordinat müşteriye gösterilen varış penceresini de
+   bozardı; operatör Dağıtım > Araçlar ekranından gerçek noktasını girer.
 2. `delivery_runs.vehicle_id` eklenir (önce nullable), eski serbest
    `vehicle` string'i `vehicles.code` üzerinden eşlenir, NOT NULL yapılır,
    `uq_delivery_run_planned` index'i `vehicle_id`'ye taşınır (K-8: semantik
@@ -32,9 +31,14 @@ down_revision = "sm2_flashcard_kaldirma"
 branch_labels = None
 depends_on = None
 
-# Eski yer tutucu koordinat (config'ten kaldırıldı; yalnız seed'de yaşar).
-_ESKI_YER_TUTUCU_LAT = 36.985500
-_ESKI_YER_TUTUCU_LNG = 35.325300
+# Başlangıç noktası SEED'LENMEZ (bağımsız denetim B-9). İlk hâl "Merkez
+# (geçici — gerçek başlangıç noktanızla değiştirin)" adıyla uydurma bir
+# koordinat yazıyordu; panelde düzenleme yolu olmadığı için o sahte nokta
+# kalıcı hâle gelebiliyordu. Koordinat yalnız rotanın başlangıcı değil,
+# MÜŞTERİYE GÖSTERİLEN varış penceresinin de başlangıcıdır — sessizce yanlış
+# olması, hiç olmamasından kötüdür. Nokta tanımlı değilken "Günü Optimize Et"
+# açık bir 409 döner: "Başlangıç noktası tanımlı değil — Dağıtım ayarlarından
+# bir BASE noktası ekleyin".
 
 
 def upgrade() -> None:
@@ -110,7 +114,7 @@ def upgrade() -> None:
         sa.Column("deleted_at", sa.DateTime(timezone=True), nullable=True),
     )
 
-    # Seed: mevcut iki araç + geçici BASE (docstring'deki gerekçe).
+    # Seed: yalnız mevcut iki araç (veri taşıma eşlemesinin kendisi).
     #
     # COROLLA'nın `fixed_cost=1800`'ü eski "COROLLA yalnız yoğun günlerde"
     # kuralının ekonomik karşılığıdır (K-3): VROOM maliyeti saniye cinsinden
@@ -122,22 +126,33 @@ def upgrade() -> None:
         "INSERT INTO vehicles (code, label, sort_order, fixed_cost) "
         "VALUES ('LADA', 'Lada', 0, 0), ('COROLLA', 'Corolla', 1, 1800)"
     )
-    op.execute(
-        "INSERT INTO pickup_points (name, kind, lat, lng, sort_order) VALUES "
-        f"('Merkez (geçici — gerçek başlangıç noktanızla değiştirin)', 'BASE', "
-        f"{_ESKI_YER_TUTUCU_LAT}, {_ESKI_YER_TUTUCU_LNG}, 0)"
-    )
 
     # ── 2) delivery_runs.vehicle → vehicle_id ───────────────────────────────
     op.add_column(
         "delivery_runs", sa.Column("vehicle_id", sa.Integer(), nullable=True)
     )
-    # Eşleme code üzerinden; eşleşmeyen (beklenmiyor ama) LADA'ya düşer —
-    # NOT NULL'a çevirmeden önce hiçbir satır boşta kalmasın.
+    # Eşleşmeyen her DISTINCT kod için ARAÇ SATIRI AÇILIR (denetim B-4).
+    # Eski kolon FK'siz/CHECK'siz serbest bir String(20) idi (§0.1'in
+    # şikâyeti), yani "KANGOO" gibi elle yazılmış bir değer gerçekten
+    # bulunabilir. Onu LADA'ya düşürmek, `fk_delivery_runs_vehicle_id`'nin
+    # RESTRICT olma gerekçesini — geçmiş turun hangi araçla koştuğu
+    # kaybolmasın — daha migration anında çiğnerdi.
+    op.execute(
+        "INSERT INTO vehicles (code, label, sort_order, fixed_cost) "
+        "SELECT DISTINCT upper(trim(r.vehicle)), "
+        "       initcap(lower(trim(r.vehicle))), 100, 0 "
+        "  FROM delivery_runs r "
+        " WHERE r.vehicle IS NOT NULL AND trim(r.vehicle) <> '' "
+        "   AND NOT EXISTS ("
+        "       SELECT 1 FROM vehicles v WHERE v.code = upper(trim(r.vehicle))"
+        "   )"
+    )
     op.execute(
         "UPDATE delivery_runs r SET vehicle_id = v.id "
-        "FROM vehicles v WHERE v.code = r.vehicle"
+        "FROM vehicles v WHERE v.code = upper(trim(r.vehicle))"
     )
+    # Yalnız `vehicle` alanı BOŞ olan tarihsel satırlar varsayılana düşer;
+    # dolu ama tanınmayan bir kod artık buraya hiç gelmez.
     op.execute(
         "UPDATE delivery_runs SET vehicle_id = "
         "(SELECT id FROM vehicles WHERE code = 'LADA') WHERE vehicle_id IS NULL"

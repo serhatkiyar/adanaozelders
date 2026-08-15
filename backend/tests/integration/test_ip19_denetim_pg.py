@@ -220,7 +220,7 @@ async def test_B5_arac_degistirmek_kuryeyi_silmez(filo, http):
             headers=hdr,
         )
         assert r.status_code == 200, r.text
-        assert r.json()["courier_id"] == courier_id, (
+        assert (r.json().get("courier") or {}).get("id") == courier_id, (
             "araç değiştirilince kurye ataması silindi"
         )
 
@@ -231,7 +231,7 @@ async def test_B5_arac_degistirmek_kuryeyi_silmez(filo, http):
             headers=hdr,
         )
         assert r2.status_code == 200, r2.text
-        assert r2.json()["courier_id"] is None, "kurye ataması kaldırılamıyor"
+        assert r2.json()["courier"] is None, "kurye ataması kaldırılamıyor"
     finally:
         async with AsyncSessionLocal() as s:
             await s.execute(
@@ -404,3 +404,121 @@ async def test_B3_ilcesiz_adres_kaydedilemez(pg, http):
             )
             await s.execute(text("DELETE FROM clients WHERE id = :c"), {"c": cid})
             await s.commit()
+
+
+# ── B-10: filo yazma uçları gerçekten limitleniyor mu ─────────────────────────
+
+
+async def test_B10_filo_yazma_ucu_kullanici_bazli_limitlenir(filo, http, monkeypatch):
+    """🔴 Sözleşme §3.4 "yazma uçları `user_rate_limit` ile kapılanır" diyordu;
+    denetim 30 ardışık POST'un 30'unun da 201 döndüğünü ölçtü — kodda limiter
+    hiç yoktu. Bu düğüm anlatılanı DAVRANIŞLA ölçer: limit aşılınca 429.
+
+    Limit kötü niyete karşı değil (uç zaten ADMIN + `delivery.manage`);
+    döngüye girmiş bir panel/betiğin filoyu boğmasına karşıdır.
+    """
+    from core import ratelimit
+    from core.config import settings as _s
+
+    # `core.ratelimit._client` MODÜL DÜZEYİNDE bir singleton'dır ve ilk
+    # yaratıldığı event loop'a bağlanır. pytest-asyncio her teste yeni loop
+    # kurduğu için, suite içinde önceki loop'tan kalmış istemci hata verir ve
+    # `enforce` FAIL-OPEN'a düşer — yani limiter testi tek başına yeşil,
+    # suite içinde SESSİZCE etkisiz olur. (Üretimde tek uzun ömürlü loop
+    # olduğu için sorun değil; ama bu, depodaki her rate-limit testinin
+    # yalancı yeşil olabileceği anlamına gelir — teknik borca yazıldı.)
+    monkeypatch.setattr(ratelimit, "_client", None)
+
+    _, hdr = await filo.admin("delivery.view", "delivery.manage")
+    vid = await filo.arac()
+
+    kodlar = []
+    for i in range(_s.RATE_LIMIT_FLEET + 1):
+        r = await http.patch(
+            f"/api/v1/delivery/vehicles/{vid}",
+            json={"label": f"Tur {i}"},
+            headers=hdr,
+        )
+        kodlar.append(r.status_code)
+        if r.status_code == 429:
+            break
+
+    assert kodlar[0] == 200, f"ilk çağrı geçmeliydi: {kodlar[0]}"
+    assert 429 in kodlar, (
+        f"{len(kodlar)} ardışık yazmada limit devreye girmedi: {set(kodlar)}"
+    )
+
+
+# ── B-9 / B-14 · matristen SONRA eklendi (dürüst kayıt) ───────────────────────
+#
+# Bu iki düğüm kırmızı matriste yoktu: düzeltmeler sırasında B-9'un (nokta
+# düzenlenemiyor) ve B-14'ün (pasifleştirme açık tur kapısını atlıyor) kapatma
+# biçimi belirlenince yazıldılar. Yeni davranışın nöbetçisidirler.
+
+
+async def test_B9_baslangic_noktasi_deploysuz_duzeltilebilir(filo, http):
+    """K-9'un gerekçesi ("nokta VERİDİR, deploy'suz düzenlenir") uç yalnız
+    GET+POST taşıdığı sürece karşılanmıyordu. Koordinat, müşteriye gösterilen
+    varış penceresinin de başlangıcıdır — yanlışı sessizce yaşayamaz."""
+    _, hdr = await filo.admin("delivery.view", "delivery.manage")
+    pid = await filo.baslangic_noktasi(lat=36.9855, lng=35.3253)
+
+    r = await http.patch(
+        f"/api/v1/delivery/pickup-points/{pid}",
+        json={"lat": 37.0025, "lng": 35.3210, "name": "Gerçek Depo"},
+        headers=hdr,
+    )
+    assert r.status_code == 200, r.text
+    assert r.json()["lat"] == 37.0025 and r.json()["name"] == "Gerçek Depo"
+
+    # Kalıcı mı — yanıt nesnesi değil, DB gerçeği.
+    async with AsyncSessionLocal() as s:
+        lat = (
+            await s.execute(
+                text("SELECT lat FROM pickup_points WHERE id = :i"), {"i": pid}
+            )
+        ).scalar_one()
+    assert float(lat) == 37.0025
+
+    assert (
+        await http.patch(
+            "/api/v1/delivery/pickup-points/99999999",
+            json={"name": "Yok"},
+            headers=hdr,
+        )
+    ).status_code == 404
+    _, yetkisiz = await filo.admin("delivery.view")
+    assert (
+        await http.patch(
+            f"/api/v1/delivery/pickup-points/{pid}", json={"name": "X"}, headers=yetkisiz
+        )
+    ).status_code == 403
+
+
+async def test_B14_acik_turu_olan_arac_PASIFLESTIRILEMEZ(filo, http):
+    """Pasifleştirme silmenin yumuşak hâlidir; kapı ikisinde de aynı olmalı."""
+    _, hdr = await filo.admin("delivery.view", "delivery.manage")
+    vid = await filo.arac()
+    async with AsyncSessionLocal() as s:
+        run_id = (
+            await s.execute(
+                text(
+                    "INSERT INTO delivery_runs (run_date, vehicle_id, status) "
+                    "VALUES (:d, :v, 'PLANNED') RETURNING id"
+                ),
+                {"d": gelecek_gun() + datetime.timedelta(days=3), "v": vid},
+            )
+        ).scalar_one()
+        await s.commit()
+    filo.run_ids.append(run_id)
+
+    r = await http.patch(
+        f"/api/v1/delivery/vehicles/{vid}", json={"is_active": False}, headers=hdr
+    )
+    assert r.status_code == 409, f"açık turu olan araç pasifleştirildi: {r.status_code}"
+
+    # DOLULUK NÖBETÇİSİ: kapı yalnız PASİFLEŞTİRMEYE bakar, etiket düzenlemeye değil.
+    r2 = await http.patch(
+        f"/api/v1/delivery/vehicles/{vid}", json={"label": "Yeni Etiket"}, headers=hdr
+    )
+    assert r2.status_code == 200, r2.text

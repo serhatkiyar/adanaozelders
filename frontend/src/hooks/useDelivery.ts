@@ -309,6 +309,20 @@ export function useCreatePickupPoint() {
   });
 }
 
+export function useUpdatePickupPoint() {
+  const invalidate = useInvalidateDelivery();
+  return useMutation({
+    mutationFn: ({
+      pointId,
+      payload,
+    }: {
+      pointId: number;
+      payload: import("@/types").PickupPointUpdate;
+    }) => deliveryApi.updatePickupPoint(pointId, payload),
+    onSuccess: invalidate,
+  });
+}
+
 /* ── Kurye profilleri (ADMIN) ── */
 
 export function useCouriers(enabled = true) {
@@ -641,15 +655,9 @@ export function useDeliveryBoard(date: string) {
   });
 }
 
-/** Filo araçları — tahtada `vehicle_id → max_stops` kapasite eşlemesi için. */
-export function useBoardVehicles(enabled = true) {
-  return useQuery({
-    queryKey: [...KEY, "board-vehicles"],
-    queryFn: deliveryApi.fetchBoardVehicles,
-    enabled,
-    staleTime: 60_000,
-  });
-}
+// Tahta araç listesi için AYRI bir hook/anahtar YOKTUR: `useVehicles`
+// kullanılır (denetim B-12). Ayrı anahtar, araç ekleyen ekranın tahtayı
+// tazelememesi demekti.
 
 /** Tahtadan drop ile durak ekleme — optimistic YOK; başarıda tüm delivery
  *  anahtarları (tahta dahil) invalidate edilir. */
@@ -657,7 +665,7 @@ export function useAddBoardStops() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ runId, orderIds }: { runId: number; orderIds: number[] }) =>
-      deliveryApi.addBoardStops(runId, orderIds),
+      deliveryApi.addDeliveryStops(runId, orderIds),
     onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
   });
 }

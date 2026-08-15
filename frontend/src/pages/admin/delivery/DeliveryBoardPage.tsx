@@ -26,13 +26,14 @@ import {
 import { RunStatusChip, TruckIcon, todayIso } from "@/components/admin/delivery/bits";
 import {
   useAddBoardStops,
-  useBoardVehicles,
+  useVehicles,
   useDeliveryBoard,
   useDispatchDay,
 } from "@/hooks/useDelivery";
 import { getErrorMessage } from "@/lib/errors";
 import { toast } from "@/store/toastStore";
-import type { BoardPoolOrder, BoardRun, BoardVehicle } from "@/api/delivery";
+import type { BoardPoolOrder, BoardRun } from "@/api/delivery";
+import type { Vehicle } from "@/types";
 
 /** İptal edilmiş duraklar kapasiteye sayılmaz (sipariş düşmüş, koltuk boş). */
 function activeStopCount(run: BoardRun): number {
@@ -104,7 +105,7 @@ function RunLane({
   onDrop,
 }: {
   run: BoardRun;
-  vehicle?: BoardVehicle;
+  vehicle?: Vehicle;
   dragging: boolean;
   warned: boolean;
   onDrop: () => void;
@@ -214,7 +215,7 @@ export default function DeliveryBoardPage() {
   const date = params.get("tarih") ?? todayIso();
 
   const boardQuery = useDeliveryBoard(date);
-  const { data: vehicles = [] } = useBoardVehicles();
+  const { data: vehicles = [] } = useVehicles();
   const addStops = useAddBoardStops();
   const dispatchDay = useDispatchDay();
 

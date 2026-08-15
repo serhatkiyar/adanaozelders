@@ -117,6 +117,13 @@ class Settings(BaseSettings):
     RATE_LIMIT_RETURN: int = 5
     # To-do görev/alt görev yazma uçları (kullanıcı bazlı; hızlı ekleme için yüksek).
     RATE_LIMIT_TASK: int = 60
+    # Filo yönetimi (araç/başlangıç noktası CRUD + günü optimize et). Uçlar
+    # zaten ADMIN + `delivery.manage` ister; limit kötü niyete karşı değil,
+    # döngüye girmiş bir panel/betiğin filoyu ya da rota servisini boğmasına
+    # karşıdır — o yüzden elle çalışmanın çok üstünde ama sınırsız değil
+    # (İP-19 §3.4; bağımsız denetim B-10 bu satırın kodda karşılığı
+    # olmadığını ölçtü).
+    RATE_LIMIT_FLEET: int = 60
 
     AWS_ACCESS_KEY_ID: str = "minioadmin"
     AWS_SECRET_ACCESS_KEY: str = "minioadmin"

@@ -1,6 +1,20 @@
 from __future__ import annotations
 
-from pydantic import BaseModel, ConfigDict, Field
+from typing import Annotated
+
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints
+
+# İl/ilçe YAPISALDIR ve zorunludur (İP-19 K-10 + bağımsız denetim B-3):
+# kendi-filo teslimat bölgesinin otoritesi artık ilçe listesidir, harita pin'i
+# değil. Boş bırakılan ilçe, siparişi sessizce "bölge dışı" yapar ve düşeceği
+# dış kargo kuyruğu henüz yazılmadı (İP-20). Yalnız beyaz boşluktan ibaret
+# değer de reddedilir — `"   "` bölge eşleşmesinde boşla aynı şeydir.
+ZorunluYer = Annotated[
+    str, StringConstraints(strip_whitespace=True, min_length=1, max_length=100)
+]
+OpsiyonelYer = Annotated[
+    str, StringConstraints(strip_whitespace=True, min_length=1, max_length=100)
+]
 
 
 class AddressCreate(BaseModel):
@@ -8,8 +22,8 @@ class AddressCreate(BaseModel):
     recipient_name: str | None = Field(default=None, max_length=150)
     phone: str | None = Field(default=None, max_length=30)
     address_line: str = Field(min_length=1, max_length=2000)
-    city: str | None = Field(default=None, max_length=100)
-    district: str | None = Field(default=None, max_length=100)
+    city: ZorunluYer
+    district: ZorunluYer
     door_no: str | None = Field(default=None, max_length=20)
     apt_no: str | None = Field(default=None, max_length=20)
     directions: str | None = Field(default=None, max_length=2000)
@@ -23,8 +37,10 @@ class AddressUpdate(BaseModel):
     recipient_name: str | None = Field(default=None, max_length=150)
     phone: str | None = Field(default=None, max_length=30)
     address_line: str | None = Field(default=None, min_length=1, max_length=2000)
-    city: str | None = Field(default=None, max_length=100)
-    district: str | None = Field(default=None, max_length=100)
+    # Kısmi güncelleme kipi korunur: alan gönderilmezse (`None`) dokunulmaz.
+    # Gönderilirse BOŞ OLAMAZ — dolu bir adresin bölge sınıfı silinemesin.
+    city: OpsiyonelYer | None = None
+    district: OpsiyonelYer | None = None
     door_no: str | None = Field(default=None, max_length=20)
     apt_no: str | None = Field(default=None, max_length=20)
     directions: str | None = Field(default=None, max_length=2000)

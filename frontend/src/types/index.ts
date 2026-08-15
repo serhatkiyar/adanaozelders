@@ -1854,7 +1854,8 @@ export interface Vehicle {
   label: string;
   plate: string | null;
   profile: "car" | "bike" | "foot";
-  /** Rota planında araç başına durak tavanı; null = sınırsız. */
+  /** Rota planında araç başına durak tavanı; null = PLATFORM VARSAYILANI
+   *  (`DELIVERY_MAX_STOPS_PER_RUN`) — "sınırsız" değil (denetim B-2). */
   max_stops: number | null;
   /** "HH:MM:SS" (backend time) — form "HH:MM" gönderebilir. */
   shift_start: string | null;
@@ -1904,6 +1905,17 @@ export interface PickupPointCreate {
   lat: number;
   lng: number;
   sort_order?: number;
+}
+
+/** Nokta düzenleme (denetim B-9). `kind` DEĞİŞTİRİLEMEZ: bir BASE'i SUPPLIER'a
+ *  çevirmek, ona bağlı araçların turunu sessizce başka yerden başlatırdı. */
+export interface PickupPointUpdate {
+  name?: string;
+  address?: string | null;
+  lat?: number;
+  lng?: number;
+  sort_order?: number;
+  is_active?: boolean;
 }
 
 export type DeliveryRunStatus = "PLANNED" | "ACTIVE" | "DONE" | "CANCELLED";

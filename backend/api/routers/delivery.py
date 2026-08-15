@@ -16,8 +16,10 @@ from api.deps import (
     require_admin_permission,
     require_roles,
     require_roles_or_admin_permission,
+    user_rate_limit,
 )
 from core import courier_position, storage
+from core.config import settings
 from core.database import get_db
 from models.role import RoleType
 from schemas.delivery import (
@@ -25,6 +27,7 @@ from schemas.delivery import (
     DeliveryMetricsOut,
     PickupPointCreate,
     PickupPointOut,
+    PickupPointUpdate,
     VehicleCreate,
     VehicleOut,
     VehicleUpdate,
@@ -72,6 +75,16 @@ router = APIRouter(
     prefix="/delivery",
     tags=["delivery"],
     dependencies=[Depends(require_admin_method_permission("delivery.view", "delivery.manage"))],
+)
+
+# İP-19 §3.4 / denetim B-10: filo yazma uçları kullanıcı bazlı limitlenir.
+# Uçlar zaten ADMIN + `delivery.manage` ister; limit, döngüye girmiş bir
+# panel/betiğin filoyu ya da rota servisini boğmasına karşıdır. Redis yoksa
+# fail-open (mevcut desen).
+_filo_limit = user_rate_limit(
+    key="fleet_write",
+    limit=settings.RATE_LIMIT_FLEET,
+    window_seconds=settings.RATE_LIMIT_WINDOW_SECONDS,
 )
 
 # Saha router'ı: ADMIN + KURYE. Kurye yalnız KENDİ atanmış turunun uçlarına
@@ -298,7 +311,12 @@ async def list_vehicles(db: AsyncSession = Depends(get_db)):
     return await delivery_service.list_vehicles(db)
 
 
-@router.post("/vehicles", response_model=VehicleOut, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/vehicles",
+    response_model=VehicleOut,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(_filo_limit)],
+)
 async def create_vehicle(
     payload: VehicleCreate,
     actor=Depends(get_current_active_user),
@@ -312,7 +330,11 @@ async def create_vehicle(
     return out
 
 
-@router.patch("/vehicles/{vehicle_id}", response_model=VehicleOut)
+@router.patch(
+    "/vehicles/{vehicle_id}",
+    response_model=VehicleOut,
+    dependencies=[Depends(_filo_limit)],
+)
 async def update_vehicle(
     vehicle_id: int,
     payload: VehicleUpdate,
@@ -327,7 +349,11 @@ async def update_vehicle(
     return out
 
 
-@router.delete("/vehicles/{vehicle_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "/vehicles/{vehicle_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(_filo_limit)],
+)
 async def delete_vehicle(
     vehicle_id: int,
     actor=Depends(get_current_active_user),
@@ -347,7 +373,10 @@ async def list_pickup_points(db: AsyncSession = Depends(get_db)):
 
 
 @router.post(
-    "/pickup-points", response_model=PickupPointOut, status_code=status.HTTP_201_CREATED
+    "/pickup-points",
+    response_model=PickupPointOut,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(_filo_limit)],
 )
 async def create_pickup_point(
     payload: PickupPointCreate,
@@ -361,6 +390,28 @@ async def create_pickup_point(
     await audit_service.record(
         db, actor=actor, action="pickup_point.create", target_type="pickup_point",
         target_id=out.id, details=out.name,
+    )
+    return out
+
+
+@router.patch(
+    "/pickup-points/{point_id}",
+    response_model=PickupPointOut,
+    dependencies=[Depends(_filo_limit)],
+)
+async def update_pickup_point(
+    point_id: int,
+    payload: PickupPointUpdate,
+    actor=Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Nokta düzenleme (denetim B-9): K-9'un "deploy'suz düzenlenir" iddiası
+    yalnız GET+POST ile karşılanmıyordu — yanlış girilmiş bir koordinat
+    müşteriye gösterilen varış penceresini bozar."""
+    out = await delivery_service.update_pickup_point(db, point_id, payload)
+    await audit_service.record(
+        db, actor=actor, action="pickup_point.update", target_type="pickup_point",
+        target_id=point_id, after=payload.model_dump(exclude_unset=True, mode="json"),
     )
     return out
 

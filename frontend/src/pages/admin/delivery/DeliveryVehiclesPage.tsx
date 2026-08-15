@@ -14,6 +14,7 @@ import {
   usePickupPoints,
   useUpdateVehicle,
   useVehicles,
+  useUpdatePickupPoint,
 } from "@/hooks/useDelivery";
 import { getErrorMessage } from "@/lib/errors";
 import { toast } from "@/store/toastStore";
@@ -412,6 +413,106 @@ function VehicleSection() {
 /* ── Başlangıç noktası (BASE) ── */
 
 function BasePointRow({ p, isDefault }: { p: PickupPoint; isDefault: boolean }) {
+  // Düzenleme, K-9'un gerekçesinin ikinci yarısıdır (denetim B-9): nokta
+  // "deploy'suz düzenlenebilir" diye veriye taşındı ama düzenleme yolu
+  // yazılmamıştı. Koordinat müşteriye gösterilen varış penceresinin de
+  // başlangıcı olduğu için yanlış girilmiş bir değer sessizce yaşayamaz.
+  const { canManage } = useAdminAreaAccess("delivery");
+  const update = useUpdatePickupPoint();
+  const [editing, setEditing] = useState(false);
+  const [name, setName] = useState(p.name);
+  const [address, setAddress] = useState(p.address ?? "");
+  const [lat, setLat] = useState(String(p.lat));
+  const [lng, setLng] = useState(String(p.lng));
+  const [sortOrder, setSortOrder] = useState(String(p.sort_order));
+
+  const kaydet = () => {
+    const la = Number(lat);
+    const ln = Number(lng);
+    if (!name.trim()) return toast.error("Nokta adı gerekli.");
+    if (!lat.trim() || !lng.trim() || Number.isNaN(la) || Number.isNaN(ln))
+      return toast.error("Geçerli enlem/boylam girin (örn. 36.98550 / 35.32530).");
+    if (la < -90 || la > 90 || ln < -180 || ln > 180)
+      return toast.error("Koordinat aralık dışı — enlem ±90, boylam ±180 olmalı.");
+    update.mutate(
+      {
+        pointId: p.id,
+        payload: {
+          name: name.trim(),
+          address: address.trim() || null,
+          lat: la,
+          lng: ln,
+          sort_order: sortOrder.trim() === "" ? 0 : Number(sortOrder),
+        },
+      },
+      {
+        onSuccess: () => {
+          setEditing(false);
+          toast.success("Başlangıç noktası güncellendi.");
+        },
+        onError: (e) => toast.error(getErrorMessage(e, "Nokta güncellenemedi.")),
+      }
+    );
+  };
+
+  if (editing) {
+    return (
+      <li className="py-3.5">
+        <div className="flex flex-wrap items-end gap-x-3 gap-y-2.5">
+          <Field label="Nokta adı">
+            <input value={name} onChange={(e) => setName(e.target.value)} className="input w-44" />
+          </Field>
+          <Field label="Adres (opsiyonel)">
+            <input
+              value={address}
+              onChange={(e) => setAddress(e.target.value)}
+              className="input w-56"
+            />
+          </Field>
+          <Field label="Enlem">
+            <input
+              value={lat}
+              onChange={(e) => setLat(e.target.value)}
+              className="input w-28 tabular-nums"
+              inputMode="decimal"
+            />
+          </Field>
+          <Field label="Boylam">
+            <input
+              value={lng}
+              onChange={(e) => setLng(e.target.value)}
+              className="input w-28 tabular-nums"
+              inputMode="decimal"
+            />
+          </Field>
+          <Field label="Sıra">
+            <input
+              type="number"
+              value={sortOrder}
+              onChange={(e) => setSortOrder(e.target.value)}
+              className="input w-16"
+            />
+          </Field>
+        </div>
+        <div className="mt-2.5 flex items-center gap-3">
+          <button
+            onClick={kaydet}
+            disabled={update.isPending}
+            className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-700 disabled:opacity-50"
+          >
+            Kaydet
+          </button>
+          <button
+            onClick={() => setEditing(false)}
+            className="text-xs font-medium text-slate-500 hover:underline dark:text-slate-400"
+          >
+            Vazgeç
+          </button>
+        </div>
+      </li>
+    );
+  }
+
   return (
     <li className="flex flex-wrap items-center gap-3 py-3">
       <div className="min-w-0 flex-1 basis-48">
@@ -430,6 +531,14 @@ function BasePointRow({ p, isDefault }: { p: PickupPoint; isDefault: boolean }) 
       <span className="shrink-0 text-xs tabular-nums text-slate-400 dark:text-slate-500">
         sıra {p.sort_order}
       </span>
+      {canManage && (
+        <button
+          onClick={() => setEditing(true)}
+          className="shrink-0 text-xs font-semibold text-indigo-600 hover:underline dark:text-indigo-400"
+        >
+          Düzenle
+        </button>
+      )}
     </li>
   );
 }

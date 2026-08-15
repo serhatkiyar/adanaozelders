@@ -57,7 +57,7 @@ describe("B-3 · adres bölge sınıfı sessizce kaybolmaz", () => {
     render(<AddressForm pending={false} onSubmit={() => {}} onCancel={() => {}} />);
     // Kullanıcı, formu göndermeden önce alanın zorunlu olduğunu görebilmeli;
     // "kaydet"e basınca sürpriz bir hata mesajı almamalı.
-    expect(screen.getByLabelText("İlçe *")).toBeInTheDocument();
-    expect(screen.getByLabelText("İl *")).toBeInTheDocument();
+    expect(screen.getByLabelText("İlçe *")).toBeTruthy();
+    expect(screen.getByLabelText("İl *")).toBeTruthy();
   });
 });

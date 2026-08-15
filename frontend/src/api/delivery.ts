@@ -19,6 +19,7 @@ import type {
   OrderTracking,
   PickupPoint,
   PickupPointCreate,
+  PickupPointUpdate,
   Vehicle,
   VehicleCreate,
   VehicleUpdate,
@@ -284,6 +285,17 @@ export async function createPickupPoint(
 ): Promise<PickupPoint> {
   const { data } = await apiClient.post<PickupPoint>(
     "/delivery/pickup-points",
+    payload
+  );
+  return data;
+}
+
+export async function updatePickupPoint(
+  pointId: number,
+  payload: PickupPointUpdate
+): Promise<PickupPoint> {
+  const { data } = await apiClient.patch<PickupPoint>(
+    `/delivery/pickup-points/${pointId}`,
     payload
   );
   return data;
@@ -577,18 +589,10 @@ export async function failDeliveryStop(
 
 /* ── İP-19 · Gün tahtası (board) ── */
 
-/** Filo aracı (GET /delivery/vehicles) — tahtada kapasite uyarısı için
- *  `vehicle_id → max_stops` eşlemesi bu listeden yapılır. */
-export interface BoardVehicle {
-  id: number;
-  code: string;
-  label: string;
-  plate?: string | null;
-  /** null = kapasite sınırı tanımsız (uyarı üretilmez). */
-  max_stops?: number | null;
-  is_active: boolean;
-  sort_order: number;
-}
+// Tahta, aracı ayrı bir tiple TANIMLAMAZ: `types/index.ts::Vehicle` tek
+// kaynaktır (denetim B-12 — paralel üretimden kalan ikinci tip, ikinci
+// fetcher ve ikinci cache anahtarı, iki ekranın aynı listeyi farklı
+// tazelemesine yol açıyordu).
 
 /** Havuzdaki (atanmamış) sipariş — `EligibleOrderOut` şekli; tahta yalnız
  *  kimlik + adres + konumu okur, kalan alanlar opsiyoneldir. */
@@ -626,32 +630,6 @@ export async function fetchDeliveryBoard(date: string): Promise<DeliveryBoardDat
   const { data } = await apiClient.get<DeliveryBoardData>("/delivery/board", {
     params: { date },
   });
-  return data;
-}
-
-export async function fetchBoardVehicles(): Promise<BoardVehicle[]> {
-  const { data } = await apiClient.get<BoardVehicle[]>("/delivery/vehicles");
-  return data;
-}
-
-/** Tahtadan sürükle-bırak ile tura durak ekleme (POST /delivery/runs/{id}/stops).
- *
- *  Gövde bilinçli olarak ÖNCEDEN stringify edilir: axios request
- *  interceptor'ları `transformRequest`'ten önce çalışır; kabul matrisi
- *  (`ip19Filo.acceptance.test.tsx::kur`) gövdeyi interceptor'da
- *  `JSON.parse(cfg.data)` ile okur — obje geçirilse orada henüz string
- *  olmadığından parse patlar ve istek hiç dispatch edilmez. String geçince
- *  axios'un varsayılan transform'u veriyi olduğu gibi yollar; tel üzerindeki
- *  baytlar obje geçirilen hâlle birebir aynıdır (Content-Type json instance
- *  varsayılanıdır). */
-export async function addBoardStops(
-  runId: number,
-  orderIds: number[]
-): Promise<DeliveryRun> {
-  const { data } = await apiClient.post<DeliveryRun>(
-    `/delivery/runs/${runId}/stops`,
-    JSON.stringify({ order_ids: orderIds })
-  );
   return data;
 }
 

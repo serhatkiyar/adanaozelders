@@ -113,12 +113,15 @@ async def test_D9_zincir_dolu_tabloda_gidip_gelir(taze_db):
             )
         }
         assert seed == {"LADA": 0, "COROLLA": 1800}, f"seed sapmış: {seed}"
+        # Başlangıç noktası SEED'LENMEZ (denetim B-9): uydurma koordinat
+        # rotanın da müşteriye gösterilen varış penceresinin de başlangıcı
+        # olurdu ve panelde düzeltme yolu yoktu.
         base = (
             await conn.execute(
                 text("SELECT COUNT(*) FROM pickup_points WHERE kind = 'BASE'")
             )
         ).scalar_one()
-        assert base == 1
+        assert base == 0, "migration uydurma bir başlangıç noktası seed'ledi"
         kolonlar = {
             r[0]
             for r in await conn.execute(

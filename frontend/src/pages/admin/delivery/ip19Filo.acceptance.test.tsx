@@ -67,7 +67,16 @@ function kur() {
     istekler.push({
       method: (cfg.method ?? "get").toLowerCase(),
       url,
-      body: cfg.data ? JSON.parse(cfg.data as string) : null,
+      // Gövde HEM obje HEM string olabilir: request interceptor'ları axios'un
+      // `transformRequest`'inden ÖNCE çalışır, yani normal çağrılarda `cfg.data`
+      // henüz objedir. Eski hâl yalnız string bekliyordu ve bu yüzden ÜRETİM
+      // KODU teste göre eğilmişti (`addBoardStops` gövdeyi önceden stringify
+      // ediyordu — denetim B-13). Eğrilik burada düzeltildi; ölçülen iddia
+      // (gerçekten gönderilen gövde) aynen duruyor.
+      body:
+        typeof cfg.data === "string"
+          ? JSON.parse(cfg.data)
+          : ((cfg.data as Record<string, unknown> | undefined) ?? null),
     });
     const veri = url.includes("/delivery/vehicles")
       ? ARACLAR
@@ -94,7 +103,17 @@ beforeEach(() => {
   istekler.length = 0;
   useAuthStore.setState({
     token: "t",
-    user: { id: 1, role_id: 1, full_name: "Admin", email: "a@b.c" } as never,
+    // İzinler AÇIKÇA verilir (denetim B-13): eski hâlde `admin_permissions`
+    // boştu, yani test SALT-OKUNUR bir admin sürüyordu — ve tur kurma
+    // formundaki araç seçicisi bu yüzden `canManage` kapısının DIŞINA
+    // alınmıştı. Kapı geri kondu; test artık gerçek yetki yolundan geçiyor.
+    user: {
+      id: 1,
+      role_id: 1,
+      full_name: "Admin",
+      email: "a@b.c",
+      admin_permissions: ["delivery.view", "delivery.manage"],
+    } as never,
   });
   kur();
 });

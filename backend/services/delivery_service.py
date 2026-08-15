@@ -47,6 +47,7 @@ from schemas.delivery import (
     CourierUpdate,
     DeliveryMetricsOut,
     PickupPointCreate,
+    PickupPointUpdate,
     PickupPointOut,
     VehicleCreate,
     VehicleOut,
@@ -352,14 +353,21 @@ async def update_run(
 
     Araç değişikliği yalnız PLANNED turda anlamlıdır; gün+araç tekliğinde son
     söz `uq_delivery_run_planned` index'inindir (IntegrityError → global 409).
+
+    Yalnız GÖNDERİLEN alanlar yazılır (denetim B-5): eski hâlde `courier_id`
+    koşulsuz atanıyordu, yani aracı değiştiren `{"vehicle_id": 3}` çağrısı
+    kurye atamasını sessizce siliyordu. Açıkça `null` gönderen çağrı ise
+    atamayı çözmeye devam eder — `model_fields_set` ikisini ayırır.
     """
     run = await _load_run(db, run_id)
+    gonderilen = payload.model_fields_set
     if payload.courier_id is not None:
         await _require_courier(db, payload.courier_id)
     if payload.vehicle_id is not None and payload.vehicle_id != run.vehicle_id:
         await _require_vehicle(db, payload.vehicle_id)
         run.vehicle_id = payload.vehicle_id
-    run.courier_id = payload.courier_id
+    if "courier_id" in gonderilen:
+        run.courier_id = payload.courier_id
     await db.commit()
     return await get_run(db, run_id)
 
@@ -1443,19 +1451,35 @@ async def aktif_araclar(db: AsyncSession | None) -> list[Vehicle]:
     )
 
 
+def _arac_tavani(v: Vehicle) -> int:
+    """Aracın EFEKTİF günlük durak tavanı — tek doğruluk kaynağı.
+
+    `max_stops` NULL demek "kısıt yok" DEĞİL, **"platform varsayılanı"**
+    demektir (`DELIVERY_MAX_STOPS_PER_RUN`). Bu ayrım bağımsız denetimin B-2
+    bulgusunun kökü: eski hâlde `gunluk_tavan` NULL'ı varsayılana çözüyor,
+    `_route_vehicle` ise ham NULL'ı rota katmanına veriyordu. Sonuç, tavanın
+    iki aracı sayıp sağlayıcının tek araç kullanmasıydı — yani "80 siparişe
+    söz ver, 1 araca yükle". Tavanı hesaplayan HER yol bu fonksiyondan geçer;
+    ayrışmaları için birinin bilinçle değiştirilmesi gerekir.
+
+    Operatör aracın tavanını panelden düşürebilir (K-1: varsayım koda değil
+    veriye) — sınırsız araç ise kasıtlı olarak ifade edilemez, çünkü sınırsız
+    araç günlük söz kapasitesini de sınırsız yapar.
+    """
+    return v.max_stops or settings.DELIVERY_MAX_STOPS_PER_RUN
+
+
 async def gunluk_tavan(db: AsyncSession | None) -> int:
-    """Günlük dağıtım tavanı = PLANA GİREN araçların `max_stops` toplamı.
+    """Günlük dağıtım tavanı = PLANA GİREN araçların efektif tavan toplamı.
 
     Sessiz tuzağın kapanışı (sözleşme §0.2): eski hâlde tavan
     ``len(_VEHICLE_IDS) * DELIVERY_MAX_STOPS_PER_RUN`` idi ama plana yalnız
     ``[1, 2]`` giriyordu — sözlüğe üçüncü araç ekleyen, tavanı %50 artırıp
     yükü yine 2 araca bindiriyordu. Artık tavan ile plana giren küme AYNI
-    listeden türer; ayrışmaları yapısal olarak imkânsızdır (D-3 nöbetçisi).
-
-    `max_stops` NULL olan araç, eski global tavan kadar sayılır.
+    listeden ve aynı SAYIDAN (`_arac_tavani`) türer (D-3 + B2-c nöbetçileri).
     """
     araclar = await aktif_araclar(db)
-    return sum(v.max_stops or settings.DELIVERY_MAX_STOPS_PER_RUN for v in araclar)
+    return sum(_arac_tavani(v) for v in araclar)
 
 
 async def _varsayilan_base(db: AsyncSession) -> PickupPoint | None:
@@ -1502,7 +1526,10 @@ def _route_vehicle(v: Vehicle, base: PickupPoint | None) -> routing.RouteVehicle
         start_lat=sp.lat,
         start_lng=sp.lng,
         profile=v.profile,
-        max_stops=v.max_stops,
+        # Rota katmanına ASLA çözülmemiş tavan gitmez (denetim B-2): VROOM'a
+        # `max_tasks` yazılmazsa araç sınırsız görünür, haversine ise
+        # `vehicles[:1]` ile ikinci aracı hiç sahaya çıkarmaz.
+        max_stops=_arac_tavani(v),
         shift_start_sec=_sec(v.shift_start),
         shift_end_sec=_sec(v.shift_end),
         fixed_cost=v.fixed_cost,
@@ -1554,11 +1581,13 @@ async def dispatch_day(db: AsyncSession, run_date: datetime.date) -> list[Delive
     # eligible listesini şişirir; sınırsız bırakılırsa "Günü Optimize Et" 150
     # duraklı, tek günde bitirilemeyecek bir tur kurar ve HEPSİNE söz verilmiş
     # görünür. Liste zaten aciliyet sırasında; tavanı aşanlar kuyrukta kalır.
-    # İP-19: tavan, PLANA GİREN araçların toplamıdır (gunluk_tavan ile aynı
-    # formül) — eski len(_VEHICLE_IDS) çarpanının sessiz tuzağı kapandı (§0.2).
-    max_total = sum(
-        rv.max_stops or settings.DELIVERY_MAX_STOPS_PER_RUN for rv in route_vehicles
-    )
+    # İP-19: tavan, PLANA GİREN araçların toplamıdır. Denetim B-2 sonrası
+    # burada `or` YOKTUR: sayı, sağlayıcıya verilen araç nesnelerinin ta
+    # kendisinden okunur. Böylece "söz verilen kapasite" ile "planlanabilen
+    # kapasite" farklı iki ifadeden türeyemez (§0.2'nin gerçek kapanışı).
+    # (`or` yerine düz toplam bilinçlidir: tavanı çözülmemiş bir araç buraya
+    # sızarsa TypeError ile YÜKSEK SESLE düşer, sessizce sıfır sayılmaz.)
+    max_total = sum(rv.max_stops for rv in route_vehicles)  # type: ignore[misc]
     if max_total > 0 and len(candidates) > max_total:
         logger.warning(
             "dispatch_day: %s uygun siparişten %s'i günlük tavana (%s) sığmadı — "
@@ -2607,13 +2636,41 @@ async def create_vehicle(db: AsyncSession, payload: VehicleCreate) -> VehicleOut
     return _vehicle_to_out(v)
 
 
+async def _acik_tur_sayisi(db: AsyncSession, vehicle_id: int) -> int:
+    """Aracın PLANNED/ACTIVE tur sayısı — silme ve PASİFLEŞTİRME ortak kapısı."""
+    return (
+        await db.execute(
+            select(func.count())
+            .select_from(DeliveryRun)
+            .where(
+                DeliveryRun.vehicle_id == vehicle_id,
+                DeliveryRun.status.in_(
+                    [DeliveryRunStatus.PLANNED.value, DeliveryRunStatus.ACTIVE.value]
+                ),
+                DeliveryRun.deleted_at.is_(None),
+            )
+        )
+    ).scalar_one()
+
+
 async def update_vehicle(
     db: AsyncSession, vehicle_id: int, payload: VehicleUpdate
 ) -> VehicleOut:
     v = await db.get(Vehicle, vehicle_id)
     if v is None or v.deleted_at is not None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Araç bulunamadı")
-    for alan, deger in payload.model_dump(exclude_unset=True).items():
+    degisiklik = payload.model_dump(exclude_unset=True)
+    # Pasifleştirme, silmenin yumuşak hâlidir: araç aktif filodan düşer, ama
+    # açık turu ortada kalır — `create_run` onu reddederken tur ekranında
+    # görünmeye devam eder. Kapı ikisinde de aynı olmalı (denetim B-14).
+    if degisiklik.get("is_active") is False and v.is_active:
+        acik = await _acik_tur_sayisi(db, vehicle_id)
+        if acik:
+            raise HTTPException(
+                status.HTTP_409_CONFLICT,
+                f"Aracın {acik} açık turu var — önce turları kapatın/iptal edin",
+            )
+    for alan, deger in degisiklik.items():
         setattr(v, alan, deger)
     await db.commit()
     await db.refresh(v)
@@ -2629,19 +2686,7 @@ async def delete_vehicle(db: AsyncSession, vehicle_id: int) -> None:
     v = await db.get(Vehicle, vehicle_id)
     if v is None or v.deleted_at is not None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Araç bulunamadı")
-    acik = (
-        await db.execute(
-            select(func.count())
-            .select_from(DeliveryRun)
-            .where(
-                DeliveryRun.vehicle_id == vehicle_id,
-                DeliveryRun.status.in_(
-                    [DeliveryRunStatus.PLANNED.value, DeliveryRunStatus.ACTIVE.value]
-                ),
-                DeliveryRun.deleted_at.is_(None),
-            )
-        )
-    ).scalar_one()
+    acik = await _acik_tur_sayisi(db, vehicle_id)
     if acik:
         raise HTTPException(
             status.HTTP_409_CONFLICT,
@@ -2681,6 +2726,25 @@ async def create_pickup_point(
 ) -> PickupPointOut:
     p = PickupPoint(**payload.model_dump())
     db.add(p)
+    await db.commit()
+    return _pickup_to_out(p)
+
+
+async def update_pickup_point(
+    db: AsyncSession, point_id: int, payload: PickupPointUpdate
+) -> PickupPointOut:
+    """Başlangıç/toplama noktası düzenlemesi (denetim B-9).
+
+    K-9'un gerekçesi "başlangıç noktası VERİDİR, deploy'suz düzenlenir" idi;
+    uç yalnız GET+POST taşıdığı için yanlış girilmiş bir koordinat gerçekte
+    düzeltilemiyordu. Koordinat müşteriye gösterilen varış penceresinin
+    başlangıcıdır — yanlışı sessizce yaşayamaz.
+    """
+    p = await db.get(PickupPoint, point_id)
+    if p is None or p.deleted_at is not None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Nokta bulunamadı")
+    for alan, deger in payload.model_dump(exclude_unset=True).items():
+        setattr(p, alan, deger)
     await db.commit()
     return _pickup_to_out(p)
 
@@ -2747,7 +2811,15 @@ async def delivery_metrics(
     km_var = False
     calisma_saniye = 0
     for r in runs:
-        if r.total_distance_km is not None:
+        # Kilometre yalnız SAHAYA ÇIKMIŞ turdan sayılır (denetim B-6):
+        # "Günü Optimize Et" planlanan turun kilometresini de yazar; hiç
+        # başlamamış ya da iptal edilmiş turun km'si teslimatsız biçimde
+        # paydaya girip `km_per_delivery`'yi şişiriyordu.
+        if (
+            r.total_distance_km is not None
+            and r.started_at is not None
+            and r.status != DeliveryRunStatus.CANCELLED.value
+        ):
             toplam_km += float(r.total_distance_km)
             km_var = True
         if r.started_at is not None and r.completed_at is not None:
@@ -2755,6 +2827,11 @@ async def delivery_metrics(
                 0, int((r.completed_at - r.started_at).total_seconds())
             )
         for stp in r.stops:
+            # İptal durak kurye performansına SAYILMAZ (models/delivery.py
+            # `DeliveryStopStatus` docstring'i) — sipariş iade/iptal edildiği
+            # için düşmüştür, kurye denemesi değildir (denetim B-6).
+            if stp.status == DeliveryStopStatus.CANCELLED.value:
+                continue
             planned += 1
             if stp.status == DeliveryStopStatus.DELIVERED.value:
                 delivered += 1
