@@ -61,7 +61,11 @@ jobs:
       # Sessiz SKIP, "servis konteyneri eksik" hâlini gerçekten koşan bir
       # suite'ten ayırt edilemez kılıyor ve yeşil gösteriyordu.
       CI_REQUIRE_SERVICES: "1"
-      REDIS_URL: redis://localhost:6379/0
+      # TB-28: yikici testler ayrilmis bir Redis veritabani numarasi kullanir.
+      # CI'daki Redis bir servis konteyneridir (izole), ama numarayi burada da
+      # ayirmak kurali TEK yerde tutar: `redis_guard` db0'i her ortamda reddeder,
+      # istisna yok. Aksi halde guard "CI haric" diye delinirdi.
+      REDIS_URL: redis://localhost:6379/15
       # Depolama: TEST amaçlı, tek kullanımlık kimlik bilgileri. Üretim sırrı
       # DEĞİL — MinIO konteyneri aynı değerlerle açılır, iş bitince yok olur.
       AWS_ENDPOINT_URL: http://localhost:9000
