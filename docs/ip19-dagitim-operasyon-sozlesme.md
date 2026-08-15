@@ -602,3 +602,66 @@ kurye tutulduğu anda, günde 40 teslimata varana kadar kendi filo kargodan
 pahalıdır. Kurucu kendisi taşırsa hesap değişir (günde ~12'de başabaş). Bu bir
 kod kararı değildir; paketin **kapsamını** etkilemez ama sahibinin kurye
 kararını etkiler.
+
+---
+
+## 10. Bağımsız denetim ve düzeltme turu (15 Ağu 2026)
+
+Paket, merge'den önce ayrı bir worktree'de (`adana-ip19-audit`, taban
+`adana-ip19-taban`) bağımsız denetime gönderildi. Denetçi gerçek PostgreSQL,
+gerçek HTTP, **gerçek VROOM v1.14 + gerçek OSRM Adana yol ağı** ile ölçtü.
+Sonuç: merge'i durduran **3 bulgu (P1)** + 11 P2.
+
+### 10.1 Kabul edilen ve kapatılan bulgular
+
+| # | Bulgu | Karar |
+|---|---|---|
+| **B-1** | `tests/integration/test_routing_live_vroom.py` `plan_fleet`'in eski imzasıyla kalmış; dosya diff'te olmadığı ve VROOM'suz CI'da **skip** olduğu için kırıklığı görülmedi. | Onarıldı. Ders: filo davranışının tek nöbetçisi VROOM'a bağlı bir dosyada duramaz — B-2 tam da bu yüzden gizlendi. Yeni düğümler VROOM'suz koşan dosyaya kondu. |
+| **B-2** | **Yük tavanı üretim varsayılanında hiç uygulanmıyor.** `_route_vehicle` rota katmanına ham `v.max_stops`'u (seed'de NULL) veriyor; `dispatch_day` ise aynı alanı `or DELIVERY_MAX_STOPS_PER_RUN` ile okuyup tavanı hesaplıyor. İki ifade ayrışıyor: tavan iki aracı sayıyor, sağlayıcı hiç kısıt görmüyor, haversine `vehicles[:1]` ile tek araç kullanıyor. Ölçüldü (gerçek VROOM): 20 sipariş → `{araç1: 20}`, 40 → `{araç1: 40}`. | **`max_stops` NULL artık "kısıt yok" değil, "platform varsayılanı"** demektir. Efektif tavan tek bir yardımcıda (`_arac_tavani`) çözülür; `gunluk_tavan`, `dispatch_day` ve `_route_vehicle` üçü de onu çağırır. İki sayı aynı *listeden* değil aynı **sayıdan** türer. |
+| **B-3** | K-10 ile bölge otoritesi ilçe listesi oldu ama adres şeması/formu ilçeyi opsiyonel bıraktı; pin'li/ilçesiz adres sessizce bölge dışı oluyor ve düşeceği dış kargo kuyruğu henüz yok (İP-20). | İl ve ilçe **zorunlu** (şema + form). Üretimde henüz adres verisi olmadığı için backfill gerekmiyor; açık olan formdu. |
+| **B-4** | Migration eşleşmeyen `delivery_runs.vehicle` kodunu LADA'ya düşürüyor; kolon FK'siz serbest string olduğu için tarihsel "hangi araçla koştu" bilgisi kaybolabiliyor. | Eşleşmeyen her DISTINCT kod için `vehicles` satırı açılır (büyük harfe katlanarak). |
+| **B-5** | `PATCH /delivery/runs/{id}` gövdede `courier_id` gönderilmese bile `run.courier_id = None` yazıyor — aracı değiştiren ilk ekran kurye atamasını silecekti. | Yalnız **gönderilen** alanlar yazılır (`model_fields_set`). Açık `null` ile çözme davranışı korunur. |
+| **B-6** | `km_per_delivery` başlamamış/iptal turların kilometresini paydaya katıyor; `planned` CANCELLED durakları sayıyor (model docstring'i "kurye performansına SAYILMAZ" diyor). | İkisi de düzeltildi. |
+| **B-7** | D-14 "elle doğrulanmış değerler" iddiası gerçekte **boş** tarih aralığında yalnız anahtar varlığına bakıyordu; boşluk B-6'yı örtmüştü. | Bilinen fixture üzerinde yedi değerin tamamı elle hesaplanıp doğrulanır. |
+| **B-10** | §3.4 "yazma uçları `user_rate_limit` ile kapılanır" diyor, kodda yok (30 POST → 30× 201). | Kablolandı. |
+| **B-12** | Paralel ajan artığı: `GET /delivery/vehicles` için iki fetcher, iki tip, iki cache anahtarı. | Tekilleştirildi. |
+| **B-13** | Üretim kodunun teste göre eğildiği iki yer. | Düzeltildi. |
+
+### 10.2 Katılmadığımız çerçeveleme — kayda geçer
+
+Denetim B-2'yi "K-3a kararı ölçümle çürüdü" diye çerçeveledi. **Denge** kaybı
+bir hata değil, K-3'ün (senin kararın) doğrudan sonucudur: yedek araç ancak
+kazanç sabit maliyeti aşarsa çıkar. Hata olan şey **fiziksel tavanın hiç
+uygulanmaması** — yani "80 siparişe söz ver, 1 araca yükle". Düzeltme tavanı
+geri getirir, ekonomiyi bozmaz: tavan altındaki günler hâlâ tek araçla gider
+(doluluk nöbetçisi `test_B2b_*`), tavan aşılınca bölünme **zorunlu** olur.
+Dengeyi daha da sıkılaştırmak isteyen operatör, panelden araç başına
+`max_stops` düşürür — varsayım yine kodda değil veridedir.
+
+### 10.3 Denetimin kapatmadığı boşluklardan öğrendiğimiz
+
+`dispatch_day` **filo-küreseldir**: aktif araç listesini veritabanından okur.
+Bu yüzden dispatch testleri filoyu sabitlemeden yazılamaz — nitekim tarayıcı
+kabul turundan test DB'sinde kalan iki araç (DOBLO/KANGOO) üç mevcut testi
+düşürdü. `tests/integration/dispatch_yardim.py::SeedFilosu` artık autouse
+fixture olarak aktif filoyu seed'in kendisine indirger (hiçbir satır silinmez,
+yalnız geçici pasifleştirilir).
+
+### 10.4 Düzeltme turunun matrisi (üretim kodundan ÖNCE, 14 kırmızı)
+
+| Düğüm | İddia | Kanıt sınıfı |
+|---|---|---|
+| Y-1 | `_arac_tavani` NULL'ı platform varsayılanına çözer | saf birim |
+| Y-2 | `_route_vehicle` rota katmanına tavansız araç vermez | saf birim |
+| Y-2b | `gunluk_tavan` ile `_route_vehicle` aynı yardımcıyı çağırır | **AST/kaynak (düşük güçlü, §C)** |
+| Y-3 | `AddressCreate` il/ilçe ister | saf birim |
+| Y-4 | `AddressUpdate` dolu alanı boşa çekemez | saf birim |
+| B2-a | Seed filoda tavanı aşan gün ikinci araca taşar (haversine) | gerçek PostgreSQL |
+| B2-b | *(kasıtlı yeşil)* tavan altındaki gün bölünmez — doluluk nöbetçisi | gerçek PostgreSQL |
+| B2-c | Günlük tavan = plana giren kapasite; araç başına tavan aşılmaz | gerçek PostgreSQL |
+| B2-canlı | Aynı iddia **gerçek VROOM + OSRM** ile | gerçek çözücü |
+| K-3a canlı | `costs.fixed` ile `max_tasks` aynı payload'da yaşar | gerçek çözücü |
+| B-4 | Eşleşmeyen araç kodu korunur | gerçek PostgreSQL + alembic |
+| B-5 | Araç değişimi kuryeyi silmez; açık `null` çözer | gerçek HTTP |
+| B-6 | Yedi metrik değeri elle hesaplanmış fixture ile birebir | gerçek PostgreSQL + HTTP |
+| B-3 | İlçesiz adres 422; formda kayıt ilerlemez | gerçek HTTP + gerçek DOM |

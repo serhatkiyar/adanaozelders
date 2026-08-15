@@ -206,3 +206,54 @@ async def test_D9_zincir_dolu_tabloda_gidip_gelir(taze_db):
     assert "No new upgrade operations detected" in res.stdout + res.stderr, (
         f"model ile şema sapmış:\n{res.stdout}\n{res.stderr}"
     )
+
+
+async def test_B4_eslesmeyen_arac_kodu_LADA_ya_ezilmez(taze_db):
+    """🔴 Bağımsız denetim bulgusu B-4.
+
+    Migration eşlemeyi `v.code = r.vehicle` ile yapıp eşleşmeyen her satırı
+    LADA'ya düşürüyor. `delivery_runs.vehicle` FK'siz/CHECK'siz serbest bir
+    `String(20)` olduğu için (sözleşme §0.1'in şikâyeti) bu teorik değil:
+    elle ya da eski bir sürümle yazılmış "KANGOO" turu, upgrade sonrası
+    LADA'ymış gibi görünür. Oysa `models/delivery.py`'de FK'nin RESTRICT
+    olmasının gerekçesi tam olarak **geçmiş turun hangi araçla koştuğunun
+    kaybolmaması**.
+
+    İddia: eşleşmeyen her DISTINCT kod için bir `vehicles` satırı açılır ve
+    tur o satıra bağlanır — hiçbir tarihsel kayıt başka bir araca yazılmaz.
+    """
+    motor, db = taze_db
+
+    # Eski dünya: `delivery_runs.vehicle` hâlâ string.
+    _alembic("upgrade", "sm2_flashcard_kaldirma", db=db)
+    async with motor.begin() as conn:
+        for i, kod in enumerate(("LADA", "COROLLA", "KANGOO", "kangoo")):
+            await conn.execute(
+                text(
+                    "INSERT INTO delivery_runs (run_date, vehicle, status) "
+                    "VALUES (CURRENT_DATE + CAST(:i AS integer), :v, 'DONE')"
+                ),
+                {"i": i, "v": kod},
+            )
+
+    _alembic("upgrade", "head", db=db)
+    async with motor.connect() as conn:
+        eslesme = {
+            r[0]: r[1]
+            for r in await conn.execute(
+                text(
+                    "SELECT r.run_date, v.code FROM delivery_runs r "
+                    "JOIN vehicles v ON v.id = r.vehicle_id ORDER BY r.run_date"
+                )
+            )
+        }
+        kodlar = sorted(eslesme.values())
+        assert kodlar == sorted(["LADA", "COROLLA", "KANGOO", "KANGOO"]), (
+            f"tarihsel araç bilgisi kayboldu: {kodlar}"
+        )
+        # Türetilen araç gerçekten yeni bir satırdır (LADA'ya iliştirilmedi).
+        assert (
+            await conn.execute(
+                text("SELECT COUNT(*) FROM vehicles WHERE code = 'KANGOO'")
+            )
+        ).scalar_one() == 1
