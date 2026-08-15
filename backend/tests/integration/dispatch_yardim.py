@@ -101,6 +101,59 @@ class DispatchFactory:
             await s.commit()
 
 
+class BazNoktasi:
+    """Aktif bir BASE noktası YOKSA açar; teardown'da yalnız KENDİ açtığını siler.
+
+    Migration artık başlangıç noktası seed'lemiyor (bağımsız denetim B-9:
+    uydurma koordinat, rotanın da müşteriye gösterilen varış penceresinin de
+    başlangıcı olurdu). Bunun doğrudan sonucu: nokta tanımlı değilken
+    `dispatch_day` bilinçli olarak 409 döner — yani dispatch testleri
+    başlangıç noktasını KENDİLERİ kurmak zorundadır.
+
+    Bu, taze bir veritabanında ölçülerek bulundu (merge turu, 15 Ağu 2026):
+    geliştirme test DB'si eski seed'den kalma bir noktaya sahip olduğu için
+    10 dispatch testi yeşil görünüyordu; sıfırdan kurulan şemada hepsi 409
+    aldı. Ürün davranışı doğruydu, eksik olan test kurulumuydu.
+    """
+
+    def __init__(self) -> None:
+        self.olusturulan_id: int | None = None
+
+    async def kur(self) -> None:
+        assert_test_database()
+        async with AsyncSessionLocal() as s:
+            var = (
+                await s.execute(
+                    text(
+                        "SELECT id FROM pickup_points WHERE kind = 'BASE' "
+                        "AND is_active IS TRUE AND deleted_at IS NULL LIMIT 1"
+                    )
+                )
+            ).scalar_one_or_none()
+            if var is not None:
+                return
+            self.olusturulan_id = (
+                await s.execute(
+                    text(
+                        "INSERT INTO pickup_points (name, kind, lat, lng, sort_order) "
+                        "VALUES (:n, 'BASE', 36.9855, 35.3253, 0) RETURNING id"
+                    ),
+                    {"n": f"Test Baz {uniq()}"},
+                )
+            ).scalar_one()
+            await s.commit()
+
+    async def kaldir(self) -> None:
+        if self.olusturulan_id is None:
+            return
+        async with AsyncSessionLocal() as s:
+            await s.execute(
+                text("DELETE FROM pickup_points WHERE id = :i"),
+                {"i": self.olusturulan_id},
+            )
+            await s.commit()
+
+
 class SeedFilosu:
     """Test süresince aktif filoyu migration seed'inin kendisine (LADA+COROLLA)
     indirger.

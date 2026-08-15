@@ -27,6 +27,7 @@ from core.database import AsyncSessionLocal
 from services import delivery_service
 from tests.integration.auth_headers import bearer_headers
 from tests.integration.dispatch_yardim import (
+    BazNoktasi,
     DispatchFactory,
     EligibleParking,
     SeedFilosu,
@@ -88,12 +89,15 @@ def vroom_kapali(monkeypatch):
 @pytest.fixture
 async def seed_filo(pg):
     """Aktif filo = migration'ın seed'lediği iki araç (dev artıklarından izole)."""
+    baz = BazNoktasi()
+    await baz.kur()
     f = SeedFilosu()
     await f.daralt()
     try:
         yield f
     finally:
         await f.geri_al()
+        await baz.kaldir()
 
 
 # ── B-2: seed filoda tavan gerçekten uygulanıyor mu ───────────────────────────

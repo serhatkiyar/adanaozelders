@@ -90,14 +90,17 @@ async def _seed_filosu(pg):
     kalan iki araç (DOBLO/KANGOO) üç testi düşürdü. Fixture hiçbir aracı
     silmez, yalnız test süresince pasifleştirir.
     """
-    from tests.integration.dispatch_yardim import SeedFilosu
+    from tests.integration.dispatch_yardim import BazNoktasi, SeedFilosu
 
+    baz = BazNoktasi()
+    await baz.kur()
     f = SeedFilosu()
     await f.daralt()
     try:
         yield f
     finally:
         await f.geri_al()
+        await baz.kaldir()
 
 
 @pytest.fixture(autouse=True)
