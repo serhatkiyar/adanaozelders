@@ -16,6 +16,6 @@ export const LEGAL_NAV: readonly LegalNavItem[] = [
   { id: "privacy", title: "Gizlilik Politikası", path: LEGAL_ROUTES.privacy },
   { id: "terms", title: "Kullanım Koşulları", path: LEGAL_ROUTES.terms },
   { id: "distance-sales", title: "Mesafeli Satış Sözleşmesi", path: LEGAL_ROUTES["distance-sales"] },
-  { id: "refund", title: "İptal ve İade Politikası", path: LEGAL_ROUTES.refund },
+  { id: "refund", title: "Teslimat, İptal ve İade Politikası", path: LEGAL_ROUTES.refund },
   { id: "cookies", title: "Çerez Politikası", path: LEGAL_ROUTES.cookies },
 ];

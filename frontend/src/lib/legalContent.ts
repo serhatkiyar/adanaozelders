@@ -420,17 +420,18 @@ const DISTANCE_SALES: LegalDoc = {
   id: "distance-sales",
   title: "Mesafeli Satış Sözleşmesi",
   description:
-    "Adana Özel Ders üzerinden satın alınan özel ders, deneme sınavı oturumu ve çalışma alanı hizmetlerine ilişkin mesafeli satış sözleşmesi.",
-  updatedAt: "2026-06-11",
+    "Adana Özel Ders üzerinden satın alınan özel ders, deneme sınavı oturumu, çalışma alanı hizmetleri ve basılı kitap siparişlerine ilişkin mesafeli satış sözleşmesi.",
+  updatedAt: "2026-08-17",
   sections: [
     {
       id: "taraflar",
       heading: "1. Taraflar",
       blocks: [
         list(
-          "ALICI: Platform üzerinden hizmet satın alan öğrenci (18 yaşından küçükse veli/vasisi).",
+          "ALICI: Platform üzerinden hizmet veya ürün satın alan öğrenci/müşteri (18 yaşından küçükse veli/vasisi).",
           "HİZMET SAĞLAYICI (SATICI): Hizmeti fiilen sunan, Platformda ilanı yayımlanan eğitmen veya kütüphane/etüt merkezi.",
-          `ARACI HİZMET SAĞLAYICI: ${OPERATOR.name} platformu işletmecisi. ${operatorIdentity()}. Platform, satışa aracılık eder ve ödemeyi emanet (escrow) modeliyle güvence altına alır.`
+          `ARACI HİZMET SAĞLAYICI: ${OPERATOR.name} platformu işletmecisi. ${operatorIdentity()}. Platform, hizmet satışına aracılık eder ve ödemeyi emanet (escrow) modeliyle güvence altına alır.`,
+          `SATICI (mağaza ürünleri): Platform mağazasında satışa sunulan basılı kitap ve benzeri fiziksel ürünlerde satıcı, aracı değil doğrudan ${OPERATOR.entity}'dır. Bu ürünlerde emanet modeli uygulanmaz; satış, işletmenin kendi ürününün doğrudan satışıdır.`
         ),
       ],
     },
@@ -439,21 +440,29 @@ const DISTANCE_SALES: LegalDoc = {
       heading: "2. Sözleşmenin Konusu",
       blocks: [
         p(
-          "Bu sözleşme; ALICI'nın Platform üzerinden elektronik ortamda sipariş verdiği aşağıdaki hizmetlerin satışı ve ifası ile tarafların 6502 sayılı Tüketicinin Korunması Hakkında Kanun ve Mesafeli Sözleşmeler Yönetmeliği'nden doğan hak ve yükümlülüklerini düzenler:"
+          "Bu sözleşme; ALICI'nın Platform üzerinden elektronik ortamda sipariş verdiği aşağıdaki hizmet ve ürünlerin satışı, ifası ve teslimi ile tarafların 6502 sayılı Tüketicinin Korunması Hakkında Kanun ve Mesafeli Sözleşmeler Yönetmeliği'nden doğan hak ve yükümlülüklerini düzenler:"
         ),
         list(
           "Özel ders hizmeti (online veya yüz yüze; süre ve tarih rezervasyonda belirtilir).",
           "Deneme sınavı oturumu katılım hakkı (oturum tarihi, türü ve yeri ilanda belirtilir).",
-          "Kütüphane çalışma alanı saatlik kullanım hakkı (tarih ve saat aralığı rezervasyonda belirtilir)."
+          "Kütüphane çalışma alanı saatlik kullanım hakkı (tarih ve saat aralığı rezervasyonda belirtilir).",
+          "Platform mağazasından sipariş edilen BASILI KİTAP ve benzeri fiziksel ürünler (ürün adı, adedi ve fiyatı sipariş özetinde belirtilir).",
+          "Eğitmenler tarafından mağazada satışa sunulan DİJİTAL ürünler (ders notu, çözüm dosyası vb.; sipariş sonrası hesabınızdan indirilir)."
+        ),
+        p(
+          "Hizmetlerde ve dijital ürünlerde Platform aracı hizmet sağlayıcı, basılı kitap satışında ise doğrudan satıcı sıfatıyla hareket eder. Her siparişte hangi sıfatla hareket edildiği sipariş özetinde görünür."
         ),
       ],
     },
     {
       id: "bedel-ve-odeme",
-      heading: "3. Hizmet Bedeli ve Ödeme",
+      heading: "3. Bedel ve Ödeme",
       blocks: [
         p(
           "Hizmet bedeli, sipariş anında Platformda gösterilen ve tüm vergiler dâhil nihai tutardır: özel derste eğitmenin saatlik ücreti × ders süresi; deneme oturumunda ilan edilen katılım ücreti; çalışma alanında saatlik ücret × rezervasyon süresi. Ödeme, iyzico ödeme altyapısı üzerinden kredi/banka kartı ile peşin alınır ve hizmet ifa edilene kadar Platform nezdinde emanette tutulur. Kart bilgileri Platform tarafından saklanmaz."
+        ),
+        p(
+          "Mağaza ürünlerinde bedel, ürün sayfasında ve sipariş özetinde gösterilen tutardır. PLATFORMDA GÖSTERİLEN TÜM FİYATLAR KDV DÂHİLDİR; ALICI'dan sipariş özetinde yer alan tutar dışında ek bir vergi veya masraf talep edilmez. Varsa kargo/teslimat bedeli sipariş özetinde ayrı bir satır olarak gösterilir ve ödeme adımından önce toplam tutara dâhil edilir; sipariş özetinde kargo bedeli görünmüyorsa teslimat ücretsizdir."
         ),
       ],
     },
@@ -465,13 +474,34 @@ const DISTANCE_SALES: LegalDoc = {
           "Özel ders: rezervasyonda belirtilen tarih ve saatte, online ise Platform içindeki görüntülü görüşme penceresiyle, yüz yüze ise kararlaştırılan buluşma noktasında ifa edilir.",
           "Deneme sınavı oturumu: ilanda belirtilen tarihte ilgili kurumda gerçekleşir; ALICI, girişte Platformdaki QR biletini okutarak katılımını doğrular.",
           "Çalışma alanı: rezerve edilen saat aralığında ilgili kurumda kullanılır; girişte QR kod doğrulaması yapılır.",
-          "Hizmet ifa edildikten sonra bedel, platform komisyonu düşülerek HİZMET SAĞLAYICI'ya aktarılır."
+          "Hizmet ifa edildikten sonra bedel, platform komisyonu düşülerek HİZMET SAĞLAYICI'ya aktarılır.",
+          "Dijital ürünler: ödeme onaylandıktan sonra ALICI'nın hesabındaki sipariş detayından indirilebilir hâle gelir; ayrıca fiziksel teslimat yapılmaz."
+        ),
+      ],
+    },
+    {
+      id: "teslimat",
+      heading: "5. Fiziksel Ürünlerin Teslimatı",
+      blocks: [
+        p(
+          "Basılı kitap siparişleri, teslimat adresine göre iki şekilde ulaştırılır:"
+        ),
+        list(
+          "ADANA İÇİ: siparişler, Platformun KENDİ ARAÇ VE KURYELERİYLE elden teslim edilir. Teslimat günü kuryemiz adresinize gelir; teslim sırasında telefonunuza gönderilen tek kullanımlık doğrulama kodu ile teslim tamamlanır. Dilerseniz sipariş detayından teslimat tercihinizi (kapıya bırakma, komşuya bırakma, önce arama) belirtebilir veya teslimatı bir sonraki güne erteleyebilirsiniz.",
+          "ADANA DIŞI: siparişler anlaşmalı kargo firmasıyla gönderilir; kargoya verildiğinde takip bilgisi hesabınıza işlenir.",
+          "Teslimat adresi, sipariş sırasında seçtiğiniz adres ve harita konumudur. Adresin doğru ve eksiksiz olmasından ALICI sorumludur; hatalı adres nedeniyle teslim edilemeyen siparişlerde yeniden gönderim yapılabilir."
+        ),
+        p(
+          "Siparişiniz onaylandığında, sipariş özetinde ve sipariş takip sayfasında TAHMİNİ TESLİM GÜNÜ gösterilir. Mesafeli Sözleşmeler Yönetmeliği uyarınca teslim süresi her hâlükârda siparişin SATICI'ya ulaşmasından itibaren OTUZ GÜNÜ geçemez. Bu süre içinde teslim yapılamazsa ALICI sözleşmeyi feshedebilir; fesih hâlinde varsa teslimat masrafları da dâhil olmak üzere tahsil edilen tüm ödemeler iade edilir."
+        ),
+        p(
+          "Teslim aldığınız paketi kurye/kargo görevlisinin yanında kontrol etmeniz önerilir. Pakette gözle görülür hasar varsa teslim almadan tutanak tutturmanız ya da paketi teslim almayıp durumu bize bildirmeniz, sürecin hızlanmasını sağlar; bu, ALICI'nın ayıplı mala ilişkin kanuni haklarını ortadan kaldırmaz."
         ),
       ],
     },
     {
       id: "cayma-hakki",
-      heading: "5. Cayma Hakkı ve İstisnaları",
+      heading: "6. Cayma Hakkı ve İstisnaları",
       blocks: [
         p(
           "Mesafeli Sözleşmeler Yönetmeliği m.15/1-g uyarınca; BELİRLİ BİR TARİHTE veya dönemde yapılması gereken, konaklama, eşya taşıma, araba kiralama, yiyecek-içecek tedariki ve eğlence veya dinlenme amacıyla yapılan BOŞ ZAMANIN DEĞERLENDİRİLMESİNE İLİŞKİN hizmetlere dair sözleşmelerde cayma hakkı kullanılamaz. Bu kapsamda, belirli tarih ve saate bağlanan deneme sınavı oturumu katılım hakkı ve çalışma alanı rezervasyonlarında cayma hakkı BULUNMAZ. Bununla birlikte SATICI, kanuni bir zorunluluk olmaksızın kendi ticari politikası gereği, oturum/rezervasyon başlangıcına 24 SAATTEN FAZLA süre kalması hâlinde iptal ve tam iade imkânı tanır; bu süreden sonra iptal yapılamaz ve katılım sağlanmaması (no-show) hâlinde iade yapılmaz."
@@ -479,20 +509,49 @@ const DISTANCE_SALES: LegalDoc = {
         p(
           "Özel ders rezervasyonlarında ders henüz ifa edilmeden yapılan iptallerde ödeme emanetten iade edilir. Hizmetin ifasına ALICI onayı ile başlanmış ve hizmet tamamlanmışsa cayma hakkı kullanılamaz (Yönetmelik m.15/1-h). Ayrıntılı iptal/iade kuralları İptal ve İade Politikası'nda yer alır ve bu sözleşmenin ayrılmaz parçasıdır."
         ),
+        p(
+          "FİZİKSEL ÜRÜNLERDE (basılı kitap) durum farklıdır: Mesafeli Sözleşmeler Yönetmeliği m.9 uyarınca ALICI, ürünü teslim aldığı günden itibaren ON DÖRT GÜN içinde hiçbir gerekçe göstermeksizin ve cezai şart ödemeksizin sözleşmeden cayabilir. Cayma hakkı, sözleşmenin kurulmasından teslime kadar olan sürede de kullanılabilir. Cayma bildirimini hesabınızdaki sipariş detayından iade talebi oluşturarak veya aşağıdaki iletişim kanallarından yazılı olarak iletebilirsiniz."
+        ),
+        p(
+          "Basılı kitapta cayma hakkının ÖNEMLİ BİR İSTİSNASI vardır: Yönetmelik m.15/1-e uyarınca, malın tesliminden sonra ambalaj, bant, mühür, paket gibi koruyucu unsurları açılmış olması hâlinde maddi ortamda sunulan kitaplara ilişkin sözleşmelerde cayma hakkı kullanılamaz. Bu nedenle iade etmeyi düşündüğünüz kitabın koruyucu ambalajını açmamanız gerekir. Aynı hüküm dijital içerik için de geçerlidir; ayrıca elektronik ortamda anında ifa edilen ve ALICI'ya anında teslim edilen dijital ürünlerde (indirilebilir ders notu vb.) Yönetmelik m.15/1-ğ uyarınca cayma hakkı bulunmaz."
+        ),
       ],
     },
     {
       id: "iade",
-      heading: "6. İade Usulü",
+      heading: "7. İade Usulü ve Masraflar",
       blocks: [
         p(
           "İade hakkının doğduğu hâllerde tutar, ödemenin yapıldığı karta iyzico aracılığıyla iade edilir. İade, iadenin onaylanmasından itibaren makul süre içinde başlatılır; tutarın karta yansıması bankanıza bağlı olarak 7-14 iş günü sürebilir."
+        ),
+        p(
+          "FİZİKSEL ÜRÜN İADESİNDE usul şöyledir: Cayma bildiriminizi ilettikten sonra ürünü, bildirim tarihinden itibaren ON DÖRT GÜN içinde bize geri göndermeniz gerekir. İADE MASRAFI SATICI'YA AİTTİR: iade gönderimini, iade talebinizi oluşturduğunuzda size bildirilen anlaşmalı taşıyıcı ile yaptığınız takdirde sizden herhangi bir iade kargo bedeli talep edilmez; Adana içinde iade edilecek ürün, talebiniz üzerine kendi kuryemizle adresinizden ücretsiz olarak alınabilir."
+        ),
+        p(
+          `İade adresi: ${OPERATOR.entity}, ${OPERATOR.address}. İade paketine sipariş numaranızı eklemeniz süreci hızlandırır.`
+        ),
+        p(
+          "Cayma hakkının usulüne uygun kullanılması hâlinde, varsa ürünün size teslim masrafları da dâhil olmak üzere tahsil edilen tüm ödemeler, ürünün anlaşmalı taşıyıcıya teslim edildiği tarihten (öngörülen taşıyıcı dışında bir taşıyıcı ile iade edilmişse ürünün bize ulaştığı tarihten) itibaren ON DÖRT GÜN içinde iade edilir. ALICI, cayma süresi içinde ürünü işleyişine, teknik özelliklerine ve kullanım talimatlarına uygun kullandığı takdirde meydana gelen değişiklik ve bozulmalardan sorumlu değildir."
+        ),
+      ],
+    },
+    {
+      id: "ayipli-mal",
+      heading: "8. Ayıplı, Eksik veya Yanlış Ürün",
+      blocks: [
+        p(
+          "Teslim edilen ürün ayıplı (hasarlı, baskı hatalı, eksik sayfalı), eksik veya sipariş ettiğinizden farklı ise 6502 sayılı Tüketicinin Korunması Hakkında Kanun'un ayıplı mala ilişkin hükümleri uygulanır. Bu durumda ALICI; sözleşmeden dönme, ürünün ayıpsız misliyle değiştirilmesi, ücretsiz onarım veya bedelde indirim seçimlik haklarından birini kullanabilir."
+        ),
+        list(
+          "Bu hak, ambalajın açılmış olmasından etkilenmez — ambalaj istisnası yalnız gerekçesiz CAYMA hakkı için geçerlidir.",
+          `Bildirimi ${OPERATOR.email} adresine veya sipariş detayındaki iade talebi ekranından yapabilirsiniz; ürün fotoğrafı eklemeniz incelemeyi hızlandırır.`,
+          "Ayıplı/eksik/yanlış üründe kargo ve iade masrafları ALICI'dan talep edilmez; değişim veya iade gönderimi SATICI tarafından karşılanır."
         ),
       ],
     },
     {
       id: "uyusmazlik",
-      heading: "7. Uyuşmazlıkların Çözümü",
+      heading: "9. Uyuşmazlıkların Çözümü",
       blocks: [
         p(
           "Bu sözleşmeden doğan uyuşmazlıklarda, Ticaret Bakanlığı'nca ilan edilen parasal sınırlar dâhilinde ALICI'nın yerleşim yerindeki Tüketici Hakem Heyetleri, sınırı aşan uyuşmazlıklarda Tüketici Mahkemeleri yetkilidir."
@@ -501,10 +560,10 @@ const DISTANCE_SALES: LegalDoc = {
     },
     {
       id: "yururluk",
-      heading: "8. Yürürlük",
+      heading: "10. Yürürlük",
       blocks: [
         p(
-          "ALICI, Platform üzerinden ödemeyi başlatmadan önce bu sözleşmeyi ve ön bilgilendirmeyi okuduğunu ve kabul ettiğini beyan eder. Sözleşme, ödemenin tamamlanmasıyla kurulur; sipariş özeti ve ödeme kaydı Platform hesabınızda saklanır."
+          "ALICI, Platform üzerinden ödemeyi başlatmadan önce bu sözleşmeyi ve Ön Bilgilendirme Formu'nu okuduğunu ve kabul ettiğini beyan eder. Sözleşme, ödemenin tamamlanmasıyla kurulur; sipariş özeti ve ödeme kaydı Platform hesabınızda saklanır."
         ),
       ],
     },
@@ -515,10 +574,10 @@ const DISTANCE_SALES: LegalDoc = {
 
 const REFUND: LegalDoc = {
   id: "refund",
-  title: "İptal ve İade Politikası",
+  title: "Teslimat, İptal ve İade Politikası",
   description:
-    "Adana Özel Ders'te özel ders, deneme sınavı oturumu ve çalışma alanı rezervasyonlarının iptal ve iade kuralları.",
-  updatedAt: "2026-06-11",
+    "Adana Özel Ders'te özel ders, deneme sınavı oturumu, çalışma alanı rezervasyonları ve basılı kitap siparişlerinin teslimat, iptal ve iade kuralları.",
+  updatedAt: "2026-08-17",
   sections: [
     {
       // ⚠️ BİLİNEN YASAL METİN BORCU — `lib/legalDebt.ts::escrow-tum-odemeler`
@@ -573,8 +632,48 @@ const REFUND: LegalDoc = {
       ],
     },
     {
+      id: "fiziksel-urunler",
+      heading: "5. Mağaza Ürünleri — Basılı Kitap Teslimatı ve İadesi",
+      blocks: [
+        p(
+          "Mağazadan satın alınan basılı kitaplarda satıcı doğrudan işletmemizdir ve emanet (escrow) modeli uygulanmaz; yukarıdaki 1. bölümde anlatılan emanet akışı hizmet satışlarına ilişkindir."
+        ),
+        p("TESLİMAT:"),
+        list(
+          "Adana içi siparişler kendi araç ve kuryelerimizle elden teslim edilir; teslimde telefonunuza gelen doğrulama kodu kullanılır.",
+          "Adana dışı siparişler anlaşmalı kargo firmasıyla gönderilir ve takip bilgisi hesabınıza işlenir.",
+          "Tahmini teslim günü sipariş özetinde gösterilir; teslim süresi her hâlükârda otuz günü geçemez. Bu sürede teslim yapılamazsa siparişi feshedip ödemenizin tamamını (varsa teslimat masrafı dâhil) geri alabilirsiniz.",
+          "Kargo/teslimat bedeli varsa sipariş özetinde ayrıca gösterilir; gösterilmiyorsa teslimat ücretsizdir."
+        ),
+        p("SİPARİŞ İPTALİ VE CAYMA:"),
+        list(
+          "Sipariş henüz kargoya verilmediyse/yola çıkmadıysa hesabınızdan iptal edebilirsiniz; ödemenin tamamı iade edilir.",
+          "Ürünü teslim aldıktan sonra ON DÖRT GÜN içinde gerekçe göstermeden cayabilirsiniz (Mesafeli Sözleşmeler Yönetmeliği m.9).",
+          "ANCAK: koruyucu ambalajı, bandı veya mührü AÇILMIŞ kitaplarda cayma hakkı kullanılamaz (Yönetmelik m.15/1-e). İade etmeyi düşünüyorsanız ambalajı açmayın.",
+          "İndirilebilir dijital ürünlerde (ders notu, çözüm dosyası) cayma hakkı bulunmaz — anında ifa edilen dijital içerik istisnası (Yönetmelik m.15/1-ğ).",
+          "İADE KARGO BEDELİ BİZE AİTTİR: iade talebinizde bildirilen anlaşmalı taşıyıcıyı kullandığınızda sizden iade masrafı alınmaz; Adana içinde ürünü kuryemizle adresinizden ücretsiz aldırabilirsiniz.",
+          "Cayma bildiriminden sonra ürünü on dört gün içinde göndermeniz gerekir. İade tutarı, ürün taşıyıcıya teslim edildiği (öngörülen taşıyıcı dışında gönderildiyse bize ulaştığı) tarihten itibaren on dört gün içinde kartınıza iade edilir."
+        ),
+      ],
+    },
+    {
+      id: "ayipli-eksik-urun",
+      heading: "6. Ayıplı, Eksik veya Yanlış Gönderilen Ürün",
+      blocks: [
+        p(
+          "Ürün hasarlı, baskı hatalı, eksik veya sipariş ettiğinizden farklı geldiyse 6502 sayılı Tüketicinin Korunması Hakkında Kanun'un ayıplı mala ilişkin hükümleri uygulanır: sözleşmeden dönme, ayıpsız misliyle değişim, ücretsiz onarım veya bedelde indirim haklarından birini seçebilirsiniz."
+        ),
+        list(
+          "Bu haklar ambalaj açılmış olsa da geçerlidir; ambalaj istisnası yalnız gerekçesiz cayma içindir.",
+          `Bildiriminizi sipariş detayındaki iade ekranından veya ${OPERATOR.email} adresinden yapın; ürün fotoğrafı incelemeyi hızlandırır.`,
+          "Ayıplı/eksik/yanlış üründe hiçbir kargo veya iade masrafı sizden talep edilmez.",
+          "Teslim sırasında pakette gözle görülür hasar varsa teslim almadan bildirmeniz süreci kolaylaştırır; bu, kanuni haklarınızı ortadan kaldırmaz."
+        ),
+      ],
+    },
+    {
       id: "iade-suresi",
-      heading: "5. İade Süresi ve Yöntemi",
+      heading: "7. İade Süresi ve Yöntemi",
       blocks: [
         p(
           "İadeler her zaman ödemenin yapıldığı karta, iyzico aracılığıyla yapılır. İade onaylandıktan sonra tutarın kartınıza yansıması, bankanızın süreçlerine bağlı olarak genellikle 7-14 iş günü sürer. Nakit veya farklı bir hesaba iade yapılmaz."
@@ -583,7 +682,7 @@ const REFUND: LegalDoc = {
     },
     {
       id: "itiraz",
-      heading: "6. İtiraz ve Destek",
+      heading: "8. İtiraz ve Destek",
       blocks: [
         p(
           `İptal/iade süreçlerine ilişkin itirazlarınız için ${OPERATOR.email} adresine işlem bilgilerinizle (rezervasyon/bilet numarası) başvurabilirsiniz. Tüketici Hakem Heyetlerine ve Tüketici Mahkemelerine başvuru hakkınız saklıdır.`
