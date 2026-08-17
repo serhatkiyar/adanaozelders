@@ -67,7 +67,45 @@ describe("yasal metin borcu kütüğü", () => {
     // edildiği için bu cümlenin dönmesi beyanla çelişki üretir.
     const bolum = sectionText("refund", "genel");
     expect(bolum).not.toContain("tüm ödemeler önce emanete alınır");
-    expect(bolum).toContain("EMANET (ESCROW) MODELİ UYGULANMAZ");
+    expect(bolum).toContain("emanet uygulanmaz");
+  });
+
+  it("emanet ifadesi MAĞAZA ile sınırlı — platform geneline genişlemiyor", () => {
+    // İki yönlü hata mümkün ve ikisi de yaşandı:
+    //   (a) "tüm ödemeler emanete alınır"  → mağaza için yanlış (kapandı),
+    //   (b) "Platform üzerinden yapılan satışlarda emanet uygulanmaz"
+    //       → ders/bilet/rezervasyon için yanlış; `backend/services/escrow.py`
+    //         PAYMENT_SPEC, EXAM_SPEC ve STUDY_SPEC gerçekten emanet uygular.
+    // Bu test (b) yönünü korur: cümlenin öznesi mağaza satışı olmalı.
+    const bolum = sectionText("refund", "genel");
+    expect(bolum).toContain("Mağazadan yapılan ürün satışlarında");
+    for (const fazlaGenis of [
+      "Platform üzerinden yapılan satışlarda satıcı doğrudan",
+      "Platformdaki tüm ödemeler",
+      "hiçbir ödemede emanet",
+    ]) {
+      expect(
+        bolum.includes(fazlaGenis),
+        `emanet ifadesi platform geneline genişlemiş: "${fazlaGenis}"`,
+      ).toBe(false);
+    }
+  });
+
+  it("kapalı akışların (ders/bilet/rezervasyon) ödeme modeli 1. bölümde tarif EDİLMİYOR", () => {
+    // Kapalı bir akışın ödeme modelini anlatmak, akış açıldığında güncellenmesi
+    // unutulacak bir taahhüt üretir. Bölüm yalnız mağazayı ve iade yönlendirmesini
+    // anlatmalı; "emanet"in geçtiği tek yer mağaza cümlesindeki olumsuzlamadır.
+    const bolum = sectionText("refund", "genel");
+    const emanetGecisi = (bolum.match(/emanet/gi) ?? []).length;
+    expect(
+      emanetGecisi,
+      `1. bölümde "emanet" ${emanetGecisi} kez geçiyor — yalnız mağaza cümlesinde geçmeli`,
+    ).toBe(1);
+    for (const kapaliAkis of ["escrow", "eğitmene aktarılır", "kütüphaneye aktarılır"]) {
+      expect(bolum.toLocaleLowerCase("tr")).not.toContain(
+        kapaliAkis.toLocaleLowerCase("tr"),
+      );
+    }
   });
 
   it("yasal metinlerde dijital ürün satışına ilişkin hüküm YOK", () => {

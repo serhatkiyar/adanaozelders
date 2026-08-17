@@ -585,11 +585,20 @@ const REFUND: LegalDoc = {
       // bu, ödeme kolları bağımsızlaştıktan sonra (PK-1) hiçbir kol için doğru
       // değildi. Sanal POS başvurusunda platformun üçüncü kişi adına tahsilat
       // yapmadığı beyan edildiği için cümle düzeltildi ve borç kaydı kapandı.
+      //
+      // İfadenin KAPSAMI bilinçli olarak MAĞAZA ile sınırlıdır. Ters yöndeki
+      // hata da gerçekti: "Platform üzerinden yapılan satışlarda ... emanet
+      // uygulanmaz" demek bu kez fazla geniş olurdu — ders (booking), deneme
+      // bileti ve çalışma rezervasyonu akışlarında kod GERÇEKTEN emanet
+      // uyguluyor (`backend/services/escrow.py`: PAYMENT_SPEC / EXAM_SPEC /
+      // STUDY_SPEC). O kalemler lansmanda çevrimiçi ödemeye kapalı olduğu için
+      // burada ödeme modelleri hiç tarif edilmiyor; kapalı bir akışın modelini
+      // anlatmak, açıldığında güncellenmesi unutulacak bir taahhüt olurdu.
       id: "genel",
       heading: "1. Genel Esaslar — Ödeme ve İade Modeli",
       blocks: [
         p(
-          "Platform üzerinden yapılan satışlarda satıcı doğrudan işletmemizdir: ödemeniz işletmemize yapılır, üçüncü kişi adına tahsilat yapılmaz ve EMANET (ESCROW) MODELİ UYGULANMAZ. İade hakkının doğduğu hâllerde tutar, ödemeyi aldığımız işletme hesabından doğrudan ödeme yaptığınız karta geri gönderilir."
+          "Mağazadan yapılan ürün satışlarında satıcı doğrudan işletmemizdir; ödeme doğrudan işletmemize yapılır, emanet uygulanmaz. İade hakkının doğduğu hâllerde tutar, ödemeyi aldığımız işletme hesabından doğrudan ödeme yaptığınız karta geri gönderilir."
         ),
         p(
           "İade koşulları satın aldığınız şeye göre değişir: fiziksel ürünlerde (basılı kitap) yasal cayma hakkı ve iade usulü 5. bölümde, hizmet niteliğindeki rezervasyonların iptal kuralları 2-4. bölümlerde açıklanmıştır."

@@ -42,9 +42,19 @@ export interface LegalDebtEntry {
 // Kapanma sebebi: sanal POS başvurusunda platformun eğitim hizmeti satmadığı,
 // üçüncü kişi adına tahsilat yapmadığı ve emanet modeliyle çalışmadığı BEYAN
 // EDİLDİ. Yasal metnin bu beyanla birebir uyuşması bir tercih değil zorunluluk
-// hâline geldiği için bölüm yeniden yazıldı: ödemenin doğrudan işletmeye
-// yapıldığı ve emanet uygulanmadığı açıkça söyleniyor. Borcun sebebi olan cümle
-// artık metinde yok, dolayısıyla kayıt SİLİNDİ (kütük sözleşmesi §(a)).
+// hâline geldiği için bölüm yeniden yazıldı. Borcun sebebi olan cümle artık
+// metinde yok, dolayısıyla kayıt SİLİNDİ (kütük sözleşmesi §(a)).
+//
+// DÜZELTMENİN KAPSAMI (ikinci tur): ilk yazımda cümle "Platform üzerinden
+// yapılan satışlarda ... emanet uygulanmaz" şeklindeydi ve bu kez TERS yönde
+// yanlıştı — ders (booking), deneme bileti ve çalışma rezervasyonu akışlarında
+// kod gerçekten emanet uyguluyor (`backend/services/escrow.py`: PAYMENT_SPEC,
+// EXAM_SPEC, STUDY_SPEC). Bu akışlar üretimde iyzico ile kapalı olsa da
+// (`core/payments/iyzico.py::supports_marketplace = False`) metin olduğu gibi
+// yanlıştı. İfade MAĞAZA satışlarıyla sınırlandırıldı; kapalı akışların ödeme
+// modeli metinde hiç tarif edilmiyor. Nöbetçi testi her iki yönü de korur:
+// eski "tüm ödemeler" ifadesi geri gelemez, yeni ifade de platform geneline
+// genişleyemez.
 //
 // Kütük yapısı ve nöbetçi testi BİLEREK duruyor: bir sonraki bilinen
 // tutarsızlık çıktığında buraya kayıt eklenir.
