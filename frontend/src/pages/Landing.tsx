@@ -15,6 +15,7 @@ import { HScroll } from "@/components/HScroll";
 import { DashboardHeader } from "@/components/DashboardHeader";
 import { PublicNavbar } from "@/components/PublicNavbar";
 import { CategoryBar, type CategoryKey } from "@/components/CategoryBar";
+import { SiteFooter } from "@/components/SiteFooter";
 import { BigSearch, CompactSearch } from "@/components/HeroSearch";
 import { useTutorSearch } from "@/hooks/useTutorSearch";
 import { useLibrarySearch } from "@/hooks/useLibraries";
@@ -143,7 +144,7 @@ export default function Landing() {
       </Seo>
       <Navbar center={center} bottom={bottom} expanded={expanded} />
       <CategoryContent active={active} />
-      <Footer />
+      <SiteFooter />
     </div>
   );
 }
@@ -392,39 +393,5 @@ export function AnnouncementBanner() {
   );
 }
 
-/* ─── footer ─────────────────────────────────────────────── */
-
-function Footer() {
-  const token = useAuthStore((s) => s.token);
-  const { data: user } = useCurrentUser();
-  const loggedIn = !!token && !!user;
-
-  const linkCls = "transition hover:text-slate-900 dark:hover:text-white";
-
-  return (
-    <footer className="border-t border-slate-100 bg-white py-10 dark:border-slate-800 dark:bg-slate-900">
-      <div className="mx-auto flex max-w-[1216px] flex-col items-center justify-between gap-4 px-6 sm:flex-row">
-        <Link to="/" className="flex items-center gap-2 transition hover:opacity-90">
-          <img src="/logo.png" alt="Adana Özel Ders Logo" className="h-8 sm:h-10 w-auto object-contain grayscale opacity-70 hover:grayscale-0 hover:opacity-100 transition" />
-        </Link>
-        <div className="text-center text-sm text-slate-500 dark:text-slate-400 sm:text-right">
-          <p>© {new Date().getFullYear()} Adana Özel Ders. Tüm hakları saklıdır.</p>
-          <div className="mt-4 flex flex-wrap justify-center gap-x-4 gap-y-2 sm:justify-end">
-            {/* Destek: mesafeli satışta erişilebilir iletişim kanalı zorunlu. */}
-            <Link to={ROUTES.faq} className={linkCls}>SSS</Link>
-            <Link to={ROUTES.contact} className={linkCls}>İletişim</Link>
-            {/* Yasal: tek giriş noktası — diğer 4 belge bu sayfaların kenar menüsünden. */}
-            <Link to={ROUTES.privacy} className={linkCls}>Gizlilik</Link>
-            <Link to={ROUTES.terms} className={linkCls}>Şartlar</Link>
-            {!loggedIn && (
-              <>
-                <Link to="?modal=login" className={linkCls}>Giriş Yap</Link>
-                <Link to="?modal=register" className={linkCls}>Kayıt Ol</Link>
-              </>
-            )}
-          </div>
-        </div>
-      </div>
-    </footer>
-  );
-}
+/* Footer artık ortak `components/SiteFooter.tsx` — mağaza ve PublicShell ile
+   aynı bileşen (linkler + iyzico ödeme rozeti tek yerden yönetilir). */
