@@ -91,6 +91,21 @@ export function getErrorMessage(
       const first = detail[0];
       if (first?.msg) return String(first.msg);
     }
+
+    // Yapılandırılmış (obje) detail. Bazı uçlar makinece okunabilir bir gövde
+    // döndürür ve içine KULLANICI İÇİN yazılmış bir `message` koyar — ör. ödeme
+    // kolu kapalıyken `{code, branch, message}`
+    // (backend/services/payment_gates.py::assert_branch_open). Bu dal olmadan
+    // obje detail hiçbir kontrole uymuyor ve fonksiyon çağıranın genel
+    // fallback'ine düşüyordu: sunucunun açıkladığı "neden" sessizce kayboluyordu.
+    //
+    // Bilinçli olarak duruma (503) değil DETAIL BİÇİMİNE bağlı: aynı desendeki
+    // her uç kendiliğinden faydalansın. Durum-kodu dallarından SONRA duruyor ki
+    // 429/409/403/401'in mevcut davranışı aynen korunsun.
+    if (detail && typeof detail === "object" && !Array.isArray(detail)) {
+      const message = (detail as { message?: unknown }).message;
+      if (typeof message === "string" && message.trim()) return message;
+    }
   }
   return fallback;
 }
