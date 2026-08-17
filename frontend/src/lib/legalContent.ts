@@ -11,25 +11,28 @@ import { SITE_NAME } from "@/lib/seo";
  * Önceki plan limited şirketti; metinlerde bir süre var olmayan bir tüzel kişi
  * (`… Ltd. Şti.`) satıcı ve veri sorumlusu olarak görünüyordu — düzeltildi.
  *
- * TODO(lansman): boş alanlar Mesafeli Sözleşmeler Yönetmeliği m.5 uyarınca
- * ZORUNLUDUR, lansmandan önce doldurulmalı:
- *   - `address`: vergi kaydındaki AÇIK adres (kayıt hangi adresteyse o; farklı
- *     bir adres göstermek yanlış beyandır — adres değişecekse önce vergi
- *     dairesine bildirilmeli)
- *   - `phone`: erişilebilir telefon (mesafeli satışta zorunlu)
- *   - `mersis`: ticaret sicili tescili ONAY SÜRECİNDE; numara gelince yazılacak
- *   - `taxOffice`: vergi dairesi adı
+ * Mesafeli Sözleşmeler Yönetmeliği m.5'in zorunlu kıldığı alanlar (açık adres,
+ * telefon, vergi dairesi/numarası) DOLDURULDU — bunlar vergi kaydındaki
+ * bilgilerdir. Adres değişecekse önce vergi dairesine bildirilmeli; kayıttan
+ * farklı bir adres göstermek yanlış beyandır.
+ *
+ * TODO(lansman): `mersis` ticaret sicili tescili ONAY SÜRECİNDE; numara gelince
+ * yazılacak. Boş kaldığı sürece `operatorIdentity()` bu satırı hiç basmaz.
  * `kep` şahıs şirketi için ZORUNLU DEĞİLDİR (sermaye şirketlerine zorunlu);
  * alınırsa `@…kep.tr` uzantılı gerçek KEP adresi yazılmalı — normal e-posta değil.
  */
 export const OPERATOR = {
   name: SITE_NAME,
   entity: "Serhat Kıyar Çukurova Dijital Pazarlama ve Yazılım",
-  address: "Adana, Türkiye",
+  address: "Emek Mah. Oktar Cirit Cad. No: 81 D: 201 Ceyhan/Adana",
   email: "bilgi@adanaozelders.com.tr",
-  phone: "",
+  /** Ekranda ve yasal metinlerde okunacak biçim. */
+  phone: "+90 539 879 63 69",
+  /** `tel:` bağlantısı için boşluksuz biçim — telefon uygulamaları boşluklu
+   *  numarayı bazı platformlarda yanlış ayrıştırır, bu yüzden ayrı tutulur. */
+  phoneHref: "+905398796369",
   taxNumber: "5590521517",
-  taxOffice: "",
+  taxOffice: "Ceyhan Vergi Dairesi Müdürlüğü",
   mersis: "",
   kep: "",
 } as const;
