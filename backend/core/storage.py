@@ -266,10 +266,47 @@ def is_allowed_resource(filename: str | None) -> bool:
     return resource_ext(filename) in ALLOWED_RESOURCE_EXTS
 
 
+# Alfa kanalı TAŞIYAN Pillow modları. Paletli ("P") görüntü listede yoktur ve
+# ayrı ele alınır: orada şeffaflık piksel verisinde değil, `info["transparency"]`
+# alanında durur.
+_ALFA_MODLARI = ("RGBA", "RGBa", "LA", "La", "PA")
+
+
+def flatten_on_white(img: Image.Image) -> Image.Image:
+    """Şeffaf görüntüyü BEYAZ zemine yapıştırıp RGB döndürür.
+
+    WebP'ye yazmadan önce doğrudan ``convert("RGB")`` demek şeffaf alanları
+    SİYAH yapıyordu: alfa düşünce geriye o piksellerin renk değeri kalır ve
+    tam şeffaf piksellerde bu neredeyse her zaman (0,0,0)'dır. Ürün kapakları
+    ve profil fotoğrafları beyaz zeminde gösterildiği için doğru zemin beyazdır.
+
+    Paletli görüntüde ayrıca doğrudan ``P → RGB`` dönüşümü Pillow'un "Palette
+    images with Transparency expressed in bytes should be converted to RGBA
+    images" uyarısını tetikler ve şeffaflık bilgisini sessizce atar; ``P → RGBA``
+    üzerinden geçmek hem uyarıyı hem kaybı ortadan kaldırır.
+
+    Şeffaflığı olmayan görüntü OLDUĞU GİBİ (aynı nesne, aynı mod) döner —
+    çağıranın kendi mod dönüşümü ve mevcut davranışı değişmez.
+    """
+    seffaf = img.mode in _ALFA_MODLARI or "transparency" in img.info
+    if not seffaf:
+        return img
+    rgba = img if img.mode == "RGBA" else img.convert("RGBA")
+    zemin = Image.new("RGB", rgba.size, (255, 255, 255))
+    zemin.paste(rgba, mask=rgba.getchannel("A"))
+    return zemin
+
+
 def optimize_image(file_bytes: bytes, size: tuple[int, int] = (256, 256)) -> bytes:
     """Görseli kare şeklinde kırpar (crop) ve WebP formatında küçültür."""
     img = Image.open(io.BytesIO(file_bytes))
-    
+
+    # Düzleştirme crop/resize'dan ÖNCE yapılır. LANCZOS renk ve alfa kanallarını
+    # ayrı ayrı interpole eder; şeffaf piksellerin renk değeri (0,0,0) olduğu
+    # için düzleştirme sonraya bırakılsaydı yarı saydam kenarlarda koyu bir hale
+    # kalırdı. Şeffaflığı olmayan görüntüde bu çağrı hiçbir şey yapmaz.
+    img = flatten_on_white(img)
+
     # Crop to center square
     min_dim = min(img.size)
     left = (img.size[0] - min_dim) / 2
@@ -293,6 +330,8 @@ def optimize_photo(file_bytes: bytes, max_dim: int = 1600, quality: int = 82) ->
     """Galeri/banner görseli: en-boy oranını KORUR, yalnız büyükse küçültür (max_dim'e
     sığdırır) ve WebP'ye çevirir. Logo/avatar'ın kare-crop'undan farkı budur."""
     img = Image.open(io.BytesIO(file_bytes))
+    # Küçültmeden ÖNCE beyaz zemine düzleştir (gerekçe: `optimize_image`).
+    img = flatten_on_white(img)
     img.thumbnail((max_dim, max_dim), Image.Resampling.LANCZOS)
     if img.mode != "RGB":
         img = img.convert("RGB")
