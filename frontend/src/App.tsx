@@ -357,6 +357,8 @@ function App() {
           <Route path={PATHS.distanceSales} element={<LegalPage doc="distance-sales" />} />
           <Route path={PATHS.refundPolicy} element={<LegalPage doc="refund" />} />
           <Route path={PATHS.cookiePolicy} element={<LegalPage doc="cookies" />} />
+          <Route path={PATHS.preliminaryInfo} element={<LegalPage doc="preliminary-info" />} />
+          <Route path={PATHS.about} element={<LegalPage doc="about" />} />
 
           {/* ── Destek (public) ── */}
           <Route path={PATHS.faq} element={<FaqPage />} />

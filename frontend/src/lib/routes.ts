@@ -46,6 +46,9 @@ export const PATHS = {
   distanceSales: "/mesafeli-satis-sozlesmesi",
   refundPolicy: "/iptal-ve-iade-politikasi",
   cookiePolicy: "/cerez-politikasi",
+  // Mesafeli satış sözleşmesi bu forma atıf yapar; sipariş öncesi özet niteliğindedir.
+  preliminaryInfo: "/on-bilgilendirme-formu",
+  about: "/hakkimizda",
 
   // ── Destek (public, SEO) — mesafeli satışta erişilebilir iletişim zorunlu ──
   faq: "/sss",
@@ -190,6 +193,8 @@ export const ROUTES = {
   distanceSales: PATHS.distanceSales,
   refundPolicy: PATHS.refundPolicy,
   cookiePolicy: PATHS.cookiePolicy,
+  preliminaryInfo: PATHS.preliminaryInfo,
+  about: PATHS.about,
 
   // ── Destek ──
   faq: PATHS.faq,
@@ -297,6 +302,8 @@ export const LEGAL_ROUTES = {
   "distance-sales": PATHS.distanceSales,
   refund: PATHS.refundPolicy,
   cookies: PATHS.cookiePolicy,
+  "preliminary-info": PATHS.preliminaryInfo,
+  about: PATHS.about,
 } as const;
 
 // Eğitmen için kanonik slug. Backend `slug` döner (isim-soyisim-{id}); yoksa id'ye düş.

@@ -12,7 +12,7 @@ import { LEGAL_ROUTES } from "@/lib/routes";
 
 describe("legalContent", () => {
   it("her belge başlık, açıklama ve en az 4 bölüm içerir", () => {
-    expect(LEGAL_DOCS.length).toBe(6);
+    expect(LEGAL_DOCS.length).toBe(8);
     for (const doc of LEGAL_DOCS) {
       expect(doc.title.length).toBeGreaterThan(5);
       expect(doc.description.length).toBeGreaterThan(30);
@@ -46,6 +46,121 @@ describe("legalContent", () => {
     expect(getLegalDoc("kvkk").title).toContain("KVKK");
     // @ts-expect-error — bilinçli geçersiz id
     expect(() => getLegalDoc("yok-boyle-belge")).toThrow();
+  });
+
+  /* ── iyzico başvurusunun zorunlu tuttuğu sayfalar ── */
+
+  it("iyzico'nun istediği belgelerin hepsi kayıtlıdır", () => {
+    // Bu liste bir "istek" değil, ödeme kuruluşunun başvuru şartı. Belgelerden
+    // biri kayıttan düşerse başvuru reddedilir; testin görevi bunu görmek.
+    for (const id of [
+      "about",
+      "preliminary-info",
+      "distance-sales",
+      "refund",
+      "privacy",
+      "kvkk",
+    ] as const) {
+      const doc = getLegalDoc(id);
+      expect(doc.sections.length).toBeGreaterThanOrEqual(4);
+      expect(LEGAL_ROUTES[id]).toMatch(/^\//);
+    }
+  });
+
+  it("mesafeli satış sözleşmesinin atıf yaptığı Ön Bilgilendirme Formu GERÇEKTEN vardır", () => {
+    // Sözleşme "bu sözleşmeyi ve Ön Bilgilendirme Formu'nu okudum" diyor.
+    // Atıf yapılan belge yoksa metin var olmayan bir belgeye onay aldırıyor
+    // demektir — regresyonun tam olarak bu olması bekleniyor.
+    const sozlesme = getLegalDoc("distance-sales");
+    const tumMetin = sozlesme.sections
+      .flatMap((s) => s.blocks)
+      .flatMap((b) => (b.type === "p" ? [b.text] : b.items))
+      .join(" ");
+    expect(tumMetin).toContain("Ön Bilgilendirme Formu");
+
+    // Atıf edilen belge kayıtlı ve rotası tanımlı olmalı.
+    const form = LEGAL_DOCS.find((d) => d.id === "preliminary-info");
+    expect(form, "Ön Bilgilendirme Formu LEGAL_DOCS'ta kayıtlı değil").toBeDefined();
+    expect(LEGAL_ROUTES["preliminary-info"]).toBe("/on-bilgilendirme-formu");
+  });
+
+  it("ön bilgilendirme formu mesafeli satış sözleşmesiyle çelişmez", () => {
+    const metin = (id: Parameters<typeof getLegalDoc>[0]) =>
+      getLegalDoc(id)
+        .sections.flatMap((s) => s.blocks)
+        .flatMap((b) => (b.type === "p" ? [b.text] : b.items))
+        .join(" ");
+
+    const form = metin("preliminary-info");
+    const sozlesme = metin("distance-sales");
+
+    // İki metin de aynı süreleri, aynı istisnaları ve aynı masraf kuralını
+    // söylemeli; biri güncellenip diğeri unutulursa test kırılır.
+    for (const ortak of ["ON DÖRT GÜN", "m.15/1-e", "m.15/1-ğ", "OTUZ GÜN"]) {
+      expect(form, `formda eksik: ${ortak}`).toContain(ortak);
+      expect(sozlesme, `sözleşmede eksik: ${ortak}`).toContain(ortak);
+    }
+    // İade masrafının satıcıda olduğu iki metinde de yazılı olmalı.
+    expect(form).toMatch(/İADE MASRAFI SATICIYA AİTTİR|iade kargo bedeli alınmaz/);
+    expect(sozlesme).toMatch(/İADE MASRAFI SATICI'YA AİTTİR|iade kargo bedeli talep edilmez/);
+  });
+
+  it("fiziksel ürün satışı yasal metinlerde kapsanmıştır", () => {
+    // Regresyon: mağaza (basılı kitap + kendi kurye filosu) aylarca çalışır
+    // durumdaydı ama yasal metinlerde "kargo/teslim/kitap" hiç geçmiyordu.
+    for (const id of ["distance-sales", "refund"] as const) {
+      const metin = getLegalDoc(id)
+        .sections.flatMap((s) => s.blocks)
+        .flatMap((b) => (b.type === "p" ? [b.text] : b.items))
+        .join(" ")
+        .toLocaleLowerCase("tr");
+      for (const kelime of ["kitap", "teslim", "kargo", "cayma"]) {
+        expect(metin, `${id} belgesinde "${kelime}" geçmiyor`).toContain(kelime);
+      }
+    }
+  });
+
+  it("OPERATOR satıcı kimliği alanları doludur (mesafeli satışta zorunlu)", () => {
+    // MERSİS bilerek hariç: ticaret sicili tescili sürüyor ve boşken
+    // operatorIdentity() o satırı hiç basmıyor.
+    for (const alan of [
+      "entity",
+      "address",
+      "email",
+      "phone",
+      "phoneHref",
+      "taxNumber",
+      "taxOffice",
+    ] as const) {
+      expect(OPERATOR[alan], `OPERATOR.${alan} boş`).toBeTruthy();
+      expect(OPERATOR[alan].trim().length).toBeGreaterThan(3);
+    }
+    // Adres yalnız "Adana, Türkiye" gibi genel bir ifade olamaz; açık adres
+    // (mahalle/cadde/kapı no) gerekir.
+    expect(OPERATOR.address.length).toBeGreaterThan(25);
+    // tel: bağlantısı boşluksuz ve + ile başlamalı.
+    expect(OPERATOR.phoneHref).toMatch(/^\+\d{10,15}$/);
+
+    const kimlik = operatorIdentity();
+    for (const parca of ["Unvan:", "Adres:", "Vergi No:", "Telefon:", "E-posta:"]) {
+      expect(kimlik, `kimlik satırında eksik: ${parca}`).toContain(parca);
+    }
+    // MERSİS boşken satır hiç basılmamalı ("MERSİS: —" gibi yarım ifade yok).
+    expect(kimlik).not.toContain("MERSİS");
+  });
+
+  it("hiçbir yasal metinde vergi ORANI yazmaz (mali müşavir onayı bekliyor)", () => {
+    // "KDV dâhildir" demek serbest; oran yazmak sonradan düzeltilmesi gereken
+    // bir taahhüt olur.
+    for (const doc of LEGAL_DOCS) {
+      const metin = doc.sections
+        .flatMap((s) => s.blocks)
+        .flatMap((b) => (b.type === "p" ? [b.text] : b.items))
+        .join(" ");
+      expect(metin, `${doc.id} belgesinde vergi oranı var`).not.toMatch(
+        /%\s*\d+|yüzde\s+\d+/i
+      );
+    }
   });
 
   it("LEGAL_NAV (hafif footer listesi) legalContent ile birebir tutarlıdır", () => {
