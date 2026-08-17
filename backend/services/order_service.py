@@ -379,6 +379,13 @@ async def validate_cart(
             for b in blocked
         ]
 
+    # Dijital ürün kapısı da ödeme denemesinden ÖNCE sepette söylensin —
+    # checkout'ta 503 görmek kullanıcıyı boşa yönlendirir.
+    if await payment_gates.digital_blocked_for_kinds(
+        db, [ln["kind"] for ln in lines]
+    ):
+        issues = list(issues) + [payment_gates.DIGITAL_CLOSED_MESSAGE]
+
     return CartValidateOut(
         items=[
             OrderItemOut(
@@ -422,6 +429,14 @@ async def create_order(
     # denemesinden önce zaten raporlar; burası son savunma.
     await payment_gates.assert_cart_branches_open(
         db, [ln["seller_type"] for ln in lines]
+    )
+
+    # Ürün tipi kapısı: dijital ürün satışı ilk sürümde kapsam dışıdır ve
+    # yasal metinler dijital ürüne ilişkin hüküm İÇERMEZ. Kol kapısı bunu
+    # yakalamaz — PLATFORM satıcı tipiyle açılmış bir dijital ürün `store`
+    # koluna düşer ve o kol varsayılan olarak AÇIKTIR.
+    await payment_gates.assert_digital_products_allowed(
+        db, [ln["kind"] for ln in lines]
     )
 
     subtotal, shipping, _total, has_physical = compute_totals(lines)

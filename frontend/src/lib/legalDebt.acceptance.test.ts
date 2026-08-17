@@ -51,8 +51,43 @@ describe("yasal metin borcu kütüğü", () => {
   it("lansmanı engelleyen borç bilinen listeyle aynı", () => {
     // Yeni bir lansman engelleyicisi eklenirse burada görünür ve teslim
     // özetinde raporlanması gerektiği hatırlatılır.
-    expect(launchBlockingLegalDebt().map((d) => d.id)).toEqual([
-      "escrow-tum-odemeler",
-    ]);
+    //
+    // 17 Ağu 2026: `escrow-tum-odemeler` KAPANDI (metin düzeltildi), liste boş.
+    // Boş liste "borç yok" demektir; yeni bir borç eklenirse bu test kırılır ve
+    // raporlanmaya zorlanır.
+    expect(launchBlockingLegalDebt().map((d) => d.id)).toEqual([]);
+  });
+
+  /* ── Kapanan borcun geri gelmemesi ── */
+
+  it("iade politikası artık 'tüm ödemeler emanete alınır' DEMİYOR", () => {
+    // Nöbetçinin yönü tersine döndü: eskiden "cümle hâlâ duruyor mu" diye
+    // bakıyorduk (borç görünür kalsın diye), artık "cümle geri geldi mi" diye
+    // bakıyoruz. Sanal POS başvurusunda emanet modeliyle çalışılmadığı beyan
+    // edildiği için bu cümlenin dönmesi beyanla çelişki üretir.
+    const bolum = sectionText("refund", "genel");
+    expect(bolum).not.toContain("tüm ödemeler önce emanete alınır");
+    expect(bolum).toContain("EMANET (ESCROW) MODELİ UYGULANMAZ");
+  });
+
+  it("yasal metinlerde dijital ürün satışına ilişkin hüküm YOK", () => {
+    // Dijital ürün satışı ilk sürümde kapsam dışı (backend'de
+    // `digital_products_live` bayrağı kapalı + checkout kapısı). Metinler bu
+    // kararla uyuşmalı: olmayan bir ürün için cayma istisnası yazmak, sanal
+    // POS beyanıyla çelişir.
+    for (const doc of LEGAL_DOCS) {
+      const metin = JSON.stringify(doc);
+      for (const yasak of [
+        "dijital ürün",
+        "Dijital ürün",
+        "indirilebilir ders notu",
+        "m.15/1-ğ",
+      ]) {
+        expect(
+          metin.includes(yasak),
+          `${doc.id} belgesinde dijital ürün hükmü var: "${yasak}"`,
+        ).toBe(false);
+      }
+    }
   });
 });

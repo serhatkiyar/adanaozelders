@@ -96,7 +96,10 @@ describe("legalContent", () => {
 
     // İki metin de aynı süreleri, aynı istisnaları ve aynı masraf kuralını
     // söylemeli; biri güncellenip diğeri unutulursa test kırılır.
-    for (const ortak of ["ON DÖRT GÜN", "m.15/1-e", "m.15/1-ğ", "OTUZ GÜN"]) {
+    // NOT: `m.15/1-ğ` (anında teslim edilen dijital ürün istisnası) bilerek
+    // listede YOK — dijital ürün satışı ilk sürümde kapsam dışı bırakıldığı
+    // için o hüküm iki metinden de çıkarıldı.
+    for (const ortak of ["ON DÖRT GÜN", "m.15/1-e", "OTUZ GÜN"]) {
       expect(form, `formda eksik: ${ortak}`).toContain(ortak);
       expect(sozlesme, `sözleşmede eksik: ${ortak}`).toContain(ortak);
     }

@@ -31,25 +31,25 @@ export interface LegalDebtEntry {
   launchBlocker: boolean;
 }
 
-export const LEGAL_DEBT: LegalDebtEntry[] = [
-  {
-    id: "escrow-tum-odemeler",
-    doc: "refund",
-    sectionId: "genel",
-    currentSnippet: "Platformdaki tüm ödemeler önce emanete alınır",
-    problem:
-      "Ödeme kolları artık bağımsız (PK-1). Bugün açık olan tek kol mağaza — " +
-      "platformun KENDİ malının satışı, yani doğrudan satış: para platformun " +
-      "kendi cirosudur, emanet edilmez. Pazaryeri kolları (eğitmen dersi/ürünü, " +
-      "kütüphane bileti) iyzico Pazaryeri entegrasyonu (PK-2) devreye girene " +
-      "kadar kapalı. Dolayısıyla 'tüm ödemeler emanete alınır' cümlesi bugün " +
-      "hiçbir kol için doğru değil ve tüketiciye yerine getirilmeyen bir " +
-      "koruma vaadi veriyor.",
-    blockedBy: "Avukat onayı (plan §14b-9: cayma/iade metinleri)",
-    owner: "PK-7 (ETAHS uyum paketi) — metin kol bazlı ayrılacak",
-    launchBlocker: true,
-  },
-];
+// KAPANAN BORÇ — `escrow-tum-odemeler` (17 Ağu 2026)
+//
+// İptal ve iade politikasının 1. bölümü "Platformdaki tüm ödemeler önce
+// emanete alınır" diyordu; ödeme kolları bağımsızlaştıktan sonra (PK-1) bu
+// cümle hiçbir kol için doğru değildi ve tüketiciye yerine getirilmeyen bir
+// koruma vaadi veriyordu. Kayıt, "avukat onayı gelmeden dokunulmaz" gerekçesiyle
+// açık tutuluyordu.
+//
+// Kapanma sebebi: sanal POS başvurusunda platformun eğitim hizmeti satmadığı,
+// üçüncü kişi adına tahsilat yapmadığı ve emanet modeliyle çalışmadığı BEYAN
+// EDİLDİ. Yasal metnin bu beyanla birebir uyuşması bir tercih değil zorunluluk
+// hâline geldiği için bölüm yeniden yazıldı: ödemenin doğrudan işletmeye
+// yapıldığı ve emanet uygulanmadığı açıkça söyleniyor. Borcun sebebi olan cümle
+// artık metinde yok, dolayısıyla kayıt SİLİNDİ (kütük sözleşmesi §(a)).
+//
+// Kütük yapısı ve nöbetçi testi BİLEREK duruyor: bir sonraki bilinen
+// tutarsızlık çıktığında buraya kayıt eklenir.
+
+export const LEGAL_DEBT: LegalDebtEntry[] = [];
 
 /** Lansmanı engelleyen açık borçlar. */
 export function launchBlockingLegalDebt(): LegalDebtEntry[] {

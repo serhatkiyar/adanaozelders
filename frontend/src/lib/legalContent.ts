@@ -448,11 +448,10 @@ const DISTANCE_SALES: LegalDoc = {
           "Özel ders hizmeti (online veya yüz yüze; süre ve tarih rezervasyonda belirtilir).",
           "Deneme sınavı oturumu katılım hakkı (oturum tarihi, türü ve yeri ilanda belirtilir).",
           "Kütüphane çalışma alanı saatlik kullanım hakkı (tarih ve saat aralığı rezervasyonda belirtilir).",
-          "Platform mağazasından sipariş edilen BASILI KİTAP ve benzeri fiziksel ürünler (ürün adı, adedi ve fiyatı sipariş özetinde belirtilir).",
-          "Eğitmenler tarafından mağazada satışa sunulan DİJİTAL ürünler (ders notu, çözüm dosyası vb.; sipariş sonrası hesabınızdan indirilir)."
+          "Platform mağazasından sipariş edilen BASILI KİTAP ve benzeri fiziksel ürünler (ürün adı, adedi ve fiyatı sipariş özetinde belirtilir)."
         ),
         p(
-          "Hizmetlerde ve dijital ürünlerde Platform aracı hizmet sağlayıcı, basılı kitap satışında ise doğrudan satıcı sıfatıyla hareket eder. Her siparişte hangi sıfatla hareket edildiği sipariş özetinde görünür."
+          "Hizmetlerde Platform aracı hizmet sağlayıcı, basılı kitap satışında ise doğrudan satıcı sıfatıyla hareket eder. Her siparişte hangi sıfatla hareket edildiği sipariş özetinde görünür."
         ),
       ],
     },
@@ -476,8 +475,7 @@ const DISTANCE_SALES: LegalDoc = {
           "Özel ders: rezervasyonda belirtilen tarih ve saatte, online ise Platform içindeki görüntülü görüşme penceresiyle, yüz yüze ise kararlaştırılan buluşma noktasında ifa edilir.",
           "Deneme sınavı oturumu: ilanda belirtilen tarihte ilgili kurumda gerçekleşir; ALICI, girişte Platformdaki QR biletini okutarak katılımını doğrular.",
           "Çalışma alanı: rezerve edilen saat aralığında ilgili kurumda kullanılır; girişte QR kod doğrulaması yapılır.",
-          "Hizmet ifa edildikten sonra bedel, platform komisyonu düşülerek HİZMET SAĞLAYICI'ya aktarılır.",
-          "Dijital ürünler: ödeme onaylandıktan sonra ALICI'nın hesabındaki sipariş detayından indirilebilir hâle gelir; ayrıca fiziksel teslimat yapılmaz."
+          "Hizmet ifa edildikten sonra bedel, platform komisyonu düşülerek HİZMET SAĞLAYICI'ya aktarılır."
         ),
       ],
     },
@@ -515,7 +513,7 @@ const DISTANCE_SALES: LegalDoc = {
           "FİZİKSEL ÜRÜNLERDE (basılı kitap) durum farklıdır: Mesafeli Sözleşmeler Yönetmeliği m.9 uyarınca ALICI, ürünü teslim aldığı günden itibaren ON DÖRT GÜN içinde hiçbir gerekçe göstermeksizin ve cezai şart ödemeksizin sözleşmeden cayabilir. Cayma hakkı, sözleşmenin kurulmasından teslime kadar olan sürede de kullanılabilir. Cayma bildirimini hesabınızdaki sipariş detayından iade talebi oluşturarak veya aşağıdaki iletişim kanallarından yazılı olarak iletebilirsiniz."
         ),
         p(
-          "Basılı kitapta cayma hakkının ÖNEMLİ BİR İSTİSNASI vardır: Yönetmelik m.15/1-e uyarınca, malın tesliminden sonra ambalaj, bant, mühür, paket gibi koruyucu unsurları açılmış olması hâlinde maddi ortamda sunulan kitaplara ilişkin sözleşmelerde cayma hakkı kullanılamaz. Bu nedenle iade etmeyi düşündüğünüz kitabın koruyucu ambalajını açmamanız gerekir. Aynı hüküm dijital içerik için de geçerlidir; ayrıca elektronik ortamda anında ifa edilen ve ALICI'ya anında teslim edilen dijital ürünlerde (indirilebilir ders notu vb.) Yönetmelik m.15/1-ğ uyarınca cayma hakkı bulunmaz."
+          "Basılı kitapta cayma hakkının ÖNEMLİ BİR İSTİSNASI vardır: Yönetmelik m.15/1-e uyarınca, malın tesliminden sonra ambalaj, bant, mühür, paket gibi koruyucu unsurları açılmış olması hâlinde maddi ortamda sunulan kitaplara ilişkin sözleşmelerde cayma hakkı kullanılamaz. Bu nedenle iade etmeyi düşündüğünüz kitabın koruyucu ambalajını açmamanız gerekir."
         ),
       ],
     },
@@ -582,17 +580,19 @@ const REFUND: LegalDoc = {
   updatedAt: "2026-08-17",
   sections: [
     {
-      // ⚠️ BİLİNEN YASAL METİN BORCU — `lib/legalDebt.ts::escrow-tum-odemeler`
-      // Aşağıdaki "tüm ödemeler emanete alınır" cümlesi ödeme kolları
-      // bağımsızlaştıktan sonra (PK-1) hiçbir kol için doğru değil. Metin
-      // BİLİNÇLİ OLARAK DEĞİŞTİRİLMEDİ: yasal metinler avukat onayına tabidir
-      // (plan §14b-9). Kütük + `legalDebt.acceptance.test.ts` bu borcun
-      // sessizce eskimesini engelliyor. Sahibi: PK-7.
+      // Bu bölüm, `lib/legalDebt.ts::escrow-tum-odemeler` kaydının konusuydu:
+      // eski metin "Platformdaki TÜM ödemeler önce emanete alınır" diyordu ve
+      // bu, ödeme kolları bağımsızlaştıktan sonra (PK-1) hiçbir kol için doğru
+      // değildi. Sanal POS başvurusunda platformun üçüncü kişi adına tahsilat
+      // yapmadığı beyan edildiği için cümle düzeltildi ve borç kaydı kapandı.
       id: "genel",
-      heading: "1. Genel Esaslar — Emanet (Escrow) Modeli",
+      heading: "1. Genel Esaslar — Ödeme ve İade Modeli",
       blocks: [
         p(
-          "Platformdaki tüm ödemeler önce emanete alınır; hizmet ifa edildiğinde hizmet sağlayıcıya aktarılır. Bu sayede hizmeti almadığınız durumlarda iade süreci basittir: emanetteki tutar hizmet sağlayıcıya hiç aktarılmadan size geri döner."
+          "Platform üzerinden yapılan satışlarda satıcı doğrudan işletmemizdir: ödemeniz işletmemize yapılır, üçüncü kişi adına tahsilat yapılmaz ve EMANET (ESCROW) MODELİ UYGULANMAZ. İade hakkının doğduğu hâllerde tutar, ödemeyi aldığımız işletme hesabından doğrudan ödeme yaptığınız karta geri gönderilir."
+        ),
+        p(
+          "İade koşulları satın aldığınız şeye göre değişir: fiziksel ürünlerde (basılı kitap) yasal cayma hakkı ve iade usulü 5. bölümde, hizmet niteliğindeki rezervasyonların iptal kuralları 2-4. bölümlerde açıklanmıştır."
         ),
       ],
     },
@@ -638,7 +638,7 @@ const REFUND: LegalDoc = {
       heading: "5. Mağaza Ürünleri — Basılı Kitap Teslimatı ve İadesi",
       blocks: [
         p(
-          "Mağazadan satın alınan basılı kitaplarda satıcı doğrudan işletmemizdir ve emanet (escrow) modeli uygulanmaz; yukarıdaki 1. bölümde anlatılan emanet akışı hizmet satışlarına ilişkindir."
+          "Mağazadan satın alınan basılı kitaplarda satıcı doğrudan işletmemizdir; ödeme işletmemize yapılır ve emanet modeli uygulanmaz (bkz. 1. bölüm)."
         ),
         p("TESLİMAT:"),
         list(
@@ -652,7 +652,6 @@ const REFUND: LegalDoc = {
           "Sipariş henüz kargoya verilmediyse/yola çıkmadıysa hesabınızdan iptal edebilirsiniz; ödemenin tamamı iade edilir.",
           "Ürünü teslim aldıktan sonra ON DÖRT GÜN içinde gerekçe göstermeden cayabilirsiniz (Mesafeli Sözleşmeler Yönetmeliği m.9).",
           "ANCAK: koruyucu ambalajı, bandı veya mührü AÇILMIŞ kitaplarda cayma hakkı kullanılamaz (Yönetmelik m.15/1-e). İade etmeyi düşünüyorsanız ambalajı açmayın.",
-          "İndirilebilir dijital ürünlerde (ders notu, çözüm dosyası) cayma hakkı bulunmaz — anında ifa edilen dijital içerik istisnası (Yönetmelik m.15/1-ğ).",
           "İADE KARGO BEDELİ BİZE AİTTİR: iade talebinizde bildirilen anlaşmalı taşıyıcıyı kullandığınızda sizden iade masrafı alınmaz; Adana içinde ürünü kuryemizle adresinizden ücretsiz aldırabilirsiniz.",
           "Cayma bildiriminden sonra ürünü on dört gün içinde göndermeniz gerekir. İade tutarı, ürün taşıyıcıya teslim edildiği (öngörülen taşıyıcı dışında gönderildiyse bize ulaştığı) tarihten itibaren on dört gün içinde kartınıza iade edilir."
         ),
@@ -797,7 +796,7 @@ const PRELIMINARY_INFO: LegalDoc = {
           "Platformda gösterilen tüm fiyatlar KDV DÂHİLDİR.",
           "Varsa kargo/teslimat bedeli sipariş özetinde ayrı satır olarak gösterilir ve toplama eklenir; gösterilmiyorsa teslimat ücretsizdir.",
           "Ödeme, iyzico altyapısı üzerinden kredi/banka kartı ile peşin yapılır. Kart bilgileriniz Platform tarafından saklanmaz.",
-          "Hizmet satışlarında bedel, hizmet ifa edilene kadar emanette (escrow) tutulur. Mağaza ürünlerinde emanet uygulanmaz; satış doğrudan satıştır.",
+          "Mağaza ürünlerinde satıcı doğrudan işletmemizdir; ödeme doğrudan işletmemize yapılır, emanet (escrow) uygulanmaz.",
           "Sipariş özetinde gösterilen tutar dışında sizden ek bir vergi veya masraf talep edilmez."
         ),
       ],
@@ -810,7 +809,7 @@ const PRELIMINARY_INFO: LegalDoc = {
           "Adana içi kitap siparişleri kendi araç ve kuryelerimizle elden teslim edilir; teslimde telefonunuza gelen doğrulama kodu kullanılır.",
           "Adana dışı siparişler anlaşmalı kargo firmasıyla gönderilir.",
           "Tahmini teslim günü sipariş özetinde gösterilir; teslim süresi her hâlükârda siparişin ulaşmasından itibaren OTUZ GÜNÜ geçemez. Bu sürede teslim yapılmazsa sözleşmeyi feshedebilir, varsa teslim masrafları dâhil ödediğiniz tutarın tamamını geri alabilirsiniz.",
-          "Hizmetler, rezervasyonda/ilanda belirtilen tarih ve saatte ifa edilir. İndirilebilir dijital ürünler ödeme onayından sonra hesabınızda erişime açılır."
+          "Hizmetler, rezervasyonda/ilanda belirtilen tarih ve saatte ifa edilir."
         ),
       ],
     },
@@ -832,7 +831,6 @@ const PRELIMINARY_INFO: LegalDoc = {
       blocks: [
         list(
           "Koruyucu ambalajı, bandı veya mührü AÇILMIŞ basılı kitaplar (Yönetmelik m.15/1-e). İade etmeyi düşünüyorsanız ambalajı açmayın.",
-          "Elektronik ortamda anında ifa edilen hizmetler ve anında teslim edilen dijital ürünler — indirilebilir ders notu, çözüm dosyası vb. (Yönetmelik m.15/1-ğ).",
           "Belirli bir tarih veya dönemde yapılması gereken, boş zamanın değerlendirilmesine ilişkin hizmetler; deneme sınavı oturumu ve çalışma alanı rezervasyonları bu kapsamdadır (Yönetmelik m.15/1-g). Buna rağmen ticari politikamız gereği, başlangıca 24 saatten fazla varsa iptal ve tam iade imkânı tanınır.",
           "Cayma süresi dolmadan, onayınızla ifasına başlanan ve tamamlanan hizmetler (Yönetmelik m.15/1-h) — tamamlanmış özel ders bu kapsamdadır."
         ),

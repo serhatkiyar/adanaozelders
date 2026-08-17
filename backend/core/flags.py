@@ -49,6 +49,7 @@ logger = logging.getLogger(__name__)
 FLAG_STORE_PAYMENTS_LIVE = "store_payments_live"
 FLAG_TUTOR_MARKETPLACE_PAYMENTS_LIVE = "tutor_marketplace_payments_live"
 FLAG_LIBRARY_MARKETPLACE_PAYMENTS_LIVE = "library_marketplace_payments_live"
+FLAG_DIGITAL_PRODUCTS_LIVE = "digital_products_live"
 FLAG_MINOR_BOOKINGS_LIVE = "minor_bookings_live"
 FLAG_INVOICING_LIVE = "invoicing_live"
 FLAG_MANUAL_PAYOUT_ENABLED = "manual_payout_enabled"
@@ -94,6 +95,22 @@ FLAG_SPECS: tuple[FlagSpec, ...] = (
         description=(
             "Kütüphane adına para tahsil edilir. Eğitmen pazaryeriyle aynı "
             "koşullara tabidir; ek olarak 5580 (etüt merkezi) görüşü beklenir."
+        ),
+        enforced=True,
+    ),
+    FlagSpec(
+        key=FLAG_DIGITAL_PRODUCTS_LIVE,
+        default=False,
+        label="Dijital ürün satışı (indirilebilir içerik)",
+        description=(
+            "İlk sürümde KAPSAM DIŞI. Sanal POS başvurusunda platformun eğitim "
+            "hizmeti satmadığı ve üçüncü kişi adına tahsilat yapmadığı beyan "
+            "edildi; yasal metinler (mesafeli satış sözleşmesi, ön bilgilendirme "
+            "formu) buna göre yazıldı ve dijital ürüne ilişkin hüküm İÇERMİYOR. "
+            "Bu bayrak açılırsa satış teknik olarak mümkün hale gelir ama "
+            "metinlerle çelişir — açmadan önce yasal metinler güncellenmelidir. "
+            "Satıcı tipinden BAĞIMSIZDIR: eğitmen ürünü ayrıca pazaryeri "
+            "koluna da tabidir, platformun kendi dijital ürünü ise yalnız buna."
         ),
         enforced=True,
     ),
