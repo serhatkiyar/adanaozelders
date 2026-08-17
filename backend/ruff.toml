@@ -84,6 +84,10 @@ ignore = [
 # --apply'dan önce gözden geçirilen şey o çıktıdır; parti parti ilerleyen
 # uygulama da created/skipped/errors sayımını ve run_id'yi konsola yazar.
 "scripts/import_kitapsec_books.py" = ["T201"]
+# ucdortbes kataloğu içe aktarma aracı: aynı gerekçe. Dry-run raporu ve
+# --apply'ın parti parti created/skipped/errors sayımı aracın çıktısıdır;
+# kullanıcı ilerlemeyi konsoldan izler.
+"scripts/import_ucdortbes.py" = ["T201"]
 # Stok defteri raporu: konsol tablosu aracın çıktısıdır (CSV opsiyoneldir).
 "scripts/stock_ledger_report.py" = ["T201"]
 # F30 gerçek tarayıcı kabulünün iki ucu. İkisi de **stdout'a tek satır JSON**
