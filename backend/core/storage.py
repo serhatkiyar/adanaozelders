@@ -354,12 +354,21 @@ def pad_to_square(
     Doğru davranış e-ticaret standardıdır: görsel oranı bozulmadan kareye
     SIĞDIRILIR, artan alan beyazla doldurulur.
 
-    - Görsel tuvalden küçükse BÜYÜTÜLMEZ (``thumbnail`` yalnız küçültür);
-      düşük çözünürlüklü bir kapağı 1200'e esnetmek onu bulanıklaştırırdı.
-      Yine de çıktı her zaman ``size×size``'dır — asıl amaç tek tip tuval.
+    **``size`` sabit çıktı boyutu DEĞİL, ÜST SINIRDIR.** Görsel önce ona
+    sığdırılır (yalnız küçültme; ``thumbnail`` büyütmez), sonra tuval
+    **kalan içeriğin uzun kenarı** kadar açılır. Yani çıktı hep karedir ama
+    boyutu girdiye göre değişir: 400×580 → 580×580, 2000×1000 → 1200×1200.
+
+    Neden sabit tuval değil: katalogdaki kapakların %98'i 400×580, yani üst
+    sınırın çok altında. Tuval her zaman 1200 olsaydı, büyütme yasağı yüzünden
+    400×580'lik içerik 1200'lük karenin ortasında küçücük kalırdı —
+    ``object-contain`` ile kutuya sığdırıldığında kapak görünürde yarı yarıya
+    küçülürdü (ölçüldü: kutu genişliğinin ~%69'undan ~%33'üne). İçerik kadar
+    tuval, hem pikselleri bozmaz hem görünen boyutu korur.
+
     - ``size`` verilmezse ``settings.PRODUCT_IMAGE_SIZE`` kullanılır.
     """
-    hedef = int(size or settings.PRODUCT_IMAGE_SIZE)
+    ust_sinir = int(size or settings.PRODUCT_IMAGE_SIZE)
     img = Image.open(io.BytesIO(file_bytes))
 
     # Düzleştirme resize'dan ÖNCE (gerekçe: `optimize_image`). Sıra ters
@@ -369,10 +378,12 @@ def pad_to_square(
     if img.mode != "RGB":
         img = img.convert("RGB")
 
-    img.thumbnail((hedef, hedef), Image.Resampling.LANCZOS)
+    img.thumbnail((ust_sinir, ust_sinir), Image.Resampling.LANCZOS)
 
-    tuval = Image.new("RGB", (hedef, hedef), (255, 255, 255))
-    tuval.paste(img, ((hedef - img.width) // 2, (hedef - img.height) // 2))
+    # Tuval = küçültme SONRASI içeriğin uzun kenarı (üst sınır değil).
+    kenar = max(img.width, img.height)
+    tuval = Image.new("RGB", (kenar, kenar), (255, 255, 255))
+    tuval.paste(img, ((kenar - img.width) // 2, (kenar - img.height) // 2))
 
     out_io = io.BytesIO()
     tuval.save(out_io, format="WebP", quality=quality)

@@ -125,22 +125,48 @@ def test_kare_gorselde_pad_YOKTUR():
 # ── Büyütme yasağı ──────────────────────────────────────────────────────────
 
 
-def test_kucuk_gorsel_BUYUTULMEZ_sadece_padlenir():
-    """400×600 içerik, 1200×1200 tuvalin ORTASINDA 400×600 olarak kalmalı.
+def test_katalog_olcusu_400x580_TUVALI_580_OLUR_ve_dikeyde_TAM_DOLAR():
+    """Kataloğun baskın ölçüsü (4593 kapak 400×580) → 580×580, doluluk %100 dikey.
 
-    Büyütme yapılsaydı içerik 800×1200'e çıkar ve sınır kutusu ~iki katına
-    çıkardı; ölçüm bunu doğrudan ayırt eder.
+    Tuval sabit ``PRODUCT_IMAGE_SIZE`` olsaydı çıktı 1200×1200 olur, 400×580
+    içerik karenin ortasında kalır ve ``object-contain`` ile kutuya
+    sığdırıldığında kapak görünürde yarı yarıya küçülürdü. Bu testin ayırt
+    ettiği tam olarak budur: uzun kenar tuvale EŞİT olmalı, altında değil.
     """
-    out = _webp_ac(storage.pad_to_square(_png(_serit_gorsel(400, 600))))
-    assert out.size == (1200, 1200)
+    out = _webp_ac(storage.pad_to_square(_png(_serit_gorsel(400, 580))))
+    assert out.size == (580, 580), f"tuval içeriğin uzun kenarı değil: {out.size}"
 
     sol, ust, sag, alt = _icerik_kutusu(out)
+    # Piksel büyütülmemiş: içerik hâlâ 400×580.
     assert abs((sag - sol) - 400) <= PAY, f"içerik genişliği büyütülmüş: {sag - sol}"
-    assert abs((alt - ust) - 600) <= PAY, f"içerik yüksekliği büyütülmüş: {alt - ust}"
-    # Ortalanmış: (1200-400)/2=400, (1200-600)/2=300
-    assert abs(sol - 400) <= PAY and abs(ust - 300) <= PAY, f"ortalanmamış: {(sol, ust)}"
-    assert _beyaz_mi(out.getpixel((600, 100))), "içerik üstü beyaz değil"
-    assert _beyaz_mi(out.getpixel((100, 600))), "içerik solu beyaz değil"
+    assert abs((alt - ust) - 580) <= PAY, f"içerik yüksekliği büyütülmüş: {alt - ust}"
+    # Uzun kenar tuvali doldurur: dikeyde beyaz bant YOK.
+    assert ust <= PAY and alt >= 580 - PAY, f"dikeyde pad var: {(ust, alt)}"
+    # Kısa kenar ortalanır: (580-400)/2 = 90.
+    assert abs(sol - 90) <= PAY and abs(sag - 490) <= PAY, f"yatay pad yanlış: {(sol, sag)}"
+    assert _beyaz_mi(out.getpixel((5, 290))), "sol kenar beyaz değil"
+    assert _beyaz_mi(out.getpixel((574, 290))), "sağ kenar beyaz değil"
+
+
+def test_ust_sinirdan_BUYUK_gorsel_once_sinira_kuculur():
+    """2000×1000 → üst sınıra sığdır (1200×600) → tuval uzun kenar = 1200."""
+    out = _webp_ac(storage.pad_to_square(_png(_serit_gorsel(2000, 1000))))
+    assert out.size == (1200, 1200), f"üst sınır uygulanmamış: {out.size}"
+
+    sol, ust, sag, alt = _icerik_kutusu(out)
+    assert sol <= PAY and sag >= 1200 - PAY, f"yatayda pad var: {(sol, sag)}"
+    # Yükseklik 1000*(1200/2000)=600 → alt/üstte (1200-600)/2=300px beyaz.
+    assert abs(ust - 300) <= PAY and abs(alt - 900) <= PAY, f"dikey pad yanlış: {(ust, alt)}"
+
+
+def test_kucuk_gorsel_pikselleri_BUYUTULMEZ():
+    """110×110 (katalogda gerçekten var) → 110×110; sınıra esnetilmez.
+
+    Büyütme yapılsaydı çıktı 1200×1200 olurdu ve düşük çözünürlüklü kapak
+    bulanıklaşırdı.
+    """
+    out = _webp_ac(storage.pad_to_square(_png(_serit_gorsel(110, 110))))
+    assert out.size == (110, 110), f"küçük görsel büyütülmüş: {out.size}"
 
 
 # ── Alfa: şeffaf alan beyaz, siyah DEĞİL ────────────────────────────────────
@@ -155,17 +181,17 @@ def test_seffaf_png_beyaz_zemine_duzlesir_siyah_alan_kalmaz():
     img = Image.new("RGBA", (600, 900), (0, 0, 0, 0))
     img.paste((255, 0, 0, 255), (0, 0, 300, 900))
     out = _webp_ac(storage.pad_to_square(_png(img)))
-    assert out.size == (1200, 1200)
+    assert out.size == (900, 900), f"tuval içeriğin uzun kenarı değil: {out.size}"
 
-    # ÖLÇÜM NOKTALARI İÇERİĞİN İÇİNDE OLMALI. 600×900 büyütülmez → tuvalde
-    # x 300..899, y 150..1049. Şeffaf sağ yarı x 600..899'dur. İlk yazımda
-    # noktalar (720,100)/(900,600)/(980,1100) seçilmişti; bunların hepsi PAD
-    # bölgesine düşüyordu ve test, düzleştirme kaldırıldığında bile geçiyordu
-    # (yalancı yeşil). Mutasyon provası bunu ortaya çıkardı.
-    for nokta in ((650, 200), (750, 600), (880, 1000)):
+    # ÖLÇÜM NOKTALARI İÇERİĞİN İÇİNDE OLMALI. 600×900 büyütülmez, tuval uzun
+    # kenar = 900 → içerik x 150..749, y 0..899. Şeffaf sağ yarı x 450..749'dur.
+    # İlk yazımda noktalar pad bölgesine düşüyordu ve test, düzleştirme
+    # kaldırıldığında bile geçiyordu (yalancı yeşil); mutasyon provası bunu
+    # ortaya çıkardı. Noktalar o yüzden içeriğin şeffaf yarısından seçilir.
+    for nokta in ((500, 100), (620, 450), (730, 800)):
         assert _beyaz_mi(out.getpixel(nokta)), f"{nokta} siyah/koyu kaldı: {out.getpixel(nokta)}"
     # Opak yarı bozulmamalı — "her şeyi beyaza boya" düzeltmesi de geçmesin.
-    r, g, b = out.getpixel((450, 600))
+    r, g, b = out.getpixel((300, 450))
     assert r >= 200 and g <= KOYU and b <= KOYU, f"opak kırmızı bozuldu: {(r, g, b)}"
 
 

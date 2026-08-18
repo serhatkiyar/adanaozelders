@@ -64,10 +64,13 @@ class Settings(BaseSettings):
     # kapsadığından presigned URL de bu adresle üretilmelidir. Boşsa
     # AWS_ENDPOINT_URL kullanılır (tek adresli kurulumlarda fark yoktur).
     S3_PUBLIC_ENDPOINT_URL: str = ""
-    # Ürün görsellerinin oturtulduğu KARE tuvalin kenar uzunluğu (piksel).
-    # Mağaza listesinde kutuların aynı yükseklikte durması için her ürün
-    # görseli — dikey kitap kapağı da, kare kırtasiye ürünü de — bu boyutta
-    # beyaz zeminli bir kareye PAD'lenir (kırpılmaz; bkz. `storage.pad_to_square`).
+    # Ürün görselleri için ÜST SINIR (piksel) — sabit çıktı boyutu DEĞİL.
+    # Her ürün görseli beyaz zeminli bir KAREYE pad'lenir (kırpılmaz), ama
+    # tuvalin kenarı bu sayı değil, küçültme sonrası İÇERİĞİN UZUN KENARIDIR:
+    # büyük görsel önce bu sınıra indirilir, küçük görsel olduğu gibi kalır
+    # (400×580 → 580×580, 2000×1000 → 1200×1200). Sabit tuval, katalogdaki
+    # 400×580'lik kapakları görünürde yarı yarıya küçültüyordu — gerekçe ve
+    # ölçüm `storage.pad_to_square` docstring'inde.
     PRODUCT_IMAGE_SIZE: int = 1200
 
     JWT_SECRET_KEY: str
