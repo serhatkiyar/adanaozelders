@@ -333,7 +333,7 @@ export default function ProductDetailPage() {
                       hero === url ? "border-indigo-500 ring-1 ring-indigo-500" : "border-slate-200 hover:border-slate-300 dark:border-slate-700"
                     }`}
                   >
-                    <img src={url} alt="" className="h-full w-full object-contain mix-blend-multiply dark:mix-blend-normal" />
+                    <img src={url} alt="" className="h-full w-full object-contain mix-blend-multiply" />
                   </button>
                 ))}
               </div>

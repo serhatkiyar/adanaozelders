@@ -29,7 +29,7 @@ export function ProductCard({
   return (
     <div className="group relative flex h-full flex-col overflow-hidden rounded-xl border border-slate-200 bg-white transition-colors hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700">
       {/* Görsel */}
-      <div className="relative flex aspect-square shrink-0 items-center justify-center bg-white p-4 dark:bg-slate-900/50">
+      <div className="relative flex aspect-square shrink-0 items-center justify-center bg-white p-4 dark:bg-slate-100">
         <Link to={ROUTES.storeProduct(product.slug)} className="absolute inset-0 z-0" aria-label={product.title} />
 
         {product.cover_url ? (
@@ -37,7 +37,7 @@ export function ProductCard({
             src={product.cover_url}
             alt={product.title}
             loading="lazy"
-            className="pointer-events-none z-0 max-h-full max-w-full object-contain mix-blend-multiply dark:mix-blend-normal"
+            className="pointer-events-none z-0 max-h-full max-w-full object-contain mix-blend-multiply"
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center text-slate-200 dark:text-slate-700">

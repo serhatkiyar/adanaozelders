@@ -277,7 +277,7 @@ export function OrderItemRow({
   const productLink = item.product_id ? ROUTES.storeProduct(item.product_id) : null;
   return (
     <div className="flex gap-4">
-      <div className="h-24 w-20 shrink-0 overflow-hidden rounded-lg border border-slate-100 bg-white dark:border-slate-800 dark:bg-slate-900/50">
+      <div className="h-24 w-20 shrink-0 overflow-hidden rounded-lg border border-slate-100 bg-white dark:border-slate-800 dark:bg-slate-100">
         {productLink ? (
           <Link to={productLink} className="block h-full w-full">
             <ItemImg item={item} />
@@ -343,7 +343,7 @@ function ItemImg({ item }: { item: OrderItemOut }) {
       <img
         src={item.cover_url}
         alt={item.title}
-        className="h-full w-full object-contain p-1.5 mix-blend-multiply dark:mix-blend-normal"
+        className="h-full w-full object-contain p-1.5 mix-blend-multiply"
       />
     );
   }
