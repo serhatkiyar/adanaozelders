@@ -24,10 +24,12 @@ const SORT_LABELS: Record<Sort, string> = {
   price_desc: "Fiyat (azalan)",
 };
 
+// "Basılı" DEĞİL: vitrinde kitap dışı fiziksel ürün de var (kalem, defter,
+// fotokopi kâğıdı). Filtre DEĞERLERİ (PHYSICAL/DIGITAL) değişmedi.
 const KIND_LABELS: { value: "" | ProductKind; label: string }[] = [
   { value: "", label: "Tümü" },
-  { value: "PHYSICAL", label: "Basılı" },
-  { value: "DIGITAL", label: "Dijital" },
+  { value: "PHYSICAL", label: "Fiziksel ürün" },
+  { value: "DIGITAL", label: "Dijital ürün" },
 ];
 
 export default function StorePage() {
@@ -198,7 +200,7 @@ export default function StorePage() {
 
                 <hr className="my-5 border-slate-100 dark:border-slate-800" />
 
-                <h3 className="mb-3 text-base font-semibold text-slate-900 dark:text-white">Format</h3>
+                <h3 className="mb-3 text-base font-semibold text-slate-900 dark:text-white">Ürün türü</h3>
                 <div className="flex flex-col gap-1">
                   {KIND_LABELS.map((k) => (
                     <FilterButton

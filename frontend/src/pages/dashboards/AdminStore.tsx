@@ -89,6 +89,9 @@ type SubTab =
   | "coupons"
   | "stock";
 
+/** Form alanı üstündeki küçük başlık (select'lerde placeholder yoktur). */
+const ALAN_BASLIGI = "text-[11px] font-medium text-slate-500 dark:text-slate-400";
+
 const STORE_ROUTES: Record<SubTab, string> = {
   products: ROUTES.adminStoreProducts,
   categories: ROUTES.adminStoreCategories,
@@ -564,6 +567,14 @@ function ProductForm({
     categoryId ? Number(categoryId) : null,
     variantConfig?.book_root_slugs ?? []
   );
+  // Kitap kategorisi seçilince künye bölümü KENDİLİĞİNDEN açılır: kitapta
+  // yazar/yayınevi/ISBN beklenen alanlardır, katlanmış bölüm onları görünmez
+  // kılıyordu. Efekt yalnız AÇAR, asla kapatmaz ve `kitapKategorisi`
+  // DEĞİŞTİĞİNDE çalışır — böylece kullanıcı bölümü elle kapattığında
+  // (kategori aynı kaldığı sürece) onunla inatlaşmaz.
+  useEffect(() => {
+    if (kitapKategorisi) setShowSpecs(true);
+  }, [kitapKategorisi]);
   // Stok gerekcesi: yalniz DUZENLEMEDE ve deger degistiginde zorunlu.
   // (Yeni urunde ilk stok `INITIAL` hareketidir; gerekcesi sabittir.)
   const [stockReason, setStockReason] = useState<AdminReasonCode | "">("");
@@ -651,26 +662,40 @@ function ProductForm({
   return (
     <div className="grid gap-3 sm:grid-cols-2">
       <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Ürün adı" className="input sm:col-span-2" />
+      {/* Select'lerin placeholder'ı olmaz: ne sorulduğu GÖRÜNÜR bir başlıkla
+          yazılır (metin alanlarında bu işi placeholder yapıyor). */}
       {isEdit ? (
-        <select value={status} onChange={(e) => setStatus(e.target.value as "ACTIVE" | "HIDDEN" | "DRAFT")} className="input">
-          <option value="ACTIVE">Yayında</option>
-          <option value="HIDDEN">Gizli</option>
-          <option value="DRAFT">Taslak</option>
-        </select>
+        <label className="flex flex-col gap-1">
+          <span className={ALAN_BASLIGI}>Durum</span>
+          <select value={status} onChange={(e) => setStatus(e.target.value as "ACTIVE" | "HIDDEN" | "DRAFT")} className="input">
+            <option value="ACTIVE">Yayında</option>
+            <option value="HIDDEN">Gizli</option>
+            <option value="DRAFT">Taslak</option>
+          </select>
+        </label>
       ) : (
-        <select value={kind} onChange={(e) => setKind(e.target.value as ProductKind)} className="input">
-          <option value="PHYSICAL">Basılı</option>
-          <option value="DIGITAL">Dijital</option>
-        </select>
+        <label className="flex flex-col gap-1">
+          <span className={ALAN_BASLIGI}>Ürün türü</span>
+          {/* "Basılı" DEĞİL: mağaza kitap dışı ürün de satar (kalem, defter,
+              fotokopi kâğıdı). Değerler (PHYSICAL/DIGITAL) değişmedi —
+              `kind` DB trigger'ıyla değiştirilemez, etiket ise serbesttir. */}
+          <select value={kind} onChange={(e) => setKind(e.target.value as ProductKind)} className="input">
+            <option value="PHYSICAL">Fiziksel ürün</option>
+            <option value="DIGITAL">Dijital ürün</option>
+          </select>
+        </label>
       )}
-      <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)} aria-label="Kategori" className="input">
-        <option value="">Kategori (opsiyonel)</option>
-        {(categories ?? []).map((c) => (
-          <option key={c.id} value={c.id}>
-            {c.name}
-          </option>
-        ))}
-      </select>
+      <label className="flex flex-col gap-1">
+        <span className={ALAN_BASLIGI}>Kategori (opsiyonel)</span>
+        <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)} aria-label="Kategori" className="input">
+          <option value="">Kategori seçilmedi</option>
+          {(categories ?? []).map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name}
+            </option>
+          ))}
+        </select>
+      </label>
       <input value={price} onChange={(e) => setPrice(e.target.value)} placeholder="Fiyat (TL)" inputMode="decimal" className="input" />
       <input value={compareAt} onChange={(e) => setCompareAt(e.target.value)} placeholder="Eski fiyat (opsiyonel)" inputMode="decimal" className="input" />
       <label className="flex flex-col gap-1">
@@ -722,7 +747,9 @@ function ProductForm({
       )}
       <textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Açıklama" rows={2} className="input sm:col-span-2" />
 
-      {/* Künye / kitap bilgileri — opsiyonel, katlanır */}
+      {/* Kitap künyesi — opsiyonel, katlanır. Kitap kategorisi seçiliyse
+          kendiliğinden açılır (yukarıdaki efekt); kitap dışı üründe kapalı
+          kalır ve başlık ne yapılması gerektiğini söyler. */}
       <div className="sm:col-span-2">
         <button
           type="button"
@@ -732,15 +759,19 @@ function ProductForm({
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className={`transition-transform ${showSpecs ? "rotate-90" : ""}`}>
             <path d="M9 18l6-6-6-6" />
           </svg>
-          Künye / kitap bilgileri (opsiyonel)
+          Kitap künyesi — kitap dışı ürünlerde boş bırakın
         </button>
         {showSpecs && (
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            <p className="text-[11px] text-slate-400 sm:col-span-2 dark:text-slate-500">
+              Ebat dışındaki alanlar yalnız kitapta anlamlıdır; kırtasiye
+              ürününde ebadı yazıp diğerlerini boş bırakabilirsiniz.
+            </p>
             <input value={author} onChange={(e) => setAuthor(e.target.value)} placeholder="Yazar" className="input" />
             <input value={publisher} onChange={(e) => setPublisher(e.target.value)} placeholder="Yayınevi" className="input" />
             <input value={isbn} onChange={(e) => setIsbn(e.target.value)} placeholder="ISBN / Barkod" className="input" />
             <input value={pageCount} onChange={(e) => setPageCount(e.target.value)} placeholder="Sayfa sayısı" inputMode="numeric" className="input" />
-            <input value={dimensions} onChange={(e) => setDimensions(e.target.value)} placeholder="Ebat (ör. 20 x 27)" className="input" />
+            <input value={dimensions} onChange={(e) => setDimensions(e.target.value)} placeholder="Ebat (ör. 20 x 27 cm · A4)" className="input" />
             <input value={pubYear} onChange={(e) => setPubYear(e.target.value)} placeholder="Basım yılı" inputMode="numeric" className="input" />
             <input value={edition} onChange={(e) => setEdition(e.target.value)} placeholder="Baskı (ör. 1. Basım)" className="input" />
             <input value={language} onChange={(e) => setLanguage(e.target.value)} placeholder="Dil (ör. Türkçe)" className="input" />
