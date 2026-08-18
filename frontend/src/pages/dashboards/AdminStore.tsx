@@ -43,6 +43,7 @@ import {
   deliverOrder,
   refundOrder,
   shipOrder,
+  updateCategory,
   updateProduct,
   uploadProductCover,
 } from "@/api/store";
@@ -516,6 +517,26 @@ function ProductForm({
   const [edition, setEdition] = useState(initial?.edition ?? "");
   const [language, setLanguage] = useState(initial?.language ?? "");
   const [coverType, setCoverType] = useState(initial?.cover_type ?? "");
+  // ── Kategori varsayılanından KDV ön-doldurma (Faz 4) ──
+  // Yalnız form kolaylığı: sunucu kategori varsayılanından ASLA oran türetmez
+  // (`tax_rate` üründe zorunlu veri). Kural: kullanıcının ELLE yazdığı değer
+  // EZİLMEZ — alan boşken ya da hâlâ önceki OTOMATİK değerdeyken doldurulur.
+  // Kategorilerin varsayılanı yoksa (bugünkü NULL dünyası) hiçbir şey yapmaz.
+  const [autoTaxPercent, setAutoTaxPercent] = useState<string | null>(null);
+  useEffect(() => {
+    const secili = (categories ?? []).find((c) => c.id === Number(categoryId));
+    const oneri = orandanYuzde(secili?.effective_tax_rate);
+    if (!oneri) return;
+    setTaxPercent((mevcut) => {
+      if (mevcut !== "" && mevcut !== autoTaxPercent) return mevcut;
+      setAutoTaxPercent(oneri);
+      return oneri;
+    });
+    // autoTaxPercent bilinçli olarak bağımlılıkta DEĞİL: kendi güncellediği
+    // değeri izleseydi döngü kurulurdu; karşılaştırma set callback'i içinde.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [categoryId, categories]);
+
   const hasKunye = !!(
     initial &&
     (initial.author || initial.publisher || initial.isbn || initial.page_count ||
@@ -1399,15 +1420,18 @@ function CategoriesPanel() {
       )}
       <div className="mt-4 space-y-2">
         {(categories ?? []).map((c) => (
-          <div key={c.id} className="flex items-center justify-between rounded-lg border border-slate-100 px-3 py-2 dark:border-slate-800">
+          <div key={c.id} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 rounded-lg border border-slate-100 px-3 py-2 dark:border-slate-800">
             <span className="text-sm text-slate-700 dark:text-slate-300">
               {c.name} <span className="text-slate-400">({c.product_count ?? 0})</span>
             </span>
-            {canManage && (
-              <button type="button" onClick={() => setDeleting({ id: c.id, name: c.name })} className="text-xs font-medium text-rose-500 hover:underline">
-                Sil
-              </button>
-            )}
+            <span className="flex items-center gap-3">
+              <KategoriKdvRozeti category={c} canManage={canManage} onChange={invalidate} />
+              {canManage && (
+                <button type="button" onClick={() => setDeleting({ id: c.id, name: c.name })} className="text-xs font-medium text-rose-500 hover:underline">
+                  Sil
+                </button>
+              )}
+            </span>
           </div>
         ))}
       </div>
@@ -1422,6 +1446,103 @@ function CategoriesPanel() {
         onConfirm={() => deleting && remove.mutate(deleting.id)}
       />
     </div>
+  );
+}
+
+/** Kategori satırındaki varsayılan KDV göstergesi + satır içi düzenleme.
+ *
+ *  Oranlar mali müşavir onayı bekliyor — bu yüzey değerlerin GİRİLECEĞİ
+ *  yerdir, kod hiçbir oran önermez. "miras" etiketi, kendi değeri boş olup
+ *  atasından devralan kategoriyi ayırt eder (yanlışlıkla "burada tanımlı"
+ *  sanılıp kökteki değer aranmasın).
+ */
+function KategoriKdvRozeti({
+  category,
+  canManage,
+  onChange,
+}: {
+  category: import("@/types").ProductCategory;
+  canManage: boolean;
+  onChange: () => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [percent, setPercent] = useState(orandanYuzde(category.default_tax_rate));
+  const save = useMutation({
+    mutationFn: (default_tax_rate: string | null) =>
+      updateCategory(category.id, { default_tax_rate }),
+    onSuccess: () => {
+      toast.success("Varsayılan KDV güncellendi");
+      setEditing(false);
+      onChange();
+    },
+    onError: (err: unknown) =>
+      toast.error(getErrorDetail(err, "Varsayılan KDV güncellenemedi")),
+  });
+
+  const kendi = orandanYuzde(category.default_tax_rate);
+  const efektif = orandanYuzde(category.effective_tax_rate);
+  const etiket = kendi
+    ? `KDV %${kendi}`
+    : efektif
+      ? `KDV %${efektif} (miras)`
+      : "KDV —";
+
+  if (!editing) {
+    return (
+      <span className="flex items-center gap-2 text-xs text-slate-400 dark:text-slate-500">
+        {etiket}
+        {canManage && (
+          <button
+            type="button"
+            onClick={() => {
+              setPercent(kendi);
+              setEditing(true);
+            }}
+            className="font-medium text-slate-600 hover:underline dark:text-slate-300"
+          >
+            Düzenle
+          </button>
+        )}
+      </span>
+    );
+  }
+  return (
+    <span className="flex items-center gap-2">
+      <input
+        value={percent}
+        onChange={(e) => setPercent(e.target.value)}
+        placeholder="%"
+        inputMode="decimal"
+        aria-label={`${category.name} varsayılan KDV (%)`}
+        className="input w-20 py-1 text-xs"
+      />
+      <button
+        type="button"
+        disabled={save.isPending}
+        onClick={() => {
+          if (!percent.trim()) {
+            save.mutate(null); // boş bırakmak varsayılanı TEMİZLER
+            return;
+          }
+          const oran = yuzdedenOran(percent);
+          if (!oran.ok) {
+            toast.error(oran.hata ?? "KDV oranı geçersiz");
+            return;
+          }
+          save.mutate(oran.oran);
+        }}
+        className="text-xs font-medium text-indigo-600 hover:underline dark:text-indigo-400"
+      >
+        Kaydet
+      </button>
+      <button
+        type="button"
+        onClick={() => setEditing(false)}
+        className="text-xs font-medium text-slate-500 hover:underline dark:text-slate-400"
+      >
+        Vazgeç
+      </button>
+    </span>
   );
 }
 

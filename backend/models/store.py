@@ -182,6 +182,19 @@ class ProductCategory(Base, TimestampMixin, SoftDeleteMixin):
     sort_order: Mapped[int] = mapped_column(
         Integer, nullable=False, server_default=text("0")
     )
+    # Kategorinin VARSAYILAN KDV oranı (0 ≤ oran < 1) — admin ürün formunun
+    # ön-doldurma kaynağı. NULL = varsayılan yok (bugünkü davranış birebir).
+    #
+    # ⚠️ DEĞERLER MALİ MÜŞAVİR ONAYI BEKLİYOR: kodda/migration'da/seed'de
+    # hiçbir oran YAZILMAZ; kolon NULL doğar, oranlar onay sonrası admin
+    # panelinden girilir. Sunucu bu koldan ASLA oran türetmez —
+    # `Product.tax_rate` ürün başına zorunlu VERİDİR ve tek otoritedir
+    # (bkz. schemas/store.py::_TAX_RATE_FIELD_ARGS notu). Miras kuralı
+    # (yaprak NULL → yaprağa en yakın dolu ata) `inherited_default_tax_rate`
+    # ile SUNUM anında çözülür, kolona yazılmaz.
+    default_tax_rate: Mapped[float | None] = mapped_column(
+        Numeric(5, 4), nullable=True
+    )
 
     products: Mapped[list["Product"]] = relationship(back_populates="category")
 
@@ -193,6 +206,13 @@ class ProductCategory(Base, TimestampMixin, SoftDeleteMixin):
             postgresql_where=text("deleted_at IS NULL"),
         ),
         Index("ix_product_categories_parent", "parent_id"),
+        # Sınır: oran birimi ORAN'dır (0.20 = %20), yüzde değil — Product
+        # tarafındaki sözleşmeyle aynı. Sayısal bir ORAN DEĞERİ içermez.
+        CheckConstraint(
+            "default_tax_rate IS NULL "
+            "OR (default_tax_rate >= 0 AND default_tax_rate < 1)",
+            name="ck_product_categories_default_tax",
+        ),
     )
 
 

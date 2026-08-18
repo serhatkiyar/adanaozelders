@@ -24,6 +24,13 @@ class ProductCategoryOut(BaseModel):
     icon_url: str | None = None
     sort_order: int = 0
     product_count: int | None = None
+    #: Kategorinin KENDİ varsayılan KDV oranı (NULL = yok). Değerler mali
+    #: müşavir onayı bekliyor — kod hiçbir oran YAZMAZ, admin girer.
+    default_tax_rate: Decimal | None = None
+    #: Miras ÇÖZÜLMÜŞ varsayılan (yaprak NULL → yaprağa en yakın dolu ata).
+    #: Yalnız SUNUM/ön-doldurma içindir; ürün oluşturmada sunucu bundan oran
+    #: türetmez (`Product.tax_rate` zorunlu veridir).
+    effective_tax_rate: Decimal | None = None
 
 
 class ProductCategoryCreate(BaseModel):
@@ -31,6 +38,11 @@ class ProductCategoryCreate(BaseModel):
     parent_id: int | None = None
     icon_url: str | None = Field(default=None, max_length=500)
     sort_order: int = 0
+    #: Sınırlar ürün oranıyla aynı sözleşme (aşağıda `_TAX_RATE_FIELD_ARGS` —
+    #: burada henüz tanımlı olmadığından değerler tekrarlanır; birim ORAN).
+    default_tax_rate: Decimal | None = Field(
+        default=None, ge=0, lt=1, max_digits=5, decimal_places=4
+    )
 
 
 class ProductCategoryUpdate(BaseModel):
@@ -38,6 +50,10 @@ class ProductCategoryUpdate(BaseModel):
     parent_id: int | None = None
     icon_url: str | None = Field(default=None, max_length=500)
     sort_order: int | None = None
+    #: `None` göndermek varsayılanı TEMİZLER (exclude_unset ayrımı serviste).
+    default_tax_rate: Decimal | None = Field(
+        default=None, ge=0, lt=1, max_digits=5, decimal_places=4
+    )
 
 
 # ── Ürün ─────────────────────────────────────────────────────────────────────────

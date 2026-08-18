@@ -1451,6 +1451,11 @@ export interface ProductCategory {
   icon_url?: string | null;
   sort_order: number;
   product_count?: number | null;
+  /** Kategorinin KENDİ varsayılan KDV oranı (ORAN, yüzde değil). Değerler
+   *  mali müşavir onayı bekliyor — kod hiçbir oran yazmaz, admin girer. */
+  default_tax_rate?: string | number | null;
+  /** Miras çözülmüş varsayılan (sunucu çözer; yalnız form ön-doldurması). */
+  effective_tax_rate?: string | number | null;
 }
 
 export interface ProductCategoryWrite {
@@ -1458,6 +1463,7 @@ export interface ProductCategoryWrite {
   parent_id?: number | null;
   icon_url?: string | null;
   sort_order?: number;
+  default_tax_rate?: string | number | null;
 }
 
 export interface ProductImageOut {

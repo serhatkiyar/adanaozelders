@@ -281,6 +281,33 @@ def rollup_category_counts(
     return counts
 
 
+def inherited_default_tax_rate(
+    category_id: int,
+    parents: dict[int, int | None],
+    rates: dict[int, Decimal | None],
+) -> Decimal | None:
+    """Miras çözülmüş varsayılan KDV oranı (saf; pytest'li).
+
+    Karar: yaprağın `default_tax_rate`'i NULL ise ata zincirinden miras alır —
+    yaprağa EN YAKIN dolu değer kazanır. Gerekçe: mali müşavir oranı kırılımın
+    köküne verir; yaprak başına elle kopya, yeni yaprak açıldığında unutulur ve
+    sessiz boşluk üretir. Zincir tamamen NULL ise None döner — oran UYDURULMAZ
+    (bugünkü davranış birebir; ön-doldurma yapılmaz, admin elle girer).
+
+    Bu değer yalnız SUNUM/ön-doldurma içindir: `Product.tax_rate` ürün başına
+    zorunlu veridir ve sunucu bu koldan asla oran türetmez. Döngü korumalı.
+    """
+    seen: set[int] = set()
+    node: int | None = category_id
+    while node is not None and node not in seen:
+        seen.add(node)
+        oran = rates.get(node)
+        if oran is not None:
+            return Decimal(str(oran))
+        node = parents.get(node)
+    return None
+
+
 async def _category_and_descendants(db: AsyncSession, category_id: int) -> list[int]:
     """Kategori + tüm alt kategorileri (recursive CTE).
 
@@ -329,6 +356,7 @@ async def list_categories(db: AsyncSession) -> list[ProductCategoryOut]:
     ).all()
     parents = {c.id: c.parent_id for c in cats}
     counts = rollup_category_counts([(cid, n) for cid, n in rows], parents)
+    rates = {c.id: c.default_tax_rate for c in cats}
     return [
         ProductCategoryOut(
             id=c.id,
@@ -338,6 +366,12 @@ async def list_categories(db: AsyncSession) -> list[ProductCategoryOut]:
             icon_url=c.icon_url,
             sort_order=c.sort_order,
             product_count=int(counts.get(c.id, 0)),
+            default_tax_rate=(
+                Decimal(str(c.default_tax_rate))
+                if c.default_tax_rate is not None
+                else None
+            ),
+            effective_tax_rate=inherited_default_tax_rate(c.id, parents, rates),
         )
         for c in cats
     ]
@@ -353,6 +387,9 @@ async def create_category(
         parent_id=payload.parent_id,
         icon_url=payload.icon_url,
         sort_order=payload.sort_order,
+        # Değer admin girdisidir; kodda hiçbir varsayılan ORAN yoktur (mali
+        # müşavir onayı bekleniyor) — gönderilmezse NULL kalır.
+        default_tax_rate=payload.default_tax_rate,
     )
     db.add(cat)
     await db.commit()
@@ -382,7 +419,9 @@ async def update_category(
         cat.slug = await _unique_category_slug(
             db, _slugify(data["name"]), exclude_id=cat.id
         )
-    for field in ("parent_id", "icon_url", "sort_order"):
+    # `default_tax_rate: null` göndermek varsayılanı TEMİZLER (exclude_unset:
+    # alan hiç gönderilmediyse dokunulmaz).
+    for field in ("parent_id", "icon_url", "sort_order", "default_tax_rate"):
         if field in data:
             setattr(cat, field, data[field])
     await db.commit()
