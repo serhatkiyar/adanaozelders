@@ -70,6 +70,12 @@ from schemas.store import (
     SellerEarningsOut,
     SellerProductCreate,
     StockNotifyIn,
+    DeriveVariantIn,
+    VariantConfigOut,
+    VariantGroupCreate,
+    VariantGroupDetailOut,
+    VariantGroupOut,
+    VariantGroupUpdate,
 )
 from schemas.delivery import (
     DeliveryFeedbackIn,
@@ -91,6 +97,7 @@ from services import (
     phone_service,
     stock_ledger,
     store_service,
+    variant_service,
 )
 
 router = APIRouter(prefix="/store", tags=["store"])
@@ -434,6 +441,109 @@ async def delete_category(
         db, actor=admin, action="category.delete", target_type="product_category",
         target_id=category_id,
     )
+
+
+# ── Admin: varyant grupları (Faz 2) ──────────────────────────────────────────────
+
+
+@router.get("/admin/variant-config", response_model=VariantConfigOut)
+async def get_variant_config(
+    _admin: Admin = Depends(require_admin_permission("products.view")),
+):
+    """Varyant sözlükleri — frontend açılır menüleri buradan doldurur (kopya
+    sabit tutulmaz; tek kaynak backend)."""
+    from models.store import VARIANT_AXES
+
+    return VariantConfigOut(
+        axes=list(VARIANT_AXES),
+        book_root_slugs=sorted(variant_service.BOOK_ROOT_SLUGS),
+    )
+
+
+@router.get("/admin/variant-groups", response_model=list[VariantGroupOut])
+async def list_variant_groups(
+    _admin: Admin = Depends(require_admin_permission("products.view")),
+    db: AsyncSession = Depends(get_db),
+):
+    return await variant_service.list_groups(db)
+
+
+@router.post(
+    "/admin/variant-groups",
+    response_model=VariantGroupOut,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_variant_group(
+    payload: VariantGroupCreate,
+    admin: Admin = Depends(require_admin_permission("products.manage")),
+    db: AsyncSession = Depends(get_db),
+):
+    group = await variant_service.create_group(db, payload)
+    await audit_service.record(
+        db, actor=admin, action="variant_group.create", target_type="variant_group",
+        target_id=group.id, details=group.title,
+        after=payload.model_dump(exclude_unset=True),
+    )
+    return group
+
+
+@router.get("/admin/variant-groups/{group_id}", response_model=VariantGroupDetailOut)
+async def get_variant_group(
+    group_id: int,
+    _admin: Admin = Depends(require_admin_permission("products.view")),
+    db: AsyncSession = Depends(get_db),
+):
+    return await variant_service.get_group_detail(db, group_id)
+
+
+@router.patch("/admin/variant-groups/{group_id}", response_model=VariantGroupOut)
+async def update_variant_group(
+    group_id: int,
+    payload: VariantGroupUpdate,
+    admin: Admin = Depends(require_admin_permission("products.manage")),
+    db: AsyncSession = Depends(get_db),
+):
+    group = await variant_service.update_group(db, group_id, payload)
+    await audit_service.record(
+        db, actor=admin, action="variant_group.update", target_type="variant_group",
+        target_id=group_id, after=payload.model_dump(exclude_unset=True),
+    )
+    return group
+
+
+@router.delete(
+    "/admin/variant-groups/{group_id}", status_code=status.HTTP_204_NO_CONTENT
+)
+async def delete_variant_group(
+    group_id: int,
+    admin: Admin = Depends(require_admin_permission("products.manage")),
+    db: AsyncSession = Depends(get_db),
+):
+    await variant_service.delete_group(db, group_id)
+    await audit_service.record(
+        db, actor=admin, action="variant_group.delete", target_type="variant_group",
+        target_id=group_id,
+    )
+
+
+@router.post(
+    "/admin/products/{product_id}/derive-variant",
+    response_model=ProductDetailOut,
+    status_code=status.HTTP_201_CREATED,
+)
+async def derive_variant(
+    product_id: int,
+    payload: DeriveVariantIn,
+    admin: Admin = Depends(require_admin_permission("products.manage")),
+    db: AsyncSession = Depends(get_db),
+):
+    product = await store_service.derive_variant(db, admin, product_id, payload)
+    await audit_service.record(
+        db, actor=admin, action="product.derive_variant", target_type="product",
+        target_id=product.id, details=product.title,
+        meta={"source_product_id": product_id},
+    )
+    return product
 
 
 # ── Admin: sipariş yönetimi ──────────────────────────────────────────────────────

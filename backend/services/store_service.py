@@ -44,6 +44,7 @@ from models.store import (
 from models.tutor import Tutor
 from schemas.review import RatingDistributionOut
 from schemas.store import (
+    DeriveVariantIn,
     ProductCategoryCreate,
     ProductCategoryOut,
     ProductCategoryUpdate,
@@ -58,7 +59,7 @@ from schemas.store import (
     SellerProductCreate,
     SellerProductStat,
 )
-from services import stock_ledger
+from services import stock_ledger, variant_service
 from services.ranking import bayesian_average
 
 
@@ -174,6 +175,11 @@ def _to_search_out(
         publisher=p.publisher,
         isbn=p.isbn,
         sku=p.sku,
+        variant_group_id=p.variant_group_id,
+        option1_value=p.option1_value,
+        option2_value=p.option2_value,
+        variant_sort=p.variant_sort or 0,
+        barcode=p.barcode,
     )
 
 
@@ -362,6 +368,16 @@ async def update_category(
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Kategori bulunamadı")
     data = payload.model_dump(exclude_unset=True)
     if "name" in data and data["name"]:
+        # Kitap kökü nöbetçisi: `variant_service.BOOK_ROOT_SLUGS` bu slug'lara
+        # bağlıdır. Ad (→ slug) değişirse "kitapta varyant kapalı" kuralı
+        # hiçbir kategoriyle eşleşmez ve SESSİZCE devre dışı kalırdı.
+        if cat.slug in variant_service.BOOK_ROOT_SLUGS:
+            raise HTTPException(
+                status.HTTP_409_CONFLICT,
+                f"'{cat.slug}' kitap kökü kategorisidir ve yeniden "
+                "adlandırılamaz: varyant kural sözlüğü bu slug'a bağlı. "
+                "Gerekliyse önce koddaki BOOK_ROOT_SLUGS güncellenmeli.",
+            )
         cat.name = data["name"]
         cat.slug = await _unique_category_slug(
             db, _slugify(data["name"]), exclude_id=cat.id
@@ -378,6 +394,14 @@ async def delete_category(db: AsyncSession, category_id: int) -> None:
     cat = await db.get(ProductCategory, category_id)
     if cat is None or cat.deleted_at is not None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Kategori bulunamadı")
+    # Kitap kökü nöbetçisi (gerekçe: update_category'deki not).
+    if cat.slug in variant_service.BOOK_ROOT_SLUGS:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            f"'{cat.slug}' kitap kökü kategorisidir ve silinemez: varyant "
+            "kural sözlüğü bu slug'a bağlı. Gerekliyse önce koddaki "
+            "BOOK_ROOT_SLUGS güncellenmeli.",
+        )
     cat.deleted_at = _now()
     await db.commit()
 
@@ -626,6 +650,22 @@ _BOOK_SPEC_FIELDS = (
 async def create_product(
     db: AsyncSession, admin: Admin, payload: ProductCreate
 ) -> ProductDetailOut:
+    # Varyant üyeliği: kitap kapısı + eksen/barkod doğrulaması ürün
+    # yazılmadan ÖNCE (opak IntegrityError yerine anlamlı 400/409).
+    if payload.variant_group_id is not None:
+        await variant_service.validate_membership(
+            db,
+            group_id=payload.variant_group_id,
+            category_id=payload.category_id,
+            option1_value=payload.option1_value,
+            option2_value=payload.option2_value,
+            barcode=payload.barcode,
+        )
+    elif payload.option1_value is not None or payload.option2_value is not None:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            "Eksen değeri yalnız bir varyant grubuyla birlikte gönderilebilir.",
+        )
     slug = await _unique_product_slug(db, _slugify(payload.title))
     # Fiziksel ürün yalnız platform tarafından satılır.
     p = Product(
@@ -649,6 +689,11 @@ async def create_product(
         status=payload.status,
         cover_url=payload.cover_url,
         created_by_admin_id=admin.id,
+        variant_group_id=payload.variant_group_id,
+        option1_value=payload.option1_value,
+        option2_value=payload.option2_value,
+        variant_sort=payload.variant_sort or 0,
+        barcode=payload.barcode,
     )
     for field in _BOOK_SPEC_FIELDS:
         setattr(p, field, getattr(payload, field))
@@ -661,6 +706,109 @@ async def create_product(
     # yazılamazsa (ör. geçersiz gerekçe) commit hiç olmaz → **ürün de
     # oluşturulmuş kalmaz**. Dijital ürün SKU alır ama stok hareketi ALMAZ.
     await db.flush()
+    if p.kind == ProductKind.PHYSICAL.value and (payload.stock or 0) > 0:
+        await stock_ledger.apply_movement(
+            db,
+            p.id,
+            qty_delta=int(payload.stock),
+            bucket=stock_ledger.StockBucket.SALEABLE,
+            movement_type=stock_ledger.StockMovementType.INITIAL,
+            reason_code="PRODUCT_CREATE",
+            ref_type="product",
+            ref_id=p.id,
+            idempotency_key=stock_ledger.idempotency_key_for(
+                stock_ledger.StockMovementType.INITIAL, product_id=p.id
+            ),
+            actor_type="ADMIN",
+            actor_id=admin.id,
+        )
+    await db.commit()
+    full = await _load_full(db, p.id)
+    return await _to_detail(db, full)
+
+
+async def derive_variant(
+    db: AsyncSession, admin: Admin, source_id: int, payload: DeriveVariantIn
+) -> ProductDetailOut:
+    """Mevcut üründen yeni varyant türetir (künye/fiyat/görsel kopyalanır).
+
+    Kaynak bir grupta OLMAK ZORUNDA (409): türetme "kardeş ekleme"dir, grup
+    kurma değil — grup kurmayı ayrı ve bilinçli bir adım olarak bırakmak,
+    yanlışlıkla tek üyelik hayalet gruplar üretilmesini engeller.
+
+    ISBN bilinçli KOPYALANMAZ: her fiziksel kalem kendi yayın kimliğini taşır;
+    kopyalansaydı "okuttum, eşleşti" güveni yanlış ürüne bağlanırdı (barkod↔ISBN
+    ayrımıyla aynı ilke). `sku` zaten trigger'ındır, kopyalanamaz.
+    """
+    kaynak = await _load_full(db, source_id)
+    if kaynak is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Ürün bulunamadı")
+    if kaynak.variant_group_id is None:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Kaynak ürün bir varyant grubunda değil. Önce grubu oluşturup "
+            "kaynağı gruba bağlayın; türetme kardeş ekler.",
+        )
+    grup = await variant_service.validate_membership(
+        db,
+        group_id=kaynak.variant_group_id,
+        category_id=kaynak.category_id,
+        option1_value=payload.option1_value,
+        option2_value=payload.option2_value,
+        barcode=payload.barcode,
+    )
+
+    if payload.title:
+        baslik = payload.title
+    else:
+        # Grup başlığı ortak köktür; değerler ayırt eder ("Trendyol deseni":
+        # varyant adı title'da yaşar, ayrı kolonda değil.
+        degerler = " / ".join(
+            v for v in (payload.option1_value, payload.option2_value) if v
+        )
+        baslik = f"{grup.title} - {degerler}"
+
+    p = Product(
+        slug=await _unique_product_slug(db, _slugify(baslik)),
+        title=baslik,
+        description=kaynak.description,
+        kind=kaynak.kind,
+        seller_type=kaynak.seller_type,
+        tutor_id=kaynak.tutor_id,
+        price=payload.price if payload.price is not None else kaynak.price,
+        compare_at_price=None,   # indirim rozeti kopyalanmaz; bilinçli karar ister
+        tax_rate=kaynak.tax_rate,
+        stock=0 if kaynak.kind == ProductKind.PHYSICAL.value else None,
+        weight_grams=kaynak.weight_grams,
+        category_id=kaynak.category_id,
+        # Taslak doğar: fiyat/görsel gözden geçirilmeden vitrine çıkmasın.
+        status=ProductStatus.DRAFT.value,
+        cover_url=kaynak.cover_url,
+        created_by_admin_id=admin.id,
+        variant_group_id=kaynak.variant_group_id,
+        option1_value=payload.option1_value,
+        option2_value=payload.option2_value,
+        variant_sort=(
+            payload.variant_sort
+            if payload.variant_sort is not None
+            else (kaynak.variant_sort or 0) + 1
+        ),
+        barcode=payload.barcode,
+    )
+    for field in _BOOK_SPEC_FIELDS:
+        if field == "isbn":
+            continue
+        setattr(p, field, getattr(kaynak, field))
+    db.add(p)
+    await db.flush()
+    # Galeri görselleri: aynı URL'lere işaret eden yeni satırlar (dosya ortak).
+    for im in kaynak.images:
+        db.add(
+            ProductImage(
+                product_id=p.id, url=im.url, caption=im.caption,
+                sort_order=im.sort_order,
+            )
+        )
     if p.kind == ProductKind.PHYSICAL.value and (payload.stock or 0) > 0:
         await stock_ledger.apply_movement(
             db,
@@ -945,6 +1093,48 @@ async def update_product(
         # sessizce taşımak yerine at.
         data.pop("stock")
 
+    # ── Varyant üyeliği (yalnız admin yolu; eğitmen dijital ürünü gruplanmaz) ──
+    _VARYANT_ALANLARI = (
+        "variant_group_id", "option1_value", "option2_value",
+        "variant_sort", "barcode",
+    )
+    # `variant_sort: null` anlamsızdır (kolon NOT NULL); "gönderilmedi" say.
+    if data.get("variant_sort", 0) is None:
+        data.pop("variant_sort")
+    if owner_tutor_id is not None:
+        for f in _VARYANT_ALANLARI:
+            data.pop(f, None)
+    else:
+        hedef_grup = (
+            data["variant_group_id"]
+            if "variant_group_id" in data
+            else p.variant_group_id
+        )
+        hedef_kategori = data.get("category_id", p.category_id)
+        if hedef_grup is not None:
+            # Kapı SONUÇ DURUMA bakar: yalnız gruba girişte değil, gruplu
+            # ürünün kategorisi kitaba TAŞINIRKEN de çalışır.
+            await variant_service.validate_membership(
+                db,
+                group_id=hedef_grup,
+                category_id=hedef_kategori,
+                option1_value=data.get("option1_value", p.option1_value),
+                option2_value=data.get("option2_value", p.option2_value),
+                barcode=data.get("barcode", p.barcode),
+            )
+        else:
+            if "variant_group_id" in data:
+                # Gruptan çıkış: eksen değerleri de temizlenir — orphan
+                # CHECK'ine çarpmadan, bayat "Kırmızı" etiketi bırakmadan.
+                data["option1_value"] = None
+                data["option2_value"] = None
+            if data.get("option1_value") or data.get("option2_value"):
+                raise HTTPException(
+                    status.HTTP_400_BAD_REQUEST,
+                    "Eksen değeri yalnız bir varyant grubuyla birlikte "
+                    "gönderilebilir.",
+                )
+
     old_stock = p.stock
     old_price = Decimal(str(p.price))
     if "title" in data and data["title"]:
@@ -967,8 +1157,10 @@ async def update_product(
         "tax_rate",
     ]
     if owner_tutor_id is None:
-        # Admin: ağırlık/durum + kitap künyesi (stok HARİÇ).
-        editable += ["weight_grams", "status", *_BOOK_SPEC_FIELDS]
+        # Admin: ağırlık/durum + kitap künyesi + varyant üyeliği (stok HARİÇ).
+        editable += [
+            "weight_grams", "status", *_BOOK_SPEC_FIELDS, *_VARYANT_ALANLARI,
+        ]
     for field in editable:
         if field in data:
             setattr(p, field, data[field])

@@ -1502,6 +1502,12 @@ export interface ProductSearchOut {
   isbn?: string | null;
   /** Stok kalemi kimliği (`FZK-000042`); sunucu üretir, aranabilir. */
   sku?: string | null;
+  /* ── Varyant üyeliği (Faz 2) — admin formu ve kardeş seçici bunlardan okur. */
+  variant_group_id?: number | null;
+  option1_value?: string | null;
+  option2_value?: string | null;
+  variant_sort?: number;
+  barcode?: string | null;
 }
 
 /** Kitap künyesi (opsiyonel) — ürün detayında "Ürün Özellikleri" tablosu + admin formu. */
@@ -1546,7 +1552,17 @@ export interface CollectionCreate {
   name: string;
 }
 
-export interface ProductCreate extends BookSpecFields {
+/** Ürünün varyant üyeliği alanları (create/update ortak). */
+export interface VariantMemberFields {
+  variant_group_id?: number | null;
+  option1_value?: string | null;
+  option2_value?: string | null;
+  variant_sort?: number | null;
+  /** Gruplu ürün barkodsuz olamaz (DB CHECK); grupsuzda opsiyonel kimlik. */
+  barcode?: string | null;
+}
+
+export interface ProductCreate extends BookSpecFields, VariantMemberFields {
   title: string;
   description?: string | null;
   kind: ProductKind;
@@ -1561,7 +1577,7 @@ export interface ProductCreate extends BookSpecFields {
   cover_url?: string | null;
 }
 
-export interface ProductUpdate extends BookSpecFields {
+export interface ProductUpdate extends BookSpecFields, VariantMemberFields {
   title?: string;
   description?: string | null;
   price?: string | number;
@@ -1573,6 +1589,56 @@ export interface ProductUpdate extends BookSpecFields {
   category_id?: number | null;
   status?: ProductStatus;
   cover_url?: string | null;
+}
+
+/* ── Varyant grubu (Faz 2) ── */
+
+export interface VariantGroup {
+  id: number;
+  title: string;
+  option1_name: string;
+  option2_name?: string | null;
+  member_count: number;
+}
+
+export interface VariantMember {
+  id: number;
+  title: string;
+  option1_value?: string | null;
+  option2_value?: string | null;
+  variant_sort: number;
+  price: string;
+  stock?: number | null;
+  status?: string | null;
+  cover_url?: string | null;
+  sku?: string | null;
+  barcode?: string | null;
+}
+
+export interface VariantGroupDetail extends VariantGroup {
+  members: VariantMember[];
+}
+
+/** Sözlükler backend'den gelir — istemcide kopya sabit tutulmaz. */
+export interface VariantConfig {
+  axes: string[];
+  book_root_slugs: string[];
+}
+
+export interface VariantGroupWrite {
+  title: string;
+  option1_name: string;
+  option2_name?: string | null;
+}
+
+export interface DeriveVariantPayload {
+  option1_value: string;
+  option2_value?: string | null;
+  barcode: string;
+  title?: string | null;
+  price?: string | number | null;
+  variant_sort?: number | null;
+  stock?: number | null;
 }
 
 export interface SellerProductCreate {

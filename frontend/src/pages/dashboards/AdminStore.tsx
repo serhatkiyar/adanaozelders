@@ -57,11 +57,17 @@ import {
   useCategories,
   useCoupons,
   useCreateCoupon,
+  useCreateVariantGroup,
   useDeleteCoupon,
+  useDeriveVariant,
   useInvalidateAdminStore,
   useResolveReturn,
   useUpdateCoupon,
+  useVariantConfig,
+  useVariantGroup,
+  useVariantGroups,
 } from "@/hooks/useStore";
+import { isBookCategory, suggestedVariantTitle } from "@/lib/variants";
 import { getErrorDetail } from "@/lib/errors";
 import { toast } from "@/store/toastStore";
 import type {
@@ -517,6 +523,26 @@ function ProductForm({
       initial.language || initial.cover_type)
   );
   const [showSpecs, setShowSpecs] = useState(hasKunye);
+  // Varyant üyeliği (Faz 2). Sözlükler backend'den (variant-config) gelir.
+  const [variantGroupId, setVariantGroupId] = useState<number | null>(
+    initial?.variant_group_id ?? null
+  );
+  const [option1Value, setOption1Value] = useState(initial?.option1_value ?? "");
+  const [option2Value, setOption2Value] = useState(initial?.option2_value ?? "");
+  const [variantSort, setVariantSort] = useState(
+    initial?.variant_sort != null ? String(initial.variant_sort) : "0"
+  );
+  const [barcode, setBarcode] = useState(initial?.barcode ?? "");
+  const [showVariant, setShowVariant] = useState(initial?.variant_group_id != null);
+  const { data: variantConfig } = useVariantConfig();
+  // Kitap kategorisinde varyant kapalı (backend 409'unun aynası): bölüm
+  // gizlenir, seçili grup varsa uyarıyla birlikte gösterilir (silinmez —
+  // sessiz veri kaybı olmasın, admin kararı görerek versin).
+  const kitapKategorisi = isBookCategory(
+    categories ?? [],
+    categoryId ? Number(categoryId) : null,
+    variantConfig?.book_root_slugs ?? []
+  );
   // Stok gerekcesi: yalniz DUZENLEMEDE ve deger degistiginde zorunlu.
   // (Yeni urunde ilk stok `INITIAL` hareketidir; gerekcesi sabittir.)
   const [stockReason, setStockReason] = useState<AdminReasonCode | "">("");
@@ -531,6 +557,18 @@ function ProductForm({
       // ve Turkce gormeli.
       const oran = yuzdedenOran(taxPercent);
       if (!oran.ok) throw new Error(oran.hata ?? "KDV oranı geçersiz");
+      if (variantGroupId != null) {
+        // Sunucu da 400/409 verir; ama admin hatayı formda Türkçe görmeli.
+        if (!barcode.trim()) {
+          throw new Error("Varyant grubundaki ürün için barkod zorunlu");
+        }
+        if (!option1Value.trim()) {
+          throw new Error("1. eksen değeri zorunlu");
+        }
+        if (kitapKategorisi) {
+          throw new Error("Kitap kategorisindeki üründe varyant açılamaz");
+        }
+      }
       const base = {
         title,
         price,
@@ -548,6 +586,14 @@ function ProductForm({
         edition: edition || null,
         language: language || null,
         cover_type: coverType || null,
+        // Varyant üyeliği: grup yoksa eksen değerleri de null gider (sunucu
+        // gruptan çıkışta değerleri zaten temizler; form da tutarlı gönderir).
+        variant_group_id: variantGroupId,
+        option1_value: variantGroupId != null ? option1Value.trim() || null : null,
+        option2_value: variantGroupId != null ? option2Value.trim() || null : null,
+        variant_sort:
+          variantGroupId != null ? parseInt(variantSort, 10) || 0 : 0,
+        barcode: barcode.trim() || null,
       };
       if (isEdit) {
         // Delta SUNUCUDA, urun satiri kilitli iken hesaplanir; istemci yalniz
@@ -596,7 +642,7 @@ function ProductForm({
           <option value="DIGITAL">Dijital</option>
         </select>
       )}
-      <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)} className="input">
+      <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)} aria-label="Kategori" className="input">
         <option value="">Kategori (opsiyonel)</option>
         {(categories ?? []).map((c) => (
           <option key={c.id} value={c.id}>
@@ -682,6 +728,74 @@ function ProductForm({
         )}
       </div>
 
+      {/* Varyant üyeliği — kitap kategorisinde kapalı (backend 409'unun aynası) */}
+      <div className="sm:col-span-2 border-t border-slate-200 pt-4 dark:border-slate-700">
+        {kitapKategorisi ? (
+          variantGroupId != null ? (
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+              <p className="text-xs text-amber-700 dark:text-amber-300">
+                Bu ürün bir varyant grubunda ama seçilen kategori kitap
+                kategorisi — kitapta varyant açılamaz. Kaydetmeden önce grubu
+                kaldırın ya da kategoriyi değiştirin.
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setVariantGroupId(null);
+                  setOption1Value("");
+                  setOption2Value("");
+                }}
+                className="text-xs font-medium text-indigo-600 hover:underline dark:text-indigo-400"
+              >
+                Gruptan çıkar
+              </button>
+            </div>
+          ) : (
+            <p className="text-xs text-slate-400 dark:text-slate-500">
+              Kitap kategorisinde varyant açılamaz — farklı baskı/cilt ayrı
+              ISBN'li ayrı bir üründür.
+            </p>
+          )
+        ) : (
+          <>
+            <button
+              type="button"
+              onClick={() => setShowVariant((v) => !v)}
+              className="flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-indigo-600 dark:text-slate-300 dark:hover:text-indigo-400"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className={`transition-transform ${showVariant ? "rotate-90" : ""}`}>
+                <path d="M9 18l6-6-6-6" />
+              </svg>
+              Varyantlar (renk, ebat…)
+              {variantGroupId != null && (
+                <span className="text-xs font-normal text-slate-400">— grupta</span>
+              )}
+            </button>
+            {showVariant && (
+              <VariantMembershipFields
+                groupId={variantGroupId}
+                onGroupChange={(id) => {
+                  setVariantGroupId(id);
+                  if (id == null) {
+                    setOption1Value("");
+                    setOption2Value("");
+                  }
+                }}
+                option1Value={option1Value}
+                option2Value={option2Value}
+                onOption1Change={setOption1Value}
+                onOption2Change={setOption2Value}
+                variantSort={variantSort}
+                onVariantSortChange={setVariantSort}
+                barcode={barcode}
+                onBarcodeChange={setBarcode}
+                currentProductId={initial?.id}
+              />
+            )}
+          </>
+        )}
+      </div>
+
       <button
         type="button"
         disabled={mutation.isPending || !title || !price || !taxPercent}
@@ -690,6 +804,315 @@ function ProductForm({
       >
         {isEdit ? "Kaydet" : "Ürünü ekle"}
       </button>
+    </div>
+  );
+}
+
+/** Ürün formunun varyant bölümü: grup seç/oluştur + eksen değerleri +
+ *  kardeş listesi + (kayıtlı üründe) "varyant türet".
+ *
+ *  Eksen ADLARI yalnız sözlükten seçilir (backend `variant-config`); eksen
+ *  DEĞERLERİ serbest metindir. Kardeşler saç-teli çizgili satır listesidir —
+ *  kart değil (calm layout).
+ */
+function VariantMembershipFields({
+  groupId,
+  onGroupChange,
+  option1Value,
+  option2Value,
+  onOption1Change,
+  onOption2Change,
+  variantSort,
+  onVariantSortChange,
+  barcode,
+  onBarcodeChange,
+  currentProductId,
+}: {
+  groupId: number | null;
+  onGroupChange: (id: number | null) => void;
+  option1Value: string;
+  option2Value: string;
+  onOption1Change: (v: string) => void;
+  onOption2Change: (v: string) => void;
+  variantSort: string;
+  onVariantSortChange: (v: string) => void;
+  barcode: string;
+  onBarcodeChange: (v: string) => void;
+  currentProductId?: number;
+}) {
+  const { data: config } = useVariantConfig();
+  const { data: groups } = useVariantGroups();
+  const { data: groupDetail } = useVariantGroup(groupId);
+  const [creating, setCreating] = useState(false);
+  const [newTitle, setNewTitle] = useState("");
+  const [newAxis1, setNewAxis1] = useState("");
+  const [newAxis2, setNewAxis2] = useState("");
+  const createGroup = useCreateVariantGroup();
+
+  const group = groups?.find((g) => g.id === groupId) ?? groupDetail ?? null;
+  const axes = config?.axes ?? [];
+
+  return (
+    <div className="mt-3 space-y-3">
+      <div className="grid gap-3 sm:grid-cols-2">
+        <select
+          value={groupId != null ? String(groupId) : ""}
+          onChange={(e) => {
+            if (e.target.value === "__yeni__") {
+              setCreating(true);
+              return;
+            }
+            setCreating(false);
+            onGroupChange(e.target.value ? Number(e.target.value) : null);
+          }}
+          aria-label="Varyant grubu"
+          className="input"
+        >
+          <option value="">Varyant grubu yok</option>
+          {(groups ?? []).map((g) => (
+            <option key={g.id} value={g.id}>
+              {g.title} ({g.option1_name}
+              {g.option2_name ? ` × ${g.option2_name}` : ""}, {g.member_count} ürün)
+            </option>
+          ))}
+          <option value="__yeni__">＋ Yeni grup oluştur…</option>
+        </select>
+        {group && (
+          <input
+            value={barcode}
+            onChange={(e) => onBarcodeChange(e.target.value)}
+            placeholder="Barkod (zorunlu — raftaki ayırt edici)"
+            aria-label="Barkod"
+            className="input"
+          />
+        )}
+      </div>
+
+      {creating && (
+        <div className="grid gap-2 sm:grid-cols-4">
+          <input
+            value={newTitle}
+            onChange={(e) => setNewTitle(e.target.value)}
+            placeholder="Grup adı (ör. Fosforlu Kalem)"
+            className="input sm:col-span-2"
+          />
+          <select value={newAxis1} onChange={(e) => setNewAxis1(e.target.value)} aria-label="1. eksen" className="input">
+            <option value="">1. eksen…</option>
+            {axes.map((a) => (
+              <option key={a} value={a}>{a}</option>
+            ))}
+          </select>
+          <select value={newAxis2} onChange={(e) => setNewAxis2(e.target.value)} aria-label="2. eksen (opsiyonel)" className="input">
+            <option value="">2. eksen yok</option>
+            {axes
+              .filter((a) => a !== newAxis1)
+              .map((a) => (
+                <option key={a} value={a}>{a}</option>
+              ))}
+          </select>
+          <div className="sm:col-span-4 flex items-center gap-3">
+            <Button
+              size="sm"
+              disabled={!newTitle.trim() || !newAxis1 || createGroup.isPending}
+              onClick={() =>
+                createGroup.mutate(
+                  {
+                    title: newTitle.trim(),
+                    option1_name: newAxis1,
+                    option2_name: newAxis2 || null,
+                  },
+                  {
+                    onSuccess: (g) => {
+                      toast.success("Varyant grubu oluşturuldu");
+                      setCreating(false);
+                      setNewTitle("");
+                      onGroupChange(g.id);
+                    },
+                    onError: (err: unknown) =>
+                      toast.error(getErrorDetail(err, "Grup oluşturulamadı")),
+                  }
+                )
+              }
+            >
+              Grubu oluştur
+            </Button>
+            <button
+              type="button"
+              onClick={() => setCreating(false)}
+              className="text-xs font-medium text-slate-500 hover:underline dark:text-slate-400"
+            >
+              Vazgeç
+            </button>
+          </div>
+        </div>
+      )}
+
+      {group && (
+        <div className="grid gap-3 sm:grid-cols-3">
+          <input
+            value={option1Value}
+            onChange={(e) => onOption1Change(e.target.value)}
+            placeholder={`${group.option1_name} (ör. Sarı)`}
+            aria-label={group.option1_name}
+            className="input"
+          />
+          {group.option2_name && (
+            <input
+              value={option2Value}
+              onChange={(e) => onOption2Change(e.target.value)}
+              placeholder={`${group.option2_name}`}
+              aria-label={group.option2_name}
+              className="input"
+            />
+          )}
+          <input
+            value={variantSort}
+            onChange={(e) => onVariantSortChange(e.target.value)}
+            placeholder="Sıra (0, 1, 2…)"
+            aria-label="Varyant sırası"
+            inputMode="numeric"
+            className="input"
+          />
+        </div>
+      )}
+
+      {groupDetail && groupDetail.members.length > 0 && (
+        <div>
+          <p className="mb-1 text-xs font-medium text-slate-500 dark:text-slate-400">
+            Gruptaki varyantlar
+          </p>
+          <ul className="divide-y divide-slate-100 text-sm dark:divide-slate-700/60">
+            {groupDetail.members.map((m) => (
+              <li key={m.id} className="flex items-center justify-between gap-3 py-1.5">
+                <span className="min-w-0 truncate text-slate-700 dark:text-slate-300">
+                  {[m.option1_value, m.option2_value].filter(Boolean).join(" / ")}
+                  <span className="text-slate-400"> · {m.title}</span>
+                  {m.id === currentProductId && (
+                    <span className="ml-1.5 text-xs text-indigo-600 dark:text-indigo-400">(bu ürün)</span>
+                  )}
+                </span>
+                <span className="shrink-0 text-xs text-slate-400">
+                  {formatTL(m.price)}
+                  {m.stock != null && ` · stok ${m.stock}`}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {currentProductId != null &&
+        groupId != null &&
+        groupDetail?.members.some((m) => m.id === currentProductId) && (
+          <DeriveVariantForm
+            productId={currentProductId}
+            group={groupDetail}
+          />
+        )}
+    </div>
+  );
+}
+
+/** "Bu üründen yeni varyant türet" — künye/fiyat/görsel kaynaktan kopyalanır. */
+function DeriveVariantForm({
+  productId,
+  group,
+}: {
+  productId: number;
+  group: NonNullable<ReturnType<typeof useVariantGroup>["data"]>;
+}) {
+  const [open, setOpen] = useState(false);
+  const [value1, setValue1] = useState("");
+  const [value2, setValue2] = useState("");
+  const [newBarcode, setNewBarcode] = useState("");
+  const derive = useDeriveVariant();
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="text-sm font-medium text-indigo-600 hover:underline dark:text-indigo-400"
+      >
+        ＋ Bu üründen yeni varyant türet
+      </button>
+    );
+  }
+  return (
+    <div className="space-y-2">
+      <p className="text-xs text-slate-500 dark:text-slate-400">
+        Künye, fiyat ve görseller bu üründen kopyalanır; yeni varyant{" "}
+        <b>taslak</b> olarak oluşur. Başlık önerisi:{" "}
+        {value1 ? suggestedVariantTitle(group.title, value1, value2 || null) : "—"}
+      </p>
+      <div className="grid gap-2 sm:grid-cols-3">
+        <input
+          value={value1}
+          onChange={(e) => setValue1(e.target.value)}
+          placeholder={group.option1_name}
+          aria-label={`Yeni ${group.option1_name}`}
+          className="input"
+        />
+        {group.option2_name && (
+          <input
+            value={value2}
+            onChange={(e) => setValue2(e.target.value)}
+            placeholder={group.option2_name}
+            aria-label={`Yeni ${group.option2_name}`}
+            className="input"
+          />
+        )}
+        <input
+          value={newBarcode}
+          onChange={(e) => setNewBarcode(e.target.value)}
+          placeholder="Yeni barkod (zorunlu)"
+          aria-label="Yeni barkod"
+          className="input"
+        />
+      </div>
+      <div className="flex items-center gap-3">
+        <Button
+          size="sm"
+          disabled={
+            derive.isPending ||
+            !value1.trim() ||
+            !newBarcode.trim() ||
+            (!!group.option2_name && !value2.trim())
+          }
+          onClick={() =>
+            derive.mutate(
+              {
+                productId,
+                payload: {
+                  option1_value: value1.trim(),
+                  option2_value: group.option2_name ? value2.trim() : null,
+                  barcode: newBarcode.trim(),
+                },
+              },
+              {
+                onSuccess: (yeni) => {
+                  toast.success(`Varyant türetildi: ${yeni.title} (taslak)`);
+                  setOpen(false);
+                  setValue1("");
+                  setValue2("");
+                  setNewBarcode("");
+                },
+                onError: (err: unknown) =>
+                  toast.error(getErrorDetail(err, "Varyant türetilemedi")),
+              }
+            )
+          }
+        >
+          Türet
+        </Button>
+        <button
+          type="button"
+          onClick={() => setOpen(false)}
+          className="text-xs font-medium text-slate-500 hover:underline dark:text-slate-400"
+        >
+          Vazgeç
+        </button>
+      </div>
     </div>
   );
 }
