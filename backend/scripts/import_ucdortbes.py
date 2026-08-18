@@ -157,7 +157,7 @@ async def _upload_cover(
         return None, f"kapak dosyası diskte yok: {p}"
     try:
         data = p.read_bytes()
-        url = await storage.upload_library_photo(data, square=False)
+        url = await storage.upload_product_photo(data)
         return url, f"yüklendi ({p.name}, {p.stat().st_size} bayt)"
     except Exception as exc:  # noqa: BLE001
         return None, f"yükleme hatası ({p.name}): {exc}"

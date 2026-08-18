@@ -13,6 +13,7 @@ yoktur: doğrulanan şey kütüphanenin kendi dönüşüm davranışıdır.
 import ast
 import importlib
 import io
+import pathlib
 
 import pytest
 from PIL import Image
@@ -319,3 +320,85 @@ def test_upload_product_photo_kare_webp_uretir_ve_public_onege_yazar(monkeypatch
     out = _webp_ac(yakalanan["data"])
     assert out.size == (1200, 1200), f"depoya giden görsel kare değil: {out.size}"
     assert _beyaz_mi(out.getpixel((5, 600))), "depoya giden görselde beyaz pad yok"
+
+
+# ── Toplu içe aktarma betikleri de aynı yolda ───────────────────────────────
+#
+# Bayiden toplu görsel geldiğinde ürün kapaklarını bu betikler yükler. Eski
+# yolda kalırlarsa katalog karışır: elle yüklenen kapak pad'li, toplu gelen
+# pad'siz olur ve ızgara yine dağınık görünür. Betikler `sys.path` kurulumu ve
+# `argparse` içerdiği için import EDİLMEZ; kaynak AST ile okunur (kaynak
+# sözleşmesi testi — DÜŞÜK GÜÇLÜ, ama dönüşümün kendisi yukarıda davranışla
+# zaten kanıtlı; burada ölçülen tek şey doğru fonksiyonun bağlandığı).
+
+_BETIK_KOKU = pathlib.Path(storage.__file__).resolve().parent.parent / "scripts"
+
+# (dosya, dönüşümü yapan fonksiyon, beklenen ad, olmaması gereken eski ad)
+_BETIK_SOZLESMESI = [
+    ("import_kitapsec_books.py", "_upload_cover", "upload_product_photo", "upload_library_photo"),
+    ("import_ucdortbes.py", "_upload_cover", "upload_product_photo", "upload_library_photo"),
+    (
+        "backfill_kitapsec_covers.py",
+        "_upload_via_shared_client",
+        "pad_to_square",
+        "optimize_photo",
+    ),
+]
+
+
+def _betik_fonksiyon_adlari(dosya: str, fonksiyon: str) -> set[str]:
+    """Betikteki TEK bir fonksiyon gövdesinde geçen tanımlayıcı adlar.
+
+    Sınır AST ile bulunur; modülün tamamına bakmak yanıltırdı — docstring'ler
+    ve başka yardımcılar eski adı anabilir.
+    """
+    yol = _BETIK_KOKU / dosya
+    assert yol.exists(), f"betik bulunamadı: {yol}"
+    agac = ast.parse(yol.read_text(encoding="utf-8"))
+    dugum = next(
+        d
+        for d in ast.walk(agac)
+        if isinstance(d, (ast.AsyncFunctionDef, ast.FunctionDef)) and d.name == fonksiyon
+    )
+    adlar = {n.attr for n in ast.walk(dugum) if isinstance(n, ast.Attribute)}
+    adlar |= {n.id for n in ast.walk(dugum) if isinstance(n, ast.Name)}
+    assert adlar, f"{dosya}::{fonksiyon} kapsamından hiç ad toplanamadı"
+    return adlar
+
+
+@pytest.mark.parametrize(
+    "dosya, fonksiyon, beklenen, eski",
+    _BETIK_SOZLESMESI,
+    ids=[b[0] for b in _BETIK_SOZLESMESI],
+)
+def test_toplu_ice_aktarma_betikleri_urun_pad_yolunu_kullanir(dosya, fonksiyon, beklenen, eski):
+    adlar = _betik_fonksiyon_adlari(dosya, fonksiyon)
+    assert beklenen in adlar, f"{dosya}::{fonksiyon} artık {beklenen} kullanmalı"
+    assert eski not in adlar, f"{dosya}::{fonksiyon} hâlâ eski {eski} yolunda"
+
+
+def test_backfill_paylasilan_istemci_optimizasyonu_KORUNDU():
+    """Pad'e geçerken performans hilesi kaybolmamalı.
+
+    Ölçüldü: `aioboto3.Session()` her çağrıda botocore servis modellerini
+    diskten yeniden yükler → görsel başına ~1,1 sn, 4.681 görselde ~90 dk.
+    Betik bu yüzden çağıranın açtığı TEK `s3` istemcisini parametre alır ve
+    `put_object`'i kendisi çağırır. `storage.upload_product_photo`'ya
+    geçilseydi (kolay yol) her görsel için yeni Session açılırdı.
+    """
+    yol = _BETIK_KOKU / "backfill_kitapsec_covers.py"
+    agac = ast.parse(yol.read_text(encoding="utf-8"))
+    dugum = next(
+        d
+        for d in ast.walk(agac)
+        if isinstance(d, (ast.AsyncFunctionDef, ast.FunctionDef))
+        and d.name == "_upload_via_shared_client"
+    )
+    # İlk parametre paylaşılan istemci olmalı...
+    assert [a.arg for a in dugum.args.args][:1] == ["s3"], "paylaşılan istemci parametresi kayıp"
+    adlar = _betik_fonksiyon_adlari("backfill_kitapsec_covers.py", "_upload_via_shared_client")
+    # ...ve put doğrudan onun üzerinden yapılmalı.
+    assert "put_object" in adlar, "put_object doğrudan çağrılmıyor"
+    assert "upload_product_photo" not in adlar, (
+        "görsel başına yeni aioboto3 Session açan yola dönülmüş"
+    )
