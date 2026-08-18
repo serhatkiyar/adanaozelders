@@ -7,3 +7,6 @@ dist-ssr
 !.env.example
 .DS_Store
 *.log
+
+# Gercek tarayici kabul cikti klasorleri (ekran goruntuleri commit'e girmez)
+*-kabul/
