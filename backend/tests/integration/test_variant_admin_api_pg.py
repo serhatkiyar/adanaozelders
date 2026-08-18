@@ -482,7 +482,94 @@ async def test_derive_variant_grupsuz_kaynaktan_409(client, kur):
     assert r.status_code == 409, r.text
 
 
+# ── P2-2 · Kategori taşınması gruplu ürünü KİLİTLEMEZ ────────────────────────
+
+
+async def test_kitap_altina_tasinmis_gruplu_urunde_varyantsiz_duzenleme_serbest(client, kur):
+    """Bağımsız denetim P2-2: kategori ağacı SONRADAN kitap kökü altına
+    taşınınca, oradaki gruplu üründe fiyat/stok/başlık düzenlemesi bile 409
+    alıyordu (kapı sonuç duruma bakıyordu). Kapı yalnız VARYANT alanlarına
+    ya da kategoriye dokunulduğunda çalışmalı."""
+    _aid, tok = await kur.admin(izinler=["products.view", "products.manage"])
+    kat = await kur.kategori(slug=f"kirtasiye-p22-{_u()}")
+    g = await kur.grup()
+    r = await client.post(
+        URUN,
+        json=kur.urun_govdesi(
+            category_id=kat, variant_group_id=g,
+            option1_value="Sarı", barcode=f"869{_u()}",
+        ),
+        headers=_bas(tok),
+    )
+    pid = _urun_kaydet(kur, r)["id"]
+
+    # Kategori ağacı taşınır: mevcut kategori bir kitap kökünün ALTINA girer.
+    # (Admin ucuyla değil doğrudan veriyle — P2-1 parent kaçağı ayrı borç;
+    # buradaki soru "veri bu hâldeyken ürün düzenlenebiliyor mu".)
+    kok = await kur.kategori(slug="kitap")
+    async with AsyncSessionLocal() as s:
+        await s.execute(
+            text("UPDATE product_categories SET parent_id = :k WHERE id = :i"),
+            {"k": kok, "i": kat},
+        )
+        await s.commit()
+
+    # Varyantla ilgisiz düzenlemeler SERBEST…
+    r = await client.patch(
+        f"{URUN}/{pid}", json={"price": "160.00"}, headers=_bas(tok)
+    )
+    assert r.status_code == 200, r.text
+    assert r.json()["price"] == "160.00"
+    r = await client.patch(
+        f"{URUN}/{pid}", json={"title": "Fosforlu Kalem - Sarı (Yeni)"},
+        headers=_bas(tok),
+    )
+    assert r.status_code == 200, r.text
+
+    # …ama VARYANT alanına dokunmak kapıdan geçer ve kitapta 409 alır.
+    r = await client.patch(
+        f"{URUN}/{pid}", json={"option1_value": "Kızıl"}, headers=_bas(tok)
+    )
+    assert r.status_code == 409, r.text
+    assert "kitap" in r.json()["detail"].lower()
+
+
 # ── Grup güncelleme tutarlılığı ──────────────────────────────────────────────
+
+
+async def test_dolu_grubun_eksen_adi_degistirilemez(client, kur):
+    """Bağımsız denetim P2-4: üyeler değer taşırken eksen YENİDEN ADLANDIRMA
+    da yasak — "Renk"→"Ebat" yapılınca "Sarı" değeri Ebat kutusuna düşer ve
+    VARIANT_AXES'in önlediği facet karışması geri gelirdi."""
+    _aid, tok = await kur.admin(izinler=["products.view", "products.manage"])
+    g = await kur.grup(option1_name="Renk", option2_name="Ebat")
+    r = await client.post(
+        URUN,
+        json=kur.urun_govdesi(
+            variant_group_id=g, option1_value="Sarı", option2_value="A4",
+            barcode=f"869{_u()}",
+        ),
+        headers=_bas(tok),
+    )
+    _urun_kaydet(kur, r)
+
+    for govde in (
+        {"option1_name": "Gramaj"},
+        {"option2_name": "Çizgi Tipi"},
+    ):
+        r = await client.patch(f"{VG}/{g}", json=govde, headers=_bas(tok))
+        assert r.status_code == 409, (govde, r.text)
+
+    # Başlık düzenlemesi serbest kalır (yalnız eksen adları kilitli).
+    r = await client.patch(f"{VG}/{g}", json={"title": "Yeni Ad"}, headers=_bas(tok))
+    assert r.status_code == 200, r.text
+
+    # BOŞ grupta eksen adı serbestçe değiştirilebilir.
+    bos = await kur.grup(option1_name="Renk")
+    r = await client.patch(
+        f"{VG}/{bos}", json={"option1_name": "Ebat"}, headers=_bas(tok)
+    )
+    assert r.status_code == 200, r.text
 
 
 async def test_option2_ekseni_uyeler_deger_tasirken_kaldirilamaz(client, kur):

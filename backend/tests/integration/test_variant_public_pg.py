@@ -249,6 +249,43 @@ async def test_variant_filtresi_option2_eksenini_de_kapsar(client, fab):
     assert ids == [a4.id]
 
 
+async def test_ayni_deger_iki_eksende_eksen_adi_ayirt_eder(client, fab):
+    """Bağımsız denetim P2-6(b): önceki fixture'larda değerler eksene özgü
+    benzersizdi — filtre eksen adını YOK SAYSA da testler yeşil kalıyordu.
+    Bu test aynı değeri iki farklı eksende taşır: "Renk:Sarı" filtresi Ebat
+    ekseninde "Sarı" taşıyan ürünü GETİRMEMELİ."""
+    isaret = f"Capraz{_u()}"
+    deger = f"Sarı-{isaret}"          # AYNI değer, iki ayrı eksende
+    g_renk = await fab.grup(option1_name="Renk")
+    g_ebat = await fab.grup(option1_name="Ebat")
+    hedef = await fab.urun(
+        title=f"{isaret} renkli", variant_group_id=g_renk,
+        option1_value=deger, barcode=f"869{_u()}", stock=1,
+    )
+    await fab.urun(
+        title=f"{isaret} ebatli", variant_group_id=g_ebat,
+        option1_value=deger, barcode=f"869{_u()}", stock=1,
+    )
+    r = await client.get(
+        "/api/v1/store/products",
+        params={"q": isaret, "variant": [f"Renk:{deger}"]},
+    )
+    assert r.status_code == 200, r.text
+    ids = [p["id"] for p in r.json()]
+    assert ids == [hedef.id], "eksen adı yok sayılıyor — Ebat:Sarı da geldi"
+
+
+async def test_bicimsiz_variant_parametresi_400(client, fab):
+    """P2-6(d) HTTP kolu: 'Eksen:Değer' biçiminde olmayan filtre SESSİZCE
+    yutulmaz — 400 döner (yutulsaydı 'filtre yok' gibi tüm katalog dönerdi)."""
+    for bozuk in ("bozuk", ":deger", "Renk:", "  :  "):
+        r = await client.get(
+            "/api/v1/store/products", params={"variant": [bozuk]}
+        )
+        assert r.status_code == 400, (bozuk, r.status_code, r.text)
+        assert "Eksen:Değer" in r.json()["detail"]
+
+
 async def test_variant_filtresi_eksenler_arasi_AND(client, fab):
     g = await fab.grup(option1_name="Renk", option2_name="Ebat")
     isaret = f"VeBagi{_u()}"

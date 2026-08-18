@@ -628,17 +628,29 @@ async def search_products(
     # Varyant eksen filtresi: değer, EKSENİ o ada sahip grupların üyelerinde
     # aranır — birinci ya da ikinci eksen olması fark etmez (facet karışması
     # çözümünün filtre tarafı; bkz. list_book_facets'teki not).
-    if variant_filters:
-        kosullar.append(VariantGroup.deleted_at.is_(None))
-        for eksen, degerler in variant_filters.items():
-            kosullar.append(
+    #
+    # KORELE EXISTS, JOIN DEĞİL (P2-6b dersi): Faz 3b refactor'ünde koşullar
+    # WHERE listesine alınıp VariantGroup JOIN'i sorguya SONRADAN eklenince
+    # eşleşme bozuldu ve filtre eksen adını fiilen yok saydı — "Ebat:Sarı"
+    # taşıyan ürün "Renk:Sarı" filtresinde de geliyordu. Eski testler değerleri
+    # eksene özgü ürettiği için bunu yakalayamadı (artık çapraz-eksen fixture'ı
+    # var). EXISTS ürünün KENDİ grubuna bağlanır; ikinci FROM/kartesyen riski
+    # yapısal olarak yoktur.
+    for eksen, degerler in (variant_filters or {}).items():
+        kosullar.append(
+            select(VariantGroup.id)
+            .where(
+                VariantGroup.id == Product.variant_group_id,
+                VariantGroup.deleted_at.is_(None),
                 or_(
                     (VariantGroup.option1_name == eksen)
                     & Product.option1_value.in_(degerler),
                     (VariantGroup.option2_name == eksen)
                     & Product.option2_value.in_(degerler),
-                )
+                ),
             )
+            .exists()
+        )
 
     relevance = literal(0.0)
     if q:
@@ -697,10 +709,6 @@ async def search_products(
         score.label("skor"),
         relevance.label("relv"),
     ).where(*kosullar)
-    if variant_filters:
-        inner = inner.join(
-            VariantGroup, VariantGroup.id == Product.variant_group_id
-        )
     sub = inner.subquery("grup_kartlari")
 
     stmt = (
@@ -1353,9 +1361,16 @@ async def update_product(
             else p.variant_group_id
         )
         hedef_kategori = data.get("category_id", p.category_id)
-        if hedef_grup is not None:
-            # Kapı SONUÇ DURUMA bakar: yalnız gruba girişte değil, gruplu
-            # ürünün kategorisi kitaba TAŞINIRKEN de çalışır.
+        # Kapı yalnız VARYANT alanlarına ya da kategoriye DOKUNULDUĞUNDA çalışır
+        # (P2-2): kategori ağacı sonradan kitap kökü altına taşınmış gruplu
+        # üründe fiyat/stok/başlık düzenlemesi bile 409 alıyordu — varyantla
+        # ilgisiz bakım, mevcut (artık kural dışı kalmış) üyeliği yeniden
+        # yargılamaz. Ürünün kategorisini DEĞİŞTİRMEK ise kapıdan geçer: gruplu
+        # ürün kitaba taşınamaz (mevcut davranış korunur).
+        varyanta_dokunuldu = bool(
+            set(data) & set(_VARYANT_ALANLARI)
+        ) or "category_id" in data
+        if hedef_grup is not None and varyanta_dokunuldu:
             await variant_service.validate_membership(
                 db,
                 group_id=hedef_grup,
@@ -1364,7 +1379,7 @@ async def update_product(
                 option2_value=data.get("option2_value", p.option2_value),
                 barcode=data.get("barcode", p.barcode),
             )
-        else:
+        elif hedef_grup is None:
             if "variant_group_id" in data:
                 # Gruptan çıkış: eksen değerleri de temizlenir — orphan
                 # CHECK'ine çarpmadan, bayat "Kırmızı" etiketi bırakmadan.

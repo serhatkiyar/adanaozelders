@@ -207,24 +207,49 @@ async def update_group(
     g = await _load_group(db, group_id)
     data = payload.model_dump(exclude_unset=True)
 
-    if "option2_name" in data and data["option2_name"] is None:
-        # Eksen kaldırma: üyeler o eksende değer taşıyorsa kaldırılamaz —
-        # değerler askıda kalır ve varyant seçici adsız kolon gösterirdi.
-        tasiyan = (
+    async def _deger_tasiyan(kolon) -> int:
+        return (
             await db.execute(
                 select(func.count()).where(
                     Product.variant_group_id == g.id,
                     Product.deleted_at.is_(None),
-                    Product.option2_value.isnot(None),
+                    kolon.isnot(None),
                 )
             )
         ).scalar_one()
+
+    if "option2_name" in data and data["option2_name"] is None:
+        # Eksen kaldırma: üyeler o eksende değer taşıyorsa kaldırılamaz —
+        # değerler askıda kalır ve varyant seçici adsız kolon gösterirdi.
+        tasiyan = await _deger_tasiyan(Product.option2_value)
         if tasiyan:
             raise HTTPException(
                 status.HTTP_409_CONFLICT,
                 f"2. eksen kaldırılamaz: {tasiyan} üründe bu eksenin değeri "
                 "dolu. Önce üyelerin 2. eksen değerlerini temizleyin.",
             )
+
+    # Eksen YENİDEN ADLANDIRMA da üyeler değer taşırken yasak (P2-4): "Renk"
+    # → "Ebat" yapılınca "Sarı" değeri Ebat kutusuna düşer ve VARIANT_AXES'in
+    # varlık sebebi olan facet karışması geri gelirdi. Boş grupta serbest.
+    for alan, kolon, etiket in (
+        ("option1_name", Product.option1_value, "1."),
+        ("option2_name", Product.option2_value, "2."),
+    ):
+        if (
+            alan in data
+            and data[alan] is not None
+            and data[alan] != getattr(g, alan)
+        ):
+            tasiyan = await _deger_tasiyan(kolon)
+            if tasiyan:
+                raise HTTPException(
+                    status.HTTP_409_CONFLICT,
+                    f"{etiket} eksenin adı değiştirilemez: {tasiyan} üründe bu "
+                    "eksenin değeri dolu — mevcut değerler yeni eksenin "
+                    "anlamına taşınmış olurdu (facet karışması). Önce üyeleri "
+                    "gruptan çıkarın ya da yeni bir grup açın.",
+                )
 
     yeni_o1 = data.get("option1_name", g.option1_name)
     yeni_o2 = data.get("option2_name", g.option2_name)

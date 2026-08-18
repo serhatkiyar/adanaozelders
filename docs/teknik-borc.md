@@ -272,6 +272,46 @@ yalnız ölçümü ve öneriyi kaydeder.
      düzeltme turunda bulundu. Sözleşme: docs/ip19-dagitim-operasyon-sozlesme.md
      §9 ve §10.6. -->
 
+## TB-?A · Kategori `parent_id` taşıması varyant kitap kuralını kapısız deliyor (denetim P2-1)
+
+| | |
+|---|---|
+| **Bulundu** | Varyant paketi bağımsız denetimi (18 Ağu 2026, P2-1 — merge sonrasına ertelendi) |
+| **Nerede** | `store_service.update_category` — `parent_id` serbestçe atanır |
+| **Sorun** | Kitap-dışı bir kategori (altındaki GRUPLU ürünlerle birlikte) admin ucundan bir kitap kökünün ALTINA taşınabilir; `ensure_variants_allowed` yalnız ÜRÜN yazma yolunda çalıştığı için taşıma anında hiçbir kapı yok. Sonuç: kural dışı kalmış gruplu ürünler (P2-2 düzeltmesi bunların BAKIMINI serbest bıraktı ama oluşmasını engellemiyor). Ayrıca `parent_id` için döngü kontrolü de yok |
+| **Neden ertelendi** | Denetim kararı: merge engeli değil; taşıma nadir bir admin aksiyonu ve ürün-yolu kapısı + `BOOK_ROOT_SLUGS` nöbetçileri ayakta |
+| **Sonraki adım** | `update_category` parent değişiminde: yeni zincir kitap köküne çıkıyorsa ve alt ağaçta gruplu ürün varsa 409; döngü kontrolü |
+
+## TB-?B · Son üyesi çıkarılan varyant grubu asılı kalıyor (denetim P2-3)
+
+| | |
+|---|---|
+| **Bulundu** | Varyant paketi bağımsız denetimi (18 Ağu 2026, P2-3 — merge sonrasına ertelendi) |
+| **Nerede** | `store_service.update_product` (gruptan çıkış) / `delete_product` |
+| **Sorun** | Üyeler tek tek gruptan çıkarılınca (ya da soft-delete edilince) grup 0 aktif üyeyle yaşamaya devam eder; admin grup listesinde ve seçicide artık hiçbir şeyi temsil etmeyen "hayalet" gruplar birikir. `delete_group` elle çağrılmadıkça temizlik yok |
+| **Neden ertelendi** | Veri bozmaz; yalnız yönetim yüzeyi kirliliği. Otomatik silme ayrı karar ister (soft-delete'li üye geri gelebilir — FK sayımı silinmişleri de sayıyor) |
+| **Sonraki adım** | Admin grup listesinde "üyesiz" rozeti + boş grubu tek tıkla silme; otomatik temizlik yapılacaksa yalnız hiç referanssız gruplar |
+
+## TB-?C · Grup kartının temsilcisi tükenik üye olabiliyor (denetim P2-5)
+
+| | |
+|---|---|
+| **Bulundu** | Varyant paketi bağımsız denetimi (18 Ağu 2026, P2-5 — merge sonrasına ertelendi) |
+| **Nerede** | `store_service.search_products` — temsilci sırası (`temsilci_sirasi`) stok durumuna bakmaz |
+| **Sorun** | `in_stock` grup semantiği doğru (kart görünür, `in_stock_override` grubu söyler) ama skor kipinde temsilci en yüksek puanlı üyedir — o üye tükenikse kartın başlığı/fiyatı/linki tükenik varyanta gider; müşteri tıklayınca "Tükendi" sayfasına iner (seçiciden stoklu kardeşe geçebilir, ama ilk izlenim yanlış) |
+| **Neden ertelendi** | Davranış yanlış veri göstermiyor, alt-optimal yönlendiriyor; temsilci sırasına `stokta DESC` eklemek sıralama kiplerinin tamamında yeniden test ister |
+| **Sonraki adım** | `temsilci_sirasi`'nın başına `stokta.desc()` ekle + altı kip testine "tükenik temsilci adayı varken stoklu üye temsil eder" senaryosu |
+
+## TB-?D · Varyant testlerinin izolasyon sınırları (denetim P2-8)
+
+| | |
+|---|---|
+| **Bulundu** | Varyant paketi bağımsız denetimi (18 Ağu 2026, P2-8 — merge sonrasına ertelendi) |
+| **Nerede** | `tests/integration/test_variant_*_pg.py` fixture'ları |
+| **Sorun** | Denetim raporundaki tanımıyla test izolasyonu bulgusu (rapor metni repoda değil; buradaki özet denetim çıktısının başlığından). Bilinen zayıf noktalar: q'suz kipler kategori-daraltmasıyla izole ediliyor ama `test_facet_eksen_adina_gore_gruplanir` facet ucunu KATALOG GENELİ sorguluyor (işaretli değerlerle ayrışıyor, yine de paralel koşumda sayım varsayımları kırılgan); duman verisi/`adana_verify` provası gibi elle kurulan veriler nöbetçi dışı |
+| **Neden ertelendi** | Suite bugün deterministik geçiyor; sertleştirme davranış değiştirmez |
+| **Sonraki adım** | Denetim raporunun tam metniyle karşılaştırıp facet testlerini kendi kategorisine daraltmak; varyant fabrikalarının teardown'larını `_hijyen_nobetcisi` tablolarıyla hizalamak |
+
 ## TB-54 · Vitest suite'inde tanımlanamayan tek seferlik kırılma
 
 | | |
