@@ -70,6 +70,7 @@ import {
 } from "@/hooks/useStore";
 import { usePaymentAvailability } from "@/hooks/useFeatureFlags";
 import { digitalProductsOpen } from "@/lib/paymentAvailability";
+import { CSV_COLUMNS, buildCsvTemplate } from "@/lib/productCsvTemplate";
 import { isBookCategory, suggestedVariantTitle } from "@/lib/variants";
 import { getErrorDetail } from "@/lib/errors";
 import { toast } from "@/store/toastStore";
@@ -1326,19 +1327,17 @@ function EditProductModal({
 
 /* ── Toplu içe aktar (CSV) ── */
 
-const CSV_COLUMNS =
-  "title,kind,price,tax_rate,compare_at_price,stock,category_slug,status,cover_url,description,author,publisher,isbn,page_count,dimensions,publication_year,edition,language,cover_type";
-
 function BulkImportPanel({ onDone }: { onDone: () => void }) {
   const [file, setFile] = useState<File | null>(null);
   const [result, setResult] = useState<BulkImportResult | null>(null);
   const importer = useBulkImportProducts();
 
   function downloadTemplate() {
-    const sample =
-      `${CSV_COLUMNS}
-` +
-      "AYT Matematik Soru Bankası,PHYSICAL,339,399,25,yks-kitaplari,ACTIVE,,Açıklama metni,Seyit Dönmez,Bilgi Sarmal Yayınları,9786258070187,416,19 x 27,2026,1. Basım,Türkçe,Karton Kapak";
+    // Başlık + örnek satır TEK KAYNAKTA (`lib/productCsvTemplate`): ikisi
+    // burada ayrı string olarak dururken aralarında bir kolon kayması oluştu
+    // (`tax_rate` atlanmış, sonraki her değer bir sola kaymıştı) ve şablonu
+    // indiren herkes geçersiz veri gönderiyordu. Hizayı Vitest nöbetçisi korur.
+    const sample = buildCsvTemplate();
     // BOM (﻿) → Excel Türkçe karakterleri doğru açar.
     const blob = new Blob([`﻿${sample}`], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
