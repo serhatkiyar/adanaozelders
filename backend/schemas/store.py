@@ -116,6 +116,11 @@ class ProductSearchOut(BaseModel):
     option2_value: str | None = None
     variant_sort: int = 0
     barcode: str | None = None
+    #: Kartın temsil ettiği grup üye sayısı (tekil üründe 1). >1 iken kart
+    #: "grup kartıdır": `in_stock` grubun durumudur ve fiyat gösterimi
+    #: `group_min_price` ile "X TL'den başlayan" olur.
+    variant_count: int = 1
+    group_min_price: str | None = None
 
 
 class ProductVariantMemberPublicOut(BaseModel):

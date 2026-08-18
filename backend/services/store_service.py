@@ -12,7 +12,7 @@ import unicodedata
 from decimal import Decimal
 
 from fastapi import HTTPException, status
-from sqlalchemy import Float, cast, func, or_, select
+from sqlalchemy import Float, cast, func, literal, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -144,7 +144,17 @@ def _in_stock(p: Product) -> bool:
 
 
 def _to_search_out(
-    p: Product, prior_mean: float, confidence: float, *, tutor_name: str | None = None
+    p: Product,
+    prior_mean: float,
+    confidence: float,
+    *,
+    tutor_name: str | None = None,
+    # Faz 3b (grup kartı): kart grubu temsil ederken üye sayısı + "X TL'den
+    # başlayan" fiyatı + grubun stok durumu buradan gelir. Tekil listelemelerde
+    # (favoriler, satıcı listesi…) varsayılanlar geçerlidir.
+    variant_count: int = 1,
+    group_min_price: str | None = None,
+    in_stock_override: bool | None = None,
 ) -> ProductSearchOut:
     return ProductSearchOut(
         id=p.id,
@@ -164,7 +174,7 @@ def _to_search_out(
         tax_rate=(Decimal(str(p.tax_rate)) if p.tax_rate is not None else None),
         currency=p.currency,
         cover_url=p.cover_url,
-        in_stock=_in_stock(p),
+        in_stock=(in_stock_override if in_stock_override is not None else _in_stock(p)),
         # Fiziksel üründe kalan adet; dijitalde None (bkz. şema yorumu).
         stock=(p.stock if p.kind == ProductKind.PHYSICAL.value else None),
         category_id=p.category_id,
@@ -183,6 +193,8 @@ def _to_search_out(
         option2_value=p.option2_value,
         variant_sort=p.variant_sort or 0,
         barcode=p.barcode,
+        variant_count=variant_count,
+        group_min_price=group_min_price,
     )
 
 
@@ -573,41 +585,35 @@ async def search_products(
     confidence = settings.BAYESIAN_CONFIDENCE
     score = _bayesian_score_expr(prior_mean, confidence)
 
-    stmt = (
-        select(Product, Tutor.first_name, Tutor.last_name)
-        .outerjoin(Tutor, Tutor.id == Product.tutor_id)
-        .where(
-            Product.status == ProductStatus.ACTIVE.value,
-            Product.deleted_at.is_(None),
-        )
-    )
+    # ── Filtre koşulları (İÇ sorguya uygulanır) ──
+    kosullar = [
+        Product.status == ProductStatus.ACTIVE.value,
+        Product.deleted_at.is_(None),
+    ]
     if category_id is not None:
         # Üst kategori seçilince alt kategorilerdeki ürünler de gelmeli.
         # Tam eşitlik kullanıldığında ("Sınav Kitapları" gibi) hiçbir üst
         # kategori ürün göstermiyordu: ürünler yaprak kategorilere atanır
         # (seed_kitapsec.py) ama gezinme üst kategoriden başlar.
-        stmt = stmt.where(
+        kosullar.append(
             Product.category_id.in_(await _category_and_descendants(db, category_id))
         )
     if tutor_id is not None:
-        stmt = stmt.where(Product.tutor_id == tutor_id)
+        kosullar.append(Product.tutor_id == tutor_id)
     if kind:
-        stmt = stmt.where(Product.kind == kind)
+        kosullar.append(Product.kind == kind)
     if min_price is not None:
-        stmt = stmt.where(Product.price >= min_price)
+        kosullar.append(Product.price >= min_price)
     if max_price is not None:
-        stmt = stmt.where(Product.price <= max_price)
-    if in_stock:
-        # Dijital her zaman stokta; fiziksel → stock > 0 (bkz. _in_stock).
-        stmt = stmt.where(
-            or_(Product.kind == ProductKind.DIGITAL.value, Product.stock > 0)
-        )
+        kosullar.append(Product.price <= max_price)
+    # DİKKAT: `in_stock` burada YOK — grup semantiği taşır ("grubun herhangi
+    # bir varyantı stokta") ve DIŞ sorguda `grp_stok` üzerinden uygulanır.
+    # İçte uygulansaydı tükenen üyeler partition'dan düşer ve temsilci/fiyat
+    # hesapları "stoktakiler" alt kümesine kayardı.
     if min_rating is not None:
         # Ham ortalama >= min_rating (bölmesiz): rating_sum >= min_rating * count.
-        stmt = stmt.where(
-            Product.rating_count > 0,
-            Product.rating_sum >= min_rating * Product.rating_count,
-        )
+        kosullar.append(Product.rating_count > 0)
+        kosullar.append(Product.rating_sum >= min_rating * Product.rating_count)
     # Künye filtreleri normalize edilmiş karşılaştırma yapar: kullanıcı
     # "palme yayinlari" seçse de kayıt "Palme Yayınları" olarak durur.
     for column, values in (
@@ -616,19 +622,16 @@ async def search_products(
         (Product.cover_type, cover_type),
     ):
         if values:
-            stmt = stmt.where(
+            kosullar.append(
                 normalized(column).in_([normalize_tr(v) for v in values])
             )
-
     # Varyant eksen filtresi: değer, EKSENİ o ada sahip grupların üyelerinde
     # aranır — birinci ya da ikinci eksen olması fark etmez (facet karışması
     # çözümünün filtre tarafı; bkz. list_book_facets'teki not).
     if variant_filters:
-        stmt = stmt.join(
-            VariantGroup, VariantGroup.id == Product.variant_group_id
-        ).where(VariantGroup.deleted_at.is_(None))
+        kosullar.append(VariantGroup.deleted_at.is_(None))
         for eksen, degerler in variant_filters.items():
-            stmt = stmt.where(
+            kosullar.append(
                 or_(
                     (VariantGroup.option1_name == eksen)
                     & Product.option1_value.in_(degerler),
@@ -637,7 +640,7 @@ async def search_products(
                 )
             )
 
-    relevance = None
+    relevance = literal(0.0)
     if q:
         # Diakritik-duyarsız: "matematık", "kitab", "cozumlu" sonuç getirmeli.
         # Yazar/yayınevi de aranır — kullanıcı çoğu zaman kitabın adını değil
@@ -650,30 +653,105 @@ async def search_products(
         tsquery = search_tsquery(q)
         norm_title = normalized(Product.title)
         norm_q = normalized(q)
-        stmt = stmt.where(_arama_kolu(q))
+        kosullar.append(_arama_kolu(q))
         relevance = func.ts_rank(Product.search_vector, tsquery) + func.similarity(
             norm_title, norm_q
         )
 
+    # ── Gruplama (Faz 3b): listede GRUP BAŞINA TEK KART ──
+    #
+    # DISTINCT ON dış sıralamayla çakışır; bunun yerine ROW_NUMBER() OVER
+    # (PARTITION BY grup, ORDER BY <kipin temsilci sırası>) alt sorgusu kurulur
+    # ve LIMIT/OFFSET **DIŞ** sorguda uygulanır — sayfalama böylece GRUP
+    # (kart) sayısına göredir, üye sayısına göre değil. Tekil ürün kendi
+    # başına bir gruptur: COALESCE(variant_group_id, -id) çakışmasız anahtar
+    # (id'ler pozitif, negatifler tekilleri temsil eder).
+    #
+    # Temsilci = kipin "en iyi" üyesi (price_asc→en ucuz, newest→en yeni,
+    # skor kiplerinde→en yüksek skor); dış sıralama temsilcinin değeriyle
+    # yapılır, böylece kart doğru konuma oturur. Window'lar FİLTRELENMİŞ küme
+    # üzerinde çalışır: "Sarı" filtresi varken kartı grubun sarı üyesi temsil
+    # eder. `id` her sırada son bağlayıcıdır (deterministik sayfalama).
+    grp = func.coalesce(Product.variant_group_id, -Product.id)
+    stokta = or_(Product.kind == ProductKind.DIGITAL.value, Product.stock > 0)
+
     if sort == "price_asc":
-        stmt = stmt.order_by(Product.price.asc(), score.desc())
+        temsilci_sirasi = [Product.price.asc(), Product.id.asc()]
     elif sort == "price_desc":
-        stmt = stmt.order_by(Product.price.desc(), score.desc())
+        temsilci_sirasi = [Product.price.desc(), Product.id.asc()]
     elif sort == "newest":
-        stmt = stmt.order_by(Product.created_at.desc())
+        temsilci_sirasi = [Product.created_at.desc(), Product.id.desc()]
+    else:  # default / rating / relevance → skor temsil eder
+        temsilci_sirasi = [
+            score.desc(), Product.created_at.desc(), Product.id.desc()
+        ]
+
+    inner = select(
+        Product.id.label("pid"),
+        func.row_number()
+        .over(partition_by=grp, order_by=temsilci_sirasi)
+        .label("rn"),
+        func.min(Product.price).over(partition_by=grp).label("grp_min"),
+        func.count().over(partition_by=grp).label("grp_n"),
+        func.bool_or(stokta).over(partition_by=grp).label("grp_stok"),
+        score.label("skor"),
+        relevance.label("relv"),
+    ).where(*kosullar)
+    if variant_filters:
+        inner = inner.join(
+            VariantGroup, VariantGroup.id == Product.variant_group_id
+        )
+    sub = inner.subquery("grup_kartlari")
+
+    stmt = (
+        select(
+            Product,
+            Tutor.first_name,
+            Tutor.last_name,
+            sub.c.grp_min,
+            sub.c.grp_n,
+            sub.c.grp_stok,
+            sub.c.skor,
+            sub.c.relv,
+        )
+        .join(sub, sub.c.pid == Product.id)
+        .outerjoin(Tutor, Tutor.id == Product.tutor_id)
+        .where(sub.c.rn == 1)
+    )
+    if in_stock:
+        stmt = stmt.where(sub.c.grp_stok)
+
+    if sort == "price_asc":
+        stmt = stmt.order_by(Product.price.asc(), sub.c.skor.desc(), Product.id.asc())
+    elif sort == "price_desc":
+        stmt = stmt.order_by(Product.price.desc(), sub.c.skor.desc(), Product.id.asc())
+    elif sort == "newest":
+        stmt = stmt.order_by(Product.created_at.desc(), Product.id.desc())
     elif sort == "rating":
-        stmt = stmt.order_by(score.desc(), Product.created_at.desc())
-    elif relevance is not None:
-        stmt = stmt.order_by(score.desc(), relevance.desc())
+        stmt = stmt.order_by(sub.c.skor.desc(), Product.created_at.desc(), Product.id.desc())
+    elif q:
+        stmt = stmt.order_by(sub.c.skor.desc(), sub.c.relv.desc(), Product.id.desc())
     else:
-        stmt = stmt.order_by(score.desc(), Product.created_at.desc())
+        stmt = stmt.order_by(sub.c.skor.desc(), Product.created_at.desc(), Product.id.desc())
 
     stmt = stmt.limit(limit).offset(offset)
     rows = (await db.execute(stmt)).all()
     out: list[ProductSearchOut] = []
-    for p, fn, ln in rows:
+    for p, fn, ln, grp_min, grp_n, grp_stok, _skor, _relv in rows:
         name = f"{fn} {ln}".strip() if fn else None
-        out.append(_to_search_out(p, prior_mean, confidence, tutor_name=name))
+        out.append(
+            _to_search_out(
+                p,
+                prior_mean,
+                confidence,
+                tutor_name=name,
+                variant_count=int(grp_n),
+                group_min_price=(str(grp_min) if grp_n > 1 else None),
+                # Kartın stok durumu GRUBUN durumudur: temsilci tükenik olsa
+                # da kardeşi satılabiliyorsa kart "Tükendi" diyemez.
+                in_stock_override=(bool(grp_stok) if grp_n > 1 else None),
+            )
+        )
     return out
 
 

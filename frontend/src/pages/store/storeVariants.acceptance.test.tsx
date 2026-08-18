@@ -218,6 +218,39 @@ describe("S-2 · grupsuz üründe seçici yok", () => {
   });
 });
 
+describe("S-4 · listede grup kartı (Faz 3b)", () => {
+  it("variant_count>1 kartı 'başlayan' fiyat + Seçenekleri Gör linki basar; sepete ekle YOK", async () => {
+    sunucu("/store/config", { data: { low_stock_threshold: 5 } }, "get");
+    sunucu("/store/categories", { data: [] }, "get");
+    sunucu("/store/book-facets", { data: { publisher: [], author: [], cover_type: [], variant_axes: {} } }, "get");
+    sunucu(/\/store\/products$/, {
+      data: [
+        {
+          id: 101, slug: "fosforlu-sari", title: "Fosforlu Kalem - Sarı",
+          kind: "PHYSICAL", seller_type: "PLATFORM", price: "50.00",
+          currency: "TRY", in_stock: true, stock: 0, rating_count: 0,
+          status: "ACTIVE", variant_group_id: 7, variant_count: 3,
+          group_min_price: "30.00",
+        },
+        {
+          id: 200, slug: "tekil-defter", title: "Tekil Defter",
+          kind: "PHYSICAL", seller_type: "PLATFORM", price: "40.00",
+          currency: "TRY", in_stock: true, stock: 3, rating_count: 0,
+          status: "ACTIVE", variant_count: 1,
+        },
+      ],
+    }, "get");
+    sar(`${PATHS.store}?q=kalem`, PATHS.store, <StorePage />);
+
+    // Grup kartı: min fiyat + "başlayan" + seçime yönlendiren GERÇEK link.
+    const link = await screen.findByRole("link", { name: /Seçenekleri Gör \(3\)/ });
+    expect(link.getAttribute("href")).toBe("/magaza/urun/fosforlu-sari");
+    expect(screen.getByText(/'den başlayan/)).toBeTruthy();
+    // Tekil kartta sepete ekle sürer; grup kartında buton yok (tek buton kaldı).
+    expect(screen.getAllByRole("button", { name: "Sepete Ekle" })).toHaveLength(1);
+  });
+});
+
 describe("S-3 · mağaza facet'i", () => {
   it("varyant ekseni kutusu veriden gelir; seçim GERÇEK isteğe variant paramı olarak yansır", async () => {
     sunucu("/store/config", { data: { low_stock_threshold: 5 } }, "get");

@@ -1514,6 +1514,10 @@ export interface ProductSearchOut {
   option2_value?: string | null;
   variant_sort?: number;
   barcode?: string | null;
+  /** Kartın temsil ettiği grup üye sayısı (tekilde 1). >1 iken `in_stock`
+   *  grubun durumudur ve fiyat `group_min_price` ile "X TL'den başlayan". */
+  variant_count?: number;
+  group_min_price?: string | null;
 }
 
 /** Kitap künyesi (opsiyonel) — ürün detayında "Ürün Özellikleri" tablosu + admin formu. */
