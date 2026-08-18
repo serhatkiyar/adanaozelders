@@ -272,7 +272,15 @@ yalnız ölçümü ve öneriyi kaydeder.
      düzeltme turunda bulundu. Sözleşme: docs/ip19-dagitim-operasyon-sozlesme.md
      §9 ve §10.6. -->
 
-## TB-?A · Kategori `parent_id` taşıması varyant kitap kuralını kapısız deliyor (denetim P2-1)
+<!-- Varyant paketi merge turu (19 Ağu 2026) — kural (3) gereği tahsis:
+     ölçüm tüm yerel+uzak dallarda en yüksek TB-54 (fetch sonrası) →
+       TB-?A → **TB-55**   kategori parent_id kitap-kuralı kaçağı  (denetim P2-1)
+       TB-?B → **TB-56**   asılı (üyesiz) varyant grubu            (denetim P2-3)
+       TB-?C → **TB-57**   grup kartı temsilcisi tükenik olabilir  (denetim P2-5)
+       TB-?D → **TB-58**   varyant testleri izolasyon sınırları    (denetim P2-8)
+     Dördü bağımsız denetimin merge-sonrasına ertelediği bulgulardır. -->
+
+## TB-55 · Kategori `parent_id` taşıması varyant kitap kuralını kapısız deliyor (denetim P2-1)
 
 | | |
 |---|---|
@@ -282,7 +290,7 @@ yalnız ölçümü ve öneriyi kaydeder.
 | **Neden ertelendi** | Denetim kararı: merge engeli değil; taşıma nadir bir admin aksiyonu ve ürün-yolu kapısı + `BOOK_ROOT_SLUGS` nöbetçileri ayakta |
 | **Sonraki adım** | `update_category` parent değişiminde: yeni zincir kitap köküne çıkıyorsa ve alt ağaçta gruplu ürün varsa 409; döngü kontrolü |
 
-## TB-?B · Son üyesi çıkarılan varyant grubu asılı kalıyor (denetim P2-3)
+## TB-56 · Son üyesi çıkarılan varyant grubu asılı kalıyor (denetim P2-3)
 
 | | |
 |---|---|
@@ -292,7 +300,7 @@ yalnız ölçümü ve öneriyi kaydeder.
 | **Neden ertelendi** | Veri bozmaz; yalnız yönetim yüzeyi kirliliği. Otomatik silme ayrı karar ister (soft-delete'li üye geri gelebilir — FK sayımı silinmişleri de sayıyor) |
 | **Sonraki adım** | Admin grup listesinde "üyesiz" rozeti + boş grubu tek tıkla silme; otomatik temizlik yapılacaksa yalnız hiç referanssız gruplar |
 
-## TB-?C · Grup kartının temsilcisi tükenik üye olabiliyor (denetim P2-5)
+## TB-57 · Grup kartının temsilcisi tükenik üye olabiliyor (denetim P2-5)
 
 | | |
 |---|---|
@@ -302,7 +310,7 @@ yalnız ölçümü ve öneriyi kaydeder.
 | **Neden ertelendi** | Davranış yanlış veri göstermiyor, alt-optimal yönlendiriyor; temsilci sırasına `stokta DESC` eklemek sıralama kiplerinin tamamında yeniden test ister |
 | **Sonraki adım** | `temsilci_sirasi`'nın başına `stokta.desc()` ekle + altı kip testine "tükenik temsilci adayı varken stoklu üye temsil eder" senaryosu |
 
-## TB-?D · Varyant testlerinin izolasyon sınırları (denetim P2-8)
+## TB-58 · Varyant testlerinin izolasyon sınırları (denetim P2-8)
 
 | | |
 |---|---|
