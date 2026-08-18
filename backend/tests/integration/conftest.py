@@ -399,6 +399,9 @@ async def ip3(pg):
 #: birikmişti. "Ayrı karar" diyerek korumasız bırakmak, korumasız bırakmaktır.
 _KRITIK_TABLOLAR = (
     "products",
+    # Varyant grupları (Faz 1): grup satırı sızarsa admin grup listesi ve
+    # gelecekteki varyant seçici test artıklarıyla dolar.
+    "variant_groups",
     "stock_movements",
     "stock_count_sessions",
     "stock_count_lines",

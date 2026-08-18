@@ -127,6 +127,7 @@ from models.store import (
     StockBucket,
     StockMovementType,
     StockNotification,
+    VariantGroup,
 )
 from models.task import Subtask, Task, TaskFilter, TaskLabel, TaskList
 from models.tutor import (
@@ -236,6 +237,7 @@ __all__ = [
     "StockMovement",
     "StockMovementType",
     "StockBucket",
+    "VariantGroup",
     # F29 — sayım ve hasarlı stok
     "COUNT_ADJUSTMENT_REASONS",
     "DAMAGE_REASONS",
