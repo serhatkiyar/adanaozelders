@@ -40,6 +40,7 @@ from models.store import (
     ProductStatus,
     SellerType,
     StockNotification,
+    VariantGroup,
 )
 from models.tutor import Tutor
 from schemas.review import RatingDistributionOut
@@ -55,6 +56,8 @@ from schemas.store import (
     ProductReviewOut,
     ProductSearchOut,
     ProductUpdate,
+    ProductVariantMemberPublicOut,
+    ProductVariantsPublicOut,
     SellerEarningsOut,
     SellerProductCreate,
     SellerProductStat,
@@ -485,6 +488,60 @@ async def list_book_facets(
             )
         ).all()
         out[key] = [{"value": value, "count": count} for value, count in rows]
+
+    # ── Varyant eksenleri — EKSEN ADINA göre gruplanır, ham kolona göre DEĞİL ──
+    #
+    # `option1_value` gruba göre farklı anlam taşır: bir grupta "Kırmızı",
+    # başkasında "A4". Ham kolon listesi bu değerleri tek kutuya döker ve facet
+    # karışır. Değer bu yüzden grubun eksen ADI (VARIANT_AXES sözlüğü —
+    # option1_name/option2_name) altında toplanır: iki grubun "Renk" değerleri
+    # birleşir, "Ebat" değerleriyle karışmaz.
+    axes: dict[str, dict[str, int]] = {}
+    for name_col, value_col in (
+        (VariantGroup.option1_name, Product.option1_value),
+        (VariantGroup.option2_name, Product.option2_value),
+    ):
+        rows = (
+            await db.execute(
+                select(name_col, value_col, func.count())
+                .join(VariantGroup, VariantGroup.id == Product.variant_group_id)
+                .where(
+                    *base_filters,
+                    VariantGroup.deleted_at.is_(None),
+                    name_col.isnot(None),
+                    value_col.isnot(None),
+                )
+                .group_by(name_col, value_col)
+            )
+        ).all()
+        for eksen, deger, adet in rows:
+            kova = axes.setdefault(eksen, {})
+            kova[deger] = kova.get(deger, 0) + int(adet)
+    out["variant_axes"] = {  # type: ignore[assignment]
+        eksen: [
+            {"value": v, "count": n}
+            for v, n in sorted(kova.items(), key=lambda x: (-x[1], x[0]))[:limit]
+        ]
+        for eksen, kova in sorted(axes.items())
+    }
+    return out
+
+
+def parse_variant_filters(items: list[str] | None) -> dict[str, list[str]]:
+    """`variant=Renk:Sarı` parametrelerini {eksen: [değerler]} sözlüğüne çevirir.
+
+    Saf; pytest'li. Biçimsiz öğe SESSİZCE YUTULMAZ — ValueError yükseltilir ve
+    router 400'e çevirir: yazım hatalı bir filtre "hiç filtre yok" gibi tüm
+    kataloğu döndürseydi hata görünmez kalırdı.
+    """
+    out: dict[str, list[str]] = {}
+    for ham in items or []:
+        eksen, ayrac, deger = ham.partition(":")
+        if not ayrac or not eksen.strip() or not deger.strip():
+            raise ValueError(
+                f"variant filtresi 'Eksen:Değer' biçiminde olmalı: {ham!r}"
+            )
+        out.setdefault(eksen.strip(), []).append(deger.strip())
     return out
 
 
@@ -505,6 +562,9 @@ async def search_products(
     publisher: list[str] | None = None,
     author: list[str] | None = None,
     cover_type: list[str] | None = None,
+    #: {eksen adı: [değerler]} — `parse_variant_filters` çıktısı. Eksenler
+    #: arası AND, aynı eksenin değerleri arası OR (publisher deseniyle aynı).
+    variant_filters: dict[str, list[str]] | None = None,
     sort: str | None = None,
     limit: int = 30,
     offset: int = 0,
@@ -558,6 +618,23 @@ async def search_products(
         if values:
             stmt = stmt.where(
                 normalized(column).in_([normalize_tr(v) for v in values])
+            )
+
+    # Varyant eksen filtresi: değer, EKSENİ o ada sahip grupların üyelerinde
+    # aranır — birinci ya da ikinci eksen olması fark etmez (facet karışması
+    # çözümünün filtre tarafı; bkz. list_book_facets'teki not).
+    if variant_filters:
+        stmt = stmt.join(
+            VariantGroup, VariantGroup.id == Product.variant_group_id
+        ).where(VariantGroup.deleted_at.is_(None))
+        for eksen, degerler in variant_filters.items():
+            stmt = stmt.where(
+                or_(
+                    (VariantGroup.option1_name == eksen)
+                    & Product.option1_value.in_(degerler),
+                    (VariantGroup.option2_name == eksen)
+                    & Product.option2_value.in_(degerler),
+                )
             )
 
     relevance = None
@@ -616,6 +693,53 @@ async def _tutor_name(db: AsyncSession, tutor_id: int | None) -> str | None:
     return t.full_name if t is not None else None
 
 
+async def _variants_block(
+    db: AsyncSession, p: Product
+) -> ProductVariantsPublicOut | None:
+    """Detay sayfası kardeş seçicisinin verisi (grupsuz üründe None).
+
+    Yalnız PUBLIC görünür kardeşler listelenir (ACTIVE + silinmemiş): gizli
+    kardeşe giden bir seçici düğmesi 404'e tıklatırdı. Tükenen kardeş ise
+    LİSTEDE KALIR ve `in_stock=false` işaretlenir — "bu renk yok" ile "bu
+    renk tükendi" farklı bilgilerdir.
+    """
+    if p.variant_group_id is None:
+        return None
+    g = await db.get(VariantGroup, p.variant_group_id)
+    if g is None or g.deleted_at is not None:
+        return None
+    uyeler = (
+        await db.execute(
+            select(Product)
+            .where(
+                Product.variant_group_id == g.id,
+                Product.deleted_at.is_(None),
+                Product.status == ProductStatus.ACTIVE.value,
+            )
+            .order_by(Product.variant_sort, Product.id)
+        )
+    ).scalars().all()
+    return ProductVariantsPublicOut(
+        group_id=g.id,
+        title=g.title,
+        option1_name=g.option1_name,
+        option2_name=g.option2_name,
+        members=[
+            ProductVariantMemberPublicOut(
+                id=m.id,
+                slug=m.slug,
+                title=m.title,
+                option1_value=m.option1_value,
+                option2_value=m.option2_value,
+                variant_sort=m.variant_sort or 0,
+                in_stock=_in_stock(m),
+                price=str(m.price),
+            )
+            for m in uyeler
+        ],
+    )
+
+
 async def _to_detail(db: AsyncSession, p: Product) -> ProductDetailOut:
     prior_mean = await _compute_global_mean(db)
     base = _to_search_out(
@@ -640,6 +764,7 @@ async def _to_detail(db: AsyncSession, p: Product) -> ProductDetailOut:
         cover_type=p.cover_type,
         images=[ProductImageOut.model_validate(im) for im in p.images],
         created_at=p.created_at,
+        variants=await _variants_block(db, p),
     )
 
 

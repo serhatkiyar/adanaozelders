@@ -9,6 +9,13 @@ export const apiClient = axios.create({
   headers: {
     "Content-Type": "application/json",
   },
+  // Dizi query paramları TEKRARLI anahtar olarak gider (`publisher=a&publisher=b`).
+  // Axios varsayılanı `publisher[]=a`dır ve FastAPI `list[str] = Query(...)`
+  // köşeli anahtarı GÖRMEZ — publisher/author/cover_type facet filtreleri bu
+  // yüzden gerçek tarayıcıda sessizce filtresiz kalıyordu (jsdom kabul
+  // testleri `config.params`ı doğrudan okuduğu için yakalayamadı; Faz 3
+  // varyant filtresi eklenirken ölçüldü).
+  paramsSerializer: { indexes: null },
   // Refresh token `httpOnly` çerezde taşınır; çerezin isteğe eklenmesi için
   // gerekli (backend CORS'ta allow_credentials açık).
   withCredentials: true,

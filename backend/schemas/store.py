@@ -118,6 +118,31 @@ class ProductSearchOut(BaseModel):
     barcode: str | None = None
 
 
+class ProductVariantMemberPublicOut(BaseModel):
+    """Detay sayfası kardeş seçicisindeki tek varyant (public)."""
+
+    id: int
+    slug: str
+    title: str
+    option1_value: str | None = None
+    option2_value: str | None = None
+    variant_sort: int = 0
+    #: Tükenen kardeş listede KALIR ama işaretlenir — seçici onu gizleseydi
+    #: müşteri "bu renk hiç yokmuş" sanırdı; "tükendi" ayrı bir bilgidir.
+    in_stock: bool = True
+    price: str
+
+
+class ProductVariantsPublicOut(BaseModel):
+    """Detaydaki varyant bloğu: eksen ADLARI gruptan gelir (VARIANT_AXES)."""
+
+    group_id: int
+    title: str
+    option1_name: str
+    option2_name: str | None = None
+    members: list[ProductVariantMemberPublicOut] = []
+
+
 class ProductDetailOut(ProductSearchOut):
     description: str | None = None
     stock: int | None = None
@@ -134,6 +159,10 @@ class ProductDetailOut(ProductSearchOut):
     cover_type: str | None = None
     images: list[ProductImageOut] = []
     created_at: datetime.datetime | None = None
+    #: Varyant grubundaysa kardeş seçici verisi; grupsuzda None (görsel
+    #: değişimi ek iş İSTEMEZ: seçici kardeşin SAYFASINA gider ve görseller
+    #: zaten ürün başınadır).
+    variants: ProductVariantsPublicOut | None = None
 
 
 #: KDV oranı alanının ORTAK tanımı — üç yazıcı şema (admin oluşturma/güncelleme

@@ -184,6 +184,9 @@ async def search_products(
     publisher: list[str] | None = Query(default=None),
     author: list[str] | None = Query(default=None),
     cover_type: list[str] | None = Query(default=None),
+    # Varyant eksen daraltması: "Eksen:Değer" (ör. Renk:Sarı). Eksen adları
+    # /store/book-facets → variant_axes'ten gelir.
+    variant: list[str] | None = Query(default=None),
     sort: str | None = Query(
         default=None, pattern="^(price_asc|price_desc|newest|rating)$"
     ),
@@ -191,12 +194,17 @@ async def search_products(
     offset: int = Query(default=0, ge=0),
     db: AsyncSession = Depends(get_db),
 ):
+    try:
+        variant_filters = store_service.parse_variant_filters(variant)
+    except ValueError as exc:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, str(exc)) from exc
     return await store_service.search_products(
         db,
         q=q,
         publisher=publisher,
         author=author,
         cover_type=cover_type,
+        variant_filters=variant_filters or None,
         category_id=category_id,
         tutor_id=tutor_id,
         kind=kind,

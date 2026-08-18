@@ -47,6 +47,8 @@ export interface ProductSearchParams {
   publisher?: string[];
   author?: string[];
   cover_type?: string[];
+  /** Varyant eksen daraltması: "Eksen:Değer" öğeleri (ör. "Renk:Sarı"). */
+  variant?: string[];
   sort?: "price_asc" | "price_desc" | "newest" | "rating";
   limit?: number;
   offset?: number;
@@ -70,6 +72,8 @@ export interface BookFacets {
   publisher: BookFacet[];
   author: BookFacet[];
   cover_type: BookFacet[];
+  /** Eksen ADI → değerler (ör. {"Renk": [...], "Ebat": [...]}). */
+  variant_axes?: Record<string, BookFacet[]>;
 }
 
 /** Kitap filtrelerinin seçilebilir değerleri (+ ürün sayısı). */

@@ -47,6 +47,9 @@ export default function StorePage() {
   const [publishers, setPublishers] = useState<string[]>([]);
   const [authors, setAuthors] = useState<string[]>([]);
   const [coverTypes, setCoverTypes] = useState<string[]>([]);
+  // Varyant eksen daraltmaları: eksen adı → seçili değerler. Eksen adları
+  // veriden gelir (book-facets → variant_axes); istemcide sözlük kopyası yok.
+  const [variantSel, setVariantSel] = useState<Record<string, string[]>>({});
 
   const debouncedQ = useDebounce(q, 350);
   const debMin = useDebounce(minPrice, 400);
@@ -79,7 +82,13 @@ export default function StorePage() {
     minRating ||
     publishers.length ||
     authors.length ||
-    coverTypes.length
+    coverTypes.length ||
+    Object.values(variantSel).some((v) => v.length)
+  );
+
+  // "Eksen:Değer" öğeleri — sunucunun `variant` parametre biçimi.
+  const variantParam = Object.entries(variantSel).flatMap(([eksen, degerler]) =>
+    degerler.map((d) => `${eksen}:${d}`)
   );
 
   const searchInput: ProductSearchParams = {
@@ -93,6 +102,7 @@ export default function StorePage() {
     publisher: publishers.length ? publishers : undefined,
     author: authors.length ? authors : undefined,
     cover_type: coverTypes.length ? coverTypes : undefined,
+    variant: variantParam.length ? variantParam : undefined,
     sort: sort || undefined,
     limit: 24,
   };
@@ -118,6 +128,7 @@ export default function StorePage() {
     setPublishers([]);
     setAuthors([]);
     setCoverTypes([]);
+    setVariantSel({});
     setSearchParams({});
   };
 
@@ -247,6 +258,21 @@ export default function StorePage() {
                   selected={coverTypes}
                   onToggle={setCoverTypes}
                 />
+                {/* Varyant eksenleri: eksen ADINA göre ayrı kutular (Renk,
+                    Ebat…) — değerler karışmaz; bkz. backend list_book_facets. */}
+                {Object.entries(bookFacets?.variant_axes ?? {}).map(
+                  ([eksen, secenekler]) => (
+                    <FacetGroup
+                      key={eksen}
+                      title={eksen}
+                      options={secenekler}
+                      selected={variantSel[eksen] ?? []}
+                      onToggle={(next) =>
+                        setVariantSel((s) => ({ ...s, [eksen]: next }))
+                      }
+                    />
+                  )
+                )}
               </div>
             </aside>
 

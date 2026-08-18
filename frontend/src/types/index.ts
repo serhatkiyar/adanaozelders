@@ -1529,6 +1529,28 @@ export interface BookSpecFields {
   cover_type?: string | null;
 }
 
+/** Detay sayfası kardeş seçicisindeki tek varyant (public). */
+export interface ProductVariantMember {
+  id: number;
+  slug: string;
+  title: string;
+  option1_value?: string | null;
+  option2_value?: string | null;
+  variant_sort: number;
+  /** Tükenen kardeş listede kalır ama işaretlenir. */
+  in_stock: boolean;
+  price: string;
+}
+
+/** Detaydaki varyant bloğu — eksen ADLARI gruptan gelir. */
+export interface ProductVariants {
+  group_id: number;
+  title: string;
+  option1_name: string;
+  option2_name?: string | null;
+  members: ProductVariantMember[];
+}
+
 export interface ProductDetailOut extends ProductSearchOut, BookSpecFields {
   description?: string | null;
   stock?: number | null;
@@ -1536,6 +1558,8 @@ export interface ProductDetailOut extends ProductSearchOut, BookSpecFields {
   digital_asset_name?: string | null;
   images: ProductImageOut[];
   created_at?: string | null;
+  /** Varyant grubundaysa kardeş seçici verisi; grupsuzda null. */
+  variants?: ProductVariants | null;
 }
 
 /* ── Koleksiyon (Listelerim) ── */
