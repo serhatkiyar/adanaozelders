@@ -216,6 +216,44 @@ async def assert_digital_products_allowed(
     )
 
 
+#: Oluşturma yolunun mesajı ayrıdır: sepetten çıkarılacak bir kalem yok,
+#: karşıdaki kişi de müşteri değil yöneticidir — ne yapılacağını söylemeli.
+DIGITAL_CREATE_CLOSED_MESSAGE = (
+    "Dijital ürün satışı kapalıyken dijital ürün oluşturulamaz. Ürün kaydedilse "
+    "bile satılamaz ve türü sonradan DEĞİŞTİRİLEMEZ (SKU öneki türe bağlıdır). "
+    "Önce yasal metinleri güncelleyip 'digital_products_live' bayrağını açın."
+)
+
+
+async def assert_digital_product_creatable(
+    db: AsyncSession | None, kind: str | None
+) -> None:
+    """Bayrak kapalıyken DIGITAL ürün OLUŞTURULMASINI reddeder.
+
+    Neden satış kapısı yetmiyor: `assert_digital_products_allowed` yalnız
+    checkout'ta çalışır. Bayrak kapalıyken oluşturulan dijital ürün kaydediliyor,
+    `status=ACTIVE` ile vitrine çıkıyor (public arama bayrağa bakmaz), sepete
+    ekleniyor ve ancak ödemede 503 alıyordu. Üstelik `products_identity_immutable`
+    trigger'ı `kind`'ı değiştirilemez kıldığı için o satır DÜZELTİLEMİYORDU —
+    tek çıkış silip yeniden açmaktı. Yani kapının yeri oluşturma anıdır.
+
+    503 (kolların ve satış kapısının kullandığı kod): kısıt geçici ve sunucu
+    kaynaklıdır, isteğin kendisi hatalı değildir.
+    """
+    if (kind or "").strip().upper() != DIGITAL_KIND:
+        return
+    if await digital_products_open(db):
+        return
+    logger.warning("Dijital ürün oluşturma reddedildi (bayrak kapalı)")
+    raise HTTPException(
+        status.HTTP_503_SERVICE_UNAVAILABLE,
+        {
+            "code": "DIGITAL_PRODUCTS_CLOSED",
+            "message": DIGITAL_CREATE_CLOSED_MESSAGE,
+        },
+    )
+
+
 async def digital_blocked_for_kinds(
     db: AsyncSession | None, kinds: list[str]
 ) -> bool:

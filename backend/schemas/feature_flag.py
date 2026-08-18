@@ -46,3 +46,9 @@ class PaymentBranchOut(BaseModel):
 
 class PaymentAvailabilityOut(BaseModel):
     branches: list[PaymentBranchOut]
+    #: Dijital (indirilebilir) ürün satışı açık mı? Kollardan BAĞIMSIZ bir
+    #: kapıdır: platformun kendi dijital ürünü `store` koluna düşer ve o kol
+    #: varsayılan olarak açıktır — yani kol durumu bu soruyu cevaplamaz.
+    #: İstemci bunu ürün formunda DIGITAL seçeneğini kapatmak için okur;
+    #: alan gelmezse fail-closed davranır (`lib/paymentAvailability`).
+    digital_products_open: bool = False

@@ -68,6 +68,8 @@ import {
   useVariantGroup,
   useVariantGroups,
 } from "@/hooks/useStore";
+import { usePaymentAvailability } from "@/hooks/useFeatureFlags";
+import { digitalProductsOpen } from "@/lib/paymentAvailability";
 import { isBookCategory, suggestedVariantTitle } from "@/lib/variants";
 import { getErrorDetail } from "@/lib/errors";
 import { toast } from "@/store/toastStore";
@@ -497,6 +499,10 @@ function ProductForm({
 }) {
   const isEdit = mode === "edit";
   const { data: categories } = useCategories();
+  // Dijital ürün kapısı (İSTEMCİ AYNASI — otorite sunucudadır). Bilgi
+  // yüklenmediyse/uç patladıysa FAIL-CLOSED: bkz. lib/paymentAvailability.
+  const { data: odemeUygunlugu } = usePaymentAvailability();
+  const dijitalAcik = digitalProductsOpen(odemeUygunlugu);
   const [title, setTitle] = useState(initial?.title ?? "");
   const [kind, setKind] = useState<ProductKind>((initial?.kind as ProductKind) ?? "PHYSICAL");
   const [price, setPrice] = useState(initial ? String(initial.price) : "");
@@ -674,16 +680,32 @@ function ProductForm({
           </select>
         </label>
       ) : (
-        <label className="flex flex-col gap-1">
-          <span className={ALAN_BASLIGI}>Ürün türü</span>
-          {/* "Basılı" DEĞİL: mağaza kitap dışı ürün de satar (kalem, defter,
-              fotokopi kâğıdı). Değerler (PHYSICAL/DIGITAL) değişmedi —
-              `kind` DB trigger'ıyla değiştirilemez, etiket ise serbesttir. */}
-          <select value={kind} onChange={(e) => setKind(e.target.value as ProductKind)} className="input">
-            <option value="PHYSICAL">Fiziksel ürün</option>
-            <option value="DIGITAL">Dijital ürün</option>
-          </select>
-        </label>
+        // Açıklama `<label>` DIŞINDA: içeride kalsaydı select'in erişilebilir
+        // adına eklenir ve alanın adı "Ürün türü Dijital ürün satışı kapalı…"
+        // olurdu (ekran okuyucuda ve testte ölçüldü).
+        <div className="flex flex-col gap-1">
+          <label className="flex flex-col gap-1">
+            <span className={ALAN_BASLIGI}>Ürün türü</span>
+            {/* "Basılı" DEĞİL: mağaza kitap dışı ürün de satar (kalem, defter,
+                fotokopi kâğıdı). Değerler (PHYSICAL/DIGITAL) değişmedi —
+                `kind` DB trigger'ıyla değiştirilemez, etiket ise serbesttir. */}
+            <select value={kind} onChange={(e) => setKind(e.target.value as ProductKind)} className="input">
+              <option value="PHYSICAL">Fiziksel ürün</option>
+              {/* Bayrak kapalıyken seçilemez: kaydedilen dijital ürün satılamaz
+                  (checkout 503) ve `kind` sonradan DEĞİŞTİRİLEMEZ. Sunucu da
+                  reddeder — burası kullanıcıyı 503'e kadar yürütmemek için. */}
+              <option value="DIGITAL" disabled={!dijitalAcik}>
+                Dijital ürün
+              </option>
+            </select>
+          </label>
+          {!dijitalAcik && (
+            <span className="text-[11px] text-slate-400 dark:text-slate-500">
+              Dijital ürün satışı kapalı olduğu için bu seçenek kullanılamıyor.
+              Bayrak açılana dek yalnız fiziksel ürün eklenebilir.
+            </span>
+          )}
+        </div>
       )}
       <label className="flex flex-col gap-1">
         <span className={ALAN_BASLIGI}>Kategori (opsiyonel)</span>
@@ -1314,7 +1336,8 @@ function BulkImportPanel({ onDone }: { onDone: () => void }) {
 
   function downloadTemplate() {
     const sample =
-      `${CSV_COLUMNS}\n` +
+      `${CSV_COLUMNS}
+` +
       "AYT Matematik Soru Bankası,PHYSICAL,339,399,25,yks-kitaplari,ACTIVE,,Açıklama metni,Seyit Dönmez,Bilgi Sarmal Yayınları,9786258070187,416,19 x 27,2026,1. Basım,Türkçe,Karton Kapak";
     // BOM (﻿) → Excel Türkçe karakterleri doğru açar.
     const blob = new Blob([`﻿${sample}`], { type: "text/csv;charset=utf-8" });

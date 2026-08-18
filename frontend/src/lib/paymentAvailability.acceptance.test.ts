@@ -14,6 +14,7 @@ import {
   blockedBranchesForCart,
   canPromiseEscrow,
   closedBranchMessage,
+  digitalProductsOpen,
   isBranchOpen,
   type PaymentAvailability,
 } from "./paymentAvailability";
@@ -125,5 +126,35 @@ describe("closedBranchMessage", () => {
       expect(msg.toLowerCase()).not.toContain("emanet");
       expect(msg.toLowerCase()).not.toContain("escrow");
     }
+  });
+});
+
+describe("digitalProductsOpen", () => {
+  // Kollardan BAĞIMSIZ bir kapı: platformun kendi dijital ürünü `store` koluna
+  // düşer ve o kol varsayılan olarak AÇIKTIR — yani kol durumu bu soruyu
+  // cevaplamaz. Admin ürün formu DIGITAL seçeneğini buna göre kapatır.
+  it("sunucu açık dediyse açıktır", () => {
+    expect(digitalProductsOpen({ branches: [], digital_products_open: true })).toBe(true);
+  });
+
+  it("sunucu kapalı dediyse kapalıdır", () => {
+    expect(digitalProductsOpen({ branches: [], digital_products_open: false })).toBe(false);
+  });
+
+  it("bilgi YOKSA kapalı sayılır (fail-closed)", () => {
+    // Uç düşerse ya da alan gelmezse DIGITAL seçeneğini açık bırakmak,
+    // yöneticiye satılamayan ve türü DEĞİŞTİRİLEMEYEN bir ürün açtırırdı.
+    expect(digitalProductsOpen(undefined)).toBe(false);
+    expect(digitalProductsOpen(null)).toBe(false);
+    expect(digitalProductsOpen({ branches: [] })).toBe(false);
+  });
+
+  it("mağaza kolunun açık olması dijital ürünü AÇMAZ", () => {
+    // Tuzağın kökü tam olarak buydu: kol kapısı dijital ürünü hiç durdurmuyor.
+    expect(
+      digitalProductsOpen({
+        branches: [{ branch: "store", open: true, flag_enabled: true, blockers: [] }],
+      })
+    ).toBe(false);
   });
 });

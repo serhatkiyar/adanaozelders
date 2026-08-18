@@ -21,6 +21,8 @@ export interface BranchStatus {
 
 export interface PaymentAvailability {
   branches: BranchStatus[];
+  /** Dijital (indirilebilir) ürün satışı açık mı? Kollardan BAĞIMSIZ kapı. */
+  digital_products_open?: boolean;
 }
 
 /** Mağaza satır satıcı tipi → ödeme kolu (backend `_SELLER_TYPE_BRANCH` ile hizalı). */
@@ -85,6 +87,22 @@ export function canPromiseEscrow(
 ): boolean {
   if (branch === "store") return false;
   return isBranchOpen(availability, branch);
+}
+
+/**
+ * Dijital ürün satışı açık mı? **Kollardan bağımsız** bir sorudur: platformun
+ * kendi dijital ürünü `store` koluna düşer ve o kol varsayılan olarak açıktır —
+ * yani kol durumuna bakmak bu soruyu cevaplamaz (tuzağın kökü tam olarak buydu).
+ *
+ * Bilgi yoksa **kapalı** sayılır (kolların fail-closed kuralıyla aynı). Burada
+ * yanlış tarafa düşmenin bedeli ödeme yüzeyindekinden ağır: bayrak kapalıyken
+ * oluşturulan dijital ürün satılamaz ve `kind` bir DB trigger'ıyla
+ * değiştirilemez olduğu için sonradan DÜZELTİLEMEZ.
+ */
+export function digitalProductsOpen(
+  availability: PaymentAvailability | null | undefined,
+): boolean {
+  return availability?.digital_products_open === true;
 }
 
 /** Kapalı kol için kullanıcıya gösterilecek nötr metin (emanet vaadi içermez). */

@@ -62,7 +62,7 @@ from schemas.store import (
     SellerProductCreate,
     SellerProductStat,
 )
-from services import stock_ledger, variant_service
+from services import payment_gates, stock_ledger, variant_service
 from services.ranking import bayesian_average
 
 
@@ -900,6 +900,9 @@ _BOOK_SPEC_FIELDS = (
 async def create_product(
     db: AsyncSession, admin: Admin, payload: ProductCreate
 ) -> ProductDetailOut:
+    # Dijital ürün kapısı EN BAŞTA: bayrak kapalıyken oluşturulan dijital ürün
+    # satılamaz ve `kind` trigger'ı yüzünden düzeltilemez (bkz. payment_gates).
+    await payment_gates.assert_digital_product_creatable(db, payload.kind)
     # Varyant üyeliği: kitap kapısı + eksen/barkod doğrulaması ürün
     # yazılmadan ÖNCE (opak IntegrityError yerine anlamlı 400/409).
     if payload.variant_group_id is not None:
@@ -993,6 +996,10 @@ async def derive_variant(
     kaynak = await _load_full(db, source_id)
     if kaynak is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Ürün bulunamadı")
+    # Türetme `kind`'ı KAYNAKTAN kopyalar (aşağıda `kind=kaynak.kind`): bayrak
+    # kapalıyken eski bir dijital üründen yeni dijital ürün doğurmak, kapıyı
+    # üçüncü bir kapıdan atlatmak olurdu.
+    await payment_gates.assert_digital_product_creatable(db, kaynak.kind)
     if kaynak.variant_group_id is None:
         raise HTTPException(
             status.HTTP_409_CONFLICT,
@@ -1091,6 +1098,13 @@ async def bulk_import_products(db: AsyncSession, admin: Admin, rows: list[dict])
     ).scalars().all()
     cat_by_slug = {c.slug: c.id for c in cats}
 
+    # Dijital ürün kapısı (bkz. `payment_gates.assert_digital_product_creatable`).
+    # Toplu içe aktarma AYNI admin ekranının ikinci kapısıdır: açık kalırsa
+    # `create_product`'a konan kapı tiyatro olur. Bayrak satır başına değil BİR
+    # KEZ okunur; satır bazlı ret `ValueError` ile verilir ki dosyanın geri
+    # kalanı işlenmeye devam etsin ve atlanan satır `errors`'ta raporlansın.
+    dijital_acik = await payment_gates.digital_products_open(db)
+
     created = 0
     skipped = 0
     errors: list[dict] = []
@@ -1123,6 +1137,11 @@ async def bulk_import_products(db: AsyncSession, admin: Admin, rows: list[dict])
             kind = (row.get("kind") or "PHYSICAL").upper()
             if kind not in ("PHYSICAL", "DIGITAL"):
                 raise ValueError("kind PHYSICAL veya DIGITAL olmalı")
+            if kind == "DIGITAL" and not dijital_acik:
+                raise ValueError(
+                    "dijital ürün satışı kapalı — bu satır atlandı "
+                    "(bayrak: digital_products_live)"
+                )
             status_v = (row.get("status") or "ACTIVE").upper()
             if status_v not in ("ACTIVE", "HIDDEN", "DRAFT"):
                 raise ValueError("status ACTIVE/HIDDEN/DRAFT olmalı")
