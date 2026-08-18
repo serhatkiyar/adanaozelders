@@ -340,6 +340,45 @@ def optimize_photo(file_bytes: bytes, max_dim: int = 1600, quality: int = 82) ->
     return out_io.getvalue()
 
 
+def pad_to_square(
+    file_bytes: bytes, size: int | None = None, quality: int = 82
+) -> bytes:
+    """Ürün görselini BEYAZ zeminli KARE tuvale oturtur (kırpma DEĞİL, pad).
+
+    Neden ayrı bir fonksiyon: mağaza kataloğunda kitap kapağı dikey, kırtasiye
+    ürünü kare/yatay geliyor. ``optimize_photo`` en-boy oranını koruduğu için
+    liste kutuları farklı yükseklikte çıkıyor ve ızgara dağınık görünüyor.
+    ``optimize_image``'in merkezden kare CROP'u ise burada kullanılamaz: dikey
+    bir kitap kapağında kadrajın alt ve üstünü — yani kitabın adını — keser.
+
+    Doğru davranış e-ticaret standardıdır: görsel oranı bozulmadan kareye
+    SIĞDIRILIR, artan alan beyazla doldurulur.
+
+    - Görsel tuvalden küçükse BÜYÜTÜLMEZ (``thumbnail`` yalnız küçültür);
+      düşük çözünürlüklü bir kapağı 1200'e esnetmek onu bulanıklaştırırdı.
+      Yine de çıktı her zaman ``size×size``'dır — asıl amaç tek tip tuval.
+    - ``size`` verilmezse ``settings.PRODUCT_IMAGE_SIZE`` kullanılır.
+    """
+    hedef = int(size or settings.PRODUCT_IMAGE_SIZE)
+    img = Image.open(io.BytesIO(file_bytes))
+
+    # Düzleştirme resize'dan ÖNCE (gerekçe: `optimize_image`). Sıra ters
+    # çevrilirse LANCZOS yarı saydam kenarlarda (0,0,0) renk değerini
+    # interpole eder ve şeffaf PNG'de koyu bir hale kalır.
+    img = flatten_on_white(img)
+    if img.mode != "RGB":
+        img = img.convert("RGB")
+
+    img.thumbnail((hedef, hedef), Image.Resampling.LANCZOS)
+
+    tuval = Image.new("RGB", (hedef, hedef), (255, 255, 255))
+    tuval.paste(img, ((hedef - img.width) // 2, (hedef - img.height) // 2))
+
+    out_io = io.BytesIO()
+    tuval.save(out_io, format="WebP", quality=quality)
+    return out_io.getvalue()
+
+
 async def _put_webp(data: bytes, *, prefix: str) -> str:
     """Optimize edilmiş WebP'yi bucket'a koyar ve kalıcı URL döner (ortak yol).
 
@@ -384,6 +423,18 @@ async def upload_library_photo(file_bytes: bytes, *, square: bool = False) -> st
         data = await _optimize_in_thread(optimize_image, file_bytes, size=(512, 512))
     else:
         data = await _optimize_in_thread(optimize_photo, file_bytes)
+    return await _put_webp(data, prefix="library-photos")
+
+
+async def upload_product_photo(file_bytes: bytes) -> str:
+    """Mağaza ürün görseli: beyaz zeminli kare tuval (bkz. :func:`pad_to_square`).
+
+    Önek bilerek ``library-photos`` olarak BIRAKILDI. Mevcut ürün görsellerinin
+    tamamı zaten bu önekte duruyor ve önek ``PUBLIC_PREFIXES`` içinde anonim
+    okumaya açık. Yeni bir önek açmak, bucket policy'nin elle yönetildiği gerçek
+    S3 kurulumunda tüm ürün görsellerini sessizce 403'e düşürürdü.
+    """
+    data = await _optimize_in_thread(pad_to_square, file_bytes)
     return await _put_webp(data, prefix="library-photos")
 
 

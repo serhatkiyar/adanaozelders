@@ -64,6 +64,11 @@ class Settings(BaseSettings):
     # kapsadığından presigned URL de bu adresle üretilmelidir. Boşsa
     # AWS_ENDPOINT_URL kullanılır (tek adresli kurulumlarda fark yoktur).
     S3_PUBLIC_ENDPOINT_URL: str = ""
+    # Ürün görsellerinin oturtulduğu KARE tuvalin kenar uzunluğu (piksel).
+    # Mağaza listesinde kutuların aynı yükseklikte durması için her ürün
+    # görseli — dikey kitap kapağı da, kare kırtasiye ürünü de — bu boyutta
+    # beyaz zeminli bir kareye PAD'lenir (kırpılmaz; bkz. `storage.pad_to_square`).
+    PRODUCT_IMAGE_SIZE: int = 1200
 
     JWT_SECRET_KEY: str
     # Alan-düzeyi şifreleme anahtarı (TCKN gibi hassas veri at-rest). Verilmezse

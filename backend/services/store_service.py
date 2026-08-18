@@ -1323,7 +1323,7 @@ async def set_cover(
 ) -> ProductDetailOut:
     p = await _require_product(db, product_id, owner_tutor_id=owner_tutor_id)
     old = p.cover_url
-    p.cover_url = await storage.upload_library_photo(file_bytes, square=False)
+    p.cover_url = await storage.upload_product_photo(file_bytes)
     await db.commit()
     if old:
         await storage.delete_file(old)
@@ -1343,7 +1343,7 @@ async def add_images(
         )
     ).scalar_one()
     for i, raw in enumerate(files):
-        url = await storage.upload_library_photo(raw, square=False)
+        url = await storage.upload_product_photo(raw)
         db.add(ProductImage(product_id=product_id, url=url, sort_order=start + i))
     await db.commit()
     full = await _load_full(db, product_id)
