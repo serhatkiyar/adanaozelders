@@ -29,21 +29,59 @@
  *
  * Bu yüzden hook `sunucuHatasi`yı da okur: gerçekten kaydedilmiş sayılmak için
  * **hem** gönderim başarılı olmalı **hem** ortada sunucu hatası olmamalı.
+ *
+ * `sunucuHatasi` **ZORUNLUDUR** (İP-A3c · P1-3). Eskiden `= null` varsayılanı
+ * vardı ve o varsayılan, paketin çözdüğü hatanın ta kendisiydi: unutulan her
+ * çağrı yerinde bekçi gönderimden sonra susardı, `tsc` uyarmazdı, hiçbir eşik
+ * ölçmezdi. Hata takibi olmayan çağrı yeri niyetini `HATA_TAKIBI_YOK` ile
+ * AÇIKÇA yazar — sessizce varsayılana düşemez.
+ *
+ * ## Bilinen sınırlar (kapsam dışı, sessiz kalmasın)
+ *
+ * 1. **Uygulama içi rota gezinmesi** — yukarıda anlatıldı (`useBlocker` data
+ *    router ister).
+ * 2. **Ebeveynin kendi kapatması** (İP-A3c · denetim P2-9). Bekçi yalnız
+ *    `kapatmayiDene`den geçen kapatma girişimlerini karşılar. Ebeveyn
+ *    `open`/`kind` durumunu KENDİ değiştirirse (WebSocket push'u, query
+ *    invalidation, hata sonrası sıfırlama, üst seviye bir "Kapat") hiçbir onay
+ *    sorulmadan form sökülür ve veri gider.
+ *
+ *    **Neden kapatılmadı:** bir hook, ebeveynin `setState` çağrısını
+ *    engelleyemez — durum ebeveynde yaşar ve React'te render sonucu geri
+ *    alınamaz. Kapatmanın tek yolu kapatma yetkisini de bu katmana taşımaktı
+ *    (ör. formu açan durumu hook'un yönetmesi); bu, göç edecek elli ekranın
+ *    pencere durumunu yeniden yazmak demektir ve bu paketin kapsamı dışıdır.
+ *
+ *    **Bu arada ne yapılmalı:** pencereyi kapatan HER yol `kapatmayiDene`den
+ *    geçmelidir. Ebeveyn bir yan etkiyle (push, invalidation) formu kapatmak
+ *    istiyorsa, kullanıcının yazdığını korumak için o yolu da bu fonksiyona
+ *    bağlamalıdır.
  */
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { usePrompt } from "@medusajs/ui";
-import type { FieldValues, UseFormReturn } from "react-hook-form";
+import { useWatch, type FieldValues, type UseFormReturn } from "react-hook-form";
 
 import { useFormDurumu } from "./form";
 import { kirliFormPromptTr } from "./medusa-tr";
+
+/**
+ * "Bu ekranda sunucu hatası takibi yok" niyetinin AÇIK yazımı.
+ *
+ * `sunucuHatasi` zorunlu olduğu için hata izlemeyen bir çağrı yeri bir şey
+ * yazmak zorundadır; `null` yazmak "hata yok" demektir ve yanlış olabilir.
+ * Bu sabit "hiç bakmıyorum" demenin yoludur ve `grep`lenebilir.
+ */
+export const HATA_TAKIBI_YOK = "hata-takibi-yok" as const;
 
 export interface KirliFormBekcisiSecenekleri<TFieldValues extends FieldValues> {
   form: UseFormReturn<TFieldValues>;
   /**
    * Ekranın elinde duran sunucu hatası (varsa). Gönderim ağa çıkıp başarısız
    * olduysa form KİRLİ sayılmaya devam eder.
+   *
+   * ZORUNLU. Hata takibi olmayan ekran `HATA_TAKIBI_YOK` yazar.
    */
-  sunucuHatasi?: unknown;
+  sunucuHatasi: unknown | typeof HATA_TAKIBI_YOK;
   /** Form kapalıyken (pencere kapalı) bekçi uyumalı. */
   etkin?: boolean;
 }
@@ -60,12 +98,31 @@ export interface KirliFormBekcisi {
 
 export function useKirliFormBekcisi<TFieldValues extends FieldValues>({
   form,
-  sunucuHatasi = null,
+  sunucuHatasi,
   etkin = true,
 }: KirliFormBekcisiSecenekleri<TFieldValues>): KirliFormBekcisi {
   const { kirli, gonderimBasarili } = useFormDurumu(form);
 
-  const kaydedildi = gonderimBasarili && !sunucuHatasi;
+  // ── "Kaydedildi" damgası GÖNDERİM ANINDAKİ veriye aittir (İP-A3c · P2-2) ──
+  //
+  // `isSubmitSuccessful` bir sonraki `handleSubmit`/`reset()`'e kadar `true`
+  // kalır. Pencere açık kalan formlarda ("kaydet ve açık kal", ayar panelleri,
+  // çok adımlı formlar) kullanıcının SONRADAN yazdığı her şey korumasız
+  // kalıyordu: bayrak hâlâ "kaydedildi" diyor, bekçi susuyor, veri gidiyor.
+  //
+  // Çözüm: başarı anındaki değerler damgalanır; değerler o damgadan sapınca
+  // form yeniden korunur. Damga ref'te tutulur ve RENDER SIRASINDA kurulur —
+  // `useEffect` bir tik geç çalışır ve o tikte kapatılan pencere korumasız
+  // kalırdı.
+  const anlikDegerler = JSON.stringify(useWatch({ control: form.control }) ?? {});
+  const damgaRef = useRef<string | null>(null);
+
+  const hataVar = sunucuHatasi !== HATA_TAKIBI_YOK && !!sunucuHatasi;
+  const gonderimTemiz = gonderimBasarili && !hataVar;
+  if (!gonderimTemiz) damgaRef.current = null;
+  else if (damgaRef.current === null) damgaRef.current = anlikDegerler;
+
+  const kaydedildi = gonderimTemiz && damgaRef.current === anlikDegerler;
   const korumali = etkin && kirli && !kaydedildi;
 
   // `beforeunload` YALNIZ korumalıyken kayıtlı. Kalıcı bir kayıt, formda
@@ -85,14 +142,43 @@ export function useKirliFormBekcisi<TFieldValues extends FieldValues>({
 
   const prompt = usePrompt();
 
+  // ── Öksüz onay penceresi (İP-A3c · P2-1) ──
+  //
+  // `usePrompt` her çağrıda `createRoot` ile bir kök mount eder ve o kökü
+  // YALNIZ onay/iptal işleyicilerinde söker. Söz çözülmeden bileşen giderse
+  // (ebeveyn `kind`'ı null yapar, WS push'u, query invalidation, rota
+  // değişimi) pencere `document.body`'de öksüz kalır; Radix modal olduğu için
+  // arkadaki sayfayı `pointer-events` ile de kilitler. Denetim bunu çalışma
+  // zamanında ölçtü: unmount sonrası `alertdialog` sayısı 1.
+  //
+  // Elimizde o köke referans YOK (Medusa'nın içinde kapalı). Ama pencerenin
+  // kendi ESC dinleyicisi `document` üzerindedir ve `onCancel`'a bağlıdır —
+  // yani sözü çözen, kökü söken ve `pointer-events`i geri veren GERÇEK yol.
+  // Temizlik onu tetikler: kapatma pencerenin kendi mekanizmasıyla olur.
+  const bekleyenRef = useRef(false);
+  const sokulduRef = useRef(false);
+  useEffect(
+    () => () => {
+      sokulduRef.current = true;
+      if (!bekleyenRef.current) return;
+      bekleyenRef.current = false;
+      document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+    },
+    []
+  );
+
   const kapatmayiDene = useCallback(
     (kapat: () => void) => {
       if (!korumali) {
         kapat();
         return;
       }
+      bekleyenRef.current = true;
       void prompt(kirliFormPromptTr).then((onay) => {
-        if (onay) kapat();
+        bekleyenRef.current = false;
+        // Bileşen bu arada söküldüyse bayat bir closure'daki `onClose`
+        // çalışmasın: kapatılacak bir şey kalmadı.
+        if (onay && !sokulduRef.current) kapat();
       });
     },
     [korumali, prompt]

@@ -101,8 +101,16 @@ describe("İP-A2 · DamageDialog pilotu", () => {
     expect(onSubmit).not.toHaveBeenCalled();
     // Formun ÜSTÜNDE genel bir uyarı şeridi yok — hata yalnız alanında.
     expect(screen.queryByTestId("damage-genel-hata")).toBeNull();
-    // Ekrandaki tek `alert` alanın kendi mesajı.
-    expect(screen.getAllByRole("alert")).toHaveLength(1);
+    // GÜNCELLENDİ (İP-A3c · Görev 4): eskiden "ekrandaki tek alert" deniyordu.
+    // O sayı kapının ARTIĞIYDI: düğme kapalı olduğu için tıklama gönderimi hiç
+    // başlatmıyor, yalnız dokunulan alan (miktar) hata gösteriyordu. Kapı
+    // kalkınca tıklama TÜM eksikleri açığa çıkarır (miktar + neden) — bu, yeni
+    // desenin istenen davranışıdır. Testin ASIL iddiası korundu ve
+    // güçlendirildi: alert'lerin HİÇBİRİ genel kanalda değil, hepsi bir alan
+    // mesaj slotunun içinde.
+    const uyarilar = screen.getAllByRole("alert");
+    expect(uyarilar.length).toBeGreaterThanOrEqual(1);
+    uyarilar.forEach((u) => expect(u.closest("[data-form-slot]")).toBeTruthy());
   });
 
   it("genel sunucu hatası (error prop'u) ÜST şeritte durur", () => {
@@ -163,11 +171,13 @@ describe("İP-A2 · DamageDialog pilotu", () => {
     expect(govde.idempotency_key).toMatch(/^ui-/);
   });
 
-  it("tedarikçi iadesinde kaynak kova zorunlu kalır ve eksik OLDUĞU SÖYLENİR", async () => {
-    // Eski formda tüm doğrulama tek gri satıra iniyordu; kullanıcı hiç
-    // dokunmadığı bir alanın eksik olduğunu oradan öğreniyordu. `Form.*`
-    // göçünde bu YÖNLENDİRME korundu (kırmızı alan hatası değil, gri ipucu):
-    // aksi hâlde gönder düğmesi sessizce kapalı kalırdı.
+  it("tedarikçi iadesinde kaynak kova zorunlu kalır: gönderilmez, hata ALANDA çıkar", async () => {
+    // GÜNCELLENDİ (İP-A3c · Görev 4). Eski hâli iki şey iddia ediyordu:
+    // (a) "kova seçilmeden gönderilemez" — KORUNDU, aşağıda aynen sınanıyor,
+    // (b) "düğme görünürde KAPALI + gri ipucu satırı yazıyor" — bu artık
+    //     bilinçli olarak YANLIŞ: kapalı düğme geri bildirim vermez ve
+    //     `eksikIpucu` onun için yazılmış paralel bir mekanizmaydı. Kapı
+    //     kalkınca ikisi de gitti; işlevini alan altındaki hata üstlendi.
     const { onSubmit } = ac({ kind: "SUPPLIER_RETURN" });
     await urunSec();
     fireEvent.change(screen.getByLabelText(/miktar/i), {
@@ -182,43 +192,76 @@ describe("İP-A2 · DamageDialog pilotu", () => {
         name: "Tedarikçiye iade et",
       }) as HTMLButtonElement;
 
-    await waitFor(() =>
-      expect(screen.getByTestId("damage-eksik-ipucu").textContent).toMatch(
-        /kova/i
-      )
-    );
-    expect(dugme().disabled).toBe(true);
+    // Düğme AÇIK: kullanıcı basabilmeli, "basıyorum ama bir şey olmuyor"
+    // durumu kalmamalı.
+    expect(dugme().disabled).toBe(false);
 
     fireEvent.click(dugme());
-    expect(onSubmit).not.toHaveBeenCalled();
 
-    // Kova seçilince ipucu kalkar ve düğme açılır.
+    // Ama geçersiz veri sunucuya GİTMEZ — asıl garanti budur.
+    await waitFor(() =>
+      expect(
+        screen.getByLabelText(/kaynak kova/i).getAttribute("aria-invalid")
+      ).toBe("true")
+    );
+    expect(onSubmit).not.toHaveBeenCalled();
+    // Ve odak ilk hatalı alana taşındı: hata ekranın görünmeyen kısmındaysa
+    // kullanıcı yine geri bildirim almamış olurdu.
+    expect(document.activeElement).toBe(screen.getByLabelText(/kaynak kova/i));
+
     fireEvent.change(screen.getByLabelText(/kaynak kova/i), {
       target: { value: "DAMAGED" },
     });
-    await waitFor(() => expect(dugme().disabled).toBe(false));
-    expect(screen.queryByTestId("damage-eksik-ipucu")).toBeNull();
-
     fireEvent.click(dugme());
     await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
     expect(onSubmit.mock.calls[0][0]).toMatchObject({ bucket: "DAMAGED" });
   });
 
-  it("eksik ipucu, alanında zaten kırmızı görünen hatayı TEKRAR ETMEZ", async () => {
-    // Aynı mesajı iki kanalda göstermek, İP-A2'nin kapattığı gürültünün ta
-    // kendisi. İpucu yalnız HENÜZ görünmeyen ilk eksiği söyler.
-    ac();
-    await urunSec();
-    fireEvent.change(screen.getByLabelText(/miktar/i), {
-      target: { value: "0" },
-    });
+  it("gönder'e basınca eksiklerin HEPSİ kendi alanının altında görünür", async () => {
+    // `eksikIpucu`nun yerini alan davranış (İP-A3c · Görev 4). Eski gri satır
+    // TEK bir eksiği söylüyordu ve hangi alana ait olduğunu kullanıcının
+    // tahmin etmesi gerekiyordu; şimdi her eksik kendi alanının altında.
+    const { onSubmit } = ac();
 
-    await waitFor(() => expect(screen.getByRole("alert")).toBeTruthy());
-    const alanMesaji = screen.getByRole("alert").textContent ?? "";
-    const ipucu = screen.queryByTestId("damage-eksik-ipucu");
-    expect(ipucu?.textContent ?? "").not.toBe(alanMesaji);
-    // Sıradaki gerçek eksik "neden" olmalı.
-    expect(ipucu?.textContent ?? "").toMatch(/neden/i);
+    fireEvent.click(screen.getByRole("button", { name: "Hasara ayır" }));
+
+    await waitFor(() =>
+      expect(screen.getAllByRole("alert").length).toBeGreaterThanOrEqual(3)
+    );
+    expect(onSubmit).not.toHaveBeenCalled();
+    // Ürün, miktar ve neden — üçü de hatalı ve üçü de kendi slotunda.
+    const metinler = screen
+      .getAllByRole("alert")
+      .map((u) => u.closest("[data-form-slot]"));
+    expect(metinler.every(Boolean)).toBe(true);
+    // Odak ilk hatalı alana (ürün seçici) taşındı.
+    expect((document.activeElement as HTMLInputElement)?.type).toBe("search");
+  });
+
+  it("imha onayı işaretlenmeden gönderilmez: düğme açık, hata kutucukta", async () => {
+    // GÜNCELLENDİ (İP-A3c · Görev 4): onay kutusu da "geçerlilik nedeniyle
+    // kapalı düğme" deseninin parçasıydı. Kapı kalktı, garanti kalmadı değil —
+    // yer değiştirdi.
+    const { onSubmit } = ac({ kind: "DISPOSAL" });
+    await urunSec();
+    fireEvent.change(screen.getByLabelText(/miktar/i), { target: { value: "1" } });
+    fireEvent.change(screen.getByLabelText(/^neden/i), { target: { value: "KIRIK" } });
+
+    const dugme = () =>
+      screen.getByRole("button", { name: "İmha et" }) as HTMLButtonElement;
+    expect(dugme().disabled).toBe(false);
+
+    fireEvent.click(dugme());
+
+    await waitFor(() =>
+      expect(screen.getByTestId("damage-onay-hatasi")).toBeTruthy()
+    );
+    expect(onSubmit).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("checkbox"));
+    expect(screen.queryByTestId("damage-onay-hatasi")).toBeNull();
+    fireEvent.click(dugme());
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
   });
 });
 

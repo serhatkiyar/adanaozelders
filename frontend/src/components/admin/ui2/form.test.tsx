@@ -12,7 +12,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { useForm } from "react-hook-form";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 
 import { Form } from "./form";
@@ -206,5 +206,176 @@ describe("İP-A2 · Form sözleşmesi", () => {
     render(<IkiAlanliForm />);
     expect(screen.getByText(/opsiyonel/i)).toBeTruthy();
     expect(document.body.textContent).not.toContain("*");
+  });
+});
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * İP-A3c · sözleşmenin YANLIŞ kullanımı görünür mü?
+ *
+ * Neden burada: nöbetçi sayacı bir kontrolü, JSX atalarında `Form.Control`
+ * varsa "adlandırılmış" sayar. Bu bir VEKİLDİR ve bugüne kadar **hiç
+ * doğrulanmamıştı** — bağımsız denetim (P1-1) vekilin en az üç yazımda yanlış
+ * olduğunu çalışma zamanında kanıtladı. Aşağıdaki ilk test vekilin kendisini
+ * doğrular; kalan üçü, vekili yanlışlayan yazımların artık SESSİZ olmadığını
+ * doğrular. İkisi birlikte olmadan sayacın "Form.Control içindeyse affet"
+ * kuralı kanıtsızdır.
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+/** Konsola düşen `console.error` çağrılarını yakalar (ve gürültüyü susturur). */
+function konsolYakala() {
+  return vi.spyOn(console, "error").mockImplementation(() => {});
+}
+
+describe("İP-A3c · Form.Control sessiz başarısız olamaz", () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it("K1 — VEKİLİN KANITI: Form.Control içindeki kontrol getByLabelText ile bulunur", () => {
+    // Sayacın tüm `Form.Control` dalı bu tek cümleye yaslanıyor. Cümle bugüne
+    // kadar hiçbir testte söylenmemişti.
+    render(<TekAlanliForm />);
+
+    const kontrol = screen.getByLabelText("Ad") as HTMLInputElement;
+    expect(kontrol.tagName).toBe("INPUT");
+    // `id` gerçekten DOM'a indi: belgeden aynı düğüm çözülüyor.
+    expect(document.getElementById(kontrol.id)).toBe(kontrol);
+    // Etiket ↔ kontrol bağı tarayıcının kendi çözümüyle de kurulu.
+    const etiket = screen.getByText("Ad").closest("label") as HTMLLabelElement;
+    expect(etiket.control).toBe(kontrol);
+    expect(kontrol.labels?.length).toBe(1);
+  });
+
+  it("K2 — kör nokta 1: Form.Item YOKKEN kullanım geliştirmede patlar", () => {
+    konsolYakala(); // React, atılan hatayı ayrıca konsola basar.
+    expect(() =>
+      render(
+        <Form.Control>
+          <input />
+        </Form.Control>
+      )
+    ).toThrow(/Form\.Item dışında/);
+  });
+
+  it("K2b — Form.Label da Form.Item olmadan patlar", () => {
+    konsolYakala();
+    expect(() => render(<Form.Label>Ad</Form.Label>)).toThrow(
+      /Form\.Item dışında/
+    );
+  });
+
+  it("K3 — kör nokta 2: Form.Control çocuğu FRAGMENT ise geliştirmede patlar", () => {
+    // Denetimin en olası bulduğu yazım: "input + birim eki" (₺, adet, %).
+    konsolYakala();
+    expect(() =>
+      render(
+        <Form.Item>
+          <Form.Control>
+            <>
+              <input />
+              <span>TL</span>
+            </>
+          </Form.Control>
+        </Form.Item>
+      )
+    ).toThrow(/Fragment olamaz/);
+  });
+
+  it("K4 — kör nokta 3: prop iletmeyen bileşen ÇALIŞMA ZAMANINDA yakalanır", () => {
+    // Bu yazım statik olarak anlaşılamaz: `Form.Control` doğru, çocuk tek,
+    // `Form.Item` var — ama `id` DOM'a inmiyor. Ölçüm mount sonrası yapılır.
+    const IletmeyenGirdi = () => <input className="input" />;
+    const hata = konsolYakala();
+
+    render(
+      <Form.Item>
+        <Form.Label>Ad</Form.Label>
+        <Form.Control>
+          <IletmeyenGirdi />
+        </Form.Control>
+      </Form.Item>
+    );
+
+    // Kontrol GERÇEKTEN adsız: vekilin yanlış olduğu bu satırla sabitlenir.
+    expect(screen.queryByLabelText("Ad")).toBeNull();
+    // Ve artık sessiz değil: bileşen adı ve alan bilgisi konsola yazıldı.
+    const mesajlar = hata.mock.calls.map((c) => String(c[0])).join(" | ");
+    expect(mesajlar).toMatch(/IletmeyenGirdi/);
+    expect(mesajlar).toMatch(/id'yi DOM'a indirmedi/);
+  });
+
+  it("K5 — çocuğun kendi aria-describedby'si EZİLMEZ, birleşir", () => {
+    // Denetim P2-3: karakter sayacı / para birimi açıklaması gibi harici
+    // yardım düğümüne bağlı kontroller göçte bağlarını kaybediyordu.
+    render(
+      <Form.Item>
+        <Form.Label>Tutar</Form.Label>
+        <Form.Control>
+          <input aria-describedby="para-birimi" />
+        </Form.Control>
+        <Form.Hint>Yardım.</Form.Hint>
+      </Form.Item>
+    );
+
+    const kontrol = screen.getByLabelText("Tutar");
+    const tanim = kontrol.getAttribute("aria-describedby") ?? "";
+    expect(tanim.split(" ")).toContain("para-birimi");
+    // Slotun kendi düğümü de duruyor (ikisi birden).
+    expect(tanim.split(" ").length).toBe(2);
+  });
+
+  it("K5b — çocuğun kendi id'si sessizce ezilmez, bildirilir", () => {
+    const hata = konsolYakala();
+    render(
+      <Form.Item>
+        <Form.Label>Ad</Form.Label>
+        <Form.Control>
+          <input id="benim-id" />
+        </Form.Control>
+      </Form.Item>
+    );
+    const mesajlar = hata.mock.calls.map((c) => String(c[0])).join(" | ");
+    expect(mesajlar).toMatch(/benim-id/);
+  });
+
+  it("K6 — Fragment İÇİNDEKİ Hint slota girer ve aria-describedby kurulur", () => {
+    // Denetim P2-4/D2b: Fragment içindeki Hint üst bölüme düşüyor, slot boş
+    // kalıyor ve `hintVar` false olduğu için bağ HİÇ kurulmuyordu.
+    const { container } = render(
+      <Form.Item>
+        <Form.Label>Ad</Form.Label>
+        <Form.Control>
+          <input />
+        </Form.Control>
+        <>
+          <Form.Hint>Sarmalanmış ipucu.</Form.Hint>
+        </>
+      </Form.Item>
+    );
+
+    const slot = container.querySelector("[data-form-slot]")!;
+    expect(slot.textContent).toContain("Sarmalanmış ipucu.");
+    const tanim = screen.getByLabelText("Ad").getAttribute("aria-describedby");
+    expect(tanim).toBeTruthy();
+    expect(document.getElementById(tanim!)?.textContent).toContain(
+      "Sarmalanmış ipucu."
+    );
+  });
+
+  it("K7 — <div> içine gömülü Hint sessizce kaybolmaz: geliştirmede patlar", () => {
+    // Fragment'tan farklı: bir <div>ün DOM karşılığı VAR, çocuğu slota taşımak
+    // kullanıcının yazdığı düzeni sessizce bozardı. Doğru davranış, taşımak
+    // değil, geliştiriciye söylemektir.
+    konsolYakala();
+    expect(() =>
+      render(
+        <Form.Item>
+          <Form.Control>
+            <input />
+          </Form.Control>
+          <div>
+            <Form.Hint>Gömülü ipucu.</Form.Hint>
+          </div>
+        </Form.Item>
+      )
+    ).toThrow(/gömülmüş/);
   });
 });

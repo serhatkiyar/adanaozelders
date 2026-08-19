@@ -61,13 +61,39 @@ function walk(dir, out = []) {
   return out;
 }
 
-/** Ölçüm tabanı: admin bileşenleri + admin sayfaları + Admin* dashboard'ları. */
+/**
+ * Ölçüm tabanına DİZİN kuralıyla girmeyen, ama aynı panel kabuğunu kullanan ve
+ * aynı göçe girecek ekranlar (İP-A3c · denetim P1-4).
+ *
+ * Taban eskiden yalnız `components/admin/**` + `pages/admin/**` +
+ * `dashboards/Admin*.tsx` idi. Aşağıdaki altı ekran `DashboardShell`
+ * kullanıyor, aynı `admin/ui` parçalarını çağırıyor ve A6-A7'de göç edecek —
+ * ama ölçümün DIŞINDAYDI. İki ayrı zarar üretiyordu: (a) nöbetçi bu bölgede
+ * borcun büyümesine izin veriyordu, (b) bir ekranı taban dışına taşımak eşiği
+ * düşürüyor ve "ilerleme" gibi okunuyordu.
+ *
+ * `DeliveryDriver.tsx` kök CLAUDE.md'ye göre ADMIN rolünün saha ekranıdır ve
+ * tek başına 19 ham buton taşıyordu — ölçülen 126'nın %15'i, tamamen görünmez.
+ */
+export const EK_TABAN_DOSYALARI = [
+  "src/pages/DeliveryDriver.tsx",
+  "src/pages/DeliveryRunHandover.tsx",
+  "src/pages/dashboards/CourierHome.tsx",
+  "src/pages/dashboards/OperatorHome.tsx",
+  "src/pages/dashboards/OperatorLibrary.tsx",
+  "src/pages/dashboards/OperatorSessions.tsx",
+];
+
+/** Ölçüm tabanı: admin bileşenleri + admin sayfaları + panel ekranları. */
 export function adminBase() {
   const files = [...walk("src/components/admin"), ...walk("src/pages/admin")];
   for (const f of walk("src/pages/dashboards")) {
     if (/\/Admin[^/]*\.tsx$/.test(f)) files.push(f);
   }
-  return files.sort();
+  for (const f of EK_TABAN_DOSYALARI) {
+    if (existsSync(join(ROOT, f))) files.push(f);
+  }
+  return [...new Set(files)].sort();
 }
 
 /** Tüm kaynak ağacı. */
@@ -93,6 +119,15 @@ export const UNLABELED_OVERLAY_FILES = [
 ];
 
 const MEDUSA = "@medusajs/ui";
+
+/**
+ * Medusa'ya doğrudan bağımlılık mı?
+ *
+ * ── Kaçış yolu 2 (İP-A3c · denetim P3-1, mutasyon M5 GEÇMİŞTİ) ──
+ * Paket kökü yerine ALT YOL yazmak (`@medusajs/ui/dist/esm/components/button`)
+ * mimari kuralı aynen çiğner ama eski kontrol yalnız tam eşitliğe bakıyordu.
+ */
+const medusaYolu = (metin) => metin === MEDUSA || metin.startsWith(`${MEDUSA}/`);
 
 /** Erişilebilir ad araması yapılan form kontrolleri. */
 const KONTROL_ETIKETLERI = new Set(["input", "select", "textarea"]);
@@ -325,6 +360,23 @@ export function dosyaOlcumu(kaynak, dosyaAdi = "olcum.tsx") {
       }
     }
 
+    // ── Kaçış yolu 1: `React.createElement("button", …)` ──
+    //
+    // JSX olmayan ham buton (İP-A3c · denetim P3-1, mutasyon M2 GEÇMİŞTİ).
+    // Bugün kod tabanında yok; kapatılmasının sebebi kötü niyet değil, göç
+    // sırasında kaza eseri ortaya çıkma ihtimali.
+    if (ts.isCallExpression(n)) {
+      const cagri = n.expression.getText(sf).replace(/\s+/g, "");
+      if (
+        (cagri === "createElement" || /(^|\.)React\.createElement$/.test(cagri)) &&
+        n.arguments[0] &&
+        ts.isStringLiteral(n.arguments[0]) &&
+        n.arguments[0].text === "button"
+      ) {
+        o.rawButton += 1;
+      }
+    }
+
     // Overlay tespiti sınıf adına bakar; sınıf adı ancak bir string/şablon
     // parçasının İÇİNDE geçebilir. Yorumdaki `fixed inset-0` artık sayılmaz.
     if (
@@ -343,7 +395,7 @@ export function dosyaOlcumu(kaynak, dosyaAdi = "olcum.tsx") {
       (ts.isImportDeclaration(n) || ts.isExportDeclaration(n)) &&
       n.moduleSpecifier &&
       ts.isStringLiteral(n.moduleSpecifier) &&
-      n.moduleSpecifier.text === MEDUSA
+      medusaYolu(n.moduleSpecifier.text)
     ) {
       o.medusaImport = true;
     }
@@ -352,7 +404,7 @@ export function dosyaOlcumu(kaynak, dosyaAdi = "olcum.tsx") {
       n.expression.kind === ts.SyntaxKind.ImportKeyword &&
       n.arguments[0] &&
       ts.isStringLiteral(n.arguments[0]) &&
-      n.arguments[0].text === MEDUSA
+      medusaYolu(n.arguments[0].text)
     ) {
       o.medusaImport = true;
     }
@@ -418,6 +470,13 @@ export function sayim() {
 
   return {
     files: base.length,
+    // Ölçüm tabanının KENDİSİ (İP-A3c · P1-2/P1-4): nöbetçi bunu isimle
+    // sabitlenmiş listeyle karşılaştırır. Eski taban kontrolü
+    // (`kontrolToplam >= 140`) göçün TANIMI GEREĞİ kırılacaktı — sayaç ham
+    // `input`/`select`/`textarea` etiketlerini sayıyor ve göç onları
+    // sarmalayıcılara çeviriyor. `AdminStore.tsx` tek başına göç etse taban
+    // 140'ın altına iner ve CI **ilerleme yüzünden** kırmızıya dönerdi.
+    dosyalar: base,
     rawButton,
     // `labels` / `labelsWithHtmlFor` artık EŞİK DEĞİL, TEŞHİS sayısıdır
     // (İP-A3a: oran metriği kaldırıldı — gerekçesi `docs/ip-a3a-rapor.md`).

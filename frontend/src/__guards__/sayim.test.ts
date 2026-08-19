@@ -111,6 +111,39 @@ describe("İP-A2 sayaç: yorum ve string sayılmaz", () => {
     expect(o.ariaModals).toBe(1);
   });
 
+  it("İP-A3c — React.createElement(\"button\") de ham buton sayılır", () => {
+    // Denetim P3-1: JSX olmayan ham buton sayaçtan kaçıyordu (mutasyon M2
+    // GEÇMİŞTİ). Bugün kod tabanında yok; kapatma sebebi kaza riski.
+    expect(
+      dosyaOlcumu(`export const X = () => React.createElement("button", null, "Tamam");`)
+        .rawButton
+    ).toBe(1);
+    expect(
+      dosyaOlcumu(`export const X = () => createElement("button", null);`).rawButton
+    ).toBe(1);
+    // TERS PROVA: başka etiket ya da bileşen sayılmaz.
+    expect(
+      dosyaOlcumu(`export const X = () => createElement("div", null);`).rawButton
+    ).toBe(0);
+    expect(
+      dosyaOlcumu(`export const X = () => createElement(Button, null);`).rawButton
+    ).toBe(0);
+  });
+
+  it("İP-A3c — @medusajs/ui ALT YOL importu da ihlaldir", () => {
+    // Denetim P3-1: `@medusajs/ui/dist/esm/components/button` mimari kuralı
+    // aynen çiğner ama eski kontrol yalnız tam eşitliğe bakıyordu (M5 GEÇMİŞTİ).
+    expect(
+      dosyaOlcumu(
+        `import { Button } from "@medusajs/ui/dist/esm/components/button";`
+      ).medusaImport
+    ).toBe(true);
+    // TERS PROVA: adı benzeyen başka bir paket ihlal değildir.
+    expect(
+      dosyaOlcumu(`import x from "@medusajs/ui-preset";`).medusaImport
+    ).toBe(false);
+  });
+
   it("@medusajs/ui importu import/export/dinamik biçimlerinde görülür", () => {
     expect(dosyaOlcumu(`import { Button } from "@medusajs/ui";`).medusaImport).toBe(
       true

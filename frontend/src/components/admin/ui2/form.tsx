@@ -59,12 +59,17 @@ import {
   Children,
   cloneElement,
   createContext,
+  Fragment,
   isValidElement,
+  useCallback,
   useContext,
+  useEffect,
   useId,
   useMemo,
+  useRef,
   type ReactElement,
   type ReactNode,
+  type Ref,
 } from "react";
 import {
   Controller,
@@ -140,6 +145,112 @@ function Field<
 /** Mesaj slotunun sınıfı — yüksekliği burada rezerve edilir. */
 const SLOT_SINIFI = "mt-1.5 min-h-[1.125rem] text-xs leading-[1.125rem]";
 
+/* ═══════════════ sözleşmenin yanlış kullanımını görünür kılan katman ═══════════════ */
+
+/**
+ * Sözleşme denetimleri YALNIZ geliştirmede çalışır (İP-A3c · P1-1).
+ *
+ * ## Neden var
+ *
+ * Nöbetçi sayacı (`ui-baseline-sayim.mjs`) bir kontrolü, JSX atalarında
+ * `Form.Control` varsa **adlandırılmış** sayar. Bu bir VEKİLDİR: kaynak
+ * düzeyinde bir ata, çalışma zamanında bir özelliği (erişilebilir ad)
+ * ölçemez. Bağımsız denetim vekilin en az üç yazımda yanlış olduğunu çalışma
+ * zamanında kanıtladı — üçünde de `id` DOM'a inmiyor, etiket bağı kurulmuyor
+ * ve **hiçbir uyarı çıkmıyor**:
+ *
+ *   1. `Form.Control`'un çocuğu bir **Fragment** (`<><input/><span>TL</span></>`)
+ *   2. `Form.Control` var ama ortada **`Form.Item` yok** (bağlam null)
+ *   3. Çocuk, prop'ları DOM'a **iletmeyen** bir bileşen
+ *
+ * Çözüm daha akıllı bir AST kuralı değil: vekili **inşa yoluyla doğru**
+ * yapmak. Bu üç yazım geliştirmede sessiz kalamazsa, "içindeyse
+ * adlandırılmıştır" gerçekten doğru olur ve sayaç o dalı dürüstçe affeder.
+ *
+ * İlk ikisi statik olarak anlaşılır → `throw` (programlama hatasıdır; sessiz
+ * bir `console.warn` göç sırasında ekrandaki yüzlerce satır arasında kaybolur).
+ * Üçüncüsü statik olarak anlaşılamaz → mount sonrası DOM'dan ÖLÇÜLÜR.
+ */
+const GELISTIRME: boolean = !!import.meta.env?.DEV;
+
+/** Hata mesajlarında bileşeni adıyla anmak için. */
+function elemanAdi(tip: unknown): string {
+  if (typeof tip === "string") return tip;
+  if (tip === Fragment) return "React.Fragment";
+  const f = tip as { displayName?: string; name?: string } | null;
+  return f?.displayName || f?.name || "Bilinmeyen bileşen";
+}
+
+/**
+ * `Hint`/`ErrorMessage` slot ayıklaması — Fragment'ların İÇİNE de bakar.
+ *
+ * `Children.toArray` bir Fragment'ı TEK çocuk olarak verir; içindeki
+ * `Form.Hint` bulunamaz, üst bölüme düşer, slot boş kalır ve `hintVar` false
+ * olduğu için `aria-describedby` HİÇ kurulmaz (denetim: P2-4, kanıt D2b/D2c).
+ * Paketin ana vaadi — "hata doğduğunda yerleşim itilmez" — sessizce kaybolur.
+ *
+ * Seçilen yol: **Fragment'a girilir, başka elemana girilmez.**
+ * Gerekçe: Fragment'ın DOM karşılığı YOKTUR, içinden bir çocuğu çıkarıp slota
+ * taşımak görünen yerleşimi değiştirmez. Bir `<div>`den çıkarmak ise
+ * kullanıcının yazdığı düzeni sessizce bozardı — orada doğru davranış taşımak
+ * değil, **geliştiricinin haberdar olması**dır: `throw`.
+ */
+function slotAyikla(dugumler: ReactNode[]): {
+  ust: ReactNode[];
+  hint: ReactNode | null;
+  hataMesaji: ReactNode | null;
+} {
+  const ust: ReactNode[] = [];
+  let hint: ReactNode | null = null;
+  let hataMesaji: ReactNode | null = null;
+
+  for (const c of dugumler) {
+    if (isValidElement(c)) {
+      if (c.type === Hint) {
+        hint = c;
+        continue;
+      }
+      if (c.type === ErrorMessage) {
+        hataMesaji = c;
+        continue;
+      }
+      if (c.type === Fragment) {
+        const ic = slotAyikla(
+          Children.toArray((c.props as { children?: ReactNode }).children)
+        );
+        hint = ic.hint ?? hint;
+        hataMesaji = ic.hataMesaji ?? hataMesaji;
+        ust.push(cloneElement(c, { key: c.key }, ...ic.ust));
+        continue;
+      }
+      if (GELISTIRME) gomuluSlotAra(c);
+    }
+    ust.push(c);
+  }
+
+  return { ust, hint, hataMesaji };
+}
+
+/** Bir elemanın altında gömülü `Hint`/`ErrorMessage` varsa geliştirmede patlat. */
+function gomuluSlotAra(eleman: ReactElement): void {
+  const gez = (dugum: ReactNode): void => {
+    Children.toArray(dugum).forEach((c) => {
+      if (!isValidElement(c)) return;
+      if (c.type === Hint || c.type === ErrorMessage) {
+        throw new Error(
+          `Form.Item: <Form.${c.type === Hint ? "Hint" : "ErrorMessage"}> ` +
+            `<${elemanAdi(eleman.type)}> içine gömülmüş. Mesaj slotu yalnız ` +
+            "DOĞRUDAN çocukları (ve Fragment içindekileri) toplar; buradan " +
+            "slota giremez, üst bölüme düşer ve tek-slot garantisi bozulur. " +
+            "Hint/ErrorMessage'ı Form.Item'ın doğrudan çocuğu yapın."
+        );
+      }
+      gez((c.props as { children?: ReactNode }).children);
+    });
+  };
+  gez((eleman.props as { children?: ReactNode }).children);
+}
+
 /**
  * Bir alanın kabı: `id`leri üretir ve mesaj slotunu açar.
  *
@@ -157,12 +268,11 @@ function Item({
   const uid = useId();
   const hata = useAlanHatasi();
 
-  const cocuklar = Children.toArray(children);
-  const hintCocuk =
-    cocuklar.find((c) => isValidElement(c) && c.type === Hint) ?? null;
-  const hataCocuk =
-    cocuklar.find((c) => isValidElement(c) && c.type === ErrorMessage) ?? null;
-  const ust = cocuklar.filter((c) => c !== hintCocuk && c !== hataCocuk);
+  const {
+    ust,
+    hint: hintCocuk,
+    hataMesaji: hataCocuk,
+  } = slotAyikla(Children.toArray(children));
 
   const hintVar = hintCocuk !== null;
   const kimlik = useMemo<KimlikBaglami>(
@@ -204,6 +314,13 @@ function Label({
   className?: string;
 }) {
   const kimlik = useContext(KimlikCtx);
+  if (GELISTIRME && !kimlik) {
+    throw new Error(
+      "Form.Label, Form.Item dışında kullanıldı: htmlFor bağlamdan gelir, " +
+        "bağlam yoksa etiket HİÇBİR kontrole bağlanmaz (htmlFor=null) ve alan " +
+        "ekran okuyucuya adsız görünür. Alanı <Form.Item> ile sarın."
+    );
+  }
   return (
     <label htmlFor={kimlik?.id} className={className}>
       {children}
@@ -227,17 +344,97 @@ function Label({
  */
 function Control({ children }: { children: ReactElement }) {
   const kimlik = useContext(KimlikCtx);
-  const hata = useAlanHatasi();
+  const alan = useContext(AlanCtx);
+  const hata = alan?.hata;
   const cocuk = Children.only(children);
+
+  // ── Statik olarak anlaşılan iki kör nokta: geliştirmede PATLA ──
+  if (GELISTIRME) {
+    if (!kimlik) {
+      throw new Error(
+        "Form.Control, Form.Item dışında kullanıldı: id/aria bağları bağlamdan " +
+          "gelir, bağlam yoksa kontrole id=undefined geçer ve etiket bağı " +
+          "kurulmaz. Alanı <Form.Item> ile sarın."
+      );
+    }
+    if (cocuk.type === Fragment) {
+      throw new Error(
+        "Form.Control'un çocuğu Fragment olamaz: prop'lar Fragment'a geçer, " +
+          "içindeki kontrollere İNMEZ (id=\"\", etiket yok). Birim eki gibi " +
+          "yan düğümler için kontrolü tek çocuk bırakıp kalanı Form.Item'ın " +
+          "doğrudan çocuğu yapın."
+      );
+    }
+  }
+
+  // ── Çocuğun kendi bağları KORUNUR (denetim P2-3) ──
+  //
+  // Eski sürüm `aria-describedby`yi `undefined` ile eziyordu: karakter
+  // sayacına, para birimi açıklamasına veya harici bir yardım düğümüne bağlı
+  // kontroller göç sırasında bağlarını SESSİZCE kaybediyordu. Artık slotun
+  // düğümü ile çocuğun kendi düğümleri BİRLEŞTİRİLİR — slotunki önce, çünkü
+  // ekran okuyucu sırayla okur ve hata mesajı ilk duyulmalıdır.
+  const cocukProps = cocuk.props as Record<string, unknown>;
+  const slotTanimi = hata
+    ? kimlik?.hataId
+    : kimlik?.hintVar
+      ? kimlik?.hintId
+      : undefined;
+  const cocukTanimi = cocukProps["aria-describedby"];
+  const tanim =
+    [slotTanimi, typeof cocukTanimi === "string" ? cocukTanimi : null]
+      .filter(Boolean)
+      .join(" ") || undefined;
+
+  // `id` ezilemez: `Form.Label`ın `htmlFor`u bağlamdaki id'yi gösterir, çocuğun
+  // id'sine saygı göstermek etiket bağını KOPARIRDI. Sessiz kalmasın diye
+  // geliştirmede bildirilir (denetim P2-3'ün ikinci yarısı).
+  if (GELISTIRME && typeof cocukProps.id === "string" && cocukProps.id) {
+    console.error(
+      `Form.Control: <${elemanAdi(cocuk.type)}> kendi id'sini ("${cocukProps.id}") ` +
+        `veriyor ama id'nin sahibi Form.Item'dır ("${kimlik?.id}") — ` +
+        "etiket bağı ona kurulu. Çocuğun id'si kullanılmayacak; " +
+        "document.getElementById ile bu kontrolü arayan kod varsa kırılır."
+    );
+  }
+
+  // ── Statik olarak anlaşılMAYAN kör nokta: prop iletmeyen bileşen ──
+  //
+  // Çocuk `id`yi DOM'a indirmezse hiçbir statik kural bunu göremez; ölçüm
+  // ancak çalışma zamanında yapılabilir. Ref DOM düğümüne ulaşırsa oradan,
+  // ulaşamazsa (bileşen ref'i de iletmiyor) belgeden doğrulanır.
+  const dugumRef = useRef<HTMLElement | null>(null);
+  const cocukRef = (cocuk as unknown as { ref?: Ref<HTMLElement> }).ref;
+  const birlesikRef = useCallback(
+    (dugum: HTMLElement | null) => {
+      dugumRef.current = dugum;
+      // Çocuğun kendi ref'i EZİLMEZ: `react-hook-form` odaklamayı onunla yapar.
+      if (typeof cocukRef === "function") cocukRef(dugum);
+      else if (cocukRef && typeof cocukRef === "object") {
+        (cocukRef as { current: HTMLElement | null }).current = dugum;
+      }
+    },
+    [cocukRef]
+  );
+
+  useEffect(() => {
+    if (!GELISTIRME || !kimlik) return;
+    const dugum = dugumRef.current ?? document.getElementById(kimlik.id);
+    if (dugum instanceof HTMLElement && dugum.id === kimlik.id) return;
+    console.error(
+      `Form.Control: <${elemanAdi(cocuk.type)}> id'yi DOM'a indirmedi ` +
+        `(alan: "${alan?.ad ?? "bilinmiyor"}", beklenen id: "${kimlik.id}"). ` +
+        "Etiket bağı kurulmadı — kontrol ekran okuyucuya ADSIZ görünüyor. " +
+        "Bileşen id/aria-* prop'larını iç kontrole iletmeli " +
+        "(ör. `({ id, ...p }) => <input id={id} {...p} />`)."
+    );
+  });
 
   return cloneElement(cocuk, {
     id: kimlik?.id,
     "aria-invalid": hata ? true : undefined,
-    "aria-describedby": hata
-      ? kimlik?.hataId
-      : kimlik?.hintVar
-        ? kimlik?.hintId
-        : undefined,
+    "aria-describedby": tanim,
+    ref: birlesikRef,
   } as Partial<typeof cocuk.props>);
 }
 

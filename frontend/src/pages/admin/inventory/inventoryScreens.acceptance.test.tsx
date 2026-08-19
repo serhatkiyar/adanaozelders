@@ -723,9 +723,18 @@ describe("21 · imha", () => {
     fireEvent.click(await screen.findByRole("button", { name: /[İi]mha et/ }));
     const dialog = await screen.findByRole("dialog");
     expect(within(dialog).getByText(/geri alınamaz|geri dönüşsüz/i)).toBeTruthy();
-    // Onay kutusu işaretlenmeden gönderilemez.
+
+    // GÜNCELLENDİ (İP-A3c · Görev 4). Eski iddia "düğme disabled"dı; kapalı
+    // düğme deseni bırakıldı. Korunan ASIL iddia: onay kutusu işaretlenmeden
+    // işlem SUNUCUYA GİTMEZ — ve kullanıcı neden gitmediğini görür.
     const gonder = within(dialog).getByRole("button", { name: /[İi]mha/ });
-    expect((gonder as HTMLButtonElement).disabled).toBe(true);
+    expect((gonder as HTMLButtonElement).disabled).toBe(false);
+    fireEvent.click(gonder);
+
+    await waitFor(() =>
+      expect(within(dialog).getByTestId("damage-onay-hatasi")).toBeTruthy()
+    );
+    expect(istekler.some((i) => i.method === "post")).toBe(false);
   });
 });
 
@@ -742,8 +751,18 @@ describe("22 · tedarikçi iadesi", () => {
     fireEvent.change(within(dialog).getByLabelText(/miktar/i), { target: { value: "2" } });
     fireEvent.change(within(dialog).getByLabelText(/neden/i), { target: { value: "KIRIK" } });
 
+    // GÜNCELLENDİ (İP-A3c · Görev 4): "düğme disabled" yerine "gönderim
+    // sunucuya gitmez" sınanıyor — kapalı düğme deseni bırakıldı, garanti
+    // yerinde duruyor.
     const gonder = within(dialog).getByRole("button", { name: /gönder|onayla|iade/i });
-    expect((gonder as HTMLButtonElement).disabled, "kova seçilmeden gönderilebiliyor").toBe(true);
+    fireEvent.click(gonder);
+    await waitFor(() =>
+      expect(
+        within(dialog).getByLabelText(/kaynak kova/i).getAttribute("aria-invalid"),
+        "kova seçilmeden gönderilebiliyor"
+      ).toBe("true")
+    );
+    expect(istekler.some((i) => i.method === "post")).toBe(false);
 
     fireEvent.change(within(dialog).getByLabelText(/kaynak kova/i), { target: { value: "DAMAGED" } });
     fireEvent.click(gonder);
@@ -788,8 +807,17 @@ describe("24 · DIGER gerekçesi", () => {
     fireEvent.change(within(dialog).getByLabelText(/miktar/i), { target: { value: "2" } });
     fireEvent.change(within(dialog).getByLabelText(/neden/i), { target: { value: "DIGER" } });
 
+    // GÜNCELLENDİ (İP-A3c · Görev 4): aynı gerekçe — garanti "kapalı düğme"
+    // değil, "geçersiz veri sunucuya gitmez".
     const gonder = within(dialog).getByRole("button", { name: /onayla|uygula|kaydet|ayır/i });
-    expect((gonder as HTMLButtonElement).disabled, "DIGER açıklamasız gönderilebiliyor").toBe(true);
+    fireEvent.click(gonder);
+    await waitFor(() =>
+      expect(
+        within(dialog).getByLabelText(/açıklama/i).getAttribute("aria-invalid"),
+        "DIGER açıklamasız gönderilebiliyor"
+      ).toBe("true")
+    );
+    expect(istekler.some((i) => i.method === "post")).toBe(false);
 
     fireEvent.change(within(dialog).getByLabelText(/açıklama/i), { target: { value: "kapak yırtık" } });
     fireEvent.click(gonder);

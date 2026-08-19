@@ -23,9 +23,30 @@
 //     genel hata içindir (`error` prop'u).
 //
 // Değişmeyen: anlık doğrulama (kullanıcı yazarken hata belirir), etki metni,
-// imha onay kutusu kapısı, idempotency anahtarının ömrü ve sunucu gövdesi.
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useForm } from "react-hook-form";
+// idempotency anahtarının ömrü ve sunucu gövdesi.
+//
+// ## İP-A3c: "geçerlilik nedeniyle kapalı düğme" deseni BIRAKILDI
+//
+// Eskiden gönder düğmesi form geçersizken `disabled` idi ve neyin eksik
+// olduğunu formun altındaki gri `eksikIpucu` satırı söylüyordu. Dört sebeple
+// bırakıldı (ürün kararı, İP-A3c · Görev 4):
+//
+//   1. Kapalı düğme GERİ BİLDİRİM VERMEZ: kullanıcı basar, hiçbir şey olmaz.
+//   2. Ekran okuyucuya NEDEN kapalı olduğunu söylemez; kontrast muafiyeti
+//      yüzünden az gören kullanıcı için de zor görünür.
+//   3. "Neyin eksik olduğunu" anlatan PARALEL bir mekanizma yazmayı zorunlu
+//      kılar (`eksikIpucu`) — o mekanizma İP-A2 pilotunda bir kez kırıldı ve
+//      regresyon olarak geri kondu.
+//   4. Kapı (senkron `safeParse`) ile alan hataları (asenkron çözümleyici +
+//      sunucudan `setError`) İKİ AYRI DOĞRULUK KAYNAĞIDIR ve saparlar:
+//      denetim, sunucu alan hatası varken düğmenin AÇIK kaldığını üretti.
+//
+// Yerine gelen desen: düğme geçerlilik yüzünden hiç kapanmaz; basılınca form
+// geçersizse GÖNDERİM YAPILMAZ, hatalar alanların altında görünür ve ODAK İLK
+// HATALI ALANA taşınır. Düğme yalnız işlem sürerken (`isPending`) kapanır —
+// bu geçerlilik değil, çift gönderim korumasıdır.
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useForm, type FieldErrors } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
 import { Button, Dialog } from "@/components/admin/ui";
@@ -109,7 +130,13 @@ export function DamageDialog({ kind, isPending, error, onClose, onSubmit }: Dama
   const [secilenUrun, setSecilenUrun] = useState<ProductSearchOut | null>(null);
   const [onaylandi, setOnaylandi] = useState(false);
   const anahtarRef = useRef<string>(newIdempotencyKey());
-  const gonderildiRef = useRef(false);
+  // Onay kutusu formun DIŞINDA yaşadığı için hatası da burada tutulur; bir
+  // kutucuk için şemaya alan açmak `damagePayload` gövdesini de kirletirdi.
+  const [onayHatasi, setOnayHatasi] = useState(false);
+  const onayRef = useRef<HTMLInputElement>(null);
+  // Odak kurtarması için: `urunId` alanının kontrolü `ProductPicker`ın kendi
+  // arama kutusudur ve `react-hook-form`a bir `ref` vermez.
+  const kapRef = useRef<HTMLDivElement>(null);
 
   const form = useForm<DamageFormValues>({
     // Şema `kind`'a bağlı (kaynak kova yalnız tedarikçi iadesinde zorunlu).
@@ -118,6 +145,12 @@ export function DamageDialog({ kind, isPending, error, onClose, onSubmit }: Dama
     // Anlık doğrulama korunur: kullanıcı yazarken hata belirir, gönder'e
     // basmayı beklemez.
     mode: "onChange",
+    // Odaklamayı KENDİMİZ yapıyoruz (`ilkHatayaOdaklan`). `react-hook-form`un
+    // kendi odaklaması `onInvalid`ten SONRA çalışır (ve bir de `setTimeout`
+    // ile tekrarlar), yani bizimkini ezer; ayrıca `ref` taşımayan alanı
+    // (`urunId` → ProductPicker) atlar ve "ilk hatalı alan" yerine ilk
+    // ODAKLANABİLİR hatalı alana gider.
+    shouldFocusError: false,
   });
 
   // Pencere her açıldığında form ve anahtar sıfırlanır.
@@ -126,8 +159,8 @@ export function DamageDialog({ kind, isPending, error, onClose, onSubmit }: Dama
       form.reset(BOS);
       setSecilenUrun(null);
       setOnaylandi(false);
+      setOnayHatasi(false);
       anahtarRef.current = newIdempotencyKey();
-      gonderildiRef.current = false;
     }
     // `form` her render'da kimliğini korur; bağımlılığa eklemek gereksiz
     // sıfırlama üretirdi.
@@ -180,6 +213,25 @@ export function DamageDialog({ kind, isPending, error, onClose, onSubmit }: Dama
     etkin: !!kind,
   });
 
+  // ── `Dialog`a geçen `onClose` KARARLI kimlikte olmalı ──
+  //
+  // `useModalA11y` odak/kaydırma etkisini `onClose` bağımlılığıyla kurar
+  // (`hooks/useModalA11y.ts:104`). Buraya her render'da yeni bir ok
+  // fonksiyonu verilirse etki HER RENDER'DA yeniden koşar ve odağı panelin
+  // İLK odaklanabilir öğesine (kapatma düğmesi) geri alır. Sonuç: gönderim
+  // sonrası "ilk hatalı alana odaklan" davranışı sessizce iptal olur — hatta
+  // kullanıcı yazarken bile odak kayabilir.
+  //
+  // Bu, `useModalA11y`yi kullanan HER pencerede geçerli bir kusurdur; ortak
+  // hook'u düzeltmek bu paketin dosya kapsamı dışında (raporda borç olarak
+  // yazıldı). Pilotta kimliği burada sabitliyoruz: güncel işleyici ref'te
+  // yaşar, dışarı verilen fonksiyon değişmez.
+  const kapatmaRef = useRef<() => void>(() => {});
+  kapatmaRef.current = () => {
+    if (!isPending) bekci.kapatmayiDene(onClose);
+  };
+  const dialogKapat = useCallback(() => kapatmaRef.current(), []);
+
   if (!kind) return null;
 
   const geriAlinamaz = etki?.irreversible ?? false;
@@ -188,56 +240,57 @@ export function DamageDialog({ kind, isPending, error, onClose, onSubmit }: Dama
   // muhatap vardır; orada kapı "kaynak kovanın açıkça seçilmesi"dir.
   const onayGerekli = kind === "DISPOSAL";
 
-  // Gönder kapısı ŞEMADAN SENKRON okunur, `formState.isValid`'ten değil.
+  // ── Gönderim: kapı yok, ama geçersiz veri de sunucuya gitmez ──
   //
-  // Sebep ölçülmüş bir davranış farkı: `react-hook-form` çözümleyicisi
-  // asenkrondur, `isValid` değişiklikten BİR TİK SONRA güncellenir. Eski form
-  // doğrulamayı render sırasında hesapladığı için son karakteri yazıp hemen
-  // tıklayan kullanıcı düğmeyi açık buluyordu; `isValid`'e bağlanınca aynı
-  // tıklama kapalı düğmeye çarpıyor ve SESSİZCE hiçbir şey olmuyordu.
-  // (Envanter kabul testlerinden beşi tam olarak bunu yakaladı.)
+  // `handleSubmit` geçersiz formda `onGecerli`yi HİÇ çağırmaz; bu, "veri
+  // sunucuya gitmez" garantisinin tek kaynağıdır. Kullanıcıya geri bildirim
+  // alanların altındaki hatalarla verilir — ve odak ilk hatalı alana taşınır,
+  // çünkü hata ekranın görünmeyen kısmındaysa kullanıcı yine hiçbir şey
+  // görmemiş olur.
   //
-  // Aynı şema iki yerde de kullanıldığı için tek doğruluk kaynağı korunur:
-  // alan altındaki kırmızı mesajlar çözümleyiciden, kapı buradan gelir.
-  const semaSonucu = damageFormSchema(kind).safeParse(degerler);
-  const gonderilebilir = semaSonucu.success && (!onayGerekli || onaylandi);
+  // Alanların GÖRSEL sırası; "ilk hatalı alan" bu sıradan okunur.
+  const GORSEL_SIRA = ["urunId", "miktar", "kova", "neden", "aciklama"] as const;
 
-  // "Gönder neden kapalı?" ipucu — eski formdan KORUNAN davranış.
-  //
-  // `react-hook-form` anlık modda yalnız DOKUNULAN alanı işaretler; hiç
-  // dokunulmamış zorunlu bir alan (ör. tedarikçi iadesinde kaynak kova)
-  // sessizce eksik kalır ve kullanıcı düğmenin neden kapalı olduğunu göremez.
-  // Eski form bunu formun altındaki GRİ satırla söylüyordu (kırmızı hata
-  // değil, yönlendirme). O satır burada korunur; alanında zaten kırmızı
-  // görünen bir eksik ikinci kez yazılmaz.
-  const eksikIpucu = (() => {
-    if (!form.formState.isDirty || semaSonucu.success) return null;
-    const gorunen = new Set(Object.keys(form.formState.errors));
-    return (
-      semaSonucu.error.issues.find((i) => !gorunen.has(String(i.path[0])))
-        ?.message ?? null
-    );
-  })();
+  const ilkHatayaOdaklan = (hatalar: FieldErrors<DamageFormValues>) => {
+    const ilk = GORSEL_SIRA.find((a) => hatalar[a]);
+    if (!ilk) return;
+    if (ilk === "urunId") {
+      // `ProductPicker` kendi arama kutusunu yönetir ve forma `ref` vermez;
+      // `setFocus` bu alanda hiçbir şey yapmaz. Kutuyu doğrudan buluyoruz.
+      kapRef.current
+        ?.querySelector<HTMLInputElement>('input[type="search"]')
+        ?.focus();
+      return;
+    }
+    form.setFocus(ilk);
+  };
 
-  const gonder = form.handleSubmit((degerler) => {
-    if (gonderildiRef.current) return;
-    gonderildiRef.current = true;
-    onSubmit(damagePayload(kind, degerler, anahtarRef.current));
-    // Kilit sunucu yanıtından SONRA açılır; hata hâlinde kullanıcı formu
-    // düzeltip yeniden gönderebilsin diye burada bırakılır.
-    window.setTimeout(() => {
-      gonderildiRef.current = false;
-    }, 0);
-  });
+  const gonder = form.handleSubmit(
+    (degerler) => {
+      // İmha onayı: kutucuk formun dışında yaşadığı için ayrı kapılanır ama
+      // davranışı aynı — düğme kapanmaz, basılınca hata belirir ve odak
+      // kutucuğa taşınır.
+      if (onayGerekli && !onaylandi) {
+        setOnayHatasi(true);
+        onayRef.current?.focus();
+        return;
+      }
+      onSubmit(damagePayload(kind, degerler, anahtarRef.current));
+    },
+    (hatalar) => {
+      if (onayGerekli && !onaylandi) setOnayHatasi(true);
+      ilkHatayaOdaklan(hatalar);
+    }
+  );
 
   return (
     <Dialog
       open
       title={damageKindLabel(kind)}
       description={DAMAGE_KINDS.find((k) => k.value === kind)?.description}
-      onClose={() => !isPending && bekci.kapatmayiDene(onClose)}
+      onClose={dialogKapat}
     >
-      <div className="space-y-4">
+      <div className="space-y-4" ref={kapRef}>
         {/* Ham ürün numarası yerine arama: hasar kaydı stoktan düşen ve geri
             alınamaz bir defter satırı üretir; yanlış numaraya yazılan bir
             hasar sessizce yanlış kitabı eksiltir. Seçilen ürün adıyla teyit
@@ -340,15 +393,6 @@ export function DamageDialog({ kind, isPending, error, onClose, onSubmit }: Dama
           />
         )}
 
-        {eksikIpucu && (
-          <p
-            data-testid="damage-eksik-ipucu"
-            className="text-xs text-slate-500 dark:text-slate-400"
-          >
-            {eksikIpucu}
-          </p>
-        )}
-
         <p
           data-testid="damage-effect"
           className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-200"
@@ -357,18 +401,34 @@ export function DamageDialog({ kind, isPending, error, onClose, onSubmit }: Dama
         </p>
 
         {onayGerekli && (
-          <label className="flex items-start gap-2.5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200">
-            <input
-              type="checkbox"
-              className="mt-0.5 h-4 w-4"
-              checked={onaylandi}
-              onChange={(e) => setOnaylandi(e.target.checked)}
-            />
-            <span>
-              Bu işlem <strong>geri alınamaz</strong>: mal fiziksel olarak çıkar ve stoğa
-              kendiliğinden dönmez. Onaylıyorum.
-            </span>
-          </label>
+          <div>
+            <label className="flex items-start gap-2.5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200">
+              <input
+                ref={onayRef}
+                type="checkbox"
+                className="mt-0.5 h-4 w-4"
+                aria-invalid={onayHatasi || undefined}
+                checked={onaylandi}
+                onChange={(e) => {
+                  setOnaylandi(e.target.checked);
+                  if (e.target.checked) setOnayHatasi(false);
+                }}
+              />
+              <span>
+                Bu işlem <strong>geri alınamaz</strong>: mal fiziksel olarak çıkar ve stoğa
+                kendiliğinden dönmez. Onaylıyorum.
+              </span>
+            </label>
+            {onayHatasi && (
+              <p
+                role="alert"
+                data-testid="damage-onay-hatasi"
+                className="mt-1.5 text-xs text-rose-600 dark:text-rose-400"
+              >
+                Devam etmek için bu kutuyu işaretleyin.
+              </p>
+            )}
+          </div>
         )}
 
         {geriAlinamaz && !onayGerekli && (
@@ -399,7 +459,8 @@ export function DamageDialog({ kind, isPending, error, onClose, onSubmit }: Dama
           </Button>
           <Button
             variant={geriAlinamaz ? "danger" : "primary"}
-            disabled={!gonderilebilir}
+            /* Geçerlilik kapısı YOK. `isPending` çift gönderimi engeller —
+               `Button` bunu kendi `disabled`ına katar. */
             isPending={isPending}
             onClick={gonder}
           >
