@@ -80,7 +80,7 @@ M-B⁻ expected [] to include 'ui/Dialog.tsx'
 M-C  expected [] to deeply equal [ 'acik' ]            (prop-ile-inen durum)
 ```
 
-Sonra sırayla onarıldı: M-A → `a082069`, M-B → `17103ee`, M-C → `7e7b9d4`.
+Sonra sırayla onarıldı: M-A → `a082069`, M-B → `17103ee`, M-C → `8861020`.
 
 | Mutasyon | Bugün (A6 aleti) | A6b'de |
 |---|---|---|
@@ -239,6 +239,7 @@ MD-6 ve MD-8 bilerek **negatif kontrollerin dişlerini** ölçer: onarım kör b
 `git diff --name-only 8ce1dda..HEAD` çıktısındaki her yol izinli kümede:
 
 ```
+docs/denetim2-a4-a6.md                (taban commit'i 2b8e56a)
 docs/ip-a6b-gorev.md
 docs/ip-a6b-rapor.md
 frontend/scripts/ui-baseline-sayim.mjs
