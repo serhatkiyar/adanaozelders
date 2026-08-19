@@ -45,14 +45,17 @@
 // geçersizse GÖNDERİM YAPILMAZ, hatalar alanların altında görünür ve ODAK İLK
 // HATALI ALANA taşınır. Düğme yalnız işlem sürerken (`isPending`) kapanır —
 // bu geçerlilik değil, çift gönderim korumasıdır.
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm, type FieldErrors } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
-import { Button, Dialog } from "@/components/admin/ui";
+import { Button } from "@/components/admin/ui";
 import { ProductPicker } from "@/components/admin/ProductPicker";
+import {
+  DuzenlemeYuzeyi,
+  type DuzenlemeYuzeyiDurumu,
+} from "@/components/admin/ui2/duzenlemeYuzeyi";
 import { Form, sunucuHatasiniUygula } from "@/components/admin/ui2/form";
-import { useKirliFormBekcisi } from "@/components/admin/ui2/kirliFormBekcisi";
 import {
   DAMAGE_KINDS,
   DAMAGE_REASON_OPTIONS,
@@ -73,7 +76,12 @@ import type { DamagePayload } from "@/api/inventory";
 import type { ProductSearchOut } from "@/types";
 
 export interface DamageDialogProps {
-  kind: DamageKind | null;
+  /**
+   * Düzenleme yüzeyi (İP-A4 · Görev 2). Eskiden burada `kind` ve `onClose`
+   * vardı ve pencere durumu EKRANDA yaşıyordu. Artık yüzey taşıyor: hangi
+   * işlem açıldığı `yuzey.baglam`, kapatma `yuzey.kapat`.
+   */
+  yuzey: DuzenlemeYuzeyiDurumu<never, DamageKind>;
   isPending: boolean;
   /**
    * HAM sunucu hatası (İP-A3a'da `string`ten değişti).
@@ -85,7 +93,6 @@ export interface DamageDialogProps {
    * uç tam olarak buydu.
    */
   error: unknown;
-  onClose: () => void;
   onSubmit: (payload: DamagePayload) => void;
 }
 
@@ -123,7 +130,9 @@ const BOS: DamageFormValues = {
   kova: "",
 };
 
-export function DamageDialog({ kind, isPending, error, onClose, onSubmit }: DamageDialogProps) {
+export function DamageDialog({ yuzey, isPending, error, onSubmit }: DamageDialogProps) {
+  // Hangi işlem açık — pencere durumunun tek kaynağı yüzeydir.
+  const kind = yuzey.baglam;
   // Ham ID metni değil SEÇİLMİŞ ÜRÜN: ekranda adıyla görünen şeyle gövdeye
   // giden ID aynı kaynaktan okunur. Gövdeye giden `urunId` formda yaşar;
   // burada tutulan yalnız ekranda gösterilecek ürün nesnesidir.
@@ -203,34 +212,17 @@ export function DamageDialog({ kind, isPending, error, onClose, onSubmit }: Dama
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [error]);
 
-  // Kirli form bekçisi: kapatma düğmesi, ESC ve dış tıklama — üçü de
-  // `Dialog`'un `onClose`'una düşer, bu yüzden tek noktadan kapılanır.
-  const bekci = useKirliFormBekcisi({
-    form,
-    // Gönderim ağa çıkıp başarısız olduysa form KİRLİ sayılmaya devam eder;
-    // `isSubmitSuccessful` tek başına "mutate çağrıldı" demektir.
-    sunucuHatasi: error,
-    etkin: !!kind,
-  });
-
-  // ── `Dialog`a geçen `onClose` KARARLI kimlikte olmalı ──
+  // ── Kirli form bekçisi ve odak yönetimi ARTIK BURADA DEĞİL ──
   //
-  // `useModalA11y` odak/kaydırma etkisini `onClose` bağımlılığıyla kurar
-  // (`hooks/useModalA11y.ts:104`). Buraya her render'da yeni bir ok
-  // fonksiyonu verilirse etki HER RENDER'DA yeniden koşar ve odağı panelin
-  // İLK odaklanabilir öğesine (kapatma düğmesi) geri alır. Sonuç: gönderim
-  // sonrası "ilk hatalı alana odaklan" davranışı sessizce iptal olur — hatta
-  // kullanıcı yazarken bile odak kayabilir.
+  // İkisi de `DuzenlemeYuzeyi`nin içinde (İP-A4 · Görev 2). Eskiden bu
+  // dosyada `useKirliFormBekcisi` çağrısı, `Dialog`a verilen `onClose`un
+  // kimliğini elle sabitleyen bir `kapatmaRef`/`useCallback` ikilisi ve
+  // ayrı bir "Vazgeç" düğmesi vardı — üçü de göç edecek her ekranda tekrar
+  // yazılacak, her ekranda ayrı ayrı unutulabilecek şeylerdi.
   //
-  // Bu, `useModalA11y`yi kullanan HER pencerede geçerli bir kusurdur; ortak
-  // hook'u düzeltmek bu paketin dosya kapsamı dışında (raporda borç olarak
-  // yazıldı). Pilotta kimliği burada sabitliyoruz: güncel işleyici ref'te
-  // yaşar, dışarı verilen fonksiyon değişmez.
-  const kapatmaRef = useRef<() => void>(() => {});
-  kapatmaRef.current = () => {
-    if (!isPending) bekci.kapatmayiDene(onClose);
-  };
-  const dialogKapat = useCallback(() => kapatmaRef.current(), []);
+  // `kapatmaRef` özel olarak `useModalA11y`nin odak sıfırlaması yüzünden
+  // gerekliydi (TB-A3c-1); o kusur hook'un içinde düzeltildiği için
+  // (İP-A4 · Görev 1) geçici sabitleme kaldırıldı.
 
   if (!kind) return null;
 
@@ -284,11 +276,26 @@ export function DamageDialog({ kind, isPending, error, onClose, onSubmit }: Dama
   );
 
   return (
-    <Dialog
-      open
-      title={damageKindLabel(kind)}
-      description={DAMAGE_KINDS.find((k) => k.value === kind)?.description}
-      onClose={dialogKapat}
+    <DuzenlemeYuzeyi
+      yuzey={yuzey}
+      baslik={damageKindLabel(kind)}
+      aciklama={DAMAGE_KINDS.find((k) => k.value === kind)?.description}
+      form={form}
+      // Gönderim ağa çıkıp başarısız olduysa form KİRLİ sayılmaya devam eder;
+      // `isSubmitSuccessful` tek başına "mutate çağrıldı" demektir.
+      sunucuHatasi={error}
+      islemSuruyor={isPending}
+      aksiyonlar={
+        <Button
+          variant={geriAlinamaz ? "danger" : "primary"}
+          /* Geçerlilik kapısı YOK. `isPending` çift gönderimi engeller —
+             `Button` bunu kendi `disabled`ına katar. */
+          isPending={isPending}
+          onClick={gonder}
+        >
+          {GONDER_ETIKET[kind]}
+        </Button>
+      }
     >
       <div className="space-y-4" ref={kapRef}>
         {/* Ham ürün numarası yerine arama: hasar kaydı stoktan düşen ve geri
@@ -448,26 +455,7 @@ export function DamageDialog({ kind, isPending, error, onClose, onSubmit }: Dama
             {genelHata}
           </p>
         )}
-
-        <div className="flex justify-end gap-2">
-          <Button
-            variant="ghost"
-            disabled={isPending}
-            onClick={() => bekci.kapatmayiDene(onClose)}
-          >
-            Vazgeç
-          </Button>
-          <Button
-            variant={geriAlinamaz ? "danger" : "primary"}
-            /* Geçerlilik kapısı YOK. `isPending` çift gönderimi engeller —
-               `Button` bunu kendi `disabled`ına katar. */
-            isPending={isPending}
-            onClick={gonder}
-          >
-            {GONDER_ETIKET[kind]}
-          </Button>
-        </div>
       </div>
-    </Dialog>
+    </DuzenlemeYuzeyi>
   );
 }

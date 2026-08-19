@@ -158,6 +158,42 @@ export const OLCUM_DISI_INPUT_TIPLERI = new Set([
   "image",
 ]);
 
+/**
+ * ── İP-A4 metriği: EKRANDA yaşayan pencere (modal) durumu ──
+ *
+ * Bugün her ekran modalını kendi `useState`'iyle yönetiyor. 71 ekran böyle
+ * yazılırsa, ileride rota tabanlı düzenleme yüzeylerine (`/…/:id/duzenle`)
+ * geçme kararı 71 dosyayı ilgilendirir. İP-A4 pencere yönetimini `ui2/`
+ * altına taşıdı (`duzenlemeYuzeyi.tsx`); bu sayaç geri kaymayı ölçer.
+ *
+ * **Ne sayılır:** bir `useState` bağı, adı aşağıdaki desene uyan bir BİLEŞENE
+ * pencere durumu olarak veriliyorsa (ör. `<XDialog open={acik}>`,
+ * `<DamageDialog kind={acikIslem}>`). Bağ başına bir kez sayılır.
+ *
+ * **Neden bileşen adına bakılıyor:** "modal state" sözdizimsel bir şey
+ * değildir; `useState(false)` her yerde var. Ölçülebilir tanım, o durumun bir
+ * PENCERE bileşenine verilmesidir. Ad deseni bilinçli olarak dardır —
+ * yanlış pozitif, gerçek borcu gözden kaçırmaktan daha zararlıdır (aynı
+ * gerekçe İP-A3c'de parçalanmış overlay sınıfı için de verildi).
+ *
+ * **Bilinen kaçış yolu:** pencere bileşeninin adı bu desene uymuyorsa
+ * (ör. `<Katman görünür={acik}>`) sayaç görmez. Göç sırasında yeni bir
+ * pencere bileşeni doğarsa desene eklenmelidir.
+ */
+const PENCERE_BILESENI = /(Dialog|Modal|Drawer|Sheet|Pencere|Yuzey|Overlay|Popover)$/;
+
+/** Pencere durumu olarak okunan öznitelik adları. */
+const PENCERE_OZNITELIKLERI = new Set([
+  "open",
+  "acik",
+  "isOpen",
+  "visible",
+  "gorunur",
+  "kind",
+  "hedef",
+  "yuzey",
+]);
+
 /** Bir kontrolü "adlandırılmış" sayan sarmalayıcı bileşenler. */
 const KONTROL_SARMALAYICILARI = new Set(["Form.Control"]);
 
@@ -202,6 +238,8 @@ export function dosyaOlcumu(kaynak, dosyaAdi = "olcum.tsx") {
     adsizKontrol: 0,
     adsizKontrolSatirlari: [],
     olcumDisiKontrol: 0,
+    // İP-A4: ekranda yaşayan pencere durumu (bağ adları).
+    modalDurumAdlari: [],
   };
 
   // Kontrol ↔ etiket bağı DOSYA ÖLÇEĞİNDE kurulur: `<label htmlFor={x}>` ile
@@ -413,6 +451,60 @@ export function dosyaOlcumu(kaynak, dosyaAdi = "olcum.tsx") {
   };
 
   gez(sf);
+
+  // ── İP-A4: ekranda yaşayan pencere durumu ──
+  //
+  // Önce dosyadaki `useState` bağları toplanır, sonra bir PENCERE bileşenine
+  // pencere özniteliği olarak verilenler işaretlenir. İki geçiş gerekir:
+  // durum bildirimi JSX'ten sonra da gelebilir (yardımcı bileşenler).
+  const durumAdlari = new Set();
+  const durumTopla = (n) => {
+    if (
+      ts.isVariableDeclaration(n) &&
+      n.initializer &&
+      ts.isCallExpression(n.initializer) &&
+      /(^|\.)useState$/.test(n.initializer.expression.getText(sf).replace(/<.*/s, "")) &&
+      ts.isArrayBindingPattern(n.name) &&
+      n.name.elements.length > 0 &&
+      ts.isBindingElement(n.name.elements[0])
+    ) {
+      durumAdlari.add(n.name.elements[0].name.getText(sf));
+    }
+    ts.forEachChild(n, durumTopla);
+  };
+  durumTopla(sf);
+
+  const modalBaglari = new Set();
+  const modalAra = (n) => {
+    if (ts.isJsxOpeningElement(n) || ts.isJsxSelfClosingElement(n)) {
+      const etiket = n.tagName.getText(sf);
+      const pencereBileseni = PENCERE_BILESENI.test(etiket);
+      for (const p of n.attributes.properties) {
+        if (!ts.isJsxAttribute(p)) continue;
+        const ad = p.name.getText(sf);
+        if (!PENCERE_OZNITELIKLERI.has(ad)) continue;
+        // `open` gibi genel bir öznitelik yalnız pencere bileşeninde sayılır.
+        if (!pencereBileseni) continue;
+        const ifade = p.initializer;
+        if (!ifade || !ts.isJsxExpression(ifade) || !ifade.expression) continue;
+        // İfadenin İÇİNDEKİ tüm tanımlayıcılara bakılır: `open={!!acik}`,
+        // `open={acik !== null}` da sayılmalı.
+        const tanimlayicilar = [];
+        const gezIfade = (m) => {
+          if (ts.isIdentifier(m)) tanimlayicilar.push(m.getText(sf));
+          ts.forEachChild(m, gezIfade);
+        };
+        gezIfade(ifade.expression);
+        for (const t of tanimlayicilar) {
+          if (durumAdlari.has(t)) modalBaglari.add(t);
+        }
+      }
+    }
+    ts.forEachChild(n, modalAra);
+  };
+  modalAra(sf);
+  o.modalDurumAdlari = [...modalBaglari].sort();
+
   return o;
 }
 
@@ -429,6 +521,8 @@ export function sayim() {
   let adsizKontrol = 0;
   let olcumDisiKontrol = 0;
   const adsizKontrolDosyalari = [];
+  let modalDurumu = 0;
+  const modalDurumDosyalari = [];
 
   for (const f of base) {
     const o = dosyaOlcumu(read(f), f);
@@ -438,6 +532,10 @@ export function sayim() {
 
     kontrolToplam += o.kontrolToplam;
     adsizKontrol += o.adsizKontrol;
+    if (o.modalDurumAdlari.length > 0) {
+      modalDurumu += o.modalDurumAdlari.length;
+      modalDurumDosyalari.push({ dosya: f, adlar: o.modalDurumAdlari });
+    }
     olcumDisiKontrol += o.olcumDisiKontrol;
     if (o.adsizKontrol > 0) {
       adsizKontrolDosyalari.push({
@@ -488,6 +586,9 @@ export function sayim() {
     adsizKontrol,
     olcumDisiKontrol,
     adsizKontrolDosyalari,
+    // İP-A4 nöbetçi metriği: ekranda yaşayan pencere (modal) durumu.
+    modalDurumu,
+    modalDurumDosyalari,
     medusaDirectImports,
     unlabeledOverlays,
     overlayOffenders: overlayOffenders.sort(),

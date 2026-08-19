@@ -120,7 +120,7 @@ try {
   await s.gonder("Page.enable");
   await s.gonder("Runtime.enable");
 
-  await s.git(`${FRONTEND}/form-probe.html`);
+  await s.git(`${FRONTEND}/scripts/probe/form-probe.html`);
   await new Promise((r) => setTimeout(r, 1500));
 
   const once = await s.eval(olc);

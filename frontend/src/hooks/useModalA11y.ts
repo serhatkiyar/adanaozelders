@@ -58,6 +58,28 @@ export function useModalA11y({
 }: ModalA11yOptions): void {
   const returnFocusRef = useRef<HTMLElement | null>(null);
 
+  // ── `onClose` bir REF'te yaşar; etkinin bağımlılığı DEĞİLDİR (TB-A3c-1) ──
+  //
+  // Çağıran taraf `onClose`u satır içi ok fonksiyonu olarak verirse — panelde
+  // yaygın desen, `onClose={() => setAcik(false)}` — kimlik her render'da
+  // değişir. Bağımlılıkta durduğu sürece etki HER RENDER'DA sökülüp yeniden
+  // kuruluyordu ve üç zarar üretiyordu:
+  //
+  //   1. Odak panelin İLK odaklanabilir öğesine geri alınıyordu. İP-A3c'nin
+  //      "gönderimde odak ilk hatalı alana taşınır" davranışı bir sonraki
+  //      render'da sessizce iptal oluyordu (form her tuş vuruşunda render
+  //      eder: kullanıcı yazarken bile odak kayabiliyordu).
+  //   2. Temizlik `returnFocusRef.current?.focus()` çağırdığı için odak
+  //      pencerenin DIŞINA, açan öğeye sıçrayabiliyordu.
+  //   3. `body.style.overflow` her render'da yeniden okunup yazılıyordu;
+  //      okunan "önceki" değer artık kendi yazdığımız `hidden` olabiliyordu.
+  //
+  // Ref render sırasında güncellenir: etkinin içinden okunan işleyici HER
+  // ZAMAN günceldir, ama etki yeniden kurulmaz. Çağıran tarafın kimliği elle
+  // sabitlemesi (İP-A3c pilotunda yapılmıştı) artık GEREKMEZ.
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+
   useEffect(() => {
     if (!open) return;
 
@@ -71,7 +93,7 @@ export function useModalA11y({
 
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
-        onClose();
+        onCloseRef.current();
         return;
       }
       if (event.key !== "Tab" || !panel) return;
@@ -98,5 +120,7 @@ export function useModalA11y({
       if (lockScroll) document.body.style.overflow = previousOverflow;
       returnFocusRef.current?.focus();
     };
-  }, [initialFocusRef, lockScroll, onClose, open, panelRef]);
+    // `onClose` BİLEREK yok: ref üzerinden okunuyor (yukarıdaki nota bak).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialFocusRef, lockScroll, open, panelRef]);
 }

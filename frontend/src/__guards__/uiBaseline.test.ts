@@ -111,6 +111,7 @@ const OLCUM_TABANI = [
   "src/components/admin/ui/Dialog.tsx",
   "src/components/admin/ui/PageState.tsx",
   "src/components/admin/ui/index.ts",
+  "src/components/admin/ui2/duzenlemeYuzeyi.tsx",
   "src/components/admin/ui2/form.tsx",
   "src/components/admin/ui2/kirliFormBekcisi.tsx",
   "src/components/admin/ui2/medusa-tr.tsx",
@@ -157,6 +158,36 @@ const OLCUM_TABANI = [
   "src/pages/dashboards/OperatorSessions.tsx",
 ];
 
+/**
+ * Pencere (modal) durumunu HÂLÂ ekranda tutan dosyalar — İP-A4 tabanı.
+ *
+ * A6-A7'de her göç eden ekran bu listeden ÇIKAR. Listeye yeni dosya girmesi
+ * göçün tersine işlediği anlamına gelir ve test kırılır.
+ */
+const MODAL_DURUM_DOSYALARI = [
+  "src/components/admin/CourierManager.tsx",
+  "src/components/admin/delivery/ClosedDays.tsx",
+  "src/pages/admin/AdminAccessPage.tsx",
+  "src/pages/admin/AdminBookingsPage.tsx",
+  "src/pages/admin/AdminDemandsPage.tsx",
+  "src/pages/admin/AdminOperationsPage.tsx",
+  "src/pages/admin/AdminReportsPage.tsx",
+  "src/pages/admin/AdminSettingsPage.tsx",
+  "src/pages/admin/delivery/DeliveryBoardPage.tsx",
+  "src/pages/admin/delivery/DeliveryRunDetailPage.tsx",
+  "src/pages/admin/delivery/DeliveryTodayPage.tsx",
+  "src/pages/admin/delivery/DeliveryVehiclesPage.tsx",
+  "src/pages/admin/inventory/CountSessionDetailPage.tsx",
+  "src/pages/admin/inventory/CountSessionsPage.tsx",
+  "src/pages/admin/packing/PackagesPage.tsx",
+  "src/pages/admin/packing/PackingStationPage.tsx",
+  "src/pages/admin/packing/ReturnQueuePage.tsx",
+  "src/pages/dashboards/AdminExamCatalogs.tsx",
+  "src/pages/dashboards/AdminHome.tsx",
+  "src/pages/dashboards/AdminLibraries.tsx",
+  "src/pages/dashboards/AdminStore.tsx",
+];
+
 const olcum = sayim();
 
 describe("İP-A1 nöbetçi eşikleri", () => {
@@ -167,11 +198,15 @@ describe("İP-A1 nöbetçi eşikleri", () => {
     expect(olcum.dosyalar).toEqual(OLCUM_TABANI);
   });
 
-  it("ham <button sayısı artamaz (taban 160)", () => {
+  it("ham <button sayısı artamaz (taban 158)", () => {
     // İP-A3c'de 126 → 160: taban altı ekran genişledi (Operator*/Courier*/
     // Delivery*), bu ekranlarda zaten duran 34 ham buton görünür oldu.
-    // Sayı A6-A7'de düşecek.
-    expect(olcum.rawButton).toBeLessThanOrEqual(160);
+    //
+    // İP-A4'te 160 → 158: `DataTable`ın sayfalama düğmeleri ortak `Button`a
+    // geçti. Pilot ekranın (`DamageEventsPage`) KENDİ ham butonu YOKTU —
+    // İP-A2/A3c'de zaten temizlenmişti; göç bu sayıyı oradan düşüremezdi ve
+    // düşmüş gibi yazmak sahte ilerleme olurdu (rapor → Görev 6).
+    expect(olcum.rawButton).toBeLessThanOrEqual(158);
   });
 
   it("erişilebilir adı olmayan form kontrolü artamaz (taban 56)", () => {
@@ -184,6 +219,25 @@ describe("İP-A1 nöbetçi eşikleri", () => {
     // kapatılıyor; eski `kontrolToplam >= 140` koruması KALDIRILDI çünkü göçün
     // kendisi onu kıracaktı (bkz. dosya başı notu).
     expect(olcum.adsizKontrol).toBeLessThanOrEqual(56);
+  });
+
+
+  // ── İP-A4 · Görev 6: ekranda yaşayan pencere (modal) durumu ──
+  //
+  // Pencere yönetimi `ui2/duzenlemeYuzeyi.tsx`'e taşındı. Bu iki test geri
+  // kaymayı ve YAYILMAYI ayrı ayrı tutar: sayı artamaz, VE listeye yeni dosya
+  // giremez. Sadece sayıya bakmak yetmezdi — göç eden bir ekran borcunu
+  // kapatırken başka bir ekran yenisini ekleyebilir ve toplam sabit kalırdı.
+  it("ekranda yaşayan pencere durumu artamaz (taban 33)", () => {
+    expect(olcum.modalDurumu).toBeLessThanOrEqual(33);
+  });
+
+  it("pencere durumu tutan dosya listesi sabittir (pilot listede DEĞİL)", () => {
+    expect(olcum.modalDurumDosyalari.map((d) => d.dosya)).toEqual(MODAL_DURUM_DOSYALARI);
+    // Pilot ekran göç etti: listede olmaması bu paketin kabul kriteridir.
+    expect(MODAL_DURUM_DOSYALARI).not.toContain(
+      "src/pages/admin/inventory/DamageEventsPage.tsx"
+    );
   });
 
   it("ui2/ dışında @medusajs/ui import eden dosya yok", () => {

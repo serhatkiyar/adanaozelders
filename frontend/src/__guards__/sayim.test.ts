@@ -323,3 +323,86 @@ describe("İP-A3a sayaç: adsız form kontrolü", () => {
     expect(o.adsizKontrol).toBe(0);
   });
 });
+
+/* ══════════════ İP-A4: ekranda yaşayan pencere durumu ══════════════ */
+
+describe("İP-A4 sayaç: modal durumu", () => {
+  it("TERS PROVA — pencere durumu gerçekten sayılır (sayaç 0'lamıyor)", () => {
+    const kaynak = `
+      export function Ekran() {
+        const [acik, setAcik] = useState(false);
+        const [secili, setSecili] = useState<X | null>(null);
+        return (
+          <>
+            <XDialog open={acik} onClose={() => setAcik(false)} />
+            <YModal kind={secili} />
+          </>
+        );
+      }
+    `;
+    expect(dosyaOlcumu(kaynak).modalDurumAdlari).toEqual(["acik", "secili"]);
+  });
+
+  it("aynı bağ iki pencerede geçse de BİR kez sayılır", () => {
+    const kaynak = `
+      export function Ekran() {
+        const [acik, setAcik] = useState(false);
+        return (<><ADialog open={acik} /><BDialog open={acik} /></>);
+      }
+    `;
+    expect(dosyaOlcumu(kaynak).modalDurumAdlari).toEqual(["acik"]);
+  });
+
+  it("türetilmiş ifade de sayılır: open={!!acik}, open={secili !== null}", () => {
+    const kaynak = `
+      export function Ekran() {
+        const [acik, setAcik] = useState(false);
+        const [secili, setSecili] = useState(null);
+        return (<><ADialog open={!!acik} /><BDialog open={secili !== null} /></>);
+      }
+    `;
+    expect(dosyaOlcumu(kaynak).modalDurumAdlari).toEqual(["acik", "secili"]);
+  });
+
+  it("pencere OLMAYAN bileşene verilen durum sayılmaz (yanlış pozitif yok)", () => {
+    // `open` özniteliği `<details>`te ve akordeon bileşenlerinde de var;
+    // metrik yalnız PENCERE bileşenlerini ölçer.
+    const kaynak = `
+      export function Ekran() {
+        const [acik, setAcik] = useState(false);
+        const [sayfa, setSayfa] = useState(1);
+        return (
+          <>
+            <Accordion open={acik} />
+            <details open={acik} />
+            <DataTable page={sayfa} />
+          </>
+        );
+      }
+    `;
+    expect(dosyaOlcumu(kaynak).modalDurumAdlari).toEqual([]);
+  });
+
+  it("durum OLMAYAN değer sayılmaz: prop/sabit pencereye verilebilir", () => {
+    // Göçün hedefi tam olarak bu: pencere durumu ekranın `useState`'inde
+    // değil, dışarıdan gelen bir yüzeyde yaşasın.
+    const kaynak = `
+      export function Ekran({ yuzey }) {
+        const acik = true;
+        return (<><XDialog yuzey={yuzey} /><YDialog open={acik} /></>);
+      }
+    `;
+    expect(dosyaOlcumu(kaynak).modalDurumAdlari).toEqual([]);
+  });
+
+  it("yorumdaki pencere kullanımı sayılmaz", () => {
+    const kaynak = [
+      "export function Ekran() {",
+      "  const [acik, setAcik] = useState(false);",
+      "  // eskiden: <XDialog open={acik} />",
+      "  return <div>{String(acik)}</div>;",
+      "}",
+    ].join(String.fromCharCode(10));
+    expect(dosyaOlcumu(kaynak).modalDurumAdlari).toEqual([]);
+  });
+});

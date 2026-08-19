@@ -31,6 +31,9 @@ vi.mock("@/hooks/useStore", () => ({
 
 import { DamageDialog } from "./DamageDialog";
 
+import type { DuzenlemeYuzeyiDurumu } from "@/components/admin/ui2/duzenlemeYuzeyi";
+import type { DamageKind } from "@/lib/inventory";
+
 /** Aramayı yazıp gelen adayı tıklar — gerçek seçici akışı. */
 async function urunSec() {
   fireEvent.change(screen.getByLabelText(/ürün ara/i), {
@@ -43,15 +46,43 @@ async function urunSec() {
   await screen.findByLabelText("Seçilen ürünler");
 }
 
-function ac(props: Partial<React.ComponentProps<typeof DamageDialog>> = {}) {
+/**
+ * İP-A4 · Görev 2: `DamageDialog` artık `kind`/`onClose` almıyor, bir
+ * DÜZENLEME YÜZEYİ alıyor. Testin İDDİALARI DEĞİŞMEDİ — yalnız pencere
+ * durumunun nereden geldiği değişti.
+ *
+ * Yüzey burada elle kuruluyor (hook değil): `kapat` doğrudan `onClose`
+ * casusudur, böylece "kapatıldı mı" iddiaları birebir korunur ve pencere
+ * kapanınca bileşen sökülmez — eski davranışın aynısı (`kind` prop'u da
+ * casus çağrıldıktan sonra sabit kalıyordu). Yüzeyin GERÇEK hâli
+ * (`useDuzenlemeYuzeyi`) ekran kabul testinde koşuyor.
+ */
+function sahteYuzey(kind: DamageKind, kapat: () => void) {
+  return {
+    acik: true,
+    yeni: true,
+    kayit: null,
+    baglam: kind,
+    hedef: { tur: "yeni", baglam: kind },
+    ac: () => {},
+    yeniAc: () => {},
+    kapat,
+  } as unknown as DuzenlemeYuzeyiDurumu<never, DamageKind>;
+}
+
+function ac({
+  kind = "TRANSFER" as DamageKind,
+  ...props
+}: { kind?: DamageKind } & Partial<
+  Omit<React.ComponentProps<typeof DamageDialog>, "yuzey">
+> = {}) {
   const onSubmit = vi.fn();
   const onClose = vi.fn();
   render(
     <DamageDialog
-      kind="TRANSFER"
+      yuzey={sahteYuzey(kind, onClose)}
       isPending={false}
       error={null}
-      onClose={onClose}
       onSubmit={onSubmit}
       {...props}
     />

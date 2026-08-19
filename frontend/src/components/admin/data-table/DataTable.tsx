@@ -8,7 +8,7 @@ import {
   type SortingState,
 } from "@tanstack/react-table";
 import type { ReactNode } from "react";
-import { EmptyState, PageSkeleton } from "@/components/admin/ui";
+import { Button, EmptyState, PageSkeleton } from "@/components/admin/ui";
 
 export interface DataTableProps<TData extends object> {
   columns: ColumnDef<TData, unknown>[];
@@ -186,13 +186,17 @@ export function DataTable<TData extends object>({
               {[10, 25, 50].map((size) => <option key={size} value={size}>{size}</option>)}
             </select>
           </label>
-          <button type="button" disabled={page <= 1} onClick={() => onPageChange(page - 1)} className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800">
+          {/* İP-A4: ham `<button>` yerine ortak `Button`. Sayfalama düğmeleri
+              panelin EN ÇOK tekrar eden düğmeleriydi ve odak halkası,
+              `disabled` opaklığı, dokunma yüksekliği burada elle yazılmıştı —
+              yani ortak sistemden ayrı yaşıyorlardı. */}
+          <Button size="sm" variant="secondary" disabled={page <= 1} onClick={() => onPageChange(page - 1)}>
             Önceki
-          </button>
+          </Button>
           <span className="min-w-16 text-center text-xs font-semibold text-slate-600 dark:text-slate-300">{page} / {totalPages}</span>
-          <button type="button" disabled={page >= totalPages} onClick={() => onPageChange(page + 1)} className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800">
+          <Button size="sm" variant="secondary" disabled={page >= totalPages} onClick={() => onPageChange(page + 1)}>
             Sonraki
-          </button>
+          </Button>
         </div>
       </footer>
     </div>

@@ -109,3 +109,27 @@ afterEach(() => {
   localStorage.clear();
   sessionStorage.clear();
 });
+
+// ## RTL asenkron bekleme bütçesi (İP-A4 · Görev 5b)
+//
+// `findBy*`/`waitFor` varsayılan bütçesi 1000 ms'dir ve **Vitest'in
+// `testTimeout`undan bağımsızdır** — `vitest.config.ts`'teki 9000 ms bu
+// bekleyişi hiç ilgilendirmiyordu. Kararsız düşen iki test
+// (`ticketsPaymentGate`, `storeVariants.acceptance`) her seferinde bu bütçeyi
+// aşıyordu: ikisi de İKİ ağ sorgusu çözülene kadar bekleyen `findAllBy*`
+// çağrılarıdır ve tam suite yük altında koşarken (114 dosya, paralel işçiler)
+// jsdom render + query çözümü 1 saniyeyi geçebiliyor.
+//
+// Kanıt: düşüşlerin İKİSİ de "Unable to find …" biçimindedir — yani iddia
+// YANLIŞ değil, HENÜZ doğru değildir; aynı testler yalnız koşturulduğunda
+// hiç düşmez ve aynı seed iki koşumda farklı sonuç verir. Sıra bağımlılığı
+// değil, YÜK bağımlılığıdır (TB-23'ün kaydettiği kökün aynısı: yeşil/kırmızı
+// sinyalinin makine yüküne bağlanması).
+//
+// 4000 ms ölçüyle seçildi: yükte gözlenen en uzun gerçek bekleyiş ~2.3 s'ydi;
+// 4 s onun ~1.7 katı ve Vitest'in 9 s'lik test bütçesinin altında kalır —
+// yani gerçek bir asılma hâlâ testi düşürür, sessizce yutulmaz. Daha geniş
+// bir değer (ör. 8 s) gerçek bir performans regresyonunu gizlerdi.
+import { configure } from "@testing-library/dom";
+
+configure({ asyncUtilTimeout: 4000 });

@@ -10,7 +10,7 @@
 //   2. Hata kırmızısının koyu zeminde okunabilirliği (aynı ölçüm, hata metni)
 //   3. Slot yüksekliklerinin iki temada da AYNI olması
 //
-// GERÇEK VERİ KULLANILMAZ: sonda `damage-probe.html`'i açar, hiçbir sunucuya
+// GERÇEK VERİ KULLANILMAZ: sonda `scripts/probe/damage-probe.html`'i açar, hiçbir sunucuya
 // bağlanmaz. (İP-A1 turu canlı `ceyhandb`'ye bağlanmış ve ekran görüntüleri
 // gerçek müşteri verisi içermişti; bu tekrarlanmadı.)
 //
@@ -211,7 +211,7 @@ try {
   await s.gonder("Page.enable");
   await s.gonder("Runtime.enable");
 
-  await s.git(`${FRONTEND}/damage-probe.html`);
+  await s.git(`${FRONTEND}/scripts/probe/damage-probe.html`);
   await new Promise((r) => setTimeout(r, 2000));
 
   await s.eval(hataDogur);
