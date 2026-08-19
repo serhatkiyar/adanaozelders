@@ -1,0 +1,2666 @@
+
+[1m[7m[36m RUN [39m[27m[22m [36mv2.1.9 [39m[90mC:/Users/kiyar/Desktop/adana-medusa-ui/frontend[39m
+
+(node:21280) Warning: `--localstorage-file` was provided without a valid path
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:23388) Warning: `--localstorage-file` was provided without a valid path
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:30676) Warning: `--localstorage-file` was provided without a valid path
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:5400) Warning: `--localstorage-file` was provided without a valid path
+(Use `node --trace-warnings ...` to show where the warning was created)
+ [31m❯[39m src/components/admin/ui2/zodTurkce.test.ts [2m([22m[2m0 test[22m[2m)[22m
+ [31m❯[39m src/components/admin/ui2/sunucuHatasi.test.tsx [2m([22m[2m0 test[22m[2m)[22m
+ [31m❯[39m src/components/admin/ui2/form.test.tsx [2m([22m[2m0 test[22m[2m)[22m
+ [31m❯[39m src/components/admin/inventory/DamageDialog.test.tsx [2m([22m[2m7 tests[22m[2m | [22m[31m5 failed[39m[2m)[22m[33m 6299[2mms[22m[39m
+[31m   [31m×[31m İP-A2 · DamageDialog pilotu[2m > [22mM9 — geçersiz alanla gönderilince hata ALANIN ALTINDA görünür[33m 1334[2mms[22m[31m[39m
+[31m     → expected null to be truthy
+
+Ignored nodes: comments, script, style
+[36m<html>[31m
+  [36m<head />[31m
+  [36m<body[31m
+    [33mstyle[31m=[32m"overflow: hidden;"[31m
+  [36m>[31m
+    [36m<div />[31m
+    [36m<div[31m
+      [33mclass[31m=[32m"fixed inset-0 z-[80] flex items-end justify-center p-0 sm:items-center sm:p-4"[31m
+    [36m>[31m
+      [36m<button[31m
+        [33maria-label[31m=[32m"Pencereyi kapat"[31m
+        [33mclass[31m=[32m"absolute inset-0 bg-slate-950/55 backdrop-blur-sm"[31m
+        [33mtype[31m=[32m"button"[31m
+      [36m/>[31m
+      [36m<div[31m
+        [33maria-describedby[31m=[32m":r1:"[31m
+        [33maria-labelledby[31m=[32m":r0:"[31m
+        [33maria-modal[31m=[32m"true"[31m
+        [33mclass[31m=[32m"relative max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-t-3xl bg-white p-6 shadow-2xl dark:bg-slate-900 sm:rounded-3xl"[31m
+        [33mrole[31m=[32m"dialog"[31m
+      [36m>[31m
+        [36m<div[31m
+          [33mclass[31m=[32m"flex items-start justify-between gap-4"[31m
+        [36m>[31m
+          [36m<div>[31m
+            [36m<h2[31m
+              [33mclass[31m=[32m"text-lg font-bold text-slate-950 dark:text-white"[31m
+              [33mid[31m=[32m":r0:"[31m
+            [36m>[31m
+              [0mHasara ayır[0m
+            [36m</h2>[31m
+            [36m<p[31m
+              [33mclass[31m=[32m"mt-1 text-sm text-slate-500 dark:text-slate-400"[31m
+              [33mid[31m=[32m":r1:"[31m
+            [36m>[31m
+              [0mSatılabilir raftan düşer, hasarlı rafa eklenir. Toplam mevcut değişmez.[0m
+            [36m</p>[31m
+          [36m</div>[31m
+          [36m<button[31m
+            [33mclass[31m=[32m"inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:hover:bg-slate-800"[31m
+            [33mtype[31m=[32m"button"[31m
+          [36m>[31m
+            [36m<span[31m
+              [33mclass[31m=[32m"sr-only"[31m
+            [36m>[31m
+              [0mKapat[0m
+            [36m</span>[31m
+            [36m<span[31m
+              [33maria-hidden[31m=[32m"true"[31m
+              [33mclass[31m=[32m"text-xl leading-none"[31m
+            [36m>[31m
+              [0m×[0m
+            [36m</span>[31m
+          [36m</button>[31m
+        [36m</div>[31m
+        [36m<div[31m
+          [33mclass[31m=[32m"mt-5"[31m
+        [36m>[31m
+          [36m<div[31m
+            [33mclass[31m=[32m"space-y-4"[31m
+          [36m>[31m
+            [36m<div[31m
+              [33mclass[31m=[32m"space-y-2"[31m
+            [36m>[31m
+              [36m<label[31m
+                [33mclass[31m=[32m"block"[31m
+              [36m>[31m
+                [36m<span[31m
+                  [33mclass[31m=[32m"mb-1.5 block text-sm font-semibold text-slate-700 dark:text-slate-200"[31m
+                [36m>[31m
+                  [0mÜrün ara[0m
+                [36m</span>[31m
+                [36m<input[31m
+                  [33mclass[31m=[32m"input"[31m
+                  [33mplaceholder[31m=[32m"Başlık, yazar, yayınevi, ISBN veya SKU"[31m
+                  [33mtype[31m=[32m"search"[31m
+                  [33mvalue[31m=[32m""[31m
+                [36m/>[31m
+              [36m</label>[31m
+              [36m<ul[31m
+                [33maria-label[31m=[32m"Seçilen ürünler"[31m
+                [33mclass[31m=[32m"space-y-1 rounded-xl border border-slate-200 p-2 dark:border-slate-700"[31m
+              [36m>[31m
+                [36m<li[31m
+                  [33mclass[31m=[32m"flex items-center justify-between gap-2 rounded-lg bg-slate-50 px-2 py-1.5 dark:bg-slate-800/60"[31m
+                [36m>[31m
+                  [36m<span[31m
+                    [33mclass[31m=[32m"min-w-0 flex-1 truncate text-xs text-slate-700 dark:text-slate-200"[31m
+                  [36m>[31m
+                    [0mMatematik Soru Bankası[0m
+                    [36m<span[31m
+                      [33mclass[31m=[32m"text-slate-400"[31m
+                    [36m>[31m
+                      [0m · [0m
+                      [0mMAT-7[0m
+                    [36m</span>[31m
+                  [36m</span>[31m
+                  [36m<button[31m
+                    [33mclass[31m=[32m"shrink-0 text-xs font-medium text-rose-500 hover:underline"[31m
+                    [33mtype[31m=[32m"button"[31m
+                  [36m>[31m
+                    [0mKaldır[0m
+                  [36m</button>[31m
+                [36m</li>[31m
+              [36m</ul>[31m
+            [36m</div>[31m
+            [36m<div[31m
+              [33mclass[31m=[32m"grid gap-4 sm:grid-cols-2"[31m
+            [36m>[31m
+              [36m<label[31m
+                [33mclass[31m=[32m"block"[31m
+              [36m>[31m
+                [36m<span[31m
+                  [33mclass[31m=[32m"mb-1.5 block text-sm font-semibold text-slate-700 dark:text-slate-200"[31m
+                [36m>[31m
+                  [0mMiktar[0m
+                [36m</span>[31m
+                [36m<input[31m
+                  [33mclass[31m=[32m"input"[31m
+                  [33mmin[31m=[32m"1"[31m
+                  [33mstep[31m=[32m"1"[31m
+                  [33mtype[31m=[32m"number"[31m
+                  [33mvalue[31m=[32m"0"[31m
+                [36m/>[31m
+              [36m</label>[31m
+            [36m</div>[31m
+            [36m<label[31m
+              [33mclass[31m=[32m"block"[31m
+            [36m>[31m
+              [36m<span[31m
+                [33mclass[31m=[32m"mb-1.5 block text-sm font-semibold text-slate-700 dark:text-slate-200"[31m
+              [36m>[31m
+                [0mNeden[0m
+              [36m</span>[31m
+              [36m<select[31m
+                [33mclass[31m=[32m"input"[31m
+              [36m>[31m
+                [36m<option[31m
+                  [33mvalue[31m=[32m""[31m
+                [36m>[31m
+                  [0mSeçin…[0m
+                [36m</option>[31m
+                [36m<option[31m
+                  [33mvalue[31m=[32m"KIRIK"[31m
+                [36m>[31m
+                  [0mKırık[0m
+                [36m</option>[31m
+                [36m<option[31m
+                  [33mvalue[31m=[32m"ISLAK"[31m
+                [36m>[31m
+                  [0mIslak / nem[0m
+                [36m</option>[31m
+                [36m<option[31m
+                  [33mvalue[31m=[32m"BASKI_HATASI"[31m
+                [36m>[31m
+                  [0mBaskı hatası[0m
+                [36m</option>[31m
+                [36m<option[31m
+                  [33mvalue[31m=[32m"MUSTERI_IADESI_HASARLI"[31m
+                [36m>[31m
+                  [0mMüşteri iadesi — hasarlı geldi[0m
+                [36m</option>[31m
+                [36m<option[31m
+                  [33mvalue[31m=[32m"DIGER"[31m
+                [36m>[31m
+                  [0mDiğer[0m
+                [36m</option>[31m
+              [36m</select>[31m
+            [36m</label>[31m
+            [36m<p[31m
+              [33mclass[31m=[32m"rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-200"[31m
+              [33mdata-testid[31m=[32m"damage-effect"[31m
+            [36m>[31m
+              [0mSatılabilir raf −—, Hasarlı raf +—. Toplam fiziksel mevcut aynı kalır.[0m
+            [36m</p>[31m
+            [36m<p[31m
+              [33mclass[31m=[32m"text-xs text-slate-500 dark:text-slate-400"[31m
+            [36m>[31m
+              [0mMiktar sıfırdan büyük bir tam sayı olmalı.[0m
+            [36m</p>[31m
+            [36m<div[31m
+              [33mclass[31m=[32m"flex justify-end gap-2"[31m
+            [36m>[31m
+              [36m<button[31m
+                [33mclass[31m=[32m"inline-flex items-center justify-center gap-2 font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 dark:focus-visible:ring-offset-slate-950 text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 min-h-10 rounded-xl px-4 text-sm "[31m
+                [33mtype[31m=[32m"button"[31m
+              [36m>[31m
+                [0mVazgeç[0m
+              [36m</button>[31m
+              [36m<button[31m
+                [33mclass[31m=[32m"inline-flex items-center justify-center gap-2 font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 dark:focus-visible:ring-offset-slate-950 bg-indigo-600 text-white shadow-sm hover:bg-indigo-700 min-h-10 rounded-xl px-4 text-sm "[31m
+                [33mdisabled[31m=[32m""[31m
+                [33mtype[31m=[32m"button"[31m
+              [36m>[31m
+                [0mHasara ayır[0m
+              [36m</button>[31m
+            [36m</div>[31m
+          [36m</div>[31m
+        [36m</div>[31m
+      [36m</div>[31m
+    [36m</div>[31m
+  [36m</body>[31m
+[36m</html>[31m[39m
+[31m   [31m×[31m İP-A2 · DamageDialog pilotu[2m > [22mM10 — alan hataları genel/toast kanalına GİTMEZ[33m 1545[2mms[22m[31m[39m
+[31m     → expected null to be 'true' // Object.is equality
+
+Ignored nodes: comments, script, style
+[36m<html>[31m
+  [36m<head />[31m
+  [36m<body[31m
+    [33mstyle[31m=[32m"overflow: hidden;"[31m
+  [36m>[31m
+    [36m<div />[31m
+    [36m<div[31m
+      [33mclass[31m=[32m"fixed inset-0 z-[80] flex items-end justify-center p-0 sm:items-center sm:p-4"[31m
+    [36m>[31m
+      [36m<button[31m
+        [33maria-label[31m=[32m"Pencereyi kapat"[31m
+        [33mclass[31m=[32m"absolute inset-0 bg-slate-950/55 backdrop-blur-sm"[31m
+        [33mtype[31m=[32m"button"[31m
+      [36m/>[31m
+      [36m<div[31m
+        [33maria-describedby[31m=[32m":r3:"[31m
+        [33maria-labelledby[31m=[32m":r2:"[31m
+        [33maria-modal[31m=[32m"true"[31m
+        [33mclass[31m=[32m"relative max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-t-3xl bg-white p-6 shadow-2xl dark:bg-slate-900 sm:rounded-3xl"[31m
+        [33mrole[31m=[32m"dialog"[31m
+      [36m>[31m
+        [36m<div[31m
+          [33mclass[31m=[32m"flex items-start justify-between gap-4"[31m
+        [36m>[31m
+          [36m<div>[31m
+            [36m<h2[31m
+              [33mclass[31m=[32m"text-lg font-bold text-slate-950 dark:text-white"[31m
+              [33mid[31m=[32m":r2:"[31m
+            [36m>[31m
+              [0mHasara ayır[0m
+            [36m</h2>[31m
+            [36m<p[31m
+              [33mclass[31m=[32m"mt-1 text-sm text-slate-500 dark:text-slate-400"[31m
+              [33mid[31m=[32m":r3:"[31m
+            [36m>[31m
+              [0mSatılabilir raftan düşer, hasarlı rafa eklenir. Toplam mevcut değişmez.[0m
+            [36m</p>[31m
+          [36m</div>[31m
+          [36m<button[31m
+            [33mclass[31m=[32m"inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:hover:bg-slate-800"[31m
+            [33mtype[31m=[32m"button"[31m
+          [36m>[31m
+            [36m<span[31m
+              [33mclass[31m=[32m"sr-only"[31m
+            [36m>[31m
+              [0mKapat[0m
+            [36m</span>[31m
+            [36m<span[31m
+              [33maria-hidden[31m=[32m"true"[31m
+              [33mclass[31m=[32m"text-xl leading-none"[31m
+            [36m>[31m
+              [0m×[0m
+            [36m</span>[31m
+          [36m</button>[31m
+        [36m</div>[31m
+        [36m<div[31m
+          [33mclass[31m=[32m"mt-5"[31m
+        [36m>[31m
+          [36m<div[31m
+            [33mclass[31m=[32m"space-y-4"[31m
+          [36m>[31m
+            [36m<div[31m
+              [33mclass[31m=[32m"space-y-2"[31m
+            [36m>[31m
+              [36m<label[31m
+                [33mclass[31m=[32m"block"[31m
+              [36m>[31m
+                [36m<span[31m
+                  [33mclass[31m=[32m"mb-1.5 block text-sm font-semibold text-slate-700 dark:text-slate-200"[31m
+                [36m>[31m
+                  [0mÜrün ara[0m
+                [36m</span>[31m
+                [36m<input[31m
+                  [33mclass[31m=[32m"input"[31m
+                  [33mplaceholder[31m=[32m"Başlık, yazar, yayınevi, ISBN veya SKU"[31m
+                  [33mtype[31m=[32m"search"[31m
+                  [33mvalue[31m=[32m""[31m
+                [36m/>[31m
+              [36m</label>[31m
+              [36m<ul[31m
+                [33maria-label[31m=[32m"Seçilen ürünler"[31m
+                [33mclass[31m=[32m"space-y-1 rounded-xl border border-slate-200 p-2 dark:border-slate-700"[31m
+              [36m>[31m
+                [36m<li[31m
+                  [33mclass[31m=[32m"flex items-center justify-between gap-2 rounded-lg bg-slate-50 px-2 py-1.5 dark:bg-slate-800/60"[31m
+                [36m>[31m
+                  [36m<span[31m
+                    [33mclass[31m=[32m"min-w-0 flex-1 truncate text-xs text-slate-700 dark:text-slate-200"[31m
+                  [36m>[31m
+                    [0mMatematik Soru Bankası[0m
+                    [36m<span[31m
+                      [33mclass[31m=[32m"text-slate-400"[31m
+                    [36m>[31m
+                      [0m · [0m
+                      [0mMAT-7[0m
+                    [36m</span>[31m
+                  [36m</span>[31m
+                  [36m<button[31m
+                    [33mclass[31m=[32m"shrink-0 text-xs font-medium text-rose-500 hover:underline"[31m
+                    [33mtype[31m=[32m"button"[31m
+                  [36m>[31m
+                    [0mKaldır[0m
+                  [36m</button>[31m
+                [36m</li>[31m
+              [36m</ul>[31m
+            [36m</div>[31m
+            [36m<div[31m
+              [33mclass[31m=[32m"grid gap-4 sm:grid-cols-2"[31m
+            [36m>[31m
+              [36m<label[31m
+                [33mclass[31m=[32m"block"[31m
+              [36m>[31m
+                [36m<span[31m
+                  [33mclass[31m=[32m"mb-1.5 block text-sm font-semibold text-slate-700 dark:text-slate-200"[31m
+                [36m>[31m
+                  [0mMiktar[0m
+                [36m</span>[31m
+                [36m<input[31m
+                  [33mclass[31m=[32m"input"[31m
+                  [33mmin[31m=[32m"1"[31m
+                  [33mstep[31m=[32m"1"[31m
+                  [33mtype[31m=[32m"number"[31m
+                  [33mvalue[31m=[32m"0"[31m
+                [36m/>[31m
+              [36m</label>[31m
+            [36m</div>[31m
+            [36m<label[31m
+              [33mclass[31m=[32m"block"[31m
+            [36m>[31m
+              [36m<span[31m
+                [33mclass[31m=[32m"mb-1.5 block text-sm font-semibold text-slate-700 dark:text-slate-200"[31m
+              [36m>[31m
+                [0mNeden[0m
+              [36m</span>[31m
+              [36m<select[31m
+                [33mclass[31m=[32m"input"[31m
+              [36m>[31m
+                [36m<option[31m
+                  [33mvalue[31m=[32m""[31m
+                [36m>[31m
+                  [0mSeçin…[0m
+                [36m</option>[31m
+                [36m<option[31m
+                  [33mvalue[31m=[32m"KIRIK"[31m
+                [36m>[31m
+                  [0mKırık[0m
+                [36m</option>[31m
+                [36m<option[31m
+                  [33mvalue[31m=[32m"ISLAK"[31m
+                [36m>[31m
+                  [0mIslak / nem[0m
+                [36m</option>[31m
+                [36m<option[31m
+                  [33mvalue[31m=[32m"BASKI_HATASI"[31m
+                [36m>[31m
+                  [0mBaskı hatası[0m
+                [36m</option>[31m
+                [36m<option[31m
+                  [33mvalue[31m=[32m"MUSTERI_IADESI_HASARLI"[31m
+                [36m>[31m
+                  [0mMüşteri iadesi — hasarlı geldi[0m
+                [36m</option>[31m
+                [36m<option[31m
+                  [33mvalue[31m=[32m"DIGER"[31m
+                [36m>[31m
+                  [0mDiğer[0m
+                [36m</option>[31m
+              [36m</select>[31m
+            [36m</label>[31m
+            [36m<p[31m
+              [33mclass[31m=[32m"rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-200"[31m
+              [33mdata-testid[31m=[32m"damage-effect"[31m
+            [36m>[31m
+              [0mSatılabilir raf −—, Hasarlı raf +—. Toplam fiziksel mevcut aynı kalır.[0m
+            [36m</p>[31m
+            [36m<p[31m
+              [33mclass[31m=[32m"text-xs text-slate-500 dark:text-slate-400"[31m
+            [36m>[31m
+              [0mMiktar sıfırdan büyük bir tam sayı olmalı.[0m
+            [36m</p>[31m
+            [36m<div[31m
+              [33mclass[31m=[32m"flex justify-end gap-2"[31m
+            [36m>[31m
+              [36m<button[31m
+                [33mclass[31m=[32m"inline-flex items-center justify-center gap-2 font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 dark:focus-visible:ring-offset-slate-950 text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 min-h-10 rounded-xl px-4 text-sm "[31m
+                [33mtype[31m=[32m"button"[31m
+              [36m>[31m
+                [0mVazgeç[0m
+              [36m</button>[31m
+              [36m<button[31m
+                [33mclass[31m=[32m"inline-flex items-center justify-center gap-2 font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 dark:focus-visible:ring-offset-slate-950 bg-indigo-600 text-white shadow-sm hover:bg-indigo-700 min-h-10 rounded-xl px-4 text-sm "[31m
+                [33mdisabled[31m=[32m""[31m
+                [33mtype[31m=[32m"button"[31m
+              [36m>[31m
+                [0mHasara ayır[0m
+              [36m</button>[31m
+            [36m</div>[31m
+          [36m</div>[31m
+        [36m</div>[31m
+      [36m</div>[31m
+    [36m</div>[31m
+  [36m</body>[31m
+[36m</html>[31m[39m
+[31m   [31m×[31m İP-A2 · DamageDialog pilotu[2m > [22mgenel sunucu hatası (error prop'u) ÜST şeritte durur[90m 22[2mms[22m[31m[39m
+[31m     → Unable to find an element by: [data-testid="damage-genel-hata"]
+
+Ignored nodes: comments, script, style
+[36m<body[31m
+  [33mstyle[31m=[32m"overflow: hidden;"[31m
+[36m>[31m
+  [36m<div />[31m
+  [36m<div[31m
+    [33mclass[31m=[32m"fixed inset-0 z-[80] flex items-end justify-center p-0 sm:items-center sm:p-4"[31m
+  [36m>[31m
+    [36m<button[31m
+      [33maria-label[31m=[32m"Pencereyi kapat"[31m
+      [33mclass[31m=[32m"absolute inset-0 bg-slate-950/55 backdrop-blur-sm"[31m
+      [33mtype[31m=[32m"button"[31m
+    [36m/>[31m
+    [36m<div[31m
+      [33maria-describedby[31m=[32m":r5:"[31m
+      [33maria-labelledby[31m=[32m":r4:"[31m
+      [33maria-modal[31m=[32m"true"[31m
+      [33mclass[31m=[32m"relative max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-t-3xl bg-white p-6 shadow-2xl dark:bg-slate-900 sm:rounded-3xl"[31m
+      [33mrole[31m=[32m"dialog"[31m
+    [36m>[31m
+      [36m<div[31m
+        [33mclass[31m=[32m"flex items-start justify-between gap-4"[31m
+      [36m>[31m
+        [36m<div>[31m
+          [36m<h2[31m
+            [33mclass[31m=[32m"text-lg font-bold text-slate-950 dark:text-white"[31m
+            [33mid[31m=[32m":r4:"[31m
+          [36m>[31m
+            [0mHasara ayır[0m
+          [36m</h2>[31m
+          [36m<p[31m
+            [33mclass[31m=[32m"mt-1 text-sm text-slate-500 dark:text-slate-400"[31m
+            [33mid[31m=[32m":r5:"[31m
+          [36m>[31m
+            [0mSatılabilir raftan düşer, hasarlı rafa eklenir. Toplam mevcut değişmez.[0m
+          [36m</p>[31m
+        [36m</div>[31m
+        [36m<button[31m
+          [33mclass[31m=[32m"inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:hover:bg-slate-800"[31m
+          [33mtype[31m=[32m"button"[31m
+        [36m>[31m
+          [36m<span[31m
+            [33mclass[31m=[32m"sr-only"[31m
+          [36m>[31m
+            [0mKapat[0m
+          [36m</span>[31m
+          [36m<span[31m
+            [33maria-hidden[31m=[32m"true"[31m
+            [33mclass[31m=[32m"text-xl leading-none"[31m
+          [36m>[31m
+            [0m×[0m
+          [36m</span>[31m
+        [36m</button>[31m
+      [36m</div>[31m
+      [36m<div[31m
+        [33mclass[31m=[32m"mt-5"[31m
+      [36m>[31m
+        [36m<div[31m
+          [33mclass[31m=[32m"space-y-4"[31m
+        [36m>[31m
+          [36m<div[31m
+            [33mclass[31m=[32m"space-y-2"[31m
+          [36m>[31m
+            [36m<label[31m
+              [33mclass[31m=[32m"block"[31m
+            [36m>[31m
+              [36m<span[31m
+                [33mclass[31m=[32m"mb-1.5 block text-sm font-semibold text-slate-700 dark:text-slate-200"[31m
+              [36m>[31m
+                [0mÜrün ara[0m
+              [36m</span>[31m
+              [36m<input[31m
+                [33mclass[31m=[32m"input"[31m
+                [33mplaceholder[31m=[32m"Başlık, yazar, yayınevi, ISBN veya SKU"[31m
+                [33mtype[31m=[32m"search"[31m
+                [33mvalue[31m=[32m""[31m
+              [36m/>[31m
+            [36m</label>[31m
+          [36m</div>[31m
+          [36m<div[31m
+            [33mclass[31m=[32m"grid gap-4 sm:grid-cols-2"[31m
+          [36m>[31m
+            [36m<label[31m
+              [33mclass[31m=[32m"block"[31m
+            [36m>[31m
+              [36m<span[31m
+                [33mclass[31m=[32m"mb-1.5 block text-sm font-semibold text-slate-700 dark:text-slate-200"[31m
+              [36m>[31m
+                [0mMiktar[0m
+              [36m</span>[31m
+              [36m<input[31m
+                [33mclass[31m=[32m"input"[31m
+                [33mmin[31m=[32m"1"[31m
+                [33mstep[31m=[32m"1"[31m
+                [33mtype[31m=[32m"number"[31m
+                [33mvalue[31m=[32m""[31m
+              [36m/>[31m
+            [36m</label>[31m
+          [36m</div>[31m
+          [36m<label[31m
+            [33mclass[31m=[32m"block"[31m
+          [36m>[31m
+            [36m<span[31m
+              [33mclass[31m=[32m"mb-1.5 block text-sm font-semibold text-slate-700 dark:text-slate-200"[31m
+            [36m>[31m
+              [0mNeden[0m
+            [36m</span>[31m
+            [36m<select[31m
+              [33mclass[31m=[32m"input"[31m
+            [36m>[31m
+              [36m<option[31m
+                [33mvalue[31m=[32m""[31m
+              [36m>[31m
+                [0mSeçin…[0m
+              [36m</option>[31m
+              [36m<option[31m
+                [33mvalue[31m=[32m"KIRIK"[31m
+              [36m>[31m
+                [0mKırık[0m
+              [36m</option>[31m
+              [36m<option[31m
+                [33mvalue[31m=[32m"ISLAK"[31m
+              [36m>[31m
+                [0mIslak / nem[0m
+              [36m</option>[31m
+              [36m<option[31m
+                [33mvalue[31m=[32m"BASKI_HATASI"[31m
+              [36m>[31m
+                [0mBaskı hatası[0m
+              [36m</option>[31m
+              [36m<option[31m
+                [33mvalue[31m=[32m"MUSTERI_IADESI_HASARLI"[31m
+              [36m>[31m
+                [0mMüşteri iadesi — hasarlı geldi[0m
+              [36m</option>[31m
+              [36m<option[31m
+                [33mvalue[31m=[32m"DIGER"[31m
+              [36m>[31m
+                [0mDiğer[0m
+              [36m</option>[31m
+            [36m</select>[31m
+          [36m</label>[31m
+          [36m<p[31m
+            [33mclass[31m=[32m"rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-200"[31m
+            [33mdata-testid[31m=[32m"damage-effect"[31m
+          [36m>[31m
+            [0mSatılabilir raf −—, Hasarlı raf +—. Toplam fiziksel mevcut aynı kalır.[0m
+          [36m</p>[31m
+          [36m<p[31m
+            [33mclass[31m=[32m"rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-sm text-rose-900 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-100"[31m
+            [33mrole[31m=[32m"alert"[31m
+          [36m>[31m
+            [0mSunucuya ulaşılamadı.[0m
+          [36m</p>[31m
+          [36m<div[31m
+            [33mclass[31m=[32m"flex justify-end gap-2"[31m
+          [36m>[31m
+            [36m<button[31m
+              [33mclass[31m=[32m"inline-flex items-center justify-center gap-2 font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 dark:focus-visible:ring-offset-slate-950 text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 min-h-10 rounded-xl px-4 text-sm "[31m
+              [33mtype[31m=[32m"button"[31m
+            [36m>[31m
+              [0mVazgeç[0m
+            [36m</button>[31m
+            [36m<button[31m
+              [33mclass[31m=[32m"inline-flex items-center justify-center gap-2 font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 dark:focus-visible:ring-offset-slate-950 bg-indigo-600 text-white shadow-sm hover:bg-indigo-700 min-h-10 rounded-xl px-4 text-sm "[31m
+              [33mdisabled[31m=[32m""[31m
+              [33mtype[31m=[32m"button"[31m
+            [36m>[31m
+              [0mHasara ayır[0m
+            [36m</button>[31m
+          [36m</div>[31m
+        [36m</div>[31m
+      [36m</div>[31m
+    [36m</div>[31m
+  [36m</div>[31m
+[36m</body>[31m[39m
+[31m   [31m×[31m İP-A2 · DamageDialog pilotu[2m > [22manlık doğrulama korunur: gönder'e basmadan hata çıkar[33m 1315[2mms[22m[31m[39m
+[31m     → Unable to find role="alert"
+
+Ignored nodes: comments, script, style
+[36m<body[31m
+  [33mstyle[31m=[32m"overflow: hidden;"[31m
+[36m>[31m
+  [36m<div />[31m
+  [36m<div[31m
+    [33mclass[31m=[32m"fixed inset-0 z-[80] flex items-end justify-center p-0 sm:items-center sm:p-4"[31m
+  [36m>[31m
+    [36m<button[31m
+      [33maria-label[31m=[32m"Pencereyi kapat"[31m
+      [33mclass[31m=[32m"absolute inset-0 bg-slate-950/55 backdrop-blur-sm"[31m
+      [33mtype[31m=[32m"button"[31m
+    [36m/>[31m
+    [36m<div[31m
+      [33maria-describedby[31m=[32m":r7:"[31m
+      [33maria-labelledby[31m=[32m":r6:"[31m
+      [33maria-modal[31m=[32m"true"[31m
+      [33mclass[31m=[32m"relative max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-t-3xl bg-white p-6 shadow-2xl dark:bg-slate-900 sm:rounded-3xl"[31m
+      [33mrole[31m=[32m"dialog"[31m
+    [36m>[31m
+      [36m<div[31m
+        [33mclass[31m=[32m"flex items-start justify-between gap-4"[31m
+      [36m>[31m
+        [36m<div>[31m
+          [36m<h2[31m
+            [33mclass[31m=[32m"text-lg font-bold text-slate-950 dark:text-white"[31m
+            [33mid[31m=[32m":r6:"[31m
+          [36m>[31m
+            [0mHasara ayır[0m
+          [36m</h2>[31m
+          [36m<p[31m
+            [33mclass[31m=[32m"mt-1 text-sm text-slate-500 dark:text-slate-400"[31m
+            [33mid[31m=[32m":r7:"[31m
+          [36m>[31m
+            [0mSatılabilir raftan düşer, hasarlı rafa eklenir. Toplam mevcut değişmez.[0m
+          [36m</p>[31m
+        [36m</div>[31m
+        [36m<button[31m
+          [33mclass[31m=[32m"inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:hover:bg-slate-800"[31m
+          [33mtype[31m=[32m"button"[31m
+        [36m>[31m
+          [36m<span[31m
+            [33mclass[31m=[32m"sr-only"[31m
+          [36m>[31m
+            [0mKapat[0m
+          [36m</span>[31m
+          [36m<span[31m
+            [33maria-hidden[31m=[32m"true"[31m
+            [33mclass[31m=[32m"text-xl leading-none"[31m
+          [36m>[31m
+            [0m×[0m
+          [36m</span>[31m
+        [36m</button>[31m
+      [36m</div>[31m
+      [36m<div[31m
+        [33mclass[31m=[32m"mt-5"[31m
+      [36m>[31m
+        [36m<div[31m
+          [33mclass[31m=[32m"space-y-4"[31m
+        [36m>[31m
+          [36m<div[31m
+            [33mclass[31m=[32m"space-y-2"[31m
+          [36m>[31m
+            [36m<label[31m
+              [33mclass[31m=[32m"block"[31m
+            [36m>[31m
+              [36m<span[31m
+                [33mclass[31m=[32m"mb-1.5 block text-sm font-semibold text-slate-700 dark:text-slate-200"[31m
+              [36m>[31m
+                [0mÜrün ara[0m
+              [36m</span>[31m
+              [36m<input[31m
+                [33mclass[31m=[32m"input"[31m
+                [33mplaceholder[31m=[32m"Başlık, yazar, yayınevi, ISBN veya SKU"[31m
+                [33mtype[31m=[32m"search"[31m
+                [33mvalue[31m=[32m""[31m
+              [36m/>[31m
+            [36m</label>[31m
+            [36m<ul[31m
+              [33maria-label[31m=[32m"Seçilen ürünler"[31m
+              [33mclass[31m=[32m"space-y-1 rounded-xl border border-slate-200 p-2 dark:border-slate-700"[31m
+            [36m>[31m
+              [36m<li[31m
+                [33mclass[31m=[32m"flex items-center justify-between gap-2 rounded-lg bg-slate-50 px-2 py-1.5 dark:bg-slate-800/60"[31m
+              [36m>[31m
+                [36m<span[31m
+                  [33mclass[31m=[32m"min-w-0 flex-1 truncate text-xs text-slate-700 dark:text-slate-200"[31m
+                [36m>[31m
+                  [0mMatematik Soru Bankası[0m
+                  [36m<span[31m
+                    [33mclass[31m=[32m"text-slate-400"[31m
+                  [36m>[31m
+                    [0m · [0m
+                    [0mMAT-7[0m
+                  [36m</span>[31m
+                [36m</span>[31m
+                [36m<button[31m
+                  [33mclass[31m=[32m"shrink-0 text-xs font-medium text-rose-500 hover:underline"[31m
+                  [33mtype[31m=[32m"button"[31m
+                [36m>[31m
+                  [0mKaldır[0m
+                [36m</button>[31m
+              [36m</li>[31m
+            [36m</ul>[31m
+          [36m</div>[31m
+          [36m<div[31m
+            [33mclass[31m=[32m"grid gap-4 sm:grid-cols-2"[31m
+          [36m>[31m
+            [36m<label[31m
+              [33mclass[31m=[32m"block"[31m
+            [36m>[31m
+              [36m<span[31m
+                [33mclass[31m=[32m"mb-1.5 block text-sm font-semibold text-slate-700 dark:text-slate-200"[31m
+              [36m>[31m
+                [0mMiktar[0m
+              [36m</span>[31m
+              [36m<input[31m
+                [33mclass[31m=[32m"input"[31m
+                [33mmin[31m=[32m"1"[31m
+                [33mstep[31m=[32m"1"[31m
+                [33mtype[31m=[32m"number"[31m
+                [33mvalue[31m=[32m"-3"[31m
+              [36m/>[31m
+            [36m</label>[31m
+          [36m</div>[31m
+          [36m<label[31m
+            [33mclass[31m=[32m"block"[31m
+          [36m>[31m
+            [36m<span[31m
+              [33mclass[31m=[32m"mb-1.5 block text-sm font-semibold text-slate-700 dark:text-slate-200"[31m
+            [36m>[31m
+              [0mNeden[0m
+            [36m</span>[31m
+            [36m<select[31m
+              [33mclass[31m=[32m"input"[31m
+            [36m>[31m
+              [36m<option[31m
+                [33mvalue[31m=[32m""[31m
+              [36m>[31m
+                [0mSeçin…[0m
+              [36m</option>[31m
+              [36m<option[31m
+                [33mvalue[31m=[32m"KIRIK"[31m
+              [36m>[31m
+                [0mKırık[0m
+              [36m</option>[31m
+              [36m<option[31m
+                [33mvalue[31m=[32m"ISLAK"[31m
+              [36m>[31m
+                [0mIslak / nem[0m
+              [36m</option>[31m
+              [36m<option[31m
+                [33mvalue[31m=[32m"BASKI_HATASI"[31m
+              [36m>[31m
+                [0mBaskı hatası[0m
+              [36m</option>[31m
+              [36m<option[31m
+                [33mvalue[31m=[32m"MUSTERI_IADESI_HASARLI"[31m
+              [36m>[31m
+                [0mMüşteri iadesi — hasarlı geldi[0m
+              [36m</option>[31m
+              [36m<option[31m
+                [33mvalue[31m=[32m"DIGER"[31m
+              [36m>[31m
+                [0mDiğer[0m
+              [36m</option>[31m
+            [36m</select>[31m
+          [36m</label>[31m
+          [36m<p[31m
+            [33mclass[31m=[32m"rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-200"[31m
+            [33mdata-testid[31m=[32m"damage-effect"[31m
+          [36m>[31m
+            [0mSatılabilir raf −—, Hasarlı raf +—. Toplam fiziksel mevcut aynı kalır.[0m
+          [36m</p>[31m
+          [36m<p[31m
+            [33mclass[31m=[32m"text-xs text-slate-500 dark:text-slate-400"[31m
+          [36m>[31m
+            [0mMiktar sıfırdan büyük bir tam sayı olmalı.[0m
+          [36m</p>[31m
+          [36m<div[31m
+            [33mclass[31m=[32m"flex justify-end gap-2"[31m
+          [36m>[31m
+            [36m<button[31m
+              [33mclass[31m=[32m"inline-flex items-center justify-center gap-2 font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 dark:focus-visible:ring-offset-slate-950 text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 min-h-10 rounded-xl px-4 text-sm "[31m
+              [33mtype[31m=[32m"button"[31m
+            [36m>[31m
+              [0mVazgeç[0m
+            [36m</button>[31m
+            [36m<button[31m
+              [33mclass[31m=[32m"inline-flex items-center justify-center gap-2 font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 dark:focus-visible:ring-offset-slate-950 bg-indigo-600 text-white shadow-sm hover:bg-indigo-700 min-h-10 rounded-xl px-4 text-sm "[31m
+              [33mdisabled[31m=[32m""[31m
+              [33mtype[31m=[32m"button"[31m
+            [36m>[31m
+              [0mHasara ayır[0m
+            [36m</button>[31m
+          [36m</div>[31m
+        [36m</div>[31m
+      [36m</div>[31m
+    [36m</div>[31m
+  [36m</div>[31m
+[36m</body>[31m
+
+Ignored nodes: comments, script, style
+[36m<html>[31m
+  [36m<head />[31m
+  [36m<body[31m
+    [33mstyle[31m=[32m"overflow: hidden;"[31m
+  [36m>[31m
+    [36m<div />[31m
+    [36m<div[31m
+      [33mclass[31m=[32m"fixed inset-0 z-[80] flex items-end justify-center p-0 sm:items-center sm:p-4"[31m
+    [36m>[31m
+      [36m<button[31m
+        [33maria-label[31m=[32m"Pencereyi kapat"[31m
+        [33mclass[31m=[32m"absolute inset-0 bg-slate-950/55 backdrop-blur-sm"[31m
+        [33mtype[31m=[32m"button"[31m
+      [36m/>[31m
+      [36m<div[31m
+        [33maria-describedby[31m=[32m":r7:"[31m
+        [33maria-labelledby[31m=[32m":r6:"[31m
+        [33maria-modal[31m=[32m"true"[31m
+        [33mclass[31m=[32m"relative max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-t-3xl bg-white p-6 shadow-2xl dark:bg-slate-900 sm:rounded-3xl"[31m
+        [33mrole[31m=[32m"dialog"[31m
+      [36m>[31m
+        [36m<div[31m
+          [33mclass[31m=[32m"flex items-start justify-between gap-4"[31m
+        [36m>[31m
+          [36m<div>[31m
+            [36m<h2[31m
+              [33mclass[31m=[32m"text-lg font-bold text-slate-950 dark:text-white"[31m
+              [33mid[31m=[32m":r6:"[31m
+            [36m>[31m
+              [0mHasara ayır[0m
+            [36m</h2>[31m
+            [36m<p[31m
+              [33mclass[31m=[32m"mt-1 text-sm text-slate-500 dark:text-slate-400"[31m
+              [33mid[31m=[32m":r7:"[31m
+            [36m>[31m
+              [0mSatılabilir raftan düşer, hasarlı rafa eklenir. Toplam mevcut değişmez.[0m
+            [36m</p>[31m
+          [36m</div>[31m
+          [36m<button[31m
+            [33mclass[31m=[32m"inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:hover:bg-slate-800"[31m
+            [33mtype[31m=[32m"button"[31m
+          [36m>[31m
+            [36m<span[31m
+              [33mclass[31m=[32m"sr-only"[31m
+            [36m>[31m
+              [0mKapat[0m
+            [36m</span>[31m
+            [36m<span[31m
+              [33maria-hidden[31m=[32m"true"[31m
+              [33mclass[31m=[32m"text-xl leading-none"[31m
+            [36m>[31m
+              [0m×[0m
+            [36m</span>[31m
+          [36m</button>[31m
+        [36m</div>[31m
+        [36m<div[31m
+          [33mclass[31m=[32m"mt-5"[31m
+        [36m>[31m
+          [36m<div[31m
+            [33mclass[31m=[32m"space-y-4"[31m
+          [36m>[31m
+            [36m<div[31m
+              [33mclass[31m=[32m"space-y-2"[31m
+            [36m>[31m
+              [36m<label[31m
+                [33mclass[31m=[32m"block"[31m
+              [36m>[31m
+                [36m<span[31m
+                  [33mclass[31m=[32m"mb-1.5 block text-sm font-semibold text-slate-700 dark:text-slate-200"[31m
+                [36m>[31m
+                  [0mÜrün ara[0m
+                [36m</span>[31m
+                [36m<input[31m
+                  [33mclass[31m=[32m"input"[31m
+                  [33mplaceholder[31m=[32m"Başlık, yazar, yayınevi, ISBN veya SKU"[31m
+                  [33mtype[31m=[32m"search"[31m
+                  [33mvalue[31m=[32m""[31m
+                [36m/>[31m
+              [36m</label>[31m
+              [36m<ul[31m
+                [33maria-label[31m=[32m"Seçilen ürünler"[31m
+                [33mclass[31m=[32m"space-y-1 rounded-xl border border-slate-200 p-2 dark:border-slate-700"[31m
+              [36m>[31m
+                [36m<li[31m
+                  [33mclass[31m=[32m"flex items-center justify-between gap-2 rounded-lg bg-slate-50 px-2 py-1.5 dark:bg-slate-800/60"[31m
+                [36m>[31m
+                  [36m<span[31m
+                    [33mclass[31m=[32m"min-w-0 flex-1 truncate text-xs text-slate-700 dark:text-slate-200"[31m
+                  [36m>[31m
+                    [0mMatematik Soru Bankası[0m
+                    [36m<span[31m
+                      [33mclass[31m=[32m"text-slate-400"[31m
+                    [36m>[31m
+                      [0m · [0m
+                      [0mMAT-7[0m
+                    [36m</span>[31m
+                  [36m</span>[31m
+                  [36m<button[31m
+                    [33mclass[31m=[32m"shrink-0 text-xs font-medium text-rose-500 hover:underline"[31m
+                    [33mtype[31m=[32m"button"[31m
+                  [36m>[31m
+                    [0mKaldır[0m
+                  [36m</button>[31m
+                [36m</li>[31m
+              [36m</ul>[31m
+            [36m</div>[31m
+            [36m<div[31m
+              [33mclass[31m=[32m"grid gap-4 sm:grid-cols-2"[31m
+            [36m>[31m
+              [36m<label[31m
+                [33mclass[31m=[32m"block"[31m
+              [36m>[31m
+                [36m<span[31m
+                  [33mclass[31m=[32m"mb-1.5 block text-sm font-semibold text-slate-700 dark:text-slate-200"[31m
+                [36m>[31m
+                  [0mMiktar[0m
+                [36m</span>[31m
+                [36m<input[31m
+                  [33mclass[31m=[32m"input"[31m
+                  [33mmin[31m=[32m"1"[31m
+                  [33mstep[31m=[32m"1"[31m
+                  [33mtype[31m=[32m"number"[31m
+                  [33mvalue[31m=[32m"-3"[31m
+                [36m/>[31m
+              [36m</label>[31m
+            [36m</div>[31m
+            [36m<label[31m
+              [33mclass[31m=[32m"block"[31m
+            [36m>[31m
+              [36m<span[31m
+                [33mclass[31m=[32m"mb-1.5 block text-sm font-semibold text-slate-700 dark:text-slate-200"[31m
+              [36m>[31m
+                [0mNeden[0m
+              [36m</span>[31m
+              [36m<select[31m
+                [33mclass[31m=[32m"input"[31m
+              [36m>[31m
+                [36m<option[31m
+                  [33mvalue[31m=[32m""[31m
+                [36m>[31m
+                  [0mSeçin…[0m
+                [36m</option>[31m
+                [36m<option[31m
+                  [33mvalue[31m=[32m"KIRIK"[31m
+                [36m>[31m
+                  [0mKırık[0m
+                [36m</option>[31m
+                [36m<option[31m
+                  [33mvalue[31m=[32m"ISLAK"[31m
+                [36m>[31m
+                  [0mIslak / nem[0m
+                [36m</option>[31m
+                [36m<option[31m
+                  [33mvalue[31m=[32m"BASKI_HATASI"[31m
+                [36m>[31m
+                  [0mBaskı hatası[0m
+                [36m</option>[31m
+                [36m<option[31m
+                  [33mvalue[31m=[32m"MUSTERI_IADESI_HASARLI"[31m
+                [36m>[31m
+                  [0mMüşteri iadesi — hasarlı geldi[0m
+                [36m</option>[31m
+                [36m<option[31m
+                  [33mvalue[31m=[32m"DIGER"[31m
+                [36m>[31m
+                  [0mDiğer[0m
+                [36m</option>[31m
+              [36m</select>[31m
+            [36m</label>[31m
+            [36m<p[31m
+              [33mclass[31m=[32m"rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-200"[31m
+              [33mdata-testid[31m=[32m"damage-effect"[31m
+            [36m>[31m
+              [0mSatılabilir raf −—, Hasarlı raf +—. Toplam fiziksel mevcut aynı kalır.[0m
+            [36m</p>[31m
+            [36m<p[31m
+              [33mclass[31m=[32m"text-xs text-slate-500 dark:text-slate-400"[31m
+            [36m>[31m
+              [0mMiktar sıfırdan büyük bir tam sayı olmalı.[0m
+            [36m</p>[31m
+            [36m<div[31m
+              [33mclass[31m=[32m"flex justify-end gap-2"[31m
+            [36m>[31m
+              [36m<button[31m
+                [33mclass[31m=[32m"inline-flex items-center justify-center gap-2 font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 dark:focus-visible:ring-offset-slate-950 text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 min-h-10 rounded-xl px-4 text-sm "[31m
+                [33mtype[31m=[32m"button"[31m
+              [36m>[31m
+                [0mVazgeç[0m
+              [36m</button>[31m
+              [36m<button[31m
+                [33mclass[31m=[32m"inline-flex items-center justify-center gap-2 font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 dark:focus-visible:ring-offset-slate-950 bg-indigo-600 text-white shadow-sm hover:bg-indigo-700 min-h-10 rounded-xl px-4 text-sm "[31m
+                [33mdisabled[31m=[32m""[31m
+                [33mtype[31m=[32m"button"[31m
+              [36m>[31m
+                [0mHasara ayır[0m
+              [36m</button>[31m
+            [36m</div>[31m
+          [36m</div>[31m
+        [36m</div>[31m
+      [36m</div>[31m
+    [36m</div>[31m
+  [36m</body>[31m
+[36m</html>[31m[39m
+   [33m[2m✓[22m[39m İP-A2 · DamageDialog pilotu[2m > [22metki metni korunur ve rakamla yazılır [33m326[2mms[22m[39m
+   [33m[2m✓[22m[39m İP-A2 · DamageDialog pilotu[2m > [22mgeçerli formda sunucuya doğru gövde gider (idempotency anahtarı dahil) [33m375[2mms[22m[39m
+[31m   [31m×[31m İP-A2 · DamageDialog pilotu[2m > [22mtedarikçi iadesinde kaynak kova alanı zorunlu kalır[33m 1379[2mms[22m[31m[39m
+[31m     → expected null to be 'true' // Object.is equality
+
+Ignored nodes: comments, script, style
+[36m<html>[31m
+  [36m<head />[31m
+  [36m<body[31m
+    [33mstyle[31m=[32m"overflow: hidden;"[31m
+  [36m>[31m
+    [36m<div />[31m
+    [36m<div[31m
+      [33mclass[31m=[32m"fixed inset-0 z-[80] flex items-end justify-center p-0 sm:items-center sm:p-4"[31m
+    [36m>[31m
+      [36m<button[31m
+        [33maria-label[31m=[32m"Pencereyi kapat"[31m
+        [33mclass[31m=[32m"absolute inset-0 bg-slate-950/55 backdrop-blur-sm"[31m
+        [33mtype[31m=[32m"button"[31m
+      [36m/>[31m
+      [36m<div[31m
+        [33maria-describedby[31m=[32m":rd:"[31m
+        [33maria-labelledby[31m=[32m":rc:"[31m
+        [33maria-modal[31m=[32m"true"[31m
+        [33mclass[31m=[32m"relative max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-t-3xl bg-white p-6 shadow-2xl dark:bg-slate-900 sm:rounded-3xl"[31m
+        [33mrole[31m=[32m"dialog"[31m
+      [36m>[31m
+        [36m<div[31m
+          [33mclass[31m=[32m"flex items-start justify-between gap-4"[31m
+        [36m>[31m
+          [36m<div>[31m
+            [36m<h2[31m
+              [33mclass[31m=[32m"text-lg font-bold text-slate-950 dark:text-white"[31m
+              [33mid[31m=[32m":rc:"[31m
+            [36m>[31m
+              [0mTedarikçiye iade et[0m
+            [36m</h2>[31m
+            [36m<p[31m
+              [33mclass[31m=[32m"mt-1 text-sm text-slate-500 dark:text-slate-400"[31m
+              [33mid[31m=[32m":rd:"[31m
+            [36m>[31m
+              [0mSeçilen raftan fiziksel çıkış. Kaynak raf açıkça seçilir.[0m
+            [36m</p>[31m
+          [36m</div>[31m
+          [36m<button[31m
+            [33mclass[31m=[32m"inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:hover:bg-slate-800"[31m
+            [33mtype[31m=[32m"button"[31m
+          [36m>[31m
+            [36m<span[31m
+              [33mclass[31m=[32m"sr-only"[31m
+            [36m>[31m
+              [0mKapat[0m
+            [36m</span>[31m
+            [36m<span[31m
+              [33maria-hidden[31m=[32m"true"[31m
+              [33mclass[31m=[32m"text-xl leading-none"[31m
+            [36m>[31m
+              [0m×[0m
+            [36m</span>[31m
+          [36m</button>[31m
+        [36m</div>[31m
+        [36m<div[31m
+          [33mclass[31m=[32m"mt-5"[31m
+        [36m>[31m
+          [36m<div[31m
+            [33mclass[31m=[32m"space-y-4"[31m
+          [36m>[31m
+            [36m<div[31m
+              [33mclass[31m=[32m"space-y-2"[31m
+            [36m>[31m
+              [36m<label[31m
+                [33mclass[31m=[32m"block"[31m
+              [36m>[31m
+                [36m<span[31m
+                  [33mclass[31m=[32m"mb-1.5 block text-sm font-semibold text-slate-700 dark:text-slate-200"[31m
+                [36m>[31m
+                  [0mÜrün ara[0m
+                [36m</span>[31m
+                [36m<input[31m
+                  [33mclass[31m=[32m"input"[31m
+                  [33mplaceholder[31m=[32m"Başlık, yazar, yayınevi, ISBN veya SKU"[31m
+                  [33mtype[31m=[32m"search"[31m
+                  [33mvalue[31m=[32m""[31m
+                [36m/>[31m
+              [36m</label>[31m
+              [36m<ul[31m
+                [33maria-label[31m=[32m"Seçilen ürünler"[31m
+                [33mclass[31m=[32m"space-y-1 rounded-xl border border-slate-200 p-2 dark:border-slate-700"[31m
+              [36m>[31m
+                [36m<li[31m
+                  [33mclass[31m=[32m"flex items-center justify-between gap-2 rounded-lg bg-slate-50 px-2 py-1.5 dark:bg-slate-800/60"[31m
+                [36m>[31m
+                  [36m<span[31m
+                    [33mclass[31m=[32m"min-w-0 flex-1 truncate text-xs text-slate-700 dark:text-slate-200"[31m
+                  [36m>[31m
+                    [0mMatematik Soru Bankası[0m
+                    [36m<span[31m
+                      [33mclass[31m=[32m"text-slate-400"[31m
+                    [36m>[31m
+                      [0m · [0m
+                      [0mMAT-7[0m
+                    [36m</span>[31m
+                  [36m</span>[31m
+                  [36m<button[31m
+                    [33mclass[31m=[32m"shrink-0 text-xs font-medium text-rose-500 hover:underline"[31m
+                    [33mtype[31m=[32m"button"[31m
+                  [36m>[31m
+                    [0mKaldır[0m
+                  [36m</button>[31m
+                [36m</li>[31m
+              [36m</ul>[31m
+            [36m</div>[31m
+            [36m<div[31m
+              [33mclass[31m=[32m"grid gap-4 sm:grid-cols-2"[31m
+            [36m>[31m
+              [36m<label[31m
+                [33mclass[31m=[32m"block"[31m
+              [36m>[31m
+                [36m<span[31m
+                  [33mclass[31m=[32m"mb-1.5 block text-sm font-semibold text-slate-700 dark:text-slate-200"[31m
+                [36m>[31m
+                  [0mMiktar[0m
+                [36m</span>[31m
+                [36m<input[31m
+                  [33mclass[31m=[32m"input"[31m
+                  [33mmin[31m=[32m"1"[31m
+                  [33mstep[31m=[32m"1"[31m
+                  [33mtype[31m=[32m"number"[31m
+                  [33mvalue[31m=[32m"1"[31m
+                [36m/>[31m
+              [36m</label>[31m
+            [36m</div>[31m
+            [36m<label[31m
+              [33mclass[31m=[32m"block"[31m
+            [36m>[31m
+              [36m<span[31m
+                [33mclass[31m=[32m"mb-1.5 block text-sm font-semibold text-slate-700 dark:text-slate-200"[31m
+              [36m>[31m
+                [0mKaynak kova[0m
+              [36m</span>[31m
+              [36m<select[31m
+                [33mclass[31m=[32m"input"[31m
+              [36m>[31m
+                [36m<option[31m
+                  [33mvalue[31m=[32m""[31m
+                [36m>[31m
+                  [0mSeçin…[0m
+                [36m</option>[31m
+                [36m<option[31m
+                  [33mvalue[31m=[32m"SALEABLE"[31m
+                [36m>[31m
+                  [0mSatılabilir[0m
+                [36m</option>[31m
+                [36m<option[31m
+                  [33mvalue[31m=[32m"DAMAGED"[31m
+                [36m>[31m
+                  [0mHasarlı[0m
+                [36m</option>[31m
+              [36m</select>[31m
+              [36m<span[31m
+                [33mclass[31m=[32m"mt-1 block text-xs text-slate-500 dark:text-slate-400"[31m
+              [36m>[31m
+                [0mAdet yalnız seçtiğiniz raftan düşer; diğer rafa aktarılmaz.[0m
+              [36m</span>[31m
+            [36m</label>[31m
+            [36m<label[31m
+              [33mclass[31m=[32m"block"[31m
+            [36m>[31m
+              [36m<span[31m
+                [33mclass[31m=[32m"mb-1.5 block text-sm font-semibold text-slate-700 dark:text-slate-200"[31m
+              [36m>[31m
+                [0mNeden[0m
+              [36m</span>[31m
+              [36m<select[31m
+                [33mclass[31m=[32m"input"[31m
+              [36m>[31m
+                [36m<option[31m
+                  [33mvalue[31m=[32m""[31m
+                [36m>[31m
+                  [0mSeçin…[0m
+                [36m</option>[31m
+                [36m<option[31m
+                  [33mvalue[31m=[32m"KIRIK"[31m
+                [36m>[31m
+                  [0mKırık[0m
+                [36m</option>[31m
+                [36m<option[31m
+                  [33mvalue[31m=[32m"ISLAK"[31m
+                [36m>[31m
+                  [0mIslak / nem[0m
+                [36m</option>[31m
+                [36m<option[31m
+                  [33mvalue[31m=[32m"BASKI_HATASI"[31m
+                [36m>[31m
+                  [0mBaskı hatası[0m
+                [36m</option>[31m
+                [36m<option[31m
+                  [33mvalue[31m=[32m"MUSTERI_IADESI_HASARLI"[31m
+                [36m>[31m
+                  [0mMüşteri iadesi — hasarlı geldi[0m
+                [36m</option>[31m
+                [36m<option[31m
+                  [33mvalue[31m=[32m"DIGER"[31m
+                [36m>[31m
+                  [0mDiğer[0m
+                [36m</option>[31m
+              [36m</select>[31m
+            [36m</label>[31m
+            [36m<p[31m
+              [33mclass[31m=[32m"rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-200"[31m
+              [33mdata-testid[31m=[32m"damage-effect"[31m
+            [36m>[31m
+              [0mKaynak raf seçilmeden etki hesaplanamaz.[0m
+            [36m</p>[31m
+            [36m<p[31m
+              [33mclass[31m=[32m"rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200"[31m
+            [36m>[31m
+              [0mBu işlem geri alınamaz: mal fiziksel olarak çıkar.[0m
+            [36m</p>[31m
+            [36m<p[31m
+              [33mclass[31m=[32m"text-xs text-slate-500 dark:text-slate-400"[31m
+            [36m>[31m
+              [0mTedarikçi iadesinde kaynak kova seçilmeli.[0m
+            [36m</p>[31m
+            [36m<div[31m
+              [33mclass[31m=[32m"flex justify-end gap-2"[31m
+            [36m>[31m
+              [36m<button[31m
+                [33mclass[31m=[32m"inline-flex items-center justify-center gap-2 font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 dark:focus-visible:ring-offset-slate-950 text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 min-h-10 rounded-xl px-4 text-sm "[31m
+                [33mtype[31m=[32m"button"[31m
+              [36m>[31m
+                [0mVazgeç[0m
+              [36m</button>[31m
+              [36m<button[31m
+                [33mclass[31m=[32m"inline-flex items-center justify-center gap-2 font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 dark:focus-visible:ring-offset-slate-950 bg-rose-600 text-white shadow-sm hover:bg-rose-700 min-h-10 rounded-xl px-4 text-sm "[31m
+                [33mdisabled[31m=[32m""[31m
+                [33mtype[31m=[32m"button"[31m
+              [36m>[31m
+                [0mTedarikçiye iade et[0m
+              [36m</button>[31m
+            [36m</div>[31m
+          [36m</div>[31m
+        [36m</div>[31m
+      [36m</div>[31m
+    [36m</div>[31m
+  [36m</body>[31m
+[36m</html>[31m[39m
+
+[31m⎯⎯⎯⎯⎯⎯[1m[7m Failed Suites 3 [27m[22m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/components/admin/ui2/form.test.tsx[2m [ src/components/admin/ui2/form.test.tsx ][22m
+[31m[1mError[22m: Failed to resolve import "./form" from "src/components/admin/ui2/form.test.tsx". Does the file exist?[39m
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mC:/Users/kiyar/Desktop/adana-medusa-ui/frontend/src/components/admin/ui2/form.test.tsx[39m:18:21
+[33m  5  |  import { describe, expect, it } from "vitest";
+  6  |  import { z } from "zod";
+  7  |  import { Form } from "./form";
+     |                        ^
+  8  |  const sema = z.object({
+  9  |    ad: z.string().min(1, "Ad zorunlu."),[39m
+[90m [2m❯[22m TransformPluginContext._formatError node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m49258:41[22m[39m
+[90m [2m❯[22m TransformPluginContext.error node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m49253:16[22m[39m
+[90m [2m❯[22m normalizeUrl node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m64307:23[22m[39m
+[90m [2m❯[22m node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m64439:39[22m[39m
+[90m [2m❯[22m TransformPluginContext.transform node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m64366:7[22m[39m
+[90m [2m❯[22m PluginContainer.transform node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m49099:18[22m[39m
+[90m [2m❯[22m loadAndTransform node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m51978:27[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/8]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/components/admin/ui2/sunucuHatasi.test.tsx[2m [ src/components/admin/ui2/sunucuHatasi.test.tsx ][22m
+[31m[1mError[22m: Failed to resolve import "./form" from "src/components/admin/ui2/sunucuHatasi.test.tsx". Does the file exist?[39m
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mC:/Users/kiyar/Desktop/adana-medusa-ui/frontend/src/components/admin/ui2/sunucuHatasi.test.tsx[39m:20:43
+[33m  6  |  import { describe, expect, it, vi } from "vitest";
+  7  |  import { z } from "zod";
+  8  |  import { Form, sunucuHatasiniUygula } from "./form";
+     |                                              ^
+  9  |  const sema = z.object({ miktar: z.string().min(1, "Miktar zorunlu.") });
+  10 |  function hata422(loc, msg) {[39m
+[90m [2m❯[22m TransformPluginContext._formatError node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m49258:41[22m[39m
+[90m [2m❯[22m TransformPluginContext.error node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m49253:16[22m[39m
+[90m [2m❯[22m normalizeUrl node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m64307:23[22m[39m
+[90m [2m❯[22m node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m64439:39[22m[39m
+[90m [2m❯[22m TransformPluginContext.transform node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m64366:7[22m[39m
+[90m [2m❯[22m PluginContainer.transform node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m49099:18[22m[39m
+[90m [2m❯[22m loadAndTransform node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m51978:27[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/8]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/components/admin/ui2/zodTurkce.test.ts[2m [ src/components/admin/ui2/zodTurkce.test.ts ][22m
+[31m[1mError[22m: Failed to resolve import "./form" from "src/components/admin/ui2/zodTurkce.test.ts". Does the file exist?[39m
+  Plugin: [35mvite:import-analysis[39m
+  File: [36mC:/Users/kiyar/Desktop/adana-medusa-ui/frontend/src/components/admin/ui2/zodTurkce.test.ts[39m:24:17
+[33m  7  |      expect(oncesi).toMatch(/expected string/i);
+  8  |      expect(oncesi).not.toMatch(/beklenen|geçersiz/i);
+  9  |      await import("./form");
+     |                   ^
+  10 |      const sonrasi = mesaj(z.string().safeParse(42));
+  11 |      expect(sonrasi).toMatch(/beklenen metin/i);[39m
+[90m [2m❯[22m TransformPluginContext._formatError node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m49258:41[22m[39m
+[90m [2m❯[22m TransformPluginContext.error node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m49253:16[22m[39m
+[90m [2m❯[22m normalizeUrl node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m64307:23[22m[39m
+[90m [2m❯[22m node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m64439:39[22m[39m
+[90m [2m❯[22m TransformPluginContext.transform node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m64366:7[22m[39m
+[90m [2m❯[22m PluginContainer.transform node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m49099:18[22m[39m
+[90m [2m❯[22m loadAndTransform node_modules/vite/dist/node/chunks/dep-BK3b2jBa.js:[2m51978:27[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/8]⎯[22m[39m
+
+[31m⎯⎯⎯⎯⎯⎯⎯[1m[7m Failed Tests 5 [27m[22m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/components/admin/inventory/DamageDialog.test.tsx[2m > [22mİP-A2 · DamageDialog pilotu[2m > [22mM9 — geçersiz alanla gönderilince hata ALANIN ALTINDA görünür
+[31m[1mAssertionError[22m[39m: expected null to be truthy
+
+Ignored nodes: comments, script, style
+[36m<html>[39m
+  [36m<head />[39m
+  [36m<body[39m
+    [33mstyle[39m=[32m"overflow: hidden;"[39m
+  [36m>[39m
+    [36m<div />[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"fixed inset-0 z-[80] flex items-end justify-center p-0 sm:items-center sm:p-4"[39m
+    [36m>[39m
+      [36m<button[39m
+        [33maria-label[39m=[32m"Pencereyi kapat"[39m
+        [33mclass[39m=[32m"absolute inset-0 bg-slate-950/55 backdrop-blur-sm"[39m
+        [33mtype[39m=[32m"button"[39m
+      [36m/>[39m
+      [36m<div[39m
+        [33maria-describedby[39m=[32m":r1:"[39m
+        [33maria-labelledby[39m=[32m":r0:"[39m
+        [33maria-modal[39m=[32m"true"[39m
+        [33mclass[39m=[32m"relative max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-t-3xl bg-white p-6 shadow-2xl dark:bg-slate-900 sm:rounded-3xl"[39m
+        [33mrole[39m=[32m"dialog"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"flex items-start justify-between gap-4"[39m
+        [36m>[39m
+          [36m<div>[39m
+            [36m<h2[39m
+              [33mclass[39m=[32m"text-lg font-bold text-slate-950 dark:text-white"[39m
+              [33mid[39m=[32m":r0:"[39m
+            [36m>[39m
+              [0mHasara ayır[0m
+            [36m</h2>[39m
+            [36m<p[39m
+              [33mclass[39m=[32m"mt-1 text-sm text-slate-500 dark:text-slate-400"[39m
+              [33mid[39m=[32m":r1:"[39m
+            [36m>[39m
+              [0mSatılabilir raftan düşer, hasarlı rafa eklenir. Toplam mevcut değişmez.[0m
+            [36m</p>[39m
+          [36m</div>[39m
+          [36m<button[39m
+            [33mclass[39m=[32m"inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:hover:bg-slate-800"[39m
+            [33mtype[39m=[32m"button"[39m
+          [36m>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"sr-only"[39m
+            [36m>[39m
+              [0mKapat[0m
+            [36m</span>[39m
+            [36m<span[39m
+              [33maria-hidden[39m=[32m"true"[39m
+              [33mclass[39m=[32m"text-xl leading-none"[39m
+            [36m>[39m
+              [0m×[0m
+            [36m</span>[39m
+          [36m</button>[39m
+        [36m</div>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"mt-5"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"space-y-4"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"space-y-2"[39m
+            [36m>[39m
+              [36m<label[39m
+                [33mclass[39m=[32m"block"[39m
+              [36m>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"mb-1.5 block text-sm font-semibold text-slate-700 dark:text-slate-200"[39m
+                [36m>[39m
+                  [0mÜrün ara[0m
+                [36m</span>[39m
+                [36m<input[39m
+                  [33mclass[39m=[32m"input"[39m
+                  [33mplaceholder[39m=[32m"Başlık, yazar, yayınevi, ISBN veya SKU"[39m
+                  [33mtype[39m=[32m"search"[39m
+                  [33mvalue[39m=[32m""[39m
+                [36m/>[39m
+              [36m</label>[39m
+              [36m<ul[39m
+                [33maria-label[39m=[32m"Seçilen ürünler"[39m
+                [33mclass[39m=[32m"space-y-1 rounded-xl border border-slate-200 p-2 dark:border-slate-700"[39m
+              [36m>[39m
+                [36m<li[39m
+                  [33mclass[39m=[32m"flex items-center justify-between gap-2 rounded-lg bg-slate-50 px-2 py-1.5 dark:bg-slate-800/60"[39m
+                [36m>[39m
+                  [36m<span[39m
+                    [33mclass[39m=[32m"min-w-0 flex-1 truncate text-xs text-slate-700 dark:text-slate-200"[39m
+                  [36m>[39m
+                    [0mMatematik Soru Bankası[0m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"text-slate-400"[39m
+                    [36m>[39m
+                      [0m · [0m
+                      [0mMAT-7[0m
+                    [36m</span>[39m
+                  [36m</span>[39m
+                  [36m<button[39m
+                    [33mclass[39m=[32m"shrink-0 text-xs font-medium text-rose-500 hover:underline"[39m
+                    [33mtype[39m=[32m"button"[39m
+                  [36m>[39m
+                    [0mKaldır[0m
+                  [36m</button>[39m
+                [36m</li>[39m
+              [36m</ul>[39m
+            [36m</div>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"grid gap-4 sm:grid-cols-2"[39m
+            [36m>[39m
+              [36m<label[39m
+                [33mclass[39m=[32m"block"[39m
+              [36m>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"mb-1.5 block text-sm font-semibold text-slate-700 dark:text-slate-200"[39m
+                [36m>[39m
+                  [0mMiktar[0m
+                [36m</span>[39m
+                [36m<input[39m
+                  [33mclass[39m=[32m"input"[39m
+                  [33mmin[39m=[32m"1"[39m
+                  [33mstep[39m=[32m"1"[39m
+                  [33mtype[39m=[32m"number"[39m
+                  [33mvalue[39m=[32m"0"[39m
+                [36m/>[39m
+              [36m</label>[39m
+            [36m</div>[39m
+            [36m<label[39m
+              [33mclass[39m=[32m"block"[39m
+            [36m>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"mb-1.5 block text-sm font-semibold text-slate-700 dark:text-slate-200"[39m
+              [36m>[39m
+                [0mNeden[0m
+              [36m</span>[39m
+              [36m<select[39m
+                [33mclass[39m=[32m"input"[39m
+              [36m>[39m
+                [36m<option[39m
+                  [33mvalue[39m=[32m""[39m
+                [36m>[39m
+                  [0mSeçin…[0m
+                [36m</option>[39m
+                [36m<option[39m
+                  [33mvalue[39m=[32m"KIRIK"[39m
+                [36m>[39m
+                  [0mKırık[0m
+                [36m</option>[39m
+                [36m<option[39m
+                  [33mvalue[39m=[32m"ISLAK"[39m
+                [36m>[39m
+                  [0mIslak / nem[0m
+                [36m</option>[39m
+                [36m<option[39m
+                  [33mvalue[39m=[32m"BASKI_HATASI"[39m
+                [36m>[39m
+                  [0mBaskı hatası[0m
+                [36m</option>[39m
+                [36m<option[39m
+                  [33mvalue[39m=[32m"MUSTERI_IADESI_HASARLI"[39m
+                [36m>[39m
+                  [0mMüşteri iadesi — hasarlı geldi[0m
+                [36m</option>[39m
+                [36m<option[39m
+                  [33mvalue[39m=[32m"DIGER"[39m
+                [36m>[39m
+                  [0mDiğer[0m
+                [36m</option>[39m
+              [36m</select>[39m
+            [36m</label>[39m
+            [36m<p[39m
+              [33mclass[39m=[32m"rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-200"[39m
+              [33mdata-testid[39m=[32m"damage-effect"[39m
+            [36m>[39m
+              [0mSatılabilir raf −—, Hasarlı raf +—. Toplam fiziksel mevcut aynı kalır.[0m
+            [36m</p>[39m
+            [36m<p[39m
+              [33mclass[39m=[32m"text-xs text-slate-500 dark:text-slate-400"[39m
+            [36m>[39m
+              [0mMiktar sıfırdan büyük bir tam sayı olmalı.[0m
+            [36m</p>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"flex justify-end gap-2"[39m
+            [36m>[39m
+              [36m<button[39m
+                [33mclass[39m=[32m"inline-flex items-center justify-center gap-2 font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 dark:focus-visible:ring-offset-slate-950 text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 min-h-10 rounded-xl px-4 text-sm "[39m
+                [33mtype[39m=[32m"button"[39m
+              [36m>[39m
+                [0mVazgeç[0m
+              [36m</button>[39m
+              [36m<button[39m
+                [33mclass[39m=[32m"inline-flex items-center justify-center gap-2 font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 dark:focus-visible:ring-offset-slate-950 bg-indigo-600 text-white shadow-sm hover:bg-indigo-700 min-h-10 rounded-xl px-4 text-sm "[39m
+                [33mdisabled[39m=[32m""[39m
+                [33mtype[39m=[32m"button"[39m
+              [36m>[39m
+                [0mHasara ayır[0m
+              [36m</button>[39m
+            [36m</div>[39m
+          [36m</div>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+    [36m</div>[39m
+  [36m</body>[39m
+[36m</html>[39m
+
+[32m- Expected:[39m 
+true
+
+[31m+ Received:[39m 
+null
+
+[36m [2m❯[22m src/components/admin/inventory/DamageDialog.test.tsx:[2m74:18[22m[39m
+    [90m 72| [39m    [35mawait[39m [34mwaitFor[39m(() [33m=>[39m {
+    [90m 73| [39m      [35mconst[39m id [33m=[39m screen[33m.[39m[34mgetByLabelText[39m([36m/miktar/i[39m)[33m.[39m[34mgetAttribute[39m([32m"aria-d[39m…
+    [90m 74| [39m      [34mexpect[39m(id)[33m.[39m[34mtoBeTruthy[39m()[33m;[39m
+    [90m   | [39m                 [31m^[39m
+    [90m 75| [39m      [35mconst[39m kutu [33m=[39m document[33m.[39m[34mgetElementById[39m(id[33m![39m)[33m;[39m
+    [90m 76| [39m      [34mexpect[39m(kutu[33m?.[39m[34mgetAttribute[39m([32m"role"[39m))[33m.[39m[34mtoBe[39m([32m"alert"[39m)[33m;[39m
+[90m [2m❯[22m runWithExpensiveErrorDiagnosticsDisabled node_modules/@testing-library/dom/dist/config.js:[2m47:12[22m[39m
+[90m [2m❯[22m checkCallback node_modules/@testing-library/dom/dist/wait-for.js:[2m124:77[22m[39m
+[90m [2m❯[22m Timeout.checkRealTimersCallback node_modules/@testing-library/dom/dist/wait-for.js:[2m118:16[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/8]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/components/admin/inventory/DamageDialog.test.tsx[2m > [22mİP-A2 · DamageDialog pilotu[2m > [22mM10 — alan hataları genel/toast kanalına GİTMEZ
+[31m[1mAssertionError[22m[39m: expected null to be 'true' // Object.is equality
+
+Ignored nodes: comments, script, style
+[36m<html>[39m
+  [36m<head />[39m
+  [36m<body[39m
+    [33mstyle[39m=[32m"overflow: hidden;"[39m
+  [36m>[39m
+    [36m<div />[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"fixed inset-0 z-[80] flex items-end justify-center p-0 sm:items-center sm:p-4"[39m
+    [36m>[39m
+      [36m<button[39m
+        [33maria-label[39m=[32m"Pencereyi kapat"[39m
+        [33mclass[39m=[32m"absolute inset-0 bg-slate-950/55 backdrop-blur-sm"[39m
+        [33mtype[39m=[32m"button"[39m
+      [36m/>[39m
+      [36m<div[39m
+        [33maria-describedby[39m=[32m":r3:"[39m
+        [33maria-labelledby[39m=[32m":r2:"[39m
+        [33maria-modal[39m=[32m"true"[39m
+        [33mclass[39m=[32m"relative max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-t-3xl bg-white p-6 shadow-2xl dark:bg-slate-900 sm:rounded-3xl"[39m
+        [33mrole[39m=[32m"dialog"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"flex items-start justify-between gap-4"[39m
+        [36m>[39m
+          [36m<div>[39m
+            [36m<h2[39m
+              [33mclass[39m=[32m"text-lg font-bold text-slate-950 dark:text-white"[39m
+              [33mid[39m=[32m":r2:"[39m
+            [36m>[39m
+              [0mHasara ayır[0m
+            [36m</h2>[39m
+            [36m<p[39m
+              [33mclass[39m=[32m"mt-1 text-sm text-slate-500 dark:text-slate-400"[39m
+              [33mid[39m=[32m":r3:"[39m
+            [36m>[39m
+              [0mSatılabilir raftan düşer, hasarlı rafa eklenir. Toplam mevcut değişmez.[0m
+            [36m</p>[39m
+          [36m</div>[39m
+          [36m<button[39m
+            [33mclass[39m=[32m"inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:hover:bg-slate-800"[39m
+            [33mtype[39m=[32m"button"[39m
+          [36m>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"sr-only"[39m
+            [36m>[39m
+              [0mKapat[0m
+            [36m</span>[39m
+            [36m<span[39m
+              [33maria-hidden[39m=[32m"true"[39m
+              [33mclass[39m=[32m"text-xl leading-none"[39m
+            [36m>[39m
+              [0m×[0m
+            [36m</span>[39m
+          [36m</button>[39m
+        [36m</div>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"mt-5"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"space-y-4"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"space-y-2"[39m
+            [36m>[39m
+              [36m<label[39m
+                [33mclass[39m=[32m"block"[39m
+              [36m>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"mb-1.5 block text-sm font-semibold text-slate-700 dark:text-slate-200"[39m
+                [36m>[39m
+                  [0mÜrün ara[0m
+                [36m</span>[39m
+                [36m<input[39m
+                  [33mclass[39m=[32m"input"[39m
+                  [33mplaceholder[39m=[32m"Başlık, yazar, yayınevi, ISBN veya SKU"[39m
+                  [33mtype[39m=[32m"search"[39m
+                  [33mvalue[39m=[32m""[39m
+                [36m/>[39m
+              [36m</label>[39m
+              [36m<ul[39m
+                [33maria-label[39m=[32m"Seçilen ürünler"[39m
+                [33mclass[39m=[32m"space-y-1 rounded-xl border border-slate-200 p-2 dark:border-slate-700"[39m
+              [36m>[39m
+                [36m<li[39m
+                  [33mclass[39m=[32m"flex items-center justify-between gap-2 rounded-lg bg-slate-50 px-2 py-1.5 dark:bg-slate-800/60"[39m
+                [36m>[39m
+                  [36m<span[39m
+                    [33mclass[39m=[32m"min-w-0 flex-1 truncate text-xs text-slate-700 dark:text-slate-200"[39m
+                  [36m>[39m
+                    [0mMatematik Soru Bankası[0m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"text-slate-400"[39m
+                    [36m>[39m
+                      [0m · [0m
+                      [0mMAT-7[0m
+                    [36m</span>[39m
+                  [36m</span>[39m
+                  [36m<button[39m
+                    [33mclass[39m=[32m"shrink-0 text-xs font-medium text-rose-500 hover:underline"[39m
+                    [33mtype[39m=[32m"button"[39m
+                  [36m>[39m
+                    [0mKaldır[0m
+                  [36m</button>[39m
+                [36m</li>[39m
+              [36m</ul>[39m
+            [36m</div>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"grid gap-4 sm:grid-cols-2"[39m
+            [36m>[39m
+              [36m<label[39m
+                [33mclass[39m=[32m"block"[39m
+              [36m>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"mb-1.5 block text-sm font-semibold text-slate-700 dark:text-slate-200"[39m
+                [36m>[39m
+                  [0mMiktar[0m
+                [36m</span>[39m
+                [36m<input[39m
+                  [33mclass[39m=[32m"input"[39m
+                  [33mmin[39m=[32m"1"[39m
+                  [33mstep[39m=[32m"1"[39m
+                  [33mtype[39m=[32m"number"[39m
+                  [33mvalue[39m=[32m"0"[39m
+                [36m/>[39m
+              [36m</label>[39m
+            [36m</div>[39m
+            [36m<label[39m
+              [33mclass[39m=[32m"block"[39m
+            [36m>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"mb-1.5 block text-sm font-semibold text-slate-700 dark:text-slate-200"[39m
+              [36m>[39m
+                [0mNeden[0m
+              [36m</span>[39m
+              [36m<select[39m
+                [33mclass[39m=[32m"input"[39m
+              [36m>[39m
+                [36m<option[39m
+                  [33mvalue[39m=[32m""[39m
+                [36m>[39m
+                  [0mSeçin…[0m
+                [36m</option>[39m
+                [36m<option[39m
+                  [33mvalue[39m=[32m"KIRIK"[39m
+                [36m>[39m
+                  [0mKırık[0m
+                [36m</option>[39m
+                [36m<option[39m
+                  [33mvalue[39m=[32m"ISLAK"[39m
+                [36m>[39m
+                  [0mIslak / nem[0m
+                [36m</option>[39m
+                [36m<option[39m
+                  [33mvalue[39m=[32m"BASKI_HATASI"[39m
+                [36m>[39m
+                  [0mBaskı hatası[0m
+                [36m</option>[39m
+                [36m<option[39m
+                  [33mvalue[39m=[32m"MUSTERI_IADESI_HASARLI"[39m
+                [36m>[39m
+                  [0mMüşteri iadesi — hasarlı geldi[0m
+                [36m</option>[39m
+                [36m<option[39m
+                  [33mvalue[39m=[32m"DIGER"[39m
+                [36m>[39m
+                  [0mDiğer[0m
+                [36m</option>[39m
+              [36m</select>[39m
+            [36m</label>[39m
+            [36m<p[39m
+              [33mclass[39m=[32m"rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-200"[39m
+              [33mdata-testid[39m=[32m"damage-effect"[39m
+            [36m>[39m
+              [0mSatılabilir raf −—, Hasarlı raf +—. Toplam fiziksel mevcut aynı kalır.[0m
+            [36m</p>[39m
+            [36m<p[39m
+              [33mclass[39m=[32m"text-xs text-slate-500 dark:text-slate-400"[39m
+            [36m>[39m
+              [0mMiktar sıfırdan büyük bir tam sayı olmalı.[0m
+            [36m</p>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"flex justify-end gap-2"[39m
+            [36m>[39m
+              [36m<button[39m
+                [33mclass[39m=[32m"inline-flex items-center justify-center gap-2 font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 dark:focus-visible:ring-offset-slate-950 text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 min-h-10 rounded-xl px-4 text-sm "[39m
+                [33mtype[39m=[32m"button"[39m
+              [36m>[39m
+                [0mVazgeç[0m
+              [36m</button>[39m
+              [36m<button[39m
+                [33mclass[39m=[32m"inline-flex items-center justify-center gap-2 font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 dark:focus-visible:ring-offset-slate-950 bg-indigo-600 text-white shadow-sm hover:bg-indigo-700 min-h-10 rounded-xl px-4 text-sm "[39m
+                [33mdisabled[39m=[32m""[39m
+                [33mtype[39m=[32m"button"[39m
+              [36m>[39m
+                [0mHasara ayır[0m
+              [36m</button>[39m
+            [36m</div>[39m
+          [36m</div>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+    [36m</div>[39m
+  [36m</body>[39m
+[36m</html>[39m
+
+[32m- Expected:[39m 
+"true"
+
+[31m+ Received:[39m 
+null
+
+[36m [2m❯[22m src/components/admin/inventory/DamageDialog.test.tsx:[2m94:77[22m[39m
+    [90m 92| [39m
+    [90m 93| [39m    [35mawait[39m [34mwaitFor[39m(() [33m=>[39m
+    [90m 94| [39m      [34mexpect[39m(screen[33m.[39m[34mgetByLabelText[39m([36m/miktar/i[39m)[33m.[39m[34mgetAttribute[39m([32m"aria-inval[39m…
+    [90m   | [39m                                                                            [31m^[39m
+    [90m 95| [39m        [32m"true"[39m
+    [90m 96| [39m      )
+[90m [2m❯[22m runWithExpensiveErrorDiagnosticsDisabled node_modules/@testing-library/dom/dist/config.js:[2m47:12[22m[39m
+[90m [2m❯[22m checkCallback node_modules/@testing-library/dom/dist/wait-for.js:[2m124:77[22m[39m
+[90m [2m❯[22m Timeout.checkRealTimersCallback node_modules/@testing-library/dom/dist/wait-for.js:[2m118:16[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/8]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/components/admin/inventory/DamageDialog.test.tsx[2m > [22mİP-A2 · DamageDialog pilotu[2m > [22mgenel sunucu hatası (error prop'u) ÜST şeritte durur
+[31m[1mTestingLibraryElementError[22m[39m: Unable to find an element by: [data-testid="damage-genel-hata"]
+
+Ignored nodes: comments, script, style
+[36m<body[39m
+  [33mstyle[39m=[32m"overflow: hidden;"[39m
+[36m>[39m
+  [36m<div />[39m
+  [36m<div[39m
+    [33mclass[39m=[32m"fixed inset-0 z-[80] flex items-end justify-center p-0 sm:items-center sm:p-4"[39m
+  [36m>[39m
+    [36m<button[39m
+      [33maria-label[39m=[32m"Pencereyi kapat"[39m
+      [33mclass[39m=[32m"absolute inset-0 bg-slate-950/55 backdrop-blur-sm"[39m
+      [33mtype[39m=[32m"button"[39m
+    [36m/>[39m
+    [36m<div[39m
+      [33maria-describedby[39m=[32m":r5:"[39m
+      [33maria-labelledby[39m=[32m":r4:"[39m
+      [33maria-modal[39m=[32m"true"[39m
+      [33mclass[39m=[32m"relative max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-t-3xl bg-white p-6 shadow-2xl dark:bg-slate-900 sm:rounded-3xl"[39m
+      [33mrole[39m=[32m"dialog"[39m
+    [36m>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"flex items-start justify-between gap-4"[39m
+      [36m>[39m
+        [36m<div>[39m
+          [36m<h2[39m
+            [33mclass[39m=[32m"text-lg font-bold text-slate-950 dark:text-white"[39m
+            [33mid[39m=[32m":r4:"[39m
+          [36m>[39m
+            [0mHasara ayır[0m
+          [36m</h2>[39m
+          [36m<p[39m
+            [33mclass[39m=[32m"mt-1 text-sm text-slate-500 dark:text-slate-400"[39m
+            [33mid[39m=[32m":r5:"[39m
+          [36m>[39m
+            [0mSatılabilir raftan düşer, hasarlı rafa eklenir. Toplam mevcut değişmez.[0m
+          [36m</p>[39m
+        [36m</div>[39m
+        [36m<button[39m
+          [33mclass[39m=[32m"inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:hover:bg-slate-800"[39m
+          [33mtype[39m=[32m"button"[39m
+        [36m>[39m
+          [36m<span[39m
+            [33mclass[39m=[32m"sr-only"[39m
+          [36m>[39m
+            [0mKapat[0m
+          [36m</span>[39m
+          [36m<span[39m
+            [33maria-hidden[39m=[32m"true"[39m
+            [33mclass[39m=[32m"text-xl leading-none"[39m
+          [36m>[39m
+            [0m×[0m
+          [36m</span>[39m
+        [36m</button>[39m
+      [36m</div>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"mt-5"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"space-y-4"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"space-y-2"[39m
+          [36m>[39m
+            [36m<label[39m
+              [33mclass[39m=[32m"block"[39m
+            [36m>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"mb-1.5 block text-sm font-semibold text-slate-700 dark:text-slate-200"[39m
+              [36m>[39m
+                [0mÜrün ara[0m
+              [36m</span>[39m
+              [36m<input[39m
+                [33mclass[39m=[32m"input"[39m
+                [33mplaceholder[39m=[32m"Başlık, yazar, yayınevi, ISBN veya SKU"[39m
+                [33mtype[39m=[32m"search"[39m
+                [33mvalue[39m=[32m""[39m
+              [36m/>[39m
+            [36m</label>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"grid gap-4 sm:grid-cols-2"[39m
+          [36m>[39m
+            [36m<label[39m
+              [33mclass[39m=[32m"block"[39m
+            [36m>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"mb-1.5 block text-sm font-semibold text-slate-700 dark:text-slate-200"[39m
+              [36m>[39m
+                [0mMiktar[0m
+              [36m</span>[39m
+              [36m<input[39m
+                [33mclass[39m=[32m"input"[39m
+                [33mmin[39m=[32m"1"[39m
+                [33mstep[39m=[32m"1"[39m
+                [33mtype[39m=[32m"number"[39m
+                [33mvalue[39m=[32m""[39m
+              [36m/>[39m
+            [36m</label>[39m
+          [36m</div>[39m
+          [36m<label[39m
+            [33mclass[39m=[32m"block"[39m
+          [36m>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"mb-1.5 block text-sm font-semibold text-slate-700 dark:text-slate-200"[39m
+            [36m>[39m
+              [0mNeden[0m
+            [36m</span>[39m
+            [36m<select[39m
+              [33mclass[39m=[32m"input"[39m
+            [36m>[39m
+              [36m<option[39m
+                [33mvalue[39m=[32m""[39m
+              [36m>[39m
+                [0mSeçin…[0m
+              [36m</option>[39m
+              [36m<option[39m
+                [33mvalue[39m=[32m"KIRIK"[39m
+              [36m>[39m
+                [0mKırık[0m
+              [36m</option>[39m
+              [36m<option[39m
+                [33mvalue[39m=[32m"ISLAK"[39m
+              [36m>[39m
+                [0mIslak / nem[0m
+              [36m</option>[39m
+              [36m<option[39m
+                [33mvalue[39m=[32m"BASKI_HATASI"[39m
+              [36m>[39m
+                [0mBaskı hatası[0m
+              [36m</option>[39m
+              [36m<option[39m
+                [33mvalue[39m=[32m"MUSTERI_IADESI_HASARLI"[39m
+              [36m>[39m
+                [0mMüşteri iadesi — hasarlı geldi[0m
+              [36m</option>[39m
+              [36m<option[39m
+                [33mvalue[39m=[32m"DIGER"[39m
+              [36m>[39m
+                [0mDiğer[0m
+              [36m</option>[39m
+            [36m</select>[39m
+          [36m</label>[39m
+          [36m<p[39m
+            [33mclass[39m=[32m"rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-200"[39m
+            [33mdata-testid[39m=[32m"damage-effect"[39m
+          [36m>[39m
+            [0mSatılabilir raf −—, Hasarlı raf +—. Toplam fiziksel mevcut aynı kalır.[0m
+          [36m</p>[39m
+          [36m<p[39m
+            [33mclass[39m=[32m"rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-sm text-rose-900 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-100"[39m
+            [33mrole[39m=[32m"alert"[39m
+          [36m>[39m
+            [0mSunucuya ulaşılamadı.[0m
+          [36m</p>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"flex justify-end gap-2"[39m
+          [36m>[39m
+            [36m<button[39m
+              [33mclass[39m=[32m"inline-flex items-center justify-center gap-2 font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 dark:focus-visible:ring-offset-slate-950 text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 min-h-10 rounded-xl px-4 text-sm "[39m
+              [33mtype[39m=[32m"button"[39m
+            [36m>[39m
+              [0mVazgeç[0m
+            [36m</button>[39m
+            [36m<button[39m
+              [33mclass[39m=[32m"inline-flex items-center justify-center gap-2 font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 dark:focus-visible:ring-offset-slate-950 bg-indigo-600 text-white shadow-sm hover:bg-indigo-700 min-h-10 rounded-xl px-4 text-sm "[39m
+              [33mdisabled[39m=[32m""[39m
+              [33mtype[39m=[32m"button"[39m
+            [36m>[39m
+              [0mHasara ayır[0m
+            [36m</button>[39m
+          [36m</div>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+    [36m</div>[39m
+  [36m</div>[39m
+[36m</body>[39m
+[90m [2m❯[22m Object.getElementError node_modules/@testing-library/dom/dist/config.js:[2m37:19[22m[39m
+[90m [2m❯[22m node_modules/@testing-library/dom/dist/query-helpers.js:[2m76:38[22m[39m
+[90m [2m❯[22m node_modules/@testing-library/dom/dist/query-helpers.js:[2m52:17[22m[39m
+[90m [2m❯[22m node_modules/@testing-library/dom/dist/query-helpers.js:[2m95:19[22m[39m
+[36m [2m❯[22m src/components/admin/inventory/DamageDialog.test.tsx:[2m110:26[22m[39m
+    [90m108| [39m  [34mit[39m([32m"genel sunucu hatası (error prop'u) ÜST şeritte durur"[39m[33m,[39m () [33m=>[39m {
+    [90m109| [39m    [34mac[39m({ error[33m:[39m [32m"Sunucuya ulaşılamadı."[39m })[33m;[39m
+    [90m110| [39m    [35mconst[39m serit [33m=[39m screen[33m.[39m[34mgetByTestId[39m([32m"damage-genel-hata"[39m)[33m;[39m
+    [90m   | [39m                         [31m^[39m
+    [90m111| [39m    [34mexpect[39m(serit[33m.[39mtextContent)[33m.[39m[34mtoContain[39m([32m"Sunucuya ulaşılamadı."[39m)[33m;[39m
+    [90m112| [39m    [34mexpect[39m(serit[33m.[39m[34mgetAttribute[39m([32m"role"[39m))[33m.[39m[34mtoBe[39m([32m"alert"[39m)[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/8]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/components/admin/inventory/DamageDialog.test.tsx[2m > [22mİP-A2 · DamageDialog pilotu[2m > [22manlık doğrulama korunur: gönder'e basmadan hata çıkar
+[31m[1mTestingLibraryElementError[22m[39m: Unable to find role="alert"
+
+Ignored nodes: comments, script, style
+[36m<body[39m
+  [33mstyle[39m=[32m"overflow: hidden;"[39m
+[36m>[39m
+  [36m<div />[39m
+  [36m<div[39m
+    [33mclass[39m=[32m"fixed inset-0 z-[80] flex items-end justify-center p-0 sm:items-center sm:p-4"[39m
+  [36m>[39m
+    [36m<button[39m
+      [33maria-label[39m=[32m"Pencereyi kapat"[39m
+      [33mclass[39m=[32m"absolute inset-0 bg-slate-950/55 backdrop-blur-sm"[39m
+      [33mtype[39m=[32m"button"[39m
+    [36m/>[39m
+    [36m<div[39m
+      [33maria-describedby[39m=[32m":r7:"[39m
+      [33maria-labelledby[39m=[32m":r6:"[39m
+      [33maria-modal[39m=[32m"true"[39m
+      [33mclass[39m=[32m"relative max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-t-3xl bg-white p-6 shadow-2xl dark:bg-slate-900 sm:rounded-3xl"[39m
+      [33mrole[39m=[32m"dialog"[39m
+    [36m>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"flex items-start justify-between gap-4"[39m
+      [36m>[39m
+        [36m<div>[39m
+          [36m<h2[39m
+            [33mclass[39m=[32m"text-lg font-bold text-slate-950 dark:text-white"[39m
+            [33mid[39m=[32m":r6:"[39m
+          [36m>[39m
+            [0mHasara ayır[0m
+          [36m</h2>[39m
+          [36m<p[39m
+            [33mclass[39m=[32m"mt-1 text-sm text-slate-500 dark:text-slate-400"[39m
+            [33mid[39m=[32m":r7:"[39m
+          [36m>[39m
+            [0mSatılabilir raftan düşer, hasarlı rafa eklenir. Toplam mevcut değişmez.[0m
+          [36m</p>[39m
+        [36m</div>[39m
+        [36m<button[39m
+          [33mclass[39m=[32m"inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:hover:bg-slate-800"[39m
+          [33mtype[39m=[32m"button"[39m
+        [36m>[39m
+          [36m<span[39m
+            [33mclass[39m=[32m"sr-only"[39m
+          [36m>[39m
+            [0mKapat[0m
+          [36m</span>[39m
+          [36m<span[39m
+            [33maria-hidden[39m=[32m"true"[39m
+            [33mclass[39m=[32m"text-xl leading-none"[39m
+          [36m>[39m
+            [0m×[0m
+          [36m</span>[39m
+        [36m</button>[39m
+      [36m</div>[39m
+      [36m<div[39m
+        [33mclass[39m=[32m"mt-5"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"space-y-4"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"space-y-2"[39m
+          [36m>[39m
+            [36m<label[39m
+              [33mclass[39m=[32m"block"[39m
+            [36m>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"mb-1.5 block text-sm font-semibold text-slate-700 dark:text-slate-200"[39m
+              [36m>[39m
+                [0mÜrün ara[0m
+              [36m</span>[39m
+              [36m<input[39m
+                [33mclass[39m=[32m"input"[39m
+                [33mplaceholder[39m=[32m"Başlık, yazar, yayınevi, ISBN veya SKU"[39m
+                [33mtype[39m=[32m"search"[39m
+                [33mvalue[39m=[32m""[39m
+              [36m/>[39m
+            [36m</label>[39m
+            [36m<ul[39m
+              [33maria-label[39m=[32m"Seçilen ürünler"[39m
+              [33mclass[39m=[32m"space-y-1 rounded-xl border border-slate-200 p-2 dark:border-slate-700"[39m
+            [36m>[39m
+              [36m<li[39m
+                [33mclass[39m=[32m"flex items-center justify-between gap-2 rounded-lg bg-slate-50 px-2 py-1.5 dark:bg-slate-800/60"[39m
+              [36m>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"min-w-0 flex-1 truncate text-xs text-slate-700 dark:text-slate-200"[39m
+                [36m>[39m
+                  [0mMatematik Soru Bankası[0m
+                  [36m<span[39m
+                    [33mclass[39m=[32m"text-slate-400"[39m
+                  [36m>[39m
+                    [0m · [0m
+                    [0mMAT-7[0m
+                  [36m</span>[39m
+                [36m</span>[39m
+                [36m<button[39m
+                  [33mclass[39m=[32m"shrink-0 text-xs font-medium text-rose-500 hover:underline"[39m
+                  [33mtype[39m=[32m"button"[39m
+                [36m>[39m
+                  [0mKaldır[0m
+                [36m</button>[39m
+              [36m</li>[39m
+            [36m</ul>[39m
+          [36m</div>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"grid gap-4 sm:grid-cols-2"[39m
+          [36m>[39m
+            [36m<label[39m
+              [33mclass[39m=[32m"block"[39m
+            [36m>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"mb-1.5 block text-sm font-semibold text-slate-700 dark:text-slate-200"[39m
+              [36m>[39m
+                [0mMiktar[0m
+              [36m</span>[39m
+              [36m<input[39m
+                [33mclass[39m=[32m"input"[39m
+                [33mmin[39m=[32m"1"[39m
+                [33mstep[39m=[32m"1"[39m
+                [33mtype[39m=[32m"number"[39m
+                [33mvalue[39m=[32m"-3"[39m
+              [36m/>[39m
+            [36m</label>[39m
+          [36m</div>[39m
+          [36m<label[39m
+            [33mclass[39m=[32m"block"[39m
+          [36m>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"mb-1.5 block text-sm font-semibold text-slate-700 dark:text-slate-200"[39m
+            [36m>[39m
+              [0mNeden[0m
+            [36m</span>[39m
+            [36m<select[39m
+              [33mclass[39m=[32m"input"[39m
+            [36m>[39m
+              [36m<option[39m
+                [33mvalue[39m=[32m""[39m
+              [36m>[39m
+                [0mSeçin…[0m
+              [36m</option>[39m
+              [36m<option[39m
+                [33mvalue[39m=[32m"KIRIK"[39m
+              [36m>[39m
+                [0mKırık[0m
+              [36m</option>[39m
+              [36m<option[39m
+                [33mvalue[39m=[32m"ISLAK"[39m
+              [36m>[39m
+                [0mIslak / nem[0m
+              [36m</option>[39m
+              [36m<option[39m
+                [33mvalue[39m=[32m"BASKI_HATASI"[39m
+              [36m>[39m
+                [0mBaskı hatası[0m
+              [36m</option>[39m
+              [36m<option[39m
+                [33mvalue[39m=[32m"MUSTERI_IADESI_HASARLI"[39m
+              [36m>[39m
+                [0mMüşteri iadesi — hasarlı geldi[0m
+              [36m</option>[39m
+              [36m<option[39m
+                [33mvalue[39m=[32m"DIGER"[39m
+              [36m>[39m
+                [0mDiğer[0m
+              [36m</option>[39m
+            [36m</select>[39m
+          [36m</label>[39m
+          [36m<p[39m
+            [33mclass[39m=[32m"rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-200"[39m
+            [33mdata-testid[39m=[32m"damage-effect"[39m
+          [36m>[39m
+            [0mSatılabilir raf −—, Hasarlı raf +—. Toplam fiziksel mevcut aynı kalır.[0m
+          [36m</p>[39m
+          [36m<p[39m
+            [33mclass[39m=[32m"text-xs text-slate-500 dark:text-slate-400"[39m
+          [36m>[39m
+            [0mMiktar sıfırdan büyük bir tam sayı olmalı.[0m
+          [36m</p>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"flex justify-end gap-2"[39m
+          [36m>[39m
+            [36m<button[39m
+              [33mclass[39m=[32m"inline-flex items-center justify-center gap-2 font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 dark:focus-visible:ring-offset-slate-950 text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 min-h-10 rounded-xl px-4 text-sm "[39m
+              [33mtype[39m=[32m"button"[39m
+            [36m>[39m
+              [0mVazgeç[0m
+            [36m</button>[39m
+            [36m<button[39m
+              [33mclass[39m=[32m"inline-flex items-center justify-center gap-2 font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 dark:focus-visible:ring-offset-slate-950 bg-indigo-600 text-white shadow-sm hover:bg-indigo-700 min-h-10 rounded-xl px-4 text-sm "[39m
+              [33mdisabled[39m=[32m""[39m
+              [33mtype[39m=[32m"button"[39m
+            [36m>[39m
+              [0mHasara ayır[0m
+            [36m</button>[39m
+          [36m</div>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+    [36m</div>[39m
+  [36m</div>[39m
+[36m</body>[39m
+
+Ignored nodes: comments, script, style
+[36m<html>[39m
+  [36m<head />[39m
+  [36m<body[39m
+    [33mstyle[39m=[32m"overflow: hidden;"[39m
+  [36m>[39m
+    [36m<div />[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"fixed inset-0 z-[80] flex items-end justify-center p-0 sm:items-center sm:p-4"[39m
+    [36m>[39m
+      [36m<button[39m
+        [33maria-label[39m=[32m"Pencereyi kapat"[39m
+        [33mclass[39m=[32m"absolute inset-0 bg-slate-950/55 backdrop-blur-sm"[39m
+        [33mtype[39m=[32m"button"[39m
+      [36m/>[39m
+      [36m<div[39m
+        [33maria-describedby[39m=[32m":r7:"[39m
+        [33maria-labelledby[39m=[32m":r6:"[39m
+        [33maria-modal[39m=[32m"true"[39m
+        [33mclass[39m=[32m"relative max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-t-3xl bg-white p-6 shadow-2xl dark:bg-slate-900 sm:rounded-3xl"[39m
+        [33mrole[39m=[32m"dialog"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"flex items-start justify-between gap-4"[39m
+        [36m>[39m
+          [36m<div>[39m
+            [36m<h2[39m
+              [33mclass[39m=[32m"text-lg font-bold text-slate-950 dark:text-white"[39m
+              [33mid[39m=[32m":r6:"[39m
+            [36m>[39m
+              [0mHasara ayır[0m
+            [36m</h2>[39m
+            [36m<p[39m
+              [33mclass[39m=[32m"mt-1 text-sm text-slate-500 dark:text-slate-400"[39m
+              [33mid[39m=[32m":r7:"[39m
+            [36m>[39m
+              [0mSatılabilir raftan düşer, hasarlı rafa eklenir. Toplam mevcut değişmez.[0m
+            [36m</p>[39m
+          [36m</div>[39m
+          [36m<button[39m
+            [33mclass[39m=[32m"inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:hover:bg-slate-800"[39m
+            [33mtype[39m=[32m"button"[39m
+          [36m>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"sr-only"[39m
+            [36m>[39m
+              [0mKapat[0m
+            [36m</span>[39m
+            [36m<span[39m
+              [33maria-hidden[39m=[32m"true"[39m
+              [33mclass[39m=[32m"text-xl leading-none"[39m
+            [36m>[39m
+              [0m×[0m
+            [36m</span>[39m
+          [36m</button>[39m
+        [36m</div>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"mt-5"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"space-y-4"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"space-y-2"[39m
+            [36m>[39m
+              [36m<label[39m
+                [33mclass[39m=[32m"block"[39m
+              [36m>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"mb-1.5 block text-sm font-semibold text-slate-700 dark:text-slate-200"[39m
+                [36m>[39m
+                  [0mÜrün ara[0m
+                [36m</span>[39m
+                [36m<input[39m
+                  [33mclass[39m=[32m"input"[39m
+                  [33mplaceholder[39m=[32m"Başlık, yazar, yayınevi, ISBN veya SKU"[39m
+                  [33mtype[39m=[32m"search"[39m
+                  [33mvalue[39m=[32m""[39m
+                [36m/>[39m
+              [36m</label>[39m
+              [36m<ul[39m
+                [33maria-label[39m=[32m"Seçilen ürünler"[39m
+                [33mclass[39m=[32m"space-y-1 rounded-xl border border-slate-200 p-2 dark:border-slate-700"[39m
+              [36m>[39m
+                [36m<li[39m
+                  [33mclass[39m=[32m"flex items-center justify-between gap-2 rounded-lg bg-slate-50 px-2 py-1.5 dark:bg-slate-800/60"[39m
+                [36m>[39m
+                  [36m<span[39m
+                    [33mclass[39m=[32m"min-w-0 flex-1 truncate text-xs text-slate-700 dark:text-slate-200"[39m
+                  [36m>[39m
+                    [0mMatematik Soru Bankası[0m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"text-slate-400"[39m
+                    [36m>[39m
+                      [0m · [0m
+                      [0mMAT-7[0m
+                    [36m</span>[39m
+                  [36m</span>[39m
+                  [36m<button[39m
+                    [33mclass[39m=[32m"shrink-0 text-xs font-medium text-rose-500 hover:underline"[39m
+                    [33mtype[39m=[32m"button"[39m
+                  [36m>[39m
+                    [0mKaldır[0m
+                  [36m</button>[39m
+                [36m</li>[39m
+              [36m</ul>[39m
+            [36m</div>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"grid gap-4 sm:grid-cols-2"[39m
+            [36m>[39m
+              [36m<label[39m
+                [33mclass[39m=[32m"block"[39m
+              [36m>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"mb-1.5 block text-sm font-semibold text-slate-700 dark:text-slate-200"[39m
+                [36m>[39m
+                  [0mMiktar[0m
+                [36m</span>[39m
+                [36m<input[39m
+                  [33mclass[39m=[32m"input"[39m
+                  [33mmin[39m=[32m"1"[39m
+                  [33mstep[39m=[32m"1"[39m
+                  [33mtype[39m=[32m"number"[39m
+                  [33mvalue[39m=[32m"-3"[39m
+                [36m/>[39m
+              [36m</label>[39m
+            [36m</div>[39m
+            [36m<label[39m
+              [33mclass[39m=[32m"block"[39m
+            [36m>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"mb-1.5 block text-sm font-semibold text-slate-700 dark:text-slate-200"[39m
+              [36m>[39m
+                [0mNeden[0m
+              [36m</span>[39m
+              [36m<select[39m
+                [33mclass[39m=[32m"input"[39m
+              [36m>[39m
+                [36m<option[39m
+                  [33mvalue[39m=[32m""[39m
+                [36m>[39m
+                  [0mSeçin…[0m
+                [36m</option>[39m
+                [36m<option[39m
+                  [33mvalue[39m=[32m"KIRIK"[39m
+                [36m>[39m
+                  [0mKırık[0m
+                [36m</option>[39m
+                [36m<option[39m
+                  [33mvalue[39m=[32m"ISLAK"[39m
+                [36m>[39m
+                  [0mIslak / nem[0m
+                [36m</option>[39m
+                [36m<option[39m
+                  [33mvalue[39m=[32m"BASKI_HATASI"[39m
+                [36m>[39m
+                  [0mBaskı hatası[0m
+                [36m</option>[39m
+                [36m<option[39m
+                  [33mvalue[39m=[32m"MUSTERI_IADESI_HASARLI"[39m
+                [36m>[39m
+                  [0mMüşteri iadesi — hasarlı geldi[0m
+                [36m</option>[39m
+                [36m<option[39m
+                  [33mvalue[39m=[32m"DIGER"[39m
+                [36m>[39m
+                  [0mDiğer[0m
+                [36m</option>[39m
+              [36m</select>[39m
+            [36m</label>[39m
+            [36m<p[39m
+              [33mclass[39m=[32m"rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-200"[39m
+              [33mdata-testid[39m=[32m"damage-effect"[39m
+            [36m>[39m
+              [0mSatılabilir raf −—, Hasarlı raf +—. Toplam fiziksel mevcut aynı kalır.[0m
+            [36m</p>[39m
+            [36m<p[39m
+              [33mclass[39m=[32m"text-xs text-slate-500 dark:text-slate-400"[39m
+            [36m>[39m
+              [0mMiktar sıfırdan büyük bir tam sayı olmalı.[0m
+            [36m</p>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"flex justify-end gap-2"[39m
+            [36m>[39m
+              [36m<button[39m
+                [33mclass[39m=[32m"inline-flex items-center justify-center gap-2 font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 dark:focus-visible:ring-offset-slate-950 text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 min-h-10 rounded-xl px-4 text-sm "[39m
+                [33mtype[39m=[32m"button"[39m
+              [36m>[39m
+                [0mVazgeç[0m
+              [36m</button>[39m
+              [36m<button[39m
+                [33mclass[39m=[32m"inline-flex items-center justify-center gap-2 font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 dark:focus-visible:ring-offset-slate-950 bg-indigo-600 text-white shadow-sm hover:bg-indigo-700 min-h-10 rounded-xl px-4 text-sm "[39m
+                [33mdisabled[39m=[32m""[39m
+                [33mtype[39m=[32m"button"[39m
+              [36m>[39m
+                [0mHasara ayır[0m
+              [36m</button>[39m
+            [36m</div>[39m
+          [36m</div>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+    [36m</div>[39m
+  [36m</body>[39m
+[36m</html>[39m
+[90m [2m❯[22m Proxy.waitForWrapper node_modules/@testing-library/dom/dist/wait-for.js:[2m163:27[22m[39m
+[36m [2m❯[22m src/components/admin/inventory/DamageDialog.test.tsx:[2m122:11[22m[39m
+    [90m120| [39m    })[33m;[39m
+    [90m121| [39m    [90m// Hiçbir gönderim yapılmadı; yine de hata görünür.[39m
+    [90m122| [39m    [35mawait[39m [34mwaitFor[39m(() [33m=>[39m [34mexpect[39m(screen[33m.[39m[34mgetByRole[39m([32m"alert"[39m))[33m.[39m[34mtoBeTruthy[39m()…
+    [90m   | [39m          [31m^[39m
+    [90m123| [39m  })[33m;[39m
+    [90m124| [39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/8]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/components/admin/inventory/DamageDialog.test.tsx[2m > [22mİP-A2 · DamageDialog pilotu[2m > [22mtedarikçi iadesinde kaynak kova alanı zorunlu kalır
+[31m[1mAssertionError[22m[39m: expected null to be 'true' // Object.is equality
+
+Ignored nodes: comments, script, style
+[36m<html>[39m
+  [36m<head />[39m
+  [36m<body[39m
+    [33mstyle[39m=[32m"overflow: hidden;"[39m
+  [36m>[39m
+    [36m<div />[39m
+    [36m<div[39m
+      [33mclass[39m=[32m"fixed inset-0 z-[80] flex items-end justify-center p-0 sm:items-center sm:p-4"[39m
+    [36m>[39m
+      [36m<button[39m
+        [33maria-label[39m=[32m"Pencereyi kapat"[39m
+        [33mclass[39m=[32m"absolute inset-0 bg-slate-950/55 backdrop-blur-sm"[39m
+        [33mtype[39m=[32m"button"[39m
+      [36m/>[39m
+      [36m<div[39m
+        [33maria-describedby[39m=[32m":rd:"[39m
+        [33maria-labelledby[39m=[32m":rc:"[39m
+        [33maria-modal[39m=[32m"true"[39m
+        [33mclass[39m=[32m"relative max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-t-3xl bg-white p-6 shadow-2xl dark:bg-slate-900 sm:rounded-3xl"[39m
+        [33mrole[39m=[32m"dialog"[39m
+      [36m>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"flex items-start justify-between gap-4"[39m
+        [36m>[39m
+          [36m<div>[39m
+            [36m<h2[39m
+              [33mclass[39m=[32m"text-lg font-bold text-slate-950 dark:text-white"[39m
+              [33mid[39m=[32m":rc:"[39m
+            [36m>[39m
+              [0mTedarikçiye iade et[0m
+            [36m</h2>[39m
+            [36m<p[39m
+              [33mclass[39m=[32m"mt-1 text-sm text-slate-500 dark:text-slate-400"[39m
+              [33mid[39m=[32m":rd:"[39m
+            [36m>[39m
+              [0mSeçilen raftan fiziksel çıkış. Kaynak raf açıkça seçilir.[0m
+            [36m</p>[39m
+          [36m</div>[39m
+          [36m<button[39m
+            [33mclass[39m=[32m"inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:hover:bg-slate-800"[39m
+            [33mtype[39m=[32m"button"[39m
+          [36m>[39m
+            [36m<span[39m
+              [33mclass[39m=[32m"sr-only"[39m
+            [36m>[39m
+              [0mKapat[0m
+            [36m</span>[39m
+            [36m<span[39m
+              [33maria-hidden[39m=[32m"true"[39m
+              [33mclass[39m=[32m"text-xl leading-none"[39m
+            [36m>[39m
+              [0m×[0m
+            [36m</span>[39m
+          [36m</button>[39m
+        [36m</div>[39m
+        [36m<div[39m
+          [33mclass[39m=[32m"mt-5"[39m
+        [36m>[39m
+          [36m<div[39m
+            [33mclass[39m=[32m"space-y-4"[39m
+          [36m>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"space-y-2"[39m
+            [36m>[39m
+              [36m<label[39m
+                [33mclass[39m=[32m"block"[39m
+              [36m>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"mb-1.5 block text-sm font-semibold text-slate-700 dark:text-slate-200"[39m
+                [36m>[39m
+                  [0mÜrün ara[0m
+                [36m</span>[39m
+                [36m<input[39m
+                  [33mclass[39m=[32m"input"[39m
+                  [33mplaceholder[39m=[32m"Başlık, yazar, yayınevi, ISBN veya SKU"[39m
+                  [33mtype[39m=[32m"search"[39m
+                  [33mvalue[39m=[32m""[39m
+                [36m/>[39m
+              [36m</label>[39m
+              [36m<ul[39m
+                [33maria-label[39m=[32m"Seçilen ürünler"[39m
+                [33mclass[39m=[32m"space-y-1 rounded-xl border border-slate-200 p-2 dark:border-slate-700"[39m
+              [36m>[39m
+                [36m<li[39m
+                  [33mclass[39m=[32m"flex items-center justify-between gap-2 rounded-lg bg-slate-50 px-2 py-1.5 dark:bg-slate-800/60"[39m
+                [36m>[39m
+                  [36m<span[39m
+                    [33mclass[39m=[32m"min-w-0 flex-1 truncate text-xs text-slate-700 dark:text-slate-200"[39m
+                  [36m>[39m
+                    [0mMatematik Soru Bankası[0m
+                    [36m<span[39m
+                      [33mclass[39m=[32m"text-slate-400"[39m
+                    [36m>[39m
+                      [0m · [0m
+                      [0mMAT-7[0m
+                    [36m</span>[39m
+                  [36m</span>[39m
+                  [36m<button[39m
+                    [33mclass[39m=[32m"shrink-0 text-xs font-medium text-rose-500 hover:underline"[39m
+                    [33mtype[39m=[32m"button"[39m
+                  [36m>[39m
+                    [0mKaldır[0m
+                  [36m</button>[39m
+                [36m</li>[39m
+              [36m</ul>[39m
+            [36m</div>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"grid gap-4 sm:grid-cols-2"[39m
+            [36m>[39m
+              [36m<label[39m
+                [33mclass[39m=[32m"block"[39m
+              [36m>[39m
+                [36m<span[39m
+                  [33mclass[39m=[32m"mb-1.5 block text-sm font-semibold text-slate-700 dark:text-slate-200"[39m
+                [36m>[39m
+                  [0mMiktar[0m
+                [36m</span>[39m
+                [36m<input[39m
+                  [33mclass[39m=[32m"input"[39m
+                  [33mmin[39m=[32m"1"[39m
+                  [33mstep[39m=[32m"1"[39m
+                  [33mtype[39m=[32m"number"[39m
+                  [33mvalue[39m=[32m"1"[39m
+                [36m/>[39m
+              [36m</label>[39m
+            [36m</div>[39m
+            [36m<label[39m
+              [33mclass[39m=[32m"block"[39m
+            [36m>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"mb-1.5 block text-sm font-semibold text-slate-700 dark:text-slate-200"[39m
+              [36m>[39m
+                [0mKaynak kova[0m
+              [36m</span>[39m
+              [36m<select[39m
+                [33mclass[39m=[32m"input"[39m
+              [36m>[39m
+                [36m<option[39m
+                  [33mvalue[39m=[32m""[39m
+                [36m>[39m
+                  [0mSeçin…[0m
+                [36m</option>[39m
+                [36m<option[39m
+                  [33mvalue[39m=[32m"SALEABLE"[39m
+                [36m>[39m
+                  [0mSatılabilir[0m
+                [36m</option>[39m
+                [36m<option[39m
+                  [33mvalue[39m=[32m"DAMAGED"[39m
+                [36m>[39m
+                  [0mHasarlı[0m
+                [36m</option>[39m
+              [36m</select>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"mt-1 block text-xs text-slate-500 dark:text-slate-400"[39m
+              [36m>[39m
+                [0mAdet yalnız seçtiğiniz raftan düşer; diğer rafa aktarılmaz.[0m
+              [36m</span>[39m
+            [36m</label>[39m
+            [36m<label[39m
+              [33mclass[39m=[32m"block"[39m
+            [36m>[39m
+              [36m<span[39m
+                [33mclass[39m=[32m"mb-1.5 block text-sm font-semibold text-slate-700 dark:text-slate-200"[39m
+              [36m>[39m
+                [0mNeden[0m
+              [36m</span>[39m
+              [36m<select[39m
+                [33mclass[39m=[32m"input"[39m
+              [36m>[39m
+                [36m<option[39m
+                  [33mvalue[39m=[32m""[39m
+                [36m>[39m
+                  [0mSeçin…[0m
+                [36m</option>[39m
+                [36m<option[39m
+                  [33mvalue[39m=[32m"KIRIK"[39m
+                [36m>[39m
+                  [0mKırık[0m
+                [36m</option>[39m
+                [36m<option[39m
+                  [33mvalue[39m=[32m"ISLAK"[39m
+                [36m>[39m
+                  [0mIslak / nem[0m
+                [36m</option>[39m
+                [36m<option[39m
+                  [33mvalue[39m=[32m"BASKI_HATASI"[39m
+                [36m>[39m
+                  [0mBaskı hatası[0m
+                [36m</option>[39m
+                [36m<option[39m
+                  [33mvalue[39m=[32m"MUSTERI_IADESI_HASARLI"[39m
+                [36m>[39m
+                  [0mMüşteri iadesi — hasarlı geldi[0m
+                [36m</option>[39m
+                [36m<option[39m
+                  [33mvalue[39m=[32m"DIGER"[39m
+                [36m>[39m
+                  [0mDiğer[0m
+                [36m</option>[39m
+              [36m</select>[39m
+            [36m</label>[39m
+            [36m<p[39m
+              [33mclass[39m=[32m"rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-800/60 dark:text-slate-200"[39m
+              [33mdata-testid[39m=[32m"damage-effect"[39m
+            [36m>[39m
+              [0mKaynak raf seçilmeden etki hesaplanamaz.[0m
+            [36m</p>[39m
+            [36m<p[39m
+              [33mclass[39m=[32m"rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200"[39m
+            [36m>[39m
+              [0mBu işlem geri alınamaz: mal fiziksel olarak çıkar.[0m
+            [36m</p>[39m
+            [36m<p[39m
+              [33mclass[39m=[32m"text-xs text-slate-500 dark:text-slate-400"[39m
+            [36m>[39m
+              [0mTedarikçi iadesinde kaynak kova seçilmeli.[0m
+            [36m</p>[39m
+            [36m<div[39m
+              [33mclass[39m=[32m"flex justify-end gap-2"[39m
+            [36m>[39m
+              [36m<button[39m
+                [33mclass[39m=[32m"inline-flex items-center justify-center gap-2 font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 dark:focus-visible:ring-offset-slate-950 text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 min-h-10 rounded-xl px-4 text-sm "[39m
+                [33mtype[39m=[32m"button"[39m
+              [36m>[39m
+                [0mVazgeç[0m
+              [36m</button>[39m
+              [36m<button[39m
+                [33mclass[39m=[32m"inline-flex items-center justify-center gap-2 font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 dark:focus-visible:ring-offset-slate-950 bg-rose-600 text-white shadow-sm hover:bg-rose-700 min-h-10 rounded-xl px-4 text-sm "[39m
+                [33mdisabled[39m=[32m""[39m
+                [33mtype[39m=[32m"button"[39m
+              [36m>[39m
+                [0mTedarikçiye iade et[0m
+              [36m</button>[39m
+            [36m</div>[39m
+          [36m</div>[39m
+        [36m</div>[39m
+      [36m</div>[39m
+    [36m</div>[39m
+  [36m</body>[39m
+[36m</html>[39m
+
+[32m- Expected:[39m 
+"true"
+
+[31m+ Received:[39m 
+null
+
+[36m [2m❯[22m src/components/admin/inventory/DamageDialog.test.tsx:[2m180:9[22m[39m
+    [90m178| [39m      [34mexpect[39m(
+    [90m179| [39m        screen[33m.[39m[34mgetByLabelText[39m([36m/kaynak kova/i[39m)[33m.[39m[34mgetAttribute[39m([32m"aria-inval[39m…
+    [90m180| [39m      )[33m.[39m[34mtoBe[39m([32m"true"[39m)
+    [90m   | [39m        [31m^[39m
+    [90m181| [39m    )[33m;[39m
+    [90m182| [39m    [34mexpect[39m(onSubmit)[33m.[39mnot[33m.[39m[34mtoHaveBeenCalled[39m()[33m;[39m
+[90m [2m❯[22m runWithExpensiveErrorDiagnosticsDisabled node_modules/@testing-library/dom/dist/config.js:[2m47:12[22m[39m
+[90m [2m❯[22m checkCallback node_modules/@testing-library/dom/dist/wait-for.js:[2m124:77[22m[39m
+[90m [2m❯[22m Timeout.checkRealTimersCallback node_modules/@testing-library/dom/dist/wait-for.js:[2m118:16[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/8]⎯[22m[39m
+
+[2m Test Files [22m [1m[31m4 failed[39m[22m[90m (4)[39m
+[2m      Tests [22m [1m[31m5 failed[39m[22m[2m | [22m[1m[32m2 passed[39m[22m[90m (7)[39m
+[2m   Start at [22m 16:00:23
+[2m   Duration [22m 7.95s[2m (transform 137ms, setup 202ms, collect 245ms, tests 6.30s, environment 3.11s, prepare 301ms)[22m
+
