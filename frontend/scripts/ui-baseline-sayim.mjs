@@ -850,17 +850,123 @@ export function dosyaOlcumu(kaynak, dosyaAdi = "olcum.tsx") {
     return null;
   };
 
+  // ── İP-A6b · Görev 4: PROP OLARAK İNEN pencere durumu (BULGU-3) ──
+  //
+  // İP-A5 bağ çözümünü dosya ölçekli ad eşleşmesinden sözlüksel kapsama
+  // çevirdi ve bu DOĞRUYDU (aynı dosyadaki üç ayrı `deleting` bağı tek
+  // sayılıyordu). Ama yeni bir kör nokta açtı: durum ebeveynde yaşayıp aynı
+  // dosyadaki çocuk bileşene **prop olarak** inerse hiç sayılmıyordu —
+  // denetimin M-C mutasyonu tam olarak buydu ve `modalDurumu` 29'da kaldı.
+  //
+  // Çözüm ne A4'e dönmek (aynı adlı iki bağı tek sayardı) ne bugünkü hâl:
+  // önce dosyadaki YEREL bileşenlerin hangi PROP'unun bir pencereye durum
+  // olarak aktığı çıkarılır, sonra o prop'a verilen `useState` bağı sayılır.
+  //
+  // Çıkarım bir SABİT NOKTA (fixpoint) hesabıdır; böylece zincir uzunluğu
+  // sınırlı değildir: `Ust → Cocuk → Torun → XDialog` da çözülür. Her tur bir
+  // sıçrama daha ekler ve yeni bilgi üretilmeyince durur.
+  //
+  // Sınır (dürüstçe): yalnız YIKILARAK alınan proplar (`function C({ acik })`)
+  // izlenir; `props.acik` biçimi ve başka DOSYADAN import edilen bir bileşene
+  // inen durum görünmez. İkincisi bilinçlidir — metrik "ekranda yaşayan
+  // durum"u ölçer ve dosya sınırını aşan bir çıkarım, ölçümü yeniden dosyaların
+  // nasıl bölündüğüne duyarlı yapardı (İP-A5'in düzelttiği kusur).
+  const yerelBilesenler = new Map();
+  const bilesenTopla = (n) => {
+    let ad = null;
+    let govde = null;
+    if (ts.isFunctionDeclaration(n) && n.name && /^[A-Z]/.test(n.name.getText(sf))) {
+      ad = n.name.getText(sf);
+      govde = n;
+    } else if (
+      ts.isVariableDeclaration(n) &&
+      n.name &&
+      ts.isIdentifier(n.name) &&
+      /^[A-Z]/.test(n.name.getText(sf)) &&
+      n.initializer &&
+      (ts.isArrowFunction(n.initializer) || ts.isFunctionExpression(n.initializer))
+    ) {
+      ad = n.name.getText(sf);
+      govde = n.initializer;
+    }
+    if (ad && govde) {
+      // Yıkılan prop'lar: yerel ad → prop adı (`{ acik: gorunur }` de çözülür).
+      const yerelDenProp = new Map();
+      const ilkParam = govde.parameters && govde.parameters[0];
+      if (ilkParam && ts.isObjectBindingPattern(ilkParam.name)) {
+        for (const el of ilkParam.name.elements) {
+          if (!ts.isBindingElement(el) || !ts.isIdentifier(el.name)) continue;
+          const yerel = el.name.getText(sf);
+          yerelDenProp.set(yerel, el.propertyName ? el.propertyName.getText(sf) : yerel);
+        }
+      }
+      yerelBilesenler.set(ad, { govde, yerelDenProp });
+    }
+    ts.forEachChild(n, bilesenTopla);
+  };
+  bilesenTopla(sf);
+
+  /** Yerel bileşen → pencereye durum olarak akan prop adları. */
+  const pencereProplari = new Map();
+  const propEkle = (ad, prop) => {
+    if (!pencereProplari.has(ad)) pencereProplari.set(ad, new Set());
+    if (pencereProplari.get(ad).has(prop)) return false;
+    pencereProplari.get(ad).add(prop);
+    return true;
+  };
+
+  /** Bir JSX özniteliği pencere durumu mu taşıyor? (doğrudan ya da devredilmiş) */
+  const pencereOzniteligiMi = (etiket, ozAdi) =>
+    (PENCERE_BILESENI.test(etiket) && PENCERE_OZNITELIKLERI.has(ozAdi)) ||
+    (pencereProplari.has(etiket) && pencereProplari.get(etiket).has(ozAdi));
+
+  const ifadeTanimlayicilari = (ifade) => {
+    const out = [];
+    const gezIfade = (m) => {
+      if (ts.isIdentifier(m)) out.push(m.getText(sf));
+      ts.forEachChild(m, gezIfade);
+    };
+    gezIfade(ifade);
+    return out;
+  };
+
+  let degisti = true;
+  while (degisti) {
+    degisti = false;
+    for (const [ad, bilesen] of yerelBilesenler) {
+      if (bilesen.yerelDenProp.size === 0) continue;
+      const gezJsx = (n) => {
+        if (ts.isJsxOpeningElement(n) || ts.isJsxSelfClosingElement(n)) {
+          const etiket = n.tagName.getText(sf);
+          for (const p of n.attributes.properties) {
+            if (!ts.isJsxAttribute(p)) continue;
+            const ozAdi = p.name.getText(sf);
+            if (!pencereOzniteligiMi(etiket, ozAdi)) continue;
+            const ifade = p.initializer;
+            if (!ifade || !ts.isJsxExpression(ifade) || !ifade.expression) continue;
+            for (const t of ifadeTanimlayicilari(ifade.expression)) {
+              const prop = bilesen.yerelDenProp.get(t);
+              if (prop && propEkle(ad, prop)) degisti = true;
+            }
+          }
+        }
+        ts.forEachChild(n, gezJsx);
+      };
+      gezJsx(bilesen.govde);
+    }
+  }
+
   const modalBaglari = new Set();
   const modalAra = (n) => {
     if (ts.isJsxOpeningElement(n) || ts.isJsxSelfClosingElement(n)) {
       const etiket = n.tagName.getText(sf);
-      const pencereBileseni = PENCERE_BILESENI.test(etiket);
       for (const p of n.attributes.properties) {
         if (!ts.isJsxAttribute(p)) continue;
         const ad = p.name.getText(sf);
-        if (!PENCERE_OZNITELIKLERI.has(ad)) continue;
-        // `open` gibi genel bir öznitelik yalnız pencere bileşeninde sayılır.
-        if (!pencereBileseni) continue;
+        // `open` gibi genel bir öznitelik yalnız PENCERE bileşeninde sayılır;
+        // yerel bir bileşende ise ancak o prop'un pencereye AKTIĞI çıkarıldıysa
+        // (İP-A6b · Görev 4 · sabit nokta hesabı).
+        if (!pencereOzniteligiMi(etiket, ad)) continue;
         const ifade = p.initializer;
         if (!ifade || !ts.isJsxExpression(ifade) || !ifade.expression) continue;
         // İfadenin İÇİNDEKİ tüm tanımlayıcılara bakılır: `open={!!acik}`,

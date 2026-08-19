@@ -116,6 +116,11 @@ const MODAL_DURUM_DOSYALARI = [
   // hepsi `ui2/duzenlemeYuzeyi`ne taşındı. Bu, göçün TERSİ değil kendisidir:
   // listeden ÇIKMAK beklenen yöndür, listeye GİRMEK kırılma sebebidir.
   "src/pages/admin/AdminAccessPage.tsx",
+  // İP-A6b · Görev 4: PROP OLARAK İNEN durum artık sayılıyor. `selected`
+  // ekranda yaşıyor, `AuditDetailDialog`a `log` prop'u olarak iniyor ve orada
+  // `<Dialog open={log !== null}>`e veriliyor — bugüne dek görünmüyordu.
+  // Saha sayımı: TÜM tabanda bu desenin tek örneği budur (29 → 32'nin +1'i).
+  "src/pages/admin/AdminAuditLogsPage.tsx",
   "src/pages/admin/AdminBookingsPage.tsx",
   "src/pages/admin/AdminDemandsPage.tsx",
   "src/pages/admin/AdminOperationsPage.tsx",
@@ -239,9 +244,14 @@ describe("İP-A1 nöbetçi eşikleri", () => {
     // `CouponsPanel`, `ReturnsPanel`, `OrdersPanel`de iki) düzenleme
     // yüzeyine taşındı. İP-A5'in öngördüğü düşüş buydu; ölçülen -6 (öngörü
     // -5 idi, `editing` de sayıldığı için bir fazla).
-    // İP-A6b'de 29 → 31: import grafiği `ExamSessionsManager`ın iki bağını
-    // görünür etti (Görev 3).
-    expect(olcum.modalDurumu).toBeLessThanOrEqual(31);
+    // İP-A6b'de 29 → 32. İki ayrı sebep, ikisi de ölçümün dürüstleşmesi:
+    //   +2  import grafiği (Görev 3) → `ExamSessionsManager`ın iki bağı
+    //   +1  prop olarak inen durum (Görev 4 · BULGU-3) → `AdminAuditLogsPage`
+    //
+    // Saha sayımı (Görev 4'ün açık bıraktığı soru): tüm tabanda prop-ile-inen
+    // pencere durumunun TEK örneği vardır. Denetim bunu sentetik mutasyonla
+    // kanıtlamıştı; gerçek sayı ölçülmemişti ve tahmin eşiğe yazılmamıştı.
+    expect(olcum.modalDurumu).toBeLessThanOrEqual(32);
   });
 
   it("pencere durumu tutan dosya listesi sabittir (pilot listede DEĞİL)", () => {
