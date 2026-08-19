@@ -53,10 +53,20 @@ import type { ComponentType, ReactElement } from "react";
  * `props`       : propsuz mount edilemez (zorunlu veri/geri çağrı ister). Sığ
  *                 kapı bunları göremez; borçları derin dal testleriyle ve göç
  *                 sırasında yazılacak ekran testleriyle kapanır.
+ * `baglam`      : tek başına değil, bir sağlayıcı ağacının içinde yaşar.
  * `bilesen-yok` : modül render edilebilir bir bileşen dışa vermiyor
  *                 (namespace nesnesi ya da yalnız hook).
  */
-const KAPI_DISI: Record<string, { tur: "props" | "bilesen-yok"; gerekce: string }> = {
+const KAPI_DISI: Record<string, { tur: "props" | "bilesen-yok" | "baglam"; gerekce: string }> = {
+  // ── İP-A6b · Görev 3: import grafiğinin getirdiği 27 dosyadan 7'si ──
+  // Yirmisi kapıda mount ediliyor; bu yedisi propsuz/ bağlamsız açılamıyor.
+  "src/components/Avatar.tsx": { tur: "props", gerekce: "zorunlu ad (bas harf uretimi)" },
+  "src/components/DeliveryRouteMap.tsx": { tur: "props", gerekce: "zorunlu run (duraklar)" },
+  "src/components/LibrariesMap.tsx": { tur: "props", gerekce: "zorunlu kutuphane dizisi" },
+  "src/components/LibraryEditorModal.tsx": { tur: "props", gerekce: "zorunlu kayit (duzenlenen kutuphane)" },
+  "src/components/LibraryMapPanel.tsx": { tur: "props", gerekce: "zorunlu kutuphane (slug)" },
+  "src/components/map/MapGate.tsx": { tur: "baglam", gerekce: "leaflet MapContainer baglami gerekiyor" },
+  "src/components/ui/Field.tsx": { tur: "props", gerekce: "children fonksiyon olarak bekleniyor (render prop)" },
   "src/components/admin/ProductPicker.tsx": {
     tur: "props",
     gerekce: "zorunlu secili dizisi + geri cagri",
@@ -116,6 +126,25 @@ const DERIN_KAPI = [
   "src/components/admin/ui2/form.tsx",
   "src/pages/dashboards/AdminStore.tsx",
 ];
+
+/**
+ * ── Çalışma zamanı ADSIZ KONTROL TABANI (İP-A6b · Görev 3 + Görev 6) ──
+ *
+ * Varsayılan render'da erişilebilir adı olmayan kontroller — **dosya başına
+ * sayısıyla**. Yedisi de import grafiğinin (Görev 3) görünür ettiği GERÇEK
+ * borçtur; bu pakette kapatılmaz, çünkü paketin kuralı "davranış değişmez"dir
+ * (kapatmak `ui2/Form`a göç demektir → İP-A6c/A7).
+ *
+ * Sayı değil KİMLİK sabitlenir: yeni bir dosyanın listeye girmesi de,
+ * listedeki bir borcun kapanması da testi kırar. İkincisi DOĞRU davranıştır —
+ * borç kapandığında bu liste bilinçli olarak küçültülür ve düşüş rapora yazılır
+ * (aksi hâlde "sayı düştü" ile "ekran ölçümden çıktı" ayırt edilemez).
+ */
+const CALISMA_ZAMANI_ADSIZ: Record<string, number> = {
+  "src/components/ImageCropModal.tsx": 1, // yakınlaştırma kaydırağı (type=range)
+  "src/components/LibraryPayoutForm.tsx": 5, // IBAN/unvan/TCKN… beşi de placeholder ile
+  "src/components/MapPicker.tsx": 1, // adres arama kutusu
+};
 
 const moduller = import.meta.glob("/src/**/*.tsx");
 
@@ -177,8 +206,8 @@ describe("İP-A6b çalışma zamanı kapısı · kapsam iki yönlü korunur", ()
     expect(kapsanan.length + Object.keys(KAPI_DISI).length).toBe(tabanEkranlari.length);
     // Sessiz daralmanın sayısal nöbetçisi: kapsam bugünkü seviyenin altına
     // inemez. Bir ekran kapı dışına çıkarılırsa BURADA görünür.
-    // Bugün ölçülen: 78 taban `.tsx` − 10 gerekçeli = **68 ekran kapıda**.
-    expect(kapsanan.length).toBeGreaterThanOrEqual(68);
+    // Bugün ölçülen: 105 taban `.tsx` − 17 gerekçeli = **88 ekran kapıda**.
+    expect(kapsanan.length).toBeGreaterThanOrEqual(88);
   });
 
   it("KAPI_DISI gerekçeleri doğrudur: park edilen ekran gerçekten mount edilemiyor", async () => {
@@ -207,8 +236,9 @@ describe("İP-A6b çalışma zamanı kapısı · kapsam iki yönlü korunur", ()
 });
 
 describe("İP-A6b çalışma zamanı kapısı · adsız kontrol", () => {
-  it("kapsanan her ekran mount edilir ve RENDER EDİLEN adsız kontrol sayısı 0'dır", async () => {
-    const adsiz: string[] = [];
+  it("kapsanan her ekran mount edilir; adsız kontrol tabanı KİMLİKLE sabittir", async () => {
+    const adsiz: Record<string, number> = {};
+    const ornekler: string[] = [];
     const mountEdilemeyen: string[] = [];
     let toplamKontrol = 0;
 
@@ -221,7 +251,10 @@ describe("İP-A6b çalışma zamanı kapısı · adsız kontrol", () => {
       try {
         const o = kontrolOlcumu(kosum(C));
         toplamKontrol += o.toplam;
-        for (const html of o.adsizHtml) adsiz.push(`${dosya}\n  ${html}`);
+        if (o.adsiz > 0) {
+          adsiz[dosya] = o.adsiz;
+          for (const html of o.adsizHtml) ornekler.push(`${dosya}\n  ${html}`);
+        }
       } catch (e) {
         mountEdilemeyen.push(`${dosya}: ${(e as Error).message.split("\n")[0]}`);
       }
@@ -234,12 +267,14 @@ describe("İP-A6b çalışma zamanı kapısı · adsız kontrol", () => {
       `kapida mount edilemedi:\n${mountEdilemeyen.join("\n")}`
     ).toEqual([]);
     // (b) Yalancı yeşil kapısı: hiçbir kontrol render edilmediyse "0 adsız"
-    //     bir şey kanıtlamaz. Bugün ölçülen taban 31 kontroldür.
+    //     bir şey kanıtlamaz. Bugün ölçülen taban 39 kontroldür.
     expect(
       toplamKontrol,
       "hic kontrol render edilmedi — kapi bosa kosuyor"
-    ).toBeGreaterThanOrEqual(31);
-    // (c) Asıl kural.
-    expect(adsiz, `varsayilan render'da adsiz kontrol:\n${adsiz.join("\n")}`).toEqual([]);
+    ).toBeGreaterThanOrEqual(39);
+    // (c) Asıl kural: taban KİMLİKLE sabit — yeni borç da, sessiz düşüş de kırar.
+    expect(adsiz, `varsayilan render'da adsiz kontrol:\n${ornekler.join("\n")}`).toEqual(
+      CALISMA_ZAMANI_ADSIZ
+    );
   }, 120000);
 });

@@ -140,6 +140,44 @@ export const EK_TABAN_DOSYALARI = [
  * öyleyse çıkar". Sessizce güncellenmesi eşikleri anlamsızlaştırır.
  */
 export const OLCUM_TABANI = [
+  // ── İP-A6b · Görev 3: İMPORT GRAFİĞİNİN GETİRDİĞİ 27 DOSYA ──
+  //
+  // Bunlar panel ekranlarının DOĞRUDAN (ya da onların üzerinden geçişli olarak)
+  // import ettiği yerel `.tsx` bileşenleridir; dizin kuralı hiçbirini
+  // görmüyordu. Aralarında göç edecek asıl düzenleme yüzeyleri var:
+  // `LibraryEditorModal` (15 kontrol), `ExamSessionsManager` (14 ham düğme,
+  // 2 adsız kontrol, 1 etiketsiz overlay), `LibraryPayoutForm` (5 adsız
+  // kontrol), `MapPicker` (9 ham düğme). `AdminLibraries`/`AdminExamCatalogs`
+  // zaten ölçülüyordu ama o ekranların DÜZENLEME yüzeyi ölçüm dışındaydı.
+  //
+  // Eşiklerdeki artış regresyon DEĞİL, ölçümün dürüstleşmesidir (Görev 6).
+  "src/components/AmenityTagGrid.tsx",
+  "src/components/AppIcon.tsx",
+  "src/components/Avatar.tsx",
+  "src/components/DashboardHeader.tsx",
+  "src/components/DashboardShell.tsx",
+  "src/components/DeliveryRouteMap.tsx",
+  "src/components/ExamSessionsManager.tsx",
+  "src/components/ImageCropModal.tsx",
+  "src/components/LibrariesMap.tsx",
+  "src/components/LibraryBookmarkButton.tsx",
+  "src/components/LibraryEditorModal.tsx",
+  "src/components/LibraryMapPanel.tsx",
+  "src/components/LibraryMediaManager.tsx",
+  "src/components/LibraryPayoutForm.tsx",
+  "src/components/MapPicker.tsx",
+  "src/components/NavbarWidget.tsx",
+  "src/components/NotificationsBell.tsx",
+  "src/components/PersonalizeModal.tsx",
+  "src/components/PinIcon.tsx",
+  "src/components/QrScanner.tsx",
+  "src/components/ShareButton.tsx",
+  "src/components/ShareModal.tsx",
+  "src/components/Spinner.tsx",
+  "src/components/StarRating.tsx",
+  "src/components/map/MapGate.tsx",
+  "src/components/ui/Field.tsx",
+  "src/components/ui/Modal.tsx",
   "src/components/admin/AccessState.tsx",
   "src/components/admin/CourierManager.tsx",
   "src/components/admin/ProductPicker.tsx",
@@ -233,6 +271,123 @@ export const OLCUM_TABANI = [
   "src/pages/dashboards/OperatorSessions.tsx",
 ];
 
+/**
+ * ── İMPORT GRAFİĞİ: tabanın ikinci denetleyicisi (İP-A6b · Görev 3 · BULGU-2) ──
+ *
+ * Taban eskiden yalnız DİZİN kuralıyla denetleniyordu (`components/admin/**`,
+ * `pages/admin/**`, `dashboards/Admin*` + `EK_TABAN_DOSYALARI`). Denetim #2 bu
+ * sınırın kaçış ürettiğini ölçtü (M-B): ölçülen bir ekranın **doğrudan import
+ * ettiği** bir bileşen bu ağacın dışındaysa borcu hiç görünmüyordu —
+ * `src/lib/denetim2Kacak.tsx` (3 ham düğme · 3 adsız kontrol · 1 etiketsiz
+ * overlay) nöbetçilerden 39/39 yeşil geçti.
+ *
+ * Sentetik bir risk değildi: ölçülen 82 dosyanın doğrudan import ettiği dokuz
+ * yerel bileşen (`ExamSessionsManager` 14 düğme, `LibraryEditorModal` 15
+ * kontrol, `MapPicker` 9 düğme, `QrScanner`, `LibraryPayoutForm` 5 adsız
+ * kontrol…) ölçümün dışındaydı. Göç edecek düzenleme yüzeyinin ÇOĞU
+ * görünmüyordu.
+ *
+ * ## Kural (örnek listeyle değil, kuralla yazılır)
+ *
+ *   1. Ölçüm tabanından ulaşılan **her yerel `.tsx` modülü** ya
+ *      `OLCUM_TABANI`'nda olmalı ya da `fazlaDosyalar`a düşmelidir. Kapanış
+ *      GEÇİŞLİDİR (fixpoint): listeye giren dosyanın importları da aynı kurala
+ *      tabidir.
+ *   2. Kapanış **`.ts` modüllerinde DURUR**. Gerekçe: ölçülen dört metriğin
+ *      dördü de JSX metriğidir (`<button`, form kontrolü, `fixed inset-0`
+ *      overlay, `@medusajs/ui` importu — sonuncusu zaten TÜM ağaçta ölçülür).
+ *      `.ts` dosyası JSX taşıyamaz; api/hook/lib katmanını tabana çekmek
+ *      ölçümü panelin arayüzü olmayan yüzlerce dosyayla şişirirdi.
+ *   3. `.ts` içindeki tek olası kaçak `React.createElement("button")`tır ve
+ *      ayrı bir BÜTÜN-AĞAÇ nöbetçisiyle kapatılır (`tsHamButonlari`) — yani
+ *      kapanışın `.ts`te durması bir delik bırakmaz.
+ *   4. Test dosyaları kapsam dışıdır (walk ile aynı gerekçe: fixture'lardaki
+ *      ham etiketler borç değildir).
+ *
+ * Grafik `paths` çözümünü TypeScript'in konfigürasyonundan okumaz; bu depoda
+ * tek takma ad `@/*` → `src/*`tır ve burada elle karşılanır. Yeni bir takma ad
+ * eklenirse buraya da eklenmelidir — aksi hâlde o yoldan gelen import sessizce
+ * çözülmez, bu yüzden `cozulmeyenIthaller` ayrıca raporlanır.
+ */
+const ITHAL_UZANTILARI = [".tsx", "/index.tsx"];
+
+/** Bir import metnini repo köküne göreli `.tsx` yoluna çözer; çözemezse null. */
+export function ithalYolunuCoz(kaynakDosya, metin) {
+  let temel;
+  if (metin.startsWith("@/")) temel = posix.join("src", metin.slice(2));
+  else if (metin.startsWith(".")) temel = posix.normalize(posix.join(posix.dirname(kaynakDosya), metin));
+  else return null; // paket importu — yerel modül değil
+  const aday = (y) => (existsSync(join(ROOT, y)) && !/\.test\.tsx?$/.test(y) ? y : null);
+  if (/\.tsx$/.test(temel)) return aday(temel);
+  for (const ek of ITHAL_UZANTILARI) {
+    const bulunan = aday(temel + ek);
+    if (bulunan) return bulunan;
+  }
+  return null;
+}
+
+/** Bir dosyanın import/export/dinamik-import metinleri (AST — yorumdaki yol sayılmaz). */
+export function ithalMetinleri(kaynak, dosyaAdi) {
+  const sf = ts.createSourceFile(
+    dosyaAdi,
+    kaynak,
+    ts.ScriptTarget.Latest,
+    true,
+    /\.tsx$/.test(dosyaAdi) ? ts.ScriptKind.TSX : ts.ScriptKind.TS
+  );
+  const out = [];
+  const gez = (n) => {
+    if (
+      (ts.isImportDeclaration(n) || ts.isExportDeclaration(n)) &&
+      n.moduleSpecifier &&
+      ts.isStringLiteral(n.moduleSpecifier)
+    ) {
+      out.push(n.moduleSpecifier.text);
+    }
+    if (
+      ts.isCallExpression(n) &&
+      n.expression.kind === ts.SyntaxKind.ImportKeyword &&
+      n.arguments[0] &&
+      ts.isStringLiteral(n.arguments[0])
+    ) {
+      out.push(n.arguments[0].text);
+    }
+    ts.forEachChild(n, gez);
+  };
+  gez(sf);
+  return out;
+}
+
+/** Tohum dosyalardan GEÇİŞLİ olarak ulaşılan yerel `.tsx` modülleri (tohumlar hariç). */
+export function ulasilanModuller(tohumlar) {
+  const gorulen = new Set(tohumlar);
+  const kuyruk = tohumlar.filter((f) => existsSync(join(ROOT, f)));
+  const ulasilan = new Set();
+  while (kuyruk.length > 0) {
+    const dosya = kuyruk.pop();
+    for (const metin of ithalMetinleri(readFileSync(join(ROOT, dosya), "utf8"), dosya)) {
+      const hedef = ithalYolunuCoz(dosya, metin);
+      if (!hedef || gorulen.has(hedef)) continue;
+      gorulen.add(hedef);
+      ulasilan.add(hedef);
+      kuyruk.push(hedef);
+    }
+  }
+  return [...ulasilan].sort();
+}
+
+/**
+ * `.ts` (JSX'siz) dosyalarda `React.createElement("button")` ile üretilmiş ham
+ * düğmeler — import grafiğinin `.ts`te durmasının bıraktığı tek deliği kapatır.
+ * Bütün kaynak ağacında aranır, tabanla sınırlı değildir.
+ */
+export function tsHamButonlari() {
+  return allSource()
+    .filter((f) => f.endsWith(".ts"))
+    .filter((f) => dosyaOlcumu(readFileSync(join(ROOT, f), "utf8"), f).rawButton > 0)
+    .sort();
+}
+
 /** Dizin kuralıyla BULUNAN taban adayları — artık ölçümün kaynağı DEĞİL, denetleyicisi. */
 export function kesfedilenTaban() {
   const files = [...walk("src/components/admin"), ...walk("src/pages/admin")];
@@ -251,11 +406,15 @@ export function kesfedilenTaban() {
  * `olculen` yalnız listede OLAN ve diskte DURAN dosyalardır: eksik bir
  * dosyanın sayısı uydurulamaz, ama eksikliği `eksik` üzerinden bağırır.
  */
-export function tabanDurumu() {
+export function tabanDurumu(taban = OLCUM_TABANI) {
   const varMi = (f) => existsSync(join(ROOT, f));
-  const olculen = OLCUM_TABANI.filter(varMi);
-  const eksik = OLCUM_TABANI.filter((f) => !varMi(f));
-  const fazla = kesfedilenTaban().filter((f) => !OLCUM_TABANI.includes(f));
+  const olculen = taban.filter(varMi);
+  const eksik = taban.filter((f) => !varMi(f));
+  // İki denetleyici birden (İP-A6b · Görev 3): DİZİN kuralı + İMPORT GRAFİĞİ.
+  // Birincisi "panel ağacına yeni dosya doğdu"yu, ikincisi "ölçülen ekran
+  // borcunu ağacın dışına devretti"yi yakalar. M-B yalnız ikincisiyle görülür.
+  const adaylar = new Set([...kesfedilenTaban(), ...ulasilanModuller(olculen)]);
+  const fazla = [...adaylar].filter((f) => !taban.includes(f)).sort();
   return { olculen, eksik, fazla };
 }
 
@@ -280,6 +439,13 @@ export const PRINT_LAYERS = [
 
 /** `role="dialog"` + `aria-modal` taşımayan gerçek overlay'i olan dosyalar (İP-A0 tespiti). */
 export const UNLABELED_OVERLAY_FILES = [
+  // İP-A6b · Görev 3: import grafiğiyle görünür olan İKİ dosya listeye GİRDİ.
+  // Borç yeni doğmadı — bugüne dek ölçümün dışındaydı: ikisi de ölçülen bir
+  // ekranın (`AdminLibraries`, `AdminExamCatalogs`) asıl düzenleme yüzeyidir
+  // ve kendi `fixed inset-0` katmanını `role="dialog"`/`aria-modal` olmadan
+  // kuruyor. 4 → 6.
+  "src/components/ExamSessionsManager.tsx",
+  "src/components/LibraryEditorModal.tsx",
   // İP-A6 · Görev 4b: `store/EditProductModal.tsx` bu listeden ÇIKTI.
   // Kendi `createPortal` + `fixed inset-0` katmanını kuruyordu ve
   // `role="dialog"`/`aria-modal` taşımıyordu; artık `ui2/duzenlemeYuzeyi`nin

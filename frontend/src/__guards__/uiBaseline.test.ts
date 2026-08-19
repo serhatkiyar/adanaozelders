@@ -77,6 +77,7 @@ import { describe, expect, it } from "vitest";
 import {
   OLCUM_TABANI,
   sayim,
+  tsHamButonlari,
   UNLABELED_OVERLAY_FILES,
 } from "../../scripts/ui-baseline-sayim.mjs";
 
@@ -103,6 +104,10 @@ import {
  * göçün tersine işlediği anlamına gelir ve test kırılır.
  */
 const MODAL_DURUM_DOSYALARI = [
+  // İP-A6b · Görev 3: import grafiğiyle görünür oldu (iki bağ). Borç yeni
+  // doğmadı; `AdminLibraries`/`AdminExamCatalogs`ın oturum yönetimi yüzeyi
+  // bugüne dek ölçüm dışındaydı.
+  "src/components/ExamSessionsManager.tsx",
   "src/components/admin/CourierManager.tsx",
   "src/components/admin/delivery/ClosedDays.tsx",
   // İP-A6 · Görev 4d: `store/` altındaki BEŞ dosya bu listeden ÇIKTI.
@@ -167,7 +172,10 @@ describe("İP-A1 nöbetçi eşikleri", () => {
     // `ProductForm`un katlanır bölüm başlığıdır (`KatlanirBaslik`) ve
     // BİLİNÇLİDİR: bir aksiyon değil, `aria-expanded` taşıyan bir açma/kapama
     // denetimi; ortak `Button`ın dolgu/gölge varyantları oraya uymuyor.
-    expect(olcum.rawButton).toBeLessThanOrEqual(131);
+    // İP-A6b'de 131 → 199 (**+68**): import grafiği (Görev 3) tabana 27 dosya
+    // ekledi. Borç ARTMADI — bugüne dek ölçülmüyordu: `ExamSessionsManager` 14,
+    // `MapPicker` 9, `PersonalizeModal` 7, `ImageCropModal` 6, `LibraryEditorModal` 5…
+    expect(olcum.rawButton).toBeLessThanOrEqual(199);
   });
 
   it("erişilebilir adı olmayan form kontrolü artamaz (taban 30)", () => {
@@ -201,7 +209,10 @@ describe("İP-A1 nöbetçi eşikleri", () => {
     // Buradaki tavan TEŞHİS olarak duruyor: kaynakta yazılı borcun sessizce
     // büyümemesini tutar ve `adsizKontrolDosyalari` göç edene nereye bakacağını
     // söyler. Tek başına "adsız alan yok" kanıtı DEĞİLDİR.
-    expect(olcum.adsizKontrol).toBeLessThanOrEqual(30);
+    // İP-A6b'de 30 → 41 (**+11**): import grafiğinin getirdiği dosyalarda
+    // zaten duran borç (`LibraryPayoutForm` 5, `ExamSessionsManager` 2,
+    // `PersonalizeModal` 2, `ImageCropModal` 1, `MapPicker` 1).
+    expect(olcum.adsizKontrol).toBeLessThanOrEqual(41);
   });
 
 
@@ -228,7 +239,9 @@ describe("İP-A1 nöbetçi eşikleri", () => {
     // `CouponsPanel`, `ReturnsPanel`, `OrdersPanel`de iki) düzenleme
     // yüzeyine taşındı. İP-A5'in öngördüğü düşüş buydu; ölçülen -6 (öngörü
     // -5 idi, `editing` de sayıldığı için bir fazla).
-    expect(olcum.modalDurumu).toBeLessThanOrEqual(29);
+    // İP-A6b'de 29 → 31: import grafiği `ExamSessionsManager`ın iki bağını
+    // görünür etti (Görev 3).
+    expect(olcum.modalDurumu).toBeLessThanOrEqual(31);
   });
 
   it("pencere durumu tutan dosya listesi sabittir (pilot listede DEĞİL)", () => {
@@ -239,6 +252,13 @@ describe("İP-A1 nöbetçi eşikleri", () => {
     );
   });
 
+  it("hiçbir .ts dosyası createElement(\"button\") ile ham düğme üretmiyor", () => {
+    // İP-A6b · Görev 3: import grafiği `.ts` modüllerinde DURUYOR (JSX
+    // taşıyamazlar). Kapanışın orada durmasının bıraktığı tek delik budur ve
+    // bütün kaynak ağacında aranarak kapatılır — taban ile sınırlı değil.
+    expect(tsHamButonlari()).toEqual([]);
+  });
+
   it("ui2/ dışında @medusajs/ui import eden dosya yok", () => {
     // Kalıcı kural: ekran dosyaları Medusa'yı doğrudan import etmez.
     expect(olcum.medusaDirectImports).toEqual([]);
@@ -246,7 +266,9 @@ describe("İP-A1 nöbetçi eşikleri", () => {
 
   it("role=dialog/aria-modal taşımayan overlay sayısı artamaz (taban 4)", () => {
     // İP-A6'da 5 → 4: `store/EditProductModal.tsx` ortak yüzeye geçti.
-    expect(olcum.unlabeledOverlays).toBeLessThanOrEqual(4);
+    // İP-A6b'de 4 → 6: import grafiğiyle görünen `ExamSessionsManager` ve
+    // `LibraryEditorModal` kendi katmanlarını etiketsiz kuruyor (Görev 3).
+    expect(olcum.unlabeledOverlays).toBeLessThanOrEqual(6);
   });
 
   it("etiketsiz overlay'i olan dosya listesi sabittir", () => {
