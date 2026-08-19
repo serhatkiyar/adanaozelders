@@ -25,6 +25,37 @@
  * Yan kazanç: `<button` ile `<ButtonGroup` ayrımı, kendi kapanan `<button />`
  * biçimi ve `role={"dialog"}` gibi ifade biçimleri artık doğru okunuyor.
  *
+ * ## ⚠️ Sayacın GERÇEĞİ SÖYLEMEYİ BIRAKTIĞI YER (İP-A6b · BULGU-1)
+ *
+ * Bu sayaç kaynakta **YAZILANI** sayar; kullanıcı **RENDER EDİLENİ** görür.
+ * İkisi aynı şey değildir ve fark üretimde bugün de var:
+ *
+ *   - `store/ProductForm.tsx` → `KunyeAlani` **tek yazım**, dokuz çağrı yeri
+ *   - 158 yazımın 7'si bir `.map()` içinde (`AdminAccessPage:161,205` ·
+ *     `DeliveryOrdersPage:299` · `PackagesPage:298` · `OperatorLibrary:565,581,588`)
+ *
+ * Denetim #2 bunu mutasyonla ölçtü (M-A): ölçülen bir dosyaya on iki çağrılı,
+ * tek yazımlık, **adsız** bir alan fabrikası eklendi ve aynı dosyada bir borç
+ * `aria-label` ile kapatıldı. Gerçek borç **+11**, çalışma zamanında **12**
+ * adsız kontrol; sayaç **+0** dedi ve nöbetçiler 39/39 yeşil geçti.
+ *
+ * Bu yüzden **"adsız kontrol" EŞİĞİNİN doğruluk kaynağı artık bu dosya
+ * değildir**. Kapı çalışma zamanına devredildi:
+ *
+ *   - `src/__guards__/calismaZamaniKapisi.test.tsx` — mount edilebilen her
+ *     taban ekranı render edilir, adsız kontrol DOM'dan sayılır (sığ)
+ *   - `src/pages/dashboards/adminStoreDalAdlari.acceptance.test.tsx` — göç
+ *     eden formların TÜM koşullu dalları açılır (derin)
+ *   - kalıcı kayıt ve mutasyon: `src/__guards__/mA.kacis.test.tsx`
+ *
+ * `adsizKontrol` burada **teşhis sayısı** olarak kalır (dosya + satır listesi
+ * üretir; göç eden kişinin nereye bakacağını söyler) ve `uiBaseline.test.ts`te
+ * hâlâ bir TAVAN olarak tutulur — ama tek başına kanıt değildir.
+ *
+ * Aynı ayrım `modalDurumu` için GEÇERLİ DEĞİLDİR: pencere durumunun nerede
+ * yaşadığı sözdizimsel bir olgudur, DOM'da gözlenmez; o metrik bilinçli olarak
+ * kaynak üzerinde kalır (İP-A6b · Görev 4).
+ *
  * Hem CLI'dan (`node scripts/ui-baseline-sayim.mjs`) hem testten çağrılır.
  */
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";

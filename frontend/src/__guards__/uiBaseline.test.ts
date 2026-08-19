@@ -186,6 +186,21 @@ describe("İP-A1 nöbetçi eşikleri", () => {
     // `placeholder` etiket yerine kullanılıyordu — ve hepsi `Form.Item` +
     // `Form.Label` + `Form.Control`a geçti. `store/` ağacında artık SIFIR
     // adsız kontrol var.
+    // ── İP-A6b · Görev 2: BU EŞİK ARTIK DOĞRULUK KAYNAĞI DEĞİLDİR ──
+    //
+    // Sayaç kaynakta YAZILANI sayar; kullanıcı RENDER EDİLENİ görür. On iki
+    // çağrılı tek yazımlık bir alan fabrikası buraya **bir** kontrol gibi
+    // görünür (M-A · `mA.kacis.test.tsx`: gerçek borç +11, bu sayı +0).
+    //
+    // Kapı çalışma zamanına devredildi:
+    //   - `calismaZamaniKapisi.test.tsx` — mount edilebilen 68 taban ekranı
+    //     render edilir, adsız kontrol DOM'dan sayılır (bugün: 0)
+    //   - `adminStoreDalAdlari.acceptance.test.tsx` — göç eden formların TÜM
+    //     koşullu dalları açılır
+    //
+    // Buradaki tavan TEŞHİS olarak duruyor: kaynakta yazılı borcun sessizce
+    // büyümemesini tutar ve `adsizKontrolDosyalari` göç edene nereye bakacağını
+    // söyler. Tek başına "adsız alan yok" kanıtı DEĞİLDİR.
     expect(olcum.adsizKontrol).toBeLessThanOrEqual(30);
   });
 
