@@ -105,6 +105,18 @@ const OLCUM_TABANI = [
   "src/components/admin/layout/adminNavigation.ts",
   "src/components/admin/packing/PackageLabel.tsx",
   "src/components/admin/packing/PackingLabelSheet.tsx",
+  // İP-A5 · `AdminStore.tsx` bölmesi. Bu sekiz satır OLMAZSA borç ölçüm
+  // dışına kaçardı: 26 adsız kontrol, 28 ham buton ve bir etiketsiz overlay
+  // eski dosyadan bu dosyalara taşındı. Liste güncellenmeseydi taban testi
+  // kırılırdı — nöbetçinin tam olarak istenen davranışı budur.
+  "src/components/admin/store/BulkImportPanel.tsx",
+  "src/components/admin/store/CategoriesPanel.tsx",
+  "src/components/admin/store/CouponsPanel.tsx",
+  "src/components/admin/store/EditProductModal.tsx",
+  "src/components/admin/store/OrdersPanel.tsx",
+  "src/components/admin/store/ProductForm.tsx",
+  "src/components/admin/store/ProductsPanel.tsx",
+  "src/components/admin/store/ReturnsPanel.tsx",
   "src/components/admin/ui/Badge.tsx",
   "src/components/admin/ui/Button.tsx",
   "src/components/admin/ui/ConfirmDialog.tsx",
@@ -167,6 +179,15 @@ const OLCUM_TABANI = [
 const MODAL_DURUM_DOSYALARI = [
   "src/components/admin/CourierManager.tsx",
   "src/components/admin/delivery/ClosedDays.tsx",
+  // İP-A5: `AdminStore.tsx`in DÖRT adı (`decision`, `deleting`,
+  // `iadeSiparisi`, `teslimSiparisi`) BEŞ bağ olarak bu dosyalara dağıldı —
+  // üç ayrı `deleting` bağı vardı ve eski sayaç ikisini görmüyordu
+  // (aşağıdaki eşik notuna bak). Pencere kodu DEĞİŞMEDİ, yeri değişti.
+  "src/components/admin/store/CategoriesPanel.tsx",
+  "src/components/admin/store/CouponsPanel.tsx",
+  "src/components/admin/store/OrdersPanel.tsx",
+  "src/components/admin/store/ProductsPanel.tsx",
+  "src/components/admin/store/ReturnsPanel.tsx",
   "src/pages/admin/AdminAccessPage.tsx",
   "src/pages/admin/AdminBookingsPage.tsx",
   "src/pages/admin/AdminDemandsPage.tsx",
@@ -185,7 +206,6 @@ const MODAL_DURUM_DOSYALARI = [
   "src/pages/dashboards/AdminExamCatalogs.tsx",
   "src/pages/dashboards/AdminHome.tsx",
   "src/pages/dashboards/AdminLibraries.tsx",
-  "src/pages/dashboards/AdminStore.tsx",
 ];
 
 const olcum = sayim();
@@ -228,8 +248,18 @@ describe("İP-A1 nöbetçi eşikleri", () => {
   // kaymayı ve YAYILMAYI ayrı ayrı tutar: sayı artamaz, VE listeye yeni dosya
   // giremez. Sadece sayıya bakmak yetmezdi — göç eden bir ekran borcunu
   // kapatırken başka bir ekran yenisini ekleyebilir ve toplam sabit kalırdı.
-  it("ekranda yaşayan pencere durumu artamaz (taban 33)", () => {
-    expect(olcum.modalDurumu).toBeLessThanOrEqual(33);
+  it("ekranda yaşayan pencere durumu artamaz (taban 35)", () => {
+    // İP-A5'te 33 → 35: BORÇ ARTMADI, sayaç düzeltildi. Metriğin yazılı
+    // sözleşmesi "bağ başına bir kez" idi ama uygulama dosya başına bir
+    // `Set<ad>` tutuyordu; `AdminStore.tsx`teki ÜÇ ayrı `deleting` bağı
+    // (ürün satırı, kategori satırı, kupon satırı) tek bağ sayılıyordu.
+    //
+    // Kusuru İP-A5'in bölmesi görünür etti: üç bağ üç ayrı dosyaya
+    // gidince eski sayaç aynı JSX için 33 yerine 35 diyecekti — yani ölçüm,
+    // ölçtüğü şeyin dosyalara nasıl dağıldığına bağlıydı. Sayaç artık bağı
+    // ADIYLA değil BİLDİRİM YERİYLE ayırt ediyor (sözlüksel kapsam) ve
+    // sonuç bölmeden ÖNCE de SONRA da 35'tir.
+    expect(olcum.modalDurumu).toBeLessThanOrEqual(35);
   });
 
   it("pencere durumu tutan dosya listesi sabittir (pilot listede DEĞİL)", () => {

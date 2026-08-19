@@ -112,10 +112,13 @@ export const PRINT_LAYERS = [
 
 /** `role="dialog"` + `aria-modal` taşımayan gerçek overlay'i olan dosyalar (İP-A0 tespiti). */
 export const UNLABELED_OVERLAY_FILES = [
+  // İP-A5: `AdminStore.tsx`in overlay'i (`EditProductModal`) bölme sırasında
+  // kendi dosyasına taşındı. Overlay SAYISI değişmedi (5) — yalnız hangi
+  // dosyada durduğu değişti; JSX'ine dokunulmadı, etiketlenmesi İP-A6'nın işi.
+  "src/components/admin/store/EditProductModal.tsx",
   "src/pages/admin/AdminPayoutsPage.tsx",
   "src/pages/dashboards/AdminExamCatalogs.tsx",
   "src/pages/dashboards/AdminLibraries.tsx",
-  "src/pages/dashboards/AdminStore.tsx",
 ];
 
 const MEDUSA = "@medusajs/ui";
@@ -457,7 +460,33 @@ export function dosyaOlcumu(kaynak, dosyaAdi = "olcum.tsx") {
   // Önce dosyadaki `useState` bağları toplanır, sonra bir PENCERE bileşenine
   // pencere özniteliği olarak verilenler işaretlenir. İki geçiş gerekir:
   // durum bildirimi JSX'ten sonra da gelebilir (yardımcı bileşenler).
-  const durumAdlari = new Set();
+  // ── İP-A5: bağlar AD ile değil, BİLDİRİM YERİ ile ayırt edilir ──
+  //
+  // Eski sürüm dosya başına bir `Set<ad>` tutuyordu. Aynı dosyadaki İKİ AYRI
+  // bileşenin aynı adlı iki bağı (`AdminStore.tsx`te üç ayrı `deleting`)
+  // TEK bağ sayılıyordu — oysa metriğin yazılı sözleşmesi "bağ başına bir
+  // kez"dir. Sonuç: metrik dosya sınırına duyarlıydı; 2216 satırlık bir
+  // dosyayı bölmek (İP-A5'in yaptığı, davranışı değiştirmeyen mekanik iş)
+  // sayıyı 33'ten 35'e ÇIKARIYORDU. Ölçüm aleti, ölçtüğü şeyin dosyalara
+  // nasıl dağıldığına bağlı olamaz.
+  //
+  // Çözüm: her `useState` bağı, ADIYLA BİRLİKTE onu kapsayan en yakın
+  // fonksiyon düğümüyle kaydedilir; kullanım yerinde ad, ataları arasındaki
+  // EN İÇTEKİ eşleşen kapsama çözülür (sözlüksel kapsam yaklaşımı).
+  const durumBaglari = [];
+  const kapsayanFonksiyon = (n) => {
+    for (let a = n.parent; a; a = a.parent) {
+      if (
+        ts.isFunctionDeclaration(a) ||
+        ts.isArrowFunction(a) ||
+        ts.isFunctionExpression(a) ||
+        ts.isMethodDeclaration(a)
+      ) {
+        return a;
+      }
+    }
+    return sf;
+  };
   const durumTopla = (n) => {
     if (
       ts.isVariableDeclaration(n) &&
@@ -468,11 +497,23 @@ export function dosyaOlcumu(kaynak, dosyaAdi = "olcum.tsx") {
       n.name.elements.length > 0 &&
       ts.isBindingElement(n.name.elements[0])
     ) {
-      durumAdlari.add(n.name.elements[0].name.getText(sf));
+      durumBaglari.push({
+        ad: n.name.elements[0].name.getText(sf),
+        kapsam: kapsayanFonksiyon(n),
+      });
     }
     ts.forEachChild(n, durumTopla);
   };
   durumTopla(sf);
+
+  /** Kullanım yerindeki adı, en içteki eşleşen bildirime çözer. */
+  const bagiCozumle = (kullanim, ad) => {
+    for (let a = kullanim; a; a = a.parent) {
+      const bulunan = durumBaglari.find((b) => b.ad === ad && b.kapsam === a);
+      if (bulunan) return bulunan;
+    }
+    return null;
+  };
 
   const modalBaglari = new Set();
   const modalAra = (n) => {
@@ -496,14 +537,17 @@ export function dosyaOlcumu(kaynak, dosyaAdi = "olcum.tsx") {
         };
         gezIfade(ifade.expression);
         for (const t of tanimlayicilar) {
-          if (durumAdlari.has(t)) modalBaglari.add(t);
+          const bag = bagiCozumle(n, t);
+          if (bag) modalBaglari.add(bag);
         }
       }
     }
     ts.forEachChild(n, modalAra);
   };
   modalAra(sf);
-  o.modalDurumAdlari = [...modalBaglari].sort();
+  // Çıktı hâlâ ADLARDIR (mevcut nöbetçiler ada bakıyor), ama artık BAĞ
+  // sayısı kadar eleman taşır: aynı adlı iki ayrı bağ iki kez listelenir.
+  o.modalDurumAdlari = [...modalBaglari].map((b) => b.ad).sort();
 
   return o;
 }

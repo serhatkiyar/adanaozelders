@@ -395,6 +395,54 @@ describe("İP-A4 sayaç: modal durumu", () => {
     expect(dosyaOlcumu(kaynak).modalDurumAdlari).toEqual([]);
   });
 
+  // ── İP-A5: sayaç dosya sınırına DUYARSIZ olmalı ──
+  //
+  // Aşağıdaki iki test bir çifttir ve tek bir şeyi kanıtlar: aynı JSX,
+  // bir dosyada da iki dosyada da AYNI sayıyı vermelidir. Bu özellik olmadan
+  // büyük bir ekranı bölmek (davranışı değiştirmeyen mekanik iş) metriği
+  // oynatır ve eşik "ilerleme"/"gerileme" gibi okunur.
+  it("aynı dosyadaki İKİ AYRI bileşenin aynı adlı bağı İKİ kez sayılır", () => {
+    const kaynak = `
+      function Urunler() {
+        const [deleting, setDeleting] = useState(null);
+        return <ConfirmDialog open={deleting !== null} />;
+      }
+      function Kuponlar() {
+        const [deleting, setDeleting] = useState(null);
+        return <ConfirmDialog open={deleting !== null} />;
+      }
+    `;
+    expect(dosyaOlcumu(kaynak).modalDurumAdlari).toEqual(["deleting", "deleting"]);
+  });
+
+  it("aynı bileşenin TEK bağı iki pencerede geçse yine BİR sayılır", () => {
+    // Üstteki testin ikizi: düzeltme "her kullanımı say" demek DEĞİL.
+    const kaynak = `
+      function Urunler() {
+        const [deleting, setDeleting] = useState(null);
+        return (
+          <>
+            <ConfirmDialog open={deleting !== null} />
+            <ReasonDialog open={deleting !== null} />
+          </>
+        );
+      }
+    `;
+    expect(dosyaOlcumu(kaynak).modalDurumAdlari).toEqual(["deleting"]);
+  });
+
+  it("iç içe fonksiyonda kullanılan dış bağ HÂLÂ çözülür (kapsam yukarı bakar)", () => {
+    // Panelde yaygın: `cell: ({ row }) => <XDialog open={acik} />`.
+    const kaynak = `
+      function Ekran() {
+        const [acik, setAcik] = useState(false);
+        const kolonlar = [{ cell: () => <XDialog open={acik} /> }];
+        return <Table columns={kolonlar} />;
+      }
+    `;
+    expect(dosyaOlcumu(kaynak).modalDurumAdlari).toEqual(["acik"]);
+  });
+
   it("yorumdaki pencere kullanımı sayılmaz", () => {
     const kaynak = [
       "export function Ekran() {",
