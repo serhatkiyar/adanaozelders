@@ -218,6 +218,22 @@ function adlarDogru(enAz: number) {
   return kontroller.length;
 }
 
+/**
+ * Yük altındaki bekleme bütçesi — gerekçe `ticketsPaymentGate.test.tsx`te
+ * (İP-A6b · Görev 5 · BULGU-10). Global `asyncUtilTimeout` kaldırıldı; bütçe
+ * yalnız gerçekten yük-bağımlı olan çağrı yerlerinde duruyor.
+ *
+ * Bu dosya listeye İP-A6c'de girdi: tam suite `--sequence.shuffle --seed=22`
+ * koşumunda D-2 kırmızı düştü ve DOM iskelet (`aria-label="Yükleniyor"`)
+ * hâlindeydi — yani ürün listesi sorgusu RTL'in 1000 ms'lik varsayılan
+ * bütçesinde çözülmemişti. Aynı seed tek başına koşturulunca YEŞİLDİ; bu
+ * "flaky" değil, yük altında daralan bir zamanlama penceresidir.
+ *
+ * Bütçe YALNIZ bu çağrı yerinde: `duzenlemeyiAc` iki ağ sorgusu (liste +
+ * ürün detayı) çözülene kadar bekler. Liste bilinçli olarak genişletilmedi.
+ */
+const YUK = { timeout: 4000 };
+
 /* ══════════════ D-1 · ProductForm — oluşturma dalları ══════════════ */
 
 describe("D-1 · ürün formu (oluşturma) — tüm koşullu dallar adlı", () => {
@@ -303,7 +319,7 @@ describe("D-2 · ürün formu (düzenleme) — stok gerekçesi ve varyant dallar
     sunucu("/store/admin/products/101", { data: URUN }, "get");
     defterSunucusu();
     panel(ROUTES.adminStoreProducts);
-    fireEvent.click(await screen.findByRole("button", { name: "Düzenle" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Düzenle" }, YUK));
     await screen.findByLabelText("Ürün adı");
   }
 

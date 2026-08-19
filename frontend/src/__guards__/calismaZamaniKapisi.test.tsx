@@ -146,6 +146,112 @@ const CALISMA_ZAMANI_ADSIZ: Record<string, number> = {
   "src/components/MapPicker.tsx": 1, // adres arama kutusu
 };
 
+/**
+ * ── Kapıda ölçülen ekranlar — SAYIYLA DEĞİL, KİMLİKLE (İP-A6c · Görev 7) ──
+ *
+ * A6b bu kapsamı `kapsanan.length >= 88` ile koruyordu. Sayı kimlik değildir:
+ * bir ekran kapsam dışına çıkıp yerine başkası girerse sayı 88'de kalır ve
+ * kapı **sessizce başka bir kümeyi** ölçmeye başlar. Ölçüm doğru görünür,
+ * ölçülen şey değişmiştir.
+ *
+ * Bu dersi bu projede iki kez öğrendik — `OLCUM_TABANI` isimle sabitlendi,
+ * etiketsiz overlay listesi isimle sabitlendi. Bu üçüncüsü.
+ *
+ * Liste iki yönlü korunur (aşağıdaki testler): burada olup kapsanmayan da,
+ * kapsanıp burada olmayan da kırmızıdır. Kapsam bilinçli değişince bu liste
+ * elle güncellenir ve değişim rapora yazılır.
+ */
+const KAPI_KAPSAMI = [
+  "src/components/AmenityTagGrid.tsx",
+  "src/components/AppIcon.tsx",
+  "src/components/DashboardHeader.tsx",
+  "src/components/DashboardShell.tsx",
+  "src/components/ExamSessionsManager.tsx",
+  "src/components/ImageCropModal.tsx",
+  "src/components/LibraryBookmarkButton.tsx",
+  "src/components/LibraryMediaManager.tsx",
+  "src/components/LibraryPayoutForm.tsx",
+  "src/components/MapPicker.tsx",
+  "src/components/NavbarWidget.tsx",
+  "src/components/NotificationsBell.tsx",
+  "src/components/PersonalizeModal.tsx",
+  "src/components/PinIcon.tsx",
+  "src/components/QrScanner.tsx",
+  "src/components/ShareButton.tsx",
+  "src/components/ShareModal.tsx",
+  "src/components/Spinner.tsx",
+  "src/components/StarRating.tsx",
+  "src/components/ui/Modal.tsx",
+  "src/components/admin/AccessState.tsx",
+  "src/components/admin/CourierManager.tsx",
+  "src/components/admin/StockBadge.tsx",
+  "src/components/admin/StockLedgerPanel.tsx",
+  "src/components/admin/StockMovementTable.tsx",
+  "src/components/admin/StockMovementsPanel.tsx",
+  "src/components/admin/delivery/CapacityStrip.tsx",
+  "src/components/admin/delivery/ClosedDays.tsx",
+  "src/components/admin/delivery/ItemLines.tsx",
+  "src/components/admin/delivery/bits.tsx",
+  "src/components/admin/layout/AdminLayout.tsx",
+  "src/components/admin/layout/AdminPageHeader.tsx",
+  "src/components/admin/layout/AdminSidebar.tsx",
+  "src/components/admin/store/BulkImportPanel.tsx",
+  "src/components/admin/store/CategoriesPanel.tsx",
+  "src/components/admin/store/CouponsPanel.tsx",
+  "src/components/admin/store/OrdersPanel.tsx",
+  "src/components/admin/store/ProductForm.tsx",
+  "src/components/admin/store/ProductsPanel.tsx",
+  "src/components/admin/store/ReturnsPanel.tsx",
+  "src/components/admin/ui/Badge.tsx",
+  "src/components/admin/ui/Button.tsx",
+  "src/components/admin/ui/ConfirmDialog.tsx",
+  "src/components/admin/ui/Dialog.tsx",
+  "src/components/admin/ui/PageState.tsx",
+  "src/components/admin/ui2/gezinmeBekcisi.tsx",
+  "src/components/admin/ui2/medusa-tr.tsx",
+  "src/pages/DeliveryDriver.tsx",
+  "src/pages/DeliveryRunHandover.tsx",
+  "src/pages/admin/AdminAccessPage.tsx",
+  "src/pages/admin/AdminAuditLogsPage.tsx",
+  "src/pages/admin/AdminBookingsPage.tsx",
+  "src/pages/admin/AdminDashboardPage.tsx",
+  "src/pages/admin/AdminDemandsPage.tsx",
+  "src/pages/admin/AdminOperationsPage.tsx",
+  "src/pages/admin/AdminPayoutsPage.tsx",
+  "src/pages/admin/AdminReportsPage.tsx",
+  "src/pages/admin/AdminSectionPage.tsx",
+  "src/pages/admin/AdminSettingsPage.tsx",
+  "src/pages/admin/AdminUserDetailPage.tsx",
+  "src/pages/admin/AdminUsersPage.tsx",
+  "src/pages/admin/delivery/DeliveryBoardPage.tsx",
+  "src/pages/admin/delivery/DeliveryCouriersPage.tsx",
+  "src/pages/admin/delivery/DeliveryLayout.tsx",
+  "src/pages/admin/delivery/DeliveryOrdersPage.tsx",
+  "src/pages/admin/delivery/DeliveryPerformancePage.tsx",
+  "src/pages/admin/delivery/DeliveryRunDetailPage.tsx",
+  "src/pages/admin/delivery/DeliveryRunsPage.tsx",
+  "src/pages/admin/delivery/DeliveryTodayPage.tsx",
+  "src/pages/admin/delivery/DeliveryVehiclesPage.tsx",
+  "src/pages/admin/inventory/CountSessionDetailPage.tsx",
+  "src/pages/admin/inventory/CountSessionsPage.tsx",
+  "src/pages/admin/inventory/DamageEventsPage.tsx",
+  "src/pages/admin/inventory/InventoryLayout.tsx",
+  "src/pages/admin/inventory/InventoryOverviewPage.tsx",
+  "src/pages/admin/packing/PackagesPage.tsx",
+  "src/pages/admin/packing/PackingLayout.tsx",
+  "src/pages/admin/packing/PackingQueuePage.tsx",
+  "src/pages/admin/packing/PackingStationPage.tsx",
+  "src/pages/admin/packing/ReturnQueuePage.tsx",
+  "src/pages/dashboards/AdminExamCatalogs.tsx",
+  "src/pages/dashboards/AdminHome.tsx",
+  "src/pages/dashboards/AdminLibraries.tsx",
+  "src/pages/dashboards/AdminStore.tsx",
+  "src/pages/dashboards/CourierHome.tsx",
+  "src/pages/dashboards/OperatorHome.tsx",
+  "src/pages/dashboards/OperatorLibrary.tsx",
+  "src/pages/dashboards/OperatorSessions.tsx",
+];
+
 const moduller = import.meta.glob("/src/**/*.tsx");
 
 const tabanEkranlari = (OLCUM_TABANI as string[]).filter((f) => f.endsWith(".tsx"));
@@ -204,10 +310,26 @@ describe("İP-A6b çalışma zamanı kapısı · kapsam iki yönlü korunur", ()
 
   it("taban ekranlarının hepsi ya kapıda ya gerekçeli listede (üçüncü ihtimal yok)", () => {
     expect(kapsanan.length + Object.keys(KAPI_DISI).length).toBe(tabanEkranlari.length);
-    // Sessiz daralmanın sayısal nöbetçisi: kapsam bugünkü seviyenin altına
-    // inemez. Bir ekran kapı dışına çıkarılırsa BURADA görünür.
-    // Bugün ölçülen: 105 taban `.tsx` − 17 gerekçeli = **88 ekran kapıda**.
-    expect(kapsanan.length).toBeGreaterThanOrEqual(88);
+  });
+
+  it("kapı kapsamı KİMLİKLE sabittir (sayı değil)", () => {
+    // İki yön de kırmızı üretir:
+    //   • listede olup artık kapsanmayan  → ekran sessizce kapı dışına çıktı
+    //   • kapsanıp listede olmayan        → kapı sessizce başka bir şey ölçüyor
+    // Sayısal taban ikisini de göremezdi: biri çıkıp biri girince 88 sabit
+    // kalır. Bugün ölçülen: 105 taban `.tsx` − 17 gerekçeli = 88 ekran kapıda.
+    expect([...kapsanan].sort()).toEqual([...KAPI_KAPSAMI].sort());
+  });
+
+  it("KAPI_KAPSAMI ile KAPI_DISI kesişmez ve ikisi tabanı tam kaplar", () => {
+    // Listenin kendisi de bir kaçış kapısı olmasın: bir dosyayı HEM kapsama
+    // HEM gerekçeli listeye yazmak, iki yönlü korumayı birbirine karşı
+    // körleştirirdi.
+    const kesisim = KAPI_KAPSAMI.filter((f) => f in KAPI_DISI);
+    expect(kesisim).toEqual([]);
+    expect([...KAPI_KAPSAMI, ...Object.keys(KAPI_DISI)].sort()).toEqual(
+      [...tabanEkranlari].sort()
+    );
   });
 
   it("KAPI_DISI gerekçeleri doğrudur: park edilen ekran gerçekten mount edilemiyor", async () => {

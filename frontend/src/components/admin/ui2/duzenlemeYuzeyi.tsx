@@ -156,7 +156,12 @@ export function DuzenlemeYuzeyi<TFieldValues extends FieldValues>({
   // Kirli form bekçisi TEK yerde bağlanır: ekran bunu yeniden yazmaz ve
   // unutamaz. `etkin` yüzeyin kendi durumundan gelir — kapalı pencerede
   // bekçinin `beforeunload` kaydı olmamalı.
-  const bekci = useKirliFormBekcisi({ form, sunucuHatasi, etkin: yuzey.acik });
+  const bekci = useKirliFormBekcisi({
+    form,
+    sunucuHatasi,
+    etkin: yuzey.acik,
+    hedef: yuzey.hedef,
+  });
 
   // İşlem sürerken kapatma yolu kapalı: yarıda kesilen bir gönderimde
   // kullanıcı sonucu göremez.
@@ -213,9 +218,20 @@ export { HATA_TAKIBI_YOK };
  * kilidi (hepsi `Dialog`/`useModalA11y`ten) ve kirli formda kapatma onayı —
  * içeriğin tek satır bile yazmadan.
  */
-const BekciBildirimCtx = createContext<((bekci: KirliFormBekcisi | null) => void) | null>(
-  null
-);
+type BekciBildirimi = (kimlik: symbol, bekci: KirliFormBekcisi | null) => void;
+
+const BekciBildirimCtx = createContext<BekciBildirimi | null>(null);
+
+/**
+ * Penceredeki hedef — içeriğin bilmediği, pencerenin bildiği şey.
+ *
+ * `useYuzeyKirliFormBekcisi` bunu bekçiye geçirir; onay beklerken hedef
+ * değişirse onay eski hedefe uygulanmaz (İP-A6c · BULGU-8).
+ */
+const HedefCtx = createContext<unknown>(undefined);
+
+/** Geliştirmede patlayan koruma; üretim derlemesinde elenir. */
+const GELISTIRME: boolean = !!import.meta.env?.DEV;
 
 /**
  * `useKirliFormBekcisi`nin yüzey farkındalığı olan hâli.
@@ -226,14 +242,28 @@ const BekciBildirimCtx = createContext<((bekci: KirliFormBekcisi | null) => void
 export function useYuzeyKirliFormBekcisi<TFieldValues extends FieldValues>(
   secenekler: KirliFormBekcisiSecenekleri<TFieldValues>
 ): KirliFormBekcisi {
-  const bekci = useKirliFormBekcisi(secenekler);
+  const pencereHedefi = useContext(HedefCtx);
+  const bekci = useKirliFormBekcisi({
+    // Hedef AÇIKÇA verilmediyse pencereninki kullanılır: içerik hedefi
+    // bilmek zorunda değildir, ama onay beklerken değişirse onay düşmelidir.
+    hedef: pencereHedefi,
+    ...secenekler,
+  });
   const bildir = useContext(BekciBildirimCtx);
+
+  // Her içeriğin KENDİ kimliği var. Eskiden kayıt kimliksizdi ve pencere onu
+  // tek bir ref'te tutuyordu: iki içerik varsa en son render eden kazanıyor,
+  // diğerinin koruması sessizce yok oluyordu (İP-A6c · BULGU-5).
+  const kimlikRef = useRef<symbol>();
+  if (!kimlikRef.current) kimlikRef.current = Symbol("yuzey-bekcisi");
+
   // Bağımlılık dizisi YOK: `bekci` her render'da yeni bir nesnedir ve
   // pencere onu bir REF'te tutar (durum değil) — yani bu bildirim yeniden
   // render tetiklemez ve döngü kurulamaz.
   useEffect(() => {
-    bildir?.(bekci);
-    return () => bildir?.(null);
+    const kimlik = kimlikRef.current!;
+    bildir?.(kimlik, bekci);
+    return () => bildir?.(kimlik, null);
   });
   return bekci;
 }
@@ -251,13 +281,33 @@ export function DuzenlemePenceresi({
   aciklama,
   children,
 }: DuzenlemePenceresiProps) {
-  const bekciRef = useRef<KirliFormBekcisi | null>(null);
-  const bildir = useCallback((bekci: KirliFormBekcisi | null) => {
-    bekciRef.current = bekci;
+  // Küme DEĞİL, kimlikli kayıt + geliştirmede `throw` (İP-A6c · BULGU-5).
+  //
+  // Küme yapmak "hangi bekçi sorar, sırayla mı sorar, biri iptal ederse ne
+  // olur, iki onay penceresi üst üste mi açılır" tasarım sorularını açar ve bu
+  // paketin işi sözleşmeyi ONARMAK, genişletmek değil. `throw` bugün veri
+  // kaybını durdurur ve tasarımı A7'ye erteler — `Form.Control`da seçilen
+  // yolun aynısı.
+  const bekcilerRef = useRef(new Map<symbol, KirliFormBekcisi>());
+  const bildir = useCallback<BekciBildirimi>((kimlik, bekci) => {
+    if (!bekci) {
+      bekcilerRef.current.delete(kimlik);
+      return;
+    }
+    bekcilerRef.current.set(kimlik, bekci);
+    if (GELISTIRME && bekcilerRef.current.size > 1) {
+      throw new Error(
+        "DuzenlemePenceresi tek bir korumalı içerik taşıyabilir: ikinci " +
+          "korumalı içerik birincinin kirli form korumasını sessizce yok " +
+          "ederdi (kullanıcının yazdığı veri soru sorulmadan giderdi). " +
+          "Bölümleri ayrı pencerelere ayırın ya da tek bir form kurup " +
+          "`useYuzeyKirliFormBekcisi`yi bir kez çağırın."
+      );
+    }
   }, []);
 
   const kapatmayiDene = useCallback(() => {
-    const bekci = bekciRef.current;
+    const bekci = bekcilerRef.current.values().next().value;
     if (!bekci) {
       yuzey.kapat();
       return;
@@ -267,14 +317,16 @@ export function DuzenlemePenceresi({
 
   return (
     <BekciBildirimCtx.Provider value={bildir}>
-      <Dialog
-        open={yuzey.acik}
-        title={baslik}
-        description={aciklama}
-        onClose={kapatmayiDene}
-      >
-        {children}
-      </Dialog>
+      <HedefCtx.Provider value={yuzey.hedef}>
+        <Dialog
+          open={yuzey.acik}
+          title={baslik}
+          description={aciklama}
+          onClose={kapatmayiDene}
+        >
+          {children}
+        </Dialog>
+      </HedefCtx.Provider>
     </BekciBildirimCtx.Provider>
   );
 }

@@ -33,7 +33,7 @@
  * verilirse `degerler.sayfa` sayıdır ve URL'deki çöp (`?sayfa=abc`)
  * varsayılana düşer — ekran `NaN` ile uğraşmaz.
  */
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 
 export type UrlDeger = string | number;
@@ -71,6 +71,49 @@ export interface UrlDurumu<T> {
   filtreliMi: boolean;
 }
 
+/** Adresten okunan değerler — saf, hook dışında da çağrılabilir. */
+function coz<T extends Record<string, UrlDeger>>(
+  kaynak: URLSearchParams,
+  anahtarlar: (keyof T & string)[],
+  varsayilan: T
+): T {
+  const cikti = {} as T;
+  for (const anahtar of anahtarlar) {
+    const ham = kaynak.get(anahtar);
+    const vars = varsayilan[anahtar];
+    if (ham === null || ham === "") {
+      cikti[anahtar] = vars;
+      continue;
+    }
+    if (typeof vars === "number") {
+      const sayi = Number(ham);
+      // URL kullanıcı tarafından yazılabilir: çöp değer ekrana `NaN`
+      // sızdırmaz, varsayılana düşer.
+      cikti[anahtar] = (Number.isFinite(sayi) ? sayi : vars) as T[keyof T & string];
+    } else {
+      cikti[anahtar] = ham as T[keyof T & string];
+    }
+  }
+  return cikti;
+}
+
+/** Verilen değerlerin adrese yazılmış hâli — bilinmeyen parametreler korunur. */
+function yazilmisHali<T extends Record<string, UrlDeger>>(
+  kaynak: URLSearchParams,
+  anahtarlar: (keyof T & string)[],
+  varsayilan: T,
+  yeni: T
+): URLSearchParams {
+  const sonraki = new URLSearchParams(kaynak);
+  for (const anahtar of anahtarlar) {
+    const deger = yeni[anahtar];
+    // Varsayılana eşitse adresten SİLİNİR (yukarıdaki karar).
+    if (deger === varsayilan[anahtar] || deger === "") sonraki.delete(anahtar);
+    else sonraki.set(anahtar, String(deger));
+  }
+  return sonraki;
+}
+
 export function useUrlDurumu<T extends Record<string, UrlDeger>>(
   varsayilan: T,
   secenekler: UrlDurumuSecenekleri<T> = {}
@@ -85,57 +128,61 @@ export function useUrlDurumu<T extends Record<string, UrlDeger>>(
     [Object.keys(varsayilan).join("|")]
   );
 
-  const degerler = useMemo(() => {
-    const cikti = {} as T;
-    for (const anahtar of anahtarlar) {
-      const ham = params.get(anahtar);
-      const vars = varsayilan[anahtar];
-      if (ham === null || ham === "") {
-        cikti[anahtar] = vars;
-        continue;
-      }
-      if (typeof vars === "number") {
-        const sayi = Number(ham);
-        // URL kullanıcı tarafından yazılabilir: çöp değer ekrana `NaN`
-        // sızdırmaz, varsayılana düşer.
-        cikti[anahtar] = (Number.isFinite(sayi) ? sayi : vars) as T[keyof T & string];
-      } else {
-        cikti[anahtar] = ham as T[keyof T & string];
-      }
-    }
-    return cikti;
+  const degerler = useMemo(
+    () => coz(params, anahtarlar, varsayilan),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [anahtarlar, params, JSON.stringify(varsayilan)]);
-
-  const yaz = useCallback(
-    (yeni: T, replaceYama?: boolean) => {
-      const sonraki = new URLSearchParams(params);
-      for (const anahtar of anahtarlar) {
-        const deger = yeni[anahtar];
-        // Varsayılana eşitse adresten SİLİNİR (yukarıdaki karar).
-        if (deger === varsayilan[anahtar] || deger === "") sonraki.delete(anahtar);
-        else sonraki.set(anahtar, String(deger));
-      }
-      setParams(sonraki, { replace: replaceYama ?? replace });
-    },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [anahtarlar, params, replace, setParams, JSON.stringify(varsayilan)]
+    [anahtarlar, params, JSON.stringify(varsayilan)]
   );
+
+  // ── Aynı olaydaki İKİNCİ yazım (İP-A6c · BULGU-4) ──
+  //
+  // `setParams`ın fonksiyonel biçimi bu router sürümünde YETMEZ ve bu ölçüldü
+  // (`docs/ip-a6c/g2-yalniz-fonksiyonel.txt`): react-router 7.18.1 geri
+  // çağrıya canlı bir ref değil, RENDER SIRASINDA kapatılmış `searchParams`ı
+  // geçirir (`useSearchParams` → `nextInit(new URLSearchParams(searchParams))`).
+  // Aynı olay işleyicisinde iki `ayarla` çağrısı arasında render olmadığı için
+  // ikinci çağrı da birincinin yazdığını GÖREMEZ.
+  //
+  // Bu yüzden "henüz konuma yansımamış yazım" burada tutulur — ve YAZILDIĞI
+  // ANDAKİ konumla birlikte. Bekleyen yazım yalnız konum hâlâ o taban
+  // üzerindeyken geçerlidir; konum değişmişse (render oldu, geri tuşuna
+  // basıldı, başka bir bileşen yazdı) BAYATTIR ve atılır.
+  //
+  // Zamanlayıcıya/mikro göreve bağlamak yetmez: ilk yazımda öyle yapıldı ve
+  // "dışarıdan gelen adres değişimi ezilmez" negatif kontrolü onu KIRDI —
+  // senkron bir çağrı dizisinde mikro görev hiç koşmaz ve bayat yazım dışarıda
+  // yapılan gezinmeyi geri alırdı.
+  const bekleyenRef = useRef<{ taban: string; yazilan: URLSearchParams } | null>(null);
 
   const ayarla = useCallback(
     (yama: Partial<T>, secenek?: { replace?: boolean }) => {
-      const yeni = { ...degerler, ...yama } as T;
+      const bekleyen =
+        bekleyenRef.current?.taban === params.toString() ? bekleyenRef.current : null;
+      const ayniOlayda = bekleyen !== null;
+      const taban = bekleyen?.yazilan ?? params;
+
+      const oncekiDegerler = coz(taban, anahtarlar, varsayilan);
+      const yeni = { ...oncekiDegerler, ...yama } as T;
       // Filtre değişti ve sayfa açıkça verilmediyse: başa dön.
       if (sayfaAnahtari && !(sayfaAnahtari in yama)) {
         yeni[sayfaAnahtari] = varsayilan[sayfaAnahtari];
       }
-      yaz(yeni, secenek?.replace);
+      const sonraki = yazilmisHali(taban, anahtarlar, varsayilan, yeni);
+
+      bekleyenRef.current = { taban: bekleyen?.taban ?? params.toString(), yazilan: sonraki };
+
+      // Tek kullanıcı hareketi = TEK geçmiş girdisi. Aynı işleyicideki ikinci
+      // yazım `push` olsaydı geri tuşu, kullanıcının hiç görmediği ara duruma
+      // (ör. "filtre uygulandı ama sayfa henüz sıfırlanmadı") dönerdi.
+      setParams(sonraki, {
+        replace: ayniOlayda ? true : (secenek?.replace ?? replace),
+      });
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [degerler, sayfaAnahtari, yaz, JSON.stringify(varsayilan)]
+    [anahtarlar, params, replace, sayfaAnahtari, setParams, JSON.stringify(varsayilan)]
   );
 
-  const temizle = useCallback(() => yaz({ ...varsayilan }), [varsayilan, yaz]);
+  const temizle = useCallback(() => ayarla({ ...varsayilan }), [ayarla, varsayilan]);
 
   const filtreliMi = anahtarlar.some(
     (a) => !filtreDisi.includes(a) && degerler[a] !== varsayilan[a]

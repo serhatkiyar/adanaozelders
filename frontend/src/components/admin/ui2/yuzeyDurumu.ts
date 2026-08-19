@@ -48,6 +48,14 @@ export interface DuzenlemeYuzeyiDurumu<TKayit, TBaglam> {
 export interface DuzenlemeYuzeyiKapisi {
   acik: boolean;
   kapat: () => void;
+  /**
+   * Ham hedef — yüzey bunu bekçiye damga olarak verir: onay beklerken hedef
+   * değişirse onay ESKİ hedefe uygulanmaz (İP-A6c · BULGU-8).
+   *
+   * Tipi `unknown`: bu kapı hedefin ne olduğunu bilmez, yalnız DEĞİŞTİĞİNİ
+   * bilmesi yeter.
+   */
+  hedef: unknown;
 }
 
 export function useDuzenlemeYuzeyi<TKayit = never, TBaglam = void>(): DuzenlemeYuzeyiDurumu<

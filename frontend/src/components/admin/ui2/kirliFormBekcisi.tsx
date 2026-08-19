@@ -93,6 +93,18 @@ export interface KirliFormBekcisiSecenekleri<TFieldValues extends FieldValues> {
   sunucuHatasi: unknown | typeof HATA_TAKIBI_YOK;
   /** Form kapalıyken (pencere kapalı) bekçi uyumalı. */
   etkin?: boolean;
+  /**
+   * Bekçinin koruduğu HEDEF (düzenlenen kayıt, "yeni", vb.).
+   *
+   * Onay penceresi açıkken alttaki hedef değişebilir — WebSocket push'u, query
+   * invalidation, listede başka bir satıra geçmek. Eskiden onay o durumda
+   * yürürlükteki hedefe uygulanıyordu: kullanıcı "çık" dediği kaydın değil,
+   * BAŞKA bir kaydın penceresini kapatıyordu (İP-A6c · BULGU-8).
+   *
+   * Verilmezse (`undefined`) damga hep eşit sayılır ve davranış eskisi gibidir
+   * — hedefi olmayan çağrı yerleri etkilenmez.
+   */
+  hedef?: unknown;
 }
 
 export interface KirliFormBekcisi {
@@ -109,6 +121,7 @@ export function useKirliFormBekcisi<TFieldValues extends FieldValues>({
   form,
   sunucuHatasi,
   etkin = true,
+  hedef,
 }: KirliFormBekcisiSecenekleri<TFieldValues>): KirliFormBekcisi {
   const { kirli, gonderimBasarili } = useFormDurumu(form);
 
@@ -178,6 +191,16 @@ export function useKirliFormBekcisi<TFieldValues extends FieldValues>({
   // Temizlik onu tetikler: kapatma pencerenin kendi mekanizmasıyla olur.
   const bekleyenRef = useRef(false);
   const sokulduRef = useRef(false);
+
+  // ── Hedef damgası (İP-A6c · BULGU-8) ──
+  //
+  // `sokulduRef` yalnız "bileşen gitti mi" sorusunu cevaplıyordu; "kapatılacak
+  // şey HÂLÂ AYNI MI" sorusu sorulmuyordu. Onay çözüldüğünde damga tutmuyorsa
+  // onay DÜŞER: kullanıcı gördüğü pencere için karar verdi, aradan geçen
+  // sürede ekranın altında başka bir kayda geçilmişse o karar o kayda ait
+  // değildir. Yeniden sormak da yanlış olurdu — kullanıcı bir şey yapmadı.
+  const hedefRef = useRef(hedef);
+  hedefRef.current = hedef;
   useEffect(
     () => () => {
       sokulduRef.current = true;
@@ -195,11 +218,16 @@ export function useKirliFormBekcisi<TFieldValues extends FieldValues>({
         return;
       }
       bekleyenRef.current = true;
+      const damga = hedefRef.current;
       void prompt(kirliFormPromptTr).then((onay) => {
         bekleyenRef.current = false;
+        if (!onay) return;
         // Bileşen bu arada söküldüyse bayat bir closure'daki `onClose`
         // çalışmasın: kapatılacak bir şey kalmadı.
-        if (onay && !sokulduRef.current) kapat();
+        if (sokulduRef.current) return;
+        // Hedef bu arada değiştiyse onay ARTIK BAŞKA bir kayda uygulanırdı.
+        if (hedefRef.current !== damga) return;
+        kapat();
       });
     },
     [korumali, prompt]

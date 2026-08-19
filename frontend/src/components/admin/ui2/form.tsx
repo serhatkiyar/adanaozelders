@@ -437,10 +437,31 @@ function Control({ children }: { children: ReactElement }) {
     );
   });
 
+  // ── Koyu temada sayı girdisinin yerel okları (İP-A6c · Görev 6b) ──
+  //
+  // `<input type="number">`ın artır/azalt okları tarayıcının YEREL widget'ıdır
+  // ve varsayılan olarak açık temaya göre çizilir: koyu panelin üstünde beyaz
+  // bir blok gibi durur. jsdom bunu çizmediği için hiçbir birim testi
+  // göremezdi; denetim gerçek tarayıcıda buldu.
+  //
+  // Çözüm `color-scheme`: tarayıcıya "bu kontrol koyu zeminde" denir ve yerel
+  // widget'ı kendisi koyu çizer. Okları `appearance: none` ile SİLMEK de bir
+  // seçenekti; seçilmedi, çünkü ok kullanıcının gerçekten kullandığı bir
+  // aracı ve kaybı erişilebilirlik kaybıdır (klavye yerine fare kullanan,
+  // ince motor kontrolü sınırlı kullanıcı).
+  //
+  // Karar burada TEK yerde veriliyor: A7'de sayısal alanı olan her ekran bunu
+  // yeniden yazmasın (ve yazmayı unutmasın).
+  const sayiAlani = cocuk.type === "input" && cocukProps.type === "number";
+  const sinif = [cocukProps.className, sayiAlani ? "dark:[color-scheme:dark]" : null]
+    .filter(Boolean)
+    .join(" ");
+
   return cloneElement(cocuk, {
     id: kimlik?.id,
     "aria-invalid": hata ? true : undefined,
     "aria-describedby": tanim,
+    ...(sinif ? { className: sinif } : {}),
     ref: birlesikRef,
   } as Partial<typeof cocuk.props>);
 }
@@ -468,7 +489,10 @@ function Hint({
  * anlık doğrulamada kullanıcı alandan çıkmadan hata belirdiği için bu şart.
  */
 function ErrorMessage({
-  className = "text-rose-600 dark:text-rose-400",
+  // Açık temada `rose-600` beyaz üstünde 4,70 ölçüyordu — AA eşiğinin yalnız
+  // 0,20 üstünde ve 12 px metin için (büyük-metin muafiyeti geçerli değil).
+  // Bir ton koyulaştırıldı; koyu temanın 6,63'ü zaten rahat, dokunulmadı.
+  className = "text-rose-700 dark:text-rose-400",
 }: {
   className?: string;
 } = {}) {

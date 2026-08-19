@@ -61,7 +61,13 @@
  *    geçmez — geçmemeli de: orada veri zaten kaydedilmiştir.
  */
 import { useCallback, useEffect, useRef, type MouseEvent, type ReactNode } from "react";
-import { NavLink, useNavigate, type NavLinkProps, type To } from "react-router-dom";
+import {
+  NavLink,
+  useNavigate,
+  type NavigateOptions,
+  type NavLinkProps,
+  type To,
+} from "react-router-dom";
 
 import { ConfirmDialog } from "@/components/admin/ui";
 
@@ -207,6 +213,24 @@ export function GezinmeBaglantisi({ to, onClick, ...kalan }: GezinmeBaglantisiPr
   const { dene, pencere } = useGezinmeOnayi();
   const navigate = useNavigate();
 
+  // ── Onaydan sonra da TAM sözleşme (İP-A6c · BULGU-7) ──
+  //
+  // Eskiden kirli yolda `navigate(to)` çağrılıyordu ve `state`, `replace`,
+  // `preventScrollReset`, `relative` ve `viewTransition` DÜŞÜYORDU.
+  // Yani aynı bağlantı, ekranda kirli bir form olup olmamasına göre farklı
+  // davranıyordu — üstelik tip sistemi yardım etmiyordu: `GezinmeBaglantisiProps`
+  // `NavLinkProps`ı genişlettiği için `state` yazmak `tsc`'ye geçerli görünür.
+  //
+  // Liste burada TEK yerde durur; `NavLink`e yeni bir gezinme seçeneği
+  // eklenirse buraya da eklenmelidir.
+  const gezinmeSecenekleri: NavigateOptions = {
+    replace: kalan.replace,
+    state: kalan.state,
+    preventScrollReset: kalan.preventScrollReset,
+    relative: kalan.relative,
+    viewTransition: kalan.viewTransition,
+  };
+
   return (
     <>
       <NavLink
@@ -225,7 +249,7 @@ export function GezinmeBaglantisi({ to, onClick, ...kalan }: GezinmeBaglantisiPr
           olay.preventDefault();
           dene(() => {
             onClick?.(olay);
-            navigate(to);
+            navigate(to, gezinmeSecenekleri);
           });
         }}
       />
