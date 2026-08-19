@@ -320,7 +320,17 @@ export function sunucuHatasiniUygula<TFieldValues extends FieldValues>(
   hata: unknown,
   form: Pick<UseFormReturn<TFieldValues>, "setError">,
   alanlar: readonly string[],
-  esleme?: Readonly<Record<string, string>>
+  esleme?: Readonly<Record<string, string>>,
+  /**
+   * 422 DIŞI hataların metnini üreten fonksiyon (İP-A3a'da eklendi).
+   *
+   * Varsayılan genel bir çeviridir; ama bazı alanların kendi sözlüğü vardır
+   * (envanterde defter bütünlüğü uyarısı, 409'da "sayfayı yenileyin"). Bu
+   * kanca olmadan pilot ekran ya o metinleri kaybederdi ya da 422 tespitini
+   * ikinci kez kendi yazardı.
+   */
+  genelMesaj: (hata: unknown) => string = (h) =>
+    getErrorDetail(h, "İşlem tamamlanamadı.")
 ): string | null {
   const yanit = (
     hata as { response?: { status?: number; data?: { detail?: unknown } } }
@@ -328,7 +338,7 @@ export function sunucuHatasiniUygula<TFieldValues extends FieldValues>(
 
   const detay = yanit?.data?.detail;
   if (yanit?.status !== 422 || !Array.isArray(detay)) {
-    return getErrorDetail(hata, "İşlem tamamlanamadı.");
+    return genelMesaj(hata);
   }
 
   const kalanlar: string[] = [];

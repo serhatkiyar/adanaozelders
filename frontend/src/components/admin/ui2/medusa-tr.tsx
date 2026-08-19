@@ -29,12 +29,37 @@ export const tablePaginationTr: TablePaginationTranslations = {};
 // çevrilemeyen 12 İngilizce dizesi var. Kullanılmayacak bir iskele bırakmak,
 // "bu geçiş yapılacak" izlenimi verirdi.
 
-/** `usePrompt` Türkçe varsayılanları — kullanıldığı pakette doldurulacak. */
+/**
+ * `usePrompt` Türkçe varsayılanları (İP-A3a'da dolduruldu).
+ *
+ * Bunlar TÜM onay pencerelerinin ortak metinleridir; pencereye özgü
+ * başlık/açıklama aşağıdaki gibi ayrı sabitlerde durur. Ortak metinleri her
+ * çağrı yerine yazmak, zamanla "İptal"/"Vazgeç"/"Kapat" üçlemesi üretirdi.
+ */
 export const promptTr: {
   cancelText?: string;
   confirmText?: string;
   verificationInstruction?: string;
-} = {};
+} = {
+  cancelText: "Vazgeç",
+  confirmText: "Çık",
+  verificationInstruction: "Onaylamak için aşağıdaki metni yazın:",
+};
+
+/**
+ * Kirli form bekçisinin onay penceresi (İP-A3a).
+ *
+ * `variant: "danger"` bilinçli: onaylanan eylem **veri kaybıdır**. Metin
+ * neyin kaybolacağını söyler — "Emin misiniz?" tek başına kullanıcıya neyi
+ * kaybedeceğini anlatmaz.
+ */
+export const kirliFormPromptTr = {
+  ...promptTr,
+  variant: "danger" as const,
+  title: "Kaydedilmemiş değişiklikler var",
+  description:
+    "Bu pencereyi kapatırsanız girdiğiniz bilgiler kaydedilmeden silinir.",
+};
 
 /** Uygulama kökünü saran Medusa locale sağlayıcısı. */
 export function MedusaI18nProvider({

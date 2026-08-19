@@ -35,7 +35,11 @@ export default function DamageEventsPage() {
   const [sayfa, setSayfa] = useState(0);
   const [urunFiltre, setUrunFiltre] = useState("");
   const [acikIslem, setAcikIslem] = useState<DamageKind | null>(null);
-  const [formHatasi, setFormHatasi] = useState<string | null>(null);
+  // HAM hata (İP-A3a). Metne çevirme işi `DamageDialog`'a taşındı: 422'nin
+  // `loc` bilgisi burada metne indirgenirse alan bilgisi kaybolur ve mesaj
+  // mecburen genel şeride düşer. Diyalog hem alanlara dağıtır hem alana
+  // düşmeyeni envanter sözlüğüyle metne çevirir.
+  const [formHatasi, setFormHatasi] = useState<unknown>(null);
   const [sonuc, setSonuc] = useState<string | null>(null);
 
   const sorgu = useDamageEvents({
@@ -60,7 +64,7 @@ export default function DamageEventsPage() {
         );
         setAcikIslem(null);
       },
-      onError: (e) => setFormHatasi(inventoryErrorMessage(e, "İşlem tamamlanamadı.")),
+      onError: (e) => setFormHatasi(e),
     });
   };
 

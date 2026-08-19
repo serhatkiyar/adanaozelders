@@ -9,8 +9,8 @@
  * seçici gerçek bileşenin kendisidir — ürün gerçekten listeden tıklanarak
  * seçilir, state elle enjekte edilmez.
  */
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { ProductSearchOut } from "@/types";
 
@@ -219,5 +219,118 @@ describe("İP-A2 · DamageDialog pilotu", () => {
     expect(ipucu?.textContent ?? "").not.toBe(alanMesaji);
     // Sıradaki gerçek eksik "neden" olmalı.
     expect(ipucu?.textContent ?? "").toMatch(/neden/i);
+  });
+});
+
+/**
+ * İP-A3a · pilotta canlı olması gereken iki sözleşme.
+ *
+ * Bunlar KATMAN testi değildir: `sunucuHatasiniUygula` ve `useKirliFormBekcisi`
+ * kendi dosyalarında zaten kanıtlı. Buradaki soru "katman çalışıyor mu" değil,
+ * **"pilot ekran ona gerçekten bağlı mı"**dır — İP-A2'nin açık bıraktığı uç
+ * tam olarak buydu.
+ */
+describe("İP-A3a · DamageDialog: 422 ve kirli form bekçisi", () => {
+  beforeEach(() => vi.clearAllMocks());
+  // Onay penceresi Radix portalıyla body'ye açılır; RTL temizliği onu sökmez
+  // ve açık kalan pencere sonraki teste sızar.
+  afterEach(async () => {
+    const iptal = screen
+      .queryAllByText("Vazgeç")
+      .find((n) => n.closest('[role="alertdialog"]'));
+    if (!iptal) return;
+    fireEvent.click(iptal);
+    await waitFor(() =>
+      expect(document.querySelector('[role="alertdialog"]')).toBeNull()
+    );
+  });
+
+  /** FastAPI 422 gövdesi — `loc` sunucu alan adlarını taşır. */
+  const hata422 = (alan: string, mesaj: string) => ({
+    response: {
+      status: 422,
+      data: { detail: [{ loc: ["body", alan], msg: mesaj, type: "value_error" }] },
+    },
+  });
+
+  it("M8 — sunucu alan hatası İLGİLİ ALANIN altında çıkar, toasta/şeride gitmez", async () => {
+    ac({ error: hata422("qty", "Bu üründe bu kadar stok yok.") });
+    await urunSec();
+
+    const miktar = screen.getByLabelText(/miktar/i);
+    await waitFor(() => {
+      const id = miktar.getAttribute("aria-describedby");
+      expect(id).toBeTruthy();
+      expect(document.getElementById(id!)?.textContent).toBe(
+        "Bu üründe bu kadar stok yok."
+      );
+    });
+    expect(miktar.getAttribute("aria-invalid")).toBe("true");
+    // Alan hatası GENEL şeride düşmemeli — İP-A2 hata yönlendirme sözleşmesi.
+    expect(screen.queryByTestId("damage-genel-hata")).toBeNull();
+  });
+
+  it("M8b — alana düşmeyen sunucu hatası ÜST şeritte kalır", async () => {
+    // Ters prova: M8 tek başına, şerit HİÇ render edilmese de geçerdi.
+    ac({
+      error: {
+        response: { status: 500, data: { detail: "Sunucu hatası." } },
+      },
+    });
+    expect((await screen.findByTestId("damage-genel-hata")).textContent).toMatch(
+      /sunucu/i
+    );
+  });
+
+  it("M8c — formda karşılığı olmayan alanın mesajı SESSİZCE KAYBOLMAZ", async () => {
+    ac({ error: hata422("supplier_id", "Tedarikçi kaydı bulunamadı.") });
+    expect((await screen.findByTestId("damage-genel-hata")).textContent).toBe(
+      "Tedarikçi kaydı bulunamadı."
+    );
+  });
+
+  it("bekçi — kirli formda KAPATMA DÜĞMESİ onay sorar", async () => {
+    const { onClose } = ac();
+    fireEvent.change(screen.getByLabelText(/miktar/i), { target: { value: "3" } });
+
+    fireEvent.click(screen.getByText("Kapat"));
+
+    expect(await screen.findByText("Kaydedilmemiş değişiklikler var")).toBeTruthy();
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it("bekçi — kirli formda ESC onay sorar", async () => {
+    const { onClose } = ac();
+    fireEvent.change(screen.getByLabelText(/miktar/i), { target: { value: "3" } });
+
+    fireEvent.keyDown(document, { key: "Escape" });
+
+    expect(await screen.findByText("Kaydedilmemiş değişiklikler var")).toBeTruthy();
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it("bekçi — kirli formda DIŞ TIKLAMA onay sorar", async () => {
+    const { onClose } = ac();
+    fireEvent.change(screen.getByLabelText(/miktar/i), { target: { value: "3" } });
+
+    fireEvent.click(screen.getByLabelText("Pencereyi kapat"));
+
+    expect(await screen.findByText("Kaydedilmemiş değişiklikler var")).toBeTruthy();
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it("bekçi — TEMİZ formda üç yolun üçü de doğrudan kapatır", async () => {
+    // Ters prova: yukarıdaki üç test, bekçi HER kapatmayı engellese de geçerdi.
+    for (const kapat of [
+      () => fireEvent.click(screen.getByText("Kapat")),
+      () => fireEvent.keyDown(document, { key: "Escape" }),
+      () => fireEvent.click(screen.getByLabelText("Pencereyi kapat")),
+    ]) {
+      const { onClose } = ac();
+      kapat();
+      await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
+      expect(screen.queryByText("Kaydedilmemiş değişiklikler var")).toBeNull();
+      cleanup();
+    }
   });
 });

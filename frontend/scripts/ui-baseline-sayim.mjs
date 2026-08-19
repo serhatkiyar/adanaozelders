@@ -94,6 +94,38 @@ export const UNLABELED_OVERLAY_FILES = [
 
 const MEDUSA = "@medusajs/ui";
 
+/** Erişilebilir ad araması yapılan form kontrolleri. */
+const KONTROL_ETIKETLERI = new Set(["input", "select", "textarea"]);
+
+/**
+ * ÖLÇÜM DIŞI `<input type=…>` değerleri ve gerekçeleri.
+ *
+ *   - `hidden`   → hiç render edilmez, odaklanamaz; etiketlenecek bir yüzeyi yok.
+ *   - `submit` / `reset` / `button` / `image` → HTML'de **labelable değildirler**
+ *     (`<label>` bu tiplere bağlanamaz); erişilebilir adları kendi
+ *     `value`/`alt` içeriklerinden gelir. Bunları borç saymak, kapatılması
+ *     imkânsız bir borç üretirdi.
+ *
+ * `checkbox`/`radio` ÖLÇÜM İÇİNDEDİR: ikisi de labelable'dır ve panelde
+ * etiketsiz kutucuk gerçek bir erişilebilirlik borcudur.
+ *
+ * Tipten bağımsız İKİNCİ bir ölçüm dışı kural daha var: `hidden` özniteliği
+ * taşıyan kontrol (`display:none`) erişilebilirlik ağacında yoktur. Bunlar
+ * `ref` ile tetiklenen dosya seçicileridir; görünen tetikleyici kendi
+ * etiketini taşır. Sadece `className`'de "hidden" geçmesi YETMEZ — dinamik
+ * olabilir; `sr-only` ise zaten görünmez ama OKUNUR, ölçüm içinde kalır.
+ */
+export const OLCUM_DISI_INPUT_TIPLERI = new Set([
+  "hidden",
+  "submit",
+  "reset",
+  "button",
+  "image",
+]);
+
+/** Bir kontrolü "adlandırılmış" sayan sarmalayıcı bileşenler. */
+const KONTROL_SARMALAYICILARI = new Set(["Form.Control"]);
+
 /** Bir JSX özniteliğinin (varsa) düz metin değeri; `x="a"` ve `x={"a"}` aynı okunur. */
 function ozniteligeDeger(init) {
   if (!init) return null;
@@ -130,6 +162,97 @@ export function dosyaOlcumu(kaynak, dosyaAdi = "olcum.tsx") {
     dialogRoles: 0,
     ariaModals: 0,
     medusaImport: false,
+    // Erişilebilir adı olmayan form kontrolleri (İP-A3a metriği).
+    kontrolToplam: 0,
+    adsizKontrol: 0,
+    adsizKontrolSatirlari: [],
+    olcumDisiKontrol: 0,
+  };
+
+  // Kontrol ↔ etiket bağı DOSYA ÖLÇEĞİNDE kurulur: `<label htmlFor={x}>` ile
+  // `<input id={x}>` aynı JSX ağacında kardeş bile olmayabilir. Bu yüzden
+  // önce dosyadaki bütün `htmlFor` değerleri toplanır, kontroller sonra
+  // taranır. Karşılaştırma özniteliğin KAYNAK METNİ üzerinden yapılır; böylece
+  // `htmlFor="ad"`↔`id="ad"` kadar `htmlFor={uid}`↔`id={uid}` de eşleşir.
+  const htmlForDegerleri = new Set();
+  const htmlForTopla = (n) => {
+    if (ts.isJsxOpeningElement(n) || ts.isJsxSelfClosingElement(n)) {
+      if (n.tagName.getText(sf) === "label") {
+        for (const p of n.attributes.properties) {
+          if (ts.isJsxAttribute(p) && p.name.getText(sf) === "htmlFor" && p.initializer) {
+            htmlForDegerleri.add(p.initializer.getText(sf).replace(/\s+/g, ""));
+          }
+        }
+      }
+    }
+    ts.forEachChild(n, htmlForTopla);
+  };
+  htmlForTopla(sf);
+
+  // ── Yerel etiket sarmalayıcıları ──
+  //
+  // Bu kod tabanında yaygın bir desen var:
+  //
+  //     function Field({ label, children }) {
+  //       return <label className="…">{label}{children}</label>;
+  //     }
+  //     …
+  //     <Field label="Araç adı"><input … /></Field>
+  //
+  // Buradaki `<input>` ÇALIŞMA ZAMANINDA `<label>` içinde sarmalanmıştır ve
+  // erişilebilir adı vardır — ama JSX ağacında atası `<Field>`tir, `<label>`
+  // değil. Bu tespit olmadan sayaç `DeliveryVehiclesPage`'in 18 alanını borç
+  // sayıyordu; ölçüm gerçek borcu 18 fazla gösterirdi.
+  //
+  // Tespit AYNI DOSYAYLA sınırlıdır: başka dosyadan import edilen bir
+  // sarmalayıcı görünmez. Kalan yanlış pozitif riski raporda listelenir.
+  const sarmalayiciAdlari = new Set();
+  const kapsayanAd = (n) => {
+    for (let a = n.parent; a; a = a.parent) {
+      if (ts.isFunctionDeclaration(a) && a.name) return a.name.getText(sf);
+      if (
+        (ts.isArrowFunction(a) || ts.isFunctionExpression(a)) &&
+        a.parent &&
+        ts.isVariableDeclaration(a.parent) &&
+        a.parent.name
+      ) {
+        return a.parent.name.getText(sf);
+      }
+    }
+    return null;
+  };
+  const sarmalayiciTopla = (n) => {
+    if (ts.isJsxElement(n) && n.openingElement.tagName.getText(sf) === "label") {
+      // `<label>` içinde `{children}` geçiyor mu?
+      let cocukAktarimi = false;
+      const ara = (m) => {
+        if (ts.isJsxExpression(m) && m.expression) {
+          const e = m.expression;
+          const metin = e.getText(sf).replace(/\s+/g, "");
+          if (metin === "children" || metin === "props.children") {
+            cocukAktarimi = true;
+          }
+        }
+        ts.forEachChild(m, ara);
+      };
+      n.children.forEach(ara);
+      if (cocukAktarimi) {
+        const ad = kapsayanAd(n);
+        if (ad) sarmalayiciAdlari.add(ad);
+      }
+    }
+    ts.forEachChild(n, sarmalayiciTopla);
+  };
+  sarmalayiciTopla(sf);
+
+  /** Bir JSX düğümünün ataları arasında verilen etiketlerden biri var mı? */
+  const atadaVarMi = (n, kabul) => {
+    for (let a = n.parent; a; a = a.parent) {
+      if (ts.isJsxElement(a) && kabul(a.openingElement.tagName.getText(sf))) {
+        return true;
+      }
+    }
+    return false;
   };
 
   const gez = (n) => {
@@ -153,6 +276,51 @@ export function dosyaOlcumu(kaynak, dosyaAdi = "olcum.tsx") {
         if (pad === "aria-modal") o.ariaModals += 1;
         if (pad === "role" && ozniteligeDeger(p.initializer) === "dialog") {
           o.dialogRoles += 1;
+        }
+      }
+
+      // ── İP-A3a: erişilebilir adı olmayan form kontrolü ──
+      if (KONTROL_ETIKETLERI.has(ad)) {
+        const nitelik = (isim) =>
+          oz.find((p) => ts.isJsxAttribute(p) && p.name.getText(sf) === isim);
+
+        const tipNit = nitelik("type");
+        const tip = tipNit ? ozniteligeDeger(tipNit.initializer) : null;
+
+        const gizliNit = nitelik("hidden");
+        const gizli =
+          !!gizliNit &&
+          (!gizliNit.initializer ||
+            gizliNit.initializer.getText(sf).replace(/\s+/g, "") === "{true}");
+
+        if (
+          gizli ||
+          (ad === "input" && tip && OLCUM_DISI_INPUT_TIPLERI.has(tip.toLowerCase()))
+        ) {
+          o.olcumDisiKontrol += 1;
+        } else {
+          o.kontrolToplam += 1;
+
+          // Dört adlandırma biçimi. Hiçbiri yoksa kontrol BORÇTUR.
+          const ariaVar = !!(nitelik("aria-label") || nitelik("aria-labelledby"));
+
+          const idNit = nitelik("id");
+          const idBagli =
+            !!idNit?.initializer &&
+            htmlForDegerleri.has(idNit.initializer.getText(sf).replace(/\s+/g, ""));
+
+          const labelIcinde = atadaVarMi(n, (t) => t === "label");
+          const kontrolIcinde = atadaVarMi(
+            n,
+            (t) => KONTROL_SARMALAYICILARI.has(t) || sarmalayiciAdlari.has(t)
+          );
+
+          if (!ariaVar && !idBagli && !labelIcinde && !kontrolIcinde) {
+            o.adsizKontrol += 1;
+            o.adsizKontrolSatirlari.push(
+              sf.getLineAndCharacterOfPosition(n.getStart(sf)).line + 1
+            );
+          }
         }
       }
     }
@@ -205,11 +373,27 @@ export function sayim() {
   const overlayOffenders = [];
   let unlabeledOverlays = 0;
 
+  let kontrolToplam = 0;
+  let adsizKontrol = 0;
+  let olcumDisiKontrol = 0;
+  const adsizKontrolDosyalari = [];
+
   for (const f of base) {
     const o = dosyaOlcumu(read(f), f);
     rawButton += o.rawButton;
     labels += o.labels;
     labelsWithHtmlFor += o.labelsWithHtmlFor;
+
+    kontrolToplam += o.kontrolToplam;
+    adsizKontrol += o.adsizKontrol;
+    olcumDisiKontrol += o.olcumDisiKontrol;
+    if (o.adsizKontrol > 0) {
+      adsizKontrolDosyalari.push({
+        dosya: f,
+        sayi: o.adsizKontrol,
+        satirlar: o.adsizKontrolSatirlari,
+      });
+    }
 
     if (PRINT_LAYERS.includes(f) || !o.overlays) continue;
     // Bir overlay'in "etiketli" sayılması için HEM role="dialog" HEM
@@ -230,11 +414,21 @@ export function sayim() {
     return s.includes(MEDUSA) && dosyaOlcumu(s, f).medusaImport;
   });
 
+  adsizKontrolDosyalari.sort((a, b) => b.sayi - a.sayi || a.dosya.localeCompare(b.dosya));
+
   return {
     files: base.length,
     rawButton,
+    // `labels` / `labelsWithHtmlFor` artık EŞİK DEĞİL, TEŞHİS sayısıdır
+    // (İP-A3a: oran metriği kaldırıldı — gerekçesi `docs/ip-a3a-rapor.md`).
+    // Sayaç bunları zaten `htmlFor`↔`id` eşleştirmesi için üretiyor.
     labels,
     labelsWithHtmlFor,
+    // İP-A3a nöbetçi metriği: erişilebilir adı olmayan form kontrolü.
+    kontrolToplam,
+    adsizKontrol,
+    olcumDisiKontrol,
+    adsizKontrolDosyalari,
     medusaDirectImports,
     unlabeledOverlays,
     overlayOffenders: overlayOffenders.sort(),

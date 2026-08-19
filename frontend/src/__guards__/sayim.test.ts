@@ -127,3 +127,166 @@ describe("İP-A2 sayaç: yorum ve string sayılmaz", () => {
     ).toBe(false);
   });
 });
+
+/**
+ * İP-A3a metriği: erişilebilir adı olmayan form kontrolü.
+ *
+ * Bu testlerin YARISI (adlandırma biçimleri) tek başına, `adsizKontrol` daima
+ * 0 dönse de geçerdi. Bu yüzden ilk test bir TERS PROVADIR: gerçekten adsız
+ * kontroller doğru sayıyla yakalanır. İkisi birlikte olmadan metrik kanıtsız.
+ */
+describe("İP-A3a sayaç: adsız form kontrolü", () => {
+  it("TERS PROVA — adsız kontroller gerçekten sayılır (sayaç 0'lamıyor)", () => {
+    const kaynak = `
+      export function X() {
+        return (
+          <div>
+            <input className="input" placeholder="Yazar" />
+            <select className="input"><option value="">Seçin…</option></select>
+            <textarea className="input" />
+          </div>
+        );
+      }
+    `;
+    const o = dosyaOlcumu(kaynak);
+    expect(o.kontrolToplam).toBe(3);
+    expect(o.adsizKontrol).toBe(3);
+    // Satır numaraları raporlanabilir olmalı: "41 borç var" demek yetmez,
+    // göç eden kişi nereye bakacağını bilmeli.
+    expect(o.adsizKontrolSatirlari).toHaveLength(3);
+  });
+
+  it("placeholder erişilebilir ad DEĞİLDİR — borç sayılmaya devam eder", () => {
+    // Bilinçli karar: placeholder yazılınca kaybolur, ekran okuyucuda
+    // güvenilmez, kontrast kuralına uymaz. Kabul edilseydi metrik bu kod
+    // tabanında neredeyse boşalır ve hiçbir şey ölçmezdi.
+    const o = dosyaOlcumu(`export const X = () => <input placeholder="Ad" />;`);
+    expect(o.adsizKontrol).toBe(1);
+  });
+
+  it("dört adlandırma biçiminin HİÇBİRİ borç saymaz", () => {
+    const kaynak = `
+      export function X() {
+        return (
+          <form>
+            {/* 1 — Form.Control (id/htmlFor bağını Form.Item kurar) */}
+            <Form.Control><input className="input" /></Form.Control>
+
+            {/* 2 — htmlFor ile kendisine bağlanan <label> */}
+            <label htmlFor="ad">Ad</label>
+            <input id="ad" />
+
+            {/* 3 — aria-label / aria-labelledby */}
+            <input aria-label="Ara" />
+            <select aria-labelledby="baslik"><option /></select>
+
+            {/* 4 — <label> içinde sarmalanmış */}
+            <label>Soyad<input /></label>
+          </form>
+        );
+      }
+    `;
+    const o = dosyaOlcumu(kaynak);
+    expect(o.kontrolToplam).toBe(5);
+    expect(o.adsizKontrol).toBe(0);
+  });
+
+  it("htmlFor↔id eşleşmesi DEĞER üzerinden kurulur, varlık üzerinden değil", () => {
+    // `id` var ama hiçbir etiket ona bağlanmıyor: bu adlandırma değildir.
+    // Bu ayrım olmadan "id yazan herkes borçtan kurtulur" hâli doğardı.
+    const kaynak = `
+      export const X = () => (
+        <div>
+          <label htmlFor="baska">Başka</label>
+          <input id="ad" />
+        </div>
+      );
+    `;
+    expect(dosyaOlcumu(kaynak).adsizKontrol).toBe(1);
+  });
+
+  it("ifade biçimli bağ da eşleşir: htmlFor={uid} ↔ id={uid}", () => {
+    const kaynak = `
+      export const X = ({ uid }) => (
+        <div>
+          <label htmlFor={uid}>Ad</label>
+          <input id={uid} />
+        </div>
+      );
+    `;
+    expect(dosyaOlcumu(kaynak).adsizKontrol).toBe(0);
+  });
+
+  it("yerel <label> sarmalayıcısı (Field deseni) adlandırma sayılır", () => {
+    // Gerçek bulgu: `DeliveryVehiclesPage`'in 18 alanı bu desendedir ve
+    // ÇALIŞMA ZAMANINDA <label> içindedir. Tespit olmadan sayaç 18 sahte
+    // borç raporluyordu.
+    const kaynak = `
+      function Field({ label, children }) {
+        return <label className="flex flex-col">{label}{children}</label>;
+      }
+      export const X = () => (
+        <Field label="Araç adı"><input className="input" /></Field>
+      );
+    `;
+    const o = dosyaOlcumu(kaynak);
+    expect(o.kontrolToplam).toBe(1);
+    expect(o.adsizKontrol).toBe(0);
+  });
+
+  it("children AKTARMAYAN bir bileşen sarmalayıcı sayılmaz", () => {
+    // Ters prova: yukarıdaki tespit "adı Field olan her şeyi affet" değildir.
+    const kaynak = `
+      function Baslik({ label }) {
+        return <label className="x">{label}</label>;
+      }
+      export const X = () => (
+        <div><Baslik label="Ad" /><input className="input" /></div>
+      );
+    `;
+    expect(dosyaOlcumu(kaynak).adsizKontrol).toBe(1);
+  });
+
+  it("ölçüm dışı tipler ve hidden özniteliği borç saymaz, ayrı sayılır", () => {
+    const kaynak = `
+      export const X = () => (
+        <form>
+          <input type="hidden" name="csrf" />
+          <input type="submit" value="Gönder" />
+          <input ref={r} type="file" hidden onChange={f} />
+        </form>
+      );
+    `;
+    const o = dosyaOlcumu(kaynak);
+    expect(o.olcumDisiKontrol).toBe(3);
+    expect(o.kontrolToplam).toBe(0);
+    expect(o.adsizKontrol).toBe(0);
+  });
+
+  it("ÖLÇÜM İÇİ tipler ayıklanmaz: checkbox/radio/file(görünür) borç sayılır", () => {
+    // Ters prova: ölçüm dışı listesi "type yazan her şeyi affet" değildir.
+    const kaynak = `
+      export const X = () => (
+        <form>
+          <input type="checkbox" />
+          <input type="radio" />
+          <input type="file" />
+        </form>
+      );
+    `;
+    const o = dosyaOlcumu(kaynak);
+    expect(o.olcumDisiKontrol).toBe(0);
+    expect(o.adsizKontrol).toBe(3);
+  });
+
+  it("yorumdaki ve string'deki <input sayılmaz", () => {
+    const kaynak = [
+      "// eskiden burada <input className='input' /> vardi",
+      "const ornek = '<input placeholder=\"Ad\" />';",
+      "export const X = () => <div>{ornek}</div>;",
+    ].join(String.fromCharCode(10));
+    const o = dosyaOlcumu(kaynak);
+    expect(o.kontrolToplam).toBe(0);
+    expect(o.adsizKontrol).toBe(0);
+  });
+});

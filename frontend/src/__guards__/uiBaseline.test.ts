@@ -15,10 +15,30 @@
  * |---|---|---|---|
  * | dosya | 78 | 64 | test dosyaları ölçüm dışına alındı |
  * | ham `<button` | 126 | 126 | değişmedi |
- * | `<label>` | 59 | 55 | −1 yorumdaki yanlış sayım, −4 pilot göçü, +1 `Form.Label` |
- * | `htmlFor`lu | 3 | 4 | +1 `Form.Label` (tek yerden tüm formlara) |
  *
- * Dördü de mutasyonla sınandı (`docs/ip-a2-rapor.md` → Görev 6).
+ * ## İP-A3a: `<label htmlFor>` ORANI KALDIRILDI
+ *
+ * Eski eşik `htmlFor`lu etiket / toplam etiket oranıydı (A1'de 3/59, A2'de
+ * 4/55) ve **ölçmeyi bırakmak üzereydi**. Mekanizma: `Form.*`'a göç eden her
+ * form ham `<label>`larını Form.Label'a devreder — PAYDA düşer — ama paya
+ * hiçbir şey eklenmez, çünkü tek `htmlFor`lu etiket `form.tsx`'in KENDİ iç
+ * etiketidir. A6-A7'de elli dosya göç edince payda ~1'e iner, oran %100'e
+ * çıkar ve nöbetçi hiçbir şey tutmaz hâle gelirdi.
+ *
+ * Daha kötüsü: hiç `<label>`ı olmayan bir `<input>` o metriğe **zaten
+ * görünmüyordu**. Gerçek borç tam orada.
+ *
+ * Yerine gelen: **erişilebilir adı olmayan form kontrolü sayısı.** Bir
+ * `<input>`/`<select>`/`<textarea>`, `Form.Control` içindeyse, `htmlFor` ile
+ * kendisine bağlanan bir `<label>` varsa, `aria-label`/`aria-labelledby`
+ * taşıyorsa ya da `<label>` içinde sarmalanmışsa adlandırılmış sayılır;
+ * kalanı borçtur. Yön "artamaz", hedef 0 — ve göç ilerledikçe DÜŞER.
+ *
+ * `labels` / `labelsWithHtmlFor` sayaçta kaldı ama artık eşik değil, teşhis
+ * sayısıdır (sayaç bunları `htmlFor`↔`id` eşleştirmesi için zaten üretiyor).
+ *
+ * Eşiklerin hepsi gerçek JSX mutasyonuyla sınandı
+ * (`docs/ip-a2-rapor.md` → Görev 6, `docs/ip-a3a-rapor.md` → Görev 5).
  */
 import { describe, expect, it } from "vitest";
 import { sayim, UNLABELED_OVERLAY_FILES } from "../../scripts/ui-baseline-sayim.mjs";
@@ -38,15 +58,14 @@ describe("İP-A1 nöbetçi eşikleri", () => {
     expect(olcum.rawButton).toBeLessThanOrEqual(126);
   });
 
-  it("<label htmlFor oranı azalamaz (taban 4/55)", () => {
-    // İP-A1'de 3/59 idi. Payda iki kez düzeldi: sayaç yorumdaki bir `<label>`
-    // sözcüğünü sayıyordu (−1) ve pilot dört ham etiketi `Form.Label`'a
-    // devretti (−4, +1). Pay `Form.Label` sayesinde arttı — bundan sonra
-    // `Form.*`'a geçen her form oranı otomatik yukarı çeker.
-    expect(olcum.labels).toBeGreaterThan(0);
-    expect(olcum.labelsWithHtmlFor / olcum.labels).toBeGreaterThanOrEqual(
-      4 / 55
-    );
+  it("erişilebilir adı olmayan form kontrolü artamaz (taban 41)", () => {
+    // İP-A3a'da eski `<label htmlFor>` ORANININ yerini aldı. Gerekçe için
+    // dosya başındaki nota bak.
+    //
+    // Ölçüm tabanı ayrıca doğrulanır: kontrol sayacı sıfıra düşerse (tarayıcı
+    // bozulur, taban çöker) borç sayısı da sıfırlanır ve eşik SESSİZCE geçer.
+    expect(olcum.kontrolToplam).toBeGreaterThanOrEqual(140);
+    expect(olcum.adsizKontrol).toBeLessThanOrEqual(41);
   });
 
   it("ui2/ dışında @medusajs/ui import eden dosya yok", () => {

@@ -30,7 +30,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 
 import { Button, Dialog } from "@/components/admin/ui";
 import { ProductPicker } from "@/components/admin/ProductPicker";
-import { Form } from "@/components/admin/ui2/form";
+import { Form, sunucuHatasiniUygula } from "@/components/admin/ui2/form";
+import { useKirliFormBekcisi } from "@/components/admin/ui2/kirliFormBekcisi";
 import {
   DAMAGE_KINDS,
   DAMAGE_REASON_OPTIONS,
@@ -38,6 +39,7 @@ import {
   damageFormSchema,
   damageKindLabel,
   damagePayload,
+  inventoryErrorMessage,
   newIdempotencyKey,
   requiresDamageNote,
   type Bucket,
@@ -52,10 +54,38 @@ import type { ProductSearchOut } from "@/types";
 export interface DamageDialogProps {
   kind: DamageKind | null;
   isPending: boolean;
-  error: string | null;
+  /**
+   * HAM sunucu hatası (İP-A3a'da `string`ten değişti).
+   *
+   * Metne çevirme işi artık diyaloğun kendisinde: 422'nin `loc` bilgisi
+   * ancak burada, hangi alanın hangi kontrole karşılık geldiğini bilen yerde
+   * alanlara dağıtılabilir. Sayfa hatayı önceden metne indirgeseydi `loc`
+   * kaybolur ve mesaj mecburen genel şeride düşerdi — İP-A2'nin açık bıraktığı
+   * uç tam olarak buydu.
+   */
+  error: unknown;
   onClose: () => void;
   onSubmit: (payload: DamagePayload) => void;
 }
+
+/** Formdaki alan adları — `sunucuHatasiniUygula` için BEYAZ LİSTE. */
+const ALANLAR = ["urunId", "miktar", "neden", "aciklama", "kova"] as const;
+
+/**
+ * Sunucu alan adı → form alan adı.
+ *
+ * Sunucu `snake_case` ve kendi şemasının adlarını kullanır (`qty`,
+ * `reason_code`); form Türkçe adlarla çalışır. Eşleme olmadan her 422 genel
+ * şeride düşerdi — teknik olarak "kaybolmaz" ama kullanıcı yine hangi alanı
+ * düzelteceğini bilemezdi.
+ */
+const SUNUCU_ALAN_ESLEMESI: Record<string, string> = {
+  product_id: "urunId",
+  qty: "miktar",
+  reason_code: "neden",
+  note: "aciklama",
+  bucket: "kova",
+};
 
 const GONDER_ETIKET: Record<DamageKind, string> = {
   TRANSFER: "Hasara ayır",
@@ -113,6 +143,43 @@ export function DamageDialog({ kind, isPending, error, onClose, onSubmit }: Dama
     [kind, adet, kova]
   );
 
+  // ── Sunucu hatasının dağıtımı (İP-A3a) ──
+  //
+  // `loc`'u bir alana düşen 422 mesajı O ALANIN altına yazılır ve genel
+  // şeride HİÇ gitmez (İP-A2 hata yönlendirme sözleşmesi). Alana düşmeyen
+  // kısım — 500, ağ hatası, formda karşılığı olmayan alan — şeritte kalır;
+  // beyaz liste sayesinde sessizce kaybolmaz.
+  //
+  // 422 dışı metinler envanterin kendi sözlüğünden gelir: defter bütünlüğü
+  // uyarısı ve 409'un "sayfayı yenileyin" yönlendirmesi genel çeviride yok.
+  const [genelHata, setGenelHata] = useState<string | null>(null);
+  useEffect(() => {
+    if (!error) {
+      setGenelHata(null);
+      return;
+    }
+    setGenelHata(
+      sunucuHatasiniUygula(error, form, ALANLAR, SUNUCU_ALAN_ESLEMESI, (h) =>
+        // Hazır metin geçiren çağıran (ör. istemci tarafı ağ hatası) olduğu
+        // gibi gösterilir; aksi hâlde envanter sözlüğünden çevrilir.
+        typeof h === "string" ? h : inventoryErrorMessage(h, "İşlem tamamlanamadı.")
+      )
+    );
+    // `form` kimliğini korur; bağımlılığa eklemek gereksiz yeniden dağıtım
+    // üretirdi (aynı hata iki kez alanlara yazılırdı).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [error]);
+
+  // Kirli form bekçisi: kapatma düğmesi, ESC ve dış tıklama — üçü de
+  // `Dialog`'un `onClose`'una düşer, bu yüzden tek noktadan kapılanır.
+  const bekci = useKirliFormBekcisi({
+    form,
+    // Gönderim ağa çıkıp başarısız olduysa form KİRLİ sayılmaya devam eder;
+    // `isSubmitSuccessful` tek başına "mutate çağrıldı" demektir.
+    sunucuHatasi: error,
+    etkin: !!kind,
+  });
+
   if (!kind) return null;
 
   const geriAlinamaz = etki?.irreversible ?? false;
@@ -168,7 +235,7 @@ export function DamageDialog({ kind, isPending, error, onClose, onSubmit }: Dama
       open
       title={damageKindLabel(kind)}
       description={DAMAGE_KINDS.find((k) => k.value === kind)?.description}
-      onClose={() => !isPending && onClose()}
+      onClose={() => !isPending && bekci.kapatmayiDene(onClose)}
     >
       <div className="space-y-4">
         {/* Ham ürün numarası yerine arama: hasar kaydı stoktan düşen ve geri
@@ -312,18 +379,22 @@ export function DamageDialog({ kind, isPending, error, onClose, onSubmit }: Dama
 
         {/* YALNIZ genel/sunucu hatası. Alan doğrulama hataları buraya asla
             düşmez — kendi alanlarının altında dururlar (İP-A2 sözleşmesi). */}
-        {error && (
+        {genelHata && (
           <p
             role="alert"
             data-testid="damage-genel-hata"
             className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-sm text-rose-900 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-100"
           >
-            {error}
+            {genelHata}
           </p>
         )}
 
         <div className="flex justify-end gap-2">
-          <Button variant="ghost" disabled={isPending} onClick={onClose}>
+          <Button
+            variant="ghost"
+            disabled={isPending}
+            onClick={() => bekci.kapatmayiDene(onClose)}
+          >
             Vazgeç
           </Button>
           <Button

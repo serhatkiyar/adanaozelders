@@ -10,6 +10,10 @@
  * `git status --porcelain` çıktısı karşılaştırılır. Kullanıcının commit
  * edilmemiş değişikliği asla kaybolmaz.
  *
+ * NOT (İP-A3a): bu sürücü ARTIK KOŞMAZ — ikinci mutasyonu (`<label htmlFor>`
+ * oranı) İP-A3a'da KALDIRILAN bir eşiği hedefliyor. İP-A2 kapanışının kaydı
+ * olarak duruyor; güncel sürücü `scripts/ip_a3a_mutasyon.mjs`.
+ *
  * Kullanım (frontend/ dizininden):  node scripts/ip_a2_mutasyon.mjs
  */
 import { execFileSync } from "node:child_process";
