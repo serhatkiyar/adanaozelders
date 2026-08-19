@@ -123,7 +123,19 @@ export function DenetimBlok() {
   39/39 yeşil.
 - **Çalışma zamanı** (`dom-accessibility-api::computeAccessibleName`):
   **12 adsız kontrol**.
-- **Onarımdan sonra beklenen:** KIRMIZI.
+- **Onarımdan sonra beklenen:** KIRMIZI — ve iddia "sayı arttı" değil, **tam
+  sayısal eşitlik**: fabrika eklendiğinde `adsizKontrol` sayacı fabrikanın
+  ürettiği **tam olarak 12** adsız kontrol kadar artmalıdır
+  (`adsizSonra − adsizÖnce === 12`). "Arttı" / "≥ 1" biçiminde bir eşik kabul
+  edilmez: 1 de 40 da o eşiği geçer, yani sayacın fabrikanın kaç çağrısını
+  gördüğünü ayırt etmez.
+- **Toplam kontrol sayısı da ayrıca doğrulanır:** aynı ölçümde toplam kontrol
+  sayısı da tam olarak 12 artmalıdır (`toplamSonra − toplamÖnce === 12`).
+  Böylece +12'nin gerçekten 12 **yeni** kontrolden geldiği, mevcut adlı
+  kontrollerin adsıza düşmesinden gelmediği kanıtlanır.
+- Ölçüm yalnız **fabrika bloğunun eklenmesi/çıkarılması** arasındaki farktır;
+  aynı dosyadaki `aria-label` onarımı (net +11 gerçek borç) bu iki farkın
+  dışında tutulur.
 
 ### M-A⁻ · Negatif kontrol
 
