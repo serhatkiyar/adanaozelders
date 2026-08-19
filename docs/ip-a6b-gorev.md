@@ -123,19 +123,21 @@ export function DenetimBlok() {
   39/39 yeşil.
 - **Çalışma zamanı** (`dom-accessibility-api::computeAccessibleName`):
   **12 adsız kontrol**.
-- **Onarımdan sonra beklenen:** KIRMIZI — ve iddia "sayı arttı" değil, **tam
-  sayısal eşitlik**: fabrika eklendiğinde `adsizKontrol` sayacı fabrikanın
-  ürettiği **tam olarak 12** adsız kontrol kadar artmalıdır
-  (`adsizSonra − adsizÖnce === 12`). "Arttı" / "≥ 1" biçiminde bir eşik kabul
-  edilmez: 1 de 40 da o eşiği geçer, yani sayacın fabrikanın kaç çağrısını
-  gördüğünü ayırt etmez.
-- **Toplam kontrol sayısı da ayrıca doğrulanır:** aynı ölçümde toplam kontrol
-  sayısı da tam olarak 12 artmalıdır (`toplamSonra − toplamÖnce === 12`).
-  Böylece +12'nin gerçekten 12 **yeni** kontrolden geldiği, mevcut adlı
-  kontrollerin adsıza düşmesinden gelmediği kanıtlanır.
-- Ölçüm yalnız **fabrika bloğunun eklenmesi/çıkarılması** arasındaki farktır;
-  aynı dosyadaki `aria-label` onarımı (net +11 gerçek borç) bu iki farkın
-  dışında tutulur.
+- **Mutasyonun kapsamı bölünemez:** 12 çağrılı adsız fabrika **eklenir** VE
+  aynı dosyada mevcut bir adsız kontrol `aria-label` ile **kapatılır**. İki
+  hareket birlikte yapılmadan M-A fabrika körlüğünü kanıtlamaz: denetimde
+  bulunan olay tam olarak "12 borç doğdu, 1 borç kapandı, sayaç 30'da kaldı"
+  idi — yani iki hareketin birbirini gizlemesi.
+- **Onarımdan sonra beklenen:** KIRMIZI. İddia "sayı arttı" değil, iki **tam
+  sayısal eşitlik** — ve bunlar **ayrı ayrı** doğrulanır:
+  1. `adsizSonra − adsizÖnce === 11` (12 yeni adsız − 1 kapatılan borç)
+  2. `toplamSonra − toplamÖnce === 12` (12 yeni kontrol; kapatma toplamı
+     değiştirmez)
+  "Arttı" / "≥ 1" biçiminde bir eşik kabul edilmez: 1 de 40 da o eşiği geçer,
+  yani sayacın fabrikanın kaç çağrısını gördüğünü ayırt etmez.
+- **Bugünkü kör aletle iki fark da 0** çıktığı için M-A bugün KIRMIZI verir;
+  ikisi ayrı doğrulandığından, sayacın yalnız birini görüp diğerini kaçırdığı
+  yarı-onarım da yakalanır.
 
 ### M-A⁻ · Negatif kontrol
 
