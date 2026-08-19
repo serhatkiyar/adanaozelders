@@ -1,10 +1,36 @@
 /**
- * Mağaza "Kuponlar" sekmesi — İP-A5'te `AdminStore.tsx`ten AYNEN taşındı.
+ * Mağaza "Kuponlar" sekmesi.
+ *
+ * ## İP-A6 · Görev 4a — göç
+ *
+ * Değişen:
+ *
+ *   - Altı alanın hepsi `Form.Item` + `Form.Label` + `Form.Control` içinde.
+ *     Eskiden hepsi `placeholder`la "adlandırılmıştı" (`KOD`, `Değer`,
+ *     `Min sepet`…) — `placeholder` erişilebilir ad değildir ve alan
+ *     doldurulunca kaybolur; ekran okuyucu altı kutuyu da adsız okuyordu.
+ *   - Yerel `inputCls` sabiti SİLİNDİ (A5'in "yedi tekrar eden desen"
+ *     listesinin biri). Ortak `.input` sınıfına devredildi.
+ *   - Elle `useState<CouponCreate>` → `react-hook-form` + zod
+ *     (`lib/storeCouponForm`). Eski doğrulama TEK kuraldı ("kod boş mu") ve
+ *     sonucu bir toast'a iniyordu; hangi alanın yanlış olduğu görünmüyordu.
+ *   - Gönder düğmesi geçerlilik yüzünden KAPANMAZ (kalıcı kural): geçersizse
+ *     istek gitmez, hatalar alanların altında belirir ve odak ilk hatalı
+ *     alana taşınır.
+ *   - Ham `<button>`ler ortak `Button`a; silme onayının pencere durumu
+ *     ekrandan `ui2/duzenlemeYuzeyi`ne.
+ *
+ * Değişmeyen: yetki kapıları, hata≠boş durum ayrımı, aktif/pasif anahtarı,
+ * silmenin onay penceresinden geçmesi, sunucu gövdesinin alanları.
  */
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useForm, type FieldErrors } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 
 import { AccessDenied, ReadOnlyNotice, useAdminAreaAccess } from "@/components/admin/AccessState";
-import { ConfirmDialog, ErrorState } from "@/components/admin/ui";
+import { Button, ConfirmDialog, ErrorState } from "@/components/admin/ui";
+import { useDuzenlemeYuzeyi } from "@/components/admin/ui2/yuzeyDurumu";
+import { Form, sunucuHatasiniUygula } from "@/components/admin/ui2/form";
 import {
   useCoupons,
   useCreateCoupon,
@@ -13,18 +39,43 @@ import {
 } from "@/hooks/useStore";
 import { getErrorDetail } from "@/lib/errors";
 import { formatTL } from "@/lib/money";
+import {
+  BOS_KUPON,
+  kuponFormSemasi,
+  kuponGovdesi,
+  type KuponFormDegerleri,
+} from "@/lib/storeCouponForm";
 import { toast } from "@/store/toastStore";
-import type { CouponCreate, CouponDiscountType } from "@/types";
 
-const EMPTY_COUPON: CouponCreate = {
-  code: "",
-  discount_type: "PERCENT",
-  discount_value: 10,
-  min_subtotal: 0,
-  max_uses: null,
-  per_user_limit: 1,
-  is_active: true,
+/** `sunucuHatasiniUygula` için BEYAZ LİSTE — formda karşılığı olan alanlar. */
+const ALANLAR = [
+  "kod",
+  "indirimTuru",
+  "indirimDegeri",
+  "minSepet",
+  "maksKullanim",
+  "kisiBasi",
+] as const;
+
+/** Sunucu alan adı → form alan adı (422 `loc` eşlemesi). */
+const SUNUCU_ALAN_ESLEMESI: Record<string, string> = {
+  code: "kod",
+  discount_type: "indirimTuru",
+  discount_value: "indirimDegeri",
+  min_subtotal: "minSepet",
+  max_uses: "maksKullanim",
+  per_user_limit: "kisiBasi",
 };
+
+/** Alanların GÖRSEL sırası; "ilk hatalı alan" bu sıradan okunur. */
+const GORSEL_SIRA = [
+  "kod",
+  "indirimTuru",
+  "indirimDegeri",
+  "minSepet",
+  "maksKullanim",
+  "kisiBasi",
+] as const;
 
 export function CouponsPanel() {
   const { canView, canManage } = useAdminAreaAccess("coupons");
@@ -32,33 +83,53 @@ export function CouponsPanel() {
   const create = useCreateCoupon();
   const update = useUpdateCoupon();
   const del = useDeleteCoupon();
-  const [form, setForm] = useState<CouponCreate>(EMPTY_COUPON);
-  const [deleting, setDeleting] = useState<{ id: number; code: string } | null>(null);
+  // Pencere durumu EKRANDA yaşamaz (İP-A4 sözleşmesi): silme onayının hedefi
+  // düzenleme yüzeyinde tutulur, böylece rota tabanlı yüzeylere geçiş kararı
+  // bu dosyayı ilgilendirmez.
+  const silmeYuzeyi = useDuzenlemeYuzeyi<{ id: number; code: string }>();
 
-  function submit() {
-    if (!form.code.trim()) {
-      toast.error("Kod gir");
+  const form = useForm<KuponFormDegerleri>({
+    resolver: zodResolver(kuponFormSemasi),
+    defaultValues: BOS_KUPON,
+    mode: "onChange",
+    // Odaklamayı kendimiz yapıyoruz; RHF'inki `onInvalid`ten sonra çalışıp
+    // bizimkini ezer (İP-A3c pilotunda ölçüldü).
+    shouldFocusError: false,
+  });
+
+  // Sunucu hatasını alanlara dağıt; alana düşmeyen kısım şeritte kalır.
+  const [genelHata, setGenelHata] = useState<string | null>(null);
+  useEffect(() => {
+    const hata = create.error;
+    if (!hata) {
+      setGenelHata(null);
       return;
     }
-    create.mutate(
-      { ...form, code: form.code.trim().toUpperCase() },
-      {
+    setGenelHata(
+      sunucuHatasiniUygula(hata, form, ALANLAR, SUNUCU_ALAN_ESLEMESI, (h) =>
+        getErrorDetail(h, "Kupon oluşturulamadı")
+      )
+    );
+    // `form` kimliğini korur; bağımlılığa eklemek aynı hatayı iki kez dağıtırdı.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [create.error]);
+
+  const gonder = form.handleSubmit(
+    (degerler) => {
+      create.mutate(kuponGovdesi(degerler), {
         onSuccess: () => {
           toast.success("Kupon oluşturuldu");
-          setForm(EMPTY_COUPON);
+          form.reset(BOS_KUPON);
         },
-        onError: (err: unknown) => {
-          const detail =
-            (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ??
-            "Kupon oluşturulamadı";
-          toast.error(detail);
-        },
-      }
-    );
-  }
-
-  const inputCls =
-    "rounded-lg border border-slate-200 px-2 py-1.5 text-sm outline-none focus:border-indigo-400 dark:border-slate-700 dark:bg-slate-800 dark:text-white";
+        // Hata alanlara yukarıdaki efektte dağıtılır; toast'a GİTMEZ
+        // (İP-A2 hata yönlendirme sözleşmesi).
+      });
+    },
+    (hatalar: FieldErrors<KuponFormDegerleri>) => {
+      const ilk = GORSEL_SIRA.find((a) => hatalar[a]);
+      if (ilk) form.setFocus(ilk);
+    }
+  );
 
   if (!canView) return <AccessDenied area="Kuponlar" />;
   if (isError) {
@@ -75,61 +146,111 @@ export function CouponsPanel() {
       {!canManage && <ReadOnlyNotice />}
       {/* Oluştur */}
       {canManage && (
-      <div className="rounded-2xl border border-slate-100 p-4 dark:border-slate-800">
-        <h3 className="mb-3 text-sm font-semibold text-slate-900 dark:text-white">Yeni kupon</h3>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-          <input
-            value={form.code}
-            onChange={(e) => setForm({ ...form, code: e.target.value.toUpperCase() })}
-            placeholder="KOD"
-            className={`${inputCls} uppercase`}
-          />
-          <select
-            value={form.discount_type}
-            onChange={(e) => setForm({ ...form, discount_type: e.target.value as CouponDiscountType })}
-            className={inputCls}
-          >
-            <option value="PERCENT">Yüzde %</option>
-            <option value="FIXED">Sabit TL</option>
-          </select>
-          <input
-            type="number"
-            value={form.discount_value}
-            onChange={(e) => setForm({ ...form, discount_value: Number(e.target.value) })}
-            placeholder="Değer"
-            className={inputCls}
-          />
-          <input
-            type="number"
-            value={form.min_subtotal ?? 0}
-            onChange={(e) => setForm({ ...form, min_subtotal: Number(e.target.value) })}
-            placeholder="Min sepet"
-            className={inputCls}
-          />
-          <input
-            type="number"
-            value={form.max_uses ?? ""}
-            onChange={(e) => setForm({ ...form, max_uses: e.target.value ? Number(e.target.value) : null })}
-            placeholder="Maks kullanım"
-            className={inputCls}
-          />
-          <input
-            type="number"
-            value={form.per_user_limit ?? ""}
-            onChange={(e) => setForm({ ...form, per_user_limit: e.target.value ? Number(e.target.value) : null })}
-            placeholder="Kişi başı"
-            className={inputCls}
-          />
+        <div className="rounded-2xl border border-slate-100 p-4 dark:border-slate-800">
+          <h3 className="mb-3 text-sm font-semibold text-slate-900 dark:text-white">Yeni kupon</h3>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+            <Form.Field
+              control={form.control}
+              name="kod"
+              render={({ field }) => (
+                <Form.Item>
+                  <Form.Label>Kod</Form.Label>
+                  <Form.Control>
+                    {/* Büyük harfe çevirme GÖRSELdir (`uppercase`); gövdedeki
+                        dönüşüm `kuponGovdesi`de yapılır. İkisini de girişte
+                        yapmak, kullanıcının yazdığı imleci zıplatıyordu. */}
+                    <input className="input uppercase" placeholder="KOD" {...field} />
+                  </Form.Control>
+                  <Form.ErrorMessage />
+                </Form.Item>
+              )}
+            />
+            <Form.Field
+              control={form.control}
+              name="indirimTuru"
+              render={({ field }) => (
+                <Form.Item>
+                  <Form.Label>İndirim türü</Form.Label>
+                  <Form.Control>
+                    <select className="input" {...field}>
+                      <option value="PERCENT">Yüzde %</option>
+                      <option value="FIXED">Sabit TL</option>
+                    </select>
+                  </Form.Control>
+                  <Form.ErrorMessage />
+                </Form.Item>
+              )}
+            />
+            <Form.Field
+              control={form.control}
+              name="indirimDegeri"
+              render={({ field }) => (
+                <Form.Item>
+                  <Form.Label>Değer</Form.Label>
+                  <Form.Control>
+                    <input className="input" type="number" inputMode="decimal" {...field} />
+                  </Form.Control>
+                  <Form.ErrorMessage />
+                </Form.Item>
+              )}
+            />
+            <Form.Field
+              control={form.control}
+              name="minSepet"
+              render={({ field }) => (
+                <Form.Item>
+                  <Form.Label>Min sepet</Form.Label>
+                  <Form.Control>
+                    <input className="input" type="number" inputMode="decimal" {...field} />
+                  </Form.Control>
+                  <Form.ErrorMessage />
+                </Form.Item>
+              )}
+            />
+            <Form.Field
+              control={form.control}
+              name="maksKullanim"
+              render={({ field }) => (
+                <Form.Item>
+                  <Form.Label optional>Maks kullanım</Form.Label>
+                  <Form.Control>
+                    <input className="input" type="number" inputMode="numeric" {...field} />
+                  </Form.Control>
+                  <Form.ErrorMessage />
+                </Form.Item>
+              )}
+            />
+            <Form.Field
+              control={form.control}
+              name="kisiBasi"
+              render={({ field }) => (
+                <Form.Item>
+                  <Form.Label optional>Kişi başı</Form.Label>
+                  <Form.Control>
+                    <input className="input" type="number" inputMode="numeric" {...field} />
+                  </Form.Control>
+                  <Form.ErrorMessage />
+                </Form.Item>
+              )}
+            />
+          </div>
+
+          {/* YALNIZ genel/sunucu hatası; alan hataları kendi alanlarının
+              altında durur ve buraya asla düşmez. */}
+          {genelHata && (
+            <p
+              role="alert"
+              className="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-sm text-rose-900 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-100"
+            >
+              {genelHata}
+            </p>
+          )}
+
+          {/* Geçerlilik kapısı YOK: `isPending` yalnız çift gönderimi engeller. */}
+          <Button className="mt-3" isPending={create.isPending} onClick={gonder}>
+            Kupon oluştur
+          </Button>
         </div>
-        <button
-          type="button"
-          onClick={submit}
-          disabled={create.isPending}
-          className="mt-3 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50"
-        >
-          Kupon oluştur
-        </button>
-      </div>
       )}
 
       {/* Liste */}
@@ -156,24 +277,16 @@ export function CouponsPanel() {
               </div>
               {canManage && (
                 <div className="flex items-center gap-2">
-                  <button
-                    type="button"
+                  <Button
+                    size="sm"
+                    variant={c.is_active ? "success" : "secondary"}
                     onClick={() => update.mutate({ id: c.id, payload: { is_active: !c.is_active } })}
-                    className={`rounded-lg px-3 py-1 text-xs font-medium ${
-                      c.is_active
-                        ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400"
-                        : "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400"
-                    }`}
                   >
                     {c.is_active ? "Aktif" : "Pasif"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setDeleting({ id: c.id, code: c.code })}
-                    className="rounded-lg px-3 py-1 text-xs font-medium text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/10"
-                  >
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => silmeYuzeyi.ac({ id: c.id, code: c.code })}>
                     Sil
-                  </button>
+                  </Button>
                 </div>
               )}
             </div>
@@ -181,14 +294,17 @@ export function CouponsPanel() {
         </div>
       )}
       <ConfirmDialog
-        open={deleting !== null}
+        open={silmeYuzeyi.acik}
         title="Kuponu sil"
-        description={deleting ? `${deleting.code} kuponu silinecek.` : ""}
+        description={silmeYuzeyi.kayit ? `${silmeYuzeyi.kayit.code} kuponu silinecek.` : ""}
         confirmLabel="Kuponu sil"
         danger
         isPending={del.isPending}
-        onClose={() => setDeleting(null)}
-        onConfirm={() => deleting && del.mutate(deleting.id, { onSuccess: () => setDeleting(null) })}
+        onClose={silmeYuzeyi.kapat}
+        onConfirm={() =>
+          silmeYuzeyi.kayit &&
+          del.mutate(silmeYuzeyi.kayit.id, { onSuccess: silmeYuzeyi.kapat })
+        }
       />
     </div>
   );

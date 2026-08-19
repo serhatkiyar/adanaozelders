@@ -10,9 +10,10 @@
  * (`useSearchParams`) ve React Query önbelleğidir. Bu yüzden bölme prop
  * geçirmeden ya da durum yukarı taşımadan yapılabildi.
  */
-import { NavLink, useLocation } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 
 import { AccessDenied } from "@/components/admin/AccessState";
+import { GezinmeBaglantisi } from "@/components/admin/ui2/gezinmeBekcisi";
 import { StockMovementsPanel } from "@/components/admin/StockMovementsPanel";
 import { CategoriesPanel } from "@/components/admin/store/CategoriesPanel";
 import { CouponsPanel } from "@/components/admin/store/CouponsPanel";
@@ -74,7 +75,7 @@ export default function AdminStore() {
             ["stock", "Stok hareketleri"],
           ] as [SubTab, string][]
         ).filter(([v]) => adminAreaAccess(permissions, TAB_AREA[v]).canView).map(([v, label]) => (
-          <NavLink
+          <GezinmeBaglantisi
             key={v}
             to={STORE_ROUTES[v]}
             aria-current={sub === v ? "page" : undefined}
@@ -85,7 +86,7 @@ export default function AdminStore() {
             }`}
           >
             {label}
-          </NavLink>
+          </GezinmeBaglantisi>
         ))}
       </div>
       {sub === "products" ? (

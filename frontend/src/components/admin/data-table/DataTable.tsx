@@ -127,7 +127,27 @@ export function DataTable<TData extends object>({
                   const sortable = header.column.getCanSort();
                   const direction = header.column.getIsSorted();
                   return (
-                    <th key={header.id} scope="col" className="px-4 py-3 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                    <th
+                      key={header.id}
+                      scope="col"
+                      /* İP-A6 · Görev 2: sıralama göstergesi GÖRSELDİ ama
+                         ekran okuyucuya görünmüyordu — ok işareti
+                         `aria-hidden`, `<th>`de ise hiçbir durum yoktu.
+                         Sıralı kolonun hangisi olduğu ve yönü ancak
+                         `aria-sort` ile duyurulur. Sıralanabilir ama sırasız
+                         kolon "none" der; sıralanamayan kolon hiçbir şey
+                         demez (öznitelik anlamsız olurdu). */
+                      aria-sort={
+                        !sortable
+                          ? undefined
+                          : direction === "asc"
+                            ? "ascending"
+                            : direction === "desc"
+                              ? "descending"
+                              : "none"
+                      }
+                      className="px-4 py-3 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400"
+                    >
                       {header.isPlaceholder ? null : sortable ? (
                         <button
                           type="button"

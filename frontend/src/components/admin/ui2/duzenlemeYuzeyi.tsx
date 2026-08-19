@@ -74,73 +74,35 @@
  * `kapatmayiDene`den geçmelidir; yüzeyin kendi çizdiği yolların hepsi geçer.
  * (İP-A3c'de belgelenen P2-9 sınırının bu katmandaki karşılığı.)
  */
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  type ReactNode,
+} from "react";
 import type { FieldValues, UseFormReturn } from "react-hook-form";
 
 import { Button, Dialog } from "@/components/admin/ui";
 
-import { HATA_TAKIBI_YOK, useKirliFormBekcisi } from "./kirliFormBekcisi";
+import {
+  HATA_TAKIBI_YOK,
+  useKirliFormBekcisi,
+  type KirliFormBekcisi,
+  type KirliFormBekcisiSecenekleri,
+} from "./kirliFormBekcisi";
+import type { DuzenlemeYuzeyiKapisi } from "./yuzeyDurumu";
 
-/** Yüzeyin hedefi: bir kayıt ya da "yeni". Kapalıyken `null`. */
-export type DuzenlemeHedefi<TKayit, TBaglam> =
-  | { tur: "kayit"; kayit: TKayit }
-  | { tur: "yeni"; baglam: TBaglam };
-
-export interface DuzenlemeYuzeyiDurumu<TKayit, TBaglam> {
-  /** Yüzey açık mı. */
-  acik: boolean;
-  /** Hedef "yeni" mi (kayıt düzenleme değil). */
-  yeni: boolean;
-  /** Düzenlenen kayıt; "yeni"de ve kapalıyken `null`. */
-  kayit: TKayit | null;
-  /** "Yeni"ye verilen bağlam (ör. hangi işlem türü); yoksa `null`. */
-  baglam: TBaglam | null;
-  /** Ham hedef — `useEffect` bağımlılığı olarak kullanışlı. */
-  hedef: DuzenlemeHedefi<TKayit, TBaglam> | null;
-  /** Var olan kaydı düzenlemek için aç. */
-  ac: (kayit: TKayit) => void;
-  /** Yeni kayıt için aç; bağlam ekranın verdiği serbest bir ayrımdır. */
-  yeniAc: (baglam?: TBaglam) => void;
-  /**
-   * KOŞULSUZ kapat — bekçiye sormaz. Kaydedildikten sonra çağrılır.
-   * Kullanıcı kaynaklı kapatma yollarını yüzey kendisi bekçiye bağlar.
-   */
-  kapat: () => void;
-}
-
-/** `DuzenlemeYuzeyi` bileşeninin ihtiyaç duyduğu asgari sözleşme. */
-export interface DuzenlemeYuzeyiKapisi {
-  acik: boolean;
-  kapat: () => void;
-}
-
-export function useDuzenlemeYuzeyi<TKayit = never, TBaglam = void>(): DuzenlemeYuzeyiDurumu<
-  TKayit,
-  TBaglam
-> {
-  const [hedef, setHedef] = useState<DuzenlemeHedefi<TKayit, TBaglam> | null>(null);
-
-  const ac = useCallback((kayit: TKayit) => setHedef({ tur: "kayit", kayit }), []);
-  const yeniAc = useCallback(
-    (baglam?: TBaglam) => setHedef({ tur: "yeni", baglam: baglam as TBaglam }),
-    []
-  );
-  const kapat = useCallback(() => setHedef(null), []);
-
-  return useMemo(
-    () => ({
-      acik: hedef !== null,
-      yeni: hedef?.tur === "yeni",
-      kayit: hedef?.tur === "kayit" ? hedef.kayit : null,
-      baglam: hedef?.tur === "yeni" ? (hedef.baglam ?? null) : null,
-      hedef,
-      ac,
-      yeniAc,
-      kapat,
-    }),
-    [ac, hedef, kapat, yeniAc]
-  );
-}
+// Durum kancası İP-A6'da `yuzeyDurumu.ts`ye ayrıldı (döngü kırma —
+// gerekçesi o dosyanın başında). Sözleşme değişmediği için buradan da
+// dışa aktarılır: mevcut çağrı yerleri `duzenlemeYuzeyi`den almaya devam eder.
+export {
+  useDuzenlemeYuzeyi,
+  type DuzenlemeHedefi,
+  type DuzenlemeYuzeyiDurumu,
+  type DuzenlemeYuzeyiKapisi,
+} from "./yuzeyDurumu";
 
 /**
  * Yüzeyin İÇİNDEN kapatma isteği. Form içindeki özel bir "Vazgeç"/"Kapat"
@@ -227,3 +189,92 @@ export function DuzenlemeYuzeyi<TFieldValues extends FieldValues>({
 }
 
 export { HATA_TAKIBI_YOK };
+
+/* ══════════ İçeriği KENDİ formunu yöneten yüzey (İP-A6 · Görev 4b) ══════════ */
+
+/**
+ * `DuzenlemeYuzeyi` formu DIŞARIDAN alır: ekran `useForm`u kurar, yüzeye
+ * verir, yüzey bekçiyi bağlar. Bu, alanları yüzeyle aynı bileşende yazılan
+ * formlar için doğru şekildir (pilot: `DamageDialog`).
+ *
+ * Ama panelde ikinci bir desen daha var ve İP-A6'nın hedefi `EditProductModal`
+ * tam olarak o: **pencere, kendi formunu kendi yöneten bir bileşeni sarar**.
+ * `ProductForm` 25 alanıyla birlikte hem oluşturmada (satır içi) hem
+ * düzenlemede (pencere içinde) kullanılıyor; formu pencereye çıkarmak, satır
+ * içi kullanımı da pencereye bağlamlı hâle getirirdi.
+ *
+ * `DuzenlemePenceresi` bu ikinci deseni karşılar: pencereyi ve kapatma
+ * yollarını o çizer, formu içerik yönetir, ikisi bir BEKÇİ üzerinden
+ * buluşur. İçerik `useYuzeyKirliFormBekcisi` çağırır; sağlayıcı yoksa hiçbir
+ * şey değişmez (satır içi kullanım) ve bekçi yalnız rota/sekme korumasını
+ * kurar.
+ *
+ * Kazanç: `role="dialog"` + `aria-modal` + odak tuzağı + ESC + arka plan
+ * kilidi (hepsi `Dialog`/`useModalA11y`ten) ve kirli formda kapatma onayı —
+ * içeriğin tek satır bile yazmadan.
+ */
+const BekciBildirimCtx = createContext<((bekci: KirliFormBekcisi | null) => void) | null>(
+  null
+);
+
+/**
+ * `useKirliFormBekcisi`nin yüzey farkındalığı olan hâli.
+ *
+ * Bekçiyi kurar VE (bir `DuzenlemePenceresi` içindeyse) pencereye bildirir;
+ * böylece ×/ESC/dış tıklama yolları da kirli formu sorar.
+ */
+export function useYuzeyKirliFormBekcisi<TFieldValues extends FieldValues>(
+  secenekler: KirliFormBekcisiSecenekleri<TFieldValues>
+): KirliFormBekcisi {
+  const bekci = useKirliFormBekcisi(secenekler);
+  const bildir = useContext(BekciBildirimCtx);
+  // Bağımlılık dizisi YOK: `bekci` her render'da yeni bir nesnedir ve
+  // pencere onu bir REF'te tutar (durum değil) — yani bu bildirim yeniden
+  // render tetiklemez ve döngü kurulamaz.
+  useEffect(() => {
+    bildir?.(bekci);
+    return () => bildir?.(null);
+  });
+  return bekci;
+}
+
+export interface DuzenlemePenceresiProps {
+  yuzey: DuzenlemeYuzeyiKapisi;
+  baslik: string;
+  aciklama?: string;
+  children: ReactNode;
+}
+
+export function DuzenlemePenceresi({
+  yuzey,
+  baslik,
+  aciklama,
+  children,
+}: DuzenlemePenceresiProps) {
+  const bekciRef = useRef<KirliFormBekcisi | null>(null);
+  const bildir = useCallback((bekci: KirliFormBekcisi | null) => {
+    bekciRef.current = bekci;
+  }, []);
+
+  const kapatmayiDene = useCallback(() => {
+    const bekci = bekciRef.current;
+    if (!bekci) {
+      yuzey.kapat();
+      return;
+    }
+    bekci.kapatmayiDene(yuzey.kapat);
+  }, [yuzey]);
+
+  return (
+    <BekciBildirimCtx.Provider value={bildir}>
+      <Dialog
+        open={yuzey.acik}
+        title={baslik}
+        description={aciklama}
+        onClose={kapatmayiDene}
+      >
+        {children}
+      </Dialog>
+    </BekciBildirimCtx.Provider>
+  );
+}

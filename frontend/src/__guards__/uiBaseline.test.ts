@@ -74,101 +74,27 @@
  * `docs/ip-a3c-rapor.md` → Görev 9).
  */
 import { describe, expect, it } from "vitest";
-import { sayim, UNLABELED_OVERLAY_FILES } from "../../scripts/ui-baseline-sayim.mjs";
+import {
+  OLCUM_TABANI,
+  sayim,
+  UNLABELED_OVERLAY_FILES,
+} from "../../scripts/ui-baseline-sayim.mjs";
 
 /**
- * Ölçüm tabanının TAM dosya listesi — nöbetçinin gerçek zemini.
+ * Ölçüm tabanının TAM dosya listesi ARTIK BURADA DEĞİL (İP-A6 · Görev 1).
  *
- * Bu liste elle bakılıp güncellenir. Kırıldığında sorulacak soru: "dosya
- * gerçekten panelin bir parçası mı, öyleyse listeye ekle" ya da "silindi mi,
- * öyleyse çıkar". Sessizce güncellenmesi eşikleri anlamsızlaştırır.
+ * İP-A3c–A5 boyunca liste bu dosyada duruyordu ve sayım dizin yürüyüşünden
+ * geliyordu; liste yalnız sonucun aynı olduğunu denetliyordu. İP-A5 bu
+ * ayrımın bir kaçış ürettiğini ölçtü (TB-A5-1): ölçülen bir dosya ağacın
+ * dışına taşındığında yürüyüş onu bulamıyor, dört eşik de geçmeye devam
+ * ediyordu.
+ *
+ * Liste `scripts/ui-baseline-sayim.mjs`e taşındı ve ölçümün KAYNAĞI oldu.
+ * Sayaç artık iki yönlü fark üretiyor: `eksikDosyalar` (listede var, diskte
+ * yok) ve `fazlaDosyalar` (diskte var, listede yok). Aşağıdaki üç test bu
+ * sözleşmenin nöbetçisidir.
  */
-const OLCUM_TABANI = [
-  "src/components/admin/AccessState.tsx",
-  "src/components/admin/CourierManager.tsx",
-  "src/components/admin/ProductPicker.tsx",
-  "src/components/admin/StockBadge.tsx",
-  "src/components/admin/StockLedgerPanel.tsx",
-  "src/components/admin/StockMovementTable.tsx",
-  "src/components/admin/StockMovementsPanel.tsx",
-  "src/components/admin/data-table/DataTable.tsx",
-  "src/components/admin/data-table/index.ts",
-  "src/components/admin/delivery/CapacityStrip.tsx",
-  "src/components/admin/delivery/ClosedDays.tsx",
-  "src/components/admin/delivery/ItemLines.tsx",
-  "src/components/admin/delivery/LabelSheet.tsx",
-  "src/components/admin/delivery/bits.tsx",
-  "src/components/admin/inventory/DamageDialog.tsx",
-  "src/components/admin/layout/AdminLayout.tsx",
-  "src/components/admin/layout/AdminPageHeader.tsx",
-  "src/components/admin/layout/AdminSidebar.tsx",
-  "src/components/admin/layout/adminNavigation.ts",
-  "src/components/admin/packing/PackageLabel.tsx",
-  "src/components/admin/packing/PackingLabelSheet.tsx",
-  // İP-A5 · `AdminStore.tsx` bölmesi. Bu sekiz satır OLMAZSA borç ölçüm
-  // dışına kaçardı: 26 adsız kontrol, 28 ham buton ve bir etiketsiz overlay
-  // eski dosyadan bu dosyalara taşındı. Liste güncellenmeseydi taban testi
-  // kırılırdı — nöbetçinin tam olarak istenen davranışı budur.
-  "src/components/admin/store/BulkImportPanel.tsx",
-  "src/components/admin/store/CategoriesPanel.tsx",
-  "src/components/admin/store/CouponsPanel.tsx",
-  "src/components/admin/store/EditProductModal.tsx",
-  "src/components/admin/store/OrdersPanel.tsx",
-  "src/components/admin/store/ProductForm.tsx",
-  "src/components/admin/store/ProductsPanel.tsx",
-  "src/components/admin/store/ReturnsPanel.tsx",
-  "src/components/admin/ui/Badge.tsx",
-  "src/components/admin/ui/Button.tsx",
-  "src/components/admin/ui/ConfirmDialog.tsx",
-  "src/components/admin/ui/Dialog.tsx",
-  "src/components/admin/ui/PageState.tsx",
-  "src/components/admin/ui/index.ts",
-  "src/components/admin/ui2/duzenlemeYuzeyi.tsx",
-  "src/components/admin/ui2/form.tsx",
-  "src/components/admin/ui2/kirliFormBekcisi.tsx",
-  "src/components/admin/ui2/medusa-tr.tsx",
-  "src/pages/DeliveryDriver.tsx",
-  "src/pages/DeliveryRunHandover.tsx",
-  "src/pages/admin/AdminAccessPage.tsx",
-  "src/pages/admin/AdminAuditLogsPage.tsx",
-  "src/pages/admin/AdminBookingsPage.tsx",
-  "src/pages/admin/AdminDashboardPage.tsx",
-  "src/pages/admin/AdminDemandsPage.tsx",
-  "src/pages/admin/AdminOperationsPage.tsx",
-  "src/pages/admin/AdminPayoutsPage.tsx",
-  "src/pages/admin/AdminReportsPage.tsx",
-  "src/pages/admin/AdminSectionPage.tsx",
-  "src/pages/admin/AdminSettingsPage.tsx",
-  "src/pages/admin/AdminUserDetailPage.tsx",
-  "src/pages/admin/AdminUsersPage.tsx",
-  "src/pages/admin/delivery/DeliveryBoardPage.tsx",
-  "src/pages/admin/delivery/DeliveryCouriersPage.tsx",
-  "src/pages/admin/delivery/DeliveryLayout.tsx",
-  "src/pages/admin/delivery/DeliveryOrdersPage.tsx",
-  "src/pages/admin/delivery/DeliveryPerformancePage.tsx",
-  "src/pages/admin/delivery/DeliveryRunDetailPage.tsx",
-  "src/pages/admin/delivery/DeliveryRunsPage.tsx",
-  "src/pages/admin/delivery/DeliveryTodayPage.tsx",
-  "src/pages/admin/delivery/DeliveryVehiclesPage.tsx",
-  "src/pages/admin/inventory/CountSessionDetailPage.tsx",
-  "src/pages/admin/inventory/CountSessionsPage.tsx",
-  "src/pages/admin/inventory/DamageEventsPage.tsx",
-  "src/pages/admin/inventory/InventoryLayout.tsx",
-  "src/pages/admin/inventory/InventoryOverviewPage.tsx",
-  "src/pages/admin/packing/PackagesPage.tsx",
-  "src/pages/admin/packing/PackingLayout.tsx",
-  "src/pages/admin/packing/PackingQueuePage.tsx",
-  "src/pages/admin/packing/PackingStationPage.tsx",
-  "src/pages/admin/packing/ReturnQueuePage.tsx",
-  "src/pages/dashboards/AdminExamCatalogs.tsx",
-  "src/pages/dashboards/AdminHome.tsx",
-  "src/pages/dashboards/AdminLibraries.tsx",
-  "src/pages/dashboards/AdminStore.tsx",
-  "src/pages/dashboards/CourierHome.tsx",
-  "src/pages/dashboards/OperatorHome.tsx",
-  "src/pages/dashboards/OperatorLibrary.tsx",
-  "src/pages/dashboards/OperatorSessions.tsx",
-];
+
 
 /**
  * Pencere (modal) durumunu HÂLÂ ekranda tutan dosyalar — İP-A4 tabanı.
@@ -179,15 +105,11 @@ const OLCUM_TABANI = [
 const MODAL_DURUM_DOSYALARI = [
   "src/components/admin/CourierManager.tsx",
   "src/components/admin/delivery/ClosedDays.tsx",
-  // İP-A5: `AdminStore.tsx`in DÖRT adı (`decision`, `deleting`,
-  // `iadeSiparisi`, `teslimSiparisi`) BEŞ bağ olarak bu dosyalara dağıldı —
-  // üç ayrı `deleting` bağı vardı ve eski sayaç ikisini görmüyordu
-  // (aşağıdaki eşik notuna bak). Pencere kodu DEĞİŞMEDİ, yeri değişti.
-  "src/components/admin/store/CategoriesPanel.tsx",
-  "src/components/admin/store/CouponsPanel.tsx",
-  "src/components/admin/store/OrdersPanel.tsx",
-  "src/components/admin/store/ProductsPanel.tsx",
-  "src/components/admin/store/ReturnsPanel.tsx",
+  // İP-A6 · Görev 4d: `store/` altındaki BEŞ dosya bu listeden ÇIKTI.
+  // İP-A5'te `AdminStore.tsx`in dört adı (`decision`, `deleting`,
+  // `iadeSiparisi`, `teslimSiparisi`) altı bağ olarak bu dosyalara dağılmıştı;
+  // hepsi `ui2/duzenlemeYuzeyi`ne taşındı. Bu, göçün TERSİ değil kendisidir:
+  // listeden ÇIKMAK beklenen yöndür, listeye GİRMEK kırılma sebebidir.
   "src/pages/admin/AdminAccessPage.tsx",
   "src/pages/admin/AdminBookingsPage.tsx",
   "src/pages/admin/AdminDemandsPage.tsx",
@@ -211,14 +133,27 @@ const MODAL_DURUM_DOSYALARI = [
 const olcum = sayim();
 
 describe("İP-A1 nöbetçi eşikleri", () => {
-  it("ölçüm tabanı dosya listesi SABİTTİR (yanlış yeşil koruması)", () => {
+  it("ölçüm tabanı listesindeki HER dosya diskte durur (kaçış kapısı)", () => {
+    // İP-A6 · Görev 1 / TB-A5-1. Bir ekranı ölçüm ağacının dışına taşımak
+    // eşikleri sessizce düşürüyordu; artık liste ölçümün kaynağı olduğu için
+    // taşınan dosya BURADA isimle görünür. Eşikler bu testten sonra okunur:
+    // eksik dosya varken düşen bir sayı ilerleme değil, kayıptır.
+    expect(olcum.eksikDosyalar).toEqual([]);
+  });
+
+  it("panel ağacındaki her dosya listede yazılıdır (borç ölçüme girmeden doğamaz)", () => {
+    // Ters yön: yeni bir panel dosyası listeye eklenmeden ölçüme giremez.
+    expect(olcum.fazlaDosyalar).toEqual([]);
+  });
+
+  it("ölçülen dosya kümesi listenin TA KENDİSİDİR", () => {
     // Taban çökerse tüm sayımlar 0'a düşer ve her eşik "geçer". Eski koruma
     // sayı tabanlıydı (`files >= 60`, `kontrolToplam >= 140`) ve göçün
     // kendisi tarafından kırılacaktı; artık taban KİMLİKLE doğrulanıyor.
     expect(olcum.dosyalar).toEqual(OLCUM_TABANI);
   });
 
-  it("ham <button sayısı artamaz (taban 158)", () => {
+  it("ham <button sayısı artamaz (taban 131)", () => {
     // İP-A3c'de 126 → 160: taban altı ekran genişledi (Operator*/Courier*/
     // Delivery*), bu ekranlarda zaten duran 34 ham buton görünür oldu.
     //
@@ -226,10 +161,16 @@ describe("İP-A1 nöbetçi eşikleri", () => {
     // geçti. Pilot ekranın (`DamageEventsPage`) KENDİ ham butonu YOKTU —
     // İP-A2/A3c'de zaten temizlenmişti; göç bu sayıyı oradan düşüremezdi ve
     // düşmüş gibi yazmak sahte ilerleme olurdu (rapor → Görev 6).
-    expect(olcum.rawButton).toBeLessThanOrEqual(158);
+    //
+    // İP-A6'da 158 → 131 (**-27**): `AdminStore`un sekiz bölümünün ham
+    // düğmeleri ortak `Button`a geçti. Kalan tek ham `<button>` o ekranda
+    // `ProductForm`un katlanır bölüm başlığıdır (`KatlanirBaslik`) ve
+    // BİLİNÇLİDİR: bir aksiyon değil, `aria-expanded` taşıyan bir açma/kapama
+    // denetimi; ortak `Button`ın dolgu/gölge varyantları oraya uymuyor.
+    expect(olcum.rawButton).toBeLessThanOrEqual(131);
   });
 
-  it("erişilebilir adı olmayan form kontrolü artamaz (taban 56)", () => {
+  it("erişilebilir adı olmayan form kontrolü artamaz (taban 30)", () => {
     // İP-A3a'da eski `<label htmlFor>` ORANININ yerini aldı. Gerekçe için
     // dosya başındaki nota bak. İP-A3c'de 41 → 56: taban genişlemesiyle
     // görünür olan 15 borç (OperatorLibrary 7, DeliveryDriver 4,
@@ -238,7 +179,14 @@ describe("İP-A1 nöbetçi eşikleri", () => {
     // "Sayaç bozulursa sessizce geçer" riski artık DOSYA LİSTESİ testiyle
     // kapatılıyor; eski `kontrolToplam >= 140` koruması KALDIRILDI çünkü göçün
     // kendisi onu kıracaktı (bkz. dosya başı notu).
-    expect(olcum.adsizKontrol).toBeLessThanOrEqual(56);
+    //
+    // İP-A6'da 56 → 30 (**-26**): `AdminStore`un 26 adsız kontrolünün TAMAMI
+    // kapandı (`ProductForm` 17, `CouponsPanel` 6, `BulkImportPanel` /
+    // `CategoriesPanel` / `OrdersPanel` 1'er). Hepsi aynı desendeydi —
+    // `placeholder` etiket yerine kullanılıyordu — ve hepsi `Form.Item` +
+    // `Form.Label` + `Form.Control`a geçti. `store/` ağacında artık SIFIR
+    // adsız kontrol var.
+    expect(olcum.adsizKontrol).toBeLessThanOrEqual(30);
   });
 
 
@@ -248,7 +196,7 @@ describe("İP-A1 nöbetçi eşikleri", () => {
   // kaymayı ve YAYILMAYI ayrı ayrı tutar: sayı artamaz, VE listeye yeni dosya
   // giremez. Sadece sayıya bakmak yetmezdi — göç eden bir ekran borcunu
   // kapatırken başka bir ekran yenisini ekleyebilir ve toplam sabit kalırdı.
-  it("ekranda yaşayan pencere durumu artamaz (taban 35)", () => {
+  it("ekranda yaşayan pencere durumu artamaz (taban 29)", () => {
     // İP-A5'te 33 → 35: BORÇ ARTMADI, sayaç düzeltildi. Metriğin yazılı
     // sözleşmesi "bağ başına bir kez" idi ama uygulama dosya başına bir
     // `Set<ad>` tutuyordu; `AdminStore.tsx`teki ÜÇ ayrı `deleting` bağı
@@ -259,7 +207,13 @@ describe("İP-A1 nöbetçi eşikleri", () => {
     // ölçtüğü şeyin dosyalara nasıl dağıldığına bağlıydı. Sayaç artık bağı
     // ADIYLA değil BİLDİRİM YERİYLE ayırt ediyor (sözlüksel kapsam) ve
     // sonuç bölmeden ÖNCE de SONRA da 35'tir.
-    expect(olcum.modalDurumu).toBeLessThanOrEqual(35);
+    //
+    // İP-A6'da 35 → 29 (**-6**): `store/` altındaki ALTI bağ
+    // (`ProductsPanel`de `editing` + `deleting`, `CategoriesPanel`,
+    // `CouponsPanel`, `ReturnsPanel`, `OrdersPanel`de iki) düzenleme
+    // yüzeyine taşındı. İP-A5'in öngördüğü düşüş buydu; ölçülen -6 (öngörü
+    // -5 idi, `editing` de sayıldığı için bir fazla).
+    expect(olcum.modalDurumu).toBeLessThanOrEqual(29);
   });
 
   it("pencere durumu tutan dosya listesi sabittir (pilot listede DEĞİL)", () => {
@@ -275,8 +229,9 @@ describe("İP-A1 nöbetçi eşikleri", () => {
     expect(olcum.medusaDirectImports).toEqual([]);
   });
 
-  it("role=dialog/aria-modal taşımayan overlay sayısı artamaz (taban 5)", () => {
-    expect(olcum.unlabeledOverlays).toBeLessThanOrEqual(5);
+  it("role=dialog/aria-modal taşımayan overlay sayısı artamaz (taban 4)", () => {
+    // İP-A6'da 5 → 4: `store/EditProductModal.tsx` ortak yüzeye geçti.
+    expect(olcum.unlabeledOverlays).toBeLessThanOrEqual(4);
   });
 
   it("etiketsiz overlay'i olan dosya listesi sabittir", () => {

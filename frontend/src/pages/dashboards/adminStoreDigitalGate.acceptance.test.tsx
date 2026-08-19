@@ -171,7 +171,7 @@ function temelSunucu(uygunluk: { digital_products_open: boolean } | null) {
 
 async function formuAc() {
   fireEvent.click(await screen.findByRole("button", { name: "Yeni ürün" }));
-  await screen.findByPlaceholderText("Ürün adı");
+  await screen.findByLabelText("Ürün adı");
   await screen.findByRole("option", { name: "Kırtasiye" });
 }
 

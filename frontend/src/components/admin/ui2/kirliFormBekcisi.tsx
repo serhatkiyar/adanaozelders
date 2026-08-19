@@ -11,13 +11,20 @@
  * Bu bekçi dördünü de kapsar: ilk üçünde onay penceresi açar, sonuncusunda
  * `beforeunload` kaydeder.
  *
- * ## Kapsam DIŞI: uygulama içi rota gezinmesi
+ * ## Uygulama içi rota gezinmesi (İP-A6'da EKLENDİ)
  *
- * `useBlocker` / `unstable_usePrompt` **kullanılmadı** — kasıtlı. Proje klasik
- * `<BrowserRouter>` + `<Routes>` kullanıyor (126 rota); `useBlocker` data
- * router ister ve bu mimaride ÇALIŞMAZ, hata fırlatır (İP-A0 ölçümü). Rota
- * engellemesi için router göçü gerekir; o ayrı ve ertelenmiş bir karardır ve
- * bu pakete sızmadı.
+ * `useBlocker` / `unstable_usePrompt` hâlâ **kullanılmıyor** — kasıtlı. Proje
+ * klasik `<BrowserRouter>` + `<Routes>` kullanıyor (126 rota); `useBlocker`
+ * data router ister ve bu mimaride ÇALIŞMAZ, hata fırlatır (İP-A0 ölçümü).
+ *
+ * İP-A3a bu yüzden rota gezinmesini kapsam dışı bırakmıştı. İP-A6 yolu
+ * router'a dokunmadan kapattı: bu hook "korumalıyım" diye kaydolur
+ * (`ui2/gezinmeBekcisi`), gezinme bileşenleri tıklama anında kayda bakıp onay
+ * sorar. Router göçüne karar verilirse o dosyanın İÇİ `useBlocker`a devreder;
+ * bu hook ve ekranlar değişmez.
+ *
+ * Kapsam ve sınırları `gezinmeBekcisi.tsx` başında yazılı (tarayıcının geri
+ * tuşu bu mimaride kapatılamaz).
  *
  * ## "Kirli" ne demek — ve `isSubmitSuccessful` neden yetmez
  *
@@ -38,8 +45,9 @@
  *
  * ## Bilinen sınırlar (kapsam dışı, sessiz kalmasın)
  *
- * 1. **Uygulama içi rota gezinmesi** — yukarıda anlatıldı (`useBlocker` data
- *    router ister).
+ * 1. **Tarayıcının geri/ileri tuşu** — `popstate` ancak gezinme
+ *    gerçekleştikten sonra ateşlenir; iptal etmek geçmişi bozar
+ *    (`gezinmeBekcisi.tsx` → Bilinen sınırlar).
  * 2. **Ebeveynin kendi kapatması** (İP-A3c · denetim P2-9). Bekçi yalnız
  *    `kapatmayiDene`den geçen kapatma girişimlerini karşılar. Ebeveyn
  *    `open`/`kind` durumunu KENDİ değiştirirse (WebSocket push'u, query
@@ -62,6 +70,7 @@ import { usePrompt } from "@medusajs/ui";
 import { useWatch, type FieldValues, type UseFormReturn } from "react-hook-form";
 
 import { useFormDurumu } from "./form";
+import { useGezinmeKorumasi } from "./gezinmeBekcisi";
 import { kirliFormPromptTr } from "./medusa-tr";
 
 /**
@@ -124,6 +133,18 @@ export function useKirliFormBekcisi<TFieldValues extends FieldValues>({
 
   const kaydedildi = gonderimTemiz && damgaRef.current === anlikDegerler;
   const korumali = etkin && kirli && !kaydedildi;
+
+  // ── Beşinci kapatma yolu: uygulama içi rota gezinmesi (İP-A6 · Görev 3) ──
+  //
+  // Kayıt BURADA kurulur, ekranda değil. Gerekçe: "korumalı mı" kararının tek
+  // doğruluk kaynağı bu hook'tur (gönderim damgası, sunucu hatası, `etkin`
+  // hepsi burada birleşiyor). Ekranların ayrıca kaydolması gerekseydi, her
+  // ekranda ayrı ayrı unutulabilirdi — İP-A3c'de `sunucuHatasi`nın varsayılan
+  // değeriyle yaşanan hatanın aynısı.
+  //
+  // Uyarıyı GÖSTEREN taraf `ui2/gezinmeBekcisi`nin `GezinmeBaglantisi`sidir;
+  // ikisi birbirini tanımaz.
+  useGezinmeKorumasi(korumali);
 
   // `beforeunload` YALNIZ korumalıyken kayıtlı. Kalıcı bir kayıt, formda
   // hiçbir şey yazmamış kullanıcıya bile her yenilemede tarayıcı uyarısı

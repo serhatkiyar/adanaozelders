@@ -84,8 +84,126 @@ export const EK_TABAN_DOSYALARI = [
   "src/pages/dashboards/OperatorSessions.tsx",
 ];
 
-/** Ölçüm tabanı: admin bileşenleri + admin sayfaları + panel ekranları. */
-export function adminBase() {
+/**
+ * ── Ölçüm tabanının TAM dosya listesi — ölçümün KAYNAĞI (İP-A6 · Görev 1) ──
+ *
+ * Bu liste İP-A3c'de eklendi ama o gün yalnız bir KİMLİK DENETİMİYDİ: sayım
+ * dizin yürüyüşünden geliyor, liste ise sonucun aynı olduğunu doğruluyordu.
+ * İP-A5 kaçışı ölçtü (TB-A5-1): ölçülen bir dosya `components/admin` /
+ * `pages/admin` ağacının DIŞINA taşındığında dört eşiğin dördü de geçmeye
+ * devam etti (ham buton 158 → 151, adsız kontrol 56 → 39) — çünkü yürüyüş
+ * onu artık bulmuyordu ve düşen sayı "ilerleme" gibi okunuyordu. Kaçışı
+ * yakalayan tek şey listeyle karşılaştırma oldu.
+ *
+ * İP-A7'de 21 ekran göç edecek, yani dosya hareketi NORMAL iş akışı olacak;
+ * bu kaçış kazayla tetiklenir. Bu yüzden yön tersine çevrildi:
+ *
+ *   - Ölçülen küme artık YÜRÜYÜŞ değil, BU LİSTEDİR.
+ *   - Listedeki bir dosya diskte yoksa `eksikDosyalar`a düşer ve nöbetçi
+ *     kırılır — sessizce ölçüm dışı kalamaz.
+ *   - Yürüyüşün bulup listede olmayan dosyası `fazlaDosyalar`a düşer ve
+ *     nöbetçi yine kırılır — yeni borç ölçüme girmeden büyüyemez.
+ *
+ * Liste elle bakılıp güncellenir. Kırıldığında sorulacak soru: "dosya
+ * gerçekten panelin bir parçası mı, öyleyse listeye ekle" ya da "silindi mi,
+ * öyleyse çıkar". Sessizce güncellenmesi eşikleri anlamsızlaştırır.
+ */
+export const OLCUM_TABANI = [
+  "src/components/admin/AccessState.tsx",
+  "src/components/admin/CourierManager.tsx",
+  "src/components/admin/ProductPicker.tsx",
+  "src/components/admin/StockBadge.tsx",
+  "src/components/admin/StockLedgerPanel.tsx",
+  "src/components/admin/StockMovementTable.tsx",
+  "src/components/admin/StockMovementsPanel.tsx",
+  "src/components/admin/data-table/DataTable.tsx",
+  "src/components/admin/data-table/index.ts",
+  "src/components/admin/delivery/CapacityStrip.tsx",
+  "src/components/admin/delivery/ClosedDays.tsx",
+  "src/components/admin/delivery/ItemLines.tsx",
+  "src/components/admin/delivery/LabelSheet.tsx",
+  "src/components/admin/delivery/bits.tsx",
+  "src/components/admin/inventory/DamageDialog.tsx",
+  "src/components/admin/layout/AdminLayout.tsx",
+  "src/components/admin/layout/AdminPageHeader.tsx",
+  "src/components/admin/layout/AdminSidebar.tsx",
+  "src/components/admin/layout/adminNavigation.ts",
+  "src/components/admin/packing/PackageLabel.tsx",
+  "src/components/admin/packing/PackingLabelSheet.tsx",
+  // İP-A5 · `AdminStore.tsx` bölmesi. Bu sekiz satır OLMAZSA borç ölçüm
+  // dışına kaçardı: 26 adsız kontrol, 28 ham buton ve bir etiketsiz overlay
+  // eski dosyadan bu dosyalara taşındı. Liste güncellenmeseydi taban testi
+  // kırılırdı — nöbetçinin tam olarak istenen davranışı budur.
+  "src/components/admin/store/BulkImportPanel.tsx",
+  "src/components/admin/store/CategoriesPanel.tsx",
+  "src/components/admin/store/CouponsPanel.tsx",
+  "src/components/admin/store/EditProductModal.tsx",
+  "src/components/admin/store/OrdersPanel.tsx",
+  "src/components/admin/store/ProductForm.tsx",
+  "src/components/admin/store/ProductsPanel.tsx",
+  "src/components/admin/store/ReturnsPanel.tsx",
+  "src/components/admin/ui/Badge.tsx",
+  "src/components/admin/ui/Button.tsx",
+  "src/components/admin/ui/ConfirmDialog.tsx",
+  "src/components/admin/ui/Dialog.tsx",
+  "src/components/admin/ui/PageState.tsx",
+  "src/components/admin/ui/index.ts",
+  "src/components/admin/ui2/duzenlemeYuzeyi.tsx",
+  "src/components/admin/ui2/form.tsx",
+  // İP-A6 · Görev 3: rota gezinmesinde kirli form uyarısı. Yeni dosya
+  // ölçüme GİRMEK zorunda — `ui2/` altındaki her şey gibi o da panelin
+  // sevk edilen arayüzünün parçası.
+  "src/components/admin/ui2/gezinmeBekcisi.tsx",
+  "src/components/admin/ui2/kirliFormBekcisi.tsx",
+  "src/components/admin/ui2/medusa-tr.tsx",
+  // İP-A6: düzenleme yüzeyinin DURUM kancası buraya ayrıldı (import döngüsü
+  // kırıldı; gerekçe dosyanın başında).
+  "src/components/admin/ui2/yuzeyDurumu.ts",
+  "src/pages/DeliveryDriver.tsx",
+  "src/pages/DeliveryRunHandover.tsx",
+  "src/pages/admin/AdminAccessPage.tsx",
+  "src/pages/admin/AdminAuditLogsPage.tsx",
+  "src/pages/admin/AdminBookingsPage.tsx",
+  "src/pages/admin/AdminDashboardPage.tsx",
+  "src/pages/admin/AdminDemandsPage.tsx",
+  "src/pages/admin/AdminOperationsPage.tsx",
+  "src/pages/admin/AdminPayoutsPage.tsx",
+  "src/pages/admin/AdminReportsPage.tsx",
+  "src/pages/admin/AdminSectionPage.tsx",
+  "src/pages/admin/AdminSettingsPage.tsx",
+  "src/pages/admin/AdminUserDetailPage.tsx",
+  "src/pages/admin/AdminUsersPage.tsx",
+  "src/pages/admin/delivery/DeliveryBoardPage.tsx",
+  "src/pages/admin/delivery/DeliveryCouriersPage.tsx",
+  "src/pages/admin/delivery/DeliveryLayout.tsx",
+  "src/pages/admin/delivery/DeliveryOrdersPage.tsx",
+  "src/pages/admin/delivery/DeliveryPerformancePage.tsx",
+  "src/pages/admin/delivery/DeliveryRunDetailPage.tsx",
+  "src/pages/admin/delivery/DeliveryRunsPage.tsx",
+  "src/pages/admin/delivery/DeliveryTodayPage.tsx",
+  "src/pages/admin/delivery/DeliveryVehiclesPage.tsx",
+  "src/pages/admin/inventory/CountSessionDetailPage.tsx",
+  "src/pages/admin/inventory/CountSessionsPage.tsx",
+  "src/pages/admin/inventory/DamageEventsPage.tsx",
+  "src/pages/admin/inventory/InventoryLayout.tsx",
+  "src/pages/admin/inventory/InventoryOverviewPage.tsx",
+  "src/pages/admin/packing/PackagesPage.tsx",
+  "src/pages/admin/packing/PackingLayout.tsx",
+  "src/pages/admin/packing/PackingQueuePage.tsx",
+  "src/pages/admin/packing/PackingStationPage.tsx",
+  "src/pages/admin/packing/ReturnQueuePage.tsx",
+  "src/pages/dashboards/AdminExamCatalogs.tsx",
+  "src/pages/dashboards/AdminHome.tsx",
+  "src/pages/dashboards/AdminLibraries.tsx",
+  "src/pages/dashboards/AdminStore.tsx",
+  "src/pages/dashboards/CourierHome.tsx",
+  "src/pages/dashboards/OperatorHome.tsx",
+  "src/pages/dashboards/OperatorLibrary.tsx",
+  "src/pages/dashboards/OperatorSessions.tsx",
+];
+
+/** Dizin kuralıyla BULUNAN taban adayları — artık ölçümün kaynağı DEĞİL, denetleyicisi. */
+export function kesfedilenTaban() {
   const files = [...walk("src/components/admin"), ...walk("src/pages/admin")];
   for (const f of walk("src/pages/dashboards")) {
     if (/\/Admin[^/]*\.tsx$/.test(f)) files.push(f);
@@ -94,6 +212,25 @@ export function adminBase() {
     if (existsSync(join(ROOT, f))) files.push(f);
   }
   return [...new Set(files)].sort();
+}
+
+/**
+ * Ölçülecek dosyalar + listenin diskle ve yürüyüşle iki yönlü farkı.
+ *
+ * `olculen` yalnız listede OLAN ve diskte DURAN dosyalardır: eksik bir
+ * dosyanın sayısı uydurulamaz, ama eksikliği `eksik` üzerinden bağırır.
+ */
+export function tabanDurumu() {
+  const varMi = (f) => existsSync(join(ROOT, f));
+  const olculen = OLCUM_TABANI.filter(varMi);
+  const eksik = OLCUM_TABANI.filter((f) => !varMi(f));
+  const fazla = kesfedilenTaban().filter((f) => !OLCUM_TABANI.includes(f));
+  return { olculen, eksik, fazla };
+}
+
+/** Geriye uyumlu ad: ölçülen dosya listesi. */
+export function adminBase() {
+  return tabanDurumu().olculen;
 }
 
 /** Tüm kaynak ağacı. */
@@ -112,10 +249,11 @@ export const PRINT_LAYERS = [
 
 /** `role="dialog"` + `aria-modal` taşımayan gerçek overlay'i olan dosyalar (İP-A0 tespiti). */
 export const UNLABELED_OVERLAY_FILES = [
-  // İP-A5: `AdminStore.tsx`in overlay'i (`EditProductModal`) bölme sırasında
-  // kendi dosyasına taşındı. Overlay SAYISI değişmedi (5) — yalnız hangi
-  // dosyada durduğu değişti; JSX'ine dokunulmadı, etiketlenmesi İP-A6'nın işi.
-  "src/components/admin/store/EditProductModal.tsx",
+  // İP-A6 · Görev 4b: `store/EditProductModal.tsx` bu listeden ÇIKTI.
+  // Kendi `createPortal` + `fixed inset-0` katmanını kuruyordu ve
+  // `role="dialog"`/`aria-modal` taşımıyordu; artık `ui2/duzenlemeYuzeyi`nin
+  // `DuzenlemePenceresi`ni kullanıyor (odak tuzağı, ESC, arka plan kilidi ve
+  // kirli form onayı da onunla geldi). Sayı 5 → 4.
   "src/pages/admin/AdminPayoutsPage.tsx",
   "src/pages/dashboards/AdminExamCatalogs.tsx",
   "src/pages/dashboards/AdminLibraries.tsx",
@@ -553,7 +691,7 @@ export function dosyaOlcumu(kaynak, dosyaAdi = "olcum.tsx") {
 }
 
 export function sayim() {
-  const base = adminBase();
+  const { olculen: base, eksik, fazla } = tabanDurumu();
   let rawButton = 0;
   let labels = 0;
   let labelsWithHtmlFor = 0;
@@ -619,6 +757,16 @@ export function sayim() {
     // sarmalayıcılara çeviriyor. `AdminStore.tsx` tek başına göç etse taban
     // 140'ın altına iner ve CI **ilerleme yüzünden** kırmızıya dönerdi.
     dosyalar: base,
+    // ── İP-A6 · Görev 1: ölçüm kaçışının iki yönü ──
+    //
+    // `eksikDosyalar`: listede yazılı ama diskte YOK. Bir ekran ölçüm ağacının
+    // dışına taşınırsa (İP-A5'in ölçtüğü kaçış) borç sessizce ölçümden düşmez,
+    // burada isimle görünür ve nöbetçi kırılır.
+    //
+    // `fazlaDosyalar`: diskte var ama listede YOK. Yeni bir panel dosyası
+    // ölçüme girmeden doğamaz.
+    eksikDosyalar: eksik,
+    fazlaDosyalar: fazla,
     rawButton,
     // `labels` / `labelsWithHtmlFor` artık EŞİK DEĞİL, TEŞHİS sayısıdır
     // (İP-A3a: oran metriği kaldırıldı — gerekçesi `docs/ip-a3a-rapor.md`).

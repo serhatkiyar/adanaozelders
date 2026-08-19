@@ -1,8 +1,19 @@
 /**
- * CSV ile toplu ürün içe aktarma paneli — İP-A5'te `AdminStore.tsx`ten AYNEN taşındı.
+ * CSV ile toplu ürün içe aktarma paneli.
+ *
+ * ## İP-A6 · Görev 4a/4c — göç
+ *
+ *   - Dosya seçici gerçek bir etiket taşıyor (eskiden adsızdı: ekran okuyucu
+ *     "dosya seç" düğmesini neyin dosyası olduğunu söylemeden okuyordu).
+ *   - İki ham `<button>` ortak `Button`a geçti.
+ *   - "İçe aktar" düğmesi dosya seçilmediği için KAPANMIYOR (kalıcı kural):
+ *     basılınca ne eksik olduğu yazıyla söyleniyor. Kapalı düğme "neden
+ *     kapalı" sorusunu cevaplamıyordu.
  */
 import { useState } from "react";
 
+import { Button } from "@/components/admin/ui";
+import { Form } from "@/components/admin/ui2/form";
 import { useBulkImportProducts } from "@/hooks/useStore";
 import { CSV_COLUMNS, buildCsvTemplate } from "@/lib/productCsvTemplate";
 import { toast } from "@/store/toastStore";
@@ -29,8 +40,16 @@ export function BulkImportPanel({ onDone }: { onDone: () => void }) {
     URL.revokeObjectURL(url);
   }
 
+  // Dosya seçilmeden basılan düğme SESSİZ kalmaz: kapalı düğme yerine
+  // görünen bir uyarı (kalıcı kural — geçerlilik düğmeyi kapatmaz).
+  const [dosyaUyarisi, setDosyaUyarisi] = useState(false);
+
   function run() {
-    if (!file) return;
+    if (!file) {
+      setDosyaUyarisi(true);
+      return;
+    }
+    setDosyaUyarisi(false);
     importer.mutate(file, {
       onSuccess: (r) => {
         setResult(r);
@@ -54,34 +73,39 @@ export function BulkImportPanel({ onDone }: { onDone: () => void }) {
         oransız satırlar oluşturulmaz ve aşağıda tek tek raporlanır. Aynı ISBN varsa
         atlanır. Platform (fiziksel/dijital) ürünü oluşturur.
       </p>
-      <button
-        type="button"
-        onClick={downloadTemplate}
-        className="mt-2 font-medium text-indigo-600 hover:underline dark:text-indigo-400"
-      >
+      <Button className="mt-2" variant="ghost" size="sm" onClick={downloadTemplate}>
         Şablon CSV indir
-      </button>
+      </Button>
       <p className="mt-2 break-words text-xs text-slate-400">Sütunlar: {CSV_COLUMNS}</p>
 
-      <div className="mt-3 flex flex-wrap items-center gap-3">
-        <input
-          type="file"
-          accept=".csv"
-          onChange={(e) => {
-            setFile(e.target.files?.[0] ?? null);
-            setResult(null);
-          }}
-          className="text-sm text-slate-600 dark:text-slate-300"
-        />
-        <button
-          type="button"
-          disabled={!file || importer.isPending}
-          onClick={run}
-          className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50 dark:bg-white dark:text-slate-900"
-        >
+      <div className="mt-3 flex flex-wrap items-start gap-3">
+        {/* `Form.Field` YOK: bu tek alanlık seçici bir `react-hook-form`
+            formu değil, tek atımlık bir dosya kutusu. `Form.Item` yine de
+            `id`/etiket bağını ve mesaj slotunu kurar. */}
+        <Form.Item>
+          <Form.Label>Yüklenecek CSV dosyası</Form.Label>
+          <Form.Control>
+            <input
+              type="file"
+              accept=".csv"
+              onChange={(e) => {
+                setFile(e.target.files?.[0] ?? null);
+                setResult(null);
+                setDosyaUyarisi(false);
+              }}
+              className="text-sm text-slate-600 dark:text-slate-300"
+            />
+          </Form.Control>
+        </Form.Item>
+        <Button className="mt-7" isPending={importer.isPending} onClick={run}>
           {importer.isPending ? "İçe aktarılıyor…" : "İçe aktar"}
-        </button>
+        </Button>
       </div>
+      {dosyaUyarisi && (
+        <p role="alert" className="mt-1 text-xs text-rose-600 dark:text-rose-400">
+          Önce içe aktarılacak CSV dosyasını seçin.
+        </p>
+      )}
 
       {result && (
         <div className="mt-3 rounded-lg bg-slate-50 p-3 dark:bg-slate-900/50">

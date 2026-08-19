@@ -1,37 +1,86 @@
 /**
- * Mağaza "Kategoriler" sekmesi — İP-A5'te `AdminStore.tsx`ten AYNEN taşındı.
+ * Mağaza "Kategoriler" sekmesi.
+ *
+ * ## İP-A6 · Görev 4a/4c/4d — göç
+ *
+ *   - "Kategori adı" alanı `placeholder` yerine gerçek etiket taşıyor.
+ *   - "Ekle" düğmesi geçerlilik yüzünden KAPANMIYOR (kalıcı kural); boşken
+ *     basılınca istek gitmez, hata alanın altında belirir ve odak alana döner.
+ *   - Beş ham `<button>` ortak `Button`a geçti.
+ *   - Silme onayının pencere durumu ekrandan `ui2/duzenlemeYuzeyi`ne taşındı.
+ *
+ * Değişmeyen: yetki kapıları, hata≠boş durum ayrımı, KDV rozetinin satır içi
+ * düzenlemesi ve "boş bırakmak varsayılanı temizler" kuralı.
  */
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation } from "@tanstack/react-query";
+import { z } from "zod";
 
 import { AccessDenied, ReadOnlyNotice, useAdminAreaAccess } from "@/components/admin/AccessState";
-import { ConfirmDialog, ErrorState } from "@/components/admin/ui";
+import { Button, ConfirmDialog, ErrorState } from "@/components/admin/ui";
+import { useDuzenlemeYuzeyi } from "@/components/admin/ui2/yuzeyDurumu";
+import { Form, sunucuHatasiniUygula } from "@/components/admin/ui2/form";
 import { createCategory, deleteCategory, updateCategory } from "@/api/store";
 import { useCategories, useInvalidateAdminStore } from "@/hooks/useStore";
 import { getErrorDetail } from "@/lib/errors";
 import { orandanYuzde, yuzdedenOran } from "@/lib/tax";
 import { toast } from "@/store/toastStore";
 
+const kategoriSemasi = z.object({
+  ad: z.string().trim().min(1, "Kategori adı zorunlu."),
+});
+type KategoriFormu = z.infer<typeof kategoriSemasi>;
+
 export function CategoriesPanel() {
   const { canView, canManage } = useAdminAreaAccess("products");
   const { data: categories, isError, error } = useCategories();
   const invalidate = useInvalidateAdminStore();
-  const [name, setName] = useState("");
+
+  const form = useForm<KategoriFormu>({
+    resolver: zodResolver(kategoriSemasi),
+    defaultValues: { ad: "" },
+    mode: "onChange",
+    shouldFocusError: false,
+  });
 
   const create = useMutation({
-    mutationFn: () => createCategory({ name }),
+    mutationFn: (ad: string) => createCategory({ name: ad }),
     onSuccess: () => {
       toast.success("Kategori eklendi");
-      setName("");
+      form.reset({ ad: "" });
       invalidate();
     },
   });
-  const [deleting, setDeleting] = useState<{ id: number; name: string } | null>(null);
+
+  // Sunucu hatası alana; alana düşmeyen kısım şeritte.
+  const [genelHata, setGenelHata] = useState<string | null>(null);
+  useEffect(() => {
+    if (!create.error) {
+      setGenelHata(null);
+      return;
+    }
+    setGenelHata(
+      sunucuHatasiniUygula(create.error, form, ["ad"], { name: "ad" }, (h) =>
+        getErrorDetail(h, "Kategori eklenemedi")
+      )
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [create.error]);
+
+  const gonder = form.handleSubmit(
+    (degerler) => create.mutate(degerler.ad.trim()),
+    () => form.setFocus("ad")
+  );
+
+  // Pencere durumu EKRANDA yaşamaz (İP-A4 sözleşmesi).
+  const silmeYuzeyi = useDuzenlemeYuzeyi<{ id: number; name: string }>();
   const remove = useMutation({
     mutationFn: (id: number) => deleteCategory(id),
     onSuccess: () => {
       toast.success("Kategori silindi");
-      setDeleting(null);
+      silmeYuzeyi.kapat();
       invalidate();
     },
     onError: (err: unknown) => toast.error(getErrorDetail(err, "Kategori silinemedi")),
@@ -45,16 +94,35 @@ export function CategoriesPanel() {
   return (
     <div>
       {canManage ? (
-        <div className="flex gap-2">
-          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Kategori adı" className="input flex-1" />
-          <button
-            type="button"
-            disabled={!name || create.isPending}
-            onClick={() => create.mutate()}
-            className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50 dark:bg-white dark:text-slate-900"
-          >
-            Ekle
-          </button>
+        <div>
+          <div className="flex items-start gap-2">
+            <Form.Field
+              control={form.control}
+              name="ad"
+              render={({ field }) => (
+                <Form.Item className="flex-1">
+                  <Form.Label>Kategori adı</Form.Label>
+                  <Form.Control>
+                    <input className="input w-full" {...field} />
+                  </Form.Control>
+                  <Form.ErrorMessage />
+                </Form.Item>
+              )}
+            />
+            {/* Etiket yüksekliği kadar aşağı: alan ile düğme aynı satırda
+                hizalansın (etiket alanın ÜSTÜNDE). */}
+            <Button className="mt-7" isPending={create.isPending} onClick={gonder}>
+              Ekle
+            </Button>
+          </div>
+          {genelHata && (
+            <p
+              role="alert"
+              className="mt-1 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-sm text-rose-900 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-100"
+            >
+              {genelHata}
+            </p>
+          )}
         </div>
       ) : (
         <ReadOnlyNotice />
@@ -68,23 +136,27 @@ export function CategoriesPanel() {
             <span className="flex items-center gap-3">
               <KategoriKdvRozeti category={c} canManage={canManage} onChange={invalidate} />
               {canManage && (
-                <button type="button" onClick={() => setDeleting({ id: c.id, name: c.name })} className="text-xs font-medium text-rose-500 hover:underline">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => silmeYuzeyi.ac({ id: c.id, name: c.name })}
+                >
                   Sil
-                </button>
+                </Button>
               )}
             </span>
           </div>
         ))}
       </div>
       <ConfirmDialog
-        open={deleting !== null}
+        open={silmeYuzeyi.acik}
         title="Kategoriyi sil"
-        description={deleting ? `"${deleting.name}" kategorisi silinecek.` : ""}
+        description={silmeYuzeyi.kayit ? `"${silmeYuzeyi.kayit.name}" kategorisi silinecek.` : ""}
         confirmLabel="Kategoriyi sil"
         danger
         isPending={remove.isPending}
-        onClose={() => setDeleting(null)}
-        onConfirm={() => deleting && remove.mutate(deleting.id)}
+        onClose={silmeYuzeyi.kapat}
+        onConfirm={() => silmeYuzeyi.kayit && remove.mutate(silmeYuzeyi.kayit.id)}
       />
     </div>
   );
@@ -96,6 +168,9 @@ export function CategoriesPanel() {
  *  yerdir, kod hiçbir oran önermez. "miras" etiketi, kendi değeri boş olup
  *  atasından devralan kategoriyi ayırt eder (yanlışlıkla "burada tanımlı"
  *  sanılıp kökteki değer aranmasın).
+ *
+ *  `editing` bir PENCERE durumu değildir: satır içinde iki gösterim arasında
+ *  geçiş yapar, hiçbir katman açmaz. Bu yüzden düzenleme yüzeyine taşınmadı.
  */
 function KategoriKdvRozeti({
   category,
@@ -133,16 +208,16 @@ function KategoriKdvRozeti({
       <span className="flex items-center gap-2 text-xs text-slate-400 dark:text-slate-500">
         {etiket}
         {canManage && (
-          <button
-            type="button"
+          <Button
+            size="sm"
+            variant="ghost"
             onClick={() => {
               setPercent(kendi);
               setEditing(true);
             }}
-            className="font-medium text-slate-600 hover:underline dark:text-slate-300"
           >
             Düzenle
-          </button>
+          </Button>
         )}
       </span>
     );
@@ -157,9 +232,10 @@ function KategoriKdvRozeti({
         aria-label={`${category.name} varsayılan KDV (%)`}
         className="input w-20 py-1 text-xs"
       />
-      <button
-        type="button"
-        disabled={save.isPending}
+      <Button
+        size="sm"
+        variant="ghost"
+        isPending={save.isPending}
         onClick={() => {
           if (!percent.trim()) {
             save.mutate(null); // boş bırakmak varsayılanı TEMİZLER
@@ -172,17 +248,12 @@ function KategoriKdvRozeti({
           }
           save.mutate(oran.oran);
         }}
-        className="text-xs font-medium text-indigo-600 hover:underline dark:text-indigo-400"
       >
         Kaydet
-      </button>
-      <button
-        type="button"
-        onClick={() => setEditing(false)}
-        className="text-xs font-medium text-slate-500 hover:underline dark:text-slate-400"
-      >
+      </Button>
+      <Button size="sm" variant="ghost" onClick={() => setEditing(false)}>
         Vazgeç
-      </button>
+      </Button>
     </span>
   );
 }

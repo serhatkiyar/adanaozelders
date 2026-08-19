@@ -177,7 +177,7 @@ function temelSunucu() {
 
 async function formuAc() {
   fireEvent.click(await screen.findByRole("button", { name: "Yeni ürün" }));
-  await screen.findByPlaceholderText("Ürün adı");
+  await screen.findByLabelText("Ürün adı");
 }
 
 async function varyantBolumunuAc() {
@@ -236,7 +236,7 @@ describe("V-1 · eksen adları sözlükten açılır menü", () => {
       target: { value: "__yeni__" },
     });
     fireEvent.change(
-      await screen.findByPlaceholderText("Grup adı (ör. Fosforlu Kalem)"),
+      await screen.findByLabelText("Grup adı"),
       { target: { value: "Spiralli Defter" } }
     );
     fireEvent.change(screen.getByLabelText("1. eksen"), { target: { value: "Ebat" } });
@@ -270,7 +270,7 @@ describe("V-2 · kitap kategorisinde varyant alanları kapalı", () => {
     // …kitap yaprağı (YKS Kitapları → kökü sinav-kitaplari) seçilince yok.
     // Kategori seçenekleri async yüklenir; option gelmeden change no-op olur.
     await screen.findByRole("option", { name: "YKS Kitapları" });
-    fireEvent.change(screen.getByLabelText("Kategori"), { target: { value: "11" } });
+    fireEvent.change(screen.getByLabelText(/^Kategori/), { target: { value: "11" } });
     await waitFor(() => {
       expect(
         screen.queryByRole("button", { name: /Varyantlar \(renk, ebat…\)/ })
@@ -290,19 +290,19 @@ describe("V-3 · varyant alanları gerçek POST gövdesinde", () => {
     magaza();
     await formuAc();
 
-    fireEvent.change(screen.getByPlaceholderText("Ürün adı"), {
+    fireEvent.change(screen.getByLabelText("Ürün adı"), {
       target: { value: "Fosforlu Kalem - Turuncu" },
     });
-    fireEvent.change(screen.getByPlaceholderText("Fiyat (TL)"), {
+    fireEvent.change(screen.getByLabelText("Fiyat (TL)"), {
       target: { value: "45" },
     });
-    fireEvent.change(screen.getByPlaceholderText("KDV oranı (%)"), {
+    fireEvent.change(screen.getByLabelText("KDV oranı (%)"), {
       target: { value: "20" },
     });
     await varyantBolumunuAc();
     await grupSec(GRUP.id);
     fireEvent.change(
-      await screen.findByPlaceholderText("Barkod (zorunlu — raftaki ayırt edici)"),
+      await screen.findByLabelText("Barkod"),
       { target: { value: "8690099" } }
     );
     fireEvent.change(screen.getByLabelText("Renk"), {
@@ -326,13 +326,13 @@ describe("V-3 · varyant alanları gerçek POST gövdesinde", () => {
     temelSunucu();
     magaza();
     await formuAc();
-    fireEvent.change(screen.getByPlaceholderText("Ürün adı"), {
+    fireEvent.change(screen.getByLabelText("Ürün adı"), {
       target: { value: "X" },
     });
-    fireEvent.change(screen.getByPlaceholderText("Fiyat (TL)"), {
+    fireEvent.change(screen.getByLabelText("Fiyat (TL)"), {
       target: { value: "10" },
     });
-    fireEvent.change(screen.getByPlaceholderText("KDV oranı (%)"), {
+    fireEvent.change(screen.getByLabelText("KDV oranı (%)"), {
       target: { value: "20" },
     });
     await varyantBolumunuAc();
@@ -342,9 +342,17 @@ describe("V-3 · varyant alanları gerçek POST gövdesinde", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "Ürünü ekle" }));
 
-    await waitFor(() => {
-      expect(useToastStore.getState().toasts.some((t) => /barkod/i.test(t.message))).toBe(true);
-    });
+    // İP-A6 · KASITLI DEĞİŞİKLİK: hata artık toast'ta DEĞİL, ALANIN altında.
+    // Gerekçe (İP-A2 hata yönlendirme sözleşmesi): alan doğrulama hatası genel
+    // kanala gitmez — kullanıcı hangi kutuyu düzelteceğini kutunun kendisinde
+    // görmeli. Korunan davranış aynı ve asıl iddia da odur: istek GİTMEZ.
+    const barkod = (await screen.findByLabelText("Barkod")) as HTMLInputElement;
+    await waitFor(() => expect(barkod.getAttribute("aria-invalid")).toBe("true"));
+    const mesajId = barkod.getAttribute("aria-describedby");
+    expect(mesajId).toBeTruthy();
+    expect(document.getElementById(mesajId!)?.textContent).toMatch(/barkod/i);
+    // Alan hatası genel kanala SIZMAZ.
+    expect(useToastStore.getState().toasts.some((t) => /barkod/i.test(t.message))).toBe(false);
     expect(sonIstek("/store/admin/products", "post")).toBeUndefined();
   });
 });
@@ -407,7 +415,7 @@ describe("V-5 · varyant türetme", () => {
     fireEvent.change(await screen.findByLabelText("Yeni Renk"), {
       target: { value: "Mavi" },
     });
-    fireEvent.change(screen.getByPlaceholderText("Yeni barkod (zorunlu)"), {
+    fireEvent.change(screen.getByLabelText("Yeni barkod"), {
       target: { value: "8690003" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Türet" }));

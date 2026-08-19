@@ -542,7 +542,11 @@ describe("O-1/O-2 · sipariş durum filtresi", () => {
     sunucu("/store/admin/orders", { data: [siparis()] }, "get");
 
     siparisler();
-    await screen.findByText(/5001/);
+    // İP-A6: `DataTable` mobil kart düzenini (`renderMobileRow`) da basar;
+    // jsdom CSS uygulamadığı için tablo VE kartlar aynı anda DOM'dadır.
+    // Bu bir davranış değişikliği değil, ölçüm ortamının sınırı — sorgu
+    // MASAÜSTÜ TABLOSUNA daraltıldı; iddia aynı kaldı.
+    await within(await screen.findByRole("table")).findByText(/5001/);
 
     const secici = await screen.findByLabelText(/durum/i);
     fireEvent.change(secici, { target: { value: "PAID" } });
@@ -559,7 +563,11 @@ describe("O-1/O-2 · sipariş durum filtresi", () => {
     sunucu("/store/admin/orders", { data: [siparis()] }, "get");
 
     siparisler("?durum=SHIPPED");
-    await screen.findByText(/5001/);
+    // İP-A6: `DataTable` mobil kart düzenini (`renderMobileRow`) da basar;
+    // jsdom CSS uygulamadığı için tablo VE kartlar aynı anda DOM'dadır.
+    // Bu bir davranış değişikliği değil, ölçüm ortamının sınırı — sorgu
+    // MASAÜSTÜ TABLOSUNA daraltıldı; iddia aynı kaldı.
+    await within(await screen.findByRole("table")).findByText(/5001/);
 
     expect(sonIstek("/store/admin/orders")?.params.get("status")).toBe("SHIPPED");
     const secici = (await screen.findByLabelText(/durum/i)) as HTMLSelectElement;

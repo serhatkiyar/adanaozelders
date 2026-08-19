@@ -1,13 +1,42 @@
 /**
- * Mağaza ürün formu ve varyant bölümü — İP-A5'te `AdminStore.tsx`ten AYNEN taşındı.
+ * Mağaza ürün formu ve varyant bölümü.
  *
- * Taşıma MEKANİKTİR: tek bir JSX düğümü, sınıf adı ya da etiket değişmedi.
- * Medusa `Form.*` göçü İP-A6'nın işidir; bu dosya ona zemin hazırlar.
+ * ## İP-A6 · Görev 4a — göç
+ *
+ * Bu ekranın adsız kontrol borcunun tamamı (17 kalem, tabanın %30'u)
+ * buradaydı ve hepsi aynı desendeydi: `placeholder` etiket yerine
+ * kullanılıyordu. `placeholder` erişilebilir ad DEĞİLDİR — alan doldurulunca
+ * kaybolur, ekran okuyucu alanı adsız okur, etikete tıklamak odaklamaz.
+ *
+ * Değişen:
+ *
+ *   - Her alan `Form.Item` + `Form.Label` + `Form.Control` içinde. Placeholder
+ *     yalnız EK BİLGİ taşıdığı yerde kaldı (ör. "ör. 20 x 27 cm · A4");
+ *     etiketi tekrar eden placeholder'lar silindi.
+ *   - 24 ayrı `useState` → tek `react-hook-form` + zod şeması
+ *     (`lib/storeProductForm`). Kural artık TEK kaynakta: aynı şema hem alan
+ *     hatasını hem sunucu gövdesini üretiyor.
+ *   - **Gönder düğmesi geçerlilik yüzünden KAPANMIYOR** (kalıcı kural).
+ *     Eskiden `!title || !price || !taxPercent` ile kapalıydı ve neyin eksik
+ *     olduğunu söylemiyordu. Şimdi basılınca geçersizse istek gitmez, hatalar
+ *     alanların altında belirir ve **odak ilk hatalı alana taşınır** — hata
+ *     katlanmış bir bölümdeyse bölüm önce AÇILIR.
+ *   - Doğrulama hataları toast yerine alanlarda; sunucunun 422'si `loc`
+ *     üzerinden alanlara dağıtılır, alana düşmeyen kısım şeritte kalır.
+ *
+ * Değişmeyen (hepsi kabul testleriyle sabit): kategori → KDV ön-doldurma ve
+ * kullanıcının elle yazdığını EZMEME kuralı · kitap kategorisinde künyenin
+ * kendiliğinden açılması ve elle kapatılınca inatlaşmaması · dijital ürün
+ * kapısının fail-closed davranışı · kitap kategorisinde varyantın kapalı
+ * olması · stok gerekçesi kuralları · sunucu gövdesinin alanları.
  */
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useForm, useWatch, type FieldErrors, type UseFormReturn } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation } from "@tanstack/react-query";
 
 import { Button } from "@/components/admin/ui";
+import { Form, sunucuHatasiniUygula } from "@/components/admin/ui2/form";
 import { createProduct, updateProduct } from "@/api/store";
 import {
   useCategories,
@@ -24,16 +53,112 @@ import { formatTL } from "@/lib/money";
 import {
   ADMIN_REASON_OPTIONS,
   requiresNote,
-  validateStockEdit,
   type AdminReasonCode,
 } from "@/lib/stockMovements";
-import { orandanYuzde, yuzdedenOran } from "@/lib/tax";
+import {
+  urunFormSemasi,
+  urunGuncelleGovdesi,
+  urunOlusturGovdesi,
+  type UrunFormBaglami,
+  type UrunFormDegerleri,
+} from "@/lib/storeProductForm";
+import { orandanYuzde } from "@/lib/tax";
 import { isBookCategory, suggestedVariantTitle } from "@/lib/variants";
 import { toast } from "@/store/toastStore";
 import type { ProductDetailOut, ProductKind } from "@/types";
 
-/** Form alanı üstündeki küçük başlık (select'lerde placeholder yoktur). */
-const ALAN_BASLIGI = "text-[11px] font-medium text-slate-500 dark:text-slate-400";
+/** `sunucuHatasiniUygula` için BEYAZ LİSTE — formda karşılığı olan alanlar. */
+const ALANLAR = [
+  "baslik", "tur", "durum", "kategoriId", "fiyat", "eskiFiyat", "kdvYuzde",
+  "stok", "stokGerekce", "stokNot", "aciklama", "yazar", "yayinevi", "isbn",
+  "sayfaSayisi", "ebat", "basimYili", "baski", "dil", "kapakTipi",
+  "varyantGrubuId", "eksen1", "eksen2", "varyantSira", "barkod",
+] as const;
+
+/** Sunucu alan adı → form alan adı (422 `loc` eşlemesi). */
+const SUNUCU_ALAN_ESLEMESI: Record<string, string> = {
+  title: "baslik",
+  kind: "tur",
+  status: "durum",
+  category_id: "kategoriId",
+  price: "fiyat",
+  compare_at_price: "eskiFiyat",
+  tax_rate: "kdvYuzde",
+  stock: "stok",
+  stock_reason_code: "stokGerekce",
+  stock_note: "stokNot",
+  description: "aciklama",
+  author: "yazar",
+  publisher: "yayinevi",
+  isbn: "isbn",
+  page_count: "sayfaSayisi",
+  dimensions: "ebat",
+  publication_year: "basimYili",
+  edition: "baski",
+  language: "dil",
+  cover_type: "kapakTipi",
+  variant_group_id: "varyantGrubuId",
+  option1_value: "eksen1",
+  option2_value: "eksen2",
+  variant_sort: "varyantSira",
+  barcode: "barkod",
+};
+
+/** Alanların GÖRSEL sırası; "ilk hatalı alan" bu sıradan okunur. */
+const GORSEL_SIRA = [
+  "baslik", "durum", "tur", "kategoriId", "fiyat", "eskiFiyat", "kdvYuzde",
+  "stok", "stokGerekce", "stokNot", "aciklama",
+  "yazar", "yayinevi", "isbn", "sayfaSayisi", "ebat", "basimYili", "baski",
+  "dil", "kapakTipi",
+  "varyantGrubuId", "barkod", "eksen1", "eksen2", "varyantSira",
+] as const;
+
+/** Katlanır künye bölümündeki alanlar — hata oradaysa bölüm AÇILMALI. */
+const KUNYE_ALANLARI = new Set<string>([
+  "yazar", "yayinevi", "isbn", "sayfaSayisi", "ebat", "basimYili", "baski",
+  "dil", "kapakTipi",
+]);
+
+/** Katlanır varyant bölümündeki alanlar. */
+const VARYANT_ALANLARI = new Set<string>([
+  "varyantGrubuId", "eksen1", "eksen2", "varyantSira", "barkod",
+]);
+
+function baslangicDegerleri(initial?: ProductDetailOut): UrunFormDegerleri {
+  return {
+    baslik: initial?.title ?? "",
+    tur: ((initial?.kind as ProductKind) ?? "PHYSICAL") as "PHYSICAL" | "DIGITAL",
+    durum:
+      initial?.status === "HIDDEN" || initial?.status === "DRAFT"
+        ? initial.status
+        : "ACTIVE",
+    kategoriId: initial?.category_id != null ? String(initial.category_id) : "",
+    fiyat: initial ? String(initial.price) : "",
+    eskiFiyat: initial?.compare_at_price ? String(initial.compare_at_price) : "",
+    // KDV: formda YÜZDE tutulur, istekte ORAN gider (bkz. lib/tax.ts). Yeni
+    // üründe boş başlar — varsayılan oran YOKTUR, karar veri olarak girilir.
+    kdvYuzde: orandanYuzde(initial?.tax_rate),
+    stok: initial?.stock != null ? String(initial.stock) : "",
+    stokGerekce: "",
+    stokNot: "",
+    aciklama: initial?.description ?? "",
+    yazar: initial?.author ?? "",
+    yayinevi: initial?.publisher ?? "",
+    isbn: initial?.isbn ?? "",
+    sayfaSayisi: initial?.page_count != null ? String(initial.page_count) : "",
+    ebat: initial?.dimensions ?? "",
+    basimYili:
+      initial?.publication_year != null ? String(initial.publication_year) : "",
+    baski: initial?.edition ?? "",
+    dil: initial?.language ?? "",
+    kapakTipi: initial?.cover_type ?? "",
+    varyantGrubuId: initial?.variant_group_id ?? null,
+    eksen1: initial?.option1_value ?? "",
+    eksen2: initial?.option2_value ?? "",
+    varyantSira: initial?.variant_sort != null ? String(initial.variant_sort) : "0",
+    barkod: initial?.barcode ?? "",
+  };
+}
 
 // Ortak ürün formu — hem oluşturma hem düzenleme (künye dahil tüm alanlar).
 export function ProductForm({
@@ -47,52 +172,11 @@ export function ProductForm({
 }) {
   const isEdit = mode === "edit";
   const { data: categories } = useCategories();
+  const { data: variantConfig } = useVariantConfig();
   // Dijital ürün kapısı (İSTEMCİ AYNASI — otorite sunucudadır). Bilgi
   // yüklenmediyse/uç patladıysa FAIL-CLOSED: bkz. lib/paymentAvailability.
   const { data: odemeUygunlugu } = usePaymentAvailability();
   const dijitalAcik = digitalProductsOpen(odemeUygunlugu);
-  const [title, setTitle] = useState(initial?.title ?? "");
-  const [kind, setKind] = useState<ProductKind>((initial?.kind as ProductKind) ?? "PHYSICAL");
-  const [price, setPrice] = useState(initial ? String(initial.price) : "");
-  const [compareAt, setCompareAt] = useState(initial?.compare_at_price ? String(initial.compare_at_price) : "");
-  // KDV: formda YUZDE tutulur, istekte ORAN gider (bkz. lib/tax.ts). Yeni
-  // urunde bos baslar — varsayilan oran YOKTUR, karar veri olarak girilir.
-  const [taxPercent, setTaxPercent] = useState(orandanYuzde(initial?.tax_rate));
-  const [stock, setStock] = useState(initial?.stock != null ? String(initial.stock) : "");
-  const [categoryId, setCategoryId] = useState(initial?.category_id != null ? String(initial.category_id) : "");
-  const [description, setDescription] = useState(initial?.description ?? "");
-  const [status, setStatus] = useState<"ACTIVE" | "HIDDEN" | "DRAFT">(
-    initial?.status === "HIDDEN" || initial?.status === "DRAFT" ? initial.status : "ACTIVE"
-  );
-  // Kitap künyesi (opsiyonel, katlanır; künye doluysa düzenlemede açık başlar).
-  const [author, setAuthor] = useState(initial?.author ?? "");
-  const [publisher, setPublisher] = useState(initial?.publisher ?? "");
-  const [isbn, setIsbn] = useState(initial?.isbn ?? "");
-  const [pageCount, setPageCount] = useState(initial?.page_count != null ? String(initial.page_count) : "");
-  const [dimensions, setDimensions] = useState(initial?.dimensions ?? "");
-  const [pubYear, setPubYear] = useState(initial?.publication_year != null ? String(initial.publication_year) : "");
-  const [edition, setEdition] = useState(initial?.edition ?? "");
-  const [language, setLanguage] = useState(initial?.language ?? "");
-  const [coverType, setCoverType] = useState(initial?.cover_type ?? "");
-  // ── Kategori varsayılanından KDV ön-doldurma (Faz 4) ──
-  // Yalnız form kolaylığı: sunucu kategori varsayılanından ASLA oran türetmez
-  // (`tax_rate` üründe zorunlu veri). Kural: kullanıcının ELLE yazdığı değer
-  // EZİLMEZ — alan boşken ya da hâlâ önceki OTOMATİK değerdeyken doldurulur.
-  // Kategorilerin varsayılanı yoksa (bugünkü NULL dünyası) hiçbir şey yapmaz.
-  const [autoTaxPercent, setAutoTaxPercent] = useState<string | null>(null);
-  useEffect(() => {
-    const secili = (categories ?? []).find((c) => c.id === Number(categoryId));
-    const oneri = orandanYuzde(secili?.effective_tax_rate);
-    if (!oneri) return;
-    setTaxPercent((mevcut) => {
-      if (mevcut !== "" && mevcut !== autoTaxPercent) return mevcut;
-      setAutoTaxPercent(oneri);
-      return oneri;
-    });
-    // autoTaxPercent bilinçli olarak bağımlılıkta DEĞİL: kendi güncellediği
-    // değeri izleseydi döngü kurulurdu; karşılaştırma set callback'i içinde.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [categoryId, categories]);
 
   const hasKunye = !!(
     initial &&
@@ -101,26 +185,80 @@ export function ProductForm({
       initial.language || initial.cover_type)
   );
   const [showSpecs, setShowSpecs] = useState(hasKunye);
-  // Varyant üyeliği (Faz 2). Sözlükler backend'den (variant-config) gelir.
-  const [variantGroupId, setVariantGroupId] = useState<number | null>(
-    initial?.variant_group_id ?? null
-  );
-  const [option1Value, setOption1Value] = useState(initial?.option1_value ?? "");
-  const [option2Value, setOption2Value] = useState(initial?.option2_value ?? "");
-  const [variantSort, setVariantSort] = useState(
-    initial?.variant_sort != null ? String(initial.variant_sort) : "0"
-  );
-  const [barcode, setBarcode] = useState(initial?.barcode ?? "");
   const [showVariant, setShowVariant] = useState(initial?.variant_group_id != null);
-  const { data: variantConfig } = useVariantConfig();
+
+  // ── Bağlam: şema fabrikasının girdisi ──
+  //
+  // Şema `resolver`ın İÇİNDE, o anki DEĞERLERDEN kurulur. Kapalı bir şemayı
+  // `useMemo` ile dışarıda kurmak, kategori değiştiğinde kuralın bir tık geç
+  // güncellenmesine yol açardı: kullanıcı kitap kategorisi seçip hemen
+  // gönderirse eski kural koşar.
+  const form = useForm<UrunFormDegerleri>({
+    defaultValues: baslangicDegerleri(initial),
+    // Anlık doğrulama: kullanıcı yazarken hata belirir, gönder'e basmayı
+    // beklemez (İP-A2 pilotundan devralınan davranış).
+    mode: "onChange",
+    // Odaklamayı KENDİMİZ yapıyoruz: katlanmış bölümdeki alan RHF'in
+    // odaklamasıyla bulunamaz (DOM'da yok), üstelik RHF'inki `onInvalid`ten
+    // SONRA çalışıp bizimkini ezer.
+    shouldFocusError: false,
+    resolver: (degerler, baglam, secenekler) =>
+      zodResolver(
+        urunFormSemasi({
+          duzenleme: isEdit,
+          mevcutStok: Number(initial?.stock ?? 0),
+          kitapKategorisi: isBookCategory(
+            categories ?? [],
+            degerler.kategoriId ? Number(degerler.kategoriId) : null,
+            variantConfig?.book_root_slugs ?? []
+          ),
+        })
+      )(degerler, baglam, secenekler),
+  });
+
+  const izlenen = useWatch({ control: form.control });
+  const seciliKategori = izlenen.kategoriId ?? "";
+  const tur = izlenen.tur ?? "PHYSICAL";
+  const stokDegeri = izlenen.stok ?? "";
+  const varyantGrubuId = izlenen.varyantGrubuId ?? null;
+
   // Kitap kategorisinde varyant kapalı (backend 409'unun aynası): bölüm
   // gizlenir, seçili grup varsa uyarıyla birlikte gösterilir (silinmez —
   // sessiz veri kaybı olmasın, admin kararı görerek versin).
   const kitapKategorisi = isBookCategory(
     categories ?? [],
-    categoryId ? Number(categoryId) : null,
+    seciliKategori ? Number(seciliKategori) : null,
     variantConfig?.book_root_slugs ?? []
   );
+
+  const baglam: UrunFormBaglami = {
+    duzenleme: isEdit,
+    mevcutStok: Number(initial?.stock ?? 0),
+    kitapKategorisi,
+  };
+
+  // ── Kategori varsayılanından KDV ön-doldurma (Faz 4) ──
+  // Yalnız form kolaylığı: sunucu kategori varsayılanından ASLA oran türetmez
+  // (`tax_rate` üründe zorunlu veri). Kural: kullanıcının ELLE yazdığı değer
+  // EZİLMEZ — alan boşken ya da hâlâ önceki OTOMATİK değerdeyken doldurulur.
+  // Kategorilerin varsayılanı yoksa (bugünkü NULL dünyası) hiçbir şey yapmaz.
+  //
+  // Otomatik değer artık `useState` yerine ref'te: eski kod `setTaxPercent`
+  // callback'inin İÇİNDEN başka bir `setState` çağırıyordu (React'in
+  // uyardığı desen) ve bağımlılık dizisini elle kısaltmak zorunda kalmıştı.
+  const otomatikKdvRef = useRef<string | null>(null);
+  useEffect(() => {
+    const secili = (categories ?? []).find((c) => c.id === Number(seciliKategori));
+    const oneri = orandanYuzde(secili?.effective_tax_rate);
+    if (!oneri) return;
+    const mevcut = form.getValues("kdvYuzde");
+    if (mevcut !== "" && mevcut !== otomatikKdvRef.current) return;
+    otomatikKdvRef.current = oneri;
+    form.setValue("kdvYuzde", oneri);
+    // `form` kimliğini korur.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [seciliKategori, categories]);
+
   // Kitap kategorisi seçilince künye bölümü KENDİLİĞİNDEN açılır: kitapta
   // yazar/yayınevi/ISBN beklenen alanlardır, katlanmış bölüm onları görünmez
   // kılıyordu. Efekt yalnız AÇAR, asla kapatmaz ve `kitapKategorisi`
@@ -129,223 +267,316 @@ export function ProductForm({
   useEffect(() => {
     if (kitapKategorisi) setShowSpecs(true);
   }, [kitapKategorisi]);
-  // Stok gerekcesi: yalniz DUZENLEMEDE ve deger degistiginde zorunlu.
-  // (Yeni urunde ilk stok `INITIAL` hareketidir; gerekcesi sabittir.)
-  const [stockReason, setStockReason] = useState<AdminReasonCode | "">("");
-  const [stockNote, setStockNote] = useState("");
+
+  // Stok gerekçesi: yalnız DÜZENLEMEDE ve değer değiştiğinde zorunlu.
+  // (Yeni üründe ilk stok `INITIAL` hareketidir; gerekçesi sabittir.)
   const stokDegisti =
-    isEdit && kind === "PHYSICAL" && Number(stock || 0) !== Number(initial?.stock ?? 0);
+    isEdit && tur === "PHYSICAL" && Number(stokDegeri || 0) !== Number(initial?.stock ?? 0);
 
   const mutation = useMutation({
-    mutationFn: () => {
-      // Oran once dogrulanir: gecersizse istek HIC gitmez. Sunucu da 422
-      // doner (tek guvenlik siniri orasidir), ama kullanici hatayi formda
-      // ve Turkce gormeli.
-      const oran = yuzdedenOran(taxPercent);
-      if (!oran.ok) throw new Error(oran.hata ?? "KDV oranı geçersiz");
-      if (variantGroupId != null) {
-        // Sunucu da 400/409 verir; ama admin hatayı formda Türkçe görmeli.
-        if (!barcode.trim()) {
-          throw new Error("Varyant grubundaki ürün için barkod zorunlu");
-        }
-        if (!option1Value.trim()) {
-          throw new Error("1. eksen değeri zorunlu");
-        }
-        if (kitapKategorisi) {
-          throw new Error("Kitap kategorisindeki üründe varyant açılamaz");
-        }
-      }
-      const base = {
-        title,
-        price,
-        tax_rate: oran.oran,
-        compare_at_price: compareAt || null,
-        stock: kind === "PHYSICAL" && stock ? Number(stock) : null,
-        category_id: categoryId ? Number(categoryId) : null,
-        description: description || null,
-        author: author || null,
-        publisher: publisher || null,
-        isbn: isbn || null,
-        page_count: pageCount ? Number(pageCount) : null,
-        dimensions: dimensions || null,
-        publication_year: pubYear ? Number(pubYear) : null,
-        edition: edition || null,
-        language: language || null,
-        cover_type: coverType || null,
-        // Varyant üyeliği: grup yoksa eksen değerleri de null gider (sunucu
-        // gruptan çıkışta değerleri zaten temizler; form da tutarlı gönderir).
-        variant_group_id: variantGroupId,
-        option1_value: variantGroupId != null ? option1Value.trim() || null : null,
-        option2_value: variantGroupId != null ? option2Value.trim() || null : null,
-        variant_sort:
-          variantGroupId != null ? parseInt(variantSort, 10) || 0 : 0,
-        barcode: barcode.trim() || null,
-      };
+    mutationFn: (degerler: UrunFormDegerleri) => {
       if (isEdit) {
-        // Delta SUNUCUDA, urun satiri kilitli iken hesaplanir; istemci yalniz
-        // HEDEFI gonderir. Ayni hedefin tekrari sunucuda sifir delta uretir ve
-        // hareket yazilmaz — bu yuzden gerekce de istenmez.
-        const dogrulama = validateStockEdit({
-          current: Number(initial?.stock ?? 0),
-          next: Number(stock || 0),
-          reason: (stockReason || null) as AdminReasonCode | null,
-          note: stockNote || null,
-        });
-        if (kind === "PHYSICAL" && !dogrulama.ok) {
-          throw new Error(dogrulama.error ?? "Stok düzenlemesi geçersiz");
-        }
-        return updateProduct(initial!.id, {
-          ...base,
-          status,
-          ...(dogrulama.submitStock ? dogrulama.payload : { stock: undefined }),
-        });
+        return updateProduct(initial!.id, urunGuncelleGovdesi(degerler, baglam));
       }
-      return createProduct({ ...base, kind, status });
+      return createProduct(urunOlusturGovdesi(degerler));
     },
     onSuccess: () => {
       toast.success(isEdit ? "Ürün güncellendi" : "Ürün eklendi");
       onDone();
     },
-    onError: (err: unknown) => {
-      const metin =
-        err instanceof Error && err.message ? err.message : null;
-      toast.error(metin ?? (isEdit ? "Ürün güncellenemedi" : "Ürün eklenemedi"));
-    },
   });
+
+  // ── Sunucu hatasının dağıtımı ──
+  //
+  // `loc`'u bir alana düşen 422 mesajı O ALANIN altına yazılır ve genel
+  // şeride HİÇ gitmez. Alana düşmeyen kısım — 500, ağ hatası, formda
+  // karşılığı olmayan alan — şeritte kalır; beyaz liste sayesinde sessizce
+  // kaybolmaz.
+  const [genelHata, setGenelHata] = useState<string | null>(null);
+  useEffect(() => {
+    if (!mutation.error) {
+      setGenelHata(null);
+      return;
+    }
+    setGenelHata(
+      sunucuHatasiniUygula(mutation.error, form, ALANLAR, SUNUCU_ALAN_ESLEMESI, (h) =>
+        getErrorDetail(h, isEdit ? "Ürün güncellenemedi" : "Ürün eklenemedi")
+      )
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mutation.error]);
+
+  // ── Odak kurtarması: katlanmış bölümdeki hataya erişim ──
+  //
+  // `setFocus` DOM'da olmayan alanı odaklayamaz. Bölüm önce açılır, alan
+  // render edildikten SONRA odaklanır — bu yüzden hedef bir tur state'te
+  // bekletilir.
+  const [odakAlani, setOdakAlani] = useState<(typeof GORSEL_SIRA)[number] | null>(null);
+  useEffect(() => {
+    if (!odakAlani) return;
+    form.setFocus(odakAlani);
+    setOdakAlani(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [odakAlani]);
+
+  const gonder = form.handleSubmit(
+    (degerler) => mutation.mutate(degerler),
+    (hatalar: FieldErrors<UrunFormDegerleri>) => {
+      const ilk = GORSEL_SIRA.find((a) => hatalar[a]);
+      if (!ilk) return;
+      if (KUNYE_ALANLARI.has(ilk)) setShowSpecs(true);
+      if (VARYANT_ALANLARI.has(ilk)) setShowVariant(true);
+      setOdakAlani(ilk);
+    }
+  );
+
+  // Formun geneline düşen şema hatası (alanı olmayan kural: kitap
+  // kategorisinde varyant). RHF bunu kök yolda tutar.
+  const formGenelHatasi = (form.formState.errors as { root?: { message?: string } })
+    .root?.message;
 
   return (
     <div className="grid gap-3 sm:grid-cols-2">
-      <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Ürün adı" className="input sm:col-span-2" />
-      {/* Select'lerin placeholder'ı olmaz: ne sorulduğu GÖRÜNÜR bir başlıkla
-          yazılır (metin alanlarında bu işi placeholder yapıyor). */}
+      <Form.Field
+        control={form.control}
+        name="baslik"
+        render={({ field }) => (
+          <Form.Item className="block sm:col-span-2">
+            <Form.Label>Ürün adı</Form.Label>
+            <Form.Control>
+              <input className="input" {...field} />
+            </Form.Control>
+            <Form.ErrorMessage />
+          </Form.Item>
+        )}
+      />
+
       {isEdit ? (
-        <label className="flex flex-col gap-1">
-          <span className={ALAN_BASLIGI}>Durum</span>
-          <select value={status} onChange={(e) => setStatus(e.target.value as "ACTIVE" | "HIDDEN" | "DRAFT")} className="input">
-            <option value="ACTIVE">Yayında</option>
-            <option value="HIDDEN">Gizli</option>
-            <option value="DRAFT">Taslak</option>
-          </select>
-        </label>
-      ) : (
-        // Açıklama `<label>` DIŞINDA: içeride kalsaydı select'in erişilebilir
-        // adına eklenir ve alanın adı "Ürün türü Dijital ürün satışı kapalı…"
-        // olurdu (ekran okuyucuda ve testte ölçüldü).
-        <div className="flex flex-col gap-1">
-          <label className="flex flex-col gap-1">
-            <span className={ALAN_BASLIGI}>Ürün türü</span>
-            {/* "Basılı" DEĞİL: mağaza kitap dışı ürün de satar (kalem, defter,
-                fotokopi kâğıdı). Değerler (PHYSICAL/DIGITAL) değişmedi —
-                `kind` DB trigger'ıyla değiştirilemez, etiket ise serbesttir. */}
-            <select value={kind} onChange={(e) => setKind(e.target.value as ProductKind)} className="input">
-              <option value="PHYSICAL">Fiziksel ürün</option>
-              {/* Bayrak kapalıyken seçilemez: kaydedilen dijital ürün satılamaz
-                  (checkout 503) ve `kind` sonradan DEĞİŞTİRİLEMEZ. Sunucu da
-                  reddeder — burası kullanıcıyı 503'e kadar yürütmemek için. */}
-              <option value="DIGITAL" disabled={!dijitalAcik}>
-                Dijital ürün
-              </option>
-            </select>
-          </label>
-          {!dijitalAcik && (
-            <span className="text-[11px] text-slate-400 dark:text-slate-500">
-              Dijital ürün satışı kapalı olduğu için bu seçenek kullanılamıyor.
-              Bayrak açılana dek yalnız fiziksel ürün eklenebilir.
-            </span>
+        <Form.Field
+          control={form.control}
+          name="durum"
+          render={({ field }) => (
+            <Form.Item>
+              <Form.Label>Durum</Form.Label>
+              <Form.Control>
+                <select className="input" {...field}>
+                  <option value="ACTIVE">Yayında</option>
+                  <option value="HIDDEN">Gizli</option>
+                  <option value="DRAFT">Taslak</option>
+                </select>
+              </Form.Control>
+              <Form.ErrorMessage />
+            </Form.Item>
           )}
-        </div>
-      )}
-      <label className="flex flex-col gap-1">
-        <span className={ALAN_BASLIGI}>Kategori (opsiyonel)</span>
-        <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)} aria-label="Kategori" className="input">
-          <option value="">Kategori seçilmedi</option>
-          {(categories ?? []).map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name}
-            </option>
-          ))}
-        </select>
-      </label>
-      <input value={price} onChange={(e) => setPrice(e.target.value)} placeholder="Fiyat (TL)" inputMode="decimal" className="input" />
-      <input value={compareAt} onChange={(e) => setCompareAt(e.target.value)} placeholder="Eski fiyat (opsiyonel)" inputMode="decimal" className="input" />
-      <label className="flex flex-col gap-1">
-        <input
-          value={taxPercent}
-          onChange={(e) => setTaxPercent(e.target.value)}
-          placeholder="KDV oranı (%)"
-          inputMode="decimal"
-          aria-label="KDV oranı (%)"
-          className="input"
         />
-        <span className="text-[11px] text-slate-400 dark:text-slate-500">
-          Yüzde olarak yazın (ör. 20). Fiyat KDV dahildir; oran faturadaki
-          matrah ayrıştırması için kullanılır.
-        </span>
-      </label>
-      {kind === "PHYSICAL" && (
-        <input value={stock} onChange={(e) => setStock(e.target.value)} placeholder="Stok" inputMode="numeric" className="input" />
+      ) : (
+        <Form.Field
+          control={form.control}
+          name="tur"
+          render={({ field }) => (
+            <Form.Item>
+              <Form.Label>Ürün türü</Form.Label>
+              <Form.Control>
+                {/* "Basılı" DEĞİL: mağaza kitap dışı ürün de satar (kalem,
+                    defter, fotokopi kâğıdı). Değerler (PHYSICAL/DIGITAL)
+                    değişmedi — `kind` DB trigger'ıyla değiştirilemez,
+                    etiket ise serbesttir. */}
+                <select className="input" {...field}>
+                  <option value="PHYSICAL">Fiziksel ürün</option>
+                  {/* Bayrak kapalıyken seçilemez: kaydedilen dijital ürün
+                      satılamaz (checkout 503) ve `kind` sonradan
+                      DEĞİŞTİRİLEMEZ. Sunucu da reddeder — burası kullanıcıyı
+                      503'e kadar yürütmemek için. */}
+                  <option value="DIGITAL" disabled={!dijitalAcik}>
+                    Dijital ürün
+                  </option>
+                </select>
+              </Form.Control>
+              {/* Açıklama etiketin DIŞINDA: `Form.Hint` slotta durur ve
+                  `aria-describedby` ile bağlanır, alanın ADINA karışmaz.
+                  (Eskiden `<label>` içindeydi ve alanın adı "Ürün türü
+                  Dijital ürün satışı kapalı…" oluyordu.) */}
+              {!dijitalAcik && (
+                <Form.Hint>
+                  Dijital ürün satışı kapalı olduğu için bu seçenek
+                  kullanılamıyor. Bayrak açılana dek yalnız fiziksel ürün
+                  eklenebilir.
+                </Form.Hint>
+              )}
+              <Form.ErrorMessage />
+            </Form.Item>
+          )}
+        />
       )}
+
+      <Form.Field
+        control={form.control}
+        name="kategoriId"
+        render={({ field }) => (
+          <Form.Item>
+            <Form.Label optional>Kategori</Form.Label>
+            <Form.Control>
+              <select className="input" {...field}>
+                <option value="">Kategori seçilmedi</option>
+                {(categories ?? []).map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </Form.Control>
+            <Form.ErrorMessage />
+          </Form.Item>
+        )}
+      />
+
+      <Form.Field
+        control={form.control}
+        name="fiyat"
+        render={({ field }) => (
+          <Form.Item>
+            <Form.Label>Fiyat (TL)</Form.Label>
+            <Form.Control>
+              <input className="input" inputMode="decimal" {...field} />
+            </Form.Control>
+            <Form.ErrorMessage />
+          </Form.Item>
+        )}
+      />
+
+      <Form.Field
+        control={form.control}
+        name="eskiFiyat"
+        render={({ field }) => (
+          <Form.Item>
+            <Form.Label optional>Eski fiyat</Form.Label>
+            <Form.Control>
+              <input className="input" inputMode="decimal" {...field} />
+            </Form.Control>
+            <Form.ErrorMessage />
+          </Form.Item>
+        )}
+      />
+
+      <Form.Field
+        control={form.control}
+        name="kdvYuzde"
+        render={({ field }) => (
+          <Form.Item>
+            <Form.Label>KDV oranı (%)</Form.Label>
+            <Form.Control>
+              <input className="input" inputMode="decimal" {...field} />
+            </Form.Control>
+            <Form.Hint>
+              Yüzde olarak yazın (ör. 20). Fiyat KDV dahildir; oran faturadaki
+              matrah ayrıştırması için kullanılır.
+            </Form.Hint>
+            <Form.ErrorMessage />
+          </Form.Item>
+        )}
+      />
+
+      {tur === "PHYSICAL" && (
+        <Form.Field
+          control={form.control}
+          name="stok"
+          render={({ field }) => (
+            <Form.Item>
+              <Form.Label>Stok</Form.Label>
+              <Form.Control>
+                <input className="input" inputMode="numeric" {...field} />
+              </Form.Control>
+              <Form.ErrorMessage />
+            </Form.Item>
+          )}
+        />
+      )}
+
       {stokDegisti && (
         <div className="sm:col-span-2 space-y-2 rounded-lg border border-amber-200 bg-amber-50/50 p-3 dark:border-amber-500/30 dark:bg-amber-500/10">
           <p className="text-xs text-amber-900 dark:text-amber-200">
-            Stok {initial?.stock ?? 0} → {Number(stock || 0)} olarak
+            Stok {initial?.stock ?? 0} → {Number(stokDegeri || 0)} olarak
             değişecek. Bu hareket deftere gerekçesiyle yazılır.
           </p>
           <div className="grid gap-2 sm:grid-cols-2">
-            <select
-              value={stockReason}
-              onChange={(e) => setStockReason(e.target.value as AdminReasonCode | "")}
-              className="input"
-            >
-              <option value="">Gerekçe seçin…</option>
-              {ADMIN_REASON_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
-            {requiresNote((stockReason || null) as AdminReasonCode | null) && (
-              <input
-                value={stockNote}
-                onChange={(e) => setStockNote(e.target.value)}
-                placeholder="Açıklama (zorunlu)"
-                className="input"
+            <Form.Field
+              control={form.control}
+              name="stokGerekce"
+              render={({ field }) => (
+                <Form.Item>
+                  <Form.Label>Gerekçe</Form.Label>
+                  <Form.Control>
+                    <select className="input" {...field}>
+                      <option value="">Gerekçe seçin…</option>
+                      {ADMIN_REASON_OPTIONS.map((o) => (
+                        <option key={o.value} value={o.value}>
+                          {o.label}
+                        </option>
+                      ))}
+                    </select>
+                  </Form.Control>
+                  <Form.ErrorMessage />
+                </Form.Item>
+              )}
+            />
+            {/* Açıklama YALNIZ gerekli gerekçelerde ("Diğer") istenir —
+                davranış İP-A5 öncesiyle aynı; koşul `lib/stockMovements`ın
+                `requiresNote` kuralından okunur. */}
+            {requiresNote((izlenen.stokGerekce || null) as AdminReasonCode | null) && (
+              <Form.Field
+                control={form.control}
+                name="stokNot"
+                render={({ field }) => (
+                  <Form.Item>
+                    <Form.Label>Stok değişikliği açıklaması</Form.Label>
+                    <Form.Control>
+                      <input className="input" {...field} />
+                    </Form.Control>
+                    <Form.ErrorMessage />
+                  </Form.Item>
+                )}
               />
             )}
           </div>
         </div>
       )}
-      <textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Açıklama" rows={2} className="input sm:col-span-2" />
+
+      <Form.Field
+        control={form.control}
+        name="aciklama"
+        render={({ field }) => (
+          <Form.Item className="block sm:col-span-2">
+            <Form.Label optional>Açıklama</Form.Label>
+            <Form.Control>
+              <textarea className="input" rows={2} {...field} />
+            </Form.Control>
+            <Form.ErrorMessage />
+          </Form.Item>
+        )}
+      />
 
       {/* Kitap künyesi — opsiyonel, katlanır. Kitap kategorisi seçiliyse
           kendiliğinden açılır (yukarıdaki efekt); kitap dışı üründe kapalı
           kalır ve başlık ne yapılması gerektiğini söyler. */}
       <div className="sm:col-span-2">
-        <button
-          type="button"
-          onClick={() => setShowSpecs((v) => !v)}
-          className="flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-indigo-600 dark:text-slate-300 dark:hover:text-indigo-400"
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className={`transition-transform ${showSpecs ? "rotate-90" : ""}`}>
-            <path d="M9 18l6-6-6-6" />
-          </svg>
+        <KatlanirBaslik acik={showSpecs} onDegis={() => setShowSpecs((v) => !v)}>
           Kitap künyesi — kitap dışı ürünlerde boş bırakın
-        </button>
+        </KatlanirBaslik>
         {showSpecs && (
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
             <p className="text-[11px] text-slate-400 sm:col-span-2 dark:text-slate-500">
               Ebat dışındaki alanlar yalnız kitapta anlamlıdır; kırtasiye
               ürününde ebadı yazıp diğerlerini boş bırakabilirsiniz.
             </p>
-            <input value={author} onChange={(e) => setAuthor(e.target.value)} placeholder="Yazar" className="input" />
-            <input value={publisher} onChange={(e) => setPublisher(e.target.value)} placeholder="Yayınevi" className="input" />
-            <input value={isbn} onChange={(e) => setIsbn(e.target.value)} placeholder="ISBN / Barkod" className="input" />
-            <input value={pageCount} onChange={(e) => setPageCount(e.target.value)} placeholder="Sayfa sayısı" inputMode="numeric" className="input" />
-            <input value={dimensions} onChange={(e) => setDimensions(e.target.value)} placeholder="Ebat (ör. 20 x 27 cm · A4)" className="input" />
-            <input value={pubYear} onChange={(e) => setPubYear(e.target.value)} placeholder="Basım yılı" inputMode="numeric" className="input" />
-            <input value={edition} onChange={(e) => setEdition(e.target.value)} placeholder="Baskı (ör. 1. Basım)" className="input" />
-            <input value={language} onChange={(e) => setLanguage(e.target.value)} placeholder="Dil (ör. Türkçe)" className="input" />
-            <input value={coverType} onChange={(e) => setCoverType(e.target.value)} placeholder="Kapak tipi (ör. İnce Kapak)" className="input" />
+            <KunyeAlani form={form} ad="yazar" etiket="Yazar" />
+            <KunyeAlani form={form} ad="yayinevi" etiket="Yayınevi" />
+            <KunyeAlani form={form} ad="isbn" etiket="ISBN / Barkod" />
+            <KunyeAlani form={form} ad="sayfaSayisi" etiket="Sayfa sayısı" mod="numeric" />
+            <KunyeAlani form={form} ad="ebat" etiket="Ebat" ipucu="ör. 20 x 27 cm · A4" />
+            <KunyeAlani form={form} ad="basimYili" etiket="Basım yılı" mod="numeric" />
+            <KunyeAlani form={form} ad="baski" etiket="Baskı" ipucu="ör. 1. Basım" />
+            <KunyeAlani form={form} ad="dil" etiket="Dil" ipucu="ör. Türkçe" />
+            <KunyeAlani form={form} ad="kapakTipi" etiket="Kapak tipi" ipucu="ör. İnce Kapak" />
           </div>
         )}
       </div>
@@ -353,24 +584,24 @@ export function ProductForm({
       {/* Varyant üyeliği — kitap kategorisinde kapalı (backend 409'unun aynası) */}
       <div className="sm:col-span-2 border-t border-slate-200 pt-4 dark:border-slate-700">
         {kitapKategorisi ? (
-          variantGroupId != null ? (
+          varyantGrubuId != null ? (
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
               <p className="text-xs text-amber-700 dark:text-amber-300">
                 Bu ürün bir varyant grubunda ama seçilen kategori kitap
                 kategorisi — kitapta varyant açılamaz. Kaydetmeden önce grubu
                 kaldırın ya da kategoriyi değiştirin.
               </p>
-              <button
-                type="button"
+              <Button
+                size="sm"
+                variant="ghost"
                 onClick={() => {
-                  setVariantGroupId(null);
-                  setOption1Value("");
-                  setOption2Value("");
+                  form.setValue("varyantGrubuId", null, { shouldValidate: true });
+                  form.setValue("eksen1", "");
+                  form.setValue("eksen2", "");
                 }}
-                className="text-xs font-medium text-indigo-600 hover:underline dark:text-indigo-400"
               >
                 Gruptan çıkar
-              </button>
+              </Button>
             </div>
           ) : (
             <p className="text-xs text-slate-400 dark:text-slate-500">
@@ -380,53 +611,114 @@ export function ProductForm({
           )
         ) : (
           <>
-            <button
-              type="button"
-              onClick={() => setShowVariant((v) => !v)}
-              className="flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-indigo-600 dark:text-slate-300 dark:hover:text-indigo-400"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className={`transition-transform ${showVariant ? "rotate-90" : ""}`}>
-                <path d="M9 18l6-6-6-6" />
-              </svg>
+            <KatlanirBaslik acik={showVariant} onDegis={() => setShowVariant((v) => !v)}>
               Varyantlar (renk, ebat…)
-              {variantGroupId != null && (
+              {varyantGrubuId != null && (
                 <span className="text-xs font-normal text-slate-400">— grupta</span>
               )}
-            </button>
+            </KatlanirBaslik>
             {showVariant && (
-              <VariantMembershipFields
-                groupId={variantGroupId}
-                onGroupChange={(id) => {
-                  setVariantGroupId(id);
-                  if (id == null) {
-                    setOption1Value("");
-                    setOption2Value("");
-                  }
-                }}
-                option1Value={option1Value}
-                option2Value={option2Value}
-                onOption1Change={setOption1Value}
-                onOption2Change={setOption2Value}
-                variantSort={variantSort}
-                onVariantSortChange={setVariantSort}
-                barcode={barcode}
-                onBarcodeChange={setBarcode}
-                currentProductId={initial?.id}
-              />
+              <VariantMembershipFields form={form} currentProductId={initial?.id} />
             )}
           </>
         )}
       </div>
 
-      <button
-        type="button"
-        disabled={mutation.isPending || !title || !price || !taxPercent}
-        onClick={() => mutation.mutate()}
-        className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50 dark:bg-white dark:text-slate-900 sm:col-span-2"
-      >
+      {/* YALNIZ genel/sunucu hatası ve alanı olmayan form kuralı. Alan
+          doğrulama hataları buraya asla düşmez — kendi alanlarının altında
+          dururlar (İP-A2 sözleşmesi). */}
+      {(genelHata || formGenelHatasi) && (
+        <p
+          role="alert"
+          className="sm:col-span-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-sm text-rose-900 dark:border-rose-500/30 dark:bg-rose-500/10 dark:text-rose-100"
+        >
+          {formGenelHatasi ?? genelHata}
+        </p>
+      )}
+
+      {/* Geçerlilik kapısı YOK: `isPending` yalnız çift gönderimi engeller. */}
+      <Button className="sm:col-span-2" isPending={mutation.isPending} onClick={gonder}>
         {isEdit ? "Kaydet" : "Ürünü ekle"}
-      </button>
+      </Button>
     </div>
+  );
+}
+
+/** Künye ızgarasındaki tek alan — dokuzu da aynı desende. */
+function KunyeAlani({
+  form,
+  ad,
+  etiket,
+  ipucu,
+  mod,
+}: {
+  form: UseFormReturn<UrunFormDegerleri>;
+  ad: keyof UrunFormDegerleri;
+  etiket: string;
+  /** Placeholder yalnız EK BİLGİ taşıdığında verilir; etiketi tekrar etmez. */
+  ipucu?: string;
+  mod?: "numeric";
+}) {
+  return (
+    <Form.Field
+      control={form.control}
+      name={ad}
+      render={({ field }) => (
+        <Form.Item>
+          <Form.Label optional>{etiket}</Form.Label>
+          <Form.Control>
+            <input
+              className="input"
+              placeholder={ipucu}
+              inputMode={mod}
+              {...field}
+              value={String(field.value ?? "")}
+            />
+          </Form.Control>
+          <Form.ErrorMessage />
+        </Form.Item>
+      )}
+    />
+  );
+}
+
+/**
+ * Katlanır bölüm başlığı — A5'in "yedi tekrar eden desen" listesinden biri.
+ *
+ * `Button` DEĞİL: bu bir aksiyon değil, bir açma/kapama denetimidir ve
+ * `aria-expanded` taşır. Ortak `Button` görsel varyantlarıyla (dolgu, gölge)
+ * gelir; burada istenen sade bir satır başlığıdır. Ham `<button>` kalması
+ * bilinçlidir ve sayaçta borç olarak görünmeye devam eder.
+ */
+function KatlanirBaslik({
+  acik,
+  onDegis,
+  children,
+}: {
+  acik: boolean;
+  onDegis: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      aria-expanded={acik}
+      onClick={onDegis}
+      className="flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-indigo-600 dark:text-slate-300 dark:hover:text-indigo-400"
+    >
+      <svg
+        width="14"
+        height="14"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2.5"
+        className={`transition-transform ${acik ? "rotate-90" : ""}`}
+      >
+        <path d="M9 18l6-6-6-6" />
+      </svg>
+      {children}
+    </button>
   );
 }
 
@@ -436,35 +728,21 @@ export function ProductForm({
  *  Eksen ADLARI yalnız sözlükten seçilir (backend `variant-config`); eksen
  *  DEĞERLERİ serbest metindir. Kardeşler saç-teli çizgili satır listesidir —
  *  kart değil (calm layout).
+ *
+ *  İP-A6: alanlar artık ana formun KENDİ alanlarıdır (prop köprüsü kalktı),
+ *  böylece barkod/eksen hataları formun geri kalanıyla aynı yoldan gelir.
  */
 function VariantMembershipFields({
-  groupId,
-  onGroupChange,
-  option1Value,
-  option2Value,
-  onOption1Change,
-  onOption2Change,
-  variantSort,
-  onVariantSortChange,
-  barcode,
-  onBarcodeChange,
+  form,
   currentProductId,
 }: {
-  groupId: number | null;
-  onGroupChange: (id: number | null) => void;
-  option1Value: string;
-  option2Value: string;
-  onOption1Change: (v: string) => void;
-  onOption2Change: (v: string) => void;
-  variantSort: string;
-  onVariantSortChange: (v: string) => void;
-  barcode: string;
-  onBarcodeChange: (v: string) => void;
+  form: UseFormReturn<UrunFormDegerleri>;
   currentProductId?: number;
 }) {
   const { data: config } = useVariantConfig();
   const { data: groups } = useVariantGroups();
-  const { data: groupDetail } = useVariantGroup(groupId);
+  const groupId = useWatch({ control: form.control, name: "varyantGrubuId" });
+  const { data: groupDetail } = useVariantGroup(groupId ?? null);
   const [creating, setCreating] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [newAxis1, setNewAxis1] = useState("");
@@ -477,61 +755,111 @@ function VariantMembershipFields({
   return (
     <div className="mt-3 space-y-3">
       <div className="grid gap-3 sm:grid-cols-2">
-        <select
-          value={groupId != null ? String(groupId) : ""}
-          onChange={(e) => {
-            if (e.target.value === "__yeni__") {
-              setCreating(true);
-              return;
-            }
-            setCreating(false);
-            onGroupChange(e.target.value ? Number(e.target.value) : null);
-          }}
-          aria-label="Varyant grubu"
-          className="input"
-        >
-          <option value="">Varyant grubu yok</option>
-          {(groups ?? []).map((g) => (
-            <option key={g.id} value={g.id}>
-              {g.title} ({g.option1_name}
-              {g.option2_name ? ` × ${g.option2_name}` : ""}, {g.member_count} ürün)
-            </option>
-          ))}
-          <option value="__yeni__">＋ Yeni grup oluştur…</option>
-        </select>
+        <Form.Field
+          control={form.control}
+          name="varyantGrubuId"
+          render={({ field }) => (
+            <Form.Item>
+              <Form.Label>Varyant grubu</Form.Label>
+              <Form.Control>
+                <select
+                  className="input"
+                  value={field.value != null ? String(field.value) : ""}
+                  onBlur={field.onBlur}
+                  onChange={(e) => {
+                    if (e.target.value === "__yeni__") {
+                      setCreating(true);
+                      return;
+                    }
+                    setCreating(false);
+                    const id = e.target.value ? Number(e.target.value) : null;
+                    field.onChange(id);
+                    if (id == null) {
+                      form.setValue("eksen1", "");
+                      form.setValue("eksen2", "");
+                    }
+                  }}
+                >
+                  <option value="">Varyant grubu yok</option>
+                  {(groups ?? []).map((g) => (
+                    <option key={g.id} value={g.id}>
+                      {g.title} ({g.option1_name}
+                      {g.option2_name ? ` × ${g.option2_name}` : ""}, {g.member_count} ürün)
+                    </option>
+                  ))}
+                  <option value="__yeni__">＋ Yeni grup oluştur…</option>
+                </select>
+              </Form.Control>
+              <Form.ErrorMessage />
+            </Form.Item>
+          )}
+        />
         {group && (
-          <input
-            value={barcode}
-            onChange={(e) => onBarcodeChange(e.target.value)}
-            placeholder="Barkod (zorunlu — raftaki ayırt edici)"
-            aria-label="Barkod"
-            className="input"
+          <Form.Field
+            control={form.control}
+            name="barkod"
+            render={({ field }) => (
+              <Form.Item>
+                <Form.Label>Barkod</Form.Label>
+                <Form.Control>
+                  <input className="input" {...field} />
+                </Form.Control>
+                <Form.Hint>Zorunlu — raftaki ayırt edici.</Form.Hint>
+                <Form.ErrorMessage />
+              </Form.Item>
+            )}
           />
         )}
       </div>
 
       {creating && (
         <div className="grid gap-2 sm:grid-cols-4">
-          <input
-            value={newTitle}
-            onChange={(e) => setNewTitle(e.target.value)}
-            placeholder="Grup adı (ör. Fosforlu Kalem)"
-            className="input sm:col-span-2"
-          />
-          <select value={newAxis1} onChange={(e) => setNewAxis1(e.target.value)} aria-label="1. eksen" className="input">
-            <option value="">1. eksen…</option>
-            {axes.map((a) => (
-              <option key={a} value={a}>{a}</option>
-            ))}
-          </select>
-          <select value={newAxis2} onChange={(e) => setNewAxis2(e.target.value)} aria-label="2. eksen (opsiyonel)" className="input">
-            <option value="">2. eksen yok</option>
-            {axes
-              .filter((a) => a !== newAxis1)
-              .map((a) => (
-                <option key={a} value={a}>{a}</option>
-              ))}
-          </select>
+          {/* Bu üç alan ANA FORMUN parçası değil: yeni bir varyant GRUBU
+              yaratan ayrı bir mini formdur ve kendi ucuna gider. `Form.Field`
+              yok, ama etiket/`id` bağı `Form.Item` üzerinden aynı. */}
+          <Form.Item className="block sm:col-span-2">
+            <Form.Label>Grup adı</Form.Label>
+            <Form.Control>
+              <input
+                className="input"
+                placeholder="ör. Fosforlu Kalem"
+                value={newTitle}
+                onChange={(e) => setNewTitle(e.target.value)}
+              />
+            </Form.Control>
+          </Form.Item>
+          <Form.Item>
+            <Form.Label>1. eksen</Form.Label>
+            <Form.Control>
+              <select
+                className="input"
+                value={newAxis1}
+                onChange={(e) => setNewAxis1(e.target.value)}
+              >
+                <option value="">1. eksen…</option>
+                {axes.map((a) => (
+                  <option key={a} value={a}>{a}</option>
+                ))}
+              </select>
+            </Form.Control>
+          </Form.Item>
+          <Form.Item>
+            <Form.Label optional>2. eksen</Form.Label>
+            <Form.Control>
+              <select
+                className="input"
+                value={newAxis2}
+                onChange={(e) => setNewAxis2(e.target.value)}
+              >
+                <option value="">2. eksen yok</option>
+                {axes
+                  .filter((a) => a !== newAxis1)
+                  .map((a) => (
+                    <option key={a} value={a}>{a}</option>
+                  ))}
+              </select>
+            </Form.Control>
+          </Form.Item>
           <div className="sm:col-span-4 flex items-center gap-3">
             <Button
               size="sm"
@@ -548,7 +876,7 @@ function VariantMembershipFields({
                       toast.success("Varyant grubu oluşturuldu");
                       setCreating(false);
                       setNewTitle("");
-                      onGroupChange(g.id);
+                      form.setValue("varyantGrubuId", g.id, { shouldValidate: true });
                     },
                     onError: (err: unknown) =>
                       toast.error(getErrorDetail(err, "Grup oluşturulamadı")),
@@ -558,42 +886,55 @@ function VariantMembershipFields({
             >
               Grubu oluştur
             </Button>
-            <button
-              type="button"
-              onClick={() => setCreating(false)}
-              className="text-xs font-medium text-slate-500 hover:underline dark:text-slate-400"
-            >
+            <Button size="sm" variant="ghost" onClick={() => setCreating(false)}>
               Vazgeç
-            </button>
+            </Button>
           </div>
         </div>
       )}
 
       {group && (
         <div className="grid gap-3 sm:grid-cols-3">
-          <input
-            value={option1Value}
-            onChange={(e) => onOption1Change(e.target.value)}
-            placeholder={`${group.option1_name} (ör. Sarı)`}
-            aria-label={group.option1_name}
-            className="input"
+          <Form.Field
+            control={form.control}
+            name="eksen1"
+            render={({ field }) => (
+              <Form.Item>
+                <Form.Label>{group.option1_name}</Form.Label>
+                <Form.Control>
+                  <input className="input" placeholder="ör. Sarı" {...field} />
+                </Form.Control>
+                <Form.ErrorMessage />
+              </Form.Item>
+            )}
           />
           {group.option2_name && (
-            <input
-              value={option2Value}
-              onChange={(e) => onOption2Change(e.target.value)}
-              placeholder={`${group.option2_name}`}
-              aria-label={group.option2_name}
-              className="input"
+            <Form.Field
+              control={form.control}
+              name="eksen2"
+              render={({ field }) => (
+                <Form.Item>
+                  <Form.Label>{group.option2_name}</Form.Label>
+                  <Form.Control>
+                    <input className="input" {...field} />
+                  </Form.Control>
+                  <Form.ErrorMessage />
+                </Form.Item>
+              )}
             />
           )}
-          <input
-            value={variantSort}
-            onChange={(e) => onVariantSortChange(e.target.value)}
-            placeholder="Sıra (0, 1, 2…)"
-            aria-label="Varyant sırası"
-            inputMode="numeric"
-            className="input"
+          <Form.Field
+            control={form.control}
+            name="varyantSira"
+            render={({ field }) => (
+              <Form.Item>
+                <Form.Label>Varyant sırası</Form.Label>
+                <Form.Control>
+                  <input className="input" inputMode="numeric" placeholder="0, 1, 2…" {...field} />
+                </Form.Control>
+                <Form.ErrorMessage />
+              </Form.Item>
+            )}
           />
         </div>
       )}
@@ -626,10 +967,7 @@ function VariantMembershipFields({
       {currentProductId != null &&
         groupId != null &&
         groupDetail?.members.some((m) => m.id === currentProductId) && (
-          <DeriveVariantForm
-            productId={currentProductId}
-            group={groupDetail}
-          />
+          <DeriveVariantForm productId={currentProductId} group={groupDetail} />
         )}
     </div>
   );
@@ -651,13 +989,9 @@ function DeriveVariantForm({
 
   if (!open) {
     return (
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="text-sm font-medium text-indigo-600 hover:underline dark:text-indigo-400"
-      >
+      <Button variant="ghost" size="sm" onClick={() => setOpen(true)}>
         ＋ Bu üründen yeni varyant türet
-      </button>
+      </Button>
     );
   }
   return (
@@ -668,29 +1002,38 @@ function DeriveVariantForm({
         {value1 ? suggestedVariantTitle(group.title, value1, value2 || null) : "—"}
       </p>
       <div className="grid gap-2 sm:grid-cols-3">
-        <input
-          value={value1}
-          onChange={(e) => setValue1(e.target.value)}
-          placeholder={group.option1_name}
-          aria-label={`Yeni ${group.option1_name}`}
-          className="input"
-        />
+        <Form.Item>
+          <Form.Label>{`Yeni ${group.option1_name}`}</Form.Label>
+          <Form.Control>
+            <input
+              className="input"
+              value={value1}
+              onChange={(e) => setValue1(e.target.value)}
+            />
+          </Form.Control>
+        </Form.Item>
         {group.option2_name && (
-          <input
-            value={value2}
-            onChange={(e) => setValue2(e.target.value)}
-            placeholder={group.option2_name}
-            aria-label={`Yeni ${group.option2_name}`}
-            className="input"
-          />
+          <Form.Item>
+            <Form.Label>{`Yeni ${group.option2_name}`}</Form.Label>
+            <Form.Control>
+              <input
+                className="input"
+                value={value2}
+                onChange={(e) => setValue2(e.target.value)}
+              />
+            </Form.Control>
+          </Form.Item>
         )}
-        <input
-          value={newBarcode}
-          onChange={(e) => setNewBarcode(e.target.value)}
-          placeholder="Yeni barkod (zorunlu)"
-          aria-label="Yeni barkod"
-          className="input"
-        />
+        <Form.Item>
+          <Form.Label>Yeni barkod</Form.Label>
+          <Form.Control>
+            <input
+              className="input"
+              value={newBarcode}
+              onChange={(e) => setNewBarcode(e.target.value)}
+            />
+          </Form.Control>
+        </Form.Item>
       </div>
       <div className="flex items-center gap-3">
         <Button
@@ -727,13 +1070,9 @@ function DeriveVariantForm({
         >
           Türet
         </Button>
-        <button
-          type="button"
-          onClick={() => setOpen(false)}
-          className="text-xs font-medium text-slate-500 hover:underline dark:text-slate-400"
-        >
+        <Button size="sm" variant="ghost" onClick={() => setOpen(false)}>
           Vazgeç
-        </button>
+        </Button>
       </div>
     </div>
   );

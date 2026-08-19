@@ -285,13 +285,18 @@ describe("S-1 · altı sekme arasında gerçek gezinme", () => {
     // → Kategoriler
     fireEvent.click(screen.getByRole("link", { name: "Kategoriler" }));
     expect(await screen.findByText(/Deneme Kitapları/)).toBeTruthy();
-    expect(screen.getByPlaceholderText("Kategori adı")).toBeTruthy();
+    expect(screen.getByLabelText("Kategori adı")).toBeTruthy();
     expect(screen.queryByText(URUN_A.title)).toBeNull();
 
     // → Siparişler
     fireEvent.click(screen.getByRole("link", { name: "Siparişler" }));
-    expect(await screen.findByText("#77")).toBeTruthy();
-    expect(screen.getByText("Ayşe Y.")).toBeTruthy();
+    // İP-A6: `DataTable` mobil kart düzenini (`renderMobileRow`) da basar;
+    // jsdom CSS uygulamadığı için tablo VE kartlar aynı anda DOM'dadır.
+    // Bu bir davranış değişikliği değil, ölçüm ortamının sınırı — sorgu
+    // MASAÜSTÜ TABLOSUNA daraltıldı; iddia aynı kaldı.
+    const siparisTablosu = await screen.findByRole("table");
+    expect(within(siparisTablosu).getByText("#77")).toBeTruthy();
+    expect(within(siparisTablosu).getByText("Ayşe Y.")).toBeTruthy();
 
     // → İadeler
     fireEvent.click(screen.getByRole("link", { name: "İadeler" }));

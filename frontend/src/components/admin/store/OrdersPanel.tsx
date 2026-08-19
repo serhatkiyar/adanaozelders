@@ -1,5 +1,21 @@
 /**
- * Mağaza "Siparişler" sekmesi — İP-A5'te `AdminStore.tsx`ten AYNEN taşındı.
+ * Mağaza "Siparişler" sekmesi.
+ *
+ * ## İP-A6 · Görev 4c/4d/4e — göç
+ *
+ *   - Üç ham `<button>` ortak `Button`a; takip no alanı gerçek etiket taşıyor.
+ *   - "Teslim edildi" ve "İade et" pencerelerinin durumu ekrandan
+ *     `ui2/duzenlemeYuzeyi`ne taşındı — bu dosyada pencere `useState`i yok.
+ *   - Tabloya `renderMobileRow` eklendi: mobilde yedi kolonlu tablo yatay
+ *     kaydırmaya düşüyordu ve satır aksiyonları ekranın dışında kalıyordu.
+ *
+ * ## Bilinen sınır (TB-A5-2, bu pakette KAPANMADI)
+ *
+ * Sipariş listesinin SAYFALAMASI yok: `DataTable` `page={1}` ve
+ * `pageSize={siparisler.length}` ile besleniyor, kesilme yalnız bir uyarı
+ * şeridiyle bildiriliyor. Sayfalama ayrı bir kapsamdır (sunucu tarafı
+ * `limit`/`offset` + `X-Total-Count` gerekir); geldiği gün uyarı şeridi
+ * KALKMALI (E-5 nöbetçisi onu koruyor).
  */
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
@@ -9,6 +25,8 @@ import type { ColumnDef } from "@tanstack/react-table";
 import { AccessDenied, ReadOnlyNotice, useAdminAreaAccess } from "@/components/admin/AccessState";
 import { Badge, Button, ConfirmDialog, ErrorState, ReasonDialog } from "@/components/admin/ui";
 import { DataTable } from "@/components/admin/data-table";
+import { useDuzenlemeYuzeyi } from "@/components/admin/ui2/yuzeyDurumu";
+import { Form } from "@/components/admin/ui2/form";
 import { deliverOrder, refundOrder, shipOrder } from "@/api/store";
 import { useAdminOrders, useInvalidateAdminStore } from "@/hooks/useStore";
 import { setQueryValue } from "@/lib/adminUserQuery";
@@ -38,7 +56,10 @@ export function OrdersPanel() {
   const invalidate = useInvalidateAdminStore();
   // "Teslim edildi" siparişi terminal duruma taşır ve teslimat akışını kapatır;
   // yanlış satıra tıklama geri alınamaz (P1-5 gerekçesi).
-  const [teslimSiparisi, setTeslimSiparisi] = useState<number | null>(null);
+  //
+  // Pencere durumu EKRANDA yaşamaz (İP-A4 sözleşmesi): hedef sipariş numarası
+  // düzenleme yüzeyinde tutulur.
+  const teslimYuzeyi = useDuzenlemeYuzeyi<number, void>();
 
   const ship = useMutation({
     mutationFn: ({ id, tracking }: { id: number; tracking: string }) => shipOrder(id, tracking),
@@ -51,20 +72,20 @@ export function OrdersPanel() {
     mutationFn: (id: number) => deliverOrder(id),
     onSuccess: () => {
       toast.success("Sipariş teslim edildi olarak işaretlendi");
-      setTeslimSiparisi(null);
+      teslimYuzeyi.kapat();
       invalidate();
     },
     onError: (err: unknown) => toast.error(getErrorDetail(err, "İşlem başarısız")),
   });
   // Gerekçe ZORUNLU (backend `AdminOrderActionIn`): iade denetim izine
   // gerekçesiz yazılamaz, bu yüzden aksiyon önce gerekçe penceresi açar.
-  const [iadeSiparisi, setIadeSiparisi] = useState<number | null>(null);
+  const iadeYuzeyi = useDuzenlemeYuzeyi<number, void>();
   const refund = useMutation({
     mutationFn: ({ id, reason }: { id: number; reason: string }) =>
       refundOrder(id, reason),
     onSuccess: () => {
       toast.success("İade edildi");
-      setIadeSiparisi(null);
+      iadeYuzeyi.kapat();
       invalidate();
     },
     onError: () => toast.error("İade başarısız"),
@@ -186,14 +207,14 @@ export function OrdersPanel() {
               <ShipButton onShip={(tracking) => ship.mutate({ id: o.id, tracking })} />
             )}
             {o.status === "SHIPPED" && (
-              <button type="button" onClick={() => setTeslimSiparisi(o.id)} className="rounded-lg border border-slate-200 px-3 py-1 text-xs dark:border-slate-700">
+              <Button size="sm" variant="secondary" onClick={() => teslimYuzeyi.ac(o.id)}>
                 Teslim edildi
-              </button>
+              </Button>
             )}
             {o.payment_status === "PAID" && (
-              <button type="button" onClick={() => setIadeSiparisi(o.id)} className="rounded-lg border border-rose-200 px-3 py-1 text-xs text-rose-600 dark:border-rose-500/30">
+              <Button size="sm" variant="ghost" onClick={() => iadeYuzeyi.ac(o.id)}>
                 İade et
-              </button>
+              </Button>
             )}
           </div>
         );
@@ -206,8 +227,11 @@ export function OrdersPanel() {
       {!canManage && <ReadOnlyNotice />}
 
       <div className="flex flex-wrap items-end gap-3">
-        <label className="text-xs font-medium text-slate-500 dark:text-slate-400">
-          Durum
+        <Form.Item>
+          <Form.Label className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">
+            Durum
+          </Form.Label>
+          <Form.Control>
           <select
             value={durum ?? ""}
             onChange={(e) =>
@@ -217,7 +241,7 @@ export function OrdersPanel() {
                 })
               )
             }
-            className="mt-1 block rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none focus:border-indigo-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
+            className="block rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none focus:border-indigo-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
           >
             <option value="">Tümü</option>
             {ORDER_STATUS_FILTERS.map((s) => (
@@ -226,7 +250,8 @@ export function OrdersPanel() {
               </option>
             ))}
           </select>
-        </label>
+          </Form.Control>
+        </Form.Item>
       </div>
 
       <DataTable
@@ -234,6 +259,48 @@ export function OrdersPanel() {
         data={siparisler}
         getRowId={(o) => String(o.id)}
         isLoading={isLoading}
+        // Mobilde yedi kolonlu tablo yatay kaydırmaya düşüyor ve satır
+        // aksiyonları ekranın dışında kalıyordu; kart düzeninde aynı veri ve
+        // AYNI aksiyonlar görünür (İP-A6 · Görev 4e).
+        renderMobileRow={(o) => (
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between gap-3">
+              <span className="font-semibold text-slate-800 dark:text-slate-200">
+                #{o.id}
+              </span>
+              <span className="font-medium">{formatTL(o.total)}</span>
+            </div>
+            <p className="text-xs text-slate-500">
+              {formatDateTime(o.created_at)} ·{" "}
+              {o.ship_recipient ?? "Dijital sipariş"}
+            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge tone={orderPaymentTone(o.payment_status)}>
+                {orderPaymentLabel(o.payment_status)}
+              </Badge>
+              <Badge tone={orderStatusTone(o.status)}>
+                {orderStatusLabel(o.status)}
+              </Badge>
+            </div>
+            {canManage && (
+              <div className="flex flex-wrap gap-2 pt-1">
+                {o.has_physical && o.payment_status === "PAID" && o.status === "PAID" && (
+                  <ShipButton onShip={(tracking) => ship.mutate({ id: o.id, tracking })} />
+                )}
+                {o.status === "SHIPPED" && (
+                  <Button size="sm" variant="secondary" onClick={() => teslimYuzeyi.ac(o.id)}>
+                    Teslim edildi
+                  </Button>
+                )}
+                {o.payment_status === "PAID" && (
+                  <Button size="sm" variant="ghost" onClick={() => iadeYuzeyi.ac(o.id)}>
+                    İade et
+                  </Button>
+                )}
+              </div>
+            )}
+          </div>
+        )}
         page={1}
         pageSize={Math.max(siparisler.length, 1)}
         total={siparisler.length}
@@ -264,17 +331,17 @@ export function OrdersPanel() {
       />
 
       <ConfirmDialog
-        open={teslimSiparisi !== null}
+        open={teslimYuzeyi.acik}
         title="Siparişi teslim edildi işaretle"
-        description={`#${teslimSiparisi} siparişi teslim edilmiş sayılacak ve teslimat akışı kapanacak.`}
+        description={`#${teslimYuzeyi.kayit} siparişi teslim edilmiş sayılacak ve teslimat akışı kapanacak.`}
         confirmLabel="Teslim edildi olarak işaretle"
         isPending={deliver.isPending}
-        onClose={() => setTeslimSiparisi(null)}
-        onConfirm={() => teslimSiparisi !== null && deliver.mutate(teslimSiparisi)}
+        onClose={teslimYuzeyi.kapat}
+        onConfirm={() => teslimYuzeyi.kayit !== null && deliver.mutate(teslimYuzeyi.kayit)}
       />
 
       <ReasonDialog
-        open={iadeSiparisi !== null}
+        open={iadeYuzeyi.acik}
         title="Siparişi iade et"
         description="Gerekçe sipariş geçmişine ve denetim izine yazılacak."
         label="İade gerekçesi"
@@ -284,9 +351,9 @@ export function OrdersPanel() {
         danger
         confirmLabel="İade et"
         isPending={refund.isPending}
-        onClose={() => setIadeSiparisi(null)}
+        onClose={iadeYuzeyi.kapat}
         onConfirm={(reason) =>
-          iadeSiparisi !== null && refund.mutate({ id: iadeSiparisi, reason })
+          iadeYuzeyi.kayit !== null && refund.mutate({ id: iadeYuzeyi.kayit, reason })
         }
       />
     </div>
@@ -296,16 +363,22 @@ export function OrdersPanel() {
 function ShipButton({ onShip }: { onShip: (tracking: string) => void }) {
   const [tracking, setTracking] = useState("");
   return (
-    <div className="flex gap-2">
-      <input
-        value={tracking}
-        onChange={(e) => setTracking(e.target.value)}
-        placeholder="Takip no"
-        className="rounded-lg border border-slate-200 px-2 py-1 text-xs dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-      />
-      <button type="button" onClick={() => onShip(tracking)} className="rounded-lg bg-slate-900 px-3 py-1 text-xs font-medium text-white dark:bg-white dark:text-slate-900">
+    <div className="flex items-end gap-2">
+      <Form.Item>
+        <Form.Label className="mb-1 block text-[11px] font-medium text-slate-500 dark:text-slate-400">
+          Takip no
+        </Form.Label>
+        <Form.Control>
+          <input
+            value={tracking}
+            onChange={(e) => setTracking(e.target.value)}
+            className="rounded-lg border border-slate-200 px-2 py-1 text-xs dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+          />
+        </Form.Control>
+      </Form.Item>
+      <Button size="sm" onClick={() => onShip(tracking)}>
         Kargola
-      </button>
+      </Button>
     </div>
   );
 }

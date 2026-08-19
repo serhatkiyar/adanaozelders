@@ -1,10 +1,21 @@
 /**
- * Mağaza "İadeler" (RMA) sekmesi — İP-A5'te `AdminStore.tsx`ten AYNEN taşındı.
+ * Mağaza "İadeler" (RMA) sekmesi.
+ *
+ * ## İP-A6 · Görev 4c/4d — göç
+ *
+ *   - İki ham `<button>` ortak `Button`a geçti.
+ *   - Karar penceresinin durumu (`decision`) ekrandan `ui2/duzenlemeYuzeyi`ne
+ *     taşındı; bu dosyada pencere `useState`i kalmadı.
+ *
+ * "Yalnız bekleyenler" kutucuğu bir PENCERE durumu değil, listenin filtresidir
+ * ve `<label>` içinde sarmalı olduğu için zaten adlandırılmıştır — göçte
+ * dokunulmadı.
  */
 import { useState } from "react";
 
 import { AccessDenied, ReadOnlyNotice, useAdminAreaAccess } from "@/components/admin/AccessState";
-import { ConfirmDialog, ErrorState, ReasonDialog } from "@/components/admin/ui";
+import { Button, ConfirmDialog, ErrorState, ReasonDialog } from "@/components/admin/ui";
+import { useDuzenlemeYuzeyi } from "@/components/admin/ui2/yuzeyDurumu";
 import { useAdminReturns, useResolveReturn } from "@/hooks/useStore";
 import { formatDateTime } from "@/lib/datetime";
 import { getErrorDetail } from "@/lib/errors";
@@ -19,7 +30,9 @@ const RETURN_STATUS_LABELS: Record<string, { label: string; cls: string }> = {
 
 export function ReturnsPanel() {
   const { canView, canManage } = useAdminAreaAccess("returns");
-  const [decision, setDecision] = useState<{ id: number; action: "approve" | "reject" } | null>(null);
+  // Pencere durumu EKRANDA yaşamaz (İP-A4 sözleşmesi): kararın hedefi ve türü
+  // düzenleme yüzeyinde tutulur.
+  const kararYuzeyi = useDuzenlemeYuzeyi<{ id: number; action: "approve" | "reject" }>();
   const [onlyPending, setOnlyPending] = useState(true);
   const { data: returns, isLoading, isError, error, refetch } =
     useAdminReturns(onlyPending ? "PENDING" : undefined);
@@ -29,7 +42,7 @@ export function ReturnsPanel() {
     resolve.mutate(
       { id, action: "approve" },
       {
-        onSuccess: () => { toast.success("İade onaylandı, ödeme iade edildi"); setDecision(null); },
+        onSuccess: () => { toast.success("İade onaylandı, ödeme iade edildi"); kararYuzeyi.kapat(); },
         onError: (err: unknown) => {
           const detail =
             (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ??
@@ -44,7 +57,7 @@ export function ReturnsPanel() {
     resolve.mutate(
       { id, action: "reject", adminNote: note || null },
       {
-        onSuccess: () => { toast.success("İade talebi reddedildi"); setDecision(null); },
+        onSuccess: () => { toast.success("İade talebi reddedildi"); kararYuzeyi.kapat(); },
         onError: () => toast.error("İşlem başarısız"),
       }
     );
@@ -107,22 +120,22 @@ export function ReturnsPanel() {
               )}
               {canManage && r.status === "PENDING" && (
                 <div className="mt-3 flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    disabled={resolve.isPending}
-                    onClick={() => setDecision({ id: r.id, action: "approve" })}
-                    className="rounded-lg bg-emerald-600 px-3 py-1 text-xs font-medium text-white transition-colors hover:bg-emerald-700 disabled:opacity-50"
+                  <Button
+                    size="sm"
+                    variant="success"
+                    isPending={resolve.isPending}
+                    onClick={() => kararYuzeyi.ac({ id: r.id, action: "approve" })}
                   >
                     Onayla & iade et
-                  </button>
-                  <button
-                    type="button"
-                    disabled={resolve.isPending}
-                    onClick={() => setDecision({ id: r.id, action: "reject" })}
-                    className="rounded-lg border border-rose-200 px-3 py-1 text-xs text-rose-600 transition-colors hover:bg-rose-50 disabled:opacity-50 dark:border-rose-500/30 dark:hover:bg-rose-500/10"
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    isPending={resolve.isPending}
+                    onClick={() => kararYuzeyi.ac({ id: r.id, action: "reject" })}
                   >
                     Reddet
-                  </button>
+                  </Button>
                 </div>
               )}
             </div>
@@ -134,25 +147,25 @@ export function ReturnsPanel() {
         </p>
       )}
       <ConfirmDialog
-        open={decision?.action === "approve"}
+        open={kararYuzeyi.kayit?.action === "approve"}
         title="İade talebini onayla"
         description="Müşteriye ödeme iadesi yapılacak ve ürün stoğu geri yüklenecek."
         confirmLabel="Onayla ve iade et"
         danger
         isPending={resolve.isPending}
-        onClose={() => setDecision(null)}
-        onConfirm={() => decision && approve(decision.id)}
+        onClose={kararYuzeyi.kapat}
+        onConfirm={() => kararYuzeyi.kayit && approve(kararYuzeyi.kayit.id)}
       />
       <ReasonDialog
-        open={decision?.action === "reject"}
+        open={kararYuzeyi.kayit?.action === "reject"}
         title="İade talebini reddet"
         description="Moderasyon notu müşteriye iletilecek."
         label="Red gerekçesi"
         confirmLabel="Talebi reddet"
         danger
         isPending={resolve.isPending}
-        onClose={() => setDecision(null)}
-        onConfirm={(note) => decision && reject(decision.id, note)}
+        onClose={kararYuzeyi.kapat}
+        onConfirm={(note) => kararYuzeyi.kayit && reject(kararYuzeyi.kayit.id, note)}
       />
     </div>
   );

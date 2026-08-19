@@ -1,10 +1,27 @@
 /**
- * Mağaza "Ürünler" sekmesi — İP-A5'te `AdminStore.tsx`ten AYNEN taşındı.
+ * Mağaza "Ürünler" sekmesi.
  *
  * Panel KENDİ durumunu taşır (arama taslağı, form/içe-aktarma görünürlüğü);
  * diğer sekmelerle paylaştığı hiçbir React durumu yoktur — ortak zemin URL
- * (`useSearchParams`) ve React Query önbelleğidir. Bölme bu yüzden prop
- * geçirmeden yapılabildi.
+ * (`useSearchParams`) ve React Query önbelleğidir.
+ *
+ * ## İP-A6 · Görev 4c/4d — göç
+ *
+ *   - Beş ham `<button>` ortak `Button`a geçti; satır aksiyonları AÇIK DÜĞME
+ *     kaldı (üç nokta menüye geçilmez — kalıcı kural).
+ *   - Düzenleme penceresi ve silme onayının durumu ekrandan
+ *     `ui2/yuzeyDurumu`na taşındı; bu dosyada pencere `useState`i yok.
+ *   - Kapak seçicisi `className="hidden"` yerine gerçek `hidden` özniteliği
+ *     taşıyor: sınıf adı dinamik olabilir, öznitelik kontrolü erişilebilirlik
+ *     ağacından GERÇEKTEN çıkarır (sayacın ölçüm dışı kuralı da buna bakar).
+ *
+ * ## Sıralama deseni (Görev 2 — A7'nin kopyalayacağı hâl)
+ *
+ * Sıralama SUNUCUDA yapılır (`DataTable` `manualSorting`), seçim URL'de yaşar
+ * (`sirala`/`yon`; `lib/storeProductQuery`) ve gösterge hem görsel hem
+ * `aria-sort` ile duyurulur. Kolonun sıralanabilir olması için `accessorFn`
+ * ŞARTTIR (aşağıdaki nota bak) — yalnız `cell` taşıyan kolon TanStack'te
+ * "display" sayılır ve başlığı düğmeye dönüşmez.
  */
 import { useEffect, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
@@ -13,6 +30,7 @@ import type { ColumnDef } from "@tanstack/react-table";
 
 import { AccessDenied, ReadOnlyNotice, useAdminAreaAccess } from "@/components/admin/AccessState";
 import { Badge, Button, ConfirmDialog, ErrorState } from "@/components/admin/ui";
+import { useDuzenlemeYuzeyi } from "@/components/admin/ui2/yuzeyDurumu";
 import { DataTable } from "@/components/admin/data-table";
 import { StockBadge } from "@/components/admin/StockBadge";
 import { deleteProduct, updateProduct, uploadProductCover } from "@/api/store";
@@ -162,20 +180,16 @@ export function ProductsPanel() {
     <div>
       {canManage ? (
         <div className="flex justify-end gap-2">
-          <button
-            type="button"
+          <Button
+            variant="secondary"
+            aria-expanded={showImport}
             onClick={() => setShowImport((v) => !v)}
-            className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 dark:border-slate-700 dark:text-slate-200"
           >
             {showImport ? "Kapat" : "Toplu içe aktar"}
-          </button>
-          <button
-            type="button"
-            onClick={() => setShowForm((v) => !v)}
-            className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white dark:bg-white dark:text-slate-900"
-          >
+          </Button>
+          <Button aria-expanded={showForm} onClick={() => setShowForm((v) => !v)}>
             {showForm ? "Kapat" : "Yeni ürün"}
-          </button>
+          </Button>
         </div>
       ) : (
         <ReadOnlyNotice />
@@ -387,16 +401,20 @@ function UrunAksiyonlari({
     mutationFn: () => deleteProduct(product.id),
     onSuccess: () => {
       toast.success("Ürün silindi");
-      setDeleting(false);
+      silmeYuzeyi.kapat();
       onChange();
     },
     // P1-5 sınıfı: sessiz başarısızlık yönetici için "silindi" ile aynı görünür.
     onError: (err: unknown) => toast.error(getErrorDetail(err, "Ürün silinemedi")),
   });
-  const [editing, setEditing] = useState(false);
+  // Pencere durumu EKRANDA yaşamaz (İP-A4 sözleşmesi): ne düzenleme penceresi
+  // ne de silme onayı bu bileşende `useState` tutar. Rota tabanlı düzenleme
+  // yüzeylerine geçiş kararı artık bu dosyayı ilgilendirmiyor.
+  //
   // Yıkıcı aksiyon ONAY penceresi olmadan tetiklenmez: katalogdan ürün
   // düşürmek yanlış satıra tıklamayla geri alınamaz bir sonuç üretir.
-  const [deleting, setDeleting] = useState(false);
+  const duzenlemeYuzeyi = useDuzenlemeYuzeyi<number, void>();
+  const silmeYuzeyi = useDuzenlemeYuzeyi<number, void>();
 
   return (
     <>
@@ -404,41 +422,45 @@ function UrunAksiyonlari({
         <div className="flex items-center justify-end gap-3 whitespace-nowrap text-xs">
           <label className="cursor-pointer font-medium text-slate-600 hover:underline dark:text-slate-300">
             Kapak
-            <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && cover.mutate(e.target.files[0])} />
+            {/* Dosya seçici GÖRÜNMEZ: tetikleyici etiketin kendisidir.
+                `hidden` özniteliği `className="hidden"`in yerini aldı —
+                sayaç yalnız gerçek `hidden`ı ölçüm dışı sayar ve haklıdır:
+                sınıf adı dinamik olabilir, öznitelik erişilebilirlik
+                ağacından gerçekten çıkarır. */}
+            <input type="file" accept="image/*" hidden onChange={(e) => e.target.files?.[0] && cover.mutate(e.target.files[0])} />
           </label>
-          <button type="button" onClick={() => setEditing(true)} className="font-medium text-indigo-600 hover:underline dark:text-indigo-400">
+          {/* Satır aksiyonları AÇIK DÜĞME kalır — üç nokta menüye geçilmez
+              (kalıcı kural): dokunmatikte gizli menü bir adım daha ekler. */}
+          <Button size="sm" variant="ghost" onClick={() => duzenlemeYuzeyi.ac(product.id)}>
             Düzenle
-          </button>
-          <button type="button" onClick={() => toggle.mutate()} className="font-medium text-slate-600 hover:underline dark:text-slate-300">
+          </Button>
+          <Button size="sm" variant="ghost" onClick={() => toggle.mutate()}>
             {product.status === "ACTIVE" ? "Gizle" : "Yayınla"}
-          </button>
-          <button type="button" onClick={() => setDeleting(true)} className="font-medium text-rose-500 hover:underline">
+          </Button>
+          <Button size="sm" variant="ghost" onClick={() => silmeYuzeyi.ac(product.id)}>
             Sil
-          </button>
+          </Button>
         </div>
       ) : null}
 
       <ConfirmDialog
-        open={deleting}
+        open={silmeYuzeyi.acik}
         title="Ürünü sil"
         description={`"${product.title}" katalogdan kaldırılacak.`}
         confirmLabel="Ürünü sil"
         danger
         isPending={remove.isPending}
-        onClose={() => setDeleting(false)}
+        onClose={silmeYuzeyi.kapat}
         onConfirm={() => remove.mutate()}
       />
 
-      {editing && (
-        <EditProductModal
-          id={product.id}
-          onClose={() => setEditing(false)}
-          onSaved={() => {
-            setEditing(false);
-            onChange();
-          }}
-        />
-      )}
+      <EditProductModal
+        yuzey={duzenlemeYuzeyi}
+        onSaved={() => {
+          duzenlemeYuzeyi.kapat();
+          onChange();
+        }}
+      />
     </>
   );
 }

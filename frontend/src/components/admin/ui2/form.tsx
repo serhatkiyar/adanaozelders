@@ -324,10 +324,17 @@ function Label({
   return (
     <label htmlFor={kimlik?.id} className={className}>
       {children}
+      {/* Boşluk METİNDE olmalı, yalnız `ml-1` ile değil (İP-A6'da bulundu).
+          `ml-1` GÖRSEL aralık verir ama etiketin metni "Yazar(opsiyonel)"
+          kalır ve erişilebilir ad ekran okuyucuya "Yazaropsiyonel" diye
+          çıkar. Görünen ad ile okunan ad ayrılamaz. */}
       {optional && (
-        <span className="ml-1 font-normal text-slate-400 dark:text-slate-500">
-          (opsiyonel)
-        </span>
+        <>
+          {" "}
+          <span className="font-normal text-slate-400 dark:text-slate-500">
+            (opsiyonel)
+          </span>
+        </>
       )}
     </label>
   );

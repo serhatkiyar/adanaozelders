@@ -61,6 +61,26 @@ export const kirliFormPromptTr = {
     "Bu pencereyi kapatırsanız girdiğiniz bilgiler kaydedilmeden silinir.",
 };
 
+/**
+ * Rota gezinmesi bekçisinin onay metinleri (İP-A6 · Görev 3).
+ *
+ * Pencere kapatmadan AYRI metin: kullanıcı orada "bu pencereyi kapatıyorum"
+ * niyetiyle, burada "başka bir sayfaya gidiyorum" niyetiyle hareket eder.
+ * Aynı metni ikisine birden vermek, ikinci durumda neyin olacağını yanlış
+ * anlatırdı ("pencere" diye bir şey yok, sayfa değişiyor).
+ *
+ * Bu sabit Medusa'nın `usePrompt` biçiminde DEĞİL, panelin kendi
+ * `ConfirmDialog`ının prop'ları biçiminde: gezinme onayı Medusa'nın
+ * `AlertDialog`unu her yönetim sayfasının ilk yüküne sokuyordu
+ * (`gezinmeBekcisi.tsx` → `useGezinmeOnayi` gerekçesi).
+ */
+export const GEZINME_ONAYI = {
+  baslik: "Kaydedilmemiş değişiklikler var",
+  aciklama:
+    "Başka bir sayfaya geçerseniz girdiğiniz bilgiler kaydedilmeden silinir.",
+  onay: "Sayfadan ayrıl",
+};
+
 /** Uygulama kökünü saran Medusa locale sağlayıcısı. */
 export function MedusaI18nProvider({
   children,
