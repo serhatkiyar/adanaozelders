@@ -110,26 +110,22 @@ afterEach(() => {
   sessionStorage.clear();
 });
 
-// ## RTL asenkron bekleme bütçesi (İP-A4 · Görev 5b)
+// ## RTL asenkron bekleme bütçesi ARTIK GLOBAL DEĞİL (İP-A6b · Görev 5 · BULGU-10)
 //
-// `findBy*`/`waitFor` varsayılan bütçesi 1000 ms'dir ve **Vitest'in
-// `testTimeout`undan bağımsızdır** — `vitest.config.ts`'teki 9000 ms bu
-// bekleyişi hiç ilgilendirmiyordu. Kararsız düşen iki test
-// (`ticketsPaymentGate`, `storeVariants.acceptance`) her seferinde bu bütçeyi
-// aşıyordu: ikisi de İKİ ağ sorgusu çözülene kadar bekleyen `findAllBy*`
-// çağrılarıdır ve tam suite yük altında koşarken (114 dosya, paralel işçiler)
-// jsdom render + query çözümü 1 saniyeyi geçebiliyor.
+// İP-A4'te buraya `configure({ asyncUtilTimeout: 4000 })` konmuştu: RTL'in
+// varsayılan 1000 ms'lik `findBy*`/`waitFor` bütçesi (Vitest'in `testTimeout`u
+// bu bekleyişi hiç ilgilendirmez) yük altında iki testte aşılıyordu.
 //
-// Kanıt: düşüşlerin İKİSİ de "Unable to find …" biçimindedir — yani iddia
-// YANLIŞ değil, HENÜZ doğru değildir; aynı testler yalnız koşturulduğunda
-// hiç düşmez ve aynı seed iki koşumda farklı sonuç verir. Sıra bağımlılığı
-// değil, YÜK bağımlılığıdır (TB-23'ün kaydettiği kökün aynısı: yeşil/kırmızı
-// sinyalinin makine yüküne bağlanması).
+// Teşhis doğruydu ama **ilaç 117 dosyanın hepsine veriliyordu**: gerçek bir
+// performans regresyonu her testte 4 saniye boyunca gizlenebilirdi. Denetim
+// ölçtü — değer 1000'e döndürülünce projenin 1183 testinin hiçbiri düşmedi.
 //
-// 4000 ms ölçüyle seçildi: yükte gözlenen en uzun gerçek bekleyiş ~2.3 s'ydi;
-// 4 s onun ~1.7 katı ve Vitest'in 9 s'lik test bütçesinin altında kalır —
-// yani gerçek bir asılma hâlâ testi düşürür, sessizce yutulmaz. Daha geniş
-// bir değer (ör. 8 s) gerçek bir performans regresyonunu gizlerdi.
-import { configure } from "@testing-library/dom";
-
-configure({ asyncUtilTimeout: 4000 });
+// Bütçe artık yalnız gerçekten yük-bağımlı olan İKİ dosyada, çağrı yerinde
+// duruyor (gerekçesi orada yazılı):
+//
+//   - `src/pages/ticketsPaymentGate.test.tsx`
+//   - `src/pages/store/storeVariants.acceptance.test.tsx`
+//
+// İkisi de İKİ ağ sorgusu çözülene kadar bekleyen `findAllBy*` çağrılarıdır.
+// Başka bir dosya düşerse çare global ayarı geri getirmek DEĞİL, o çağrıya
+// ölçülmüş bir bütçe yazmaktır: hangi test, hangi sorgu, ölçülen gerçek süre.

@@ -13,6 +13,23 @@
  * "mock'un kendisini" değil kullanıcının gördüğü sonucu doğrular.
  */
 import { render, screen, waitFor, within } from "@testing-library/react";
+
+/**
+ * ── Yük altındaki bekleme bütçesi (İP-A6b · Görev 5 · BULGU-10) ──
+ *
+ * RTL'in varsayılan `asyncUtilTimeout`u 1000 ms'dir ve Vitest'in `testTimeout`u
+ * bu bekleyişi HİÇ ilgilendirmez. Bu dosyanın `findAllBy*` çağrıları İKİ ağ
+ * sorgusu çözülene kadar bekler; tam suite yük altında koşarken (117 dosya,
+ * paralel işçiler) jsdom render + query çözümü 1 saniyeyi geçebiliyordu ve
+ * düşüşlerin hepsi "Unable to find …" biçimindeydi — iddia yanlış değil,
+ * HENÜZ doğru değil.
+ *
+ * Eskiden bu bütçe `src/test-setup.ts`te GLOBAL olarak 4000 ms yapılıyordu ve
+ * 117 dosyanın hepsini etkiliyordu: gerçek bir performans regresyonu her yerde
+ * 4 saniye boyunca gizlenebilirdi. İP-A6b bunu iki dosyaya indirdi; global
+ * ayar kaldırıldı.
+ */
+const YUK = { timeout: 4000 };
 import { MemoryRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -127,7 +144,7 @@ describe("Biletlerim — ödeme kolu kapalıyken", () => {
   it("iki 'Ödemeyi tamamla' butonu da DEVRE DIŞI ve metni 'Ödeme kapalı'", async () => {
     sar();
 
-    const butonlar = await screen.findAllByRole("button", { name: "Ödeme kapalı" });
+    const butonlar = await screen.findAllByRole("button", { name: "Ödeme kapalı" }, YUK);
     // Bilet + çalışma rezervasyonu = iki kart.
     expect(butonlar).toHaveLength(2);
     for (const b of butonlar) {
@@ -139,13 +156,13 @@ describe("Biletlerim — ödeme kolu kapalıyken", () => {
 
   it("sunucunun kapalı-kol açıklaması gösterilir (PaymentBranchNotice)", async () => {
     sar();
-    const notlar = await screen.findAllByText("Kütüphane ödemeleri şu anda kapalıdır.");
+    const notlar = await screen.findAllByText("Kütüphane ödemeleri şu anda kapalıdır.", undefined, YUK);
     expect(notlar.length).toBeGreaterThanOrEqual(2);
   });
 
   it("İptal butonu kapalı kolda da kullanılabilir kalır", async () => {
     sar();
-    const iptaller = await screen.findAllByRole("button", { name: "İptal" });
+    const iptaller = await screen.findAllByRole("button", { name: "İptal" }, YUK);
     expect(iptaller.length).toBe(2);
     for (const b of iptaller) {
       expect((b as HTMLButtonElement).disabled).toBe(false);
@@ -160,7 +177,7 @@ describe("Biletlerim — ödeme kolu açıkken", () => {
 
   it("butonlar normal metniyle ve ETKİN gelir, uyarı şeridi yok", async () => {
     sar();
-    const butonlar = await screen.findAllByRole("button", { name: "Ödemeyi tamamla" });
+    const butonlar = await screen.findAllByRole("button", { name: "Ödemeyi tamamla" }, YUK);
     expect(butonlar).toHaveLength(2);
     for (const b of butonlar) {
       expect((b as HTMLButtonElement).disabled).toBe(false);
@@ -169,7 +186,7 @@ describe("Biletlerim — ödeme kolu açıkken", () => {
       expect(
         screen.queryByText("Kütüphane ödemeleri şu anda kapalıdır.")
       ).toBeNull();
-    });
+    }, YUK);
   });
 });
 
@@ -177,7 +194,7 @@ describe("kart içeriği", () => {
   it("her iki kart da kendi tutarını gösterir (fixture gerçekten render oldu)", async () => {
     sar();
     // Boş/yanlış fixture yüzünden testin sessizce boş DOM'da geçmesini önler.
-    const govde = await screen.findByText(/TYT Genel Deneme/);
+    const govde = await screen.findByText(/TYT Genel Deneme/, undefined, YUK);
     expect(within(document.body).getByText(/150/)).toBeTruthy();
     expect(within(document.body).getByText(/90/)).toBeTruthy();
     expect(govde).toBeTruthy();
