@@ -1,0 +1,142 @@
+[
+  {
+    "dosya": "01-landing-dark.png",
+    "olcu": "1262x804",
+    "farkliPiksel": 0,
+    "yuzde": 0,
+    "maxKanalFarki": 0
+  },
+  {
+    "dosya": "01-landing-light.png",
+    "olcu": "1262x804",
+    "farkliPiksel": 0,
+    "yuzde": 0,
+    "maxKanalFarki": 0
+  },
+  {
+    "dosya": "02-marketplace-dark.png",
+    "olcu": "1262x804",
+    "farkliPiksel": 0,
+    "yuzde": 0,
+    "maxKanalFarki": 0
+  },
+  {
+    "dosya": "02-marketplace-light.png",
+    "olcu": "1262x804",
+    "farkliPiksel": 0,
+    "yuzde": 0,
+    "maxKanalFarki": 0
+  },
+  {
+    "dosya": "03-libraries-dark.png",
+    "olcu": "1262x804",
+    "farkliPiksel": 0,
+    "yuzde": 0,
+    "maxKanalFarki": 0
+  },
+  {
+    "dosya": "03-libraries-light.png",
+    "olcu": "1262x804",
+    "farkliPiksel": 0,
+    "yuzde": 0,
+    "maxKanalFarki": 0
+  },
+  {
+    "dosya": "04-library-detail-dark.png",
+    "olcu": "1262x804",
+    "farkliPiksel": 0,
+    "yuzde": 0,
+    "maxKanalFarki": 0
+  },
+  {
+    "dosya": "04-library-detail-light.png",
+    "olcu": "1262x804",
+    "farkliPiksel": 0,
+    "yuzde": 0,
+    "maxKanalFarki": 0
+  },
+  {
+    "dosya": "05-store-list-dark.png",
+    "olcu": "1262x804",
+    "farkliPiksel": 0,
+    "yuzde": 0,
+    "maxKanalFarki": 0
+  },
+  {
+    "dosya": "05-store-list-light.png",
+    "olcu": "1262x804",
+    "farkliPiksel": 0,
+    "yuzde": 0,
+    "maxKanalFarki": 0
+  },
+  {
+    "dosya": "06-store-product-dark.png",
+    "olcu": "1262x804",
+    "farkliPiksel": 2451,
+    "yuzde": 0.242,
+    "maxKanalFarki": 161
+  },
+  {
+    "dosya": "06-store-product-light.png",
+    "olcu": "1262x804",
+    "farkliPiksel": 874,
+    "yuzde": 0.086,
+    "maxKanalFarki": 137
+  },
+  {
+    "dosya": "07-tutor-detail-dark.png",
+    "olcu": "1262x804",
+    "farkliPiksel": 0,
+    "yuzde": 0,
+    "maxKanalFarki": 0
+  },
+  {
+    "dosya": "07-tutor-detail-light.png",
+    "olcu": "1262x804",
+    "farkliPiksel": 0,
+    "yuzde": 0,
+    "maxKanalFarki": 0
+  },
+  {
+    "dosya": "08-admin-magaza-dark.png",
+    "olcu": "1262x804",
+    "farkliPiksel": 0,
+    "yuzde": 0,
+    "maxKanalFarki": 1
+  },
+  {
+    "dosya": "08-admin-magaza-light.png",
+    "olcu": "1262x804",
+    "farkliPiksel": 0,
+    "yuzde": 0,
+    "maxKanalFarki": 0
+  },
+  {
+    "dosya": "09-admin-envanter-dark.png",
+    "olcu": "1262x804",
+    "farkliPiksel": 0,
+    "yuzde": 0,
+    "maxKanalFarki": 0
+  },
+  {
+    "dosya": "09-admin-envanter-light.png",
+    "olcu": "1262x804",
+    "farkliPiksel": 0,
+    "yuzde": 0,
+    "maxKanalFarki": 0
+  },
+  {
+    "dosya": "10-kutuphane-overlay-dark.png",
+    "olcu": "1262x804",
+    "farkliPiksel": 0,
+    "yuzde": 0,
+    "maxKanalFarki": 0
+  },
+  {
+    "dosya": "10-kutuphane-overlay-light.png",
+    "olcu": "1262x804",
+    "farkliPiksel": 0,
+    "yuzde": 0,
+    "maxKanalFarki": 0
+  }
+]
