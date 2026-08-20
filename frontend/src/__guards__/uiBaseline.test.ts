@@ -103,8 +103,15 @@ import {
  * A6-A7'de her göç eden ekran bu listeden ÇIKAR. Listeye yeni dosya girmesi
  * göçün tersine işlediği anlamına gelir ve test kırılır.
  */
-const MODAL_DURUM_DOSYALARI = [
-  // İP-A7d4 · göç dalgası 4: ALTI dosya bu listeden ÇIKTI (9 → 2).
+const MODAL_DURUM_DOSYALARI: string[] = [
+  // İP-A7d4 · kapanış: SON İKİ dosya da ÇIKTI (2 → **0**). Liste artık BOŞ.
+  //   • `AdminDemandsPage`  — talep iptali gerekçesi
+  //   • `ReturnQueuePage`   — depoya kabul gerekçesi
+  // İkisi de `ReasonDialog` taşıyordu (SK-7 ile zaten korumalı); göç yalnız
+  // pencere durumunu yüzeye taşıdı. Metrik SIFIRLANDI ve eşik `toBe(0)`
+  // oldu — yani artık bir TAVAN değil bir TABAN.
+  //
+  // İP-A7d4 · göç dalgası 4: ALTI dosya bu listeden ÇIKMIŞTI (9 → 2).
   //   • `AdminAccessPage`      — rol penceresi (SK-9: canlı veri kaybı)
   //   • `ClosedDays`           — resmî tatil yükleme onayı
   //   • `AdminOperationsPage`  — ölü işi yeniden kuyruğa alma onayı
@@ -132,8 +139,6 @@ const MODAL_DURUM_DOSYALARI = [
   //   örneğiydi) · `AdminBookingsPage` · `AdminLibraries`
   //
   // İP-A6 · Görev 4d: `store/` altındaki BEŞ dosya ÇIKMIŞTI.
-  "src/pages/admin/AdminDemandsPage.tsx",
-  "src/pages/admin/packing/ReturnQueuePage.tsx",
 ];
 
 const olcum = sayim();
@@ -292,7 +297,7 @@ describe("İP-A1 nöbetçi eşikleri", () => {
   // kaymayı ve YAYILMAYI ayrı ayrı tutar: sayı artamaz, VE listeye yeni dosya
   // giremez. Sadece sayıya bakmak yetmezdi — göç eden bir ekran borcunu
   // kapatırken başka bir ekran yenisini ekleyebilir ve toplam sabit kalırdı.
-  it("ekranda yaşayan pencere durumu artamaz (taban 29)", () => {
+  it("ekranda yaşayan pencere durumu SIFIR (tavan değil TABAN)", () => {
     // İP-A5'te 33 → 35: BORÇ ARTMADI, sayaç düzeltildi. Metriğin yazılı
     // sözleşmesi "bağ başına bir kez" idi ama uygulama dosya başına bir
     // `Set<ad>` tutuyordu; `AdminStore.tsx`teki ÜÇ ayrı `deleting` bağı
@@ -327,19 +332,28 @@ describe("İP-A1 nöbetçi eşikleri", () => {
     //   `AdminAccessPage` (SK-9) · `ClosedDays` · `AdminOperationsPage` ·
     //   `AdminSettingsPage` · `DeliveryBoardPage` · `DeliveryTodayPage` (2)
     //
-    // KALAN 2 (`AdminDemandsPage`, `ReturnQueuePage`) bilinçli bırakıldı:
-    // paketin kapsamı dört ile altı ekrandı ve altısı da alındı. İkisi de
-    // aynı mekanik dönüşümdür (`useState` → yüzey) ve metriği SIFIRLAR;
-    // kapanış envanterinde adıyla yazılı.
-    expect(olcum.modalDurumu).toBeLessThanOrEqual(2);
+    // İP-A7d4 kapanışında 2 → **0**: son iki bağ da (`AdminDemandsPage`,
+    // `ReturnQueuePage`) düzenleme yüzeyine taşındı.
+    //
+    // Eşik artık `toBe(0)` ve bu, metriğin EN SERT hâlidir — etiketsiz
+    // overlay'de A7d2'de yapılanın aynısı. Bir TAVAN "borç büyümesin" der;
+    // bir TABAN "borç YOK" der: panelde ekranda yaşayan bir pencere durumu
+    // doğduğu gün CI kırılır ve hangi dosyada doğduğu alttaki liste
+    // testinde isimle görünür.
+    expect(olcum.modalDurumu).toBe(0);
   });
 
-  it("pencere durumu tutan dosya listesi sabittir (pilot listede DEĞİL)", () => {
+  it("pencere durumu tutan dosya listesi BOŞTUR", () => {
+    // Sayı sıfırlanınca bu test bir tekrar gibi görünür ama değildir: sayı
+    // eşiği "kaç tane" der, bu test "HANGİ dosyada" der. Bir bağ doğduğunda
+    // ikisi birden kırılır ve yalnız bu ikincisi nereye bakılacağını söyler.
     expect(olcum.modalDurumDosyalari.map((d) => d.dosya)).toEqual(MODAL_DURUM_DOSYALARI);
-    // Pilot ekran göç etti: listede olmaması bu paketin kabul kriteridir.
-    expect(MODAL_DURUM_DOSYALARI).not.toContain(
-      "src/pages/admin/inventory/DamageEventsPage.tsx"
-    );
+    // İP-A4'ten beri burada duran "pilot ekran listede DEĞİL" iddiası
+    // (`not.toContain(DamageEventsPage)`) KALDIRILDI: liste boşaldığı için
+    // artık boş küme üzerinde çalışan, her koşulda doğru bir iddiaydı —
+    // canlı bir nöbetçi gibi okunan ölü bir kontrol. Yerini alan iddia
+    // yukarıdaki satırdır ve daha güçlüdür: liste BOŞ, yani pilot ekran da
+    // dahil HİÇBİR dosya listede değil.
   });
 
   it("hiçbir .ts dosyası createElement(\"button\") ile ham düğme üretmiyor", () => {

@@ -3,6 +3,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import type { ColumnDef, OnChangeFn, SortingState } from "@tanstack/react-table";
 import { DataTable } from "@/components/admin/data-table";
 import { Badge, Button, ErrorState, ReasonDialog } from "@/components/admin/ui";
+import { useDuzenlemeYuzeyi } from "@/components/admin/ui2/duzenlemeYuzeyi";
 import { useAdminDemands, useCancelAdminDemand } from "@/hooks/useAdmin";
 import { parseAdminDemandQuery } from "@/lib/adminOperationsQuery";
 import { setQueryValue } from "@/lib/adminUserQuery";
@@ -40,7 +41,10 @@ export default function AdminDemandsPage() {
   const [params, setParams] = useSearchParams();
   const state = parseAdminDemandQuery(params);
   const [search, setSearch] = useState(state.q);
-  const [cancelling, setCancelling] = useState<AdminDemandOut | null>(null);
+  // Pencere durumu ekranda YASAMAZ (IP-A4 sozlesmesi): iptal edilecek talep
+  // yuzeyin HEDEFIDIR, ekranin yerel durumu degil.
+  const iptal = useDuzenlemeYuzeyi<AdminDemandOut, void>();
+  const cancelling = iptal.kayit;
   const query = useAdminDemands({
     limit: state.pageSize,
     offset: (state.page - 1) * state.pageSize,
@@ -123,7 +127,7 @@ export default function AdminDemandsPage() {
       header: "İşlem",
       enableSorting: false,
       cell: ({ row }) => canManage && row.original.status === DemandStatus.OPEN ? (
-        <Button size="sm" variant="danger" disabled={cancel.isPending} onClick={() => setCancelling(row.original)}>İptal et</Button>
+        <Button size="sm" variant="danger" disabled={cancel.isPending} onClick={() => iptal.ac(row.original)}>İptal et</Button>
       ) : <span className="text-xs text-slate-400">{canManage ? "İşlem yok" : "Salt okunur"}</span>,
     },
   ], [canManage, cancel.isPending]);
@@ -187,7 +191,7 @@ export default function AdminDemandsPage() {
                 <span>{demand.response_count} yanıt · {budgetLabel(demand)}</span>
               </div>
               {canManage && demand.status === DemandStatus.OPEN && (
-                <Button className="mt-3" size="sm" variant="danger" disabled={cancel.isPending} onClick={() => setCancelling(demand)}>İptal et</Button>
+                <Button className="mt-3" size="sm" variant="danger" disabled={cancel.isPending} onClick={() => iptal.ac(demand)}>İptal et</Button>
               )}
             </div>
           )}
@@ -200,7 +204,7 @@ export default function AdminDemandsPage() {
       )}
 
       <ReasonDialog
-        open={cancelling !== null}
+        open={iptal.acik}
         title="Öğrenci talebini iptal et"
         description={cancelling ? `“${cancelling.title}” talebi kapatılacak; işlem denetim kaydına yazılacak.` : ""}
         label="İptal gerekçesi"
@@ -211,7 +215,7 @@ export default function AdminDemandsPage() {
         confirmLabel="Talebi iptal et"
         danger
         isPending={cancel.isPending}
-        onClose={() => setCancelling(null)}
+        onClose={iptal.kapat}
         onConfirm={(reason) => {
           if (!cancelling) return;
           cancel.mutate(
@@ -219,7 +223,7 @@ export default function AdminDemandsPage() {
             {
               onSuccess: () => {
                 toast.success("Öğrenci talebi iptal edildi.");
-                setCancelling(null);
+                iptal.kapat();
               },
               onError: (error) => toast.error(getErrorMessage(error, "Talep iptal edilemedi.")),
             }

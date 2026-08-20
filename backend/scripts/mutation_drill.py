@@ -1601,7 +1601,7 @@ MUTASYONLAR: list[Mutasyon] = [
     # metrigin olctugu seyi hic uretmemisti ve "YAKALANMADI" sonucu testin
     # degil mutasyonun kusuruydu. A7D3-3'te de ayni tuzaga dusulmustu.
     Mutasyon(
-        "A7D4-3", "esik: pencere durumu ekrana geri tasindi (2 -> 3)",
+        "A7D4-3", "esik: pencere durumu ekrana geri tasindi (0 -> 1; esik artik toBe(0))",
         "frontend/src/pages/admin/AdminOperationsPage.tsx",
         "  const yuzey = useDuzenlemeYuzeyi<FailedOutboxEvent, void>();",
         "  const [secili] = useState<FailedOutboxEvent | null>(null);\n"
