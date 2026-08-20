@@ -41,14 +41,21 @@ function durum() {
 const argv = process.argv.slice(2);
 const uretim = [];
 const testler = [];
+// Karşılaştırma tabanı. Varsayılan HEAD'dir; ama paket COMMIT EDİLDİKTEN sonra
+// HEAD zaten göç etmiş hâlidir ve ölçüm "hiç kırmızı yok" der — bu bir sonuç
+// değil, yanlış tabana bakmaktır. Dalganın tabanı (`--taban <ref>`) açıkça
+// verilebilir.
+const tabanKovasi = [];
 let kova = null;
 for (const a of argv) {
   if (a === "--uretim") kova = uretim;
   else if (a === "--test") kova = testler;
+  else if (a === "--taban") kova = tabanKovasi;
   else if (kova) kova.push(a);
 }
+const TABAN = tabanKovasi[0] ?? "HEAD";
 if (!uretim.length || !testler.length) {
-  console.error("kullanim: --uretim <dosya…> --test <dosya…>");
+  console.error("kullanim: --uretim <dosya…> --test <dosya…> [--taban <ref>]");
   process.exit(2);
 }
 
@@ -63,7 +70,7 @@ let cikis = 0;
 try {
   for (const dosya of uretim) {
     const gitYolu = `frontend/${dosya.replace(/\\/g, "/")}`;
-    const eski = git("show", `HEAD:${gitYolu}`);
+    const eski = git("show", `${TABAN}:${gitYolu}`);
     fs.writeFileSync(dosya, eski);
   }
   try {

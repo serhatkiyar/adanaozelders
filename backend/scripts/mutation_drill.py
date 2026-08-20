@@ -1422,20 +1422,20 @@ MUTASYONLAR: list[Mutasyon] = [
     ),
     Mutasyon(
         "A7D3-3", "esik: pencere durumu ekrana geri tasindi (9 -> 10)",
-        "frontend/src/pages/admin/AdminReportsPage.tsx",
-        "  const karar = useDuzenlemeYuzeyi<Decision, void>();",
-        """  const [secilenKarar, setSecilenKarar] = useState<Decision | null>(null);
-  const karar = { ...useDuzenlemeYuzeyi<Decision, void>(), ac: setSecilenKarar };""",
+        "frontend/src/pages/admin/delivery/DeliveryRunDetailPage.tsx",
+        "  const iptalYuzeyi = useDuzenlemeYuzeyi<never, void>();",
+        "  const [cancelOpen, setCancelOpen] = useState(false);\n"
+        "  const iptalYuzeyi = {\n"
+        "    ...useDuzenlemeYuzeyi<never, void>(),\n"
+        "    yeniAc: () => setCancelOpen(true),\n"
+        "    kapat: () => setCancelOpen(false),\n"
+        "  };",
         ("src/__guards__/uiBaseline.test.ts",), "frontend",
         ((
-            "frontend/src/pages/admin/AdminReportsPage.tsx",
-            "      <KararPenceresi yuzey={karar} />",
-            """      <KararPenceresi yuzey={{ ...karar, acik: secilenKarar !== null }} />""",
-        ), (
-            "frontend/src/pages/admin/AdminReportsPage.tsx",
-            'import { useMemo } from "react";',
-            'import { useMemo, useState } from "react";',
-        )),
+            "frontend/src/pages/admin/delivery/DeliveryRunDetailPage.tsx",
+            "        open={iptalYuzeyi.acik}",
+            "        open={cancelOpen}",
+        ),),
     ),
     Mutasyon(
         "A7D3-4", "esik: etiketsiz overlay geri kondu (0 -> 1)",
