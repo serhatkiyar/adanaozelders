@@ -1,8 +1,9 @@
-import { useContext, useEffect, useId, useRef, type ReactNode, type RefObject } from "react";
+import { useContext, useEffect, useId, useRef, useState, type ReactNode, type RefObject } from "react";
 import { createPortal } from "react-dom";
 
 import { useModalA11y } from "@/hooks/useModalA11y";
 import {
+  GELISTIRME,
   IcerikKorumasiCtx,
   icerikKorumasiDenetle,
 } from "@/components/admin/ui2/icerikKorumasi";
@@ -76,6 +77,62 @@ export function Dialog({ open, title, description, children, onClose, initialFoc
       baslik: title,
     });
   });
+
+  /* ── İP-A8 · Görev 3 · B-2: denetim `Dialog`un RENDER'ına bağlı OLAMAZ ──
+   *
+   * Yukarıdaki efektin bağımlılık dizisi yok ve A7d4 bunu "her render'da
+   * koşuyor, kayıt taze" diye savunmuştu. Doğrusu şu: **`Dialog`un KENDİ
+   * render'ında** koşuyor. Pencerenin içindeki bir çocuk kendi `useState`ini
+   * değiştirdiğinde (katlanır bölüm açıldı, sekme değişti, çocuğun sorgusu
+   * geldi) `Dialog` yeniden render EDİLMEZ ve denetim bir daha hiç çalışmaz.
+   *
+   * Bağımsız denetim #3 bunu `vi.mock` ile ölçtü: B-1 senaryosunda dedektöre
+   * yapılan çağrı sayısı **BİR**di ve o tek çağrı anında panelde sıfır girdi
+   * vardı; "+ Operatör"e basılıp dört alan belirdiğinde denetim bir daha
+   * koşmadı. Dedektörün kapsamı bu yüzden sanılandan çok daha dardı: yalnız
+   * "pencere açıldığı anda zaten basılı olan" alanları görüyordu.
+   *
+   * Çözüm panelin İÇERİĞİNİ izlemek: `MutationObserver` alt ağacı dinler ve
+   * her değişimde denetim yeniden koşar.
+   *
+   * Hata gözlemci geri çağrısından DOĞRUDAN fırlatılmaz — orası React'in
+   * dışıdır ve hata sınırına ulaşmaz, teşhis edilemez bir "uncaught" olurdu.
+   * Duruma yazılıp **render sırasında** fırlatılır: böylece mevcut sözleşme
+   * (hata sınırı yakalar, test onu okur) aynen korunur.
+   *
+   * Sıralama güvenli: çocuğun bekçi kaydı bir `useEffect`tir ve React 18'de
+   * commit sonrası SENKRON akar; gözlemci geri çağrısı ise bir mikrogörevdir
+   * ve ondan SONRA koşar. Yani "form açıldı ama bekçisi henüz kaydolmadı"
+   * diye bir yanlış pozitif oluşmaz.
+   */
+  const [icerikHatasi, setIcerikHatasi] = useState<Error | null>(null);
+  useEffect(() => {
+    if (!GELISTIRME || !open) return;
+    const panel = panelRef.current;
+    if (!panel) return;
+    const gozlemci = new MutationObserver(() => {
+      try {
+        icerikKorumasiDenetle({
+          kok: panel,
+          korumaVar: korumaVarMi?.() ?? false,
+          korumasiz,
+          baslik: title,
+        });
+      } catch (hata) {
+        setIcerikHatasi(hata as Error);
+      }
+    });
+    gozlemci.observe(panel, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      // `disabled`/`readonly` kalkması da "artık veri taşıyor" demektir.
+      attributeFilter: ["disabled", "readonly", "type", "contenteditable"],
+    });
+    return () => gozlemci.disconnect();
+  }, [korumaVarMi, korumasiz, open, title]);
+
+  if (icerikHatasi) throw icerikHatasi;
 
   if (!open) return null;
 

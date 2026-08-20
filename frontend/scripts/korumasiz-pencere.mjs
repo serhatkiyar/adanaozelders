@@ -25,6 +25,25 @@
  * varsa (yani alanlar başka dosyada olabilir) bulgu "belirsiz" sayılır ve
  * SESSİZCE temiz yazılmaz — `belirsiz` listesine düşer.
  *
+ * ## İP-A8 · Görev 3 — kapatılan ÜÇ kör nokta
+ *
+ * Bağımsız denetim #3 taramayı doğrudan çağırarak üç yazımın **sessizce
+ * temiz** geçtiğini ölçtü (ne bulgu ne belirsiz):
+ *
+ *   1. **`korumasiz={false}`** — beyan kontrolü özniteliğin VARLIĞINA
+ *      bakıyordu, değerine değil. "Korumasızım ama değilim" diye bir durum
+ *      yok; artık değer okunuyor ve `false` beyan SAYILMAZ.
+ *   2. **Değişkene alınmış içerik** — `const govde = <input/>;
+ *      <Dialog>{govde}</Dialog>`. Küçük harfli JSX ifadesi ne kontrol ne
+ *      bileşen sayılıyordu. Artık aynı dosyadaki JSX değişkenleri çözülüp
+ *      pencerenin içine SATIR İÇİ alınıyor (çevrim koruması var).
+ *   3. **Aynı dosyada ikinci pencere** — dosyada herhangi bir bekçi kancası
+ *      görülünce `bekciVar` bütün dosyayı affediyordu. Bir dosyada bir
+ *      korumalı + bir korumasız pencere varsa ikincisi görünmüyordu. Bekçi
+ *      artık yalnız dosyada TEK pencere varken atfedilebilir sayılır; birden
+ *      çok pencerede kontrol taşıyan pencereler `belirsiz`e düşer
+ *      (`sebep: "atfedilemez-bekci"`) — sessizce temiz YAZILMAZ.
+ *
  * ## Kural
  *
  * Ölçüm tabanındaki bir `.tsx` dosyasında `<Dialog>` ya da
@@ -78,6 +97,26 @@ function ozellik(node, ad) {
   return null;
 }
 
+/**
+ * `korumasiz` beyanı GERÇEKTEN var mı — özniteliğin DEĞERİ okunur.
+ *
+ * `<Dialog korumasiz>` ve `<Dialog korumasiz={true}>` beyandır;
+ * `<Dialog korumasiz={false}>` DEĞİLDİR. Eski hâl özniteliğin varlığına
+ * bakıyordu ve `{false}` taramayı atlatıyordu (İP-A8 · Görev 3).
+ * Bilinmeyen/dinamik bir değer (`korumasiz={bayrak}`) beyan sayılmaz:
+ * güvenli taraf taramaktır.
+ */
+function korumasizBeyani(node) {
+  const o = ozellik(node, "korumasiz");
+  if (!o) return false;
+  if (!o.initializer) return true; // çıplak `korumasiz`
+  const i = o.initializer;
+  if (ts.isJsxExpression(i) && i.expression) {
+    return i.expression.kind === ts.SyntaxKind.TrueKeyword;
+  }
+  return false;
+}
+
 /** `<input type="hidden">` gibi veri taşımayan bir kontrol mü. */
 function verisizInputMu(node) {
   const tip = ozellik(node, "type");
@@ -106,16 +145,48 @@ export function korumasizPencereler(kaynak, dosyaAdi = "olcum.tsx") {
   };
   bekciAra(sf);
 
+  // (2) Aynı dosyada JSX'e bağlanmış değişkenler — `<Dialog>{govde}</Dialog>`
+  //     yazımı içeriği taramadan kaçırıyordu (İP-A8 · Görev 3 · kör nokta 2).
+  const jsxDegiskenleri = new Map();
+  const jsxSoy = (n) => {
+    let d = n;
+    while (d && ts.isParenthesizedExpression(d)) d = d.expression;
+    return d && (ts.isJsxElement(d) || ts.isJsxSelfClosingElement(d) || ts.isJsxFragment(d)) ? d : null;
+  };
+  const degiskenAra = (n) => {
+    if (ts.isVariableDeclaration(n) && ts.isIdentifier(n.name) && n.initializer) {
+      const jsx = jsxSoy(n.initializer);
+      if (jsx) jsxDegiskenleri.set(n.name.text, jsx);
+    }
+    ts.forEachChild(n, degiskenAra);
+  };
+  degiskenAra(sf);
+
+  // (3) Dosyadaki pencere sayısı — bekçinin ATFEDİLEBİLİRLİĞİ buna bağlı.
+  //     Eskiden `bekciVar` tek başına bütün dosyayı affediyordu: bir dosyada
+  //     bir korumalı + bir korumasız pencere varsa ikincisi görünmüyordu
+  //     (İP-A8 · Görev 3 · kör nokta 3).
+  let pencereSayisi = 0;
+  const pencereSay = (n) => {
+    const ad = etiketAdi(n);
+    if (ad && PENCERE_ETIKETLERI.has(ad)) pencereSayisi += 1;
+    ts.forEachChild(n, pencereSay);
+  };
+  pencereSay(sf);
+
   const bulgular = [];
   const belirsiz = [];
-  if (bekciVar) return { bulgular, belirsiz };
+  // Bekçi ancak dosyada TEK pencere varsa ona atfedilebilir.
+  const bekciAtfedilebilir = bekciVar && pencereSayisi <= 1;
+  if (bekciAtfedilebilir) return { bulgular, belirsiz };
 
   const gez = (n) => {
     const ad = etiketAdi(n);
     if (ad && PENCERE_ETIKETLERI.has(ad)) {
-      if (ozellik(n, "korumasiz")) return; // beyanlı — meşru, taranmaz
+      if (korumasizBeyani(n)) return; // beyanlı — meşru, taranmaz
       const kontroller = [];
       const bilesenler = [];
+      const cozulen = new Set();
       const alt = (m) => {
         if (m !== n) {
           const a = etiketAdi(m);
@@ -124,13 +195,33 @@ export function korumasizPencereler(kaynak, dosyaAdi = "olcum.tsx") {
             else if (a === "Form.Control") kontroller.push(a);
             else if (/^[A-Z]/.test(a) && !PENCERE_ETIKETLERI.has(a)) bilesenler.push(a);
           }
+          // Değişkene alınmış içerik SATIR İÇİ alınır: `{govde}` gibi bir
+          // ifade aynı dosyada JSX'e bağlıysa o JSX de pencerenin içidir.
+          if (ts.isJsxExpression(m) && m.expression && ts.isIdentifier(m.expression)) {
+            const hedef = jsxDegiskenleri.get(m.expression.text);
+            if (hedef && !cozulen.has(hedef)) {
+              cozulen.add(hedef);
+              alt(hedef);
+            }
+          }
         }
         ts.forEachChild(m, alt);
       };
       alt(n);
       const satir = sf.getLineAndCharacterOfPosition(n.getStart()).line + 1;
-      if (kontroller.length) bulgular.push({ pencere: ad, satir, kontroller });
-      else if (bilesenler.length) belirsiz.push({ pencere: ad, satir, bilesenler: [...new Set(bilesenler)] });
+      if (kontroller.length) {
+        // Dosyada bekçi VAR ama birden çok pencere olduğu için hangisine ait
+        // olduğu kaynaktan bilinemez. Sessizce temiz yazmak yerine BELİRSİZ:
+        // nöbetçinin listesi kimlikle sabit olduğu için yeni bir giriş
+        // kırmızı üretir.
+        if (bekciVar) {
+          belirsiz.push({ pencere: ad, satir, bilesenler: [...new Set(bilesenler)], sebep: "atfedilemez-bekci" });
+        } else {
+          bulgular.push({ pencere: ad, satir, kontroller });
+        }
+      } else if (bilesenler.length) {
+        belirsiz.push({ pencere: ad, satir, bilesenler: [...new Set(bilesenler)], sebep: "capraz-dosya" });
+      }
     }
     ts.forEachChild(n, gez);
   };

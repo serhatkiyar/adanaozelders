@@ -9,11 +9,22 @@ export function useAdminAreaAccess(...prefixes: string[]): AdminAreaAccess {
   return adminAreaAccess(permissions, ...prefixes);
 }
 
+/**
+ * 403 kutusunun başlığı — **tek kaynak** (İP-A8 · Görev 1 · B-5).
+ *
+ * Çalışma zamanı kapısı "ekran gerçekten render edildi mi" sorusunu bu metnin
+ * YOKLUĞUYLA cevaplar: yetkisiz bir fixture yüzünden 403 kutusu basan ekran
+ * "ölçüldü" sayılamaz. Metin iki yerde ayrı ayrı yazılsaydı kapı, başlık
+ * değişince sessizce körleşirdi — nöbetçinin eşiği koruduğu şeyden türemesin
+ * kuralının aynısı, metin düzeyinde.
+ */
+export const ERISIM_REDDEDILDI_BASLIK = "Bu alan için yetkiniz yok";
+
 /** Yetkisiz deep-link (view izni yok) — tam ekran 403 durumu. */
 export function AccessDenied({ area }: { area: string }) {
   return (
     <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-14 text-center dark:border-slate-700 dark:bg-slate-900">
-      <h2 className="text-sm font-bold text-slate-900 dark:text-white">Bu alan için yetkiniz yok</h2>
+      <h2 className="text-sm font-bold text-slate-900 dark:text-white">{ERISIM_REDDEDILDI_BASLIK}</h2>
       <p className="mx-auto mt-1 max-w-md text-sm text-slate-500 dark:text-slate-400">
         {area} bölümünü görüntülemek için yönetici rolünüzde ilgili izin tanımlı değil.
         Erişim gerekiyorsa yetki yönetiminden sorumlu yöneticinizle görüşün.

@@ -106,8 +106,12 @@ export function ClosedDays() {
               <Form.Item>
                 <Form.Label>Kapatılacak gün</Form.Label>
                 <Form.Control>
-                  {/* Koyu temada yerel tarih widget'i (SK-6): ortak `.input`
-                      sinifi `color-scheme`i zaten tasiyor. */}
+                  {/* Koyu temada yerel tarih widget'i (SK-6): sema kok
+                      ogeden (`html.dark { color-scheme: dark }`, index.css)
+                      miras alinir. ESKI YORUM YANLISTI — ortak `.input`
+                      sinifi `color-scheme` TASIMIYORDU ve o yanlis inanc
+                      dokuz widget'in korumasiz kalmasinin koku oldu
+                      (bagimsiz denetim #3 - B-15/B-9). */}
                   <input type="date" className="input w-auto" {...field} />
                 </Form.Control>
                 <Form.ErrorMessage />

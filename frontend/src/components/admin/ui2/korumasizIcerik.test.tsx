@@ -16,8 +16,8 @@
  * patlıyor" ayırt edilemezdi — panelde onay penceresi (`ConfirmDialog`) çok
  * ve hepsi meşru biçimde bekçisiz.
  */
-import { render, screen } from "@testing-library/react";
-import { Component, type ReactNode } from "react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { Component, useState, type ReactNode } from "react";
 import { useForm } from "react-hook-form";
 import { describe, expect, it, vi } from "vitest";
 
@@ -54,6 +54,18 @@ function kur(icerik: ReactNode) {
   render(<HataSiniri yakalandi={(h) => hatalar.push(h)}>{icerik}</HataSiniri>);
   sessiz.mockRestore();
   return hatalar;
+}
+
+/**
+ * `kur`un ETKİLEŞİMLİ hâli: hata sınırı kurulur ama `console.error` susturması
+ * testin sonuna kadar sürer — çünkü hata ilk render'da değil, kullanıcı
+ * pencereyi kurcaladıktan SONRA doğabilir (İP-A8 · B-1/B-2).
+ */
+function kurEtkilesimli(icerik: ReactNode) {
+  const hatalar: Error[] = [];
+  const sessiz = vi.spyOn(console, "error").mockImplementation(() => {});
+  render(<HataSiniri yakalandi={(h) => hatalar.push(h)}>{icerik}</HataSiniri>);
+  return { hatalar, bitir: () => sessiz.mockRestore() };
 }
 
 /** Açık bir pencereyi tek başına kuran yardımcı (yüzey katmanı YOK). */
@@ -242,6 +254,121 @@ describe("İP-A7d4 · dedektör geriye dönük sınama", () => {
     // Kaç alan olduğunu da söylesin: 25 alanlık bir formda "25" yazar ve
     // etkinin büyüklüğünü gösterir.
     expect(hatalar[0].message).toContain("2 düzenlenebilir kontrol");
+  });
+
+  /* ── İP-A8 · Görev 3: sınama SK-9 ve B-1 ile TAMAMLANDI ── */
+
+  it("SK-9 (A7d4 · `AdminAccessPage` düzeltilmeden önce) YAKALANIR", () => {
+    // Rol penceresi: rol kodu + adı + açıklaması + izin kutuları. Bekçi yok.
+    // Bu, sınıfın nöbetçi tarafından bulunan İLK üyesiydi; sınama onu da
+    // taşır ki dedektör zayıflarsa üçü birden kırmızı düşsün.
+    function EskiRolPenceresi() {
+      const yuzey = useDuzenlemeYuzeyi<{ id: number }, void>();
+      if (!yuzey.acik) yuzey.ac({ id: 3 });
+      return (
+        <DuzenlemePenceresi yuzey={yuzey} baslik="Rol tanımı">
+          <input aria-label="Rol kodu" defaultValue="" />
+          <input aria-label="Rol adı" defaultValue="" />
+          <textarea aria-label="Açıklama" defaultValue="" />
+          <input type="checkbox" aria-label="users.manage" />
+        </DuzenlemePenceresi>
+      );
+    }
+    const hatalar = kur(<EskiRolPenceresi />);
+    expect(hatalar).toHaveLength(1);
+    expect(hatalar[0].message).toContain("Rol tanımı");
+    expect(hatalar[0].message).toContain("4 düzenlenebilir kontrol");
+  });
+
+  it("B-1 (A8 · `AdminLibraries` operatör formu) YAKALANIR — alanlar SONRADAN doğuyor", async () => {
+    // Sınıfın DÖRDÜNCÜ canlı örneği ve dedektörün asıl kör noktası:
+    // pencere açıldığı anda panelde SIFIR girdi var (bölüm kapalı), form
+    // ancak kullanıcı "+ Operatör"e basınca doğuyor. Eski dedektör pencereyi
+    // yalnız `Dialog`un kendi render'ında denetlediği için bir daha hiç
+    // koşmuyordu ve kusur ÜRETİMDE CANLI kaldı (bağımsız denetim #3 · B-1/B-2).
+    function EskiOperatorBolumu() {
+      const [acik, setAcik] = useState(false);
+      return (
+        <div>
+          <button type="button" onClick={() => setAcik(true)}>
+            + Operatör
+          </button>
+          {acik && (
+            <div>
+              <input aria-label="Ad" defaultValue="" />
+              <input aria-label="Soyad" defaultValue="" />
+              <input aria-label="E-posta" defaultValue="" />
+              <input aria-label="Şifre" type="password" defaultValue="" />
+            </div>
+          )}
+        </div>
+      );
+    }
+    function EskiYonetimPenceresi() {
+      const yuzey = useDuzenlemeYuzeyi<{ id: number }, void>();
+      if (!yuzey.acik) yuzey.ac({ id: 1 });
+      return (
+        <DuzenlemePenceresi yuzey={yuzey} baslik="Oturumlar & Operatörler">
+          <EskiOperatorBolumu />
+        </DuzenlemePenceresi>
+      );
+    }
+    const { hatalar, bitir } = kurEtkilesimli(<EskiYonetimPenceresi />);
+    try {
+      // Pencere açıldığı anda panel TEMİZ: dedektör haklı olarak susuyor.
+      expect(hatalar).toEqual([]);
+
+      fireEvent.click(screen.getByRole("button", { name: "+ Operatör" }));
+
+      // Dört alan doğdu → dedektör YENİDEN denetlemeli ve patlamalı.
+      await waitFor(() => expect(hatalar).toHaveLength(1));
+      expect(hatalar[0].message).toContain("Oturumlar & Operatörler");
+      expect(hatalar[0].message).toContain("4 düzenlenebilir kontrol");
+    } finally {
+      bitir();
+    }
+  });
+
+  it("B-1'in DOĞRU yazımı (bekçi çocukta) sonradan açılan formda da GEÇER", async () => {
+    // Ters provanın diğer yönü: dedektör "içerik sonradan doğdu" diye değil,
+    // "koruma yok" diye patlamalı. Bekçili aynı akış temiz geçmeli — yoksa
+    // düzeltme, kusuru yakalarken doğru yazımı da kırmızıya boğardı.
+    function BekciliBolum() {
+      const [acik, setAcik] = useState(false);
+      return (
+        <div>
+          <button type="button" onClick={() => setAcik(true)}>
+            + Operatör
+          </button>
+          {acik && <BekciliForm />}
+        </div>
+      );
+    }
+    function BekciliForm() {
+      const form = useForm<{ ad: string }>({ defaultValues: { ad: "" } });
+      useYuzeyKirliFormBekcisi({ form, sunucuHatasi: HATA_TAKIBI_YOK });
+      return <input aria-label="Ad" {...form.register("ad")} />;
+    }
+    function Pencere() {
+      const yuzey = useDuzenlemeYuzeyi<{ id: number }, void>();
+      if (!yuzey.acik) yuzey.ac({ id: 1 });
+      return (
+        <DuzenlemePenceresi yuzey={yuzey} baslik="Oturumlar & Operatörler">
+          <BekciliBolum />
+        </DuzenlemePenceresi>
+      );
+    }
+    const { hatalar, bitir } = kurEtkilesimli(<Pencere />);
+    try {
+      fireEvent.click(screen.getByRole("button", { name: "+ Operatör" }));
+      expect(await screen.findByLabelText("Ad")).toBeTruthy();
+      // Mikrogörev kuyruğunun boşalması için bir tur bekle: gözlemci geri
+      // çağrısı burada koşar. Sessiz kalmalı.
+      await waitFor(() => expect(screen.getByLabelText("Ad")).toBeTruthy());
+      expect(hatalar).toEqual([]);
+    } finally {
+      bitir();
+    }
   });
 });
 

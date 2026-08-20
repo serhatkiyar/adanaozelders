@@ -48,11 +48,28 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 // Bütçe BÜYÜTÜLMEDİ: yavaşlık üretim kodunda değil test kurulumunda; statik
 // import maliyeti TOPLAMA (collect) evresine taşır (A7d2'nin kararı).
 import "@/components/admin/ui2/duzenlemeYuzeyi";
+// ── İkinci ağır ortak modül: LEAFLET (İP-A8 · Görev 5) ──
+//
+// Aynı gerekçenin ikinci örneği ve bu turda ÖLÇÜLDÜ: tam suite yükü altında
+// `KAPI_DISI gerekçesi doğru: src/components/LibrariesMap.tsx` **5.928 ms**
+// sürüyordu — suite'in en yavaş tek testi ve 9.000 ms'lik `testTimeout`un
+// %66'sı. Sebep bekleme değil MODÜL YÜKÜ: `LibrariesMap`/`DeliveryRouteMap`/
+// `MapGate` üçü de `react-leaflet` + `leaflet` + üç PNG varlığı çekiyor ve
+// fatura, `it.each` sırası karışık tohumda değiştiği için HANGİ testin
+// önce koştuğuna göre yer değiştiriyordu.
+//
+// Denetimin B-4'ü bu testi göstermedi ama sınıf aynı sınıftır (A7d3/A7d5'in
+// tembel modül borcu) ve daha yavaş bir makinede zaman aşımına düşmeye
+// A7d5'in kapattığı ikisinden daha yakındı. Bütçe BÜYÜTÜLMEDİ: maliyet
+// TOPLAMA evresine taşındı.
+import "@/components/map/MapGate";
+import "@/components/LibrariesMap";
 
 import { createElement } from "react";
 
 import { apiClient } from "@/api/axios";
 import { useAuthStore } from "@/store/authStore";
+import { TAM_ADMIN_IZINLERI } from "@/test-utils/adminIzinleri";
 import { OLCUM_TABANI } from "../../scripts/ui-baseline-sayim.mjs";
 import { kontrolOlcumu } from "./kapiOlcumu";
 
@@ -330,6 +347,137 @@ const KAPI_KAPSAMI = [
   "src/pages/dashboards/OperatorSessions.tsx",
 ];
 
+/**
+ * ── "Bu ekranda kontrol beklenmiyor" kaydı (İP-A8 · Görev 2 · B-7) ──
+ *
+ * Kapının ekran başına iddiası `expect(o.adsiz).toBe(0)` idi ve bağımsız
+ * denetim #3 ölçtü: **88 ekranın 71'inde totoloji.** Hiç kontrol render
+ * edilmeyen bir ekranda "adsız kontrol yok" bir şey kanıtlamaz — sıfırdan
+ * sıfır çıkar. (Bu, bu turda bulunan ÜÇÜNCÜ ölü iddiaydı.)
+ *
+ * İddia artık iki parçalıdır ve **kimliğe** bağlıdır:
+ *
+ *   1. Ekran ya en az bir kontrol render eder — o zaman `adsiz` iddiası
+ *      gerçekten bir şey ayırt eder;
+ *   2. ya da BURADA, gerekçesiyle yazılıdır — "kontrol beklenmiyor" bilinçli
+ *      bir kayıttır, sessiz bir varsayılan değil.
+ *
+ * İki yön de kırar: listedeki bir ekran kontrol basmaya başlarsa da (kayıt
+ * bayatladı), listede olmayan bir ekran kontrol basmayı bırakırsa da (ekran
+ * sessizce boşaldı) kapı kırmızıdır.
+ *
+ * Gerekçe kodları:
+ *   `sunum`          — rozet/ikon/durum/tablo hücresi; form kontrolü taşımaz.
+ *   `kabuk`          — düzen/gezinme kabuğu ya da sağlayıcı; kendi alanı yok.
+ *   `pencere-kabugu` — pencere gövdesi; kontroller `children`dan gelir.
+ *   `kosullu`        — kontroller varsayılan (boş veri / kapalı) render'da
+ *                      açılmayan dallarda yaşar; borçları derin dal
+ *                      testlerinde ve ekran kabul testlerinde kapanır.
+ */
+const KONTROLSUZ_EKRANLAR: Record<string, "sunum" | "kabuk" | "pencere-kabugu" | "kosullu"> = {
+  "src/components/AmenityTagGrid.tsx": "kosullu",
+  "src/components/AppIcon.tsx": "sunum",
+  "src/components/DashboardHeader.tsx": "kabuk",
+  "src/components/DashboardShell.tsx": "kabuk",
+  "src/components/ExamSessionsManager.tsx": "kosullu",
+  "src/components/LibraryBookmarkButton.tsx": "sunum",
+  "src/components/LibraryMediaManager.tsx": "kosullu",
+  "src/components/NavbarWidget.tsx": "kabuk",
+  "src/components/NotificationsBell.tsx": "sunum",
+  "src/components/PersonalizeModal.tsx": "kosullu",
+  "src/components/PinIcon.tsx": "sunum",
+  "src/components/ShareButton.tsx": "sunum",
+  "src/components/ShareModal.tsx": "kosullu",
+  "src/components/Spinner.tsx": "sunum",
+  "src/components/StarRating.tsx": "sunum",
+  "src/components/admin/AccessState.tsx": "sunum",
+  "src/components/admin/CourierManager.tsx": "kosullu",
+  "src/components/admin/StockBadge.tsx": "sunum",
+  "src/components/admin/StockLedgerPanel.tsx": "kosullu",
+  "src/components/admin/StockMovementTable.tsx": "sunum",
+  "src/components/admin/delivery/CapacityStrip.tsx": "sunum",
+  "src/components/admin/delivery/ItemLines.tsx": "sunum",
+  "src/components/admin/delivery/bits.tsx": "sunum",
+  "src/components/admin/layout/AdminLayout.tsx": "kabuk",
+  "src/components/admin/layout/AdminPageHeader.tsx": "kabuk",
+  "src/components/admin/layout/AdminSidebar.tsx": "kabuk",
+  "src/components/admin/store/ReturnsPanel.tsx": "kosullu",
+  "src/components/admin/ui/Badge.tsx": "sunum",
+  "src/components/admin/ui/Button.tsx": "sunum",
+  "src/components/admin/ui/ConfirmDialog.tsx": "pencere-kabugu",
+  "src/components/admin/ui/Dialog.tsx": "pencere-kabugu",
+  "src/components/admin/ui/PageState.tsx": "sunum",
+  "src/components/admin/ui2/gezinmeBekcisi.tsx": "kabuk",
+  "src/components/admin/ui2/medusa-tr.tsx": "kabuk",
+  "src/components/ui/Modal.tsx": "pencere-kabugu",
+  "src/pages/DeliveryDriver.tsx": "kosullu",
+  "src/pages/DeliveryRunHandover.tsx": "kosullu",
+  "src/pages/admin/AdminAccessPage.tsx": "kosullu",
+  "src/pages/admin/AdminDashboardPage.tsx": "kosullu",
+  "src/pages/admin/AdminOperationsPage.tsx": "kosullu",
+  "src/pages/admin/AdminPayoutsPage.tsx": "kosullu",
+  "src/pages/admin/AdminSectionPage.tsx": "kabuk",
+  "src/pages/admin/AdminSettingsPage.tsx": "kosullu",
+  "src/pages/admin/AdminUserDetailPage.tsx": "kosullu",
+  "src/pages/admin/delivery/DeliveryLayout.tsx": "kabuk",
+  "src/pages/admin/delivery/DeliveryOrdersPage.tsx": "kosullu",
+  "src/pages/admin/delivery/DeliveryPerformancePage.tsx": "kosullu",
+  "src/pages/admin/delivery/DeliveryRunDetailPage.tsx": "kosullu",
+  "src/pages/admin/delivery/DeliveryVehiclesPage.tsx": "kosullu",
+  "src/pages/admin/inventory/CountSessionDetailPage.tsx": "kosullu",
+  "src/pages/admin/inventory/InventoryLayout.tsx": "kabuk",
+  "src/pages/admin/inventory/InventoryOverviewPage.tsx": "kosullu",
+  "src/pages/admin/packing/PackagesPage.tsx": "kosullu",
+  "src/pages/admin/packing/PackingLayout.tsx": "kabuk",
+  "src/pages/admin/packing/PackingQueuePage.tsx": "kosullu",
+  "src/pages/admin/packing/PackingStationPage.tsx": "kosullu",
+  "src/pages/admin/packing/ReturnQueuePage.tsx": "kosullu",
+  "src/pages/dashboards/AdminExamCatalogs.tsx": "kosullu",
+  "src/pages/dashboards/AdminHome.tsx": "kosullu",
+  "src/pages/dashboards/AdminLibraries.tsx": "kosullu",
+  "src/pages/dashboards/CourierHome.tsx": "kosullu",
+  "src/pages/dashboards/OperatorHome.tsx": "kosullu",
+  "src/pages/dashboards/OperatorLibrary.tsx": "kosullu",
+  "src/pages/dashboards/OperatorSessions.tsx": "kosullu",
+};
+
+/**
+ * ── Ekranın mount edilebilmesi için gereken ASGARİ prop (İP-A8 · Görev 1) ──
+ *
+ * Kapı ilke olarak propsuz mount eder; propsuz açılamayan dosyalar
+ * `KAPI_DISI`'nda gerekçesiyle yazılıdır. Arada üçüncü bir sınıf çıktı ve
+ * **yeni 403 çıpası onu görünür etti**: `AdminHome`/`AdminSectionPage` propsuz
+ * MOUNT OLUYOR ama `section` `undefined` kaldığı için izin alanı
+ * `SECTION_AREA[undefined]` → `undefined` oluyor ve ekran kendi içeriği yerine
+ * 403 kutusu basıyordu. Yani ekran "ölçülüyor" görünüyordu, ölçülen şey hata
+ * kutusuydu — B-5'in aynısı, başka sebeple.
+ *
+ * `KAPI_DISI`'na park etmek yanlış olurdu: oranın ters provası "propsuz mount
+ * EDİLEMİYOR" der, bunlar ediliyor. Doğru cevap ekranı **gerçekten render
+ * ettirmek**: bölüm seçimi ekranın verisi değil, rota parametresidir.
+ *
+ * Bu bir kaçış kapısı olmasın diye iki yönlü korunur (aşağıdaki `afterAll`):
+ * buradaki her dosya kapsamda olmalıdır ve prop verilen ekran da diğerleriyle
+ * aynı iddialara tabidir (403 basamaz, boş DOM basamaz, kontrol kaydı tutulur).
+ */
+const ZORUNLU_PROPLAR: Record<string, Record<string, unknown>> = {
+  // Rota parametresi: `/yonetim/ilanlar` → `section="listings"`. Üç bölümün
+  // hepsi aynı bileşendir; kapı ilkini render eder, üçünün dalları
+  // `adminTutorApproval.acceptance`te açılır (DERIN_KAPI).
+  "src/pages/admin/AdminSectionPage.tsx": { section: "listings" },
+  "src/pages/dashboards/AdminHome.tsx": { section: "listings" },
+};
+
+/**
+ * 403 kutusu basması BEKLENEN dosyalar (İP-A8 · Görev 1 · B-5).
+ *
+ * Kural "hiçbir ekran 403 basmaz"tır; tek meşru istisna kutunun KENDİ
+ * modülüdür — `AccessState.tsx`in ilk büyük harfli export'u `AccessDenied`
+ * olduğu için kapı doğrudan onu render eder. İstisna isimle yazılıdır ki
+ * ikincisi doğduğunda sessizce eklenemesin.
+ */
+const ERISIM_KUTUSU_BEKLENEN = ["src/components/admin/AccessState.tsx"];
+
 const moduller = import.meta.glob("/src/**/*.tsx");
 
 // ── Parçalanmış kapının sayaçları (İP-A7d4 · Görev 3) ──
@@ -339,7 +487,8 @@ const moduller = import.meta.glob("/src/**/*.tsx");
 // edildi mi". İkisi de bu sayaçlarla dosyanın SONUNDAKİ nöbetçilere taşınır.
 const olculenEkranlar = new Set<string>();
 const olculenKapiDisi = new Set<string>();
-let toplamKontrol = 0;
+/** Gerçekten kontrol render eden ekranlar — yalancı-yeşil kapısının ÇIPASI. */
+const kontrolBasanEkranlar = new Set<string>();
 
 const tabanEkranlari = (OLCUM_TABANI as string[]).filter((f) => f.endsWith(".tsx"));
 const kapsanan = tabanEkranlari.filter((f) => !(f in KAPI_DISI));
@@ -363,13 +512,13 @@ async function ekranBileseni(dosya: string): Promise<ComponentType | null> {
 }
 
 /** Panel kabuğunun asgari bağlamı: sorgu istemcisi + rota + oturum. */
-function kosum(C: ComponentType): ReactElement {
+function kosum(C: ComponentType, proplar?: Record<string, unknown>): ReactElement {
   const qc = new QueryClient({
     defaultOptions: { queries: { retry: false, gcTime: 0 }, mutations: { retry: false } },
   });
   return (
     <QueryClientProvider client={qc}>
-      <MemoryRouter>{createElement(C)}</MemoryRouter>
+      <MemoryRouter>{createElement(C, proplar)}</MemoryRouter>
     </QueryClientProvider>
   );
 }
@@ -379,10 +528,21 @@ beforeEach(() => {
   // edilir — ölçülen şey "veri geldi mi" değil, "render edilen alanın adı var mı".
   apiClient.defaults.adapter = async (config: AxiosRequestConfig) =>
     ({ data: [], status: 200, statusText: "OK", headers: {}, config }) as never;
+  // ── Oturum GERÇEK izin listesiyle kurulur (İP-A8 · Görev 1 · B-5) ──
+  //
+  // Eskiden `admin_permissions: ["*"]` yazıyordu. Joker diye bir şey yok:
+  // `lib/adminAccess.ts` tam kodu arar, backend de hiçbir zaman `"*"`
+  // üretmez. Sonuç: `useAdminAreaAccess` kullanan 17 taban ekranı
+  // `canView === false` dönüyor ve ekran yerine 403 kutusu basıyordu — 88
+  // ekranın 14'ü. Kapı bunları "ölçtüm" sayıyor, üstelik yalancı-yeşil eşiği
+  // (`toplamKontrol >= 39`) tam da o çökmüş sayıya kalibre ediliyordu.
+  //
+  // Ölçülen kontrol sayısı bu düzeltmeyle 39 → 60'a çıktı. **Artış regresyon
+  // DEĞİL**: 14 ekran ilk kez gerçekten render ediliyor (İP-A8 raporu §1).
   useAuthStore.setState({
     token: "test-token",
     isAuthenticated: true,
-    user: { id: 1, role_id: 1, admin_permissions: ["*"] } as never,
+    user: { id: 1, role_id: 1, admin_permissions: [...TAM_ADMIN_IZINLERI] } as never,
   });
 });
 
@@ -478,19 +638,53 @@ describe("İP-A6b çalışma zamanı kapısı · adsız kontrol", () => {
    * kabul edildi; bu turda ölçüm aletinin güvenilirliği defalarca süreye
    * tercih edildi.
    */
-  it.each(kapsanan)("%s — adsız kontrol tabanı KİMLİKLE sabit", async (dosya) => {
-    const C = await ekranBileseni(dosya);
-    expect(C, `${dosya}: render edilebilir bilesen yok`).not.toBeNull();
-    const o = kontrolOlcumu(kosum(C!));
-    olculenEkranlar.add(dosya);
-    toplamKontrol += o.toplam;
-    // Beklenen borç: listede yazılıysa o sayı, yoksa SIFIR. İki yön de kırar —
-    // yeni borç da, listedeki bir borcun sessizce kapanması da.
-    expect(
-      o.adsiz,
-      `${dosya} — varsayilan render'da adsiz kontrol: ${o.adsizHtml.join(" | ")}`
-    ).toBe(CALISMA_ZAMANI_ADSIZ[dosya] ?? 0);
-  });
+  it.each(kapsanan)(
+    "%s — gerçekten render edildi + adsız kontrol tabanı KİMLİKLE sabit",
+    async (dosya) => {
+      const C = await ekranBileseni(dosya);
+      expect(C, `${dosya}: render edilebilir bilesen yok`).not.toBeNull();
+      const o = kontrolOlcumu(kosum(C!, ZORUNLU_PROPLAR[dosya]));
+      olculenEkranlar.add(dosya);
+      if (o.toplam > 0) kontrolBasanEkranlar.add(dosya);
+
+      // ── Çıpa 1: 403 kutusu RENDER SAYILMAZ (İP-A8 · Görev 1 · B-5) ──
+      //
+      // Ekran kendisi yerine "Bu alan için yetkiniz yok" bastıysa bundan
+      // sonraki hiçbir iddia ekranın gerçek içeriğine değmiyor demektir. Eski
+      // kapı bunu hiç ölçmüyordu ve 88 ekranın 14'ünü sessizce hata kutusu
+      // hâlinde "ölçüyordu".
+      expect(
+        o.erisimReddedildi,
+        `${dosya}: ekran yerine 403 kutusu render edildi — fixture'in izin ` +
+          "listesi eksik (test-utils/adminIzinleri) ya da ekran yeni bir izin " +
+          "alani kullaniyor. Bu ekran OLCULMUS SAYILMAZ."
+      ).toBe(ERISIM_KUTUSU_BEKLENEN.includes(dosya));
+
+      // ── Çıpa 2: ekran boş DOM basmadı ──
+      expect(o.dugumSayisi, `${dosya}: hicbir sey render edilmedi`).toBeGreaterThan(0);
+
+      // ── Çıpa 3: "kontrol beklenmiyor" bilinçli bir KAYIT (B-7) ──
+      //
+      // Bu olmadan aşağıdaki `adsiz` iddiası 88 ekranın 64'ünde totolojidir.
+      const kontrolBekleniyor = !(dosya in KONTROLSUZ_EKRANLAR);
+      expect(
+        o.toplam > 0,
+        kontrolBekleniyor
+          ? `${dosya}: varsayilan render'da HIC kontrol yok — "adsiz kontrol 0" ` +
+            "iddiasi totoloji. Ekran gercekten kontrolsuzse KONTROLSUZ_EKRANLAR'a " +
+            "gerekcesiyle yaz."
+          : `${dosya}: KONTROLSUZ_EKRANLAR'da yazili ama ${o.toplam} kontrol ` +
+            "render etti — kayit bayatladi, listeden cikar."
+      ).toBe(kontrolBekleniyor);
+
+      // Beklenen borç: listede yazılıysa o sayı, yoksa SIFIR. İki yön de kırar
+      // — yeni borç da, listedeki bir borcun sessizce kapanması da.
+      expect(
+        o.adsiz,
+        `${dosya} — varsayilan render'da adsiz kontrol: ${o.adsizHtml.join(" | ")}`
+      ).toBe(CALISMA_ZAMANI_ADSIZ[dosya] ?? 0);
+    }
+  );
 
   /**
    * Parçalamanın ÜÇ nöbetçisi. Bunlar olmadan bölünmüş kapı, birleşiğinin
@@ -518,10 +712,25 @@ describe("İP-A6b çalışma zamanı kapısı · adsız kontrol", () => {
     // karşılaştırması); parçalanınca ayrıca yazılması gerekir.
     expect(Object.keys(CALISMA_ZAMANI_ADSIZ).filter((f) => !kapsanan.includes(f))).toEqual([]);
 
-    // Yalancı yeşil kapısı: hiçbir kontrol render edilmediyse "0 adsız" bir
-    // şey kanıtlamaz. Bugün ölçülen taban 39 kontroldür.
-    expect(toplamKontrol, "hic kontrol render edilmedi — kapi bosa kosuyor").toBeGreaterThanOrEqual(
-      39
+    // ── Yalancı-yeşil kapısı artık SAYI değil KİMLİK (İP-A8 · Görev 1) ──
+    //
+    // Eskiden `toplamKontrol >= 39` yazıyordu ve 39, kapının kendi bozuk
+    // fixture'ıyla ölçülmüş sayının ta kendisiydi: **koruduğu ölçümden
+    // türetilmiş bir eşik o ölçümü koruyamaz.** Aynı hata bu turda üçüncü kez
+    // yapılmıştı (`kapsanan.length >= 88` kimlikle çözülmüştü; bu, sayıyla
+    // tekrarladı).
+    //
+    // Çıpa artık bağımsız: hangi ekranların kontrol bastığı KİMLİKLE
+    // sabittir. Kontrol basan bir ekran susarsa da, susan bir ekran kontrol
+    // basmaya başlarsa da kırmızıdır — ve ikisi birbirini götürerek toplamı
+    // sabit tutamaz.
+    expect([...kontrolBasanEkranlar].sort()).toEqual(
+      kapsanan.filter((f) => !(f in KONTROLSUZ_EKRANLAR)).sort()
     );
+
+    // Kaydın kendisi de bayatlamasın: listedeki her dosya kapsamda olmalı.
+    expect(Object.keys(KONTROLSUZ_EKRANLAR).filter((f) => !kapsanan.includes(f))).toEqual([]);
+    expect(ERISIM_KUTUSU_BEKLENEN.filter((f) => !kapsanan.includes(f))).toEqual([]);
+    expect(Object.keys(ZORUNLU_PROPLAR).filter((f) => !kapsanan.includes(f))).toEqual([]);
   });
 });

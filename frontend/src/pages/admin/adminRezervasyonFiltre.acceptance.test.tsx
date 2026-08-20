@@ -255,8 +255,17 @@ describe("İP-A7d1 (b) · göçün getirdiği davranış", () => {
   });
 
   it("SAYFA değişince filtre korunur (ters prova)", async () => {
+    // ── `limit=5` BİLİNÇLİ (İP-A8 · Görev 5 · B-4) ──
+    //
+    // Sayfa boyutu bir URL parametresidir (`filtreDisi`de yazılı, filtre
+    // sayılmaz) ve sınanan davranış — sayfa değişince filtrenin korunması —
+    // sayfa boyutundan BAĞIMSIZDIR. Varsayılan 25 ile bu test masaüstü
+    // tablosunda 25 satır + mobil kartlarda 25 kart basıyordu ve tam suite
+    // yükü altında ÖLÇÜLEN süresi **3.886 ms**ti (bağımsız denetçinin ~2 kat
+    // yavaş makinesinde 9.000 ms'lik `testTimeout`u aşıyor ve tohuma bağlı
+    // kırmızı düşüyordu — B-4). Bütçe BÜYÜTÜLMEDİ; ölçüm küçültüldü.
     kayitlar = Array.from({ length: 30 }, (_, i) => ({ ...REZ, id: i + 1 }));
-    sar(`${ROUTES.adminBookings}?status=PENDING`);
+    sar(`${ROUTES.adminBookings}?status=PENDING&limit=5`);
     await screen.findAllByText(/Ayşe Yılmaz/);
 
     fireEvent.click(screen.getByRole("button", { name: "Sonraki" }));
@@ -265,8 +274,11 @@ describe("İP-A7d1 (b) · göçün getirdiği davranış", () => {
   });
 
   it("SIRALAMA iki anahtarı TEK adımda yazar ve sayfayı sıfırlar", async () => {
+    // `limit=5` gerekçesi bir üstteki testte yazılı (B-4). Bu dosyanın en
+    // yavaş testiydi: ölçülen **4.459 ms**. Sıralamanın iki anahtarı tek
+    // adımda yazması sayfa boyutundan bağımsızdır.
     kayitlar = Array.from({ length: 30 }, (_, i) => ({ ...REZ, id: i + 1 }));
-    sar(`${ROUTES.adminBookings}?page=2`);
+    sar(`${ROUTES.adminBookings}?page=2&limit=5`);
     await screen.findAllByText(/Ayşe Yılmaz/);
 
     fireEvent.click(screen.getByRole("button", { name: /Tutar/ }));

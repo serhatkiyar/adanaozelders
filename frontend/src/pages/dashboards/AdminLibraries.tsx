@@ -16,14 +16,37 @@
 //   - On üç ham `<button>` ortak `Button`a geçti.
 //   - Operatör ekleme formunun dört alanı `placeholder`ı etiket yerine
 //     kullanıyordu (ekran okuyucuya adsız görünüyorlardı); `Form.*`a geçti.
-import { useState } from "react";
+//
+// ## İP-A8 · Görev 3 — B-1: operatör formu KORUMASIZDI (üretimde canlıydı)
+//
+// A7d1'de operatör ekleme formu "pencere içindeki bir bölümün satır içi
+// formu" sayıldı ve kirli form bekçisine BİLEREK bağlanmadı; gerekçe "bir
+// `DuzenlemePenceresi` tek korumalı içerik taşır, o hak oturum yönetimine
+// ayrıldı" idi. Bağımsız denetim #3 iki şeyi ölçtü:
+//
+//   1. Gerekçe yanlıştı: oturum yönetiminin bekçisi kendi İÇ penceresine
+//      kaydolur, bu dış pencereye değil — dış pencerenin bekçi defteri HER
+//      ZAMAN boştu. Yani "ayrılmış hak" hiç kullanılmıyordu.
+//   2. Sonuç canlı bir kusurdu: ad · soyad · e-posta · **şifre** doluyken ESC
+//      dört alanı da sormadan siliyordu (SK-4/SK-7/SK-9 sınıfının dördüncü
+//      örneği).
+//
+// Düzeltme sözleşmeyi eğmiyor, kullanıyor: operatör formu KENDİ penceresine
+// çıktı (`ekleYuzeyi`) ve orada `Form.*` + `useYuzeyKirliFormBekcisi` ile
+// korunuyor. Dış pencere artık düzenlenebilir kontrol taşımıyor.
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+
 import { ExamSessionsManager } from "@/components/ExamSessionsManager";
 import { AccessDenied, ReadOnlyNotice, useAdminAreaAccess } from "@/components/admin/AccessState";
 import { Button, ConfirmDialog, ReasonDialog } from "@/components/admin/ui";
 import {
   DuzenlemePenceresi,
   useDuzenlemeYuzeyi,
+  useYuzeyKirliFormBekcisi,
 } from "@/components/admin/ui2/duzenlemeYuzeyi";
+import { Form, sunucuHatasiniUygula } from "@/components/admin/ui2/form";
 import { LibraryPayoutForm } from "@/components/LibraryPayoutForm";
 import {
   LibraryEditorModal,
@@ -303,69 +326,15 @@ export default function AdminLibraries() {
 
 /* ── Operatör hesapları ── */
 
-interface OperatorFormDegerleri {
-  first_name: string;
-  last_name: string;
-  email: string;
-  password: string;
-}
-
-const OPERATOR_BOS: OperatorFormDegerleri = {
-  first_name: "",
-  last_name: "",
-  email: "",
-  password: "",
-};
-
 function OperatorsManager({ libraryId }: { libraryId: number }) {
   const { data: operators } = useOperators(libraryId);
-  const create = useCreateOperator(libraryId);
   const del = useDeleteOperator(libraryId);
-  // Satır içi ekleme formunun AÇIK/KAPALI olması bir pencere durumu değildir;
-  // katlanır bir bölüm başlığıdır ve ekranda kalır.
-  const [acik, setAcik] = useState(false);
+  // Ekleme formu artık katlanır bir bölüm DEĞİL, kendi düzenleme yüzeyi
+  // (İP-A8 · B-1): şifre dahil dört alan ancak korumalı bir pencerede
+  // yaşayabilir.
+  const ekleYuzeyi = useDuzenlemeYuzeyi<void, void>();
   const silmeYuzeyi = useDuzenlemeYuzeyi<{ id: number; name: string }, void>();
   const silinecek = silmeYuzeyi.kayit;
-
-  // Not: burada kirli form bekçisi KURULMAZ. Bu form pencerenin kendi formu
-  // değil, pencere içindeki bir bölümün satır içi formudur; `DuzenlemePenceresi`
-  // tek bir korumalı içerik taşıyabilir (İP-A6c · BULGU-5) ve o hak aynı
-  // pencerede yaşayan oturum yönetimine ayrılmıştır.
-  const [degerler, setDegerler] = useState<OperatorFormDegerleri>(OPERATOR_BOS);
-  const [hatalar, setHatalar] = useState<Partial<Record<keyof OperatorFormDegerleri, string>>>({});
-
-  const alan = (ad: keyof OperatorFormDegerleri) => ({
-    value: degerler[ad],
-    onChange: (e: React.ChangeEvent<HTMLInputElement>) => {
-      setDegerler((d) => ({ ...d, [ad]: e.target.value }));
-      setHatalar((h) => ({ ...h, [ad]: undefined }));
-    },
-  });
-
-  const submit = () => {
-    const yeni: Partial<Record<keyof OperatorFormDegerleri, string>> = {};
-    if (!degerler.first_name.trim()) yeni.first_name = "Ad gerekli.";
-    if (!degerler.last_name.trim()) yeni.last_name = "Soyad gerekli.";
-    if (!degerler.email.trim()) yeni.email = "E-posta gerekli.";
-    if (degerler.password.length < 8) yeni.password = "Şifre en az 8 karakter olmalı.";
-    setHatalar(yeni);
-    if (Object.keys(yeni).length) {
-      // Gönderim YAPILMAZ; odak ilk hatalı alana taşınır.
-      const ilk = (["first_name", "last_name", "email", "password"] as const).find(
-        (a) => yeni[a]
-      );
-      if (ilk) document.getElementById(`operator-${ilk}`)?.focus();
-      return;
-    }
-    create.mutate(degerler, {
-      onSuccess: () => {
-        toast.success("Operatör hesabı oluşturuldu.");
-        setDegerler(OPERATOR_BOS);
-        setAcik(false);
-      },
-      onError: (e) => toast.error(getErrorMessage(e, "Oluşturulamadı.")),
-    });
-  };
 
   const onDelete = (id: number) => {
     del.mutate(id, {
@@ -378,35 +347,10 @@ function OperatorsManager({ libraryId }: { libraryId: number }) {
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-bold text-slate-900 dark:text-white">Operatörler</h3>
-        <Button size="sm" variant="secondary" aria-expanded={acik} onClick={() => setAcik((v) => !v)}>
-          {acik ? "Kapat" : "+ Operatör"}
+        <Button size="sm" variant="secondary" onClick={() => ekleYuzeyi.yeniAc()}>
+          + Operatör
         </Button>
       </div>
-
-      {acik && (
-        <div className="grid grid-cols-2 gap-2 rounded-xl bg-slate-50 p-3 dark:bg-slate-900/40">
-          {/* `Form.*` kullanılmıyor: bu form `react-hook-form` bağlamı
-              taşımıyor (pencerenin formu değil). Etiket/`id` bağı ve hata
-              slotu elle ama AYNI sözleşmeyle kuruluyor — alanların hepsinin
-              erişilebilir adı var ve hata alanın altında. */}
-          <OperatorAlani ad="first_name" etiket="Ad" hata={hatalar.first_name} {...alan("first_name")} />
-          <OperatorAlani ad="last_name" etiket="Soyad" hata={hatalar.last_name} {...alan("last_name")} />
-          <OperatorAlani ad="email" etiket="E-posta" genis hata={hatalar.email} {...alan("email")} />
-          <OperatorAlani
-            ad="password"
-            etiket="Şifre (en az 8 karakter)"
-            tip="password"
-            genis
-            hata={hatalar.password}
-            {...alan("password")}
-          />
-          <div className="col-span-2">
-            <Button className="w-full" isPending={create.isPending} onClick={submit}>
-              Operatör Hesabı Oluştur
-            </Button>
-          </div>
-        </div>
-      )}
 
       {operators && operators.length > 0 ? (
         <ul className="divide-y divide-slate-100 rounded-xl border border-slate-100 dark:divide-slate-700 dark:border-slate-700">
@@ -429,6 +373,17 @@ function OperatorsManager({ libraryId }: { libraryId: number }) {
       ) : (
         <p className="text-xs text-slate-400">Henüz operatör yok. Kütüphaneci için hesap oluşturun.</p>
       )}
+
+      <DuzenlemePenceresi
+        yuzey={ekleYuzeyi}
+        baslik="Operatör hesabı oluştur"
+        aciklama="Kütüphaneci bu hesapla giriş yapıp oturumlarını yönetir ve QR okutur."
+      >
+        {ekleYuzeyi.acik && (
+          <OperatorEkleIcerik libraryId={libraryId} kapat={ekleYuzeyi.kapat} />
+        )}
+      </DuzenlemePenceresi>
+
       <ConfirmDialog
         open={silinecek !== null}
         title="Operatör hesabını sil"
@@ -443,43 +398,147 @@ function OperatorsManager({ libraryId }: { libraryId: number }) {
   );
 }
 
-function OperatorAlani({
-  ad,
-  etiket,
-  tip = "text",
-  genis = false,
-  hata,
-  value,
-  onChange,
-}: {
-  ad: keyof OperatorFormDegerleri;
-  etiket: string;
-  tip?: string;
-  genis?: boolean;
-  hata?: string;
-  value: string;
-  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-}) {
-  const id = `operator-${ad}`;
-  const hataId = `${id}-hata`;
+/**
+ * Operatör hesabı formu — pencerenin İÇİNDE yaşar ve bekçisini KENDİ kaydeder.
+ *
+ * Kanca burada çağrılır, `OperatorsManager`da değil: bildirim
+ * `BekciBildirimCtx` üzerinden yapılır ve o bağlamı `DuzenlemePenceresi` açar
+ * (İP-A7d1 · SK-3'ün keskin kenarı). Pencereyi RENDER EDEN bileşende çağrılsa
+ * bekçi pencereye hiç bildirilmez ve ×/ESC yine sormadan kapatırdı.
+ */
+const operatorSemasi = z.object({
+  first_name: z.string().refine((v) => v.trim().length > 0, "Ad gerekli."),
+  last_name: z.string().refine((v) => v.trim().length > 0, "Soyad gerekli."),
+  email: z
+    .string()
+    .refine((v) => v.trim().length > 0, "E-posta gerekli.")
+    .refine((v) => v.includes("@"), "E-posta adresi geçerli görünmüyor."),
+  password: z.string().min(8, "Şifre en az 8 karakter olmalı."),
+});
+
+type OperatorFormDegerleri = z.infer<typeof operatorSemasi>;
+
+/** Odak sırası = ekrandaki görsel sıra (gönderimde ilk hatalı alana gidilir). */
+const OPERATOR_SIRA = ["first_name", "last_name", "email", "password"] as const;
+
+function OperatorEkleIcerik({ libraryId, kapat }: { libraryId: number; kapat: () => void }) {
+  const create = useCreateOperator(libraryId);
+  const form = useForm<OperatorFormDegerleri>({
+    resolver: zodResolver(operatorSemasi),
+    defaultValues: { first_name: "", last_name: "", email: "", password: "" },
+    mode: "onChange",
+    // Odak `onInvalid` argümanından verilir: `formState.errors` gönderim
+    // anında henüz boştur ve odak `<body>`ye düşerdi (İP-A7d2 · C-1).
+    shouldFocusError: false,
+  });
+
+  useYuzeyKirliFormBekcisi({ form, sunucuHatasi: create.error });
+
+  const gonder = form.handleSubmit(
+    (deger) => {
+      form.clearErrors("root.sunucu");
+      create.mutate(
+        {
+          first_name: deger.first_name.trim(),
+          last_name: deger.last_name.trim(),
+          email: deger.email.trim(),
+          password: deger.password,
+        },
+        {
+          onSuccess: () => {
+            toast.success("Operatör hesabı oluşturuldu.");
+            // `reset` ÖNCE: bekçi "kirli" görürken kapatmak onay penceresi
+            // açardı ve kullanıcı kaydettiği formda "çıkmak istiyor musun"
+            // sorusuyla karşılaşırdı.
+            form.reset({ first_name: "", last_name: "", email: "", password: "" });
+            kapat();
+          },
+          onError: (hata) => {
+            const kalan = sunucuHatasiniUygula(hata, form, [...OPERATOR_SIRA], undefined, (h) =>
+              getErrorMessage(h, "Oluşturulamadı.")
+            );
+            form.setError("root.sunucu", { type: "server", message: kalan ?? undefined });
+          },
+        }
+      );
+    },
+    (hatalar) => {
+      const alan = OPERATOR_SIRA.find((a) => hatalar[a]);
+      if (alan) form.setFocus(alan);
+    }
+  );
+
+  const genelHata = form.formState.errors.root?.sunucu?.message;
+
   return (
-    <div className={genis ? "col-span-2" : undefined}>
-      <label htmlFor={id} className="mb-1 block text-xs font-semibold text-slate-600 dark:text-slate-300">
-        {etiket}
-      </label>
-      <input
-        id={id}
-        type={tip}
-        className="input w-full"
-        value={value}
-        onChange={onChange}
-        aria-invalid={hata ? true : undefined}
-        aria-describedby={hata ? hataId : undefined}
+    <div className="space-y-4">
+      {genelHata && (
+        <p
+          role="alert"
+          className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700 dark:bg-rose-500/10 dark:text-rose-300"
+        >
+          {genelHata}
+        </p>
+      )}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <Form.Field
+          control={form.control}
+          name="first_name"
+          render={({ field }) => (
+            <Form.Item>
+              <Form.Label>Ad</Form.Label>
+              <Form.Control>
+                <input className="input" autoComplete="given-name" {...field} />
+              </Form.Control>
+              <Form.ErrorMessage />
+            </Form.Item>
+          )}
+        />
+        <Form.Field
+          control={form.control}
+          name="last_name"
+          render={({ field }) => (
+            <Form.Item>
+              <Form.Label>Soyad</Form.Label>
+              <Form.Control>
+                <input className="input" autoComplete="family-name" {...field} />
+              </Form.Control>
+              <Form.ErrorMessage />
+            </Form.Item>
+          )}
+        />
+      </div>
+      <Form.Field
+        control={form.control}
+        name="email"
+        render={({ field }) => (
+          <Form.Item>
+            <Form.Label>E-posta</Form.Label>
+            <Form.Control>
+              <input className="input" type="email" autoComplete="email" {...field} />
+            </Form.Control>
+            <Form.ErrorMessage />
+          </Form.Item>
+        )}
       />
-      {/* Slot HER ZAMAN var: hata doğunca yerleşim itilmez (Form.Item kuralı). */}
-      <p id={hataId} role={hata ? "alert" : undefined} className="mt-1 min-h-[1rem] text-xs text-rose-700 dark:text-rose-400">
-        {hata}
-      </p>
+      <Form.Field
+        control={form.control}
+        name="password"
+        render={({ field }) => (
+          <Form.Item>
+            <Form.Label>Şifre (en az 8 karakter)</Form.Label>
+            <Form.Control>
+              <input className="input" type="password" autoComplete="new-password" {...field} />
+            </Form.Control>
+            <Form.ErrorMessage />
+          </Form.Item>
+        )}
+      />
+      <div className="flex justify-end">
+        <Button isPending={create.isPending} onClick={gonder}>
+          Operatör Hesabı Oluştur
+        </Button>
+      </div>
     </div>
   );
 }

@@ -298,14 +298,26 @@ export const OLCUM_TABANI = [
  *      `OLCUM_TABANI`'nda olmalı ya da `fazlaDosyalar`a düşmelidir. Kapanış
  *      GEÇİŞLİDİR (fixpoint): listeye giren dosyanın importları da aynı kurala
  *      tabidir.
- *   2. Kapanış **`.ts` modüllerinde DURUR**. Gerekçe: ölçülen dört metriğin
- *      dördü de JSX metriğidir (`<button`, form kontrolü, `fixed inset-0`
- *      overlay, `@medusajs/ui` importu — sonuncusu zaten TÜM ağaçta ölçülür).
- *      `.ts` dosyası JSX taşıyamaz; api/hook/lib katmanını tabana çekmek
- *      ölçümü panelin arayüzü olmayan yüzlerce dosyayla şişirirdi.
- *   3. `.ts` içindeki tek olası kaçak `React.createElement("button")`tır ve
- *      ayrı bir BÜTÜN-AĞAÇ nöbetçisiyle kapatılır (`tsHamButonlari`) — yani
- *      kapanışın `.ts`te durması bir delik bırakmaz.
+ *   2. Kapanış `.ts` modüllerinden **GEÇER ama onları ÖLÇMEZ**
+ *      (İP-A8 · Görev 2 · B-6). Ölçülen dört metriğin dördü de JSX
+ *      metriğidir ve `.ts` dosyası JSX taşıyamaz — dolayısıyla `.ts` bir
+ *      ölçüm hedefi değildir. Ama bir **YOL**dur: `export … from "./X"`
+ *      yazan bir `.ts` barreli üzerinden ulaşılan `.tsx` bileşeni, kapanış
+ *      `.ts`te DURDUĞU sürece dört metriğin dördüne de görünmezdi.
+ *
+ *      Bağımsız denetim #3 bunu sentetik kaçakla ölçtü (B-6): `src/lib`
+ *      altında bir `.ts` barreli üzerinden bağlanan 3 ham düğme + 2 adsız
+ *      kontrol + 1 etiketsiz overlay **50/50 nöbetçiden yeşil geçti**. Bu,
+ *      sayacın altıncı kusuruydu ve sayının doğruluğunu değil KAPSAMINI
+ *      ilgilendiriyordu.
+ *
+ *      Kapanış artık `.ts` kenarlarını da yürür; `ulasilan` kümesine yalnız
+ *      `.tsx` modülleri girer, yani taban `api/`/`hooks/`/`lib/` katmanıyla
+ *      ŞİŞMEZ — ama o katmanın arkasına saklanmış bir arayüz dosyası da
+ *      kaçamaz.
+ *   3. `.ts` dosyasının KENDİ içindeki tek olası kaçak
+ *      `React.createElement("button")`tır ve ayrı bir BÜTÜN-AĞAÇ
+ *      nöbetçisiyle kapatılır (`tsHamButonlari`).
  *   4. Test dosyaları kapsam dışıdır (walk ile aynı gerekçe: fixture'lardaki
  *      ham etiketler borç değildir).
  *
@@ -314,7 +326,9 @@ export const OLCUM_TABANI = [
  * eklenirse buraya da eklenmelidir — aksi hâlde o yoldan gelen import sessizce
  * çözülmez, bu yüzden `cozulmeyenIthaller` ayrıca raporlanır.
  */
-const ITHAL_UZANTILARI = [".tsx", "/index.tsx"];
+// `.ts` de çözülür — ölçülmez ama İZLENİR (B-6). Sıra önemli: aynı adlı
+// `.tsx` varsa o kazanır (bugün depoda böyle bir çift yok, ama kural sabit).
+const ITHAL_UZANTILARI = [".tsx", ".ts", "/index.tsx", "/index.ts"];
 
 /** Bir import metnini repo köküne göreli `.tsx` yoluna çözer; çözemezse null. */
 export function ithalYolunuCoz(kaynakDosya, metin) {
@@ -323,7 +337,7 @@ export function ithalYolunuCoz(kaynakDosya, metin) {
   else if (metin.startsWith(".")) temel = posix.normalize(posix.join(posix.dirname(kaynakDosya), metin));
   else return null; // paket importu — yerel modül değil
   const aday = (y) => (existsSync(join(ROOT, y)) && !/\.test\.tsx?$/.test(y) ? y : null);
-  if (/\.tsx$/.test(temel)) return aday(temel);
+  if (/\.tsx?$/.test(temel)) return aday(temel);
   for (const ek of ITHAL_UZANTILARI) {
     const bulunan = aday(temel + ek);
     if (bulunan) return bulunan;
@@ -363,7 +377,15 @@ export function ithalMetinleri(kaynak, dosyaAdi) {
   return out;
 }
 
-/** Tohum dosyalardan GEÇİŞLİ olarak ulaşılan yerel `.tsx` modülleri (tohumlar hariç). */
+/**
+ * Tohum dosyalardan GEÇİŞLİ olarak ulaşılan yerel `.tsx` modülleri
+ * (tohumlar hariç).
+ *
+ * Yürüyüş `.ts` modüllerinden de GEÇER (B-6: bir `.ts` barreli üzerinden
+ * yeniden dışa vurulan bileşen dört metriğin dördüne de görünmüyordu), ama
+ * `.ts` sonuca GİRMEZ: JSX taşıyamaz, dolayısıyla ölçüm hedefi değildir.
+ * Böylece kapsam kapanır, taban `api/hooks/lib` katmanıyla şişmez.
+ */
 export function ulasilanModuller(tohumlar) {
   const gorulen = new Set(tohumlar);
   const kuyruk = tohumlar.filter((f) => existsSync(join(ROOT, f)));
@@ -374,7 +396,7 @@ export function ulasilanModuller(tohumlar) {
       const hedef = ithalYolunuCoz(dosya, metin);
       if (!hedef || gorulen.has(hedef)) continue;
       gorulen.add(hedef);
-      ulasilan.add(hedef);
+      if (hedef.endsWith(".tsx")) ulasilan.add(hedef);
       kuyruk.push(hedef);
     }
   }

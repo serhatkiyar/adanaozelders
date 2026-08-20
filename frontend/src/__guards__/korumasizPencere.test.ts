@@ -43,11 +43,28 @@ const BELIRSIZ = [
   // `ProductForm` kendi `useYuzeyKirliFormBekcisi`sini çağırır (A7d2 · SK-4
   // düzeltmesi). `StockLedgerPanel` salt okunur defter listesidir.
   "src/components/admin/store/EditProductModal.tsx",
+  // ── İP-A8 · Görev 3: ÜÇ YENİ GİRİŞ, hepsi ölçümün dürüstleşmesi ──
+  //
+  // Bu üç pencere eskiden hiç görünmüyordu: `bekciVar` bayrağı DOSYA
+  // KAPSAMLIYDI ve dosyada herhangi bir bekçi kancası varsa bütün pencereler
+  // taranmadan geçiyordu (kör nokta 3). Üçü de ortak katmanda:
+  //
+  //   • `ConfirmDialog:53`  — onay penceresi, içinde yalnız `Button`. Girdi yok.
+  //   • `ConfirmDialog:139` — `ReasonDialog`; içeriği `GerekceIcerik` ve bekçiyi
+  //                           KENDİ çağırır (A7d3 · SK-7 düzeltmesi).
+  //   • `duzenlemeYuzeyi:183` — `DuzenlemeYuzeyi`nin kendi `Dialog`u; bu yüzey
+  //                           bekçiyi zaten kendi bağlar (sözleşme gereği).
+  "src/components/admin/ui/ConfirmDialog.tsx",
+  "src/components/admin/ui/ConfirmDialog.tsx",
+  "src/components/admin/ui2/duzenlemeYuzeyi.tsx",
   // Salt-okunur denetim kaydı detayı: `DetailRow`/`Badge`/`JsonBlock`.
   // Korunacak bir girdi yok.
   "src/pages/admin/AdminAuditLogsPage.tsx",
-  // İki ayrı pencere: operatör/oturum yönetimi ve ödeme formu. İkincisinin
-  // içeriği `LibraryPayoutForm`dur ve bekçiyi kendi çağırır (A7d3).
+  // ÜÇ pencere: oturum/operatör yönetimi, ödeme formu ve (İP-A8 · B-1)
+  // operatör hesabı formunun KENDİ penceresi. Üçünün de içeriği bekçisini
+  // kendi çağırır ya da hiç girdi taşımaz; doğrulaması çalışma zamanındadır
+  // (`korumasizIcerik.test.tsx` + `adminKutuphaneOperator.acceptance`).
+  "src/pages/dashboards/AdminLibraries.tsx",
   "src/pages/dashboards/AdminLibraries.tsx",
   "src/pages/dashboards/AdminLibraries.tsx",
 ];
@@ -151,6 +168,71 @@ describe("İP-A7d4 · statik taramanın ters provası", () => {
       }
     `;
     expect(korumasizPencereler(kaynak, "a.tsx").bulgular).toEqual([]);
+  });
+
+  /* ── İP-A8 · Görev 3: kapatılan ÜÇ kör nokta ──
+   *
+   * Üçü de bağımsız denetim #3'te doğrudan çağrıyla ölçüldü ve üçü de
+   * **sessizce temiz** geçiyordu (ne bulgu ne belirsiz). Aşağıdaki üç test
+   * onların ters provasıdır: taramanın eski hâli hepsinde `[]` döndürürdü.
+   */
+
+  it("`korumasiz={false}` beyan SAYILMAZ — pencere taranır", () => {
+    const kaynak = PENCERE_ICI_FORM.replace("<Dialog open", "<Dialog korumasiz={false} open");
+    const sonuc = korumasizPencereler(kaynak, "a.tsx");
+    expect(sonuc.bulgular).toHaveLength(1);
+    expect(sonuc.bulgular[0].kontroller).toEqual(["input", "textarea"]);
+  });
+
+  it("`korumasiz={true}` (açık yazım) beyandır — GEÇER", () => {
+    const kaynak = PENCERE_ICI_FORM.replace("<Dialog open", "<Dialog korumasiz={true} open");
+    expect(korumasizPencereler(kaynak, "a.tsx").bulgular).toEqual([]);
+  });
+
+  it("DEĞİŞKENE alınmış içerik satır içi alınır — YAKALANIR", () => {
+    const kaynak = `
+      export function Ekran() {
+        const govde = <input value={a} onChange={x} />;
+        return (
+          <Dialog open title="Rol" onClose={kapat}>{govde}</Dialog>
+        );
+      }
+    `;
+    const sonuc = korumasizPencereler(kaynak, "a.tsx");
+    expect(sonuc.bulgular).toHaveLength(1);
+    expect(sonuc.bulgular[0].kontroller).toEqual(["input"]);
+  });
+
+  it("AYNI DOSYADAKİ ikinci pencere bekçiden pay ALMAZ — belirsize düşer", () => {
+    // Eskiden `bekciVar` dosya kapsamlıydı: bir korumalı + bir korumasız
+    // pencere varsa ikincisi taranmadan geçiyordu. Artık bekçi ancak dosyada
+    // TEK pencere varken atfedilebilir; çoklu pencerede kontrol taşıyan her
+    // pencere `belirsiz`e düşer ve nöbetçinin kimlik listesi onu kırmızı yapar.
+    const kaynak = `
+      export function A() {
+        const b = useYuzeyKirliFormBekcisi({ form, sunucuHatasi });
+        return (<Dialog open title="korumali" onClose={k}><input value={a} onChange={x} /></Dialog>);
+      }
+      export function B() {
+        return (<Dialog open title="korumasiz" onClose={k}>
+          <input value={c} onChange={z} /><textarea value={d} onChange={w} /></Dialog>);
+      }
+    `;
+    const sonuc = korumasizPencereler(kaynak, "a.tsx");
+    expect(sonuc.bulgular).toEqual([]);
+    expect(sonuc.belirsiz.map((b) => b.sebep)).toEqual([
+      "atfedilemez-bekci",
+      "atfedilemez-bekci",
+    ]);
+  });
+
+  it("bekçili TEK pencereli dosya hâlâ GEÇER (aşırı sıkılaşma yok)", () => {
+    // Ters yön: düzeltme meşru yazımı kırmamalı. Dosyada tek pencere varsa
+    // bekçi ona atfedilebilir ve tarama sessiz kalır.
+    const kaynak = "const b = useKirliFormBekcisi({ form, sunucuHatasi });" + PENCERE_ICI_FORM;
+    const sonuc = korumasizPencereler(kaynak, "a.tsx");
+    expect(sonuc.bulgular).toEqual([]);
+    expect(sonuc.belirsiz).toEqual([]);
   });
 
   it("çapraz dosyalı içerik SESSİZCE temiz sayılmaz — belirsiz olur", () => {

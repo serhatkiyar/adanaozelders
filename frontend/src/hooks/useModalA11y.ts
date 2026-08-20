@@ -17,6 +17,45 @@ const FOCUSABLE =
   'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), ' +
   'textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
+/**
+ * ── AÇIK PENCERE YIĞINI (İP-A8 · Görev 4 · B-3) ──
+ *
+ * Her açık pencere `document`e KENDİ `keydown` dinleyicisini ekliyordu ve
+ * aralarında sıra yoktu: iki pencere açıkken **tek ESC ikisinin de**
+ * `onClose`unu çağırıyordu.
+ *
+ * Bu, envanterde "iç içe ESC yığını yok" başlığıyla ve **erişilebilirlik
+ * konforu** olarak kayıtlıydı. Bağımsız denetim #3 sınıflandırmanın yanlış
+ * olduğunu davranışla ölçtü (B-3): `AdminLibraries` → oturum yönetimi →
+ * "+ Oturum" (iç pencere, kirli form bekçisi KAYITLI) → başlığa yaz → tek ESC:
+ *
+ *     ic pencere acildiktan sonra dialog sayisi: 2
+ *     ESC sonrasi dialog sayisi: 0
+ *     onay metni: false
+ *
+ * Yani dıştaki pencere (bekçi defteri boş) ANINDA kapanıyor ve içteki
+ * KORUMALI formun onay istemi daha görünmeden ağaçtan sökülüyordu. Bu bir
+ * konfor eksiği değil, göçün kapatmak için kurulduğu **sessiz veri kaybının**
+ * ta kendisidir.
+ *
+ * Çözüm bir modal yığınıdır ve sözleşme `ui2/` katmanında değil BURADA kurulur
+ * — çünkü ESC'i dinleyen katman burasıdır ve panelin dışındaki tüketici
+ * modalları da (harita, kırpma, paylaş) aynı kancayı kullanır. Ekran başına
+ * çözülseydi her yeni iç içe yüzeyde yeniden unutulabilirdi.
+ *
+ * Kural: **klavye olayını yalnız yığının EN ÜSTÜNDEKİ pencere işler.** ESC en
+ * içteki pencereyi kapatır; kapanan pencere korumalıysa onayı o pencerenin
+ * kendi `onClose`u (bekçi) sorar. Dıştaki pencereye dokunulmaz.
+ *
+ * Tab tuzağı da aynı kurala tabidir: iki panel birden odak döngüsü kurmaya
+ * çalışırsa odak, üstteki pencereden alttakine kaçabilirdi.
+ *
+ * Yığın modül düzeyindedir çünkü paylaşılan tek gerçek "hangi pencere en
+ * üstte" sorusudur; React bağlamı bunu veremez (pencereler kardeş ağaçlarda,
+ * `createPortal` ile gövdeye çıkıyorlar).
+ */
+const MODAL_YIGINI: symbol[] = [];
+
 export interface ModalA11yOptions {
   open: boolean;
   onClose: () => void;
@@ -80,8 +119,18 @@ export function useModalA11y({
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
 
+  // Bu pencerenin yığındaki kimliği. Ref'te yaşar: her render'da yeni bir
+  // sembol üretmek pencereyi kendi yığın girdisinden koparırdı.
+  const kimlikRef = useRef<symbol>();
+  if (!kimlikRef.current) kimlikRef.current = Symbol("modal-a11y");
+
   useEffect(() => {
     if (!open) return;
+
+    // Açılış sırası = yığın sırası. Sonradan açılan pencere ÜSTTEDİR.
+    const kimlik = kimlikRef.current!;
+    MODAL_YIGINI.push(kimlik);
+    const enUsttekiMi = () => MODAL_YIGINI[MODAL_YIGINI.length - 1] === kimlik;
 
     // Modal kapanınca odak, onu açan öğeye geri döner — aksi halde odak
     // <body>'ye düşer ve klavye kullanıcısı sayfanın başına savrulur.
@@ -92,6 +141,10 @@ export function useModalA11y({
     focusTarget?.focus();
 
     const onKeyDown = (event: KeyboardEvent) => {
+      // Yalnız EN ÜSTTEKİ pencere klavyeyi işler (B-3). Alttakiler sessiz
+      // kalır: aksi hâlde tek ESC bütün yığını birden kapatır ve içteki
+      // korumalı formun onayı hiç görünmeden yok olurdu.
+      if (!enUsttekiMi()) return;
       if (event.key === "Escape") {
         onCloseRef.current();
         return;
@@ -116,6 +169,8 @@ export function useModalA11y({
     if (lockScroll) document.body.style.overflow = "hidden";
 
     return () => {
+      const sira = MODAL_YIGINI.lastIndexOf(kimlik);
+      if (sira >= 0) MODAL_YIGINI.splice(sira, 1);
       document.removeEventListener("keydown", onKeyDown);
       if (lockScroll) document.body.style.overflow = previousOverflow;
       returnFocusRef.current?.focus();
