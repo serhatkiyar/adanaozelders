@@ -25,6 +25,25 @@
  * ilgisiz onlarca kaydı kaydırır ve nöbetçi gürültüye dönüşür — gürültülü
  * nöbetçi, susturulan nöbetçidir.
  *
+ * ## Kimliğin ikinci parçası: ÇAĞRI SAYISI (doğrulama turu · D-1)
+ *
+ * İlk yazımda tarama `new Set` ile TEKİLLEŞTİRİYORDU ve bu, satır numarasından
+ * vazgeçmenin ölçülmemiş bedeliydi: aynı dosyaya **aynı ifadeyle** eklenen
+ * ikinci bir geçerlilik kapısı nöbetçiye hiç görünmüyordu. Bağımsız doğrulama
+ * turu bunu ters provayla kanıtladı — `PackingStationPage`e ikinci bir
+ * `<Button disabled={!kod.trim()}>` konduğunda nöbetçi **8/8 yeşil** kaldı;
+ * raporun "dokuzuncusu doğduğu gün CI kırılır" cümlesi o şekil için yanlıştı.
+ *
+ * Artık tarama tekilleştirmez, **sayar**: kimlik `dosya + etiket + ifade` ve
+ * yanında o kimliğin kaç kez geçtiği. Nöbetçi ikisini birden dondurur, yani
+ * hem yeni bir şekil hem aynı şeklin tekrarı kırmızı üretir. Satır numarasına
+ * DÖNÜLMEDİ — gürültü gerekçesi hâlâ geçerli; sayı, satır numarasının ayırt
+ * etme gücünü onun gürültüsü olmadan geri getiriyor.
+ *
+ * Bugünkü fark ölçüldü: **77 ham çağrı yeri, 62 benzersiz kimlik.** Aradaki 15
+ * tekrarın hepsi `islem` sınıfında (`isPending`/`busy`); hiçbiri geçerlilik
+ * borcu değil.
+ *
  * ## Sınıflandırma nöbetçide, burada DEĞİL
  *
  * Bu dosya bilerek yalnız ÖLÇER. "Bu `disabled` meşru mu" sorusu bir yargıdır
@@ -71,20 +90,33 @@ export function disabledDugmeleri(kaynak, dosyaAdi) {
   return out;
 }
 
-/** Ölçüm tabanının tamamı — sıralı, kimlik dizeleri hâlinde. */
-export function tabanTaramasi(taban = OLCUM_TABANI) {
-  const satirlar = [];
+/**
+ * Ölçüm tabanının tamamı — **kimlik → ÇAĞRI SAYISI**, kimliğe göre sıralı.
+ *
+ * TEKİLLEŞTİRMEZ (doğrulama turu · D-1): aynı dosyadaki aynı ifadenin ikinci
+ * kez yazılması da bir olaydır ve nöbetçinin görmesi gerekir.
+ */
+export function tabanSayimi(taban = OLCUM_TABANI) {
+  const sayac = new Map();
   for (const dosya of taban) {
     if (!dosya.endsWith(".tsx")) continue;
     for (const d of disabledDugmeleri(readFileSync(join(ROOT, dosya), "utf8"), dosya)) {
-      satirlar.push(`${dosya} <${d.etiket}> ${d.ifade}`);
+      const kimlik = `${dosya} <${d.etiket}> ${d.ifade}`;
+      sayac.set(kimlik, (sayac.get(kimlik) ?? 0) + 1);
     }
   }
-  return [...new Set(satirlar)].sort();
+  return Object.fromEntries([...sayac.keys()].sort().map((k) => [k, sayac.get(k)]));
+}
+
+/** Ölçüm tabanının tamamı — sıralı, BENZERSİZ kimlik dizeleri hâlinde. */
+export function tabanTaramasi(taban = OLCUM_TABANI) {
+  return Object.keys(tabanSayimi(taban));
 }
 
 if (process.argv[1] && process.argv[1].endsWith("gonder-dugmesi.mjs")) {
-  const satirlar = tabanTaramasi();
-  console.log(`DISABLED DÜĞME: ${satirlar.length}`);
-  for (const s of satirlar) console.log(` ${s}`);
+  const sayim = tabanSayimi();
+  const kimlikler = Object.keys(sayim);
+  const ham = Object.values(sayim).reduce((a, b) => a + b, 0);
+  console.log(`DISABLED DÜĞME: ${kimlikler.length} kimlik / ${ham} ham çağrı yeri`);
+  for (const k of kimlikler) console.log(` ${sayim[k] > 1 ? "x" + sayim[k] : "  "} ${k}`);
 }

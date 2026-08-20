@@ -310,6 +310,62 @@ yalnız ölçümü ve öneriyi kaydeder.
 | **Neden ertelendi** | Davranış yanlış veri göstermiyor, alt-optimal yönlendiriyor; temsilci sırasına `stokta DESC` eklemek sıralama kiplerinin tamamında yeniden test ister |
 | **Sonraki adım** | `temsilci_sirasi`'nın başına `stokta.desc()` ekle + altı kip testine "tükenik temsilci adayı varken stoklu üye temsil eder" senaryosu |
 
+## TB-59 · `MutationObserver` sözleşmesinin sıralama garantisi yalnız test ortamında doğrulandı
+
+| | |
+|---|---|
+| **Bulundu** | İP-A8'in bağımsız doğrulama turu (21 Ağu 2026 · D-3) |
+| **Nerede** | `frontend/src/components/admin/ui/Dialog.tsx` — panel içeriğini izleyen gözlemci efekti |
+| **Sorun** | Dedektörün yanlış-pozitif emniyeti şu varsayıma dayanıyor: *"çocuğun bekçi kaydı bir `useEffect`tir ve commit sonrası senkron akar; gözlemci geri çağrısı bir mikrogörevdir ve ondan SONRA koşar."* Bu, RTL/`act()` altında doğru (doğrulama turunda gerçek `AdminLibraries` penceresiyle ölçüldü: geç doğan **korumalı** form dedektörü patlatmıyor). Gerçek tarayıcıda ise React 18 pasif efektleri `scheduleCallback` (MessageChannel = makrogörev) ile planlar; `MutationObserver` geri çağrısı mikrogörevdir ve **önce** koşabilir — o anda `korumaVar` hâlâ `false`tur |
+| **Etki** | **Yalnız geliştirme.** Üretim derlemesinde dedektör gövdesi tamamen eleniyor (doğrulama turu `dist/`te ölçtü: `function pc({kok,korumaVar,korumasiz,baslik}){}`, `attributeFilter` dizesi bundle'da yok). Riskin üretim tarafı yoktur; olası zarar, DOĞRU yazılmış bir pencerenin geliştirmede yanlışlıkla uygulamayı düşürmesidir |
+| **Neden ertelendi** | Doğrulaması gerçek tarayıcı turu ister; doğrulama turu zaman kutusu gereği tam tarayıcı turu yapmadı |
+| **Sonraki adım** | Bir sonraki tarayıcı turunda: dev derlemesinde pencere açıkken **sonradan doğan, bekçisi olan** bir form açılsın ve patlamadığı görülsün. Patlıyorsa çözüm gözlemci geri çağrısını `queueMicrotask` yerine bir sonraki makrogörev turuna ertelemektir |
+
+## TB-60 · `KONTROLSUZ_EKRANLAR`'ın 64 gerekçesi doğrulanmadı
+
+| | |
+|---|---|
+| **Bulundu** | İP-A8 (kendi risk notu #3) + bağımsız doğrulama turu (21 Ağu 2026 · D-4) |
+| **Nerede** | `frontend/src/__guards__/calismaZamaniKapisi.test.tsx` → `KONTROLSUZ_EKRANLAR` |
+| **Sorun** | Kayıt kimlikle dondurulmuş ve iki yönlü korunuyor (bir ekran kontrol basmaya başlarsa da, susarsa da kırmızı) — ama **listenin kendisi ölçümden türetildi**: "bugün kontrol basmayan ekran". Gerekçe kodları elle verildi ve 40'tan fazla ekran `kosullu` yazıyor; hiçbiri bir dal testiyle doğrulanmadı. Liste yazıldığı anda zaten sessizce boşalmış bir ekran sonsuza dek `kosullu` kalır ve fark edilmez |
+| **Neden bu B-5'in tekrarı DEĞİL** | B-5'te eşik (`toplamKontrol >= 39`) çökmüş ölçüme kalibreydi ve hiçbir şey ayırt etmiyordu. Burada liste 24 ekranda gerçek bir iddia taşıyor ve iki yönlü. Aynı ailenin daha zayıf üyesi, aynı kusur değil |
+| **Neden ertelendi** | Doğrusu her `kosullu` ekranın bir dal testinde kontrol bastığını sınamaktı; 40+ ekran için kabul testi yazmak İP-A8'in kapsamının katbekat üstünde |
+| **Sonraki adım** | `kosullu` yazan her ekran için ya bir dal testi (ekranın kontrol bastığı hâli) ya da gerekçenin daraltılması (`sunum`/`kabuk`/`pencere-kabugu` gibi ölçülebilir sınıflara) |
+
+## TB-61 · Duvar saatine bağlı bekleyiş 56 test dosyasında ayakta (B-4'ün sınıfı)
+
+| | |
+|---|---|
+| **Bulundu** | Bağımsız doğrulama turu (21 Ağu 2026 · D-5) |
+| **Nerede** | `frontend/src` altında `findBy*`/`waitFor` kullanan **56** test dosyası |
+| **Sorun** | Denetim #3'ün B-4'ü (karışık tohumda zaman aşımı) İP-A8'de **örnek bazında** kapatıldı: A8 reçeteyi (`act` ile makrogörev akıtması + iddiayı eşzamanlı `getBy*` yapmak) yalnız dokunduğu iki dosyada uyguladı. Sınıf kapanmadı — `findBy*`'ın 1000 ms'lik bütçesi hâlâ makine hızına bağlı bir iddiadır |
+| **Ölçüm** | Doğrulama turunda `src/` altına tek bir ağır sonda dosyası eklendiğinde `adminKataloglarGoc.acceptance` (17 `findBy*`/`waitFor` içeriyor) bir tohumda kırmızı düştü. Temiz ağaçta 6/6 tohum yeşil, yani bugün CI'da canlı değil |
+| **Etki** | Yalancı kırmızı riski. Yükü artan bir CI makinesi bu 56 dosyanın herhangi birinde aynı düşüşü üretebilir ve [[TB-36]] gereği "yerelde geçiyor" bir kez daha flaky tanısı olarak okunmamalı |
+| **Neden ertelendi** | İP-A8 denetim #3'ün bulgularını kapatmak için kuruldu; 56 dosyayı dönüştürmek ayrı bir pakettir |
+| **Sonraki adım** | Reçeteyi kalan dosyalara yaymak ve nöbetçisini `beklemeButcesi` envanterine bağlamak (dosya başına `waitFor` sayısı dondurulur, yenisi gerekçesiz doğamaz) |
+
+## TB-62 · B-16'nın (iki `useUrlDurumu` örneği) nöbetçisi yok
+
+| | |
+|---|---|
+| **Bulundu** | Bağımsız denetim #3 (B-16) + doğrulama turu (21 Ağu 2026 · D-6) |
+| **Nerede** | `frontend/src/hooks/useUrlDurumu.ts` |
+| **Sorun** | Aynı sayfada iki `useUrlDurumu` örneği aynı olayda yazarsa birincinin yazdığı **sessizce kayboluyor** (A6c·BULGU-4'ün çözümü hook örneği başına). Bugün canlı değil: doğrulama turu yedi tüketicinin **hepsinde tek örnek** ölçtü (`AdminAuditLogsPage`, `AdminBookingsPage`, `AdminPayoutsPage`, `CountSessionsPage`, `DamageEventsPage`, `PackagesPage`, `AdminHome`) |
+| **Asıl eksik** | Borç yazıldı, **kapısı yazılmadı**. İkinci bir örnek sessizce doğabilir — kapısız borç, canlıya dönebilen borçtur |
+| **Neden ertelendi** | Kusurun kendisinin düzeltilmesi `bekleyenRef`i hook örneğinden modül düzeyine taşımak, yani A6c·BULGU-4'ün çözümünü yeniden tasarlamak demek; ayrı paket |
+| **Sonraki adım** | **Ucuz olan önce:** "bir dosyada tek `useUrlDurumu` çağrısı" kaynak nöbetçisi (tek `it`). Asıl düzeltme ondan sonra, kendi paketinde |
+
+## TB-63 · `ExamSessionsManager` `!dirty`: sınıflandırma ile kod yorumu çelişiyor
+
+| | |
+|---|---|
+| **Bulundu** | Bağımsız doğrulama turu (21 Ağu 2026 · D-2'nin ikinci ayağı) |
+| **Nerede** | `frontend/src/components/ExamSessionsManager.tsx:684-690` ↔ `frontend/src/__guards__/gonderDugmesi.test.ts` → `KAYIT` |
+| **Sorun** | Düğme nöbetçide `gecerlilik-borc` (kilitli kararın ihlali) sınıfına yazılı; oysa kodda yanı başında *"'Kaydet' DEĞİŞİKLİK YOKKEN kapalıdır ve bu bir geçerlilik kapısı DEĞİLDİR"* yorumu duruyor. İkisi aynı anda doğru olamaz: ya sınıf `onkosul`/`secim` olmalı, ya yorum yanlış |
+| **Bugün hangi taraf** | Sınıf **bilinçli olarak `gecerlilik-borc`ta bırakıldı** — güvenli taraf borç saymaktır; aklamak, kilitli kararın gerçek bir ihlalini envanterden düşürme riski taşır |
+| **Neden ertelendi** | Cevabı bir ürün kararı: "kaydedilecek bir şey yokken Kaydet kapalı olmalı mı" sorusu kilitli kararın kapsamına girip girmediğiyle ilgili ve bu, göç kararlarının sahibiyle konuşulmalı |
+| **Sonraki adım** | Karar verilsin ve **ikisi birlikte** düzeltilsin: ya sınıf değişir ve kod yorumu kaynak gösterilir, ya yorum silinir ve düğme hata slotuna bağlanır |
+
 ## TB-58 · Varyant testlerinin izolasyon sınırları (denetim P2-8)
 
 | | |

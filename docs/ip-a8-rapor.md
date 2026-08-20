@@ -492,7 +492,7 @@ yazıldı.
 | Zorunlu prop kaydı | yoktu | **2** | §1d |
 | **Kaynak nöbetçisi: `belirsiz` pencere** | 4 | **8** | dosya kapsamlı bekçi bayrağı kalktı (+3) · B-1'in yeni penceresi (+1) |
 | Kaynak nöbetçisi: `bulgular` | 0 | **0** | — |
-| **`disabled` düğme kaydı** | yoktu | **62** (7'si açık borç) | yeni nöbetçi (B-10) |
+| **`disabled` düğme kaydı** | yoktu | **62 kimlik / 77 ham çağrı yeri** (8 çağrı yeri açık borç, 7 ekran) | yeni nöbetçi (B-10); sayı kimliğe doğrulama turunda eklendi (D-1) |
 | Suite | 145 dosya / 1676 test | **148 dosya / 1704 test** | +3 dosya, +28 test |
 
 ### 7b. **Yükselen sayı REGRESYON DEĞİLDİR**
@@ -513,7 +513,26 @@ Bu bölüm altı ay sonra "A8'de borç patladı" diye okunmasın diye yazılıyo
 ### 7c. Yeni nöbetçinin bulduğu YENİ BORÇ (7 kalem)
 
 Gönder düğmesi nöbetçisi kurulurken kilitli kararın **yedi ihlali daha**
-görünür oldu. Hiçbiri göç eden 21 ekranda değil; hepsi kapsam dışı yüzeylerde:
+görünür oldu.
+
+> **DÜZELTME (bağımsız doğrulama turu · D-1/D-2, 21 Ağustos 2026).** Bu
+> paragrafın ilk hâli "hiçbiri göç eden 21 ekranda değil; hepsi kapsam dışı
+> yüzeylerde" diyordu. **Yanlıştı ve ölçülerek çürütüldü:** yedi ekranın üçü
+> —`ExamSessionsManager`, `store/ProductForm`, `PackingStationPage`— `ui2/`
+> katmanına göç etmiş dosyalardır ve üçü de `calismaZamaniKapisi`'nin
+> `DERIN_KAPI` listesinde yazılıdır. Doğrusu şudur: **göç eden dosyalarda da
+> ihlal var; göç kapsamı dosya bazlıydı ve o dosyaların bu YÜZEYLERİ (varyant
+> paneli, barkod okutma kutusu, satır içi özet kaydı) hiçbir dalganın kabul
+> testine girmemişti.** Kapatılmama gerekçesi (aşağıda) değişmiyor; değişen
+> yalnız borcun nerede durduğu.
+>
+> İkinci düzeltme aynı turdan: `ExamSessionsManager`'ın `!dirty` düğmesi
+> `gecerlilik-borc` sınıfına yazılmıştı, oysa dosyada yanı başında *"'Kaydet'
+> DEĞİŞİKLİK YOKKEN kapalıdır ve bu bir geçerlilik kapısı DEĞİLDİR"* yazıyor.
+> Sınıflandırma ile kod yorumu bugün çelişiyor. Sınıf **bilinçli olarak
+> `gecerlilik-borc`ta bırakıldı** (güvenli taraf: borç saymak, aklamaktan
+> ucuzdur) ve çelişki merge sonrasına borç olarak yazıldı — kapatılırken ikisi
+> birlikte kararlaştırılmalı.
 
 | Yer | İfade |
 |---|---|
@@ -537,6 +556,19 @@ bulgunun doğrulama kalitesini düşürürdü.
 **Sessiz kalamazlar:** hepsi `gonderDugmesi.test.ts`te `gecerlilik-borc`
 etiketiyle isimle yazılı ve kimlik listesi dondurulmuş — **dokuzuncusu doğduğu
 gün CI kırılır**.
+
+> **DÜZELTME (doğrulama turu · D-1).** Bu vaat ilk yazımında **eksikti** ve
+> ters provayla çürütüldü: kimlik `dosya + etiket + normalize ifade` idi ve
+> tarama `new Set` ile tekilleştiriyordu, yani aynı dosyaya **aynı ifadeyle**
+> eklenen ikinci bir geçerlilik kapısı nöbetçiye hiç görünmüyordu
+> (`PackingStationPage`e ikinci bir `<Button disabled={!kod.trim()}>` konuldu,
+> dosya **8/8 yeşil** kaldı). Vaat yalnız ihlalin ŞEKLİ yeniyse doğruydu.
+>
+> Kapatıldı: kimliğe **çağrı sayısı** eklendi (`tabanSayimi` artık
+> tekilleştirmiyor, sayıyor; `ADETLER` kaydı tekrarları dondurdu). Aynı
+> mutasyon şimdi kırmızı düşüyor (`… <Button> !kod.trim(): 1` → `2`). Satır
+> numarasına dönülmedi; gürültü gerekçesi hâlâ geçerli. Ölçülen fark: **62
+> benzersiz kimlik / 77 ham çağrı yeri**, tekrarların hepsi `islem` sınıfında.
 
 ### 7d. Kilitli kararlar — hâlâ tutuluyor mu
 
@@ -601,7 +633,7 @@ gün CI kırılır**.
 | `node scripts/ip_a8_mutasyon.mjs` | **15/15 yakalandı**, ağaç başlangıçtaki hâlinde |
 | `node scripts/ip_a8_kontrast.mjs` | **eşik altı kalan: 0** |
 | `node scripts/korumasiz-pencere.mjs` | bulgular **0**, belirsiz **8** (isimle kayıtlı) |
-| `node scripts/gonder-dugmesi.mjs` | **62** kayıt, 7'si açık borç (isimle kayıtlı) |
+| `node scripts/gonder-dugmesi.mjs` | **62 kimlik / 77 ham çağrı yeri**, 8'i açık borç (isimle ve adediyle kayıtlı) |
 
 ### 10a. 20 tohum
 

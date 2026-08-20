@@ -25,16 +25,29 @@
  * kurulduğunda ölçülen sayı genellikle YÜKSELİR ve bu bir regresyon değil,
  * ölçümün dürüstleşmesidir.
  *
- * ## Kimlik neden satır numarası taşımıyor
+ * ## Kimlik neden satır numarası taşımıyor — ve neden SAYI taşıyor
  *
- * `dosya + normalize edilmiş ifade`. Satır numarası taşısaydı ilgisiz bir
- * satır eklemek onlarca kaydı kaydırırdı; gürültülü nöbetçi susturulan
- * nöbetçidir (`beklemeButcesi` envanteri on kalemle bunu kaldırabiliyor,
- * altmış iki kalemle kaldıramazdı).
+ * `dosya + etiket + normalize edilmiş ifade`. Satır numarası taşısaydı
+ * ilgisiz bir satır eklemek onlarca kaydı kaydırırdı; gürültülü nöbetçi
+ * susturulan nöbetçidir (`beklemeButcesi` envanteri on kalemle bunu
+ * kaldırabiliyor, altmış iki kalemle kaldıramazdı).
+ *
+ * **Ama satır numarasından vazgeçmenin ölçülmemiş bir bedeli vardı ve bağımsız
+ * doğrulama turu onu ters provayla buldu (D-1):** tarama `new Set` ile
+ * tekilleştirdiği için, aynı dosyaya **aynı ifadeyle** eklenen ikinci bir
+ * geçerlilik kapısı nöbetçiye hiç görünmüyordu. Sonda `PackingStationPage`e
+ * ikinci bir `<Button disabled={!kod.trim()}>` koydu ve bu dosya **8/8 yeşil**
+ * kaldı. Yani yukarıdaki "sekizincisi/dokuzuncusu doğduğu gün CI kırılır"
+ * vaadi, ihlalin ŞEKLİ yeniyse doğruydu; tekrarıysa değildi.
+ *
+ * Düzeltme satır numarasına dönmek değil, kimliğe **çağrı sayısını** eklemek:
+ * `ADETLER` her kimliğin kaç kez geçtiğini dondurur (yazılmayan her kimlik
+ * için 1). Tekrar da, tekrarın kapanması da kırmızı üretir; kaydırma gürültüsü
+ * geri gelmez. Ölçülen: **62 benzersiz kimlik / 77 ham çağrı yeri.**
  */
 import { describe, expect, it } from "vitest";
 
-import { disabledDugmeleri, tabanTaramasi } from "../../scripts/gonder-dugmesi.mjs";
+import { disabledDugmeleri, tabanSayimi, tabanTaramasi } from "../../scripts/gonder-dugmesi.mjs";
 
 /**
  * `disabled` çağrı yerlerinin TAM kaydı — sınıfıyla.
@@ -140,6 +153,30 @@ const KAYIT: Record<string, "islem" | "sinir" | "secim" | "onkosul" | "gecerlili
   "src/pages/admin/packing/PackingStationPage.tsx <Button> !kod.trim()": "gecerlilik-borc",
 };
 
+/**
+ * ── Aynı kimlikten BİRDEN ÇOK çağrı yeri taşıyan kayıtlar (doğrulama turu · D-1) ──
+ *
+ * Yazılmayan her kimliğin beklenen adedi **1**'dir. Buradaki sekiz kayıt bugün
+ * ölçülen tekrarlardır ve **hepsi `islem` sınıfındadır** (`isPending`/`busy`)
+ * — yani bugün tekrar eden tek bir geçerlilik borcu yok. Bir kimlik burada
+ * yazılı olmadan ikinci kez doğarsa da, buradaki bir sayı değişirse de
+ * (tekrar arttı ya da kapandı) nöbetçi kırmızıdır.
+ *
+ * `1` yazmak YASAK: varsayılan zaten 1'dir ve "1" yazan bir kayıt, tekrarların
+ * listesini gereksiz yere şişirip okunmaz hâle getirirdi. Aşağıdaki test bunu
+ * ayrıca sınıyor.
+ */
+const ADETLER: Record<string, number> = {
+  "src/components/ImageCropModal.tsx <button> isUploading": 3,
+  "src/components/LibraryBookmarkButton.tsx <button> toggle.isPending": 2,
+  "src/components/LibraryMediaManager.tsx <button> busy": 2,
+  "src/components/admin/ui/ConfirmDialog.tsx <Button> isPending": 2,
+  "src/pages/DeliveryDriver.tsx <button> busy": 2,
+  "src/pages/admin/AdminBookingsPage.tsx <Button> pending": 3,
+  "src/pages/admin/AdminDemandsPage.tsx <Button> cancel.isPending": 2,
+  "src/pages/dashboards/AdminHome.tsx <Button> busy": 7,
+};
+
 /** Kilitli kararın bugünkü açık borcu — sayı DEĞİL, kimlik. */
 const GECERLILIK_BORCU = Object.entries(KAYIT)
   .filter(([, sinif]) => sinif === "gecerlilik-borc")
@@ -161,6 +198,40 @@ describe("İP-A8 · gönder düğmesi nöbetçisi (kilitli karar)", () => {
     // Bu bir TAVAN değil, dondurulmuş bir kimliktir: yeni bir "geçerlilikle
     // kapanan gönder düğmesi" bu satırı kıramadan doğamaz.
     expect(taban.filter((s) => KAYIT[s] === "gecerlilik-borc")).toEqual(GECERLILIK_BORCU);
+  });
+
+  it("her kimliğin ÇAĞRI SAYISI da dondurulmuştur (tekrar eden ihlal sessizce doğamaz)", () => {
+    // D-1'in ters provası kalıcı hâle geldi: `taban` tekilleştirilmiş bir liste
+    // olduğu sürece, aynı dosyaya AYNI ifadeyle eklenen ikinci bir geçerlilik
+    // kapısı hiçbir iddiayı kırmıyordu. Kimlik artık sayıyı da kapsıyor.
+    //
+    // İki yön de kırar: adet artarsa (yeni tekrar) da, azalırsa (tekrar
+    // kapandı ama kayıt bayat kaldı) da kırmızıdır.
+    const beklenen = Object.fromEntries(
+      Object.keys(KAYIT)
+        .sort()
+        .map((kimlik) => [kimlik, ADETLER[kimlik] ?? 1])
+    );
+    expect(tabanSayimi()).toEqual(beklenen);
+  });
+
+  it("ADETLER kaydının kendisi sağlıklıdır (ölü giriş yok, gereksiz `1` yok)", () => {
+    // Kaydın kendisi de bir kaçış kapısı olmasın: `KAYIT`ta olmayan bir kimlik
+    // için adet yazmak, ya da varsayılanla aynı olan `1`i yazmak, listeyi
+    // okunmaz yapıp tekrarları gizlerdi.
+    expect(Object.keys(ADETLER).filter((k) => !(k in KAYIT)), "ölü adet kaydı").toEqual([]);
+    expect(
+      Object.entries(ADETLER).filter(([, adet]) => adet < 2),
+      "varsayılanla aynı olan adet kaydı (1 YAZILMAZ)"
+    ).toEqual([]);
+  });
+
+  it("bugün tekrar eden hiçbir kimlik GEÇERLİLİK BORCU değildir", () => {
+    // Bu iddia bir kaydı değil bir OLGUYU dondurur: tekrarların hepsi bugün
+    // `islem` sınıfında. Bir geçerlilik borcu tekrar etmeye başlarsa —yani
+    // kilitli kararın ihlali çoğalırsa— burası kırmızı düşer ve bunun ayrı
+    // okunması gerekir.
+    expect(Object.keys(ADETLER).filter((k) => KAYIT[k] === "gecerlilik-borc")).toEqual([]);
   });
 
   it("B-10 KAPANDI: `DeliveryOrdersPage` artık geçerlilikle kapanan düğme taşımıyor", () => {
