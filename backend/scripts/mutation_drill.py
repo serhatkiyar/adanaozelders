@@ -1185,6 +1185,90 @@ MUTASYONLAR: list[Mutasyon] = [
         '# MUTASYON: setdefault kaldirildi (.env sizabilir)',
         ("tests/integration/test_ip5_provider_guard_pg.py",),
     ),
+
+    # -- IP-A7d1: goc dalgasi 1 (uc ekran + ortak katman) --------------------
+    #
+    # Bes esigin her biri GERCEK bir JSX mutasyonuyla kirilir; ayrica Gorev 1'in
+    # ortak katman karari ve "her kosullu dal render edilir" kabul kriteri de
+    # birer mutasyonla sinanir. Frontend tarafinda surucunun yesil taban kapisi
+    # olcum yapmiyor ([[TB-45]] notu); taban ayrica elle dogrulandi (tam suite
+    # 1277/1277, alti karisik tohum).
+    Mutasyon(
+        "A7D1-1", "esik: ham <button> geri kondu (182 -> 183)",
+        "frontend/src/pages/admin/AdminBookingsPage.tsx",
+        '<div className="flex gap-2"><Button type="submit">Ara</Button>',
+        '<div className="flex gap-2"><button type="button">Disa aktar</button><Button type="submit">Ara</Button>',
+        ("src/__guards__/uiBaseline.test.ts",), "frontend",
+    ),
+    Mutasyon(
+        "A7D1-2", "esik: adsiz form kontrolu eklendi (37 -> 38)",
+        "frontend/src/pages/admin/AdminAuditLogsPage.tsx",
+        """          <div className="flex gap-2">
+            <Button type="submit">Ara</Button>""",
+        """          <div className="flex gap-2">
+            <input className="input" placeholder="Not" />
+            <Button type="submit">Ara</Button>""",
+        (
+            "src/__guards__/uiBaseline.test.ts",
+            "src/__guards__/calismaZamaniKapisi.test.tsx",
+        ), "frontend",
+    ),
+    Mutasyon(
+        "A7D1-3", "esik: pencere durumu ekrana geri tasindi (28 -> 29)",
+        "frontend/src/pages/admin/AdminBookingsPage.tsx",
+        """  const yuzey = useDuzenlemeYuzeyi<Decision, void>();
+  const karar = yuzey.kayit;""",
+        """  const [karar, setKarar] = useState<Decision | null>(null);
+  const yuzey = {
+    ...useDuzenlemeYuzeyi<Decision, void>(),
+    ac: setKarar,
+    kapat: () => setKarar(null),
+  };""",
+        ("src/__guards__/uiBaseline.test.ts",), "frontend",
+    ),
+    Mutasyon(
+        "A7D1-4", "esik: etiketsiz overlay geri kondu (3 -> 4)",
+        "frontend/src/pages/dashboards/AdminLibraries.tsx",
+        '    <section className="space-y-4">',
+        """    <section className="space-y-4">
+      <div className="fixed inset-0 bg-black/40" />""",
+        ("src/__guards__/uiBaseline.test.ts",), "frontend",
+    ),
+    Mutasyon(
+        "A7D1-5", "esik: bir ekran olcum tabanindan sessizce cikarildi",
+        "frontend/scripts/ui-baseline-sayim.mjs",
+        '  "src/pages/admin/AdminBookingsPage.tsx",',
+        "  // MUTASYON: olcum tabanindan cikarildi",
+        ("src/__guards__/uiBaseline.test.ts",), "frontend",
+    ),
+    Mutasyon(
+        "A7D1-6", "Gorev 1: satir aksiyonu korumasi kaldirildi",
+        "frontend/src/components/admin/data-table/DataTable.tsx",
+        "  return hedef instanceof Element && hedef.closest(ETKILESIMLI) !== null;",
+        "  return false; // MUTASYON: aksiyona basmak satiri da aciyor",
+        ("src/components/admin/data-table/satirAksiyonu.test.tsx",), "frontend",
+    ),
+    Mutasyon(
+        "A7D1-7", "kabul kriteri: kosullu dalda duran alanin adi silindi",
+        "frontend/src/components/LibraryEditorModal.tsx",
+        '                              aria-label={`${WEEKDAY_LABELS[g.weekday]} açılış saati`}',
+        '                              data-mutasyon="ad-yok"',
+        ("src/components/kutuphaneEditoruDalAdlari.acceptance.test.tsx",), "frontend",
+    ),
+    Mutasyon(
+        "A7D1-8", "bos durum ayrimi kaldirildi (filtre eslesmedi = kayit yok)",
+        "frontend/src/pages/admin/AdminBookingsPage.tsx",
+        'emptyTitle={filtreliMi ? "Bu filtreyle rezervasyon bulunamadı" : "Rezervasyon yok"}',
+        'emptyTitle="Rezervasyon yok"',
+        ("src/pages/admin/adminRezervasyonFiltre.acceptance.test.tsx",), "frontend",
+    ),
+    Mutasyon(
+        "A7D1-9", "filtre degisince sayfa sifirlamasi kapatildi",
+        "frontend/src/pages/admin/AdminBookingsPage.tsx",
+        '    sayfaAnahtari: "page",',
+        "    sayfaAnahtari: null,",
+        ("src/pages/admin/adminRezervasyonFiltre.acceptance.test.tsx",), "frontend",
+    ),
 ]
 
 

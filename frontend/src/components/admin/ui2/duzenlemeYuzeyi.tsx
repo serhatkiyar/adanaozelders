@@ -239,6 +239,26 @@ const GELISTIRME: boolean = !!import.meta.env?.DEV;
  * Bekçiyi kurar VE (bir `DuzenlemePenceresi` içindeyse) pencereye bildirir;
  * böylece ×/ESC/dış tıklama yolları da kirli formu sorar.
  */
+/**
+ * ⚠️ KESKİN KENAR (İP-A7d1 · SK-3): kanca, pencerenin İÇİNDE çağrılmalıdır.
+ *
+ * Bildirim `BekciBildirimCtx` üzerinden yapılır ve o bağlamı
+ * `DuzenlemePenceresi` açar. Kancayı, pencereyi RENDER EDEN bileşende çağırmak
+ * (yani `<DuzenlemePenceresi>`in kardeşi/ebeveyni olarak) bağlamın DIŞINDA
+ * kalmaktır: `bildir` `null` gelir, pencere bekçiyi hiç tanımaz ve ×/ESC/dış
+ * tıklama kirli formu SORMADAN kapatır — kullanıcının yazdığı veri gider.
+ *
+ * Sessizdir: tip hatası yok, uyarı yok, test yazılmadıysa fark edilmez.
+ * İP-A7d1'de bu tuzağa düşüldü ve ancak kabul testi yakaladı.
+ *
+ * Otomatik uyarı EKLENMEDİ: sağlayıcısız çağrı MEŞRU bir kullanımdır (satır
+ * içi form — pencere yokken bekçi yalnız rota/sekme korumasını kurar), yani
+ * "sağlayıcı yok" tek başına hata değildir. Doğru yazım şudur:
+ *
+ *     <DuzenlemePenceresi yuzey={yuzey} baslik="…">
+ *       <Icerik />          // ← `useYuzeyKirliFormBekcisi` BURADA çağrılır
+ *     </DuzenlemePenceresi>
+ */
 export function useYuzeyKirliFormBekcisi<TFieldValues extends FieldValues>(
   secenekler: KirliFormBekcisiSecenekleri<TFieldValues>
 ): KirliFormBekcisi {

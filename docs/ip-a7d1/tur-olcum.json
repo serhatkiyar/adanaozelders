@@ -1,0 +1,270 @@
+{
+  "olculdu": "2026-08-20T00:16:17.828Z",
+  "ekranlar": {
+    "kutuphane-editoru": {
+      "acik-1280": {
+        "tema": "acik",
+        "yatayTasma": false,
+        "colorScheme": [
+          {
+            "ad": ":r3:kontrol",
+            "colorScheme": "normal"
+          },
+          {
+            "ad": ":r4:kontrol",
+            "colorScheme": "normal"
+          }
+        ]
+      },
+      "acik-380": {
+        "tema": "acik",
+        "yatayTasma": false,
+        "colorScheme": [
+          {
+            "ad": ":r3:kontrol",
+            "colorScheme": "normal"
+          },
+          {
+            "ad": ":r4:kontrol",
+            "colorScheme": "normal"
+          }
+        ]
+      },
+      "koyu-1280": {
+        "tema": "koyu",
+        "yatayTasma": false,
+        "colorScheme": [
+          {
+            "ad": ":r3:kontrol",
+            "colorScheme": "dark"
+          },
+          {
+            "ad": ":r4:kontrol",
+            "colorScheme": "dark"
+          }
+        ]
+      },
+      "koyu-380": {
+        "tema": "koyu",
+        "yatayTasma": false,
+        "colorScheme": [
+          {
+            "ad": ":r3:kontrol",
+            "colorScheme": "dark"
+          },
+          {
+            "ad": ":r4:kontrol",
+            "colorScheme": "dark"
+          }
+        ]
+      }
+    },
+    "rezervasyonlar": {
+      "acik-1280": {
+        "tema": "acik",
+        "yatayTasma": false
+      },
+      "acik-380": {
+        "tema": "acik",
+        "yatayTasma": false,
+        "mobilKart": {
+          "kartSayisi": 6,
+          "kartGenisligi": 346,
+          "govdeGenisligi": 380,
+          "yatayTasma": false,
+          "aciciVar": false,
+          "aciciAdi": "yok",
+          "aciciKapliyor": null,
+          "icIceButon": 0,
+          "aksiyonEtiketleri": [
+            "İhtilafı kaldır",
+            "İptal / iade"
+          ],
+          "aksiyonYuksekligi": 36
+        }
+      },
+      "koyu-1280": {
+        "tema": "koyu",
+        "yatayTasma": false
+      },
+      "koyu-380": {
+        "tema": "koyu",
+        "yatayTasma": false,
+        "mobilKart": {
+          "kartSayisi": 6,
+          "kartGenisligi": 346,
+          "govdeGenisligi": 380,
+          "yatayTasma": false,
+          "aciciVar": false,
+          "aciciAdi": "yok",
+          "aciciKapliyor": null,
+          "icIceButon": 0,
+          "aksiyonEtiketleri": [
+            "İhtilafı kaldır",
+            "İptal / iade"
+          ],
+          "aksiyonYuksekligi": 36
+        }
+      }
+    },
+    "denetim-kayitlari": {
+      "acik-1280": {
+        "tema": "acik",
+        "yatayTasma": false
+      },
+      "acik-380": {
+        "tema": "acik",
+        "yatayTasma": false,
+        "mobilKart": {
+          "kartSayisi": 6,
+          "kartGenisligi": 346,
+          "govdeGenisligi": 380,
+          "yatayTasma": false,
+          "aciciVar": true,
+          "aciciAdi": "kart içeriğinden",
+          "aciciKapliyor": true,
+          "icIceButon": 0,
+          "aksiyonEtiketleri": [],
+          "aksiyonYuksekligi": null
+        }
+      },
+      "koyu-1280": {
+        "tema": "koyu",
+        "yatayTasma": false
+      },
+      "koyu-380": {
+        "tema": "koyu",
+        "yatayTasma": false,
+        "mobilKart": {
+          "kartSayisi": 6,
+          "kartGenisligi": 346,
+          "govdeGenisligi": 380,
+          "yatayTasma": false,
+          "aciciVar": true,
+          "aciciAdi": "kart içeriğinden",
+          "aciciKapliyor": true,
+          "icIceButon": 0,
+          "aksiyonEtiketleri": [],
+          "aksiyonYuksekligi": null
+        }
+      }
+    }
+  },
+  "cakisma": {
+    "acik": {
+      "olcum": {
+        "kartSayisi": 3,
+        "kartGenisligi": 346,
+        "govdeGenisligi": 380,
+        "yatayTasma": false,
+        "aciciVar": true,
+        "aciciAdi": "kart içeriğinden",
+        "aciciKapliyor": true,
+        "icIceButon": 0,
+        "aksiyonEtiketleri": [
+          "Sil"
+        ],
+        "aksiyonYuksekligi": 36
+      },
+      "aksiyonSonrasi": "aksiyon:1",
+      "metinSonrasi": "aksiyon:1 satir:1"
+    },
+    "koyu": {
+      "olcum": {
+        "kartSayisi": 3,
+        "kartGenisligi": 346,
+        "govdeGenisligi": 380,
+        "yatayTasma": false,
+        "aciciVar": true,
+        "aciciAdi": "kart içeriğinden",
+        "aciciKapliyor": true,
+        "icIceButon": 0,
+        "aksiyonEtiketleri": [
+          "Sil"
+        ],
+        "aksiyonYuksekligi": 36
+      },
+      "aksiyonSonrasi": "aksiyon:1",
+      "metinSonrasi": "aksiyon:1 satir:1"
+    }
+  },
+  "satirAksiyonu": {
+    "oncePencere": null,
+    "basildi": {
+      "basilan": "İhtilafı kaldır"
+    },
+    "sonraPencere": {
+      "baslik": "İhtilafı kaldır"
+    },
+    "icIceButon": 0
+  },
+  "odakTuzagi": {
+    "acildi": {
+      "baslik": "Denetim kaydı"
+    },
+    "acanOdakliydi": true,
+    "tabDisinaCikti": false,
+    "shiftTabPencereIcinde": true,
+    "escKapatti": true,
+    "odakIadesi": {
+      "acanaDondu": true,
+      "etiket": "tr"
+    }
+  },
+  "gonderim": {
+    "acik": {
+      "odak": {
+        "etiket": "input",
+        "tip": null,
+        "ad": ":r2:kontrol",
+        "ariaInvalid": "true",
+        "pencereIcinde": true
+      },
+      "hata": {
+        "metin": "Kütüphane adı en az 2 karakter olmalı.",
+        "renk": "rgb(190, 18, 60)",
+        "fontPx": 12,
+        "kontrast": 6.29,
+        "esik": 4.5,
+        "gecti": true
+      },
+      "colorScheme": [
+        {
+          "ad": ":r3:kontrol",
+          "colorScheme": "normal"
+        },
+        {
+          "ad": ":r4:kontrol",
+          "colorScheme": "normal"
+        }
+      ]
+    },
+    "koyu": {
+      "odak": {
+        "etiket": "input",
+        "tip": null,
+        "ad": ":r2:kontrol",
+        "ariaInvalid": "true",
+        "pencereIcinde": true
+      },
+      "hata": {
+        "metin": "Kütüphane adı en az 2 karakter olmalı.",
+        "renk": "rgb(251, 113, 133)",
+        "fontPx": 12,
+        "kontrast": 6.63,
+        "esik": 4.5,
+        "gecti": true
+      },
+      "colorScheme": [
+        {
+          "ad": ":r3:kontrol",
+          "colorScheme": "dark"
+        },
+        {
+          "ad": ":r4:kontrol",
+          "colorScheme": "dark"
+        }
+      ]
+    }
+  }
+}

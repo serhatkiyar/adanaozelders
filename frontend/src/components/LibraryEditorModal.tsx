@@ -338,8 +338,13 @@ interface LibraryEditorModalProps {
  * kirli formu SORMADAN kapatır — kullanıcının yazdığı veri gider.
  *
  * Bu tuzağa bu göçte düşüldü ve kabul testi yakaladı (rapor → sözleşme
- * kusurları · SK-3). Sözleşme artık `useYuzeyKirliFormBekcisi`nin kendi
- * içinde de geliştirmede uyarıyor.
+ * kusurları · SK-3). Ters prova yapıldı: kanca sağlayıcı dışına alındığında
+ * "KİRLİ formda kapatma önce sorar" testi kırılıyor.
+ *
+ * Otomatik bir uyarı EKLENEMEDİ ve sebebi bilinçlidir: kancanın sağlayıcısız
+ * çağrılması MEŞRU bir kullanım (satır içi form, ör. `ProductForm`), yani
+ * "sağlayıcı yok" tek başına hata değil. Nöbetçi kabul testidir; kural
+ * `ui2/duzenlemeYuzeyi.tsx`te de yazılıdır.
  */
 export function LibraryEditorModal({ yuzey, canEditIdentity = true }: LibraryEditorModalProps) {
   const kayit = yuzey.kayit;
