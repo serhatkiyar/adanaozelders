@@ -248,10 +248,30 @@ def _kirilanlar(cikti: str) -> list[str]:
             f"{h} (KURULUM HATASI — test hiç koşmadı)" for h in kurulum_hatasi
         ]
     # vitest: "×" işaretli satırlar
-    return [
+    #
+    # ── İP-A7d4: "×" TEK BAŞINA YETMİYOR ──
+    #
+    # Bir `afterAll`/`beforeAll` kancasında düşen iddia vitest çıktısında "×"
+    # satırı ÜRETMEZ; "Unhandled Error" / "Test Files 1 failed" olarak görünür.
+    # Sürücü bu yüzden gerçek bir kırılmayı "YAKALANMADI" diye raporluyordu
+    # (A7D4-10: parçalanmış kapının kapsam nöbetçisi kancaya taşınmıştı).
+    #
+    # Kanca hatası da bir kırılmadır. `_kirilanlar` artık özet satırlarını da
+    # okur; çağıran taraf ayrıca `returncode`u geçirebilir.
+    carpi = [
         s.strip()[:110].encode("ascii", "replace").decode()
         for s in cikti.splitlines() if "×" in s
     ][:8]
+    if carpi:
+        return carpi
+    ozet = [
+        s.strip()[:110].encode("ascii", "replace").decode()
+        for s in cikti.splitlines()
+        if ("Test Files" in s and "failed" in s)
+        or "Unhandled Error" in s
+        or s.strip().startswith("Errors ")
+    ][:8]
+    return ozet
 
 
 def _yesil_taban(m: Mutasyon) -> tuple[bool, str]:
@@ -265,8 +285,17 @@ def _yesil_taban(m: Mutasyon) -> tuple[bool, str]:
     Referans uygulama `mutation_drill_ip18.py`'de doğmuştu; İP-21'de buraya
     taşındı ki yedi paketin ortak aracı aynı kapıyı taşısın.
     """
+    # ── İP-A7d4: frontend tarafında da ÖLÇÜLÜYOR (eski sınır TB-45) ──
+    #
+    # Eskiden burası koşulsuz `True` dönüyordu, yani zaten kırık bir vitest
+    # dosyası mutasyon altında da kırık kalır ve "YAKALANDI" sayılırdı —
+    # backend tarafında kapatılan kapının frontend tarafı açıktı. Üstelik bu
+    # pakette `_kirilanlar` daha duyarlı hâle getirildi; duyarlılığı taban
+    # kapısı olmadan artırmak yanlış yönde bir risk olurdu.
     if m.taraf != "backend":
-        return True, "(frontend — taban ölçülmedi)"
+        r = _kos("npx vitest run " + " ".join(m.testler), FRONTEND)
+        cikti = r.stdout + r.stderr
+        return r.returncode == 0, f"(frontend vitest returncode={r.returncode})"
     r = _kos([sys.executable, "-m", "pytest", "-q", *m.testler], BACKEND)
     cikti = r.stdout + r.stderr
     return (not _kirilanlar(cikti)) and r.returncode == 0, _sayi_ve_sonuc(cikti)
@@ -1565,15 +1594,32 @@ MUTASYONLAR: list[Mutasyon] = [
             "src/__guards__/calismaZamaniKapisi.test.tsx",
         ), "frontend",
     ),
+    # NOT (mutasyonun kendi hatasi, kayda geciyor): ilk yazim yalniz bir
+    # `useState` bildiriyor ve onu `void secili;` ile kullaniyordu. Sayac ise
+    # "ekranda yasayan pencere durumu"nu bir bildirim olarak DEGIL, o durumun
+    # bir pencerenin `open` propuna AKMASI olarak olcuyor — yani mutasyon
+    # metrigin olctugu seyi hic uretmemisti ve "YAKALANMADI" sonucu testin
+    # degil mutasyonun kusuruydu. A7D3-3'te de ayni tuzaga dusulmustu.
     Mutasyon(
         "A7D4-3", "esik: pencere durumu ekrana geri tasindi (2 -> 3)",
         "frontend/src/pages/admin/AdminOperationsPage.tsx",
         "  const yuzey = useDuzenlemeYuzeyi<FailedOutboxEvent, void>();",
-        "  const [secili, setSecili] = useState<FailedOutboxEvent | null>(null);\n"
-        "  void setSecili;\n"
-        "  const yuzey = useDuzenlemeYuzeyi<FailedOutboxEvent, void>();\n"
-        "  void secili;",
+        "  const [secili] = useState<FailedOutboxEvent | null>(null);\n"
+        "  const yuzey = useDuzenlemeYuzeyi<FailedOutboxEvent, void>();",
         ("src/__guards__/uiBaseline.test.ts",), "frontend",
+        ek=(
+            (
+                "frontend/src/pages/admin/AdminOperationsPage.tsx",
+                "        open={yuzey.acik}",
+                "        open={secili !== null || yuzey.acik}",
+            ),
+            (
+                "frontend/src/pages/admin/AdminOperationsPage.tsx",
+                'import { Badge, Button, ConfirmDialog, EmptyState, ErrorState } from "@/components/admin/ui";',
+                'import { useState } from "react";\n'
+                'import { Badge, Button, ConfirmDialog, EmptyState, ErrorState } from "@/components/admin/ui";',
+            ),
+        ),
     ),
     Mutasyon(
         "A7D4-4", "esik: etiketsiz overlay geri kondu (0 -> 1)",
