@@ -1,7 +1,29 @@
+// Kütüphane yönetimi — katalog + onay kuyruğu + düzenleme yüzeyleri.
+//
+// ## İP-A7d1 · göç dalgası 1, ekran (a)'nın ev sahibi
+//
+// Bu ekran (a) biriminin ikinci yarısıdır: `LibraryEditorModal` göç edince
+// pencere durumunun ekrandan çıkması gerekti ("ekranlarda modal `useState`i
+// yaşamaz" kilitli kararı). Ekranın DÖRT pencere durumu vardı ve dördü de
+// yüzeye taşındı: editör, oturum/operatör yönetimi, ödeme bilgileri ve
+// onay/red/silme kararı.
+//
+// Yanında kapanan borçlar:
+//
+//   - Elle kurulan İKİ `fixed inset-0` katmanı (`ManageModal`,
+//     `LibraryPayoutModal`) ortak `DuzenlemePenceresi`ye geçti: ikisinde de
+//     `role="dialog"` YOKTU, `aria-modal` YOKTU, odak tuzağı ve ESC YOKTU.
+//   - On üç ham `<button>` ortak `Button`a geçti.
+//   - Operatör ekleme formunun dört alanı `placeholder`ı etiket yerine
+//     kullanıyordu (ekran okuyucuya adsız görünüyorlardı); `Form.*`a geçti.
 import { useState } from "react";
 import { ExamSessionsManager } from "@/components/ExamSessionsManager";
 import { AccessDenied, ReadOnlyNotice, useAdminAreaAccess } from "@/components/admin/AccessState";
-import { ConfirmDialog, ReasonDialog } from "@/components/admin/ui";
+import { Button, ConfirmDialog, ReasonDialog } from "@/components/admin/ui";
+import {
+  DuzenlemePenceresi,
+  useDuzenlemeYuzeyi,
+} from "@/components/admin/ui2/duzenlemeYuzeyi";
 import { LibraryPayoutForm } from "@/components/LibraryPayoutForm";
 import {
   LibraryEditorModal,
@@ -36,16 +58,19 @@ const STATUS_BADGE: Record<string, string> = {
   HIDDEN: "bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-300",
 };
 
+type Karar = { kind: "approve" | "reject" | "delete"; library: LibrarySearchOut };
+
 export default function AdminLibraries() {
   const { canView, canManage } = useAdminAreaAccess("libraries");
-  const [decision, setDecision] = useState<{
-    kind: "approve" | "reject" | "delete";
-    library: LibrarySearchOut;
-  } | null>(null);
   const { data, isLoading, isError, error } = useAdminLibraries();
-  const [editor, setEditor] = useState<EditorState | null>(null);
-  const [managing, setManaging] = useState<LibrarySearchOut | null>(null);
-  const [payouting, setPayouting] = useState<LibrarySearchOut | null>(null);
+
+  // Dört pencere, dört yüzey — hiçbiri `useState` değil.
+  const kararYuzeyi = useDuzenlemeYuzeyi<Karar, void>();
+  const editor = useDuzenlemeYuzeyi<EditorState, void>();
+  const yonetim = useDuzenlemeYuzeyi<LibrarySearchOut, void>();
+  const odeme = useDuzenlemeYuzeyi<LibrarySearchOut, void>();
+  const karar = kararYuzeyi.kayit;
+
   const del = useDeleteLibrary();
   const approve = useApproveLibrary();
   const reject = useRejectLibrary();
@@ -54,7 +79,7 @@ export default function AdminLibraries() {
 
   const onApprove = (lib: LibrarySearchOut) => {
     approve.mutate(lib.id, {
-      onSuccess: () => { toast.success("Başvuru onaylandı, kütüphane yayında."); setDecision(null); },
+      onSuccess: () => { toast.success("Başvuru onaylandı, kütüphane yayında."); kararYuzeyi.kapat(); },
       onError: (e) => toast.error(getErrorMessage(e, "Onay başarısız.")),
     });
   };
@@ -63,19 +88,19 @@ export default function AdminLibraries() {
     reject.mutate(
       { id: lib.id, reason: reason || null },
       {
-        onSuccess: () => { toast.success("Başvuru reddedildi."); setDecision(null); },
+        onSuccess: () => { toast.success("Başvuru reddedildi."); kararYuzeyi.kapat(); },
         onError: (e) => toast.error(getErrorMessage(e, "Reddetme başarısız.")),
       }
     );
   };
 
-  const openCreate = () => setEditor(emptyEditor());
+  const openCreate = () => editor.ac(emptyEditor());
 
   const openEdit = async (lib: LibrarySearchOut) => {
     try {
       // Tam kayıt (saatler + iletişim) admin detay ucundan gelir (GİZLİ dahil).
       const full = await fetchLibraryAdmin(lib.id);
-      setEditor(toEditorState(full));
+      editor.ac(toEditorState(full));
     } catch (e) {
       toast.error(getErrorMessage(e, "Kütüphane yüklenemedi."));
     }
@@ -83,7 +108,7 @@ export default function AdminLibraries() {
 
   const onDelete = (lib: LibrarySearchOut) => {
     del.mutate(lib.id, {
-      onSuccess: () => { toast.success("Kütüphane silindi."); setDecision(null); },
+      onSuccess: () => { toast.success("Kütüphane silindi."); kararYuzeyi.kapat(); },
       onError: (e) => toast.error(getErrorMessage(e, "Silme başarısız.")),
     });
   };
@@ -96,14 +121,7 @@ export default function AdminLibraries() {
         <p className="text-xs text-slate-400 dark:text-slate-500">
           {data?.length ?? 0} kütüphane · sahada gezip kaydettiğin mekânları buradan yönet.
         </p>
-        {canManage && (
-          <button
-            onClick={openCreate}
-            className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 active:scale-95"
-          >
-            + Kütüphane Ekle
-          </button>
-        )}
+        {canManage && <Button onClick={openCreate}>+ Kütüphane Ekle</Button>}
       </div>
       {!canManage && <ReadOnlyNotice />}
 
@@ -129,26 +147,25 @@ export default function AdminLibraries() {
               </div>
               {canManage && (
                 <div className="flex shrink-0 flex-wrap gap-2">
-                  <button
-                    onClick={() => openEdit(lib)}
-                    className="rounded-xl border border-slate-200 bg-white px-3.5 py-1.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100"
-                  >
+                  <Button size="sm" variant="secondary" onClick={() => openEdit(lib)}>
                     İncele
-                  </button>
-                  <button
-                    onClick={() => setDecision({ kind: "reject", library: lib })}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="secondary"
                     disabled={reject.isPending}
-                    className="rounded-xl border border-rose-200 bg-white px-3.5 py-1.5 text-sm font-semibold text-rose-600 shadow-sm transition hover:bg-rose-50 disabled:opacity-60 dark:border-rose-500/30 dark:bg-slate-700"
+                    onClick={() => kararYuzeyi.ac({ kind: "reject", library: lib })}
                   >
                     Reddet
-                  </button>
-                  <button
-                    onClick={() => setDecision({ kind: "approve", library: lib })}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="success"
                     disabled={approve.isPending}
-                    className="rounded-xl bg-emerald-600 px-3.5 py-1.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:opacity-60 active:scale-95"
+                    onClick={() => kararYuzeyi.ac({ kind: "approve", library: lib })}
                   >
                     Onayla
-                  </button>
+                  </Button>
                 </div>
               )}
             </div>
@@ -202,30 +219,22 @@ export default function AdminLibraries() {
               </div>
               {canManage && (
                 <div className="flex shrink-0 flex-wrap gap-2">
-                  <button
-                    onClick={() => setManaging(lib)}
-                    className="rounded-xl bg-indigo-50 px-3.5 py-1.5 text-sm font-semibold text-indigo-700 transition hover:bg-indigo-100 dark:bg-indigo-500/15 dark:text-indigo-300"
-                  >
-                    Oturumlar & Operatörler
-                  </button>
-                  <button
-                    onClick={() => setPayouting(lib)}
-                    className="rounded-xl bg-emerald-50 px-3.5 py-1.5 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-100 dark:bg-emerald-500/15 dark:text-emerald-300"
-                  >
+                  <Button size="sm" variant="secondary" onClick={() => yonetim.ac(lib)}>
+                    Oturumlar &amp; Operatörler
+                  </Button>
+                  <Button size="sm" variant="secondary" onClick={() => odeme.ac(lib)}>
                     Ödeme
-                  </button>
-                  <button
-                    onClick={() => openEdit(lib)}
-                    className="rounded-xl border border-slate-200 bg-white px-3.5 py-1.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100"
-                  >
+                  </Button>
+                  <Button size="sm" variant="secondary" onClick={() => openEdit(lib)}>
                     Düzenle
-                  </button>
-                  <button
-                    onClick={() => setDecision({ kind: "delete", library: lib })}
-                    className="rounded-xl border border-slate-200 bg-white px-3.5 py-1.5 text-sm font-semibold text-red-600 shadow-sm transition hover:bg-red-50 dark:border-slate-600 dark:bg-slate-700"
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="danger"
+                    onClick={() => kararYuzeyi.ac({ kind: "delete", library: lib })}
                   >
                     Sil
-                  </button>
+                  </Button>
                 </div>
               )}
             </div>
@@ -233,140 +242,126 @@ export default function AdminLibraries() {
         </div>
       )}
 
-      {editor && (
-        <LibraryEditorModal
-          state={editor}
-          onClose={() => setEditor(null)}
-        />
-      )}
+      <LibraryEditorModal yuzey={editor} />
 
-      {managing && (
-        <ManageModal library={managing} onClose={() => setManaging(null)} />
-      )}
+      <DuzenlemePenceresi
+        yuzey={yonetim}
+        baslik={yonetim.kayit?.name ?? "Kütüphane"}
+        genislik="genis"
+      >
+        {yonetim.kayit && (
+          <div className="space-y-6">
+            <OperatorsManager libraryId={yonetim.kayit.id} />
+            <div className="border-t border-slate-100 pt-5 dark:border-slate-700">
+              <ExamSessionsManager libraryId={yonetim.kayit.id} />
+            </div>
+          </div>
+        )}
+      </DuzenlemePenceresi>
 
-      {payouting && (
-        <LibraryPayoutModal library={payouting} onClose={() => setPayouting(null)} />
-      )}
+      <DuzenlemePenceresi
+        yuzey={odeme}
+        baslik={`Ödeme Bilgileri · ${odeme.kayit?.name ?? ""}`}
+      >
+        {odeme.kayit && <LibraryPayoutForm libraryId={odeme.kayit.id} />}
+      </DuzenlemePenceresi>
+
       <ConfirmDialog
-        open={decision?.kind === "approve"}
+        open={karar?.kind === "approve"}
         title="Kütüphane başvurusunu onayla"
-        description={decision ? `${decision.library.name} onaylanıp public kataloğa alınacak.` : ""}
+        description={karar ? `${karar.library.name} onaylanıp public kataloğa alınacak.` : ""}
         confirmLabel="Onayla ve yayınla"
         isPending={approve.isPending}
-        onClose={() => setDecision(null)}
-        onConfirm={() => decision && onApprove(decision.library)}
+        onClose={kararYuzeyi.kapat}
+        onConfirm={() => karar && onApprove(karar.library)}
       />
       <ConfirmDialog
-        open={decision?.kind === "delete"}
+        open={karar?.kind === "delete"}
         title="Kütüphaneyi sil"
-        description={decision ? `${decision.library.name} katalogdan kaldırılacak.` : ""}
+        description={karar ? `${karar.library.name} katalogdan kaldırılacak.` : ""}
         confirmLabel="Kütüphaneyi sil"
         danger
         isPending={del.isPending}
-        onClose={() => setDecision(null)}
-        onConfirm={() => decision && onDelete(decision.library)}
+        onClose={kararYuzeyi.kapat}
+        onConfirm={() => karar && onDelete(karar.library)}
       />
       <ReasonDialog
-        open={decision?.kind === "reject"}
+        open={karar?.kind === "reject"}
         title="Kütüphane başvurusunu reddet"
-        description={decision ? `${decision.library.name} için gerekçe operatöre iletilecek.` : ""}
+        description={karar ? `${karar.library.name} için gerekçe operatöre iletilecek.` : ""}
         label="Red gerekçesi"
         required
         danger
         confirmLabel="Başvuruyu reddet"
         isPending={reject.isPending}
-        onClose={() => setDecision(null)}
-        onConfirm={(reason) => decision && onReject(decision.library, reason)}
+        onClose={kararYuzeyi.kapat}
+        onConfirm={(reason) => karar && onReject(karar.library, reason)}
       />
     </section>
   );
 }
 
-/* ── Kütüphane ödeme (payout) modalı — ortak LibraryPayoutForm sarmalayıcısı ── */
+/* ── Operatör hesapları ── */
 
-function LibraryPayoutModal({
-  library,
-  onClose,
-}: {
-  library: LibrarySearchOut;
-  onClose: () => void;
-}) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl dark:bg-slate-800">
-        <div className="mb-3 flex items-center justify-between">
-          <h3 className="text-base font-bold text-slate-900 dark:text-white">
-            Ödeme Bilgileri · {library.name}
-          </h3>
-          <button
-            onClick={onClose}
-            className="rounded-full px-2 py-1 text-sm text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700"
-          >
-            ✕
-          </button>
-        </div>
-        <LibraryPayoutForm libraryId={library.id} />
-      </div>
-    </div>
-  );
+interface OperatorFormDegerleri {
+  first_name: string;
+  last_name: string;
+  email: string;
+  password: string;
 }
 
-/* ── Oturumlar & Operatörler modalı ── */
-
-function ManageModal({
-  library,
-  onClose,
-}: {
-  library: LibrarySearchOut;
-  onClose: () => void;
-}) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
-      <div className="absolute inset-0" onClick={onClose} />
-      <div className="relative flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-3xl bg-white shadow-2xl dark:bg-slate-800">
-        <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4 dark:border-slate-700">
-          <h2 className="truncate text-lg font-bold text-slate-900 dark:text-white">
-            {library.name}
-          </h2>
-          <button onClick={onClose} className="rounded-full p-2 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700">
-            ✕
-          </button>
-        </div>
-        <div className="flex-1 space-y-6 overflow-y-auto p-6">
-          <OperatorsManager libraryId={library.id} />
-          <div className="border-t border-slate-100 pt-5 dark:border-slate-700">
-            <ExamSessionsManager libraryId={library.id} />
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
+const OPERATOR_BOS: OperatorFormDegerleri = {
+  first_name: "",
+  last_name: "",
+  email: "",
+  password: "",
+};
 
 function OperatorsManager({ libraryId }: { libraryId: number }) {
   const { data: operators } = useOperators(libraryId);
   const create = useCreateOperator(libraryId);
   const del = useDeleteOperator(libraryId);
-  const [form, setForm] = useState({
-    email: "",
-    password: "",
-    first_name: "",
-    last_name: "",
+  // Satır içi ekleme formunun AÇIK/KAPALI olması bir pencere durumu değildir;
+  // katlanır bir bölüm başlığıdır ve ekranda kalır.
+  const [acik, setAcik] = useState(false);
+  const silmeYuzeyi = useDuzenlemeYuzeyi<{ id: number; name: string }, void>();
+  const silinecek = silmeYuzeyi.kayit;
+
+  // Not: burada kirli form bekçisi KURULMAZ. Bu form pencerenin kendi formu
+  // değil, pencere içindeki bir bölümün satır içi formudur; `DuzenlemePenceresi`
+  // tek bir korumalı içerik taşıyabilir (İP-A6c · BULGU-5) ve o hak aynı
+  // pencerede yaşayan oturum yönetimine ayrılmıştır.
+  const [degerler, setDegerler] = useState<OperatorFormDegerleri>(OPERATOR_BOS);
+  const [hatalar, setHatalar] = useState<Partial<Record<keyof OperatorFormDegerleri, string>>>({});
+
+  const alan = (ad: keyof OperatorFormDegerleri) => ({
+    value: degerler[ad],
+    onChange: (e: React.ChangeEvent<HTMLInputElement>) => {
+      setDegerler((d) => ({ ...d, [ad]: e.target.value }));
+      setHatalar((h) => ({ ...h, [ad]: undefined }));
+    },
   });
-  const [open, setOpen] = useState(false);
-  const [deleting, setDeleting] = useState<{ id: number; name: string } | null>(null);
 
   const submit = () => {
-    if (!form.email || form.password.length < 8 || !form.first_name || !form.last_name) {
-      toast.error("Tüm alanları doldurun (şifre en az 8 karakter).");
+    const yeni: Partial<Record<keyof OperatorFormDegerleri, string>> = {};
+    if (!degerler.first_name.trim()) yeni.first_name = "Ad gerekli.";
+    if (!degerler.last_name.trim()) yeni.last_name = "Soyad gerekli.";
+    if (!degerler.email.trim()) yeni.email = "E-posta gerekli.";
+    if (degerler.password.length < 8) yeni.password = "Şifre en az 8 karakter olmalı.";
+    setHatalar(yeni);
+    if (Object.keys(yeni).length) {
+      // Gönderim YAPILMAZ; odak ilk hatalı alana taşınır.
+      const ilk = (["first_name", "last_name", "email", "password"] as const).find(
+        (a) => yeni[a]
+      );
+      if (ilk) document.getElementById(`operator-${ilk}`)?.focus();
       return;
     }
-    create.mutate(form, {
+    create.mutate(degerler, {
       onSuccess: () => {
         toast.success("Operatör hesabı oluşturuldu.");
-        setForm({ email: "", password: "", first_name: "", last_name: "" });
-        setOpen(false);
+        setDegerler(OPERATOR_BOS);
+        setAcik(false);
       },
       onError: (e) => toast.error(getErrorMessage(e, "Oluşturulamadı.")),
     });
@@ -374,7 +369,7 @@ function OperatorsManager({ libraryId }: { libraryId: number }) {
 
   const onDelete = (id: number) => {
     del.mutate(id, {
-      onSuccess: () => { toast.success("Operatör silindi."); setDeleting(null); },
+      onSuccess: () => { toast.success("Operatör silindi."); silmeYuzeyi.kapat(); },
       onError: (e) => toast.error(getErrorMessage(e, "Silme başarısız.")),
     });
   };
@@ -383,23 +378,33 @@ function OperatorsManager({ libraryId }: { libraryId: number }) {
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-bold text-slate-900 dark:text-white">Operatörler</h3>
-        <button
-          onClick={() => setOpen((v) => !v)}
-          className="rounded-lg bg-slate-100 px-3 py-1.5 text-sm font-semibold text-slate-700 dark:bg-slate-700 dark:text-slate-200"
-        >
-          {open ? "Kapat" : "+ Operatör"}
-        </button>
+        <Button size="sm" variant="secondary" aria-expanded={acik} onClick={() => setAcik((v) => !v)}>
+          {acik ? "Kapat" : "+ Operatör"}
+        </Button>
       </div>
 
-      {open && (
+      {acik && (
         <div className="grid grid-cols-2 gap-2 rounded-xl bg-slate-50 p-3 dark:bg-slate-900/40">
-          <input className="input" placeholder="Ad" value={form.first_name} onChange={(e) => setForm({ ...form, first_name: e.target.value })} />
-          <input className="input" placeholder="Soyad" value={form.last_name} onChange={(e) => setForm({ ...form, last_name: e.target.value })} />
-          <input className="input col-span-2" placeholder="E-posta" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
-          <input className="input col-span-2" type="password" placeholder="Şifre (min 8)" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
-          <button onClick={submit} disabled={create.isPending} className="col-span-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60">
-            {create.isPending ? "Oluşturuluyor…" : "Operatör Hesabı Oluştur"}
-          </button>
+          {/* `Form.*` kullanılmıyor: bu form `react-hook-form` bağlamı
+              taşımıyor (pencerenin formu değil). Etiket/`id` bağı ve hata
+              slotu elle ama AYNI sözleşmeyle kuruluyor — alanların hepsinin
+              erişilebilir adı var ve hata alanın altında. */}
+          <OperatorAlani ad="first_name" etiket="Ad" hata={hatalar.first_name} {...alan("first_name")} />
+          <OperatorAlani ad="last_name" etiket="Soyad" hata={hatalar.last_name} {...alan("last_name")} />
+          <OperatorAlani ad="email" etiket="E-posta" genis hata={hatalar.email} {...alan("email")} />
+          <OperatorAlani
+            ad="password"
+            etiket="Şifre (en az 8 karakter)"
+            tip="password"
+            genis
+            hata={hatalar.password}
+            {...alan("password")}
+          />
+          <div className="col-span-2">
+            <Button className="w-full" isPending={create.isPending} onClick={submit}>
+              Operatör Hesabı Oluştur
+            </Button>
+          </div>
         </div>
       )}
 
@@ -411,9 +416,13 @@ function OperatorsManager({ libraryId }: { libraryId: number }) {
                 <p className="truncate text-sm font-medium text-slate-800 dark:text-slate-200">{op.full_name}</p>
                 <p className="truncate text-xs text-slate-400">{op.email}</p>
               </div>
-              <button onClick={() => setDeleting({ id: op.id, name: op.full_name })} className="rounded-lg px-2 py-1 text-xs font-semibold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/10">
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => silmeYuzeyi.ac({ id: op.id, name: op.full_name })}
+              >
                 Sil
-              </button>
+              </Button>
             </li>
           ))}
         </ul>
@@ -421,16 +430,56 @@ function OperatorsManager({ libraryId }: { libraryId: number }) {
         <p className="text-xs text-slate-400">Henüz operatör yok. Kütüphaneci için hesap oluşturun.</p>
       )}
       <ConfirmDialog
-        open={deleting !== null}
+        open={silinecek !== null}
         title="Operatör hesabını sil"
-        description={deleting ? `${deleting.name} operatör hesabı kalıcı olarak kapatılacak.` : ""}
+        description={silinecek ? `${silinecek.name} operatör hesabı kalıcı olarak kapatılacak.` : ""}
         confirmLabel="Hesabı sil"
         danger
         isPending={del.isPending}
-        onClose={() => setDeleting(null)}
-        onConfirm={() => deleting && onDelete(deleting.id)}
+        onClose={silmeYuzeyi.kapat}
+        onConfirm={() => silinecek && onDelete(silinecek.id)}
       />
     </div>
   );
 }
 
+function OperatorAlani({
+  ad,
+  etiket,
+  tip = "text",
+  genis = false,
+  hata,
+  value,
+  onChange,
+}: {
+  ad: keyof OperatorFormDegerleri;
+  etiket: string;
+  tip?: string;
+  genis?: boolean;
+  hata?: string;
+  value: string;
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+}) {
+  const id = `operator-${ad}`;
+  const hataId = `${id}-hata`;
+  return (
+    <div className={genis ? "col-span-2" : undefined}>
+      <label htmlFor={id} className="mb-1 block text-xs font-semibold text-slate-600 dark:text-slate-300">
+        {etiket}
+      </label>
+      <input
+        id={id}
+        type={tip}
+        className="input w-full"
+        value={value}
+        onChange={onChange}
+        aria-invalid={hata ? true : undefined}
+        aria-describedby={hata ? hataId : undefined}
+      />
+      {/* Slot HER ZAMAN var: hata doğunca yerleşim itilmez (Form.Item kuralı). */}
+      <p id={hataId} role={hata ? "alert" : undefined} className="mt-1 min-h-[1rem] text-xs text-rose-700 dark:text-rose-400">
+        {hata}
+      </p>
+    </div>
+  );
+}

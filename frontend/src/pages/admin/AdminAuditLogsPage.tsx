@@ -1,13 +1,47 @@
+// Denetim kayıtları — arama/filtre + satıra tıklayınca tam kayıt.
+//
+// ## İP-A7d1 · göç dalgası 1, ekran (c)
+//
+// Bu ekran tabanda YAPISAL OLARAK TEKTİ: pencere durumu ekranda yaşayıp bir
+// bileşene **prop olarak iniyordu** (`selected` → `AuditDetailDialog`ın `log`
+// prop'u → `<Dialog open={log !== null}>`). Sayaç bu deseni İP-A6b'ye kadar
+// hiç görmüyordu (BULGU-3) ve tüm tabanda tek örneği buydu.
+//
+// Göçte değişenler:
+//
+//   1. **Pencere durumu ekranda YOK.** `useDuzenlemeYuzeyi` + `DuzenlemePenceresi`
+//      (`ui2/duzenlemeYuzeyi.tsx`): odak tuzağı, ESC, arka plan kilidi,
+//      `role="dialog"` + `aria-modal` ortak yüzeyden gelir.
+//   2. **Filtreler `useUrlDurumu`da.** Adres parametrelerinin ADLARI korundu
+//      (`q`,`target`,`actor`,`rid`,`sort`,`order`,`page`,`limit`) — paylaşılmış
+//      eski bağlantılar çalışmaya devam eder. Kazanç: varsayılana eşit değer
+//      artık adrese YAZILMIYOR ve filtre değişince sayfa BAŞA dönüyor
+//      (eskiden her çağrı yerinde elle `page: 1` yazılıyordu; unutulan bir
+//      yerde kullanıcı boş sayfada kalırdı).
+//   3. **Boş durum AYRIŞTI**: "filtre eşleşmedi" bir düzeltme talimatıdır ve
+//      çıkış yolu (filtreleri temizle) sunar; "hiç kayıt yok" bir durumdur.
+//
+// ## Değer doğrulama neden hâlâ `parseAdminAuditQuery`
+//
+// `useUrlDurumu` tip ve varsayılan yönetir, ENUM BEYAZ LİSTESİ tutmaz:
+// `?sort=drop_table` gibi bir adres doğrudan isteğe gitmemeli. Doğrulama tek
+// kaynakta (`lib/adminOperationsQuery.ts`) kaldı; kanca yalnız adres↔durum
+// köprüsünü kurar. İkisini birleştirmek doğrulamayı yirmi bir ekrana
+// kopyalamak olurdu.
 import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
-import { useSearchParams } from "react-router-dom";
 import type { ColumnDef, OnChangeFn, SortingState } from "@tanstack/react-table";
 import { DataTable } from "@/components/admin/data-table";
-import { Badge, Button, Dialog, ErrorState } from "@/components/admin/ui";
+import { Badge, Button, ErrorState } from "@/components/admin/ui";
+import {
+  DuzenlemePenceresi,
+  useDuzenlemeYuzeyi,
+  type DuzenlemeYuzeyiDurumu,
+} from "@/components/admin/ui2/duzenlemeYuzeyi";
 import { useAdminAuditLogs } from "@/hooks/useAdmin";
+import { useUrlDurumu } from "@/hooks/useUrlDurumu";
 import { formatDateTime } from "@/lib/datetime";
 import { getErrorMessage } from "@/lib/errors";
 import { parseAdminAuditQuery, type AdminAuditSort } from "@/lib/adminOperationsQuery";
-import { setQueryValue } from "@/lib/adminUserQuery";
 import type { AuditLogOut } from "@/types";
 
 const ACTOR_ROLE_LABEL: Record<number, string> = {
@@ -16,6 +50,18 @@ const ACTOR_ROLE_LABEL: Record<number, string> = {
   3: "Öğrenci",
   4: "Operatör",
   5: "Kurye",
+};
+
+/** Adres varsayılanları — anahtar ADLARI eski sürümle birebir aynıdır. */
+const VARSAYILAN = {
+  q: "",
+  target: "",
+  actor: "",
+  rid: "",
+  sort: "created_at",
+  order: "desc",
+  page: 1,
+  limit: 25,
 };
 
 function actorLabel(log: AuditLogOut): string {
@@ -42,10 +88,17 @@ function JsonBlock({ label, value }: { label: string; value: Record<string, unkn
   );
 }
 
-/** Tek kaydın tüm yapılandırılmış alanları — satıra tıklayınca açılır. */
-function AuditDetailDialog({ log, onClose }: { log: AuditLogOut | null; onClose: () => void }) {
+/**
+ * Tek kaydın tüm yapılandırılmış alanları — satıra tıklayınca açılır.
+ *
+ * Pencerenin açık/kapalı durumu ARTIK BURAYA PROP OLARAK İNMİYOR: yüzeyin
+ * kendisi geliyor. Fark ölçülebilir — `open={log !== null}` bir pencere
+ * durumuydu ve ekranın `useState`inde yaşıyordu.
+ */
+function AuditDetailPenceresi({ yuzey }: { yuzey: DuzenlemeYuzeyiDurumu<AuditLogOut, void> }) {
+  const log = yuzey.kayit;
   return (
-    <Dialog open={log !== null} title="Denetim kaydı" onClose={onClose}>
+    <DuzenlemePenceresi yuzey={yuzey} baslik="Denetim kaydı">
       {log && (
         <div>
           <dl className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -73,16 +126,38 @@ function AuditDetailDialog({ log, onClose }: { log: AuditLogOut | null; onClose:
           )}
         </div>
       )}
-    </Dialog>
+    </DuzenlemePenceresi>
   );
 }
 
 export default function AdminAuditLogsPage() {
-  const [params, setParams] = useSearchParams();
-  const state = parseAdminAuditQuery(params);
+  // `sort`/`order` FİLTRE DEĞİLDİR: farklı sıralamada olmak boş durumun
+  // metnini "filtreyi temizleyin"e çevirmemeli.
+  const { degerler, ayarla, temizle, filtreliMi } = useUrlDurumu(VARSAYILAN, {
+    sayfaAnahtari: "page",
+    filtreDisi: ["page", "limit", "sort", "order"],
+  });
+
+  // Adresteki ham değerler doğrulanır (enum beyaz listesi + sayı sınırları).
+  const state = useMemo(
+    () =>
+      parseAdminAuditQuery(
+        new URLSearchParams(
+          Object.entries(degerler)
+            .filter(([, v]) => v !== "" && v !== undefined)
+            .map(([k, v]) => [k, String(v)] as [string, string])
+        )
+      ),
+    [degerler]
+  );
+
+  // Serbest metin kutuları GÖNDERİMDE adrese yazılır (her tuşta değil):
+  // denetim listesi pahalı bir sorgudur ve her harf bir istek üretirdi.
   const [search, setSearch] = useState(state.q);
   const [requestId, setRequestId] = useState(state.requestId);
-  const [selected, setSelected] = useState<AuditLogOut | null>(null);
+
+  const yuzey = useDuzenlemeYuzeyi<AuditLogOut, void>();
+
   const query = useAdminAuditLogs({
     limit: state.pageSize,
     offset: (state.page - 1) * state.pageSize,
@@ -97,8 +172,7 @@ export default function AdminAuditLogsPage() {
 
   useEffect(() => setSearch(state.q), [state.q]);
   useEffect(() => setRequestId(state.requestId), [state.requestId]);
-  const update = (changes: Record<string, string | number | boolean | undefined>) =>
-    setParams(setQueryValue(params, changes));
+
   const sorting = useMemo<SortingState>(
     () => [{ id: state.sort, desc: state.order === "desc" }],
     [state.order, state.sort]
@@ -106,10 +180,10 @@ export default function AdminAuditLogsPage() {
   const changeSorting: OnChangeFn<SortingState> = (updater) => {
     const next = typeof updater === "function" ? updater(sorting) : updater;
     const selectedSort = next[0];
-    update({
+    // Tek çağrı = tek geçmiş girdisi; sayfa sıfırlaması kancanın işidir.
+    ayarla({
       sort: (selectedSort?.id as AdminAuditSort | undefined) ?? "created_at",
       order: selectedSort?.desc === false ? "asc" : "desc",
-      page: 1,
     });
   };
 
@@ -147,7 +221,13 @@ export default function AdminAuditLogsPage() {
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
-    update({ q: search.trim() || undefined, rid: requestId.trim() || undefined, page: 1 });
+    ayarla({ q: search.trim(), rid: requestId.trim() });
+  };
+
+  const filtreleriTemizle = () => {
+    setSearch("");
+    setRequestId("");
+    temizle();
   };
 
   return (
@@ -155,12 +235,12 @@ export default function AdminAuditLogsPage() {
       <form onSubmit={submit} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <div className="grid gap-3 md:grid-cols-[minmax(13rem,1fr)_10rem_8rem_11rem_auto]">
           <input aria-label="Denetim kaydı ara" value={search} maxLength={100} onChange={(event) => setSearch(event.target.value)} placeholder="Aksiyon, hedef, gerekçe ara" className="input" />
-          <input aria-label="Hedef türü" value={state.targetType} maxLength={30} onChange={(event) => update({ target: event.target.value || undefined, page: 1 })} placeholder="Hedef türü" className="input" />
-          <input aria-label="Admin kimliği" type="number" min={1} value={state.actorId ?? ""} onChange={(event) => update({ actor: event.target.value || undefined, page: 1 })} placeholder="Aktör ID" className="input" />
+          <input aria-label="Hedef türü" value={degerler.target} maxLength={30} onChange={(event) => ayarla({ target: event.target.value }, { replace: true })} placeholder="Hedef türü" className="input" />
+          <input aria-label="Admin kimliği" type="number" min={1} value={degerler.actor} onChange={(event) => ayarla({ actor: event.target.value }, { replace: true })} placeholder="Aktör ID" className="input" />
           <input aria-label="Request ID" value={requestId} maxLength={64} onChange={(event) => setRequestId(event.target.value)} placeholder="Request ID" className="input" />
           <div className="flex gap-2">
             <Button type="submit">Ara</Button>
-            <Button variant="ghost" onClick={() => { setSearch(""); setRequestId(""); setParams({}); }}>Temizle</Button>
+            <Button variant="ghost" onClick={filtreleriTemizle}>Temizle</Button>
           </div>
         </div>
       </form>
@@ -175,9 +255,24 @@ export default function AdminAuditLogsPage() {
           sorting={sorting}
           onSortingChange={changeSorting}
           isLoading={query.isLoading}
-          emptyTitle="Denetim kaydı bulunamadı"
-          emptyDescription="Filtreleri değiştirerek yeniden deneyin."
-          onRowClick={(row) => setSelected(row)}
+          /* "Filtre eşleşmedi" ile "hiç kayıt yok" AYRI ekranlardır: ilki bir
+             düzeltme talimatı, ikincisi bir durum bildirimi. Aynı metni
+             ikisinde de göstermek kullanıcıyı "kayıtlar kayboldu" sanısına
+             sürükler. */
+          emptyTitle={filtreliMi ? "Bu filtreyle kayıt bulunamadı" : "Denetim kaydı yok"}
+          emptyDescription={
+            filtreliMi
+              ? "Aradığınız ölçütlere uyan bir denetim kaydı yok. Filtreleri temizleyip tüm geçmişe bakabilirsiniz."
+              : "Yönetici işlemleri yapıldıkça buraya yazılır; kayıtlar değiştirilemez."
+          }
+          emptyAction={
+            filtreliMi ? (
+              <Button size="sm" variant="secondary" onClick={filtreleriTemizle}>
+                Filtreleri temizle
+              </Button>
+            ) : undefined
+          }
+          onRowClick={(row) => yuzey.ac(row)}
           renderMobileRow={(log) => (
             <div>
               <div className="flex items-center justify-between gap-2"><Badge tone="info">{log.action}</Badge><span className="text-xs text-slate-400">{formatDateTime(log.created_at)}</span></div>
@@ -188,12 +283,12 @@ export default function AdminAuditLogsPage() {
           page={state.page}
           pageSize={state.pageSize}
           total={query.data?.total ?? 0}
-          onPageChange={(page) => update({ page })}
-          onPageSizeChange={(size) => update({ limit: size, page: 1 })}
+          onPageChange={(page) => ayarla({ page })}
+          onPageSizeChange={(size) => ayarla({ limit: size })}
         />
       )}
 
-      <AuditDetailDialog log={selected} onClose={() => setSelected(null)} />
+      <AuditDetailPenceresi yuzey={yuzey} />
     </div>
   );
 }

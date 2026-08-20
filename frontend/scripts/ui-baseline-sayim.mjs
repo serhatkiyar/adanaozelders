@@ -444,8 +444,14 @@ export const UNLABELED_OVERLAY_FILES = [
   // ekranın (`AdminLibraries`, `AdminExamCatalogs`) asıl düzenleme yüzeyidir
   // ve kendi `fixed inset-0` katmanını `role="dialog"`/`aria-modal` olmadan
   // kuruyor. 4 → 6.
+  //
+  // İP-A7d1 · Görev 3: ÜÇ katman listeden ÇIKTI (6 → 3). `LibraryEditorModal`
+  // ile `AdminLibraries`in iki iç penceresi (`ManageModal`,
+  // `LibraryPayoutModal`) ortak `DuzenlemePenceresi`ye geçti — `role="dialog"`,
+  // `aria-modal`, odak tuzağı, ESC ve kirli form onayı onunla birlikte geldi.
+  // `AdminLibraries.tsx` dosya olarak listeden düştü, çünkü kendi katmanı
+  // kalmadı.
   "src/components/ExamSessionsManager.tsx",
-  "src/components/LibraryEditorModal.tsx",
   // İP-A6 · Görev 4b: `store/EditProductModal.tsx` bu listeden ÇIKTI.
   // Kendi `createPortal` + `fixed inset-0` katmanını kuruyordu ve
   // `role="dialog"`/`aria-modal` taşımıyordu; artık `ui2/duzenlemeYuzeyi`nin
@@ -453,9 +459,7 @@ export const UNLABELED_OVERLAY_FILES = [
   // kirli form onayı da onunla geldi). Sayı 5 → 4.
   "src/pages/admin/AdminPayoutsPage.tsx",
   "src/pages/dashboards/AdminExamCatalogs.tsx",
-  "src/pages/dashboards/AdminLibraries.tsx",
 ];
-
 const MEDUSA = "@medusajs/ui";
 
 /**

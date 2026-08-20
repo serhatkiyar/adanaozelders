@@ -7,8 +7,58 @@ import {
   type Row,
   type SortingState,
 } from "@tanstack/react-table";
-import type { ReactNode } from "react";
+import { useId, type ReactNode } from "react";
 import { Button, EmptyState, PageSkeleton } from "@/components/admin/ui";
+
+/**
+ * ── İP-A7d1 · Görev 1: satır tıklaması ↔ satır aksiyonu çakışması ──
+ *
+ * Denetim #2 gerçek tarayıcıda ölçtü: `onRowClick` verildiğinde mobil kart
+ * bütünüyle tek bir `<button>`a sarılıyordu. İç içe `<button>` GEÇERSİZ
+ * HTML'dir; yani kartın içine ikinci bir aksiyon konulamıyordu. Kilitli
+ * kararımız ise "satır aksiyonları açık düğme kalır, üç nokta menüye
+ * geçilmez". İkisi bir arada mümkün değildi — bu bir kusur değil, çözülmesi
+ * gereken bir ÇELİŞKİYDİ.
+ *
+ * ### Seçenekler ve seçilen
+ *
+ * 1. *Mobilde satır tıklamasını bırak* — reddedildi: aynı listede masaüstünde
+ *    tıklanan bir satır mobilde tıklanamaz olur; kullanıcı aynı ekranın iki
+ *    farklı davranışını öğrenmek zorunda kalır.
+ * 3. *Aksiyonları kart altına ayrı bir şeride al* — reddedildi: aksiyonların
+ *    hangi kayda ait olduğu görsel bir yakınlık meselesidir; ayrı şerit bunu
+ *    zayıflatır ve kart yüksekliğini her satırda büyütür.
+ * 2. **Kartı `<button>`a SARMA; tıklanabilir alanı kart içinde bir katmana
+ *    indir — SEÇİLEN.**
+ *
+ * ### Nasıl çözüldü (ekran başına değil, burada)
+ *
+ * Kart artık bir `<div>`; tıklama kabın kendisinde dinlenir. Kabın içine,
+ * içeriğin ALTINDA (`z-0`) duran bir "satırı aç" düğmesi serilir: bu düğme
+ * klavye ve ekran okuyucu için vardır — odak halkasını o taşır, erişilebilir
+ * adını `aria-labelledby` ile KART İÇERİĞİNDEN alır. Böylece çağıran taraf
+ * yeni bir prop yazmaz ve unutamaz; A7'de yirmi bir ekran aynı davranışı
+ * miras alır.
+ *
+ * Fare tıklaması için tek kural yeterli: **etkileşimli bir öğeden gelen
+ * tıklama satırı açmaz.** Aynı kural masaüstü `<tr>` için de geçerlidir ve
+ * orada bugüne dek YOKTU — satır aksiyonuna basmak hem aksiyonu çalıştırıyor
+ * hem satırı açıyordu (bu paketin bulduğu sözleşme kusuru; `AdminUsersPage`
+ * ve `AdminAuditLogsPage` bugün üretimde bu davranışı taşıyor, yalnız o
+ * ekranlarda satır aksiyonu bulunmadığı için görünmüyordu).
+ */
+const ETKILESIMLI = 'a[href], button, input, select, textarea, [role="button"], [contenteditable="true"]';
+
+/**
+ * Olayın kaynağı kartın/satırın kendi denetimlerinden biri mi.
+ *
+ * `closest` kullanılır: tıklama düğmenin İÇİNDEKİ bir `<span>`e de gelebilir.
+ * "Satırı aç" katmanı kasten hariç tutulmaz — o katmana gelen tıklama zaten
+ * kendi `onClick`inde ele alınır ve burada ikinci kez sayılmamalıdır.
+ */
+function etkilesimliKaynak(hedef: EventTarget | null): boolean {
+  return hedef instanceof Element && hedef.closest(ETKILESIMLI) !== null;
+}
 
 export interface DataTableProps<TData extends object> {
   columns: ColumnDef<TData, unknown>[];
@@ -72,6 +122,9 @@ export function DataTable<TData extends object>({
   onPageChange,
   onPageSizeChange,
 }: DataTableProps<TData>) {
+  // Mobil kartın erişilebilir adı içeriğinden gelir; bağ için kararlı bir
+  // kimlik önekine ihtiyaç var (aynı sayfada iki tablo olabilir).
+  const mobilKapKimligi = useId();
   const table = useReactTable({
     columns,
     data,
@@ -98,17 +151,29 @@ export function DataTable<TData extends object>({
     <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
       {truncationNotice}
       {renderMobileRow && (
-        <div className="divide-y divide-slate-100 dark:divide-slate-800 md:hidden">
+        <div data-mobil-satirlar className="divide-y divide-slate-100 dark:divide-slate-800 md:hidden">
           {table.getRowModel().rows.map((row) => (
             onRowClick ? (
-              <button
+              <div
                 key={row.id}
-                type="button"
-                onClick={() => activateRow(row)}
-                className="block w-full px-4 py-4 text-left transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-500 dark:hover:bg-slate-800/60"
+                className="relative px-4 py-4 transition hover:bg-slate-50 dark:hover:bg-slate-800/60"
+                onClick={(event) => {
+                  // Aksiyon düğmesine/bağlantıya gelen tıklama satırı AÇMAZ.
+                  if (!etkilesimliKaynak(event.target)) activateRow(row);
+                }}
               >
-                {renderMobileRow(row.original)}
-              </button>
+                {/* Klavye + ekran okuyucu affordance'ı. Görünmez ama odak
+                    halkasını taşır; adını kart içeriğinden alır. */}
+                <button
+                  type="button"
+                  aria-labelledby={`${mobilKapKimligi}-${row.id}`}
+                  onClick={() => activateRow(row)}
+                  className="absolute inset-0 z-0 rounded-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-500"
+                />
+                <div id={`${mobilKapKimligi}-${row.id}`} className="relative z-10">
+                  {renderMobileRow(row.original)}
+                </div>
+              </div>
             ) : (
               <div key={row.id} className="px-4 py-4">
                 {renderMobileRow(row.original)}
@@ -171,12 +236,18 @@ export function DataTable<TData extends object>({
               <tr
                 key={row.id}
                 tabIndex={onRowClick ? 0 : undefined}
-                onClick={() => activateRow(row)}
+                onClick={(event) => {
+                  // Satır aksiyonuna basmak satırı AÇMAZ (İP-A7d1 · Görev 1).
+                  if (!etkilesimliKaynak(event.target)) activateRow(row);
+                }}
                 onKeyDown={(event) => {
-                  if (onRowClick && (event.key === "Enter" || event.key === " ")) {
-                    event.preventDefault();
-                    activateRow(row);
-                  }
+                  if (!onRowClick) return;
+                  if (event.key !== "Enter" && event.key !== " ") return;
+                  // Hücredeki bir düğmede Enter'a basmak o düğmeyi çalıştırır;
+                  // satırı da açması kullanıcının istemediği ikinci bir iştir.
+                  if (etkilesimliKaynak(event.target)) return;
+                  event.preventDefault();
+                  activateRow(row);
                 }}
                 className={onRowClick ? "cursor-pointer transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-500 dark:hover:bg-slate-800/60" : undefined}
               >

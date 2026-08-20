@@ -272,6 +272,8 @@ export interface DuzenlemePenceresiProps {
   yuzey: DuzenlemeYuzeyiKapisi;
   baslik: string;
   aciklama?: string;
+  /** Panel genişliği — gerekçesi `admin/ui/Dialog.tsx`te. */
+  genislik?: "dar" | "genis";
   children: ReactNode;
 }
 
@@ -279,6 +281,7 @@ export function DuzenlemePenceresi({
   yuzey,
   baslik,
   aciklama,
+  genislik,
   children,
 }: DuzenlemePenceresiProps) {
   // Küme DEĞİL, kimlikli kayıt + geliştirmede `throw` (İP-A6c · BULGU-5).
@@ -322,6 +325,7 @@ export function DuzenlemePenceresi({
           open={yuzey.acik}
           title={baslik}
           description={aciklama}
+          genislik={genislik}
           onClose={kapatmayiDene}
         >
           {children}

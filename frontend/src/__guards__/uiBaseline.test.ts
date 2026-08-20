@@ -116,12 +116,12 @@ const MODAL_DURUM_DOSYALARI = [
   // hepsi `ui2/duzenlemeYuzeyi`ne taşındı. Bu, göçün TERSİ değil kendisidir:
   // listeden ÇIKMAK beklenen yöndür, listeye GİRMEK kırılma sebebidir.
   "src/pages/admin/AdminAccessPage.tsx",
-  // İP-A6b · Görev 4: PROP OLARAK İNEN durum artık sayılıyor. `selected`
-  // ekranda yaşıyor, `AuditDetailDialog`a `log` prop'u olarak iniyor ve orada
-  // `<Dialog open={log !== null}>`e veriliyor — bugüne dek görünmüyordu.
-  // Saha sayımı: TÜM tabanda bu desenin tek örneği budur (29 → 32'nin +1'i).
-  "src/pages/admin/AdminAuditLogsPage.tsx",
-  "src/pages/admin/AdminBookingsPage.tsx",
+  // İP-A7d1 · Görev 3: ÜÇ dosya bu listeden ÇIKTI (göç dalgası 1).
+  //   • `AdminAuditLogsPage` — tabanın TEK "prop olarak inen pencere durumu"
+  //     örneğiydi (İP-A6b · BULGU-3); detay yüzeyi `DuzenlemePenceresi`ye geçti.
+  //   • `AdminBookingsPage` — `decision` bağı yüzeye taşındı.
+  //   • `AdminLibraries` — dört pencerenin dördü de yüzeye taşındı
+  //     (`decision` + `deleting`, ikisi de sayılıyordu).
   "src/pages/admin/AdminDemandsPage.tsx",
   "src/pages/admin/AdminOperationsPage.tsx",
   "src/pages/admin/AdminReportsPage.tsx",
@@ -137,7 +137,6 @@ const MODAL_DURUM_DOSYALARI = [
   "src/pages/admin/packing/ReturnQueuePage.tsx",
   "src/pages/dashboards/AdminExamCatalogs.tsx",
   "src/pages/dashboards/AdminHome.tsx",
-  "src/pages/dashboards/AdminLibraries.tsx",
 ];
 
 const olcum = sayim();
@@ -180,7 +179,15 @@ describe("İP-A1 nöbetçi eşikleri", () => {
     // İP-A6b'de 131 → 199 (**+68**): import grafiği (Görev 3) tabana 27 dosya
     // ekledi. Borç ARTMADI — bugüne dek ölçülmüyordu: `ExamSessionsManager` 14,
     // `MapPicker` 9, `PersonalizeModal` 7, `ImageCropModal` 6, `LibraryEditorModal` 5…
-    expect(olcum.rawButton).toBeLessThanOrEqual(199);
+    //
+    // İP-A7d1'de 199 → 182 (**-17**): göç dalgası 1. `AdminLibraries` 13
+    // (kart aksiyonları + operatör formu + iki pencere başlığı) ve
+    // `LibraryEditorModal` 4 düğme ortak `Button`a geçti. Editörde KALAN tek
+    // ham `<button>` olanak rozetleridir (`aria-pressed` taşıyan yuvarlak
+    // seçim çipi) ve BİLİNÇLİDİR: bir aksiyon değil bir seçim durumu; ortak
+    // `Button`ın dolgu/gölge varyantları oraya uymuyor — `AdminStore`daki
+    // `KatlanirBaslik` istisnasının aynısı.
+    expect(olcum.rawButton).toBeLessThanOrEqual(182);
   });
 
   it("erişilebilir adı olmayan form kontrolü artamaz (taban 30)", () => {
@@ -217,7 +224,11 @@ describe("İP-A1 nöbetçi eşikleri", () => {
     // İP-A6b'de 30 → 41 (**+11**): import grafiğinin getirdiği dosyalarda
     // zaten duran borç (`LibraryPayoutForm` 5, `ExamSessionsManager` 2,
     // `PersonalizeModal` 2, `ImageCropModal` 1, `MapPicker` 1).
-    expect(olcum.adsizKontrol).toBeLessThanOrEqual(41);
+    //
+    // İP-A7d1'de 41 → 37 (**-4**): `AdminLibraries`in operatör ekleme formunun
+    // dört alanı `placeholder`ı etiket yerine kullanıyordu; `htmlFor`/`id`
+    // bağıyla ve hata slotuyla yeniden yazıldı.
+    expect(olcum.adsizKontrol).toBeLessThanOrEqual(37);
   });
 
 
@@ -251,7 +262,7 @@ describe("İP-A1 nöbetçi eşikleri", () => {
     // Saha sayımı (Görev 4'ün açık bıraktığı soru): tüm tabanda prop-ile-inen
     // pencere durumunun TEK örneği vardır. Denetim bunu sentetik mutasyonla
     // kanıtlamıştı; gerçek sayı ölçülmemişti ve tahmin eşiğe yazılmamıştı.
-    expect(olcum.modalDurumu).toBeLessThanOrEqual(32);
+    expect(olcum.modalDurumu).toBeLessThanOrEqual(28);
   });
 
   it("pencere durumu tutan dosya listesi sabittir (pilot listede DEĞİL)", () => {
@@ -278,7 +289,9 @@ describe("İP-A1 nöbetçi eşikleri", () => {
     // İP-A6'da 5 → 4: `store/EditProductModal.tsx` ortak yüzeye geçti.
     // İP-A6b'de 4 → 6: import grafiğiyle görünen `ExamSessionsManager` ve
     // `LibraryEditorModal` kendi katmanlarını etiketsiz kuruyor (Görev 3).
-    expect(olcum.unlabeledOverlays).toBeLessThanOrEqual(6);
+    // İP-A7d1'de 6 → 3: `LibraryEditorModal` ve `AdminLibraries`in iki iç
+    // penceresi ortak `DuzenlemePenceresi`ye geçti.
+    expect(olcum.unlabeledOverlays).toBeLessThanOrEqual(3);
   });
 
   it("etiketsiz overlay'i olan dosya listesi sabittir", () => {

@@ -63,7 +63,9 @@ const KAPI_DISI: Record<string, { tur: "props" | "bilesen-yok" | "baglam"; gerek
   "src/components/Avatar.tsx": { tur: "props", gerekce: "zorunlu ad (bas harf uretimi)" },
   "src/components/DeliveryRouteMap.tsx": { tur: "props", gerekce: "zorunlu run (duraklar)" },
   "src/components/LibrariesMap.tsx": { tur: "props", gerekce: "zorunlu kutuphane dizisi" },
-  "src/components/LibraryEditorModal.tsx": { tur: "props", gerekce: "zorunlu kayit (duzenlenen kutuphane)" },
+  // İP-A7d1: prop artık `state` degil `yuzey` (duzenleme yuzeyi). Propsuz
+  // mount edilemez; borcu DERIN kapida kapaniyor (dal testi).
+  "src/components/LibraryEditorModal.tsx": { tur: "props", gerekce: "zorunlu yuzey (duzenleme yuzeyi)" },
   "src/components/LibraryMapPanel.tsx": { tur: "props", gerekce: "zorunlu kutuphane (slug)" },
   "src/components/map/MapGate.tsx": { tur: "baglam", gerekce: "leaflet MapContainer baglami gerekiyor" },
   "src/components/ui/Field.tsx": { tur: "props", gerekce: "children fonksiyon olarak bekleniyor (render prop)" },
@@ -116,6 +118,12 @@ const KAPI_DISI: Record<string, { tur: "props" | "bilesen-yok" | "baglam"; gerek
  * onların hangi dosyaları kapsadığını ölçüm tabanına bağlar.
  */
 const DERIN_KAPI = [
+  // İP-A7d1 · göç dalgası 1 · ekran (a): `kutuphaneEditoruDalAdlari.acceptance`
+  // formu ÜÇ koşullu dalıyla (admin-yeni / admin-düzenleme / operatör) ve
+  // ayrıca gün açık↔kapalı dalıyla render eder; her alanın erişilebilir adı
+  // `test-utils/alanAdlari` ile doğrulanır. Sığ kapı bu dosyayı göremez
+  // (propsuz mount edilemiyor), derin kapı görür.
+  "src/components/LibraryEditorModal.tsx",
   "src/components/admin/store/BulkImportPanel.tsx",
   "src/components/admin/store/CategoriesPanel.tsx",
   "src/components/admin/store/CouponsPanel.tsx",
