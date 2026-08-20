@@ -30,6 +30,19 @@
 import { fireEvent, render } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+// ── Ağır ortak modül BİLE BİLE statik import ediliyor (İP-A7d3 · Görev 5) ──
+//
+// Etiket bileşeni `admin/ui` demetinden geçiyor ve o demet İP-A7d3'te
+// `ui2/duzenlemeYuzeyi` üzerinden `@medusajs/ui`ye bağlandı (`ReasonDialog`ın
+// kirli form bekçisi — SK-7). Modül aşağıda TEMBEL yükleniyor ve maliyeti
+// DOSYANIN İLK TESTİNİN İÇİNDE ödeniyor; paralel yük altında o tek test
+// 9 sn'lik bütçeyi aştı.
+//
+// Bütçe BÜYÜTÜLMEDİ — A7d2'nin `PackagesPage`/`OperatorSessions` için verdiği
+// kararın aynısı: yavaşlık üretim kodunda değil test kurulumunda. Statik
+// import maliyeti TOPLAMA (collect) evresine taşır; orada test bütçesi yoktur.
+import "@/components/admin/ui2/duzenlemeYuzeyi";
+
 import type { ComponentType } from "react";
 
 // `vi.mock` hoist edilir; paylaşılan diziyi `vi.hoisted` ile önden kur.
@@ -113,6 +126,24 @@ beforeEach(() => {
   qrCagrilari.length = 0;
 });
 
+/**
+ * Etiketin KENDİ baskı stilini KİMLİKLE bulur.
+ *
+ * Eskiden `document.querySelector("style")` yazılıydı — yani "belgedeki İLK
+ * <style>". Bu bir kimlik değil bir SIRA iddiasıydı ve etiketin stiliyle
+ * hiçbir bağı yoktu: kendi çalışma zamanı stilini enjekte eden herhangi bir
+ * kütüphane (İP-A7d3'te `@medusajs/ui`, `admin/ui` demeti üzerinden yüklendi)
+ * o sırayı değiştirdiği anda test, ÜRETİM KODU HİÇ DEĞİŞMEDEN kırmızıya
+ * dönüyordu. Testin kusuruydu; baskı kuralı yerinde duruyordu.
+ */
+function baskiStili(): string {
+  const stil = Array.from(document.querySelectorAll("style")).find((s) =>
+    (s.textContent ?? "").includes(".package-label-overlay")
+  );
+  if (!stil) throw new Error("etiketin baski stili DOM'da yok");
+  return stil.textContent ?? "";
+}
+
 describe("PackageLabel baskı sözleşmesi", () => {
   it("print CSS'i etiketin GÖRÜNÜRLÜĞÜNÜ geri verir", async () => {
     // `index.css:268-286` fatura kuralı `body * { visibility: hidden }` yapıyor;
@@ -120,9 +151,9 @@ describe("PackageLabel baskı sözleşmesi", () => {
     // baskı 1 KB'lık boş PDF olur (bir kez yaşandı).
     const PackageLabel = await bilesen();
     render(<PackageLabel package={paket()} onClose={() => {}} />);
-    const style = document.querySelector("style");
-    expect(style?.textContent).toContain("@media print");
-    expect(style?.textContent).toMatch(
+    const style = baskiStili();
+    expect(style).toContain("@media print");
+    expect(style).toMatch(
       /\.package-label\s*,\s*\.package-label\s*\*\s*\{[^}]*visibility:\s*visible/,
     );
   });
@@ -317,8 +348,7 @@ describe("PackageLabel baskı sözleşmesi", () => {
     // İkiye bölünen etiketin QR'ı okunamaz; kutu kör gider.
     const PackageLabel = await bilesen();
     render(<PackageLabel package={paket()} onClose={() => {}} />);
-    const style = document.querySelector("style")?.textContent ?? "";
-    expect(style).toMatch(/\.package-label\s*\{[^}]*break-inside:\s*avoid/);
+    expect(baskiStili()).toMatch(/\.package-label\s*\{[^}]*break-inside:\s*avoid/);
   });
 
   it("Escape kapatır (kullanıcı paketleme akışına döner)", async () => {

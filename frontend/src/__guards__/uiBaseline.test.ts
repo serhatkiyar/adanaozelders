@@ -104,39 +104,33 @@ import {
  * göçün tersine işlediği anlamına gelir ve test kırılır.
  */
 const MODAL_DURUM_DOSYALARI = [
-  // İP-A7d2 · göç dalgası 2: BEŞ dosya bu listeden ÇIKTI (28 → 20).
-  //   • `ExamSessionsManager` — iptal + yayın onayı (2 bağ)
-  //   • `AdminExamCatalogs`   — katalog silme onayı
-  //   • `CourierManager`      — hesap kapatma + kurye silme (2 bağ)
-  //   • `PackagesPage`        — yeniden paketle + bozuldu damgası (2 bağ)
-  //   • `DeliveryVehiclesPage` — araç silme onayı
+  // İP-A7d3 · göç dalgası 3: ALTI dosya bu listeden ÇIKTI (20 → 9).
+  //   • `CountSessionDetailPage` — uygula + iptal + açıklama (3 bağ)
+  //   • `PackingStationPage`     — elle doğrula + geri al + vazgeç (3 bağ)
+  //   • `AdminHome`              — ilan silme + başvuru reddi (2 bağ)
+  //   • `CountSessionsPage`      — yeni sayım oturumu
+  //   • `AdminReportsPage`       — şikâyet kararı
+  //   • `DeliveryRunDetailPage`  — tur iptali
   // Hepsi `useDuzenlemeYuzeyi`ye taşındı. Listeden ÇIKMAK beklenen yöndür;
   // listeye GİRMEK kırılma sebebidir.
+  //
+  // İP-A7d2 · göç dalgası 2: BEŞ dosya bu listeden ÇIKMIŞTI (28 → 20).
+  //   `ExamSessionsManager` · `AdminExamCatalogs` · `CourierManager` ·
+  //   `PackagesPage` · `DeliveryVehiclesPage`
+  //
+  // İP-A7d1 · göç dalgası 1: ÜÇ dosya ÇIKMIŞTI.
+  //   `AdminAuditLogsPage` (tabanın TEK "prop olarak inen pencere durumu"
+  //   örneğiydi) · `AdminBookingsPage` · `AdminLibraries`
+  //
+  // İP-A6 · Görev 4d: `store/` altındaki BEŞ dosya ÇIKMIŞTI.
   "src/components/admin/delivery/ClosedDays.tsx",
-  // İP-A6 · Görev 4d: `store/` altındaki BEŞ dosya bu listeden ÇIKTI.
-  // İP-A5'te `AdminStore.tsx`in dört adı (`decision`, `deleting`,
-  // `iadeSiparisi`, `teslimSiparisi`) altı bağ olarak bu dosyalara dağılmıştı;
-  // hepsi `ui2/duzenlemeYuzeyi`ne taşındı. Bu, göçün TERSİ değil kendisidir:
-  // listeden ÇIKMAK beklenen yöndür, listeye GİRMEK kırılma sebebidir.
   "src/pages/admin/AdminAccessPage.tsx",
-  // İP-A7d1 · Görev 3: ÜÇ dosya bu listeden ÇIKTI (göç dalgası 1).
-  //   • `AdminAuditLogsPage` — tabanın TEK "prop olarak inen pencere durumu"
-  //     örneğiydi (İP-A6b · BULGU-3); detay yüzeyi `DuzenlemePenceresi`ye geçti.
-  //   • `AdminBookingsPage` — `decision` bağı yüzeye taşındı.
-  //   • `AdminLibraries` — dört pencerenin dördü de yüzeye taşındı
-  //     (`decision` + `deleting`, ikisi de sayılıyordu).
   "src/pages/admin/AdminDemandsPage.tsx",
   "src/pages/admin/AdminOperationsPage.tsx",
-  "src/pages/admin/AdminReportsPage.tsx",
   "src/pages/admin/AdminSettingsPage.tsx",
   "src/pages/admin/delivery/DeliveryBoardPage.tsx",
-  "src/pages/admin/delivery/DeliveryRunDetailPage.tsx",
   "src/pages/admin/delivery/DeliveryTodayPage.tsx",
-  "src/pages/admin/inventory/CountSessionDetailPage.tsx",
-  "src/pages/admin/inventory/CountSessionsPage.tsx",
-  "src/pages/admin/packing/PackingStationPage.tsx",
   "src/pages/admin/packing/ReturnQueuePage.tsx",
-  "src/pages/dashboards/AdminHome.tsx",
 ];
 
 const olcum = sayim();
@@ -198,7 +192,16 @@ describe("İP-A1 nöbetçi eşikleri", () => {
     // bölüm başlığı, kütüphane editörünün olanak rozetleri, `PackagesPage`in
     // durum süzgeci çipleri ve `AdminPayoutsPage`in sekme şeridi. Ortak
     // `Button`ın dolgu/gölge varyantları bu görsel dili taşımıyor.
-    expect(olcum.rawButton).toBeLessThanOrEqual(130);
+    // İP-A7d3'te 130 → 104 (**-26**): göç dalgası 3, on ekran.
+    //   `AdminHome` 12 · `DeliveryRunDetailPage` 5 · `OperatorLibrary` 3 ·
+    //   `OperatorHome` 3 · `OperatorSessions` 3.
+    //
+    // `OperatorLibrary` ve `AdminHome`da BİRER ham `<button>` bilerek KALDI ve
+    // ikisi de aynı aileden: `aria-pressed` taşıyan SEÇİM DURUMLARI (olanak
+    // rozeti, süzgeç çipi), aksiyon değil. A7d3'te ikisine de eksik olan
+    // `aria-pressed` EKLENDİ — yani sayı düşmedi ama borç azaldı: bir çipin
+    // seçili olduğu artık ekran okuyucuda görünüyor.
+    expect(olcum.rawButton).toBeLessThanOrEqual(104);
   });
 
   it("erişilebilir adı olmayan form kontrolü artamaz (taban 30)", () => {
@@ -255,7 +258,20 @@ describe("İP-A1 nöbetçi eşikleri", () => {
     // göremez. Alanlar açık `Form.Field` bloklarına çevrildi. İP-A6b'nin M-A
     // kaçışının aynadaki hâli: orada gerçek borç gizleniyordu, burada sahte
     // borç üretiliyordu.
-    expect(olcum.adsizKontrol).toBeLessThanOrEqual(26);
+    // İP-A7d3'te 26 → 7 (**-19**): göç dalgası 3.
+    //   `OperatorLibrary` 7 (beş adres kutusu + iki saat kutusu) ·
+    //   `LibraryPayoutForm` 5 (IBAN/TCKN/unvan — `Form.*`a geçti) ·
+    //   `OperatorHome` 3 (şifre paneli) · `AdminHome` 2 (iki red notu) ·
+    //   `OperatorSessions` 1 (elle bilet kodu) · `MapPicker` 1 (adres arama).
+    //
+    // `MapPicker` A7d2'nin kapanış notunda "dalga 3'te kapatılmalı" diye
+    // yazılıydı ve üç ayrı testte "bilinen istisna" olarak taşınıyordu;
+    // `aria-label` ile kapandı ve `CALISMA_ZAMANI_ADSIZ` tabanından çıktı.
+    //
+    // KALAN 7'nin tamamı bu dalganın kapsamı dışındaki üç dosyada:
+    //   `DeliveryDriver` 4 (saha/mobil ekran, kendi dalgasını bekliyor) ·
+    //   `PersonalizeModal` 2 · `ImageCropModal` 1 (paylaşılan widget'lar).
+    expect(olcum.adsizKontrol).toBeLessThanOrEqual(7);
   });
 
 
@@ -292,7 +308,10 @@ describe("İP-A1 nöbetçi eşikleri", () => {
     // İP-A7d2'de 28 → 20 (**-8**): göç dalgası 2'nin altı ekranından beşi
     // pencere durumu taşıyordu; sekiz bağın hepsi `useDuzenlemeYuzeyi`ye
     // geçti (dosya listesi aşağıda).
-    expect(olcum.modalDurumu).toBeLessThanOrEqual(20);
+    // İP-A7d3'te 20 → 9 (**-11**): göç dalgası 3'ün altı ekranı pencere
+    // durumu taşıyordu; on bir bağın hepsi `useDuzenlemeYuzeyi`ye geçti
+    // (dosya listesi yukarıda).
+    expect(olcum.modalDurumu).toBeLessThanOrEqual(9);
   });
 
   it("pencere durumu tutan dosya listesi sabittir (pilot listede DEĞİL)", () => {
@@ -325,6 +344,9 @@ describe("İP-A1 nöbetçi eşikleri", () => {
     // `AdminExamCatalogs`, `AdminPayoutsPage`) ortak pencereye geçti. Eşik
     // artık SIFIR ve bu metriğin en sert hâlidir: panelde etiketsiz bir
     // overlay doğduğu gün CI kırılır.
+    // İP-A7d3: SIFIRDA KALDI. Bu dalga on ekran göç ettirdi ve hiçbiri yeni
+    // bir katman kurmadı — `toBe(0)` bir tavan değil TABANDIR ve bir tane
+    // bile doğsa CI kırılır.
     expect(olcum.unlabeledOverlays).toBe(0);
   });
 

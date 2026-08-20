@@ -147,11 +147,22 @@ const pencere = () => screen.getByRole("dialog") as HTMLElement;
  * İstisna SAYIYLA da doğrulanır (aşağıda): liste bayatlarsa — borç kapanırsa
  * ya da ikincisi doğarsa — test kırılır, sessizce affetmez.
  */
-const BILINEN_ADSIZ = "map-picker-search-input";
-
-/** Formun kendi adsız kontrolleri (bilinen istisna hariç). */
+/**
+ * Formun adsız kontrolleri.
+ *
+ * ── İP-A7d3: "BİLİNEN İSTİSNA" FİLTRESİ KALDIRILDI ──
+ *
+ * A7d1'de `MapPicker`ın adres arama kutusu adsızdı ve bu üç dal testinde
+ * filtreyle affediliyordu. Filtre bilinçliydi ve yanına bir TERS PROVA
+ * konmuştu: "istisna gerçekten render ediliyor mu" (`toBe(1)`). Borç dalga
+ * 3'te kapanınca o ters prova kendiliğinden kırıldı ve mesajı da tam olarak
+ * buydu — "bilinen istisna listesi bayatladı".
+ *
+ * Bu, filtrenin doğru tasarlandığının kanıtıdır: sessizce affetmeye devam
+ * etmedi, borç kapandığı gün haber verdi.
+ */
 function formunAdsizlari(kap: HTMLElement) {
-  return adsizKontroller(kap).filter((a) => !a.html.includes(BILINEN_ADSIZ));
+  return adsizKontroller(kap);
 }
 const yazmaIstegi = () => istekler.find((i) => i.method !== "get");
 
@@ -191,12 +202,13 @@ describe("İP-A7d1 (a) · her koşullu dal render edilir, her alanın adı vard�
         adsiz,
         `adsız kontrol:\n${adsiz.map((a) => a.html).join("\n")}`
       ).toEqual([]);
-      // Ters prova: bilinen istisna GERÇEKTEN render ediliyor. Bu olmadan
-      // filtre, ileride kapanacak bir borcu sessizce affetmeye devam ederdi.
+      // İP-A7d3: eski ters prova ("bilinen istisna GERÇEKTEN render ediliyor")
+      // KALKTI çünkü istisna kapandı. Yerine, harita arama kutusunun HÂLÂ
+      // render edildiği ve artık ADLI olduğu iddiası geldi — yoksa "0 adsız"
+      // kutu hiç basılmadığı için de doğru olabilirdi.
       expect(
-        adsizKontroller(pencere()).length,
-        "bilinen istisna listesi bayatladı"
-      ).toBe(1);
+        within(pencere()).getByRole("textbox", { name: "Haritada adres ara" })
+      ).toBeTruthy();
       expect(container).toBeTruthy();
     });
   }

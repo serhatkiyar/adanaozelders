@@ -22,6 +22,8 @@
 // taşır ve hook onu detay önbelleğine yazar. İyimser artırma, reddedilen
 // taramada ekranı sunucuyla çelişkiye düşürürdü.
 import { useRef, useState } from "react";
+
+import { useDuzenlemeYuzeyi } from "@/components/admin/ui2/duzenlemeYuzeyi";
 import { Link, useParams } from "react-router-dom";
 
 import { PackageLabelButton } from "@/components/admin/packing/PackageLabel";
@@ -156,9 +158,20 @@ export default function PackingStationPage() {
 
   const [kod, setKod] = useState("");
   const [bildirim, setBildirim] = useState<Bildirim | null>(null);
-  const [manuelSatir, setManuelSatir] = useState<PackageItem | null>(null);
-  const [geriAlSatir, setGeriAlSatir] = useState<PackageItem | null>(null);
-  const [vazgecAcik, setVazgecAcik] = useState(false);
+  // ── İP-A7d3 · göç dalgası 3 ──
+  //
+  // Üç pencere durumu da ekranda yaşıyordu ve bu tabanın en yoğun kalemiydi
+  // (`CountSessionDetailPage` ile birlikte 3'er bağ). Üçü de `useDuzenlemeYuzeyi`ye
+  // taşındı: ekran artık "pencere açık mı" durumu TUTMAZ, bir yüzey açar.
+  //
+  // Yüzeylerin ayrı olması bilinçlidir: aynı anda yalnız biri açık olabilir ama
+  // hedefleri farklı türdendir (satır / satır / paketin kendisi) ve tek bir
+  // birleşik yüzey, hangi pencerenin hangi hedefe ait olduğunu tipten silerdi.
+  const manuelYuzeyi = useDuzenlemeYuzeyi<PackageItem, void>();
+  const geriAlYuzeyi = useDuzenlemeYuzeyi<PackageItem, void>();
+  const vazgecYuzeyi = useDuzenlemeYuzeyi<never, void>();
+  const manuelSatir = manuelYuzeyi.kayit;
+  const geriAlSatir = geriAlYuzeyi.kayit;
   const [tamamlaHatasi, setTamamlaHatasi] = useState<string | null>(null);
   const kutuRef = useRef<HTMLInputElement>(null);
 
@@ -326,7 +339,7 @@ export default function PackingStationPage() {
           status={paket.status}
         />
         {vazgecebilir(paket.status, canPack, canManage) && (
-          <Button size="sm" variant="ghost" onClick={() => setVazgecAcik(true)}>
+          <Button size="sm" variant="ghost" onClick={() => vazgecYuzeyi.yeniAc()}>
             Paketten vazgeç
           </Button>
         )}
@@ -450,7 +463,7 @@ export default function PackingStationPage() {
                       <Button
                         size="sm"
                         variant="ghost"
-                        onClick={() => setGeriAlSatir(satir)}
+                        onClick={() => geriAlYuzeyi.ac(satir)}
                       >
                         Geri al
                       </Button>
@@ -459,7 +472,7 @@ export default function PackingStationPage() {
                       <Button
                         size="sm"
                         variant="secondary"
-                        onClick={() => setManuelSatir(satir)}
+                        onClick={() => manuelYuzeyi.ac(satir)}
                       >
                         Elle doğrula
                       </Button>
@@ -544,7 +557,7 @@ export default function PackingStationPage() {
 
       {/* ── Gerekçeli pencereler ── */}
       <ReasonDialog
-        open={manuelSatir != null}
+        open={manuelYuzeyi.acik}
         title="Elle doğrula"
         description={
           manuelSatir
@@ -557,7 +570,7 @@ export default function PackingStationPage() {
         maxLength={GEREKCE_MAX}
         cancelLabel="İptal"
         isPending={scan.isPending}
-        onClose={() => setManuelSatir(null)}
+        onClose={manuelYuzeyi.kapat}
         onConfirm={(reason) => {
           if (!manuelSatir) return;
           scan.mutate(
@@ -576,13 +589,13 @@ export default function PackingStationPage() {
             {
               onSuccess: (sonuc) => {
                 manuelAnahtarRef.current = null;
-                setManuelSatir(null);
+                manuelYuzeyi.kapat();
                 sonucuIsle(sonuc.result);
               },
               onError: (e) => {
                 // Pencere KAPANIR ama anahtar korunur: kullanıcı aynı satırı
                 // yeniden denerse (aynı gerekçeyle) sunucu tek iş görür.
-                setManuelSatir(null);
+                manuelYuzeyi.kapat();
                 hataylaIsle(e, "Elle doğrulama gönderilemedi.");
               },
             },
@@ -591,7 +604,7 @@ export default function PackingStationPage() {
       />
 
       <ReasonDialog
-        open={geriAlSatir != null}
+        open={geriAlYuzeyi.acik}
         title="Okutmayı geri al"
         description={
           geriAlSatir
@@ -604,7 +617,7 @@ export default function PackingStationPage() {
         maxLength={GEREKCE_MAX}
         cancelLabel="İptal"
         isPending={undo.isPending}
-        onClose={() => setGeriAlSatir(null)}
+        onClose={geriAlYuzeyi.kapat}
         onConfirm={(reason) => {
           if (!geriAlSatir) return;
           undo.mutate(
@@ -624,11 +637,11 @@ export default function PackingStationPage() {
             {
               onSuccess: () => {
                 geriAlAnahtarRef.current = null;
-                setGeriAlSatir(null);
+                geriAlYuzeyi.kapat();
                 toast.success("Okutma geri alındı.");
               },
               onError: (e) => {
-                setGeriAlSatir(null);
+                geriAlYuzeyi.kapat();
                 toast.error(getErrorMessage(e, "Geri alınamadı."));
               },
             },
@@ -637,7 +650,7 @@ export default function PackingStationPage() {
       />
 
       <ReasonDialog
-        open={vazgecAcik}
+        open={vazgecYuzeyi.acik}
         title="Paketten vazgeç"
         description="Kutu bozulur, içerik rafa döner ve sipariş yeniden paketlenmeyi bekler. Gerekçe kayda geçer."
         label="Gerekçe"
@@ -651,17 +664,17 @@ export default function PackingStationPage() {
         // hangisinin işlemi yaptığını ayırt edilemez hâle getiriyordu.
         cancelLabel="İptal"
         isPending={voidPackage.isPending}
-        onClose={() => setVazgecAcik(false)}
+        onClose={vazgecYuzeyi.kapat}
         onConfirm={(reason) =>
           voidPackage.mutate(
             { packageId: paket.id, reason },
             {
               onSuccess: () => {
-                setVazgecAcik(false);
+                vazgecYuzeyi.kapat();
                 toast.success(`${paket.code} paketinden vazgeçildi.`);
               },
               onError: (e) => {
-                setVazgecAcik(false);
+                vazgecYuzeyi.kapat();
                 toast.error(getErrorMessage(e, "Paketten vazgeçilemedi."));
               },
             },

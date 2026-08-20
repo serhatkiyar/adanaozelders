@@ -829,19 +829,23 @@ describe("gerekçe penceresi", () => {
     expect(screen.getByText("3/200")).toBeTruthy();
   });
 
+  // İP-A7d3 · SK-8 (KASITLI DEĞİŞİKLİK): iddia aynı — sınır üstü gerekçe
+  // sunucuya GİTMEZ. Mekanizma değişti: düğme geçerlilikle kapanmıyor, hata
+  // alanda çıkıyor. Sayaç iddiası korundu.
   it("sınır üstü gerekçe GÖNDERİLEMEZ (422'ye bırakılmaz)", async () => {
     const alan = await vazgecPenceresiniAc();
     fireEvent.change(alan, { target: { value: "x".repeat(201) } });
 
     const onay = screen.getByRole("button", { name: "Vazgeç" }) as HTMLButtonElement;
-    expect(onay.disabled).toBe(true);
+    expect(onay.disabled).toBe(false);
     fireEvent.click(onay);
-    await waitFor(() => expect(screen.getByText("201/200")).toBeTruthy());
+    await waitFor(() => expect(alan.getAttribute("aria-invalid")).toBe("true"));
+    expect(screen.getByText("201/200")).toBeTruthy();
     expect(istekler.filter((i) => i.url.includes("/void"))).toHaveLength(0);
   });
 
   it("sınır içindeki gerekçe GÖNDERİLİR (ters prova)", async () => {
-    // Yukarıdaki test, düğme her hâlde kapalı olsaydı da geçerdi.
+    // Yukarıdaki test, gönderim her hâlde engellenseydi de geçerdi.
     const alan = await vazgecPenceresiniAc();
     fireEvent.change(alan, { target: { value: "x".repeat(200) } });
     const onay = screen.getByRole("button", { name: "Vazgeç" }) as HTMLButtonElement;
@@ -912,5 +916,89 @@ describe("geri dönüş kuyruğu sayfalama", () => {
     expect(screen.getByText("0/500")).toBeTruthy();
     // İptal düğmesi onaydan ("Depoya alındı") ayrı bir ada sahip.
     expect(screen.getByRole("button", { name: "İptal" })).toBeTruthy();
+  });
+});
+
+/* ══════════════════════════════════════════════════════════════════════════
+ * İP-A7d3 · göç dalgası 3 · ekran (5): `PackingStationPage`
+ *
+ * Haritadaki yeri: **üç pencere durumu** — tabanın en yoğun iki kaleminden
+ * biri. Üçü de `useDuzenlemeYuzeyi`ye taşındı.
+ *
+ * Ekranın yazımı da yeni: paketleme istasyonu ÇOK ADIMLI bir akıştır (kod
+ * okut → satır kapat → kutuyu tamamla) ve pencereler akışın ortasında açılır.
+ * Bu yüzden "kirli formda kapatma sorar" iddiası burada sıradan bir konfor
+ * değil: operatör gerekçeyi yazarken kutuya bir kod daha okutursa yazdığı
+ * gerekçe kaybolmamalıdır.
+ * ══════════════════════════════════════════════════════════════════════════ */
+
+describe("İP-A7d3 · istasyon pencereleri ortak yüzeyde", () => {
+  async function paketiAc(over: Record<string, unknown> = {}) {
+    izinVer(VIEW, PACK, MANAGE);
+    paketDetayi(
+      PAKET({
+        status: "OPEN",
+        items: [KALEM({ scanned_qty: 1, remaining: 1 })],
+        ...over,
+      }),
+    );
+    await sar("/yonetim/paketleme/paket/77");
+  }
+
+  it("ELLE DOĞRULA penceresinde kirli formda kapatma ÖNCE SORAR", async () => {
+    await paketiAc();
+    fireEvent.click(await screen.findByRole("button", { name: /elle doğrula/i }));
+    const alan = await screen.findByRole("textbox", { name: /gerekçe/i });
+    fireEvent.change(alan, { target: { value: "barkod yırtık" } });
+    await act(async () => {});
+
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(await screen.findByText("Kaydedilmemiş değişiklikler var")).toBeTruthy();
+  });
+
+  it("GERİ AL penceresinde kirli formda kapatma ÖNCE SORAR", async () => {
+    await paketiAc();
+    fireEvent.click(await screen.findByRole("button", { name: /geri al/i }));
+    const alan = await screen.findByRole("textbox", { name: /gerekçe/i });
+    fireEvent.change(alan, { target: { value: "yanlış kutu" } });
+    await act(async () => {});
+
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(await screen.findByText("Kaydedilmemiş değişiklikler var")).toBeTruthy();
+  });
+
+  it("PAKETTEN VAZGEÇ penceresinde kirli formda kapatma ÖNCE SORAR", async () => {
+    await paketiAc();
+    fireEvent.click(await screen.findByRole("button", { name: /paketten vazgeç/i }));
+    const alan = await screen.findByRole("textbox", { name: /gerekçe/i });
+    fireEvent.change(alan, { target: { value: "sipariş iptal" } });
+    await act(async () => {});
+
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(await screen.findByText("Kaydedilmemiş değişiklikler var")).toBeTruthy();
+  });
+
+  it("TEMİZ pencerede ESC doğrudan kapatır (ters prova)", async () => {
+    // Üstteki üç test, bekçi HER kapatmayı engelleseydi de geçerdi.
+    await paketiAc();
+    fireEvent.click(await screen.findByRole("button", { name: /paketten vazgeç/i }));
+    await screen.findByRole("textbox", { name: /gerekçe/i });
+    fireEvent.keyDown(document, { key: "Escape" });
+    await waitFor(() =>
+      expect(screen.queryByRole("textbox", { name: /gerekçe/i })).toBeNull(),
+    );
+    expect(screen.queryByText("Kaydedilmemiş değişiklikler var")).toBeNull();
+  });
+
+  it("gerekçe ZORUNLUYKEN boş gönderim istek ÜRETMEZ, hata alanda çıkar (SK-8)", async () => {
+    await paketiAc();
+    fireEvent.click(await screen.findByRole("button", { name: /paketten vazgeç/i }));
+    const alan = await screen.findByRole("textbox", { name: /gerekçe/i });
+    const onay = screen.getByRole("button", { name: "Vazgeç" }) as HTMLButtonElement;
+    expect(onay.disabled).toBe(false);
+    fireEvent.click(onay);
+
+    await waitFor(() => expect(alan.getAttribute("aria-invalid")).toBe("true"));
+    expect(istekler.filter((i) => i.url.includes("/void"))).toHaveLength(0);
   });
 });

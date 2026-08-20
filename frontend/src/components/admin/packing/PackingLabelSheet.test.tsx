@@ -12,6 +12,18 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+// ── Ağır ortak modül BİLE BİLE statik import ediliyor (İP-A7d3 · Görev 5) ──
+//
+// Bu dosya ekran/bileşen modüllerini TEMBEL yüklüyor ve maliyeti ilk testin
+// İÇİNDE ödüyor. İP-A7d3'te `admin/ui` demeti `ui2/duzenlemeYuzeyi` üzerinden
+// `@medusajs/ui`ye bağlandı (SK-7: `ReasonDialog`ın kirli form bekçisi) ve
+// paralel yük altında ilk test bütçeyi aştı.
+//
+// Bütçe BÜYÜTÜLMEDİ: yavaşlık üretim kodunda değil test kurulumunda; statik
+// import maliyeti TOPLAMA (collect) evresine taşır (A7d2'nin kararı).
+import "@/components/admin/ui2/duzenlemeYuzeyi";
+
+
 import { apiClient } from "@/api/axios";
 
 import type { AxiosRequestConfig } from "axios";

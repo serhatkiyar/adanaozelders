@@ -1398,6 +1398,155 @@ MUTASYONLAR: list[Mutasyon] = [
         "  useYuzeyKirliFormBekcisi({ form, sunucuHatasi: null, pencereSiz: true, etkin: false });",
         ("src/components/examOturumlariGoc.acceptance.test.tsx",), "frontend",
     ),
+    # ── IP-A7d3 (goc dalgasi 3) ────────────────────────────────────────────
+    #
+    # Dort esik + ORTAK KATMANDAKI iki sozlesme kusuru (SK-7 hic cagrilmayan
+    # bekci, SK-8 gecerlilikle kapanan gonder dugmesi) + ekran basina alinan
+    # kararlar (sessiz return, adsiz saat kutulari, adresteki suzgec).
+    Mutasyon(
+        "A7D3-1", "esik: ham <button> geri kondu (104 -> 105)",
+        "frontend/src/pages/admin/AdminReportsPage.tsx",
+        '      <KararPenceresi yuzey={karar} />',
+        '      <button type="button">Disa aktar</button>\n      <KararPenceresi yuzey={karar} />',
+        ("src/__guards__/uiBaseline.test.ts",), "frontend",
+    ),
+    Mutasyon(
+        "A7D3-2", "esik: adsiz form kontrolu eklendi (7 -> 8)",
+        "frontend/src/pages/admin/inventory/CountSessionsPage.tsx",
+        '        {canCount && yeniButon}',
+        '        <input className="input" placeholder="Not" />\n        {canCount && yeniButon}',
+        (
+            "src/__guards__/uiBaseline.test.ts",
+            "src/__guards__/calismaZamaniKapisi.test.tsx",
+        ), "frontend",
+    ),
+    Mutasyon(
+        "A7D3-3", "esik: pencere durumu ekrana geri tasindi (9 -> 10)",
+        "frontend/src/pages/admin/AdminReportsPage.tsx",
+        "  const karar = useDuzenlemeYuzeyi<Decision, void>();",
+        """  const [secilenKarar, setSecilenKarar] = useState<Decision | null>(null);
+  const karar = { ...useDuzenlemeYuzeyi<Decision, void>(), ac: setSecilenKarar };""",
+        ("src/__guards__/uiBaseline.test.ts",), "frontend",
+        ((
+            "frontend/src/pages/admin/AdminReportsPage.tsx",
+            "      <KararPenceresi yuzey={karar} />",
+            """      <KararPenceresi yuzey={{ ...karar, acik: secilenKarar !== null }} />""",
+        ), (
+            "frontend/src/pages/admin/AdminReportsPage.tsx",
+            'import { useMemo } from "react";',
+            'import { useMemo, useState } from "react";',
+        )),
+    ),
+    Mutasyon(
+        "A7D3-4", "esik: etiketsiz overlay geri kondu (0 -> 1)",
+        "frontend/src/pages/admin/inventory/CountSessionsPage.tsx",
+        "      <YeniSayimPenceresi yuzey={yeni} />",
+        '      <div className="fixed inset-0 bg-black/40" />\n      <YeniSayimPenceresi yuzey={yeni} />',
+        ("src/__guards__/uiBaseline.test.ts",), "frontend",
+    ),
+    Mutasyon(
+        "A7D3-5", "SK-7: gerekce penceresinin kirli form bekcisi kaldirildi",
+        "frontend/src/components/admin/ui/ConfirmDialog.tsx",
+        "  const bekci = useYuzeyKirliFormBekcisi({ form, sunucuHatasi: HATA_TAKIBI_YOK });",
+        """  const bekci = useYuzeyKirliFormBekcisi({
+    form,
+    sunucuHatasi: HATA_TAKIBI_YOK,
+    etkin: false,
+  });""",
+        (
+            "src/components/admin/ui/gerekcePenceresi.test.tsx",
+            "src/pages/admin/inventory/sayimDetayiGoc.acceptance.test.tsx",
+        ), "frontend",
+    ),
+    Mutasyon(
+        "A7D3-6", "SK-8: gerekce onay dugmesi yine gecerlilikle kapaniyor",
+        "frontend/src/components/admin/ui/ConfirmDialog.tsx",
+        '        <Button variant={danger ? "danger" : "primary"} isPending={isPending} onClick={gonder}>{confirmLabel}</Button>',
+        '        <Button variant={danger ? "danger" : "primary"} disabled={uzunluk < minLength || asildi} isPending={isPending} onClick={gonder}>{confirmLabel}</Button>',
+        (
+            "src/components/admin/ui/gerekcePenceresi.test.tsx",
+            "src/pages/dashboards/adminTutorApproval.acceptance.test.tsx",
+        ), "frontend",
+    ),
+    Mutasyon(
+        "A7D3-7", "gonder kapisi: 'Oturumu ac' yine gecerlilikle kapaniyor",
+        "frontend/src/pages/admin/inventory/CountSessionsPage.tsx",
+        "        <Button isPending={olustur.isPending} onClick={gonder}>",
+        """        <Button
+          disabled={!form.formState.isValid}
+          isPending={olustur.isPending}
+          onClick={gonder}
+        >""",
+        ("src/pages/admin/inventory/sayimOturumlariGoc.acceptance.test.tsx",), "frontend",
+    ),
+    Mutasyon(
+        "A7D3-8", "urun ekleme yine SESSIZ return yapiyor (dogrulama yok)",
+        "frontend/src/pages/admin/inventory/CountSessionDetailPage.tsx",
+        """    .refine(
+      (v) =>
+        v
+          .split(/[\\s,]+/)
+          .filter(Boolean)
+          .every((p) => Number.isInteger(Number(p)) && Number(p) > 0),
+      "Yalnız pozitif ürün numaraları yazın (ör. 12, 34)."
+    ),""",
+        "    ,",
+        ("src/pages/admin/inventory/sayimDetayiGoc.acceptance.test.tsx",), "frontend",
+    ),
+    Mutasyon(
+        "A7D3-9", "odeme formunda kirli form bekcisi kaldirildi (IBAN/TCKN)",
+        "frontend/src/components/LibraryPayoutForm.tsx",
+        "  useYuzeyKirliFormBekcisi({ form, sunucuHatasi: submit.error, pencereSiz: true });",
+        """  useYuzeyKirliFormBekcisi({
+    form,
+    sunucuHatasi: submit.error,
+    pencereSiz: true,
+    etkin: false,
+  });""",
+        ("src/components/kutuphaneOdemeGoc.acceptance.test.tsx",), "frontend",
+    ),
+    Mutasyon(
+        "A7D3-10", "kutuphane saat kutularinin erisilebilir adi geri alindi",
+        "frontend/src/pages/dashboards/OperatorLibrary.tsx",
+        "                      aria-label={`${WEEKDAY_LABELS[h.weekday]} açılış saati`}\n",
+        "",
+        (
+            "src/pages/dashboards/operatorPanel.acceptance.test.tsx",
+            "src/__guards__/uiBaseline.test.ts",
+        ), "frontend",
+    ),
+    Mutasyon(
+        "A7D3-11", "ad degisikligi suzgeci yine useState'te (adreste degil)",
+        "frontend/src/pages/dashboards/AdminHome.tsx",
+        '  const url = useUrlDurumu({ talep: "PENDING" });',
+        '  const url = { degerler: { talep: "PENDING" }, ayarla: (_v: unknown) => { void _v; } };',
+        ("src/pages/dashboards/adminTutorApproval.acceptance.test.tsx",), "frontend",
+    ),
+    Mutasyon(
+        "A7D3-12", "harita arama kutusunun adi geri alindi (bilinen istisna)",
+        "frontend/src/components/MapPicker.tsx",
+        '                aria-label="Haritada adres ara"\n',
+        "",
+        (
+            "src/components/kutuphaneEditoruDalAdlari.acceptance.test.tsx",
+            "src/__guards__/uiBaseline.test.ts",
+            "src/__guards__/calismaZamaniKapisi.test.tsx",
+        ), "frontend",
+    ),
+    Mutasyon(
+        "A7D3-13", "sikayet karar penceresinin kirli form bekcisi kaldirildi",
+        "frontend/src/pages/admin/AdminReportsPage.tsx",
+        "  useYuzeyKirliFormBekcisi({ form, sunucuHatasi: resolve.error });",
+        "  useYuzeyKirliFormBekcisi({ form, sunucuHatasi: resolve.error, etkin: false });",
+        ("src/pages/admin/adminSikayetGoc.acceptance.test.tsx",), "frontend",
+    ),
+    Mutasyon(
+        "A7D3-14", "surukle-birak siralamasi sunucuya yeni sirayi yazmiyor",
+        "frontend/src/pages/admin/delivery/DeliveryRunDetailPage.tsx",
+        "    ids.splice(to, 0, ...ids.splice(from, 1));",
+        "    void to; // MUTASYON: sira degistirilmiyor",
+        ("src/pages/admin/delivery/turDetayiGoc.acceptance.test.tsx",), "frontend",
+    ),
 ]
 
 

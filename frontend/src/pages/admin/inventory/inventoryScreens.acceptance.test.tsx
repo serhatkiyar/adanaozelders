@@ -170,6 +170,20 @@ const SATIR_DAMAGED = {
   difference: 0,
 };
 
+/**
+ * Oturum kodunun DOM'daki düğümleri (İP-A7d3 · kasıtlı test güncellemesi).
+ *
+ * Sayım listesi ortak `DataTable`a geçti; bileşen masaüstü satırını ve mobil
+ * kartı BİRLİKTE basar (görünürlüğü CSS ayırır). Bu yüzden kod iki düğümde
+ * bulunur ve `getByText` "birden çok eşleşme" diye patlar.
+ *
+ * Sayı GEVŞETİLMEDİ: iddia `toHaveLength(2)`dir. `getAllByText(...).length > 0`
+ * yazmak, satır iki kez basılsa da (gerçek bir hata) geçerdi.
+ */
+function kodDugumleri(kod: string): HTMLElement[] {
+  return screen.getAllByText(kod);
+}
+
 const OTURUM = {
   id: 7,
   code: "SAY-2027-0007",
@@ -295,7 +309,7 @@ describe("2 · yalnız inventory.view", () => {
     izinVer(VIEW);
     listeSunucusu();
     sar(ROUTES.adminInventoryCounts);
-    await waitFor(() => expect(screen.getByText("SAY-2027-0007")).toBeTruthy());
+    await waitFor(() => expect(kodDugumleri("SAY-2027-0007")).toHaveLength(2));
     expect(screen.queryByRole("button", { name: /yeni sayım/i })).toBeNull();
   });
 
@@ -424,7 +438,7 @@ describe("7 · sayım listesi", () => {
     izinVer(VIEW);
     listeSunucusu();
     sar(ROUTES.adminInventoryCounts);
-    await waitFor(() => expect(screen.getByText("SAY-2027-0007")).toBeTruthy());
+    await waitFor(() => expect(kodDugumleri("SAY-2027-0007")).toHaveLength(2));
     // Durum RENKLE değil METİNLE anlatılır.
     const satir = screen.getByTestId("session-row-7");
     expect(within(satir).getByText(/[İi]ncelemede/), "durum satırda METİN olarak yok").toBeTruthy();
@@ -441,7 +455,7 @@ describe("7 · sayım listesi", () => {
     izinVer(VIEW);
     listeSunucusu();
     sar(ROUTES.adminInventoryCounts);
-    await waitFor(() => expect(screen.getByText("SAY-2027-0007")).toBeTruthy());
+    await waitFor(() => expect(kodDugumleri("SAY-2027-0007")).toHaveLength(2));
     fireEvent.change(screen.getByLabelText(/duruma göre/i), { target: { value: "REVIEW" } });
     await waitFor(() => {
       const son = istekler[istekler.length - 1];
@@ -453,7 +467,7 @@ describe("7 · sayım listesi", () => {
     izinVer(VIEW);
     listeSunucusu([{ ...OTURUM, has_stale: true }]);
     sar(ROUTES.adminInventoryCounts);
-    await waitFor(() => expect(screen.getByText("SAY-2027-0007")).toBeTruthy());
+    await waitFor(() => expect(kodDugumleri("SAY-2027-0007")).toHaveLength(2));
     const satir = screen.getByTestId("session-row-7");
     expect(within(satir).getByTestId("stale-flag")).toBeTruthy();
     expect(within(satir).getByRole("link").getAttribute("href")).toBe(
@@ -921,7 +935,7 @@ describe("26 · sayfalama", () => {
     sunucu("count-sessions", { data: { items: cok, total: 60, limit: 25, offset: 0 } }, "get");
     sar(ROUTES.adminInventoryCounts);
 
-    await waitFor(() => expect(screen.getByText("SAY-1")).toBeTruthy());
+    await waitFor(() => expect(kodDugumleri("SAY-1")).toHaveLength(2));
     expect(istekler[0].url).toMatch(/limit=25/);
     expect(istekler[0].url).toMatch(/offset=0/);
 
@@ -1017,7 +1031,7 @@ describe("29 · erişilebilirlik", () => {
     izinVer(VIEW);
     listeSunucusu();
     const { container } = sar(ROUTES.adminInventoryCounts);
-    await waitFor(() => expect(screen.getByText("SAY-2027-0007")).toBeTruthy());
+    await waitFor(() => expect(kodDugumleri("SAY-2027-0007")).toHaveLength(2));
     expect(container.querySelectorAll("h1").length).toBe(0);
   });
 });

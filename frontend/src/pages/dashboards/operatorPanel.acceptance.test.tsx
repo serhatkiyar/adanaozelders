@@ -22,7 +22,7 @@
 // `backend/schemas/*.py` ve `src/types/index.ts` okunarak yazılmıştır; uydurma
 // alan yoktur.
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { configure, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, configure, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -45,6 +45,7 @@ import "@/components/admin/ui2/duzenlemeYuzeyi";
 
 import { apiClient } from "@/api/axios";
 import { useAuthStore } from "@/store/authStore";
+import { adsizKontroller } from "@/test-utils/alanAdlari";
 
 import type { AxiosRequestConfig } from "axios";
 import type { ComponentType } from "react";
@@ -173,6 +174,7 @@ function operatorOturumu() {
 
 const EKRANLAR = import.meta.glob([
   "./OperatorHome.tsx",
+  "./OperatorLibrary.tsx",
   "./OperatorSessions.tsx",
   "../Notifications.tsx",
   "../Leaderboard.tsx",
@@ -783,4 +785,162 @@ describe("N · ortak sayfalarda operatör navigasyonu", () => {
       expect(screen.queryByRole("link", { name: /Rezervasyonlar/i })).toBeNull();
     });
   }
+});
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+ * İP-A7d3 · göç dalgası 3 · ekranlar (7)(8)(9): operatör paneli üçlüsü
+ *
+ * Haritadaki yeri (dalga başındaki taban):
+ *   • `OperatorLibrary`  — 4 ham düğme + **7 adsız kontrol** (tabanın en büyük
+ *     adsız kalemi: beş adres kutusu + on dört saat kutusundan ikisi)
+ *   • `OperatorHome`     — 3 ham düğme + 3 adsız kontrol (şifre paneli)
+ *   • `OperatorSessions` — 3 ham düğme + 1 adsız kontrol (elle bilet kodu)
+ *
+ * A7d2 bu üçlüyü "ayrı sahip, ayrı kabul matrisi" gerekçesiyle elemişti.
+ * Bu dalganın ölçütü BORÇ YOĞUNLUĞU: kalan 26 adsız kontrolün 11'i buradaydı
+ * ve üçünü de almadan sayıyı anlamlı biçimde düşürmek mümkün değildi. Kabul
+ * matrisi karışmasın diye iddialar bu dosyanın SONUNDA, kendi bölümünde durur
+ * ve İP-14'ün mevcut testlerine dokunmaz.
+ * ══════════════════════════════════════════════════════════════════════════ */
+
+describe("İP-A7d3 · operatör paneli göçü", () => {
+  it("OperatorHome · şifre panelinin üç alanı da ADLI", async () => {
+    operatorOturumu();
+    temelUclar();
+    const { container } = await sar("./OperatorHome.tsx");
+
+    fireEvent.click(await screen.findByRole("button", { name: "Şifre değiştir" }));
+    expect(await screen.findByLabelText("Mevcut şifre")).toBeTruthy();
+    expect(screen.getByLabelText(/Yeni şifre \(en az 8/)).toBeTruthy();
+    expect(screen.getByLabelText("Yeni şifre (tekrar)")).toBeTruthy();
+    expect(adsizKontroller(container).map((a) => a.html)).toEqual([]);
+  });
+
+  it("OperatorHome · KAPALI dalda şifre alanları hiç basılmaz (ters prova)", async () => {
+    operatorOturumu();
+    temelUclar();
+    await sar("./OperatorHome.tsx");
+    await screen.findByRole("button", { name: "Şifre değiştir" });
+    expect(screen.queryByLabelText("Mevcut şifre")).toBeNull();
+  });
+
+  it("OperatorHome · kısa şifrede düğme AÇIK kalır, istek GİTMEZ, hata ALANDA çıkar", async () => {
+    operatorOturumu();
+    temelUclar();
+    await sar("./OperatorHome.tsx");
+
+    fireEvent.click(await screen.findByRole("button", { name: "Şifre değiştir" }));
+    const mevcut = await screen.findByLabelText("Mevcut şifre");
+    fireEvent.change(mevcut, { target: { value: "eski-sifre" } });
+    fireEvent.change(screen.getByLabelText(/Yeni şifre \(en az 8/), { target: { value: "kisa" } });
+    await act(async () => {});
+
+    const gonder = screen.getByRole("button", { name: "Şifreyi Güncelle" }) as HTMLButtonElement;
+    expect(gonder.disabled).toBe(false);
+    fireEvent.click(gonder);
+
+    expect(await screen.findByText("Yeni şifre en az 8 karakter olmalı.")).toBeTruthy();
+    expect(gidenler("/change-password", "post")).toHaveLength(0);
+  });
+
+  it("OperatorHome · şifreler eşleşmiyorsa hata TEKRAR alanında çıkar", async () => {
+    operatorOturumu();
+    temelUclar();
+    await sar("./OperatorHome.tsx");
+
+    fireEvent.click(await screen.findByRole("button", { name: "Şifre değiştir" }));
+    fireEvent.change(await screen.findByLabelText("Mevcut şifre"), { target: { value: "eski" } });
+    fireEvent.change(screen.getByLabelText(/Yeni şifre \(en az 8/), {
+      target: { value: "yeterince-uzun" },
+    });
+    fireEvent.change(screen.getByLabelText("Yeni şifre (tekrar)"), { target: { value: "baska" } });
+    fireEvent.click(screen.getByRole("button", { name: "Şifreyi Güncelle" }));
+
+    const mesaj = await screen.findByText("Yeni şifreler eşleşmiyor.");
+    const tekrar = screen.getByLabelText("Yeni şifre (tekrar)");
+    expect(tekrar.getAttribute("aria-describedby") ?? "").toContain(mesaj.id);
+  });
+
+  it("OperatorHome · şifre formu KİRLİYKEN sekme kapatma İPTAL edilir", async () => {
+    operatorOturumu();
+    temelUclar();
+    await sar("./OperatorHome.tsx");
+    fireEvent.click(await screen.findByRole("button", { name: "Şifre değiştir" }));
+
+    const temiz = new Event("beforeunload", { cancelable: true });
+    window.dispatchEvent(temiz);
+    expect(temiz.defaultPrevented).toBe(false);
+
+    fireEvent.change(await screen.findByLabelText("Mevcut şifre"), { target: { value: "x" } });
+    await act(async () => {});
+    const kirli = new Event("beforeunload", { cancelable: true });
+    window.dispatchEvent(kirli);
+    expect(kirli.defaultPrevented).toBe(true);
+  });
+
+  it("OperatorSessions · elle bilet kodu kutusu ADLI", async () => {
+    operatorOturumu();
+    temelUclar();
+    const { container } = await sar("./OperatorSessions.tsx");
+
+    expect(await screen.findByLabelText("Bilet kodu")).toBeTruthy();
+    expect(adsizKontroller(container).map((a) => a.html)).toEqual([]);
+  });
+
+  it("OperatorLibrary · adres dalının BEŞ alanı da ADLI", async () => {
+    operatorOturumu();
+    temelUclar();
+    const { container } = await sar("./OperatorLibrary.tsx");
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: /Adres & Konum — düzenle/ }),
+    );
+    expect(await screen.findByLabelText("İl")).toBeTruthy();
+    expect(screen.getByLabelText("İlçe")).toBeTruthy();
+    expect(screen.getByLabelText("Mahalle")).toBeTruthy();
+    expect(screen.getByLabelText("Sokak / Cadde")).toBeTruthy();
+    expect(screen.getByLabelText("No")).toBeTruthy();
+    expect(adsizKontroller(container).map((a) => a.html)).toEqual([]);
+  });
+
+  it("OperatorLibrary · saat dalının ON DÖRT kutusu da GÜN ADIYLA adlı", async () => {
+    operatorOturumu();
+    temelUclar();
+    const { container } = await sar("./OperatorLibrary.tsx");
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: /Çalışma Saatleri — düzenle/ }),
+    );
+    // Gün varsayılan olarak KAPALI gelir (fixture `hours: []`); saat kutuları
+    // ancak gün açıkken basılır.
+    fireEvent.click((await screen.findAllByRole("checkbox", { name: "Açık" }))[0]);
+    fireEvent.click(screen.getAllByRole("checkbox", { name: "Açık" })[6]);
+    // Gün adı ADIN İÇİNDE: yedi satırın on dört kutusu birbirinden ayırt
+    // edilebilmeli. "Bir yerde bir ad var" iddiası burada yetmez.
+    expect(await screen.findByLabelText("Pazartesi açılış saati")).toBeTruthy();
+    expect(screen.getByLabelText("Pazartesi kapanış saati")).toBeTruthy();
+    expect(screen.getByLabelText("Pazar açılış saati")).toBeTruthy();
+    expect(screen.getByLabelText("Pazar kapanış saati")).toBeTruthy();
+    expect(adsizKontroller(container).map((a) => a.html)).toEqual([]);
+  });
+
+  it("OperatorLibrary · SALT OKUNUR dalda hiçbir kontrol adsız değil (ters prova)", async () => {
+    operatorOturumu();
+    temelUclar();
+    const { container } = await sar("./OperatorLibrary.tsx");
+    await screen.findByRole("button", { name: /Adres & Konum — düzenle/ });
+    expect(adsizKontroller(container).map((a) => a.html)).toEqual([]);
+  });
+
+  it("OperatorLibrary · olanak çipi SEÇİM DURUMUNU beyan eder (aria-pressed)", async () => {
+    operatorOturumu();
+    temelUclar({ kutuphane: KUTUPHANE({ amenities: ["wifi"] }) });
+    await sar("./OperatorLibrary.tsx");
+
+    fireEvent.click(await screen.findByRole("button", { name: /Olanaklar — düzenle/ }));
+    const secili = await screen.findAllByRole("button", { pressed: true });
+    expect(secili.length).toBeGreaterThan(0);
+    expect(screen.getAllByRole("button", { pressed: false }).length).toBeGreaterThan(0);
+  });
 });

@@ -2,6 +2,12 @@ import { usePaymentAvailability } from "@/hooks/useFeatureFlags";
 import { canPromiseEscrow } from "@/lib/paymentAvailability";
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { Button } from "@/components/admin/ui";
+import { useYuzeyKirliFormBekcisi } from "@/components/admin/ui2/duzenlemeYuzeyi";
+import { Form, sunucuHatasiniUygula } from "@/components/admin/ui2/form";
 import { DashboardShell } from "@/components/DashboardShell";
 import { OPERATOR_NAV } from "@/lib/nav";
 import { useOperatorMe } from "@/hooks/useLibraryExams";
@@ -208,13 +214,14 @@ function LibraryStatusBanner({ libraryId }: { libraryId: number }) {
           <Link to={ROUTES.operatorLibrary} className="font-semibold underline">Profilini düzelt</Link>{" "}
           ve başvurunu tekrar gönder.
         </p>
-        <button
+        <Button
+          variant="danger"
+          className="mt-3 rounded-xl"
+          isPending={resubmit.isPending}
           onClick={doResubmit}
-          disabled={resubmit.isPending}
-          className="mt-3 rounded-xl bg-rose-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-rose-700 disabled:opacity-60 active:scale-95"
         >
-          {resubmit.isPending ? "Gönderiliyor…" : "Tekrar başvur"}
-        </button>
+          Tekrar başvur
+        </Button>
       </div>
     );
   }
@@ -372,75 +379,158 @@ function OperationsTeaser({ libraryId: _libraryId }: { libraryId: number }) {
   );
 }
 
+/**
+ * Hesap güvenliği — şifre değiştirme (İP-A7d3 · göç dalgası 3).
+ *
+ * Üç alanın üçü de `placeholder`ı etiket yerine kullanıyordu ve doğrulama
+ * `toast.error` ile veriliyordu: kullanıcı "Yeni şifreler eşleşmiyor." yazısını
+ * ekranın altında görüyor, hangi kutuya bakacağını bilmiyordu. Bir şifre
+ * formunda bu, alanın içeriği gizli olduğu için daha da körleştirici.
+ */
+const sifreSemasi = z
+  .object({
+    current: z.string().refine((v) => v.length > 0, "Mevcut şifreni yaz."),
+    next: z.string().refine((v) => v.length >= 8, "Yeni şifre en az 8 karakter olmalı."),
+    confirm: z.string(),
+  })
+  .superRefine((deger, ctx) => {
+    if (deger.confirm !== deger.next) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["confirm"],
+        message: "Yeni şifreler eşleşmiyor.",
+      });
+    }
+  });
+
+type SifreDegerleri = z.infer<typeof sifreSemasi>;
+
+const SIFRE_SIRA = ["current", "next", "confirm"] as const;
+
 function PasswordPanel() {
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({ current: "", next: "", confirm: "" });
   const change = useChangePassword();
 
-  const submit = () => {
-    if (form.next.length < 8) {
-      toast.error("Yeni şifre en az 8 karakter olmalı.");
-      return;
+  const form = useForm<SifreDegerleri>({
+    resolver: zodResolver(sifreSemasi),
+    defaultValues: { current: "", next: "", confirm: "" },
+    mode: "onChange",
+    shouldFocusError: false,
+  });
+
+  // Satır içi form (pencere yok) — beyan zorunlu (İP-A7d2 · SK-3).
+  useYuzeyKirliFormBekcisi({ form, sunucuHatasi: change.error, pencereSiz: true });
+
+  const submit = form.handleSubmit(
+    (deger) => {
+      form.clearErrors("root.sunucu");
+      change.mutate(
+        { current_password: deger.current, new_password: deger.next },
+        {
+          onSuccess: () => {
+            toast.success("Şifren güncellendi.");
+            form.reset({ current: "", next: "", confirm: "" });
+            setOpen(false);
+          },
+          onError: (e) => {
+            const kalan = sunucuHatasiniUygula(
+              e,
+              form,
+              ["current", "next"],
+              // Sunucu alan adlarını kendi şemasıyla söyler; formdaki karşılığı
+              // farklıdır ve eşleme olmadan mesaj genel kanala düşerdi.
+              { current_password: "current", new_password: "next" },
+              (h) => getErrorMessage(h, "Şifre değiştirilemedi.")
+            );
+            form.setError("root.sunucu", { type: "server", message: kalan ?? undefined });
+          },
+        }
+      );
+    },
+    (hatalar) => {
+      const alan = SIFRE_SIRA.find((a) => hatalar[a]);
+      if (alan) form.setFocus(alan);
     }
-    if (form.next !== form.confirm) {
-      toast.error("Yeni şifreler eşleşmiyor.");
-      return;
-    }
-    change.mutate(
-      { current_password: form.current, new_password: form.next },
-      {
-        onSuccess: () => {
-          toast.success("Şifren güncellendi.");
-          setForm({ current: "", next: "", confirm: "" });
-          setOpen(false);
-        },
-        onError: (e) => toast.error(getErrorMessage(e, "Şifre değiştirilemedi.")),
-      }
-    );
-  };
+  );
+
+  const genelHata = form.formState.errors.root?.sunucu?.message;
 
   return (
     <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700">
       <div className="flex items-center justify-between">
         <h2 className="text-base font-bold text-slate-900 dark:text-white">Hesap Güvenliği</h2>
-        <button
+        <Button
+          size="sm"
+          variant="secondary"
+          aria-expanded={open}
           onClick={() => setOpen((v) => !v)}
-          className="rounded-lg bg-slate-100 px-3 py-1.5 text-sm font-semibold text-slate-700 dark:bg-slate-700 dark:text-slate-200"
         >
           {open ? "Kapat" : "Şifre değiştir"}
-        </button>
+        </Button>
       </div>
       {open && (
         <div className="mt-3 grid max-w-md grid-cols-1 gap-2">
-          <input
-            type="password"
-            className="input"
-            placeholder="Mevcut şifre"
-            value={form.current}
-            onChange={(e) => setForm({ ...form, current: e.target.value })}
+          {genelHata && (
+            <p
+              role="alert"
+              className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700 dark:bg-rose-500/10 dark:text-rose-300"
+            >
+              {genelHata}
+            </p>
+          )}
+          <Form.Field
+            control={form.control}
+            name="current"
+            render={({ field }) => (
+              <Form.Item>
+                <Form.Label>Mevcut şifre</Form.Label>
+                <Form.Control>
+                  <input type="password" className="input" autoComplete="current-password" {...field} />
+                </Form.Control>
+                <Form.ErrorMessage />
+              </Form.Item>
+            )}
           />
-          <input
-            type="password"
-            className="input"
-            placeholder="Yeni şifre (min 8)"
-            value={form.next}
-            onChange={(e) => setForm({ ...form, next: e.target.value })}
+          <Form.Field
+            control={form.control}
+            name="next"
+            render={({ field }) => (
+              <Form.Item>
+                <Form.Label>Yeni şifre (en az 8 karakter)</Form.Label>
+                <Form.Control>
+                  <input type="password" className="input" autoComplete="new-password" {...field} />
+                </Form.Control>
+                <Form.ErrorMessage />
+              </Form.Item>
+            )}
           />
-          <input
-            type="password"
-            className="input"
-            placeholder="Yeni şifre (tekrar)"
-            value={form.confirm}
-            onChange={(e) => setForm({ ...form, confirm: e.target.value })}
-            onKeyDown={(e) => e.key === "Enter" && submit()}
+          <Form.Field
+            control={form.control}
+            name="confirm"
+            render={({ field }) => (
+              <Form.Item>
+                <Form.Label>Yeni şifre (tekrar)</Form.Label>
+                <Form.Control>
+                  <input
+                    type="password"
+                    className="input"
+                    autoComplete="new-password"
+                    {...field}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") submit();
+                    }}
+                  />
+                </Form.Control>
+                <Form.ErrorMessage />
+              </Form.Item>
+            )}
           />
-          <button
-            onClick={submit}
-            disabled={change.isPending || !form.current || !form.next}
-            className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
-          >
-            {change.isPending ? "Güncelleniyor…" : "Şifreyi Güncelle"}
-          </button>
+          <div className="flex justify-end">
+            {/* Düğme geçerlilikle KAPANMAZ (kilitli karar). */}
+            <Button isPending={change.isPending} onClick={submit}>
+              Şifreyi Güncelle
+            </Button>
+          </div>
         </div>
       )}
     </div>

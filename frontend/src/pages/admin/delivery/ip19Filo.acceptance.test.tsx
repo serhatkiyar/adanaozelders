@@ -20,6 +20,17 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
+// ── Ağır ortak modül BİLE BİLE statik import ediliyor (İP-A7d3 · Görev 5) ──
+//
+// Ekranlar bu dosyada TEMBEL yükleniyor (`await import("./DeliveryTodayPage")`)
+// ve maliyeti ilk testin İÇİNDE ödeniyor. İP-A7d3'te `admin/ui` demeti
+// `ui2/duzenlemeYuzeyi` üzerinden `@medusajs/ui`ye bağlandı (SK-7) ve D-13
+// paralel yük altında 9 sn'lik bütçeyi aştı — YALNIZ ilk test.
+//
+// Bütçe BÜYÜTÜLMEDİ: yavaşlık üretim kodunda değil test kurulumunda; statik
+// import maliyeti TOPLAMA evresine taşır (A7d2'nin `PackagesPage` kararı).
+import "@/components/admin/ui2/duzenlemeYuzeyi";
+
 import { apiClient } from "@/api/axios";
 import { useAuthStore } from "@/store/authStore";
 

@@ -37,6 +37,18 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it } from "vitest";
+
+// ── Ağır ortak modül BİLE BİLE statik import ediliyor (İP-A7d3 · Görev 5) ──
+//
+// Bu dosya ekran/bileşen modüllerini TEMBEL yüklüyor ve maliyeti ilk testin
+// İÇİNDE ödüyor. İP-A7d3'te `admin/ui` demeti `ui2/duzenlemeYuzeyi` üzerinden
+// `@medusajs/ui`ye bağlandı (SK-7: `ReasonDialog`ın kirli form bekçisi) ve
+// paralel yük altında ilk test bütçeyi aştı.
+//
+// Bütçe BÜYÜTÜLMEDİ: yavaşlık üretim kodunda değil test kurulumunda; statik
+// import maliyeti TOPLAMA (collect) evresine taşır (A7d2'nin kararı).
+import "@/components/admin/ui2/duzenlemeYuzeyi";
+
 import { createElement } from "react";
 
 import { apiClient } from "@/api/axios";
@@ -146,6 +158,27 @@ const DERIN_KAPI = [
   "src/pages/admin/delivery/DeliveryVehiclesPage.tsx",
   "src/pages/dashboards/AdminExamCatalogs.tsx",
   "src/pages/dashboards/AdminStore.tsx",
+  // İP-A7d3 · göç dalgası 3: ON dosya derin kapıya GİRDİ. Her birinin koşullu
+  // dalları kendi kabul dosyasında render edilip alan adları doğrulanıyor:
+  //   • `LibraryPayoutForm`       → `kutuphaneOdemeGoc.acceptance` (Ö-1)
+  //   • `AdminReportsPage`        → `adminSikayetGoc.acceptance` (Ş-3)
+  //   • `CountSessionsPage`       → `sayimOturumlariGoc.acceptance` (S-2)
+  //   • `CountSessionDetailPage`  → `sayimDetayiGoc.acceptance` (D-4)
+  //   • `PackingStationPage`      → `packingLabel.acceptance` (A7d3 bölümü)
+  //   • `DeliveryRunDetailPage`   → `turDetayiGoc.acceptance` (T-4)
+  //   • `OperatorHome` / `OperatorLibrary` / `OperatorSessions`
+  //                               → `operatorPanel.acceptance` (A7d3 bölümü)
+  //   • `AdminHome`               → `adminTutorApproval.acceptance` (A7d3 bölümü)
+  "src/components/LibraryPayoutForm.tsx",
+  "src/pages/admin/AdminReportsPage.tsx",
+  "src/pages/admin/delivery/DeliveryRunDetailPage.tsx",
+  "src/pages/admin/inventory/CountSessionDetailPage.tsx",
+  "src/pages/admin/inventory/CountSessionsPage.tsx",
+  "src/pages/admin/packing/PackingStationPage.tsx",
+  "src/pages/dashboards/AdminHome.tsx",
+  "src/pages/dashboards/OperatorHome.tsx",
+  "src/pages/dashboards/OperatorLibrary.tsx",
+  "src/pages/dashboards/OperatorSessions.tsx",
 ];
 
 /**
@@ -162,9 +195,18 @@ const DERIN_KAPI = [
  * (aksi hâlde "sayı düştü" ile "ekran ölçümden çıktı" ayırt edilemez).
  */
 const CALISMA_ZAMANI_ADSIZ: Record<string, number> = {
+  // ── İP-A7d3 · göç dalgası 3: İKİ kalem bu tabandan ÇIKTI (7 → 1) ──
+  //
+  //   • `LibraryPayoutForm` 5 → 0: beş alan da `Form.*`a geçti (IBAN/TCKN/
+  //     unvan/e-posta/telefon) ve doğrulama toast'tan alana indi.
+  //   • `MapPicker` 1 → 0: adres arama kutusuna `aria-label` verildi.
+  //     A7d2'nin kapanış notu bunu adıyla dalga 3'e bırakmıştı ve borç üç ayrı
+  //     testte "bilinen istisna" olarak taşınıyordu.
+  //
+  // Listeden ÇIKMAK borcun kapandığı anlamına gelir ve bu test kırılarak
+  // düşüşü RAPORLATIR (aksi hâlde "sayı düştü" ile "ekran ölçümden çıktı"
+  // ayırt edilemez).
   "src/components/ImageCropModal.tsx": 1, // yakınlaştırma kaydırağı (type=range)
-  "src/components/LibraryPayoutForm.tsx": 5, // IBAN/unvan/TCKN… beşi de placeholder ile
-  "src/components/MapPicker.tsx": 1, // adres arama kutusu
 };
 
 /**
