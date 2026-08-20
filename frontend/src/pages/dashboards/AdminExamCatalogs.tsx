@@ -1,6 +1,16 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { AccessDenied, ReadOnlyNotice, useAdminAreaAccess } from "@/components/admin/AccessState";
-import { ConfirmDialog } from "@/components/admin/ui";
+import { Button, ConfirmDialog, ErrorState } from "@/components/admin/ui";
+import {
+  DuzenlemePenceresi,
+  useDuzenlemeYuzeyi,
+  useYuzeyKirliFormBekcisi,
+  type DuzenlemeYuzeyiDurumu,
+} from "@/components/admin/ui2/duzenlemeYuzeyi";
+import { Form, sunucuHatasiniUygula } from "@/components/admin/ui2/form";
 import {
   useCatalogs,
   useCreateCatalog,
@@ -26,6 +36,58 @@ interface FormState {
   is_nationwide: boolean;
 }
 
+/** Boş bırakılabilen, negatif olmayan tam sayı alanı. */
+function sayiAlani(etiket: string) {
+  return z
+    .string()
+    .refine(
+      (v) => v.trim() === "" || (Number.isFinite(Number(v)) && Number(v) >= 0),
+      `${etiket} negatif olamaz.`
+    );
+}
+
+/**
+ * Katalog formu şeması (İP-A7d2 · Görev 4).
+ *
+ * Eskiden tek kural vardı ve `submit()` içinde elle yazılmıştı; hata
+ * `toast.error("Deneme adı gerekli.")` ile köşeye düşüyordu.
+ */
+const katalogSemasi = z.object({
+  exam_name: z.string().trim().min(2, "Deneme adı en az 2 karakter olmalı."),
+  exam_type: z.string().min(1, "Sınav türü seçilmeli."),
+  publisher_name: z.string(),
+  description: z.string(),
+  question_count: sayiAlani("Soru sayısı"),
+  duration_minutes: sayiAlani("Süre"),
+  is_public: z.boolean(),
+  is_nationwide: z.boolean(),
+});
+
+type KatalogFormDegerleri = z.infer<typeof katalogSemasi>;
+
+/** Alan sırası — "ilk hatalı alana odaklan" bunu kullanır. */
+const GORSEL_SIRA = [
+  "exam_name",
+  "exam_type",
+  "publisher_name",
+  "question_count",
+  "duration_minutes",
+  "description",
+] as const;
+
+function formDegerleri(f: FormState): KatalogFormDegerleri {
+  return {
+    exam_name: f.exam_name,
+    exam_type: f.exam_type,
+    publisher_name: f.publisher_name,
+    description: f.description,
+    question_count: f.question_count,
+    duration_minutes: f.duration_minutes,
+    is_public: f.is_public,
+    is_nationwide: f.is_nationwide,
+  };
+}
+
 function emptyForm(): FormState {
   return {
     exam_name: "",
@@ -41,8 +103,9 @@ function emptyForm(): FormState {
 
 export default function AdminExamCatalogs() {
   const { canView, canManage } = useAdminAreaAccess("catalogs");
-  const { data: catalogs, isLoading } = useCatalogs();
-  const [editor, setEditor] = useState<FormState | null>(null);
+  const { data: catalogs, isLoading, isError, refetch } = useCatalogs();
+  // Pencere durumu ekranda yaşamaz (İP-A4 sözleşmesi).
+  const editor = useDuzenlemeYuzeyi<FormState, void>();
 
   if (!canView) return <AccessDenied area="Deneme katalogları" />;
 
@@ -59,18 +122,22 @@ export default function AdminExamCatalogs() {
           </p>
         </div>
         {canManage && (
-          <button
-            onClick={() => setEditor(emptyForm())}
-            className="shrink-0 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
-          >
+          <Button className="shrink-0" onClick={() => editor.ac(emptyForm())}>
             + Katalog
-          </button>
+          </Button>
         )}
       </div>
       {!canManage && <ReadOnlyNotice />}
 
       {isLoading ? (
         <div className="h-32 animate-pulse rounded-2xl bg-slate-100 dark:bg-slate-800" />
+      ) : isError ? (
+        // Hata ≠ boş: sunucu patlarken "Henüz katalog eklenmedi" demek,
+        // yöneticiye kataloglarının silindiğini söylemektir.
+        <ErrorState
+          description="Katalog listesi yüklenemedi. Listenin boş olduğu anlamına gelmez."
+          onRetry={() => void refetch()}
+        />
       ) : !catalogs || catalogs.length === 0 ? (
         <p className="rounded-2xl border border-dashed border-slate-300 py-16 text-center text-sm text-slate-400 dark:border-slate-700">
           Henüz katalog eklenmedi. İlk ortak denemeyi oluştur.
@@ -78,12 +145,17 @@ export default function AdminExamCatalogs() {
       ) : (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {catalogs.map((c) => (
-            <CatalogCard key={c.id} catalog={c} canManage={canManage} onEdit={() => setEditor(toForm(c))} />
+            <CatalogCard
+              key={c.id}
+              catalog={c}
+              canManage={canManage}
+              onEdit={() => editor.ac(toForm(c))}
+            />
           ))}
         </div>
       )}
 
-      {editor && <CatalogEditor form={editor} onClose={() => setEditor(null)} />}
+      <CatalogEditorPenceresi yuzey={editor} />
     </div>
   );
 }
@@ -103,14 +175,14 @@ function toForm(c: CatalogOut): FormState {
 }
 
 function CatalogCard({ catalog, canManage, onEdit }: { catalog: CatalogOut; canManage: boolean; onEdit: () => void }) {
-  const [deleteOpen, setDeleteOpen] = useState(false);
+  const silme = useDuzenlemeYuzeyi<CatalogOut, void>();
   const del = useDeleteCatalog();
   const uploadKey = useUploadCatalogAnswerKey();
   const keyInput = useRef<HTMLInputElement>(null);
 
   const onDelete = () => {
     del.mutate(catalog.id, {
-      onSuccess: () => { toast.success("Katalog silindi."); setDeleteOpen(false); },
+      onSuccess: () => { toast.success("Katalog silindi."); silme.kapat(); },
       onError: (e) => toast.error(getErrorMessage(e, "Silinemedi.")),
     });
   };
@@ -166,17 +238,14 @@ function CatalogCard({ catalog, canManage, onEdit }: { catalog: CatalogOut; canM
         ) : null}
         {canManage && (
           <>
-            <button
+            <Button
+              size="sm"
+              variant="secondary"
+              isPending={uploadKey.isPending}
               onClick={() => keyInput.current?.click()}
-              disabled={uploadKey.isPending}
-              className="rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-60 dark:border-slate-600 dark:text-slate-300"
             >
-              {uploadKey.isPending
-                ? "Yükleniyor…"
-                : catalog.answer_key_url
-                  ? "Değiştir"
-                  : "🔑 Cevap Anahtarı"}
-            </button>
+              {catalog.answer_key_url ? "Değiştir" : "🔑 Cevap Anahtarı"}
+            </Button>
             <input
               ref={keyInput}
               type="file"
@@ -189,133 +258,277 @@ function CatalogCard({ catalog, canManage, onEdit }: { catalog: CatalogOut; canM
               }}
             />
             <div className="ml-auto flex gap-1.5">
-              <button
-                onClick={onEdit}
-                className="rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300"
-              >
+              <Button size="sm" variant="secondary" onClick={onEdit}>
                 Düzenle
-              </button>
-              <button
-                onClick={() => setDeleteOpen(true)}
-                className="rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-semibold text-rose-600 hover:bg-rose-50 dark:border-slate-600"
-              >
+              </Button>
+              <Button size="sm" variant="danger" onClick={() => silme.ac(catalog)}>
                 Sil
-              </button>
+              </Button>
             </div>
           </>
         )}
       </div>
     </div>
     <ConfirmDialog
-      open={deleteOpen}
+      open={silme.acik}
       title="Deneme kataloğunu sil"
       description={`“${catalog.exam_name}” kataloğu silinecek.`}
       confirmLabel="Kataloğu sil"
       danger
       isPending={del.isPending}
-      onClose={() => setDeleteOpen(false)}
+      onClose={silme.kapat}
       onConfirm={onDelete}
     />
     </>
   );
 }
 
-function CatalogEditor({ form, onClose }: { form: FormState; onClose: () => void }) {
-  const [f, setF] = useState<FormState>(form);
+/**
+ * Katalog editörü — DIŞ kabuk (İP-A7d2 · Görev 4).
+ *
+ * Nöbetçinin etiketsiz overlay'lerinden ikincisi buydu: kendi
+ * `fixed inset-0` katmanı, `role`/`aria-modal` yok, ESC yok, odak tuzağı yok.
+ * Bekçi kancası İÇERİK bileşeninde çağrılır — pencereyi render eden bu
+ * bileşende çağırmak A7d2'den beri geliştirmede patlar (SK-3).
+ */
+function CatalogEditorPenceresi({
+  yuzey,
+}: {
+  yuzey: DuzenlemeYuzeyiDurumu<FormState, void>;
+}) {
+  const kayit = yuzey.kayit;
+  return (
+    <DuzenlemePenceresi
+      yuzey={yuzey}
+      baslik={kayit?.id != null ? "Katalogu Düzenle" : "Yeni Deneme Katalogu"}
+      aciklama={
+        kayit?.id != null
+          ? undefined
+          : "Cevap anahtarını oluşturduktan sonra katalog kartından yükleyebilirsin."
+      }
+    >
+      {kayit && <CatalogEditorIcerik yuzey={yuzey} kayit={kayit} />}
+    </DuzenlemePenceresi>
+  );
+}
+
+function CatalogEditorIcerik({
+  yuzey,
+  kayit,
+}: {
+  yuzey: DuzenlemeYuzeyiDurumu<FormState, void>;
+  kayit: FormState;
+}) {
   const create = useCreateCatalog();
   const update = useUpdateCatalog();
   const busy = create.isPending || update.isPending;
-  const isEdit = f.id != null;
+  const isEdit = kayit.id != null;
 
-  const set = <K extends keyof FormState>(k: K, v: FormState[K]) =>
-    setF((p) => ({ ...p, [k]: v }));
+  const form = useForm<KatalogFormDegerleri>({
+    resolver: zodResolver(katalogSemasi),
+    defaultValues: formDegerleri(kayit),
+    mode: "onChange",
+    shouldFocusError: false,
+  });
 
-  const submit = () => {
-    if (f.exam_name.trim().length < 2) return toast.error("Deneme adı gerekli.");
-    const payload: CatalogWrite = {
-      exam_name: f.exam_name.trim(),
-      exam_type: f.exam_type,
-      publisher_name: f.publisher_name.trim() || null,
-      description: f.description.trim() || null,
-      question_count: f.question_count ? Number(f.question_count) : null,
-      duration_minutes: f.duration_minutes ? Number(f.duration_minutes) : null,
-      is_public: f.is_public,
-      is_nationwide: f.is_nationwide,
-    };
-    const opts = {
-      onSuccess: () => {
-        toast.success(isEdit ? "Katalog güncellendi." : "Katalog oluşturuldu.");
-        onClose();
-      },
-      onError: (e: unknown) => toast.error(getErrorMessage(e, "Kaydedilemedi.")),
-    };
-    if (isEdit) update.mutate({ id: f.id!, payload }, opts);
-    else create.mutate(payload, opts);
+  const hedefKimligi = kayit.id ?? "yeni";
+  useEffect(() => {
+    form.reset(formDegerleri(kayit));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hedefKimligi]);
+
+  useYuzeyKirliFormBekcisi({ form, sunucuHatasi: create.error ?? update.error ?? null });
+
+  const sunucuHatasiniDagit = (hata: unknown) => {
+    const kalan = sunucuHatasiniUygula(hata, form, [...GORSEL_SIRA]);
+    form.setError("root.sunucu", { type: "server", message: kalan ?? undefined });
   };
 
-  return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
-      <div className="absolute inset-0" onClick={onClose} />
-      <div className="relative w-full max-w-md space-y-3 rounded-2xl bg-white p-5 shadow-2xl dark:bg-slate-800">
-        <h3 className="text-base font-bold text-slate-900 dark:text-white">
-          {isEdit ? "Katalogu Düzenle" : "Yeni Deneme Katalogu"}
-        </h3>
-        <label className="block">
-          <span className="mb-1 block text-xs font-semibold text-slate-600 dark:text-slate-300">Deneme adı</span>
-          <input value={f.exam_name} onChange={(e) => set("exam_name", e.target.value)} className="input" placeholder="Türkiye Geneli YKS-1" />
-        </label>
-        <div className="grid grid-cols-2 gap-2">
-          <label className="block">
-            <span className="mb-1 block text-xs font-semibold text-slate-600 dark:text-slate-300">Sınav türü</span>
-            <select value={f.exam_type} onChange={(e) => set("exam_type", e.target.value)} className="input">
-              {EXAM_TYPES.map((t) => (
-                <option key={t} value={t}>{t}</option>
-              ))}
-            </select>
-          </label>
-          <label className="block">
-            <span className="mb-1 block text-xs font-semibold text-slate-600 dark:text-slate-300">Yayıncı</span>
-            <input value={f.publisher_name} onChange={(e) => set("publisher_name", e.target.value)} className="input" placeholder="Özdebir" />
-          </label>
-        </div>
-        <div className="grid grid-cols-2 gap-2">
-          <label className="block">
-            <span className="mb-1 block text-xs font-semibold text-slate-600 dark:text-slate-300">Soru sayısı</span>
-            <input type="number" min={0} value={f.question_count} onChange={(e) => set("question_count", e.target.value)} className="input" />
-          </label>
-          <label className="block">
-            <span className="mb-1 block text-xs font-semibold text-slate-600 dark:text-slate-300">Süre (dk)</span>
-            <input type="number" min={0} value={f.duration_minutes} onChange={(e) => set("duration_minutes", e.target.value)} className="input" />
-          </label>
-        </div>
-        <label className="block">
-          <span className="mb-1 block text-xs font-semibold text-slate-600 dark:text-slate-300">Açıklama</span>
-          <textarea value={f.description} onChange={(e) => set("description", e.target.value)} rows={2} className="input" />
-        </label>
-        <div className="flex flex-wrap gap-4 pt-1">
-          <label className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-200">
-            <input type="checkbox" checked={f.is_public} onChange={(e) => set("is_public", e.target.checked)} />
-            Public (kütüphaneler kullanabilir)
-          </label>
-          <label className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-200">
-            <input type="checkbox" checked={f.is_nationwide} onChange={(e) => set("is_nationwide", e.target.checked)} />
-            Türkiye Geneli
-          </label>
-        </div>
+  const gonder = form.handleSubmit(
+    (deger) => {
+      form.clearErrors("root.sunucu");
+      const payload: CatalogWrite = {
+        exam_name: deger.exam_name.trim(),
+        exam_type: deger.exam_type,
+        publisher_name: deger.publisher_name.trim() || null,
+        description: deger.description.trim() || null,
+        // Boş sayısal alan 0 DEĞİL null gider: "0 soruluk deneme" diye bir
+        // şey yok, boş bırakmak "bilinmiyor" demektir.
+        question_count: deger.question_count.trim() ? Number(deger.question_count) : null,
+        duration_minutes: deger.duration_minutes.trim()
+          ? Number(deger.duration_minutes)
+          : null,
+        is_public: deger.is_public,
+        is_nationwide: deger.is_nationwide,
+      };
+      const opts = {
+        onSuccess: () => {
+          toast.success(isEdit ? "Katalog güncellendi." : "Katalog oluşturuldu.");
+          yuzey.kapat();
+        },
+        onError: sunucuHatasiniDagit,
+      };
+      if (isEdit) update.mutate({ id: kayit.id!, payload }, opts);
+      else create.mutate(payload, opts);
+    },
+    (hatalar) => {
+      const alan = GORSEL_SIRA.find((a) => hatalar[a]);
+      if (alan) form.setFocus(alan);
+    }
+  );
 
-        <div className="flex gap-2 pt-1">
-          <button onClick={onClose} className="flex-1 rounded-xl bg-slate-100 px-4 py-2.5 text-sm font-semibold text-slate-700 dark:bg-slate-700 dark:text-slate-200">
-            Vazgeç
-          </button>
-          <button onClick={submit} disabled={busy} className="flex-[2] rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60">
-            {busy ? "Kaydediliyor…" : isEdit ? "Güncelle" : "Oluştur"}
-          </button>
-        </div>
-        {!isEdit && (
-          <p className="text-[11px] text-slate-400">
-            Cevap anahtarını oluşturduktan sonra katalog kartından yükleyebilirsin.
-          </p>
+  const genelHata = form.formState.errors.root?.sunucu?.message;
+
+  return (
+    <div className="space-y-3">
+      {genelHata && (
+        <p
+          role="alert"
+          className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700 dark:bg-rose-500/10 dark:text-rose-300"
+        >
+          {genelHata}
+        </p>
+      )}
+
+      <Form.Field
+        control={form.control}
+        name="exam_name"
+        render={({ field }) => (
+          <Form.Item>
+            <Form.Label>Deneme adı</Form.Label>
+            <Form.Control>
+              <input className="input" placeholder="Türkiye Geneli YKS-1" {...field} />
+            </Form.Control>
+            <Form.ErrorMessage />
+          </Form.Item>
         )}
+      />
+
+      <div className="grid grid-cols-2 gap-2">
+        <Form.Field
+          control={form.control}
+          name="exam_type"
+          render={({ field }) => (
+            <Form.Item>
+              <Form.Label>Sınav türü</Form.Label>
+              <Form.Control>
+                <select className="input" {...field}>
+                  {EXAM_TYPES.map((t) => (
+                    <option key={t} value={t}>
+                      {t}
+                    </option>
+                  ))}
+                </select>
+              </Form.Control>
+              <Form.ErrorMessage />
+            </Form.Item>
+          )}
+        />
+        <Form.Field
+          control={form.control}
+          name="publisher_name"
+          render={({ field }) => (
+            <Form.Item>
+              <Form.Label optional>Yayıncı</Form.Label>
+              <Form.Control>
+                <input className="input" placeholder="Özdebir" {...field} />
+              </Form.Control>
+              <Form.ErrorMessage />
+            </Form.Item>
+          )}
+        />
+      </div>
+
+      <div className="grid grid-cols-2 gap-2">
+        <Form.Field
+          control={form.control}
+          name="question_count"
+          render={({ field }) => (
+            <Form.Item>
+              <Form.Label optional>Soru sayısı</Form.Label>
+              <Form.Control>
+                <input type="number" min={0} className="input" {...field} />
+              </Form.Control>
+              <Form.ErrorMessage />
+            </Form.Item>
+          )}
+        />
+        <Form.Field
+          control={form.control}
+          name="duration_minutes"
+          render={({ field }) => (
+            <Form.Item>
+              <Form.Label optional>Süre (dk)</Form.Label>
+              <Form.Control>
+                <input type="number" min={0} className="input" {...field} />
+              </Form.Control>
+              <Form.ErrorMessage />
+            </Form.Item>
+          )}
+        />
+      </div>
+
+      <Form.Field
+        control={form.control}
+        name="description"
+        render={({ field }) => (
+          <Form.Item>
+            <Form.Label optional>Açıklama</Form.Label>
+            <Form.Control>
+              <textarea rows={2} className="input" {...field} />
+            </Form.Control>
+            <Form.ErrorMessage />
+          </Form.Item>
+        )}
+      />
+
+      <div className="flex flex-wrap gap-4 pt-1">
+        <Form.Field
+          control={form.control}
+          name="is_public"
+          render={({ field }) => (
+            <Form.Item className="flex items-center gap-2">
+              <Form.Control>
+                <input
+                  type="checkbox"
+                  checked={field.value}
+                  onChange={(e) => field.onChange(e.target.checked)}
+                  onBlur={field.onBlur}
+                  name={field.name}
+                  ref={field.ref}
+                />
+              </Form.Control>
+              <Form.Label>Public (kütüphaneler kullanabilir)</Form.Label>
+            </Form.Item>
+          )}
+        />
+        <Form.Field
+          control={form.control}
+          name="is_nationwide"
+          render={({ field }) => (
+            <Form.Item className="flex items-center gap-2">
+              <Form.Control>
+                <input
+                  type="checkbox"
+                  checked={field.value}
+                  onChange={(e) => field.onChange(e.target.checked)}
+                  onBlur={field.onBlur}
+                  name={field.name}
+                  ref={field.ref}
+                />
+              </Form.Control>
+              <Form.Label>Türkiye Geneli</Form.Label>
+            </Form.Item>
+          )}
+        />
+      </div>
+
+      {/* Gönder düğmesi geçerlilikle KAPANMAZ (kilitli karar). "Vazgeç"
+          yoktur: kapatma yolları pencerede ve bekçiden geçiyor. */}
+      <div className="flex justify-end pt-1">
+        <Button isPending={busy} onClick={gonder}>
+          {isEdit ? "Güncelle" : "Oluştur"}
+        </Button>
       </div>
     </div>
   );

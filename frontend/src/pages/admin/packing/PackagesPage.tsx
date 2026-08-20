@@ -9,22 +9,24 @@
 //
 // Bilinmeyen `durum` değeri **yok sayılır** (süzgeçsiz liste): uydurma bir
 // değeri sunucuya geçirmek 422 üretir ve kullanıcı boş ekranın sebebini göremez.
-import { useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { useMemo, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import type { ColumnDef } from "@tanstack/react-table";
 
 import {
   PackageLabelButton,
   canPrintLabel,
 } from "@/components/admin/packing/PackageLabel";
 import { PackingLabelSheet } from "@/components/admin/packing/PackingLabelSheet";
+import { DataTable } from "@/components/admin/data-table";
 import {
   Badge,
   Button,
   ConfirmDialog,
-  EmptyState,
   ErrorState,
-  PageSkeleton,
 } from "@/components/admin/ui";
+import { useDuzenlemeYuzeyi } from "@/components/admin/ui2/duzenlemeYuzeyi";
+import { useUrlDurumu } from "@/hooks/useUrlDurumu";
 import { usePackages, useRepackPackage, useUnpackPackage } from "@/hooks/usePacking";
 import { formatDateTime } from "@/lib/datetime";
 import { getErrorMessage } from "@/lib/errors";
@@ -137,31 +139,43 @@ function siparisNo(raw: string | null): number | undefined {
 
 export default function PackagesPage() {
   const { canView, canManage } = usePackingAccess();
-  const [params, setParams] = useSearchParams();
-
-  const hamDurum = params.get("durum");
+  const navigate = useNavigate();
+  // Süzgeç + sayfa ortak katmanda (İP-A4 · Görev 3b): varsayılan adrese
+  // yazılmaz, süzgeç değişince sayfa 1'e döner, geri tuşu çalışır.
+  //
+  // Adres adları KORUNDU (`durum`, `siparis`, `sayfa`): paylaşılmış eski
+  // bağlantılar ve `DeliveryOrdersPage`ten gelen `?siparis=` kısayolu
+  // çalışmaya devam etmeli.
+  const url = useUrlDurumu(
+    { durum: "", siparis: 0, sayfa: 1, boyut: LIMIT },
+    { sayfaAnahtari: "sayfa", filtreDisi: ["sayfa", "boyut"] },
+  );
+  // Beyaz liste `useUrlDurumu`ya devredilemez: kanca tipi ve varsayılanı
+  // yönetir, `?durum=drop_table` gibi bir değeri eleyemez.
+  const hamDurum = url.degerler.durum;
   const durum =
     hamDurum && GECERLI_DURUMLAR.has(hamDurum) ? (hamDurum as PackageStatus) : undefined;
-  const siparis = siparisNo(params.get("siparis"));
-  const sayfa = sayfaNo(params.get("sayfa"));
+  const siparis = siparisNo(url.degerler.siparis ? String(url.degerler.siparis) : null);
+  const sayfa = sayfaNo(String(url.degerler.sayfa));
+  const boyut = url.degerler.boyut > 0 ? url.degerler.boyut : LIMIT;
 
   const query = usePackages(
-    { status: durum, orderId: siparis, limit: LIMIT, offset: (sayfa - 1) * LIMIT },
+    { status: durum, orderId: siparis, limit: boyut, offset: (sayfa - 1) * boyut },
     canView,
   );
   const repack = useRepackPackage();
   const unpack = useUnpackPackage();
-  const [yenidenPaketle, setYenidenPaketle] = useState<Package | null>(null);
-  const [bozulduDamgasi, setBozulduDamgasi] = useState<Package | null>(null);
+  // Pencere durumu ekranda yaşamaz.
+  const yenidenPaketle = useDuzenlemeYuzeyi<Package, void>();
+  const bozulduDamgasi = useDuzenlemeYuzeyi<Package, void>();
   // Toplu etiket seçimi. Sayfa değişince ya da süzgeç yenilenince seçim
   // korunmaz (aşağıda temizlenir): görünmeyen bir satırın etiketini basmak,
   // operatörün elinde olmayan bir kutuya kâğıt üretmek demektir.
   const [secili, setSecili] = useState<number[]>([]);
-  const [sayfaAcik, setSayfaAcik] = useState(false);
+  const etiketSayfasi = useDuzenlemeYuzeyi<never, void>();
 
   const paketler = query.data?.items ?? [];
   const toplam = query.data?.total ?? 0;
-  const sonSayfa = Math.max(1, Math.ceil(toplam / LIMIT));
 
   // Etiket YALNIZ kutu elde ve içeriği doğrulanmışken basılır (`canPrintLabel`:
   // PACKED · RETURNED); seçim kutusu da yalnız o satırlarda çıkar.
@@ -173,22 +187,105 @@ export default function PackagesPage() {
       onceki.includes(id) ? onceki.filter((x) => x !== id) : [...onceki, id],
     );
 
-  /** Süzgeç değişince sayfa 1'e döner; yoksa 3. sayfada boş liste görünür. */
+  /** Satır aksiyonları — masaüstü hücresi ve mobil kart AYNI parçayı basar. */
+  const satirAksiyonlari = (paket: Package) => (
+    <div className="flex flex-wrap items-center gap-1.5">
+      {/* Yeniden basım yan etkisizdir: paket durumu da QR token'ı da
+          değişmez (`repack` sonrası eski etiket geçerli kalır). */}
+      <PackageLabelButton
+        packageId={paket.id}
+        code={paket.code}
+        status={paket.status}
+        label="Etiket"
+      />
+      {canManage && paket.status === "RETURNED" && (
+        <Button size="sm" variant="secondary" onClick={() => yenidenPaketle.ac(paket)}>
+          Yeniden paketle
+        </Button>
+      )}
+      {canManage && paket.status === "VOID" && !paket.unpacked_at && (
+        <Button size="sm" variant="secondary" onClick={() => bozulduDamgasi.ac(paket)}>
+          Bozuldu olarak işaretle
+        </Button>
+      )}
+    </div>
+  );
+
+  const secimKutusu = (paket: Package) =>
+    canPrintLabel(paket.status) ? (
+      <input
+        type="checkbox"
+        className="h-4 w-4 shrink-0"
+        aria-label={`${paket.code} etiketini seç`}
+        checked={secili.includes(paket.id)}
+        onChange={() => secimDegistir(paket.id)}
+      />
+    ) : null;
+
+  const kolonlar = useMemo<ColumnDef<Package, unknown>[]>(
+    () => [
+      {
+        id: "secim",
+        header: "",
+        enableSorting: false,
+        cell: ({ row }) => secimKutusu(row.original),
+      },
+      {
+        accessorKey: "code",
+        header: "Paket",
+        enableSorting: false,
+        cell: ({ row }) => {
+          const damga = zamanDamgasi(row.original);
+          return (
+            <div className="min-w-0">
+              <Link
+                to={ROUTES.adminPackingPackage(row.original.id)}
+                className="text-sm font-semibold text-indigo-600 hover:underline dark:text-indigo-400"
+              >
+                {row.original.code}
+              </Link>
+              <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                Sipariş #{row.original.order_id}
+                {(row.original.items?.length ?? 0) > 0 &&
+                  ` · ${row.original.items.length} kalem`}
+                {damga && ` · ${damga}`}
+              </p>
+            </div>
+          );
+        },
+      },
+      {
+        id: "durum",
+        header: "Durum",
+        enableSorting: false,
+        cell: ({ row }) => (
+          <Badge tone={DURUM_TONU[row.original.status] ?? "neutral"}>
+            {satirEtiketi(row.original)}
+          </Badge>
+        ),
+      },
+      {
+        id: "aksiyonlar",
+        header: "İşlem",
+        enableSorting: false,
+        cell: ({ row }) => satirAksiyonlari(row.original),
+      },
+    ],
+    // Aksiyonlar seçime, izne ve iki yüzeye bağlı; hepsi her render'da
+    // yeniden kurulur, memo yalnız tabloya sabit kimlik vermek için.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [canManage, secili, paketler],
+  );
+
+  /** Süzgeç değişince sayfa sıfırlaması artık kancanın işi. */
   const suzgecUygula = (yeni: PackageStatus | null) => {
-    const sonraki = new URLSearchParams(params);
-    sonraki.delete("sayfa");
-    if (yeni) sonraki.set("durum", yeni);
-    else sonraki.delete("durum");
     setSecili([]);
-    setParams(sonraki, { replace: true });
+    url.ayarla({ durum: yeni ?? "" });
   };
 
   const sayfaGit = (yeni: number) => {
-    const sonraki = new URLSearchParams(params);
-    if (yeni <= 1) sonraki.delete("sayfa");
-    else sonraki.set("sayfa", String(yeni));
     setSecili([]);
-    setParams(sonraki, { replace: true });
+    url.ayarla({ sayfa: yeni });
   };
 
   return (
@@ -230,11 +327,7 @@ export default function PackagesPage() {
         {siparis != null && (
           <button
             type="button"
-            onClick={() => {
-              const sonraki = new URLSearchParams(params);
-              sonraki.delete("siparis");
-              setParams(sonraki, { replace: true });
-            }}
+            onClick={() => url.ayarla({ siparis: 0 })}
             className="min-h-9 rounded-lg bg-indigo-50 px-3 text-xs font-semibold text-indigo-700 transition hover:bg-indigo-100 dark:bg-indigo-500/15 dark:text-indigo-300"
           >
             Sipariş #{siparis} süzgecini kaldır ×
@@ -247,17 +340,6 @@ export default function PackagesPage() {
           <ErrorState
             description={getErrorMessage(query.error, "Paket listesi yüklenemedi.")}
             onRetry={query.refetch}
-          />
-        </div>
-      ) : query.isLoading ? (
-        <div className="p-6">
-          <PageSkeleton rows={3} />
-        </div>
-      ) : paketler.length === 0 ? (
-        <div className="p-6">
-          <EmptyState
-            title="Bu süzgeçte paket yok"
-            description="Süzgeci genişletin ya da kuyruktan yeni bir paket açın."
           />
         </div>
       ) : (
@@ -282,122 +364,106 @@ export default function PackagesPage() {
                 variant="secondary"
                 className="ml-auto"
                 disabled={seciliGorunen.length === 0}
-                onClick={() => setSayfaAcik(true)}
+                onClick={() => etiketSayfasi.yeniAc()}
               >
                 Seçili {seciliGorunen.length} etiketi yazdır
               </Button>
             </div>
           )}
-          <ul className="divide-y divide-slate-100 px-6 dark:divide-slate-800">
-            {paketler.map((paket) => {
-              const damga = zamanDamgasi(paket);
-              const basilabilir = canPrintLabel(paket.status);
-              return (
-                <li key={paket.id} className="flex flex-wrap items-center gap-3 py-3">
-                  {basilabilir && (
-                    <input
-                      type="checkbox"
-                      className="h-4 w-4 shrink-0"
-                      aria-label={`${paket.code} etiketini seç`}
-                      checked={secili.includes(paket.id)}
-                      onChange={() => secimDegistir(paket.id)}
-                    />
-                  )}
-                  <div className="min-w-0 flex-1 basis-56">
-                    <Link
-                      to={ROUTES.adminPackingPackage(paket.id)}
-                      className="text-sm font-semibold text-indigo-600 hover:underline dark:text-indigo-400"
-                    >
-                      {paket.code}
-                    </Link>
-                    <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
-                      Sipariş #{paket.order_id}
-                      {(paket.items?.length ?? 0) > 0 && ` · ${paket.items.length} kalem`}
-                      {damga && ` · ${damga}`}
-                    </p>
+          <div className="px-6 pb-4">
+            <DataTable
+              columns={kolonlar}
+              data={paketler}
+              getRowId={(p) => String(p.id)}
+              isLoading={query.isLoading}
+              /* Boş durum İKİYE ayrıldı: "süzgeç eşleşmedi" bir düzeltme
+                 talimatı, "hiç paket yok" bir durum bildirimidir. Eskiden
+                 ikisi de "Bu süzgeçte paket yok" diyordu ve depoda hiç kutu
+                 açılmamışken bile kullanıcıya var olmayan bir süzgeci
+                 aratıyordu. */
+              emptyTitle={url.filtreliMi ? "Bu süzgeçte paket yok" : "Henüz paket açılmadı"}
+              emptyDescription={
+                url.filtreliMi
+                  ? "Süzgeci genişletin ya da kuyruktan yeni bir paket açın."
+                  : "Paketleme kuyruğundan ilk kutuyu açtığınızda burada listelenir."
+              }
+              emptyAction={
+                url.filtreliMi ? (
+                  <Button size="sm" variant="secondary" onClick={() => { setSecili([]); url.temizle(); }}>
+                    Süzgeci temizle
+                  </Button>
+                ) : undefined
+              }
+              /* Satır tıklaması VE satır aksiyonu birlikte: SK-1'in korumasının
+                 ilk gerçek ekranı (A7d1'de yalnız sentetik sondayla ölçülmüştü).
+                 Kolondaki `<a>`, aksiyon `<button>`ları ve seçim `<input>`u —
+                 üçü de satırı açmamalı. */
+              onRowClick={(p) => navigate(ROUTES.adminPackingPackage(p.id))}
+              satirAdi={(p) => `${p.code} — paket detayı`}
+              renderMobileRow={(paket) => {
+                const damga = zamanDamgasi(paket);
+                return (
+                  <div>
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-slate-900 dark:text-white">
+                          {paket.code}
+                        </p>
+                        <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                          Sipariş #{paket.order_id}
+                          {damga && ` · ${damga}`}
+                        </p>
+                      </div>
+                      <Badge tone={DURUM_TONU[paket.status] ?? "neutral"}>
+                        {satirEtiketi(paket)}
+                      </Badge>
+                    </div>
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                      {secimKutusu(paket)}
+                      {satirAksiyonlari(paket)}
+                    </div>
                   </div>
-                  <Badge tone={DURUM_TONU[paket.status] ?? "neutral"}>
-                    {satirEtiketi(paket)}
-                  </Badge>
-                  {/* Yeniden basım yan etkisizdir: paket durumu da QR token'ı da
-                      değişmez (`repack` sonrası eski etiket geçerli kalır). */}
-                  <PackageLabelButton
-                    packageId={paket.id}
-                    code={paket.code}
-                    status={paket.status}
-                    label="Etiket"
-                  />
-                  {canManage && paket.status === "RETURNED" && (
-                    <Button size="sm" variant="secondary" onClick={() => setYenidenPaketle(paket)}>
-                      Yeniden paketle
-                    </Button>
-                  )}
-                  {canManage && paket.status === "VOID" && !paket.unpacked_at && (
-                    <Button size="sm" variant="secondary" onClick={() => setBozulduDamgasi(paket)}>
-                      Bozuldu olarak işaretle
-                    </Button>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
+                );
+              }}
+              page={sayfa}
+              pageSize={boyut}
+              total={toplam}
+              onPageChange={sayfaGit}
+              onPageSizeChange={(yeni) => {
+                setSecili([]);
+                url.ayarla({ boyut: yeni, sayfa: 1 });
+              }}
+            />
+          </div>
         </>
       )}
 
-      {sayfaAcik && (
-        <PackingLabelSheet
-          packageIds={seciliGorunen}
-          onClose={() => setSayfaAcik(false)}
-        />
-      )}
-
-      {toplam > LIMIT && (
-        <div className="flex items-center justify-between gap-3 border-t border-slate-100 px-6 py-3 dark:border-slate-800">
-          <span className="text-xs text-slate-500 dark:text-slate-400">
-            Sayfa {sayfa} / {sonSayfa}
-          </span>
-          <div className="flex gap-2">
-            <Button
-              size="sm"
-              variant="secondary"
-              disabled={sayfa <= 1}
-              onClick={() => sayfaGit(sayfa - 1)}
-            >
-              Önceki
-            </Button>
-            <Button
-              size="sm"
-              variant="secondary"
-              disabled={sayfa >= sonSayfa}
-              onClick={() => sayfaGit(sayfa + 1)}
-            >
-              Sonraki
-            </Button>
-          </div>
-        </div>
+      {etiketSayfasi.acik && (
+        <PackingLabelSheet packageIds={seciliGorunen} onClose={etiketSayfasi.kapat} />
       )}
 
       <ConfirmDialog
-        open={yenidenPaketle != null}
+        open={yenidenPaketle.acik}
         title="Yeniden dağıtıma ver"
         description={
-          yenidenPaketle
-            ? `${yenidenPaketle.code} yeniden dağıtıma girer. Kutunun üstündeki etiket GEÇERLİ kalır; yeni etiket basmayın.`
+          yenidenPaketle.kayit
+            ? `${yenidenPaketle.kayit.code} yeniden dağıtıma girer. Kutunun üstündeki etiket GEÇERLİ kalır; yeni etiket basmayın.`
             : ""
         }
         confirmLabel="Yeniden paketle"
         cancelLabel="İptal"
         isPending={repack.isPending}
-        onClose={() => setYenidenPaketle(null)}
+        onClose={yenidenPaketle.kapat}
         onConfirm={() => {
-          if (!yenidenPaketle) return;
-          repack.mutate(yenidenPaketle.id, {
+          const hedef = yenidenPaketle.kayit;
+          if (!hedef) return;
+          repack.mutate(hedef.id, {
             onSuccess: () => {
-              setYenidenPaketle(null);
+              yenidenPaketle.kapat();
               toast.success("Paket yeniden dağıtıma hazır.");
             },
             onError: (e) => {
-              setYenidenPaketle(null);
+              yenidenPaketle.kapat();
               toast.error(getErrorMessage(e, "Paket yeniden dağıtıma verilemedi."));
             },
           });
@@ -405,26 +471,27 @@ export default function PackagesPage() {
       />
 
       <ConfirmDialog
-        open={bozulduDamgasi != null}
+        open={bozulduDamgasi.acik}
         title="Kutu bozuldu mu?"
         description={
-          bozulduDamgasi
-            ? `${bozulduDamgasi.code} kutusunun fiziksel olarak açıldığını ve içeriğin rafa geri konduğunu işaretleyeceksiniz. Bu damga stok hareketi YAZMAZ; sayım envanterden yapılır.`
+          bozulduDamgasi.kayit
+            ? `${bozulduDamgasi.kayit.code} kutusunun fiziksel olarak açıldığını ve içeriğin rafa geri konduğunu işaretleyeceksiniz. Bu damga stok hareketi YAZMAZ; sayım envanterden yapılır.`
             : ""
         }
         confirmLabel="Bozuldu"
         cancelLabel="İptal"
         isPending={unpack.isPending}
-        onClose={() => setBozulduDamgasi(null)}
+        onClose={bozulduDamgasi.kapat}
         onConfirm={() => {
-          if (!bozulduDamgasi) return;
-          unpack.mutate(bozulduDamgasi.id, {
+          const hedef = bozulduDamgasi.kayit;
+          if (!hedef) return;
+          unpack.mutate(hedef.id, {
             onSuccess: () => {
-              setBozulduDamgasi(null);
+              bozulduDamgasi.kapat();
               toast.success("Kutu bozuldu olarak işaretlendi.");
             },
             onError: (e) => {
-              setBozulduDamgasi(null);
+              bozulduDamgasi.kapat();
               toast.error(getErrorMessage(e, "İşaretlenemedi."));
             },
           });

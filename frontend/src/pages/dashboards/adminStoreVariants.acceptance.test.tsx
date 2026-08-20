@@ -407,7 +407,12 @@ describe("V-5 · varyant türetme", () => {
     sunucu(/stock-verify/, { data: { consistent: true, problems: [], product_id: 101 } }, "get");
     magaza();
 
-    fireEvent.click(await screen.findByRole("button", { name: "Düzenle" }));
+    // Yük altındaki bekleme bütçesi (İP-A7d2 · Görev 5). Ürün listesi
+    // sorgusu paralel yük altında 1000 ms'lik varsayılanın dibine değiyor;
+    // ölçüm ve gerekçe `adminHakedisGoc.acceptance.test.tsx`in başında.
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Düzenle" }, { timeout: 4000 })
+    );
     await varyantBolumunuAc();
     fireEvent.click(
       await screen.findByRole("button", { name: /Bu üründen yeni varyant türet/ })

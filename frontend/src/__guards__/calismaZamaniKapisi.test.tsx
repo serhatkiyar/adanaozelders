@@ -124,6 +124,16 @@ const DERIN_KAPI = [
   // `test-utils/alanAdlari` ile doğrulanır. Sığ kapı bu dosyayı göremez
   // (propsuz mount edilemiyor), derin kapı görür.
   "src/components/LibraryEditorModal.tsx",
+  // İP-A7d2 · göç dalgası 2: BEŞ dosya derin kapıya GİRDİ. Her birinin tüm
+  // koşullu dalları kendi kabul dosyasında render edilip alan adları
+  // doğrulanıyor:
+  //   • `ExamSessionsManager`   → `examOturumlariGoc.acceptance` (S-3)
+  //   • `AdminExamCatalogs`     → `adminKataloglarGoc.acceptance` (K-4)
+  //   • `AdminPayoutsPage`      → `adminHakedisGoc.acceptance` (H-5)
+  //   • `CourierManager`        → `kuryeYonetimiGoc.acceptance` (KY-3)
+  //   • `DeliveryVehiclesPage`  → `araclarGoc.acceptance` (AR-3)
+  "src/components/ExamSessionsManager.tsx",
+  "src/components/admin/CourierManager.tsx",
   "src/components/admin/store/BulkImportPanel.tsx",
   "src/components/admin/store/CategoriesPanel.tsx",
   "src/components/admin/store/CouponsPanel.tsx",
@@ -132,6 +142,9 @@ const DERIN_KAPI = [
   "src/components/admin/store/ProductsPanel.tsx",
   "src/components/admin/store/ReturnsPanel.tsx",
   "src/components/admin/ui2/form.tsx",
+  "src/pages/admin/AdminPayoutsPage.tsx",
+  "src/pages/admin/delivery/DeliveryVehiclesPage.tsx",
+  "src/pages/dashboards/AdminExamCatalogs.tsx",
   "src/pages/dashboards/AdminStore.tsx",
 ];
 

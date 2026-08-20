@@ -26,6 +26,23 @@ import { configure, fireEvent, render, screen, waitFor, within } from "@testing-
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+// ── Ağır ortak modül BİLE BİLE statik import ediliyor (İP-A7d2 · Görev 5) ──
+//
+// Ekranlar `import.meta.glob` ile TEMBEL yükleniyor ve maliyeti ilk testin
+// İÇİNDE ödeniyor. `OperatorSessions` → `ExamSessionsManager` A7d2'de ortak
+// düzenleme yüzeyine (dolayısıyla `@medusajs/ui`ye) bağlanınca ölçüldü:
+//
+//   | Modül | Süre |
+//   |---|---|
+//   | Calendar / Leaderboard / Learn / Notifications | 46–260 ms |
+//   | Settings / OperatorHome | 546–927 ms |
+//   | **OperatorSessions** | **11.235 ms** |
+//
+// G-1 ve G-2 testleri 20 sn'lik bütçeyi aştı. Bütçe BÜYÜTÜLMEDİ: yavaşlık
+// üretim kodunda değil test kurulumunda. Modül burada statik alınınca maliyet
+// TOPLAMA (collect) evresine geçer.
+import "@/components/admin/ui2/duzenlemeYuzeyi";
+
 import { apiClient } from "@/api/axios";
 import { useAuthStore } from "@/store/authStore";
 

@@ -248,19 +248,57 @@ const GELISTIRME: boolean = !!import.meta.env?.DEV;
  * kalmaktır: `bildir` `null` gelir, pencere bekçiyi hiç tanımaz ve ×/ESC/dış
  * tıklama kirli formu SORMADAN kapatır — kullanıcının yazdığı veri gider.
  *
- * Sessizdir: tip hatası yok, uyarı yok, test yazılmadıysa fark edilmez.
- * İP-A7d1'de bu tuzağa düşüldü ve ancak kabul testi yakaladı.
+ * İP-A7d1'de bu tuzağa düşüldü ve ancak kabul testi yakaladı; tip hatası da
+ * uyarı da yoktu.
  *
- * Otomatik uyarı EKLENMEDİ: sağlayıcısız çağrı MEŞRU bir kullanımdır (satır
- * içi form — pencere yokken bekçi yalnız rota/sekme korumasını kurar), yani
- * "sağlayıcı yok" tek başına hata değildir. Doğru yazım şudur:
+ * ## İP-A7d2 · Görev 1 — sessizlik kaldırıldı: MEŞRU KULLANIM KENDİNİ BEYAN EDER
+ *
+ * A7d1 otomatik uyarı eklememeyi seçmişti: sağlayıcısız çağrı MEŞRU bir
+ * kullanımdır (satır içi form — pencere yokken bekçi yalnız rota/sekme
+ * korumasını kurar), yani "sağlayıcı yok" tek başına hata değildir.
+ *
+ * **Tespit doğruydu, sonuç yanlıştı.** Meşru bir durumun varlığı dedektörden
+ * vazgeçmeyi değil, meşru durumu BEYAN ETTİRMEYİ gerektirir. Bu projede aynı
+ * yol iki kez seçildi: `sunucuHatasi` zorunlu yapıldı (takip etmeyen çağrı
+ * yeri `HATA_TAKIBI_YOK` yazar) ve `Form.Control` sessiz yazımlarda
+ * geliştirmede patlatıldı (İP-A3c). İkisinde de sessiz varsayılanın yerine
+ * açık beyan kondu.
+ *
+ * Kural artık şudur:
+ *
+ *   | Sağlayıcı | Beyan | Sonuç |
+ *   |---|---|---|
+ *   | var | yok | geçer — pencereli, doğru yazım |
+ *   | var | var  | geçer — beyan zararsızdır (içerik nerede olduğunu bilmez) |
+ *   | yok | var  | geçer — satır içi form, bilinçli |
+ *   | yok | yok  | **geliştirmede `throw`** (üretimde elenir) |
+ *
+ * Doğru yazımlar:
  *
  *     <DuzenlemePenceresi yuzey={yuzey} baslik="…">
  *       <Icerik />          // ← `useYuzeyKirliFormBekcisi` BURADA çağrılır
  *     </DuzenlemePenceresi>
+ *
+ *     // satır içi (pencere yok) — beyan zorunlu:
+ *     useYuzeyKirliFormBekcisi({ form, sunucuHatasi, pencereSiz: true });
  */
+export interface YuzeyBekcisiSecenekleri<TFieldValues extends FieldValues>
+  extends KirliFormBekcisiSecenekleri<TFieldValues> {
+  /**
+   * "Bu form bilerek pencere DIŞINDA yaşıyor" beyanı (İP-A7d2 · Görev 1).
+   *
+   * Beyan yazan çağrı yeri sağlayıcısız çalışabilir: bekçi yalnız rota ve
+   * sekme korumasını kurar, pencere kapatma yolları zaten yoktur. Beyansız ve
+   * sağlayıcısız çağrı geliştirmede patlar.
+   *
+   * `false` yazılamaz: "penceresizim ama değilim" diye bir durum yok; beyan ya
+   * vardır ya yoktur.
+   */
+  pencereSiz?: true;
+}
+
 export function useYuzeyKirliFormBekcisi<TFieldValues extends FieldValues>(
-  secenekler: KirliFormBekcisiSecenekleri<TFieldValues>
+  { pencereSiz, ...secenekler }: YuzeyBekcisiSecenekleri<TFieldValues>
 ): KirliFormBekcisi {
   const pencereHedefi = useContext(HedefCtx);
   const bekci = useKirliFormBekcisi({
@@ -285,6 +323,22 @@ export function useYuzeyKirliFormBekcisi<TFieldValues extends FieldValues>(
     bildir?.(kimlik, bekci);
     return () => bildir?.(kimlik, null);
   });
+
+  // Beyansız + sağlayıcısız = SESSİZ VERİ KAYBI. Kontrol bütün kancalardan
+  // SONRA yapılır: erken `throw` kanca sırasını bozar ve asıl hatayı React'in
+  // "rendered fewer hooks than expected" hatasının altına gömerdi.
+  if (GELISTIRME && !bildir && !pencereSiz) {
+    throw new Error(
+      "useYuzeyKirliFormBekcisi bir <DuzenlemePenceresi> DIŞINDA çağrıldı ve " +
+        "`pencereSiz` beyanı yok. Bu hâliyle bekçi pencereye hiç bildirilmez: " +
+        "×/ESC/dış tıklama kirli formu SORMADAN kapatır ve kullanıcının " +
+        "yazdığı veri gider (İP-A7d1 · SK-3). İki doğru yazımdan birini seç: " +
+        "(1) kancayı pencerenin İÇİNDEKİ içerik bileşenine taşı — " +
+        "<DuzenlemePenceresi><Icerik/></DuzenlemePenceresi> ve çağrı " +
+        "<Icerik> içinde olsun; (2) form gerçekten satır içiyse (pencere yok) " +
+        "seçeneklere `pencereSiz: true` yaz."
+    );
+  }
   return bekci;
 }
 

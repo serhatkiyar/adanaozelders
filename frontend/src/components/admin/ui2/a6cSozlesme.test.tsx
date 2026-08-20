@@ -605,6 +605,23 @@ describe("Görev 6 · görsel kusurlar", () => {
     render(<AlanEkrani tur="text" />);
     expect(screen.getByLabelText("Miktar").className).not.toContain("color-scheme");
   });
+
+  it.each(["date", "datetime-local", "time", "month", "week", "color"])(
+    "6b⁺ — '%s' girdisi de koyu temada yerel şemayı alır (İP-A7d2 · SK-6)",
+    (tur) => {
+      // A6c bu düzeltmeyi YALNIZ `number` için kurmuştu; o pakette ölçülen
+      // tek yerel widget artır/azalt oklarıydı. Tarih ve saat girdileri de
+      // yerel widget çizer (takvim/saat ikonu) ve koyu panelde beyaz kalıyordu.
+      //
+      // A7d2'nin gerçek tarayıcı turu bunu ÖLÇTÜ: oturum editöründe
+      // `Tarih & saat` ve araç formunda `Vardiya başlangıç/bitiş` alanlarının
+      // `color-scheme` değeri koyu temada `normal` idi.
+      render(<AlanEkrani tur={tur} />);
+      expect(screen.getByLabelText("Miktar").className).toContain(
+        "dark:[color-scheme:dark]"
+      );
+    }
+  );
 });
 
 /** Hata mesajını doğuran asgari alan. */

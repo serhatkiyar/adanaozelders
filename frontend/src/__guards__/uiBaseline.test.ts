@@ -104,11 +104,14 @@ import {
  * göçün tersine işlediği anlamına gelir ve test kırılır.
  */
 const MODAL_DURUM_DOSYALARI = [
-  // İP-A6b · Görev 3: import grafiğiyle görünür oldu (iki bağ). Borç yeni
-  // doğmadı; `AdminLibraries`/`AdminExamCatalogs`ın oturum yönetimi yüzeyi
-  // bugüne dek ölçüm dışındaydı.
-  "src/components/ExamSessionsManager.tsx",
-  "src/components/admin/CourierManager.tsx",
+  // İP-A7d2 · göç dalgası 2: BEŞ dosya bu listeden ÇIKTI (28 → 20).
+  //   • `ExamSessionsManager` — iptal + yayın onayı (2 bağ)
+  //   • `AdminExamCatalogs`   — katalog silme onayı
+  //   • `CourierManager`      — hesap kapatma + kurye silme (2 bağ)
+  //   • `PackagesPage`        — yeniden paketle + bozuldu damgası (2 bağ)
+  //   • `DeliveryVehiclesPage` — araç silme onayı
+  // Hepsi `useDuzenlemeYuzeyi`ye taşındı. Listeden ÇIKMAK beklenen yöndür;
+  // listeye GİRMEK kırılma sebebidir.
   "src/components/admin/delivery/ClosedDays.tsx",
   // İP-A6 · Görev 4d: `store/` altındaki BEŞ dosya bu listeden ÇIKTI.
   // İP-A5'te `AdminStore.tsx`in dört adı (`decision`, `deleting`,
@@ -129,13 +132,10 @@ const MODAL_DURUM_DOSYALARI = [
   "src/pages/admin/delivery/DeliveryBoardPage.tsx",
   "src/pages/admin/delivery/DeliveryRunDetailPage.tsx",
   "src/pages/admin/delivery/DeliveryTodayPage.tsx",
-  "src/pages/admin/delivery/DeliveryVehiclesPage.tsx",
   "src/pages/admin/inventory/CountSessionDetailPage.tsx",
   "src/pages/admin/inventory/CountSessionsPage.tsx",
-  "src/pages/admin/packing/PackagesPage.tsx",
   "src/pages/admin/packing/PackingStationPage.tsx",
   "src/pages/admin/packing/ReturnQueuePage.tsx",
-  "src/pages/dashboards/AdminExamCatalogs.tsx",
   "src/pages/dashboards/AdminHome.tsx",
 ];
 
@@ -187,7 +187,18 @@ describe("İP-A1 nöbetçi eşikleri", () => {
     // seçim çipi) ve BİLİNÇLİDİR: bir aksiyon değil bir seçim durumu; ortak
     // `Button`ın dolgu/gölge varyantları oraya uymuyor — `AdminStore`daki
     // `KatlanirBaslik` istisnasının aynısı.
-    expect(olcum.rawButton).toBeLessThanOrEqual(182);
+    //
+    // İP-A7d2'de 182 → 130 (**-52**): göç dalgası 2, altı ekran.
+    //   `CourierManager` 15 · `ExamSessionsManager` 14 ·
+    //   `DeliveryVehiclesPage` 14 · `AdminExamCatalogs` 6 ·
+    //   `AdminPayoutsPage` 3 (sekme şeridinin İKİ düğmesi KALDI).
+    //
+    // Kalan bilinçli istisnalar aynı ailedendir ve hepsi `aria-pressed`
+    // taşıyan SEÇİM DURUMLARIDIR, aksiyon değil: `AdminStore`un katlanır
+    // bölüm başlığı, kütüphane editörünün olanak rozetleri, `PackagesPage`in
+    // durum süzgeci çipleri ve `AdminPayoutsPage`in sekme şeridi. Ortak
+    // `Button`ın dolgu/gölge varyantları bu görsel dili taşımıyor.
+    expect(olcum.rawButton).toBeLessThanOrEqual(130);
   });
 
   it("erişilebilir adı olmayan form kontrolü artamaz (taban 30)", () => {
@@ -228,7 +239,23 @@ describe("İP-A1 nöbetçi eşikleri", () => {
     // İP-A7d1'de 41 → 37 (**-4**): `AdminLibraries`in operatör ekleme formunun
     // dört alanı `placeholder`ı etiket yerine kullanıyordu; `htmlFor`/`id`
     // bağıyla ve hata slotuyla yeniden yazıldı.
-    expect(olcum.adsizKontrol).toBeLessThanOrEqual(37);
+    //
+    // İP-A7d2'de 37 → 26 (**-11**): tabanın en büyük kalemi `CourierManager`
+    // (9) kapandı — dört satır içi formun tamamı `Form.*`a geçti; gizli
+    // vesikalık `<input type="file">`ına da gerçek bir ad verildi (`hidden`
+    // ÖZNİTELİĞİ kullanılmadı: o, borcu kapatmadan ölçümden düşürürdü).
+    // Ayrıca `ExamSessionsManager`in sonuç tablosundaki iki sayısal alan (net
+    // ve sıra) öğrenci adını içeren `aria-label` aldı.
+    //
+    // **Ölçüm sırasında bulunan bir tuzak (rapor · Görev 4):**
+    // `DeliveryVehiclesPage`in alanları önce tek bir render-prop
+    // sarmalayıcısından geçirilmişti. Çalışma zamanı kapısı ve dal testi
+    // "adsız kontrol 0" diyordu ama BU SAYAÇ 13 sahte borç raporladı — sayaç
+    // `Form.Control` içindeki `<input>`u bir fonksiyon gövdesinin ardında
+    // göremez. Alanlar açık `Form.Field` bloklarına çevrildi. İP-A6b'nin M-A
+    // kaçışının aynadaki hâli: orada gerçek borç gizleniyordu, burada sahte
+    // borç üretiliyordu.
+    expect(olcum.adsizKontrol).toBeLessThanOrEqual(26);
   });
 
 
@@ -262,7 +289,10 @@ describe("İP-A1 nöbetçi eşikleri", () => {
     // Saha sayımı (Görev 4'ün açık bıraktığı soru): tüm tabanda prop-ile-inen
     // pencere durumunun TEK örneği vardır. Denetim bunu sentetik mutasyonla
     // kanıtlamıştı; gerçek sayı ölçülmemişti ve tahmin eşiğe yazılmamıştı.
-    expect(olcum.modalDurumu).toBeLessThanOrEqual(28);
+    // İP-A7d2'de 28 → 20 (**-8**): göç dalgası 2'nin altı ekranından beşi
+    // pencere durumu taşıyordu; sekiz bağın hepsi `useDuzenlemeYuzeyi`ye
+    // geçti (dosya listesi aşağıda).
+    expect(olcum.modalDurumu).toBeLessThanOrEqual(20);
   });
 
   it("pencere durumu tutan dosya listesi sabittir (pilot listede DEĞİL)", () => {
@@ -291,7 +321,11 @@ describe("İP-A1 nöbetçi eşikleri", () => {
     // `LibraryEditorModal` kendi katmanlarını etiketsiz kuruyor (Görev 3).
     // İP-A7d1'de 6 → 3: `LibraryEditorModal` ve `AdminLibraries`in iki iç
     // penceresi ortak `DuzenlemePenceresi`ye geçti.
-    expect(olcum.unlabeledOverlays).toBeLessThanOrEqual(3);
+    // İP-A7d2'de 3 → **0**: kalan üçü de (`ExamSessionsManager`,
+    // `AdminExamCatalogs`, `AdminPayoutsPage`) ortak pencereye geçti. Eşik
+    // artık SIFIR ve bu metriğin en sert hâlidir: panelde etiketsiz bir
+    // overlay doğduğu gün CI kırılır.
+    expect(olcum.unlabeledOverlays).toBe(0);
   });
 
   it("etiketsiz overlay'i olan dosya listesi sabittir", () => {

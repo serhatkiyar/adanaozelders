@@ -398,8 +398,11 @@ describe("paketler listesinden etiket", () => {
     sunucu("/packing/packages", { data: LISTE(["PACKED", "HANDED_OVER"]) });
     await sar("/yonetim/paketleme/paketler");
 
-    await screen.findByText("PKT-000100");
-    expect(screen.getAllByRole("button", { name: "Etiket" })).toHaveLength(1);
+    // İP-A7d2: liste `DataTable`a geçti ve tablo mobil kartı da masaüstü
+    // satırını da DOM'a basar (görünürlüğü CSS ayırır). Bu yüzden her satır
+    // içeriği İKİ kez bulunur; sayı iddiası satır BAŞINA ikiye çıkar.
+    await screen.findAllByText("PKT-000100");
+    expect(screen.getAllByRole("button", { name: "Etiket" })).toHaveLength(2);
   });
 
   it("seçilen paketlerin etiketleri TEK sayfada basılır (N paket → N etiket)", async () => {
@@ -442,11 +445,12 @@ describe("paketler listesinden etiket", () => {
     sunucu("/packing/packages", { data: LISTE(["PACKED", "RETURNED"]) });
     await sar("/yonetim/paketleme/paketler");
 
-    await screen.findByText("PKT-000100");
-    expect(screen.getByText(/paketlendi ·/)).toBeTruthy();
-    expect(screen.getByText(/depoya alındı ·/)).toBeTruthy();
+    await screen.findAllByText("PKT-000100");
+    expect(screen.getAllByText(/paketlendi ·/).length).toBeGreaterThan(0);
     // PACKED satırında "depoya alındı" damgası GÖRÜNMEZ (veri dolu olsa bile).
-    expect(screen.getAllByText(/depoya alındı ·/)).toHaveLength(1);
+    // İP-A7d2: `DataTable` mobil kart + masaüstü satırı ikisini de basar, bu
+    // yüzden tek satırın damgası İKİ düğümde görünür.
+    expect(screen.getAllByText(/depoya alındı ·/)).toHaveLength(2);
   });
 
   it("?durum=toString API'ye status olarak GİTMEZ (prototip sızıntısı)", async () => {

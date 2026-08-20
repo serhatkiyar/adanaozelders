@@ -7,7 +7,7 @@ import {
   type Row,
   type SortingState,
 } from "@tanstack/react-table";
-import { useId, type ReactNode } from "react";
+import { type ReactNode } from "react";
 import { Button, EmptyState, PageSkeleton } from "@/components/admin/ui";
 
 /**
@@ -87,6 +87,31 @@ export interface DataTableProps<TData extends object> {
    */
   truncationNotice?: ReactNode;
   onRowClick?: (row: TData) => void;
+  /**
+   * Satırın KENDİ adı — "satırı aç" denetiminin erişilebilir adı (İP-A7d2 · SK-5).
+   *
+   * ## Neden zorunlu (ve neden `aria-labelledby` yetmedi)
+   *
+   * A7d1 mobil kartın tıklanabilirliğini, kartın içine serilen görünmez bir
+   * "satırı aç" düğmesiyle çözdü ve o düğmenin adını **kartın tüm içeriğinden**
+   * (`aria-labelledby`) aldı. Gerekçe iyiydi: çağıran taraf yeni bir prop
+   * yazmaz, 21 ekranda unutulamaz.
+   *
+   * Ama A7d1'in üç ekranının hiçbirinde kartın İÇİNDE aksiyon düğmesi yoktu.
+   * Olduğu anda (`PackagesPage`) ölçüldü: erişilebilir ad hesabı, hedef
+   * düğümün İÇİNDEKİ düğmelerin metnini de toplar. Sonuç:
+   *
+   *   - Ekran okuyucu "satırı aç" düğmesini `"PKT-000077 Sipariş #501 …
+   *     Yeniden paketle Bozuldu olarak işaretle"` diye okur — kartın bütün
+   *     aksiyonları TEK bir düğmenin adına karışır.
+   *   - Aynı ada sahip İKİ farklı denetim doğar ("Yeniden paketle" hem gerçek
+   *     aksiyon hem satırı açan görünmez düğme): klavye/otomasyon seçimi
+   *     belirsizleşir ve yanlış olan tetiklenir.
+   *
+   * Bu yüzden ad artık çağıran taraftan gelir — ama **unutulamaz**: prop,
+   * `onRowClick` verildiğinde tip düzeyinde ZORUNLUDUR (aşağıdaki birleşim).
+   */
+  satirAdi?: (row: TData) => string;
   renderMobileRow?: (row: TData) => ReactNode;
   page: number;
   pageSize: number;
@@ -103,6 +128,18 @@ function SortIndicator({ direction }: { direction: false | "asc" | "desc" }) {
   );
 }
 
+/**
+ * Satır tıklaması varsa satır ADI da vardır — tip düzeyinde bağlı iki prop.
+ *
+ * Ayrı iki isteğe bağlı prop yazmak, `satirAdi`yı yazmayı unutmayı serbest
+ * bırakırdı ve unutulduğunda ortaya çıkan hata SESSİZDİR (yalnız ekran
+ * okuyucuda ve otomasyonda görünür). A3c'den beri seçilen yol aynı: sessiz
+ * varsayılan yerine açık beyan.
+ */
+export type DataTableSatirTiklamasi<TData> =
+  | { onRowClick: (row: TData) => void; satirAdi: (row: TData) => string }
+  | { onRowClick?: undefined; satirAdi?: undefined };
+
 export function DataTable<TData extends object>({
   columns,
   data,
@@ -115,16 +152,15 @@ export function DataTable<TData extends object>({
   emptyAction,
   truncationNotice,
   onRowClick,
+  satirAdi,
   renderMobileRow,
   page,
   pageSize,
   total,
   onPageChange,
   onPageSizeChange,
-}: DataTableProps<TData>) {
-  // Mobil kartın erişilebilir adı içeriğinden gelir; bağ için kararlı bir
-  // kimlik önekine ihtiyaç var (aynı sayfada iki tablo olabilir).
-  const mobilKapKimligi = useId();
+}: Omit<DataTableProps<TData>, "onRowClick" | "satirAdi"> &
+  DataTableSatirTiklamasi<TData>) {
   const table = useReactTable({
     columns,
     data,
@@ -163,14 +199,17 @@ export function DataTable<TData extends object>({
                 }}
               >
                 {/* Klavye + ekran okuyucu affordance'ı. Görünmez ama odak
-                    halkasını taşır; adını kart içeriğinden alır. */}
+                    halkasını taşır. Adı çağıran taraftan gelir: kart
+                    içeriğinden türetmek, kartın kendi aksiyon düğmelerinin
+                    metnini de bu düğmenin adına karıştırıyordu
+                    (İP-A7d2 · SK-5). */}
                 <button
                   type="button"
-                  aria-labelledby={`${mobilKapKimligi}-${row.id}`}
+                  aria-label={satirAdi?.(row.original)}
                   onClick={() => activateRow(row)}
                   className="absolute inset-0 z-0 rounded-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-500"
                 />
-                <div id={`${mobilKapKimligi}-${row.id}`} className="relative z-10">
+                <div className="relative z-10">
                   {renderMobileRow(row.original)}
                 </div>
               </div>

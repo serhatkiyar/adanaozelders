@@ -66,6 +66,7 @@ function kur({
       getRowId={(k) => String(k.id)}
       emptyTitle="Kayıt yok"
       onRowClick={satirAcildi}
+      satirAdi={(k) => `${k.ad} — ayrıntı`}
       renderMobileRow={(k) => (
         <div>
           <p>{k.ad}</p>
@@ -129,14 +130,25 @@ describe("İP-A7d1 · satır tıklaması + satır aksiyonu birlikte yaşayabilir
     expect(satirAcildi).toHaveBeenCalledWith(VERI[1]);
   });
 
-  it("satırı açan denetimin erişilebilir adı kart içeriğinden gelir", () => {
-    // Ad çağıran taraftan İSTENMEZ: istenirse yirmi bir ekranda yirmi bir kez
-    // unutulabilir ve "Satırı aç" gibi anlamsız bir ad ekran okuyucuya çıkar.
+  it("satırı açan denetimin adı satırı TANITIR ama aksiyonları YUTMAZ (SK-5)", () => {
+    // İP-A7d1'de bu ad `aria-labelledby` ile kartın TÜM içeriğinden geliyordu
+    // ve gerekçesi "çağıran taraf prop yazmasın, unutulamasın" idi. İP-A7d2
+    // ölçtü: A7d1'in üç ekranının hiçbirinde kartın İÇİNDE aksiyon yoktu.
+    // Olduğu anda (`PackagesPage`) erişilebilir ad hesabı kartın aksiyon
+    // düğmelerinin metnini de topluyor — ekran okuyucu tek düğmeyi
+    // "Birinci kayıt Sil 1" diye okuyor ve "Sil 1" adlı İKİ denetim doğuyor.
+    //
+    // Yeni sözleşme: ad çağıran taraftan gelir ama UNUTULAMAZ —
+    // `onRowClick` verildiğinde `satirAdi` tip düzeyinde zorunludur.
     const { container } = kur({ satirAcildi: vi.fn(), aksiyon: vi.fn() });
-    const acicilar = within(mobilBolum(container)).getAllByRole("button", {
-      name: /Birinci kayıt/,
+    const acici = within(mobilBolum(container)).getByRole("button", {
+      name: "Birinci kayıt — ayrıntı",
     });
-    expect(acicilar.length).toBeGreaterThan(0);
+    expect(acici.getAttribute("aria-label")).toBe("Birinci kayıt — ayrıntı");
+    // Aksiyon adı YALNIZ gerçek aksiyonda bulunur (ikiye çıkmaz).
+    expect(
+      within(mobilBolum(container)).getAllByRole("button", { name: "Sil 1" })
+    ).toHaveLength(1);
   });
 
   it("masaüstünde satır aksiyonuna tıklamak satırı AÇMAZ (olay kabarması)", () => {

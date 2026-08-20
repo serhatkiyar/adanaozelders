@@ -37,7 +37,7 @@
  * kopyalamak olurdu.
  */
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
@@ -529,6 +529,75 @@ describe("D-4 · gönder kapısı ve odak", () => {
  * Sunucuya gerçekten `sort` parametresi gittiği `adminStorePanel`de zaten
  * kanıtlı; buradaki iddia GÖSTERGE, yani şimdiye kadar hiç ölçülmemiş kısım.
  */
+describe("D-6 · kirli formda kapatma önce sorar (İP-A7d2 · SK-4)", () => {
+  /**
+   * Bu test A7d2'de yazıldı ve YAZILDIĞI ANDA KIRMIZIYDI.
+   *
+   * `EditProductModal` İP-A6'da ortak `DuzenlemePenceresi`ye geçirilmişti ve
+   * o paketin raporu kazanç listesine "kirli formda kapatma onayı"nı da
+   * yazmıştı. Ama pencere korumayı İÇERİKTEN öğrenir (`useYuzeyKirliFormBekcisi`
+   * bildirimi) ve `ProductForm` o kancayı HİÇ çağırmıyordu: 25 alanlık ürün
+   * formunda ESC / × / dış tıklama, yazılan her şeyi sormadan siliyordu.
+   *
+   * A7d1'in SK-3'ü "kanca YANLIŞ YERDE çağrıldı" hâliydi; bu onun kardeşi:
+   * "kanca HİÇ çağrılmadı". A7d2'nin `pencereSiz` beyanı ikincisini yakalamaz
+   * — olmayan çağrının beyanı da olmaz.
+   */
+  it("düzenleme penceresinde alan değişince ESC kapatmaz, önce sorar", async () => {
+    izinVer("products.view", "products.manage");
+    temelSunucu();
+    sunucu("/store/admin/products", { data: [URUN], headers: { "x-total-count": "1" } }, "get");
+    sunucu("/store/admin/products/101", { data: URUN }, "get");
+    defterSunucusu();
+    panel(ROUTES.adminStoreProducts);
+    fireEvent.click(await screen.findByRole("button", { name: "Düzenle" }, YUK));
+    const ad = await screen.findByLabelText("Ürün adı");
+
+    fireEvent.change(ad, { target: { value: "Fosforlu Kalem - Yeşil" } });
+    // Bekçinin kurulmasını BEKLE. Form `mode: "onChange"` ve zod resolver'ı
+    // ASENKRON: `isDirty` bayrağı değişiklikle aynı tikte değil, doğrulama
+    // sözü çözülünce yayınlanıyor. Ölçüldü (A7d2 · Görev 3): değişiklikten
+    // hemen sonraki render'da `isDirty` hâlâ false, bir tik sonra true.
+    // Beklemeden ESC'ye basmak testi YANLIŞ SEBEPLE yeşil/kırmızı yapardı.
+    await act(async () => {});
+    fireEvent.keyDown(document, { key: "Escape" });
+
+    expect(await screen.findByText("Kaydedilmemiş değişiklikler var")).toBeTruthy();
+    // Editör AYAKTA. `getByRole("dialog")` kullanılmaz: onay penceresi açıkken
+    // Radix kardeş düğümlere `aria-hidden` koyar ve editör erişilebilirlik
+    // ağacından geçici olarak düşer (A7d1'de bu tuzağa düşüldü).
+    expect(
+      document.querySelector('[role="dialog"]'),
+      "onay sorulmadan ürün penceresi kapandı"
+    ).not.toBeNull();
+  });
+
+  it("TEMİZ formda ESC doğrudan kapatır (bekçi her şeyi sormuyor)", async () => {
+    izinVer("products.view", "products.manage");
+    temelSunucu();
+    sunucu("/store/admin/products", { data: [URUN], headers: { "x-total-count": "1" } }, "get");
+    sunucu("/store/admin/products/101", { data: URUN }, "get");
+    defterSunucusu();
+    panel(ROUTES.adminStoreProducts);
+    fireEvent.click(await screen.findByRole("button", { name: "Düzenle" }, YUK));
+    await screen.findByLabelText("Ürün adı");
+
+    fireEvent.keyDown(document, { key: "Escape" });
+    await waitFor(() => expect(screen.queryByLabelText("Ürün adı")).toBeNull());
+  });
+
+  it("SATIR İÇİ oluşturma formu beyanlıdır: pencere yokken patlamaz", async () => {
+    // `pencereSiz: true` beyanının gerçek çağrı yerindeki kanıtı. Beyan
+    // silinirse A7d2'nin `throw`u burayı kırar.
+    izinVer("products.view", "products.manage");
+    temelSunucu();
+    sunucu("/store/admin/products", { data: [], headers: { "x-total-count": "0" } }, "get");
+    panel(ROUTES.adminStoreProducts);
+    fireEvent.click(await screen.findByRole("button", { name: "Yeni ürün" }, YUK));
+    expect(await screen.findByLabelText("Ürün adı")).toBeTruthy();
+  });
+});
+
 describe("D-5 · sıralama göstergesi", () => {
   it("sıralı kolon aria-sort taşır, diğerleri 'none' der ve URL'den okunur", async () => {
     izinVer("products.view", "products.manage");

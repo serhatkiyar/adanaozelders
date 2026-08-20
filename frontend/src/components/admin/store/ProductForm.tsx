@@ -37,6 +37,7 @@ import { useMutation } from "@tanstack/react-query";
 
 import { Button } from "@/components/admin/ui";
 import { Form, sunucuHatasiniUygula } from "@/components/admin/ui2/form";
+import { useYuzeyKirliFormBekcisi } from "@/components/admin/ui2/duzenlemeYuzeyi";
 import { createProduct, updateProduct } from "@/api/store";
 import {
   useCategories,
@@ -305,6 +306,25 @@ export function ProductForm({
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mutation.error]);
+
+  // ── Kirli form bekçisi (İP-A7d2 · SK-4) ──
+  //
+  // BU ÇAĞRI YOKTU. `EditProductModal` İP-A6'da ortak `DuzenlemePenceresi`ye
+  // geçirildi ve rapor "kirli formda kapatma onayı geldi" dedi; ama pencere
+  // korumayı İÇERİKTEN öğrenir ve `ProductForm` bekçiyi hiç çağırmıyordu.
+  // Sonuç: 25 alanlık ürün formunda ×/ESC/dış tıklama, yazılan her şeyi
+  // SORMADAN siliyordu. A7d2'nin `pencereSiz` beyanı bu deliği KAPATMAZ —
+  // hiç çağrılmayan bir kancanın beyanı da olmaz (rapor: SK-4).
+  //
+  // `pencereSiz` beyanı `mode`dan türer ve bu tesadüf değil: form iki yerde
+  // yaşıyor — `ProductsPanel`de SATIR İÇİ (oluşturma, pencere yok) ve
+  // `EditProductModal`de PENCERE İÇİNDE (düzenleme). Beyanın çağrı yerine
+  // göre değişmesi gereken ilk gerçek örneği budur.
+  useYuzeyKirliFormBekcisi({
+    form,
+    sunucuHatasi: mutation.error,
+    pencereSiz: isEdit ? undefined : true,
+  });
 
   // ── Odak kurtarması: katlanmış bölümdeki hataya erişim ──
   //

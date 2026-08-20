@@ -187,7 +187,15 @@ describe("İP-A7d1 (c) · mevcut davranış korunur", () => {
   it("sunucu hatasında liste yerine hata + Yeniden dene çıkar", async () => {
     hataVer = true;
     sar();
-    expect(await screen.findByRole("button", { name: /yeniden dene/i })).toBeTruthy();
+    // Yük altındaki bekleme bütçesi (İP-A7d2 · Görev 5). Bu iddia A7d1'de
+    // yazıldı ve o gün yeşildi; A7d2'de suite altı dosya büyüyünce paralel
+    // yük arttı ve HATA yolu (sorgunun reddedilip `ErrorState`e düşmesi)
+    // 1000 ms'lik varsayılanın dibine değdi — `adminHakedisGoc`ta ölçülen
+    // aynı pencere (en kötü 917 ms). Gecikme üretim kodunda değil, vitest
+    // işçilerinin CPU paylaşımında.
+    expect(
+      await screen.findByRole("button", { name: /yeniden dene/i }, { timeout: 4000 })
+    ).toBeTruthy();
   });
 });
 

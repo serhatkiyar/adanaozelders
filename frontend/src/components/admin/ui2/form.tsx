@@ -452,8 +452,31 @@ function Control({ children }: { children: ReactElement }) {
   //
   // Karar burada TEK yerde veriliyor: A7'de sayısal alanı olan her ekran bunu
   // yeniden yazmasın (ve yazmayı unutmasın).
-  const sayiAlani = cocuk.type === "input" && cocukProps.type === "number";
-  const sinif = [cocukProps.className, sayiAlani ? "dark:[color-scheme:dark]" : null]
+  //
+  // ── İP-A7d2 · SK-6: KAPSAM `number` İLE SINIRLIYDI ──
+  //
+  // A6c bu düzeltmeyi yalnız `type="number"` için kurmuştu ve o pakette
+  // ölçülen tek yerel widget artır/azalt oklarıydı. Ama tarih ve saat
+  // girdileri de yerel widget çizer (takvim/saat ikonu, açılır seçici) ve
+  // onlar da varsayılan olarak AÇIK temaya göre çizilir.
+  //
+  // Dalga 2'nin gerçek tarayıcı turu ölçtü: koyu temada `Tarih & saat`
+  // (`datetime-local`) ve `Vardiya başlangıç/bitiş` (`time`) alanlarının
+  // `color-scheme` değeri `normal` kalıyordu — yani koyu panelin üstünde
+  // beyaz bir takvim ikonu. A7d1'in üç ekranında tarih alanı YOKTU; bu yüzden
+  // eksik görünmemişti.
+  const YEREL_WIDGET_TIPLERI = new Set([
+    "number",
+    "date",
+    "datetime-local",
+    "time",
+    "month",
+    "week",
+    "color",
+  ]);
+  const yerelWidget =
+    cocuk.type === "input" && YEREL_WIDGET_TIPLERI.has(String(cocukProps.type));
+  const sinif = [cocukProps.className, yerelWidget ? "dark:[color-scheme:dark]" : null]
     .filter(Boolean)
     .join(" ");
 

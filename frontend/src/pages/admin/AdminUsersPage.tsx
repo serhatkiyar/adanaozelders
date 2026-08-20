@@ -177,6 +177,7 @@ export default function AdminUsersPage() {
             emptyTitle="Kullanıcı bulunamadı"
             emptyDescription="Arama veya filtre ölçütlerini değiştirerek yeniden deneyin."
             onRowClick={openUser}
+            satirAdi={(user) => `${user.full_name} — kullanıcı ayrıntısı`}
             renderMobileRow={(user) => (
               <div className="flex items-start gap-3">
                 <Avatar name={user.full_name} size="sm" />

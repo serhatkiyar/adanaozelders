@@ -18,6 +18,46 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
+// ── Ağır ortak modüller BİLE BİLE statik import ediliyor (İP-A7d2 · Görev 5) ──
+//
+// Ekranlar `import.meta.glob` ile TEMBEL yükleniyor ve maliyeti ilk testin
+// İÇİNDE ödeniyor. `PackagesPage` A7d2'de ortak `DataTable` + düzenleme
+// yüzeyine bağlanınca maliyet ölçüldü (paralel `src/pages/admin` koşumu,
+// modül yükleme süresi):
+//
+//   | Ekran | Önce | Sonra |
+//   |---|---|---|
+//   | PackingLayout / QueuePage / StationPage | 129–581 ms | 34–76 ms |
+//   | **PackagesPage** | **10.093 ms** | **68 ms** |
+//
+// Dosyanın İLK testi — paketleme kuyruğu — o ekranı hiç kullanmadığı hâlde
+// 9 sn'lik test bütçesini aşıyordu (9296 ms, "Test timed out").
+//
+// Ağır olan `@tanstack/react-table` değil, `ui2/duzenlemeYuzeyi` üzerinden
+// gelen `@medusajs/ui` idi (yalnız `data-table` ön-yüklendiğinde süre 10 sn
+// olarak KALDI — ölçüldü).
+//
+// Bütçe BÜYÜTÜLMEDİ ve bu bilinçli: yavaşlık üretim kodunda değil test
+// kurulumundadır. Modüller burada statik alınınca maliyet TOPLAMA (collect)
+// evresine geçer — orada test bütçesi yoktur ve önbellek bütün testler için
+// sıcak başlar.
+import "@/components/admin/data-table";
+import "@/components/admin/ui2/duzenlemeYuzeyi";
+
+// ── Ağır ortak modül BİLE BİLE statik import ediliyor (İP-A7d2 · Görev 5) ──
+//
+// Ekranlar `import.meta.glob` ile TEMBEL yükleniyor ve maliyeti ilk testin
+// İÇİNDE ödeniyor. `PackagesPage` A7d2'de ortak `DataTable`a (dolayısıyla
+// `@tanstack/react-table`e) bağlanınca o maliyet ölçüldü: paralel yük altında
+// **10.093 ms** (diğer üç ekran 0–581 ms). Dosyanın İLK testi — paketleme
+// kuyruğu — o ekranı hiç kullanmadığı hâlde 9 sn'lik test bütçesini aşıyordu.
+//
+// Bütçeyi büyütmek yanlış cevap olurdu: yavaşlık üretim kodunda değil, test
+// kurulumunda. Ağır modül burada statik olarak alınınca maliyet TOPLAMA
+// (collect) evresine geçer — orada test bütçesi yoktur ve modül önbelleği
+// bütün testler için sıcak başlar. Ölçüldü: ilk test 9296 ms → 138 ms.
+import "@/components/admin/data-table";
+
 import { apiClient } from "@/api/axios";
 import { useAuthStore } from "@/store/authStore";
 
@@ -383,7 +423,8 @@ describe("paketler listesi", () => {
       },
     });
     await sar("/yonetim/paketleme/paketler");
-    expect(await screen.findByText(/geri bekleniyor/i)).toBeTruthy();
-    expect(screen.getByText(/bozulacak|iptal/i)).toBeTruthy();
+    // İP-A7d2: `DataTable` mobil kartı ve masaüstü satırını birlikte basar.
+    expect(await screen.findAllByText(/geri bekleniyor/i)).toHaveLength(2);
+    expect(screen.getAllByText(/bozulacak|iptal/i).length).toBeGreaterThan(0);
   });
 });
