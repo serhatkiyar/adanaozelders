@@ -309,7 +309,17 @@ describe("S-3 · her koşullu dal render edilir, her alanın adı vardır", () =
     fireEvent.click(await screen.findByRole("button", { name: "Katılımcılar" }));
     expect(await screen.findByTestId("roster-sayaci")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Giriş ver" })).toBeTruthy();
-    adlarDogru(0);
+    // İP-A7d5 · Görev 4: eskiden `adlarDogru(0)` yazıyordu ve HİÇBİR ŞEY
+    // iddia etmiyordu — ölü kontrol. İkisi de boş küme üzerinde her koşulda
+    // doğruydu: (1) "kontrol sayısı ≥ 0" totolojidir, (2) "adsız kontrol yok"
+    // iddiası hiç kontrol render edilmediği için kendiliğinden geçiyordu.
+    // ÖLÇÜLDÜ: bu dal GERÇEKTEN sıfır form kontrolü render ediyor. Kimlik
+    // kontrolüne çevrildi — dala bir alan eklendiği gün kırılır ve alanın
+    // adlandırılıp ölçüme girmesi gerektiğini söyler.
+    expect(
+      formKontrolleri(document.body).map((k) => k.tagName),
+      "bu dalda form kontrolü BEKLENMİYOR"
+    ).toEqual([]);
   });
 
   it("SONUÇ tablosu dalı — net ve sıra alanlarının adı vardır", async () => {

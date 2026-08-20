@@ -149,32 +149,24 @@ function izinVer(...kodlar: string[]) {
   });
 }
 
-// `import.meta.glob`: Vite düz dinamik import'u derleme anında çözer ve ekranlar
-// henüz yokken tüm matrisi collection'da düşürür ("no tests" — 14 kabul kriteri
-// tek satıra iner). Glob, olmayan dosya için boş eşleşme döndürür.
-const EKRANLAR = import.meta.glob([
-  "./PackingLayout.tsx",
-  "./PackingQueuePage.tsx",
-  "./PackingStationPage.tsx",
-  "./PackagesPage.tsx",
-]);
-
-async function ekranlar() {
-  const al = async (ad: string) => {
-    const yukle = EKRANLAR[`./${ad}.tsx`];
-    if (!yukle) throw new Error(`HENÜZ YAZILMADI: src/pages/admin/packing/${ad}.tsx`);
-    return ((await yukle()) as Record<string, any>).default;
-  };
-  return {
-    Layout: await al("PackingLayout"),
-    Kuyruk: await al("PackingQueuePage"),
-    Istasyon: await al("PackingStationPage"),
-    Paketler: await al("PackagesPage"),
-  };
-}
+// ── İP-A7d5 · Görev 2: dört ekran da STATİK import ediliyor ──
+//
+// Eskiden `import.meta.glob([...])` idi ve gerekçesi "ekranlar HENÜZ YOKKEN
+// tüm matris collection'da düşmesin"di (red-first idiom). Ekranlar yazıldığı
+// gün o gerekçe bitti; geriye maliyeti kaldı: A7d2'de `PackagesPage`in modül
+// yüklemesi **10.093 ms** ölçüldü ve dosyanın İLK testini — o ekranı hiç
+// kullanmadığı hâlde — 9 sn'lik bütçenin dışına attı. O gün ilaç ortak
+// modülü statik almaktı; A7d5'te ekranların KENDİSİ de statik alındı.
+import PackagesPage from "./PackagesPage";
+import PackingLayout from "./PackingLayout";
+import PackingQueuePage from "./PackingQueuePage";
+import PackingStationPage from "./PackingStationPage";
 
 async function sar(yol: string) {
-  const { Layout, Kuyruk, Istasyon, Paketler } = await ekranlar();
+  const Layout = PackingLayout;
+  const Kuyruk = PackingQueuePage;
+  const Istasyon = PackingStationPage;
+  const Paketler = PackagesPage;
   const qc = new QueryClient({
     defaultOptions: { queries: { retry: false, gcTime: 0 }, mutations: { retry: false } },
   });

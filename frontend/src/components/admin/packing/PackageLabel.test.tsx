@@ -68,9 +68,16 @@ const UZUN_BASLIK =
   "TYT ve AYT İçin Kapsamlı Matematik Soru Bankası Video Çözümlü " +
   "Genişletilmiş 2026 Baskısı Set Halinde Toplam Dört Kitap";
 
-// `import.meta.glob`: Vite düz dinamik import'u derleme anında çözer ve dosya
-// yoksa tüm matrisi collection'da düşürür ("no tests"). Glob boş eşleşme döner.
-const MODULLER = import.meta.glob("./PackageLabel.tsx");
+// ── İP-A7d5 · Görev 2: modül STATİK import ediliyor ──
+//
+// Eskiden `import.meta.glob("./PackageLabel.tsx")` idi ve gerekçesi "dosya
+// HENÜZ YOKKEN kırmızı matris kurulabilsin"di (red-first idiom). Dosya
+// yazıldığı gün o gerekçe bitti; geriye maliyeti kaldı ve A7d2/A7d3'te bu
+// dosyanın İLK TESTİ tam olarak bu yüzden zaman aşımına düştü (transform
+// süresi testin bütçesinden ödeniyordu). Statik import maliyeti TOPLAMA
+// evresine taşır. Gevşek tip sözleşmesi (aşağıdaki `EtiketModulu`) KORUNUYOR:
+// testin negatif iddiaları fixture'ın fazladan alan taşımasına dayanır.
+import * as PackageLabelModulu from "./PackageLabel";
 
 /**
  * Glob yükleyicisinin `unknown` çıktısına verilen ad — `any` DEĞİL.
@@ -89,11 +96,7 @@ interface EtiketModulu {
 }
 
 async function modul(): Promise<EtiketModulu> {
-  const yukle = MODULLER["./PackageLabel.tsx"];
-  if (!yukle) {
-    throw new Error("HENÜZ YAZILMADI: src/components/admin/packing/PackageLabel.tsx");
-  }
-  return (await yukle()) as unknown as EtiketModulu;
+  return PackageLabelModulu as unknown as EtiketModulu;
 }
 
 async function bilesen(): Promise<EtiketModulu["PackageLabel"]> {

@@ -98,7 +98,11 @@ const ETIKET = (id: number, over: Record<string, unknown> = {}) => ({
   ...over,
 });
 
-const MODULLER = import.meta.glob("./PackingLabelSheet.tsx");
+// ── İP-A7d5 · Görev 2: modül STATİK import ediliyor ──
+// Gerekçe kardeş dosyada (`PackageLabel.test.tsx`) yazılı: glob red-first
+// idiomuydu, dosya yazıldıktan sonra geriye yalnız ilk testin bütçesinden
+// ödenen transform maliyeti kaldı.
+import * as SayfaModuluKaynak from "./PackingLabelSheet";
 
 /** Glob yükleyicisinin `unknown` çıktısına verilen ad — `any` DEĞİL. */
 interface SayfaModulu {
@@ -111,11 +115,7 @@ interface SayfaModulu {
 }
 
 async function modul(): Promise<SayfaModulu> {
-  const yukle = MODULLER["./PackingLabelSheet.tsx"];
-  if (!yukle) {
-    throw new Error("HENÜZ YAZILMADI: src/components/admin/packing/PackingLabelSheet.tsx");
-  }
-  return (await yukle()) as unknown as SayfaModulu;
+  return SayfaModuluKaynak as unknown as SayfaModulu;
 }
 
 async function sayfa(): Promise<SayfaModulu["PackingLabelSheet"]> {

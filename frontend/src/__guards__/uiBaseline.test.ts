@@ -164,7 +164,7 @@ describe("İP-A1 nöbetçi eşikleri", () => {
     expect(olcum.dosyalar).toEqual(OLCUM_TABANI);
   });
 
-  it("ham <button sayısı artamaz (taban 131)", () => {
+  it("ham <button sayısı artamaz (bugünkü taban 102)", () => {
     // İP-A3c'de 126 → 160: taban altı ekran genişledi (Operator*/Courier*/
     // Delivery*), bu ekranlarda zaten duran 34 ham buton görünür oldu.
     //
@@ -220,7 +220,7 @@ describe("İP-A1 nöbetçi eşikleri", () => {
     expect(olcum.rawButton).toBeLessThanOrEqual(102);
   });
 
-  it("erişilebilir adı olmayan form kontrolü artamaz (taban 30)", () => {
+  it("erişilebilir adı olmayan form kontrolü artamaz (bugünkü taban 7)", () => {
     // İP-A3a'da eski `<label htmlFor>` ORANININ yerini aldı. Gerekçe için
     // dosya başındaki nota bak. İP-A3c'de 41 → 56: taban genişlemesiyle
     // görünür olan 15 borç (OperatorLibrary 7, DeliveryDriver 4,
@@ -368,7 +368,7 @@ describe("İP-A1 nöbetçi eşikleri", () => {
     expect(olcum.medusaDirectImports).toEqual([]);
   });
 
-  it("role=dialog/aria-modal taşımayan overlay sayısı artamaz (taban 4)", () => {
+  it("role=dialog/aria-modal taşımayan overlay SIFIR (tavan değil TABAN)", () => {
     // İP-A6'da 5 → 4: `store/EditProductModal.tsx` ortak yüzeye geçti.
     // İP-A6b'de 4 → 6: import grafiğiyle görünen `ExamSessionsManager` ve
     // `LibraryEditorModal` kendi katmanlarını etiketsiz kuruyor (Görev 3).

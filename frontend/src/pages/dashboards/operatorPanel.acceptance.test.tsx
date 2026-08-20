@@ -22,7 +22,7 @@
 // `backend/schemas/*.py` ve `src/types/index.ts` okunarak yazılmıştır; uydurma
 // alan yoktur.
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { act, configure, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -42,30 +42,60 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 // üretim kodunda değil test kurulumunda. Modül burada statik alınınca maliyet
 // TOPLAMA (collect) evresine geçer.
 import "@/components/admin/ui2/duzenlemeYuzeyi";
+import Calendar from "@/pages/Calendar";
+import Leaderboard from "@/pages/Leaderboard";
+import Learn from "@/pages/Learn";
+import Notifications from "@/pages/Notifications";
+import Settings from "@/pages/Settings";
+import OperatorHome from "@/pages/dashboards/OperatorHome";
+import OperatorLibrary from "@/pages/dashboards/OperatorLibrary";
+import OperatorSessions from "@/pages/dashboards/OperatorSessions";
 
 import { apiClient } from "@/api/axios";
+import { dosyaBeklemeButcesi } from "@/test-utils/beklemeButcesi";
 import { useAuthStore } from "@/store/authStore";
 import { adsizKontroller } from "@/test-utils/alanAdlari";
 
 import type { AxiosRequestConfig } from "axios";
 import type { ComponentType } from "react";
 
-// ── Süre bütçesi ────────────────────────────────────────────────────────────
+// ── İP-A7d5 · Görev 3: BİRİ KALKTI, BİRİ SIZINTISIZ HÂLE GETİRİLDİ ──
 //
-// Bu dosya gerçek sayfa ağaçlarını (DashboardShell + üst bar + hook'lar)
-// jsdom'da render eder; esbuild transform'u tek başına birkaç saniye sürer ve
-// projenin 5 sn'lik varsayılan test bütçesi paralel koşuda aşılıyor — ölçülen
-// davranış yüzünden DEĞİL, derleme süresi yüzünden.
+// Burada iki ezme vardı ve ikisinin de gerekçesi AYNI cümleydi: "esbuild
+// transform'u birkaç saniye sürüyor". Yani ölçülen davranış değil, MODÜL
+// YÜKLEME maliyeti bütçeyi yiyordu — ve o maliyet Görev 2'de kaynağında
+// kaldırıldı (ekranlar statik import edildi, maliyet collect evresine geçti).
 //
-// `vi.setConfig` YALNIZ bu dosyayı etkiler; `vitest.config.ts`'teki global
-// ayar (İP-12'nin dokunduğu yer) olduğu gibi kalır.
-vi.setConfig({ testTimeout: 20_000, hookTimeout: 20_000 });
-
-// RTL'in kendi bekleme süresi (`findBy*`) test bütçesinden AYRIDIR ve
-// varsayılanı 1 sn'dir: yavaş bir koşuda sorgu daha patlamadan iddia
-// zamanaşımına uğrayıp "element yok" diyordu. Bekleme süresi uzatılıyor;
-// iddiaların kendisi değişmiyor.
-configure({ asyncUtilTimeout: 5_000 });
+//   1. `vi.setConfig({ testTimeout: 20_000, hookTimeout: 20_000 })` — KALKTI.
+//      `vitest.config.ts`'in yazılı kuralını ("dosya başına testTimeout ezmesi
+//      YAPILMAZ") delen iki dosyadan biriydi. Göç sonrası ÖLÇÜLDÜ: tam suite
+//      yükü altında bu dosyanın EN YAVAŞ testi 3.997 ms (öncesi: ilk test tek
+//      başına 6.923 ms). 9 sn'lik ortak bütçe yeterli.
+//
+//   2. `configure({ asyncUtilTimeout: 5_000 })` — bundan daha kötüsü: RTL'in
+//      `configure`u modül düzeyinde GLOBALDİR ve `@testing-library/dom` bir
+//      node_modules bağımlılığı olduğu için vitest işçisinin ESM önbelleğinde
+//      DOSYALAR ARASINDA paylaşılır (aynı sızıntı `zodTurkce.test.ts`te zod
+//      için belgeli). Ölçüldü: `--pool=forks --singleFork` ile bu dosyadan
+//      SONRA koşan bir sonda `asyncUtilTimeout = 5000` okuyor; tek başına
+//      koşunca 1000. Yani bu satır "yalnız bu dosyanın bütçesi" değildi —
+//      aynı işçide sonra gelen HER dosyanın bütçesini, karışık tohumda
+//      değişen bir kümede sessizce beş katına çıkarıyordu. İP-A6b'nin
+//      BULGU-10'da kaldırdığı global ayar, yan kapıdan geri gelmişti.
+//
+// ── Peki bekleme bütçesi bu dosyada GEREKLİ Mİ? Ölçüldü: EVET ──
+//
+// Ezme kaldırılıp tam suite 12 karışık tohumla koşuldu ve ÜÇ tohumda bu dosya
+// kırmızı düştü (5001, 5041: "Adres & Konum — düzenle" bulunamadı · 5059:
+// "/Kütüphanem/" bulunamadı). Yani buradaki bütçe — sızıntının aksine —
+// gerçek bir yükü taşıyor: dosya sekiz ayrı ağır ekranı jsdom'da render
+// ediyor ve ilk sorgu, ekran boyanana kadar bekliyor. Ölçülen tepe bekleme
+// (üst sınır, tam suite yükü): 3.578 ms.
+//
+// Bütçe geri kondu ama SIZINTISIZ biçimde: `dosyaBeklemeButcesi` değeri
+// `beforeAll`da kurar ve `afterAll`da ÖNCEKİ değerine döndürür; aynı işçide
+// sonra koşan dosyalar varsayılanla başlar.
+dosyaBeklemeButcesi(5_000);
 
 /* ══════════════ Sahte sunucu — gerçek axios örneği, yalnız adapter değişir ══════════════ */
 
@@ -172,35 +202,31 @@ function operatorOturumu() {
   });
 }
 
-const EKRANLAR = import.meta.glob([
-  "./OperatorHome.tsx",
-  "./OperatorLibrary.tsx",
-  "./OperatorSessions.tsx",
-  "../Notifications.tsx",
-  "../Leaderboard.tsx",
-  "../Settings.tsx",
-  "../Calendar.tsx",
-  "../Learn.tsx",
-]);
-
-// Ekran modülleri TEMBEL yüklenir ve önbelleğe alınır: aynı sayfayı kullanan
-// sonraki testler transform maliyetini tekrar ödemez. (Hepsini `beforeAll`'da
-// toplu yüklemek denendi ve 10 sn'lik HOOK bütçesini aşıyor — yedi sayfanın
-// tamamı aynı anda derleniyor.)
-const ONBELLEK = new Map<string, ComponentType>();
-
-async function ekran(yol: string): Promise<ComponentType> {
-  const onbellekli = ONBELLEK.get(yol);
-  if (onbellekli) return onbellekli;
-  const yukle = EKRANLAR[yol];
-  if (!yukle) throw new Error(`HENÜZ YAZILMADI: ${yol}`);
-  const bilesen = ((await yukle()) as { default: ComponentType }).default;
-  ONBELLEK.set(yol, bilesen);
-  return bilesen;
-}
+// ── İP-A7d5 · Görev 2: sekiz ekran da STATİK import ediliyor ──
+//
+// Eskiden `import.meta.glob` + tembel yükleme + `ONBELLEK` vardı. Glob, ekran
+// dosyaları HENÜZ YOKKEN kırmızı matris kurabilmek içindi (red-first idiom);
+// dosyalar yazıldığı gün o gerekçe bitti ve geriye SADECE maliyeti kaldı:
+// sekiz sayfa ağacının transform + değerlendirme süresi İLK TESTİN bütçesinden
+// ödeniyordu (ölçülen: ilk test 6,9 sn — dosyanın geri kalanının ortancası
+// 0,7 sn). Dosyadaki eski not "hepsini `beforeAll`da yüklemek 10 sn'lik KANCA
+// bütçesini aşıyor" diyordu; doğru cevap kancaya taşımak değil, TOPLAMA
+// (collect) evresine taşımaktı — orada hiçbir bütçe yoktur.
+// Ölçüm ve gerekçe: `docs/ip-a7d5-rapor.md` · Görev 2.
+const EKRANLAR: Record<string, ComponentType> = {
+  "./OperatorHome.tsx": OperatorHome,
+  "./OperatorLibrary.tsx": OperatorLibrary,
+  "./OperatorSessions.tsx": OperatorSessions,
+  "../Notifications.tsx": Notifications,
+  "../Leaderboard.tsx": Leaderboard,
+  "../Settings.tsx": Settings,
+  "../Calendar.tsx": Calendar,
+  "../Learn.tsx": Learn,
+};
 
 async function sar(modulYolu: string, rota = "/") {
-  const Bilesen = await ekran(modulYolu);
+  const Bilesen = EKRANLAR[modulYolu];
+  if (!Bilesen) throw new Error(`bilinmeyen ekran: ${modulYolu}`);
   const qc = new QueryClient({
     defaultOptions: { queries: { retry: false, gcTime: 0 }, mutations: { retry: false } },
   });

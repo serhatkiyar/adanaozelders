@@ -23,6 +23,20 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, render, screen } from "@testing-library/react";
 import { HelmetProvider } from "react-helmet-async";
 import { MemoryRouter } from "react-router-dom";
+
+import App from "@/App";
+// ── İP-A7d5 · Görev 2: TEMBEL ROTA HEDEFLERİ de statik alınıyor ──
+//
+// `App` rota tablosunu `React.lazy` ile kuruyor: ekran modülü ancak o rotaya
+// GİDİLDİĞİNDE, yani testin `findBy*` beklemesinin İÇİNDE yükleniyor. Sınıfın
+// en saf hâli bu — ve ölçüldü: tohum 5103'te R7 tam olarak bu yüzden düştü
+// (Suspense yedeği ekrandayken 1000 ms'lik bütçe doldu, "Aradığınız sayfa
+// bulunamadı" başlığı henüz yoktu).
+//
+// Yan etki importu modülü TOPLAMA evresinde değerlendirir; `lazy` sonra onu
+// önbellekten alır ve bekleme tek bir mikro-göreve iner. Bütçe BÜYÜTÜLMEDİ.
+import "@/pages/NotFound";
+import "@/pages/srs/SrsDecks";
 import { afterEach, describe, expect, it } from "vitest";
 
 import Learn from "@/pages/Learn";
@@ -144,9 +158,13 @@ describe("R7 — App.tsx rota tablosunda eski yol yok (gerçek DOM)", () => {
   // `RouteErrorBoundary` bunu "Bu sayfa yüklenemedi" ekranına çevirir.
   // Yani sarmayı unutmak, 404 iddiasını sessizce ölçülemez hâle getirirdi:
   // test kırmızı düşerdi ama sebebi rota tablosu olmazdı.
+  // İP-A7d5 · Görev 2: `App` STATİK import ediliyor (dosya başında). Eskiden
+  // her testin İÇİNDE `await import("@/App")` vardı: bütün rota tablosunun
+  // değerlendirilmesi ilk testin bütçesinden ödeniyordu. Modül önbelleği
+  // sayesinde davranış aynı — yalnız maliyet TOPLAMA evresine geçti.
   const yoluBas = async (yol: string) => {
     window.history.pushState({}, "", yol);
-    const { default: App } = await import("@/App");
+
     return render(
       <HelmetProvider>
         <App />

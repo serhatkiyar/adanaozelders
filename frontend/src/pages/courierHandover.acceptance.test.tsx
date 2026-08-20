@@ -56,6 +56,8 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 // Bütçe BÜYÜTÜLMEDİ: yavaşlık üretim kodunda değil test kurulumunda; statik
 // import maliyeti TOPLAMA (collect) evresine taşır (A7d2'nin kararı).
 import "@/components/admin/ui2/duzenlemeYuzeyi";
+import DeliveryDriver from "@/pages/DeliveryDriver";
+import DeliveryRunHandover from "@/pages/DeliveryRunHandover";
 
 
 import { apiClient } from "@/api/axios";
@@ -138,16 +140,21 @@ function kuryeOturumu() {
   });
 }
 
-const EKRAN = import.meta.glob(["./DeliveryRunHandover.tsx", "./DeliveryDriver.tsx"]);
-
-async function ekran(ad: string): Promise<ComponentType> {
-  const yukle = EKRAN[`./${ad}.tsx`];
-  if (!yukle) throw new Error(`HENÜZ YAZILMADI: src/pages/${ad}.tsx`);
-  return ((await yukle()) as { default: ComponentType }).default;
-}
+// ── İP-A7d5 · Görev 2: ekranlar STATİK import ediliyor ──
+//
+// Eskiden `import.meta.glob([...])` ile tembel yükleniyorlardı; glob, ekran
+// dosyaları HENÜZ YOKKEN kırmızı matris kurabilmek içindi (red-first idiom).
+// Dosyalar yazıldığı gün o gerekçe bitti, geriye maliyeti kaldı: modül
+// değerlendirmesi ilk testin bütçesinden ödeniyordu. Statik import maliyeti
+// TOPLAMA evresine taşır. Ölçüm: `docs/ip-a7d5-rapor.md` · Görev 2.
+const EKRANLAR: Record<string, ComponentType> = {
+  DeliveryRunHandover,
+  DeliveryDriver,
+};
 
 async function sar(ad: string, yol: string) {
-  const Bilesen = await ekran(ad);
+  const Bilesen = EKRANLAR[ad];
+  if (!Bilesen) throw new Error(`bilinmeyen ekran: ${ad}`);
   const qc = new QueryClient({
     defaultOptions: { queries: { retry: false, gcTime: 0 }, mutations: { retry: false } },
   });

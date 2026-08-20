@@ -343,7 +343,22 @@ describe("S-4 · liste, satır tıklaması ve boş durum ayrımı", () => {
   it("liste hatası boş durumdan AYRI gösterilir", async () => {
     sunucu("count-sessions", { status: 500, data: { detail: "patladi" } }, "get");
     sar();
-    expect(await screen.findByRole("button", { name: /Yeniden dene/i })).toBeTruthy();
+    // ── İP-A7d5 · Görev 3: bu bütçe YENİ ama borç ESKİ ──
+    //
+    // Bu satırın bütçesi yoktu ve olması gerekmiyor sanılıyordu. Gerçekte
+    // `operatorPanel`/`operatorBalance` dosyalarındaki
+    // `configure({ asyncUtilTimeout: 5_000 })` aynı vitest işçisinde SONRA
+    // koşan her dosyaya sızıyordu (gerekçe: `test-utils/beklemeButcesi.ts`);
+    // sızıntı kalkınca ihtiyaç görünür oldu: tohum 5001'de bu iddia
+    // "Unable to find /Yeniden dene/i" ile kırmızı düştü.
+    //
+    // Ölçülen (üst sınır, tam suite yükü): bu dosyanın en yavaş beklemesi
+    // 802 ms — yani varsayılan 1000 ms'nin DİBİNDE. Gecikme üretim kodunda
+    // değil: sahte adapter anında dönüyor, ekran hata durumuna düşene kadar
+    // geçen süre vitest işçilerinin CPU paylaşımından geliyor.
+    expect(
+      await screen.findByRole("button", { name: /Yeniden dene/i }, { timeout: 3000 })
+    ).toBeTruthy();
     expect(screen.queryByText("Henüz sayım oturumu açılmadı")).toBeNull();
   });
 });

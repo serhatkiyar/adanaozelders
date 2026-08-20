@@ -191,7 +191,27 @@ describe("K-2 · hata ≠ boş", () => {
     izinVer("catalogs.view", "catalogs.manage");
     sunucu("/exam-catalogs", { status: 500, data: { detail: "patladi" } }, "get");
     sar();
-    expect(await screen.findByRole("button", { name: /Yeniden dene/i })).toBeTruthy();
+    // ── İP-A7d5 · Görev 1+3: bütçe YENİ, borç ESKİ ──
+    //
+    // Denetim bu testi (K-2) kararsız sınıfa koymuştu ve haklıydı — ama
+    // sebebi reçete edilen sınıf DEĞİL. Ölçüldü: bu dosyada tembel modül
+    // yüklemesi YOK (dedektör `__guards__/tembelModul.test.ts` doğruluyor),
+    // ekran statik import ediliyor ve bu sorgunun ölçülen süresi tam suite
+    // yükü altında 136 ms (dosyanın en yavaş beklemesi 457 ms).
+    //
+    // Gerçek sebep AK-1'dir: `operatorPanel`/`operatorBalance` dosyalarındaki
+    // `configure({ asyncUtilTimeout: 5_000 })` aynı vitest işçisinde SONRA
+    // koşan her dosyaya sızıyordu (bkz. `test-utils/beklemeButcesi.ts`) ve
+    // bu iddia da o sızıntıdan bedavaya yararlanıyordu. Sızıntı kaldırılınca
+    // ihtiyaç görünür oldu: 12 tohumluk turda **tohum 5153** bu satırı
+    // "Unable to find /Yeniden dene/i" ile kırmızı düşürdü.
+    //
+    // Yani gecikme üretim kodunda değil: sahte adapter anında dönüyor, ekran
+    // hata durumuna düşene kadar geçen süre 15 paralel vitest işçisinin CPU
+    // paylaşımından geliyor. Bütçe ölçüme göre yazıldı (3000 ms).
+    expect(
+      await screen.findByRole("button", { name: /Yeniden dene/i }, { timeout: 3000 })
+    ).toBeTruthy();
     expect(screen.queryByText(/Henüz katalog eklenmedi/)).toBeNull();
   });
 });
@@ -255,7 +275,17 @@ describe("K-4 · her koşullu dal render edilir, her alanın adı vardır", () =
     sar();
     expect(await screen.findByRole("link", { name: /Cevap anahtarı/ })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Değiştir" })).toBeTruthy();
-    adlarDogru(0);
+    // İP-A7d5 · Görev 4: eskiden `adlarDogru(0)` yazıyordu ve HİÇBİR ŞEY
+    // iddia etmiyordu — ölü kontrol. İkisi de boş küme üzerinde her koşulda
+    // doğruydu: (1) "kontrol sayısı ≥ 0" totolojidir, (2) "adsız kontrol yok"
+    // iddiası hiç kontrol render edilmediği için kendiliğinden geçiyordu.
+    // ÖLÇÜLDÜ: bu dal GERÇEKTEN sıfır form kontrolü render ediyor. Kimlik
+    // kontrolüne çevrildi — dala bir alan eklendiği gün kırılır ve alanın
+    // adlandırılıp ölçüme girmesi gerektiğini söyler.
+    expect(
+      formKontrolleri(document.body).map((k) => k.tagName),
+      "bu dalda form kontrolü BEKLENMİYOR"
+    ).toEqual([]);
   });
 });
 

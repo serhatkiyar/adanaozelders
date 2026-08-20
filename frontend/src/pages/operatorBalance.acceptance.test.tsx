@@ -16,44 +16,54 @@
 // Kanıt sınıfı: gerçek DOM + gerçek HTTP isteği. `EarningTransaction`
 // fixture'ı `backend/schemas/payment.py` alan adlarıyla birebirdir.
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { configure, render, screen, within } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
-import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-// ── Ağır ortak modül BİLE BİLE statik import ediliyor (İP-A7d3 · Görev 5) ──
+// ── Ağır modüller BİLE BİLE statik import ediliyor (İP-A7d3 · Görev 5) ──
 //
-// Bu dosya ekran/bileşen modüllerini TEMBEL yüklüyor ve maliyeti ilk testin
-// İÇİNDE ödüyor. İP-A7d3'te `admin/ui` demeti `ui2/duzenlemeYuzeyi` üzerinden
-// `@medusajs/ui`ye bağlandı (SK-7: `ReasonDialog`ın kirli form bekçisi) ve
-// paralel yük altında ilk test bütçeyi aştı.
-//
-// Bütçe BÜYÜTÜLMEDİ: yavaşlık üretim kodunda değil test kurulumunda; statik
-// import maliyeti TOPLAMA (collect) evresine taşır (A7d2'nin kararı).
+// Maliyet TOPLAMA (collect) evresinde ödenir; orada test/kanca bütçesi yoktur.
+// İP-A7d5'te ekranın KENDİSİ de (`Balance`) buraya alındı — tembel yükleme
+// kaldırıldı, gerekçesi aşağıda.
 import "@/components/admin/ui2/duzenlemeYuzeyi";
-
+import Balance from "@/pages/Balance";
 
 import { apiClient } from "@/api/axios";
+import { dosyaBeklemeButcesi } from "@/test-utils/beklemeButcesi";
 import { useAuthStore } from "@/store/authStore";
 
 import type { AxiosRequestConfig } from "axios";
-import type { ComponentType } from "react";
 
-// ── Süre bütçesi ────────────────────────────────────────────────────────────
+// ── İP-A7d5 · Görev 3: İKİ BÜTÇE EZMESİ DE KALDIRILDI ──
 //
-// Bu dosya gerçek sayfa ağaçlarını (DashboardShell + üst bar + hook'lar)
-// jsdom'da render eder; esbuild transform'u tek başına birkaç saniye sürer ve
-// projenin 5 sn'lik varsayılan test bütçesi paralel koşuda aşılıyor — ölçülen
-// davranış yüzünden DEĞİL, derleme süresi yüzünden.
+// Burada iki ezme vardı ve ikisinin de gerekçesi AYNI cümleydi: "esbuild
+// transform'u birkaç saniye sürüyor". Yani ölçülen davranış değil, MODÜL
+// YÜKLEME maliyeti bütçeyi yiyordu — ve o maliyet Görev 2'de kaynağında
+// kaldırıldı (ekranlar statik import edildi, maliyet collect evresine geçti).
 //
-// `vi.setConfig` YALNIZ bu dosyayı etkiler; `vitest.config.ts`'teki global
-// ayar (İP-12'nin dokunduğu yer) olduğu gibi kalır.
-vi.setConfig({ testTimeout: 20_000, hookTimeout: 20_000 });
-
-// RTL'in kendi bekleme süresi (`findBy*`) test bütçesinden AYRIDIR ve
-// varsayılanı 1 sn'dir: yavaş bir koşuda sorgu daha patlamadan iddia
-// zamanaşımına uğrayıp "element yok" diyordu. Bekleme süresi uzatılıyor;
-// iddiaların kendisi değişmiyor.
-configure({ asyncUtilTimeout: 5_000 });
+//   1. `vi.setConfig({ testTimeout: 20_000, hookTimeout: 20_000 })` — KALKTI.
+//      `vitest.config.ts`'in yazılı kuralını ("dosya başına testTimeout ezmesi
+//      YAPILMAZ") delen iki dosyadan biriydi. Göç sonrası ÖLÇÜLDÜ: tam suite
+//      yükü altında bu dosyanın EN YAVAŞ testi 3.997 ms (öncesi: ilk test tek
+//      başına 6.923 ms). 9 sn'lik ortak bütçe yeterli.
+//
+//   2. `configure({ asyncUtilTimeout: 5_000 })` — bundan daha kötüsü: RTL'in
+//      `configure`u modül düzeyinde GLOBALDİR ve `@testing-library/dom` bir
+//      node_modules bağımlılığı olduğu için vitest işçisinin ESM önbelleğinde
+//      DOSYALAR ARASINDA paylaşılır (aynı sızıntı `zodTurkce.test.ts`te zod
+//      için belgeli). Ölçüldü: `--pool=forks --singleFork` ile bu dosyadan
+//      SONRA koşan bir sonda `asyncUtilTimeout = 5000` okuyor; tek başına
+//      koşunca 1000. Yani bu satır "yalnız bu dosyanın bütçesi" değildi —
+//      aynı işçide sonra gelen HER dosyanın bütçesini, karışık tohumda
+//      değişen bir kümede sessizce beş katına çıkarıyordu. İP-A6b'nin
+//      BULGU-10'da kaldırdığı global ayar, yan kapıdan geri gelmişti.
+//
+// Bütçe SIZINTISIZ biçimde geri kondu ve ÖLÇÜLMÜŞ bir değere indirildi
+// (5000 → 3000): bu dosyanın ölçülen tepe beklemesi 1.184 ms'dir (üst sınır,
+// tam suite yükü) — yani varsayılanın üstünde ama kardeş dosyanın mertebesinde
+// değil. `dosyaBeklemeButcesi` değeri `beforeAll`da kurar, `afterAll`da
+// ÖNCEKİ değerine döndürür.
+dosyaBeklemeButcesi(3_000);
 
 /* ══════════════ Sahte sunucu ══════════════ */
 
@@ -124,20 +134,14 @@ function operatorOturumu() {
   });
 }
 
-const EKRAN = import.meta.glob(["./Balance.tsx"]);
-
-// Modül yüklemesi (Balance -> DashboardShell -> header/hook ağacı) tek seferlik
-// birkaç saniyelik bir maliyet. İlk testin içinde kalırsa o test, ölçtüğü
-// davranış yüzünden değil TRANSFORM süresi yüzünden 5 sn sınırına takılıyordu.
-// Yükleme buraya alındı: süre hiçbir testin bütçesine yazılmıyor ve vitest
-// timeout ayarına dokunmuyoruz (o ayar İP-12'nin işi).
-let Bilesen: ComponentType;
-
-beforeAll(async () => {
-  const yukle = EKRAN["./Balance.tsx"];
-  if (!yukle) throw new Error("HENÜZ YAZILMADI: src/pages/Balance.tsx");
-  Bilesen = ((await yukle()) as { default: ComponentType }).default;
-});
+// ── İP-A7d5 · Görev 2: ekran STATİK import ediliyor ──
+//
+// Eskiden `import.meta.glob(["./Balance.tsx"])` + `beforeAll` yüklemesiydi.
+// Glob, ekran dosyası HENÜZ YOKKEN kırmızı matris kurabilmek içindi (red-first
+// idiom); dosya yazıldığı gün o gerekçe bitti ve geriye yalnız maliyeti kaldı:
+// modül değerlendirmesi TOPLAMA evresinde değil, koşum evresinde ödeniyordu.
+// Statik import maliyeti collect'e taşır — orada test/kanca bütçesi yoktur.
+// Ölçüm ve gerekçe: `docs/ip-a7d5-rapor.md` · Görev 2.
 
 async function sar() {
   const qc = new QueryClient({
@@ -147,7 +151,7 @@ async function sar() {
     <QueryClientProvider client={qc}>
       <MemoryRouter initialEntries={["/bakiyem"]}>
         <Routes>
-          <Route path="*" element={<Bilesen />} />
+          <Route path="*" element={<Balance />} />
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>

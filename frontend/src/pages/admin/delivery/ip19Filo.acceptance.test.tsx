@@ -20,16 +20,15 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-// ── Ağır ortak modül BİLE BİLE statik import ediliyor (İP-A7d3 · Görev 5) ──
+// ── Ağır modüller BİLE BİLE statik import ediliyor (İP-A7d3 · Görev 5) ──
 //
-// Ekranlar bu dosyada TEMBEL yükleniyor (`await import("./DeliveryTodayPage")`)
-// ve maliyeti ilk testin İÇİNDE ödeniyor. İP-A7d3'te `admin/ui` demeti
-// `ui2/duzenlemeYuzeyi` üzerinden `@medusajs/ui`ye bağlandı (SK-7) ve D-13
-// paralel yük altında 9 sn'lik bütçeyi aştı — YALNIZ ilk test.
-//
-// Bütçe BÜYÜTÜLMEDİ: yavaşlık üretim kodunda değil test kurulumunda; statik
-// import maliyeti TOPLAMA evresine taşır (A7d2'nin `PackagesPage` kararı).
+// A7d3'te yalnız ortak demet (`ui2/duzenlemeYuzeyi`) statikti; EKRANLAR hâlâ
+// test gövdelerinin içinde `await import(...)` ile yükleniyordu ve maliyeti
+// ilk testin bütçesinden ödeniyordu (D-13 o yüzden 9 sn'lik bütçeyi aşmıştı).
+// İP-A7d5'te ekranlar da buraya alındı: maliyet TOPLAMA evresine geçti.
 import "@/components/admin/ui2/duzenlemeYuzeyi";
+import DeliveryBoardPage from "./DeliveryBoardPage";
+import DeliveryTodayPage from "./DeliveryTodayPage";
 
 import { apiClient } from "@/api/axios";
 import { useAuthStore } from "@/store/authStore";
@@ -165,7 +164,6 @@ function bas(Bilesen: React.ComponentType) {
 
 describe("D-13 — araç seçenekleri sunucudan gelir", () => {
   it("tur kurma formundaki araç listesi sabit iki seçenek DEĞİL", async () => {
-    const { default: DeliveryTodayPage } = await import("./DeliveryTodayPage");
     bas(DeliveryTodayPage);
 
     // İstek GERÇEKTEN atılmalı — "seçenek var" tek başına kanıt değil.
@@ -183,7 +181,6 @@ describe("D-13 — araç seçenekleri sunucudan gelir", () => {
   });
 
   it("'Lada ve Corolla' gibi sabit metin ekranda YOK", async () => {
-    const { default: DeliveryTodayPage } = await import("./DeliveryTodayPage");
     const { container } = bas(DeliveryTodayPage);
     await waitFor(() =>
       expect(istekler.some((i) => i.url.includes("/delivery/vehicles"))).toBe(true)
@@ -196,8 +193,7 @@ describe("D-13 — araç seçenekleri sunucudan gelir", () => {
 
 describe("D-11 — gün tahtası sürükle-bırak", () => {
   it("havuzdan araca bırakma POST /runs/{id}/stops isteğine dönüşür", async () => {
-    const { default: DeliveryBoard } = await import("./DeliveryBoardPage");
-    bas(DeliveryBoard);
+    bas(DeliveryBoardPage);
 
     const kart = await screen.findByTestId("havuz-siparis-101");
     const hedef = await screen.findByTestId("tur-55");
@@ -219,8 +215,7 @@ describe("D-11 — gün tahtası sürükle-bırak", () => {
 
 describe("D-12 — kapasite ihlali uyarısı", () => {
   it("max_stops aşılınca uyarı DOM'da görünür", async () => {
-    const { default: DeliveryBoard } = await import("./DeliveryBoardPage");
-    bas(DeliveryBoard);
+    bas(DeliveryBoardPage);
 
     // Araç 7'nin max_stops'u 3, turunda zaten 3 durak var → dördüncü aşar.
     const kart = await screen.findByTestId("havuz-siparis-101");
@@ -231,8 +226,7 @@ describe("D-12 — kapasite ihlali uyarısı", () => {
   });
 
   it("uyarıya rağmen işlem ENGELLENMEZ — karar operatörün", async () => {
-    const { default: DeliveryBoard } = await import("./DeliveryBoardPage");
-    bas(DeliveryBoard);
+    bas(DeliveryBoardPage);
 
     const kart = await screen.findByTestId("havuz-siparis-101");
     fireEvent.dragStart(kart);
@@ -248,8 +242,7 @@ describe("D-12 — kapasite ihlali uyarısı", () => {
 
   // DOLULUK NÖBETÇİSİ: kapasitesi bol araçta uyarı ÇIKMAMALI.
   it("NÖBETÇİ: kapasite yeterliyse uyarı yok", async () => {
-    const { default: DeliveryBoard } = await import("./DeliveryBoardPage");
-    bas(DeliveryBoard);
+    bas(DeliveryBoardPage);
     await screen.findByTestId("tur-55");
     expect(screen.queryByTestId("kapasite-uyarisi-9")).toBeNull();
   });
@@ -281,7 +274,6 @@ describe("İP-A7d4 · dağıtım pencereleri ortak düzenleme yüzeyinde", () =>
   }
 
   it("BUGÜN: 'Günü Optimize Et' etiketli pencere açar, ESC kapatır, istek GİTMEZ", async () => {
-    const { default: DeliveryTodayPage } = await import("./DeliveryTodayPage");
     bas(DeliveryTodayPage);
     fireEvent.click(await optimizeDugmesi());
 
@@ -295,7 +287,6 @@ describe("İP-A7d4 · dağıtım pencereleri ortak düzenleme yüzeyinde", () =>
   });
 
   it("BUGÜN: onaylanınca dispatch isteği GERÇEKTEN gider", async () => {
-    const { default: DeliveryTodayPage } = await import("./DeliveryTodayPage");
     bas(DeliveryTodayPage);
     fireEvent.click(await optimizeDugmesi());
     fireEvent.click(
@@ -309,7 +300,6 @@ describe("İP-A7d4 · dağıtım pencereleri ortak düzenleme yüzeyinde", () =>
   it("BUGÜN: istisna kuyruğunun penceresi HEDEFİ taşır (yüzeyin `kayit`i)", async () => {
     // Eskiden ekranda `retrying` useState'i vardı ve pencere metnini o
     // besliyordu; artık hedef yüzeyin kendisinde yaşıyor.
-    const { default: DeliveryTodayPage } = await import("./DeliveryTodayPage");
     bas(DeliveryTodayPage);
     fireEvent.click(await screen.findByRole("button", { name: "Yeniden Dene" }));
     const p = await screen.findByRole("dialog");
@@ -320,8 +310,7 @@ describe("İP-A7d4 · dağıtım pencereleri ortak düzenleme yüzeyinde", () =>
   });
 
   it("TAHTA: 'Günü Optimize Et' etiketli pencere açar ve ESC kapatır", async () => {
-    const { default: DeliveryBoard } = await import("./DeliveryBoardPage");
-    bas(DeliveryBoard);
+    bas(DeliveryBoardPage);
     fireEvent.click(await optimizeDugmesi());
 
     const p = await screen.findByRole("dialog");
