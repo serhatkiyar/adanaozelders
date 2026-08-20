@@ -23,6 +23,7 @@ import {
   ErrorState,
   PageSkeleton,
 } from "@/components/admin/ui";
+import { useDuzenlemeYuzeyi } from "@/components/admin/ui2/duzenlemeYuzeyi";
 import { RunStatusChip, TruckIcon, todayIso } from "@/components/admin/delivery/bits";
 import {
   useAddBoardStops,
@@ -221,7 +222,8 @@ export default function DeliveryBoardPage() {
 
   const [dragId, setDragId] = useState<number | null>(null);
   const [warned, setWarned] = useState<Record<number, boolean>>({});
-  const [dispatchOpen, setDispatchOpen] = useState(false);
+  // Pencere durumu ekranda YASAMAZ (IP-A4 sozlesmesi).
+  const gunuOptimizeEt = useDuzenlemeYuzeyi<void, void>();
 
   const setDate = (d: string) => {
     setParams(d === todayIso() ? {} : { tarih: d }, { replace: true });
@@ -279,7 +281,7 @@ export default function DeliveryBoardPage() {
         />
         <Button
           size="sm"
-          onClick={() => setDispatchOpen(true)}
+          onClick={() => gunuOptimizeEt.yeniAc()}
           disabled={dispatchable === 0}
           isPending={dispatchDay.isPending}
           title={
@@ -364,16 +366,16 @@ export default function DeliveryBoardPage() {
       )}
 
       <ConfirmDialog
-        open={dispatchOpen}
+        open={gunuOptimizeEt.acik}
         title="Günü optimize et"
         description={`${dispatchable} konumlu sipariş filo araçlarına bölüştürülüp optimize turlar kurulacak. Mevcut planlı turlara durak eklenebilir.`}
         confirmLabel="Turları kur"
         isPending={dispatchDay.isPending}
-        onClose={() => setDispatchOpen(false)}
+        onClose={gunuOptimizeEt.kapat}
         onConfirm={() =>
           dispatchDay.mutate(date, {
             onSuccess: (createdRuns) => {
-              setDispatchOpen(false);
+              gunuOptimizeEt.kapat();
               setWarned({});
               toast.success(
                 createdRuns.length > 1

@@ -6,6 +6,7 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 
 import { useAdminAreaAccess } from "@/components/admin/AccessState";
 import { Badge, Button, ConfirmDialog, EmptyState, ErrorState, PageSkeleton } from "@/components/admin/ui";
+import { useDuzenlemeYuzeyi } from "@/components/admin/ui2/duzenlemeYuzeyi";
 import { CapacityStrip } from "@/components/admin/delivery/CapacityStrip";
 import { RunStatusChip, TruckIcon, todayIso } from "@/components/admin/delivery/bits";
 import {
@@ -52,7 +53,9 @@ function RoutingHealthStrip() {
    siparişler operatör kararı bekler; boşken nötr tek satıra iner. */
 function ExceptionQueue() {
   const { canManage } = useAdminAreaAccess("delivery");
-  const [retrying, setRetrying] = useState<number | null>(null);
+  // Pencere durumu ekranda YASAMAZ (IP-A4 sozlesmesi): onaylanacak siparis
+  // yuzeyin HEDEFIDIR, ekranin yerel durumu degil.
+  const yenidenDene = useDuzenlemeYuzeyi<number, void>();
   const query = useAttentionOrders();
   const retry = useRetryExhausted();
   // Beklenmedik gövde (proxy hata sayfası vb.) kokpiti çökertmesin — dizi değilse boş say.
@@ -108,7 +111,7 @@ function ExceptionQueue() {
               ₺{o.total}
             </span>
             {canManage && (
-              <Button size="sm" variant="secondary" onClick={() => setRetrying(o.order_id)}>
+              <Button size="sm" variant="secondary" onClick={() => yenidenDene.ac(o.order_id)}>
                 Yeniden Dene
               </Button>
             )}
@@ -116,22 +119,22 @@ function ExceptionQueue() {
         ))}
       </ul>
       <ConfirmDialog
-        open={retrying !== null}
+        open={yenidenDene.acik}
         title="Yeni teslimat denemesi planla"
         description={
-          retrying
-            ? `Sipariş #${retrying} müşteriyle görüşüldüğü kabul edilerek yeniden dağıtım kuyruğuna alınacak.`
+          yenidenDene.kayit
+            ? `Sipariş #${yenidenDene.kayit} müşteriyle görüşüldüğü kabul edilerek yeniden dağıtım kuyruğuna alınacak.`
             : ""
         }
         confirmLabel="Yeniden dene"
         isPending={retry.isPending}
-        onClose={() => setRetrying(null)}
+        onClose={yenidenDene.kapat}
         onConfirm={() =>
-          retrying !== null &&
-          retry.mutate(retrying, {
+          yenidenDene.kayit !== null &&
+          retry.mutate(yenidenDene.kayit, {
             onSuccess: () => {
-              toast.success(`#${retrying} yeniden dağıtım kuyruğuna alındı.`);
-              setRetrying(null);
+              toast.success(`#${yenidenDene.kayit} yeniden dağıtım kuyruğuna alındı.`);
+              yenidenDene.kapat();
             },
             onError: (e) => toast.error(getErrorMessage(e, "İşlem başarısız.")),
           })
@@ -195,7 +198,7 @@ export default function DeliveryTodayPage() {
 
   // Araç listesi sunucudan (İP-19) — seçim yapılmadıysa ilk aktif araç önerilir.
   const [vehicleId, setVehicleId] = useState<number | null>(null);
-  const [dispatchOpen, setDispatchOpen] = useState(false);
+  const gunuOptimizeEt = useDuzenlemeYuzeyi<void, void>();
   const runsQuery = useDeliveryRuns(date);
   const vehiclesQuery = useVehicles();
   const { data: eligibleData } = useEligibleOrders();
@@ -285,7 +288,7 @@ export default function DeliveryTodayPage() {
               </Button>
               <Button
                 size="sm"
-                onClick={() => setDispatchOpen(true)}
+                onClick={() => gunuOptimizeEt.yeniAc()}
                 disabled={dispatchable === 0}
                 isPending={dispatchDay.isPending}
                 title={
@@ -340,16 +343,16 @@ export default function DeliveryTodayPage() {
       </section>
 
       <ConfirmDialog
-        open={dispatchOpen}
+        open={gunuOptimizeEt.acik}
         title="Günü optimize et"
         description={`${dispatchable} konumlu sipariş aktif araçlara bölüştürülüp optimize turlar kurulacak. Mevcut planlı turlara durak eklenebilir.`}
         confirmLabel="Turları kur"
         isPending={dispatchDay.isPending}
-        onClose={() => setDispatchOpen(false)}
+        onClose={gunuOptimizeEt.kapat}
         onConfirm={() =>
           dispatchDay.mutate(date, {
             onSuccess: (createdRuns) => {
-              setDispatchOpen(false);
+              gunuOptimizeEt.kapat();
               toast.success(
                 createdRuns.length > 1
                   ? `Gün ${createdRuns.length} araca bölüştürüldü.`

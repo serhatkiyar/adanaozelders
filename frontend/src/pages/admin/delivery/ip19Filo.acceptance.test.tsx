@@ -53,6 +53,20 @@ const ARACLAR = [
   { id: 11, code: "DOBLO", label: "Doblo", max_stops: 20, is_active: true, sort_order: 2 },
 ];
 
+/**
+ * Istisna kuyrugu (IP-A7d4): eskiden bu uc `{}` donuyordu, `Array.isArray`
+ * false kaliyordu ve kuyruk HIC render edilmiyordu — yani o penceresi olan
+ * dal olculemez durumdaydi.
+ */
+const ISTISNA_KUYRUGU = [
+  {
+    order_id: 909,
+    address: "Seyhan / F Sok.",
+    attempts: 3,
+    last_failure_reason: "Adreste bulunamadi",
+  },
+];
+
 const TAHTA = {
   unassigned: [
     { order_id: 101, address: "Seyhan / A Sok.", lat: 36.99, lng: 35.32 },
@@ -89,8 +103,10 @@ function kur() {
           ? JSON.parse(cfg.data)
           : ((cfg.data as Record<string, unknown> | undefined) ?? null),
     });
-    const veri = url.includes("/delivery/vehicles")
-      ? ARACLAR
+    const veri = url.includes("/delivery/attention-orders")
+      ? ISTISNA_KUYRUGU
+      : url.includes("/delivery/vehicles")
+        ? ARACLAR
       : url.includes("/delivery/board")
         ? TAHTA
         : url.includes("/delivery/eligible-orders")
@@ -236,5 +252,82 @@ describe("D-12 — kapasite ihlali uyarısı", () => {
     bas(DeliveryBoard);
     await screen.findByTestId("tur-55");
     expect(screen.queryByTestId("kapasite-uyarisi-9")).toBeNull();
+  });
+});
+
+/* ══════════════ İP-A7d4 · göç dalgası 4: iki dağıtım ekranının pencereleri ══════════════ */
+
+/**
+ * `DeliveryTodayPage` (iki bağ: "yeniden dene" + "günü optimize et") ve
+ * `DeliveryBoardPage` (bir bağ) pencere durumunu ekranda `useState` ile
+ * tutuyordu; üç bağın üçü de `useDuzenlemeYuzeyi`ye geçti.
+ *
+ * İkisinin de penceresi ONAY penceresidir — içinde yazılan bir şey yok, bekçi
+ * orada anlamsız bir soru üretirdi (A7d3'ün `ConfirmDialog` kararı). Bu yüzden
+ * zorunlu ikilinin birinci maddesi burada "pencere ortak yüzeyden geliyor mu"
+ * biçimini alır (A7d3 · T-3'ün aynısı).
+ */
+describe("İP-A7d4 · dağıtım pencereleri ortak düzenleme yüzeyinde", () => {
+  /**
+   * "Günü Optimize Et" konumlu sipariş YOKKEN kapalıdır (bu bir gönder
+   * düğmesi değil, ön koşulu olmayan bir işlem). Düğme ilk render'da
+   * kapalı doğar ve veri gelince açılır; beklemeden tıklamak sessizce
+   * hiçbir şey yapmaz ve test "pencere açılmadı" derdi.
+   */
+  async function optimizeDugmesi() {
+    const dugme = await screen.findByRole("button", { name: /Günü Optimize Et/ });
+    await waitFor(() => expect((dugme as HTMLButtonElement).disabled).toBe(false));
+    return dugme;
+  }
+
+  it("BUGÜN: 'Günü Optimize Et' etiketli pencere açar, ESC kapatır, istek GİTMEZ", async () => {
+    const { default: DeliveryTodayPage } = await import("./DeliveryTodayPage");
+    bas(DeliveryTodayPage);
+    fireEvent.click(await optimizeDugmesi());
+
+    const p = await screen.findByRole("dialog");
+    expect(p.getAttribute("aria-modal")).toBe("true");
+    expect(p.textContent).toContain("Turları kur");
+
+    fireEvent.keyDown(document, { key: "Escape" });
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(istekler.filter((i) => i.url.includes("dispatch-day"))).toEqual([]);
+  });
+
+  it("BUGÜN: onaylanınca dispatch isteği GERÇEKTEN gider", async () => {
+    const { default: DeliveryTodayPage } = await import("./DeliveryTodayPage");
+    bas(DeliveryTodayPage);
+    fireEvent.click(await optimizeDugmesi());
+    fireEvent.click(
+      within(await screen.findByRole("dialog")).getByRole("button", { name: "Turları kur" })
+    );
+    await waitFor(() =>
+      expect(istekler.some((i) => i.url.includes("dispatch-day"))).toBe(true)
+    );
+  });
+
+  it("BUGÜN: istisna kuyruğunun penceresi HEDEFİ taşır (yüzeyin `kayit`i)", async () => {
+    // Eskiden ekranda `retrying` useState'i vardı ve pencere metnini o
+    // besliyordu; artık hedef yüzeyin kendisinde yaşıyor.
+    const { default: DeliveryTodayPage } = await import("./DeliveryTodayPage");
+    bas(DeliveryTodayPage);
+    fireEvent.click(await screen.findByRole("button", { name: "Yeniden Dene" }));
+    const p = await screen.findByRole("dialog");
+    expect(p.textContent).toContain("#909");
+
+    fireEvent.keyDown(document, { key: "Escape" });
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  });
+
+  it("TAHTA: 'Günü Optimize Et' etiketli pencere açar ve ESC kapatır", async () => {
+    const { default: DeliveryBoard } = await import("./DeliveryBoardPage");
+    bas(DeliveryBoard);
+    fireEvent.click(await optimizeDugmesi());
+
+    const p = await screen.findByRole("dialog");
+    expect(p.getAttribute("aria-modal")).toBe("true");
+
+    fireEvent.keyDown(document, { key: "Escape" });
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   });
 });

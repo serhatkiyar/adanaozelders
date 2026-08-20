@@ -1,5 +1,3 @@
-import { useState } from "react";
-
 import {
   Badge,
   Button,
@@ -8,6 +6,7 @@ import {
   PageSkeleton,
   ReasonDialog,
 } from "@/components/admin/ui";
+import { useDuzenlemeYuzeyi } from "@/components/admin/ui2/duzenlemeYuzeyi";
 import {
   useFeatureFlags,
   usePaymentBranches,
@@ -43,7 +42,10 @@ export default function AdminSettingsPage() {
   const updateFlag = useUpdateFeatureFlag();
   const canManage =
     useAuthStore((state) => state.user?.admin_permissions?.includes("settings.manage")) ?? false;
-  const [pending, setPending] = useState<FeatureFlagOut | null>(null);
+  // Pencere durumu ekranda YASAMAZ (IP-A4 sozlesmesi): degistirilecek bayrak
+  // yuzeyin HEDEFIDIR.
+  const yuzey = useDuzenlemeYuzeyi<FeatureFlagOut, void>();
+  const pending = yuzey.kayit;
 
   const submit = (reason: string) => {
     if (!pending) return;
@@ -53,7 +55,7 @@ export default function AdminSettingsPage() {
       {
         onSuccess: () => {
           toast.success(next ? "Bayrak açıldı." : "Bayrak kapatıldı.");
-          setPending(null);
+          yuzey.kapat();
         },
         onError: (error) => toast.error(getErrorMessage(error, "Bayrak değiştirilemedi.")),
       },
@@ -197,7 +199,7 @@ export default function AdminSettingsPage() {
                 {canManage && (
                   <Button
                     variant={flag.enabled ? "secondary" : "primary"}
-                    onClick={() => setPending(flag)}
+                    onClick={() => yuzey.ac(flag)}
                     disabled={!!flag.locked_reason && !flag.enabled}
                     // Satırda 7 tane "Aç" var; ekran okuyucu hangisini açtığını
                     // görünen metinden anlayamaz.
@@ -214,7 +216,7 @@ export default function AdminSettingsPage() {
       </section>
 
       <ReasonDialog
-        open={pending !== null}
+        open={yuzey.acik}
         title={pending?.enabled ? "Bayrağı kapat" : "Bayrağı aç"}
         description={
           pending
@@ -231,7 +233,7 @@ export default function AdminSettingsPage() {
         // (Açık = success). Tersi, "yeşile çevirmek tehlikeli" gibi okunuyordu.
         danger={pending?.enabled}
         isPending={updateFlag.isPending}
-        onClose={() => setPending(null)}
+        onClose={yuzey.kapat}
         onConfirm={submit}
       />
     </div>

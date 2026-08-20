@@ -86,6 +86,7 @@ import type { FieldValues, UseFormReturn } from "react-hook-form";
 
 import { Button, Dialog } from "@/components/admin/ui";
 
+import { IcerikKorumasiCtx } from "./icerikKorumasi";
 import {
   HATA_TAKIBI_YOK,
   useKirliFormBekcisi,
@@ -170,7 +171,10 @@ export function DuzenlemeYuzeyi<TFieldValues extends FieldValues>({
     bekci.kapatmayiDene(yuzey.kapat);
   }, [bekci, islemSuruyor, yuzey.kapat]);
 
+  // Bu yüzey bekçiyi KENDİ bağlar (yukarıda): içeriğin hiçbir şey yapması
+  // gerekmez, dolayısıyla koruma her zaman vardır (İP-A7d4 · Görev 1).
   return (
+    <IcerikKorumasiCtx.Provider value={KORUMA_VAR}>
     <KapatmaCtx.Provider value={kapatmayiDene}>
       {/* `onClose`a satır içi ok fonksiyonu vermek ARTIK GÜVENLİ: `useModalA11y`
           işleyiciyi ref'te tutuyor (İP-A4 · Görev 1). Önceden her render'da
@@ -190,8 +194,12 @@ export function DuzenlemeYuzeyi<TFieldValues extends FieldValues>({
         </div>
       </Dialog>
     </KapatmaCtx.Provider>
+    </IcerikKorumasiCtx.Provider>
   );
 }
+
+/** Sabit kimlik: her render'da yeni bir fonksiyon bağlamı boşuna tazelerdi. */
+const KORUMA_VAR = () => true;
 
 export { HATA_TAKIBI_YOK };
 
@@ -392,7 +400,12 @@ export function DuzenlemePenceresi({
     bekci.kapatmayiDene(yuzey.kapat);
   }, [yuzey]);
 
+  // Dedektöre cevap veren taraf (İP-A7d4 · Görev 1): kayıt defteri boşsa
+  // içerik korumasızdır ve `Dialog` panelde girdi görürse patlar.
+  const korumaVarMi = useCallback(() => bekcilerRef.current.size > 0, []);
+
   return (
+    <IcerikKorumasiCtx.Provider value={korumaVarMi}>
     <BekciBildirimCtx.Provider value={bildir}>
       <HedefCtx.Provider value={yuzey.hedef}>
         <Dialog
@@ -406,5 +419,6 @@ export function DuzenlemePenceresi({
         </Dialog>
       </HedefCtx.Provider>
     </BekciBildirimCtx.Provider>
+    </IcerikKorumasiCtx.Provider>
   );
 }

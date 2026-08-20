@@ -104,6 +104,15 @@ import {
  * göçün tersine işlediği anlamına gelir ve test kırılır.
  */
 const MODAL_DURUM_DOSYALARI = [
+  // İP-A7d4 · göç dalgası 4: ALTI dosya bu listeden ÇIKTI (9 → 2).
+  //   • `AdminAccessPage`      — rol penceresi (SK-9: canlı veri kaybı)
+  //   • `ClosedDays`           — resmî tatil yükleme onayı
+  //   • `AdminOperationsPage`  — ölü işi yeniden kuyruğa alma onayı
+  //   • `AdminSettingsPage`    — bayrak gerekçesi penceresi
+  //   • `DeliveryBoardPage`    — günü optimize et onayı
+  //   • `DeliveryTodayPage`    — günü optimize et + yeniden dene (2 bağ)
+  // Listeden ÇIKMAK beklenen yöndür; listeye GİRMEK kırılma sebebidir.
+  //
   // İP-A7d3 · göç dalgası 3: ALTI dosya bu listeden ÇIKTI (20 → 9).
   //   • `CountSessionDetailPage` — uygula + iptal + açıklama (3 bağ)
   //   • `PackingStationPage`     — elle doğrula + geri al + vazgeç (3 bağ)
@@ -123,13 +132,7 @@ const MODAL_DURUM_DOSYALARI = [
   //   örneğiydi) · `AdminBookingsPage` · `AdminLibraries`
   //
   // İP-A6 · Görev 4d: `store/` altındaki BEŞ dosya ÇIKMIŞTI.
-  "src/components/admin/delivery/ClosedDays.tsx",
-  "src/pages/admin/AdminAccessPage.tsx",
   "src/pages/admin/AdminDemandsPage.tsx",
-  "src/pages/admin/AdminOperationsPage.tsx",
-  "src/pages/admin/AdminSettingsPage.tsx",
-  "src/pages/admin/delivery/DeliveryBoardPage.tsx",
-  "src/pages/admin/delivery/DeliveryTodayPage.tsx",
   "src/pages/admin/packing/ReturnQueuePage.tsx",
 ];
 
@@ -201,7 +204,15 @@ describe("İP-A1 nöbetçi eşikleri", () => {
     // rozeti, süzgeç çipi), aksiyon değil. A7d3'te ikisine de eksik olan
     // `aria-pressed` EKLENDİ — yani sayı düşmedi ama borç azaldı: bir çipin
     // seçili olduğu artık ekran okuyucuda görünüyor.
-    expect(olcum.rawButton).toBeLessThanOrEqual(104);
+    // İP-A7d4'te 104 → 102 (**-2**): göç dalgası 4. `ClosedDays`in "günü
+    // yeniden aç" ikonu ve `AdminOperationsPage`in "yeniden dene" düğmesi
+    // ortak `Button`a geçti. Düşüş KÜÇÜK ve bu BEKLENENDİ: kalan 102'nin
+    // 41'i saha ekranı + üç paylaşılan widget, ~55'i kabuk bileşenlerinin
+    // kendi iç denetimleri, 5'i `aria-pressed` taşıyan seçim çipleri —
+    // hepsi A7d3 raporunda isimle ve gerekçesiyle yazılı. Bu metrik sıfıra
+    // İNMEYECEK ve inmemeli; doğru kapanış hedefi "kalanın her biri isimle
+    // ve gerekçesiyle yazılı" olmasıdır.
+    expect(olcum.rawButton).toBeLessThanOrEqual(102);
   });
 
   it("erişilebilir adı olmayan form kontrolü artamaz (taban 30)", () => {
@@ -311,7 +322,16 @@ describe("İP-A1 nöbetçi eşikleri", () => {
     // İP-A7d3'te 20 → 9 (**-11**): göç dalgası 3'ün altı ekranı pencere
     // durumu taşıyordu; on bir bağın hepsi `useDuzenlemeYuzeyi`ye geçti
     // (dosya listesi yukarıda).
-    expect(olcum.modalDurumu).toBeLessThanOrEqual(9);
+    // İP-A7d4'te 9 → 2 (**-7**): göç dalgası 4'ün altı ekranı yedi bağ
+    // taşıyordu; hepsi `useDuzenlemeYuzeyi`ye geçti.
+    //   `AdminAccessPage` (SK-9) · `ClosedDays` · `AdminOperationsPage` ·
+    //   `AdminSettingsPage` · `DeliveryBoardPage` · `DeliveryTodayPage` (2)
+    //
+    // KALAN 2 (`AdminDemandsPage`, `ReturnQueuePage`) bilinçli bırakıldı:
+    // paketin kapsamı dört ile altı ekrandı ve altısı da alındı. İkisi de
+    // aynı mekanik dönüşümdür (`useState` → yüzey) ve metriği SIFIRLAR;
+    // kapanış envanterinde adıyla yazılı.
+    expect(olcum.modalDurumu).toBeLessThanOrEqual(2);
   });
 
   it("pencere durumu tutan dosya listesi sabittir (pilot listede DEĞİL)", () => {

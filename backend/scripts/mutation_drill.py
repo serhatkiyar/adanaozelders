@@ -1547,6 +1547,107 @@ MUTASYONLAR: list[Mutasyon] = [
         "    void to; // MUTASYON: sira degistirilmiyor",
         ("src/pages/admin/delivery/turDetayiGoc.acceptance.test.tsx",), "frontend",
     ),
+    # ═══════════════ IP-A7d4 · goc dalgasi 4 + dedektor ═══════════════
+    Mutasyon(
+        "A7D4-1", "esik: ham <button> geri kondu (102 -> 103)",
+        "frontend/src/pages/admin/AdminAccessPage.tsx",
+        "      <RolPenceresi yuzey={yuzey} gruplar={permissionGroups} />",
+        '      <button type="button">Disa aktar</button>\n      <RolPenceresi yuzey={yuzey} gruplar={permissionGroups} />',
+        ("src/__guards__/uiBaseline.test.ts",), "frontend",
+    ),
+    Mutasyon(
+        "A7D4-2", "esik: adsiz form kontrolu eklendi (7 -> 8)",
+        "frontend/src/pages/admin/AdminAccessPage.tsx",
+        "      <RolPenceresi yuzey={yuzey} gruplar={permissionGroups} />",
+        '      <input type="text" />\n      <RolPenceresi yuzey={yuzey} gruplar={permissionGroups} />',
+        (
+            "src/__guards__/uiBaseline.test.ts",
+            "src/__guards__/calismaZamaniKapisi.test.tsx",
+        ), "frontend",
+    ),
+    Mutasyon(
+        "A7D4-3", "esik: pencere durumu ekrana geri tasindi (2 -> 3)",
+        "frontend/src/pages/admin/AdminOperationsPage.tsx",
+        "  const yuzey = useDuzenlemeYuzeyi<FailedOutboxEvent, void>();",
+        "  const [secili, setSecili] = useState<FailedOutboxEvent | null>(null);\n"
+        "  void setSecili;\n"
+        "  const yuzey = useDuzenlemeYuzeyi<FailedOutboxEvent, void>();\n"
+        "  void secili;",
+        ("src/__guards__/uiBaseline.test.ts",), "frontend",
+    ),
+    Mutasyon(
+        "A7D4-4", "esik: etiketsiz overlay geri kondu (0 -> 1)",
+        "frontend/src/pages/admin/AdminAccessPage.tsx",
+        "      <RolPenceresi yuzey={yuzey} gruplar={permissionGroups} />",
+        '      <div className="fixed inset-0 z-50 bg-black/40" />\n      <RolPenceresi yuzey={yuzey} gruplar={permissionGroups} />',
+        ("src/__guards__/uiBaseline.test.ts",), "frontend",
+    ),
+    # ── Dedektorun kendisi (Gorev 1) ──
+    Mutasyon(
+        "A7D4-5", "dedektor: Dialog denetimi hic cagrilmiyor",
+        "frontend/src/components/admin/ui/Dialog.tsx",
+        "    icerikKorumasiDenetle({",
+        "    if (open) return;\n    icerikKorumasiDenetle({",
+        ("src/components/admin/ui2/korumasizIcerik.test.tsx",), "frontend",
+    ),
+    Mutasyon(
+        "A7D4-6", "dedektor: girdi sondasi hicbir kontrol gormuyor",
+        "frontend/src/components/admin/ui2/icerikKorumasi.ts",
+        "  return [...kok.querySelectorAll<HTMLElement>(GIRDI_SECICI)].filter(",
+        "  return [].filter(\n    () => true\n  ) as HTMLElement[];\n  return [...kok.querySelectorAll<HTMLElement>(GIRDI_SECICI)].filter(",
+        ("src/components/admin/ui2/korumasizIcerik.test.tsx",), "frontend",
+    ),
+    Mutasyon(
+        "A7D4-7", "dedektor: pencere HER ZAMAN korumali oldugunu soyluyor",
+        "frontend/src/components/admin/ui2/duzenlemeYuzeyi.tsx",
+        "  const korumaVarMi = useCallback(() => bekcilerRef.current.size > 0, []);",
+        "  const korumaVarMi = useCallback(() => true, []);",
+        ("src/components/admin/ui2/korumasizIcerik.test.tsx",), "frontend",
+    ),
+    Mutasyon(
+        "A7D4-8", "statik tarama: ham <Dialog> artik taranmiyor",
+        "frontend/scripts/korumasiz-pencere.mjs",
+        'const PENCERE_ETIKETLERI = new Set(["Dialog", "DuzenlemePenceresi"]);',
+        'const PENCERE_ETIKETLERI = new Set(["DuzenlemePenceresi"]);',
+        ("src/__guards__/korumasizPencere.test.ts",), "frontend",
+    ),
+    Mutasyon(
+        "A7D4-9", "SK-9 geri: rol penceresinin kirli form bekcisi kaldirildi",
+        "frontend/src/pages/admin/AdminAccessPage.tsx",
+        "  useYuzeyKirliFormBekcisi({ form, sunucuHatasi });",
+        "  useYuzeyKirliFormBekcisi({ form, sunucuHatasi, etkin: false });",
+        ("src/pages/admin/adminYetkiGoc.acceptance.test.tsx",), "frontend",
+    ),
+    # ── Parcalanmis kapinin iki yonlu kimlik korumasi (Gorev 3) ──
+    Mutasyon(
+        "A7D4-10", "parcalanmis kapi: kapsam sessizce daraltildi (ilk 5 ekran)",
+        "frontend/src/__guards__/calismaZamaniKapisi.test.tsx",
+        'it.each(kapsanan)("%s — adsız kontrol tabanı KİMLİKLE sabit"',
+        'it.each(kapsanan.slice(0, 5))("%s — adsız kontrol tabanı KİMLİKLE sabit"',
+        ("src/__guards__/calismaZamaniKapisi.test.tsx",), "frontend",
+    ),
+    Mutasyon(
+        "A7D4-11", "parcalanmis kapi: adsiz kontrol tabanindan bir kayit silindi",
+        "frontend/src/__guards__/calismaZamaniKapisi.test.tsx",
+        '  "src/components/ImageCropModal.tsx": 1,',
+        "",
+        ("src/__guards__/calismaZamaniKapisi.test.tsx",), "frontend",
+    ),
+    # ── Gonder kapisi (kilitli karar) ──
+    Mutasyon(
+        "A7D4-12", "takvim: 'Gunu kapat' yine gecerlilikle kapaniyor",
+        "frontend/src/components/admin/delivery/ClosedDays.tsx",
+        "onClick={doAdd} isPending={add.isPending}",
+        "onClick={doAdd} disabled={!form.watch(\"day\")} isPending={add.isPending}",
+        ("src/pages/admin/dalga4Pencereleri.acceptance.test.tsx",), "frontend",
+    ),
+    Mutasyon(
+        "A7D4-13", "rol penceresi: 'Kaydet' yine gecerlilikle kapaniyor",
+        "frontend/src/pages/admin/AdminAccessPage.tsx",
+        "        <Button isPending={islemSuruyor} onClick={gonder}>",
+        "        <Button isPending={islemSuruyor} disabled={!form.formState.isValid} onClick={gonder}>",
+        ("src/pages/admin/adminYetkiGoc.acceptance.test.tsx",), "frontend",
+    ),
 ]
 
 

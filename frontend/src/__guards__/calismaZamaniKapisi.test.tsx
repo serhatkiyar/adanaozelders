@@ -36,7 +36,7 @@
  */
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router-dom";
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterAll, beforeEach, describe, expect, it } from "vitest";
 
 // ── Ağır ortak modül BİLE BİLE statik import ediliyor (İP-A7d3 · Görev 5) ──
 //
@@ -179,6 +179,21 @@ const DERIN_KAPI = [
   "src/pages/dashboards/OperatorHome.tsx",
   "src/pages/dashboards/OperatorLibrary.tsx",
   "src/pages/dashboards/OperatorSessions.tsx",
+  // İP-A7d4 · göç dalgası 4: ALTI dosya derin kapıya GİRDİ. Her birinin
+  // koşullu dalları kendi kabul dosyasında render edilip alan adları
+  // doğrulanıyor:
+  //   • `AdminAccessPage`      → `adminYetkiGoc.acceptance` (Y-3)
+  //   • `ClosedDays`           → `dalga4Pencereleri.acceptance` (D4-1)
+  //   • `AdminOperationsPage`  → `dalga4Pencereleri.acceptance` (D4-2)
+  //   • `AdminSettingsPage`    → `dalga4Pencereleri.acceptance` (D4-3)
+  //   • `DeliveryTodayPage` / `DeliveryBoardPage`
+  //                            → `ip19Filo.acceptance` (A7d4 bölümü)
+  "src/components/admin/delivery/ClosedDays.tsx",
+  "src/pages/admin/AdminAccessPage.tsx",
+  "src/pages/admin/AdminOperationsPage.tsx",
+  "src/pages/admin/AdminSettingsPage.tsx",
+  "src/pages/admin/delivery/DeliveryBoardPage.tsx",
+  "src/pages/admin/delivery/DeliveryTodayPage.tsx",
 ];
 
 /**
@@ -317,6 +332,15 @@ const KAPI_KAPSAMI = [
 
 const moduller = import.meta.glob("/src/**/*.tsx");
 
+// ── Parçalanmış kapının sayaçları (İP-A7d4 · Görev 3) ──
+//
+// Ekran başına ayrı test yazmak, birleşik testin sağladığı iki şeyi kaybetme
+// riski taşır: (a) "hepsi gerçekten koştu mu", (b) "toplamda bir şey render
+// edildi mi". İkisi de bu sayaçlarla dosyanın SONUNDAKİ nöbetçilere taşınır.
+const olculenEkranlar = new Set<string>();
+const olculenKapiDisi = new Set<string>();
+let toplamKontrol = 0;
+
 const tabanEkranlari = (OLCUM_TABANI as string[]).filter((f) => f.endsWith(".tsx"));
 const kapsanan = tabanEkranlari.filter((f) => !(f in KAPI_DISI));
 
@@ -395,71 +419,109 @@ describe("İP-A6b çalışma zamanı kapısı · kapsam iki yönlü korunur", ()
     );
   });
 
-  it("KAPI_DISI gerekçeleri doğrudur: park edilen ekran gerçekten mount edilemiyor", async () => {
-    // Ters prova. Bu olmadan `KAPI_DISI` bir kaçış kapısı olurdu: mount
-    // edilebilen bir ekranı listeye yazmak kapıyı sessizce daraltırdı.
-    const yanlisPark: string[] = [];
-    for (const [dosya, kayit] of Object.entries(KAPI_DISI)) {
+  /**
+   * ── İP-A7d4 · Görev 3: EKRAN BAŞINA AYRI TEST ──
+   *
+   * Ters prova. Bu olmadan `KAPI_DISI` bir kaçış kapısı olurdu: mount
+   * edilebilen bir ekranı listeye yazmak kapıyı sessizce daraltırdı.
+   *
+   * Eskiden tek bir döngüydü ve tek kırmızı "on yedi dosyadan biri yanlış
+   * park edilmiş" derdi; hangisi olduğu ancak mesaj okunarak bulunurdu.
+   */
+  it.each(Object.entries(KAPI_DISI))(
+    "KAPI_DISI gerekçesi doğru: %s propsuz mount EDİLEMİYOR",
+    async (dosya, kayit) => {
+      olculenKapiDisi.add(dosya);
       const C = await ekranBileseni(dosya);
       if (kayit.tur === "bilesen-yok") {
-        if (C) yanlisPark.push(`${dosya}: bilesen VAR, "bilesen-yok" yazilmis`);
-        continue;
+        expect(C, `${dosya}: bilesen VAR, "bilesen-yok" yazilmis`).toBeNull();
+        return;
       }
-      if (!C) {
-        yanlisPark.push(`${dosya}: bilesen yok, "props" yazilmis`);
-        continue;
-      }
-      try {
-        kontrolOlcumu(kosum(C));
-        yanlisPark.push(`${dosya}: propsuz MOUNT EDILEBILIYOR (${kayit.gerekce})`);
-      } catch {
-        /* beklenen: propsuz mount edilemiyor */
-      }
+      expect(C, `${dosya}: bilesen yok, "props" yazilmis`).not.toBeNull();
+      expect(
+        () => kontrolOlcumu(kosum(C!)),
+        `${dosya}: propsuz MOUNT EDILEBILIYOR (${kayit.gerekce})`
+      ).toThrow();
     }
-    expect(yanlisPark).toEqual([]);
-  }, 60000);
+  );
+
+  // Parçalama yeni bir sessiz daralma yolu açar: bir `it.each` girdisi
+  // üretilmezse (liste boşalır, filtre eklenir, `describe.skip` yazılır)
+  // suite yeşil kalır ve HİÇBİR ekran ölçülmemiş olur. Sayaç değil kimlik.
+  //
+  // ⚠️ Bu kontrol bir `it` DEĞİL bir `afterAll`dur ve gerekçesi ölçüldü:
+  // ilk yazımda `it` idi ve "dosya içindeki testler bildirim sırasında koşar"
+  // varsayımına dayanıyordu. **Yanlıştı** — `--sequence.shuffle` dosya İÇİNDEKİ
+  // testleri de karıştırıyor ve tohum 4001'de kapanış nöbetçileri `it.each`
+  // bloklarından ÖNCE koşup üçü birden kırmızı düştü. `afterAll` sıradan
+  // bağımsızdır: suite bittikten sonra, her hâlde çalışır.
+  afterAll(() => {
+    expect([...olculenKapiDisi].sort()).toEqual(Object.keys(KAPI_DISI).sort());
+  });
 });
 
 describe("İP-A6b çalışma zamanı kapısı · adsız kontrol", () => {
-  it("kapsanan her ekran mount edilir; adsız kontrol tabanı KİMLİKLE sabittir", async () => {
-    const adsiz: Record<string, number> = {};
-    const ornekler: string[] = [];
-    const mountEdilemeyen: string[] = [];
-    let toplamKontrol = 0;
-
-    for (const dosya of kapsanan) {
-      const C = await ekranBileseni(dosya);
-      if (!C) {
-        mountEdilemeyen.push(`${dosya}: render edilebilir bilesen yok`);
-        continue;
-      }
-      try {
-        const o = kontrolOlcumu(kosum(C));
-        toplamKontrol += o.toplam;
-        if (o.adsiz > 0) {
-          adsiz[dosya] = o.adsiz;
-          for (const html of o.adsizHtml) ornekler.push(`${dosya}\n  ${html}`);
-        }
-      } catch (e) {
-        mountEdilemeyen.push(`${dosya}: ${(e as Error).message.split("\n")[0]}`);
-      }
-    }
-
-    // (a) Kapsam gerçekten koştu mu? Sessiz daralma burada da yakalanır:
-    //     mount edilemeyen dosya varsa gerekçesiyle KAPI_DISI'na yazılmalıdır.
+  /**
+   * ── İP-A7d4 · Görev 3: 88 ekran TEK testte değil, EKRAN BAŞINA ──
+   *
+   * Eskiden tek `it` bütün kapsamı mount ediyordu ve tam suite yükü altında
+   * 9,9 saniye sürüyordu — `testTimeout`un (9000 ms) ÜSTÜNDE. Ayakta kalması
+   * yalnız dosyaya yazılmış 120 sn'lik ezmeye bağlıydı, yani `vitest.config`
+   * kuralının ("dosya başına testTimeout ezmesi YAPILMAZ") istisnasıydı.
+   *
+   * Asıl bedel bütçe değil TEŞHİSTİ: tek bir yavaş ekran testi zaman aşımına
+   * düşürdüğünde 88 ekranın HİÇBİRİ ölçülmemiş oluyordu ve tek kırmızı hangi
+   * ekranın sorunlu olduğunu söylemiyordu.
+   *
+   * Parçalanınca her ekran kendi bütçesinde koşar (ölçülen: ekran başına
+   * ~40-120 ms) ve kırmızı doğrudan ekranı adıyla gösterir. Süre artışı
+   * kabul edildi; bu turda ölçüm aletinin güvenilirliği defalarca süreye
+   * tercih edildi.
+   */
+  it.each(kapsanan)("%s — adsız kontrol tabanı KİMLİKLE sabit", async (dosya) => {
+    const C = await ekranBileseni(dosya);
+    expect(C, `${dosya}: render edilebilir bilesen yok`).not.toBeNull();
+    const o = kontrolOlcumu(kosum(C!));
+    olculenEkranlar.add(dosya);
+    toplamKontrol += o.toplam;
+    // Beklenen borç: listede yazılıysa o sayı, yoksa SIFIR. İki yön de kırar —
+    // yeni borç da, listedeki bir borcun sessizce kapanması da.
     expect(
-      mountEdilemeyen,
-      `kapida mount edilemedi:\n${mountEdilemeyen.join("\n")}`
-    ).toEqual([]);
-    // (b) Yalancı yeşil kapısı: hiçbir kontrol render edilmediyse "0 adsız"
-    //     bir şey kanıtlamaz. Bugün ölçülen taban 39 kontroldür.
-    expect(
-      toplamKontrol,
-      "hic kontrol render edilmedi — kapi bosa kosuyor"
-    ).toBeGreaterThanOrEqual(39);
-    // (c) Asıl kural: taban KİMLİKLE sabit — yeni borç da, sessiz düşüş de kırar.
-    expect(adsiz, `varsayilan render'da adsiz kontrol:\n${ornekler.join("\n")}`).toEqual(
-      CALISMA_ZAMANI_ADSIZ
+      o.adsiz,
+      `${dosya} — varsayilan render'da adsiz kontrol: ${o.adsizHtml.join(" | ")}`
+    ).toBe(CALISMA_ZAMANI_ADSIZ[dosya] ?? 0);
+  });
+
+  /**
+   * Parçalamanın ÜÇ nöbetçisi. Bunlar olmadan bölünmüş kapı, birleşiğinin
+   * sağladığı iki yönlü korumanın altına düşerdi.
+   *
+   * ⚠️ Üçü de `it` DEĞİL, `afterAll` — ve gerekçesi ÖLÇÜLDÜ. İlk yazımda
+   * `it` idiler ve "dosya içindeki testler bildirim sırasında koşar"
+   * varsayımına dayanıyorlardı. Varsayım yanlıştı: `--sequence.shuffle`
+   * dosya İÇİNDEKİ testleri de karıştırıyor ve **tohum 4001'de üçü birden
+   * kırmızı düştü** (sayaçlar henüz doldurulmamışken koştular). Bu, paketin
+   * kendi kapısında ürettiği gerçek bir kusurdu ve karışık tohum koşumu
+   * yakaladı.
+   *
+   * `afterAll` sıradan bağımsızdır: hangi sırayla koşulursa koşulsun,
+   * suite bittikten sonra çalışır.
+   */
+  afterAll(() => {
+    // Yön 1: listede olup ölçülmeyen. `it.each` girdisi üretilmezse ya da bir
+    // ekran sessizce atlanırsa burada görünür.
+    expect([...olculenEkranlar].sort()).toEqual([...KAPI_KAPSAMI].sort());
+
+    // Yön 2: listede olup kapsamda OLMAYAN bir dosya, hiçbir testin
+    // doğrulamadığı ölü bir kayıttır — borç kapanmış gibi görünmeden orada
+    // durur. Birleşik testte bu otomatik yakalanıyordu (`toEqual` sözlük
+    // karşılaştırması); parçalanınca ayrıca yazılması gerekir.
+    expect(Object.keys(CALISMA_ZAMANI_ADSIZ).filter((f) => !kapsanan.includes(f))).toEqual([]);
+
+    // Yalancı yeşil kapısı: hiçbir kontrol render edilmediyse "0 adsız" bir
+    // şey kanıtlamaz. Bugün ölçülen taban 39 kontroldür.
+    expect(toplamKontrol, "hic kontrol render edilmedi — kapi bosa kosuyor").toBeGreaterThanOrEqual(
+      39
     );
-  }, 120000);
+  });
 });

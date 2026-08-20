@@ -223,6 +223,11 @@ export const OLCUM_TABANI = [
   // ölçüme GİRMEK zorunda — `ui2/` altındaki her şey gibi o da panelin
   // sevk edilen arayüzünün parçası.
   "src/components/admin/ui2/gezinmeBekcisi.tsx",
+  // İP-A7d4 · Görev 1: "içeriğim korumasız" dedektörünün bağlamı + DOM
+  // sondası. `.ts` olduğu için çalışma zamanı kapısına girmez (JSX taşımaz),
+  // ama ölçüm tabanına GİRER: `ui2/` altındaki her şey gibi o da panelin
+  // sevk edilen arayüzünün parçası.
+  "src/components/admin/ui2/icerikKorumasi.ts",
   "src/components/admin/ui2/kirliFormBekcisi.tsx",
   "src/components/admin/ui2/medusa-tr.tsx",
   // İP-A6: düzenleme yüzeyinin DURUM kancası buraya ayrıldı (import döngüsü
