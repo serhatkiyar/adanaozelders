@@ -1,0 +1,170 @@
+{
+  "share-modal-light": {
+    "acilis": {
+      "sinifliEleman": 2,
+      "detay": [
+        {
+          "sinif": "w-full animate-in fade-in duration-300",
+          "animationName": "none",
+          "animationDuration": "0s",
+          "transform": "none",
+          "opacity": "1"
+        },
+        {
+          "sinif": "relative w-full max-w-sm rounded-3xl bg-white p-6 shadow-xl ring-1 ring-slate-100 dark:bg-",
+          "animationName": "none",
+          "animationDuration": "0s",
+          "transform": "none",
+          "opacity": "1"
+        }
+      ],
+      "kosan": []
+    },
+    "dingin": {
+      "sinifliEleman": 2,
+      "detay": [
+        {
+          "sinif": "w-full animate-in fade-in duration-300",
+          "animationName": "none",
+          "animationDuration": "0s",
+          "transform": "none",
+          "opacity": "1"
+        },
+        {
+          "sinif": "relative w-full max-w-sm rounded-3xl bg-white p-6 shadow-xl ring-1 ring-slate-100 dark:bg-",
+          "animationName": "none",
+          "animationDuration": "0s",
+          "transform": "none",
+          "opacity": "1"
+        }
+      ],
+      "kosan": []
+    }
+  },
+  "auth-modal-light": {
+    "acilis": {
+      "sinifliEleman": 2,
+      "detay": [
+        {
+          "sinif": "relative w-full max-w-md scale-100 overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ",
+          "animationName": "none",
+          "animationDuration": "0s",
+          "transform": "matrix(1, 0, 0, 1, 0, 0)",
+          "opacity": "1"
+        },
+        {
+          "sinif": "relative w-full max-w-md scale-100 overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ",
+          "animationName": "none",
+          "animationDuration": "0s",
+          "transform": "matrix(1, 0, 0, 1, 0, 0)",
+          "opacity": "1"
+        }
+      ],
+      "kosan": []
+    },
+    "dingin": {
+      "sinifliEleman": 2,
+      "detay": [
+        {
+          "sinif": "relative w-full max-w-md scale-100 overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ",
+          "animationName": "none",
+          "animationDuration": "0s",
+          "transform": "matrix(1, 0, 0, 1, 0, 0)",
+          "opacity": "1"
+        },
+        {
+          "sinif": "relative w-full max-w-md scale-100 overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ",
+          "animationName": "none",
+          "animationDuration": "0s",
+          "transform": "matrix(1, 0, 0, 1, 0, 0)",
+          "opacity": "1"
+        }
+      ],
+      "kosan": []
+    }
+  },
+  "share-modal-dark": {
+    "acilis": {
+      "sinifliEleman": 2,
+      "detay": [
+        {
+          "sinif": "w-full animate-in fade-in duration-300",
+          "animationName": "none",
+          "animationDuration": "0s",
+          "transform": "none",
+          "opacity": "1"
+        },
+        {
+          "sinif": "relative w-full max-w-sm rounded-3xl bg-white p-6 shadow-xl ring-1 ring-slate-100 dark:bg-",
+          "animationName": "none",
+          "animationDuration": "0s",
+          "transform": "none",
+          "opacity": "1"
+        }
+      ],
+      "kosan": []
+    },
+    "dingin": {
+      "sinifliEleman": 2,
+      "detay": [
+        {
+          "sinif": "w-full animate-in fade-in duration-300",
+          "animationName": "none",
+          "animationDuration": "0s",
+          "transform": "none",
+          "opacity": "1"
+        },
+        {
+          "sinif": "relative w-full max-w-sm rounded-3xl bg-white p-6 shadow-xl ring-1 ring-slate-100 dark:bg-",
+          "animationName": "none",
+          "animationDuration": "0s",
+          "transform": "none",
+          "opacity": "1"
+        }
+      ],
+      "kosan": []
+    }
+  },
+  "auth-modal-dark": {
+    "acilis": {
+      "sinifliEleman": 2,
+      "detay": [
+        {
+          "sinif": "relative w-full max-w-md scale-100 overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ",
+          "animationName": "none",
+          "animationDuration": "0s",
+          "transform": "matrix(1, 0, 0, 1, 0, 0)",
+          "opacity": "1"
+        },
+        {
+          "sinif": "relative w-full max-w-md scale-100 overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ",
+          "animationName": "none",
+          "animationDuration": "0s",
+          "transform": "matrix(1, 0, 0, 1, 0, 0)",
+          "opacity": "1"
+        }
+      ],
+      "kosan": []
+    },
+    "dingin": {
+      "sinifliEleman": 2,
+      "detay": [
+        {
+          "sinif": "relative w-full max-w-md scale-100 overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ",
+          "animationName": "none",
+          "animationDuration": "0s",
+          "transform": "matrix(1, 0, 0, 1, 0, 0)",
+          "opacity": "1"
+        },
+        {
+          "sinif": "relative w-full max-w-md scale-100 overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ",
+          "animationName": "none",
+          "animationDuration": "0s",
+          "transform": "matrix(1, 0, 0, 1, 0, 0)",
+          "opacity": "1"
+        }
+      ],
+      "kosan": []
+    }
+  }
+}

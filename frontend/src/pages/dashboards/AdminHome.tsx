@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { Avatar } from "@/components/Avatar";
 import { AccessDenied, ReadOnlyNotice, useAdminAreaAccess } from "@/components/admin/AccessState";
-import { ConfirmDialog, ErrorState, ReasonDialog } from "@/components/admin/ui";
+import { Button, ConfirmDialog, ErrorState, ReasonDialog } from "@/components/admin/ui";
+import { useDuzenlemeYuzeyi } from "@/components/admin/ui2/duzenlemeYuzeyi";
+import { useUrlDurumu } from "@/hooks/useUrlDurumu";
 import {
   useActivateTutor,
   useAdminTutors,
@@ -53,12 +55,21 @@ const TUTOR_STATUS_META: Record<TutorStatus, { label: string; cls: string }> = {
   },
 };
 
+/** Adresten gelen talep filtresi için BEYAZ LİSTE (İP-A7d3). */
+const GECERLI_TALEP_DURUMLARI = new Set<string>([
+  "PENDING",
+  "APPROVED",
+  "REJECTED",
+  "TUMU",
+]);
+
 /* ─── listing management ─────────────────────────────── */
 
 function ListingRow({ tutor }: { tutor: TutorOut }) {
   const { canManage } = useAdminAreaAccess("tutors");
-  const [deleteOpen, setDeleteOpen] = useState(false);
-  const [rejectOpen, setRejectOpen] = useState(false);
+  // İP-A7d3: pencere durumu ekranda yaşamaz (İP-A4 sözleşmesi).
+  const silmeYuzeyi = useDuzenlemeYuzeyi<never, void>();
+  const redYuzeyi = useDuzenlemeYuzeyi<never, void>();
   const suspend = useSuspendTutor();
   const activate = useActivateTutor();
   const approve = useApproveTutor();
@@ -116,73 +127,83 @@ function ListingRow({ tutor }: { tutor: TutorOut }) {
             onaylamak için ya SQL'e iniyor ya eğitmeni siliyordu. */}
         {tutor.status === TutorStatus.PENDING_APPROVAL && (
           <>
-            <button
+            <Button
+              size="sm"
+              variant="success"
+              className="rounded-xl"
               disabled={busy}
               onClick={() =>
                 run(approve, `${tutor.full_name} onaylandı.`, "Onaylama başarısız.")
               }
-              className="rounded-xl bg-emerald-600 px-3.5 py-1.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 active:scale-95 disabled:opacity-60"
             >
               Onayla
-            </button>
-            <button
+            </Button>
+            <Button
+              size="sm"
+              variant="secondary"
+              className="rounded-xl text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
               disabled={busy}
-              onClick={() => setRejectOpen(true)}
-              className="rounded-xl border border-slate-200 bg-white px-3.5 py-1.5 text-sm font-semibold text-red-600 shadow-sm transition hover:bg-red-50 active:scale-95 disabled:opacity-60 dark:border-slate-600 dark:bg-slate-700 dark:hover:bg-red-900/20"
+              onClick={() => redYuzeyi.yeniAc()}
             >
               Reddet
-            </button>
+            </Button>
           </>
         )}
         {tutor.status === TutorStatus.APPROVED && (
-          <button
+          <Button
+            size="sm"
+            variant="secondary"
+            className="rounded-xl"
             disabled={busy}
             onClick={() =>
               run(suspend, "İlan yayından kaldırıldı.", "İşlem başarısız.")
             }
-            className="rounded-xl border border-slate-200 bg-white px-3.5 py-1.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 active:scale-95 disabled:opacity-60 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 dark:hover:bg-slate-600"
           >
             Yayından Kaldır
-          </button>
+          </Button>
         )}
         {tutor.status === TutorStatus.SUSPENDED && (
-          <button
+          <Button
+            size="sm"
+            variant="success"
+            className="rounded-xl"
             disabled={busy}
             onClick={() =>
               run(activate, "İlan yeniden yayında.", "İşlem başarısız.")
             }
-            className="rounded-xl bg-emerald-600 px-3.5 py-1.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 active:scale-95 disabled:opacity-60"
           >
             Yeniden Yayınla
-          </button>
+          </Button>
         )}
-        <button
+        <Button
+          size="sm"
+          variant="secondary"
+          className="rounded-xl text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
           disabled={busy}
-          onClick={() => setDeleteOpen(true)}
-          className="rounded-xl border border-slate-200 bg-white px-3.5 py-1.5 text-sm font-semibold text-red-600 shadow-sm transition hover:bg-red-50 active:scale-95 disabled:opacity-60 dark:border-slate-600 dark:bg-slate-700 dark:hover:bg-red-900/20"
+          onClick={() => silmeYuzeyi.yeniAc()}
         >
           Sil
-        </button>
+        </Button>
       </div>
       )}
     </div>
     <ConfirmDialog
-      open={deleteOpen}
+      open={silmeYuzeyi.acik}
       title="İlanı yayından kaldır"
       description={`${tutor.full_name} ilanı silinecek ve yayından kaldırılacak.`}
       confirmLabel="İlanı sil"
       danger
       isPending={del.isPending}
-      onClose={() => setDeleteOpen(false)}
+      onClose={silmeYuzeyi.kapat}
       onConfirm={() => del.mutate(tutor.id, {
-        onSuccess: () => { toast.success("İlan silindi."); setDeleteOpen(false); },
+        onSuccess: () => { toast.success("İlan silindi."); silmeYuzeyi.kapat(); },
         onError: (error) => toast.error(getErrorMessage(error, "Silme başarısız.")),
       })}
     />
     {/* Red GEREKÇESİ zorunlu (backend `TutorRejectIn`): karar denetim izine
         gerekçesiz yazılamaz ve eğitmen neden reddedildiğini öğrenemezdi. */}
     <ReasonDialog
-      open={rejectOpen}
+      open={redYuzeyi.acik}
       title="Başvuruyu reddet"
       description={`${tutor.full_name} başvurusu reddedilecek. Gerekçe denetim izine yazılır.`}
       label="Red gerekçesi"
@@ -193,14 +214,14 @@ function ListingRow({ tutor }: { tutor: TutorOut }) {
       confirmLabel="Başvuruyu reddet"
       danger
       isPending={reject.isPending}
-      onClose={() => setRejectOpen(false)}
+      onClose={redYuzeyi.kapat}
       onConfirm={(reason) =>
         reject.mutate(
           { id: tutor.id, reason },
           {
             onSuccess: () => {
               toast.success(`${tutor.full_name} reddedildi.`);
-              setRejectOpen(false);
+              redYuzeyi.kapat();
             },
             onError: (error) =>
               toast.error(getErrorMessage(error, "Reddetme başarısız.")),
@@ -408,45 +429,51 @@ function EducationVerifyCard({ edu }: { edu: AdminEducation }) {
 
       {!canManage ? null : rejecting ? (
         <div className="mt-3 space-y-2">
-          <input
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            maxLength={500}
-            placeholder="Red nedeni (eğitmene gösterilir)"
-            className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-rose-400 dark:border-slate-600 dark:bg-slate-700 dark:text-white"
-          />
+          {/* İP-A7d3: alan ADSIZDI — `placeholder` etiket yerine kullanılıyordu.
+              Bir eğitmene gösterilecek red gerekçesi yazılan yer burası. */}
+          <label className="block">
+            <span className="mb-1 block text-sm font-semibold text-slate-700 dark:text-slate-200">
+              Red nedeni (eğitmene gösterilir)
+            </span>
+            <input
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              maxLength={500}
+              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-rose-400 dark:border-slate-600 dark:bg-slate-700 dark:text-white"
+            />
+          </label>
           <div className="flex gap-2">
-            <button
+            <Button
+              variant="danger"
+              className="rounded-lg"
+              isPending={verify.isPending}
               onClick={doReject}
-              disabled={verify.isPending}
-              className="rounded-lg bg-rose-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-rose-700 disabled:opacity-60"
             >
               Reddet
-            </button>
-            <button
-              onClick={() => setRejecting(false)}
-              className="rounded-lg px-4 py-2 text-sm font-medium text-slate-500 transition hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700"
-            >
+            </Button>
+            <Button variant="ghost" className="rounded-lg" onClick={() => setRejecting(false)}>
               Vazgeç
-            </button>
+            </Button>
           </div>
         </div>
       ) : (
         <div className="mt-3 flex gap-2">
-          <button
+          <Button
+            variant="success"
+            className="rounded-lg"
+            isPending={verify.isPending}
             onClick={doVerify}
-            disabled={verify.isPending}
-            className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-60"
           >
             ✓ Doğrula
-          </button>
-          <button
-            onClick={() => setRejecting(true)}
+          </Button>
+          <Button
+            variant="secondary"
+            className="rounded-lg"
             disabled={verify.isPending}
-            className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 disabled:opacity-60 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700"
+            onClick={() => setRejecting(true)}
           >
             Reddet
-          </button>
+          </Button>
         </div>
       )}
     </div>
@@ -541,14 +568,21 @@ function NameChangeCard({ req }: { req: NameChangeRequest }) {
 
       {isPending ? (
         <div className="mt-4 flex flex-col gap-2 border-t border-slate-100 pt-3 dark:border-slate-700 sm:flex-row">
-          <input
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            placeholder="Red notu (opsiyonel)"
-            className="flex-1 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-indigo-500 dark:border-slate-600 dark:bg-slate-900 dark:text-white"
-          />
+          {/* İP-A7d3: alan ADSIZDI (`placeholder` etiket yerine). */}
+          <label className="flex-1">
+            <span className="mb-1 block text-xs font-semibold text-slate-500 dark:text-slate-400">
+              Red notu (opsiyonel)
+            </span>
+            <input
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-indigo-500 dark:border-slate-600 dark:bg-slate-900 dark:text-white"
+            />
+          </label>
           <div className="flex gap-2">
-            <button
+            <Button
+              variant="success"
+              className="rounded-xl"
               disabled={busy}
               onClick={() =>
                 approve.mutate(req.id, {
@@ -556,11 +590,12 @@ function NameChangeCard({ req }: { req: NameChangeRequest }) {
                   onError: (e) => toast.error(getErrorMessage(e, "Onaylanamadı.")),
                 })
               }
-              className="rounded-xl bg-emerald-600 px-3.5 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-60"
             >
               Onayla
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="secondary"
+              className="rounded-xl"
               disabled={busy}
               onClick={() =>
                 reject.mutate(
@@ -572,10 +607,9 @@ function NameChangeCard({ req }: { req: NameChangeRequest }) {
                   }
                 )
               }
-              className="rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 disabled:opacity-60 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-300"
             >
               Reddet
-            </button>
+            </Button>
           </div>
         </div>
       ) : (
@@ -590,8 +624,22 @@ function NameChangeCard({ req }: { req: NameChangeRequest }) {
 }
 
 function NameChangesSection() {
-  const [filter, setFilter] = useState<NameChangeStatus | undefined>("PENDING");
-  const { data, isLoading, isError, error, refetch } = useAdminNameChangeRequests(filter);
+  // ── İP-A7d3: filtre ADRESTE yaşar ("filtreler URL'de" kilitli kararı) ──
+  //
+  // `useState`teyken paylaşılan bağlantı hep "Bekleyen"e düşüyordu ve geri
+  // tuşu filtre değişimini görmüyordu. Beyaz liste `useUrlDurumu`ya
+  // devredilemez: kanca tipi ve varsayılanı yönetir, `?talep=drop_table` gibi
+  // bir değeri eleyemez.
+  const url = useUrlDurumu({ talep: "PENDING" });
+  const hamFiltre = String(url.degerler.talep);
+  const filter = (GECERLI_TALEP_DURUMLARI.has(hamFiltre) ? hamFiltre : "TUMU") as
+    | NameChangeStatus
+    | "TUMU";
+  const setFilter = (v: NameChangeStatus | undefined) =>
+    url.ayarla({ talep: v ?? "TUMU" });
+  const { data, isLoading, isError, error, refetch } = useAdminNameChangeRequests(
+    filter === "TUMU" ? undefined : filter
+  );
 
   const FILTERS: { value: NameChangeStatus | undefined; label: string }[] = [
     { value: "PENDING", label: "Bekleyen" },
@@ -604,11 +652,17 @@ function NameChangesSection() {
     <section className="space-y-4">
       <div className="flex flex-wrap gap-1.5">
         {FILTERS.map((f) => (
+          // BİLİNÇLİ ham <button>: aksiyon değil SEÇİM DURUMU (aria-pressed).
+          // Ortak Button'ın dolgu/gölge varyantları süzgeç çipi dilini
+          // taşımıyor — PackagesPage'in durum süzgeci çipleriyle aynı
+          // istisna. A7d3'te EKSİK olan aria-pressed eklendi.
           <button
             key={f.label}
+            type="button"
+            aria-pressed={filter === (f.value ?? "TUMU")}
             onClick={() => setFilter(f.value)}
             className={`rounded-xl px-3 py-1.5 text-sm font-semibold transition ${
-              filter === f.value
+              filter === (f.value ?? "TUMU")
                 ? "bg-indigo-600 text-white"
                 : "bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-300 dark:ring-slate-700"
             }`}

@@ -11,6 +11,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { DeliveryRouteMap } from "@/components/DeliveryRouteMap";
 import { useAdminAreaAccess } from "@/components/admin/AccessState";
 import { Badge, Button, ConfirmDialog, ErrorState, PageSkeleton } from "@/components/admin/ui";
+import { useDuzenlemeYuzeyi } from "@/components/admin/ui2/duzenlemeYuzeyi";
 import {
   DeliveryPrefBadge,
   PromiseChip,
@@ -198,17 +199,40 @@ function StopRow({
       </span>
       {editable && (
         <div className="flex shrink-0 items-center">
-          <button onClick={() => onMove(stop.id, -1)} disabled={isFirst} title="Yukarı taşı" aria-label={"Durak " + stop.sequence + " yukarı taşı"} className={iconBtn}>
+          {/* İP-A7d3: üç ham `<button>` ortak `Button`a geçti. Erişilebilir
+              adlar (`aria-label`) AYNEN korundu — sürükle-bırak dokunmatikte
+              çalışmadığı için bu üç düğme sıralamanın TEK klavye/dokunma
+              yoludur ve adları sözleşmedir. */}
+          <Button
+            size="sm"
+            variant="ghost"
+            className={iconBtn}
+            onClick={() => onMove(stop.id, -1)}
+            disabled={isFirst}
+            title="Yukarı taşı"
+            aria-label={"Durak " + stop.sequence + " yukarı taşı"}
+          >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-4 w-4">
               <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" />
             </svg>
-          </button>
-          <button onClick={() => onMove(stop.id, 1)} disabled={isLast} title="Aşağı taşı" aria-label={"Durak " + stop.sequence + " aşağı taşı"} className={iconBtn}>
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            className={iconBtn}
+            onClick={() => onMove(stop.id, 1)}
+            disabled={isLast}
+            title="Aşağı taşı"
+            aria-label={"Durak " + stop.sequence + " aşağı taşı"}
+          >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-4 w-4">
               <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
             </svg>
-          </button>
-          <button
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="min-h-9 min-w-9 px-0 text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-500/10 dark:hover:text-rose-400"
             onClick={() =>
               removeStop.mutate(stop.id, {
                 onSuccess: () => toast.success("Durak turdan çıkarıldı."),
@@ -217,12 +241,11 @@ function StopRow({
             }
             title="Turdan çıkar"
             aria-label={"Durak " + stop.sequence + " turdan çıkar"}
-            className="inline-flex min-h-9 min-w-9 items-center justify-center rounded-md text-slate-400 transition hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-500/10 dark:hover:text-rose-400"
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-4 w-4">
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
             </svg>
-          </button>
+          </Button>
         </div>
       )}
     </li>
@@ -235,7 +258,8 @@ export default function DeliveryRunDetailPage() {
   const navigate = useNavigate();
   const { canManage } = useAdminAreaAccess("delivery");
 
-  const [cancelOpen, setCancelOpen] = useState(false);
+  // İP-A7d3: pencere durumu ekranda yaşamaz.
+  const iptalYuzeyi = useDuzenlemeYuzeyi<never, void>();
   const [showLabels, setShowLabels] = useState(false);
   const [showMap, setShowMap] = useState(true);
   // Sürükle-bırak durumu (yalnız görsel; bırakınca tek reorder mutasyonu).
@@ -305,7 +329,7 @@ export default function DeliveryRunDetailPage() {
       { runId: run.id, action },
       {
         onSuccess: () => {
-          if (action === "cancel") setCancelOpen(false);
+          if (action === "cancel") iptalYuzeyi.kapat();
           toast.success(
             action === "start"
               ? "Tur başlatıldı — siparişler 'dağıtımda' olarak işaretlendi."
@@ -421,7 +445,7 @@ export default function DeliveryRunDetailPage() {
               </Button>
             )}
             {planning && (
-              <Button size="sm" variant="ghost" onClick={() => setCancelOpen(true)} title="Turu iptal et">
+              <Button size="sm" variant="ghost" onClick={() => iptalYuzeyi.yeniAc()} title="Turu iptal et">
                 İptal
               </Button>
             )}
@@ -466,12 +490,15 @@ export default function DeliveryRunDetailPage() {
             >
               {run.optimize_provider === "vroom" ? "yol ağı" : "yaklaşık"}
             </span>
-            <button
+            <Button
+              size="sm"
+              variant="ghost"
+              className="ml-auto px-1 font-semibold text-indigo-600 hover:underline dark:text-indigo-400"
+              aria-expanded={showMap}
               onClick={() => setShowMap((v) => !v)}
-              className="ml-auto font-semibold text-indigo-600 hover:underline dark:text-indigo-400"
             >
               {showMap ? "Haritayı gizle" : "Haritayı göster"}
-            </button>
+            </Button>
           </div>
         )}
         {run.optimized_at && showMap && run.stops.some((s) => s.lat != null) && (
@@ -551,7 +578,11 @@ export default function DeliveryRunDetailPage() {
                 )}
               </h3>
               {eligible.length > 1 && (
-                <button
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="px-1 text-xs font-semibold text-indigo-600 hover:underline dark:text-indigo-400"
+                  isPending={addStops.isPending}
                   onClick={() =>
                     addStops.mutate(
                       { runId: run.id, orderIds: eligible.map((o) => o.order_id) },
@@ -561,11 +592,9 @@ export default function DeliveryRunDetailPage() {
                       }
                     )
                   }
-                  disabled={addStops.isPending}
-                  className="text-xs font-semibold text-indigo-600 hover:underline dark:text-indigo-400"
                 >
                   Tümünü ekle
-                </button>
+                </Button>
               )}
             </div>
             {eligibleLoading ? (
@@ -627,13 +656,13 @@ export default function DeliveryRunDetailPage() {
 
       {showLabels && <LabelSheet run={run} onClose={() => setShowLabels(false)} />}
       <ConfirmDialog
-        open={cancelOpen}
+        open={iptalYuzeyi.acik}
         title="Dağıtım turunu iptal et"
         description={`Tur #${run.id}: bekleyen ${pendingCount} durak "teslim edilemedi" olarak kapanacak ve siparişler yeniden planlanabilir hale gelecek. Teslim edilmiş duraklar etkilenmez.`}
         confirmLabel="Turu iptal et"
         danger
         isPending={runAction.isPending}
-        onClose={() => setCancelOpen(false)}
+        onClose={iptalYuzeyi.kapat}
         onConfirm={() => act("cancel")}
       />
     </div>

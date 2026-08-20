@@ -270,7 +270,14 @@ describe("C-1 · yıkıcı aksiyon onay penceresi olmadan istek üretmez", () =>
 
     sar(ROUTES.adminStoreOrders, <AdminStore />);
 
-    fireEvent.click(await screen.findByRole("button", { name: "Teslim edildi" }));
+    // İP-A6: `DataTable` mobil kart düzenini (`renderMobileRow`) da basar;
+    // jsdom CSS uygulamadığı için tablo VE kartlar aynı anda DOM'dadır.
+    // Bu bir davranış değişikliği değil, ölçüm ortamının sınırı — sorgu
+    // MASAÜSTÜ TABLOSUNA daraltıldı; iddia aynı kaldı.
+    const tablo = await screen.findByRole("table");
+    fireEvent.click(
+      within(tablo).getByRole("button", { name: "Teslim edildi" })
+    );
 
     expect(await screen.findByRole("button", { name: "Teslim edildi olarak işaretle" })).toBeTruthy();
     expect(istekler.some((i) => i.url.includes("/deliver"))).toBe(false);
@@ -440,7 +447,11 @@ describe("D · veri geldiğinde liste basılır (hata durumu yanlış tetiklenmi
     izinVer("orders.view", "orders.manage");
     sunucu("/store/admin/orders", { data: [SIPARIS] }, "get");
     sar(ROUTES.adminStoreOrders, <AdminStore />);
-    expect(await screen.findByText(/#77/)).toBeTruthy();
+    // İP-A6: `DataTable` mobil kart düzenini (`renderMobileRow`) da basar;
+    // jsdom CSS uygulamadığı için tablo VE kartlar aynı anda DOM'dadır.
+    // Bu bir davranış değişikliği değil, ölçüm ortamının sınırı — sorgu
+    // MASAÜSTÜ TABLOSUNA daraltıldı; iddia aynı kaldı.
+    expect(within(await screen.findByRole("table")).getByText(/#77/)).toBeTruthy();
   });
 
   it("iadeler", async () => {

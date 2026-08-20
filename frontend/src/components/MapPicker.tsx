@@ -405,8 +405,13 @@ export function MapPicker({
                 <circle cx="11" cy="11" r="8" />
                 <line x1="21" y1="21" x2="16.65" y2="16.65" />
               </svg>
+              {/* İP-A7d3: kutu ADSIZDI (`placeholder` etiket yerine) ve üç ayrı
+                  testte "bilinen istisna" olarak taşınıyordu (A7d2'nin kapanış
+                  notunda dalga 3'e bırakılmıştı). Görünür bir etiket harita
+                  tuvalinin üstünde yer kaplar; `aria-label` doğru çözümdür. */}
               <input
                 type="text"
+                aria-label="Haritada adres ara"
                 value={searchQuery}
                 onChange={(e) => handleSearchInput(e.target.value)}
                 onKeyDown={(e) => {

@@ -12,11 +12,11 @@ import { describe, expect, it } from "vitest";
 
 import type { PackageStatus } from "@/types/packing";
 
-// `import.meta.glob` kullanılıyor, düz `await import()` değil: Vite dinamik
-// import'u DERLEME anında çözer ve dosya yoksa transform hatası verir — bütün
-// dosya collection'da düşer, "no tests" görünür. Glob, olmayan dosya için boş
-// eşleşme döndürür; böylece her düğüm kendi mesajıyla ayrı ayrı kırmızı olur.
-const MODULLER = import.meta.glob("./packing.ts");
+// İP-A7d5 · Görev 2: modül STATİK import ediliyor. Eski `import.meta.glob`
+// red-first idiomuydu (dosya HENÜZ YOKKEN her düğüm ayrı kırmızı olsun diye);
+// dosya yazıldığı gün gerekçesi bitti. Statik import ayrıca daha katıdır:
+// dosya silinirse collection'da net bir hata verir, sessizce boş küme değil.
+import * as paketlemeModulu from "./packing";
 
 // Dönüş tipi `Record<string, any>` DEĞİL, modülün kendi tipi: `any` ile
 // yeniden adlandırılmış ya da silinmiş bir export testte sessizce `undefined`
@@ -26,9 +26,7 @@ const MODULLER = import.meta.glob("./packing.ts");
 type PaketlemeModulu = typeof import("./packing");
 
 async function paketleme(): Promise<PaketlemeModulu> {
-  const yukle = MODULLER["./packing.ts"];
-  if (!yukle) throw new Error("HENÜZ YAZILMADI: src/lib/packing.ts");
-  return (await yukle()) as PaketlemeModulu;
+  return paketlemeModulu;
 }
 
 const satir = (over: Record<string, unknown> = {}) => ({

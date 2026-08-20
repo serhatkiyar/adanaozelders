@@ -20,9 +20,38 @@
 // R6 ölü linkin tek otomatik nöbetçisidir: route silinip hub kartı bırakılırsa
 // kullanıcı tıklayınca boş ekrana düşer ve başka hiçbir test bunu görmez.
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { cleanup, render, screen } from "@testing-library/react";
+import { act, cleanup, render, screen } from "@testing-library/react";
 import { HelmetProvider } from "react-helmet-async";
 import { MemoryRouter } from "react-router-dom";
+
+import App from "@/App";
+// ── İP-A7d5 · Görev 2: TEMBEL ROTA HEDEFLERİ de statik alınıyor ──
+//
+// `App` rota tablosunu `React.lazy` ile kuruyor: ekran modülü ancak o rotaya
+// GİDİLDİĞİNDE, yani testin `findBy*` beklemesinin İÇİNDE yükleniyor. Sınıfın
+// en saf hâli bu — ve ölçüldü: tohum 5103'te R7 tam olarak bu yüzden düştü
+// (Suspense yedeği ekrandayken 1000 ms'lik bütçe doldu, "Aradığınız sayfa
+// bulunamadı" başlığı henüz yoktu).
+//
+// Yan etki importu modülü TOPLAMA evresinde değerlendirir; `lazy` sonra onu
+// önbellekten alır ve bekleme tek bir mikro-göreve iner. Bütçe BÜYÜTÜLMEDİ.
+//
+// ## İP-A8 · Görev 5 — düzeltme YETMEDİ ve sebebi ölçüldü
+//
+// Bağımsız denetim #3 (B-4) iki tohumda (7001, 7137) R7'yi yine kırmızı buldu.
+// A7d5'in teşhisi doğru ama TAM DEĞİLDİ: statik import tembel modülün
+// ÇÖZÜMLENME maliyetini kaldırır, **bekleyişin kendisini** kaldırmaz.
+// `React.lazy` her hâlükârda en az bir mikro-görev geciktirir ve
+// `findByRole` bunu DUVAR SAATİYLE bekler (1000 ms). Yani iddia hâlâ
+// "makine yeterince hızlı mı" sorusuna bağlıydı; paralel yük altında
+// `render(<App/>)`ın kendi maliyeti de aynı bütçeden ödeniyor.
+//
+// Doğru düzeltme bütçeyi büyütmek DEĞİL, bekleyişi ORTADAN KALDIRMAKTIR:
+// tembel sınırı `act` ile AKITILIR ve iddia eşzamanlı `getByRole` olur.
+// `getBy*`ın zaman aşımı yoktur — bu düğüm artık duvar saatinden tamamen
+// bağımsızdır ve hiçbir makinede "yavaştı" diye düşemez.
+import "@/pages/NotFound";
+import "@/pages/srs/SrsDecks";
 import { afterEach, describe, expect, it } from "vitest";
 
 import Learn from "@/pages/Learn";
@@ -144,14 +173,35 @@ describe("R7 — App.tsx rota tablosunda eski yol yok (gerçek DOM)", () => {
   // `RouteErrorBoundary` bunu "Bu sayfa yüklenemedi" ekranına çevirir.
   // Yani sarmayı unutmak, 404 iddiasını sessizce ölçülemez hâle getirirdi:
   // test kırmızı düşerdi ama sebebi rota tablosu olmazdı.
+  // İP-A7d5 · Görev 2: `App` STATİK import ediliyor (dosya başında). Eskiden
+  // her testin İÇİNDE `await import("@/App")` vardı: bütün rota tablosunun
+  // değerlendirilmesi ilk testin bütçesinden ödeniyordu. Modül önbelleği
+  // sayesinde davranış aynı — yalnız maliyet TOPLAMA evresine geçti.
   const yoluBas = async (yol: string) => {
     window.history.pushState({}, "", yol);
-    const { default: App } = await import("@/App");
-    return render(
+
+    const sonuc = render(
       <HelmetProvider>
         <App />
       </HelmetProvider>
     );
+
+    // ── Tembel sınırı AKIT, bekleme (İP-A8 · Görev 5) ──
+    //
+    // `React.lazy`in promise'i modül önbellekten gelse bile çözülmüş bir
+    // promise'tir ve React onu ancak bir sonraki mikro-görevde işler.
+    // `findBy*` bunu duvar saatiyle beklerdi; `act` içindeki boş bekleyiş
+    // React'in kuyruğunu boşaltır ve sonuç DETERMİNİSTİK olur. İki tur:
+    // birincisi `lazy`nin `.then`ini, ikincisi ondan doğan yeniden render'ı
+    // akıtır (`GlobalMeeting`/`AuthModal` gibi kardeş sınırlar da aynı
+    // kuyruğu paylaşıyor).
+    await act(async () => {
+      await Promise.resolve();
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    return sonuc;
   };
 
   afterEach(() => {
@@ -161,8 +211,10 @@ describe("R7 — App.tsx rota tablosunda eski yol yok (gerçek DOM)", () => {
 
   it.each(ESKI_YOLLAR)("%s → 404 sayfası", async (yol) => {
     await yoluBas(yol);
+    // `getBy*` — zaman aşımı YOK. Bekleyiş `yoluBas` içinde akıtıldı;
+    // burada duvar saatine bağlı hiçbir şey kalmadı (İP-A8 · Görev 5 · B-4).
     expect(
-      await screen.findByRole("heading", { name: /Aradığınız sayfa bulunamadı/i })
+      screen.getByRole("heading", { name: /Aradığınız sayfa bulunamadı/i })
     ).toBeTruthy();
   });
 

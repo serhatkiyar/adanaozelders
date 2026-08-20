@@ -1,0 +1,87 @@
+{
+  "acik": {
+    "tema": "acik",
+    "panelArkaPlan": "rgb(255, 255, 255)",
+    "etiketSayisi": 3,
+    "etiket": {
+      "metin": "Miktar",
+      "renk": "rgb(51, 65, 85)",
+      "arkaPlan": "rgb(255, 255, 255)",
+      "fontPx": 14,
+      "kontrast": 10.35,
+      "esik": 4.5,
+      "gecti": true
+    },
+    "hint": {
+      "metin": "Adet yalnız seçtiğiniz raftan düşer; diğ",
+      "renk": "rgb(100, 116, 139)",
+      "arkaPlan": "rgb(255, 255, 255)",
+      "fontPx": 12,
+      "kontrast": 4.76,
+      "esik": 4.5,
+      "gecti": true
+    },
+    "hata": {
+      "metin": "Miktar sıfırdan büyük bir tam sayı olmal",
+      "renk": "rgb(225, 29, 72)",
+      "arkaPlan": "rgb(255, 255, 255)",
+      "fontPx": 12,
+      "kontrast": 4.7,
+      "esik": 4.5,
+      "gecti": true
+    },
+    "slotlar": [
+      18,
+      18,
+      18,
+      18
+    ],
+    "panelYuksekligi": 726
+  },
+  "koyu": {
+    "tema": "koyu",
+    "panelArkaPlan": "rgb(15, 23, 42)",
+    "etiketSayisi": 3,
+    "etiket": {
+      "metin": "Miktar",
+      "renk": "rgb(226, 232, 240)",
+      "arkaPlan": "rgb(15, 23, 42)",
+      "fontPx": 14,
+      "kontrast": 14.48,
+      "esik": 4.5,
+      "gecti": true
+    },
+    "hint": {
+      "metin": "Adet yalnız seçtiğiniz raftan düşer; diğ",
+      "renk": "rgb(148, 163, 184)",
+      "arkaPlan": "rgb(15, 23, 42)",
+      "fontPx": 12,
+      "kontrast": 6.96,
+      "esik": 4.5,
+      "gecti": true
+    },
+    "hata": {
+      "metin": "Miktar sıfırdan büyük bir tam sayı olmal",
+      "renk": "rgb(251, 113, 133)",
+      "arkaPlan": "rgb(15, 23, 42)",
+      "fontPx": 12,
+      "kontrast": 6.63,
+      "esik": 4.5,
+      "gecti": true
+    },
+    "slotlar": [
+      18,
+      18,
+      18,
+      18
+    ],
+    "panelYuksekligi": 726
+  },
+  "slotFarki": [
+    0,
+    0,
+    0,
+    0
+  ],
+  "panelYuksekligiFarkiPx": 0
+}

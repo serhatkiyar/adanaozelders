@@ -170,7 +170,7 @@ function temelSunucu() {
 
 async function formuAc() {
   fireEvent.click(await screen.findByRole("button", { name: "Yeni ürün" }));
-  await screen.findByPlaceholderText("Ürün adı");
+  await screen.findByLabelText("Ürün adı");
   await screen.findByRole("option", { name: "Kalemler" });
 }
 
@@ -185,7 +185,7 @@ describe("K-1 · kategori varsayılanı KDV alanını ön-doldurur", () => {
     sayfa(ROUTES.adminStoreProducts);
     await formuAc();
     expect(kdvAlani().value).toBe("");
-    fireEvent.change(screen.getByLabelText("Kategori"), { target: { value: "31" } });
+    fireEvent.change(screen.getByLabelText(/^Kategori/), { target: { value: "31" } });
     await waitFor(() => expect(kdvAlani().value).toBe(TEST_YUZDE));
   });
 });
@@ -197,7 +197,7 @@ describe("K-2 · elle yazılan oran ezilmez", () => {
     sayfa(ROUTES.adminStoreProducts);
     await formuAc();
     fireEvent.change(kdvAlani(), { target: { value: TEST_ORAN_ELLE } });
-    fireEvent.change(screen.getByLabelText("Kategori"), { target: { value: "31" } });
+    fireEvent.change(screen.getByLabelText(/^Kategori/), { target: { value: "31" } });
     // Ön-doldurma çalışsaydı TEST_YUZDE olurdu; elle değer korunmalı.
     await new Promise((r) => setTimeout(r, 50));
     expect(kdvAlani().value).toBe(TEST_ORAN_ELLE);
@@ -211,9 +211,9 @@ describe("K-3 · ürün seviyesinde ezme", () => {
     sunucu("/store/admin/products", { status: 201, data: { id: 990 } }, "post");
     sayfa(ROUTES.adminStoreProducts);
     await formuAc();
-    fireEvent.change(screen.getByPlaceholderText("Ürün adı"), { target: { value: "Kalem X" } });
-    fireEvent.change(screen.getByPlaceholderText("Fiyat (TL)"), { target: { value: "10" } });
-    fireEvent.change(screen.getByLabelText("Kategori"), { target: { value: "31" } });
+    fireEvent.change(screen.getByLabelText("Ürün adı"), { target: { value: "Kalem X" } });
+    fireEvent.change(screen.getByLabelText("Fiyat (TL)"), { target: { value: "10" } });
+    fireEvent.change(screen.getByLabelText(/^Kategori/), { target: { value: "31" } });
     await waitFor(() => expect(kdvAlani().value).toBe(TEST_YUZDE));
     fireEvent.change(kdvAlani(), { target: { value: TEST_ORAN_ELLE } });
     fireEvent.click(screen.getByRole("button", { name: "Ürünü ekle" }));
@@ -234,7 +234,7 @@ describe("K-4 · varsayılansız kategoride bugünkü davranış birebir", () =>
     temelSunucu();
     sayfa(ROUTES.adminStoreProducts);
     await formuAc();
-    fireEvent.change(screen.getByLabelText("Kategori"), { target: { value: "40" } });
+    fireEvent.change(screen.getByLabelText(/^Kategori/), { target: { value: "40" } });
     await new Promise((r) => setTimeout(r, 50));
     expect(kdvAlani().value).toBe("");
   });

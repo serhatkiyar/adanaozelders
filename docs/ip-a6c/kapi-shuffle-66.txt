@@ -1,0 +1,8 @@
+    at Controller (file:///C:/Users/kiyar/Desktop/adana-medusa-ui/frontend/node_modules/react-hook-form/dist/index.esm.mjs:654:37)
+    at Controller (file:///C:/Users/kiyar/Desktop/adana-medusa-ui/frontend/node_modules/react-hook-form/dist/index.esm.mjs:654:37)
+    at Controller (file:///C:/Users/kiyar/Desktop/adana-medusa-ui/frontend/node_modules/react-hook-form/dist/index.esm.mjs:654:37)
+ Test Files  122 passed (122)
+      Tests  1226 passed (1226)
+   Start at  02:16:50
+   Duration  55.51s (transform 33.59s, setup 5.63s, collect 291.17s, tests 165.20s, environment 161.24s, prepare 16.27s)
+EXIT=0

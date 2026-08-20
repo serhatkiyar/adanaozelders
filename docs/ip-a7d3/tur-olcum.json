@@ -1,0 +1,413 @@
+{
+  "olculdu": "2026-08-20T11:57:04.741Z",
+  "tamTur": {
+    "sayim-detayi": {
+      "acik-1280": {
+        "govdeGenisligi": 1280,
+        "yatayTasma": false,
+        "tasmaPiksel": 0,
+        "icIceButon": 0,
+        "dugmeSayisi": 6,
+        "enKucukDokunmaHedefi": 36,
+        "hamButon": 0,
+        "tema": "acik"
+      },
+      "acik-380": {
+        "govdeGenisligi": 380,
+        "yatayTasma": false,
+        "tasmaPiksel": 0,
+        "icIceButon": 0,
+        "dugmeSayisi": 6,
+        "enKucukDokunmaHedefi": 36,
+        "hamButon": 0,
+        "tema": "acik"
+      },
+      "koyu-1280": {
+        "govdeGenisligi": 1280,
+        "yatayTasma": false,
+        "tasmaPiksel": 0,
+        "icIceButon": 0,
+        "dugmeSayisi": 6,
+        "enKucukDokunmaHedefi": 36,
+        "hamButon": 0,
+        "tema": "koyu"
+      },
+      "koyu-380": {
+        "govdeGenisligi": 380,
+        "yatayTasma": false,
+        "tasmaPiksel": 0,
+        "icIceButon": 0,
+        "dugmeSayisi": 6,
+        "enKucukDokunmaHedefi": 36,
+        "hamButon": 0,
+        "tema": "koyu"
+      }
+    },
+    "tur-detayi": {
+      "acik-1280": {
+        "govdeGenisligi": 1280,
+        "yatayTasma": false,
+        "tasmaPiksel": 0,
+        "icIceButon": 0,
+        "dugmeSayisi": 13,
+        "enKucukDokunmaHedefi": 36,
+        "hamButon": 0,
+        "tema": "acik"
+      },
+      "acik-380": {
+        "govdeGenisligi": 380,
+        "yatayTasma": false,
+        "tasmaPiksel": 0,
+        "icIceButon": 0,
+        "dugmeSayisi": 13,
+        "enKucukDokunmaHedefi": 36,
+        "hamButon": 0,
+        "tema": "acik"
+      },
+      "koyu-1280": {
+        "govdeGenisligi": 1280,
+        "yatayTasma": false,
+        "tasmaPiksel": 0,
+        "icIceButon": 0,
+        "dugmeSayisi": 13,
+        "enKucukDokunmaHedefi": 36,
+        "hamButon": 0,
+        "tema": "koyu"
+      },
+      "koyu-380": {
+        "govdeGenisligi": 380,
+        "yatayTasma": false,
+        "tasmaPiksel": 0,
+        "icIceButon": 0,
+        "dugmeSayisi": 13,
+        "enKucukDokunmaHedefi": 36,
+        "hamButon": 0,
+        "tema": "koyu"
+      }
+    },
+    "operator-kutuphanem": {
+      "acik-1280": {
+        "govdeGenisligi": 1280,
+        "yatayTasma": false,
+        "tasmaPiksel": 0,
+        "icIceButon": 0,
+        "dugmeSayisi": 11,
+        "enKucukDokunmaHedefi": 28,
+        "hamButon": 7,
+        "tema": "acik"
+      },
+      "acik-380": {
+        "govdeGenisligi": 380,
+        "yatayTasma": false,
+        "tasmaPiksel": 0,
+        "icIceButon": 0,
+        "dugmeSayisi": 11,
+        "enKucukDokunmaHedefi": 28,
+        "hamButon": 7,
+        "tema": "acik"
+      },
+      "koyu-1280": {
+        "govdeGenisligi": 1280,
+        "yatayTasma": false,
+        "tasmaPiksel": 0,
+        "icIceButon": 0,
+        "dugmeSayisi": 11,
+        "enKucukDokunmaHedefi": 28,
+        "hamButon": 7,
+        "tema": "koyu"
+      },
+      "koyu-380": {
+        "govdeGenisligi": 380,
+        "yatayTasma": false,
+        "tasmaPiksel": 0,
+        "icIceButon": 0,
+        "dugmeSayisi": 11,
+        "enKucukDokunmaHedefi": 28,
+        "hamButon": 7,
+        "tema": "koyu"
+      }
+    }
+  },
+  "kisaTur": {
+    "sayim-listesi": {
+      "govdeGenisligi": 380,
+      "yatayTasma": false,
+      "tasmaPiksel": 0,
+      "icIceButon": 0,
+      "dugmeSayisi": 4,
+      "enKucukDokunmaHedefi": 36,
+      "hamButon": 1,
+      "dugmeler": [
+        "Yeni sayım",
+        "SAY-2027-0007 — sayım oturumu",
+        "Önceki",
+        "Sonraki"
+      ]
+    },
+    "sikayetler": {
+      "govdeGenisligi": 380,
+      "yatayTasma": false,
+      "tasmaPiksel": 0,
+      "icIceButon": 0,
+      "dugmeSayisi": 8,
+      "enKucukDokunmaHedefi": 36,
+      "hamButon": 0,
+      "dugmeler": [
+        "Çöz",
+        "Reddet",
+        "Çöz",
+        "Reddet",
+        "Çöz",
+        "Reddet",
+        "Çöz",
+        "Reddet",
+        "Çöz",
+        "Reddet",
+        "Çöz",
+        "Reddet",
+        "Önceki",
+        "Sonraki"
+      ]
+    },
+    "istasyon": {
+      "govdeGenisligi": 380,
+      "yatayTasma": false,
+      "tasmaPiksel": 0,
+      "icIceButon": 0,
+      "dugmeSayisi": 5,
+      "enKucukDokunmaHedefi": 36,
+      "hamButon": 0,
+      "dugmeler": [
+        "Paketten vazgeç",
+        "Okut",
+        "Geri al",
+        "Elle doğrula",
+        "Paketi tamamla"
+      ]
+    },
+    "odeme": {
+      "govdeGenisligi": 380,
+      "yatayTasma": false,
+      "tasmaPiksel": 0,
+      "icIceButon": 0,
+      "dugmeSayisi": 1,
+      "enKucukDokunmaHedefi": 40,
+      "hamButon": 0,
+      "dugmeler": [
+        "Kaydet & Doğrula"
+      ]
+    },
+    "admin-home": {
+      "govdeGenisligi": 380,
+      "yatayTasma": false,
+      "tasmaPiksel": 0,
+      "icIceButon": 0,
+      "dugmeSayisi": 3,
+      "enKucukDokunmaHedefi": 36,
+      "hamButon": 0,
+      "dugmeler": [
+        "Onayla",
+        "Reddet",
+        "Sil"
+      ]
+    },
+    "operator-panel": {
+      "govdeGenisligi": 380,
+      "yatayTasma": false,
+      "tasmaPiksel": 0,
+      "icIceButon": 0,
+      "dugmeSayisi": 3,
+      "enKucukDokunmaHedefi": 36,
+      "hamButon": 3,
+      "dugmeler": [
+        "Bildirimler",
+        "Hesap menüsü",
+        "Bildirimler",
+        "Menüyü aç/kapat",
+        "Şifre değiştir"
+      ]
+    },
+    "operator-oturumlar": {
+      "govdeGenisligi": 380,
+      "yatayTasma": false,
+      "tasmaPiksel": 0,
+      "icIceButon": 0,
+      "dugmeSayisi": 5,
+      "enKucukDokunmaHedefi": 36,
+      "hamButon": 3,
+      "dugmeler": [
+        "Bildirimler",
+        "Hesap menüsü",
+        "Bildirimler",
+        "Menüyü aç/kapat",
+        "Kamera ile QR tara",
+        "Doğrula",
+        "+ Oturum"
+      ]
+    }
+  },
+  "saatSemasi": [
+    {
+      "tip": "time",
+      "ad": "Pazartesi açılış saati",
+      "colorScheme": "dark"
+    },
+    {
+      "tip": "time",
+      "ad": "Pazartesi kapanış saati",
+      "colorScheme": "dark"
+    },
+    {
+      "tip": "time",
+      "ad": "Salı açılış saati",
+      "colorScheme": "dark"
+    },
+    {
+      "tip": "time",
+      "ad": "Salı kapanış saati",
+      "colorScheme": "dark"
+    },
+    {
+      "tip": "time",
+      "ad": "Çarşamba açılış saati",
+      "colorScheme": "dark"
+    },
+    {
+      "tip": "time",
+      "ad": "Çarşamba kapanış saati",
+      "colorScheme": "dark"
+    },
+    {
+      "tip": "time",
+      "ad": "Perşembe açılış saati",
+      "colorScheme": "dark"
+    },
+    {
+      "tip": "time",
+      "ad": "Perşembe kapanış saati",
+      "colorScheme": "dark"
+    },
+    {
+      "tip": "time",
+      "ad": "Cuma açılış saati",
+      "colorScheme": "dark"
+    },
+    {
+      "tip": "time",
+      "ad": "Cuma kapanış saati",
+      "colorScheme": "dark"
+    },
+    {
+      "tip": "time",
+      "ad": "Cumartesi açılış saati",
+      "colorScheme": "dark"
+    },
+    {
+      "tip": "time",
+      "ad": "Cumartesi kapanış saati",
+      "colorScheme": "dark"
+    },
+    {
+      "tip": "time",
+      "ad": "Pazar açılış saati",
+      "colorScheme": "dark"
+    },
+    {
+      "tip": "time",
+      "ad": "Pazar kapanış saati",
+      "colorScheme": "dark"
+    }
+  ],
+  "sayimSemasi": [
+    {
+      "tip": "number",
+      "ad": "Sayılan miktar — Satılabilir (ürün #101)",
+      "colorScheme": "dark"
+    },
+    {
+      "tip": "number",
+      "ad": "Sayılan miktar — Hasarlı (ürün #102)",
+      "colorScheme": "dark"
+    },
+    {
+      "tip": "number",
+      "ad": "Sayılan miktar — Satılabilir (ürün #103)",
+      "colorScheme": "dark"
+    }
+  ],
+  "odakTuzagi": {
+    "acildi": {
+      "baslik": "Yeni sayım oturumu"
+    },
+    "acanOdakliydi": true,
+    "tabDisinaCikti": false,
+    "shiftTabPencereIcinde": true,
+    "escKapatti": true,
+    "odakIadesi": {
+      "acanaDondu": true,
+      "etiket": "button"
+    }
+  },
+  "kirliYazma": {
+    "yazildi": "Not"
+  },
+  "kirliKapatma": {
+    "onaySoruldu": true,
+    "editorAyakta": true
+  },
+  "gerekceYazma": {
+    "yazildi": "İptal gerekçesi"
+  },
+  "gerekceKapatma": {
+    "onaySoruldu": true
+  },
+  "gonderim": {
+    "acik": {
+      "odak": {
+        "etiket": "input",
+        "tip": "number",
+        "ad": "Sayılan miktar — Satılabilir (ürün #101)",
+        "ariaInvalid": "true",
+        "pencereIcinde": false
+      },
+      "hata": {
+        "metin": "Miktar tam sayı olmalı.",
+        "renk": "rgb(190, 18, 60)",
+        "fontPx": 12,
+        "kontrast": 6.29,
+        "esik": 4.5,
+        "gecti": true
+      }
+    },
+    "koyu": {
+      "odak": {
+        "etiket": "input",
+        "tip": "number",
+        "ad": "Sayılan miktar — Satılabilir (ürün #101)",
+        "ariaInvalid": "true",
+        "pencereIcinde": false
+      },
+      "hata": {
+        "metin": "Miktar tam sayı olmalı.",
+        "renk": "rgb(251, 113, 133)",
+        "fontPx": 12,
+        "kontrast": 6.63,
+        "esik": 4.5,
+        "gecti": true
+      }
+    }
+  },
+  "siralama": {
+    "okSayisi": 6,
+    "adlar": [
+      "Durak 1 yukarı taşı",
+      "Durak 1 aşağı taşı",
+      "Durak 2 yukarı taşı",
+      "Durak 2 aşağı taşı",
+      "Durak 3 yukarı taşı",
+      "Durak 3 aşağı taşı"
+    ],
+    "enKucukHedef": 36,
+    "surukleneKapSayisi": 3
+  }
+}

@@ -8,10 +8,10 @@
 //
 // Depoya kabul `packing.manage` ister: okutma yapan istasyon operatörü kendi
 // başına "geldi" diyemez (görev ayrılığı; kesin karar backend'de).
-import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
 
 import { Badge, Button, EmptyState, ErrorState, PageSkeleton, ReasonDialog } from "@/components/admin/ui";
+import { useDuzenlemeYuzeyi } from "@/components/admin/ui2/duzenlemeYuzeyi";
 import { useReturnInPackage, useReturnQueue } from "@/hooks/usePacking";
 import { getErrorMessage } from "@/lib/errors";
 import { toast } from "@/store/toastStore";
@@ -42,7 +42,10 @@ export default function ReturnQueuePage() {
   // biriktiği yerdir, yani sınırsız büyümeye en yatkın olanı.
   const query = useReturnQueue({ limit: LIMIT, offset: (sayfa - 1) * LIMIT }, canView);
   const returnIn = useReturnInPackage();
-  const [kabulSatiri, setKabulSatiri] = useState<ReturnQueueRow | null>(null);
+  // Pencere durumu ekranda YASAMAZ (IP-A4 sozlesmesi): kabul edilecek satir
+  // yuzeyin HEDEFIDIR.
+  const kabul = useDuzenlemeYuzeyi<ReturnQueueRow, void>();
+  const kabulSatiri = kabul.kayit;
 
   const satirlar = query.data?.items ?? [];
   // `total` SÜZÜLMÜŞ toplamdır, sayfanın uzunluğu değil: rozet "N kutu" derken
@@ -106,7 +109,7 @@ export default function ReturnQueuePage() {
                 {satir.waiting_days} gündür araçta
               </Badge>
               {canManage && (
-                <Button size="sm" variant="secondary" onClick={() => setKabulSatiri(satir)}>
+                <Button size="sm" variant="secondary" onClick={() => kabul.ac(satir)}>
                   Depoya al
                 </Button>
               )}
@@ -142,7 +145,7 @@ export default function ReturnQueuePage() {
       )}
 
       <ReasonDialog
-        open={kabulSatiri != null}
+        open={kabul.acik}
         title="Kutuyu depoya al"
         description={
           kabulSatiri
@@ -155,7 +158,7 @@ export default function ReturnQueuePage() {
         confirmLabel="Depoya alındı"
         cancelLabel="İptal"
         isPending={returnIn.isPending}
-        onClose={() => setKabulSatiri(null)}
+        onClose={kabul.kapat}
         onConfirm={(note) => {
           if (!kabulSatiri) return;
           returnIn.mutate(
@@ -167,11 +170,11 @@ export default function ReturnQueuePage() {
             },
             {
               onSuccess: () => {
-                setKabulSatiri(null);
+                kabul.kapat();
                 toast.success("Kutu depoya alındı.");
               },
               onError: (e) => {
-                setKabulSatiri(null);
+                kabul.kapat();
                 toast.error(getErrorMessage(e, "Kutu depoya alınamadı."));
               },
             },

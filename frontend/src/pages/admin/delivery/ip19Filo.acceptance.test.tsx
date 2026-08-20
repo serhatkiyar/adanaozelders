@@ -20,6 +20,16 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
+// ── Ağır modüller BİLE BİLE statik import ediliyor (İP-A7d3 · Görev 5) ──
+//
+// A7d3'te yalnız ortak demet (`ui2/duzenlemeYuzeyi`) statikti; EKRANLAR hâlâ
+// test gövdelerinin içinde `await import(...)` ile yükleniyordu ve maliyeti
+// ilk testin bütçesinden ödeniyordu (D-13 o yüzden 9 sn'lik bütçeyi aşmıştı).
+// İP-A7d5'te ekranlar da buraya alındı: maliyet TOPLAMA evresine geçti.
+import "@/components/admin/ui2/duzenlemeYuzeyi";
+import DeliveryBoardPage from "./DeliveryBoardPage";
+import DeliveryTodayPage from "./DeliveryTodayPage";
+
 import { apiClient } from "@/api/axios";
 import { useAuthStore } from "@/store/authStore";
 
@@ -40,6 +50,20 @@ const ARACLAR = [
   { id: 7, code: "LADA", label: "Lada", max_stops: 3, is_active: true, sort_order: 0 },
   { id: 9, code: "COROLLA", label: "Corolla", max_stops: 10, is_active: true, sort_order: 1 },
   { id: 11, code: "DOBLO", label: "Doblo", max_stops: 20, is_active: true, sort_order: 2 },
+];
+
+/**
+ * Istisna kuyrugu (IP-A7d4): eskiden bu uc `{}` donuyordu, `Array.isArray`
+ * false kaliyordu ve kuyruk HIC render edilmiyordu — yani o penceresi olan
+ * dal olculemez durumdaydi.
+ */
+const ISTISNA_KUYRUGU = [
+  {
+    order_id: 909,
+    address: "Seyhan / F Sok.",
+    attempts: 3,
+    last_failure_reason: "Adreste bulunamadi",
+  },
 ];
 
 const TAHTA = {
@@ -78,8 +102,10 @@ function kur() {
           ? JSON.parse(cfg.data)
           : ((cfg.data as Record<string, unknown> | undefined) ?? null),
     });
-    const veri = url.includes("/delivery/vehicles")
-      ? ARACLAR
+    const veri = url.includes("/delivery/attention-orders")
+      ? ISTISNA_KUYRUGU
+      : url.includes("/delivery/vehicles")
+        ? ARACLAR
       : url.includes("/delivery/board")
         ? TAHTA
         : url.includes("/delivery/eligible-orders")
@@ -138,7 +164,6 @@ function bas(Bilesen: React.ComponentType) {
 
 describe("D-13 — araç seçenekleri sunucudan gelir", () => {
   it("tur kurma formundaki araç listesi sabit iki seçenek DEĞİL", async () => {
-    const { default: DeliveryTodayPage } = await import("./DeliveryTodayPage");
     bas(DeliveryTodayPage);
 
     // İstek GERÇEKTEN atılmalı — "seçenek var" tek başına kanıt değil.
@@ -156,7 +181,6 @@ describe("D-13 — araç seçenekleri sunucudan gelir", () => {
   });
 
   it("'Lada ve Corolla' gibi sabit metin ekranda YOK", async () => {
-    const { default: DeliveryTodayPage } = await import("./DeliveryTodayPage");
     const { container } = bas(DeliveryTodayPage);
     await waitFor(() =>
       expect(istekler.some((i) => i.url.includes("/delivery/vehicles"))).toBe(true)
@@ -169,8 +193,7 @@ describe("D-13 — araç seçenekleri sunucudan gelir", () => {
 
 describe("D-11 — gün tahtası sürükle-bırak", () => {
   it("havuzdan araca bırakma POST /runs/{id}/stops isteğine dönüşür", async () => {
-    const { default: DeliveryBoard } = await import("./DeliveryBoardPage");
-    bas(DeliveryBoard);
+    bas(DeliveryBoardPage);
 
     const kart = await screen.findByTestId("havuz-siparis-101");
     const hedef = await screen.findByTestId("tur-55");
@@ -192,8 +215,7 @@ describe("D-11 — gün tahtası sürükle-bırak", () => {
 
 describe("D-12 — kapasite ihlali uyarısı", () => {
   it("max_stops aşılınca uyarı DOM'da görünür", async () => {
-    const { default: DeliveryBoard } = await import("./DeliveryBoardPage");
-    bas(DeliveryBoard);
+    bas(DeliveryBoardPage);
 
     // Araç 7'nin max_stops'u 3, turunda zaten 3 durak var → dördüncü aşar.
     const kart = await screen.findByTestId("havuz-siparis-101");
@@ -204,8 +226,7 @@ describe("D-12 — kapasite ihlali uyarısı", () => {
   });
 
   it("uyarıya rağmen işlem ENGELLENMEZ — karar operatörün", async () => {
-    const { default: DeliveryBoard } = await import("./DeliveryBoardPage");
-    bas(DeliveryBoard);
+    bas(DeliveryBoardPage);
 
     const kart = await screen.findByTestId("havuz-siparis-101");
     fireEvent.dragStart(kart);
@@ -221,9 +242,81 @@ describe("D-12 — kapasite ihlali uyarısı", () => {
 
   // DOLULUK NÖBETÇİSİ: kapasitesi bol araçta uyarı ÇIKMAMALI.
   it("NÖBETÇİ: kapasite yeterliyse uyarı yok", async () => {
-    const { default: DeliveryBoard } = await import("./DeliveryBoardPage");
-    bas(DeliveryBoard);
+    bas(DeliveryBoardPage);
     await screen.findByTestId("tur-55");
     expect(screen.queryByTestId("kapasite-uyarisi-9")).toBeNull();
+  });
+});
+
+/* ══════════════ İP-A7d4 · göç dalgası 4: iki dağıtım ekranının pencereleri ══════════════ */
+
+/**
+ * `DeliveryTodayPage` (iki bağ: "yeniden dene" + "günü optimize et") ve
+ * `DeliveryBoardPage` (bir bağ) pencere durumunu ekranda `useState` ile
+ * tutuyordu; üç bağın üçü de `useDuzenlemeYuzeyi`ye geçti.
+ *
+ * İkisinin de penceresi ONAY penceresidir — içinde yazılan bir şey yok, bekçi
+ * orada anlamsız bir soru üretirdi (A7d3'ün `ConfirmDialog` kararı). Bu yüzden
+ * zorunlu ikilinin birinci maddesi burada "pencere ortak yüzeyden geliyor mu"
+ * biçimini alır (A7d3 · T-3'ün aynısı).
+ */
+describe("İP-A7d4 · dağıtım pencereleri ortak düzenleme yüzeyinde", () => {
+  /**
+   * "Günü Optimize Et" konumlu sipariş YOKKEN kapalıdır (bu bir gönder
+   * düğmesi değil, ön koşulu olmayan bir işlem). Düğme ilk render'da
+   * kapalı doğar ve veri gelince açılır; beklemeden tıklamak sessizce
+   * hiçbir şey yapmaz ve test "pencere açılmadı" derdi.
+   */
+  async function optimizeDugmesi() {
+    const dugme = await screen.findByRole("button", { name: /Günü Optimize Et/ });
+    await waitFor(() => expect((dugme as HTMLButtonElement).disabled).toBe(false));
+    return dugme;
+  }
+
+  it("BUGÜN: 'Günü Optimize Et' etiketli pencere açar, ESC kapatır, istek GİTMEZ", async () => {
+    bas(DeliveryTodayPage);
+    fireEvent.click(await optimizeDugmesi());
+
+    const p = await screen.findByRole("dialog");
+    expect(p.getAttribute("aria-modal")).toBe("true");
+    expect(p.textContent).toContain("Turları kur");
+
+    fireEvent.keyDown(document, { key: "Escape" });
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(istekler.filter((i) => i.url.includes("dispatch-day"))).toEqual([]);
+  });
+
+  it("BUGÜN: onaylanınca dispatch isteği GERÇEKTEN gider", async () => {
+    bas(DeliveryTodayPage);
+    fireEvent.click(await optimizeDugmesi());
+    fireEvent.click(
+      within(await screen.findByRole("dialog")).getByRole("button", { name: "Turları kur" })
+    );
+    await waitFor(() =>
+      expect(istekler.some((i) => i.url.includes("dispatch-day"))).toBe(true)
+    );
+  });
+
+  it("BUGÜN: istisna kuyruğunun penceresi HEDEFİ taşır (yüzeyin `kayit`i)", async () => {
+    // Eskiden ekranda `retrying` useState'i vardı ve pencere metnini o
+    // besliyordu; artık hedef yüzeyin kendisinde yaşıyor.
+    bas(DeliveryTodayPage);
+    fireEvent.click(await screen.findByRole("button", { name: "Yeniden Dene" }));
+    const p = await screen.findByRole("dialog");
+    expect(p.textContent).toContain("#909");
+
+    fireEvent.keyDown(document, { key: "Escape" });
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  });
+
+  it("TAHTA: 'Günü Optimize Et' etiketli pencere açar ve ESC kapatır", async () => {
+    bas(DeliveryBoardPage);
+    fireEvent.click(await optimizeDugmesi());
+
+    const p = await screen.findByRole("dialog");
+    expect(p.getAttribute("aria-modal")).toBe("true");
+
+    fireEvent.keyDown(document, { key: "Escape" });
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   });
 });

@@ -109,3 +109,23 @@ afterEach(() => {
   localStorage.clear();
   sessionStorage.clear();
 });
+
+// ## RTL asenkron bekleme bütçesi ARTIK GLOBAL DEĞİL (İP-A6b · Görev 5 · BULGU-10)
+//
+// İP-A4'te buraya `configure({ asyncUtilTimeout: 4000 })` konmuştu: RTL'in
+// varsayılan 1000 ms'lik `findBy*`/`waitFor` bütçesi (Vitest'in `testTimeout`u
+// bu bekleyişi hiç ilgilendirmez) yük altında iki testte aşılıyordu.
+//
+// Teşhis doğruydu ama **ilaç 117 dosyanın hepsine veriliyordu**: gerçek bir
+// performans regresyonu her testte 4 saniye boyunca gizlenebilirdi. Denetim
+// ölçtü — değer 1000'e döndürülünce projenin 1183 testinin hiçbiri düşmedi.
+//
+// Bütçe artık yalnız gerçekten yük-bağımlı olan İKİ dosyada, çağrı yerinde
+// duruyor (gerekçesi orada yazılı):
+//
+//   - `src/pages/ticketsPaymentGate.test.tsx`
+//   - `src/pages/store/storeVariants.acceptance.test.tsx`
+//
+// İkisi de İKİ ağ sorgusu çözülene kadar bekleyen `findAllBy*` çağrılarıdır.
+// Başka bir dosya düşerse çare global ayarı geri getirmek DEĞİL, o çağrıya
+// ölçülmüş bir bütçe yazmaktır: hangi test, hangi sorgu, ölçülen gerçek süre.

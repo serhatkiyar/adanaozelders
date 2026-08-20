@@ -1,3 +1,5 @@
+import { z } from "zod";
+
 // F29 envanter (sayım + hasarlı stok) — sunum tarafı saf mantık.
 //
 // Kurallar üç ekranda birden kullanılıyor: sayım listesi, sayım detayı ve
@@ -437,41 +439,137 @@ export interface DamageFormResult {
   payload?: DamagePayload;
 }
 
+/**
+ * Hasar formunun ALAN BAZLI doğrulama şeması (İP-A2).
+ *
+ * Tek doğruluk kaynağıdır: hem `DamageDialog` (alan altına yazılan mesajlar)
+ * hem `validateDamageForm` (tek metne indirgenmiş eski sözleşme) bunu kullanır.
+ * İki ayrı kural listesi tutulsaydı biri değişip diğeri kalır ve arayüz ile
+ * gövde farklı şeyleri geçerli sayardı.
+ *
+ * Mesajlar burada AÇIKÇA Türkçe yazılır; zod'un yerel haritasına
+ * güvenilmez — bu modül arayüz katmanı yüklenmeden de (test, sunucu tarafı
+ * yardımcı) çağrılabilir.
+ *
+ * İmha onay kutusu BİLİNÇLİ olarak şemada değildir: o bir doğrulama hatası
+ * değil, bir kapıdır (işaretlenene dek gönder düğmesi kapalı kalır) ve
+ * "Onaylayın" diye alan hatası basmak yanlış olurdu.
+ */
+export interface DamageFormValues {
+  urunId: number | null;
+  // `neden`/`kova` DAR birer birleşim değil düz metindir: form kontrolünün
+  // ham değeri budur ("" = seçilmedi) ve `react-hook-form` çözümleyicisinin
+  // giriş/çıkış tipleri şemayla birebir eşleşmek zorundadır. Daraltma
+  // `damagePayload` içinde, doğrulamadan SONRA yapılır.
+  miktar: string;
+  neden: string;
+  aciklama: string;
+  kova: string;
+}
+
+export function damageFormSchema(kind: DamageKind) {
+  return z
+    .object({
+      urunId: z.number().nullable(),
+      miktar: z.string(),
+      neden: z.string(),
+      aciklama: z.string(),
+      kova: z.string(),
+    })
+    .superRefine((v, ctx) => {
+      if (v.urunId === null || !Number.isInteger(v.urunId) || v.urunId <= 0) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["urunId"],
+          message: "Ürün seçilmeden işlem yapılamaz.",
+        });
+      }
+      const adet = Number(v.miktar);
+      if (!v.miktar.trim() || !Number.isInteger(adet) || adet <= 0) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["miktar"],
+          message: "Miktar sıfırdan büyük bir tam sayı olmalı.",
+        });
+      }
+      if (!v.neden) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["neden"],
+          message: "Neden seçmeden işlem yapılamaz.",
+        });
+      }
+      if (
+        requiresDamageNote((v.neden || null) as DamageReason | null) &&
+        !v.aciklama.trim()
+      ) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["aciklama"],
+          message: "“Diğer” nedeninde açıklama zorunlu.",
+        });
+      }
+      if (kind === "SUPPLIER_RETURN" && !v.kova) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["kova"],
+          message: "Tedarikçi iadesinde kaynak kova seçilmeli.",
+        });
+      }
+    });
+}
+
+/** Doğrulanmış form değerlerinden sunucu gövdesi. */
+export function damagePayload(
+  kind: DamageKind,
+  v: DamageFormValues,
+  idempotencyKey: string
+): DamagePayload {
+  const reason = v.neden as DamageReason;
+  const payload: DamagePayload = {
+    product_id: v.urunId as number,
+    kind,
+    qty: Number(v.miktar),
+    reason_code: reason,
+    note: requiresDamageNote(reason) ? v.aciklama.trim() : null,
+    idempotency_key: idempotencyKey,
+  };
+  // `bucket` YALNIZ tedarikçi iadesinde anlamlı; diğerlerinde göndermek
+  // sunucuda `extra=forbid` yüzünden 422 üretmez ama anlamsız veri taşır.
+  if (kind === "SUPPLIER_RETURN" && v.kova) payload.bucket = v.kova as Bucket;
+  return payload;
+}
+
+/**
+ * Eski (tek metinli) sözleşme — artık şemaya DEVREDER.
+ *
+ * Kuralları kendi içinde tekrar etmez; yalnız ilk hatayı metne indirger.
+ * Bu fonksiyonun testleri, şemanın aynı kuralları koruduğunun nöbetçisidir.
+ */
 export function validateDamageForm(input: DamageFormInput): DamageFormResult {
   const { productId, kind, qty, reason, note, bucket, idempotencyKey } = input;
 
-  if (!productId || !Number.isInteger(productId) || productId <= 0) {
-    return { ok: false, error: "Ürün seçilmeden işlem yapılamaz." };
-  }
-  if (!Number.isInteger(qty) || qty <= 0) {
-    return { ok: false, error: "Miktar sıfırdan büyük bir tam sayı olmalı." };
-  }
-  if (!reason) {
-    return { ok: false, error: "Neden seçmeden işlem yapılamaz." };
-  }
-  if (requiresDamageNote(reason) && !note.trim()) {
-    return { ok: false, error: "“Diğer” nedeninde açıklama zorunlu." };
-  }
-  if (kind === "SUPPLIER_RETURN" && !bucket) {
-    return { ok: false, error: "Tedarikçi iadesinde kaynak kova seçilmeli." };
+  const sonuc = damageFormSchema(kind).safeParse({
+    urunId: productId,
+    // `qty` sayıdır, form alanı metin: NaN/Infinity boş metne düşer ve
+    // "miktar geçersiz" dalına girer.
+    miktar: Number.isFinite(qty) ? String(qty) : "",
+    neden: reason ?? "",
+    aciklama: note,
+    kova: bucket ?? "",
+  });
+
+  if (!sonuc.success) {
+    return { ok: false, error: sonuc.error.issues[0].message };
   }
   if (!idempotencyKey) {
     // Anahtarsız gönderim, ağ tekrarında ikinci kez stok düşürebilirdi.
     return { ok: false, error: "İşlem anahtarı üretilemedi; pencereyi kapatıp yeniden açın." };
   }
-
-  const payload: DamagePayload = {
-    product_id: productId,
-    kind,
-    qty,
-    reason_code: reason,
-    note: requiresDamageNote(reason) ? note.trim() : null,
-    idempotency_key: idempotencyKey,
+  return {
+    ok: true,
+    payload: damagePayload(kind, sonuc.data as DamageFormValues, idempotencyKey),
   };
-  // `bucket` YALNIZ tedarikçi iadesinde anlamlı; diğerlerinde göndermek
-  // sunucuda `extra=forbid` yüzünden 422 üretmez ama anlamsız veri taşır.
-  if (kind === "SUPPLIER_RETURN" && bucket) payload.bucket = bucket;
-  return { ok: true, payload };
 }
 
 /**

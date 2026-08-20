@@ -3,12 +3,43 @@
 // Geçmiş satırlarında GEÇMİŞ ZAMAN kullanılır ("Hasara ayrıldı"): buton "yap"
 // der, kayıt "yapıldı" der. Aynı metni ikisinde de kullanmak, liste satırını
 // tıklanabilir bir eylem gibi okutur.
-import { useState } from "react";
+//
+// ## İP-A4 pilotu — göçün deseni burada belirlendi
+//
+// Bu ekran panelde TAMAMI göç eden ilk ekrandır. A6-A7'de 70 ekran bunun
+// kopyası olacak; değişenler ve gerekçeleri:
+//
+//   1. **Pencere durumu ekranda YOK.** Eskiden `useState<DamageKind | null>`
+//      vardı. Artık `useDuzenlemeYuzeyi` (`ui2/duzenlemeYuzeyi.tsx`): ekran
+//      "modal açık mı" bilmez, yüzey açar. Rota tabanlı düzenleme yüzeylerine
+//      (`/…/:id/duzenle`) geçilirse o dosyanın İÇİ değişir, bu ekran değişmez.
+//   2. **Kirli form bekçisi ekranda yazılmaz.** Yüzeyin içinden bağlanır.
+//   3. **Elle yazılmış tablo → ortak `DataTable`**, `renderMobileRow` ile.
+//      Dokunmatik satırlar artık gerçek bir mobil düzen alıyor; ekran ortak
+//      sayfalama/boş durum davranışını miras alıyor.
+//   4. **Filtreler URL'de** (`useUrlDurumu`). Sayfa yenilenince filtre
+//      kaybolmuyor, filtreli görünüm paylaşılabiliyor, geri tuşu çalışıyor.
+//   5. **İki ayrı boş durum**: "filtre eşleşmedi" (çıkışı: filtreyi temizle)
+//      ile "hiç kayıt yok" (çıkışı: ilk kaydı oluştur) aynı ekran değildir.
+//
+// ## Sıralama: bu uçta sunucu tarafında YOK (bilinçli)
+//
+// `GET /inventory/damage-events` yalnız `product_id/limit/offset` alır ve
+// daima `id DESC` döner (`services/inventory_damage.py::list_damage_events`).
+// `DataTable`'ın sıralaması bu yüzden AÇILMADI: sayfalanmış bir listede
+// istemci tarafında sıralamak, kullanıcıya yalnız GÖRÜNEN 25 satırı sıralayıp
+// "sıraladım" demektir — yanlış veriyi doğru gibi gösterir. Sunucu bir
+// `sort` parametresi kazanırsa kolonlara `enableSorting` açılır; borç
+// raporda (İP-A4 → Bilinen sınırlar).
+import { useMemo, useState } from "react";
 
 import { DamageDialog } from "@/components/admin/inventory/DamageDialog";
-import { Badge, Button, EmptyState, ErrorState, PageSkeleton } from "@/components/admin/ui";
+import { DataTable } from "@/components/admin/data-table";
+import { Badge, Button, ErrorState } from "@/components/admin/ui";
+import { useDuzenlemeYuzeyi } from "@/components/admin/ui2/duzenlemeYuzeyi";
 import { useCreateDamageEvent, useDamageEvents } from "@/hooks/useInventory";
 import { useInventoryAccess } from "@/hooks/useInventoryAccess";
+import { useUrlDurumu } from "@/hooks/useUrlDurumu";
 import {
   DAMAGE_KINDS,
   bucketLabel,
@@ -18,9 +49,8 @@ import {
   type DamageKind,
 } from "@/lib/inventory";
 
-import type { DamagePayload } from "@/api/inventory";
-
-const PAGE_SIZE = 25;
+import type { DamageEventOut, DamagePayload } from "@/api/inventory";
+import type { ColumnDef } from "@tanstack/react-table";
 
 const ZAMAN = new Intl.DateTimeFormat("tr-TR", {
   day: "numeric",
@@ -32,22 +62,37 @@ const ZAMAN = new Intl.DateTimeFormat("tr-TR", {
 
 export default function DamageEventsPage() {
   const { canApply } = useInventoryAccess();
-  const [sayfa, setSayfa] = useState(0);
-  const [urunFiltre, setUrunFiltre] = useState("");
-  const [acikIslem, setAcikIslem] = useState<DamageKind | null>(null);
-  const [formHatasi, setFormHatasi] = useState<string | null>(null);
+
+  // Filtre + sayfalama URL'de. `sayfa`/`boyut` filtre SAYILMAZ: 2. sayfada
+  // olmak boş durumun metnini değiştirmemeli.
+  const { degerler, ayarla, temizle, filtreliMi } = useUrlDurumu(
+    { urun: "", sayfa: 1, boyut: 25 },
+    { sayfaAnahtari: "sayfa", filtreDisi: ["sayfa", "boyut"] }
+  );
+  const { urun, sayfa, boyut } = degerler;
+
+  // Pencere durumu EKRANDA DEĞİL: yüzey tutar. "Yeni"nin bağlamı hangi
+  // işlemin açıldığıdır; düzenlenen bir kayıt yoktur (hasar olayı
+  // append-only'dir, güncellenemez).
+  const yuzey = useDuzenlemeYuzeyi<never, DamageKind>();
+
+  // HAM hata (İP-A3a). Metne çevirme işi `DamageDialog`'a taşındı: 422'nin
+  // `loc` bilgisi burada metne indirgenirse alan bilgisi kaybolur ve mesaj
+  // mecburen genel şeride düşer. Diyalog hem alanlara dağıtır hem alana
+  // düşmeyeni envanter sözlüğüyle metne çevirir.
+  const [formHatasi, setFormHatasi] = useState<unknown>(null);
   const [sonuc, setSonuc] = useState<string | null>(null);
 
+  const urunNo = Number(urun) > 0 ? Number(urun) : undefined;
   const sorgu = useDamageEvents({
-    product_id: Number(urunFiltre) > 0 ? Number(urunFiltre) : undefined,
-    limit: PAGE_SIZE,
-    offset: sayfa * PAGE_SIZE,
+    product_id: urunNo,
+    limit: boyut,
+    offset: (sayfa - 1) * boyut,
   });
   const olustur = useCreateDamageEvent();
 
   const olaylar = sorgu.data?.items ?? [];
   const toplam = sorgu.data?.total ?? 0;
-  const sonSayfa = (sayfa + 1) * PAGE_SIZE >= toplam;
 
   const gonder = (payload: DamagePayload) => {
     setFormHatasi(null);
@@ -58,11 +103,89 @@ export default function DamageEventsPage() {
             ? "Bu işlem zaten işlenmişti — aynı anahtarla ikinci kez uygulanmadı, stok değişmedi."
             : `Hasar kaydı alındı: ${damageKindPastLabel(payload.kind)}, ürün #${payload.product_id}, ${payload.qty} adet.`
         );
-        setAcikIslem(null);
+        // KOŞULSUZ kapatma: veri kaydedildi, bekçiye soracak bir şey yok.
+        yuzey.kapat();
       },
-      onError: (e) => setFormHatasi(inventoryErrorMessage(e, "İşlem tamamlanamadı.")),
+      onError: (e) => setFormHatasi(e),
     });
   };
+
+  const kolonlar = useMemo<ColumnDef<DamageEventOut, unknown>[]>(
+    () => [
+      {
+        id: "islem",
+        header: "İşlem",
+        enableSorting: false,
+        cell: ({ row }) => (
+          <span className="font-medium text-slate-900 dark:text-white">
+            {damageKindPastLabel(row.original.kind)}
+          </span>
+        ),
+      },
+      {
+        id: "urun",
+        header: "Ürün",
+        enableSorting: false,
+        cell: ({ row }) => `Ürün #${row.original.product_id}`,
+      },
+      {
+        id: "miktar",
+        header: "Miktar",
+        enableSorting: false,
+        cell: ({ row }) => (
+          <span className="block text-right tabular-nums text-slate-900 dark:text-white">
+            {row.original.qty}
+          </span>
+        ),
+      },
+      {
+        id: "kova",
+        header: "Kaynak kova",
+        enableSorting: false,
+        cell: ({ row }) => (
+          <Badge tone={row.original.source_bucket === "DAMAGED" ? "warning" : "neutral"}>
+            {bucketLabel(row.original.source_bucket)}
+          </Badge>
+        ),
+      },
+      {
+        id: "neden",
+        header: "Neden",
+        enableSorting: false,
+        cell: ({ row }) => (
+          <>
+            {damageReasonLabel(row.original.reason_code)}
+            {row.original.note && (
+              <span className="block text-xs text-slate-500 dark:text-slate-400">
+                {row.original.note}
+              </span>
+            )}
+          </>
+        ),
+      },
+      {
+        id: "yapan",
+        header: "Yapan",
+        enableSorting: false,
+        cell: ({ row }) => (
+          <span className="text-slate-500 dark:text-slate-400">
+            #{row.original.actor_admin_id}
+          </span>
+        ),
+      },
+      {
+        id: "zaman",
+        header: "Zaman",
+        enableSorting: false,
+        cell: ({ row }) => (
+          <span className="tabular-nums text-slate-500 dark:text-slate-400">
+            {ZAMAN.format(new Date(row.original.created_at))}
+          </span>
+        ),
+      },
+    ],
+    []
+  );
 
   return (
     <div className="space-y-4">
@@ -81,7 +204,7 @@ export default function DamageEventsPage() {
                 onClick={() => {
                   setFormHatasi(null);
                   setSonuc(null);
-                  setAcikIslem(k.value);
+                  yuzey.yeniAc(k.value);
                 }}
               >
                 {k.label}
@@ -111,8 +234,8 @@ export default function DamageEventsPage() {
         )}
       </section>
 
-      <section className="rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
-        <div className="flex flex-wrap items-center gap-3 border-b border-slate-100 px-6 py-4 dark:border-slate-800">
+      <section className="space-y-3">
+        <div className="flex flex-wrap items-end gap-3">
           <div className="mr-auto">
             <h2 className="text-base font-bold text-slate-900 dark:text-white">Geçmiş</h2>
             <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
@@ -126,104 +249,88 @@ export default function DamageEventsPage() {
             <input
               className="input w-28"
               inputMode="numeric"
-              value={urunFiltre}
-              onChange={(e) => {
-                setSayfa(0);
-                setUrunFiltre(e.target.value);
-              }}
+              value={urun}
+              /* Serbest metin: her tuş vuruşu ayrı geçmiş girdisi ÜRETMEZ
+                 (`replace`). Ayrık filtreler `push` kalır. */
+              onChange={(e) => ayarla({ urun: e.target.value }, { replace: true })}
             />
           </label>
+          {filtreliMi && (
+            <Button size="sm" variant="secondary" onClick={temizle}>
+              Filtreyi temizle
+            </Button>
+          )}
         </div>
 
         {sorgu.isError ? (
-          <div className="p-6">
-            <ErrorState
-              description={inventoryErrorMessage(sorgu.error, "Hasar olayları yüklenemedi.")}
-              onRetry={() => sorgu.refetch()}
-            />
-          </div>
-        ) : sorgu.isLoading ? (
-          <div className="p-6">
-            <PageSkeleton rows={4} />
-          </div>
-        ) : olaylar.length === 0 ? (
-          <div className="p-6">
-            <EmptyState
-              title="Hasar kaydı yok"
-              description="Kırık, ıslak ya da baskı hatalı ürünleri hasarlı rafa ayırdığınızda burada listelenir."
-            />
-          </div>
+          <ErrorState
+            description={inventoryErrorMessage(sorgu.error, "Hasar olayları yüklenemedi.")}
+            onRetry={() => sorgu.refetch()}
+          />
         ) : (
-          <>
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[52rem] text-left text-sm">
-                <thead>
-                  <tr className="border-b border-slate-100 text-xs uppercase tracking-wide text-slate-500 dark:border-slate-800 dark:text-slate-400">
-                    <th scope="col" className="px-4 py-2 font-semibold">İşlem</th>
-                    <th scope="col" className="px-4 py-2 font-semibold">Ürün</th>
-                    <th scope="col" className="px-4 py-2 text-right font-semibold">Miktar</th>
-                    <th scope="col" className="px-4 py-2 font-semibold">Kaynak kova</th>
-                    <th scope="col" className="px-4 py-2 font-semibold">Neden</th>
-                    <th scope="col" className="px-4 py-2 font-semibold">Yapan</th>
-                    <th scope="col" className="px-4 py-2 font-semibold">Zaman</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                  {olaylar.map((olay) => (
-                    <tr key={olay.id} data-testid={`damage-row-${olay.id}`}>
-                      <td className="px-4 py-2.5 font-medium text-slate-900 dark:text-white">
-                        {damageKindPastLabel(olay.kind)}
-                      </td>
-                      <td className="px-4 py-2.5 text-slate-700 dark:text-slate-300">
-                        Ürün #{olay.product_id}
-                      </td>
-                      <td className="px-4 py-2.5 text-right tabular-nums text-slate-900 dark:text-white">
-                        {olay.qty}
-                      </td>
-                      <td className="px-4 py-2.5">
-                        <Badge tone={olay.source_bucket === "DAMAGED" ? "warning" : "neutral"}>
-                          {bucketLabel(olay.source_bucket)}
-                        </Badge>
-                      </td>
-                      <td className="px-4 py-2.5 text-slate-700 dark:text-slate-300">
-                        {damageReasonLabel(olay.reason_code)}
-                        {olay.note && (
-                          <span className="block text-xs text-slate-500 dark:text-slate-400">
-                            {olay.note}
-                          </span>
-                        )}
-                      </td>
-                      <td className="px-4 py-2.5 text-slate-500 dark:text-slate-400">
-                        #{olay.actor_admin_id}
-                      </td>
-                      <td className="px-4 py-2.5 tabular-nums text-slate-500 dark:text-slate-400">
-                        {ZAMAN.format(new Date(olay.created_at))}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <div className="flex flex-wrap items-center gap-3 border-t border-slate-100 px-6 py-3 text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400">
-              <span className="mr-auto tabular-nums">
-                {sayfa * PAGE_SIZE + 1}–{sayfa * PAGE_SIZE + olaylar.length} / {toplam} kayıt
-              </span>
-              <Button size="sm" variant="secondary" disabled={sayfa === 0} onClick={() => setSayfa(sayfa - 1)}>
-                Önceki
-              </Button>
-              <Button size="sm" variant="secondary" disabled={sonSayfa} onClick={() => setSayfa(sayfa + 1)}>
-                Sonraki
-              </Button>
-            </div>
-          </>
+          <DataTable
+            columns={kolonlar}
+            data={olaylar}
+            getRowId={(olay) => String(olay.id)}
+            isLoading={sorgu.isLoading}
+            /* "Filtre eşleşmedi" ile "hiç kayıt yok" AYRI ekranlardır: ilki
+               bir düzeltme talimatı, ikincisi bir davet. Aynı metni ikisinde
+               de göstermek kullanıcıyı "kayıtlar kayboldu" sanısına sürükler. */
+            emptyTitle={filtreliMi ? "Bu filtreyle kayıt bulunamadı" : "Hasar kaydı yok"}
+            emptyDescription={
+              filtreliMi
+                ? `Ürün #${urun} için hasar kaydı bulunmuyor. Filtreyi temizleyip tüm geçmişe bakabilirsiniz.`
+                : "Kırık, ıslak ya da baskı hatalı ürünleri hasarlı rafa ayırdığınızda burada listelenir."
+            }
+            emptyAction={
+              filtreliMi ? (
+                <Button size="sm" variant="secondary" onClick={temizle}>
+                  Filtreyi temizle
+                </Button>
+              ) : canApply ? (
+                <Button size="sm" onClick={() => yuzey.yeniAc("TRANSFER")}>
+                  İlk kaydı oluştur
+                </Button>
+              ) : undefined
+            }
+            /* Dokunmatik: mobilde satır aksiyonu değil, okunabilir bir kart.
+               Bu desen kod tabanında vardı ama hiçbir ekranda kullanılmıyordu;
+               pilot onu kullanıma sokan ekran. */
+            renderMobileRow={(olay) => (
+              <div>
+                <div className="flex items-baseline justify-between gap-3">
+                  <span className="text-sm font-semibold text-slate-900 dark:text-white">
+                    {damageKindPastLabel(olay.kind)}
+                  </span>
+                  <span className="shrink-0 text-sm tabular-nums text-slate-900 dark:text-white">
+                    {olay.qty} adet
+                  </span>
+                </div>
+                <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                  Ürün #{olay.product_id} · {bucketLabel(olay.source_bucket)} ·{" "}
+                  {damageReasonLabel(olay.reason_code)}
+                </p>
+                {olay.note && (
+                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{olay.note}</p>
+                )}
+                <p className="mt-1 text-xs tabular-nums text-slate-400 dark:text-slate-500">
+                  {ZAMAN.format(new Date(olay.created_at))} · #{olay.actor_admin_id}
+                </p>
+              </div>
+            )}
+            page={sayfa}
+            pageSize={boyut}
+            total={toplam}
+            onPageChange={(p) => ayarla({ sayfa: p })}
+            onPageSizeChange={(b) => ayarla({ boyut: b })}
+          />
         )}
       </section>
 
       <DamageDialog
-        kind={acikIslem}
+        yuzey={yuzey}
         isPending={olustur.isPending}
         error={formHatasi}
-        onClose={() => setAcikIslem(null)}
         onSubmit={gonder}
       />
     </div>

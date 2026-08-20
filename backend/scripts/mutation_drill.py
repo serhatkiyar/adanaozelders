@@ -248,10 +248,30 @@ def _kirilanlar(cikti: str) -> list[str]:
             f"{h} (KURULUM HATASI — test hiç koşmadı)" for h in kurulum_hatasi
         ]
     # vitest: "×" işaretli satırlar
-    return [
+    #
+    # ── İP-A7d4: "×" TEK BAŞINA YETMİYOR ──
+    #
+    # Bir `afterAll`/`beforeAll` kancasında düşen iddia vitest çıktısında "×"
+    # satırı ÜRETMEZ; "Unhandled Error" / "Test Files 1 failed" olarak görünür.
+    # Sürücü bu yüzden gerçek bir kırılmayı "YAKALANMADI" diye raporluyordu
+    # (A7D4-10: parçalanmış kapının kapsam nöbetçisi kancaya taşınmıştı).
+    #
+    # Kanca hatası da bir kırılmadır. `_kirilanlar` artık özet satırlarını da
+    # okur; çağıran taraf ayrıca `returncode`u geçirebilir.
+    carpi = [
         s.strip()[:110].encode("ascii", "replace").decode()
         for s in cikti.splitlines() if "×" in s
     ][:8]
+    if carpi:
+        return carpi
+    ozet = [
+        s.strip()[:110].encode("ascii", "replace").decode()
+        for s in cikti.splitlines()
+        if ("Test Files" in s and "failed" in s)
+        or "Unhandled Error" in s
+        or s.strip().startswith("Errors ")
+    ][:8]
+    return ozet
 
 
 def _yesil_taban(m: Mutasyon) -> tuple[bool, str]:
@@ -265,8 +285,17 @@ def _yesil_taban(m: Mutasyon) -> tuple[bool, str]:
     Referans uygulama `mutation_drill_ip18.py`'de doğmuştu; İP-21'de buraya
     taşındı ki yedi paketin ortak aracı aynı kapıyı taşısın.
     """
+    # ── İP-A7d4: frontend tarafında da ÖLÇÜLÜYOR (eski sınır TB-45) ──
+    #
+    # Eskiden burası koşulsuz `True` dönüyordu, yani zaten kırık bir vitest
+    # dosyası mutasyon altında da kırık kalır ve "YAKALANDI" sayılırdı —
+    # backend tarafında kapatılan kapının frontend tarafı açıktı. Üstelik bu
+    # pakette `_kirilanlar` daha duyarlı hâle getirildi; duyarlılığı taban
+    # kapısı olmadan artırmak yanlış yönde bir risk olurdu.
     if m.taraf != "backend":
-        return True, "(frontend — taban ölçülmedi)"
+        r = _kos("npx vitest run " + " ".join(m.testler), FRONTEND)
+        cikti = r.stdout + r.stderr
+        return r.returncode == 0, f"(frontend vitest returncode={r.returncode})"
     r = _kos([sys.executable, "-m", "pytest", "-q", *m.testler], BACKEND)
     cikti = r.stdout + r.stderr
     return (not _kirilanlar(cikti)) and r.returncode == 0, _sayi_ve_sonuc(cikti)
@@ -1184,6 +1213,486 @@ MUTASYONLAR: list[Mutasyon] = [
         'os.environ.setdefault("PAYMENT_PROVIDER", "fake")',
         '# MUTASYON: setdefault kaldirildi (.env sizabilir)',
         ("tests/integration/test_ip5_provider_guard_pg.py",),
+    ),
+
+    # -- IP-A7d1: goc dalgasi 1 (uc ekran + ortak katman) --------------------
+    #
+    # Bes esigin her biri GERCEK bir JSX mutasyonuyla kirilir; ayrica Gorev 1'in
+    # ortak katman karari ve "her kosullu dal render edilir" kabul kriteri de
+    # birer mutasyonla sinanir. Frontend tarafinda surucunun yesil taban kapisi
+    # olcum yapmiyor ([[TB-45]] notu); taban ayrica elle dogrulandi (tam suite
+    # 1277/1277, alti karisik tohum).
+    Mutasyon(
+        "A7D1-1", "esik: ham <button> geri kondu (182 -> 183)",
+        "frontend/src/pages/admin/AdminBookingsPage.tsx",
+        '<div className="flex gap-2"><Button type="submit">Ara</Button>',
+        '<div className="flex gap-2"><button type="button">Disa aktar</button><Button type="submit">Ara</Button>',
+        ("src/__guards__/uiBaseline.test.ts",), "frontend",
+    ),
+    Mutasyon(
+        "A7D1-2", "esik: adsiz form kontrolu eklendi (37 -> 38)",
+        "frontend/src/pages/admin/AdminAuditLogsPage.tsx",
+        """          <div className="flex gap-2">
+            <Button type="submit">Ara</Button>""",
+        """          <div className="flex gap-2">
+            <input className="input" placeholder="Not" />
+            <Button type="submit">Ara</Button>""",
+        (
+            "src/__guards__/uiBaseline.test.ts",
+            "src/__guards__/calismaZamaniKapisi.test.tsx",
+        ), "frontend",
+    ),
+    Mutasyon(
+        "A7D1-3", "esik: pencere durumu ekrana geri tasindi (28 -> 29)",
+        "frontend/src/pages/admin/AdminBookingsPage.tsx",
+        """  const yuzey = useDuzenlemeYuzeyi<Decision, void>();
+  const karar = yuzey.kayit;""",
+        """  const [karar, setKarar] = useState<Decision | null>(null);
+  const yuzey = {
+    ...useDuzenlemeYuzeyi<Decision, void>(),
+    ac: setKarar,
+    kapat: () => setKarar(null),
+  };""",
+        ("src/__guards__/uiBaseline.test.ts",), "frontend",
+    ),
+    Mutasyon(
+        "A7D1-4", "esik: etiketsiz overlay geri kondu (3 -> 4)",
+        "frontend/src/pages/dashboards/AdminLibraries.tsx",
+        '    <section className="space-y-4">',
+        """    <section className="space-y-4">
+      <div className="fixed inset-0 bg-black/40" />""",
+        ("src/__guards__/uiBaseline.test.ts",), "frontend",
+    ),
+    Mutasyon(
+        "A7D1-5", "esik: bir ekran olcum tabanindan sessizce cikarildi",
+        "frontend/scripts/ui-baseline-sayim.mjs",
+        '  "src/pages/admin/AdminBookingsPage.tsx",',
+        "  // MUTASYON: olcum tabanindan cikarildi",
+        ("src/__guards__/uiBaseline.test.ts",), "frontend",
+    ),
+    Mutasyon(
+        "A7D1-6", "Gorev 1: satir aksiyonu korumasi kaldirildi",
+        "frontend/src/components/admin/data-table/DataTable.tsx",
+        "  return hedef instanceof Element && hedef.closest(ETKILESIMLI) !== null;",
+        "  return false; // MUTASYON: aksiyona basmak satiri da aciyor",
+        ("src/components/admin/data-table/satirAksiyonu.test.tsx",), "frontend",
+    ),
+    Mutasyon(
+        "A7D1-7", "kabul kriteri: kosullu dalda duran alanin adi silindi",
+        "frontend/src/components/LibraryEditorModal.tsx",
+        '                              aria-label={`${WEEKDAY_LABELS[g.weekday]} açılış saati`}',
+        '                              data-mutasyon="ad-yok"',
+        ("src/components/kutuphaneEditoruDalAdlari.acceptance.test.tsx",), "frontend",
+    ),
+    Mutasyon(
+        "A7D1-8", "bos durum ayrimi kaldirildi (filtre eslesmedi = kayit yok)",
+        "frontend/src/pages/admin/AdminBookingsPage.tsx",
+        'emptyTitle={filtreliMi ? "Bu filtreyle rezervasyon bulunamadı" : "Rezervasyon yok"}',
+        'emptyTitle="Rezervasyon yok"',
+        ("src/pages/admin/adminRezervasyonFiltre.acceptance.test.tsx",), "frontend",
+    ),
+    Mutasyon(
+        "A7D1-9", "filtre degisince sayfa sifirlamasi kapatildi",
+        "frontend/src/pages/admin/AdminBookingsPage.tsx",
+        '    sayfaAnahtari: "page",',
+        "    sayfaAnahtari: null,",
+        ("src/pages/admin/adminRezervasyonFiltre.acceptance.test.tsx",), "frontend",
+    ),
+    # ── IP-A7d2 (goc dalgasi 2) ────────────────────────────────────────────
+    #
+    # Dort esik + A7d2'nin uc sozlesme kusuru (SK-3 beyani, SK-4 hic
+    # cagrilmayan bekci, SK-5 satiri acan denetimin adi) + dokunmatik erisim
+    # karari + alan bazli dogrulama.
+    Mutasyon(
+        "A7D2-1", "esik: ham <button> geri kondu (130 -> 131)",
+        "frontend/src/pages/dashboards/AdminExamCatalogs.tsx",
+        '          <Button className="shrink-0" onClick={() => editor.ac(emptyForm())}>',
+        '          <button type="button">Disa aktar</button>\n          <Button className="shrink-0" onClick={() => editor.ac(emptyForm())}>',
+        ("src/__guards__/uiBaseline.test.ts",), "frontend",
+    ),
+    Mutasyon(
+        "A7D2-2", "esik: adsiz form kontrolu eklendi (26 -> 27)",
+        "frontend/src/components/admin/CourierManager.tsx",
+        '        {adding && <KuryeEklemeFormu onBitti={() => setAdding(false)} />}',
+        '        <input className="input" placeholder="Not" />\n        {adding && <KuryeEklemeFormu onBitti={() => setAdding(false)} />}',
+        (
+            "src/__guards__/uiBaseline.test.ts",
+            "src/__guards__/calismaZamaniKapisi.test.tsx",
+        ), "frontend",
+    ),
+    Mutasyon(
+        "A7D2-3", "esik: pencere durumu ekrana geri tasindi (20 -> 21)",
+        "frontend/src/pages/dashboards/AdminExamCatalogs.tsx",
+        """  const silme = useDuzenlemeYuzeyi<CatalogOut, void>();
+  const del = useDeleteCatalog();""",
+        """  const [silinen, setSilinen] = useState<CatalogOut | null>(null);
+  const silme = { ...useDuzenlemeYuzeyi<CatalogOut, void>(), ac: setSilinen };
+  const del = useDeleteCatalog();""",
+        ("src/__guards__/uiBaseline.test.ts",), "frontend",
+        # Ikinci yama SART: sayac bagi PENCEREYE verildiginde sayar. Yalniz
+        # `useState`i geri koymak (pencereye baglamadan) olu koddur ve metrik
+        # onu -dogru sekilde- saymaz.
+        ek=(
+            (
+                "frontend/src/pages/dashboards/AdminExamCatalogs.tsx",
+                "      open={silme.acik}",
+                "      open={silinen !== null}",
+            ),
+        ),
+    ),
+    Mutasyon(
+        "A7D2-4", "esik: etiketsiz overlay geri kondu (0 -> 1)",
+        "frontend/src/pages/admin/AdminPayoutsPage.tsx",
+        '    <div className="space-y-6">',
+        '    <div className="space-y-6">\n      <div className="fixed inset-0 bg-black/40" />',
+        ("src/__guards__/uiBaseline.test.ts",), "frontend",
+    ),
+    Mutasyon(
+        "A7D2-5", "SK-3: beyansiz + saglayicisiz cagri artik patlamiyor",
+        "frontend/src/components/admin/ui2/duzenlemeYuzeyi.tsx",
+        "  if (GELISTIRME && !bildir && !pencereSiz) {",
+        "  if (false && GELISTIRME && !bildir && !pencereSiz) {",
+        ("src/components/admin/ui2/sk3Beyani.test.tsx",), "frontend",
+    ),
+    Mutasyon(
+        "A7D2-6", "SK-3: gercek satir ici cagri yerinden beyan silindi",
+        "frontend/src/components/admin/CourierManager.tsx",
+        """  useYuzeyKirliFormBekcisi({ form, sunucuHatasi: update.error, pencereSiz: true });
+
+  const calistir = form.handleSubmit((deger) => {
+    update.mutate(""",
+        """  useYuzeyKirliFormBekcisi({ form, sunucuHatasi: update.error });
+
+  const calistir = form.handleSubmit((deger) => {
+    update.mutate(""",
+        ("src/components/admin/kuryeYonetimiGoc.acceptance.test.tsx",), "frontend",
+    ),
+    Mutasyon(
+        "A7D2-7", "SK-4: urun formunun kirli form bekcisi kaldirildi",
+        "frontend/src/components/admin/store/ProductForm.tsx",
+        """  useYuzeyKirliFormBekcisi({
+    form,
+    sunucuHatasi: mutation.error,
+    pencereSiz: isEdit ? undefined : true,
+  });""",
+        "  // MUTASYON: bekci hic cagrilmiyor (A7d2 oncesi hal)",
+        ("src/pages/dashboards/adminStoreDalAdlari.acceptance.test.tsx",), "frontend",
+    ),
+    Mutasyon(
+        "A7D2-8", "SK-5: satiri acan denetimin adi geri alindi",
+        "frontend/src/components/admin/data-table/DataTable.tsx",
+        "                  aria-label={satirAdi?.(row.original)}",
+        '                  data-mutasyon="ad-yok"',
+        (
+            "src/pages/admin/packing/paketlerGoc.acceptance.test.tsx",
+            "src/components/admin/data-table/satirAksiyonu.test.tsx",
+        ), "frontend",
+    ),
+    Mutasyon(
+        "A7D2-9", "dokunmatik: satir aksiyonlari yine hover'a baglandi",
+        "frontend/src/components/admin/CourierManager.tsx",
+        '          <div className="flex shrink-0 flex-wrap items-center gap-1.5">',
+        '          <div className="flex shrink-0 flex-wrap items-center gap-1.5 opacity-0 group-hover:opacity-100">',
+        ("src/components/admin/kuryeYonetimiGoc.acceptance.test.tsx",), "frontend",
+    ),
+    Mutasyon(
+        "A7D2-10", "alan bazli dogrulama: koordinat araligi kaldirildi",
+        "frontend/src/pages/admin/delivery/DeliveryVehiclesPage.tsx",
+        """    .refine(
+      (v) => v.trim() === "" || Math.abs(Number(v)) <= sinir,
+      `${etiket} \u00b1${sinir} aral\u0131\u011f\u0131nda olmal\u0131.`
+    );""",
+        "    ;",
+        ("src/pages/admin/delivery/araclarGoc.acceptance.test.tsx",), "frontend",
+    ),
+    Mutasyon(
+        "A7D2-12", "SK-6: color-scheme yine yalniz type=number icin kuruluyor",
+        "frontend/src/components/admin/ui2/form.tsx",
+        '    cocuk.type === "input" && YEREL_WIDGET_TIPLERI.has(String(cocukProps.type));',
+        '    cocuk.type === "input" && cocukProps.type === "number";',
+        ("src/components/admin/ui2/a6cSozlesme.test.tsx",), "frontend",
+    ),
+    Mutasyon(
+        "A7D2-13", "satir ici formda odak ilk hatali alana tasinmiyor",
+        "frontend/src/pages/admin/delivery/DeliveryVehiclesPage.tsx",
+        """    const alan = sira.find((a) => hatalar[a as string]);
+    if (alan) form.setFocus(alan);""",
+        "    void hatalar; // MUTASYON: odak tasinmiyor",
+        ("src/pages/admin/delivery/araclarGoc.acceptance.test.tsx",), "frontend",
+    ),
+    Mutasyon(
+        "A7D2-11", "kirli formda kapatma onayi kaldirildi (oturum editoru)",
+        "frontend/src/components/ExamSessionsManager.tsx",
+        "  useYuzeyKirliFormBekcisi({ form, sunucuHatasi: create.error ?? update.error ?? null });",
+        "  useYuzeyKirliFormBekcisi({ form, sunucuHatasi: null, pencereSiz: true, etkin: false });",
+        ("src/components/examOturumlariGoc.acceptance.test.tsx",), "frontend",
+    ),
+    # ── IP-A7d3 (goc dalgasi 3) ────────────────────────────────────────────
+    #
+    # Dort esik + ORTAK KATMANDAKI iki sozlesme kusuru (SK-7 hic cagrilmayan
+    # bekci, SK-8 gecerlilikle kapanan gonder dugmesi) + ekran basina alinan
+    # kararlar (sessiz return, adsiz saat kutulari, adresteki suzgec).
+    Mutasyon(
+        "A7D3-1", "esik: ham <button> geri kondu (104 -> 105)",
+        "frontend/src/pages/admin/AdminReportsPage.tsx",
+        '      <KararPenceresi yuzey={karar} />',
+        '      <button type="button">Disa aktar</button>\n      <KararPenceresi yuzey={karar} />',
+        ("src/__guards__/uiBaseline.test.ts",), "frontend",
+    ),
+    Mutasyon(
+        "A7D3-2", "esik: adsiz form kontrolu eklendi (7 -> 8)",
+        "frontend/src/pages/admin/inventory/CountSessionsPage.tsx",
+        '        {canCount && yeniButon}',
+        '        <input className="input" placeholder="Not" />\n        {canCount && yeniButon}',
+        (
+            "src/__guards__/uiBaseline.test.ts",
+            "src/__guards__/calismaZamaniKapisi.test.tsx",
+        ), "frontend",
+    ),
+    Mutasyon(
+        "A7D3-3", "esik: pencere durumu ekrana geri tasindi (9 -> 10)",
+        "frontend/src/pages/admin/delivery/DeliveryRunDetailPage.tsx",
+        "  const iptalYuzeyi = useDuzenlemeYuzeyi<never, void>();",
+        "  const [cancelOpen, setCancelOpen] = useState(false);\n"
+        "  const iptalYuzeyi = {\n"
+        "    ...useDuzenlemeYuzeyi<never, void>(),\n"
+        "    yeniAc: () => setCancelOpen(true),\n"
+        "    kapat: () => setCancelOpen(false),\n"
+        "  };",
+        ("src/__guards__/uiBaseline.test.ts",), "frontend",
+        ((
+            "frontend/src/pages/admin/delivery/DeliveryRunDetailPage.tsx",
+            "        open={iptalYuzeyi.acik}",
+            "        open={cancelOpen}",
+        ),),
+    ),
+    Mutasyon(
+        "A7D3-4", "esik: etiketsiz overlay geri kondu (0 -> 1)",
+        "frontend/src/pages/admin/inventory/CountSessionsPage.tsx",
+        "      <YeniSayimPenceresi yuzey={yeni} />",
+        '      <div className="fixed inset-0 bg-black/40" />\n      <YeniSayimPenceresi yuzey={yeni} />',
+        ("src/__guards__/uiBaseline.test.ts",), "frontend",
+    ),
+    Mutasyon(
+        "A7D3-5", "SK-7: gerekce penceresinin kirli form bekcisi kaldirildi",
+        "frontend/src/components/admin/ui/ConfirmDialog.tsx",
+        "  const bekci = useYuzeyKirliFormBekcisi({ form, sunucuHatasi: HATA_TAKIBI_YOK });",
+        """  const bekci = useYuzeyKirliFormBekcisi({
+    form,
+    sunucuHatasi: HATA_TAKIBI_YOK,
+    etkin: false,
+  });""",
+        (
+            "src/components/admin/ui/gerekcePenceresi.test.tsx",
+            "src/pages/admin/inventory/sayimDetayiGoc.acceptance.test.tsx",
+        ), "frontend",
+    ),
+    Mutasyon(
+        "A7D3-6", "SK-8: gerekce onay dugmesi yine gecerlilikle kapaniyor",
+        "frontend/src/components/admin/ui/ConfirmDialog.tsx",
+        '        <Button variant={danger ? "danger" : "primary"} isPending={isPending} onClick={gonder}>{confirmLabel}</Button>',
+        '        <Button variant={danger ? "danger" : "primary"} disabled={uzunluk < minLength || asildi} isPending={isPending} onClick={gonder}>{confirmLabel}</Button>',
+        (
+            "src/components/admin/ui/gerekcePenceresi.test.tsx",
+            "src/pages/dashboards/adminTutorApproval.acceptance.test.tsx",
+        ), "frontend",
+    ),
+    Mutasyon(
+        "A7D3-7", "gonder kapisi: 'Oturumu ac' yine gecerlilikle kapaniyor",
+        "frontend/src/pages/admin/inventory/CountSessionsPage.tsx",
+        "        <Button isPending={olustur.isPending} onClick={gonder}>",
+        """        <Button
+          disabled={!form.formState.isValid}
+          isPending={olustur.isPending}
+          onClick={gonder}
+        >""",
+        ("src/pages/admin/inventory/sayimOturumlariGoc.acceptance.test.tsx",), "frontend",
+    ),
+    Mutasyon(
+        "A7D3-8", "urun ekleme yine SESSIZ return yapiyor (dogrulama yok)",
+        "frontend/src/pages/admin/inventory/CountSessionDetailPage.tsx",
+        """    .refine(
+      (v) =>
+        v
+          .split(/[\\s,]+/)
+          .filter(Boolean)
+          .every((p) => Number.isInteger(Number(p)) && Number(p) > 0),
+      "Yalnız pozitif ürün numaraları yazın (ör. 12, 34)."
+    ),""",
+        "    ,",
+        ("src/pages/admin/inventory/sayimDetayiGoc.acceptance.test.tsx",), "frontend",
+    ),
+    Mutasyon(
+        "A7D3-9", "odeme formunda kirli form bekcisi kaldirildi (IBAN/TCKN)",
+        "frontend/src/components/LibraryPayoutForm.tsx",
+        "  useYuzeyKirliFormBekcisi({ form, sunucuHatasi: submit.error, pencereSiz: true });",
+        """  useYuzeyKirliFormBekcisi({
+    form,
+    sunucuHatasi: submit.error,
+    pencereSiz: true,
+    etkin: false,
+  });""",
+        ("src/components/kutuphaneOdemeGoc.acceptance.test.tsx",), "frontend",
+    ),
+    Mutasyon(
+        "A7D3-10", "kutuphane saat kutularinin erisilebilir adi geri alindi",
+        "frontend/src/pages/dashboards/OperatorLibrary.tsx",
+        "                      aria-label={`${WEEKDAY_LABELS[h.weekday]} açılış saati`}\n",
+        "",
+        (
+            "src/pages/dashboards/operatorPanel.acceptance.test.tsx",
+            "src/__guards__/uiBaseline.test.ts",
+        ), "frontend",
+    ),
+    Mutasyon(
+        "A7D3-11", "ad degisikligi suzgeci yine useState'te (adreste degil)",
+        "frontend/src/pages/dashboards/AdminHome.tsx",
+        '  const url = useUrlDurumu({ talep: "PENDING" });',
+        '  const url = { degerler: { talep: "PENDING" }, ayarla: (_v: unknown) => { void _v; } };',
+        ("src/pages/dashboards/adminTutorApproval.acceptance.test.tsx",), "frontend",
+    ),
+    Mutasyon(
+        "A7D3-12", "harita arama kutusunun adi geri alindi (bilinen istisna)",
+        "frontend/src/components/MapPicker.tsx",
+        '                aria-label="Haritada adres ara"\n',
+        "",
+        (
+            "src/components/kutuphaneEditoruDalAdlari.acceptance.test.tsx",
+            "src/__guards__/uiBaseline.test.ts",
+            "src/__guards__/calismaZamaniKapisi.test.tsx",
+        ), "frontend",
+    ),
+    Mutasyon(
+        "A7D3-13", "sikayet karar penceresinin kirli form bekcisi kaldirildi",
+        "frontend/src/pages/admin/AdminReportsPage.tsx",
+        "  useYuzeyKirliFormBekcisi({ form, sunucuHatasi: resolve.error });",
+        "  useYuzeyKirliFormBekcisi({ form, sunucuHatasi: resolve.error, etkin: false });",
+        ("src/pages/admin/adminSikayetGoc.acceptance.test.tsx",), "frontend",
+    ),
+    Mutasyon(
+        "A7D3-14", "surukle-birak siralamasi sunucuya yeni sirayi yazmiyor",
+        "frontend/src/pages/admin/delivery/DeliveryRunDetailPage.tsx",
+        "    ids.splice(to, 0, ...ids.splice(from, 1));",
+        "    void to; // MUTASYON: sira degistirilmiyor",
+        ("src/pages/admin/delivery/turDetayiGoc.acceptance.test.tsx",), "frontend",
+    ),
+    # ═══════════════ IP-A7d4 · goc dalgasi 4 + dedektor ═══════════════
+    Mutasyon(
+        "A7D4-1", "esik: ham <button> geri kondu (102 -> 103)",
+        "frontend/src/pages/admin/AdminAccessPage.tsx",
+        "      <RolPenceresi yuzey={yuzey} gruplar={permissionGroups} />",
+        '      <button type="button">Disa aktar</button>\n      <RolPenceresi yuzey={yuzey} gruplar={permissionGroups} />',
+        ("src/__guards__/uiBaseline.test.ts",), "frontend",
+    ),
+    Mutasyon(
+        "A7D4-2", "esik: adsiz form kontrolu eklendi (7 -> 8)",
+        "frontend/src/pages/admin/AdminAccessPage.tsx",
+        "      <RolPenceresi yuzey={yuzey} gruplar={permissionGroups} />",
+        '      <input type="text" />\n      <RolPenceresi yuzey={yuzey} gruplar={permissionGroups} />',
+        (
+            "src/__guards__/uiBaseline.test.ts",
+            "src/__guards__/calismaZamaniKapisi.test.tsx",
+        ), "frontend",
+    ),
+    # NOT (mutasyonun kendi hatasi, kayda geciyor): ilk yazim yalniz bir
+    # `useState` bildiriyor ve onu `void secili;` ile kullaniyordu. Sayac ise
+    # "ekranda yasayan pencere durumu"nu bir bildirim olarak DEGIL, o durumun
+    # bir pencerenin `open` propuna AKMASI olarak olcuyor — yani mutasyon
+    # metrigin olctugu seyi hic uretmemisti ve "YAKALANMADI" sonucu testin
+    # degil mutasyonun kusuruydu. A7D3-3'te de ayni tuzaga dusulmustu.
+    Mutasyon(
+        "A7D4-3", "esik: pencere durumu ekrana geri tasindi (0 -> 1; esik artik toBe(0))",
+        "frontend/src/pages/admin/AdminOperationsPage.tsx",
+        "  const yuzey = useDuzenlemeYuzeyi<FailedOutboxEvent, void>();",
+        "  const [secili] = useState<FailedOutboxEvent | null>(null);\n"
+        "  const yuzey = useDuzenlemeYuzeyi<FailedOutboxEvent, void>();",
+        ("src/__guards__/uiBaseline.test.ts",), "frontend",
+        ek=(
+            (
+                "frontend/src/pages/admin/AdminOperationsPage.tsx",
+                "        open={yuzey.acik}",
+                "        open={secili !== null || yuzey.acik}",
+            ),
+            (
+                "frontend/src/pages/admin/AdminOperationsPage.tsx",
+                'import { Badge, Button, ConfirmDialog, EmptyState, ErrorState } from "@/components/admin/ui";',
+                'import { useState } from "react";\n'
+                'import { Badge, Button, ConfirmDialog, EmptyState, ErrorState } from "@/components/admin/ui";',
+            ),
+        ),
+    ),
+    Mutasyon(
+        "A7D4-4", "esik: etiketsiz overlay geri kondu (0 -> 1)",
+        "frontend/src/pages/admin/AdminAccessPage.tsx",
+        "      <RolPenceresi yuzey={yuzey} gruplar={permissionGroups} />",
+        '      <div className="fixed inset-0 z-50 bg-black/40" />\n      <RolPenceresi yuzey={yuzey} gruplar={permissionGroups} />',
+        ("src/__guards__/uiBaseline.test.ts",), "frontend",
+    ),
+    # ── Dedektorun kendisi (Gorev 1) ──
+    Mutasyon(
+        "A7D4-5", "dedektor: Dialog denetimi hic cagrilmiyor",
+        "frontend/src/components/admin/ui/Dialog.tsx",
+        "    icerikKorumasiDenetle({",
+        "    if (open) return;\n    icerikKorumasiDenetle({",
+        ("src/components/admin/ui2/korumasizIcerik.test.tsx",), "frontend",
+    ),
+    Mutasyon(
+        "A7D4-6", "dedektor: girdi sondasi hicbir kontrol gormuyor",
+        "frontend/src/components/admin/ui2/icerikKorumasi.ts",
+        "  return [...kok.querySelectorAll<HTMLElement>(GIRDI_SECICI)].filter(",
+        "  return [].filter(\n    () => true\n  ) as HTMLElement[];\n  return [...kok.querySelectorAll<HTMLElement>(GIRDI_SECICI)].filter(",
+        ("src/components/admin/ui2/korumasizIcerik.test.tsx",), "frontend",
+    ),
+    Mutasyon(
+        "A7D4-7", "dedektor: pencere HER ZAMAN korumali oldugunu soyluyor",
+        "frontend/src/components/admin/ui2/duzenlemeYuzeyi.tsx",
+        "  const korumaVarMi = useCallback(() => bekcilerRef.current.size > 0, []);",
+        "  const korumaVarMi = useCallback(() => true, []);",
+        ("src/components/admin/ui2/korumasizIcerik.test.tsx",), "frontend",
+    ),
+    Mutasyon(
+        "A7D4-8", "statik tarama: ham <Dialog> artik taranmiyor",
+        "frontend/scripts/korumasiz-pencere.mjs",
+        'const PENCERE_ETIKETLERI = new Set(["Dialog", "DuzenlemePenceresi"]);',
+        'const PENCERE_ETIKETLERI = new Set(["DuzenlemePenceresi"]);',
+        ("src/__guards__/korumasizPencere.test.ts",), "frontend",
+    ),
+    Mutasyon(
+        "A7D4-9", "SK-9 geri: rol penceresinin kirli form bekcisi kaldirildi",
+        "frontend/src/pages/admin/AdminAccessPage.tsx",
+        "  useYuzeyKirliFormBekcisi({ form, sunucuHatasi });",
+        "  useYuzeyKirliFormBekcisi({ form, sunucuHatasi, etkin: false });",
+        ("src/pages/admin/adminYetkiGoc.acceptance.test.tsx",), "frontend",
+    ),
+    # ── Parcalanmis kapinin iki yonlu kimlik korumasi (Gorev 3) ──
+    Mutasyon(
+        "A7D4-10", "parcalanmis kapi: kapsam sessizce daraltildi (ilk 5 ekran)",
+        "frontend/src/__guards__/calismaZamaniKapisi.test.tsx",
+        'it.each(kapsanan)("%s — adsız kontrol tabanı KİMLİKLE sabit"',
+        'it.each(kapsanan.slice(0, 5))("%s — adsız kontrol tabanı KİMLİKLE sabit"',
+        ("src/__guards__/calismaZamaniKapisi.test.tsx",), "frontend",
+    ),
+    Mutasyon(
+        "A7D4-11", "parcalanmis kapi: adsiz kontrol tabanindan bir kayit silindi",
+        "frontend/src/__guards__/calismaZamaniKapisi.test.tsx",
+        '  "src/components/ImageCropModal.tsx": 1,',
+        "",
+        ("src/__guards__/calismaZamaniKapisi.test.tsx",), "frontend",
+    ),
+    # ── Gonder kapisi (kilitli karar) ──
+    Mutasyon(
+        "A7D4-12", "takvim: 'Gunu kapat' yine gecerlilikle kapaniyor",
+        "frontend/src/components/admin/delivery/ClosedDays.tsx",
+        "onClick={doAdd} isPending={add.isPending}",
+        "onClick={doAdd} disabled={!form.watch(\"day\")} isPending={add.isPending}",
+        ("src/pages/admin/dalga4Pencereleri.acceptance.test.tsx",), "frontend",
+    ),
+    Mutasyon(
+        "A7D4-13", "rol penceresi: 'Kaydet' yine gecerlilikle kapaniyor",
+        "frontend/src/pages/admin/AdminAccessPage.tsx",
+        "        <Button isPending={islemSuruyor} onClick={gonder}>",
+        "        <Button isPending={islemSuruyor} disabled={!form.formState.isValid} onClick={gonder}>",
+        ("src/pages/admin/adminYetkiGoc.acceptance.test.tsx",), "frontend",
     ),
 ]
 

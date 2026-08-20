@@ -21,7 +21,7 @@
 // gerçekten gönderilen istektir. Kaynak taraması ölü dalın içindeki butonu da
 // "var" sayar — P1-1 tam olarak böyle gözden kaçtı.
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
@@ -30,9 +30,12 @@ import { Toaster } from "@/components/Toaster";
 import AdminSectionPage from "@/pages/admin/AdminSectionPage";
 import { useAuthStore } from "@/store/authStore";
 import { useToastStore } from "@/store/toastStore";
+import { adsizKontroller } from "@/test-utils/alanAdlari";
 
 import type { AxiosRequestConfig } from "axios";
 
+const USERS_VIEW = "users.view";
+const USERS_MANAGE = "users.manage";
 const TUTORS_VIEW = "tutors.view";
 const TUTORS_MANAGE = "tutors.manage";
 
@@ -113,6 +116,26 @@ function izinVer(...kodlar: string[]) {
     isAuthenticated: true,
     user: { id: 1, role_id: 1, admin_permissions: kodlar } as never,
   });
+}
+
+/** Ad değişikliği kuyruğu — kendi bölümü, kendi adresi (İP-A7d3). */
+function adDegisiklikleriSar(adres = "/yonetim/ad-degisiklikleri") {
+  const qc = new QueryClient({
+    defaultOptions: { queries: { retry: false, gcTime: 0 }, mutations: { retry: false } },
+  });
+  return render(
+    <QueryClientProvider client={qc}>
+      <MemoryRouter initialEntries={[adres]}>
+        <Routes>
+          <Route
+            path="/yonetim/ad-degisiklikleri"
+            element={<AdminSectionPage section="names" />}
+          />
+        </Routes>
+      </MemoryRouter>
+      <Toaster />
+    </QueryClientProvider>
+  );
 }
 
 function sar() {
@@ -255,7 +278,15 @@ describe("A-3 · Onayla tıklaması POST /admin/tutors/{id}/approve üretir", ()
 /* ═════════════════════ A-4 · Red gerekçesi zorunlu ═════════════════════ */
 
 describe("A-4 · Reddet gerekçe olmadan gönderilemiyor", () => {
-  it("gerekçe kutusu boşken onay düğmesi devre dışıdır ve hiçbir istek gitmez", async () => {
+  // ── İP-A7d3 · SK-8 (KASITLI DEĞİŞİKLİK) ──
+  //
+  // Bu testin İDDİASI değişmedi: gerekçesiz red isteği SUNUCUYA GİTMEZ.
+  // Değişen MEKANİZMA: gönder düğmesi artık geçerlilikle KAPANMIYOR (kilitli
+  // karar). Eskiden `disabled` idi ve kullanıcı neden basamadığını düğmeden
+  // öğrenemiyordu; artık basılır, gönderim yapılmaz, hata ALANDA çıkar ve odak
+  // oraya taşınır. İddia gevşetilmedi, GÜÇLENDİRİLDİ: "istek gitmedi"nin yanına
+  // "kullanıcı sebebi gördü" eklendi.
+  it("gerekçe kutusu boşken düğme AÇIK kalır, istek GİTMEZ, hata alanda çıkar", async () => {
     izinVer(TUTORS_VIEW, TUTORS_MANAGE);
     tutorSunucusu([BEKLEYEN]);
     sunucu("/admin/tutors/41/reject", { data: {} }, "post");
@@ -265,9 +296,12 @@ describe("A-4 · Reddet gerekçe olmadan gönderilemiyor", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Reddet" }));
 
     const gonder = await screen.findByRole("button", { name: "Başvuruyu reddet" });
-    expect((gonder as HTMLButtonElement).disabled).toBe(true);
+    expect((gonder as HTMLButtonElement).disabled).toBe(false);
 
     fireEvent.click(gonder);
+    const alan = await screen.findByRole("textbox");
+    await waitFor(() => expect(alan.getAttribute("aria-invalid")).toBe("true"));
+    await waitFor(() => expect(document.activeElement).toBe(alan));
     expect(istekler.some((i) => i.url.includes("/reject"))).toBe(false);
   });
 
@@ -298,11 +332,14 @@ describe("A-4 · Reddet gerekçe olmadan gönderilemiyor", () => {
     sar();
 
     fireEvent.click(await screen.findByRole("button", { name: "Reddet" }));
-    fireEvent.change(await screen.findByRole("textbox"), { target: { value: "   " } });
+    const alan = await screen.findByRole("textbox");
+    fireEvent.change(alan, { target: { value: "   " } });
 
     const gonder = screen.getByRole("button", { name: "Başvuruyu reddet" });
-    expect((gonder as HTMLButtonElement).disabled).toBe(true);
+    // SK-8: düğme açık, ama boşluk gerekçe DEĞİLDİR ve gönderim yapılmaz.
+    expect((gonder as HTMLButtonElement).disabled).toBe(false);
     fireEvent.click(gonder);
+    await waitFor(() => expect(alan.getAttribute("aria-invalid")).toBe("true"));
     expect(istekler.some((i) => i.url.includes("/reject"))).toBe(false);
   });
 });
@@ -371,5 +408,107 @@ describe("F-1 · izin bilgisi yoksa yönetim aksiyonu gösterilmez", () => {
     expect(await screen.findByText("Aday Ogretmen")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Onayla" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Reddet" })).toBeNull();
+  });
+});
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+ * İP-A7d3 · göç dalgası 3 · ekran (10): `AdminHome`
+ *
+ * Haritadaki yeri: **12 ham düğme + 2 adsız kontrol + 2 pencere durumu** —
+ * kalan ham düğme borcunun panel içindeki en büyük tek kalemi. A7d2 bu ekranı
+ * "bölümleri başka ekranların kabuğu" diye elemişti; okuma doğruydu ama
+ * borcun tamamı ekranın KENDİ bölümlerindeydi (ilan satırı, diploma teyidi,
+ * ad değişikliği kuyruğu) ve hiçbiri başka bir ekranı sürüklemedi.
+ *
+ * Bölüm ayrıca iki kilitli karar ihlalini kapatıyor:
+ *   • ad değişikliği kuyruğunun süzgeci `useState`teydi ("filtreler URL'de");
+ *   • süzgeç çipleri seçili olduklarını BEYAN ETMİYORDU (`aria-pressed`).
+ * ══════════════════════════════════════════════════════════════════════════ */
+
+describe("İP-A7d3 · AdminHome göçü", () => {
+  it("ilan satırının hiçbir form kontrolü adsız değil (onay kuyruğu dalı)", async () => {
+    izinVer(TUTORS_VIEW, TUTORS_MANAGE);
+    tutorSunucusu([BEKLEYEN]);
+    const { container } = sar();
+    await screen.findByRole("button", { name: "Onayla" });
+    expect(adsizKontroller(container).map((a) => a.html)).toEqual([]);
+  });
+
+  it("silme penceresi ortak yüzeyden gelir (role=dialog + aria-modal)", async () => {
+    izinVer(TUTORS_VIEW, TUTORS_MANAGE);
+    tutorSunucusu([BEKLEYEN]);
+    sar();
+    fireEvent.click(await screen.findByRole("button", { name: "Sil" }));
+    const p = await screen.findByRole("dialog");
+    expect(p.getAttribute("aria-modal")).toBe("true");
+  });
+
+  it("red penceresinde KİRLİ formda kapatma ÖNCE SORAR (SK-7 · çağrı yeri kanıtı)", async () => {
+    // Red gerekçesi denetim izine yazılır ve eğitmene gösterilir; sormadan
+    // silinmesi geri alınamaz bir bilgi kaybıdır.
+    izinVer(TUTORS_VIEW, TUTORS_MANAGE);
+    tutorSunucusu([BEKLEYEN]);
+    sar();
+    fireEvent.click(await screen.findByRole("button", { name: "Reddet" }));
+    const alan = await screen.findByRole("textbox", { name: "Red gerekçesi" });
+    fireEvent.change(alan, { target: { value: "Diploma barkodu doğrulanamadı." } });
+    await act(async () => {});
+
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(await screen.findByText("Kaydedilmemiş değişiklikler var")).toBeTruthy();
+  });
+
+  it("TEMİZ red penceresinde ESC doğrudan kapatır (ters prova)", async () => {
+    izinVer(TUTORS_VIEW, TUTORS_MANAGE);
+    tutorSunucusu([BEKLEYEN]);
+    sar();
+    fireEvent.click(await screen.findByRole("button", { name: "Reddet" }));
+    await screen.findByRole("textbox", { name: "Red gerekçesi" });
+    fireEvent.keyDown(document, { key: "Escape" });
+    await waitFor(() =>
+      expect(screen.queryByRole("textbox", { name: "Red gerekçesi" })).toBeNull(),
+    );
+  });
+});
+
+describe("İP-A7d3 · ad değişikliği kuyruğunun süzgeci ADRESTE yaşar", () => {
+  it("adresteki süzgeç ekranı ORADA açar ve isteğe konur (paylaşılabilir)", async () => {
+    izinVer(USERS_VIEW, USERS_MANAGE);
+    sunucu("/admin/name-change-requests", { data: [] }, "get");
+    adDegisiklikleriSar("/yonetim/ad-degisiklikleri?talep=REJECTED");
+
+    await waitFor(() => {
+      const g = istekler.find((i) => i.url.includes("/admin/name-change-requests"));
+      expect(g, "kuyruk isteği hiç gitmedi").toBeTruthy();
+      expect(g!.url).toContain("REJECTED");
+    });
+    expect(
+      screen.getByRole("button", { name: "Reddedilen" }).getAttribute("aria-pressed"),
+    ).toBe("true");
+  });
+
+  it("'Tümü' süzgeci durum parametresini HİÇ göndermez", async () => {
+    izinVer(USERS_VIEW, USERS_MANAGE);
+    sunucu("/admin/name-change-requests", { data: [] }, "get");
+    adDegisiklikleriSar("/yonetim/ad-degisiklikleri?talep=TUMU");
+
+    await waitFor(() => {
+      const g = istekler.find((i) => i.url.includes("/admin/name-change-requests"));
+      expect(g, "kuyruk isteği hiç gitmedi").toBeTruthy();
+      expect(g!.url).not.toMatch(/PENDING|APPROVED|REJECTED/);
+    });
+  });
+
+  it("adresteki UYDURMA süzgeç değeri ELENİR (beyaz liste)", async () => {
+    izinVer(USERS_VIEW, USERS_MANAGE);
+    sunucu("/admin/name-change-requests", { data: [] }, "get");
+    adDegisiklikleriSar("/yonetim/ad-degisiklikleri?talep=drop_table");
+
+    await waitFor(() => {
+      const g = istekler.find((i) => i.url.includes("/admin/name-change-requests"));
+      expect(g, "kuyruk isteği hiç gitmedi").toBeTruthy();
+      expect(g!.url).not.toContain("drop_table");
+    });
   });
 });

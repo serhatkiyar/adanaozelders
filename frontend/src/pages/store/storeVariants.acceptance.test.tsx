@@ -9,6 +9,13 @@
 //       GERÇEKTEN giden isteğe `variant=Eksen:Değer` olarak yansır.
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+
+/**
+ * Yük altındaki bekleme bütçesi — gerekçe `ticketsPaymentGate.test.tsx`te
+ * (İP-A6b · Görev 5 · BULGU-10). Global `asyncUtilTimeout` kaldırıldı; bütçe
+ * yalnız gerçekten yük-bağımlı olan bu iki dosyada, çağrı yerinde duruyor.
+ */
+const YUK = { timeout: 4000 };
 import { HelmetProvider } from "react-helmet-async";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -190,7 +197,7 @@ describe("S-1 · detayda kardeş seçici", () => {
   it("eksen adı gruptan gelir; üyeler kardeş sayfasına giden gerçek link", async () => {
     detaySunucusu(urunDetayi());
     detayAc();
-    await screen.findByRole("heading", { name: "Fosforlu Kalem - Sarı" });
+    await screen.findByRole("heading", { name: "Fosforlu Kalem - Sarı" }, YUK);
     // Eksen başlığı: grubun option1_name'i.
     expect(screen.getByText("Renk")).toBeTruthy();
     const pembe = screen.getByRole("link", { name: /Pembe/ });
@@ -200,7 +207,7 @@ describe("S-1 · detayda kardeş seçici", () => {
   it("aktif üye işaretli; tükenen üye listede ve 'Tükendi' etiketli", async () => {
     detaySunucusu(urunDetayi());
     detayAc();
-    await screen.findByRole("heading", { name: "Fosforlu Kalem - Sarı" });
+    await screen.findByRole("heading", { name: "Fosforlu Kalem - Sarı" }, YUK);
     const sari = screen.getByRole("link", { name: /^Sarı$/ });
     expect(sari.getAttribute("aria-current")).toBe("true");
     const pembe = screen.getByRole("link", { name: /Pembe/ });
@@ -213,7 +220,7 @@ describe("S-2 · grupsuz üründe seçici yok", () => {
   it("variants null ise eksen başlığı çizilmez", async () => {
     detaySunucusu(urunDetayi({ variants: null }));
     detayAc();
-    await screen.findByRole("heading", { name: "Fosforlu Kalem - Sarı" });
+    await screen.findByRole("heading", { name: "Fosforlu Kalem - Sarı" }, YUK);
     expect(screen.queryByText("Renk")).toBeNull();
   });
 });
@@ -243,7 +250,7 @@ describe("S-4 · listede grup kartı (Faz 3b)", () => {
     sar(`${PATHS.store}?q=kalem`, PATHS.store, <StorePage />);
 
     // Grup kartı: min fiyat + "başlayan" + seçime yönlendiren GERÇEK link.
-    const link = await screen.findByRole("link", { name: /Seçenekleri Gör \(3\)/ });
+    const link = await screen.findByRole("link", { name: /Seçenekleri Gör \(3\)/ }, YUK);
     expect(link.getAttribute("href")).toBe("/magaza/urun/fosforlu-sari");
     expect(screen.getByText(/'den başlayan/)).toBeTruthy();
     // Tekil kartta sepete ekle sürer; grup kartında buton yok (tek buton kaldı).
@@ -267,13 +274,13 @@ describe("S-3 · mağaza facet'i", () => {
     // Filtre paneli yalnız filtreleme modunda görünür → q ile gir.
     sar(`${PATHS.store}?q=kalem`, PATHS.store, <StorePage />);
 
-    const kutu = await screen.findByText("Renk");
+    const kutu = await screen.findByText("Renk", undefined, YUK);
     expect(kutu).toBeTruthy();
     fireEvent.click(screen.getByRole("checkbox", { name: /Sarı/ }));
     await waitFor(() => {
       const istek = sonIstek("/store/products");
       expect(istek).toBeDefined();
       expect(istek!.params.getAll("variant")).toEqual(["Renk:Sarı"]);
-    });
+    }, YUK);
   });
 });

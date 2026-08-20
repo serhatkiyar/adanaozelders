@@ -178,7 +178,7 @@ function temelSunucu() {
 
 async function formuAc() {
   fireEvent.click(await screen.findByRole("button", { name: "Yeni ürün" }));
-  await screen.findByPlaceholderText("Ürün adı");
+  await screen.findByLabelText("Ürün adı");
   await screen.findByRole("option", { name: "Kırtasiye" });
 }
 
@@ -212,8 +212,8 @@ describe("E-1 · ürün türü seçicisi", () => {
     sar(ROUTES.adminStoreProducts, ROUTES.adminStoreProducts, <AdminStore />);
     await formuAc();
 
-    fireEvent.change(screen.getByPlaceholderText("Ürün adı"), { target: { value: "Kurşun Kalem" } });
-    fireEvent.change(screen.getByPlaceholderText("Fiyat (TL)"), { target: { value: "12" } });
+    fireEvent.change(screen.getByLabelText("Ürün adı"), { target: { value: "Kurşun Kalem" } });
+    fireEvent.change(screen.getByLabelText("Fiyat (TL)"), { target: { value: "12" } });
     fireEvent.change(screen.getByLabelText("KDV oranı (%)"), { target: { value: "20" } });
     fireEvent.click(screen.getByRole("button", { name: "Ürünü ekle" }));
 
@@ -247,7 +247,7 @@ describe("E-2 · künye bölümünün başlığı", () => {
     await formuAc();
     fireEvent.click(screen.getByRole("button", { name: /Kitap künyesi/ }));
 
-    const ebat = screen.getByPlaceholderText(/^Ebat/) as HTMLInputElement;
+    const ebat = screen.getByLabelText(/^Ebat/) as HTMLInputElement;
     expect(ebat.placeholder).toMatch(/A4/);
   });
 });
@@ -262,11 +262,11 @@ describe("E-3 · kitap kategorisinde künye kendiliğinden açılır", () => {
     await formuAc();
 
     // Yeni üründe bölüm KAPALI başlar (bugünkü davranış).
-    expect(screen.queryByPlaceholderText("Yazar")).toBeNull();
+    expect(screen.queryByLabelText("Yazar (opsiyonel)")).toBeNull();
 
     // Kitap KÖKÜNÜN YAPRAĞI: zincir çözümü de kanıtlanır.
-    fireEvent.change(screen.getByLabelText("Kategori"), { target: { value: "11" } });
-    await waitFor(() => expect(screen.getByPlaceholderText("Yazar")).toBeTruthy());
+    fireEvent.change(screen.getByLabelText(/^Kategori/), { target: { value: "11" } });
+    await waitFor(() => expect(screen.getByLabelText("Yazar (opsiyonel)")).toBeTruthy());
   });
 
   it("kitap dışı kategoride kapalı kalır", async () => {
@@ -275,9 +275,9 @@ describe("E-3 · kitap kategorisinde künye kendiliğinden açılır", () => {
     sar(ROUTES.adminStoreProducts, ROUTES.adminStoreProducts, <AdminStore />);
     await formuAc();
 
-    fireEvent.change(screen.getByLabelText("Kategori"), { target: { value: "30" } });
+    fireEvent.change(screen.getByLabelText(/^Kategori/), { target: { value: "30" } });
     await new Promise((r) => setTimeout(r, 50));
-    expect(screen.queryByPlaceholderText("Yazar")).toBeNull();
+    expect(screen.queryByLabelText("Yazar (opsiyonel)")).toBeNull();
   });
 });
 
@@ -288,16 +288,16 @@ describe("E-4 · efekt kullanıcıyla inatlaşmaz", () => {
     sar(ROUTES.adminStoreProducts, ROUTES.adminStoreProducts, <AdminStore />);
     await formuAc();
 
-    fireEvent.change(screen.getByLabelText("Kategori"), { target: { value: "10" } });
-    await waitFor(() => expect(screen.getByPlaceholderText("Yazar")).toBeTruthy());
+    fireEvent.change(screen.getByLabelText(/^Kategori/), { target: { value: "10" } });
+    await waitFor(() => expect(screen.getByLabelText("Yazar (opsiyonel)")).toBeTruthy());
 
     // Kullanıcı kapatır; başka bir alana dokunmak (yeniden render) onu
     // geri açmamalı — aksi hâlde bölüm kapatılamaz olurdu.
     fireEvent.click(screen.getByRole("button", { name: /Kitap künyesi/ }));
-    expect(screen.queryByPlaceholderText("Yazar")).toBeNull();
-    fireEvent.change(screen.getByPlaceholderText("Ürün adı"), { target: { value: "Deneme" } });
+    expect(screen.queryByLabelText("Yazar (opsiyonel)")).toBeNull();
+    fireEvent.change(screen.getByLabelText("Ürün adı"), { target: { value: "Deneme" } });
     await new Promise((r) => setTimeout(r, 50));
-    expect(screen.queryByPlaceholderText("Yazar")).toBeNull();
+    expect(screen.queryByLabelText("Yazar (opsiyonel)")).toBeNull();
   });
 });
 

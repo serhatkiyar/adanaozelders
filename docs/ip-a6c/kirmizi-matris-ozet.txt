@@ -1,0 +1,20 @@
+ × src/components/admin/ui2/a6cSozlesme.test.tsx > T3 · BULGU-4 · aynı olayda iki `ayarla` çağrısı > T3 — ikisi de yazılır (ilk yazım yutulmaz)
+   → ilk `ayarla` çağrısı sessizce kayboldu: expected { q: '', sayfa: 3 } to deeply equal { q: 'a', sayfa: 3 }
+ ✓ src/components/admin/ui2/a6cSozlesme.test.tsx > T3 · BULGU-4 · aynı olayda iki `ayarla` çağrısı > T3⁻ — sonraki OLAYDA sayfa sıfırlama kuralı hâlâ işler
+ ✓ src/components/admin/ui2/a6cSozlesme.test.tsx > T3 · BULGU-4 · aynı olayda iki `ayarla` çağrısı > T3⁻ — DIŞARIDAN gelen adres değişimi ezilmez
+ × src/components/admin/ui2/a6cSozlesme.test.tsx > T6 · BULGU-5 · pencerede iki korumalı içerik > T6 — ikinci korumalı içerik GELİŞTİRMEDE patlar (sessiz veri kaybı yerine)
+   → expected [Function] to throw an error
+ ✓ src/components/admin/ui2/a6cSozlesme.test.tsx > T6 · BULGU-5 · pencerede iki korumalı içerik > T6⁻ — TEK korumalı içerik patlamaz ve korur
+ ✓ src/components/admin/ui2/a6cSozlesme.test.tsx > T6 · BULGU-5 · pencerede iki korumalı içerik > T6⁻ — TEK korumalı içerik patlamaz ve korur
+ ✓ src/components/admin/ui2/a6cSozlesme.test.tsx > T6 · BULGU-5 · pencerede iki korumalı içerik > T6⁻ — ARDIŞIK içerik değişimi patlamaz (kayıt birikmiyor)
+ × src/components/admin/ui2/a6cSozlesme.test.tsx > T4 · BULGU-7 · kirli yolda NavLink sözleşmesi > T4 — `state` kirli yolda da taşınır
+   → onaydan sonra `state` düştü: expected '/siparisler|null' to be '/siparisler|{"kaynak":"denetim"}' // Object.is equality
+ × src/components/admin/ui2/a6cSozlesme.test.tsx > T4 · BULGU-7 · kirli yolda NavLink sözleşmesi > T4 — `replace` kirli yolda da uygulanır 1048ms
+   → Unable to find an element with the text: Kök sayfası. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+ × src/components/admin/ui2/a6cSozlesme.test.tsx > T4 · BULGU-7 · kirli yolda NavLink sözleşmesi > T4 — `relative="path"` kirli yolda da uygulanır 1042ms
+   → Unable to find an element with the text: Mağaza üst sayfası. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+ ✓ src/components/admin/ui2/a6cSozlesme.test.tsx > T4 · BULGU-7 · kirli yolda NavLink sözleşmesi > T4⁻ — TEMİZ yol aynı sonucu verir (sözleşme forma göre değişmez)
+ ✓ src/components/admin/ui2/a6cSozlesme.test.tsx > T4 · BULGU-7 · kirli yolda NavLink sözleşmesi > T4⁻ — onay REDDEDİLİRSE gezinme hiç olmaz
+ × src/components/admin/ui2/a6cSozlesme.test.tsx > T7 · BULGU-8 · onay beklerken hedef değişimi > T7 — hedef değişirse onay ESKİ hedefe uygulanmaz
+   → onay, kullanıcının sormadığı kaydı kapattı: expected 'kapalı' to be 'kayit:2' // Object.is equality
+ ✓ src/components/admin/ui2/a6cSozlesme.test.tsx > T7 · BULGU-8 · onay beklerken hedef değişimi > T7⁻ — hedef DEĞİŞMEDİYSE onay normal uygulanır

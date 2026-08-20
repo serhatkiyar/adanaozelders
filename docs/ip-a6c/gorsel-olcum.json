@@ -1,0 +1,34 @@
+{
+  "acik": {
+    "tema": "acik",
+    "hata": {
+      "metin": "Miktar en az 1 olmalı.",
+      "renk": "rgb(190, 18, 60)",
+      "arkaPlan": "rgb(255, 255, 255)",
+      "fontPx": 12,
+      "kontrast": 6.29,
+      "esik": 4.5,
+      "gecti": true
+    },
+    "colorScheme": {
+      "onarimli": "normal",
+      "onarimsiz": "normal"
+    }
+  },
+  "koyu": {
+    "tema": "koyu",
+    "hata": {
+      "metin": "Miktar en az 1 olmalı.",
+      "renk": "rgb(251, 113, 133)",
+      "arkaPlan": "rgb(15, 23, 42)",
+      "fontPx": 12,
+      "kontrast": 6.63,
+      "esik": 4.5,
+      "gecti": true
+    },
+    "colorScheme": {
+      "onarimli": "dark",
+      "onarimsiz": "normal"
+    }
+  }
+}

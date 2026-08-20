@@ -1,5 +1,6 @@
 import { type ReactNode } from "react";
-import { NavLink, useLocation } from "react-router-dom";
+import { useLocation } from "react-router-dom";
+import { GezinmeBaglantisi } from "@/components/admin/ui2/gezinmeBekcisi";
 import { useOpenReportCount } from "@/hooks/useReports";
 import { ADMIN_NAV_GROUPS, ADMIN_NAV_ITEMS, type AdminNavItem } from "./adminNavigation";
 import { useAuthStore } from "@/store/authStore";
@@ -55,7 +56,7 @@ export function AdminSidebar({ onNavigate }: AdminSidebarProps) {
               {items.map((item) => {
                 const storeActive = item.icon === "store" && pathname.startsWith("/yonetim/magaza/");
                 return (
-                  <NavLink
+                  <GezinmeBaglantisi
                     key={item.to}
                     to={item.to}
                     end={item.end}
@@ -85,7 +86,7 @@ export function AdminSidebar({ onNavigate }: AdminSidebarProps) {
                         </>
                       );
                     }}
-                  </NavLink>
+                  </GezinmeBaglantisi>
                 );
               })}
             </div>

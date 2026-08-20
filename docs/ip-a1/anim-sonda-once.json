@@ -1,0 +1,915 @@
+{
+  "landing-light": {
+    "erken": {
+      "animSinifliEleman": 0,
+      "animationNameNoneDegil": 0,
+      "canliOrnek": [],
+      "kosanAnimasyon": [
+        "spin"
+      ],
+      "borderBaseDegiskeni": "(tanımsız)",
+      "gorunurKenarlikRenkleri": [
+        [
+          "rgb(79, 70, 229)",
+          1
+        ]
+      ],
+      "varsayilanRenkDagilimi": [
+        [
+          "rgb(229, 231, 235)",
+          361
+        ],
+        [
+          "rgb(79, 70, 229)",
+          1
+        ],
+        [
+          "rgb(15, 23, 42)",
+          1
+        ]
+      ]
+    },
+    "gec": {
+      "animSinifliEleman": 0,
+      "animationNameNoneDegil": 0,
+      "canliOrnek": [],
+      "kosanAnimasyon": [
+        "spin"
+      ],
+      "borderBaseDegiskeni": "(tanımsız)",
+      "gorunurKenarlikRenkleri": [
+        [
+          "rgb(79, 70, 229)",
+          1
+        ]
+      ],
+      "varsayilanRenkDagilimi": [
+        [
+          "rgb(229, 231, 235)",
+          361
+        ],
+        [
+          "rgb(79, 70, 229)",
+          1
+        ],
+        [
+          "rgb(15, 23, 42)",
+          1
+        ]
+      ]
+    }
+  },
+  "marketplace-light": {
+    "erken": {
+      "animSinifliEleman": 1,
+      "animationNameNoneDegil": 0,
+      "canliOrnek": [],
+      "kosanAnimasyon": [],
+      "borderBaseDegiskeni": "(tanımsız)",
+      "gorunurKenarlikRenkleri": [
+        [
+          "rgb(226, 232, 240)",
+          5
+        ]
+      ],
+      "varsayilanRenkDagilimi": [
+        [
+          "rgb(229, 231, 235)",
+          394
+        ],
+        [
+          "rgb(226, 232, 240)",
+          5
+        ],
+        [
+          "rgb(241, 245, 249)",
+          1
+        ]
+      ]
+    },
+    "gec": {
+      "animSinifliEleman": 1,
+      "animationNameNoneDegil": 0,
+      "canliOrnek": [],
+      "kosanAnimasyon": [],
+      "borderBaseDegiskeni": "(tanımsız)",
+      "gorunurKenarlikRenkleri": [
+        [
+          "rgb(226, 232, 240)",
+          5
+        ]
+      ],
+      "varsayilanRenkDagilimi": [
+        [
+          "rgb(229, 231, 235)",
+          394
+        ],
+        [
+          "rgb(226, 232, 240)",
+          5
+        ],
+        [
+          "rgb(241, 245, 249)",
+          1
+        ]
+      ]
+    }
+  },
+  "libraries-light": {
+    "erken": {
+      "animSinifliEleman": 0,
+      "animationNameNoneDegil": 0,
+      "canliOrnek": [],
+      "kosanAnimasyon": [
+        "spin"
+      ],
+      "borderBaseDegiskeni": "(tanımsız)",
+      "gorunurKenarlikRenkleri": [
+        [
+          "rgb(79, 70, 229)",
+          1
+        ]
+      ],
+      "varsayilanRenkDagilimi": [
+        [
+          "rgb(229, 231, 235)",
+          361
+        ],
+        [
+          "rgb(79, 70, 229)",
+          1
+        ],
+        [
+          "rgb(15, 23, 42)",
+          1
+        ]
+      ]
+    },
+    "gec": {
+      "animSinifliEleman": 1,
+      "animationNameNoneDegil": 0,
+      "canliOrnek": [],
+      "kosanAnimasyon": [],
+      "borderBaseDegiskeni": "(tanımsız)",
+      "gorunurKenarlikRenkleri": [
+        [
+          "rgb(226, 232, 240)",
+          4
+        ],
+        [
+          "rgb(15, 23, 42)",
+          1
+        ]
+      ],
+      "varsayilanRenkDagilimi": [
+        [
+          "rgb(229, 231, 235)",
+          394
+        ],
+        [
+          "rgb(226, 232, 240)",
+          4
+        ],
+        [
+          "rgb(241, 245, 249)",
+          1
+        ],
+        [
+          "rgb(15, 23, 42)",
+          1
+        ]
+      ]
+    }
+  },
+  "library-detail-light": {
+    "erken": {
+      "animSinifliEleman": 1,
+      "animationNameNoneDegil": 0,
+      "canliOrnek": [],
+      "kosanAnimasyon": [],
+      "borderBaseDegiskeni": "(tanımsız)",
+      "gorunurKenarlikRenkleri": [
+        [
+          "rgb(255, 255, 255)",
+          2
+        ],
+        [
+          "rgb(226, 232, 240)",
+          1
+        ],
+        [
+          "rgb(203, 213, 225)",
+          1
+        ]
+      ],
+      "varsayilanRenkDagilimi": [
+        [
+          "rgb(229, 231, 235)",
+          394
+        ],
+        [
+          "rgb(255, 255, 255)",
+          2
+        ],
+        [
+          "rgb(241, 245, 249)",
+          1
+        ],
+        [
+          "rgb(226, 232, 240)",
+          1
+        ]
+      ]
+    },
+    "gec": {
+      "animSinifliEleman": 1,
+      "animationNameNoneDegil": 0,
+      "canliOrnek": [],
+      "kosanAnimasyon": [],
+      "borderBaseDegiskeni": "(tanımsız)",
+      "gorunurKenarlikRenkleri": [
+        [
+          "rgb(255, 255, 255)",
+          2
+        ],
+        [
+          "rgb(226, 232, 240)",
+          1
+        ],
+        [
+          "rgb(203, 213, 225)",
+          1
+        ]
+      ],
+      "varsayilanRenkDagilimi": [
+        [
+          "rgb(229, 231, 235)",
+          394
+        ],
+        [
+          "rgb(255, 255, 255)",
+          2
+        ],
+        [
+          "rgb(241, 245, 249)",
+          1
+        ],
+        [
+          "rgb(226, 232, 240)",
+          1
+        ]
+      ]
+    }
+  },
+  "store-list-light": {
+    "erken": {
+      "animSinifliEleman": 0,
+      "animationNameNoneDegil": 0,
+      "canliOrnek": [],
+      "kosanAnimasyon": [],
+      "borderBaseDegiskeni": "(tanımsız)",
+      "gorunurKenarlikRenkleri": [
+        [
+          "rgb(226, 232, 240)",
+          37
+        ],
+        [
+          "rgb(241, 245, 249)",
+          2
+        ]
+      ],
+      "varsayilanRenkDagilimi": [
+        [
+          "rgb(229, 231, 235)",
+          372
+        ],
+        [
+          "rgb(226, 232, 240)",
+          22
+        ],
+        [
+          "rgba(0, 0, 0, 0)",
+          5
+        ],
+        [
+          "rgb(79, 70, 229)",
+          1
+        ]
+      ]
+    },
+    "gec": {
+      "animSinifliEleman": 0,
+      "animationNameNoneDegil": 0,
+      "canliOrnek": [],
+      "kosanAnimasyon": [],
+      "borderBaseDegiskeni": "(tanımsız)",
+      "gorunurKenarlikRenkleri": [
+        [
+          "rgb(226, 232, 240)",
+          37
+        ],
+        [
+          "rgb(241, 245, 249)",
+          2
+        ]
+      ],
+      "varsayilanRenkDagilimi": [
+        [
+          "rgb(229, 231, 235)",
+          372
+        ],
+        [
+          "rgb(226, 232, 240)",
+          22
+        ],
+        [
+          "rgba(0, 0, 0, 0)",
+          5
+        ],
+        [
+          "rgb(79, 70, 229)",
+          1
+        ]
+      ]
+    }
+  },
+  "gorevler-light": {
+    "erken": {
+      "animSinifliEleman": 0,
+      "animationNameNoneDegil": 0,
+      "canliOrnek": [],
+      "kosanAnimasyon": [
+        "spin"
+      ],
+      "borderBaseDegiskeni": "(tanımsız)",
+      "gorunurKenarlikRenkleri": [
+        [
+          "rgb(79, 70, 229)",
+          1
+        ]
+      ],
+      "varsayilanRenkDagilimi": [
+        [
+          "rgb(229, 231, 235)",
+          361
+        ],
+        [
+          "rgb(79, 70, 229)",
+          1
+        ],
+        [
+          "rgb(15, 23, 42)",
+          1
+        ]
+      ]
+    },
+    "gec": {
+      "animSinifliEleman": 0,
+      "animationNameNoneDegil": 0,
+      "canliOrnek": [],
+      "kosanAnimasyon": [
+        "pulse",
+        "pulse",
+        "pulse",
+        "pulse",
+        "pulse",
+        "pulse",
+        "pulse"
+      ],
+      "borderBaseDegiskeni": "(tanımsız)",
+      "gorunurKenarlikRenkleri": [],
+      "varsayilanRenkDagilimi": [
+        [
+          "rgb(229, 231, 235)",
+          398
+        ],
+        [
+          "rgb(241, 245, 249)",
+          1
+        ],
+        [
+          "rgb(15, 23, 42)",
+          1
+        ]
+      ]
+    }
+  },
+  "aliskanliklar-light": {
+    "erken": {
+      "animSinifliEleman": 0,
+      "animationNameNoneDegil": 0,
+      "canliOrnek": [],
+      "kosanAnimasyon": [
+        "spin"
+      ],
+      "borderBaseDegiskeni": "(tanımsız)",
+      "gorunurKenarlikRenkleri": [
+        [
+          "rgb(79, 70, 229)",
+          1
+        ]
+      ],
+      "varsayilanRenkDagilimi": [
+        [
+          "rgb(229, 231, 235)",
+          361
+        ],
+        [
+          "rgb(79, 70, 229)",
+          1
+        ],
+        [
+          "rgb(15, 23, 42)",
+          1
+        ]
+      ]
+    },
+    "gec": {
+      "animSinifliEleman": 0,
+      "animationNameNoneDegil": 0,
+      "canliOrnek": [],
+      "kosanAnimasyon": [
+        "pulse",
+        "pulse",
+        "pulse",
+        "pulse"
+      ],
+      "borderBaseDegiskeni": "(tanımsız)",
+      "gorunurKenarlikRenkleri": [],
+      "varsayilanRenkDagilimi": [
+        [
+          "rgb(229, 231, 235)",
+          398
+        ],
+        [
+          "rgb(241, 245, 249)",
+          1
+        ],
+        [
+          "rgb(15, 23, 42)",
+          1
+        ]
+      ]
+    }
+  },
+  "landing-dark": {
+    "erken": {
+      "animSinifliEleman": 0,
+      "animationNameNoneDegil": 0,
+      "canliOrnek": [],
+      "kosanAnimasyon": [
+        "spin"
+      ],
+      "borderBaseDegiskeni": "(tanımsız)",
+      "gorunurKenarlikRenkleri": [
+        [
+          "rgb(129, 140, 248)",
+          1
+        ]
+      ],
+      "varsayilanRenkDagilimi": [
+        [
+          "rgb(229, 231, 235)",
+          361
+        ],
+        [
+          "rgb(129, 140, 248)",
+          1
+        ],
+        [
+          "rgb(241, 245, 249)",
+          1
+        ]
+      ]
+    },
+    "gec": {
+      "animSinifliEleman": 0,
+      "animationNameNoneDegil": 0,
+      "canliOrnek": [],
+      "kosanAnimasyon": [
+        "pulse",
+        "pulse",
+        "pulse",
+        "pulse",
+        "pulse",
+        "pulse"
+      ],
+      "borderBaseDegiskeni": "(tanımsız)",
+      "gorunurKenarlikRenkleri": [
+        [
+          "rgb(51, 65, 85)",
+          1
+        ]
+      ],
+      "varsayilanRenkDagilimi": [
+        [
+          "rgb(229, 231, 235)",
+          395
+        ],
+        [
+          "rgb(30, 41, 59)",
+          3
+        ],
+        [
+          "rgb(51, 65, 85)",
+          1
+        ],
+        [
+          "rgb(241, 245, 249)",
+          1
+        ]
+      ]
+    }
+  },
+  "marketplace-dark": {
+    "erken": {
+      "animSinifliEleman": 1,
+      "animationNameNoneDegil": 0,
+      "canliOrnek": [],
+      "kosanAnimasyon": [],
+      "borderBaseDegiskeni": "(tanımsız)",
+      "gorunurKenarlikRenkleri": [
+        [
+          "rgb(51, 65, 85)",
+          5
+        ]
+      ],
+      "varsayilanRenkDagilimi": [
+        [
+          "rgb(229, 231, 235)",
+          394
+        ],
+        [
+          "rgb(51, 65, 85)",
+          5
+        ],
+        [
+          "rgb(30, 41, 59)",
+          1
+        ]
+      ]
+    },
+    "gec": {
+      "animSinifliEleman": 1,
+      "animationNameNoneDegil": 0,
+      "canliOrnek": [],
+      "kosanAnimasyon": [],
+      "borderBaseDegiskeni": "(tanımsız)",
+      "gorunurKenarlikRenkleri": [
+        [
+          "rgb(51, 65, 85)",
+          5
+        ]
+      ],
+      "varsayilanRenkDagilimi": [
+        [
+          "rgb(229, 231, 235)",
+          394
+        ],
+        [
+          "rgb(51, 65, 85)",
+          5
+        ],
+        [
+          "rgb(30, 41, 59)",
+          1
+        ]
+      ]
+    }
+  },
+  "libraries-dark": {
+    "erken": {
+      "animSinifliEleman": 1,
+      "animationNameNoneDegil": 0,
+      "canliOrnek": [],
+      "kosanAnimasyon": [],
+      "borderBaseDegiskeni": "(tanımsız)",
+      "gorunurKenarlikRenkleri": [
+        [
+          "rgb(51, 65, 85)",
+          4
+        ],
+        [
+          "rgb(255, 255, 255)",
+          1
+        ]
+      ],
+      "varsayilanRenkDagilimi": [
+        [
+          "rgb(229, 231, 235)",
+          394
+        ],
+        [
+          "rgb(51, 65, 85)",
+          4
+        ],
+        [
+          "rgb(30, 41, 59)",
+          1
+        ],
+        [
+          "rgb(255, 255, 255)",
+          1
+        ]
+      ]
+    },
+    "gec": {
+      "animSinifliEleman": 1,
+      "animationNameNoneDegil": 0,
+      "canliOrnek": [],
+      "kosanAnimasyon": [],
+      "borderBaseDegiskeni": "(tanımsız)",
+      "gorunurKenarlikRenkleri": [
+        [
+          "rgb(51, 65, 85)",
+          4
+        ],
+        [
+          "rgb(255, 255, 255)",
+          1
+        ]
+      ],
+      "varsayilanRenkDagilimi": [
+        [
+          "rgb(229, 231, 235)",
+          394
+        ],
+        [
+          "rgb(51, 65, 85)",
+          4
+        ],
+        [
+          "rgb(30, 41, 59)",
+          1
+        ],
+        [
+          "rgb(255, 255, 255)",
+          1
+        ]
+      ]
+    }
+  },
+  "library-detail-dark": {
+    "erken": {
+      "animSinifliEleman": 1,
+      "animationNameNoneDegil": 0,
+      "canliOrnek": [],
+      "kosanAnimasyon": [],
+      "borderBaseDegiskeni": "(tanımsız)",
+      "gorunurKenarlikRenkleri": [
+        [
+          "rgb(51, 65, 85)",
+          2
+        ],
+        [
+          "rgb(255, 255, 255)",
+          2
+        ]
+      ],
+      "varsayilanRenkDagilimi": [
+        [
+          "rgb(229, 231, 235)",
+          394
+        ],
+        [
+          "rgb(51, 65, 85)",
+          2
+        ],
+        [
+          "rgb(255, 255, 255)",
+          2
+        ],
+        [
+          "rgb(30, 41, 59)",
+          1
+        ]
+      ]
+    },
+    "gec": {
+      "animSinifliEleman": 1,
+      "animationNameNoneDegil": 0,
+      "canliOrnek": [],
+      "kosanAnimasyon": [],
+      "borderBaseDegiskeni": "(tanımsız)",
+      "gorunurKenarlikRenkleri": [
+        [
+          "rgb(51, 65, 85)",
+          2
+        ],
+        [
+          "rgb(255, 255, 255)",
+          2
+        ]
+      ],
+      "varsayilanRenkDagilimi": [
+        [
+          "rgb(229, 231, 235)",
+          394
+        ],
+        [
+          "rgb(51, 65, 85)",
+          2
+        ],
+        [
+          "rgb(255, 255, 255)",
+          2
+        ],
+        [
+          "rgb(30, 41, 59)",
+          1
+        ]
+      ]
+    }
+  },
+  "store-list-dark": {
+    "erken": {
+      "animSinifliEleman": 0,
+      "animationNameNoneDegil": 0,
+      "canliOrnek": [],
+      "kosanAnimasyon": [],
+      "borderBaseDegiskeni": "(tanımsız)",
+      "gorunurKenarlikRenkleri": [
+        [
+          "rgb(30, 41, 59)",
+          38
+        ],
+        [
+          "rgb(51, 65, 85)",
+          1
+        ]
+      ],
+      "varsayilanRenkDagilimi": [
+        [
+          "rgb(229, 231, 235)",
+          372
+        ],
+        [
+          "rgb(30, 41, 59)",
+          19
+        ],
+        [
+          "rgba(0, 0, 0, 0)",
+          5
+        ],
+        [
+          "rgb(51, 65, 85)",
+          3
+        ]
+      ]
+    },
+    "gec": {
+      "animSinifliEleman": 0,
+      "animationNameNoneDegil": 0,
+      "canliOrnek": [],
+      "kosanAnimasyon": [],
+      "borderBaseDegiskeni": "(tanımsız)",
+      "gorunurKenarlikRenkleri": [
+        [
+          "rgb(30, 41, 59)",
+          38
+        ],
+        [
+          "rgb(51, 65, 85)",
+          1
+        ]
+      ],
+      "varsayilanRenkDagilimi": [
+        [
+          "rgb(229, 231, 235)",
+          372
+        ],
+        [
+          "rgb(30, 41, 59)",
+          19
+        ],
+        [
+          "rgba(0, 0, 0, 0)",
+          5
+        ],
+        [
+          "rgb(51, 65, 85)",
+          3
+        ]
+      ]
+    }
+  },
+  "gorevler-dark": {
+    "erken": {
+      "animSinifliEleman": 0,
+      "animationNameNoneDegil": 0,
+      "canliOrnek": [],
+      "kosanAnimasyon": [
+        "spin"
+      ],
+      "borderBaseDegiskeni": "(tanımsız)",
+      "gorunurKenarlikRenkleri": [
+        [
+          "rgb(129, 140, 248)",
+          1
+        ]
+      ],
+      "varsayilanRenkDagilimi": [
+        [
+          "rgb(229, 231, 235)",
+          361
+        ],
+        [
+          "rgb(129, 140, 248)",
+          1
+        ],
+        [
+          "rgb(241, 245, 249)",
+          1
+        ]
+      ]
+    },
+    "gec": {
+      "animSinifliEleman": 0,
+      "animationNameNoneDegil": 0,
+      "canliOrnek": [],
+      "kosanAnimasyon": [
+        "pulse",
+        "pulse",
+        "pulse",
+        "pulse",
+        "pulse",
+        "pulse",
+        "pulse"
+      ],
+      "borderBaseDegiskeni": "(tanımsız)",
+      "gorunurKenarlikRenkleri": [],
+      "varsayilanRenkDagilimi": [
+        [
+          "rgb(229, 231, 235)",
+          398
+        ],
+        [
+          "rgb(30, 41, 59)",
+          1
+        ],
+        [
+          "rgb(241, 245, 249)",
+          1
+        ]
+      ]
+    }
+  },
+  "aliskanliklar-dark": {
+    "erken": {
+      "animSinifliEleman": 0,
+      "animationNameNoneDegil": 0,
+      "canliOrnek": [],
+      "kosanAnimasyon": [
+        "spin"
+      ],
+      "borderBaseDegiskeni": "(tanımsız)",
+      "gorunurKenarlikRenkleri": [
+        [
+          "rgb(129, 140, 248)",
+          1
+        ]
+      ],
+      "varsayilanRenkDagilimi": [
+        [
+          "rgb(229, 231, 235)",
+          361
+        ],
+        [
+          "rgb(129, 140, 248)",
+          1
+        ],
+        [
+          "rgb(241, 245, 249)",
+          1
+        ]
+      ]
+    },
+    "gec": {
+      "animSinifliEleman": 0,
+      "animationNameNoneDegil": 0,
+      "canliOrnek": [],
+      "kosanAnimasyon": [
+        "pulse",
+        "pulse",
+        "pulse",
+        "pulse"
+      ],
+      "borderBaseDegiskeni": "(tanımsız)",
+      "gorunurKenarlikRenkleri": [],
+      "varsayilanRenkDagilimi": [
+        [
+          "rgb(229, 231, 235)",
+          398
+        ],
+        [
+          "rgb(30, 41, 59)",
+          1
+        ],
+        [
+          "rgb(241, 245, 249)",
+          1
+        ]
+      ]
+    }
+  }
+}

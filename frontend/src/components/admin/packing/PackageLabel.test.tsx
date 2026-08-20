@@ -30,6 +30,19 @@
 import { fireEvent, render } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+// ── Ağır ortak modül BİLE BİLE statik import ediliyor (İP-A7d3 · Görev 5) ──
+//
+// Etiket bileşeni `admin/ui` demetinden geçiyor ve o demet İP-A7d3'te
+// `ui2/duzenlemeYuzeyi` üzerinden `@medusajs/ui`ye bağlandı (`ReasonDialog`ın
+// kirli form bekçisi — SK-7). Modül aşağıda TEMBEL yükleniyor ve maliyeti
+// DOSYANIN İLK TESTİNİN İÇİNDE ödeniyor; paralel yük altında o tek test
+// 9 sn'lik bütçeyi aştı.
+//
+// Bütçe BÜYÜTÜLMEDİ — A7d2'nin `PackagesPage`/`OperatorSessions` için verdiği
+// kararın aynısı: yavaşlık üretim kodunda değil test kurulumunda. Statik
+// import maliyeti TOPLAMA (collect) evresine taşır; orada test bütçesi yoktur.
+import "@/components/admin/ui2/duzenlemeYuzeyi";
+
 import type { ComponentType } from "react";
 
 // `vi.mock` hoist edilir; paylaşılan diziyi `vi.hoisted` ile önden kur.
@@ -55,9 +68,16 @@ const UZUN_BASLIK =
   "TYT ve AYT İçin Kapsamlı Matematik Soru Bankası Video Çözümlü " +
   "Genişletilmiş 2026 Baskısı Set Halinde Toplam Dört Kitap";
 
-// `import.meta.glob`: Vite düz dinamik import'u derleme anında çözer ve dosya
-// yoksa tüm matrisi collection'da düşürür ("no tests"). Glob boş eşleşme döner.
-const MODULLER = import.meta.glob("./PackageLabel.tsx");
+// ── İP-A7d5 · Görev 2: modül STATİK import ediliyor ──
+//
+// Eskiden `import.meta.glob("./PackageLabel.tsx")` idi ve gerekçesi "dosya
+// HENÜZ YOKKEN kırmızı matris kurulabilsin"di (red-first idiom). Dosya
+// yazıldığı gün o gerekçe bitti; geriye maliyeti kaldı ve A7d2/A7d3'te bu
+// dosyanın İLK TESTİ tam olarak bu yüzden zaman aşımına düştü (transform
+// süresi testin bütçesinden ödeniyordu). Statik import maliyeti TOPLAMA
+// evresine taşır. Gevşek tip sözleşmesi (aşağıdaki `EtiketModulu`) KORUNUYOR:
+// testin negatif iddiaları fixture'ın fazladan alan taşımasına dayanır.
+import * as PackageLabelModulu from "./PackageLabel";
 
 /**
  * Glob yükleyicisinin `unknown` çıktısına verilen ad — `any` DEĞİL.
@@ -76,11 +96,7 @@ interface EtiketModulu {
 }
 
 async function modul(): Promise<EtiketModulu> {
-  const yukle = MODULLER["./PackageLabel.tsx"];
-  if (!yukle) {
-    throw new Error("HENÜZ YAZILMADI: src/components/admin/packing/PackageLabel.tsx");
-  }
-  return (await yukle()) as unknown as EtiketModulu;
+  return PackageLabelModulu as unknown as EtiketModulu;
 }
 
 async function bilesen(): Promise<EtiketModulu["PackageLabel"]> {
@@ -113,6 +129,24 @@ beforeEach(() => {
   qrCagrilari.length = 0;
 });
 
+/**
+ * Etiketin KENDİ baskı stilini KİMLİKLE bulur.
+ *
+ * Eskiden `document.querySelector("style")` yazılıydı — yani "belgedeki İLK
+ * <style>". Bu bir kimlik değil bir SIRA iddiasıydı ve etiketin stiliyle
+ * hiçbir bağı yoktu: kendi çalışma zamanı stilini enjekte eden herhangi bir
+ * kütüphane (İP-A7d3'te `@medusajs/ui`, `admin/ui` demeti üzerinden yüklendi)
+ * o sırayı değiştirdiği anda test, ÜRETİM KODU HİÇ DEĞİŞMEDEN kırmızıya
+ * dönüyordu. Testin kusuruydu; baskı kuralı yerinde duruyordu.
+ */
+function baskiStili(): string {
+  const stil = Array.from(document.querySelectorAll("style")).find((s) =>
+    (s.textContent ?? "").includes(".package-label-overlay")
+  );
+  if (!stil) throw new Error("etiketin baski stili DOM'da yok");
+  return stil.textContent ?? "";
+}
+
 describe("PackageLabel baskı sözleşmesi", () => {
   it("print CSS'i etiketin GÖRÜNÜRLÜĞÜNÜ geri verir", async () => {
     // `index.css:268-286` fatura kuralı `body * { visibility: hidden }` yapıyor;
@@ -120,9 +154,9 @@ describe("PackageLabel baskı sözleşmesi", () => {
     // baskı 1 KB'lık boş PDF olur (bir kez yaşandı).
     const PackageLabel = await bilesen();
     render(<PackageLabel package={paket()} onClose={() => {}} />);
-    const style = document.querySelector("style");
-    expect(style?.textContent).toContain("@media print");
-    expect(style?.textContent).toMatch(
+    const style = baskiStili();
+    expect(style).toContain("@media print");
+    expect(style).toMatch(
       /\.package-label\s*,\s*\.package-label\s*\*\s*\{[^}]*visibility:\s*visible/,
     );
   });
@@ -317,8 +351,7 @@ describe("PackageLabel baskı sözleşmesi", () => {
     // İkiye bölünen etiketin QR'ı okunamaz; kutu kör gider.
     const PackageLabel = await bilesen();
     render(<PackageLabel package={paket()} onClose={() => {}} />);
-    const style = document.querySelector("style")?.textContent ?? "";
-    expect(style).toMatch(/\.package-label\s*\{[^}]*break-inside:\s*avoid/);
+    expect(baskiStili()).toMatch(/\.package-label\s*\{[^}]*break-inside:\s*avoid/);
   });
 
   it("Escape kapatır (kullanıcı paketleme akışına döner)", async () => {

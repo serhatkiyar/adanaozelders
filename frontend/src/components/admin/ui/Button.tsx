@@ -14,7 +14,15 @@ const VARIANTS: Record<ButtonVariant, string> = {
   secondary: "border border-slate-200 bg-white text-slate-700 shadow-sm hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800",
   // Tamamlama/olumlu sonuç aksiyonları (ör. "Turu Tamamla") — !important
   // kaçışlarıyla primary'yi ezmek yerine sistem varyantı.
-  success: "bg-emerald-600 text-white shadow-sm hover:bg-emerald-700",
+  //
+  // ── `emerald-600` → `emerald-700` (İP-A8 · Görev 6 · B-8) ──
+  //
+  // Beyaz metin `emerald-600` üzerinde **3,77:1**di; AA eşiği 4,5 ve buradaki
+  // metin 14 px (büyük metin muafiyeti YOK). İki temada da eşik altındaydı ve
+  // panelde 10 gerçek çağrı yeri vardı. Kontrast sondaları o güne dek yalnız
+  // HATA METNİNE bakıyordu; düğme metni hiçbir tur raporunda ölçülmemişti
+  // (bağımsız denetim #3 · B-8). `emerald-700` gerçek Chrome'da **5,48:1**.
+  success: "bg-emerald-700 text-white shadow-sm hover:bg-emerald-800",
   danger: "bg-rose-600 text-white shadow-sm hover:bg-rose-700",
   ghost: "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800",
 };

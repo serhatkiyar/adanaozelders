@@ -1,4 +1,7 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import {
   useAttendRegistration,
   useBulkUploadDocuments,
@@ -13,8 +16,16 @@ import {
   useUploadSessionAnswerKey,
 } from "@/hooks/useLibraryExams";
 import { useUsableCatalogs } from "@/hooks/useExamCatalogs";
+import { Button } from "@/components/admin/ui/Button";
 import { ConfirmDialog } from "@/components/admin/ui/ConfirmDialog";
 import { ErrorState } from "@/components/admin/ui/PageState";
+import {
+  DuzenlemePenceresi,
+  useDuzenlemeYuzeyi,
+  useYuzeyKirliFormBekcisi,
+  type DuzenlemeYuzeyiDurumu,
+} from "@/components/admin/ui2/duzenlemeYuzeyi";
+import { Form, sunucuHatasiniUygula } from "@/components/admin/ui2/form";
 import { yoklamaSayaci } from "@/lib/operatorAgenda";
 import { downloadResultsReference } from "@/api/libraryExams";
 import { formatTRY } from "@/lib/money";
@@ -44,6 +55,75 @@ interface FormState {
   price: number;
 }
 
+/**
+ * Oturum formu şeması (İP-A7d2 · Görev 4).
+ *
+ * Doğrulama A7d2'ye kadar `submit()` içinde elle yapılıyordu ve ilk hata
+ * `toast.error` ile ekranın köşesine düşüyordu: kullanıcı HANGİ alanı
+ * düzelteceğini göremiyordu, ekran okuyucu hiç göremiyordu. Kural artık
+ * şemada, mesaj alanın altında (`role="alert"` + `aria-invalid`).
+ *
+ * Sayısal alanlar `coerce` ile okunur: `<input type="number">`ın değeri
+ * DAİMA string'tir ve `Number("")` sıfırdır — eskiden boş kontenjan sessizce
+ * 0 olarak sunucuya gidiyordu.
+ */
+/** En az `enAz` olan, boş bırakılamayan sayı alanı. */
+function sayiAlani(etiket: string, enAz: number) {
+  return z
+    .string()
+    .refine((v) => v.trim() !== "", `${etiket} gerekli.`)
+    .refine(
+      (v) => v.trim() === "" || Number.isFinite(Number(v)),
+      `${etiket} bir sayı olmalı.`
+    )
+    .refine(
+      (v) => v.trim() === "" || Number(v) >= enAz,
+      `${etiket} en az ${enAz} olmalı.`
+    );
+}
+
+const oturumSemasi = z.object({
+  catalog_id: z.string(),
+  exam_type: z.string().min(1, "Sınav türü seçilmeli."),
+  title: z.string().trim().min(2, "Başlık en az 2 karakter olmalı."),
+  description: z.string(),
+  starts_at: z.string().min(1, "Tarih ve saat gerekli."),
+  // Sayısal alanlar formda STRING tutulur (`<input type="number">`ın değeri
+  // zaten string'tir) ve gönderimde çevrilir. `z.coerce` denendi ve
+  // bırakıldı: girdi/çıktı tipleri ayrışınca `react-hook-form` 7.85'in
+  // `Resolver` tipi tutmuyor. Aynı desen `LibraryEditorModal`de de var.
+  duration_minutes: sayiAlani("Süre", 1),
+  capacity: sayiAlani("Kontenjan", 1),
+  price: sayiAlani("Ücret", 0),
+});
+
+type OturumFormDegerleri = z.infer<typeof oturumSemasi>;
+
+/** Alan sırası — "ilk hatalı alana odaklan" bu sırayı kullanır. */
+const GORSEL_SIRA = [
+  "catalog_id",
+  "exam_type",
+  "price",
+  "title",
+  "description",
+  "starts_at",
+  "duration_minutes",
+  "capacity",
+] as const;
+
+function formDegerleri(f: FormState): OturumFormDegerleri {
+  return {
+    catalog_id: f.catalog_id == null ? "" : String(f.catalog_id),
+    exam_type: f.exam_type,
+    title: f.title,
+    description: f.description,
+    starts_at: f.starts_at,
+    duration_minutes: String(f.duration_minutes),
+    capacity: String(f.capacity),
+    price: String(f.price),
+  };
+}
+
 function emptyForm(): FormState {
   return {
     catalog_id: null,
@@ -59,7 +139,9 @@ function emptyForm(): FormState {
 
 export function ExamSessionsManager({ libraryId }: { libraryId: number }) {
   const { data: sessions, isLoading, isError, refetch } = useManageSessions(libraryId);
-  const [editor, setEditor] = useState<FormState | null>(null);
+  // Pencere durumu ekranda YAŞAMAZ (İP-A4 sözleşmesi): hangi oturumun
+  // düzenlendiği düzenleme yüzeyinde durur.
+  const editor = useDuzenlemeYuzeyi<FormState, void>();
 
   return (
     <div className="space-y-3">
@@ -67,12 +149,9 @@ export function ExamSessionsManager({ libraryId }: { libraryId: number }) {
         <h3 className="text-sm font-bold text-slate-900 dark:text-white">
           Deneme Oturumları
         </h3>
-        <button
-          onClick={() => setEditor(emptyForm())}
-          className="rounded-lg bg-indigo-600 px-3.5 py-1.5 text-sm font-semibold text-white hover:bg-indigo-700"
-        >
+        <Button size="sm" onClick={() => editor.ac(emptyForm())}>
           + Oturum
-        </button>
+        </Button>
       </div>
 
       {isLoading ? (
@@ -96,18 +175,12 @@ export function ExamSessionsManager({ libraryId }: { libraryId: number }) {
       ) : (
         <div className="space-y-2">
           {sessions.map((s) => (
-            <SessionRow key={s.id} session={s} onEdit={() => setEditor(toForm(s))} />
+            <SessionRow key={s.id} session={s} onEdit={() => editor.ac(toForm(s))} />
           ))}
         </div>
       )}
 
-      {editor && (
-        <SessionEditor
-          libraryId={libraryId}
-          form={editor}
-          onClose={() => setEditor(null)}
-        />
-      )}
+      <SessionEditorPenceresi libraryId={libraryId} yuzey={editor} />
     </div>
   );
 }
@@ -134,7 +207,8 @@ function SessionRow({
   onEdit: () => void;
 }) {
   const [panel, setPanel] = useState<"none" | "roster" | "results">("none");
-  const [iptalSoruluyor, setIptalSoruluyor] = useState(false);
+  // Onay penceresinin durumu da yüzeyde: ekran "modal açık mı" tutmaz.
+  const iptal = useDuzenlemeYuzeyi<ExamSessionOut, void>();
   const cancel = useCancelSession();
   const cancelled = session.status === "CANCELLED";
   const isPast = new Date(session.starts_at).getTime() < Date.now();
@@ -147,7 +221,7 @@ function SessionRow({
     cancel.mutate(session.id, {
       onSuccess: () => {
         toast.success("Oturum iptal edildi, iadeler yapıldı.");
-        setIptalSoruluyor(false);
+        iptal.kapat();
       },
       onError: (e) => toast.error(getErrorMessage(e, "İptal başarısız.")),
     });
@@ -193,34 +267,32 @@ function SessionRow({
           </p>
         </div>
         <div className="flex shrink-0 flex-wrap gap-2">
-          <button
+          <Button
+            size="sm"
+            variant="secondary"
+            aria-expanded={panel === "roster"}
             onClick={() => setPanel((p) => (p === "roster" ? "none" : "roster"))}
-            className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300"
           >
             Katılımcılar
-          </button>
+          </Button>
           {!cancelled && (
-            <button
+            <Button
+              size="sm"
+              variant="secondary"
+              aria-expanded={panel === "results"}
               onClick={() => setPanel((p) => (p === "results" ? "none" : "results"))}
-              className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300"
             >
               Sonuçlar
-            </button>
+            </Button>
           )}
           {!cancelled && (
             <>
-              <button
-                onClick={onEdit}
-                className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300"
-              >
+              <Button size="sm" variant="secondary" onClick={onEdit}>
                 Düzenle
-              </button>
-              <button
-                onClick={() => setIptalSoruluyor(true)}
-                className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-50 dark:border-slate-600"
-              >
+              </Button>
+              <Button size="sm" variant="danger" onClick={() => iptal.ac(session)}>
                 İptal
-              </button>
+              </Button>
             </>
           )}
         </div>
@@ -229,14 +301,14 @@ function SessionRow({
       {panel === "results" && <ResultsPanel session={session} isPast={isPast} />}
 
       <ConfirmDialog
-        open={iptalSoruluyor}
+        open={iptal.acik}
         danger
         title="Oturumu iptal et"
         description={`"${session.title}" iptal edilecek. Ödemesi alınmış ${session.registered_count} kayda iade yapılır; bu işlem geri alınamaz.`}
         confirmLabel="Oturumu iptal et"
         cancelLabel="Vazgeç"
         isPending={cancel.isPending}
-        onClose={() => setIptalSoruluyor(false)}
+        onClose={iptal.kapat}
         onConfirm={doCancel}
       />
     </div>
@@ -301,13 +373,14 @@ function RosterPanel({ sessionId }: { sessionId: number }) {
           {r.status === "ATTENDED" ? (
             <span className="shrink-0 text-xs font-semibold text-emerald-600">Katıldı ✓</span>
           ) : (
-            <button
+            <Button
+              size="sm"
+              className="shrink-0 bg-emerald-600 hover:bg-emerald-700"
+              isPending={attend.isPending}
               onClick={() => doAttend(r.registration_id, r.client_name)}
-              disabled={attend.isPending}
-              className="shrink-0 rounded-lg bg-emerald-600 px-3 py-1 text-xs font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-60"
             >
-              {attend.isPending ? "…" : "Giriş ver"}
-            </button>
+              Giriş ver
+            </Button>
           )}
         </li>
       ))}
@@ -329,7 +402,7 @@ function ResultsPanel({
   const bulk = useBulkUploadDocuments(session.id);
   const publish = usePublishResults(session.id);
   const answerKey = useUploadSessionAnswerKey(session.id);
-  const [yayinSoruluyor, setYayinSoruluyor] = useState(false);
+  const yayin = useDuzenlemeYuzeyi<ExamSessionOut, void>();
 
   const bulkInput = useRef<HTMLInputElement>(null);
   const keyInput = useRef<HTMLInputElement>(null);
@@ -363,7 +436,7 @@ function ResultsPanel({
     publish.mutate(undefined, {
       onSuccess: (res) => {
         toast.success(res.message);
-        setYayinSoruluyor(false);
+        yayin.kapat();
       },
       onError: (e) => toast.error(getErrorMessage(e, "Yayınlama başarısız.")),
     });
@@ -385,19 +458,17 @@ function ResultsPanel({
 
       {/* Üst aksiyonlar */}
       <div className="mb-3 flex flex-wrap items-center gap-2">
-        <button
-          onClick={onReference}
-          className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300"
-        >
+        <Button size="sm" variant="secondary" onClick={onReference}>
           ⬇ Referans (CSV)
-        </button>
-        <button
+        </Button>
+        <Button
+          size="sm"
+          variant="secondary"
+          isPending={bulk.isPending}
           onClick={() => bulkInput.current?.click()}
-          disabled={bulk.isPending}
-          className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-60 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300"
         >
-          {bulk.isPending ? "Yükleniyor…" : "⬆ Toplu Karne (PDF)"}
-        </button>
+          ⬆ Toplu Karne (PDF)
+        </Button>
         <input
           ref={bulkInput}
           type="file"
@@ -412,13 +483,14 @@ function ResultsPanel({
         />
         {!session.catalog_id && (
           <>
-            <button
+            <Button
+              size="sm"
+              variant="secondary"
+              isPending={answerKey.isPending}
               onClick={() => keyInput.current?.click()}
-              disabled={answerKey.isPending}
-              className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-60 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300"
             >
-              {answerKey.isPending ? "Yükleniyor…" : "🔑 Cevap Anahtarı"}
-            </button>
+              🔑 Cevap Anahtarı
+            </Button>
             <input
               ref={keyInput}
               type="file"
@@ -433,24 +505,26 @@ function ResultsPanel({
           </>
         )}
         <div className="ml-auto">
-          <button
-            onClick={() => setYayinSoruluyor(true)}
-            disabled={publish.isPending || session.results_published}
-            className="rounded-lg bg-emerald-600 px-3.5 py-1.5 text-xs font-bold text-white hover:bg-emerald-700 disabled:opacity-60"
+          <Button
+            size="sm"
+            className="bg-emerald-600 hover:bg-emerald-700"
+            isPending={publish.isPending}
+            disabled={session.results_published}
+            onClick={() => yayin.ac(session)}
           >
-            {publish.isPending ? "…" : session.results_published ? "Yayında ✓" : "Karneleri Yayınla"}
-          </button>
+            {session.results_published ? "Yayında ✓" : "Karneleri Yayınla"}
+          </Button>
         </div>
       </div>
 
       <ConfirmDialog
-        open={yayinSoruluyor}
+        open={yayin.acik}
         title="Karneleri yayınla"
         description="Karnesi yüklenmiş öğrencilere bildirim gidecek ve karnelerini görebilecekler. Yayınlama geri alınamaz."
         confirmLabel="Yayınla"
         cancelLabel="Vazgeç"
         isPending={publish.isPending}
-        onClose={() => setYayinSoruluyor(false)}
+        onClose={yayin.kapat}
         onConfirm={onPublish}
       />
 
@@ -552,17 +626,17 @@ function ResultRow({ sessionId, row }: { sessionId: number; row: RosterEntry }) 
         )}
       </td>
       <td className="px-1 py-1.5">
-        <button
+        <Button
+          size="sm"
+          variant="secondary"
+          isPending={upload.isPending}
+          className={row.result_document_url ? "text-emerald-600 dark:text-emerald-400" : ""}
           onClick={() => docInput.current?.click()}
-          disabled={upload.isPending}
-          className={`rounded-md border px-2.5 py-1 text-xs font-semibold disabled:opacity-50 ${
-            row.result_document_url
-              ? "border-emerald-300 text-emerald-600 dark:border-emerald-700"
-              : "border-indigo-300 text-indigo-600 hover:bg-indigo-50 dark:border-indigo-700 dark:hover:bg-indigo-500/10"
-          }`}
         >
-          {upload.isPending ? "…" : row.result_document_url ? "📄 Yüklendi ✓" : "📄 Karne yükle"}
-        </button>
+          {row.result_document_url
+            ? `📄 ${row.client_name} karnesi yüklendi ✓`
+            : `📄 ${row.client_name} karnesini yükle`}
+        </Button>
         <input
           ref={docInput}
           type="file"
@@ -576,11 +650,16 @@ function ResultRow({ sessionId, row }: { sessionId: number; row: RosterEntry }) 
         />
       </td>
       <td className="px-1 py-1.5">
+        {/* Erişilebilir ad ÖĞRENCİYİ de içerir: tablo satırında tek başına
+            "Net" demek ekran okuyucuda hangi öğrencinin neti olduğunu
+            söylemez (nöbetçi sayacında bu iki alan `ExamSessionsManager: 2`
+            borcuydu — A7d2'de kapandı). */}
         <input
           type="number"
           min={0}
           step="0.01"
           value={net}
+          aria-label={`${row.client_name} — toplam net`}
           placeholder="—"
           onChange={(e) => setNet(e.target.value)}
           className={numCls}
@@ -591,153 +670,302 @@ function ResultRow({ sessionId, row }: { sessionId: number; row: RosterEntry }) 
           type="number"
           min={1}
           value={rank}
+          aria-label={`${row.client_name} — sıra`}
           placeholder="—"
           onChange={(e) => setRank(e.target.value)}
           className={numCls}
         />
       </td>
       <td className="px-1 py-1.5">
-        <button
+        {/* "Kaydet" DEĞİŞİKLİK YOKKEN kapalıdır ve bu bir geçerlilik kapısı
+            DEĞİLDİR: kaydedilecek bir şey olmadığında basmanın anlamı yok.
+            Kilitli karar ("gönder düğmesi geçerlilikle kapanmaz") formun
+            gönderimi içindir. */}
+        <Button
+          size="sm"
+          isPending={summary.isPending}
+          disabled={!dirty}
+          aria-label={`${row.client_name} — özeti kaydet`}
           onClick={save}
-          disabled={summary.isPending || !dirty}
-          className="rounded-md bg-indigo-600 px-2.5 py-1 text-xs font-semibold text-white hover:bg-indigo-700 disabled:opacity-40"
         >
-          {summary.isPending ? "…" : "Kaydet"}
-        </button>
+          Kaydet
+        </Button>
       </td>
     </tr>
   );
 }
 
-function SessionEditor({
+/**
+ * Oturum editörü — DIŞ kabuk (İP-A7d2 · Görev 4).
+ *
+ * Bu bileşen A7d2'ye kadar KENDİ `fixed inset-0` katmanını kuruyordu:
+ * `role="dialog"` yok, `aria-modal` yok, odak tuzağı yok, ESC yok, arka plan
+ * kilidi yok, kirli formda uyarı yok. Nöbetçinin üç etiketsiz overlay'inden
+ * biri buydu ve ortak `Dialog` tek genişlikte olduğu için (A7d1'e kadar)
+ * geçemiyordu.
+ *
+ * Pencere DIŞ kabuk, form İÇ bileşendir ve bu bir zorunluluktur:
+ * `useYuzeyKirliFormBekcisi` bekçiyi pencereye BAĞLAM üzerinden bildirir,
+ * bağlamı `DuzenlemePenceresi` açar. Kancayı burada çağırmak bağlamın dışında
+ * kalmak olurdu — A7d2'den beri o yazım geliştirmede PATLAR (SK-3).
+ */
+function SessionEditorPenceresi({
   libraryId,
-  form,
-  onClose,
+  yuzey,
 }: {
   libraryId: number;
-  form: FormState;
-  onClose: () => void;
+  yuzey: DuzenlemeYuzeyiDurumu<FormState, void>;
 }) {
-  const [f, setF] = useState<FormState>(form);
+  const kayit = yuzey.kayit;
+  return (
+    <DuzenlemePenceresi
+      yuzey={yuzey}
+      baslik={kayit?.id != null ? "Oturumu Düzenle" : "Yeni Deneme Oturumu"}
+    >
+      {kayit && <SessionEditorIcerik libraryId={libraryId} yuzey={yuzey} kayit={kayit} />}
+    </DuzenlemePenceresi>
+  );
+}
+
+function SessionEditorIcerik({
+  libraryId,
+  yuzey,
+  kayit,
+}: {
+  libraryId: number;
+  yuzey: DuzenlemeYuzeyiDurumu<FormState, void>;
+  kayit: FormState;
+}) {
   const create = useCreateSession(libraryId);
   const update = useUpdateSession();
   const { data: catalogs } = useUsableCatalogs();
   const busy = create.isPending || update.isPending;
-  const isEdit = f.id != null;
+  const isEdit = kayit.id != null;
 
-  const set = <K extends keyof FormState>(k: K, v: FormState[K]) =>
-    setF((p) => ({ ...p, [k]: v }));
+  const form = useForm<OturumFormDegerleri>({
+    resolver: zodResolver(oturumSemasi),
+    defaultValues: formDegerleri(kayit),
+    mode: "onChange",
+    // Odaklamayı KENDİMİZ yapıyoruz: RHF'inki `onInvalid`ten SONRA çalışıp
+    // bizimkini ezer (İP-A6'dan devralınan kural).
+    shouldFocusError: false,
+  });
 
-  const onPickCatalog = (idStr: string) => {
-    const id = idStr ? Number(idStr) : null;
-    const cat = catalogs?.find((c) => c.id === id);
-    setF((p) => ({
-      ...p,
-      catalog_id: id,
-      // Katalog seçilince tür + (boşsa) başlığı ön-doldur.
-      exam_type: cat ? cat.exam_type : p.exam_type,
-      title: cat && !p.title.trim() ? cat.exam_name : p.title,
-      duration_minutes: cat?.duration_minutes ?? p.duration_minutes,
-    }));
+  // Hedef değişince form yeniden kurulur (aynı pencere başka oturuma geçebilir).
+  const hedefKimligi = kayit.id ?? "yeni";
+  useEffect(() => {
+    form.reset(formDegerleri(kayit));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hedefKimligi]);
+
+  // Kirli form bekçisi: ×/ESC/dış tıklama yolları pencereden geçer.
+  useYuzeyKirliFormBekcisi({ form, sunucuHatasi: create.error ?? update.error ?? null });
+
+  const sunucuHatasiniDagit = (hata: unknown) => {
+    const kalan = sunucuHatasiniUygula(hata, form, [...GORSEL_SIRA]);
+    form.setError("root.sunucu", { type: "server", message: kalan ?? undefined });
   };
 
-  const submit = () => {
-    if (f.title.trim().length < 2) return toast.error("Başlık gerekli.");
-    if (!f.starts_at) return toast.error("Tarih/saat gerekli.");
-    const payload: ExamSessionWrite = {
-      catalog_id: f.catalog_id,
-      exam_type: f.exam_type,
-      title: f.title.trim(),
-      description: f.description.trim() || null,
-      starts_at: new Date(f.starts_at).toISOString(),
-      duration_minutes: f.duration_minutes,
-      capacity: f.capacity,
-      price: f.price,
-    };
-    const opts = {
-      onSuccess: () => {
-        toast.success(isEdit ? "Oturum güncellendi." : "Oturum eklendi.");
-        onClose();
-      },
-      onError: (e: unknown) => toast.error(getErrorMessage(e, "Kaydedilemedi.")),
-    };
-    if (isEdit) update.mutate({ id: f.id!, payload }, opts);
-    else create.mutate(payload, opts);
+  const gonder = form.handleSubmit(
+    (deger) => {
+      form.clearErrors("root.sunucu");
+      const payload: ExamSessionWrite = {
+        catalog_id: deger.catalog_id ? Number(deger.catalog_id) : null,
+        exam_type: deger.exam_type,
+        title: deger.title.trim(),
+        description: deger.description.trim() || null,
+        starts_at: new Date(deger.starts_at).toISOString(),
+        duration_minutes: Number(deger.duration_minutes),
+        capacity: Number(deger.capacity),
+        price: Number(deger.price),
+      };
+      const opts = {
+        onSuccess: () => {
+          toast.success(isEdit ? "Oturum güncellendi." : "Oturum eklendi.");
+          // KOŞULSUZ kapatma: veri kaydedildi, bekçiye soracak bir şey yok.
+          yuzey.kapat();
+        },
+        onError: sunucuHatasiniDagit,
+      };
+      if (isEdit) update.mutate({ id: kayit.id!, payload }, opts);
+      else create.mutate(payload, opts);
+    },
+    (hatalar) => {
+      const alan = GORSEL_SIRA.find((a) => hatalar[a]);
+      if (alan) form.setFocus(alan);
+    }
+  );
+
+  /** Katalog seçilince tür + (boşsa) başlık + süre ön-dolar. */
+  const katalogSec = (idStr: string) => {
+    const cat = catalogs?.find((c) => c.id === Number(idStr));
+    form.setValue("catalog_id", idStr, { shouldDirty: true });
+    if (!cat) return;
+    form.setValue("exam_type", cat.exam_type, { shouldDirty: true });
+    if (!form.getValues("title").trim()) {
+      form.setValue("title", cat.exam_name, { shouldDirty: true });
+    }
+    if (cat.duration_minutes != null) {
+      form.setValue("duration_minutes", String(cat.duration_minutes), {
+        shouldDirty: true,
+      });
+    }
   };
+
+  const genelHata = form.formState.errors.root?.sunucu?.message;
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
-      <div className="absolute inset-0" onClick={onClose} />
-      <div className="relative w-full max-w-md space-y-3 rounded-2xl bg-white p-5 shadow-2xl dark:bg-slate-800">
-        <h3 className="text-base font-bold text-slate-900 dark:text-white">
-          {isEdit ? "Oturumu Düzenle" : "Yeni Deneme Oturumu"}
-        </h3>
+    <div className="space-y-3">
+      {genelHata && (
+        <p
+          role="alert"
+          className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700 dark:bg-rose-500/10 dark:text-rose-300"
+        >
+          {genelHata}
+        </p>
+      )}
 
-        <label className="block">
-          <span className="mb-1 block text-xs font-semibold text-slate-600 dark:text-slate-300">
-            Deneme katalogu (opsiyonel)
-          </span>
-          <select
-            value={f.catalog_id ?? ""}
-            onChange={(e) => onPickCatalog(e.target.value)}
-            className="input"
-          >
-            <option value="">Katalogsuz (tek seferlik)</option>
-            {(catalogs ?? []).map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.is_nationwide ? "🇹🇷 " : ""}
-                {c.exam_name} ({c.exam_type})
-                {c.publisher_name ? ` — ${c.publisher_name}` : ""}
-              </option>
-            ))}
-          </select>
-        </label>
+      <Form.Field
+        control={form.control}
+        name="catalog_id"
+        render={({ field }) => (
+          <Form.Item>
+            <Form.Label optional>Deneme katalogu</Form.Label>
+            <Form.Control>
+              <select
+                {...field}
+                className="input"
+                onChange={(e) => katalogSec(e.target.value)}
+              >
+                <option value="">Katalogsuz (tek seferlik)</option>
+                {(catalogs ?? []).map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.is_nationwide ? "🇹🇷 " : ""}
+                    {c.exam_name} ({c.exam_type})
+                    {c.publisher_name ? ` — ${c.publisher_name}` : ""}
+                  </option>
+                ))}
+              </select>
+            </Form.Control>
+            <Form.ErrorMessage />
+          </Form.Item>
+        )}
+      />
 
-        <div className="grid grid-cols-2 gap-2">
-          <label className="block">
-            <span className="mb-1 block text-xs font-semibold text-slate-600 dark:text-slate-300">Sınav türü</span>
-            <select value={f.exam_type} onChange={(e) => set("exam_type", e.target.value)} className="input">
-              {EXAM_TYPES.map((t) => (
-                <option key={t} value={t}>{t}</option>
-              ))}
-            </select>
-          </label>
-          <label className="block">
-            <span className="mb-1 block text-xs font-semibold text-slate-600 dark:text-slate-300">Ücret (TL)</span>
-            <input type="number" min={0} value={f.price} onChange={(e) => set("price", Number(e.target.value))} className="input" />
-          </label>
-        </div>
-        <label className="block">
-          <span className="mb-1 block text-xs font-semibold text-slate-600 dark:text-slate-300">Başlık</span>
-          <input value={f.title} onChange={(e) => set("title", e.target.value)} className="input" placeholder="Mart TYT Genel Denemesi" />
-        </label>
-        <label className="block">
-          <span className="mb-1 block text-xs font-semibold text-slate-600 dark:text-slate-300">Açıklama</span>
-          <textarea value={f.description} onChange={(e) => set("description", e.target.value)} rows={2} className="input" />
-        </label>
-        <div className="grid grid-cols-2 gap-2">
-          <label className="block">
-            <span className="mb-1 block text-xs font-semibold text-slate-600 dark:text-slate-300">Tarih & saat</span>
-            <input type="datetime-local" value={f.starts_at} onChange={(e) => set("starts_at", e.target.value)} className="input" />
-          </label>
-          <label className="block">
-            <span className="mb-1 block text-xs font-semibold text-slate-600 dark:text-slate-300">Süre (dk)</span>
-            <input type="number" min={1} value={f.duration_minutes} onChange={(e) => set("duration_minutes", Number(e.target.value))} className="input" />
-          </label>
-        </div>
-        <label className="block">
-          <span className="mb-1 block text-xs font-semibold text-slate-600 dark:text-slate-300">Kontenjan</span>
-          <input type="number" min={1} value={f.capacity} onChange={(e) => set("capacity", Number(e.target.value))} className="input" />
-        </label>
+      <div className="grid grid-cols-2 gap-2">
+        <Form.Field
+          control={form.control}
+          name="exam_type"
+          render={({ field }) => (
+            <Form.Item>
+              <Form.Label>Sınav türü</Form.Label>
+              <Form.Control>
+                <select {...field} className="input">
+                  {EXAM_TYPES.map((t) => (
+                    <option key={t} value={t}>
+                      {t}
+                    </option>
+                  ))}
+                </select>
+              </Form.Control>
+              <Form.ErrorMessage />
+            </Form.Item>
+          )}
+        />
+        <Form.Field
+          control={form.control}
+          name="price"
+          render={({ field }) => (
+            <Form.Item>
+              <Form.Label>Ücret (TL)</Form.Label>
+              <Form.Control>
+                <input type="number" min={0} className="input" {...field} />
+              </Form.Control>
+              <Form.ErrorMessage />
+            </Form.Item>
+          )}
+        />
+      </div>
 
-        <div className="flex gap-2 pt-1">
-          <button onClick={onClose} className="flex-1 rounded-xl bg-slate-100 px-4 py-2.5 text-sm font-semibold text-slate-700 dark:bg-slate-700 dark:text-slate-200">
-            Vazgeç
-          </button>
-          <button onClick={submit} disabled={busy} className="flex-[2] rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60">
-            {busy ? "Kaydediliyor…" : isEdit ? "Güncelle" : "Ekle"}
-          </button>
-        </div>
+      <Form.Field
+        control={form.control}
+        name="title"
+        render={({ field }) => (
+          <Form.Item>
+            <Form.Label>Başlık</Form.Label>
+            <Form.Control>
+              <input className="input" placeholder="Mart TYT Genel Denemesi" {...field} />
+            </Form.Control>
+            <Form.ErrorMessage />
+          </Form.Item>
+        )}
+      />
+
+      <Form.Field
+        control={form.control}
+        name="description"
+        render={({ field }) => (
+          <Form.Item>
+            <Form.Label optional>Açıklama</Form.Label>
+            <Form.Control>
+              <textarea rows={2} className="input" {...field} />
+            </Form.Control>
+            <Form.ErrorMessage />
+          </Form.Item>
+        )}
+      />
+
+      <div className="grid grid-cols-2 gap-2">
+        <Form.Field
+          control={form.control}
+          name="starts_at"
+          render={({ field }) => (
+            <Form.Item>
+              <Form.Label>Tarih &amp; saat</Form.Label>
+              <Form.Control>
+                <input type="datetime-local" className="input" {...field} />
+              </Form.Control>
+              <Form.ErrorMessage />
+            </Form.Item>
+          )}
+        />
+        <Form.Field
+          control={form.control}
+          name="duration_minutes"
+          render={({ field }) => (
+            <Form.Item>
+              <Form.Label>Süre (dk)</Form.Label>
+              <Form.Control>
+                <input type="number" min={1} className="input" {...field} />
+              </Form.Control>
+              <Form.ErrorMessage />
+            </Form.Item>
+          )}
+        />
+      </div>
+
+      <Form.Field
+        control={form.control}
+        name="capacity"
+        render={({ field }) => (
+          <Form.Item>
+            <Form.Label>Kontenjan</Form.Label>
+            <Form.Control>
+              <input type="number" min={1} className="input" {...field} />
+            </Form.Control>
+            <Form.ErrorMessage />
+          </Form.Item>
+        )}
+      />
+
+      {/* Gönder düğmesi geçerlilik yüzünden KAPANMAZ (kilitli karar): geçersiz
+          formda basılır, gönderim yapılmaz, hatalar alanlarda belirir ve odak
+          ilk hatalı alana gider. "Vazgeç" YOKTUR — `DuzenlemePenceresi`
+          kapatmayı × / ESC / dış tıklamadan bekçiye bağlı olarak veriyor. */}
+      <div className="flex justify-end pt-1">
+        <Button isPending={busy} onClick={gonder}>
+          {isEdit ? "Güncelle" : "Ekle"}
+        </Button>
       </div>
     </div>
   );
