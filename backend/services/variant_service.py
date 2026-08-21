@@ -14,7 +14,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from models.store import Product, ProductCategory, VariantGroup
 from schemas.store import (
-    DeriveVariantIn,
     VariantGroupCreate,
     VariantGroupDetailOut,
     VariantGroupOut,

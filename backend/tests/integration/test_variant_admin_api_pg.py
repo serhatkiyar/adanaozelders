@@ -19,7 +19,7 @@ from sqlalchemy import text
 from core.database import AsyncSessionLocal
 from core.security import create_access_token
 from models.admin import Admin
-from models.store import Product, ProductCategory, VariantGroup
+from models.store import ProductCategory, VariantGroup
 from schemas.admin_access import AdminRoleCreate
 from services import admin_access_service
 from tests.integration.db_guard import purge_products
