@@ -256,6 +256,35 @@ class Settings(BaseSettings):
     # önbelleklenir ve bu süreyle sınırlanır (sağlık ucu asla asılı kalmaz).
     ROUTING_HEALTH_TTL_SECONDS: int = 60
     ROUTING_HEALTH_TIMEOUT_SECONDS: float = 5.0
+
+    # ── Tedarikçi senkronu (Yıldırım B2B) ──
+    #
+    # DİKKAT: API token'ı BURADA DEĞİLDİR. Sır panelden girilir ve DB'de
+    # şifreli durur (`suppliers.api_token`, `core/crypto.EncryptedText`);
+    # env'e koymak rotasyonu deploy'a bağlar ve sırrı üç ortama kopyalar.
+    # Aynı gerekçeyle senkron ARALIKLARI da env'de değil, tedarikçi satırında:
+    # kullanıcı sıklığı panelden değiştirebilmeli, yeniden başlatma istemeden.
+    #
+    # Buradakiler yalnız süreç düzeyi teknik ayarlardır.
+    #
+    # Döngü tick'i: DB'deki vadeye bakar, işi kendisi yapmaz. 15 sn, 30 sn'lik
+    # alt sınırın yarısı — vade geldiğinde en fazla yarım periyot gecikir.
+    SUPPLIER_SYNC_TICK_SECONDS: int = 15
+    SUPPLIER_HTTP_TIMEOUT_SECONDS: float = 15.0
+    # İstekler arası bekleme (rapor §2.11: origin zayıf, 800 ms ölçülmüş kural).
+    SUPPLIER_REQUEST_GAP_SECONDS: float = 0.8
+    # `/health` "bayat mı" eşiği: son başarılı senkronun üzerinden aralığın bu
+    # katı geçtiyse `degraded`. 1 kat çok hassas olurdu (tek gecikmiş tur alarm
+    # verirdi), 3 kat gerçek bir duruşu ~3 dakikada bildirir.
+    SUPPLIER_STALE_FACTOR: int = 3
+    # Devre kesici tavanı: `min(30 sn × 2^n, bu değer)`.
+    SUPPLIER_MAX_COOLDOWN_SECONDS: int = 1800
+    # Token vadesine bu kadar gün kala kayan pencere yenilemesi denenir.
+    SUPPLIER_TOKEN_REFRESH_DAYS: int = 7
+    # TESTLERDE AÇIK (bkz. `backend/conftest.py`): istemci ağ açmayı reddeder.
+    # `PAYMENT_PROVIDER=fake` ile aynı sınıf koruma — geliştiricinin panelden
+    # girdiği gerçek token suite'ten canlı cari hesaba çıkmasın.
+    SUPPLIER_NETWORK_DISABLED: bool = False
     # Durak başına paket teslim servis süresi (sn) — ETA hesabına girer.
     DELIVERY_STOP_SERVICE_SECONDS: int = 180
     # "Rotayı bozan durak" eşiği: durağın rotaya kattığı ek yol (km) bunu

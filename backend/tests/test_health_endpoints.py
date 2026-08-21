@@ -174,6 +174,7 @@ def test_readiness_tedarikci_senkronunu_raporlar(client, monkeypatch):
             "last_ok_at": "2026-08-20T10:00:00Z",
         }
 
+    _saglikli_bagimliliklar(main, monkeypatch)
     monkeypatch.setattr(main, "_check_supplier", _bayat)
     resp = client.get("/health")
     assert resp.status_code == 200
@@ -189,6 +190,7 @@ def test_kapali_tedarikci_saglik_durumunu_bozmaz(client, monkeypatch):
     async def _kapali():
         return {"enabled": False, "status": "disabled", "degraded": False}
 
+    _saglikli_bagimliliklar(main, monkeypatch)
     monkeypatch.setattr(main, "_check_supplier", _kapali)
     resp = client.get("/health")
     assert resp.json()["supplier_sync"]["enabled"] is False
@@ -200,13 +202,38 @@ def test_tedarikci_kontrolu_saglik_ucunu_asla_patlatmaz(client, monkeypatch):
     kendisi arıza kaynağı olamaz (`_check_routing` ile aynı disiplin)."""
     import main
 
-    async def _patla():
+    _saglikli_bagimliliklar(main, monkeypatch)
+    # `_check_supplier` KENDİSİ değil, içindeki DB okuması patlatılır: guard'ın
+    # yeri fonksiyonun içidir ve testin ölçtüğü şey o guard'dır. Fonksiyonun
+    # tamamını değiştirseydik yalnız `main`'in onu çağırdığını doğrulardık.
+    def _patlayan_session(*_a, **_kw):
+        # Düz fonksiyon: `async def` yazmak "coroutine never awaited"
+        # uyarısı üretir ve gerçek arıza (session kurulamıyor) senkron bir
+        # hatadır zaten.
         raise RuntimeError("tedarikçi tablosu okunamadı")
 
-    monkeypatch.setattr(main, "_check_supplier", _patla)
+    monkeypatch.setattr(main, "AsyncSessionLocal", _patlayan_session)
     resp = client.get("/health")
     assert resp.status_code in (200, 503)
     assert resp.json()["supplier_sync"]["status"] == "unknown"
+
+
+def _saglikli_bagimliliklar(main, monkeypatch) -> None:
+    """DB/Redis/MinIO/rota SAĞLIKLI sabitlenir.
+
+    Bunlar sabitlenmezse test geliştirme makinesinin altyapısına bağımlı olur:
+    DB düşükse `/health` 503 döner ve "tedarikçi 503 vermemeli" iddiası YANLIŞ
+    nedenle kırılır (ilk koşumda tam olarak bu yaşandı)."""
+    async def _ok():
+        return True
+
+    async def _rota():
+        return {"provider": "auto", "status": "connected", "degraded": False}
+
+    monkeypatch.setattr(main, "_check_database", _ok)
+    monkeypatch.setattr(main, "_check_redis", _ok)
+    monkeypatch.setattr(main, "_check_storage", _ok)
+    monkeypatch.setattr(main, "_check_routing", _rota)
 
 
 def test_uretimde_tedarikci_hata_metni_gizlenir(client, monkeypatch):

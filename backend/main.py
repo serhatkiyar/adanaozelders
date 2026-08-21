@@ -24,6 +24,7 @@ from services import (
     library_exam_service,
     payment_gates,
     study_reservation_service,
+    supplier_sync_service,
     task_service,
 )
 
@@ -80,6 +81,7 @@ _LOCK_REMINDERS = 918_301_001
 _LOCK_ESCROW = 918_301_002
 _LOCK_DELIVERY = 918_301_003
 _LOCK_OUTBOX = 918_301_004
+_LOCK_SUPPLIER_SYNC = 918_301_005
 
 
 async def _reminder_tick() -> None:
@@ -117,6 +119,33 @@ async def _reminder_loop() -> None:
     while True:
         await asyncio.sleep(_REMINDER_INTERVAL_SECONDS)
         await _run_job("reminder loop", _reminder_tick)
+
+
+async def _supplier_sync_tick() -> None:
+    """Tedarikçi senkronunun bir turu — vadesi gelen işi koşar.
+
+    Ayrı bir döngü (hatırlatma turuna eklenmedi): tedarikçi taraması AĞA
+    çıkıyor ve saniyeler sürebiliyor; aynı `_leader_job` içinde koşsaydı
+    escrow mutabakatı ve teslimat watchdog'u o süre boyunca beklerdi.
+    """
+    await _leader_job(
+        "tedarikçi senkronu",
+        _LOCK_SUPPLIER_SYNC,
+        lambda session: supplier_sync_service.run_due(session),
+    )
+
+
+async def _supplier_sync_loop() -> None:
+    """Tick DB'deki vadeye bakar; sıklık ayarı tedarikçi satırında yaşar.
+
+    Aralığı env'e koymamanın nedeni: kullanıcı "1 dakikada bir" ile "5
+    dakikada bir" arasında panelden geçebilmeli, yeniden başlatma olmadan.
+    Tick 15 sn — alt sınırın (30 sn) yarısı, yani vade geldiğinde en fazla
+    yarım periyot gecikir.
+    """
+    while True:
+        await asyncio.sleep(settings.SUPPLIER_SYNC_TICK_SECONDS)
+        await _run_job("tedarikçi senkronu", _supplier_sync_tick)
 
 
 async def _outbox_loop() -> None:
@@ -199,14 +228,17 @@ async def lifespan(app: FastAPI):
     task1 = asyncio.create_task(_reminder_loop())
     task2 = asyncio.create_task(_presence_flusher())
     task3 = asyncio.create_task(_outbox_loop())
+    task4 = asyncio.create_task(_supplier_sync_loop())
     yield
     task1.cancel()
     task2.cancel()
     task3.cancel()
+    task4.cancel()
     with contextlib.suppress(asyncio.CancelledError):
         await task1
         await task2
         await task3
+        await task4
     await engine.dispose()
 
 
@@ -356,6 +388,16 @@ async def _check_routing() -> dict:
         return {"status": "unknown", "degraded": True}
 
 
+async def _check_supplier() -> dict:
+    """Tedarikçi senkronu. ASLA patlamaz — teşhis ucu arıza kaynağı olamaz."""
+    try:
+        async with AsyncSessionLocal() as session:
+            return await supplier_sync_service.health_snapshot(session)
+    except Exception:
+        logger.warning("health: supplier check failed", exc_info=True)
+        return {"enabled": False, "status": "unknown", "degraded": True}
+
+
 @app.get("/health/live")
 async def liveness_check():
     """**Liveness**: süreç ayakta ve olay döngüsü yanıt veriyor mu — HİÇBİR dış
@@ -383,6 +425,7 @@ async def health_check():
     redis_ok = await _check_redis()
     storage_ok = await _check_storage()
     routing_state = await _check_routing()
+    supplier_state = await _check_supplier()
     body = {
         "status": "ok" if db_ok else "degraded",
         "database": "connected" if db_ok else "down",
@@ -392,8 +435,13 @@ async def health_check():
         # Ödeme kolları KOL BAZINDA raporlanır; tek bir "hazır mı" boolean'ı
         # bilinçli olarak yoktur (bir kolun eksiği diğerini kapatmasın).
         "payment_branches": await _check_payment_branches(),
+        # Tedarikçi senkronu bayatladığında sitenin KENDİ stoğu hâlâ satılıyor
+        # ve sipariş akışı çalışıyor; konteyneri yeniden başlatmak hiçbir şeyi
+        # düzeltmez (sorun Yıldırım'ın origin'i ya da bizim token'ımızdır).
+        # Bu yüzden rota kalıbı: `degraded`, 503 DEĞİL.
+        "supplier_sync": supplier_state,
     }
-    if db_ok and routing_state.get("degraded"):
+    if db_ok and (routing_state.get("degraded") or supplier_state.get("degraded")):
         body["status"] = "degraded"
     if not db_ok:
         return JSONResponse(status_code=503, content=body)

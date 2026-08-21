@@ -33,6 +33,7 @@ from api.routers import (
     srs,
     support,
     store,
+    supplier,
     study_reservations,
     tasks,
     tutors,
@@ -75,6 +76,10 @@ api_router.include_router(payouts.router)
 api_router.include_router(payout.router)
 api_router.include_router(reports.router)
 api_router.include_router(store.router)
+# Tedarikçi senkronu. Yol öneki `/store/admin/suppliers` ama AYRI dosyada:
+# `store.py` zaten 1500+ satır. `store.router` ile yol çakışması yok —
+# `store.py` içinde `/admin/suppliers*` tanımlı değil.
+api_router.include_router(supplier.router)
 api_router.include_router(study_reservations.router)
 api_router.include_router(tasks.router)
 api_router.include_router(ws.router)

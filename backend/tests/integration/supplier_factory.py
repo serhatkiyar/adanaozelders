@@ -51,7 +51,10 @@ BOZUK_BARKOD = "8694051010124"
 class Fabrika:
     def __init__(self) -> None:
         self.product_ids: list[int] = []
+        #: Fabrikanın AÇTIĞI satırlar (teardown siler).
         self.supplier_ids: list[int] = []
+        #: Migration seed'i — teardown tohum hâline DÖNDÜRÜR, silmez.
+        self.seed_ids: list[int] = []
         self.supplier_product_ids: list[int] = []
         self.order_ids: list[int] = []
         self.client_ids: list[int] = []
@@ -70,37 +73,68 @@ class Fabrika:
         price_interval_seconds: int = 21600,
         provider: str = "yildirim",
     ) -> int:
-        """Yeni bir tedarikçi satırı.
+        """Migration'ın SEED satırını test ayarlarıyla kullanır.
 
-        Migration seed'i ile ÇAKIŞMAMASI için: seed satırı `provider='yildirim'`
-        ve `uq_suppliers_provider_active` kısmi unique. Bu yüzden fabrika önce
-        seed satırını soft-delete eder ve teardown'da geri açar — testler
-        birbirinin tedarikçisini görmez.
+        Neden yeni satır AÇMIYORUZ: `uq_suppliers_provider_active` sağlayıcı
+        başına tek aktif satıra izin veriyor (bilinçli — iki Yıldırım kaydı
+        olsaydı hangi token'ın kullanılacağı belirsiz kalırdı).
+
+        İlk sürüm seed'i soft-delete edip yenisini açıyordu ve teardown
+        "silinmiş yildirim satırlarını geri aç" diyordu. İki test koştuğunda
+        geri açma İKİ satırı birden aktif yapıp unique index'i ihlal etti:
+        bütün teardown'lar patladı ve hijyen nöbetçisi 10 satırlık sızıntı
+        bildirdi. Doğru çözüm seed'i YERİNDE kullanmak; teardown onu tohum
+        hâline döndürür, silmez (o satır migration'ın ürünüdür).
         """
         from models.supplier import Supplier
 
         async with AsyncSessionLocal() as s:
-            await s.execute(
-                text(
-                    "UPDATE suppliers SET deleted_at = now() "
-                    "WHERE provider = :p AND deleted_at IS NULL"
-                ),
-                {"p": provider},
-            )
-            sup = Supplier(
-                provider=provider,
-                name=f"Test Tedarikçi {uniq()}",
-                is_enabled=is_enabled,
-                base_url="https://ornek.test/api/vitrin",
-                api_token=token,
-                stock_interval_seconds=stock_interval_seconds,
-                price_interval_seconds=price_interval_seconds,
-            )
-            s.add(sup)
-            await s.flush()
-            sid = sup.id
+            mevcut = (
+                await s.execute(
+                    text(
+                        "SELECT id FROM suppliers "
+                        "WHERE provider = :p AND deleted_at IS NULL LIMIT 1"
+                    ),
+                    {"p": provider},
+                )
+            ).scalar()
+            if mevcut is None:
+                sup = Supplier(
+                    provider=provider,
+                    name=f"Test Tedarikçi {uniq()}",
+                    is_enabled=is_enabled,
+                    base_url="https://ornek.test/api/vitrin",
+                    api_token=token,
+                    stock_interval_seconds=stock_interval_seconds,
+                    price_interval_seconds=price_interval_seconds,
+                )
+                s.add(sup)
+                await s.flush()
+                sid = sup.id
+                self.supplier_ids.append(sid)
+            else:
+                sid = int(mevcut)
+                sup = await s.get(Supplier, sid)
+                sup.name = f"Test Tedarikçi {uniq()}"
+                sup.is_enabled = is_enabled
+                sup.base_url = "https://ornek.test/api/vitrin"
+                sup.api_token = token
+                sup.stock_interval_seconds = stock_interval_seconds
+                sup.price_interval_seconds = price_interval_seconds
+                sup.next_stock_sync_at = None
+                sup.next_price_sync_at = None
+                sup.last_stock_sync_ok_at = None
+                sup.last_price_sync_ok_at = None
+                sup.last_error = None
+                sup.last_error_at = None
+                sup.last_sync_stats = None
+                sup.consecutive_failures = 0
+                sup.cooldown_until = None
+                sup.token_expires_at = None
+                sup.token_refreshed_at = None
+                if sid not in self.seed_ids:
+                    self.seed_ids.append(sid)
             await s.commit()
-        self.supplier_ids.append(sid)
         return sid
 
     # ── Ürün ──
@@ -164,7 +198,7 @@ class Fabrika:
         from models.store import VariantGroup
 
         async with AsyncSessionLocal() as s:
-            g = VariantGroup(name=f"Grup {uniq()}", option1_name=option1_name)
+            g = VariantGroup(title=f"Grup {uniq()}", option1_name=option1_name)
             s.add(g)
             await s.flush()
             gid = g.id
@@ -350,10 +384,11 @@ class Fabrika:
                 await s.execute(
                     text("DELETE FROM orders WHERE id = ANY(:i)"), {"i": self.order_ids}
                 )
-            if self.supplier_ids:
+            tum_tedarikciler = self.supplier_ids + self.seed_ids
+            if tum_tedarikciler:
                 await s.execute(
                     text("DELETE FROM supplier_products WHERE supplier_id = ANY(:i)"),
-                    {"i": self.supplier_ids},
+                    {"i": tum_tedarikciler},
                 )
             if self.supplier_product_ids:
                 await s.execute(
@@ -376,13 +411,30 @@ class Fabrika:
                     text("DELETE FROM suppliers WHERE id = ANY(:i)"),
                     {"i": self.supplier_ids},
                 )
-            # Seed satırını geri aç (fabrika onu soft-delete etmişti).
-            await s.execute(
-                text(
-                    "UPDATE suppliers SET deleted_at = NULL "
-                    "WHERE provider = 'yildirim' AND deleted_at IS NOT NULL"
+            if self.seed_ids:
+                # Seed satırı SİLİNMEZ (migration'ın ürünü) — tohum hâline
+                # döndürülür. Hijyen nöbetçisi `suppliers` sayısını izliyor;
+                # silmek de eklemek de sayacı kaydırırdı.
+                await s.execute(
+                    text(
+                        "UPDATE suppliers SET is_enabled = false, api_token = NULL, "
+                        "name = :ad, base_url = :url, "
+                        "stock_interval_seconds = 60, price_interval_seconds = 21600, "
+                        "next_stock_sync_at = NULL, next_price_sync_at = NULL, "
+                        "last_stock_sync_ok_at = NULL, last_price_sync_ok_at = NULL, "
+                        "last_error = NULL, last_error_at = NULL, "
+                        "last_sync_stats = NULL, consecutive_failures = 0, "
+                        "cooldown_until = NULL, token_expires_at = NULL, "
+                        "token_updated_at = NULL, token_refreshed_at = NULL, "
+                        "deleted_at = NULL "
+                        "WHERE id = ANY(:i)"
+                    ),
+                    {
+                        "i": self.seed_ids,
+                        "ad": "Yıldırım Dağıtım",
+                        "url": "https://b2b.yildirimdagitim.com/api/vitrin",
+                    },
                 )
-            )
             await s.commit()
 
         if self.product_ids:

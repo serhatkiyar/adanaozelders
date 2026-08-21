@@ -264,21 +264,45 @@ async def test_repr_tokeni_gostermez():
 # ── Ağ guard'ı (D-11) ──
 
 
-async def test_ag_kapaliyken_istek_acilmaz(monkeypatch):
+async def test_ag_kapaliyken_gercek_istemci_istek_acmaz(monkeypatch):
     """`SUPPLIER_NETWORK_DISABLED` testlerde açıktır (kök `conftest.py`).
 
     Gerekçe `db_guard.assert_fake_payment_provider` ile aynı: geliştiricinin
-    `.env`'indeki gerçek token bir gün suite'e sızarsa, testler cari hesabımıza
-    canlı istek atar. Guard bunu SESSİZ olmaktan çıkarır."""
+    panelden girdiği gerçek token bir gün suite'e sızarsa, testler cari
+    hesabımıza canlı istek atar. Guard bunu SESSİZ olmaktan çıkarır.
+
+    Burada taşıma ENJEKTE EDİLMEZ — üretimdeki istemcinin ta kendisi kurulur.
+    Guard'ın kapsamı budur: gerçek soket. Enjekte edilmiş `MockTransport`
+    zaten soket açmaz ve onu da reddetmek, ağ davranışının (backoff, aralık,
+    başlık) test edilmesini imkânsız kılardı."""
     from core.config import settings
 
     monkeypatch.setattr(settings, "SUPPLIER_NETWORK_DISABLED", True)
 
-    def handler(request: httpx.Request) -> httpx.Response:  # pragma: no cover
-        raise AssertionError("guard açıkken ağa çıkılmamalıydı")
-
+    gercek = YildirimClient(token=TOKEN, base_url="https://ornek.test/api/vitrin")
     with pytest.raises(RuntimeError, match="SUPPLIER_NETWORK_DISABLED"):
-        await _istemci(handler).fetch_favorites()
+        await gercek.fetch_favorites()
+
+
+async def test_guard_kapaliyken_gercek_istemci_ag_dener(monkeypatch):
+    """Guard'ın kendisi de nöbetsiz kalmasın: kapalıyken istemci GERÇEKTEN
+    ağa çıkmayı denemeli (ulaşılamayan adres → `SupplierUnavailable`).
+
+    Bu ters prova olmasa, guard'ı her zaman açık bırakan bir hata "testler
+    yeşil" diye geçebilir ve üretimde senkron hiç koşmazdı."""
+    from core.config import settings
+
+    monkeypatch.setattr(settings, "SUPPLIER_NETWORK_DISABLED", False)
+
+    gercek = YildirimClient(
+        # RFC 5737 TEST-NET-1: yönlendirilemez, dışarı çıkmaz.
+        token=TOKEN,
+        base_url="http://192.0.2.1:9/api/vitrin",
+        timeout=0.15,
+        gap_seconds=0,
+    )
+    with pytest.raises(SupplierUnavailable):
+        await gercek.fetch_favorites()
 
 
 # ── Token yenileme ──

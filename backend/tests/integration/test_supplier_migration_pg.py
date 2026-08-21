@@ -14,6 +14,7 @@ Burada kısıt gerçekten **ihlal edilmeye çalışılır**.
 """
 from __future__ import annotations
 
+import datetime
 import os
 import subprocess
 import sys
@@ -256,7 +257,9 @@ async def test_upgrade_dogrulama_downgrade_tekrar_upgrade(migration_db):
             "external_code": f"KOD {uuid.uuid4().hex[:6]}",
             "name": "Tedarikci Urunu",
             "stock_qty": 0,
-            "last_seen_at": "2026-08-22T00:00:00+00:00",
+            # asyncpg TIMESTAMPTZ için gerçek `datetime` ister; dizgi vermek
+            # DataError üretir (testin ilk koşumunda yaşandı).
+            "last_seen_at": datetime.datetime.now(datetime.timezone.utc),
         }
         alanlar.update(kw)
         kolonlar = ", ".join(alanlar)
