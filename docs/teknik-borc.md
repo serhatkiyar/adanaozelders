@@ -72,6 +72,33 @@ Merge sırasında çakışma yine de çıkarsa (ör. iki dal aynı turda merge
 edilirse) **main kanoniktir**: gelen dalın kaydı yeniden numaralanır ve
 eski→yeni eşlemesi buraya yorum olarak yazılır. **Hiçbir kayıt silinmez.**
 
+### Merge turu kontrol listesi (geçici etiket taşıyan dal main'e girerken)
+
+Geçici etiket, main merge turunda gerçek numaraya çevrilmezse kodda ve
+belgelerde kalır — bu listenin varlık sebebi odur. Merge turunu yapan bunu
+madde madde işaretler:
+
+```
+[ ] TB numarası tahsisi — main merge turunda:
+    a) git fetch --all
+    b) Tüm dallarda en yüksek TB numarasını YENİDEN ölç (dal içindeki ölçüm
+       tarihlidir ve bayat olabilir — ör. `magaza-tasarim`in "en yüksek TB-63"
+       ölçümü cdc5e3f tarihlidir)
+    c) TB-?A → TB-<n+1>, TB-?B → TB-<n+2>, …
+    d) Etiketin geçtiği TÜM konumları güncelle — ölçerek bul, hatırlayarak
+       değil:
+         git grep -n "TB-?A"        # kod, yorum, test docstring'i, sözleşme
+         git grep -n "TB-?B"
+         grep -rn "TB-?[A-Z]" --include=*.md .
+       (Kural metninin kendi örnekleri ve geçmiş tahsis notları DEĞİŞMEZ;
+        yalnız bu dalın açtığı kayıtların başlıkları ve onlara yapılan
+        atıflar taşınır.)
+    e) Seçilen numaraların başka bir dalda kullanılmadığını (b)'deki dökümle
+       doğrula
+    f) Eski→yeni eşlemesini merge commit mesajına ve bu dosyaya yorum olarak
+       yaz
+```
+
 ### Kural neden değişti: dördüncü çakışma yapısaldı
 
 Dört çakışma yaşandı ve **üçü okuma hatasıydı, dördüncüsü değildi**:
@@ -280,6 +307,18 @@ yalnız ölçümü ve öneriyi kaydeder.
        TB-?D → **TB-58**   varyant testleri izolasyon sınırları    (denetim P2-8)
      Dördü bağımsız denetimin merge-sonrasına ertelediği bulgulardır. -->
 
+## TB-?C · Ana sayfa navbar'ında logo, kategori şeridinin ÜSTÜNE biniyor (768-1024 px)
+
+| | |
+|---|---|
+| **Bulundu** | `magaza-tasarim` merge öncesi doğrulama turu (21 Ağu 2026) — gerçek Chrome + CDP ölçümü, `frontend/scripts/marka_logo_turu.mjs` |
+| **Nerede** | `frontend/src/components/PublicNavbar.tsx` — `flex-1` logo sütunu ile `shrink-0` orta sütun (`CategoryBar`) |
+| **Ölçüm** | 768 px: logo `<img>` 32 → 289.7 px, kategori şeridi 143.6 px'ten başlıyor → **146.1 × 36 px kesişim**. Ekran görüntüsü `docs/magaza-merge-dogrulama/anasayfa-768.png`: "Adana Özel Ders" yazısının üstüne "Hepsi" ve "Eğitmenler" ikonları biniyor. Çakışma bandı 768-1024 px; 640/700'de yok (o aralıkta `logo-compact.svg` var, 32 px), 1280'de yok (şerit 440.2'den başlıyor) |
+| **Sebep** | Navbar üç sütunlu bir flex satırıdır: `flex-1` (logo) · `shrink-0` (kategoriler) · `flex-1` (aksiyonlar). Orta sütun daralmadığı için yan sütunlara ~148 px kalıyor; logonun `<img>`'i `w-auto` ile 257.7 px genişliğinde doğuyor ve kendi sütunundan TAŞIP ortadakinin üstüne çiziliyor. `md:` breakpoint'i tam 768'de büyük logoyu açtığı için sorun o eşikte başlıyor |
+| **MERGE'ÜN GETİRDİĞİ BİR KUSUR DEĞİL** | Aynı ölçüm aynı DOM'da `src` geçici olarak `/logo.png`'ye çevrilerek tekrarlandı: PNG ile de çakışma var — 768 px'te 117.2 px. Yani kusur SVG geçişinden ÖNCE de canlıydı; SVG onu ~29 px büyütüyor (117.2 → 146.1). Ölçüm tablosu: `docs/magaza-merge-dogrulama/marka-logo-olcum.json` → `cakismaTaramasi` |
+| **Neden ertelendi** | Doğrulama turunun kapsamı ölçmekti; sınıf/yerleşim değişikliği ayrı bir karardır (logoya `max-w` vermek, orta sütunu `min-w-0` yapmak, ya da `md:` yerine `lg:` eşiğinde büyük logoya geçmek — üçü farklı tasarım kararı) |
+| **Sonraki adım** | Yerleşim kararı verilip uygulanmalı ve `marka_logo_turu.mjs` kapısı yeşile alınmalı. Tur zaten nöbetçidir: kesişim dedektörünün atıl olmadığı mutasyonla kanıtlandı (`kesisimDedektoruProvasi.dedektorCalisti = true`) |
+
 ## TB-?A · OG/Twitter görseli SVG'ye geçmedi — `/logo.png` bilinçli olarak kalıyor
 
 | | |
@@ -288,7 +327,8 @@ yalnız ölçümü ve öneriyi kaydeder.
 | **Nerede** | `frontend/src/components/Seo.tsx:16,43` (varsayılan `ogImage`) ve `frontend/src/pages/Landing.tsx:138` (Organization JSON-LD `logo`) |
 | **Sorun** | Marka varlıkları SVG'ye geçti (`logo.svg`, `logo-compact.svg`, `magaza-logo.svg`); navbar ve footer artık SVG kullanıyor. Ancak paylaşım önizlemesi (OG/Twitter card) ve arama motoru JSON-LD'si hâlâ `/logo.png` gösteriyor |
 | **Neden bilinçli** | Bazı platformlar (WhatsApp, Slack, Twitter kartları, birçok arama motoru zengin sonucu) `image/svg+xml`'i işlemez veya güvenlik gerekçesiyle reddeder. PNG'yi SVG'ye çevirmek önizlemeyi **kırar**; bu yüzden bu iki yer kasten PNG'de bırakıldı |
-| **Risk** | `logo.png` (890×140, oran 6.36) ile `logo.svg` (viewBox 977.21×136.5, oran 7.16) **aynı çizim değil** — %13 oran farkı var. Paylaşım önizlemesi bugün sitedeki logodan biraz farklı bir marka görseli gösteriyor |
+| **KASITLI — SVG'ye çevrilmeyecek** | Kalan `/logo.png` referansları: OG meta + JSON-LD. Sosyal medya önizleme kartları (Facebook, X, WhatsApp, LinkedIn) SVG raster etmiyor; çevrilirse paylaşım önizlemeleri kırılır. **Bu kayıt, ileride "tutarlılık için hepsini SVG yapalım" denmesini engellemek için tutulmuştur.** |
+| **Risk** | `logo.png` (890×140, oran 6.36) ile `logo.svg` (viewBox 977.21×136.5, oran 7.16) **aynı çizim değil** — %13 oran farkı var. Paylaşım önizlemesi bugün sitedeki logodan biraz farklı bir marka görseli gösteriyor. Fark ölçüldü: aynı `md:h-9` yüksekliğinde PNG 228.8 px, SVG 257.7 px render ediliyor (`docs/magaza-merge-dogrulama/marka-logo-olcum.json`) |
 | **Sonraki adım** | `logo.svg`'den yüksek çözünürlüklü (ör. 1200×630 OG tuvaline yerleştirilmiş) bir PNG üretip `logo.png`'yi onunla değiştirmek; kod tarafında değişiklik gerekmez |
 
 ## TB-?B · `AccountHub` içindeki `CompactSearch` "Uzaktan Eğitim" seçeneğini göstermiyor

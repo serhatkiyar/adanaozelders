@@ -1,0 +1,1760 @@
+{
+  "olculdu": "2026-08-21T12:36:50.092Z",
+  "kip": "normal",
+  "genislikler": [
+    360,
+    414,
+    768
+  ],
+  "ekranlar": {
+    "anasayfa": {
+      "360": {
+        "gorunurGenislik": 360,
+        "govdeGenisligi": 360,
+        "scrollWidth": 360,
+        "clientWidth": 360,
+        "yatayTasma": false,
+        "tasmaPiksel": 0,
+        "seritKaynagi": "CategoryBar (/icons/categories)",
+        "serit": {
+          "genislik": 351.6,
+          "yukseklik": 83.5,
+          "sol": 4.2,
+          "sag": 355.8,
+          "ust": 88,
+          "alt": 171.5,
+          "ogeSayisi": 4
+        },
+        "logolar": [
+          {
+            "src": "/logo-compact.svg",
+            "alt": "",
+            "gorunur": true,
+            "sinif": "h-8 w-auto object-contain md:hidden",
+            "rect": {
+              "genislik": 32,
+              "yukseklik": 32,
+              "sol": 16,
+              "sag": 48,
+              "ust": 20,
+              "alt": 52
+            },
+            "computedHeight": "32px",
+            "kapsayici": {
+              "genislik": 32,
+              "yukseklik": 32,
+              "sol": 16,
+              "sag": 48,
+              "ust": 20,
+              "alt": 52
+            },
+            "kapsayiciyiAsiyor": false,
+            "bolge": "header",
+            "bolgeRect": {
+              "genislik": 360,
+              "yukseklik": 258.5,
+              "sol": 0,
+              "sag": 360,
+              "ust": 0,
+              "alt": 258.5
+            },
+            "gorunurAlaniAsiyor": false,
+            "seritKesisimi": null
+          },
+          {
+            "src": "/logo.svg",
+            "alt": "",
+            "gorunur": false,
+            "sinif": "hidden md:block md:h-9 w-auto object-contain",
+            "rect": {
+              "genislik": 0,
+              "yukseklik": 0,
+              "sol": 0,
+              "sag": 0,
+              "ust": 0,
+              "alt": 0
+            },
+            "computedHeight": "auto",
+            "kapsayici": {
+              "genislik": 32,
+              "yukseklik": 32,
+              "sol": 16,
+              "sag": 48,
+              "ust": 20,
+              "alt": 52
+            },
+            "kapsayiciyiAsiyor": false,
+            "bolge": "header",
+            "bolgeRect": {
+              "genislik": 360,
+              "yukseklik": 258.5,
+              "sol": 0,
+              "sag": 360,
+              "ust": 0,
+              "alt": 258.5
+            },
+            "gorunurAlaniAsiyor": false,
+            "seritKesisimi": null
+          },
+          {
+            "src": "/logo.svg",
+            "alt": "Adana Özel Ders Logo",
+            "gorunur": true,
+            "sinif": "h-8 w-auto object-contain opacity-70 grayscale transition hover:opacity-100 hover:grayscale-0 md:h-9",
+            "rect": {
+              "genislik": 229.1,
+              "yukseklik": 32,
+              "sol": 65.5,
+              "sag": 294.5,
+              "ust": 427.5,
+              "alt": 459.5
+            },
+            "computedHeight": "32px",
+            "kapsayici": {
+              "genislik": 229.1,
+              "yukseklik": 32,
+              "sol": 65.5,
+              "sag": 294.5,
+              "ust": 427.5,
+              "alt": 459.5
+            },
+            "kapsayiciyiAsiyor": false,
+            "bolge": "footer",
+            "bolgeRect": {
+              "genislik": 360,
+              "yukseklik": 418,
+              "sol": 0,
+              "sag": 360,
+              "ust": 386.5,
+              "alt": 804.5
+            },
+            "gorunurAlaniAsiyor": false,
+            "seritKesisimi": null
+          },
+          {
+            "src": "/odeme/iyzico-logo-band.svg",
+            "alt": "iyzico ile güvenli ödeme",
+            "gorunur": true,
+            "sinif": "h-7 w-auto max-w-full object-contain dark:hidden",
+            "rect": {
+              "genislik": 312,
+              "yukseklik": 28,
+              "sol": 24,
+              "sag": 336,
+              "ust": 736.5,
+              "alt": 764.5
+            },
+            "computedHeight": "28px",
+            "kapsayici": {
+              "genislik": 312,
+              "yukseklik": 28,
+              "sol": 24,
+              "sag": 336,
+              "ust": 736.5,
+              "alt": 764.5
+            },
+            "kapsayiciyiAsiyor": false,
+            "bolge": "footer",
+            "bolgeRect": {
+              "genislik": 360,
+              "yukseklik": 418,
+              "sol": 0,
+              "sag": 360,
+              "ust": 386.5,
+              "alt": 804.5
+            },
+            "gorunurAlaniAsiyor": false,
+            "seritKesisimi": null
+          },
+          {
+            "src": "/odeme/iyzico-logo-band-white.svg",
+            "alt": "iyzico ile güvenli ödeme",
+            "gorunur": false,
+            "sinif": "hidden h-7 w-auto max-w-full object-contain dark:block",
+            "rect": {
+              "genislik": 0,
+              "yukseklik": 0,
+              "sol": 0,
+              "sag": 0,
+              "ust": 0,
+              "alt": 0
+            },
+            "computedHeight": "28px",
+            "kapsayici": {
+              "genislik": 312,
+              "yukseklik": 28,
+              "sol": 24,
+              "sag": 336,
+              "ust": 736.5,
+              "alt": 764.5
+            },
+            "kapsayiciyiAsiyor": false,
+            "bolge": "footer",
+            "bolgeRect": {
+              "genislik": 360,
+              "yukseklik": 418,
+              "sol": 0,
+              "sag": 360,
+              "ust": 386.5,
+              "alt": 804.5
+            },
+            "gorunurAlaniAsiyor": false,
+            "seritKesisimi": null
+          }
+        ],
+        "sayfaHazir": true
+      },
+      "414": {
+        "gorunurGenislik": 414,
+        "govdeGenisligi": 414,
+        "scrollWidth": 414,
+        "clientWidth": 414,
+        "yatayTasma": false,
+        "tasmaPiksel": 0,
+        "seritKaynagi": "CategoryBar (/icons/categories)",
+        "serit": {
+          "genislik": 351.6,
+          "yukseklik": 83.5,
+          "sol": 31.2,
+          "sag": 382.8,
+          "ust": 88,
+          "alt": 171.5,
+          "ogeSayisi": 4
+        },
+        "logolar": [
+          {
+            "src": "/logo-compact.svg",
+            "alt": "",
+            "gorunur": true,
+            "sinif": "h-8 w-auto object-contain md:hidden",
+            "rect": {
+              "genislik": 32,
+              "yukseklik": 32,
+              "sol": 16,
+              "sag": 48,
+              "ust": 20,
+              "alt": 52
+            },
+            "computedHeight": "32px",
+            "kapsayici": {
+              "genislik": 32,
+              "yukseklik": 32,
+              "sol": 16,
+              "sag": 48,
+              "ust": 20,
+              "alt": 52
+            },
+            "kapsayiciyiAsiyor": false,
+            "bolge": "header",
+            "bolgeRect": {
+              "genislik": 414,
+              "yukseklik": 258.5,
+              "sol": 0,
+              "sag": 414,
+              "ust": 0,
+              "alt": 258.5
+            },
+            "gorunurAlaniAsiyor": false,
+            "seritKesisimi": null
+          },
+          {
+            "src": "/logo.svg",
+            "alt": "",
+            "gorunur": false,
+            "sinif": "hidden md:block md:h-9 w-auto object-contain",
+            "rect": {
+              "genislik": 0,
+              "yukseklik": 0,
+              "sol": 0,
+              "sag": 0,
+              "ust": 0,
+              "alt": 0
+            },
+            "computedHeight": "auto",
+            "kapsayici": {
+              "genislik": 32,
+              "yukseklik": 32,
+              "sol": 16,
+              "sag": 48,
+              "ust": 20,
+              "alt": 52
+            },
+            "kapsayiciyiAsiyor": false,
+            "bolge": "header",
+            "bolgeRect": {
+              "genislik": 414,
+              "yukseklik": 258.5,
+              "sol": 0,
+              "sag": 414,
+              "ust": 0,
+              "alt": 258.5
+            },
+            "gorunurAlaniAsiyor": false,
+            "seritKesisimi": null
+          },
+          {
+            "src": "/logo.svg",
+            "alt": "Adana Özel Ders Logo",
+            "gorunur": true,
+            "sinif": "h-8 w-auto object-contain opacity-70 grayscale transition hover:opacity-100 hover:grayscale-0 md:h-9",
+            "rect": {
+              "genislik": 229.1,
+              "yukseklik": 32,
+              "sol": 92.5,
+              "sag": 321.5,
+              "ust": 427.5,
+              "alt": 459.5
+            },
+            "computedHeight": "32px",
+            "kapsayici": {
+              "genislik": 229.1,
+              "yukseklik": 32,
+              "sol": 92.5,
+              "sag": 321.5,
+              "ust": 427.5,
+              "alt": 459.5
+            },
+            "kapsayiciyiAsiyor": false,
+            "bolge": "footer",
+            "bolgeRect": {
+              "genislik": 414,
+              "yukseklik": 390,
+              "sol": 0,
+              "sag": 414,
+              "ust": 386.5,
+              "alt": 776.5
+            },
+            "gorunurAlaniAsiyor": false,
+            "seritKesisimi": null
+          },
+          {
+            "src": "/odeme/iyzico-logo-band.svg",
+            "alt": "iyzico ile güvenli ödeme",
+            "gorunur": true,
+            "sinif": "h-7 w-auto max-w-full object-contain dark:hidden",
+            "rect": {
+              "genislik": 366,
+              "yukseklik": 28,
+              "sol": 24,
+              "sag": 390,
+              "ust": 708.5,
+              "alt": 736.5
+            },
+            "computedHeight": "28px",
+            "kapsayici": {
+              "genislik": 366,
+              "yukseklik": 28,
+              "sol": 24,
+              "sag": 390,
+              "ust": 708.5,
+              "alt": 736.5
+            },
+            "kapsayiciyiAsiyor": false,
+            "bolge": "footer",
+            "bolgeRect": {
+              "genislik": 414,
+              "yukseklik": 390,
+              "sol": 0,
+              "sag": 414,
+              "ust": 386.5,
+              "alt": 776.5
+            },
+            "gorunurAlaniAsiyor": false,
+            "seritKesisimi": null
+          },
+          {
+            "src": "/odeme/iyzico-logo-band-white.svg",
+            "alt": "iyzico ile güvenli ödeme",
+            "gorunur": false,
+            "sinif": "hidden h-7 w-auto max-w-full object-contain dark:block",
+            "rect": {
+              "genislik": 0,
+              "yukseklik": 0,
+              "sol": 0,
+              "sag": 0,
+              "ust": 0,
+              "alt": 0
+            },
+            "computedHeight": "28px",
+            "kapsayici": {
+              "genislik": 366,
+              "yukseklik": 28,
+              "sol": 24,
+              "sag": 390,
+              "ust": 708.5,
+              "alt": 736.5
+            },
+            "kapsayiciyiAsiyor": false,
+            "bolge": "footer",
+            "bolgeRect": {
+              "genislik": 414,
+              "yukseklik": 390,
+              "sol": 0,
+              "sag": 414,
+              "ust": 386.5,
+              "alt": 776.5
+            },
+            "gorunurAlaniAsiyor": false,
+            "seritKesisimi": null
+          }
+        ],
+        "sayfaHazir": true
+      },
+      "768": {
+        "gorunurGenislik": 768,
+        "govdeGenisligi": 768,
+        "scrollWidth": 768,
+        "clientWidth": 768,
+        "yatayTasma": false,
+        "tasmaPiksel": 0,
+        "seritKaynagi": "CategoryBar (/icons/categories)",
+        "serit": {
+          "genislik": 399.7,
+          "yukseklik": 83.5,
+          "sol": 143.6,
+          "sag": 543.3,
+          "ust": 20,
+          "alt": 103.5,
+          "ogeSayisi": 4
+        },
+        "logolar": [
+          {
+            "src": "/logo-compact.svg",
+            "alt": "",
+            "gorunur": false,
+            "sinif": "h-8 w-auto object-contain md:hidden",
+            "rect": {
+              "genislik": 0,
+              "yukseklik": 0,
+              "sol": 0,
+              "sag": 0,
+              "ust": 0,
+              "alt": 0
+            },
+            "computedHeight": "32px",
+            "kapsayici": {
+              "genislik": 257.7,
+              "yukseklik": 36,
+              "sol": 32,
+              "sag": 289.7,
+              "ust": 20,
+              "alt": 56
+            },
+            "kapsayiciyiAsiyor": false,
+            "bolge": "header",
+            "bolgeRect": {
+              "genislik": 768,
+              "yukseklik": 186.5,
+              "sol": 0,
+              "sag": 768,
+              "ust": 0,
+              "alt": 186.5
+            },
+            "gorunurAlaniAsiyor": false,
+            "seritKesisimi": null
+          },
+          {
+            "src": "/logo.svg",
+            "alt": "",
+            "gorunur": true,
+            "sinif": "hidden md:block md:h-9 w-auto object-contain",
+            "rect": {
+              "genislik": 257.7,
+              "yukseklik": 36,
+              "sol": 32,
+              "sag": 289.7,
+              "ust": 20,
+              "alt": 56
+            },
+            "computedHeight": "36px",
+            "kapsayici": {
+              "genislik": 257.7,
+              "yukseklik": 36,
+              "sol": 32,
+              "sag": 289.7,
+              "ust": 20,
+              "alt": 56
+            },
+            "kapsayiciyiAsiyor": false,
+            "bolge": "header",
+            "bolgeRect": {
+              "genislik": 768,
+              "yukseklik": 186.5,
+              "sol": 0,
+              "sag": 768,
+              "ust": 0,
+              "alt": 186.5
+            },
+            "gorunurAlaniAsiyor": false,
+            "seritKesisimi": {
+              "genislik": 146.1,
+              "yukseklik": 36
+            }
+          },
+          {
+            "src": "/logo.svg",
+            "alt": "Adana Özel Ders Logo",
+            "gorunur": true,
+            "sinif": "h-8 w-auto object-contain opacity-70 grayscale transition hover:opacity-100 hover:grayscale-0 md:h-9",
+            "rect": {
+              "genislik": 257.7,
+              "yukseklik": 36,
+              "sol": 24,
+              "sag": 281.7,
+              "ust": 355.5,
+              "alt": 391.5
+            },
+            "computedHeight": "36px",
+            "kapsayici": {
+              "genislik": 257.7,
+              "yukseklik": 36,
+              "sol": 24,
+              "sag": 281.7,
+              "ust": 355.5,
+              "alt": 391.5
+            },
+            "kapsayiciyiAsiyor": false,
+            "bolge": "footer",
+            "bolgeRect": {
+              "genislik": 768,
+              "yukseklik": 270,
+              "sol": 0,
+              "sag": 768,
+              "ust": 314.5,
+              "alt": 584.5
+            },
+            "gorunurAlaniAsiyor": false,
+            "seritKesisimi": null
+          },
+          {
+            "src": "/odeme/iyzico-logo-band.svg",
+            "alt": "iyzico ile güvenli ödeme",
+            "gorunur": true,
+            "sinif": "h-7 w-auto max-w-full object-contain dark:hidden",
+            "rect": {
+              "genislik": 375.4,
+              "yukseklik": 28,
+              "sol": 368.6,
+              "sag": 744,
+              "ust": 516.5,
+              "alt": 544.5
+            },
+            "computedHeight": "28px",
+            "kapsayici": {
+              "genislik": 375.4,
+              "yukseklik": 28,
+              "sol": 368.6,
+              "sag": 744,
+              "ust": 516.5,
+              "alt": 544.5
+            },
+            "kapsayiciyiAsiyor": false,
+            "bolge": "footer",
+            "bolgeRect": {
+              "genislik": 768,
+              "yukseklik": 270,
+              "sol": 0,
+              "sag": 768,
+              "ust": 314.5,
+              "alt": 584.5
+            },
+            "gorunurAlaniAsiyor": false,
+            "seritKesisimi": null
+          },
+          {
+            "src": "/odeme/iyzico-logo-band-white.svg",
+            "alt": "iyzico ile güvenli ödeme",
+            "gorunur": false,
+            "sinif": "hidden h-7 w-auto max-w-full object-contain dark:block",
+            "rect": {
+              "genislik": 0,
+              "yukseklik": 0,
+              "sol": 0,
+              "sag": 0,
+              "ust": 0,
+              "alt": 0
+            },
+            "computedHeight": "28px",
+            "kapsayici": {
+              "genislik": 375.4,
+              "yukseklik": 28,
+              "sol": 368.6,
+              "sag": 744,
+              "ust": 516.5,
+              "alt": 544.5
+            },
+            "kapsayiciyiAsiyor": false,
+            "bolge": "footer",
+            "bolgeRect": {
+              "genislik": 768,
+              "yukseklik": 270,
+              "sol": 0,
+              "sag": 768,
+              "ust": 314.5,
+              "alt": 584.5
+            },
+            "gorunurAlaniAsiyor": false,
+            "seritKesisimi": null
+          }
+        ],
+        "sayfaHazir": true
+      }
+    },
+    "magaza": {
+      "360": {
+        "gorunurGenislik": 360,
+        "govdeGenisligi": 360,
+        "scrollWidth": 360,
+        "clientWidth": 360,
+        "yatayTasma": false,
+        "tasmaPiksel": 0,
+        "seritKaynagi": "StoreCategoryBar (a[href*=category=])",
+        "serit": {
+          "genislik": 323.6,
+          "yukseklik": 46,
+          "sol": 134.2,
+          "sag": 457.8,
+          "ust": 155,
+          "alt": 201,
+          "ogeSayisi": 3
+        },
+        "logolar": [
+          {
+            "src": "/magaza-logo.svg",
+            "alt": "Mağaza",
+            "gorunur": true,
+            "sinif": "h-8 w-auto object-contain md:h-9",
+            "rect": {
+              "genislik": 135.2,
+              "yukseklik": 32,
+              "sol": 16,
+              "sag": 151.2,
+              "ust": 20,
+              "alt": 52
+            },
+            "computedHeight": "32px",
+            "kapsayici": {
+              "genislik": 135.2,
+              "yukseklik": 32,
+              "sol": 16,
+              "sag": 151.2,
+              "ust": 20,
+              "alt": 52
+            },
+            "kapsayiciyiAsiyor": false,
+            "bolge": "header",
+            "bolgeRect": {
+              "genislik": 360,
+              "yukseklik": 155,
+              "sol": 0,
+              "sag": 360,
+              "ust": 0,
+              "alt": 155
+            },
+            "gorunurAlaniAsiyor": false,
+            "seritKesisimi": null
+          },
+          {
+            "src": "/logo.svg",
+            "alt": "Adana Özel Ders Logo",
+            "gorunur": true,
+            "sinif": "h-8 w-auto object-contain opacity-70 grayscale transition hover:opacity-100 hover:grayscale-0 md:h-9",
+            "rect": {
+              "genislik": 229.1,
+              "yukseklik": 32,
+              "sol": 65.5,
+              "sag": 294.5,
+              "ust": 523,
+              "alt": 555
+            },
+            "computedHeight": "32px",
+            "kapsayici": {
+              "genislik": 229.1,
+              "yukseklik": 32,
+              "sol": 65.5,
+              "sag": 294.5,
+              "ust": 523,
+              "alt": 555
+            },
+            "kapsayiciyiAsiyor": false,
+            "bolge": "footer",
+            "bolgeRect": {
+              "genislik": 360,
+              "yukseklik": 418,
+              "sol": 0,
+              "sag": 360,
+              "ust": 482,
+              "alt": 900
+            },
+            "gorunurAlaniAsiyor": false,
+            "seritKesisimi": null
+          },
+          {
+            "src": "/odeme/iyzico-logo-band.svg",
+            "alt": "iyzico ile güvenli ödeme",
+            "gorunur": true,
+            "sinif": "h-7 w-auto max-w-full object-contain dark:hidden",
+            "rect": {
+              "genislik": 312,
+              "yukseklik": 28,
+              "sol": 24,
+              "sag": 336,
+              "ust": 832,
+              "alt": 860
+            },
+            "computedHeight": "28px",
+            "kapsayici": {
+              "genislik": 312,
+              "yukseklik": 28,
+              "sol": 24,
+              "sag": 336,
+              "ust": 832,
+              "alt": 860
+            },
+            "kapsayiciyiAsiyor": false,
+            "bolge": "footer",
+            "bolgeRect": {
+              "genislik": 360,
+              "yukseklik": 418,
+              "sol": 0,
+              "sag": 360,
+              "ust": 482,
+              "alt": 900
+            },
+            "gorunurAlaniAsiyor": false,
+            "seritKesisimi": null
+          },
+          {
+            "src": "/odeme/iyzico-logo-band-white.svg",
+            "alt": "iyzico ile güvenli ödeme",
+            "gorunur": false,
+            "sinif": "hidden h-7 w-auto max-w-full object-contain dark:block",
+            "rect": {
+              "genislik": 0,
+              "yukseklik": 0,
+              "sol": 0,
+              "sag": 0,
+              "ust": 0,
+              "alt": 0
+            },
+            "computedHeight": "28px",
+            "kapsayici": {
+              "genislik": 312,
+              "yukseklik": 28,
+              "sol": 24,
+              "sag": 336,
+              "ust": 832,
+              "alt": 860
+            },
+            "kapsayiciyiAsiyor": false,
+            "bolge": "footer",
+            "bolgeRect": {
+              "genislik": 360,
+              "yukseklik": 418,
+              "sol": 0,
+              "sag": 360,
+              "ust": 482,
+              "alt": 900
+            },
+            "gorunurAlaniAsiyor": false,
+            "seritKesisimi": null
+          }
+        ],
+        "sayfaHazir": true
+      },
+      "414": {
+        "gorunurGenislik": 414,
+        "govdeGenisligi": 414,
+        "scrollWidth": 414,
+        "clientWidth": 414,
+        "yatayTasma": false,
+        "tasmaPiksel": 0,
+        "seritKaynagi": "StoreCategoryBar (a[href*=category=])",
+        "serit": {
+          "genislik": 323.6,
+          "yukseklik": 46,
+          "sol": 134.2,
+          "sag": 457.8,
+          "ust": 155,
+          "alt": 201,
+          "ogeSayisi": 3
+        },
+        "logolar": [
+          {
+            "src": "/magaza-logo.svg",
+            "alt": "Mağaza",
+            "gorunur": true,
+            "sinif": "h-8 w-auto object-contain md:h-9",
+            "rect": {
+              "genislik": 135.2,
+              "yukseklik": 32,
+              "sol": 16,
+              "sag": 151.2,
+              "ust": 20,
+              "alt": 52
+            },
+            "computedHeight": "32px",
+            "kapsayici": {
+              "genislik": 135.2,
+              "yukseklik": 32,
+              "sol": 16,
+              "sag": 151.2,
+              "ust": 20,
+              "alt": 52
+            },
+            "kapsayiciyiAsiyor": false,
+            "bolge": "header",
+            "bolgeRect": {
+              "genislik": 414,
+              "yukseklik": 155,
+              "sol": 0,
+              "sag": 414,
+              "ust": 0,
+              "alt": 155
+            },
+            "gorunurAlaniAsiyor": false,
+            "seritKesisimi": null
+          },
+          {
+            "src": "/logo.svg",
+            "alt": "Adana Özel Ders Logo",
+            "gorunur": true,
+            "sinif": "h-8 w-auto object-contain opacity-70 grayscale transition hover:opacity-100 hover:grayscale-0 md:h-9",
+            "rect": {
+              "genislik": 229.1,
+              "yukseklik": 32,
+              "sol": 92.5,
+              "sag": 321.5,
+              "ust": 551,
+              "alt": 583
+            },
+            "computedHeight": "32px",
+            "kapsayici": {
+              "genislik": 229.1,
+              "yukseklik": 32,
+              "sol": 92.5,
+              "sag": 321.5,
+              "ust": 551,
+              "alt": 583
+            },
+            "kapsayiciyiAsiyor": false,
+            "bolge": "footer",
+            "bolgeRect": {
+              "genislik": 414,
+              "yukseklik": 390,
+              "sol": 0,
+              "sag": 414,
+              "ust": 510,
+              "alt": 900
+            },
+            "gorunurAlaniAsiyor": false,
+            "seritKesisimi": null
+          },
+          {
+            "src": "/odeme/iyzico-logo-band.svg",
+            "alt": "iyzico ile güvenli ödeme",
+            "gorunur": true,
+            "sinif": "h-7 w-auto max-w-full object-contain dark:hidden",
+            "rect": {
+              "genislik": 366,
+              "yukseklik": 28,
+              "sol": 24,
+              "sag": 390,
+              "ust": 832,
+              "alt": 860
+            },
+            "computedHeight": "28px",
+            "kapsayici": {
+              "genislik": 366,
+              "yukseklik": 28,
+              "sol": 24,
+              "sag": 390,
+              "ust": 832,
+              "alt": 860
+            },
+            "kapsayiciyiAsiyor": false,
+            "bolge": "footer",
+            "bolgeRect": {
+              "genislik": 414,
+              "yukseklik": 390,
+              "sol": 0,
+              "sag": 414,
+              "ust": 510,
+              "alt": 900
+            },
+            "gorunurAlaniAsiyor": false,
+            "seritKesisimi": null
+          },
+          {
+            "src": "/odeme/iyzico-logo-band-white.svg",
+            "alt": "iyzico ile güvenli ödeme",
+            "gorunur": false,
+            "sinif": "hidden h-7 w-auto max-w-full object-contain dark:block",
+            "rect": {
+              "genislik": 0,
+              "yukseklik": 0,
+              "sol": 0,
+              "sag": 0,
+              "ust": 0,
+              "alt": 0
+            },
+            "computedHeight": "28px",
+            "kapsayici": {
+              "genislik": 366,
+              "yukseklik": 28,
+              "sol": 24,
+              "sag": 390,
+              "ust": 832,
+              "alt": 860
+            },
+            "kapsayiciyiAsiyor": false,
+            "bolge": "footer",
+            "bolgeRect": {
+              "genislik": 414,
+              "yukseklik": 390,
+              "sol": 0,
+              "sag": 414,
+              "ust": 510,
+              "alt": 900
+            },
+            "gorunurAlaniAsiyor": false,
+            "seritKesisimi": null
+          }
+        ],
+        "sayfaHazir": true
+      },
+      "768": {
+        "gorunurGenislik": 768,
+        "govdeGenisligi": 768,
+        "scrollWidth": 768,
+        "clientWidth": 768,
+        "yatayTasma": false,
+        "tasmaPiksel": 0,
+        "seritKaynagi": "StoreCategoryBar (a[href*=category=])",
+        "serit": {
+          "genislik": 339.6,
+          "yukseklik": 46,
+          "sol": 158.2,
+          "sag": 497.8,
+          "ust": 75,
+          "alt": 121,
+          "ogeSayisi": 3
+        },
+        "logolar": [
+          {
+            "src": "/magaza-logo.svg",
+            "alt": "Mağaza",
+            "gorunur": true,
+            "sinif": "h-8 w-auto object-contain md:h-9",
+            "rect": {
+              "genislik": 152.1,
+              "yukseklik": 36,
+              "sol": 32,
+              "sag": 184.1,
+              "ust": 20,
+              "alt": 56
+            },
+            "computedHeight": "36px",
+            "kapsayici": {
+              "genislik": 152.1,
+              "yukseklik": 36,
+              "sol": 32,
+              "sag": 184.1,
+              "ust": 20,
+              "alt": 56
+            },
+            "kapsayiciyiAsiyor": false,
+            "bolge": "header",
+            "bolgeRect": {
+              "genislik": 768,
+              "yukseklik": 75,
+              "sol": 0,
+              "sag": 768,
+              "ust": 0,
+              "alt": 75
+            },
+            "gorunurAlaniAsiyor": false,
+            "seritKesisimi": null
+          },
+          {
+            "src": "/logo.svg",
+            "alt": "Adana Özel Ders Logo",
+            "gorunur": true,
+            "sinif": "h-8 w-auto object-contain opacity-70 grayscale transition hover:opacity-100 hover:grayscale-0 md:h-9",
+            "rect": {
+              "genislik": 257.7,
+              "yukseklik": 36,
+              "sol": 24,
+              "sag": 281.7,
+              "ust": 671,
+              "alt": 707
+            },
+            "computedHeight": "36px",
+            "kapsayici": {
+              "genislik": 257.7,
+              "yukseklik": 36,
+              "sol": 24,
+              "sag": 281.7,
+              "ust": 671,
+              "alt": 707
+            },
+            "kapsayiciyiAsiyor": false,
+            "bolge": "footer",
+            "bolgeRect": {
+              "genislik": 768,
+              "yukseklik": 270,
+              "sol": 0,
+              "sag": 768,
+              "ust": 630,
+              "alt": 900
+            },
+            "gorunurAlaniAsiyor": false,
+            "seritKesisimi": null
+          },
+          {
+            "src": "/odeme/iyzico-logo-band.svg",
+            "alt": "iyzico ile güvenli ödeme",
+            "gorunur": true,
+            "sinif": "h-7 w-auto max-w-full object-contain dark:hidden",
+            "rect": {
+              "genislik": 375.4,
+              "yukseklik": 28,
+              "sol": 368.6,
+              "sag": 744,
+              "ust": 832,
+              "alt": 860
+            },
+            "computedHeight": "28px",
+            "kapsayici": {
+              "genislik": 375.4,
+              "yukseklik": 28,
+              "sol": 368.6,
+              "sag": 744,
+              "ust": 832,
+              "alt": 860
+            },
+            "kapsayiciyiAsiyor": false,
+            "bolge": "footer",
+            "bolgeRect": {
+              "genislik": 768,
+              "yukseklik": 270,
+              "sol": 0,
+              "sag": 768,
+              "ust": 630,
+              "alt": 900
+            },
+            "gorunurAlaniAsiyor": false,
+            "seritKesisimi": null
+          },
+          {
+            "src": "/odeme/iyzico-logo-band-white.svg",
+            "alt": "iyzico ile güvenli ödeme",
+            "gorunur": false,
+            "sinif": "hidden h-7 w-auto max-w-full object-contain dark:block",
+            "rect": {
+              "genislik": 0,
+              "yukseklik": 0,
+              "sol": 0,
+              "sag": 0,
+              "ust": 0,
+              "alt": 0
+            },
+            "computedHeight": "28px",
+            "kapsayici": {
+              "genislik": 375.4,
+              "yukseklik": 28,
+              "sol": 368.6,
+              "sag": 744,
+              "ust": 832,
+              "alt": 860
+            },
+            "kapsayiciyiAsiyor": false,
+            "bolge": "footer",
+            "bolgeRect": {
+              "genislik": 768,
+              "yukseklik": 270,
+              "sol": 0,
+              "sag": 768,
+              "ust": 630,
+              "alt": 900
+            },
+            "gorunurAlaniAsiyor": false,
+            "seritKesisimi": null
+          }
+        ],
+        "sayfaHazir": true
+      }
+    },
+    "magaza-oturum": {
+      "360": {
+        "gorunurGenislik": 360,
+        "govdeGenisligi": 360,
+        "scrollWidth": 360,
+        "clientWidth": 360,
+        "yatayTasma": false,
+        "tasmaPiksel": 0,
+        "seritKaynagi": "StoreCategoryBar (a[href*=category=])",
+        "serit": {
+          "genislik": 323.6,
+          "yukseklik": 46,
+          "sol": 134.2,
+          "sag": 457.8,
+          "ust": 155,
+          "alt": 201,
+          "ogeSayisi": 3
+        },
+        "logolar": [
+          {
+            "src": "/magaza-logo.svg",
+            "alt": "Mağaza",
+            "gorunur": true,
+            "sinif": "h-8 w-auto object-contain md:h-9",
+            "rect": {
+              "genislik": 135.2,
+              "yukseklik": 32,
+              "sol": 16,
+              "sag": 151.2,
+              "ust": 20,
+              "alt": 52
+            },
+            "computedHeight": "32px",
+            "kapsayici": {
+              "genislik": 135.2,
+              "yukseklik": 32,
+              "sol": 16,
+              "sag": 151.2,
+              "ust": 20,
+              "alt": 52
+            },
+            "kapsayiciyiAsiyor": false,
+            "bolge": "header",
+            "bolgeRect": {
+              "genislik": 360,
+              "yukseklik": 155,
+              "sol": 0,
+              "sag": 360,
+              "ust": 0,
+              "alt": 155
+            },
+            "gorunurAlaniAsiyor": false,
+            "seritKesisimi": null
+          },
+          {
+            "src": "/logo.svg",
+            "alt": "Adana Özel Ders Logo",
+            "gorunur": true,
+            "sinif": "h-8 w-auto object-contain opacity-70 grayscale transition hover:opacity-100 hover:grayscale-0 md:h-9",
+            "rect": {
+              "genislik": 229.1,
+              "yukseklik": 32,
+              "sol": 65.5,
+              "sag": 294.5,
+              "ust": 551,
+              "alt": 583
+            },
+            "computedHeight": "32px",
+            "kapsayici": {
+              "genislik": 229.1,
+              "yukseklik": 32,
+              "sol": 65.5,
+              "sag": 294.5,
+              "ust": 551,
+              "alt": 583
+            },
+            "kapsayiciyiAsiyor": false,
+            "bolge": "footer",
+            "bolgeRect": {
+              "genislik": 360,
+              "yukseklik": 390,
+              "sol": 0,
+              "sag": 360,
+              "ust": 510,
+              "alt": 900
+            },
+            "gorunurAlaniAsiyor": false,
+            "seritKesisimi": null
+          },
+          {
+            "src": "/odeme/iyzico-logo-band.svg",
+            "alt": "iyzico ile güvenli ödeme",
+            "gorunur": true,
+            "sinif": "h-7 w-auto max-w-full object-contain dark:hidden",
+            "rect": {
+              "genislik": 312,
+              "yukseklik": 28,
+              "sol": 24,
+              "sag": 336,
+              "ust": 832,
+              "alt": 860
+            },
+            "computedHeight": "28px",
+            "kapsayici": {
+              "genislik": 312,
+              "yukseklik": 28,
+              "sol": 24,
+              "sag": 336,
+              "ust": 832,
+              "alt": 860
+            },
+            "kapsayiciyiAsiyor": false,
+            "bolge": "footer",
+            "bolgeRect": {
+              "genislik": 360,
+              "yukseklik": 390,
+              "sol": 0,
+              "sag": 360,
+              "ust": 510,
+              "alt": 900
+            },
+            "gorunurAlaniAsiyor": false,
+            "seritKesisimi": null
+          },
+          {
+            "src": "/odeme/iyzico-logo-band-white.svg",
+            "alt": "iyzico ile güvenli ödeme",
+            "gorunur": false,
+            "sinif": "hidden h-7 w-auto max-w-full object-contain dark:block",
+            "rect": {
+              "genislik": 0,
+              "yukseklik": 0,
+              "sol": 0,
+              "sag": 0,
+              "ust": 0,
+              "alt": 0
+            },
+            "computedHeight": "28px",
+            "kapsayici": {
+              "genislik": 312,
+              "yukseklik": 28,
+              "sol": 24,
+              "sag": 336,
+              "ust": 832,
+              "alt": 860
+            },
+            "kapsayiciyiAsiyor": false,
+            "bolge": "footer",
+            "bolgeRect": {
+              "genislik": 360,
+              "yukseklik": 390,
+              "sol": 0,
+              "sag": 360,
+              "ust": 510,
+              "alt": 900
+            },
+            "gorunurAlaniAsiyor": false,
+            "seritKesisimi": null
+          }
+        ],
+        "sayfaHazir": true
+      },
+      "414": {
+        "gorunurGenislik": 414,
+        "govdeGenisligi": 414,
+        "scrollWidth": 414,
+        "clientWidth": 414,
+        "yatayTasma": false,
+        "tasmaPiksel": 0,
+        "seritKaynagi": "StoreCategoryBar (a[href*=category=])",
+        "serit": {
+          "genislik": 323.6,
+          "yukseklik": 46,
+          "sol": 134.2,
+          "sag": 457.8,
+          "ust": 155,
+          "alt": 201,
+          "ogeSayisi": 3
+        },
+        "logolar": [
+          {
+            "src": "/magaza-logo.svg",
+            "alt": "Mağaza",
+            "gorunur": true,
+            "sinif": "h-8 w-auto object-contain md:h-9",
+            "rect": {
+              "genislik": 135.2,
+              "yukseklik": 32,
+              "sol": 16,
+              "sag": 151.2,
+              "ust": 20,
+              "alt": 52
+            },
+            "computedHeight": "32px",
+            "kapsayici": {
+              "genislik": 135.2,
+              "yukseklik": 32,
+              "sol": 16,
+              "sag": 151.2,
+              "ust": 20,
+              "alt": 52
+            },
+            "kapsayiciyiAsiyor": false,
+            "bolge": "header",
+            "bolgeRect": {
+              "genislik": 414,
+              "yukseklik": 155,
+              "sol": 0,
+              "sag": 414,
+              "ust": 0,
+              "alt": 155
+            },
+            "gorunurAlaniAsiyor": false,
+            "seritKesisimi": null
+          },
+          {
+            "src": "/logo.svg",
+            "alt": "Adana Özel Ders Logo",
+            "gorunur": true,
+            "sinif": "h-8 w-auto object-contain opacity-70 grayscale transition hover:opacity-100 hover:grayscale-0 md:h-9",
+            "rect": {
+              "genislik": 229.1,
+              "yukseklik": 32,
+              "sol": 92.5,
+              "sag": 321.5,
+              "ust": 579,
+              "alt": 611
+            },
+            "computedHeight": "32px",
+            "kapsayici": {
+              "genislik": 229.1,
+              "yukseklik": 32,
+              "sol": 92.5,
+              "sag": 321.5,
+              "ust": 579,
+              "alt": 611
+            },
+            "kapsayiciyiAsiyor": false,
+            "bolge": "footer",
+            "bolgeRect": {
+              "genislik": 414,
+              "yukseklik": 362,
+              "sol": 0,
+              "sag": 414,
+              "ust": 538,
+              "alt": 900
+            },
+            "gorunurAlaniAsiyor": false,
+            "seritKesisimi": null
+          },
+          {
+            "src": "/odeme/iyzico-logo-band.svg",
+            "alt": "iyzico ile güvenli ödeme",
+            "gorunur": true,
+            "sinif": "h-7 w-auto max-w-full object-contain dark:hidden",
+            "rect": {
+              "genislik": 366,
+              "yukseklik": 28,
+              "sol": 24,
+              "sag": 390,
+              "ust": 832,
+              "alt": 860
+            },
+            "computedHeight": "28px",
+            "kapsayici": {
+              "genislik": 366,
+              "yukseklik": 28,
+              "sol": 24,
+              "sag": 390,
+              "ust": 832,
+              "alt": 860
+            },
+            "kapsayiciyiAsiyor": false,
+            "bolge": "footer",
+            "bolgeRect": {
+              "genislik": 414,
+              "yukseklik": 362,
+              "sol": 0,
+              "sag": 414,
+              "ust": 538,
+              "alt": 900
+            },
+            "gorunurAlaniAsiyor": false,
+            "seritKesisimi": null
+          },
+          {
+            "src": "/odeme/iyzico-logo-band-white.svg",
+            "alt": "iyzico ile güvenli ödeme",
+            "gorunur": false,
+            "sinif": "hidden h-7 w-auto max-w-full object-contain dark:block",
+            "rect": {
+              "genislik": 0,
+              "yukseklik": 0,
+              "sol": 0,
+              "sag": 0,
+              "ust": 0,
+              "alt": 0
+            },
+            "computedHeight": "28px",
+            "kapsayici": {
+              "genislik": 366,
+              "yukseklik": 28,
+              "sol": 24,
+              "sag": 390,
+              "ust": 832,
+              "alt": 860
+            },
+            "kapsayiciyiAsiyor": false,
+            "bolge": "footer",
+            "bolgeRect": {
+              "genislik": 414,
+              "yukseklik": 362,
+              "sol": 0,
+              "sag": 414,
+              "ust": 538,
+              "alt": 900
+            },
+            "gorunurAlaniAsiyor": false,
+            "seritKesisimi": null
+          }
+        ],
+        "sayfaHazir": true
+      },
+      "768": {
+        "gorunurGenislik": 768,
+        "govdeGenisligi": 768,
+        "scrollWidth": 768,
+        "clientWidth": 768,
+        "yatayTasma": false,
+        "tasmaPiksel": 0,
+        "seritKaynagi": "StoreCategoryBar (a[href*=category=])",
+        "serit": {
+          "genislik": 339.6,
+          "yukseklik": 46,
+          "sol": 158.2,
+          "sag": 497.8,
+          "ust": 75,
+          "alt": 121,
+          "ogeSayisi": 3
+        },
+        "logolar": [
+          {
+            "src": "/magaza-logo.svg",
+            "alt": "Mağaza",
+            "gorunur": true,
+            "sinif": "h-8 w-auto object-contain md:h-9",
+            "rect": {
+              "genislik": 152.1,
+              "yukseklik": 36,
+              "sol": 32,
+              "sag": 184.1,
+              "ust": 20,
+              "alt": 56
+            },
+            "computedHeight": "36px",
+            "kapsayici": {
+              "genislik": 152.1,
+              "yukseklik": 36,
+              "sol": 32,
+              "sag": 184.1,
+              "ust": 20,
+              "alt": 56
+            },
+            "kapsayiciyiAsiyor": false,
+            "bolge": "header",
+            "bolgeRect": {
+              "genislik": 768,
+              "yukseklik": 75,
+              "sol": 0,
+              "sag": 768,
+              "ust": 0,
+              "alt": 75
+            },
+            "gorunurAlaniAsiyor": false,
+            "seritKesisimi": null
+          },
+          {
+            "src": "/logo.svg",
+            "alt": "Adana Özel Ders Logo",
+            "gorunur": true,
+            "sinif": "h-8 w-auto object-contain opacity-70 grayscale transition hover:opacity-100 hover:grayscale-0 md:h-9",
+            "rect": {
+              "genislik": 257.7,
+              "yukseklik": 36,
+              "sol": 24,
+              "sag": 281.7,
+              "ust": 671,
+              "alt": 707
+            },
+            "computedHeight": "36px",
+            "kapsayici": {
+              "genislik": 257.7,
+              "yukseklik": 36,
+              "sol": 24,
+              "sag": 281.7,
+              "ust": 671,
+              "alt": 707
+            },
+            "kapsayiciyiAsiyor": false,
+            "bolge": "footer",
+            "bolgeRect": {
+              "genislik": 768,
+              "yukseklik": 270,
+              "sol": 0,
+              "sag": 768,
+              "ust": 630,
+              "alt": 900
+            },
+            "gorunurAlaniAsiyor": false,
+            "seritKesisimi": null
+          },
+          {
+            "src": "/odeme/iyzico-logo-band.svg",
+            "alt": "iyzico ile güvenli ödeme",
+            "gorunur": true,
+            "sinif": "h-7 w-auto max-w-full object-contain dark:hidden",
+            "rect": {
+              "genislik": 375.4,
+              "yukseklik": 28,
+              "sol": 368.6,
+              "sag": 744,
+              "ust": 832,
+              "alt": 860
+            },
+            "computedHeight": "28px",
+            "kapsayici": {
+              "genislik": 375.4,
+              "yukseklik": 28,
+              "sol": 368.6,
+              "sag": 744,
+              "ust": 832,
+              "alt": 860
+            },
+            "kapsayiciyiAsiyor": false,
+            "bolge": "footer",
+            "bolgeRect": {
+              "genislik": 768,
+              "yukseklik": 270,
+              "sol": 0,
+              "sag": 768,
+              "ust": 630,
+              "alt": 900
+            },
+            "gorunurAlaniAsiyor": false,
+            "seritKesisimi": null
+          },
+          {
+            "src": "/odeme/iyzico-logo-band-white.svg",
+            "alt": "iyzico ile güvenli ödeme",
+            "gorunur": false,
+            "sinif": "hidden h-7 w-auto max-w-full object-contain dark:block",
+            "rect": {
+              "genislik": 0,
+              "yukseklik": 0,
+              "sol": 0,
+              "sag": 0,
+              "ust": 0,
+              "alt": 0
+            },
+            "computedHeight": "28px",
+            "kapsayici": {
+              "genislik": 375.4,
+              "yukseklik": 28,
+              "sol": 368.6,
+              "sag": 744,
+              "ust": 832,
+              "alt": 860
+            },
+            "kapsayiciyiAsiyor": false,
+            "bolge": "footer",
+            "bolgeRect": {
+              "genislik": 768,
+              "yukseklik": 270,
+              "sol": 0,
+              "sag": 768,
+              "ust": 630,
+              "alt": 900
+            },
+            "gorunurAlaniAsiyor": false,
+            "seritKesisimi": null
+          }
+        ],
+        "sayfaHazir": true
+      }
+    }
+  },
+  "konsol": {
+    "anasayfa-360": [],
+    "anasayfa-414": [],
+    "anasayfa-768": [],
+    "magaza-360": [],
+    "magaza-414": [],
+    "magaza-768": [],
+    "magaza-oturum-360": [],
+    "magaza-oturum-414": [],
+    "magaza-oturum-768": []
+  },
+  "dusenKapilar": [
+    "anasayfa/768: /logo.svg kategori seridiyle cakisiyor ({\"genislik\":146.1,\"yukseklik\":36})"
+  ],
+  "yukseklikKarsilastirmasi": {
+    "anasayfa": [
+      {
+        "src": "/logo.svg",
+        "bolge": "header",
+        "yukseklik": 36
+      },
+      {
+        "src": "/logo.svg",
+        "bolge": "footer",
+        "yukseklik": 36
+      }
+    ],
+    "magaza": [
+      {
+        "src": "/magaza-logo.svg",
+        "bolge": "header",
+        "yukseklik": 36
+      },
+      {
+        "src": "/logo.svg",
+        "bolge": "footer",
+        "yukseklik": 36
+      }
+    ]
+  },
+  "cakismaTaramasi": {
+    "640": {
+      "svg": {
+        "src": "/logo-compact.svg",
+        "genislik": 32,
+        "sag": 48,
+        "seritSol": 120.2,
+        "kesisim": null
+      },
+      "png": {
+        "src": "/logo-compact.svg",
+        "genislik": 32,
+        "sag": 48,
+        "seritSol": 120.2,
+        "kesisim": null
+      }
+    },
+    "700": {
+      "svg": {
+        "src": "/logo-compact.svg",
+        "genislik": 32,
+        "sag": 48,
+        "seritSol": 150.2,
+        "kesisim": null
+      },
+      "png": {
+        "src": "/logo-compact.svg",
+        "genislik": 32,
+        "sag": 48,
+        "seritSol": 150.2,
+        "kesisim": null
+      }
+    },
+    "768": {
+      "svg": {
+        "src": "/logo.svg",
+        "genislik": 257.7,
+        "sag": 289.7,
+        "seritSol": 143.6,
+        "kesisim": {
+          "genislik": 146.1,
+          "yukseklik": 36
+        }
+      },
+      "png": {
+        "src": "/logo.png",
+        "genislik": 228.8,
+        "sag": 260.8,
+        "seritSol": 143.6,
+        "kesisim": {
+          "genislik": 117.2,
+          "yukseklik": 36
+        }
+      }
+    },
+    "820": {
+      "svg": {
+        "src": "/logo.svg",
+        "genislik": 257.7,
+        "sag": 289.7,
+        "seritSol": 195.6,
+        "kesisim": {
+          "genislik": 94.1,
+          "yukseklik": 36
+        }
+      },
+      "png": {
+        "src": "/logo.png",
+        "genislik": 228.8,
+        "sag": 260.8,
+        "seritSol": 195.6,
+        "kesisim": {
+          "genislik": 65.2,
+          "yukseklik": 36
+        }
+      }
+    },
+    "900": {
+      "svg": {
+        "src": "/logo.svg",
+        "genislik": 257.7,
+        "sag": 289.7,
+        "seritSol": 250.2,
+        "kesisim": {
+          "genislik": 39.5,
+          "yukseklik": 36
+        }
+      },
+      "png": {
+        "src": "/logo.png",
+        "genislik": 228.8,
+        "sag": 260.8,
+        "seritSol": 250.2,
+        "kesisim": {
+          "genislik": 10.6,
+          "yukseklik": 36
+        }
+      }
+    },
+    "1024": {
+      "svg": {
+        "src": "/logo.svg",
+        "genislik": 257.7,
+        "sag": 289.7,
+        "seritSol": 201.1,
+        "kesisim": {
+          "genislik": 88.6,
+          "yukseklik": 36
+        }
+      },
+      "png": {
+        "src": "/logo.png",
+        "genislik": 228.8,
+        "sag": 260.8,
+        "seritSol": 201.1,
+        "kesisim": {
+          "genislik": 59.7,
+          "yukseklik": 36
+        }
+      }
+    },
+    "1280": {
+      "svg": {
+        "src": "/logo.svg",
+        "genislik": 257.7,
+        "sag": 289.7,
+        "seritSol": 440.2,
+        "kesisim": null
+      },
+      "png": {
+        "src": "/logo.png",
+        "genislik": 228.8,
+        "sag": 260.8,
+        "seritSol": 440.2,
+        "kesisim": null
+      }
+    }
+  },
+  "footerLogosu": {
+    "src": "/logo.svg",
+    "sinif": "h-8 w-auto object-contain opacity-70 grayscale transition hover:opacity-100 hover:grayscale-0 md:h-9",
+    "computedHeight": "36px",
+    "rectYuksekligi": 36
+  },
+  "footerKonsolu": [],
+  "hataliAdim": 1
+}
