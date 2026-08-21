@@ -214,6 +214,9 @@ export const OLCUM_TABANI = [
   "src/components/admin/store/ProductForm.tsx",
   "src/components/admin/store/ProductsPanel.tsx",
   "src/components/admin/store/ReturnsPanel.tsx",
+  // Tedarikci senkronu (Yildirim B2B) — yeni yuzey, dogdugu gun olcume girer.
+  "src/components/admin/store/SupplierLinkDialog.tsx",
+  "src/components/admin/store/SupplierPanel.tsx",
   "src/components/admin/ui/Badge.tsx",
   "src/components/admin/ui/Button.tsx",
   "src/components/admin/ui/ConfirmDialog.tsx",

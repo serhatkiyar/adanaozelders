@@ -20,6 +20,7 @@ import { CouponsPanel } from "@/components/admin/store/CouponsPanel";
 import { OrdersPanel } from "@/components/admin/store/OrdersPanel";
 import { ProductsPanel } from "@/components/admin/store/ProductsPanel";
 import { ReturnsPanel } from "@/components/admin/store/ReturnsPanel";
+import { SupplierPanel } from "@/components/admin/store/SupplierPanel";
 import { adminAreaAccess } from "@/lib/adminAccess";
 import { ROUTES } from "@/lib/routes";
 import { useAuthStore } from "@/store/authStore";
@@ -30,7 +31,8 @@ type SubTab =
   | "orders"
   | "returns"
   | "coupons"
-  | "stock";
+  | "stock"
+  | "supplier";
 
 const STORE_ROUTES: Record<SubTab, string> = {
   products: ROUTES.adminStoreProducts,
@@ -39,6 +41,7 @@ const STORE_ROUTES: Record<SubTab, string> = {
   returns: ROUTES.adminStoreReturns,
   coupons: ROUTES.adminStoreCoupons,
   stock: ROUTES.adminStoreStock,
+  supplier: ROUTES.adminStoreSupplier,
 };
 
 // Sekme → backend izin alanı (kategoriler backend'de products.manage kapsamında).
@@ -50,6 +53,10 @@ const TAB_AREA: Record<SubTab, string> = {
   coupons: "coupons",
   // Defter salt-okunur bir teşhis yüzeyi; ürün görüntüleme izniyle açılır.
   stock: "products",
+  // Tedarikçi AYRI bir izin alanıdır (sözleşme §3): `products.manage`
+  // bilinçli olarak yeniden kullanılmadı — ayar bir sır (API token) taşır ve
+  // görev ayrılığı `inventory.*`/`packing.*` ile aynı gerekçeye dayanır.
+  supplier: "suppliers",
 };
 
 export default function AdminStore() {
@@ -64,7 +71,7 @@ export default function AdminStore() {
   }
   return (
     <div>
-      <div className="mb-4 flex gap-2">
+      <div className="mb-4 flex flex-wrap gap-2">
         {(
           [
             ["products", "Ürünler"],
@@ -73,6 +80,7 @@ export default function AdminStore() {
             ["returns", "İadeler"],
             ["coupons", "Kuponlar"],
             ["stock", "Stok hareketleri"],
+            ["supplier", "Tedarikçi"],
           ] as [SubTab, string][]
         ).filter(([v]) => adminAreaAccess(permissions, TAB_AREA[v]).canView).map(([v, label]) => (
           <GezinmeBaglantisi
@@ -99,6 +107,8 @@ export default function AdminStore() {
         <ReturnsPanel />
       ) : sub === "stock" ? (
         <StockMovementsPanel />
+      ) : sub === "supplier" ? (
+        <SupplierPanel />
       ) : (
         <CouponsPanel />
       )}

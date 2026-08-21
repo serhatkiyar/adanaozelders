@@ -18,6 +18,16 @@ import type { AdminProductQuery } from "@/api/store";
 export const STOK_FILTRELERI = ["tukendi", "azalan", "var", "kritik"] as const;
 export type StokFiltresi = (typeof STOK_FILTRELERI)[number];
 
+/**
+ * Tedarikçi kovaları.
+ *
+ * `below_cost` bir süzgeç değil bir ALARM listesidir: satış fiyatı maliyetin
+ * altına düşmüş ürünler. Ayrı bir ekran yerine buraya kondu çünkü düzeltme
+ * eylemi (fiyatı güncelle) zaten bu listede yaşıyor.
+ */
+export const TEDARIKCI_FILTRELERI = ["linked", "backed", "below_cost"] as const;
+export type TedarikciFiltresi = (typeof TEDARIKCI_FILTRELERI)[number];
+
 export const URUN_SIRALARI = ["title", "price", "stock", "created_at"] as const;
 export type UrunSirasi = (typeof URUN_SIRALARI)[number];
 
@@ -32,6 +42,7 @@ export interface UrunSorguDurumu {
   stok?: StokFiltresi;
   yayinevi: string;
   yazar: string;
+  tedarikci?: TedarikciFiltresi;
   sort: UrunSirasi;
   order: SiraYonu;
 }
@@ -43,6 +54,7 @@ function pozitifTamsayi(value: string | null, fallback: number): number {
 
 export function parseUrunSorgusu(params: URLSearchParams): UrunSorguDurumu {
   const hamStok = params.get("stok") as StokFiltresi | null;
+  const hamTedarikci = params.get("tedarikci") as TedarikciFiltresi | null;
   const hamSort = params.get("sirala") as UrunSirasi | null;
   const hamBoyut = pozitifTamsayi(params.get("limit"), 25);
 
@@ -58,6 +70,12 @@ export function parseUrunSorgusu(params: URLSearchParams): UrunSorguDurumu {
         : undefined,
     yayinevi: (params.get("yayinevi") ?? "").slice(0, 200),
     yazar: (params.get("yazar") ?? "").slice(0, 200),
+    // Beyaz liste: bilinmeyen değer SESSİZCE düşer (uydurma bir süzgeç
+    // sunucuda 422 üretirdi ve liste bomboş görünürdü).
+    tedarikci:
+      hamTedarikci && (TEDARIKCI_FILTRELERI as readonly string[]).includes(hamTedarikci)
+        ? hamTedarikci
+        : undefined,
     sort:
       hamSort && (URUN_SIRALARI as readonly string[]).includes(hamSort)
         ? hamSort
@@ -73,6 +91,7 @@ export function urunSorgusundanIstek(durum: UrunSorguDurumu): AdminProductQuery 
     stok: durum.stok,
     publisher: durum.yayinevi || undefined,
     author: durum.yazar || undefined,
+    supplier: durum.tedarikci,
     sort: durum.sort,
     order: durum.order,
     limit: durum.pageSize,
@@ -82,5 +101,7 @@ export function urunSorgusundanIstek(durum: UrunSorguDurumu): AdminProductQuery 
 
 /** Listeyi daraltan bir seçim var mı? "kayıt yok" ile "sonuç yok" ayrımı buna bakar. */
 export function filtreVarMi(durum: UrunSorguDurumu): boolean {
-  return Boolean(durum.q || durum.stok || durum.yayinevi || durum.yazar);
+  return Boolean(
+    durum.q || durum.stok || durum.yayinevi || durum.yazar || durum.tedarikci
+  );
 }

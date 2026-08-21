@@ -2,6 +2,12 @@
 // Decimal -> STRING (Pydantic v2 JSON serileştirmesi; örn. "250.5"), datetime/date -> ISO string.
 // Para alanlarını okurken @/lib/money parseMoney/formatTRY kullan.
 
+// Tedarikçi senkronu tipleri AYRI dosyada (`types/supplier.ts`) yaşar ve
+// buradan yeniden dışa verilir: ürün şeması onlara bağımlı (D-6 maliyet
+// bloğu), ama tedarikçi paneli bu dev dosyayı import etmek zorunda değil.
+export * from "./supplier";
+import type { ProductFulfillment, ProductSupplierOut } from "./supplier";
+
 /* ============================ ENUMS ============================ */
 
 export enum RoleType {
@@ -1518,6 +1524,29 @@ export interface ProductSearchOut {
    *  grubun durumudur ve fiyat `group_min_price` ile "X TL'den başlayan". */
   variant_count?: number;
   group_min_price?: string | null;
+  /**
+   * Vitrindeki uygunluğun KAYNAĞI (tedarikçi senkronu · D-2).
+   *
+   * `in_stock` yalnız "satılabilir mi" der; `SUPPLIER` ise mal bizim rafımızda
+   * DEĞİL, tedarikçidedir ve teslim süresi uzayabilir. Public detayda tek
+   * satırlık nötr bir not olarak görünür.
+   */
+  fulfillment?: ProductFulfillment;
+  /**
+   * "Kendi stoğum bitince tedarikçi stoğu vitrinde sayılsın" anahtarı.
+   *
+   * `Product`ta yaşar (bağ tablosunda değil): bağ çözülüp yeniden kurulunca
+   * kaybolmamalı ve "temin açık ama bağlantı yok" uyarısı ancak böyle
+   * ifade edilebilir. Yönetim listesinde rozet, formda checkbox.
+   */
+  supplier_backed?: boolean;
+  /**
+   * Tedarikçi maliyet/marj özeti — **YALNIZ ADMIN yanıtlarında dolu** (D-6).
+   *
+   * Public aramada her zaman `null`/`undefined`dır; maliyet ticari sırdır ve
+   * rakip de müşteri olabilir.
+   */
+  supplier?: ProductSupplierOut | null;
 }
 
 /** Kitap künyesi (opsiyonel) — ürün detayında "Ürün Özellikleri" tablosu + admin formu. */
@@ -1609,6 +1638,14 @@ export interface ProductCreate extends BookSpecFields, VariantMemberFields {
   category_id?: number | null;
   status?: "ACTIVE" | "HIDDEN" | "DRAFT";
   cover_url?: string | null;
+  /**
+   * "Kendi stoğum bitince tedarikçi stoğu vitrinde sayılsın" anahtarı.
+   *
+   * Bir MERCHANDISING kararıdır ve `Product`ta yaşar, bağ tablosunda değil:
+   * bağ çözülüp yeniden kurulunca kaybolmamalı. Yalnız FİZİKSEL üründe
+   * anlamlıdır (dijital tükenmez).
+   */
+  supplier_backed?: boolean;
 }
 
 export interface ProductUpdate extends BookSpecFields, VariantMemberFields {
@@ -1623,6 +1660,8 @@ export interface ProductUpdate extends BookSpecFields, VariantMemberFields {
   category_id?: number | null;
   status?: ProductStatus;
   cover_url?: string | null;
+  /** Bkz. `ProductCreate.supplier_backed`. Gönderilmezse mevcut değer korunur. */
+  supplier_backed?: boolean;
 }
 
 /* ── Varyant grubu (Faz 2) ── */

@@ -133,6 +133,10 @@ export const PATHS = {
   adminStoreReturns: "/yonetim/magaza/iadeler",
   adminStoreCoupons: "/yonetim/magaza/kuponlar",
   adminStoreStock: "/yonetim/magaza/stok-hareketleri",
+  // Tedarikci senkronu Magaza'nin bir sekmesidir ama izinleri AYRIDIR
+  // (`suppliers.*`): ayar bir sir (API token) ve "vitrin neyi otomatik
+  // satar" karari tasir; urun metnini duzenleyen kisi token degistirememeli.
+  adminStoreSupplier: "/yonetim/magaza/tedarikci",
   // Envanter, Magaza'nin 7. sekmesi DEGIL ayri bir bolum: backend izinleri
   // (`inventory.*`) bilincli olarak `products.*`'tan ayrildi.
   adminInventory: "/yonetim/envanter",
@@ -266,6 +270,7 @@ export const ROUTES = {
   adminStoreReturns: PATHS.adminStoreReturns,
   adminStoreCoupons: PATHS.adminStoreCoupons,
   adminStoreStock: PATHS.adminStoreStock,
+  adminStoreSupplier: PATHS.adminStoreSupplier,
   adminInventory: PATHS.adminInventory,
   adminInventoryCounts: PATHS.adminInventoryCounts,
   adminInventoryDamage: PATHS.adminInventoryDamage,

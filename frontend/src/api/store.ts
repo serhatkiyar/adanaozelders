@@ -283,6 +283,15 @@ export interface AdminProductQuery {
   author?: string;
   sort?: string;
   order?: string;
+  /**
+   * Tedarikçi süzgeci (tedarikçi senkronu).
+   *
+   * `linked` = bir tedarikçi satırına bağlı · `backed` = tedarikçiden temin
+   * açık (`supplier_backed`) · `below_cost` = satış fiyatı maliyetin ALTINDA.
+   * Sonuncusu bir para kaybı alarmıdır: fiyatı elle girilmiş bir ürünün
+   * maliyeti tedarikçi zammıyla sessizce geçmesi, ancak burada görülür.
+   */
+  supplier?: "linked" | "backed" | "below_cost";
   limit?: number;
   offset?: number;
 }

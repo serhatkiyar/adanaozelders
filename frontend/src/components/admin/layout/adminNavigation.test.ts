@@ -15,6 +15,21 @@ describe("admin navigation", () => {
     expect(item.to).toBe(ROUTES.adminStoreProducts);
   });
 
+  it("tedarikçi sekmesi de Mağaza grubuna düşer", () => {
+    // Tedarikçi ayrı bir İZİN alanıdır (`suppliers.*`) ama ayrı bir BÖLÜM
+    // değildir: kenar çubuğunda kendi girişi yoktur, Mağaza'nın 7. sekmesidir.
+    // `getAdminNavItem` bunu `/yonetim/magaza/` önekinden çözer — yeni sekme
+    // o önekin DIŞINA taşınırsa (ör. `/yonetim/tedarikci`) breadcrumb ve
+    // başlık sessizce "Genel Bakış"a düşerdi.
+    expect(ROUTES.adminStoreSupplier).toBe("/yonetim/magaza/tedarikci");
+    expect(ROUTES.adminStoreSupplier.startsWith("/yonetim/magaza/")).toBe(true);
+
+    const item = getAdminNavItem(ROUTES.adminStoreSupplier);
+    expect(item.label).toBe("Mağaza");
+    expect(item.group).toBe("Ticaret");
+    expect(item.to).toBe(ROUTES.adminStoreProducts);
+  });
+
   it("keeps the overview route exact", () => {
     expect(getAdminNavItem(ROUTES.admin).label).toBe("Genel Bakış");
     expect(getAdminNavItem(ROUTES.adminUsers).label).toBe("Kullanıcılar");

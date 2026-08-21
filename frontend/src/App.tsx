@@ -471,6 +471,7 @@ function App() {
               <Route path="magaza/iadeler" element={<AdminStore />} />
               <Route path="magaza/kuponlar" element={<AdminStore />} />
               <Route path="magaza/stok-hareketleri" element={<AdminStore />} />
+              <Route path="magaza/tedarikci" element={<AdminStore />} />
               <Route path="envanter" element={<InventoryLayout />}>
                 <Route index element={<InventoryOverviewPage />} />
                 <Route path="sayimlar" element={<CountSessionsPage />} />

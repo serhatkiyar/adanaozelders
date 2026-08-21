@@ -58,6 +58,8 @@ import { ProductForm } from "./ProductForm";
 
 export function ProductsPanel() {
   const { canView, canManage } = useAdminAreaAccess("products");
+  // Tedarikçi maliyeti AYRI bir izin alanıdır (sözleşme §3/D-6).
+  const tedarikciGorebilir = useAdminAreaAccess("suppliers").canView;
   const [params, setParams] = useSearchParams();
   const durum = parseUrunSorgusu(params);
   const { data, isLoading, isError, error, refetch } = useAdminProducts(
@@ -137,7 +139,7 @@ export function ProductsPanel() {
       enableSorting: true,
       // Eşik bilinmiyorsa rozet "azalan" ayrımını yapmaz ama "Tükendi"yi
       // yine gösterir (bkz. StockBadge).
-      cell: ({ row }) => <StockBadge stock={row.original.stock} threshold={esik} />,
+      cell: ({ row }) => <StokHucresi product={row.original} esik={esik} />,
     },
     {
       id: "price",
@@ -176,6 +178,19 @@ export function ProductsPanel() {
     },
   ];
 
+  // ── Maliyet/marj kolonu izin duvarının ARKASINDA (D-6) ──
+  //
+  // Blok yalnız admin yanıtında dolar, ama `suppliers.view`i olmayan bir
+  // yönetici için sunucu onu da doldurmaz: kolon baştan sona "—" olurdu.
+  // Görev ayrılığı ekranda da görünsün: kolon o role hiç basılmaz.
+  if (tedarikciGorebilir) {
+    kolonlar.splice(3, 0, {
+      id: "maliyet",
+      header: "Maliyet / Marj",
+      cell: ({ row }) => <MaliyetHucresi product={row.original} />,
+    });
+  }
+
   return (
     <div>
       {canManage ? (
@@ -212,6 +227,7 @@ export function ProductsPanel() {
         aramaTaslak={aramaTaslak}
         onArama={setAramaTaslak}
         onDegis={guncelle}
+        tedarikciGorebilir={tedarikciGorebilir}
       />
 
       <div className="mt-4">
@@ -260,11 +276,13 @@ function UrunFiltreCubugu({
   aramaTaslak,
   onArama,
   onDegis,
+  tedarikciGorebilir,
 }: {
   durum: UrunSorguDurumu;
   aramaTaslak: string;
   onArama: (deger: string) => void;
   onDegis: (degisiklikler: Record<string, string | number | undefined>) => void;
+  tedarikciGorebilir: boolean;
 }) {
   const facets = useBookFacets();
   const yayinevleri = facets.data?.publisher ?? [];
@@ -298,6 +316,22 @@ function UrunFiltreCubugu({
         </select>
       </label>
 
+      {tedarikciGorebilir && (
+      <label className="text-xs font-medium text-slate-500 dark:text-slate-400">
+        Tedarikçi
+        <select
+          value={durum.tedarikci ?? ""}
+          onChange={(e) => onDegis({ tedarikci: e.target.value || undefined })}
+          className="mt-1 block rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none focus:border-indigo-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
+        >
+          <option value="">Tümü</option>
+          <option value="linked">Bağlı</option>
+          <option value="backed">Tedarikçiden temin</option>
+          <option value="below_cost">Zararına</option>
+        </select>
+      </label>
+      )}
+
       <label className="text-xs font-medium text-slate-500 dark:text-slate-400">
         Yayınevi
         <select
@@ -329,6 +363,92 @@ function UrunFiltreCubugu({
           ))}
         </select>
       </label>
+    </div>
+  );
+}
+
+/**
+ * Stok hücresi: KENDİ rafımız + (varsa) tedarikçi stoğu.
+ *
+ * `StockBadge`in yazılı önermesi ("stok 0 ise ürün satılamıyordur") tedarikçi
+ * desteğiyle ARTIK YANLIŞ: vitrin satmaya devam ederken yönetici satırda
+ * kırmızı "Tükendi" görüyordu. Kırmızı bu panelde "engellenmiş/kritik"
+ * demektir ve satın alma kararını yanlış yönlendirir.
+ *
+ * O yüzden tedarikçi karşılıyorsa rozet NÖTR olur ve ne söylediğini kendisi
+ * yazar ("Kendi stoğu 0"). Rozet metni tek başına anlaşılır: kritik bilgiyi
+ * yalnız `title` tooltip'ine koymak dokunmatikte görünmez.
+ */
+function StokHucresi({
+  product,
+  esik,
+}: {
+  product: ProductSearchOut;
+  esik?: number | null;
+}) {
+  const tedarikci = product.supplier;
+  const tedarikciKarsiliyor =
+    !!product.supplier_backed && !!tedarikci && Number(tedarikci.stock_qty) >= 1;
+  const kendiBos = (product.stock ?? 0) <= 0;
+
+  return (
+    <div className="flex flex-wrap items-center gap-1.5">
+      {tedarikciKarsiliyor && kendiBos ? (
+        <Badge>Kendi stoğu 0</Badge>
+      ) : (
+        <StockBadge stock={product.stock} threshold={esik ?? undefined} />
+      )}
+      {/* Kendi rafımız ile tedarikçi stoğu AYRI iki sayıdır (D-1: Yıldırım
+          stoğu `products.stock`a ASLA yazılmaz). */}
+      {product.supplier_backed && tedarikci && (
+        <Badge>
+          Tedarikçide {tedarikciStogu(tedarikci.stock_qty)}
+          {tedarikci.unit_name ? ` ${tedarikci.unit_name}` : ""}
+        </Badge>
+      )}
+    </div>
+  );
+}
+
+/** Tedarikçi stoğu kesirli olabilir (`"12.500"` → `"12,5"`). */
+function tedarikciStogu(deger: string): string {
+  const sayi = Number(deger);
+  if (!Number.isFinite(sayi)) return deger;
+  return new Intl.NumberFormat("tr-TR", { maximumFractionDigits: 3 }).format(sayi);
+}
+
+/**
+ * Maliyet ve marj — **yalnız admin yanıtında dolu** (D-6).
+ *
+ * Tedarikçisi olmayan üründe "0" DEĞİL, "—" basılır: sıfır maliyet gerçek bir
+ * değerdir ("bedava geldi") ve bilinmeyenle karıştırılamaz.
+ *
+ * `below_cost` tek KIRMIZI kalemdir: satış fiyatı maliyetin altına düşmüşse
+ * her satış para kaybettirir ve bunun bir süzgeç arkasında beklemesi kabul
+ * edilemez.
+ */
+function MaliyetHucresi({ product }: { product: ProductSearchOut }) {
+  const tedarikci = product.supplier;
+  if (!tedarikci || !tedarikci.cost_gross) {
+    return <span className="text-slate-400">—</span>;
+  }
+  const marj = tedarikci.margin_percent;
+  const marjSayi = marj == null ? null : Number(marj);
+  return (
+    <div className="whitespace-nowrap">
+      <span className="tabular-nums text-slate-700 dark:text-slate-300">
+        {formatTL(tedarikci.cost_gross)}
+      </span>
+      {marjSayi != null && Number.isFinite(marjSayi) && (
+        <span className="ml-2 text-xs tabular-nums text-slate-500 dark:text-slate-400">
+          %{new Intl.NumberFormat("tr-TR", { maximumFractionDigits: 1 }).format(marjSayi)}
+        </span>
+      )}
+      {tedarikci.below_cost && (
+        <Badge tone="danger" className="ml-2">
+          Zararına
+        </Badge>
+      )}
     </div>
   );
 }

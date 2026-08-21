@@ -106,6 +106,10 @@ const KAPI_DISI: Record<string, { tur: "props" | "bilesen-yok" | "baglam"; gerek
     tur: "props",
     gerekce: "zorunlu columns/rows",
   },
+  "src/components/admin/store/SupplierLinkDialog.tsx": {
+    tur: "props",
+    gerekce: "zorunlu yuzey (duzenleme yuzeyi) + supplierId",
+  },
   "src/components/admin/delivery/LabelSheet.tsx": {
     tur: "props",
     gerekce: "zorunlu run (duraklar)",
@@ -298,6 +302,7 @@ const KAPI_KAPSAMI = [
   "src/components/admin/store/ProductForm.tsx",
   "src/components/admin/store/ProductsPanel.tsx",
   "src/components/admin/store/ReturnsPanel.tsx",
+  "src/components/admin/store/SupplierPanel.tsx",
   "src/components/admin/ui/Badge.tsx",
   "src/components/admin/ui/Button.tsx",
   "src/components/admin/ui/ConfirmDialog.tsx",
@@ -406,6 +411,11 @@ const KONTROLSUZ_EKRANLAR: Record<string, "sunum" | "kabuk" | "pencere-kabugu" |
   "src/components/admin/layout/AdminPageHeader.tsx": "kabuk",
   "src/components/admin/layout/AdminSidebar.tsx": "kabuk",
   "src/components/admin/store/ReturnsPanel.tsx": "kosullu",
+  // Tedarikçi paneli: ağsız render'da tedarikçi listesi BOŞtur ve ekran
+  // `EmptyState` basar. Durum şeridi, ayar formu ve tablolar ancak bir
+  // tedarikçi satırı geldiğinde doğar — `ReturnsPanel` ile aynı sınıf.
+  // Gerçek DOM ölçümü sözleşme testindedir (`SupplierPanel.test.tsx`).
+  "src/components/admin/store/SupplierPanel.tsx": "kosullu",
   "src/components/admin/ui/Badge.tsx": "sunum",
   "src/components/admin/ui/Button.tsx": "sunum",
   "src/components/admin/ui/ConfirmDialog.tsx": "pencere-kabugu",

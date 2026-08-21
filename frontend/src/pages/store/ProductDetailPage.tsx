@@ -143,10 +143,20 @@ export default function ProductDetailPage() {
   // Eşik bilinmiyorsa (config ucu düştü) uyarı BASILMAZ: yanlış eşikle
   // "son N ürün" demek müşteriye uydurulmuş bir aciliyet gösterir.
   // "Stokta yok" bundan ayrıdır ve eşik gerektirmez.
+  //
+  // ── Tedarikçiden karşılanan ürün "az kaldı" DEMEZ (tedarikçi senkronu) ──
+  //
+  // `fulfillment === "SUPPLIER"` yalnız KENDİ stoğumuz 0 iken doğar
+  // (`core/stock_policy.py::karsilanma_kaynagi`) ama ürün satılabilir kalır.
+  // Bu koşul olmadan `product.stock === 0 <= eşik` sağlanıyor ve ekran
+  // **"Son 0 ürün"** basıyordu: hem anlamsız hem de amber renkte uydurulmuş
+  // bir aciliyet — yukarıdaki notun tam olarak yasakladığı şey.
   const lowStock =
     product.kind === "PHYSICAL" &&
     !soldOut &&
+    product.fulfillment !== "SUPPLIER" &&
     product.stock != null &&
+    product.stock > 0 &&
     lowStockThreshold != null &&
     product.stock <= lowStockThreshold;
   const isClient = user?.role_id === ROLE_IDS.CLIENT;
@@ -399,6 +409,17 @@ export default function ProductDetailPage() {
                     Son {product.stock} ürün
                   </span>
                 )}
+              </p>
+            )}
+
+            {/* Tedarikçi stoğundan karşılanan ürün (D-2).
+                Tek satır, nötr renk: bu bir uyarı değil, dürüst bir beklenti
+                ayarı. Maliyet/marj BURADA GÖRÜNMEZ (D-6) — `supplier` bloğu
+                public yanıtta zaten boştur. */}
+            {product.fulfillment === "SUPPLIER" && (
+              <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+                Tedarikçi stoğundan temin edilir; teslim süresi biraz
+                uzayabilir.
               </p>
             )}
 

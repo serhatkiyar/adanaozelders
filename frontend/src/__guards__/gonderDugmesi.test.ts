@@ -43,7 +43,9 @@
  * Düzeltme satır numarasına dönmek değil, kimliğe **çağrı sayısını** eklemek:
  * `ADETLER` her kimliğin kaç kez geçtiğini dondurur (yazılmayan her kimlik
  * için 1). Tekrar da, tekrarın kapanması da kırmızı üretir; kaydırma gürültüsü
- * geri gelmez. Ölçülen: **62 benzersiz kimlik / 77 ham çağrı yeri.**
+ * geri gelmez. Ölçülen: **64 benzersiz kimlik / 80 ham çağrı yeri**
+ * (tedarikçi bağlama penceresinin "Vazgeç"i + devre kesici açıkken kapanan
+ * iki senkron düğmesi eklendi).
  */
 import { describe, expect, it } from "vitest";
 
@@ -76,6 +78,10 @@ const KAYIT: Record<string, "islem" | "sinir" | "secim" | "onkosul" | "gecerlili
   "src/components/admin/CourierManager.tsx <Button> closeAccount.isPending": "islem",
   "src/components/admin/delivery/ClosedDays.tsx <Button> remove.isPending": "islem",
   "src/components/admin/ui/ConfirmDialog.tsx <Button> isPending": "islem",
+  // Tedarikçi bağlama penceresinin "Vazgeç"i — `ReasonDialog`ınkiyle aynı
+  // gerekçe: istek uçarken kapatmak sonucu gizler. "Bağla" düğmesi
+  // geçerlilikle KAPANMAZ (kilitli karar), bu yüzden burada tek kayıt var.
+  "src/components/admin/store/SupplierLinkDialog.tsx <Button> link.isPending": "islem",
   "src/components/admin/ui2/duzenlemeYuzeyi.tsx <Button> islemSuruyor": "islem",
   "src/pages/DeliveryDriver.tsx <button> busy": "islem",
   "src/pages/DeliveryDriver.tsx <button> runAction.isPending": "islem",
@@ -130,6 +136,10 @@ const KAYIT: Record<string, "islem" | "sinir" | "secim" | "onkosul" | "gecerlili
   "src/pages/DeliveryDriver.tsx <button> s.status !== \"PENDING\" || run.status !== \"ACTIVE\"":
     "onkosul",
   "src/pages/admin/AdminSettingsPage.tsx <Button> !!flag.locked_reason && !flag.enabled": "onkosul",
+  // Devre kesici açıkken elle senkron düğmeleri kapalı: sunucu cooldown
+  // yüzünden zaten reddeder. Sebep EKRANDA — hem `title`da hem düğmelerin
+  // altındaki amber şeritte ("Devre kesici açık — N dk beklemede").
+  "src/components/admin/store/SupplierPanel.tsx <Button> bekleyenDakika !== null": "onkosul",
   "src/pages/admin/delivery/DeliveryRunDetailPage.tsx <Button> pendingCount > 0": "onkosul",
   "src/pages/admin/inventory/CountSessionDetailPage.tsx <Button> engeller.length > 0": "onkosul",
   "src/pages/admin/packing/PackingStationPage.tsx <Button> engeller.length > 0": "onkosul",
@@ -170,6 +180,7 @@ const ADETLER: Record<string, number> = {
   "src/components/ImageCropModal.tsx <button> isUploading": 3,
   "src/components/LibraryBookmarkButton.tsx <button> toggle.isPending": 2,
   "src/components/LibraryMediaManager.tsx <button> busy": 2,
+  "src/components/admin/store/SupplierPanel.tsx <Button> bekleyenDakika !== null": 2,
   "src/components/admin/ui/ConfirmDialog.tsx <Button> isPending": 2,
   "src/pages/DeliveryDriver.tsx <button> busy": 2,
   "src/pages/admin/AdminBookingsPage.tsx <Button> pending": 3,

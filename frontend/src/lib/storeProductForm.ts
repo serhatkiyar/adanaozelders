@@ -67,6 +67,8 @@ export interface UrunFormDegerleri {
   eksen2: string;
   varyantSira: string;
   barkod: string;
+  /** "Kendi stoğum bitince tedarikçi stoğu vitrinde sayılsın" (yalnız PHYSICAL). */
+  tedarikciTemin: boolean;
 }
 
 export interface UrunFormBaglami {
@@ -135,6 +137,7 @@ export function urunFormSemasi(baglam: UrunFormBaglami) {
       eksen2: opsiyonelMetin,
       varyantSira: opsiyonelMetin,
       barkod: opsiyonelMetin,
+      tedarikciTemin: z.boolean(),
     })
     .superRefine((d, ctx) => {
       // ── Varyant üyeliği ──
@@ -227,9 +230,20 @@ function ortakAlanlar(d: UrunFormDegerleri) {
   };
 }
 
+/**
+ * Tedarikçi anahtarı YALNIZ fiziksel üründe gövdeye girer.
+ *
+ * Dijital ürün tükenmez; onun için "tedarikçiden temin" anlamsızdır ve alanı
+ * göndermek, sunucuda anlamsız bir `true` bırakıp ürün türü ileride
+ * sorgulandığında yanıltıcı bir sinyal üretirdi.
+ */
+function tedarikciAlani(d: UrunFormDegerleri): { supplier_backed?: boolean } {
+  return d.tur === "PHYSICAL" ? { supplier_backed: d.tedarikciTemin } : {};
+}
+
 /** Yeni ürün gövdesi. */
 export function urunOlusturGovdesi(d: UrunFormDegerleri): ProductCreate {
-  return { ...ortakAlanlar(d), kind: d.tur, status: d.durum };
+  return { ...ortakAlanlar(d), ...tedarikciAlani(d), kind: d.tur, status: d.durum };
 }
 
 /**
@@ -251,6 +265,7 @@ export function urunGuncelleGovdesi(
   });
   return {
     ...ortakAlanlar(d),
+    ...tedarikciAlani(d),
     status: d.durum,
     ...(dogrulama.submitStock ? dogrulama.payload : { stock: undefined }),
   };

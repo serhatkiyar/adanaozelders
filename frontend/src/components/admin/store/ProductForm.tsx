@@ -74,6 +74,7 @@ const ALANLAR = [
   "stok", "stokGerekce", "stokNot", "aciklama", "yazar", "yayinevi", "isbn",
   "sayfaSayisi", "ebat", "basimYili", "baski", "dil", "kapakTipi",
   "varyantGrubuId", "eksen1", "eksen2", "varyantSira", "barkod",
+  "tedarikciTemin",
 ] as const;
 
 /** Sunucu alan adı → form alan adı (422 `loc` eşlemesi). */
@@ -103,12 +104,13 @@ const SUNUCU_ALAN_ESLEMESI: Record<string, string> = {
   option2_value: "eksen2",
   variant_sort: "varyantSira",
   barcode: "barkod",
+  supplier_backed: "tedarikciTemin",
 };
 
 /** Alanların GÖRSEL sırası; "ilk hatalı alan" bu sıradan okunur. */
 const GORSEL_SIRA = [
   "baslik", "durum", "tur", "kategoriId", "fiyat", "eskiFiyat", "kdvYuzde",
-  "stok", "stokGerekce", "stokNot", "aciklama",
+  "stok", "stokGerekce", "stokNot", "tedarikciTemin", "aciklama",
   "yazar", "yayinevi", "isbn", "sayfaSayisi", "ebat", "basimYili", "baski",
   "dil", "kapakTipi",
   "varyantGrubuId", "barkod", "eksen1", "eksen2", "varyantSira",
@@ -158,6 +160,7 @@ function baslangicDegerleri(initial?: ProductDetailOut): UrunFormDegerleri {
     eksen2: initial?.option2_value ?? "",
     varyantSira: initial?.variant_sort != null ? String(initial.variant_sort) : "0",
     barkod: initial?.barcode ?? "",
+    tedarikciTemin: initial?.supplier_backed ?? false,
   };
 }
 
@@ -506,6 +509,38 @@ export function ProductForm({
               <Form.Control>
                 <input className="input" inputMode="numeric" {...field} />
               </Form.Control>
+              <Form.ErrorMessage />
+            </Form.Item>
+          )}
+        />
+      )}
+
+      {tur === "PHYSICAL" && (
+        <Form.Field
+          control={form.control}
+          name="tedarikciTemin"
+          render={({ field }) => (
+            <Form.Item className="block sm:col-span-2">
+              <div className="flex items-center gap-2">
+                <Form.Control>
+                  <input
+                    type="checkbox"
+                    checked={field.value}
+                    onBlur={field.onBlur}
+                    onChange={(e) => field.onChange(e.target.checked)}
+                    className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 dark:border-slate-600 dark:bg-slate-900"
+                  />
+                </Form.Control>
+                <Form.Label className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                  Tedarikçiden temin et
+                </Form.Label>
+              </div>
+              {/* Açıklama etiketin DIŞINDA (`Form.Hint`): alanın erişilebilir
+                  adına karışmaz, `aria-describedby` ile bağlanır. */}
+              <Form.Hint>
+                Kendi stoğunuz bitince tedarikçi stoğu vitrinde "stokta"
+                sayılır; satış fiyatına dokunulmaz.
+              </Form.Hint>
               <Form.ErrorMessage />
             </Form.Item>
           )}

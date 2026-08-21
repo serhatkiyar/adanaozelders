@@ -64,6 +64,10 @@ export const TAM_ADMIN_IZINLERI: readonly string[] = [
   "packing.view",
   "packing.pack",
   "packing.manage",
+  // Tedarikçi senkronu — `products.*` bilinçli olarak yeniden kullanılmadı
+  // (token bir sırdır; sözleşme §3).
+  "suppliers.view",
+  "suppliers.manage",
   // Güvenlik
   "reports.view",
   "reports.manage",
