@@ -2,26 +2,38 @@
   "landing-magaza-banner__vp1280__acik": {
     "metinIcerik": "Mağaza",
     "onRenk": "rgb(246, 173, 85)",
-    "scrimBg": "rgba(0, 0, 0, 0.8)",
+    "scrimBg": "rgba(0, 0, 0, 0)",
+    "scrimKatmani": {
+      "backgroundColor": "rgba(0, 0, 0, 0)",
+      "backgroundImage": "linear-gradient(to right, rgba(0, 0, 0, 0.8) 0%, rgba(0, 0, 0, 0.8), rgba(0, 0, 0, 0))"
+    },
     "fontPx": 24,
     "kalin": true,
     "buyukMetinMi": true,
-    "enKotuKontrast": 6.9,
-    "enKotuZemin": "rgb(48, 48, 47)",
+    "glyphKutuSayisi": 1,
+    "imgSrc": "/images/hero/magaza-hero.webp",
+    "enKotuKontrast": 6.97,
+    "enKotuZemin": "rgb(48, 48, 42)",
     "enKotuPiksel": {
-      "nx": 535,
-      "ny": 78
+      "x": 183,
+      "y": 289,
+      "cssX": 182.8,
+      "cssY": 288.7
+    },
+    "ornekSayisi": 752,
+    "ornekAralik": {
+      "x0": 96,
+      "x1": 187,
+      "y0": 285,
+      "y1": 314
+    },
+    "olculenDpr": 1,
+    "ssBoyut": {
+      "w": 1280,
+      "h": 1000
     },
     "esik": 4.5,
     "gecti": true,
-    "imgRect": {
-      "w": 1168,
-      "h": 113
-    },
-    "naturalSize": {
-      "w": 2280,
-      "h": 220
-    },
     "odak": {
       "focusVisible": true,
       "boxShadow": "rgb(255, 255, 255) 0px 0px 0px 2px, rgb(99, 102, 241) 0px 0px 0px 4px, rgba(0, 0, 0, 0) 0px 0px 0px 0px",
@@ -31,26 +43,35 @@
   "magaza-ozelders-banner__vp1280__acik": {
     "metinIcerik": "Özel Ders",
     "onRenk": "rgb(255, 255, 255)",
-    "scrimBg": "rgba(0, 0, 0, 0.8)",
+    "scrimBg": "rgba(0, 0, 0, 0)",
+    "scrimKatmani": null,
     "fontPx": 24,
     "kalin": true,
     "buyukMetinMi": true,
-    "enKotuKontrast": 15.95,
-    "enKotuZemin": "rgb(40, 31, 39)",
+    "glyphKutuSayisi": 1,
+    "imgSrc": "/images/hero/ozelders-hero.webp",
+    "enKotuKontrast": 9.32,
+    "enKotuZemin": "rgb(103, 13, 175)",
     "enKotuPiksel": {
-      "nx": 594,
-      "ny": 41
+      "x": 586,
+      "y": 143,
+      "cssX": 585.7,
+      "cssY": 142.7
+    },
+    "ornekSayisi": 896,
+    "ornekAralik": {
+      "x0": 586,
+      "x1": 694,
+      "y0": 143,
+      "y1": 172
+    },
+    "olculenDpr": 1,
+    "ssBoyut": {
+      "w": 1280,
+      "h": 1000
     },
     "esik": 4.5,
     "gecti": true,
-    "imgRect": {
-      "w": 1216,
-      "h": 117
-    },
-    "naturalSize": {
-      "w": 2280,
-      "h": 220
-    },
     "odak": {
       "focusVisible": true,
       "boxShadow": "rgb(255, 255, 255) 0px 0px 0px 2px, rgb(99, 102, 241) 0px 0px 0px 4px, rgba(0, 0, 0, 0) 0px 0px 0px 0px",
@@ -60,26 +81,38 @@
   "landing-magaza-banner__vp1280__koyu": {
     "metinIcerik": "Mağaza",
     "onRenk": "rgb(246, 173, 85)",
-    "scrimBg": "rgba(0, 0, 0, 0.8)",
+    "scrimBg": "rgba(0, 0, 0, 0)",
+    "scrimKatmani": {
+      "backgroundColor": "rgba(0, 0, 0, 0)",
+      "backgroundImage": "linear-gradient(to right, rgba(0, 0, 0, 0.8) 0%, rgba(0, 0, 0, 0.8), rgba(0, 0, 0, 0))"
+    },
     "fontPx": 24,
     "kalin": true,
     "buyukMetinMi": true,
-    "enKotuKontrast": 6.9,
-    "enKotuZemin": "rgb(48, 48, 47)",
+    "glyphKutuSayisi": 1,
+    "imgSrc": "/images/hero/magaza-hero.webp",
+    "enKotuKontrast": 6.97,
+    "enKotuZemin": "rgb(48, 48, 42)",
     "enKotuPiksel": {
-      "nx": 535,
-      "ny": 78
+      "x": 183,
+      "y": 289,
+      "cssX": 182.8,
+      "cssY": 288.7
+    },
+    "ornekSayisi": 752,
+    "ornekAralik": {
+      "x0": 96,
+      "x1": 187,
+      "y0": 285,
+      "y1": 314
+    },
+    "olculenDpr": 1,
+    "ssBoyut": {
+      "w": 1280,
+      "h": 1000
     },
     "esik": 4.5,
     "gecti": true,
-    "imgRect": {
-      "w": 1168,
-      "h": 113
-    },
-    "naturalSize": {
-      "w": 2280,
-      "h": 220
-    },
     "odak": {
       "focusVisible": true,
       "boxShadow": "rgb(15, 23, 42) 0px 0px 0px 2px, rgb(99, 102, 241) 0px 0px 0px 4px, rgba(0, 0, 0, 0) 0px 0px 0px 0px",
@@ -89,26 +122,35 @@
   "magaza-ozelders-banner__vp1280__koyu": {
     "metinIcerik": "Özel Ders",
     "onRenk": "rgb(255, 255, 255)",
-    "scrimBg": "rgba(0, 0, 0, 0.8)",
+    "scrimBg": "rgba(0, 0, 0, 0)",
+    "scrimKatmani": null,
     "fontPx": 24,
     "kalin": true,
     "buyukMetinMi": true,
-    "enKotuKontrast": 15.95,
-    "enKotuZemin": "rgb(40, 31, 39)",
+    "glyphKutuSayisi": 1,
+    "imgSrc": "/images/hero/ozelders-hero.webp",
+    "enKotuKontrast": 9.32,
+    "enKotuZemin": "rgb(103, 13, 175)",
     "enKotuPiksel": {
-      "nx": 594,
-      "ny": 41
+      "x": 586,
+      "y": 143,
+      "cssX": 585.7,
+      "cssY": 142.7
+    },
+    "ornekSayisi": 896,
+    "ornekAralik": {
+      "x0": 586,
+      "x1": 694,
+      "y0": 143,
+      "y1": 172
+    },
+    "olculenDpr": 1,
+    "ssBoyut": {
+      "w": 1280,
+      "h": 1000
     },
     "esik": 4.5,
     "gecti": true,
-    "imgRect": {
-      "w": 1216,
-      "h": 117
-    },
-    "naturalSize": {
-      "w": 2280,
-      "h": 220
-    },
     "odak": {
       "focusVisible": true,
       "boxShadow": "rgb(15, 23, 42) 0px 0px 0px 2px, rgb(99, 102, 241) 0px 0px 0px 4px, rgba(0, 0, 0, 0) 0px 0px 0px 0px",
@@ -118,26 +160,38 @@
   "landing-magaza-banner__vp380__acik": {
     "metinIcerik": "Mağaza",
     "onRenk": "rgb(246, 173, 85)",
-    "scrimBg": "rgba(0, 0, 0, 0.8)",
+    "scrimBg": "rgba(0, 0, 0, 0)",
+    "scrimKatmani": {
+      "backgroundColor": "rgba(0, 0, 0, 0)",
+      "backgroundImage": "linear-gradient(to right, rgba(0, 0, 0, 0.8) 0%, rgba(0, 0, 0, 0.8), rgba(0, 0, 0, 0))"
+    },
     "fontPx": 18,
     "kalin": true,
     "buyukMetinMi": false,
-    "enKotuKontrast": 8.94,
-    "enKotuZemin": "rgb(0, 34, 19)",
+    "glyphKutuSayisi": 1,
+    "imgSrc": "/images/hero/magaza-hero.webp",
+    "enKotuKontrast": 8.81,
+    "enKotuZemin": "rgb(1, 35, 20)",
     "enKotuPiksel": {
-      "nx": 900,
-      "ny": 48
+      "x": 95,
+      "y": 360,
+      "cssX": 94.7,
+      "cssY": 359.8
+    },
+    "ornekSayisi": 432,
+    "ornekAralik": {
+      "x0": 48,
+      "x1": 116,
+      "y0": 345,
+      "y1": 366
+    },
+    "olculenDpr": 1,
+    "ssBoyut": {
+      "w": 380,
+      "h": 900
     },
     "esik": 4.5,
     "gecti": true,
-    "imgRect": {
-      "w": 332,
-      "h": 80
-    },
-    "naturalSize": {
-      "w": 2280,
-      "h": 220
-    },
     "odak": {
       "focusVisible": true,
       "boxShadow": "rgb(255, 255, 255) 0px 0px 0px 2px, rgb(99, 102, 241) 0px 0px 0px 4px, rgba(0, 0, 0, 0) 0px 0px 0px 0px",
@@ -147,26 +201,35 @@
   "magaza-ozelders-banner__vp380__acik": {
     "metinIcerik": "Özel Ders",
     "onRenk": "rgb(255, 255, 255)",
-    "scrimBg": "rgba(0, 0, 0, 0.8)",
+    "scrimBg": "rgba(0, 0, 0, 0)",
+    "scrimKatmani": null,
     "fontPx": 18,
     "kalin": true,
     "buyukMetinMi": false,
-    "enKotuKontrast": 19.06,
-    "enKotuZemin": "rgb(25, 10, 30)",
+    "glyphKutuSayisi": 1,
+    "imgSrc": "/images/hero/ozelders-hero.webp",
+    "enKotuKontrast": 9.32,
+    "enKotuZemin": "rgb(103, 13, 175)",
     "enKotuPiksel": {
-      "nx": 779,
-      "ny": 36
+      "x": 149,
+      "y": 208,
+      "cssX": 149.3,
+      "cssY": 208
+    },
+    "ornekSayisi": 504,
+    "ornekAralik": {
+      "x0": 149,
+      "x1": 231,
+      "y0": 208,
+      "y1": 229
+    },
+    "olculenDpr": 1,
+    "ssBoyut": {
+      "w": 380,
+      "h": 900
     },
     "esik": 4.5,
     "gecti": true,
-    "imgRect": {
-      "w": 348,
-      "h": 80
-    },
-    "naturalSize": {
-      "w": 2280,
-      "h": 220
-    },
     "odak": {
       "focusVisible": true,
       "boxShadow": "rgb(255, 255, 255) 0px 0px 0px 2px, rgb(99, 102, 241) 0px 0px 0px 4px, rgba(0, 0, 0, 0) 0px 0px 0px 0px",
@@ -176,26 +239,38 @@
   "landing-magaza-banner__vp380__koyu": {
     "metinIcerik": "Mağaza",
     "onRenk": "rgb(246, 173, 85)",
-    "scrimBg": "rgba(0, 0, 0, 0.8)",
+    "scrimBg": "rgba(0, 0, 0, 0)",
+    "scrimKatmani": {
+      "backgroundColor": "rgba(0, 0, 0, 0)",
+      "backgroundImage": "linear-gradient(to right, rgba(0, 0, 0, 0.8) 0%, rgba(0, 0, 0, 0.8), rgba(0, 0, 0, 0))"
+    },
     "fontPx": 18,
     "kalin": true,
     "buyukMetinMi": false,
-    "enKotuKontrast": 8.94,
-    "enKotuZemin": "rgb(0, 34, 19)",
+    "glyphKutuSayisi": 1,
+    "imgSrc": "/images/hero/magaza-hero.webp",
+    "enKotuKontrast": 8.81,
+    "enKotuZemin": "rgb(1, 35, 20)",
     "enKotuPiksel": {
-      "nx": 900,
-      "ny": 48
+      "x": 95,
+      "y": 360,
+      "cssX": 94.7,
+      "cssY": 359.8
+    },
+    "ornekSayisi": 432,
+    "ornekAralik": {
+      "x0": 48,
+      "x1": 116,
+      "y0": 345,
+      "y1": 366
+    },
+    "olculenDpr": 1,
+    "ssBoyut": {
+      "w": 380,
+      "h": 900
     },
     "esik": 4.5,
     "gecti": true,
-    "imgRect": {
-      "w": 332,
-      "h": 80
-    },
-    "naturalSize": {
-      "w": 2280,
-      "h": 220
-    },
     "odak": {
       "focusVisible": true,
       "boxShadow": "rgb(15, 23, 42) 0px 0px 0px 2px, rgb(99, 102, 241) 0px 0px 0px 4px, rgba(0, 0, 0, 0) 0px 0px 0px 0px",
@@ -205,26 +280,35 @@
   "magaza-ozelders-banner__vp380__koyu": {
     "metinIcerik": "Özel Ders",
     "onRenk": "rgb(255, 255, 255)",
-    "scrimBg": "rgba(0, 0, 0, 0.8)",
+    "scrimBg": "rgba(0, 0, 0, 0)",
+    "scrimKatmani": null,
     "fontPx": 18,
     "kalin": true,
     "buyukMetinMi": false,
-    "enKotuKontrast": 19.06,
-    "enKotuZemin": "rgb(25, 10, 30)",
+    "glyphKutuSayisi": 1,
+    "imgSrc": "/images/hero/ozelders-hero.webp",
+    "enKotuKontrast": 9.32,
+    "enKotuZemin": "rgb(103, 13, 175)",
     "enKotuPiksel": {
-      "nx": 779,
-      "ny": 36
+      "x": 149,
+      "y": 208,
+      "cssX": 149.3,
+      "cssY": 208
+    },
+    "ornekSayisi": 504,
+    "ornekAralik": {
+      "x0": 149,
+      "x1": 231,
+      "y0": 208,
+      "y1": 229
+    },
+    "olculenDpr": 1,
+    "ssBoyut": {
+      "w": 380,
+      "h": 900
     },
     "esik": 4.5,
     "gecti": true,
-    "imgRect": {
-      "w": 348,
-      "h": 80
-    },
-    "naturalSize": {
-      "w": 2280,
-      "h": 220
-    },
     "odak": {
       "focusVisible": true,
       "boxShadow": "rgb(15, 23, 42) 0px 0px 0px 2px, rgb(99, 102, 241) 0px 0px 0px 4px, rgba(0, 0, 0, 0) 0px 0px 0px 0px",

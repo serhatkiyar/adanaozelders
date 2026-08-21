@@ -9,6 +9,7 @@ import { useBookFacets, useCategories, useProducts, useInfiniteProducts } from "
 import { useDebounce } from "@/hooks/useDebounce";
 import { getRecentlyViewedProducts } from "@/lib/recentlyViewedProducts";
 import { CrossPromoBanner } from "@/components/CrossPromoBanner";
+import CROSS_PROMO from "@/config/crossPromo.json";
 import type { ProductKind } from "@/types";
 import type { ProductSearchParams } from "@/api/store";
 
@@ -143,12 +144,16 @@ export default function StorePage() {
       />
 
       <div className={`${CONTAINER} pt-6`}>
+        {/* Örtü YOK — ölçüm: beyaz metin mor zeminde örtüsüz 9.32, eşiğin
+            (4.5) iki katı. Buraya scrim koymak okunabilirliğe hiçbir şey
+            katmıyor, yalnız düz mor alanın üstüne siyah bir hap çiziyordu.
+            Ölçüm: docs/ip-c1/. */}
         <CrossPromoBanner
-          imageSrc="/images/hero/ozelders-hero.webp"
+          imageSrc={CROSS_PROMO.storeToTutors.imageSrc}
           heading="Özel Ders"
-          headingClassName="bg-black/80 text-white"
+          headingClassName="text-white"
           to={ROUTES.tutors}
-          ariaLabel="Özel ders eğitmenlerine git"
+          ariaLabel={CROSS_PROMO.storeToTutors.ariaLabel}
         />
       </div>
 
