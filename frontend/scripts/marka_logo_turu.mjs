@@ -36,7 +36,10 @@ const NEGATIF = ARGS.negatif === "1";
 const OUT = resolve(ARGS.out ?? "../docs/magaza-merge-dogrulama");
 const CHROME = ARGS.chrome ?? "C:/Program Files/Google/Chrome/Application/chrome.exe";
 const PORT = Number(ARGS.port ?? 9296);
-const GENISLIKLER = [360, 414, 768];
+// TB-?C kapanışı: eşik `md:` → `xl:` taşındıktan sonra kabul ölçütü TEK BİR
+// dar genişlik değil, çakışma bandının TAMAMIDIR. 1152 bu turda ilk kez
+// ölçülüyor (daha önce hiç bakılmamıştı) ve 1280 yeni eşiğin ilk noktasıdır.
+const GENISLIKLER = [360, 414, 640, 700, 768, 820, 900, 1024, 1152, 1280, 1440];
 // Yükseklik karşılaştırması YALNIZ marka logolarını kapsar; iyzico ödeme
 // rozeti (`/odeme/iyzico-logo-band*.svg`) bir marka lockup'ı değildir ve
 // bilerek h-7'dir.
@@ -384,10 +387,11 @@ try {
 
   /* ── Görev 2: üç logonun aynı breakpoint'te aynı yüksekliği ── */
   // PublicNavbar + SiteFooter aynı sayfada (anasayfa), StoreLayout header +
-  // SiteFooter aynı sayfada (magaza). Ortak breakpoint: 768 (md açık).
+  // SiteFooter aynı sayfada (magaza). Ortak breakpoint 1280: kelime logosu
+  // artık `xl:` eşiğinde açıldığı için 768'de navbar'da hiç yok.
   const yukseklikler = {};
   for (const ekran of ["anasayfa", "magaza"]) {
-    yukseklikler[ekran] = (sonuc.ekranlar[ekran][768].logolar ?? [])
+    yukseklikler[ekran] = (sonuc.ekranlar[ekran][1280].logolar ?? [])
       .filter((l) => l.gorunur && MARKA_LOGOLARI.includes(l.src))
       .map((l) => ({ src: l.src, bolge: l.bolge, yukseklik: l.rect.yukseklik }));
   }
@@ -397,7 +401,7 @@ try {
     const benzersiz = [...new Set(hepsi.map((x) => x.yukseklik))];
     kapi(
       benzersiz.length === 1,
-      `768px'te logo yukseklikleri esit degil: ${JSON.stringify(hepsi)}`
+      `1280px'te logo yukseklikleri esit degil: ${JSON.stringify(hepsi)}`
     );
   }
 
@@ -464,7 +468,7 @@ try {
   }
 
   /* ── Görev 2: SiteFooter DOM'da gerçekten /logo.svg mi ── */
-  await s.genislik(768);
+  await s.genislik(1280);
   await s.git(adres("magaza-oturum", 0));
   sonuc.footerLogosu = await s.eval(() => {
     const f = document.querySelector("footer");

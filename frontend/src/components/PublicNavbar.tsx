@@ -27,13 +27,25 @@ export function PublicNavbar({
               aria-label="Adana Özel Ders ana sayfa"
               className="flex shrink-0 items-center gap-2 transition hover:opacity-90 group"
             >
-              {/* Küçük ekranda yazısız (yalnız simge) logo — kategori şeridine yer açar */}
-              <img src="/logo-compact.svg" alt="" aria-hidden className="h-8 w-auto object-contain md:hidden" />
+              {/* Küçük ekranda yazısız (yalnız simge) logo — kategori şeridine yer açar.
+                  Eşik `md:` DEĞİL `xl:`: kelime logosu 257.7 px genişliğinde doğuyor ve
+                  768-1279 arasında orta sütundaki kategori şeridinin ÜSTÜNE biniyordu
+                  (ölçüm: 768'de 146.1 px, 1024'te hâlâ 88.6 px kesişim — yani `lg:`
+                  eşiği de çakışmanın içine düşüyor). Kesişimin sıfır olduğu ilk üst
+                  nokta 1280'dir.
+
+                  Bu eşik KALICI BİR TASARIM KARARIDIR, kozmetik bir tercih değil:
+                  navbar'ın üç sütunlu flex modeli (flex-1 · shrink-0 · flex-1)
+                  değişirse eşik yeniden ÖLÇÜLMELİDİR — varsayılmaz. Ölçüm aracı
+                  hazır: `node scripts/marka_logo_turu.mjs` (11 genişlik; kabul
+                  ölçütü her genişlikte kesişim 0 ve yatay taşma 0).
+                  Ayrıntı: docs/magaza-merge-dogrulama-raporu.md */}
+              <img src="/logo-compact.svg" alt="" aria-hidden className="h-8 w-auto object-contain xl:hidden" />
               <img
                 src="/logo.svg"
                 alt=""
                 aria-hidden
-                className="hidden md:block md:h-9 w-auto object-contain"
+                className="hidden xl:block xl:h-9 w-auto object-contain"
               />
             </Link>
           </div>

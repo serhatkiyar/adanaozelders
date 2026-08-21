@@ -3,9 +3,12 @@
 **Tarih:** 21 Ağustos 2026 · **Dal:** `magaza-tasarim` · **Taban:** `cdc5e3f`
 (merge: main `8ee17ea` → `magaza-tasarim`)
 
-Merge raporunda **kanıtlanmamış üç iddia** kalmıştı. Bu tur onları ölçüme
-çevirir. **Üretim kodu değiştirilmedi** — yalnız ölçüm aracı, ölçüm çıktısı ve
-borç kaydı üretildi.
+Merge raporunda **kanıtlanmamış üç iddia** kalmıştı. Bu belge onları ölçüme
+çevirir. İki bölümden oluşur: (1) **doğrulama turu** — üretim kodu
+değiştirilmeden yalnız ölçüm aracı, ölçüm çıktısı ve borç kaydı üretildi;
+(2) **TB-?C kapanışı** (en altta) — turun bulduğu 768-1279 px çakışması,
+kullanıcı kararıyla `PublicNavbar.tsx`'te iki sınıf değiştirilerek kapatıldı ve
+11 genişlikte yeniden ölçüldü.
 
 Ölçüm aracı: `frontend/scripts/marka_logo_turu.mjs` (Chrome + CDP, İP-A7d4
 sondasının harness'ı) · sonda sayfası `frontend/scripts/probe/MarkaLogoProbe.tsx`
@@ -78,8 +81,9 @@ Sebep: navbar üç sütunlu bir flex satırı (`flex-1` logo · `shrink-0` kateg
 `w-auto` logo 257.7 px doğuyor ve kendi sütunundan taşıp ortadakinin üstüne
 çiziliyor. `md:` eşiği tam 768'de büyük logoyu açtığı için sorun orada başlıyor.
 
-Talimat gereği **sınıf/stil değiştirilmedi**; bulgu `docs/teknik-borc.md` →
-`TB-?C` olarak kaydedildi.
+Talimat gereği o turda **sınıf/stil değiştirilmedi**; bulgu `docs/teknik-borc.md`
+→ `TB-?C` olarak kaydedildi. **Bu kayıt 21 Ağustos 2026'da ayrı bir turda
+kapatıldı — bkz. aşağıdaki "TB-?C kapanışı" bölümü.**
 
 ---
 
@@ -149,9 +153,10 @@ Kural I gereği açıkça yazıyorum — ikisi de sondanın **yalancı** sonucuy
 
 ## Şüphe listesi (denetçiye)
 
-1. **TB-?C (768-1024 çakışması) hangi kararla kapanacak?** Üç seçenek farklı
-   tasarım kararıdır: logoya `max-w` vermek · orta sütunu `min-w-0` yapmak ·
-   büyük logoyu `md:` yerine `lg:` eşiğine almak. Karar verilmedi.
+1. ~~TB-?C hangi kararla kapanacak?~~ **KAPANDI** — kelime logosu `xl:`
+   eşiğine alındı; ayrıntı ve ölçüm en alttaki "TB-?C kapanışı" bölümünde.
+   Geriye kalan açık nokta: 768-1279 arasında marka yalnız simge olarak
+   görünüyor (kabul edilmiş bedel).
 2. **Bu kusur ne kadar zamandır canlı?** PNG ölçümü kusurun SVG'den önce de var
    olduğunu gösteriyor, ama hangi commit'te doğduğu araştırılmadı.
 3. **`marka_logo_turu.mjs` CI'da koşmuyor.** Elle çalıştırılan bir turdur;
@@ -159,3 +164,89 @@ Kural I gereği açıkça yazıyorum — ikisi de sondanın **yalancı** sonucuy
 4. **TB-?A/?B/?C etiketleri hâlâ geçicidir.** Numara main merge turunda
    tahsis edilecek; kontrol listesi `docs/teknik-borc.md` → "Merge turu kontrol
    listesi" bölümüne yazıldı.
+
+---
+
+## TB-?C kapanışı — kelime logosu eşiği `md:` → `xl:`
+
+**Karar (kullanıcı):** kelime logosu (`logo.svg`) `md:` eşiğinde değil **`xl:`**
+eşiğinde açılır; 768-1279 arasında `logo-compact.svg` kalır. Gerekçe ölçümdür:
+1024'te hâlâ 88.6 px kesişim vardı, yani `lg:` eşiği çakışmanın **içine**
+düşüyordu. Kesişimin sıfır olduğu ilk üst nokta 1280'dir.
+
+Reddedilen alternatifler (bilinçli): logoya `max-w` vermek (sabit `h-9` ile
+oranı bozar), sütunlara `min-w-0` eklemek (sütun zaten içerikten dar, çözmez),
+navbar'ın üç sütunlu flex yapısını değiştirmek.
+
+**Değişen tek yer** — `frontend/src/components/PublicNavbar.tsx`, iki sınıf:
+
+```
+- className="h-8 w-auto object-contain md:hidden"          (logo-compact.svg)
++ className="h-8 w-auto object-contain xl:hidden"
+
+- className="hidden md:block md:h-9 w-auto object-contain"  (logo.svg)
++ className="hidden xl:block xl:h-9 w-auto object-contain"
+```
+
+Başka hiçbir sınıfa dokunulmadı.
+
+### Doğrulama — 11 genişlik, üç yüzey
+
+`node scripts/marka_logo_turu.mjs --out ../docs/magaza-merge-dogrulama/tbc-kapanis`
+· çıktı `docs/magaza-merge-dogrulama/tbc-kapanis/`.
+
+| Genişlik | Navbar logosu | Navbar px | Şerit kesişimi | Yatay taşma |
+|---:|---|---:|---:|---:|
+| 360 | `logo-compact.svg` | 32.0 | **0** | 0 |
+| 414 | `logo-compact.svg` | 32.0 | **0** | 0 |
+| 640 | `logo-compact.svg` | 32.0 | **0** | 0 |
+| 700 | `logo-compact.svg` | 32.0 | **0** | 0 |
+| 768 | `logo-compact.svg` | 32.0 | **0** (önce 146.1) | 0 |
+| 820 | `logo-compact.svg` | 32.0 | **0** (önce 94.1) | 0 |
+| 900 | `logo-compact.svg` | 32.0 | **0** (önce 39.5) | 0 |
+| 1024 | `logo-compact.svg` | 32.0 | **0** (önce 88.6) | 0 |
+| **1152** | `logo-compact.svg` | 32.0 | **0** | 0 |
+| 1280 | `logo.svg` | 257.7 | **0** | 0 |
+| 1440 | `logo.svg` | 257.7 | **0** | 0 |
+
+1152 px bu turda **ilk kez** ölçüldü (önceki tarama 1024'ten 1280'e atlıyordu);
+temiz çıktı. Mağaza yüzeyi (`magaza` ve `magaza-oturum`) 11 genişliğin hepsinde
+zaten temizdi ve öyle kaldı: `magaza-logo.svg` 135.2 px (<768) / 152.1 px (≥768),
+kesişim 0, taşma 0.
+
+Toplam **0 düşen kapı** (önceki turda 1). Konsol: 33 ekran/genişlik
+kombinasyonunda 0 kayıt. Yükseklik pariteleri 1280'de ölçüldü — navbar
+`logo.svg` 36.0 px · mağaza header `magaza-logo.svg` 36.0 px · footer
+`logo.svg` 36.0 px.
+
+### Negatif kontrol tekrarlandı
+
+- **M1** (logo 3x şişirme): 0 kırmızı kapı → **75 kırmızı**.
+- **M2** (kesişim dedektörü): 1280'de taban kesişimi `null`, logo
+  `translateX(418px)` ile şeridin üstüne taşındıktan sonra dedektör
+  `257.7 × 36 px` bildirdi → `dedektorCalisti: true`. **Sonda kör değil**;
+  yeşil sonuç dedektörün sustuğu için değil, çakışma olmadığı için yeşil.
+
+### Sonda üretime sızmıyor (kanıt)
+
+Temiz `npm run build` sonrası `dist/` (285 dosya) içinde arandı — sekiz desenin
+hepsi **0 dosya**: `MarkaLogoProbe` · `marka-logo-probe` · `marka_logo_turu` ·
+`logoyuSisir` · `logoyuSeritUstuneKaydir` · `navbarLogosunuDegistir` ·
+`Sonda Kitap` · `sonda@ornek.test`. `dist/` içinde `*probe*` / `*sonda*` /
+`*marka-logo*` adlı dosya yok. Yapısal sebep: `tsconfig.json` → `"include": ["src"]`
+ve Vite'ın tek girişi kökteki `index.html`; `frontend/scripts/` ikisinin de
+dışındadır.
+
+### Kalıcılık notu
+
+`xl:` eşiği **kalıcı bir tasarım kararıdır**, kozmetik tercih değil. Navbar'ın
+üç sütunlu flex modeli (`flex-1` · `shrink-0` · `flex-1`) ileride değişirse bu
+eşik **yeniden ölçülmelidir** — varsayılmaz. Not aynen `PublicNavbar.tsx`
+içindeki yorumda da durur, çünkü navbar'ı değiştirecek kişi önce orayı görür.
+
+### Kapanışın bıraktığı açık nokta
+
+768-1279 arasında (tablet ve küçük dizüstü) marka artık **yalnız simge** olarak
+görünüyor. Bu, çakışmanın kabul edilmiş bedelidir; marka görünürlüğü açısından
+istenirse ileride bu aralığa özel dar bir kelime logosu varyantı üretilebilir —
+bu turun kapsamı değildir.

@@ -307,18 +307,6 @@ yalnız ölçümü ve öneriyi kaydeder.
        TB-?D → **TB-58**   varyant testleri izolasyon sınırları    (denetim P2-8)
      Dördü bağımsız denetimin merge-sonrasına ertelediği bulgulardır. -->
 
-## TB-?C · Ana sayfa navbar'ında logo, kategori şeridinin ÜSTÜNE biniyor (768-1024 px)
-
-| | |
-|---|---|
-| **Bulundu** | `magaza-tasarim` merge öncesi doğrulama turu (21 Ağu 2026) — gerçek Chrome + CDP ölçümü, `frontend/scripts/marka_logo_turu.mjs` |
-| **Nerede** | `frontend/src/components/PublicNavbar.tsx` — `flex-1` logo sütunu ile `shrink-0` orta sütun (`CategoryBar`) |
-| **Ölçüm** | 768 px: logo `<img>` 32 → 289.7 px, kategori şeridi 143.6 px'ten başlıyor → **146.1 × 36 px kesişim**. Ekran görüntüsü `docs/magaza-merge-dogrulama/anasayfa-768.png`: "Adana Özel Ders" yazısının üstüne "Hepsi" ve "Eğitmenler" ikonları biniyor. Çakışma bandı 768-1024 px; 640/700'de yok (o aralıkta `logo-compact.svg` var, 32 px), 1280'de yok (şerit 440.2'den başlıyor) |
-| **Sebep** | Navbar üç sütunlu bir flex satırıdır: `flex-1` (logo) · `shrink-0` (kategoriler) · `flex-1` (aksiyonlar). Orta sütun daralmadığı için yan sütunlara ~148 px kalıyor; logonun `<img>`'i `w-auto` ile 257.7 px genişliğinde doğuyor ve kendi sütunundan TAŞIP ortadakinin üstüne çiziliyor. `md:` breakpoint'i tam 768'de büyük logoyu açtığı için sorun o eşikte başlıyor |
-| **MERGE'ÜN GETİRDİĞİ BİR KUSUR DEĞİL** | Aynı ölçüm aynı DOM'da `src` geçici olarak `/logo.png`'ye çevrilerek tekrarlandı: PNG ile de çakışma var — 768 px'te 117.2 px. Yani kusur SVG geçişinden ÖNCE de canlıydı; SVG onu ~29 px büyütüyor (117.2 → 146.1). Ölçüm tablosu: `docs/magaza-merge-dogrulama/marka-logo-olcum.json` → `cakismaTaramasi` |
-| **Neden ertelendi** | Doğrulama turunun kapsamı ölçmekti; sınıf/yerleşim değişikliği ayrı bir karardır (logoya `max-w` vermek, orta sütunu `min-w-0` yapmak, ya da `md:` yerine `lg:` eşiğinde büyük logoya geçmek — üçü farklı tasarım kararı) |
-| **Sonraki adım** | Yerleşim kararı verilip uygulanmalı ve `marka_logo_turu.mjs` kapısı yeşile alınmalı. Tur zaten nöbetçidir: kesişim dedektörünün atıl olmadığı mutasyonla kanıtlandı (`kesisimDedektoruProvasi.dedektorCalisti = true`) |
-
 ## TB-?A · OG/Twitter görseli SVG'ye geçmedi — `/logo.png` bilinçli olarak kalıyor
 
 | | |
