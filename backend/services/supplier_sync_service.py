@@ -473,6 +473,17 @@ async def run_due(db: AsyncSession, *, client_factory=None) -> DueReport:
     rapor = DueReport()
     simdi = _now()
 
+    # Ağ kapalıysa HİÇ DENEME. Guard "senkron yapma" demektir; denemek her
+    # tick'te `RuntimeError` + traceback üretirdi ve `run_due` bunu
+    # "beklenmeyen hata" diye loglardı. 15 saniyede bir yanlış etiketli bir
+    # yığın izi, insanları bu logger'ı görmezden gelmeye alıştırır — gerçek
+    # bir arıza geldiğinde de görülmez.
+    #
+    # `client_factory` verilmişse (testler) guard atlanır: sahte istemci ağa
+    # zaten çıkmaz ve döngü mantığı sınanabilir olmalı.
+    if client_factory is None and settings.SUPPLIER_NETWORK_DISABLED:
+        return rapor
+
     tedarikciler = (
         await db.execute(
             select(Supplier)
