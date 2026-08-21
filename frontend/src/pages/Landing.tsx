@@ -18,6 +18,7 @@ import { CategoryBar, type CategoryKey } from "@/components/CategoryBar";
 import { DENEMELER_ACIK, KUTUPHANELER_ACIK } from "@/lib/ozellikBayraklari";
 import { SiteFooter } from "@/components/SiteFooter";
 import { BigSearch, CompactSearch } from "@/components/HeroSearch";
+import { CrossPromoBanner } from "@/components/CrossPromoBanner";
 import { useTutorSearch } from "@/hooks/useTutorSearch";
 import { useLibrarySearch } from "@/hooks/useLibraries";
 import type { TutorSearchParams } from "@/api/tutors";
@@ -153,6 +154,16 @@ export default function Landing() {
         />
       </Seo>
       <Navbar center={center} bottom={bottom} expanded={expanded} />
+      <div className="mx-auto max-w-[1216px] px-6 pt-8">
+        <CrossPromoBanner
+          imageSrc="/images/hero/magaza-hero.webp"
+          heading="Mağaza"
+          headingClassName="bg-black/80"
+          headingStyle={{ color: "#F6AD55" }}
+          to={ROUTES.store}
+          ariaLabel="Mağazaya git"
+        />
+      </div>
       <CategoryContent active={active} />
       <SiteFooter />
     </div>

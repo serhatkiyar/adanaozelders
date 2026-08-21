@@ -8,6 +8,7 @@ import { HScroll } from "@/components/HScroll";
 import { useBookFacets, useCategories, useProducts, useInfiniteProducts } from "@/hooks/useStore";
 import { useDebounce } from "@/hooks/useDebounce";
 import { getRecentlyViewedProducts } from "@/lib/recentlyViewedProducts";
+import { CrossPromoBanner } from "@/components/CrossPromoBanner";
 import type { ProductKind } from "@/types";
 import type { ProductSearchParams } from "@/api/store";
 
@@ -140,6 +141,16 @@ export default function StorePage() {
         title="Mağaza — Adana Özel Ders"
         description="Kitaplar, deneme setleri, kırtasiye ve eğitmenlerin dijital ders notları. Tek hesapla alışveriş."
       />
+
+      <div className={`${CONTAINER} pt-6`}>
+        <CrossPromoBanner
+          imageSrc="/images/hero/ozelders-hero.webp"
+          heading="Özel Ders"
+          headingClassName="bg-black/80 text-white"
+          to={ROUTES.tutors}
+          ariaLabel="Özel ders eğitmenlerine git"
+        />
+      </div>
 
       {isFiltering ? (
         /* ── Arama / filtre görünümü: yan filtre + ızgara ── */
