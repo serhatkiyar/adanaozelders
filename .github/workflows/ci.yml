@@ -175,6 +175,25 @@ jobs:
       - name: Doğrulama paketi (gerçek DB + servis katmanı)
         env:
           POSTGRES_DB: adana_verify
+          # İzole Redis veritabanı — Postgres'te olduğu gibi.
+          #
+          # Neden (21 Ağu 2026'da ölçüldü): rate-limit sayaçları (`rl:*`)
+          # Redis'te yaşar ve TTL'leri 60 sn'dir; iş genelindeki tek
+          # `REDIS_URL` yüzünden entegrasyon adımının bıraktığı login sayacı
+          # bu adıma DEVREDİYORDU. Entegrasyon 5 giriş yapıyor
+          # (`test_ip3_session_invalidation_pg.py`, ROLLER üzerinden), bu
+          # paket 9 — toplam 14 > `RATE_LIMIT_LOGIN`=10 ve son dördü 429
+          # aldı. Adımların birbirinin sayacını görmesi zaten yanlıştı:
+          # bir adımın kırmızılığı diğerinin ne kadar hızlı koştuğuna
+          # bağlı hâle geliyordu.
+          #
+          # Bu SERTLEŞTİRME, asıl düzeltmenin YERİNE GEÇMEZ: kova IP
+          # başınadır ve testler artık test başına ayrı istemci IP'si
+          # kullanır (`tests/verify/test_verify_session_cookie.py::http`).
+          # Buradaki ayrım, adımlar arası her türlü `rl:*`/presence/denylist
+          # bulaşmasını da kapatır. db14 `redis_guard.SAFE_REDIS_DBS`
+          # içindedir (db0 reddedilir).
+          REDIS_URL: redis://localhost:6379/14
         run: |
           python -c "
           import asyncio, asyncpg

@@ -11,6 +11,9 @@ edilmez; buna rağmen oturum sessizce yenilenmeye devam eder.
 """
 from __future__ import annotations
 
+import itertools
+import os
+
 import httpx
 import pytest
 from httpx import ASGITransport
@@ -34,24 +37,69 @@ async def user(db, factory):
     return c
 
 
+#: Test başına istemci IP'si üretir. Sayaç süreç içinde ARTAR, PID süreçler
+#: arasında ayırır — yani iki test (aynı koşuda da, ayrı CI adımlarında da)
+#: asla aynı adresi almaz.
+_IP_SAYACI = itertools.count()
+
+
+def _tekil_istemci_ip() -> str:
+    n = next(_IP_SAYACI)
+    assert n < 254 * 254, "test IP havuzu tükendi"
+    return f"10.{os.getpid() % 256}.{n // 254}.{n % 254 + 1}"
+
+
 @pytest.fixture
 async def http():
-    """Uygulamayı lifespan ÇALIŞTIRMADAN konuşur.
+    """Uygulamayı lifespan ÇALIŞTIRMADAN, **teste özel bir istemci IP'siyle** konuşur.
 
     Lifespan arka plan döngülerini (hatırlatma, escrow mutabakatı, teslimat
     watchdog) başlatır; oturum testinin ortasında veri değiştirmelerini
     istemiyoruz. `scripts/scale/probe.py` ile aynı gerekçe.
+
+    IP neden teste özel (21 Ağu 2026'da CI'da ölçüldü): `POST /auth/login`
+    IP başına limitlidir (`rl:login:{ip}`, `RATE_LIMIT_LOGIN`=10/60 sn) ve
+    sayaç **Redis'te** yaşar. `ASGITransport` varsayılan olarak her isteğe
+    `127.0.0.1` der; yani depodaki BÜTÜN HTTP testleri — üstelik ayrı CI
+    adımlarındakiler bile — tek bir kovayı paylaşıyordu. Bu dosyanın 9
+    giriş'i, entegrasyon adımının 5 giriş'iyle (`test_ip3_session_
+    invalidation_pg.py`, `ROLLER` üzerinden parametrik) aynı 60 sn'lik
+    pencereye düştüğünde toplam 14 > 10 oluyor ve son dördü 429 alıyordu.
+
+    Limiter KAPATILMADI, limit YÜKSELTİLMEDİ: ikisi de gerçek davranışı
+    testten kaçırırdı (`tests/verify/test_verify_redis_infra.py` bu paketin
+    limiter'ı gerçekten saydığını doğrular ve öyle kalmalıdır). Bunun yerine
+    testler gerçek dünyadaki gibi **farklı istemcilerden** konuşur.
     """
-    transport = ASGITransport(app=app)
+    transport = ASGITransport(app=app, client=(_tekil_istemci_ip(), 1))
     async with httpx.AsyncClient(transport=transport, base_url=API) as c:
         yield c
 
 
 async def _login(http: httpx.AsyncClient, email: str, *, remember: bool = True):
-    return await http.post(
+    """Giriş yapar ve BAŞARILI olduğunu doğrular.
+
+    Yardımcı neden iddia ediyor: giriş sessizce başarısız olduğunda (ölçülen
+    gerçek vaka: IP rate-limit kovası dolduğu için 429) testler alakasız
+    yerlerde `KeyError: 'set-cookie'` / `KeyError: 'access_token'` diye
+    patlıyor ve sebep görünmüyordu — CI'da bu tam olarak yaşandı (21 Ağu
+    2026). Daha kötüsü, oturum kurulmasını sonuçta ARAMAYAN bir test (bkz.
+    `test_pasif_hesap_yenileyemez`) 429'a rağmen YEŞİL kalıyordu: hiç
+    oturum açmamış bir hesapla "oturum yenilenemiyor" kanıtlanıyordu.
+
+    Bu yüzden başarısızlık burada, sebebiyle birlikte durur.
+    """
+    r = await http.post(
         "/auth/login",
         data={"username": email, "password": PASSWORD, "remember": str(remember).lower()},
     )
+    assert r.status_code == 200, (
+        f"giriş yapılamadı ({r.status_code}): {r.text[:200]}\n"
+        "429 ise: `rl:login:{ip}` kovası bu testin dışından doldurulmuş "
+        "demektir (kova IP başınadır ve Redis'te CI adımları arasında "
+        "yaşar). Testlerin IP izolasyonu için `http` fixture'ına bakın."
+    )
+    return r
 
 
 async def test_login_refresh_tokeni_GOVDEDE_dondurmez(http, user):
@@ -148,6 +196,15 @@ async def test_logout_cerezi_siler_ve_tokeni_iptal_eder(http, user):
 
 async def test_pasif_hesap_yenileyemez(http, user, db):
     await _login(http, user.email)
+    # ÖNCE gerçekten bir oturum kurulduğunu doğrula: bu satır olmadan test,
+    # hiç giriş yapamamış (ör. 429 yemiş) bir hesapla da geçiyordu — çünkü
+    # oturumu olmayanın `refresh`'i de 401 döner. Yani yeşil, "pasif hesap
+    # yenileyemez" değil "oturum yoktu" anlamına geliyordu. 29 Tem 2026'dan
+    # 21 Ağu 2026'ya kadar yalancı yeşildi.
+    assert cookies.COOKIE_NAME in http.cookies, (
+        "giriş çerezi yok — düşürülecek bir oturum kurulmadı, test hiçbir şey "
+        "kanıtlamaz"
+    )
     user.is_active = False
     await db.commit()
 

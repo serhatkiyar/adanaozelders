@@ -319,6 +319,28 @@ yalnız ölçümü ve öneriyi kaydeder.
      kapanan kayıt silindiği için ortada numaralanacak bir borç kalmadı;
      kapanış kanıtı docs/magaza-merge-dogrulama-raporu.md'de durur. -->
 
+## TB-68 · Yalancı yeşil deseni TARANMADI: "yeşil, iddia edilenin doğrulandığını göstermez"
+
+| | |
+|---|---|
+| **Bulundu** | Rate-limit katmanı düzeltme turu (21 Ağu 2026), Adım 1 |
+| **Nerede** | Somut örnek kapatıldı: `backend/tests/verify/test_verify_session_cookie.py::test_pasif_hesap_yenileyemez`. **Taranmamış olan**: aynı desenin depodaki diğer testlerde olup olmadığı |
+| **Sorun** | Bu test 29 Tem 2026'dan 21 Ağu 2026'ya kadar **yalancı yeşildi**. Kurulum adımı (`_login`) sessizce 429 alıyordu; hiç oturum açılmıyordu. Test `refresh → 401` bekliyordu ve **oturumu olmayanın refresh'i de 401 döner** — yani "pasif hesap yenileyemez" iddiası, hiç oturumu olmamış bir hesapla "kanıtlanıyordu". Ölçüldü: kova tüketilip (999/10) test tek başına koşturulduğunda `1 passed` veriyordu |
+| **Neden sessiz** | Kurulum başarısızlığı ile beklenen sonuç **aynı gözlemi** üretiyor. Bu, negatif iddia eden (`401`, `403`, `boş liste`, `değişmedi`) her testin yapısal riski: kurulum çökerse iddia kendiliğinden "doğru" olur |
+| **Neden ertelendi** | Tur bu tek örneği kapattı (kurulumun gerçekten kurulduğunu doğrulayan iddia eklendi). Depodaki ~1400 testi bu gözle taramak **ayrı bir iştir** ve mekanik değildir: her negatif iddianın kurulum adımının gözlemlenebilir bir sonucu olup olmadığına tek tek bakılmalı |
+| **Sonraki adım** | Negatif iddia eden testleri çıkar (401/403/404/boş/değişmedi), her birinde kurulumun **gözlemlenebilir** biçimde doğrulanıp doğrulanmadığını denetle. Mekanik ön eleme: kurulum adımının dönüş değerini hiç kullanmayan testler. Bulunanlar için kural: *kurulumun başarısı, iddianın kendisinden ayrı bir satırla doğrulanır* |
+
+## TB-69 · Login brute-force koruması HTTP seviyesinde hiç test edilmiyor
+
+| | |
+|---|---|
+| **Bulundu** | Rate-limit katmanı düzeltme turu (21 Ağu 2026), Adım 4 |
+| **Nerede** | `backend/api/routers/auth.py:184` (`POST /auth/login` + `_login_limit`) ↔ `backend/tests/` |
+| **Sorun** | `RATE_LIMIT_LOGIN`'in değerini **hiçbir test iddia etmiyor** (grep boş) ve `POST /auth/login`'in limit aşılınca 429 döndüğünü doğrulayan bir HTTP testi yok. Bugün kanıtlanan iki komşu şey var ama ikisi de bu değil: `tests/verify/test_verify_redis_infra.py:131` `ratelimit.enforce`'u **doğrudan** (kendi `limit=3`'üyle) çağırır, `tests/integration/test_ip19_denetim_pg.py:416` HTTP'den sürer ama **filo** ucunu ve `RATE_LIMIT_FLEET`'i kullanır. Yani "login uca limiter gerçekten bağlı mı" sorusunun kanıtı yok — dependency listesinden `_login_limit` düşse hiçbir test kırılmaz |
+| **Neden sessiz** | Limiter fail-open'dır; bağlı olmaması ile Redis'in olmaması aynı gözlemi üretir. Ayrıca eksiklik "eksik test"tir — kırmızı vermez, yokluğuyla var olur |
+| **Neden ertelendi** | Turun kapsamı CI'daki kırmızıydı. Bu testi yazmak, IP kovasının test başına izole edilmesiyle (bu turda yapıldı) artık kolaydır ama ayrı bir davranış sözleşmesidir |
+| **Sonraki adım** | `tests/verify/`'a HTTP seviyesinde bir düğüm: tek ve **kendine ait** bir istemci IP'siyle `RATE_LIMIT_LOGIN + 1` giriş denemesi yap, son denemenin 429 + `Retry-After` döndüğünü doğrula. Mutasyon provası: `_login_limit` dependency'sini kaldır, testin kırıldığını göster. **DİKKAT**: bu test kendi IP'sini kullanmazsa komşu testleri boğar — bu turda düzeltilen hatanın aynısını üretir |
+
 ## TB-66 · Yerel `adana_verify` veritabanı bayat — doğrulama paketi yerelde tam koşulamıyor
 
 | | |
