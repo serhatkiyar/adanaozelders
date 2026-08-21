@@ -435,6 +435,13 @@ _KRITIK_TABLOLAR = (
     "libraries",
     "library_operators",
     "refresh_tokens",
+    # Tedarikçi senkronu: `supplier_products` her turda favori listesi kadar
+    # satır upsert eder. Sızan bir test satırı yalnız tabloyu şişirmez —
+    # `supplier_backed` bir üründe açıksa VİTRİNDE "stokta" gösterir. Bu yüzden
+    # nöbetçide. (`suppliers` tek satırlık bir ayar tablosu ama fabrika seed
+    # satırını soft-delete edip geri açıyor; sayı sabit kalmalı.)
+    "suppliers",
+    "supplier_products",
 )
 
 

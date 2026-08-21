@@ -131,5 +131,36 @@ async def test_kilit_anahtarlari_benzersiz() -> None:
         main._LOCK_ESCROW,
         main._LOCK_DELIVERY,
         main._LOCK_OUTBOX,
+        main._LOCK_SUPPLIER_SYNC,
     ]
     assert len(keys) == len(set(keys))
+
+
+async def test_tedarikci_senkronu_kendi_kilidiyle_kosar(monkeypatch, sessions):
+    """Tedarikçi taraması tek replikada koşmalı.
+
+    İki replika aynı anda tararsa: aynı satırlar iki kez upsert edilmeye
+    çalışılır (`uq_supplier_products_external` çakışması), Yıldırım origin'i
+    iki katı istek alır ve otomatik bağlama iki tarafta da "tek eşleşme" görüp
+    yarışır. `_leader_job` bunu tek satırla çözer — ama ancak ÇAĞRILIRSA.
+    """
+    cagri: list[tuple[str, int]] = []
+
+    async def sahte_leader(name, lock_key, job):
+        cagri.append((name, lock_key))
+
+    monkeypatch.setattr(main, "_leader_job", sahte_leader)
+    await main._supplier_sync_tick()
+
+    assert cagri, "tedarikçi turu `_leader_job` üzerinden geçmiyor"
+    assert cagri[0][1] == main._LOCK_SUPPLIER_SYNC
+
+
+async def test_tedarikci_senkronu_patlarsa_dongu_devam_eder(monkeypatch, sessions):
+    """`_run_job` sınırı: senkron her turda patlasa bile döngü ölmemeli."""
+    async def patlayan():
+        raise RuntimeError("Yıldırım düştü")
+
+    monkeypatch.setattr(main, "_supplier_sync_tick", patlayan)
+    # İstisna dışarı SIZMAMALI.
+    await main._run_job("tedarikçi senkronu", main._supplier_sync_tick)

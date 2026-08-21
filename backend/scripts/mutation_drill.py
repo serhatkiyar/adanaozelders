@@ -1694,6 +1694,76 @@ MUTASYONLAR: list[Mutasyon] = [
         "        <Button isPending={islemSuruyor} disabled={!form.formState.isValid} onClick={gonder}>",
         ("src/pages/admin/adminYetkiGoc.acceptance.test.tsx",), "frontend",
     ),
+    # ══════════ Tedarikçi senkronu (Yıldırım B2B) ══════════
+    #
+    # Sözleşme: `docs/tedarikci-senkron-sozlesme.md` §7. Bu paketin sessiz hata
+    # sınıfı diğerlerinden farklı: hiçbiri istisna atmaz. Yanlış maliyet doğru
+    # görünen bir sayıdır, sızan token bir log satırıdır, hayali stok artışı
+    # bir sonraki sayımda ortaya çıkar. Hepsi ancak nöbetçiyle yakalanır.
+    Mutasyon(
+        "S1", "vitrin yükleminden supplier_backed kosulu kaldirildi",
+        "backend/core/stock_policy.py",
+        """        Product.supplier_backed.is_(True),
+        _tedarikci_stok_var(),""",
+        "        _tedarikci_stok_var(),",
+        ("tests/integration/test_supplier_storefront_pg.py",),
+    ),
+    Mutasyon(
+        "S2", "tedarikci stok esigi >= 1 yerine > 0",
+        "backend/core/stock_policy.py",
+        "SupplierProduct.stock_qty >= 1",
+        "SupplierProduct.stock_qty > 0",
+        ("tests/integration/test_supplier_storefront_pg.py",),
+        ek=(
+            (
+                "backend/core/stock_policy.py",
+                "    return int(supplier_qty) >= 1",
+                "    return supplier_qty > 0",
+            ),
+        ),
+    ),
+    Mutasyon(
+        "S3", "hata metni redaksiyonu kaldirildi (token sizinti)",
+        "backend/services/supplier_sync_service.py",
+        "    supplier.last_error = _sanitize_error(exc, supplier)",
+        "    supplier.last_error = str(exc)",
+        ("tests/integration/test_supplier_sync_pg.py",),
+    ),
+    Mutasyon(
+        "S4", "ayar ucundan suppliers.manage kaldirildi",
+        "backend/api/routers/supplier.py",
+        'require_admin_permission("suppliers.manage")',
+        'require_admin_permission("suppliers.view")',
+        ("tests/integration/test_supplier_http_pg.py",),
+    ),
+    Mutasyon(
+        "S5", "odemede tedarikci kapsamasi yok sayildi",
+        "backend/services/order_service.py",
+        "        if stock_ledger.has_shortage(locked[pid].stock + tedarikci_pay.get(pid, 0), qty)",
+        "        if stock_ledger.has_shortage(locked[pid].stock, qty)",
+        ("tests/integration/test_supplier_order_pg.py",),
+    ),
+    Mutasyon(
+        "S6", "_restock tavanindan supplier_quantity dusulmuyor",
+        "backend/services/order_service.py",
+        "        satilan = int(item.quantity) - int(item.supplier_quantity or 0)",
+        "        satilan = int(item.quantity)",
+        ("tests/integration/test_supplier_order_pg.py",),
+    ),
+    Mutasyon(
+        "S7", "maliyet varsayilan kirilim yerine zarftaki netten",
+        "backend/core/suppliers/pricing.py",
+        "    varsayilan = price.default_breakdown",
+        "    varsayilan = _ZarfKirilimi(price)",
+        ("tests/test_supplier_pricing.py", "tests/test_supplier_parse.py"),
+    ),
+    Mutasyon(
+        "S8", "baglama payload'indan reason dusuruldu",
+        "frontend/src/api/suppliers.ts",
+        "  return apiClient.post(yol, { product_id: govde.product_id, reason: govde.reason })",
+        "  return apiClient.post(yol, { product_id: govde.product_id })",
+        ("src/api/suppliers.test.ts",), "frontend",
+    ),
 ]
 
 

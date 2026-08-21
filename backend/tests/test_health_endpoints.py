@@ -154,3 +154,68 @@ def test_zorunlu_vroom_modunda_rota_arizasi_503_verir(client, monkeypatch):
             rt for rt in app.router.routes
             if getattr(rt, "path", "") != "/__test__/rota-arizasi"
         ]
+
+
+def test_readiness_tedarikci_senkronunu_raporlar(client, monkeypatch):
+    """Senkron BAYATLARSA `/health` bunu söylemeli.
+
+    Neden 503 DEĞİL: tedarikçi verisi bayatladığında sitenin kendi stoğu hâlâ
+    satılıyor ve sipariş akışı çalışıyor. Konteyneri yeniden başlatmak hiçbir
+    şeyi düzeltmez — Yıldırım'ın origin'i ya da bizim token'ımız sorunludur.
+    Bu yüzden rota kalıbı izlenir: `status: degraded`, kod 200.
+    """
+    import main
+
+    async def _bayat():
+        return {
+            "enabled": True,
+            "status": "stale",
+            "degraded": True,
+            "last_ok_at": "2026-08-20T10:00:00Z",
+        }
+
+    monkeypatch.setattr(main, "_check_supplier", _bayat)
+    resp = client.get("/health")
+    assert resp.status_code == 200
+    govde = resp.json()
+    assert govde["supplier_sync"]["status"] == "stale"
+    assert govde["status"] == "degraded"
+
+
+def test_kapali_tedarikci_saglik_durumunu_bozmaz(client, monkeypatch):
+    """Tedarikçi hiç kurulmamışsa (varsayılan hâl) sistem "bozuk" değildir."""
+    import main
+
+    async def _kapali():
+        return {"enabled": False, "status": "disabled", "degraded": False}
+
+    monkeypatch.setattr(main, "_check_supplier", _kapali)
+    resp = client.get("/health")
+    assert resp.json()["supplier_sync"]["enabled"] is False
+    assert resp.json()["status"] != "degraded"
+
+
+def test_tedarikci_kontrolu_saglik_ucunu_asla_patlatmaz(client, monkeypatch):
+    """Kontrol fonksiyonu patlasa bile `/health` yanıt vermeli — teşhis ucunun
+    kendisi arıza kaynağı olamaz (`_check_routing` ile aynı disiplin)."""
+    import main
+
+    async def _patla():
+        raise RuntimeError("tedarikçi tablosu okunamadı")
+
+    monkeypatch.setattr(main, "_check_supplier", _patla)
+    resp = client.get("/health")
+    assert resp.status_code in (200, 503)
+    assert resp.json()["supplier_sync"]["status"] == "unknown"
+
+
+def test_uretimde_tedarikci_hata_metni_gizlenir(client, monkeypatch):
+    """`/health` kimlik doğrulamasız public bir uçtur. Sağlayıcının hata
+    gövdesi token parçası veya iç URL taşıyabilir."""
+    import main
+    from core.config import settings
+
+    monkeypatch.setattr(settings, "ENVIRONMENT", "production")
+    resp = client.get("/health")
+    govde = resp.json().get("supplier_sync", {})
+    assert "last_error" not in govde

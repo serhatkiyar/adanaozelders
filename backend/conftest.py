@@ -30,3 +30,12 @@ os.environ.setdefault("AUTO_CREATE_DB", "False")
 # durum için ikinci savunma vardır: `tests/integration/db_guard.py
 # ::assert_fake_payment_provider` suite'i başlatmaz.
 os.environ.setdefault("PAYMENT_PROVIDER", "fake")
+# Tedarikçi (Yıldırım B2B) senkronu: TESTLER AĞA ÇIKMAZ.
+#
+# `PAYMENT_PROVIDER=fake` ile aynı sınıf risk, aynı gerekçe. Geliştiricinin
+# panelden girdiği token veritabanında duruyor; senkron servisi onu okuyup
+# gerçek bir cari hesaba istek atabilir. Guard açıkken `YildirimClient` ağ
+# açmayı reddeder ve hata SESSİZ olmaz.
+#
+# `setdefault`: canlı doğrulama turunda açıkça `0` verilebilir.
+os.environ.setdefault("SUPPLIER_NETWORK_DISABLED", "True")

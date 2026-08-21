@@ -1,0 +1,134 @@
+{
+  "_not": "POST /fiyat yanıtının anonimleştirilmiş kopyası (yildirim-b2b-rapor 2.5/2.6). 55880 ve 11003 rapordaki GERÇEK ölçüm değerleridir: 55880'de fiyatlar.net (56.691) ile kirilim PEŞİN net (51.0219) bilerek FARKLIDIR — D-3'ün nöbetçisi budur.",
+  "fiyatlar": {
+    "55880": {
+      "taban": 62.99,
+      "isk": [10, 0, 0, 0, 0, 0],
+      "net": 56.691,
+      "listeFiyat": 62.99,
+      "sfiyat1": 62.99,
+      "kdv": 20,
+      "kdvModu": "haric_fiyat",
+      "dovizId": 1,
+      "kampanyali": false
+    },
+    "11003": {
+      "taban": 208.38,
+      "isk": [26.58, 0, 0, 0, 0, 0],
+      "net": 170.0,
+      "listeFiyat": 208.38,
+      "sfiyat1": 208.38,
+      "kdv": 10,
+      "kdvModu": "haric_fiyat",
+      "dovizId": 1,
+      "kampanyali": false
+    },
+    "77394": {
+      "taban": 220.0,
+      "isk": [33, 0, 0, 0, 0, 0],
+      "net": 147.39999999999998,
+      "listeFiyat": 220.0,
+      "sfiyat1": 220.0,
+      "kdv": 0,
+      "kdvModu": "haric_fiyat",
+      "dovizId": 1,
+      "kampanyali": false
+    },
+    "93075": {
+      "taban": 469.0,
+      "isk": [10, 0, 0, 0, 0, 0],
+      "net": 422.1,
+      "listeFiyat": 469.0,
+      "sfiyat1": 469.0,
+      "kdv": 20,
+      "kdvModu": "haric_fiyat",
+      "dovizId": 1,
+      "kampanyali": false
+    },
+    "39236": {
+      "taban": 5060.0,
+      "isk": [0, 0, 0, 0, 0, 0],
+      "net": 3499.0,
+      "listeFiyat": 5060.0,
+      "sfiyat1": 5060.0,
+      "kdv": 20,
+      "kdvModu": "haric_fiyat",
+      "dovizId": 1,
+      "kampanyali": false
+    },
+    "70213": {
+      "taban": 575.0,
+      "isk": [21.9, 0, 0, 0, 0, 0],
+      "net": 449.0,
+      "listeFiyat": 575.0,
+      "sfiyat1": 575.0,
+      "kdv": 20,
+      "kdvModu": "haric_fiyat",
+      "dovizId": 1,
+      "kampanyali": true
+    },
+    "90001": {
+      "taban": 0.0,
+      "isk": [0, 0, 0, 0, 0, 0],
+      "net": 0.0,
+      "listeFiyat": 0.0,
+      "sfiyat1": 0.0,
+      "kdv": 20,
+      "kdvModu": "haric_fiyat",
+      "dovizId": 1,
+      "kampanyali": false
+    },
+    "90002": {
+      "taban": 120.0,
+      "isk": [10, 0, 0, 0, 0, 0],
+      "net": 108.0,
+      "listeFiyat": 120.0,
+      "sfiyat1": 120.0,
+      "kdv": 20,
+      "kdvModu": "haric_fiyat",
+      "dovizId": 2,
+      "kampanyali": false
+    },
+    "90003": {
+      "taban": 150.0,
+      "isk": [0, 0, 0, 0, 0, 0],
+      "net": 239.52,
+      "listeFiyat": 150.0,
+      "sfiyat1": 150.0,
+      "kdv": 20,
+      "kdvModu": "haric_fiyat",
+      "dovizId": 1,
+      "kampanyali": false
+    }
+  },
+  "iskontoDetay": true,
+  "kirilim": {
+    "55880": [
+      { "altHesapId": 2, "ad": "PEŞİN", "varsayilan": true, "net": 51.0219, "iskontolar": [10, 10], "sira": 1 },
+      { "altHesapId": 6, "ad": "KREDİ KARTI", "varsayilan": false, "net": 51.0219, "iskontolar": [10, 10], "sira": 2 },
+      { "altHesapId": 3, "ad": "SEZON", "varsayilan": false, "net": 56.691, "iskontolar": [10], "sira": 3 }
+    ],
+    "11003": [
+      { "altHesapId": 2, "ad": "PEŞİN", "varsayilan": true, "net": 153.0, "iskontolar": [26.58], "sira": 1 },
+      { "altHesapId": 3, "ad": "SEZON", "varsayilan": false, "net": 170.0, "iskontolar": [18.42], "sira": 3 }
+    ],
+    "77394": [
+      { "altHesapId": 2, "ad": "PEŞİN", "varsayilan": true, "net": 147.39999999999998, "iskontolar": [33], "sira": 1 }
+    ],
+    "39236": [
+      { "altHesapId": 2, "ad": "PEŞİN", "varsayilan": true, "net": 3499.0, "iskontolar": [], "sira": 1 }
+    ],
+    "70213": [
+      { "altHesapId": 2, "ad": "PEŞİN", "varsayilan": true, "net": 449.0, "iskontolar": [21.9], "sira": 1 }
+    ],
+    "90001": [
+      { "altHesapId": 2, "ad": "PEŞİN", "varsayilan": true, "net": 0.0, "iskontolar": [], "sira": 1 }
+    ],
+    "90002": [
+      { "altHesapId": 2, "ad": "PEŞİN", "varsayilan": true, "net": 108.0, "iskontolar": [10], "sira": 1 }
+    ],
+    "90003": [
+      { "altHesapId": 2, "ad": "PEŞİN", "varsayilan": true, "net": 239.52, "iskontolar": [], "sira": 1 }
+    ]
+  }
+}
