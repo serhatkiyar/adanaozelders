@@ -98,6 +98,7 @@ from models.srs import (
     SrsReviewLog,
     SrsTag,
 )
+from models.supplier import Supplier, SupplierProduct
 from models.store import (
     Collection,
     CollectionItem,
@@ -235,6 +236,8 @@ __all__ = [
     "ProductReview",
     "ProductStatus",
     "StockMovement",
+    "Supplier",
+    "SupplierProduct",
     "StockMovementType",
     "StockBucket",
     "VariantGroup",

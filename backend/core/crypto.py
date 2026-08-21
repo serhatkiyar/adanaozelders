@@ -14,7 +14,7 @@ import logging
 from functools import lru_cache
 
 from cryptography.fernet import Fernet, InvalidToken
-from sqlalchemy import String
+from sqlalchemy import String, Text
 from sqlalchemy.types import TypeDecorator
 
 from core.config import settings
@@ -54,6 +54,32 @@ class EncryptedString(TypeDecorator):
     tutacak kadar geniş olmalı (kısa girdiler ~100+ karaktere şişer)."""
 
     impl = String
+    cache_ok = True
+
+    def process_bind_param(self, value, dialect):
+        return encrypt(value)
+
+    def process_result_value(self, value, dialect):
+        return decrypt(value)
+
+
+class EncryptedText(TypeDecorator):
+    """DB'de şifreli, Python'da düz metin — **genişlik sınırı olmadan**.
+
+    Neden `EncryptedString`'in yanına ayrı bir tip: Fernet çıktısı girdiyle
+    orantılı büyür (~1,4 kat + sabit başlık). IBAN gibi kısa bir alan için
+    `VARCHAR(n)` seçmek makul, ama bir **JWT** için değildir — Yıldırım
+    token'ı 600-900 karakter bandındadır ve şifrelenince 1000'i rahatça aşar.
+    Sabit bir genişlik seçmek, sağlayıcı token biçimini büyüttüğü gün
+    `value too long for type character varying(n)` ile 500 demektir; hata da
+    ancak yönetici token'ı yapıştırdığında ortaya çıkar.
+
+    `tests/acceptance/test_encrypted_column_widths.py` bu tipi tanır ve
+    genişliksiz olduğu için ölçüm yapmaz — ama genişliği OLAN bir kolonun
+    yanlışlıkla bu tipe geçmediğini doğrular.
+    """
+
+    impl = Text
     cache_ok = True
 
     def process_bind_param(self, value, dialect):

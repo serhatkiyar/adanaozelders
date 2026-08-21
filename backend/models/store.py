@@ -403,6 +403,19 @@ class Product(Base, TimestampMixin, SoftDeleteMixin):
         String(10), nullable=False, server_default=text("'DRAFT'")
     )
 
+    # ── Tedarikçiden temin (Yıldırım B2B) ──
+    # "Kendi stoğum bitince tedarikçinin stoğu vitrinde satılabilir sayılsın."
+    # Bir MERCHANDISING kararıdır, bağın kendisi değil: bağ çözülüp yeniden
+    # kurulunca kaybolmamalı ve "temin açık ama hiçbir tedarikçiye bağlı değil"
+    # uyarısı ancak böyle ifade edilebilir. Uygunluk yüklemi
+    # `core/stock_policy.satilabilir_yuklemi`; stok verisi `supplier_products`.
+    #
+    # `stock` sözleşmesine DOKUNMAZ: tedarikçi stoğu asla `stock`'a yazılmaz
+    # (`docs/tedarikci-senkron-sozlesme.md` D-1).
+    supplier_backed: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("false")
+    )
+
     cover_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     # DIGITAL teslimat: yüklenen dosyanın object key'i + gösterim adı.
     digital_asset_key: Mapped[str | None] = mapped_column(String(500), nullable=True)
@@ -472,6 +485,14 @@ class Product(Base, TimestampMixin, SoftDeleteMixin):
         # gerekçesi migration dosyasında.
         Index("ix_products_isbn", "isbn"),
         Index("ix_products_status", "status"),
+        # Vitrin yüklemi her katalog sorgusunda `supplier_backed`'e bakar;
+        # ürünlerin büyük çoğunluğu `false` olduğu için kısmi index planlayıcıya
+        # ucuz bir kısa devre verir.
+        Index(
+            "ix_products_supplier_backed",
+            "supplier_backed",
+            postgresql_where=text("supplier_backed AND deleted_at IS NULL"),
+        ),
         # Yönetim ürün listesi ve "yeni eklenenler" sıralaması.
         Index(
             "ix_products_created_desc",
@@ -900,10 +921,30 @@ class OrderItem(Base, TimestampMixin):
     )
     tutor_earning: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)
 
+    # ── Tedarikçiden karşılanan adet (D-8) ──
+    # Ödeme anında, ürün satırı KİLİTLİYKEN hesaplanır: `quantity` kadar malın
+    # kaç tanesi rafımızda yoktu ve tedarikçiden getirilecek?
+    #
+    # İki yerde belirleyicidir:
+    #   • `SALE` hareketi yalnız `quantity - supplier_quantity` kadar yazılır
+    #     (rafa hiç girmemiş mal deftere giremez);
+    #   • iptal/tam iadede geri yükleme tavanı bu adedi DÜŞER — düşmezse hiç
+    #     satılmamış mal için stok artışı üretilir.
+    #
+    # Ayrıca operasyonel: admin bu kalemi Yıldırım'a sipariş edecek.
+    supplier_quantity: Mapped[int] = mapped_column(
+        Integer, nullable=False, server_default=text("0")
+    )
+
     order: Mapped["Order"] = relationship(back_populates="items")
 
     __table_args__ = (
         CheckConstraint("quantity > 0", name="ck_order_items_quantity"),
+        # Tedarikçi payı sipariş adedini AŞAMAZ ve negatif olamaz.
+        CheckConstraint(
+            "supplier_quantity >= 0 AND supplier_quantity <= quantity",
+            name="ck_order_items_supplier_qty",
+        ),
         Index("ix_order_items_tutor", "tutor_id"),
         Index("ix_order_items_product", "product_id"),
     )

@@ -46,6 +46,16 @@ PERMISSION_CATALOG: tuple[tuple[str, str, str], ...] = (
     ("coupons.manage", "Kupon yönetimi", "Ticaret"),
     ("delivery.view", "Dağıtım görüntüleme", "Ticaret"),
     ("delivery.manage", "Dağıtım yönetimi", "Ticaret"),
+    # Tedarikçi senkronu (Yıldırım B2B). `products.*` bilinçli olarak YENİDEN
+    # KULLANILMADI: bu yüzey bir SIR (API token'ı) ve "vitrin neyi otomatik
+    # satar" kararı taşır. Ürün metnini düzenleyen kişinin token'ı
+    # değiştirebilmesi, `inventory.*` ve `packing.*` için verilen görev
+    # ayrılığı gerekçesinin aynısıyla yanlıştır.
+    #
+    # NOT: ürün başına "tedarikçiden temin" anahtarı bir ÜRÜN özniteliğidir ve
+    # `products.manage` ile düzenlenir — o ayrım bilinçlidir.
+    ("suppliers.view", "Tedarikçi senkronu görüntüleme", "Ticaret"),
+    ("suppliers.manage", "Tedarikçi ayarı ve eşleştirme yönetimi", "Ticaret"),
     # Hakediş defteri: kime ne kadar borçluyuz + ödeme kaydı (para çıkışı).
     ("payments.view", "Hakediş görüntüleme", "Ticaret"),
     ("payments.manage", "Hakediş ödemesi kaydetme", "Ticaret"),
