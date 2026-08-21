@@ -276,6 +276,7 @@ const KAPI_KAPSAMI = [
   "src/components/ShareModal.tsx",
   "src/components/Spinner.tsx",
   "src/components/StarRating.tsx",
+  "src/components/YakindaRozeti.tsx",
   "src/components/ui/Modal.tsx",
   "src/components/admin/AccessState.tsx",
   "src/components/admin/CourierManager.tsx",
@@ -390,6 +391,9 @@ const KONTROLSUZ_EKRANLAR: Record<string, "sunum" | "kabuk" | "pencere-kabugu" |
   "src/components/ShareModal.tsx": "kosullu",
   "src/components/Spinner.tsx": "sunum",
   "src/components/StarRating.tsx": "sunum",
+  // Donmuş bölüm rozeti: tek bir <span> metni. Form kontrolü BULUNMAZ ve
+  // bulunmamalıdır — rozet etkileşimsizdir (bkz. lib/ozellikBayraklari.ts).
+  "src/components/YakindaRozeti.tsx": "sunum",
   "src/components/admin/AccessState.tsx": "sunum",
   "src/components/admin/CourierManager.tsx": "kosullu",
   "src/components/admin/StockBadge.tsx": "sunum",

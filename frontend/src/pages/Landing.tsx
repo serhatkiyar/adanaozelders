@@ -15,6 +15,7 @@ import { HScroll } from "@/components/HScroll";
 import { DashboardHeader } from "@/components/DashboardHeader";
 import { PublicNavbar } from "@/components/PublicNavbar";
 import { CategoryBar, type CategoryKey } from "@/components/CategoryBar";
+import { DENEMELER_ACIK, KUTUPHANELER_ACIK } from "@/lib/ozellikBayraklari";
 import { SiteFooter } from "@/components/SiteFooter";
 import { BigSearch, CompactSearch } from "@/components/HeroSearch";
 import { useTutorSearch } from "@/hooks/useTutorSearch";
@@ -200,45 +201,35 @@ function Navbar({
 function CategoryContent({ active }: { active: CategoryKey }) {
   return (
     <main className="space-y-12 pb-24 pt-8">
-      {active === "hepsi" && (
-        <>
-          <TutorRow
-            heading="Ortaokul Matematik"
-            params={{ limit: 12, offset: 0, subject: ["Matematik"], exam: "LGS" }}
-          />
-          <TutorRow
-            heading="TYT'ye hazırlık"
-            params={{ limit: 12, offset: 0, exam: "TYT" }}
-          />
-          <LibraryRow
-            heading="Kütüphaneler & etüt merkezleri"
-            params={{ limit: 12, offset: 0 }}
-          />
-        </>
+      {/* ── EĞİTMENLER: TEK kuşak ──────────────────────────────────────────
+          Burada eskiden "TYT'ye hazırlık" / "YKS Hazırlık" / "AYT'ye
+          hazırlık" / "Ortaokul Matematik" / "LGS Matematik" diye SABİT
+          yazılmış kuşaklar vardı. İkisi gerçek bir daraltma yapıyordu
+          (`subject` sert filtredir), üçü YAPMIYORDU: `exam` backend'de sert
+          filtre değil, yalnız SIRALAMA BOOST'udur — üç kuşak da aynı eğitmen
+          listesini gösteriyordu (ölçüm: 7 eğitmenin üçünde de aynısı).
+          Kategori vaat edip kategori uygulamayan başlık, kullanıcıya "sahte
+          veri" gibi görünür; şikâyetin sebebi buydu.
+
+          Sadeleştirme: tek dürüst başlık. Kuşak boşsa `TutorRow` zaten
+          kendini gizler. Kategori kırılımı, arz gerçekten kategori başına
+          anlamlı sayıya ulaştığında ve VERİDEN türetilebildiğinde geri
+          gelmelidir — sabit liste olarak değil.
+          Nöbetçi: `__guards__/egitmenKusaklari.test.tsx`. */}
+      {(active === "hepsi" || active === "egitmenler") && (
+        <TutorRow heading="Eğitmenler" params={{ limit: 12, offset: 0 }} />
       )}
 
-      {active === "egitmenler" && (
-        <>
-          <TutorRow
-            heading="YKS Hazırlık"
-            params={{ limit: 12, offset: 0, exam: "YKS" }}
-          />
-          {/* "LGS Matematik": subject SERT filtre olduğu için gerçek ders adı
-              ("Matematik") ile süzülür; exam ("LGS") yalnız sıralamayı öne çeker. */}
-          <TutorRow
-            heading="LGS Matematik"
-            params={{ limit: 12, offset: 0, subject: ["Matematik"], exam: "LGS" }}
-          />
-          {/* İlkokul: taksonomiye eklenen ilkokula özgü derslerle (Okuma-Yazma,
-              Hayat Bilgisi) süzülür; eğitmen bu dersleri ilan ettikçe dolar. */}
-          <TutorRow
-            heading="İlkokul Okuma-Yazma ve Tüm Dersler"
-            params={{ limit: 12, offset: 0, subject: ["Okuma-Yazma", "Hayat Bilgisi"] }}
-          />
-        </>
+      {/* Kütüphane kuşakları yalnız bölüm AÇIKKEN çizilir: donmuş bölüme
+          giden kart, "Yakında" ekranına tıklatırdı. */}
+      {KUTUPHANELER_ACIK && active === "hepsi" && (
+        <LibraryRow
+          heading="Kütüphaneler & etüt merkezleri"
+          params={{ limit: 12, offset: 0 }}
+        />
       )}
 
-      {active === "kutuphaneler" && (
+      {KUTUPHANELER_ACIK && active === "kutuphaneler" && (
         <>
           <LibraryRow
             heading="Çukurova Kütüphaneleri"
@@ -259,21 +250,11 @@ function CategoryContent({ active }: { active: CategoryKey }) {
         </>
       )}
 
-      {active === "denemeler" && (
-        <>
-          <LibraryRow
-            heading="Deneme oturumu olan kütüphaneler"
-            params={{ limit: 20, offset: 0 }}
-          />
-          <TutorRow
-            heading="TYT'ye hazırlık"
-            params={{ limit: 12, offset: 0, exam: "TYT" }}
-          />
-          <TutorRow
-            heading="AYT'ye hazırlık"
-            params={{ limit: 12, offset: 0, exam: "AYT" }}
-          />
-        </>
+      {DENEMELER_ACIK && active === "denemeler" && (
+        <LibraryRow
+          heading="Deneme oturumu olan kütüphaneler"
+          params={{ limit: 20, offset: 0 }}
+        />
       )}
     </main>
   );

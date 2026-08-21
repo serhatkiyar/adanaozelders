@@ -1,4 +1,5 @@
 import { ROUTES } from "@/lib/routes";
+import { KUTUPHANELER_ACIK } from "@/lib/ozellikBayraklari";
 
 export type NavIcon =
   | "favorites"
@@ -26,6 +27,13 @@ export interface NavItem {
   label: string;
   end?: boolean;
   icon?: NavIcon;
+  /**
+   * Bölüm donduruldu (bkz. `lib/ozellikBayraklari.ts`). Girdi menüde GÖRÜNÜR
+   * kalır ama bağlantı değildir, klavyeyle odaklanamaz ve "Yakında" rozeti
+   * taşır. Menüyü çizen her yüzey (`DashboardHeader` üst bar + yan menü) bu
+   * alanı okumak ZORUNDADIR; okumayan yüzey donmuş bölüme tıklatır.
+   */
+  yakinda?: boolean;
 }
 
 export const STUDENT_NAV: NavItem[] = [
@@ -49,7 +57,7 @@ export const TUTOR_NAV: NavItem[] = [
   // eğitmen izni `srs_progress`/`srs_review_logs` okutmaz) yerinde durur;
   // buradaki tek değişiklik hub'ın kendi araçlarına erişimdir.
   { to: ROUTES.learn, label: "Öğren", icon: "learn" },
-  { to: ROUTES.libraries, label: "Kütüphaneler", icon: "library" },
+  { to: ROUTES.libraries, label: "Kütüphaneler", icon: "library", yakinda: !KUTUPHANELER_ACIK },
   { to: ROUTES.store, label: "Mağaza", icon: "shop" },
 ];
 

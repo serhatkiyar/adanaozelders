@@ -14,6 +14,7 @@ import { resolveSurface } from "@/lib/navPrefs";
 import { ROUTES } from "@/lib/routes";
 import { ROLE_IDS } from "@/types";
 import type { NavItem } from "@/lib/nav";
+import { YakindaRozeti } from "@/components/YakindaRozeti";
 
 const navIconClass = ({ isActive }: { isActive: boolean }) =>
   `rounded-lg p-2 transition ${
@@ -100,7 +101,22 @@ export function DashboardHeader({ navItems, transparent = false, center, bottom,
           <Icon name="profile" className="h-5 w-5" />
           Hesabım
         </NavLink>
-        {sidebarItems.map((l) => (
+        {sidebarItems.map((l) =>
+          // Donmuş bölüm: bağlantı DEĞİL. `NavLink`e `aria-disabled` eklemek
+          // yetmezdi — anchor `href`i taşımaya ve tıklamayı yutmaya devam
+          // ederdi (bkz. lib/ozellikBayraklari.ts).
+          l.yakinda ? (
+            <span
+              key={l.to}
+              aria-disabled="true"
+              tabIndex={-1}
+              className={`${menuItemClass} cursor-default opacity-60`}
+            >
+              {l.icon && <Icon name={l.icon} className="h-5 w-5" />}
+              {l.label}
+              <YakindaRozeti className="ml-auto" />
+            </span>
+          ) : (
           <NavLink
             key={l.to}
             to={l.to}
@@ -116,7 +132,8 @@ export function DashboardHeader({ navItems, transparent = false, center, bottom,
               </span>
             )}
           </NavLink>
-        ))}
+          )
+        )}
 
         <NavLink to={ROUTES.settings} onClick={onClick} className={menuItemClass}>
           <Icon name="settings" className="h-5 w-5" />
@@ -178,7 +195,24 @@ export function DashboardHeader({ navItems, transparent = false, center, bottom,
         {/* Masaüstü: nav ikonları + avatar dropdown */}
         <div className="hidden flex-1 shrink-0 items-center justify-end gap-1 sm:flex">
           {navbarItems.map((l) =>
-            l.icon ? (
+            l.yakinda ? (
+              // Üst bar kısayolu ikon-only; rozet sığmaz, `title`/`aria-label`
+              // "Yakında"yı taşır ki ekran okuyucu da durumu duysun.
+              <span
+                key={l.to}
+                aria-disabled="true"
+                tabIndex={-1}
+                title={`${l.label} — Yakında`}
+                aria-label={`${l.label} — Yakında`}
+                className={`${navIconClass} cursor-default opacity-40`}
+              >
+                {l.icon ? (
+                  <Icon name={l.icon} className="h-5 w-5" />
+                ) : (
+                  <span className="text-sm font-medium">{l.label}</span>
+                )}
+              </span>
+            ) : l.icon ? (
               <NavLink
                 key={l.to}
                 to={l.to}

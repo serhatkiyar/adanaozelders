@@ -1,5 +1,7 @@
 import { Link } from "react-router-dom";
 import { ROUTES } from "@/lib/routes";
+import { DENEMELER_ACIK, KUTUPHANELER_ACIK } from "@/lib/ozellikBayraklari";
+import { YakindaRozeti } from "@/components/YakindaRozeti";
 
 /**
  * Airbnb tarzı üst-seviye kategori çubuğu: küçük 3D ikon + altında etiket,
@@ -18,14 +20,16 @@ type Category = {
   label: string;
   icon: string;
   to: string;
+  /** Bölüm donduruldu: görünür kalır ama tıklanamaz (bkz. ozellikBayraklari). */
+  donuk?: boolean;
 };
 
 const CATEGORIES: Category[] = [
   { key: "hepsi", label: "Hepsi", icon: "/icons/categories/hepsi.webp", to: ROUTES.home },
   { key: "egitmenler", label: "Eğitmenler", icon: "/icons/categories/egitmenler.webp", to: ROUTES.tutors },
-  { key: "kutuphaneler", label: "Kütüphaneler", icon: "/icons/categories/kutuphaneler.webp", to: ROUTES.libraries },
+  { key: "kutuphaneler", label: "Kütüphaneler", icon: "/icons/categories/kutuphaneler.webp", to: ROUTES.libraries, donuk: !KUTUPHANELER_ACIK },
   // Deneme oturumları kütüphane profillerinde yer alır.
-  { key: "denemeler", label: "Denemeler", icon: "/icons/categories/denemeler.webp", to: ROUTES.libraries },
+  { key: "denemeler", label: "Denemeler", icon: "/icons/categories/denemeler.webp", to: ROUTES.libraries, donuk: !DENEMELER_ACIK },
 ];
 
 
@@ -85,6 +89,23 @@ export function CategoryBar({
               </span>
             </>
           );
+          // Donmuş kategori: ne <Link> ne <button>. Anchor'ı `href`siz
+          // bırakmak fare kullanıcısı için hiçbir şeyi değiştirmezdi; öğe
+          // baştan etkileşimsiz bir <span> olarak basılır.
+          if (c.donuk) {
+            return (
+              <span
+                key={c.key}
+                aria-disabled="true"
+                tabIndex={-1}
+                className={`${cls} cursor-default opacity-60`}
+              >
+                {inner}
+                <YakindaRozeti />
+              </span>
+            );
+          }
+
           return onSelect ? (
             <button
               key={c.key}

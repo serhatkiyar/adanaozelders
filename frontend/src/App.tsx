@@ -9,6 +9,7 @@ import { ErrorBoundary, RouteErrorBoundary } from "@/components/ErrorBoundary";
 import { FullScreenSpinner } from "@/components/Spinner";
 import { ROLE_IDS } from "@/types";
 import { ROUTES, PATHS } from "@/lib/routes";
+import { DENEMELER_ACIK, KUTUPHANELER_ACIK } from "@/lib/ozellikBayraklari";
 import { PublicRoute } from "@/routes/PublicRoute";
 import { ProtectedRoute } from "@/routes/ProtectedRoute";
 import { LegacyRedirect } from "@/routes/LegacyRedirect";
@@ -39,6 +40,7 @@ const AuthModal = lazy(() =>
 const MarketplacePage = lazy(() => import("@/pages/MarketplacePage"));
 const TutorProfilePage = lazy(() => import("@/pages/TutorProfilePage"));
 const Libraries = lazy(() => import("@/pages/Libraries"));
+const Yakinda = lazy(() => import("@/pages/Yakinda"));
 const LibraryDetail = lazy(() => import("@/pages/LibraryDetail"));
 const LibraryRegister = lazy(() => import("@/pages/LibraryRegister"));
 // Mağaza (D&R tarzı) — katalog/detay/sepet public; ödeme/siparişler oturum-içi
@@ -336,9 +338,28 @@ function App() {
           <Route path={PATHS.home} element={<RootDispatcher />} />
           <Route path={PATHS.tutors} element={<MarketplacePage />} />
           <Route path={PATHS.tutor} element={<TutorProfilePage />} />
-          <Route path={PATHS.libraries} element={<Libraries />} />
-          <Route path={PATHS.library} element={<LibraryDetail />} />
-          <Route path={PATHS.libraryRegister} element={<LibraryRegister />} />
+          {/* Donmuş bölüm (bkz. lib/ozellikBayraklari.ts): doğrudan URL yazan
+              kullanıcı gerçek sayfayı değil "Yakında" ekranını görür. Bayrak
+              `true` yapılınca üç rota da eski hâline döner. */}
+          <Route
+            path={PATHS.libraries}
+            element={KUTUPHANELER_ACIK ? <Libraries /> : <Yakinda />}
+          />
+          <Route
+            path={PATHS.library}
+            element={KUTUPHANELER_ACIK ? <LibraryDetail /> : <Yakinda />}
+          />
+          <Route
+            path={PATHS.libraryRegister}
+            element={KUTUPHANELER_ACIK ? <LibraryRegister /> : <Yakinda />}
+          />
+          {/* `/denemeler` normalde CLIENT korumalıdır. Donmuşken korumanın
+              DIŞINDA duruyor: anonim kullanıcı da 404 ya da giriş ekranı
+              yerine "Yakında" görsün. Bayrak açılınca aşağıdaki korumalı
+              blokta yeniden yerini alır. */}
+          {!DENEMELER_ACIK && (
+            <Route path={PATHS.exams} element={<Yakinda />} />
+          )}
 
           {/* ── Mağaza (public: katalog/detay/sepet) ── */}
           <Route path={PATHS.store} element={<StorePage />} />
@@ -420,7 +441,7 @@ function App() {
           {/* ── Yalnızca CLIENT ── */}
           <Route element={<ProtectedRoute allowedRoleId={ROLE_IDS.CLIENT} />}>
             <Route path={PATHS.favorites} element={<Favorites />} />
-            <Route path={PATHS.exams} element={<Exams />} />
+            {DENEMELER_ACIK && <Route path={PATHS.exams} element={<Exams />} />}
             <Route path={PATHS.storeCheckout} element={<CheckoutPage />} />
             <Route path={PATHS.orders} element={<OrdersPage />} />
             <Route path={PATHS.orderDetail} element={<OrderDetailPage />} />
