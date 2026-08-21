@@ -42,28 +42,41 @@ async def test_kitap_kokleri_canli_katalogda_aktif():
     except _BAGLANTI_HATALARI as exc:
         servis_yok("Postgres", exc)
 
-    async with AsyncSessionLocal() as s:
-        # Katalog hiç kurulmamışsa (boş/tek kullanımlık DB) hizalanacak veri
-        # yoktur — bu bir sapma değil, kapsam dışıdır.
-        toplam = (
-            await s.execute(
-                select(ProductCategory.id).where(ProductCategory.deleted_at.is_(None))
-            )
-        ).scalars().first()
-        if toplam is None:
-            pytest.skip("kategori kataloğu boş — hizalanacak canlı veri yok")
-
-        mevcut = set(
-            (
+    # `finally` ZORUNLU: aşağıdaki `pytest.skip` de bir exception'dır ve
+    # `engine.dispose()` eskiden bu bloğun ALTINDA düz bir satırdı — yani boş
+    # katalogda (CI'nın taze `adana_verify` veritabanı tam olarak böyledir)
+    # hiç çalışmıyordu. `async with` bağlantıyı havuza İADE eder, kapatmaz;
+    # test bitince pytest-asyncio o event loop'u kapatır ve havuzda ölü loop'a
+    # bağlı canlı bir bağlantı kalır. Sıradaki dosya (alfabetik:
+    # test_verify_booking_money.py) onu alıp `RuntimeError: got Future
+    # attached to a different loop` ile ERROR veriyordu — 21 Ağu 2026'da CI'da
+    # ölçüldü. Havuzun boşaltılması ÇIKIŞ YOLUNA BAĞLI OLAMAZ.
+    try:
+        async with AsyncSessionLocal() as s:
+            # Katalog hiç kurulmamışsa (boş/tek kullanımlık DB) hizalanacak veri
+            # yoktur — bu bir sapma değil, kapsam dışıdır.
+            toplam = (
                 await s.execute(
-                    select(ProductCategory.slug).where(
-                        ProductCategory.slug.in_(sorted(BOOK_ROOT_SLUGS)),
-                        ProductCategory.deleted_at.is_(None),
+                    select(ProductCategory.id).where(
+                        ProductCategory.deleted_at.is_(None)
                     )
                 )
-            ).scalars()
-        )
-    await engine.dispose()
+            ).scalars().first()
+            if toplam is None:
+                pytest.skip("kategori kataloğu boş — hizalanacak canlı veri yok")
+
+            mevcut = set(
+                (
+                    await s.execute(
+                        select(ProductCategory.slug).where(
+                            ProductCategory.slug.in_(sorted(BOOK_ROOT_SLUGS)),
+                            ProductCategory.deleted_at.is_(None),
+                        )
+                    )
+                ).scalars()
+            )
+    finally:
+        await engine.dispose()
     eksik = BOOK_ROOT_SLUGS - mevcut
     assert not eksik, (
         f"Kitap kökü slug'ları katalogda YOK: {sorted(eksik)}. Kategori "

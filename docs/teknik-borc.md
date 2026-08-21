@@ -319,6 +319,28 @@ yalnız ölçümü ve öneriyi kaydeder.
      kapanan kayıt silindiği için ortada numaralanacak bir borç kalmadı;
      kapanış kanıtı docs/magaza-merge-dogrulama-raporu.md'de durur. -->
 
+## TB-66 · Yerel `adana_verify` veritabanı bayat — doğrulama paketi yerelde tam koşulamıyor
+
+| | |
+|---|---|
+| **Bulundu** | CI event-loop hatası düzeltme turu (21 Ağu 2026), Adım 7 |
+| **Nerede** | Yerel Postgres, `adana_verify` veritabanı |
+| **Sorun** | Damga `ip19_filo_veriye`, `alembic heads` ise `b95b705ab859`. Şema bayat olduğu için yerelde `pytest tests/verify` **37 failed / 6 error** veriyor; CI'da (taze DB + `alembic upgrade head`) aynı paket temiz koşuyor. Ölçüldü: bu turda düzeltilen testler yeşil, kalan 37 kırmızının tamamı şema sapmasından |
+| **Neden sessiz** | Sayı büyük olduğu için "zaten kırmızı" diye normalleşiyor: paketin **gerçek** bir regresyonu bu gürültünün içinde fark edilmez. Tam olarak bu oldu — CI'daki tek gerçek hata yerelde hiç aranmadı, çünkü yerel zaten kırmızıydı |
+| **Neden ertelendi** | Turun kapsamı CI'daki event-loop hatasıydı; DB'yi ileri sarmak ayrı bir doğrulama işi (37 kırmızının kaçı gerçekten şema, kaçı başka sebep — tek tek bakılmalı) |
+| **Sonraki adım** | `POSTGRES_DB=adana_verify python -m alembic upgrade head` ile DB'yi head'e çek, sonra tam paketi koş ve kalan kırmızı varsa **ayrı** kayıt aç. Kalıcı çözüm: `tests/verify/run.py`'nin koşudan önce `upgrade head` uygulaması (CI adımı zaten öyle yapıyor) |
+
+## TB-67 · `pytest-asyncio` yalnız `ci.yml`'de pinli, `requirements.txt`'te yok
+
+| | |
+|---|---|
+| **Bulundu** | CI event-loop hatası düzeltme turu (21 Ağu 2026), Adım 4 |
+| **Nerede** | `.github/workflows/ci.yml` ("Install dependencies" adımı) ↔ `backend/requirements.txt` |
+| **Sorun** | Test araç zinciri (`pytest`, `pytest-asyncio`, `pytest-cov`, `hypothesis`, `ruff`) yalnız iş akışı dosyasında sabitlenmiş; `requirements.txt` çalışma zamanı bağımlılıklarını kilitliyor ama test araçlarını içermiyor. Geliştiricinin ortamı `pip install -r requirements.txt` ile CI'nınkine eşitlenmez — bugün ikisi de 1.4.0, ama bu **tesadüf**, sözleşme değil |
+| **Neden önemli** | Ayrışmanın maliyeti soyut değil, ölçüldü: pytest-asyncio 1.x varsayılan event-loop kapsamını fonksiyona çevirdiğinde doğrulama paketi 72 ERROR verdi (`tests/verify/conftest.py` docstring'i). Aynı sınıf hata sürüm ayrışınca geri gelir ve "bende çalışıyor"la üç gün geçer — bu turda tam olarak bu yaşandı |
+| **Neden ertelendi** | Sürümleri tek yere taşımak (`requirements-dev.txt` ya da `pyproject` extras) CI adımını ve geliştirici kurulum yönergesini birlikte değiştirmeyi gerektirir; bu tur yalnız kırmızıyı kapatıyordu |
+| **Sonraki adım** | Test araç zincirini `requirements-dev.txt`'e (pip-compile ile kilitli) taşı, `ci.yml` onu kursun, `backend/CLAUDE.md` kurulum bölümü onu göstersin. Yanına, iki kaynağın ayrışmadığını doğrulayan bir nöbetçi (`tests/test_ci_workflow.py` deseninde) eklenmeli |
+
 ## TB-64 · OG/Twitter görseli SVG'ye geçmedi — `/logo.png` bilinçli olarak kalıyor
 
 | | |

@@ -24,6 +24,8 @@ import uuid
 from decimal import Decimal
 
 import pytest
+from sqlalchemy import event
+from sqlalchemy import exc as sa_exc
 from sqlalchemy import text
 
 from core.config import settings
@@ -32,6 +34,26 @@ from tests.integration.db_guard import purge_products
 
 VERIFY_DB_NAME = "adana_verify"
 
+#: `db` fixture'ının "Postgres yok" sayacağı hatalar — YALNIZ gerçekten
+#: erişilemezlik anlamına gelenler.
+#:
+#: Burada çıplak `except Exception` vardı ve teşhisi bir tur geciktirdi:
+#: `test_verify_book_roots.py` havuzda bayat (kapanmış event loop'a bağlı)
+#: bir asyncpg bağlantısı bırakınca bir sonraki test `RuntimeError: got
+#: Future attached to a different loop` alıyor, çıplak yakalama bunu
+#: "Postgres erişilemiyor" diye raporluyordu — oysa Postgres sapasağlamdı.
+#: Aynı ders entegrasyon paketinde bir kez öğrenildi (bkz.
+#: `tests/integration/conftest.py::_BAGLANTI_HATALARI`); bu paket almamıştı.
+#: Tanınmayan hata artık OLDUĞU GİBİ yukarı fırlar: yanlış suçlanan bir
+#: bağımlılık, gizlenmiş bir hatadan daha pahalıdır.
+_BAGLANTI_HATALARI = (
+    ConnectionError,
+    OSError,
+    sa_exc.OperationalError,
+    sa_exc.InterfaceError,
+    sa_exc.DBAPIError,
+)
+
 
 def _now() -> datetime.datetime:
     return datetime.datetime.now(datetime.timezone.utc)
@@ -39,6 +61,64 @@ def _now() -> datetime.datetime:
 
 def _uniq() -> str:
     return uuid.uuid4().hex[:10]
+
+
+#: Havuzda AÇIK duran gerçek asyncpg bağlantıları — kimlikleriyle.
+#:
+#: Bilinçli olarak SAYI değil KİMLİK tutulur. Bir eşik ("en fazla N bağlantı
+#: kalabilir") koruduğu ölçümden türetilseydi, sızıntı büyüdükçe eşik de
+#: büyür ve nöbetçi kendi kör noktasını üretirdi. Burada soru ikilidir:
+#: testten sonra havuzda kalan BELİRLİ bir bağlantı var mı, yok mu.
+_ACIK_BAGLANTILAR: dict[int, str] = {}
+
+
+@event.listens_for(engine.sync_engine, "connect")
+def _baglanti_acildi(dbapi_connection, connection_record) -> None:  # noqa: ARG001
+    _ACIK_BAGLANTILAR[id(dbapi_connection)] = repr(dbapi_connection)
+
+
+@event.listens_for(engine.sync_engine, "close")
+@event.listens_for(engine.sync_engine, "close_detached")
+def _baglanti_kapandi(dbapi_connection, *_args) -> None:
+    _ACIK_BAGLANTILAR.pop(id(dbapi_connection), None)
+
+
+@pytest.fixture(autouse=True)
+async def _havuz_nobetcisi():
+    """Hiçbir test havuzda bağlantı BIRAKAMAZ.
+
+    Neden var (21 Ağu 2026'da CI'da ölçüldü): `test_verify_book_roots.py`
+    boş katalogda `pytest.skip` ile çıkıyor, `engine.dispose()` satırına hiç
+    varılmıyor ve havuzda kapanmak üzere olan event loop'a bağlı bir asyncpg
+    bağlantısı kalıyordu. Sıradaki test dosyası o bağlantıyı havuzdan alıp
+    `RuntimeError: got Future attached to a different loop` ile ERROR
+    veriyordu — üstelik hata "Postgres erişilemiyor" maskesinin altındaydı.
+
+    Tek tek testlerin `dispose()` çağırmayı hatırlamasına güvenmek bu sınıfı
+    kapatmaz: sızıntı NORMAL çıkışta değil, ERKEN çıkışta (skip/exception)
+    doğar. Nöbetçi bu yüzden autouse'dur ve teardown'ı, açıkça istenen
+    fixture'ların (`db`) teardown'ından SONRA koşar.
+
+    İki iş yapar: (1) havuzu her hâlükârda boşaltarak sızıntının bir sonraki
+    teste BULAŞMASINI keser, (2) sızıntının kendisini isimleriyle raporlar —
+    sessizce toparlasaydı, hata ancak bir sonraki tuhaf ERROR'da fark
+    edilirdi.
+    """
+    yield
+
+    kalanlar = sorted(_ACIK_BAGLANTILAR.values())
+    if kalanlar:
+        await engine.dispose()
+        pytest.fail(
+            "Havuz sızıntısı: test bittiğinde açık asyncpg bağlantısı kaldı "
+            f"({len(kalanlar)} adet) → {kalanlar}. Bu bağlantılar bu testin "
+            "event loop'una bağlıdır; loop kapanınca sıradaki test onları "
+            "havuzdan alır ve 'got Future attached to a different loop' ile "
+            "ERROR verir. Motora doğrudan dokunan test, erken çıkış "
+            "yollarında da (skip/exception) havuzu boşaltmalıdır: "
+            "`try: ... finally: await engine.dispose()`.",
+            pytrace=False,
+        )
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -83,7 +163,7 @@ async def db():
     try:
         async with engine.connect() as conn:
             await conn.execute(text("SELECT 1"))
-    except Exception as exc:  # noqa: BLE001
+    except _BAGLANTI_HATALARI as exc:
         pytest.fail(f"Postgres erişilemiyor: {exc!r}")
 
     from core import seed
