@@ -8,6 +8,8 @@ import { HScroll } from "@/components/HScroll";
 import { useBookFacets, useCategories, useProducts, useInfiniteProducts } from "@/hooks/useStore";
 import { useDebounce } from "@/hooks/useDebounce";
 import { getRecentlyViewedProducts } from "@/lib/recentlyViewedProducts";
+import { CrossPromoBanner } from "@/components/CrossPromoBanner";
+import CROSS_PROMO from "@/config/crossPromo.json";
 import type { ProductKind } from "@/types";
 import type { ProductSearchParams } from "@/api/store";
 
@@ -140,6 +142,20 @@ export default function StorePage() {
         title="Mağaza — Adana Özel Ders"
         description="Kitaplar, deneme setleri, kırtasiye ve eğitmenlerin dijital ders notları. Tek hesapla alışveriş."
       />
+
+      <div className={`${CONTAINER} pt-6`}>
+        {/* Örtü YOK — ölçüm: beyaz metin mor zeminde örtüsüz 9.32, eşiğin
+            (4.5) iki katı. Buraya scrim koymak okunabilirliğe hiçbir şey
+            katmıyor, yalnız düz mor alanın üstüne siyah bir hap çiziyordu.
+            Ölçüm: docs/ip-c1/. */}
+        <CrossPromoBanner
+          imageSrc={CROSS_PROMO.storeToTutors.imageSrc}
+          heading="Özel Ders"
+          headingClassName="text-white"
+          to={ROUTES.tutors}
+          ariaLabel={CROSS_PROMO.storeToTutors.ariaLabel}
+        />
+      </div>
 
       {isFiltering ? (
         /* ── Arama / filtre görünümü: yan filtre + ızgara ── */

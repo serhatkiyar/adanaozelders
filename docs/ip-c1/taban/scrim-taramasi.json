@@ -1,0 +1,364 @@
+{
+  "ozet": {
+    "landing-magaza-banner": {
+      "enDusukGuvenliAlfa": 0.5,
+      "alfaBasinaEnKotu": {
+        "0": 1.51,
+        "0.3": 2.85,
+        "0.5": 4.57,
+        "0.6": 5.78,
+        "0.7": 7.3,
+        "0.8": 8.82
+      }
+    },
+    "magaza-ozelders-banner": {
+      "enDusukGuvenliAlfa": 0,
+      "alfaBasinaEnKotu": {
+        "0": 9.32,
+        "0.3": 13.16,
+        "0.5": 16.1,
+        "0.6": 17.44,
+        "0.7": 18.79,
+        "0.8": 19.76
+      }
+    }
+  },
+  "ham": {
+    "landing-magaza-banner__vp1280__acik__alfa0": {
+      "alfa": 0,
+      "enKotuKontrast": 1.51,
+      "gecti": false,
+      "ornekSayisi": 752,
+      "enKotuZemin": "rgb(1, 175, 100)"
+    },
+    "landing-magaza-banner__vp1280__acik__alfa0.3": {
+      "alfa": 0.3,
+      "enKotuKontrast": 2.85,
+      "gecti": false,
+      "ornekSayisi": 752,
+      "enKotuZemin": "rgb(0, 122, 69)"
+    },
+    "landing-magaza-banner__vp1280__acik__alfa0.5": {
+      "alfa": 0.5,
+      "enKotuKontrast": 4.57,
+      "gecti": true,
+      "ornekSayisi": 752,
+      "enKotuZemin": "rgb(1, 87, 50)"
+    },
+    "landing-magaza-banner__vp1280__acik__alfa0.6": {
+      "alfa": 0.6,
+      "enKotuKontrast": 5.78,
+      "gecti": true,
+      "ornekSayisi": 752,
+      "enKotuZemin": "rgb(0, 70, 40)"
+    },
+    "landing-magaza-banner__vp1280__acik__alfa0.7": {
+      "alfa": 0.7,
+      "enKotuKontrast": 7.3,
+      "gecti": true,
+      "ornekSayisi": 752,
+      "enKotuZemin": "rgb(0, 52, 30)"
+    },
+    "landing-magaza-banner__vp1280__acik__alfa0.8": {
+      "alfa": 0.8,
+      "enKotuKontrast": 8.82,
+      "gecti": true,
+      "ornekSayisi": 752,
+      "enKotuZemin": "rgb(0, 35, 20)"
+    },
+    "magaza-ozelders-banner__vp1280__acik__alfa0": {
+      "alfa": 0,
+      "enKotuKontrast": 9.32,
+      "gecti": true,
+      "ornekSayisi": 896,
+      "enKotuZemin": "rgb(103, 13, 175)"
+    },
+    "magaza-ozelders-banner__vp1280__acik__alfa0.3": {
+      "alfa": 0.3,
+      "enKotuKontrast": 13.16,
+      "gecti": true,
+      "ornekSayisi": 896,
+      "enKotuZemin": "rgb(72, 9, 122)"
+    },
+    "magaza-ozelders-banner__vp1280__acik__alfa0.5": {
+      "alfa": 0.5,
+      "enKotuKontrast": 16.1,
+      "gecti": true,
+      "ornekSayisi": 896,
+      "enKotuZemin": "rgb(51, 6, 87)"
+    },
+    "magaza-ozelders-banner__vp1280__acik__alfa0.6": {
+      "alfa": 0.6,
+      "enKotuKontrast": 17.44,
+      "gecti": true,
+      "ornekSayisi": 896,
+      "enKotuZemin": "rgb(41, 5, 70)"
+    },
+    "magaza-ozelders-banner__vp1280__acik__alfa0.7": {
+      "alfa": 0.7,
+      "enKotuKontrast": 18.79,
+      "gecti": true,
+      "ornekSayisi": 896,
+      "enKotuZemin": "rgb(30, 3, 52)"
+    },
+    "magaza-ozelders-banner__vp1280__acik__alfa0.8": {
+      "alfa": 0.8,
+      "enKotuKontrast": 19.76,
+      "gecti": true,
+      "ornekSayisi": 896,
+      "enKotuZemin": "rgb(20, 2, 35)"
+    },
+    "landing-magaza-banner__vp1280__koyu__alfa0": {
+      "alfa": 0,
+      "enKotuKontrast": 1.51,
+      "gecti": false,
+      "ornekSayisi": 752,
+      "enKotuZemin": "rgb(1, 175, 100)"
+    },
+    "landing-magaza-banner__vp1280__koyu__alfa0.3": {
+      "alfa": 0.3,
+      "enKotuKontrast": 2.85,
+      "gecti": false,
+      "ornekSayisi": 752,
+      "enKotuZemin": "rgb(0, 122, 69)"
+    },
+    "landing-magaza-banner__vp1280__koyu__alfa0.5": {
+      "alfa": 0.5,
+      "enKotuKontrast": 4.57,
+      "gecti": true,
+      "ornekSayisi": 752,
+      "enKotuZemin": "rgb(1, 87, 50)"
+    },
+    "landing-magaza-banner__vp1280__koyu__alfa0.6": {
+      "alfa": 0.6,
+      "enKotuKontrast": 5.78,
+      "gecti": true,
+      "ornekSayisi": 752,
+      "enKotuZemin": "rgb(0, 70, 40)"
+    },
+    "landing-magaza-banner__vp1280__koyu__alfa0.7": {
+      "alfa": 0.7,
+      "enKotuKontrast": 7.3,
+      "gecti": true,
+      "ornekSayisi": 752,
+      "enKotuZemin": "rgb(0, 52, 30)"
+    },
+    "landing-magaza-banner__vp1280__koyu__alfa0.8": {
+      "alfa": 0.8,
+      "enKotuKontrast": 8.82,
+      "gecti": true,
+      "ornekSayisi": 752,
+      "enKotuZemin": "rgb(0, 35, 20)"
+    },
+    "magaza-ozelders-banner__vp1280__koyu__alfa0": {
+      "alfa": 0,
+      "enKotuKontrast": 9.32,
+      "gecti": true,
+      "ornekSayisi": 896,
+      "enKotuZemin": "rgb(103, 13, 175)"
+    },
+    "magaza-ozelders-banner__vp1280__koyu__alfa0.3": {
+      "alfa": 0.3,
+      "enKotuKontrast": 13.16,
+      "gecti": true,
+      "ornekSayisi": 896,
+      "enKotuZemin": "rgb(72, 9, 122)"
+    },
+    "magaza-ozelders-banner__vp1280__koyu__alfa0.5": {
+      "alfa": 0.5,
+      "enKotuKontrast": 16.1,
+      "gecti": true,
+      "ornekSayisi": 896,
+      "enKotuZemin": "rgb(51, 6, 87)"
+    },
+    "magaza-ozelders-banner__vp1280__koyu__alfa0.6": {
+      "alfa": 0.6,
+      "enKotuKontrast": 17.44,
+      "gecti": true,
+      "ornekSayisi": 896,
+      "enKotuZemin": "rgb(41, 5, 70)"
+    },
+    "magaza-ozelders-banner__vp1280__koyu__alfa0.7": {
+      "alfa": 0.7,
+      "enKotuKontrast": 18.79,
+      "gecti": true,
+      "ornekSayisi": 896,
+      "enKotuZemin": "rgb(30, 3, 52)"
+    },
+    "magaza-ozelders-banner__vp1280__koyu__alfa0.8": {
+      "alfa": 0.8,
+      "enKotuKontrast": 19.76,
+      "gecti": true,
+      "ornekSayisi": 896,
+      "enKotuZemin": "rgb(20, 2, 35)"
+    },
+    "landing-magaza-banner__vp380__acik__alfa0": {
+      "alfa": 0,
+      "enKotuKontrast": 1.51,
+      "gecti": false,
+      "ornekSayisi": 432,
+      "enKotuZemin": "rgb(1, 175, 100)"
+    },
+    "landing-magaza-banner__vp380__acik__alfa0.3": {
+      "alfa": 0.3,
+      "enKotuKontrast": 2.85,
+      "gecti": false,
+      "ornekSayisi": 432,
+      "enKotuZemin": "rgb(0, 122, 69)"
+    },
+    "landing-magaza-banner__vp380__acik__alfa0.5": {
+      "alfa": 0.5,
+      "enKotuKontrast": 4.57,
+      "gecti": true,
+      "ornekSayisi": 432,
+      "enKotuZemin": "rgb(1, 87, 50)"
+    },
+    "landing-magaza-banner__vp380__acik__alfa0.6": {
+      "alfa": 0.6,
+      "enKotuKontrast": 5.78,
+      "gecti": true,
+      "ornekSayisi": 432,
+      "enKotuZemin": "rgb(0, 70, 40)"
+    },
+    "landing-magaza-banner__vp380__acik__alfa0.7": {
+      "alfa": 0.7,
+      "enKotuKontrast": 7.3,
+      "gecti": true,
+      "ornekSayisi": 432,
+      "enKotuZemin": "rgb(0, 52, 30)"
+    },
+    "landing-magaza-banner__vp380__acik__alfa0.8": {
+      "alfa": 0.8,
+      "enKotuKontrast": 8.82,
+      "gecti": true,
+      "ornekSayisi": 432,
+      "enKotuZemin": "rgb(0, 35, 20)"
+    },
+    "magaza-ozelders-banner__vp380__acik__alfa0": {
+      "alfa": 0,
+      "enKotuKontrast": 9.32,
+      "gecti": true,
+      "ornekSayisi": 504,
+      "enKotuZemin": "rgb(103, 13, 175)"
+    },
+    "magaza-ozelders-banner__vp380__acik__alfa0.3": {
+      "alfa": 0.3,
+      "enKotuKontrast": 13.16,
+      "gecti": true,
+      "ornekSayisi": 504,
+      "enKotuZemin": "rgb(72, 9, 122)"
+    },
+    "magaza-ozelders-banner__vp380__acik__alfa0.5": {
+      "alfa": 0.5,
+      "enKotuKontrast": 16.1,
+      "gecti": true,
+      "ornekSayisi": 504,
+      "enKotuZemin": "rgb(51, 6, 87)"
+    },
+    "magaza-ozelders-banner__vp380__acik__alfa0.6": {
+      "alfa": 0.6,
+      "enKotuKontrast": 17.44,
+      "gecti": true,
+      "ornekSayisi": 504,
+      "enKotuZemin": "rgb(41, 5, 70)"
+    },
+    "magaza-ozelders-banner__vp380__acik__alfa0.7": {
+      "alfa": 0.7,
+      "enKotuKontrast": 18.79,
+      "gecti": true,
+      "ornekSayisi": 504,
+      "enKotuZemin": "rgb(30, 3, 52)"
+    },
+    "magaza-ozelders-banner__vp380__acik__alfa0.8": {
+      "alfa": 0.8,
+      "enKotuKontrast": 19.76,
+      "gecti": true,
+      "ornekSayisi": 504,
+      "enKotuZemin": "rgb(20, 2, 35)"
+    },
+    "landing-magaza-banner__vp380__koyu__alfa0": {
+      "alfa": 0,
+      "enKotuKontrast": 1.51,
+      "gecti": false,
+      "ornekSayisi": 432,
+      "enKotuZemin": "rgb(1, 175, 100)"
+    },
+    "landing-magaza-banner__vp380__koyu__alfa0.3": {
+      "alfa": 0.3,
+      "enKotuKontrast": 2.85,
+      "gecti": false,
+      "ornekSayisi": 432,
+      "enKotuZemin": "rgb(0, 122, 69)"
+    },
+    "landing-magaza-banner__vp380__koyu__alfa0.5": {
+      "alfa": 0.5,
+      "enKotuKontrast": 4.57,
+      "gecti": true,
+      "ornekSayisi": 432,
+      "enKotuZemin": "rgb(1, 87, 50)"
+    },
+    "landing-magaza-banner__vp380__koyu__alfa0.6": {
+      "alfa": 0.6,
+      "enKotuKontrast": 5.78,
+      "gecti": true,
+      "ornekSayisi": 432,
+      "enKotuZemin": "rgb(0, 70, 40)"
+    },
+    "landing-magaza-banner__vp380__koyu__alfa0.7": {
+      "alfa": 0.7,
+      "enKotuKontrast": 7.3,
+      "gecti": true,
+      "ornekSayisi": 432,
+      "enKotuZemin": "rgb(0, 52, 30)"
+    },
+    "landing-magaza-banner__vp380__koyu__alfa0.8": {
+      "alfa": 0.8,
+      "enKotuKontrast": 8.82,
+      "gecti": true,
+      "ornekSayisi": 432,
+      "enKotuZemin": "rgb(0, 35, 20)"
+    },
+    "magaza-ozelders-banner__vp380__koyu__alfa0": {
+      "alfa": 0,
+      "enKotuKontrast": 9.32,
+      "gecti": true,
+      "ornekSayisi": 504,
+      "enKotuZemin": "rgb(103, 13, 175)"
+    },
+    "magaza-ozelders-banner__vp380__koyu__alfa0.3": {
+      "alfa": 0.3,
+      "enKotuKontrast": 13.16,
+      "gecti": true,
+      "ornekSayisi": 504,
+      "enKotuZemin": "rgb(72, 9, 122)"
+    },
+    "magaza-ozelders-banner__vp380__koyu__alfa0.5": {
+      "alfa": 0.5,
+      "enKotuKontrast": 16.1,
+      "gecti": true,
+      "ornekSayisi": 504,
+      "enKotuZemin": "rgb(51, 6, 87)"
+    },
+    "magaza-ozelders-banner__vp380__koyu__alfa0.6": {
+      "alfa": 0.6,
+      "enKotuKontrast": 17.44,
+      "gecti": true,
+      "ornekSayisi": 504,
+      "enKotuZemin": "rgb(41, 5, 70)"
+    },
+    "magaza-ozelders-banner__vp380__koyu__alfa0.7": {
+      "alfa": 0.7,
+      "enKotuKontrast": 18.79,
+      "gecti": true,
+      "ornekSayisi": 504,
+      "enKotuZemin": "rgb(30, 3, 52)"
+    },
+    "magaza-ozelders-banner__vp380__koyu__alfa0.8": {
+      "alfa": 0.8,
+      "enKotuKontrast": 19.76,
+      "gecti": true,
+      "ornekSayisi": 504,
+      "enKotuZemin": "rgb(20, 2, 35)"
+    }
+  }
+}
