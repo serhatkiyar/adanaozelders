@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from sqlalchemy import text
+from sqlalchemy import select, text
 
 from api.router import api_router
 from core.config import settings
@@ -222,6 +222,50 @@ async def lifespan(app: FastAPI):
                     row["branch"],
                     ", ".join(row["blockers"]),
                 )
+
+    # ── Tedarikçi senkronu: DIŞ İSTEK ATACAK MI? ──
+    #
+    # Bu satır bir olaydan sonra eklendi. Geliştirme makinesinde tedarikçi
+    # ETKİN + token'lı bırakılmıştı ve `SUPPLIER_NETWORK_DISABLED` kapalıydı;
+    # arka plan döngüsü açılıştan ~19 sn sonra Yıldırım'ın CANLI sunucusuna
+    # istek attı. Kimse bir şey yapmadı, hiçbir hata çıkmadı — davranış
+    # tamamen SESSİZDİ ve ancak log tek tek okunduğunda görüldü.
+    #
+    # Guard zaten vardı (`SUPPLIER_NETWORK_DISABLED`); eksik olan GÖRÜNÜRLÜKTÜ.
+    # Artık açılışta hangi hosta çıkılacağı yazılıyor. Üretimde bu normaldir ve
+    # INFO'dur; geliştirmede WARNING, çünkü orada genellikle istenmez.
+    try:
+        async with AsyncSessionLocal() as session:
+            from models.supplier import Supplier
+
+            etkin = (
+                await session.execute(
+                    select(Supplier).where(
+                        Supplier.deleted_at.is_(None),
+                        Supplier.is_enabled.is_(True),
+                        Supplier.api_token.isnot(None),
+                    )
+                )
+            ).scalars().all()
+        for sup in etkin:
+            if settings.SUPPLIER_NETWORK_DISABLED:
+                logger.info(
+                    "Tedarikçi senkronu etkin ama AĞ KAPALI (%s) — istek atılmayacak",
+                    sup.name,
+                )
+            else:
+                (logger.info if settings.is_production else logger.warning)(
+                    "Tedarikçi senkronu ETKİN: %s → %s adresine GERÇEK istek "
+                    "atılacak (stok %s sn, fiyat %s sn). İstemiyorsanız "
+                    "SUPPLIER_NETWORK_DISABLED=True ile açın ya da panelden "
+                    "tedarikçiyi kapatın.",
+                    sup.name,
+                    sup.base_url,
+                    sup.stock_interval_seconds,
+                    sup.price_interval_seconds,
+                )
+    except Exception:  # noqa: BLE001 - teşhis; açılışı engellemez
+        logger.warning("tedarikçi açılış raporu okunamadı", exc_info=True)
 
     # MinIO bucket + anonim-okuma policy'si (best-effort; minio-init'e bağımlılık yok).
     await storage.ensure_bucket()

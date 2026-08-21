@@ -96,6 +96,10 @@ async def tohumla() -> None:
         # Kendi stoğu BİLEREK 0: turun ölçtüğü şey "raf boş ama tedarikçide var".
         urun.supplier_backed = True
         urun.status = "ACTIVE"
+        # `--temizle` ürünü SOFT siler; yeniden tohumlarken diriltilmeli.
+        # Unutulduğunda hata sessizdi: uç 404 döner, tur "vitrin ayağı kaldı"
+        # der ve neden görünmez (ilk koşumda tam olarak bu yaşandı).
+        urun.deleted_at = None
 
         bagli = (
             await s.execute(
