@@ -264,6 +264,7 @@ def _to_search_out(
             p.kind, p.stock, supplier_backed=tedarikciden, supplier_qty=supplier_qty
         ),
         supplier=supplier_info,
+        supplier_backed=tedarikciden,
         # Fiziksel üründe kalan adet; dijitalde None (bkz. şema yorumu).
         stock=(p.stock if p.kind == ProductKind.PHYSICAL.value else None),
         category_id=p.category_id,

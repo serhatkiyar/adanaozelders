@@ -317,6 +317,40 @@ async def test_admin_listesi_zararina_satisi_isaretler(fab, client):
     assert kart["supplier"]["below_cost"] is True
 
 
+async def test_yanit_temin_anahtarinin_MEVCUT_degerini_tasir(fab, client):
+    """SESSİZ VERİ KAYBI nöbetçisi.
+
+    Yönetim formu düzenleme modunda "Tedarikçiden temin" kutusunu bu alandan
+    ön-doldurur. Alan dönmezse kutu her açılışta BOŞ görünür ve kaydeden
+    yönetici `supplier_backed: false` gönderir — AÇIK olan anahtarı farkında
+    olmadan kapatır ve ürün vitrinde sessizce "tükendi"ye düşer.
+
+    Kusur gerçekti: alan ilk sürümde şemada YOKTU ve frontend
+    `initial?.supplier_backed ?? false` okuyordu.
+    """
+    token = await fab.admin_token(izinler=["products.view"])
+    sid = await fab.tedarikci()
+    acik = await fab.urun(stock=0, supplier_backed=True)
+    kapali = await fab.urun(stock=1, supplier_backed=False)
+    await fab.tedarikci_urunu(sid, product_id=acik, link_source="AUTO", stock_qty="3")
+
+    r = await client.get(
+        "/api/v1/store/admin/products",
+        params={"limit": 100},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert r.status_code == 200, r.text
+    kartlar = {k["id"]: k for k in r.json()}
+    assert kartlar[acik]["supplier_backed"] is True
+    assert kartlar[kapali]["supplier_backed"] is False
+
+    # Public yanıt da taşır — vitrin "tedarikçiden temin" notunu buna bakarak
+    # basmıyor (`fulfillment` yeterli) ama alan güvenlidir: bir sır değil,
+    # ürün özniteliğidir.
+    detay = await _detay(client, acik)
+    assert detay["supplier_backed"] is True
+
+
 async def test_admin_tedarikci_filtresi(fab, client):
     token = await fab.admin_token(izinler=["products.view"])
     sid = await fab.tedarikci()

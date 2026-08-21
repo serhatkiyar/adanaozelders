@@ -131,6 +131,15 @@ class ProductSearchOut(BaseModel):
     #: NONE (tükendi) · DIGITAL. **Public'te güvenlidir** — teslim süresi
     #: farkını gizlemek, tutulamayacak bir söz vermek olurdu.
     fulfillment: str = "OWN"
+    #: "Tedarikçiden temin" anahtarının MEVCUT değeri.
+    #:
+    #: Yanıtta dönmek ZORUNDA: yönetim formu düzenleme modunda checkbox'ı bu
+    #: alandan ön-doldurur. Dönmezse kutu her açılışta boş görünür ve kaydeden
+    #: yönetici `supplier_backed: false` gönderir — yani AÇIK olan anahtarı
+    #: farkında olmadan KAPATIR ve ürün vitrinde sessizce "tükendi"ye düşer.
+    #: (`tax_rate`'in yanıtta dönme gerekçesiyle aynı sınıf; orada da kısmi
+    #: PATCH oranı sıfırlıyordu.)
+    supplier_backed: bool = False
     #: Maliyet/marj bloğu — **YALNIZ ADMIN yollarında doldurulur** (D-6).
     #: Şema ortak olduğu için alan burada durur; public yanıtta `None` kalır ve
     #: bunu bir PG testi (`test_supplier_storefront_pg`) gövdeyi tarayarak
