@@ -102,6 +102,8 @@ const DeliveryRunsPage = lazy(() => import("@/pages/admin/delivery/DeliveryRunsP
 const DeliveryRunDetailPage = lazy(() => import("@/pages/admin/delivery/DeliveryRunDetailPage"));
 const DeliveryPerformancePage = lazy(() => import("@/pages/admin/delivery/DeliveryPerformancePage"));
 const DeliveryCouriersPage = lazy(() => import("@/pages/admin/delivery/DeliveryCouriersPage"));
+const DeliveryVehiclesPage = lazy(() => import("@/pages/admin/delivery/DeliveryVehiclesPage"));
+const DeliveryBoardPage = lazy(() => import("@/pages/admin/delivery/DeliveryBoardPage"));
 const DeliveryDriver = lazy(() => import("@/pages/DeliveryDriver"));
 // Zimmet (paketi araca alma) saha ekranından AYRI bir rotadır: aynı sayfada
 // sekme olsaydı, kurye kapıda yanlış moda düşebilirdi (sözleşme §3.4).
@@ -355,6 +357,8 @@ function App() {
           <Route path={PATHS.distanceSales} element={<LegalPage doc="distance-sales" />} />
           <Route path={PATHS.refundPolicy} element={<LegalPage doc="refund" />} />
           <Route path={PATHS.cookiePolicy} element={<LegalPage doc="cookies" />} />
+          <Route path={PATHS.preliminaryInfo} element={<LegalPage doc="preliminary-info" />} />
+          <Route path={PATHS.about} element={<LegalPage doc="about" />} />
 
           {/* ── Destek (public) ── */}
           <Route path={PATHS.faq} element={<FaqPage />} />
@@ -467,6 +471,8 @@ function App() {
                 <Route path="turlar/:id" element={<DeliveryRunDetailPage />} />
                 <Route path="performans" element={<DeliveryPerformancePage />} />
                 <Route path="kuryeler" element={<DeliveryCouriersPage />} />
+                <Route path="araclar" element={<DeliveryVehiclesPage />} />
+                <Route path="tahta" element={<DeliveryBoardPage />} />
               </Route>
               <Route path="rezervasyonlar" element={<AdminBookingsPage />} />
               <Route path="talepler" element={<AdminDemandsPage />} />

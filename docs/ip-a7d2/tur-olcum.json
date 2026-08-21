@@ -1,0 +1,363 @@
+{
+  "olculdu": "2026-08-20T08:50:22.136Z",
+  "tamTur": {
+    "paketler": {
+      "acik-1280": {
+        "tema": "acik",
+        "yatayTasma": false
+      },
+      "acik-380": {
+        "tema": "acik",
+        "yatayTasma": false,
+        "mobilKart": {
+          "kartSayisi": 3,
+          "kartGenisligi": 296,
+          "govdeGenisligi": 380,
+          "yatayTasma": false,
+          "aciciVar": true,
+          "aciciAdi": "PKT-000001 — paket detayı",
+          "aciciKapliyor": true,
+          "icIceButon": 0,
+          "aksiyonEtiketleri": [
+            "Etiket"
+          ],
+          "enKucukDokunmaHedefi": 36
+        }
+      },
+      "koyu-1280": {
+        "tema": "koyu",
+        "yatayTasma": false
+      },
+      "koyu-380": {
+        "tema": "koyu",
+        "yatayTasma": false,
+        "mobilKart": {
+          "kartSayisi": 3,
+          "kartGenisligi": 296,
+          "govdeGenisligi": 380,
+          "yatayTasma": false,
+          "aciciVar": true,
+          "aciciAdi": "PKT-000001 — paket detayı",
+          "aciciKapliyor": true,
+          "icIceButon": 0,
+          "aksiyonEtiketleri": [
+            "Etiket"
+          ],
+          "enKucukDokunmaHedefi": 36
+        }
+      }
+    },
+    "oturumlar": {
+      "acik-1280": {
+        "tema": "acik",
+        "yatayTasma": false
+      },
+      "acik-380": {
+        "tema": "acik",
+        "yatayTasma": false,
+        "mobilKart": {
+          "mobilKartYok": true,
+          "govdeGenisligi": 380,
+          "yatayTasma": false
+        }
+      },
+      "koyu-1280": {
+        "tema": "koyu",
+        "yatayTasma": false
+      },
+      "koyu-380": {
+        "tema": "koyu",
+        "yatayTasma": false,
+        "mobilKart": {
+          "mobilKartYok": true,
+          "govdeGenisligi": 380,
+          "yatayTasma": false
+        }
+      }
+    },
+    "araclar": {
+      "acik-1280": {
+        "tema": "acik",
+        "yatayTasma": false
+      },
+      "acik-380": {
+        "tema": "acik",
+        "yatayTasma": false,
+        "mobilKart": {
+          "mobilKartYok": true,
+          "govdeGenisligi": 380,
+          "yatayTasma": false
+        }
+      },
+      "koyu-1280": {
+        "tema": "koyu",
+        "yatayTasma": false
+      },
+      "koyu-380": {
+        "tema": "koyu",
+        "yatayTasma": false,
+        "mobilKart": {
+          "mobilKartYok": true,
+          "govdeGenisligi": 380,
+          "yatayTasma": false
+        }
+      }
+    }
+  },
+  "kisaTur": {
+    "kataloglar": {
+      "mobilKartYok": true,
+      "govdeGenisligi": 380,
+      "yatayTasma": false
+    },
+    "hakedis": {
+      "mobilKartYok": true,
+      "govdeGenisligi": 380,
+      "yatayTasma": false
+    },
+    "kuryeler": {
+      "mobilKartYok": true,
+      "govdeGenisligi": 380,
+      "yatayTasma": false
+    }
+  },
+  "satirCakismasi": {
+    "acik": {
+      "kart": {
+        "kartSayisi": 3,
+        "kartGenisligi": 296,
+        "govdeGenisligi": 380,
+        "yatayTasma": false,
+        "aciciVar": true,
+        "aciciAdi": "PKT-000001 — paket detayı",
+        "aciciKapliyor": true,
+        "icIceButon": 0,
+        "aksiyonEtiketleri": [
+          "Etiket"
+        ],
+        "enKucukDokunmaHedefi": 36
+      },
+      "aksiyonSonrasi": {
+        "basildi": "Yeniden paketle"
+      },
+      "aksiyonDurumu": {
+        "pencere": {
+          "baslik": "Yeniden dağıtıma ver"
+        },
+        "detaydaMi": false
+      }
+    },
+    "koyu": {
+      "kart": {
+        "kartSayisi": 3,
+        "kartGenisligi": 296,
+        "govdeGenisligi": 380,
+        "yatayTasma": false,
+        "aciciVar": true,
+        "aciciAdi": "PKT-000001 — paket detayı",
+        "aciciKapliyor": true,
+        "icIceButon": 0,
+        "aksiyonEtiketleri": [
+          "Etiket"
+        ],
+        "enKucukDokunmaHedefi": 36
+      },
+      "aksiyonSonrasi": {
+        "basildi": "Yeniden paketle"
+      },
+      "aksiyonDurumu": {
+        "pencere": {
+          "baslik": "Yeniden dağıtıma ver"
+        },
+        "detaydaMi": false
+      }
+    }
+  },
+  "odakTuzagi": {
+    "acildi": {
+      "baslik": "Yeni Deneme Oturumu"
+    },
+    "acanOdakliydi": true,
+    "tabDisinaCikti": false,
+    "shiftTabPencereIcinde": true,
+    "escKapatti": true,
+    "odakIadesi": {
+      "acanaDondu": true,
+      "etiket": "button"
+    }
+  },
+  "kirliKapatma": {
+    "onaySoruldu": true,
+    "editorAyakta": true
+  },
+  "gonderim": {
+    "acik": {
+      "odak": {
+        "etiket": "input",
+        "tip": null,
+        "ad": "Başlık",
+        "ariaInvalid": "true",
+        "pencereIcinde": true
+      },
+      "hata": {
+        "metin": "Başlık en az 2 karakter olmalı.",
+        "renk": "rgb(190, 18, 60)",
+        "fontPx": 12,
+        "kontrast": 6.29,
+        "esik": 4.5,
+        "gecti": true
+      },
+      "colorScheme": [
+        {
+          "tip": "number",
+          "ad": "Ücret (TL)",
+          "colorScheme": "normal"
+        },
+        {
+          "tip": "datetime-local",
+          "ad": "Tarih & saat",
+          "colorScheme": "normal"
+        },
+        {
+          "tip": "number",
+          "ad": "Süre (dk)",
+          "colorScheme": "normal"
+        },
+        {
+          "tip": "number",
+          "ad": "Kontenjan",
+          "colorScheme": "normal"
+        }
+      ]
+    },
+    "koyu": {
+      "odak": {
+        "etiket": "input",
+        "tip": null,
+        "ad": "Başlık",
+        "ariaInvalid": "true",
+        "pencereIcinde": true
+      },
+      "hata": {
+        "metin": "Başlık en az 2 karakter olmalı.",
+        "renk": "rgb(251, 113, 133)",
+        "fontPx": 12,
+        "kontrast": 6.63,
+        "esik": 4.5,
+        "gecti": true
+      },
+      "colorScheme": [
+        {
+          "tip": "number",
+          "ad": "Ücret (TL)",
+          "colorScheme": "dark"
+        },
+        {
+          "tip": "datetime-local",
+          "ad": "Tarih & saat",
+          "colorScheme": "dark"
+        },
+        {
+          "tip": "number",
+          "ad": "Süre (dk)",
+          "colorScheme": "dark"
+        },
+        {
+          "tip": "number",
+          "ad": "Kontenjan",
+          "colorScheme": "dark"
+        }
+      ]
+    }
+  },
+  "aracGonderim": {
+    "acik": {
+      "odak": {
+        "etiket": "input",
+        "tip": null,
+        "ad": "Araç adı",
+        "ariaInvalid": "true",
+        "pencereIcinde": false
+      },
+      "hata": {
+        "metin": "Araç adı (etiket) gerekli.",
+        "renk": "rgb(190, 18, 60)",
+        "fontPx": 12,
+        "kontrast": 6.29,
+        "esik": 4.5,
+        "gecti": true
+      },
+      "colorScheme": [
+        {
+          "tip": "number",
+          "ad": "Durak tavanı (opsiyonel)",
+          "colorScheme": "normal"
+        },
+        {
+          "tip": "time",
+          "ad": "Vardiya başlangıç (opsiyonel)",
+          "colorScheme": "normal"
+        },
+        {
+          "tip": "time",
+          "ad": "Vardiya bitiş (opsiyonel)",
+          "colorScheme": "normal"
+        },
+        {
+          "tip": "number",
+          "ad": "Sabit maliyet (₺/gün)",
+          "colorScheme": "normal"
+        },
+        {
+          "tip": "number",
+          "ad": "Sıra",
+          "colorScheme": "normal"
+        }
+      ]
+    },
+    "koyu": {
+      "odak": {
+        "etiket": "input",
+        "tip": null,
+        "ad": "Araç adı",
+        "ariaInvalid": "true",
+        "pencereIcinde": false
+      },
+      "hata": {
+        "metin": "Araç adı (etiket) gerekli.",
+        "renk": "rgb(251, 113, 133)",
+        "fontPx": 12,
+        "kontrast": 6.63,
+        "esik": 4.5,
+        "gecti": true
+      },
+      "colorScheme": [
+        {
+          "tip": "number",
+          "ad": "Durak tavanı (opsiyonel)",
+          "colorScheme": "dark"
+        },
+        {
+          "tip": "time",
+          "ad": "Vardiya başlangıç (opsiyonel)",
+          "colorScheme": "dark"
+        },
+        {
+          "tip": "time",
+          "ad": "Vardiya bitiş (opsiyonel)",
+          "colorScheme": "dark"
+        },
+        {
+          "tip": "number",
+          "ad": "Sabit maliyet (₺/gün)",
+          "colorScheme": "dark"
+        },
+        {
+          "tip": "number",
+          "ad": "Sıra",
+          "colorScheme": "dark"
+        }
+      ]
+    }
+  }
+}

@@ -1,7 +1,6 @@
-import { useState } from "react";
-
 import { AccessDenied, useAdminAreaAccess } from "@/components/admin/AccessState";
-import { Badge, ConfirmDialog, EmptyState, ErrorState } from "@/components/admin/ui";
+import { Badge, Button, ConfirmDialog, EmptyState, ErrorState } from "@/components/admin/ui";
+import { useDuzenlemeYuzeyi } from "@/components/admin/ui2/duzenlemeYuzeyi";
 import { formatDateTime } from "@/lib/datetime";
 import { formatTL } from "@/lib/money";
 import { getErrorDetail, getErrorMessage } from "@/lib/errors";
@@ -134,7 +133,9 @@ function StuckRow({ kayit }: { kayit: StuckEscrowRecord }) {
 
 function FailedOutboxSection({ canManage }: { canManage: boolean }) {
   const { data, isLoading, isError, error, refetch } = useFailedOutbox();
-  const [secili, setSecili] = useState<FailedOutboxEvent | null>(null);
+  // Pencere durumu ekranda YASAMAZ (IP-A4 sozlesmesi): yeniden kuyruklanacak
+  // olay yuzeyin HEDEFIDIR.
+  const yuzey = useDuzenlemeYuzeyi<FailedOutboxEvent, void>();
   const retry = useRetryOutboxEvent();
 
   return (
@@ -189,13 +190,9 @@ function FailedOutboxSection({ canManage }: { canManage: boolean }) {
                 </p>
               </div>
               {canManage && (
-                <button
-                  type="button"
-                  onClick={() => setSecili(is)}
-                  className="shrink-0 rounded-xl border border-slate-200 bg-white px-3.5 py-1.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 active:scale-95 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
-                >
+                <Button size="sm" variant="secondary" className="shrink-0" onClick={() => yuzey.ac(is)}>
                   Yeniden dene
-                </button>
+                </Button>
               )}
             </li>
           ))}
@@ -203,26 +200,26 @@ function FailedOutboxSection({ canManage }: { canManage: boolean }) {
       )}
 
       <ConfirmDialog
-        open={secili !== null}
+        open={yuzey.acik}
         title="İşi yeniden kuyruğa al"
         description={
-          secili
-            ? `"${secili.kind}" işi (#${secili.id}) yeniden gönderilmek üzere kuyruğa alınacak. Bu işlem müşteriye giden bir bildirimi tetikleyebilir.`
+          yuzey.kayit
+            ? `"${yuzey.kayit.kind}" işi (#${yuzey.kayit.id}) yeniden gönderilmek üzere kuyruğa alınacak. Bu işlem müşteriye giden bir bildirimi tetikleyebilir.`
             : ""
         }
         confirmLabel="İşi yeniden kuyruğa al"
         isPending={retry.isPending}
-        onClose={() => setSecili(null)}
+        onClose={yuzey.kapat}
         onConfirm={() =>
-          secili &&
-          retry.mutate(secili.id, {
+          yuzey.kayit &&
+          retry.mutate(yuzey.kayit.id, {
             onSuccess: (sonuc) => {
               toast.success(
                 sonuc.requeued
                   ? "İş yeniden kuyruğa alındı."
                   : "İş zaten kuyrukta bekliyordu; yeniden kuyruğa alınmadı."
               );
-              setSecili(null);
+              yuzey.kapat();
             },
             onError: (err) =>
               // 409'un gerekçesi ("Gönderilmiş bir bildirim ikinci kez

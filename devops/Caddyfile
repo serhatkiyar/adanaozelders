@@ -86,7 +86,10 @@
 	#
 	# GOOGLEBOT BİLEREK LİSTEDE YOK: Google JS render eder ve gerçek sayfayı
 	# görmelidir. Ona farklı içerik sunmak "cloaking" sayılır ve cezalandırılır.
-	@social_bot header_regexp User-Agent (?i)(facebookexternalhit|twitterbot|whatsapp|linkedinbot|slackbot|telegrambot|discordbot|pinterest|redditbot|skypeuripreview|embedly|quora link preview|vkshare)
+	# Regex TIRNAK İÇİNDE olmalı: "quora link preview" boşluk taşıdığı için
+	# tırnaksız yazıldığında Caddy onu üç ayrı argüman sayar ve config adapter
+	# "wrong argument count ... after 'preview|vkshare)'" ile açılışta ölür.
+	@social_bot header_regexp User-Agent "(?i)(facebookexternalhit|twitterbot|whatsapp|linkedinbot|slackbot|telegrambot|discordbot|pinterest|redditbot|skypeuripreview|embedly|quora link preview|vkshare)"
 	handle @social_bot {
 		rewrite * /__meta?path={uri}
 		reverse_proxy backend:8000

@@ -26,7 +26,6 @@ import {
 } from "@/hooks/useDelivery";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { getErrorMessage } from "@/lib/errors";
-import { VEHICLE_LABEL } from "@/lib/deliveryRun";
 import { ROUTES } from "@/lib/routes";
 import { toast } from "@/store/toastStore";
 import type { DeliveryEligibleOrder } from "@/types";
@@ -210,7 +209,7 @@ function ReadyQueue() {
                   >
                     {openRuns.map((r) => (
                       <option key={r.id} value={r.id}>
-                        Tur #{r.id} · {(VEHICLE_LABEL[r.vehicle] ?? r.vehicle).split(" ")[0]}
+                        Tur #{r.id} · {r.vehicle}
                       </option>
                     ))}
                   </select>
@@ -269,6 +268,8 @@ function OutsourcedQueue() {
   const query = useOutsourcedOrders();
   const qc = useQueryClient();
   const [trackingByOrder, setTrackingByOrder] = useState<Record<number, string>>({});
+  // Alan başına hata slotu — kilitli kararın gereği (aşağıdaki `KargolaSatiri`).
+  const [shipHatalari, setShipHatalari] = useState<Record<number, string | undefined>>({});
   const ship = useMutation({
     mutationFn: ({ id, tracking }: { id: number; tracking: string }) => shipOrder(id, tracking),
     onSuccess: (_d, v) => {
@@ -296,28 +297,15 @@ function OutsourcedQueue() {
                 <Badge tone="neutral">{[o.district, o.city].filter(Boolean).join(" / ")}</Badge>
               )}
               {canShip ? (
-                <div className="flex shrink-0 items-center gap-1.5">
-                  <input
-                    value={trackingByOrder[o.order_id] ?? ""}
-                    onChange={(e) =>
-                      setTrackingByOrder((s) => ({ ...s, [o.order_id]: e.target.value }))
-                    }
-                    placeholder="Takip no"
-                    aria-label={`#${o.order_id} kargo takip numarası`}
-                    className="input w-32 py-1.5 text-xs"
-                  />
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    onClick={() =>
-                      ship.mutate({ id: o.order_id, tracking: trackingByOrder[o.order_id] ?? "" })
-                    }
-                    disabled={!(trackingByOrder[o.order_id] ?? "").trim()}
-                    isPending={ship.isPending && ship.variables?.id === o.order_id}
-                  >
-                    Kargola
-                  </Button>
-                </div>
+                <KargolaSatiri
+                  order={o}
+                  deger={trackingByOrder[o.order_id] ?? ""}
+                  yaz={(v) => setTrackingByOrder((s) => ({ ...s, [o.order_id]: v }))}
+                  hata={shipHatalari[o.order_id]}
+                  hataYaz={(v) => setShipHatalari((s) => ({ ...s, [o.order_id]: v }))}
+                  gonder={(tracking) => ship.mutate({ id: o.order_id, tracking })}
+                  islemSuruyor={ship.isPending && ship.variables?.id === o.order_id}
+                />
               ) : (
                 <Link
                   to={ROUTES.adminStoreOrders}
@@ -331,6 +319,86 @@ function OutsourcedQueue() {
         </ul>
       )}
     </QueueShell>
+  );
+}
+
+/**
+ * Dış kargo satırının takip numarası formu (İP-A8 · Görev 6 · B-10).
+ *
+ * ## Neden ayrı bir bileşen
+ *
+ * Eski hâl satır içindeydi ve gönder düğmesi **geçerlilikle kapanıyordu**
+ * (`disabled={!tracking.trim()}`), hata slotu yoktu. Bu, göçün kilitli
+ * kararlarından birinin — "gönder düğmesi geçerlilikle kapanmaz; kullanıcı
+ * basar, hata ALANDA görünür" — açık ihlaliydi ve bağımsız denetim #3 onu
+ * panelin tamamını elle tarayarak buldu (B-10): bu ekran hiçbir göç
+ * dalgasının kapsamına girmemişti.
+ *
+ * Kullanıcı boş bırakıp bastığında düğme sessizce ölü kalmıyor; **neden**
+ * gönderilmediğini alanın altında okuyor. Slot HER ZAMAN yer kaplar
+ * (`min-h`), böylece hata doğunca satır itilmez — `Form.Item` kuralının bu
+ * satır içi formdaki karşılığı.
+ */
+function KargolaSatiri({
+  order,
+  deger,
+  yaz,
+  hata,
+  hataYaz,
+  gonder,
+  islemSuruyor,
+}: {
+  order: { order_id: number };
+  deger: string;
+  yaz: (v: string) => void;
+  hata: string | undefined;
+  hataYaz: (v: string | undefined) => void;
+  gonder: (tracking: string) => void;
+  islemSuruyor: boolean;
+}) {
+  const alanId = `kargo-takip-${order.order_id}`;
+  const hataId = `${alanId}-hata`;
+  return (
+    <div className="shrink-0">
+      <div className="flex items-center gap-1.5">
+        <input
+          id={alanId}
+          value={deger}
+          onChange={(e) => {
+            yaz(e.target.value);
+            hataYaz(undefined);
+          }}
+          placeholder="Takip no"
+          aria-label={`#${order.order_id} kargo takip numarası`}
+          aria-invalid={hata ? true : undefined}
+          aria-describedby={hata ? hataId : undefined}
+          className="input w-32 py-1.5 text-xs"
+        />
+        <Button
+          size="sm"
+          variant="secondary"
+          onClick={() => {
+            const tracking = deger.trim();
+            if (!tracking) {
+              hataYaz("Takip numarası girin.");
+              document.getElementById(alanId)?.focus();
+              return;
+            }
+            gonder(tracking);
+          }}
+          isPending={islemSuruyor}
+        >
+          Kargola
+        </Button>
+      </div>
+      <p
+        id={hataId}
+        role={hata ? "alert" : undefined}
+        className="mt-1 min-h-[1rem] text-xs text-rose-700 dark:text-rose-400"
+      >
+        {hata}
+      </p>
+    </div>
   );
 }
 

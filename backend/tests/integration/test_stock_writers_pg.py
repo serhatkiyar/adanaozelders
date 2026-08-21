@@ -15,11 +15,17 @@ from decimal import Decimal
 import pytest
 from sqlalchemy import select, text
 
+from core import flags
 from core.database import AsyncSessionLocal
 from tests.integration.db_guard import purge_products
 from models.store import Product, StockMovement
 from schemas.store import ProductCreate, ProductUpdate
-from services import order_service, stock_ledger, store_service
+from services import (
+    feature_flag_service,
+    order_service,
+    stock_ledger,
+    store_service,
+)
 from services.stock_ledger import StockMovementType
 
 ADMIN_ID = 1
@@ -245,7 +251,37 @@ async def test_w4_urun_olusturma_INITIAL_hareketi_yazar(fab):
     assert await _sku(detay.id) == f"FZK-{detay.id:06d}"
 
 
-async def test_w4_dijital_urun_SKU_alir_hareket_ALMAZ(fab):
+@pytest.fixture
+async def dijital_satis_acik(pg):
+    """Dijital ürün OLUŞTURMA kapısını bu test için açar.
+
+    Bu testin konusu stok defteri (dijital ürün SKU alır ama hareket almaz),
+    satış politikası DEĞİL. `digital_products_live` varsayılan olarak kapalı
+    ve `create_product` artık bu bayrağı okuduğu için (dijital ürün satılamaz
+    ve `kind` sonradan düzeltilemez — bkz. test_digital_create_gate_pg.py),
+    testin ön koşulu açıkça kurulur. Bayrak satırı teardown'da silinir.
+    """
+    async with AsyncSessionLocal() as s:
+        await feature_flag_service.set_flag(
+            s,
+            key=flags.FLAG_DIGITAL_PRODUCTS_LIVE,
+            enabled=True,
+            admin_id=ADMIN_ID,
+            note="stok defteri testi ön koşulu",
+        )
+        await s.commit()
+    flags.invalidate(flags.FLAG_DIGITAL_PRODUCTS_LIVE)
+    yield
+    async with AsyncSessionLocal() as s:
+        await s.execute(
+            text("DELETE FROM feature_flags WHERE key = :k"),
+            {"k": flags.FLAG_DIGITAL_PRODUCTS_LIVE},
+        )
+        await s.commit()
+    flags.invalidate(flags.FLAG_DIGITAL_PRODUCTS_LIVE)
+
+
+async def test_w4_dijital_urun_SKU_alir_hareket_ALMAZ(fab, dijital_satis_acik):
     """§3g0: dijital ürün stok yönetimine tabi değil."""
     async with AsyncSessionLocal() as s:
         detay = await store_service.create_product(

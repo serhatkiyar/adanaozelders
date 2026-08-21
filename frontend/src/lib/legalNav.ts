@@ -12,10 +12,12 @@ export interface LegalNavItem {
 }
 
 export const LEGAL_NAV: readonly LegalNavItem[] = [
+  { id: "about", title: "Hakkımızda", path: LEGAL_ROUTES.about },
   { id: "kvkk", title: "KVKK Aydınlatma Metni", path: LEGAL_ROUTES.kvkk },
   { id: "privacy", title: "Gizlilik Politikası", path: LEGAL_ROUTES.privacy },
   { id: "terms", title: "Kullanım Koşulları", path: LEGAL_ROUTES.terms },
+  { id: "preliminary-info", title: "Ön Bilgilendirme Formu", path: LEGAL_ROUTES["preliminary-info"] },
   { id: "distance-sales", title: "Mesafeli Satış Sözleşmesi", path: LEGAL_ROUTES["distance-sales"] },
-  { id: "refund", title: "İptal ve İade Politikası", path: LEGAL_ROUTES.refund },
+  { id: "refund", title: "Teslimat, İptal ve İade Politikası", path: LEGAL_ROUTES.refund },
   { id: "cookies", title: "Çerez Politikası", path: LEGAL_ROUTES.cookies },
 ];

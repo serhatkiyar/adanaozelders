@@ -10,8 +10,6 @@ from services.delivery_promise import (
 
 UTC = datetime.timezone.utc
 
-# Depo: Seyhan (config varsayılanı).
-DEPOT = dict(depot_lat=36.9855, depot_lng=35.3253)
 DISTRICTS = ["Seyhan", "Yüreğir", "Çukurova", "Sarıçam"]
 
 
@@ -90,36 +88,33 @@ def test_countdown_after_cutoff_none():
 # ── Bölge kontrolü ────────────────────────────────────────────────────────────────
 
 
-def _zone(lat=None, lng=None, city=None, district=None, radius=25.0):
-    return in_delivery_zone(
-        lat, lng, city, district, radius_km=radius, districts=DISTRICTS, **DEPOT
-    )
+def _zone(city=None, district=None):
+    return in_delivery_zone(city, district, districts=DISTRICTS)
 
 
-def test_pin_inside_radius():
-    # Yüreğir merkez ~5 km.
-    assert _zone(lat=36.9997, lng=35.3854) is True
+# İP-19/K-10 güncellemesi: eski pin/yarıçap testleri KALDIRILDI — bölge
+# kararının tek otoritesi artık ilçe listesidir (yarıçap, uydurma depo
+# koordinatına bağlıydı ve depo diye bir şey yok). İmza nöbetçisi ve tam
+# vaka matrisi `tests/test_ip19_filo_sozlesme.py::test_D16_*`'dadır; buradaki
+# testler fonksiyonun bu dosyadaki mevcut kapsamını (ilçe kararı) korur.
 
 
-def test_pin_outside_radius():
-    # Ceyhan ~43 km — pin varken ilçe metni yok sayılır (pin otorite).
-    assert _zone(lat=37.0246, lng=35.8125, city="Adana", district="Seyhan") is False
-
-
-def test_district_fallback_in_zone():
+def test_district_authority_in_zone():
     assert _zone(city="Adana", district="Yüreğir") is True
 
 
-def test_district_fallback_case_and_accent_insensitive():
+def test_district_case_and_accent_insensitive():
     assert _zone(city="ADANA", district="yuregir") is True
     assert _zone(city="adana", district="CUKUROVA") is True
 
 
-def test_district_fallback_out_of_zone():
+def test_district_out_of_zone():
     assert _zone(city="Adana", district="Ceyhan") is False
     assert _zone(city="Mersin", district="Seyhan") is False
 
 
-def test_unknown_when_no_pin_no_district():
-    assert _zone() is None
-    assert _zone(city="Adana") is None
+def test_missing_info_is_out_of_zone():
+    # Eski davranış None ("bilinmiyor") idi; İP-19 güvenli tarafa çekti —
+    # bilinmeyen adres bölge DIŞI sayılır, dış kargo kuyruğuna düşer (K-10).
+    assert _zone() is False
+    assert _zone(city="Adana") is False

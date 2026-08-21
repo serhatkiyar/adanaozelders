@@ -1,0 +1,3 @@
+dist/index.html                                     1.10 kB │ gzip:  0.59 kB
+✓ built in 27.50s
+EXIT=0

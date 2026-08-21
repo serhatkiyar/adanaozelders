@@ -12,6 +12,9 @@ import {
   useMyStudyReservations,
   usePayStudy,
 } from "@/hooks/useStudy";
+import { PaymentBranchNotice } from "@/components/PaymentBranchNotice";
+import { usePaymentAvailability } from "@/hooks/useFeatureFlags";
+import { isBranchOpen } from "@/lib/paymentAvailability";
 import { formatTRY } from "@/lib/money";
 import { formatDateTime } from "@/lib/datetime";
 import { getErrorMessage } from "@/lib/errors";
@@ -497,6 +500,12 @@ function TicketCard({ reg }: { reg: RegistrationOut }) {
   const [showResult, setShowResult] = useState(false);
   const pay = usePayRegistration();
   const cancel = useCancelRegistration();
+  // Deneme bileti ödemesi kütüphane pazaryeri koluna bağlıdır
+  // (backend/api/routers/library_exams.py:380 → LIBRARY_MARKETPLACE). Kol
+  // kapalıyken buton tıklanabilir kalırsa kullanıcı 503'e yürür; desen
+  // `ExamSessionsSection`/`StudySpaceSection` ile aynıdır.
+  const { data: availability } = usePaymentAvailability();
+  const payOpen = isBranchOpen(availability, "library_marketplace");
   const session = reg.session;
   // Oturum bitti mi? (başlangıç + süre). Geçmiş + okutulmamış = no-show.
   const examEndMs = session
@@ -578,14 +587,23 @@ function TicketCard({ reg }: { reg: RegistrationOut }) {
             <p className="mt-2 text-sm font-bold text-white">{formatTRY(reg.amount)}</p>
 
             {reg.status === "PENDING_PAYMENT" && !isExpired && (
-              <div className="mt-3 flex flex-wrap gap-2">
-                <button onClick={doPay} disabled={pay.isPending} className={PAY_BTN}>
-                  {pay.isPending ? "…" : "Ödemeyi tamamla"}
-                </button>
-                <button onClick={doCancel} disabled={cancel.isPending} className={GHOST_BTN}>
-                  İptal
-                </button>
-              </div>
+              <>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button
+                    onClick={doPay}
+                    disabled={!payOpen || pay.isPending}
+                    className={PAY_BTN}
+                  >
+                    {!payOpen ? "Ödeme kapalı" : pay.isPending ? "…" : "Ödemeyi tamamla"}
+                  </button>
+                  <button onClick={doCancel} disabled={cancel.isPending} className={GHOST_BTN}>
+                    İptal
+                  </button>
+                </div>
+                {!payOpen && (
+                  <PaymentBranchNotice branch="library_marketplace" className="mt-3" />
+                )}
+              </>
             )}
 
             {reg.status === "PAID" && refundableUntilStart(session?.starts_at) && (
@@ -642,6 +660,12 @@ function StudyReservationCard({ res }: { res: StudyReservationOut }) {
   const [showQr, setShowQr] = useState(false);
   const pay = usePayStudy();
   const cancel = useCancelStudy();
+  // Çalışma alanı rezervasyonu da kütüphane pazaryeri kolundadır
+  // (backend/api/routers/study_reservations.py:143 → LIBRARY_MARKETPLACE).
+  // Deneme biletiyle AYNI kol olması bir kopyala-yapıştır değil, backend'de
+  // doğrulanmış durumdur: iki uç da `PaymentBranch.LIBRARY_MARKETPLACE` ister.
+  const { data: availability } = usePaymentAvailability();
+  const payOpen = isBranchOpen(availability, "library_marketplace");
   // Çalışma penceresi bitti mi? Geçmiş + okutulmamış = no-show.
   const isExpired =
     res.status !== "ATTENDED" &&
@@ -709,14 +733,23 @@ function StudyReservationCard({ res }: { res: StudyReservationOut }) {
           <p className="mt-2 text-sm font-bold text-white">{formatTRY(res.amount)}</p>
 
           {res.status === "PENDING_PAYMENT" && !isExpired && (
-            <div className="mt-3 flex flex-wrap gap-2">
-              <button onClick={doPay} disabled={pay.isPending} className={PAY_BTN}>
-                {pay.isPending ? "…" : "Ödemeyi tamamla"}
-              </button>
-              <button onClick={doCancel} disabled={cancel.isPending} className={GHOST_BTN}>
-                İptal
-              </button>
-            </div>
+            <>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button
+                  onClick={doPay}
+                  disabled={!payOpen || pay.isPending}
+                  className={PAY_BTN}
+                >
+                  {!payOpen ? "Ödeme kapalı" : pay.isPending ? "…" : "Ödemeyi tamamla"}
+                </button>
+                <button onClick={doCancel} disabled={cancel.isPending} className={GHOST_BTN}>
+                  İptal
+                </button>
+              </div>
+              {!payOpen && (
+                <PaymentBranchNotice branch="library_marketplace" className="mt-3" />
+              )}
+            </>
           )}
 
           {res.status === "PAID" && refundableUntilStart(res.starts_at) && (

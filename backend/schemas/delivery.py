@@ -7,17 +7,111 @@ import re
 from pydantic import BaseModel, Field, field_validator
 
 
+# ── Filo (İP-19) ─────────────────────────────────────────────────────────────
+
+
+class VehicleCreate(BaseModel):
+    code: str = Field(min_length=1, max_length=20, pattern=r"^[A-Z0-9_-]+$")
+    label: str = Field(min_length=1, max_length=50)
+    plate: str | None = Field(default=None, max_length=20)
+    profile: str = Field(default="car", pattern="^(car|bike|foot)$")
+    max_stops: int | None = Field(default=None, ge=1, le=500)
+    shift_start: datetime.time | None = None
+    shift_end: datetime.time | None = None
+    fixed_cost: int = Field(default=0, ge=0)
+    start_point_id: int | None = None
+    sort_order: int = 0
+
+
+class VehicleUpdate(BaseModel):
+    label: str | None = Field(default=None, min_length=1, max_length=50)
+    plate: str | None = Field(default=None, max_length=20)
+    profile: str | None = Field(default=None, pattern="^(car|bike|foot)$")
+    max_stops: int | None = Field(default=None, ge=1, le=500)
+    shift_start: datetime.time | None = None
+    shift_end: datetime.time | None = None
+    fixed_cost: int | None = Field(default=None, ge=0)
+    start_point_id: int | None = None
+    sort_order: int | None = None
+    is_active: bool | None = None
+
+
+class VehicleOut(BaseModel):
+    id: int
+    code: str
+    label: str
+    plate: str | None = None
+    profile: str
+    max_stops: int | None = None
+    shift_start: datetime.time | None = None
+    shift_end: datetime.time | None = None
+    fixed_cost: int
+    start_point_id: int | None = None
+    sort_order: int
+    is_active: bool
+
+
+class PickupPointCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=80)
+    kind: str = Field(pattern="^(BASE|SUPPLIER)$")
+    address: str | None = Field(default=None, max_length=2000)
+    lat: float = Field(ge=-90, le=90)
+    lng: float = Field(ge=-180, le=180)
+    sort_order: int = 0
+
+
+class PickupPointUpdate(BaseModel):
+    """Başlangıç/toplama noktası düzenlemesi (denetim B-9).
+
+    `kind` DEĞİŞTİRİLEMEZ: bir BASE'i SUPPLIER'a çevirmek, ona bağlı araçların
+    turunu sessizce başka bir yerden başlatırdı. Yanlış tür girildiyse doğru
+    olanı eklenir, yanlış olan pasifleştirilir.
+    """
+
+    name: str | None = Field(default=None, min_length=1, max_length=80)
+    address: str | None = Field(default=None, max_length=2000)
+    lat: float | None = Field(default=None, ge=-90, le=90)
+    lng: float | None = Field(default=None, ge=-180, le=180)
+    sort_order: int | None = None
+    is_active: bool | None = None
+
+
+class PickupPointOut(BaseModel):
+    id: int
+    name: str
+    kind: str
+    address: str | None = None
+    lat: float
+    lng: float
+    sort_order: int
+    is_active: bool
+
+
+class DeliveryMetricsOut(BaseModel):
+    """Beş operasyon metriği (sözleşme §4.3) — hepsi MEVCUT alanlardan türer."""
+
+    on_time_rate: float | None = None
+    first_attempt_rate: float | None = None
+    stops_per_hour: float | None = None
+    fail_reasons: dict[str, int] = Field(default_factory=dict)
+    km_per_delivery: float | None = None
+    delivered: int = 0
+    planned: int = 0
+
+
 class DeliveryRunCreate(BaseModel):
     run_date: datetime.date
-    vehicle: str = Field(default="LADA", pattern="^(LADA|COROLLA)$")
+    # İP-19: araç artık regex'le değil FK ile doğrulanır — `vehicles.id`.
+    vehicle_id: int
     notes: str | None = Field(default=None, max_length=2000)
     courier_id: int | None = None
 
 
 class DeliveryRunUpdate(BaseModel):
-    """Tur meta güncellemesi (şimdilik yalnız kurye ataması)."""
+    """Tur meta güncellemesi: kurye ve/veya araç ataması (İP-19, D-2)."""
 
     courier_id: int | None = None
+    vehicle_id: int | None = None
 
 
 class DispatchDayIn(BaseModel):
@@ -32,13 +126,11 @@ class DispatchDayIn(BaseModel):
 class CourierCreate(BaseModel):
     name: str = Field(min_length=2, max_length=150)
     phone: str | None = Field(default=None, max_length=30)
-    vehicle_plate: str | None = Field(default=None, max_length=20)
 
 
 class CourierUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=2, max_length=150)
     phone: str | None = Field(default=None, max_length=30)
-    vehicle_plate: str | None = Field(default=None, max_length=20)
     is_active: bool | None = None
 
 
@@ -47,7 +139,6 @@ class CourierOut(BaseModel):
     name: str
     phone: str | None = None
     photo_url: str | None = None
-    vehicle_plate: str | None = None
     is_active: bool
 
 
@@ -97,15 +188,20 @@ class DeliveryStopOut(BaseModel):
 class DeliveryRunOut(BaseModel):
     id: int
     run_date: datetime.date
+    # İP-19: `vehicle_id` FK; `vehicle` alanı KORUNDU ama artık aracın görünen
+    # ETİKETİDİR (eski "LADA" kod-string'i değil) — saha/panel ekranları
+    # doğrudan basar, VEHICLE_LABEL sözlüğü kalktı.
+    vehicle_id: int
     vehicle: str
     status: str
     notes: str | None = None
     started_at: datetime.datetime | None = None
     completed_at: datetime.datetime | None = None
     created_at: datetime.datetime
-    # Depo = turun başlangıç noktası (navigasyon ilk ayağı için).
-    depot_lat: float
-    depot_lng: float
+    # Turun başlangıç noktası (navigasyon ilk ayağı). İP-19/K-9: aracın
+    # `start_point`'i, yoksa varsayılan BASE; hiçbiri tanımlı değilse None.
+    depot_lat: float | None = None
+    depot_lng: float | None = None
     # Rota optimizasyonu (Faz B) — son optimize snapshot'ı
     optimized_at: datetime.datetime | None = None
     optimize_provider: str | None = None
@@ -400,3 +496,9 @@ class ScanIn(BaseModel):
 class ScanOut(BaseModel):
     stop: DeliveryStopOut
     run_status: str
+
+class DeliveryBoardOut(BaseModel):
+    """Gün tahtası (İP-19 §4.2): atanmamış havuz + araç bazlı turlar."""
+
+    unassigned: list[EligibleOrderOut]
+    runs: list[DeliveryRunOut]

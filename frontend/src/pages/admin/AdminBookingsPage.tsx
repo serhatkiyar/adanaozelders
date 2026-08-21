@@ -1,13 +1,40 @@
+// Rezervasyon yönetimi — çoklu filtre + satır aksiyonları (iptal / ihtilaf).
+//
+// ## İP-A7d1 · göç dalgası 1, ekran (b)
+//
+// Dalganın "çoklu filtre" ekranı: üç bağımsız filtre (serbest metin + iki
+// ayrık seçim), sunucu tarafı sıralama (iki anahtar TEK olayda yazılır) ve
+// sayfalama. `useUrlDurumu` bugüne dek yalnız tek filtreli pilot ekranda
+// (`DamageEventsPage`) kullanılmıştı; buradaki yazım alanı sınanmamıştı.
+//
+// Göçte değişenler:
+//
+//   1. **Filtreler `useUrlDurumu`da.** Adres parametrelerinin ADLARI korundu
+//      (`q`,`status`,`disputed`,`sort`,`order`,`page`,`limit`): paylaşılmış
+//      eski bağlantılar çalışmaya devam eder. Kazanç: varsayılana eşit değer
+//      artık adrese yazılmıyor ve sayfa sıfırlama kararı ÇAĞRI YERİNDE
+//      tekrarlanmıyor — eskiden her `update(...)` çağrısına elle `page: 1`
+//      yazılıyordu ve bir yerde unutulsa kullanıcı boş sayfada kalırdı.
+//   2. **Pencere durumu ekranda YOK.** `decision` bir `useState`ti; artık
+//      `useDuzenlemeYuzeyi` taşıyor. Kararın TÜRÜ (iptal/ihtilaf/kaldır)
+//      yüzeyin hedefinde yaşar.
+//   3. **Boş durum AYRIŞTI**: "filtre eşleşmedi" bir düzeltme talimatıdır ve
+//      çıkış yolu sunar; "hiç rezervasyon yok" bir durum bildirimidir.
+//
+// Değer doğrulaması (enum beyaz listesi) `parseAdminBookingQuery`de KALDI:
+// `useUrlDurumu` tip ve varsayılan yönetir, `?status=DROP` gibi bir adresi
+// eleyemez. Gerekçe `AdminAuditLogsPage`teki notla aynıdır.
 import { useEffect, useMemo, useState, type FormEvent } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link } from "react-router-dom";
 import type { ColumnDef, OnChangeFn, SortingState } from "@tanstack/react-table";
 import type { AdminBookingSort } from "@/api/admin";
 import { DataTable } from "@/components/admin/data-table";
 import { Badge, Button, ConfirmDialog, ErrorState, ReasonDialog } from "@/components/admin/ui";
+import { useDuzenlemeYuzeyi } from "@/components/admin/ui2/duzenlemeYuzeyi";
 import { useAdminBookingList, useAdminCancelBooking, useAdminToggleDisputeBooking } from "@/hooks/useAdmin";
+import { useUrlDurumu } from "@/hooks/useUrlDurumu";
 import { BOOKING_STATUS_LABEL } from "@/lib/bookingStatus";
 import { parseAdminBookingQuery } from "@/lib/adminOperationsQuery";
-import { setQueryValue } from "@/lib/adminUserQuery";
 import { formatDateTime } from "@/lib/datetime";
 import { getErrorMessage } from "@/lib/errors";
 import { formatTRY } from "@/lib/money";
@@ -24,6 +51,17 @@ const STATUS_TONE: Record<BookingStatus, "warning" | "info" | "danger" | "neutra
   COMPLETED: "success",
 };
 
+/** Adres varsayılanları — anahtar ADLARI eski sürümle birebir aynıdır. */
+const VARSAYILAN = {
+  q: "",
+  status: "",
+  disputed: "",
+  sort: "created_at",
+  order: "desc",
+  page: 1,
+  limit: 25,
+};
+
 type Decision = { kind: "cancel" | "dispute" | "clear"; booking: AdminBookingOut };
 
 function bookingStatus(value: AdminBookingOut["status"]): BookingStatus {
@@ -33,10 +71,30 @@ function bookingStatus(value: AdminBookingOut["status"]): BookingStatus {
 }
 
 export default function AdminBookingsPage() {
-  const [params, setParams] = useSearchParams();
-  const state = parseAdminBookingQuery(params);
+  // `sort`/`order` FİLTRE DEĞİLDİR: farklı sıralamada olmak boş durumun
+  // metnini "filtreyi temizleyin"e çevirmemeli.
+  const { degerler, ayarla, temizle, filtreliMi } = useUrlDurumu(VARSAYILAN, {
+    sayfaAnahtari: "page",
+    filtreDisi: ["page", "limit", "sort", "order"],
+  });
+
+  const state = useMemo(
+    () =>
+      parseAdminBookingQuery(
+        new URLSearchParams(
+          Object.entries(degerler)
+            .filter(([, v]) => v !== "" && v !== undefined)
+            .map(([k, v]) => [k, String(v)] as [string, string])
+        )
+      ),
+    [degerler]
+  );
+
   const [search, setSearch] = useState(state.q);
-  const [decision, setDecision] = useState<Decision | null>(null);
+  // Pencere durumu ekranda DEĞİL: hangi kararın sorulduğu yüzeyin hedefidir.
+  const yuzey = useDuzenlemeYuzeyi<Decision, void>();
+  const karar = yuzey.kayit;
+
   const query = useAdminBookingList({
     limit: state.pageSize,
     offset: (state.page - 1) * state.pageSize,
@@ -52,8 +110,7 @@ export default function AdminBookingsPage() {
   const canManage = useAuthStore((store) => store.user?.admin_permissions?.includes("bookings.manage")) ?? false;
 
   useEffect(() => setSearch(state.q), [state.q]);
-  const update = (changes: Record<string, string | number | boolean | undefined>) =>
-    setParams(setQueryValue(params, changes));
+
   const sorting = useMemo<SortingState>(
     () => [{ id: state.sort, desc: state.order === "desc" }],
     [state.order, state.sort]
@@ -61,22 +118,22 @@ export default function AdminBookingsPage() {
   const changeSorting: OnChangeFn<SortingState> = (updater) => {
     const next = typeof updater === "function" ? updater(sorting) : updater;
     const selected = next[0];
-    update({
+    // Tek çağrı = tek geçmiş girdisi; sayfa sıfırlaması kancanın işidir.
+    ayarla({
       sort: (selected?.id as AdminBookingSort | undefined) ?? "created_at",
       order: selected?.desc === false ? "asc" : "desc",
-      page: 1,
     });
   };
 
   const actions = (booking: AdminBookingOut) => canManage ? (
     <div className="flex flex-wrap gap-2">
       {booking.is_disputed ? (
-        <Button size="sm" variant="secondary" disabled={pending} onClick={() => setDecision({ kind: "clear", booking })}>İhtilafı kaldır</Button>
+        <Button size="sm" variant="secondary" disabled={pending} onClick={() => yuzey.ac({ kind: "clear", booking })}>İhtilafı kaldır</Button>
       ) : (
-        <Button size="sm" variant="secondary" disabled={pending} onClick={() => setDecision({ kind: "dispute", booking })}>İhtilaf işaretle</Button>
+        <Button size="sm" variant="secondary" disabled={pending} onClick={() => yuzey.ac({ kind: "dispute", booking })}>İhtilaf işaretle</Button>
       )}
       {booking.status !== BookingStatus.CANCELLED && booking.status !== BookingStatus.REJECTED && (
-        <Button size="sm" variant="danger" disabled={pending} onClick={() => setDecision({ kind: "cancel", booking })}>İptal / iade</Button>
+        <Button size="sm" variant="danger" disabled={pending} onClick={() => yuzey.ac({ kind: "cancel", booking })}>İptal / iade</Button>
       )}
     </div>
   ) : <span className="text-xs text-slate-400">Salt okunur</span>;
@@ -127,14 +184,18 @@ export default function AdminBookingsPage() {
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
-    update({ q: search.trim() || undefined, page: 1 });
+    ayarla({ q: search.trim() });
   };
-  const close = () => setDecision(null);
+  const close = () => yuzey.kapat();
+  const filtreleriTemizle = () => {
+    setSearch("");
+    temizle();
+  };
   const submitReason = (reason: string) => {
-    if (!decision) return;
-    if (decision.kind === "cancel") {
+    if (!karar) return;
+    if (karar.kind === "cancel") {
       cancel.mutate(
-        { id: decision.booking.id, reason },
+        { id: karar.booking.id, reason },
         {
           onSuccess: () => { toast.success("Rezervasyon iptal edildi."); close(); },
           onError: (error) => toast.error(getErrorMessage(error, "Rezervasyon iptal edilemedi.")),
@@ -142,7 +203,7 @@ export default function AdminBookingsPage() {
       );
     } else {
       dispute.mutate(
-        { id: decision.booking.id, is_disputed: true, admin_notes: reason },
+        { id: karar.booking.id, is_disputed: true, admin_notes: reason },
         {
           onSuccess: () => { toast.success("Rezervasyon ihtilaflı olarak işaretlendi."); close(); },
           onError: (error) => toast.error(getErrorMessage(error, "İhtilaf kaydedilemedi.")),
@@ -156,16 +217,16 @@ export default function AdminBookingsPage() {
       <form onSubmit={submit} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <div className="grid gap-3 md:grid-cols-[minmax(15rem,1fr)_11rem_11rem_auto]">
           <input aria-label="Rezervasyon ara" value={search} maxLength={100} onChange={(event) => setSearch(event.target.value)} placeholder="Eğitmen, öğrenci veya e-posta ara" className="input" />
-          <select aria-label="Rezervasyon durumu" value={state.status ?? ""} onChange={(event) => update({ status: event.target.value || undefined, page: 1 })} className="input">
+          <select aria-label="Rezervasyon durumu" value={degerler.status} onChange={(event) => ayarla({ status: event.target.value })} className="input">
             <option value="">Tüm durumlar</option>
             {Object.values(BookingStatus).map((status) => <option key={status} value={status}>{BOOKING_STATUS_LABEL[status]}</option>)}
           </select>
-          <select aria-label="İhtilaf durumu" value={state.isDisputed === undefined ? "" : String(state.isDisputed)} onChange={(event) => update({ disputed: event.target.value || undefined, page: 1 })} className="input">
+          <select aria-label="İhtilaf durumu" value={degerler.disputed} onChange={(event) => ayarla({ disputed: event.target.value })} className="input">
             <option value="">Tüm ihtilaflar</option>
             <option value="true">Yalnız ihtilaflı</option>
             <option value="false">İhtilafsız</option>
           </select>
-          <div className="flex gap-2"><Button type="submit">Ara</Button><Button variant="ghost" onClick={() => { setSearch(""); setParams({}); }}>Temizle</Button></div>
+          <div className="flex gap-2"><Button type="submit">Ara</Button><Button variant="ghost" onClick={filtreleriTemizle}>Temizle</Button></div>
         </div>
       </form>
 
@@ -177,8 +238,20 @@ export default function AdminBookingsPage() {
           data={query.data?.items ?? []}
           getRowId={(row) => String(row.id)}
           isLoading={query.isLoading}
-          emptyTitle="Rezervasyon bulunamadı"
-          emptyDescription="Arama veya filtreleri değiştirerek tekrar deneyin."
+          /* "Filtre eşleşmedi" ile "hiç kayıt yok" AYRI ekranlardır. */
+          emptyTitle={filtreliMi ? "Bu filtreyle rezervasyon bulunamadı" : "Rezervasyon yok"}
+          emptyDescription={
+            filtreliMi
+              ? "Aradığınız ölçütlere uyan rezervasyon yok. Filtreleri temizleyip tüm listeye bakabilirsiniz."
+              : "Öğrenciler eğitmenlerden ders talep ettikçe rezervasyonlar burada listelenir."
+          }
+          emptyAction={
+            filtreliMi ? (
+              <Button size="sm" variant="secondary" onClick={filtreleriTemizle}>
+                Filtreleri temizle
+              </Button>
+            ) : undefined
+          }
           sorting={sorting}
           onSortingChange={changeSorting}
           renderMobileRow={(booking) => {
@@ -195,36 +268,36 @@ export default function AdminBookingsPage() {
           page={state.page}
           pageSize={state.pageSize}
           total={query.data?.total ?? 0}
-          onPageChange={(page) => update({ page })}
-          onPageSizeChange={(size) => update({ limit: size, page: 1 })}
+          onPageChange={(page) => ayarla({ page })}
+          onPageSizeChange={(size) => ayarla({ limit: size })}
         />
       )}
 
       <ReasonDialog
-        open={decision?.kind === "cancel" || decision?.kind === "dispute"}
-        title={decision?.kind === "cancel" ? "Rezervasyonu iptal et" : "İhtilaf işaretle"}
+        open={karar?.kind === "cancel" || karar?.kind === "dispute"}
+        title={karar?.kind === "cancel" ? "Rezervasyonu iptal et" : "İhtilaf işaretle"}
         description="Gerekçe rezervasyon kaydına ve denetim izine yazılacak."
-        label={decision?.kind === "cancel" ? "İptal gerekçesi" : "İhtilaf gerekçesi"}
+        label={karar?.kind === "cancel" ? "İptal gerekçesi" : "İhtilaf gerekçesi"}
         required
         minLength={3}
         maxLength={500}
-        danger={decision?.kind === "cancel"}
-        confirmLabel={decision?.kind === "cancel" ? "İptal et" : "İhtilaf işaretle"}
+        danger={karar?.kind === "cancel"}
+        confirmLabel={karar?.kind === "cancel" ? "İptal et" : "İhtilaf işaretle"}
         isPending={pending}
         onClose={close}
         onConfirm={submitReason}
       />
       <ConfirmDialog
-        open={decision?.kind === "clear"}
+        open={karar?.kind === "clear"}
         title="İhtilafı kaldır"
         description="Rezervasyonun ihtilaf işareti kaldırılacak."
         confirmLabel="İhtilafı kaldır"
         isPending={dispute.isPending}
         onClose={close}
         onConfirm={() => {
-          if (!decision) return;
+          if (!karar) return;
           dispute.mutate(
-            { id: decision.booking.id, is_disputed: false },
+            { id: karar.booking.id, is_disputed: false },
             {
               onSuccess: () => { toast.success("İhtilaf işareti kaldırıldı."); close(); },
               onError: (error) => toast.error(getErrorMessage(error, "İhtilaf kaldırılamadı.")),

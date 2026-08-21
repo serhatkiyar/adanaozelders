@@ -1,5 +1,15 @@
-import { useMemo, useState, type FormEvent } from "react";
-import { Badge, Button, Dialog, ErrorState, PageSkeleton } from "@/components/admin/ui";
+import { useMemo } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { Badge, Button, ErrorState, PageSkeleton } from "@/components/admin/ui";
+import {
+  DuzenlemePenceresi,
+  useDuzenlemeYuzeyi,
+  useYuzeyKirliFormBekcisi,
+  type DuzenlemeYuzeyiDurumu,
+} from "@/components/admin/ui2/duzenlemeYuzeyi";
+import { Form, sunucuHatasiniUygula } from "@/components/admin/ui2/form";
 import {
   useAdminPermissions,
   useAdminRoleAssignments,
@@ -11,35 +21,60 @@ import {
 import { getErrorMessage } from "@/lib/errors";
 import { useAuthStore } from "@/store/authStore";
 import { toast } from "@/store/toastStore";
-import type { AdminRoleOut } from "@/types";
+import type { AdminPermissionOut, AdminRoleOut } from "@/types";
 
-interface RoleDraft {
-  id?: number;
-  code: string;
-  name: string;
-  description: string;
-  permissionCodes: string[];
+/**
+ * ── İP-A7d4 · göç dalgası 4 ──
+ *
+ * Bu ekran, göçün SON canlı SK-4 sınıfı kusurunu taşıyordu ve onu bulan
+ * **elle arama değil, bu pakette yazılan nöbetçi** oldu
+ * (`__guards__/korumasizPencere.test.ts`).
+ *
+ * Eski hâl: ekran kendi `Dialog`ını kuruyor, içinde rol kodu + rol adı +
+ * 500 karakterlik açıklama + izin kutuları taşıyor, kirli form bekçisini HİÇ
+ * çağırmıyordu. ×/ESC/dış tıklama yazılan her şeyi sormadan siliyordu — bir
+ * YETKİ tanımının ortasında.
+ *
+ * Ayrıca doğrulama tarayıcının `required`/`pattern` özniteliklerine
+ * bırakılmıştı: hata mesajı tarayıcı diline ve baloncuğuna bağlıydı,
+ * ekran okuyucuya `aria-invalid` olarak inmiyordu ve alan başına gerekçe
+ * yazılamıyordu.
+ */
+interface RolHedefi {
+  rol: AdminRoleOut | null;
 }
 
-const EMPTY_DRAFT: RoleDraft = {
-  code: "",
-  name: "",
-  description: "",
-  permissionCodes: [],
-};
+const KOD_DESENI = /^[A-Z][A-Z0-9_]*$/;
+
+const rolSemasi = z.object({
+  code: z
+    .string()
+    .trim()
+    .min(3, "Rol kodu en az 3 karakter olmalı.")
+    .max(50, "Rol kodu en fazla 50 karakter olabilir.")
+    .regex(KOD_DESENI, "Rol kodu büyük harfle başlamalı; yalnız A-Z, 0-9 ve _ içerebilir."),
+  name: z
+    .string()
+    .trim()
+    .min(2, "Rol adı en az 2 karakter olmalı.")
+    .max(100, "Rol adı en fazla 100 karakter olabilir."),
+  description: z.string().max(500, "Açıklama en fazla 500 karakter olabilir."),
+  permissionCodes: z.array(z.string()),
+});
+
+type RolDegerleri = z.infer<typeof rolSemasi>;
 
 export default function AdminAccessPage() {
   const permissionsQuery = useAdminPermissions();
   const rolesQuery = useAdminRoles();
   const assignmentsQuery = useAdminRoleAssignments();
-  const createRole = useCreateAdminRole();
-  const updateRole = useUpdateAdminRole();
   const assignRole = useAssignAdminRole();
   const canManage = useAuthStore((state) => state.user?.admin_permissions?.includes("admin_roles.manage")) ?? false;
-  const [draft, setDraft] = useState<RoleDraft | null>(null);
+  // Pencere durumu ekranda YAŞAMAZ (İP-A4 sözleşmesi).
+  const yuzey = useDuzenlemeYuzeyi<RolHedefi, void>();
 
   const permissionGroups = useMemo(() => {
-    const groups = new Map<string, NonNullable<typeof permissionsQuery.data>>();
+    const groups = new Map<string, AdminPermissionOut[]>();
     for (const permission of permissionsQuery.data ?? []) {
       const current = groups.get(permission.group) ?? [];
       current.push(permission);
@@ -47,49 +82,6 @@ export default function AdminAccessPage() {
     }
     return [...groups.entries()];
   }, [permissionsQuery.data]);
-
-  const openRole = (role?: AdminRoleOut) => {
-    setDraft(role ? {
-      id: role.id,
-      code: role.code,
-      name: role.name,
-      description: role.description ?? "",
-      permissionCodes: role.permission_codes,
-    } : { ...EMPTY_DRAFT, permissionCodes: [] });
-  };
-
-  const togglePermission = (code: string) => setDraft((current) => {
-    if (!current) return current;
-    const selected = current.permissionCodes.includes(code);
-    return {
-      ...current,
-      permissionCodes: selected
-        ? current.permissionCodes.filter((item) => item !== code)
-        : [...current.permissionCodes, code],
-    };
-  });
-
-  const submitRole = (event: FormEvent) => {
-    event.preventDefault();
-    if (!draft) return;
-    const payload = {
-      name: draft.name.trim(),
-      description: draft.description.trim() || null,
-      permission_codes: draft.permissionCodes,
-    };
-    const options = {
-      onSuccess: () => {
-        toast.success(draft.id ? "Yönetici rolü güncellendi." : "Yönetici rolü oluşturuldu.");
-        setDraft(null);
-      },
-      onError: (error: unknown) => toast.error(getErrorMessage(error, "Rol kaydedilemedi.")),
-    };
-    if (draft.id) {
-      updateRole.mutate({ id: draft.id, payload }, options);
-    } else {
-      createRole.mutate({ ...payload, code: draft.code.trim().toUpperCase() }, options);
-    }
-  };
 
   const changeAssignment = (adminId: number, roleId: number) => {
     assignRole.mutate(
@@ -121,7 +113,7 @@ export default function AdminAccessPage() {
             <h2 className="text-lg font-bold text-slate-950 dark:text-white">Yönetici rolleri</h2>
             <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Her yönetici tek bir görev rolüne atanır. Kesin izin kontrolü API tarafında uygulanır.</p>
           </div>
-          {canManage && <Button onClick={() => openRole()}>Yeni rol</Button>}
+          {canManage && <Button onClick={() => yuzey.ac({ rol: null })}>Yeni rol</Button>}
         </div>
         <div className="mt-5 grid gap-3 lg:grid-cols-2">
           {(rolesQuery.data ?? []).map((role) => (
@@ -134,7 +126,7 @@ export default function AdminAccessPage() {
                   </div>
                   <p className="mt-1 font-mono text-xs text-slate-500">{role.code}</p>
                 </div>
-                {canManage && role.code !== "SUPER_ADMIN" && <Button size="sm" variant="secondary" onClick={() => openRole(role)}>Düzenle</Button>}
+                {canManage && role.code !== "SUPER_ADMIN" && <Button size="sm" variant="secondary" onClick={() => yuzey.ac({ rol: role })}>Düzenle</Button>}
               </div>
               {role.description && <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">{role.description}</p>}
               <div className="mt-3 flex flex-wrap gap-2 text-xs">
@@ -173,50 +165,207 @@ export default function AdminAccessPage() {
         </div>
       </section>
 
-      <Dialog
-        open={draft !== null}
-        onClose={() => !(createRole.isPending || updateRole.isPending) && setDraft(null)}
-        title={draft?.id ? "Yönetici rolünü düzenle" : "Yeni yönetici rolü"}
-        description="İzinler en az yetki ilkesine göre seçilmelidir."
-      >
-        {draft && (
-          <form onSubmit={submitRole}>
-            {!draft.id && (
-              <label className="block">
-                <span className="mb-1.5 block text-sm font-semibold">Rol kodu</span>
-                <input className="input" required minLength={3} maxLength={50} pattern="[A-Z][A-Z0-9_]*" value={draft.code} onChange={(event) => setDraft({ ...draft, code: event.target.value.toUpperCase().replace(/[^A-Z0-9_]/g, "") })} placeholder="ICERIK_EDITORU" />
-              </label>
-            )}
-            <label className="mt-4 block">
-              <span className="mb-1.5 block text-sm font-semibold">Rol adı</span>
-              <input className="input" required minLength={2} maxLength={100} value={draft.name} onChange={(event) => setDraft({ ...draft, name: event.target.value })} />
-            </label>
-            <label className="mt-4 block">
-              <span className="mb-1.5 block text-sm font-semibold">Açıklama</span>
-              <textarea className="input min-h-20 resize-y" maxLength={500} value={draft.description} onChange={(event) => setDraft({ ...draft, description: event.target.value })} />
-            </label>
-            <div className="mt-5 space-y-4">
-              {permissionGroups.map(([group, permissions]) => (
-                <fieldset key={group}>
-                  <legend className="text-sm font-bold text-slate-800 dark:text-slate-100">{group}</legend>
-                  <div className="mt-2 grid gap-2 sm:grid-cols-2">
-                    {permissions.map((permission) => (
-                      <label key={permission.code} className="flex cursor-pointer items-start gap-2 rounded-lg border border-slate-200 p-3 text-sm dark:border-slate-700">
-                        <input type="checkbox" className="mt-0.5 h-4 w-4 accent-indigo-600" checked={draft.permissionCodes.includes(permission.code)} onChange={() => togglePermission(permission.code)} />
-                        <span><span className="block font-semibold">{permission.name}</span><span className="font-mono text-[10px] text-slate-500">{permission.code}</span></span>
-                      </label>
-                    ))}
-                  </div>
-                </fieldset>
+      <RolPenceresi yuzey={yuzey} gruplar={permissionGroups} />
+    </div>
+  );
+}
+
+function RolPenceresi({
+  yuzey,
+  gruplar,
+}: {
+  yuzey: DuzenlemeYuzeyiDurumu<RolHedefi, void>;
+  gruplar: [string, AdminPermissionOut[]][];
+}) {
+  const rol = yuzey.kayit?.rol ?? null;
+  return (
+    <DuzenlemePenceresi
+      yuzey={yuzey}
+      baslik={rol ? "Yönetici rolünü düzenle" : "Yeni yönetici rolü"}
+      aciklama="İzinler en az yetki ilkesine göre seçilmelidir."
+    >
+      {/* İçerik hedef başına yeniden kurulur: `key` olmadan bir rolden
+          diğerine geçerken `useForm`un varsayılanları taşınırdı. */}
+      {yuzey.acik && <RolIcerik key={rol?.id ?? "yeni"} yuzey={yuzey} rol={rol} gruplar={gruplar} />}
+    </DuzenlemePenceresi>
+  );
+}
+
+function RolIcerik({
+  yuzey,
+  rol,
+  gruplar,
+}: {
+  yuzey: DuzenlemeYuzeyiDurumu<RolHedefi, void>;
+  rol: AdminRoleOut | null;
+  gruplar: [string, AdminPermissionOut[]][];
+}) {
+  const createRole = useCreateAdminRole();
+  const updateRole = useUpdateAdminRole();
+  const sunucuHatasi = createRole.error ?? updateRole.error;
+  const islemSuruyor = createRole.isPending || updateRole.isPending;
+
+  const form = useForm<RolDegerleri>({
+    resolver: zodResolver(rolSemasi),
+    defaultValues: {
+      // Düzenlemede kod alanı basılmaz ama şema onu ister; mevcut kod
+      // taşınır ki "kod geçersiz" diye bir hayalet hata doğmasın.
+      code: rol?.code ?? "",
+      name: rol?.name ?? "",
+      description: rol?.description ?? "",
+      permissionCodes: rol?.permission_codes ?? [],
+    },
+    mode: "onChange",
+    shouldFocusError: false,
+  });
+
+  useYuzeyKirliFormBekcisi({ form, sunucuHatasi });
+
+  const gonder = form.handleSubmit(
+    (deger) => {
+      form.clearErrors("root.sunucu");
+      const payload = {
+        name: deger.name.trim(),
+        description: deger.description.trim() || null,
+        permission_codes: deger.permissionCodes,
+      };
+      const secenekler = {
+        onSuccess: () => {
+          toast.success(rol ? "Yönetici rolü güncellendi." : "Yönetici rolü oluşturuldu.");
+          yuzey.kapat();
+        },
+        onError: (hata: unknown) => {
+          const kalan = sunucuHatasiniUygula(
+            hata,
+            form,
+            ["code", "name", "description"],
+            { permission_codes: "permissionCodes" },
+            (h) => getErrorMessage(h, "Rol kaydedilemedi.")
+          );
+          form.setError("root.sunucu", { type: "server", message: kalan ?? undefined });
+        },
+      };
+      if (rol) updateRole.mutate({ id: rol.id, payload }, secenekler);
+      else createRole.mutate({ ...payload, code: deger.code.trim().toUpperCase() }, secenekler);
+    },
+    (hatalar) => {
+      // Odak İLK hatalı alana: `shouldFocusError` kapalı çünkü pencere
+      // açılışındaki odak yönetimiyle yarışırdı.
+      const sira: (keyof RolDegerleri)[] = ["code", "name", "description"];
+      const ilk = sira.find((ad) => hatalar[ad]);
+      if (ilk) form.setFocus(ilk);
+    }
+  );
+
+  const genelHata = form.formState.errors.root?.sunucu?.message;
+  const secili = form.watch("permissionCodes");
+
+  return (
+    <div className="space-y-4">
+      {genelHata && (
+        <p
+          role="alert"
+          className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700 dark:bg-rose-500/10 dark:text-rose-300"
+        >
+          {genelHata}
+        </p>
+      )}
+
+      {!rol && (
+        <Form.Field
+          control={form.control}
+          name="code"
+          render={({ field }) => (
+            <Form.Item>
+              <Form.Label>Rol kodu</Form.Label>
+              <Form.Control>
+                <input
+                  className="input"
+                  maxLength={50}
+                  placeholder="ICERIK_EDITORU"
+                  {...field}
+                  onChange={(event) =>
+                    field.onChange(event.target.value.toUpperCase().replace(/[^A-Z0-9_]/g, ""))
+                  }
+                />
+              </Form.Control>
+              <Form.Hint>Oluşturulduktan sonra değiştirilemez.</Form.Hint>
+              <Form.ErrorMessage />
+            </Form.Item>
+          )}
+        />
+      )}
+
+      <Form.Field
+        control={form.control}
+        name="name"
+        render={({ field }) => (
+          <Form.Item>
+            <Form.Label>Rol adı</Form.Label>
+            <Form.Control>
+              <input className="input" maxLength={100} {...field} />
+            </Form.Control>
+            <Form.ErrorMessage />
+          </Form.Item>
+        )}
+      />
+
+      <Form.Field
+        control={form.control}
+        name="description"
+        render={({ field }) => (
+          <Form.Item>
+            <Form.Label optional>Açıklama</Form.Label>
+            <Form.Control>
+              <textarea className="input min-h-20 resize-y" maxLength={500} {...field} />
+            </Form.Control>
+            <Form.ErrorMessage />
+          </Form.Item>
+        )}
+      />
+
+      <div className="space-y-4">
+        {gruplar.map(([grup, izinler]) => (
+          <fieldset key={grup}>
+            <legend className="text-sm font-bold text-slate-800 dark:text-slate-100">{grup}</legend>
+            <div className="mt-2 grid gap-2 sm:grid-cols-2">
+              {izinler.map((izin) => (
+                <label
+                  key={izin.code}
+                  className="flex cursor-pointer items-start gap-2 rounded-lg border border-slate-200 p-3 text-sm dark:border-slate-700"
+                >
+                  <input
+                    type="checkbox"
+                    className="mt-0.5 h-4 w-4 accent-indigo-600"
+                    checked={secili.includes(izin.code)}
+                    onChange={(event) =>
+                      form.setValue(
+                        "permissionCodes",
+                        event.target.checked
+                          ? [...secili, izin.code]
+                          : secili.filter((kod) => kod !== izin.code),
+                        { shouldDirty: true }
+                      )
+                    }
+                  />
+                  <span>
+                    <span className="block font-semibold">{izin.name}</span>
+                    <span className="font-mono text-[10px] text-slate-500">{izin.code}</span>
+                  </span>
+                </label>
               ))}
             </div>
-            <div className="mt-6 flex justify-end gap-2">
-              <Button variant="secondary" onClick={() => setDraft(null)} disabled={createRole.isPending || updateRole.isPending}>Vazgeç</Button>
-              <Button type="submit" isPending={createRole.isPending || updateRole.isPending}>Kaydet</Button>
-            </div>
-          </form>
-        )}
-      </Dialog>
+          </fieldset>
+        ))}
+      </div>
+
+      <div className="flex justify-end">
+        {/* Düğme geçerlilikle KAPANMAZ (kilitli karar): boş bırakan kullanıcı
+            NEDEN gönderemediğini alanın altında görür. */}
+        <Button isPending={islemSuruyor} onClick={gonder}>
+          Kaydet
+        </Button>
+      </div>
     </div>
   );
 }

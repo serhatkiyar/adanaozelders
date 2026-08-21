@@ -1,0 +1,7 @@
+ × src/components/admin/ui2/a6cSozlesme.test.tsx > T3 · BULGU-4 · aynı olayda iki `ayarla` çağrısı > T3 — ikisi de yazılır (ilk yazım yutulmaz)
+   → ilk `ayarla` çağrısı sessizce kayboldu: expected { q: '', sayfa: 3 } to deeply equal { q: 'a', sayfa: 3 }
+ ✓ src/components/admin/ui2/a6cSozlesme.test.tsx > T3 · BULGU-4 · aynı olayda iki `ayarla` çağrısı > T3⁻ — sonraki OLAYDA sayfa sıfırlama kuralı hâlâ işler
+ ✓ src/components/admin/ui2/a6cSozlesme.test.tsx > T3 · BULGU-4 · aynı olayda iki `ayarla` çağrısı > T3⁻ — DIŞARIDAN gelen adres değişimi ezilmez
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+ ❯ src/components/admin/ui2/a6cSozlesme.test.tsx:128:69
+      Tests  1 failed | 2 passed | 21 skipped (24)

@@ -22,32 +22,80 @@
 // `backend/schemas/*.py` ve `src/types/index.ts` okunarak yazılmıştır; uydurma
 // alan yoktur.
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { configure, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+// ── Ağır ortak modül BİLE BİLE statik import ediliyor (İP-A7d2 · Görev 5) ──
+//
+// Ekranlar `import.meta.glob` ile TEMBEL yükleniyor ve maliyeti ilk testin
+// İÇİNDE ödeniyor. `OperatorSessions` → `ExamSessionsManager` A7d2'de ortak
+// düzenleme yüzeyine (dolayısıyla `@medusajs/ui`ye) bağlanınca ölçüldü:
+//
+//   | Modül | Süre |
+//   |---|---|
+//   | Calendar / Leaderboard / Learn / Notifications | 46–260 ms |
+//   | Settings / OperatorHome | 546–927 ms |
+//   | **OperatorSessions** | **11.235 ms** |
+//
+// G-1 ve G-2 testleri 20 sn'lik bütçeyi aştı. Bütçe BÜYÜTÜLMEDİ: yavaşlık
+// üretim kodunda değil test kurulumunda. Modül burada statik alınınca maliyet
+// TOPLAMA (collect) evresine geçer.
+import "@/components/admin/ui2/duzenlemeYuzeyi";
+import Calendar from "@/pages/Calendar";
+import Leaderboard from "@/pages/Leaderboard";
+import Learn from "@/pages/Learn";
+import Notifications from "@/pages/Notifications";
+import Settings from "@/pages/Settings";
+import OperatorHome from "@/pages/dashboards/OperatorHome";
+import OperatorLibrary from "@/pages/dashboards/OperatorLibrary";
+import OperatorSessions from "@/pages/dashboards/OperatorSessions";
+
 import { apiClient } from "@/api/axios";
+import { dosyaBeklemeButcesi } from "@/test-utils/beklemeButcesi";
 import { useAuthStore } from "@/store/authStore";
+import { adsizKontroller } from "@/test-utils/alanAdlari";
 
 import type { AxiosRequestConfig } from "axios";
 import type { ComponentType } from "react";
 
-// ── Süre bütçesi ────────────────────────────────────────────────────────────
+// ── İP-A7d5 · Görev 3: BİRİ KALKTI, BİRİ SIZINTISIZ HÂLE GETİRİLDİ ──
 //
-// Bu dosya gerçek sayfa ağaçlarını (DashboardShell + üst bar + hook'lar)
-// jsdom'da render eder; esbuild transform'u tek başına birkaç saniye sürer ve
-// projenin 5 sn'lik varsayılan test bütçesi paralel koşuda aşılıyor — ölçülen
-// davranış yüzünden DEĞİL, derleme süresi yüzünden.
+// Burada iki ezme vardı ve ikisinin de gerekçesi AYNI cümleydi: "esbuild
+// transform'u birkaç saniye sürüyor". Yani ölçülen davranış değil, MODÜL
+// YÜKLEME maliyeti bütçeyi yiyordu — ve o maliyet Görev 2'de kaynağında
+// kaldırıldı (ekranlar statik import edildi, maliyet collect evresine geçti).
 //
-// `vi.setConfig` YALNIZ bu dosyayı etkiler; `vitest.config.ts`'teki global
-// ayar (İP-12'nin dokunduğu yer) olduğu gibi kalır.
-vi.setConfig({ testTimeout: 20_000, hookTimeout: 20_000 });
-
-// RTL'in kendi bekleme süresi (`findBy*`) test bütçesinden AYRIDIR ve
-// varsayılanı 1 sn'dir: yavaş bir koşuda sorgu daha patlamadan iddia
-// zamanaşımına uğrayıp "element yok" diyordu. Bekleme süresi uzatılıyor;
-// iddiaların kendisi değişmiyor.
-configure({ asyncUtilTimeout: 5_000 });
+//   1. `vi.setConfig({ testTimeout: 20_000, hookTimeout: 20_000 })` — KALKTI.
+//      `vitest.config.ts`'in yazılı kuralını ("dosya başına testTimeout ezmesi
+//      YAPILMAZ") delen iki dosyadan biriydi. Göç sonrası ÖLÇÜLDÜ: tam suite
+//      yükü altında bu dosyanın EN YAVAŞ testi 3.997 ms (öncesi: ilk test tek
+//      başına 6.923 ms). 9 sn'lik ortak bütçe yeterli.
+//
+//   2. `configure({ asyncUtilTimeout: 5_000 })` — bundan daha kötüsü: RTL'in
+//      `configure`u modül düzeyinde GLOBALDİR ve `@testing-library/dom` bir
+//      node_modules bağımlılığı olduğu için vitest işçisinin ESM önbelleğinde
+//      DOSYALAR ARASINDA paylaşılır (aynı sızıntı `zodTurkce.test.ts`te zod
+//      için belgeli). Ölçüldü: `--pool=forks --singleFork` ile bu dosyadan
+//      SONRA koşan bir sonda `asyncUtilTimeout = 5000` okuyor; tek başına
+//      koşunca 1000. Yani bu satır "yalnız bu dosyanın bütçesi" değildi —
+//      aynı işçide sonra gelen HER dosyanın bütçesini, karışık tohumda
+//      değişen bir kümede sessizce beş katına çıkarıyordu. İP-A6b'nin
+//      BULGU-10'da kaldırdığı global ayar, yan kapıdan geri gelmişti.
+//
+// ── Peki bekleme bütçesi bu dosyada GEREKLİ Mİ? Ölçüldü: EVET ──
+//
+// Ezme kaldırılıp tam suite 12 karışık tohumla koşuldu ve ÜÇ tohumda bu dosya
+// kırmızı düştü (5001, 5041: "Adres & Konum — düzenle" bulunamadı · 5059:
+// "/Kütüphanem/" bulunamadı). Yani buradaki bütçe — sızıntının aksine —
+// gerçek bir yükü taşıyor: dosya sekiz ayrı ağır ekranı jsdom'da render
+// ediyor ve ilk sorgu, ekran boyanana kadar bekliyor. Ölçülen tepe bekleme
+// (üst sınır, tam suite yükü): 3.578 ms.
+//
+// Bütçe geri kondu ama SIZINTISIZ biçimde: `dosyaBeklemeButcesi` değeri
+// `beforeAll`da kurar ve `afterAll`da ÖNCEKİ değerine döndürür; aynı işçide
+// sonra koşan dosyalar varsayılanla başlar.
+dosyaBeklemeButcesi(5_000);
 
 /* ══════════════ Sahte sunucu — gerçek axios örneği, yalnız adapter değişir ══════════════ */
 
@@ -154,34 +202,31 @@ function operatorOturumu() {
   });
 }
 
-const EKRANLAR = import.meta.glob([
-  "./OperatorHome.tsx",
-  "./OperatorSessions.tsx",
-  "../Notifications.tsx",
-  "../Leaderboard.tsx",
-  "../Settings.tsx",
-  "../Calendar.tsx",
-  "../Learn.tsx",
-]);
-
-// Ekran modülleri TEMBEL yüklenir ve önbelleğe alınır: aynı sayfayı kullanan
-// sonraki testler transform maliyetini tekrar ödemez. (Hepsini `beforeAll`'da
-// toplu yüklemek denendi ve 10 sn'lik HOOK bütçesini aşıyor — yedi sayfanın
-// tamamı aynı anda derleniyor.)
-const ONBELLEK = new Map<string, ComponentType>();
-
-async function ekran(yol: string): Promise<ComponentType> {
-  const onbellekli = ONBELLEK.get(yol);
-  if (onbellekli) return onbellekli;
-  const yukle = EKRANLAR[yol];
-  if (!yukle) throw new Error(`HENÜZ YAZILMADI: ${yol}`);
-  const bilesen = ((await yukle()) as { default: ComponentType }).default;
-  ONBELLEK.set(yol, bilesen);
-  return bilesen;
-}
+// ── İP-A7d5 · Görev 2: sekiz ekran da STATİK import ediliyor ──
+//
+// Eskiden `import.meta.glob` + tembel yükleme + `ONBELLEK` vardı. Glob, ekran
+// dosyaları HENÜZ YOKKEN kırmızı matris kurabilmek içindi (red-first idiom);
+// dosyalar yazıldığı gün o gerekçe bitti ve geriye SADECE maliyeti kaldı:
+// sekiz sayfa ağacının transform + değerlendirme süresi İLK TESTİN bütçesinden
+// ödeniyordu (ölçülen: ilk test 6,9 sn — dosyanın geri kalanının ortancası
+// 0,7 sn). Dosyadaki eski not "hepsini `beforeAll`da yüklemek 10 sn'lik KANCA
+// bütçesini aşıyor" diyordu; doğru cevap kancaya taşımak değil, TOPLAMA
+// (collect) evresine taşımaktı — orada hiçbir bütçe yoktur.
+// Ölçüm ve gerekçe: `docs/ip-a7d5-rapor.md` · Görev 2.
+const EKRANLAR: Record<string, ComponentType> = {
+  "./OperatorHome.tsx": OperatorHome,
+  "./OperatorLibrary.tsx": OperatorLibrary,
+  "./OperatorSessions.tsx": OperatorSessions,
+  "../Notifications.tsx": Notifications,
+  "../Leaderboard.tsx": Leaderboard,
+  "../Settings.tsx": Settings,
+  "../Calendar.tsx": Calendar,
+  "../Learn.tsx": Learn,
+};
 
 async function sar(modulYolu: string, rota = "/") {
-  const Bilesen = await ekran(modulYolu);
+  const Bilesen = EKRANLAR[modulYolu];
+  if (!Bilesen) throw new Error(`bilinmeyen ekran: ${modulYolu}`);
   const qc = new QueryClient({
     defaultOptions: { queries: { retry: false, gcTime: 0 }, mutations: { retry: false } },
   });
@@ -766,4 +811,162 @@ describe("N · ortak sayfalarda operatör navigasyonu", () => {
       expect(screen.queryByRole("link", { name: /Rezervasyonlar/i })).toBeNull();
     });
   }
+});
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+ * İP-A7d3 · göç dalgası 3 · ekranlar (7)(8)(9): operatör paneli üçlüsü
+ *
+ * Haritadaki yeri (dalga başındaki taban):
+ *   • `OperatorLibrary`  — 4 ham düğme + **7 adsız kontrol** (tabanın en büyük
+ *     adsız kalemi: beş adres kutusu + on dört saat kutusundan ikisi)
+ *   • `OperatorHome`     — 3 ham düğme + 3 adsız kontrol (şifre paneli)
+ *   • `OperatorSessions` — 3 ham düğme + 1 adsız kontrol (elle bilet kodu)
+ *
+ * A7d2 bu üçlüyü "ayrı sahip, ayrı kabul matrisi" gerekçesiyle elemişti.
+ * Bu dalganın ölçütü BORÇ YOĞUNLUĞU: kalan 26 adsız kontrolün 11'i buradaydı
+ * ve üçünü de almadan sayıyı anlamlı biçimde düşürmek mümkün değildi. Kabul
+ * matrisi karışmasın diye iddialar bu dosyanın SONUNDA, kendi bölümünde durur
+ * ve İP-14'ün mevcut testlerine dokunmaz.
+ * ══════════════════════════════════════════════════════════════════════════ */
+
+describe("İP-A7d3 · operatör paneli göçü", () => {
+  it("OperatorHome · şifre panelinin üç alanı da ADLI", async () => {
+    operatorOturumu();
+    temelUclar();
+    const { container } = await sar("./OperatorHome.tsx");
+
+    fireEvent.click(await screen.findByRole("button", { name: "Şifre değiştir" }));
+    expect(await screen.findByLabelText("Mevcut şifre")).toBeTruthy();
+    expect(screen.getByLabelText(/Yeni şifre \(en az 8/)).toBeTruthy();
+    expect(screen.getByLabelText("Yeni şifre (tekrar)")).toBeTruthy();
+    expect(adsizKontroller(container).map((a) => a.html)).toEqual([]);
+  });
+
+  it("OperatorHome · KAPALI dalda şifre alanları hiç basılmaz (ters prova)", async () => {
+    operatorOturumu();
+    temelUclar();
+    await sar("./OperatorHome.tsx");
+    await screen.findByRole("button", { name: "Şifre değiştir" });
+    expect(screen.queryByLabelText("Mevcut şifre")).toBeNull();
+  });
+
+  it("OperatorHome · kısa şifrede düğme AÇIK kalır, istek GİTMEZ, hata ALANDA çıkar", async () => {
+    operatorOturumu();
+    temelUclar();
+    await sar("./OperatorHome.tsx");
+
+    fireEvent.click(await screen.findByRole("button", { name: "Şifre değiştir" }));
+    const mevcut = await screen.findByLabelText("Mevcut şifre");
+    fireEvent.change(mevcut, { target: { value: "eski-sifre" } });
+    fireEvent.change(screen.getByLabelText(/Yeni şifre \(en az 8/), { target: { value: "kisa" } });
+    await act(async () => {});
+
+    const gonder = screen.getByRole("button", { name: "Şifreyi Güncelle" }) as HTMLButtonElement;
+    expect(gonder.disabled).toBe(false);
+    fireEvent.click(gonder);
+
+    expect(await screen.findByText("Yeni şifre en az 8 karakter olmalı.")).toBeTruthy();
+    expect(gidenler("/change-password", "post")).toHaveLength(0);
+  });
+
+  it("OperatorHome · şifreler eşleşmiyorsa hata TEKRAR alanında çıkar", async () => {
+    operatorOturumu();
+    temelUclar();
+    await sar("./OperatorHome.tsx");
+
+    fireEvent.click(await screen.findByRole("button", { name: "Şifre değiştir" }));
+    fireEvent.change(await screen.findByLabelText("Mevcut şifre"), { target: { value: "eski" } });
+    fireEvent.change(screen.getByLabelText(/Yeni şifre \(en az 8/), {
+      target: { value: "yeterince-uzun" },
+    });
+    fireEvent.change(screen.getByLabelText("Yeni şifre (tekrar)"), { target: { value: "baska" } });
+    fireEvent.click(screen.getByRole("button", { name: "Şifreyi Güncelle" }));
+
+    const mesaj = await screen.findByText("Yeni şifreler eşleşmiyor.");
+    const tekrar = screen.getByLabelText("Yeni şifre (tekrar)");
+    expect(tekrar.getAttribute("aria-describedby") ?? "").toContain(mesaj.id);
+  });
+
+  it("OperatorHome · şifre formu KİRLİYKEN sekme kapatma İPTAL edilir", async () => {
+    operatorOturumu();
+    temelUclar();
+    await sar("./OperatorHome.tsx");
+    fireEvent.click(await screen.findByRole("button", { name: "Şifre değiştir" }));
+
+    const temiz = new Event("beforeunload", { cancelable: true });
+    window.dispatchEvent(temiz);
+    expect(temiz.defaultPrevented).toBe(false);
+
+    fireEvent.change(await screen.findByLabelText("Mevcut şifre"), { target: { value: "x" } });
+    await act(async () => {});
+    const kirli = new Event("beforeunload", { cancelable: true });
+    window.dispatchEvent(kirli);
+    expect(kirli.defaultPrevented).toBe(true);
+  });
+
+  it("OperatorSessions · elle bilet kodu kutusu ADLI", async () => {
+    operatorOturumu();
+    temelUclar();
+    const { container } = await sar("./OperatorSessions.tsx");
+
+    expect(await screen.findByLabelText("Bilet kodu")).toBeTruthy();
+    expect(adsizKontroller(container).map((a) => a.html)).toEqual([]);
+  });
+
+  it("OperatorLibrary · adres dalının BEŞ alanı da ADLI", async () => {
+    operatorOturumu();
+    temelUclar();
+    const { container } = await sar("./OperatorLibrary.tsx");
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: /Adres & Konum — düzenle/ }),
+    );
+    expect(await screen.findByLabelText("İl")).toBeTruthy();
+    expect(screen.getByLabelText("İlçe")).toBeTruthy();
+    expect(screen.getByLabelText("Mahalle")).toBeTruthy();
+    expect(screen.getByLabelText("Sokak / Cadde")).toBeTruthy();
+    expect(screen.getByLabelText("No")).toBeTruthy();
+    expect(adsizKontroller(container).map((a) => a.html)).toEqual([]);
+  });
+
+  it("OperatorLibrary · saat dalının ON DÖRT kutusu da GÜN ADIYLA adlı", async () => {
+    operatorOturumu();
+    temelUclar();
+    const { container } = await sar("./OperatorLibrary.tsx");
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: /Çalışma Saatleri — düzenle/ }),
+    );
+    // Gün varsayılan olarak KAPALI gelir (fixture `hours: []`); saat kutuları
+    // ancak gün açıkken basılır.
+    fireEvent.click((await screen.findAllByRole("checkbox", { name: "Açık" }))[0]);
+    fireEvent.click(screen.getAllByRole("checkbox", { name: "Açık" })[6]);
+    // Gün adı ADIN İÇİNDE: yedi satırın on dört kutusu birbirinden ayırt
+    // edilebilmeli. "Bir yerde bir ad var" iddiası burada yetmez.
+    expect(await screen.findByLabelText("Pazartesi açılış saati")).toBeTruthy();
+    expect(screen.getByLabelText("Pazartesi kapanış saati")).toBeTruthy();
+    expect(screen.getByLabelText("Pazar açılış saati")).toBeTruthy();
+    expect(screen.getByLabelText("Pazar kapanış saati")).toBeTruthy();
+    expect(adsizKontroller(container).map((a) => a.html)).toEqual([]);
+  });
+
+  it("OperatorLibrary · SALT OKUNUR dalda hiçbir kontrol adsız değil (ters prova)", async () => {
+    operatorOturumu();
+    temelUclar();
+    const { container } = await sar("./OperatorLibrary.tsx");
+    await screen.findByRole("button", { name: /Adres & Konum — düzenle/ });
+    expect(adsizKontroller(container).map((a) => a.html)).toEqual([]);
+  });
+
+  it("OperatorLibrary · olanak çipi SEÇİM DURUMUNU beyan eder (aria-pressed)", async () => {
+    operatorOturumu();
+    temelUclar({ kutuphane: KUTUPHANE({ amenities: ["wifi"] }) });
+    await sar("./OperatorLibrary.tsx");
+
+    fireEvent.click(await screen.findByRole("button", { name: /Olanaklar — düzenle/ }));
+    const secili = await screen.findAllByRole("button", { pressed: true });
+    expect(secili.length).toBeGreaterThan(0);
+    expect(screen.getAllByRole("button", { pressed: false }).length).toBeGreaterThan(0);
+  });
 });

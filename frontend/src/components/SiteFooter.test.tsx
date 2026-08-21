@@ -1,0 +1,110 @@
+/**
+ * Ortak footer — GERÇEK DOM davranışı (RTL).
+ *
+ * İki iddiayı korur:
+ *  1. Footer'ın kendisi: yasal linklerin TAMAMI `legalNav`'dan türetilir,
+ *     destek linkleri ve iyzico ödeme rozeti bulunur.
+ *  2. `PublicShell` gerçekten footer render eder. Bu, düzeltmenin asıl
+ *     sebebiydi: yasal sayfalar, SSS, iletişim, eğitmen arama ve profil
+ *     PublicShell kullanıyor ve footer'sız kalıyordu. "Ekledim" demek
+ *     yetmez — shell'i render edip footer'ı DOM'da arıyoruz.
+ */
+import { render, screen, within } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { describe, expect, it } from "vitest";
+
+import { SiteFooter } from "@/components/SiteFooter";
+import { PublicShell } from "@/components/PublicShell";
+import { LEGAL_NAV } from "@/lib/legalNav";
+import { ROUTES } from "@/lib/routes";
+
+function sar(ui: React.ReactNode) {
+  const qc = new QueryClient({
+    defaultOptions: { queries: { retry: false, gcTime: 0 } },
+  });
+  return render(
+    <QueryClientProvider client={qc}>
+      <MemoryRouter>{ui}</MemoryRouter>
+    </QueryClientProvider>
+  );
+}
+
+describe("SiteFooter", () => {
+  it("yasal belgelerin TAMAMINI legalNav'dan türeterek listeler", () => {
+    sar(<SiteFooter />);
+    const footer = screen.getByRole("contentinfo");
+
+    expect(LEGAL_NAV.length).toBeGreaterThan(0);
+    for (const doc of LEGAL_NAV) {
+      const link = within(footer).getByRole("link", { name: doc.title });
+      expect(link.getAttribute("href")).toBe(doc.path);
+    }
+  });
+
+  it("destek linklerini (SSS, İletişim) korur — eski Landing footer'ından", () => {
+    sar(<SiteFooter />);
+    const footer = screen.getByRole("contentinfo");
+    expect(
+      within(footer).getByRole("link", { name: "SSS" }).getAttribute("href")
+    ).toBe(ROUTES.faq);
+    expect(
+      within(footer)
+        .getByRole("link", { name: "İletişim" })
+        .getAttribute("href")
+    ).toBe(ROUTES.contact);
+  });
+
+  it("mağaza footer'ının iki hedefi (gizlilik + kullanım koşulları) kaybolmadı", () => {
+    sar(<SiteFooter />);
+    const footer = screen.getByRole("contentinfo");
+    const hedefler = within(footer)
+      .getAllByRole("link")
+      .map((a) => a.getAttribute("href"));
+    expect(hedefler).toContain(ROUTES.privacy);
+    expect(hedefler).toContain(ROUTES.terms);
+  });
+
+  it("iyzico ödeme rozetini lazy yükler ve erişilebilir metin verir", () => {
+    sar(<SiteFooter />);
+    const footer = screen.getByRole("contentinfo");
+    const rozetler = within(footer).getAllByAltText("iyzico ile güvenli ödeme");
+
+    // Açık + koyu tema sürümü.
+    expect(rozetler).toHaveLength(2);
+    for (const img of rozetler) {
+      expect(img.getAttribute("loading")).toBe("lazy");
+      expect(img.getAttribute("src")).toMatch(/^\/odeme\/iyzico-logo-band/);
+    }
+  });
+
+  it("anonim kullanıcıya giriş/kayıt kısayollarını gösterir", () => {
+    sar(<SiteFooter />);
+    const footer = screen.getByRole("contentinfo");
+    expect(within(footer).getByRole("link", { name: "Giriş Yap" })).toBeTruthy();
+    expect(within(footer).getByRole("link", { name: "Kayıt Ol" })).toBeTruthy();
+  });
+});
+
+describe("PublicShell", () => {
+  it("footer'ı GERÇEKTEN render eder (yasal/SSS/iletişim sayfaları bunu kullanır)", () => {
+    sar(
+      <PublicShell>
+        <p>sayfa içeriği</p>
+      </PublicShell>
+    );
+
+    const footer = screen.getByRole("contentinfo");
+    expect(footer).toBeTruthy();
+    // Footer'ın kimliğini doğrula: yalnız <footer> etiketi değil, BİZİM
+    // footer'ımız olduğunu ödeme rozetinden anlıyoruz.
+    expect(
+      within(footer).getAllByAltText("iyzico ile güvenli ödeme").length
+    ).toBe(2);
+    expect(
+      within(footer)
+        .getByRole("link", { name: LEGAL_NAV[0].title })
+        .getAttribute("href")
+    ).toBe(LEGAL_NAV[0].path);
+  });
+});

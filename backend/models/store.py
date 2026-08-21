@@ -182,6 +182,19 @@ class ProductCategory(Base, TimestampMixin, SoftDeleteMixin):
     sort_order: Mapped[int] = mapped_column(
         Integer, nullable=False, server_default=text("0")
     )
+    # Kategorinin VARSAYILAN KDV oranı (0 ≤ oran < 1) — admin ürün formunun
+    # ön-doldurma kaynağı. NULL = varsayılan yok (bugünkü davranış birebir).
+    #
+    # ⚠️ DEĞERLER MALİ MÜŞAVİR ONAYI BEKLİYOR: kodda/migration'da/seed'de
+    # hiçbir oran YAZILMAZ; kolon NULL doğar, oranlar onay sonrası admin
+    # panelinden girilir. Sunucu bu koldan ASLA oran türetmez —
+    # `Product.tax_rate` ürün başına zorunlu VERİDİR ve tek otoritedir
+    # (bkz. schemas/store.py::_TAX_RATE_FIELD_ARGS notu). Miras kuralı
+    # (yaprak NULL → yaprağa en yakın dolu ata) `inherited_default_tax_rate`
+    # ile SUNUM anında çözülür, kolona yazılmaz.
+    default_tax_rate: Mapped[float | None] = mapped_column(
+        Numeric(5, 4), nullable=True
+    )
 
     products: Mapped[list["Product"]] = relationship(back_populates="category")
 
@@ -193,6 +206,83 @@ class ProductCategory(Base, TimestampMixin, SoftDeleteMixin):
             postgresql_where=text("deleted_at IS NULL"),
         ),
         Index("ix_product_categories_parent", "parent_id"),
+        # Sınır: oran birimi ORAN'dır (0.20 = %20), yüzde değil — Product
+        # tarafındaki sözleşmeyle aynı. Sayısal bir ORAN DEĞERİ içermez.
+        CheckConstraint(
+            "default_tax_rate IS NULL "
+            "OR (default_tax_rate >= 0 AND default_tax_rate < 1)",
+            name="ck_product_categories_default_tax",
+        ),
+    )
+
+
+#: Varyant eksen adlarının KONTROLLÜ sözlüğü. Serbest metin bilinçli olarak
+#: yasak: aynı kavram "Renk"/"renk"/"Colour" diye üç ada bölünürse mağaza
+#: filtreleri (facet) ve varyant seçici birbirini bulamaz. Sözlük kodda bir
+#: sabittir (tablo veya PG enum değil) çünkü:
+#:   * eksen eklemek bir ŞEMA/ÜRÜN KARARIDIR, operasyon verisi değil — tablo
+#:     olsaydı admin CRUD yüzeyi açılır ve serbest büyüme geri gelirdi;
+#:   * PG enum'u `ALTER TYPE ... ADD VALUE` ister ve yeniden adlandırma/silme
+#:     pratikte yoktur — sabit + CHECK aynı DB garantisini verir, migration'ı
+#:     sıradan bir constraint değişikliğidir;
+#:   * sabit, Pydantic şemasında ve frontend'de tek kaynaktan doğrulanabilir.
+#: Yeni eksen = bu tuple'a ekle + CHECK'i yenileyen migration (bilinçli adım).
+VARIANT_AXES: tuple[str, ...] = (
+    "Renk",
+    "Ebat",
+    "Uç Kalınlığı",
+    "Çizgi Tipi",
+    "Yaprak Sayısı",
+    "Kapak Tipi",
+    "Gramaj",
+    "Paket Adedi",
+)
+
+#: CHECK gövdelerinde kullanılan SQL listesi ('Renk','Ebat',…).
+_AXES_SQL = ", ".join(f"'{a}'" for a in VARIANT_AXES)
+
+
+class VariantGroup(Base, TimestampMixin, SoftDeleteMixin):
+    """Varyant grubu — aynı ürünün alış seçenekleri (Trendyol deseni).
+
+    Her varyant `products` tablosunda TAM TEŞEKKÜLLÜ bir üründür (kendi SKU'su,
+    barkodu, stoğu, fiyatı, defter zinciri); grup yalnız "bunlar aynı ürünün
+    seçenekleridir" bilgisini ve eksen ADLARINI taşır. Eksen DEĞERLERİ üründe
+    (`option1_value`/`option2_value`) durur. Varyant adı ayrı kolonda DEĞİL,
+    ürün `title`'ında yaşar ("Fosforlu Kalem - Sarı"): sipariş kalemi snapshot'ı
+    (`OrderItem.title`) böylece kendiliğinden doğru kalır, ayrıca seçenek
+    snapshot'ı gerekmez.
+    """
+
+    __tablename__ = "variant_groups"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    #: Grubun ortak adı (varyant seçicinin başlığı) — üyelerin title'ından ayrı.
+    title: Mapped[str] = mapped_column(String(250), nullable=False)
+    #: 1. eksenin adı (VARIANT_AXES sözlüğünden; CHECK ile zorlanır).
+    option1_name: Mapped[str] = mapped_column(String(30), nullable=False)
+    #: 2. eksen opsiyonel; doluysa 1.'den farklı bir sözlük adı olmalı.
+    option2_name: Mapped[str | None] = mapped_column(String(30), nullable=True)
+
+    products: Mapped[list["Product"]] = relationship(
+        back_populates="variant_group",
+        order_by="Product.variant_sort, Product.id",
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            f"option1_name IN ({_AXES_SQL})",
+            name="ck_variant_groups_opt1_axis",
+        ),
+        CheckConstraint(
+            f"option2_name IS NULL OR option2_name IN ({_AXES_SQL})",
+            name="ck_variant_groups_opt2_axis",
+        ),
+        # Aynı eksen iki kez seçilemez ("Renk × Renk" anlamsız kombinasyon).
+        CheckConstraint(
+            "option2_name IS NULL OR option2_name <> option1_name",
+            name="ck_variant_groups_axes_distinct",
+        ),
     )
 
 
@@ -291,6 +381,24 @@ class Product(Base, TimestampMixin, SoftDeleteMixin):
         ForeignKey("product_categories.id", ondelete="SET NULL"), nullable=True
     )
 
+    # ── Varyant üyeliği (Faz 1) ──
+    # RESTRICT bilinçli (SET NULL değil): grup silinirken FK yalnız bu kolonu
+    # NULL'lar, option değerleri kalır ve satır `ck_products_variant_orphan`'a
+    # çarpardı — yani SET NULL zaten çalışamazdı. Grubu çözmek servis işidir
+    # (üyeleri tek tek gruptan çıkar, sonra grubu soft-delete et).
+    variant_group_id: Mapped[int | None] = mapped_column(
+        ForeignKey("variant_groups.id", ondelete="RESTRICT"), nullable=True
+    )
+    #: Grubun 1./2. ekseni için BU ürünün değeri ("Kırmızı", "A4"). Eksen ADI
+    #: grupta durur; değer serbest metindir (değer sözlüğü yok — "Kırmızı" ile
+    #: "Bordo" ürün kararıdır, facet karışması eksen adında yaşanır).
+    option1_value: Mapped[str | None] = mapped_column(String(60), nullable=True)
+    option2_value: Mapped[str | None] = mapped_column(String(60), nullable=True)
+    #: Varyant seçicideki el sırası (grup içinde; grupsuz üründe anlamsız, 0).
+    variant_sort: Mapped[int] = mapped_column(
+        Integer, nullable=False, server_default=text("0")
+    )
+
     status: Mapped[str] = mapped_column(
         String(10), nullable=False, server_default=text("'DRAFT'")
     )
@@ -328,6 +436,9 @@ class Product(Base, TimestampMixin, SoftDeleteMixin):
     )
 
     category: Mapped["ProductCategory | None"] = relationship(back_populates="products")
+    variant_group: Mapped["VariantGroup | None"] = relationship(
+        back_populates="products"
+    )
     images: Mapped[list["ProductImage"]] = relationship(
         back_populates="product",
         cascade="all, delete-orphan",
@@ -396,6 +507,48 @@ class Product(Base, TimestampMixin, SoftDeleteMixin):
         CheckConstraint(
             "damaged_stock IS NULL OR damaged_stock >= 0",
             name="ck_products_damaged_sign",
+        ),
+        # ── Varyant değişmezleri (Faz 1) ──
+        # Gruba giren ürün rafta fiziksel olarak ayırt edilmek zorundadır:
+        # barkodsuz iki varyant hazırlama/sayım ekranında birbirine karışır
+        # (F26 sınıfı hata). Kural DB'de — CSV/seed/ham SQL de kaçamaz.
+        CheckConstraint(
+            "variant_group_id IS NULL OR barcode IS NOT NULL",
+            name="ck_products_variant_barcode",
+        ),
+        # Gruptaki ürün 1. eksende bir değer TAŞIMAK zorunda; değersiz üye
+        # varyant seçicide adsız bir şık olurdu.
+        CheckConstraint(
+            "variant_group_id IS NULL OR option1_value IS NOT NULL",
+            name="ck_products_variant_opt1",
+        ),
+        # 2. eksen değeri 1.'siz olamaz (eksenler sıralı dolar).
+        CheckConstraint(
+            "option2_value IS NULL OR option1_value IS NOT NULL",
+            name="ck_products_variant_opt2",
+        ),
+        # Grupsuz üründe option değeri olamaz: gruptan çıkarılan ürünün
+        # değerleri de temizlenmek ZORUNDA kalır — bayat "Kırmızı" etiketi
+        # taşıyan bağımsız ürün kalmaz.
+        CheckConstraint(
+            "variant_group_id IS NOT NULL "
+            "OR (option1_value IS NULL AND option2_value IS NULL)",
+            name="ck_products_variant_orphan",
+        ),
+        # Aynı kombinasyon grupta iki kez yazılamaz. NULLS NOT DISTINCT (PG 15+)
+        # şart: tek eksenli grupta option2 hep NULL'dur ve PG varsayılanı
+        # NULL'ları farklı saydığından tekillik sessizce devre dışı kalırdı.
+        # Kısmi: silinmişler ve grupsuz ürünler (üçlüsü tamamen NULL) dışarıda.
+        Index(
+            "uq_products_variant_combo",
+            "variant_group_id",
+            "option1_value",
+            "option2_value",
+            unique=True,
+            postgresql_nulls_not_distinct=True,
+            postgresql_where=text(
+                "deleted_at IS NULL AND variant_group_id IS NOT NULL"
+            ),
         ),
     )
 

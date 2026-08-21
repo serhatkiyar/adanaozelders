@@ -24,6 +24,13 @@ class ProductCategoryOut(BaseModel):
     icon_url: str | None = None
     sort_order: int = 0
     product_count: int | None = None
+    #: Kategorinin KENDİ varsayılan KDV oranı (NULL = yok). Değerler mali
+    #: müşavir onayı bekliyor — kod hiçbir oran YAZMAZ, admin girer.
+    default_tax_rate: Decimal | None = None
+    #: Miras ÇÖZÜLMÜŞ varsayılan (yaprak NULL → yaprağa en yakın dolu ata).
+    #: Yalnız SUNUM/ön-doldurma içindir; ürün oluşturmada sunucu bundan oran
+    #: türetmez (`Product.tax_rate` zorunlu veridir).
+    effective_tax_rate: Decimal | None = None
 
 
 class ProductCategoryCreate(BaseModel):
@@ -31,6 +38,11 @@ class ProductCategoryCreate(BaseModel):
     parent_id: int | None = None
     icon_url: str | None = Field(default=None, max_length=500)
     sort_order: int = 0
+    #: Sınırlar ürün oranıyla aynı sözleşme (aşağıda `_TAX_RATE_FIELD_ARGS` —
+    #: burada henüz tanımlı olmadığından değerler tekrarlanır; birim ORAN).
+    default_tax_rate: Decimal | None = Field(
+        default=None, ge=0, lt=1, max_digits=5, decimal_places=4
+    )
 
 
 class ProductCategoryUpdate(BaseModel):
@@ -38,6 +50,10 @@ class ProductCategoryUpdate(BaseModel):
     parent_id: int | None = None
     icon_url: str | None = Field(default=None, max_length=500)
     sort_order: int | None = None
+    #: `None` göndermek varsayılanı TEMİZLER (exclude_unset ayrımı serviste).
+    default_tax_rate: Decimal | None = Field(
+        default=None, ge=0, lt=1, max_digits=5, decimal_places=4
+    )
 
 
 # ── Ürün ─────────────────────────────────────────────────────────────────────────
@@ -92,6 +108,44 @@ class ProductSearchOut(BaseModel):
     #: Stok kalemi kimliği (`FZK-000042`). Yönetim tarafında aranabilir ve
     #: etiket/sayım ekranlarında ürünü teyit etmeye yarar.
     sku: str | None = None
+    # ── Varyant üyeliği (Faz 2) ──
+    # Yanıtta dönmek zorunda: admin formu mevcut değerleri buradan okur ve
+    # vitrin (Faz 4) kardeş seçiciyi bu alanlarla kurar.
+    variant_group_id: int | None = None
+    option1_value: str | None = None
+    option2_value: str | None = None
+    variant_sort: int = 0
+    barcode: str | None = None
+    #: Kartın temsil ettiği grup üye sayısı (tekil üründe 1). >1 iken kart
+    #: "grup kartıdır": `in_stock` grubun durumudur ve fiyat gösterimi
+    #: `group_min_price` ile "X TL'den başlayan" olur.
+    variant_count: int = 1
+    group_min_price: str | None = None
+
+
+class ProductVariantMemberPublicOut(BaseModel):
+    """Detay sayfası kardeş seçicisindeki tek varyant (public)."""
+
+    id: int
+    slug: str
+    title: str
+    option1_value: str | None = None
+    option2_value: str | None = None
+    variant_sort: int = 0
+    #: Tükenen kardeş listede KALIR ama işaretlenir — seçici onu gizleseydi
+    #: müşteri "bu renk hiç yokmuş" sanırdı; "tükendi" ayrı bir bilgidir.
+    in_stock: bool = True
+    price: str
+
+
+class ProductVariantsPublicOut(BaseModel):
+    """Detaydaki varyant bloğu: eksen ADLARI gruptan gelir (VARIANT_AXES)."""
+
+    group_id: int
+    title: str
+    option1_name: str
+    option2_name: str | None = None
+    members: list[ProductVariantMemberPublicOut] = []
 
 
 class ProductDetailOut(ProductSearchOut):
@@ -110,6 +164,10 @@ class ProductDetailOut(ProductSearchOut):
     cover_type: str | None = None
     images: list[ProductImageOut] = []
     created_at: datetime.datetime | None = None
+    #: Varyant grubundaysa kardeş seçici verisi; grupsuzda None (görsel
+    #: değişimi ek iş İSTEMEZ: seçici kardeşin SAYFASINA gider ve görseller
+    #: zaten ürün başınadır).
+    variants: ProductVariantsPublicOut | None = None
 
 
 #: KDV oranı alanının ORTAK tanımı — üç yazıcı şema (admin oluşturma/güncelleme
@@ -126,6 +184,22 @@ class ProductDetailOut(ProductSearchOut):
 _TAX_RATE_FIELD_ARGS = {"ge": 0, "lt": 1, "max_digits": 5, "decimal_places": 4}
 
 
+class _VariantMemberFields(BaseModel):
+    """Ürünün varyant üyeliği alanları (ProductCreate/ProductUpdate ortak).
+
+    `barcode` burada: bugüne dek hiçbir yazma şemasında yoktu (yalnız insan
+    girdisiyle dolar kuralı gereği elle yönetiliyordu) ama gruplu ürün DB
+    CHECK'i ile barkod TAŞIMAK ZORUNDA — alan API'ye açılmadan varyant
+    oluşturulamazdı. Grupsuz üründe de gönderilebilir (opsiyonel kimlik).
+    """
+
+    variant_group_id: int | None = None
+    option1_value: str | None = Field(default=None, min_length=1, max_length=60)
+    option2_value: str | None = Field(default=None, min_length=1, max_length=60)
+    variant_sort: int | None = Field(default=None, ge=0)
+    barcode: str | None = Field(default=None, min_length=4, max_length=32)
+
+
 class _BookSpecFields(BaseModel):
     """Kitap künyesi (opsiyonel) — ProductCreate/ProductUpdate ortak alanları."""
 
@@ -140,7 +214,7 @@ class _BookSpecFields(BaseModel):
     cover_type: str | None = Field(default=None, max_length=40)
 
 
-class ProductCreate(_BookSpecFields):
+class ProductCreate(_BookSpecFields, _VariantMemberFields):
     """Admin ürün oluşturma (varsayılan PLATFORM/fiziksel). Eğitmen ürünleri ayrı
     seller ucundan gelir (kind=DIGITAL zorlanır)."""
 
@@ -168,7 +242,7 @@ class ProductCreate(_BookSpecFields):
         return self
 
 
-class ProductUpdate(_BookSpecFields):
+class ProductUpdate(_BookSpecFields, _VariantMemberFields):
     title: str | None = Field(default=None, min_length=1, max_length=250)
     description: str | None = None
     price: Decimal | None = Field(default=None, gt=0, max_digits=10, decimal_places=2)
@@ -256,6 +330,107 @@ class SellerEarningsOut(BaseModel):
 class ProductReviewCreate(BaseModel):
     rating: int = Field(ge=1, le=5)
     comment_text: str | None = Field(default=None, max_length=2000)
+
+
+# ── Varyant grubu (Faz 2) ──────────────────────────────────────────────────────────
+
+
+def _eksen_dogrula(ad: str | None) -> str | None:
+    """Eksen adı kontrollü sözlükten olmalı (422 — DB CHECK'e inmeden).
+
+    Sözlüğün tek kaynağı `models.store.VARIANT_AXES`; burada kopyası tutulmaz.
+    """
+    from models.store import VARIANT_AXES
+
+    if ad is not None and ad not in VARIANT_AXES:
+        raise ValueError(
+            f"Eksen adı sözlükten seçilmeli: {', '.join(VARIANT_AXES)}"
+        )
+    return ad
+
+
+class _VariantAxisFields(BaseModel):
+    option1_name: str = Field(min_length=1, max_length=30)
+    option2_name: str | None = Field(default=None, max_length=30)
+
+    _v1 = field_validator("option1_name")(_eksen_dogrula)
+    _v2 = field_validator("option2_name")(_eksen_dogrula)
+
+    @model_validator(mode="after")
+    def _eksenler_farkli(self):
+        if self.option2_name is not None and self.option2_name == self.option1_name:
+            raise ValueError("İki eksen aynı olamaz")
+        return self
+
+
+class VariantGroupCreate(_VariantAxisFields):
+    title: str = Field(min_length=1, max_length=250)
+
+
+class VariantGroupUpdate(BaseModel):
+    """Kısmi güncelleme. `option2_name: None` göndermek ekseni KALDIRMAK
+    demektir (exclude_unset ayrımı serviste yapılır); üyeler değer taşıyorsa
+    servis 409 verir."""
+
+    title: str | None = Field(default=None, min_length=1, max_length=250)
+    option1_name: str | None = Field(default=None, max_length=30)
+    option2_name: str | None = Field(default=None, max_length=30)
+
+    _v1 = field_validator("option1_name")(_eksen_dogrula)
+    _v2 = field_validator("option2_name")(_eksen_dogrula)
+
+
+class VariantGroupOut(BaseModel):
+    id: int
+    title: str
+    option1_name: str
+    option2_name: str | None = None
+    #: Gruba bağlı AKTİF (silinmemiş) ürün sayısı.
+    member_count: int = 0
+
+
+class VariantMemberOut(BaseModel):
+    """Grup detayındaki kardeş satırı (admin varyant tablosu)."""
+
+    id: int
+    title: str
+    option1_value: str | None = None
+    option2_value: str | None = None
+    variant_sort: int = 0
+    price: str
+    stock: int | None = None
+    status: str | None = None
+    cover_url: str | None = None
+    sku: str | None = None
+    barcode: str | None = None
+
+
+class VariantGroupDetailOut(VariantGroupOut):
+    members: list[VariantMemberOut] = []
+
+
+class VariantConfigOut(BaseModel):
+    """Varyant sözlükleri — frontend'in tek kaynağı (kopya sabit tutulmaz)."""
+
+    axes: list[str]
+    book_root_slugs: list[str]
+
+
+class DeriveVariantIn(BaseModel):
+    """Kaynak üründen yeni varyant türetme. Künye/fiyat/görsel kaynaktan
+    kopyalanır; burada yalnız YENİ varyantı ayırt eden alanlar gelir."""
+
+    option1_value: str = Field(min_length=1, max_length=60)
+    option2_value: str | None = Field(default=None, min_length=1, max_length=60)
+    #: Gruplu ürün barkodsuz olamaz (Faz 1 CHECK'i) — türetmede de zorunlu.
+    barcode: str = Field(min_length=4, max_length=32)
+    #: Verilmezse "{kaynak başlığın grupça ortak kökü yoksa kaynak başlık} - {değer}".
+    title: str | None = Field(default=None, min_length=1, max_length=250)
+    price: Decimal | None = Field(
+        default=None, gt=0, max_digits=10, decimal_places=2
+    )
+    variant_sort: int | None = Field(default=None, ge=0)
+    stock: int | None = Field(default=None, ge=0)
 
 
 class ProductReviewOut(BaseModel):

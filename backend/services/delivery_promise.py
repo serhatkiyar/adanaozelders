@@ -16,7 +16,6 @@ from __future__ import annotations
 import datetime
 import unicodedata
 
-from core.routing.haversine import haversine_km
 
 
 def _to_local(dt_utc: datetime.datetime, utc_offset_hours: int) -> datetime.datetime:
@@ -135,23 +134,27 @@ def _fold(s: str) -> str:
 
 
 def in_delivery_zone(
-    lat: float | None,
-    lng: float | None,
     city: str | None,
     district: str | None,
     *,
-    depot_lat: float,
-    depot_lng: float,
-    radius_km: float,
     districts: list[str],
-) -> bool | None:
-    """Teslimat noktası kendi-filo bölgesinde mi? Pin varsa Haversine yarıçapı
-    (otorite — ilçe sınırları geniş, pin doğru); yoksa il+ilçe fallback;
-    hiçbiri yoksa None (bilinmiyor)."""
-    if lat is not None and lng is not None:
-        return haversine_km(depot_lat, depot_lng, float(lat), float(lng)) <= radius_km
+) -> bool:
+    """Teslimat noktası kendi-filo bölgesinde mi? Otorite İLÇE LİSTESİDİR.
+
+    İP-19 / K-10: eski hâl pin varsa **yarıçapı** otorite sayıyordu ve yarıçap
+    DEPO koordinatından ölçülüyordu — aynı değişken hem rotanın başlangıcı hem
+    bölgenin merkeziydi. Depo diye bir şey olmadığı (K-9) ve başlangıç noktası
+    veriye taşındığı için o bağ koptu: başlangıç noktası taşınsa bölge kaymaz.
+
+    Kural sahibin kendi cümlesidir: "Adana kent merkezinde dağıtım yapacağız,
+    kent merkezi içinde değilse kargo firmasına veririz." İlçe listesi bu
+    cümlenin birebir karşılığıdır; yarıçap onun yaklaşık bir vekiliydi.
+
+    İl/ilçe bilinmiyorsa sonuç **bölge dışıdır** (güvenli taraf): yanlış söz
+    vermektense sipariş dış kargo kuyruğuna düşer.
+    """
     if city and district:
         return _fold(city) == _fold("Adana") and _fold(district) in {
             _fold(d) for d in districts
         }
-    return None
+    return False

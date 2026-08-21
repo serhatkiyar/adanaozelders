@@ -11,25 +11,28 @@ import { SITE_NAME } from "@/lib/seo";
  * Önceki plan limited şirketti; metinlerde bir süre var olmayan bir tüzel kişi
  * (`… Ltd. Şti.`) satıcı ve veri sorumlusu olarak görünüyordu — düzeltildi.
  *
- * TODO(lansman): boş alanlar Mesafeli Sözleşmeler Yönetmeliği m.5 uyarınca
- * ZORUNLUDUR, lansmandan önce doldurulmalı:
- *   - `address`: vergi kaydındaki AÇIK adres (kayıt hangi adresteyse o; farklı
- *     bir adres göstermek yanlış beyandır — adres değişecekse önce vergi
- *     dairesine bildirilmeli)
- *   - `phone`: erişilebilir telefon (mesafeli satışta zorunlu)
- *   - `mersis`: ticaret sicili tescili ONAY SÜRECİNDE; numara gelince yazılacak
- *   - `taxOffice`: vergi dairesi adı
+ * Mesafeli Sözleşmeler Yönetmeliği m.5'in zorunlu kıldığı alanlar (açık adres,
+ * telefon, vergi dairesi/numarası) DOLDURULDU — bunlar vergi kaydındaki
+ * bilgilerdir. Adres değişecekse önce vergi dairesine bildirilmeli; kayıttan
+ * farklı bir adres göstermek yanlış beyandır.
+ *
+ * TODO(lansman): `mersis` ticaret sicili tescili ONAY SÜRECİNDE; numara gelince
+ * yazılacak. Boş kaldığı sürece `operatorIdentity()` bu satırı hiç basmaz.
  * `kep` şahıs şirketi için ZORUNLU DEĞİLDİR (sermaye şirketlerine zorunlu);
  * alınırsa `@…kep.tr` uzantılı gerçek KEP adresi yazılmalı — normal e-posta değil.
  */
 export const OPERATOR = {
   name: SITE_NAME,
   entity: "Serhat Kıyar Çukurova Dijital Pazarlama ve Yazılım",
-  address: "Adana, Türkiye",
+  address: "Emek Mah. Oktar Cirit Cad. No: 81 D: 201 Ceyhan/Adana",
   email: "bilgi@adanaozelders.com.tr",
-  phone: "",
+  /** Ekranda ve yasal metinlerde okunacak biçim. */
+  phone: "+90 539 879 63 69",
+  /** `tel:` bağlantısı için boşluksuz biçim — telefon uygulamaları boşluklu
+   *  numarayı bazı platformlarda yanlış ayrıştırır, bu yüzden ayrı tutulur. */
+  phoneHref: "+905398796369",
   taxNumber: "5590521517",
-  taxOffice: "",
+  taxOffice: "Ceyhan Vergi Dairesi Müdürlüğü",
   mersis: "",
   kep: "",
 } as const;
@@ -72,7 +75,9 @@ export type LegalDocId =
   | "terms"
   | "distance-sales"
   | "refund"
-  | "cookies";
+  | "cookies"
+  | "preliminary-info"
+  | "about";
 
 export interface LegalDoc {
   id: LegalDocId;
@@ -417,17 +422,18 @@ const DISTANCE_SALES: LegalDoc = {
   id: "distance-sales",
   title: "Mesafeli Satış Sözleşmesi",
   description:
-    "Adana Özel Ders üzerinden satın alınan özel ders, deneme sınavı oturumu ve çalışma alanı hizmetlerine ilişkin mesafeli satış sözleşmesi.",
-  updatedAt: "2026-06-11",
+    "Adana Özel Ders üzerinden satın alınan özel ders, deneme sınavı oturumu, çalışma alanı hizmetleri ve basılı kitap siparişlerine ilişkin mesafeli satış sözleşmesi.",
+  updatedAt: "2026-08-17",
   sections: [
     {
       id: "taraflar",
       heading: "1. Taraflar",
       blocks: [
         list(
-          "ALICI: Platform üzerinden hizmet satın alan öğrenci (18 yaşından küçükse veli/vasisi).",
+          "ALICI: Platform üzerinden hizmet veya ürün satın alan öğrenci/müşteri (18 yaşından küçükse veli/vasisi).",
           "HİZMET SAĞLAYICI (SATICI): Hizmeti fiilen sunan, Platformda ilanı yayımlanan eğitmen veya kütüphane/etüt merkezi.",
-          `ARACI HİZMET SAĞLAYICI: ${OPERATOR.name} platformu işletmecisi. ${operatorIdentity()}. Platform, satışa aracılık eder ve ödemeyi emanet (escrow) modeliyle güvence altına alır.`
+          `ARACI HİZMET SAĞLAYICI: ${OPERATOR.name} platformu işletmecisi. ${operatorIdentity()}. Platform, hizmet satışına aracılık eder ve ödemeyi emanet (escrow) modeliyle güvence altına alır.`,
+          `SATICI (mağaza ürünleri): Platform mağazasında satışa sunulan basılı kitap ve benzeri fiziksel ürünlerde satıcı, aracı değil doğrudan ${OPERATOR.entity}'dır. Bu ürünlerde emanet modeli uygulanmaz; satış, işletmenin kendi ürününün doğrudan satışıdır.`
         ),
       ],
     },
@@ -436,21 +442,28 @@ const DISTANCE_SALES: LegalDoc = {
       heading: "2. Sözleşmenin Konusu",
       blocks: [
         p(
-          "Bu sözleşme; ALICI'nın Platform üzerinden elektronik ortamda sipariş verdiği aşağıdaki hizmetlerin satışı ve ifası ile tarafların 6502 sayılı Tüketicinin Korunması Hakkında Kanun ve Mesafeli Sözleşmeler Yönetmeliği'nden doğan hak ve yükümlülüklerini düzenler:"
+          "Bu sözleşme; ALICI'nın Platform üzerinden elektronik ortamda sipariş verdiği aşağıdaki hizmet ve ürünlerin satışı, ifası ve teslimi ile tarafların 6502 sayılı Tüketicinin Korunması Hakkında Kanun ve Mesafeli Sözleşmeler Yönetmeliği'nden doğan hak ve yükümlülüklerini düzenler:"
         ),
         list(
           "Özel ders hizmeti (online veya yüz yüze; süre ve tarih rezervasyonda belirtilir).",
           "Deneme sınavı oturumu katılım hakkı (oturum tarihi, türü ve yeri ilanda belirtilir).",
-          "Kütüphane çalışma alanı saatlik kullanım hakkı (tarih ve saat aralığı rezervasyonda belirtilir)."
+          "Kütüphane çalışma alanı saatlik kullanım hakkı (tarih ve saat aralığı rezervasyonda belirtilir).",
+          "Platform mağazasından sipariş edilen BASILI KİTAP ve benzeri fiziksel ürünler (ürün adı, adedi ve fiyatı sipariş özetinde belirtilir)."
+        ),
+        p(
+          "Hizmetlerde Platform aracı hizmet sağlayıcı, basılı kitap satışında ise doğrudan satıcı sıfatıyla hareket eder. Her siparişte hangi sıfatla hareket edildiği sipariş özetinde görünür."
         ),
       ],
     },
     {
       id: "bedel-ve-odeme",
-      heading: "3. Hizmet Bedeli ve Ödeme",
+      heading: "3. Bedel ve Ödeme",
       blocks: [
         p(
           "Hizmet bedeli, sipariş anında Platformda gösterilen ve tüm vergiler dâhil nihai tutardır: özel derste eğitmenin saatlik ücreti × ders süresi; deneme oturumunda ilan edilen katılım ücreti; çalışma alanında saatlik ücret × rezervasyon süresi. Ödeme, iyzico ödeme altyapısı üzerinden kredi/banka kartı ile peşin alınır ve hizmet ifa edilene kadar Platform nezdinde emanette tutulur. Kart bilgileri Platform tarafından saklanmaz."
+        ),
+        p(
+          "Mağaza ürünlerinde bedel, ürün sayfasında ve sipariş özetinde gösterilen tutardır. PLATFORMDA GÖSTERİLEN TÜM FİYATLAR KDV DÂHİLDİR; ALICI'dan sipariş özetinde yer alan tutar dışında ek bir vergi veya masraf talep edilmez. Varsa kargo/teslimat bedeli sipariş özetinde ayrı bir satır olarak gösterilir ve ödeme adımından önce toplam tutara dâhil edilir; sipariş özetinde kargo bedeli görünmüyorsa teslimat ücretsizdir."
         ),
       ],
     },
@@ -467,8 +480,28 @@ const DISTANCE_SALES: LegalDoc = {
       ],
     },
     {
+      id: "teslimat",
+      heading: "5. Fiziksel Ürünlerin Teslimatı",
+      blocks: [
+        p(
+          "Basılı kitap siparişleri, teslimat adresine göre iki şekilde ulaştırılır:"
+        ),
+        list(
+          "ADANA İÇİ: siparişler, Platformun KENDİ ARAÇ VE KURYELERİYLE elden teslim edilir. Teslimat günü kuryemiz adresinize gelir; teslim sırasında telefonunuza gönderilen tek kullanımlık doğrulama kodu ile teslim tamamlanır. Dilerseniz sipariş detayından teslimat tercihinizi (kapıya bırakma, komşuya bırakma, önce arama) belirtebilir veya teslimatı bir sonraki güne erteleyebilirsiniz.",
+          "ADANA DIŞI: siparişler anlaşmalı kargo firmasıyla gönderilir; kargoya verildiğinde takip bilgisi hesabınıza işlenir.",
+          "Teslimat adresi, sipariş sırasında seçtiğiniz adres ve harita konumudur. Adresin doğru ve eksiksiz olmasından ALICI sorumludur; hatalı adres nedeniyle teslim edilemeyen siparişlerde yeniden gönderim yapılabilir."
+        ),
+        p(
+          "Siparişiniz onaylandığında, sipariş özetinde ve sipariş takip sayfasında TAHMİNİ TESLİM GÜNÜ gösterilir. Mesafeli Sözleşmeler Yönetmeliği uyarınca teslim süresi her hâlükârda siparişin SATICI'ya ulaşmasından itibaren OTUZ GÜNÜ geçemez. Bu süre içinde teslim yapılamazsa ALICI sözleşmeyi feshedebilir; fesih hâlinde varsa teslimat masrafları da dâhil olmak üzere tahsil edilen tüm ödemeler iade edilir."
+        ),
+        p(
+          "Teslim aldığınız paketi kurye/kargo görevlisinin yanında kontrol etmeniz önerilir. Pakette gözle görülür hasar varsa teslim almadan tutanak tutturmanız ya da paketi teslim almayıp durumu bize bildirmeniz, sürecin hızlanmasını sağlar; bu, ALICI'nın ayıplı mala ilişkin kanuni haklarını ortadan kaldırmaz."
+        ),
+      ],
+    },
+    {
       id: "cayma-hakki",
-      heading: "5. Cayma Hakkı ve İstisnaları",
+      heading: "6. Cayma Hakkı ve İstisnaları",
       blocks: [
         p(
           "Mesafeli Sözleşmeler Yönetmeliği m.15/1-g uyarınca; BELİRLİ BİR TARİHTE veya dönemde yapılması gereken, konaklama, eşya taşıma, araba kiralama, yiyecek-içecek tedariki ve eğlence veya dinlenme amacıyla yapılan BOŞ ZAMANIN DEĞERLENDİRİLMESİNE İLİŞKİN hizmetlere dair sözleşmelerde cayma hakkı kullanılamaz. Bu kapsamda, belirli tarih ve saate bağlanan deneme sınavı oturumu katılım hakkı ve çalışma alanı rezervasyonlarında cayma hakkı BULUNMAZ. Bununla birlikte SATICI, kanuni bir zorunluluk olmaksızın kendi ticari politikası gereği, oturum/rezervasyon başlangıcına 24 SAATTEN FAZLA süre kalması hâlinde iptal ve tam iade imkânı tanır; bu süreden sonra iptal yapılamaz ve katılım sağlanmaması (no-show) hâlinde iade yapılmaz."
@@ -476,20 +509,49 @@ const DISTANCE_SALES: LegalDoc = {
         p(
           "Özel ders rezervasyonlarında ders henüz ifa edilmeden yapılan iptallerde ödeme emanetten iade edilir. Hizmetin ifasına ALICI onayı ile başlanmış ve hizmet tamamlanmışsa cayma hakkı kullanılamaz (Yönetmelik m.15/1-h). Ayrıntılı iptal/iade kuralları İptal ve İade Politikası'nda yer alır ve bu sözleşmenin ayrılmaz parçasıdır."
         ),
+        p(
+          "FİZİKSEL ÜRÜNLERDE (basılı kitap) durum farklıdır: Mesafeli Sözleşmeler Yönetmeliği m.9 uyarınca ALICI, ürünü teslim aldığı günden itibaren ON DÖRT GÜN içinde hiçbir gerekçe göstermeksizin ve cezai şart ödemeksizin sözleşmeden cayabilir. Cayma hakkı, sözleşmenin kurulmasından teslime kadar olan sürede de kullanılabilir. Cayma bildirimini hesabınızdaki sipariş detayından iade talebi oluşturarak veya aşağıdaki iletişim kanallarından yazılı olarak iletebilirsiniz."
+        ),
+        p(
+          "Basılı kitapta cayma hakkının ÖNEMLİ BİR İSTİSNASI vardır: Yönetmelik m.15/1-e uyarınca, malın tesliminden sonra ambalaj, bant, mühür, paket gibi koruyucu unsurları açılmış olması hâlinde maddi ortamda sunulan kitaplara ilişkin sözleşmelerde cayma hakkı kullanılamaz. Bu nedenle iade etmeyi düşündüğünüz kitabın koruyucu ambalajını açmamanız gerekir."
+        ),
       ],
     },
     {
       id: "iade",
-      heading: "6. İade Usulü",
+      heading: "7. İade Usulü ve Masraflar",
       blocks: [
         p(
           "İade hakkının doğduğu hâllerde tutar, ödemenin yapıldığı karta iyzico aracılığıyla iade edilir. İade, iadenin onaylanmasından itibaren makul süre içinde başlatılır; tutarın karta yansıması bankanıza bağlı olarak 7-14 iş günü sürebilir."
+        ),
+        p(
+          "FİZİKSEL ÜRÜN İADESİNDE usul şöyledir: Cayma bildiriminizi ilettikten sonra ürünü, bildirim tarihinden itibaren ON DÖRT GÜN içinde bize geri göndermeniz gerekir. İADE MASRAFI SATICI'YA AİTTİR: iade gönderimini, iade talebinizi oluşturduğunuzda size bildirilen anlaşmalı taşıyıcı ile yaptığınız takdirde sizden herhangi bir iade kargo bedeli talep edilmez; Adana içinde iade edilecek ürün, talebiniz üzerine kendi kuryemizle adresinizden ücretsiz olarak alınabilir."
+        ),
+        p(
+          `İade adresi: ${OPERATOR.entity}, ${OPERATOR.address}. İade paketine sipariş numaranızı eklemeniz süreci hızlandırır.`
+        ),
+        p(
+          "Cayma hakkının usulüne uygun kullanılması hâlinde, varsa ürünün size teslim masrafları da dâhil olmak üzere tahsil edilen tüm ödemeler, ürünün anlaşmalı taşıyıcıya teslim edildiği tarihten (öngörülen taşıyıcı dışında bir taşıyıcı ile iade edilmişse ürünün bize ulaştığı tarihten) itibaren ON DÖRT GÜN içinde iade edilir. ALICI, cayma süresi içinde ürünü işleyişine, teknik özelliklerine ve kullanım talimatlarına uygun kullandığı takdirde meydana gelen değişiklik ve bozulmalardan sorumlu değildir."
+        ),
+      ],
+    },
+    {
+      id: "ayipli-mal",
+      heading: "8. Ayıplı, Eksik veya Yanlış Ürün",
+      blocks: [
+        p(
+          "Teslim edilen ürün ayıplı (hasarlı, baskı hatalı, eksik sayfalı), eksik veya sipariş ettiğinizden farklı ise 6502 sayılı Tüketicinin Korunması Hakkında Kanun'un ayıplı mala ilişkin hükümleri uygulanır. Bu durumda ALICI; sözleşmeden dönme, ürünün ayıpsız misliyle değiştirilmesi, ücretsiz onarım veya bedelde indirim seçimlik haklarından birini kullanabilir."
+        ),
+        list(
+          "Bu hak, ambalajın açılmış olmasından etkilenmez — ambalaj istisnası yalnız gerekçesiz CAYMA hakkı için geçerlidir.",
+          `Bildirimi ${OPERATOR.email} adresine veya sipariş detayındaki iade talebi ekranından yapabilirsiniz; ürün fotoğrafı eklemeniz incelemeyi hızlandırır.`,
+          "Ayıplı/eksik/yanlış üründe kargo ve iade masrafları ALICI'dan talep edilmez; değişim veya iade gönderimi SATICI tarafından karşılanır."
         ),
       ],
     },
     {
       id: "uyusmazlik",
-      heading: "7. Uyuşmazlıkların Çözümü",
+      heading: "9. Uyuşmazlıkların Çözümü",
       blocks: [
         p(
           "Bu sözleşmeden doğan uyuşmazlıklarda, Ticaret Bakanlığı'nca ilan edilen parasal sınırlar dâhilinde ALICI'nın yerleşim yerindeki Tüketici Hakem Heyetleri, sınırı aşan uyuşmazlıklarda Tüketici Mahkemeleri yetkilidir."
@@ -498,10 +560,10 @@ const DISTANCE_SALES: LegalDoc = {
     },
     {
       id: "yururluk",
-      heading: "8. Yürürlük",
+      heading: "10. Yürürlük",
       blocks: [
         p(
-          "ALICI, Platform üzerinden ödemeyi başlatmadan önce bu sözleşmeyi ve ön bilgilendirmeyi okuduğunu ve kabul ettiğini beyan eder. Sözleşme, ödemenin tamamlanmasıyla kurulur; sipariş özeti ve ödeme kaydı Platform hesabınızda saklanır."
+          "ALICI, Platform üzerinden ödemeyi başlatmadan önce bu sözleşmeyi ve Ön Bilgilendirme Formu'nu okuduğunu ve kabul ettiğini beyan eder. Sözleşme, ödemenin tamamlanmasıyla kurulur; sipariş özeti ve ödeme kaydı Platform hesabınızda saklanır."
         ),
       ],
     },
@@ -512,23 +574,34 @@ const DISTANCE_SALES: LegalDoc = {
 
 const REFUND: LegalDoc = {
   id: "refund",
-  title: "İptal ve İade Politikası",
+  title: "Teslimat, İptal ve İade Politikası",
   description:
-    "Adana Özel Ders'te özel ders, deneme sınavı oturumu ve çalışma alanı rezervasyonlarının iptal ve iade kuralları.",
-  updatedAt: "2026-06-11",
+    "Adana Özel Ders'te özel ders, deneme sınavı oturumu, çalışma alanı rezervasyonları ve basılı kitap siparişlerinin teslimat, iptal ve iade kuralları.",
+  updatedAt: "2026-08-17",
   sections: [
     {
-      // ⚠️ BİLİNEN YASAL METİN BORCU — `lib/legalDebt.ts::escrow-tum-odemeler`
-      // Aşağıdaki "tüm ödemeler emanete alınır" cümlesi ödeme kolları
-      // bağımsızlaştıktan sonra (PK-1) hiçbir kol için doğru değil. Metin
-      // BİLİNÇLİ OLARAK DEĞİŞTİRİLMEDİ: yasal metinler avukat onayına tabidir
-      // (plan §14b-9). Kütük + `legalDebt.acceptance.test.ts` bu borcun
-      // sessizce eskimesini engelliyor. Sahibi: PK-7.
+      // Bu bölüm, `lib/legalDebt.ts::escrow-tum-odemeler` kaydının konusuydu:
+      // eski metin "Platformdaki TÜM ödemeler önce emanete alınır" diyordu ve
+      // bu, ödeme kolları bağımsızlaştıktan sonra (PK-1) hiçbir kol için doğru
+      // değildi. Sanal POS başvurusunda platformun üçüncü kişi adına tahsilat
+      // yapmadığı beyan edildiği için cümle düzeltildi ve borç kaydı kapandı.
+      //
+      // İfadenin KAPSAMI bilinçli olarak MAĞAZA ile sınırlıdır. Ters yöndeki
+      // hata da gerçekti: "Platform üzerinden yapılan satışlarda ... emanet
+      // uygulanmaz" demek bu kez fazla geniş olurdu — ders (booking), deneme
+      // bileti ve çalışma rezervasyonu akışlarında kod GERÇEKTEN emanet
+      // uyguluyor (`backend/services/escrow.py`: PAYMENT_SPEC / EXAM_SPEC /
+      // STUDY_SPEC). O kalemler lansmanda çevrimiçi ödemeye kapalı olduğu için
+      // burada ödeme modelleri hiç tarif edilmiyor; kapalı bir akışın modelini
+      // anlatmak, açıldığında güncellenmesi unutulacak bir taahhüt olurdu.
       id: "genel",
-      heading: "1. Genel Esaslar — Emanet (Escrow) Modeli",
+      heading: "1. Genel Esaslar — Ödeme ve İade Modeli",
       blocks: [
         p(
-          "Platformdaki tüm ödemeler önce emanete alınır; hizmet ifa edildiğinde hizmet sağlayıcıya aktarılır. Bu sayede hizmeti almadığınız durumlarda iade süreci basittir: emanetteki tutar hizmet sağlayıcıya hiç aktarılmadan size geri döner."
+          "Mağazadan yapılan ürün satışlarında satıcı doğrudan işletmemizdir; ödeme doğrudan işletmemize yapılır, emanet uygulanmaz. İade hakkının doğduğu hâllerde tutar, ödemeyi aldığımız işletme hesabından doğrudan ödeme yaptığınız karta geri gönderilir."
+        ),
+        p(
+          "İade koşulları satın aldığınız şeye göre değişir: fiziksel ürünlerde (basılı kitap) yasal cayma hakkı ve iade usulü 5. bölümde, hizmet niteliğindeki rezervasyonların iptal kuralları 2-4. bölümlerde açıklanmıştır."
         ),
       ],
     },
@@ -570,8 +643,47 @@ const REFUND: LegalDoc = {
       ],
     },
     {
+      id: "fiziksel-urunler",
+      heading: "5. Mağaza Ürünleri — Basılı Kitap Teslimatı ve İadesi",
+      blocks: [
+        p(
+          "Mağazadan satın alınan basılı kitaplarda satıcı doğrudan işletmemizdir; ödeme işletmemize yapılır ve emanet modeli uygulanmaz (bkz. 1. bölüm)."
+        ),
+        p("TESLİMAT:"),
+        list(
+          "Adana içi siparişler kendi araç ve kuryelerimizle elden teslim edilir; teslimde telefonunuza gelen doğrulama kodu kullanılır.",
+          "Adana dışı siparişler anlaşmalı kargo firmasıyla gönderilir ve takip bilgisi hesabınıza işlenir.",
+          "Tahmini teslim günü sipariş özetinde gösterilir; teslim süresi her hâlükârda otuz günü geçemez. Bu sürede teslim yapılamazsa siparişi feshedip ödemenizin tamamını (varsa teslimat masrafı dâhil) geri alabilirsiniz.",
+          "Kargo/teslimat bedeli varsa sipariş özetinde ayrıca gösterilir; gösterilmiyorsa teslimat ücretsizdir."
+        ),
+        p("SİPARİŞ İPTALİ VE CAYMA:"),
+        list(
+          "Sipariş henüz kargoya verilmediyse/yola çıkmadıysa hesabınızdan iptal edebilirsiniz; ödemenin tamamı iade edilir.",
+          "Ürünü teslim aldıktan sonra ON DÖRT GÜN içinde gerekçe göstermeden cayabilirsiniz (Mesafeli Sözleşmeler Yönetmeliği m.9).",
+          "ANCAK: koruyucu ambalajı, bandı veya mührü AÇILMIŞ kitaplarda cayma hakkı kullanılamaz (Yönetmelik m.15/1-e). İade etmeyi düşünüyorsanız ambalajı açmayın.",
+          "İADE KARGO BEDELİ BİZE AİTTİR: iade talebinizde bildirilen anlaşmalı taşıyıcıyı kullandığınızda sizden iade masrafı alınmaz; Adana içinde ürünü kuryemizle adresinizden ücretsiz aldırabilirsiniz.",
+          "Cayma bildiriminden sonra ürünü on dört gün içinde göndermeniz gerekir. İade tutarı, ürün taşıyıcıya teslim edildiği (öngörülen taşıyıcı dışında gönderildiyse bize ulaştığı) tarihten itibaren on dört gün içinde kartınıza iade edilir."
+        ),
+      ],
+    },
+    {
+      id: "ayipli-eksik-urun",
+      heading: "6. Ayıplı, Eksik veya Yanlış Gönderilen Ürün",
+      blocks: [
+        p(
+          "Ürün hasarlı, baskı hatalı, eksik veya sipariş ettiğinizden farklı geldiyse 6502 sayılı Tüketicinin Korunması Hakkında Kanun'un ayıplı mala ilişkin hükümleri uygulanır: sözleşmeden dönme, ayıpsız misliyle değişim, ücretsiz onarım veya bedelde indirim haklarından birini seçebilirsiniz."
+        ),
+        list(
+          "Bu haklar ambalaj açılmış olsa da geçerlidir; ambalaj istisnası yalnız gerekçesiz cayma içindir.",
+          `Bildiriminizi sipariş detayındaki iade ekranından veya ${OPERATOR.email} adresinden yapın; ürün fotoğrafı incelemeyi hızlandırır.`,
+          "Ayıplı/eksik/yanlış üründe hiçbir kargo veya iade masrafı sizden talep edilmez.",
+          "Teslim sırasında pakette gözle görülür hasar varsa teslim almadan bildirmeniz süreci kolaylaştırır; bu, kanuni haklarınızı ortadan kaldırmaz."
+        ),
+      ],
+    },
+    {
       id: "iade-suresi",
-      heading: "5. İade Süresi ve Yöntemi",
+      heading: "7. İade Süresi ve Yöntemi",
       blocks: [
         p(
           "İadeler her zaman ödemenin yapıldığı karta, iyzico aracılığıyla yapılır. İade onaylandıktan sonra tutarın kartınıza yansıması, bankanızın süreçlerine bağlı olarak genellikle 7-14 iş günü sürer. Nakit veya farklı bir hesaba iade yapılmaz."
@@ -580,7 +692,7 @@ const REFUND: LegalDoc = {
     },
     {
       id: "itiraz",
-      heading: "6. İtiraz ve Destek",
+      heading: "8. İtiraz ve Destek",
       blocks: [
         p(
           `İptal/iade süreçlerine ilişkin itirazlarınız için ${OPERATOR.email} adresine işlem bilgilerinizle (rezervasyon/bilet numarası) başvurabilirsiniz. Tüketici Hakem Heyetlerine ve Tüketici Mahkemelerine başvuru hakkınız saklıdır.`
@@ -650,11 +762,201 @@ const COOKIES: LegalDoc = {
   ],
 };
 
+/* ───────────────────────── Ön Bilgilendirme Formu ───────────────────────── */
+
+/**
+ * Mesafeli Sözleşmeler Yönetmeliği, sipariş verilmeden ÖNCE tüketicinin
+ * bilgilendirilmesini zorunlu kılar. Mesafeli Satış Sözleşmesi bu forma atıf
+ * yapar; iki metin ÇELİŞMEMELİDİR — süreler (on dört gün), istisnalar
+ * (ambalajı açılmış kitap, anında ifa edilen dijital içerik), iade masrafının
+ * satıcıya ait olduğu ve teslim süresi üst sınırı (otuz gün) burada da aynıdır.
+ */
+const PRELIMINARY_INFO: LegalDoc = {
+  id: "preliminary-info",
+  title: "Ön Bilgilendirme Formu",
+  description:
+    "Sipariş öncesi bilgilendirme: satıcı bilgileri, sipariş konusu, toplam bedel, teslimat, cayma hakkı ve istisnaları.",
+  updatedAt: "2026-08-17",
+  sections: [
+    {
+      id: "satici-bilgileri",
+      heading: "1. Satıcı / Sağlayıcı Bilgileri",
+      blocks: [
+        p(operatorIdentity()),
+        p(
+          "Özel ders, deneme sınavı oturumu ve çalışma alanı rezervasyonlarında hizmeti fiilen sunan taraf, Platformda ilanı yayımlanan eğitmen veya kütüphane/etüt merkezidir; Platform bu satışlarda aracı hizmet sağlayıcıdır. Mağazadan satılan basılı kitaplarda ise satıcı doğrudan yukarıda kimliği verilen işletmedir."
+        ),
+      ],
+    },
+    {
+      id: "siparis-konusu",
+      heading: "2. Sipariş Konusu ve Temel Nitelikler",
+      blocks: [
+        p(
+          "Satın aldığınız hizmet veya ürünün temel nitelikleri (ders süresi ve tarihi, oturum tarihi ve türü, rezervasyon saat aralığı; kitapta ürün adı, yazar/yayınevi ve adet) ilgili ilan sayfasında ve ödeme öncesi gösterilen SİPARİŞ ÖZETİNDE yer alır. Sipariş özetindeki bilgiler bu formun ayrılmaz parçasıdır."
+        ),
+      ],
+    },
+    {
+      id: "toplam-bedel",
+      heading: "3. Toplam Bedel ve Ödeme",
+      blocks: [
+        list(
+          "Platformda gösterilen tüm fiyatlar KDV DÂHİLDİR.",
+          "Varsa kargo/teslimat bedeli sipariş özetinde ayrı satır olarak gösterilir ve toplama eklenir; gösterilmiyorsa teslimat ücretsizdir.",
+          "Ödeme, iyzico altyapısı üzerinden kredi/banka kartı ile peşin yapılır. Kart bilgileriniz Platform tarafından saklanmaz.",
+          "Mağaza ürünlerinde satıcı doğrudan işletmemizdir; ödeme doğrudan işletmemize yapılır, emanet (escrow) uygulanmaz.",
+          "Sipariş özetinde gösterilen tutar dışında sizden ek bir vergi veya masraf talep edilmez."
+        ),
+      ],
+    },
+    {
+      id: "teslim-ve-ifa",
+      heading: "4. Teslimat ve İfa",
+      blocks: [
+        list(
+          "Adana içi kitap siparişleri kendi araç ve kuryelerimizle elden teslim edilir; teslimde telefonunuza gelen doğrulama kodu kullanılır.",
+          "Adana dışı siparişler anlaşmalı kargo firmasıyla gönderilir.",
+          "Tahmini teslim günü sipariş özetinde gösterilir; teslim süresi her hâlükârda siparişin ulaşmasından itibaren OTUZ GÜNÜ geçemez. Bu sürede teslim yapılmazsa sözleşmeyi feshedebilir, varsa teslim masrafları dâhil ödediğiniz tutarın tamamını geri alabilirsiniz.",
+          "Hizmetler, rezervasyonda/ilanda belirtilen tarih ve saatte ifa edilir."
+        ),
+      ],
+    },
+    {
+      id: "cayma",
+      heading: "5. Cayma Hakkı",
+      blocks: [
+        p(
+          "Fiziksel ürünlerde (basılı kitap), ürünü teslim aldığınız günden itibaren ON DÖRT GÜN içinde hiçbir gerekçe göstermeden ve cezai şart ödemeden sözleşmeden cayabilirsiniz (Mesafeli Sözleşmeler Yönetmeliği m.9). Cayma hakkı, sözleşmenin kurulmasından teslime kadar olan sürede de kullanılabilir."
+        ),
+        p(
+          "Cayma bildirimini hesabınızdaki sipariş detayından iade talebi oluşturarak veya aşağıdaki iletişim kanallarımıza yazılı olarak iletebilirsiniz."
+        ),
+      ],
+    },
+    {
+      id: "cayma-istisnalari",
+      heading: "6. Cayma Hakkının Bulunmadığı Hâller",
+      blocks: [
+        list(
+          "Koruyucu ambalajı, bandı veya mührü AÇILMIŞ basılı kitaplar (Yönetmelik m.15/1-e). İade etmeyi düşünüyorsanız ambalajı açmayın.",
+          "Belirli bir tarih veya dönemde yapılması gereken, boş zamanın değerlendirilmesine ilişkin hizmetler; deneme sınavı oturumu ve çalışma alanı rezervasyonları bu kapsamdadır (Yönetmelik m.15/1-g). Buna rağmen ticari politikamız gereği, başlangıca 24 saatten fazla varsa iptal ve tam iade imkânı tanınır.",
+          "Cayma süresi dolmadan, onayınızla ifasına başlanan ve tamamlanan hizmetler (Yönetmelik m.15/1-h) — tamamlanmış özel ders bu kapsamdadır."
+        ),
+      ],
+    },
+    {
+      id: "iade-usulu",
+      heading: "7. İade Usulü ve Masraflar",
+      blocks: [
+        list(
+          "Cayma bildiriminden sonra ürünü ON DÖRT GÜN içinde geri göndermeniz gerekir.",
+          "İADE MASRAFI SATICIYA AİTTİR: iade talebinizde bildirilen anlaşmalı taşıyıcıyı kullandığınızda sizden iade kargo bedeli alınmaz. Adana içinde ürün, talebiniz üzerine kuryemizle adresinizden ücretsiz alınabilir.",
+          `İade adresi: ${OPERATOR.entity}, ${OPERATOR.address}.`,
+          "İade tutarı, ürünün anlaşmalı taşıyıcıya teslim edildiği (öngörülen taşıyıcı dışında gönderildiyse bize ulaştığı) tarihten itibaren ON DÖRT GÜN içinde, varsa teslim masrafları da dâhil olmak üzere ödemenin yapıldığı karta iade edilir.",
+          "Ürünü cayma süresi içinde işleyişine ve kullanım talimatlarına uygun kullandığınız takdirde oluşan değişiklik ve bozulmalardan sorumlu tutulmazsınız."
+        ),
+      ],
+    },
+    {
+      id: "sikayet",
+      heading: "8. Şikâyet ve Uyuşmazlık",
+      blocks: [
+        p(
+          `Talep ve şikâyetlerinizi ${OPERATOR.email} adresine veya ${OPERATOR.phone} numarasına iletebilirsiniz. Uyuşmazlık hâlinde, Ticaret Bakanlığı'nca her yıl ilan edilen parasal sınırlar dâhilinde yerleşim yerinizdeki Tüketici Hakem Heyetine, sınırı aşan uyuşmazlıklarda Tüketici Mahkemelerine başvurabilirsiniz.`
+        ),
+      ],
+    },
+    {
+      id: "kayit",
+      heading: "9. Kayıt ve Saklama",
+      blocks: [
+        p(
+          "Bu formu ve Mesafeli Satış Sözleşmesi'ni ödeme adımından önce onaylarsınız; sipariş özetiniz ve ödeme kaydınız Platform hesabınızda saklanır ve dilediğiniz zaman görüntülenebilir."
+        ),
+      ],
+    },
+  ],
+};
+
+/* ──────────────────────────────── Hakkımızda ──────────────────────────────── */
+
+/**
+ * iyzico başvurusunun zorunlu tuttuğu kurumsal tanıtım sayfası.
+ *
+ * BİLİNÇLİ OLARAK ÖLÇÜLÜ: platform henüz canlıya alınmadığı için öğrenci/
+ * eğitmen sayısı, "binlerce kullanıcı" gibi doğrulanamayacak hiçbir iddia
+ * yazılmaz. Yalnız gerçekten var olan özellikler ve tescilli işletme kimliği
+ * anlatılır.
+ */
+const ABOUT: LegalDoc = {
+  id: "about",
+  title: "Hakkımızda",
+  description:
+    "Adana Özel Ders; Adana'da özel ders eşleştirme, çalışma alanı rezervasyonu ve eğitim kitabı satışı yapan yerel bir eğitim platformudur.",
+  updatedAt: "2026-08-17",
+  sections: [
+    {
+      id: "kimiz",
+      heading: "Kimiz?",
+      blocks: [
+        p(
+          `${SITE_NAME}, Adana'da öğrenciler ile özel ders eğitmenlerini buluşturan, bölgedeki kütüphane ve etüt merkezlerini tek bir katalogda toplayan ve eğitim kitabı satışı yapan yerel bir eğitim platformudur. Platform, aşağıda kimliği verilen tescilli işletme tarafından işletilmektedir.`
+        ),
+        p(operatorIdentity()),
+      ],
+    },
+    {
+      id: "ne-yapiyoruz",
+      heading: "Ne Yapıyoruz?",
+      blocks: [
+        list(
+          "ÖZEL DERS EŞLEŞTİRME: Öğrenciler branşa, ilçeye, bütçeye ve ders biçimine (online / yüz yüze) göre eğitmen arar, uygun saati seçip rezervasyon oluşturur.",
+          "KÜTÜPHANE VE ETÜT MERKEZİ KATALOĞU: Adana'daki çalışma mekânlarının konumu, çalışma saatleri ve olanakları (sessiz alan, wifi, kafeterya vb.) tek yerde listelenir.",
+          "ÇALIŞMA ALANI REZERVASYONU: Anlaşmalı kütüphanelerde saatlik koltuk rezervasyonu yapılır; girişte QR kod okutularak kullanım başlar.",
+          "DENEME SINAVI OTURUMLARI: Kütüphanelerin düzenlediği deneme sınavlarına çevrimiçi kayıt ve biletleme yapılır.",
+          "EĞİTİM KİTABI SATIŞI: Mağazamızdan sipariş edilen basılı kitaplar, Adana içinde kendi araç ve kuryelerimizle elden teslim edilir.",
+          "ÇALIŞMA ARAÇLARI: Görev takibi, aralıklı tekrar (flash kart), alışkanlık takibi ve deneme sonucu analizi gibi ücretsiz araçlar hesabınıza dâhildir."
+        ),
+      ],
+    },
+    {
+      id: "nasil-calisiyor",
+      heading: "Nasıl Çalışıyor?",
+      blocks: [
+        list(
+          "Platformda ilan yayımlayan her eğitmen, yayına alınmadan önce başvurusu incelenerek onaylanır.",
+          "Ders ücreti sunucu tarafında hesaplanır ve rezervasyon anında sabitlenir; ödeme adımında sürpriz tutar çıkmaz.",
+          "Hizmet ödemeleri, hizmet gerçekleşene kadar emanette (escrow) tutulur; ders yapılmazsa ücret öğrenciye iade edilir.",
+          "Ödemeler iyzico altyapısı üzerinden alınır; kart bilgileri Platform tarafından saklanmaz.",
+          "Eğitmen ile öğrenci arasındaki mesajlaşma, güvenlik ve kayıt altına alınabilirlik için Platform içinde yürütülür."
+        ),
+      ],
+    },
+    {
+      id: "iletisim-bilgileri",
+      heading: "İletişim",
+      blocks: [
+        list(
+          `E-posta: ${OPERATOR.email}`,
+          `Telefon: ${OPERATOR.phone}`,
+          `Adres: ${OPERATOR.address}`
+        ),
+        p(
+          "Soru, talep ve şikâyetleriniz için İletişim sayfamızdaki formu da kullanabilirsiniz; başvurularınız aynı ekibe ulaşır."
+        ),
+      ],
+    },
+  ],
+};
+
 /** Tüm yasal belgeler — footer/menü sırası bu dizidir. */
 export const LEGAL_DOCS: readonly LegalDoc[] = [
+  ABOUT,
   KVKK,
   PRIVACY,
   TERMS,
+  PRELIMINARY_INFO,
   DISTANCE_SALES,
   REFUND,
   COOKIES,

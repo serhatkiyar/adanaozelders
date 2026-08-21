@@ -27,6 +27,7 @@ from core.routing.base import (
     FleetPlan,
     RoutePlan,
     RoutePoint,
+    RouteVehicle,
     RoutingProvider,
     RoutingUnavailable,
 )
@@ -40,6 +41,7 @@ __all__ = [
     "FleetPlan",
     "RoutePlan",
     "RoutePoint",
+    "RouteVehicle",
     "RoutingProvider",
     "RoutingUnavailable",
     "HaversineRoutingProvider",
@@ -174,30 +176,26 @@ async def plan_route(
 
 async def plan_fleet(
     *,
-    depot_lat: float,
-    depot_lng: float,
     points: list[RoutePoint],
-    vehicle_ids: list[int],
+    vehicles: list[RouteVehicle],
 ) -> FleetPlan:
     """Çok araçlı bölüştürme + rota (plan_route ile aynı sağlayıcı seçimi/fallback).
-    VROOM işleri araçlara kendisi optimal ve DENGELİ dağıtır (araç başına kapasite
-    tavanı); haversine kutupsal-açı dilimleme + NN/2-opt ile yaklaşır."""
+
+    İP-19: araç NESNESİ alır — start/max_stops/vardiya/fixed_cost araç başına
+    (sözleşme §3.1). VROOM işleri araçlara kendisi dağıtır (denge tavanı +
+    `costs.fixed` ekonomisi); haversine gereken araç sayısını `max_stops`'tan
+    türetip kutupsal-açı dilimleme + NN/2-opt ile yaklaşır."""
     mode = _mode()
 
     async def _haversine() -> FleetPlan:
         return await HaversineRoutingProvider().plan_fleet(
-            depot_lat=depot_lat, depot_lng=depot_lng, points=points, vehicle_ids=vehicle_ids
+            points=points, vehicles=vehicles
         )
 
     if mode == "haversine":
         return await _haversine()
     return await _with_vroom(
-        lambda: VroomRoutingProvider().plan_fleet(
-            depot_lat=depot_lat,
-            depot_lng=depot_lng,
-            points=points,
-            vehicle_ids=vehicle_ids,
-        ),
+        lambda: VroomRoutingProvider().plan_fleet(points=points, vehicles=vehicles),
         mode,
         _haversine,
     )

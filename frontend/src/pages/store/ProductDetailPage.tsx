@@ -28,7 +28,7 @@ import { useCartStore } from "@/store/cartStore";
 import { useFavoritesStore } from "@/store/favoritesStore";
 import { useAuthStore } from "@/store/authStore";
 import { ROLE_IDS } from "@/types";
-import type { ProductCategory, ProductKind } from "@/types";
+import type { ProductCategory, ProductKind, ProductVariants } from "@/types";
 import { toast } from "@/store/toastStore";
 
 // Düşük stok eşiği burada SABİT DEĞİL: sunucudan (`GET /store/config`)
@@ -333,7 +333,7 @@ export default function ProductDetailPage() {
                       hero === url ? "border-indigo-500 ring-1 ring-indigo-500" : "border-slate-200 hover:border-slate-300 dark:border-slate-700"
                     }`}
                   >
-                    <img src={url} alt="" className="h-full w-full object-contain mix-blend-multiply dark:mix-blend-normal" />
+                    <img src={url} alt="" className="h-full w-full object-contain mix-blend-multiply" />
                   </button>
                 ))}
               </div>
@@ -369,6 +369,12 @@ export default function ProductDetailPage() {
               </div>
             ) : (
               <div className="mt-3 text-sm text-slate-400">Henüz değerlendirme yok</div>
+            )}
+
+            {/* Varyant seçici — kardeşler; görsel değişimi ek iş istemez,
+                seçim kardeşin SAYFASINA gider ve görseller ürün başınadır. */}
+            {product.variants && product.variants.members.length > 1 && (
+              <VariantPicker variants={product.variants} currentId={product.id} />
             )}
 
             {/* Fiyat */}
@@ -635,6 +641,56 @@ export default function ProductDetailPage() {
           document.body
         )}
     </StoreLayout>
+  );
+}
+
+/** Kardeş varyant seçici. Eksen adları GRUPTAN gelir (option1/2_name); seçim
+ *  kardeşin sayfasına Link ile gider. Tükenen kardeş tıklanabilir kalır ama
+ *  "Tükendi" işaretlidir — o sayfada stok bildirimi formu var.
+ */
+function VariantPicker({
+  variants,
+  currentId,
+}: {
+  variants: ProductVariants;
+  currentId: number;
+}) {
+  const baslik = variants.option2_name
+    ? `${variants.option1_name} / ${variants.option2_name}`
+    : variants.option1_name;
+  return (
+    <div className="mt-6">
+      <p className="mb-2 text-sm font-medium text-slate-700 dark:text-slate-300">
+        {baslik}
+      </p>
+      <div className="flex flex-wrap gap-2">
+        {variants.members.map((m) => {
+          const etiket = [m.option1_value, m.option2_value]
+            .filter(Boolean)
+            .join(" / ");
+          const aktif = m.id === currentId;
+          return (
+            <Link
+              key={m.id}
+              to={ROUTES.storeProduct(m.slug)}
+              aria-current={aktif ? "true" : undefined}
+              className={`relative rounded-lg border px-3.5 py-2 text-sm font-medium transition-colors ${
+                aktif
+                  ? "border-indigo-600 text-indigo-600 ring-1 ring-indigo-600 dark:border-indigo-400 dark:text-indigo-400 dark:ring-indigo-400"
+                  : "border-slate-200 text-slate-700 hover:border-slate-300 dark:border-slate-700 dark:text-slate-300 dark:hover:border-slate-600"
+              } ${!m.in_stock ? "opacity-60" : ""}`}
+            >
+              {etiket || m.title}
+              {!m.in_stock && (
+                <span className="ml-1.5 text-[11px] font-normal text-slate-400">
+                  · Tükendi
+                </span>
+              )}
+            </Link>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 

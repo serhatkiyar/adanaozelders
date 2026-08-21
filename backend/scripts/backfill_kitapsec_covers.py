@@ -11,13 +11,14 @@ DB'de isbn=NULL yazılan kayıtlarda da bu alan doludur, çünkü kaynaktaki
 image_path ISBN doğrulamasından bağımsızdır). ISBN'e göre DOSYA ADI
 TAHMİN EDİLMEZ; kaynağın kendi image_path'i okunur.
 
-Boyutlandırma kararı: `core.storage.upload_library_photo` kullanılır — aynen
+Boyutlandırma kararı: `core.storage.pad_to_square` kullanılır — aynen
 `store_service.set_cover`'ın (admin elle kapak yüklerken) kullandığı yol.
-En-boy oranı korunur, 1600px'e sığdırılır, WebP kalite 82'ye çevrilir.
+Görsel oranı bozulmadan beyaz zeminli `PRODUCT_IMAGE_SIZE` (1200px) kare
+tuvale sığdırılır (kırpılmaz), WebP kalite 82'ye çevrilir.
 Ayrıca liste görünümü için AYRI bir küçük thumbnail ÜRETİLMİYOR: platformda
 zaten tek `cover_url` mimarisi var (bkz. `ProductSearchOut.cover_url`,
 srcset/thumbnail alanı yok) — ikinci bir boyut eklemek yalnız bu betikte
-özel bir şema sapması yaratırdı. WebP + 1600px tavanı kaynaktaki en büyük
+özel bir şema sapması yaratırdı. WebP + 1200px kare tuval kaynaktaki en büyük
 dosyayı (448 KB, JPEG/PNG) zaten büyük ölçüde küçültüyor (WebP q82 tipik
 olarak orijinal JPEG'in %20-40'ı büyüklüğünde çıkar); mevcut liste
 sayfasının performans etkisi bu betiğin sonunda ölçülüp raporlanır.
@@ -62,7 +63,7 @@ from models.store import Product  # noqa: E402
 
 
 async def _upload_via_shared_client(s3, file_bytes: bytes) -> str:
-    """`storage.upload_library_photo` ile AYNI dönüşüm (optimize_photo → WebP →
+    """`storage.upload_product_photo` ile AYNI dönüşüm (pad_to_square → WebP →
     ``library-photos/`` public önek), ama HER görsel için yeni bir aioboto3
     Session/istemci kurmak yerine ÇAĞRI SAHİBİNİN açtığı TEK istemciyi kullanır.
 
@@ -70,8 +71,13 @@ async def _upload_via_shared_client(s3, file_bytes: bytes) -> str:
     görsel başına ~1,1 saniye. Suçlu Pillow ya da ağ değil: `aioboto3.Session()`
     her çağrıda botocore'un servis modellerini diskten yeniden yüklüyor. 4.681
     görselde bu, tüm turu ~90 dakikaya çıkarıyordu. Tek istemciyle bu maliyet
-    turda BİR KEZ ödenir."""
-    data = await storage._optimize_in_thread(storage.optimize_photo, file_bytes)  # noqa: SLF001
+    turda BİR KEZ ödenir.
+
+    Dönüşüm ``pad_to_square``'dir (``optimize_photo`` DEĞİL): mağaza ızgarasında
+    her ürün görseli aynı beyaz zeminli kare tuvalde durmalı. Bu betiğin kendi
+    kopyası olması yalnız istemci paylaşımı içindir — dönüşüm kararı tek
+    kaynakta, ``core/storage``'da yaşar."""
+    data = await storage._optimize_in_thread(storage.pad_to_square, file_bytes)  # noqa: SLF001
     key = f"library-photos/{uuid.uuid4().hex}.webp"
     body_kwargs = {
         "Bucket": settings.AWS_BUCKET_NAME,

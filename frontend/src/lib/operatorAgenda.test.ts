@@ -16,14 +16,15 @@
 // içindeki gerçek DOM testlerindedir.
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const MODUL = import.meta.glob("./operatorAgenda.ts");
+// İP-A7d5 · Görev 2: modül STATİK import ediliyor. Eski `import.meta.glob`
+// red-first idiomuydu ("dosya henüz yokken matris çökmesin"); dosya yazıldığı
+// gün gerekçesi bitti ve geriye yalnız koşum evresinde ödenen yükleme kaldı.
+import * as operatorAgenda from "./operatorAgenda";
 
 type Modul = typeof import("./operatorAgenda");
 
 async function modul(): Promise<Modul> {
-  const yukle = MODUL["./operatorAgenda.ts"];
-  if (!yukle) throw new Error("HENÜZ YAZILMADI: src/lib/operatorAgenda.ts");
-  return (await yukle()) as Modul;
+  return operatorAgenda;
 }
 
 /** Türkiye duvar-saatini UTC ISO'ya çevirir (sabit +03:00, DST yok). */

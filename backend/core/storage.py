@@ -266,10 +266,47 @@ def is_allowed_resource(filename: str | None) -> bool:
     return resource_ext(filename) in ALLOWED_RESOURCE_EXTS
 
 
+# Alfa kanalı TAŞIYAN Pillow modları. Paletli ("P") görüntü listede yoktur ve
+# ayrı ele alınır: orada şeffaflık piksel verisinde değil, `info["transparency"]`
+# alanında durur.
+_ALFA_MODLARI = ("RGBA", "RGBa", "LA", "La", "PA")
+
+
+def flatten_on_white(img: Image.Image) -> Image.Image:
+    """Şeffaf görüntüyü BEYAZ zemine yapıştırıp RGB döndürür.
+
+    WebP'ye yazmadan önce doğrudan ``convert("RGB")`` demek şeffaf alanları
+    SİYAH yapıyordu: alfa düşünce geriye o piksellerin renk değeri kalır ve
+    tam şeffaf piksellerde bu neredeyse her zaman (0,0,0)'dır. Ürün kapakları
+    ve profil fotoğrafları beyaz zeminde gösterildiği için doğru zemin beyazdır.
+
+    Paletli görüntüde ayrıca doğrudan ``P → RGB`` dönüşümü Pillow'un "Palette
+    images with Transparency expressed in bytes should be converted to RGBA
+    images" uyarısını tetikler ve şeffaflık bilgisini sessizce atar; ``P → RGBA``
+    üzerinden geçmek hem uyarıyı hem kaybı ortadan kaldırır.
+
+    Şeffaflığı olmayan görüntü OLDUĞU GİBİ (aynı nesne, aynı mod) döner —
+    çağıranın kendi mod dönüşümü ve mevcut davranışı değişmez.
+    """
+    seffaf = img.mode in _ALFA_MODLARI or "transparency" in img.info
+    if not seffaf:
+        return img
+    rgba = img if img.mode == "RGBA" else img.convert("RGBA")
+    zemin = Image.new("RGB", rgba.size, (255, 255, 255))
+    zemin.paste(rgba, mask=rgba.getchannel("A"))
+    return zemin
+
+
 def optimize_image(file_bytes: bytes, size: tuple[int, int] = (256, 256)) -> bytes:
     """Görseli kare şeklinde kırpar (crop) ve WebP formatında küçültür."""
     img = Image.open(io.BytesIO(file_bytes))
-    
+
+    # Düzleştirme crop/resize'dan ÖNCE yapılır. LANCZOS renk ve alfa kanallarını
+    # ayrı ayrı interpole eder; şeffaf piksellerin renk değeri (0,0,0) olduğu
+    # için düzleştirme sonraya bırakılsaydı yarı saydam kenarlarda koyu bir hale
+    # kalırdı. Şeffaflığı olmayan görüntüde bu çağrı hiçbir şey yapmaz.
+    img = flatten_on_white(img)
+
     # Crop to center square
     min_dim = min(img.size)
     left = (img.size[0] - min_dim) / 2
@@ -293,11 +330,63 @@ def optimize_photo(file_bytes: bytes, max_dim: int = 1600, quality: int = 82) ->
     """Galeri/banner görseli: en-boy oranını KORUR, yalnız büyükse küçültür (max_dim'e
     sığdırır) ve WebP'ye çevirir. Logo/avatar'ın kare-crop'undan farkı budur."""
     img = Image.open(io.BytesIO(file_bytes))
+    # Küçültmeden ÖNCE beyaz zemine düzleştir (gerekçe: `optimize_image`).
+    img = flatten_on_white(img)
     img.thumbnail((max_dim, max_dim), Image.Resampling.LANCZOS)
     if img.mode != "RGB":
         img = img.convert("RGB")
     out_io = io.BytesIO()
     img.save(out_io, format="WebP", quality=quality)
+    return out_io.getvalue()
+
+
+def pad_to_square(
+    file_bytes: bytes, size: int | None = None, quality: int = 82
+) -> bytes:
+    """Ürün görselini BEYAZ zeminli KARE tuvale oturtur (kırpma DEĞİL, pad).
+
+    Neden ayrı bir fonksiyon: mağaza kataloğunda kitap kapağı dikey, kırtasiye
+    ürünü kare/yatay geliyor. ``optimize_photo`` en-boy oranını koruduğu için
+    liste kutuları farklı yükseklikte çıkıyor ve ızgara dağınık görünüyor.
+    ``optimize_image``'in merkezden kare CROP'u ise burada kullanılamaz: dikey
+    bir kitap kapağında kadrajın alt ve üstünü — yani kitabın adını — keser.
+
+    Doğru davranış e-ticaret standardıdır: görsel oranı bozulmadan kareye
+    SIĞDIRILIR, artan alan beyazla doldurulur.
+
+    **``size`` sabit çıktı boyutu DEĞİL, ÜST SINIRDIR.** Görsel önce ona
+    sığdırılır (yalnız küçültme; ``thumbnail`` büyütmez), sonra tuval
+    **kalan içeriğin uzun kenarı** kadar açılır. Yani çıktı hep karedir ama
+    boyutu girdiye göre değişir: 400×580 → 580×580, 2000×1000 → 1200×1200.
+
+    Neden sabit tuval değil: katalogdaki kapakların %98'i 400×580, yani üst
+    sınırın çok altında. Tuval her zaman 1200 olsaydı, büyütme yasağı yüzünden
+    400×580'lik içerik 1200'lük karenin ortasında küçücük kalırdı —
+    ``object-contain`` ile kutuya sığdırıldığında kapak görünürde yarı yarıya
+    küçülürdü (ölçüldü: kutu genişliğinin ~%69'undan ~%33'üne). İçerik kadar
+    tuval, hem pikselleri bozmaz hem görünen boyutu korur.
+
+    - ``size`` verilmezse ``settings.PRODUCT_IMAGE_SIZE`` kullanılır.
+    """
+    ust_sinir = int(size or settings.PRODUCT_IMAGE_SIZE)
+    img = Image.open(io.BytesIO(file_bytes))
+
+    # Düzleştirme resize'dan ÖNCE (gerekçe: `optimize_image`). Sıra ters
+    # çevrilirse LANCZOS yarı saydam kenarlarda (0,0,0) renk değerini
+    # interpole eder ve şeffaf PNG'de koyu bir hale kalır.
+    img = flatten_on_white(img)
+    if img.mode != "RGB":
+        img = img.convert("RGB")
+
+    img.thumbnail((ust_sinir, ust_sinir), Image.Resampling.LANCZOS)
+
+    # Tuval = küçültme SONRASI içeriğin uzun kenarı (üst sınır değil).
+    kenar = max(img.width, img.height)
+    tuval = Image.new("RGB", (kenar, kenar), (255, 255, 255))
+    tuval.paste(img, ((kenar - img.width) // 2, (kenar - img.height) // 2))
+
+    out_io = io.BytesIO()
+    tuval.save(out_io, format="WebP", quality=quality)
     return out_io.getvalue()
 
 
@@ -345,6 +434,18 @@ async def upload_library_photo(file_bytes: bytes, *, square: bool = False) -> st
         data = await _optimize_in_thread(optimize_image, file_bytes, size=(512, 512))
     else:
         data = await _optimize_in_thread(optimize_photo, file_bytes)
+    return await _put_webp(data, prefix="library-photos")
+
+
+async def upload_product_photo(file_bytes: bytes) -> str:
+    """Mağaza ürün görseli: beyaz zeminli kare tuval (bkz. :func:`pad_to_square`).
+
+    Önek bilerek ``library-photos`` olarak BIRAKILDI. Mevcut ürün görsellerinin
+    tamamı zaten bu önekte duruyor ve önek ``PUBLIC_PREFIXES`` içinde anonim
+    okumaya açık. Yeni bir önek açmak, bucket policy'nin elle yönetildiği gerçek
+    S3 kurulumunda tüm ürün görsellerini sessizce 403'e düşürürdü.
+    """
+    data = await _optimize_in_thread(pad_to_square, file_bytes)
     return await _put_webp(data, prefix="library-photos")
 
 

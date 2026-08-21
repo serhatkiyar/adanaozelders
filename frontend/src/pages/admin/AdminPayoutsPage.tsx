@@ -1,5 +1,15 @@
-import { useState, type FormEvent } from "react";
-import { ErrorState } from "@/components/admin/ui";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { Button, ErrorState } from "@/components/admin/ui";
+import {
+  DuzenlemePenceresi,
+  useDuzenlemeYuzeyi,
+  useYuzeyKirliFormBekcisi,
+  type DuzenlemeYuzeyiDurumu,
+} from "@/components/admin/ui2/duzenlemeYuzeyi";
+import { Form, sunucuHatasiniUygula } from "@/components/admin/ui2/form";
+import { useUrlDurumu } from "@/hooks/useUrlDurumu";
 import { formatTL, parseMoney } from "@/lib/money";
 import { formatDate } from "@/lib/datetime";
 import {
@@ -21,8 +31,13 @@ import { toast } from "@/store/toastStore";
  * Emanetteki tutar ayrı gösterilir: ders henüz yapılmadığı için borç değildir.
  */
 export default function AdminPayoutsPage() {
-  const [tab, setTab] = useState<"pending" | "history">("pending");
-  const [selected, setSelected] = useState<PayeeBalance | null>(null);
+  // Sekme bir FİLTREDİR: adreste yaşar ("filtreler URL'de" kilitli kararı).
+  // `useState`teyken paylaşılan bağlantı hep "ödenecekler"e düşüyordu ve geri
+  // tuşu sekme değişimini görmüyordu.
+  const url = useUrlDurumu({ sekme: "odenecekler" });
+  const tab = url.degerler.sekme === "gecmis" ? "gecmis" : "odenecekler";
+  // Pencere durumu ekranda yaşamaz.
+  const odeme = useDuzenlemeYuzeyi<PayeeBalance, void>();
 
   return (
     // Başlık ve açıklama `AdminPageHeader` tarafından basılır (nav öğesinin
@@ -30,16 +45,22 @@ export default function AdminPayoutsPage() {
     // halde ekranda iki <h1> olur ve belge başlık hiyerarşisi bozulur.
     <div className="space-y-6">
       <div className="flex gap-1 border-b border-slate-200 dark:border-slate-700">
+        {/* Sekme şeridi ORTAK `Button`a çevrilmedi ve bu bilinçlidir:
+            bunlar bir aksiyon değil, bir SEÇİM DURUMU (`aria-pressed`) ve alt
+            çizgi göstergesi ortak düğmenin dolgu/gölge varyantlarıyla
+            çizilemez. `AdminStore`daki `KatlanirBaslik` ve kütüphane
+            editöründeki olanak rozetleriyle aynı istisna. */}
         {(
           [
-            ["pending", "Ödenecekler"],
-            ["history", "Ödeme geçmişi"],
+            ["odenecekler", "Ödenecekler"],
+            ["gecmis", "Ödeme geçmişi"],
           ] as const
         ).map(([key, label]) => (
           <button
             key={key}
             type="button"
-            onClick={() => setTab(key)}
+            aria-pressed={tab === key}
+            onClick={() => url.ayarla({ sekme: key })}
             className={`-mb-px border-b-2 px-4 py-2 text-sm font-medium transition-colors ${
               tab === key
                 ? "border-indigo-600 text-indigo-600 dark:border-indigo-400 dark:text-indigo-400"
@@ -51,15 +72,9 @@ export default function AdminPayoutsPage() {
         ))}
       </div>
 
-      {tab === "pending" ? (
-        <PendingList onPay={setSelected} />
-      ) : (
-        <HistoryList />
-      )}
+      {tab === "odenecekler" ? <PendingList onPay={odeme.ac} /> : <HistoryList />}
 
-      {selected && (
-        <PayModal balance={selected} onClose={() => setSelected(null)} />
-      )}
+      <PayPenceresi yuzey={odeme} />
     </div>
   );
 }
@@ -71,17 +86,13 @@ function PendingList({ onPay }: { onPay: (b: PayeeBalance) => void }) {
     return <p className="text-sm text-slate-500">Yükleniyor…</p>;
   }
   if (isError) {
+    // Ortak `ErrorState`: aynı ekranın iki listesi iki farklı hata yüzeyi
+    // çiziyordu ve "Tekrar dene" ile "Yeniden dene" iki ayrı addı.
     return (
-      <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm dark:border-red-900 dark:bg-red-950/30">
-        <p className="text-red-700 dark:text-red-300">Liste alınamadı.</p>
-        <button
-          type="button"
-          onClick={() => refetch()}
-          className="mt-2 font-medium text-red-700 underline dark:text-red-300"
-        >
-          Tekrar dene
-        </button>
-      </div>
+      <ErrorState
+        description="Ödenecekler listesi alınamadı. Listenin boş olduğu anlamına gelmez."
+        onRetry={() => void refetch()}
+      />
     );
   }
   if (!data || data.length === 0) {
@@ -145,13 +156,9 @@ function PendingList({ onPay }: { onPay: (b: PayeeBalance) => void }) {
                   {formatTL(b.pending)}
                 </td>
                 <td className="py-3 text-right">
-                  <button
-                    type="button"
-                    onClick={() => onPay(b)}
-                    className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-indigo-700"
-                  >
+                  <Button size="sm" onClick={() => onPay(b)}>
                     Ödedim
-                  </button>
+                  </Button>
                 </td>
               </tr>
             ))}
@@ -229,133 +236,177 @@ function HistoryList() {
   );
 }
 
-function PayModal({
+/**
+ * Ödeme kaydı penceresi — DIŞ kabuk (İP-A7d2 · Görev 4).
+ *
+ * Nöbetçinin üçüncü ve son etiketsiz overlay'i buydu. Bir PARA ekranı olması
+ * kirli form korumasını sıradan bir konfor olmaktan çıkarır: yönetici dekont
+ * referansını yazıp yanlışlıkla dışarı tıklarsa, kaydı yeniden bulup yazması
+ * gerekir ve bu sırada aynı havaleyi iki kez kaydetme riski doğar.
+ */
+function PayPenceresi({ yuzey }: { yuzey: DuzenlemeYuzeyiDurumu<PayeeBalance, void> }) {
+  const bakiye = yuzey.kayit;
+  return (
+    <DuzenlemePenceresi
+      yuzey={yuzey}
+      baslik={bakiye ? `Ödeme kaydı — ${bakiye.name}` : "Ödeme kaydı"}
+      aciklama="Havaleyi bankadan yaptıktan sonra buraya kaydedin."
+    >
+      {bakiye && <PayIcerik yuzey={yuzey} balance={bakiye} />}
+    </DuzenlemePenceresi>
+  );
+}
+
+/**
+ * Tutar şeması bakiyeye BAĞLIDIR: üst sınır alıcıya göre değişir.
+ *
+ * Eskiden bu kural düğmeyi kapatıyordu (`disabled={gecersiz}`) ve kilitli
+ * kararın açık ihlaliydi: kullanıcı düğmeye basamadığında sebebini
+ * göremiyordu. Artık basılır, gönderim yapılmaz, hata TUTAR alanında çıkar.
+ */
+function odemeSemasi(enFazla: number, enFazlaMetin: string) {
+  return z.object({
+    amount: z
+      .string()
+      .refine((v) => v.trim() !== "", "Tutar gerekli.")
+      .refine((v) => Number.isFinite(Number(v)), "Tutar bir sayı olmalı.")
+      .refine((v) => Number(v) > 0, "Tutar sıfırdan büyük olmalı.")
+      .refine((v) => Number(v) <= enFazla, `Tutar en fazla ${enFazlaMetin} olabilir.`),
+    reference: z.string().max(120, "Referans en fazla 120 karakter olabilir."),
+    note: z.string().max(1000, "Not en fazla 1000 karakter olabilir."),
+  });
+}
+
+type OdemeFormDegerleri = z.infer<ReturnType<typeof odemeSemasi>>;
+
+const ODEME_SIRA = ["amount", "reference", "note"] as const;
+
+function PayIcerik({
+  yuzey,
   balance,
-  onClose,
 }: {
+  yuzey: DuzenlemeYuzeyiDurumu<PayeeBalance, void>;
   balance: PayeeBalance;
-  onClose: () => void;
 }) {
-  const [amount, setAmount] = useState(balance.balance);
-  const [reference, setReference] = useState("");
-  const [note, setNote] = useState("");
   const create = useCreatePayout();
-
   const max = parseMoney(balance.balance) ?? 0;
-  const value = parseMoney(amount) ?? 0;
-  const gecersiz = value <= 0 || value > max;
 
-  const submit = (e: FormEvent) => {
-    e.preventDefault();
-    create.mutate(
-      {
-        payee_type: balance.payee_type,
-        payee_id: balance.payee_id,
-        amount,
-        reference: reference.trim() || null,
-        note: note.trim() || null,
-      },
-      {
-        onSuccess: () => {
-          toast.success("Ödeme kaydedildi.");
-          onClose();
+  const form = useForm<OdemeFormDegerleri>({
+    resolver: zodResolver(odemeSemasi(max, formatTL(balance.balance))),
+    defaultValues: { amount: balance.balance, reference: "", note: "" },
+    mode: "onChange",
+    shouldFocusError: false,
+  });
+
+  useYuzeyKirliFormBekcisi({ form, sunucuHatasi: create.error });
+
+  const gonder = form.handleSubmit(
+    (deger) => {
+      form.clearErrors("root.sunucu");
+      create.mutate(
+        {
+          payee_type: balance.payee_type,
+          payee_id: balance.payee_id,
+          amount: deger.amount,
+          reference: deger.reference.trim() || null,
+          note: deger.note.trim() || null,
         },
-        onError: (err) => toast.error(getErrorMessage(err, "Kaydedilemedi.")),
-      }
-    );
-  };
+        {
+          onSuccess: () => {
+            toast.success("Ödeme kaydedildi.");
+            yuzey.kapat();
+          },
+          onError: (hata) => {
+            const kalan = sunucuHatasiniUygula(hata, form, [...ODEME_SIRA]);
+            form.setError("root.sunucu", { type: "server", message: kalan ?? undefined });
+          },
+        }
+      );
+    },
+    (hatalar) => {
+      const alan = ODEME_SIRA.find((a) => hatalar[a]);
+      if (alan) form.setFocus(alan);
+    }
+  );
+
+  const genelHata = form.formState.errors.root?.sunucu?.message;
 
   return (
-    <div
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm"
-      onClick={onClose}
-    >
-      <form
-        onClick={(e) => e.stopPropagation()}
-        onSubmit={submit}
-        className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-700 dark:bg-slate-900"
-      >
-        <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
-          Ödeme kaydı — {balance.name}
-        </h2>
-        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-          Havaleyi bankadan yaptıktan sonra buraya kaydedin. Ödenmemiş bakiye:{" "}
-          <strong>{formatTL(balance.balance)}</strong>
+    <div className="space-y-3">
+      <p className="text-sm text-slate-500 dark:text-slate-400">
+        Ödenmemiş bakiye: <strong>{formatTL(balance.balance)}</strong>
+      </p>
+      {balance.iban ? (
+        <p className="rounded-lg bg-slate-50 px-3 py-2 font-mono text-xs text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+          {balance.iban}
         </p>
-        {balance.iban ? (
-          <p className="mt-2 rounded-lg bg-slate-50 px-3 py-2 font-mono text-xs text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-            {balance.iban}
-          </p>
-        ) : (
-          <p className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
-            Bu alıcının IBAN'ı kayıtlı değil; ödemeden önce kendisinden isteyin.
-          </p>
+      ) : (
+        <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
+          Bu alıcının IBAN&apos;ı kayıtlı değil; ödemeden önce kendisinden isteyin.
+        </p>
+      )}
+
+      {genelHata && (
+        <p
+          role="alert"
+          className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700 dark:bg-rose-500/10 dark:text-rose-300"
+        >
+          {genelHata}
+        </p>
+      )}
+
+      <Form.Field
+        control={form.control}
+        name="amount"
+        render={({ field }) => (
+          <Form.Item>
+            <Form.Label>Tutar (TL)</Form.Label>
+            <Form.Control>
+              <input type="number" step="0.01" min="0.01" className="input" {...field} />
+            </Form.Control>
+            <Form.ErrorMessage />
+          </Form.Item>
         )}
+      />
 
-        <label className="mt-4 block">
-          <span className="text-sm font-medium text-slate-700 dark:text-slate-200">
-            Tutar (TL)
-          </span>
-          <input
-            type="number"
-            step="0.01"
-            min="0.01"
-            max={max}
-            required
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-          />
-          {gecersiz && (
-            <span className="mt-1 block text-xs text-red-500">
-              Tutar 0 ile {formatTL(balance.balance)} arasında olmalı.
-            </span>
-          )}
-        </label>
+      <Form.Field
+        control={form.control}
+        name="reference"
+        render={({ field }) => (
+          <Form.Item>
+            <Form.Label optional>Havale referansı</Form.Label>
+            <Form.Control>
+              <input
+                maxLength={120}
+                placeholder="Dekonttaki referans no"
+                className="input"
+                {...field}
+              />
+            </Form.Control>
+            <Form.ErrorMessage />
+          </Form.Item>
+        )}
+      />
 
-        <label className="mt-3 block">
-          <span className="text-sm font-medium text-slate-700 dark:text-slate-200">
-            Havale referansı (isteğe bağlı)
-          </span>
-          <input
-            value={reference}
-            onChange={(e) => setReference(e.target.value)}
-            maxLength={120}
-            placeholder="Dekonttaki referans no"
-            className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-          />
-        </label>
+      <Form.Field
+        control={form.control}
+        name="note"
+        render={({ field }) => (
+          <Form.Item>
+            <Form.Label optional>Not</Form.Label>
+            <Form.Control>
+              <textarea rows={2} maxLength={1000} className="input" {...field} />
+            </Form.Control>
+            <Form.ErrorMessage />
+          </Form.Item>
+        )}
+      />
 
-        <label className="mt-3 block">
-          <span className="text-sm font-medium text-slate-700 dark:text-slate-200">
-            Not (isteğe bağlı)
-          </span>
-          <textarea
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            rows={2}
-            maxLength={1000}
-            className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-          />
-        </label>
-
-        <div className="mt-5 flex justify-end gap-3">
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-xl px-4 py-2 text-sm font-medium text-slate-500 hover:text-slate-900 dark:hover:text-white"
-          >
-            Vazgeç
-          </button>
-          <button
-            type="submit"
-            disabled={gecersiz || create.isPending}
-            className="rounded-xl bg-indigo-600 px-5 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:opacity-50"
-          >
-            {create.isPending ? "Kaydediliyor…" : "Ödemeyi kaydet"}
-          </button>
-        </div>
-      </form>
+      <div className="flex justify-end pt-1">
+        <Button isPending={create.isPending} onClick={gonder}>
+          Ödemeyi kaydet
+        </Button>
+      </div>
     </div>
   );
 }

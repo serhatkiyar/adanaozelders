@@ -1,0 +1,20 @@
+ ✓ src/__guards__/calismaZamaniKapisi.test.tsx > İP-A6b çalışma zamanı kapısı · kapsam iki yönlü korunur > KAPI_DISI'ndaki her dosya ölçüm tabanında yazılıdır
+ ✓ src/__guards__/calismaZamaniKapisi.test.tsx > İP-A6b çalışma zamanı kapısı · kapsam iki yönlü korunur > DERIN_KAPI'daki her dosya ölçüm tabanında yazılıdır
+ ✓ src/__guards__/calismaZamaniKapisi.test.tsx > İP-A6b çalışma zamanı kapısı · kapsam iki yönlü korunur > taban ekranlarının hepsi ya kapıda ya gerekçeli listede (üçüncü ihtimal yok)
+ × src/__guards__/calismaZamaniKapisi.test.tsx > İP-A6b çalışma zamanı kapısı · kapsam iki yönlü korunur > kapı kapsamı KİMLİKLE sabittir (sayı değil)
+   → expected [ …(88) ] to deeply equal [ …(88) ]
+ × src/__guards__/calismaZamaniKapisi.test.tsx > İP-A6b çalışma zamanı kapısı · kapsam iki yönlü korunur > KAPI_KAPSAMI ile KAPI_DISI kesişmez ve ikisi tabanı tam kaplar
+   → expected [ …(105) ] to deeply equal [ …(105) ]
+ ✓ src/__guards__/calismaZamaniKapisi.test.tsx > İP-A6b çalışma zamanı kapısı · kapsam iki yönlü korunur > KAPI_DISI gerekçeleri doğrudur: park edilen ekran gerçekten mount edilemiyor 5147ms
+stderr | src/__guards__/calismaZamaniKapisi.test.tsx > İP-A6b çalışma zamanı kapısı · adsız kontrol > kapsanan her ekran mount edilir; adsız kontrol tabanı KİMLİKLE sabittir
+stderr | src/__guards__/calismaZamaniKapisi.test.tsx > İP-A6b çalışma zamanı kapısı · adsız kontrol > kapsanan her ekran mount edilir; adsız kontrol tabanı KİMLİKLE sabittir
+stderr | src/__guards__/calismaZamaniKapisi.test.tsx > İP-A6b çalışma zamanı kapısı · adsız kontrol > kapsanan her ekran mount edilir; adsız kontrol tabanı KİMLİKLE sabittir
+stderr | src/__guards__/calismaZamaniKapisi.test.tsx > İP-A6b çalışma zamanı kapısı · adsız kontrol > kapsanan her ekran mount edilir; adsız kontrol tabanı KİMLİKLE sabittir
+stderr | src/__guards__/calismaZamaniKapisi.test.tsx > İP-A6b çalışma zamanı kapısı · adsız kontrol > kapsanan her ekran mount edilir; adsız kontrol tabanı KİMLİKLE sabittir
+stderr | src/__guards__/calismaZamaniKapisi.test.tsx > İP-A6b çalışma zamanı kapısı · adsız kontrol > kapsanan her ekran mount edilir; adsız kontrol tabanı KİMLİKLE sabittir
+stderr | src/__guards__/calismaZamaniKapisi.test.tsx > İP-A6b çalışma zamanı kapısı · adsız kontrol > kapsanan her ekran mount edilir; adsız kontrol tabanı KİMLİKLE sabittir
+ ✓ src/__guards__/calismaZamaniKapisi.test.tsx > İP-A6b çalışma zamanı kapısı · adsız kontrol > kapsanan her ekran mount edilir; adsız kontrol tabanı KİMLİKLE sabittir 3597ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+ ❯ src/__guards__/calismaZamaniKapisi.test.tsx:321:34
+    321|     expect([...kapsanan].sort()).toEqual([...KAPI_KAPSAMI].sort());
+ ❯ src/__guards__/calismaZamaniKapisi.test.tsx:330:65

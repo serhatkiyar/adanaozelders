@@ -1451,6 +1451,11 @@ export interface ProductCategory {
   icon_url?: string | null;
   sort_order: number;
   product_count?: number | null;
+  /** Kategorinin KENDİ varsayılan KDV oranı (ORAN, yüzde değil). Değerler
+   *  mali müşavir onayı bekliyor — kod hiçbir oran yazmaz, admin girer. */
+  default_tax_rate?: string | number | null;
+  /** Miras çözülmüş varsayılan (sunucu çözer; yalnız form ön-doldurması). */
+  effective_tax_rate?: string | number | null;
 }
 
 export interface ProductCategoryWrite {
@@ -1458,6 +1463,7 @@ export interface ProductCategoryWrite {
   parent_id?: number | null;
   icon_url?: string | null;
   sort_order?: number;
+  default_tax_rate?: string | number | null;
 }
 
 export interface ProductImageOut {
@@ -1502,6 +1508,16 @@ export interface ProductSearchOut {
   isbn?: string | null;
   /** Stok kalemi kimliği (`FZK-000042`); sunucu üretir, aranabilir. */
   sku?: string | null;
+  /* ── Varyant üyeliği (Faz 2) — admin formu ve kardeş seçici bunlardan okur. */
+  variant_group_id?: number | null;
+  option1_value?: string | null;
+  option2_value?: string | null;
+  variant_sort?: number;
+  barcode?: string | null;
+  /** Kartın temsil ettiği grup üye sayısı (tekilde 1). >1 iken `in_stock`
+   *  grubun durumudur ve fiyat `group_min_price` ile "X TL'den başlayan". */
+  variant_count?: number;
+  group_min_price?: string | null;
 }
 
 /** Kitap künyesi (opsiyonel) — ürün detayında "Ürün Özellikleri" tablosu + admin formu. */
@@ -1517,6 +1533,28 @@ export interface BookSpecFields {
   cover_type?: string | null;
 }
 
+/** Detay sayfası kardeş seçicisindeki tek varyant (public). */
+export interface ProductVariantMember {
+  id: number;
+  slug: string;
+  title: string;
+  option1_value?: string | null;
+  option2_value?: string | null;
+  variant_sort: number;
+  /** Tükenen kardeş listede kalır ama işaretlenir. */
+  in_stock: boolean;
+  price: string;
+}
+
+/** Detaydaki varyant bloğu — eksen ADLARI gruptan gelir. */
+export interface ProductVariants {
+  group_id: number;
+  title: string;
+  option1_name: string;
+  option2_name?: string | null;
+  members: ProductVariantMember[];
+}
+
 export interface ProductDetailOut extends ProductSearchOut, BookSpecFields {
   description?: string | null;
   stock?: number | null;
@@ -1524,6 +1562,8 @@ export interface ProductDetailOut extends ProductSearchOut, BookSpecFields {
   digital_asset_name?: string | null;
   images: ProductImageOut[];
   created_at?: string | null;
+  /** Varyant grubundaysa kardeş seçici verisi; grupsuzda null. */
+  variants?: ProductVariants | null;
 }
 
 /* ── Koleksiyon (Listelerim) ── */
@@ -1546,7 +1586,17 @@ export interface CollectionCreate {
   name: string;
 }
 
-export interface ProductCreate extends BookSpecFields {
+/** Ürünün varyant üyeliği alanları (create/update ortak). */
+export interface VariantMemberFields {
+  variant_group_id?: number | null;
+  option1_value?: string | null;
+  option2_value?: string | null;
+  variant_sort?: number | null;
+  /** Gruplu ürün barkodsuz olamaz (DB CHECK); grupsuzda opsiyonel kimlik. */
+  barcode?: string | null;
+}
+
+export interface ProductCreate extends BookSpecFields, VariantMemberFields {
   title: string;
   description?: string | null;
   kind: ProductKind;
@@ -1561,7 +1611,7 @@ export interface ProductCreate extends BookSpecFields {
   cover_url?: string | null;
 }
 
-export interface ProductUpdate extends BookSpecFields {
+export interface ProductUpdate extends BookSpecFields, VariantMemberFields {
   title?: string;
   description?: string | null;
   price?: string | number;
@@ -1573,6 +1623,56 @@ export interface ProductUpdate extends BookSpecFields {
   category_id?: number | null;
   status?: ProductStatus;
   cover_url?: string | null;
+}
+
+/* ── Varyant grubu (Faz 2) ── */
+
+export interface VariantGroup {
+  id: number;
+  title: string;
+  option1_name: string;
+  option2_name?: string | null;
+  member_count: number;
+}
+
+export interface VariantMember {
+  id: number;
+  title: string;
+  option1_value?: string | null;
+  option2_value?: string | null;
+  variant_sort: number;
+  price: string;
+  stock?: number | null;
+  status?: string | null;
+  cover_url?: string | null;
+  sku?: string | null;
+  barcode?: string | null;
+}
+
+export interface VariantGroupDetail extends VariantGroup {
+  members: VariantMember[];
+}
+
+/** Sözlükler backend'den gelir — istemcide kopya sabit tutulmaz. */
+export interface VariantConfig {
+  axes: string[];
+  book_root_slugs: string[];
+}
+
+export interface VariantGroupWrite {
+  title: string;
+  option1_name: string;
+  option2_name?: string | null;
+}
+
+export interface DeriveVariantPayload {
+  option1_value: string;
+  option2_value?: string | null;
+  barcode: string;
+  title?: string | null;
+  price?: string | number | null;
+  variant_sort?: number | null;
+  stock?: number | null;
 }
 
 export interface SellerProductCreate {
@@ -1846,7 +1946,78 @@ export interface BulkImportResult {
 
 /* ── Kendi-filo teslimat (mağaza dağıtım turları — ADMIN) ── */
 
-export type DeliveryVehicle = "LADA" | "COROLLA";
+/** Filo aracı (İP-19: sabit LADA/COROLLA enum'u tabloya taşındı — admin CRUD). */
+export interface Vehicle {
+  id: number;
+  /** Değişmez kısa kod (^[A-Z0-9_-]+$) — oluşturulduktan sonra düzenlenemez. */
+  code: string;
+  label: string;
+  plate: string | null;
+  profile: "car" | "bike" | "foot";
+  /** Rota planında araç başına durak tavanı; null = PLATFORM VARSAYILANI
+   *  (`DELIVERY_MAX_STOPS_PER_RUN`) — "sınırsız" değil (denetim B-2). */
+  max_stops: number | null;
+  /** "HH:MM:SS" (backend time) — form "HH:MM" gönderebilir. */
+  shift_start: string | null;
+  shift_end: string | null;
+  fixed_cost: number;
+  /** Turun başladığı nokta; null = varsayılan BASE noktası. */
+  start_point_id: number | null;
+  sort_order: number;
+  is_active: boolean;
+}
+
+export interface VehicleCreate {
+  code: string;
+  label: string;
+  plate?: string | null;
+  profile?: "car" | "bike" | "foot";
+  max_stops?: number | null;
+  shift_start?: string | null;
+  shift_end?: string | null;
+  fixed_cost?: number;
+  start_point_id?: number | null;
+  sort_order?: number;
+}
+
+/** code oluşturmadan sonra değiştirilemez. */
+export type VehicleUpdate = Partial<Omit<VehicleCreate, "code">> & {
+  is_active?: boolean;
+};
+
+/** Başlangıç/toplama noktası (K-9: depo .env sabiti yerine veri).
+ *  Varsayılan başlangıç = aktif BASE kayıtlarından sırası en küçük olan. */
+export interface PickupPoint {
+  id: number;
+  name: string;
+  kind: "BASE" | "SUPPLIER";
+  address: string | null;
+  lat: number;
+  lng: number;
+  sort_order: number;
+  is_active: boolean;
+}
+
+export interface PickupPointCreate {
+  name: string;
+  kind: "BASE" | "SUPPLIER";
+  address?: string | null;
+  lat: number;
+  lng: number;
+  sort_order?: number;
+}
+
+/** Nokta düzenleme (denetim B-9). `kind` DEĞİŞTİRİLEMEZ: bir BASE'i SUPPLIER'a
+ *  çevirmek, ona bağlı araçların turunu sessizce başka yerden başlatırdı. */
+export interface PickupPointUpdate {
+  name?: string;
+  address?: string | null;
+  lat?: number;
+  lng?: number;
+  sort_order?: number;
+  is_active?: boolean;
+}
+
 export type DeliveryRunStatus = "PLANNED" | "ACTIVE" | "DONE" | "CANCELLED";
 export type DeliveryStopStatus =
   | "PENDING"
@@ -1901,14 +2072,17 @@ export interface DeliveryStop {
 export interface DeliveryRun {
   id: number;
   run_date: string;
-  vehicle: DeliveryVehicle;
+  vehicle_id: number;
+  /** Aracın görünen ETİKETİ ("Lada") — İP-19'dan beri kod değil, ad. */
+  vehicle: string;
   status: DeliveryRunStatus;
   notes?: string | null;
   started_at?: string | null;
   completed_at?: string | null;
   created_at: string;
-  depot_lat: number;
-  depot_lng: number;
+  /** Başlangıç (BASE) noktası koordinatı; hiç BASE tanımlı değilse null. */
+  depot_lat: number | null;
+  depot_lng: number | null;
   /** Rota optimizasyonu (Faz B) — son optimize snapshot'ı */
   optimized_at?: string | null;
   optimize_provider?: string | null;
@@ -1918,6 +2092,14 @@ export interface DeliveryRun {
   route_geometry?: string | null;
   courier?: Courier | null;
   stops: DeliveryStop[];
+}
+
+/** POST /delivery/runs gövdesi — İP-19: araç FK ile seçilir (eski {vehicle:"LADA"} yok). */
+export interface DeliveryRunCreate {
+  run_date: string;
+  vehicle_id: number;
+  notes?: string | null;
+  courier_id?: number | null;
 }
 
 export interface DeliveryEligibleOrder {
@@ -2129,20 +2311,19 @@ export interface OrderTracking {
   proof_photo_url?: string | null;
 }
 
-/** Kurye profili (ADMIN yönetir; müşteri takip sayfasında kimlik kartı). */
+/** Kurye profili (ADMIN yönetir; müşteri takip sayfasında kimlik kartı).
+ *  İP-19: plaka kuryeden kalktı — araç kimliği `Vehicle.plate`'te yaşar. */
 export interface Courier {
   id: number;
   name: string;
   phone?: string | null;
   photo_url?: string | null;
-  vehicle_plate?: string | null;
   is_active: boolean;
 }
 
 export interface CourierCreate {
   name: string;
   phone?: string | null;
-  vehicle_plate?: string | null;
 }
 
 export type CourierUpdate = Partial<CourierCreate> & { is_active?: boolean };

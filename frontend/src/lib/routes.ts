@@ -46,6 +46,9 @@ export const PATHS = {
   distanceSales: "/mesafeli-satis-sozlesmesi",
   refundPolicy: "/iptal-ve-iade-politikasi",
   cookiePolicy: "/cerez-politikasi",
+  // Mesafeli satış sözleşmesi bu forma atıf yapar; sipariş öncesi özet niteliğindedir.
+  preliminaryInfo: "/on-bilgilendirme-formu",
+  about: "/hakkimizda",
 
   // ── Destek (public, SEO) — mesafeli satışta erişilebilir iletişim zorunlu ──
   faq: "/sss",
@@ -150,6 +153,8 @@ export const PATHS = {
   adminDeliveryRunDetail: "/yonetim/dagitim/turlar/:id",
   adminDeliveryPerformance: "/yonetim/dagitim/performans",
   adminDeliveryCouriers: "/yonetim/dagitim/kuryeler",
+  adminDeliveryVehicles: "/yonetim/dagitim/araclar",
+  adminDeliveryBoard: "/yonetim/dagitim/tahta",
   adminBookings: "/yonetim/rezervasyonlar",
   adminDemands: "/yonetim/talepler",
   adminNameChanges: "/yonetim/ad-degisiklikleri",
@@ -188,6 +193,8 @@ export const ROUTES = {
   distanceSales: PATHS.distanceSales,
   refundPolicy: PATHS.refundPolicy,
   cookiePolicy: PATHS.cookiePolicy,
+  preliminaryInfo: PATHS.preliminaryInfo,
+  about: PATHS.about,
 
   // ── Destek ──
   faq: PATHS.faq,
@@ -273,6 +280,8 @@ export const ROUTES = {
   adminDeliveryRun: (id: string | number) => `/yonetim/dagitim/turlar/${id}`,
   adminDeliveryPerformance: PATHS.adminDeliveryPerformance,
   adminDeliveryCouriers: PATHS.adminDeliveryCouriers,
+  adminDeliveryVehicles: PATHS.adminDeliveryVehicles,
+  adminDeliveryBoard: PATHS.adminDeliveryBoard,
   adminBookings: PATHS.adminBookings,
   adminDemands: PATHS.adminDemands,
   adminNameChanges: PATHS.adminNameChanges,
@@ -293,6 +302,8 @@ export const LEGAL_ROUTES = {
   "distance-sales": PATHS.distanceSales,
   refund: PATHS.refundPolicy,
   cookies: PATHS.cookiePolicy,
+  "preliminary-info": PATHS.preliminaryInfo,
+  about: PATHS.about,
 } as const;
 
 // Eğitmen için kanonik slug. Backend `slug` döner (isim-soyisim-{id}); yoksa id'ye düş.

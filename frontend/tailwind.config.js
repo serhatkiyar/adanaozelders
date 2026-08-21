@@ -1,7 +1,14 @@
+import medusaPreset from "@medusajs/ui-preset";
+
 /** @type {import('tailwindcss').Config} */
 export default {
+  presets: [medusaPreset],
   darkMode: "class",
-  content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
+  content: [
+    "./index.html",
+    "./src/**/*.{js,ts,jsx,tsx}",
+    "./node_modules/@medusajs/ui/dist/**/*.{js,jsx,ts,tsx}",
+  ],
   theme: {
     extend: {
       fontFamily: {
@@ -15,6 +22,18 @@ export default {
           "Helvetica Neue",
           "Arial",
           "sans-serif",
+        ],
+        // Preset'in "Roboto Mono"su geri alınıyor: font yüklü değil ve
+        // KVKK gereği Google Fonts CDN'i kullanılmıyor. Tailwind varsayılanı.
+        mono: [
+          "ui-monospace",
+          "SFMono-Regular",
+          "Menlo",
+          "Monaco",
+          "Consolas",
+          "Liberation Mono",
+          "Courier New",
+          "monospace",
         ],
       },
       keyframes: {

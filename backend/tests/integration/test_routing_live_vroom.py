@@ -22,7 +22,7 @@ import pytest
 
 from core.config import settings
 from core.routing import plan_fleet, plan_route, reset_state
-from core.routing.base import RoutePoint, RoutingUnavailable
+from core.routing.base import RoutePoint, RouteVehicle, RoutingUnavailable
 from core.routing.haversine import HaversineRoutingProvider, haversine_km
 from core.routing.vroom import VroomRoutingProvider
 
@@ -115,21 +115,56 @@ async def test_tavan_asimi_ag_a_cikmadan_kesilir(monkeypatch):
     assert plan.provider == "haversine"  # akış kesilmedi, yalnız bozuldu
 
 
+def _filo(n: int, *, fixed_cost: int = 0, max_stops: int | None = None):
+    """n araçlık filo; hepsi aynı başlangıç noktasından (İP-19: depo yok, K-9)."""
+    return [
+        RouteVehicle(
+            id=i,
+            start_lat=DEPOT[0],
+            start_lng=DEPOT[1],
+            fixed_cost=fixed_cost,
+            max_stops=max_stops,
+        )
+        for i in range(1, n + 1)
+    ]
+
+
 async def test_coklu_arac_yuku_dengeli_bolusturuyor():
     """Kısıtsız VROOM toplam maliyeti azaltır, yükü dengelemez: 20 iş / 2 araçta
     ölçülen bölüşüm çok dengesiz olabiliyordu (bir kurye 8 saat, diğeri 2 saat).
     capacity=ceil(n/k) tavanı bunu düzeltmeli — ve kapasite yüzünden atanamayan
-    iş üretmemeli."""
+    iş üretmemeli.
+
+    İP-19 (bağımsız denetim B-1): `plan_fleet` imzası `depot_lat/vehicle_ids`
+    yerine araç NESNELERİ alacak biçimde değişmişti, bu dosya güncellenmemişti
+    ve VROOM kapalı CI'da SKIP olduğu için kırıklığı görünmedi. Denge tavanı
+    MALİYETSİZ filoya aittir (K-3a) — bu düğüm o hâli ölçer.
+    """
     points = _grid(20)
-    fleet = await plan_fleet(
-        depot_lat=DEPOT[0], depot_lng=DEPOT[1], points=points, vehicle_ids=[1, 2]
-    )
+    fleet = await plan_fleet(points=points, vehicles=_filo(2))
     assert fleet.provider == "vroom"
     sizes = sorted(len(r.ordered_ids) for r in fleet.routes.values())
     assert sum(sizes) == 20, "durak kaybı/tekrarı var"
     assert sizes[-1] <= 10, f"yük dengesiz bölüşüldü: {sizes}"
     all_ids = sorted(i for r in fleet.routes.values() for i in r.ordered_ids)
     assert all_ids == [p.id for p in points]
+
+
+async def test_maliyetli_filoda_tavan_YINE_DE_uygulanir():
+    """K-3a'nın canlı kanıtı (denetim M-5): `costs.fixed` ile `max_tasks` aynı
+    payload'da yaşayabilir. Denge tavanı maliyetli filoda bilinçli yazılmaz ama
+    aracın KENDİ fiziksel tavanı her hâlde uygulanır — "tek araca 40 yükle"
+    durumunun sağlayıcı katmanındaki nöbetçisi (B-2).
+
+    Bu düğüm kasıtlı olarak YEŞİL doğar: mevcut davranışın doğru olduğunu
+    ölçer ve ileride `max_stops`'un maliyetli filoda düşürülmesini engeller.
+    """
+    points = _grid(12)
+    fleet = await plan_fleet(points=points, vehicles=_filo(2, fixed_cost=1800, max_stops=7))
+    assert fleet.provider == "vroom"
+    sizes = sorted(len(r.ordered_ids) for r in fleet.routes.values())
+    assert sum(sizes) == 12, "kapasite yüzünden atanamayan iş üretildi"
+    assert max(sizes) <= 7, f"araç kendi tavanını aştı: {sizes}"
 
 
 async def test_haversine_fallback_gercek_rotayi_asiri_iyimser_gostermiyor():

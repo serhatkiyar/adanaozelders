@@ -27,9 +27,10 @@ from models.delivery import (
     DeliveryRunStatus,
     DeliveryStop,
     DeliveryStopStatus,
-    DeliveryVehicle,
     FeedbackProblem,
 )
+from models.pickup_point import PickupPoint
+from models.vehicle import Vehicle
 from models.demand import Demand, DemandStatus
 from models.demand_response import DemandResponse
 from models.exam import PracticeExam, PracticeExamSubject
@@ -126,6 +127,7 @@ from models.store import (
     StockBucket,
     StockMovementType,
     StockNotification,
+    VariantGroup,
 )
 from models.task import Subtask, Task, TaskFilter, TaskLabel, TaskList
 from models.tutor import (
@@ -168,6 +170,8 @@ __all__ = [
     "ClientEducation",
     "Conversation",
     "Courier",
+    "PickupPoint",
+    "Vehicle",
     "CourierAccount",
     "DeliveryClosedDay",
     "DeliveryFeedback",
@@ -176,7 +180,6 @@ __all__ = [
     "DeliveryRunStatus",
     "DeliveryStop",
     "DeliveryStopStatus",
-    "DeliveryVehicle",
     "Demand",
     "DemandResponse",
     "DemandStatus",
@@ -234,6 +237,7 @@ __all__ = [
     "StockMovement",
     "StockMovementType",
     "StockBucket",
+    "VariantGroup",
     # F29 — sayım ve hasarlı stok
     "COUNT_ADJUSTMENT_REASONS",
     "DAMAGE_REASONS",

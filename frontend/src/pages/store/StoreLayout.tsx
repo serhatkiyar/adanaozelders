@@ -8,11 +8,10 @@ import { AuthModal } from "@/components/AuthModal";
 import { StoreCategoryBar } from "@/components/store/StoreCategoryBar";
 import { StoreAccountMenu } from "@/components/store/StoreAccountMenu";
 import { StoreSearch } from "@/components/store/StoreSearch";
+import { SiteFooter } from "@/components/SiteFooter";
 
-// Boxed gövde; banner/şerit full-bleed. İçerik genişliği ~1400px (1464 − 64 kenar boşluğu).
-const CONTAINER = "mx-auto max-w-[1464px] px-4 md:px-8";
 // Header, ana site navbar'ıyla aynı max-width'i kullanır (max-w-screen-2xl) — geniş
-// ekranlarda logo sol kenarı ana site logosuyla hizalı kalsın diye; içerik CONTAINER'da kalır.
+// ekranlarda logo sol kenarı ana site logosuyla hizalı kalsın diye.
 const HEADER_CONTAINER = "mx-auto max-w-screen-2xl px-4 md:px-8";
 
 export function StoreLayout({
@@ -102,29 +101,10 @@ export function StoreLayout({
       {/* İçerik */}
       <main className="w-full flex-1 pb-12">{children}</main>
 
-      {/* Footer */}
-      <footer className="mt-auto w-full border-t border-slate-200 bg-white py-8 dark:border-slate-800 dark:bg-slate-900">
-        <div className={`${CONTAINER} flex flex-col items-center justify-between gap-6 sm:flex-row`}>
-          <Link to="/" className="shrink-0">
-            <img
-              src="/logo.svg"
-              alt="Adana Özel Ders"
-              className="h-8 w-auto object-contain opacity-70 grayscale transition hover:opacity-100 hover:grayscale-0 md:h-9 dark:opacity-60"
-            />
-          </Link>
-          <div className="text-center text-sm text-slate-500 sm:text-right dark:text-slate-400">
-            <p>© {new Date().getFullYear()} Adana Özel Ders. Tüm hakları saklıdır.</p>
-            <div className="mt-4 flex flex-wrap justify-center gap-x-4 gap-y-2 sm:justify-end">
-              <Link to={ROUTES.privacy} className="transition-colors hover:text-slate-900 dark:hover:text-white">
-                Gizlilik Şartları
-              </Link>
-              <Link to={ROUTES.terms} className="transition-colors hover:text-slate-900 dark:hover:text-white">
-                Kullanıcı Sözleşmesi
-              </Link>
-            </div>
-          </div>
-        </div>
-      </footer>
+      {/* Footer — ortak bileşen (bkz. components/SiteFooter.tsx). Mağazanın
+          eski footer'ındaki "Gizlilik Şartları" ve "Kullanıcı Sözleşmesi"
+          linkleri aynı hedeflere legalNav başlıklarıyla taşındı. */}
+      <SiteFooter />
 
       <AuthModal />
     </div>

@@ -1,8 +1,18 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import type { ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/components/admin/data-table";
-import { Badge, Button, Dialog, ErrorState } from "@/components/admin/ui";
+import { Badge, Button, ErrorState } from "@/components/admin/ui";
+import {
+  DuzenlemePenceresi,
+  useDuzenlemeYuzeyi,
+  useYuzeyKirliFormBekcisi,
+  type DuzenlemeYuzeyiDurumu,
+} from "@/components/admin/ui2/duzenlemeYuzeyi";
+import { Form, sunucuHatasiniUygula } from "@/components/admin/ui2/form";
 import { useAdminReportList, useResolveReport } from "@/hooks/useReports";
 import { parseAdminReportQuery } from "@/lib/adminOperationsQuery";
 import { setQueryValue } from "@/lib/adminUserQuery";
@@ -47,46 +57,21 @@ interface Decision {
 export default function AdminReportsPage() {
   const [params, setParams] = useSearchParams();
   const state = parseAdminReportQuery(params);
-  const [decision, setDecision] = useState<Decision | null>(null);
-  const [resolution, setResolution] = useState("");
-  const [hideTarget, setHideTarget] = useState(false);
+  // Pencere durumu ekranda YAŞAMAZ (İP-A4 sözleşmesi). Karar yüzeyi hem
+  // hedefi hem "çöz mü reddet mi" bağlamını taşır.
+  const karar = useDuzenlemeYuzeyi<Decision, void>();
   const query = useAdminReportList({
     status: state.status,
     target_type: state.targetType || undefined,
     limit: state.pageSize,
     offset: (state.page - 1) * state.pageSize,
   });
-  const resolve = useResolveReport();
   const canManage = useAuthStore((store) => store.user?.admin_permissions?.includes("reports.manage")) ?? false;
   const update = (changes: Record<string, string | number | boolean | undefined>) =>
     setParams(setQueryValue(params, changes));
 
-  const openDecision = (report: ReportOut, status: Decision["status"]) => {
-    setResolution("");
-    // Varsayılan: şikayeti çözerken içeriği de kaldır. Bir yorum hakkındaki
-    // şikayet haklı bulunduysa yorumun yayında kalması beklenmez; yine de
-    // admin bu kutuyu kaldırabilir (ör. yorum uygun, şikayet asılsız).
-    setHideTarget(status === ReportStatus.RESOLVED && isModeratable(report));
-    setDecision({ report, status });
-  };
-  const submitDecision = () => {
-    if (!decision) return;
-    resolve.mutate(
-      {
-        id: decision.report.id,
-        status: decision.status,
-        resolution: resolution.trim() || undefined,
-        hideTarget: hideTarget && isModeratable(decision.report),
-      },
-      {
-        onSuccess: () => {
-          toast.success("Şikâyet kararı kaydedildi.");
-          setDecision(null);
-        },
-        onError: (error) => toast.error(getErrorMessage(error, "Karar kaydedilemedi.")),
-      }
-    );
-  };
+  const openDecision = (report: ReportOut, status: Decision["status"]) =>
+    karar.ac({ report, status });
 
   const actionButtons = (report: ReportOut) => canManage && report.status === ReportStatus.OPEN ? (
     <div className="flex flex-wrap gap-2">
@@ -182,37 +167,169 @@ export default function AdminReportsPage() {
         />
       )}
 
-      <Dialog
-        open={decision !== null}
-        onClose={() => !resolve.isPending && setDecision(null)}
-        title={decision?.status === ReportStatus.RESOLVED ? "Şikâyeti çöz" : "Şikâyeti reddet"}
-        description={decision ? `${decision.report.target_type} #${decision.report.target_id} için karar kaydedilecek.` : undefined}
-      >
-        <label className="block">
-          <span className="mb-1.5 block text-sm font-semibold">Moderasyon notu</span>
-          <textarea value={resolution} onChange={(event) => setResolution(event.target.value)} maxLength={2000} rows={5} className="input min-h-28 resize-y" placeholder="Kararın kısa gerekçesi" />
-        </label>
-        {decision && isModeratable(decision.report) && (
-          <label className="mt-4 flex items-start gap-3 text-sm">
-            <input
-              type="checkbox"
-              checked={hideTarget}
-              onChange={(event) => setHideTarget(event.target.checked)}
-              className="mt-0.5 h-4 w-4 rounded border-slate-300 dark:border-slate-600"
-            />
-            <span>
-              <span className="font-semibold">Yorumu yayından kaldır</span>
-              <span className="mt-0.5 block text-xs text-slate-500 dark:text-slate-400">
-                Yorum silinmez; gizlenir ve puan ortalamasından düşülür. Karar geri alınabilir.
-              </span>
-            </span>
-          </label>
+      <KararPenceresi yuzey={karar} />
+    </div>
+  );
+}
+
+/**
+ * Karar penceresi — İP-A7d3'te ortak düzenleme yüzeyine geçti.
+ *
+ * SK-4 sınıfı bir kusur buradaydı: pencere kendi `Dialog`ını kuruyor, içinde
+ * 2000 karakterlik bir moderasyon notu alanı taşıyor ve kirli form bekçisini
+ * HİÇ çağırmıyordu. Yönetici gerekçeyi yazıp yanlışlıkla dışarı tıkladığında
+ * metin sormadan gidiyordu — üstelik bu, hakkında karar verilen içeriğin
+ * yayından kaldırılıp kaldırılmayacağını da içeren bir yüzey.
+ */
+function KararPenceresi({ yuzey }: { yuzey: DuzenlemeYuzeyiDurumu<Decision, void> }) {
+  const karar = yuzey.kayit;
+  return (
+    <DuzenlemePenceresi
+      yuzey={yuzey}
+      baslik={karar?.status === ReportStatus.RESOLVED ? "Şikâyeti çöz" : "Şikâyeti reddet"}
+      aciklama={
+        karar
+          ? `${karar.report.target_type} #${karar.report.target_id} için karar kaydedilecek.`
+          : undefined
+      }
+    >
+      {karar && <KararIcerik yuzey={yuzey} karar={karar} />}
+    </DuzenlemePenceresi>
+  );
+}
+
+const kararSemasi = z.object({
+  resolution: z.string().max(2000, "Not en fazla 2000 karakter olabilir."),
+  hideTarget: z.boolean(),
+});
+
+type KararDegerleri = z.infer<typeof kararSemasi>;
+
+function KararIcerik({
+  yuzey,
+  karar,
+}: {
+  yuzey: DuzenlemeYuzeyiDurumu<Decision, void>;
+  karar: Decision;
+}) {
+  const resolve = useResolveReport();
+  const moderable = isModeratable(karar.report);
+
+  const form = useForm<KararDegerleri>({
+    resolver: zodResolver(kararSemasi),
+    defaultValues: {
+      resolution: "",
+      // Varsayılan: şikayeti çözerken içeriği de kaldır. Bir yorum hakkındaki
+      // şikayet haklı bulunduysa yorumun yayında kalması beklenmez; yine de
+      // admin bu kutuyu kaldırabilir (ör. yorum uygun, şikayet asılsız).
+      hideTarget: karar.status === ReportStatus.RESOLVED && moderable,
+    },
+    mode: "onChange",
+    shouldFocusError: false,
+  });
+
+  useYuzeyKirliFormBekcisi({ form, sunucuHatasi: resolve.error });
+
+  const gonder = form.handleSubmit(
+    (deger) => {
+      form.clearErrors("root.sunucu");
+      resolve.mutate(
+        {
+          id: karar.report.id,
+          status: karar.status,
+          resolution: deger.resolution.trim() || undefined,
+          hideTarget: deger.hideTarget && moderable,
+        },
+        {
+          onSuccess: () => {
+            toast.success("Şikâyet kararı kaydedildi.");
+            yuzey.kapat();
+          },
+          onError: (error) => {
+            const kalan = sunucuHatasiniUygula(error, form, ["resolution"], undefined, (h) =>
+              getErrorMessage(h, "Karar kaydedilemedi.")
+            );
+            form.setError("root.sunucu", { type: "server", message: kalan ?? undefined });
+          },
+        }
+      );
+    },
+    (hatalar) => {
+      if (hatalar.resolution) form.setFocus("resolution");
+    }
+  );
+
+  const genelHata = form.formState.errors.root?.sunucu?.message;
+
+  return (
+    <div className="space-y-4">
+      {genelHata && (
+        <p
+          role="alert"
+          className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700 dark:bg-rose-500/10 dark:text-rose-300"
+        >
+          {genelHata}
+        </p>
+      )}
+
+      <Form.Field
+        control={form.control}
+        name="resolution"
+        render={({ field }) => (
+          <Form.Item>
+            <Form.Label optional>Moderasyon notu</Form.Label>
+            <Form.Control>
+              <textarea
+                maxLength={2000}
+                rows={5}
+                placeholder="Kararın kısa gerekçesi"
+                className="input min-h-28 resize-y"
+                {...field}
+              />
+            </Form.Control>
+            <Form.ErrorMessage />
+          </Form.Item>
         )}
-        <div className="mt-5 flex justify-end gap-2">
-          <Button variant="ghost" disabled={resolve.isPending} onClick={() => setDecision(null)}>Vazgeç</Button>
-          <Button variant={decision?.status === ReportStatus.DISMISSED ? "danger" : "primary"} isPending={resolve.isPending} onClick={submitDecision}>Kararı kaydet</Button>
-        </div>
-      </Dialog>
+      />
+
+      {moderable && (
+        <Form.Field
+          control={form.control}
+          name="hideTarget"
+          render={({ field }) => (
+            <Form.Item>
+              <label className="flex items-start gap-3 text-sm">
+                <input
+                  type="checkbox"
+                  checked={field.value}
+                  onChange={(event) => field.onChange(event.target.checked)}
+                  onBlur={field.onBlur}
+                  ref={field.ref}
+                  name={field.name}
+                  className="mt-0.5 h-4 w-4 rounded border-slate-300 dark:border-slate-600"
+                />
+                <span>
+                  <span className="font-semibold">Yorumu yayından kaldır</span>
+                  <span className="mt-0.5 block text-xs text-slate-500 dark:text-slate-400">
+                    Yorum silinmez; gizlenir ve puan ortalamasından düşülür. Karar geri alınabilir.
+                  </span>
+                </span>
+              </label>
+            </Form.Item>
+          )}
+        />
+      )}
+
+      <div className="flex justify-end">
+        {/* Düğme geçerlilikle KAPANMAZ (kilitli karar). */}
+        <Button
+          variant={karar.status === ReportStatus.DISMISSED ? "danger" : "primary"}
+          isPending={resolve.isPending}
+          onClick={gonder}
+        >
+          Kararı kaydet
+        </Button>
+      </div>
     </div>
   );
 }

@@ -12,8 +12,6 @@ from __future__ import annotations
 
 import asyncio
 import datetime
-import uuid
-from decimal import Decimal
 
 import httpx
 import pytest
@@ -22,22 +20,23 @@ from sqlalchemy import text
 
 from core.config import settings
 from core.database import AsyncSessionLocal
-from models.client import Client
-from models.store import Order
 from schemas.delivery import DeliveryRunCreate
+from tests.integration.filo_yardim import arac_id
 from services import delivery_service
-from tests.integration.db_guard import assert_test_database
 
-DEPOT = (settings.DELIVERY_DEPOT_LAT, settings.DELIVERY_DEPOT_LNG)
+# İP-19: depo ayarı kalktı (K-9). Bu, testin VROOM canlılık yoklaması ve
+# sipariş üretimi için kullandığı Adana-içi bir çapa noktasıdır; migration
+# seed'inin BASE noktasıyla aynı koordinat (OSRM verisi Adana bbox'ı).
+DEPOT = (36.9855, 35.3253)
 
-# Adana merkezde gerçek mahalle ölçeğinde dağılmış teslimat noktaları.
-_ADRESLER = [
-    (37.0025, 35.3210), (36.9760, 35.3400), (37.0140, 35.3050),
-    (36.9900, 35.3600), (37.0300, 35.3300), (36.9650, 35.3100),
-    (37.0080, 35.3480), (36.9820, 35.2950), (37.0200, 35.3620),
-    (36.9700, 35.3520), (37.0350, 35.3150), (36.9950, 35.2880),
-    (37.0120, 35.3700), (36.9600, 35.3350), (37.0260, 35.2980),
-]
+# Teslimat noktaları, sipariş fabrikası ve "yabancı uygun siparişi park"
+# düzeneği ortak modüldedir: aynı düzenek VROOM'suz koşan
+# `test_ip19_denetim_pg.py` tarafından da kullanılır (kopyalanan iki
+# fixture'ın ayrışması bu paketin düzeltmeye çalıştığı hata sınıfı).
+from tests.integration.dispatch_yardim import (  # noqa: E402
+    DispatchFactory,
+    EligibleParking as _EligibleParking,
+)
 
 
 def _vroom_up() -> bool:
@@ -64,174 +63,6 @@ pytestmark = [
 ]
 
 
-def _uniq() -> str:
-    return uuid.uuid4().hex[:10]
-
-
-class DispatchFactory:
-    """Testin kendi siparişleri — teardown'da FİZİKSEL silinir."""
-
-    def __init__(self) -> None:
-        self.client_ids: list[int] = []
-        self.order_ids: list[int] = []
-        self.run_ids: list[int] = []
-
-    async def orders(self, n: int) -> list[int]:
-        ids: list[int] = []
-        async with AsyncSessionLocal() as s:
-            for i in range(n):
-                u = _uniq()
-                client = Client(
-                    email=f"c-{u}@dispatch.test", hashed_password="x",
-                    first_name="Dagitim", last_name=f"Musteri{i}",
-                    username=f"c{u}", role_id=3,
-                )
-                s.add(client)
-                await s.flush()
-                lat, lng = _ADRESLER[i % len(_ADRESLER)]
-                order = Order(
-                    client_id=client.id, status="PAID", payment_status="PAID",
-                    subtotal=Decimal("100.00"), total=Decimal("100.00"),
-                    has_physical=True, ship_recipient=f"Dagitim Musteri{i}",
-                    ship_address=f"Test adres {i}", ship_in_zone=True,
-                    ship_lat=Decimal(str(lat)), ship_lng=Decimal(str(lng)),
-                    prepared_at=datetime.datetime.now(datetime.timezone.utc),
-                )
-                s.add(order)
-                await s.flush()
-                ids.append(order.id)
-                self.client_ids.append(client.id)
-                self.order_ids.append(order.id)
-            await s.commit()
-        return ids
-
-    async def cleanup(self) -> None:
-        async with AsyncSessionLocal() as s:
-            params = {
-                "ids": self.order_ids or [0],
-                "runs": self.run_ids or [0],
-                "cids": self.client_ids or [0],
-            }
-            for q in (
-                "DELETE FROM delivery_stops WHERE order_id = ANY(:ids)",
-                "DELETE FROM delivery_runs WHERE id = ANY(:runs)",
-                "DELETE FROM order_status_history WHERE order_id = ANY(:ids)",
-                "DELETE FROM orders WHERE id = ANY(:ids)",
-                "DELETE FROM clients WHERE id = ANY(:cids)",
-            ):
-                await s.execute(text(q), params)
-            await s.commit()
-
-
-# ── Dış veriden izolasyon ────────────────────────────────────────────────────
-#
-# KÖK NEDEN: `dispatch_day(gun)` tasarımı gereği **sistem genelinde** çalışır —
-# `eligible_orders(db)` çağırıp söz günü `gun`'ü geçmeyen TÜM konumlu siparişleri
-# planlar. Testler ise "yalnız benim siparişlerim planlanır" varsayıyordu ve
-# `planlanan == set(order_ids)` / `sum(boyutlar) == n` gibi GLOBAL eşitlikler
-# kuruyordu. Geliştirme veritabanında başka bir uygun sipariş bulunduğu anda
-# (ör. elle oluşturulmuş demo siparişleri) bu eşitlikler kırılıyordu.
-#
-# `_future_date()` yorumu "mevcut PLANNED turlarla çakışmasın" diyor ama tarih
-# İZOLASYON SAĞLAMAZ: filtre `promised_delivery_date <= gun` olduğu için ileri
-# bir tarih, geçmiş sözlü tüm siparişleri de aday yapar. Yani tarihle izole
-# etmek imkânsız.
-#
-# ÇÖZÜM: veriyi SİLMEK yerine "park etmek". `eligible_orders` açık durağı olan
-# siparişleri hariç tutar (sipariş başına tek açık durak kısıtı). Bu yüzden test
-# başlarken önceden var olan uygun siparişler geçici bir PLANNED tura durak
-# olarak bağlanır; teardown'da o tur ve durakları FİZİKSEL silinir. Hiçbir
-# üretim verisi değişmez, sipariş durumlarına dokunulmaz ve test dev DB'nin
-# içeriğinden bağımsız hale gelir.
-
-
-class _EligibleParking:
-    """Test süresince yabancı uygun siparişleri kuyruk dışına alır."""
-
-    def __init__(self) -> None:
-        self.run_id: int | None = None
-        self.stop_ids: list[int] = []
-
-    async def park(self) -> int:
-        # `pg` fixture'ı zaten kilitliyor; burada da doğrulanır çünkü park etmek
-        # canlı dağıtım kuyruğunu geçici olarak değiştiren TEK test adımıdır.
-        assert_test_database()
-        async with AsyncSessionLocal() as s:
-            rows = (
-                await s.execute(
-                    text(
-                        """
-                        SELECT o.id FROM orders o
-                        WHERE o.deleted_at IS NULL
-                          AND o.payment_status = 'PAID'
-                          AND o.has_physical IS TRUE
-                          AND o.status IN ('PAID', 'SHIPPED')
-                          AND NOT EXISTS (
-                              SELECT 1 FROM delivery_stops ds
-                              WHERE ds.order_id = o.id
-                                AND ds.status IN ('PENDING', 'DELIVERED')
-                          )
-                        """
-                    )
-                )
-            ).scalars().all()
-            if not rows:
-                return 0
-            # Park turu testin kullandığı günden AYRI bir günde açılır: gün+araç
-            # başına tek PLANNED tur kısıtı testin kendi turlarıyla çakışmasın.
-            park_date = _future_date() - datetime.timedelta(days=1)
-            run_id = (
-                await s.execute(
-                    text(
-                        """
-                        INSERT INTO delivery_runs (run_date, vehicle, status)
-                        VALUES (:d, 'LADA', 'PLANNED') RETURNING id
-                        """
-                    ),
-                    {"d": park_date},
-                )
-            ).scalar_one()
-            self.run_id = run_id
-            for i, oid in enumerate(rows, start=1):
-                sid = (
-                    await s.execute(
-                        text(
-                            """
-                            INSERT INTO delivery_stops
-                                (run_id, order_id, sequence, status, qr_token)
-                            VALUES (:r, :o, :seq, 'PENDING', :tok) RETURNING id
-                            """
-                        ),
-                        {"r": run_id, "o": oid, "seq": i, "tok": f"park-{_uniq()}"},
-                    )
-                ).scalar_one()
-                self.stop_ids.append(sid)
-            await s.commit()
-        return len(rows)
-
-    async def release(self) -> None:
-        if self.run_id is None:
-            return
-        async with AsyncSessionLocal() as s:
-            # Silme HEM id ile HEM işaretle sınırlı: yanlış bir id gerçek bir
-            # durağı/turu silemesin. `park-` öneki yalnız bu fixture'ın ürettiği
-            # satırlarda bulunur.
-            await s.execute(
-                text(
-                    "DELETE FROM delivery_stops "
-                    "WHERE id = ANY(:ids) AND qr_token LIKE 'park-%'"
-                ),
-                {"ids": self.stop_ids or [0]},
-            )
-            await s.execute(
-                text(
-                    "DELETE FROM delivery_runs WHERE id = :r AND status = 'PLANNED' "
-                    "AND NOT EXISTS (SELECT 1 FROM delivery_stops ds WHERE ds.run_id = :r)"
-                ),
-                {"r": self.run_id},
-            )
-            await s.commit()
-
 
 @pytest.fixture(autouse=True)
 async def izole_kuyruk(pg):
@@ -247,6 +78,29 @@ async def df(pg):
     f = DispatchFactory()
     yield f
     await f.cleanup()
+
+
+@pytest.fixture(autouse=True)
+async def _seed_filosu(pg):
+    """Aktif filo = migration seed'i (LADA + COROLLA).
+
+    `dispatch_day` filo-KÜRESELDİR: aktif araç listesini veritabanından okur.
+    Bu dosyanın "6 durak tek araca sığmalı" gibi iddiaları, dev/test DB'sine
+    elle eklenmiş her araçla sessizce kırılır — nitekim tarayıcı kabul turundan
+    kalan iki araç (DOBLO/KANGOO) üç testi düşürdü. Fixture hiçbir aracı
+    silmez, yalnız test süresince pasifleştirir.
+    """
+    from tests.integration.dispatch_yardim import BazNoktasi, SeedFilosu
+
+    baz = BazNoktasi()
+    await baz.kur()
+    f = SeedFilosu()
+    await f.daralt()
+    try:
+        yield f
+    finally:
+        await f.geri_al()
+        await baz.kaldir()
 
 
 @pytest.fixture(autouse=True)
@@ -308,7 +162,11 @@ async def test_add_stops_ayni_session_da_taze_okunur(df):
     order_ids = await df.orders(3)
     async with AsyncSessionLocal() as s:
         run = await delivery_service.create_run(
-            s, DeliveryRunCreate(run_date=_future_date(), vehicle="LADA")
+            s,
+            DeliveryRunCreate(
+                run_date=_future_date(),
+                vehicle_id=await arac_id(),
+            ),
         )
         df.run_ids.append(run.id)
         out = await delivery_service.add_stops(s, run.id, order_ids)
@@ -331,38 +189,68 @@ async def test_add_stops_ayni_session_da_taze_okunur(df):
         assert len(yeniden.stops) == 3
 
 
-async def test_dispatch_yogun_gunde_iki_araca_dengeli_bolusturur(df):
-    """Eşiği aşan gün ikinci aracı devreye almalı ve yükü DENGELİ bölüşmeli —
-    kısıtsız VROOM toplam maliyeti azaltıp bir kuryeye yığabiliyordu."""
-    n = settings.DELIVERY_SINGLE_VEHICLE_MAX_STOPS + 3
-    order_ids = await df.orders(n)
-    async with AsyncSessionLocal() as s:
-        runs = await delivery_service.dispatch_day(s, _future_date())
-    df.run_ids.extend(r.id for r in runs)
+async def test_dispatch_kapasiteyi_asan_gun_ikinci_araca_tasar(df):
+    """Birincil aracın `max_stops`'unu aşan gün, yük ikinci araca taşmalı.
 
-    assert {r.vehicle for r in runs} == {"LADA", "COROLLA"}
-    boyutlar = sorted(len(r.stops) for r in runs)
-    assert sum(boyutlar) == n
-    # ceil(n/2) tavanı: en yüklü araç bunu aşamaz.
-    assert boyutlar[-1] <= -(-n // 2), f"yük dengesiz: {boyutlar}"
-    hepsi = {s.order_id for r in runs for s in r.stops}
-    assert hepsi == set(order_ids)
-    assert all(r.optimize_provider == "vroom" for r in runs if len(r.stops) >= 2)
+    İP-19 güncellemesi (sözleşme §6.1): eski test
+    `DELIVERY_SINGLE_VEHICLE_MAX_STOPS` eşiğini ve `ceil(n/2)` denge tavanını
+    ölçüyordu — ikisi de kalktı. Yeni modelde COROLLA `fixed_cost` taşır
+    (seed 1800) ve maliyetli filoda denge tavanı bilinçli olarak YAZILMAZ
+    (K-3 çelişkisi, `vroom.py` docstring'i). Bölünmeyi artık ölçülebilir
+    biçimde zorlayan şey KAPASİTEDİR: LADA'ya `max_stops` verilir, n onu
+    aşar, VROOM taşan kısmı fixed maliyeti ödeyip COROLLA'ya atar.
+    Ölçülen: iki araç da sahada, kimse kapasitesini aşmıyor, sipariş kaybı
+    yok — "dengeli bölüşüm" değil "kapasite gerçeği" iddiası.
+    """
+    from tests.integration.filo_yardim import arac_id as _aid
+
+    lada = await _aid()
+    n = 11
+    async with AsyncSessionLocal() as s:
+        await s.execute(
+            text("UPDATE vehicles SET max_stops = 8 WHERE id = :i"), {"i": lada}
+        )
+        await s.commit()
+    try:
+        order_ids = await df.orders(n)
+        async with AsyncSessionLocal() as s:
+            runs = await delivery_service.dispatch_day(s, _future_date())
+        df.run_ids.extend(r.id for r in runs)
+
+        # `vehicle` alanı artık ETİKETTİR (İP-19).
+        assert {r.vehicle for r in runs} == {"Lada", "Corolla"}
+        boyutlar = {r.vehicle: len(r.stops) for r in runs}
+        assert sum(boyutlar.values()) == n
+        assert boyutlar["Lada"] <= 8, f"kapasite aşıldı: {boyutlar}"
+        hepsi = {s.order_id for r in runs for s in r.stops}
+        assert hepsi == set(order_ids)
+        assert all(
+            r.optimize_provider == "vroom" for r in runs if len(r.stops) >= 2
+        )
+    finally:
+        async with AsyncSessionLocal() as s:
+            await s.execute(
+                text("UPDATE vehicles SET max_stops = NULL WHERE id = :i"),
+                {"i": lada},
+            )
+            await s.commit()
 
 
 async def test_gunluk_tavan_asilan_siparisler_kuyrukta_kalir(df, monkeypatch):
     """Biriken söz borcu tek günde bitirilemeyecek tur kurmamalı: tavanı aşan
     siparişler PLANA GİRMEZ ama uygunluk kuyruğunda görünmeye devam eder."""
     monkeypatch.setattr(settings, "DELIVERY_MAX_STOPS_PER_RUN", 2)
-    monkeypatch.setattr(settings, "DELIVERY_SINGLE_VEHICLE_MAX_STOPS", 99)
     order_ids = await df.orders(6)
+    # İP-19: tavan artık plana giren araçların toplamıdır (max_stops NULL →
+    # DELIVERY_MAX_STOPS_PER_RUN başına düşer). Seed'li iki araçla 2+2=4.
+    tavan = await delivery_service.gunluk_tavan(None)
     async with AsyncSessionLocal() as s:
         runs = await delivery_service.dispatch_day(s, _future_date())
     df.run_ids.extend(r.id for r in runs)
 
     planlanan = {st.order_id for r in runs for st in r.stops}
     bizimkiler = planlanan & set(order_ids)
-    assert len(bizimkiler) <= 2 * settings.DELIVERY_MAX_STOPS_PER_RUN
+    assert len(bizimkiler) <= tavan
 
     async with AsyncSessionLocal() as s:
         kalan = {o.order_id for o in await delivery_service.eligible_orders(s)}
@@ -459,3 +347,27 @@ async def test_ikinci_dispatch_ayni_siparisleri_tekrar_planlamaz(df):
     tum_duraklar = [st.order_id for r in runs2 for st in r.stops]
     assert sorted(tum_duraklar) == sorted(ilk_grup + yeni)
     assert len(tum_duraklar) == len(set(tum_duraklar)), "durak tekrarlandı"
+
+
+async def test_seed_filoda_tavani_asan_gun_GERCEK_vroom_ile_de_bolunur(df, monkeypatch):
+    """Bağımsız denetim B-2'nin canlı ikizi.
+
+    `test_ip19_denetim_pg.py::test_B2a_*` aynı iddiayı haversine ile ölçer
+    (CI'da koşsun diye). Bu düğüm gerçek çözücüyle ölçer: seed filo `max_stops`
+    NULL taşır, o yüzden payload'a `max_tasks` yazılmıyordu ve VROOM sabit
+    maliyetli ikinci aracı çıkarmaya hiç zorlanmıyordu — 40 sipariş tek araca
+    biniyordu (denetim ölçümü: 20→{1:20}, 40→{1:40}).
+
+    Fixture seed filoyu OLDUĞU GİBİ kullanır: `max_stops`'a elle değer yazmaz.
+    """
+    monkeypatch.setattr(settings, "DELIVERY_MAX_STOPS_PER_RUN", 5)
+    order_ids = await df.orders(8)
+    async with AsyncSessionLocal() as s:
+        runs = await delivery_service.dispatch_day(s, _future_date())
+    df.run_ids.extend(r.id for r in runs)
+
+    boyutlar = sorted(len(r.stops) for r in runs)
+    assert len(runs) == 2, f"gerçek VROOM yükü tek araca bindirdi: {boyutlar}"
+    assert max(boyutlar) <= 5, f"araç başına tavan aşıldı: {boyutlar}"
+    assert {st.order_id for r in runs for st in r.stops} == set(order_ids)
+    assert all(r.optimize_provider == "vroom" for r in runs if len(r.stops) >= 2)

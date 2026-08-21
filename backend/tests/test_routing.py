@@ -15,6 +15,16 @@ from services.delivery_service import compute_detours
 
 DEPOT = (36.9855, 35.3253)  # Seyhan Çakmak Cad. civarı
 
+def arac(vid: int, *, max_stops=None, fixed_cost=0):
+    """İP-19 imzası: payload kurucular araç NESNESİ alır (RouteVehicle)."""
+    from core.routing.base import RouteVehicle
+
+    return RouteVehicle(
+        id=vid, start_lat=DEPOT[0], start_lng=DEPOT[1],
+        max_stops=max_stops, fixed_cost=fixed_cost,
+    )
+
+
 
 def p(id_: int, lat: float, lng: float) -> RoutePoint:
     return RoutePoint(id=id_, lat=lat, lng=lng)
@@ -59,9 +69,7 @@ async def test_haversine_provider_plan_offsets_monotonic():
 
 
 def test_build_vroom_payload_lng_lat_order():
-    payload = build_vroom_payload(
-        depot_lat=DEPOT[0], depot_lng=DEPOT[1], points=[p(7, 37.01, 35.33)]
-    )
+    payload = build_vroom_payload(points=[p(7, 37.01, 35.33)], vehicles=[arac(1)])
     assert payload["vehicles"][0]["start"] == [DEPOT[1], DEPOT[0]]  # [lng, lat]
     assert payload["jobs"][0]["location"] == [35.33, 37.01]
     assert payload["jobs"][0]["id"] == 7
@@ -122,10 +130,10 @@ def test_compute_detours_never_negative():
 
 
 def test_build_vroom_payload_single_vehicle_unchanged():
-    """vehicle_ids verilmediğinde payload bugüne kadarki tek-araç biçiminin
-    BİREBİR aynısı olmalı (geriye uyumluluk regresyonu)."""
+    """Varsayılan değerli tek araçta payload, İP-19 ÖNCESİ tek-araç biçiminin
+    BİREBİR aynısı olmalı (geriye uyumluluk regresyonu — D-4 ile aynı iddia)."""
     pts = [p(11, 37.01, 35.33)]
-    payload = build_vroom_payload(depot_lat=DEPOT[0], depot_lng=DEPOT[1], points=pts)
+    payload = build_vroom_payload(points=pts, vehicles=[arac(1)])
     assert payload["vehicles"] == [
         {"id": 1, "profile": "car", "start": [DEPOT[1], DEPOT[0]]}
     ]
@@ -135,9 +143,7 @@ def test_build_vroom_payload_single_vehicle_unchanged():
 
 def test_build_vroom_payload_multi_vehicle():
     pts = [p(11, 37.01, 35.33), p(12, 36.99, 35.30)]
-    payload = build_vroom_payload(
-        depot_lat=DEPOT[0], depot_lng=DEPOT[1], points=pts, vehicle_ids=[1, 2]
-    )
+    payload = build_vroom_payload(points=pts, vehicles=[arac(1), arac(2)])
     assert [v["id"] for v in payload["vehicles"]] == [1, 2]
     assert all(v["start"] == [DEPOT[1], DEPOT[0]] for v in payload["vehicles"])
 
@@ -215,8 +221,10 @@ async def test_haversine_plan_fleet_two_vehicles():
         p(3, 37.00, 35.40),
         p(4, 37.01, 35.41),
     ]
+    # İP-19: haversine kaç aracın çıkacağını max_stops'tan türetir (K-3
+    # fallback yarısı) — iki aracın da sahaya çıkması için tavan veriyoruz.
     fleet = await HaversineRoutingProvider().plan_fleet(
-        depot_lat=DEPOT[0], depot_lng=DEPOT[1], points=pts, vehicle_ids=[1, 2]
+        points=pts, vehicles=[arac(1, max_stops=2), arac(2, max_stops=2)]
     )
     assert fleet.provider == "haversine"
     assert set(fleet.routes) == {1, 2}

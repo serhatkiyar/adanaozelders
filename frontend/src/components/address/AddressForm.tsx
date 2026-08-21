@@ -16,8 +16,11 @@ const saveBtn =
 const cancelBtn =
   "rounded-xl px-4 py-2 text-sm font-medium text-slate-500 transition hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-700";
 
-// Yapısal il/ilçe: Cıncık Teslimat bölge kontrolünün fallback'i (harita pin'i
-// otorite). Merkez ilçeler önde; datalist serbest yazıma da izin verir.
+// Yapısal il/ilçe: Cıncık Teslimat bölge kontrolünün OTORİTESİ (İP-19 / K-10 —
+// harita pin'i artık otorite DEĞİL; yarıçap kalktı, yerini ilçe listesi aldı).
+// Bu yüzden ikisi de zorunludur: boş ilçe, siparişi sessizce "bölge dışı"
+// yapar ve düşeceği dış kargo kuyruğu henüz yazılmadı (denetim B-3).
+// Merkez ilçeler önde; datalist serbest yazıma da izin verir.
 const ADANA_DISTRICTS = [
   "Seyhan",
   "Yüreğir",
@@ -94,13 +97,21 @@ export function AddressForm({
       toast.error("Lütfen haritadan konum seçin.");
       return;
     }
+    if (!city.trim()) {
+      toast.error("İl boş olamaz.");
+      return;
+    }
+    if (!district.trim()) {
+      toast.error("İlçe boş olamaz — teslimat bölgesi ilçeye göre belirlenir.");
+      return;
+    }
     onSubmit({
       title: title.trim(),
       recipient_name: recipientName.trim() || null,
       phone: phone.trim() || null,
       address_line: addressLine.trim(),
-      city: city.trim() || null,
-      district: district.trim() || null,
+      city: city.trim(),
+      district: district.trim(),
       door_no: doorNo.trim() || null,
       apt_no: aptNo.trim() || null,
       directions: directions.trim() || null,
@@ -186,7 +197,7 @@ export function AddressForm({
 
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label htmlFor={`${uid}-il`} className={fieldLabelCls}>İl</label>
+          <label htmlFor={`${uid}-il`} className={fieldLabelCls}>İl *</label>
           <input id={`${uid}-il`}
             type="text"
             maxLength={100}
@@ -197,7 +208,7 @@ export function AddressForm({
           />
         </div>
         <div>
-          <label htmlFor={`${uid}-ilce`} className={fieldLabelCls}>İlçe</label>
+          <label htmlFor={`${uid}-ilce`} className={fieldLabelCls}>İlçe *</label>
           <input id={`${uid}-ilce`}
             type="text"
             maxLength={100}

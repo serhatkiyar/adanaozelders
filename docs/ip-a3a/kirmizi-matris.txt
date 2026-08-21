@@ -1,0 +1,72 @@
+İP-A3a — KIRMIZI MATRİS (implementasyondan ÖNCE)
+Tarih: 2026-08-19 16:51
+
+════════ 1) HİÇ KOŞMADI (dosya çözülemedi) ════════
+M1-M7'yi taşıyan katman dosyası './kirliFormBekcisi' modülü yok.
+Bu 'test zayıf' değil, 'test hiç koşmadı' hâlidir (kök CLAUDE.md §D).
+
+
+ RUN  v2.1.9 C:/Users/kiyar/Desktop/adana-medusa-ui/frontend
+
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/components/admin/ui2/kirliFormBekcisi.test.tsx [ src/components/admin/ui2/kirliFormBekcisi.test.tsx ]
+Error: Failed to resolve import "./kirliFormBekcisi" from "src/components/admin/ui2/kirliFormBekcisi.test.tsx". Does the file exist?
+  Plugin: vite:import-analysis
+  File: C:/Users/kiyar/Desktop/adana-medusa-ui/frontend/src/components/admin/ui2/kirliFormBekcisi.test.tsx:17:36
+  4  |  import { useForm } from "react-hook-form";
+  5  |  import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+  6  |  import { useKirliFormBekcisi } from "./kirliFormBekcisi";
+     |                                       ^
+  7  |  const ONAY_BASLIK = "Kaydedilmemiş değişiklikler var";
+  8  |  const CIK = "Çık";
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+ Test Files  1 failed (1)
+      Tests  no tests
+   Start at  16:51:42
+   Duration  1.23s (transform 27ms, setup 26ms, collect 0ms, tests 0ms, environment 668ms, prepare 57ms)
+
+
+════════ 2) GERÇEKTEN KIRMIZI (koştu ve düştü) ════════
+   ✓ İP-A2 · DamageDialog pilotu > M9 — geçersiz alanla gönderilince hata ALANIN ALTINDA görünür 359ms
+   ✓ İP-A2 · DamageDialog pilotu > M10 — alan hataları genel/toast kanalına GİTMEZ 375ms
+   ✓ İP-A2 · DamageDialog pilotu > anlık doğrulama korunur: gönder'e basmadan hata çıkar 313ms
+   ✓ İP-A2 · DamageDialog pilotu > geçerli formda sunucuya doğru gövde gider (idempotency anahtarı dahil) 331ms
+   ✓ İP-A2 · DamageDialog pilotu > tedarikçi iadesinde kaynak kova zorunlu kalır ve eksik OLDUĞU SÖYLENİR 430ms
+   ✓ İP-A2 · DamageDialog pilotu > eksik ipucu, alanında zaten kırmızı görünen hatayı TEKRAR ETMEZ 372ms
+   × İP-A3a · DamageDialog: 422 ve kirli form bekçisi > M8 — sunucu alan hatası İLGİLİ ALANIN altında çıkar, toasta/şeride gitmez 36ms
+   × İP-A3a · DamageDialog: 422 ve kirli form bekçisi > M8b — alana düşmeyen sunucu hatası ÜST şeritte kalır 24ms
+   × İP-A3a · DamageDialog: 422 ve kirli form bekçisi > M8c — formda karşılığı olmayan alanın mesajı SESSİZCE KAYBOLMAZ 18ms
+   × İP-A3a · DamageDialog: 422 ve kirli form bekçisi > bekçi — kirli formda KAPATMA DÜĞMESİ onay sorar 1054ms
+     → Unable to find an element with the text: Kaydedilmemiş değişiklikler var. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+            ×
+            ×
+   × İP-A3a · DamageDialog: 422 ve kirli form bekçisi > bekçi — kirli formda ESC onay sorar 1044ms
+     → Unable to find an element with the text: Kaydedilmemiş değişiklikler var. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+            ×
+            ×
+   × İP-A3a · DamageDialog: 422 ve kirli form bekçisi > bekçi — kirli formda DIŞ TIKLAMA onay sorar 1034ms
+     → Unable to find an element with the text: Kaydedilmemiş değişiklikler var. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+            ×
+            ×
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 6 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  src/components/admin/inventory/DamageDialog.test.tsx > İP-A3a · DamageDialog: 422 ve kirli form bekçisi > M8 — sunucu alan hatası İLGİLİ ALANIN altında çıkar, toasta/şeride gitmez
+ FAIL  src/components/admin/inventory/DamageDialog.test.tsx > İP-A3a · DamageDialog: 422 ve kirli form bekçisi > M8b — alana düşmeyen sunucu hatası ÜST şeritte kalır
+ FAIL  src/components/admin/inventory/DamageDialog.test.tsx > İP-A3a · DamageDialog: 422 ve kirli form bekçisi > M8c — formda karşılığı olmayan alanın mesajı SESSİZCE KAYBOLMAZ
+ FAIL  src/components/admin/inventory/DamageDialog.test.tsx > İP-A3a · DamageDialog: 422 ve kirli form bekçisi > bekçi — kirli formda KAPATMA DÜĞMESİ onay sorar
+TestingLibraryElementError: Unable to find an element with the text: Kaydedilmemiş değişiklikler var. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+            ×
+            ×
+ FAIL  src/components/admin/inventory/DamageDialog.test.tsx > İP-A3a · DamageDialog: 422 ve kirli form bekçisi > bekçi — kirli formda ESC onay sorar
+TestingLibraryElementError: Unable to find an element with the text: Kaydedilmemiş değişiklikler var. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+            ×
+            ×
+ FAIL  src/components/admin/inventory/DamageDialog.test.tsx > İP-A3a · DamageDialog: 422 ve kirli form bekçisi > bekçi — kirli formda DIŞ TIKLAMA onay sorar
+TestingLibraryElementError: Unable to find an element with the text: Kaydedilmemiş değişiklikler var. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+            ×
+            ×
+ Test Files  1 failed (1)
+      Tests  6 failed | 9 passed (15)

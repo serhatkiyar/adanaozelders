@@ -29,6 +29,7 @@ from models.client import Client
 from models.delivery import DeliveryRun
 from models.store import Order
 from services import delivery_service
+from tests.integration.filo_yardim import arac_id
 
 
 def _uniq() -> str:
@@ -72,7 +73,10 @@ class PrepFactory:
 
     async def run(self) -> int:
         async with AsyncSessionLocal() as s:
-            run = DeliveryRun(run_date=datetime.date.today(), status="PLANNED")
+            run = DeliveryRun(
+                run_date=datetime.date.today(), status="PLANNED",
+                vehicle_id=await arac_id(),
+            )
             s.add(run)
             await s.flush()
             rid = run.id

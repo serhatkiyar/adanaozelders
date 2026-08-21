@@ -64,6 +64,14 @@ class Settings(BaseSettings):
     # kapsadığından presigned URL de bu adresle üretilmelidir. Boşsa
     # AWS_ENDPOINT_URL kullanılır (tek adresli kurulumlarda fark yoktur).
     S3_PUBLIC_ENDPOINT_URL: str = ""
+    # Ürün görselleri için ÜST SINIR (piksel) — sabit çıktı boyutu DEĞİL.
+    # Her ürün görseli beyaz zeminli bir KAREYE pad'lenir (kırpılmaz), ama
+    # tuvalin kenarı bu sayı değil, küçültme sonrası İÇERİĞİN UZUN KENARIDIR:
+    # büyük görsel önce bu sınıra indirilir, küçük görsel olduğu gibi kalır
+    # (400×580 → 580×580, 2000×1000 → 1200×1200). Sabit tuval, katalogdaki
+    # 400×580'lik kapakları görünürde yarı yarıya küçültüyordu — gerekçe ve
+    # ölçüm `storage.pad_to_square` docstring'inde.
+    PRODUCT_IMAGE_SIZE: int = 1200
 
     JWT_SECRET_KEY: str
     # Alan-düzeyi şifreleme anahtarı (TCKN gibi hassas veri at-rest). Verilmezse
@@ -117,6 +125,13 @@ class Settings(BaseSettings):
     RATE_LIMIT_RETURN: int = 5
     # To-do görev/alt görev yazma uçları (kullanıcı bazlı; hızlı ekleme için yüksek).
     RATE_LIMIT_TASK: int = 60
+    # Filo yönetimi (araç/başlangıç noktası CRUD + günü optimize et). Uçlar
+    # zaten ADMIN + `delivery.manage` ister; limit kötü niyete karşı değil,
+    # döngüye girmiş bir panel/betiğin filoyu ya da rota servisini boğmasına
+    # karşıdır — o yüzden elle çalışmanın çok üstünde ama sınırsız değil
+    # (İP-19 §3.4; bağımsız denetim B-10 bu satırın kodda karşılığı
+    # olmadığını ölçtü).
+    RATE_LIMIT_FLEET: int = 60
 
     AWS_ACCESS_KEY_ID: str = "minioadmin"
     AWS_SECRET_ACCESS_KEY: str = "minioadmin"
@@ -212,11 +227,10 @@ class Settings(BaseSettings):
     INVOICE_SELLER_ADDRESS: str | None = None
     INVOICE_SELLER_PHONE: str | None = None
     INVOICE_SELLER_EMAIL: str | None = None
-    # Kendi-filo teslimat (mağaza kitap dağıtımı). Depo = turun başlangıç noktası
-    # (Seyhan Çakmak Cad. civarı; kesinleşince .env'den güncellenir). Teslim OTP'si
-    # kapıda müşterinin söylediği koddur — telefon doğrulama OTP'sinden ayrıdır.
-    DELIVERY_DEPOT_LAT: float = 36.985500
-    DELIVERY_DEPOT_LNG: float = 35.325300
+    # Kendi-filo teslimat (mağaza kitap dağıtımı). İP-19/K-9: DEPO AYARI YOK —
+    # turun başlangıç noktası veridir (`pickup_points`, kind=BASE; araç bazlı
+    # `vehicles.start_point_id`). Teslim OTP'si kapıda müşterinin söylediği
+    # koddur — telefon doğrulama OTP'sinden ayrıdır.
     DELIVERY_OTP_TTL_MINUTES: int = 30
     DELIVERY_OTP_MAX_ATTEMPTS: int = 5
     # Rota optimizasyonu (Faz B). ROUTING_PROVIDER: "auto" (VROOM dene, düşerse
@@ -255,17 +269,14 @@ class Settings(BaseSettings):
     # (delivery_closed_days tablosu) — operasyon kendi günlerini kontrol eder.
     DELIVERY_NON_WORKING_WEEKDAYS: list[int] = []
     # Kendi-filo teslimat bölgesi: pin varsa depoya Haversine yarıçapı (otorite),
-    # pin yoksa il=Adana + ilçe listesi fallback'i. Bölge dışı sipariş eligible
-    # listesine girmez; admin "dış kargo bekliyor" kuyruğunda görür.
-    DELIVERY_ZONE_RADIUS_KM: float = 25.0
+    # İP-19/K-10: bölgenin TEK otoritesi bu ilçe listesidir ("Adana kent
+    # merkezi"). Yarıçap kaldırıldı — depo koordinatına bağlıydı ve depo yok;
+    # il/ilçe bilinmiyorsa sipariş bölge DIŞI sayılır (dış kargo kuyruğu).
     DELIVERY_ZONE_DISTRICTS: list[str] = ["Seyhan", "Yüreğir", "Çukurova", "Sarıçam"]
     # Müşteriye gösterilen varış penceresi: stop.eta − early … eta + late,
     # 15 dk'ya yuvarlı ("18:00–19:00"). Nokta ETA müşteriye gösterilmez.
     DELIVERY_ETA_WINDOW_EARLY_MINUTES: int = 15
     DELIVERY_ETA_WINDOW_LATE_MINUTES: int = 45
-    # "Günü Optimize Et": konumlu sipariş sayısı bu eşiği aşarsa ikinci araç
-    # (COROLLA) devreye girer; altındaysa tek LADA turu kurulur.
-    DELIVERY_SINGLE_VEHICLE_MAX_STOPS: int = 12
     # Bir aracın bir günde fiilen bitirebileceği durak sayısı. "Günü Optimize Et"
     # bu tavanı aşan siparişleri PLANA ALMAZ (eligible kuyruğunda, aciliyet
     # sırasında bekler) — aksi halde biriken söz borcu tek günde bitirilemeyecek

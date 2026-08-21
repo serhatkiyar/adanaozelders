@@ -196,6 +196,18 @@ export default function ContactPage() {
                   </a>
                 </dd>
               </div>
+              {/* Mesafeli satışta erişilebilir telefon zorunludur. */}
+              <div>
+                <dt className="text-slate-500 dark:text-slate-400">Telefon</dt>
+                <dd>
+                  <a
+                    href={`tel:${OPERATOR.phoneHref}`}
+                    className="text-indigo-600 underline-offset-2 hover:underline dark:text-indigo-400"
+                  >
+                    {OPERATOR.phone}
+                  </a>
+                </dd>
+              </div>
             </dl>
           </aside>
         </div>

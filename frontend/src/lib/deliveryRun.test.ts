@@ -29,7 +29,9 @@ function run(stops: DeliveryStop[]): DeliveryRun {
   return {
     id: 1,
     run_date: "2026-07-03",
-    vehicle: "LADA",
+    vehicle_id: 7,
+    // İP-19: `vehicle` sunucudan gelen görünen etikettir — ekranlar doğrudan basar.
+    vehicle: "Lada",
     status: "ACTIVE",
     created_at: "2026-07-03T08:00:00Z",
     depot_lat: 36.9855,

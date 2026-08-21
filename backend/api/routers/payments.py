@@ -105,7 +105,10 @@ async def payment_availability(db: AsyncSession = Depends(get_db)):
     anonim ziyaretçinin de ürün sayfasında doğru metni görmesi gerekir.
     """
     return PaymentAvailabilityOut(
-        branches=await payment_gates.branches_status(db, include_diagnostics=False)
+        branches=await payment_gates.branches_status(db, include_diagnostics=False),
+        # Kolların cevaplamadığı ayrı bir soru: dijital ürün satılabilir mi?
+        # Admin ürün formu DIGITAL seçeneğini buna göre kapatır.
+        digital_products_open=await payment_gates.digital_products_open(db),
     )
 
 

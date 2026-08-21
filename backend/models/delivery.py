@@ -37,13 +37,6 @@ if TYPE_CHECKING:
     from models.store import Order
 
 
-class DeliveryVehicle(str, enum.Enum):
-    """Filo araçları. LADA birincil; COROLLA yalnız yoğun günlerde."""
-
-    LADA = "LADA"
-    COROLLA = "COROLLA"
-
-
 class DeliveryRunStatus(str, enum.Enum):
     """Tur FSM'i: PLANNED (kuruluyor) → ACTIVE (sahada) → DONE; iptal CANCELLED."""
 
@@ -110,10 +103,12 @@ class DeliveryRun(Base, TimestampMixin, SoftDeleteMixin):
     __table_args__ = (
         # Gün+araç başına tek PLANLI tur — dispatch-day'in find-or-create'i
         # yarışta iki tur üretmesin (servis kontrolü UX, index otorite).
+        # İP-19: anahtar eski serbest `vehicle` string'inden `vehicle_id`
+        # FK'sine taşındı; semantik değişmedi (K-8).
         Index(
             "uq_delivery_run_planned",
             "run_date",
-            "vehicle",
+            "vehicle_id",
             unique=True,
             postgresql_where=text("status = 'PLANNED' AND deleted_at IS NULL"),
         ),
@@ -131,9 +126,16 @@ class DeliveryRun(Base, TimestampMixin, SoftDeleteMixin):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     run_date: Mapped[datetime.date] = mapped_column(Date, nullable=False, index=True)
-    vehicle: Mapped[str] = mapped_column(
-        String(20), nullable=False, server_default=text("'LADA'")
+    # Turun aracı (İP-19). RESTRICT: aktif/geçmiş turu olan araç silinemez —
+    # geçmiş turların hangi araçla koşulduğu kaybolmasın (D-8; soft-delete
+    # kullanıcı yüzeyindeki yol, FK son savunma hattı).
+    vehicle_id: Mapped[int] = mapped_column(
+        ForeignKey("vehicles.id", ondelete="RESTRICT"), nullable=False
     )
+    #: Adı bilerek `vehicle` DEĞİL: o ad eski serbest-string kolonundu ve
+    #: yokluğu matriste ölçülüyor (D-1). `lazy="joined"` — tur okunan her
+    #: yerde etiket/plaka/başlangıç tek JOIN ile gelir.
+    vehicle_ref = relationship("Vehicle", lazy="joined")
     status: Mapped[str] = mapped_column(
         String(10), nullable=False, server_default=text("'PLANNED'")
     )

@@ -7,8 +7,58 @@ import {
   type Row,
   type SortingState,
 } from "@tanstack/react-table";
-import type { ReactNode } from "react";
-import { EmptyState, PageSkeleton } from "@/components/admin/ui";
+import { type ReactNode } from "react";
+import { Button, EmptyState, PageSkeleton } from "@/components/admin/ui";
+
+/**
+ * ── İP-A7d1 · Görev 1: satır tıklaması ↔ satır aksiyonu çakışması ──
+ *
+ * Denetim #2 gerçek tarayıcıda ölçtü: `onRowClick` verildiğinde mobil kart
+ * bütünüyle tek bir `<button>`a sarılıyordu. İç içe `<button>` GEÇERSİZ
+ * HTML'dir; yani kartın içine ikinci bir aksiyon konulamıyordu. Kilitli
+ * kararımız ise "satır aksiyonları açık düğme kalır, üç nokta menüye
+ * geçilmez". İkisi bir arada mümkün değildi — bu bir kusur değil, çözülmesi
+ * gereken bir ÇELİŞKİYDİ.
+ *
+ * ### Seçenekler ve seçilen
+ *
+ * 1. *Mobilde satır tıklamasını bırak* — reddedildi: aynı listede masaüstünde
+ *    tıklanan bir satır mobilde tıklanamaz olur; kullanıcı aynı ekranın iki
+ *    farklı davranışını öğrenmek zorunda kalır.
+ * 3. *Aksiyonları kart altına ayrı bir şeride al* — reddedildi: aksiyonların
+ *    hangi kayda ait olduğu görsel bir yakınlık meselesidir; ayrı şerit bunu
+ *    zayıflatır ve kart yüksekliğini her satırda büyütür.
+ * 2. **Kartı `<button>`a SARMA; tıklanabilir alanı kart içinde bir katmana
+ *    indir — SEÇİLEN.**
+ *
+ * ### Nasıl çözüldü (ekran başına değil, burada)
+ *
+ * Kart artık bir `<div>`; tıklama kabın kendisinde dinlenir. Kabın içine,
+ * içeriğin ALTINDA (`z-0`) duran bir "satırı aç" düğmesi serilir: bu düğme
+ * klavye ve ekran okuyucu için vardır — odak halkasını o taşır, erişilebilir
+ * adını `aria-labelledby` ile KART İÇERİĞİNDEN alır. Böylece çağıran taraf
+ * yeni bir prop yazmaz ve unutamaz; A7'de yirmi bir ekran aynı davranışı
+ * miras alır.
+ *
+ * Fare tıklaması için tek kural yeterli: **etkileşimli bir öğeden gelen
+ * tıklama satırı açmaz.** Aynı kural masaüstü `<tr>` için de geçerlidir ve
+ * orada bugüne dek YOKTU — satır aksiyonuna basmak hem aksiyonu çalıştırıyor
+ * hem satırı açıyordu (bu paketin bulduğu sözleşme kusuru; `AdminUsersPage`
+ * ve `AdminAuditLogsPage` bugün üretimde bu davranışı taşıyor, yalnız o
+ * ekranlarda satır aksiyonu bulunmadığı için görünmüyordu).
+ */
+const ETKILESIMLI = 'a[href], button, input, select, textarea, [role="button"], [contenteditable="true"]';
+
+/**
+ * Olayın kaynağı kartın/satırın kendi denetimlerinden biri mi.
+ *
+ * `closest` kullanılır: tıklama düğmenin İÇİNDEKİ bir `<span>`e de gelebilir.
+ * "Satırı aç" katmanı kasten hariç tutulmaz — o katmana gelen tıklama zaten
+ * kendi `onClick`inde ele alınır ve burada ikinci kez sayılmamalıdır.
+ */
+function etkilesimliKaynak(hedef: EventTarget | null): boolean {
+  return hedef instanceof Element && hedef.closest(ETKILESIMLI) !== null;
+}
 
 export interface DataTableProps<TData extends object> {
   columns: ColumnDef<TData, unknown>[];
@@ -37,6 +87,31 @@ export interface DataTableProps<TData extends object> {
    */
   truncationNotice?: ReactNode;
   onRowClick?: (row: TData) => void;
+  /**
+   * Satırın KENDİ adı — "satırı aç" denetiminin erişilebilir adı (İP-A7d2 · SK-5).
+   *
+   * ## Neden zorunlu (ve neden `aria-labelledby` yetmedi)
+   *
+   * A7d1 mobil kartın tıklanabilirliğini, kartın içine serilen görünmez bir
+   * "satırı aç" düğmesiyle çözdü ve o düğmenin adını **kartın tüm içeriğinden**
+   * (`aria-labelledby`) aldı. Gerekçe iyiydi: çağıran taraf yeni bir prop
+   * yazmaz, 21 ekranda unutulamaz.
+   *
+   * Ama A7d1'in üç ekranının hiçbirinde kartın İÇİNDE aksiyon düğmesi yoktu.
+   * Olduğu anda (`PackagesPage`) ölçüldü: erişilebilir ad hesabı, hedef
+   * düğümün İÇİNDEKİ düğmelerin metnini de toplar. Sonuç:
+   *
+   *   - Ekran okuyucu "satırı aç" düğmesini `"PKT-000077 Sipariş #501 …
+   *     Yeniden paketle Bozuldu olarak işaretle"` diye okur — kartın bütün
+   *     aksiyonları TEK bir düğmenin adına karışır.
+   *   - Aynı ada sahip İKİ farklı denetim doğar ("Yeniden paketle" hem gerçek
+   *     aksiyon hem satırı açan görünmez düğme): klavye/otomasyon seçimi
+   *     belirsizleşir ve yanlış olan tetiklenir.
+   *
+   * Bu yüzden ad artık çağıran taraftan gelir — ama **unutulamaz**: prop,
+   * `onRowClick` verildiğinde tip düzeyinde ZORUNLUDUR (aşağıdaki birleşim).
+   */
+  satirAdi?: (row: TData) => string;
   renderMobileRow?: (row: TData) => ReactNode;
   page: number;
   pageSize: number;
@@ -53,6 +128,18 @@ function SortIndicator({ direction }: { direction: false | "asc" | "desc" }) {
   );
 }
 
+/**
+ * Satır tıklaması varsa satır ADI da vardır — tip düzeyinde bağlı iki prop.
+ *
+ * Ayrı iki isteğe bağlı prop yazmak, `satirAdi`yı yazmayı unutmayı serbest
+ * bırakırdı ve unutulduğunda ortaya çıkan hata SESSİZDİR (yalnız ekran
+ * okuyucuda ve otomasyonda görünür). A3c'den beri seçilen yol aynı: sessiz
+ * varsayılan yerine açık beyan.
+ */
+export type DataTableSatirTiklamasi<TData> =
+  | { onRowClick: (row: TData) => void; satirAdi: (row: TData) => string }
+  | { onRowClick?: undefined; satirAdi?: undefined };
+
 export function DataTable<TData extends object>({
   columns,
   data,
@@ -65,13 +152,15 @@ export function DataTable<TData extends object>({
   emptyAction,
   truncationNotice,
   onRowClick,
+  satirAdi,
   renderMobileRow,
   page,
   pageSize,
   total,
   onPageChange,
   onPageSizeChange,
-}: DataTableProps<TData>) {
+}: Omit<DataTableProps<TData>, "onRowClick" | "satirAdi"> &
+  DataTableSatirTiklamasi<TData>) {
   const table = useReactTable({
     columns,
     data,
@@ -98,17 +187,32 @@ export function DataTable<TData extends object>({
     <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
       {truncationNotice}
       {renderMobileRow && (
-        <div className="divide-y divide-slate-100 dark:divide-slate-800 md:hidden">
+        <div data-mobil-satirlar className="divide-y divide-slate-100 dark:divide-slate-800 md:hidden">
           {table.getRowModel().rows.map((row) => (
             onRowClick ? (
-              <button
+              <div
                 key={row.id}
-                type="button"
-                onClick={() => activateRow(row)}
-                className="block w-full px-4 py-4 text-left transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-500 dark:hover:bg-slate-800/60"
+                className="relative px-4 py-4 transition hover:bg-slate-50 dark:hover:bg-slate-800/60"
+                onClick={(event) => {
+                  // Aksiyon düğmesine/bağlantıya gelen tıklama satırı AÇMAZ.
+                  if (!etkilesimliKaynak(event.target)) activateRow(row);
+                }}
               >
-                {renderMobileRow(row.original)}
-              </button>
+                {/* Klavye + ekran okuyucu affordance'ı. Görünmez ama odak
+                    halkasını taşır. Adı çağıran taraftan gelir: kart
+                    içeriğinden türetmek, kartın kendi aksiyon düğmelerinin
+                    metnini de bu düğmenin adına karıştırıyordu
+                    (İP-A7d2 · SK-5). */}
+                <button
+                  type="button"
+                  aria-label={satirAdi?.(row.original)}
+                  onClick={() => activateRow(row)}
+                  className="absolute inset-0 z-0 rounded-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-500"
+                />
+                <div className="relative z-10">
+                  {renderMobileRow(row.original)}
+                </div>
+              </div>
             ) : (
               <div key={row.id} className="px-4 py-4">
                 {renderMobileRow(row.original)}
@@ -127,7 +231,27 @@ export function DataTable<TData extends object>({
                   const sortable = header.column.getCanSort();
                   const direction = header.column.getIsSorted();
                   return (
-                    <th key={header.id} scope="col" className="px-4 py-3 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                    <th
+                      key={header.id}
+                      scope="col"
+                      /* İP-A6 · Görev 2: sıralama göstergesi GÖRSELDİ ama
+                         ekran okuyucuya görünmüyordu — ok işareti
+                         `aria-hidden`, `<th>`de ise hiçbir durum yoktu.
+                         Sıralı kolonun hangisi olduğu ve yönü ancak
+                         `aria-sort` ile duyurulur. Sıralanabilir ama sırasız
+                         kolon "none" der; sıralanamayan kolon hiçbir şey
+                         demez (öznitelik anlamsız olurdu). */
+                      aria-sort={
+                        !sortable
+                          ? undefined
+                          : direction === "asc"
+                            ? "ascending"
+                            : direction === "desc"
+                              ? "descending"
+                              : "none"
+                      }
+                      className="px-4 py-3 text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400"
+                    >
                       {header.isPlaceholder ? null : sortable ? (
                         <button
                           type="button"
@@ -151,12 +275,18 @@ export function DataTable<TData extends object>({
               <tr
                 key={row.id}
                 tabIndex={onRowClick ? 0 : undefined}
-                onClick={() => activateRow(row)}
+                onClick={(event) => {
+                  // Satır aksiyonuna basmak satırı AÇMAZ (İP-A7d1 · Görev 1).
+                  if (!etkilesimliKaynak(event.target)) activateRow(row);
+                }}
                 onKeyDown={(event) => {
-                  if (onRowClick && (event.key === "Enter" || event.key === " ")) {
-                    event.preventDefault();
-                    activateRow(row);
-                  }
+                  if (!onRowClick) return;
+                  if (event.key !== "Enter" && event.key !== " ") return;
+                  // Hücredeki bir düğmede Enter'a basmak o düğmeyi çalıştırır;
+                  // satırı da açması kullanıcının istemediği ikinci bir iştir.
+                  if (etkilesimliKaynak(event.target)) return;
+                  event.preventDefault();
+                  activateRow(row);
                 }}
                 className={onRowClick ? "cursor-pointer transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-500 dark:hover:bg-slate-800/60" : undefined}
               >
@@ -186,13 +316,17 @@ export function DataTable<TData extends object>({
               {[10, 25, 50].map((size) => <option key={size} value={size}>{size}</option>)}
             </select>
           </label>
-          <button type="button" disabled={page <= 1} onClick={() => onPageChange(page - 1)} className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800">
+          {/* İP-A4: ham `<button>` yerine ortak `Button`. Sayfalama düğmeleri
+              panelin EN ÇOK tekrar eden düğmeleriydi ve odak halkası,
+              `disabled` opaklığı, dokunma yüksekliği burada elle yazılmıştı —
+              yani ortak sistemden ayrı yaşıyorlardı. */}
+          <Button size="sm" variant="secondary" disabled={page <= 1} onClick={() => onPageChange(page - 1)}>
             Önceki
-          </button>
+          </Button>
           <span className="min-w-16 text-center text-xs font-semibold text-slate-600 dark:text-slate-300">{page} / {totalPages}</span>
-          <button type="button" disabled={page >= totalPages} onClick={() => onPageChange(page + 1)} className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800">
+          <Button size="sm" variant="secondary" disabled={page >= totalPages} onClick={() => onPageChange(page + 1)}>
             Sonraki
-          </button>
+          </Button>
         </div>
       </footer>
     </div>

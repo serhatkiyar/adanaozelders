@@ -1,10 +1,14 @@
 // Teslimat takvimi (kapalı günler) — tek runtime-yönetilebilir operasyon ayarı.
 // Söz motoru bu tarihlere teslimat sözü vermez. Resmî tatiller tek tıkla
 // yüklenir (yalnız 2026 verisi mevcut); admin istemediğini siler, ek gün ekler.
-import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 
 import { useAdminAreaAccess } from "@/components/admin/AccessState";
 import { Button, ConfirmDialog, EmptyState, ErrorState, PageSkeleton } from "@/components/admin/ui";
+import { useDuzenlemeYuzeyi, useYuzeyKirliFormBekcisi } from "@/components/admin/ui2/duzenlemeYuzeyi";
+import { Form, sunucuHatasiniUygula } from "@/components/admin/ui2/form";
 import {
   useAddClosedDay,
   useClosedDays,
@@ -20,32 +24,62 @@ const CLOSED_DAY_FMT = new Intl.DateTimeFormat("tr-TR", {
   weekday: "long",
 });
 
+/**
+ * -- IP-A7d4 - goc dalgasi 4 --
+ *
+ * Iki borc birden kapandi:
+ *   - `seedOpen` pencere durumu ekranda yasiyordu -> `useDuzenlemeYuzeyi`.
+ *   - "Gunu kapat" dugmesi `disabled={!newDay}` ile GECERLILIKLE KAPANIYORDU
+ *     (kilitli kararin acik ihlali). Gun secmeden basan kullanici dugmenin
+ *     neden olu oldugunu goremiyordu; artik hata alanin altinda cikiyor.
+ */
+const gunSemasi = z.object({
+  day: z.string().min(1, "Kapatılacak günü seçin."),
+  label: z.string().max(120, "Açıklama en fazla 120 karakter olabilir."),
+});
+
+type GunDegerleri = z.infer<typeof gunSemasi>;
+
 export function ClosedDays() {
   const { canManage } = useAdminAreaAccess("delivery");
   const query = useClosedDays();
   const add = useAddClosedDay();
   const remove = useRemoveClosedDay();
   const seed = useSeedHolidays();
-  const [newDay, setNewDay] = useState("");
-  const [newLabel, setNewLabel] = useState("");
-  const [seedOpen, setSeedOpen] = useState(false);
+  // Pencere durumu ekranda YASAMAZ (IP-A4 sozlesmesi).
+  const seedYuzeyi = useDuzenlemeYuzeyi<void, void>();
   const days = query.data ?? [];
   const year = new Date().getFullYear();
 
-  const doAdd = () => {
-    if (!newDay) return;
-    add.mutate(
-      { day: newDay, label: newLabel.trim() || undefined },
-      {
-        onSuccess: () => {
-          toast.success("Gün teslimata kapatıldı.");
-          setNewDay("");
-          setNewLabel("");
-        },
-        onError: (e) => toast.error(getErrorMessage(e, "Eklenemedi.")),
-      }
-    );
-  };
+  const form = useForm<GunDegerleri>({
+    resolver: zodResolver(gunSemasi),
+    defaultValues: { day: "", label: "" },
+    mode: "onChange",
+    shouldFocusError: false,
+  });
+  // Satir ici form: pencere yok, bekci yalniz rota/sekme korumasini kurar.
+  useYuzeyKirliFormBekcisi({ form, sunucuHatasi: add.error, pencereSiz: true });
+
+  const doAdd = form.handleSubmit(
+    (deger) => {
+      add.mutate(
+        { day: deger.day, label: deger.label.trim() || undefined },
+        {
+          onSuccess: () => {
+            toast.success("Gün teslimata kapatıldı.");
+            form.reset({ day: "", label: "" });
+          },
+          onError: (e) => {
+            const kalan = sunucuHatasiniUygula(e, form, ["day", "label"], undefined, (h) =>
+              getErrorMessage(h, "Eklenemedi.")
+            );
+            if (kalan) toast.error(kalan);
+          },
+        }
+      );
+    },
+    (hatalar) => form.setFocus(hatalar.day ? "day" : "label")
+  );
 
   return (
     <section className="mt-6 rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
@@ -57,7 +91,7 @@ export function ClosedDays() {
           </p>
         </div>
         {canManage && (
-          <Button size="sm" variant="secondary" onClick={() => setSeedOpen(true)} isPending={seed.isPending}>
+          <Button size="sm" variant="secondary" onClick={() => seedYuzeyi.yeniAc()} isPending={seed.isPending}>
             Resmî tatilleri yükle
           </Button>
         )}
@@ -65,31 +99,46 @@ export function ClosedDays() {
 
       {canManage && (
         <div className="flex flex-wrap items-end gap-2 border-b border-slate-100 px-6 py-4 dark:border-slate-800">
-          <label className="text-sm">
-            <span className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">
-              Kapatılacak gün
-            </span>
-            <input
-              type="date"
-              value={newDay}
-              onChange={(e) => setNewDay(e.target.value)}
-              className="input w-auto"
-            />
-          </label>
-          <label className="min-w-[10rem] flex-1 text-sm">
-            <span className="mb-1 block text-xs font-medium text-slate-500 dark:text-slate-400">
-              Açıklama (isteğe bağlı)
-            </span>
-            <input
-              type="text"
-              value={newLabel}
-              onChange={(e) => setNewLabel(e.target.value)}
-              placeholder="ör. Kurban Bayramı, yıllık bakım…"
-              maxLength={120}
-              className="input w-full"
-            />
-          </label>
-          <Button size="sm" variant="secondary" onClick={doAdd} disabled={!newDay} isPending={add.isPending}>
+          <Form.Field
+            control={form.control}
+            name="day"
+            render={({ field }) => (
+              <Form.Item>
+                <Form.Label>Kapatılacak gün</Form.Label>
+                <Form.Control>
+                  {/* Koyu temada yerel tarih widget'i (SK-6): sema kok
+                      ogeden (`html.dark { color-scheme: dark }`, index.css)
+                      miras alinir. ESKI YORUM YANLISTI — ortak `.input`
+                      sinifi `color-scheme` TASIMIYORDU ve o yanlis inanc
+                      dokuz widget'in korumasiz kalmasinin koku oldu
+                      (bagimsiz denetim #3 - B-15/B-9). */}
+                  <input type="date" className="input w-auto" {...field} />
+                </Form.Control>
+                <Form.ErrorMessage />
+              </Form.Item>
+            )}
+          />
+          <Form.Field
+            control={form.control}
+            name="label"
+            render={({ field }) => (
+              <Form.Item className="min-w-[10rem] flex-1">
+                <Form.Label optional>Açıklama</Form.Label>
+                <Form.Control>
+                  <input
+                    type="text"
+                    placeholder="ör. Kurban Bayramı, yıllık bakım…"
+                    maxLength={120}
+                    className="input w-full"
+                    {...field}
+                  />
+                </Form.Control>
+                <Form.ErrorMessage />
+              </Form.Item>
+            )}
+          />
+          {/* Dugme gecerlilikle KAPANMAZ (kilitli karar). */}
+          <Button size="sm" variant="secondary" onClick={doAdd} isPending={add.isPending}>
             Günü kapat
           </Button>
         </div>
@@ -124,7 +173,9 @@ export function ClosedDays() {
                 {d.label ?? (d.source === "holiday" ? "Resmî tatil" : "Kapalı")}
               </span>
               {canManage && (
-                <button
+                <Button
+                  variant="ghost"
+                  size="sm"
                   onClick={() =>
                     remove.mutate(d.id, {
                       onError: (e) => toast.error(getErrorMessage(e, "Açılamadı.")),
@@ -133,12 +184,12 @@ export function ClosedDays() {
                   disabled={remove.isPending}
                   title="Bu günü yeniden aç"
                   aria-label={CLOSED_DAY_FMT.format(new Date(d.day + "T00:00:00")) + " gününü yeniden aç"}
-                  className="inline-flex min-h-9 min-w-9 shrink-0 items-center justify-center rounded-lg text-slate-400 transition hover:bg-rose-50 hover:text-rose-600 disabled:opacity-50 dark:hover:bg-rose-500/10 dark:hover:text-rose-400"
+                  className="min-h-9 min-w-9 shrink-0 px-0 text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-500/10 dark:hover:text-rose-400"
                 >
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-4 w-4">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
                   </svg>
-                </button>
+                </Button>
               )}
             </li>
           ))}
@@ -146,19 +197,19 @@ export function ClosedDays() {
       )}
 
       <ConfirmDialog
-        open={seedOpen}
+        open={seedYuzeyi.acik}
         title={`${year} resmî tatillerini yükle`}
         description="Yılın resmî tatilleri teslimata kapalı olarak işaretlenir (yinelenenler atlanır). İstemediğiniz günü listeden silebilirsiniz. Not: tatil verisi şimdilik yalnız 2026 için tanımlı."
         confirmLabel="Yükle"
         isPending={seed.isPending}
-        onClose={() => setSeedOpen(false)}
+        onClose={seedYuzeyi.kapat}
         onConfirm={() =>
           seed.mutate(year, {
             onSuccess: (r) => {
               toast.success(
                 r.length > 0 ? `${r.length} resmî tatil yüklendi.` : "Bu yıl için tatil verisi yok."
               );
-              setSeedOpen(false);
+              seedYuzeyi.kapat();
             },
             onError: (e) => toast.error(getErrorMessage(e, "Yüklenemedi.")),
           })

@@ -14,6 +14,8 @@ const TABS: { to: string; label: string; end?: boolean }[] = [
   { to: ROUTES.adminDeliveryRuns, label: "Turlar" },
   { to: ROUTES.adminDeliveryPerformance, label: "Performans" },
   { to: ROUTES.adminDeliveryCouriers, label: "Kuryeler" },
+  { to: ROUTES.adminDeliveryBoard, label: "Tahta" },
+  { to: ROUTES.adminDeliveryVehicles, label: "Araçlar" },
 ];
 
 export default function DeliveryLayout() {

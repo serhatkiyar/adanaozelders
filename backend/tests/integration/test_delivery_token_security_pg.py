@@ -58,7 +58,13 @@ class TokenFactory:
             )
             s.add(order)
             await s.flush()
-            run = DeliveryRun(run_date=datetime.date.today(), status="DONE")
+            from tests.integration.filo_yardim import arac_id
+
+            run = DeliveryRun(
+                run_date=datetime.date.today(),
+                status="DONE",
+                vehicle_id=await arac_id(),
+            )
             s.add(run)
             await s.flush()
             stop = DeliveryStop(

@@ -24,6 +24,7 @@ from models.delivery import DeliveryRun, DeliveryStop
 from models.outbox import OutboxEvent
 from models.store import Order
 from services import delivery_service, order_service
+from tests.integration.filo_yardim import arac_id
 
 
 def _uniq() -> str:
@@ -49,7 +50,7 @@ class P1Factory:
     ) -> int:
         async with AsyncSessionLocal() as s:
             run = DeliveryRun(
-                run_date=datetime.date.today(), vehicle="LADA", status=status,
+                run_date=datetime.date.today(), vehicle_id=await arac_id(), status=status,
                 started_at=started_at, optimized_at=optimized_at,
             )
             s.add(run)

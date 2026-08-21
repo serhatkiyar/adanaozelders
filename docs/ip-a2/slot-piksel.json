@@ -1,0 +1,18 @@
+{
+  "once": {
+    "kapYuksekligi": 88,
+    "slotYuksekligi": 18,
+    "komsuY": 112,
+    "slotMetni": "Kimliğinizdeki ad.",
+    "slotDugumu": true
+  },
+  "sonra": {
+    "kapYuksekligi": 88,
+    "slotYuksekligi": 18,
+    "komsuY": 112,
+    "slotMetni": "Ad zorunlu.",
+    "slotDugumu": true
+  },
+  "kapFarkiPx": 0,
+  "komsuKaymasiPx": 0
+}

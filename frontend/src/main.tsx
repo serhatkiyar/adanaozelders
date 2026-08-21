@@ -2,6 +2,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { HelmetProvider } from "react-helmet-async";
 import App from "@/App";
+import { MedusaI18nProvider } from "@/components/admin/ui2/medusa-tr";
 import { initAnalytics } from "@/lib/analytics";
 import { initMonitoring } from "@/lib/monitoring";
 import "@/index.css";
@@ -31,7 +32,9 @@ try {
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <HelmetProvider>
-      <App />
+      <MedusaI18nProvider>
+        <App />
+      </MedusaI18nProvider>
     </HelmetProvider>
   </StrictMode>
 );

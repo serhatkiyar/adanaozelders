@@ -25,11 +25,16 @@ export function ProductCard({
     !!product.compare_at_price &&
     Number(product.compare_at_price) > Number(product.price);
   const hasRating = product.rating_count > 0 && product.rating_average != null;
+  // Grup kartı (Faz 3b): kart tek bir ürünü değil varyant grubunu temsil
+  // eder — fiyat "X TL'den başlayan", aksiyon sepete ekleme değil seçime
+  // (detaydaki varyant seçicisine) yönlendirme. Temsilci ürünü körlemesine
+  // sepete eklemek, müşterinin seçmediği bir rengi satın aldırırdı.
+  const grupKarti = (product.variant_count ?? 1) > 1;
 
   return (
     <div className="group relative flex h-full flex-col overflow-hidden rounded-xl border border-slate-200 bg-white transition-colors hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700">
       {/* Görsel */}
-      <div className="relative flex aspect-square shrink-0 items-center justify-center bg-white p-4 dark:bg-slate-900/50">
+      <div className="relative flex aspect-square shrink-0 items-center justify-center bg-white p-4 dark:bg-slate-100">
         <Link to={ROUTES.storeProduct(product.slug)} className="absolute inset-0 z-0" aria-label={product.title} />
 
         {product.cover_url ? (
@@ -37,7 +42,7 @@ export function ProductCard({
             src={product.cover_url}
             alt={product.title}
             loading="lazy"
-            className="pointer-events-none z-0 max-h-full max-w-full object-contain mix-blend-multiply dark:mix-blend-normal"
+            className="pointer-events-none z-0 max-h-full max-w-full object-contain mix-blend-multiply"
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center text-slate-200 dark:text-slate-700">
@@ -108,28 +113,48 @@ export function ProductCard({
         {/* Fiyat + sepete ekle */}
         <div className="mt-auto pt-3">
           <div className="mb-3 flex items-baseline gap-2">
-            <span className="text-lg font-semibold text-slate-900 dark:text-white">
-              {formatTL(product.price)}
-            </span>
-            {hasDiscount && (
-              <span className="text-xs text-slate-400 line-through">
-                {formatTL(product.compare_at_price!)}
+            {grupKarti ? (
+              <span className="text-lg font-semibold text-slate-900 dark:text-white">
+                {formatTL(product.group_min_price ?? product.price)}
+                <span className="ml-1 text-xs font-normal text-slate-500 dark:text-slate-400">
+                  &apos;den başlayan
+                </span>
               </span>
+            ) : (
+              <>
+                <span className="text-lg font-semibold text-slate-900 dark:text-white">
+                  {formatTL(product.price)}
+                </span>
+                {hasDiscount && (
+                  <span className="text-xs text-slate-400 line-through">
+                    {formatTL(product.compare_at_price!)}
+                  </span>
+                )}
+              </>
             )}
           </div>
 
-          <button
-            type="button"
-            disabled={soldOut}
-            onClick={(e) => {
-              e.preventDefault();
-              add(product);
-              toast.success("Sepete eklendi");
-            }}
-            className="w-full rounded-full bg-indigo-600 py-2 text-sm font-semibold text-white transition-colors hover:bg-indigo-700 active:scale-[0.99] disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400 dark:disabled:bg-slate-800 dark:disabled:text-slate-500"
-          >
-            {soldOut ? "Tükendi" : "Sepete Ekle"}
-          </button>
+          {grupKarti ? (
+            <Link
+              to={ROUTES.storeProduct(product.slug)}
+              className="block w-full rounded-full border border-indigo-600 py-2 text-center text-sm font-semibold text-indigo-600 transition-colors hover:bg-indigo-50 dark:border-indigo-400 dark:text-indigo-400 dark:hover:bg-indigo-500/10"
+            >
+              {soldOut ? "Tükendi" : `Seçenekleri Gör (${product.variant_count})`}
+            </Link>
+          ) : (
+            <button
+              type="button"
+              disabled={soldOut}
+              onClick={(e) => {
+                e.preventDefault();
+                add(product);
+                toast.success("Sepete eklendi");
+              }}
+              className="w-full rounded-full bg-indigo-600 py-2 text-sm font-semibold text-white transition-colors hover:bg-indigo-700 active:scale-[0.99] disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400 dark:disabled:bg-slate-800 dark:disabled:text-slate-500"
+            >
+              {soldOut ? "Tükendi" : "Sepete Ekle"}
+            </button>
+          )}
         </div>
       </div>
     </div>

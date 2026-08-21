@@ -23,6 +23,11 @@ import type {
   SellerEarnings,
   OrderInvoiceOut,
   SellerProductCreate,
+  DeriveVariantPayload,
+  VariantConfig,
+  VariantGroup,
+  VariantGroupDetail,
+  VariantGroupWrite,
 } from "@/types";
 
 const MULTIPART = { headers: { "Content-Type": "multipart/form-data" } };
@@ -42,6 +47,8 @@ export interface ProductSearchParams {
   publisher?: string[];
   author?: string[];
   cover_type?: string[];
+  /** Varyant eksen daraltması: "Eksen:Değer" öğeleri (ör. "Renk:Sarı"). */
+  variant?: string[];
   sort?: "price_asc" | "price_desc" | "newest" | "rating";
   limit?: number;
   offset?: number;
@@ -65,6 +72,8 @@ export interface BookFacets {
   publisher: BookFacet[];
   author: BookFacet[];
   cover_type: BookFacet[];
+  /** Eksen ADI → değerler (ör. {"Renk": [...], "Ebat": [...]}). */
+  variant_axes?: Record<string, BookFacet[]>;
 }
 
 /** Kitap filtrelerinin seçilebilir değerleri (+ ürün sayısı). */
@@ -424,6 +433,67 @@ export async function updateCategory(
 
 export async function deleteCategory(id: number): Promise<void> {
   await apiClient.delete(`/store/admin/categories/${id}`);
+}
+
+/* ── Varyant grupları (Faz 2) ── */
+
+export async function fetchVariantConfig(): Promise<VariantConfig> {
+  const { data } = await apiClient.get<VariantConfig>(
+    "/store/admin/variant-config"
+  );
+  return data;
+}
+
+export async function listVariantGroups(): Promise<VariantGroup[]> {
+  const { data } = await apiClient.get<VariantGroup[]>(
+    "/store/admin/variant-groups"
+  );
+  return data;
+}
+
+export async function fetchVariantGroup(
+  id: number
+): Promise<VariantGroupDetail> {
+  const { data } = await apiClient.get<VariantGroupDetail>(
+    `/store/admin/variant-groups/${id}`
+  );
+  return data;
+}
+
+export async function createVariantGroup(
+  payload: VariantGroupWrite
+): Promise<VariantGroup> {
+  const { data } = await apiClient.post<VariantGroup>(
+    "/store/admin/variant-groups",
+    payload
+  );
+  return data;
+}
+
+export async function updateVariantGroup(
+  id: number,
+  payload: Partial<VariantGroupWrite>
+): Promise<VariantGroup> {
+  const { data } = await apiClient.patch<VariantGroup>(
+    `/store/admin/variant-groups/${id}`,
+    payload
+  );
+  return data;
+}
+
+export async function deleteVariantGroup(id: number): Promise<void> {
+  await apiClient.delete(`/store/admin/variant-groups/${id}`);
+}
+
+export async function deriveVariant(
+  productId: number,
+  payload: DeriveVariantPayload
+): Promise<ProductDetailOut> {
+  const { data } = await apiClient.post<ProductDetailOut>(
+    `/store/admin/products/${productId}/derive-variant`,
+    payload
+  );
+  return data;
 }
 
 /** Sipariş listesi + EŞLEŞEN toplam (dönen satır sayısı değil). */

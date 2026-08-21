@@ -12,7 +12,7 @@ import unicodedata
 from decimal import Decimal
 
 from fastapi import HTTPException, status
-from sqlalchemy import Float, cast, func, or_, select
+from sqlalchemy import Float, cast, func, literal, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -40,10 +40,12 @@ from models.store import (
     ProductStatus,
     SellerType,
     StockNotification,
+    VariantGroup,
 )
 from models.tutor import Tutor
 from schemas.review import RatingDistributionOut
 from schemas.store import (
+    DeriveVariantIn,
     ProductCategoryCreate,
     ProductCategoryOut,
     ProductCategoryUpdate,
@@ -54,11 +56,13 @@ from schemas.store import (
     ProductReviewOut,
     ProductSearchOut,
     ProductUpdate,
+    ProductVariantMemberPublicOut,
+    ProductVariantsPublicOut,
     SellerEarningsOut,
     SellerProductCreate,
     SellerProductStat,
 )
-from services import stock_ledger
+from services import payment_gates, stock_ledger, variant_service
 from services.ranking import bayesian_average
 
 
@@ -140,7 +144,17 @@ def _in_stock(p: Product) -> bool:
 
 
 def _to_search_out(
-    p: Product, prior_mean: float, confidence: float, *, tutor_name: str | None = None
+    p: Product,
+    prior_mean: float,
+    confidence: float,
+    *,
+    tutor_name: str | None = None,
+    # Faz 3b (grup kartı): kart grubu temsil ederken üye sayısı + "X TL'den
+    # başlayan" fiyatı + grubun stok durumu buradan gelir. Tekil listelemelerde
+    # (favoriler, satıcı listesi…) varsayılanlar geçerlidir.
+    variant_count: int = 1,
+    group_min_price: str | None = None,
+    in_stock_override: bool | None = None,
 ) -> ProductSearchOut:
     return ProductSearchOut(
         id=p.id,
@@ -160,7 +174,7 @@ def _to_search_out(
         tax_rate=(Decimal(str(p.tax_rate)) if p.tax_rate is not None else None),
         currency=p.currency,
         cover_url=p.cover_url,
-        in_stock=_in_stock(p),
+        in_stock=(in_stock_override if in_stock_override is not None else _in_stock(p)),
         # Fiziksel üründe kalan adet; dijitalde None (bkz. şema yorumu).
         stock=(p.stock if p.kind == ProductKind.PHYSICAL.value else None),
         category_id=p.category_id,
@@ -174,6 +188,13 @@ def _to_search_out(
         publisher=p.publisher,
         isbn=p.isbn,
         sku=p.sku,
+        variant_group_id=p.variant_group_id,
+        option1_value=p.option1_value,
+        option2_value=p.option2_value,
+        variant_sort=p.variant_sort or 0,
+        barcode=p.barcode,
+        variant_count=variant_count,
+        group_min_price=group_min_price,
     )
 
 
@@ -275,6 +296,33 @@ def rollup_category_counts(
     return counts
 
 
+def inherited_default_tax_rate(
+    category_id: int,
+    parents: dict[int, int | None],
+    rates: dict[int, Decimal | None],
+) -> Decimal | None:
+    """Miras çözülmüş varsayılan KDV oranı (saf; pytest'li).
+
+    Karar: yaprağın `default_tax_rate`'i NULL ise ata zincirinden miras alır —
+    yaprağa EN YAKIN dolu değer kazanır. Gerekçe: mali müşavir oranı kırılımın
+    köküne verir; yaprak başına elle kopya, yeni yaprak açıldığında unutulur ve
+    sessiz boşluk üretir. Zincir tamamen NULL ise None döner — oran UYDURULMAZ
+    (bugünkü davranış birebir; ön-doldurma yapılmaz, admin elle girer).
+
+    Bu değer yalnız SUNUM/ön-doldurma içindir: `Product.tax_rate` ürün başına
+    zorunlu veridir ve sunucu bu koldan asla oran türetmez. Döngü korumalı.
+    """
+    seen: set[int] = set()
+    node: int | None = category_id
+    while node is not None and node not in seen:
+        seen.add(node)
+        oran = rates.get(node)
+        if oran is not None:
+            return Decimal(str(oran))
+        node = parents.get(node)
+    return None
+
+
 async def _category_and_descendants(db: AsyncSession, category_id: int) -> list[int]:
     """Kategori + tüm alt kategorileri (recursive CTE).
 
@@ -323,6 +371,7 @@ async def list_categories(db: AsyncSession) -> list[ProductCategoryOut]:
     ).all()
     parents = {c.id: c.parent_id for c in cats}
     counts = rollup_category_counts([(cid, n) for cid, n in rows], parents)
+    rates = {c.id: c.default_tax_rate for c in cats}
     return [
         ProductCategoryOut(
             id=c.id,
@@ -332,6 +381,12 @@ async def list_categories(db: AsyncSession) -> list[ProductCategoryOut]:
             icon_url=c.icon_url,
             sort_order=c.sort_order,
             product_count=int(counts.get(c.id, 0)),
+            default_tax_rate=(
+                Decimal(str(c.default_tax_rate))
+                if c.default_tax_rate is not None
+                else None
+            ),
+            effective_tax_rate=inherited_default_tax_rate(c.id, parents, rates),
         )
         for c in cats
     ]
@@ -347,6 +402,9 @@ async def create_category(
         parent_id=payload.parent_id,
         icon_url=payload.icon_url,
         sort_order=payload.sort_order,
+        # Değer admin girdisidir; kodda hiçbir varsayılan ORAN yoktur (mali
+        # müşavir onayı bekleniyor) — gönderilmezse NULL kalır.
+        default_tax_rate=payload.default_tax_rate,
     )
     db.add(cat)
     await db.commit()
@@ -362,11 +420,23 @@ async def update_category(
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Kategori bulunamadı")
     data = payload.model_dump(exclude_unset=True)
     if "name" in data and data["name"]:
+        # Kitap kökü nöbetçisi: `variant_service.BOOK_ROOT_SLUGS` bu slug'lara
+        # bağlıdır. Ad (→ slug) değişirse "kitapta varyant kapalı" kuralı
+        # hiçbir kategoriyle eşleşmez ve SESSİZCE devre dışı kalırdı.
+        if cat.slug in variant_service.BOOK_ROOT_SLUGS:
+            raise HTTPException(
+                status.HTTP_409_CONFLICT,
+                f"'{cat.slug}' kitap kökü kategorisidir ve yeniden "
+                "adlandırılamaz: varyant kural sözlüğü bu slug'a bağlı. "
+                "Gerekliyse önce koddaki BOOK_ROOT_SLUGS güncellenmeli.",
+            )
         cat.name = data["name"]
         cat.slug = await _unique_category_slug(
             db, _slugify(data["name"]), exclude_id=cat.id
         )
-    for field in ("parent_id", "icon_url", "sort_order"):
+    # `default_tax_rate: null` göndermek varsayılanı TEMİZLER (exclude_unset:
+    # alan hiç gönderilmediyse dokunulmaz).
+    for field in ("parent_id", "icon_url", "sort_order", "default_tax_rate"):
         if field in data:
             setattr(cat, field, data[field])
     await db.commit()
@@ -378,6 +448,14 @@ async def delete_category(db: AsyncSession, category_id: int) -> None:
     cat = await db.get(ProductCategory, category_id)
     if cat is None or cat.deleted_at is not None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Kategori bulunamadı")
+    # Kitap kökü nöbetçisi (gerekçe: update_category'deki not).
+    if cat.slug in variant_service.BOOK_ROOT_SLUGS:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            f"'{cat.slug}' kitap kökü kategorisidir ve silinemez: varyant "
+            "kural sözlüğü bu slug'a bağlı. Gerekliyse önce koddaki "
+            "BOOK_ROOT_SLUGS güncellenmeli.",
+        )
     cat.deleted_at = _now()
     await db.commit()
 
@@ -422,6 +500,60 @@ async def list_book_facets(
             )
         ).all()
         out[key] = [{"value": value, "count": count} for value, count in rows]
+
+    # ── Varyant eksenleri — EKSEN ADINA göre gruplanır, ham kolona göre DEĞİL ──
+    #
+    # `option1_value` gruba göre farklı anlam taşır: bir grupta "Kırmızı",
+    # başkasında "A4". Ham kolon listesi bu değerleri tek kutuya döker ve facet
+    # karışır. Değer bu yüzden grubun eksen ADI (VARIANT_AXES sözlüğü —
+    # option1_name/option2_name) altında toplanır: iki grubun "Renk" değerleri
+    # birleşir, "Ebat" değerleriyle karışmaz.
+    axes: dict[str, dict[str, int]] = {}
+    for name_col, value_col in (
+        (VariantGroup.option1_name, Product.option1_value),
+        (VariantGroup.option2_name, Product.option2_value),
+    ):
+        rows = (
+            await db.execute(
+                select(name_col, value_col, func.count())
+                .join(VariantGroup, VariantGroup.id == Product.variant_group_id)
+                .where(
+                    *base_filters,
+                    VariantGroup.deleted_at.is_(None),
+                    name_col.isnot(None),
+                    value_col.isnot(None),
+                )
+                .group_by(name_col, value_col)
+            )
+        ).all()
+        for eksen, deger, adet in rows:
+            kova = axes.setdefault(eksen, {})
+            kova[deger] = kova.get(deger, 0) + int(adet)
+    out["variant_axes"] = {  # type: ignore[assignment]
+        eksen: [
+            {"value": v, "count": n}
+            for v, n in sorted(kova.items(), key=lambda x: (-x[1], x[0]))[:limit]
+        ]
+        for eksen, kova in sorted(axes.items())
+    }
+    return out
+
+
+def parse_variant_filters(items: list[str] | None) -> dict[str, list[str]]:
+    """`variant=Renk:Sarı` parametrelerini {eksen: [değerler]} sözlüğüne çevirir.
+
+    Saf; pytest'li. Biçimsiz öğe SESSİZCE YUTULMAZ — ValueError yükseltilir ve
+    router 400'e çevirir: yazım hatalı bir filtre "hiç filtre yok" gibi tüm
+    kataloğu döndürseydi hata görünmez kalırdı.
+    """
+    out: dict[str, list[str]] = {}
+    for ham in items or []:
+        eksen, ayrac, deger = ham.partition(":")
+        if not ayrac or not eksen.strip() or not deger.strip():
+            raise ValueError(
+                f"variant filtresi 'Eksen:Değer' biçiminde olmalı: {ham!r}"
+            )
+        out.setdefault(eksen.strip(), []).append(deger.strip())
     return out
 
 
@@ -442,6 +574,9 @@ async def search_products(
     publisher: list[str] | None = None,
     author: list[str] | None = None,
     cover_type: list[str] | None = None,
+    #: {eksen adı: [değerler]} — `parse_variant_filters` çıktısı. Eksenler
+    #: arası AND, aynı eksenin değerleri arası OR (publisher deseniyle aynı).
+    variant_filters: dict[str, list[str]] | None = None,
     sort: str | None = None,
     limit: int = 30,
     offset: int = 0,
@@ -450,41 +585,35 @@ async def search_products(
     confidence = settings.BAYESIAN_CONFIDENCE
     score = _bayesian_score_expr(prior_mean, confidence)
 
-    stmt = (
-        select(Product, Tutor.first_name, Tutor.last_name)
-        .outerjoin(Tutor, Tutor.id == Product.tutor_id)
-        .where(
-            Product.status == ProductStatus.ACTIVE.value,
-            Product.deleted_at.is_(None),
-        )
-    )
+    # ── Filtre koşulları (İÇ sorguya uygulanır) ──
+    kosullar = [
+        Product.status == ProductStatus.ACTIVE.value,
+        Product.deleted_at.is_(None),
+    ]
     if category_id is not None:
         # Üst kategori seçilince alt kategorilerdeki ürünler de gelmeli.
         # Tam eşitlik kullanıldığında ("Sınav Kitapları" gibi) hiçbir üst
         # kategori ürün göstermiyordu: ürünler yaprak kategorilere atanır
         # (seed_kitapsec.py) ama gezinme üst kategoriden başlar.
-        stmt = stmt.where(
+        kosullar.append(
             Product.category_id.in_(await _category_and_descendants(db, category_id))
         )
     if tutor_id is not None:
-        stmt = stmt.where(Product.tutor_id == tutor_id)
+        kosullar.append(Product.tutor_id == tutor_id)
     if kind:
-        stmt = stmt.where(Product.kind == kind)
+        kosullar.append(Product.kind == kind)
     if min_price is not None:
-        stmt = stmt.where(Product.price >= min_price)
+        kosullar.append(Product.price >= min_price)
     if max_price is not None:
-        stmt = stmt.where(Product.price <= max_price)
-    if in_stock:
-        # Dijital her zaman stokta; fiziksel → stock > 0 (bkz. _in_stock).
-        stmt = stmt.where(
-            or_(Product.kind == ProductKind.DIGITAL.value, Product.stock > 0)
-        )
+        kosullar.append(Product.price <= max_price)
+    # DİKKAT: `in_stock` burada YOK — grup semantiği taşır ("grubun herhangi
+    # bir varyantı stokta") ve DIŞ sorguda `grp_stok` üzerinden uygulanır.
+    # İçte uygulansaydı tükenen üyeler partition'dan düşer ve temsilci/fiyat
+    # hesapları "stoktakiler" alt kümesine kayardı.
     if min_rating is not None:
         # Ham ortalama >= min_rating (bölmesiz): rating_sum >= min_rating * count.
-        stmt = stmt.where(
-            Product.rating_count > 0,
-            Product.rating_sum >= min_rating * Product.rating_count,
-        )
+        kosullar.append(Product.rating_count > 0)
+        kosullar.append(Product.rating_sum >= min_rating * Product.rating_count)
     # Künye filtreleri normalize edilmiş karşılaştırma yapar: kullanıcı
     # "palme yayinlari" seçse de kayıt "Palme Yayınları" olarak durur.
     for column, values in (
@@ -493,11 +622,37 @@ async def search_products(
         (Product.cover_type, cover_type),
     ):
         if values:
-            stmt = stmt.where(
+            kosullar.append(
                 normalized(column).in_([normalize_tr(v) for v in values])
             )
+    # Varyant eksen filtresi: değer, EKSENİ o ada sahip grupların üyelerinde
+    # aranır — birinci ya da ikinci eksen olması fark etmez (facet karışması
+    # çözümünün filtre tarafı; bkz. list_book_facets'teki not).
+    #
+    # KORELE EXISTS, JOIN DEĞİL (P2-6b dersi): Faz 3b refactor'ünde koşullar
+    # WHERE listesine alınıp VariantGroup JOIN'i sorguya SONRADAN eklenince
+    # eşleşme bozuldu ve filtre eksen adını fiilen yok saydı — "Ebat:Sarı"
+    # taşıyan ürün "Renk:Sarı" filtresinde de geliyordu. Eski testler değerleri
+    # eksene özgü ürettiği için bunu yakalayamadı (artık çapraz-eksen fixture'ı
+    # var). EXISTS ürünün KENDİ grubuna bağlanır; ikinci FROM/kartesyen riski
+    # yapısal olarak yoktur.
+    for eksen, degerler in (variant_filters or {}).items():
+        kosullar.append(
+            select(VariantGroup.id)
+            .where(
+                VariantGroup.id == Product.variant_group_id,
+                VariantGroup.deleted_at.is_(None),
+                or_(
+                    (VariantGroup.option1_name == eksen)
+                    & Product.option1_value.in_(degerler),
+                    (VariantGroup.option2_name == eksen)
+                    & Product.option2_value.in_(degerler),
+                ),
+            )
+            .exists()
+        )
 
-    relevance = None
+    relevance = literal(0.0)
     if q:
         # Diakritik-duyarsız: "matematık", "kitab", "cozumlu" sonuç getirmeli.
         # Yazar/yayınevi de aranır — kullanıcı çoğu zaman kitabın adını değil
@@ -510,30 +665,101 @@ async def search_products(
         tsquery = search_tsquery(q)
         norm_title = normalized(Product.title)
         norm_q = normalized(q)
-        stmt = stmt.where(_arama_kolu(q))
+        kosullar.append(_arama_kolu(q))
         relevance = func.ts_rank(Product.search_vector, tsquery) + func.similarity(
             norm_title, norm_q
         )
 
+    # ── Gruplama (Faz 3b): listede GRUP BAŞINA TEK KART ──
+    #
+    # DISTINCT ON dış sıralamayla çakışır; bunun yerine ROW_NUMBER() OVER
+    # (PARTITION BY grup, ORDER BY <kipin temsilci sırası>) alt sorgusu kurulur
+    # ve LIMIT/OFFSET **DIŞ** sorguda uygulanır — sayfalama böylece GRUP
+    # (kart) sayısına göredir, üye sayısına göre değil. Tekil ürün kendi
+    # başına bir gruptur: COALESCE(variant_group_id, -id) çakışmasız anahtar
+    # (id'ler pozitif, negatifler tekilleri temsil eder).
+    #
+    # Temsilci = kipin "en iyi" üyesi (price_asc→en ucuz, newest→en yeni,
+    # skor kiplerinde→en yüksek skor); dış sıralama temsilcinin değeriyle
+    # yapılır, böylece kart doğru konuma oturur. Window'lar FİLTRELENMİŞ küme
+    # üzerinde çalışır: "Sarı" filtresi varken kartı grubun sarı üyesi temsil
+    # eder. `id` her sırada son bağlayıcıdır (deterministik sayfalama).
+    grp = func.coalesce(Product.variant_group_id, -Product.id)
+    stokta = or_(Product.kind == ProductKind.DIGITAL.value, Product.stock > 0)
+
     if sort == "price_asc":
-        stmt = stmt.order_by(Product.price.asc(), score.desc())
+        temsilci_sirasi = [Product.price.asc(), Product.id.asc()]
     elif sort == "price_desc":
-        stmt = stmt.order_by(Product.price.desc(), score.desc())
+        temsilci_sirasi = [Product.price.desc(), Product.id.asc()]
     elif sort == "newest":
-        stmt = stmt.order_by(Product.created_at.desc())
+        temsilci_sirasi = [Product.created_at.desc(), Product.id.desc()]
+    else:  # default / rating / relevance → skor temsil eder
+        temsilci_sirasi = [
+            score.desc(), Product.created_at.desc(), Product.id.desc()
+        ]
+
+    inner = select(
+        Product.id.label("pid"),
+        func.row_number()
+        .over(partition_by=grp, order_by=temsilci_sirasi)
+        .label("rn"),
+        func.min(Product.price).over(partition_by=grp).label("grp_min"),
+        func.count().over(partition_by=grp).label("grp_n"),
+        func.bool_or(stokta).over(partition_by=grp).label("grp_stok"),
+        score.label("skor"),
+        relevance.label("relv"),
+    ).where(*kosullar)
+    sub = inner.subquery("grup_kartlari")
+
+    stmt = (
+        select(
+            Product,
+            Tutor.first_name,
+            Tutor.last_name,
+            sub.c.grp_min,
+            sub.c.grp_n,
+            sub.c.grp_stok,
+            sub.c.skor,
+            sub.c.relv,
+        )
+        .join(sub, sub.c.pid == Product.id)
+        .outerjoin(Tutor, Tutor.id == Product.tutor_id)
+        .where(sub.c.rn == 1)
+    )
+    if in_stock:
+        stmt = stmt.where(sub.c.grp_stok)
+
+    if sort == "price_asc":
+        stmt = stmt.order_by(Product.price.asc(), sub.c.skor.desc(), Product.id.asc())
+    elif sort == "price_desc":
+        stmt = stmt.order_by(Product.price.desc(), sub.c.skor.desc(), Product.id.asc())
+    elif sort == "newest":
+        stmt = stmt.order_by(Product.created_at.desc(), Product.id.desc())
     elif sort == "rating":
-        stmt = stmt.order_by(score.desc(), Product.created_at.desc())
-    elif relevance is not None:
-        stmt = stmt.order_by(score.desc(), relevance.desc())
+        stmt = stmt.order_by(sub.c.skor.desc(), Product.created_at.desc(), Product.id.desc())
+    elif q:
+        stmt = stmt.order_by(sub.c.skor.desc(), sub.c.relv.desc(), Product.id.desc())
     else:
-        stmt = stmt.order_by(score.desc(), Product.created_at.desc())
+        stmt = stmt.order_by(sub.c.skor.desc(), Product.created_at.desc(), Product.id.desc())
 
     stmt = stmt.limit(limit).offset(offset)
     rows = (await db.execute(stmt)).all()
     out: list[ProductSearchOut] = []
-    for p, fn, ln in rows:
+    for p, fn, ln, grp_min, grp_n, grp_stok, _skor, _relv in rows:
         name = f"{fn} {ln}".strip() if fn else None
-        out.append(_to_search_out(p, prior_mean, confidence, tutor_name=name))
+        out.append(
+            _to_search_out(
+                p,
+                prior_mean,
+                confidence,
+                tutor_name=name,
+                variant_count=int(grp_n),
+                group_min_price=(str(grp_min) if grp_n > 1 else None),
+                # Kartın stok durumu GRUBUN durumudur: temsilci tükenik olsa
+                # da kardeşi satılabiliyorsa kart "Tükendi" diyemez.
+                in_stock_override=(bool(grp_stok) if grp_n > 1 else None),
+            )
+        )
     return out
 
 
@@ -551,6 +777,53 @@ async def _tutor_name(db: AsyncSession, tutor_id: int | None) -> str | None:
         return None
     t = await db.get(Tutor, tutor_id)
     return t.full_name if t is not None else None
+
+
+async def _variants_block(
+    db: AsyncSession, p: Product
+) -> ProductVariantsPublicOut | None:
+    """Detay sayfası kardeş seçicisinin verisi (grupsuz üründe None).
+
+    Yalnız PUBLIC görünür kardeşler listelenir (ACTIVE + silinmemiş): gizli
+    kardeşe giden bir seçici düğmesi 404'e tıklatırdı. Tükenen kardeş ise
+    LİSTEDE KALIR ve `in_stock=false` işaretlenir — "bu renk yok" ile "bu
+    renk tükendi" farklı bilgilerdir.
+    """
+    if p.variant_group_id is None:
+        return None
+    g = await db.get(VariantGroup, p.variant_group_id)
+    if g is None or g.deleted_at is not None:
+        return None
+    uyeler = (
+        await db.execute(
+            select(Product)
+            .where(
+                Product.variant_group_id == g.id,
+                Product.deleted_at.is_(None),
+                Product.status == ProductStatus.ACTIVE.value,
+            )
+            .order_by(Product.variant_sort, Product.id)
+        )
+    ).scalars().all()
+    return ProductVariantsPublicOut(
+        group_id=g.id,
+        title=g.title,
+        option1_name=g.option1_name,
+        option2_name=g.option2_name,
+        members=[
+            ProductVariantMemberPublicOut(
+                id=m.id,
+                slug=m.slug,
+                title=m.title,
+                option1_value=m.option1_value,
+                option2_value=m.option2_value,
+                variant_sort=m.variant_sort or 0,
+                in_stock=_in_stock(m),
+                price=str(m.price),
+            )
+            for m in uyeler
+        ],
+    )
 
 
 async def _to_detail(db: AsyncSession, p: Product) -> ProductDetailOut:
@@ -577,6 +850,7 @@ async def _to_detail(db: AsyncSession, p: Product) -> ProductDetailOut:
         cover_type=p.cover_type,
         images=[ProductImageOut.model_validate(im) for im in p.images],
         created_at=p.created_at,
+        variants=await _variants_block(db, p),
     )
 
 
@@ -626,6 +900,25 @@ _BOOK_SPEC_FIELDS = (
 async def create_product(
     db: AsyncSession, admin: Admin, payload: ProductCreate
 ) -> ProductDetailOut:
+    # Dijital ürün kapısı EN BAŞTA: bayrak kapalıyken oluşturulan dijital ürün
+    # satılamaz ve `kind` trigger'ı yüzünden düzeltilemez (bkz. payment_gates).
+    await payment_gates.assert_digital_product_creatable(db, payload.kind)
+    # Varyant üyeliği: kitap kapısı + eksen/barkod doğrulaması ürün
+    # yazılmadan ÖNCE (opak IntegrityError yerine anlamlı 400/409).
+    if payload.variant_group_id is not None:
+        await variant_service.validate_membership(
+            db,
+            group_id=payload.variant_group_id,
+            category_id=payload.category_id,
+            option1_value=payload.option1_value,
+            option2_value=payload.option2_value,
+            barcode=payload.barcode,
+        )
+    elif payload.option1_value is not None or payload.option2_value is not None:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            "Eksen değeri yalnız bir varyant grubuyla birlikte gönderilebilir.",
+        )
     slug = await _unique_product_slug(db, _slugify(payload.title))
     # Fiziksel ürün yalnız platform tarafından satılır.
     p = Product(
@@ -649,6 +942,11 @@ async def create_product(
         status=payload.status,
         cover_url=payload.cover_url,
         created_by_admin_id=admin.id,
+        variant_group_id=payload.variant_group_id,
+        option1_value=payload.option1_value,
+        option2_value=payload.option2_value,
+        variant_sort=payload.variant_sort or 0,
+        barcode=payload.barcode,
     )
     for field in _BOOK_SPEC_FIELDS:
         setattr(p, field, getattr(payload, field))
@@ -682,6 +980,113 @@ async def create_product(
     return await _to_detail(db, full)
 
 
+async def derive_variant(
+    db: AsyncSession, admin: Admin, source_id: int, payload: DeriveVariantIn
+) -> ProductDetailOut:
+    """Mevcut üründen yeni varyant türetir (künye/fiyat/görsel kopyalanır).
+
+    Kaynak bir grupta OLMAK ZORUNDA (409): türetme "kardeş ekleme"dir, grup
+    kurma değil — grup kurmayı ayrı ve bilinçli bir adım olarak bırakmak,
+    yanlışlıkla tek üyelik hayalet gruplar üretilmesini engeller.
+
+    ISBN bilinçli KOPYALANMAZ: her fiziksel kalem kendi yayın kimliğini taşır;
+    kopyalansaydı "okuttum, eşleşti" güveni yanlış ürüne bağlanırdı (barkod↔ISBN
+    ayrımıyla aynı ilke). `sku` zaten trigger'ındır, kopyalanamaz.
+    """
+    kaynak = await _load_full(db, source_id)
+    if kaynak is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Ürün bulunamadı")
+    # Türetme `kind`'ı KAYNAKTAN kopyalar (aşağıda `kind=kaynak.kind`): bayrak
+    # kapalıyken eski bir dijital üründen yeni dijital ürün doğurmak, kapıyı
+    # üçüncü bir kapıdan atlatmak olurdu.
+    await payment_gates.assert_digital_product_creatable(db, kaynak.kind)
+    if kaynak.variant_group_id is None:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Kaynak ürün bir varyant grubunda değil. Önce grubu oluşturup "
+            "kaynağı gruba bağlayın; türetme kardeş ekler.",
+        )
+    grup = await variant_service.validate_membership(
+        db,
+        group_id=kaynak.variant_group_id,
+        category_id=kaynak.category_id,
+        option1_value=payload.option1_value,
+        option2_value=payload.option2_value,
+        barcode=payload.barcode,
+    )
+
+    if payload.title:
+        baslik = payload.title
+    else:
+        # Grup başlığı ortak köktür; değerler ayırt eder ("Trendyol deseni":
+        # varyant adı title'da yaşar, ayrı kolonda değil.
+        degerler = " / ".join(
+            v for v in (payload.option1_value, payload.option2_value) if v
+        )
+        baslik = f"{grup.title} - {degerler}"
+
+    p = Product(
+        slug=await _unique_product_slug(db, _slugify(baslik)),
+        title=baslik,
+        description=kaynak.description,
+        kind=kaynak.kind,
+        seller_type=kaynak.seller_type,
+        tutor_id=kaynak.tutor_id,
+        price=payload.price if payload.price is not None else kaynak.price,
+        compare_at_price=None,   # indirim rozeti kopyalanmaz; bilinçli karar ister
+        tax_rate=kaynak.tax_rate,
+        stock=0 if kaynak.kind == ProductKind.PHYSICAL.value else None,
+        weight_grams=kaynak.weight_grams,
+        category_id=kaynak.category_id,
+        # Taslak doğar: fiyat/görsel gözden geçirilmeden vitrine çıkmasın.
+        status=ProductStatus.DRAFT.value,
+        cover_url=kaynak.cover_url,
+        created_by_admin_id=admin.id,
+        variant_group_id=kaynak.variant_group_id,
+        option1_value=payload.option1_value,
+        option2_value=payload.option2_value,
+        variant_sort=(
+            payload.variant_sort
+            if payload.variant_sort is not None
+            else (kaynak.variant_sort or 0) + 1
+        ),
+        barcode=payload.barcode,
+    )
+    for field in _BOOK_SPEC_FIELDS:
+        if field == "isbn":
+            continue
+        setattr(p, field, getattr(kaynak, field))
+    db.add(p)
+    await db.flush()
+    # Galeri görselleri: aynı URL'lere işaret eden yeni satırlar (dosya ortak).
+    for im in kaynak.images:
+        db.add(
+            ProductImage(
+                product_id=p.id, url=im.url, caption=im.caption,
+                sort_order=im.sort_order,
+            )
+        )
+    if p.kind == ProductKind.PHYSICAL.value and (payload.stock or 0) > 0:
+        await stock_ledger.apply_movement(
+            db,
+            p.id,
+            qty_delta=int(payload.stock),
+            bucket=stock_ledger.StockBucket.SALEABLE,
+            movement_type=stock_ledger.StockMovementType.INITIAL,
+            reason_code="PRODUCT_CREATE",
+            ref_type="product",
+            ref_id=p.id,
+            idempotency_key=stock_ledger.idempotency_key_for(
+                stock_ledger.StockMovementType.INITIAL, product_id=p.id
+            ),
+            actor_type="ADMIN",
+            actor_id=admin.id,
+        )
+    await db.commit()
+    full = await _load_full(db, p.id)
+    return await _to_detail(db, full)
+
+
 async def bulk_import_products(db: AsyncSession, admin: Admin, rows: list[dict]) -> dict:
     """CSV satırlarından platform fiziksel/dijital ürün toplu oluşturur. Her satır
     kendi savepoint'inde işlenir (biri patlarsa diğerleri etkilenmez). ISBN ile
@@ -692,6 +1097,13 @@ async def bulk_import_products(db: AsyncSession, admin: Admin, rows: list[dict])
         )
     ).scalars().all()
     cat_by_slug = {c.slug: c.id for c in cats}
+
+    # Dijital ürün kapısı (bkz. `payment_gates.assert_digital_product_creatable`).
+    # Toplu içe aktarma AYNI admin ekranının ikinci kapısıdır: açık kalırsa
+    # `create_product`'a konan kapı tiyatro olur. Bayrak satır başına değil BİR
+    # KEZ okunur; satır bazlı ret `ValueError` ile verilir ki dosyanın geri
+    # kalanı işlenmeye devam etsin ve atlanan satır `errors`'ta raporlansın.
+    dijital_acik = await payment_gates.digital_products_open(db)
 
     created = 0
     skipped = 0
@@ -725,6 +1137,11 @@ async def bulk_import_products(db: AsyncSession, admin: Admin, rows: list[dict])
             kind = (row.get("kind") or "PHYSICAL").upper()
             if kind not in ("PHYSICAL", "DIGITAL"):
                 raise ValueError("kind PHYSICAL veya DIGITAL olmalı")
+            if kind == "DIGITAL" and not dijital_acik:
+                raise ValueError(
+                    "dijital ürün satışı kapalı — bu satır atlandı "
+                    "(bayrak: digital_products_live)"
+                )
             status_v = (row.get("status") or "ACTIVE").upper()
             if status_v not in ("ACTIVE", "HIDDEN", "DRAFT"):
                 raise ValueError("status ACTIVE/HIDDEN/DRAFT olmalı")
@@ -945,6 +1362,55 @@ async def update_product(
         # sessizce taşımak yerine at.
         data.pop("stock")
 
+    # ── Varyant üyeliği (yalnız admin yolu; eğitmen dijital ürünü gruplanmaz) ──
+    _VARYANT_ALANLARI = (
+        "variant_group_id", "option1_value", "option2_value",
+        "variant_sort", "barcode",
+    )
+    # `variant_sort: null` anlamsızdır (kolon NOT NULL); "gönderilmedi" say.
+    if data.get("variant_sort", 0) is None:
+        data.pop("variant_sort")
+    if owner_tutor_id is not None:
+        for f in _VARYANT_ALANLARI:
+            data.pop(f, None)
+    else:
+        hedef_grup = (
+            data["variant_group_id"]
+            if "variant_group_id" in data
+            else p.variant_group_id
+        )
+        hedef_kategori = data.get("category_id", p.category_id)
+        # Kapı yalnız VARYANT alanlarına ya da kategoriye DOKUNULDUĞUNDA çalışır
+        # (P2-2): kategori ağacı sonradan kitap kökü altına taşınmış gruplu
+        # üründe fiyat/stok/başlık düzenlemesi bile 409 alıyordu — varyantla
+        # ilgisiz bakım, mevcut (artık kural dışı kalmış) üyeliği yeniden
+        # yargılamaz. Ürünün kategorisini DEĞİŞTİRMEK ise kapıdan geçer: gruplu
+        # ürün kitaba taşınamaz (mevcut davranış korunur).
+        varyanta_dokunuldu = bool(
+            set(data) & set(_VARYANT_ALANLARI)
+        ) or "category_id" in data
+        if hedef_grup is not None and varyanta_dokunuldu:
+            await variant_service.validate_membership(
+                db,
+                group_id=hedef_grup,
+                category_id=hedef_kategori,
+                option1_value=data.get("option1_value", p.option1_value),
+                option2_value=data.get("option2_value", p.option2_value),
+                barcode=data.get("barcode", p.barcode),
+            )
+        elif hedef_grup is None:
+            if "variant_group_id" in data:
+                # Gruptan çıkış: eksen değerleri de temizlenir — orphan
+                # CHECK'ine çarpmadan, bayat "Kırmızı" etiketi bırakmadan.
+                data["option1_value"] = None
+                data["option2_value"] = None
+            if data.get("option1_value") or data.get("option2_value"):
+                raise HTTPException(
+                    status.HTTP_400_BAD_REQUEST,
+                    "Eksen değeri yalnız bir varyant grubuyla birlikte "
+                    "gönderilebilir.",
+                )
+
     old_stock = p.stock
     old_price = Decimal(str(p.price))
     if "title" in data and data["title"]:
@@ -967,8 +1433,10 @@ async def update_product(
         "tax_rate",
     ]
     if owner_tutor_id is None:
-        # Admin: ağırlık/durum + kitap künyesi (stok HARİÇ).
-        editable += ["weight_grams", "status", *_BOOK_SPEC_FIELDS]
+        # Admin: ağırlık/durum + kitap künyesi + varyant üyeliği (stok HARİÇ).
+        editable += [
+            "weight_grams", "status", *_BOOK_SPEC_FIELDS, *_VARYANT_ALANLARI,
+        ]
     for field in editable:
         if field in data:
             setattr(p, field, data[field])
@@ -1323,7 +1791,7 @@ async def set_cover(
 ) -> ProductDetailOut:
     p = await _require_product(db, product_id, owner_tutor_id=owner_tutor_id)
     old = p.cover_url
-    p.cover_url = await storage.upload_library_photo(file_bytes, square=False)
+    p.cover_url = await storage.upload_product_photo(file_bytes)
     await db.commit()
     if old:
         await storage.delete_file(old)
@@ -1343,7 +1811,7 @@ async def add_images(
         )
     ).scalar_one()
     for i, raw in enumerate(files):
-        url = await storage.upload_library_photo(raw, square=False)
+        url = await storage.upload_product_photo(raw)
         db.add(ProductImage(product_id=product_id, url=url, sort_order=start + i))
     await db.commit()
     full = await _load_full(db, product_id)

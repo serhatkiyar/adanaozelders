@@ -355,6 +355,62 @@ async def test_B7_BAYAT_IZIN_KODLARI_UPGRADE_ILE_DUZELIR(birlesik_agac, taze_db)
         )
 
 
+async def test_N8_KATALOG_DISI_rolun_izni_de_TASINIR(birlesik_agac, taze_db):
+    """İP-21 · TB-47 — taşıma adımının ASIL işlevi buradadır.
+
+    🔴 Ölçüldü (İP-21 teşhis turu, yeşil taban doğrulanarak): taşıma
+    `INSERT`'i etkisizleştirildiğinde bu dosyadaki 7 test de yeşil kalıyordu.
+    Sebep, B7'nin rol iddiasını `SUPER_ADMIN` ve `EDUCATION_MANAGER` üzerinden
+    kurması: migration'ın `ROLE_GRANTS` döngüsü o iki role doğru kodları
+    **koşulsuz** verir, yani taşıma hiç çalışmasa da iddia geçer. Test,
+    taşımayı değil `ROLE_GRANTS`'ı ölçüyordu.
+
+    Taşımanın gerçek işlevi **katalog dışı** rol bağlarıdır: panelden elle bir
+    role verilmiş izin, `ROLE_GRANTS` tarafından geri getirilmez — yalnız
+    taşıma getirir. Taşıma sessizce bozulursa o rol izni **kalıcı olarak
+    kaybolur** ve migration yine "başarılı" döner.
+    """
+    motor, db = taze_db
+    _alembic(birlesik_agac, "upgrade", "ip16_araliklitekrar", db=db)
+
+    await _bayat_dunyayi_kur(motor)
+    # Katalogda OLMAYAN bir rol — panelden elle izin verilmiş hâli temsil eder.
+    async with motor.begin() as conn:
+        await conn.execute(
+            text(
+                "INSERT INTO admin_roles (code, name, is_system) "
+                "VALUES ('IP21_OZEL', 'İP-21 özel rol', false)"
+            )
+        )
+        await conn.execute(
+            text(
+                "INSERT INTO admin_role_permissions (admin_role_id, permission_id) "
+                "SELECT r.id, p.id FROM admin_roles r, admin_permissions p "
+                "WHERE r.code = 'IP21_OZEL' AND p.code = :kod"
+            ),
+            {"kod": BAYAT_KODLAR[0]},
+        )
+
+    _alembic(birlesik_agac, "upgrade", "head", db=db)
+
+    roller = await _rol_izinleri(motor, DOGRU_KODLAR[0])
+    assert "IP21_OZEL" in roller, (
+        f"katalog dışı rolün izni taşınmadı — yetki KALICI olarak kayboldu: "
+        f"{roller}"
+    )
+
+    # DOLULUK NÖBETÇİSİ: taşıma "her role ver"e dönüşemez. Bayat izni HİÇ
+    # olmayan bir rol, upgrade sonrası da o izne sahip olmamalı.
+    async with motor.begin() as conn:
+        await conn.execute(
+            text(
+                "INSERT INTO admin_roles (code, name, is_system) "
+                "VALUES ('IP21_BOS', 'İP-21 izinsiz rol', false)"
+            )
+        )
+    assert "IP21_BOS" not in await _rol_izinleri(motor, DOGRU_KODLAR[0])
+
+
 async def _bayat_dunyayi_kur(engine) -> None:
     """Yeniden adlandırma ÖNCESİ durum: eski kodlar, SUPER_ADMIN'e bağlı."""
     async with engine.begin() as conn:

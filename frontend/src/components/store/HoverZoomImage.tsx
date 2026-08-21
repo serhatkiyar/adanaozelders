@@ -64,7 +64,7 @@ export function HoverZoomImage({
   return (
     <div
       ref={boxRef}
-      className="relative aspect-square rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900/50"
+      className="relative aspect-square rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-100"
     >
       <button
         type="button"
@@ -78,7 +78,7 @@ export function HoverZoomImage({
           ref={imgRef}
           src={src}
           alt={alt}
-          className="h-full w-full object-contain mix-blend-multiply dark:mix-blend-normal"
+          className="h-full w-full object-contain mix-blend-multiply"
         />
       </button>
 

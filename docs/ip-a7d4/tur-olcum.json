@@ -1,0 +1,220 @@
+{
+  "olculdu": "2026-08-20T13:09:08.547Z",
+  "tamTur": {
+    "yetki": {
+      "acik-1280": {
+        "govdeGenisligi": 1280,
+        "yatayTasma": false,
+        "tasmaPiksel": 0,
+        "icIceButon": 0,
+        "dugmeSayisi": 2,
+        "enKucukDokunmaHedefi": 36,
+        "tema": "acik",
+        "adsizKontroller": []
+      },
+      "acik-380": {
+        "govdeGenisligi": 380,
+        "yatayTasma": false,
+        "tasmaPiksel": 0,
+        "icIceButon": 0,
+        "dugmeSayisi": 2,
+        "enKucukDokunmaHedefi": 36,
+        "tema": "acik",
+        "adsizKontroller": []
+      },
+      "koyu-1280": {
+        "govdeGenisligi": 1280,
+        "yatayTasma": false,
+        "tasmaPiksel": 0,
+        "icIceButon": 0,
+        "dugmeSayisi": 2,
+        "enKucukDokunmaHedefi": 36,
+        "tema": "koyu",
+        "adsizKontroller": []
+      },
+      "koyu-380": {
+        "govdeGenisligi": 380,
+        "yatayTasma": false,
+        "tasmaPiksel": 0,
+        "icIceButon": 0,
+        "dugmeSayisi": 2,
+        "enKucukDokunmaHedefi": 36,
+        "tema": "koyu",
+        "adsizKontroller": []
+      }
+    },
+    "takvim": {
+      "acik-1280": {
+        "govdeGenisligi": 1280,
+        "yatayTasma": false,
+        "tasmaPiksel": 0,
+        "icIceButon": 0,
+        "dugmeSayisi": 4,
+        "enKucukDokunmaHedefi": 36,
+        "tema": "acik",
+        "adsizKontroller": []
+      },
+      "acik-380": {
+        "govdeGenisligi": 380,
+        "yatayTasma": false,
+        "tasmaPiksel": 0,
+        "icIceButon": 0,
+        "dugmeSayisi": 4,
+        "enKucukDokunmaHedefi": 36,
+        "tema": "acik",
+        "adsizKontroller": []
+      },
+      "koyu-1280": {
+        "govdeGenisligi": 1280,
+        "yatayTasma": false,
+        "tasmaPiksel": 0,
+        "icIceButon": 0,
+        "dugmeSayisi": 4,
+        "enKucukDokunmaHedefi": 36,
+        "tema": "koyu",
+        "adsizKontroller": []
+      },
+      "koyu-380": {
+        "govdeGenisligi": 380,
+        "yatayTasma": false,
+        "tasmaPiksel": 0,
+        "icIceButon": 0,
+        "dugmeSayisi": 4,
+        "enKucukDokunmaHedefi": 36,
+        "tema": "koyu",
+        "adsizKontroller": []
+      }
+    }
+  },
+  "kisaTur": {
+    "ayarlar": {
+      "govdeGenisligi": 380,
+      "yatayTasma": false,
+      "tasmaPiksel": 0,
+      "icIceButon": 0,
+      "dugmeSayisi": 1,
+      "enKucukDokunmaHedefi": 40,
+      "adsizKontroller": []
+    },
+    "operasyon": {
+      "govdeGenisligi": 380,
+      "yatayTasma": false,
+      "tasmaPiksel": 0,
+      "icIceButon": 0,
+      "dugmeSayisi": 1,
+      "enKucukDokunmaHedefi": 36,
+      "adsizKontroller": []
+    },
+    "bugun": {
+      "govdeGenisligi": 380,
+      "yatayTasma": false,
+      "tasmaPiksel": 0,
+      "icIceButon": 0,
+      "dugmeSayisi": 3,
+      "enKucukDokunmaHedefi": 36,
+      "adsizKontroller": []
+    },
+    "tahta": {
+      "govdeGenisligi": 380,
+      "yatayTasma": false,
+      "tasmaPiksel": 0,
+      "icIceButon": 0,
+      "dugmeSayisi": 1,
+      "enKucukDokunmaHedefi": 36,
+      "adsizKontroller": []
+    }
+  },
+  "tarihSemasi": [
+    {
+      "tip": "date",
+      "ad": "Kapatılacak gün",
+      "colorScheme": "dark"
+    }
+  ],
+  "odakTuzagi": {
+    "acildi": {
+      "baslik": "Yeni yönetici rolü"
+    },
+    "acanOdakliydi": true,
+    "tabDisinaCikti": false,
+    "shiftTabPencereIcinde": true,
+    "escKapatti": true,
+    "odakIadesi": {
+      "acanaDondu": true,
+      "etiket": "button"
+    }
+  },
+  "kirliYazma": {
+    "yazildi": "Rol adı"
+  },
+  "kirliKapatma": {
+    "onaySoruldu": true,
+    "editorAyakta": true
+  },
+  "kutuKirletti": true,
+  "gonderDugmesi": {
+    "bulundu": true,
+    "kapali": false
+  },
+  "gonderim": {
+    "acik": {
+      "odak": {
+        "etiket": "input",
+        "tip": null,
+        "ad": "Rol kodu",
+        "ariaInvalid": "true",
+        "pencereIcinde": true
+      },
+      "hata": {
+        "metin": "Rol kodu en az 3 karakter olmalı.",
+        "renk": "rgb(190, 18, 60)",
+        "fontPx": 12,
+        "kontrast": 6.29,
+        "esik": 4.5,
+        "gecti": true
+      }
+    },
+    "koyu": {
+      "odak": {
+        "etiket": "input",
+        "tip": null,
+        "ad": "Rol kodu",
+        "ariaInvalid": "true",
+        "pencereIcinde": true
+      },
+      "hata": {
+        "metin": "Rol kodu en az 3 karakter olmalı.",
+        "renk": "rgb(251, 113, 133)",
+        "fontPx": 12,
+        "kontrast": 6.63,
+        "esik": 4.5,
+        "gecti": true
+      }
+    }
+  },
+  "takvimGonder": {
+    "bulundu": true,
+    "kapali": false
+  },
+  "takvimHata": true,
+  "onayPencereleri": {
+    "operasyon": {
+      "acildi": {
+        "baslik": "İşi yeniden kuyruğa al"
+      },
+      "kapandi": true
+    },
+    "bugun": {
+      "acildi": {
+        "baslik": "Günü optimize et"
+      },
+      "kapandi": true
+    },
+    "tahta": {
+      "acildi": {
+        "baslik": "Günü optimize et"
+      },
+      "kapandi": true
+    }
+  }
+}

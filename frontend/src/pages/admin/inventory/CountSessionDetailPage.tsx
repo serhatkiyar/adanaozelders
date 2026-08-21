@@ -10,15 +10,24 @@
 // raporu §15'te kayıtlı; burada kararlı kimlik olarak ürün numarası kullanılır.
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 
 import {
   Badge,
   Button,
-  Dialog,
   ErrorState,
   PageSkeleton,
   ReasonDialog,
 } from "@/components/admin/ui";
+import {
+  DuzenlemePenceresi,
+  useDuzenlemeYuzeyi,
+  useYuzeyKirliFormBekcisi,
+  type DuzenlemeYuzeyiDurumu,
+} from "@/components/admin/ui2/duzenlemeYuzeyi";
+import { Form } from "@/components/admin/ui2/form";
 import {
   useApplyCountSession,
   useCancelCountSession,
@@ -55,6 +64,20 @@ const ZAMAN = new Intl.DateTimeFormat("tr-TR", {
   month: "short",
   hour: "2-digit",
   minute: "2-digit",
+});
+
+/**
+ * Satır sayım şeması.
+ *
+ * Boş alan "0 sayıldı" DEĞİLDİR: sayılmamış satırın farkı "0" değil "henüz
+ * sayılmadı"dır ve bu ayrım ekranın var olma sebebidir.
+ */
+const sayimSemasi = z.object({
+  counted: z
+    .string()
+    .refine((v) => v.trim() !== "", "Sayılan miktarı yazın.")
+    .refine((v) => Number.isInteger(Number(v)), "Miktar tam sayı olmalı.")
+    .refine((v) => Number(v) >= 0, "Miktar negatif olamaz."),
 });
 
 function zaman(iso: string | null): string {
@@ -126,18 +149,39 @@ function SatirGorunumu({
   onAcikla: (lineId: number) => void;
   kaydediliyor: boolean;
 }) {
-  const [taslak, setTaslak] = useState<string>(
-    satir.counted_qty === null ? "" : String(satir.counted_qty)
-  );
-  // Sunucudan yeni bir sayım/snapshot geldiğinde alan onu yansıtmalı; aksi
-  // hâlde ekranda eski rakam kalır ve operatör onu "kaydedilmiş" sanır.
-  useEffect(() => {
-    setTaslak(satir.counted_qty === null ? "" : String(satir.counted_qty));
-  }, [satir.counted_qty, satir.counted_at]);
-
   const rozet = lineStatusBadge(satir.status);
   const kova = bucketLabel(satir.bucket);
-  const gecerli = taslak !== "" && Number.isInteger(Number(taslak)) && Number(taslak) >= 0;
+
+  // ── İP-A7d3 · satır içi sayım formu ──
+  //
+  // Eskiden `taslak` bir `useState` idi ve "Kaydet" düğmesi geçerlilikle
+  // KAPANIYORDU (`disabled={!gecerli}`): operatör 12,5 yazdığında düğmenin
+  // neden tıklanamadığını ekrandan öğrenemiyordu. Artık düğme açık kalır,
+  // gönderim yapılmaz ve hata ALANIN altında çıkar.
+  const form = useForm<{ counted: string }>({
+    resolver: zodResolver(sayimSemasi),
+    defaultValues: { counted: satir.counted_qty === null ? "" : String(satir.counted_qty) },
+    mode: "onChange",
+    shouldFocusError: false,
+  });
+
+  // Sunucudan yeni bir sayım/snapshot geldiğinde alan onu yansıtmalı; aksi
+  // hâlde ekranda eski rakam kalır ve operatör onu "kaydedilmiş" sanır.
+  //
+  // `reset` kullanılır, `setValue` DEĞİL: `setValue` alanı KİRLİ bırakır ve
+  // sunucudan gelen bir tazeleme, kullanıcı hiçbir şey yazmamışken kirli form
+  // bekçisini uyandırırdı.
+  useEffect(() => {
+    form.reset({ counted: satir.counted_qty === null ? "" : String(satir.counted_qty) });
+    // `form` kimliği her render'da sabittir (react-hook-form); bağımlılık
+    // listesi bilerek yalnız SUNUCU verisidir.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [satir.counted_qty, satir.counted_at]);
+
+  const kaydet = form.handleSubmit(
+    (deger) => onSay(satir.id, Number(deger.counted)),
+    () => form.setFocus("counted")
+  );
 
   return (
     <tr
@@ -171,23 +215,28 @@ function SatirGorunumu({
       </td>
       <td data-testid="counted" className="px-3 py-2.5 text-right text-sm tabular-nums text-slate-700 dark:text-slate-300">
         {sayilabilir ? (
-          <div className="flex items-center justify-end gap-1.5">
-            <input
-              type="number"
-              min="0"
-              step="1"
-              className="input w-24 text-right"
-              aria-label={`Sayılan miktar — ${kova} (ürün #${satir.product_id})`}
-              value={taslak}
-              onChange={(e) => setTaslak(e.target.value)}
+          <div className="flex items-start justify-end gap-1.5">
+            <Form.Field
+              control={form.control}
+              name="counted"
+              render={({ field }) => (
+                <Form.Item>
+                  <Form.Control>
+                    <input
+                      type="number"
+                      min="0"
+                      step="1"
+                      className="input w-24 text-right"
+                      aria-label={`Sayılan miktar — ${kova} (ürün #${satir.product_id})`}
+                      {...field}
+                    />
+                  </Form.Control>
+                  <Form.ErrorMessage className="mt-1 max-w-40 text-left text-xs text-rose-700 dark:text-rose-400" />
+                </Form.Item>
+              )}
             />
-            <Button
-              size="sm"
-              variant="secondary"
-              disabled={!gecerli}
-              isPending={kaydediliyor}
-              onClick={() => onSay(satir.id, Number(taslak))}
-            >
+            {/* Düğme geçerlilikle KAPANMAZ (kilitli karar). */}
+            <Button size="sm" variant="secondary" isPending={kaydediliyor} onClick={kaydet}>
               Kaydet
             </Button>
           </div>
@@ -235,19 +284,25 @@ function SatirGorunumu({
 
 /* ── Uygulama onayı ── */
 
-function UygulaDialog({
-  open,
+/**
+ * Uygulama onayı — İP-A7d3'te ortak pencereye geçti.
+ *
+ * Bu pencerede YAZILAN bir şey yoktur (salt okunur bir etki listesi + onay),
+ * dolayısıyla kirli form bekçisi çağrılmaz ve çağrılmaması doğrudur: sorulacak
+ * bir değişiklik yok. Kazanç `role="dialog"` + `aria-modal` + odak tuzağı +
+ * ESC + arka plan kilidinin TEK yerden gelmesi.
+ */
+function UygulaPenceresi({
+  yuzey,
   satirlar,
   isPending,
   hata,
-  onClose,
   onConfirm,
 }: {
-  open: boolean;
+  yuzey: DuzenlemeYuzeyiDurumu<never, void>;
   satirlar: CountLineOut[];
   isPending: boolean;
   hata: string | null;
-  onClose: () => void;
   onConfirm: () => void;
 }) {
   const etkiler = satirlar
@@ -255,11 +310,10 @@ function UygulaDialog({
     .filter((e) => e.fark !== null && e.fark !== 0);
 
   return (
-    <Dialog
-      open={open}
-      title="Farkları uygula"
-      description="Aşağıdaki düzeltmeler stok defterine yazılacak. İşlem geri alınamaz; yanlışsa yeni bir sayım açmak gerekir."
-      onClose={() => !isPending && onClose()}
+    <DuzenlemePenceresi
+      yuzey={yuzey}
+      baslik="Farkları uygula"
+      aciklama="Aşağıdaki düzeltmeler stok defterine yazılacak. İşlem geri alınamaz; yanlışsa yeni bir sayım açmak gerekir."
     >
       <div className="space-y-4">
         {etkiler.length === 0 ? (
@@ -286,7 +340,7 @@ function UygulaDialog({
           </p>
         )}
         <div className="flex justify-end gap-2">
-          <Button variant="ghost" disabled={isPending} onClick={onClose}>
+          <Button variant="ghost" disabled={isPending} onClick={yuzey.kapat}>
             Vazgeç
           </Button>
           <Button isPending={isPending} onClick={onConfirm}>
@@ -294,7 +348,7 @@ function UygulaDialog({
           </Button>
         </div>
       </div>
-    </Dialog>
+    </DuzenlemePenceresi>
   );
 }
 
@@ -314,11 +368,12 @@ export default function CountSessionDetailPage() {
   const iptal = useCancelCountSession(sessionId);
   const urunEkle = useAddCountProducts(sessionId);
 
-  const [uygulaAcik, setUygulaAcik] = useState(false);
-  const [iptalAcik, setIptalAcik] = useState(false);
-  const [aciklananSatir, setAciklananSatir] = useState<number | null>(null);
+  // Pencere durumu ekranda YAŞAMAZ (İP-A4 sözleşmesi) — üç bağın üçü de yüzeye
+  // taşındı.
+  const uygulaYuzeyi = useDuzenlemeYuzeyi<never, void>();
+  const iptalYuzeyi = useDuzenlemeYuzeyi<never, void>();
+  const aciklamaYuzeyi = useDuzenlemeYuzeyi<number, void>();
   const [uygulaHatasi, setUygulaHatasi] = useState<string | null>(null);
-  const [urunGirdi, setUrunGirdi] = useState("");
 
   // İdempotency anahtarı tek gönderim niyeti boyunca SABİT kalır: her
   // render'da yenilenirse ağ tekrarında sunucu iki ayrı iş görür.
@@ -354,7 +409,7 @@ export default function CountSessionDetailPage() {
         toast.success("Sayım farkları uygulandı.");
         anahtarRef.current = newIdempotencyKey();
         gonderildiRef.current = false;
-        setUygulaAcik(false);
+        uygulaYuzeyi.kapat();
       },
       onError: (e) => {
         // Kilit AÇILMAZ: aynı anahtarla tekrar denemek sunucuda replay'dir,
@@ -373,42 +428,7 @@ export default function CountSessionDetailPage() {
         {/* Eylem barı — FSM ve izne göre yalnız anlamlı olanlar */}
         <div className="flex flex-wrap items-center gap-2 border-b border-slate-100 px-6 py-3 dark:border-slate-800">
           {canCount && eylemler.includes("products") && (
-            <div className="mr-auto flex flex-wrap items-center gap-2">
-              <label className="flex items-center gap-2">
-                <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
-                  Ürün ekle
-                </span>
-                <input
-                  className="input w-40"
-                  value={urunGirdi}
-                  onChange={(e) => setUrunGirdi(e.target.value)}
-                  placeholder="12, 34"
-                  inputMode="numeric"
-                />
-              </label>
-              <Button
-                size="sm"
-                variant="secondary"
-                isPending={urunEkle.isPending}
-                onClick={() => {
-                  const idler = urunGirdi
-                    .split(/[\s,]+/)
-                    .map(Number)
-                    .filter((n) => Number.isInteger(n) && n > 0);
-                  if (!idler.length) return;
-                  urunEkle.mutate(idler, {
-                    onSuccess: () => {
-                      setUrunGirdi("");
-                      toast.success("Ürünler oturuma eklendi.");
-                    },
-                    onError: (e) =>
-                      toast.error(inventoryErrorMessage(e, "Ürün eklenemedi.")),
-                  });
-                }}
-              >
-                Ekle
-              </Button>
-            </div>
+            <UrunEklemeFormu ekle={urunEkle} />
           )}
           <div className="ml-auto flex flex-wrap items-center gap-2">
             {canCount && eylemler.includes("start") && (
@@ -461,14 +481,14 @@ export default function CountSessionDetailPage() {
                 disabled={engeller.length > 0}
                 onClick={() => {
                   setUygulaHatasi(null);
-                  setUygulaAcik(true);
+                  uygulaYuzeyi.yeniAc();
                 }}
               >
                 Farkları uygula
               </Button>
             )}
             {canCount && eylemler.includes("cancel") && (
-              <Button size="sm" variant="ghost" onClick={() => setIptalAcik(true)}>
+              <Button size="sm" variant="ghost" onClick={() => iptalYuzeyi.yeniAc()}>
                 Oturumu iptal et
               </Button>
             )}
@@ -510,7 +530,7 @@ export default function CountSessionDetailPage() {
                   satir={s}
                   sayilabilir={sayilabilir}
                   kaydediliyor={say.isPending}
-                  onAcikla={setAciklananSatir}
+                  onAcikla={aciklamaYuzeyi.ac}
                   onSay={(lineId, qty) =>
                     say.mutate(
                       { lineId, countedQty: qty },
@@ -533,17 +553,16 @@ export default function CountSessionDetailPage() {
         )}
       </section>
 
-      <UygulaDialog
-        open={uygulaAcik}
+      <UygulaPenceresi
+        yuzey={uygulaYuzeyi}
         satirlar={oturum.lines}
         isPending={uygula.isPending}
         hata={uygulaHatasi}
-        onClose={() => setUygulaAcik(false)}
         onConfirm={uygulaGonder}
       />
 
       <ReasonDialog
-        open={iptalAcik}
+        open={iptalYuzeyi.acik}
         title="Sayım oturumunu iptal et"
         description="İptal geri alınamaz; oturum salt okunur olur ve hiçbir stok hareketi yazılmaz."
         label="İptal gerekçesi"
@@ -552,12 +571,12 @@ export default function CountSessionDetailPage() {
         danger
         confirmLabel="Oturumu iptal et"
         isPending={iptal.isPending}
-        onClose={() => setIptalAcik(false)}
+        onClose={iptalYuzeyi.kapat}
         onConfirm={(reason) =>
           iptal.mutate(reason, {
             onSuccess: () => {
               toast.success("Oturum iptal edildi.");
-              setIptalAcik(false);
+              iptalYuzeyi.kapat();
             },
             onError: (e) => toast.error(inventoryErrorMessage(e, "Oturum iptal edilemedi.")),
           })
@@ -565,7 +584,7 @@ export default function CountSessionDetailPage() {
       />
 
       <ReasonDialog
-        open={aciklananSatir !== null}
+        open={aciklamaYuzeyi.acik}
         title="Belirsizliği açıkla"
         description="Açıklama kayda geçer ama satırı UYGULANABİLİR YAPMAZ. Farkın uygulanabilmesi için satır yeniden sayılmalıdır."
         label="Açıklama"
@@ -573,20 +592,103 @@ export default function CountSessionDetailPage() {
         minLength={3}
         confirmLabel="Açıklamayı kaydet"
         isPending={acikla.isPending}
-        onClose={() => setAciklananSatir(null)}
+        onClose={aciklamaYuzeyi.kapat}
         onConfirm={(note) =>
           acikla.mutate(
-            { lineId: aciklananSatir!, note },
+            { lineId: aciklamaYuzeyi.kayit!, note },
             {
               onSuccess: () => {
                 toast.success("Açıklama kaydedildi. Satır hâlâ yeniden sayılmalı.");
-                setAciklananSatir(null);
+                aciklamaYuzeyi.kapat();
               },
               onError: (e) => toast.error(inventoryErrorMessage(e, "Açıklama kaydedilemedi.")),
             }
           )
         }
       />
+    </div>
+  );
+}
+
+/* ── Ürün ekleme (satır içi form) ── */
+
+/**
+ * Oturuma ürün ekleme — İP-A7d3'te `Form.*`a geçti.
+ *
+ * Eskiden girdi bir `useState` idi ve "Ekle" düğmesi geçersiz girişte **hiçbir
+ * şey yapmıyordu** (`if (!idler.length) return;`): operatör "12a" yazıp Ekle'ye
+ * bastığında ekranda hiçbir şey olmuyordu ve neden olmadığını öğrenemiyordu.
+ * Sessiz `return` bir doğrulama değil, gizlenmiş bir hatadır.
+ */
+const urunEklemeSemasi = z.object({
+  idler: z
+    .string()
+    .refine((v) => v.trim() !== "", "Ürün numarası yazın.")
+    .refine(
+      (v) =>
+        v
+          .split(/[\s,]+/)
+          .filter(Boolean)
+          .every((p) => Number.isInteger(Number(p)) && Number(p) > 0),
+      "Yalnız pozitif ürün numaraları yazın (ör. 12, 34)."
+    ),
+});
+
+function UrunEklemeFormu({
+  ekle,
+}: {
+  ekle: ReturnType<typeof useAddCountProducts>;
+}) {
+  const form = useForm<{ idler: string }>({
+    resolver: zodResolver(urunEklemeSemasi),
+    defaultValues: { idler: "" },
+    mode: "onChange",
+    shouldFocusError: false,
+  });
+
+  // Satır içi form: pencere yok, beyan zorunlu (İP-A7d2 · SK-3).
+  useYuzeyKirliFormBekcisi({ form, sunucuHatasi: ekle.error, pencereSiz: true });
+
+  const gonder = form.handleSubmit(
+    (deger) => {
+      const idler = deger.idler
+        .split(/[\s,]+/)
+        .filter(Boolean)
+        .map(Number);
+      ekle.mutate(idler, {
+        onSuccess: () => {
+          form.reset({ idler: "" });
+          toast.success("Ürünler oturuma eklendi.");
+        },
+        onError: (e) =>
+          form.setError("idler", {
+            type: "server",
+            message: inventoryErrorMessage(e, "Ürün eklenemedi."),
+          }),
+      });
+    },
+    () => form.setFocus("idler")
+  );
+
+  return (
+    <div className="mr-auto flex flex-wrap items-start gap-2">
+      <Form.Field
+        control={form.control}
+        name="idler"
+        render={({ field }) => (
+          <Form.Item>
+            <Form.Label>Ürün ekle</Form.Label>
+            <Form.Control>
+              <input className="input w-40" placeholder="12, 34" inputMode="numeric" {...field} />
+            </Form.Control>
+            <Form.ErrorMessage className="mt-1 max-w-56 text-xs text-rose-700 dark:text-rose-400" />
+          </Form.Item>
+        )}
+      />
+      {/* Düğme geçerlilikle KAPANMAZ (kilitli karar). */}
+      <Button size="sm" variant="secondary" className="mt-6" isPending={ekle.isPending} onClick={gonder}>
+        Ekle
+      </Button>
     </div>
   );
 }

@@ -287,6 +287,63 @@ export function useBulkImportProducts() {
   });
 }
 
+/* ── Varyant grupları (Faz 2) ── */
+
+export function useVariantConfig() {
+  return useQuery({
+    queryKey: ["store", "admin", "variant-config"],
+    queryFn: storeApi.fetchVariantConfig,
+    // Sözlük oturum boyunca değişmez (değişimi bir migration'dır).
+    staleTime: Infinity,
+  });
+}
+
+export function useVariantGroups(enabled = true) {
+  return useQuery({
+    queryKey: ["store", "admin", "variant-groups"],
+    queryFn: storeApi.listVariantGroups,
+    enabled,
+  });
+}
+
+export function useVariantGroup(id: number | null | undefined) {
+  return useQuery({
+    queryKey: ["store", "admin", "variant-group", id],
+    queryFn: () => storeApi.fetchVariantGroup(id!),
+    enabled: id != null,
+  });
+}
+
+export function useCreateVariantGroup() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: storeApi.createVariantGroup,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["store", "admin", "variant-groups"] });
+    },
+  });
+}
+
+export function useDeriveVariant() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      productId,
+      payload,
+    }: {
+      productId: number;
+      payload: import("@/types").DeriveVariantPayload;
+    }) => storeApi.deriveVariant(productId, payload),
+    onSuccess: (yeni) => {
+      qc.invalidateQueries({ queryKey: ["store", "admin", "products"] });
+      qc.invalidateQueries({ queryKey: ["store", "admin", "variant-groups"] });
+      qc.invalidateQueries({
+        queryKey: ["store", "admin", "variant-group", yeni.variant_group_id],
+      });
+    },
+  });
+}
+
 export function useAdminOrders(statusFilter?: string, limit?: number) {
   return useQuery({
     queryKey: ["store", "admin", "orders", statusFilter ?? "all", limit ?? 100],

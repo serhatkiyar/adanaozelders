@@ -1,0 +1,435 @@
+
+[1m[7m[36m RUN [39m[27m[22m [36mv2.1.9 [39m[90mC:/Users/kiyar/Desktop/adana-medusa-ui/frontend[39m
+
+(node:24204) Warning: `--localstorage-file` was provided without a valid path
+(Use `node --trace-warnings ...` to show where the warning was created)
+ [31m×[39m src/components/admin/ui2/a6cSozlesme.test.tsx[2m > [22mT3 · BULGU-4 · aynı olayda iki `ayarla` çağrısı[2m > [22mT3 — ikisi de yazılır (ilk yazım yutulmaz)
+[31m   → ilk `ayarla` çağrısı sessizce kayboldu: expected { q: '', sayfa: 3 } to deeply equal { q: 'a', sayfa: 3 }[39m
+ [32m✓[39m src/components/admin/ui2/a6cSozlesme.test.tsx[2m > [22mT3 · BULGU-4 · aynı olayda iki `ayarla` çağrısı[2m > [22mT3⁻ — sonraki OLAYDA sayfa sıfırlama kuralı hâlâ işler
+ [32m✓[39m src/components/admin/ui2/a6cSozlesme.test.tsx[2m > [22mT3 · BULGU-4 · aynı olayda iki `ayarla` çağrısı[2m > [22mT3⁻ — DIŞARIDAN gelen adres değişimi ezilmez
+ [31m×[39m src/components/admin/ui2/a6cSozlesme.test.tsx[2m > [22mT6 · BULGU-5 · pencerede iki korumalı içerik[2m > [22mT6 — ikinci korumalı içerik GELİŞTİRMEDE patlar (sessiz veri kaybı yerine)
+[31m   → expected [Function] to throw an error[39m
+ [32m✓[39m src/components/admin/ui2/a6cSozlesme.test.tsx[2m > [22mT6 · BULGU-5 · pencerede iki korumalı içerik[2m > [22mT6⁻ — TEK korumalı içerik patlamaz ve korur
+ [32m✓[39m src/components/admin/ui2/a6cSozlesme.test.tsx[2m > [22mT6 · BULGU-5 · pencerede iki korumalı içerik[2m > [22mT6⁻ — TEK korumalı içerik patlamaz ve korur
+ [32m✓[39m src/components/admin/ui2/a6cSozlesme.test.tsx[2m > [22mT6 · BULGU-5 · pencerede iki korumalı içerik[2m > [22mT6⁻ — ARDIŞIK içerik değişimi patlamaz (kayıt birikmiyor)
+ [31m×[39m src/components/admin/ui2/a6cSozlesme.test.tsx[2m > [22mT4 · BULGU-7 · kirli yolda NavLink sözleşmesi[2m > [22mT4 — `state` kirli yolda da taşınır
+[31m   → onaydan sonra `state` düştü: expected '/siparisler|null' to be '/siparisler|{"kaynak":"denetim"}' // Object.is equality[39m
+ [31m×[39m src/components/admin/ui2/a6cSozlesme.test.tsx[2m > [22mT4 · BULGU-7 · kirli yolda NavLink sözleşmesi[2m > [22mT4 — `replace` kirli yolda da uygulanır[33m 1048[2mms[22m[39m
+[31m   → Unable to find an element with the text: Kök sayfası. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+
+Ignored nodes: comments, script, style
+[36m<body[31m
+  [33mstyle[31m=[32m"pointer-events: auto;"[31m
+[36m>[31m
+  [36m<div>[31m
+    [36m<span[31m
+      [33mdata-testid[31m=[32m"konum"[31m
+    [36m>[31m
+      [0m/magaza/detay[0m
+      [0m|[0m
+      [0mnull[0m
+    [36m</span>[31m
+    [36m<nav>[31m
+      [36m<a[31m
+        [33mclass[31m=[32m""[31m
+        [33mdata-discover[31m=[32m"true"[31m
+        [33mhref[31m=[32m"/siparisler"[31m
+      [36m>[31m
+        [0mGit[0m
+      [36m</a>[31m
+    [36m</nav>[31m
+    [36m<button[31m
+      [33mdata-testid[31m=[32m"geri"[31m
+    [36m>[31m
+      [0mGeri[0m
+    [36m</button>[31m
+    [36m<div>[31m
+      [36m<h1>[31m
+        [0mDetay sayfası[0m
+      [36m</h1>[31m
+      [36m<input[31m
+        [33maria-label[31m=[32m"Ad"[31m
+        [33mname[31m=[32m"ad"[31m
+      [36m/>[31m
+    [36m</div>[31m
+  [36m</div>[31m
+[36m</body>[31m
+
+Ignored nodes: comments, script, style
+[36m<body[31m
+  [33mstyle[31m=[32m"pointer-events: auto;"[31m
+[36m>[31m
+  [36m<div>[31m
+    [36m<span[31m
+      [33mdata-testid[31m=[32m"konum"[31m
+    [36m>[31m
+      [0m/magaza/detay[0m
+      [0m|[0m
+      [0mnull[0m
+    [36m</span>[31m
+    [36m<nav>[31m
+      [36m<a[31m
+        [33mclass[31m=[32m""[31m
+        [33mdata-discover[31m=[32m"true"[31m
+        [33mhref[31m=[32m"/siparisler"[31m
+      [36m>[31m
+        [0mGit[0m
+      [36m</a>[31m
+    [36m</nav>[31m
+    [36m<button[31m
+      [33mdata-testid[31m=[32m"geri"[31m
+    [36m>[31m
+      [0mGeri[0m
+    [36m</button>[31m
+    [36m<div>[31m
+      [36m<h1>[31m
+        [0mDetay sayfası[0m
+      [36m</h1>[31m
+      [36m<input[31m
+        [33maria-label[31m=[32m"Ad"[31m
+        [33mname[31m=[32m"ad"[31m
+      [36m/>[31m
+    [36m</div>[31m
+  [36m</div>[31m
+[36m</body>[31m[39m
+[90mstderr[2m | src/components/admin/ui2/a6cSozlesme.test.tsx[2m > [22m[2mT4 · BULGU-7 · kirli yolda NavLink sözleşmesi[2m > [22m[2mT4 — `relative="path"` kirli yolda da uygulanır
+[22m[39mNo routes matched location "/" 
+
+ [31m×[39m src/components/admin/ui2/a6cSozlesme.test.tsx[2m > [22mT4 · BULGU-7 · kirli yolda NavLink sözleşmesi[2m > [22mT4 — `relative="path"` kirli yolda da uygulanır[33m 1042[2mms[22m[39m
+[31m   → Unable to find an element with the text: Mağaza üst sayfası. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+
+Ignored nodes: comments, script, style
+[36m<body[31m
+  [33mstyle[31m=[32m"pointer-events: auto;"[31m
+[36m>[31m
+  [36m<div>[31m
+    [36m<span[31m
+      [33mdata-testid[31m=[32m"konum"[31m
+    [36m>[31m
+      [0m/[0m
+      [0m|[0m
+      [0mnull[0m
+    [36m</span>[31m
+    [36m<nav>[31m
+      [36m<a[31m
+        [33maria-current[31m=[32m"page"[31m
+        [33mclass[31m=[32m"active"[31m
+        [33mdata-discover[31m=[32m"true"[31m
+        [33mhref[31m=[32m"/"[31m
+      [36m>[31m
+        [0mGit[0m
+      [36m</a>[31m
+    [36m</nav>[31m
+    [36m<button[31m
+      [33mdata-testid[31m=[32m"geri"[31m
+    [36m>[31m
+      [0mGeri[0m
+    [36m</button>[31m
+  [36m</div>[31m
+[36m</body>[31m
+
+Ignored nodes: comments, script, style
+[36m<body[31m
+  [33mstyle[31m=[32m"pointer-events: auto;"[31m
+[36m>[31m
+  [36m<div>[31m
+    [36m<span[31m
+      [33mdata-testid[31m=[32m"konum"[31m
+    [36m>[31m
+      [0m/[0m
+      [0m|[0m
+      [0mnull[0m
+    [36m</span>[31m
+    [36m<nav>[31m
+      [36m<a[31m
+        [33maria-current[31m=[32m"page"[31m
+        [33mclass[31m=[32m"active"[31m
+        [33mdata-discover[31m=[32m"true"[31m
+        [33mhref[31m=[32m"/"[31m
+      [36m>[31m
+        [0mGit[0m
+      [36m</a>[31m
+    [36m</nav>[31m
+    [36m<button[31m
+      [33mdata-testid[31m=[32m"geri"[31m
+    [36m>[31m
+      [0mGeri[0m
+    [36m</button>[31m
+  [36m</div>[31m
+[36m</body>[31m[39m
+ [32m✓[39m src/components/admin/ui2/a6cSozlesme.test.tsx[2m > [22mT4 · BULGU-7 · kirli yolda NavLink sözleşmesi[2m > [22mT4⁻ — TEMİZ yol aynı sonucu verir (sözleşme forma göre değişmez)
+ [32m✓[39m src/components/admin/ui2/a6cSozlesme.test.tsx[2m > [22mT4 · BULGU-7 · kirli yolda NavLink sözleşmesi[2m > [22mT4⁻ — onay REDDEDİLİRSE gezinme hiç olmaz
+ [31m×[39m src/components/admin/ui2/a6cSozlesme.test.tsx[2m > [22mT7 · BULGU-8 · onay beklerken hedef değişimi[2m > [22mT7 — hedef değişirse onay ESKİ hedefe uygulanmaz
+[31m   → onay, kullanıcının sormadığı kaydı kapattı: expected 'kapalı' to be 'kayit:2' // Object.is equality[39m
+ [32m✓[39m src/components/admin/ui2/a6cSozlesme.test.tsx[2m > [22mT7 · BULGU-8 · onay beklerken hedef değişimi[2m > [22mT7⁻ — hedef DEĞİŞMEDİYSE onay normal uygulanır
+ [31m×[39m src/components/admin/ui2/a6cSozlesme.test.tsx[2m > [22mT6a · GEÇİCİ · sessiz veri kaybının yeniden üretimi[2m > [22mT6a — A kirliyken kapatma ONAY SORMADAN geçiyor (bugünkü kusur)
+[31m   → A'daki veri hiçbir soru sorulmadan gitti: expected { onay: false, pencereAcik: false } to deeply equal { onay: true, pencereAcik: true }[39m
+
+[31m⎯⎯⎯⎯⎯⎯⎯[1m[7m Failed Tests 7 [27m[22m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/components/admin/ui2/a6cSozlesme.test.tsx[2m > [22mT3 · BULGU-4 · aynı olayda iki `ayarla` çağrısı[2m > [22mT3 — ikisi de yazılır (ilk yazım yutulmaz)
+[31m[1mAssertionError[22m: ilk `ayarla` çağrısı sessizce kayboldu: expected { q: '', sayfa: 3 } to deeply equal { q: 'a', sayfa: 3 }[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[2m  Object {[22m
+[32m-   "q": "a",[39m
+[31m+   "q": "",[39m
+[2m    "sayfa": 3,[22m
+[2m  }[22m
+
+[36m [2m❯[22m src/components/admin/ui2/a6cSozlesme.test.tsx:[2m128:69[22m[39m
+    [90m126| [39m    [34mbas[39m([32m"İki yazma"[39m)[33m;[39m
+    [90m127| [39m
+    [90m128| [39m    [34mexpect[39m([34murlDegerler[39m()[33m,[39m [32m"ilk `ayarla` çağrısı sessizce kayboldu"[39m)[33m.[39m[34mto[39m…
+    [90m   | [39m                                                                    [31m^[39m
+    [90m129| [39m      q[33m:[39m [32m"a"[39m[33m,[39m
+    [90m130| [39m      sayfa[33m:[39m [34m3[39m[33m,[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/7]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/components/admin/ui2/a6cSozlesme.test.tsx[2m > [22mT6 · BULGU-5 · pencerede iki korumalı içerik[2m > [22mT6 — ikinci korumalı içerik GELİŞTİRMEDE patlar (sessiz veri kaybı yerine)
+[31m[1mAssertionError[22m: expected [Function] to throw an error[39m
+
+[32m- Expected:[39m 
+null
+
+[31m+ Received:[39m 
+undefined
+
+[36m [2m❯[22m src/components/admin/ui2/a6cSozlesme.test.tsx:[2m204:52[22m[39m
+    [90m202| [39m    [90m// olur" tasarımını açar; bu paket veri kaybını DURDURUR, tasarımı[39m…
+    [90m203| [39m    [90m// bırakır (`Form.Control`da seçilen yolun aynısı).[39m
+    [90m204| [39m    [34mexpect[39m(() [33m=>[39m [34mrender[39m([33m<[39m[33mPencereEkrani[39m [33mikinci[39m [33m/[39m[33m>[39m))[33m.[39m[34mtoThrow[39m(
+    [90m   | [39m                                                   [31m^[39m
+    [90m205| [39m      [36m/ikinci korumalı içerik/i[39m
+    [90m206| [39m    )[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/7]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/components/admin/ui2/a6cSozlesme.test.tsx[2m > [22mT4 · BULGU-7 · kirli yolda NavLink sözleşmesi[2m > [22mT4 — `state` kirli yolda da taşınır
+[31m[1mAssertionError[22m: onaydan sonra `state` düştü: expected '/siparisler|null' to be '/siparisler|{"kaynak":"denetim"}' // Object.is equality[39m
+
+Expected: [32m"/siparisler|[7m{"kaynak":"denetim"}[27m"[39m
+Received: [31m"/siparisler|[7mnull[27m"[39m
+
+[36m [2m❯[22m src/components/admin/ui2/a6cSozlesme.test.tsx:[2m324:52[22m[39m
+    [90m322| [39m
+    [90m323| [39m    [35mawait[39m screen[33m.[39m[34mfindByText[39m([32m"Siparişler sayfası"[39m)[33m;[39m
+    [90m324| [39m    [34mexpect[39m([34mkonum[39m()[33m,[39m [32m"onaydan sonra `state` düştü"[39m)[33m.[39m[34mtoBe[39m(
+    [90m   | [39m                                                   [31m^[39m
+    [90m325| [39m      [32m'/siparisler|{"kaynak":"denetim"}'[39m
+    [90m326| [39m    )[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/7]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/components/admin/ui2/a6cSozlesme.test.tsx[2m > [22mT4 · BULGU-7 · kirli yolda NavLink sözleşmesi[2m > [22mT4 — `replace` kirli yolda da uygulanır
+[31m[1mTestingLibraryElementError[22m: Unable to find an element with the text: Kök sayfası. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+
+Ignored nodes: comments, script, style
+[36m<body[31m
+  [33mstyle[31m=[32m"pointer-events: auto;"[31m
+[36m>[31m
+  [36m<div>[31m
+    [36m<span[31m
+      [33mdata-testid[31m=[32m"konum"[31m
+    [36m>[31m
+      [0m/magaza/detay[0m
+      [0m|[0m
+      [0mnull[0m
+    [36m</span>[31m
+    [36m<nav>[31m
+      [36m<a[31m
+        [33mclass[31m=[32m""[31m
+        [33mdata-discover[31m=[32m"true"[31m
+        [33mhref[31m=[32m"/siparisler"[31m
+      [36m>[31m
+        [0mGit[0m
+      [36m</a>[31m
+    [36m</nav>[31m
+    [36m<button[31m
+      [33mdata-testid[31m=[32m"geri"[31m
+    [36m>[31m
+      [0mGeri[0m
+    [36m</button>[31m
+    [36m<div>[31m
+      [36m<h1>[31m
+        [0mDetay sayfası[0m
+      [36m</h1>[31m
+      [36m<input[31m
+        [33maria-label[31m=[32m"Ad"[31m
+        [33mname[31m=[32m"ad"[31m
+      [36m/>[31m
+    [36m</div>[31m
+  [36m</div>[31m
+[36m</body>[31m
+
+Ignored nodes: comments, script, style
+[36m<body[31m
+  [33mstyle[31m=[32m"pointer-events: auto;"[31m
+[36m>[31m
+  [36m<div>[31m
+    [36m<span[31m
+      [33mdata-testid[31m=[32m"konum"[31m
+    [36m>[31m
+      [0m/magaza/detay[0m
+      [0m|[0m
+      [0mnull[0m
+    [36m</span>[31m
+    [36m<nav>[31m
+      [36m<a[31m
+        [33mclass[31m=[32m""[31m
+        [33mdata-discover[31m=[32m"true"[31m
+        [33mhref[31m=[32m"/siparisler"[31m
+      [36m>[31m
+        [0mGit[0m
+      [36m</a>[31m
+    [36m</nav>[31m
+    [36m<button[31m
+      [33mdata-testid[31m=[32m"geri"[31m
+    [36m>[31m
+      [0mGeri[0m
+    [36m</button>[31m
+    [36m<div>[31m
+      [36m<h1>[31m
+        [0mDetay sayfası[0m
+      [36m</h1>[31m
+      [36m<input[31m
+        [33maria-label[31m=[32m"Ad"[31m
+        [33mname[31m=[32m"ad"[31m
+      [36m/>[31m
+    [36m</div>[31m
+  [36m</div>[31m
+[36m</body>[31m[39m
+[90m [2m❯[22m waitForWrapper node_modules/@testing-library/dom/dist/wait-for.js:[2m163:27[22m[39m
+[90m [2m❯[22m node_modules/@testing-library/dom/dist/query-helpers.js:[2m86:33[22m[39m
+[36m [2m❯[22m src/components/admin/ui2/a6cSozlesme.test.tsx:[2m347:25[22m[39m
+    [90m345| [39m
+    [90m346| [39m    [90m// `replace` uygulandıysa /magaza/detay geçmişten SİLİNMİŞ olmalı.[39m
+    [90m347| [39m    [34mexpect[39m([35mawait[39m screen[33m.[39m[34mfindByText[39m([32m"Kök sayfası"[39m))[33m.[39m[34mtoBeTruthy[39m()[33m;[39m
+    [90m   | [39m                        [31m^[39m
+    [90m348| [39m  })[33m;[39m
+    [90m349| [39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/7]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/components/admin/ui2/a6cSozlesme.test.tsx[2m > [22mT4 · BULGU-7 · kirli yolda NavLink sözleşmesi[2m > [22mT4 — `relative="path"` kirli yolda da uygulanır
+[31m[1mTestingLibraryElementError[22m: Unable to find an element with the text: Mağaza üst sayfası. This could be because the text is broken up by multiple elements. In this case, you can provide a function for your text matcher to make your matcher more flexible.
+
+Ignored nodes: comments, script, style
+[36m<body[31m
+  [33mstyle[31m=[32m"pointer-events: auto;"[31m
+[36m>[31m
+  [36m<div>[31m
+    [36m<span[31m
+      [33mdata-testid[31m=[32m"konum"[31m
+    [36m>[31m
+      [0m/[0m
+      [0m|[0m
+      [0mnull[0m
+    [36m</span>[31m
+    [36m<nav>[31m
+      [36m<a[31m
+        [33maria-current[31m=[32m"page"[31m
+        [33mclass[31m=[32m"active"[31m
+        [33mdata-discover[31m=[32m"true"[31m
+        [33mhref[31m=[32m"/"[31m
+      [36m>[31m
+        [0mGit[0m
+      [36m</a>[31m
+    [36m</nav>[31m
+    [36m<button[31m
+      [33mdata-testid[31m=[32m"geri"[31m
+    [36m>[31m
+      [0mGeri[0m
+    [36m</button>[31m
+  [36m</div>[31m
+[36m</body>[31m
+
+Ignored nodes: comments, script, style
+[36m<body[31m
+  [33mstyle[31m=[32m"pointer-events: auto;"[31m
+[36m>[31m
+  [36m<div>[31m
+    [36m<span[31m
+      [33mdata-testid[31m=[32m"konum"[31m
+    [36m>[31m
+      [0m/[0m
+      [0m|[0m
+      [0mnull[0m
+    [36m</span>[31m
+    [36m<nav>[31m
+      [36m<a[31m
+        [33maria-current[31m=[32m"page"[31m
+        [33mclass[31m=[32m"active"[31m
+        [33mdata-discover[31m=[32m"true"[31m
+        [33mhref[31m=[32m"/"[31m
+      [36m>[31m
+        [0mGit[0m
+      [36m</a>[31m
+    [36m</nav>[31m
+    [36m<button[31m
+      [33mdata-testid[31m=[32m"geri"[31m
+    [36m>[31m
+      [0mGeri[0m
+    [36m</button>[31m
+  [36m</div>[31m
+[36m</body>[31m[39m
+[90m [2m❯[22m waitForWrapper node_modules/@testing-library/dom/dist/wait-for.js:[2m163:27[22m[39m
+[90m [2m❯[22m node_modules/@testing-library/dom/dist/query-helpers.js:[2m86:33[22m[39m
+[36m [2m❯[22m src/components/admin/ui2/a6cSozlesme.test.tsx:[2m365:25[22m[39m
+    [90m363| [39m
+    [90m364| [39m    [90m// relative="path" → "/magaza"; düşerse rota hiyerarşisine göre "/[39m…
+    [90m365| [39m    [34mexpect[39m([35mawait[39m screen[33m.[39m[34mfindByText[39m([32m"Mağaza üst sayfası"[39m))[33m.[39m[34mtoBeTruthy[39m()[33m;[39m
+    [90m   | [39m                        [31m^[39m
+    [90m366| [39m    [34mexpect[39m([34mkonum[39m())[33m.[39m[34mtoBe[39m([32m"/magaza|null"[39m)[33m;[39m
+    [90m367| [39m  })[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/7]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/components/admin/ui2/a6cSozlesme.test.tsx[2m > [22mT7 · BULGU-8 · onay beklerken hedef değişimi[2m > [22mT7 — hedef değişirse onay ESKİ hedefe uygulanmaz
+[31m[1mAssertionError[22m: onay, kullanıcının sormadığı kaydı kapattı: expected 'kapalı' to be 'kayit:2' // Object.is equality[39m
+
+Expected: [32m"ka[7myit:2[27m"[39m
+Received: [31m"ka[7mpalı[27m"[39m
+
+[36m [2m❯[22m src/components/admin/ui2/a6cSozlesme.test.tsx:[2m465:67[22m[39m
+    [90m463| [39m    [35mawait[39m [34monayda[39m([33mCIK[39m)[33m;[39m
+    [90m464| [39m
+    [90m465| [39m    [34mexpect[39m([34mhedef[39m()[33m,[39m [32m"onay, kullanıcının sormadığı kaydı kapattı"[39m)[33m.[39m[34mtoBe[39m…
+    [90m   | [39m                                                                  [31m^[39m
+    [90m466| [39m  })[33m;[39m
+    [90m467| [39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/7]⎯[22m[39m
+
+[31m[1m[7m FAIL [27m[22m[39m src/components/admin/ui2/a6cSozlesme.test.tsx[2m > [22mT6a · GEÇİCİ · sessiz veri kaybının yeniden üretimi[2m > [22mT6a — A kirliyken kapatma ONAY SORMADAN geçiyor (bugünkü kusur)
+[31m[1mAssertionError[22m: A'daki veri hiçbir soru sorulmadan gitti: expected { onay: false, pencereAcik: false } to deeply equal { onay: true, pencereAcik: true }[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[2m  Object {[22m
+[32m-   "onay": true,[39m
+[32m-   "pencereAcik": true,[39m
+[31m+   "onay": false,[39m
+[31m+   "pencereAcik": false,[39m
+[2m  }[22m
+
+[36m [2m❯[22m src/components/admin/ui2/a6cSozlesme.test.tsx:[2m513:7[22m[39m
+    [90m511| [39m      { onay[33m,[39m pencereAcik }[33m,[39m
+    [90m512| [39m      [32m"A'daki veri hiçbir soru sorulmadan gitti"[39m
+    [90m513| [39m    )[33m.[39m[34mtoEqual[39m({ onay[33m:[39m [35mtrue[39m[33m,[39m pencereAcik[33m:[39m [35mtrue[39m })[33m;[39m
+    [90m   | [39m      [31m^[39m
+    [90m514| [39m  })[33m;[39m
+    [90m515| [39m})[33m;[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/7]⎯[22m[39m
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[31m7 failed[39m[22m[2m | [22m[1m[32m7 passed[39m[22m[90m (14)[39m
+[2m   Start at [22m 01:27:32
+[2m   Duration [22m 5.75s[2m (transform 427ms, setup 22ms, collect 1.92s, tests 2.58s, environment 752ms, prepare 193ms)[22m
+
+EXIT=1

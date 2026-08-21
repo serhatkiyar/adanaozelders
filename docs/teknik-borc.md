@@ -253,91 +253,239 @@ yalnız ölçümü ve öneriyi kaydeder.
        TB-46 : TB-34 (dal içi, terk edildi) → TB-?B → TB-46
 -->
 
-## TB-47 · `ip16_srs_izin_kodu_hizalama`'nın rol bağı taşıması NÖBETSİZ — sökülünce hiçbir test kırılmıyor
+<!-- Numaralandırma notu (İP-19, merge turu — 15 Ağu 2026): altı kayıt dal
+     içinde geçici etiketle durdu ve numaralar defterin kuralı gereği MERGE
+     TURUNDA tahsis edildi. Ölçüm (`git fetch --all` sonrası, tüm yerel VE
+     uzak dallar): en yüksek `^## TB-<n>` başlığı **47** (main, origin/main,
+     magaza-tasarim, sm2-kaldirma) → numaralar 48'den başladı.
+
+     Etiket→numara eşlemesi:
+       TB-?A → **TB-48**   teslimat sözü m.16 bağlayıcılığı      (araştırma turu)
+       TB-?B → **TB-49**   kurye ekranı hız baskısı / muvazaa     (araştırma turu)
+       TB-?C → **TB-50**   yetki belgesi P1* varsayımı            (araştırma turu)
+       TB-?D → **TB-51**   ratelimit `_client` event loop tuzağı  (denetim turu)
+       TB-?E → **TB-52**   tahtada tek sürükleme kipi             (denetim turu)
+       TB-?F → **TB-53**   delete_vehicle 409 yarışı              (denetim turu)
+
+     48-50 İP-19'un araştırma turunda bulundu ve o paketin KAPSAMI DIŞINDADIR
+     (hukuk/mevzuat kararı ister, kod kusuru değil). 51-53 bağımsız denetim
+     düzeltme turunda bulundu. Sözleşme: docs/ip19-dagitim-operasyon-sozlesme.md
+     §9 ve §10.6. -->
+
+<!-- Varyant paketi merge turu (19 Ağu 2026) — kural (3) gereği tahsis:
+     ölçüm tüm yerel+uzak dallarda en yüksek TB-54 (fetch sonrası) →
+       TB-?A → **TB-55**   kategori parent_id kitap-kuralı kaçağı  (denetim P2-1)
+       TB-?B → **TB-56**   asılı (üyesiz) varyant grubu            (denetim P2-3)
+       TB-?C → **TB-57**   grup kartı temsilcisi tükenik olabilir  (denetim P2-5)
+       TB-?D → **TB-58**   varyant testleri izolasyon sınırları    (denetim P2-8)
+     Dördü bağımsız denetimin merge-sonrasına ertelediği bulgulardır. -->
+
+## TB-?A · OG/Twitter görseli SVG'ye geçmedi — `/logo.png` bilinçli olarak kalıyor
 
 | | |
 |---|---|
-| **Bulundu** | SM-2 kaldırma paketinin audit hazırlığı, mutasyon provası **D6** (13 Ağu 2026). Kaldırma paketinin kendi işi değil; komşu paketin kodu prova sırasında ölçüldü |
-| **Yer** | `backend/migrations/versions/ip16_srs_izin_kodu_hizalama.py` — bayat kodların rol bağlarını taşıyan `INSERT` (`:95-112`) ↔ aynı dosyadaki `ROLE_GRANTS` döngüsü (`:122-141`) |
-| **Durum** | Migration iki iş yapar: (1) bayat izin kodlarını (`srs.platform.*`) siler, (2) o kodların **rol bağlarını güncel koda (`srs_platform.*`) taşır**. İP-16 sözleşmesi ikisinin **birlikte** yapıldığını, yalnız kimliği değiştirmenin yetmeyeceğini açıkça söyler. Ama (2) için nöbetçi YOK |
-| **Ölçüm (D6)** | Taşıma `INSERT`'i etkisizleştirildi (`WHERE eski.code = '__mutasyon_yok__'` — SQL geçerli kalır, hiçbir satır üretmez). `pytest tests/integration/test_ip16_migration_pg.py` → **7 passed**. Mutasyon YAKALANMADI |
-| **Neden yakalanmıyor** | `ROLE_GRANTS` döngüsü doğru kodları `SUPER_ADMIN` ve `EDUCATION_MANAGER`'a **koşulsuz** veriyor. `test_B7_BAYAT_IZIN_KODLARI_UPGRADE_ILE_DUZELIR` rol iddiasını tam bu iki rol üzerinden kuruyor (`"SUPER_ADMIN" in roller and "EDUCATION_MANAGER" in roller`), dolayısıyla taşıma hiç çalışmasa da yeşil kalıyor. Test, taşımayı değil `ROLE_GRANTS`'ı ölçüyor |
-| **Etki** | Taşımanın gerçek işlevi **katalog dışı** rol bağlarıdır: panelden elle bir role `srs.platform.view` verilmişse, `ROLE_GRANTS` onu geri getirmez — yalnız taşıma getirir. Taşıma sessizce bozulursa (ya da bir refactor'da düşerse) o rol izni **kalıcı olarak kaybolur** ve migration yine "başarılı" döner. Bu, İP-16'nın B7 tuzağının aynı ailesinden: sessiz kayıp |
-| **Kapsam** | Bu kayıt SM-2 kaldırma paketinin kapsamı DIŞINDADIR. Kaldırma paketi `git diff main...HEAD` ile ölçtü: B7 test gövdelerinde **tek satır** değişiklik yapmadı (dokunulan yerler yalnız `birlesik_agac` fixture'ı ve iki B1 düğümü). Boşluk İP-16 merge edildiğinde de oradaydı; prova onu yalnızca görünür kıldı |
-| **Sonraki adım** | B7'ye bir düğüm eklenmeli: bayat dünya kurulurken izin **`ROLE_GRANTS`'ta olmayan bir role** de bağlanır (ör. `SUPPORT`/özel bir rol), `upgrade head` sonrası o bağın **güncel koda taşındığı** ölçülür. D6 mutasyonu o düğümü kırmalıdır — eklendikten sonra prova tekrarlanıp yakalandığı gösterilmelidir |
+| **Bulundu** | `magaza-tasarim` ← `main` merge turu (21 Ağu 2026), Adım 8 |
+| **Nerede** | `frontend/src/components/Seo.tsx:16,43` (varsayılan `ogImage`) ve `frontend/src/pages/Landing.tsx:138` (Organization JSON-LD `logo`) |
+| **Sorun** | Marka varlıkları SVG'ye geçti (`logo.svg`, `logo-compact.svg`, `magaza-logo.svg`); navbar ve footer artık SVG kullanıyor. Ancak paylaşım önizlemesi (OG/Twitter card) ve arama motoru JSON-LD'si hâlâ `/logo.png` gösteriyor |
+| **Neden bilinçli** | Bazı platformlar (WhatsApp, Slack, Twitter kartları, birçok arama motoru zengin sonucu) `image/svg+xml`'i işlemez veya güvenlik gerekçesiyle reddeder. PNG'yi SVG'ye çevirmek önizlemeyi **kırar**; bu yüzden bu iki yer kasten PNG'de bırakıldı |
+| **Risk** | `logo.png` (890×140, oran 6.36) ile `logo.svg` (viewBox 977.21×136.5, oran 7.16) **aynı çizim değil** — %13 oran farkı var. Paylaşım önizlemesi bugün sitedeki logodan biraz farklı bir marka görseli gösteriyor |
+| **Sonraki adım** | `logo.svg`'den yüksek çözünürlüklü (ör. 1200×630 OG tuvaline yerleştirilmiş) bir PNG üretip `logo.png`'yi onunla değiştirmek; kod tarafında değişiklik gerekmez |
 
-## TB-46 · `app.routes` üzerinden yol araması SESSİZCE boş döner — kaldırma testleri yalancı yeşil olur
+## TB-?B · `AccountHub` içindeki `CompactSearch` "Uzaktan Eğitim" seçeneğini göstermiyor
 
 | | |
 |---|---|
-| **Bulundu** | SM-2 kelime kartı kaldırma paketi, kırmızı matris turu (13 Ağu 2026). Yeni yazılan bir "bu uçlar artık yok" testi, kaldırma HİÇ YAPILMAMIŞKEN yeşil döndü |
-| **Yer** | FastAPI `include_router` — `app.routes` / `APIRouter.routes` üzerinde `path` araması yapan her test |
-| **Durum** | `include_router` route'ları düzleştirmez; tembel bir `_IncludedRouter` nesnesi bırakır (`path == ""`) ve alt-router yolları ancak istek çözümlenirken açılır. `app.routes` bu depoda **9 girdi** döner (openapi/docs/health + bir `_IncludedRouter`); yüzlerce gerçek uç orada GÖRÜNMEZ |
-| **Etki** | Yön kritik: bir uç için `assert yol in app.routes` yazan test **yanlış kırmızı** verir (bu bir kez yaşandı, İP-16 commit 1), `assert yol not in app.routes` yazan test ise **yalancı yeşil** verir — ve bu ikincisi tehlikelidir, çünkü kaldırma yapılmadan da geçer. Yani "bu sistem kaldırıldı" iddiasının kanıtı olarak sunulabilir ve hiçbir şey ölçmemiş olur |
-| **Neden bu kayıt açıldı** | Tuzak zaten ÜÇ yerde yorum olarak belgeliydi (`tests/integration/test_ip16_privacy_pg.py` D-6c/D-7, `tests/acceptance/test_f30_packing_contract.py::_router_yollari`, `tests/integration/test_ip3_operator_active_gate_pg.py`). Buna rağmen dördüncü kez aynı yere düşüldü. **Belge yetmiyor**: yorum, o dosyayı okuyanı korur, yeni dosya yazanı korumaz |
-| **Kural** | Route tablosu iddiaları **OpenAPI şemasından** okunur (`app.openapi()["paths"]`), `app.routes`'tan değil. Yokluk iddialarına ayrıca bir doluluk nöbetçisi konur (ör. komşu bir önekin yollarının VAR olduğu), yoksa boş/kapalı şema iddiayı kendiliğinden geçirir — `ENVIRONMENT=production` OpenAPI'yi kapatır |
-| **Sonraki adım** | Yorumla yetinmeyen bir nöbetçi: `app.routes`/`.routes` üzerinde path araması yapan test kaynaklarını AST ile tarayıp reddeden bir meta-test (düşük güçlü ama bu tuzağın tekrarını gerçekten kesen tek şey), ya da testlere ortak bir `router_yollari()` yardımcısı verip doğrudan erişimi bırakmak |
-| **Şimdilik koruma** | Kaldırma paketinin kendi düğümü OpenAPI'ye çevrildi ve doluluk nöbetçisi eklendi (`backend/tests/test_flashcards_kaldirildi.py::test_R2_*`) |
+| **Bulundu** | `magaza-tasarim` ← `main` merge turu (21 Ağu 2026), Adım 8 |
+| **Nerede** | `frontend/src/pages/AccountHub.tsx:163` — `CompactSearch` çağrısı (`frontend/src/components/HeroSearch.tsx:136`) |
+| **Sorun** | `CompactSearch`, ilçe etiketi yerine "Uzaktan Eğitim" yazmak için `remote` prop'una bakar (`HeroSearch.tsx:157-158`). `Landing.tsx:94` ve `useNavSearch.tsx:50` bunu `remote={showRemoteOption && remote}` ile geçiriyor; `AccountHub` hiç geçirmiyor (`remote = false` varsayılanına düşüyor) ve `district={[]}` sabit. Sonuç: oturum açmış kullanıcı panel arama kutusunda hep "Tüm ilçeler" görüyor — Uzaktan Eğitim seçimi bu yüzeyde ne gösterilebiliyor ne de taşınıyor |
+| **Neden sessiz** | `remote` opsiyonel tanımlı ve varsayılanı `false` — `tsc --noEmit` ve lint temiz geçiyor. Bir tür hatası değil, **davranış boşluğu**; yalnız iki yüzey karşılaştırılınca görülüyor |
+| **Neden ertelendi** | Merge turunun kapsamı çakışma çözümü + marka varlıkları; arama yüzeyi davranışını genişletmek ayrı bir paket |
+| **Sonraki adım** | `AccountHub`'ın arama durumunu (kategori/ilçe/uzaktan) `useNavSearch` üzerinden sürmesi — ya da en azından `remote`'u URL'den okuyup geçirmesi. Yanına iki yüzeyi birlikte tutan bir nöbetçi (aynı prop sözleşmesi) eklenmeli |
 
-## TB-45 · Yeşil taban çizgisi nöbetçisi ORTAK sürücüde YOK — kırmızı tabanda "YAKALANDI" denebiliyor
+## TB-55 · Kategori `parent_id` taşıması varyant kitap kuralını kapısız deliyor (denetim P2-1)
 
 | | |
 |---|---|
-| **Bulundu** | İP-17 bağımsız denetimi (14 Ağu 2026) |
-| **Yer** | `backend/scripts/mutation_drill.py` (ortak sürücü) ve onu kullanan `mutation_drill_ip16.py`, `_ip14.py`. Nöbetçi YALNIZ `mutation_drill_ip18.py::_yesil_taban`'da var |
-| **Durum** | Sürücü, mutasyonu uygulamadan önce hedef testlerin **temiz ağaçta yeşil olduğunu** doğrulamıyor. Zaten kırmızı olan bir test mutasyon altında da kırmızı kalır ve sürücü bunu "YAKALANDI" sayar. Yani prova, ölçmek istediği şeyi ölçmeden geçer |
-| **Ölçüm (denetçinin, bu dalda yeniden koşulmadı)** | Taban kasıtlı bozuldu (`params.ROLLOVER_HOUR = 0`) ve `IP17-2` koşuldu: sürücü **"YAKALANDI (6)"** dedi, oysa altı testin **beşi mutasyondan bağımsız olarak zaten kırıktı**. Mutasyonun gerçek katkısı bir testti; rapor altı diyordu |
-| **Etki** | Kapanış raporlarındaki "N/N yakalandı" satırının anlamını zayıflatır. Yön **tehlikeli**: fazla sayar. "Seçilen test = 0 → BAŞARISIZLIK" nöbetçisi girdi tarafını, [[TB-29]]'un kapattığı `ERROR` sayımı çıktı tarafını koruyordu; bu üçüncü kapı (taban) yalnız bir pakette var. İP-17'nin kendi 7/7 sonucu bu kusurdan **etkilenmedi** — provaların hepsi temiz ağaçta koşuldu ve ağaç her provadan sonra doğrulandı, ama bu bir tesadüf değil disiplin; araç garanti etmiyor |
-| **Neden ertelendi** | Ortak sürücüyü değiştirmek yedi paketin ölçüm aracını değiştirir; İP-17 bunu TB-29 için bir kez yaptı ve bedelini de gördü (İP-18'in gölgesi çift saymaya başladı, merge turunda düzeltildi). İkinci bir ortak-araç değişikliğini audit'ten geçmiş bir dala **merge öncesi** sokmak, kapanış ölçümlerini yeniden koşturmayı gerektirir |
-| **Sonraki adım** | `_yesil_taban`'ı `mutation_drill_ip18.py`'den ortak `mutation_drill.py`'ye taşı (referans uygulama HAZIR, yeniden yazılmayacak), `calistir` içinde mutasyondan ÖNCE çağır, kırmızı tabanda provayı **hata** olarak kes. Ardından İP-14/İP-16/İP-17 kataloglarını bir kez yeniden koşup raporlanan sayıların değişip değişmediğini ölç |
+| **Bulundu** | Varyant paketi bağımsız denetimi (18 Ağu 2026, P2-1 — merge sonrasına ertelendi) |
+| **Nerede** | `store_service.update_category` — `parent_id` serbestçe atanır |
+| **Sorun** | Kitap-dışı bir kategori (altındaki GRUPLU ürünlerle birlikte) admin ucundan bir kitap kökünün ALTINA taşınabilir; `ensure_variants_allowed` yalnız ÜRÜN yazma yolunda çalıştığı için taşıma anında hiçbir kapı yok. Sonuç: kural dışı kalmış gruplu ürünler (P2-2 düzeltmesi bunların BAKIMINI serbest bıraktı ama oluşmasını engellemiyor). Ayrıca `parent_id` için döngü kontrolü de yok |
+| **Neden ertelendi** | Denetim kararı: merge engeli değil; taşıma nadir bir admin aksiyonu ve ürün-yolu kapısı + `BOOK_ROOT_SLUGS` nöbetçileri ayakta |
+| **Sonraki adım** | `update_category` parent değişiminde: yeni zincir kitap köküne çıkıyorsa ve alt ağaçta gruplu ürün varsa 409; döngü kontrolü |
 
-## TB-44 · Yeni kart sıralaması (`_order_id`) NÖBETSİZ — tersine çevrilince hiçbir test kırılmıyor
+## TB-56 · Son üyesi çıkarılan varyant grubu asılı kalıyor (denetim P2-3)
 
 | | |
 |---|---|
-| **Bulundu** | İP-17 bağımsız denetimi (14 Ağu 2026) |
-| **Yer** | `backend/services/srs_service.py::study_queue::_order_id` — yeni kart kovasının sırası (`SrsCard.id.asc()` = ekleniş sırası, sözleşme §4.1 Q-9) |
-| **Durum** | Sıra tersine çevrildiğinde **hiçbir test kırılmıyor**. Sözleşme "yeni kartlar `card_id` artan = ekleniş sırası" diyor ama bunu ölçen bir düğüm yok |
-| **Ölçüm (denetçinin)** | `_order_id` tersine çevrildi → **76 test seçildi, 0 kırıldı**. Ölçüm kazası olmadığı **karşılaştırma provasıyla** gösterildi: birincil sıra bozulduğunda (`due_at.asc()` → `.desc()`, denetçinin D-5 provası) **aynı 76 testten 1'i** kırıldı. Yani koşum düzeneği çalışıyor, boşluk gerçek |
-| **Etki** | Bugün davranış doğru, yalnız korumasız: yeni kart sırasını bozan bir değişiklik sessizce geçer. Kullanıcıya etkisi "yeni kartlar rastgele/ters sırada geliyor" olur — deste tasarımı sıraya bağlıysa (alfabe, konu sırası, kolaydan zora) öğrenme akışı bozulur ama hiçbir test bunu söylemez |
-| **Sınıf** | İP-17'nin `IP17-5` provasında bulunan **Q-9 tie-breaker boşluğuyla aynı sınıf** (bkz. `ip16-aralikli-tekrar-sozlesme.md` §4.4): sözleşme sıralama kuralını yazmış, test kurulumu o kuralın devreye girdiği durumu hiç üretmemiş. İkisi de İP-16 kapsamından geliyor, İP-17 yalnız birini kapattı |
-| **Neden ertelendi** | Denetim "merge edilebilir" verdi ve bu bir P2; kapatmak İP-17'nin kırmızı matrisine yeni düğüm eklemek demek, o da audit'ten geçmiş matrisi merge öncesi kaydırırdı |
-| **Sonraki adım** | Q-9 düğümüne **ikinci bir yeni kart** ekle (bugün tek yeni kart var, tek kartla sıra gözlenemez) ve sunulma sırasının `card_id` artan olduğunu doğrula; ardından `_order_id`'yi tersine çeviren bir mutasyon provasıyla nöbetçiliğini kanıtla |
+| **Bulundu** | Varyant paketi bağımsız denetimi (18 Ağu 2026, P2-3 — merge sonrasına ertelendi) |
+| **Nerede** | `store_service.update_product` (gruptan çıkış) / `delete_product` |
+| **Sorun** | Üyeler tek tek gruptan çıkarılınca (ya da soft-delete edilince) grup 0 aktif üyeyle yaşamaya devam eder; admin grup listesinde ve seçicide artık hiçbir şeyi temsil etmeyen "hayalet" gruplar birikir. `delete_group` elle çağrılmadıkça temizlik yok |
+| **Neden ertelendi** | Veri bozmaz; yalnız yönetim yüzeyi kirliliği. Otomatik silme ayrı karar ister (soft-delete'li üye geri gelebilir — FK sayımı silinmişleri de sayıyor) |
+| **Sonraki adım** | Admin grup listesinde "üyesiz" rozeti + boş grubu tek tıkla silme; otomatik temizlik yapılacaksa yalnız hiç referanssız gruplar |
 
-## TB-43 · `apply_refunded_amount`'ın `LEAST(…, total)` tavanı ve `refunded_at` COALESCE koruması NÖBETSİZ
+## TB-57 · Grup kartının temsilcisi tükenik üye olabiliyor (denetim P2-5)
 
 | | |
 |---|---|
-| **Bulundu** | İP-18 dar teyit turu (14 Ağu 2026); denetçi ölçtü, bağımsız olarak doğrulandı |
-| **Yer** | `backend/services/order_service.py::apply_refunded_amount` — `UPDATE orders SET refunded_amount = LEAST(refunded_amount + :a, total), refunded_at = COALESCE(refunded_at, now())` |
-| **Ölçüm** | İki korumanın İKİSİ de sökülünce (tavan `LEAST` kaldırıldı, `COALESCE` düz `now()` yapıldı) **56 para testinin hiçbiri kırılmıyor** |
-| **Neden İP-18 kapsamı dışı** | Fonksiyon tanımı tabanla (`c8b05d2`) **bayt-özdeş**. Bağımsız olarak doğrulandı: `ast.get_source_segment` ile çıkarılıp SHA-256'lanan gövde iki tarafta da `f35ffa2006e7…` (aynı yöntemle `reserve_refund` = `9cb77e97a801…`, `reservable_refund` = `03794adefc5a…`, üçü de özdeş). Yani önceden var olan bir borçtur; İP-18 bu fonksiyonu **çağıran** yolu değiştirdi, fonksiyonun kendisini değil |
-| **Neden İP-18 nöbetçileri yakalamıyor** | D12 tam iadeyi ölçer (`refunded_amount == refund_reserved == total`); sıfırdan tam tutara giden tek adımda `LEAST` tavanı zaten devreye girmez ve `refunded_at` de zaten NULL'dur, yani `COALESCE` ile düz `now()` aynı sonucu verir. Korumaların ayırt edici olduğu hâl **kısmi iade + ikinci hareket**tir ve o, İP-18'in değil İP-2a'nın (RMA) alanıdır |
-| **Gerçek risk** | Orta. `LEAST` düşerse kümülatif kısmi iadeler `refunded_amount`'ı `total`'ın ÜSTÜNE çıkarabilir (ciro raporu negatif net ciro gösterir; `escrow.order_inflight_refund` `total - kesin` hesabını negatife düşürür). `COALESCE` düşerse **ilk** iade zamanı her yeni kısmi iadede ezilir — iade penceresi/denetim izi için kullanılan damga kayar |
-| **Sonraki adım** | İP-2a alanında iki düğüm: (1) `refunded_amount + tutar > total` olacak şekilde ikinci bir kısmi iade → kolon `total`'ı AŞMAMALI; (2) iki ardışık kısmi iade → `refunded_at` **ilk** iadenin damgasını korumalı. İkisi de `tests/integration/test_ip2a_partial_math_pg.py`'ye aittir |
+| **Bulundu** | Varyant paketi bağımsız denetimi (18 Ağu 2026, P2-5 — merge sonrasına ertelendi) |
+| **Nerede** | `store_service.search_products` — temsilci sırası (`temsilci_sirasi`) stok durumuna bakmaz |
+| **Sorun** | `in_stock` grup semantiği doğru (kart görünür, `in_stock_override` grubu söyler) ama skor kipinde temsilci en yüksek puanlı üyedir — o üye tükenikse kartın başlığı/fiyatı/linki tükenik varyanta gider; müşteri tıklayınca "Tükendi" sayfasına iner (seçiciden stoklu kardeşe geçebilir, ama ilk izlenim yanlış) |
+| **Neden ertelendi** | Davranış yanlış veri göstermiyor, alt-optimal yönlendiriyor; temsilci sırasına `stokta DESC` eklemek sıralama kiplerinin tamamında yeniden test ister |
+| **Sonraki adım** | `temsilci_sirasi`'nın başına `stokta.desc()` ekle + altı kip testine "tükenik temsilci adayı varken stoklu üye temsil eder" senaryosu |
 
-## TB-42 · Mutasyon sürücüsünün `ERROR` gölgelemesi kısmen kör — düğüm ayracı olmayan koleksiyon hatasını saymıyor
+## TB-59 · `MutationObserver` sözleşmesinin sıralama garantisi yalnız test ortamında doğrulandı
 
 | | |
 |---|---|
-| **Bulundu** | İP-18 bağımsız audit'i (14 Ağu 2026) |
-| **Yer** | `backend/scripts/mutation_drill.py::_kirilanlar` — **ORTAK sürücü**. Kayıt açıldığında kusur `mutation_drill_ip18.py` ve `_ip16.py`'deki yerel gölgelerdeydi; İP-17 turunda TB-29 ortak sürücüde kapatılınca iki gölge de silindi (İP-17 merge adaptasyonu) ve kusur tek yerde toplandı. Yani artık düzeltilecek TEK nokta var |
-| **Durum** | Gölgeleme yalnız içinde `::` geçen `ERROR` satırlarını sayar. Pytest, KOLEKSİYON düzeyinde patlayan bir dosyayı `ERROR tests/x.py - NameError: …` biçiminde, yani **düğüm ayracı olmadan** raporlar; o satır sayılmaz ve mutasyon "YAKALANMADI" görünebilir |
-| **Neden `::` şartı kaldırılamaz** | Yakalanan log çıktısı da `ERROR ` ile başlar (`ERROR    adana.escrow:escrow.py:518 …`). Onu da saymak, ERROR log yazan HER mutasyonu "yakalandı" gösterirdi — ölçüm aracını **yalancı yeşil üreticisine** çevirirdi |
-| **Yön** | Güvenli: eksik sayar, fazla saymaz. Yani bugünkü "11/11 yakalandı" sonucu bu kusurdan **şişmiş değildir** |
-| **Bugünkü durum** | Kusur duruyor. İP-18 turunda docstring'in fazla geniş iddiası daraltıldı; İP-17 merge adaptasyonunda kusur tek noktaya indirildi (gölgeler silindi). Davranış değişmedi |
-| **Sonraki adım** | İki deseni ayırt eden eşleştirici (`^ERROR (\S+\.py)(::\S+)? ` + logger satırlarının çoklu boşluk/`ad:dosya:satır` şeklini dışlama) ve bunun **kendi pozitif kontrolü**. Ortak `mutation_drill.py` üzerinde yapılır — TB-29 kapandığı için ikinci bir yerde daha düzeltmek GEREKMEZ |
+| **Bulundu** | İP-A8'in bağımsız doğrulama turu (21 Ağu 2026 · D-3) |
+| **Nerede** | `frontend/src/components/admin/ui/Dialog.tsx` — panel içeriğini izleyen gözlemci efekti |
+| **Sorun** | Dedektörün yanlış-pozitif emniyeti şu varsayıma dayanıyor: *"çocuğun bekçi kaydı bir `useEffect`tir ve commit sonrası senkron akar; gözlemci geri çağrısı bir mikrogörevdir ve ondan SONRA koşar."* Bu, RTL/`act()` altında doğru (doğrulama turunda gerçek `AdminLibraries` penceresiyle ölçüldü: geç doğan **korumalı** form dedektörü patlatmıyor). Gerçek tarayıcıda ise React 18 pasif efektleri `scheduleCallback` (MessageChannel = makrogörev) ile planlar; `MutationObserver` geri çağrısı mikrogörevdir ve **önce** koşabilir — o anda `korumaVar` hâlâ `false`tur |
+| **Etki** | **Yalnız geliştirme.** Üretim derlemesinde dedektör gövdesi tamamen eleniyor (doğrulama turu `dist/`te ölçtü: `function pc({kok,korumaVar,korumasiz,baslik}){}`, `attributeFilter` dizesi bundle'da yok). Riskin üretim tarafı yoktur; olası zarar, DOĞRU yazılmış bir pencerenin geliştirmede yanlışlıkla uygulamayı düşürmesidir |
+| **Neden ertelendi** | Doğrulaması gerçek tarayıcı turu ister; doğrulama turu zaman kutusu gereği tam tarayıcı turu yapmadı |
+| **Sonraki adım** | Bir sonraki tarayıcı turunda: dev derlemesinde pencere açıkken **sonradan doğan, bekçisi olan** bir form açılsın ve patlamadığı görülsün. Patlıyorsa çözüm gözlemci geri çağrısını `queueMicrotask` yerine bir sonraki makrogörev turuna ertelemektir |
 
-## TB-41 · İP-18 AST nöbetçisi kandırılabilir — `values` sözlüğü değişkene alınırsa görmüyor
+## TB-60 · `KONTROLSUZ_EKRANLAR`'ın 64 gerekçesi doğrulanmadı
 
 | | |
 |---|---|
-| **Bulundu** | İP-18 bağımsız audit'i (14 Ağu 2026); denetçi çalışan bir kaçış üretti |
-| **Yer** | `backend/tests/test_ip18_odeme_kosulu.py::_paid_yazan_dogrudan_claimler` |
-| **Kaçış** | Dedektör yalnız `escrow.claim(..., values={...})` biçimini, yani **satır içi sözlük değişmezini** tarar. `values` bir DEĞİŞKENE alınırsa (`deger = {"payment_status": "PAID", …}; await escrow.claim(..., values=deger)`) hem AST nöbetçisi hem de **21 davranış testi** geçti — yani boğaz noktası sessizce atlanabiliyor |
-| **Neden davranış testleri de geçti** | Kaçış claim'in *koşulunu* değil *bulunabilirliğini* bozuyor; kaçan çağrı hâlâ doğru koşulu taşıyorsa davranış aynı kalır. Yani bu, davranış nöbetçisiyle kapatılamayan **saf yapısal** bir boşluktur |
-| **İP-18 turunda yapılan** | Nöbetçiye **pozitif kontrol** eklendi (`test_yesil_ast_nobetcisi_pozitif_kontrol`: bilinen kötü örneği gerçekten buluyor mu) ve negatif kontrol (boğaz noktasının kendisi + iade yönü claim'i muaf). Bu, [[TB-38]]/(b)'nin "dedektör bozuksa sonsuza dek yeşil kalır" hâlini kapatır ama **kaçışı kapatmaz** |
-| **Sonraki adım** | (1) `values`'ı bir ada bağlanmış sözlüğe kadar izleyen basit yerel veri akışı (aynı fonksiyon gövdesinde `Name → Dict` çözümü); (2) daha sağlamı: kuralı tersine çevir — `escrow.claim`'in `Order` modeliyle çağrılması `_siparis_para_claimi` DIŞINDA topyekûn yasaklansın (iade yönü claim'leri de boğaz noktasından geçsin), o zaman `values` içeriğini okumaya hiç gerek kalmaz |
+| **Bulundu** | İP-A8 (kendi risk notu #3) + bağımsız doğrulama turu (21 Ağu 2026 · D-4) |
+| **Nerede** | `frontend/src/__guards__/calismaZamaniKapisi.test.tsx` → `KONTROLSUZ_EKRANLAR` |
+| **Sorun** | Kayıt kimlikle dondurulmuş ve iki yönlü korunuyor (bir ekran kontrol basmaya başlarsa da, susarsa da kırmızı) — ama **listenin kendisi ölçümden türetildi**: "bugün kontrol basmayan ekran". Gerekçe kodları elle verildi ve 40'tan fazla ekran `kosullu` yazıyor; hiçbiri bir dal testiyle doğrulanmadı. Liste yazıldığı anda zaten sessizce boşalmış bir ekran sonsuza dek `kosullu` kalır ve fark edilmez |
+| **Neden bu B-5'in tekrarı DEĞİL** | B-5'te eşik (`toplamKontrol >= 39`) çökmüş ölçüme kalibreydi ve hiçbir şey ayırt etmiyordu. Burada liste 24 ekranda gerçek bir iddia taşıyor ve iki yönlü. Aynı ailenin daha zayıf üyesi, aynı kusur değil |
+| **Neden ertelendi** | Doğrusu her `kosullu` ekranın bir dal testinde kontrol bastığını sınamaktı; 40+ ekran için kabul testi yazmak İP-A8'in kapsamının katbekat üstünde |
+| **Sonraki adım** | `kosullu` yazan her ekran için ya bir dal testi (ekranın kontrol bastığı hâli) ya da gerekçenin daraltılması (`sunum`/`kabuk`/`pencere-kabugu` gibi ölçülebilir sınıflara) |
+
+## TB-61 · Duvar saatine bağlı bekleyiş 56 test dosyasında ayakta (B-4'ün sınıfı)
+
+| | |
+|---|---|
+| **Bulundu** | Bağımsız doğrulama turu (21 Ağu 2026 · D-5) |
+| **Nerede** | `frontend/src` altında `findBy*`/`waitFor` kullanan **56** test dosyası |
+| **Sorun** | Denetim #3'ün B-4'ü (karışık tohumda zaman aşımı) İP-A8'de **örnek bazında** kapatıldı: A8 reçeteyi (`act` ile makrogörev akıtması + iddiayı eşzamanlı `getBy*` yapmak) yalnız dokunduğu iki dosyada uyguladı. Sınıf kapanmadı — `findBy*`'ın 1000 ms'lik bütçesi hâlâ makine hızına bağlı bir iddiadır |
+| **Ölçüm** | Doğrulama turunda `src/` altına tek bir ağır sonda dosyası eklendiğinde `adminKataloglarGoc.acceptance` (17 `findBy*`/`waitFor` içeriyor) bir tohumda kırmızı düştü. Temiz ağaçta 6/6 tohum yeşil, yani bugün CI'da canlı değil |
+| **Etki** | Yalancı kırmızı riski. Yükü artan bir CI makinesi bu 56 dosyanın herhangi birinde aynı düşüşü üretebilir ve [[TB-36]] gereği "yerelde geçiyor" bir kez daha flaky tanısı olarak okunmamalı |
+| **Neden ertelendi** | İP-A8 denetim #3'ün bulgularını kapatmak için kuruldu; 56 dosyayı dönüştürmek ayrı bir pakettir |
+| **Sonraki adım** | Reçeteyi kalan dosyalara yaymak ve nöbetçisini `beklemeButcesi` envanterine bağlamak (dosya başına `waitFor` sayısı dondurulur, yenisi gerekçesiz doğamaz) |
+
+## TB-62 · B-16'nın (iki `useUrlDurumu` örneği) nöbetçisi yok
+
+| | |
+|---|---|
+| **Bulundu** | Bağımsız denetim #3 (B-16) + doğrulama turu (21 Ağu 2026 · D-6) |
+| **Nerede** | `frontend/src/hooks/useUrlDurumu.ts` |
+| **Sorun** | Aynı sayfada iki `useUrlDurumu` örneği aynı olayda yazarsa birincinin yazdığı **sessizce kayboluyor** (A6c·BULGU-4'ün çözümü hook örneği başına). Bugün canlı değil: doğrulama turu yedi tüketicinin **hepsinde tek örnek** ölçtü (`AdminAuditLogsPage`, `AdminBookingsPage`, `AdminPayoutsPage`, `CountSessionsPage`, `DamageEventsPage`, `PackagesPage`, `AdminHome`) |
+| **Asıl eksik** | Borç yazıldı, **kapısı yazılmadı**. İkinci bir örnek sessizce doğabilir — kapısız borç, canlıya dönebilen borçtur |
+| **Neden ertelendi** | Kusurun kendisinin düzeltilmesi `bekleyenRef`i hook örneğinden modül düzeyine taşımak, yani A6c·BULGU-4'ün çözümünü yeniden tasarlamak demek; ayrı paket |
+| **Sonraki adım** | **Ucuz olan önce:** "bir dosyada tek `useUrlDurumu` çağrısı" kaynak nöbetçisi (tek `it`). Asıl düzeltme ondan sonra, kendi paketinde |
+
+## TB-63 · `ExamSessionsManager` `!dirty`: sınıflandırma ile kod yorumu çelişiyor
+
+| | |
+|---|---|
+| **Bulundu** | Bağımsız doğrulama turu (21 Ağu 2026 · D-2'nin ikinci ayağı) |
+| **Nerede** | `frontend/src/components/ExamSessionsManager.tsx:684-690` ↔ `frontend/src/__guards__/gonderDugmesi.test.ts` → `KAYIT` |
+| **Sorun** | Düğme nöbetçide `gecerlilik-borc` (kilitli kararın ihlali) sınıfına yazılı; oysa kodda yanı başında *"'Kaydet' DEĞİŞİKLİK YOKKEN kapalıdır ve bu bir geçerlilik kapısı DEĞİLDİR"* yorumu duruyor. İkisi aynı anda doğru olamaz: ya sınıf `onkosul`/`secim` olmalı, ya yorum yanlış |
+| **Bugün hangi taraf** | Sınıf **bilinçli olarak `gecerlilik-borc`ta bırakıldı** — güvenli taraf borç saymaktır; aklamak, kilitli kararın gerçek bir ihlalini envanterden düşürme riski taşır |
+| **Neden ertelendi** | Cevabı bir ürün kararı: "kaydedilecek bir şey yokken Kaydet kapalı olmalı mı" sorusu kilitli kararın kapsamına girip girmediğiyle ilgili ve bu, göç kararlarının sahibiyle konuşulmalı |
+| **Sonraki adım** | Karar verilsin ve **ikisi birlikte** düzeltilsin: ya sınıf değişir ve kod yorumu kaynak gösterilir, ya yorum silinir ve düğme hata slotuna bağlanır |
+
+## TB-58 · Varyant testlerinin izolasyon sınırları (denetim P2-8)
+
+| | |
+|---|---|
+| **Bulundu** | Varyant paketi bağımsız denetimi (18 Ağu 2026, P2-8 — merge sonrasına ertelendi) |
+| **Nerede** | `tests/integration/test_variant_*_pg.py` fixture'ları |
+| **Sorun** | Denetim raporundaki tanımıyla test izolasyonu bulgusu (rapor metni repoda değil; buradaki özet denetim çıktısının başlığından). Bilinen zayıf noktalar: q'suz kipler kategori-daraltmasıyla izole ediliyor ama `test_facet_eksen_adina_gore_gruplanir` facet ucunu KATALOG GENELİ sorguluyor (işaretli değerlerle ayrışıyor, yine de paralel koşumda sayım varsayımları kırılgan); duman verisi/`adana_verify` provası gibi elle kurulan veriler nöbetçi dışı |
+| **Neden ertelendi** | Suite bugün deterministik geçiyor; sertleştirme davranış değiştirmez |
+| **Sonraki adım** | Denetim raporunun tam metniyle karşılaştırıp facet testlerini kendi kategorisine daraltmak; varyant fabrikalarının teardown'larını `_hijyen_nobetcisi` tablolarıyla hizalamak |
+
+## TB-54 · Vitest suite'inde tanımlanamayan tek seferlik kırılma
+
+| | |
+|---|---|
+| **Bulundu** | İP-21 kapanış kapıları (15 Ağu 2026) |
+| **Ne oldu** | `npx vitest run` bir koşumda `1 failed \| 916 passed` verdi; **ardından dört koşumda da 917/917 geçti** ve kırılan düğümün adı yakalanamadı (çıktı filtrelenirken kayboldu) |
+| **Neden kayda geçiyor** | Bu depoda "yerelde geçiyor" bir kez daha flaky tanısı konmasın diye ([[TB-36]]): tek seferlik kırılma **kanıt yokluğu değildir**. Ad bilinmediği için sınıfı da bilinmiyor — gerçek bir yarış mı, `act()` uyarısı üreten bir asenkron güncelleme mi, [[TB-23]]'ün timeout kökü mü |
+| **Sonraki adım** | Kırılma tekrarlanırsa **ad kaybedilmeden** yakalansın: `npx vitest run --reporter=json --outputFile=vitest.json` ile koşulup `vitest.json` saklanır. CI için de aynısı düşünülmeli — bugün CI çıktısı da yalnız insan-okur biçimde |
+| **Etki** | Bilinmiyor. Yön belirsiz: gerçek bir yarışsa üretim davranışını da etkileyebilir, test-tarafı asenkron kurulum sorunuysa yalnız gürültüdür |
+
+## TB-53 · `delete_vehicle`'ın 409 kontrolü kontrol-sonra-yaz yarışına açık
+
+`services/delivery_service.py::delete_vehicle` açık tur sayısını okur, sonra
+soft-delete yazar; arada kilit yoktur. Teorik olarak "araç silinirken aynı anda
+o araca tur açılması" hem 409'u atlatabilir hem `fk_delivery_runs_vehicle_id`
+RESTRICT'ini devre dışı bırakabilir (soft-delete FK'yi tetiklemez).
+
+Bağımsız denetim de (M-7) kaybeden sıralamayı üretmeyi denedi ve **üretemedi**;
+yapısal boşluk yine de duruyor. Çözüm `SELECT … FOR UPDATE` ile aracı kilitlemek
+ya da kısmi unique index benzeri bir DB kısıtı. Kapsam dışı: gerçek zarar için
+aynı saniyede iki admin gerekir ve sonucu geri alınabilirdir (araç yeniden
+aktifleştirilir).
+
+---
+
+---
+
+## TB-52 · Gün tahtasında üç sürükleme kipinden yalnız biri var
+
+İP-19 sözleşmesi §4.2 üç kip vaat ediyordu: **havuzdan araca**, **araçtan
+araca**, **araç içinde sıra değiştirme**. Yazılan yalnız birincisidir
+(`DeliveryBoardPage.tsx::handleDrop`); ikincisi ve üçüncüsü yok. Bağımsız
+denetim (B-11) bunu ölçtü ve sözleşme metni düzeltildi.
+
+Etki sınırlı: sıra değiştirme uçtan (`PUT /delivery/runs/{id}/reorder`) zaten
+mümkün ve tur detay ekranından yapılabiliyor; araçtan araca taşıma için durak
+silinip diğerine eklenmesi gerekiyor (iki ayrı çağrı, atomik değil). Kapsam
+dışı bırakıldı çünkü yarım bir sürükleme yüzeyi, hiç olmayanından kötüdür:
+atomik olmayan taşıma yarıda kalırsa durak hiçbir turda kalmayabilir.
+
+---
+
+---
+
+## TB-50 · Yetki belgesi varsayımı doğrulanmadı — K2 değil muhtemelen P1*
+
+| | |
+|---|---|
+| **Bulundu** | İP-19 araştırma turu, 15 Ağu 2026 |
+| **Yer** | Kod değil — operasyonun yasal zemini. Dolaylı: `docs/pk1-deployment-checklist.md` (lansman kontrol listesi) |
+| **Durum** | Kendi aracıyla şehir içi teslimat için gereken belge, araştırmada varsayıldığı gibi K1/K2 ekseninde **değil**: Karayolu Taşıma Yönetmeliği kurye/dağıtım faaliyetini **P türü** belgeye bağlıyor. **P1\*** = il içi kurye taşımacılığı, sınırlı taşıt sayısı, otomobil+motosiklet+kamyonet kaydedilebiliyor. K2 ("kendi esas iştigal konusu") savunması **pazaryeri modelinde çökebilir**: eğitmenin fiziksel ürünü taşınıyorsa mal bize ait değildir; hangi belgenin gerektiği **faturayı kimin kestiğine** bağlıdır |
+| **Ölçülmedi** | ⚠️ P1\*'ın taşıt sayısı sınırı ve ücreti **belge aracısı sitelerinden** alındı; resmî KTY metninden **teyit edilemedi**. Ayrıca internette dolaşan "3,5 ton altı şehir içi muafiyeti" iddiası **muhtemelen 2008'de sona ermiş** — eşya taşımacılığı için geçerli değil |
+| **Etki** | Belgesiz ticari taşıma idari para cezası ve faaliyet durdurma riski taşır. Lansmanla birlikte teslimat başlayacağı için bu, **lansman öncesi kapanması gereken** bir kalemdir |
+| **Neden şimdi düzeltilmedi** | Kod işi değil; başvuru ve mali müşavir/mevzuat işi |
+| **Sonraki adım** | (1) **e-Devlet U-NET** veya Adana Ulaştırma Bölge Müdürlüğü'nden **yazılı teyit** al — belge aracısı sitelerine güvenme; (2) fatura akışını mali müşavire göstererek K2/P1\* ayrımını netleştir; (3) sonucu `pk1-deployment-checklist.md`'ye madde olarak yaz |
+
+---
+
+## TB-49 · Kurye ekranı hız baskısı üretiyor olabilir — hem mevzuat hem muvazaa riski
+
+| | |
+|---|---|
+| **Bulundu** | İP-19 araştırma turu, 15 Ağu 2026 |
+| **Yer** | `frontend/src/pages/courier/` saha ekranı · `DeliveryRun` ETA alanları · teslimat söz zinciri |
+| **Durum** | İki ayrı risk aynı ekranda buluşuyor. **(a) Mevzuat:** kurye düzenlemelerinde platformların sürücü üzerinde **hız baskısı** kurması ve **makul olmayan teslimat süresi taahhüdü** dayatması yasaklanmıştır. **(b) Muvazaa:** Yargıtay/BAM içtihadı, alt işveren veya "esnaf kurye" üzerinden çalıştırılan kuryelerde **platformu asıl işveren** sayabiliyor; *"platform yalnızca teknoloji şirketi olduğunu ileri sürerek sorumluluktan kurtulamaz"*. Bu davada **ekranın kontrol sıkılığı delil** olur: kim rotayı belirliyor, kim sırayı dayatıyor, kim süre ölçüyor |
+| **Ölçülmedi** | ⚠️ Hız baskısı yasağının **tam metni ve yaptırımı birincil kaynaktan doğrulanamadı** (yönetmelik PDF'i makine-okunur değil). İddia ikincil kaynaklardan; teyit edilmeli |
+| **Etki** | Şahıs şirketi ölçeğinde tek bir muvazaa davası (kıdem + ihbar + fazla mesai + geriye dönük SGK) ağırdır. Mevzuat tarafı ise idari yaptırım riski |
+| **Neden şimdi düzeltilmedi** | Kurye istihdam biçimi henüz kararlaşmadı (kurucu mu taşıyacak, ücretli kurye mi). Ekran tasarımı bu karara bağlı; karar verilmeden tasarım değiştirmek erken |
+| **Sonraki adım** | (1) Yasağın tam metnini Resmî Gazete'den teyit et; (2) kurye ekranında **geri sayım/süre sayacı yerine rota sırası** göster — süre sözü müşteriye verilir, kuryeye dayatılmaz; (3) ücretli kurye alınacaksa **SGK'lı** tercih et, esnaf-kurye modelinden uzak dur |
+
+---
+
+## TB-48 · Teslimat sözü BAĞLAYICI bir taahhüttür ve 30 gün kalkanını kaldırır
+
+> **Öncelik: yüksek — LANSMAN ÖNCESİ ürün+hukuk kararı.** Bu bir kod kusuru
+> değil; çalışan ve amaçlandığı gibi davranan bir özelliğin **hukuki
+> pozisyonunun** ölçülmemiş olması.
+
+| | |
+|---|---|
+| **Bulundu** | İP-19 araştırma turu, 15 Ağu 2026 — Türkiye teslimat mevzuatı taraması |
+| **Yer** | `backend/services/delivery_promise.py` (16:00 cutoff → `Order.promised_delivery_date`) · `GET /store/delivery-info` · `frontend/src/components/DeliveryPromiseBadge.tsx` (geri sayımlı söz rozeti; ürün/sepet/checkout) · `frontend/src/lib/legalContent.ts` (ön bilgilendirme metni) |
+| **Durum** | Mesafeli Sözleşmeler Yönetmeliği (RG 27.11.2014/29188) **m.16/1**: satıcı "**taahhüt ettiği süre içinde**" ifa etmek zorundadır; otuz gün **her hâlükârda üst sınırdır**, taahhüt edilen süre **alt sınırı** belirler. **m.16/2**: yükümlülük yerine getirilmezse tüketici **sözleşmeyi feshedebilir**. **m.16/3**: fesihten itibaren **14 gün içinde** tüm ödemeler **yasal faiziyle** iade edilir. **m.5/1-f**: ön bilgilendirmedeki teslim süresi, **ticari reklamda taahhüt edilen süreyle uyumlu** olmalıdır |
+| **Etki** | Platform "aynı/ertesi gün" sözünü **sisteme yazmış** durumda (rozet geri sayım gösteriyor, `promised_delivery_date` sipariş satırında yaşıyor). Bu, pazarlama vaadi değil bağlayıcı taahhüttür: tutulmadığı her siparişte tüketici **30 günü beklemeden** fesih + faizli iade hakkı kazanır. Kendi filoyla teslimatta gecikme sebepleri (araç arızası, kurye hastalığı, hava) tamamen bizim riskimizdedir |
+| **Neden şimdi düzeltilmedi** | İP-19'un konusu **kaynak modelidir** (araç/vardiya/planlama). Metin değişikliği ayrı bir karar ve **avukat onayı** ister; yasal metinler zaten toplu onay bekliyor. Ayrıca teknik düzeltme değil ürün kararı: "aynı gün" vitrinde kalacak mı, kalacaksa hangi istisnalarla |
+| **Sonraki adım** | (1) Ön bilgilendirme formundaki **bağlayıcı süreyi** pazarlama vaadinden AYIR — vitrinde "aynı gün", sözleşmede "en geç X iş günü"; (2) `DeliveryPromiseBadge`'in dilini buna hizala; (3) mevcut ürün/hava/trafik istisnalarını metne yaz; (4) avukat onayına gönder |
+
+---
 
 ## TB-40 · Kilit sırası nöbetçisi (D9) kandırılabilir — `FOR UPDATE OF o` deseni hem davranış hem kaynak sözleşmesini geçiyor
 
@@ -569,18 +717,6 @@ products` ile `UPDATE orders` sırası).
 | **Neden ertelendi** | Doğru çözümün iki parçası var: (1) damganın repoda karşılığı olduğunu doğrulamak (ucuz: `alembic_version.version_num` ∈ `versions/*.py` revision kimlikleri; bilinmeyen damgada fail-fast + beklenen revizyonu söyle — guard bunun YANINA, sonrasına değil); (2) şemanın damgayla uyuştuğunu CI'da **kapı** yapmak (`alembic check`). İkincisi bugün çapraz-dal sapması yüzünden kırmızı verir, yani dal durumu temizlenmeden kapıya çevrilemez. İP-16'nın kapsamı aralıklı tekrardır |
 | **Sonraki adım** | (1) `ensure_schema`'ya damga-repo doğrulaması + bilinmeyen damgada fail-fast; `--purge` guard'ını yalnız **bilinen** squash-öncesi revizyon listesine daralt; (2) taze DB'de `alembic upgrade head && alembic check` CI kapısı; (3) `down_revision` değiştiren her commit'in "eski zincirle kurulmuş DB'ler yeniden kurulmalı" notunu taşıması sözleşme kuralı olsun; (4) `AUTO_CREATE_DB=false` maddesini lansman kontrol listesine ekle |
 | **AYRI İŞ PAKETİ — "doğrula modu" (9 Ağu 2026'da önerildi, BİLİNÇLİ OLARAK ERTELENDİ)** | Yukarıdaki (1)-(4) hâlâ geçerli; bu satır onları **sıraya** koyar ve bir madde ekler. **(A) `ensure_schema` "kur" modundan "doğrula" moduna geçsin:** açılışta `alembic current` ile `heads` karşılaştırılsın, eşit değilse uygulama **açılmasın** ve `alembic upgrade head` koşulması söylensin. Maliyeti tek sorgu. Kritik tasarım kararı: bu doğrulama **`AUTO_CREATE_DB`'den BAĞIMSIZ, her zaman** koşmalı — bugün bayrak kapalıyken hiçbir kontrol yok, yani şema kayması *sessizce* değil *hiç* fark edilmiyor. **(B) `--purge` guard'ını bilinen revizyon listesine daralt** (= mevcut (1)'in ikinci yarısı). **(C) `AUTO_CREATE_DB=false` dev varsayılanı olsun**, temiz kurulum `docker-compose`'da backend'den ÖNCE koşan ayrı bir `migrate` adımına bağlansın. **SIRA ÖNEMLİ: (A) → (C).** (C)'yi (A)'sız uygulamak durumu BUGÜNKÜNDEN KÖTÜLEŞTİRİR: bu depoda sekiz worktree ve farklı migration head'li dallar var; otomatik hizalama kalkar ama yerine hiçbir uyarı gelmez, dal değiştirip `upgrade head` koşmayı unutan geliştiricinin uygulaması sessizce eski şemayla açılır. (A) tek başına da anlamlı bir ilk adımdır; (C) onsuz yapılmamalıdır. Bu paket İP-16 veya operasyon turunun kapsamı değildi, ayrı bir tur ister |
-
-## TB-28 · Entegrasyon testleri **canlı Redis'e** (db 0) yazıyor — izolasyon yok
-
-| | |
-|---|---|
-| **Bulundu** | presence flush kapanış turu, 9 Ağu 2026 |
-| **Yer** | `backend/tests/integration/conftest.py` (ve tüm `*_factory.py`) — `POSTGRES_DB` tek kullanımlık test veritabanına yönlendirilir ama **`REDIS_URL` hiçbir yerde ezilmez**; `httpx.ASGITransport` gerçek `app`'i dependency override olmadan sürdüğü için her kimlik doğrulamalı istek `get_current_active_user` → `presence.touch` zincirinden geçer |
-| **Ölçüm** | Geliştirme Redis'inde (db 0) `presence:dirty` **7.488 kayda** ulaşmıştı. Kuyruktaki kimlikler kanıt: `clients:3939`, `clients:2632` — oysa geliştirme veritabanındaki en büyük `clients.id` **1398**'dir (14 canlı satır). Yani kayıtların bir kısmı **başka veritabanlarından** gelmiş: `clients_id_seq` tepe değerleri `adana_f29_test` 7089, `adana_ip2b_test` 5656, `ip1a_test` 4471, `ceyhandb` 4451 |
-| **Etki** | (1) Test verisi geliştirme Redis'ini kirletiyor — §G'nin "bir testin ürettiği veri başka teste kalmaz" sözü Redis tarafında **hiç** geçerli değil; (2) paylaşılan anahtar alanı yalnız presence değil: `core/ratelimit` kovaları, `core/token_denylist` jti'leri, `core/courier_position` konumları da aynı db 0'da — bir test koşumu geliştiricinin oturumunu denylist'leyebilir ya da rate-limit kovasını doldurabilir; (3) ters yönde flaky: geliştirme sırasında dolan bir kova, testte fail-open olmayan bir yolu beklenmedik biçimde etkileyebilir |
-| **Neden ertelendi** | Bu turun kapsamı presence flush'ının kendisiydi. Presence testleri kendi izolasyonunu **çözdü** (`test_presence_flush_pg.py::redis_izole` ayrı bir Redis veritabanına, db 15'e bağlanır), ama bunu suite geneline yaymak conftest'e `REDIS_URL` ezmesi + `flushdb` teardown'ı eklemek ve her fabrikanın Redis dokunuşunu gözden geçirmek demek — ayrı ve ölçülmesi gereken bir iş |
-| **Sonraki adım** | (1) `tests/integration/conftest.py`'de session kapsamlı bir fixture ile `settings.REDIS_URL`'i ayrı bir Redis veritabanına (ör. db 14) çevir; (2) suite başında/sonunda o db'yi `FLUSHDB` et; (3) hijyen nöbetçisinin Redis karşılığını ekle (suite sonunda beklenmeyen anahtar kalmışsa kırmızı); (4) geliştirme Redis'inde kalan çöpü tek seferlik temizle |
-| **Kabul ölçütü** | Tam `tests/integration` koşumu sonrası **db 0'da** `presence:dirty`, `rl:*`, `denylist:*`, `courier:*` anahtar sayılarının **değişmemesi** (koşum öncesi/sonrası ölçülerek) |
 
 ## TB-27 · `last_seen_at` iki ayrı yoldan yazılıyor; presence yolunun izlenmesi yalnız log
 
