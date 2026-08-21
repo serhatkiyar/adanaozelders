@@ -1147,3 +1147,43 @@ belgelerde geçiyor ve kaydırmak onları sessizce yanlış kayda bağlardı.
 | **Neden ertelendi** | Doğru çözüm, sağlayıcı çağrısını transaction dışına alan bir **outbox / iş kuyruğu** desenidir (mevcut `core/outbox` altyapısı buna uygun). Bu, ödeme/iade mimarisinin yeniden tasarımıdır ve stok paketinin kapsamı dışındadır |
 | **İzleme** | Kilit bekleme süresi üretimde gözlenmeli: `pg_stat_activity` üzerinde `wait_event_type = 'Lock'` + `products` birleşimi bir uyarıya bağlanabilir |
 | **Koruma** | Kanonik sıra `tests/acceptance/test_stock_lock_contract.py`, deadlock yokluğu `tests/integration/test_stock_lock_order_pg.py` (5 çift × ters sıra × 3 tur, `lock_timeout`'lu) ile sabitlendi. Sıra bozulursa testler kırılır. Matris İP-2a ile güncellendi (`_settle_return` çıktı, `settle_refunded_order` ve `receive_return` girdi); kalan nöbetçi boşluğu [[TB-14]] #2 |
+
+## TB-70 · `/magaza` vitrin kuşakları aynı ürünleri gösteriyor; "Tümünü gör" ölü
+
+| | |
+|---|---|
+| **Bulundu** | Dört konu turu (21 Ağu 2026), Konu 1 — yalnız ÖLÇÜM istendi, düzeltme onaya bırakıldı |
+| **Nerede** | `frontend/src/pages/store/StorePage.tsx:366-388` (vitrin) · `StorePage.tsx:36-46` (URL durumu) · `backend/services/store_service.py:732-743` (sıralama) |
+| **Sorun** | **İki ayrı kusur, tek belirti.** (1) *Sıralama dejenere*: `sort=rating` dalının `ORDER BY`'ı varsayılan dalınkiyle **birebir aynıdır** (`skor DESC, created_at DESC, id DESC`); `sort=newest` de veride yalnız 14 farklı `created_at` olduğu için aynı sırayı üretiyor. Canlı ölçüm (4695 aktif ürün): `[]`, `sort=rating`, `sort=newest` → **aynı 12 id**; `sort=price_asc` → farklı (yani parametre okunuyor). 4695 üründen yalnız **1**'inin puanı var, dolayısıyla Bayesian skor herkeste eşit ve bağ `id DESC`'e düşüyor. (2) *"Tümünü gör" ölü*: bağlantı `/magaza?sort=rating`e gidiyor ama `StorePage` URL'den yalnız `q` ve `category` okuyor — `sort` sadece yerel state. Üstelik `isFiltering` `sort`u hiç saymıyor, yani sort ayarlansa bile sayfa vitrin kipinde kalır ve ızgaraya geçmez. Gerçek tarayıcıda doğrulandı: URL `/magaza?sort=rating` oldu, üç kuşak başlığı aynen kaldı |
+| **Negatif kontrol** | `?zzzSahteParam=1` yanıtı değiştirmedi (bilinmeyen parametre sessizce yok sayılıyor) **ama** `?sort=price_asc` değiştirdi → "frontend'in gönderdiği ad backend'in kabul ettiğiyle uyuşmuyor" hipotezi **ÇÜRÜTÜLDÜ**. Router imzası (`api/routers/store.py:173-195`) ile `ProductSearchParams` (`api/store.ts:37-55`) birebir aynı |
+| **Etkisi** | Kullanıcı üç ayrı vitrin kuşağında aynı 12 ürünü görüyor ("Öne çıkanlar" ∩ "Yeni gelenler" = **12/12**, ∩ "Sınav Kitapları" = **11/12**) ve "Tümünü gör" hiçbir şey yapmıyor. Ayrıca ilk üç üst kategoriden ikisi (`Kitap`, `Okula Yardımcı`) **boş** olduğu için kuşakları hiç çizilmiyor — vitrin `topCategories.slice(0,3)` diyor ama tek kategori kuşağı görünüyor |
+| **Neden sessiz** | Sıralama "uygulanıyor" — SQL doğru koşuyor, parametre geçiyor, test yazılsa geçerdi. Bozuk olan sıralamanın **ayırt ediciliği**, ki bu ancak veriyle birlikte görülür |
+| **Neden ertelendi** | Tur "yalnız ölç, düzeltme onay bekle" talimatıyla açıldı |
+| **Sonraki adım** | (a) `sort=rating` ile varsayılanı ayır (ör. rating dalında `rating_count > 0` şartı ya da puanı olmayanları sona atan bir sıralama); `newest` bağını `id DESC` yerine gerçek bir zaman alanına bağla. (b) `StorePage`'i `useUrlDurumu`ya taşı (bugün yalnız `/yonetim/*` ekranları kullanıyor): `sort` URL'den okunsun ve `isFiltering`e girsin. (c) Boş üst kategorileri vitrinden ele (bkz. TB-73 ile aynı sınıf). Nöbetçi: iki kuşağın **kesişimi** üzerinde bir iddia — "aynı sıralamayı iki farklı ad altında sunma" |
+
+## TB-71 · `AuthModal` çift monte ediliyor → `/magaza` ve public sayfalarda kaydırma kalıcı kilitleniyor
+
+| | |
+|---|---|
+| **Bulundu** | Dört konu turu (21 Ağu 2026), Konu 2 — yalnız ÖLÇÜM istendi |
+| **Nerede** | `frontend/src/App.tsx:543` (global) ↔ `frontend/src/pages/store/StoreLayout.tsx:61,109` ve `frontend/src/components/PublicShell.tsx:26` · kilit `frontend/src/hooks/useModalA11y.ts:168-176` |
+| **Sorun** | `<AuthModal />` **hem** `App.tsx`'te `<Routes>`'un dışında (yani HER rotada) **hem** `StoreLayout`/`PublicShell` içinde render ediliyor. İkisi de aynı URL parametresini (`?modal=login`) okuduğu için birlikte açılıyor → **iki `useModalA11y` örneği**. Kilit sayaçsızdır: her örnek açılışta `previousOverflow`u saklar, kapanışta geri yazar. Birinci temizleyici `""`, ikinci temizleyici sakladığı `"hidden"`i geri yazar → `body.style.overflow` **`hidden` olarak KALIR**. Sayfa yenilenene kadar fare tekerleğiyle kaydırma çalışmaz |
+| **Kanıt (gerçek Chrome + CDP)** | `/magaza`, oturum kapalı, arayüzden "Giriş yap" → `[role=dialog]` sayısı **2** → pencere kapatıldıktan sonra `body.style.overflow="hidden"`, kaydırma çubuğu genişliği **15px → 0px** iken `scrollHeight(2110) > innerHeight(788)`. **3/3 turda tekrarlandı.** Sayfa yenilenince düzeliyor |
+| **Kapsam** | `StoreLayout` kullanan 11 sayfa + `PublicShell` kullanan 12 sayfa. Yalnız `App.tsx`'inkinin geçerli olduğu rotalarda (ör. `/`) sorun YOK — ölçüldü: orada 1 örnek, kilit temiz |
+| **Regresyon mu?** | **HAYIR.** `useModalA11y.ts` Medusa merge'inden (8ee17ea) beri **birebir aynı** (`git diff` boş). Merge `MODAL_YIGINI` yığınını EKLEDİ ama yalnız klavye (ESC) için — kaydırma kilidi yığına hiç bağlanmadı. Kusur merge'den eskidir |
+| **Neden sessiz** | Kapanma sırası LIFO olduğunda kilit temiz kalkıyor; sızıntı yalnız iki örneğin ayrı commit'lerde monte olduğu yolda (uygulama içi gezinme) doğuyor. Tam sayfa yüklemesiyle `?modal=login` açmak ölçümde TEMİZ çıktı — hatayı aramak için doğru yolu bulmak gerekiyordu |
+| **Neden ertelendi** | Tur "yalnız ölç" talimatıyla açıldı |
+| **Sonraki adım** | (a) *Asıl düzeltme*: `AuthModal`ı tek yerde bırak — `App.tsx` zaten global, `StoreLayout`/`PublicShell` kopyaları silinmeli. (b) *Savunma katmanı*: kaydırma kilidini **sayaca** bağla (mevcut `MODAL_YIGINI` kullanılabilir) — ilk giren kilitler, SON çıkan açar; ya da tek bir `useScrollLock` sayacı. Radix/`@medusajs/ui` bunu `body[data-scroll-locked]` sayacıyla zaten doğru yapıyor, örnek orada. (c) Nöbetçi: iki modalı üst üste açıp **LIFO DIŞI** kapatan bir RTL testi + `document.body.style.overflow`un `""`e döndüğü iddiası |
+
+## TB-72 · Kirli form bekçisinde "Çık" pencereyi kapatmıyor (panel)
+
+| | |
+|---|---|
+| **Bulundu** | Dört konu turu (21 Ağu 2026), Konu 2 ölçümünün yan bulgusu |
+| **Nerede** | `frontend/src/components/admin/ui2/kirliFormBekcisi.tsx` ↔ `components/admin/ui2/duzenlemeYuzeyi.tsx` |
+| **Sorun** | Düzenleme yüzeyinde form kirletilip kapatılmak istendiğinde bekçi istemi (Medusa `Prompt`) açılıyor. İstemdeki **"Çık"** düğmesi istemi kapatıyor ama **düzenleme penceresi açık kalıyor** ve girilen değer duruyor. Yani "değişiklikleri at ve çık" eylemi çıkmıyor |
+| **Kanıt (gerçek Chrome + CDP)** | `/yonetim/envanter/hasar` → "Hasara ayır" → `miktar=3` → kapatma → istem → "Çık" → 5 sn sonra hâlâ `[role=dialog]` **görünür**, `miktar` alanı hâlâ `3`, `body.style.overflow` hâlâ `hidden`. **Üç kapatma yolunda da** aynı (× düğmesi, dış tıklama, "Vazgeç" düğmesi) |
+| **Etkisi** | Yalnız panel (ADMIN/operatör) yüzeyi — son kullanıcı görmüyor, bu yüzden öncelik düşük. Kullanıcı pencereyi ikinci kez kapatmayı denerse istem tekrar açılıyor (döngü); kaydırma kilidi de pencere kapanana dek kalkmıyor |
+| **Neden sessiz** | `kirliFormBekcisi`'nin testleri istemin AÇILDIĞINI doğruluyor; "Çık"tan SONRA pencerenin kapandığını doğrulayan bir düğüm yok |
+| **Neden ertelendi** | Turun kapsamı kamuya açık yüzeydeki kaydırma kilidiydi (kullanıcı önceliği açıkça oraya verdi) |
+| **Sonraki adım** | `duzenlemeYuzeyi`'nin `kapatmayiDene` → onay yolunu izle: onay geldiğinde `kapat()` gerçekten çağrılıyor mu, yoksa yalnız istem state'i mi sıfırlanıyor? Nöbetçi: RTL ile kirli form → kapat → "Çık" → `queryByRole("dialog")` **null**. Mutasyon: onay dalından `kapat()` çağrısını kaldır, testin kırıldığını göster |
