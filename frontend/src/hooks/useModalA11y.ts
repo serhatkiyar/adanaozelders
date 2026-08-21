@@ -56,6 +56,54 @@ const FOCUSABLE =
  */
 const MODAL_YIGINI: symbol[] = [];
 
+/**
+ * ── KAYDIRMA KİLİDİ SAYACI (TB-71) ──
+ *
+ * Yukarıdaki yığın İP-A8'de yalnız KLAVYE için kuruldu; kaydırma kilidi ona
+ * hiç bağlanmadı ve her pencere `document.body.style.overflow`u tek başına
+ * yönetmeye devam etti: açılışta "önceki" değeri saklar, kapanışta geri yazar.
+ *
+ * İki pencere aynı anda açıkken ikincinin sakladığı "önceki" değer
+ * BİRİNCİNİN yazdığı `hidden`dır. Kapanma sırası LIFO değilse son temizleyici
+ * `hidden`i geri yazar ve arka plan sayfa yenilenene dek kilitli kalır.
+ *
+ * Bu teorik bir uç değildi: `<AuthModal />` hem `App.tsx`te (global) hem
+ * `StoreLayout`/`PublicShell` içinde monte ediliyordu, ikisi de aynı URL
+ * parametresini (`?modal=login`) okuyup birlikte açılıyordu. Gerçek Chrome'da
+ * ölçüldü (`/magaza`, oturum kapalı): pencere kapandıktan sonra
+ * `body.style.overflow="hidden"`, kaydırma çubuğu 15px → 0px iken
+ * `scrollHeight(2110) > innerHeight(788)`; 3/3 tur.
+ *
+ * Çift monte kaldırıldı (asıl düzeltme), ama kilit ayrıca SAYACA bağlanır:
+ * iç içe pencere bu kod tabanında meşru bir durumdur (`MODAL_YIGINI`in
+ * varlık sebebi) ve tek bir yanlış montaj kullanıcıyı yine kilitli sayfada
+ * bırakırdı. Kural Radix'in `react-remove-scroll` deseniyle aynıdır:
+ * **ilk giren kilitler, SON çıkan açar** — ve açılan değer sayfanın kendi
+ * değeridir, boş dize değil.
+ *
+ * Yığın ayrı tutulur çünkü `lockScroll: false` pencereler klavye yığınında
+ * vardır ama kilide katılmazlar.
+ */
+const KILIT_YIGINI: symbol[] = [];
+let kilitOncesiOverflow: string | null = null;
+
+function kaydirmaKilidiAl(kimlik: symbol): void {
+  if (KILIT_YIGINI.length === 0) {
+    kilitOncesiOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+  }
+  KILIT_YIGINI.push(kimlik);
+}
+
+function kaydirmaKilidiBirak(kimlik: symbol): void {
+  const sira = KILIT_YIGINI.lastIndexOf(kimlik);
+  if (sira < 0) return;
+  KILIT_YIGINI.splice(sira, 1);
+  if (KILIT_YIGINI.length > 0) return;
+  document.body.style.overflow = kilitOncesiOverflow ?? "";
+  kilitOncesiOverflow = null;
+}
+
 export interface ModalA11yOptions {
   open: boolean;
   onClose: () => void;
@@ -165,14 +213,13 @@ export function useModalA11y({
 
     document.addEventListener("keydown", onKeyDown);
 
-    const previousOverflow = document.body.style.overflow;
-    if (lockScroll) document.body.style.overflow = "hidden";
+    if (lockScroll) kaydirmaKilidiAl(kimlik);
 
     return () => {
       const sira = MODAL_YIGINI.lastIndexOf(kimlik);
       if (sira >= 0) MODAL_YIGINI.splice(sira, 1);
       document.removeEventListener("keydown", onKeyDown);
-      if (lockScroll) document.body.style.overflow = previousOverflow;
+      if (lockScroll) kaydirmaKilidiBirak(kimlik);
       returnFocusRef.current?.focus();
     };
     // `onClose` BİLEREK yok: ref üzerinden okunuyor (yukarıdaki nota bak).

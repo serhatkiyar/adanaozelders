@@ -201,12 +201,33 @@ export function useKirliFormBekcisi<TFieldValues extends FieldValues>({
   // değildir. Yeniden sormak da yanlış olurdu — kullanıcı bir şey yapmadı.
   const hedefRef = useRef(hedef);
   hedefRef.current = hedef;
+  //
+  // ── MANDAL HER MONTAJDA İNDİRİLİR (TB-72) ──
+  //
+  // `sokulduRef` yalnız kaldırılıyor, hiç indirilmiyordu. React 18
+  // `StrictMode` geliştirmede her efekti **mount → cleanup → mount**
+  // sırasıyla iki kez koşturur: ilk cleanup mandalı kaldırıyor, ikinci mount
+  // onu indirmediği için bileşen ayaktayken bile "söküldüm" diyordu. Sonuç:
+  // aşağıdaki onay dalında `kapat()` HİÇ çağrılmıyordu — kullanıcı "Çık"
+  // diyor, istem kapanıyor, düzenleme penceresi ve girdiği veri duruyordu.
+  //
+  // Uygulama `main.tsx`te `<StrictMode>` içinde koşar, yani bu geliştirme
+  // ortamında CANLI bir kusurdu; testler görmüyordu çünkü RTL `render()`i
+  // çıplak (StrictMode'suz) kullanıyorlardı. Nöbetçi artık `StrictMode`
+  // içinde koşuyor (`cikPencereyiKapatir.test.tsx`).
+  //
+  // Mandal ayrıca gerçek bir söküp-yeniden-kurma döngüsünde de doğru
+  // davranmalıdır (Fast Refresh, Suspense, `key` değişimi): "söküldü" durumu
+  // bir bileşen örneğinin ÖMRÜNE aittir, kalıcı bir damga değildir.
   useEffect(
-    () => () => {
-      sokulduRef.current = true;
-      if (!bekleyenRef.current) return;
-      bekleyenRef.current = false;
-      document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+    () => {
+      sokulduRef.current = false;
+      return () => {
+        sokulduRef.current = true;
+        if (!bekleyenRef.current) return;
+        bekleyenRef.current = false;
+        document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+      };
     },
     []
   );

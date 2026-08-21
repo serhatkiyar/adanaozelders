@@ -1161,29 +1161,37 @@ belgelerde geçiyor ve kaydırmak onları sessizce yanlış kayda bağlardı.
 | **Neden ertelendi** | Tur "yalnız ölç, düzeltme onay bekle" talimatıyla açıldı |
 | **Sonraki adım** | (a) `sort=rating` ile varsayılanı ayır (ör. rating dalında `rating_count > 0` şartı ya da puanı olmayanları sona atan bir sıralama); `newest` bağını `id DESC` yerine gerçek bir zaman alanına bağla. (b) `StorePage`'i `useUrlDurumu`ya taşı (bugün yalnız `/yonetim/*` ekranları kullanıyor): `sort` URL'den okunsun ve `isFiltering`e girsin. (c) Boş üst kategorileri vitrinden ele (bkz. TB-73 ile aynı sınıf). Nöbetçi: iki kuşağın **kesişimi** üzerinde bir iddia — "aynı sıralamayı iki farklı ad altında sunma" |
 
-## TB-71 · `AuthModal` çift monte ediliyor → `/magaza` ve public sayfalarda kaydırma kalıcı kilitleniyor
+<!-- Kapanma notu (İP-A9): **TB-71** ("`AuthModal` çift monte ediliyor →
+     kaydırma kalıcı kilitleniyor") ve **TB-72** ("Kirli form bekçisinde 'Çık'
+     pencereyi kapatmıyor") KAPANDI ve dosyanın kendi kuralı gereği SİLİNDİ.
+
+     TB-71: `StoreLayout` (2 yer) ve `PublicShell`'deki kopyalar kaldırıldı —
+     `App.tsx` zaten her rotada bir kez render ediyor. Ayrıca kaydırma kilidi
+     SAYACA bağlandı (`hooks/useModalA11y.ts` → `KILIT_YIGINI`; ilk giren
+     kilitler, son çıkan sayfanın KENDİ overflow değerini geri verir). Nöbetçi:
+     `hooks/kaydirmaKilidi.test.tsx` (LIFO DIŞI kapanma dahil 6 senaryo) +
+     `__guards__/authModalTekMontaj.test.ts` (AST ile tek montaj) + gerçek
+     Chrome turu `frontend/scripts/ip_a9_tur.mjs` (3/3 tur temiz).
+
+     TB-72: kök, sanılan yerde değildi. `kirliFormBekcisi`'nin `sokulduRef`
+     mandalı sökülünce kaldırılıyor ama YENİDEN MONTAJDA indirilmiyordu;
+     React 18 `StrictMode` (uygulama `main.tsx`te onunla koşuyor) her efekti
+     mount→cleanup→mount yaptığı için mandal ilk andan itibaren kalkıktı ve
+     onay dalındaki `kapat()` HİÇ çağrılmıyordu. Testler görmüyordu çünkü RTL
+     `render()`i StrictMode'suz kullanıyorlardı. Nöbetçi:
+     `ui2/cikPencereyiKapatir.test.tsx` (dört kapatma yolu × StrictMode) +
+     aynı turun gerçek panel ekranı ayağı. -->
+
+## TB-74 · Tam suite `--sequence.shuffle` altında KARARSIZ (zaman aşımı sınıfı)
 
 | | |
 |---|---|
-| **Bulundu** | Dört konu turu (21 Ağu 2026), Konu 2 — yalnız ÖLÇÜM istendi |
-| **Nerede** | `frontend/src/App.tsx:543` (global) ↔ `frontend/src/pages/store/StoreLayout.tsx:61,109` ve `frontend/src/components/PublicShell.tsx:26` · kilit `frontend/src/hooks/useModalA11y.ts:168-176` |
-| **Sorun** | `<AuthModal />` **hem** `App.tsx`'te `<Routes>`'un dışında (yani HER rotada) **hem** `StoreLayout`/`PublicShell` içinde render ediliyor. İkisi de aynı URL parametresini (`?modal=login`) okuduğu için birlikte açılıyor → **iki `useModalA11y` örneği**. Kilit sayaçsızdır: her örnek açılışta `previousOverflow`u saklar, kapanışta geri yazar. Birinci temizleyici `""`, ikinci temizleyici sakladığı `"hidden"`i geri yazar → `body.style.overflow` **`hidden` olarak KALIR**. Sayfa yenilenene kadar fare tekerleğiyle kaydırma çalışmaz |
-| **Kanıt (gerçek Chrome + CDP)** | `/magaza`, oturum kapalı, arayüzden "Giriş yap" → `[role=dialog]` sayısı **2** → pencere kapatıldıktan sonra `body.style.overflow="hidden"`, kaydırma çubuğu genişliği **15px → 0px** iken `scrollHeight(2110) > innerHeight(788)`. **3/3 turda tekrarlandı.** Sayfa yenilenince düzeliyor |
-| **Kapsam** | `StoreLayout` kullanan 11 sayfa + `PublicShell` kullanan 12 sayfa. Yalnız `App.tsx`'inkinin geçerli olduğu rotalarda (ör. `/`) sorun YOK — ölçüldü: orada 1 örnek, kilit temiz |
-| **Regresyon mu?** | **HAYIR.** `useModalA11y.ts` Medusa merge'inden (8ee17ea) beri **birebir aynı** (`git diff` boş). Merge `MODAL_YIGINI` yığınını EKLEDİ ama yalnız klavye (ESC) için — kaydırma kilidi yığına hiç bağlanmadı. Kusur merge'den eskidir |
-| **Neden sessiz** | Kapanma sırası LIFO olduğunda kilit temiz kalkıyor; sızıntı yalnız iki örneğin ayrı commit'lerde monte olduğu yolda (uygulama içi gezinme) doğuyor. Tam sayfa yüklemesiyle `?modal=login` açmak ölçümde TEMİZ çıktı — hatayı aramak için doğru yolu bulmak gerekiyordu |
-| **Neden ertelendi** | Tur "yalnız ölç" talimatıyla açıldı |
-| **Sonraki adım** | (a) *Asıl düzeltme*: `AuthModal`ı tek yerde bırak — `App.tsx` zaten global, `StoreLayout`/`PublicShell` kopyaları silinmeli. (b) *Savunma katmanı*: kaydırma kilidini **sayaca** bağla (mevcut `MODAL_YIGINI` kullanılabilir) — ilk giren kilitler, SON çıkan açar; ya da tek bir `useScrollLock` sayacı. Radix/`@medusajs/ui` bunu `body[data-scroll-locked]` sayacıyla zaten doğru yapıyor, örnek orada. (c) Nöbetçi: iki modalı üst üste açıp **LIFO DIŞI** kapatan bir RTL testi + `document.body.style.overflow`un `""`e döndüğü iddiası |
-
-## TB-72 · Kirli form bekçisinde "Çık" pencereyi kapatmıyor (panel)
-
-| | |
-|---|---|
-| **Bulundu** | Dört konu turu (21 Ağu 2026), Konu 2 ölçümünün yan bulgusu |
-| **Nerede** | `frontend/src/components/admin/ui2/kirliFormBekcisi.tsx` ↔ `components/admin/ui2/duzenlemeYuzeyi.tsx` |
-| **Sorun** | Düzenleme yüzeyinde form kirletilip kapatılmak istendiğinde bekçi istemi (Medusa `Prompt`) açılıyor. İstemdeki **"Çık"** düğmesi istemi kapatıyor ama **düzenleme penceresi açık kalıyor** ve girilen değer duruyor. Yani "değişiklikleri at ve çık" eylemi çıkmıyor |
-| **Kanıt (gerçek Chrome + CDP)** | `/yonetim/envanter/hasar` → "Hasara ayır" → `miktar=3` → kapatma → istem → "Çık" → 5 sn sonra hâlâ `[role=dialog]` **görünür**, `miktar` alanı hâlâ `3`, `body.style.overflow` hâlâ `hidden`. **Üç kapatma yolunda da** aynı (× düğmesi, dış tıklama, "Vazgeç" düğmesi) |
-| **Etkisi** | Yalnız panel (ADMIN/operatör) yüzeyi — son kullanıcı görmüyor, bu yüzden öncelik düşük. Kullanıcı pencereyi ikinci kez kapatmayı denerse istem tekrar açılıyor (döngü); kaydırma kilidi de pencere kapanana dek kalkmıyor |
-| **Neden sessiz** | `kirliFormBekcisi`'nin testleri istemin AÇILDIĞINI doğruluyor; "Çık"tan SONRA pencerenin kapandığını doğrulayan bir düğüm yok |
-| **Neden ertelendi** | Turun kapsamı kamuya açık yüzeydeki kaydırma kilidiydi (kullanıcı önceliği açıkça oraya verdi) |
-| **Sonraki adım** | `duzenlemeYuzeyi`'nin `kapatmayiDene` → onay yolunu izle: onay geldiğinde `kapat()` gerçekten çağrılıyor mu, yoksa yalnız istem state'i mi sıfırlanıyor? Nöbetçi: RTL ile kirli form → kapat → "Çık" → `queryByRole("dialog")` **null**. Mutasyon: onay dalından `kapat()` çağrısını kaldır, testin kırıldığını göster |
+| **Bulundu** | İP-A9 kapısı (21-22 Ağu 2026). **İP-A9 kaynaklı DEĞİL** — HEAD'de de üretiliyor |
+| **Nerede** | `frontend/vitest.config.ts` (`testTimeout: 9000`) ↔ `src/pages/admin/adminRezervasyonFiltre.acceptance.test.tsx` (iki test) · `pages/dashboards/adminStoreDalAdlari` · `adminStoreBolme` · `adminKataloglarGoc` · `operatorPanel` · `ticketsPaymentGate` |
+| **Sorun** | Karışık sırada tam suite koşumları koşumdan koşuma FARKLI testlerde düşüyor ve düşüşlerin hepsi `Test timed out in 9000ms` — assertion hatası yok. Aynı testler tek başına koşturulunca 3/3 geçiyor. Bütçe İP-12 FAZ 0'da **756 test / en yavaş test 2.959 ms** ölçülerek seçilmişti (tepe × 3.04). Suite o günden bu yana **1747 teste** çıktı ve tam koşumda ölçülen tepe artık **6.453 ms** — yani marj 3.04 kattan **1.39 kata** düştü. Bütçe eskimiş; kırmızı/yeşil sinyali yeniden makine yüküne bağlanmış durumda (TB-23'ün kapatıldığı kusurun ta kendisi, yeni ölçekte) |
+| **Ölçüm** | Sıralı (shuffle'sız) tam koşum: **1761/1761 yeşil**. Karışık sıra, İP-A9 ağacı: 7001→1, 7013→3, 7027→3, 7043→**0**, 7059→1, 7071→3 düşük. **HEAD (İP-A9'un hiçbir dosyası yokken), tohum 7001 → 2 düşük** (aynı iki `adminRezervasyonFiltre` testi). İP-A9'un yalnız üretim değişiklikleriyle (yeni test dosyaları hariç) sıralı tam koşum: 152/152 dosya, 1747/1747 test yeşil |
+| **Etkisi** | Kapı sinyali güvenilmez: gerçek bir regresyon "yine flake" diye elenebilir, ya da temiz bir paket kırmızıyla dönebilir. CI sıralı koştuğu için bugün CI'yı kırmıyor — ama karışık sıra kapısı bu hâliyle KANIT ÜRETMİYOR |
+| **Neden sessiz** | Sıralı koşum yeşil; kararsızlık yalnız karışık sırada ve yük altında doğuyor |
+| **Neden ertelendi** | İP-A9 kapsamı iki canlı kusurla sınırlıydı ("kapsam dar, ekran göçü yok"); düzeltme yabancı paketlerin ağır kabul testlerini ya da suite genelinde işçi paralelliğini değiştirmeyi gerektirir |
+| **Sonraki adım** | (a) `vitest.config.ts`teki bütçeyi İP-12'deki yöntemle YENİDEN ÖLÇ (boşta makinede `--testTimeout=60000` ile tam koşum → gerçek tepe → tepe × ~3). (b) Tepe testleri incele: `adminRezervasyonFiltre`'nin iki testi 30 kayıtlık `DataTable` basıyor (dosya kendi içinde "bu dosyanın en yavaş testi: 4.459 ms" diye kayıtlı). (c) `poolOptions.threads.maxThreads` ile aşırı-abonelik ölçülsün — kararsızlığın gözlenen tetikleyicisi CPU çekişmesi. **Bütçeyi ölçmeden büyütmek YASAK** (config dosyasının kendi kuralı) |
+| **Not** | Aynı taramada bir belge kusuru görüldü: **TB-70'in "Sonraki adım" satırı tanımı olmayan bir `TB-73`e atıf yapıyor.** Kimlik hiç açılmamış; bu yüzden yeni kayıt TB-74 alındı |

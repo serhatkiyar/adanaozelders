@@ -4,12 +4,17 @@ import { ROUTES } from "@/lib/routes";
 import { SITE_NAME } from "@/lib/seo";
 import { useCartStore } from "@/store/cartStore";
 import { useSurfaceStore } from "@/store/surfaceStore";
-import { AuthModal } from "@/components/AuthModal";
 import { StoreCategoryBar } from "@/components/store/StoreCategoryBar";
 import { StoreAccountMenu } from "@/components/store/StoreAccountMenu";
 import { StoreSearch } from "@/components/store/StoreSearch";
 import { SiteFooter } from "@/components/SiteFooter";
 
+// `<AuthModal />` BU DOSYADA YOKTUR ve eklenmemelidir (TB-71): `App.tsx` onu
+// her rotada bir kez render eder. İkinci bir kopya aynı `?modal=login`
+// parametresini okuyup birlikte açılır; iki kaydırma kilidi LIFO dışı
+// kapandığında `body.style.overflow` `hidden` kalır ve mağaza sayfası
+// yenilenene dek kaydırılamaz (gerçek Chrome'da 3/3 turda ölçüldü).
+//
 // Header, ana site navbar'ıyla aynı max-width'i kullanır (max-w-screen-2xl) — geniş
 // ekranlarda logo sol kenarı ana site logosuyla hizalı kalsın diye.
 const HEADER_CONTAINER = "mx-auto max-w-screen-2xl px-4 md:px-8";
@@ -58,7 +63,6 @@ export function StoreLayout({
           </div>
         </header>
         <main className="w-full flex-1 pb-12">{children}</main>
-        <AuthModal />
       </div>
     );
   }
@@ -105,8 +109,6 @@ export function StoreLayout({
           eski footer'ındaki "Gizlilik Şartları" ve "Kullanıcı Sözleşmesi"
           linkleri aynı hedeflere legalNav başlıklarıyla taşındı. */}
       <SiteFooter />
-
-      <AuthModal />
     </div>
   );
 }

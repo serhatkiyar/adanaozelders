@@ -1,0 +1,203 @@
+{
+  "sonuc": {
+    "tb71": [
+      {
+        "tur": 1,
+        "acikken": {
+          "dialogSayisi": 1,
+          "overflow": "hidden",
+          "hesaplananOverflow": "hidden",
+          "scrollHeight": 2112,
+          "innerHeight": 704,
+          "kaydirilabilir": true
+        },
+        "kapandiktanSonra": {
+          "dialogSayisi": 0,
+          "overflow": "",
+          "hesaplananOverflow": "visible",
+          "scrollHeight": 2112,
+          "innerHeight": 704,
+          "kaydirilabilir": true
+        },
+        "kaydirmaSonrasiScrollY": 400
+      },
+      {
+        "tur": 2,
+        "acikken": {
+          "dialogSayisi": 1,
+          "overflow": "hidden",
+          "hesaplananOverflow": "hidden",
+          "scrollHeight": 2112,
+          "innerHeight": 704,
+          "kaydirilabilir": true
+        },
+        "kapandiktanSonra": {
+          "dialogSayisi": 0,
+          "overflow": "",
+          "hesaplananOverflow": "visible",
+          "scrollHeight": 2112,
+          "innerHeight": 704,
+          "kaydirilabilir": true
+        },
+        "kaydirmaSonrasiScrollY": 400
+      },
+      {
+        "tur": 3,
+        "acikken": {
+          "dialogSayisi": 1,
+          "overflow": "hidden",
+          "hesaplananOverflow": "hidden",
+          "scrollHeight": 2112,
+          "innerHeight": 704,
+          "kaydirilabilir": true
+        },
+        "kapandiktanSonra": {
+          "dialogSayisi": 0,
+          "overflow": "",
+          "hesaplananOverflow": "visible",
+          "scrollHeight": 2112,
+          "innerHeight": 704,
+          "kaydirilabilir": true
+        },
+        "kaydirmaSonrasiScrollY": 400
+      }
+    ],
+    "tb72": [
+      {
+        "yol": "Vazgeç düğmesi",
+        "istem": {
+          "yuzeyAcik": true,
+          "dialogSayisi": 1,
+          "alertdialogSayisi": 1,
+          "pencereGorunur": true,
+          "miktar": "3",
+          "overflow": "hidden",
+          "bodyPointerEvents": "none"
+        },
+        "sonra": {
+          "yuzeyAcik": false,
+          "dialogSayisi": 0,
+          "alertdialogSayisi": 0,
+          "pencereGorunur": false,
+          "miktar": null,
+          "overflow": "",
+          "bodyPointerEvents": "auto"
+        }
+      },
+      {
+        "yol": "ESC",
+        "istem": {
+          "yuzeyAcik": true,
+          "dialogSayisi": 1,
+          "alertdialogSayisi": 1,
+          "pencereGorunur": true,
+          "miktar": "3",
+          "overflow": "hidden",
+          "bodyPointerEvents": "none"
+        },
+        "sonra": {
+          "yuzeyAcik": false,
+          "dialogSayisi": 0,
+          "alertdialogSayisi": 0,
+          "pencereGorunur": false,
+          "miktar": null,
+          "overflow": "",
+          "bodyPointerEvents": "auto"
+        }
+      },
+      {
+        "yol": "dış tıklama",
+        "istem": {
+          "yuzeyAcik": true,
+          "dialogSayisi": 1,
+          "alertdialogSayisi": 1,
+          "pencereGorunur": true,
+          "miktar": "3",
+          "overflow": "hidden",
+          "bodyPointerEvents": "none"
+        },
+        "sonra": {
+          "yuzeyAcik": false,
+          "dialogSayisi": 0,
+          "alertdialogSayisi": 0,
+          "pencereGorunur": false,
+          "miktar": null,
+          "overflow": "",
+          "bodyPointerEvents": "auto"
+        }
+      },
+      {
+        "yol": "gerçek ekran · Vazgeç düğmesi",
+        "istem": {
+          "yuzeyAcik": false,
+          "dialogSayisi": 1,
+          "alertdialogSayisi": 1,
+          "pencereGorunur": true,
+          "miktar": "3",
+          "overflow": "hidden",
+          "bodyPointerEvents": "none"
+        },
+        "sonra": {
+          "yuzeyAcik": false,
+          "dialogSayisi": 0,
+          "alertdialogSayisi": 0,
+          "pencereGorunur": false,
+          "miktar": null,
+          "overflow": "",
+          "bodyPointerEvents": "auto"
+        }
+      },
+      {
+        "yol": "gerçek ekran · ESC",
+        "istem": {
+          "yuzeyAcik": false,
+          "dialogSayisi": 1,
+          "alertdialogSayisi": 1,
+          "pencereGorunur": true,
+          "miktar": "3",
+          "overflow": "hidden",
+          "bodyPointerEvents": "none"
+        },
+        "sonra": {
+          "yuzeyAcik": false,
+          "dialogSayisi": 0,
+          "alertdialogSayisi": 0,
+          "pencereGorunur": false,
+          "miktar": null,
+          "overflow": "",
+          "bodyPointerEvents": "auto"
+        }
+      },
+      {
+        "yol": "gerçek ekran · dış tıklama",
+        "istem": {
+          "yuzeyAcik": false,
+          "dialogSayisi": 1,
+          "alertdialogSayisi": 1,
+          "pencereGorunur": true,
+          "miktar": "3",
+          "overflow": "hidden",
+          "bodyPointerEvents": "none"
+        },
+        "sonra": {
+          "yuzeyAcik": false,
+          "dialogSayisi": 0,
+          "alertdialogSayisi": 0,
+          "pencereGorunur": false,
+          "miktar": null,
+          "overflow": "",
+          "bodyPointerEvents": "auto"
+        }
+      }
+    ],
+    "tb71Baslangic": {
+      "dialogSayisi": 0,
+      "overflow": "",
+      "hesaplananOverflow": "visible",
+      "scrollHeight": 2112,
+      "innerHeight": 704,
+      "kaydirilabilir": true
+    }
+  },
+  "sorunlar": []
+}

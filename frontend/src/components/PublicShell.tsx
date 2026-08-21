@@ -1,10 +1,15 @@
 import { type ReactNode } from "react";
 import { PublicNavbar } from "@/components/PublicNavbar";
-import { AuthModal } from "@/components/AuthModal";
 import { SiteFooter } from "@/components/SiteFooter";
 
 // Not: sayfa başlığı/meta artık merkezî `<Seo />` (react-helmet-async) ile
 // yönetilir; shell document.title'a dokunmaz (çift yönetim/flicker önlenir).
+//
+// `<AuthModal />` BURADA YOKTUR ve eklenmemelidir (TB-71): `App.tsx` onu
+// `<Routes>`un DIŞINDA, yani her rotada bir kez render eder. Kabuğa ikinci
+// bir kopya koymak aynı `?modal=login` parametresini iki örneğe okutur;
+// ikisi birlikte açılır ve kaydırma kilidi LIFO dışı kapanmada sayfada
+// kalırdı.
 export function PublicShell({
   children,
   center,
@@ -23,7 +28,6 @@ export function PublicShell({
       <PublicNavbar center={center} bottom={bottom} expanded />
       <main className="flex-1 p-4 sm:p-6">{children}</main>
       <SiteFooter />
-      <AuthModal />
     </div>
   );
 }
