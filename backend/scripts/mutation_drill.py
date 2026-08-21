@@ -1730,10 +1730,15 @@ MUTASYONLAR: list[Mutasyon] = [
         ("tests/integration/test_supplier_sync_pg.py",),
     ),
     Mutasyon(
+        # Desen BİLEREK dar: `require_admin_permission("suppliers.manage")`
+        # dört uçta geçiyor ve sürücü belirsiz deseni (doğru biçimde) reddetti.
+        # Hedef AYAR ucudur — token'ın girildiği yer.
         "S4", "ayar ucundan suppliers.manage kaldirildi",
         "backend/api/routers/supplier.py",
-        'require_admin_permission("suppliers.manage")',
-        'require_admin_permission("suppliers.view")',
+        """    payload: SupplierSettingsIn,
+    admin: Admin = Depends(require_admin_permission("suppliers.manage")),""",
+        """    payload: SupplierSettingsIn,
+    admin: Admin = Depends(require_admin_permission("suppliers.view")),""",
         ("tests/integration/test_supplier_http_pg.py",),
     ),
     Mutasyon(
