@@ -54,3 +54,6 @@ frontend/vite.config.d.ts
 backend/scripts/data/
 frontend/ip19-kabul/
 frontend/ip19-kabul-log.txt
+
+# Tedarikçi turu çıktısı (ekran görüntüleri + Chrome profili) — üretilmiş veri.
+docs/tedarikci-tur/

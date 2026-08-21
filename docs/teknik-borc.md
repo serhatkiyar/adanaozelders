@@ -1222,3 +1222,17 @@ belgelerde geçiyor ve kaydırmak onları sessizce yanlış kayda bağlardı.
 | **Ara önlem (BUGÜN AKTİF)** | `BIRIM_ADET_DEGIL` bayrağı her böyle satırda konur ve panelde "Birim adet değil" uyarısı olarak görünür; birim adı stok sayısının yanında **her zaman** gösterilir ("12,5 Düzine"). Yani yönetici bağlamadan önce görüyor |
 | **Sonraki adım** | Faz 2: (a) bağlama diyaloğunda "1 mağaza ürünü = kaç tedarikçi birimi" alanı (`link_multiplier`); (b) uygunluk ve marj o çarpanla hesaplansın; (c) çarpan girilmeden `BIRIM_ADET_DEGIL` bir satırın **otomatik** bağlanması engellensin (bugün bağlanıyor, yalnız bayraklanıyor). Nöbetçi: düzine ürününde 1 adet siparişin doğru tedarikçi adedine çevrildiği bir PG testi |
 
+
+## TB-77 · Tedarikçiden temin edilen üründe teslim tarihi SÖYLENEMİYOR
+
+| | |
+|---|---|
+| **Bulundu** | Tedarikçi senkronu Faz 1, **gerçek tarayıcı turunda** (22 Ağu 2026). Ekran görüntüsü: rafta olmayan ürün için "Cıncık Teslimat · **bugün kapında**" yazıyordu |
+| **Nerede** | `frontend/src/components/store/DeliveryPromiseBadge.tsx` (stok/karşılanma girdisi ALMIYOR) ↔ `backend/services/delivery_promise.py` (sözü yalnız 16:00 cutoff'undan üretir) ↔ `pages/store/ProductDetailPage.tsx` |
+| **Sorun** | Söz stoktan bağımsız hesaplanıyor. Bu, tedarikçi katmanından ÖNCE sorun değildi: rafta olmayan ürün satın alınamıyordu, rozet hiç görünmüyordu. Artık `supplier_backed` bir ürün kendi stoğu 0 iken satılabiliyor ve aynı rozet "bugün kapında" diyor — oysa mal önce Yıldırım'dan getirilecek |
+| **Etkisi** | Tutulamayacak söz. Müşteri aynı gün bekler, gelmez; teslimat operasyonunun bütün güven söylemi ("Güven Sözleşmesi") bu sözün tutulmasına dayanıyor |
+| **Neden sessiz** | Hiçbir hata çıkmaz. Söz teknik olarak "hesaplanıyor" ve doğru cutoff'u kullanıyor; yanlış olan GİRDİSİ |
+| **Ara önlem (BUGÜN AKTİF)** | `fulfillment === "SUPPLIER"` iken aynı gün sözü **GİZLENİR**; yerine nötr "Tedarikçiden temin edilir; teslim tarihi sipariş sonrası bildirilir." satırı basılır. Bilmediğimiz bir tarihi yazmak, yanlış sözü başka bir yanlış sözle değiştirmek olurdu |
+| **Neden tam çözülmedi** | Doğru söz **Yıldırım'ın hazırlık/teslim süresini** gerektiriyor ve o süre BİLİNMİYOR (rapor §4, açık konu 1: "depoya gidildiğinde sorulacak"). Üstelik 1.000 TL minimum sipariş kuralı tekil siparişi imkânsız kılıyor: gerçek süre "kaç günde bir depoya gidiliyor"a bağlı, yani bir OPERASYON kararı |
+| **Sonraki adım** | (a) Yıldırım'ın hazırlık süresi ve bizim depoya gidiş ritmimiz netleşsin; (b) `Supplier.lead_time_days` (+ opsiyonel ürün bazlı ezme) alanı; (c) `delivery_promise` karşılanma kaynağını girdi olarak alsın ve tedarikçi kaleminde `söz = cutoff günü + lead_time` versin; (d) sepette karışık kalem varsa (raftan + tedarikçiden) söz EN GEÇ kaleme göre kurulsun — parçalı teslimat yoksa. Nöbetçi: tedarikçi kaleminde aynı gün sözünün ÜRETİLMEDİĞİNİ doğrulayan bir test |
+| **Not** | Kusuru statik analiz değil, GERÇEK TARAYICI TURU buldu; RTL testleri rozeti hiç render etmiyordu. Kök `CLAUDE.md` § F'nin ("gerçek tarayıcı gereken yerde mock yetmez") somut karşılığı |

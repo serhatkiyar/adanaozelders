@@ -130,6 +130,13 @@ class Sayfa {
   }
   async git(url) {
     await this.gonder("Page.navigate", { url });
+    // Gezinmenin gerçekten olduğunu doğrula: yanlış hedefe bağlanınca
+    // `Page.navigate` sessizce hiçbir şey yapmıyordu.
+    for (let i = 0; i < 40; i++) {
+      const su = await this.eval(() => location.href);
+      if (su && su !== "about:blank") break;
+      await new Promise((r) => setTimeout(r, 250));
+    }
     for (let i = 0; i < 160; i++) {
       if (await this.eval(() => document.readyState === "complete")) break;
       await new Promise((r) => setTimeout(r, 250));
@@ -161,6 +168,27 @@ class Sayfa {
 
 const bekle = (ms) => new Promise((r) => setTimeout(r, ms));
 
+/**
+ * Bir seçici GÖRÜNENE kadar bekler (en fazla `sn` saniye).
+ *
+ * Sabit `setTimeout` YETMEZ: panel `React.lazy` ile kod-bölünmüş, `/me`
+ * çözülmesini bekliyor ve React Query iki istek atıyor. İlk koşumda 1200 ms
+ * yetmedi ve tur "panel açılmadı" dedi — oysa panel açılıyordu, ekran
+ * görüntüsünde yükleme dönencesi vardı. Sabit beklemeye bahis oynamak,
+ * makine yüküne bağlı KARARSIZ bir tur demektir.
+ */
+async function bekleGorunur(s, secici, sn = 25) {
+  for (let i = 0; i < sn * 4; i++) {
+    const var_mi = await s.eval(
+      (sec) => !!document.querySelector(sec),
+      secici
+    );
+    if (var_mi) return true;
+    await bekle(250);
+  }
+  return false;
+}
+
 /** Görünür, metnini içeren öğenin merkezi. */
 const merkezIceren = (secici, metin) => {
   const kucuk = metin.toLocaleLowerCase("tr");
@@ -184,8 +212,24 @@ function kaydet(ad, gecti, not = "") {
 async function main() {
   mkdirSync(OUT, { recursive: true });
   const chrome = await chromeBaslat();
+  // Hedef listesinin İLK kaydı sayfa OLMAYABİLİR: Chrome bileşen
+  // uzantılarının arka plan sayfaları (`chrome-extension://…/background.html`)
+  // da listeleniyor ve bu makinede listenin başında geliyorlar. `hedefler[0]`
+  // demek, bütün turu bir uzantı bağlamında koşturmak demekti — sayfa hiç
+  // gezinmiyor, `fetch` uzantı kökeninden çıkıp CORS'a takılıyor ve hata
+  // "Failed to fetch" diye görünüyordu. Kök neden ancak `location.href`
+  // yoklanınca ortaya çıktı.
   const hedefler = await (await fetch(`http://127.0.0.1:${PORT}/json/list`)).json();
-  const ws = new WebSocket(hedefler[0].webSocketDebuggerUrl);
+  const sayfa = hedefler.find(
+    (h) => h.type === "page" && !String(h.url).startsWith("chrome-extension://")
+  );
+  if (!sayfa) {
+    throw new Error(
+      "Gezilebilir sayfa hedefi yok — listelenen: " +
+        hedefler.map((h) => `${h.type}:${h.url}`).join(", ")
+    );
+  }
+  const ws = new WebSocket(sayfa.webSocketDebuggerUrl);
   await new Promise((r) => (ws.onopen = r));
   const s = new Sayfa(ws);
   await s.gonder("Page.enable");
@@ -197,21 +241,30 @@ async function main() {
     await s.git(`${FRONTEND}/giris`);
     await s.eval(
       async (eposta, sifre, taban) => {
+        // Login ucu OAuth2 FORM'u ister (`OAuth2PasswordRequestForm`), JSON
+        // değil — JSON gönderen bir istemci 422 alır ve alan adı `username`'dir.
+        const govde = new URLSearchParams({ username: eposta, password: sifre });
         const r = await fetch(`${taban}/api/v1/auth/login`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
           credentials: "include",
-          body: JSON.stringify({ email: eposta, password: sifre }),
+          body: govde.toString(),
         });
         const d = await r.json();
         if (!r.ok) throw new Error("giriş başarısız: " + JSON.stringify(d));
-        // Uygulamanın kendi deposu (zustand persist) — gerçek kabuk bunu okur.
-        const durum = {
-          state: { token: d.access_token, user: d.user, rememberMe: true },
+        // Uygulamanın KENDİ deposu. Anahtar ve şekil `store/authStore.ts`'ten
+        // birebir alınmalı: `persist({ name: "adana-auth", partialize: token })`.
+        // Uydurulmuş bir anahtar sessizce yok sayılır ve oturum açılmamış
+        // görünür — ilk koşumda tam olarak bu oldu ("adana-auth" yerine
+        // "auth-storage" yazılmıştı).
+        localStorage.setItem("adana-auth", JSON.stringify({
+          state: { token: d.access_token },
           version: 0,
-        };
-        localStorage.setItem("auth-storage", JSON.stringify(durum));
-        return true;
+        }));
+        // "Beni hatırla" bayrağı: `switchingStorage` buna bakarak localStorage
+        // ile sessionStorage arasında seçim yapıyor.
+        localStorage.setItem("adana-remember", "1");
+        return d.access_token ? "ok" : "token yok";
       },
       EPOSTA,
       SIFRE,
@@ -221,12 +274,14 @@ async function main() {
     // ── A · Panel gerçekten açılıyor mu ──
     s.istekler.length = 0;
     await s.git(`${FRONTEND}/yonetim/magaza/tedarikci`);
-    await bekle(1200);
+    const panelVar = await bekleGorunur(s, '[data-testid="tedarikci-durum"]');
+    await bekle(800); // listeler de otursun
     await s.ss(join(OUT, "A-panel.png"));
-    const panelVar = await s.eval(
-      () => !!document.querySelector('[data-testid="tedarikci-durum"]')
+    kaydet(
+      "A · tedarikçi paneli açıldı",
+      panelVar,
+      panelVar ? "" : await s.eval(() => document.body.innerText.slice(0, 120))
     );
-    kaydet("A · tedarikçi paneli açıldı", panelVar);
 
     const listeIstegi = s.istekler.find(
       (i) => i.url.includes("/store/admin/suppliers") && i.method === "GET"
@@ -239,18 +294,36 @@ async function main() {
 
     // ── C · Token kutusu boş ──
     const tokenBos = await s.eval(() => {
-      const alanlar = [...document.querySelectorAll("textarea, input")];
-      const kutu = alanlar.find((a) =>
-        (a.getAttribute("aria-label") || a.id || a.name || "")
-          .toLowerCase()
-          .includes("token")
+      // Alan `<label htmlFor>` ile etiketli (ui2 Form deseni) — ilk sürüm
+      // yalnız `aria-label`/`id`/`name` bakıyordu ve kutuyu BULAMIYORDU.
+      // "Bulamadım" ile "boş" aynı şey değildir: birincisinde test hiçbir şey
+      // ölçmemiş olur.
+      const etiket = [...document.querySelectorAll("label")].find((l) =>
+        /api token/i.test(l.textContent || "")
       );
-      return kutu ? kutu.value === "" : null;
+      let kutu = null;
+      if (etiket) {
+        const id = etiket.getAttribute("for");
+        kutu = id ? document.getElementById(id) : etiket.querySelector("textarea, input");
+      }
+      if (!kutu) {
+        kutu = [...document.querySelectorAll("textarea, input")].find((a) =>
+          /token/i.test(
+            (a.getAttribute("aria-label") || "") + (a.id || "") + (a.name || "") +
+              (a.placeholder || "")
+          )
+        );
+      }
+      return kutu ? { bos: kutu.value === "", etiketli: !!etiket } : null;
     });
     kaydet(
       "C · token kutusu ön-doldurulmadı (D-5)",
-      tokenBos === true,
+      tokenBos !== null && tokenBos.bos === true,
       tokenBos === null ? "token kutusu bulunamadı" : ""
+    );
+    kaydet(
+      "C3 · token kutusunun ERİŞİLEBİLİR etiketi var",
+      tokenBos !== null && tokenBos.etiketli === true
     );
     const tokenSizdi = await s.eval(() =>
       /eyJhbG[A-Za-z0-9_-]{6,}/.test(document.body.innerText)
@@ -273,7 +346,8 @@ async function main() {
     // ── E · Vitrin: temin edilen ürün "stokta" ──
     if (SLUG) {
       await s.git(`${FRONTEND}/magaza/urun/${SLUG}`);
-      await bekle(1000);
+      await bekleGorunur(s, "h1");
+      await bekle(700);
       await s.ss(join(OUT, "E-vitrin-detay.png"));
       const tukendiYok = await s.eval(
         () => !/tükendi/i.test(document.body.innerText)

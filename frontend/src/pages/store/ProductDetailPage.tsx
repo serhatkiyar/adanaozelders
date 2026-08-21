@@ -449,8 +449,45 @@ export default function ProductDetailPage() {
 
             {/* Teslimat & satıcı — kutu yok, saç-teli ayraçlı, yalnız gerçek bilgi */}
             <div className="mt-8 space-y-3 border-t border-slate-100 pt-6 text-sm dark:border-slate-800">
-              {product.kind === "PHYSICAL" ? (
+              {/*
+                Tedarikçiden temin edilen üründe AYNI GÜN sözü VERİLMEZ.
+
+                `DeliveryPromiseBadge` sözü yalnız 16:00 cutoff'undan üretir;
+                stoğu hiç bilmez. Bu, tedarikçi katmanından ÖNCE sorun
+                değildi: rafta olmayan ürün zaten satın alınamıyordu ve rozet
+                hiç görünmüyordu. Artık görünebiliyor ve "bugün kapında"
+                diyor — oysa mal Yıldırım'dan getirilecek.
+
+                Yıldırım'ın hazırlık/teslim süresi HENÜZ BİLİNMİYOR (rapor
+                §4 açık konu 1) ve 1.000 TL minimum sipariş kuralı toplu alım
+                gerektiriyor. Doğru süreyi bilmeden bir gün yazmak, yanlış
+                sözü başka bir yanlış sözle değiştirmek olurdu; bu yüzden söz
+                GİZLENİR ve yukarıdaki nötr tedarikçi notu tek başına kalır.
+                Borç: TB-77.
+              */}
+              {product.kind === "PHYSICAL" && product.fulfillment !== "SUPPLIER" ? (
                 <DeliveryPromiseBadge />
+              ) : product.kind === "PHYSICAL" ? (
+                <div className="flex items-start gap-2.5 text-slate-600 dark:text-slate-300">
+                  <svg
+                    className="mt-0.5 shrink-0 text-slate-400"
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                  >
+                    <rect x="1" y="3" width="15" height="13" rx="1.5" />
+                    <path d="M16 8h4l3 3v5h-7z" />
+                    <circle cx="5.5" cy="18.5" r="2" />
+                    <circle cx="18.5" cy="18.5" r="2" />
+                  </svg>
+                  <span>
+                    Tedarikçiden temin edilir; teslim tarihi sipariş sonrası
+                    bildirilir.
+                  </span>
+                </div>
               ) : (
                 <div className="flex items-start gap-2.5 text-slate-600 dark:text-slate-300">
                   <svg className="mt-0.5 shrink-0 text-slate-400" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
