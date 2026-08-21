@@ -287,8 +287,10 @@ const KAPI_KAPSAMI = [
   "src/components/admin/delivery/ClosedDays.tsx",
   "src/components/admin/delivery/ItemLines.tsx",
   "src/components/admin/delivery/bits.tsx",
+  "src/components/admin/layout/AdminKomutPenceresi.tsx",
   "src/components/admin/layout/AdminLayout.tsx",
   "src/components/admin/layout/AdminPageHeader.tsx",
+  "src/components/admin/layout/AdminProfilMenusu.tsx",
   "src/components/admin/layout/AdminSidebar.tsx",
   "src/components/admin/store/BulkImportPanel.tsx",
   "src/components/admin/store/CategoriesPanel.tsx",
@@ -303,6 +305,7 @@ const KAPI_KAPSAMI = [
   "src/components/admin/ui/Dialog.tsx",
   "src/components/admin/ui/PageState.tsx",
   "src/components/admin/ui2/gezinmeBekcisi.tsx",
+  "src/components/admin/ui2/komutPenceresi.tsx",
   "src/components/admin/ui2/medusa-tr.tsx",
   "src/pages/DeliveryDriver.tsx",
   "src/pages/DeliveryRunHandover.tsx",
@@ -400,6 +403,9 @@ const KONTROLSUZ_EKRANLAR: Record<string, "sunum" | "kabuk" | "pencere-kabugu" |
   "src/components/admin/delivery/bits.tsx": "sunum",
   "src/components/admin/layout/AdminLayout.tsx": "kabuk",
   "src/components/admin/layout/AdminPageHeader.tsx": "kabuk",
+  // İP-B1: profil menüsü KAPALI açılır; tema radyo düğmeleri menü açılınca
+  // doğar. Açık hâli `panelKabugu.test.tsx`te gerçek DOM'da ölçülüyor.
+  "src/components/admin/layout/AdminProfilMenusu.tsx": "kosullu",
   "src/components/admin/layout/AdminSidebar.tsx": "kabuk",
   "src/components/admin/store/ReturnsPanel.tsx": "kosullu",
   "src/components/admin/ui/Badge.tsx": "sunum",
@@ -466,6 +472,30 @@ const ZORUNLU_PROPLAR: Record<string, Record<string, unknown>> = {
   // `adminTutorApproval.acceptance`te açılır (DERIN_KAPI).
   "src/pages/admin/AdminSectionPage.tsx": { section: "listings" },
   "src/pages/dashboards/AdminHome.tsx": { section: "listings" },
+  // ── İP-B1 · komut penceresi: KAPALI hâli `null` render eder ──
+  //
+  // İkisi de propsuz MOUNT OLUR (bu yüzden `KAPI_DISI`'na yazılamazlar: oranın
+  // ters provası "propsuz mount EDİLEMİYOR" der) ama `acik` verilmediğinde
+  // hiçbir düğüm basmazlar ve kapının 2. çıpası ("boş DOM basmadı") haklı
+  // olarak kırılır. Doğru cevap `AdminSectionPage`teki gibi ekranı GERÇEKTEN
+  // render ettirmektir: açıklık bir veri değil, bir kip parametresidir.
+  "src/components/admin/layout/AdminKomutPenceresi.tsx": {
+    acik: true,
+    onAc: () => {},
+    onKapat: () => {},
+  },
+  "src/components/admin/ui2/komutPenceresi.tsx": {
+    acik: true,
+    onKapat: () => {},
+    baslik: "Komut penceresi",
+    aramaEtiketi: "Panelde ara",
+    yerTutucu: "Ara…",
+    sorgu: "",
+    onSorgu: () => {},
+    gruplar: [],
+    etkin: 0,
+    onEtkin: () => {},
+  },
 };
 
 /**

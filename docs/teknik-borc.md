@@ -319,6 +319,62 @@ yalnız ölçümü ve öneriyi kaydeder.
      kapanan kayıt silindiği için ortada numaralanacak bir borç kalmadı;
      kapanış kanıtı docs/magaza-merge-dogrulama-raporu.md'de durur. -->
 
+## TB-?A · Karışık sıralı tam suite bu makinede 9.000 ms zaman aşımıyla kırmızı düşüyor
+
+| | |
+|---|---|
+| **Bulundu** | İP-B1 (21-22 Ağu 2026), kapı koşumu — altı tohumlu `--sequence.shuffle` |
+| **Nerede** | `frontend/src/pages/admin/adminRezervasyonFiltre.acceptance.test.tsx` · `frontend/src/components/examOturumlariGoc.acceptance.test.tsx` · `frontend/src/pages/dashboards/adminStoreBolme.acceptance.test.tsx` · `frontend/src/pages/dashboards/operatorPanel.acceptance.test.tsx` |
+| **Sorun** | Altı tohumun **altısında** 1-4 test düşüyor ve hepsinin sebebi aynı: `Test timed out in 9000ms`. Düşen küme tohuma göre değişiyor. **Sıralı koşum da bağışık değil**: paketin ortasında iki kez 1728/1728 ve 1730/1730 yeşil ölçüldü, kapanışta yük altındaki üç koşumun ikisinde birer test düştü ve her koşumda BAŞKA bir test (`adminStoreBolme.acceptance` → `adminStoreDalAdlari.acceptance`); ikisi de tek başına koşulduğunda geçiyor |
+| **Neden bu paketin sebebi DEĞİL** | Ölçüldü: bu paketin eklediği test dosyası (`panelKabugu.test.tsx`, 16 test) **kaldırılıp** aynı tohum (31337) yeniden koşuldu — kırmızı sürdü ve **arttı** (2 → 4). Aynı dosyalar tek başlarına, karışık sırayla, üç kez koşuldu: **31/31 yeşil.** Yani kusur yük altındaki zamanlamada, testlerin mantığında değil |
+| **Neden sessiz** | Sıralı koşum (`npm test`, CI'ın bugünkü hâli) bu pencereyi hiç açmıyor |
+| **Neden ertelendi** | Kök, `vitest.config.ts`teki 9.000 ms bütçesinin **ölçüldüğü makineye** kalibre olması (TB-23 ve İP-A8 · B-4 aynı sınıfı iki kez kaydetti). Bütçeyi büyütmek gerçek performans regresyonlarını gizler; doğru çözüm ağır acceptance testlerinin fixture'larını küçültmektir (B-4'te bir kez yapıldı: `limit=25` → `limit=5`) |
+| **Sonraki adım** | Dört dosyanın en yavaş testlerini ölç (`--testTimeout=60000` ile gerçek süreler), fixture boyutunu düşür, sonra karışık sıralı kapıyı yeniden koş. Bütçe BÜYÜTÜLMEZ |
+
+## TB-?B · `TaskCommandPalette` ortak komut penceresi mekanizmasına bağlanmadı — üç a11y borcu orada duruyor
+
+| | |
+|---|---|
+| **Bulundu** | İP-B1 · Görev 4 |
+| **Nerede** | `frontend/src/components/TaskCommandPalette.tsx` ↔ `frontend/src/components/admin/ui2/komutPenceresi.tsx` |
+| **Sorun** | Ortak mekanizma görev modülünün paletinden **çıkarıldı** ve panelde kullanılıyor; görev modülü hâlâ kendi kopyasını taşıyor. O kopyada üç canlı borç var: (a) overlay `role="dialog"`/`aria-modal` taşımıyor, (b) sonuçlar `role="listbox"`/`role="option"` değil ham `<button>` yığını (ekran okuyucuda "N sonuçtan 2.si" yok), (c) pencere kapanınca odak açan öğeye dönmüyor |
+| **Neden sessiz** | `pages/Tasks.tsx` ve palet ölçüm tabanının (`OLCUM_TABANI`) dışında — nöbetçiler oraya bakmıyor |
+| **Neden ertelendi** | Görev modülü İP-B1'in kapsamı dışında; oraya dokunmak kabuğun kırmızı matrisini başka bir modülün testleriyle karıştırırdı |
+| **Sonraki adım** | B9 (temizlik paketi): `TaskCommandPalette`i `ui2/komutPenceresi` üzerine oturt, üç borcu kapat, `Tasks` için gerçek DOM nöbetçisi yaz |
+
+## TB-?C · Google Fonts CDN'i kullanılıyor ama kod yorumu "KVKK gereği kullanılmıyor" diyor
+
+| | |
+|---|---|
+| **Bulundu** | İP-B1 · Görev 2 (Ç-5) |
+| **Nerede** | `frontend/index.html:11-16` ↔ `frontend/tailwind.config.js` (`fontFamily.mono` yorumu) |
+| **Sorun** | Yorum "font yüklü değil ve **KVKK gereği Google Fonts CDN'i kullanılmıyor**" diyor; `index.html` ise `fonts.googleapis.com`a `preconnect` yapıp `Inter`ı oradan çekiyor. İkisi aynı anda doğru olamaz. Bu bir tasarım meselesi değil **KVKK** meselesi: CDN her sayfa yüklemesinde ziyaretçinin IP'sini üçüncü tarafa gönderir |
+| **Neden sessiz** | Çelişki iki ayrı dosyada; hiçbir test yazı tipinin nereden geldiğini iddia etmiyor |
+| **Neden ertelendi** | İP-B1'in kapsamı kabuk; yazı tipi kaynağını değiştirmek bütün siteyi (public dahil) ilgilendirir |
+| **Sonraki adım** | Karar: (A) `Inter`ı `public/fonts`a indirip `@font-face` ile bağla (yorumu gerçek yapar, ~200 KB varlık), (B) yorumu düzelt ve CDN'i bilinçli kabul et. Marka yazı tipi (`Figtree`) eklenecekse bu karar **önce** verilmeli — aksi hâlde risk ikiye katlanır |
+
+## TB-?D · "Kişiselleştir" penceresine yönetim panelinden erişilemiyor
+
+| | |
+|---|---|
+| **Bulundu** | İP-B1 · Görev 4 |
+| **Nerede** | `frontend/src/components/PersonalizeModal.tsx` ↔ `frontend/src/components/admin/layout/AdminLayout.tsx` |
+| **Sorun** | Panel kabuğu kendi çerçevesini kurunca `DashboardHeader` panelden kalktı; "Kişiselleştir" girişi o başlıktaydı. Pencere `DashboardShell` yüzeylerini (navbar/kenar kısayol düzeni, navbar widget'ı, keşif tercihleri) ayarlıyor ve panel rail'ini zaten hiç etkilemiyordu — yani panelde işlevsizdi, ama erişim yolu da kayboldu |
+| **Neden sessiz** | Pencerenin kendi testleri var; "panelden erişilebilir mi" diye bir iddia yok |
+| **Neden ertelendi** | Panel kabuğuna panel dışı bir tercih penceresi koymak dilin "ayarlar bir kiptir" kuralıyla çelişiyor; doğru yeri Ayarlar bölümü (B8) |
+| **Sonraki adım** | B8'de karar: ya profil menüsüne bir giriş eklenir, ya tercihler Ayarlar bölümüne taşınır |
+
+## TB-?E · Mobil çekmecede fiziksel klavye varsayan `Ctrl K` tuş rozeti görünüyor
+
+| | |
+|---|---|
+| **Bulundu** | İP-B1 · Görev 5 (tarayıcı turu, 380 px ekran görüntüsü) |
+| **Nerede** | `frontend/src/components/admin/layout/AdminSidebar.tsx` (arama tetikleyicisi) |
+| **Sorun** | Arama öğesi rail ile mobil çekmecede aynı bileşen; dokunmatik cihazda fiziksel klavye olmayabilir ve rozet yanlış vaat eder |
+| **Neden sessiz** | Kozmetik; hiçbir eşiği ihlal etmiyor |
+| **Neden ertelendi** | Kabuk paketi işlevi değil çerçeveyi kuruyor |
+| **Sonraki adım** | B2'de arama öğesi ele alınırken rozet yalnız rail varyantında gösterilsin |
+
 ## TB-68 · Yalancı yeşil deseni TARANMADI: "yeşil, iddia edilenin doğrulandığını göstermez"
 
 | | |

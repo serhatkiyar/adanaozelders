@@ -11,6 +11,29 @@ export default {
   ],
   theme: {
     extend: {
+      // ── Panel token köprüsü (İP-B1 · docs/tasarim-dili.md §1.2) ──
+      //
+      // Değerler `src/index.css` → `:root` / `.dark` altında yaşar; burası
+      // yalnız onları sınıf hâline getirir. `<alpha-value>` yer tutucusu
+      // saydamlık varyantlarını (`bg-panel-surface/60`) çalışır kılar —
+      // değerler bu yüzden hex değil boşluklu RGB üçlüsü olarak yazılır.
+      colors: {
+        panel: {
+          bg: "rgb(var(--panel-bg) / <alpha-value>)",
+          surface: "rgb(var(--panel-surface) / <alpha-value>)",
+          "surface-subtle": "rgb(var(--panel-surface-subtle) / <alpha-value>)",
+          "surface-hover": "rgb(var(--panel-surface-hover) / <alpha-value>)",
+          border: "rgb(var(--panel-border) / <alpha-value>)",
+          "border-strong": "rgb(var(--panel-border-strong) / <alpha-value>)",
+          fg: "rgb(var(--panel-fg) / <alpha-value>)",
+          "fg-muted": "rgb(var(--panel-fg-muted) / <alpha-value>)",
+          "fg-subtle": "rgb(var(--panel-fg-subtle) / <alpha-value>)",
+          accent: "rgb(var(--panel-accent) / <alpha-value>)",
+          "accent-fg": "rgb(var(--panel-accent-fg) / <alpha-value>)",
+          "accent-soft": "rgb(var(--panel-accent-soft) / <alpha-value>)",
+          focus: "rgb(var(--panel-focus) / <alpha-value>)",
+        },
+      },
       fontFamily: {
         sans: [
           "Inter",

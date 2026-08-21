@@ -1,8 +1,11 @@
 import { type ReactNode } from "react";
-import { useLocation } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
+import { Button } from "@/components/admin/ui";
 import { GezinmeBaglantisi } from "@/components/admin/ui2/gezinmeBekcisi";
 import { useOpenReportCount } from "@/hooks/useReports";
+import { ROUTES } from "@/lib/routes";
 import { ADMIN_NAV_GROUPS, ADMIN_NAV_ITEMS, type AdminNavItem } from "./adminNavigation";
+import { AdminProfilMenusu } from "./AdminProfilMenusu";
 import { useAuthStore } from "@/store/authStore";
 
 const ICONS: Record<AdminNavItem["icon"], ReactNode> = {
@@ -26,11 +29,61 @@ const ICONS: Record<AdminNavItem["icon"], ReactNode> = {
   ),
 };
 
-interface AdminSidebarProps {
-  onNavigate?: () => void;
+function Glif({ ad, className }: { ad: AdminNavItem["icon"]; className?: string }) {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.7"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+    >
+      {ICONS[ad]}
+    </svg>
+  );
 }
 
-export function AdminSidebar({ onNavigate }: AdminSidebarProps) {
+export interface AdminSidebarProps {
+  onNavigate?: () => void;
+  /** Yalnız ikon gösterilen dar hâl (masaüstü rail). */
+  katli?: boolean;
+  /** Komut penceresini açar. */
+  onAramaAc: () => void;
+  /** Katlamayı çeviren düğme — çekmece varyantında verilmez. */
+  onKatlamaDegistir?: () => void;
+  /**
+   * `data-testid` ve dolayısıyla nöbetçi kimliği. Rail ve çekmece AYNI
+   * bileşendir ama aynı anda DOM'da bulunabilir; testin hangisini ölçtüğü
+   * belirsiz kalmasın diye kimlik çağırandan gelir.
+   */
+  testId?: string;
+}
+
+/**
+ * ── Panel gezinme çubuğu: ÜÇ BÖLGE (İP-B1 · docs/tasarim-dili.md §4.1) ──
+ *
+ * Üst: marka + arama öğesi (komut penceresini açar) + katlama.
+ * Orta: alan gezinmesi — **yalnız bu bölge kayar**.
+ * Alt: Ayarlar + profil menüsü (tema anahtarı, çıkış).
+ *
+ * Ayarların gezinme gruplarının DIŞINDA, altta durmasının sebebi Medusa'yla
+ * aynı: ayarlar bir alan değil bir kiptir. Grupların içinde olsaydı "Platform"
+ * başlığı altında, "Kullanıcılar"la aynı seviyede görünürdü.
+ *
+ * Katlı hâlde etiket metni DOM'dan kalkar ama erişilebilir ad `aria-label` ile
+ * KORUNUR. Bu bir süs değil, kabuğun kırmızı matrisindeki bir madde: ikon-only
+ * gezinme, adı `<span>`den alan bir yazımda ekran okuyucuya sessiz kalır.
+ */
+export function AdminSidebar({
+  onNavigate,
+  katli = false,
+  onAramaAc,
+  onKatlamaDegistir,
+  testId,
+}: AdminSidebarProps) {
   const { pathname } = useLocation();
   // FAIL-CLOSED (İP-4/F-1): izin bilgisi yüklenemediyse menü öğesi
   // GÖSTERİLMEZ. Eskiden `!permissions ||` ile fail-open'dı ve `lib/adminAccess`
@@ -40,59 +93,200 @@ export function AdminSidebar({ onNavigate }: AdminSidebarProps) {
   const izinVar = (kod?: string) => !kod || (permissions?.includes(kod) ?? false);
   const { data: openReports = 0 } = useOpenReportCount(izinVar("reports.view"));
 
+  const ayarlar = ADMIN_NAV_ITEMS.find((i) => i.to === ROUTES.adminSettings);
+
+  const ogeSinifi = (aktif: boolean) =>
+    `group flex min-h-10 items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-panel-focus focus-visible:ring-offset-2 focus-visible:ring-offset-panel-surface ${
+      katli ? "justify-center px-0" : ""
+    } ${
+      aktif
+        ? "bg-panel-accent-soft text-panel-accent"
+        : "text-panel-fg-muted hover:bg-panel-surface-hover hover:text-panel-fg"
+    }`;
+
   return (
-    <nav aria-label="Yönetim menüsü" className="space-y-5 px-3 py-5">
-      {ADMIN_NAV_GROUPS.map((group) => {
-        const items = ADMIN_NAV_ITEMS.filter(
-          (item) => item.group === group && izinVar(item.requiredPermission)
-        );
-        if (items.length === 0) return null;
-        return (
-          <section key={group} aria-labelledby={`admin-nav-${group}`}>
-            <h2 id={`admin-nav-${group}`} className="mb-1 px-3 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">
-              {group}
-            </h2>
-            <div className="space-y-0.5">
-              {items.map((item) => {
-                const storeActive = item.icon === "store" && pathname.startsWith("/yonetim/magaza/");
-                return (
-                  <GezinmeBaglantisi
-                    key={item.to}
-                    to={item.to}
-                    end={item.end}
-                    onClick={onNavigate}
-                    className={({ isActive }) => {
-                      const active = isActive || storeActive;
-                      return `group flex min-h-10 items-center gap-3 rounded-xl px-3 py-2 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900 ${
-                        active
-                          ? "bg-indigo-600 text-white shadow-sm"
-                          : "text-slate-600 hover:bg-slate-100 hover:text-slate-950 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white"
-                      }`;
-                    }}
+    <div
+      data-testid={testId}
+      data-katli={katli ? "true" : "false"}
+      className="flex h-full min-h-0 flex-col bg-panel-surface"
+    >
+      {/* ── ÜST: marka · arama · katlama ── */}
+      <div data-testid="rail-ust" className="flex flex-col gap-2 border-b border-panel-border p-3">
+        <div className={`flex items-center gap-2 ${katli ? "justify-center" : ""}`}>
+          <Link
+            to={ROUTES.admin}
+            onClick={onNavigate}
+            aria-label="Yönetim paneli ana sayfası"
+            className="flex min-w-0 items-center gap-2 rounded-xl px-1 py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-panel-focus"
+          >
+            <span
+              aria-hidden="true"
+              className="flex h-8 w-8 flex-none items-center justify-center rounded-lg bg-panel-accent text-sm font-semibold text-panel-accent-fg"
+            >
+              A
+            </span>
+            {!katli && (
+              <span className="min-w-0 truncate text-sm font-semibold text-panel-fg">Yönetim</span>
+            )}
+          </Link>
+          {!katli && onKatlamaDegistir && (
+            <Button
+              variant="ghost"
+              size="sm"
+              aria-pressed={false}
+              onClick={onKatlamaDegistir}
+              className="ml-auto !px-2"
+            >
+              <span className="sr-only">Menüyü katla</span>
+              <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4">
+                <path strokeLinecap="round" d="M15 5v14M4 12h7m0 0-3-3m3 3-3 3" />
+              </svg>
+            </Button>
+          )}
+        </div>
+
+        {katli && onKatlamaDegistir && (
+          <Button variant="ghost" size="sm" aria-pressed onClick={onKatlamaDegistir} className="!px-2">
+            <span className="sr-only">Menüyü katla</span>
+            <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4">
+              <path strokeLinecap="round" d="M9 5v14M20 12h-7m0 0 3-3m-3 3 3 3" />
+            </svg>
+          </Button>
+        )}
+
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={onAramaAc}
+          className={`w-full ${katli ? "!px-2" : "justify-start !font-normal"}`}
+        >
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4 flex-none">
+            <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-4.3-4.3M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16Z" />
+          </svg>
+          {katli ? (
+            <span className="sr-only">Ara</span>
+          ) : (
+            <>
+              <span className="flex-1 text-left text-panel-fg-subtle">Ara</span>
+              <kbd className="flex-none rounded-md border border-panel-border px-1.5 py-0.5 text-[10px] font-semibold text-panel-fg-subtle">
+                Ctrl K
+              </kbd>
+            </>
+          )}
+        </Button>
+      </div>
+
+      {/* ── ORTA: alan gezinmesi (yalnız bu bölge kayar) ── */}
+      <div data-testid="rail-orta" className="min-h-0 flex-1 overflow-y-auto">
+        <nav aria-label="Yönetim menüsü" className="space-y-4 px-3 py-4">
+          {ADMIN_NAV_GROUPS.map((group) => {
+            const items = ADMIN_NAV_ITEMS.filter(
+              (item) => item.group === group && item.to !== ROUTES.adminSettings && izinVar(item.requiredPermission)
+            );
+            if (items.length === 0) return null;
+            return (
+              <section key={group} aria-labelledby={`admin-nav-${group}`}>
+                {!katli && (
+                  <h2
+                    id={`admin-nav-${group}`}
+                    className="mb-1 px-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-panel-fg-subtle"
                   >
-                    {({ isActive }) => {
-                      const active = isActive || storeActive;
-                      return (
-                        <>
-                          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" className={`h-[18px] w-[18px] shrink-0 ${active ? "text-white" : "text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-200"}`}>
-                            {ICONS[item.icon]}
-                          </svg>
-                          <span className="min-w-0 flex-1 truncate">{item.shortLabel ?? item.label}</span>
-                          {item.badge === "open-reports" && openReports > 0 && (
-                            <span className={`inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] font-bold ${active ? "bg-white text-indigo-700" : "bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-300"}`}>
-                              {openReports > 99 ? "99+" : openReports}
-                            </span>
-                          )}
-                        </>
-                      );
-                    }}
-                  </GezinmeBaglantisi>
-                );
-              })}
-            </div>
-          </section>
-        );
-      })}
-    </nav>
+                    {group}
+                  </h2>
+                )}
+                {/* Katlı hâlde başlık görünmez ama gruplama ekran okuyucuda
+                    korunur: `aria-label` başlığın yerine geçer. */}
+                <div className="space-y-0.5" role="group" aria-label={katli ? group : undefined}>
+                  {items.map((item) => {
+                    // ── İKON DEĞİL ROTA (İP-B1 · Görev 5 · tarayıcı turu) ──
+                    //
+                    // Eski koşul `item.icon === "store"` idi ve "Hakedişler"
+                    // de o ikonu taşıyor: `/yonetim/magaza/*` altındayken
+                    // kenar çubuğunda İKİ öğe birden etkin görünüyordu.
+                    // Ekran görüntüsünde yakalandı; `aria-current` doğruydu
+                    // (yalnız Mağaza'daydı), yani hata SALT GÖRSELDİ ve
+                    // hiçbir a11y nöbetçisi göremezdi.
+                    const storeActive =
+                      item.to === ROUTES.adminStoreProducts &&
+                      pathname.startsWith("/yonetim/magaza/");
+                    const etiket = item.shortLabel ?? item.label;
+                    return (
+                      <GezinmeBaglantisi
+                        key={item.to}
+                        to={item.to}
+                        end={item.end}
+                        onClick={onNavigate}
+                        aria-label={katli ? etiket : undefined}
+                        title={katli ? etiket : undefined}
+                        className={({ isActive }) => ogeSinifi(isActive || storeActive)}
+                      >
+                        {({ isActive }) => {
+                          const active = isActive || storeActive;
+                          return (
+                            <>
+                              {/* Etkinlik DOM'da GÖRÜNÜR bir sözleşme:
+                                  `aria-current` yalnız NavLink'in kendi
+                                  eşleşmesini yansıtıyor, `storeActive` gibi
+                                  türetilmiş etkinlikleri değil. Bu yüzden
+                                  "aynı anda kaç öğe etkin" sorusu ancak
+                                  buradan ölçülebilir (tur, iki öğenin birden
+                                  etkin göründüğü bir hatayı ekran
+                                  görüntüsünden yakaladı). */}
+                              <span data-etkin={active ? "true" : "false"} className="sr-only" />
+                              <Glif
+                                ad={item.icon}
+                                className={`h-[18px] w-[18px] shrink-0 ${
+                                  active ? "text-panel-accent" : "text-panel-fg-subtle group-hover:text-panel-fg"
+                                }`}
+                              />
+                              {!katli && <span className="min-w-0 flex-1 truncate">{etiket}</span>}
+                              {item.badge === "open-reports" && openReports > 0 && (
+                                <span
+                                  className={`inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] font-semibold ${
+                                    katli ? "absolute" : ""
+                                  } bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-300`}
+                                >
+                                  {openReports > 99 ? "99+" : openReports}
+                                </span>
+                              )}
+                            </>
+                          );
+                        }}
+                      </GezinmeBaglantisi>
+                    );
+                  })}
+                </div>
+              </section>
+            );
+          })}
+        </nav>
+      </div>
+
+      {/* ── ALT: Ayarlar + profil ── */}
+      <div data-testid="rail-alt" className="space-y-1 border-t border-panel-border p-3">
+        {ayarlar && izinVar(ayarlar.requiredPermission) && (
+          <GezinmeBaglantisi
+            to={ayarlar.to}
+            onClick={onNavigate}
+            aria-label={katli ? "Ayarlar" : undefined}
+            title={katli ? "Ayarlar" : undefined}
+            className={({ isActive }) => ogeSinifi(isActive)}
+          >
+            {({ isActive }) => (
+              <>
+                <Glif
+                  ad="settings"
+                  className={`h-[18px] w-[18px] shrink-0 ${
+                    isActive ? "text-panel-accent" : "text-panel-fg-subtle group-hover:text-panel-fg"
+                  }`}
+                />
+                {!katli && <span className="min-w-0 flex-1 truncate">Ayarlar</span>}
+              </>
+            )}
+          </GezinmeBaglantisi>
+        )}
+        <AdminProfilMenusu katli={katli} onNavigate={onNavigate} />
+      </div>
+    </div>
   );
 }

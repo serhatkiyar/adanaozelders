@@ -193,10 +193,17 @@ export const OLCUM_TABANI = [
   "src/components/admin/delivery/LabelSheet.tsx",
   "src/components/admin/delivery/bits.tsx",
   "src/components/admin/inventory/DamageDialog.tsx",
+  // İP-B1 · Görev 4: panel kabuğunun yeni parçaları. Üçü de `ui2/` ve
+  // `layout/` altında, yani sevk edilen panel arayüzünün parçası — ölçüme
+  // GİRMEK zorundalar. Listeye yazılmasalardı `fazlaDosyalar` kırılırdı ve
+  // nöbetçinin tam olarak istenen davranışı budur.
+  "src/components/admin/layout/AdminKomutPenceresi.tsx",
   "src/components/admin/layout/AdminLayout.tsx",
   "src/components/admin/layout/AdminPageHeader.tsx",
+  "src/components/admin/layout/AdminProfilMenusu.tsx",
   "src/components/admin/layout/AdminSidebar.tsx",
   "src/components/admin/layout/adminNavigation.ts",
+  "src/components/admin/layout/panelKabuguDurumu.ts",
   "src/components/admin/packing/PackageLabel.tsx",
   "src/components/admin/packing/PackingLabelSheet.tsx",
   // İP-A5 · `AdminStore.tsx` bölmesi. Bu sekiz satır OLMAZSA borç ölçüm
@@ -229,6 +236,9 @@ export const OLCUM_TABANI = [
   // sevk edilen arayüzünün parçası.
   "src/components/admin/ui2/icerikKorumasi.ts",
   "src/components/admin/ui2/kirliFormBekcisi.tsx",
+  // İP-B1 · Görev 4: komut penceresinin ORTAK mekanizması (görev modülünün
+  // paletinden taşındı).
+  "src/components/admin/ui2/komutPenceresi.tsx",
   "src/components/admin/ui2/medusa-tr.tsx",
   // İP-A6: düzenleme yüzeyinin DURUM kancası buraya ayrıldı (import döngüsü
   // kırıldı; gerekçe dosyanın başında).

@@ -217,7 +217,15 @@ describe("İP-A1 nöbetçi eşikleri", () => {
     // hepsi A7d3 raporunda isimle ve gerekçesiyle yazılı. Bu metrik sıfıra
     // İNMEYECEK ve inmemeli; doğru kapanış hedefi "kalanın her biri isimle
     // ve gerekçesiyle yazılı" olmasıdır.
-    expect(olcum.rawButton).toBeLessThanOrEqual(102);
+    // İP-B1'de 102 → 99 (**-3**): panel kabuğu. Mobil çekmecenin hamburger'ı
+    // ve kapatma düğmesi ortak `Button`a geçti; zemin katmanı ham bir
+    // `<button aria-label="…kapat">` iken `aria-hidden` bir katmana indi —
+    // odak sırasından da çıktı, yani düşüş erişilebilirlik kazancının yan
+    // ürünü. Kabuk YENİ denetimler getirdi (arama, katlama, profil, tema)
+    // ama hiçbiri ham düğme değil: hepsi ortak `Button` ya da `<label>` içine
+    // sarılı `<input type="radio">`. Komut penceresi de sonuç başına bir ham
+    // düğme yazan eski palet desenini değil listbox desenini kullanıyor.
+    expect(olcum.rawButton).toBeLessThanOrEqual(99);
   });
 
   it("erişilebilir adı olmayan form kontrolü artamaz (bugünkü taban 7)", () => {

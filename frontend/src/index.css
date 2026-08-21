@@ -4,21 +4,74 @@
 @tailwind utilities;
 
 @layer base {
+  /* ── PANEL TOKEN KATMANI (İP-B1 · docs/tasarim-dili.md §1) ──
+   *
+   * Burada eskiden `--admin-surface` / `--admin-border` / `--admin-focus`
+   * üçlüsü duruyordu: TANIMLIYDI ama hiçbir yere bağlı DEĞİLDİ — ne
+   * Tailwind'e köprülenmişti ne de tek bir dosyada `var(--admin-…)` olarak
+   * okunuyordu (arama: sıfır sonuç). Yarım kalmış bir girişimdi ve
+   * `docs/medusa-arayuz-karsilastirma.md` §2.2 onu isimle işaretlemişti.
+   *
+   * İP-B1 onu SİLMEDİ, TAMAMLADI: aşağıdaki küme Medusa'nın indirection
+   * desenini uygular (semantik ad → CSS değişkeni → `.dark` altında aynı adın
+   * yeniden tanımı) ve `tailwind.config.js` → `theme.extend.colors.panel`
+   * üzerinden sınıf hâline gelir. Bileşen `bg-panel-surface` yazar; `dark:`
+   * ikizini YAZMAZ. Bugün panelde 891 elle yazılmış `dark:` sınıfı var ve
+   * her biri unutulabilecek ikinci bir yazımdır (`AdminStore.tsx:1958` zaten
+   * unutulmuştu).
+   *
+   * Değerler BOŞLUKLU RGB üçlüsüdür, hex değil: köprü
+   * `rgb(var(--x) / <alpha-value>)` biçimini kullanır ve ancak bu biçimde
+   * `bg-panel-surface/60` gibi saydamlık varyantları çalışır. Hex yazılsaydı
+   * saydamlık sessizce kırılırdı.
+   *
+   * Aksan (`--panel-accent`) bugün `indigo-600`dur. Marka lacivertine
+   * (#1A365D) geçiş KARAR BEKLİYOR ve tek satırlık bir değişikliktir;
+   * gerekçe: `docs/tasarim-dili.md` §1.4.
+   */
   :root {
-    --admin-surface: 255 255 255;
-    --admin-surface-muted: 248 250 252;
-    --admin-border: 226 232 240;
-    --admin-focus: 79 70 229;
-    --admin-danger: 225 29 72;
-    --admin-success: 5 150 105;
+    --panel-bg: 248 250 252;            /* slate-50  */
+    --panel-surface: 255 255 255;       /* beyaz     */
+    --panel-surface-subtle: 248 250 252;/* slate-50  */
+    --panel-surface-hover: 241 245 249; /* slate-100 */
+    --panel-border: 226 232 240;        /* slate-200 */
+    --panel-border-strong: 203 213 225; /* slate-300 */
+    --panel-fg: 15 23 42;               /* slate-900 */
+    --panel-fg-muted: 71 85 105;        /* slate-600 */
+    --panel-fg-subtle: 100 116 139;     /* slate-500 */
+    --panel-accent: 79 70 229;          /* indigo-600 */
+    --panel-accent-fg: 255 255 255;
+    --panel-accent-soft: 238 242 255;   /* indigo-50 */
+    --panel-focus: 79 70 229;
   }
   .dark {
-    --admin-surface: 15 23 42;
-    --admin-surface-muted: 2 6 23;
-    --admin-border: 51 65 85;
-    --admin-focus: 129 140 248;
-    --admin-danger: 251 113 133;
-    --admin-success: 52 211 153;
+    --panel-bg: 2 6 23;                 /* slate-950 */
+    --panel-surface: 15 23 42;          /* slate-900 */
+    --panel-surface-subtle: 2 6 23;     /* slate-950 */
+    --panel-surface-hover: 30 41 59;    /* slate-800 */
+    --panel-border: 30 41 59;           /* slate-800 */
+    --panel-border-strong: 51 65 85;    /* slate-700 */
+    /* ── KOYU TEMA DEĞERLERİ GERÇEK CHROME'DA ÖLÇÜLDÜ (İP-B1 · Görev 5) ──
+     *
+     * İlk yazımda `fg-muted: slate-400` / `fg-subtle: slate-500` /
+     * `accent-soft: indigo-900` vardı ve tur iki eşik ihlali ölçtü:
+     *   • etkin gezinme öğesi (indigo-400 ÜZERİNE indigo-900): **3,83** — AA
+     *     eşiği 4,5 ve metin 14 px (büyük metin muafiyeti YOK).
+     *   • `fg-subtle` (slate-500 ÜZERİNE slate-900): **3,75** — arama
+     *     öğesinin "Ara" metni ve tuş rozeti bu seviyede yazılıyor.
+     *
+     * Seçilen değerler yeniden ölçüldü: accent-soft indigo-950 → **5,36**;
+     * fg-subtle slate-400 → **6,96**; fg-muted slate-300 → **12,02**.
+     * Üç seviye birbirinden hâlâ ayırt edilebilir (12 / 7 / kontrastsız
+     * yüzey), yani hiyerarşi korunuyor.
+     */
+    --panel-fg: 248 250 252;            /* slate-50  */
+    --panel-fg-muted: 203 213 225;      /* slate-300 · 12,02 */
+    --panel-fg-subtle: 148 163 184;     /* slate-400 · 6,96  */
+    --panel-accent: 129 140 248;        /* indigo-400 */
+    --panel-accent-fg: 2 6 23;          /* slate-950 · 6,76 */
+    --panel-accent-soft: 30 27 75;      /* indigo-950 · 5,36 */
+    --panel-focus: 129 140 248;
   }
   html {
     scroll-behavior: smooth;
