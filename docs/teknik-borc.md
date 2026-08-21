@@ -307,7 +307,19 @@ yalnız ölçümü ve öneriyi kaydeder.
        TB-?D → **TB-58**   varyant testleri izolasyon sınırları    (denetim P2-8)
      Dördü bağımsız denetimin merge-sonrasına ertelediği bulgulardır. -->
 
-## TB-?A · OG/Twitter görseli SVG'ye geçmedi — `/logo.png` bilinçli olarak kalıyor
+<!-- Mağaza tasarım dalı merge turu (21 Ağu 2026) — kural (3) gereği tahsis:
+     ölçüm `git fetch --all` sonrası TÜM yerel+uzak dallarda dal başına
+     okundu; en yüksek gerçek numara **TB-63** (main, origin/main,
+     feat/medusa-ui-taban, dogrulama/a8-merge-oncesi) →
+       TB-?A → **TB-64**   OG/JSON-LD'de /logo.png KASITLI kalıyor
+       TB-?B → **TB-65**   AccountHub CompactSearch'e remote geçirmiyor
+     Aynı dalda açılan üçüncü geçici kayıt (TB-?C, navbar 768-1279 çakışması)
+     **numara ALMADI**: dal içinde açıldı ve yine dal içinde kapatıldı
+     (b3366d2 — kelime logosu eşiği md: → xl:). Defterin kuralı gereği
+     kapanan kayıt silindiği için ortada numaralanacak bir borç kalmadı;
+     kapanış kanıtı docs/magaza-merge-dogrulama-raporu.md'de durur. -->
+
+## TB-64 · OG/Twitter görseli SVG'ye geçmedi — `/logo.png` bilinçli olarak kalıyor
 
 | | |
 |---|---|
@@ -319,7 +331,7 @@ yalnız ölçümü ve öneriyi kaydeder.
 | **Risk** | `logo.png` (890×140, oran 6.36) ile `logo.svg` (viewBox 977.21×136.5, oran 7.16) **aynı çizim değil** — %13 oran farkı var. Paylaşım önizlemesi bugün sitedeki logodan biraz farklı bir marka görseli gösteriyor. Fark ölçüldü: aynı `md:h-9` yüksekliğinde PNG 228.8 px, SVG 257.7 px render ediliyor (`docs/magaza-merge-dogrulama/marka-logo-olcum.json`) |
 | **Sonraki adım** | `logo.svg`'den yüksek çözünürlüklü (ör. 1200×630 OG tuvaline yerleştirilmiş) bir PNG üretip `logo.png`'yi onunla değiştirmek; kod tarafında değişiklik gerekmez |
 
-## TB-?B · `AccountHub` içindeki `CompactSearch` "Uzaktan Eğitim" seçeneğini göstermiyor
+## TB-65 · `AccountHub` içindeki `CompactSearch` "Uzaktan Eğitim" seçeneğini göstermiyor
 
 | | |
 |---|---|

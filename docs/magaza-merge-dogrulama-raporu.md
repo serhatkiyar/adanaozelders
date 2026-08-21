@@ -6,7 +6,8 @@
 Merge raporunda **kanıtlanmamış üç iddia** kalmıştı. Bu belge onları ölçüme
 çevirir. İki bölümden oluşur: (1) **doğrulama turu** — üretim kodu
 değiştirilmeden yalnız ölçüm aracı, ölçüm çıktısı ve borç kaydı üretildi;
-(2) **TB-?C kapanışı** (en altta) — turun bulduğu 768-1279 px çakışması,
+(2) **navbar çakışmasının kapanışı** (en altta) — turun bulduğu 768-1279 px
+çakışması,
 kullanıcı kararıyla `PublicNavbar.tsx`'te iki sınıf değiştirilerek kapatıldı ve
 11 genişlikte yeniden ölçüldü.
 
@@ -82,8 +83,11 @@ Sebep: navbar üç sütunlu bir flex satırı (`flex-1` logo · `shrink-0` kateg
 çiziliyor. `md:` eşiği tam 768'de büyük logoyu açtığı için sorun orada başlıyor.
 
 Talimat gereği o turda **sınıf/stil değiştirilmedi**; bulgu `docs/teknik-borc.md`
-→ `TB-?C` olarak kaydedildi. **Bu kayıt 21 Ağustos 2026'da ayrı bir turda
-kapatıldı — bkz. aşağıdaki "TB-?C kapanışı" bölümü.**
+→ geçici `TB-?C` etiketiyle kaydedildi. **Bu kayıt 21 Ağustos 2026'da ayrı bir
+turda kapatıldı — bkz. aşağıdaki "Navbar çakışmasının kapanışı" bölümü.**
+Kayıt dal içinde açılıp dal içinde kapandığı için defterde gerçek bir TB
+numarası **almadı**; kapanan borç defterden silinir (aynı dalın açık kalan iki
+kaydı main merge turunda TB-64 ve TB-65 numaralarını aldı).
 
 ---
 
@@ -153,21 +157,26 @@ Kural I gereği açıkça yazıyorum — ikisi de sondanın **yalancı** sonucuy
 
 ## Şüphe listesi (denetçiye)
 
-1. ~~TB-?C hangi kararla kapanacak?~~ **KAPANDI** — kelime logosu `xl:`
-   eşiğine alındı; ayrıntı ve ölçüm en alttaki "TB-?C kapanışı" bölümünde.
+1. ~~Navbar çakışması (eski geçici etiket TB-?C) hangi kararla kapanacak?~~
+   **KAPANDI** — kelime logosu `xl:` eşiğine alındı; ayrıntı ve ölçüm en
+   alttaki "Navbar çakışmasının kapanışı" bölümünde.
    Geriye kalan açık nokta: 768-1279 arasında marka yalnız simge olarak
    görünüyor (kabul edilmiş bedel).
 2. **Bu kusur ne kadar zamandır canlı?** PNG ölçümü kusurun SVG'den önce de var
    olduğunu gösteriyor, ama hangi commit'te doğduğu araştırılmadı.
 3. **`marka_logo_turu.mjs` CI'da koşmuyor.** Elle çalıştırılan bir turdur;
    kusur düzeltildikten sonra nöbetçi olarak bağlanması ayrı bir karardır.
-4. **TB-?A/?B/?C etiketleri hâlâ geçicidir.** Numara main merge turunda
-   tahsis edilecek; kontrol listesi `docs/teknik-borc.md` → "Merge turu kontrol
-   listesi" bölümüne yazıldı.
+4. ~~TB-?A/?B/?C etiketleri hâlâ geçicidir.~~ **TAHSİS EDİLDİ** (main merge
+   turu, 21 Ağu 2026): ölçüm tüm dallarda en yüksek TB-63 → `TB-?A` → **TB-64**,
+   `TB-?B` → **TB-65**. `TB-?C` numara almadı, çünkü aynı dalda kapandı ve
+   kapanan kayıt defterden silinir.
 
 ---
 
-## TB-?C kapanışı — kelime logosu eşiği `md:` → `xl:`
+## Navbar çakışmasının kapanışı — kelime logosu eşiği `md:` → `xl:`
+
+> Bu bulgu tur sırasında geçici `TB-?C` etiketiyle açılmış, aynı dalda
+> kapatılmıştır; bu yüzden defterde kalıcı bir TB numarası yoktur.
 
 **Karar (kullanıcı):** kelime logosu (`logo.svg`) `md:` eşiğinde değil **`xl:`**
 eşiğinde açılır; 768-1279 arasında `logo-compact.svg` kalır. Gerekçe ölçümdür:

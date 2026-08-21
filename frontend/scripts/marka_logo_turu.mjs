@@ -36,7 +36,7 @@ const NEGATIF = ARGS.negatif === "1";
 const OUT = resolve(ARGS.out ?? "../docs/magaza-merge-dogrulama");
 const CHROME = ARGS.chrome ?? "C:/Program Files/Google/Chrome/Application/chrome.exe";
 const PORT = Number(ARGS.port ?? 9296);
-// TB-?C kapanışı: eşik `md:` → `xl:` taşındıktan sonra kabul ölçütü TEK BİR
+// Navbar çakışması kapanışı: eşik `md:` → `xl:` taşındıktan sonra kabul ölçütü TEK BİR
 // dar genişlik değil, çakışma bandının TAMAMIDIR. 1152 bu turda ilk kez
 // ölçülüyor (daha önce hiç bakılmamıştı) ve 1280 yeni eşiğin ilk noktasıdır.
 const GENISLIKLER = [360, 414, 640, 700, 768, 820, 900, 1024, 1152, 1280, 1440];
