@@ -270,12 +270,18 @@ async def test_upgrade_dogrulama_downgrade_tekrar_upgrade(migration_db):
             **alanlar,
         )
 
+    # Bağlı satır NASIL bağlandığını söylemek zorunda.
     with pytest.raises((IntegrityError, DBAPIError)):
         await _sp(product_id=pid2)  # link_source yok
     with pytest.raises((IntegrityError, DBAPIError)):
-        await _sp(link_source="AUTO")  # product_id yok
-    with pytest.raises((IntegrityError, DBAPIError)):
         await _sp(product_id=pid2, link_source="UYDURMA")
+
+    # TERSİ serbest: "kaynak var, ürün yok". Bu, ürün fiziksel silinince FK'nin
+    # `ON DELETE SET NULL`'ının ürettiği hâldir; yasaklamak silmeyi bloklardı
+    # (aşağıda (j)). Yetim etiket zararsız — "bağlı" sorgusu her yerde
+    # `product_id IS NOT NULL` ile kuruluyor.
+    yetim = await _sp(link_source="AUTO")
+    assert yetim
 
     bagli = await _sp(product_id=pid2, link_source="AUTO")
     assert bagli
@@ -290,17 +296,49 @@ async def test_upgrade_dogrulama_downgrade_tekrar_upgrade(migration_db):
         "SELECT stock_qty FROM supplier_products WHERE id = :i", i=kesirli
     ) == 12.5
 
-    # ── (j) Ürün fiziksel silinince bağ satırı YAŞAR, product_id NULL olur ──
-    # `RESTRICT` olsaydı `db_guard.purge_products` her tedarikçi testinde patlardı.
+    # ── (j) Ürün FİZİKSEL silinince bağ satırı YAŞAR, product_id NULL olur ──
+    #
+    # Bu adım gerçek bir şema kusuru yakaladı: kısıt önce çift yönlüydü
+    # (`(product_id IS NULL) = (link_source IS NULL)`) ve FK yalnız
+    # `product_id`'yi NULL'ladığı için DELETE **reddediliyordu**. Yani
+    # `db_guard.purge_products` (test izolasyonunun aracı) tedarikçiye bağlı
+    # bir üründe patlardı — ve üretimde de "ürünü tamamen sil" yolu kapanırdı.
+    #
+    # `RESTRICT` de aynı sonucu verirdi; SET NULL bilinçli tercih.
     await db.exec("DELETE FROM products WHERE id = :i", i=pid2)
     assert (
         await db.scalar(
             "SELECT product_id FROM supplier_products WHERE id = :i", i=bagli
         )
         is None
+    ), "bağ satırı ürünle birlikte silinmiş ya da DELETE reddedilmiş"
+
+    # ── (j2) Trigger'lar KAPALIYKEN de silinebilmeli ──
+    # `purge_products` silmeden önce `DISABLE TRIGGER USER` yapıyor; kullanıcı
+    # trigger'ıyla kurulan bir onarım burada susar ama FK ve CHECK çalışır.
+    # Kısıtın tek yönlü olması bu yüzden şart.
+    pid3 = await _urun(db)
+    bagli3 = await _sp(product_id=pid3, link_source="MANUAL")
+    await db.exec("ALTER TABLE products DISABLE TRIGGER USER")
+    try:
+        await db.exec("DELETE FROM products WHERE id = :i", i=pid3)
+    finally:
+        await db.exec("ALTER TABLE products ENABLE TRIGGER USER")
+    assert (
+        await db.scalar(
+            "SELECT product_id FROM supplier_products WHERE id = :i", i=bagli3
+        )
+        is None
     )
 
     # ── (k) supplier_quantity tavanı: quantity'yi aşamaz ──
+    # Tek kullanımlık DB'de yalnız `alembic upgrade` koştu; rol seed'i
+    # (`core/seed.seed_roles`) uygulama açılışında çalışıyor ve burada yok.
+    # `clients.role_id` FK'si onu istiyor.
+    await db.exec(
+        "INSERT INTO roles (id, name) VALUES (3, 'CLIENT') "
+        "ON CONFLICT (id) DO NOTHING"
+    )
     cid = await db.insert_scalar(
         "INSERT INTO clients (email, hashed_password, first_name, last_name, "
         "username, role_id) VALUES (:e, 'x', 'A', 'B', :u, 3) RETURNING id",

@@ -124,8 +124,12 @@ def _sp_cikti(sp: SupplierProduct, urun: Product | None) -> SupplierProductOut:
             if urun is not None
             else None
         ),
-        link_source=sp.link_source,
-        linked_at=sp.linked_at,
+        # Ürün fiziksel silinince FK `product_id`'yi NULL'lar ama `link_source`
+        # 'AUTO' kalır (kısıt bilinçli olarak tek yönlü — bkz. models/supplier).
+        # Panelde "kaynak: AUTO ama ürün yok" göstermek kafa karıştırırdı:
+        # bağ yoksa kaynak da yoktur.
+        link_source=(sp.link_source if sp.product_id is not None else None),
+        linked_at=(sp.linked_at if sp.product_id is not None else None),
         is_favorite=sp.is_favorite,
         unfavorited_at=sp.unfavorited_at,
         stock_synced_at=sp.stock_synced_at,

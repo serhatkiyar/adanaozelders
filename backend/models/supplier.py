@@ -304,11 +304,29 @@ class SupplierProduct(Base, TimestampMixin):
             + "')",
             name="ck_supplier_products_link_source",
         ),
-        # Bağ eşleşmesi: ürün ve kaynak BİRLİKTE dolar. Yarım bir bağ
-        # ("product_id var, kaynak yok") panelde "kim bağladı" sorusunu
-        # cevapsız bırakır ve senkronun MANUAL'ı ezip ezemeyeceği belirsizleşir.
+        # Bağlı bir satır NASIL bağlandığını söylemek ZORUNDA: "product_id var,
+        # kaynak yok" hâli panelde "kim bağladı" sorusunu cevapsız bırakır ve
+        # senkronun MANUAL bağı ezip ezemeyeceğini belirsizleştirir.
+        #
+        # TERSİ (kaynak var, ürün yok) bilinçli olarak SERBEST. İlk sürüm çift
+        # yönlü eşitlik (`(product_id IS NULL) = (link_source IS NULL)`)
+        # yazıyordu ve migration testi onu kırdı: ürün FİZİKSEL silinince FK'nin
+        # `ON DELETE SET NULL`'ı yalnız `product_id`'yi NULL'lar, `link_source`
+        # 'AUTO' kalır ve DELETE kısıt ihlaliyle reddedilir.
+        #
+        # Trigger'la iki kolonu birlikte temizlemek de ÇÖZMEZ:
+        # `db_guard.purge_products` (test izolasyonunun aracı) silmeden önce
+        # `ALTER TABLE products DISABLE TRIGGER USER` yapıyor — kullanıcı
+        # trigger'ı susar ama FK sistem trigger'ı ve CHECK çalışmaya devam eder.
+        # Yani sıkı kısıt, ürünü fiziksel silen HER yolu bloklardı.
+        #
+        # Yetim etiketin zararı yok: "bağlı" sorgusu her yerde
+        # `product_id IS NOT NULL` ile kuruluyor (`uq_supplier_products_link`
+        # kısmi index'i dahil) ve API katmanı `product_id` boşken `link_source`
+        # DÖNDÜRMEZ. `auto_link` de böyle bir satırı yeniden bağlayıp etiketi
+        # tazeler.
         CheckConstraint(
-            "(product_id IS NULL) = (link_source IS NULL)",
+            "product_id IS NULL OR link_source IS NOT NULL",
             name="ck_supplier_products_link_pairing",
         ),
         CheckConstraint("stock_qty >= 0", name="ck_supplier_products_stock_sign"),

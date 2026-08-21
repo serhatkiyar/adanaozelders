@@ -185,8 +185,13 @@ def upgrade() -> None:
             "link_source IS NULL OR link_source IN ('AUTO', 'MANUAL')",
             name="ck_supplier_products_link_source",
         ),
+        # Bağlı satır NASIL bağlandığını söylemek zorunda; tersi (kaynak var,
+        # ürün yok) SERBEST — gerekçesi `models/supplier.py`'de: çift yönlü
+        # eşitlik, `ON DELETE SET NULL` ile birlikte ürünün fiziksel
+        # silinmesini bloklar ve `db_guard.purge_products` trigger'ları
+        # kapattığı için trigger'la da onarılamaz.
         sa.CheckConstraint(
-            "(product_id IS NULL) = (link_source IS NULL)",
+            "product_id IS NULL OR link_source IS NOT NULL",
             name="ck_supplier_products_link_pairing",
         ),
         sa.CheckConstraint("stock_qty >= 0", name="ck_supplier_products_stock_sign"),

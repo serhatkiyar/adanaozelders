@@ -1195,3 +1195,55 @@ belgelerde geçiyor ve kaydırmak onları sessizce yanlış kayda bağlardı.
 | **Neden ertelendi** | İP-A9 kapsamı iki canlı kusurla sınırlıydı ("kapsam dar, ekran göçü yok"); düzeltme yabancı paketlerin ağır kabul testlerini ya da suite genelinde işçi paralelliğini değiştirmeyi gerektirir |
 | **Sonraki adım** | (a) `vitest.config.ts`teki bütçeyi İP-12'deki yöntemle YENİDEN ÖLÇ (boşta makinede `--testTimeout=60000` ile tam koşum → gerçek tepe → tepe × ~3). (b) Tepe testleri incele: `adminRezervasyonFiltre`'nin iki testi 30 kayıtlık `DataTable` basıyor (dosya kendi içinde "bu dosyanın en yavaş testi: 4.459 ms" diye kayıtlı). (c) `poolOptions.threads.maxThreads` ile aşırı-abonelik ölçülsün — kararsızlığın gözlenen tetikleyicisi CPU çekişmesi. **Bütçeyi ölçmeden büyütmek YASAK** (config dosyasının kendi kuralı) |
 | **Not** | Aynı taramada bir belge kusuru görüldü: **TB-70'in "Sonraki adım" satırı tanımı olmayan bir `TB-73`e atıf yapıyor.** Kimlik hiç açılmamış; bu yüzden yeni kayıt TB-74 alındı |
+
+## TB-75 · Tedarikçi stoğu REZERVE EDİLMİYOR (aynı son adet iki müşteriye satılabilir)
+
+| | |
+|---|---|
+| **Bulundu** | Tedarikçi senkronu Faz 1 (22 Ağu 2026) — **bilinçli kapsam kararı**, kaza değil |
+| **Nerede** | `services/order_service.py::_finalize_paid` (tedarikçi kapsaması) ↔ `services/supplier_sync_service.availability_map` |
+| **Sorun** | Kendi stoğumuz `SELECT FOR UPDATE` ile kilitlenip deftere yazılıyor; tedarikçi stoğu ise **başka bir sistemin verisidir** ve kilitlenemez. İki müşteri aynı anda son 1 adedi görüp ikisi de ödeyebilir. Tedarikçi stoğu 60 saniyede bir tazeleniyor, yani pencere teorik değil: iki sipariş aynı senkron turu içinde gelirse ikisi de "var" görür |
+| **Etkisi** | Yıldırım'a gidildiğinde mal bulunamayabilir → müşteriye iade + özür. Kayıp para değil, kayıp güven ve operasyon yükü. Ölçek küçükken (günde birkaç tedarikçi kalemi) düşük olasılık; kampanya gününde artar |
+| **Neden sessiz** | Hiçbir hata üretmez. Sipariş PAID olur, defterde iz yoktur (D-8 gereği), sorun ancak depoda ortaya çıkar |
+| **Neden ertelendi** | Rezervasyon, karşılığı olmayan bir kilit demek: Yıldırım'ın API'sinde "bu adedi bana ayır" diye bir uç YOK (rapor §2.3'te 101 uç tarandı). Gerçek çözüm rezervasyon değil **satın alma kuyruğu**: `supplier_quantity > 0` olan PAID kalemler bir kuyruğa düşer, admin toplu sipariş verir, teslim alınca defterde `PURCHASE` hareketiyle rafa girer. O zaman "ayrılmış ama alınmamış" adet bizim tarafımızda izlenebilir hâle gelir |
+| **Sonraki adım** | Faz 2: (a) `supplier_purchase_orders` (+ kalem) tablosu; (b) `/store/admin/suppliers/{id}/purchase-queue` ucu (`supplier_quantity>0 AND payment_status=PAID AND henüz sipariş edilmemiş`); (c) "tedarikçiye sipariş verildi / teslim alındı" damgaları; (d) teslim alımında `stock_ledger` `PURCHASE` hareketi (yeni `StockMovementType`); (e) uygunluk yükleminden **bekleyen taahhüt** düşülsün (`stock_qty − açık kuyruk adedi ≥ 1`). Nöbetçi: iki eşzamanlı siparişin aynı son adedi tüketmeye çalıştığı bir PG yarış testi |
+| **Ara önlem** | Bugün admin sipariş panelinde "Tedarikçiden: N" rozeti var; yönetici kuyruğu gözle takip edebiliyor. Bu bir çözüm değil, görünürlük |
+
+## TB-76 · Satış birimi "Adet" olmayan tedarikçi ürünlerinde adet dönüşümü yok
+
+| | |
+|---|---|
+| **Bulundu** | Tedarikçi senkronu Faz 1 (22 Ağu 2026) — bilinçli kapsam kararı |
+| **Nerede** | `core/suppliers/quarantine.py::favorite_flags` (`BIRIM_ADET_DEGIL`) ↔ `models/supplier.SupplierProduct.unit_multiplier` (yazılıyor, KULLANILMIYOR) |
+| **Sorun** | Yıldırım'da stok ve fiyat **satış birimi** cinsindendir ve katalogun ~%15'i adetle satılmıyor (Düzine 110, Gros 91 [=144 adet], Paket 743, Set 287, Stand 249 kayıt — rapor §1.5). ÇINAR defterinde `stok: 16` = 16 düzine = 192 defter, `maliyet: 153 TL` = 12 defterin fiyatı. Bizim tarafta uygunluk `stock_qty >= 1` diyor, yani "1 düzine var" → ürün satılabilir sayılıyor; müşteri **1 defter** sipariş ediyor ve biz 12 defter alıyoruz |
+| **Etkisi** | (a) Marj hesabı birim başına yanlış görünür (153 TL maliyet, 25 TL satış → panelde "zararına" der, oysa düzine başına kârlı olabilir); (b) müşteri ürün adında birim yazmıyorsa 1 adet sandığı şeyi 12'li alır; (c) minimum sipariş 1.000 TL kuralıyla birleşince sermaye bağlanır |
+| **Neden sessiz** | Sayı ve para doğru; YANLIŞ OLAN BİRİM. Hiçbir doğrulama birimi kontrol etmez |
+| **Neden ertelendi** | Doğru çözüm tek bir çarpma değil: hangi ürünün "12'li paket olarak satılacağı", hangisinin "bölünüp adetle satılacağı" bir **ürün kararıdır** ve ikisi farklı `Product` satırı ister. Otomatik dönüşüm yanlış kararı sessizce dayatırdı |
+| **Ara önlem (BUGÜN AKTİF)** | `BIRIM_ADET_DEGIL` bayrağı her böyle satırda konur ve panelde "Birim adet değil" uyarısı olarak görünür; birim adı stok sayısının yanında **her zaman** gösterilir ("12,5 Düzine"). Yani yönetici bağlamadan önce görüyor |
+| **Sonraki adım** | Faz 2: (a) bağlama diyaloğunda "1 mağaza ürünü = kaç tedarikçi birimi" alanı (`link_multiplier`); (b) uygunluk ve marj o çarpanla hesaplansın; (c) çarpan girilmeden `BIRIM_ADET_DEGIL` bir satırın **otomatik** bağlanması engellensin (bugün bağlanıyor, yalnız bayraklanıyor). Nöbetçi: düzine ürününde 1 adet siparişin doğru tedarikçi adedine çevrildiği bir PG testi |
+
+## TB-75 · Tedarikçi stoğu REZERVE EDİLMİYOR (aynı son adet iki müşteriye satılabilir)
+
+| | |
+|---|---|
+| **Bulundu** | Tedarikçi senkronu Faz 1 (22 Ağu 2026) — **bilinçli kapsam kararı**, kaza değil |
+| **Nerede** | `services/order_service.py::_finalize_paid` (tedarikçi kapsaması) ↔ `services/supplier_sync_service.availability_map` |
+| **Sorun** | Kendi stoğumuz `SELECT FOR UPDATE` ile kilitlenip deftere yazılıyor; tedarikçi stoğu ise **başka bir sistemin verisidir** ve kilitlenemez. İki müşteri aynı anda son 1 adedi görüp ikisi de ödeyebilir. Tedarikçi stoğu 60 saniyede bir tazeleniyor, yani pencere teorik değil: iki sipariş aynı senkron turu içinde gelirse ikisi de "var" görür |
+| **Etkisi** | Yıldırım'a gidildiğinde mal bulunamayabilir → müşteriye iade + özür. Kayıp para değil, kayıp güven ve operasyon yükü. Ölçek küçükken (günde birkaç tedarikçi kalemi) düşük olasılık; kampanya gününde artar |
+| **Neden sessiz** | Hiçbir hata üretmez. Sipariş PAID olur, defterde iz yoktur (D-8 gereği), sorun ancak depoda ortaya çıkar |
+| **Neden ertelendi** | Rezervasyon, karşılığı olmayan bir kilit demek: Yıldırım'ın API'sinde "bu adedi bana ayır" diye bir uç YOK (rapor §2.3'te 101 uç tarandı). Gerçek çözüm rezervasyon değil **satın alma kuyruğu**: `supplier_quantity > 0` olan PAID kalemler bir kuyruğa düşer, admin toplu sipariş verir, teslim alınca defterde `PURCHASE` hareketiyle rafa girer. O zaman "ayrılmış ama alınmamış" adet bizim tarafımızda izlenebilir hâle gelir |
+| **Sonraki adım** | Faz 2: (a) `supplier_purchase_orders` (+ kalem) tablosu; (b) `/store/admin/suppliers/{id}/purchase-queue` ucu (`supplier_quantity>0 AND payment_status=PAID AND henüz sipariş edilmemiş`); (c) "tedarikçiye sipariş verildi / teslim alındı" damgaları; (d) teslim alımında `stock_ledger` `PURCHASE` hareketi (yeni `StockMovementType`); (e) uygunluk yükleminden **bekleyen taahhüt** düşülsün (`stock_qty − açık kuyruk adedi ≥ 1`). Nöbetçi: iki eşzamanlı siparişin aynı son adedi tüketmeye çalıştığı bir PG yarış testi |
+| **Ara önlem** | Bugün admin sipariş panelinde "Tedarikçiden: N" rozeti var; yönetici kuyruğu gözle takip edebiliyor. Bu bir çözüm değil, görünürlük |
+
+## TB-76 · Satış birimi "Adet" olmayan tedarikçi ürünlerinde adet dönüşümü yok
+
+| | |
+|---|---|
+| **Bulundu** | Tedarikçi senkronu Faz 1 (22 Ağu 2026) — bilinçli kapsam kararı |
+| **Nerede** | `core/suppliers/quarantine.py::favorite_flags` (`BIRIM_ADET_DEGIL`) ↔ `models/supplier.SupplierProduct.unit_multiplier` (yazılıyor, KULLANILMIYOR) |
+| **Sorun** | Yıldırım'da stok ve fiyat **satış birimi** cinsindendir ve katalogun ~%15'i adetle satılmıyor (Düzine 110, Gros 91 [=144 adet], Paket 743, Set 287, Stand 249 kayıt — rapor §1.5). ÇINAR defterinde `stok: 16` = 16 düzine = 192 defter, `maliyet: 153 TL` = 12 defterin fiyatı. Bizim tarafta uygunluk `stock_qty >= 1` diyor, yani "1 düzine var" → ürün satılabilir sayılıyor; müşteri **1 defter** sipariş ediyor ve biz 12 defter alıyoruz |
+| **Etkisi** | (a) Marj hesabı birim başına yanlış görünür (153 TL maliyet, 25 TL satış → panelde "zararına" der, oysa düzine başına kârlı olabilir); (b) müşteri ürün adında birim yazmıyorsa 1 adet sandığı şeyi 12'li alır; (c) minimum sipariş 1.000 TL kuralıyla birleşince sermaye bağlanır |
+| **Neden sessiz** | Sayı ve para doğru; YANLIŞ OLAN BİRİM. Hiçbir doğrulama birimi kontrol etmez |
+| **Neden ertelendi** | Doğru çözüm tek bir çarpma değil: hangi ürünün "12'li paket olarak satılacağı", hangisinin "bölünüp adetle satılacağı" bir **ürün kararıdır** ve ikisi farklı `Product` satırı ister. Otomatik dönüşüm yanlış kararı sessizce dayatırdı |
+| **Ara önlem (BUGÜN AKTİF)** | `BIRIM_ADET_DEGIL` bayrağı her böyle satırda konur ve panelde "Birim adet değil" uyarısı olarak görünür; birim adı stok sayısının yanında **her zaman** gösterilir ("12,5 Düzine"). Yani yönetici bağlamadan önce görüyor |
+| **Sonraki adım** | Faz 2: (a) bağlama diyaloğunda "1 mağaza ürünü = kaç tedarikçi birimi" alanı (`link_multiplier`); (b) uygunluk ve marj o çarpanla hesaplansın; (c) çarpan girilmeden `BIRIM_ADET_DEGIL` bir satırın **otomatik** bağlanması engellensin (bugün bağlanıyor, yalnız bayraklanıyor). Nöbetçi: düzine ürününde 1 adet siparişin doğru tedarikçi adedine çevrildiği bir PG testi |

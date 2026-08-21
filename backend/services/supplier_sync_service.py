@@ -625,6 +625,12 @@ async def update_settings(db: AsyncSession, admin, supplier: Supplier, payload):
     yeni_token = veriler.pop("api_token", None)
 
     for alan, deger in veriler.items():
+        # Açıkça `null` gönderilen alan ATLANIR. `exclude_unset` "gönderilmedi"
+        # ile "null gönderildi"yi ayırır; ikincisi bu şemada anlamlı değildir
+        # (hiçbiri nullable kolon) ve `name: null` NOT NULL ihlaliyle 500
+        # üretirdi. Silme niyeti varsa ayrı bir uç gerekir.
+        if deger is None:
+            continue
         setattr(supplier, alan, deger)
 
     simdi = _now()
