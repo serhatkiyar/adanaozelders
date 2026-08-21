@@ -1765,8 +1765,8 @@ MUTASYONLAR: list[Mutasyon] = [
     Mutasyon(
         "S8", "baglama payload'indan reason dusuruldu",
         "frontend/src/api/suppliers.ts",
-        "  return apiClient.post(yol, { product_id: govde.product_id, reason: govde.reason })",
-        "  return apiClient.post(yol, { product_id: govde.product_id })",
+        "    { product_id: payload.product_id, reason: payload.reason },",
+        "    { product_id: payload.product_id },",
         ("src/api/suppliers.test.ts",), "frontend",
     ),
 ]
