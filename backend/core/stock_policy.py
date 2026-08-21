@@ -17,9 +17,12 @@ sunucudan okunur; iki taraf aynı sayıyı ayrı ayrı yazarsa sorun geri gelir.
 """
 from __future__ import annotations
 
-from sqlalchemy import and_, or_
+from decimal import Decimal
+
+from sqlalchemy import and_, exists, or_
 
 from models.store import Product, ProductKind, ProductStatus
+from models.supplier import Supplier, SupplierProduct
 
 #: Düşük stok eşiği (adet). Bu değeri **buradan başka hiçbir yere yazmayın**.
 #:
@@ -106,3 +109,103 @@ def stock_bucket(stock: int | None) -> str:
     if stock <= LOW_STOCK_THRESHOLD:
         return "azalan"
     return "var"
+
+
+# ═══════════════════ Satılabilirlik (tedarikçi dahil) ═══════════════════
+#
+# Sözleşme: `docs/tedarikci-senkron-sozlesme.md` D-2.
+#
+# ## Neden SQL ve Python ikizi AYNI dosyada
+#
+# Katalog araması kararı SQL'de verir (pencere fonksiyonuyla grup kartı),
+# detay ve tekil listelemeler Python'da (`_in_stock`). İkisi ayrı dosyalara
+# dağılsaydı biri güncellenip diğeri unutulurdu ve sonuç şudur: **liste
+# "stokta" der, detay "tükendi" der** — ikisi de hata vermez. Bu projede bir
+# kez yaşandı; ikizler o yüzden yan yana duruyor ve aynı testte ölçülüyor.
+#
+# ## Eşik neden `>= 1`
+#
+# Tedarikçi stoğu satış birimi cinsinden ve KESİRLİ olabilir (ölçümde 12.5
+# düzine). 0,5 düzine "yarım paket" demektir ve sipariş karşılanamaz. `> 0`
+# yazmak, karşılanamayacak siparişi kabul etmektir.
+
+
+def _tedarikci_stok_var():
+    """Ürüne bağlı, favoride, etkin tedarikçide **en az bir birim** var mı?"""
+    return exists().where(
+        SupplierProduct.product_id == Product.id,
+        SupplierProduct.is_favorite.is_(True),
+        SupplierProduct.stock_qty >= 1,
+        Supplier.id == SupplierProduct.supplier_id,
+        Supplier.is_enabled.is_(True),
+        Supplier.deleted_at.is_(None),
+    )
+
+
+def tedarikci_temin_yuklemi():
+    """"Kendi stoğum yok ama tedarikçiden getirebilirim" hâli (SQL).
+
+    `supplier_backed` yöneticinin AÇIK kararıdır; bağın kurulmuş olması tek
+    başına satışa yetmez. Tedarikçi kaydı kapalıysa veri BAYATTIR ve bayat
+    stoğa güvenip satmak, karşılayamayacağımız sipariş almaktır.
+    """
+    return and_(
+        Product.supplier_backed.is_(True),
+        _tedarikci_stok_var(),
+    )
+
+
+def satilabilir_yuklemi():
+    """Vitrinin "stokta" yüklemi (SQL) — `_in_stock`'un ikizi."""
+    return or_(
+        Product.kind == ProductKind.DIGITAL.value,
+        Product.stock > 0,
+        tedarikci_temin_yuklemi(),
+    )
+
+
+def satilabilir_mi(
+    kind: str,
+    stock: int | None,
+    *,
+    supplier_backed: bool = False,
+    supplier_qty: Decimal | None = None,
+) -> bool:
+    """`satilabilir_yuklemi`'nin Python ikizi.
+
+    `supplier_qty` çağıranın TEK sorguda topladığı değerdir
+    (`supplier_sync_service.availability_map`); burada lazy-load YOKTUR —
+    async oturumda ilişki gezmek `MissingGreenlet` demektir.
+    """
+    if kind == ProductKind.DIGITAL.value:
+        return True
+    if (stock or 0) > 0:
+        return True
+    if not supplier_backed or supplier_qty is None:
+        return False
+    return int(supplier_qty) >= 1
+
+
+def karsilanma_kaynagi(
+    kind: str,
+    stock: int | None,
+    *,
+    supplier_backed: bool = False,
+    supplier_qty: Decimal | None = None,
+) -> str:
+    """Müşteriye GÜVENLE söylenebilecek karşılanma bilgisi.
+
+    "Bizde var" ile "tedarikçiden getirilir" teslim süresi açısından farklı
+    sözlerdir; ikincisini gizlemek, tutulamayacak bir söz vermektir. Maliyet
+    ve tedarikçi kimliği ise public yanıta ASLA girmez (D-6) — bu alan yalnız
+    dört değerden birini taşır.
+    """
+    if kind == ProductKind.DIGITAL.value:
+        return "DIGITAL"
+    if (stock or 0) > 0:
+        return "OWN"
+    if satilabilir_mi(
+        kind, stock, supplier_backed=supplier_backed, supplier_qty=supplier_qty
+    ):
+        return "SUPPLIER"
+    return "NONE"

@@ -86,7 +86,6 @@ async def test_tedarikci_stogu_sepet_dogrulamasinda_sayilir(http, fab5, sfab):
     """Raf boş ama tedarikçide var → sepet geçerli olmalı."""
     m = await fab5.musteri()
     pid = await fab5.urun(price="100.00", tax_rate="0.20", stock=0)
-    sfab.product_ids.append(pid)
     await _temin_ac(sfab, pid, stok="5")
 
     r = await http.post(
@@ -101,7 +100,6 @@ async def test_tedarikci_stogu_sepet_dogrulamasinda_sayilir(http, fab5, sfab):
 async def test_tedarikci_stogunun_da_ustunde_istek_reddedilir(http, fab5, sfab):
     m = await fab5.musteri()
     pid = await fab5.urun(price="100.00", tax_rate="0.20", stock=0)
-    sfab.product_ids.append(pid)
     await _temin_ac(sfab, pid, stok="2")
 
     r = await http.post(
@@ -118,7 +116,6 @@ async def test_kesirli_tedarikci_stogu_asagi_yuvarlanir(http, fab5, sfab):
     siparişi kabul etmektir."""
     m = await fab5.musteri()
     pid = await fab5.urun(price="100.00", tax_rate="0.20", stock=0)
-    sfab.product_ids.append(pid)
     await _temin_ac(sfab, pid, stok="2.5")
 
     iyi = await http.post(
@@ -144,7 +141,6 @@ async def test_tamamen_tedarikciden_karsilanan_siparis_deftere_yazmaz(
     """S5'in birinci yarısı: sipariş İADE EDİLMEMELİ."""
     m = await fab5.musteri()
     pid = await fab5.urun(price="100.00", tax_rate="0.20", stock=0)
-    sfab.product_ids.append(pid)
     await _temin_ac(sfab, pid, stok="5")
 
     veri = await fab5.siparis_ver(http, m, items=[(pid, 2)], beklenen_durum=201)
@@ -168,7 +164,6 @@ async def test_karisik_karsilamada_yalniz_kendi_payi_deftere_yazilir(
     """Rafta 1, tedarikçide bol, sipariş 3 → deftere yalnız −1 yazılır."""
     m = await fab5.musteri()
     pid = await fab5.urun(price="100.00", tax_rate="0.20", stock=1)
-    sfab.product_ids.append(pid)
     await _temin_ac(sfab, pid, stok="9")
 
     veri = await fab5.siparis_ver(http, m, items=[(pid, 3)], beklenen_durum=201)
@@ -186,7 +181,6 @@ async def test_tamamen_raftan_karsilanan_siparis_degismez(http, fab5, sfab):
     """Regresyon kapısı: tedarikçi katmanı mevcut davranışa dokunmamalı."""
     m = await fab5.musteri()
     pid = await fab5.urun(price="100.00", tax_rate="0.20", stock=5)
-    sfab.product_ids.append(pid)
     await _temin_ac(sfab, pid, stok="9")
 
     veri = await fab5.siparis_ver(http, m, items=[(pid, 2)], beklenen_durum=201)
@@ -201,7 +195,6 @@ async def test_temin_kapali_urunde_eski_oversell_yolu_calisir(http, fab5, sfab):
     stok yetmezse sipariş ucu reddeder."""
     m = await fab5.musteri()
     pid = await fab5.urun(price="100.00", tax_rate="0.20", stock=1)
-    sfab.product_ids.append(pid)
     sid = await sfab.tedarikci()
     await sfab.tedarikci_urunu(
         sid, product_id=pid, link_source="AUTO", stock_qty="50"
@@ -225,7 +218,6 @@ async def test_tamamen_tedarikciden_karsilanan_siparis_iptalinde_stok_artmaz(
     """S6'nın hedefi. Hiç satılmamış mal rafa EKLENEMEZ."""
     m = await fab5.musteri()
     pid = await fab5.urun(price="100.00", tax_rate="0.20", stock=0)
-    sfab.product_ids.append(pid)
     await _temin_ac(sfab, pid, stok="5")
 
     veri = await fab5.siparis_ver(http, m, items=[(pid, 2)], beklenen_durum=201)
@@ -245,7 +237,6 @@ async def test_karisik_siparis_iptalinde_yalniz_kendi_payi_geri_doner(
 ):
     m = await fab5.musteri()
     pid = await fab5.urun(price="100.00", tax_rate="0.20", stock=1)
-    sfab.product_ids.append(pid)
     await _temin_ac(sfab, pid, stok="9")
 
     veri = await fab5.siparis_ver(http, m, items=[(pid, 3)], beklenen_durum=201)
@@ -275,7 +266,6 @@ async def test_odeme_aninda_temin_kapanirsa_mevcut_iade_yolu_calisir(
 
     m = await fab5.musteri()
     pid = await fab5.urun(price="100.00", tax_rate="0.20", stock=0)
-    sfab.product_ids.append(pid)
     spid = await _temin_ac(sfab, pid, stok="5")
 
     class TeminKapatanSaglayici(FakePaymentProvider):

@@ -12,13 +12,18 @@ import unicodedata
 from decimal import Decimal
 
 from fastapi import HTTPException, status
-from sqlalchemy import Float, cast, func, literal, or_, select
+from sqlalchemy import Float, cast, exists, func, literal, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from core import mail, storage
 from core.config import settings
-from core.stock_policy import stok_kovasi_yuklemi
+from core.stock_policy import (
+    karsilanma_kaynagi,
+    satilabilir_mi,
+    satilabilir_yuklemi,
+    stok_kovasi_yuklemi,
+)
 from core.search_text import (
     normalize_tr,
     normalized,
@@ -42,6 +47,7 @@ from models.store import (
     StockNotification,
     VariantGroup,
 )
+from models.supplier import Supplier, SupplierProduct
 from models.tutor import Tutor
 from schemas.review import RatingDistributionOut
 from schemas.store import (
@@ -136,11 +142,76 @@ def _bayesian_score_expr(prior_mean: float, confidence: float):
     ).label("bayesian_score")
 
 
-def _in_stock(p: Product) -> bool:
-    """Dijital → her zaman stokta; fiziksel → stock > 0 (NULL = sınırsız sayılmaz)."""
-    if p.kind == ProductKind.DIGITAL.value:
-        return True
-    return (p.stock or 0) > 0
+def _in_stock(p: Product, supplier_qty: Decimal | None = None) -> bool:
+    """Vitrinin "stokta" kararı — SQL yükleminin Python ikizi.
+
+    Karar `core/stock_policy` içinde TEK yerde tanımlıdır: arama listesi aynı
+    kuralı SQL'de uyguluyor ve ikisi ayrışırsa liste "stokta", detay "tükendi"
+    der (ikisi de hata vermeden).
+
+    `supplier_qty` çağıranın `availability_map` ile TOPLUCA topladığı değerdir;
+    burada ilişki gezilmez — async oturumda lazy-load `MissingGreenlet` demektir.
+    """
+    return satilabilir_mi(
+        p.kind,
+        p.stock,
+        supplier_backed=bool(getattr(p, "supplier_backed", False)),
+        supplier_qty=supplier_qty,
+    )
+
+
+async def _tedarikci_stogu(db: AsyncSession, urunler) -> dict[int, Decimal]:
+    """{product_id: tedarikçi stoğu} — tek sorgu.
+
+    Tembel import: `supplier_sync_service` bu modülü (bildirim için) import
+    ediyor; tepe seviyede karşılıklı import döngü kurardı.
+    """
+    from services import supplier_sync_service
+
+    idler = [u.id for u in urunler if getattr(u, "supplier_backed", False)]
+    if not idler:
+        return {}
+    return await supplier_sync_service.availability_map(db, idler)
+
+
+async def _tedarikci_admin_bilgisi(db: AsyncSession, urunler) -> dict:
+    """{product_id: ProductSupplierOut} — maliyet/marj bloğu.
+
+    **YALNIZ yönetim yollarından çağrılır** (D-6). Public bir yüzeyden
+    çağrılması, ticari sırrı rakibe açmak olur; bunu bir PG testi
+    (`test_supplier_storefront_pg::test_public_yanit_maliyet_tasimaz`) public
+    gövdeyi tarayarak korur.
+    """
+    from core.suppliers.pricing import margin as _marj
+    from schemas.supplier import ProductSupplierOut
+    from services import supplier_sync_service
+
+    idler = [u.id for u in urunler]
+    kayitlar = await supplier_sync_service.admin_info_map(db, idler)
+    if not kayitlar:
+        return {}
+    fiyat = {u.id: u.price for u in urunler}
+    out: dict[int, ProductSupplierOut] = {}
+    for pid, sp in kayitlar.items():
+        brut = Decimal(str(sp.cost_gross)) if sp.cost_gross is not None else None
+        m = _marj(Decimal(str(fiyat.get(pid) or 0)), brut)
+        out[pid] = ProductSupplierOut(
+            supplier_product_id=sp.id,
+            external_code=sp.external_code,
+            unit_name=sp.unit_name,
+            stock_qty=str(sp.stock_qty),
+            cost_net=(str(sp.cost_net) if sp.cost_net is not None else None),
+            cost_gross=(str(brut) if brut is not None else None),
+            margin_absolute=(str(m.absolute) if m.absolute is not None else None),
+            margin_percent=(str(m.percent) if m.percent is not None else None),
+            below_cost=m.below_cost,
+            link_source=sp.link_source,
+            is_favorite=sp.is_favorite,
+            quarantine_flags=list(sp.quarantine_flags or []),
+            stock_synced_at=sp.stock_synced_at,
+            price_synced_at=sp.price_synced_at,
+        )
+    return out
 
 
 def _to_search_out(
@@ -155,7 +226,14 @@ def _to_search_out(
     variant_count: int = 1,
     group_min_price: str | None = None,
     in_stock_override: bool | None = None,
+    #: `supplier_sync_service.availability_map`'ten TOPLUCA gelen tedarikçi
+    #: stoğu. `None` = "bu yüzey tedarikçiyi sormadı" (tekil listelemeler).
+    supplier_qty: Decimal | None = None,
+    #: YALNIZ ADMIN yollarında doldurulur (D-6). Public yanıtta maliyet ve
+    #: marj görünmemeli — rakip de müşteri olabilir.
+    supplier_info: "ProductSupplierOut | None" = None,
 ) -> ProductSearchOut:
+    tedarikciden = bool(getattr(p, "supplier_backed", False))
     return ProductSearchOut(
         id=p.id,
         slug=p.slug,
@@ -174,7 +252,18 @@ def _to_search_out(
         tax_rate=(Decimal(str(p.tax_rate)) if p.tax_rate is not None else None),
         currency=p.currency,
         cover_url=p.cover_url,
-        in_stock=(in_stock_override if in_stock_override is not None else _in_stock(p)),
+        in_stock=(
+            in_stock_override
+            if in_stock_override is not None
+            else _in_stock(p, supplier_qty)
+        ),
+        # "Bizde var" ile "tedarikçiden getirilir" teslim süresi açısından
+        # FARKLI sözlerdir; ikincisini gizlemek tutulamayacak bir söz vermektir.
+        # Maliyet ve tedarikçi kimliği ise burada YOK (D-6).
+        fulfillment=karsilanma_kaynagi(
+            p.kind, p.stock, supplier_backed=tedarikciden, supplier_qty=supplier_qty
+        ),
+        supplier=supplier_info,
         # Fiziksel üründe kalan adet; dijitalde None (bkz. şema yorumu).
         stock=(p.stock if p.kind == ProductKind.PHYSICAL.value else None),
         category_id=p.category_id,
@@ -685,7 +774,9 @@ async def search_products(
     # üzerinde çalışır: "Sarı" filtresi varken kartı grubun sarı üyesi temsil
     # eder. `id` her sırada son bağlayıcıdır (deterministik sayfalama).
     grp = func.coalesce(Product.variant_group_id, -Product.id)
-    stokta = or_(Product.kind == ProductKind.DIGITAL.value, Product.stock > 0)
+    # Tedarikçiden temin edilen ürün de "stokta"dır (D-2). Yüklem
+    # `core/stock_policy`'de, `_in_stock` ile AYNI dosyada durur.
+    stokta = satilabilir_yuklemi()
 
     if sort == "price_asc":
         temsilci_sirasi = [Product.price.asc(), Product.id.asc()]
@@ -744,6 +835,9 @@ async def search_products(
 
     stmt = stmt.limit(limit).offset(offset)
     rows = (await db.execute(stmt)).all()
+    # Tedarikçi stoğu TEK sorguda toplanır: kart başına sorgu, 30 ürünlük bir
+    # sayfada 30 gidiş-dönüş demekti (N+1).
+    tedarikci = await _tedarikci_stogu(db, [r[0] for r in rows])
     out: list[ProductSearchOut] = []
     for p, fn, ln, grp_min, grp_n, grp_stok, _skor, _relv in rows:
         name = f"{fn} {ln}".strip() if fn else None
@@ -753,6 +847,7 @@ async def search_products(
                 prior_mean,
                 confidence,
                 tutor_name=name,
+                supplier_qty=tedarikci.get(p.id),
                 variant_count=int(grp_n),
                 group_min_price=(str(grp_min) if grp_n > 1 else None),
                 # Kartın stok durumu GRUBUN durumudur: temsilci tükenik olsa
@@ -805,6 +900,10 @@ async def _variants_block(
             .order_by(Product.variant_sort, Product.id)
         )
     ).scalars().all()
+    # Kardeşlerin tedarikçi stoğu da toplu okunur: tükenen kardeş listede
+    # KALIR ve işaretlenir, ama tedarikçiden temin ediliyorsa "tükendi" demek
+    # yanlış olur.
+    tedarikci = await _tedarikci_stogu(db, uyeler)
     return ProductVariantsPublicOut(
         group_id=g.id,
         title=g.title,
@@ -818,7 +917,7 @@ async def _variants_block(
                 option1_value=m.option1_value,
                 option2_value=m.option2_value,
                 variant_sort=m.variant_sort or 0,
-                in_stock=_in_stock(m),
+                in_stock=_in_stock(m, tedarikci.get(m.id)),
                 price=str(m.price),
             )
             for m in uyeler
@@ -828,11 +927,13 @@ async def _variants_block(
 
 async def _to_detail(db: AsyncSession, p: Product) -> ProductDetailOut:
     prior_mean = await _compute_global_mean(db)
+    tedarikci = await _tedarikci_stogu(db, [p])
     base = _to_search_out(
         p,
         prior_mean,
         settings.BAYESIAN_CONFIDENCE,
         tutor_name=await _tutor_name(db, p.tutor_id),
+        supplier_qty=tedarikci.get(p.id),
     )
     return ProductDetailOut(
         **base.model_dump(),
@@ -1269,7 +1370,7 @@ async def subscribe_back_in_stock(
     await db.commit()
 
 
-async def _notify_back_in_stock(db: AsyncSession, product: Product) -> None:
+async def notify_back_in_stock(db: AsyncSession, product: Product) -> None:
     """Ürün 0→>0 stoğa girince bekleyen abonelere e-posta atar (best-effort)."""
     subs = (
         await db.execute(
@@ -1481,7 +1582,7 @@ async def update_product(
     await db.commit()
     # Stok 0→>0 olduysa bekleyen stok-bildirim abonelerine haber ver.
     if (old_stock is None or old_stock <= 0) and (p.stock or 0) > 0:
-        await _notify_back_in_stock(db, p)
+        await notify_back_in_stock(db, p)
     full = await _load_full(db, p.id)
     return await _to_detail(db, full)
 
@@ -1516,6 +1617,7 @@ def _admin_filtreleri(
     stok: str | None,
     publisher: list[str] | None,
     author: list[str] | None,
+    supplier: str | None = None,
 ):
     """Admin ürün listesinin WHERE dalları — sayım ve sayfa sorgusu PAYLAŞIR.
 
@@ -1530,6 +1632,33 @@ def _admin_filtreleri(
         # filtreliyordu, liste filtrelemiyordu ve kart 5 derken liste 7
         # gösteriyordu.
         stmt = stmt.where(stok_kovasi_yuklemi(stok))
+
+    if supplier is not None:
+        # Üç ayrı soru, üç ayrı filtre:
+        #   linked     — bu ürünün bir tedarikçi karşılığı var mı? (eşleştirme
+        #                işini takip etmek için)
+        #   backed     — "tedarikçiden temin" anahtarı açık mı? (bağ olmadan da
+        #                açık olabilir; o hâl bir UYARIDIR ve görünmeli)
+        #   below_cost — satış fiyatı maliyetin altında mı? (para kaybı)
+        bagli = exists().where(
+            SupplierProduct.product_id == Product.id,
+            Supplier.id == SupplierProduct.supplier_id,
+            Supplier.deleted_at.is_(None),
+        )
+        if supplier == "linked":
+            stmt = stmt.where(bagli)
+        elif supplier == "backed":
+            stmt = stmt.where(Product.supplier_backed.is_(True))
+        elif supplier == "below_cost":
+            stmt = stmt.where(
+                exists().where(
+                    SupplierProduct.product_id == Product.id,
+                    SupplierProduct.cost_gross.isnot(None),
+                    SupplierProduct.cost_gross >= Product.price,
+                    Supplier.id == SupplierProduct.supplier_id,
+                    Supplier.deleted_at.is_(None),
+                )
+            )
 
     for column, values in ((Product.publisher, publisher), (Product.author, author)):
         if values:
@@ -1549,6 +1678,8 @@ async def list_products_admin(
     stok: str | None = None,
     publisher: list[str] | None = None,
     author: list[str] | None = None,
+    #: `linked` | `backed` | `below_cost` — bkz. `_admin_filtreleri`.
+    supplier: str | None = None,
     sort: str = "created_at",
     order: str = "desc",
     limit: int = 100,
@@ -1574,12 +1705,12 @@ async def list_products_admin(
         .where(Product.deleted_at.is_(None))
     )
     taban = _admin_filtreleri(
-        taban, q=q, stok=stok, publisher=publisher, author=author
+        taban, q=q, stok=stok, publisher=publisher, author=author, supplier=supplier
     )
 
     sayim = select(func.count()).select_from(Product).where(Product.deleted_at.is_(None))
     sayim = _admin_filtreleri(
-        sayim, q=q, stok=stok, publisher=publisher, author=author
+        sayim, q=q, stok=stok, publisher=publisher, author=author, supplier=supplier
     )
     toplam = int((await db.execute(sayim)).scalar_one())
 
@@ -1591,12 +1722,21 @@ async def list_products_admin(
     stmt = taban.order_by(yon, Product.id.desc()).limit(limit).offset(offset)
 
     rows = (await db.execute(stmt)).all()
+    # Maliyet ve marj YALNIZ burada doldurulur (D-6): bu uç
+    # `require_admin_permission("products.view")` arkasında.
+    tedarikci_bilgi = await _tedarikci_admin_bilgisi(db, [r[0] for r in rows])
     return [
         _to_search_out(
             p,
             prior_mean,
             confidence,
             tutor_name=(f"{fn} {ln}".strip() if fn else None),
+            supplier_qty=(
+                Decimal(tedarikci_bilgi[p.id].stock_qty)
+                if p.id in tedarikci_bilgi
+                else None
+            ),
+            supplier_info=tedarikci_bilgi.get(p.id),
         )
         for p, fn, ln in rows
     ], toplam
@@ -1623,12 +1763,14 @@ async def list_favorites(db: AsyncSession, client_id: int) -> list[ProductSearch
             .order_by(ProductBookmark.created_at.desc())
         )
     ).all()
+    tedarikci = await _tedarikci_stogu(db, [r[0] for r in rows])
     return [
         _to_search_out(
             p,
             prior_mean,
             confidence,
             tutor_name=(f"{fn} {ln}".strip() if fn else None),
+            supplier_qty=tedarikci.get(p.id),
         )
         for p, fn, ln in rows
     ]
@@ -1704,6 +1846,7 @@ async def list_seller_products(
         )
     ).scalars().all()
     return [
+        # Eğitmen ürünleri DİJİTALDİR; tedarikçi katmanı onları hiç kapsamaz.
         _to_search_out(p, prior_mean, confidence, tutor_name=tutor.full_name)
         for p in products
     ]

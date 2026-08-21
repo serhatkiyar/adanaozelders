@@ -68,6 +68,11 @@ class ProductImageOut(BaseModel):
     sort_order: int = 0
 
 
+# `ProductSupplierOut` ileri referans: `schemas/supplier.py` bu modülü import
+# ETMEZ (tek yön), döngü yok.
+from schemas.supplier import ProductSupplierOut  # noqa: E402
+
+
 class ProductSearchOut(BaseModel):
     """Katalog kartı (liste/ızgara)."""
 
@@ -121,6 +126,17 @@ class ProductSearchOut(BaseModel):
     #: `group_min_price` ile "X TL'den başlayan" olur.
     variant_count: int = 1
     group_min_price: str | None = None
+    # ── Tedarikçiden temin (Yıldırım B2B) ──
+    #: Karşılanma kaynağı: OWN (raftan) · SUPPLIER (tedarikçiden getirilir) ·
+    #: NONE (tükendi) · DIGITAL. **Public'te güvenlidir** — teslim süresi
+    #: farkını gizlemek, tutulamayacak bir söz vermek olurdu.
+    fulfillment: str = "OWN"
+    #: Maliyet/marj bloğu — **YALNIZ ADMIN yollarında doldurulur** (D-6).
+    #: Şema ortak olduğu için alan burada durur; public yanıtta `None` kalır ve
+    #: bunu bir PG testi (`test_supplier_storefront_pg`) gövdeyi tarayarak
+    #: doğrular: "alan var ama boş" ile "alan hiç yok" arasındaki fark, bir
+    #: gün yanlışlıkla doldurulduğunda ortaya çıkar.
+    supplier: "ProductSupplierOut | None" = None
 
 
 class ProductVariantMemberPublicOut(BaseModel):
@@ -234,6 +250,9 @@ class ProductCreate(_BookSpecFields, _VariantMemberFields):
     category_id: int | None = None
     status: str = Field(default="DRAFT", pattern="^(ACTIVE|HIDDEN|DRAFT)$")
     cover_url: str | None = Field(default=None, max_length=500)
+    #: "Kendi stoğum bitince tedarikçi stoğu vitrinde satılabilir sayılsın."
+    #: Yalnız PHYSICAL'de anlamlı (servis dijitalde 400 döner).
+    supplier_backed: bool | None = None
 
     @model_validator(mode="after")
     def _check(self):
@@ -266,6 +285,8 @@ class ProductUpdate(_BookSpecFields, _VariantMemberFields):
     category_id: int | None = None
     status: str | None = Field(default=None, pattern="^(ACTIVE|HIDDEN|DRAFT|PENDING)$")
     cover_url: str | None = Field(default=None, max_length=500)
+    #: Tedarikçiden temin anahtarı. Gönderilmezse mevcut değer korunur.
+    supplier_backed: bool | None = None
 
 
 class SellerProductCreate(BaseModel):

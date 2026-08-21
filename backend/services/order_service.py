@@ -292,6 +292,29 @@ def compute_totals(
 # ── Sepet doğrulama / sipariş kurulumu ───────────────────────────────────────────
 
 
+async def _tedarikci_paylari(db: AsyncSession, urunler) -> dict[int, int]:
+    """{product_id: tedarikçiden karşılanabilecek ADET} — aşağı yuvarlanmış.
+
+    Tedarikçi stoğu satış birimi cinsinden ve KESİRLİ olabilir (12,5 düzine).
+    2,5 düzine = 2 satılabilir düzine; yukarı yuvarlamak, karşılanamayacak
+    siparişi kabul etmektir.
+
+    Tembel import: `supplier_sync_service` sipariş akışını hiç bilmez, tek yön.
+    """
+    from services import supplier_sync_service
+
+    idler = [
+        u.id
+        for u in urunler
+        if getattr(u, "supplier_backed", False)
+        and u.kind == ProductKind.PHYSICAL.value
+    ]
+    if not idler:
+        return {}
+    ham = await supplier_sync_service.availability_map(db, idler)
+    return {pid: int(qty) for pid, qty in ham.items() if int(qty) > 0}
+
+
 async def _resolve_lines(db: AsyncSession, items: list) -> tuple[list[dict], list[str]]:
     """Sepet kalemlerini DB'deki güncel ürünlerle eşler; fiyat/stok/uygunluğu
     sunucuda doğrular. (satırlar, sorunlar) döner — fiyat istemciye GÜVENİLMEZ."""
@@ -314,13 +337,18 @@ async def _resolve_lines(db: AsyncSession, items: list) -> tuple[list[dict], lis
         )
     ).scalars().all()
     by_id = {p.id: p for p in products}
+    # Tedarikçiden temin edilen ürünlerde raf boş olsa da satış mümkündür
+    # (D-2). Harita TEK sorguda toplanır — kalem başına sorgu N+1 olurdu.
+    tedarikci = await _tedarikci_paylari(db, list(by_id.values()))
 
     for pid, qty in wanted.items():
         p = by_id.get(pid)
         if p is None or p.status != ProductStatus.ACTIVE.value:
             issues.append("Bir ürün artık satışta değil")
             continue
-        if p.kind == ProductKind.PHYSICAL.value and (p.stock or 0) < qty:
+        if p.kind == ProductKind.PHYSICAL.value and (
+            max(p.stock or 0, 0) + tedarikci.get(pid, 0)
+        ) < qty:
             issues.append(f"'{p.title}' için yeterli stok yok")
             continue
         lines.append(
@@ -909,10 +937,21 @@ async def _finalize_paid(
     # Aynı sebeple sipariş kimliği de şimdiden yakalanır: `rollback` `order`
     # nesnesini de expire eder ve `order.id` okumak lazy-load tetikler.
     order_id = order.id
+    # ── Tedarikçi kapsaması (D-8) ──
+    #
+    # Raf yetmiyorsa sipariş HEMEN iade edilmez: ürün "tedarikçiden temin"
+    # işaretliyse eksik oradan karşılanır. Tedarikçi stoğu KİLİTLENMEZ ve
+    # kilitlenemez — başka bir sistemin verisidir; danışma niteliğindedir ve
+    # Faz 1'de rezerve edilmez (sözleşme §6, kabul edilen risk).
+    #
+    # Bu satır kalkarsa: temin açık bir ürün ödendikten sonra "stok yok" diye
+    # TAM İADE edilir; müşteri parasını geri alır, satış kaybedilir ve akış
+    # "başarılı bir iade" olduğu için hiçbir alarm çalmaz (S5).
+    tedarikci_pay = await _tedarikci_paylari(db, list(locked.values()))
     shortages = [
         locked[pid].title
         for pid, qty in sorted(needed.items())
-        if stock_ledger.has_shortage(locked[pid].stock, qty)
+        if stock_ledger.has_shortage(locked[pid].stock + tedarikci_pay.get(pid, 0), qty)
     ]
     if shortages:
         await _out_of_stock_refund(db, order, shortages)
@@ -1007,6 +1046,16 @@ async def _finalize_paid(
     # sessizce yutuyor ve hiçbir iz bırakmıyordu. Artık her fiziksel kalem için
     # bir `SALE` hareketi yazılır (anahtar `order_item:{id}:SALE`) ve
     # `products.stock` yalnız defter tarafından güncellenir.
+    # Kalem başına "tedarikçiden karşılanacak adet". Kilit ALTINDA, taze
+    # bakiyeyle hesaplanır ve siparişe YAZILIR: iptalde geri yükleme tavanı ve
+    # admin'in Yıldırım'a vereceği sipariş bu sayıdan okunur.
+    kalan_raf = {pid: max(int(locked[pid].stock or 0), 0) for pid in needed}
+    for item in sorted(physical, key=lambda i: i.id):
+        raf = kalan_raf.get(item.product_id, 0)
+        kendi = min(raf, int(item.quantity))
+        kalan_raf[item.product_id] = raf - kendi
+        item.supplier_quantity = int(item.quantity) - kendi
+
     if physical:
         try:
             await stock_ledger.apply_many(
@@ -1014,7 +1063,10 @@ async def _finalize_paid(
                 [
                     {
                         "product_id": item.product_id,
-                        "qty_delta": -item.quantity,
+                        # Rafa hiç girmemiş mal deftere GİREMEZ: `qty_delta`
+                        # yalnız kendi payımızdır. Tedarikçi payı için hareket
+                        # yazmak stoğu eksiye iterdi (`InsufficientStock`).
+                        "qty_delta": -(item.quantity - item.supplier_quantity),
                         # Satış SATILABİLİR kovadan düşer; kitap fiziksel olarak
                         # hâlâ işletmededir (F29 §3 olay etkisi tablosu).
                         "bucket": stock_ledger.StockBucket.SALEABLE,
@@ -1028,6 +1080,10 @@ async def _finalize_paid(
                         ),
                     }
                     for item in physical
+                    # Tamamen tedarikçiden karşılanan kalem için hareket YOK:
+                    # `qty_delta=0` bir hareket satırı üretir ve defteri
+                    # anlamsız satırlarla şişirirdi.
+                    if item.quantity > item.supplier_quantity
                 ],
             )
         except stock_ledger.InsufficientStock as exc:
@@ -1821,7 +1877,10 @@ async def _restock(db: AsyncSession, order: Order, *, reason_code: str) -> None:
     )
     specs: list[dict] = []
     for item in physical:
-        satilan = int(item.quantity)
+        # Tedarikçiden karşılanan adet hiç rafa girmedi → geri de yüklenemez.
+        # Düşülmezse tam iptal, HİÇ SATILMAMIŞ mal için stok artışı üretir ve
+        # hata ancak bir sonraki sayımda görünür (S6).
+        satilan = int(item.quantity) - int(item.supplier_quantity or 0)
         kalan = satilan - int(geri_yuklenen.get(item.id, 0))
         if kalan <= 0:
             # Bu kalem zaten (kısmen/tamamen iade yoluyla) geri yüklenmiş.

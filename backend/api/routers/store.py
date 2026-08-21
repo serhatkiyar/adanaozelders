@@ -232,6 +232,9 @@ async def list_products_admin(
     stok: Literal["tukendi", "azalan", "var", "kritik"] | None = Query(default=None),
     publisher: list[str] | None = Query(default=None),
     author: list[str] | None = Query(default=None),
+    #: Tedarikçi daraltması. `Literal`: yazım hatalı bir değer 422 döner,
+    #: sessizce filtresiz liste değil (TB-19 sınıfı).
+    supplier: Literal["linked", "backed", "below_cost"] | None = Query(default=None),
     sort: Literal["title", "price", "stock", "created_at"] = Query(
         default="created_at"
     ),
@@ -253,6 +256,7 @@ async def list_products_admin(
         stok=stok,
         publisher=publisher,
         author=author,
+        supplier=supplier,
         sort=sort,
         order=order,
         limit=limit,
