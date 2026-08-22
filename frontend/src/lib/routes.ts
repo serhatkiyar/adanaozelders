@@ -168,6 +168,7 @@ export const PATHS = {
   adminPayouts: "/yonetim/hakedisler",
   adminAccess: "/yonetim/yetkiler",
   adminSettings: "/yonetim/ayarlar",
+  adminAnnouncements: "/yonetim/duyuru-seridi",
 } as const;
 
 export const ROUTES = {
@@ -296,6 +297,7 @@ export const ROUTES = {
   adminPayouts: PATHS.adminPayouts,
   adminAccess: PATHS.adminAccess,
   adminSettings: PATHS.adminSettings,
+  adminAnnouncements: PATHS.adminAnnouncements,
 } as const;
 
 // Yasal belge id'si (lib/legalContent.ts) → URL. LegalPage kenar gezinmesi ve

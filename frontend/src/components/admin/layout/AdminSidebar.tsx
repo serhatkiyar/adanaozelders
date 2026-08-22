@@ -27,6 +27,11 @@ const ICONS: Record<AdminNavItem["icon"], ReactNode> = {
   settings: (
     <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm8.4-3a8.4 8.4 0 0 0-.1-1.2l2-1.5-2-3.4-2.3 1a8.5 8.5 0 0 0-2-1.2L15.6 2h-3.9l-.4 2.5a8.5 8.5 0 0 0-2 1.2l-2.3-1-2 3.4 2 1.5a8.4 8.4 0 0 0 0 2.4l-2 1.5 2 3.4 2.3-1a8.5 8.5 0 0 0 2 1.2l.4 2.5h3.9l.4-2.5a8.5 8.5 0 0 0 2-1.2l2.3 1 2-3.4-2-1.5c.06-.4.1-.8.1-1.2Z" />
   ),
+  // Duyuru şeridi: megafon. Kendi glifi — "moderation" (kalkan) yanlış anlam
+  // taşırdı, bu bir yayın/duyuru yüzeyi, bir güvenlik kararı değil.
+  announcement: (
+    <path d="M3 11v2a2 2 0 0 0 2 2h1l2 5h2l-1.5-5H10l8 4V6l-8 4H5a2 2 0 0 0-2 2Zm7-1v4m8-8v12" />
+  ),
 };
 
 function Glif({ ad, className }: { ad: AdminNavItem["icon"]; className?: string }) {

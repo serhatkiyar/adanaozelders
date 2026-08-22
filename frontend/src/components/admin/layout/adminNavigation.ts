@@ -8,7 +8,7 @@ export interface AdminNavItem {
   to: string;
   group: AdminNavGroup;
   description: string;
-  icon: "overview" | "users" | "education" | "library" | "exam" | "store" | "inventory" | "delivery" | "booking" | "moderation" | "audit" | "access" | "settings";
+  icon: "overview" | "users" | "education" | "library" | "exam" | "store" | "inventory" | "delivery" | "booking" | "moderation" | "audit" | "access" | "settings" | "announcement";
   requiredPermission?: string;
   end?: boolean;
   badge?: "open-reports";
@@ -60,6 +60,15 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
     description: "Ödeme kolu kapıları ve özellik bayrakları.",
     icon: "settings",
     requiredPermission: "settings.view",
+  },
+  {
+    label: "Duyuru Şeridi",
+    shortLabel: "Duyurular",
+    to: ROUTES.adminAnnouncements,
+    group: "Platform",
+    description: "Storefront'un tepesindeki duyuru/kampanya şeridini yönetin.",
+    icon: "announcement",
+    requiredPermission: "announcements.view",
   },
   {
     label: "Eğitmen İlanları",
