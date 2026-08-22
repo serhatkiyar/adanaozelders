@@ -267,6 +267,7 @@ export const OLCUM_TABANI = [
   "src/pages/DeliveryDriver.tsx",
   "src/pages/DeliveryRunHandover.tsx",
   "src/pages/admin/AdminAccessPage.tsx",
+  "src/pages/admin/AdminAnnouncementsPage.tsx",
   "src/pages/admin/AdminAuditLogsPage.tsx",
   "src/pages/admin/AdminBookingsPage.tsx",
   "src/pages/admin/AdminDashboardPage.tsx",

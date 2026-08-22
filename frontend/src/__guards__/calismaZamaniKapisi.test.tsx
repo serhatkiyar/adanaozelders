@@ -327,6 +327,7 @@ const KAPI_KAPSAMI = [
   "src/pages/DeliveryDriver.tsx",
   "src/pages/DeliveryRunHandover.tsx",
   "src/pages/admin/AdminAccessPage.tsx",
+  "src/pages/admin/AdminAnnouncementsPage.tsx",
   "src/pages/admin/AdminAuditLogsPage.tsx",
   "src/pages/admin/AdminBookingsPage.tsx",
   "src/pages/admin/AdminDashboardPage.tsx",
@@ -455,6 +456,11 @@ const KONTROLSUZ_EKRANLAR: Record<string, "sunum" | "kabuk" | "pencere-kabugu" |
   "src/pages/DeliveryDriver.tsx": "kosullu",
   "src/pages/DeliveryRunHandover.tsx": "kosullu",
   "src/pages/admin/AdminAccessPage.tsx": "kosullu",
+  // Duyuru şeridi listesi: ağsız render'da liste BOŞtur (`KayitYokDurumu`
+  // basar) ve oluşturma formu `showForm` KAPALI doğar — "Yeni duyuru"ya
+  // basılınca açılır. `ProductsPanel`/`SupplierPanel` ile aynı sınıf; gerçek
+  // DOM ölçümü `adminAnnouncements.acceptance.test.tsx`tedir.
+  "src/pages/admin/AdminAnnouncementsPage.tsx": "kosullu",
   "src/pages/admin/AdminDashboardPage.tsx": "kosullu",
   "src/pages/admin/AdminOperationsPage.tsx": "kosullu",
   "src/pages/admin/AdminPayoutsPage.tsx": "kosullu",
