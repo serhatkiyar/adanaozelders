@@ -70,7 +70,6 @@ async def _tedarikci(s):
 async def tohumla() -> None:
     from models.store import Product
     from models.supplier import SupplierProduct
-    from services import stock_ledger
 
     async with AsyncSessionLocal() as s:
         sup = await _tedarikci(s)

@@ -239,7 +239,6 @@ def _saglikli_bagimliliklar(main, monkeypatch) -> None:
 def test_uretimde_tedarikci_hata_metni_gizlenir(client, monkeypatch):
     """`/health` kimlik doğrulamasız public bir uçtur. Sağlayıcının hata
     gövdesi token parçası veya iç URL taşıyabilir."""
-    import main
     from core.config import settings
 
     monkeypatch.setattr(settings, "ENVIRONMENT", "production")

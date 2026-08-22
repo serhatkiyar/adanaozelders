@@ -49,9 +49,25 @@ ignore = [
 # Depolama taşıma aracı da CLI: taşınacak/taşınan her nesneyi rapor eder
 # (dry-run çıktısı, uygulamadan önce gözden geçirilen şeyin ta kendisidir).
 "scripts/migrate_storage_visibility.py" = ["T20"]
+# `scripts/` dizininin TAMAMI T201'den muaftır. Buradaki dosyaların hepsi ELLE
+# çalıştırılan CLI araçlarıdır (tohum, mutasyon provası, içe aktarma, rapor):
+# konsol çıktısı aracın kullanıcıyla konuşma biçimidir, üretimde unutulmuş bir
+# debug print DEĞİLDİR. Özellikle `tedarikci_tur_seed.py`'deki "REDDEDİLDİ:"
+# güvenlik reddi mesajları terminale BASILMAK zorundadır — logging'e çevirmek
+# betiği neden reddettiğini kullanıcıdan gizlerdi.
+#
+# Muafiyet iki eksende de DAR tutulur: yalnız T201 (T203/pprint dahil değil) ve
+# yalnız `scripts/` ağacı (alt dizinler dahil). Dışındaki hiçbir dosya
+# etkilenmez;
+# uygulama kodunda unutulan bir print CI'da hâlâ kırar. (Daha önce burada
+# dosya-dosya istisna verilirdi; her yeni CLI aracı bu bloğa bir satır eklemeyi
+# gerektirdiği ve unutulunca CI'yı alakasız yere kırdığı için dizin bazına
+# çıkarıldı. Aşağıdaki tekil `scripts/...` satırları tarihsel kayıttır —
+# gerekçelerini korumak için bırakıldı, artık bu satır onları kapsıyor.)
+"scripts/*" = ["T201"]
+#
 # Aşağıdaki üçü de argparse'lı CLI araçlarıdır ve konsol çıktısı ARACIN
-# KENDİSİDİR. İstisna dosya + kural bazında dar tutulur — `scripts/` dizinine
-# toplu muafiyet verilmez, yoksa yarın eklenen bir script sessizce muaf olur.
+# KENDİSİDİR.
 #
 # Mutasyon provası sürücüsü: hangi mutasyonun uygulandığını, hangi testin
 # kırıldığını ve geri almanın doğrulandığını adım adım yazar; bu çıktı
