@@ -1049,12 +1049,24 @@ async def _finalize_paid(
     # Kalem başına "tedarikçiden karşılanacak adet". Kilit ALTINDA, taze
     # bakiyeyle hesaplanır ve siparişe YAZILIR: iptalde geri yükleme tavanı ve
     # admin'in Yıldırım'a vereceği sipariş bu sayıdan okunur.
+    # Tedarikçi payı ÖN KONTROLDE ölçülen havuzla TAVANLANIR. Tavansız hâlde
+    # rafın açığı sorgusuz "tedarikçi karşılar" sayılıyordu — ürün tedarikçiye
+    # hiç bağlı olmasa (`tedarikci_pay` boş) bile. Sonuç: `qty_delta` yalnız
+    # rafta OLAN kadar küçülüyor, defter reddetmiyor ve claim sonrası yetersiz
+    # stok KURTARMA YOLU (aşağıdaki `InsufficientStock` dalı) hiç çalışmıyordu:
+    # sipariş PAID kalıyor, karşılanamayan adet sessizce "tedarikçiden gelecek"
+    # diye yazılıyordu. Ön kontrol bu yolun GUARD'I DEĞİLDİR (tedarikçi verisi
+    # kilitlenmez, danışma niteliğindedir) — bu yüzden tavan burada da durur.
     kalan_raf = {pid: max(int(locked[pid].stock or 0), 0) for pid in needed}
+    kalan_tedarikci = {pid: max(int(tedarikci_pay.get(pid, 0)), 0) for pid in needed}
     for item in sorted(physical, key=lambda i: i.id):
         raf = kalan_raf.get(item.product_id, 0)
         kendi = min(raf, int(item.quantity))
         kalan_raf[item.product_id] = raf - kendi
-        item.supplier_quantity = int(item.quantity) - kendi
+        havuz = kalan_tedarikci.get(item.product_id, 0)
+        ted = min(int(item.quantity) - kendi, havuz)
+        kalan_tedarikci[item.product_id] = havuz - ted
+        item.supplier_quantity = ted
 
     if physical:
         try:
