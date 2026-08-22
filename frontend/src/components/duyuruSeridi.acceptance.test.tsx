@@ -223,13 +223,18 @@ describe("İP-C2 · duyuru şeridi", () => {
     expect(bolge.className).not.toContain("#1A365D");
   });
 
-  it("17b: bilgi varyantı lacivert sınıfını taşır", async () => {
+  it("17b: bilgi varyantı NÖTR yüzey + lacivert AKSAN kenarlığı taşır (zemin lacivert DEĞİL)", async () => {
     adapterKur({ status: 200, data: ORNEK_BILGI });
     sar(<DuyuruSeridi />);
 
     const bolge = await screen.findByRole("region", { name: "Duyuru" });
     expect(bolge.getAttribute("data-varyant")).toBe("bilgi");
-    expect(bolge.className).toContain("#1A365D");
+    // Düzeltme turu (Ç-3 kapanış): Ç-3 kararı "nötr yüzey + lacivert aksan"dır
+    // — `#1A365D` dolu zemin OLAMAZ, etkin gezinme/odak/birincil düğme rengidir.
+    // Eski davranış `bg-[#1A365D]` idi (bu testin ölçtüğü tam ihlal).
+    expect(bolge.className).toContain("bg-panel-surface");
+    expect(bolge.className).toContain("border-l-panel-accent");
+    expect(bolge.className).not.toMatch(/bg-\[#1A365D\]/);
   });
 
   /**
