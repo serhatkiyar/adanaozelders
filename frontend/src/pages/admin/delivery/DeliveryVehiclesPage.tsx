@@ -761,7 +761,7 @@ function BasePointRow({ p, isDefault }: { p: PickupPoint; isDefault: boolean }) 
         <p className="truncate text-sm font-medium text-slate-900 dark:text-white">
           {p.name}
           {isDefault && (
-            <span className="ml-2 rounded-full bg-indigo-50 px-2 py-0.5 text-[11px] font-semibold text-indigo-600 dark:bg-indigo-500/15 dark:text-indigo-300">
+            <span className="ml-2 rounded-full bg-panel-accent-soft px-2 py-0.5 text-[11px] font-semibold text-panel-accent">
               varsayılan
             </span>
           )}

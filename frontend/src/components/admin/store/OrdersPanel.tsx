@@ -241,7 +241,7 @@ export function OrdersPanel() {
                 })
               )
             }
-            className="block rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none focus:border-indigo-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
+            className="block rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none focus:border-panel-accent dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
           >
             <option value="">Tümü</option>
             {ORDER_STATUS_FILTERS.map((s) => (

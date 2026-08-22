@@ -97,7 +97,7 @@ export function ProductPicker({
                   <button
                     type="button"
                     onClick={() => ekle(p)}
-                    className="block w-full px-3 py-2 text-left transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-500 dark:hover:bg-slate-800/60"
+                    className="block w-full px-3 py-2 text-left transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-panel-focus dark:hover:bg-slate-800/60"
                   >
                     <span className="block text-sm text-slate-800 dark:text-slate-200">
                       {p.title}

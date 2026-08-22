@@ -110,6 +110,13 @@ const KAPI_DISI: Record<string, { tur: "props" | "bilesen-yok" | "baglam"; gerek
     tur: "props",
     gerekce: "zorunlu yuzey (duzenleme yuzeyi) + supplierId",
   },
+  // İP-B2 · liste ailesi: kural fonksiyonu `aksiyonlar` dizisini gezdiği
+  // için propsuz mount PATLAR. Borcu, kendi davranış dosyasında ve ürün
+  // listesi kabul matrisinde kapanıyor.
+  "src/components/admin/ui2/liste/satirAksiyonlari.tsx": {
+    tur: "props",
+    gerekce: "zorunlu aksiyonlar dizisi (Ç-2 kural denetimi)",
+  },
   "src/components/admin/delivery/LabelSheet.tsx": {
     tur: "props",
     gerekce: "zorunlu run (duraklar)",
@@ -292,9 +299,12 @@ const KAPI_KAPSAMI = [
   "src/components/admin/delivery/ClosedDays.tsx",
   "src/components/admin/delivery/ItemLines.tsx",
   "src/components/admin/delivery/bits.tsx",
+  "src/components/admin/layout/AdminKomutPenceresi.tsx",
   "src/components/admin/layout/AdminLayout.tsx",
   "src/components/admin/layout/AdminPageHeader.tsx",
+  "src/components/admin/layout/AdminProfilMenusu.tsx",
   "src/components/admin/layout/AdminSidebar.tsx",
+  "src/components/admin/layout/baslikAksiyonu.tsx",
   "src/components/admin/store/BulkImportPanel.tsx",
   "src/components/admin/store/CategoriesPanel.tsx",
   "src/components/admin/store/CouponsPanel.tsx",
@@ -309,6 +319,10 @@ const KAPI_KAPSAMI = [
   "src/components/admin/ui/Dialog.tsx",
   "src/components/admin/ui/PageState.tsx",
   "src/components/admin/ui2/gezinmeBekcisi.tsx",
+  "src/components/admin/ui2/komutPenceresi.tsx",
+  "src/components/admin/ui2/liste/aracCubugu.tsx",
+  "src/components/admin/ui2/liste/bosDurum.tsx",
+  "src/components/admin/ui2/liste/menu.tsx",
   "src/components/admin/ui2/medusa-tr.tsx",
   "src/pages/DeliveryDriver.tsx",
   "src/pages/DeliveryRunHandover.tsx",
@@ -400,6 +414,17 @@ const KONTROLSUZ_EKRANLAR: Record<string, "sunum" | "kabuk" | "pencere-kabugu" |
   // bulunmamalıdır — rozet etkileşimsizdir (bkz. lib/ozellikBayraklari.ts).
   "src/components/YakindaRozeti.tsx": "sunum",
   "src/components/admin/AccessState.tsx": "sunum",
+  // ── İP-B2 · liste ailesi ──
+  // `aracCubugu`: propsuz hâlde ne arama ne filtre bildirilir; arama girdisi
+  //   yalnız `arama` tanımı verilince doğar (kosullu).
+  // `bosDurum`: h2 + açıklama + aksiyon yuvası; hiç form kontrolü taşımaz.
+  // `menu`: kapalı menü yalnız tetikleyici düğmeyi basar; öğeler açılınca
+  //   doğar ve zaten hiçbiri form kontrolü değil.
+  // `baslikAksiyonu`: portal sarmalayıcısı; içeriği çağırandan gelir.
+  "src/components/admin/ui2/liste/aracCubugu.tsx": "kosullu",
+  "src/components/admin/ui2/liste/bosDurum.tsx": "sunum",
+  "src/components/admin/ui2/liste/menu.tsx": "kosullu",
+  "src/components/admin/layout/baslikAksiyonu.tsx": "kabuk",
   "src/components/admin/CourierManager.tsx": "kosullu",
   "src/components/admin/StockBadge.tsx": "sunum",
   "src/components/admin/StockLedgerPanel.tsx": "kosullu",
@@ -409,6 +434,9 @@ const KONTROLSUZ_EKRANLAR: Record<string, "sunum" | "kabuk" | "pencere-kabugu" |
   "src/components/admin/delivery/bits.tsx": "sunum",
   "src/components/admin/layout/AdminLayout.tsx": "kabuk",
   "src/components/admin/layout/AdminPageHeader.tsx": "kabuk",
+  // İP-B1: profil menüsü KAPALI açılır; tema radyo düğmeleri menü açılınca
+  // doğar. Açık hâli `panelKabugu.test.tsx`te gerçek DOM'da ölçülüyor.
+  "src/components/admin/layout/AdminProfilMenusu.tsx": "kosullu",
   "src/components/admin/layout/AdminSidebar.tsx": "kabuk",
   "src/components/admin/store/ReturnsPanel.tsx": "kosullu",
   // Tedarikçi paneli: ağsız render'da tedarikçi listesi BOŞtur ve ekran
@@ -480,6 +508,37 @@ const ZORUNLU_PROPLAR: Record<string, Record<string, unknown>> = {
   // `adminTutorApproval.acceptance`te açılır (DERIN_KAPI).
   "src/pages/admin/AdminSectionPage.tsx": { section: "listings" },
   "src/pages/dashboards/AdminHome.tsx": { section: "listings" },
+  // ── İP-B1 · komut penceresi: KAPALI hâli `null` render eder ──
+  //
+  // İkisi de propsuz MOUNT OLUR (bu yüzden `KAPI_DISI`'na yazılamazlar: oranın
+  // ters provası "propsuz mount EDİLEMİYOR" der) ama `acik` verilmediğinde
+  // hiçbir düğüm basmazlar ve kapının 2. çıpası ("boş DOM basmadı") haklı
+  // olarak kırılır. Doğru cevap `AdminSectionPage`teki gibi ekranı GERÇEKTEN
+  // render ettirmektir: açıklık bir veri değil, bir kip parametresidir.
+  "src/components/admin/layout/AdminKomutPenceresi.tsx": {
+    acik: true,
+    onAc: () => {},
+    onKapat: () => {},
+  },
+  // İP-B2 · başlık aksiyonu yuvası: `children` YOKSA hiçbir düğüm basmaz
+  // (portal hedefi de yoktur, `<>{undefined}</>` döner) ve kapının 2. çıpası
+  // ("boş DOM basmadı") haklı olarak kırılır. `AdminKomutPenceresi`teki
+  // gerekçenin aynısı: içerik bir veri değil, bileşenin varlık sebebi.
+  "src/components/admin/layout/baslikAksiyonu.tsx": {
+    children: "Yeni ürün",
+  },
+  "src/components/admin/ui2/komutPenceresi.tsx": {
+    acik: true,
+    onKapat: () => {},
+    baslik: "Komut penceresi",
+    aramaEtiketi: "Panelde ara",
+    yerTutucu: "Ara…",
+    sorgu: "",
+    onSorgu: () => {},
+    gruplar: [],
+    etkin: 0,
+    onEtkin: () => {},
+  },
 };
 
 /**

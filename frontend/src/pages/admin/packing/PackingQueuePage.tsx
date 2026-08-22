@@ -84,7 +84,7 @@ function SatirAksiyonu({
     return (
       <Link
         to={ROUTES.adminPackingPackage(paketId)}
-        className="inline-flex min-h-9 items-center justify-center rounded-lg bg-indigo-600 px-3 text-xs font-semibold text-white shadow-sm transition hover:bg-indigo-700"
+        className="inline-flex min-h-9 items-center justify-center rounded-lg bg-panel-accent px-3 text-xs font-semibold text-panel-accent-fg shadow-sm transition hover:bg-panel-accent/90"
       >
         Paketlemeye devam et
       </Link>
@@ -131,7 +131,7 @@ function SatirAksiyonu({
     return (
       <Link
         to={ROUTES.adminPackingPackage(paketId)}
-        className="text-xs font-semibold text-indigo-600 hover:underline dark:text-indigo-400"
+        className="text-xs font-semibold text-panel-accent hover:underline"
       >
         Paketi gör →
       </Link>

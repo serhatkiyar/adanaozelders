@@ -1,0 +1,697 @@
+{
+  "olculdu": "2026-08-21T21:27:29.346Z",
+  "ekranlar": {
+    "magaza": {
+      "acik-1280": {
+        "tema": "acik",
+        "govdeGenisligi": 1280,
+        "yatayTasma": false,
+        "tasmaPiksel": 0,
+        "icIceButon": 0,
+        "dugmeSayisi": 7,
+        "enKucukDokunmaHedefi": 36,
+        "railGorunur": true,
+        "railGenisligi": 263,
+        "railKatli": "false",
+        "h1Sayisi": 1,
+        "h1": "Mağaza",
+        "ariaCurrent": [
+          "Mağaza",
+          "Ürünler"
+        ],
+        "erisimReddi": false,
+        "adsizKontroller": [],
+        "kontrast": {
+          "gezinmeEtkinOge": {
+            "kontrast": 5.62,
+            "esik": 4.5,
+            "gecti": true,
+            "fontPx": 14
+          },
+          "gezinmePasifOge": {
+            "kontrast": 17.85,
+            "esik": 4.5,
+            "gecti": true,
+            "fontPx": 16
+          },
+          "grupBasligi": {
+            "kontrast": 4.76,
+            "esik": 3,
+            "gecti": true,
+            "fontPx": 10
+          },
+          "sayfaBasligi": null,
+          "kenarlik": {
+            "renk": "rgb(226, 232, 240)",
+            "kontrast": 1.23,
+            "esik": 3,
+            "gecti": false
+          }
+        }
+      },
+      "acik-380": {
+        "tema": "acik",
+        "govdeGenisligi": 380,
+        "yatayTasma": false,
+        "tasmaPiksel": 0,
+        "icIceButon": 0,
+        "dugmeSayisi": 5,
+        "enKucukDokunmaHedefi": 36,
+        "railGorunur": false,
+        "railGenisligi": 0,
+        "railKatli": "false",
+        "h1Sayisi": 1,
+        "h1": "Mağaza",
+        "ariaCurrent": [
+          "Mağaza",
+          "Ürünler"
+        ],
+        "erisimReddi": false,
+        "adsizKontroller": []
+      },
+      "koyu-1280": {
+        "tema": "koyu",
+        "govdeGenisligi": 1280,
+        "yatayTasma": false,
+        "tasmaPiksel": 0,
+        "icIceButon": 0,
+        "dugmeSayisi": 7,
+        "enKucukDokunmaHedefi": 36,
+        "railGorunur": true,
+        "railGenisligi": 263,
+        "railKatli": "false",
+        "h1Sayisi": 1,
+        "h1": "Mağaza",
+        "ariaCurrent": [
+          "Mağaza",
+          "Ürünler"
+        ],
+        "erisimReddi": false,
+        "adsizKontroller": [],
+        "kontrast": {
+          "gezinmeEtkinOge": {
+            "kontrast": 5.36,
+            "esik": 4.5,
+            "gecti": true,
+            "fontPx": 14
+          },
+          "gezinmePasifOge": {
+            "kontrast": 17.06,
+            "esik": 4.5,
+            "gecti": true,
+            "fontPx": 16
+          },
+          "grupBasligi": {
+            "kontrast": 6.96,
+            "esik": 3,
+            "gecti": true,
+            "fontPx": 10
+          },
+          "sayfaBasligi": null,
+          "kenarlik": {
+            "renk": "rgb(30, 41, 59)",
+            "kontrast": 1.22,
+            "esik": 3,
+            "gecti": false
+          }
+        }
+      },
+      "koyu-380": {
+        "tema": "koyu",
+        "govdeGenisligi": 380,
+        "yatayTasma": false,
+        "tasmaPiksel": 0,
+        "icIceButon": 0,
+        "dugmeSayisi": 5,
+        "enKucukDokunmaHedefi": 36,
+        "railGorunur": false,
+        "railGenisligi": 0,
+        "railKatli": "false",
+        "h1Sayisi": 1,
+        "h1": "Mağaza",
+        "ariaCurrent": [
+          "Mağaza",
+          "Ürünler"
+        ],
+        "erisimReddi": false,
+        "adsizKontroller": []
+      }
+    },
+    "envanter": {
+      "acik-1280": {
+        "tema": "acik",
+        "govdeGenisligi": 1280,
+        "yatayTasma": false,
+        "tasmaPiksel": 0,
+        "icIceButon": 0,
+        "dugmeSayisi": 5,
+        "enKucukDokunmaHedefi": 36,
+        "railGorunur": true,
+        "railGenisligi": 263,
+        "railKatli": "false",
+        "h1Sayisi": 1,
+        "h1": "Envanter",
+        "ariaCurrent": [
+          "Envanter",
+          "Genel"
+        ],
+        "erisimReddi": false,
+        "adsizKontroller": [],
+        "kontrast": {
+          "gezinmeEtkinOge": {
+            "kontrast": 5.62,
+            "esik": 4.5,
+            "gecti": true,
+            "fontPx": 14
+          },
+          "gezinmePasifOge": {
+            "kontrast": 17.85,
+            "esik": 4.5,
+            "gecti": true,
+            "fontPx": 16
+          },
+          "grupBasligi": {
+            "kontrast": 4.76,
+            "esik": 3,
+            "gecti": true,
+            "fontPx": 10
+          },
+          "sayfaBasligi": null,
+          "kenarlik": {
+            "renk": "rgb(226, 232, 240)",
+            "kontrast": 1.23,
+            "esik": 3,
+            "gecti": false
+          }
+        }
+      },
+      "acik-380": {
+        "tema": "acik",
+        "govdeGenisligi": 380,
+        "yatayTasma": false,
+        "tasmaPiksel": 0,
+        "icIceButon": 0,
+        "dugmeSayisi": 3,
+        "enKucukDokunmaHedefi": 36,
+        "railGorunur": false,
+        "railGenisligi": 0,
+        "railKatli": "false",
+        "h1Sayisi": 1,
+        "h1": "Envanter",
+        "ariaCurrent": [
+          "Envanter",
+          "Genel"
+        ],
+        "erisimReddi": false,
+        "adsizKontroller": []
+      },
+      "koyu-1280": {
+        "tema": "koyu",
+        "govdeGenisligi": 1280,
+        "yatayTasma": false,
+        "tasmaPiksel": 0,
+        "icIceButon": 0,
+        "dugmeSayisi": 5,
+        "enKucukDokunmaHedefi": 36,
+        "railGorunur": true,
+        "railGenisligi": 263,
+        "railKatli": "false",
+        "h1Sayisi": 1,
+        "h1": "Envanter",
+        "ariaCurrent": [
+          "Envanter",
+          "Genel"
+        ],
+        "erisimReddi": false,
+        "adsizKontroller": [],
+        "kontrast": {
+          "gezinmeEtkinOge": {
+            "kontrast": 5.36,
+            "esik": 4.5,
+            "gecti": true,
+            "fontPx": 14
+          },
+          "gezinmePasifOge": {
+            "kontrast": 17.06,
+            "esik": 4.5,
+            "gecti": true,
+            "fontPx": 16
+          },
+          "grupBasligi": {
+            "kontrast": 6.96,
+            "esik": 3,
+            "gecti": true,
+            "fontPx": 10
+          },
+          "sayfaBasligi": null,
+          "kenarlik": {
+            "renk": "rgb(30, 41, 59)",
+            "kontrast": 1.22,
+            "esik": 3,
+            "gecti": false
+          }
+        }
+      },
+      "koyu-380": {
+        "tema": "koyu",
+        "govdeGenisligi": 380,
+        "yatayTasma": false,
+        "tasmaPiksel": 0,
+        "icIceButon": 0,
+        "dugmeSayisi": 3,
+        "enKucukDokunmaHedefi": 36,
+        "railGorunur": false,
+        "railGenisligi": 0,
+        "railKatli": "false",
+        "h1Sayisi": 1,
+        "h1": "Envanter",
+        "ariaCurrent": [
+          "Envanter",
+          "Genel"
+        ],
+        "erisimReddi": false,
+        "adsizKontroller": []
+      }
+    },
+    "kurye": {
+      "acik-1280": {
+        "tema": "acik",
+        "govdeGenisligi": 1280,
+        "yatayTasma": false,
+        "tasmaPiksel": 0,
+        "icIceButon": 0,
+        "dugmeSayisi": 8,
+        "enKucukDokunmaHedefi": 36,
+        "railGorunur": true,
+        "railGenisligi": 263,
+        "railKatli": "false",
+        "h1Sayisi": 1,
+        "h1": "Dağıtım",
+        "ariaCurrent": [
+          "Dağıtım",
+          "Kuryeler"
+        ],
+        "erisimReddi": false,
+        "adsizKontroller": [],
+        "kontrast": {
+          "gezinmeEtkinOge": {
+            "kontrast": 5.62,
+            "esik": 4.5,
+            "gecti": true,
+            "fontPx": 14
+          },
+          "gezinmePasifOge": {
+            "kontrast": 17.85,
+            "esik": 4.5,
+            "gecti": true,
+            "fontPx": 16
+          },
+          "grupBasligi": {
+            "kontrast": 4.76,
+            "esik": 3,
+            "gecti": true,
+            "fontPx": 10
+          },
+          "sayfaBasligi": null,
+          "kenarlik": {
+            "renk": "rgb(226, 232, 240)",
+            "kontrast": 1.23,
+            "esik": 3,
+            "gecti": false
+          }
+        }
+      },
+      "acik-380": {
+        "tema": "acik",
+        "govdeGenisligi": 380,
+        "yatayTasma": false,
+        "tasmaPiksel": 0,
+        "icIceButon": 0,
+        "dugmeSayisi": 6,
+        "enKucukDokunmaHedefi": 36,
+        "railGorunur": false,
+        "railGenisligi": 0,
+        "railKatli": "false",
+        "h1Sayisi": 1,
+        "h1": "Dağıtım",
+        "ariaCurrent": [
+          "Dağıtım",
+          "Kuryeler"
+        ],
+        "erisimReddi": false,
+        "adsizKontroller": []
+      },
+      "koyu-1280": {
+        "tema": "koyu",
+        "govdeGenisligi": 1280,
+        "yatayTasma": false,
+        "tasmaPiksel": 0,
+        "icIceButon": 0,
+        "dugmeSayisi": 8,
+        "enKucukDokunmaHedefi": 36,
+        "railGorunur": true,
+        "railGenisligi": 263,
+        "railKatli": "false",
+        "h1Sayisi": 1,
+        "h1": "Dağıtım",
+        "ariaCurrent": [
+          "Dağıtım",
+          "Kuryeler"
+        ],
+        "erisimReddi": false,
+        "adsizKontroller": [],
+        "kontrast": {
+          "gezinmeEtkinOge": {
+            "kontrast": 5.36,
+            "esik": 4.5,
+            "gecti": true,
+            "fontPx": 14
+          },
+          "gezinmePasifOge": {
+            "kontrast": 17.06,
+            "esik": 4.5,
+            "gecti": true,
+            "fontPx": 16
+          },
+          "grupBasligi": {
+            "kontrast": 6.96,
+            "esik": 3,
+            "gecti": true,
+            "fontPx": 10
+          },
+          "sayfaBasligi": null,
+          "kenarlik": {
+            "renk": "rgb(30, 41, 59)",
+            "kontrast": 1.22,
+            "esik": 3,
+            "gecti": false
+          }
+        }
+      },
+      "koyu-380": {
+        "tema": "koyu",
+        "govdeGenisligi": 380,
+        "yatayTasma": false,
+        "tasmaPiksel": 0,
+        "icIceButon": 0,
+        "dugmeSayisi": 6,
+        "enKucukDokunmaHedefi": 36,
+        "railGorunur": false,
+        "railGenisligi": 0,
+        "railKatli": "false",
+        "h1Sayisi": 1,
+        "h1": "Dağıtım",
+        "ariaCurrent": [
+          "Dağıtım",
+          "Kuryeler"
+        ],
+        "erisimReddi": false,
+        "adsizKontroller": []
+      }
+    },
+    "kutuphane": {
+      "acik-1280": {
+        "tema": "acik",
+        "govdeGenisligi": 1280,
+        "yatayTasma": false,
+        "tasmaPiksel": 0,
+        "icIceButon": 0,
+        "dugmeSayisi": 6,
+        "enKucukDokunmaHedefi": 36,
+        "railGorunur": true,
+        "railGenisligi": 263,
+        "railKatli": "false",
+        "h1Sayisi": 1,
+        "h1": "Kütüphaneler",
+        "ariaCurrent": [
+          "Kütüphaneler"
+        ],
+        "erisimReddi": false,
+        "adsizKontroller": [],
+        "kontrast": {
+          "gezinmeEtkinOge": {
+            "kontrast": 5.62,
+            "esik": 4.5,
+            "gecti": true,
+            "fontPx": 14
+          },
+          "gezinmePasifOge": {
+            "kontrast": 17.85,
+            "esik": 4.5,
+            "gecti": true,
+            "fontPx": 16
+          },
+          "grupBasligi": {
+            "kontrast": 4.76,
+            "esik": 3,
+            "gecti": true,
+            "fontPx": 10
+          },
+          "sayfaBasligi": null,
+          "kenarlik": {
+            "renk": "rgb(226, 232, 240)",
+            "kontrast": 1.23,
+            "esik": 3,
+            "gecti": false
+          }
+        }
+      },
+      "acik-380": {
+        "tema": "acik",
+        "govdeGenisligi": 380,
+        "yatayTasma": false,
+        "tasmaPiksel": 0,
+        "icIceButon": 0,
+        "dugmeSayisi": 4,
+        "enKucukDokunmaHedefi": 36,
+        "railGorunur": false,
+        "railGenisligi": 0,
+        "railKatli": "false",
+        "h1Sayisi": 1,
+        "h1": "Kütüphaneler",
+        "ariaCurrent": [
+          "Kütüphaneler"
+        ],
+        "erisimReddi": false,
+        "adsizKontroller": []
+      },
+      "koyu-1280": {
+        "tema": "koyu",
+        "govdeGenisligi": 1280,
+        "yatayTasma": false,
+        "tasmaPiksel": 0,
+        "icIceButon": 0,
+        "dugmeSayisi": 6,
+        "enKucukDokunmaHedefi": 36,
+        "railGorunur": true,
+        "railGenisligi": 263,
+        "railKatli": "false",
+        "h1Sayisi": 1,
+        "h1": "Kütüphaneler",
+        "ariaCurrent": [
+          "Kütüphaneler"
+        ],
+        "erisimReddi": false,
+        "adsizKontroller": [],
+        "kontrast": {
+          "gezinmeEtkinOge": {
+            "kontrast": 5.36,
+            "esik": 4.5,
+            "gecti": true,
+            "fontPx": 14
+          },
+          "gezinmePasifOge": {
+            "kontrast": 17.06,
+            "esik": 4.5,
+            "gecti": true,
+            "fontPx": 16
+          },
+          "grupBasligi": {
+            "kontrast": 6.96,
+            "esik": 3,
+            "gecti": true,
+            "fontPx": 10
+          },
+          "sayfaBasligi": null,
+          "kenarlik": {
+            "renk": "rgb(30, 41, 59)",
+            "kontrast": 1.22,
+            "esik": 3,
+            "gecti": false
+          }
+        }
+      },
+      "koyu-380": {
+        "tema": "koyu",
+        "govdeGenisligi": 380,
+        "yatayTasma": false,
+        "tasmaPiksel": 0,
+        "icIceButon": 0,
+        "dugmeSayisi": 4,
+        "enKucukDokunmaHedefi": 36,
+        "railGorunur": false,
+        "railGenisligi": 0,
+        "railKatli": "false",
+        "h1Sayisi": 1,
+        "h1": "Kütüphaneler",
+        "ariaCurrent": [
+          "Kütüphaneler"
+        ],
+        "erisimReddi": false,
+        "adsizKontroller": []
+      }
+    }
+  },
+  "etkilesim": {
+    "katlama": {
+      "acikGenislik": 263,
+      "katliGenislik": 71,
+      "katliDurum": "true",
+      "yenidenYuklemedeKatli": "true",
+      "katliAdlar": [
+        "Genel Bakış",
+        "Kullanıcılar",
+        "Hata Çözme",
+        "Eğitmenler",
+        "Diplomalar",
+        "Rezervasyonlar",
+        "Talepler",
+        "Hakedişler",
+        "Mağaza",
+        "Envanter",
+        "Paketleme",
+        "Dağıtım",
+        "Kütüphaneler",
+        "Deneme Katalogları",
+        "Ad Değişiklikleri",
+        "Şikâyetler",
+        "Denetim Kayıtları",
+        "Yetkiler"
+      ]
+    },
+    "komutPenceresi": {
+      "pencere": {
+        "ad": "Komut penceresi",
+        "ariaModal": "true"
+      },
+      "odak": {
+        "etiket": "input",
+        "ad": "Panelde ara",
+        "railIcinde": false,
+        "pencereIcinde": true
+      },
+      "suzme": {
+        "yazildi": true
+      },
+      "secenekler": [
+        "EnvanterG E"
+      ],
+      "gidilenYol": "/yonetim/envanter",
+      "pencereKapandi": true
+    },
+    "kisayol": {
+      "gKIleGidilen": "/yonetim/kullanicilar",
+      "girdiOdaktaykenYol": "/yonetim/magaza/urunler"
+    },
+    "tema": {
+      "secenekler": [
+        {
+          "deger": "light",
+          "ad": "Açık",
+          "secili": false
+        },
+        {
+          "deger": "dark",
+          "ad": "Koyu",
+          "secili": true
+        },
+        {
+          "deger": "system",
+          "ad": "Sistem",
+          "secili": false
+        }
+      ],
+      "koyuSecinceSinif": true
+    },
+    "mobilCekmece": {
+      "cekmece": {
+        "ad": "Yönetim menüsü",
+        "ariaModal": "true"
+      },
+      "odakDisinaCikti": false,
+      "escKapatti": true
+    },
+    "odakHalkasi": [
+      {
+        "ad": "Yönetim paneli ana sayfası",
+        "etiket": "a",
+        "boxShadow": "rgb(255, 255, 255) 0px 0px 0px 0px, rgb(79, 70, 229) 0px 0px 0px 2px, rgba(0, 0, 0, 0) 0px 0px 0px 0px",
+        "outline": "solid 2px rgba(0, 0, 0, 0)",
+        "halkaVar": true,
+        "ham": "rgb(255, 255, 255) 0px 0px 0px 0px, rgb(79, 70, 229) 0px 0px"
+      },
+      {
+        "ad": "Menüyü katla",
+        "etiket": "button",
+        "boxShadow": "rgb(255, 255, 255) 0px 0px 0px 2px, rgb(99, 102, 241) 0px 0px 0px 4px, rgba(0, 0, 0, 0) 0px 0px 0px 0px",
+        "outline": "solid 2px rgba(0, 0, 0, 0)",
+        "halkaVar": true,
+        "ham": "rgb(255, 255, 255) 0px 0px 0px 2px, rgb(99, 102, 241) 0px 0p"
+      },
+      {
+        "ad": "AraCtrl K",
+        "etiket": "button",
+        "boxShadow": "rgb(255, 255, 255) 0px 0px 0px 2px, rgb(99, 102, 241) 0px 0px 0px 4px, rgba(0, 0, 0, 0.05) 0px 1px 2px 0px",
+        "outline": "solid 2px rgba(0, 0, 0, 0)",
+        "halkaVar": true,
+        "ham": "rgb(255, 255, 255) 0px 0px 0px 2px, rgb(99, 102, 241) 0px 0p"
+      },
+      {
+        "ad": "Genel Bakış",
+        "etiket": "a",
+        "boxShadow": "rgba(255, 255, 255, 1) 0px 0px 0px 2px, rgba(79, 70, 229, 1) 0px 0px 0px 4px, rgba(0, 0, 0, 0) 0px 0px 0px 0px",
+        "outline": "solid 2px rgba(0, 0, 0, 0)",
+        "halkaVar": true,
+        "ham": "rgba(255, 255, 255, 1) 0px 0px 0px 2px, rgba(79, 70, 229, 1)"
+      },
+      {
+        "ad": "Kullanıcılar",
+        "etiket": "a",
+        "boxShadow": "rgb(255, 255, 255) 0px 0px 0px 2px, rgb(79, 70, 229) 0px 0px 0px 4px, rgba(0, 0, 0, 0) 0px 0px 0px 0px",
+        "outline": "solid 2px rgba(0, 0, 0, 0)",
+        "halkaVar": true,
+        "ham": "rgb(255, 255, 255) 0px 0px 0px 2px, rgb(79, 70, 229) 0px 0px"
+      },
+      {
+        "ad": "Hata Çözme",
+        "etiket": "a",
+        "boxShadow": "rgb(255, 255, 255) 0px 0px 0px 2px, rgb(79, 70, 229) 0px 0px 0px 4px, rgba(0, 0, 0, 0) 0px 0px 0px 0px",
+        "outline": "solid 2px rgba(0, 0, 0, 0)",
+        "halkaVar": true,
+        "ham": "rgb(255, 255, 255) 0px 0px 0px 2px, rgb(79, 70, 229) 0px 0px"
+      },
+      {
+        "ad": "Eğitmenler",
+        "etiket": "a",
+        "boxShadow": "rgb(255, 255, 255) 0px 0px 0px 2px, rgb(79, 70, 229) 0px 0px 0px 4px, rgba(0, 0, 0, 0) 0px 0px 0px 0px",
+        "outline": "solid 2px rgba(0, 0, 0, 0)",
+        "halkaVar": true,
+        "ham": "rgb(255, 255, 255) 0px 0px 0px 2px, rgb(79, 70, 229) 0px 0px"
+      },
+      {
+        "ad": "Diplomalar",
+        "etiket": "a",
+        "boxShadow": "rgb(255, 255, 255) 0px 0px 0px 2px, rgb(79, 70, 229) 0px 0px 0px 4px, rgba(0, 0, 0, 0) 0px 0px 0px 0px",
+        "outline": "solid 2px rgba(0, 0, 0, 0)",
+        "halkaVar": true,
+        "ham": "rgb(255, 255, 255) 0px 0px 0px 2px, rgb(79, 70, 229) 0px 0px"
+      }
+    ]
+  },
+  "giris": {
+    "epostaYazildi": true,
+    "sifreYazildi": true,
+    "yol": "/yonetim"
+  },
+  "hataliAdim": 0
+}

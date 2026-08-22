@@ -145,7 +145,7 @@ export function Dialog({ open, title, description, children, onClose, initialFoc
             <h2 id={titleId} className="text-lg font-bold text-slate-950 dark:text-white">{title}</h2>
             {description && <p id={descriptionId} className="mt-1 text-sm text-slate-500 dark:text-slate-400">{description}</p>}
           </div>
-          <button type="button" onClick={onClose} className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:hover:bg-slate-800">
+          <button type="button" onClick={onClose} className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-panel-focus dark:hover:bg-slate-800">
             <span className="sr-only">Kapat</span>
             <span aria-hidden="true" className="text-xl leading-none">×</span>
           </button>

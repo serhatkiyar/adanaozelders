@@ -12,6 +12,15 @@ export interface AdminNavItem {
   requiredPermission?: string;
   end?: boolean;
   badge?: "open-reports";
+  /**
+   * `G` dizisinden sonra basılan harf (İP-B1 · docs/tasarim-dili.md §4.4).
+   *
+   * Yalnız en sık kullanılan alanlara verilir; her öğeye kısayol vermek
+   * hatırlanabilirliği yok eder. Harf TÜRKÇE etiketten türetilir ve tekilliği
+   * `adminNavigation.test.ts`te sınanır — iki alan aynı harfi alırsa dizinin
+   * hangisine gideceği yazım sırasına bağlı olurdu.
+   */
+  kisayol?: string;
 }
 
 export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
@@ -26,6 +35,7 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
   },
   {
     label: "Genel Bakış",
+    kisayol: "G",
     to: ROUTES.admin,
     group: "Platform",
     description: "Platform sağlığı, bekleyen işler ve temel kullanıcı metrikleri.",
@@ -35,6 +45,7 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
   },
   {
     label: "Kullanıcılar",
+    kisayol: "K",
     to: ROUTES.adminUsers,
     group: "Platform",
     description: "Yönetici, eğitmen ve öğrenci hesaplarını görüntüleyin.",
@@ -43,6 +54,7 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
   },
   {
     label: "Ayarlar",
+    kisayol: "A",
     to: ROUTES.adminSettings,
     group: "Platform",
     description: "Ödeme kolu kapıları ve özellik bayrakları.",
@@ -51,6 +63,7 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
   },
   {
     label: "Eğitmen İlanları",
+    kisayol: "T",
     shortLabel: "Eğitmenler",
     to: ROUTES.adminTutors,
     group: "Eğitim",
@@ -69,6 +82,7 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
   },
   {
     label: "Rezervasyonlar",
+    kisayol: "R",
     to: ROUTES.adminBookings,
     group: "Eğitim",
     description: "Ders rezervasyonlarını ve ihtilaf durumlarını yönetin.",
@@ -86,6 +100,7 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
   },
   {
     label: "Kütüphaneler",
+    kisayol: "L",
     to: ROUTES.adminLibraries,
     group: "Operasyon",
     description: "Kütüphane profilleri, operatörler ve ödeme ayarları.",
@@ -103,6 +118,7 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
   },
   {
     label: "Mağaza",
+    kisayol: "M",
     to: ROUTES.adminStoreProducts,
     group: "Ticaret",
     description: "Ürün, kategori, sipariş, iade ve kupon operasyonları.",
@@ -111,6 +127,7 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
   },
   {
     label: "Envanter",
+    kisayol: "E",
     to: ROUTES.adminInventory,
     group: "Ticaret",
     description:
@@ -120,6 +137,7 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
   },
   {
     label: "Paketleme",
+    kisayol: "P",
     to: ROUTES.adminPacking,
     group: "Ticaret",
     description:
@@ -131,6 +149,7 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
   },
   {
     label: "Dağıtım",
+    kisayol: "D",
     to: ROUTES.adminDelivery,
     group: "Ticaret",
     description: "Günlük turlar, hazırlık, kapasite ve kurye operasyonları.",

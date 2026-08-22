@@ -91,7 +91,7 @@ export default function AdminDemandsPage() {
       header: "Öğrenci",
       enableSorting: false,
       cell: ({ row }) => (
-        <Link className="font-medium text-indigo-600 hover:underline dark:text-indigo-300" to={ROUTES.adminUser("client", row.original.client_id)}>
+        <Link className="font-medium text-panel-accent hover:underline" to={ROUTES.adminUser("client", row.original.client_id)}>
           {row.original.client_name}
         </Link>
       ),
@@ -187,7 +187,7 @@ export default function AdminDemandsPage() {
                 <Badge tone={STATUS_TONE[demand.status]}>{STATUS_LABEL[demand.status]}</Badge>
               </div>
               <div className="mt-3 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-500">
-                <Link className="font-medium text-indigo-600 dark:text-indigo-300" to={ROUTES.adminUser("client", demand.client_id)}>{demand.client_name}</Link>
+                <Link className="font-medium text-panel-accent" to={ROUTES.adminUser("client", demand.client_id)}>{demand.client_name}</Link>
                 <span>{demand.response_count} yanıt · {budgetLabel(demand)}</span>
               </div>
               {canManage && demand.status === DemandStatus.OPEN && (

@@ -254,7 +254,11 @@ describe("P-1 · ürün listesi DataTable'a taşındı", () => {
 
     magaza();
 
-    const satir = (await screen.findByText(/Geometri Soru Bankası/)).closest("tr");
+    // MASAÜSTÜ tablosuna daraltıldı: İP-B2'de `renderMobileRow` bağlandı ve
+    // aynı ürün hem tabloda hem mobil kartta basılıyor (jsdom ikisini de
+    // görür; `md:hidden` yalnız CSS'tir). İddia aynı kaldı.
+    const tablo = await screen.findByRole("table");
+    const satir = within(tablo).getByText(/Geometri Soru Bankası/).closest("tr");
     expect(satir).not.toBeNull();
     const icinde = within(satir as HTMLElement);
     expect(icinde.getByText(/Ahmet Yılmaz/)).toBeTruthy();
@@ -448,14 +452,24 @@ describe("F-1/F-2/F-3 · stok filtresi gerçekten sunucuya gider", () => {
   });
 
   it("filtre seçimi URL'e yazılır ve sunucuya gider", async () => {
+    // ── İP-B2: MEKANİZMA değişti, İDDİA değişmedi ──
+    //
+    // Filtre artık bir `<select>` değil, "Filtre ekle" menüsünün iki adımı
+    // (önce kriter, sonra değer — tasarım dili §5.1). Eski yazım
+    // `findByLabelText(/stok durumu/i)` ile `<select>`i buluyordu; o etiket
+    // artık yok.
+    //
+    // Ölçülen şey AYNI ve asıl olan o: seçim SUNUCUYA gidiyor mu. "Element
+    // var mı" hiçbir zaman kanıt sayılmadı.
     izinVer("products.view");
     urunSunucusu([urun()]);
 
     magaza();
     await screen.findByRole("table");
 
-    const secici = await screen.findByLabelText(/stok durumu/i);
-    fireEvent.change(secici, { target: { value: "tukendi" } });
+    fireEvent.click(screen.getByRole("button", { name: "Filtre ekle" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Stok durumu" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Tükendi" }));
 
     await screen.findByRole("table");
     expect(sonIstek("/store/admin/products")?.params.get("stok")).toBe("tukendi");
@@ -470,8 +484,16 @@ describe("F-1/F-2/F-3 · stok filtresi gerçekten sunucuya gider", () => {
     magaza("?stok=tukendi");
     await screen.findByRole("table");
 
-    const secici = (await screen.findByLabelText(/stok durumu/i)) as HTMLSelectElement;
-    expect(secici.value, "filtre URL'den geri okunmuyor").toBe("tukendi");
+    // İP-B2: seçim artık `<select>`in değerinde değil, UYGULANAN FİLTRE
+    // ÇİPİNDE görünür — ve çip, filtrenin hem hangi kriter hem hangi değer
+    // olduğunu insan diliyle söyler (eski `<select>` yalnız değeri taşıyordu).
+    // İki iddia birden: (1) seçim ekranda geri okunuyor, (2) sunucuya da
+    // gidiyor — ikincisi olmasa ekran "filtreliymiş gibi" görünürdü.
+    expect(
+      screen.getByRole("button", { name: "Stok durumu filtresini kaldır: Tükendi" }),
+      "filtre URL'den geri okunmuyor"
+    ).toBeTruthy();
+    expect(sonIstek("/store/admin/products")?.params.get("stok")).toBe("tukendi");
   });
 });
 

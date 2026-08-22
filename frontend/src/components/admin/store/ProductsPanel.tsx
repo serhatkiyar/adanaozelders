@@ -1,36 +1,84 @@
 /**
- * Mağaza "Ürünler" sekmesi.
+ * Mağaza "Ürünler" sekmesi — **İP-B2'nin referans liste ekranı**.
  *
- * Panel KENDİ durumunu taşır (arama taslağı, form/içe-aktarma görünürlüğü);
- * diğer sekmelerle paylaştığı hiçbir React durumu yoktur — ortak zemin URL
- * (`useSearchParams`) ve React Query önbelleğidir.
+ * Panel KENDİ durumunu taşır (form/içe-aktarma görünürlüğü); diğer sekmelerle
+ * paylaştığı hiçbir React durumu yoktur — ortak zemin URL (`useSearchParams`)
+ * ve React Query önbelleğidir.
  *
- * ## İP-A6 · Görev 4c/4d — göç
+ * ## İP-B2 · liste sayfası anatomisi (docs/tasarim-dili.md §5)
  *
- *   - Beş ham `<button>` ortak `Button`a geçti; satır aksiyonları AÇIK DÜĞME
- *     kaldı (üç nokta menüye geçilmez — kalıcı kural).
- *   - Düzenleme penceresi ve silme onayının durumu ekrandan
- *     `ui2/yuzeyDurumu`na taşındı; bu dosyada pencere `useState`i yok.
- *   - Kapak seçicisi `className="hidden"` yerine gerçek `hidden` özniteliği
- *     taşıyor: sınıf adı dinamik olabilir, öznitelik kontrolü erişilebilirlik
- *     ağacından GERÇEKTEN çıkarır (sayacın ölçüm dışı kuralı da buna bakar).
+ * Bu ekran, diğer 21 liste ekranının kopyalayacağı hâldir. Yukarıdan aşağı
+ * sabit sıra:
  *
- * ## Sıralama deseni (Görev 2 — A7'nin kopyalayacağı hâl)
+ *   1. **Üst başlık** — `<h1>` ve birincil aksiyon KABUKTAN gelir
+ *      (`PanelBaslikAksiyonu`). "Yeni ürün" artık içeriğin içinde değil,
+ *      panelin her ekranındaki aynı yerde.
+ *   2. **Araç çubuğu** — arama · "Filtre ekle" · "Sırala". Bu ekran yalnız
+ *      HANGİ filtreleri sunacağını söyler; düzeni, gecikmeyi, URL yazımını ve
+ *      sayfa sıfırlamayı `ListeAracCubugu` yapar.
+ *   3. **Uygulanan filtre çipleri** — araç çubuğundan gelir, tek tek
+ *      kaldırılabilir.
+ *   4. **Tablo** — `DataTable` (sunucu taraflı sıralama korunur).
+ *   5. **Sayfalama** — `DataTable`ın altbilgisi.
+ *
+ * ### Ne KAYBOLDU ve neden
+ *
+ * Dört `<select>`li filtre şeridi kalktı. Ölçülen sorun: dört açılır liste
+ * yan yana, 380 px'te alt alta dört satıra kırılıyordu ve hiçbiri
+ * "uygulanmış mı" bilgisini taşımıyordu (varsayılan "Tümü" ile seçili değer
+ * aynı görünüyordu). Menü + çip deseni ikisini birden çözer: uygulanmamış
+ * filtre yer kaplamaz, uygulanmış filtre bir çip olarak GÖRÜNÜR ve tek
+ * dokunuşla kalkar.
+ *
+ * ### Satır aksiyonları — Ç-2 · D
+ *
+ * Açıkta iki düğme: **Düzenle** ve **Yayınla/Gizle**. Menüde: kapak yükleme
+ * ve **Sil** (yıkıcı, onay adımlı). Kural `SatirAksiyonlari`nde zorlanır —
+ * üçüncü bir açık düğme ya da açıkta bir yıkıcı aksiyon yazılırsa
+ * geliştirmede GÜRÜLTÜLÜ patlar.
+ *
+ * ### Mobil
+ *
+ * `renderMobileRow` İLK KEZ bağlandı (İP-B1 envanteri T1: "bugün
+ * kullanılmıyor — B2'de bağlanır"). 380 px'te tablo gizlenir, yerine kart
+ * gelir: kimlik satırı + en fazla üç meta satırı + aksiyonlar. Yatay kaydırma
+ * çözüm değildir.
+ *
+ * ### Tedarikçi (D-6/D-8) — B2 anatomisine UYARLANDI
+ *
+ * Tedarikçi entegrasyonu bu ekrana eski dört `<select>`li şerit üzerinden
+ * girmişti. Şerit kalkınca süzgeç kaybolabilirdi; kaybolsa hiçbir test
+ * kırılmazdı (birleşme anında tedarikçi yüzeyinin tek bir testi yoktu).
+ * Bugünkü hâl: süzgeç `filtreler` dizisinin bir üyesi, "Maliyet / Marj"
+ * kolonu ise `kolonlar` dizisine sonradan eklenen bir kolon — ikisi de
+ * `suppliers.view` duvarının arkasında. Mobil kart da tedarikçi stoğunu ve
+ * maliyeti gösterir; nöbetçisi `urunListesiAnatomisi.acceptance` · F.
+ *
+ * ## Sıralama deseni (İP-A6 · Görev 2'den DEĞİŞMEDİ)
  *
  * Sıralama SUNUCUDA yapılır (`DataTable` `manualSorting`), seçim URL'de yaşar
  * (`sirala`/`yon`; `lib/storeProductQuery`) ve gösterge hem görsel hem
- * `aria-sort` ile duyurulur. Kolonun sıralanabilir olması için `accessorFn`
- * ŞARTTIR (aşağıdaki nota bak) — yalnız `cell` taşıyan kolon TanStack'te
- * "display" sayılır ve başlığı düğmeye dönüşmez.
+ * `aria-sort` ile duyurulur. Araç çubuğundaki "Sırala" düğmesi ile tablo
+ * başlığındaki gösterge AYNI URL durumunu okur — çelişemezler.
  */
-import { useEffect, useState } from "react";
+import { useRef, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import type { ColumnDef } from "@tanstack/react-table";
 
 import { AccessDenied, ReadOnlyNotice, useAdminAreaAccess } from "@/components/admin/AccessState";
-import { Badge, Button, ConfirmDialog, ErrorState } from "@/components/admin/ui";
+import { Badge, Button, ErrorState } from "@/components/admin/ui";
 import { useDuzenlemeYuzeyi } from "@/components/admin/ui2/yuzeyDurumu";
+import {
+  KayitYokDurumu,
+  ListeAracCubugu,
+  SatirAksiyonlari,
+  SonucYokDurumu,
+  useListeTemizleme,
+  type FiltreTanimi,
+  type SatirAksiyonu,
+} from "@/components/admin/ui2/liste";
+import { PanelBaslikAksiyonu } from "@/components/admin/layout/baslikAksiyonu";
 import { DataTable } from "@/components/admin/data-table";
 import { StockBadge } from "@/components/admin/StockBadge";
 import { deleteProduct, updateProduct, uploadProductCover } from "@/api/store";
@@ -47,7 +95,6 @@ import {
   filtreVarMi,
   parseUrunSorgusu,
   urunSorgusundanIstek,
-  type UrunSorguDurumu,
 } from "@/lib/storeProductQuery";
 import { toast } from "@/store/toastStore";
 import type { ProductSearchOut } from "@/types";
@@ -55,6 +102,33 @@ import type { ProductSearchOut } from "@/types";
 import { BulkImportPanel } from "./BulkImportPanel";
 import { EditProductModal } from "./EditProductModal";
 import { ProductForm } from "./ProductForm";
+
+/** Sıralama seçenekleri — `URUN_SIRALARI` ile aynı küme, insan adlarıyla. */
+const SIRALAMA_SECENEKLERI = [
+  { deger: "created_at", etiket: "Eklenme" },
+  { deger: "title", etiket: "Başlık" },
+  { deger: "price", etiket: "Fiyat" },
+  { deger: "stock", etiket: "Stok" },
+];
+
+const STOK_SECENEKLERI = [
+  { deger: "tukendi", etiket: "Tükendi" },
+  { deger: "azalan", etiket: "Azalan" },
+  { deger: "kritik", etiket: "Tükendi + azalan" },
+  { deger: "var", etiket: "Stokta" },
+];
+
+/**
+ * Tedarikçi kovaları (D-6) — `TEDARIKCI_FILTRELERI` ile aynı küme.
+ *
+ * `below_cost` bir süzgeç değil ALARM listesidir; menüde de öyle adlandırılır
+ * ("Zararına satılan"), çünkü çipe düştüğünde tek başına okunacak.
+ */
+const TEDARIKCI_SECENEKLERI = [
+  { deger: "linked", etiket: "Bağlı" },
+  { deger: "backed", etiket: "Tedarikçiden temin" },
+  { deger: "below_cost", etiket: "Zararına satılan" },
+];
 
 export function ProductsPanel() {
   const { canView, canManage } = useAdminAreaAccess("products");
@@ -67,33 +141,12 @@ export function ProductsPanel() {
   );
   const config = useStoreConfig();
   const invalidate = useInvalidateAdminStore();
+  const facets = useBookFacets();
   const [showForm, setShowForm] = useState(false);
   const [showImport, setShowImport] = useState(false);
-
-  // Arama kutusu yerel state tutar ve gecikmeli olarak URL'e yazar: her tuş
-  // vuruşunda URL'i (ve dolayısıyla isteği) tazelemek hem gereksiz istek
-  // üretir hem de geri tuşunu kullanılamaz hâle getirir.
-  const [aramaTaslak, setAramaTaslak] = useState(durum.q);
-  const urlQ = durum.q;
-  useEffect(() => setAramaTaslak(urlQ), [urlQ]);
-  useEffect(() => {
-    if (aramaTaslak === urlQ) return;
-    const zamanlayici = setTimeout(() => {
-      setParams(
-        (onceki) => {
-          const sonraki = new URLSearchParams(onceki);
-          if (aramaTaslak) sonraki.set("q", aramaTaslak);
-          else sonraki.delete("q");
-          // Arama daraldığında eski sayfa numarası geçersizdir: 4. sayfadayken
-          // arama yapıp boş sonuç görmek, "kayıt yok" sanılan bir ekran üretir.
-          sonraki.delete("sayfa");
-          return sonraki;
-        },
-        { replace: true }
-      );
-    }, 300);
-    return () => clearTimeout(zamanlayici);
-  }, [aramaTaslak, urlQ, setParams]);
+  // Sıralama ve sayfa boyu KORUNUR: "filtreleri temizle" diyen kullanıcı
+  // listeyi genişletmek ister, sıralamasını kaybetmek değil.
+  const temizle = useListeTemizleme(["sirala", "yon", "limit"]);
 
   function guncelle(degisiklikler: Record<string, string | number | undefined>) {
     setParams((onceki) => {
@@ -119,6 +172,36 @@ export function ProductsPanel() {
   const toplam = data?.total ?? -1;
   const filtreli = filtreVarMi(durum);
   const esik = config.data?.low_stock_threshold;
+
+  const filtreler: FiltreTanimi[] = [
+    { anahtar: "stok", etiket: "Stok durumu", secenekler: STOK_SECENEKLERI },
+    // Tedarikçi süzgeci maliyet kolonuyla AYNI izin duvarının arkasında
+    // (D-6): `suppliers.view`i olmayan yönetici için sunucu `supplier`
+    // bloğunu doldurmaz — filtre ona boş liste döndürürdü.
+    ...(tedarikciGorebilir
+      ? [{ anahtar: "tedarikci", etiket: "Tedarikçi", secenekler: TEDARIKCI_SECENEKLERI }]
+      : []),
+    {
+      anahtar: "yayinevi",
+      etiket: "Yayınevi",
+      yukleniyor: facets.isLoading,
+      secenekler: (facets.data?.publisher ?? []).map((f) => ({
+        deger: f.value,
+        etiket: f.value,
+        sayi: f.count,
+      })),
+    },
+    {
+      anahtar: "yazar",
+      etiket: "Yazar",
+      yukleniyor: facets.isLoading,
+      secenekler: (facets.data?.author ?? []).map((f) => ({
+        deger: f.value,
+        etiket: f.value,
+        sayi: f.count,
+      })),
+    },
+  ];
 
   const kolonlar: ColumnDef<ProductSearchOut, unknown>[] = [
     // `accessorFn` sıralama İÇİN gerekli: TanStack, veri erişimi olmayan
@@ -147,7 +230,7 @@ export function ProductsPanel() {
       header: "Fiyat",
       enableSorting: true,
       cell: ({ row }) => (
-        <span className="whitespace-nowrap">{formatTL(row.original.price)}</span>
+        <span className="whitespace-nowrap tabular-nums">{formatTL(row.original.price)}</span>
       ),
     },
     {
@@ -192,26 +275,33 @@ export function ProductsPanel() {
   }
 
   return (
-    <div>
+    <div className="space-y-4">
+      {/* Birincil aksiyon KABUĞUN başlık şeridine portallanır (tasarım dili
+          §4.2). Kabuk yoksa (kabul testi, çalışma zamanı kapısı) satır içinde
+          çizilir — gerekçe `baslikAksiyonu.tsx`te. */}
       {canManage ? (
-        <div className="flex justify-end gap-2">
-          <Button
-            variant="secondary"
-            aria-expanded={showImport}
-            onClick={() => setShowImport((v) => !v)}
-          >
-            {showImport ? "Kapat" : "Toplu içe aktar"}
-          </Button>
-          <Button aria-expanded={showForm} onClick={() => setShowForm((v) => !v)}>
-            {showForm ? "Kapat" : "Yeni ürün"}
-          </Button>
-        </div>
+        <PanelBaslikAksiyonu>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="secondary"
+              size="sm"
+              aria-expanded={showImport}
+              onClick={() => setShowImport((v) => !v)}
+            >
+              {showImport ? "Kapat" : "Toplu içe aktar"}
+            </Button>
+            <Button size="sm" aria-expanded={showForm} onClick={() => setShowForm((v) => !v)}>
+              {showForm ? "Kapat" : "Yeni ürün"}
+            </Button>
+          </div>
+        </PanelBaslikAksiyonu>
       ) : (
         <ReadOnlyNotice />
       )}
+
       {canManage && showImport && <BulkImportPanel onDone={invalidate} />}
       {showForm && (
-        <div className="mt-4 rounded-xl border border-slate-200 p-4 dark:border-slate-700">
+        <div className="rounded-2xl border border-panel-border p-4">
           <ProductForm
             mode="create"
             onDone={() => {
@@ -222,147 +312,77 @@ export function ProductsPanel() {
         </div>
       )}
 
-      <UrunFiltreCubugu
-        durum={durum}
-        aramaTaslak={aramaTaslak}
-        onArama={setAramaTaslak}
-        onDegis={guncelle}
-        tedarikciGorebilir={tedarikciGorebilir}
+      <ListeAracCubugu
+        arama={{
+          etiket: "Ürün ara",
+          ipucu: "Başlık, yazar, yayınevi, ISBN veya SKU",
+        }}
+        filtreler={filtreler}
+        siralama={{
+          anahtar: "sirala",
+          yonAnahtari: "yon",
+          varsayilan: "created_at",
+          varsayilanYon: "desc",
+          secenekler: SIRALAMA_SECENEKLERI,
+        }}
       />
 
-      <div className="mt-4">
-        <DataTable
-          columns={kolonlar}
-          data={urunler}
-          getRowId={(p) => String(p.id)}
-          isLoading={isLoading}
-          sorting={[{ id: durum.sort, desc: durum.order === "desc" }]}
-          onSortingChange={(guncelleyici) => {
-            const sonraki =
-              typeof guncelleyici === "function"
-                ? guncelleyici([{ id: durum.sort, desc: durum.order === "desc" }])
-                : guncelleyici;
-            const ilk = sonraki[0];
-            if (!ilk) return;
-            guncelle({ sirala: ilk.id, yon: ilk.desc ? "desc" : "asc" });
-          }}
-          page={durum.page}
-          pageSize={durum.pageSize}
-          total={toplam < 0 ? urunler.length : toplam}
-          onPageChange={(sayfa) => guncelle({ sayfa })}
-          onPageSizeChange={(boyut) => guncelle({ limit: boyut, sayfa: 1 })}
-          emptyTitle={filtreli ? "Sonuç bulunamadı" : "Henüz ürün eklenmemiş"}
-          emptyDescription={
-            filtreli
-              ? "Arama veya filtreleri değiştirmeyi deneyin."
-              : "İlk ürünü ekleyerek kataloğu oluşturmaya başlayın."
-          }
-          emptyAction={
-            filtreli ? (
-              <Button size="sm" variant="secondary" onClick={() => setParams({})}>
-                Filtreleri temizle
-              </Button>
-            ) : undefined
-          }
-        />
-      </div>
-    </div>
-  );
-}
-
-/** Filtre çubuğu — arama + stok + yayınevi/yazar. Tablonun ÜSTÜNDE, tek şerit. */
-function UrunFiltreCubugu({
-  durum,
-  aramaTaslak,
-  onArama,
-  onDegis,
-  tedarikciGorebilir,
-}: {
-  durum: UrunSorguDurumu;
-  aramaTaslak: string;
-  onArama: (deger: string) => void;
-  onDegis: (degisiklikler: Record<string, string | number | undefined>) => void;
-  tedarikciGorebilir: boolean;
-}) {
-  const facets = useBookFacets();
-  const yayinevleri = facets.data?.publisher ?? [];
-  const yazarlar = facets.data?.author ?? [];
-
-  return (
-    <div className="mt-4 flex flex-wrap items-end gap-3">
-      <label className="flex-1 min-w-56 text-xs font-medium text-slate-500 dark:text-slate-400">
-        Ürün ara
-        <input
-          type="search"
-          value={aramaTaslak}
-          onChange={(e) => onArama(e.target.value)}
-          placeholder="Başlık, yazar, yayınevi, ISBN veya SKU"
-          className="mt-1 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
-        />
-      </label>
-
-      <label className="text-xs font-medium text-slate-500 dark:text-slate-400">
-        Stok durumu
-        <select
-          value={durum.stok ?? ""}
-          onChange={(e) => onDegis({ stok: e.target.value || undefined })}
-          className="mt-1 block rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none focus:border-indigo-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
-        >
-          <option value="">Tümü</option>
-          <option value="tukendi">Tükendi</option>
-          <option value="azalan">Azalan</option>
-          <option value="kritik">Tükendi + azalan</option>
-          <option value="var">Stokta</option>
-        </select>
-      </label>
-
-      {tedarikciGorebilir && (
-      <label className="text-xs font-medium text-slate-500 dark:text-slate-400">
-        Tedarikçi
-        <select
-          value={durum.tedarikci ?? ""}
-          onChange={(e) => onDegis({ tedarikci: e.target.value || undefined })}
-          className="mt-1 block rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none focus:border-indigo-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
-        >
-          <option value="">Tümü</option>
-          <option value="linked">Bağlı</option>
-          <option value="backed">Tedarikçiden temin</option>
-          <option value="below_cost">Zararına</option>
-        </select>
-      </label>
-      )}
-
-      <label className="text-xs font-medium text-slate-500 dark:text-slate-400">
-        Yayınevi
-        <select
-          value={durum.yayinevi}
-          onChange={(e) => onDegis({ yayinevi: e.target.value || undefined })}
-          className="mt-1 block max-w-48 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none focus:border-indigo-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
-        >
-          <option value="">Tümü</option>
-          {yayinevleri.map((f) => (
-            <option key={f.value} value={f.value}>
-              {f.value} ({f.count})
-            </option>
-          ))}
-        </select>
-      </label>
-
-      <label className="text-xs font-medium text-slate-500 dark:text-slate-400">
-        Yazar
-        <select
-          value={durum.yazar}
-          onChange={(e) => onDegis({ yazar: e.target.value || undefined })}
-          className="mt-1 block max-w-48 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none focus:border-indigo-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
-        >
-          <option value="">Tümü</option>
-          {yazarlar.map((f) => (
-            <option key={f.value} value={f.value}>
-              {f.value} ({f.count})
-            </option>
-          ))}
-        </select>
-      </label>
+      <DataTable
+        columns={kolonlar}
+        data={urunler}
+        getRowId={(p) => String(p.id)}
+        isLoading={isLoading}
+        sorting={[{ id: durum.sort, desc: durum.order === "desc" }]}
+        onSortingChange={(guncelleyici) => {
+          const sonraki =
+            typeof guncelleyici === "function"
+              ? guncelleyici([{ id: durum.sort, desc: durum.order === "desc" }])
+              : guncelleyici;
+          const ilk = sonraki[0];
+          if (!ilk) return;
+          guncelle({ sirala: ilk.id, yon: ilk.desc ? "desc" : "asc" });
+        }}
+        page={durum.page}
+        pageSize={durum.pageSize}
+        total={toplam < 0 ? urunler.length : toplam}
+        onPageChange={(sayfa) => guncelle({ sayfa })}
+        onPageSizeChange={(boyut) => guncelle({ limit: boyut, sayfa: 1 })}
+        renderMobileRow={(p) => (
+          <UrunKarti
+            product={p}
+            esik={esik}
+            canManage={canManage}
+            onChange={invalidate}
+            tedarikciGorebilir={tedarikciGorebilir}
+          />
+        )}
+        bos={{
+          filtreli,
+          kayitYok: (
+            <KayitYokDurumu
+              baslik="Henüz ürün eklenmemiş"
+              aciklama="İlk ürünü ekleyerek kataloğu oluşturmaya başlayın."
+              aksiyon={
+                canManage ? (
+                  <Button size="sm" onClick={() => setShowForm(true)}>
+                    Yeni ürün
+                  </Button>
+                ) : undefined
+              }
+            />
+          ),
+          sonucYok: (
+            <SonucYokDurumu
+              // Metin `adminStorePanel.acceptance` (E-2) sözleşmesiyle
+              // hizalıdır: "kayıt yok" ile "sonuç yok" AYNI cümle olamaz ve
+              // ikincisi eşleşmeden söz etmelidir.
+              baslik="Eşleşen ürün yok"
+              aciklama="Arama ve filtreleri gevşetmeyi deneyin; katalogda ürün var."
+              onTemizle={temizle}
+            />
+          ),
+        }}
+      />
     </div>
   );
 }
@@ -458,19 +478,66 @@ function UrunHucresi({ product }: { product: ProductSearchOut }) {
   const kunye = [product.author, product.publisher, product.isbn].filter(Boolean);
   return (
     <div className="flex items-center gap-3">
-      <div className="h-12 w-9 shrink-0 overflow-hidden rounded-md bg-slate-100 dark:bg-slate-800">
+      <div className="h-12 w-9 shrink-0 overflow-hidden rounded-md bg-panel-surface-hover">
         {product.cover_url && (
           <img src={product.cover_url} alt="" className="h-full w-full object-cover" />
         )}
       </div>
       <div className="min-w-0">
-        <p className="truncate text-sm font-medium text-slate-800 dark:text-slate-200">
-          {product.title}
-        </p>
+        <p className="truncate text-sm font-medium text-panel-fg">{product.title}</p>
         {kunye.length > 0 && (
-          <p className="truncate text-xs text-slate-500">{kunye.join(" · ")}</p>
+          <p className="truncate text-xs text-panel-fg-subtle">{kunye.join(" · ")}</p>
         )}
       </div>
+    </div>
+  );
+}
+
+/**
+ * Mobil kart (tasarım dili §5.5).
+ *
+ * Anatomi sabit: kimlik satırı (başlık + durum rozeti) · EN FAZLA üç meta
+ * satırı · aksiyonlar. Üçten fazla meta satırı kartı listeye çevirir ve
+ * tarama avantajını yok eder — bu yüzden künye tek satırda birleştirilir.
+ */
+function UrunKarti({
+  product,
+  esik,
+  canManage,
+  onChange,
+  tedarikciGorebilir,
+}: {
+  product: ProductSearchOut;
+  esik?: number | null;
+  canManage: boolean;
+  onChange: () => void;
+  tedarikciGorebilir: boolean;
+}) {
+  const kunye = [product.author, product.publisher].filter(Boolean).join(" · ");
+  return (
+    <div className="space-y-2">
+      <div className="flex items-start justify-between gap-3">
+        <p className="min-w-0 flex-1 text-sm font-medium text-panel-fg">{product.title}</p>
+        <UrunDurumRozeti status={product.status} />
+      </div>
+      {kunye && <p className="text-xs text-panel-fg-subtle">{kunye}</p>}
+      {/* Stok, masaüstü tablosundaki HÜCRENİN TA KENDİSİ ile çizilir: mobilde
+          düz `StockBadge` kullanmak, tedarikçinin karşıladığı ürünü kırmızı
+          "Tükendi" gösterip satın alma kararını yanlış yönlendirirdi (D-8) ve
+          "Tedarikçide N" sayısını yalnız masaüstünde bırakırdı. */}
+      <div className="flex flex-wrap items-center gap-3 text-xs text-panel-fg-muted">
+        <span className="font-semibold tabular-nums text-panel-fg">{formatTL(product.price)}</span>
+        <StokHucresi product={product} esik={esik} />
+      </div>
+      {/* Üçüncü ve SON meta satırı (§5.5): maliyet/marj — masaüstündeki kolonla
+          aynı izin duvarının arkasında. "Zararına" rozeti para kaybettiren
+          satırı işaretler; mobilde gizlemek onu görünmez bir borç yapardı. */}
+      {tedarikciGorebilir && product.supplier?.cost_gross && (
+        <div className="text-xs text-panel-fg-muted">
+          <MaliyetHucresi product={product} />
+        </div>
+      )}
+      <UrunAksiyonlari product={product} canManage={canManage} onChange={onChange} yerlesim="kart" />
     </div>
   );
 }
@@ -489,26 +556,37 @@ function UrunDurumRozeti({ status }: { status?: string | null }) {
   return <Badge tone={esleme?.tone ?? "neutral"}>{esleme?.label ?? status}</Badge>;
 }
 
-/** Satır aksiyonları — kart düzeninden tablo hücresine taşındı.
+/**
+ * Satır aksiyonları — Ç-2 · D deseninin referans uygulaması.
  *
- *  Yıkıcı aksiyonların sözleşmesi DEĞİŞMEDİ: "Sil" tek başına DELETE
- *  göndermez, önce `ConfirmDialog` açılır (P1-5). Taşınan yalnız yerleşim.
+ * Açıktaki iki aksiyonun seçimi bu EKRANIN kararıdır: "Düzenle" ve
+ * "Yayınla/Gizle" günlük katalog işinin ikisi; kapak yükleme daha seyrek,
+ * "Sil" ise yıkıcı ve zaten açıkta duramaz.
+ *
+ * Yıkıcı aksiyonun sözleşmesi DEĞİŞMEDİ: "Sil" tek başına DELETE göndermez,
+ * önce onay penceresi açılır (P1-5). Değişen: onayı artık ekran değil ortak
+ * bileşen zorunlu kılıyor — `yikici: true` yazan bir aksiyon `onay` metni
+ * vermeden derlenmez.
  */
 function UrunAksiyonlari({
   product,
   canManage,
   onChange,
+  yerlesim = "satir",
 }: {
   product: ProductSearchOut;
   canManage: boolean;
   onChange: () => void;
+  yerlesim?: "satir" | "kart";
 }) {
+  const dosyaRef = useRef<HTMLInputElement>(null);
   const cover = useMutation({
     mutationFn: (file: File) => uploadProductCover(product.id, file),
     onSuccess: () => {
       toast.success("Kapak güncellendi");
       onChange();
     },
+    onError: (err: unknown) => toast.error(getErrorDetail(err, "Kapak yüklenemedi")),
   });
   const toggle = useMutation({
     mutationFn: () =>
@@ -521,57 +599,63 @@ function UrunAksiyonlari({
     mutationFn: () => deleteProduct(product.id),
     onSuccess: () => {
       toast.success("Ürün silindi");
-      silmeYuzeyi.kapat();
       onChange();
     },
     // P1-5 sınıfı: sessiz başarısızlık yönetici için "silindi" ile aynı görünür.
     onError: (err: unknown) => toast.error(getErrorDetail(err, "Ürün silinemedi")),
   });
-  // Pencere durumu EKRANDA yaşamaz (İP-A4 sözleşmesi): ne düzenleme penceresi
-  // ne de silme onayı bu bileşende `useState` tutar. Rota tabanlı düzenleme
-  // yüzeylerine geçiş kararı artık bu dosyayı ilgilendirmiyor.
-  //
-  // Yıkıcı aksiyon ONAY penceresi olmadan tetiklenmez: katalogdan ürün
-  // düşürmek yanlış satıra tıklamayla geri alınamaz bir sonuç üretir.
+  // Pencere durumu EKRANDA yaşamaz (İP-A4 sözleşmesi).
   const duzenlemeYuzeyi = useDuzenlemeYuzeyi<number, void>();
-  const silmeYuzeyi = useDuzenlemeYuzeyi<number, void>();
+
+  if (!canManage) return null;
+
+  const aksiyonlar: SatirAksiyonu[] = [
+    { etiket: "Düzenle", acik: true, onSec: () => duzenlemeYuzeyi.ac(product.id) },
+    {
+      etiket: product.status === "ACTIVE" ? "Gizle" : "Yayınla",
+      acik: true,
+      bekliyor: toggle.isPending,
+      onSec: () => toggle.mutate(),
+    },
+    {
+      etiket: "Kapak görseli yükle",
+      ipucu: "PNG veya JPG",
+      bekliyor: cover.isPending,
+      onSec: () => dosyaRef.current?.click(),
+    },
+    {
+      etiket: "Sil",
+      yikici: true,
+      bekliyor: remove.isPending,
+      onay: {
+        baslik: "Ürünü sil",
+        aciklama: `"${product.title}" katalogdan kaldırılacak.`,
+        onayEtiketi: "Ürünü sil",
+      },
+      // Pencere YALNIZ başarıda kapanır: istek uçarken açık kalması onay
+      // düğmesini `isPending` ile devre dışı tutar (çift tıklama koruması),
+      // hata hâlinde de kullanıcı gerekçeyi görüp yeniden deneyebilir.
+      onSec: (kapat) => remove.mutate(undefined, { onSuccess: kapat }),
+    },
+  ];
 
   return (
     <>
-      {canManage ? (
-        <div className="flex items-center justify-end gap-3 whitespace-nowrap text-xs">
-          <label className="cursor-pointer font-medium text-slate-600 hover:underline dark:text-slate-300">
-            Kapak
-            {/* Dosya seçici GÖRÜNMEZ: tetikleyici etiketin kendisidir.
-                `hidden` özniteliği `className="hidden"`in yerini aldı —
-                sayaç yalnız gerçek `hidden`ı ölçüm dışı sayar ve haklıdır:
-                sınıf adı dinamik olabilir, öznitelik erişilebilirlik
-                ağacından gerçekten çıkarır. */}
-            <input type="file" accept="image/*" hidden onChange={(e) => e.target.files?.[0] && cover.mutate(e.target.files[0])} />
-          </label>
-          {/* Satır aksiyonları AÇIK DÜĞME kalır — üç nokta menüye geçilmez
-              (kalıcı kural): dokunmatikte gizli menü bir adım daha ekler. */}
-          <Button size="sm" variant="ghost" onClick={() => duzenlemeYuzeyi.ac(product.id)}>
-            Düzenle
-          </Button>
-          <Button size="sm" variant="ghost" onClick={() => toggle.mutate()}>
-            {product.status === "ACTIVE" ? "Gizle" : "Yayınla"}
-          </Button>
-          <Button size="sm" variant="ghost" onClick={() => silmeYuzeyi.ac(product.id)}>
-            Sil
-          </Button>
-        </div>
-      ) : null}
+      {/* Dosya seçici GÖRÜNMEZ ve `hidden` ÖZNİTELİĞİ taşır: sınıf adı
+          (`className="hidden"`) dinamik olabilir, öznitelik erişilebilirlik
+          ağacından GERÇEKTEN çıkarır. Menü öğesi bunu programlı tetikler. */}
+      <input
+        ref={dosyaRef}
+        type="file"
+        accept="image/*"
+        hidden
+        onChange={(e) => e.target.files?.[0] && cover.mutate(e.target.files[0])}
+      />
 
-      <ConfirmDialog
-        open={silmeYuzeyi.acik}
-        title="Ürünü sil"
-        description={`"${product.title}" katalogdan kaldırılacak.`}
-        confirmLabel="Ürünü sil"
-        danger
-        isPending={remove.isPending}
-        onClose={silmeYuzeyi.kapat}
-        onConfirm={() => remove.mutate()}
+      <SatirAksiyonlari
+        aksiyonlar={aksiyonlar}
+        yerlesim={yerlesim}
+        menuEtiketi={`${product.title} — diğer işlemler`}
       />
 
       <EditProductModal

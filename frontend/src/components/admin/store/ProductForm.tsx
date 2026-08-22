@@ -528,7 +528,7 @@ export function ProductForm({
                     checked={field.value}
                     onBlur={field.onBlur}
                     onChange={(e) => field.onChange(e.target.checked)}
-                    className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 dark:border-slate-600 dark:bg-slate-900"
+                    className="h-4 w-4 rounded border-slate-300 text-panel-accent focus:ring-panel-focus dark:border-slate-600 dark:bg-slate-900"
                   />
                 </Form.Control>
                 <Form.Label className="text-sm font-semibold text-slate-700 dark:text-slate-200">
@@ -759,7 +759,7 @@ function KatlanirBaslik({
       type="button"
       aria-expanded={acik}
       onClick={onDegis}
-      className="flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-indigo-600 dark:text-slate-300 dark:hover:text-indigo-400"
+      className="flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-panel-accent dark:text-slate-300"
     >
       <svg
         width="14"
@@ -1006,7 +1006,7 @@ function VariantMembershipFields({
                   {[m.option1_value, m.option2_value].filter(Boolean).join(" / ")}
                   <span className="text-slate-400"> · {m.title}</span>
                   {m.id === currentProductId && (
-                    <span className="ml-1.5 text-xs text-indigo-600 dark:text-indigo-400">(bu ürün)</span>
+                    <span className="ml-1.5 text-xs text-panel-accent">(bu ürün)</span>
                   )}
                 </span>
                 <span className="shrink-0 text-xs text-slate-400">

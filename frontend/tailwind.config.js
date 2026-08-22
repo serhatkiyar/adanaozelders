@@ -11,6 +11,35 @@ export default {
   ],
   theme: {
     extend: {
+      // ── Panel token köprüsü (İP-B1 · docs/tasarim-dili.md §1.2) ──
+      //
+      // Değerler `src/index.css` → `:root` / `.dark` altında yaşar; burası
+      // yalnız onları sınıf hâline getirir. `<alpha-value>` yer tutucusu
+      // saydamlık varyantlarını (`bg-panel-surface/60`) çalışır kılar —
+      // değerler bu yüzden hex değil boşluklu RGB üçlüsü olarak yazılır.
+      colors: {
+        panel: {
+          bg: "rgb(var(--panel-bg) / <alpha-value>)",
+          surface: "rgb(var(--panel-surface) / <alpha-value>)",
+          "surface-subtle": "rgb(var(--panel-surface-subtle) / <alpha-value>)",
+          "surface-hover": "rgb(var(--panel-surface-hover) / <alpha-value>)",
+          border: "rgb(var(--panel-border) / <alpha-value>)",
+          "border-strong": "rgb(var(--panel-border-strong) / <alpha-value>)",
+          fg: "rgb(var(--panel-fg) / <alpha-value>)",
+          "fg-muted": "rgb(var(--panel-fg-muted) / <alpha-value>)",
+          "fg-subtle": "rgb(var(--panel-fg-subtle) / <alpha-value>)",
+          accent: "rgb(var(--panel-accent) / <alpha-value>)",
+          "accent-fg": "rgb(var(--panel-accent-fg) / <alpha-value>)",
+          "accent-soft": "rgb(var(--panel-accent-soft) / <alpha-value>)",
+          focus: "rgb(var(--panel-focus) / <alpha-value>)",
+          // Dikkat rengi (#F6AD55) AKSAN DEĞİLDİR — yalnız uyarı ve bekleyen
+          // iş durumları. Ayrı bir isim altında durmasının sebebi tam olarak
+          // budur: `accent` yazan biri yanlışlıkla turuncuya ulaşamaz.
+          attention: "rgb(var(--panel-attention) / <alpha-value>)",
+          "attention-soft": "rgb(var(--panel-attention-soft) / <alpha-value>)",
+          "attention-fg": "rgb(var(--panel-attention-fg) / <alpha-value>)",
+        },
+      },
       fontFamily: {
         sans: [
           "Inter",
@@ -23,8 +52,22 @@ export default {
           "Arial",
           "sans-serif",
         ],
-        // Preset'in "Roboto Mono"su geri alınıyor: font yüklü değil ve
-        // KVKK gereği Google Fonts CDN'i kullanılmıyor. Tailwind varsayılanı.
+        // Panel başlıkları (docs/tasarim-dili.md §1.4). `.panel-kok` altındaki
+        // h1/h2/h3 bunu index.css'teki TEK kuraldan alır; ekran dosyaları
+        // yazı tipi sınıfı yazmaz.
+        display: [
+          "Figtree",
+          "Inter",
+          "ui-sans-serif",
+          "system-ui",
+          "-apple-system",
+          "Segoe UI",
+          "sans-serif",
+        ],
+        // Preset'in "Roboto Mono"su geri alınıyor: yazı tipi yüklü değil ve
+        // dış yazı tipi CDN'i KULLANILMIYOR. Bu cümle İP-B2'ye kadar YANLIŞTI
+        // — `index.html` `Inter`ı CDN'den çekiyordu (Ç-5 · KVKK). Artık doğru
+        // ve bir nöbetçiye bağlı: `src/__guards__/disFont.test.ts`.
         mono: [
           "ui-monospace",
           "SFMono-Regular",

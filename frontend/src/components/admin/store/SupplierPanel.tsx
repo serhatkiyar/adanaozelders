@@ -608,7 +608,7 @@ function AyarlarFormu({ tedarikci }: { tedarikci: SupplierOut }) {
                     checked={field.value}
                     onBlur={field.onBlur}
                     onChange={(e) => field.onChange(e.target.checked)}
-                    className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 dark:border-slate-600 dark:bg-slate-900"
+                    className="h-4 w-4 rounded border-slate-300 text-panel-accent focus:ring-panel-focus dark:border-slate-600 dark:bg-slate-900"
                   />
                 </Form.Control>
                 <Form.Label className="text-sm font-semibold text-slate-700 dark:text-slate-200">

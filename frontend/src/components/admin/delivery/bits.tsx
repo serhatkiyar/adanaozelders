@@ -19,7 +19,7 @@ export function TruckIcon({ className = "h-5 w-5" }: { className?: string }) {
 
 const RUN_CHIP: Record<string, { dot: string; text: string; bg: string }> = {
   PLANNED: { dot: "bg-slate-400", text: "text-slate-600 dark:text-slate-300", bg: "bg-slate-100 dark:bg-slate-800" },
-  ACTIVE: { dot: "bg-indigo-500 animate-pulse", text: "text-indigo-700 dark:text-indigo-300", bg: "bg-indigo-50 dark:bg-indigo-500/10" },
+  ACTIVE: { dot: "bg-panel-accent animate-pulse", text: "text-panel-accent", bg: "bg-panel-accent-soft" },
   DONE: { dot: "bg-emerald-500", text: "text-emerald-700 dark:text-emerald-300", bg: "bg-emerald-50 dark:bg-emerald-500/10" },
   CANCELLED: { dot: "bg-rose-500", text: "text-rose-700 dark:text-rose-300", bg: "bg-rose-50 dark:bg-rose-500/10" },
 };

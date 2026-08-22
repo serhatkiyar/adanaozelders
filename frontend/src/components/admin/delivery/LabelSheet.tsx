@@ -35,7 +35,7 @@ export function LabelSheet({ run, onClose }: { run: DeliveryRun; onClose: () => 
         <div className="flex gap-2">
           <button
             onClick={() => window.print()}
-            className="rounded-lg bg-indigo-600 px-4 py-1.5 text-sm font-semibold text-white hover:bg-indigo-700"
+            className="rounded-lg bg-panel-accent px-4 py-1.5 text-sm font-semibold text-panel-accent-fg hover:bg-panel-accent/90"
           >
             Yazdır
           </button>

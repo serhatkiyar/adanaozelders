@@ -88,7 +88,7 @@ function RunCourier({ run }: { run: DeliveryRun }) {
     return (
       <Link
         to={ROUTES.adminDeliveryCouriers}
-        className="text-xs font-semibold text-indigo-600 hover:underline dark:text-indigo-400"
+        className="text-xs font-semibold text-panel-accent hover:underline"
       >
         Kurye ekle →
       </Link>
@@ -148,7 +148,7 @@ function StopRow({
     <li
       {...dragProps}
       className={`flex flex-wrap items-center gap-3 py-3 ${
-        isDragTarget ? "rounded-lg bg-indigo-50/60 dark:bg-indigo-500/10" : ""
+        isDragTarget ? "rounded-lg bg-panel-accent-soft/60" : ""
       } ${dragProps.draggable ? "cursor-grab active:cursor-grabbing" : ""}`}
     >
       <SeqBadge stop={stop} />
@@ -163,7 +163,7 @@ function StopRow({
           )}
           {coLocated.length > 0 && (
             <span
-              className="ml-2 inline-flex items-center rounded-full bg-indigo-50 px-2 py-0.5 text-[11px] font-medium text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-300"
+              className="ml-2 inline-flex items-center rounded-full bg-panel-accent-soft px-2 py-0.5 text-[11px] font-medium text-panel-accent"
               title={`Aynı adrese ${coLocated.length} paket daha var — birlikte teslim edilir`}
             >
               +{coLocated.length} paket
@@ -412,7 +412,7 @@ export default function DeliveryRunDetailPage() {
             {run.status === "ACTIVE" && (
               <Link
                 to={ROUTES.deliveryRun(run.id)}
-                className="inline-flex min-h-9 items-center gap-1.5 rounded-lg px-3 text-xs font-semibold text-indigo-600 ring-1 ring-indigo-200 transition hover:bg-indigo-50 dark:text-indigo-400 dark:ring-indigo-500/40 dark:hover:bg-indigo-500/10"
+                className="inline-flex min-h-9 items-center gap-1.5 rounded-lg px-3 text-xs font-semibold text-panel-accent ring-1 ring-panel-accent/30 transition hover:bg-panel-accent-soft/40 dark:hover:bg-panel-accent/10"
               >
                 Saha Ekranı →
               </Link>
@@ -459,7 +459,7 @@ export default function DeliveryRunDetailPage() {
             <div className="h-1.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
               <div
                 className={`h-full rounded-full transition-all ${
-                  run.status === "DONE" ? "bg-emerald-500" : "bg-indigo-500"
+                  run.status === "DONE" ? "bg-emerald-500" : "bg-panel-accent"
                 }`}
                 style={{ width: `${total ? Math.round((done / total) * 100) : 0}%` }}
               />
@@ -479,7 +479,7 @@ export default function DeliveryRunDetailPage() {
             <span
               className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${
                 run.optimize_provider === "vroom"
-                  ? "bg-indigo-50 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-300"
+                  ? "bg-panel-accent-soft text-panel-accent"
                   : "bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400"
               }`}
               title={
@@ -493,7 +493,7 @@ export default function DeliveryRunDetailPage() {
             <Button
               size="sm"
               variant="ghost"
-              className="ml-auto px-1 font-semibold text-indigo-600 hover:underline dark:text-indigo-400"
+              className="ml-auto px-1 font-semibold text-panel-accent hover:underline"
               aria-expanded={showMap}
               onClick={() => setShowMap((v) => !v)}
             >
@@ -581,7 +581,7 @@ export default function DeliveryRunDetailPage() {
                 <Button
                   size="sm"
                   variant="ghost"
-                  className="px-1 text-xs font-semibold text-indigo-600 hover:underline dark:text-indigo-400"
+                  className="px-1 text-xs font-semibold text-panel-accent hover:underline"
                   isPending={addStops.isPending}
                   onClick={() =>
                     addStops.mutate(
@@ -604,7 +604,7 @@ export default function DeliveryRunDetailPage() {
             ) : eligible.length === 0 ? (
               <p className="py-6 text-center text-sm text-slate-400 dark:text-slate-500">
                 Tura hazır sipariş yok —{" "}
-                <Link to={ROUTES.adminDeliveryOrders} className="font-semibold text-indigo-600 hover:underline dark:text-indigo-400">
+                <Link to={ROUTES.adminDeliveryOrders} className="font-semibold text-panel-accent hover:underline">
                   Siparişler
                 </Link>{" "}
                 sekmesinden paket hazırlayın.

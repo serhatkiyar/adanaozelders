@@ -43,3 +43,29 @@ describe("admin navigation", () => {
     expect(item.label).toBe("Genel Bakış");
   });
 });
+
+describe("İP-B1 · klavye kısayolları", () => {
+  it("hiçbir harf iki alana birden verilmez", () => {
+    // Dizi (`G` + harf) tek bir hedefe çözülmeli. İki alan aynı harfi alsaydı
+    // `find` ilkini seçerdi — yani hedef, kaynak dosyadaki YAZIM SIRASINA
+    // bağlı olurdu ve öğe eklendikçe sessizce değişirdi.
+    const harfler = ADMIN_NAV_ITEMS.map((i) => i.kisayol).filter(Boolean);
+    expect(new Set(harfler).size).toBe(harfler.length);
+  });
+
+  it("her kısayol TEK harftir ve büyük yazılır", () => {
+    // Küçük harf yazılsaydı eşleşme (`toLocaleUpperCase("tr")` ile normalize
+    // edilen tuş) hiç tutmazdı ve kısayol sessizce ölü olurdu.
+    for (const i of ADMIN_NAV_ITEMS) {
+      if (!i.kisayol) continue;
+      expect(i.kisayol, i.label).toMatch(/^[A-ZÇĞİÖŞÜ]$/);
+    }
+  });
+
+  it("kısayolu olan her alan gerçek bir rotaya bakar", () => {
+    for (const i of ADMIN_NAV_ITEMS) {
+      if (!i.kisayol) continue;
+      expect(Object.values(ROUTES)).toContain(i.to);
+    }
+  });
+});

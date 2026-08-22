@@ -3,22 +3,218 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ══════════════════════════════════════════════════════════════════════════
+ * YAZI TİPİ: SELF-HOST (İP-B2 · Ç-5 — KVKK)
+ * ══════════════════════════════════════════════════════════════════════════
+ *
+ * `index.html` İP-B2'ye kadar `fonts.google` CDN'inden `Inter` çekiyordu;
+ * aynı depodaki `tailwind.config.js` yorumu ise "KVKK gereği Google Fonts
+ * CDN'i kullanılmıyor" diyordu. İkisi aynı anda doğru olamazdı ve doğru
+ * olmayan taraf KOD değil YORUMDU: her sayfa yüklemesinde — giriş yapmamış
+ * ziyaretçi dahil — tarayıcı ABD'li bir sunucuya bağlanıyor ve IP adresini
+ * oraya gönderiyordu. Bu, Cloudflare'i DNS-only tutma gerekçesinin birebir
+ * aynısıdır (KVKK m.9 · yurt dışına aktarım) ve Almanya'da aynı gerekçeyle
+ * tazminata hükmedilmiş emsal kararlar var (LG München I, 3 O 17493/20).
+ *
+ * Çözüm: yazı tipi depoya indirildi ve KENDİ alanımızdan sunuluyor.
+ *
+ *   - Dosyalar: `public/fonts/inter-latin.woff2` (48 KB) +
+ *     `public/fonts/inter-latin-ext.woff2` (85 KB). İkisi de DEĞİŞKEN
+ *     (variable) yazı tipidir: `font-weight: 100 900` aralığının tamamını
+ *     TEK dosyada taşırlar, yani altı ayrı ağırlık dosyası indirmeye gerek
+ *     yok. Toplam 133 KB.
+ *   - `latin-ext` ZORUNLU: Türkçenin `ş ğ İ Ş Ğ` harfleri `latin` altkümesinde
+ *     YOK (yalnız `ı ç ö ü` var). Yalnız `latin` alınsaydı panel Türkçe
+ *     metinlerin bir kısmını yedek yazı tipiyle çizerdi ve fark ancak gerçek
+ *     tarayıcıda görülürdü.
+ *   - `font-display: swap`: yazı tipi inene kadar metin GÖRÜNÜR kalır
+ *     (yedek aile ile çizilir), sonra yerine geçer. `block` olsaydı ilk
+ *     boyamada 3 saniyeye kadar boş metin alanı oluşurdu.
+ *   - `unicode-range` Google'ın ürettiği altküme sınırlarının aynısıdır:
+ *     tarayıcı sayfada latin-ext karakter yoksa o 85 KB'ı HİÇ indirmez.
+ *
+ * Lisans: Inter, SIL Open Font License 1.1 (self-host açıkça serbest).
+ * Ayrıntı: `public/fonts/README.md`.
+ *
+ * Nöbetçi: `src/__guards__/disFont.test.ts` — depoda dış yazı tipi konağına
+ * atıf geçerse test KIRMIZI düşer, `@font-face` bildirimi ya da woff2
+ * dosyaları kaybolursa da öyle. Yorum ile kodun bir daha sessizce
+ * çelişememesi bu nöbetçinin işidir.
+ */
+/* Figtree — YALNIZ panel başlıkları (docs/tasarim-dili.md §1.4 · §2).
+ *
+ * Marka kimliğinin yazı tipi ayağı. Gövde metni `Inter` kalır: panel günde
+ * saatlerce okunan bir çalışma aletidir ve `Inter`ın rakam/tablo davranışı
+ * (`tabular-nums`, `cv11`) bu iş için seçilmişti. Figtree başlıklara kimlik
+ * verir, gövdenin okunabilirliğini değiştirmez.
+ *
+ * Uygulama TEK KURALDIR (aşağıda `.panel-kok`): ekran dosyaları yazı tipi
+ * sınıfı YAZMAZ. Ekran başına yazılsaydı 44 panel rotasının bir kısmı Figtree,
+ * bir kısmı Inter başlık taşırdı — Ç-3'ün "panel yarı lacivert yarı indigo
+ * kalmayacak" şartının tipografideki ikizi.
+ *
+ * Ağırlık aralığı `300 900`: Figtree'nin değişken sürümü 100/200'ü taşımaz ve
+ * `100 900` yazmak tarayıcıyı olmayan bir ağırlığı sentezlemeye zorlardı.
+ */
+@font-face {
+  font-family: "Figtree";
+  font-style: normal;
+  font-weight: 300 900;
+  font-display: swap;
+  src: url("/fonts/figtree-latin-ext.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF,
+    U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020,
+    U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: "Figtree";
+  font-style: normal;
+  font-weight: 300 900;
+  font-display: swap;
+  src: url("/fonts/figtree-latin.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+    U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+    U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("/fonts/inter-latin-ext.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF,
+    U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020,
+    U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("/fonts/inter-latin.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+    U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+    U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+
 @layer base {
+  /* ── PANEL TOKEN KATMANI (İP-B1 · docs/tasarim-dili.md §1) ──
+   *
+   * Burada eskiden `--admin-surface` / `--admin-border` / `--admin-focus`
+   * üçlüsü duruyordu: TANIMLIYDI ama hiçbir yere bağlı DEĞİLDİ — ne
+   * Tailwind'e köprülenmişti ne de tek bir dosyada `var(--admin-…)` olarak
+   * okunuyordu (arama: sıfır sonuç). Yarım kalmış bir girişimdi ve
+   * `docs/medusa-arayuz-karsilastirma.md` §2.2 onu isimle işaretlemişti.
+   *
+   * İP-B1 onu SİLMEDİ, TAMAMLADI: aşağıdaki küme Medusa'nın indirection
+   * desenini uygular (semantik ad → CSS değişkeni → `.dark` altında aynı adın
+   * yeniden tanımı) ve `tailwind.config.js` → `theme.extend.colors.panel`
+   * üzerinden sınıf hâline gelir. Bileşen `bg-panel-surface` yazar; `dark:`
+   * ikizini YAZMAZ. Bugün panelde 891 elle yazılmış `dark:` sınıfı var ve
+   * her biri unutulabilecek ikinci bir yazımdır (`AdminStore.tsx:1958` zaten
+   * unutulmuştu).
+   *
+   * Değerler BOŞLUKLU RGB üçlüsüdür, hex değil: köprü
+   * `rgb(var(--x) / <alpha-value>)` biçimini kullanır ve ancak bu biçimde
+   * `bg-panel-surface/60` gibi saydamlık varyantları çalışır. Hex yazılsaydı
+   * saydamlık sessizce kırılırdı.
+   *
+   * Aksan (`--panel-accent`) bugün `indigo-600`dur. Marka lacivertine
+   * (#1A365D) geçiş KARAR BEKLİYOR ve tek satırlık bir değişikliktir;
+   * gerekçe: `docs/tasarim-dili.md` §1.4.
+   */
   :root {
-    --admin-surface: 255 255 255;
-    --admin-surface-muted: 248 250 252;
-    --admin-border: 226 232 240;
-    --admin-focus: 79 70 229;
-    --admin-danger: 225 29 72;
-    --admin-success: 5 150 105;
+    --panel-bg: 248 250 252;            /* slate-50  */
+    --panel-surface: 255 255 255;       /* beyaz     */
+    --panel-surface-subtle: 248 250 252;/* slate-50  */
+    --panel-surface-hover: 241 245 249; /* slate-100 */
+    --panel-border: 226 232 240;        /* slate-200 */
+    --panel-border-strong: 203 213 225; /* slate-300 */
+    --panel-fg: 15 23 42;               /* slate-900 */
+    --panel-fg-muted: 71 85 105;        /* slate-600 */
+    --panel-fg-subtle: 100 116 139;     /* slate-500 */
+    /* ── MARKA AKSANI: LACİVERT (İP-B2 · Ç-3 kararı) ──
+     *
+     * İP-B1 burada `indigo-600` bırakmıştı ve gerekçesi yazılıydı: aksanı
+     * yalnız kabukta çevirmek paneli yarı lacivert yarı indigo bırakırdı.
+     * Ç-3 kararlaştı ve değişiklik kabuk + ekranlar + ortak bileşenler
+     * birlikte yapıldı (nöbetçi: `__guards__/panelAksani.test.ts` — panel
+     * ağacında `indigo-` sınıfı SIFIR).
+     *
+     * Zemin lacivert DEĞİL: yüzeyler, kenarlıklar ve metin nötr (slate)
+     * kalır. Marka yalnız üç yerde görünür — etkin gezinme öğesi, birincil
+     * düğme, odak halkası. Gerekçe `docs/tasarim-dili.md` §1.3/§1.4: panel
+     * günde saatlerce bakılan bir çalışma aletidir; marka rengine boyanmış
+     * bir zemin durumu ve uyarıyı bastırır.
+     *
+     * Ölçülen kontrastlar (gerçek Chrome · docs/ip-b2/kontrast.json):
+     *   beyaz metin / #1A365D  = 12,14   (AA 4,5 · AAA 7)
+     *   #1A365D / #EAF0F7      = 10,58   (etkin satır zemini)
+     *   odak halkası / beyaz   = 12,14   (SC 1.4.11 eşiği 3)
+     */
+    --panel-accent: 26 54 93;           /* #1A365D — marka lacivert */
+    --panel-accent-fg: 255 255 255;
+    --panel-accent-soft: 234 240 247;   /* #EAF0F7 — lacivertin sakin hâli */
+    --panel-focus: 26 54 93;
+
+    /* ── DİKKAT RENGİ: #F6AD55 — AKSAN DEĞİL (Ç-3) ──
+     *
+     * Marka turuncusu birincil düğmeye verilseydi aynı ekranda hem "yap" hem
+     * "dikkat et" anlamına gelirdi. Rolü tek: bekleyen iş ve uyarı durumları
+     * (bekleyen ödeme, rotayı bozan durak, kontenjan dolmak üzere). Kehribar
+     * (`amber-*`) rozetlerin yerini alır ve renk paletinde başka hiçbir yerde
+     * geçmez.
+     *
+     * Ölçülen: #7C2D12 metin / #FDF1E1 zemin = 8,41.
+     */
+    --panel-attention: 246 173 85;      /* #F6AD55 — düz hâl (şerit, nokta) */
+    --panel-attention-soft: 253 241 225;/* rozet zemini */
+    --panel-attention-fg: 124 45 18;    /* rozet metni */
   }
   .dark {
-    --admin-surface: 15 23 42;
-    --admin-surface-muted: 2 6 23;
-    --admin-border: 51 65 85;
-    --admin-focus: 129 140 248;
-    --admin-danger: 251 113 133;
-    --admin-success: 52 211 153;
+    --panel-bg: 2 6 23;                 /* slate-950 */
+    --panel-surface: 15 23 42;          /* slate-900 */
+    --panel-surface-subtle: 2 6 23;     /* slate-950 */
+    --panel-surface-hover: 30 41 59;    /* slate-800 */
+    --panel-border: 30 41 59;           /* slate-800 */
+    --panel-border-strong: 51 65 85;    /* slate-700 */
+    /* ── KOYU TEMA DEĞERLERİ GERÇEK CHROME'DA ÖLÇÜLDÜ (İP-B1 · Görev 5) ──
+     *
+     * İlk yazımda `fg-muted: slate-400` / `fg-subtle: slate-500` /
+     * `accent-soft: indigo-900` vardı ve tur iki eşik ihlali ölçtü:
+     *   • etkin gezinme öğesi (indigo-400 ÜZERİNE indigo-900): **3,83** — AA
+     *     eşiği 4,5 ve metin 14 px (büyük metin muafiyeti YOK).
+     *   • `fg-subtle` (slate-500 ÜZERİNE slate-900): **3,75** — arama
+     *     öğesinin "Ara" metni ve tuş rozeti bu seviyede yazılıyor.
+     *
+     * Seçilen değerler yeniden ölçüldü: accent-soft indigo-950 → **5,36**;
+     * fg-subtle slate-400 → **6,96**; fg-muted slate-300 → **12,02**.
+     * Üç seviye birbirinden hâlâ ayırt edilebilir (12 / 7 / kontrastsız
+     * yüzey), yani hiyerarşi korunuyor.
+     */
+    --panel-fg: 248 250 252;            /* slate-50  */
+    --panel-fg-muted: 203 213 225;      /* slate-300 · 12,02 */
+    --panel-fg-subtle: 148 163 184;     /* slate-400 · 6,96  */
+    /* Koyu temada #1A365D KULLANILAMAZ: slate-900 yüzeyin üstünde kontrastı
+     * 1,3'tür — düğme zeminden ayırt edilemez. Aksan aynı renk AİLESİNİN
+     * açık ucuna taşınır (lacivertin ton eğrisi korunur, kimlik kaybolmaz).
+     *
+     * Ölçülen (gerçek Chrome):
+     *   #8AB0DE / slate-900          = 7,94   (etkin gezinme metni)
+     *   slate-950 metin / #8AB0DE    = 8,98   (birincil düğme)
+     *   #8AB0DE / #152944            = 6,52   (etkin satır zemini)
+     *   #F6AD55 metin / #422006      = 7,65   (dikkat rozeti)
+     */
+    --panel-accent: 138 176 222;        /* #8AB0DE · 7,94 */
+    --panel-accent-fg: 2 6 23;          /* slate-950 · 8,98 */
+    --panel-accent-soft: 21 41 68;      /* #152944 · 6,52 */
+    --panel-focus: 138 176 222;
+
+    --panel-attention: 246 173 85;      /* #F6AD55 — iki temada da AYNI */
+    --panel-attention-soft: 66 32 6;    /* #422006 */
+    --panel-attention-fg: 246 173 85;   /* koyu zeminde turuncu METİN · 7,65 */
   }
   html {
     scroll-behavior: smooth;
@@ -45,6 +241,25 @@
   }
   html.dark {
     color-scheme: dark;
+  }
+  /* ── PANEL BAŞLIK TİPOGRAFİSİ: TEK KURAL (İP-B2 · Ç-3 · §1.4) ──
+   *
+   * `panel-kok` sınıfı yalnız `AdminLayout`un kök `<div>`ünde durur; yani
+   * bu kural panelin TAMAMINI (44 rota) tek satırda kapsar ve public siteye
+   * DOKUNMAZ.
+   *
+   * Neden ekran başına `font-display` sınıfı yazılmadı: 22 liste ekranından
+   * yalnız biri bu pakette göç ediyor. Sınıf ekran başına yazılsaydı panelin
+   * bir kısmı Figtree, bir kısmı Inter başlık taşırdı — Ç-3'ün "panel yarı
+   * lacivert yarı indigo kalmayacak" şartının tipografideki ikizi. Kural
+   * kabukta olduğu için göç etmemiş ekranlar da doğru başlığı bugün alıyor.
+   *
+   * `h4`+ dahil DEĞİL: dördüncü seviye başlık panelde bir gruplama etiketi
+   * (`text-[10px]` uppercase) ve orada Figtree'nin geniş harf gövdesi
+   * `tracking` ile çakışıyor.
+   */
+  .panel-kok :is(h1, h2, h3) {
+    font-family: theme("fontFamily.display");
   }
   body {
     @apply bg-slate-50 text-slate-900 antialiased dark:bg-slate-900 dark:text-slate-100;
