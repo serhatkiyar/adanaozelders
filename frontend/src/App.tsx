@@ -20,6 +20,7 @@ import { useCurrentUser } from "@/hooks/useCurrentUser";
 import Landing from "@/pages/Landing";
 import { PendingFavoriteApplier } from "@/components/PendingFavoriteApplier";
 import { StoreFavoritesSync } from "@/components/StoreFavoritesSync";
+import { DuyuruSeridi } from "@/components/DuyuruSeridi";
 import { rtcManager } from "@/lib/rtcTransfer";
 
 // Her ziyaretçiye inen ama NADİREN açılan üç yüzey. Giriş paketinden çıkarıldı:
@@ -327,6 +328,12 @@ function App() {
       <WsManager />
       <BrowserRouter>
         <AnalyticsTracker />
+        {/* Storefront'un tepesindeki tek duyuru şeridi. BİLEREK BURADA:
+            routed sayfa içeriğinin (dolayısıyla PublicNavbar/DashboardHeader'ın
+            sticky top-0 konteynerinin) DIŞINDA ve ÖNÜNDE, normal belge
+            akışında durur — sticky DEĞİLDİR, aşağı kaydırınca kaybolur ve
+            geri gelmez. Kendi rota kontrolüyle /yonetim'de render edilmez. */}
+        <DuyuruSeridi />
         {/* İkinci sınır ROUTER'IN İÇİNDE: dıştaki sınır tek başınayken bir
             sayfa çöktüğünde router da düşüyordu, yani "ana sayfaya dön"
             tam sayfa yenilemeye zorlanıyordu. İçteki sınır rota değişince

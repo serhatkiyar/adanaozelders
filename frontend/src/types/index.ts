@@ -2452,3 +2452,43 @@ export interface OutboxRetryResult extends FailedOutboxEvent {
   /** `false` = iş bu çağrıdan ÖNCE zaten kuyruğa alınmıştı (idempotent no-op). */
   requeued: boolean;
 }
+
+// ── İP-C2: Duyuru şeridi ────────────────────────────────────────────────
+
+export type DuyuruVaryant = "bilgi" | "dikkat";
+
+/** Public uç (`GET /duyuru-seridi/aktif`) — yalnız gösterime gereken alanlar. */
+export interface DuyuruAktifOut {
+  metin: string;
+  link_url: string | null;
+  link_metni: string | null;
+  varyant: DuyuruVaryant;
+}
+
+/** Admin liste/detay — tüm alanlar. */
+export interface DuyuruSeridiOut {
+  id: number;
+  metin: string;
+  link_url: string | null;
+  link_metni: string | null;
+  varyant: DuyuruVaryant;
+  aktif: boolean;
+  baslangic_at: string | null;
+  bitis_at: string | null;
+  sira: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DuyuruSeridiCreate {
+  metin: string;
+  link_url?: string | null;
+  link_metni?: string | null;
+  varyant?: DuyuruVaryant;
+  aktif?: boolean;
+  baslangic_at?: string | null;
+  bitis_at?: string | null;
+  sira?: number;
+}
+
+export type DuyuruSeridiUpdate = Partial<DuyuruSeridiCreate>;
