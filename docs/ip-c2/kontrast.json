@@ -1,0 +1,154 @@
+{
+  "bilgi__acik__metin": {
+    "metinIcerik": "OLCUM-DUYURU: yeni sezon indirimleri basladi, kacirmayin",
+    "onRenk": "rgb(15, 23, 42)",
+    "fontPx": 14,
+    "buyukMetinMi": false,
+    "glyphKutuSayisi": 1,
+    "enKotuKontrast": 17.85,
+    "enKotuZemin": "rgb(255, 255, 255)",
+    "ornekSayisi": 2020,
+    "esik": 4.5,
+    "gecti": true,
+    "odak": {
+      "focusVisible": false,
+      "boxShadow": "none",
+      "outline": "none 3px rgb(15, 23, 42)"
+    }
+  },
+  "bilgi__acik__link": {
+    "metinIcerik": "Incele",
+    "onRenk": "rgb(26, 54, 93)",
+    "fontPx": 14,
+    "buyukMetinMi": false,
+    "glyphKutuSayisi": 1,
+    "enKotuKontrast": 12.14,
+    "enKotuZemin": "rgb(255, 255, 255)",
+    "ornekSayisi": 220,
+    "esik": 4.5,
+    "gecti": true,
+    "odak": {
+      "focusVisible": true,
+      "boxShadow": "rgb(255, 255, 255) 0px 0px 0px 2px, rgb(26, 54, 93) 0px 0px 0px 4px, rgba(0, 0, 0, 0) 0px 0px 0px 0px",
+      "outline": "solid 2px rgba(0, 0, 0, 0)"
+    },
+    "dekorasyon": {
+      "textDecorationLine": "underline",
+      "textDecorationColor": "rgba(26, 54, 93, 0.7)"
+    }
+  },
+  "bilgi__koyu__metin": {
+    "metinIcerik": "OLCUM-DUYURU: yeni sezon indirimleri basladi, kacirmayin",
+    "onRenk": "rgb(248, 250, 252)",
+    "fontPx": 14,
+    "buyukMetinMi": false,
+    "glyphKutuSayisi": 1,
+    "enKotuKontrast": 17.06,
+    "enKotuZemin": "rgb(15, 23, 42)",
+    "ornekSayisi": 2020,
+    "esik": 4.5,
+    "gecti": true,
+    "odak": {
+      "focusVisible": false,
+      "boxShadow": "none",
+      "outline": "none 3px rgb(248, 250, 252)"
+    }
+  },
+  "bilgi__koyu__link": {
+    "metinIcerik": "Incele",
+    "onRenk": "rgb(138, 176, 222)",
+    "fontPx": 14,
+    "buyukMetinMi": false,
+    "glyphKutuSayisi": 1,
+    "enKotuKontrast": 7.94,
+    "enKotuZemin": "rgb(15, 23, 42)",
+    "ornekSayisi": 220,
+    "esik": 4.5,
+    "gecti": true,
+    "odak": {
+      "focusVisible": true,
+      "boxShadow": "rgb(15, 23, 42) 0px 0px 0px 2px, rgb(138, 176, 222) 0px 0px 0px 4px, rgba(0, 0, 0, 0) 0px 0px 0px 0px",
+      "outline": "solid 2px rgba(0, 0, 0, 0)"
+    },
+    "dekorasyon": {
+      "textDecorationLine": "underline",
+      "textDecorationColor": "rgba(138, 176, 222, 0.7)"
+    }
+  },
+  "dikkat__acik__metin": {
+    "metinIcerik": "OLCUM-DUYURU: yeni sezon indirimleri basladi, kacirmayin",
+    "onRenk": "rgb(61, 34, 0)",
+    "fontPx": 14,
+    "buyukMetinMi": false,
+    "glyphKutuSayisi": 1,
+    "enKotuKontrast": 7.73,
+    "enKotuZemin": "rgb(246, 173, 85)",
+    "ornekSayisi": 2020,
+    "esik": 4.5,
+    "gecti": true,
+    "odak": {
+      "focusVisible": false,
+      "boxShadow": "none",
+      "outline": "none 3px rgb(61, 34, 0)"
+    }
+  },
+  "dikkat__acik__link": {
+    "metinIcerik": "Incele",
+    "onRenk": "rgb(61, 34, 0)",
+    "fontPx": 14,
+    "buyukMetinMi": false,
+    "glyphKutuSayisi": 1,
+    "enKotuKontrast": 7.73,
+    "enKotuZemin": "rgb(246, 173, 85)",
+    "ornekSayisi": 220,
+    "esik": 4.5,
+    "gecti": true,
+    "odak": {
+      "focusVisible": true,
+      "boxShadow": "none",
+      "outline": "solid 2px rgb(61, 34, 0)"
+    },
+    "dekorasyon": {
+      "textDecorationLine": "underline",
+      "textDecorationColor": "rgba(61, 34, 0, 0.7)"
+    }
+  },
+  "dikkat__koyu__metin": {
+    "metinIcerik": "OLCUM-DUYURU: yeni sezon indirimleri basladi, kacirmayin",
+    "onRenk": "rgb(61, 34, 0)",
+    "fontPx": 14,
+    "buyukMetinMi": false,
+    "glyphKutuSayisi": 1,
+    "enKotuKontrast": 7.73,
+    "enKotuZemin": "rgb(246, 173, 85)",
+    "ornekSayisi": 2020,
+    "esik": 4.5,
+    "gecti": true,
+    "odak": {
+      "focusVisible": false,
+      "boxShadow": "none",
+      "outline": "none 3px rgb(61, 34, 0)"
+    }
+  },
+  "dikkat__koyu__link": {
+    "metinIcerik": "Incele",
+    "onRenk": "rgb(61, 34, 0)",
+    "fontPx": 14,
+    "buyukMetinMi": false,
+    "glyphKutuSayisi": 1,
+    "enKotuKontrast": 7.73,
+    "enKotuZemin": "rgb(246, 173, 85)",
+    "ornekSayisi": 220,
+    "esik": 4.5,
+    "gecti": true,
+    "odak": {
+      "focusVisible": true,
+      "boxShadow": "none",
+      "outline": "solid 2px rgb(61, 34, 0)"
+    },
+    "dekorasyon": {
+      "textDecorationLine": "underline",
+      "textDecorationColor": "rgba(61, 34, 0, 0.7)"
+    }
+  }
+}
