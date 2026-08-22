@@ -319,7 +319,98 @@ yalnız ölçümü ve öneriyi kaydeder.
      kapanan kayıt silindiği için ortada numaralanacak bir borç kalmadı;
      kapanış kanıtı docs/magaza-merge-dogrulama-raporu.md'de durur. -->
 
-## TB-?A · Karışık sıralı tam suite bu makinede 9.000 ms zaman aşımıyla kırmızı düşüyor
+<!-- İP-B2 turu (22 Ağu 2026) — kural (3) gereği tahsis + İKİ DÜZELTME.
+
+     ÖLÇÜM (`git fetch --all` sonrası, tüm yerel VE uzak dallar, dal başına)
+     **İKİ KEZ** yapıldı ve ikisi FARKLI sonuç verdi — kuralın neden "numarayı
+     almadan önce ÖLÇ" dediğinin canlı örneği:
+
+       1. ölçüm (paketin ortası) : en yüksek **TB-76** (main; tedarikçi paketi)
+       2. ölçüm (kapanış)        : en yüksek **TB-77** (main ilerledi:
+                                   "Tedarikçiden temin edilen üründe teslim
+                                   tarihi SÖYLENEMİYOR")
+
+     Numaralar bu yüzden **78**'den başlıyor. İlk ölçüme göre yazılmış 77-82
+     aralığı kapanışta 78-83'e kaydırıldı.
+
+     ⚠️ Görev metninde bu paketin karışık-sıra borcu için "TB-75" önerilmişti.
+     ÖLÇÜM ONU ÇÜRÜTTÜ: 75, 76 ve 77 main'de zaten alınmış. Öneriye uyulsaydı
+     defterin üç kez yaşadığı çakışma dördüncü kez yaşanırdı.
+
+     Etiket→numara eşlemesi (İP-B1'de açılan beş geçici kayıt):
+       TB-?A → **TB-78**   karışık sıralı kapı zaman aşımı
+       TB-?B → **TB-79**   `TaskCommandPalette` ortak mekanizmaya bağlanmadı
+       TB-?C → **numara ALMADI, KAPANDI**  Google Fonts / KVKK çelişkisi
+       TB-?D → **TB-80**   "Kişiselleştir" penceresine panelden erişilemiyor
+       TB-?E → **numara ALMADI, KAPANDI**  mobil çekmecedeki `Ctrl K` rozeti
+
+     İP-B2'nin KENDİ açtığı üç kayıt (aynı ölçümün devamı):
+       **TB-81**   satır aksiyonları iki kez monte ediliyor (ölçülmemiş maliyet)
+       **TB-82**   kabuk hamburger'i 36 px (tasarım dili 40 px diyor)
+       **TB-83**   nöbetçi envanterleri satır numarasına çıpalı (TB-38'in kardeşi)
+
+     TB-?C İP-B2'nin kapsamındaydı (Ç-5, lansman engeli) ve kapatıldı: yazı
+     tipleri `public/fonts/` altına indirildi, `index.html`den dış konak
+     bağlantıları kaldırıldı, nöbetçi eklendi (`__guards__/disFont.test.ts`).
+     TB-?E de bu turda kapandı (`AdminSidebar` `cekmece` bayrağı). Defterin
+     kuralı gereği kapanan kayıt SİLİNİR, numara tahsis edilmez.
+
+     ── Bulunan İKİ BELGE KUSURU (ikisi de main'de, bu dalda değil) ──
+
+     (a) **TB-73 bir HAYALET kimliktir.** `main`de TB-70'in "Sonraki adım"
+         satırı `(c) Boş üst kategorileri vitrinden ele (bkz. TB-73 ile aynı
+         sınıf)` diyor ama TB-73 başlığı HİÇ AÇILMAMIŞ. İP-A9 turu bunu fark
+         edip yeni kaydına 74 vermiş, ama atfı düzeltmemiş. TB-73 kimliği
+         **yakılmıştır**: yeniden kullanılmaz. main'deki TB-70 satırı merge
+         turunda ya atfı kaldırarak ya da gerçek bir kayda bağlayarak
+         düzeltilmelidir (bu dalda TB-70 kaydı YOK, o yüzden burada
+         düzeltilemedi).
+
+     (b) **main'de TB-75 ve TB-76 İKİŞER KEZ yazılmış** (`## TB-75` ve
+         `## TB-76` başlıkları `docs/teknik-borc.md`de tekrarlanıyor —
+         tedarikçi paketinin kapanış commit'inde blok mükerrer eklenmiş).
+         İçerikleri aynı; ikinci kopyalar silinmelidir. Bu, ölçüm komutunun
+         çıktısını da bozuyor (`70 74 75 75 76 76`).
+-->
+
+## TB-81 · Satır aksiyonları İKİ KEZ monte ediliyor (tablo + mobil kart)
+
+| | |
+|---|---|
+| **Bulundu** | İP-B2 (22 Ağu 2026), `renderMobileRow` bağlanırken |
+| **Nerede** | `frontend/src/components/admin/data-table/DataTable.tsx` (iki bölüm birden basılır) ↔ `frontend/src/components/admin/store/ProductsPanel.tsx::UrunAksiyonlari` |
+| **Sorun** | Mobil kart ve masaüstü hücresi AYNI aksiyon bileşenini basıyor; `md:hidden` yalnız CSS olduğu için **ikisi de monte ediliyor**. 25 satırlık bir sayfada bu 50 `SatirAksiyonlari`, 50 `EditProductModal` iskeleti ve **150 React Query mutation kancası** demek (kapak/yayınla/sil × 2 yüzey × 25 satır). Görsel bir kusur yok; bedeli montaj maliyeti |
+| **Ölçüldü mü** | **HAYIR.** Gerçek tarayıcı turunda ilk boyama sorunsuzdu (yatay taşma 0, 4 ölçümün dördü temiz) ama render süresi ÖLÇÜLMEDİ. Bu kayıt bir varsayımı değil, **ölçülmemiş bir maliyeti** işaretliyor |
+| **Neden sessiz** | Desen zaten depoda vardı (`PackagesPage` A7d1'den beri aynısını yapıyor); B2 onu ürün listesine taşıdı, yeni bir sınıf açmadı |
+| **Neden ertelendi** | Doğru çözüm ölçüm gerektiriyor: (a) tek yüzey + `useMediaQuery` (SSR/hydration yok, güvenli) mi, (b) mutation kancalarını satırdan yukarı taşımak mı, (c) hiçbir şey (maliyet ihmal edilebilir) mi. Ölçmeden seçmek erken iyileştirme olurdu |
+| **Sonraki adım** | 50 satırlık bir listede React Profiler ile montaj süresini ölç; 16 ms'lik kare bütçesini zorluyorsa (a) veya (b). Ölçüm B5'te (envanter listeleri, daha büyük tablolar) doğal olarak gelecek |
+
+## TB-82 · Kabuk hamburger'i 36 px — tasarım dilinin 40 px kuralının altında
+
+| | |
+|---|---|
+| **Bulundu** | İP-B2 · gerçek tarayıcı turu (22 Ağu 2026); kusur **İP-B1'den** kalma |
+| **Nerede** | `frontend/src/components/admin/layout/AdminPageHeader.tsx` (mobil menü düğmesi, `Button size="sm"` = `min-h-9`) |
+| **Sorun** | `docs/tasarim-dili.md` §4.1 "40 px dokunma hedefi" diyor; ölçülen **36 px**. 380 px genişlikte panelin EN KÜÇÜK dokunma hedefi bu düğme ve tek gezinme yolu o |
+| **Ölçüm** | `docs/ip-b2/tur.json` → `ekranlar["acik-380"].enKucukDokunmaHedefiAdi` = `{ad: "Yönetim menüsünü aç", yukseklik: 36}` |
+| **Neden sessiz** | İP-B1'in turu en küçük dokunma hedefini sayı olarak ölçüyordu ama **hangi düğme olduğunu kaydetmiyordu**; 36 px eşik ihlali olarak görünmüyordu çünkü kapı 32 px'e kalibreliydi |
+| **Neden ertelendi** | Kabuk bu paketin kapsamı değil; hamburger'i büyütmek üst şeridin yüksekliğini ve hizasını etkiler, o da B1'in ölçülmüş düzeni |
+| **Sonraki adım** | `size="md"` (40 px) ya da `className="min-h-10"`; sonra üst şerit yüksekliğini iki genişlikte yeniden ölç. B9 (temizlik) ya da kabuk düzeltme turu |
+
+## TB-83 · Nöbetçi envanterleri SATIR NUMARASINA çıpalı — alakasız düzenlemede kırılıyor
+
+| | |
+|---|---|
+| **Bulundu** | İP-B2 (22 Ağu 2026); bu turda **üç kez** kırdı |
+| **Nerede** | `frontend/src/__guards__/beklemeButcesi.test.ts` (`CAGRI_BUTCELERI`) · `frontend/src/__guards__/tembelModul.test.ts` (`GEREKCELI`) |
+| **Sorun** | İki nöbetçi envanterini `dosya:satır değer` biçiminde tutuyor. Bir test dosyasına yardımcı fonksiyon eklemek — davranışa hiç dokunmadan — envanteri kırıyor ve düzeltme mekanik bir sayı güncellemesi oluyor. Bu turda `adminStoreDalAdlari:235→251`, `calismaZamaniKapisi:511→540`, `adminStoreVariants:414→418` |
+| **Etkisi** | İki yönlü zarar: (a) alakasız kırmızılar "nöbetçiyi güncelle" refleksi yaratır ve **gerçek bir kayma da aynı refleksle geçilir**; (b) düzeltme diffs'i şişirir, incelemeyi zorlaştırır |
+| **Neden sessiz** | Kırmızı hemen görünüyor; sinsi olan kırmızının ANLAMSIZ olması |
+| **Neden ertelendi** | Doğru çözüm çıpayı satır yerine **bağlama** taşımak (ör. çevreleyen `it` adı ya da çağrının kendi metni). Bu, iki nöbetçinin tarayıcılarını (`scripts/bekleme-butcesi.mjs`, `scripts/tembel-modul.mjs`) değiştirmeyi gerektiriyor ve B2'nin kapsamı dışında |
+| **Not** | **TB-38**'in kardeşi ("kaynak sözleşmesi testleri ada duyarlı, davranışa kör"): orada AD, burada SATIR NUMARASI kırılganlığın kaynağı. İkisi birlikte ele alınmalı |
+| **Sonraki adım** | Envanter anahtarını `dosya:satır` yerine `dosya::<en yakın it/describe adı>` yap; ölçüm çıktısını da o biçimde üret |
+
+## TB-78 · Karışık sıralı tam suite bu makinede 9.000 ms zaman aşımıyla kırmızı düşüyor
 
 | | |
 |---|---|
@@ -330,8 +421,10 @@ yalnız ölçümü ve öneriyi kaydeder.
 | **Neden sessiz** | Sıralı koşum (`npm test`, CI'ın bugünkü hâli) bu pencereyi hiç açmıyor |
 | **Neden ertelendi** | Kök, `vitest.config.ts`teki 9.000 ms bütçesinin **ölçüldüğü makineye** kalibre olması (TB-23 ve İP-A8 · B-4 aynı sınıfı iki kez kaydetti). Bütçeyi büyütmek gerçek performans regresyonlarını gizler; doğru çözüm ağır acceptance testlerinin fixture'larını küçültmektir (B-4'te bir kez yapıldı: `limit=25` → `limit=5`) |
 | **Sonraki adım** | Dört dosyanın en yavaş testlerini ölç (`--testTimeout=60000` ile gerçek süreler), fixture boyutunu düşür, sonra karışık sıralı kapıyı yeniden koş. Bütçe BÜYÜTÜLMEZ |
+| **⚠️ main'de İKİZİ VAR** | `main` dalında **TB-74** aynı kusur sınıfını kaydediyor (İP-A9 turu, 21-22 Ağu). Bu dal `main`den TB-74 açılmadan ÖNCE ayrıldığı için kayıt burada yok ve iki numara aynı şeyi anlatıyor. **Merge turunda TB-74 ile TB-78 BİRLEŞTİRİLMELİDİR** — TB-74'ün ölçümleri (tepe 6.453 ms, marj 3,04→1,39 kat) ile buradaki ölçümler (altı tohum, kaldır-ve-yeniden-koş provası) birbirini tamamlıyor; iki ayrı kayıt olarak durmaları defteri yanıltır |
+| **İP-B2'de yeniden ölçüldü** | Bu paketin kapı koşumunda da kırmızı; sonuç `docs/ip-b2-rapor.md` §7'de HAM olarak yazılı. Düzeltmeye girilmedi (görev metni açıkça yasakladı) |
 
-## TB-?B · `TaskCommandPalette` ortak komut penceresi mekanizmasına bağlanmadı — üç a11y borcu orada duruyor
+## TB-79 · `TaskCommandPalette` ortak komut penceresi mekanizmasına bağlanmadı — üç a11y borcu orada duruyor
 
 | | |
 |---|---|
@@ -342,18 +435,7 @@ yalnız ölçümü ve öneriyi kaydeder.
 | **Neden ertelendi** | Görev modülü İP-B1'in kapsamı dışında; oraya dokunmak kabuğun kırmızı matrisini başka bir modülün testleriyle karıştırırdı |
 | **Sonraki adım** | B9 (temizlik paketi): `TaskCommandPalette`i `ui2/komutPenceresi` üzerine oturt, üç borcu kapat, `Tasks` için gerçek DOM nöbetçisi yaz |
 
-## TB-?C · Google Fonts CDN'i kullanılıyor ama kod yorumu "KVKK gereği kullanılmıyor" diyor
-
-| | |
-|---|---|
-| **Bulundu** | İP-B1 · Görev 2 (Ç-5) |
-| **Nerede** | `frontend/index.html:11-16` ↔ `frontend/tailwind.config.js` (`fontFamily.mono` yorumu) |
-| **Sorun** | Yorum "font yüklü değil ve **KVKK gereği Google Fonts CDN'i kullanılmıyor**" diyor; `index.html` ise `fonts.googleapis.com`a `preconnect` yapıp `Inter`ı oradan çekiyor. İkisi aynı anda doğru olamaz. Bu bir tasarım meselesi değil **KVKK** meselesi: CDN her sayfa yüklemesinde ziyaretçinin IP'sini üçüncü tarafa gönderir |
-| **Neden sessiz** | Çelişki iki ayrı dosyada; hiçbir test yazı tipinin nereden geldiğini iddia etmiyor |
-| **Neden ertelendi** | İP-B1'in kapsamı kabuk; yazı tipi kaynağını değiştirmek bütün siteyi (public dahil) ilgilendirir |
-| **Sonraki adım** | Karar: (A) `Inter`ı `public/fonts`a indirip `@font-face` ile bağla (yorumu gerçek yapar, ~200 KB varlık), (B) yorumu düzelt ve CDN'i bilinçli kabul et. Marka yazı tipi (`Figtree`) eklenecekse bu karar **önce** verilmeli — aksi hâlde risk ikiye katlanır |
-
-## TB-?D · "Kişiselleştir" penceresine yönetim panelinden erişilemiyor
+## TB-80 · "Kişiselleştir" penceresine yönetim panelinden erişilemiyor
 
 | | |
 |---|---|
@@ -363,17 +445,6 @@ yalnız ölçümü ve öneriyi kaydeder.
 | **Neden sessiz** | Pencerenin kendi testleri var; "panelden erişilebilir mi" diye bir iddia yok |
 | **Neden ertelendi** | Panel kabuğuna panel dışı bir tercih penceresi koymak dilin "ayarlar bir kiptir" kuralıyla çelişiyor; doğru yeri Ayarlar bölümü (B8) |
 | **Sonraki adım** | B8'de karar: ya profil menüsüne bir giriş eklenir, ya tercihler Ayarlar bölümüne taşınır |
-
-## TB-?E · Mobil çekmecede fiziksel klavye varsayan `Ctrl K` tuş rozeti görünüyor
-
-| | |
-|---|---|
-| **Bulundu** | İP-B1 · Görev 5 (tarayıcı turu, 380 px ekran görüntüsü) |
-| **Nerede** | `frontend/src/components/admin/layout/AdminSidebar.tsx` (arama tetikleyicisi) |
-| **Sorun** | Arama öğesi rail ile mobil çekmecede aynı bileşen; dokunmatik cihazda fiziksel klavye olmayabilir ve rozet yanlış vaat eder |
-| **Neden sessiz** | Kozmetik; hiçbir eşiği ihlal etmiyor |
-| **Neden ertelendi** | Kabuk paketi işlevi değil çerçeveyi kuruyor |
-| **Sonraki adım** | B2'de arama öğesi ele alınırken rozet yalnız rail varyantında gösterilsin |
 
 ## TB-68 · Yalancı yeşil deseni TARANMADI: "yeşil, iddia edilenin doğrulandığını göstermez"
 

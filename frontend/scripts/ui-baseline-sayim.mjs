@@ -197,12 +197,16 @@ export const OLCUM_TABANI = [
   // `layout/` altında, yani sevk edilen panel arayüzünün parçası — ölçüme
   // GİRMEK zorundalar. Listeye yazılmasalardı `fazlaDosyalar` kırılırdı ve
   // nöbetçinin tam olarak istenen davranışı budur.
+  // İP-B2 · Görev "birincil aksiyon yuvası": ekranın düğmesini kabuğun başlık
+  // şeridine taşıyan portal. `ui2/`/`layout/` altındaki her şey gibi sevk
+  // edilen panel arayüzünün parçası — ölçüme GİRMEK zorunda.
   "src/components/admin/layout/AdminKomutPenceresi.tsx",
   "src/components/admin/layout/AdminLayout.tsx",
   "src/components/admin/layout/AdminPageHeader.tsx",
   "src/components/admin/layout/AdminProfilMenusu.tsx",
   "src/components/admin/layout/AdminSidebar.tsx",
   "src/components/admin/layout/adminNavigation.ts",
+  "src/components/admin/layout/baslikAksiyonu.tsx",
   "src/components/admin/layout/panelKabuguDurumu.ts",
   "src/components/admin/packing/PackageLabel.tsx",
   "src/components/admin/packing/PackingLabelSheet.tsx",
@@ -239,6 +243,17 @@ export const OLCUM_TABANI = [
   // İP-B1 · Görev 4: komut penceresinin ORTAK mekanizması (görev modülünün
   // paletinden taşındı).
   "src/components/admin/ui2/komutPenceresi.tsx",
+  // ── İP-B2 · liste ailesi (ortak parçalar) ──
+  //
+  // Beşi de `ui2/` altında ve panelin 22 liste ekranının kopyalayacağı
+  // yüzeyi taşıyor. Listeye yazılmasalardı `fazlaDosyalar` kırılırdı ve
+  // nöbetçinin tam olarak istenen davranışı budur: yeni panel arayüzü,
+  // ölçüme girmeden doğamaz.
+  "src/components/admin/ui2/liste/aracCubugu.tsx",
+  "src/components/admin/ui2/liste/bosDurum.tsx",
+  "src/components/admin/ui2/liste/index.ts",
+  "src/components/admin/ui2/liste/menu.tsx",
+  "src/components/admin/ui2/liste/satirAksiyonlari.tsx",
   "src/components/admin/ui2/medusa-tr.tsx",
   // İP-A6: düzenleme yüzeyinin DURUM kancası buraya ayrıldı (import döngüsü
   // kırıldı; gerekçe dosyanın başında).

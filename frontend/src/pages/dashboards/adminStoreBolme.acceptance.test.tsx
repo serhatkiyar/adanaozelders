@@ -264,9 +264,25 @@ function tamYetki() {
   );
 }
 
+/**
+ * Ürün başlığı MASAÜSTÜ tablosunda aranır.
+ *
+ * İP-B2'de `renderMobileRow` bağlandı (İP-B1 envanteri T1'in kapanışı): aynı
+ * ürün artık hem tabloda hem mobil kartta basılıyor ve jsdom ikisini de
+ * görüyor (`md:hidden` yalnız CSS'tir). Daraltılmamış bir `findByText` bu
+ * yüzden "birden çok eşleşme" hatası veriyor.
+ *
+ * İDDİA DEĞİŞMEDİ, yalnız KAPSAMI daraldı — aynı düzeltme İP-A7d1'de sipariş
+ * tablosu için de yapılmıştı (bkz. yukarıdaki `siparisTablosu`).
+ */
+async function tabloMetni(baslik: string | RegExp): Promise<HTMLElement> {
+  const tablo = await screen.findByRole("table");
+  return within(tablo).getByText(baslik);
+}
+
 async function urunSatiri(baslik: string): Promise<HTMLElement> {
-  const hucre = await screen.findByText(baslik);
-  const satir = hucre.closest("tr, div.rounded-xl");
+  const hucre = await tabloMetni(baslik);
+  const satir = hucre.closest("tr");
   if (!satir) throw new Error(`"${baslik}" için satır bulunamadı`);
   return satir as HTMLElement;
 }
@@ -280,7 +296,7 @@ describe("S-1 · altı sekme arasında gerçek gezinme", () => {
     magaza();
 
     // Ürünler (başlangıç)
-    expect(await screen.findByText(URUN_A.title)).toBeTruthy();
+    expect(await tabloMetni(URUN_A.title)).toBeTruthy();
 
     // → Kategoriler
     fireEvent.click(screen.getByRole("link", { name: "Kategoriler" }));
@@ -309,7 +325,7 @@ describe("S-1 · altı sekme arasında gerçek gezinme", () => {
 
     // → Ürünler (geri)
     fireEvent.click(screen.getByRole("link", { name: "Ürünler" }));
-    expect(await screen.findByText(URUN_A.title)).toBeTruthy();
+    expect(await tabloMetni(URUN_A.title)).toBeTruthy();
   });
 
   it("izinsiz sekme çubuğa HİÇ girmez (bölme yetki kapısını taşımadı)", async () => {
@@ -317,7 +333,7 @@ describe("S-1 · altı sekme arasında gerçek gezinme", () => {
     tamSunucu();
     magaza();
 
-    expect(await screen.findByText(URUN_A.title)).toBeTruthy();
+    expect(await tabloMetni(URUN_A.title)).toBeTruthy();
     expect(screen.getByRole("link", { name: "Kategoriler" })).toBeTruthy();
     expect(screen.queryByRole("link", { name: "Siparişler" })).toBeNull();
     expect(screen.queryByRole("link", { name: "Kuponlar" })).toBeNull();
@@ -333,7 +349,12 @@ describe("S-2 · onay penceresi açılır ve kapanır", () => {
     magaza();
 
     const satir = await urunSatiri(URUN_A.title);
-    fireEvent.click(within(satir).getByRole("button", { name: "Sil" }));
+    // İP-B2 · Ç-2 (D): yıkıcı aksiyon AÇIKTA DURAMAZ; üç nokta menüsünden
+    // geçer. İDDİA DEĞİŞMEDİ ("Sil pencereyi açar, vazgeçmek DELETE
+    // göndermez"), yalnız aksiyona ulaşma yolu bir adım uzadı — ve bu,
+    // kararın kendisidir: yanlış satıra tek dokunuşla silme yapılamaz.
+    fireEvent.click(within(satir).getByRole("button", { name: /diğer işlemler/ }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Sil" }));
 
     const pencere = await screen.findByRole("dialog");
     expect(within(pencere).getByText(/katalogdan kaldırılacak/)).toBeTruthy();
@@ -368,7 +389,7 @@ describe("S-3 · düzenleme penceresi açılır ve kapanır", () => {
       expect(screen.queryByText("Ürünü düzenle")).toBeNull()
     );
     // Liste ekranda kalmalı: pencere kapanınca panel çökmez.
-    expect(screen.getByText(URUN_A.title)).toBeTruthy();
+    expect(within(screen.getByRole("table")).getByText(URUN_A.title)).toBeTruthy();
   });
 });
 
@@ -380,8 +401,8 @@ describe("S-4 · ürün listesi sunucudan gelir", () => {
     tamSunucu();
     magaza();
 
-    expect(await screen.findByText(URUN_A.title)).toBeTruthy();
-    expect(screen.getByText(URUN_B.title)).toBeTruthy();
+    expect(await tabloMetni(URUN_A.title)).toBeTruthy();
+    expect(within(screen.getByRole("table")).getByText(URUN_B.title)).toBeTruthy();
 
     const liste = istekleri("/store/admin/products").filter(
       (i) => !/\/products\/\d+$/.test(i.url.split("?")[0])

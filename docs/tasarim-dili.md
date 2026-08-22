@@ -78,10 +78,19 @@ saydamlık varyantı sessizce kırılırdı.
 | `--panel-fg` | Birincil metin | slate-900 | slate-50 |
 | `--panel-fg-muted` | İkincil metin, açıklama | slate-600 | slate-400 |
 | `--panel-fg-subtle` | Üçüncül metin, ikon, etiket | slate-500 | slate-500 |
-| `--panel-accent` | Aksiyon rengi (etkin gezinme, birincil düğme) | indigo-600 | indigo-400 |
+| `--panel-accent` | Aksiyon rengi (etkin gezinme, birincil düğme) | **#1A365D** (marka lacivert) | **#8AB0DE** |
 | `--panel-accent-fg` | Aksiyon üstündeki metin | beyaz | slate-950 |
-| `--panel-accent-soft` | Aksiyonun sakin hâli (etkin satır zemini) | indigo-50 | indigo koyu |
-| `--panel-focus` | Odak halkası | indigo-600 | indigo-400 |
+| `--panel-accent-soft` | Aksiyonun sakin hâli (etkin satır zemini) | **#EAF0F7** | **#152944** |
+| `--panel-focus` | Odak halkası | **#1A365D** | **#8AB0DE** |
+| `--panel-attention` | **Dikkat** rengi — düz hâl (şerit, nokta) | #F6AD55 | #F6AD55 |
+| `--panel-attention-soft` | Dikkat rozetinin zemini | #FDF1E1 | #422006 |
+| `--panel-attention-fg` | Dikkat rozetinin metni | #7C2D12 | #F6AD55 |
+
+**Koyu temada aksan neden farklı bir değer:** `#1A365D` slate-900 yüzeyin
+üstünde **1,3** kontrast verir — düğme zeminden ayırt edilemez. Aksan aynı
+renk AİLESİNİN açık ucuna taşınır; lacivertin ton eğrisi korunur, kimlik
+kaybolmaz. Ölçülen: `#8AB0DE` / slate-900 = **7,94**; slate-950 metin /
+`#8AB0DE` = **8,98** (İP-B2 · gerçek Chrome).
 
 Tailwind köprüsü `tailwind.config.js` → `theme.extend.colors.panel`. Kullanım:
 `bg-panel-surface`, `text-panel-fg-muted`, `border-panel-border`,
@@ -107,7 +116,7 @@ Tailwind köprüsü `tailwind.config.js` → `theme.extend.colors.panel`. Kullan
    B-9 — dokuz yerel widget koyu temada beyaz blok çiziyordu; tek tek yamamak
    onuncusunu davet ederdi.
 
-### 1.4 Marka: navy + turuncu — **KARAR BEKLİYOR**
+### 1.4 Marka: navy + turuncu — **KARAR VERİLDİ (İP-B2 · Ç-3)**
 
 `#1A365D` navy, `#F6AD55` turuncu ve `Figtree` yazı tipi **bugün kod tabanında
 hiç geçmiyor** (arama: sıfır sonuç, `frontend/` ağacının tamamında). Panel
@@ -130,10 +139,24 @@ Tavsiye — **Medusa'nın dili + bizim kimliğimiz**, klon değil:
   diyor — **belge ile kod çelişiyor** (bkz. rapor · Ç-5). İkinci bir CDN yazı
   tipi eklemeden önce bu çelişki çözülmelidir.
 
-**Neden B1'de uygulanmadı:** aksanı yalnız kabukta navy'ye çevirmek, ekranları
-indigo bırakırdı — panel yarısı lacivert yarısı indigo görünürdü. Aksan
-değişikliği tek pakette, kabuk ve ekranlar birlikte yapılmalıdır. Token zaten
-tek noktada (`--panel-accent`); karar verildiği gün bir satır değişir.
+**İP-B2'de uygulandı.** Değişiklik yalnız token'da kalmadı: panel ağacındaki
+(`components/admin/**`, `pages/admin/**`) **55 `indigo-` sınıfı** token'lara
+süpürüldü ve nöbetçi eşiği `toEqual([])` yapıldı
+(`__guards__/panelAksani.test.ts`) — yani panelde yeni bir `indigo-` doğduğu
+gün CI kırılır. "Panel yarı lacivert yarı indigo kalmaz" bir niyet değil,
+ölçülen bir sözleşmedir.
+
+Süpürme sırasında **koyu temada canlı bir kontrast kusuru** görüldü: ortak
+`Button`ın birincil varyantı `bg-indigo-600 text-white` yazıyordu ve `white`
+koyu temada da beyaz kalıyordu. `indigo-600` koyu temada da koyu olduğu için
+kusur gizliydi; aksan açık lacivertle değişince **1,35** kontrasta düşecekti.
+`text-panel-accent-fg` ile kapandı.
+
+Yazı tipi: `Figtree` **panel başlıklarına** (`h1/h2/h3`), `Inter` gövdeye.
+Uygulama tek kuraldır (`index.css` → `.panel-kok :is(h1,h2,h3)`); ekran
+dosyaları yazı tipi sınıfı YAZMAZ. Ekran başına yazılsaydı panelin bir kısmı
+Figtree, bir kısmı Inter başlık taşırdı — aksanın yarım kalması riskinin
+tipografideki ikizi. İkisi de **self-host** (Ç-5).
 
 ---
 
@@ -365,8 +388,18 @@ Yukarıdan aşağı, **sabit sıra**:
 
 - Ortak `DataTable` **zorunludur**. Envanter ve hasar sayfalarının elle yazılmış
   tabloları B serisinde ona taşınır.
-- **Satır aksiyonları açık düğmedir** (kilitli karar, Ç-2). Üç nokta menüye
-  geçilmez.
+- **Satır aksiyonları: en fazla 2 açık düğme, fazlası üç nokta menüsünde**
+  (kilitli karar, Ç-2 · **Seçenek D**; İP-B2'de uygulandı). Masaüstü ve mobil
+  AYNI deseni kullanır. **Açıktakilerin hiçbiri yıkıcı olamaz** (sil/iptal/
+  iade); yıkıcı aksiyon her zaman menüde ve **onay adımlıdır**.
+
+  Kural yazıyla değil **bileşende** zorlanır (`ui2/liste/satirAksiyonlari.tsx`):
+  üçüncü açık düğme ya da açıkta bir yıkıcı aksiyon verilirse geliştirmede
+  `throw`, üretimde `console.error` + güvenli bozunma. Gerekçe İP-B1'in
+  `Form.Control` dersidir: zorlanmayan bir sözleşme çürür.
+
+  "Hangi ikisi birincil" kararı **ekranındır** — üründe "Düzenle" +
+  "Yayınla/Gizle", pakette "Yeniden paketle" + "Etiket".
 - Satır tıklaması gerçek gezinti semantiği taşır: `onRowClick` verildiğinde
   erişilebilir ad **çağırandan** gelir (kilitli karar 7 — kart `<button>`a
   sarılmaz).
@@ -532,6 +565,9 @@ Bu dil aşağıdakileri **bozamaz**. Bozuyorsa tasarım kararı yanlıştır:
 | Erişilebilir adı olmayan form kontrolü | `≤ 7` (kaynak) / `0` (çalışma zamanı) | `uiBaseline` + `calismaZamaniKapisi` |
 | Ham `<button>` | artamaz | `uiBaseline.test.ts` |
 | `ui2/` dışında `@medusajs/ui` importu | `toEqual([])` | `uiBaseline.test.ts` |
+| **Panel ağacında `indigo-` sınıfı** | `toEqual([])` | `panelAksani.test.ts` (İP-B2) |
+| **Dış yazı tipi konağına atıf** | `toEqual([])` | `disFont.test.ts` (İP-B2 · KVKK) |
+| **Satır başına açık düğme** | `≤ 2`, hiçbiri yıkıcı değil | `satirAksiyonlari.tsx` (çalışma zamanı) |
 
 Ek olarak: ölçüm tabanına giren her yeni panel dosyası `OLCUM_TABANI`'na
 **ve** çalışma zamanı kapısının kapsamına yazılır. Sessizce eklenen bir dosya

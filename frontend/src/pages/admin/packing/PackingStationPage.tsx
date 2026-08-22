@@ -317,7 +317,7 @@ export default function PackingStationPage() {
             Sipariş{" "}
             <Link
               to={`${ROUTES.adminPackingPackages}?siparis=${paket.order_id}`}
-              className="font-semibold text-indigo-600 hover:underline dark:text-indigo-400"
+              className="font-semibold text-panel-accent hover:underline"
             >
               #{paket.order_id}
             </Link>{" "}

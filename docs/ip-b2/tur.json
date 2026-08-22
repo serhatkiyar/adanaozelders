@@ -1,0 +1,471 @@
+{
+  "olculdu": "2026-08-21T23:49:48.869Z",
+  "ekranlar": {
+    "acik-1280": {
+      "tema": "acik",
+      "govdeGenisligi": 1280,
+      "yatayTasma": false,
+      "tasmaPiksel": 0,
+      "icIceButon": 0,
+      "dugmeSayisi": 30,
+      "enKucukDokunmaHedefi": 32,
+      "enKucukDokunmaHedefiAdi": {
+        "ad": "Başlık↕",
+        "yukseklik": 32,
+        "kapsayici": "tablo-basligi"
+      },
+      "h1Sayisi": 1,
+      "h1": "Mağaza",
+      "tabloGorunur": true,
+      "mobilKartGorunur": false,
+      "mobilKartSayisi": 5,
+      "aramaVar": true,
+      "filtreEkleVar": true,
+      "siralaVar": true,
+      "bosDurum": null,
+      "cipSayisi": 0,
+      "satirAcikDugmeleri": [
+        "Düzenle",
+        "Gizle"
+      ],
+      "erisimReddi": false,
+      "baslikFontu": "Figtree, Inter, ui-sans-serif, system-ui, -apple-system, \"Segoe UI\", sans-serif",
+      "govdeFontu": "Inter, ui-sans-serif, system-ui, -apple-system, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+      "yuklenenFontlar": [
+        "Figtree 300 900",
+        "Figtree 300 900",
+        "Inter 100 900",
+        "Inter 100 900"
+      ],
+      "kontrast": {
+        "birincilDugme": {
+          "kontrast": 12.14,
+          "esik": 4.5,
+          "gecti": true,
+          "fontPx": 12
+        },
+        "ikincilDugme": {
+          "kontrast": 10.35,
+          "esik": 4.5,
+          "gecti": true,
+          "fontPx": 12
+        },
+        "cip": null,
+        "tabloBasligi": {
+          "kontrast": 4.55,
+          "esik": 3,
+          "gecti": true,
+          "fontPx": 10
+        },
+        "tabloHucresi": {
+          "kontrast": 7.58,
+          "esik": 4.5,
+          "gecti": true,
+          "fontPx": 14
+        },
+        "sayfalamaSayaci": {
+          "kontrast": 4.76,
+          "esik": 4.5,
+          "gecti": true,
+          "fontPx": 12
+        },
+        "bosDurumBasligi": null,
+        "durumRozeti": {
+          "kontrast": 9.45,
+          "esik": 4.5,
+          "gecti": true,
+          "fontPx": 12
+        },
+        "birincilDugmeZemini": "rgb(26, 54, 93)"
+      },
+      "olculmeyenSeviyeler": [
+        "cip",
+        "bosDurumBasligi"
+      ]
+    },
+    "acik-380": {
+      "tema": "acik",
+      "govdeGenisligi": 380,
+      "yatayTasma": false,
+      "tasmaPiksel": 0,
+      "icIceButon": 0,
+      "dugmeSayisi": 24,
+      "enKucukDokunmaHedefi": 36,
+      "enKucukDokunmaHedefiAdi": {
+        "ad": "Yönetim menüsünü aç",
+        "yukseklik": 36,
+        "kapsayici": "diger"
+      },
+      "h1Sayisi": 1,
+      "h1": "Mağaza",
+      "tabloGorunur": false,
+      "mobilKartGorunur": true,
+      "mobilKartSayisi": 5,
+      "aramaVar": true,
+      "filtreEkleVar": true,
+      "siralaVar": true,
+      "bosDurum": null,
+      "cipSayisi": 0,
+      "satirAcikDugmeleri": [
+        "Düzenle",
+        "Gizle"
+      ],
+      "erisimReddi": false,
+      "baslikFontu": "Figtree, Inter, ui-sans-serif, system-ui, -apple-system, \"Segoe UI\", sans-serif",
+      "govdeFontu": "Inter, ui-sans-serif, system-ui, -apple-system, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+      "yuklenenFontlar": [
+        "Figtree 300 900",
+        "Figtree 300 900",
+        "Inter 100 900",
+        "Inter 100 900"
+      ],
+      "kontrast": {
+        "birincilDugme": {
+          "kontrast": 12.14,
+          "esik": 4.5,
+          "gecti": true,
+          "fontPx": 12
+        },
+        "ikincilDugme": {
+          "kontrast": 10.35,
+          "esik": 4.5,
+          "gecti": true,
+          "fontPx": 12
+        },
+        "cip": null,
+        "tabloBasligi": {
+          "kontrast": 4.55,
+          "esik": 3,
+          "gecti": true,
+          "fontPx": 10
+        },
+        "tabloHucresi": {
+          "kontrast": 7.58,
+          "esik": 4.5,
+          "gecti": true,
+          "fontPx": 14
+        },
+        "sayfalamaSayaci": {
+          "kontrast": 4.76,
+          "esik": 4.5,
+          "gecti": true,
+          "fontPx": 12
+        },
+        "bosDurumBasligi": null,
+        "durumRozeti": {
+          "kontrast": 9.45,
+          "esik": 4.5,
+          "gecti": true,
+          "fontPx": 12
+        },
+        "birincilDugmeZemini": "rgb(26, 54, 93)"
+      },
+      "olculmeyenSeviyeler": [
+        "cip",
+        "bosDurumBasligi"
+      ]
+    },
+    "koyu-1280": {
+      "tema": "koyu",
+      "govdeGenisligi": 1280,
+      "yatayTasma": false,
+      "tasmaPiksel": 0,
+      "icIceButon": 0,
+      "dugmeSayisi": 30,
+      "enKucukDokunmaHedefi": 32,
+      "enKucukDokunmaHedefiAdi": {
+        "ad": "Başlık↕",
+        "yukseklik": 32,
+        "kapsayici": "tablo-basligi"
+      },
+      "h1Sayisi": 1,
+      "h1": "Mağaza",
+      "tabloGorunur": true,
+      "mobilKartGorunur": false,
+      "mobilKartSayisi": 5,
+      "aramaVar": true,
+      "filtreEkleVar": true,
+      "siralaVar": true,
+      "bosDurum": null,
+      "cipSayisi": 0,
+      "satirAcikDugmeleri": [
+        "Düzenle",
+        "Gizle"
+      ],
+      "erisimReddi": false,
+      "baslikFontu": "Figtree, Inter, ui-sans-serif, system-ui, -apple-system, \"Segoe UI\", sans-serif",
+      "govdeFontu": "Inter, ui-sans-serif, system-ui, -apple-system, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+      "yuklenenFontlar": [
+        "Figtree 300 900",
+        "Figtree 300 900",
+        "Inter 100 900",
+        "Inter 100 900"
+      ],
+      "kontrast": {
+        "birincilDugme": {
+          "kontrast": 8.98,
+          "esik": 4.5,
+          "gecti": true,
+          "fontPx": 12
+        },
+        "ikincilDugme": {
+          "kontrast": 14.48,
+          "esik": 4.5,
+          "gecti": true,
+          "fontPx": 12
+        },
+        "cip": null,
+        "tabloBasligi": {
+          "kontrast": 7.87,
+          "esik": 3,
+          "gecti": true,
+          "fontPx": 10
+        },
+        "tabloHucresi": {
+          "kontrast": 12.02,
+          "esik": 4.5,
+          "gecti": true,
+          "fontPx": 14
+        },
+        "sayfalamaSayaci": {
+          "kontrast": 6.96,
+          "esik": 4.5,
+          "gecti": true,
+          "fontPx": 12
+        },
+        "bosDurumBasligi": null,
+        "durumRozeti": {
+          "kontrast": 9.85,
+          "esik": 4.5,
+          "gecti": true,
+          "fontPx": 12
+        },
+        "birincilDugmeZemini": "rgb(138, 176, 222)"
+      },
+      "olculmeyenSeviyeler": [
+        "cip",
+        "bosDurumBasligi"
+      ]
+    },
+    "koyu-380": {
+      "tema": "koyu",
+      "govdeGenisligi": 380,
+      "yatayTasma": false,
+      "tasmaPiksel": 0,
+      "icIceButon": 0,
+      "dugmeSayisi": 24,
+      "enKucukDokunmaHedefi": 36,
+      "enKucukDokunmaHedefiAdi": {
+        "ad": "Yönetim menüsünü aç",
+        "yukseklik": 36,
+        "kapsayici": "diger"
+      },
+      "h1Sayisi": 1,
+      "h1": "Mağaza",
+      "tabloGorunur": false,
+      "mobilKartGorunur": true,
+      "mobilKartSayisi": 5,
+      "aramaVar": true,
+      "filtreEkleVar": true,
+      "siralaVar": true,
+      "bosDurum": null,
+      "cipSayisi": 0,
+      "satirAcikDugmeleri": [
+        "Düzenle",
+        "Gizle"
+      ],
+      "erisimReddi": false,
+      "baslikFontu": "Figtree, Inter, ui-sans-serif, system-ui, -apple-system, \"Segoe UI\", sans-serif",
+      "govdeFontu": "Inter, ui-sans-serif, system-ui, -apple-system, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+      "yuklenenFontlar": [
+        "Figtree 300 900",
+        "Figtree 300 900",
+        "Inter 100 900",
+        "Inter 100 900"
+      ],
+      "kontrast": {
+        "birincilDugme": {
+          "kontrast": 8.98,
+          "esik": 4.5,
+          "gecti": true,
+          "fontPx": 12
+        },
+        "ikincilDugme": {
+          "kontrast": 14.48,
+          "esik": 4.5,
+          "gecti": true,
+          "fontPx": 12
+        },
+        "cip": null,
+        "tabloBasligi": {
+          "kontrast": 7.87,
+          "esik": 3,
+          "gecti": true,
+          "fontPx": 10
+        },
+        "tabloHucresi": {
+          "kontrast": 12.02,
+          "esik": 4.5,
+          "gecti": true,
+          "fontPx": 14
+        },
+        "sayfalamaSayaci": {
+          "kontrast": 6.96,
+          "esik": 4.5,
+          "gecti": true,
+          "fontPx": 12
+        },
+        "bosDurumBasligi": null,
+        "durumRozeti": {
+          "kontrast": 9.85,
+          "esik": 4.5,
+          "gecti": true,
+          "fontPx": 12
+        },
+        "birincilDugmeZemini": "rgb(138, 176, 222)"
+      },
+      "olculmeyenSeviyeler": [
+        "cip",
+        "bosDurumBasligi"
+      ]
+    }
+  },
+  "etkilesim": {
+    "satirMenusu": {
+      "etiket": "AYT Kimya Konu Anlatımı — diğer işlemler",
+      "ogeler": [
+        "Kapak görseli yükle PNG veya JPG",
+        "Sil"
+      ],
+      "tasiyor": false
+    },
+    "menuEscKapatti": true,
+    "filtre": {
+      "kriterler": [
+        "Stok durumu",
+        "Yayınevi",
+        "Yazar"
+      ],
+      "degerler": [
+        "‹ Stok durumu",
+        "Tükendi",
+        "Azalan",
+        "Tükendi + azalan",
+        "Stokta"
+      ],
+      "cipliUrl": "?stok=tukendi",
+      "cipSayisi": 1,
+      "bosDurum": "sonuc-yok",
+      "cipKontrasti": {
+        "kontrast": 14.48,
+        "esik": 4.5,
+        "gecti": true,
+        "fontPx": 12
+      }
+    },
+    "bosDurumlar": {
+      "sonucYok": "sonuc-yok",
+      "sonucYokMetni": "Eşleşen ürün yok",
+      "basligiKontrasti": {
+        "kontrast": 17.06,
+        "esik": 4.5,
+        "gecti": true,
+        "fontPx": 14
+      }
+    },
+    "odakHalkasi": [
+      {
+        "ad": "Yönetim paneli ana sayfası",
+        "etiket": "a",
+        "boxShadow": "rgb(255, 255, 255) 0px 0px 0px 0px, rgb(138, 176, 222) 0px 0px 0px 2px, rgba(0, 0, 0, 0) 0px 0px 0px 0px",
+        "outline": "solid 2px rgba(0, 0, 0, 0)",
+        "halkaVar": true
+      },
+      {
+        "ad": "Menüyü katla",
+        "etiket": "button",
+        "boxShadow": "rgb(2, 6, 23) 0px 0px 0px 2px, rgb(138, 176, 222) 0px 0px 0px 4px, rgba(0, 0, 0, 0) 0px 0px 0px 0px",
+        "outline": "solid 2px rgba(0, 0, 0, 0)",
+        "halkaVar": true
+      },
+      {
+        "ad": "AraCtrl K",
+        "etiket": "button",
+        "boxShadow": "rgb(2, 6, 23) 0px 0px 0px 2px, rgb(138, 176, 222) 0px 0px 0px 4px, rgba(0, 0, 0, 0.05) 0px 1px 2px 0px",
+        "outline": "solid 2px rgba(0, 0, 0, 0)",
+        "halkaVar": true
+      },
+      {
+        "ad": "Genel Bakış",
+        "etiket": "a",
+        "boxShadow": "rgba(15, 23, 42, 0.992) 0px 0px 0px 1.98587px, rgba(138, 176, 222, 0.992) 0px 0px 0px 3.97173px, rgba(0, 0, 0, 0) 0px 0px 0px 0px",
+        "outline": "solid 2px rgba(0, 0, 0, 0)",
+        "halkaVar": true
+      },
+      {
+        "ad": "Kullanıcılar",
+        "etiket": "a",
+        "boxShadow": "rgb(15, 23, 42) 0px 0px 0px 2px, rgb(138, 176, 222) 0px 0px 0px 4px, rgba(0, 0, 0, 0) 0px 0px 0px 0px",
+        "outline": "solid 2px rgba(0, 0, 0, 0)",
+        "halkaVar": true
+      },
+      {
+        "ad": "Hata Çözme",
+        "etiket": "a",
+        "boxShadow": "rgb(15, 23, 42) 0px 0px 0px 2px, rgb(138, 176, 222) 0px 0px 0px 4px, rgba(0, 0, 0, 0) 0px 0px 0px 0px",
+        "outline": "solid 2px rgba(0, 0, 0, 0)",
+        "halkaVar": true
+      },
+      {
+        "ad": "Eğitmenler",
+        "etiket": "a",
+        "boxShadow": "rgb(15, 23, 42) 0px 0px 0px 2px, rgb(138, 176, 222) 0px 0px 0px 4px, rgba(0, 0, 0, 0) 0px 0px 0px 0px",
+        "outline": "solid 2px rgba(0, 0, 0, 0)",
+        "halkaVar": true
+      },
+      {
+        "ad": "Diplomalar",
+        "etiket": "a",
+        "boxShadow": "rgb(15, 23, 42) 0px 0px 0px 2px, rgb(138, 176, 222) 0px 0px 0px 4px, rgba(0, 0, 0, 0) 0px 0px 0px 0px",
+        "outline": "solid 2px rgba(0, 0, 0, 0)",
+        "halkaVar": true
+      },
+      {
+        "ad": "Rezervasyonlar",
+        "etiket": "a",
+        "boxShadow": "rgba(15, 23, 42, 0.992) 0px 0px 0px 1.98604px, rgba(138, 176, 222, 0.992) 0px 0px 0px 3.97209px, rgba(0, 0, 0, 0) 0px 0px 0px 0px",
+        "outline": "solid 2px rgba(0, 0, 0, 0)",
+        "halkaVar": true
+      },
+      {
+        "ad": "Talepler",
+        "etiket": "a",
+        "boxShadow": "rgb(15, 23, 42) 0px 0px 0px 2px, rgb(138, 176, 222) 0px 0px 0px 4px, rgba(0, 0, 0, 0) 0px 0px 0px 0px",
+        "outline": "solid 2px rgba(0, 0, 0, 0)",
+        "halkaVar": true
+      }
+    ],
+    "yaziTipi": {
+      "h1": "Figtree, Inter, ui-sans-serif, system-ui, -apple-system, \"Segoe UI\", sans-serif",
+      "body": "Inter, ui-sans-serif, system-ui, -apple-system, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, sans-serif",
+      "yuklenen": [
+        "Figtree",
+        "Figtree",
+        "Inter",
+        "Inter"
+      ]
+    }
+  },
+  "ag": {
+    "toplamIstek": 991,
+    "disYaziTipiIstegi": 0,
+    "ornekler": [],
+    "yerelYaziTipiIstegi": 23
+  },
+  "giris": {
+    "epostaYazildi": true,
+    "sifreYazildi": true,
+    "yol": "/yonetim"
+  },
+  "hataliAdim": 0
+}

@@ -724,7 +724,7 @@ function KatlanirBaslik({
       type="button"
       aria-expanded={acik}
       onClick={onDegis}
-      className="flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-indigo-600 dark:text-slate-300 dark:hover:text-indigo-400"
+      className="flex items-center gap-1.5 text-sm font-medium text-slate-600 hover:text-panel-accent dark:text-slate-300"
     >
       <svg
         width="14"
@@ -971,7 +971,7 @@ function VariantMembershipFields({
                   {[m.option1_value, m.option2_value].filter(Boolean).join(" / ")}
                   <span className="text-slate-400"> · {m.title}</span>
                   {m.id === currentProductId && (
-                    <span className="ml-1.5 text-xs text-indigo-600 dark:text-indigo-400">(bu ürün)</span>
+                    <span className="ml-1.5 text-xs text-panel-accent">(bu ürün)</span>
                   )}
                 </span>
                 <span className="shrink-0 text-xs text-slate-400">

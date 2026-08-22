@@ -208,10 +208,28 @@ const HAKEDIS_KAYDI = {
  * yerleşime değil DAVRANIŞA bakmaya devam etsin.
  */
 async function urunSatiri(baslik: string): Promise<HTMLElement> {
-  const hucre = await screen.findByText(baslik);
-  const satir = hucre.closest("tr, div.rounded-xl");
+  // MASAÜSTÜ tablosuna daraltıldı (İP-B2): `renderMobileRow` bağlandığı için
+  // aynı ürün hem tabloda hem mobil kartta basılıyor ve jsdom ikisini de
+  // görüyor (`md:hidden` yalnız CSS'tir). İDDİA DEĞİŞMEDİ, sorgunun KAPSAMI
+  // daraldı.
+  const tablo = await screen.findByRole("table");
+  const hucre = within(tablo).getByText(baslik);
+  const satir = hucre.closest("tr");
   if (!satir) throw new Error(`"${baslik}" için satır bulunamadı`);
   return satir as HTMLElement;
+}
+
+/**
+ * Ürün satırındaki YIKICI aksiyona ulaşır.
+ *
+ * İP-B2 · Ç-2 (D): "Sil" artık açık bir düğme DEĞİL, üç nokta menüsünde ve
+ * onay adımlı. Sözleşme aynı ("tek başına DELETE göndermez"), yola bir adım
+ * eklendi — ve o adım kararın kendisidir: yanlış satıra tek dokunuşla silme
+ * yapılamaz.
+ */
+function urunSilmeyiAc(satir: HTMLElement) {
+  fireEvent.click(within(satir).getByRole("button", { name: /diğer işlemler/ }));
+  fireEvent.click(screen.getByRole("menuitem", { name: "Sil" }));
 }
 
 /* ═════════════════════ C-1/C-2/C-3 · Yıkıcı aksiyon sözleşmesi ═════════════════════ */
@@ -225,7 +243,7 @@ describe("C-1 · yıkıcı aksiyon onay penceresi olmadan istek üretmez", () =>
     sar(ROUTES.adminStoreProducts, <AdminStore />);
 
     const satir = await urunSatiri(URUN.title);
-    fireEvent.click(within(satir as HTMLElement).getByRole("button", { name: "Sil" }));
+    urunSilmeyiAc(satir);
 
     // Onay penceresi açılmalı; istek HENÜZ gitmemeli.
     expect(await screen.findByRole("button", { name: "Ürünü sil" })).toBeTruthy();
@@ -240,7 +258,7 @@ describe("C-1 · yıkıcı aksiyon onay penceresi olmadan istek üretmez", () =>
     sar(ROUTES.adminStoreProducts, <AdminStore />);
 
     const satir = await urunSatiri(URUN.title);
-    fireEvent.click(within(satir as HTMLElement).getByRole("button", { name: "Sil" }));
+    urunSilmeyiAc(satir);
     fireEvent.click(await screen.findByRole("button", { name: "Ürünü sil" }));
 
     await screen.findByText(/ürün silindi/i);
@@ -293,7 +311,7 @@ describe("C-2 · istek uçarken onay düğmesi devre dışı (çift tıklama yok
     sar(ROUTES.adminStoreProducts, <AdminStore />);
 
     const satir = await urunSatiri(URUN.title);
-    fireEvent.click(within(satir as HTMLElement).getByRole("button", { name: "Sil" }));
+    urunSilmeyiAc(satir);
     const onay = await screen.findByRole("button", { name: "Ürünü sil" });
     fireEvent.click(onay);
 
@@ -318,7 +336,7 @@ describe("C-3 · yıkıcı aksiyon patlarsa kullanıcı hatayı GÖRÜR", () => 
     sar(ROUTES.adminStoreProducts, <AdminStore />);
 
     const satir = await urunSatiri(URUN.title);
-    fireEvent.click(within(satir as HTMLElement).getByRole("button", { name: "Sil" }));
+    urunSilmeyiAc(satir);
     fireEvent.click(await screen.findByRole("button", { name: "Ürünü sil" }));
 
     expect(await screen.findByText(/açık siparişte kullanılıyor/i)).toBeTruthy();

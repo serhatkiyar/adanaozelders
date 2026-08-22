@@ -40,7 +40,7 @@ function Sayac({
   return (
     <Link
       to={to}
-      className="block rounded-2xl border border-slate-200 bg-white px-5 py-4 transition hover:border-slate-300 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700 dark:hover:bg-slate-800/60"
+      className="block rounded-2xl border border-slate-200 bg-white px-5 py-4 transition hover:border-slate-300 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-panel-focus dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700 dark:hover:bg-slate-800/60"
     >
       <p className="text-xs font-medium text-slate-500 dark:text-slate-400">{baslik}</p>
       <p
@@ -91,7 +91,7 @@ export default function InventoryOverviewPage() {
           </div>
           <Link
             to={ROUTES.adminInventoryDamage}
-            className="rounded-lg px-3 py-1.5 text-xs font-semibold text-indigo-600 transition hover:bg-indigo-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:text-indigo-400 dark:hover:bg-indigo-500/10"
+            className="rounded-lg px-3 py-1.5 text-xs font-semibold text-panel-accent transition hover:bg-panel-accent-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-panel-focus dark:hover:bg-panel-accent/10"
           >
             Tümü
           </Link>
@@ -137,13 +137,13 @@ export default function InventoryOverviewPage() {
         <div className="mt-3 flex flex-wrap gap-2">
           <Link
             to={ROUTES.adminStoreStock}
-            className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+            className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-panel-focus dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
           >
             Stok hareketleri
           </Link>
           <Link
             to={ROUTES.adminAuditLogs}
-            className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+            className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-panel-focus dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
           >
             Denetim kayıtları
           </Link>

@@ -63,7 +63,7 @@ export default function AdminPayoutsPage() {
             onClick={() => url.ayarla({ sekme: key })}
             className={`-mb-px border-b-2 px-4 py-2 text-sm font-medium transition-colors ${
               tab === key
-                ? "border-indigo-600 text-indigo-600 dark:border-indigo-400 dark:text-indigo-400"
+                ? "border-panel-accent text-panel-accent"
                 : "border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
             }`}
           >

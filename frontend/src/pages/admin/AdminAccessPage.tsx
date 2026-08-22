@@ -336,7 +336,7 @@ function RolIcerik({
                 >
                   <input
                     type="checkbox"
-                    className="mt-0.5 h-4 w-4 accent-indigo-600"
+                    className="mt-0.5 h-4 w-4 accent-panel-accent"
                     checked={secili.includes(izin.code)}
                     onChange={(event) =>
                       form.setValue(

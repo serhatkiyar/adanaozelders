@@ -46,12 +46,12 @@ interface QueueCardProps {
 
 function QueueCard({ label, value, to, tone = "neutral", description }: QueueCardProps) {
   return (
-    <Link to={to} className="group rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-indigo-300 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-indigo-700">
+    <Link to={to} className="group rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-panel-accent/40 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-panel-focus dark:border-slate-800 dark:bg-slate-900 dark:hover:border-panel-accent">
       <div className="flex items-start justify-between gap-3">
         <div><p className="font-semibold text-slate-900 dark:text-white">{label}</p><p className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">{description}</p></div>
         <Badge tone={tone}>{value}</Badge>
       </div>
-      <p className="mt-3 text-xs font-semibold text-indigo-600 group-hover:text-indigo-700 dark:text-indigo-400">Kuyruğu aç →</p>
+      <p className="mt-3 text-xs font-semibold text-panel-accent group-hover:opacity-80">Kuyruğu aç →</p>
     </Link>
   );
 }
@@ -81,7 +81,7 @@ export default function AdminDashboardPage() {
           <div><h2 id="period-title" className="text-lg font-bold text-slate-950 dark:text-white">Dönem hareketi</h2><p className="text-sm text-slate-500">Yeni hesap ve sipariş oluşumu; {selected.period}.</p></div>
           <div className="flex rounded-xl border border-slate-200 bg-white p-1 dark:border-slate-800 dark:bg-slate-900">
             {RANGES.map((item) => (
-              <button key={item.value} type="button" onClick={() => setParams(item.value === "week" ? {} : { range: item.value })} className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 ${range === item.value ? "bg-indigo-600 text-white" : "text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"}`}>{item.label}</button>
+              <button key={item.value} type="button" onClick={() => setParams(item.value === "week" ? {} : { range: item.value })} className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-panel-focus ${range === item.value ? "bg-panel-accent text-panel-accent-fg" : "text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"}`}>{item.label}</button>
             ))}
           </div>
         </div>

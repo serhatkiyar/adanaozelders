@@ -85,9 +85,9 @@ const CAGRI_BUTCELERI = [
   "src/pages/admin/adminHakedisGoc.acceptance.test.tsx:53 4000",
   "src/pages/admin/inventory/sayimOturumlariGoc.acceptance.test.tsx:360 3000",
   "src/pages/dashboards/adminKataloglarGoc.acceptance.test.tsx:213 3000",
-  "src/pages/dashboards/adminStoreDalAdlari.acceptance.test.tsx:235 4000",
+  "src/pages/dashboards/adminStoreDalAdlari.acceptance.test.tsx:251 4000",
   "src/pages/dashboards/adminStoreVariants.acceptance.test.tsx:188 1500",
-  "src/pages/dashboards/adminStoreVariants.acceptance.test.tsx:414 4000",
+  "src/pages/dashboards/adminStoreVariants.acceptance.test.tsx:418 4000",
   "src/pages/store/storeVariants.acceptance.test.tsx:18 4000",
   "src/pages/ticketsPaymentGate.test.tsx:32 4000",
 ];

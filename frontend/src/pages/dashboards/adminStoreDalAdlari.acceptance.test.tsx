@@ -196,6 +196,22 @@ function defterSunucusu() {
 }
 
 /**
+ * MASAÜSTÜ tablosundaki "Düzenle" düğmesi.
+ *
+ * İP-B2'de `renderMobileRow` bağlandı: aynı satırın aksiyonları hem tabloda
+ * hem mobil kartta basılıyor ve jsdom ikisini de görüyor (`md:hidden` yalnız
+ * CSS'tir). Daraltılmamış bir `findByRole` bu yüzden "birden çok eşleşme"
+ * hatası veriyor.
+ *
+ * İDDİA DEĞİŞMEDİ — hangi yüzeyden tıklandığı zaten testin konusu değil;
+ * konusu, açılan formun alanlarının adı.
+ */
+async function masaustuDuzenle(): Promise<HTMLElement> {
+  const tablo = await screen.findByRole("table", {}, YUK);
+  return within(tablo).getByRole("button", { name: "Düzenle" });
+}
+
+/**
  * Denetimin kendisi. İKİ iddia birden:
  *
  *   1. Adsız kontrol YOK (asıl kural).
@@ -319,7 +335,7 @@ describe("D-2 · ürün formu (düzenleme) — stok gerekçesi ve varyant dallar
     sunucu("/store/admin/products/101", { data: URUN }, "get");
     defterSunucusu();
     panel(ROUTES.adminStoreProducts);
-    fireEvent.click(await screen.findByRole("button", { name: "Düzenle" }, YUK));
+    fireEvent.click(await masaustuDuzenle());
     await screen.findByLabelText("Ürün adı");
   }
 
@@ -402,7 +418,13 @@ describe("D-3 · kupon / kategori / içe aktarma / sipariş / iade formları", (
 
     fireEvent.click(await screen.findByRole("button", { name: "Toplu içe aktar" }));
     await screen.findByLabelText("Yüklenecek CSV dosyası");
-    adlarDogru(5);
+    // Eşik 5 → 2 (İP-B2): ürün listesinin DÖRT filtre `<select>`i kalktı;
+    // filtreler artık "Filtre ekle" menüsünde ve menü öğeleri form kontrolü
+    // DEĞİL, `menuitem` düğmeleridir. Ekranda kalan kontroller: arama girdisi
+    // + CSV dosya seçicisi. (Liste boş olduğu için sayfalama seçicisi de
+    // basılmıyor.) Bu eşik bir SÖZLEŞME değil, "dal gerçekten açıldı mı"
+    // yalancı-yeşil kapısıdır; sayı gerçek render'a göre yeniden ölçüldü.
+    adlarDogru(2);
   });
 
   it("sipariş durum filtresi ve 'Kargola' takip no alanı adlı", async () => {
@@ -550,7 +572,7 @@ describe("D-6 · kirli formda kapatma önce sorar (İP-A7d2 · SK-4)", () => {
     sunucu("/store/admin/products/101", { data: URUN }, "get");
     defterSunucusu();
     panel(ROUTES.adminStoreProducts);
-    fireEvent.click(await screen.findByRole("button", { name: "Düzenle" }, YUK));
+    fireEvent.click(await masaustuDuzenle());
     const ad = await screen.findByLabelText("Ürün adı");
 
     fireEvent.change(ad, { target: { value: "Fosforlu Kalem - Yeşil" } });
@@ -579,7 +601,7 @@ describe("D-6 · kirli formda kapatma önce sorar (İP-A7d2 · SK-4)", () => {
     sunucu("/store/admin/products/101", { data: URUN }, "get");
     defterSunucusu();
     panel(ROUTES.adminStoreProducts);
-    fireEvent.click(await screen.findByRole("button", { name: "Düzenle" }, YUK));
+    fireEvent.click(await masaustuDuzenle());
     await screen.findByLabelText("Ürün adı");
 
     fireEvent.keyDown(document, { key: "Escape" });

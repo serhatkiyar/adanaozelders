@@ -12,7 +12,7 @@
 //   V-4 Grup seçilince kardeş listesi (grup üyeleri) görünür.
 //   V-5 "Varyant türet" gerçek derive-variant isteğini doğru gövdeyle atar.
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
@@ -410,8 +410,14 @@ describe("V-5 · varyant türetme", () => {
     // Yük altındaki bekleme bütçesi (İP-A7d2 · Görev 5). Ürün listesi
     // sorgusu paralel yük altında 1000 ms'lik varsayılanın dibine değiyor;
     // ölçüm ve gerekçe `adminHakedisGoc.acceptance.test.tsx`in başında.
+    // MASAÜSTÜ tablosuna daraltıldı (İP-B2): `renderMobileRow` bağlandığı
+    // için aynı satırın aksiyonları hem tabloda hem mobil kartta basılıyor.
+    // İDDİA DEĞİŞMEDİ — hangi yüzeyden tıklandığı bu testin konusu değil,
+    // konusu türetme isteğinin gerçekten gitmesi.
     fireEvent.click(
-      await screen.findByRole("button", { name: "Düzenle" }, { timeout: 4000 })
+      within(await screen.findByRole("table", {}, { timeout: 4000 })).getByRole("button", {
+        name: "Düzenle",
+      })
     );
     await varyantBolumunuAc();
     fireEvent.click(

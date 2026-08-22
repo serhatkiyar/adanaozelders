@@ -88,7 +88,10 @@ export default function AdminLayout() {
   }, [drawerOpen]);
 
   return (
-    <div className="flex h-dvh min-h-0 bg-panel-bg text-panel-fg">
+    // `panel-kok`: panel başlık tipografisinin (Figtree) TEK bağlanma
+    // noktası — kural `index.css`te, sınıf yalnız burada. Public site
+    // etkilenmez ve panelin 44 rotası göç etmeyi beklemez.
+    <div className="panel-kok flex h-dvh min-h-0 bg-panel-bg text-panel-fg">
       <aside
         className={`hidden shrink-0 border-r border-panel-border lg:block ${
           katli ? "w-[72px]" : "w-[264px]"
@@ -142,6 +145,7 @@ export default function AdminLayout() {
             </Button>
             <AdminSidebar
               testId="panel-cekmece"
+              cekmece
               onAramaAc={() => {
                 setDrawerOpen(false);
                 komutAc();

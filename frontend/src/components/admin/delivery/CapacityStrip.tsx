@@ -57,7 +57,7 @@ export function CapacityStrip({
         );
         const cls = `min-w-[3.6rem] shrink-0 rounded-lg px-2 py-1.5 text-center ring-1 transition ${
           isSelected
-            ? "ring-2 ring-indigo-400 dark:ring-indigo-500"
+            ? "ring-2 ring-panel-accent"
             : "ring-slate-100 dark:ring-slate-800"
         } ${!d.is_working_day ? "opacity-40" : ""}`;
         return onSelectDate ? (

@@ -55,6 +55,19 @@ export interface AdminSidebarProps {
   /** Katlamayı çeviren düğme — çekmece varyantında verilmez. */
   onKatlamaDegistir?: () => void;
   /**
+   * Mobil çekmece varyantı mı (İP-B2 · İP-B1'in TB-?E kaydı).
+   *
+   * İP-B1'in tarayıcı turu 380 px ekran görüntüsünde gördü: arama öğesi rail
+   * ile çekmecede AYNI bileşen olduğu için çekmecede de `Ctrl K` tuş rozeti
+   * çiziliyordu. Dokunmatik cihazda fiziksel klavye olmayabilir; rozet
+   * kullanıcıya yerine getiremeyeceği bir söz veriyor.
+   *
+   * Bayrak AÇIK yazılıyor, `testId`den ya da `onKatlamaDegistir`in
+   * yokluğundan çıkarılmıyor: ikisi de tesadüfi bağıntı ve ileride biri
+   * değişirse rozet sessizce geri gelir.
+   */
+  cekmece?: boolean;
+  /**
    * `data-testid` ve dolayısıyla nöbetçi kimliği. Rail ve çekmece AYNI
    * bileşendir ama aynı anda DOM'da bulunabilir; testin hangisini ölçtüğü
    * belirsiz kalmasın diye kimlik çağırandan gelir.
@@ -80,6 +93,7 @@ export interface AdminSidebarProps {
 export function AdminSidebar({
   onNavigate,
   katli = false,
+  cekmece = false,
   onAramaAc,
   onKatlamaDegistir,
   testId,
@@ -168,9 +182,11 @@ export function AdminSidebar({
           ) : (
             <>
               <span className="flex-1 text-left text-panel-fg-subtle">Ara</span>
-              <kbd className="flex-none rounded-md border border-panel-border px-1.5 py-0.5 text-[10px] font-semibold text-panel-fg-subtle">
-                Ctrl K
-              </kbd>
+              {!cekmece && (
+                <kbd className="flex-none rounded-md border border-panel-border px-1.5 py-0.5 text-[10px] font-semibold text-panel-fg-subtle">
+                  Ctrl K
+                </kbd>
+              )}
             </>
           )}
         </Button>

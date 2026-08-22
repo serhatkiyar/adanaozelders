@@ -1,15 +1,13 @@
-import { type ReactNode } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/admin/ui";
 import { NotificationsBell } from "@/components/NotificationsBell";
 import { ROUTES } from "@/lib/routes";
 import { getAdminNavItem } from "./adminNavigation";
+import { BASLIK_AKSIYON_ID } from "./baslikAksiyonu";
 
 export interface AdminPageHeaderProps {
   /** Mobil gezinme çekmecesini açar. */
   onMenuAc: () => void;
-  /** Sayfaya ait birincil aksiyon — ekranlar B2'den itibaren doldurur. */
-  aksiyon?: ReactNode;
 }
 
 /**
@@ -17,18 +15,18 @@ export interface AdminPageHeaderProps {
  *
  * Sol: sayfa yolu + `<h1>` + açıklama. Sağ: birincil aksiyon yuvası + bildirim.
  *
- * `aksiyon` yuvası bugün BOŞ ve bilerek öyle: ekran içerikleri bu pakette
- * değişmiyor. Yuvanın şimdiden açılmasının sebebi, B2'nin liste sayfası
- * anatomisini yazarken "Yeni ürün" düğmesini nereye koyacağını bu belgede
- * bulması: her ekranda AYNI yerde. Bugün her ekran onu kendi içeriğinin
- * farklı bir yerine koyuyor.
+ * Birincil aksiyon yuvası İP-B2'de DOLDU: artık bir `id` taşıyan boş bir
+ * kutudur ve ekranlar `PanelBaslikAksiyonu` ile oraya portal açar (gerekçesi
+ * `baslikAksiyonu.tsx`te — context+state yolu sonsuz döngü üretiyordu).
+ * Kazanç: "Yeni ürün" panelin her ekranında AYNI yerde durur; bugüne dek her
+ * ekran onu kendi içeriğinin farklı bir yerine koyuyordu.
  *
  * Bildirim alanı UYDURMA DEĞİL: `NotificationsBell` gerçek `/notifications`
  * ucuna bağlı, okunmamış sayacı ve yan paneli olan mevcut bileşendir. Panelin
  * üstündeki genel site navbar'ı kalkarken bildirime erişim kaybolmasın diye
  * buraya taşındı.
  */
-export function AdminPageHeader({ onMenuAc, aksiyon }: AdminPageHeaderProps) {
+export function AdminPageHeader({ onMenuAc }: AdminPageHeaderProps) {
   const { pathname } = useLocation();
   const current = getAdminNavItem(pathname);
   const kokte = current.to === ROUTES.admin;
@@ -67,7 +65,7 @@ export function AdminPageHeader({ onMenuAc, aksiyon }: AdminPageHeaderProps) {
         </div>
 
         <div className="flex shrink-0 items-center gap-2">
-          {aksiyon}
+          <div id={BASLIK_AKSIYON_ID} className="flex items-center gap-2" />
           <NotificationsBell />
         </div>
       </div>
