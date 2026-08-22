@@ -1769,6 +1769,99 @@ MUTASYONLAR: list[Mutasyon] = [
         "    { product_id: payload.product_id },",
         ("src/api/suppliers.test.ts",), "frontend",
     ),
+    # ── İP-C2: duyuru şeridi — düzeltme turu madde E ──
+    # mutmut Windows'ta çalışmıyor ("please use the WSL"); bu depoda zaten
+    # var olan güvenli sürücü kullanıldı. Kapsam kullanıcının istediği iki
+    # dosyayla SINIRLI: services/duyuru_service.py (seçim sorgusu) ve
+    # schemas/duyuru.py (validator'lar).
+    Mutasyon(
+        "D1", "duyuru: sira ASC -> DESC",
+        "backend/services/duyuru_service.py",
+        ".order_by(DuyuruSeridi.sira.asc(), DuyuruSeridi.id.desc())\n        .limit(1)",
+        ".order_by(DuyuruSeridi.sira.desc(), DuyuruSeridi.id.desc())\n        .limit(1)",
+        ("tests/integration/test_duyuru_pg.py",),
+    ),
+    Mutasyon(
+        "D2", "duyuru: bitis_at > simdi -> >=",
+        "backend/services/duyuru_service.py",
+        "                DuyuruSeridi.bitis_at > simdi,",
+        "                DuyuruSeridi.bitis_at >= simdi,",
+        ("tests/integration/test_duyuru_pg.py",),
+    ),
+    Mutasyon(
+        "D3", "duyuru: baslangic_at <= simdi -> <",
+        "backend/services/duyuru_service.py",
+        "                DuyuruSeridi.baslangic_at <= simdi,",
+        "                DuyuruSeridi.baslangic_at < simdi,",
+        ("tests/integration/test_duyuru_pg.py",),
+    ),
+    Mutasyon(
+        "D4", "duyuru: esit sira ikincil anahtari id DESC -> ASC",
+        "backend/services/duyuru_service.py",
+        ".order_by(DuyuruSeridi.sira.asc(), DuyuruSeridi.id.desc())\n        .limit(1)",
+        ".order_by(DuyuruSeridi.sira.asc(), DuyuruSeridi.id.asc())\n        .limit(1)",
+        ("tests/integration/test_duyuru_pg.py",),
+    ),
+    Mutasyon(
+        "D5", "duyuru: aktif filtresi ters cevrildi",
+        "backend/services/duyuru_service.py",
+        "        .where(DuyuruSeridi.aktif.is_(True))",
+        "        .where(DuyuruSeridi.aktif.is_(False))",
+        ("tests/integration/test_duyuru_pg.py",),
+    ),
+    Mutasyon(
+        "D6", "duyuru: limit(1) -> limit(2) (tekillik guard'i kalkti)",
+        "backend/services/duyuru_service.py",
+        "        .order_by(DuyuruSeridi.sira.asc(), DuyuruSeridi.id.desc())\n        .limit(1)",
+        "        .order_by(DuyuruSeridi.sira.asc(), DuyuruSeridi.id.desc())\n        .limit(2)",
+        ("tests/integration/test_duyuru_pg.py",),
+    ),
+    Mutasyon(
+        "D7", "duyuru: PATCH exclude_unset kalkti (gonderilmeyen alanlar da yazilir)",
+        "backend/services/duyuru_service.py",
+        "    for alan, deger in payload.model_dump(exclude_unset=True).items():",
+        "    for alan, deger in payload.model_dump(exclude_unset=False).items():",
+        ("tests/integration/test_duyuru_pg.py",),
+    ),
+    Mutasyon(
+        "D8", "duyuru schema: _dolu_mu artik bosluk-yalniz metni de dolu sayiyor",
+        "backend/schemas/duyuru.py",
+        "    return bool(deger and deger.strip())",
+        "    return bool(deger)",
+        ("tests/integration/test_duyuru_pg.py",),
+    ),
+    Mutasyon(
+        "D9", "duyuru schema: link tutarliligi == -> != (mantik ters cevrildi)",
+        "backend/schemas/duyuru.py",
+        "    return _dolu_mu(link_url) == _dolu_mu(link_metni)",
+        "    return _dolu_mu(link_url) != _dolu_mu(link_metni)",
+        ("tests/integration/test_duyuru_pg.py",),
+    ),
+    Mutasyon(
+        "D10", "duyuru schema (Create): bitis<=baslangic -> < (esitlik sinirinda kacak)",
+        "backend/schemas/duyuru.py",
+        """        if (
+            self.bitis_at is not None
+            and self.baslangic_at is not None
+            and self.bitis_at <= self.baslangic_at
+        ):
+            raise ValueError("bitis_at, baslangic_at'ten sonra olmalı")
+        return self
+
+
+class DuyuruUpdate""",
+        """        if (
+            self.bitis_at is not None
+            and self.baslangic_at is not None
+            and self.bitis_at < self.baslangic_at
+        ):
+            raise ValueError("bitis_at, baslangic_at'ten sonra olmalı")
+        return self
+
+
+class DuyuruUpdate""",
+        ("tests/integration/test_duyuru_pg.py",),
+    ),
 ]
 
 

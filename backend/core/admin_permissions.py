@@ -21,6 +21,11 @@ PERMISSION_CATALOG: tuple[tuple[str, str, str], ...] = (
     ("users.manage", "Kullanıcı yönetimi", "Platform"),
     ("settings.view", "Platform ayarlarını görüntüleme", "Platform"),
     ("settings.manage", "Platform ayarlarını değiştirme", "Platform"),
+    # Duyuru şeridi (İP-C2): storefront'un tepesindeki tek şeridi kim
+    # yönetir. `settings.*` bilinçli olarak YENİDEN KULLANILMADI — bu bir
+    # PAZARLAMA/vitrin metnidir, platform ödeme kolu/bayrak ayarı değildir.
+    ("announcements.view", "Duyuru şeridi görüntüleme", "Platform"),
+    ("announcements.manage", "Duyuru şeridi yönetimi", "Platform"),
     ("tutors.view", "Eğitmen görüntüleme", "Eğitim"),
     ("tutors.manage", "Eğitmen yönetimi", "Eğitim"),
     ("bookings.view", "Rezervasyon görüntüleme", "Eğitim"),

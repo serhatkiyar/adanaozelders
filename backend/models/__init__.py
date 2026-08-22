@@ -33,6 +33,7 @@ from models.pickup_point import PickupPoint
 from models.vehicle import Vehicle
 from models.demand import Demand, DemandStatus
 from models.demand_response import DemandResponse
+from models.duyuru import DuyuruSeridi, DuyuruVaryant
 from models.exam import PracticeExam, PracticeExamSubject
 from models.feature_flag import FeatureFlag
 from models.habit import Habit, HabitEntry
@@ -184,6 +185,8 @@ __all__ = [
     "Demand",
     "DemandResponse",
     "DemandStatus",
+    "DuyuruSeridi",
+    "DuyuruVaryant",
     "ExamRegistration",
     "ExamSessionStatus",
     "ExamType",

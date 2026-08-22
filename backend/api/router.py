@@ -9,6 +9,7 @@ from api.routers import (
     clients,
     delivery,
     demands,
+    duyuru,
     educations,
     exams,
     geocode,
@@ -50,6 +51,7 @@ api_router.include_router(delivery.router)
 # Saha router'ı ayrı: ADMIN+KURYE (router-level ADMIN dependency'sinden bağımsız).
 api_router.include_router(delivery.field_router)
 api_router.include_router(demands.router)
+api_router.include_router(duyuru.router)
 api_router.include_router(bookings.router)
 api_router.include_router(bookmarks.router)
 api_router.include_router(qa.router)
