@@ -1521,3 +1521,44 @@ belgelerde geçiyor ve kaydırmak onları sessizce yanlış kayda bağlardı.
 | **Etkisi** | [[TB-74]] kapandı ama **kalıcı yapılandırma yazılmadı**: kararsızlığın çaresini bugün yalnız bayrağı elle veren biliyor. Bayrak kalıcılaşana kadar karışık sıralı kapı gürültülü koşmaya devam eder |
 | **Neden ertelendi** | Yeniden üretilemeyen bir hatayı kovalamak zaman kutusu ister; ölçüm turu bunu kapsamında tutmadı |
 | **Sonraki adım** | (a) `--maxForks=4`ü arka arkaya koşup hatayı yeniden üretmeye çalış; (b) üretilemezse CLI bayrağı yerine **config'e** yaz (`poolOptions.forks.maxForks: 4`) ve orada koş; (c) yine çıkarsa Vitest/Tinypool sürümlerini not al ve yukarı akışa bak. Kalıcı hâle gelince [[TB-74]]'ün kapanış notuna işlensin |
+
+## TB-90 · `sokulduRef` erken çıkış dalı CANLI ve nöbetsiz — "ulaşılamaz" gerekçesi ölçümle çürütüldü
+
+| | |
+|---|---|
+| **Bulundu** | İP-A9 bağımsız denetimi (`ef3ebd6` denetimi); kayda 23 Ağu 2026'da geçirildi |
+| **Nerede** | `frontend/src/components/admin/ui2/kirliFormBekcisi.tsx:248` → `if (sokulduRef.current) return;` (onay `true` çözüldükten sonraki erken çıkış) |
+| **Çürütülen iddia** | İP-A9 raporu bu dalı **"gözlemlenebilir davranışta ulaşılamaz"** ilan etti ve `M8` mutasyonunun kaçmasını böyle gerekçelendirdi. Gerekçe şuydu: sökülme anında `useEffect` temizleyicisi (satır 225-229) istemi zaten Escape ile iptal ediyor, dolayısıyla söz `onay=true` ile hiç çözülmüyor |
+| **Ölçüm (çürütme)** | Üretim kodu sayaçla işaretlendi (`{ globalThis.__DAL__++; return; }`) ve gerçek `DuzenlemeYuzeyi` + **gerçek Medusa `usePrompt`** ile iki sıra ayrı ayrı sürüldü: <br>· **Escape AÇIK** (üretimdeki hâl), SIRA A → dal sayacı **1** <br>· **Escape DEVRE DIŞI**, SIRA B → dal sayacı **0** <br>Yani dal, üretim kodu hiç değiştirilmeden **giriliyor** |
+| **Doğru okuma** | Dal ne ölü ne maskeli: **canlı ve nöbetsiz**. `M8`in kaçtığı iddiası DOĞRUYDU; yanlış olan, kaçışa yazılan **gerekçe**. Kod kusurlu değil — koruduğu şey gerçek (bayat closure'daki `onClose` çalışmasın); eksik olan **nöbetçi** |
+| **Neden sessiz** | Kaçan mutasyon bir kez "ulaşılamaz dal" diye sınıflandırılınca ikinci kez sorgulanmadı. `CLAUDE.md` § D'nin tam karşılığı: mutasyon yakalanmıyorsa önce **testin yetersizliği** kabul edilir, dalın ölülüğü değil |
+| **Neden ertelendi** | Testin kurulumu ucuz değil: onayın `true` çözüldüğü **ve** mikrogörev akmadan sökülmenin gerçekleştiği sıra, `prompt` sözünün çözülmesiyle React'in unmount'u arasına girmeyi gerektiriyor. Gerçek `usePrompt` ile sürülmesi ayrıca [[TB-92]]'nin şüphesine değiyor |
+| **Sonraki adım** | Nöbetçi: onay `true` çözülüp **mikrogörev akmadan** sökülmenin gerçekleştiği sırayı kapsayan bir test — `sokulduRef` dalı kaldırılınca (M8) KIRMIZI dönmeli. Denetimin sayaç sondası (`globalThis.__DAL__`) bu sıranın kurulabildiğini zaten kanıtlıyor; testin işi aynı sırayı sayaçsız, iddiayla kurmak. Kurulduktan sonra `M8` yeniden koşulup kaçmadığı gösterilsin |
+
+## TB-91 · `authModalTekMontaj` AST nöbetçisi DÜŞÜK GÜÇLÜ — iki montaj biçimi kapsam dışı
+
+| | |
+|---|---|
+| **Bulundu** | İP-A9 bağımsız denetimi (`ef3ebd6` denetimi); kayda 23 Ağu 2026'da geçirildi |
+| **Nerede** | `frontend/src/__guards__/authModalTekMontaj.test.ts:44-55` → `montajSayisi()`, tek ölçütü `dugum.tagName.getText(agac) === "AuthModal"` |
+| **Kapsam açığı** | Nöbetçi yalnız **JSX etiket adını** sayıyor. Kaçan iki biçim: (a) `createElement(AuthModal, …)` — JSX düğümü hiç doğmaz, sayaç 0 der; (b) `import { AuthModal as X }` takma adı — düğüm `X` adıyla doğar, karşılaştırma tutmaz. İkisi de ikinci bir montaj kurar ve nöbetçi YEŞİL kalır |
+| **BUGÜN BİR KUSUR DEĞİL** | Üretim ağacında ne `createElement(AuthModal)` ne de takma adlı import var; nöbetçinin bugünkü iddiası (`{ "App.tsx": 1 }`) doğru. Bu kayıt bir kırmızıyı değil, **nöbetçinin bilinen sınırını** kaydediyor |
+| **Neden sessiz** | Dosya sınırı kendi başlığında zaten ilan ediyor (satır 19-23: "Bu bir KAYNAK SÖZLEŞMESİ testidir, yani düşük güçlüdür… Sınır bilinçli olarak dar tutuldu"). Ama **deftere geçmediği** için sınır yalnız o dosyayı açanın bildiği bir şey kaldı — nöbetçiye dışarıdan güvenen bir tur onu tam kapsamlı sanabilir |
+| **Kaydın gerekçesi** | `CLAUDE.md` § C: kaynak sözleşmesi testleri düşük güçlü sayılır ve "geçmesi, özelliğin tamamlandığı anlamına gelmez". Bir sınırın kodda yorumla ilan edilmesi, defterde izlenmesinin yerine geçmez |
+| **Neden ertelendi** | Açığı kapatmak nöbetçiyi genişletmeyi gerektiriyor (identifier çözümlemesi + import takma adı izleme) ve bu, **davranış** kanıtı üretmez — yine kaynak sözleşmesi kalır. Asıl güçlendirme davranış tarafındadır ([[TB-71]] · Sonraki adım (c): nöbetçiyi `/kvkk` üzerinde kurmak) |
+| **Sonraki adım** | (a) `montajSayisi`ye iki biçimi ekle: `createElement`/`jsx` çağrılarının ilk argümanı ve import takma adlarından çözülen yerel ad; (b) her ikisi için **kendi kendini doğrulama** iddiası yaz (dosya bu deseni satır 74-84'te zaten kuruyor); (c) sınır kapandığında bu kaydı kapat — ama düşük güçlü olma niteliği DEĞİŞMEZ, yalnız kapsamı genişler |
+| **Bağlantı** | [[TB-38]] (kaynak sözleşmesi testleri ada duyarlı, davranışa kör) ile **aynı aile**: orada yeniden adlandırma körleştiriyor, burada takma ad. [[TB-83]] de aynı kırılganlığın satır-numarası hâli |
+
+## TB-92 · Medusa `usePrompt` istem kökü testler arasında SIZIYOR OLABİLİR — DOĞRULANMADI
+
+| | |
+|---|---|
+| **Bulundu** | İP-A9 bağımsız denetimi (`ef3ebd6` denetimi), denetçinin kendi sondasında; kayda 23 Ağu 2026'da geçirildi |
+| **⚠️ Kanıt durumu** | **ŞÜPHE — DOĞRULANMADI.** Elde tek bir gözlem var: denetçinin sondasında **ikinci test istemi bulamadı**. Buradan bir kök neden ölçülmedi, ikinci bir koşumla üretilmedi, mutasyon provası yapılmadı. Kayıt bir bulguyu değil, **kovalanmamış bir izi** işaretliyor |
+| **Şüphe (hipotez)** | `usePrompt` her çağrıda `createRoot` ile **kendi kökünü** mount eder ve o kökü yalnız onay/iptal işleyicilerinde söker — bu davranış üretim kodunda zaten yazılı (`kirliFormBekcisi.tsx:181-192`, öksüz pencere notu). Hipotez: RTL `cleanup`'ı bu kökü kaldırmıyor, çünkü kök RTL'in `render()` konteynerinin dışında yaşıyor. Sızan kök bir sonraki teste kalıyor ve istem çözümlemesini bozuyor olabilir |
+| **Neden makul** | Ortak kurulumda (`frontend/src/test-setup.ts:108-111`) `afterEach` yalnız `localStorage`/`sessionStorage` temizliyor; `document.body`ye RTL dışından eklenen köklere dokunan bir sıfırlayıcı YOK. Yani mekanizma teorik olarak açık |
+| **Neden yine de doğrulanmadı sayılıyor** | "Mekanizma mümkün" ile "olan bu" ayrı şeylerdir. İkinci testin istemi bulamamasının en az iki rakip açıklaması daha var: sondanın kendi bekleme penceresi ve `bekleyenRef`/Escape temizleyicisinin sıralaması. Hiçbiri elenmedi |
+| **Etkisi (gerçekse)** | İki yönlü ve ikisi de sinsi: (a) **yalancı kırmızı** — istem bulunamadığı için sağlam bir test düşer ve "flaky" diye elenir; (b) **yalancı yeşil** — bayat kök yüzünden istem hiç görünmez ve "pencere kapandı" bekleyen bir iddia kaza eseri sağlanır. İkincisi [[TB-90]]'ın nöbetçisini yazacak turu doğrudan ilgilendirir: o test gerçek `usePrompt` ile sürülecek |
+| **Neden ertelendi** | Doğrulama, sızıntıyı gösteren bir sonda yazmayı gerektiriyor (iki ardışık testte `document.body` çocuk sayısı + `alertdialog` sayısı) ve denetim turu kapsamını iki canlı kusurla sınırlamıştı |
+| **Sonraki adım** | (a) Sondayı yaz: aynı dosyada iki test, ikisi de istem açıp kapatsın; her testten sonra `document.body.children.length` ve `[role="alertdialog"]` sayısı ölçülsün — sızıntı varsa ikinci testte taban kirli başlar; (b) sızıntı doğrulanırsa ortak `afterEach`e RTL dışı kök temizliği ekle ve **sızdıran testi ADIYLA söyleyen** bir nöbetçi kur; (c) çürütülürse bu kayıt "çürütüldü" notuyla kapatılsın — kovalanmamış iz olarak durması da bir maliyettir |
+| **Bağlantı** | [[TB-85]] (`useModalA11y` modül düzeyi durumunu testler arasında sıfırlamıyor) ile **aynı aile**: ikisi de "test sınırında temizlenmeyen paylaşılan durum" sınıfı. Orada durum modül değişkeninde, burada `document.body`ye asılı bir React kökünde. Sızıntı nöbetçisi tek turda ikisini birden kapsayabilir |
