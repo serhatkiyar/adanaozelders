@@ -14,6 +14,7 @@ const TABS: { to: string; label: string; end?: boolean }[] = [
   { to: ROUTES.adminInventory, label: "Genel", end: true },
   { to: ROUTES.adminInventoryCounts, label: "Sayım oturumları" },
   { to: ROUTES.adminInventoryDamage, label: "Hasar olayları" },
+  { to: ROUTES.adminInventoryMovements, label: "Hareketler" },
 ];
 
 export default function InventoryLayout() {

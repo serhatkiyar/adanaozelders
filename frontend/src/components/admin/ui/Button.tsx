@@ -1,5 +1,7 @@
 import { forwardRef, type ButtonHTMLAttributes } from "react";
 
+import { PlainButton } from "@/components/ui/PlainButton";
+
 type ButtonVariant = "primary" | "secondary" | "success" | "danger" | "ghost";
 type ButtonSize = "sm" | "md";
 
@@ -49,7 +51,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
   ref
 ) {
   return (
-    <button
+    <PlainButton
       ref={ref}
       type={type}
       disabled={disabled || isPending}
@@ -59,6 +61,6 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
     >
       {isPending && <span aria-hidden="true" className="h-4 w-4 animate-spin rounded-full border-2 border-current border-r-transparent" />}
       {children}
-    </button>
+    </PlainButton>
   );
 });

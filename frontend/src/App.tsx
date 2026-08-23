@@ -20,7 +20,6 @@ import { useCurrentUser } from "@/hooks/useCurrentUser";
 import Landing from "@/pages/Landing";
 import { PendingFavoriteApplier } from "@/components/PendingFavoriteApplier";
 import { StoreFavoritesSync } from "@/components/StoreFavoritesSync";
-import { DuyuruSeridi } from "@/components/DuyuruSeridi";
 import { rtcManager } from "@/lib/rtcTransfer";
 
 // Her ziyaretçiye inen ama NADİREN açılan üç yüzey. Giriş paketinden çıkarıldı:
@@ -46,6 +45,7 @@ const LibraryDetail = lazy(() => import("@/pages/LibraryDetail"));
 const LibraryRegister = lazy(() => import("@/pages/LibraryRegister"));
 // Mağaza (D&R tarzı) — katalog/detay/sepet public; ödeme/siparişler oturum-içi
 const StorePage = lazy(() => import("@/pages/store/StorePage"));
+const StoreLandingPage = lazy(() => import("@/pages/store/StoreLandingPage"));
 const ProductDetailPage = lazy(() => import("@/pages/store/ProductDetailPage"));
 const SellerStorePage = lazy(() => import("@/pages/store/SellerStorePage"));
 const CartPage = lazy(() => import("@/pages/store/CartPage"));
@@ -85,7 +85,6 @@ const AdminDemandsPage = lazy(() => import("@/pages/admin/AdminDemandsPage"));
 const AdminBookingsPage = lazy(() => import("@/pages/admin/AdminBookingsPage"));
 const AdminAccessPage = lazy(() => import("@/pages/admin/AdminAccessPage"));
 const AdminSettingsPage = lazy(() => import("@/pages/admin/AdminSettingsPage"));
-const AdminAnnouncementsPage = lazy(() => import("@/pages/admin/AdminAnnouncementsPage"));
 const AdminLibraries = lazy(() => import("@/pages/dashboards/AdminLibraries"));
 const AdminExamCatalogs = lazy(() => import("@/pages/dashboards/AdminExamCatalogs"));
 const AdminStore = lazy(() => import("@/pages/dashboards/AdminStore"));
@@ -94,6 +93,10 @@ const InventoryOverviewPage = lazy(() => import("@/pages/admin/inventory/Invento
 const CountSessionsPage = lazy(() => import("@/pages/admin/inventory/CountSessionsPage"));
 const CountSessionDetailPage = lazy(() => import("@/pages/admin/inventory/CountSessionDetailPage"));
 const DamageEventsPage = lazy(() => import("@/pages/admin/inventory/DamageEventsPage"));
+const StockMovementsPanel = lazy(() =>
+  import("@/components/admin/StockMovementsPanel").then((module) => ({ default: module.StockMovementsPanel }))
+);
+const StoreContentPreviewPage = lazy(() => import("@/pages/admin/store/StoreContentPreviewPage"));
 const PackingLayout = lazy(() => import("@/pages/admin/packing/PackingLayout"));
 const PackingQueuePage = lazy(() => import("@/pages/admin/packing/PackingQueuePage"));
 const PackingStationPage = lazy(() => import("@/pages/admin/packing/PackingStationPage"));
@@ -329,12 +332,6 @@ function App() {
       <WsManager />
       <BrowserRouter>
         <AnalyticsTracker />
-        {/* Storefront'un tepesindeki tek duyuru şeridi. BİLEREK BURADA:
-            routed sayfa içeriğinin (dolayısıyla PublicNavbar/DashboardHeader'ın
-            sticky top-0 konteynerinin) DIŞINDA ve ÖNÜNDE, normal belge
-            akışında durur — sticky DEĞİLDİR, aşağı kaydırınca kaybolur ve
-            geri gelmez. Kendi rota kontrolüyle /yonetim'de render edilmez. */}
-        <DuyuruSeridi />
         {/* İkinci sınır ROUTER'IN İÇİNDE: dıştaki sınır tek başınayken bir
             sayfa çöktüğünde router da düşüyordu, yani "ana sayfaya dön"
             tam sayfa yenilemeye zorlanıyordu. İçteki sınır rota değişince
@@ -376,6 +373,7 @@ function App() {
           <Route path={PATHS.storeCart} element={<CartPage />} />
           <Route path={PATHS.storeFavorites} element={<FavoritesPage />} />
           <Route path={PATHS.storeCollectionShared} element={<SharedCollectionPage />} />
+          <Route path={PATHS.storeLandingPage} element={<StoreLandingPage />} />
           {/* Oturumsuz kargo takibi (SMS token'ı) — subdomain kökü buraya rewrite'lanır. */}
           <Route path={PATHS.cargoTracking} element={<CargoTrackingPage />} />
 
@@ -473,18 +471,26 @@ function App() {
               <Route path="diplomalar" element={<AdminSectionPage section="diplomas" />} />
               <Route path="kutuphaneler" element={<AdminLibraries />} />
               <Route path="deneme-kataloglari" element={<AdminExamCatalogs />} />
+              <Route path="magaza" element={<Navigate replace to={ROUTES.adminStoreHome} />} />
+              <Route path="magaza/ana-sayfa" element={<AdminStore />} />
+              <Route path="magaza/kampanyalar" element={<AdminStore />} />
+              <Route path="magaza/koleksiyonlar" element={<AdminStore />} />
+              <Route path="magaza/onizleme/:pageId" element={<StoreContentPreviewPage />} />
               <Route path="magaza/urunler" element={<AdminStore />} />
               <Route path="magaza/kategoriler" element={<AdminStore />} />
               <Route path="magaza/siparisler" element={<AdminStore />} />
               <Route path="magaza/iadeler" element={<AdminStore />} />
               <Route path="magaza/kuponlar" element={<AdminStore />} />
-              <Route path="magaza/stok-hareketleri" element={<AdminStore />} />
+              <Route path="magaza/stok-hareketleri" element={<Navigate replace to={ROUTES.adminInventoryMovements} />} />
               <Route path="magaza/tedarikci" element={<AdminStore />} />
+              <Route path="magaza/vitrin-sayfalari" element={<Navigate replace to={ROUTES.adminStorePages} />} />
+              <Route path="magaza/urun-gruplari" element={<Navigate replace to={ROUTES.adminStoreProductSets} />} />
               <Route path="envanter" element={<InventoryLayout />}>
                 <Route index element={<InventoryOverviewPage />} />
                 <Route path="sayimlar" element={<CountSessionsPage />} />
                 <Route path="sayimlar/:id" element={<CountSessionDetailPage />} />
                 <Route path="hasar" element={<DamageEventsPage />} />
+                <Route path="hareketler" element={<StockMovementsPanel />} />
               </Route>
               {/* Paketleme istasyonu: kuyruk (index) · paketler · tek paket
                   (deep-link) · geri dönüş kuyruğu. */}
@@ -513,7 +519,8 @@ function App() {
               <Route path="hakedisler" element={<AdminPayoutsPage />} />
               <Route path="yetkiler" element={<AdminAccessPage />} />
               <Route path="ayarlar" element={<AdminSettingsPage />} />
-              <Route path="duyuru-seridi" element={<AdminAnnouncementsPage />} />
+              <Route path="vitrin-gorselleri" element={<Navigate replace to={ROUTES.adminStoreHome} />} />
+              <Route path="duyuru-seridi" element={<Navigate replace to={ROUTES.adminStoreHome} />} />
             </Route>
           </Route>
 

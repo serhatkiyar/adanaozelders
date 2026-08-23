@@ -140,6 +140,13 @@ export function urunFormSemasi(baglam: UrunFormBaglami) {
       tedarikciTemin: z.boolean(),
     })
     .superRefine((d, ctx) => {
+      if (d.durum === "ACTIVE" && !d.kategoriId) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["kategoriId"],
+          message: "Aktif ürün için kategori zorunlu.",
+        });
+      }
       // ── Varyant üyeliği ──
       if (d.varyantGrubuId != null) {
         if (!d.barkod.trim()) {

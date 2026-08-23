@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
+import { PlainButton } from "@/components/ui/PlainButton";
+
 // Yatay tek satır kaydırıcı: kategori çubuğundaki gibi kenarlarda beliren
 // (sınıra gelince gizlenen) ok butonları + basılı tutunca sürekli kaydırma.
 export function HScroll({
@@ -73,7 +75,7 @@ export function HScroll({
 
       {canScrollRight && (
         <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-1">
-          <button
+          <PlainButton
             type="button"
             onPointerDown={() => startScroll("right")}
             onPointerUp={stopScroll}
@@ -84,13 +86,13 @@ export function HScroll({
             <svg className="h-5 w-5 ml-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
             </svg>
-          </button>
+          </PlainButton>
         </div>
       )}
 
       {canScrollLeft && (
         <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-1">
-          <button
+          <PlainButton
             type="button"
             onPointerDown={() => startScroll("left")}
             onPointerUp={stopScroll}
@@ -101,7 +103,7 @@ export function HScroll({
             <svg className="h-5 w-5 mr-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
             </svg>
-          </button>
+          </PlainButton>
         </div>
       )}
 

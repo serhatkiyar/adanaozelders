@@ -36,6 +36,8 @@ export const PATHS = {
   storeCheckout: "/magaza/odeme",
   /** Paylaşılan koleksiyon (public). */
   storeCollectionShared: "/magaza/liste/:token",
+  /** Yönetilebilir kampanya/sezon/vitrin sayfası; sabit mağaza yollarından sonra eşleşir. */
+  storeLandingPage: "/magaza/:slug",
   /** Oturumsuz kargo takibi (SMS'le paylaşılan token). */
   cargoTracking: "/kargo-takip/:token",
 
@@ -128,21 +130,27 @@ export const PATHS = {
   adminLibraries: "/yonetim/kutuphaneler",
   adminExamCatalogs: "/yonetim/deneme-kataloglari",
   adminStoreProducts: "/yonetim/magaza/urunler",
+  adminStoreHome: "/yonetim/magaza/ana-sayfa",
   adminStoreCategories: "/yonetim/magaza/kategoriler",
   adminStoreOrders: "/yonetim/magaza/siparisler",
   adminStoreReturns: "/yonetim/magaza/iadeler",
   adminStoreCoupons: "/yonetim/magaza/kuponlar",
+  /** @deprecated Stok hareketleri Envanter'e taşındı. */
   adminStoreStock: "/yonetim/magaza/stok-hareketleri",
   // Tedarikci senkronu Magaza'nin bir sekmesidir ama izinleri AYRIDIR
   // (`suppliers.*`): ayar bir sir (API token) ve "vitrin neyi otomatik
   // satar" karari tasir; urun metnini duzenleyen kisi token degistirememeli.
   adminStoreSupplier: "/yonetim/magaza/tedarikci",
+  adminStorePages: "/yonetim/magaza/kampanyalar",
+  adminStoreProductSets: "/yonetim/magaza/koleksiyonlar",
+  adminStorePreview: "/yonetim/magaza/onizleme/:pageId",
   // Envanter, Magaza'nin 7. sekmesi DEGIL ayri bir bolum: backend izinleri
   // (`inventory.*`) bilincli olarak `products.*`'tan ayrildi.
   adminInventory: "/yonetim/envanter",
   adminInventoryCounts: "/yonetim/envanter/sayimlar",
   adminInventoryCountDetail: "/yonetim/envanter/sayimlar/:id",
   adminInventoryDamage: "/yonetim/envanter/hasar",
+  adminInventoryMovements: "/yonetim/envanter/hareketler",
   // Paketleme istasyonu — Dağıtım'dan AYRI bir bölüm: izinleri (`packing.*`)
   // `delivery.*`'tan bağımsızdır (raf başındaki operatör turu yönetmez) ve
   // sipariş "hazır" damgası artık yalnız burada, kalem kalem doğrulanarak doğar.
@@ -168,7 +176,10 @@ export const PATHS = {
   adminPayouts: "/yonetim/hakedisler",
   adminAccess: "/yonetim/yetkiler",
   adminSettings: "/yonetim/ayarlar",
-  adminAnnouncements: "/yonetim/duyuru-seridi",
+  /** Mağaza tepesindeki, admin tarafından yüklenen görsel carousel. */
+  adminStoreHero: "/yonetim/vitrin-gorselleri",
+  /** @deprecated Eski ad yalnız mevcut çağrı yerlerini kırmamak için tutulur. */
+  adminAnnouncements: "/yonetim/vitrin-gorselleri",
 } as const;
 
 export const ROUTES = {
@@ -189,6 +200,7 @@ export const ROUTES = {
   storeFavorites: PATHS.storeFavorites,
   storeCheckout: PATHS.storeCheckout,
   storeCollectionShared: (token: string) => `/magaza/liste/${token}`,
+  storeLandingPage: (slug: string) => `/magaza/${slug}`,
   cargoTracking: (token: string) => `/kargo-takip/${token}`,
 
   // ── Yasal sayfalar ──
@@ -266,15 +278,20 @@ export const ROUTES = {
   adminLibraries: PATHS.adminLibraries,
   adminExamCatalogs: PATHS.adminExamCatalogs,
   adminStoreProducts: PATHS.adminStoreProducts,
+  adminStoreHome: PATHS.adminStoreHome,
   adminStoreCategories: PATHS.adminStoreCategories,
   adminStoreOrders: PATHS.adminStoreOrders,
   adminStoreReturns: PATHS.adminStoreReturns,
   adminStoreCoupons: PATHS.adminStoreCoupons,
   adminStoreStock: PATHS.adminStoreStock,
   adminStoreSupplier: PATHS.adminStoreSupplier,
+  adminStorePages: PATHS.adminStorePages,
+  adminStoreProductSets: PATHS.adminStoreProductSets,
+  adminStorePreview: (pageId: string | number) => `/yonetim/magaza/onizleme/${pageId}`,
   adminInventory: PATHS.adminInventory,
   adminInventoryCounts: PATHS.adminInventoryCounts,
   adminInventoryDamage: PATHS.adminInventoryDamage,
+  adminInventoryMovements: PATHS.adminInventoryMovements,
   adminInventoryCount: (id: string | number) => `/yonetim/envanter/sayimlar/${id}`,
   adminPacking: PATHS.adminPacking,
   adminPackingPackages: PATHS.adminPackingPackages,
@@ -297,6 +314,7 @@ export const ROUTES = {
   adminPayouts: PATHS.adminPayouts,
   adminAccess: PATHS.adminAccess,
   adminSettings: PATHS.adminSettings,
+  adminStoreHero: PATHS.adminStoreHero,
   adminAnnouncements: PATHS.adminAnnouncements,
 } as const;
 

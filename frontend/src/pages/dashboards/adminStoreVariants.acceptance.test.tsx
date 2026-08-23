@@ -299,6 +299,10 @@ describe("V-3 · varyant alanları gerçek POST gövdesinde", () => {
     fireEvent.change(screen.getByLabelText("KDV oranı (%)"), {
       target: { value: "20" },
     });
+    await screen.findByRole("option", { name: "Kırtasiye" });
+    fireEvent.change(screen.getByLabelText(/^Kategori/), {
+      target: { value: "20" },
+    });
     await varyantBolumunuAc();
     await grupSec(GRUP.id);
     fireEvent.change(

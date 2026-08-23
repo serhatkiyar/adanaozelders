@@ -71,7 +71,7 @@ export function StoreLayout({
     <div className="flex min-h-screen flex-col bg-slate-50 font-sans dark:bg-slate-950">
       {/* Header: logo + (ortalı) arama + aksiyonlar */}
       <header className="sticky top-0 z-40 w-full border-b border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900">
-        <div className={`${HEADER_CONTAINER} flex flex-col gap-3 pt-5 pb-3 md:grid md:grid-cols-[auto_minmax(0,1fr)_auto] md:items-start md:gap-8`}>
+        <div className={`${HEADER_CONTAINER} flex flex-col gap-3 py-4 md:grid md:grid-cols-[auto_minmax(0,1fr)_auto] md:items-center md:gap-8`}>
           {/* Logo: mağaza logosu → mağaza ana sayfası */}
           <div className="flex shrink-0 items-center">
             <Link to={ROUTES.store} aria-label="Mağaza ana sayfa" className="flex items-center transition hover:opacity-90">

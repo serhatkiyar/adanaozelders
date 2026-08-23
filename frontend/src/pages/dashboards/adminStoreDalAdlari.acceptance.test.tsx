@@ -514,6 +514,7 @@ describe("D-4 · gönder kapısı ve odak", () => {
     await screen.findByLabelText("Ürün adı");
     // Zorunlu alanlar doldurulur ki İLK hata künyede olsun.
     fireEvent.change(screen.getByLabelText("Ürün adı"), { target: { value: "Kalem" } });
+    fireEvent.change(screen.getByLabelText(/^Kategori/), { target: { value: "20" } });
     fireEvent.change(screen.getByLabelText("Fiyat (TL)"), { target: { value: "10" } });
     fireEvent.change(screen.getByLabelText("KDV oranı (%)"), { target: { value: "20" } });
 

@@ -213,6 +213,7 @@ describe("E-1 · ürün türü seçicisi", () => {
     await formuAc();
 
     fireEvent.change(screen.getByLabelText("Ürün adı"), { target: { value: "Kurşun Kalem" } });
+    fireEvent.change(screen.getByLabelText(/^Kategori/), { target: { value: "30" } });
     fireEvent.change(screen.getByLabelText("Fiyat (TL)"), { target: { value: "12" } });
     fireEvent.change(screen.getByLabelText("KDV oranı (%)"), { target: { value: "20" } });
     fireEvent.click(screen.getByRole("button", { name: "Ürünü ekle" }));
@@ -288,7 +289,7 @@ describe("E-4 · efekt kullanıcıyla inatlaşmaz", () => {
     sar(ROUTES.adminStoreProducts, ROUTES.adminStoreProducts, <AdminStore />);
     await formuAc();
 
-    fireEvent.change(screen.getByLabelText(/^Kategori/), { target: { value: "10" } });
+    fireEvent.change(screen.getByLabelText(/^Kategori/), { target: { value: "11" } });
     await waitFor(() => expect(screen.getByLabelText("Yazar (opsiyonel)")).toBeTruthy());
 
     // Kullanıcı kapatır; başka bir alana dokunmak (yeniden render) onu

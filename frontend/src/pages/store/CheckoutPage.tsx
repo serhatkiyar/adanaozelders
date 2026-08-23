@@ -19,6 +19,7 @@ import { useCreateOrder } from "@/hooks/useStore";
 import { useMyAddresses, useAddAddress } from "@/hooks/useAddresses";
 import { AddressForm } from "@/components/address/AddressForm";
 import { useCartStore } from "@/store/cartStore";
+import { currentStoreAttribution } from "@/api/storeMerchandising";
 import { toast } from "@/store/toastStore";
 
 export default function CheckoutPage() {
@@ -113,6 +114,7 @@ export default function CheckoutPage() {
     createOrder.mutate(
       {
         items: cartLines,
+        attribution_token: currentStoreAttribution(),
         address_id: hasPhysical ? selectedAddr : undefined,
         coupon_code: couponCode || undefined,
       },

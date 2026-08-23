@@ -60,19 +60,27 @@ import type { AxiosRequestConfig } from "axios";
    burada bilerek BOŞ döner. Böylece "banner ancak veri gelirse çiziliyor"
    gizli bağımlılığı da ölçülmüş olur. */
 let eskiAdapter: unknown;
+let storeHeroSlides: unknown[];
 
 beforeEach(() => {
   eskiAdapter = apiClient.defaults.adapter;
-  apiClient.defaults.adapter = async (config: AxiosRequestConfig) =>
-    ({
-      data: /\/(search|products)\b/.test(String(config.url))
-        ? { items: [], total: 0, page: 1, size: 20, pages: 0 }
-        : [],
+  storeHeroSlides = [];
+  apiClient.defaults.adapter = async (config: AxiosRequestConfig) => {
+    const url = String(config.url);
+    return ({
+      data: url.includes("/store/hero-slides")
+        ? storeHeroSlides
+        : url.includes("/store/products")
+          ? []
+          : /\/search\b/.test(url)
+            ? { items: [], total: 0, page: 1, size: 20, pages: 0 }
+            : [],
       status: 200,
       statusText: "OK",
       headers: {},
       config,
     }) as never;
+  };
 });
 
 afterEach(() => {
@@ -122,10 +130,21 @@ describe("İP-C1 · çapraz tanıtım banner'ı", () => {
     await bannerDogrula(cfg.ariaLabel, PATHS.store, cfg.imageSrc);
   });
 
-  it("N-2: mağaza sayfasında özel ders banner'ı erişilebilir adıyla ve LCP ipuçlarıyla çizilir", async () => {
-    const cfg = CROSS_PROMO.storeToTutors;
-    sar(cfg.pagePath, cfg.pagePath, <StorePage />);
-    await bannerDogrula(cfg.ariaLabel, PATHS.tutors, cfg.imageSrc);
+  it("N-2: mağaza sayfası admin kaynaklı vitrin görselini bağlantısıyla çizer", async () => {
+    storeHeroSlides = [{
+      id: 17,
+      image_url: "https://cdn.example.com/vitrin.webp",
+      mobile_image_url: null,
+      alt_text: "Okula dönüş vitrini",
+      link_url: "/magaza?q=okul",
+    }];
+    sar(PATHS.store, PATHS.store, <StorePage />);
+
+    const image = await screen.findByRole("img", { name: "Okula dönüş vitrini" });
+    expect(image.getAttribute("src")).toBe("https://cdn.example.com/vitrin.webp");
+    expect(image.getAttribute("fetchpriority")).toBe("high");
+    expect(image.closest("a")?.getAttribute("href")).toBe("/magaza?q=okul");
+    expect(screen.queryByRole("link", { name: CROSS_PROMO.storeToTutors.ariaLabel })).toBeNull();
   });
 
   it("N-2b: iki banner birbirinin sayfasına gider (yön karışmaz)", async () => {

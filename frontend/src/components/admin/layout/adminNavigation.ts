@@ -62,15 +62,6 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
     requiredPermission: "settings.view",
   },
   {
-    label: "Duyuru Şeridi",
-    shortLabel: "Duyurular",
-    to: ROUTES.adminAnnouncements,
-    group: "Platform",
-    description: "Storefront'un tepesindeki duyuru/kampanya şeridini yönetin.",
-    icon: "announcement",
-    requiredPermission: "announcements.view",
-  },
-  {
     label: "Eğitmen İlanları",
     kisayol: "T",
     shortLabel: "Eğitmenler",
@@ -128,9 +119,9 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
   {
     label: "Mağaza",
     kisayol: "M",
-    to: ROUTES.adminStoreProducts,
+    to: ROUTES.adminStoreHome,
     group: "Ticaret",
-    description: "Ürün, kategori, sipariş, iade ve kupon operasyonları.",
+    description: "Ana sayfa, kampanya, koleksiyon ve mağaza operasyonları.",
     icon: "store",
     requiredPermission: "products.view",
   },
@@ -220,7 +211,7 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
 
 export function getAdminNavItem(pathname: string): AdminNavItem {
   if (pathname.startsWith("/yonetim/magaza/")) {
-    return ADMIN_NAV_ITEMS.find((item) => item.to === ROUTES.adminStoreProducts)!;
+    return ADMIN_NAV_ITEMS.find((item) => item.to === ROUTES.adminStoreHome)!;
   }
 
   // Fallback DİZİ SIRASINA bağlanamaz: `ADMIN_NAV_ITEMS[0]` bugün "Hakedişler"

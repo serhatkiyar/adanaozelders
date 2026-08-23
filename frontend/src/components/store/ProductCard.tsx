@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
+import { PlainButton } from "@/components/ui/PlainButton";
 import { ROUTES } from "@/lib/routes";
 import { StarRating } from "@/components/StarRating";
 import { formatTL } from "@/lib/money";
@@ -11,10 +12,13 @@ import type { ProductSearchOut } from "@/types";
 export function ProductCard({
   product,
   menu,
+  showPurchaseAction = true,
 }: {
   product: ProductSearchOut;
   /** Verilirse sağ-üstte kalp yerine bu render edilir (ör. favoriler/koleksiyon 3-nokta menüsü). */
   menu?: ReactNode;
+  /** Ana sayfa vitrin şeritlerinde kartın tamamı ürün detayına yönlendirir; satın alma aksiyonu gösterilmez. */
+  showPurchaseAction?: boolean;
 }) {
   const add = useCartStore((s) => s.add);
   const toggleFav = useFavoritesStore((s) => s.toggle);
@@ -56,7 +60,7 @@ export function ProductCard({
         {menu ? (
           <div className="absolute right-3 top-3 z-10">{menu}</div>
         ) : (
-          <button
+          <PlainButton
             type="button"
             aria-label={isFav ? "Favorilerden çıkar" : "Favorilere ekle"}
             aria-pressed={isFav}
@@ -72,7 +76,7 @@ export function ProductCard({
             <svg width="18" height="18" viewBox="0 0 24 24" fill={isFav ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2">
               <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
             </svg>
-          </button>
+          </PlainButton>
         )}
       </div>
 
@@ -112,7 +116,7 @@ export function ProductCard({
 
         {/* Fiyat + sepete ekle */}
         <div className="mt-auto pt-3">
-          <div className="mb-3 flex items-baseline gap-2">
+          <div className={`flex items-baseline gap-2 ${showPurchaseAction ? "mb-3" : ""}`}>
             {grupKarti ? (
               <span className="text-lg font-semibold text-slate-900 dark:text-white">
                 {formatTL(product.group_min_price ?? product.price)}
@@ -134,7 +138,7 @@ export function ProductCard({
             )}
           </div>
 
-          {grupKarti ? (
+          {showPurchaseAction && (grupKarti ? (
             <Link
               to={ROUTES.storeProduct(product.slug)}
               className="block w-full rounded-full border border-indigo-600 py-2 text-center text-sm font-semibold text-indigo-600 transition-colors hover:bg-indigo-50 dark:border-indigo-400 dark:text-indigo-400 dark:hover:bg-indigo-500/10"
@@ -142,7 +146,7 @@ export function ProductCard({
               {soldOut ? "Tükendi" : `Seçenekleri Gör (${product.variant_count})`}
             </Link>
           ) : (
-            <button
+            <PlainButton
               type="button"
               disabled={soldOut}
               onClick={(e) => {
@@ -153,8 +157,8 @@ export function ProductCard({
               className="w-full rounded-full bg-indigo-600 py-2 text-sm font-semibold text-white transition-colors hover:bg-indigo-700 active:scale-[0.99] disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400 dark:disabled:bg-slate-800 dark:disabled:text-slate-500"
             >
               {soldOut ? "Tükendi" : "Sepete Ekle"}
-            </button>
-          )}
+            </PlainButton>
+          ))}
         </div>
       </div>
     </div>

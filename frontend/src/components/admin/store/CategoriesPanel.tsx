@@ -27,6 +27,7 @@ import { useCategories, useInvalidateAdminStore } from "@/hooks/useStore";
 import { getErrorDetail } from "@/lib/errors";
 import { orandanYuzde, yuzdedenOran } from "@/lib/tax";
 import { toast } from "@/store/toastStore";
+import type { ProductCategoryWrite } from "@/types";
 
 const kategoriSemasi = z.object({
   ad: z.string().trim().min(1, "Kategori adı zorunlu."),
@@ -37,6 +38,7 @@ export function CategoriesPanel() {
   const { canView, canManage } = useAdminAreaAccess("products");
   const { data: categories, isError, error } = useCategories();
   const invalidate = useInvalidateAdminStore();
+  const [parentId, setParentId] = useState("");
 
   const form = useForm<KategoriFormu>({
     resolver: zodResolver(kategoriSemasi),
@@ -46,10 +48,11 @@ export function CategoriesPanel() {
   });
 
   const create = useMutation({
-    mutationFn: (ad: string) => createCategory({ name: ad }),
+    mutationFn: (payload: ProductCategoryWrite) => createCategory(payload),
     onSuccess: () => {
       toast.success("Kategori eklendi");
       form.reset({ ad: "" });
+      setParentId("");
       invalidate();
     },
   });
@@ -70,7 +73,7 @@ export function CategoriesPanel() {
   }, [create.error]);
 
   const gonder = form.handleSubmit(
-    (degerler) => create.mutate(degerler.ad.trim()),
+    (degerler) => create.mutate({ name: degerler.ad.trim(), parent_id: parentId ? Number(parentId) : null, is_active: true }),
     () => form.setFocus("ad")
   );
 
@@ -95,7 +98,7 @@ export function CategoriesPanel() {
     <div>
       {canManage ? (
         <div>
-          <div className="flex items-start gap-2">
+          <div className="grid items-end gap-2 md:grid-cols-[minmax(0,1fr)_minmax(220px,0.6fr)_auto]">
             <Form.Field
               control={form.control}
               name="ad"
@@ -109,9 +112,16 @@ export function CategoriesPanel() {
                 </Form.Item>
               )}
             />
+            <label className="block space-y-1 text-sm font-medium text-panel-fg">
+              <span>Üst kategori</span>
+              <select className="input w-full" value={parentId} onChange={(event) => setParentId(event.target.value)}>
+                <option value="">Ana kategori</option>
+                {(categories ?? []).filter((category) => category.is_active).map((category) => <option key={category.id} value={category.id}>{category.parent_id ? "↳ " : ""}{category.name}</option>)}
+              </select>
+            </label>
             {/* Etiket yüksekliği kadar aşağı: alan ile düğme aynı satırda
                 hizalansın (etiket alanın ÜSTÜNDE). */}
-            <Button className="mt-7" isPending={create.isPending} onClick={gonder}>
+            <Button isPending={create.isPending} onClick={gonder}>
               Ekle
             </Button>
           </div>
@@ -130,10 +140,11 @@ export function CategoriesPanel() {
       <div className="mt-4 space-y-2">
         {(categories ?? []).map((c) => (
           <div key={c.id} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 rounded-lg border border-slate-100 px-3 py-2 dark:border-slate-800">
-            <span className="text-sm text-slate-700 dark:text-slate-300">
-              {c.name} <span className="text-slate-400">({c.product_count ?? 0})</span>
+            <span className={`text-sm text-slate-700 dark:text-slate-300 ${!c.is_active ? "opacity-50" : ""}`} style={{ paddingLeft: `${categoryDepth(c, categories ?? []) * 18}px` }}>
+              {c.parent_id ? "↳ " : ""}{c.name} <span className="text-slate-400">({c.product_count ?? 0})</span>
             </span>
             <span className="flex items-center gap-3">
+              {canManage && <CategoryActiveToggle category={c} onChange={invalidate} />}
               <KategoriKdvRozeti category={c} canManage={canManage} onChange={invalidate} />
               {canManage && (
                 <Button
@@ -160,6 +171,18 @@ export function CategoriesPanel() {
       />
     </div>
   );
+}
+
+function categoryDepth(category: import("@/types").ProductCategory, categories: import("@/types").ProductCategory[]): number {
+  const byId = new Map(categories.map((item) => [item.id, item]));
+  let depth = 0; let current = category; const seen = new Set<number>();
+  while (current.parent_id && !seen.has(current.id) && depth < 4) { seen.add(current.id); const parent = byId.get(current.parent_id); if (!parent) break; depth += 1; current = parent; }
+  return depth;
+}
+
+function CategoryActiveToggle({ category, onChange }: { category: import("@/types").ProductCategory; onChange: () => void }) {
+  const mutation = useMutation({ mutationFn: () => updateCategory(category.id, { is_active: !category.is_active }), onSuccess: () => { toast.success(category.is_active ? "Kategori pasife alındı" : "Kategori açıldı"); onChange(); }, onError: (error: unknown) => toast.error(getErrorDetail(error, "Kategori durumu değiştirilemedi")) });
+  return <Button size="sm" variant="ghost" isPending={mutation.isPending} onClick={() => mutation.mutate()}>{category.is_active ? "Pasife al" : "Etkinleştir"}</Button>;
 }
 
 /** Kategori satırındaki varsayılan KDV göstergesi + satır içi düzenleme.

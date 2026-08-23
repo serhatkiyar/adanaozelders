@@ -1456,6 +1456,7 @@ export interface ProductCategory {
   parent_id?: number | null;
   icon_url?: string | null;
   sort_order: number;
+  is_active: boolean;
   product_count?: number | null;
   /** Kategorinin KENDİ varsayılan KDV oranı (ORAN, yüzde değil). Değerler
    *  mali müşavir onayı bekliyor — kod hiçbir oran yazmaz, admin girer. */
@@ -1469,6 +1470,7 @@ export interface ProductCategoryWrite {
   parent_id?: number | null;
   icon_url?: string | null;
   sort_order?: number;
+  is_active?: boolean;
   default_tax_rate?: string | number | null;
 }
 
@@ -1931,6 +1933,7 @@ export interface OrderCreate {
   items: CartLineIn[];
   address_id?: number | null;
   coupon_code?: string | null;
+  attribution_token?: string | null;
 }
 
 export type CouponDiscountType = "PERCENT" | "FIXED";
@@ -2451,6 +2454,330 @@ export interface FailedOutboxEvent {
 export interface OutboxRetryResult extends FailedOutboxEvent {
   /** `false` = iş bu çağrıdan ÖNCE zaten kuyruğa alınmıştı (idempotent no-op). */
   requeued: boolean;
+}
+
+// ── Mağaza hero carousel ────────────────────────────────────────────────
+
+export interface StoreHeroSlidePublic {
+  id: number;
+  image_url: string;
+  mobile_image_url: string | null;
+  alt_text: string;
+  link_url: string | null;
+}
+
+export interface StoreHeroSlide extends StoreHeroSlidePublic {
+  is_active: boolean;
+  starts_at: string | null;
+  ends_at: string | null;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface StoreShowcaseProduct {
+  id: number;
+  slug: string;
+  title: string;
+  cover_url: string | null;
+}
+
+export type StoreShowcaseContentMode = "PRODUCTS" | "CUSTOM";
+
+export interface StoreShowcaseCustomTile {
+  image_url: string;
+  label: string;
+  alt_text: string;
+  link_url: string;
+}
+
+export interface StoreShowcaseCustomTileInput {
+  file: File | null;
+  existing_index: number | null;
+  label: string;
+  alt_text: string;
+  link_url: string;
+}
+
+export interface StoreShowcaseCardPublic {
+  id: number;
+  title: string;
+  description: string;
+  link_url: string;
+  link_label: string;
+  content_mode: StoreShowcaseContentMode;
+  products: StoreShowcaseProduct[];
+  custom_tiles: StoreShowcaseCustomTile[];
+}
+
+export interface StoreShowcaseFeed {
+  configured: boolean;
+  cards: StoreShowcaseCardPublic[];
+}
+
+export interface StoreShowcaseCard extends StoreShowcaseCardPublic {
+  product_ids: number[];
+  is_active: boolean;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface StoreShowcaseCardInput {
+  title: string;
+  description: string;
+  link_url: string;
+  link_label: string;
+  product_ids: number[];
+  is_active: boolean;
+  sort_order: number;
+}
+
+export interface StoreShowcaseCustomCardInput {
+  title: string;
+  description: string;
+  link_url: string;
+  link_label: string;
+  tiles: StoreShowcaseCustomTileInput[];
+  is_active: boolean;
+  sort_order: number;
+}
+
+export type StoreHomeSectionType = "PRODUCT_RAIL" | "IMAGE_GRID" | "RECENTLY_VIEWED";
+
+export interface StoreHomeImageTile {
+  image_url: string;
+  label: string;
+  alt_text: string;
+  link_url: string;
+}
+
+export interface StoreHomeImageTileInput {
+  file: File | null;
+  existing_index: number | null;
+  label: string;
+  alt_text: string;
+  link_url: string;
+}
+
+export interface StoreHomeSectionPublic {
+  id: number;
+  title: string;
+  description: string;
+  section_type: StoreHomeSectionType;
+  link_url: string | null;
+  link_label: string;
+  products: ProductSearchOut[];
+  image_tiles: StoreHomeImageTile[];
+}
+
+export interface StoreHomeFeed {
+  configured: boolean;
+  sections: StoreHomeSectionPublic[];
+}
+
+export interface StoreHomeSection extends StoreHomeSectionPublic {
+  product_ids: number[];
+  is_active: boolean;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface StoreHomeSectionMetaInput {
+  title: string;
+  description: string;
+  link_url: string | null;
+  link_label: string;
+  is_active: boolean;
+  sort_order: number;
+}
+
+export interface StoreHomeProductSectionInput extends StoreHomeSectionMetaInput {
+  product_ids: number[];
+}
+
+export interface StoreHomeImageSectionInput extends StoreHomeSectionMetaInput {
+  tiles: StoreHomeImageTileInput[];
+}
+
+export interface StoreHeroSlideUpdate {
+  alt_text?: string;
+  link_url?: string | null;
+  is_active?: boolean;
+  starts_at?: string | null;
+  ends_at?: string | null;
+  sort_order?: number;
+}
+
+/* ── Mağaza vitrin sayfaları ve akıllı ürün grupları ── */
+
+export interface ProductAttributeValue {
+  id: number;
+  definition_id: number;
+  label: string;
+  slug: string;
+  sort_order: number;
+  is_active: boolean;
+}
+
+export interface ProductAttributeDefinition {
+  id: number;
+  name: string;
+  slug: string;
+  sort_order: number;
+  is_active: boolean;
+  values: ProductAttributeValue[];
+}
+
+export type ProductSetRule =
+  | { field: "CATEGORY"; operator: "IN" | "NOT_IN"; values: number[]; include_descendants: boolean }
+  | { field: "ATTRIBUTE"; operator: "IN" | "NOT_IN"; values: number[] }
+  | { field: "KIND"; operator: "IN" | "NOT_IN"; values: ProductKind[] }
+  | { field: "AVAILABLE"; operator: "EQ"; value: boolean }
+  | { field: "PRICE"; operator: "BETWEEN"; minimum?: number | null; maximum?: number | null };
+
+export interface ProductSetRevisionInput {
+  match_mode: "ALL" | "ANY";
+  rules: ProductSetRule[];
+  pinned_product_ids: number[];
+  excluded_product_ids: number[];
+  sort_mode: "MANUAL" | "NEWEST" | "POPULAR" | "RATING" | "PRICE_ASC" | "PRICE_DESC";
+  max_items: number;
+}
+
+export interface ProductSetRevision extends ProductSetRevisionInput {
+  id: number;
+  product_set_id: number;
+  version: number;
+  status: "DRAFT" | "PUBLISHED";
+  published_at?: string | null;
+}
+
+export interface ProductSetInput {
+  name: string;
+  description: string;
+  is_active: boolean;
+  revision: ProductSetRevisionInput;
+}
+
+export interface ProductSet {
+  id: number;
+  name: string;
+  description: string;
+  is_active: boolean;
+  revision: ProductSetRevision;
+  published_revision_id?: number | null;
+  matched_count: number;
+  preview_products: ProductSearchOut[];
+  warnings: string[];
+}
+
+export type LandingPageBlockType =
+  | "HERO_CAROUSEL" | "IMAGE_CARD_GRID" | "CATEGORY_GRID"
+  | "PRODUCT_RAIL" | "BANNER" | "RICH_TEXT" | "RECENTLY_VIEWED";
+
+export interface LandingPageBlockInput {
+  block_key?: string | null;
+  block_type: LandingPageBlockType;
+  title: string;
+  description: string;
+  link_label: string;
+  link_url?: string | null;
+  config: Record<string, unknown>;
+  product_set_id?: number | null;
+  product_set_revision_id?: number | null;
+  is_active: boolean;
+  sort_order: number;
+}
+
+export interface LandingPageBlock extends LandingPageBlockInput {
+  id: number;
+  block_key: string;
+  products: ProductSearchOut[];
+  categories: ProductCategory[];
+  warnings: string[];
+}
+
+export interface LandingPageRevisionInput {
+  title: string;
+  seo_title: string;
+  seo_description: string;
+  og_image_url?: string | null;
+  blocks: LandingPageBlockInput[];
+}
+
+export interface LandingPageRevision extends LandingPageRevisionInput {
+  id: number;
+  page_id: number;
+  version: number;
+  status: "DRAFT" | "PUBLISHED";
+  published_at?: string | null;
+  blocks: LandingPageBlock[];
+}
+
+export interface LandingPageCreate {
+  internal_name: string;
+  slug: string;
+  page_type: "HOME" | "CAMPAIGN" | "SEASONAL" | "EXAM" | "BRAND" | "CURATED";
+  revision: LandingPageRevisionInput;
+}
+
+export interface LandingPageSummary {
+  id: number;
+  internal_name: string;
+  slug: string;
+  page_type: string;
+  is_archived: boolean;
+  state: "DRAFT" | "UPCOMING" | "LIVE" | "ENDED" | "ARCHIVED";
+  latest_revision_id: number;
+  latest_version: number;
+  starts_at?: string | null;
+  ends_at?: string | null;
+  has_unpublished_changes?: boolean;
+}
+
+export interface LandingPagePublication {
+  id: number;
+  page_id: number;
+  revision_id: number;
+  starts_at: string;
+  ends_at?: string | null;
+  state: "UPCOMING" | "LIVE" | "ENDED";
+}
+
+export interface LandingPage {
+  id: number;
+  internal_name: string;
+  slug: string;
+  page_type: string;
+  is_archived: boolean;
+  state: "DRAFT" | "UPCOMING" | "LIVE" | "ENDED" | "ARCHIVED";
+  starts_at?: string | null;
+  ends_at?: string | null;
+  canonical_url: string;
+  revision: LandingPageRevision;
+}
+
+export interface StoreMediaAsset {
+  id: number;
+  image_url: string;
+  alt_text: string;
+  mime_type: string;
+  width: number;
+  height: number;
+  file_size: number;
+  created_at: string;
+}
+
+export interface StorePageMetric {
+  page_id: number;
+  page_revision_id: number;
+  page_views: number;
+  block_clicks: number;
+  product_clicks: number;
+  paid_orders: number;
+  attributed_revenue: string;
 }
 
 // ── İP-C2: Duyuru şeridi ────────────────────────────────────────────────

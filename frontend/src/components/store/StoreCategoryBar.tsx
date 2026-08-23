@@ -36,8 +36,6 @@ export function StoreCategoryBar() {
     return map;
   }, [categories]);
 
-  if (topCategories.length === 0) return null;
-
   const openKids = openId != null ? childrenByParent.get(openId) ?? [] : [];
 
   const linkBase =
@@ -45,6 +43,7 @@ export function StoreCategoryBar() {
 
   return (
     <nav
+      aria-label="Mağaza gezinmesi"
       className="relative z-20 w-full border-b border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900"
       onMouseLeave={() => setOpenId(null)}
     >
@@ -71,6 +70,16 @@ export function StoreCategoryBar() {
             Kategoriler
           </Link>
 
+          <span aria-hidden="true" className="my-3 h-5 w-px shrink-0 bg-slate-200 dark:bg-slate-700" />
+
+          <Link
+            to={ROUTES.tutors}
+            onMouseEnter={() => setOpenId(null)}
+            className={`${linkBase} border-transparent text-slate-600 hover:text-indigo-600 dark:text-slate-300 dark:hover:text-indigo-400`}
+          >
+            Özel Ders Al
+          </Link>
+
           {topCategories.map((c) => {
             const isActive = activeCategory === String(c.id);
             return (
@@ -88,6 +97,7 @@ export function StoreCategoryBar() {
               </Link>
             );
           })}
+
         </div>
       </div>
 

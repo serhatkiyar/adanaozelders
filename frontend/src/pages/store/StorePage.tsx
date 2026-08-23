@@ -5,11 +5,18 @@ import { Seo } from "@/components/Seo";
 import { StoreLayout } from "@/pages/store/StoreLayout";
 import { ProductCard } from "@/components/store/ProductCard";
 import { HScroll } from "@/components/HScroll";
-import { useBookFacets, useCategories, useProducts, useInfiniteProducts } from "@/hooks/useStore";
+import {
+  useBookFacets,
+  useCategories,
+  useProducts,
+  useInfiniteProducts,
+} from "@/hooks/useStore";
 import { useDebounce } from "@/hooks/useDebounce";
-import { getRecentlyViewedProducts } from "@/lib/recentlyViewedProducts";
-import { CrossPromoBanner } from "@/components/CrossPromoBanner";
-import CROSS_PROMO from "@/config/crossPromo.json";
+import { StoreHeroCarousel } from "@/components/store/StoreHeroCarousel";
+import { StoreHomeSections } from "@/components/store/StoreHomeSections";
+import { StoreLandingBlocks } from "@/components/store/StoreLandingBlocks";
+import { useStoreHome } from "@/hooks/useStoreHome";
+import { useStoreHomePage } from "@/hooks/useStoreMerchandising";
 import type { ProductKind } from "@/types";
 import type { ProductSearchParams } from "@/api/store";
 
@@ -38,11 +45,19 @@ export default function StorePage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const urlQ = searchParams.get("q") || "";
   const urlCat = searchParams.get("category");
+  const rawUrlKind = searchParams.get("kind");
+  const urlKind: "" | ProductKind =
+    rawUrlKind === "PHYSICAL" || rawUrlKind === "DIGITAL" ? rawUrlKind : "";
+  const rawUrlSort = searchParams.get("sort");
+  const urlSort: Sort =
+    rawUrlSort && rawUrlSort in SORT_LABELS ? (rawUrlSort as Sort) : "";
 
   const [q, setQ] = useState(urlQ);
-  const [categoryId, setCategoryId] = useState<number | undefined>(urlCat ? Number(urlCat) : undefined);
-  const [kind, setKind] = useState<"" | ProductKind>("");
-  const [sort, setSort] = useState<Sort>("");
+  const [categoryId, setCategoryId] = useState<number | undefined>(
+    urlCat ? Number(urlCat) : undefined,
+  );
+  const [kind, setKind] = useState<"" | ProductKind>(urlKind);
+  const [sort, setSort] = useState<Sort>(urlSort);
   const [minPrice, setMinPrice] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
   const [inStock, setInStock] = useState(false);
@@ -67,19 +82,30 @@ export default function StorePage() {
     setCategoryId(urlCat ? Number(urlCat) : undefined);
   }, [urlCat]);
 
+  useEffect(() => {
+    setKind(urlKind);
+  }, [urlKind]);
+
+  useEffect(() => {
+    setSort(urlSort);
+  }, [urlSort]);
+
   const { data: categories } = useCategories();
+  const { data: homeFeed, isLoading: isHomeLoading } = useStoreHome();
+  const { data: canonicalHome, isLoading: isCanonicalHomeLoading } = useStoreHomePage();
   // Seçenekler kategoriye göre daralır: "Kırtasiye"de yayınevi listesi
   // göstermek kullanıcıyı boş sonuca sürükler.
   const { data: bookFacets } = useBookFacets(categoryId);
   const topCategories = useMemo(
     () => (categories ?? []).filter((c) => !c.parent_id),
-    [categories]
+    [categories],
   );
 
   const isFiltering = !!(
     debouncedQ ||
     categoryId ||
     kind ||
+    sort ||
     debMin ||
     debMax ||
     inStock ||
@@ -92,7 +118,7 @@ export default function StorePage() {
 
   // "Eksen:Değer" öğeleri — sunucunun `variant` parametre biçimi.
   const variantParam = Object.entries(variantSel).flatMap(([eksen, degerler]) =>
-    degerler.map((d) => `${eksen}:${d}`)
+    degerler.map((d) => `${eksen}:${d}`),
   );
 
   const searchInput: ProductSearchParams = {
@@ -111,13 +137,8 @@ export default function StorePage() {
     limit: 24,
   };
 
-  const {
-    data,
-    isLoading,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-  } = useInfiniteProducts(searchInput);
+  const { data, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } =
+    useInfiniteProducts(searchInput);
   const products = useMemo(() => data?.pages.flat() ?? [], [data]);
 
   const resetFilters = () => {
@@ -143,20 +164,6 @@ export default function StorePage() {
         description="Kitaplar, deneme setleri, kırtasiye ve eğitmenlerin dijital ders notları. Tek hesapla alışveriş."
       />
 
-      <div className={`${CONTAINER} pt-6`}>
-        {/* Örtü YOK — ölçüm: beyaz metin mor zeminde örtüsüz 9.32, eşiğin
-            (4.5) iki katı. Buraya scrim koymak okunabilirliğe hiçbir şey
-            katmıyor, yalnız düz mor alanın üstüne siyah bir hap çiziyordu.
-            Ölçüm: docs/ip-c1/. */}
-        <CrossPromoBanner
-          imageSrc={CROSS_PROMO.storeToTutors.imageSrc}
-          heading="Özel Ders"
-          headingClassName="text-white"
-          to={ROUTES.tutors}
-          ariaLabel={CROSS_PROMO.storeToTutors.ariaLabel}
-        />
-      </div>
-
       {isFiltering ? (
         /* ── Arama / filtre görünümü: yan filtre + ızgara ── */
         <div className={`${CONTAINER} py-8`}>
@@ -164,7 +171,9 @@ export default function StorePage() {
             {/* Yan filtre */}
             <aside className="w-full flex-shrink-0 md:w-64">
               <div className="sticky top-24 rounded-2xl border border-slate-100 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
-                <h3 className="mb-4 text-base font-semibold text-slate-900 dark:text-white">Kategoriler</h3>
+                <h3 className="mb-4 text-base font-semibold text-slate-900 dark:text-white">
+                  Kategoriler
+                </h3>
                 <div className="flex flex-col gap-1">
                   <FilterButton
                     active={categoryId === undefined}
@@ -193,7 +202,9 @@ export default function StorePage() {
                 <hr className="my-5 border-slate-100 dark:border-slate-800" />
 
                 {/* Fiyat aralığı */}
-                <h3 className="mb-3 text-base font-semibold text-slate-900 dark:text-white">Fiyat aralığı</h3>
+                <h3 className="mb-3 text-base font-semibold text-slate-900 dark:text-white">
+                  Fiyat aralığı
+                </h3>
                 <div className="flex items-center gap-2">
                   <input
                     type="number"
@@ -216,7 +227,9 @@ export default function StorePage() {
 
                 <hr className="my-5 border-slate-100 dark:border-slate-800" />
 
-                <h3 className="mb-3 text-base font-semibold text-slate-900 dark:text-white">Ürün türü</h3>
+                <h3 className="mb-3 text-base font-semibold text-slate-900 dark:text-white">
+                  Ürün türü
+                </h3>
                 <div className="flex flex-col gap-1">
                   {KIND_LABELS.map((k) => (
                     <FilterButton
@@ -230,9 +243,15 @@ export default function StorePage() {
 
                 <hr className="my-5 border-slate-100 dark:border-slate-800" />
 
-                <h3 className="mb-3 text-base font-semibold text-slate-900 dark:text-white">Değerlendirme</h3>
+                <h3 className="mb-3 text-base font-semibold text-slate-900 dark:text-white">
+                  Değerlendirme
+                </h3>
                 <div className="flex flex-col gap-1">
-                  <FilterButton active={minRating === undefined} onClick={() => setMinRating(undefined)} label="Tümü" />
+                  <FilterButton
+                    active={minRating === undefined}
+                    onClick={() => setMinRating(undefined)}
+                    label="Tümü"
+                  />
                   {[4, 3].map((r) => (
                     <FilterButton
                       key={r}
@@ -289,7 +308,7 @@ export default function StorePage() {
                         setVariantSel((s) => ({ ...s, [eksen]: next }))
                       }
                     />
-                  )
+                  ),
                 )}
               </div>
             </aside>
@@ -302,8 +321,9 @@ export default function StorePage() {
                     {debouncedQ
                       ? `"${debouncedQ}" için sonuçlar`
                       : categoryId
-                      ? topCategories.find((c) => c.id === categoryId)?.name ?? "Ürünler"
-                      : "Tüm Ürünler"}
+                        ? (topCategories.find((c) => c.id === categoryId)
+                            ?.name ?? "Ürünler")
+                        : "Tüm Ürünler"}
                   </h1>
                   {!isLoading && (
                     <p className="mt-0.5 text-sm text-slate-400">
@@ -332,7 +352,10 @@ export default function StorePage() {
               {isLoading ? (
                 <div className={GRID}>
                   {Array.from({ length: 12 }).map((_, i) => (
-                    <div key={i} className="animate-pulse rounded-xl border border-slate-100 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+                    <div
+                      key={i}
+                      className="animate-pulse rounded-xl border border-slate-100 bg-white p-4 dark:border-slate-800 dark:bg-slate-900"
+                    >
                       <div className="aspect-[4/5] rounded-lg bg-slate-100 dark:bg-slate-800" />
                       <div className="mt-4 h-4 w-3/4 rounded bg-slate-100 dark:bg-slate-800" />
                       <div className="mt-2 h-4 w-1/2 rounded bg-slate-100 dark:bg-slate-800" />
@@ -353,7 +376,9 @@ export default function StorePage() {
                         disabled={isFetchingNextPage}
                         className="rounded-full border border-slate-200 px-6 py-2.5 text-sm font-semibold text-slate-700 transition-colors hover:border-indigo-300 hover:text-indigo-600 disabled:opacity-50 dark:border-slate-700 dark:text-slate-200 dark:hover:text-indigo-400"
                       >
-                        {isFetchingNextPage ? "Yükleniyor…" : "Daha fazla yükle"}
+                        {isFetchingNextPage
+                          ? "Yükleniyor…"
+                          : "Daha fazla yükle"}
                       </button>
                     </div>
                   )}
@@ -361,13 +386,26 @@ export default function StorePage() {
               ) : (
                 <div className="rounded-2xl border border-slate-100 bg-white py-24 text-center dark:border-slate-800 dark:bg-slate-900">
                   <div className="mb-4 inline-flex h-16 w-16 items-center justify-center rounded-full bg-slate-50 dark:bg-slate-800">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-slate-400">
+                    <svg
+                      width="24"
+                      height="24"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      className="text-slate-400"
+                    >
                       <circle cx="11" cy="11" r="8" />
                       <path d="M21 21l-4.3-4.3" />
                     </svg>
                   </div>
-                  <h3 className="mb-1 text-lg font-semibold text-slate-900 dark:text-white">Sonuç bulunamadı</h3>
-                  <p className="text-slate-500 dark:text-slate-400">Aradığınız kriterlere uygun ürün yok. Filtreleri temizleyip tekrar deneyin.</p>
+                  <h3 className="mb-1 text-lg font-semibold text-slate-900 dark:text-white">
+                    Sonuç bulunamadı
+                  </h3>
+                  <p className="text-slate-500 dark:text-slate-400">
+                    Aradığınız kriterlere uygun ürün yok. Filtreleri temizleyip
+                    tekrar deneyin.
+                  </p>
                   <button
                     onClick={resetFilters}
                     className="mt-6 rounded-full bg-indigo-600 px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-indigo-700"
@@ -380,30 +418,69 @@ export default function StorePage() {
           </div>
         </div>
       ) : (
-        /* ── Vitrin (filtre yokken): gerçek ürün kuşakları ── */
-        <div className={`${CONTAINER} flex flex-col gap-12 py-10`}>
-          <ProductScroller
-            title="Öne çıkanlar"
-            params={{ sort: "rating", limit: 12 }}
-            to={`${ROUTES.store}?sort=rating`}
-          />
-          <ProductScroller
-            title="Yeni gelenler"
-            params={{ sort: "newest", limit: 12 }}
-            to={`${ROUTES.store}?sort=newest`}
-          />
-          {topCategories.slice(0, 3).map((c) => (
-            <ProductScroller
-              key={c.id}
-              title={c.name}
-              params={{ category_id: c.id, limit: 12 }}
-              to={`${ROUTES.store}?category=${c.id}`}
-            />
-          ))}
-          <RecentlyViewedRail />
-        </div>
+        /* ── Vitrin (filtre yokken): yönetilen kanonik HOME akışı ── */
+        <>
+          {canonicalHome ? (
+            <StoreLandingBlocks page={canonicalHome} />
+          ) : isCanonicalHomeLoading ? (
+            <div className={`${CONTAINER} py-10`}><HomeFlowSkeleton /></div>
+          ) : (
+            <>
+              <StoreHeroCarousel />
+              <div id="vitrin-urunleri" className={`${CONTAINER} flex scroll-mt-28 flex-col gap-12 pb-10 pt-8 md:pt-12`}>
+              {isHomeLoading ? (
+              <HomeFlowSkeleton />
+            ) : homeFeed?.configured ? (
+              <StoreHomeSections sections={homeFeed.sections} />
+            ) : (
+              <>
+                <ProductScroller
+                  title="Öne çıkanlar"
+                  params={{ sort: "rating", limit: 12 }}
+                  to={`${ROUTES.store}?sort=rating`}
+                />
+                <ProductScroller
+                  title="Yeni gelenler"
+                  params={{ sort: "newest", limit: 12 }}
+                  to={`${ROUTES.store}?sort=newest`}
+                />
+                {topCategories.slice(0, 3).map((c) => (
+                  <ProductScroller
+                    key={c.id}
+                    title={c.name}
+                    params={{ category_id: c.id, limit: 12 }}
+                    to={`${ROUTES.store}?category=${c.id}`}
+                  />
+                ))}
+                <StoreHomeSections
+                  sections={(homeFeed?.sections ?? []).filter(
+                    (section) => section.section_type === "RECENTLY_VIEWED",
+                  )}
+                />
+              </>
+              )}
+              </div>
+            </>
+          )}
+        </>
       )}
     </StoreLayout>
+  );
+}
+
+function HomeFlowSkeleton() {
+  return (
+    <div aria-label="Mağaza bölümleri yükleniyor" className="space-y-5">
+      <div className="h-7 w-48 animate-pulse rounded bg-slate-100 dark:bg-slate-800" />
+      <div className="flex gap-4 overflow-hidden md:gap-6">
+        {Array.from({ length: 6 }).map((_, index) => (
+          <div
+            key={index}
+            className="h-[280px] w-[160px] shrink-0 animate-pulse rounded-xl bg-slate-100 md:w-[200px] dark:bg-slate-800"
+          />
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -433,25 +510,6 @@ function FilterButton({
   );
 }
 
-function RecentlyViewedRail() {
-  const [items] = useState(() => getRecentlyViewedProducts());
-  if (items.length === 0) return null;
-  return (
-    <div>
-      <h2 className="mb-6 text-xl font-semibold text-slate-900 md:text-2xl dark:text-white">
-        Son görüntülediklerin
-      </h2>
-      <HScroll className="snap-x gap-4 pb-4 md:gap-6">
-        {items.map((p) => (
-          <div key={p.id} className="w-[160px] shrink-0 snap-start md:w-[200px]">
-            <ProductCard product={p} />
-          </div>
-        ))}
-      </HScroll>
-    </div>
-  );
-}
-
 function ProductScroller({
   title,
   params,
@@ -466,10 +524,15 @@ function ProductScroller({
   if (isLoading) {
     return (
       <div>
-        <h2 className="mb-6 text-xl font-semibold text-slate-900 md:text-2xl dark:text-white">{title}</h2>
+        <h2 className="mb-6 text-xl font-semibold text-slate-900 md:text-2xl dark:text-white">
+          {title}
+        </h2>
         <div className="flex gap-4 overflow-hidden">
           {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="h-[280px] w-[160px] shrink-0 animate-pulse rounded-xl bg-slate-100 md:w-[200px] dark:bg-slate-800" />
+            <div
+              key={i}
+              className="h-[280px] w-[160px] shrink-0 animate-pulse rounded-xl bg-slate-100 md:w-[200px] dark:bg-slate-800"
+            />
           ))}
         </div>
       </div>
@@ -481,28 +544,40 @@ function ProductScroller({
   return (
     <div>
       <div className="mb-6 flex items-center justify-between">
-        <h2 className="text-xl font-semibold text-slate-900 md:text-2xl dark:text-white">{title}</h2>
+        <h2 className="text-xl font-semibold text-slate-900 md:text-2xl dark:text-white">
+          {title}
+        </h2>
         <Link
           to={to}
           className="group flex items-center gap-1 text-sm font-semibold text-indigo-600 hover:underline dark:text-indigo-400"
         >
           Tümünü gör
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="transition-transform group-hover:translate-x-1">
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            className="transition-transform group-hover:translate-x-1"
+          >
             <path d="M5 12h14M12 5l7 7-7 7" />
           </svg>
         </Link>
       </div>
       <HScroll className="snap-x gap-4 pb-4 md:gap-6">
         {products.map((p) => (
-          <div key={p.id} className="w-[160px] shrink-0 snap-start md:w-[200px]">
-            <ProductCard product={p} />
+          <div
+            key={p.id}
+            className="w-[160px] shrink-0 snap-start md:w-[200px]"
+          >
+            <ProductCard product={p} showPurchaseAction={false} />
           </div>
         ))}
       </HScroll>
     </div>
   );
 }
-
 
 /** Sayaçlı çoklu seçim filtre grubu (yayınevi / yazar / kapak).
  *
@@ -535,7 +610,7 @@ function FacetGroup({
     onToggle(
       selected.includes(value)
         ? selected.filter((v) => v !== value)
-        : [...selected, value]
+        : [...selected, value],
     );
 
   return (
@@ -557,7 +632,9 @@ function FacetGroup({
               className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 dark:border-slate-600 dark:bg-slate-800"
             />
             <span className="min-w-0 flex-1 truncate">{option.value}</span>
-            <span className="shrink-0 text-xs text-slate-400">{option.count}</span>
+            <span className="shrink-0 text-xs text-slate-400">
+              {option.count}
+            </span>
           </label>
         ))}
       </div>

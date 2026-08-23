@@ -71,7 +71,7 @@ const DOSYA_BUTCELERI = [
  *     aynı sorgu tohum 2013'te **917 ms** ölçülmüştü (varsayılan 1000).
  *   • `adminStoreDalAdlari:235` 4000 (4 çağrı) — ölçülen tepe 885 ms.
  *   • `adminStoreVariants:188` 1500 — ölçülen tepe **1550 ms**.
- *   • `adminStoreVariants:414` 4000 — ölçülen tepe 439 ms.
+ *   • `adminStoreVariants:422` 4000 — ölçülen tepe 439 ms.
  *   • `storeVariants:18` 4000 (6 çağrı) — ölçülen tepe **1124 ms**.
  *   • `ticketsPaymentGate:32` 4000 (6 çağrı) — ölçülen tepe 225 ms.
  *
@@ -87,7 +87,7 @@ const CAGRI_BUTCELERI = [
   "src/pages/dashboards/adminKataloglarGoc.acceptance.test.tsx:213 3000",
   "src/pages/dashboards/adminStoreDalAdlari.acceptance.test.tsx:251 4000",
   "src/pages/dashboards/adminStoreVariants.acceptance.test.tsx:188 1500",
-  "src/pages/dashboards/adminStoreVariants.acceptance.test.tsx:418 4000",
+  "src/pages/dashboards/adminStoreVariants.acceptance.test.tsx:422 4000",
   "src/pages/store/storeVariants.acceptance.test.tsx:18 4000",
   "src/pages/ticketsPaymentGate.test.tsx:32 4000",
 ];

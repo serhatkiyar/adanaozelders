@@ -31,14 +31,24 @@
  * olması · stok gerekçesi kuralları · sunucu gövdesinin alanları.
  */
 import { useEffect, useRef, useState } from "react";
-import { useForm, useWatch, type FieldErrors, type UseFormReturn } from "react-hook-form";
+import {
+  useForm,
+  useWatch,
+  type FieldErrors,
+  type UseFormReturn,
+} from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 
 import { Button } from "@/components/admin/ui";
 import { Form, sunucuHatasiniUygula } from "@/components/admin/ui2/form";
 import { useYuzeyKirliFormBekcisi } from "@/components/admin/ui2/duzenlemeYuzeyi";
 import { createProduct, updateProduct } from "@/api/store";
+import {
+  fetchProductAttributeValueIds,
+  setProductAttributes,
+} from "@/api/storeMerchandising";
+import { useStoreAttributes } from "@/hooks/useStoreMerchandising";
 import {
   useCategories,
   useCreateVariantGroup,
@@ -70,10 +80,31 @@ import type { ProductDetailOut, ProductKind } from "@/types";
 
 /** `sunucuHatasiniUygula` için BEYAZ LİSTE — formda karşılığı olan alanlar. */
 const ALANLAR = [
-  "baslik", "tur", "durum", "kategoriId", "fiyat", "eskiFiyat", "kdvYuzde",
-  "stok", "stokGerekce", "stokNot", "aciklama", "yazar", "yayinevi", "isbn",
-  "sayfaSayisi", "ebat", "basimYili", "baski", "dil", "kapakTipi",
-  "varyantGrubuId", "eksen1", "eksen2", "varyantSira", "barkod",
+  "baslik",
+  "tur",
+  "durum",
+  "kategoriId",
+  "fiyat",
+  "eskiFiyat",
+  "kdvYuzde",
+  "stok",
+  "stokGerekce",
+  "stokNot",
+  "aciklama",
+  "yazar",
+  "yayinevi",
+  "isbn",
+  "sayfaSayisi",
+  "ebat",
+  "basimYili",
+  "baski",
+  "dil",
+  "kapakTipi",
+  "varyantGrubuId",
+  "eksen1",
+  "eksen2",
+  "varyantSira",
+  "barkod",
   "tedarikciTemin",
 ] as const;
 
@@ -109,35 +140,70 @@ const SUNUCU_ALAN_ESLEMESI: Record<string, string> = {
 
 /** Alanların GÖRSEL sırası; "ilk hatalı alan" bu sıradan okunur. */
 const GORSEL_SIRA = [
-  "baslik", "durum", "tur", "kategoriId", "fiyat", "eskiFiyat", "kdvYuzde",
-  "stok", "stokGerekce", "stokNot", "tedarikciTemin", "aciklama",
-  "yazar", "yayinevi", "isbn", "sayfaSayisi", "ebat", "basimYili", "baski",
-  "dil", "kapakTipi",
-  "varyantGrubuId", "barkod", "eksen1", "eksen2", "varyantSira",
+  "baslik",
+  "durum",
+  "tur",
+  "kategoriId",
+  "fiyat",
+  "eskiFiyat",
+  "kdvYuzde",
+  "stok",
+  "stokGerekce",
+  "stokNot",
+  "tedarikciTemin",
+  "aciklama",
+  "yazar",
+  "yayinevi",
+  "isbn",
+  "sayfaSayisi",
+  "ebat",
+  "basimYili",
+  "baski",
+  "dil",
+  "kapakTipi",
+  "varyantGrubuId",
+  "barkod",
+  "eksen1",
+  "eksen2",
+  "varyantSira",
 ] as const;
 
 /** Katlanır künye bölümündeki alanlar — hata oradaysa bölüm AÇILMALI. */
 const KUNYE_ALANLARI = new Set<string>([
-  "yazar", "yayinevi", "isbn", "sayfaSayisi", "ebat", "basimYili", "baski",
-  "dil", "kapakTipi",
+  "yazar",
+  "yayinevi",
+  "isbn",
+  "sayfaSayisi",
+  "ebat",
+  "basimYili",
+  "baski",
+  "dil",
+  "kapakTipi",
 ]);
 
 /** Katlanır varyant bölümündeki alanlar. */
 const VARYANT_ALANLARI = new Set<string>([
-  "varyantGrubuId", "eksen1", "eksen2", "varyantSira", "barkod",
+  "varyantGrubuId",
+  "eksen1",
+  "eksen2",
+  "varyantSira",
+  "barkod",
 ]);
 
 function baslangicDegerleri(initial?: ProductDetailOut): UrunFormDegerleri {
   return {
     baslik: initial?.title ?? "",
-    tur: ((initial?.kind as ProductKind) ?? "PHYSICAL") as "PHYSICAL" | "DIGITAL",
+    tur: ((initial?.kind as ProductKind) ?? "PHYSICAL") as
+      "PHYSICAL" | "DIGITAL",
     durum:
       initial?.status === "HIDDEN" || initial?.status === "DRAFT"
         ? initial.status
         : "ACTIVE",
     kategoriId: initial?.category_id != null ? String(initial.category_id) : "",
     fiyat: initial ? String(initial.price) : "",
-    eskiFiyat: initial?.compare_at_price ? String(initial.compare_at_price) : "",
+    eskiFiyat: initial?.compare_at_price
+      ? String(initial.compare_at_price)
+      : "",
     // KDV: formda YÜZDE tutulur, istekte ORAN gider (bkz. lib/tax.ts). Yeni
     // üründe boş başlar — varsayılan oran YOKTUR, karar veri olarak girilir.
     kdvYuzde: orandanYuzde(initial?.tax_rate),
@@ -158,7 +224,8 @@ function baslangicDegerleri(initial?: ProductDetailOut): UrunFormDegerleri {
     varyantGrubuId: initial?.variant_group_id ?? null,
     eksen1: initial?.option1_value ?? "",
     eksen2: initial?.option2_value ?? "",
-    varyantSira: initial?.variant_sort != null ? String(initial.variant_sort) : "0",
+    varyantSira:
+      initial?.variant_sort != null ? String(initial.variant_sort) : "0",
     barkod: initial?.barcode ?? "",
     tedarikciTemin: initial?.supplier_backed ?? false,
   };
@@ -184,12 +251,20 @@ export function ProductForm({
 
   const hasKunye = !!(
     initial &&
-    (initial.author || initial.publisher || initial.isbn || initial.page_count ||
-      initial.dimensions || initial.publication_year || initial.edition ||
-      initial.language || initial.cover_type)
+    (initial.author ||
+      initial.publisher ||
+      initial.isbn ||
+      initial.page_count ||
+      initial.dimensions ||
+      initial.publication_year ||
+      initial.edition ||
+      initial.language ||
+      initial.cover_type)
   );
   const [showSpecs, setShowSpecs] = useState(hasKunye);
-  const [showVariant, setShowVariant] = useState(initial?.variant_group_id != null);
+  const [showVariant, setShowVariant] = useState(
+    initial?.variant_group_id != null,
+  );
 
   // ── Bağlam: şema fabrikasının girdisi ──
   //
@@ -214,9 +289,9 @@ export function ProductForm({
           kitapKategorisi: isBookCategory(
             categories ?? [],
             degerler.kategoriId ? Number(degerler.kategoriId) : null,
-            variantConfig?.book_root_slugs ?? []
+            variantConfig?.book_root_slugs ?? [],
           ),
-        })
+        }),
       )(degerler, baglam, secenekler),
   });
 
@@ -232,7 +307,7 @@ export function ProductForm({
   const kitapKategorisi = isBookCategory(
     categories ?? [],
     seciliKategori ? Number(seciliKategori) : null,
-    variantConfig?.book_root_slugs ?? []
+    variantConfig?.book_root_slugs ?? [],
   );
 
   const baglam: UrunFormBaglami = {
@@ -252,7 +327,9 @@ export function ProductForm({
   // uyardığı desen) ve bağımlılık dizisini elle kısaltmak zorunda kalmıştı.
   const otomatikKdvRef = useRef<string | null>(null);
   useEffect(() => {
-    const secili = (categories ?? []).find((c) => c.id === Number(seciliKategori));
+    const secili = (categories ?? []).find(
+      (c) => c.id === Number(seciliKategori),
+    );
     const oneri = orandanYuzde(secili?.effective_tax_rate);
     if (!oneri) return;
     const mevcut = form.getValues("kdvYuzde");
@@ -275,12 +352,17 @@ export function ProductForm({
   // Stok gerekçesi: yalnız DÜZENLEMEDE ve değer değiştiğinde zorunlu.
   // (Yeni üründe ilk stok `INITIAL` hareketidir; gerekçesi sabittir.)
   const stokDegisti =
-    isEdit && tur === "PHYSICAL" && Number(stokDegeri || 0) !== Number(initial?.stock ?? 0);
+    isEdit &&
+    tur === "PHYSICAL" &&
+    Number(stokDegeri || 0) !== Number(initial?.stock ?? 0);
 
   const mutation = useMutation({
     mutationFn: (degerler: UrunFormDegerleri) => {
       if (isEdit) {
-        return updateProduct(initial!.id, urunGuncelleGovdesi(degerler, baglam));
+        return updateProduct(
+          initial!.id,
+          urunGuncelleGovdesi(degerler, baglam),
+        );
       }
       return createProduct(urunOlusturGovdesi(degerler));
     },
@@ -303,9 +385,14 @@ export function ProductForm({
       return;
     }
     setGenelHata(
-      sunucuHatasiniUygula(mutation.error, form, ALANLAR, SUNUCU_ALAN_ESLEMESI, (h) =>
-        getErrorDetail(h, isEdit ? "Ürün güncellenemedi" : "Ürün eklenemedi")
-      )
+      sunucuHatasiniUygula(
+        mutation.error,
+        form,
+        ALANLAR,
+        SUNUCU_ALAN_ESLEMESI,
+        (h) =>
+          getErrorDetail(h, isEdit ? "Ürün güncellenemedi" : "Ürün eklenemedi"),
+      ),
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mutation.error]);
@@ -334,7 +421,9 @@ export function ProductForm({
   // `setFocus` DOM'da olmayan alanı odaklayamaz. Bölüm önce açılır, alan
   // render edildikten SONRA odaklanır — bu yüzden hedef bir tur state'te
   // bekletilir.
-  const [odakAlani, setOdakAlani] = useState<(typeof GORSEL_SIRA)[number] | null>(null);
+  const [odakAlani, setOdakAlani] = useState<
+    (typeof GORSEL_SIRA)[number] | null
+  >(null);
   useEffect(() => {
     if (!odakAlani) return;
     form.setFocus(odakAlani);
@@ -350,13 +439,14 @@ export function ProductForm({
       if (KUNYE_ALANLARI.has(ilk)) setShowSpecs(true);
       if (VARYANT_ALANLARI.has(ilk)) setShowVariant(true);
       setOdakAlani(ilk);
-    }
+    },
   );
 
   // Formun geneline düşen şema hatası (alanı olmayan kural: kitap
   // kategorisinde varyant). RHF bunu kök yolda tutar.
-  const formGenelHatasi = (form.formState.errors as { root?: { message?: string } })
-    .root?.message;
+  const formGenelHatasi = (
+    form.formState.errors as { root?: { message?: string } }
+  ).root?.message;
 
   return (
     <div className="grid gap-3 sm:grid-cols-2">
@@ -373,6 +463,7 @@ export function ProductForm({
           </Form.Item>
         )}
       />
+      {isEdit && initial && <ProductManagedAttributes productId={initial.id} />}
 
       {isEdit ? (
         <Form.Field
@@ -437,15 +528,23 @@ export function ProductForm({
         name="kategoriId"
         render={({ field }) => (
           <Form.Item>
-            <Form.Label optional>Kategori</Form.Label>
+            <Form.Label>Kategori</Form.Label>
             <Form.Control>
               <select className="input" {...field}>
                 <option value="">Kategori seçilmedi</option>
-                {(categories ?? []).map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
+                {(categories ?? [])
+                  .filter(
+                    (c) =>
+                      c.is_active !== false &&
+                      !(categories ?? []).some(
+                        (child) => child.parent_id === c.id && child.is_active !== false,
+                      ),
+                  )
+                  .map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
               </select>
             </Form.Control>
             <Form.ErrorMessage />
@@ -577,7 +676,9 @@ export function ProductForm({
             {/* Açıklama YALNIZ gerekli gerekçelerde ("Diğer") istenir —
                 davranış İP-A5 öncesiyle aynı; koşul `lib/stockMovements`ın
                 `requiresNote` kuralından okunur. */}
-            {requiresNote((izlenen.stokGerekce || null) as AdminReasonCode | null) && (
+            {requiresNote(
+              (izlenen.stokGerekce || null) as AdminReasonCode | null,
+            ) && (
               <Form.Field
                 control={form.control}
                 name="stokNot"
@@ -614,7 +715,10 @@ export function ProductForm({
           kendiliğinden açılır (yukarıdaki efekt); kitap dışı üründe kapalı
           kalır ve başlık ne yapılması gerektiğini söyler. */}
       <div className="sm:col-span-2">
-        <KatlanirBaslik acik={showSpecs} onDegis={() => setShowSpecs((v) => !v)}>
+        <KatlanirBaslik
+          acik={showSpecs}
+          onDegis={() => setShowSpecs((v) => !v)}
+        >
           Kitap künyesi — kitap dışı ürünlerde boş bırakın
         </KatlanirBaslik>
         {showSpecs && (
@@ -626,12 +730,37 @@ export function ProductForm({
             <KunyeAlani form={form} ad="yazar" etiket="Yazar" />
             <KunyeAlani form={form} ad="yayinevi" etiket="Yayınevi" />
             <KunyeAlani form={form} ad="isbn" etiket="ISBN / Barkod" />
-            <KunyeAlani form={form} ad="sayfaSayisi" etiket="Sayfa sayısı" mod="numeric" />
-            <KunyeAlani form={form} ad="ebat" etiket="Ebat" ipucu="ör. 20 x 27 cm · A4" />
-            <KunyeAlani form={form} ad="basimYili" etiket="Basım yılı" mod="numeric" />
-            <KunyeAlani form={form} ad="baski" etiket="Baskı" ipucu="ör. 1. Basım" />
+            <KunyeAlani
+              form={form}
+              ad="sayfaSayisi"
+              etiket="Sayfa sayısı"
+              mod="numeric"
+            />
+            <KunyeAlani
+              form={form}
+              ad="ebat"
+              etiket="Ebat"
+              ipucu="ör. 20 x 27 cm · A4"
+            />
+            <KunyeAlani
+              form={form}
+              ad="basimYili"
+              etiket="Basım yılı"
+              mod="numeric"
+            />
+            <KunyeAlani
+              form={form}
+              ad="baski"
+              etiket="Baskı"
+              ipucu="ör. 1. Basım"
+            />
             <KunyeAlani form={form} ad="dil" etiket="Dil" ipucu="ör. Türkçe" />
-            <KunyeAlani form={form} ad="kapakTipi" etiket="Kapak tipi" ipucu="ör. İnce Kapak" />
+            <KunyeAlani
+              form={form}
+              ad="kapakTipi"
+              etiket="Kapak tipi"
+              ipucu="ör. İnce Kapak"
+            />
           </div>
         )}
       </div>
@@ -650,7 +779,9 @@ export function ProductForm({
                 size="sm"
                 variant="ghost"
                 onClick={() => {
-                  form.setValue("varyantGrubuId", null, { shouldValidate: true });
+                  form.setValue("varyantGrubuId", null, {
+                    shouldValidate: true,
+                  });
                   form.setValue("eksen1", "");
                   form.setValue("eksen2", "");
                 }}
@@ -666,14 +797,22 @@ export function ProductForm({
           )
         ) : (
           <>
-            <KatlanirBaslik acik={showVariant} onDegis={() => setShowVariant((v) => !v)}>
+            <KatlanirBaslik
+              acik={showVariant}
+              onDegis={() => setShowVariant((v) => !v)}
+            >
               Varyantlar (renk, ebat…)
               {varyantGrubuId != null && (
-                <span className="text-xs font-normal text-slate-400">— grupta</span>
+                <span className="text-xs font-normal text-slate-400">
+                  — grupta
+                </span>
               )}
             </KatlanirBaslik>
             {showVariant && (
-              <VariantMembershipFields form={form} currentProductId={initial?.id} />
+              <VariantMembershipFields
+                form={form}
+                currentProductId={initial?.id}
+              />
             )}
           </>
         )}
@@ -692,10 +831,87 @@ export function ProductForm({
       )}
 
       {/* Geçerlilik kapısı YOK: `isPending` yalnız çift gönderimi engeller. */}
-      <Button className="sm:col-span-2" isPending={mutation.isPending} onClick={gonder}>
+      <Button
+        className="sm:col-span-2"
+        isPending={mutation.isPending}
+        onClick={gonder}
+      >
         {isEdit ? "Kaydet" : "Ürünü ekle"}
       </Button>
     </div>
+  );
+}
+
+function ProductManagedAttributes({ productId }: { productId: number }) {
+  const { data: rawDefinitions } = useStoreAttributes(true);
+  const definitions = Array.isArray(rawDefinitions) ? rawDefinitions : [];
+  const { data: rawInitialIds } = useQuery({
+    queryKey: ["admin", "store", "product-attributes", productId],
+    queryFn: () => fetchProductAttributeValueIds(productId),
+  });
+  const [selected, setSelected] = useState<number[]>([]);
+  useEffect(
+    () => setSelected(Array.isArray(rawInitialIds) ? rawInitialIds : []),
+    [rawInitialIds],
+  );
+  const save = useMutation({
+    mutationFn: () => setProductAttributes(productId, selected),
+    onSuccess: () => toast.success("Ürün özellikleri kaydedildi"),
+    onError: (error: unknown) =>
+      toast.error(getErrorDetail(error, "Ürün özellikleri kaydedilemedi")),
+  });
+  return (
+    <fieldset className="space-y-3 rounded-xl border border-panel-border bg-panel-muted/40 p-4 md:col-span-2">
+      <legend className="text-sm font-semibold text-panel-fg">
+        Yönetilen ürün özellikleri
+      </legend>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-xs text-panel-fg-muted">
+          Akıllı vitrinler başlığa değil bu değerlere göre çalışır.
+        </p>
+        <Button
+          size="sm"
+          variant="secondary"
+          isPending={save.isPending}
+          onClick={() => save.mutate()}
+        >
+          Özellikleri kaydet
+        </Button>
+      </div>
+      {definitions
+        .filter((definition) => definition.is_active !== false && Array.isArray(definition.values))
+        .map((definition) => (
+          <div key={definition.id}>
+            <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-panel-fg-subtle">
+              {definition.name}
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {definition.values
+                .filter((value) => value.is_active !== false)
+                .map((value) => (
+                  <label
+                    key={value.id}
+                    className="rounded-full border border-panel-border bg-panel-card px-2.5 py-1 text-xs text-panel-fg"
+                  >
+                    <input
+                      type="checkbox"
+                      className="mr-1.5"
+                      checked={selected.includes(value.id)}
+                      onChange={() =>
+                        setSelected((current) =>
+                          current.includes(value.id)
+                            ? current.filter((id) => id !== value.id)
+                            : [...current, value.id],
+                        )
+                      }
+                    />
+                    {value.label}
+                  </label>
+                ))}
+            </div>
+          </div>
+        ))}
+    </fieldset>
   );
 }
 
@@ -839,7 +1055,8 @@ function VariantMembershipFields({
                   {(groups ?? []).map((g) => (
                     <option key={g.id} value={g.id}>
                       {g.title} ({g.option1_name}
-                      {g.option2_name ? ` × ${g.option2_name}` : ""}, {g.member_count} ürün)
+                      {g.option2_name ? ` × ${g.option2_name}` : ""},{" "}
+                      {g.member_count} ürün)
                     </option>
                   ))}
                   <option value="__yeni__">＋ Yeni grup oluştur…</option>
@@ -893,7 +1110,9 @@ function VariantMembershipFields({
               >
                 <option value="">1. eksen…</option>
                 {axes.map((a) => (
-                  <option key={a} value={a}>{a}</option>
+                  <option key={a} value={a}>
+                    {a}
+                  </option>
                 ))}
               </select>
             </Form.Control>
@@ -910,7 +1129,9 @@ function VariantMembershipFields({
                 {axes
                   .filter((a) => a !== newAxis1)
                   .map((a) => (
-                    <option key={a} value={a}>{a}</option>
+                    <option key={a} value={a}>
+                      {a}
+                    </option>
                   ))}
               </select>
             </Form.Control>
@@ -931,17 +1152,23 @@ function VariantMembershipFields({
                       toast.success("Varyant grubu oluşturuldu");
                       setCreating(false);
                       setNewTitle("");
-                      form.setValue("varyantGrubuId", g.id, { shouldValidate: true });
+                      form.setValue("varyantGrubuId", g.id, {
+                        shouldValidate: true,
+                      });
                     },
                     onError: (err: unknown) =>
                       toast.error(getErrorDetail(err, "Grup oluşturulamadı")),
-                  }
+                  },
                 )
               }
             >
               Grubu oluştur
             </Button>
-            <Button size="sm" variant="ghost" onClick={() => setCreating(false)}>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => setCreating(false)}
+            >
               Vazgeç
             </Button>
           </div>
@@ -985,7 +1212,12 @@ function VariantMembershipFields({
               <Form.Item>
                 <Form.Label>Varyant sırası</Form.Label>
                 <Form.Control>
-                  <input className="input" inputMode="numeric" placeholder="0, 1, 2…" {...field} />
+                  <input
+                    className="input"
+                    inputMode="numeric"
+                    placeholder="0, 1, 2…"
+                    {...field}
+                  />
                 </Form.Control>
                 <Form.ErrorMessage />
               </Form.Item>
@@ -1001,12 +1233,19 @@ function VariantMembershipFields({
           </p>
           <ul className="divide-y divide-slate-100 text-sm dark:divide-slate-700/60">
             {groupDetail.members.map((m) => (
-              <li key={m.id} className="flex items-center justify-between gap-3 py-1.5">
+              <li
+                key={m.id}
+                className="flex items-center justify-between gap-3 py-1.5"
+              >
                 <span className="min-w-0 truncate text-slate-700 dark:text-slate-300">
-                  {[m.option1_value, m.option2_value].filter(Boolean).join(" / ")}
+                  {[m.option1_value, m.option2_value]
+                    .filter(Boolean)
+                    .join(" / ")}
                   <span className="text-slate-400"> · {m.title}</span>
                   {m.id === currentProductId && (
-                    <span className="ml-1.5 text-xs text-panel-accent">(bu ürün)</span>
+                    <span className="ml-1.5 text-xs text-panel-accent">
+                      (bu ürün)
+                    </span>
                   )}
                 </span>
                 <span className="shrink-0 text-xs text-slate-400">
@@ -1054,7 +1293,9 @@ function DeriveVariantForm({
       <p className="text-xs text-slate-500 dark:text-slate-400">
         Künye, fiyat ve görseller bu üründen kopyalanır; yeni varyant{" "}
         <b>taslak</b> olarak oluşur. Başlık önerisi:{" "}
-        {value1 ? suggestedVariantTitle(group.title, value1, value2 || null) : "—"}
+        {value1
+          ? suggestedVariantTitle(group.title, value1, value2 || null)
+          : "—"}
       </p>
       <div className="grid gap-2 sm:grid-cols-3">
         <Form.Item>
@@ -1119,7 +1360,7 @@ function DeriveVariantForm({
                 },
                 onError: (err: unknown) =>
                   toast.error(getErrorDetail(err, "Varyant türetilemedi")),
-              }
+              },
             )
           }
         >

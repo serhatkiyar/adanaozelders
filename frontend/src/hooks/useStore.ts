@@ -27,10 +27,11 @@ export function useBookFacets(categoryId?: number) {
   });
 }
 
-export function useProducts(params: ProductSearchParams) {
+export function useProducts(params: ProductSearchParams, enabled = true) {
   return useQuery({
     queryKey: ["store", "products", params],
     queryFn: () => storeApi.searchProducts(params),
+    enabled,
   });
 }
 
@@ -260,11 +261,12 @@ export function useStoreConfig() {
  *  `placeholderData`: sayfa/filtre değişiminde önceki sayfa ekranda kalır,
  *  tablo boşalıp zıplamaz.
  */
-export function useAdminProducts(query: storeApi.AdminProductQuery = {}) {
+export function useAdminProducts(query: storeApi.AdminProductQuery = {}, enabled = true) {
   return useQuery({
     queryKey: ["store", "admin", "products", query],
     queryFn: () => storeApi.listProductsAdmin(query),
     placeholderData: (previous) => previous,
+    enabled,
   });
 }
 
