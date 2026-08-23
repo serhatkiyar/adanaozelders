@@ -1307,9 +1307,87 @@ belgelerde geçiyor ve kaydırmak onları sessizce yanlış kayda bağlardı.
      onay dalındaki `kapat()` HİÇ çağrılmıyordu. Testler görmüyordu çünkü RTL
      `render()`i StrictMode'suz kullanıyorlardı. Nöbetçi:
      `ui2/cikPencereyiKapatir.test.tsx` (dört kapatma yolu × StrictMode) +
-     aynı turun gerçek panel ekranı ayağı. -->
+     aynı turun gerçek panel ekranı ayağı.
 
-## TB-74 · Tam suite `--sequence.shuffle` altında KARARSIZ (zaman aşımı sınıfı)
+     ⚠️ **TB-71 GERİ AÇILDI (23 Ağu 2026)** — aşağıdaki kayda bakın. Bu not
+     tarihsel olarak durur: yapılan iş doğruydu, ama semptomu bitirmedi. -->
+
+## TB-71 · `/kvkk`'da kaydırma kilidi asılı kalıyor — dev'de CANLI, üretimde temiz · **GERİ AÇILDI**
+
+> ⚠️ **GERİ AÇILDI (23 Ağu 2026).** Kayıt İP-A9 turunda kapatılıp dosyanın
+> kuralı gereği silinmişti (yukarıdaki kapanma notu). Kapatma **erkendi**:
+> yapılan iki düzeltme de doğruydu ve yerinde duruyor — çift `AuthModal`
+> montajı kaldırıldı, kilit `KILIT_YIGINI` sayacına bağlandı — ama semptom
+> bitmedi. Kapanış kanıtı `/magaza` üzerinde üretilmişti; kusur başka bir
+> sayfada yaşıyor.
+
+| | |
+|---|---|
+| **Bulundu** | İP-A9'da açıldı ve kapatıldı (21-22 Ağu 2026); 23 Ağu 2026'da yeniden ölçülünce ayakta bulundu |
+| **Nerede** | `frontend/src/hooks/useModalA11y.ts:87-103` (`KILIT_YIGINI`, `kilitOncesiOverflow`) ↔ `/kvkk` ekranı (`pages/LegalPage.tsx` üzerinden) |
+| **Semptom (ölçülen)** | **Geliştirme sunucusunda** `/kvkk` açıkken `[role="dialog"]` düğüm sayısı **2**; pencereler kapandıktan sonra `document.body.style.overflow` `hidden` kalıyor ve arka plan sayfa yenilenene dek kaydırılamıyor |
+| **ÜRETİMDE YOK** | Aynı sayfa üretim derlemesinde **temiz** ölçüldü: kapanışta `overflow` geri veriliyor. Ayrım anlamlıdır — uygulama `main.tsx`te yalnız geliştirmede `<StrictMode>` ile koşar (her efekt mount→cleanup→mount) ve dev sunucusunda HMR ikinci bir montaj üretebilir. Yani bugün bu bir **kullanıcı** kusuru değil; bir **geliştirici** kusuru ve daha önemlisi bir **ölçüm** kusuru: geliştirme ortamında yapılan her kaydırma/yerleşim ölçümü kirli bir tabandan başlıyor |
+| **Neden sessiz** | Hiçbir hata çıkmaz; kilidi ancak kaydırmayı deneyen fark eder. Kapanışta kurulan nöbetçiler (`hooks/kaydirmaKilidi.test.tsx`, `__guards__/authModalTekMontaj.test.ts`) bugün **YEŞİL** — ikisi de doğru şeyi ölçüyor, ama ölçtükleri şey artık kalan kusur değil |
+| **Şüpheli kök (DOĞRULANMADI)** | Kilit sayacı tek yazar varsayıyor; oysa `body.style.overflow`u yazan **üç ayrı yer** var ve ikisi sayaçtan habersiz — bkz. [[TB-84]]. Ayrıca kanca modül düzeyi durumunu testler arasında sıfırlamıyor ([[TB-85]]), bu yüzden nöbetçilerin yeşilliği tek başına kanıt sayılmaz |
+| **Neden ertelendi** | Doğru düzeltme önce şu soruyu cevaplamayı gerektiriyor: `/kvkk`'daki iki `dialog` KİM? StrictMode ikizi mi, HMR artığı mı, yoksa gerçekten iki ayrı montaj mı. Üçü farklı düzeltme ister; ölçmeden seçmek İP-A9'un hatasını tekrarlamak olur |
+| **Sonraki adım** | (a) Gerçek Chrome turunda `/kvkk`'daki iki `[role="dialog"]` düğümünü **kimliklendir** (ağaçtaki konum + bileşen); (b) aynı sayfayı StrictMode'lu dev ile üretim derlemesinde karşılaştır; (c) kök bulunduktan sonra nöbetçiyi `/magaza` değil **`/kvkk`** üzerinde kur — kapanışın açığı tam olarak buydu |
+| **Ders** | Kapanış kanıtı kusurun ÖLÇÜLDÜĞÜ yüzeyde üretildi, kusurun YAŞADIĞI yüzeyde değil. `CLAUDE.md` § E'nin "eski bozuk kod da aynı testi geçer miydi?" sorusunun kardeşi: **"düzeltilmiş kod bu testi başka bir sayfada da geçirir miydi?"** |
+
+## TB-73 · **TANIMSIZ KİMLİK** — kayıt hiç yazılmadı, numara yalnız atıfta kullanıldı
+
+> 🕳️ **Yer tutucu.** Bu numaraya ait bir borç kaydı **hiçbir zaman
+> yazılmamıştır.** Numara, [[TB-70]]'in "Sonraki adım" satırındaki bir atıfta
+> kullanıldı ve karşılığı açılmadı. Bu kayıt boşluğu **kapatmak için değil,
+> görünür kılmak için** vardır: numara yeniden kullanılmaz, silinmez.
+
+| | |
+|---|---|
+| **Durum** | Tanımsız — açılmamış kimlik. Kapatılacak bir borç YOK |
+| **Nasıl doğdu** | Dört konu turu (21 Ağu 2026) [[TB-70]]'i yazarken "(c) Boş üst kategorileri vitrinden ele (bkz. TB-73 ile aynı sınıf)" dedi; atıf yapılan kayıt hiç açılmadı |
+| **Ne zaman fark edildi** | İP-A9 kapısı (21-22 Ağu 2026) — tur bunu gördü, yeni kaydına 74'ü verdi ([[TB-74]] · **Not** satırı), ama atfı düzeltmedi. İP-B2 dalı aynı kusuru bağımsız olarak ikinci kez ölçtü (bu dosyadaki İP-B2 tahsis yorumu, madde (a)) |
+| **Atıflar (ölçüldü)** | `git grep -n 'TB-73'` → beş yer, **hiçbiri kodda değil**. Bu dosyada üç: (1) İP-B2 tahsis yorumu — "TB-73 bir HAYALET kimliktir"; (2) [[TB-70]] · **Sonraki adım** — "(c) … bkz. TB-73 ile aynı sınıf"; (3) [[TB-74]] · **Not** — "tanımı olmayan bir TB-73e atıf yapıyor". Paket raporlarında iki: `docs/ip-a9-rapor.md:235` ve `docs/ip-b2-rapor.md:623-624` (ikisi de kusuru RAPOR EDİYOR, kayda atıf yapmıyor — düzeltilmeleri gerekmez) |
+| **Numara neden yakıldı** | Yeniden kullanmak defteri geriye dönük yanıltır: yukarıdaki üç atıf, bugün "TB-73" yazan bambaşka bir kaydı işaret ediyormuş gibi okunur. Numaranın maliyeti sıfır; yanlış okumanın maliyeti değil |
+| **[[TB-70]] atfı ne demek istiyordu** | Görünen o ki "boş üst kategorilerin vitrinde kuşak açması" ayrı bir kayıt olacaktı ama açılmadı. O iş bugün **[[TB-70]] · Sonraki adım (c)** içinde yaşıyor ve ayrı kayda ihtiyacı yok. Yani eksik olan iş değil, **kimlik** |
+
+## TB-74 · ~~Tam suite `--sequence.shuffle` altında KARARSIZ (zaman aşımı sınıfı)~~ **KAPANDI**
+
+> ✅ **KAPANDI (23 Ağu 2026) — kök neden kayıtta yazılandan BAŞKA çıktı.**
+> Kayıt kararsızlığı **bütçe eskimesine** bağlıyordu (9.000 ms, İP-12'de
+> ölçülen tepeye göre kalibreydi; suite büyüdü, marj 3,04 kattan 1,39 kata
+> düştü). Ölçüm bunu **çürüttü**: kök neden **CPU aşırı-aboneliği**. Vitest'in
+> varsayılan işçi sayısı bu makinede çekirdek sayısını aşıyor; testler
+> birbirinin CPU'sunu bekliyor ve bekleyiş zaman aşımı olarak görünüyor.
+>
+> Ölçüm (aynı ağaç, boşta makine):
+>
+> | Koşum | Sonuç | Tepe (en yavaş test) |
+> |---|---|---|
+> | Varsayılan işçi sayısı | **1757 / 1761** (4 düşük) | **17.465 ms** |
+> | `--maxForks=4` | **1761 / 1761** (temiz) | **2.500 ms** |
+>
+> Tepe süre **~7 kat** düşüyor ve düşükler tamamen kayboluyor. Bütçe eskimiş
+> olsaydı `--maxForks=4` altında da en az bir test 9.000 ms'yi zorlardı;
+> zorlamıyor — 2.500 ms, bütçenin **3,6 kat** altında, yani İP-12'nin
+> orijinal marjından (3,04) daha geniş. **Bütçe BÜYÜTÜLMEDİ** ve
+> büyütülmesine gerek yok.
+>
+> **İKİ AYRI BÜTÇE VAR — kayıt bunu görmüyordu.** Düşüşlerin bir kısmı
+> Vitest'in `testTimeout: 9000`'inden değil, **RTL'in 1.000 ms
+> `asyncUtilTimeout`undan** geliyor (`waitFor` / `findBy*` o bütçeye tabidir).
+> Aynı yük altında 1.000 ms'lik pencere, 9.000 ms'lik pencereden **dokuz kat**
+> önce dolar — yani CPU çekişmesinin ilk göründüğü yer orasıdır. "Zaman aşımı"
+> diye tek küme sayılan düşükler aslında **iki farklı sayaçtan** çıkıyordu; bu
+> yüzden yalnız `vitest.config.ts`teki sayıya bakmak yanıltıcıydı.
+>
+> ⚠️ **Kapanışın açık ucu:** `--maxForks=4` bir oturumda Tinypool'dan
+> `RangeError: options.minThreads and options.maxThreads must not conflict`
+> aldı ve kaynağı **bulunamadı** (ne `vitest.config.ts`te ne CI workflow'unda
+> havuz ayarı var). Bu yüzden bayrak **kalıcı yapılandırmaya yazılmadı** —
+> bkz. [[TB-89]].
+>
+> **Kardeş kayıt:** [[TB-78]] (İP-B1 dalı) aynı kusur sınıfını bağımsız ölçtü
+> ve merge turunda bu kayıtla birleştirilmesi kararlaştırılmıştı. Yukarıdaki
+> ölçüm ikisini birden açıklıyor.
 
 | | |
 |---|---|
@@ -1363,3 +1441,83 @@ belgelerde geçiyor ve kaydırmak onları sessizce yanlış kayda bağlardı.
 | **Neden tam çözülmedi** | Doğru söz **Yıldırım'ın hazırlık/teslim süresini** gerektiriyor ve o süre BİLİNMİYOR (rapor §4, açık konu 1: "depoya gidildiğinde sorulacak"). Üstelik 1.000 TL minimum sipariş kuralı tekil siparişi imkânsız kılıyor: gerçek süre "kaç günde bir depoya gidiliyor"a bağlı, yani bir OPERASYON kararı |
 | **Sonraki adım** | (a) Yıldırım'ın hazırlık süresi ve bizim depoya gidiş ritmimiz netleşsin; (b) `Supplier.lead_time_days` (+ opsiyonel ürün bazlı ezme) alanı; (c) `delivery_promise` karşılanma kaynağını girdi olarak alsın ve tedarikçi kaleminde `söz = cutoff günü + lead_time` versin; (d) sepette karışık kalem varsa (raftan + tedarikçiden) söz EN GEÇ kaleme göre kurulsun — parçalı teslimat yoksa. Nöbetçi: tedarikçi kaleminde aynı gün sözünün ÜRETİLMEDİĞİNİ doğrulayan bir test |
 | **Not** | Kusuru statik analiz değil, GERÇEK TARAYICI TURU buldu; RTL testleri rozeti hiç render etmiyordu. Kök `CLAUDE.md` § F'nin ("gerçek tarayıcı gereken yerde mock yetmez") somut karşılığı |
+
+## TB-84 · `body.style.overflow`u yazan İKİ KOORDİNASYONSUZ yer daha var — kilit sayacı tek yazar sanıyor
+
+| | |
+|---|---|
+| **Bulundu** | [[TB-71]] yeniden açılırken (23 Ağu 2026), `body.style.overflow` yazarları taranınca |
+| **Nerede** | Sayaçlı yol: `frontend/src/hooks/useModalA11y.ts:87-103` (`KILIT_YIGINI`, `kilitOncesiOverflow`). Sayaçtan **habersiz** iki yazar: `frontend/src/components/admin/layout/AdminLayout.tsx:60-85` (mobil çekmece) · `frontend/src/components/admin/ui2/komutPenceresi.tsx:93-97` (komut penceresi) |
+| **Sorun** | İki yazar da [[TB-71]]'in kapatmak için kurulduğu **eski deseni** kullanıyor: açılışta "önceki" değeri kendi yerel değişkenine saklar, kapanışta geri yazar. İkisi de `KILIT_YIGINI`ye katılmıyor ve diğerinin durumunu bilmiyor. Sayaçlı bir pencere ile sayaçsız bir yüzey üst üste gelirse ikincinin sakladığı "önceki" değer birincinin yazdığı `hidden`dır; kapanma sırası LIFO değilse `hidden` geri yazılır ve kilit asılı kalır — **[[TB-71]]'in tarif ettiği kusurun, sayacın göremediği hâli** |
+| **Etkisi** | Kilit sayacı bir SÖZLEŞMEDİR ama yalnız ona katılanları bağlar. Bugün yönetim panelinde komut penceresi (`Ctrl K`) ve mobil çekmece bir modalla çakışabilir; kullanıcı kilitli sayfada kalır |
+| **Ölçüldü mü** | **HAYIR.** Çakışma yolu gerçek tarayıcıda denenmedi. Kayıt bir kırmızıyı değil, **kapatılmamış bir deliği** işaretliyor |
+| **Neden sessiz** | Üç yazarın üçü de tek başına doğru çalışıyor; kusur ancak ikisi üst üste gelince doğar ve hiçbir hata üretmez |
+| **Neden ertelendi** | Doğru çözüm mekanik değil: iki yüzeyi `useModalA11y`nin kilidine bağlamak onların **klavye** davranışını da yığına sokar (`MODAL_YIGINI`) ve bu bir davranış değişikliğidir (ESC hangi katmanı kapatır?). [[TB-71]]'in kökü netleşmeden bunu değiştirmek iki değişkeni birden oynatmak olur |
+| **Sonraki adım** | (a) Her iki yüzeyi `useModalA11y`ye `lockScroll: true` ile bağla ve klavye etkisini ayrıca ölç; **ya da** (b) kilidi kancadan ayırıp bağımsız bir `kaydirmaKilidi(kimlik)` API'si olarak dışa aç, üç yazar da onu çağırsın. Nöbetçi: "`body.style.overflow`a `KILIT_YIGINI` dışından yazan yok" diyen bir AST sözleşmesi — çıpası ada/satıra değil **çağrıya** bağlansın ([[TB-83]], [[TB-38]]) |
+| **Bağlantı** | [[TB-71]]'in şüpheli kökü; [[TB-85]] ile aynı turda bulundu |
+
+## TB-85 · `useModalA11y` modül düzeyi durumunu testler arasında SIFIRLAMIYOR
+
+| | |
+|---|---|
+| **Bulundu** | [[TB-71]] yeniden açılırken (23 Ağu 2026) |
+| **Nerede** | `frontend/src/hooks/useModalA11y.ts` → `MODAL_YIGINI` (satır 57), `KILIT_YIGINI` (87), `kilitOncesiOverflow` (88). Üçü de modül düzeyinde; **hiçbiri dışa açılmıyor** ve sıfırlayıcı yok |
+| **Sorun** | Modül düzeyi durum aynı Vitest işçisi içinde **testler ve dosyalar arasında yaşar**. Bir test penceresini düzgün sökmeden biterse (erken `throw`, `unmount` çağrılmaması, cleanup sırası) yığında bir `symbol` kalır ve sonraki test "üstte başka pencere var" sanan bir kancayla başlar — klavye ve kilit davranışı sessizce değişir. `kilitOncesiOverflow` daha kötüsünü yapar: bir sonraki kilit, önceki testin bıraktığı değeri "sayfanın kendi değeri" sanıp geri yazar |
+| **Etkisi** | İki yönlü: (a) **yalancı yeşil** — kilit zaten `hidden` olduğu için testin beklediği durum kaza eseri sağlanır; (b) **sıraya duyarlılık** — testler tek başına geçer, birlikte düşer. `--sequence.shuffle` altında bu sınıf dışarıdan [[TB-74]] gibi görünür ama kökü başkadır |
+| **Ölçüldü mü** | **HAYIR.** Bugün `hooks/kaydirmaKilidi.test.tsx`, `hooks/useModalA11y.test.tsx` ve `__guards__/authModalTekMontaj.test.ts` yeşil. Kayıt bir kırmızıyı değil, **kanıt gücü düşük bir yeşili** işaretliyor: [[TB-71]] tam olarak bu nöbetçiler yeşilken ayakta kaldı |
+| **Neden sessiz** | Sızıntı ancak sıra değişince ya da bir test yarım kalınca görünür; ikisi de nadirdir ve "flaky" diye elenir |
+| **Neden ertelendi** | Sıfırlayıcıyı yalnız test için dışa açmak üretim API'sini kirletir; doğru biçim (`__test__` ad alanı mı, `vi.resetModules()` mi, yoksa durumu bir bağlam nesnesine taşımak mı) [[TB-71]]'in kökü netleşmeden seçilmemeli — kök, durumun **nerede yaşaması gerektiğini** de değiştirebilir |
+| **Sonraki adım** | (a) Bir test sıfırlayıcısı dışa aç ve ortak kurulumda `afterEach`e bağla; (b) sonra **sızıntı nöbetçisi** ekle: her testten sonra `MODAL_YIGINI.length === 0 && KILIT_YIGINI.length === 0 && document.body.style.overflow === ""`, sızdıran testi ADIYLA söylesin. İP-A7d5 turunda RTL `configure()` sızıntısında tam bu desen üç gizli borcu ortaya çıkarmıştı |
+
+## TB-86 · Tek yönlü mandal (one-way latch) adayları — bir kez kalkıp hiç indirilmeyen durum bayrakları
+
+| | |
+|---|---|
+| **Bulundu** | 23 Ağu 2026; TB-72'nin (kapandı ve silindi — kapanma notu [[TB-70]]'in altındaki yorumda) kökünün **sınıf olarak** taranması |
+| **Sınıfın kaynağı** | TB-72'nin kökü tam olarak buydu: `kirliFormBekcisi`nin `sokulduRef` mandalı sökülünce **kaldırılıyor ama yeniden montajda indirilmiyordu**. React 18 `StrictMode` her efekti mount→cleanup→mount yaptığı için mandal ilk andan itibaren kalkıktı ve onay dalındaki `kapat()` HİÇ çağrılmadı. Kusur bir mantık hatası değil, bir **ömür** hatasıydı: bayrağın ömrü bileşenin ömründen uzundu |
+| **Aday (canlı)** | `frontend/src/pages/VerifyEmail.tsx:22,25-26` → `const ran = useRef(false)`; efektin başında `if (ran.current) return; ran.current = true;` ve **hiçbir yerde indirilmiyor**. Amaç doğru (StrictMode çift çağrısını engellemek), ama aynı montaj içinde farklı bir `token` ile efekte yeniden girilirse ikinci doğrulama sessizce ATLANIR |
+| **Karşı örnek (temiz)** | `frontend/src/pages/admin/inventory/CountSessionDetailPage.tsx:383,404-411` → `gonderildiRef` aynı deseni kullanıyor ama **411'de geri indiriliyor**. Doğru biçim budur; kayıt bu satırı ayırt edici örnek olarak tutuyor |
+| **Karşı örnek (temiz)** | `frontend/src/components/admin/ui2/kirliFormBekcisi.tsx:192,227-244` → `bekleyenRef` iki yoldan da indiriliyor |
+| **Sorun** | Tarama **ada göre** yapıldı (`useRef(false)`), yani KAPSAMLI DEĞİL: `useState` ile tutulan, modül düzeyinde duran ya da başka adla yazılmış mandallar bu taramaya hiç girmedi. Kayıt bir kusur listesi değil, **taranmamış bir sınıf** |
+| **Etkisi** | Sınıf bir kez canlı kusur üretti (TB-72: geliştirme ortamında sessiz veri kaybı). Aynı ömür hatası her StrictMode çift montajında, her HMR yenilemesinde ve her `key` değişiminde yeniden doğabilir |
+| **Neden ertelendi** | Düzeltme tek tek incelemedir: her mandalın "bu bayrak neyin ömrüne bağlı?" sorusuna cevabı farklı. Toplu bir dönüşüm (hepsini cleanup'ta indir) YANLIŞ olurdu — bazıları kasıtlı olarak montaj ötesi yaşamalı |
+| **Sonraki adım** | (a) Taramayı genişlet: `useRef(false)` · `useRef(true)` · modül düzeyi `let` bayrakları · `useState` mandalları; (b) her aday için "ömrü ne?" sorusunu yazılı cevapla; (c) cleanup'ta indirilmesi gerekenler için nöbetçi — **StrictMode ile** render eden bir test (TB-72'nin nöbetçisi `ui2/cikPencereyiKapatir.test.tsx` bu deseni zaten kuruyor, çoğaltılabilir) |
+
+## TB-87 · **SÜREÇ BORCU** — tedarikçi paketi `_finalize_paid` kurtarma yolunu test etmedi; regresyon ancak `git bisect` ile bulundu
+
+| | |
+|---|---|
+| **Bulundu** | 22 Ağu 2026, tedarikçi senkronu Faz 1'den sonra; düzeltme `7c0271a` |
+| **Sınıf** | **Süreç borcu — kod borcu DEĞİL.** Kod tarafı kapalı: regresyon `3be4049`te (`feat(tedarikci): vitrin + siparis entegrasyonu`) doğdu, `git bisect` ile kesinleştirildi ve `7c0271a`te düzeltildi (pay, ön kontrolde ölçülen havuzla **tavanlanır**). Mutasyon provası yapıldı, kapı yeşil. Açık kalan şey **paketin bu senaryo için test yazmamış — ve mevcut testleri koşmamış — olmasıdır** |
+| **Ne kaçtı** | `3be4049`, `_finalize_paid` içindeki pay dağıtım döngüsünü rafın açığını **sorgusuz** "tedarikçi karşılar" sayacak hâle getirdi; `tedarikci_pay` haritasına hiç bakmıyordu. Ürün tedarikçiye bağlı olmasa bile (harita boş) açık `supplier_quantity`'ye yazılıyor, `qty_delta` yalnız rafta OLAN kadar küçülüyor ve defter hareketi KABUL ediyordu |
+| **Sonucu** | **Claim sonrası yetersiz stok kurtarma yolu (`InsufficientStock` dalı) hiç çalışmıyordu.** Üç garantinin üçü birden düştü: (1) sipariş PAID kalıyordu (claim geri alınmıyordu), (2) rafta ne varsa düşülüyordu (defterde `SALE` satırı kalıyordu), (3) out-of-stock/iade akışına hiç girilmiyordu (sağlayıcı iadesi çağrılmıyordu) |
+| **Neden test yakalamadı** | Tedarikçi paketinin kendi testleri **mutlu yolu** ölçüyordu (ürün tedarikçiye bağlı, havuz yeterli). Kırılan dal ise ürünün tedarikçiye **bağlı olmadığı** ve rafın **yetmediği** birleşimdi. `tests/integration/test_stock_concurrency_pg.py` içindeki iki test bunu yakalayacak güçteydi ve **kırmızıydı** — ama paket kapanışında o dosya KOŞULMADI |
+| **Etkisi (o pencerede)** | Para yüzeyi: müşteri öder, mal yoktur, iade akışı hiç tetiklenmez. `3be4049` ile `7c0271a` arasında main'de canlıydı |
+| **Asıl borç** | Para yollarına dokunan bir paket, dokunduğu fonksiyonun **mevcut** entegrasyon testlerini koşmadan kapanabildi. `CLAUDE.md` § J-4 ("mevcut testlerin hiçbiri istemeden kırılmadı") o turda uygulanmadı; boşluğu ancak sonraki bir tur `git bisect` ile kapattı |
+| **Sonraki adım** | (a) Kapanış kapısına kural: **`services/order_service.py` diff'i varsa `tests/integration/test_stock_concurrency_pg.py` koşulur** ve sayısı rapora yazılır; (b) ayrık sözleşme testi — tedarikçi kapsaması `tedarikci_pay` haritasına **bakmadan** pay yazamaz (bugünkü kanıt yalnız iki testin kırmızıdan yeşile dönmesi; düzeltme commit'i "Test DEĞİŞTİRİLMEDİ" diyor, yani senaryonun kendi adlı testi yok); (c) [[TB-75]] Faz 2'ye geçerken bu yolun yeniden ölçülmesi |
+
+## TB-88 · `pytest -q` kök dizinden koşturulduğunda geniş kapsamda hata veriyor — kök neden ARAŞTIRILMADI
+
+| | |
+|---|---|
+| **Bulundu** | 23 Ağu 2026, elle `pytest -q` denenirken |
+| **Nerede** | `backend/pytest.ini:20` → `testpaths = tests` |
+| **Sorun** | Yol verilmeden koşulan her `pytest`, `tests/` altındaki **her şeyi** toplar — `tests/integration` ve `tests/verify` dahil. İkisi de dış altyapıya bağlıdır ve toplanır toplanmaz geniş kapsamda hata üretirler |
+| **Şüphe (DOĞRULANMADI)** | Muhtemel sebep eksik altyapı: MinIO ayakta değil ve `adana_verify` veritabanı bayat ([[TB-66]] aynı sınıfı zaten kaydediyor). **Bu bir hipotezdir** — hata çıktısı sınıflandırılmadı, kök neden aranmadı |
+| **CI etkilenmiyor** | CI kendi unit adımını açıkça daraltıyor: `pytest -q --ignore=tests/integration --ignore=tests/verify` (`.github/workflows/ci.yml:158`); entegrasyon ve doğrulama ayrı adımlarda servisleriyle koşuyor ve `ci.yml:147` bunu yorumda da anlatıyor. Yani CI'ın unit adımı **yeşil**; bu kayıt CI'ı değil **yerel geliştirici deneyimini** işaretliyor |
+| **Etkisi** | Yeni bir oturum ya da geliştirici kök dizinden `pytest -q` yazınca yığınla hata görüyor ve bunun **yapılandırma** mı yoksa **gerçek regresyon** mu olduğunu ayırt edemiyor. En kötü hâli: gerçek bir kırmızı bu gürültünün içinde kaybolur |
+| **Neden ertelendi** | Kök neden araştırılmadı; araştırmadan `testpaths`i daraltmak CI'ın bugünkü davranışını da etkileyebilir ve bu turun kapsamı değil |
+| **Sonraki adım** | (a) Hatayı sınıflandır — toplama hatası mı, fixture mı, bağlantı mı; (b) hipotezi doğrula (MinIO açık/kapalı, `adana_verify` güncel/bayat farkı); (c) sonuca göre ya `pytest.ini`e varsayılan `addopts = --ignore=tests/integration --ignore=tests/verify` ekle (CI zaten elle bunu yazıyor), ya da eksik altyapıda **anlaşılır tek bir skip mesajı** ver — bugünkü hata yığını değil |
+
+## TB-89 · `--maxForks=4` bir oturumda Tinypool `RangeError` verdi — kaynağı BULUNAMADI
+
+| | |
+|---|---|
+| **Bulundu** | 23 Ağu 2026, [[TB-74]] kapatılırken. Kapanış ölçümünün kendisi sorunsuz koştu; hata **başka bir oturumda** çıktı ve tekrar üretilemedi |
+| **Hata** | Tinypool → `RangeError: options.minThreads and options.maxThreads must not conflict` |
+| **Arandı, bulunamadı** | `frontend/vitest.config.ts`te havuz ayarı **yok** (`pool`, `poolOptions`, `minThreads`, `maxThreads`, `maxForks`, `maxWorkers` — hiçbiri geçmiyor). `.github/workflows/ci.yml`de de yok. Yani çakışan `minThreads` değerini yazan yer bu iki dosyada değil |
+| **Sorun** | `--maxForks=4` [[TB-74]]'ün kapanış kanıtıdır ve düzeltmenin **kalıcı hâli** olmaya adaydır (varsayılan işçi: 1757/1761, tepe 17.465 ms → `--maxForks=4`: 1761/1761, tepe 2.500 ms). Ama bayrağı yapılandırmaya yazamıyoruz: aynı bayrak bir kez açıklanamayan bir `RangeError` üretti |
+| **Şüpheliler (DOĞRULANMADI)** | (a) `forks` havuzunda `--maxForks` ile `minThreads`/`maxThreads` varsayılanlarının karışması; (b) Vitest sürümüne özgü bir bayrak eşleme kusuru; (c) o oturumda devrede olan başka bir CLI bayrağıyla (ör. `--sequence.shuffle`) birleşim. Hiçbiri denenmedi |
+| **Etkisi** | [[TB-74]] kapandı ama **kalıcı yapılandırma yazılmadı**: kararsızlığın çaresini bugün yalnız bayrağı elle veren biliyor. Bayrak kalıcılaşana kadar karışık sıralı kapı gürültülü koşmaya devam eder |
+| **Neden ertelendi** | Yeniden üretilemeyen bir hatayı kovalamak zaman kutusu ister; ölçüm turu bunu kapsamında tutmadı |
+| **Sonraki adım** | (a) `--maxForks=4`ü arka arkaya koşup hatayı yeniden üretmeye çalış; (b) üretilemezse CLI bayrağı yerine **config'e** yaz (`poolOptions.forks.maxForks: 4`) ve orada koş; (c) yine çıkarsa Vitest/Tinypool sürümlerini not al ve yukarı akışa bak. Kalıcı hâle gelince [[TB-74]]'ün kapanış notuna işlensin |
