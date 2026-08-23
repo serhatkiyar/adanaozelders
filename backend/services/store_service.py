@@ -470,6 +470,7 @@ async def list_categories(db: AsyncSession) -> list[ProductCategoryOut]:
             parent_id=c.parent_id,
             icon_url=c.icon_url,
             sort_order=c.sort_order,
+            is_active=c.is_active,
             product_count=int(counts.get(c.id, 0)),
             default_tax_rate=(
                 Decimal(str(c.default_tax_rate))
@@ -485,6 +486,7 @@ async def list_categories(db: AsyncSession) -> list[ProductCategoryOut]:
 async def create_category(
     db: AsyncSession, payload: ProductCategoryCreate
 ) -> ProductCategoryOut:
+    await _validate_category_parent(db, category_id=None, parent_id=payload.parent_id)
     slug = await _unique_category_slug(db, _slugify(payload.name))
     cat = ProductCategory(
         slug=slug,
@@ -492,12 +494,13 @@ async def create_category(
         parent_id=payload.parent_id,
         icon_url=payload.icon_url,
         sort_order=payload.sort_order,
+        is_active=payload.is_active,
         # Değer admin girdisidir; kodda hiçbir varsayılan ORAN yoktur (mali
         # müşavir onayı bekleniyor) — gönderilmezse NULL kalır.
         default_tax_rate=payload.default_tax_rate,
     )
     db.add(cat)
-    await db.commit()
+    await db.flush()
     await db.refresh(cat)
     return ProductCategoryOut.model_validate(cat)
 
@@ -509,6 +512,26 @@ async def update_category(
     if cat is None or cat.deleted_at is not None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Kategori bulunamadı")
     data = payload.model_dump(exclude_unset=True)
+    if data.get("is_active") is False and cat.is_active:
+        active_child = (await db.execute(select(ProductCategory.id).where(
+            ProductCategory.parent_id == category_id,
+            ProductCategory.deleted_at.is_(None),
+            ProductCategory.is_active.is_(True),
+        ).limit(1))).scalar_one_or_none()
+        active_product = (await db.execute(select(Product.id).where(
+            Product.category_id == category_id,
+            Product.deleted_at.is_(None),
+            Product.status == ProductStatus.ACTIVE.value,
+        ).limit(1))).scalar_one_or_none()
+        if active_child is not None or active_product is not None:
+            raise HTTPException(
+                status.HTTP_409_CONFLICT,
+                "Aktif alt kategori veya ürün içeren kategori pasife alınamaz.",
+            )
+    if "parent_id" in data:
+        await _validate_category_parent(
+            db, category_id=category_id, parent_id=data["parent_id"]
+        )
     if "name" in data and data["name"]:
         # Kitap kökü nöbetçisi: `variant_service.BOOK_ROOT_SLUGS` bu slug'lara
         # bağlıdır. Ad (→ slug) değişirse "kitapta varyant kapalı" kuralı
@@ -526,10 +549,10 @@ async def update_category(
         )
     # `default_tax_rate: null` göndermek varsayılanı TEMİZLER (exclude_unset:
     # alan hiç gönderilmediyse dokunulmaz).
-    for field in ("parent_id", "icon_url", "sort_order", "default_tax_rate"):
+    for field in ("parent_id", "icon_url", "sort_order", "default_tax_rate", "is_active"):
         if field in data:
             setattr(cat, field, data[field])
-    await db.commit()
+    await db.flush()
     await db.refresh(cat)
     return ProductCategoryOut.model_validate(cat)
 
@@ -546,8 +569,83 @@ async def delete_category(db: AsyncSession, category_id: int) -> None:
             "kural sözlüğü bu slug'a bağlı. Gerekliyse önce koddaki "
             "BOOK_ROOT_SLUGS güncellenmeli.",
         )
+    child = (await db.execute(select(ProductCategory.id).where(
+        ProductCategory.parent_id == category_id,
+        ProductCategory.deleted_at.is_(None),
+    ).limit(1))).scalar_one_or_none()
+    if child is not None:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Alt kategorileri bulunan kategori silinemez; önce alt kategorileri taşıyın.",
+        )
+    product = (await db.execute(select(Product.id).where(
+        Product.category_id == category_id,
+        Product.deleted_at.is_(None),
+    ).limit(1))).scalar_one_or_none()
+    if product is not None:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Ürün bağlı kategori silinemez; önce ürünleri başka kategoriye taşıyın.",
+        )
     cat.deleted_at = _now()
-    await db.commit()
+    await db.flush()
+
+
+async def _validate_category_parent(
+    db: AsyncSession, *, category_id: int | None, parent_id: int | None
+) -> None:
+    """Kategori ağacını döngüsüz ve en fazla dört seviyeli tutar."""
+    categories = list((await db.execute(select(ProductCategory).where(
+        ProductCategory.deleted_at.is_(None)
+    ))).scalars().all())
+    by_id = {category.id: category for category in categories}
+    if parent_id is not None:
+        parent = by_id.get(parent_id)
+        if parent is None or not parent.is_active:
+            raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Üst kategori bulunamadı veya pasif.")
+    if category_id is not None and parent_id == category_id:
+        raise HTTPException(status.HTTP_409_CONFLICT, "Kategori kendisinin üst kategorisi olamaz.")
+
+    parents = {category.id: category.parent_id for category in categories}
+    if category_id is not None:
+        parents[category_id] = parent_id
+    synthetic_id = category_id if category_id is not None else -1
+    if category_id is None:
+        parents[synthetic_id] = parent_id
+
+    def depth(node_id: int, trail: set[int] | None = None) -> int:
+        trail = set() if trail is None else trail
+        if node_id in trail:
+            raise HTTPException(status.HTTP_409_CONFLICT, "Kategori ağacında döngü oluşamaz.")
+        trail.add(node_id)
+        parent = parents.get(node_id)
+        return 1 if parent is None else 1 + depth(parent, trail)
+
+    for node_id in parents:
+        if depth(node_id) > 4:
+            raise HTTPException(status.HTTP_409_CONFLICT, "Kategori ağacı en fazla dört seviye olabilir.")
+
+
+async def _validate_product_category(
+    db: AsyncSession, *, category_id: int | None, target_status: str
+) -> None:
+    if target_status == ProductStatus.ACTIVE.value and category_id is None:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Aktif ürün için kategori zorunludur.")
+    if category_id is None:
+        return
+    category = await db.get(ProductCategory, category_id)
+    if category is None or category.deleted_at is not None or not category.is_active:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Kategori bulunamadı veya pasif.")
+    child = (await db.execute(select(ProductCategory.id).where(
+        ProductCategory.parent_id == category_id,
+        ProductCategory.deleted_at.is_(None),
+        ProductCategory.is_active.is_(True),
+    ).limit(1))).scalar_one_or_none()
+    if child is not None:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            "Ürün yalnız alt kategorisi olmayan bir yaprak kategoriye atanabilir.",
+        )
 
 
 # ── Public arama / detay ─────────────────────────────────────────────────────────
@@ -1002,6 +1100,9 @@ _BOOK_SPEC_FIELDS = (
 async def create_product(
     db: AsyncSession, admin: Admin, payload: ProductCreate
 ) -> ProductDetailOut:
+    await _validate_product_category(
+        db, category_id=payload.category_id, target_status=payload.status
+    )
     # Dijital ürün kapısı EN BAŞTA: bayrak kapalıyken oluşturulan dijital ürün
     # satılamaz ve `kind` trigger'ı yüzünden düzeltilemez (bkz. payment_gates).
     await payment_gates.assert_digital_product_creatable(db, payload.kind)
@@ -1077,7 +1178,7 @@ async def create_product(
             actor_type="ADMIN",
             actor_id=admin.id,
         )
-    await db.commit()
+    await db.flush()
     full = await _load_full(db, p.id)
     return await _to_detail(db, full)
 
@@ -1184,7 +1285,7 @@ async def derive_variant(
             actor_type="ADMIN",
             actor_id=admin.id,
         )
-    await db.commit()
+    await db.flush()
     full = await _load_full(db, p.id)
     return await _to_detail(db, full)
 
@@ -1284,6 +1385,12 @@ async def bulk_import_products(db: AsyncSession, admin: Admin, rows: list[dict])
             category_id = cat_by_slug.get(cat_slug) if cat_slug else None
             if cat_slug and category_id is None:
                 raise ValueError(f"kategori bulunamadı: {cat_slug}")
+            try:
+                await _validate_product_category(
+                    db, category_id=category_id, target_status=status_v
+                )
+            except HTTPException as exc:
+                raise ValueError(str(exc.detail)) from exc
 
             # Ürün + `INITIAL` hareketi AYNI savepoint'te: hareket yazılamazsa
             # o satırın ürünü de oluşmaz, diğer satırlar etkilenmez.
@@ -1339,7 +1446,7 @@ async def bulk_import_products(db: AsyncSession, admin: Admin, rows: list[dict])
         except Exception as exc:  # noqa: BLE001 — satır hatası raporlanır, akış sürer
             errors.append({"row": i, "message": str(exc)})
 
-    await db.commit()
+    await db.flush()
     return {"created": created, "skipped": skipped, "errors": errors}
 
 
@@ -1390,7 +1497,7 @@ async def notify_back_in_stock(db: AsyncSession, product: Product) -> None:
             to=s.email, product_title=product.title, product_url=url
         )
         s.notified_at = now
-    await db.commit()
+    await db.flush()
 
 
 async def update_product(
@@ -1410,6 +1517,11 @@ async def update_product(
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Bu ürün sizin değil")
 
     data = payload.model_dump(exclude_unset=True)
+    await _validate_product_category(
+        db,
+        category_id=data.get("category_id", p.category_id),
+        target_status=data.get("status", p.status),
+    )
 
     # ── Stok değişikliği: kilit altında, delta tabanlı ──
     #
@@ -1580,7 +1692,7 @@ async def update_product(
             )
         )
 
-    await db.commit()
+    await db.flush()
     # Stok 0→>0 olduysa bekleyen stok-bildirim abonelerine haber ver.
     if (old_stock is None or old_stock <= 0) and (p.stock or 0) > 0:
         await notify_back_in_stock(db, p)

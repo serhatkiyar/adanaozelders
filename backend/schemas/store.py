@@ -23,6 +23,7 @@ class ProductCategoryOut(BaseModel):
     parent_id: int | None = None
     icon_url: str | None = None
     sort_order: int = 0
+    is_active: bool = True
     product_count: int | None = None
     #: Kategorinin KENDİ varsayılan KDV oranı (NULL = yok). Değerler mali
     #: müşavir onayı bekliyor — kod hiçbir oran YAZMAZ, admin girer.
@@ -38,6 +39,7 @@ class ProductCategoryCreate(BaseModel):
     parent_id: int | None = None
     icon_url: str | None = Field(default=None, max_length=500)
     sort_order: int = 0
+    is_active: bool = True
     #: Sınırlar ürün oranıyla aynı sözleşme (aşağıda `_TAX_RATE_FIELD_ARGS` —
     #: burada henüz tanımlı olmadığından değerler tekrarlanır; birim ORAN).
     default_tax_rate: Decimal | None = Field(
@@ -50,6 +52,7 @@ class ProductCategoryUpdate(BaseModel):
     parent_id: int | None = None
     icon_url: str | None = Field(default=None, max_length=500)
     sort_order: int | None = None
+    is_active: bool | None = None
     #: `None` göndermek varsayılanı TEMİZLER (exclude_unset ayrımı serviste).
     default_tax_rate: Decimal | None = Field(
         default=None, ge=0, lt=1, max_digits=5, decimal_places=4
@@ -267,6 +270,8 @@ class ProductCreate(_BookSpecFields, _VariantMemberFields):
     def _check(self):
         if self.compare_at_price is not None and self.compare_at_price <= self.price:
             raise ValueError("compare_at_price fiyattan büyük olmalı")
+        if self.status == "ACTIVE" and self.category_id is None:
+            raise ValueError("Aktif ürün için kategori zorunludur.")
         return self
 
 
@@ -487,6 +492,7 @@ class OrderCreate(BaseModel):
     # Fiziksel kalem varsa zorunlu (sunucuda doğrulanır).
     address_id: int | None = None
     coupon_code: str | None = Field(default=None, max_length=40)
+    attribution_token: str | None = Field(default=None, max_length=1200)
 
 
 class OrderItemOut(BaseModel):

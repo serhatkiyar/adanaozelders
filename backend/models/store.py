@@ -176,11 +176,14 @@ class ProductCategory(Base, TimestampMixin, SoftDeleteMixin):
     slug: Mapped[str] = mapped_column(String(140), nullable=False)
     name: Mapped[str] = mapped_column(String(120), nullable=False)
     parent_id: Mapped[int | None] = mapped_column(
-        ForeignKey("product_categories.id", ondelete="SET NULL"), nullable=True
+        ForeignKey("product_categories.id", ondelete="RESTRICT"), nullable=True
     )
     icon_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     sort_order: Mapped[int] = mapped_column(
         Integer, nullable=False, server_default=text("0")
+    )
+    is_active: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("true")
     )
     # Kategorinin VARSAYILAN KDV oranı (0 ≤ oran < 1) — admin ürün formunun
     # ön-doldurma kaynağı. NULL = varsayılan yok (bugünkü davranış birebir).
@@ -378,7 +381,7 @@ class Product(Base, TimestampMixin, SoftDeleteMixin):
     cover_type: Mapped[str | None] = mapped_column(String(40), nullable=True)
 
     category_id: Mapped[int | None] = mapped_column(
-        ForeignKey("product_categories.id", ondelete="SET NULL"), nullable=True
+        ForeignKey("product_categories.id", ondelete="RESTRICT"), nullable=True
     )
 
     # ── Varyant üyeliği (Faz 1) ──
@@ -516,6 +519,10 @@ class Product(Base, TimestampMixin, SoftDeleteMixin):
         CheckConstraint(
             "compare_at_price IS NULL OR compare_at_price > price",
             name="ck_products_compare_price",
+        ),
+        CheckConstraint(
+            "status <> 'ACTIVE' OR category_id IS NOT NULL",
+            name="ck_products_active_category",
         ),
         # Hasarlı kova, satılabilir kovanın takip semantiğine bağlıdır: stok
         # takip edilmiyorsa (dijital) hasarlı da izlenmez. "Takip edilmiyor" ile
@@ -789,6 +796,18 @@ class Order(Base, TimestampMixin, SoftDeleteMixin):
     track_token: Mapped[str] = mapped_column(
         String(32), nullable=False, unique=True, index=True,
         default=lambda: uuid.uuid4().hex,
+    )
+
+    # Mağaza vitrini son-tıklama katkısı. İstemciden kimlikler değil, sunucu
+    # imzalı ve süreli token gelir; servis doğruladıktan sonra snapshot'lanır.
+    source_page_revision_id: Mapped[int | None] = mapped_column(
+        ForeignKey("store_landing_page_revisions.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    source_block_key: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    source_product_id: Mapped[int | None] = mapped_column(
+        ForeignKey("products.id", ondelete="SET NULL"), nullable=True
     )
 
     client: Mapped["Client"] = relationship()

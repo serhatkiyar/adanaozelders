@@ -41,6 +41,55 @@
 	# TRUSTED_PROXY_IPS içindeki bir bağlantıdan gelirse kabul eder.
 	# Compose ağında Caddy'nin IP'si sabit olmadığından üretim .env'inde
 	# TRUSTED_PROXY_IPS=["172.16.0.0/12"] (Docker varsayılan aralığı) verin.
+	# Hero create iki ayrı 12 MB görsel alabilir; multipart payı için 26 MB.
+	@store_hero_create {
+		path /api/v1/admin/store-hero-slides
+		method POST
+	}
+	handle @store_hero_create {
+		request_body {
+			max_size 26MB
+		}
+		reverse_proxy backend:8000
+	}
+
+	# Tek görsel değiştirme ucu: 12 MB dosya + multipart payı.
+	@store_hero_replace {
+		path_regexp storeHeroReplace ^/api/v1/admin/store-hero-slides/[0-9]+/image$
+		method POST
+	}
+	handle @store_hero_replace {
+		request_body {
+			max_size 13MB
+		}
+		reverse_proxy backend:8000
+	}
+
+	# Yeni vitrin medya kütüphanesi tek 12 MB dosya kabul eder.
+	@store_merchandising_media {
+		path /api/v1/admin/store-merchandising/media
+		method POST
+	}
+	handle @store_merchandising_media {
+		request_body {
+			max_size 13MB
+		}
+		reverse_proxy backend:8000
+	}
+
+	# Eski ana-akış ve özel kart düzenleyicileri en fazla dört görsel taşır;
+	# multipart alan payıyla gövdeyi proxy katmanında 50 MB'ta kes.
+	@store_multi_image_uploads {
+		path /api/v1/admin/store-home-sections/images /api/v1/admin/store-home-sections/*/images /api/v1/admin/store-showcase-cards/custom /api/v1/admin/store-showcase-cards/*/custom
+		method POST PUT
+	}
+	handle @store_multi_image_uploads {
+		request_body {
+			max_size 50MB
+		}
+		reverse_proxy backend:8000
+	}
+
 	handle /api/* {
 		reverse_proxy backend:8000
 	}

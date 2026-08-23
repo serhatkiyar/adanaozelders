@@ -16,6 +16,10 @@ from core.config import settings
 
 logger = logging.getLogger(__name__)
 
+# Büyük banner decode/encode işleri aynı anda sınırsız thread açmasın. Bu sınır
+# yalnız mağaza vitrinine özeldir; avatar/ürün yüklemelerini birbirine kilitlemez.
+_STORE_HERO_PROCESS_LIMIT = asyncio.Semaphore(2)
+
 # ── Erişim sınıfları ────────────────────────────────────────────────────────────
 #
 # Bucket TEK, ama iki erişim sınıfı vardır ve ayrım ANAHTAR ÖNEKİYLE yapılır:
@@ -31,7 +35,12 @@ logger = logging.getLogger(__name__)
 # `Principal: *` ile yazıldığında imzalı (kimlikli) isteği de kapsayabilir ve
 # presigned URL'i sessizce kırar. Allow'u daraltmak aynı sonucu, sürpriz
 # etkileşim olmadan verir.
-PUBLIC_PREFIXES: tuple[str, ...] = ("avatars/", "library-photos/")
+PUBLIC_PREFIXES: tuple[str, ...] = (
+    "avatars/",
+    "library-photos/",
+    "store-hero/",
+    "store-showcase/",
+)
 PRIVATE_PREFIX = "private/"
 
 
@@ -50,8 +59,7 @@ def _s3_client(*, public_endpoint: bool = False):
     """
     return aioboto3.Session().client(
         "s3",
-        endpoint_url=(_public_endpoint() if public_endpoint else settings.AWS_ENDPOINT_URL)
-        or None,
+        endpoint_url=(_public_endpoint() if public_endpoint else settings.AWS_ENDPOINT_URL) or None,
         aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
         aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
         region_name=settings.AWS_REGION_NAME,
@@ -89,9 +97,7 @@ def public_read_policy(bucket: str) -> str:
                     "Effect": "Allow",
                     "Principal": {"AWS": ["*"]},
                     "Action": ["s3:GetObject"],
-                    "Resource": [
-                        f"arn:aws:s3:::{bucket}/{p}*" for p in PUBLIC_PREFIXES
-                    ],
+                    "Resource": [f"arn:aws:s3:::{bucket}/{p}*" for p in PUBLIC_PREFIXES],
                 },
             ],
         }
@@ -118,14 +124,13 @@ async def ensure_bucket() -> None:
                 Bucket=settings.AWS_BUCKET_NAME,
                 Policy=public_read_policy(settings.AWS_BUCKET_NAME),
             )
-            logger.info(
-                "MinIO bucket hazır: %s (anonim okuma açık)", settings.AWS_BUCKET_NAME
-            )
+            logger.info("MinIO bucket hazır: %s (anonim okuma açık)", settings.AWS_BUCKET_NAME)
     except Exception:
         logger.warning(
             "MinIO bucket/policy garantilenemedi (storage kapalı olabilir)",
             exc_info=True,
         )
+
 
 # ── Anahtar / URL dönüşümleri ───────────────────────────────────────────────────
 
@@ -139,10 +144,7 @@ def object_url(key: str) -> str:
     endpoint = _public_endpoint()
     if endpoint:
         return f"{endpoint.rstrip('/')}/{settings.AWS_BUCKET_NAME}/{key}"
-    return (
-        f"https://{settings.AWS_BUCKET_NAME}.s3."
-        f"{settings.AWS_REGION_NAME}.amazonaws.com/{key}"
-    )
+    return f"https://{settings.AWS_BUCKET_NAME}.s3.{settings.AWS_REGION_NAME}.amazonaws.com/{key}"
 
 
 def key_from_url(url: str | None) -> str | None:
@@ -210,9 +212,7 @@ _presign_cache: dict[tuple[str, int], tuple[str, float]] = {}
 _PRESIGN_CACHE_MAX = 4096
 
 
-def presign_many(
-    urls: Sequence[str | None], *, ttl: int | None = None
-) -> list[str | None]:
+def presign_many(urls: Sequence[str | None], *, ttl: int | None = None) -> list[str | None]:
     """:func:`presign`'in toplu hâli (liste yanıtları için)."""
     seconds = ttl or settings.S3_PRESIGN_TTL_SECONDS
     now = time.monotonic()
@@ -251,9 +251,21 @@ def presign_many(
 # URL ile okunur.
 ALLOWED_RESOURCE_EXTS: frozenset[str] = frozenset(
     {
-        ".pdf", ".png", ".jpg", ".jpeg", ".webp", ".gif",
-        ".doc", ".docx", ".ppt", ".pptx", ".xls", ".xlsx",
-        ".txt", ".csv", ".zip",
+        ".pdf",
+        ".png",
+        ".jpg",
+        ".jpeg",
+        ".webp",
+        ".gif",
+        ".doc",
+        ".docx",
+        ".ppt",
+        ".pptx",
+        ".xls",
+        ".xlsx",
+        ".txt",
+        ".csv",
+        ".zip",
     }
 )
 
@@ -314,10 +326,10 @@ def optimize_image(file_bytes: bytes, size: tuple[int, int] = (256, 256)) -> byt
     right = (img.size[0] + min_dim) / 2
     bottom = (img.size[1] + min_dim) / 2
     img = img.crop((left, top, right, bottom))
-    
+
     # Resize
     img = img.resize(size, Image.Resampling.LANCZOS)
-    
+
     # Convert to WebP bytes
     out_io = io.BytesIO()
     if img.mode != "RGB":
@@ -340,9 +352,7 @@ def optimize_photo(file_bytes: bytes, max_dim: int = 1600, quality: int = 82) ->
     return out_io.getvalue()
 
 
-def pad_to_square(
-    file_bytes: bytes, size: int | None = None, quality: int = 82
-) -> bytes:
+def pad_to_square(file_bytes: bytes, size: int | None = None, quality: int = 82) -> bytes:
     """Ürün görselini BEYAZ zeminli KARE tuvale oturtur (kırpma DEĞİL, pad).
 
     Neden ayrı bir fonksiyon: mağaza kataloğunda kitap kapağı dikey, kırtasiye
@@ -447,6 +457,47 @@ async def upload_product_photo(file_bytes: bytes) -> str:
     """
     data = await _optimize_in_thread(pad_to_square, file_bytes)
     return await _put_webp(data, prefix="library-photos")
+
+
+async def upload_store_hero_photo(file_bytes: bytes) -> str:
+    """Mağaza hero görseli: oranı koru, 2400px üst sınırla WebP'ye çevir.
+
+    Masaüstü ve mobil dosyaları aynı işleme girer; kırpma içerik yöneticisinin
+    yüklediği kadraja bırakılır. Obje public ``store-hero/`` öneğinde yaşar.
+    """
+    async with _STORE_HERO_PROCESS_LIMIT:
+        data = await _optimize_in_thread(optimize_photo, file_bytes, max_dim=2400, quality=86)
+    return await _put_webp(data, prefix="store-hero")
+
+
+async def upload_store_showcase_photo(file_bytes: bytes) -> str:
+    """Yönetilebilir vitrin kartı görseli: oranı koru ve public WebP olarak sakla."""
+    async with _STORE_HERO_PROCESS_LIMIT:
+        data = await _optimize_in_thread(optimize_photo, file_bytes, max_dim=1600, quality=86)
+    return await _put_webp(data, prefix="store-showcase")
+
+
+def _validate_store_hero_photo_sync(file_bytes: bytes) -> None:
+    """Gerçek dosya türü ile açılabilir boyutu doğrula; sıkıştırma bombalarını reddet."""
+    try:
+        with Image.open(io.BytesIO(file_bytes)) as image:
+            if image.format not in {"JPEG", "PNG", "WEBP"}:
+                raise ValueError("Yalnızca JPG, PNG veya WebP görsel yüklenebilir.")
+            width, height = image.size
+            if width <= 0 or height <= 0 or width > 12_000 or height > 12_000:
+                raise ValueError("Görsel boyutları geçersiz veya çok büyük.")
+            if width * height > 16_000_000:
+                raise ValueError("Görsel en fazla 16 megapiksel olabilir.")
+            image.verify()
+    except ValueError:
+        raise
+    except Exception as exc:
+        raise ValueError("Dosya geçerli bir JPG, PNG veya WebP görsel değil.") from exc
+
+
+async def validate_store_hero_photo(file_bytes: bytes) -> None:
+    async with _STORE_HERO_PROCESS_LIMIT:
+        await _optimize_in_thread(_validate_store_hero_photo_sync, file_bytes)
 
 
 async def upload_delivery_photo(file_bytes: bytes) -> str:

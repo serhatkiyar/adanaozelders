@@ -10,7 +10,8 @@ import asyncio
 from sqlalchemy import select
 
 from core.database import AsyncSessionLocal
-from models.store import Product, ProductCategory
+from models import Product, ProductCategory
+from services import stock_ledger
 
 BOOKS = [
     dict(
@@ -48,45 +49,103 @@ BOOKS = [
 ]
 
 
+async def _category(
+    db,
+    *,
+    slug: str,
+    name: str,
+    sort_order: int,
+    parent_id: int | None = None,
+) -> ProductCategory:
+    category = (
+        await db.execute(
+            select(ProductCategory).where(
+                ProductCategory.slug == slug,
+                ProductCategory.deleted_at.is_(None),
+            )
+        )
+    ).scalar_one_or_none()
+    if category is None:
+        category = ProductCategory(
+            slug=slug,
+            name=name,
+            sort_order=sort_order,
+            parent_id=parent_id,
+        )
+        db.add(category)
+        await db.flush()
+    else:
+        category.name = name
+        category.sort_order = sort_order
+        category.parent_id = parent_id
+    return category
+
+
 async def main():
     async with AsyncSessionLocal() as db:
-        cat = (
-            await db.execute(
-                select(ProductCategory).where(ProductCategory.slug == "yks-kitaplari")
-            )
-        ).scalar_one()
+        root = await _category(
+            db,
+            slug="sinav-kitaplari",
+            name="Sınav Kitapları",
+            sort_order=1,
+        )
+        cat = await _category(
+            db,
+            slug="yks-kitaplari",
+            name="YKS (TYT - AYT) Kitapları",
+            sort_order=1,
+            parent_id=root.id,
+        )
 
         existing = set(
             (
                 await db.execute(
                     select(Product.isbn).where(
-                        Product.isbn.in_([b["isbn"] for b in BOOKS])
+                        Product.isbn.in_([b["isbn"] for b in BOOKS]),
+                        Product.deleted_at.is_(None),
                     )
                 )
             ).scalars().all()
         )
 
         added = 0
+        skipped = 0
         for b in BOOKS:
             if b["isbn"] in existing:
                 print(f"  atlandı (zaten var): {b['title']}")
+                skipped += 1
                 continue
-            db.add(
-                Product(
-                    kind="PHYSICAL",
-                    seller_type="PLATFORM",
-                    category_id=cat.id,
-                    status="ACTIVE",
-                    currency="TRY",
-                    stock=25,
-                    language="Türkçe",
-                    **b,
-                )
+            product = Product(
+                kind="PHYSICAL",
+                seller_type="PLATFORM",
+                category_id=cat.id,
+                status="ACTIVE",
+                currency="TRY",
+                stock=0,
+                language="Türkçe",
+                **b,
+            )
+            db.add(product)
+            await db.flush()
+            await stock_ledger.apply_movement(
+                db,
+                product.id,
+                qty_delta=25,
+                bucket=stock_ledger.StockBucket.SALEABLE,
+                movement_type=stock_ledger.StockMovementType.INITIAL,
+                reason_code="PRODUCT_CREATE",
+                ref_type="product",
+                ref_id=product.id,
+                idempotency_key=stock_ledger.idempotency_key_for(
+                    stock_ledger.StockMovementType.INITIAL,
+                    product_id=product.id,
+                ),
+                actor_type="SYSTEM",
             )
             added += 1
             print(f"  eklendi: {b['title']}")
         await db.commit()
-        print(f"Toplam {added} kitap eklendi.")
+        print(f"Eklendi: {added}, güncellendi: 0, atlandı: {skipped}")
 
 
 if __name__ == "__main__":

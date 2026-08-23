@@ -34,6 +34,10 @@ from api.routers import (
     srs,
     support,
     store,
+    store_hero,
+    store_home,
+    store_showcase,
+    store_merchandising,
     supplier,
     study_reservations,
     tasks,
@@ -78,6 +82,14 @@ api_router.include_router(payouts.router)
 api_router.include_router(payout.router)
 api_router.include_router(reports.router)
 api_router.include_router(store.router)
+api_router.include_router(store_hero.router)
+api_router.include_router(store_hero.admin_router)
+api_router.include_router(store_home.router)
+api_router.include_router(store_home.admin_router)
+api_router.include_router(store_showcase.router)
+api_router.include_router(store_showcase.admin_router)
+api_router.include_router(store_merchandising.public_router)
+api_router.include_router(store_merchandising.admin_router)
 # Tedarikçi senkronu. Yol öneki `/store/admin/suppliers` ama AYRI dosyada:
 # `store.py` zaten 1500+ satır. `store.router` ile yol çakışması yok —
 # `store.py` içinde `/admin/suppliers*` tanımlı değil.

@@ -67,6 +67,7 @@ from services import (
     payment_gates,
     returns,
     stock_ledger,
+    store_merchandising_service,
     tax,
 )
 
@@ -498,6 +499,9 @@ async def create_order(
         ),
     )
 
+    attribution = store_merchandising_service.decode_attribution_token(
+        payload.attribution_token
+    )
     order = Order(
         client_id=client.id,
         status="PENDING",
@@ -519,6 +523,9 @@ async def create_order(
             else Decimal(str(settings.SHIPPING_TAX_RATE))
         ),
         shipping_tax_amount=kdv.shipping_tax,
+        source_page_revision_id=(attribution.get("rev") if attribution else None),
+        source_block_key=(attribution.get("block") if attribution else None),
+        source_product_id=(attribution.get("product") if attribution else None),
     )
 
     if has_physical:
