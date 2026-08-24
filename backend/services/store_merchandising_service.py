@@ -928,7 +928,15 @@ async def get_page(db: AsyncSession, slug: str, *, preview_revision_id: int | No
     )
     if page.is_archived and preview_revision_id is None:
         state = "ARCHIVED"
-    if revision is None or (state in {"DRAFT", "UPCOMING", "ARCHIVED"} and preview_revision_id is None):
+    # "ENDED" BURADA kapatılır ama `get_home`'da KAPATILMAZ — ayrım bilinçli:
+    # bir kampanyada `ends_at` "bu tarihten sonra gösterme" demektir (biten
+    # kampanyanın fiyat/vaat metni yayında kalırsa ticari ve hukuki risktir),
+    # ana sayfada ise 404 mağazayı bomboş bırakır. Ana sayfanın yayınsız hâli
+    # ayrı bir üründür kararıdır (varsayılan vitrin) ve o karar verilene dek
+    # son yayın sürümü sunulmaya devam eder.
+    if revision is None or (
+        state in {"DRAFT", "UPCOMING", "ARCHIVED", "ENDED"} and preview_revision_id is None
+    ):
         raise HTTPException(404, "Vitrin sayfası henüz yayında değil.")
     canonical = f"{settings.FRONTEND_BASE_URL.rstrip('/')}/magaza/{page.slug}"
     return LandingPageOut(
