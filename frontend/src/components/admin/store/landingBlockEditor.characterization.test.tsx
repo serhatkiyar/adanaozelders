@@ -193,11 +193,32 @@ function sar() {
   );
 }
 
-/** Blok listesinden bir bloğu seçer. */
-async function blokSec(tipAdi: string | RegExp) {
-  const dugme = await screen.findByRole("button", { name: tipAdi });
-  fireEvent.click(dugme);
-  return dugme;
+/**
+ * Blok listesinden bir bloğu seçer VE editörün gerçekten o bloğa geçtiğini
+ * bekler.
+ *
+ * KARARSIZLIK NOTU (ölçüldü, iki turda): ilk yazımda yalnız bir kez
+ * tıklanıyordu. Blok listesi taslak türetilirken kısa süre içinde yeniden
+ * çiziliyor; `findByRole` eşleşen düğmeyi bulur bulmaz dönüyor ve tıklama
+ * BAYAT bir düğüme düşebiliyordu — sonuç: aynı test bir koşuda geçip
+ * ötekinde düşüyordu (PRODUCT_RAIL'de üç koşumun ikisinde).
+ *
+ * Beklenen şey "tıklandı" değil "editör değişti"dir; bu yüzden tıklama
+ * `waitFor` içinde ve idempotenttir (aynı bloğu yeniden seçmek zararsız).
+ * Başlık girdisi editöre özgüdür: listede başlık düz metin olarak durur,
+ * `getByDisplayValue` yalnız form alanını görür.
+ */
+async function blokSec(tip: string) {
+  await waitFor(
+    () => {
+      const dugme = screen.getByRole("button", {
+        name: new RegExp(`${tip} başlık`),
+      });
+      fireEvent.click(dugme);
+      expect(screen.getByDisplayValue(`${tip} başlık`)).toBeTruthy();
+    },
+    { timeout: 4000 },
+  );
 }
 
 /** Autosave'in gönderdiği SON taslak yükünü bekler. */
@@ -226,7 +247,7 @@ describe("blok editörü · karakterizasyon", () => {
 
   it("ortak alan (başlık) düzenlemesi taslak yüküne girer", async () => {
     sar();
-    await blokSec(/RICH_TEXT başlık/);
+    await blokSec("RICH_TEXT");
     const girdi = await screen.findByDisplayValue("RICH_TEXT başlık");
     fireEvent.change(girdi, { target: { value: "Yeni başlık" } });
 
@@ -236,7 +257,7 @@ describe("blok editörü · karakterizasyon", () => {
 
   it("RICH_TEXT metni config.content olarak gonderilir", async () => {
     sar();
-    await blokSec(/RICH_TEXT başlık/);
+    await blokSec("RICH_TEXT");
     const alan = await screen.findByDisplayValue("merhaba");
     fireEvent.change(alan, { target: { value: "yeni metin" } });
 
@@ -246,7 +267,7 @@ describe("blok editörü · karakterizasyon", () => {
 
   it("CATEGORY_GRID secimi config.category_ids olarak gonderilir", async () => {
     sar();
-    await blokSec(/CATEGORY_GRID başlık/);
+    await blokSec("CATEGORY_GRID");
     const kirtasiye = await screen.findByLabelText("Kırtasiye");
     fireEvent.click(kirtasiye);
 
@@ -257,7 +278,7 @@ describe("blok editörü · karakterizasyon", () => {
 
   it("PRODUCT_RAIL koleksiyon secimi product_set_id olarak gonderilir", async () => {
     sar();
-    await blokSec(/PRODUCT_RAIL başlık/);
+    await blokSec("PRODUCT_RAIL");
     // Sayfada başka `select`ler de var (sürüm/sayfa seçiciler); kapsam blok
     // editörüne daraltılır, yoksa test yanlış kontrolü sürer.
     const kok = await screen.findByRole("article");
@@ -272,7 +293,7 @@ describe("blok editörü · karakterizasyon", () => {
 
   it("gorunurluk anahtari is_active olarak gonderilir", async () => {
     sar();
-    await blokSec(/BANNER başlık/);
+    await blokSec("BANNER");
     const anahtar = await screen.findByLabelText("Göster");
     fireEvent.click(anahtar);
 
@@ -282,7 +303,7 @@ describe("blok editörü · karakterizasyon", () => {
 
   it("yonlendirme alani link_url olarak gonderilir ve BOSKEN null olur", async () => {
     sar();
-    await blokSec(/RICH_TEXT başlık/);
+    await blokSec("RICH_TEXT");
     const alan = await screen.findByPlaceholderText("/magaza?...");
     fireEvent.change(alan, { target: { value: "/magaza?q=kitap" } });
     let yuk = await sonKayit();
@@ -298,7 +319,7 @@ describe("blok editörü · karakterizasyon", () => {
 
   it("sira degistirme sort_order'i yeniden yazar", async () => {
     sar();
-    await blokSec(/IMAGE_CARD_GRID başlık/);
+    await blokSec("IMAGE_CARD_GRID");
     const asagi = await screen.findByRole("button", { name: "Aşağı" });
     fireEvent.click(asagi);
 
@@ -320,7 +341,7 @@ describe("blok editörü · karakterizasyon", () => {
 
   it("autosave DEBOUNCE eder: ard arda degisiklik TEK istek dogurur", async () => {
     sar();
-    await blokSec(/RICH_TEXT başlık/);
+    await blokSec("RICH_TEXT");
     const girdi = await screen.findByDisplayValue("RICH_TEXT başlık");
     for (const deger of ["a", "ab", "abc", "abcd", "abcde"]) {
       fireEvent.change(girdi, { target: { value: deger } });
@@ -340,7 +361,7 @@ describe("blok editörü · karakterizasyon", () => {
 
   it("blok kopyalama YENI block_key uretir", async () => {
     sar();
-    await blokSec(/RICH_TEXT başlık/);
+    await blokSec("RICH_TEXT");
     const kopyala = await screen.findByRole("button", { name: "Kopyala" });
     fireEvent.click(kopyala);
 
@@ -354,7 +375,7 @@ describe("blok editörü · karakterizasyon", () => {
 
   it("blok kaldirma bloku yukten cikarir", async () => {
     sar();
-    await blokSec(/RECENTLY_VIEWED başlık/);
+    await blokSec("RECENTLY_VIEWED");
     const kaldir = await screen.findByRole("button", { name: "Kaldır" });
     fireEvent.click(kaldir);
 
@@ -364,12 +385,12 @@ describe("blok editörü · karakterizasyon", () => {
 
   it("gorselli bloklarda medya secici acilir, metin blogunda ACILMAZ", async () => {
     sar();
-    await blokSec(/BANNER başlık/);
+    await blokSec("BANNER");
     expect(
       await screen.findByRole("button", { name: /Görsel(i)? (ekle|değiştir)/i }),
     ).toBeTruthy();
 
-    await blokSec(/RICH_TEXT başlık/);
+    await blokSec("RICH_TEXT");
     await waitFor(() =>
       expect(
         screen.queryByRole("button", { name: /Görsel(i)? (ekle|değiştir)/i }),
@@ -379,7 +400,7 @@ describe("blok editörü · karakterizasyon", () => {
 
   it("RECENTLY_VIEWED kopyalanamaz (tekil blok)", async () => {
     sar();
-    await blokSec(/RECENTLY_VIEWED başlık/);
+    await blokSec("RECENTLY_VIEWED");
     await waitFor(() =>
       expect(screen.queryByRole("button", { name: "Kopyala" })).toBeNull(),
     );
@@ -402,7 +423,7 @@ describe("blok editörü · tip bazlı alan matrisi", () => {
   for (const { tip, olmali, olmamali } of MATRIS) {
     it(`${tip} yalniz kendi alanlarini gosterir`, async () => {
       sar();
-      await blokSec(new RegExp(`${tip} başlık`));
+      await blokSec(tip);
       const kok = await screen.findByRole("article");
       for (const desen of olmali) {
         expect(within(kok).getByText(desen)).toBeTruthy();

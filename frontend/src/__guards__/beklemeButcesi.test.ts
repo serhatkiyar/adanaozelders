@@ -75,12 +75,31 @@ const DOSYA_BUTCELERI = [
  *   • `storeVariants:18` 4000 (6 çağrı) — ölçülen tepe **1124 ms**.
  *   • `ticketsPaymentGate:32` 4000 (6 çağrı) — ölçülen tepe 225 ms.
  *
+ * P3 (vitrin blok editörü) ÜÇ çağrı yeri açtı; üçü de 4000.
+ *
+ * Önce ÖLÇÜLDÜ (`performance.now()`, dosya tek başına koşarken tepe değer):
+ * blok seçim döngüsü 657 ms, autosave beklemesi 929 ms. Bu ölçüme dayanarak
+ * bütçeler ilk turda 1500/2500 yazıldı ve dosya tek başına dört koşumda
+ * kararlıydı.
+ *
+ * TAM SUITE'te KIRILDI (ölçüldü): `landingSemaSurucusu` HERO_CAROUSEL testi
+ * "Unable to find button" ile düştü — paralel yük altında panelin İLK VERİ
+ * YÜKLEMESİ 1500 ms'i aşıyor. Yani 657 ms'lik tepe yalıtılmış koşumun
+ * gerçeğiydi, suite'in değil. Bütçeler bu yüzden panel-mount eden diğer
+ * kabul testleriyle aynı hizaya (4000) çekildi.
+ *
+ * Kayıt önemli: burada bütçe "ne olur ne olmaz" diye değil, ÖLÇÜLEN bir
+ * kırılmadan sonra yükseltildi.
+ *
  * A7d5'te İKİ çağrı yeri KAPANDI (`operatorPanel`, `operatorBalance`): ikisi de
  * bütçe değil, tembel modül yükleme sorunuydu (Görev 2) ve ikisi de yukarıdaki
  * sızıntıyı üretiyordu.
  */
 const CAGRI_BUTCELERI = [
   "src/components/admin/inventory/DamageDialog.test.tsx:43 2000",
+  "src/components/admin/store/landingBlockEditor.characterization.test.tsx:220 4000",
+  "src/components/admin/store/landingBlockEditor.characterization.test.tsx:227 4000",
+  "src/components/admin/store/landingSemaSurucusu.test.tsx:139 4000",
   "src/pages/admin/adminDenetimKayitlari.acceptance.test.tsx:197 4000",
   "src/pages/admin/adminHakedisGoc.acceptance.test.tsx:53 4000",
   "src/pages/admin/inventory/sayimOturumlariGoc.acceptance.test.tsx:360 3000",
