@@ -796,6 +796,61 @@ async def _publication_for_page(db: AsyncSession, page_id: int, *, preview_revis
     return revision, state, publication.starts_at, publication.ends_at
 
 
+#: Hedef (link) bekleyen blok tipleri. Metin/kategori/ürün blokları kendi
+#: yönlendirmesini üretir; onlarda hedefsizlik hata değildir.
+_HEDEFLI_BLOKLAR = {"HERO_CAROUSEL": "slides", "IMAGE_CARD_GRID": "cards"}
+
+
+def _bos_hedef(deger: object) -> bool:
+    return not (isinstance(deger, str) and deger.strip())
+
+
+def block_link_warnings(
+    *, block_type: str, link_label: str | None, link_url: str | None, config: dict
+) -> list[str]:
+    """Bir bloğun 'hiçbir yere gitmiyor' kusurlarını yöneticiye anlatır.
+
+    B-2 (ölçüldü 24 Ağu 2026): canlı ana sayfada dört görsel kartın da hedefi
+    boştu; mağazada link gibi görünüp tıklanmıyorlardı ve panel bunu hiç
+    söylemiyordu. Ayrıca `link_label` yazılıp `link_url` boş bırakıldığında
+    yazılan metin mağazada HİÇ basılmıyor (StoreLandingBlocks Heading, yalnız
+    `link_url` doluysa render eder) — yani sessiz veri kaybı.
+    """
+    uyarilar: list[str] = []
+    blok_hedefi_var = not _bos_hedef(link_url)
+
+    if link_label and link_label.strip() and not blok_hedefi_var:
+        uyarilar.append(
+            f"“{link_label.strip()}” bağlantı metni yazılmış ama hedef adres boş; "
+            "bu metin mağazada hiç görünmüyor."
+        )
+
+    if block_type == "BANNER":
+        if config.get("image_url") and not blok_hedefi_var:
+            uyarilar.append("Görsel hiçbir yere gitmiyor: hedef adres boş.")
+        return uyarilar
+
+    anahtar = _HEDEFLI_BLOKLAR.get(block_type)
+    if not anahtar or blok_hedefi_var:
+        return uyarilar
+
+    ogeler = config.get(anahtar) or []
+    if not isinstance(ogeler, list):
+        return uyarilar
+    hedefsiz = sum(
+        1
+        for oge in ogeler
+        if isinstance(oge, dict) and oge.get("image_url") and _bos_hedef(oge.get("link_url"))
+    )
+    if hedefsiz:
+        ad = "slayt" if anahtar == "slides" else "görsel kart"
+        # Sayı ŞART: "bazı kartlar" cümlesi düzeltilebilir bir uyarı değildir.
+        uyarilar.append(
+            f"{hedefsiz} {ad} hiçbir yere gitmiyor: hedef adres boş."
+        )
+    return uyarilar
+
+
 async def _revision_out(db: AsyncSession, revision: StoreLandingPageRevision) -> LandingPageRevisionOut:
     category_outputs = await store_service.list_categories(db)
     category_map = {category.id: category for category in category_outputs}
@@ -820,8 +875,19 @@ async def _revision_out(db: AsyncSession, revision: StoreLandingPageRevision) ->
         elif block.product_set_revision_id:
             set_revision = await db.get(ProductSetRevision, block.product_set_revision_id)
         if set_revision:
-            rows, _count, warnings = await evaluate_product_set(db, set_revision)
+            # DİKKAT: burada `warnings = ...` ATAMASI yapılmaz — ürün seti
+            # uyarısı, bağlantı uyarısının üzerine yazardı.
+            rows, _count, set_warnings = await evaluate_product_set(db, set_revision)
+            warnings.extend(set_warnings)
             products = await _product_outputs(db, rows)
+        warnings.extend(
+            block_link_warnings(
+                block_type=block.block_type,
+                link_label=block.link_label,
+                link_url=block.link_url,
+                config=block.config or {},
+            )
+        )
         categories = [category_map[cid] for cid in block.config.get("category_ids", []) if cid in category_map]
         blocks.append(LandingPageBlockOut(
             id=block.id, block_key=block.block_key, block_type=block.block_type,

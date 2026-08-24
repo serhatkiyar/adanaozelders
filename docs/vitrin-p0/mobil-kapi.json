@@ -16,6 +16,26 @@
           "etiket": "div",
           "sinif": "flex snap-x snap-mandatory gap-4 overflow-x-auto pb-5 [scrollbar-width:none] [&:",
           "genislik": 1229
+        },
+        {
+          "etiket": "div",
+          "sinif": "go3489369143 go1754112896 tsqd-open-btn-container",
+          "genislik": 48
+        },
+        {
+          "etiket": "div",
+          "sinif": "",
+          "genislik": 64
+        },
+        {
+          "etiket": "svg",
+          "sinif": "[object SVGAnimatedString]",
+          "genislik": 64
+        },
+        {
+          "etiket": "circle",
+          "sinif": "[object SVGAnimatedString]",
+          "genislik": 64
         }
       ]
     },
@@ -35,6 +55,26 @@
           "etiket": "div",
           "sinif": "flex snap-x snap-mandatory gap-4 overflow-x-auto pb-5 [scrollbar-width:none] [&:",
           "genislik": 1327
+        },
+        {
+          "etiket": "div",
+          "sinif": "go3489369143 go1754112896 tsqd-open-btn-container",
+          "genislik": 48
+        },
+        {
+          "etiket": "div",
+          "sinif": "",
+          "genislik": 64
+        },
+        {
+          "etiket": "svg",
+          "sinif": "[object SVGAnimatedString]",
+          "genislik": 64
+        },
+        {
+          "etiket": "circle",
+          "sinif": "[object SVGAnimatedString]",
+          "genislik": 64
         }
       ]
     },
@@ -54,6 +94,26 @@
           "etiket": "div",
           "sinif": "flex snap-x snap-mandatory gap-4 overflow-x-auto pb-5 [scrollbar-width:none] [&:",
           "genislik": 1406
+        },
+        {
+          "etiket": "div",
+          "sinif": "go3489369143 go1754112896 tsqd-open-btn-container",
+          "genislik": 48
+        },
+        {
+          "etiket": "div",
+          "sinif": "",
+          "genislik": 64
+        },
+        {
+          "etiket": "svg",
+          "sinif": "[object SVGAnimatedString]",
+          "genislik": 64
+        },
+        {
+          "etiket": "circle",
+          "sinif": "[object SVGAnimatedString]",
+          "genislik": 64
         }
       ]
     },
@@ -63,7 +123,38 @@
       "scrollWidth": 768,
       "tasma": 0,
       "vitrinBloguVar": true,
-      "suclular": []
+      "suclular": [
+        {
+          "etiket": "g",
+          "sinif": "[object SVGAnimatedString]",
+          "genislik": 43
+        },
+        {
+          "etiket": "ellipse",
+          "sinif": "[object SVGAnimatedString]",
+          "genislik": 43
+        },
+        {
+          "etiket": "g",
+          "sinif": "[object SVGAnimatedString]",
+          "genislik": 43
+        },
+        {
+          "etiket": "ellipse",
+          "sinif": "[object SVGAnimatedString]",
+          "genislik": 43
+        },
+        {
+          "etiket": "g",
+          "sinif": "[object SVGAnimatedString]",
+          "genislik": 43
+        },
+        {
+          "etiket": "ellipse",
+          "sinif": "[object SVGAnimatedString]",
+          "genislik": 43
+        }
+      ]
     }
   ],
   "dusenler": [

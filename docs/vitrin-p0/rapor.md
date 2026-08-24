@@ -89,12 +89,27 @@ Eski nesil tablolarındaki veri hacmi küçük (11 satır) — P7'deki DROP kara
 390 px genişlikte `/magaza` gövdesi ~1360 px; dört görsel kart tek satırda sıkışıp sayfayı taşırıyor. Ölçüm: `mobil.yatayTasma = true`, `tasmaPiksel = 970`. Kanıt: `magaza-ana-mobil-koyu.png`.
 Kampanya sayfasında taşma yok (0 px) — sorun dört kartlı ızgaraya özgü.
 
-### B-2 · Vitrindeki her şey ölü bağlantı (P1, kullanıcı görür)
-Canlı HOME'un dört `IMAGE_CARD_GRID` bloğunda `config.cards[0].link_url = ""` ve blok `link_url = null`; hero slaytında da `link_url = null`.
-- Ölçüm: `urunKartiLinki = 0`, `kesfetBaglantisi = 0`, `tiklanamazGorsel = 3`.
-- `TrackedLink` (`StoreLandingBlocks.tsx:596`) hedef yoksa `<a>` yerine `<div>` basıyor — yani kartlar **link gibi görünüp** hiçbir yere gitmiyor.
-- Dördünün de metni **aynı**: "Okula Dönüş Alışverişi →".
+### B-2 · Vitrinde iki ölü blok + panelin hiç uyarmaması (P1, kullanıcı görür)
+
+> **DÜZELTME (aynı gün):** ilk yazımda "dört kartın da hedefi boş, hiçbiri tıklanamıyor" denmişti. **Bu yanlıştı.** Ölçüm aracının deseni gerçek ok karakterini ("→") değil ASCII `->` arıyordu ve hiç eşleşmedi; ben de bundan "0 bağlantı" sonucunu çıkardım. Canlı veriden doğrulanan gerçek durum aşağıdadır.
+
+Canlı HOME'un 5 bloğundan **2'si** hiçbir yere gitmiyor:
+
+| # | Blok | `block.link_url` | `card/slide.link_url` | Durum |
+|---|---|---|---|---|
+| 0 | HERO_CAROUSEL | `null` | `null` | **ölü** |
+| 1 | IMAGE_CARD_GRID · Sırt Çantaları | `null` | `""` | **ölü** |
+| 2 | IMAGE_CARD_GRID · Su Mataraları | `/magaza` | `/magaza` | çalışıyor |
+| 3 | IMAGE_CARD_GRID · Resim Malzemeleri | `/magaza` | `/magaza` | çalışıyor |
+| 4 | IMAGE_CARD_GRID · Beslenme Çantaları | `/magaza` | `/magaza` | çalışıyor |
+
+- `TrackedLink` (`StoreLandingBlocks.tsx:596`) hedef yoksa `<a>` yerine `<div>` basıyor — o iki blok **link gibi görünüp** tıklanmıyor.
+- 1 numaralı blokta ayrıca **sessiz veri kaybı** var: `link_label="Okula Dönüş Alışverişi"` yazılmış ama `link_url` boş; `Heading` (satır 311) bağlantı metnini yalnız hedef doluysa basıyor, yani yazılan metin mağazada hiç görünmüyor.
+- Dördünün de bağlantı metni **aynı**: "Okula Dönüş Alışverişi" — hedefi olan üçü de aynı yere (`/magaza`) gidiyor. Bu bir hata değil ama kürasyon kalitesi sorunudur.
 - **Panel bunu uyarmıyor:** blok kaydedilirken boş hedef için hiçbir doğrulama/uyarı yok.
+
+### B-2b · `warnings` mekanizması var ama panelde ÖLÜ (P1)
+Backend blok başına `warnings` üretiyor (ör. "N sabit ürün satılabilir olmadığı için gizlendi" — `store_merchandising_service.py:431`) ve yanıtta gönderiyor. Panel bunu taslak kurarken **atıyor** (`LandingPagesManager.tsx:217`, `warnings: _warnings` ile ayıklanıyor) ve hiçbir yerde render etmiyor. Yönetici bugün var olan uyarıları bile görmüyor.
 
 ### B-3 · Her vitrin yüklemesinde ölü nesle gereksiz istek (P2)
 `StorePage.tsx:94` `useStoreHome()` **koşulsuz** çağrılıyor; kanonik sistem çalışırken bile `/store/home-sections` isteği doğuyor (ölçüldü: 1). React hook'ları koşullu çağrılamadığı için fallback dalı render edilmese de istek gidiyor.

@@ -57,6 +57,41 @@ const localDateTime = () => {
 
 const freshBlockKey = () => crypto.randomUUID();
 
+/**
+ * Sunucunun blok başına ürettiği uyarıları blok anahtarına eşler.
+ *
+ * Uyarılar TASLAKTA yaşamaz (taslak kurulurken ayıklanır, çünkü kaydedilen
+ * yükün parçası değildir); kaynakları her zaman sunucudan gelen önizleme
+ * revizyonudur.
+ */
+export function warningsByBlockKey(
+  blocks: { block_key?: string | null; warnings?: string[] }[] | undefined,
+): Record<string, string[]> {
+  const harita: Record<string, string[]> = {};
+  for (const block of blocks ?? []) {
+    if (!block.block_key) continue;
+    if (block.warnings?.length) harita[block.block_key] = block.warnings;
+  }
+  return harita;
+}
+
+/** Blok uyarılarını yöneticiye gösterir. Uyarı yoksa hiçbir şey basmaz. */
+export function BlockWarnings({ warnings = [] }: { warnings?: string[] }) {
+  // Varsayılan ŞART: çalışma zamanı kapısı dışa aktarılan her bileşeni
+  // PROPSUZ render eder; `warnings.length` orada çöküyordu (ölçüldü).
+  if (!warnings.length) return null;
+  return (
+    <ul
+      role="alert"
+      className="space-y-1 border-l-2 border-amber-400 bg-amber-50/60 py-2 pl-3 text-xs text-amber-900 dark:bg-amber-500/10 dark:text-amber-200"
+    >
+      {warnings.map((uyari) => (
+        <li key={uyari}>{uyari}</li>
+      ))}
+    </ul>
+  );
+}
+
 export function duplicateLandingBlock(
   block: LandingPageBlockInput,
   index: number,
@@ -335,6 +370,8 @@ export function LandingPagesManager({
     -1;
   const selectedBlock =
     selectedBlockIndex >= 0 ? draft?.blocks[selectedBlockIndex] : undefined;
+  // Uyarılar sunucudan gelir (taslakta taşınmaz); kaynak önizleme revizyonu.
+  const blockWarnings = warningsByBlockKey(preview.data?.revision.blocks);
 
   return (
     <div className="space-y-6">
@@ -408,6 +445,11 @@ export function LandingPagesManager({
                     <span className="mt-0.5 block truncate text-sm font-medium text-panel-fg">
                       {block.title || "Başlıksız bölüm"}
                     </span>
+                    {blockWarnings[block.block_key ?? ""]?.length ? (
+                      <span className="mt-0.5 block text-xs text-amber-700 dark:text-amber-300">
+                        {blockWarnings[block.block_key ?? ""].length} uyarı
+                      </span>
+                    ) : null}
                   </PlainButton>
                 ))}
               </div>
@@ -570,6 +612,11 @@ export function LandingPagesManager({
                     </Button>
                   </div>
                 </div>
+                {selectedBlock ? (
+                  <BlockWarnings
+                    warnings={blockWarnings[selectedBlock.block_key ?? ""] ?? []}
+                  />
+                ) : null}
                 {selectedBlock && selectedBlockIndex >= 0 ? (
                   <BlockEditor
                     key={selectedBlock.block_key}
