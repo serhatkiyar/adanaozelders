@@ -63,6 +63,8 @@ from tests.integration.ip5_factory import fab5  # noqa: F401,E402
 from tests.integration.ip12_factory import fab12  # noqa: F401,E402
 # İP-C2 duyuru şeridi fabrikası (fab_duyuru) — aynı gerekçe.
 from tests.integration.duyuru_factory import fab_duyuru  # noqa: F401,E402
+# Vitrin (merchandising) fabrikası (fabv) — aynı gerekçe.
+from tests.integration.vitrin_factory import fabv  # noqa: F401,E402
 
 
 def _now() -> datetime.datetime:
