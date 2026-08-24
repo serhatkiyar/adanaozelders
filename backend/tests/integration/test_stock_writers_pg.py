@@ -18,6 +18,10 @@ from sqlalchemy import select, text
 from core import flags
 from core.database import AsyncSessionLocal
 from tests.integration.db_guard import purge_products
+from tests.integration.product_category import (
+    TEST_PRODUCT_CATEGORY_SLUG,
+    integration_product_category_id,
+)
 from models.store import Product, StockMovement
 from schemas.store import ProductCreate, ProductUpdate
 from services import (
@@ -57,6 +61,7 @@ class Fabrika:
                 price=Decimal("100.00"),
                 stock=stock if kind == "PHYSICAL" else None,
                 status="ACTIVE",
+                category_id=await integration_product_category_id(s),
             )
             s.add(p)
             await s.flush()
@@ -234,6 +239,7 @@ async def test_w4_urun_olusturma_INITIAL_hareketi_yazar(fab):
                 stock=12,
             ),
         )
+        await s.commit()
     fab.izle_urun(detay.id)
 
     rows = await _movements(detay.id)
@@ -292,6 +298,7 @@ async def test_w4_dijital_urun_SKU_alir_hareket_ALMAZ(fab, dijital_satis_acik):
                 title=f"Dijital {_uniq()}", kind="DIGITAL", price=Decimal("20.00")
             ),
         )
+        await s.commit()
     fab.izle_urun(detay.id)
     assert await _sku(detay.id) == f"DIJ-{detay.id:06d}"
     assert await _movements(detay.id) == []
@@ -336,6 +343,7 @@ def _csv_row(**over) -> dict:
         # `errors[]`'ta raporlanır. Sessizce %0 yazmak, yanlış oranla satılan
         # ve yanlış fatura kesilen bir ürün demektir.
         "tax_rate": "0.20",
+        "category_slug": TEST_PRODUCT_CATEGORY_SLUG,
         "stock": "7",
         "status": "ACTIVE",
     }
@@ -348,6 +356,7 @@ async def test_w5_csv_import_INITIAL_yazar(fab):
         sonuc = await store_service.bulk_import_products(
             s, SahteAdmin(), [_csv_row(), _csv_row(stock="3")]
         )
+        await s.commit()
     assert sonuc["created"] == 2, sonuc
 
     async with AsyncSessionLocal() as s:
@@ -380,6 +389,7 @@ async def test_w5_hatali_satir_digerlerini_ve_defterlerini_bozmaz(fab):
                 _csv_row(stock="6"),
             ],
         )
+        await s.commit()
     assert sonuc["created"] == 2
     assert len(sonuc["errors"]) == 1 and sonuc["errors"][0]["row"] == 2
 
@@ -433,6 +443,7 @@ async def test_w6_admin_duzeltmesi_hareket_yazar(fab):
             ProductUpdate(stock=25, stock_reason_code="TEDARIK"),
             admin_id=ADMIN_ID,
         )
+        await s.commit()
     rows = await _movements(pid)
     assert len(rows) == 1
     mv = rows[0]
@@ -477,6 +488,7 @@ async def test_w6_diger_gerekcesinde_not_zorunlu(fab):
             ProductUpdate(stock=25, stock_reason_code="DIGER", stock_note="depo sayımı"),
             admin_id=ADMIN_ID,
         )
+        await s.commit()
     rows = await _movements(pid)
     assert len(rows) == 1 and rows[0].note == "depo sayımı"
 

@@ -20,7 +20,12 @@ from decimal import Decimal
 
 import pytest
 
+from core.database import AsyncSessionLocal
 from tests.integration.ip5_factory import uniq
+from tests.integration.product_category import (
+    TEST_PRODUCT_CATEGORY_SLUG,
+    integration_product_category_id,
+)
 
 pytestmark = pytest.mark.asyncio
 
@@ -30,6 +35,11 @@ _IZIN = ["products.view", "products.manage"]
 async def _admin_headers(fab5):
     _, headers = await fab5.admin(izinler=_IZIN)
     return headers
+
+
+async def _test_category_id() -> int:
+    async with AsyncSessionLocal() as s:
+        return await integration_product_category_id(s)
 
 
 # ── V-1 · ProductCreate oranı kabul ediyor ve DB'ye YAZIYOR ──────────────────
@@ -47,6 +57,7 @@ async def test_v1_urun_olusturmada_oran_dbye_yaziliyor(http, fab5):
             "tax_rate": "0.20",
             "stock": 5,
             "status": "ACTIVE",
+            "category_id": await _test_category_id(),
         },
     )
     assert r.status_code == 201, r.text
@@ -69,6 +80,7 @@ async def test_v1b_oran_yaniti_da_tasiyor(http, fab5):
             "price": "100.00",
             "tax_rate": "0.10",
             "stock": 1,
+            "category_id": await _test_category_id(),
         },
     )
     assert r.status_code == 201, r.text
@@ -149,9 +161,11 @@ async def test_v3_csv_orani_okuyor(http, fab5):
     # görmez ve sabit başlık çakışması yaşanmaz.
     onek = f"IP5CSV{uniq()}"
     csv = (
-        "title,kind,price,tax_rate,stock\n"
-        f"{onek} Kirtasiye,PHYSICAL,120.00,0.20,5\n"
-        f"{onek} Kitap,PHYSICAL,100.00,0,5\n"
+        "title,kind,price,tax_rate,stock,category_slug\n"
+        f"{onek} Kirtasiye,PHYSICAL,120.00,0.20,5,"
+        f"{TEST_PRODUCT_CATEGORY_SLUG}\n"
+        f"{onek} Kitap,PHYSICAL,100.00,0,5,"
+        f"{TEST_PRODUCT_CATEGORY_SLUG}\n"
     )
     r = await _csv_yukle(http, headers, csv)
     oranlar = await _csv_urunlerini_topla(fab5, onek)
@@ -171,9 +185,11 @@ async def test_v3b_csv_oransiz_satir_reddediliyor_ve_raporlaniyor(http, fab5):
     headers = await _admin_headers(fab5)
     onek = f"IP5CSVX{uniq()}"
     csv = (
-        "title,kind,price,tax_rate,stock\n"
-        f"{onek} Oranli,PHYSICAL,120.00,0.20,5\n"
-        f"{onek} Oransiz,PHYSICAL,100.00,,5\n"
+        "title,kind,price,tax_rate,stock,category_slug\n"
+        f"{onek} Oranli,PHYSICAL,120.00,0.20,5,"
+        f"{TEST_PRODUCT_CATEGORY_SLUG}\n"
+        f"{onek} Oransiz,PHYSICAL,100.00,,5,"
+        f"{TEST_PRODUCT_CATEGORY_SLUG}\n"
     )
     r = await _csv_yukle(http, headers, csv)
     oranlar = await _csv_urunlerini_topla(fab5, onek)
@@ -214,6 +230,7 @@ async def test_v4_gecersiz_oran_422(http, fab5, gecersiz):
             "price": "100.00",
             "tax_rate": gecersiz,
             "stock": 1,
+            "category_id": await _test_category_id(),
         },
     )
     if r.status_code == 201:  # pragma: no cover — kırmızı matriste beklenen yol
@@ -245,6 +262,7 @@ async def test_v4c_oran_zorunlu_alan(http, fab5):
             "kind": "PHYSICAL",
             "price": "100.00",
             "stock": 1,
+            "category_id": await _test_category_id(),
         },
     )
     if r.status_code == 201:  # pragma: no cover
@@ -263,6 +281,7 @@ async def test_v5_ayni_kategoride_farkli_oranlar_korunuyor(http, fab5):
     kısayol eklemesini yakalar.
     """
     headers = await _admin_headers(fab5)
+    fallback_category_id = await _test_category_id()
 
     kr = await http.post(
         "/api/v1/store/admin/categories",
@@ -300,7 +319,7 @@ async def test_v5_ayni_kategoride_farkli_oranlar_korunuyor(http, fab5):
         r = await http.patch(
             f"/api/v1/store/admin/products/{pid0}",
             headers=headers,
-            json={"category_id": None},
+            json={"category_id": fallback_category_id},
         )
         assert r.status_code == 200, r.text
         assert await fab5.urun_orani(pid0) == Decimal("0.0000")
@@ -311,8 +330,11 @@ async def test_v5_ayni_kategoride_farkli_oranlar_korunuyor(http, fab5):
 
         async with AsyncSessionLocal() as s:
             await s.execute(
-                sa_text("UPDATE products SET category_id = NULL WHERE category_id = :c"),
-                {"c": kategori_id},
+                sa_text(
+                    "UPDATE products SET category_id = :fallback "
+                    "WHERE category_id = :c"
+                ),
+                {"c": kategori_id, "fallback": fallback_category_id},
             )
             await s.execute(
                 sa_text("DELETE FROM product_categories WHERE id = :c"),

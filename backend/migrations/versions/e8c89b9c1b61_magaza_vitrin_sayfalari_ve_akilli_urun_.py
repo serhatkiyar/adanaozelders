@@ -446,10 +446,11 @@ def downgrade() -> None:
     op.drop_column('orders', 'source_block_key')
     op.drop_column('orders', 'source_page_revision_id')
     op.drop_table('store_page_daily_metrics')
-    op.drop_constraint(
-        'ex_store_landing_page_publication_window',
-        'store_landing_page_publications',
-        type_='exclude',
+    # Alembic ``drop_constraint`` exclusion türünü tanımaz; upgrade'da elle
+    # kurulan PostgreSQL GiST constraint'i downgrade'da da ham DDL ile düşer.
+    op.execute(
+        "ALTER TABLE store_landing_page_publications "
+        "DROP CONSTRAINT ex_store_landing_page_publication_window"
     )
     op.drop_index('ix_store_landing_page_publications_window', table_name='store_landing_page_publications')
     op.drop_index(op.f('ix_store_landing_page_publications_page_id'), table_name='store_landing_page_publications')

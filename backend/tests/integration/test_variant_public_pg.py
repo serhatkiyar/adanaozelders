@@ -25,6 +25,7 @@ from sqlalchemy import text
 from core.database import AsyncSessionLocal
 from models.store import Product, VariantGroup
 from tests.integration.db_guard import purge_products
+from tests.integration.product_category import integration_product_category_id
 
 
 def _u() -> str:
@@ -71,6 +72,9 @@ class Fab:
         )
         varsayilan.update(kw)
         async with AsyncSessionLocal() as s:
+            varsayilan.setdefault(
+                "category_id", await integration_product_category_id(s)
+            )
             p = Product(**varsayilan)
             s.add(p)
             await s.commit()

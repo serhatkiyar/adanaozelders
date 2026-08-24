@@ -31,6 +31,7 @@ from models.store import Coupon, CouponRedemption, Order, OrderItem, Product
 from services import delivery_service, stock_ledger
 from tests.integration.auth_headers import bearer_headers
 from tests.integration.db_guard import purge_products
+from tests.integration.product_category import integration_product_category_id
 
 
 def uniq() -> str:
@@ -81,6 +82,7 @@ class Ip2bFabrika:
                 price=Decimal(price),
                 stock=None if kind != "PHYSICAL" else 0,
                 status="ACTIVE",
+                category_id=await integration_product_category_id(s),
             )
             s.add(p)
             await s.flush()

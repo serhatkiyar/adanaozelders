@@ -25,6 +25,7 @@ from sqlalchemy.exc import DBAPIError, IntegrityError
 
 from core.database import AsyncSessionLocal
 from tests.integration.db_guard import purge_products
+from tests.integration.product_category import integration_product_category_id
 from models.store import Product, StockMovement
 from services import stock_ledger
 from services.stock_ledger import (
@@ -65,6 +66,7 @@ class ProductFactory:
                 price=Decimal("100.00"),
                 stock=stock,
                 status="ACTIVE",
+                category_id=await integration_product_category_id(s),
             )
             s.add(p)
             await s.flush()
@@ -730,10 +732,13 @@ async def test_ham_insert_sku_yu_otomatik_alir(urun):
             await s.execute(
                 text(
                     "INSERT INTO products (slug, title, kind, seller_type, price, "
-                    "stock, status) VALUES (:s, 'Ham INSERT', 'PHYSICAL', "
-                    "'PLATFORM', 10.00, 0, 'ACTIVE') RETURNING id"
+                    "stock, status, category_id) VALUES (:s, 'Ham INSERT', 'PHYSICAL', "
+                    "'PLATFORM', 10.00, 0, 'ACTIVE', :category_id) RETURNING id"
                 ),
-                {"s": slug},
+                {
+                    "s": slug,
+                    "category_id": await integration_product_category_id(s),
+                },
             )
         ).scalar_one()
         await s.commit()
@@ -749,10 +754,14 @@ async def test_verilen_sahte_sku_trigger_tarafindan_EZILIR(urun):
             await s.execute(
                 text(
                     "INSERT INTO products (slug, title, kind, seller_type, price, "
-                    "stock, status, sku) VALUES (:s, 'Sahte SKU', 'PHYSICAL', "
-                    "'PLATFORM', 10.00, 0, 'ACTIVE', 'FZK-000001') RETURNING id"
+                    "stock, status, sku, category_id) VALUES "
+                    "(:s, 'Sahte SKU', 'PHYSICAL', 'PLATFORM', 10.00, 0, "
+                    "'ACTIVE', 'FZK-000001', :category_id) RETURNING id"
                 ),
-                {"s": slug},
+                {
+                    "s": slug,
+                    "category_id": await integration_product_category_id(s),
+                },
             )
         ).scalar_one()
         await s.commit()

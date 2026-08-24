@@ -28,6 +28,7 @@ from schemas.admin_access import AdminRoleCreate
 from services import admin_access_service, stock_ledger
 from tests.integration.auth_headers import bearer_headers
 from tests.integration.db_guard import purge_products
+from tests.integration.product_category import integration_product_category_id
 
 
 @pytest.fixture
@@ -193,6 +194,7 @@ class PanelFabrikasi:
                 publisher=publisher,
                 isbn=isbn,
                 barcode=barcode,
+                category_id=await integration_product_category_id(s),
             )
             s.add(p)
             await s.flush()

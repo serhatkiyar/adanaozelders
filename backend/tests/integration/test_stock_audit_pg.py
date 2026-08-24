@@ -22,6 +22,7 @@ from sqlalchemy import event, select, text
 
 from core.database import AsyncSessionLocal, engine
 from tests.integration.db_guard import purge_products
+from tests.integration.product_category import integration_product_category_id
 from models.store import Product
 from services import stock_ledger
 from services.stock_ledger import StockMovementType
@@ -73,6 +74,7 @@ class Fabrika:
                 price=Decimal("10.00"),
                 stock=stock,
                 status="ACTIVE",
+                category_id=await integration_product_category_id(s),
             )
             s.add(p)
             await s.flush()

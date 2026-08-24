@@ -26,6 +26,7 @@ from sqlalchemy import func, select, text
 
 from core.database import AsyncSessionLocal
 from tests.integration.db_guard import purge_products
+from tests.integration.product_category import integration_product_category_id
 from models.store import Product, StockMovement
 from services import stock_ledger
 from services.stock_ledger import (
@@ -68,6 +69,7 @@ class ProductFactory:
                 price=Decimal("100.00"),
                 stock=0 if with_opening else stock,
                 status="ACTIVE",
+                category_id=await integration_product_category_id(s),
             )
             s.add(p)
             await s.flush()

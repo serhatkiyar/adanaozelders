@@ -37,6 +37,7 @@ from sqlalchemy import text
 from core.config import settings
 from core.database import AsyncSessionLocal, engine
 from tests.integration.redis_guard import assert_test_redis
+from tests.integration.product_category import TEST_PRODUCT_CATEGORY_SLUG
 from tests.integration.db_guard import (
     assert_fake_payment_provider,
     assert_test_database,
@@ -401,6 +402,7 @@ async def ip3(pg):
 #: birikmişti. "Ayrı karar" diyerek korumasız bırakmak, korumasız bırakmaktır.
 _KRITIK_TABLOLAR = (
     "products",
+    "product_categories",
     # Varyant grupları (Faz 1): grup satırı sızarsa admin grup listesi ve
     # gelecekteki varyant seçici test artıklarıyla dolar.
     "variant_groups",
@@ -547,6 +549,52 @@ async def _test_veritabani():
     yield ad
 
 
+@pytest.fixture(scope="session", autouse=True)
+async def _test_urun_kategorisi(_test_veritabani):
+    """Aktif test ürünlerini üretimle aynı kategori invariantında tutar."""
+    async with AsyncSessionLocal() as s:
+        category_id = (
+            await s.execute(
+                text(
+                    "SELECT id FROM product_categories "
+                    "WHERE slug = :slug AND deleted_at IS NULL"
+                ),
+                {"slug": TEST_PRODUCT_CATEGORY_SLUG},
+            )
+        ).scalar_one_or_none()
+        if category_id is None:
+            category_id = (
+                await s.execute(
+                    text(
+                        "INSERT INTO product_categories "
+                        "(slug, name, sort_order, is_active) "
+                        "VALUES (:slug, 'Entegrasyon Test Ürünleri', 0, true) "
+                        "RETURNING id"
+                    ),
+                    {"slug": TEST_PRODUCT_CATEGORY_SLUG},
+                )
+            ).scalar_one()
+        await s.commit()
+    await engine.dispose()
+
+    yield int(category_id)
+
+    async with AsyncSessionLocal() as s:
+        references = (
+            await s.execute(
+                text("SELECT count(*) FROM products WHERE category_id = :id"),
+                {"id": category_id},
+            )
+        ).scalar_one()
+        if references == 0:
+            await s.execute(
+                text("DELETE FROM product_categories WHERE id = :id"),
+                {"id": category_id},
+            )
+            await s.commit()
+    await engine.dispose()
+
+
 async def _tablo_sayilari() -> dict[str, int]:
     """Kritik tablo sayıları.
 
@@ -584,7 +632,7 @@ def _nobetci_duyur(mesaj: str) -> None:
 
 
 @pytest.fixture(scope="session", autouse=True)
-async def _hijyen_nobetcisi(_test_veritabani):
+async def _hijyen_nobetcisi(_test_urun_kategorisi):
     """Suite öncesi/sonrası kritik tablo sayıları AYNI kalmalı.
 
     Bir test teardown'ı unutur/başarısız olursa satır birikir ve bu zamanla

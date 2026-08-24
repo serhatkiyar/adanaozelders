@@ -32,6 +32,7 @@ from services.stock_ledger import (
     StockMovementType,
 )
 from tests.integration.db_guard import purge_products
+from tests.integration.product_category import integration_product_category_id
 
 SALEABLE = StockBucket.SALEABLE
 DAMAGED = StockBucket.DAMAGED
@@ -55,6 +56,7 @@ class Fabrika:
                 price=Decimal("10.00"),
                 stock=stock,
                 status="ACTIVE",
+                category_id=await integration_product_category_id(s),
             )
             s.add(p)
             await s.flush()

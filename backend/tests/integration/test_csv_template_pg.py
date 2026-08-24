@@ -60,7 +60,7 @@ async def http():
 
 
 @pytest.fixture
-async def urun_copu(pg):
+async def urun_copu(pg, sablon_kategorisi):
     """Başlık ile temizlik — test başarısız olsa da satır kalmasın."""
     basliklar: list[str] = []
     yield basliklar

@@ -22,6 +22,7 @@ from models.client import Client
 from models.store import Order, OrderItem, Product
 from services import stock_ledger
 from tests.integration.db_guard import purge_products
+from tests.integration.product_category import integration_product_category_id
 
 
 def uniq() -> str:
@@ -65,6 +66,7 @@ class Fabrika:
                 price=Decimal("100.00"),
                 stock=None if stock is None else 0,
                 status="ACTIVE",
+                category_id=await integration_product_category_id(s),
             )
             s.add(p)
             await s.flush()

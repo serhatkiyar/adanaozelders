@@ -40,6 +40,10 @@ from core.database import AsyncSessionLocal
 from services import feature_flag_service
 from tests.integration.db_guard import purge_products
 from tests.integration.ip12_factory import fab12  # noqa: F401  (fixture)
+from tests.integration.product_category import (
+    TEST_PRODUCT_CATEGORY_SLUG,
+    integration_product_category_id,
+)
 
 UC = f"{settings.API_V1_PREFIX}/store/admin/products"
 
@@ -125,7 +129,13 @@ async def bayrak(fab12):  # noqa: F811
     flags.invalidate(flags.FLAG_DIGITAL_PRODUCTS_LIVE)
 
 
-def _govde(kind: str, ek: str) -> dict:
+@pytest.fixture
+async def kategori_id(pg) -> int:
+    async with AsyncSessionLocal() as s:
+        return await integration_product_category_id(s)
+
+
+def _govde(kind: str, ek: str, category_id: int) -> dict:
     return {
         "title": f"Dijital Kapı Testi {ek}",
         "kind": kind,
@@ -134,6 +144,7 @@ def _govde(kind: str, ek: str) -> dict:
         # kararını sınamıyor (mali müşavir onayı ayrı iş).
         "tax_rate": "0.1234",
         "status": "ACTIVE",
+        "category_id": category_id,
     }
 
 
@@ -156,13 +167,13 @@ async def _dijital_satir_sayisi(baslik: str) -> int:
 
 
 async def test_bayrak_kapaliyken_dijital_urun_OLUSTURULAMAZ(
-    http, fab12, bayrak, urun_copu  # noqa: F811
+    http, fab12, bayrak, urun_copu, kategori_id  # noqa: F811
 ):
     """503 + `DIGITAL_PRODUCTS_CLOSED` ve **tabloda satır yok**."""
     await bayrak(False)
     _admin_id, basliklar = await fab12.admin(izinler=["products.manage"])
     ek = _uniq()
-    govde = _govde("DIGITAL", ek)
+    govde = _govde("DIGITAL", ek, kategori_id)
     urun_copu.append(govde["title"])  # kapı bozulursa satır teardown'da silinsin
 
     r = await http.post(UC, json=govde, headers=basliklar)
@@ -177,13 +188,13 @@ async def test_bayrak_kapaliyken_dijital_urun_OLUSTURULAMAZ(
 
 
 async def test_fiziksel_urun_ayni_bayrakta_ETKILENMEZ(
-    http, fab12, bayrak, urun_copu  # noqa: F811
+    http, fab12, bayrak, urun_copu, kategori_id  # noqa: F811
 ):
     """Kapı yalnız DIGITAL'i durdurur — kitap/kırtasiye satışı ASIL iştir."""
     await bayrak(False)
     _admin_id, basliklar = await fab12.admin(izinler=["products.manage"])
     ek = _uniq()
-    govde = _govde("PHYSICAL", ek)
+    govde = _govde("PHYSICAL", ek, kategori_id)
     urun_copu.append(govde["title"])
 
     r = await http.post(UC, json=govde, headers=basliklar)
@@ -196,13 +207,13 @@ async def test_fiziksel_urun_ayni_bayrakta_ETKILENMEZ(
 
 
 async def test_bayrak_acikken_dijital_urun_olusturulabilir(
-    http, fab12, bayrak, urun_copu  # noqa: F811
+    http, fab12, bayrak, urun_copu, kategori_id  # noqa: F811
 ):
     """Aksi hâlde bayrak açıldığında dijital satış yine çalışmazdı."""
     await bayrak(True)
     _admin_id, basliklar = await fab12.admin(izinler=["products.manage"])
     ek = _uniq()
-    govde = _govde("DIGITAL", ek)
+    govde = _govde("DIGITAL", ek, kategori_id)
     urun_copu.append(govde["title"])
 
     r = await http.post(UC, json=govde, headers=basliklar)
@@ -231,9 +242,11 @@ async def test_csv_ile_de_dijital_urun_KACIRILAMAZ(
     fiziksel_baslik = f"CSV Fiziksel {ek}"
     urun_copu.extend([dijital_baslik, fiziksel_baslik])
     csv_metni = (
-        "title,kind,price,tax_rate,status\n"
-        f"{dijital_baslik},DIGITAL,50,0.1234,ACTIVE\n"
-        f"{fiziksel_baslik},PHYSICAL,50,0.1234,ACTIVE\n"
+        "title,kind,price,tax_rate,status,category_slug\n"
+        f"{dijital_baslik},DIGITAL,50,0.1234,ACTIVE,"
+        f"{TEST_PRODUCT_CATEGORY_SLUG}\n"
+        f"{fiziksel_baslik},PHYSICAL,50,0.1234,ACTIVE,"
+        f"{TEST_PRODUCT_CATEGORY_SLUG}\n"
     )
 
     r = await http.post(

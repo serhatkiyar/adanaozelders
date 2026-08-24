@@ -35,6 +35,7 @@ from sqlalchemy import func, select, text
 
 from core.database import AsyncSessionLocal
 from tests.integration.db_guard import purge_products
+from tests.integration.product_category import integration_product_category_id
 from models.store import Product, StockMovement
 from services import order_service, stock_ledger, store_service
 from services.stock_ledger import StockMovementType
@@ -116,6 +117,7 @@ class Fabrika:
                 price=Decimal("100.00"),
                 stock=stock,
                 status="ACTIVE",
+                category_id=await integration_product_category_id(s),
             )
             s.add(p)
             await s.flush()
@@ -345,6 +347,7 @@ async def test_cift2_satis_ile_admin_duzeltmesi_serilesir(fab, tur, ters_baslat)
                 ProductUpdate(stock=60, stock_reason_code="TEDARIK"),
                 admin_id=ADMIN_ID,
             )
+            await s.commit()
 
     isciler = [satis(), admin_duzeltmesi()]
     if ters_baslat:
@@ -428,6 +431,7 @@ async def test_cift2b_bayat_kimlik_haritasi_uzerinden_delta_hesaplanmiyor(fab, t
                 ProductUpdate(stock=3, stock_reason_code="SAYIM_FARKI"),
                 admin_id=ADMIN_ID,
             )
+            await admin_s.commit()
         except HTTPException as exc:
             raise AssertionError(
                 f"bayat bakiye üzerinden delta hesaplandı (409: {exc.detail})"
@@ -601,6 +605,7 @@ async def test_cift5_ayni_siparisin_retryi_ile_admin_duzeltmesi(fab, tur, ters_b
                 ProductUpdate(stock=25, stock_reason_code="TEDARIK"),
                 admin_id=ADMIN_ID,
             )
+            await s.commit()
 
     isciler = [satis_retry(), admin_duzeltmesi()]
     if ters_baslat:

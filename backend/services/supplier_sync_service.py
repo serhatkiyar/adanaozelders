@@ -245,6 +245,10 @@ async def sync_stock(
     await db.commit()
 
     rapor.notified = await _bildirimleri_tetikle(db, supplier_id, onceki_stok)
+    # Bildirim damgaları stok senkronunun ikinci transaction'ında oluşur.
+    # `notify_back_in_stock` yalnız flush eder; burada commit edilmezse oturum
+    # kapanırken `notified_at` geri alınır ve sonraki tur aynı postayı yollar.
+    await db.commit()
     return rapor
 
 

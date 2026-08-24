@@ -33,6 +33,7 @@ from models.store import Coupon, Product
 from schemas.admin_access import AdminRoleCreate
 from services import admin_access_service, stock_ledger
 from tests.integration.auth_headers import bearer_headers
+from tests.integration.product_category import integration_product_category_id
 from tests.integration.db_guard import purge_products
 
 
@@ -194,6 +195,7 @@ class VergiFabrikasi:
                 tax_rate=Decimal(tax_rate),
                 stock=0 if kind == "PHYSICAL" else None,
                 status="ACTIVE",
+                category_id=await integration_product_category_id(s),
             )
             s.add(p)
             await s.flush()

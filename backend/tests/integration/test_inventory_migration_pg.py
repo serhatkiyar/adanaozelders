@@ -217,9 +217,14 @@ async def test_F29_append_only_triggerlari_DOLU_tabloda_calisir(mig_db):
         await s.execute(text(
             "INSERT INTO roles (id,name) VALUES (1,'ADMIN') ON CONFLICT DO NOTHING"))
         await s.execute(text(
+            "INSERT INTO product_categories (slug,name,sort_order) "
+            "VALUES ('f29mig-kat','F29 Migration Testi',0) ON CONFLICT DO NOTHING"))
+        await s.execute(text(
             "INSERT INTO products (slug,title,kind,seller_type,price,stock,status,"
-            "created_at,updated_at) VALUES ('f29mig-t','T','PHYSICAL','PLATFORM',1,1,"
-            "'ACTIVE',now(),now())"))
+            "category_id,created_at,updated_at) VALUES "
+            "('f29mig-t','T','PHYSICAL','PLATFORM',1,1,'ACTIVE',"
+            "(SELECT id FROM product_categories WHERE slug='f29mig-kat' "
+            "AND deleted_at IS NULL),now(),now())"))
         await s.execute(text(
             "INSERT INTO admins (email,hashed_password,first_name,last_name,username,"
             "role_id,is_active,created_at,updated_at) VALUES ('f29mig@t.local','x','A','B',"
@@ -246,9 +251,14 @@ async def test_F29_downgrade_VERI_VARKEN_reddedilir_temizken_calisir(mig_db):
 
     async with mig_db() as s:
         await s.execute(text(
+            "INSERT INTO product_categories (slug,name,sort_order) "
+            "VALUES ('f29mig-kat','F29 Migration Testi',0) ON CONFLICT DO NOTHING"))
+        await s.execute(text(
             "INSERT INTO products (slug,title,kind,seller_type,price,stock,damaged_stock,"
-            "status,created_at,updated_at) VALUES ('f29mig-d','D','PHYSICAL','PLATFORM',1,5,2,"
-            "'ACTIVE',now(),now())"))
+            "status,category_id,created_at,updated_at) VALUES "
+            "('f29mig-d','D','PHYSICAL','PLATFORM',1,5,2,'ACTIVE',"
+            "(SELECT id FROM product_categories WHERE slug='f29mig-kat' "
+            "AND deleted_at IS NULL),now(),now())"))
         await s.commit()
 
     red = _alembic("downgrade", F29_ONCESI, bekle_hata=True)

@@ -25,6 +25,7 @@ from core.database import AsyncSessionLocal
 from models.store import Product
 from services import stock_ledger
 from tests.integration.db_guard import purge_products
+from tests.integration.product_category import integration_product_category_id
 
 
 def uniq() -> str:
@@ -167,6 +168,7 @@ class Fabrika:
                 isbn=isbn,
                 variant_group_id=variant_group_id,
                 option1_value=option1_value,
+                category_id=await integration_product_category_id(s),
             )
             s.add(p)
             await s.flush()

@@ -90,6 +90,23 @@ class Kurulum:
         async with AsyncSessionLocal() as s:
             if self.product_ids:
                 await purge_products(s, self.product_ids)
+        # Toplu içe aktarma testi ürün kimliğini HTTP yanıtından alamaz; buna
+        # rağmen ürün, bu fixture'ın oluşturduğu kategoriye bağlıdır. RESTRICT
+        # FK doğru biçimde kategori silmeyi engellediği için önce o ürünleri de
+        # kategori bağı üzerinden fiziksel temizleriz.
+        async with AsyncSessionLocal() as s:
+            if self.category_ids:
+                category_product_ids = (
+                    await s.execute(
+                        text(
+                            "SELECT id FROM products "
+                            "WHERE category_id = ANY(:i)"
+                        ),
+                        {"i": self.category_ids},
+                    )
+                ).scalars().all()
+                if category_product_ids:
+                    await purge_products(s, category_product_ids)
         async with AsyncSessionLocal() as s:
             if self.category_ids:
                 await s.execute(
