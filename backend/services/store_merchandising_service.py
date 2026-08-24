@@ -45,7 +45,6 @@ from schemas.store_merchandising import (
     AttributeValueWrite,
     LandingPageBlockOut,
     LandingPageCreate,
-    LandingPageBlockWrite,
     LandingPageDuplicateIn,
     LandingPageOut,
     LandingPagePublicationOut,
