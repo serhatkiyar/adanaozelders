@@ -3,6 +3,12 @@ import { useQuery } from "@tanstack/react-query";
 
 import { previewLandingPage } from "@/api/storeMerchandising";
 import { Button } from "@/components/admin/ui";
+import {
+  appendMediaToLandingBlock,
+  duplicateLandingBlock,
+  newBlock,
+  warningsByBlockKey,
+} from "@/components/admin/store/landing/landingDraft";
 import { useDuzenlemeYuzeyi } from "@/components/admin/ui2/yuzeyDurumu";
 import { Modal } from "@/components/ui/Modal";
 import { PlainButton } from "@/components/ui/PlainButton";
@@ -26,13 +32,10 @@ import {
 } from "@/lib/storeBlockSchema";
 import { toast } from "@/store/toastStore";
 import type {
-  LandingPage,
   LandingPageBlockInput,
   LandingPagePublication,
   LandingPageBlockType,
   LandingPageRevisionInput,
-  ProductCategory,
-  ProductSet,
   StoreMediaAsset,
 } from "@/types";
 
@@ -55,26 +58,6 @@ const localDateTime = () => {
   return now.toISOString().slice(0, 16);
 };
 
-const freshBlockKey = () => crypto.randomUUID();
-
-/**
- * Sunucunun blok başına ürettiği uyarıları blok anahtarına eşler.
- *
- * Uyarılar TASLAKTA yaşamaz (taslak kurulurken ayıklanır, çünkü kaydedilen
- * yükün parçası değildir); kaynakları her zaman sunucudan gelen önizleme
- * revizyonudur.
- */
-export function warningsByBlockKey(
-  blocks: { block_key?: string | null; warnings?: string[] }[] | undefined,
-): Record<string, string[]> {
-  const harita: Record<string, string[]> = {};
-  for (const block of blocks ?? []) {
-    if (!block.block_key) continue;
-    if (block.warnings?.length) harita[block.block_key] = block.warnings;
-  }
-  return harita;
-}
-
 /** Blok uyarılarını yöneticiye gösterir. Uyarı yoksa hiçbir şey basmaz. */
 export function BlockWarnings({ warnings = [] }: { warnings?: string[] }) {
   // Varsayılan ŞART: çalışma zamanı kapısı dışa aktarılan her bileşeni
@@ -90,120 +73,6 @@ export function BlockWarnings({ warnings = [] }: { warnings?: string[] }) {
       ))}
     </ul>
   );
-}
-
-export function duplicateLandingBlock(
-  block: LandingPageBlockInput,
-  index: number,
-): LandingPageBlockInput {
-  return {
-    ...block,
-    block_key: freshBlockKey(),
-    title: block.title ? `${block.title} (kopya)` : block.title,
-    config: structuredClone(block.config),
-    sort_order: index * 10,
-  };
-}
-
-export function appendMediaToLandingBlock(
-  block: LandingPageBlockInput,
-  asset: StoreMediaAsset,
-): LandingPageBlockInput {
-  // Hangi bloğun görsel aldığı ve görselin nereye yazıldığı ŞEMADAN gelir;
-  // eskiden burada blok tiplerini sayan iki koşul ve gömülü bir `fit` üçlüsü
-  // vardı (yeni bir görselli tip eklendiğinde burası sessizce atlanırdı).
-  const alan = medyaAlani(block.block_type);
-  if (!alan) return block;
-  if (alan.tekil) {
-    return {
-      ...block,
-      config: {
-        ...block.config,
-        [alan.ad]: asset.image_url,
-        alt_text: asset.alt_text,
-        decorative: !asset.alt_text,
-        fit: alan.varsayilanFit,
-      },
-    };
-  }
-  const items =
-    (block.config[alan.ad] as Array<Record<string, unknown>> | undefined) ?? [];
-  if (items.some((item) => item.image_url === asset.image_url)) return block;
-  return {
-    ...block,
-    config: {
-      ...block.config,
-      [alan.ad]: [
-        ...items,
-        {
-          image_url: asset.image_url,
-          alt_text: asset.alt_text,
-          decorative: !asset.alt_text,
-          fit: alan.varsayilanFit,
-          label: "",
-          link_url: "",
-        },
-      ],
-    },
-  };
-}
-
-export function composeLandingDraftPreview(
-  page: LandingPage,
-  draft: LandingPageRevisionInput,
-  productSets: ProductSet[],
-  categories: ProductCategory[],
-): LandingPage {
-  const existing = new Map(
-    page.revision.blocks.map((block) => [block.block_key, block]),
-  );
-  return {
-    ...page,
-    state: "DRAFT",
-    revision: {
-      ...page.revision,
-      title: draft.title,
-      seo_title: draft.seo_title,
-      seo_description: draft.seo_description,
-      og_image_url: draft.og_image_url,
-      blocks: draft.blocks
-        .filter((block) => block.is_active)
-        .map((block, index) => {
-          const blockKey = block.block_key || `preview-${index}`;
-          const previous = existing.get(blockKey);
-          const productSet = productSets.find(
-            (set) =>
-              set.id === block.product_set_id ||
-              set.revision.id === block.product_set_revision_id,
-          );
-          const categoryIds =
-            (block.config.category_ids as number[] | undefined) ?? [];
-          return {
-            ...block,
-            id: previous?.id ?? -(index + 1),
-            block_key: blockKey,
-            sort_order: index * 10,
-            // Hangi bloğun önizlemede ürün/kategori zenginleştirmesi aldığı
-            // da ŞEMADAN okunur: koleksiyon alanı olan blok ürün, kategori
-            // alanı olan blok kategori taşır. Tip adı sabitlemek, yeni bir
-            // ürün/kategori bloğu eklendiğinde burayı sessizce atlatırdı.
-            products: BLOK_SEMASI[block.block_type].alanlar.some(
-              (alan) => alan.tur === "koleksiyon",
-            )
-              ? (productSet?.preview_products ?? [])
-              : (previous?.products ?? []),
-            categories: BLOK_SEMASI[block.block_type].alanlar.some(
-              (alan) => alan.tur === "kategoriler",
-            )
-              ? categoryIds
-                  .map((id) => categories.find((category) => category.id === id))
-                  .filter((category): category is ProductCategory => Boolean(category))
-              : (previous?.categories ?? []),
-            warnings: productSet?.warnings ?? previous?.warnings ?? [],
-          };
-        }),
-    },
-  };
 }
 
 export function LandingPagesManager({
@@ -1505,27 +1374,6 @@ function BlockEditor({
   );
 }
 
-/** Yeni blok — varsayılanların tek kaynağı `BLOK_SEMASI`. */
-function newBlock(
-  type: LandingPageBlockType,
-  index: number,
-  productSetId?: number,
-): LandingPageBlockInput {
-  const tanim = BLOK_SEMASI[type];
-  return {
-    block_key: freshBlockKey(),
-    block_type: type,
-    title: tanim.varsayilanBaslik,
-    description: "",
-    link_label: "Keşfet",
-    link_url: null,
-    config: tanim.varsayilanConfig(),
-    product_set_id: type === "PRODUCT_RAIL" ? (productSetId ?? null) : null,
-    product_set_revision_id: null,
-    is_active: true,
-    sort_order: index * 10,
-  };
-}
 function State({ state }: { state: string }) {
   const label: Record<string, string> = {
     DRAFT: "Taslak",

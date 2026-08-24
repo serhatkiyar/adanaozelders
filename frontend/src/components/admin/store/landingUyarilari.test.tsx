@@ -14,10 +14,11 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
-import {
-  BlockWarnings,
-  warningsByBlockKey,
-} from "@/components/admin/store/LandingPagesManager";
+// `warningsByBlockKey` saf olduğu için `landing/landingDraft.ts`e taşındı;
+// `BlockWarnings` JSX ürettiği için panelde kaldı. Yalnız import yolları
+// değişti, iddialar aynı.
+import { BlockWarnings } from "@/components/admin/store/LandingPagesManager";
+import { warningsByBlockKey } from "@/components/admin/store/landing/landingDraft";
 
 describe("warningsByBlockKey", () => {
   it("blok anahtarina gore uyarilari eslestirir", () => {

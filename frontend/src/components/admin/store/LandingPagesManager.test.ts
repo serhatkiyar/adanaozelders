@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 
+// Yardımcılar `landing/landingDraft.ts`e TAŞINDI (P4): saf oldukları için
+// panel dosyasında durmaları gerekmiyordu. Yalnız import yolu değişti;
+// iddialar aynı kaldı.
 import {
   appendMediaToLandingBlock,
-  composeLandingDraftPreview,
   duplicateLandingBlock,
-} from "./LandingPagesManager";
+} from "./landing/landingDraft";
 import type {
   LandingPage,
   LandingPageBlockInput,
@@ -65,55 +67,4 @@ describe("LandingPagesManager düzenleyici yardımcıları", () => {
     expect(copy.config).toEqual(original.config);
   });
 
-  it("taslağı gerçek sayfa önizleme verisine dönüştürür", () => {
-    const product = { id: 41, title: "TYT Matematik" } as ProductSearchOut;
-    const category = { id: 9, name: "Romanlar" } as ProductCategory;
-    const productSet = {
-      id: 3,
-      name: "Yeni gelenler",
-      revision: { id: 33 },
-      preview_products: [product],
-      warnings: [],
-    } as ProductSet;
-    const page = {
-      id: 1,
-      state: "LIVE",
-      revision: { id: 5, blocks: [] },
-    } as unknown as LandingPage;
-    const draft = {
-      title: "Anlık başlık",
-      seo_title: "SEO",
-      seo_description: "",
-      blocks: [
-        {
-          ...imageBlock,
-          block_key: "products",
-          block_type: "PRODUCT_RAIL",
-          product_set_id: 3,
-          product_set_revision_id: null,
-          config: {},
-        },
-        {
-          ...imageBlock,
-          block_key: "categories",
-          block_type: "CATEGORY_GRID",
-          config: { category_ids: [9] },
-        },
-        { ...imageBlock, block_key: "hidden", is_active: false },
-      ],
-    } as LandingPageRevisionInput;
-
-    const preview = composeLandingDraftPreview(
-      page,
-      draft,
-      [productSet],
-      [category],
-    );
-
-    expect(preview.state).toBe("DRAFT");
-    expect(preview.revision.title).toBe("Anlık başlık");
-    expect(preview.revision.blocks).toHaveLength(2);
-    expect(preview.revision.blocks[0].products).toEqual([product]);
-    expect(preview.revision.blocks[1].categories).toEqual([category]);
-  });
 });

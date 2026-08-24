@@ -224,6 +224,10 @@ export const OLCUM_TABANI = [
   "src/components/admin/store/CouponsPanel.tsx",
   "src/components/admin/store/EditProductModal.tsx",
   "src/components/admin/store/LandingPagesManager.tsx",
+  // P4: vitrin taslağının SAF yardımcıları panel dosyasından ayrıldı. `.ts`
+  // olduğu için ekran ölçümüne (adsız kontrol / dokunma hedefi) girmez;
+  // envanterde yazılı olması "borç ölçüme girmeden doğamaz" kuralı gereği.
+  "src/components/admin/store/landing/landingDraft.ts",
   "src/components/admin/store/OrdersPanel.tsx",
   "src/components/admin/store/ProductForm.tsx",
   "src/components/admin/store/ProductSetsManager.tsx",
