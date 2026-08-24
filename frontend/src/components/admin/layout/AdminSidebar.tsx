@@ -1,5 +1,5 @@
 import { type ReactNode } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/admin/ui";
 import { GezinmeBaglantisi } from "@/components/admin/ui2/gezinmeBekcisi";
 import { useOpenReportCount } from "@/hooks/useReports";
@@ -103,7 +103,6 @@ export function AdminSidebar({
   onKatlamaDegistir,
   testId,
 }: AdminSidebarProps) {
-  const { pathname } = useLocation();
   // FAIL-CLOSED (İP-4/F-1): izin bilgisi yüklenemediyse menü öğesi
   // GÖSTERİLMEZ. Eskiden `!permissions ||` ile fail-open'dı ve `lib/adminAccess`
   // ile aynı sözleşmeyi paylaşıyordu; o sözleşme değişti, bu da onunla gitti —
@@ -219,17 +218,6 @@ export function AdminSidebar({
                     korunur: `aria-label` başlığın yerine geçer. */}
                 <div className="space-y-0.5" role="group" aria-label={katli ? group : undefined}>
                   {items.map((item) => {
-                    // ── İKON DEĞİL ROTA (İP-B1 · Görev 5 · tarayıcı turu) ──
-                    //
-                    // Eski koşul `item.icon === "store"` idi ve "Hakedişler"
-                    // de o ikonu taşıyor: `/yonetim/magaza/*` altındayken
-                    // kenar çubuğunda İKİ öğe birden etkin görünüyordu.
-                    // Ekran görüntüsünde yakalandı; `aria-current` doğruydu
-                    // (yalnız Mağaza'daydı), yani hata SALT GÖRSELDİ ve
-                    // hiçbir a11y nöbetçisi göremezdi.
-                    const storeActive =
-                      item.to === ROUTES.adminStoreProducts &&
-                      pathname.startsWith("/yonetim/magaza/");
                     const etiket = item.shortLabel ?? item.label;
                     return (
                       <GezinmeBaglantisi
@@ -239,10 +227,10 @@ export function AdminSidebar({
                         onClick={onNavigate}
                         aria-label={katli ? etiket : undefined}
                         title={katli ? etiket : undefined}
-                        className={({ isActive }) => ogeSinifi(isActive || storeActive)}
+                        className={({ isActive }) => ogeSinifi(isActive)}
                       >
                         {({ isActive }) => {
-                          const active = isActive || storeActive;
+                          const active = isActive;
                           return (
                             <>
                               {/* Etkinlik DOM'da GÖRÜNÜR bir sözleşme:

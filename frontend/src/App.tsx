@@ -96,7 +96,7 @@ const DamageEventsPage = lazy(() => import("@/pages/admin/inventory/DamageEvents
 const StockMovementsPanel = lazy(() =>
   import("@/components/admin/StockMovementsPanel").then((module) => ({ default: module.StockMovementsPanel }))
 );
-const StoreContentPreviewPage = lazy(() => import("@/pages/admin/store/StoreContentPreviewPage"));
+const StoreContentPreviewPage = lazy(() => import("@/pages/store/StoreContentPreviewPage"));
 const PackingLayout = lazy(() => import("@/pages/admin/packing/PackingLayout"));
 const PackingQueuePage = lazy(() => import("@/pages/admin/packing/PackingQueuePage"));
 const PackingStationPage = lazy(() => import("@/pages/admin/packing/PackingStationPage"));

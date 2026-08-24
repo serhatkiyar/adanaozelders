@@ -456,6 +456,9 @@ const KONTROLSUZ_EKRANLAR: Record<string, "sunum" | "kabuk" | "pencere-kabugu" |
   "src/components/admin/layout/AdminProfilMenusu.tsx": "kosullu",
   "src/components/admin/layout/AdminSidebar.tsx": "kabuk",
   "src/components/admin/store/ReturnsPanel.tsx": "kosullu",
+  // Mağaza içerik yöneticisi ağsız varsayılan render'da sayfa seçilene kadar
+  // boş durum gösterir; formlar ve medya seçici kabul testlerinde açılır.
+  "src/components/admin/store/LandingPagesManager.tsx": "kosullu",
   "src/components/admin/store/StoreHomeLayoutManager.tsx": "kosullu",
   "src/components/admin/store/StoreShowcaseManager.tsx": "kosullu",
   // Tedarikçi paneli: ağsız render'da tedarikçi listesi BOŞtur ve ekran
@@ -502,6 +505,9 @@ const KONTROLSUZ_EKRANLAR: Record<string, "sunum" | "kabuk" | "pencere-kabugu" |
   "src/pages/dashboards/AdminExamCatalogs.tsx": "kosullu",
   "src/pages/dashboards/AdminHome.tsx": "kosullu",
   "src/pages/dashboards/AdminLibraries.tsx": "kosullu",
+  // Rota kabuğu varsayılan test konumunda HOME panelini açar; veri gelmeden
+  // kontrol basmaz. Sekme ve form dalları admin mağaza kabul testlerindedir.
+  "src/pages/dashboards/AdminStore.tsx": "kosullu",
   "src/pages/dashboards/CourierHome.tsx": "kosullu",
   "src/pages/dashboards/OperatorHome.tsx": "kosullu",
   "src/pages/dashboards/OperatorLibrary.tsx": "kosullu",

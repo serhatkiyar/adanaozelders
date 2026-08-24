@@ -43,7 +43,7 @@ const TAB_AREA: Record<SubTab, string> = {
 
 const GROUPS: { label: string; items: [SubTab, string][] }[] = [
   { label: "İçerik", items: [["home", "Ana sayfa"], ["campaigns", "Kampanyalar"], ["collections", "Koleksiyonlar"]] },
-  { label: "Katalog", items: [["products", "Ürünler"], ["categories", "Kategoriler ve özellikler"], ["supplier", "Tedarikçi"]] },
+  { label: "Katalog", items: [["products", "Ürünler"], ["categories", "Kategoriler"], ["supplier", "Tedarikçi"]] },
   { label: "Satış", items: [["orders", "Siparişler"], ["returns", "İadeler"], ["coupons", "Kuponlar"]] },
 ];
 

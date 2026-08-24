@@ -12,7 +12,7 @@ describe("admin navigation", () => {
   it("resolves every store sub-route to the store page metadata", () => {
     const item = getAdminNavItem(ROUTES.adminStoreOrders);
     expect(item.label).toBe("Mağaza");
-    expect(item.to).toBe(ROUTES.adminStoreProducts);
+    expect(item.to).toBe(ROUTES.adminStoreRoot);
   });
 
   it("tedarikçi sekmesi de Mağaza grubuna düşer", () => {
@@ -27,7 +27,7 @@ describe("admin navigation", () => {
     const item = getAdminNavItem(ROUTES.adminStoreSupplier);
     expect(item.label).toBe("Mağaza");
     expect(item.group).toBe("Ticaret");
-    expect(item.to).toBe(ROUTES.adminStoreProducts);
+    expect(item.to).toBe(ROUTES.adminStoreRoot);
   });
 
   it("keeps the overview route exact", () => {

@@ -420,7 +420,7 @@ export default function StorePage() {
       ) : (
         /* ── Vitrin (filtre yokken): yönetilen kanonik HOME akışı ── */
         <>
-          {canonicalHome ? (
+          {canonicalHome?.revision && Array.isArray(canonicalHome.revision.blocks) ? (
             <StoreLandingBlocks page={canonicalHome} />
           ) : isCanonicalHomeLoading ? (
             <div className={`${CONTAINER} py-10`}><HomeFlowSkeleton /></div>

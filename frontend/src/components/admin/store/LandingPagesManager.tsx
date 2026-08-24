@@ -3,7 +3,9 @@ import { useQuery } from "@tanstack/react-query";
 
 import { previewLandingPage } from "@/api/storeMerchandising";
 import { Button } from "@/components/admin/ui";
+import { useDuzenlemeYuzeyi } from "@/components/admin/ui2/yuzeyDurumu";
 import { Modal } from "@/components/ui/Modal";
+import { PlainButton } from "@/components/ui/PlainButton";
 import { useCategories } from "@/hooks/useStore";
 import {
   useLandingPageRevisions,
@@ -394,7 +396,7 @@ export function LandingPagesManager({
               </div>
               <div className="space-y-1.5">
                 {draft.blocks.map((block, index) => (
-                  <button
+                  <PlainButton
                     key={block.block_key}
                     type="button"
                     onClick={() => setSelectedBlockKey(block.block_key ?? null)}
@@ -406,7 +408,7 @@ export function LandingPagesManager({
                     <span className="mt-0.5 block truncate text-sm font-medium text-panel-fg">
                       {block.title || "Başlıksız bölüm"}
                     </span>
-                  </button>
+                  </PlainButton>
                 ))}
               </div>
             </div>
@@ -625,7 +627,7 @@ export function LandingPagesManager({
                   <div className="mt-2 grid gap-2 sm:grid-cols-2">
                     {(Object.keys(BLOCK_NAMES) as LandingPageBlockType[]).map(
                       (type) => (
-                        <button
+                        <PlainButton
                           key={type}
                           type="button"
                           onClick={() => {
@@ -648,7 +650,7 @@ export function LandingPagesManager({
                           <span className="mt-1 block text-xs leading-5 text-panel-fg-muted">
                             {BLOCK_DESCRIPTIONS[type]}
                           </span>
-                        </button>
+                        </PlainButton>
                       ),
                     )}
                   </div>
@@ -896,7 +898,7 @@ function BlockEditor({
       ? [String(block.config.image_url ?? "")]
       : items.map((item) => String(item.image_url ?? "")),
   );
-  const [showMediaPicker, setShowMediaPicker] = useState(false);
+  const mediaPicker = useDuzenlemeYuzeyi();
   return (
     <article className="rounded-xl border border-panel-border bg-panel-card p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -1063,7 +1065,7 @@ function BlockEditor({
             </div>
             <Button
               variant="secondary"
-              onClick={() => setShowMediaPicker(true)}
+              onClick={() => mediaPicker.yeniAc()}
             >
               {block.block_type === "BANNER" && block.config.image_url
                 ? "Görseli değiştir"
@@ -1071,8 +1073,8 @@ function BlockEditor({
             </Button>
           </div>
           <Modal
-            open={showMediaPicker}
-            onClose={() => setShowMediaPicker(false)}
+            open={mediaPicker.acik}
+            onClose={mediaPicker.kapat}
             title="Görsel seç veya yükle"
             description="Yeni bir görsel yüklediğinizde doğrudan bu bölüme eklenir."
             maxWidth="max-w-4xl"
@@ -1080,7 +1082,7 @@ function BlockEditor({
             <MediaUpload
               onUploaded={(asset) => {
                 onChange(appendMediaToLandingBlock(block, asset));
-                setShowMediaPicker(false);
+                mediaPicker.kapat();
               }}
             />
             <div className="mt-5">
@@ -1092,13 +1094,13 @@ function BlockEditor({
                   {media.map((asset) => {
                     const selected = selectedMediaUrls.has(asset.image_url);
                     return (
-                      <button
+                      <PlainButton
                         key={asset.id}
                         type="button"
                         aria-pressed={selected}
                         onClick={() => {
                           onChange(appendMediaToLandingBlock(block, asset));
-                          setShowMediaPicker(false);
+                          mediaPicker.kapat();
                         }}
                         className={`overflow-hidden rounded-xl border p-2 text-left transition hover:border-panel-accent ${selected ? "border-panel-accent bg-panel-accent/10" : "border-panel-border"}`}
                       >
@@ -1115,7 +1117,7 @@ function BlockEditor({
                             ? "Bu bölümde kullanılıyor"
                             : `${asset.width} × ${asset.height}`}
                         </span>
-                      </button>
+                      </PlainButton>
                     );
                   })}
                 </div>

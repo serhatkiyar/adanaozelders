@@ -119,7 +119,7 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
   {
     label: "Mağaza",
     kisayol: "M",
-    to: ROUTES.adminStoreHome,
+    to: ROUTES.adminStoreRoot,
     group: "Ticaret",
     description: "Ana sayfa, kampanya, koleksiyon ve mağaza operasyonları.",
     icon: "store",
@@ -211,7 +211,7 @@ export const ADMIN_NAV_GROUPS: AdminNavGroup[] = [
 
 export function getAdminNavItem(pathname: string): AdminNavItem {
   if (pathname.startsWith("/yonetim/magaza/")) {
-    return ADMIN_NAV_ITEMS.find((item) => item.to === ROUTES.adminStoreHome)!;
+    return ADMIN_NAV_ITEMS.find((item) => item.to === ROUTES.adminStoreRoot)!;
   }
 
   // Fallback DİZİ SIRASINA bağlanamaz: `ADMIN_NAV_ITEMS[0]` bugün "Hakedişler"
