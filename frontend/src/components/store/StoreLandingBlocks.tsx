@@ -226,6 +226,10 @@ function Hero({
                   alt={slide.decorative ? "" : (slide.alt_text ?? "")}
                   loading={priority && index === 0 ? "eager" : "lazy"}
                   fetchPriority={priority && index === 0 ? "high" : "auto"}
+                  // Eski `StoreHeroCarousel` bunu veriyordu; vitrin tek nesle
+                  // inerken kaybolmasın (LCP görselinin kod çözümü ana iş
+                  // parçacığını bloklamamalı).
+                  decoding="async"
                   className={`h-full w-full ${slide.fit === "contain" ? "object-contain" : "object-cover"}`}
                   style={{
                     objectPosition: `${slide.focal_x ?? 50}% ${slide.focal_y ?? 50}%`,

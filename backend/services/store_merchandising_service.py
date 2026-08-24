@@ -947,6 +947,37 @@ async def get_page(db: AsyncSession, slug: str, *, preview_revision_id: int | No
     )
 
 
+async def storefront_health(db: AsyncSession) -> dict:
+    """Mağaza ana sayfası SUNULABİLİR durumda mı — `/health` için.
+
+    Neden var: vitrin bugüne kadar bozulduğunda SESSİZ kalıyordu. Müşteri eski
+    bir neslin içeriğini görüyor, operatör hiçbir şey fark etmiyordu. Bu, bu
+    projede rota katmanında bir kez öğrenilmiş bir ders: VROOM düştüğünde
+    sistem çalışmaya devam ediyor ama müşteriye verilen varış penceresi
+    tahmine dönüyordu — çözüm gerilemeyi engellemek değil, GÖRÜNÜR kılmaktı
+    (`core/routing.health_snapshot`). Vitrin de aynı doktrine giriyor.
+
+    Rota kalıbı: `degraded`, 503 DEĞİL. Ana sayfası yayınsız bir mağazada
+    ürün sayfaları, sepet ve ödeme çalışmaya devam eder; konteyneri yeniden
+    başlatmak da hiçbir şeyi düzeltmez (sorun içeriktedir).
+    """
+    page = (await db.execute(select(StoreLandingPage).where(
+        StoreLandingPage.page_type == "HOME",
+        StoreLandingPage.deleted_at.is_(None),
+    ))).scalar_one_or_none()
+    if page is None:
+        return {"status": "missing_page", "degraded": True}
+    revision, state, _starts_at, _ends_at = await _publication_for_page(db, page.id)
+    if revision is None:
+        return {"status": "unpublished", "degraded": True}
+    blocks = [b for b in revision.blocks if b.deleted_at is None and b.is_active]
+    if not blocks:
+        # "200 döndü" yetmez: bloksuz bir ana sayfa müşteriye BOŞ görünür ve
+        # bu, yayınsız olmaktan farksızdır.
+        return {"status": "empty", "degraded": True, "state": state}
+    return {"status": "ok", "degraded": False, "state": state, "blocks": len(blocks)}
+
+
 async def get_home(
     db: AsyncSession, *, preview_revision_id: int | None = None
 ) -> LandingPageOut:

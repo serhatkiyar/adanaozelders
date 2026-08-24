@@ -60,7 +60,51 @@ import type { AxiosRequestConfig } from "axios";
    burada bilerek BOŞ döner. Böylece "banner ancak veri gelirse çiziliyor"
    gizli bağımlılığı da ölçülmüş olur. */
 let eskiAdapter: unknown;
-let storeHeroSlides: unknown[];
+/* Hero artık KANONİK vitrin sayfasından gelir (`GET /store/home`), eski
+   `store_hero_slides` ucundan DEĞİL. Vitrin tek nesle indirilirken (P2)
+   `StorePage` eski hero'yu çağırmayı bıraktı; bu testin N-2 iddiası
+   BİLİNÇLİ olarak yeni kaynağa taşındı. Taşınan şey KAYNAKTIR, iddia
+   değil: hero görseli çizilmeli, LCP ipuçlarını taşımalı ve bağlantısı
+   doğru olmalı. */
+let storeHeroSlides: { image_url: string; alt_text: string; link_url: string }[];
+
+function kanonikHome(slaytlar: typeof storeHeroSlides) {
+  if (!slaytlar.length) return { revision: { id: 1, blocks: [] } };
+  return {
+    id: 1,
+    slug: "ana-sayfa",
+    page_type: "HOME",
+    state: "LIVE",
+    revision: {
+      id: 1,
+      blocks: [
+        {
+          id: 1,
+          block_key: "hero",
+          block_type: "HERO_CAROUSEL",
+          title: "",
+          description: "",
+          link_label: "",
+          link_url: null,
+          config: {
+            slides: slaytlar.map((s) => ({
+              image_url: s.image_url,
+              mobile_image_url: null,
+              alt_text: s.alt_text,
+              link_url: s.link_url,
+              fit: "cover",
+            })),
+          },
+          is_active: true,
+          sort_order: 0,
+          products: [],
+          categories: [],
+          warnings: [],
+        },
+      ],
+    },
+  };
+}
 
 beforeEach(() => {
   eskiAdapter = apiClient.defaults.adapter;
@@ -68,8 +112,8 @@ beforeEach(() => {
   apiClient.defaults.adapter = async (config: AxiosRequestConfig) => {
     const url = String(config.url);
     return ({
-      data: url.includes("/store/hero-slides")
-        ? storeHeroSlides
+      data: /\/store\/home(\?|$)/.test(url)
+        ? kanonikHome(storeHeroSlides)
         : url.includes("/store/products")
           ? []
           : /\/search\b/.test(url)
@@ -132,9 +176,7 @@ describe("İP-C1 · çapraz tanıtım banner'ı", () => {
 
   it("N-2: mağaza sayfası admin kaynaklı vitrin görselini bağlantısıyla çizer", async () => {
     storeHeroSlides = [{
-      id: 17,
       image_url: "https://cdn.example.com/vitrin.webp",
-      mobile_image_url: null,
       alt_text: "Okula dönüş vitrini",
       link_url: "/magaza?q=okul",
     }];
