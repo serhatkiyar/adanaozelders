@@ -250,6 +250,11 @@ class Factory:
     ):
         from models.store import Product
 
+        if status == "ACTIVE" and category_id is None:
+            category_id = (await self.category(
+                session, name="Dogrulama Urunleri"
+            )).id
+
         u = _uniq()
         p = Product(
             slug=f"urun-{u}",
