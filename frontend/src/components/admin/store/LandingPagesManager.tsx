@@ -18,6 +18,12 @@ import {
 } from "@/hooks/useStoreMerchandising";
 import { getErrorDetail } from "@/lib/errors";
 import { ROUTES } from "@/lib/routes";
+import {
+  BLOK_SEMASI,
+  BLOK_TIPLERI,
+  medyaAlani,
+  type BlokAlan,
+} from "@/lib/storeBlockSchema";
 import { toast } from "@/store/toastStore";
 import type {
   LandingPage,
@@ -29,25 +35,18 @@ import type {
   StoreMediaAsset,
 } from "@/types";
 
-const BLOCK_NAMES: Record<LandingPageBlockType, string> = {
-  HERO_CAROUSEL: "Dönen büyük görseller",
-  IMAGE_CARD_GRID: "Resimli kart grubu",
-  CATEGORY_GRID: "Kategori bağlantıları",
-  PRODUCT_RAIL: "Ürün vitrini",
-  BANNER: "Tek geniş görsel",
-  RICH_TEXT: "Metin alanı",
-  RECENTLY_VIEWED: "Son görüntülenenler",
-};
+/**
+ * Ad ve açıklama sözlükleri artık ELLE tutulmuyor: tek kaynak
+ * `lib/storeBlockSchema`. Eskiden bunlar ayrı iki `Record` idi ve yeni bir
+ * blok tipi eklerken biri unutulduğunda hata sessiz kalıyordu.
+ */
+const BLOCK_NAMES = Object.fromEntries(
+  BLOK_TIPLERI.map((tip) => [tip, BLOK_SEMASI[tip].ad]),
+) as Record<LandingPageBlockType, string>;
 
-const BLOCK_DESCRIPTIONS: Record<LandingPageBlockType, string> = {
-  HERO_CAROUSEL: "Sayfanın üstünde sırayla değişen kampanya görselleri.",
-  IMAGE_CARD_GRID: "Birbiriyle ilgili 2–4 görsel bağlantıyı yan yana gösterir.",
-  CATEGORY_GRID: "Seçtiğiniz mağaza kategorilerine kısa yollar ekler.",
-  PRODUCT_RAIL: "Bir ürün grubunu yatay vitrin olarak gösterir.",
-  BANNER: "Tek bir yatay kampanya görseli gösterir.",
-  RICH_TEXT: "Başlık, açıklama veya bilgilendirme metni ekler.",
-  RECENTLY_VIEWED: "Ziyaretçinin daha önce baktığı ürünleri gösterir.",
-};
+const BLOCK_DESCRIPTIONS = Object.fromEntries(
+  BLOK_TIPLERI.map((tip) => [tip, BLOK_SEMASI[tip].aciklama]),
+) as Record<LandingPageBlockType, string>;
 
 const localDateTime = () => {
   const now = new Date(Date.now() + 60_000);
@@ -109,36 +108,37 @@ export function appendMediaToLandingBlock(
   block: LandingPageBlockInput,
   asset: StoreMediaAsset,
 ): LandingPageBlockInput {
-  if (block.block_type === "BANNER") {
+  // Hangi bloğun görsel aldığı ve görselin nereye yazıldığı ŞEMADAN gelir;
+  // eskiden burada blok tiplerini sayan iki koşul ve gömülü bir `fit` üçlüsü
+  // vardı (yeni bir görselli tip eklendiğinde burası sessizce atlanırdı).
+  const alan = medyaAlani(block.block_type);
+  if (!alan) return block;
+  if (alan.tekil) {
     return {
       ...block,
       config: {
         ...block.config,
-        image_url: asset.image_url,
+        [alan.ad]: asset.image_url,
         alt_text: asset.alt_text,
         decorative: !asset.alt_text,
-        fit: "cover",
+        fit: alan.varsayilanFit,
       },
     };
   }
-  if (!["HERO_CAROUSEL", "IMAGE_CARD_GRID"].includes(block.block_type)) {
-    return block;
-  }
-  const itemsKey = block.block_type === "HERO_CAROUSEL" ? "slides" : "cards";
   const items =
-    (block.config[itemsKey] as Array<Record<string, unknown>> | undefined) ?? [];
+    (block.config[alan.ad] as Array<Record<string, unknown>> | undefined) ?? [];
   if (items.some((item) => item.image_url === asset.image_url)) return block;
   return {
     ...block,
     config: {
       ...block.config,
-      [itemsKey]: [
+      [alan.ad]: [
         ...items,
         {
           image_url: asset.image_url,
           alt_text: asset.alt_text,
           decorative: !asset.alt_text,
-          fit: block.block_type === "HERO_CAROUSEL" ? "cover" : "contain",
+          fit: alan.varsayilanFit,
           label: "",
           link_url: "",
         },
@@ -182,16 +182,22 @@ export function composeLandingDraftPreview(
             id: previous?.id ?? -(index + 1),
             block_key: blockKey,
             sort_order: index * 10,
-            products:
-              block.block_type === "PRODUCT_RAIL"
-                ? (productSet?.preview_products ?? [])
-                : (previous?.products ?? []),
-            categories:
-              block.block_type === "CATEGORY_GRID"
-                ? categoryIds
-                    .map((id) => categories.find((category) => category.id === id))
-                    .filter((category): category is ProductCategory => Boolean(category))
-                : (previous?.categories ?? []),
+            // Hangi bloğun önizlemede ürün/kategori zenginleştirmesi aldığı
+            // da ŞEMADAN okunur: koleksiyon alanı olan blok ürün, kategori
+            // alanı olan blok kategori taşır. Tip adı sabitlemek, yeni bir
+            // ürün/kategori bloğu eklendiğinde burayı sessizce atlatırdı.
+            products: BLOK_SEMASI[block.block_type].alanlar.some(
+              (alan) => alan.tur === "koleksiyon",
+            )
+              ? (productSet?.preview_products ?? [])
+              : (previous?.products ?? []),
+            categories: BLOK_SEMASI[block.block_type].alanlar.some(
+              (alan) => alan.tur === "kategoriler",
+            )
+              ? categoryIds
+                  .map((id) => categories.find((category) => category.id === id))
+                  .filter((category): category is ProductCategory => Boolean(category))
+              : (previous?.categories ?? []),
             warnings: productSet?.warnings ?? previous?.warnings ?? [],
           };
         }),
@@ -672,7 +678,7 @@ export function LandingPagesManager({
                     + Yeni bölüm ekle
                   </summary>
                   <div className="mt-2 grid gap-2 sm:grid-cols-2">
-                    {(Object.keys(BLOCK_NAMES) as LandingPageBlockType[]).map(
+                    {BLOK_TIPLERI.map(
                       (type) => (
                         <PlainButton
                           key={type}
@@ -911,6 +917,105 @@ function CreatePageForm({ onClose }: { onClose: () => void }) {
   );
 }
 
+/**
+ * Şemadaki tek bir alanı çizer. Görsel alanı BURADA DEĞİL: onun kendi
+ * modalı, yükleyicisi ve öğe listesi var ve blok editörünün gövdesinde
+ * kalıyor (bu paket "davranış değişmez" kuralına tabi; taşımak ayrı iş).
+ */
+function SemaAlani({
+  alan,
+  block,
+  productSets,
+  categories,
+  onChange,
+}: {
+  alan: BlokAlan;
+  block: LandingPageBlockInput;
+  productSets: ReturnType<typeof useProductSets>["data"];
+  categories: ReturnType<typeof useCategories>["data"];
+  onChange: (block: LandingPageBlockInput) => void;
+}) {
+  if (alan.tur === "koleksiyon") {
+    return (
+      <Field label={alan.etiket}>
+        <select
+          className="input mt-3 w-full"
+          value={block.product_set_id ?? ""}
+          onChange={(event) =>
+            onChange({
+              ...block,
+              product_set_id: Number(event.target.value) || null,
+              product_set_revision_id: null,
+            })
+          }
+        >
+          <option value="">Seçin</option>
+          {(productSets ?? []).map((set) => (
+            <option key={set.id} value={set.id}>
+              {set.name} · {set.matched_count} ürün
+            </option>
+          ))}
+        </select>
+      </Field>
+    );
+  }
+  if (alan.tur === "uzunMetin") {
+    return (
+      <Field label={alan.etiket}>
+        <textarea
+          className="input mt-3 min-h-32 w-full"
+          value={String(block.config[alan.ad] ?? "")}
+          onChange={(event) =>
+            onChange({
+              ...block,
+              config: { ...block.config, [alan.ad]: event.target.value },
+            })
+          }
+        />
+      </Field>
+    );
+  }
+  if (alan.tur === "kategoriler") {
+    const ids = (block.config[alan.ad] as number[] | undefined) ?? [];
+    return (
+      <fieldset className="mt-3">
+        <legend className="text-sm font-medium text-panel-fg">
+          {alan.etiket}
+        </legend>
+        <div className="mt-2 flex flex-wrap gap-2">
+          {(categories ?? [])
+            .filter((category) => category.is_active !== false)
+            .map((category) => (
+              <label
+                key={category.id}
+                className="rounded-full border border-panel-border px-2.5 py-1 text-xs text-panel-fg"
+              >
+                <input
+                  type="checkbox"
+                  className="mr-1.5"
+                  checked={ids.includes(category.id)}
+                  onChange={() =>
+                    onChange({
+                      ...block,
+                      config: {
+                        ...block.config,
+                        [alan.ad]: ids.includes(category.id)
+                          ? ids.filter((id) => id !== category.id)
+                          : [...ids, category.id],
+                      },
+                    })
+                  }
+                />
+                {category.name}
+              </label>
+            ))}
+        </div>
+      </fieldset>
+    );
+  }
+  return null;
+}
+
 function BlockEditor({
   block,
   index,
@@ -936,13 +1041,16 @@ function BlockEditor({
   onDuplicate: () => void;
   onDelete: () => void;
 }) {
-  const itemsKey = block.block_type === "HERO_CAROUSEL" ? "slides" : "cards";
+  // Görsel alanının VARLIĞI ve anahtarı şemadan gelir; burada blok tipi
+  // sayılmaz. Yeni bir görselli tip eklendiğinde bu kod değişmez.
+  const gorselAlani = medyaAlani(block.block_type);
+  const itemsKey = gorselAlani && !gorselAlani.tekil ? gorselAlani.ad : "cards";
   const items =
     (block.config[itemsKey] as Array<Record<string, unknown>> | undefined) ??
     [];
   const selectedMediaUrls = new Set(
-    block.block_type === "BANNER"
-      ? [String(block.config.image_url ?? "")]
+    gorselAlani?.tekil
+      ? [String(block.config[gorselAlani.ad] ?? "")]
       : items.map((item) => String(item.image_url ?? "")),
   );
   const mediaPicker = useDuzenlemeYuzeyi();
@@ -974,7 +1082,7 @@ function BlockEditor({
           <Button size="sm" variant="ghost" onClick={() => onMove(1)}>
             Aşağı
           </Button>
-          {block.block_type !== "RECENTLY_VIEWED" && (
+          {BLOK_SEMASI[block.block_type].kopyalanabilir && (
             <Button size="sm" variant="secondary" onClick={onDuplicate}>
               Kopyala
             </Button>
@@ -1024,84 +1132,22 @@ function BlockEditor({
           />
         </Field>
       </div>
-      {block.block_type === "PRODUCT_RAIL" && (
-        <Field label="Koleksiyon">
-          <select
-            className="input mt-3 w-full"
-            value={block.product_set_id ?? ""}
-            onChange={(event) =>
-              onChange({
-                ...block,
-                product_set_id: Number(event.target.value) || null,
-                product_set_revision_id: null,
-              })
-            }
-          >
-            <option value="">Seçin</option>
-            {(productSets ?? []).map((set) => (
-              <option key={set.id} value={set.id}>
-                {set.name} · {set.matched_count} ürün
-              </option>
-            ))}
-          </select>
-        </Field>
-      )}
-      {block.block_type === "CATEGORY_GRID" && (
-        <fieldset className="mt-3">
-          <legend className="text-sm font-medium text-panel-fg">
-            Kategoriler
-          </legend>
-          <div className="mt-2 flex flex-wrap gap-2">
-            {(categories ?? [])
-              .filter((category) => category.is_active !== false)
-              .map((category) => {
-                const ids =
-                  (block.config.category_ids as number[] | undefined) ?? [];
-                return (
-                  <label
-                    key={category.id}
-                    className="rounded-full border border-panel-border px-2.5 py-1 text-xs text-panel-fg"
-                  >
-                    <input
-                      type="checkbox"
-                      className="mr-1.5"
-                      checked={ids.includes(category.id)}
-                      onChange={() =>
-                        onChange({
-                          ...block,
-                          config: {
-                            ...block.config,
-                            category_ids: ids.includes(category.id)
-                              ? ids.filter((id) => id !== category.id)
-                              : [...ids, category.id],
-                          },
-                        })
-                      }
-                    />
-                    {category.name}
-                  </label>
-                );
-              })}
-          </div>
-        </fieldset>
-      )}
-      {block.block_type === "RICH_TEXT" && (
-        <Field label="Metin">
-          <textarea
-            className="input mt-3 min-h-32 w-full"
-            value={String(block.config.content ?? "")}
-            onChange={(event) =>
-              onChange({
-                ...block,
-                config: { ...block.config, content: event.target.value },
-              })
-            }
+      {/* Tip'e ÖZGÜ alanlar ŞEMADAN üretilir. Eskiden burada blok tipini
+          sayan üç ayrı koşul vardı; yeni bir tip eklemek her birine
+          dokunmayı gerektiriyordu ve unutulan dal sessiz kalıyordu. */}
+      {BLOK_SEMASI[block.block_type].alanlar
+        .filter((alan) => alan.tur !== "medya")
+        .map((alan) => (
+          <SemaAlani
+            key={alan.tur === "koleksiyon" ? "koleksiyon" : alan.ad}
+            alan={alan}
+            block={block}
+            productSets={productSets}
+            categories={categories}
+            onChange={onChange}
           />
-        </Field>
-      )}
-      {["HERO_CAROUSEL", "IMAGE_CARD_GRID", "BANNER"].includes(
-        block.block_type,
-      ) && (
+        ))}
+      {gorselAlani && (
         <div className="mt-4">
           <div className="flex items-center justify-between gap-3 border-t border-panel-border pt-4">
             <div>
@@ -1114,7 +1160,7 @@ function BlockEditor({
               variant="secondary"
               onClick={() => mediaPicker.yeniAc()}
             >
-              {block.block_type === "BANNER" && block.config.image_url
+              {gorselAlani.tekil && block.config[gorselAlani.ad]
                 ? "Görseli değiştir"
                 : "+ Görsel ekle"}
             </Button>
@@ -1175,8 +1221,8 @@ function BlockEditor({
               )}
             </div>
           </Modal>
-          {block.block_type === "BANNER" &&
-            Boolean(block.config.image_url) && (
+          {gorselAlani.tekil &&
+            Boolean(block.config[gorselAlani.ad]) && (
             <div className="mt-3 flex items-center gap-3 rounded-xl border border-panel-border p-3">
               <img
                 src={String(block.config.image_url)}
@@ -1209,7 +1255,7 @@ function BlockEditor({
               </Button>
             </div>
           )}
-          {block.block_type !== "BANNER" &&
+          {!gorselAlani.tekil &&
             items.map((item, itemIndex) => (
               <div
                 key={itemIndex}
@@ -1320,29 +1366,21 @@ function BlockEditor({
   );
 }
 
+/** Yeni blok — varsayılanların tek kaynağı `BLOK_SEMASI`. */
 function newBlock(
   type: LandingPageBlockType,
   index: number,
   productSetId?: number,
 ): LandingPageBlockInput {
-  const config: Record<string, unknown> =
-    type === "HERO_CAROUSEL"
-      ? { slides: [], autoplay_ms: 6500 }
-      : type === "IMAGE_CARD_GRID"
-        ? { cards: [] }
-        : type === "CATEGORY_GRID"
-          ? { category_ids: [] }
-          : type === "RICH_TEXT"
-            ? { content: "" }
-            : {};
+  const tanim = BLOK_SEMASI[type];
   return {
     block_key: freshBlockKey(),
     block_type: type,
-    title: type === "RECENTLY_VIEWED" ? "Son görüntülediklerin" : "",
+    title: tanim.varsayilanBaslik,
     description: "",
     link_label: "Keşfet",
     link_url: null,
-    config,
+    config: tanim.varsayilanConfig(),
     product_set_id: type === "PRODUCT_RAIL" ? (productSetId ?? null) : null,
     product_set_revision_id: null,
     is_active: true,
