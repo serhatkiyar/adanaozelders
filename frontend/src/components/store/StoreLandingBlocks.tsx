@@ -16,7 +16,13 @@ import { getRecentlyViewedProducts } from "@/lib/recentlyViewedProducts";
 import { ROUTES } from "@/lib/routes";
 import type { LandingPage, LandingPageBlock } from "@/types";
 
-const CONTAINER = "mx-auto max-w-[1464px] px-4 md:px-8";
+// `w-full` ZORUNLU, süs değil: bu kap bir KOLON FLEX öğesi olarak render
+// ediliyor ve çapraz eksende `mx-auto` (auto kenar boşluğu) flex `stretch`
+// davranışını İPTAL eder. Stretch gidince kap içeriğine göre boyutlanır ve
+// yatay kaydırmalı kart şeridinin max-content genişliğine (≈1360 px) büyür;
+// telefonda sayfa 970 px taşar (ölçüldü: 360/390/414 px). Nöbetçi:
+// `frontend/scripts/vitrin_mobil_kapisi.mjs`.
+const CONTAINER = "mx-auto w-full max-w-[1464px] px-4 md:px-8";
 const LandingEventTrackingContext = createContext(true);
 type MediaItem = {
   image_url: string;
