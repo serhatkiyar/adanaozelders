@@ -385,3 +385,81 @@ async def test_yalniz_okuma_izni_yazmaya_yetmez(fabv, http):
 async def test_oturumsuz_erisim_401(http):
     r = await http.get("/api/v1/admin/store-merchandising/pages")
     assert r.status_code == 401, r.text
+
+
+# ── Vitrin sağlığı: düşüş SESSİZ olmaz ───────────────────────────────────────
+
+
+async def test_saglik_ucu_vitrini_raporlar(fabv, http):
+    """`/health` vitrinin sunulabilir olup olmadığını SÖYLER.
+
+    Bu, sessiz fallback'in yerine geçen mekanizmadır. Sektör ayrımı net:
+    "graceful degradation" operatörün kısıtlı modu BİLDİĞİ görünür bir
+    azalmadır; "silent fallback" ise hatayı operatörden ve izlemeden gizleyen
+    görünmez bir kod yolu değişimidir. Bu projede aynı ders rota katmanında
+    bir kez öğrenildi (`core/routing` devre kesici + /health + ERROR log);
+    vitrin de aynı doktrine giriyor.
+    """
+    r = await http.get("/health")
+    assert r.status_code == 200, r.text
+    vitrin = r.json()["storefront"]
+    assert vitrin["status"] == "ok", vitrin
+    assert vitrin["degraded"] is False
+    # Blok sayısı ŞART: yayında ama BOŞ bir ana sayfa müşteriye yayınsızdan
+    # farksız görünür; "200 döndü" tek başına sağlık kanıtı değildir.
+    assert vitrin["blocks"] >= 1
+
+
+async def test_ana_sayfa_yayini_kalkinca_saglik_degraded(fabv, http):
+    """Yayın kalkarsa `/health` bunu `degraded` olarak bildirir — ve 503 VERMEZ.
+
+    503 vermemek bilinçli: ana sayfası yayınsız bir mağazada ürün sayfaları,
+    sepet ve ödeme çalışmaya devam eder; konteyneri yeniden başlatmak da
+    hiçbir şeyi düzeltmez (sorun içeriktedir). Rota ve tedarikçi katmanları
+    da aynı kalıbı kullanıyor.
+    """
+    from sqlalchemy import text as _text
+
+    async with AsyncSessionLocal() as s:
+        home_id = (
+            await s.execute(
+                _text(
+                    "SELECT id FROM store_landing_pages "
+                    "WHERE page_type = 'HOME' AND deleted_at IS NULL"
+                )
+            )
+        ).scalar_one()
+        yedek = (
+            await s.execute(
+                _text(
+                    "SELECT id FROM store_landing_page_publications "
+                    "WHERE page_id = :p AND deleted_at IS NULL"
+                ),
+                {"p": home_id},
+            )
+        ).scalars().all()
+        await s.execute(
+            _text(
+                "UPDATE store_landing_page_publications SET deleted_at = now() "
+                "WHERE id = ANY(:ids)"
+            ),
+            {"ids": yedek},
+        )
+        await s.commit()
+    try:
+        r = await http.get("/health")
+        assert r.status_code == 200, "vitrin arızası 503 ÜRETMEMELİ"
+        vitrin = r.json()["storefront"]
+        assert vitrin["degraded"] is True, vitrin
+        assert vitrin["status"] == "unpublished", vitrin
+        assert r.json()["status"] == "degraded"
+    finally:
+        async with AsyncSessionLocal() as s:
+            await s.execute(
+                _text(
+                    "UPDATE store_landing_page_publications SET deleted_at = NULL "
+                    "WHERE id = ANY(:ids)"
+                ),
+                {"ids": yedek},
+            )
+            await s.commit()
