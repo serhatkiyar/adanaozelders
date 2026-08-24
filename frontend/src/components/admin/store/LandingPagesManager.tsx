@@ -28,6 +28,7 @@ import { toast } from "@/store/toastStore";
 import type {
   LandingPage,
   LandingPageBlockInput,
+  LandingPagePublication,
   LandingPageBlockType,
   LandingPageRevisionInput,
   ProductCategory,
@@ -379,6 +380,27 @@ export function LandingPagesManager({
   // Uyarılar sunucudan gelir (taslakta taşınmaz); kaynak önizleme revizyonu.
   const blockWarnings = warningsByBlockKey(preview.data?.revision.blocks);
 
+  // Canlıda ne var / elimde ne var — ikisi AYRI gerçek ve ekranda ayrı ayrı
+  // görünmeleri gerekiyor.
+  const canliYayin = publications.find(
+    (publication) => publication.state === "LIVE",
+  );
+  const canliSurum = revisions.find(
+    (revision) => revision.id === canliYayin?.revision_id,
+  );
+  const draftSurumu = revisions.find(
+    (revision) => revision.status === "DRAFT",
+  )?.version;
+  const yayinlanmamisVar = Boolean(selected?.has_unpublished_changes);
+  // Sona ermiş yayınlar GİZLENMEZ, KATLANIR: canlı sayfada 11 satır aynı
+  // günün dakikalarıyla birikmişti.
+  const acikYayinlar = publications.filter(
+    (publication) => publication.state !== "ENDED",
+  );
+  const bitmisYayinlar = publications.filter(
+    (publication) => publication.state === "ENDED",
+  );
+
   return (
     <div className="space-y-6">
       <header className="flex flex-wrap items-start justify-between gap-4">
@@ -464,23 +486,74 @@ export function LandingPagesManager({
         </aside>
         {selected && draft ? (
           <main className="min-w-0 space-y-5">
-            <div className="flex flex-wrap items-center gap-2 border-b border-panel-border pb-4">
-              <span className="mr-1 text-xs font-semibold uppercase tracking-wide text-panel-fg-subtle">
-                Sürümler
-              </span>
-              {revisions.map((revision) => (
-                <Button
-                  key={revision.id}
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => setRevisionId(revision.id)}
-                  className={`rounded-full px-3 py-1 text-xs font-medium ${revision.id === revisionId ? "bg-panel-accent text-panel-accent-fg" : "bg-panel-muted text-panel-fg-muted"}`}
+            {/* DURUM ŞERİDİ — "kaydettim" ile "yayınladım" aynı şey değil.
+                Eskiden burada yalnız sürüm çipleri vardı ve otomatik kayıt
+                "Tüm değişiklikler kaydedildi" diyordu; bu cümle doğru ama
+                yanıltıcıydı (kaydedilen TASLAK, canlı mağaza değişmedi).
+                Ekranda artık HER ZAMAN iki ayrı gerçek var. */}
+            <div
+              data-testid="yayin-durum-seridi"
+              className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2 border-b border-panel-border pb-4 text-sm"
+            >
+              <div className="flex items-center gap-2">
+                <span
+                  className={`inline-block h-2 w-2 rounded-full ${canliYayin ? "bg-emerald-500" : "bg-panel-fg-subtle"}`}
+                  aria-hidden="true"
+                />
+                <span className="font-medium text-panel-fg">
+                  {canliYayin
+                    ? `Yayında · v${canliSurum?.version ?? "?"}`
+                    : "Yayında değil"}
+                </span>
+                {canliYayin && (
+                  <span className="text-xs text-panel-fg-muted">
+                    {new Date(canliYayin.starts_at).toLocaleString("tr-TR")}
+                    {"'dan beri"}
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-2 text-xs">
+                <span
+                  className={
+                    autosaveState === "error"
+                      ? "text-rose-600"
+                      : "text-panel-fg-muted"
+                  }
                 >
-                  v{revision.version} ·{" "}
-                  {revision.status === "PUBLISHED" ? "yayınlanmış" : "taslak"}
-                </Button>
-              ))}
+                  {autosaveState === "saving"
+                    ? "Taslak kaydediliyor…"
+                    : autosaveState === "error"
+                      ? "Taslak kaydedilemedi"
+                      : `Taslak${draftSurumu ? ` v${draftSurumu}` : ""} kaydedildi`}
+                </span>
+                {yayinlanmamisVar && (
+                  <span className="rounded-full bg-amber-50 px-2 py-0.5 font-medium text-amber-900 dark:bg-amber-500/10 dark:text-amber-200">
+                    yayınlanmamış değişiklik var
+                  </span>
+                )}
+              </div>
             </div>
+            {/* Sürüm geçmişi KATLANIR: canlı sayfada dokuz çip birikmişti ve
+                editör için okunabilir bir geçmiş değil, log dökümüydü. */}
+            <details className="border-b border-panel-border pb-4">
+              <summary className="cursor-pointer py-1 text-xs font-semibold uppercase tracking-wide text-panel-fg-subtle">
+                Sürüm geçmişi ({revisions.length})
+              </summary>
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                {revisions.map((revision) => (
+                  <Button
+                    key={revision.id}
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setRevisionId(revision.id)}
+                    className={`rounded-full px-3 py-1 text-xs font-medium ${revision.id === revisionId ? "bg-panel-accent text-panel-accent-fg" : "bg-panel-muted text-panel-fg-muted"}`}
+                  >
+                    v{revision.version} ·{" "}
+                    {revision.status === "PUBLISHED" ? "yayınlanmış" : "taslak"}
+                  </Button>
+                ))}
+              </div>
+            </details>
             <div className="grid gap-4 border-b border-panel-border pb-5 md:grid-cols-3">
               <Stat label="Görüntüleme" value={metric?.page_views ?? 0} />
               <Stat
@@ -549,35 +622,46 @@ export function LandingPagesManager({
               </div>
             </details>
             {publications.length > 0 && (
-              <section className="border-t border-panel-border pt-5">
+              <section
+                data-testid="yayin-takvimi"
+                className="border-t border-panel-border pt-5"
+              >
                 <h3 className="text-sm font-semibold text-panel-fg">Yayın takvimi</h3>
-                <div className="mt-3 divide-y divide-panel-border border-y border-panel-border">
-                  {publications.map((publication) => (
-                    <div key={publication.id} className="flex flex-wrap items-center justify-between gap-3 py-3 text-sm">
-                      <div>
-                        <p className="font-medium text-panel-fg">{new Date(publication.starts_at).toLocaleString("tr-TR")}</p>
-                        <p className="text-xs text-panel-fg-muted">{publication.ends_at ? `${new Date(publication.ends_at).toLocaleString("tr-TR")} tarihinde biter` : "Süresiz"} · {publication.state === "LIVE" ? "Yayında" : publication.state === "UPCOMING" ? "Planlı" : "Sona erdi"}</p>
-                      </div>
-                      {publication.state !== "ENDED" && (
-                        <Button
-                          size="sm"
-                          variant="danger"
-                          isPending={mutations.cancelPublication.isPending}
-                          onClick={async () => {
-                            try {
-                              await mutations.cancelPublication.mutateAsync({ pageId: selected.id, publicationId: publication.id });
-                              toast.success("Yayın kaldırıldı");
-                            } catch (error) {
-                              toast.error(getErrorDetail(error, "Yayın kaldırılamadı."));
-                            }
-                          }}
-                        >
-                          Yayını kaldır
-                        </Button>
-                      )}
-                    </div>
+                <div
+                  data-testid="yayin-acik-liste"
+                  className="mt-3 divide-y divide-panel-border border-y border-panel-border"
+                >
+                  {acikYayinlar.map((publication) => (
+                    <YayinSatiri
+                      key={publication.id}
+                      publication={publication}
+                      pageId={selected.id}
+                      mutations={mutations}
+                    />
                   ))}
+                  {acikYayinlar.length === 0 && (
+                    <p className="py-3 text-sm text-panel-fg-muted">
+                      Şu anda yayında veya planlı bir sürüm yok.
+                    </p>
+                  )}
                 </div>
+                {bitmisYayinlar.length > 0 && (
+                  <details className="mt-3">
+                    <summary className="cursor-pointer py-1 text-xs font-semibold uppercase tracking-wide text-panel-fg-subtle">
+                      Sona ermiş yayınlar ({bitmisYayinlar.length})
+                    </summary>
+                    <div className="mt-2 divide-y divide-panel-border border-y border-panel-border">
+                      {bitmisYayinlar.map((publication) => (
+                        <YayinSatiri
+                          key={publication.id}
+                          publication={publication}
+                          pageId={selected.id}
+                          mutations={mutations}
+                        />
+                      ))}
+                    </div>
+                  </details>
+                )}
               </section>
             )}
             <div>
@@ -594,9 +678,6 @@ export function LandingPagesManager({
                     </p>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    <span className={`self-center text-xs ${autosaveState === "error" ? "text-rose-600" : "text-panel-fg-subtle"}`}>
-                      {autosaveState === "saving" ? "Kaydediliyor…" : autosaveState === "error" ? "Kaydedilemedi" : "Tüm değişiklikler kaydedildi"}
-                    </span>
                     <Button
                       variant="secondary"
                       onClick={async () => {
@@ -922,6 +1003,64 @@ function CreatePageForm({ onClose }: { onClose: () => void }) {
  * modalı, yükleyicisi ve öğe listesi var ve blok editörünün gövdesinde
  * kalıyor (bu paket "davranış değişmez" kuralına tabi; taşımak ayrı iş).
  */
+/** Yayın takviminin tek satırı. Açık ve sona ermiş listeler AYNI satırı
+ *  kullanır; iki ayrı kopya iki ayrı davranış demekti. */
+function YayinSatiri({
+  publication,
+  pageId,
+  mutations,
+}: {
+  publication: LandingPagePublication;
+  pageId: number;
+  mutations: ReturnType<typeof useMerchandisingMutations>;
+}) {
+  const durum =
+    publication.state === "LIVE"
+      ? "Yayında"
+      : publication.state === "UPCOMING"
+        ? "Planlı"
+        : "Sona erdi";
+  return (
+    <div
+      data-testid="yayin-satiri"
+      data-durum={publication.state}
+      className="flex flex-wrap items-center justify-between gap-3 py-3 text-sm"
+    >
+      <div>
+        <p className="font-medium text-panel-fg">
+          {new Date(publication.starts_at).toLocaleString("tr-TR")}
+        </p>
+        <p className="text-xs text-panel-fg-muted">
+          {publication.ends_at
+            ? `${new Date(publication.ends_at).toLocaleString("tr-TR")} tarihinde biter`
+            : "Süresiz"}{" "}
+          · {durum}
+        </p>
+      </div>
+      {publication.state !== "ENDED" && (
+        <Button
+          size="sm"
+          variant="danger"
+          isPending={mutations.cancelPublication.isPending}
+          onClick={async () => {
+            try {
+              await mutations.cancelPublication.mutateAsync({
+                pageId,
+                publicationId: publication.id,
+              });
+              toast.success("Yayın kaldırıldı");
+            } catch (error) {
+              toast.error(getErrorDetail(error, "Yayın kaldırılamadı."));
+            }
+          }}
+        >
+          Yayını kaldır
+        </Button>
+      )}
+    </div>
+  );
+}
+
 function SemaAlani({
   alan,
   block,
