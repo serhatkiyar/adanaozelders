@@ -167,7 +167,12 @@ const vitriniOlc = () => {
     gorunurLink: tumLinkler.length,
     urunKartiLinki: urunLinkleri.length,
     h2Basliklari: basliklar,
-    kesfetBaglantisi: tumLinkler.filter((a) => /kesfet|kesfet|->/i.test(a.textContent)).length,
+    // ALET KUSURU NOTU: bu desen once `/kesfet|->/i` yazilmisti; sayfadaki
+    // gercek ok karakteri "→" oldugu icin HIC eslesmedi ve "0 kesfet
+    // baglantisi" diye YANLIS bir bulgu uretti (blok 2-4 aslinda /magaza'ya
+    // gidiyor). Desen artik gercek karakteri ariyor.
+    kesfetBaglantisi: tumLinkler.filter((a) => /keşfet|→/i.test(a.textContent))
+      .length,
   };
 };
 
