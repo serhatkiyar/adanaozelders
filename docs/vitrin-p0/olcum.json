@@ -1,0 +1,264 @@
+{
+  "olculdu": "2026-08-24T13:50:12.689Z",
+  "frontend": "http://localhost:5173",
+  "turlar": {
+    "magaza-ana": {
+      "yol": "/magaza",
+      "acik": {
+        "mainVar": true,
+        "metinUzunlugu": 487,
+        "govdeArkaPlan": "rgb(248, 250, 252)",
+        "yatayTasma": false,
+        "tasmaPiksel": 0,
+        "sayfaYuksekligi": 1212,
+        "gorunurGorsel": 8,
+        "tiklanamazGorsel": 3,
+        "gorunurLink": 23,
+        "urunKartiLinki": 0,
+        "h2Basliklari": [
+          "Sırt Çantaları",
+          "Su Mataraları",
+          "Resim Malzemeleri",
+          "Beslenme Çantaları"
+        ],
+        "kesfetBaglantisi": 0
+      },
+      "koyu": {
+        "mainVar": true,
+        "metinUzunlugu": 487,
+        "govdeArkaPlan": "rgb(15, 23, 42)",
+        "yatayTasma": false,
+        "tasmaPiksel": 0,
+        "sayfaYuksekligi": 1212,
+        "gorunurGorsel": 8,
+        "tiklanamazGorsel": 3,
+        "gorunurLink": 23,
+        "urunKartiLinki": 0,
+        "h2Basliklari": [
+          "Sırt Çantaları",
+          "Su Mataraları",
+          "Resim Malzemeleri",
+          "Beslenme Çantaları"
+        ],
+        "kesfetBaglantisi": 0
+      },
+      "mobil": {
+        "mainVar": true,
+        "metinUzunlugu": 458,
+        "govdeArkaPlan": "rgb(15, 23, 42)",
+        "yatayTasma": true,
+        "tasmaPiksel": 970,
+        "sayfaYuksekligi": 3137,
+        "gorunurGorsel": 8,
+        "tiklanamazGorsel": 3,
+        "gorunurLink": 23,
+        "urunKartiLinki": 0,
+        "h2Basliklari": [
+          "Sırt Çantaları",
+          "Su Mataraları",
+          "Resim Malzemeleri",
+          "Beslenme Çantaları"
+        ],
+        "kesfetBaglantisi": 0
+      },
+      "nesilVurus": {
+        "G1 duyuru": 0,
+        "G2 hero": 0,
+        "G3 home-sections": 1,
+        "G3 showcase-cards": 0,
+        "G4 home (kanonik)": 2
+      },
+      "apiIstekSayisi": 7,
+      "apiIstekleri": [
+        "http://localhost:8000/api/v1/store/categories",
+        "http://localhost:8000/api/v1/store/home-sections",
+        "http://localhost:8000/api/v1/store/home",
+        "http://localhost:8000/api/v1/store/book-facets",
+        "http://localhost:8000/api/v1/store/products?limit=24&offset=0",
+        "http://localhost:8000/api/v1/store/page-revisions/15/events",
+        "http://localhost:8000/api/v1/store/page-revisions/15/events"
+      ]
+    },
+    "kampanya": {
+      "yol": "/magaza/okula-donus",
+      "acik": {
+        "mainVar": true,
+        "metinUzunlugu": 336,
+        "govdeArkaPlan": "rgb(248, 250, 252)",
+        "yatayTasma": false,
+        "tasmaPiksel": 0,
+        "sayfaYuksekligi": 900,
+        "gorunurGorsel": 4,
+        "tiklanamazGorsel": 2,
+        "gorunurLink": 20,
+        "urunKartiLinki": 0,
+        "h2Basliklari": [
+          "Sırt Çantaları"
+        ],
+        "kesfetBaglantisi": 0
+      },
+      "koyu": {
+        "mainVar": true,
+        "metinUzunlugu": 336,
+        "govdeArkaPlan": "rgb(15, 23, 42)",
+        "yatayTasma": false,
+        "tasmaPiksel": 0,
+        "sayfaYuksekligi": 900,
+        "gorunurGorsel": 4,
+        "tiklanamazGorsel": 2,
+        "gorunurLink": 20,
+        "urunKartiLinki": 0,
+        "h2Basliklari": [
+          "Sırt Çantaları"
+        ],
+        "kesfetBaglantisi": 0
+      },
+      "mobil": {
+        "mainVar": true,
+        "metinUzunlugu": 307,
+        "govdeArkaPlan": "rgb(15, 23, 42)",
+        "yatayTasma": false,
+        "tasmaPiksel": 0,
+        "sayfaYuksekligi": 1143,
+        "gorunurGorsel": 4,
+        "tiklanamazGorsel": 2,
+        "gorunurLink": 20,
+        "urunKartiLinki": 0,
+        "h2Basliklari": [
+          "Sırt Çantaları"
+        ],
+        "kesfetBaglantisi": 0
+      },
+      "nesilVurus": {
+        "G1 duyuru": 0,
+        "G2 hero": 0,
+        "G3 home-sections": 0,
+        "G3 showcase-cards": 0,
+        "G4 home (kanonik)": 0
+      },
+      "apiIstekSayisi": 4,
+      "apiIstekleri": [
+        "http://localhost:8000/api/v1/store/categories",
+        "http://localhost:8000/api/v1/store/pages/okula-donus",
+        "http://localhost:8000/api/v1/store/page-revisions/2/events",
+        "http://localhost:8000/api/v1/store/page-revisions/2/events"
+      ]
+    },
+    "kampanya-yayinsiz": {
+      "yol": "/magaza/okula-donus-2",
+      "acik": {
+        "mainVar": true,
+        "metinUzunlugu": 420,
+        "govdeArkaPlan": "rgb(248, 250, 252)",
+        "yatayTasma": false,
+        "tasmaPiksel": 0,
+        "sayfaYuksekligi": 900,
+        "gorunurGorsel": 3,
+        "tiklanamazGorsel": 1,
+        "gorunurLink": 20,
+        "urunKartiLinki": 0,
+        "h2Basliklari": [],
+        "kesfetBaglantisi": 0
+      },
+      "koyu": {
+        "mainVar": true,
+        "metinUzunlugu": 420,
+        "govdeArkaPlan": "rgb(15, 23, 42)",
+        "yatayTasma": false,
+        "tasmaPiksel": 0,
+        "sayfaYuksekligi": 900,
+        "gorunurGorsel": 3,
+        "tiklanamazGorsel": 1,
+        "gorunurLink": 20,
+        "urunKartiLinki": 0,
+        "h2Basliklari": [],
+        "kesfetBaglantisi": 0
+      },
+      "mobil": {
+        "mainVar": true,
+        "metinUzunlugu": 391,
+        "govdeArkaPlan": "rgb(15, 23, 42)",
+        "yatayTasma": false,
+        "tasmaPiksel": 0,
+        "sayfaYuksekligi": 948,
+        "gorunurGorsel": 3,
+        "tiklanamazGorsel": 1,
+        "gorunurLink": 20,
+        "urunKartiLinki": 0,
+        "h2Basliklari": [],
+        "kesfetBaglantisi": 0
+      },
+      "nesilVurus": {
+        "G1 duyuru": 0,
+        "G2 hero": 0,
+        "G3 home-sections": 0,
+        "G3 showcase-cards": 0,
+        "G4 home (kanonik)": 0
+      },
+      "apiIstekSayisi": 3,
+      "apiIstekleri": [
+        "http://localhost:8000/api/v1/store/categories",
+        "http://localhost:8000/api/v1/store/pages/okula-donus-2",
+        "http://localhost:8000/api/v1/store/pages/okula-donus-2"
+      ]
+    },
+    "panel-magaza": {
+      "yol": "/yonetim/magaza",
+      "acik": {
+        "yol": "/yonetim/magaza/ana-sayfa",
+        "yatayTasma": false,
+        "tasmaPiksel": 0,
+        "dugmeSayisi": 37,
+        "adsizDugme": 0,
+        "girdiSayisi": 14,
+        "metinUzunlugu": 2275,
+        "h1": [
+          "Mağaza"
+        ]
+      },
+      "koyu": {
+        "yol": "/yonetim/magaza/ana-sayfa",
+        "yatayTasma": false,
+        "tasmaPiksel": 0,
+        "dugmeSayisi": 37,
+        "adsizDugme": 0,
+        "girdiSayisi": 14,
+        "metinUzunlugu": 2275,
+        "h1": [
+          "Mağaza"
+        ]
+      }
+    },
+    "panel-vitrin": {
+      "yol": "/yonetim/magaza/ana-sayfa",
+      "acik": {
+        "yol": "/yonetim/magaza/ana-sayfa",
+        "yatayTasma": false,
+        "tasmaPiksel": 0,
+        "dugmeSayisi": 37,
+        "adsizDugme": 0,
+        "girdiSayisi": 14,
+        "metinUzunlugu": 2275,
+        "h1": [
+          "Mağaza"
+        ]
+      },
+      "koyu": {
+        "yol": "/yonetim/magaza/ana-sayfa",
+        "yatayTasma": false,
+        "tasmaPiksel": 0,
+        "dugmeSayisi": 37,
+        "adsizDugme": 0,
+        "girdiSayisi": 14,
+        "metinUzunlugu": 2275,
+        "h1": [
+          "Mağaza"
+        ]
+      }
+    }
+  },
+  "giris": {
+    "sonuc": "gonderildi",
+    "url": "/yonetim"
+  }
+}
