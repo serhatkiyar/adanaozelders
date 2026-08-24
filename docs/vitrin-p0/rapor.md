@@ -154,3 +154,38 @@ Aynı kavram iki yerde: blokta üst seviye `title / description / link_label / l
 | P6 merchandising | **Önceliği yükseldi** — B-5: vitrinde hiç ürün yok. |
 | P7 silme | G1 en ucuz parça (D1). İzin göçü `products.*` değil **`merchandising.*`** olmalı (D3). |
 | Yeni | B-1 (mobil taşma) plana ayrı ve **erken** madde olarak girmeli; bu bugün canlı bir kullanıcı hatası. |
+
+---
+
+## 6. P1 sonucu — nöbetçi ağı kuruldu (24 Ağu 2026)
+
+`backend/tests/integration/test_store_merchandising_pg.py` — **16 test**, hepsi
+gerçek PostgreSQL + gerçek HTTP + gerçek yetki çözümü (dependency override yok).
+Mutasyon provası **7/7** (ayrıntı: `docs/vitrin-p0/mutasyon.md`).
+
+Kapsanan davranışlar: yayın penceresi (başlangıç/bitiş/ardışık devir) · GiST
+exclusion · tek-HOME partial unique index · revizyon değişmezliği · slug 308
+yönlendirmesi · HMAC attribution token (üretim + kurcalama) · 26 admin ucunun
+yetki ayrımı (`view` ≠ `manage`) · oturumsuz 401.
+
+### Bulunan gerçek üretim hatası — B-3
+
+**Süresi dolmuş kampanya sayfası yayında kalıyordu.** `_publication_for_page`
+`"ENDED"` durumunu hesaplıyor ama `get_page` yalnız `{DRAFT, UPCOMING,
+ARCHIVED}` için 404 veriyordu; yani `ends_at` alanı fiilen hiçbir şey
+yapmıyordu. Biten bir kampanyanın fiyat/vaat metninin yayında kalması ticari ve
+hukuki risktir. Düzeltildi (`a7f5702`); `get_home` bilinçli olarak dışarıda
+bırakıldı (404 mağazayı boşaltırdı) ve bu ayrım kendi testiyle korunuyor.
+
+### Düzeltilen ölçüm kusuru
+
+İlk koşumda 14 test ERROR verdi ve hijyen nöbetçisi "test izolasyonu bozuk"
+dedi. Sebep testlerde değil **fabrikanın temizliğindeydi**:
+`store_page_daily_metrics` sayfaya değil revizyona bağlı (`page_revision_id`),
+`page_id` diye silmeye çalışmak teardown'ı patlatıyordu. Düzeltildikten sonra
+sızıntı sıfır.
+
+### Not — P2'nin ön koşulu artık hazır
+
+Fallback (`StorePage.tsx:423-464`) bu ağ olmadan kaldırılamazdı. Artık G4'ün
+yayın/yetki/sürüm davranışları mock'suz kanıtlı; P2 açılabilir.
