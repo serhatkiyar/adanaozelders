@@ -139,6 +139,12 @@ export function LandingPagesManager({
   const [showCreate, setShowCreate] = useState(false);
   const [showDuplicate, setShowDuplicate] = useState(false);
   const [selectedBlockKey, setSelectedBlockKey] = useState<string | null>(null);
+  // Yan yana önizleme. Varsayılan KAPALI: her panel açılışında bir sayfa daha
+  // yüklemek gereksiz; yönetici istediğinde açar.
+  const [onizlemeAcik, setOnizlemeAcik] = useState(false);
+  // Çerçeve, taslak her kaydedildiğinde tazelenmeli — yoksa yan yana
+  // önizleme YANLIŞ bir şey gösterir ki bu hiç önizleme olmamasından kötüdür.
+  const [onizlemeDamgasi, setOnizlemeDamgasi] = useState(0);
 
   useEffect(() => {
     if (!draft?.blocks.length) {
@@ -162,6 +168,7 @@ export function LandingPagesManager({
         payload: draft,
       });
       setRevisionId(revision.id);
+      setOnizlemeDamgasi((damga) => damga + 1);
       if (announce) toast.success(`Taslak v${revision.version} kaydedildi`);
       return revision;
     } catch (error) {
@@ -187,6 +194,7 @@ export function LandingPagesManager({
         savedSnapshot.current = snapshot;
         setRevisionId(revision.id);
         setAutosaveState("saved");
+        setOnizlemeDamgasi((damga) => damga + 1);
       } catch {
         setAutosaveState("error");
       }
@@ -557,6 +565,12 @@ export function LandingPagesManager({
                       Gerçek sayfada önizle
                     </Button>
                     <Button
+                      variant="secondary"
+                      onClick={() => setOnizlemeAcik((acik) => !acik)}
+                    >
+                      {onizlemeAcik ? "Önizlemeyi kapat" : "Önizlemeyi aç"}
+                    </Button>
+                    <Button
                       variant="success"
                       onClick={publishNow}
                       isPending={
@@ -568,6 +582,23 @@ export function LandingPagesManager({
                     </Button>
                   </div>
                 </div>
+                {onizlemeAcik && (
+                  <div className="overflow-hidden rounded-xl border border-panel-border">
+                    <div className="flex items-center justify-between gap-3 border-b border-panel-border px-3 py-2">
+                      <p className="text-xs font-medium text-panel-fg-muted">
+                        Canlı önizleme — kaydettikçe tazelenir; ziyaretçiler bu
+                        sürümü henüz görmez.
+                      </p>
+                    </div>
+                    <iframe
+                      // `key` DEĞİL `src` değişiyor: `key` çerçeveyi baştan
+                      // yaratır ve kaydırma konumu her kayıtta başa döner.
+                      title="Canlı önizleme"
+                      src={`${ROUTES.adminStorePreview(selected.id)}?t=${onizlemeDamgasi}`}
+                      className="h-[520px] w-full bg-white dark:bg-slate-950"
+                    />
+                  </div>
+                )}
                 {selectedBlock ? (
                   <BlockWarnings
                     warnings={blockWarnings[selectedBlock.block_key ?? ""] ?? []}
