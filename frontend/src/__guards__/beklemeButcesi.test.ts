@@ -91,6 +91,13 @@ const DOSYA_BUTCELERI = [
  * Kayıt önemli: burada bütçe "ne olur ne olmaz" diye değil, ÖLÇÜLEN bir
  * kırılmadan sonra yükseltildi.
  *
+ * P5 (yayın olayı) ÜÇ çağrı yeri daha açtı, üçü de 4000. Bunlar bir gecikme
+ * değil bir OLAY bekliyor: `BroadcastChannel` mesajının başka bir kanal
+ * örneğine ulaşması, ardından React Query'nin geçersiz kılıp yeniden
+ * çekmesi. Beklenen şey milisaniyelerle değil olay sırasıyla ölçülür; kısa
+ * bir bütçe burada gerçek bir regresyonu değil, yalnız makine yükünü
+ * ölçerdi.
+ *
  * A7d5'te İKİ çağrı yeri KAPANDI (`operatorPanel`, `operatorBalance`): ikisi de
  * bütçe değil, tembel modül yükleme sorunuydu (Görev 2) ve ikisi de yukarıdaki
  * sızıntıyı üretiyordu.
@@ -100,6 +107,9 @@ const CAGRI_BUTCELERI = [
   "src/components/admin/store/landingBlockEditor.characterization.test.tsx:220 4000",
   "src/components/admin/store/landingBlockEditor.characterization.test.tsx:227 4000",
   "src/components/admin/store/landingSemaSurucusu.test.tsx:139 4000",
+  "src/hooks/vitrinYayinOlayi.test.tsx:134 4000",
+  "src/hooks/vitrinYayinOlayi.test.tsx:150 4000",
+  "src/hooks/vitrinYayinOlayi.test.tsx:177 4000",
   "src/pages/admin/adminDenetimKayitlari.acceptance.test.tsx:197 4000",
   "src/pages/admin/adminHakedisGoc.acceptance.test.tsx:53 4000",
   "src/pages/admin/inventory/sayimOturumlariGoc.acceptance.test.tsx:360 3000",
