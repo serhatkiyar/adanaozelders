@@ -91,9 +91,11 @@ const DOSYA_BUTCELERI = [
  * Kayıt önemli: burada bütçe "ne olur ne olmaz" diye değil, ÖLÇÜLEN bir
  * kırılmadan sonra yükseltildi.
  *
- * P5 önizleme çerçevesi bir çağrı yeri daha açtı
- * (`landingOnizleme:167` 4000): beklenen şey otomatik kaydın 900 ms'lik
- * debounce'u + kaydın tamamlanması + çerçeve adresinin tazelenmesi.
+ * P5 önizleme çerçevesi ÜÇ çağrı yeri açtı (`landingOnizleme` 138/150/179,
+ * hepsi 4000). Biri (179) otomatik kaydın 900 ms'lik debounce'unu + kaydın
+ * tamamlanmasını + çerçeve adresinin tazelenmesini bekler. Diğer ikisi panel
+ * MONTAJINI bekler: dosya tek başına geçerken TAM SUITE paralel yükünde
+ * düştü (ölçüldü) — beş sorgu birden çözülürken varsayılan 1000 ms yetmiyor.
  *
  * P5 (yayın olayı) ÜÇ çağrı yeri daha açtı, üçü de 4000. Bunlar bir gecikme
  * değil bir OLAY bekliyor: `BroadcastChannel` mesajının başka bir kanal
@@ -110,7 +112,9 @@ const CAGRI_BUTCELERI = [
   "src/components/admin/inventory/DamageDialog.test.tsx:43 2000",
   "src/components/admin/store/landingBlockEditor.characterization.test.tsx:220 4000",
   "src/components/admin/store/landingBlockEditor.characterization.test.tsx:227 4000",
-  "src/components/admin/store/landingOnizleme.test.tsx:167 4000",
+  "src/components/admin/store/landingOnizleme.test.tsx:138 4000",
+  "src/components/admin/store/landingOnizleme.test.tsx:150 4000",
+  "src/components/admin/store/landingOnizleme.test.tsx:179 4000",
   "src/components/admin/store/landingSemaSurucusu.test.tsx:139 4000",
   "src/hooks/vitrinYayinOlayi.test.tsx:134 4000",
   "src/hooks/vitrinYayinOlayi.test.tsx:150 4000",

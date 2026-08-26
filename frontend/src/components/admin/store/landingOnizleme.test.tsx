@@ -128,7 +128,15 @@ function sar() {
 }
 
 async function onizlemeyiAc() {
-  const dugme = await screen.findByRole("button", { name: /Önizlemeyi (aç|göster)/i });
+  // Bütçe ŞART: panel monte olurken beş sorgu birden çözülüyor ve tam suite
+  // paralel yükünde varsayılan 1000 ms yetmiyor (ölçüldü — bu test tek
+  // başına geçip suite içinde düştü). Diğer panel-mount kabul testleriyle
+  // aynı hizada.
+  const dugme = await screen.findByRole(
+    "button",
+    { name: /Önizlemeyi (aç|göster)/i },
+    { timeout: 4000 },
+  );
   fireEvent.click(dugme);
   return screen.findByTitle(/canlı önizleme/i);
 }
@@ -136,7 +144,11 @@ async function onizlemeyiAc() {
 describe("yan yana önizleme", () => {
   it("kapalıyken çerçeve YOK; açılınca gerçek sayfa çerçevesi basılır", async () => {
     sar();
-    await screen.findByRole("button", { name: /Önizlemeyi (aç|göster)/i });
+    await screen.findByRole(
+      "button",
+      { name: /Önizlemeyi (aç|göster)/i },
+      { timeout: 4000 },
+    );
     // Varsayılan KAPALI: her panel açılışında bir sayfa daha yüklemek
     // gereksiz; yönetici istediğinde açar.
     expect(screen.queryByTitle(/canlı önizleme/i)).toBeNull();
