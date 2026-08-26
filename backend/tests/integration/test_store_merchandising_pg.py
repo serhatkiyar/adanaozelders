@@ -40,6 +40,32 @@ from tests.integration.vitrin_factory import iso, now, uniq
 
 pytestmark = pytest.mark.asyncio
 
+
+@pytest.fixture(autouse=True)
+async def _home_yayini_saglam(pg):
+    """Her testten ÖNCE ana sayfanın yayınını sağlam hâle getirir.
+
+    NEDEN GEREKLİ (ölçüldü): aşağıdaki `test_ana_sayfa_yayini_kalkinca_
+    saglik_degraded` testi paylaşılan HOME yayınını geçici olarak soft-delete
+    ediyor ve `finally` ile geri koyuyor. Ama süreç ÖLDÜRÜLÜRSE (zaman aşımı,
+    Ctrl+C, CI iptali) `finally` hiç çalışmaz ve yayın silinmiş kalır; sonraki
+    koşumda ALAKASIZ iki test kırmızıya döner ("/store/home 200 dönmeli").
+    Bu bir kez yaşandı ve mutasyon provasının tabanını kırmızı yaptı.
+
+    Temizliği yalnız teardown'a bırakmak, öldürülen sürece karşı korumasızdır;
+    bu yüzden kurulum da kendini toparlar.
+    """
+    async with AsyncSessionLocal() as s:
+        await s.execute(
+            text(
+                "UPDATE store_landing_page_publications SET deleted_at = NULL "
+                "WHERE page_id = (SELECT id FROM store_landing_pages "
+                "WHERE page_type = 'HOME' AND deleted_at IS NULL)"
+            )
+        )
+        await s.commit()
+    yield
+
 YÖNET = ["products.view", "products.manage"]
 
 
