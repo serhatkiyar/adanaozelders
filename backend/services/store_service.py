@@ -926,7 +926,20 @@ async def search_products(
     elif sort == "newest":
         stmt = stmt.order_by(Product.created_at.desc(), Product.id.desc())
     elif sort == "rating":
-        stmt = stmt.order_by(sub.c.skor.desc(), Product.created_at.desc(), Product.id.desc())
+        # TB-70: bu dal eskiden varsayılanla BİREBİR AYNI `ORDER BY`ı
+        # üretiyordu. Katalogda puanlı ürün az olduğu için Bayesian skor
+        # herkeste eşit çıkıyor, bağ `created_at`e düşüyor ve "En beğenilen"
+        # fiilen "En yeni" oluyordu — iki menü seçeneği aynı SQL'i üretiyordu.
+        #
+        # Puanlanmış ürünler ÖNCE gelir; kendi aralarında Bayesian skor
+        # sıralar (tek 5 yıldızlı bir ürün, 4.8'lik 500 oylu bir ürünü
+        # geçmesin diye ham ortalama KULLANILMAZ), sonra oy sayısı.
+        stmt = stmt.order_by(
+            (Product.rating_count > 0).desc(),
+            sub.c.skor.desc(),
+            Product.rating_count.desc(),
+            Product.id.desc(),
+        )
     elif q:
         stmt = stmt.order_by(sub.c.skor.desc(), sub.c.relv.desc(), Product.id.desc())
     else:

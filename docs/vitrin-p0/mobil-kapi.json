@@ -1,0 +1,165 @@
+{
+  "sonuclar": [
+    {
+      "genislik": 360,
+      "govde": 360,
+      "scrollWidth": 1261,
+      "tasma": 901,
+      "vitrinBloguVar": true,
+      "suclular": [
+        {
+          "etiket": "section",
+          "sinif": "mx-auto max-w-[1464px] px-4 md:px-8 relative z-30 -mt-48 sm:-mt-52",
+          "genislik": 1261
+        },
+        {
+          "etiket": "div",
+          "sinif": "flex snap-x snap-mandatory gap-4 overflow-x-auto pb-5 [scrollbar-width:none] [&:",
+          "genislik": 1229
+        },
+        {
+          "etiket": "div",
+          "sinif": "go3489369143 go1754112896 tsqd-open-btn-container",
+          "genislik": 48
+        },
+        {
+          "etiket": "div",
+          "sinif": "",
+          "genislik": 64
+        },
+        {
+          "etiket": "svg",
+          "sinif": "[object SVGAnimatedString]",
+          "genislik": 64
+        },
+        {
+          "etiket": "circle",
+          "sinif": "[object SVGAnimatedString]",
+          "genislik": 64
+        }
+      ]
+    },
+    {
+      "genislik": 390,
+      "govde": 390,
+      "scrollWidth": 1360,
+      "tasma": 970,
+      "vitrinBloguVar": true,
+      "suclular": [
+        {
+          "etiket": "section",
+          "sinif": "mx-auto max-w-[1464px] px-4 md:px-8 relative z-30 -mt-48 sm:-mt-52",
+          "genislik": 1359
+        },
+        {
+          "etiket": "div",
+          "sinif": "flex snap-x snap-mandatory gap-4 overflow-x-auto pb-5 [scrollbar-width:none] [&:",
+          "genislik": 1327
+        },
+        {
+          "etiket": "div",
+          "sinif": "go3489369143 go1754112896 tsqd-open-btn-container",
+          "genislik": 48
+        },
+        {
+          "etiket": "div",
+          "sinif": "",
+          "genislik": 64
+        },
+        {
+          "etiket": "svg",
+          "sinif": "[object SVGAnimatedString]",
+          "genislik": 64
+        },
+        {
+          "etiket": "circle",
+          "sinif": "[object SVGAnimatedString]",
+          "genislik": 64
+        }
+      ]
+    },
+    {
+      "genislik": 414,
+      "govde": 414,
+      "scrollWidth": 1439,
+      "tasma": 1025,
+      "vitrinBloguVar": true,
+      "suclular": [
+        {
+          "etiket": "section",
+          "sinif": "mx-auto max-w-[1464px] px-4 md:px-8 relative z-30 -mt-48 sm:-mt-52",
+          "genislik": 1438
+        },
+        {
+          "etiket": "div",
+          "sinif": "flex snap-x snap-mandatory gap-4 overflow-x-auto pb-5 [scrollbar-width:none] [&:",
+          "genislik": 1406
+        },
+        {
+          "etiket": "div",
+          "sinif": "go3489369143 go1754112896 tsqd-open-btn-container",
+          "genislik": 48
+        },
+        {
+          "etiket": "div",
+          "sinif": "",
+          "genislik": 64
+        },
+        {
+          "etiket": "svg",
+          "sinif": "[object SVGAnimatedString]",
+          "genislik": 64
+        },
+        {
+          "etiket": "circle",
+          "sinif": "[object SVGAnimatedString]",
+          "genislik": 64
+        }
+      ]
+    },
+    {
+      "genislik": 768,
+      "govde": 768,
+      "scrollWidth": 768,
+      "tasma": 0,
+      "vitrinBloguVar": true,
+      "suclular": [
+        {
+          "etiket": "g",
+          "sinif": "[object SVGAnimatedString]",
+          "genislik": 43
+        },
+        {
+          "etiket": "ellipse",
+          "sinif": "[object SVGAnimatedString]",
+          "genislik": 43
+        },
+        {
+          "etiket": "g",
+          "sinif": "[object SVGAnimatedString]",
+          "genislik": 43
+        },
+        {
+          "etiket": "ellipse",
+          "sinif": "[object SVGAnimatedString]",
+          "genislik": 43
+        },
+        {
+          "etiket": "g",
+          "sinif": "[object SVGAnimatedString]",
+          "genislik": 43
+        },
+        {
+          "etiket": "ellipse",
+          "sinif": "[object SVGAnimatedString]",
+          "genislik": 43
+        }
+      ]
+    }
+  ],
+  "dusenler": [
+    "360px: yatay tasma 901px - ilk suclu {\"etiket\":\"section\",\"sinif\":\"mx-auto max-w-[1464px] px-4 md:px-8 relative z-30 -mt-48 sm:-mt-52\",\"genislik\":1261}",
+    "390px: yatay tasma 970px - ilk suclu {\"etiket\":\"section\",\"sinif\":\"mx-auto max-w-[1464px] px-4 md:px-8 relative z-30 -mt-48 sm:-mt-52\",\"genislik\":1359}",
+    "414px: yatay tasma 1025px - ilk suclu {\"etiket\":\"section\",\"sinif\":\"mx-auto max-w-[1464px] px-4 md:px-8 relative z-30 -mt-48 sm:-mt-52\",\"genislik\":1438}"
+  ]
+}
