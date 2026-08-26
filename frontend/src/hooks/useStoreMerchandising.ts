@@ -23,6 +23,7 @@ import {
   rescheduleLandingPagePublication,
   saveLandingPageDraft,
   saveProductSet,
+  updateLandingPageIdentity,
   uploadStoreMedia,
 } from "@/api/storeMerchandising";
 import type { ProductSetInput } from "@/types";
@@ -114,6 +115,19 @@ export function useMerchandisingMutations() {
     saveProductSet: useMutation({ mutationFn: ({ payload, id }: { payload: ProductSetInput; id?: number }) => saveProductSet(payload, id), onSuccess: refreshDraft }),
     publishProductSet: useMutation({ mutationFn: publishProductSet, onSuccess: refreshPublished }),
     createPage: useMutation({ mutationFn: createLandingPage, onSuccess: refreshDraft }),
+    // Kimlik (ad · adres · arşiv) PUBLIC yüzeyi değiştirir: slug değişince
+    // sayfanın adresi, arşivlenince görünürlüğü değişir. Bu yüzden taslak
+    // tarafına değil YAYIN tarafına bağlı.
+    updatePageIdentity: useMutation({
+      mutationFn: ({
+        pageId,
+        payload,
+      }: {
+        pageId: number;
+        payload: { internal_name?: string; slug?: string; is_archived?: boolean };
+      }) => updateLandingPageIdentity(pageId, payload),
+      onSuccess: refreshPublished,
+    }),
     duplicatePage: useMutation({
       mutationFn: ({ pageId, internalName, slug }: { pageId: number; internalName: string; slug: string }) =>
         duplicateLandingPage(pageId, { internal_name: internalName, slug }),

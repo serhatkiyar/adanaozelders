@@ -104,6 +104,10 @@ export function LandingPagesManager({
   useEffect(() => {
     if (selected) setRevisionId(selected.latest_revision_id);
   }, [selected?.id, selected?.latest_revision_id]);
+  useEffect(() => {
+    setKimlikAd(selected?.internal_name ?? "");
+    setKimlikSlug(selected?.slug ?? "");
+  }, [selected?.id, selected?.internal_name, selected?.slug]);
   const preview = useQuery({
     queryKey: ["admin", "store", "page-preview", selected?.id, revisionId],
     queryFn: () => previewLandingPage(selected!.id, revisionId!),
@@ -139,6 +143,12 @@ export function LandingPagesManager({
   const [showCreate, setShowCreate] = useState(false);
   const [showDuplicate, setShowDuplicate] = useState(false);
   const [selectedBlockKey, setSelectedBlockKey] = useState<string | null>(null);
+  // Sayfa KİMLİĞİ (ad · adres · arşiv) taslaktan AYRI yaşar: taslak 900 ms'de
+  // bir otomatik kaydedilir, adres ise açık onayla değişir. Yanlışlıkla URL
+  // değiştirmek paylaşılmış bağlantıları etkiler.
+  const [kimlikAd, setKimlikAd] = useState("");
+  const [kimlikSlug, setKimlikSlug] = useState("");
+
   // Yan yana önizleme. Varsayılan KAPALI: her panel açılışında bir sayfa daha
   // yüklemek gereksiz; yönetici istediğinde açar.
   const [onizlemeAcik, setOnizlemeAcik] = useState(false);
@@ -447,6 +457,81 @@ export function LandingPagesManager({
                 Sayfa bilgileri ve SEO
               </summary>
               <div className="grid gap-3 pt-4 md:grid-cols-2">
+                <Field label="Sayfa adı">
+                  <input
+                    className="input w-full"
+                    value={kimlikAd}
+                    onChange={(event) => setKimlikAd(event.target.value)}
+                  />
+                </Field>
+                <Field label="Adres (URL)">
+                  <input
+                    className="input w-full"
+                    value={kimlikSlug}
+                    onChange={(event) => setKimlikSlug(event.target.value)}
+                  />
+                </Field>
+                <div className="md:col-span-2 -mt-1 flex flex-wrap items-center gap-3">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    isPending={mutations.updatePageIdentity.isPending}
+                    onClick={async () => {
+                      try {
+                        await mutations.updatePageIdentity.mutateAsync({
+                          pageId: selected.id,
+                          payload: {
+                            internal_name: kimlikAd,
+                            slug: kimlikSlug,
+                          },
+                        });
+                        toast.success("Sayfa adı ve adresi güncellendi");
+                      } catch (error) {
+                        toast.error(
+                          getErrorDetail(error, "Sayfa güncellenemedi."),
+                        );
+                      }
+                    }}
+                  >
+                    Adresi ve adı kaydet
+                  </Button>
+                  <Button
+                    variant={selected.is_archived ? "secondary" : "danger"}
+                    size="sm"
+                    isPending={mutations.updatePageIdentity.isPending}
+                    onClick={async () => {
+                      try {
+                        await mutations.updatePageIdentity.mutateAsync({
+                          pageId: selected.id,
+                          payload: { is_archived: !selected.is_archived },
+                        });
+                        toast.success(
+                          selected.is_archived
+                            ? "Sayfa arşivden çıkarıldı"
+                            : "Sayfa arşivlendi",
+                        );
+                      } catch (error) {
+                        toast.error(
+                          getErrorDetail(error, "İşlem tamamlanamadı."),
+                        );
+                      }
+                    }}
+                  >
+                    {selected.is_archived ? "Arşivden çıkar" : "Arşivle"}
+                  </Button>
+                  <p className="text-xs text-panel-fg-subtle">
+                    {selected.is_archived
+                      ? "Arşivdeki sayfa ziyaretçilere gösterilmez; yayın takvimi korunur."
+                      : "Arşivlemek sayfayı ziyaretçilerden gizler, silmez."}
+                  </p>
+                </div>
+                {kimlikSlug !== (selected.slug ?? "") && (
+                  <p className="md:col-span-2 -mt-1 border-l-2 border-amber-400 bg-amber-50/60 py-2 pl-3 text-xs text-amber-900 dark:bg-amber-500/10 dark:text-amber-200">
+                    Adres değişecek. Eski adres <b>/magaza/{selected.slug}</b>{" "}
+                    yeni adrese otomatik yönlendirilir; paylaşılmış bağlantılar
+                    kırılmaz.
+                  </p>
+                )}
                 <Field label="Sayfa başlığı">
                   <input
                     className="input w-full"

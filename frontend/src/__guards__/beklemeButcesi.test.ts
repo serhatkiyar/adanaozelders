@@ -91,6 +91,9 @@ const DOSYA_BUTCELERI = [
  * Kayıt önemli: burada bütçe "ne olur ne olmaz" diye değil, ÖLÇÜLEN bir
  * kırılmadan sonra yükseltildi.
  *
+ * Sayfa kimliği düzenleme ÜÇ çağrı yeri açtı (`landingSayfaKimligi`
+ * 120/141/163, hepsi 4000): panel montajı. Aynı gerekçe, aynı hiza.
+ *
  * Mobil görsel alanı (tasarım turu) BEŞ çağrı yeri açtı
  * (`landingMobilGorsel` 167/177/190/195/203, hepsi 4000): panel montajı +
  * 900 ms'lik otomatik kayıt. Aynı gerekçe, aynı hiza.
@@ -124,6 +127,9 @@ const CAGRI_BUTCELERI = [
   "src/components/admin/store/landingOnizleme.test.tsx:138 4000",
   "src/components/admin/store/landingOnizleme.test.tsx:150 4000",
   "src/components/admin/store/landingOnizleme.test.tsx:179 4000",
+  "src/components/admin/store/landingSayfaKimligi.test.tsx:120 4000",
+  "src/components/admin/store/landingSayfaKimligi.test.tsx:141 4000",
+  "src/components/admin/store/landingSayfaKimligi.test.tsx:163 4000",
   "src/components/admin/store/landingSemaSurucusu.test.tsx:139 4000",
   "src/hooks/vitrinYayinOlayi.test.tsx:134 4000",
   "src/hooks/vitrinYayinOlayi.test.tsx:150 4000",
