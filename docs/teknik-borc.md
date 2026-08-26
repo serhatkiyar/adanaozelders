@@ -1275,18 +1275,28 @@ belgelerde geçiyor ve kaydırmak onları sessizce yanlış kayda bağlardı.
 | **İzleme** | Kilit bekleme süresi üretimde gözlenmeli: `pg_stat_activity` üzerinde `wait_event_type = 'Lock'` + `products` birleşimi bir uyarıya bağlanabilir |
 | **Koruma** | Kanonik sıra `tests/acceptance/test_stock_lock_contract.py`, deadlock yokluğu `tests/integration/test_stock_lock_order_pg.py` (5 çift × ters sıra × 3 tur, `lock_timeout`'lu) ile sabitlendi. Sıra bozulursa testler kırılır. Matris İP-2a ile güncellendi (`_settle_return` çıktı, `settle_refunded_order` ve `receive_return` girdi); kalan nöbetçi boşluğu [[TB-14]] #2 |
 
-## TB-70 · `/magaza` vitrin kuşakları aynı ürünleri gösteriyor; "Tümünü gör" ölü
+<!-- Kapanma notu (vitrin turu, 26 Ağu 2026): **TB-70** KAPANDI ve dosyanın
+     kendi kuralı gereği SİLİNDİ.
 
-| | |
-|---|---|
-| **Bulundu** | Dört konu turu (21 Ağu 2026), Konu 1 — yalnız ÖLÇÜM istendi, düzeltme onaya bırakıldı |
-| **Nerede** | `frontend/src/pages/store/StorePage.tsx:366-388` (vitrin) · `StorePage.tsx:36-46` (URL durumu) · `backend/services/store_service.py:732-743` (sıralama) |
-| **Sorun** | **İki ayrı kusur, tek belirti.** (1) *Sıralama dejenere*: `sort=rating` dalının `ORDER BY`'ı varsayılan dalınkiyle **birebir aynıdır** (`skor DESC, created_at DESC, id DESC`); `sort=newest` de veride yalnız 14 farklı `created_at` olduğu için aynı sırayı üretiyor. Canlı ölçüm (4695 aktif ürün): `[]`, `sort=rating`, `sort=newest` → **aynı 12 id**; `sort=price_asc` → farklı (yani parametre okunuyor). 4695 üründen yalnız **1**'inin puanı var, dolayısıyla Bayesian skor herkeste eşit ve bağ `id DESC`'e düşüyor. (2) *"Tümünü gör" ölü*: bağlantı `/magaza?sort=rating`e gidiyor ama `StorePage` URL'den yalnız `q` ve `category` okuyor — `sort` sadece yerel state. Üstelik `isFiltering` `sort`u hiç saymıyor, yani sort ayarlansa bile sayfa vitrin kipinde kalır ve ızgaraya geçmez. Gerçek tarayıcıda doğrulandı: URL `/magaza?sort=rating` oldu, üç kuşak başlığı aynen kaldı |
-| **Negatif kontrol** | `?zzzSahteParam=1` yanıtı değiştirmedi (bilinmeyen parametre sessizce yok sayılıyor) **ama** `?sort=price_asc` değiştirdi → "frontend'in gönderdiği ad backend'in kabul ettiğiyle uyuşmuyor" hipotezi **ÇÜRÜTÜLDÜ**. Router imzası (`api/routers/store.py:173-195`) ile `ProductSearchParams` (`api/store.ts:37-55`) birebir aynı |
-| **Etkisi** | Kullanıcı üç ayrı vitrin kuşağında aynı 12 ürünü görüyor ("Öne çıkanlar" ∩ "Yeni gelenler" = **12/12**, ∩ "Sınav Kitapları" = **11/12**) ve "Tümünü gör" hiçbir şey yapmıyor. Ayrıca ilk üç üst kategoriden ikisi (`Kitap`, `Okula Yardımcı`) **boş** olduğu için kuşakları hiç çizilmiyor — vitrin `topCategories.slice(0,3)` diyor ama tek kategori kuşağı görünüyor |
-| **Neden sessiz** | Sıralama "uygulanıyor" — SQL doğru koşuyor, parametre geçiyor, test yazılsa geçerdi. Bozuk olan sıralamanın **ayırt ediciliği**, ki bu ancak veriyle birlikte görülür |
-| **Neden ertelendi** | Tur "yalnız ölç, düzeltme onay bekle" talimatıyla açıldı |
-| **Sonraki adım** | (a) `sort=rating` ile varsayılanı ayır (ör. rating dalında `rating_count > 0` şartı ya da puanı olmayanları sona atan bir sıralama); `newest` bağını `id DESC` yerine gerçek bir zaman alanına bağla. (b) `StorePage`'i `useUrlDurumu`ya taşı (bugün yalnız `/yonetim/*` ekranları kullanıyor): `sort` URL'den okunsun ve `isFiltering`e girsin. (c) Boş üst kategorileri vitrinden ele (bkz. TB-73 ile aynı sınıf). Nöbetçi: iki kuşağın **kesişimi** üzerinde bir iddia — "aynı sıralamayı iki farklı ad altında sunma" |
+     (a) Sıralama dejeneresi düzeltildi: `sort == "rating"` artık
+     `(rating_count > 0) DESC, skor DESC, rating_count DESC, id DESC`
+     sıralıyor — puanlanmış ürünler önce. Nöbetçi
+     `tests/integration/test_store_sort_pg.py`: puanlı ürün daha yeni ama
+     puansız ürünlerin üstüne gelir VE iki sıralama aynı diziyi üretemez.
+     Sınır durumu ayrıca kayıtlı: hiç puanlı ürün yoksa çakışma DOĞRUDUR.
+     Mutasyon notu: davranış İKİ katmanla korunuyor (puanlananlar-önce +
+     bağ bozucunun `created_at` yerine `rating_count` olması); tek katmanı
+     sökmek testi kırmıyor, ikisi birden sökülünce kırılıyor.
+
+     (b) `sort` artık URL'de yaşıyor (`StorePage`); "Önerilen"e dönülünce
+     parametre siliniyor. Nöbetçi `pages/store/storeSiralamaUrl.test.tsx`
+     (gerçek DOM + gerçek adres). `isFiltering` `sort`u zaten sayıyordu.
+
+     (c) "Boş üst kategorileri vitrinden ele" maddesi KONUSUZ KALDI: vitrinin
+     koda gömülü `ProductScroller` kuşakları P2'de tamamen kaldırıldı
+     (sessiz fallback temizliği). Bugün ana sayfa yalnız yönetilen bloklardan
+     oluşuyor; "üç kuşak aynı ürünü gösteriyor" belirtisinin üreticisi de
+     oydu. -->
 
 <!-- Kapanma notu (İP-A9): **TB-71** ("`AuthModal` çift monte ediliyor →
      kaydırma kalıcı kilitleniyor") ve **TB-72** ("Kirli form bekçisinde 'Çık'
