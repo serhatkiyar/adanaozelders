@@ -91,6 +91,10 @@ const DOSYA_BUTCELERI = [
  * Kayıt önemli: burada bütçe "ne olur ne olmaz" diye değil, ÖLÇÜLEN bir
  * kırılmadan sonra yükseltildi.
  *
+ * Mobil görsel alanı (tasarım turu) BEŞ çağrı yeri açtı
+ * (`landingMobilGorsel` 167/177/190/195/203, hepsi 4000): panel montajı +
+ * 900 ms'lik otomatik kayıt. Aynı gerekçe, aynı hiza.
+ *
  * P5 önizleme çerçevesi ÜÇ çağrı yeri açtı (`landingOnizleme` 138/150/179,
  * hepsi 4000). Biri (179) otomatik kaydın 900 ms'lik debounce'unu + kaydın
  * tamamlanmasını + çerçeve adresinin tazelenmesini bekler. Diğer ikisi panel
@@ -112,6 +116,11 @@ const CAGRI_BUTCELERI = [
   "src/components/admin/inventory/DamageDialog.test.tsx:43 2000",
   "src/components/admin/store/landingBlockEditor.characterization.test.tsx:220 4000",
   "src/components/admin/store/landingBlockEditor.characterization.test.tsx:227 4000",
+  "src/components/admin/store/landingMobilGorsel.test.tsx:167 4000",
+  "src/components/admin/store/landingMobilGorsel.test.tsx:177 4000",
+  "src/components/admin/store/landingMobilGorsel.test.tsx:190 4000",
+  "src/components/admin/store/landingMobilGorsel.test.tsx:195 4000",
+  "src/components/admin/store/landingMobilGorsel.test.tsx:203 4000",
   "src/components/admin/store/landingOnizleme.test.tsx:138 4000",
   "src/components/admin/store/landingOnizleme.test.tsx:150 4000",
   "src/components/admin/store/landingOnizleme.test.tsx:179 4000",
