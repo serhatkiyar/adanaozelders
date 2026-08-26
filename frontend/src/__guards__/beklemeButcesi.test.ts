@@ -75,12 +75,21 @@ const DOSYA_BUTCELERI = [
  *   • `storeVariants:18` 4000 (6 çağrı) — ölçülen tepe **1124 ms**.
  *   • `ticketsPaymentGate:32` 4000 (6 çağrı) — ölçülen tepe 225 ms.
  *
+ * Yayın olayı ÜÇ çağrı yeri açtı (`vitrinYayinOlayi` 134/150/177, hepsi
+ * 4000). Bunlar bir gecikme değil bir OLAY bekliyor: `BroadcastChannel`
+ * mesajının başka bir kanal örneğine ulaşması, ardından React Query'nin
+ * geçersiz kılıp yeniden çekmesi. Kısa bir bütçe burada gerçek bir
+ * regresyonu değil, yalnız makine yükünü ölçerdi.
+ *
  * A7d5'te İKİ çağrı yeri KAPANDI (`operatorPanel`, `operatorBalance`): ikisi de
  * bütçe değil, tembel modül yükleme sorunuydu (Görev 2) ve ikisi de yukarıdaki
  * sızıntıyı üretiyordu.
  */
 const CAGRI_BUTCELERI = [
   "src/components/admin/inventory/DamageDialog.test.tsx:43 2000",
+  "src/hooks/vitrinYayinOlayi.test.tsx:134 4000",
+  "src/hooks/vitrinYayinOlayi.test.tsx:150 4000",
+  "src/hooks/vitrinYayinOlayi.test.tsx:177 4000",
   "src/pages/admin/adminDenetimKayitlari.acceptance.test.tsx:197 4000",
   "src/pages/admin/adminHakedisGoc.acceptance.test.tsx:53 4000",
   "src/pages/admin/inventory/sayimOturumlariGoc.acceptance.test.tsx:360 3000",

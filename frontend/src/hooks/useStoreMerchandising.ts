@@ -1,4 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect } from "react";
+
+import { yayinDinle, yayinDuyur } from "@/lib/storefrontBroadcast";
 
 import {
   createLandingPage,
@@ -31,7 +34,24 @@ export function useLandingPage(slug: string) {
 }
 
 export function useStoreHomePage() {
-  return useQuery({ queryKey: ["store", "home"], queryFn: fetchStoreHomePage });
+  const queryClient = useQueryClient();
+  useEffect(
+    () =>
+      yayinDinle(() => {
+        void queryClient.invalidateQueries({ queryKey: ["store", "home"] });
+      }),
+    [queryClient],
+  );
+  return useQuery({
+    queryKey: ["store", "home"],
+    queryFn: fetchStoreHomePage,
+    // HEDEFLENMİŞ ayar: global `refetchOnWindowFocus: false` DEĞİŞTİRİLMEDİ
+    // (bir vitrin ihtiyacı için bütün uygulamanın ağ davranışı ölçülmemiş
+    // biçimde değişmemeli). Yayınlanan içeriğin açık bir sekmede süresiz
+    // eski kalmaması ise gerçek bir kusurdu.
+    refetchOnWindowFocus: true,
+    staleTime: 60_000,
+  });
 }
 
 export function useStoreAttributes(admin = false) {
@@ -68,34 +88,49 @@ export function useStorePageMetrics() {
 
 export function useMerchandisingMutations() {
   const queryClient = useQueryClient();
-  const refresh = () => {
+  /**
+   * TASLAK tarafı: yalnız yönetim önbelleği tazelenir.
+   *
+   * Eskiden ortak bir `refresh()` her mutasyonda public `["store","home"]` ve
+   * `["store","page"]` anahtarlarını da geçersiz kılıyordu — yani 900 ms'de
+   * bir çalışabilen taslak kaydı mağaza vitrininin public önbelleğini
+   * tazeliyordu. Hem boşuna istek hem kavramsal karışıklık: taslak canlıyı
+   * DEĞİŞTİRMEZ.
+   */
+  const refreshDraft = () => {
     void queryClient.invalidateQueries({ queryKey: ADMIN_KEY });
+  };
+  /** YAYIN tarafı: canlı vitrin gerçekten değişti; public önbellek de gider
+   *  ve aynı tarayıcıdaki açık mağaza sekmelerine duyurulur. */
+  const refreshPublished = () => {
+    refreshDraft();
     void queryClient.invalidateQueries({ queryKey: ["store", "home"] });
     void queryClient.invalidateQueries({ queryKey: ["store", "page"] });
+    yayinDuyur();
   };
   return {
-    createAttribute: useMutation({ mutationFn: createStoreAttribute, onSuccess: refresh }),
-    createAttributeValue: useMutation({ mutationFn: ({ definitionId, ...payload }: { definitionId: number; label: string; sort_order: number; is_active: boolean }) => createStoreAttributeValue(definitionId, payload), onSuccess: refresh }),
-    saveProductSet: useMutation({ mutationFn: ({ payload, id }: { payload: ProductSetInput; id?: number }) => saveProductSet(payload, id), onSuccess: refresh }),
-    publishProductSet: useMutation({ mutationFn: publishProductSet, onSuccess: refresh }),
-    createPage: useMutation({ mutationFn: createLandingPage, onSuccess: refresh }),
+    createAttribute: useMutation({ mutationFn: createStoreAttribute, onSuccess: refreshDraft }),
+    createAttributeValue: useMutation({ mutationFn: ({ definitionId, ...payload }: { definitionId: number; label: string; sort_order: number; is_active: boolean }) => createStoreAttributeValue(definitionId, payload), onSuccess: refreshDraft }),
+    saveProductSet: useMutation({ mutationFn: ({ payload, id }: { payload: ProductSetInput; id?: number }) => saveProductSet(payload, id), onSuccess: refreshDraft }),
+    publishProductSet: useMutation({ mutationFn: publishProductSet, onSuccess: refreshPublished }),
+    createPage: useMutation({ mutationFn: createLandingPage, onSuccess: refreshDraft }),
     duplicatePage: useMutation({
       mutationFn: ({ pageId, internalName, slug }: { pageId: number; internalName: string; slug: string }) =>
         duplicateLandingPage(pageId, { internal_name: internalName, slug }),
-      onSuccess: refresh,
+      onSuccess: refreshDraft,
     }),
-    saveDraft: useMutation({ mutationFn: ({ pageId, payload }: { pageId: number; payload: Parameters<typeof saveLandingPageDraft>[1] }) => saveLandingPageDraft(pageId, payload), onSuccess: refresh }),
-    publishPage: useMutation({ mutationFn: ({ pageId, startsAt, endsAt }: { pageId: number; startsAt: string; endsAt?: string | null }) => publishLandingPage(pageId, startsAt, endsAt), onSuccess: refresh }),
+    saveDraft: useMutation({ mutationFn: ({ pageId, payload }: { pageId: number; payload: Parameters<typeof saveLandingPageDraft>[1] }) => saveLandingPageDraft(pageId, payload), onSuccess: refreshDraft }),
+    publishPage: useMutation({ mutationFn: ({ pageId, startsAt, endsAt }: { pageId: number; startsAt: string; endsAt?: string | null }) => publishLandingPage(pageId, startsAt, endsAt), onSuccess: refreshPublished }),
     reschedulePublication: useMutation({
       mutationFn: ({ pageId, publicationId, startsAt, endsAt }: { pageId: number; publicationId: number; startsAt: string; endsAt?: string | null }) =>
         rescheduleLandingPagePublication(pageId, publicationId, { starts_at: startsAt, ends_at: endsAt }),
-      onSuccess: refresh,
+      onSuccess: refreshPublished,
     }),
     cancelPublication: useMutation({
       mutationFn: ({ pageId, publicationId }: { pageId: number; publicationId: number }) =>
         cancelLandingPagePublication(pageId, publicationId),
-      onSuccess: refresh,
+      onSuccess: refreshPublished,
     }),
-    uploadMedia: useMutation({ mutationFn: ({ image, altText }: { image: File; altText: string }) => uploadStoreMedia(image, altText), onSuccess: refresh }),
+    uploadMedia: useMutation({ mutationFn: ({ image, altText }: { image: File; altText: string }) => uploadStoreMedia(image, altText), onSuccess: refreshDraft }),
   };
 }
