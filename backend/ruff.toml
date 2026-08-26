@@ -68,6 +68,11 @@ ignore = [
 # YEŞİL TABAN ÇİZGİSİ ve `ERROR` sayan kırılma taraması da konsola raporlanır —
 # "prova geçerli miydi" sorusunun cevabı o çıktıdadır.
 "scripts/mutation_drill_ip18.py" = ["T201"]
+# Vitrin mutasyon kataloğu: aynı güvenlik makinesi, aynı gerekçe. Ayrıca
+# kapsam ayrımını konsola yazar — beş mutasyon sürücüyle, iki veritabanı
+# garantisi (GiST exclusion + tek-HOME index) ELLE SQL ile yapılır ve bu
+# ayrım çıktıda görünmezse "7/7" cümlesi dürüst olmaz.
+"scripts/mutation_drill_vitrin.py" = ["T201"]
 # İP-16 F-15 altın referans üreticisi: test DEĞİL, kaynak kanıtıdır. Gerçek
 # py-fsrs v5.1.3'e karşı çalıştırılıp `tests/data/ip16_fsrs_ref.json`'u basar;
 # değerlerin nereden geldiği ancak bu betik okunarak doğrulanabilir.
