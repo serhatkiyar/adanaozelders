@@ -422,9 +422,47 @@ function CompactImageRow({
   revisionId: number;
   homeOverlay: boolean;
 }) {
+  // ORTAK ÇAĞRI: canlı ana sayfada dört kartın dördünde de aynı metin ve aynı
+  // hedef vardı ("Okula Dönüş Alışverişi →" ×4). Aynı çağrıyı dört kez basmak
+  // bilgi taşımaz, gürültü üretir. Metin SİLİNMEZ — satır başına bir kez
+  // basılır; bu projede "yönetici alanı doldurdu, vitrin sessizce basmadı"
+  // hatası bir kez yaşandı (B-2) ve o sınıfa geri dönülmez.
+  //
+  // Tekilleştirme yalnız metin VE hedef aynıysa yapılır: aynı metin farklı
+  // yerlere gidiyorsa tek bağlantı hangi karta gideceğini söyleyemez.
+  const ilk = blocks[0];
+  const ilkHedef =
+    ((ilk?.config.cards as MediaItem[] | undefined)?.[0]?.link_url ?? null) ||
+    ilk?.link_url ||
+    null;
+  const ortakEtiket =
+    ilk?.link_label &&
+    ilkHedef &&
+    blocks.every((block) => {
+      const hedef =
+        ((block.config.cards as MediaItem[] | undefined)?.[0]?.link_url ?? null) ||
+        block.link_url ||
+        null;
+      return block.link_label === ilk.link_label && hedef === ilkHedef;
+    })
+      ? ilk.link_label
+      : null;
+
   return (
     <section className={`${CONTAINER} ${homeOverlay ? "relative z-30 -mt-48 sm:-mt-52" : ""}`}>
-      <div className="flex snap-x snap-mandatory gap-4 overflow-x-auto pb-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:grid md:grid-cols-2 md:overflow-visible lg:grid-cols-4">
+      {ortakEtiket && (
+        <div className="mb-4 flex justify-end">
+          <TrackedLink
+            to={ilkHedef}
+            revisionId={revisionId}
+            block={ilk}
+            className="text-sm font-semibold text-indigo-600 hover:underline dark:text-indigo-400"
+          >
+            {ortakEtiket} <span aria-hidden="true">→</span>
+          </TrackedLink>
+        </div>
+      )}
+      <div className="flex snap-x snap-mandatory gap-4 overflow-x-auto pb-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:grid md:grid-cols-2 md:overflow-visible md:gap-6 lg:grid-cols-4">
         {blocks.map((block) => {
           const card = ((block.config.cards as MediaItem[] | undefined) ?? [])[0];
           if (!card?.image_url) return null;
@@ -434,29 +472,35 @@ function CompactImageRow({
               to={card.link_url ?? block.link_url}
               revisionId={revisionId}
               block={block}
-              className="group flex w-[82vw] max-w-[340px] shrink-0 snap-start flex-col rounded-2xl border border-slate-200/80 bg-white p-4 shadow-[0_18px_45px_-24px_rgba(15,23,42,0.5)] transition hover:-translate-y-1 hover:shadow-[0_24px_55px_-25px_rgba(15,23,42,0.6)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 md:w-auto md:max-w-none dark:border-slate-800 dark:bg-slate-900"
+              /* SAKİN DÜZEN: kart çerçevesi + gölge + içteki ikinci kutu
+                 kaldırıldı. Kartı ayıran şey KUTU değil BOŞLUK; görselin
+                 kendisi zaten bir sınır çiziyor. */
+              className="group flex w-[82vw] max-w-[340px] shrink-0 snap-start flex-col rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 md:w-auto md:max-w-none"
             >
-              <h2 className="mb-3 text-base font-bold text-slate-900 md:text-lg dark:text-white">
-                {block.title || card.label || "Keşfet"}
-              </h2>
-              <div className="aspect-square overflow-hidden rounded-xl bg-slate-50 dark:bg-slate-800">
+              <div className="aspect-square overflow-hidden rounded-xl bg-slate-100 dark:bg-slate-900">
                 <img
                   src={card.image_url}
                   alt={card.decorative ? "" : (card.alt_text ?? "")}
                   loading="lazy"
+                  decoding="async"
                   className={`h-full w-full transition duration-300 group-hover:scale-[1.035] ${card.fit === "cover" ? "object-cover" : "object-contain"}`}
                   style={{
                     objectPosition: `${card.focal_x ?? 50}% ${card.focal_y ?? 50}%`,
                   }}
                 />
               </div>
+              {/* Başlık görselin ALTINDA: ürün ızgaralarındaki ritmin aynısı,
+                  okuma sırası görsel → ad. */}
+              <h2 className="mt-3 text-base font-semibold text-slate-900 group-hover:text-indigo-700 md:text-[17px] dark:text-white dark:group-hover:text-indigo-300">
+                {block.title || card.label || "Keşfet"}
+              </h2>
               {block.description && (
-                <p className="mt-1 line-clamp-2 text-xs text-slate-500 dark:text-slate-400">
+                <p className="mt-1 line-clamp-2 text-sm text-slate-500 dark:text-slate-400">
                   {block.description}
                 </p>
               )}
-              {block.link_label && (
-                <span className="mt-auto inline-flex items-center gap-1 pt-3 text-sm font-semibold text-indigo-600 group-hover:text-indigo-700 dark:text-indigo-300 dark:group-hover:text-indigo-200">
+              {!ortakEtiket && block.link_label && (
+                <span className="mt-2 inline-flex items-center gap-1 text-sm font-semibold text-indigo-600 dark:text-indigo-400">
                   {block.link_label} <span aria-hidden="true">→</span>
                 </span>
               )}

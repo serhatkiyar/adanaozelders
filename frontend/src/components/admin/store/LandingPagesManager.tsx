@@ -1093,6 +1093,10 @@ function BlockEditor({
       : items.map((item) => String(item.image_url ?? "")),
   );
   const mediaPicker = useDuzenlemeYuzeyi();
+  // Mobil görsel seçimi AYNI seçiciyi kullanır; fark yalnız "seçilen görsel
+  // nereye yazılacak" sorusudur. `null` = ana görsel, sayı = o öğenin mobil
+  // görseli. İkinci bir modal açmak aynı listeyi iki yerde tutmak olurdu.
+  const [mobilHedef, setMobilHedef] = useState<number | null>(null);
   return (
     <article className="rounded-xl border border-panel-border bg-panel-card p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -1213,7 +1217,20 @@ function BlockEditor({
           >
             <MediaUpload
               onUploaded={(asset) => {
-                onChange(appendMediaToLandingBlock(block, asset));
+                if (mobilHedef === null) {
+                  onChange(appendMediaToLandingBlock(block, asset));
+                } else {
+                  const next = [...items];
+                  next[mobilHedef] = {
+                    ...next[mobilHedef],
+                    mobile_image_url: asset.image_url,
+                  };
+                  onChange({
+                    ...block,
+                    config: { ...block.config, [itemsKey]: next },
+                  });
+                }
+                setMobilHedef(null);
                 mediaPicker.kapat();
               }}
             />
@@ -1231,7 +1248,20 @@ function BlockEditor({
                         type="button"
                         aria-pressed={selected}
                         onClick={() => {
-                          onChange(appendMediaToLandingBlock(block, asset));
+                          if (mobilHedef === null) {
+                            onChange(appendMediaToLandingBlock(block, asset));
+                          } else {
+                            const next = [...items];
+                            next[mobilHedef] = {
+                              ...next[mobilHedef],
+                              mobile_image_url: asset.image_url,
+                            };
+                            onChange({
+                              ...block,
+                              config: { ...block.config, [itemsKey]: next },
+                            });
+                          }
+                          setMobilHedef(null);
                           mediaPicker.kapat();
                         }}
                         className={`overflow-hidden rounded-xl border p-2 text-left transition hover:border-panel-accent ${selected ? "border-panel-accent bg-panel-accent/10" : "border-panel-border"}`}
@@ -1325,6 +1355,53 @@ function BlockEditor({
                       }}
                     />
                   </label>
+                  <div className="space-y-1 text-xs font-medium text-panel-fg-muted">
+                    <span className="block">Mobil görsel (isteğe bağlı)</span>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        aria-label={`${itemIndex + 1}. medya mobil görseli`}
+                        onClick={() => {
+                          setMobilHedef(itemIndex);
+                          mediaPicker.yeniAc();
+                        }}
+                      >
+                        {item.mobile_image_url ? "Değiştir" : "+ Mobil görsel"}
+                      </Button>
+                      {Boolean(item.mobile_image_url) && (
+                        <>
+                          <img
+                            src={String(item.mobile_image_url)}
+                            alt=""
+                            className="h-10 w-8 rounded bg-panel-muted object-cover"
+                          />
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            aria-label={`${itemIndex + 1}. medya mobil görselini kaldır`}
+                            onClick={() => {
+                              const next = [...items];
+                              next[itemIndex] = {
+                                ...item,
+                                mobile_image_url: null,
+                              };
+                              onChange({
+                                ...block,
+                                config: { ...block.config, [itemsKey]: next },
+                              });
+                            }}
+                          >
+                            Kaldır
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                    <p className="text-[11px] font-normal text-panel-fg-subtle">
+                      Masaüstü görseli telefonda kırpılır. Görselin içinde yazı
+                      varsa dikey bir sürüm ekleyin.
+                    </p>
+                  </div>
                   <label className="block space-y-1 text-xs font-medium text-panel-fg-muted">
                     <span>Tıklanınca gidilecek adres</span>
                     <input
