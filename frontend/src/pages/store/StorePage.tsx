@@ -330,7 +330,18 @@ export default function StorePage() {
                   <span className="font-medium">Sırala:</span>
                   <select
                     value={sort}
-                    onChange={(e) => setSort(e.target.value as Sort)}
+                    onChange={(event) => {
+                      const secilen = event.target.value as Sort;
+                      setSort(secilen);
+                      // TB-70 (b): sıralama URL'DE yaşamalı. `q`, `category`
+                      // ve `kind` zaten orada; sıralamanın yerelde kalması
+                      // paylaşılan/yer imlenen adresin farklı bir liste
+                      // göstermesi demekti. Boş değer parametreyi SİLER —
+                      // `?sort=` kuyruğu "seçim yapılmış" gibi görünür.
+                      if (secilen) searchParams.set("sort", secilen);
+                      else searchParams.delete("sort");
+                      setSearchParams(searchParams);
+                    }}
                     className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-900 outline-none transition-colors hover:border-slate-300 focus:border-indigo-400 dark:border-slate-700 dark:bg-slate-900 dark:text-white"
                   >
                     {(Object.keys(SORT_LABELS) as Sort[]).map((s) => (
