@@ -862,7 +862,15 @@ async def get_page(db: AsyncSession, slug: str, *, preview_revision_id: int | No
     )
     if page.is_archived and preview_revision_id is None:
         state = "ARCHIVED"
-    if revision is None or (state in {"DRAFT", "UPCOMING", "ARCHIVED"} and preview_revision_id is None):
+    # "ENDED" BURADA kapatılır ama `get_home`'da KAPATILMAZ — ayrım bilinçli:
+    # bir kampanyada `ends_at` "bu tarihten sonra gösterme" demektir (biten
+    # kampanyanın fiyat/vaat metni yayında kalırsa ticari ve hukuki risktir),
+    # ana sayfada ise 404 mağazayı bomboş bırakır. Ana sayfanın yayınsız hâli
+    # ayrı bir üründür kararıdır (varsayılan vitrin) ve o karar verilene dek
+    # son yayın sürümü sunulmaya devam eder.
+    if revision is None or (
+        state in {"DRAFT", "UPCOMING", "ARCHIVED", "ENDED"} and preview_revision_id is None
+    ):
         raise HTTPException(404, "Vitrin sayfası henüz yayında değil.")
     canonical = f"{settings.FRONTEND_BASE_URL.rstrip('/')}/magaza/{page.slug}"
     return LandingPageOut(
@@ -871,6 +879,37 @@ async def get_page(db: AsyncSession, slug: str, *, preview_revision_id: int | No
         starts_at=starts_at, ends_at=ends_at, canonical_url=canonical,
         revision=await _revision_out(db, revision),
     )
+
+
+async def storefront_health(db: AsyncSession) -> dict:
+    """Mağaza ana sayfası SUNULABİLİR durumda mı — `/health` için.
+
+    Neden var: vitrin bugüne kadar bozulduğunda SESSİZ kalıyordu. Müşteri eski
+    bir neslin içeriğini görüyor, operatör hiçbir şey fark etmiyordu. Bu, bu
+    projede rota katmanında bir kez öğrenilmiş bir ders: VROOM düştüğünde
+    sistem çalışmaya devam ediyor ama müşteriye verilen varış penceresi
+    tahmine dönüyordu — çözüm gerilemeyi engellemek değil, GÖRÜNÜR kılmaktı
+    (`core/routing.health_snapshot`). Vitrin de aynı doktrine giriyor.
+
+    Rota kalıbı: `degraded`, 503 DEĞİL. Ana sayfası yayınsız bir mağazada
+    ürün sayfaları, sepet ve ödeme çalışmaya devam eder; konteyneri yeniden
+    başlatmak da hiçbir şeyi düzeltmez (sorun içeriktedir).
+    """
+    page = (await db.execute(select(StoreLandingPage).where(
+        StoreLandingPage.page_type == "HOME",
+        StoreLandingPage.deleted_at.is_(None),
+    ))).scalar_one_or_none()
+    if page is None:
+        return {"status": "missing_page", "degraded": True}
+    revision, state, _starts_at, _ends_at = await _publication_for_page(db, page.id)
+    if revision is None:
+        return {"status": "unpublished", "degraded": True}
+    blocks = [b for b in revision.blocks if b.deleted_at is None and b.is_active]
+    if not blocks:
+        # "200 döndü" yetmez: bloksuz bir ana sayfa müşteriye BOŞ görünür ve
+        # bu, yayınsız olmaktan farksızdır.
+        return {"status": "empty", "degraded": True, "state": state}
+    return {"status": "ok", "degraded": False, "state": state, "blocks": len(blocks)}
 
 
 async def get_home(
