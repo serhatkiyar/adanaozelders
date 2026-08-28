@@ -49,7 +49,6 @@ export const TUTOR_NAV: NavItem[] = [
   { to: ROUTES.bookings, label: "Ders Talepleri", icon: "bookings" },
   { to: ROUTES.demands, label: "Gelen Talepler", icon: "demand" },
   { to: ROUTES.balance, label: "Bakiyem", icon: "wallet" },
-  { to: ROUTES.sellerProducts, label: "Dijital Ürünlerim", icon: "store" },
   { to: ROUTES.messages, label: "Mesajlar", icon: "messages" },
   // Eğitmen de "Öğren" hub'ını görür (aralıklı tekrar, pomodoro,
   // grafik, alışkanlıklar…). Kendi kullanmadığı aracı öğrencisine
