@@ -26,6 +26,7 @@ from services import (
     study_reservation_service,
     supplier_sync_service,
     task_service,
+    tutor_promotion_service,
 )
 
 logger = logging.getLogger(__name__)
@@ -94,6 +95,11 @@ async def _reminder_tick() -> None:
         await study_reservation_service.auto_release_no_shows(session)
         await task_service.send_task_due_reminders(session)
         await task_service.dispatch_task_reminders(session)
+        # Öne çıkarma süresi dolan eğitmene tek seferlik bilgilendirme.
+        # DİKKAT: bu iş GÖRÜNÜRLÜĞÜ ETKİLEMEZ — paket zaten sorgu düzeyinde
+        # düşmüştür (services/tutor_promotion_service.aktif_kosul). İş hiç
+        # koşmasa da hiçbir ilan bedava öne çıkmaz.
+        await tutor_promotion_service.notify_expired(session)
         await session.commit()
 
     async def _escrow(session) -> None:

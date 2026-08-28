@@ -29,7 +29,12 @@ def test_uygunluk_ucu_anonim_erisilebilir_ve_teshis_alani_ICERMEZ(client):
     assert r.status_code == 200
     body = r.json()
     assert "branches" in body
-    assert len(body["branches"]) == 3
+    # 4 kol: store, tutor_marketplace, library_marketplace, tutor_promotion.
+    # Sayı bilinçli olarak elle yazılıdır (kaynaktaki `_BRANCH_ORDER`'a
+    # bağlanmaz): kol eklemek public sözleşmeyi genişletir ve bu testin
+    # güncellenmesi o kararın kaydıdır. Sayıyı kaynaktan okumak, kolun
+    # gövdeye hiç düşmediği durumu da sessizce yeşil gösterirdi.
+    assert len(body["branches"]) == 4
 
     for row in body["branches"]:
         # Public sözleşme: yalnız bunlar.

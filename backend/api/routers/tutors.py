@@ -3,10 +3,11 @@ from __future__ import annotations
 import re
 from decimal import Decimal
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.deps import require_roles
+from api.deps import require_roles, user_rate_limit
+from core.config import settings
 from core.database import get_db
 from models.role import RoleType
 from models.tutor import Gender, Tutor
@@ -17,9 +18,22 @@ from schemas.tutor import (
     TutorSearchOut,
     TutorSort,
 )
-from services import search_service, tutor_service
+from schemas.tutor_promotion import (
+    PromotionPackageOut,
+    TutorPromotionOut,
+    TutorPromotionPurchaseIn,
+    TutorPromotionPurchaseOut,
+)
+from services import search_service, tutor_promotion_service, tutor_service
 
 router = APIRouter(prefix="/tutors", tags=["tutors"])
+
+# Satın alma bir ödeme başlatır: mağaza/ders ödemeleriyle aynı bütçeye tabidir.
+_promotion_limit = user_rate_limit(
+    key="promotion_buy",
+    limit=settings.RATE_LIMIT_PAYMENT,
+    window_seconds=settings.RATE_LIMIT_WINDOW_SECONDS,
+)
 
 
 @router.get("/search", response_model=list[TutorSearchOut])
@@ -93,6 +107,85 @@ async def tutor_price_histogram(
         lat=lat,
         lng=lng,
         radius_km=radius_km,
+    )
+
+
+@router.get("/featured", response_model=list[TutorSearchOut])
+async def featured_tutors(
+    q: str | None = Query(default=None),
+    min_rate: Decimal | None = Query(default=None, ge=0),
+    max_rate: Decimal | None = Query(default=None, ge=0),
+    mode: list[TeachingMode] | None = Query(default=None),
+    gender: Gender | None = Query(default=None),
+    min_age: int | None = Query(default=None, ge=0, le=120),
+    max_age: int | None = Query(default=None, ge=0, le=120),
+    subject: list[str] | None = Query(default=None),
+    district: list[str] | None = Query(default=None),
+    lat: float | None = Query(default=None, ge=-90, le=90),
+    lng: float | None = Query(default=None, ge=-180, le=180),
+    radius_km: float | None = Query(default=None, gt=0, le=500),
+    db: AsyncSession = Depends(get_db),
+):
+    """Ücretli öne çıkarma bloğu — arama ile AYNI sert filtreler, en fazla 3.
+
+    Anonim erişilebilir (arama gibi). Sıralamayı DEĞİŞTİRMEZ: bu ayrı bir
+    bloktur ve arayüzde "Reklam" etiketiyle çizilmek zorundadır.
+    `exam` ve `sort` bilinçli olarak YOKTUR — ikisi de sıralama parametresidir,
+    bu blokta sıralama satın alınmaz.
+    """
+    return await search_service.featured_tutors(
+        db,
+        q=q,
+        min_rate=min_rate,
+        max_rate=max_rate,
+        modes=[m.value for m in mode] if mode else None,
+        gender=gender,
+        min_age=min_age,
+        max_age=max_age,
+        subjects=subject,
+        districts=district,
+        lat=lat,
+        lng=lng,
+        radius_km=radius_km,
+    )
+
+
+@router.get("/promotion-packages", response_model=list[PromotionPackageOut])
+async def promotion_packages():
+    """Satın alınabilir paketler. Fiyatın tek kaynağı sunucudur."""
+    return tutor_promotion_service.list_packages()
+
+
+@router.get("/me/promotions", response_model=list[TutorPromotionOut])
+async def my_promotions(
+    tutor: Tutor = Depends(require_roles(RoleType.TUTOR)),
+    db: AsyncSession = Depends(get_db),
+):
+    return await tutor_promotion_service.list_for_tutor(db, tutor.id)
+
+
+@router.post(
+    "/me/promotions",
+    response_model=TutorPromotionPurchaseOut,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(_promotion_limit)],
+)
+async def buy_promotion(
+    payload: TutorPromotionPurchaseIn,
+    request: Request,
+    tutor: Tutor = Depends(require_roles(RoleType.TUTOR)),
+    db: AsyncSession = Depends(get_db),
+):
+    promo, redirect_url = await tutor_promotion_service.purchase(
+        db,
+        tutor,
+        days=payload.days,
+        terms_accepted=payload.terms_accepted,
+        client_ip=request.client.host if request.client else None,
+    )
+    return TutorPromotionPurchaseOut(
+        promotion=TutorPromotionOut.model_validate(promo),
+        redirect_url=redirect_url,
     )
 
 

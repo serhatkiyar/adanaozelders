@@ -157,6 +157,7 @@ from models.tutor import (
     TutorStatus,
     TutorSubject,
 )
+from models.tutor_promotion import PromotionPaymentStatus, TutorPromotion
 from models.verification_token import TokenPurpose, VerificationToken
 from models.phone_otp import PhoneOtp
 
@@ -336,8 +337,10 @@ __all__ = [
     "Tutor",
     "TutorAvailability",
     "TutorEducation",
+    "TutorPromotion",
     "TutorStatus",
     "TutorSubject",
+    "PromotionPaymentStatus",
     "VerificationToken",
     "PhoneOtp",
     "NameChangeRequest",

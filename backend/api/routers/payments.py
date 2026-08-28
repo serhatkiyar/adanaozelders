@@ -36,6 +36,7 @@ from services import (
     payment_service,
     phone_service,
     study_reservation_service,
+    tutor_promotion_service,
 )
 
 logger = logging.getLogger("adana.payments")
@@ -46,6 +47,7 @@ router = APIRouter(prefix="/payments", tags=["payments"])
 _BOOKINGS_PAGE = "/ders-talepleri"
 _TICKETS_PAGE = "/biletlerim"
 _ORDERS_PAGE = "/siparislerim"
+_PROMOTION_PAGE = "/ilanimi-one-cikar"
 
 _pay_limit = user_rate_limit(
     key="payment_pay",
@@ -192,6 +194,13 @@ async def iyzico_callback(request: Request, db: AsyncSession = Depends(get_db)):
             token=token, paid_price=result.paid_price,
         )
         return _checkout_redirect(_ORDERS_PAGE, ok=result.success)
+    if kind == "promo":
+        await tutor_promotion_service.complete_checkout(
+            db, promotion_id=entity_id, success=result.success,
+            provider_ref=result.provider_ref,
+            token=token, paid_price=result.paid_price,
+        )
+        return _checkout_redirect(_PROMOTION_PAGE, ok=result.success)
     if kind == "examreg":
         await library_exam_service.complete_checkout(
             db, registration_id=entity_id, success=result.success,

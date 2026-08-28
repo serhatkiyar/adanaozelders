@@ -35,6 +35,7 @@ from schemas.admin_access import (
     AdminRoleUpdate,
 )
 from schemas.tutor import TutorOut
+from schemas.tutor_promotion import AdminTutorPromotionOut, PromotionCancelIn
 from schemas.booking import BookingCancel
 from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field
@@ -80,6 +81,7 @@ from services import (
     payment_gates,
     report_service,
     revenue_service,
+    tutor_promotion_service,
     tutor_service,
 )
 
@@ -411,6 +413,43 @@ async def list_tutors(
         stmt = stmt.where(Tutor.status == status_filter)
     stmt = stmt.order_by(Tutor.created_at.desc())
     return (await db.execute(stmt)).scalars().all()
+
+
+@router.get("/promotions", response_model=list[AdminTutorPromotionOut])
+async def list_promotions(
+    status_filter: str | None = Query(default=None, alias="status"),
+    limit: int = Query(default=100, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    _: Admin = Depends(require_admin_permission("promotions.view")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Öne çıkarma satışları. `status=active` yalnız yürürlüktekileri verir."""
+    return await tutor_promotion_service.list_for_admin(
+        db, status_filter=status_filter, limit=limit, offset=offset
+    )
+
+
+@router.post("/promotions/{promotion_id}/cancel", response_model=AdminTutorPromotionOut)
+async def cancel_promotion(
+    promotion_id: int,
+    payload: PromotionCancelIn,
+    admin: Admin = Depends(require_admin_permission("promotions.manage")),
+    db: AsyncSession = Depends(get_db),
+):
+    """Paketi anında durdurur ve iadeyi başlatır. Gerekçe zorunlu (denetim)."""
+    promo = await tutor_promotion_service.cancel_by_admin(
+        db, promotion_id, reason=payload.reason
+    )
+    await audit_service.record(
+        db,
+        actor=admin,
+        action="promotion.cancel",
+        target_type="tutor_promotion",
+        target_id=promotion_id,
+        reason=payload.reason,
+    )
+    await db.commit()
+    return await tutor_promotion_service.to_admin_out(db, promo)
 
 
 @router.post("/tutors/{tutor_id}/approve", response_model=TutorOut)

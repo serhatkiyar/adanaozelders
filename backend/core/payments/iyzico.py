@@ -44,7 +44,7 @@ _REFUND_PATH = "/payment/refund"
 _PAYMENT_DETAIL_PATH = "/payment/detail"
 
 # Callback'te varlık çözümü için referans türleri (conversationId/basketId öneki).
-_REFERENCE_KINDS = ("booking", "examreg", "studyres", "order")
+_REFERENCE_KINDS = ("booking", "examreg", "studyres", "order", "promo")
 
 
 def format_price(amount: Decimal | float | str) -> str:

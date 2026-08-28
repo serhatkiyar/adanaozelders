@@ -51,12 +51,20 @@ class PaymentBranch(str, Enum):
     STORE = "store"
     TUTOR_MARKETPLACE = "tutor_marketplace"
     LIBRARY_MARKETPLACE = "library_marketplace"
+    # İlan öne çıkarma: eğitmen PLATFORMDAN reklam alanı satın alır. Para
+    # başkası adına toplanmaz — yön de terstir, eğitmen ödeyen taraftadır.
+    # Bu yüzden `TUTOR_MARKETPLACE` yeniden KULLANILMADI: o kolun kapalı
+    # olmasının sebebi (alt üye işyeri) burada hiç geçerli değil, ikisini aynı
+    # bayrağa bağlamak reklam satışını gereksiz yere pazaryeri lisansına
+    # bağımlı kılardı.
+    TUTOR_PROMOTION = "tutor_promotion"
 
 
 BRANCH_FLAG: dict[PaymentBranch, str] = {
     PaymentBranch.STORE: flags.FLAG_STORE_PAYMENTS_LIVE,
     PaymentBranch.TUTOR_MARKETPLACE: flags.FLAG_TUTOR_MARKETPLACE_PAYMENTS_LIVE,
     PaymentBranch.LIBRARY_MARKETPLACE: flags.FLAG_LIBRARY_MARKETPLACE_PAYMENTS_LIVE,
+    PaymentBranch.TUTOR_PROMOTION: flags.FLAG_TUTOR_PROMOTION_PAYMENTS_LIVE,
 }
 
 #: Kol başkası adına para topluyor mu? (alt üye işyeri gerektirir)
@@ -64,12 +72,14 @@ BRANCH_NEEDS_MARKETPLACE: dict[PaymentBranch, bool] = {
     PaymentBranch.STORE: False,
     PaymentBranch.TUTOR_MARKETPLACE: True,
     PaymentBranch.LIBRARY_MARKETPLACE: True,
+    PaymentBranch.TUTOR_PROMOTION: False,
 }
 
 BRANCH_LABEL: dict[PaymentBranch, str] = {
     PaymentBranch.STORE: "Mağaza (platform kitapları)",
     PaymentBranch.TUTOR_MARKETPLACE: "Eğitmen pazaryeri (ders ve dijital ürün)",
     PaymentBranch.LIBRARY_MARKETPLACE: "Kütüphane pazaryeri (bilet ve koltuk)",
+    PaymentBranch.TUTOR_PROMOTION: "İlan öne çıkarma (eğitmen reklam paketi)",
 }
 
 #: Müşteriye gösterilecek nötr metin. Kapalı kol "emanet" vaadi VERMEZ.
@@ -88,6 +98,12 @@ BRANCH_CLOSED_MESSAGE: dict[PaymentBranch, str] = {
     PaymentBranch.LIBRARY_MARKETPLACE: (
         "Kütüphane bileti ve çalışma alanı ödemeleri henüz açılmadı. Ödeme "
         "altyapımız hazır olduğunda satışa açılacak."
+    ),
+    # Bu metni EĞİTMEN görür (müşteri değil) — kapalıyken ilanı zaten
+    # yayında olduğu için "bir şey bozuldu" izlenimi bırakmamalı.
+    PaymentBranch.TUTOR_PROMOTION: (
+        "İlan öne çıkarma satışı henüz açılmadı. İlanınız yayında kalmaya "
+        "devam ediyor; öne çıkarma açıldığında panelinizden satın alabilirsiniz."
     ),
 }
 
@@ -274,6 +290,7 @@ _BRANCH_ORDER: tuple[PaymentBranch, ...] = (
     PaymentBranch.STORE,
     PaymentBranch.TUTOR_MARKETPLACE,
     PaymentBranch.LIBRARY_MARKETPLACE,
+    PaymentBranch.TUTOR_PROMOTION,
 )
 
 
