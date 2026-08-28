@@ -226,6 +226,15 @@ class LandingPageRevisionWrite(BaseModel):
     seo_description: str = Field(default="", max_length=320)
     og_image_url: str | None = Field(default=None, max_length=500)
     blocks: list[LandingPageBlockWrite] = Field(default_factory=list, max_length=60)
+    # Puck editörünün kanonik verisi (Faz 2). DOLUYSA `blocks` gönderilemez —
+    # blok satırları sunucuda bu veriden türetilir (store_merchandising_puck).
+    puck_data: dict | None = None
+
+    @model_validator(mode="after")
+    def tek_kaynak(self):
+        if self.puck_data is not None and self.blocks:
+            raise ValueError("puck_data ve blocks birlikte gönderilemez.")
+        return self
 
 
 class LandingPageCreate(BaseModel):
@@ -272,6 +281,7 @@ class LandingPageRevisionOut(BaseModel):
     og_image_url: str | None = None
     published_at: datetime.datetime | None = None
     blocks: list[LandingPageBlockOut] = []
+    puck_data: dict | None = None
 
 
 class LandingPageOut(BaseModel):

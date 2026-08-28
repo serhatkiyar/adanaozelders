@@ -59,6 +59,7 @@ from schemas.store_merchandising import (
     StorePageEventIn,
     StorePageMetricOut,
 )
+from services import store_merchandising_puck as puck_bridge
 from services import store_service
 
 
@@ -640,10 +641,41 @@ async def create_page(db: AsyncSession, payload: LandingPageCreate, admin_id: in
     return page
 
 
+async def _attach_rail_revisions(db: AsyncSession, writes) -> None:
+    """Puck'tan türetilen ürün raylarına koleksiyonun güncel revizyonunu bağlar.
+
+    `_validate_block` PRODUCT_RAIL için `product_set_revision_id` şart koşar;
+    Puck editörü yalnız koleksiyon KİMLİĞİ seçer. Yayınlıysa yayınlı, değilse
+    en yeni revizyon bağlanır — yayınlanmamış koleksiyonun kapısı zaten
+    `publish_page`te (422) duruyor.
+    """
+    for write in writes:
+        if write.block_type != "PRODUCT_RAIL" or write.product_set_id is None:
+            continue
+        revision_id = (await db.execute(
+            select(ProductSetRevision.id).where(
+                ProductSetRevision.product_set_id == write.product_set_id,
+                ProductSetRevision.deleted_at.is_(None),
+            ).order_by(
+                (ProductSetRevision.status == "PUBLISHED").desc(),
+                ProductSetRevision.version.desc(),
+            ).limit(1)
+        )).scalar_one_or_none()
+        if revision_id is None:
+            raise HTTPException(422, "Seçilen koleksiyon bulunamadı.")
+        write.product_set_revision_id = revision_id
+
+
 async def save_page_draft(
     db: AsyncSession, page_id: int, payload: LandingPageRevisionWrite, admin_id: int
 ) -> StoreLandingPageRevision:
     _validate_image_url(payload.og_image_url)
+    # ── Puck nesli: bloklar puck_data'dan TÜRETİLİR (tek doğruluk kaynağı) ──
+    normalized_puck: dict | None = None
+    blocks_payload = payload.blocks
+    if payload.puck_data is not None:
+        normalized_puck, blocks_payload = puck_bridge.normalize_puck_data(payload.puck_data)
+        await _attach_rail_revisions(db, blocks_payload)
     page = (await db.execute(select(StoreLandingPage).where(
         StoreLandingPage.id == page_id,
         StoreLandingPage.deleted_at.is_(None),
@@ -664,10 +696,11 @@ async def save_page_draft(
             page_id=page_id, version=latest + 1, status="DRAFT", created_by_admin_id=admin_id,
             title=payload.title, seo_title=payload.seo_title,
             seo_description=payload.seo_description, og_image_url=payload.og_image_url,
+            puck_data=normalized_puck,
         )
         db.add(revision)
         await db.flush()
-        await _write_blocks(db, revision.id, payload.blocks)
+        await _write_blocks(db, revision.id, blocks_payload)
     else:
         revision = draft
         revision.title = payload.title
@@ -675,7 +708,10 @@ async def save_page_draft(
         revision.seo_description = payload.seo_description
         revision.og_image_url = payload.og_image_url
         revision.created_by_admin_id = admin_id
-        await _sync_draft_blocks(db, revision.id, payload.blocks)
+        # Eski istemci `blocks` gönderirse puck_data düşer: son yazan kazanır,
+        # iki format aynı taslakta çatallanamaz.
+        revision.puck_data = normalized_puck
+        await _sync_draft_blocks(db, revision.id, blocks_payload)
         await db.flush()
     return revision
 
@@ -837,6 +873,7 @@ async def _revision_out(db: AsyncSession, revision: StoreLandingPageRevision) ->
         status=revision.status, title=revision.title, seo_title=revision.seo_title,
         seo_description=revision.seo_description, og_image_url=revision.og_image_url,
         published_at=revision.published_at, blocks=blocks,
+        puck_data=revision.puck_data,
     )
 
 
@@ -1007,15 +1044,19 @@ async def duplicate_page(
     )
     db.add(target_revision)
     await db.flush()
+    # Puck neslinde puck_data'daki block_key'ler blok satırlarıyla senkron
+    # kalmalı: yeni anahtarlar eşlenir, kopyanın puck_data'sı yeniden yazılır.
+    key_map: dict[str, str] = {}
     for index, block in enumerate(
         sorted(
             (item for item in revision.blocks if item.deleted_at is None),
             key=lambda item: (item.sort_order, item.id),
         )
     ):
+        key_map[block.block_key] = str(uuid.uuid4())
         db.add(StoreLandingPageBlock(
             revision_id=target_revision.id,
-            block_key=str(uuid.uuid4()),
+            block_key=key_map[block.block_key],
             block_type=block.block_type,
             title=block.title,
             description=block.description,
@@ -1027,6 +1068,22 @@ async def duplicate_page(
             is_active=block.is_active,
             sort_order=index * 10,
         ))
+    if revision.puck_data is not None:
+        kopya = dict(revision.puck_data)
+        kopya["content"] = [
+            {
+                **item,
+                "props": {
+                    **item.get("props", {}),
+                    "block_key": key_map.get(
+                        str(item.get("props", {}).get("block_key") or ""),
+                        str(uuid.uuid4()),
+                    ),
+                },
+            }
+            for item in revision.puck_data.get("content", [])
+        ]
+        target_revision.puck_data = kopya
     await db.flush()
     return target
 

@@ -203,6 +203,13 @@ class StoreLandingPageRevision(Base, TimestampMixin, SoftDeleteMixin):
     seo_title: Mapped[str] = mapped_column(String(160), nullable=False)
     seo_description: Mapped[str] = mapped_column(String(320), nullable=False, server_default=text("''"))
     og_image_url: Mapped[str | None] = mapped_column(Text)
+    # Puck editörünün kanonik verisi (Faz 2). DOLUYSA bu revizyon "Puck
+    # nesli"dir ve blok satırları bu veriden SUNUCUDA türetilmiştir
+    # (services/store_merchandising_puck.py); NULL ise eski form nesli.
+    # Revizyon başına TEK doğruluk kaynağı — iki format aynı taslakta yaşamaz.
+    # none_as_null ŞART: yoksa Python None JSON 'null' olarak yazılır ve
+    # ck_..._puck_object check'ine takılır (jsonb_typeof('null') = 'null').
+    puck_data: Mapped[dict | None] = mapped_column(JSONB(none_as_null=True), nullable=True)
     created_by_admin_id: Mapped[int | None] = mapped_column(
         ForeignKey("admins.id", ondelete="SET NULL"), nullable=True
     )
@@ -217,6 +224,10 @@ class StoreLandingPageRevision(Base, TimestampMixin, SoftDeleteMixin):
         UniqueConstraint("page_id", "version", name="uq_store_landing_page_revision_version"),
         UniqueConstraint("page_id", "id", name="uq_store_landing_page_revision_page_id"),
         CheckConstraint("status IN ('DRAFT', 'PUBLISHED')", name="ck_store_landing_page_revision_status"),
+        CheckConstraint(
+            "puck_data IS NULL OR jsonb_typeof(puck_data) = 'object'",
+            name="ck_store_landing_page_revision_puck_object",
+        ),
     )
 
 
