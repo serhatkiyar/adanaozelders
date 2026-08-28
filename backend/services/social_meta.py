@@ -24,6 +24,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.config import settings
+from models.blog import BlogPost
 from models.library import Library, LibraryStatus
 from models.store import Product, ProductStatus
 from models.tutor import Tutor, TutorStatus
@@ -160,6 +161,24 @@ async def meta_for_path(db: AsyncSession, path: str) -> str:
             title = f"{lib.name} | {SITE_NAME}"
             description = truncate(lib.description)
             image = _abs(lib.cover_url)
+
+    # ── Blog yazısı ──
+    elif clean.startswith("/blog/"):
+        slug = clean.removeprefix("/blog/").split("/")[0]
+        post = (
+            await db.execute(
+                select(BlogPost).where(
+                    BlogPost.slug == slug,
+                    BlogPost.status == "PUBLISHED",
+                    BlogPost.deleted_at.is_(None),
+                )
+            )
+        ).scalars().first()
+        if post is not None:
+            title = (post.seo_title or post.title) + f" | {SITE_NAME}"
+            description = truncate(post.seo_description or post.excerpt)
+            image = _abs(post.cover_image_url)
+            kind = "article"
 
     # ── Ürün ──
     elif clean.startswith("/magaza/urun/"):

@@ -135,6 +135,9 @@ const KAYIT: Record<string, "islem" | "sinir" | "secim" | "onkosul" | "gecerlili
   //     PackingStation'ın karşılığı).
   //   • `results_published` / `pendingCount > 0` / durum kontrolü — FSM durumu.
   //   • `locked_reason` — kilidin gerekçesi rozetle gösteriliyor.
+  // CMS Faz 1: araç çubuğu düğmesi geri al/yinele YAPILAMAZKEN kapalıdır
+  // (editör durumu önkoşulu); gönderim geçerliliğiyle ilgisi yok.
+  "src/components/admin/content/BlogBodyEditor.tsx <button> disabled": "onkosul",
   "src/components/ExamSessionsManager.tsx <Button> session.results_published": "onkosul",
   "src/pages/DeliveryDriver.tsx <button> s.status !== \"PENDING\" || run.status !== \"ACTIVE\"":
     "onkosul",

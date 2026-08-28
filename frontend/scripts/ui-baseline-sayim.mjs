@@ -215,6 +215,11 @@ export const OLCUM_TABANI = [
   "src/components/admin/layout/panelKabuguDurumu.ts",
   "src/components/admin/packing/PackageLabel.tsx",
   "src/components/admin/packing/PackingLabelSheet.tsx",
+  // CMS Faz 1 · blog editörü. Toolbar'ın ham `<button>`ı bilinçli istisnadır:
+  // `aria-pressed` taşıyan biçim SEÇİM durumları (kalın/italik/liste…) — ortak
+  // `Button`ın dolgu/gölge varyantları kompakt araç çubuğuna uymuyor
+  // (`AdminStore` KatlanirBaslik ailesi).
+  "src/components/admin/content/BlogBodyEditor.tsx",
   // İP-A5 · `AdminStore.tsx` bölmesi. Bu sekiz satır OLMAZSA borç ölçüm
   // dışına kaçardı: 26 adsız kontrol, 28 ham buton ve bir etiketsiz overlay
   // eski dosyadan bu dosyalara taşındı. Liste güncellenmeseydi taban testi
@@ -279,6 +284,9 @@ export const OLCUM_TABANI = [
   "src/pages/admin/AdminAnnouncementsPage.tsx",
   "src/pages/admin/AdminAuditLogsPage.tsx",
   "src/pages/admin/AdminBookingsPage.tsx",
+  // CMS Faz 1 · blog yönetimi (liste + editör).
+  "src/pages/admin/blog/AdminBlogEditorPage.tsx",
+  "src/pages/admin/blog/AdminBlogListPage.tsx",
   "src/pages/admin/AdminDashboardPage.tsx",
   "src/pages/admin/AdminDemandsPage.tsx",
   "src/pages/admin/AdminOperationsPage.tsx",

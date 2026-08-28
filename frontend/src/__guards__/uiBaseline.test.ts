@@ -225,7 +225,13 @@ describe("İP-A1 nöbetçi eşikleri", () => {
     // ama hiçbiri ham düğme değil: hepsi ortak `Button` ya da `<label>` içine
     // sarılı `<input type="radio">`. Komut penceresi de sonuç başına bir ham
     // düğme yazan eski palet desenini değil listbox desenini kullanıyor.
-    expect(olcum.rawButton).toBeLessThanOrEqual(99);
+    // CMS Faz 1'de 99 → 100 (**+1**): blog editörünün araç çubuğu
+    // (`BlogBodyEditor`). Tek ham `<button>` biçim SEÇİM durumlarıdır
+    // (`aria-pressed` taşıyan kalın/italik/liste anahtarları) — `AdminStore`
+    // KatlanirBaslik ailesinin aynısı; ortak `Button`ın dolgu/gölge
+    // varyantları kompakt araç çubuğuna uymuyor. Editörün diğer düğmeleri
+    // (bağlantı formu, kapak kaldırma) ortak `Button`dadır.
+    expect(olcum.rawButton).toBeLessThanOrEqual(100);
   });
 
   it("erişilebilir adı olmayan form kontrolü artamaz (bugünkü taban 7)", () => {

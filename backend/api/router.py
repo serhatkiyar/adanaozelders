@@ -4,6 +4,7 @@ from api.routers import (
     addresses,
     admin,
     auth,
+    blog,
     bookings,
     bookmarks,
     clients,
@@ -56,6 +57,8 @@ api_router.include_router(delivery.router)
 api_router.include_router(delivery.field_router)
 api_router.include_router(demands.router)
 api_router.include_router(duyuru.router)
+api_router.include_router(blog.public_router)
+api_router.include_router(blog.admin_router)
 api_router.include_router(bookings.router)
 api_router.include_router(bookmarks.router)
 api_router.include_router(qa.router)

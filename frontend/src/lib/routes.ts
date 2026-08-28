@@ -52,6 +52,10 @@ export const PATHS = {
   preliminaryInfo: "/on-bilgilendirme-formu",
   about: "/hakkimizda",
 
+  // ── Blog (public, SEO) ──
+  blog: "/blog",
+  blogPost: "/blog/:slug",
+
   // ── Destek (public, SEO) — mesafeli satışta erişilebilir iletişim zorunlu ──
   faq: "/sss",
   contact: "/iletisim",
@@ -145,6 +149,11 @@ export const PATHS = {
   adminStorePages: "/yonetim/magaza/kampanyalar",
   adminStoreProductSets: "/yonetim/magaza/koleksiyonlar",
   adminStorePreview: "/yonetim/magaza/onizleme/:pageId",
+  // Blog, Mağaza'nın alt-sekmesi DEĞİL: içerik (`content.*`) platform geneline
+  // yazar, ürün kataloğuna değil.
+  adminBlog: "/yonetim/blog",
+  adminBlogNew: "/yonetim/blog/yeni",
+  adminBlogEdit: "/yonetim/blog/:postId",
   // Envanter, Magaza'nin 7. sekmesi DEGIL ayri bir bolum: backend izinleri
   // (`inventory.*`) bilincli olarak `products.*`'tan ayrildi.
   adminInventory: "/yonetim/envanter",
@@ -213,6 +222,10 @@ export const ROUTES = {
   cookiePolicy: PATHS.cookiePolicy,
   preliminaryInfo: PATHS.preliminaryInfo,
   about: PATHS.about,
+
+  // ── Blog ──
+  blog: PATHS.blog,
+  blogPost: (slug: string) => `/blog/${slug}`,
 
   // ── Destek ──
   faq: PATHS.faq,
@@ -290,6 +303,9 @@ export const ROUTES = {
   adminStorePages: PATHS.adminStorePages,
   adminStoreProductSets: PATHS.adminStoreProductSets,
   adminStorePreview: (pageId: string | number) => `/yonetim/magaza/onizleme/${pageId}`,
+  adminBlog: PATHS.adminBlog,
+  adminBlogNew: PATHS.adminBlogNew,
+  adminBlogEdit: (postId: string | number) => `/yonetim/blog/${postId}`,
   adminInventory: PATHS.adminInventory,
   adminInventoryCounts: PATHS.adminInventoryCounts,
   adminInventoryDamage: PATHS.adminInventoryDamage,

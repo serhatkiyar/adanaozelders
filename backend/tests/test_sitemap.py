@@ -15,6 +15,7 @@ import xml.etree.ElementTree as ET
 from services.sitemap_service import (
     STATIC_PATHS,
     _url_entry,
+    blog_path,
     library_path,
     product_path,
     render_sitemap,
@@ -31,12 +32,13 @@ def test_url_yollari_frontend_rotalariyla_ayni() -> None:
     assert tutor_path("ayse-yilmaz-12") == "/egitmenler/ayse-yilmaz-12"
     assert library_path("merkez-kutuphane") == "/kutuphaneler/merkez-kutuphane"
     assert product_path("tyt-matematik") == "/magaza/urun/tyt-matematik"
+    assert blog_path("tyt-calisma-programi") == "/blog/tyt-calisma-programi"
 
 
 def test_statik_sayfalar_kapsanmis() -> None:
     paths = [p for p, _f, _pr in STATIC_PATHS]
     # Ana giriş noktaları ve destek/yasal sayfalar indekslenebilir olmalı.
-    for expected in ("/", "/egitmenler", "/kutuphaneler", "/magaza", "/sss", "/iletisim"):
+    for expected in ("/", "/egitmenler", "/kutuphaneler", "/magaza", "/blog", "/sss", "/iletisim"):
         assert expected in paths
     # Oturum-içi yollar sitemap'e GİRMEMELİ (robots.txt zaten Disallow eder).
     for forbidden in ("/hesabim", "/mesajlar", "/siparislerim", "/giris"):

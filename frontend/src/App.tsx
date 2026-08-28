@@ -60,6 +60,8 @@ const OrderDetailPage = lazy(() => import("@/pages/store/OrderDetailPage"));
 const SellerProducts = lazy(() => import("@/pages/store/SellerProducts"));
 // Yasal sayfalar — tek chunk, belge prop'la seçilir (içerik lib/legalContent.ts)
 const LegalPage = lazy(() => import("@/pages/LegalPage"));
+const BlogListPage = lazy(() => import("@/pages/blog/BlogListPage"));
+const BlogPostPage = lazy(() => import("@/pages/blog/BlogPostPage"));
 const FaqPage = lazy(() => import("@/pages/FaqPage"));
 const ContactPage = lazy(() => import("@/pages/ContactPage"));
 const OperatorHome = lazy(() => import("@/pages/dashboards/OperatorHome"));
@@ -88,6 +90,9 @@ const AdminSettingsPage = lazy(() => import("@/pages/admin/AdminSettingsPage"));
 const AdminLibraries = lazy(() => import("@/pages/dashboards/AdminLibraries"));
 const AdminExamCatalogs = lazy(() => import("@/pages/dashboards/AdminExamCatalogs"));
 const AdminStore = lazy(() => import("@/pages/dashboards/AdminStore"));
+// Blog editörü (TipTap) yalnız bu chunk'la gelir — public bundle'a girmez.
+const AdminBlogListPage = lazy(() => import("@/pages/admin/blog/AdminBlogListPage"));
+const AdminBlogEditorPage = lazy(() => import("@/pages/admin/blog/AdminBlogEditorPage"));
 const InventoryLayout = lazy(() => import("@/pages/admin/inventory/InventoryLayout"));
 const InventoryOverviewPage = lazy(() => import("@/pages/admin/inventory/InventoryOverviewPage"));
 const CountSessionsPage = lazy(() => import("@/pages/admin/inventory/CountSessionsPage"));
@@ -388,6 +393,9 @@ function App() {
           <Route path={PATHS.about} element={<LegalPage doc="about" />} />
 
           {/* ── Destek (public) ── */}
+          <Route path={PATHS.blog} element={<BlogListPage />} />
+          <Route path={PATHS.blogPost} element={<BlogPostPage />} />
+
           <Route path={PATHS.faq} element={<FaqPage />} />
           <Route path={PATHS.contact} element={<ContactPage />} />
 
@@ -471,6 +479,9 @@ function App() {
               <Route path="diplomalar" element={<AdminSectionPage section="diplomas" />} />
               <Route path="kutuphaneler" element={<AdminLibraries />} />
               <Route path="deneme-kataloglari" element={<AdminExamCatalogs />} />
+              <Route path="blog" element={<AdminBlogListPage />} />
+              <Route path="blog/yeni" element={<AdminBlogEditorPage />} />
+              <Route path="blog/:postId" element={<AdminBlogEditorPage />} />
               <Route path="magaza" element={<Navigate replace to={ROUTES.adminStoreHome} />} />
               <Route path="magaza/ana-sayfa" element={<AdminStore />} />
               <Route path="magaza/kampanyalar" element={<AdminStore />} />

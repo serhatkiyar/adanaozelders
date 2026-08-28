@@ -41,6 +41,8 @@ aioboto3==15.5.0
 httpx==0.28.1
 aiosmtplib==5.1.0
 Pillow==12.2.0
+# Blog govde HTML'inin sunucu tarafi temizligi (XSS) - services/blog_service.py
+nh3==0.3.7
 
 # ── Gozlemlenebilirlik ──
 sentry-sdk==2.61.0

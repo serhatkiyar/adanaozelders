@@ -39,6 +39,9 @@ export function SiteFooter() {
           </Link>
 
           <nav className="flex flex-wrap justify-center gap-x-4 gap-y-2 text-sm text-slate-500 sm:justify-end dark:text-slate-400">
+            <Link to={ROUTES.blog} className={linkCls}>
+              Blog
+            </Link>
             {/* Destek: mesafeli satışta erişilebilir iletişim kanalı zorunlu. */}
             <Link to={ROUTES.faq} className={linkCls}>
               SSS

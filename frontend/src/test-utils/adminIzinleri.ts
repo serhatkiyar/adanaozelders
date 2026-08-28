@@ -50,6 +50,8 @@ export const TAM_ADMIN_IZINLERI: readonly string[] = [
   // Ticaret
   "products.view",
   "products.manage",
+  "content.view",
+  "content.manage",
   "orders.view",
   "orders.manage",
   "returns.view",

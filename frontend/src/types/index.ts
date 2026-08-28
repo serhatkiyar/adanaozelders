@@ -2819,3 +2819,53 @@ export interface DuyuruSeridiCreate {
 }
 
 export type DuyuruSeridiUpdate = Partial<DuyuruSeridiCreate>;
+
+// ── Blog ─────────────────────────────────────────────────────────────────────
+
+export interface BlogPostSummary {
+  slug: string;
+  title: string;
+  excerpt: string;
+  cover_image_url: string | null;
+  published_at: string;
+  tags: string[];
+}
+
+export interface BlogPostPublic extends BlogPostSummary {
+  /** Sunucuda sanitize edilmiş HTML — public taraf yalnız bunu basar. */
+  body_html: string;
+  updated_at: string | null;
+  seo_title: string;
+  seo_description: string;
+}
+
+export interface BlogPostList {
+  items: BlogPostSummary[];
+  total: number;
+}
+
+export interface BlogPostAdmin {
+  id: number;
+  slug: string;
+  title: string;
+  excerpt: string;
+  body_html: string;
+  cover_image_url: string | null;
+  status: "DRAFT" | "PUBLISHED";
+  published_at: string | null;
+  seo_title: string;
+  seo_description: string;
+  tags: string[];
+  updated_at: string | null;
+}
+
+export interface BlogPostInput {
+  title: string;
+  slug?: string | null;
+  excerpt?: string;
+  body_html?: string;
+  cover_image_url?: string | null;
+  seo_title?: string;
+  seo_description?: string;
+  tags?: string[];
+}

@@ -145,6 +145,11 @@ const KAPI_DISI: Record<string, { tur: "props" | "bilesen-yok" | "baglam"; gerek
     tur: "props",
     gerekce: "zorunlu yayinlanmis vitrin sayfasi",
   },
+  // CMS Faz 1: kontrollü bileşen — value/onChange olmadan mount edilemez.
+  "src/components/admin/content/BlogBodyEditor.tsx": {
+    tur: "props",
+    gerekce: "zorunlu value/onChange (kontrollu TipTap editoru)",
+  },
   "src/components/admin/ui2/duzenlemeYuzeyi.tsx": {
     tur: "props",
     gerekce: "zorunlu yuzey durumu (acik)",
@@ -354,6 +359,9 @@ const KAPI_KAPSAMI = [
   "src/pages/admin/AdminSettingsPage.tsx",
   "src/pages/admin/AdminUserDetailPage.tsx",
   "src/pages/admin/AdminUsersPage.tsx",
+  // CMS Faz 1 · blog yönetimi.
+  "src/pages/admin/blog/AdminBlogEditorPage.tsx",
+  "src/pages/admin/blog/AdminBlogListPage.tsx",
   "src/pages/admin/delivery/DeliveryBoardPage.tsx",
   "src/pages/admin/delivery/DeliveryCouriersPage.tsx",
   "src/pages/admin/delivery/DeliveryLayout.tsx",
@@ -456,6 +464,9 @@ const KONTROLSUZ_EKRANLAR: Record<string, "sunum" | "kabuk" | "pencere-kabugu" |
   "src/components/admin/layout/AdminProfilMenusu.tsx": "kosullu",
   "src/components/admin/layout/AdminSidebar.tsx": "kabuk",
   "src/components/admin/store/ReturnsPanel.tsx": "kosullu",
+  // CMS Faz 1: blog listesi salt liste + bağlantıdır; form kontrolü taşımaz
+  // (arama/filtre yok — kayıt sayısı düşük). Editör sayfası kapıda ölçülür.
+  "src/pages/admin/blog/AdminBlogListPage.tsx": "sunum",
   // Mağaza içerik yöneticisi ağsız varsayılan render'da sayfa seçilene kadar
   // boş durum gösterir; formlar ve medya seçici kabul testlerinde açılır.
   "src/components/admin/store/LandingPagesManager.tsx": "kosullu",

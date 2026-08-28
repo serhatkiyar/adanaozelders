@@ -23,6 +23,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.config import settings
 from core.slug import tutor_slug
+from models.blog import BlogPost
 from models.library import Library, LibraryStatus
 from models.store import Product, ProductStatus
 from models.tutor import Tutor, TutorStatus
@@ -34,6 +35,7 @@ STATIC_PATHS: tuple[tuple[str, str, str], ...] = (
     ("/egitmenler", "daily", "0.9"),
     ("/kutuphaneler", "weekly", "0.8"),
     ("/magaza", "daily", "0.9"),
+    ("/blog", "daily", "0.7"),
     ("/sss", "monthly", "0.5"),
     ("/iletisim", "yearly", "0.4"),
     ("/kvkk", "yearly", "0.3"),
@@ -91,6 +93,10 @@ def library_path(slug: str) -> str:
 
 def product_path(slug: str) -> str:
     return f"/magaza/urun/{slug}"
+
+
+def blog_path(slug: str) -> str:
+    return f"/blog/{slug}"
 
 
 async def build_sitemap(db: AsyncSession) -> str:
@@ -178,6 +184,23 @@ async def build_sitemap(db: AsyncSession) -> str:
     entries += [
         _url_entry(f"/magaza/{slug}", lastmod=updated, changefreq="weekly", priority="0.8")
         for slug, updated in pages
+        if slug
+    ]
+
+    # ── Blog yazıları (yalnız PUBLISHED — taslak sitemap'e sızmaz) ──
+    posts = (
+        await db.execute(
+            select(BlogPost.slug, BlogPost.updated_at)
+            .where(
+                BlogPost.status == "PUBLISHED",
+                BlogPost.deleted_at.is_(None),
+            )
+            .limit(MAX_URLS)
+        )
+    ).all()
+    entries += [
+        _url_entry(blog_path(slug), lastmod=updated, changefreq="weekly", priority="0.7")
+        for slug, updated in posts
         if slug
     ]
 

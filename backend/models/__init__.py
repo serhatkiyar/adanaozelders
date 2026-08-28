@@ -33,6 +33,7 @@ from models.pickup_point import PickupPoint
 from models.vehicle import Vehicle
 from models.demand import Demand, DemandStatus
 from models.demand_response import DemandResponse
+from models.blog import BlogPost, BlogPostRedirect
 from models.duyuru import DuyuruSeridi, DuyuruVaryant
 from models.store_hero_slide import StoreHeroSlide
 from models.store_showcase_card import StoreShowcaseCard, StoreShowcaseCardItem
@@ -202,6 +203,8 @@ __all__ = [
     "Demand",
     "DemandResponse",
     "DemandStatus",
+    "BlogPost",
+    "BlogPostRedirect",
     "DuyuruSeridi",
     "DuyuruVaryant",
     "StoreHeroSlide",

@@ -100,6 +100,14 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
     requiredPermission: "demands.view",
   },
   {
+    label: "Blog",
+    to: ROUTES.adminBlog,
+    group: "Platform",
+    description: "SEO ve rehber içerikleri: yazı oluşturun, düzenleyin ve yayımlayın.",
+    icon: "announcement",
+    requiredPermission: "content.view",
+  },
+  {
     label: "Kütüphaneler",
     kisayol: "L",
     to: ROUTES.adminLibraries,
