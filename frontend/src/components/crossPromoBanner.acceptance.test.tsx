@@ -174,18 +174,15 @@ describe("İP-C1 · çapraz tanıtım banner'ı", () => {
     await bannerDogrula(cfg.ariaLabel, PATHS.store, cfg.imageSrc);
   });
 
-  it("N-2: mağaza sayfası admin kaynaklı vitrin görselini bağlantısıyla çizer", async () => {
-    storeHeroSlides = [{
-      image_url: "https://cdn.example.com/vitrin.webp",
-      alt_text: "Okula dönüş vitrini",
-      link_url: "/magaza?q=okul",
-    }];
+  it("N-2: mağaza sayfası MANUEL vitrini bağlantısıyla çizer (API'siz)", async () => {
+    // Manuel vitrin kararı (28 Ağu 2026): hero artık kodda yaşar
+    // (pages/store/vitrin/AnaVitrin.tsx) — admin kaynaklı slayt yoktur.
     sar(PATHS.store, PATHS.store, <StorePage />);
 
-    const image = await screen.findByRole("img", { name: "Okula dönüş vitrini" });
-    expect(image.getAttribute("src")).toBe("https://cdn.example.com/vitrin.webp");
+    const image = await screen.findByRole("img", { name: "Okula dönüş kampanyası" });
+    expect(image.getAttribute("src")).toBe("/vitrin/hero-okula-donus.webp");
     expect(image.getAttribute("fetchpriority")).toBe("high");
-    expect(image.closest("a")?.getAttribute("href")).toBe("/magaza?q=okul");
+    expect(image.closest("a")?.getAttribute("href")).toBe("/magaza/okula-donus");
     expect(screen.queryByRole("link", { name: CROSS_PROMO.storeToTutors.ariaLabel })).toBeNull();
   });
 

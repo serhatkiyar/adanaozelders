@@ -27,7 +27,6 @@ from models.blog import BlogPost
 from models.library import Library, LibraryStatus
 from models.store import Product, ProductStatus
 from models.tutor import Tutor, TutorStatus
-from models.store_merchandising import StoreLandingPage, StoreLandingPagePublication
 
 #: Statik public sayfalar — (yol, değişim sıklığı, öncelik).
 STATIC_PATHS: tuple[tuple[str, str, str], ...] = (
@@ -35,6 +34,8 @@ STATIC_PATHS: tuple[tuple[str, str, str], ...] = (
     ("/egitmenler", "daily", "0.9"),
     ("/kutuphaneler", "weekly", "0.8"),
     ("/magaza", "daily", "0.9"),
+    # Manuel vitrin: kampanya sayfaları kodda yaşar, sabit yol olarak girer.
+    ("/magaza/okula-donus", "weekly", "0.8"),
     ("/blog", "daily", "0.7"),
     ("/sss", "monthly", "0.5"),
     ("/iletisim", "yearly", "0.4"),
@@ -164,28 +165,6 @@ async def build_sitemap(db: AsyncSession) -> str:
         if slug
     ]
 
-    # ── Kalıcı mağaza vitrinleri (yayına en az bir kez çıkmış; HOME kök URL'de) ──
-    now = datetime.datetime.now(datetime.timezone.utc)
-    pages = (
-        await db.execute(
-            select(StoreLandingPage.slug, StoreLandingPage.updated_at)
-            .join(StoreLandingPagePublication, StoreLandingPagePublication.page_id == StoreLandingPage.id)
-            .where(
-                StoreLandingPage.deleted_at.is_(None),
-                StoreLandingPage.is_archived.is_(False),
-                StoreLandingPage.page_type != "HOME",
-                StoreLandingPagePublication.deleted_at.is_(None),
-                StoreLandingPagePublication.starts_at <= now,
-            )
-            .distinct()
-            .limit(MAX_URLS)
-        )
-    ).all()
-    entries += [
-        _url_entry(f"/magaza/{slug}", lastmod=updated, changefreq="weekly", priority="0.8")
-        for slug, updated in pages
-        if slug
-    ]
 
     # ── Blog yazıları (yalnız PUBLISHED — taslak sitemap'e sızmaz) ──
     posts = (

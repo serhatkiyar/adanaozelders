@@ -3,9 +3,7 @@ import { useLocation } from "react-router-dom";
 import { AccessDenied } from "@/components/admin/AccessState";
 import { CategoriesPanel } from "@/components/admin/store/CategoriesPanel";
 import { CouponsPanel } from "@/components/admin/store/CouponsPanel";
-import { LandingPagesManager } from "@/components/admin/store/LandingPagesManager";
 import { OrdersPanel } from "@/components/admin/store/OrdersPanel";
-import { ProductSetsManager } from "@/components/admin/store/ProductSetsManager";
 import { ProductsPanel } from "@/components/admin/store/ProductsPanel";
 import { ReturnsPanel } from "@/components/admin/store/ReturnsPanel";
 import { StoreAttributesManager } from "@/components/admin/store/StoreAttributesManager";
@@ -15,12 +13,9 @@ import { adminAreaAccess } from "@/lib/adminAccess";
 import { ROUTES } from "@/lib/routes";
 import { useAuthStore } from "@/store/authStore";
 
-type SubTab = "home" | "campaigns" | "collections" | "products" | "categories" | "supplier" | "orders" | "returns" | "coupons";
+type SubTab = "products" | "categories" | "supplier" | "orders" | "returns" | "coupons";
 
 const STORE_ROUTES: Record<SubTab, string> = {
-  home: ROUTES.adminStoreHome,
-  campaigns: ROUTES.adminStorePages,
-  collections: ROUTES.adminStoreProductSets,
   products: ROUTES.adminStoreProducts,
   categories: ROUTES.adminStoreCategories,
   supplier: ROUTES.adminStoreSupplier,
@@ -30,9 +25,6 @@ const STORE_ROUTES: Record<SubTab, string> = {
 };
 
 const TAB_AREA: Record<SubTab, string> = {
-  home: "content",
-  campaigns: "content",
-  collections: "content",
   products: "products",
   categories: "products",
   supplier: "suppliers",
@@ -41,8 +33,8 @@ const TAB_AREA: Record<SubTab, string> = {
   coupons: "coupons",
 };
 
+// İçerik grubu SÖKÜLDÜ (manuel vitrin kararı): vitrin kodda yaşar.
 const GROUPS: { label: string; items: [SubTab, string][] }[] = [
-  { label: "İçerik", items: [["home", "Ana sayfa"], ["campaigns", "Kampanyalar"], ["collections", "Koleksiyonlar"]] },
   { label: "Katalog", items: [["products", "Ürünler"], ["categories", "Kategoriler"], ["supplier", "Tedarikçi"]] },
   { label: "Satış", items: [["orders", "Siparişler"], ["returns", "İadeler"], ["coupons", "Kuponlar"]] },
 ];
@@ -50,7 +42,7 @@ const GROUPS: { label: string; items: [SubTab, string][] }[] = [
 export default function AdminStore() {
   const { pathname } = useLocation();
   const permissions = useAuthStore((state) => state.user?.admin_permissions);
-  const sub = (Object.entries(STORE_ROUTES).find(([, route]) => pathname === route)?.[0] as SubTab | undefined) ?? "home";
+  const sub = (Object.entries(STORE_ROUTES).find(([, route]) => pathname === route)?.[0] as SubTab | undefined) ?? "products";
 
   if (!adminAreaAccess(permissions, ...Object.values(TAB_AREA)).canView) return <AccessDenied area="Mağaza" />;
 
@@ -79,10 +71,7 @@ export default function AdminStore() {
       </aside>
 
       <main className="min-w-0">
-        {sub === "home" ? <LandingPagesManager pageType="HOME" />
-          : sub === "campaigns" ? <LandingPagesManager pageType="CAMPAIGN" />
-          : sub === "collections" ? <ProductSetsManager />
-          : sub === "products" ? <ProductsPanel />
+        {sub === "products" ? <ProductsPanel />
           : sub === "categories" ? <div className="space-y-10"><CategoriesPanel /><StoreAttributesManager /></div>
           : sub === "supplier" ? <SupplierPanel />
           : sub === "orders" ? <OrdersPanel />

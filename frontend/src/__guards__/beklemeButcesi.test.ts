@@ -87,9 +87,6 @@ const DOSYA_BUTCELERI = [
  */
 const CAGRI_BUTCELERI = [
   "src/components/admin/inventory/DamageDialog.test.tsx:43 2000",
-  "src/hooks/vitrinYayinOlayi.test.tsx:134 4000",
-  "src/hooks/vitrinYayinOlayi.test.tsx:150 4000",
-  "src/hooks/vitrinYayinOlayi.test.tsx:177 4000",
   "src/pages/admin/adminDenetimKayitlari.acceptance.test.tsx:197 4000",
   "src/pages/admin/adminHakedisGoc.acceptance.test.tsx:53 4000",
   "src/pages/admin/inventory/sayimOturumlariGoc.acceptance.test.tsx:360 3000",

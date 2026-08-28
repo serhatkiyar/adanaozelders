@@ -432,16 +432,6 @@ async def _check_routing() -> dict:
         return {"status": "unknown", "degraded": True}
 
 
-async def _check_storefront() -> dict:
-    """Mağaza vitrini. ASLA patlamaz — teşhis ucu arıza kaynağı olamaz."""
-    try:
-        from services import store_merchandising_service
-
-        async with AsyncSessionLocal() as session:
-            return await store_merchandising_service.storefront_health(session)
-    except Exception:
-        logger.warning("health: storefront check failed", exc_info=True)
-        return {"status": "unknown", "degraded": True}
 
 
 async def _check_supplier() -> dict:
@@ -482,7 +472,6 @@ async def health_check():
     storage_ok = await _check_storage()
     routing_state = await _check_routing()
     supplier_state = await _check_supplier()
-    storefront_state = await _check_storefront()
     body = {
         "status": "ok" if db_ok else "degraded",
         "database": "connected" if db_ok else "down",
@@ -497,16 +486,12 @@ async def health_check():
         # düzeltmez (sorun Yıldırım'ın origin'i ya da bizim token'ımızdır).
         # Bu yüzden rota kalıbı: `degraded`, 503 DEĞİL.
         "supplier_sync": supplier_state,
-        # Vitrin bozulduğunda bugüne kadar SESSİZ kalıyordu: müşteri eski bir
-        # neslin içeriğini görüyor, operatör fark etmiyordu. Rota kalıbı:
-        # raporlanır ve `degraded` yapar, ama 503 VERMEZ — ana sayfası
-        # yayınsız bir mağazada ürün/sepet/ödeme çalışmaya devam eder.
-        "storefront": storefront_state,
+        # Vitrin sağlığı kalktı (manuel vitrin kararı): ana sayfa artık kodda
+        # yaşayan statik bir bileşen — bozulabilecek bir veri yolu yok.
     }
     if db_ok and (
         routing_state.get("degraded")
         or supplier_state.get("degraded")
-        or storefront_state.get("degraded")
     ):
         body["status"] = "degraded"
     if not db_ok:
