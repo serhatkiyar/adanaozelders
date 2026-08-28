@@ -36,8 +36,8 @@ export const PATHS = {
   storeCheckout: "/magaza/odeme",
   /** Paylaşılan koleksiyon (public). */
   storeCollectionShared: "/magaza/liste/:token",
-  /** Yönetilebilir kampanya/sezon/vitrin sayfası; sabit mağaza yollarından sonra eşleşir. */
-  storeLandingPage: "/magaza/:slug",
+  /** Okula dönüş kampanyası — manuel vitrin sayfası (kodda yaşar). */
+  storeOkulaDonus: "/magaza/okula-donus",
   /** Oturumsuz kargo takibi (SMS'le paylaşılan token). */
   cargoTracking: "/kargo-takip/:token",
 
@@ -135,7 +135,6 @@ export const PATHS = {
   adminExamCatalogs: "/yonetim/deneme-kataloglari",
   adminStoreRoot: "/yonetim/magaza",
   adminStoreProducts: "/yonetim/magaza/urunler",
-  adminStoreHome: "/yonetim/magaza/ana-sayfa",
   adminStoreCategories: "/yonetim/magaza/kategoriler",
   adminStoreOrders: "/yonetim/magaza/siparisler",
   adminStoreReturns: "/yonetim/magaza/iadeler",
@@ -146,11 +145,7 @@ export const PATHS = {
   // (`suppliers.*`): ayar bir sir (API token) ve "vitrin neyi otomatik
   // satar" karari tasir; urun metnini duzenleyen kisi token degistirememeli.
   adminStoreSupplier: "/yonetim/magaza/tedarikci",
-  adminStorePages: "/yonetim/magaza/kampanyalar",
-  adminStoreProductSets: "/yonetim/magaza/koleksiyonlar",
-  adminStorePreview: "/yonetim/magaza/onizleme/:pageId",
-  // Blog, Mağaza'nın alt-sekmesi DEĞİL: içerik (`content.*`) platform geneline
-  // yazar, ürün kataloğuna değil.
+  // Blog: içerik (content.*) platform geneline yazar.
   adminBlog: "/yonetim/blog",
   adminBlogNew: "/yonetim/blog/yeni",
   adminBlogEdit: "/yonetim/blog/:postId",
@@ -210,7 +205,7 @@ export const ROUTES = {
   storeFavorites: PATHS.storeFavorites,
   storeCheckout: PATHS.storeCheckout,
   storeCollectionShared: (token: string) => `/magaza/liste/${token}`,
-  storeLandingPage: (slug: string) => `/magaza/${slug}`,
+  storeOkulaDonus: PATHS.storeOkulaDonus,
   cargoTracking: (token: string) => `/kargo-takip/${token}`,
 
   // ── Yasal sayfalar ──
@@ -293,16 +288,12 @@ export const ROUTES = {
   adminExamCatalogs: PATHS.adminExamCatalogs,
   adminStoreRoot: PATHS.adminStoreRoot,
   adminStoreProducts: PATHS.adminStoreProducts,
-  adminStoreHome: PATHS.adminStoreHome,
   adminStoreCategories: PATHS.adminStoreCategories,
   adminStoreOrders: PATHS.adminStoreOrders,
   adminStoreReturns: PATHS.adminStoreReturns,
   adminStoreCoupons: PATHS.adminStoreCoupons,
   adminStoreStock: PATHS.adminStoreStock,
   adminStoreSupplier: PATHS.adminStoreSupplier,
-  adminStorePages: PATHS.adminStorePages,
-  adminStoreProductSets: PATHS.adminStoreProductSets,
-  adminStorePreview: (pageId: string | number) => `/yonetim/magaza/onizleme/${pageId}`,
   adminBlog: PATHS.adminBlog,
   adminBlogNew: PATHS.adminBlogNew,
   adminBlogEdit: (postId: string | number) => `/yonetim/blog/${postId}`,

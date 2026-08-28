@@ -48,8 +48,8 @@ import { korumasizTembeller, tabanTaramasi } from "../../scripts/tembel-modul.mj
  *     kurulduğunu ölçer). Statik import bu iddiayı yok eder.
  */
 const GEREKCELI = [
-  // CMS Faz 1+4 kayıtları (KAPI_DISI ekleme/çıkarmaları) satırı 585→590'a taşıdı.
-  "src/__guards__/calismaZamaniKapisi.test.tsx:590 /src/**/*.tsx",
+  // Manuel vitrin sökümü kayıtları satırı 593'e taşıdı.
+  "src/__guards__/calismaZamaniKapisi.test.tsx:585 /src/**/*.tsx",
   "src/components/admin/ui2/zodTurkce.test.ts:49 ./form",
 ];
 

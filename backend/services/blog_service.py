@@ -8,6 +8,7 @@ temizlik bir kez yapılınca kolondaki veri her tüketici için güvenlidir.
 from __future__ import annotations
 
 import datetime
+import re
 
 import nh3
 from fastapi import HTTPException, status
@@ -35,8 +36,25 @@ _ALLOWED_ATTRIBUTES = {
     "img": {"src", "alt", "title", "width", "height"},
     "th": {"colspan", "rowspan"},
     "td": {"colspan", "rowspan"},
+    # `style` yalnız hizalama için: attribute_filter değeri süzer (aşağıda).
+    "p": {"style"},
+    "h2": {"style"},
+    "h3": {"style"},
+    "h4": {"style"},
 }
 _ALLOWED_URL_SCHEMES = {"http", "https", "mailto"}
+
+#: TipTap TextAlign'ın ürettiği tek biçim. `style` genel bir CSS kapısı DEĞİL:
+#: bu kalıba uymayan her style özniteliği bütünüyle atılır (color, font, url()
+#: — hepsi). Bkz. test_blog_sanitize.py.
+_HIZA_STILI = re.compile(r"^\s*text-align:\s*(left|center|right|justify)\s*;?\s*$")
+
+
+def _oznitelik_suzgeci(element: str, attribute: str, value: str) -> str | None:
+    if attribute != "style":
+        return value
+    m = _HIZA_STILI.match(value)
+    return f"text-align: {m.group(1)}" if m else None
 
 
 def sanitize_html(raw: str) -> str:
@@ -47,6 +65,7 @@ def sanitize_html(raw: str) -> str:
         raw,
         tags=_ALLOWED_TAGS,
         attributes=_ALLOWED_ATTRIBUTES,
+        attribute_filter=_oznitelik_suzgeci,
         url_schemes=_ALLOWED_URL_SCHEMES,
         link_rel="noopener noreferrer",
     )

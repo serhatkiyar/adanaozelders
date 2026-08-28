@@ -9,8 +9,7 @@ import {
   useInfiniteProducts,
 } from "@/hooks/useStore";
 import { useDebounce } from "@/hooks/useDebounce";
-import { StoreLandingBlocks } from "@/components/store/StoreLandingBlocks";
-import { useStoreHomePage } from "@/hooks/useStoreMerchandising";
+import { AnaVitrin } from "@/pages/store/vitrin/AnaVitrin";
 import type { ProductKind } from "@/types";
 import type { ProductSearchParams } from "@/api/store";
 
@@ -85,7 +84,6 @@ export default function StorePage() {
   }, [urlSort]);
 
   const { data: categories } = useCategories();
-  const { data: canonicalHome, isLoading: isCanonicalHomeLoading } = useStoreHomePage();
   // Seçenekler kategoriye göre daralır: "Kırtasiye"de yayınevi listesi
   // göstermek kullanıcıyı boş sonuca sürükler.
   const { data: bookFacets } = useBookFacets(categoryId);
@@ -422,63 +420,17 @@ export default function StorePage() {
           </div>
         </div>
       ) : (
-        /* ── Vitrin (filtre yokken): yönetilen kanonik HOME akışı ── */
-        <>
-          {/* TEK NESİL. Eskiden burada üç kademeli bir fallback vardı:
-              kanonik bloklar yoksa eski hero (G2) + eski bölümler (G3), o da
-              yoksa koda gömülü ürün şeritleri. Bu, sektörün "silent fallback"
-              dediği anti-desendi — hatayı operatörden ve izlemeden gizleyen
-              görünmez bir kod yolu değişimi. Üstelik aynı sayfanın eski
-              kopyasını değil, BAŞKA BİR NESLİN içeriğini basıyordu; bozukluk
-              günlerce yaşayabilir ve kimse fark etmezdi.
-
-              Yerine geçen sözleşme:
-                • varsayılan ana sayfa VERİDİR (migration/seed ile garanti
-                  edilen, panelden düzenlenebilir bir sayfa) — koda gömülü
-                  bir dal değil,
-                • çalışma zamanı hatasında React Query önbellekteki son iyi
-                  kopyayı tutar (stale-if-error kalıbı),
-                • elde hiçbir şey yoksa düşüş GÖRÜNÜR olur: kullanıcıya açık
-                  bir uyarı, sunucuda `/health → storefront: degraded`. */}
-          {canonicalHome?.revision && Array.isArray(canonicalHome.revision.blocks) ? (
-            <StoreLandingBlocks page={canonicalHome} />
-          ) : isCanonicalHomeLoading ? (
-            <div className={`${CONTAINER} py-10`}><HomeFlowSkeleton /></div>
-          ) : (
-            <div className={`${CONTAINER} py-16`}>
-              <div
-                role="alert"
-                className="mx-auto max-w-lg border-l-2 border-amber-400 bg-amber-50/60 py-4 pl-4 text-sm text-amber-900 "
-              >
-                <p className="font-semibold">Vitrin şu anda görüntülenemiyor.</p>
-                <p className="mt-1">
-                  Ürünleri aramaya ve kategorilere göz atmaya devam
-                  edebilirsiniz.
-                </p>
-              </div>
-            </div>
-          )}
-        </>
+        /* ── MANUEL VİTRİN (kullanıcı kararı, 28 Ağu 2026) ──
+           Eski sözleşme "ana sayfa VERİDİR, panelden düzenlenir" idi; CMS/Puck
+           yönetimi kullanıcı kararıyla söküldü. Vitrin artık KODDUR
+           (pages/store/vitrin/AnaVitrin.tsx): sıfır istek, sıfır düşüş yolu,
+           yükleme/degraded durumu yok — değişiklik = kod düzenlemesi. */
+        <AnaVitrin />
       )}
     </StoreLayout>
   );
 }
 
-function HomeFlowSkeleton() {
-  return (
-    <div aria-label="Mağaza bölümleri yükleniyor" className="space-y-5">
-      <div className="h-7 w-48 animate-pulse rounded bg-slate-100 " />
-      <div className="flex gap-4 overflow-hidden md:gap-6">
-        {Array.from({ length: 6 }).map((_, index) => (
-          <div
-            key={index}
-            className="h-[280px] w-[160px] shrink-0 animate-pulse rounded-xl bg-slate-100 md:w-[200px] "
-          />
-        ))}
-      </div>
-    </div>
-  );
-}
 
 function FilterButton({
   active,

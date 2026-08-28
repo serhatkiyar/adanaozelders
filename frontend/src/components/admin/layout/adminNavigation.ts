@@ -130,7 +130,7 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
     kisayol: "M",
     to: ROUTES.adminStoreRoot,
     group: "Ticaret",
-    description: "Ana sayfa, kampanya, koleksiyon ve mağaza operasyonları.",
+    description: "Ürün kataloğu, siparişler, iadeler ve kuponlar.",
     icon: "store",
     // İçerik editörü (content.*) katalog yetkisi olmadan da Mağaza'ya girer;
     // alt-sekmeler kendi alanlarını `TAB_AREA` ile ayrıca süzer.

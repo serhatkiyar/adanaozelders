@@ -45,7 +45,7 @@ const LibraryDetail = lazy(() => import("@/pages/LibraryDetail"));
 const LibraryRegister = lazy(() => import("@/pages/LibraryRegister"));
 // Mağaza (D&R tarzı) — katalog/detay/sepet public; ödeme/siparişler oturum-içi
 const StorePage = lazy(() => import("@/pages/store/StorePage"));
-const StoreLandingPage = lazy(() => import("@/pages/store/StoreLandingPage"));
+const OkulaDonusKampanyasi = lazy(() => import("@/pages/store/vitrin/OkulaDonusKampanyasi"));
 const ProductDetailPage = lazy(() => import("@/pages/store/ProductDetailPage"));
 const SellerStorePage = lazy(() => import("@/pages/store/SellerStorePage"));
 const CartPage = lazy(() => import("@/pages/store/CartPage"));
@@ -101,7 +101,6 @@ const DamageEventsPage = lazy(() => import("@/pages/admin/inventory/DamageEvents
 const StockMovementsPanel = lazy(() =>
   import("@/components/admin/StockMovementsPanel").then((module) => ({ default: module.StockMovementsPanel }))
 );
-const StoreContentPreviewPage = lazy(() => import("@/pages/store/StoreContentPreviewPage"));
 const PackingLayout = lazy(() => import("@/pages/admin/packing/PackingLayout"));
 const PackingQueuePage = lazy(() => import("@/pages/admin/packing/PackingQueuePage"));
 const PackingStationPage = lazy(() => import("@/pages/admin/packing/PackingStationPage"));
@@ -378,7 +377,8 @@ function App() {
           <Route path={PATHS.storeCart} element={<CartPage />} />
           <Route path={PATHS.storeFavorites} element={<FavoritesPage />} />
           <Route path={PATHS.storeCollectionShared} element={<SharedCollectionPage />} />
-          <Route path={PATHS.storeLandingPage} element={<StoreLandingPage />} />
+          {/* Manuel vitrin: kampanya sayfaları KODDA, sabit rotalarla. */}
+          <Route path={PATHS.storeOkulaDonus} element={<OkulaDonusKampanyasi />} />
           {/* Oturumsuz kargo takibi (SMS token'ı) — subdomain kökü buraya rewrite'lanır. */}
           <Route path={PATHS.cargoTracking} element={<CargoTrackingPage />} />
 
@@ -482,11 +482,10 @@ function App() {
               <Route path="blog" element={<AdminBlogListPage />} />
               <Route path="blog/yeni" element={<AdminBlogEditorPage />} />
               <Route path="blog/:postId" element={<AdminBlogEditorPage />} />
-              <Route path="magaza" element={<Navigate replace to={ROUTES.adminStoreHome} />} />
-              <Route path="magaza/ana-sayfa" element={<AdminStore />} />
-              <Route path="magaza/kampanyalar" element={<AdminStore />} />
-              <Route path="magaza/koleksiyonlar" element={<AdminStore />} />
-              <Route path="magaza/onizleme/:pageId" element={<StoreContentPreviewPage />} />
+              <Route path="magaza" element={<Navigate replace to={ROUTES.adminStoreProducts} />} />
+              <Route path="magaza/ana-sayfa" element={<Navigate replace to={ROUTES.adminStoreProducts} />} />
+              <Route path="magaza/kampanyalar" element={<Navigate replace to={ROUTES.adminStoreProducts} />} />
+              <Route path="magaza/koleksiyonlar" element={<Navigate replace to={ROUTES.adminStoreProducts} />} />
               <Route path="magaza/urunler" element={<AdminStore />} />
               <Route path="magaza/kategoriler" element={<AdminStore />} />
               <Route path="magaza/siparisler" element={<AdminStore />} />
@@ -494,8 +493,8 @@ function App() {
               <Route path="magaza/kuponlar" element={<AdminStore />} />
               <Route path="magaza/stok-hareketleri" element={<Navigate replace to={ROUTES.adminInventoryMovements} />} />
               <Route path="magaza/tedarikci" element={<AdminStore />} />
-              <Route path="magaza/vitrin-sayfalari" element={<Navigate replace to={ROUTES.adminStorePages} />} />
-              <Route path="magaza/urun-gruplari" element={<Navigate replace to={ROUTES.adminStoreProductSets} />} />
+              <Route path="magaza/vitrin-sayfalari" element={<Navigate replace to={ROUTES.adminStoreProducts} />} />
+              <Route path="magaza/urun-gruplari" element={<Navigate replace to={ROUTES.adminStoreProducts} />} />
               <Route path="envanter" element={<InventoryLayout />}>
                 <Route index element={<InventoryOverviewPage />} />
                 <Route path="sayimlar" element={<CountSessionsPage />} />
@@ -530,8 +529,8 @@ function App() {
               <Route path="hakedisler" element={<AdminPayoutsPage />} />
               <Route path="yetkiler" element={<AdminAccessPage />} />
               <Route path="ayarlar" element={<AdminSettingsPage />} />
-              <Route path="vitrin-gorselleri" element={<Navigate replace to={ROUTES.adminStoreHome} />} />
-              <Route path="duyuru-seridi" element={<Navigate replace to={ROUTES.adminStoreHome} />} />
+              <Route path="vitrin-gorselleri" element={<Navigate replace to={ROUTES.adminStoreProducts} />} />
+              <Route path="duyuru-seridi" element={<Navigate replace to={ROUTES.adminStoreProducts} />} />
             </Route>
           </Route>
 

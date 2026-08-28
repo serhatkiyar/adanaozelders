@@ -48,3 +48,13 @@ def test_gorsel_korunur_ama_veri_semasi_atilir() -> None:
 
 def test_bos_girdi_bos_cikti() -> None:
     assert sanitize_html("") == ""
+
+
+def test_hizalama_stili_gecer_diger_stiller_atilir() -> None:
+    """TipTap TextAlign: style yalnız text-align değeriyle yaşar; genel CSS kapısı değildir."""
+    assert sanitize_html('<p style="text-align: center">a</p>') == '<p style="text-align: center">a</p>'
+    assert sanitize_html('<h2 style="text-align: right">b</h2>') == '<h2 style="text-align: right">b</h2>'
+    # Hizalama dışı her style bütünüyle atılır — birleşik yazım dahil.
+    assert sanitize_html('<p style="color:red">a</p>') == "<p>a</p>"
+    assert sanitize_html('<p style="text-align: center; color:red">a</p>') == "<p>a</p>"
+    assert sanitize_html('<p style="background:url(javascript:x)">a</p>') == "<p>a</p>"

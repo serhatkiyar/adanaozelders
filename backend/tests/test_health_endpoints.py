@@ -225,25 +225,20 @@ def _saglikli_bagimliliklar(main, monkeypatch) -> None:
     DB düşükse `/health` 503 döner ve "tedarikçi 503 vermemeli" iddiası YANLIŞ
     nedenle kırılır (ilk koşumda tam olarak bu yaşandı).
 
-    VİTRİN de buraya eklendi: `_check_storefront` veritabanına gider ve DB'siz
-    birim ortamında `degraded` döner; sabitlenmezse "tedarikçi kapalıyken
-    sistem bozuk sayılmaz" iddiası vitrin yüzünden kırılır — yine YANLIŞ
-    nedenle. (Bu yardımcının sözleşmesi "TÜM bağımlılıklar sağlıklı"dır;
-    yeni bir bağımlılık eklendiğinde burası da güncellenmelidir.)"""
+    (Tarihçe: vitrin kontrolü de sabitleniyordu; manuel vitrin kararıyla
+    `_check_storefront` kalktı — vitrin artık kodda, bozulabilir veri yolu
+    yok. Bu yardımcının sözleşmesi "TÜM bağımlılıklar sağlıklı"dır; yeni bir
+    bağımlılık eklendiğinde burası da güncellenmelidir.)"""
     async def _ok():
         return True
 
     async def _rota():
         return {"provider": "auto", "status": "connected", "degraded": False}
 
-    async def _vitrin():
-        return {"status": "ok", "degraded": False, "state": "LIVE", "blocks": 3}
-
     monkeypatch.setattr(main, "_check_database", _ok)
     monkeypatch.setattr(main, "_check_redis", _ok)
     monkeypatch.setattr(main, "_check_storage", _ok)
     monkeypatch.setattr(main, "_check_routing", _rota)
-    monkeypatch.setattr(main, "_check_storefront", _vitrin)
 
 
 def test_uretimde_tedarikci_hata_metni_gizlenir(client, monkeypatch):

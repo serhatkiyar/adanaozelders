@@ -141,10 +141,6 @@ const KAPI_DISI: Record<string, { tur: "props" | "bilesen-yok" | "baglam"; gerek
     tur: "props",
     gerekce: "zorunlu urun verisi",
   },
-  "src/components/store/StoreLandingBlocks.tsx": {
-    tur: "props",
-    gerekce: "zorunlu yayinlanmis vitrin sayfasi",
-  },
   // CMS Faz 1: kontrollü bileşen — value/onChange olmadan mount edilemez.
   "src/components/admin/content/BlogBodyEditor.tsx": {
     tur: "props",
@@ -322,10 +318,8 @@ const KAPI_KAPSAMI = [
   "src/components/admin/store/BulkImportPanel.tsx",
   "src/components/admin/store/CategoriesPanel.tsx",
   "src/components/admin/store/CouponsPanel.tsx",
-  "src/components/admin/store/LandingPagesManager.tsx",
   "src/components/admin/store/OrdersPanel.tsx",
   "src/components/admin/store/ProductForm.tsx",
-  "src/components/admin/store/ProductSetsManager.tsx",
   "src/components/admin/store/ProductsPanel.tsx",
   "src/components/admin/store/ReturnsPanel.tsx",
   "src/components/admin/store/StoreAttributesManager.tsx",
@@ -359,6 +353,7 @@ const KAPI_KAPSAMI = [
   // CMS Faz 1 · blog yönetimi.
   "src/pages/admin/blog/AdminBlogEditorPage.tsx",
   "src/pages/admin/blog/AdminBlogListPage.tsx",
+  // CMS Faz 2 · Puck editör sayfası + medya seçici alanı.
   "src/pages/admin/delivery/DeliveryBoardPage.tsx",
   "src/pages/admin/delivery/DeliveryCouriersPage.tsx",
   "src/pages/admin/delivery/DeliveryLayout.tsx",
@@ -464,9 +459,10 @@ const KONTROLSUZ_EKRANLAR: Record<string, "sunum" | "kabuk" | "pencere-kabugu" |
   // CMS Faz 1: blog listesi salt liste + bağlantıdır; form kontrolü taşımaz
   // (arama/filtre yok — kayıt sayısı düşük). Editör sayfası kapıda ölçülür.
   "src/pages/admin/blog/AdminBlogListPage.tsx": "sunum",
+  // CMS Faz 2: rota parametresi yokken editör iskelet basar; gerçek kontroller
+  // Puck yüzeyinde doğar ve dev ortam provası + PG entegrasyonuyla ölçülür.
   // Mağaza içerik yöneticisi ağsız varsayılan render'da sayfa seçilene kadar
   // boş durum gösterir; formlar ve medya seçici kabul testlerinde açılır.
-  "src/components/admin/store/LandingPagesManager.tsx": "kosullu",
   // Tedarikçi paneli: ağsız render'da tedarikçi listesi BOŞtur ve ekran
   // `EmptyState` basar. Durum şeridi, ayar formu ve tablolar ancak bir
   // tedarikçi satırı geldiğinde doğar — `ReturnsPanel` ile aynı sınıf.
@@ -512,7 +508,6 @@ const KONTROLSUZ_EKRANLAR: Record<string, "sunum" | "kabuk" | "pencere-kabugu" |
   "src/pages/dashboards/AdminLibraries.tsx": "kosullu",
   // Rota kabuğu varsayılan test konumunda HOME panelini açar; veri gelmeden
   // kontrol basmaz. Sekme ve form dalları admin mağaza kabul testlerindedir.
-  "src/pages/dashboards/AdminStore.tsx": "kosullu",
   "src/pages/dashboards/CourierHome.tsx": "kosullu",
   "src/pages/dashboards/OperatorHome.tsx": "kosullu",
   "src/pages/dashboards/OperatorLibrary.tsx": "kosullu",

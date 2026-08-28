@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { EditorContent, useEditor, type Editor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Link from "@tiptap/extension-link";
+import TextAlign from "@tiptap/extension-text-align";
 
 import { Button } from "@/components/admin/ui";
 
@@ -109,6 +110,9 @@ export function BlogBodyEditor({
         autolink: true,
         defaultProtocol: "https",
       }),
+      // Hizalama style="text-align: …" olarak yazılır; sunucu sanitizasyonu
+      // yalnız bu style değerini geçirir (services/blog_service.py).
+      TextAlign.configure({ types: ["heading", "paragraph"] }),
     ],
     content: value,
     onUpdate: ({ editor: e }) => onChange(e.isEmpty ? "" : e.getHTML()),
@@ -158,6 +162,10 @@ export function BlogBodyEditor({
         <ToolbarButton editor={editor} title="Kalın" label={<strong>K</strong>} aktif={editor.isActive("bold")} onClick={() => editor.chain().focus().toggleBold().run()} />
         <ToolbarButton editor={editor} title="İtalik" label={<em>İ</em>} aktif={editor.isActive("italic")} onClick={() => editor.chain().focus().toggleItalic().run()} />
         <ToolbarButton editor={editor} title="Üstü çizili" label={<s>S</s>} aktif={editor.isActive("strike")} onClick={() => editor.chain().focus().toggleStrike().run()} />
+        <span className="mx-1 h-5 w-px bg-slate-200 " aria-hidden />
+        <ToolbarButton editor={editor} title="Sola hizala" label="⇤" aktif={editor.isActive({ textAlign: "left" })} onClick={() => editor.chain().focus().setTextAlign("left").run()} />
+        <ToolbarButton editor={editor} title="Ortala" label="↔" aktif={editor.isActive({ textAlign: "center" })} onClick={() => editor.chain().focus().setTextAlign("center").run()} />
+        <ToolbarButton editor={editor} title="Sağa hizala" label="⇥" aktif={editor.isActive({ textAlign: "right" })} onClick={() => editor.chain().focus().setTextAlign("right").run()} />
         <span className="mx-1 h-5 w-px bg-slate-200 " aria-hidden />
         <ToolbarButton editor={editor} title="Madde listesi" label="•—" aktif={editor.isActive("bulletList")} onClick={() => editor.chain().focus().toggleBulletList().run()} />
         <ToolbarButton editor={editor} title="Numaralı liste" label="1—" aktif={editor.isActive("orderedList")} onClick={() => editor.chain().focus().toggleOrderedList().run()} />
