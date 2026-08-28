@@ -197,6 +197,7 @@ export const puckConfig: Config = {
       title: "Vitrin blokları",
       components: [
         "HeroCarousel",
+        "CardRow",
         "Banner",
         "ImageCardGrid",
         "ProductRail",
@@ -224,18 +225,32 @@ export const puckConfig: Config = {
           min: 1,
         },
         autoplay_ms: { type: "number", label: "Otomatik geçiş (ms)", min: 0 },
+        fade_bottom: {
+          type: "radio",
+          label: "Alta doğru zemine karışsın (Amazon tarzı)",
+          options: [
+            { label: "Hayır", value: false },
+            { label: "Evet", value: true },
+          ],
+        },
         ...gorunumAlanlari({ hiza: false }),
       },
-      defaultProps: { slides: [bosMedya()], autoplay_ms: 6500, ...GORUNUM_VARSAYILAN },
-      render: ({ slides, gorunum }) => (
+      defaultProps: { slides: [bosMedya()], autoplay_ms: 6500, fade_bottom: false, ...GORUNUM_VARSAYILAN },
+      render: ({ slides, gorunum, fade_bottom }) => (
         <GorunumSarici g={gorunum as BlokGorunumu}>
         <div className="mx-auto max-w-6xl px-4 py-3">
-          <div className="flex snap-x gap-4 overflow-x-auto pb-2">
+          <div className="relative flex snap-x gap-4 overflow-x-auto pb-2">
             {(slides as PuckMedya[]).map((s, i) => (
               <div key={i} className="w-full flex-none snap-start">
                 <MedyaOnizleme medya={s} />
               </div>
             ))}
+            {Boolean(fade_bottom) && (
+              <div
+                aria-hidden="true"
+                className="pointer-events-none absolute inset-x-0 bottom-0 h-2/5 bg-gradient-to-b from-transparent to-white"
+              />
+            )}
           </div>
         </div>
         </GorunumSarici>
@@ -390,6 +405,102 @@ export const puckConfig: Config = {
         </section>
         </GorunumSarici>
       ),
+    },
+
+    CardRow: {
+      label: "Kart satırı (Amazon tarzı)",
+      fields: {
+        cards: {
+          type: "array",
+          label: "Kartlar (1-4)",
+          getItemSummary: (item: { title?: string }, i) => item.title || `Kart ${(i ?? 0) + 1}`,
+          min: 1,
+          max: 4,
+          defaultItemProps: {
+            title: "Kart başlığı",
+            link_label: "Daha fazlasını keşfet",
+            link_url: "",
+            items: [{ image_url: "", alt_text: "", label: "", link_url: "" }],
+          },
+          arrayFields: {
+            title: { type: "text", label: "Kart başlığı" },
+            link_label: { type: "text", label: "Alt bağlantı etiketi" },
+            link_url: { type: "text", label: "Alt bağlantı adresi" },
+            items: {
+              type: "array",
+              label: "Görseller (1 = tekil kart, 4 = 2x2)",
+              min: 1,
+              max: 4,
+              getItemSummary: (item: PuckMedya, i) => item.label || item.alt_text || `Görsel ${(i ?? 0) + 1}`,
+              defaultItemProps: { image_url: "", alt_text: "", label: "", link_url: "" },
+              arrayFields: {
+                image_url: medyaUrlAlani("Görsel"),
+                alt_text: { type: "text", label: "Alternatif metin" },
+                label: { type: "text", label: "Görsel etiketi" },
+                link_url: { type: "text", label: "Bağlantı" },
+              },
+            },
+          },
+        },
+        overlay: {
+          type: "radio",
+          label: "Hero üzerine bindir",
+          options: [
+            { label: "Hayır", value: false },
+            { label: "Evet", value: true },
+          ],
+        },
+        ...gorunumAlanlari({ hiza: false }),
+      },
+      defaultProps: {
+        cards: [{
+          title: "Kart başlığı",
+          link_label: "Daha fazlasını keşfet",
+          link_url: "",
+          items: [{ image_url: "", alt_text: "", label: "", link_url: "" }],
+        }],
+        overlay: true,
+        ...GORUNUM_VARSAYILAN,
+      },
+      render: ({ cards, overlay, gorunum }) => {
+        const liste = (cards as Array<{ title?: string; link_label?: string; items?: PuckMedya[] }>) ?? [];
+        const kolon =
+          liste.length <= 1 ? "md:grid-cols-1 md:max-w-sm" : liste.length === 2 ? "md:grid-cols-2" : liste.length === 3 ? "md:grid-cols-3" : "md:grid-cols-4";
+        return (
+          <GorunumSarici g={gorunum as BlokGorunumu}>
+            <div className={`mx-auto max-w-6xl px-4 py-3 ${overlay ? "relative z-30 -mt-24" : ""}`}>
+              <div className={`grid gap-4 ${kolon}`}>
+                {liste.map((kart, i) => {
+                  const gorseller = (kart.items ?? []).slice(0, 4);
+                  const tekil = gorseller.length <= 1;
+                  return (
+                    <div key={i} className="flex flex-col rounded-md border border-slate-200 bg-white p-5 shadow-sm">
+                      <h3 className="text-lg font-bold leading-snug text-slate-900">{kart.title}</h3>
+                      <div className={`mt-4 grid flex-1 gap-3 ${tekil ? "" : "grid-cols-2"}`}>
+                        {gorseller.map((g, j) => (
+                          <div key={j}>
+                            {g.image_url ? (
+                              <img src={g.image_url} alt={g.alt_text || ""} className={`w-full rounded-sm object-cover ${tekil ? "aspect-[4/3]" : "aspect-square"}`} />
+                            ) : (
+                              <div className={`flex items-center justify-center rounded-sm border border-dashed border-slate-300 text-[11px] text-slate-400 ${tekil ? "aspect-[4/3]" : "aspect-square"}`}>
+                                Görsel seçin
+                              </div>
+                            )}
+                            {g.label && <p className="mt-1 truncate text-xs text-slate-700">{g.label}</p>}
+                          </div>
+                        ))}
+                      </div>
+                      {kart.link_label && (
+                        <span className="mt-4 text-[13px] font-medium text-sky-700">{kart.link_label}</span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </GorunumSarici>
+        );
+      },
     },
 
     RichText: {

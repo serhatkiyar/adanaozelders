@@ -157,6 +157,8 @@ function Block({
       <Banner block={block} revisionId={revisionId} />
     ) : block.block_type === "RICH_TEXT" ? (
       <RichText block={block} revisionId={revisionId} />
+    ) : block.block_type === "CARD_ROW" ? (
+      <CardRow block={block} revisionId={revisionId} />
     ) : (
       <RecentlyViewed block={block} revisionId={revisionId} />
     );
@@ -200,6 +202,9 @@ function Hero({
     return () => window.clearInterval(timer);
   }, [block.config.autoplay_ms, next, paused, slides.length]);
   if (!slides.length) return null;
+  // Amazon deseni: `fade_bottom` açıkken hero alta doğru sayfa zeminine
+  // karışır (gradient fade) — bindirmeli kart satırı üstüne oturur.
+  const fade = Boolean(block.config.fade_bottom);
   return (
     <section
       aria-roledescription="carousel"
@@ -289,6 +294,12 @@ function Hero({
           </>
         )}
       </div>
+      {fade && (
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-x-0 bottom-0 h-2/5 bg-gradient-to-b from-transparent to-white"
+        />
+      )}
     </section>
   );
 }
@@ -593,6 +604,87 @@ function Banner({
           className={`${bannerBoySinifi(gorunumOku(block.config))} w-full ${media.fit === "contain" ? "object-contain" : "object-cover"}`}
         />
       </TrackedLink>
+    </section>
+  );
+}
+
+
+type CardRowKart = {
+  title?: string;
+  link_label?: string;
+  link_url?: string | null;
+  items?: MediaItem[];
+};
+
+/**
+ * Amazon tarzı kart satırı (CARD_ROW): beyaz kartlar, kart başına 1-4 görsel
+ * (4'lü = "quad card" 2x2 dizilir), altta CTA linki. `overlay` açıkken satır
+ * hero'nun gradient fade'i üzerine biner (IMAGE_CARD_GRID ile aynı bindirme).
+ */
+function CardRow({
+  block,
+  revisionId,
+}: {
+  block: LandingPageBlock;
+  revisionId: number;
+}) {
+  const cards = ((block.config.cards as CardRowKart[] | undefined) ?? []).filter(
+    (card) => (card.items ?? []).some((item) => item.image_url),
+  );
+  if (!cards.length) return null;
+  const kolon =
+    cards.length === 1 ? "md:grid-cols-1 md:max-w-sm" : cards.length === 2 ? "md:grid-cols-2" : cards.length === 3 ? "md:grid-cols-3" : "md:grid-cols-4";
+  return (
+    <section
+      className={`${CONTAINER} ${block.config.overlay ? "relative z-30 -mt-28 md:-mt-40" : ""}`}
+    >
+      <div className={`grid gap-4 md:gap-5 ${kolon}`}>
+        {cards.map((card, cardIndex) => {
+          const items = (card.items ?? []).filter((item) => item.image_url).slice(0, 4);
+          const tekil = items.length === 1;
+          return (
+            <div
+              key={cardIndex}
+              className="flex flex-col rounded-md border border-slate-200 bg-white p-5 shadow-sm"
+            >
+              <h2 className="text-lg font-bold leading-snug text-slate-900">{card.title}</h2>
+              <div className={`mt-4 grid flex-1 gap-3 ${tekil ? "" : "grid-cols-2"}`}>
+                {items.map((item, itemIndex) => (
+                  <TrackedLink
+                    key={itemIndex}
+                    to={item.link_url ?? card.link_url ?? block.link_url}
+                    revisionId={revisionId}
+                    block={block}
+                    className="group block"
+                  >
+                    <img
+                      src={item.image_url}
+                      alt={item.decorative ? "" : (item.alt_text ?? "")}
+                      loading="lazy"
+                      className={`w-full rounded-sm object-cover ${tekil ? "aspect-[4/3]" : "aspect-square"}`}
+                    />
+                    {item.label && (
+                      <p className="mt-1 truncate text-xs text-slate-700 group-hover:underline">
+                        {item.label}
+                      </p>
+                    )}
+                  </TrackedLink>
+                ))}
+              </div>
+              {card.link_label && (
+                <TrackedLink
+                  to={card.link_url ?? block.link_url}
+                  revisionId={revisionId}
+                  block={block}
+                  className="mt-4 text-[13px] font-medium text-sky-700 hover:text-orange-600 hover:underline"
+                >
+                  {card.link_label}
+                </TrackedLink>
+              )}
+            </div>
+          );
+        })}
+      </div>
     </section>
   );
 }

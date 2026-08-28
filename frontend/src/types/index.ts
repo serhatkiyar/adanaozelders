@@ -2521,7 +2521,8 @@ export interface ProductSet {
 
 export type LandingPageBlockType =
   | "HERO_CAROUSEL" | "IMAGE_CARD_GRID" | "CATEGORY_GRID"
-  | "PRODUCT_RAIL" | "BANNER" | "RICH_TEXT" | "RECENTLY_VIEWED";
+  | "PRODUCT_RAIL" | "BANNER" | "RICH_TEXT" | "RECENTLY_VIEWED"
+  | "CARD_ROW";
 
 export interface LandingPageBlockInput {
   block_key?: string | null;

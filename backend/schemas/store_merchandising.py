@@ -173,6 +173,7 @@ class LandingPageBlockWrite(BaseModel):
         "BANNER",
         "RICH_TEXT",
         "RECENTLY_VIEWED",
+        "CARD_ROW",
     ]
     title: str = Field(default="", max_length=140)
     description: str = Field(default="", max_length=1000)

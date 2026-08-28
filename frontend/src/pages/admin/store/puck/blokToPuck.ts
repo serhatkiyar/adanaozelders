@@ -33,6 +33,7 @@ const TIP_ESLEME: Record<string, string> = {
   BANNER: "Banner",
   RICH_TEXT: "RichText",
   RECENTLY_VIEWED: "RecentlyViewed",
+  CARD_ROW: "CardRow",
 };
 
 function medya(raw: unknown): PuckMedya {
@@ -83,6 +84,7 @@ export function blokToPuck(blocks: LandingPageBlock[]): DonusumSonucu {
         slides: ((b.config.slides as unknown[]) ?? []).map(medya),
       };
       if (typeof b.config.autoplay_ms === "number") props.autoplay_ms = b.config.autoplay_ms;
+      if (b.config.fade_bottom) props.fade_bottom = true;
       content.push({ type: tip, props });
     } else if (b.block_type === "IMAGE_CARD_GRID") {
       content.push({
@@ -110,6 +112,21 @@ export function blokToPuck(blocks: LandingPageBlock[]): DonusumSonucu {
       });
     } else if (b.block_type === "BANNER") {
       content.push({ type: tip, props: { ...ortak, image: medya(b.config) } });
+    } else if (b.block_type === "CARD_ROW") {
+      const kartlar = (b.config.cards as Array<Record<string, unknown>> | undefined) ?? [];
+      content.push({
+        type: tip,
+        props: {
+          ...ortak,
+          cards: kartlar.map((k) => ({
+            title: String(k.title ?? ""),
+            link_label: String(k.link_label ?? ""),
+            link_url: k.link_url ? String(k.link_url) : "",
+            items: ((k.items as unknown[]) ?? []).map(medya),
+          })),
+          overlay: Boolean(b.config.overlay),
+        },
+      });
     } else if (b.block_type === "RICH_TEXT") {
       // Eski düz metin zengin metne çevrilir; zaten HTML'liyse olduğu gibi.
       const mevcutHtml = String(b.config.content_html ?? "");

@@ -23,12 +23,12 @@ def veri(*content) -> dict:
     return {"root": {"props": {}}, "content": list(content), "zones": {}}
 
 
-def test_yedi_tipin_tamami_eslenmis() -> None:
-    """Eşleme tablosu DB'nin yedi blok tipini de kapsar — eksik tip sessizce
-    'bilinmeyen'e düşerdi."""
+def test_tum_blok_tipleri_eslenmis() -> None:
+    """Eşleme tablosu DB'nin blok tiplerinin tamamını kapsar — eksik tip
+    sessizce 'bilinmeyen'e düşerdi."""
     assert sorted(PUCK_TO_BLOCK_TYPE.values()) == sorted([
         "HERO_CAROUSEL", "IMAGE_CARD_GRID", "CATEGORY_GRID", "PRODUCT_RAIL",
-        "BANNER", "RICH_TEXT", "RECENTLY_VIEWED",
+        "BANNER", "RICH_TEXT", "RECENTLY_VIEWED", "CARD_ROW",
     ])
 
 
@@ -151,3 +151,34 @@ def test_gorunum_preset_dogrulanir() -> None:
             gorunum={"kolon": "3"}), 0
     )
     assert w.config["gorunum"] == {"kolon": "3"}
+
+
+def test_kart_satiri_ve_hero_fade_eslenir() -> None:
+    """Amazon deseni: hero fade_bottom taşır, kart satırı kart+görsel yapısını korur."""
+    w = puck_item_to_block_write(oge(
+        "HeroCarousel",
+        slides=[{"image_url": "https://cdn/h.webp", "alt_text": "h"}],
+        fade_bottom=True,
+    ), 0)
+    assert w.config["fade_bottom"] is True
+
+    w = puck_item_to_block_write(oge(
+        "CardRow",
+        cards=[{
+            "title": "Okula dönüş",
+            "link_label": "Alışverişe başla",
+            "link_url": "/magaza",
+            "items": [
+                {"image_url": "https://cdn/1.webp", "alt_text": "a", "label": "Çantalar"},
+                {"image_url": "https://cdn/2.webp", "alt_text": "b", "label": "Defterler"},
+                {"image_url": "https://cdn/3.webp", "alt_text": "c", "label": "Kalemler"},
+                {"image_url": "https://cdn/4.webp", "alt_text": "d", "label": "Elektronik"},
+            ],
+        }],
+        overlay=True,
+    ), 1)
+    assert w.block_type == "CARD_ROW"
+    assert w.config["overlay"] is True
+    kart = w.config["cards"][0]
+    assert kart["title"] == "Okula dönüş" and kart["link_url"] == "/magaza"
+    assert [i["label"] for i in kart["items"]] == ["Çantalar", "Defterler", "Kalemler", "Elektronik"]

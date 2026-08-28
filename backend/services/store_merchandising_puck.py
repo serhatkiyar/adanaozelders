@@ -32,6 +32,7 @@ PUCK_TO_BLOCK_TYPE: dict[str, str] = {
     "Banner": "BANNER",
     "RichText": "RICH_TEXT",
     "RecentlyViewed": "RECENTLY_VIEWED",
+    "CardRow": "CARD_ROW",
 }
 
 _MAX_PUCK_BYTES = 400_000
@@ -126,6 +127,10 @@ def puck_item_to_block_write(item: dict, index: int) -> LandingPageBlockWrite:
         autoplay = props.get("autoplay_ms")
         if isinstance(autoplay, (int, float)) and autoplay > 0:
             config["autoplay_ms"] = int(autoplay)
+        # Amazon tarzı: hero alta doğru zemine karışır (gradient fade),
+        # üzerine bindirmeli kart satırı gelir.
+        if props.get("fade_bottom"):
+            config["fade_bottom"] = True
     elif tip == "IMAGE_CARD_GRID":
         cards = props.get("cards")
         if not isinstance(cards, list):
@@ -148,6 +153,24 @@ def puck_item_to_block_write(item: dict, index: int) -> LandingPageBlockWrite:
             raise _err("Ürün vitrini için bir koleksiyon seçin.")
     elif tip == "BANNER":
         config = _media_item(props.get("image") or props, allow_label=False)
+    elif tip == "CARD_ROW":
+        cards = props.get("cards")
+        if not isinstance(cards, list):
+            raise _err("Kart satırı bir kart listesi taşımalı.")
+        config["cards"] = [
+            {
+                "title": str((c or {}).get("title") or "") if isinstance(c, dict) else "",
+                "link_label": str(c.get("link_label") or "") if isinstance(c, dict) else "",
+                "link_url": (str(c["link_url"]) if isinstance(c, dict) and c.get("link_url") else None),
+                "items": [
+                    _media_item(i, allow_label=True)
+                    for i in (c.get("items") if isinstance(c, dict) and isinstance(c.get("items"), list) else [])
+                ],
+            }
+            for c in cards
+        ]
+        if props.get("overlay"):
+            config["overlay"] = True
     elif tip == "RICH_TEXT":
         # Zengin metin: HTML burada DEĞİL, yazma boğazında sanitize edilir
         # (store_merchandising_service._sanitize_rich_text — legacy yol dahil).

@@ -249,6 +249,26 @@ def _validate_block(block) -> None:
         _validate_image_url(cfg.get("image_url"))
         _validate_image_url(cfg.get("mobile_image_url"))
         _validate_link(cfg.get("link_url"))
+    elif block.block_type == "CARD_ROW":
+        # Amazon tarzı bindirmeli kart satırı: 1-4 kart; kart başına 1-4 görsel
+        # (1 = tekil kart, 4 = 2x2 "quad" kart).
+        cards = cfg.get("cards")
+        if not isinstance(cards, list) or not 1 <= len(cards) <= 4:
+            raise HTTPException(422, "Kart satırında 1-4 kart bulunmalı.")
+        for card in cards:
+            if not isinstance(card, dict) or not str(card.get("title") or "").strip():
+                raise HTTPException(422, "Her kartın bir başlığı olmalı.")
+            _validate_link(card.get("link_url"))
+            items = card.get("items")
+            if not isinstance(items, list) or not 1 <= len(items) <= 4:
+                raise HTTPException(422, "Her kartta 1-4 görsel bulunmalı.")
+            for item in items:
+                if not isinstance(item, dict) or not item.get("image_url"):
+                    raise HTTPException(422, "Kart görsellerinin her biri için görsel seçin.")
+                _validate_image_url(item.get("image_url"))
+                if not item.get("alt_text") and not item.get("decorative"):
+                    raise HTTPException(422, "Her görsele açıklama yazın veya dekoratif işaretleyin.")
+                _validate_link(item.get("link_url"))
     elif block.block_type == "CATEGORY_GRID":
         ids = cfg.get("category_ids")
         if not isinstance(ids, list) or not ids:

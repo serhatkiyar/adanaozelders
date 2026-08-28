@@ -273,7 +273,7 @@ class StoreLandingPageBlock(Base, TimestampMixin, SoftDeleteMixin):
         CheckConstraint("sort_order >= 0", name="ck_store_landing_page_block_sort"),
         CheckConstraint(
             "block_type IN ('HERO_CAROUSEL', 'IMAGE_CARD_GRID', 'CATEGORY_GRID', "
-            "'PRODUCT_RAIL', 'BANNER', 'RICH_TEXT', 'RECENTLY_VIEWED')",
+            "'PRODUCT_RAIL', 'BANNER', 'RICH_TEXT', 'RECENTLY_VIEWED', 'CARD_ROW')",
             name="ck_store_landing_page_block_type",
         ),
         CheckConstraint("jsonb_typeof(config) = 'object'", name="ck_store_landing_page_block_config"),
