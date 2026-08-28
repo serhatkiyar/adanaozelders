@@ -14,7 +14,6 @@ import { useNavigate } from "react-router-dom";
 
 import { Badge, Button, EmptyState, PageSkeleton } from "@/components/admin/ui";
 import {
-  useLandingPagePublications,
   useLandingPages,
   useMerchandisingMutations,
   useStorePageMetrics,
@@ -47,16 +46,6 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-function tarihYaz(iso: string | null | undefined): string {
-  if (!iso) return "—";
-  return new Date(iso).toLocaleString("tr-TR", {
-    day: "numeric",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-
 export function LandingPagesManager({
   pageType = "CAMPAIGN",
 }: {
@@ -65,7 +54,6 @@ export function LandingPagesManager({
   const navigate = useNavigate();
   const { data: rawPages, isLoading } = useLandingPages();
   const { data: rawMetrics } = useStorePageMetrics();
-  const mutations = useMerchandisingMutations();
 
   const pages = Array.isArray(rawPages)
     ? rawPages.filter((page) =>
@@ -76,7 +64,6 @@ export function LandingPagesManager({
 
   const [selectedPageId, setSelectedPageId] = useState<number | null>(null);
   const selected = pages.find((page) => page.id === selectedPageId) ?? pages[0];
-  const { data: publications = [] } = useLandingPagePublications(selected?.id);
   const [showCreate, setShowCreate] = useState(false);
   const [showDuplicate, setShowDuplicate] = useState(false);
 
@@ -92,8 +79,8 @@ export function LandingPagesManager({
             {pageType === "HOME" ? "Mağaza ana sayfası" : "Kampanya sayfaları"}
           </h2>
           <p className="mt-1 text-sm text-panel-fg-muted">
-            İçerik blokları sürükle-bırak editörde düzenlenir; burada sayfaların
-            yaşam döngüsü (oluşturma, kopya, yayın takvimi) yönetilir.
+            İçerik blokları sürükle-bırak editörde düzenlenir; yayınlamak tek
+            tıktır ve anında canlıya alır.
           </p>
         </div>
         {pageType !== "HOME" && (
@@ -147,9 +134,7 @@ export function LandingPagesManager({
                       <DurumRozeti state={selected.state} />
                     </div>
                     <p className="mt-1 text-xs text-panel-fg-muted">
-                      /magaza/{selected.page_type === "HOME" ? "" : selected.slug} · v
-                      {selected.latest_version}
-                      {selected.starts_at && ` · yayın: ${tarihYaz(selected.starts_at)}`}
+                      /magaza/{selected.page_type === "HOME" ? "" : selected.slug}
                     </p>
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
@@ -185,57 +170,6 @@ export function LandingPagesManager({
                 />
               )}
 
-              <section className="rounded-2xl border border-panel-border bg-panel-surface p-5">
-                <h4 className="text-sm font-semibold text-panel-fg">Yayın takvimi</h4>
-                {publications.length === 0 ? (
-                  <p className="mt-2 text-sm text-panel-fg-muted">
-                    Henüz yayın planı yok — içerik editöründeki "Yayınla" ile eklenir.
-                  </p>
-                ) : (
-                  <ul className="mt-3 divide-y divide-panel-border">
-                    {publications.map((publication) => (
-                      <li
-                        key={publication.id}
-                        className="flex flex-wrap items-center justify-between gap-2 py-2.5 text-sm"
-                      >
-                        <span className="text-panel-fg">
-                          {tarihYaz(publication.starts_at)} →{" "}
-                          {publication.ends_at ? tarihYaz(publication.ends_at) : "süresiz"}
-                        </span>
-                        <span className="flex items-center gap-2">
-                          <Badge tone={publication.state === "LIVE" ? "success" : "neutral"}>
-                            {publication.state === "LIVE"
-                              ? "Yayında"
-                              : publication.state === "UPCOMING"
-                                ? "Bekliyor"
-                                : "Bitti"}
-                          </Badge>
-                          {publication.state !== "ENDED" && (
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              isPending={mutations.cancelPublication.isPending}
-                              onClick={async () => {
-                                try {
-                                  await mutations.cancelPublication.mutateAsync({
-                                    pageId: selected.id,
-                                    publicationId: publication.id,
-                                  });
-                                  toast.success("Yayın planı iptal edildi");
-                                } catch (error) {
-                                  toast.error(getErrorDetail(error, "Yayın iptal edilemedi."));
-                                }
-                              }}
-                            >
-                              İptal et
-                            </Button>
-                          )}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </section>
 
               {sayfaMetrikleri.length > 0 && (
                 <section className="rounded-2xl border border-panel-border bg-panel-surface p-5">

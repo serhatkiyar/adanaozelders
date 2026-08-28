@@ -18,9 +18,7 @@ import { Puck, type Data } from "@measured/puck";
 import "@measured/puck/puck.css";
 
 import { AccessDenied, useAdminAreaAccess } from "@/components/admin/AccessState";
-import { useDuzenlemeYuzeyi } from "@/components/admin/ui2/duzenlemeYuzeyi";
 import { Badge, Button, ErrorState, PageSkeleton } from "@/components/admin/ui";
-import { Modal } from "@/components/ui/Modal";
 import {
   useLandingPageRevisions,
   useLandingPages,
@@ -40,13 +38,6 @@ function kaynakVeri(revision: LandingPageRevision): { data: Data; atlanan: strin
   }
   const { data, atlanan } = blokToPuck(revision.blocks);
   return { data: data as unknown as Data, atlanan };
-}
-
-function simdiYerel(): string {
-  const d = new Date();
-  d.setSeconds(0, 0);
-  const ofset = d.getTimezoneOffset() * 60_000;
-  return new Date(d.getTime() - ofset).toISOString().slice(0, 16);
 }
 
 export default function PuckEditorPage() {
@@ -71,9 +62,6 @@ export default function PuckEditorPage() {
   const [veri, setVeri] = useState<Data | null>(null);
   const [atlanan, setAtlanan] = useState<string[]>([]);
   const [kirli, setKirli] = useState(false);
-  // Pencere durumu ekranda YAŞAMAZ (İP-A4): yayın onayı bir yüzeydir.
-  const yayinYuzeyi = useDuzenlemeYuzeyi<void, void>();
-  const [baslangic, setBaslangic] = useState(simdiYerel);
   const yuklenenRevizyon = useRef<number | null>(null);
 
   useEffect(() => {
@@ -119,6 +107,8 @@ export default function PuckEditorPage() {
     }
   };
 
+  // Kullanıcı kararı: sürümleme/ileri tarih TÖRENİ YOK — Yayınla tek tıktır,
+  // son hali kaydeder ve ANINDA canlıya alır (tarih modalı bilinçli kaldırıldı).
   const yayimla = async () => {
     if (!veri) return;
     const revision = await kaydet(veri);
@@ -126,10 +116,9 @@ export default function PuckEditorPage() {
     try {
       await mutations.publishPage.mutateAsync({
         pageId,
-        startsAt: new Date(baslangic).toISOString(),
+        startsAt: new Date().toISOString(),
       });
-      toast.success("Sayfa yayımlandı.");
-      yayinYuzeyi.kapat();
+      toast.success("Yayında.");
     } catch (e) {
       toast.error(getErrorDetail(e, "Yayımlanamadı."));
     }
@@ -155,7 +144,7 @@ export default function PuckEditorPage() {
             {sayfa?.internal_name ?? `Sayfa #${pageId}`}
           </p>
           <Badge tone={kaynakRevizyon.status === "DRAFT" ? "neutral" : "success"}>
-            {kaynakRevizyon.status === "DRAFT" ? `Taslak v${kaynakRevizyon.version}` : `Yayında v${kaynakRevizyon.version}`}
+            {kaynakRevizyon.status === "DRAFT" ? "Taslak" : "Yayında"}
           </Badge>
           {kirli && <span className="text-xs text-amber-600">Kaydedilmemiş değişiklik</span>}
         </div>
@@ -175,7 +164,11 @@ export default function PuckEditorPage() {
           >
             Taslağı kaydet
           </Button>
-          <Button size="sm" onClick={() => yayinYuzeyi.yeniAc()}>
+          <Button
+            size="sm"
+            isPending={mutations.publishPage.isPending || mutations.saveDraft.isPending}
+            onClick={() => void yayimla()}
+          >
             Yayınla
           </Button>
         </div>
@@ -202,34 +195,6 @@ export default function PuckEditorPage() {
         />
       </div>
 
-      <Modal
-        open={yayinYuzeyi.acik}
-        onClose={yayinYuzeyi.kapat}
-        title="Sayfayı yayınla"
-        description="Önce son hali taslak olarak kaydedilir, sonra yayına alınır."
-      >
-        <label htmlFor="puck-yayin-baslangic" className="block text-xs font-semibold text-slate-500">
-          Yayın başlangıcı
-        </label>
-        <input
-          id="puck-yayin-baslangic"
-          type="datetime-local"
-          className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-          value={baslangic}
-          onChange={(e) => setBaslangic(e.target.value)}
-        />
-        <div className="mt-4 flex justify-end gap-2">
-          <Button variant="ghost" onClick={yayinYuzeyi.kapat}>
-            Vazgeç
-          </Button>
-          <Button
-            isPending={mutations.publishPage.isPending || mutations.saveDraft.isPending}
-            onClick={() => void yayimla()}
-          >
-            Yayınla
-          </Button>
-        </div>
-      </Modal>
     </div>
   );
 }
