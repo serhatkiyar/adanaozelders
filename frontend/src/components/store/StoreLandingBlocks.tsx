@@ -8,6 +8,16 @@ import {
 } from "react";
 import { Link } from "react-router-dom";
 
+// Küratörlü görünüm preset'leri (CMS Faz 2) — editör canvas'ıyla ortak harita.
+import {
+  ZENGIN_METIN_SINIFI,
+  bannerBoySinifi,
+  bolumSinifi,
+  gorunumOku,
+  hizaSinifi,
+  kolonSinifi,
+} from "./gorunumSiniflari";
+
 import { recordStorePageEvent } from "@/api/storeMerchandising";
 import { HScroll } from "@/components/HScroll";
 import { ProductCard } from "@/components/store/ProductCard";
@@ -134,19 +144,26 @@ function Block({
   priority: boolean;
   isHome: boolean;
 }) {
-  if (block.block_type === "HERO_CAROUSEL")
-    return <Hero block={block} revisionId={revisionId} priority={priority} isHome={isHome} />;
-  if (block.block_type === "PRODUCT_RAIL")
-    return <ProductRail block={block} revisionId={revisionId} />;
-  if (block.block_type === "IMAGE_CARD_GRID")
-    return <ImageGrid block={block} revisionId={revisionId} />;
-  if (block.block_type === "CATEGORY_GRID")
-    return <CategoryGrid block={block} revisionId={revisionId} />;
-  if (block.block_type === "BANNER")
-    return <Banner block={block} revisionId={revisionId} />;
-  if (block.block_type === "RICH_TEXT")
-    return <RichText block={block} revisionId={revisionId} />;
-  return <RecentlyViewed block={block} revisionId={revisionId} />;
+  const icerik =
+    block.block_type === "HERO_CAROUSEL" ? (
+      <Hero block={block} revisionId={revisionId} priority={priority} isHome={isHome} />
+    ) : block.block_type === "PRODUCT_RAIL" ? (
+      <ProductRail block={block} revisionId={revisionId} />
+    ) : block.block_type === "IMAGE_CARD_GRID" ? (
+      <ImageGrid block={block} revisionId={revisionId} />
+    ) : block.block_type === "CATEGORY_GRID" ? (
+      <CategoryGrid block={block} revisionId={revisionId} />
+    ) : block.block_type === "BANNER" ? (
+      <Banner block={block} revisionId={revisionId} />
+    ) : block.block_type === "RICH_TEXT" ? (
+      <RichText block={block} revisionId={revisionId} />
+    ) : (
+      <RecentlyViewed block={block} revisionId={revisionId} />
+    );
+  // Küratörlü görünüm: zemin/boşluk sarmalayıcısı. Ayar yokken sınıf boş —
+  // eski kayıtlar piksel piksel bugünkü gibi kalır.
+  const sarici = bolumSinifi(gorunumOku(block.config));
+  return sarici ? <div className={sarici}>{icerik}</div> : icerik;
 }
 
 function Hero({
@@ -305,8 +322,9 @@ function Heading({
   revisionId: number;
 }) {
   if (!block.title && !block.description && !block.link_url) return null;
+  const orta = hizaSinifi(gorunumOku(block.config));
   return (
-    <div className="mb-5 flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-end sm:gap-5">
+    <div className={`mb-5 flex flex-col justify-between gap-3 ${orta ? "items-center text-center sm:flex-col sm:items-center" : "items-start sm:flex-row sm:items-end"} sm:gap-5`}>
       <div>
         <h2 className="text-xl font-semibold tracking-tight text-slate-950 md:text-2xl ">
           {block.title}
@@ -380,7 +398,15 @@ function ImageGrid({
     >
       <Heading block={block} revisionId={revisionId} />
       <div
-        className={`grid gap-4 md:gap-6 ${cards.length === 1 ? "max-w-sm" : cards.length === 2 ? "md:grid-cols-2" : "grid-cols-2 lg:grid-cols-4"}`}
+        className={`grid gap-4 md:gap-6 ${
+          cards.length === 1
+            ? "max-w-sm"
+            : cards.length === 2
+              ? "md:grid-cols-2"
+              : gorunumOku(block.config).kolon
+                ? kolonSinifi(gorunumOku(block.config))
+                : "grid-cols-2 lg:grid-cols-4"
+        }`}
       >
         {cards.map((card, index) => (
           <TrackedLink
@@ -564,7 +590,7 @@ function Banner({
           src={media.image_url}
           alt={media.decorative ? "" : (media.alt_text ?? "")}
           loading="lazy"
-          className={`max-h-[520px] w-full ${media.fit === "contain" ? "object-contain" : "object-cover"}`}
+          className={`${bannerBoySinifi(gorunumOku(block.config))} w-full ${media.fit === "contain" ? "object-contain" : "object-cover"}`}
         />
       </TrackedLink>
     </section>
@@ -578,14 +604,24 @@ function RichText({
   block: LandingPageBlock;
   revisionId: number;
 }) {
+  const contentHtml = String(block.config.content_html ?? "");
   const content = String(block.config.content ?? "");
-  if (!content) return null;
+  if (!contentHtml && !content) return null;
   return (
     <section className={`${CONTAINER} max-w-4xl`}>
       <Heading block={block} revisionId={revisionId} />
-      <div className="whitespace-pre-wrap text-base leading-7 text-slate-700 ">
-        {content}
-      </div>
+      {contentHtml ? (
+        // SUNUCUDA sanitize edilmiş HTML (services/blog_service.sanitize_html
+        // — _sanitize_rich_text yazma boğazı); inline text-align stili korunur.
+        <div
+          className={ZENGIN_METIN_SINIFI}
+          dangerouslySetInnerHTML={{ __html: contentHtml }}
+        />
+      ) : (
+        <div className="whitespace-pre-wrap text-base leading-7 text-slate-700 ">
+          {content}
+        </div>
+      )}
     </section>
   );
 }

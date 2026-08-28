@@ -8,9 +8,22 @@
  * Pasif bloklar (`is_active=false`) İÇE ALINMAZ: public render zaten yalnız
  * aktifleri basıyor ve Puck neslinde "pasif blok" kavramı yok (silinir).
  */
+import type { BlokGorunumu } from "@/components/store/gorunumSiniflari";
 import type { LandingPageBlock } from "@/types";
 
 import type { PuckIcerikOgesi, PuckMedya, PuckVerisi } from "./puckTipleri";
+
+/** Eski düz metni zengin metin HTML'ine çevirir (kaçışlı; çift satır sonu = paragraf). */
+export function duzMetindenHtml(metin: string): string {
+  const kacis = (s: string) =>
+    s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const paragraflar = metin
+    .split(/\n{2,}/)
+    .map((par) => par.trim())
+    .filter(Boolean)
+    .map((par) => `<p>${kacis(par).replace(/\n/g, "<br>")}</p>`);
+  return paragraflar.join("");
+}
 
 const TIP_ESLEME: Record<string, string> = {
   HERO_CAROUSEL: "HeroCarousel",
@@ -54,6 +67,7 @@ export function blokToPuck(blocks: LandingPageBlock[]): DonusumSonucu {
       atlanan.push(b.block_type);
       continue;
     }
+    const gorunum = (b.config.gorunum as BlokGorunumu | undefined) ?? undefined;
     const ortak = {
       id: `${tip}-${b.block_key}`,
       block_key: b.block_key,
@@ -61,6 +75,7 @@ export function blokToPuck(blocks: LandingPageBlock[]): DonusumSonucu {
       description: b.description,
       link_label: b.link_label,
       link_url: b.link_url ?? null,
+      ...(gorunum ? { gorunum } : {}),
     };
     if (b.block_type === "HERO_CAROUSEL") {
       const props: Record<string, unknown> = {
@@ -96,9 +111,12 @@ export function blokToPuck(blocks: LandingPageBlock[]): DonusumSonucu {
     } else if (b.block_type === "BANNER") {
       content.push({ type: tip, props: { ...ortak, image: medya(b.config) } });
     } else if (b.block_type === "RICH_TEXT") {
+      // Eski düz metin zengin metne çevrilir; zaten HTML'liyse olduğu gibi.
+      const mevcutHtml = String(b.config.content_html ?? "");
+      const duz = String(b.config.content ?? "");
       content.push({
         type: tip,
-        props: { ...ortak, content: String(b.config.content ?? "") },
+        props: { ...ortak, content_html: mevcutHtml || duzMetindenHtml(duz) },
       });
     } else {
       // RECENTLY_VIEWED — config taşımaz.

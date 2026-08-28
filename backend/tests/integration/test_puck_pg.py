@@ -117,3 +117,43 @@ async def test_bilinmeyen_puck_tipi_422(fabv, http):
     )
     assert r.status_code == 422
     assert "Bilinmeyen blok tipi" in r.text
+
+
+async def test_zengin_metin_sanitize_edilip_publicte_gorunur(fabv, http):
+    """XSS sınırı uçtan uca: script/onerror kaydedilmeden atılır, hizalama kalır."""
+    _, h = await fabv.admin(izinler=YÖNET)
+    s = await fabv.sayfa(http, h)
+
+    kirli = (
+        '<p style="text-align: center">Ortalı <strong>metin</strong></p>'
+        '<script>alert(1)</script><p style="color:red" onclick="x()">düz</p>'
+    )
+    r = await _taslak_kaydet(http, h, s.id, puck_veri({
+        "type": "RichText",
+        "props": {"title": "Zengin", "content_html": kirli},
+    }))
+    assert r.status_code == 200, r.text
+    kayitli = r.json()["blocks"][0]["config"]["content_html"]
+    assert "<script" not in kayitli and "onclick" not in kayitli and "color:red" not in kayitli
+    assert 'style="text-align: center"' in kayitli
+    assert "<strong>metin</strong>" in kayitli
+
+    yayin = await http.post(
+        f"/api/v1/admin/store-merchandising/pages/{s.id}/publish",
+        headers=h, json={"starts_at": "2020-01-01T00:00:00+00:00"},
+    )
+    assert yayin.status_code == 200, yayin.text
+    public = await http.get(f"/api/v1/store/pages/{s.slug}")
+    blok = public.json()["revision"]["blocks"][0]
+    assert blok["config"]["content_html"] == kayitli
+
+
+async def test_gecersiz_gorunum_422(fabv, http):
+    _, h = await fabv.admin(izinler=YÖNET)
+    s = await fabv.sayfa(http, h)
+    r = await _taslak_kaydet(http, h, s.id, puck_veri({
+        "type": "RichText",
+        "props": {"content_html": "<p>a</p>", "gorunum": {"zemin": "mor"}},
+    }))
+    assert r.status_code == 422
+    assert "geçersiz değer" in r.text

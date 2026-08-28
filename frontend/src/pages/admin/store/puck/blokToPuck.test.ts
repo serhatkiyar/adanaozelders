@@ -8,7 +8,7 @@ import { describe, expect, it } from "vitest";
 
 import type { LandingPageBlock } from "@/types";
 
-import { blokToPuck } from "./blokToPuck";
+import { blokToPuck, duzMetindenHtml } from "./blokToPuck";
 
 let sira = 0;
 function blok(kismi: Partial<LandingPageBlock>): LandingPageBlock {
@@ -69,7 +69,7 @@ describe("blokToPuck", () => {
       blok({ config: { content: "görünür" } }),
     ]);
     expect(data.content).toHaveLength(1);
-    expect((data.content[0].props as Record<string, unknown>).content).toBe("görünür");
+    expect((data.content[0].props as Record<string, unknown>).content_html).toBe("<p>görünür</p>");
   });
 
   it("kart ızgarası label + overlay taşır, banner config MediaItem olarak sarılır", () => {
@@ -99,6 +99,27 @@ describe("blokToPuck", () => {
     expect((data.content[0].props as Record<string, unknown>).product_set).toMatchObject({ id: 7 });
     expect((data.content[1].props as Record<string, unknown>).category_ids).toEqual([1, 2]);
     expect(data.content[2].type).toBe("RecentlyViewed");
+  });
+
+  it("eski düz metin zengin metne çevrilir, gorunum taşınır", () => {
+    const { data } = blokToPuck([
+      blok({
+        config: {
+          content: "İlk satır\nikinci satır\n\nYeni paragraf <b>",
+          gorunum: { hiza: "orta", zemin: "yumusak" },
+        },
+      }),
+    ]);
+    const props = data.content[0].props as Record<string, unknown>;
+    expect(props.content_html).toBe(
+      "<p>İlk satır<br>ikinci satır</p><p>Yeni paragraf &lt;b&gt;</p>"
+    );
+    expect(props.gorunum).toEqual({ hiza: "orta", zemin: "yumusak" });
+  });
+
+  it("duzMetindenHtml boş metinde boş döner", () => {
+    expect(duzMetindenHtml("")).toBe("");
+    expect(duzMetindenHtml("  \n  ")).toBe("");
   });
 
   it("bilinmeyen tip atlanır ve İSİMLE raporlanır", () => {

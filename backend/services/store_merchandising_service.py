@@ -205,9 +205,27 @@ def _validate_image_url(value: str | None) -> None:
         )
 
 
+def _sanitize_rich_text(block) -> None:
+    """RICH_TEXT gövde HTML'ini yazma boğazında temizler (Puck + legacy tek nokta).
+
+    Public render `content_html`'i dangerouslySetInnerHTML ile basar; kolona
+    sanitize edilmemiş HTML hiçbir yoldan giremez. Sanitizer blogunkiyle
+    ORTAK (services/blog_service.sanitize_html): allowlist + yalnız
+    text-align style'ı.
+    """
+    if block.block_type != "RICH_TEXT":
+        return
+    ham = block.config.get("content_html")
+    if ham:
+        from services.blog_service import sanitize_html
+
+        block.config["content_html"] = sanitize_html(str(ham))
+
+
 def _validate_block(block) -> None:
     _validate_link(block.link_url)
     cfg = block.config
+    puck_bridge.validate_gorunum(cfg.get("gorunum"), block_type=block.block_type)
     if block.block_type == "PRODUCT_RAIL" and block.product_set_revision_id is None:
         raise HTTPException(422, "Ürün vitrini için akıllı ürün grubu seçin.")
     if block.block_type != "PRODUCT_RAIL" and block.product_set_revision_id is not None:
@@ -550,6 +568,7 @@ async def _write_blocks(db: AsyncSession, revision_id: int, blocks) -> None:
         raise HTTPException(422, "Bir sayfada yalnız bir Son görüntülenenler bloğu olabilir.")
     keys: set[str] = set()
     for index, block in enumerate(blocks):
+        _sanitize_rich_text(block)
         _validate_block(block)
         key = block.block_key or str(uuid.uuid4())
         if key in keys:
@@ -580,6 +599,7 @@ async def _sync_draft_blocks(db: AsyncSession, revision_id: int, blocks) -> None
     seen: set[str] = set()
     now = _now()
     for index, payload in enumerate(blocks):
+        _sanitize_rich_text(payload)
         _validate_block(payload)
         key = payload.block_key or str(uuid.uuid4())
         if key in seen:

@@ -36,6 +36,38 @@ PUCK_TO_BLOCK_TYPE: dict[str, str] = {
 
 _MAX_PUCK_BYTES = 400_000
 
+#: Küratörlü görünüm preset'leri — frontend `gorunumSiniflari.ts` ile sözleşme.
+#: Serbest renk/px bilinçli YOK: preset dışı her değer 422 (marka tutarlılığı
+#: ve ölçülmüş kontrast garantileri korunur).
+GORUNUM_SECENEKLERI: dict[str, set[str]] = {
+    "hiza": {"sol", "orta"},
+    "zemin": {"beyaz", "yumusak", "vurgu"},
+    "bosluk": {"dar", "normal", "genis"},
+    "kolon": {"2", "3", "4"},       # yalnız IMAGE_CARD_GRID
+    "boy": {"ince", "normal"},      # yalnız BANNER
+}
+
+
+def validate_gorunum(raw: object, *, block_type: str) -> dict:
+    """`gorunum` nesnesini preset allowlist'ine indirger (saf; pytest'li)."""
+    if raw is None:
+        return {}
+    if not isinstance(raw, dict):
+        raise _err("Görünüm ayarları geçersiz.")
+    out: dict = {}
+    for anahtar, deger in raw.items():
+        secenekler = GORUNUM_SECENEKLERI.get(str(anahtar))
+        if secenekler is None:
+            raise _err(f"Bilinmeyen görünüm ayarı: {anahtar!r}")
+        if anahtar == "kolon" and block_type != "IMAGE_CARD_GRID":
+            raise _err("Kolon ayarı yalnız resimli kartlarda kullanılabilir.")
+        if anahtar == "boy" and block_type != "BANNER":
+            raise _err("Boy ayarı yalnız banner bloğunda kullanılabilir.")
+        if str(deger) not in secenekler:
+            raise _err(f"Görünüm ayarı {anahtar!r} için geçersiz değer: {deger!r}")
+        out[str(anahtar)] = str(deger)
+    return out
+
 
 def _err(mesaj: str) -> HTTPException:
     return HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, mesaj)
@@ -117,8 +149,17 @@ def puck_item_to_block_write(item: dict, index: int) -> LandingPageBlockWrite:
     elif tip == "BANNER":
         config = _media_item(props.get("image") or props, allow_label=False)
     elif tip == "RICH_TEXT":
-        config["content"] = str(props.get("content") or "")
+        # Zengin metin: HTML burada DEĞİL, yazma boğazında sanitize edilir
+        # (store_merchandising_service._sanitize_rich_text — legacy yol dahil).
+        config["content_html"] = str(props.get("content_html") or "")
+        # Eski düz alan fallback olarak korunur (eski public render yolu).
+        if props.get("content"):
+            config["content"] = str(props["content"])
     # RECENTLY_VIEWED: config boş.
+
+    gorunum = validate_gorunum(props.get("gorunum"), block_type=tip)
+    if gorunum:
+        config["gorunum"] = gorunum
 
     return LandingPageBlockWrite(
         block_key=(str(props["block_key"]) if props.get("block_key") else None),

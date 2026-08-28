@@ -120,3 +120,34 @@ def test_normalize_dev_veri_422() -> None:
 def test_normalize_content_listesi_sart() -> None:
     with pytest.raises(HTTPException):
         normalize_puck_data({"root": {}})
+
+
+def test_zengin_metin_content_html_tasinir() -> None:
+    w = puck_item_to_block_write(
+        oge("RichText", title="", content_html="<p>merhaba</p>"), 0
+    )
+    assert w.config["content_html"] == "<p>merhaba</p>"
+
+
+def test_gorunum_preset_dogrulanir() -> None:
+    w = puck_item_to_block_write(
+        oge("RichText", content_html="<p>a</p>", gorunum={"zemin": "yumusak", "bosluk": "genis"}), 0
+    )
+    assert w.config["gorunum"] == {"zemin": "yumusak", "bosluk": "genis"}
+
+    with pytest.raises(HTTPException) as e:
+        puck_item_to_block_write(oge("RichText", gorunum={"zemin": "kirmizi"}), 0)
+    assert "geçersiz değer" in e.value.detail
+
+    with pytest.raises(HTTPException) as e:
+        puck_item_to_block_write(oge("RichText", gorunum={"padding": "10px"}), 0)
+    assert "Bilinmeyen görünüm ayarı" in e.value.detail
+
+    # kolon yalnız resimli kartlarda, boy yalnız banner'da.
+    with pytest.raises(HTTPException):
+        puck_item_to_block_write(oge("RichText", gorunum={"kolon": "3"}), 0)
+    w = puck_item_to_block_write(
+        oge("ImageCardGrid", cards=[{"image_url": "https://cdn/x.webp", "alt_text": "x"}],
+            gorunum={"kolon": "3"}), 0
+    )
+    assert w.config["gorunum"] == {"kolon": "3"}
