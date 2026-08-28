@@ -282,7 +282,7 @@ export const puckConfig: Config = {
     },
 
     ImageCardGrid: {
-      label: "Resimli kartlar",
+      label: "Fotoğraf ızgarası (yalnız görsel — eski)",
       fields: {
         ...ORTAK_ALANLAR,
         cards: {
@@ -408,7 +408,7 @@ export const puckConfig: Config = {
     },
 
     CardRow: {
-      label: "Kart satırı (Amazon tarzı)",
+      label: "Amazon kartı — başlık + görseller + link",
       fields: {
         cards: {
           type: "array",
