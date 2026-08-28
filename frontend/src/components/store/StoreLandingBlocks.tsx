@@ -633,22 +633,26 @@ function CardRow({
   );
   if (!cards.length) return null;
   const kolon =
-    cards.length === 1 ? "md:grid-cols-1 md:max-w-sm" : cards.length === 2 ? "md:grid-cols-2" : cards.length === 3 ? "md:grid-cols-3" : "md:grid-cols-4";
+    cards.length === 1 ? "md:grid-cols-1 md:max-w-sm" : cards.length === 2 ? "md:grid-cols-2" : cards.length === 3 ? "md:grid-cols-3" : "sm:grid-cols-2 md:grid-cols-4";
   return (
     <section
       className={`${CONTAINER} ${block.config.overlay ? "relative z-30 -mt-28 md:-mt-40" : ""}`}
     >
-      <div className={`grid gap-4 md:gap-5 ${kolon}`}>
+      <div className={`grid items-stretch gap-5 ${kolon}`}>
         {cards.map((card, cardIndex) => {
           const items = (card.items ?? []).filter((item) => item.image_url).slice(0, 4);
           const tekil = items.length === 1;
           return (
             <div
               key={cardIndex}
-              className="flex flex-col rounded-[4px] bg-white p-5 shadow-[0_2px_5px_0_rgba(15,17,17,0.15)]"
+              className="flex flex-col bg-white p-5 pb-4 shadow-[0_2px_5px_rgba(15,17,17,0.08)]"
             >
-              <h2 className="text-lg font-bold leading-snug text-slate-900">{card.title}</h2>
-              <div className={`mt-4 grid flex-1 gap-3 ${tekil ? "" : "grid-cols-2"}`}>
+              <h2 className="text-[21px] font-bold leading-[27px] text-[#0F1111]">
+                {card.title}
+              </h2>
+              <div
+                className={`mt-3 grid flex-1 content-start ${tekil ? "" : "grid-cols-2 gap-x-3 gap-y-3.5"}`}
+              >
                 {items.map((item, itemIndex) => (
                   <TrackedLink
                     key={itemIndex}
@@ -657,16 +661,16 @@ function CardRow({
                     block={block}
                     className="group block"
                   >
-                    <img
-                      src={item.image_url}
-                      alt={item.decorative ? "" : (item.alt_text ?? "")}
-                      loading="lazy"
-                      className={`w-full rounded-sm bg-white ${
-                        item.fit === "cover" ? "object-cover" : "object-contain"
-                      } ${tekil ? "aspect-[4/3]" : "aspect-square"}`}
-                    />
+                    <div className={`overflow-hidden bg-white ${tekil ? "aspect-[1/1.05]" : "aspect-square"}`}>
+                      <img
+                        src={item.image_url}
+                        alt={item.decorative ? "" : (item.alt_text ?? "")}
+                        loading="lazy"
+                        className={`h-full w-full ${item.fit === "cover" ? "object-cover" : "object-contain"}`}
+                      />
+                    </div>
                     {item.label && (
-                      <p className="mt-1 truncate text-xs text-slate-700 group-hover:underline">
+                      <p className="mt-1 truncate text-[13px] leading-[17px] text-[#0F1111]">
                         {item.label}
                       </p>
                     )}
@@ -678,7 +682,7 @@ function CardRow({
                   to={card.link_url ?? block.link_url}
                   revisionId={revisionId}
                   block={block}
-                  className="mt-4 text-[13px] font-medium text-sky-700 hover:text-orange-600 hover:underline"
+                  className="mt-4 block text-[13px] leading-[19px] text-[#007185] hover:text-[#C7511F] hover:underline"
                 >
                   {card.link_label}
                 </TrackedLink>

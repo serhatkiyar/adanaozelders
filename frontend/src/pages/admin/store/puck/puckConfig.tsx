@@ -465,34 +465,38 @@ export const puckConfig: Config = {
       render: ({ cards, overlay, gorunum }) => {
         const liste = (cards as Array<{ title?: string; link_label?: string; items?: PuckMedya[] }>) ?? [];
         const kolon =
-          liste.length <= 1 ? "md:grid-cols-1 md:max-w-sm" : liste.length === 2 ? "md:grid-cols-2" : liste.length === 3 ? "md:grid-cols-3" : "md:grid-cols-4";
+          liste.length <= 1 ? "md:grid-cols-1 md:max-w-sm" : liste.length === 2 ? "md:grid-cols-2" : liste.length === 3 ? "md:grid-cols-3" : "sm:grid-cols-2 md:grid-cols-4";
         return (
           <GorunumSarici g={gorunum as BlokGorunumu}>
             <div className={`bg-slate-50 ${overlay ? "relative z-30 -mt-24" : ""}`}>
             <div className="mx-auto max-w-6xl px-4 py-3">
-              <div className={`grid gap-4 ${kolon}`}>
+              <div className={`grid items-stretch gap-5 ${kolon}`}>
                 {liste.map((kart, i) => {
                   const gorseller = (kart.items ?? []).slice(0, 4);
                   const tekil = gorseller.length <= 1;
                   return (
-                    <div key={i} className="flex flex-col rounded-[4px] bg-white p-5 shadow-[0_2px_5px_0_rgba(15,17,17,0.15)]">
-                      <h3 className="text-lg font-bold leading-snug text-slate-900">{kart.title}</h3>
-                      <div className={`mt-4 grid flex-1 gap-3 ${tekil ? "" : "grid-cols-2"}`}>
+                    <div key={i} className="flex flex-col bg-white p-5 pb-4 shadow-[0_2px_5px_rgba(15,17,17,0.08)]">
+                      <h3 className="text-[21px] font-bold leading-[27px] text-[#0F1111]">{kart.title}</h3>
+                      <div className={`mt-3 grid flex-1 content-start ${tekil ? "" : "grid-cols-2 gap-x-3 gap-y-3.5"}`}>
                         {gorseller.map((g, j) => (
                           <div key={j}>
-                            {g.image_url ? (
-                              <img src={g.image_url} alt={g.alt_text || ""} className={`w-full rounded-sm bg-white ${g.fit === "cover" ? "object-cover" : "object-contain"} ${tekil ? "aspect-[4/3]" : "aspect-square"}`} />
-                            ) : (
-                              <div className={`flex items-center justify-center rounded-sm border border-dashed border-slate-300 text-[11px] text-slate-400 ${tekil ? "aspect-[4/3]" : "aspect-square"}`}>
-                                Görsel seçin
-                              </div>
+                            <div className={`overflow-hidden bg-white ${tekil ? "aspect-[1/1.05]" : "aspect-square"}`}>
+                              {g.image_url ? (
+                                <img src={g.image_url} alt={g.alt_text || ""} className={`h-full w-full ${g.fit === "cover" ? "object-cover" : "object-contain"}`} />
+                              ) : (
+                                <div className="flex h-full items-center justify-center border border-dashed border-slate-300 text-[11px] text-slate-400">
+                                  Görsel seçin
+                                </div>
+                              )}
+                            </div>
+                            {g.label && (
+                              <p className="mt-1 truncate text-[13px] leading-[17px] text-[#0F1111]">{g.label}</p>
                             )}
-                            {g.label && <p className="mt-1 truncate text-xs text-slate-700">{g.label}</p>}
                           </div>
                         ))}
                       </div>
                       {kart.link_label && (
-                        <span className="mt-4 text-[13px] font-medium text-sky-700">{kart.link_label}</span>
+                        <span className="mt-4 text-[13px] leading-[19px] text-[#007185]">{kart.link_label}</span>
                       )}
                     </div>
                   );
