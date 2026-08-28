@@ -371,12 +371,30 @@ async def _resolve_lines(db: AsyncSession, items: list) -> tuple[list[dict], lis
     return lines, issues
 
 
+SELF_DEALING_MESSAGE = "Kendi sattığınız ürünü satın alamazsınız"
+
+
+def _self_dealing_lines(lines: list[dict], buyer_tutor_id: int | None) -> list[dict]:
+    """Alıcının kendi sattığı kalemler (docs/egitmen-alici-sozlesme.md §3).
+
+    Eğitmen mağazada alıcı olabildiği için kendi dijital ürününü satın alma
+    yolu açıldı. Engel olmadan `_finalize_paid` o kaleme komisyon/kazanç yazar
+    ve `payout_ledger` tutarı eğitmenin IBAN'ına kuyruklar — kartla ödenen para
+    kesinti düşülmüş hâlde geri döner (çalıntı kartı nakde çevirme kanalı).
+    Ayrıca kendi ürününe "doğrulanmış alıcı" yorumu yazma yolu açılırdı.
+    """
+    if buyer_tutor_id is None:
+        return []
+    return [ln for ln in lines if ln.get("tutor_id") == buyer_tutor_id]
+
+
 async def validate_cart(
     db: AsyncSession,
     items: list,
     *,
     coupon_code: str | None = None,
     client_id: int | None = None,
+    buyer_tutor_id: int | None = None,
 ) -> CartValidateOut:
     lines, issues = await _resolve_lines(db, items)
     subtotal, shipping, _total, has_physical = compute_totals(lines)
@@ -413,6 +431,11 @@ async def validate_cart(
         db, [ln["kind"] for ln in lines]
     ):
         issues = list(issues) + [payment_gates.DIGITAL_CLOSED_MESSAGE]
+
+    # Kendi ürününü satın alma: checkout'ta 409 görmek yerine sepette öğrenilsin
+    # (§3.1). Asıl ret `create_order` içindedir.
+    for ln in _self_dealing_lines(lines, buyer_tutor_id):
+        issues = list(issues) + [f"'{ln['title']}' — {SELF_DEALING_MESSAGE.lower()}"]
 
     return CartValidateOut(
         items=[
@@ -451,6 +474,12 @@ async def create_order(
         raise HTTPException(status.HTTP_409_CONFLICT, "; ".join(issues))
     if not lines:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Sepet boş")
+
+    # Self-dealing kapısı (§3.2): eğitmen kendi sattığı kalemi sipariş edemez.
+    # `client` bir eğitmenin alışveriş gölgesi ise `shadow_of_tutor_id` satıcı
+    # kimliğidir; gerçek öğrencide None olduğu için kapı sessizce geçilir.
+    if _self_dealing_lines(lines, client.shadow_of_tutor_id):
+        raise HTTPException(status.HTTP_409_CONFLICT, SELF_DEALING_MESSAGE)
 
     # Ödeme kolu kapısı: karışık sepet (platform malı + eğitmen dijital ürünü)
     # HER İKİ kolun da açık olmasını ister. `validate_cart` bunu ödeme
@@ -1127,9 +1156,23 @@ async def _finalize_paid(
             )
             return
 
+    # Self-dealing son savunması (§3.3). `create_order` kapısı bunu zaten 409
+    # ile reddediyor; buradaki ikinci katman, kapı ileride bir yoldan atlanırsa
+    # PARANIN eğitmenin kendi IBAN'ına kuyruklanmasını engeller.
+    alici_tutor_id = await db.scalar(
+        select(Client.shadow_of_tutor_id).where(Client.id == order.client_id)
+    )
+
     for item in order.items:
         # Eğitmen dijital kalemi → komisyon bölüşümü kazanca yaz.
         if item.seller_type == SellerType.TUTOR.value and item.tutor_id is not None:
+            if alici_tutor_id is not None and item.tutor_id == alici_tutor_id:
+                logger.error(
+                    "ALERT order %s kalem %s: alıcı ve satıcı aynı eğitmen (%s) — "
+                    "komisyon/kazanç YAZILMADI (self-dealing son savunması)",
+                    order.id, item.id, item.tutor_id,
+                )
+                continue
             tutor = await db.get(Tutor, item.tutor_id)
             line_total = Decimal(str(item.unit_price)) * item.quantity
             rate = commission.rate_for(tutor) if tutor else commission.effective_commission_rate(None, None)

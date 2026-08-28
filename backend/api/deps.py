@@ -5,6 +5,8 @@ import datetime
 import jwt
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
+from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.config import settings
@@ -211,6 +213,91 @@ async def get_current_active_operator(
         )
     return user
 
+
+
+#: Gölgeye yansıtılan kimlik alanları (docs/egitmen-alici-sozlesme.md §1.5).
+#: Yansıtma TEK YÖNLÜDÜR: Tutor → gölge. Liste burada tek kaynaktır; yeni bir
+#: kimlik alanı eklenirse buraya girmezse fatura/ödeme sağlayıcısı eski değeri
+#: görür.
+_SHADOW_MIRRORED_FIELDS = (
+    "first_name",
+    "last_name",
+    "email",
+    "avatar_url",
+    "phone",
+    "phone_verified_at",
+    "email_verified_at",
+)
+
+
+def _shadow_username(tutor_id: int) -> str:
+    # Kısmi UNIQUE indeks gölgeleri kullanıcı adı tekilliğinden dışladığı için
+    # bu ad global isim alanını tüketmez; yine de çakışmasın diye türetilir.
+    return f"__shadow_t{tutor_id}"
+
+
+async def get_shopping_client(
+    user: CurrentUser = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+) -> Client:
+    """Mağazanın alıcı kimliği: öğrencinin kendisi ya da eğitmenin gölgesi.
+
+    `require_roles(RoleType.CLIENT)`'ın mağaza+adres uçlarındaki yerini alır
+    (docs/egitmen-alici-sozlesme.md §2). Aşağı akış — sipariş, escrow, fatura,
+    teslimat, adres — HİÇ DEĞİŞMEZ: hepsi bir `Client` nesnesi ve `clients.id`
+    üzerinde çalışmaya devam eder.
+
+    Sözleşme:
+
+    - **CLIENT** → kendisi; mevcut davranış birebir korunur.
+    - **TUTOR** → bağlı gölge satır; yoksa oluşturulur, varsa kimlik alanları
+      tazelenir. Gölge bir giriş öznesi değildir (§1.2): parolası hiçbir şeyle
+      eşleşmez, `is_active=False`'tır ve kimlik sorgularından düşürülür.
+    - **Diğer roller** → 403, `require_roles` ile aynı gövde (fail-closed).
+
+    `TutorStatus.SUSPENDED` alışverişi durdurmaz (§6): askıya alma satıcılığı
+    hedefler, tüketiciliği değil. Hesap tamamen kapatılmışsa
+    `get_current_active_user` zaten `is_active`'te keser.
+    """
+    if isinstance(user, Client):
+        return user
+    if not isinstance(user, Tutor):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Insufficient permissions")
+
+    stmt = select(Client).where(
+        Client.shadow_of_tutor_id == user.id, Client.deleted_at.is_(None)
+    )
+    shadow = (await db.execute(stmt)).scalar_one_or_none()
+
+    if shadow is None:
+        shadow = Client(
+            shadow_of_tutor_id=user.id,
+            role_id=ROLE_IDS[RoleType.CLIENT],
+            username=_shadow_username(user.id),
+            hashed_password="!",  # hiçbir parolayla eşleşmez
+            is_active=False,
+            **{f: getattr(user, f, None) for f in _SHADOW_MIRRORED_FIELDS},
+        )
+        try:
+            # SAVEPOINT: çakışmada yalnız bu ekleme geri alınır. Düz
+            # `db.rollback()` dış işlemi de öldürür ve `get_current_active_user`
+            # içinde tazelenen kullanıcı nesnesini expire ederdi.
+            async with db.begin_nested():
+                db.add(shadow)
+                await db.flush()
+        except IntegrityError:
+            # Aynı eğitmenin iki eşzamanlı isteği: kısmi UNIQUE indeks ikinciyi
+            # reddeder. Kazananı oku — gölge yine tektir.
+            shadow = (await db.execute(stmt)).scalar_one()
+        return shadow
+
+    # Yansıtmayı tazele — YALNIZ değer farklıysa yaz. Aksi hâlde her GET isteği
+    # gereksiz bir UPDATE üretirdi (§8.6).
+    for field in _SHADOW_MIRRORED_FIELDS:
+        yeni = getattr(user, field, None)
+        if getattr(shadow, field) != yeni:
+            setattr(shadow, field, yeni)
+    return shadow
 
 
 async def get_optional_user(

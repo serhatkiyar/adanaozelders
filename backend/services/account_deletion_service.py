@@ -59,6 +59,21 @@ def anonymized_username(user_id: int, role_id: int) -> str:
     return f"silinmis_{digest}"
 
 
+async def _shadow_of(db: AsyncSession, tutor_id: int) -> Client | None:
+    """Eğitmenin canlı alışveriş gölgesi (docs/egitmen-alici-sozlesme.md §1).
+
+    Gölge ayrı bir kişi değil, aynı kişinin mağazadaki yansımasıdır: hesap
+    kapatma, silme kilidi ve veri dökümü onu da kapsamak zorundadır.
+    """
+    return (
+        await db.execute(
+            select(Client).where(
+                Client.shadow_of_tutor_id == tutor_id, Client.deleted_at.is_(None)
+            )
+        )
+    ).scalar_one_or_none()
+
+
 async def anonymize_account(db: AsyncSession, user) -> list[str]:
     """Kullanıcının kimlik/iletişim verisini temizler ve hesabı kapatır.
 
@@ -144,6 +159,14 @@ async def anonymize_account(db: AsyncSession, user) -> list[str]:
                     setattr(addr, field, None)
             addr.deleted_at = _now()
 
+    # ── Eğitmenin alışveriş gölgesi de aynı yoldan geçer (§5.3) ──
+    # Gölge kendi başına bir hesap değil; eğitmenle birlikte kapanmazsa mağaza
+    # tarafında adı, e-postası ve teslimat adresleri geride kalırdı.
+    if isinstance(user, Tutor):
+        shadow = await _shadow_of(db, uid)
+        if shadow is not None:
+            orphan_files.extend(await anonymize_account(db, shadow))
+
     # Rıza kayıtlarındaki IP/user-agent (onayın verildiği gerçeği kalır).
     await consent_service.purge_for_user(db, user_id=uid, role_id=role_id)
 
@@ -196,11 +219,20 @@ async def export_personal_data(db: AsyncSession, user) -> dict:
         for key, row in sorted(consents.items())
     ]
 
+    # Adresler ve siparişler `clients.id`'ye bağlıdır; eğitmenin mağaza verisi
+    # gölgesinin id'sinde durur ve dökümde eksik kalmamalıdır (§5.5).
+    alici_id: int | None = None
     if role_id == ROLE_IDS[RoleType.CLIENT]:
+        alici_id = user.id
+    elif isinstance(user, Tutor):
+        shadow = await _shadow_of(db, user.id)
+        alici_id = shadow.id if shadow is not None else None
+
+    if alici_id is not None:
         addresses = (
             await db.execute(
                 select(ClientAddress).where(
-                    ClientAddress.client_id == user.id,
+                    ClientAddress.client_id == alici_id,
                     ClientAddress.deleted_at.is_(None),
                 )
             )
@@ -230,11 +262,21 @@ async def can_delete(db: AsyncSession, user) -> tuple[bool, str | None]:
     """
     from models.store import Order  # yerel import: döngü önleme
 
+    # Siparişler `clients.id`'ye bağlıdır; eğitmenin siparişleri gölgesinin
+    # id'sindedir. Kilit gölge üzerinden de aranmazsa yolda kargosu olan bir
+    # eğitmen hesabını kapatır ve kuryenin teslim adresi/telefonu boşalır (§5.4).
+    buyer_id: int | None = None
     if user.role_id == ROLE_IDS[RoleType.CLIENT]:
+        buyer_id = user.id
+    elif isinstance(user, Tutor):
+        shadow = await _shadow_of(db, user.id)
+        buyer_id = shadow.id if shadow is not None else None
+
+    if buyer_id is not None:
         open_orders = (
             await db.execute(
                 select(Order.id).where(
-                    Order.client_id == user.id,
+                    Order.client_id == buyer_id,
                     Order.deleted_at.is_(None),
                     Order.status.in_(["PAID", "SHIPPED"]),
                 )

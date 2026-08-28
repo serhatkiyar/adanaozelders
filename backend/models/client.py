@@ -48,6 +48,15 @@ class Client(
         SAEnum(Gender, name="gender"), nullable=True
     )
 
+    # Eğitmenin alışveriş yansıması (docs/egitmen-alici-sozlesme.md §1).
+    # DOLU ise bu satır bir GÖLGEDİR: giriş öznesi değildir, admin dizininde
+    # görünmez, e-posta/kullanıcı adı tekilliğini tüketmez. Tek yazıcısı
+    # `api/deps.get_shopping_client`; kimlik alanları `tutors` satırından
+    # okuma anında tazelenir (tek yönlü yansıtma).
+    shadow_of_tutor_id: Mapped[int | None] = mapped_column(
+        ForeignKey("tutors.id", ondelete="CASCADE"), nullable=True
+    )
+
     role: Mapped["Role"] = relationship()
     educations: Mapped[list["ClientEducation"]] = relationship(
         back_populates="client", cascade="all, delete-orphan"
@@ -62,17 +71,35 @@ class Client(
     )
 
     __table_args__ = (
+        # Gölge satırlar tekillik alanının DIŞINDA tutulur: eğitmenin e-postası
+        # `clients` tablosunda kilitlenmemeli — aksi hâlde aynı e-postayla ayrı
+        # bir öğrenci hesabı açma (bugünkü davranış) sessizce kırılır. Aynısı
+        # kullanıcı adı için: gölgenin türetilmiş adı global isim alanını
+        # tüketmez (sözleşme §1.4).
         Index(
             "uq_clients_email_active",
             "email",
             unique=True,
-            postgresql_where=text("deleted_at IS NULL"),
+            postgresql_where=text(
+                "deleted_at IS NULL AND shadow_of_tutor_id IS NULL"
+            ),
         ),
         Index(
             "uq_clients_username_active",
             "username",
             unique=True,
-            postgresql_where=text("deleted_at IS NULL"),
+            postgresql_where=text(
+                "deleted_at IS NULL AND shadow_of_tutor_id IS NULL"
+            ),
+        ),
+        # Eğitmen başına en fazla bir canlı gölge (sözleşme §1.1).
+        Index(
+            "uq_clients_shadow_tutor",
+            "shadow_of_tutor_id",
+            unique=True,
+            postgresql_where=text(
+                "shadow_of_tutor_id IS NOT NULL AND deleted_at IS NULL"
+            ),
         ),
         # Admin kullanıcı listesi (created_at DESC LIMIT n).
         Index(

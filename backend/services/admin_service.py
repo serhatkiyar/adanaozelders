@@ -55,6 +55,11 @@ async def initiate_password_reset(db: AsyncSession, *, role: str, user_id: int) 
     user = await db.get(model, user_id)
     if user is None or user.deleted_at is not None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")
+    # Gölgeye şifre sıfırlama linki GÖNDERİLEMEZ: link tamamlanırsa gölgeye
+    # gerçek bir parola yazılır ve giriş öznesi olmadığı kuralı (§1.2) çöker.
+    # Eğitmenin sıfırlaması kendi TUTOR kaydından yapılır.
+    if getattr(user, "shadow_of_tutor_id", None) is not None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")
     role_id = ROLE_IDS[RoleType.TUTOR if role == "tutor" else RoleType.CLIENT]
     await refresh_token_service.revoke_all_for_user(
         db, role_id=role_id, user_id=user.id
@@ -112,6 +117,12 @@ def _count_scalar(model, *conditions, soft_delete: bool = True):
     filters = list(conditions)
     if soft_delete and hasattr(model, "deleted_at"):
         filters.insert(0, model.deleted_at.is_(None))
+    # Eğitmenin alışveriş gölgesi bir kullanıcı DEĞİLDİR: müşteri sayacını
+    # şişirmemeli (docs/egitmen-alici-sozlesme.md §5.1). Filtre bilinçli olarak
+    # çağrı yerlerine değil BURAYA konuldu — ileride eklenecek yeni bir Client
+    # sayacı da onu unutamasın (fail-closed).
+    if model is Client:
+        filters.insert(0, Client.shadow_of_tutor_id.is_(None))
     return select(func.count()).select_from(model).where(*filters).scalar_subquery()
 
 
@@ -212,6 +223,9 @@ def _user_directory_selects(*, role: str | None, q: str | None):
             model.is_active.label("is_active"),
             model.created_at.label("created_at"),
         ).where(model.deleted_at.is_(None))
+        if model is Client:
+            # Gölge satırlar kullanıcı dizininde görünmez (§5.1).
+            stmt = stmt.where(Client.shadow_of_tutor_id.is_(None))
         if q:
             pattern = f"%{q}%"
             stmt = stmt.where(
@@ -286,6 +300,10 @@ async def get_user_detail(
     model, role_name = _USER_DETAIL_MODELS[role]
     user = await db.get(model, user_id)
     if user is None or user.deleted_at is not None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")
+    # Gölge kimliği dizinde yok; detayı da yok (§5.2). Eğitmenin alışverişi
+    # kendi TUTOR kaydına aittir, ayrı bir "müşteri" kaydına değil.
+    if role == "client" and user.shadow_of_tutor_id is not None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")
 
     booking_count = 0
