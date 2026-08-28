@@ -3,6 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { DashboardShell } from "@/components/DashboardShell";
 import { STUDENT_NAV, TUTOR_NAV } from "@/lib/nav";
 import { TutorCard } from "@/components/TutorCard";
+import { FeaturedTutorBlock } from "@/components/FeaturedTutorBlock";
 import { PriceRangeHistogram } from "@/components/PriceRangeHistogram";
 import { SegmentedControl } from "@/components/SegmentedControl";
 import { useTutorSearch, useTutorPriceHistogram } from "@/hooks/useTutorSearch";
@@ -12,7 +13,7 @@ import { getErrorMessage } from "@/lib/errors";
 import { toast } from "@/store/toastStore";
 import { useSurfaceStore } from "@/store/surfaceStore";
 import { Gender, ROLE_IDS, TeachingMode, TutorSort } from "@/types";
-import type { TutorSearchParams } from "@/api/tutors";
+import type { FeaturedTutorParams, TutorSearchParams } from "@/api/tutors";
 import { CategoryBar } from "@/components/CategoryBar";
 import { BigSearch, CompactSearch } from "@/components/HeroSearch";
 import { TRENDING_SEARCHES } from "@/lib/trendingSearches";
@@ -190,6 +191,20 @@ export default function Marketplace() {
   ]);
 
   const { data, isLoading, isFetching, isError, error } = useTutorSearch(params);
+
+  // ── Öne çıkarma bloğu ──
+  // Arama ile AYNI sert filtreler; `sort`/`exam` GEÇMEZ (blokta sıralama
+  // satın alınmaz). Bu sayfa "daha fazla göster" ile kümülatif büyür, yani
+  // tek bir sayfadır: blok en üstte kalır ve dedupe her zaman uygulanır.
+  // (Gerçek sayfalaması olan anonim sayfada blok yalnız 1. sayfada çizilir.)
+  const featuredParams = useMemo<FeaturedTutorParams>(() => {
+    const { sort: _sort, exam: _exam, limit: _limit, offset: _offset, ...rest } =
+      params;
+    return rest;
+  }, [params]);
+
+  const [featuredIds, setFeaturedIds] = useState<number[]>([]);
+  const organicTutors = (data ?? []).filter((t) => !featuredIds.includes(t.id));
 
   const histParams = useMemo(() => {
     const p: Parameters<typeof useTutorPriceHistogram>[0] = {};
@@ -448,8 +463,9 @@ export default function Marketplace() {
             </div>
           ) : (
             <>
+              <FeaturedTutorBlock params={featuredParams} onIds={setFeaturedIds} />
               <div className="mb-3 flex items-center gap-2 text-xs text-slate-400 ">
-                <span>{data.length} eğitmen listeleniyor</span>
+                <span>{organicTutors.length} eğitmen listeleniyor</span>
                 {isFetching && (
                   <span className="flex items-center gap-1.5">
                     <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-indigo-400" />
@@ -458,7 +474,7 @@ export default function Marketplace() {
                 )}
               </div>
               <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
-                {data.map((tutor) => (
+                {organicTutors.map((tutor) => (
                   <TutorCard key={tutor.id} tutor={tutor} />
                 ))}
               </div>

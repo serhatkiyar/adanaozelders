@@ -121,6 +121,7 @@ const DeliveryDriver = lazy(() => import("@/pages/DeliveryDriver"));
 const DeliveryRunHandover = lazy(() => import("@/pages/DeliveryRunHandover"));
 const TutorDashboard = lazy(() => import("@/pages/TutorDashboard"));
 const TutorSettings = lazy(() => import("@/pages/TutorSettings"));
+const TutorPromotion = lazy(() => import("@/pages/TutorPromotion"));
 const TutorQuestions = lazy(() => import("@/pages/TutorQuestions"));
 const Favorites = lazy(() => import("@/pages/Favorites"));
 const StudentProfile = lazy(() => import("@/pages/StudentProfile"));
@@ -390,6 +391,7 @@ function App() {
           <Route path={PATHS.refundPolicy} element={<LegalPage doc="refund" />} />
           <Route path={PATHS.cookiePolicy} element={<LegalPage doc="cookies" />} />
           <Route path={PATHS.preliminaryInfo} element={<LegalPage doc="preliminary-info" />} />
+          <Route path={PATHS.rankingCriteria} element={<LegalPage doc="ranking-criteria" />} />
           <Route path={PATHS.about} element={<LegalPage doc="about" />} />
 
           {/* ── Destek (public) ── */}
@@ -465,6 +467,7 @@ function App() {
           {/* ── Yalnızca TUTOR ── */}
           <Route element={<ProtectedRoute allowedRoleId={ROLE_IDS.TUTOR} />}>
             <Route path={PATHS.tutorListing} element={<TutorSettings />} />
+            <Route path={PATHS.tutorPromotion} element={<TutorPromotion />} />
             <Route path={PATHS.studentProfile} element={<StudentProfile />} />
             <Route path={PATHS.sellerProducts} element={<SellerProducts />} />
           </Route>

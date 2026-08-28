@@ -8,11 +8,19 @@ import { ROUTES, tutorSlug } from "@/lib/routes";
 interface TutorCardProps {
   tutor: TutorSearchOut;
   showBookmark?: boolean;
+  /**
+   * Ücretli öne çıkarma kartı. Etiket zorunludur ve metni "Reklam"dır —
+   * Ticari Reklam ve Haksız Ticari Uygulamalar Yönetmeliği ücretli
+   * yerleşimin ayırt edilebilir olmasını şart koşar. "Sponsorlu" ya da
+   * "Öne çıkan" bu yükümlülüğü tek başına karşılamaz.
+   */
+  featured?: boolean;
 }
 
 export function TutorCard({
   tutor,
   showBookmark = true,
+  featured = false,
 }: TutorCardProps) {
   const hasRatings = tutor.rating_count > 0;
   const rate = parseMoney(tutor.hourly_rate);
@@ -41,6 +49,13 @@ export function TutorCard({
           loading="lazy"
         />
         
+        {/* Reklam etiketi — yasal zorunluluk, karttan ayrılamaz */}
+        {featured && (
+          <span className="absolute left-4 top-4 z-10 rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-semibold tracking-wide text-slate-700 shadow-sm">
+            Reklam
+          </span>
+        )}
+
         {/* Bookmark top right */}
         {showBookmark && (
           <div className="absolute right-4 top-4 z-10">

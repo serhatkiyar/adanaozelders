@@ -55,6 +55,70 @@ export async function fetchPriceHistogram(
   return data;
 }
 
+// Öne çıkarma bloğu: arama ile AYNI sert filtreler, en fazla 3 sonuç.
+// `sort` ve `exam` bilinçli olarak YOK — bu blokta sıralama satın alınmaz.
+export type FeaturedTutorParams = Omit<
+  TutorSearchParams,
+  "sort" | "exam" | "limit" | "offset"
+>;
+
+export async function fetchFeaturedTutors(
+  params: FeaturedTutorParams
+): Promise<TutorSearchOut[]> {
+  const { data } = await apiClient.get<TutorSearchOut[]>("/tutors/featured", {
+    params,
+    paramsSerializer: { indexes: null },
+  });
+  return data;
+}
+
+export interface PromotionPackage {
+  days: number;
+  price: string;
+  label: string;
+}
+
+export interface TutorPromotion {
+  id: number;
+  package_days: number;
+  price: string;
+  currency: string;
+  payment_status: string;
+  starts_at: string | null;
+  ends_at: string | null;
+  cancelled_at: string | null;
+  created_at: string;
+}
+
+export async function fetchPromotionPackages(): Promise<PromotionPackage[]> {
+  const { data } = await apiClient.get<PromotionPackage[]>(
+    "/tutors/promotion-packages"
+  );
+  return data;
+}
+
+export async function fetchMyPromotions(): Promise<TutorPromotion[]> {
+  const { data } = await apiClient.get<TutorPromotion[]>("/tutors/me/promotions");
+  return data;
+}
+
+export interface PromotionPurchaseResult {
+  promotion: TutorPromotion;
+  redirect_url: string | null;
+}
+
+export async function buyPromotion(payload: {
+  days: number;
+  terms_accepted: boolean;
+}): Promise<PromotionPurchaseResult> {
+  // Tutar GÖNDERİLMEZ: fiyatın tek kaynağı sunucudaki katalogdur.
+  const { data } = await apiClient.post<PromotionPurchaseResult>(
+    "/tutors/me/promotions",
+    payload
+  );
+  return data;
+}
+
 export async function fetchTutor(id: number): Promise<TutorSearchOut> {
   const { data } = await apiClient.get<TutorSearchOut>(`/tutors/${id}`);
   return data;
