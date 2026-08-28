@@ -11,12 +11,22 @@ from core.mail.smtp import SMTPEmailSender
 
 logger = logging.getLogger("adana.mail")
 
+_LOCAL_SMTP_HOSTS = {"localhost", "127.0.0.1", "mailhog", "mailpit"}
+
 
 @lru_cache
 def get_email_sender() -> EmailSender:
     """``EMAIL_PROVIDER`` ayarına göre sender seçer (singleton)."""
     provider = (settings.EMAIL_PROVIDER or "console").strip().lower()
     if provider == "smtp":
+        smtp_host = (settings.SMTP_HOST or "").strip().lower()
+        if not settings.is_production and smtp_host not in _LOCAL_SMTP_HOSTS:
+            logger.warning(
+                "Geliştirme ortamında harici SMTP engellendi; e-postalar konsola yazılacak "
+                "(host=%s)",
+                smtp_host,
+            )
+            return ConsoleEmailSender()
         return SMTPEmailSender()
     return ConsoleEmailSender()
 

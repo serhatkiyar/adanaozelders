@@ -12,30 +12,18 @@ os.environ.setdefault("POSTGRES_DB", "test")
 os.environ.setdefault("POSTGRES_HOST", "localhost")
 os.environ.setdefault("JWT_SECRET_KEY", "test-secret-key-not-for-production")
 os.environ.setdefault("AUTO_CREATE_DB", "False")
-# TB-21: sahte ödeme sağlayıcısı test ortamının VARSAYILANIDIR.
-#
-# Bu satır olmadan geliştiricinin `.env`'indeki `PAYMENT_PROVIDER=iyzico`
-# (sandbox anahtarlarıyla, canlı doğrulama için bilinçli) testlere sızıyordu:
-# entegrasyon conftest'i çoğu yolda `FakePaymentProvider`'ı fixture ile
-# enjekte ediyor, ama sağlayıcıyı fixture'dan almayan yollar GERÇEKTEN
-# sandbox'a ağ isteği atıyordu. Ölçülmüş kanıt: `test_ip1b_silme_guard_pg
-# ::test_D4_...` → `402: email hatalı format ile gönderilmiştir`, istek
-# `sandbox-api.iyzipay.com`'a gitmiş.
-#
-# Zararın en sinsi yüzü üçüncüsüdür: sandbox isteği BAŞARILI olsaydı test
-# yeşil kalır ve fake sağlayıcı yolunun hiç sınanmadığı fark edilmezdi.
-#
-# `setdefault` yalnız değişken YOKKEN korur — açıkça verilmiş bir gerçek
-# sağlayıcıyı ezmez (ezmesi de yanlış olurdu; env ayarın son sözüdür). O
-# durum için ikinci savunma vardır: `tests/integration/db_guard.py
-# ::assert_fake_payment_provider` suite'i başlatmaz.
-os.environ.setdefault("PAYMENT_PROVIDER", "fake")
-# Tedarikçi (Yıldırım B2B) senkronu: TESTLER AĞA ÇIKMAZ.
-#
-# `PAYMENT_PROVIDER=fake` ile aynı sınıf risk, aynı gerekçe. Geliştiricinin
-# panelden girdiği token veritabanında duruyor; senkron servisi onu okuyup
-# gerçek bir cari hesaba istek atabilir. Guard açıkken `YildirimClient` ağ
-# açmayı reddeder ve hata SESSİZ olmaz.
-#
-# `setdefault`: canlı doğrulama turunda açıkça `0` verilebilir.
-os.environ.setdefault("SUPPLIER_NETWORK_DISABLED", "True")
+
+# Testler hiçbir koşulda geliştiricinin `.env` dosyasındaki gerçek SMTP
+# hesabını kullanmamalı. Doğrudan atama bilinçlidir: yerel Google Workspace
+# ayarı veya shell değişkeni pytest'e sızsa bile e-postalar yalnız konsola gider.
+os.environ["EMAIL_PROVIDER"] = "console"
+os.environ["SMTP_HOST"] = "localhost"
+os.environ["SMTP_PORT"] = "1025"
+os.environ["SMTP_USERNAME"] = ""
+os.environ["SMTP_PASSWORD"] = ""
+os.environ["SMTP_USE_TLS"] = "False"
+
+# Pytest dış hizmetlere ve gerçek hesaplara çıkmaz.
+os.environ["PAYMENT_PROVIDER"] = "fake"
+os.environ["SMS_PROVIDER"] = "console"
+os.environ["SUPPLIER_NETWORK_DISABLED"] = "True"

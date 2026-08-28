@@ -53,7 +53,13 @@ def test_get_email_sender_selects_provider(monkeypatch):
 
     mail.get_email_sender.cache_clear()
     monkeypatch.setattr(settings, "EMAIL_PROVIDER", "SMTP")  # büyük/küçük harf duyarsız
+    monkeypatch.setattr(settings, "ENVIRONMENT", "development")
+    monkeypatch.setattr(settings, "SMTP_HOST", "localhost")
     assert isinstance(mail.get_email_sender(), SMTPEmailSender)
+
+    mail.get_email_sender.cache_clear()
+    monkeypatch.setattr(settings, "SMTP_HOST", "smtp.gmail.com")
+    assert isinstance(mail.get_email_sender(), ConsoleEmailSender)
 
     mail.get_email_sender.cache_clear()  # diğer testler için varsayılana dön
 
