@@ -297,7 +297,7 @@ function Hero({
       {fade && (
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute inset-x-0 bottom-0 h-2/5 bg-gradient-to-b from-transparent to-white"
+          className="pointer-events-none absolute inset-x-0 bottom-0 h-2/5 bg-gradient-to-b from-transparent to-slate-50"
         />
       )}
     </section>
@@ -645,7 +645,7 @@ function CardRow({
           return (
             <div
               key={cardIndex}
-              className="flex flex-col rounded-md border border-slate-200 bg-white p-5 shadow-sm"
+              className="flex flex-col rounded-[4px] bg-white p-5 shadow-[0_2px_5px_0_rgba(15,17,17,0.15)]"
             >
               <h2 className="text-lg font-bold leading-snug text-slate-900">{card.title}</h2>
               <div className={`mt-4 grid flex-1 gap-3 ${tekil ? "" : "grid-cols-2"}`}>

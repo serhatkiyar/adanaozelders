@@ -248,7 +248,7 @@ export const puckConfig: Config = {
             {Boolean(fade_bottom) && (
               <div
                 aria-hidden="true"
-                className="pointer-events-none absolute inset-x-0 bottom-0 h-2/5 bg-gradient-to-b from-transparent to-white"
+                className="pointer-events-none absolute inset-x-0 bottom-0 h-2/5 bg-gradient-to-b from-transparent to-slate-50"
               />
             )}
           </div>
@@ -468,13 +468,14 @@ export const puckConfig: Config = {
           liste.length <= 1 ? "md:grid-cols-1 md:max-w-sm" : liste.length === 2 ? "md:grid-cols-2" : liste.length === 3 ? "md:grid-cols-3" : "md:grid-cols-4";
         return (
           <GorunumSarici g={gorunum as BlokGorunumu}>
-            <div className={`mx-auto max-w-6xl px-4 py-3 ${overlay ? "relative z-30 -mt-24" : ""}`}>
+            <div className={`bg-slate-50 ${overlay ? "relative z-30 -mt-24" : ""}`}>
+            <div className="mx-auto max-w-6xl px-4 py-3">
               <div className={`grid gap-4 ${kolon}`}>
                 {liste.map((kart, i) => {
                   const gorseller = (kart.items ?? []).slice(0, 4);
                   const tekil = gorseller.length <= 1;
                   return (
-                    <div key={i} className="flex flex-col rounded-md border border-slate-200 bg-white p-5 shadow-sm">
+                    <div key={i} className="flex flex-col rounded-[4px] bg-white p-5 shadow-[0_2px_5px_0_rgba(15,17,17,0.15)]">
                       <h3 className="text-lg font-bold leading-snug text-slate-900">{kart.title}</h3>
                       <div className={`mt-4 grid flex-1 gap-3 ${tekil ? "" : "grid-cols-2"}`}>
                         {gorseller.map((g, j) => (
@@ -497,6 +498,7 @@ export const puckConfig: Config = {
                   );
                 })}
               </div>
+            </div>
             </div>
           </GorunumSarici>
         );
