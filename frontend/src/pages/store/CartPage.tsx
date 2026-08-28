@@ -13,7 +13,7 @@ import { DeliveryPromiseBadge } from "@/components/store/DeliveryPromiseBadge";
 import { isSelected, selectedSubtotal, type CartItem } from "@/lib/cart";
 import { useCartStore } from "@/store/cartStore";
 import { useAuthStore } from "@/store/authStore";
-import { ROLE_IDS } from "@/types";
+import { alisverisYapabilir } from "@/lib/roles";
 import { toast } from "@/store/toastStore";
 
 export default function CartPage() {
@@ -52,8 +52,8 @@ export default function CartPage() {
       navigate(ROUTES.login);
       return;
     }
-    if (user?.role_id !== ROLE_IDS.CLIENT) {
-      toast.error("Yalnızca öğrenci hesabıyla alışveriş yapılabilir");
+    if (!alisverisYapabilir(user?.role_id)) {
+      toast.error("Bu hesap türüyle alışveriş yapılamıyor");
       return;
     }
     navigate(ROUTES.storeCheckout);

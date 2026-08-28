@@ -9,7 +9,7 @@ import {
 } from "@/lib/favorites";
 import { addFavorite as apiAdd, removeFavorite as apiRemove } from "@/api/store";
 import { useAuthStore } from "@/store/authStore";
-import { ROLE_IDS } from "@/types";
+import { alisverisYapabilir } from "@/lib/roles";
 import type { ProductSearchOut } from "@/types";
 
 export type { FavoriteItem } from "@/lib/favorites";
@@ -34,7 +34,7 @@ interface FavoritesState {
 /** Oturumlu öğrenciyse sunucuya da yansıt (fail-soft — offline'da yerel kalır). */
 function pushToServer(productId: number, added: boolean): void {
   const auth = useAuthStore.getState();
-  if (!auth.token || auth.user?.role_id !== ROLE_IDS.CLIENT) return;
+  if (!auth.token || !alisverisYapabilir(auth.user?.role_id)) return;
   void (added ? apiAdd(productId) : apiRemove(productId)).catch(() => {});
 }
 

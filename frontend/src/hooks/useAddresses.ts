@@ -6,7 +6,7 @@ import {
   updateAddress,
 } from "@/api/addresses";
 import { useAuthStore } from "@/store/authStore";
-import { ROLE_IDS } from "@/types";
+import { alisverisYapabilir } from "@/lib/roles";
 import type { SavedAddressCreate, SavedAddressUpdate } from "@/types";
 
 const MY_ADDRESSES_KEY = ["addresses", "me"] as const;
@@ -14,11 +14,11 @@ const MY_ADDRESSES_KEY = ["addresses", "me"] as const;
 export function useMyAddresses(enabled = true) {
   const token = useAuthStore((s) => s.token);
   const user = useAuthStore((s) => s.user);
-  const isClient = user?.role_id === ROLE_IDS.CLIENT;
+  const alisverisAcik = alisverisYapabilir(user?.role_id);
   return useQuery({
     queryKey: MY_ADDRESSES_KEY,
     queryFn: fetchMyAddresses,
-    enabled: !!token && isClient && enabled,
+    enabled: !!token && alisverisAcik && enabled,
   });
 }
 

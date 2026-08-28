@@ -3,7 +3,7 @@ import { Link, useLocation } from "react-router-dom";
 import { ROUTES } from "@/lib/routes";
 import { useAuthStore } from "@/store/authStore";
 import { useLogout } from "@/hooks/useLogout";
-import { ROLE_IDS } from "@/types";
+import { alisverisYapabilir } from "@/lib/roles";
 
 /**
  * Mağaza navbar'ındaki hesap affordance'ı — ışınlayan link DEĞİL, açılır menü
@@ -48,7 +48,7 @@ export function StoreAccountMenu() {
     );
   }
 
-  const isClient = user.role_id === ROLE_IDS.CLIENT;
+  const alisverisAcik = alisverisYapabilir(user.role_id);
   const itemClass =
     "flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 ";
 
@@ -75,7 +75,7 @@ export function StoreAccountMenu() {
         >
           <div className="my-1 border-t border-slate-100 " />
 
-          {isClient && (
+          {alisverisAcik && (
             <Link to={ROUTES.orders} onClick={() => setOpen(false)} className={itemClass}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
                 <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />

@@ -7,6 +7,7 @@ import { trackPageview } from "@/lib/analytics";
 import { Toaster } from "@/components/Toaster";
 import { ErrorBoundary, RouteErrorBoundary } from "@/components/ErrorBoundary";
 import { FullScreenSpinner } from "@/components/Spinner";
+import { ALISVERIS_ROLLERI } from "@/lib/roles";
 import { ROLE_IDS } from "@/types";
 import { ROUTES, PATHS } from "@/lib/routes";
 import { DENEMELER_ACIK, KUTUPHANELER_ACIK } from "@/lib/ozellikBayraklari";
@@ -459,6 +460,12 @@ function App() {
           <Route element={<ProtectedRoute allowedRoleId={ROLE_IDS.CLIENT} />}>
             <Route path={PATHS.favorites} element={<Favorites />} />
             {DENEMELER_ACIK && <Route path={PATHS.exams} element={<Exams />} />}
+          </Route>
+
+          {/* ── Mağaza alıcı yüzeyi: öğrenci + eğitmen ──
+              Eğitmen kendi oturumuyla alışveriş yapar; sunucu tarafında bir
+              `Client` yansımasına çevrilir (docs/egitmen-alici-sozlesme.md). */}
+          <Route element={<ProtectedRoute allowedRoleIds={[...ALISVERIS_ROLLERI]} />}>
             <Route path={PATHS.storeCheckout} element={<CheckoutPage />} />
             <Route path={PATHS.orders} element={<OrdersPage />} />
             <Route path={PATHS.orderDetail} element={<OrderDetailPage />} />
