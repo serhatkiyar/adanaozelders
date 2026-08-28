@@ -18,8 +18,6 @@ import { CategoryBar, type CategoryKey } from "@/components/CategoryBar";
 import { DENEMELER_ACIK, KUTUPHANELER_ACIK } from "@/lib/ozellikBayraklari";
 import { SiteFooter } from "@/components/SiteFooter";
 import { BigSearch, CompactSearch } from "@/components/HeroSearch";
-import { CrossPromoBanner } from "@/components/CrossPromoBanner";
-import CROSS_PROMO from "@/config/crossPromo.json";
 import { useTutorSearch } from "@/hooks/useTutorSearch";
 import { useLibrarySearch } from "@/hooks/useLibraries";
 import type { TutorSearchParams } from "@/api/tutors";
@@ -155,26 +153,9 @@ export default function Landing() {
         />
       </Seo>
       <Navbar center={center} bottom={bottom} expanded={expanded} />
-      <div className="mx-auto max-w-[1216px] px-6 pt-8">
-        {/* Örtü ölçümle seçildi (docs/ip-c1/):
-            • Örtüsüz turuncu metin — ortada yeşil zeminde 1.51, sola yaslıyken
-              defter/kâğıt dekorunun üstünde 1.01. Örtü GEREKLİ.
-            • Uniform alfa taraması, metin SOLDAYKEN: en düşük güvenli değer
-              0.70. Bir kademe üstü → 0.80.
-            • Orta yerdeki siyah "hap" yerine yönlü gradyan: en koyu uç metnin
-              tarafında, karşı taraf saydam. 0.80 metnin bittiği yere kadar
-              (%26) korunur, sonra %62'de tamamen söner — sağdaki dekor
-              (kalem/silgi/cetvel) kirlenmeden kalsın diye. */}
-        <CrossPromoBanner
-          imageSrc={CROSS_PROMO.landingToStore.imageSrc}
-          heading="Mağaza"
-          headingStyle={{ color: "#F6AD55" }}
-          align="left"
-          scrimClassName="bg-gradient-to-r from-black/80 from-0% via-black/80 via-26% to-transparent to-62%"
-          to={ROUTES.store}
-          ariaLabel={CROSS_PROMO.landingToStore.ariaLabel}
-        />
-      </div>
+      {/* Mağaza çapraz tanıtım banner'ı KALDIRILDI (kullanıcı kararı, 29 Ağu):
+          "kocaman hero" özel ders sayfasında yer kaplıyordu; mağazaya geçiş
+          navbar'daki Mağaza linkinden yapılır. */}
       <CategoryContent active={active} />
       <SiteFooter />
     </div>

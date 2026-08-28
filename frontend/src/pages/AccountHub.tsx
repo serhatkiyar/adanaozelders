@@ -12,6 +12,8 @@ interface AccountCard {
   title: string;
   desc: string;
   icon: ReactNode;
+  /** Amazon "Your Account" tarzı 3D görsel (public/hesap/) — varsa ikon kutusu yerine basılır. */
+  img?: string;
 }
 
 const ICON = "h-7 w-7";
@@ -31,6 +33,7 @@ const CARDS: AccountCard[] = [
   {
     to: ROUTES.bookings,    title: "Rezervasyonlarım",
     desc: "Derslerin, biletlerin ve talep durumların.",
+    img: "/hesap/rezervasyonlar.webp",
     icon: (
       <svg className={ICON} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
         <rect x="3" y="4" width="18" height="18" rx="2" />
@@ -61,6 +64,7 @@ const CARDS: AccountCard[] = [
   {
     to: ROUTES.addresses,    title: "Adreslerim",
     desc: "Teslimat adreslerini ekle, düzenle veya sil.",
+    img: "/hesap/adresler.webp",
     icon: (
       <svg className={ICON} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
         <path d="M21 10c0 7-9 12-9 12s-9-5-9-12a9 9 0 0 1 18 0z" />
@@ -72,6 +76,7 @@ const CARDS: AccountCard[] = [
     to: ROUTES.messageCenter,
     title: "Mesaj Merkezi",
     desc: "Mesajların ve bildirimlerin tek yerde.",
+    img: "/hesap/mesajlar.webp",
     icon: (
       <svg className={ICON} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
         <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
@@ -83,6 +88,7 @@ const CARDS: AccountCard[] = [
   {
     to: ROUTES.settings,    title: "Hesap & Güvenlik",
     desc: "Kimlik, şifre, e-posta/telefon doğrulama, görünüm.",
+    img: "/hesap/guvenlik.webp",
     icon: (
       <svg className={ICON} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
         <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
@@ -129,9 +135,17 @@ export default function AccountHub() {
             to={c.to}
             className="group flex items-start gap-4 rounded-2xl border border-slate-200 bg-white p-5 transition-colors hover:border-indigo-300 hover:bg-indigo-50/40 "
           >
-            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 ">
-              {c.icon}
-            </span>
+            {c.img ? (
+              // Amazon "Your Account" deseni: ikonun kendi açık mavi dairesi
+              // kadraja kırpılmıştır; yuvarlak maske beyaz köşeleri gizler.
+              <span className="h-16 w-16 shrink-0 overflow-hidden rounded-full">
+                <img src={c.img} alt="" loading="lazy" className="h-full w-full object-cover" />
+              </span>
+            ) : (
+              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 ">
+                {c.icon}
+              </span>
+            )}
             <span>
               <span className="block font-semibold text-slate-900 group-hover:text-indigo-700 ">
                 {c.title}

@@ -14,7 +14,6 @@ import { resolveSurface } from "@/lib/navPrefs";
 import { ROUTES } from "@/lib/routes";
 import { ROLE_IDS } from "@/types";
 import type { NavItem } from "@/lib/nav";
-import { YakindaRozeti } from "@/components/YakindaRozeti";
 
 const navIconClass = ({ isActive }: { isActive: boolean }) =>
   `rounded-lg p-2 transition ${
@@ -114,7 +113,6 @@ export function DashboardHeader({ navItems, transparent = false, center, bottom,
             >
               {l.icon && <Icon name={l.icon} className="h-5 w-5" />}
               {l.label}
-              <YakindaRozeti className="ml-auto" />
             </span>
           ) : (
           <NavLink

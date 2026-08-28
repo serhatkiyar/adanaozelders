@@ -4,7 +4,6 @@ import { navForRole, STUDENT_NAV } from "@/lib/nav";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { ROUTES } from "@/lib/routes";
 import { DENEMELER_ACIK } from "@/lib/ozellikBayraklari";
-import { YakindaRozeti } from "@/components/YakindaRozeti";
 
 export default function Learn() {
   const { data: user } = useCurrentUser();
@@ -218,7 +217,6 @@ export default function Learn() {
               <p className="mt-1 text-sm text-indigo-50">
                 Girdiğin deneme sınavlarını kaydet, netlerini ve ilerlemeni analiz et.
               </p>
-              <YakindaRozeti className="mt-4 !bg-white/20 !text-white" />
             </div>
           </span>
           )}

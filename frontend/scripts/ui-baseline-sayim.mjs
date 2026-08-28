@@ -176,9 +176,6 @@ export const OLCUM_TABANI = [
   "src/components/ShareModal.tsx",
   "src/components/Spinner.tsx",
   "src/components/StarRating.tsx",
-  // Donmuş bölüm rozeti (bkz. lib/ozellikBayraklari.ts) — DashboardHeader
-  // üzerinden import grafiğine girer. Etkileşimli öğe/form kontrolü YOK.
-  "src/components/YakindaRozeti.tsx",
   "src/components/map/MapGate.tsx",
   "src/components/ui/Field.tsx",
   "src/components/ui/Modal.tsx",
