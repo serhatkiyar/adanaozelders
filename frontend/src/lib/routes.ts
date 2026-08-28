@@ -149,6 +149,8 @@ export const PATHS = {
   adminStorePages: "/yonetim/magaza/kampanyalar",
   adminStoreProductSets: "/yonetim/magaza/koleksiyonlar",
   adminStorePreview: "/yonetim/magaza/onizleme/:pageId",
+  /** Vitrin sayfasının Puck editörü (tam ekran). */
+  adminStorePageEdit: "/yonetim/magaza/sayfa/:pageId/duzenle",
   // Blog, Mağaza'nın alt-sekmesi DEĞİL: içerik (`content.*`) platform geneline
   // yazar, ürün kataloğuna değil.
   adminBlog: "/yonetim/blog",
@@ -303,6 +305,7 @@ export const ROUTES = {
   adminStorePages: PATHS.adminStorePages,
   adminStoreProductSets: PATHS.adminStoreProductSets,
   adminStorePreview: (pageId: string | number) => `/yonetim/magaza/onizleme/${pageId}`,
+  adminStorePageEdit: (pageId: string | number) => `/yonetim/magaza/sayfa/${pageId}/duzenle`,
   adminBlog: PATHS.adminBlog,
   adminBlogNew: PATHS.adminBlogNew,
   adminBlogEdit: (postId: string | number) => `/yonetim/blog/${postId}`,

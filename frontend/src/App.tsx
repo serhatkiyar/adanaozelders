@@ -92,8 +92,8 @@ const AdminExamCatalogs = lazy(() => import("@/pages/dashboards/AdminExamCatalog
 const AdminStore = lazy(() => import("@/pages/dashboards/AdminStore"));
 // Blog editörü (TipTap) yalnız bu chunk'la gelir — public bundle'a girmez.
 const AdminBlogListPage = lazy(() => import("@/pages/admin/blog/AdminBlogListPage"));
-// SPIKE (feat/puck-spike): gizli deneme rotası — nav'da yok, merge edilmeyecek.
-const PuckSpikePage = lazy(() => import("@/pages/admin/puck/PuckSpikePage"));
+// Vitrin Puck editörü — Puck paketi yalnız bu chunk'la iner.
+const PuckEditorPage = lazy(() => import("@/pages/admin/store/puck/PuckEditorPage"));
 const AdminBlogEditorPage = lazy(() => import("@/pages/admin/blog/AdminBlogEditorPage"));
 const InventoryLayout = lazy(() => import("@/pages/admin/inventory/InventoryLayout"));
 const InventoryOverviewPage = lazy(() => import("@/pages/admin/inventory/InventoryOverviewPage"));
@@ -473,6 +473,8 @@ function App() {
 
           {/* ── Yalnızca ADMIN: kanonik, deep-link destekli yönetim alanı ── */}
           <Route element={<ProtectedRoute allowedRoleId={ROLE_IDS.ADMIN} />}>
+            {/* Tam ekran Puck editörü: kabuk kromu olmadan, kendi üst çubuğuyla. */}
+            <Route path={PATHS.adminStorePageEdit} element={<PuckEditorPage />} />
             <Route path={PATHS.admin} element={<AdminLayout />}>
               <Route index element={<AdminDashboardPage />} />
               <Route path="kullanicilar" element={<AdminUsersPage />} />
@@ -482,7 +484,6 @@ function App() {
               <Route path="kutuphaneler" element={<AdminLibraries />} />
               <Route path="deneme-kataloglari" element={<AdminExamCatalogs />} />
               <Route path="blog" element={<AdminBlogListPage />} />
-              <Route path="puck-deneme" element={<PuckSpikePage />} />
               <Route path="blog/yeni" element={<AdminBlogEditorPage />} />
               <Route path="blog/:postId" element={<AdminBlogEditorPage />} />
               <Route path="magaza" element={<Navigate replace to={ROUTES.adminStoreHome} />} />

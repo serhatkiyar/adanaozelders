@@ -284,6 +284,14 @@ export const OLCUM_TABANI = [
   // CMS Faz 1 · blog yönetimi (liste + editör).
   "src/pages/admin/blog/AdminBlogEditorPage.tsx",
   "src/pages/admin/blog/AdminBlogListPage.tsx",
+  // CMS Faz 2 · Puck editörü. Medya seçicinin küçük-resim düğmesi ile
+  // yöneticinin sayfa seçim satırı bilinçli ham `<button>`: ikisi de SEÇİM
+  // yüzeyi (aria-current / görsel ızgarası), ortak Button'ın dolgu dili uymaz.
+  "src/pages/admin/store/puck/MedyaAlani.tsx",
+  "src/pages/admin/store/puck/PuckEditorPage.tsx",
+  "src/pages/admin/store/puck/blokToPuck.ts",
+  "src/pages/admin/store/puck/puckConfig.tsx",
+  "src/pages/admin/store/puck/puckTipleri.ts",
   "src/pages/admin/AdminDashboardPage.tsx",
   "src/pages/admin/AdminDemandsPage.tsx",
   "src/pages/admin/AdminOperationsPage.tsx",

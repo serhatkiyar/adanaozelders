@@ -82,6 +82,16 @@ export function useStoreMedia() {
   return useQuery({ queryKey: [...ADMIN_KEY, "media"], queryFn: fetchStoreMedia });
 }
 
+/** Puck medya seçicisinin bağımsız yükleyicisi — kütüphane listesini tazeler. */
+export function useUploadStoreMedia() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ image, altText }: { image: File; altText: string }) =>
+      uploadStoreMedia(image, altText),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: [...ADMIN_KEY, "media"] }),
+  });
+}
+
 export function useStorePageMetrics() {
   return useQuery({ queryKey: [...ADMIN_KEY, "metrics"], queryFn: fetchStorePageMetrics });
 }

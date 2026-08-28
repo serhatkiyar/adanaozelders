@@ -150,6 +150,11 @@ const KAPI_DISI: Record<string, { tur: "props" | "bilesen-yok" | "baglam"; gerek
     tur: "props",
     gerekce: "zorunlu value/onChange (kontrollu TipTap editoru)",
   },
+  // CMS Faz 2 · Puck editörü yardımcıları.
+  "src/pages/admin/store/puck/puckConfig.tsx": {
+    tur: "bilesen-yok",
+    gerekce: "Puck Config nesnesi + alan fabrikalari; render'lari editor icinde yasar",
+  },
   "src/components/admin/ui2/duzenlemeYuzeyi.tsx": {
     tur: "props",
     gerekce: "zorunlu yuzey durumu (acik)",
@@ -359,6 +364,9 @@ const KAPI_KAPSAMI = [
   // CMS Faz 1 · blog yönetimi.
   "src/pages/admin/blog/AdminBlogEditorPage.tsx",
   "src/pages/admin/blog/AdminBlogListPage.tsx",
+  // CMS Faz 2 · Puck editör sayfası + medya seçici alanı.
+  "src/pages/admin/store/puck/MedyaAlani.tsx",
+  "src/pages/admin/store/puck/PuckEditorPage.tsx",
   "src/pages/admin/delivery/DeliveryBoardPage.tsx",
   "src/pages/admin/delivery/DeliveryCouriersPage.tsx",
   "src/pages/admin/delivery/DeliveryLayout.tsx",
@@ -464,6 +472,9 @@ const KONTROLSUZ_EKRANLAR: Record<string, "sunum" | "kabuk" | "pencere-kabugu" |
   // CMS Faz 1: blog listesi salt liste + bağlantıdır; form kontrolü taşımaz
   // (arama/filtre yok — kayıt sayısı düşük). Editör sayfası kapıda ölçülür.
   "src/pages/admin/blog/AdminBlogListPage.tsx": "sunum",
+  // CMS Faz 2: rota parametresi yokken editör iskelet basar; gerçek kontroller
+  // Puck yüzeyinde doğar ve dev ortam provası + PG entegrasyonuyla ölçülür.
+  "src/pages/admin/store/puck/PuckEditorPage.tsx": "kosullu",
   // Mağaza içerik yöneticisi ağsız varsayılan render'da sayfa seçilene kadar
   // boş durum gösterir; formlar ve medya seçici kabul testlerinde açılır.
   "src/components/admin/store/LandingPagesManager.tsx": "kosullu",

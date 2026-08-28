@@ -57,6 +57,21 @@ for (const ad of ["localStorage", "sessionStorage"] as const) {
   }
 }
 
+// ## `ResizeObserver` — jsdom'da HİÇ YOK
+//
+// `@measured/puck` (vitrin editörü) modül değerlendirilirken ResizeObserver
+// ister; jsdom sağlamaz ve çalışma zamanı kapısı Puck ekranlarını mount
+// edemezdi. Stub gözlem yapmaz — testler boyut değişimini ölçmez, yalnız
+// modülün yüklenebilir olmasını ister (matchMedia stub'ıyla aynı gerekçe).
+class ResizeObserverStub {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+if (typeof globalThis.ResizeObserver === "undefined") {
+  globalThis.ResizeObserver = ResizeObserverStub as unknown as typeof ResizeObserver;
+}
+
 // ## `window.matchMedia` — jsdom'da HİÇ YOK
 //
 // jsdom bu API'yi HİÇ sağlamaz (tanımlı değil, boş da değil); `matchMedia(...)`

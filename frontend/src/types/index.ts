@@ -2551,6 +2551,8 @@ export interface LandingPageRevisionInput {
   seo_description: string;
   og_image_url?: string | null;
   blocks: LandingPageBlockInput[];
+  /** Puck editörünün kanonik verisi — doluysa `blocks` gönderilmez (sunucu türetir). */
+  puck_data?: Record<string, unknown> | null;
 }
 
 export interface LandingPageRevision extends LandingPageRevisionInput {
