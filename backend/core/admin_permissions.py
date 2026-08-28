@@ -42,6 +42,13 @@ PERMISSION_CATALOG: tuple[tuple[str, str, str], ...] = (
     ("catalogs.manage", "Deneme kataloğu yönetimi", "Operasyon"),
     ("products.view", "Ürün görüntüleme", "Ticaret"),
     ("products.manage", "Ürün yönetimi", "Ticaret"),
+    # Vitrin içeriği (landing page / koleksiyon / medya). `products.*` bilinçli
+    # olarak YENİDEN KULLANILMADI: ürün metnini düzenlemek ile mağaza ana
+    # sayfasını YAYINLAMAK farklı işlerdir — ikincisi tüm ziyaretçilerin
+    # gördüğü yüzeyi değiştirir. Ürüne öznitelik ATAMAK ise ürün verisidir ve
+    # `products.manage`'de kalır (tedarikçi anahtarı ayrımıyla aynı gerekçe).
+    ("content.view", "Vitrin içeriğini görüntüleme", "Ticaret"),
+    ("content.manage", "Vitrin içeriği ve yayın yönetimi", "Ticaret"),
     ("orders.view", "Sipariş görüntüleme", "Ticaret"),
     ("orders.manage", "Sipariş yönetimi", "Ticaret"),
     ("returns.view", "İade görüntüleme", "Ticaret"),

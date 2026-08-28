@@ -9,7 +9,8 @@ export interface AdminNavItem {
   group: AdminNavGroup;
   description: string;
   icon: "overview" | "users" | "education" | "library" | "exam" | "store" | "inventory" | "delivery" | "booking" | "moderation" | "audit" | "access" | "settings" | "announcement";
-  requiredPermission?: string;
+  /** Birden fazla kod verilirse HERHANGİ BİRİ yeter (ör. Mağaza: katalog VEYA içerik yetkisi). */
+  requiredPermission?: string | string[];
   end?: boolean;
   badge?: "open-reports";
   /**
@@ -123,7 +124,9 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
     group: "Ticaret",
     description: "Ana sayfa, kampanya, koleksiyon ve mağaza operasyonları.",
     icon: "store",
-    requiredPermission: "products.view",
+    // İçerik editörü (content.*) katalog yetkisi olmadan da Mağaza'ya girer;
+    // alt-sekmeler kendi alanlarını `TAB_AREA` ile ayrıca süzer.
+    requiredPermission: ["products.view", "content.view"],
   },
   {
     label: "Envanter",

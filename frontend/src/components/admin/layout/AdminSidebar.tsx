@@ -108,7 +108,11 @@ export function AdminSidebar({
   // ile aynı sözleşmeyi paylaşıyordu; o sözleşme değişti, bu da onunla gitti —
   // aksi hâlde menüde görünüp tıklandığında 403 veren bir öğe kalırdı.
   const permissions = useAuthStore((state) => state.user?.admin_permissions);
-  const izinVar = (kod?: string) => !kod || (permissions?.includes(kod) ?? false);
+  const izinVar = (kod?: string | string[]) => {
+    if (!kod) return true;
+    const kodlar = Array.isArray(kod) ? kod : [kod];
+    return kodlar.some((k) => permissions?.includes(k) ?? false);
+  };
   const { data: openReports = 0 } = useOpenReportCount(izinVar("reports.view"));
 
   const ayarlar = ADMIN_NAV_ITEMS.find((i) => i.to === ROUTES.adminSettings);

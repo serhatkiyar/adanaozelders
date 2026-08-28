@@ -164,7 +164,7 @@ async def get_product_attributes(
 
 @admin_router.get("/product-sets", response_model=list[ProductSetOut])
 async def list_product_sets(
-    _admin: Admin = Depends(require_admin_permission("products.view")),
+    _admin: Admin = Depends(require_admin_permission("content.view")),
     db: AsyncSession = Depends(get_db),
 ):
     return await service.list_product_sets(db)
@@ -173,7 +173,7 @@ async def list_product_sets(
 @admin_router.post("/product-sets", response_model=ProductSetOut, status_code=201)
 async def create_product_set(
     payload: ProductSetWrite,
-    admin: Admin = Depends(require_admin_permission("products.manage")),
+    admin: Admin = Depends(require_admin_permission("content.manage")),
     _limited: None = Depends(_write_limit),
     db: AsyncSession = Depends(get_db),
 ):
@@ -187,7 +187,7 @@ async def create_product_set(
 async def revise_product_set(
     product_set_id: int,
     payload: ProductSetWrite,
-    admin: Admin = Depends(require_admin_permission("products.manage")),
+    admin: Admin = Depends(require_admin_permission("content.manage")),
     _limited: None = Depends(_write_limit),
     db: AsyncSession = Depends(get_db),
 ):
@@ -200,7 +200,7 @@ async def revise_product_set(
 @admin_router.post("/product-sets/{product_set_id}/publish", response_model=ProductSetOut)
 async def publish_product_set(
     product_set_id: int,
-    admin: Admin = Depends(require_admin_permission("products.manage")),
+    admin: Admin = Depends(require_admin_permission("content.manage")),
     _limited: None = Depends(_write_limit),
     db: AsyncSession = Depends(get_db),
 ):
@@ -218,7 +218,7 @@ async def publish_product_set(
 
 @admin_router.get("/pages", response_model=list[LandingPageSummaryOut])
 async def list_pages(
-    _admin: Admin = Depends(require_admin_permission("products.view")),
+    _admin: Admin = Depends(require_admin_permission("content.view")),
     db: AsyncSession = Depends(get_db),
 ):
     return await service.list_pages(db)
@@ -227,7 +227,7 @@ async def list_pages(
 @admin_router.post("/pages", response_model=LandingPageSummaryOut, status_code=201)
 async def create_page(
     payload: LandingPageCreate,
-    admin: Admin = Depends(require_admin_permission("products.manage")),
+    admin: Admin = Depends(require_admin_permission("content.manage")),
     _limited: None = Depends(_write_limit),
     db: AsyncSession = Depends(get_db),
 ):
@@ -241,7 +241,7 @@ async def create_page(
 async def update_page_identity(
     page_id: int,
     payload: LandingPageIdentityUpdate,
-    admin: Admin = Depends(require_admin_permission("products.manage")),
+    admin: Admin = Depends(require_admin_permission("content.manage")),
     _limited: None = Depends(_write_limit),
     db: AsyncSession = Depends(get_db),
 ):
@@ -258,7 +258,7 @@ async def update_page_identity(
 async def save_page_draft(
     page_id: int,
     payload: LandingPageRevisionWrite,
-    admin: Admin = Depends(require_admin_permission("products.manage")),
+    admin: Admin = Depends(require_admin_permission("content.manage")),
     _limited: None = Depends(_write_limit),
     db: AsyncSession = Depends(get_db),
 ):
@@ -273,7 +273,7 @@ async def save_page_draft(
 async def upsert_page_draft(
     page_id: int,
     payload: LandingPageRevisionWrite,
-    admin: Admin = Depends(require_admin_permission("products.manage")),
+    admin: Admin = Depends(require_admin_permission("content.manage")),
     _limited: None = Depends(_write_limit),
     db: AsyncSession = Depends(get_db),
 ):
@@ -295,7 +295,7 @@ async def upsert_page_draft(
 @admin_router.get("/pages/{page_id}/revisions", response_model=list[LandingPageRevisionOut])
 async def list_page_revisions(
     page_id: int,
-    _admin: Admin = Depends(require_admin_permission("products.view")),
+    _admin: Admin = Depends(require_admin_permission("content.view")),
     db: AsyncSession = Depends(get_db),
 ):
     revisions = list((await db.execute(select(StoreLandingPageRevision).options(
@@ -312,7 +312,7 @@ async def publish_page(
     page_id: int,
     revision_id: int,
     payload: LandingPagePublishIn,
-    admin: Admin = Depends(require_admin_permission("products.manage")),
+    admin: Admin = Depends(require_admin_permission("content.manage")),
     _limited: None = Depends(_write_limit),
     db: AsyncSession = Depends(get_db),
 ):
@@ -326,7 +326,7 @@ async def publish_page(
 async def publish_latest_page_draft(
     page_id: int,
     payload: LandingPagePublishIn,
-    admin: Admin = Depends(require_admin_permission("products.manage")),
+    admin: Admin = Depends(require_admin_permission("content.manage")),
     _limited: None = Depends(_write_limit),
     db: AsyncSession = Depends(get_db),
 ):
@@ -354,7 +354,7 @@ async def publish_latest_page_draft(
 async def duplicate_page(
     page_id: int,
     payload: LandingPageDuplicateIn,
-    admin: Admin = Depends(require_admin_permission("products.manage")),
+    admin: Admin = Depends(require_admin_permission("content.manage")),
     _limited: None = Depends(_write_limit),
     db: AsyncSession = Depends(get_db),
 ):
@@ -377,7 +377,7 @@ async def duplicate_page(
 )
 async def list_publications(
     page_id: int,
-    _admin: Admin = Depends(require_admin_permission("products.view")),
+    _admin: Admin = Depends(require_admin_permission("content.view")),
     db: AsyncSession = Depends(get_db),
 ):
     return await service.list_publications(db, page_id)
@@ -391,7 +391,7 @@ async def reschedule_publication(
     page_id: int,
     publication_id: int,
     payload: LandingPagePublicationUpdate,
-    admin: Admin = Depends(require_admin_permission("products.manage")),
+    admin: Admin = Depends(require_admin_permission("content.manage")),
     _limited: None = Depends(_write_limit),
     db: AsyncSession = Depends(get_db),
 ):
@@ -422,7 +422,7 @@ async def reschedule_publication(
 async def cancel_publication(
     page_id: int,
     publication_id: int,
-    admin: Admin = Depends(require_admin_permission("products.manage")),
+    admin: Admin = Depends(require_admin_permission("content.manage")),
     _limited: None = Depends(_write_limit),
     db: AsyncSession = Depends(get_db),
 ):
@@ -441,7 +441,7 @@ async def cancel_publication(
 async def preview_page(
     page_id: int,
     revision_id: int,
-    _admin: Admin = Depends(require_admin_permission("products.view")),
+    _admin: Admin = Depends(require_admin_permission("content.view")),
     db: AsyncSession = Depends(get_db),
 ):
     page = await db.get(StoreLandingPage, page_id)
@@ -453,7 +453,7 @@ async def preview_page(
 @admin_router.get("/pages/{page_id}/preview", response_model=LandingPageOut)
 async def preview_latest_draft(
     page_id: int,
-    _admin: Admin = Depends(require_admin_permission("products.view")),
+    _admin: Admin = Depends(require_admin_permission("content.view")),
     db: AsyncSession = Depends(get_db),
 ):
     page = await db.get(StoreLandingPage, page_id)
@@ -473,7 +473,7 @@ async def preview_latest_draft(
 
 @admin_router.get("/metrics", response_model=list[StorePageMetricOut])
 async def page_metrics(
-    _admin: Admin = Depends(require_admin_permission("products.view")),
+    _admin: Admin = Depends(require_admin_permission("content.view")),
     db: AsyncSession = Depends(get_db),
 ):
     return await service.metrics(db)
@@ -481,7 +481,7 @@ async def page_metrics(
 
 @admin_router.get("/media", response_model=list[MediaAssetOut])
 async def list_media(
-    _admin: Admin = Depends(require_admin_permission("products.view")),
+    _admin: Admin = Depends(require_admin_permission("content.view")),
     db: AsyncSession = Depends(get_db),
 ):
     return list((await db.execute(select(StoreMediaAsset).where(
@@ -493,7 +493,7 @@ async def list_media(
 async def upload_media(
     image: UploadFile = File(...),
     alt_text: str = Form(""),
-    admin: Admin = Depends(require_admin_permission("products.manage")),
+    admin: Admin = Depends(require_admin_permission("content.manage")),
     _limited: None = Depends(_write_limit),
     db: AsyncSession = Depends(get_db),
 ):

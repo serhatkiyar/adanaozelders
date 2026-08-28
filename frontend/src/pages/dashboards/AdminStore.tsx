@@ -30,9 +30,9 @@ const STORE_ROUTES: Record<SubTab, string> = {
 };
 
 const TAB_AREA: Record<SubTab, string> = {
-  home: "products",
-  campaigns: "products",
-  collections: "products",
+  home: "content",
+  campaigns: "content",
+  collections: "content",
   products: "products",
   categories: "products",
   supplier: "suppliers",

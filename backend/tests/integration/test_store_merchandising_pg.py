@@ -66,7 +66,7 @@ async def _home_yayini_saglam(pg):
         await s.commit()
     yield
 
-YÖNET = ["products.view", "products.manage"]
+YÖNET = ["content.view", "content.manage"]
 
 
 # ── Yayın penceresi ──────────────────────────────────────────────────────────
@@ -386,14 +386,14 @@ async def test_izinsiz_admin_vitrini_goremez_ve_yazamaz(fabv, http):
 
 
 async def test_yalniz_okuma_izni_yazmaya_yetmez(fabv, http):
-    """`products.view` listeyi açar ama yayınlamaya yetmez.
+    """`content.view` listeyi açar ama yayınlamaya yetmez.
 
     Sayı değil AYRIM ölçülür: iki izin tek koda bağlanmış olsaydı bu test
     kırmızı olurdu.
     """
     _, yetkili = await fabv.admin(izinler=YÖNET)
     s = await fabv.sayfa(http, yetkili)
-    _, okur = await fabv.admin(izinler=["products.view"])
+    _, okur = await fabv.admin(izinler=["content.view"])
 
     assert (
         await http.get("/api/v1/admin/store-merchandising/pages", headers=okur)

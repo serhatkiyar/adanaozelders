@@ -55,9 +55,11 @@ export function AdminKomutPenceresi({ acik, onAc, onKapat }: AdminKomutPenceresi
 
   const ogeler = useMemo(
     () =>
-      ADMIN_NAV_ITEMS.filter(
-        (i) => !i.requiredPermission || (permissions?.includes(i.requiredPermission) ?? false)
-      ),
+      ADMIN_NAV_ITEMS.filter((i) => {
+        if (!i.requiredPermission) return true;
+        const kodlar = Array.isArray(i.requiredPermission) ? i.requiredPermission : [i.requiredPermission];
+        return kodlar.some((kod) => permissions?.includes(kod) ?? false);
+      }),
     [permissions]
   );
 
