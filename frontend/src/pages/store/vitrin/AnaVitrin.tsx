@@ -78,8 +78,9 @@ function AmazonKart({ kart }: { kart: VitrinKarti }) {
 
 export function AnaVitrin() {
   return (
-    <div>
-      {/* ── Hero: tam genişlik + alta gradient fade ── */}
+    // Amazon gibi: hero dahil tüm vitrin ~1500px'te ortalanır, dışı sayfa zemini.
+    <div className="mx-auto w-full max-w-[1500px]">
+      {/* ── Hero: konteyner genişliği + alta gradient fade ── */}
       <section aria-label="Okula dönüş kampanyası" className="relative overflow-hidden">
         <Link to="/magaza/okula-donus" className="block">
           <img
@@ -98,7 +99,7 @@ export function AnaVitrin() {
       {/* ── Hero üzerine binen Amazon kartları ── */}
       <section
         aria-label="Öne çıkan bölümler"
-        className="relative z-30 mx-auto -mt-16 w-full max-w-[1464px] px-4 sm:-mt-24 md:-mt-40 md:px-8"
+        className="relative z-30 -mt-20 px-4 sm:-mt-36 md:-mt-64 md:px-8"
       >
         <div className="grid items-stretch gap-5 sm:grid-cols-2 md:grid-cols-4">
           {KARTLAR.map((kart) => (

@@ -11,7 +11,7 @@ vi.mock("@/hooks/useStore", () => ({
 }));
 
 describe("StoreCategoryBar", () => {
-  it("özel ders bağlantısını eğitmenler sayfasına yönlendirir", () => {
+  it("özel ders bağlantısını site ana sayfasına yönlendirir", () => {
     useCategories.mockReturnValue({ data: [] });
 
     render(
@@ -21,7 +21,9 @@ describe("StoreCategoryBar", () => {
     );
 
     expect(screen.getByRole("navigation", { name: "Mağaza gezinmesi" })).toBeTruthy();
-    expect(screen.getByRole("link", { name: "Özel Ders Al" }).getAttribute("href")).toBe("/egitmenler");
+    // Kullanıcı kararı (29 Ağu): mağazadan özel ders tarafına geçiş ana
+    // sayfadan başlar (/egitmenler "gereksiz bir yere atıyor" bulundu).
+    expect(screen.getByRole("link", { name: "Özel Ders Al" }).getAttribute("href")).toBe("/");
   });
 
   it("ürün kategorilerinin yanında görünmeye devam eder", () => {
@@ -38,7 +40,7 @@ describe("StoreCategoryBar", () => {
     expect(screen.getByRole("link", { name: "Sınav Kitapları" })).toBeTruthy();
     expect(screen.getByRole("link", { name: "Özel Ders Al" })).toBeTruthy();
     expect(screen.getAllByRole("link").map((link) => link.textContent?.trim())).toEqual([
-      "Kategoriler",
+      "Tümü",
       "Özel Ders Al",
       "Sınav Kitapları",
     ]);

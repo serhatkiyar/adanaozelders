@@ -54,11 +54,11 @@ describe("bayraklar BAĞIMSIZ — yalnız DENEMELER açık", () => {
     sar(<CategoryBar />);
     // Açılan bayrak: gerçek bağlantı.
     expect(screen.getByRole("link", { name: /Denemeler/ })).toBeTruthy();
-    // Kapalı kalan bayrak: hâlâ bağlantı değil, hâlâ rozetli.
+    // Kapalı kalan bayrak: hâlâ bağlantı değil ("Yakında" rozeti 29 Ağu'da
+    // kalktı; donukluk aria-disabled + soluklukla anlatılır).
     expect(screen.queryByRole("link", { name: /Kütüphaneler/ })).toBeNull();
     const donuk = screen.getByText("Kütüphaneler").closest("[aria-disabled]");
     expect(donuk).not.toBeNull();
-    expect(within(donuk as HTMLElement).getByText("Yakında")).toBeTruthy();
   });
 
   it("Öğren hub'ında 'Denemelerim' açıldı (DENEMELER bayrağı okunuyor)", () => {

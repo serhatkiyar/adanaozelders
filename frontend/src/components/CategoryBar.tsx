@@ -1,7 +1,6 @@
 import { Link } from "react-router-dom";
 import { ROUTES } from "@/lib/routes";
 import { DENEMELER_ACIK, KUTUPHANELER_ACIK } from "@/lib/ozellikBayraklari";
-import { YakindaRozeti } from "@/components/YakindaRozeti";
 
 /**
  * Airbnb tarzı üst-seviye kategori çubuğu: küçük 3D ikon + altında etiket,
@@ -101,7 +100,6 @@ export function CategoryBar({
                 className={`${cls} cursor-default opacity-60`}
               >
                 {inner}
-                <YakindaRozeti />
               </span>
             );
           }

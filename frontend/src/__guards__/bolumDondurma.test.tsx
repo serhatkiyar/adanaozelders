@@ -114,10 +114,12 @@ describe("A — kategori çubuğu (gerçek DOM)", () => {
     expect(oge!.getAttribute("tabindex")).toBe("-1");
   });
 
-  it.each(DONMUS_ETIKETLER)("%s yanında 'Yakında' rozeti var", (etiket) => {
+  it.each(DONMUS_ETIKETLER)("%s yanında 'Yakında' rozeti YOK (kullanıcı kararı, 29 Ağu)", (etiket) => {
+    // Rozet kaldırıldı: soluk + tıklanamaz hâl durumu zaten anlatıyor,
+    // ek "Yakında" metni gürültüydü. Donukluk yukarıdaki iddialarla sınanır.
     sar(<CategoryBar />);
     const oge = screen.getByText(etiket).closest("[aria-disabled]");
-    expect(within(oge as HTMLElement).getByText("Yakında")).toBeTruthy();
+    expect(within(oge as HTMLElement).queryByText("Yakında")).toBeNull();
   });
 
   it("sekme kipinde donmuş kategoriye tıklamak sekmeyi DEĞİŞTİRMEZ", () => {
@@ -208,13 +210,13 @@ describe("C — Öğren hub'ındaki 'Denemelerim' kartı (gerçek DOM)", () => {
     expect(olu).toEqual([]);
   });
 
-  it("'Denemelerim' kartında 'Yakında' rozeti var ve aria-disabled", () => {
+  it("'Denemelerim' kartı aria-disabled ve rozetsiz (29 Ağu: 'Yakında' metni kalktı)", () => {
     hubuBas();
     const kart = screen.getByText("Denemelerim").closest("[aria-disabled]");
     expect(kart).not.toBeNull();
     expect(kart!.getAttribute("aria-disabled")).toBe("true");
     expect(kart!.getAttribute("tabindex")).toBe("-1");
-    expect(within(kart as HTMLElement).getByText("Yakında")).toBeTruthy();
+    expect(within(kart as HTMLElement).queryByText("Yakında")).toBeNull();
   });
 });
 
@@ -242,13 +244,15 @@ describe("D — eğitmen menüsündeki 'Kütüphaneler' girdisi (gerçek DOM)", 
     expect(olu).toEqual([]);
   });
 
-  it("'Kütüphaneler' girdisi aria-disabled + tabIndex=-1 ve 'Yakında' rozetli", () => {
+  it("'Kütüphaneler' girdisi aria-disabled + tabIndex=-1 ve rozetsiz", () => {
     menuyuAc();
     const oge = screen.getByText("Kütüphaneler").closest("[aria-disabled]");
     expect(oge).not.toBeNull();
     expect(oge!.getAttribute("aria-disabled")).toBe("true");
     expect(oge!.getAttribute("tabindex")).toBe("-1");
-    expect(within(oge as HTMLElement).getByText("Yakında")).toBeTruthy();
+    // Görünür "Yakında" metni kalktı (29 Ağu); ekran okuyucu için durum
+    // aria-label'da ("… — Yakında") anlatılmaya devam eder.
+    expect(within(oge as HTMLElement).queryByText("Yakında")).toBeNull();
   });
 
   it("üst bar kısayolu da bağlantı değil (yan menüyü açmadan)", () => {
