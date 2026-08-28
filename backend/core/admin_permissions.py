@@ -21,10 +21,10 @@ PERMISSION_CATALOG: tuple[tuple[str, str, str], ...] = (
     ("users.manage", "Kullanıcı yönetimi", "Platform"),
     ("settings.view", "Platform ayarlarını görüntüleme", "Platform"),
     ("settings.manage", "Platform ayarlarını değiştirme", "Platform"),
-    # Kodlar geriye uyumluluk için sabit; izin artık metin şeridini değil
-    # mağaza hero carousel'ini yönetir.
-    ("announcements.view", "Vitrin görsellerini görüntüleme", "Platform"),
-    ("announcements.manage", "Vitrin görsellerini yönetme", "Platform"),
+    # NOT: `announcements.*` KALDIRILDI (CMS Faz 4): önce duyuru şeridini,
+    # sonra eski hero carousel'i yönetiyordu; iki yüzey de öldü (vitrin
+    # içeriği artık `content.*` ile store_merchandising'ten yönetilir).
+    # DB satırları `d4f8a2c6e0b3_announcements_izinleri_kaldirildi` ile silindi.
     ("tutors.view", "Eğitmen görüntüleme", "Eğitim"),
     ("tutors.manage", "Eğitmen yönetimi", "Eğitim"),
     ("bookings.view", "Rezervasyon görüntüleme", "Eğitim"),

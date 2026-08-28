@@ -329,8 +329,6 @@ const KAPI_KAPSAMI = [
   "src/components/admin/store/ProductsPanel.tsx",
   "src/components/admin/store/ReturnsPanel.tsx",
   "src/components/admin/store/StoreAttributesManager.tsx",
-  "src/components/admin/store/StoreHomeLayoutManager.tsx",
-  "src/components/admin/store/StoreShowcaseManager.tsx",
   "src/components/admin/store/SupplierPanel.tsx",
   "src/components/admin/ui/Badge.tsx",
   "src/components/admin/ui/Button.tsx",
@@ -347,7 +345,6 @@ const KAPI_KAPSAMI = [
   "src/pages/DeliveryDriver.tsx",
   "src/pages/DeliveryRunHandover.tsx",
   "src/pages/admin/AdminAccessPage.tsx",
-  "src/pages/admin/AdminAnnouncementsPage.tsx",
   "src/pages/admin/AdminAuditLogsPage.tsx",
   "src/pages/admin/AdminBookingsPage.tsx",
   "src/pages/admin/AdminDashboardPage.tsx",
@@ -470,8 +467,6 @@ const KONTROLSUZ_EKRANLAR: Record<string, "sunum" | "kabuk" | "pencere-kabugu" |
   // Mağaza içerik yöneticisi ağsız varsayılan render'da sayfa seçilene kadar
   // boş durum gösterir; formlar ve medya seçici kabul testlerinde açılır.
   "src/components/admin/store/LandingPagesManager.tsx": "kosullu",
-  "src/components/admin/store/StoreHomeLayoutManager.tsx": "kosullu",
-  "src/components/admin/store/StoreShowcaseManager.tsx": "kosullu",
   // Tedarikçi paneli: ağsız render'da tedarikçi listesi BOŞtur ve ekran
   // `EmptyState` basar. Durum şeridi, ayar formu ve tablolar ancak bir
   // tedarikçi satırı geldiğinde doğar — `ReturnsPanel` ile aynı sınıf.
@@ -493,7 +488,6 @@ const KONTROLSUZ_EKRANLAR: Record<string, "sunum" | "kabuk" | "pencere-kabugu" |
   // basar) ve oluşturma formu `showForm` KAPALI doğar — "Yeni duyuru"ya
   // basılınca açılır. `ProductsPanel`/`SupplierPanel` ile aynı sınıf; gerçek
   // DOM ölçümü `adminAnnouncements.acceptance.test.tsx`tedir.
-  "src/pages/admin/AdminAnnouncementsPage.tsx": "kosullu",
   "src/pages/admin/AdminDashboardPage.tsx": "kosullu",
   "src/pages/admin/AdminOperationsPage.tsx": "kosullu",
   "src/pages/admin/AdminPayoutsPage.tsx": "kosullu",

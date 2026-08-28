@@ -31,8 +31,6 @@ export const TAM_ADMIN_IZINLERI: readonly string[] = [
   "settings.manage",
   "operations.view",
   "operations.manage",
-  "announcements.view",
-  "announcements.manage",
   // Eğitim
   "tutors.view",
   "tutors.manage",

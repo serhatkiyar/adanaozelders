@@ -235,8 +235,6 @@ export const OLCUM_TABANI = [
   "src/components/admin/store/ProductsPanel.tsx",
   "src/components/admin/store/ReturnsPanel.tsx",
   "src/components/admin/store/StoreAttributesManager.tsx",
-  "src/components/admin/store/StoreHomeLayoutManager.tsx",
-  "src/components/admin/store/StoreShowcaseManager.tsx",
   // Tedarikci senkronu (Yildirim B2B) — yeni yuzey, dogdugu gun olcume girer.
   "src/components/admin/store/SupplierLinkDialog.tsx",
   "src/components/admin/store/SupplierPanel.tsx",
@@ -281,7 +279,6 @@ export const OLCUM_TABANI = [
   "src/pages/DeliveryDriver.tsx",
   "src/pages/DeliveryRunHandover.tsx",
   "src/pages/admin/AdminAccessPage.tsx",
-  "src/pages/admin/AdminAnnouncementsPage.tsx",
   "src/pages/admin/AdminAuditLogsPage.tsx",
   "src/pages/admin/AdminBookingsPage.tsx",
   // CMS Faz 1 · blog yönetimi (liste + editör).

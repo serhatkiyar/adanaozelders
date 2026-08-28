@@ -10,7 +10,6 @@ from api.routers import (
     clients,
     delivery,
     demands,
-    duyuru,
     educations,
     exams,
     geocode,
@@ -35,9 +34,6 @@ from api.routers import (
     srs,
     support,
     store,
-    store_hero,
-    store_home,
-    store_showcase,
     store_merchandising,
     supplier,
     study_reservations,
@@ -56,7 +52,6 @@ api_router.include_router(delivery.router)
 # Saha router'ı ayrı: ADMIN+KURYE (router-level ADMIN dependency'sinden bağımsız).
 api_router.include_router(delivery.field_router)
 api_router.include_router(demands.router)
-api_router.include_router(duyuru.router)
 api_router.include_router(blog.public_router)
 api_router.include_router(blog.admin_router)
 api_router.include_router(bookings.router)
@@ -85,12 +80,6 @@ api_router.include_router(payouts.router)
 api_router.include_router(payout.router)
 api_router.include_router(reports.router)
 api_router.include_router(store.router)
-api_router.include_router(store_hero.router)
-api_router.include_router(store_hero.admin_router)
-api_router.include_router(store_home.router)
-api_router.include_router(store_home.admin_router)
-api_router.include_router(store_showcase.router)
-api_router.include_router(store_showcase.admin_router)
 api_router.include_router(store_merchandising.public_router)
 api_router.include_router(store_merchandising.admin_router)
 # Tedarikçi senkronu. Yol öneki `/store/admin/suppliers` ama AYRI dosyada:

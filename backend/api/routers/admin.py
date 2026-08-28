@@ -66,7 +66,6 @@ from schemas.feature_flag import (
 from schemas.report import ReportCountOut, ReportOut, ReportResolve
 from schemas.education import AdminEducationOut, EducationOut, EducationVerifyIn
 from schemas.user import NameChangeRequestOut
-from schemas.duyuru import DuyuruCreate, DuyuruOut, DuyuruUpdate
 from models.demand import DemandStatus
 from services import (
     admin_service,
@@ -74,7 +73,6 @@ from services import (
     admin_operations_service,
     audit_service,
     content_moderation,
-    duyuru_service,
     education_service,
     demand_service,
     feature_flag_service,
@@ -932,72 +930,3 @@ async def reject_name_change(
     )
     return req
 
-
-# ── Duyuru şeridi (İP-C2) ────────────────────────────────────────────────
-#
-# Storefront'un tepesindeki tek şeridin panel CRUD'u. Seçim mantığı (hangi
-# kaydın gösterileceği) burada değil `duyuru_service.get_aktif`te yaşar ve
-# public `GET /duyuru-seridi/aktif` ucundan çağrılır (api/routers/duyuru.py).
-
-
-@router.get("/duyuru-seridi", response_model=list[DuyuruOut])
-async def list_duyuru_seridi(
-    _admin: Admin = Depends(require_admin_permission("announcements.view")),
-    db: AsyncSession = Depends(get_db),
-):
-    return await duyuru_service.list_all(db)
-
-
-@router.post(
-    "/duyuru-seridi",
-    response_model=DuyuruOut,
-    status_code=status.HTTP_201_CREATED,
-)
-async def create_duyuru_seridi(
-    payload: DuyuruCreate,
-    admin: Admin = Depends(require_admin_permission("announcements.manage")),
-    db: AsyncSession = Depends(get_db),
-):
-    kayit = await duyuru_service.create(db, payload)
-    await audit_service.record(
-        db,
-        actor=admin,
-        action="duyuru_seridi.create",
-        target_type="duyuru_seridi",
-        target_id=kayit.id,
-    )
-    return kayit
-
-
-@router.patch("/duyuru-seridi/{duyuru_id}", response_model=DuyuruOut)
-async def update_duyuru_seridi(
-    duyuru_id: int,
-    payload: DuyuruUpdate,
-    admin: Admin = Depends(require_admin_permission("announcements.manage")),
-    db: AsyncSession = Depends(get_db),
-):
-    kayit = await duyuru_service.update(db, duyuru_id, payload)
-    await audit_service.record(
-        db,
-        actor=admin,
-        action="duyuru_seridi.update",
-        target_type="duyuru_seridi",
-        target_id=duyuru_id,
-    )
-    return kayit
-
-
-@router.delete("/duyuru-seridi/{duyuru_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_duyuru_seridi(
-    duyuru_id: int,
-    admin: Admin = Depends(require_admin_permission("announcements.manage")),
-    db: AsyncSession = Depends(get_db),
-):
-    await duyuru_service.delete(db, duyuru_id)
-    await audit_service.record(
-        db,
-        actor=admin,
-        action="duyuru_seridi.delete",
-        target_type="duyuru_seridi",
-        target_id=duyuru_id,
-    )

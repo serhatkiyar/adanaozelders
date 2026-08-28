@@ -9,7 +9,19 @@ from typing import Annotated, Literal
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from schemas.store import ProductCategoryOut, ProductSearchOut
-from schemas.store_hero_slide import _validate_link
+
+
+def _validate_link(value: str | None) -> str | None:
+    if value is None:
+        return None
+    value = value.strip()
+    if not value:
+        return None
+    if value.startswith("/") and not value.startswith("//"):
+        return value
+    if value.startswith("https://") or value.startswith("http://"):
+        return value
+    raise ValueError("Bağlantı / ile başlayan site içi yol veya http(s) adresi olmalı.")
 
 
 class AttributeValueWrite(BaseModel):

@@ -114,11 +114,6 @@ const KAYIT: Record<string, "islem" | "sinir" | "secim" | "onkosul" | "gecerlili
   "src/pages/admin/packing/PackingQueuePage.tsx <Button> sayfa >= sonSayfa": "sinir",
   "src/pages/admin/packing/ReturnQueuePage.tsx <Button> sayfa <= 1": "sinir",
   "src/pages/admin/packing/ReturnQueuePage.tsx <Button> sayfa >= sonSayfa": "sinir",
-  "src/components/admin/store/StoreHomeLayoutManager.tsx <Button> index === 0": "sinir",
-  "src/components/admin/store/StoreHomeLayoutManager.tsx <Button> index === 0 || reorder.isPending": "sinir",
-  "src/components/admin/store/StoreHomeLayoutManager.tsx <Button> index === images.length - 1": "sinir",
-  "src/components/admin/store/StoreHomeLayoutManager.tsx <Button> index === sections.length - 1 || reorder.isPending": "sinir",
-  "src/components/admin/store/StoreHomeLayoutManager.tsx <Button> index === selected.length - 1": "sinir",
 
   // ── secim: aksiyonun öznesi yok ──
   "src/components/admin/packing/PackingLabelSheet.tsx <button> basilacaklar.length === 0": "secim",
@@ -151,7 +146,6 @@ const KAYIT: Record<string, "islem" | "sinir" | "secim" | "onkosul" | "gecerlili
   "src/pages/admin/packing/PackingStationPage.tsx <Button> engeller.length > 0": "onkosul",
   "src/pages/DeliveryDriver.tsx <button> busy || deliverDrop.isPending || !stop.photo_url":
     "onkosul",
-  "src/components/admin/store/StoreHomeLayoutManager.tsx <Button> selected.length >= 12": "onkosul",
 
   // ── gecerlilik-borc: KİLİTLİ KARARIN İHLALİ (İP-A8'de kayda geçti) ──
   //
@@ -184,7 +178,6 @@ const KAYIT: Record<string, "islem" | "sinir" | "secim" | "onkosul" | "gecerlili
  * ayrıca sınıyor.
  */
 const ADETLER: Record<string, number> = {
-  "src/components/admin/store/StoreHomeLayoutManager.tsx <Button> index === 0": 2,
   "src/components/ImageCropModal.tsx <button> isUploading": 3,
   "src/components/LibraryBookmarkButton.tsx <button> toggle.isPending": 2,
   "src/components/LibraryMediaManager.tsx <button> busy": 2,
